@@ -1,0 +1,11 @@
+syntax: glob
+*.o
+*.mod
+.DS_Store
+build
+pflotran
+pflotran_fc
+pflow
+ptran
+
+
