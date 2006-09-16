@@ -1,0 +1,185 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 42;
+	objects = {
+
+/* Begin PBXFileReference section */
+		23CA5E010AAF411000EC6DC4 /* pflotran_fc.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = pflotran_fc.F90; sourceTree = "<group>"; };
+		33021A9208A12EFD00D082B8 /* co2_span_wagner.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = co2_span_wagner.F90; sourceTree = "<group>"; };
+		33021A9308A12EFD00D082B8 /* co2_sw_global.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = co2_sw_global.F90; sourceTree = "<group>"; };
+		33021A9408A12EFD00D082B8 /* co2_sw_rtsafe.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = co2_sw_rtsafe.F90; sourceTree = "<group>"; };
+		33021A9508A12EFD00D082B8 /* co2eos.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = co2eos.F90; sourceTree = "<group>"; };
+		33021A9608A12EFD00D082B8 /* definitions.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = definitions.h; sourceTree = "<group>"; };
+		33021A9708A12EFD00D082B8 /* fileio.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = fileio.F90; sourceTree = "<group>"; };
+		33021A9808A12EFD00D082B8 /* gaseos_mod.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = gaseos_mod.F90; sourceTree = "<group>"; };
+		33021A9908A12EFD00D082B8 /* hydrostat.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = hydrostat.F90; sourceTree = "<group>"; };
+		33021A9A08A12EFD00D082B8 /* makefile */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.make; path = makefile; sourceTree = "<group>"; };
+		33021A9B08A12EFD00D082B8 /* mixed_fluid_eos_duan.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = mixed_fluid_eos_duan.F90; sourceTree = "<group>"; };
+		33021A9C08A12EFD00D082B8 /* mixed_fluid_eos_sp_ana.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = mixed_fluid_eos_sp_ana.F90; sourceTree = "<group>"; };
+		33021A9D08A12EFD00D082B8 /* mixed_fluid_eos.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = mixed_fluid_eos.F90; sourceTree = "<group>"; };
+		33021A9F08A12EFD00D082B8 /* pflotran.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = pflotran.F90; sourceTree = "<group>"; };
+		33021AA108A12EFD00D082B8 /* pflow_2pha_ResJac.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = pflow_2pha_ResJac.F90; sourceTree = "<group>"; };
+		33021AA208A12EFD00D082B8 /* pflow_COND.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = pflow_COND.F90; sourceTree = "<group>"; };
+		33021AA308A12EFD00D082B8 /* pflow_gridtype.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = pflow_gridtype.F90; sourceTree = "<group>"; };
+		33021AA408A12EFD00D082B8 /* pflow_LIQUID.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = pflow_LIQUID.F90; sourceTree = "<group>"; };
+		33021AA508A12EFD00D082B8 /* pflow_mphase_ResJac.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = pflow_mphase_ResJac.F90; sourceTree = "<group>"; };
+		33021AA608A12EFD00D082B8 /* pflow_output.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = pflow_output.F90; sourceTree = "<group>"; };
+		33021AA808A12EFD00D082B8 /* pflow_read_gridsize.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = pflow_read_gridsize.F90; sourceTree = "<group>"; };
+		33021AA908A12EFD00D082B8 /* pflow_TH.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = pflow_TH.F90; sourceTree = "<group>"; };
+		33021AAA08A12EFD00D082B8 /* pflow_THC.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = pflow_THC.F90; sourceTree = "<group>"; };
+		33021AAB08A12EFD00D082B8 /* pflow_THS.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = pflow_THS.F90; sourceTree = "<group>"; };
+		33021AAC08A12EFD00D082B8 /* pflow_TWOPH.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = pflow_TWOPH.F90; sourceTree = "<group>"; };
+		33021AAD08A12EFD00D082B8 /* pflow_vector_ops.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = pflow_vector_ops.F90; sourceTree = "<group>"; };
+		33021AAE08A12EFD00D082B8 /* pflow.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = pflow.F90; sourceTree = "<group>"; };
+		33021AAF08A12EFD00D082B8 /* pflowgrid_mod.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = pflowgrid_mod.F90; sourceTree = "<group>"; };
+		33021AB108A12EFD00D082B8 /* ptran_conn.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = ptran_conn.F90; sourceTree = "<group>"; };
+		33021AB208A12EFD00D082B8 /* ptran_dbase.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = ptran_dbase.F90; sourceTree = "<group>"; };
+		33021AB308A12EFD00D082B8 /* ptran_destroy.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = ptran_destroy.F90; sourceTree = "<group>"; };
+		33021AB408A12EFD00D082B8 /* ptran_dt.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = ptran_dt.F90; sourceTree = "<group>"; };
+		33021AB508A12EFD00D082B8 /* ptran_global.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = ptran_global.F90; sourceTree = "<group>"; };
+		33021AB608A12EFD00D082B8 /* ptran_init.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = ptran_init.F90; sourceTree = "<group>"; };
+		33021AB708A12EFD00D082B8 /* ptran_multi.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = ptran_multi.F90; sourceTree = "<group>"; };
+		33021AB808A12EFD00D082B8 /* ptran_out.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = ptran_out.F90; sourceTree = "<group>"; };
+		33021AB908A12EFD00D082B8 /* ptran_psi.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = ptran_psi.F90; sourceTree = "<group>"; };
+		33021ABA08A12EFD00D082B8 /* ptran_read.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = ptran_read.F90; sourceTree = "<group>"; };
+		33021ABB08A12EFD00D082B8 /* ptran_setbnd.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = ptran_setbnd.F90; sourceTree = "<group>"; };
+		33021ABC08A12EFD00D082B8 /* ptran_solv.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = ptran_solv.F90; sourceTree = "<group>"; };
+		33021ABD08A12EFD00D082B8 /* ptran_speciation.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = ptran_speciation.F90; sourceTree = "<group>"; };
+		33021ABE08A12EFD00D082B8 /* ptran_update.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = ptran_update.F90; sourceTree = "<group>"; };
+		33021ABF08A12EFD00D082B8 /* ptran.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = ptran.F90; sourceTree = "<group>"; };
+		33021AC008A12EFD00D082B8 /* rock_react.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = rock_react.F90; sourceTree = "<group>"; };
+		33021AC108A12EFD00D082B8 /* trdynmem.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = trdynmem.F90; sourceTree = "<group>"; };
+		33021AC208A12EFD00D082B8 /* trgamdh.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = trgamdh.F90; sourceTree = "<group>"; };
+		33021AC308A12EFD00D082B8 /* trionexc.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = trionexc.F90; sourceTree = "<group>"; };
+		33021AC408A12EFD00D082B8 /* trkinmin.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = trkinmin.F90; sourceTree = "<group>"; };
+		33021AC508A12EFD00D082B8 /* trstdyst.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = trstdyst.F90; sourceTree = "<group>"; };
+		33021AC608A12EFD00D082B8 /* utilities.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = utilities.F90; sourceTree = "<group>"; };
+		33021AC708A12EFD00D082B8 /* water_eos.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = water_eos.F90; sourceTree = "<group>"; };
+		33021ACE08A1306800D082B8 /* translator_mixed_fluid_OWG.F90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; path = translator_mixed_fluid_OWG.F90; sourceTree = "<group>"; };
+		3337519B095B75B000209B95 /* pflow_solve.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = pflow_solve.F90; sourceTree = "<group>"; };
+		3337F94108EB45D90080E8DC /* pflow_pckr_mod.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = pflow_pckr_mod.F90; sourceTree = "<group>"; };
+		334F95C30A92833000D51F44 /* pflotran_couple.F90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; path = pflotran_couple.F90; sourceTree = "<group>"; };
+		339C8E3D09D4754800E6481F /* pflow_owg_ResJac.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = pflow_owg_ResJac.F90; sourceTree = "<group>"; };
+		33C0932A09BF95D300A773C8 /* Readfield.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = Readfield.F90; sourceTree = "<group>"; };
+		33D9A02109D9A0A9008962D9 /* oil_eos.F90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; path = oil_eos.F90; sourceTree = "<group>"; };
+		33D9A02809D9EB2C008962D9 /* oil_pckr.F90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; path = oil_pckr.F90; sourceTree = "<group>"; };
+		33E20B6909ED787000578A26 /* translator_mixed_fluid_mph.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = translator_mixed_fluid_mph.F90; sourceTree = "<group>"; };
+		33E20BAC09ED9D9000578A26 /* translator_mixed_fluid.F90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; path = translator_mixed_fluid.F90; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		33021A8608A12EC800D082B8 = {
+			isa = PBXGroup;
+			children = (
+				33021A9208A12EFD00D082B8 /* co2_span_wagner.F90 */,
+				33021A9308A12EFD00D082B8 /* co2_sw_global.F90 */,
+				33021A9408A12EFD00D082B8 /* co2_sw_rtsafe.F90 */,
+				33021A9508A12EFD00D082B8 /* co2eos.F90 */,
+				33021A9608A12EFD00D082B8 /* definitions.h */,
+				33021A9708A12EFD00D082B8 /* fileio.F90 */,
+				33021A9808A12EFD00D082B8 /* gaseos_mod.F90 */,
+				33021A9908A12EFD00D082B8 /* hydrostat.F90 */,
+				33021A9A08A12EFD00D082B8 /* makefile */,
+				33021A9D08A12EFD00D082B8 /* mixed_fluid_eos.F90 */,
+				33021A9B08A12EFD00D082B8 /* mixed_fluid_eos_duan.F90 */,
+				33021A9C08A12EFD00D082B8 /* mixed_fluid_eos_sp_ana.F90 */,
+				33D9A02109D9A0A9008962D9 /* oil_eos.F90 */,
+				33D9A02809D9EB2C008962D9 /* oil_pckr.F90 */,
+				33021A9F08A12EFD00D082B8 /* pflotran.F90 */,
+				334F95C30A92833000D51F44 /* pflotran_couple.F90 */,
+				23CA5E010AAF411000EC6DC4 /* pflotran_fc.F90 */,
+				33021AAE08A12EFD00D082B8 /* pflow.F90 */,
+				33021AA108A12EFD00D082B8 /* pflow_2pha_ResJac.F90 */,
+				33021AA208A12EFD00D082B8 /* pflow_COND.F90 */,
+				33021AA308A12EFD00D082B8 /* pflow_gridtype.F90 */,
+				33021AA408A12EFD00D082B8 /* pflow_LIQUID.F90 */,
+				33021AA508A12EFD00D082B8 /* pflow_mphase_ResJac.F90 */,
+				33021AA608A12EFD00D082B8 /* pflow_output.F90 */,
+				339C8E3D09D4754800E6481F /* pflow_owg_ResJac.F90 */,
+				3337F94108EB45D90080E8DC /* pflow_pckr_mod.F90 */,
+				33021AA808A12EFD00D082B8 /* pflow_read_gridsize.F90 */,
+				3337519B095B75B000209B95 /* pflow_solve.F90 */,
+				33021AA908A12EFD00D082B8 /* pflow_TH.F90 */,
+				33021AAA08A12EFD00D082B8 /* pflow_THC.F90 */,
+				33021AAB08A12EFD00D082B8 /* pflow_THS.F90 */,
+				33021AAC08A12EFD00D082B8 /* pflow_TWOPH.F90 */,
+				33021AAD08A12EFD00D082B8 /* pflow_vector_ops.F90 */,
+				33021AAF08A12EFD00D082B8 /* pflowgrid_mod.F90 */,
+				33021ABF08A12EFD00D082B8 /* ptran.F90 */,
+				33021AB108A12EFD00D082B8 /* ptran_conn.F90 */,
+				33021AB208A12EFD00D082B8 /* ptran_dbase.F90 */,
+				33021AB308A12EFD00D082B8 /* ptran_destroy.F90 */,
+				33021AB408A12EFD00D082B8 /* ptran_dt.F90 */,
+				33021AB508A12EFD00D082B8 /* ptran_global.F90 */,
+				33021AB608A12EFD00D082B8 /* ptran_init.F90 */,
+				33021AB708A12EFD00D082B8 /* ptran_multi.F90 */,
+				33021AB808A12EFD00D082B8 /* ptran_out.F90 */,
+				33021AB908A12EFD00D082B8 /* ptran_psi.F90 */,
+				33021ABA08A12EFD00D082B8 /* ptran_read.F90 */,
+				33021ABB08A12EFD00D082B8 /* ptran_setbnd.F90 */,
+				33021ABC08A12EFD00D082B8 /* ptran_solv.F90 */,
+				33021ABD08A12EFD00D082B8 /* ptran_speciation.F90 */,
+				33021ABE08A12EFD00D082B8 /* ptran_update.F90 */,
+				33C0932A09BF95D300A773C8 /* Readfield.F90 */,
+				33021AC008A12EFD00D082B8 /* rock_react.F90 */,
+				33E20BAC09ED9D9000578A26 /* translator_mixed_fluid.F90 */,
+				33E20B6909ED787000578A26 /* translator_mixed_fluid_mph.F90 */,
+				33021ACE08A1306800D082B8 /* translator_mixed_fluid_OWG.F90 */,
+				33021AC108A12EFD00D082B8 /* trdynmem.F90 */,
+				33021AC208A12EFD00D082B8 /* trgamdh.F90 */,
+				33021AC308A12EFD00D082B8 /* trionexc.F90 */,
+				33021AC408A12EFD00D082B8 /* trkinmin.F90 */,
+				33021AC508A12EFD00D082B8 /* trstdyst.F90 */,
+				33021AC608A12EFD00D082B8 /* utilities.F90 */,
+				33021AC708A12EFD00D082B8 /* water_eos.F90 */,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXProject section */
+		33021A8808A12EC800D082B8 /* Project object */ = {
+			isa = PBXProject;
+			buildConfigurationList = 33021A8908A12EC800D082B8 /* Build configuration list for PBXProject "pfltra231_68ksp" */;
+			hasScannedForEncodings = 0;
+			mainGroup = 33021A8608A12EC800D082B8;
+			projectDirPath = "";
+			targets = (
+			);
+		};
+/* End PBXProject section */
+
+/* Begin XCBuildConfiguration section */
+		33021A8A08A12EC800D082B8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+			};
+			name = Debug;
+		};
+		33021A8B08A12EC800D082B8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		33021A8908A12EC800D082B8 /* Build configuration list for PBXProject "pfltra231_68ksp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				33021A8A08A12EC800D082B8 /* Debug */,
+				33021A8B08A12EC800D082B8 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 33021A8808A12EC800D082B8 /* Project object */;
+}
