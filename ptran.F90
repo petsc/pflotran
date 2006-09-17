@@ -155,19 +155,22 @@
     if (nblksrc > 0) then
       n = 1
       tsrc = timesrc(isrc1,n)
-      if (t > tsrc) then
+      if (t == tsrc) then
+        isrc1 = isrc1 + 1
+      else if (t > tsrc) then
         t = t - dt
         dt = tsrc - t
         t = tsrc
         isrc1 = isrc1 + 1
-        goto 999
+!       goto 999
       endif
- 999  continue
+!999  continue
+!     print *,'ptran-src: ',isrc1,tsrc,t,dt
     endif
     
     if (dt <= 0.d0) then
       if (myrank == 0) &
-      print *,'ptransles-zero dt stopping: ',kstep,t,dt,kplt, &
+      print *,'ptran-zero dt stopping: ',kstep,t,dt,kplt, &
       tplot(kplt),tsrc
       stop
     endif

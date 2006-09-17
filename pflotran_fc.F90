@@ -196,7 +196,7 @@ endif
     rtotco2 = 0.D0
     sumdt = 0.d0
 
-    if(nkin>0) phik_p(:) =phik_old_p(:)
+    if(nkin>0) phik_p(:) = phik_old_p(:)
     do kstep = 1, kmax
 
       nstep = nstep + 1
@@ -279,39 +279,38 @@ endif
       if (t >= tflow2) exit
     enddo
 
-
     rtoth2o = rtoth2o/(tflow2-tflow1)
     rtotco2 = rtotco2/(tflow2-tflow1)
     
 	err1=0.D0; err2=0.D0; rmax1=0.D0; rmax2=0.D0
-	  do nn=1, nlmax
-	    if(dabs(grid%rtot(nn,1)- rtoth2o(nn)) > err1)err1=dabs(grid%rtot(nn,1)- rtoth2o(nn))
-	    if(dabs(grid%rtot(nn,2)- rtotco2(nn)) > err2)err2=dabs(grid%rtot(nn,2)- rtotco2(nn))
-	    if(dabs(rtoth2o(nn))>1D-14)then
-          if(dabs((grid%rtot(nn,1)- rtoth2o(nn))/rtoth2o(nn))>rmax1)&
-		    rmax1=dabs((grid%rtot(nn,1)- rtoth2o(nn))/rtoth2o(nn))
-		endif
-		if(dabs(rtotco2(nn))>1D-14)then
-		if(dabs((grid%rtot(nn,2)- rtotco2(nn))/rtotco2(nn))>rmax2)&
-		   rmax2=dabs((grid%rtot(nn,2)- rtotco2(nn))/rtotco2(nn))
-	    endif
-	  enddo
+    do nn=1, nlmax
+      if(abs(grid%rtot(nn,1)-rtoth2o(nn)) > err1) err1=abs(grid%rtot(nn,1)-rtoth2o(nn))
+      if(abs(grid%rtot(nn,2)-rtotco2(nn)) > err2) err2=abs(grid%rtot(nn,2)-rtotco2(nn))
+      if(abs(rtoth2o(nn))>1D-14)then
+        if(abs((grid%rtot(nn,1)-rtoth2o(nn))/rtoth2o(nn)) > rmax1) &
+          rmax1=dabs((grid%rtot(nn,1)-rtoth2o(nn))/rtoth2o(nn))
+      endif
+      if(dabs(rtotco2(nn))>1D-14)then
+        if(abs((grid%rtot(nn,2)-rtotco2(nn))/rtotco2(nn)) > rmax2) &
+          rmax2=abs((grid%rtot(nn,2)-rtotco2(nn))/rtotco2(nn))
+      endif
+    enddo
 	 
-	  if(grid%commsize >1)then
+    if(grid%commsize >1)then
 	  call MPI_ALLREDUCE(err1, err10,1, MPI_DOUBLE_PRECISION,MPI_MAX,PETSC_COMM_WORLD,ierr)
       call MPI_ALLREDUCE(err2, err20,1, MPI_DOUBLE_PRECISION,MPI_MAX,PETSC_COMM_WORLD,ierr)
 	  call MPI_ALLREDUCE(rmax1, rmax10,1, MPI_DOUBLE_PRECISION,MPI_MAX,PETSC_COMM_WORLD,ierr)
 	  call MPI_ALLREDUCE(rmax2, rmax20,1, MPI_DOUBLE_PRECISION,MPI_MAX,PETSC_COMM_WORLD,ierr)
 	  err1=err10; err2=err20
 	  rmax1=rmax10; rmax2=rmax20
-	   endif		  	  
+    endif		  	  
 	 
 	
-	 if(max(err1, err2)< eps) isucc=1
-     if(max(rmax1, rmax2)< 5D-2) isucc=1
-	if(myrank == 0)  print *, 'R : ', err1, err2 ,rmax1, rmax2
+    if(max(err1, err2) < eps) isucc=1
+    if(max(rmax1, rmax2) < 5D-2) isucc=1
+	if(myrank == 0) print *,'R : ', err1, err2 ,rmax1, rmax2
    
-   enddo
+  enddo
 
   if(myrank == 0) print *,' Finished Step ****************************************'  
     grid%t=grid%t+grid%dt

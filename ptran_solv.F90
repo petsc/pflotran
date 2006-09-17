@@ -68,8 +68,8 @@
   KSPConvergedReason :: ksp_reason
   KSP   ::  ksp
 
-  integer :: ierr, its, n !, newton_mx
-  real*8 :: delc
+  integer :: iconv, ierr, its, j, jn, n !, newton_mx
+  real*8 :: delc, res
   real*8, pointer :: cc_p(:), ccloc_p(:), x_p(:), porloc_p(:), &
                      temploc_p(:), ssat_loc_p(:), sat_loc_p(:),pressloc_p(:)
 ! -----------------------------------------
@@ -120,25 +120,35 @@
     call VecRestoreArrayF90(porloc,porloc_p,ierr)
 
 !---check convergence
-!   call VecGetArrayF90(b,b_p,ierr)
-!   do n = 1, nlmax
-!     do j = 1, ncomp
-!       jn = j+(n-1)*nmat
-!       if(vb(n) > 1.d0) then
-!         b_p(jn) = b_p(jn)/vb(n)
-!       endif
-!     enddo
-!   enddo
-!   call VecRestoreArrayF90(b,b_p,ierr)
+    call VecGetArrayF90(b,b_p,ierr)
+    iconv = 2
+    r2norm = 0.d0
+    do n = 1, nlmax
+      do j = 1, ncomp
+        jn = j+(n-1)*nmat
+        if(vb(n) > 1.d0) then
+          res = b_p(jn)/vb(n)
+        else
+          res = b_p(jn)
+        endif
+        if (abs(res) > eps) iconv = -2
+        r2norm = max(r2norm,res)
+        
+!       print *,'ptran_solv: ',j,n,res,r2norm
+      enddo
+    enddo
+    call VecRestoreArrayF90(b,b_p,ierr)
+    
+    if (newton > 0 .and. iconv == 2) exit
 
-    call VecNorm(b,NORM_2,r2norm,ierr)
+!   call VecNorm(b,NORM_2,r2norm,ierr)
     
 !   call VecView(b,PETSC_VIEWER_STDOUT_WORLD,ierr)
 !   call MatView(A,PETSC_VIEWER_STDOUT_WORLD,ierr)
     
-    if (newton > 0 .and. r2norm < eps) then
-      exit ! convergence obtained
-    endif
+!   if (newton > 0 .and. r2norm < eps) then
+!     exit ! convergence obtained
+!   endif
 
 !   call KSPSetResidualHistory(ksp,history,maxitr,PETSC_TRUE,ierr)
     

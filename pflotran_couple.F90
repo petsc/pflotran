@@ -60,7 +60,7 @@ contains
   dist1 => grid%dist1
   dist2 => grid%dist2
   area  => grid%area
-  nblkbc=grid%nblkbc
+  nblkbc = grid%nblkbc
   distbc => grid%distbc
   areabc => grid%areabc
 
@@ -177,41 +177,41 @@ contains
     call VecRestoreArrayF90(grid%xx, xx_p, ierr)
   endif
 
-    if (grid%use_mph == PETSC_TRUE) then
-  !   call VecGetArrayF90(grid%xx_loc, xx_p, ierr)
-      call VecGetArrayF90(grid%xx, xx_p, ierr)
-      call VecGetArrayF90(grid%yy, yy_p, ierr)
-      call VecGetArrayF90(grid%iphas, iphase_p, ierr)
-      call VecGetArrayF90(grid%iphas_old, iphase_old_p, ierr)	
-      do m = 1, grid%nlmax
-  !     n = nL2G(m)
-  !     ppress_p(m) = xx_p(1+(n-1)*grid%ndof) ! ppress and press defined for nphase
-  !     ttemp_p(m) = xx_p(2+(n-1)*grid%ndof)
-        jm = 2+(m-1)*grid%nphase 
-        ppress_p(m) = xx_p(1+(m-1)*grid%ndof) ! ppress and press defined for nphase
-        press_p(m) = yy_p(1+(m-1)*grid%ndof)
-        ttemp_p(m) = xx_p(2+(m-1)*grid%ndof)
-        temp_p(m) = yy_p(2+(m-1)*grid%ndof)
-        
-        iiphas=iphase_p(m)
-        select case(iiphas)
-          case(1)
-            ssat_p(jm) = 0.D0
-          case(2)
-            ssat_p(jm) = 1.D0
-          case(3)
-            ssat_p(jm) = xx_p(3+(m-1)*grid%ndof)    	  
-        end select
-         
-        iiphas=iphase_old_p(m)
-        select case(iiphas)
-          case(1)
-            sat_p(jm) = 0.D0
-          case(2)
-            sat_p(jm) = 1.D0 
-          case(3)
-            sat_p(jm) = yy_p(3+(m-1)*grid%ndof)    	  
-        end select
+  if (grid%use_mph == PETSC_TRUE) then
+!   call VecGetArrayF90(grid%xx_loc, xx_p, ierr)
+    call VecGetArrayF90(grid%xx, xx_p, ierr)
+    call VecGetArrayF90(grid%yy, yy_p, ierr)
+    call VecGetArrayF90(grid%iphas, iphase_p, ierr)
+    call VecGetArrayF90(grid%iphas_old, iphase_old_p, ierr)	
+    do m = 1, grid%nlmax
+!     n = nL2G(m)
+!     ppress_p(m) = xx_p(1+(n-1)*grid%ndof) ! ppress and press defined for nphase
+!     ttemp_p(m) = xx_p(2+(n-1)*grid%ndof)
+      jm = 2+(m-1)*grid%nphase 
+      ppress_p(m) = xx_p(1+(m-1)*grid%ndof) ! ppress and press defined for nphase
+      press_p(m) = yy_p(1+(m-1)*grid%ndof)
+      ttemp_p(m) = xx_p(2+(m-1)*grid%ndof)
+      temp_p(m) = yy_p(2+(m-1)*grid%ndof)
+      
+      iiphas=iphase_p(m)
+      select case(iiphas)
+        case(1)
+          ssat_p(jm) = 0.D0
+        case(2)
+          ssat_p(jm) = 1.D0
+        case(3)
+          ssat_p(jm) = xx_p(3+(m-1)*grid%ndof)    	  
+      end select
+       
+      iiphas=iphase_old_p(m)
+      select case(iiphas)
+        case(1)
+          sat_p(jm) = 0.D0
+        case(2)
+          sat_p(jm) = 1.D0 
+        case(3)
+          sat_p(jm) = yy_p(3+(m-1)*grid%ndof)    	  
+      end select
     enddo
 !   call VecRestoreArrayF90(grid%xx_loc, xx_p, ierr)
     call VecRestoreArrayF90(grid%xx, xx_p, ierr)
@@ -278,16 +278,13 @@ contains
   endif
 #endif
 
- call DAGlobalToLocalBegin(grid%da_1_dof, xphi_co2, INSERT_VALUES, &
+  call DAGlobalToLocalBegin(grid%da_1_dof, xphi_co2, INSERT_VALUES, &
                             xphi_co2_loc, ierr)
- call DAGlobalToLocalEnd(grid%da_1_dof, xphi_co2, INSERT_VALUES, &
+  call DAGlobalToLocalEnd(grid%da_1_dof, xphi_co2, INSERT_VALUES, &
                             xphi_co2_loc, ierr)
-
-
- call DAGlobalToLocalBegin(grid%da_1_dof, den_co2, INSERT_VALUES, &
+  call DAGlobalToLocalBegin(grid%da_1_dof, den_co2, INSERT_VALUES, &
                             den_co2_loc, ierr)
-				
-    call DAGlobalToLocalEnd(grid%da_1_dof, den_co2, INSERT_VALUES, &
+  call DAGlobalToLocalEnd(grid%da_1_dof, den_co2, INSERT_VALUES, &
                             den_co2_loc, ierr)
 
   if (f2 > 0.d0) then

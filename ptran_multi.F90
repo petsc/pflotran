@@ -128,7 +128,7 @@ contains
           ssg*ppsig(j,ng)-sg*psig(j,ng))
 
 !         print *,'ptranmulti-acc: ',myrank,n,ng,j,porloc_p(ng),dt,pvdt,vb(n), &
-!         ssl,ssg,sl,sg,psi(j,ng),ppsi(j,ng),dpsi(j,l,ng),b_p(jn)
+!         ssl,ssg,sl,sg,psi(j,ng),ppsi(j,ng),b_p(jn)
 
           do l = 1, ncomp
             lng = l+(ng-1)*nmat
@@ -136,7 +136,7 @@ contains
             val = pvdt*(ssl*dpsi(j,l,ng)+ssg*dpsig(j,l,ng))
 
 !           print *,'ptranmulti-acc: ',myrank,n,ng,j,l,porloc_p(ng),vb(n), &
-!           ssl,ssg,sl,sg,psi(j,ng),ppsi(j,ng),dpsi(j,l,ng),b_p(jn)
+!           ssl,ssg,sl,sg,psi(j,ng),ppsi(j,ng),dpsi(j,l,ng),dpsig(j,l,ng),b_p(jn)
 
             blkmat1(j,l) = val
             if (iblkfmt == 0 .and. dfill(j+(l-1)*ncomp).ne.0) then

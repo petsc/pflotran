@@ -184,16 +184,16 @@ module ptran_setbnd_module
         iisrc = iisrc+1
         iireg = ireg
         
-        do j = 1,ncomp
-        print *,'ptran_setbnd1: ',j,ireg,ibcreg(3),ibcreg(4),itype(j,ireg),ctot(j,ireg)
-        enddo
+!       do j = 1,ncomp
+!       print *,'ptran_setbnd1: ',j,ireg,ibcreg(3),ibcreg(4),itype(j,ireg),ctot(j,ireg)
+!       enddo
         if (myrank==0) write(iunit2,1000) iisrc,tempbc(ireg)
 
         call trspeciate (cloc,cxloc,cloctot,pgasloc, &
         cecloc,xexloc,csorplc,ccsorplc,csorpflc,sitdnloc,alogpf, &
         gamloc,gamxloc,dgamdi,rho,tempbc(ireg),iter)
         
-        print *,'ptran_setbnd2: ',ireg,ctot(jco2,ireg)
+!       print *,'ptran_setbnd2: ',ireg,ctot(jco2,ireg)
 
         nss = nss+1
 
