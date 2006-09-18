@@ -68,7 +68,7 @@
   KSPConvergedReason :: ksp_reason
   KSP   ::  ksp
 
-  integer :: iconv, ierr, its, j, jn, n !, newton_mx
+  integer :: iconv, iconv0, ierr, its, j, jn, n !, newton_mx
   real*8 :: delc, res
   real*8, pointer :: cc_p(:), ccloc_p(:), x_p(:), porloc_p(:), &
                      temploc_p(:), ssat_loc_p(:), sat_loc_p(:),pressloc_p(:)
@@ -132,12 +132,20 @@
           res = b_p(jn)
         endif
         if (abs(res) > eps) iconv = -2
-        r2norm = max(r2norm,res)
+        r2norm = max(r2norm,abs(res))
         
 !       print *,'ptran_solv: ',j,n,res,r2norm
       enddo
     enddo
     call VecRestoreArrayF90(b,b_p,ierr)
+  
+    if(commsize >1)then
+      call MPI_ALLREDUCE(iconv,iconv0, 1, MPI_INTEGER,MPI_MIN,PETSC_COMM_WORLD,ierr)
+      iconv=iconv0
+      call MPI_ALLREDUCE(r2norm,res, 1, MPI_DOUBLE_PRECISION,MPI_MAX,PETSC_COMM_WORLD,ierr)
+      r2norm=res
+    endif 
+
     
     if (newton > 0 .and. iconv == 2) exit
 

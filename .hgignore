@@ -3,6 +3,7 @@ syntax: glob
 *.mod
 .DS_Store
 build
+pflotran.xcodeproj
 pflotran
 pflotran_fc
 pflow

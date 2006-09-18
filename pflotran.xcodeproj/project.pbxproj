@@ -143,7 +143,7 @@
 /* Begin PBXProject section */
 		33021A8808A12EC800D082B8 /* Project object */ = {
 			isa = PBXProject;
-			buildConfigurationList = 33021A8908A12EC800D082B8 /* Build configuration list for PBXProject "pfltra231_68ksp" */;
+			buildConfigurationList = 33021A8908A12EC800D082B8 /* Build configuration list for PBXProject "pflotran" */;
 			hasScannedForEncodings = 0;
 			mainGroup = 33021A8608A12EC800D082B8;
 			projectDirPath = "";
@@ -170,7 +170,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		33021A8908A12EC800D082B8 /* Build configuration list for PBXProject "pfltra231_68ksp" */ = {
+		33021A8908A12EC800D082B8 /* Build configuration list for PBXProject "pflotran" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				33021A8A08A12EC800D082B8 /* Debug */,
