@@ -252,7 +252,7 @@
       if (grid%isync == 0) &
       call ptran_dt (nstep,newton,t,dt,dtmax,tfac,iflgcut,iaccel,myrank)
 
-      call ptran_out(kplt,da,da_1dof,da_kin)
+      call ptran_psai_out(kplt,da,da_1dof,da_kin)
       
       if (t >= tflow2) exit
     enddo

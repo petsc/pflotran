@@ -213,7 +213,7 @@
     ! RTM: Adjust the timestep.
     call ptran_dt (nstep,newton,t,dt,dtmax,tfac,iflgcut,iaccel,myrank)
     
-    call ptran_out (kplt,da,da_1dof,da_kin)
+    call ptran_psai_out (kplt,da,da_1dof,da_kin)
     if (t >= tplot(kplt)) kplt = kplt + 1
     if (kplt > kplot) exit
   enddo

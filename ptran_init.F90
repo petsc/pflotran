@@ -76,7 +76,7 @@ contains
   Vec :: temp1_nat_vec,temp2_nat_vec,temp3_nat_vec,temp4_nat_vec
   Vec :: phik_tmp, surf_tmp
 
-  integer :: ierr,i,j,k,ir,n,ng,nr
+  integer :: ierr,i,j,k,ir,n,ng,nr, na
 ! integer :: isumjl
 ! integer :: dfill(ncomp*ncomp), ofill(ncomp*ncomp)
   
@@ -256,7 +256,8 @@ contains
 ! Compute arrays for indexing between local ghosted and non-ghosted 
 ! arrays
 ! if (using_pflowGrid .ne. PETSC_TRUE) then
-    allocate(nL2G(nlmax))
+    allocate(nL2A(nlmax))
+	allocate(nL2G(nlmax))
     allocate(nG2L(ngmax))
 
     nG2L(1:ngmax) = 0
@@ -294,6 +295,25 @@ contains
         endif
       endif
     enddo
+	
+	 ! Local(non ghosted)->Natural(natural order starts from 0)
+    n=0
+     do k=1,nlz
+        do j=1,nly
+          do i=1,nlx
+            n = n + 1
+            na = i-1+nxs+(j-1+nys)*nx+(k-1+nzs)*nxy
+			if(na>(nmax-1)) print *,'Wrong Nature order....'
+			 nL2A(n) = na
+			!print *,grid%myrank, k,j,i,n,na
+			!grid%nG2N(ng) = na
+		  enddo
+        enddo
+      enddo
+
+	
+	
+	
 ! endif
   
   ! identify corner ghost nodes
