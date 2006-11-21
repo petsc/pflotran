@@ -2,8 +2,15 @@ syntax: glob
 *.o
 *.mod
 .DS_Store
+._.DS_Store
+.hgignore.orig
+.hgignore~
 build
 pflotran.xcodeproj
+pflotran.xcodeproj/clu.mode1
+pflotran.xcodeproj/clu.pbxuser
+pflotran.xcodeproj/lichtner.mode1
+pflotran.xcodeproj/lichtner.pbxuser
 pflotran
 pflotran_fc
 pflow
