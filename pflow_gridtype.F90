@@ -123,7 +123,7 @@ private
       
     integer*4, pointer :: iperm1(:), iperm2(:), ipermbc(:)
     
-    real*8, pointer :: dist1(:),dist2(:),distbc(:),area(:),areabc(:), &
+    real*8, pointer :: dist1(:),dist2(:),distbc(:),area(:),areabc(:), grav_ang(:), &
                        delzbc(:), vlbc(:), vvlbc(:),vgbc(:),vvgbc(:)
 
     real*8, pointer :: density_bc(:),d_p_bc(:),d_t_bc(:), d_s_bc(:),d_c_bc(:),&
@@ -187,7 +187,7 @@ private
 	integer, pointer:: iphasebc0(:)  
 
 !   phik
-    integer :: iregperm, iran_por=0, iread_perm=0
+    integer :: iregperm, iran_por=0, iread_perm=0, iread_geom =1
     real*8 :: ran_fac=-1.d0
     integer*4, pointer :: i1reg(:),i2reg(:),j1reg(:),j2reg(:),k1reg(:),k2reg(:)
     real*8, pointer :: por_reg(:),tor_reg(:),perm_reg(:,:)
