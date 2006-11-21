@@ -392,8 +392,8 @@
     p = xx_p(n0+1); t= xx_p(n0+2)
     select case(iipha) 
 	  case(1) 
-	    xmol(4)= xx_p(n0+3)
-	    xmol(3)=1.D0 - xmol(4)
+	    xmol(2)= xx_p(n0+3)
+	    xmol(1)=1.D0 - xmol(2)
 	    satu(1)=1.D0; satu(2)=0.D0
 	  case(2)  
 	    xmol(4)= xx_p(n0+3)
@@ -405,8 +405,8 @@
 	    xmol(3)= yh2o_in_co2; xmol(4)=1.D0-xmol(3)
     end select
     
-!    p2=p!*xmol(4)
-    p2=p*xmol(4)
+    p2=p!*xmol(4)
+!    p2=p*xmol(4)
     
     if(p2>=5d4)then
       !call ideal_gaseos_noderiv(pa,t,energyscale,dg,hg,ug)
@@ -426,8 +426,10 @@
 !   xphi = 1.d0 ! test-pcl
 
 !   call Henry_CO2_noderiv(xla,tmp,t,p*xmol(4),xphi,henry,co2_poyn)
-    call Henry_CO2_noderiv(xla,tmp,t,p*xmol(4),xphi,henry,co2_poyn)
+!  call Henry_CO2_noderiv(xla,tmp,t,p*xmol(4),xphi,henry,co2_poyn)
+       call Henry_duan_sun(p2 *1D-5, t,  henry)
     
+     henry= 1D0 / (fmwh2o*1D-3) / (henry*1D-5) /xphi 
     !note: henry = H/phi
     
 !    print *,'translator_mixed: ',iipha,xla,tmp,t,p,xmol(4),p*xmol(4), &
@@ -440,22 +442,30 @@
   
 	    
  !print *, 'out 2 phase solver'
-
-    
+ select case(iipha)     
+   case(1)
+    xmol(4)=xmol(2)*henry/p   
+   
  ! if(iphase /= 1)then
     xmol(3)=1.D0-xmol(4)
 	if(xmol(3)<0.D0)xmol(3)=0.D0
 	!if(xmol(3)<0.D0) xmol(3)=0.D0
-	xmol(2)= p*xmol(4)/henry
-    xmol(1)=1.D0-xmol(2)
-    
-	if(iipha==3)then
-	  xmol(2)=99.D0/(1D2*Henry/p -1D0)
+   case(2) 	
+	
+     xmol(2)= p*xmol(4)/henry
+    !xmol(2)= 1.D0/(1.D0 + 1.D0 /(henry * xmol(4) * p* 1D-5 *xphi * grid%fmwh2o ))
+        
+     xmol(1)=1.D0-xmol(2)
+	 if(xmol(1)<0.D0) xmol(1)=0.D0
+    case(3)
+  	  xmol(2)=99.D0/(1D2*Henry/p -1D0)
 	  xmol(1)= 1.D0- xmol(2)
 	  xmol(3)=xmol(1)/1D2
-	  xmol(4)= 1.D0-xmol(3)									
-    endif																			  					  			    
-    !ichange = 0 
+	  xmol(4)= 1.D0-xmol(3)						
+    end select
+
+
+    
 
  select case(icri)
   case(0)
@@ -501,7 +511,7 @@
       ! write(IUNIT2,'('' 2ph -> Liq '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3)
       iphase_p(n) = 1 ! 2ph -> Liq
       ichange = 1;ipr=1
-	  tmp = xmol(4) * 0.9995
+	  tmp = xmol(2) * 0.9995
       xx_p(n0 + 3)=tmp
 !	  xx_p(n0+1)= yy_p(n0+1);xx_p(n0+2)= yy_p(n0+2)
 	  !xx_p(n0+2) =  xx_p(n0+2)*(1.D0-eps)
@@ -749,12 +759,12 @@
 	case(1) ! only water phase
 	 p = x(1)
 	 t = x(2)
-	 xmol(4)= x(3)
+	 xmol(2)= x(3)
 	! if(xmol(2)<0.D0) xmol(2)=0.D0
 	! if(xmol(2)>1.D0) xmol(2)=1.D0
-	if(xmol(4)<0.D0) print *,'tran:',iphase, x(1:3)
-	if(xmol(4)>1.D0) print *,'tran:',iphase, x(1:3)
-	 xmol(3)=1.D0 - xmol(4)
+	if(xmol(2)<0.D0) print *,'tran:',iphase, x(1:3)
+	if(xmol(2)>1.D0) print *,'tran:',iphase, x(1:3)
+	 xmol(1)=1.D0 - xmol(2)
 	! if(xmol(3)<0.D0)xmol(3)=0.D0
 	 pc(1)=0.D0
 	 pc(2)=0.D0
@@ -825,8 +835,8 @@
   
   !do while(err>1E-8)
   
- !  p2=p!*xmol(4)
-    p2=p*xmol(4)
+   p2=p!*xmol(4)
+ !   p2=p*xmol(4)
 
     if(p2>=5d4)then
       !call ideal_gaseos_noderiv(pa,t,energyscale,dg,hg,ug)
@@ -846,8 +856,11 @@
 !   xphi  = 1.d0 ! test-pcl
     
 !    call Henry_CO2_noderiv(xla,tmp,t,p*xmol(4),xphi,henry,co2_poyn)
-     call Henry_CO2_noderiv(xla,tmp,t,p*xmol(4),xphi,henry,co2_poyn)
+    call Henry_duan_sun(p2*1D-5, t,  henry) ! henry = mol/kg/bars
+    
+     henry= 1D0 / (fmwh2o *1D-3) / (henry*1D-5 )/xphi 
      
+     !print *, "translator :; henry ", henry, xphi, p*.99/henry        
      !note: henry = H/phi
      
   !   tmp = (p-sat_pressure)/(henry-sat_pressure)
@@ -858,21 +871,30 @@
 	    
  !print *, 'out 2 phase solver'
 
-    
+  select case(iphase)     
+   case(1)
+    xmol(4)=xmol(2)*henry/p   
+   
  ! if(iphase /= 1)then
     xmol(3)=1.D0-xmol(4)
 	if(xmol(3)<0.D0)xmol(3)=0.D0
 	!if(xmol(3)<0.D0) xmol(3)=0.D0
-	xmol(2)= p*xmol(4)/henry
+   case(2) 	
+	
+    xmol(2)= p*xmol(4)/henry
+    !xmol(2)= 1.D0/(1.D0 + 1.D0 /(henry * xmol(4) * p* 1D-5 *xphi * grid%fmwh2o ))
+        
     xmol(1)=1.D0-xmol(2)
 	!if(xmol(1)<0.D0) xmol(1)=0.D0
   !endif
-     if(iphase==3)then
+     case(3)
   	  xmol(2)=99.D0/(1D2*Henry/p -1D0)
 	  xmol(1)= 1.D0- xmol(2)
 	  xmol(3)=xmol(1)/1D2
 	  xmol(4)= 1.D0-xmol(3)						
-     endif
+    end select
+
+
   if(p2<5d4) call visco2(t,dg*fmwco2,visg)
 !***************  Liquid phase properties **************************
 	avgmw(1)= xmol(1)* fmwh2o + xmol(2) * fmwco2 
@@ -901,7 +923,7 @@
     !apply mixing rules
     ! should be careful with the consistance of mixing rules
 
-
+!FEHM mixing
 !  den(1) = xmol(2)*dg + xmol(1)*dw_mol
 ! ideal mixing    
 	!den(1) = 1.D0/(xmol(2)/dg + xmol(1)/dw_mol) !*c+(1-c)* 
