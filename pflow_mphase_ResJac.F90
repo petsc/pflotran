@@ -596,7 +596,7 @@ private
 	  density_ave = upweight*density1(np)+(1.D0-upweight)*density2(np)  
 	  
 	  gravity = (upweight*density1(np)*amw1(np) + (1.D0-upweight)*density2(np)*amw2(np)) &
-              * grid%gravity * grid%delz(nconn_no)
+              * grid%gravity * grid%delz(nconn_no) * grid%grav_ang(nconn_no)
 			  
 	  dphi = pre_ref1-pc1(np) - pre_ref2 + pc2(np) + gravity
 !	  print *,'FLcont  dp',dphi
@@ -1327,7 +1327,8 @@ private
     dd = dd1 + dd2
     f1 = dd1/dd
     f2 = dd2/dd
-    
+!   if(dabs(perm1-1D-15)>1D-20)print *, 'perm1 error', perm1, ip1, n1,n2
+!	if(dabs(perm2-1D-15)>1D-20)print *, 'perm2 error', perm2, ip2, n1,n2
     call MPHASERes_FLCont(nc ,grid%area(nc), &
          var_loc_p((m1-1)*size_var_node+1:(m1-1)*size_var_node+size_var_use),&
 		 porosity_loc_p(m1),tor_loc_p(m1),grid%sir(1:grid%nphase,iicap1),dd1,perm1,D1,&
