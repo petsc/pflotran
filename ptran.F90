@@ -1,3 +1,25 @@
+!=======================================================================
+! PFLOTRAN v1.0 LA-CC-06-093
+!=======================================================================
+! This program was prepared by the Regents of the University of  
+! California at Los Alamos National Laboratory (the University) under  
+! contract No. W-7405-ENG-36 with the U.S. Department of Energy (DOE). 
+! All rights in the program are reserved by the DOE and the University.
+! Permission is granted to the public to copy and use this software 
+! without charge, provided that this Notice and any statement of  
+! authorship are reproduced on all copies. Neither the U.S. Government 
+! nor the University makes any warranty, express or implied, or 
+! assumes any liability or responsibility for the use of this software.
+
+! Send all bug reports/questions/comments to:
+! Peter C. Lichtner
+! Los Alamos National Laboratory
+! Earth and Environmental Sciences
+! EES-6, MS: D469
+! (505) 667-3420
+! lichtner@lanl.gov
+! Los Alamos, NM
+!=======================================================================
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 
 ! VERSION/REVISION HISTORY
@@ -213,7 +235,7 @@
     ! RTM: Adjust the timestep.
     call ptran_dt (nstep,newton,t,dt,dtmax,tfac,iflgcut,iaccel,myrank)
     
-    call ptran_out (kplt,da,da_1dof,da_kin)
+    call ptran_psi_out (kplt,da,da_1dof,da_kin)
     if (t >= tplot(kplt)) kplt = kplt + 1
     if (kplt > kplot) exit
   enddo
