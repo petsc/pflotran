@@ -48,7 +48,7 @@
                         vlbc(:), vgbc(:)
     real*8, pointer  :: vb(:)
 
-    integer, pointer :: nL2G(:), nG2L(:)
+    integer, pointer :: nL2G(:), nG2L(:), nL2A(:)
     real*8, pointer :: ghost_loc_p(:)
     integer, allocatable :: nreg_val(:), nregbc(:)
     Vec :: nreg
