@@ -672,11 +672,11 @@ contains
       real*8 :: actr,ah2o0,ak,alno2,alogfo2,aph,av,blkden, &
                 cjtot,dco2,den,dgamdi(*), &
                 distj,dwat,d1m,eh,ehfac, &
-                xco2,x1m, &
+                xco2,x1m,xpsi, &
                 faraday0,fco2,grainden,tc,fvcoll, &
                 ph,pe,percent,perctads,pfac,phico2,phih2o, &
                 retard, &
-                sj,skdc,skdm,sum,sumpt,srfpot,surfchrg,skdmj, &
+                sj,skdc,skdm,sum,sumpt,sumx,srfpot,surfchrg,skdmj, &
                 skdcj,tmpk,tj,qz2,xh2o,xh2oapp,ah2oloc
 
       integer :: i,ii,j,jj,k,l,m,irun,iter,kk,mm
@@ -846,13 +846,41 @@ contains
       endif
 
     if (myrank == 0) then
+        
+      ! mole fraction
+      sumx = 0.d0
+      do j = 1, ncomp
+        sumx = sumx + cc(j)
+      enddo
+      do i = 1, ncmplx
+        sumx = sumx + cx(i)
+      enddo
+      
+      
+      
+      write(iunit2,'()') 
+      
+      write(iunit2,'(72("-"))')
+      write(iunit2,'(''species          xmol        Xmol'')')
+      write(iunit2,'(72("-"))')
+      do j = 1, ncomp
+        xpsi = cc(j)
+        do i = 1, ncmplx
+          xpsi = xpsi + shom(j,i)*cx(i)
+        enddo
+        if(j/=jco2)&
+        write(iunit2,'(a12,1p10e12.4)') nam(j),cc(j)/sumx,xpsi/sumx
+       if(j==jco2)&
+        write(iunit2,'(a12,1p10e12.4)') nam(j),cc(j)/sumx,xpsi/sumx,&
+              10.d0**eqgas(jco2g)*xpsi/(pref0*1D-5)
+      enddo
+        
       if (jph > 0) then
         write(iunit2,'(72("-"))')
         write(iunit2,1010)
         write(iunit2,'(72("-"))')
         do j = 1, ncomp
-          if(cc(jph).gt.0.) acratio(j) = log10(cc(j)) &
-          -z(j)*log10(cc(jph)) 
+          if(cc(jph).gt.0.) acratio(j) = log10(cc(j)) - z(j)*log10(cc(jph)) 
           write(iunit2,1060) nam(j),cc(j),psi(j),gam(j),acratio(j), &
           itype(j,ireg),ncon(j,ireg)
         enddo
@@ -1129,8 +1157,8 @@ contains
 
  1105 format(/' charge balance - q = ',1p2e12.4)
  1051 format(' iter =',i3,5x,' ionic strength =',1pe12.4)
- 1060 format(1x,a11,1p4e11.4,1x,i2,1x,a12)
- 1061 format(1x,a11,1p3e12.4,1x,i2,1x,a12)
+ 1060 format(1x,a12,1pe11.4,1pe12.4,1pe11.4,1pe12.4,1x,i2,1x,a12)
+ 1061 format(1x,a12,1p3e12.4,1x,i2,1x,a12)
  1070 format(' ',1p10e12.4)
  1072 format(' ion-exchange solid composition',/, &
              ' cation ',5x,'cjbar ',8x,'kd')
@@ -2559,31 +2587,35 @@ contains
 
 !---------duan, moller, weare (1992) eos with modified henry's law 
 !         (recommended)
-          call duanco2 (tc,pco2,dco2,fco2,phico2)
+          call duanco2 (tc,pref0 *1D-5,dco2,fco2,phico2)
           
 !         dco2 = [g/cm^3]
 
 !         print *,'ptran_speciation2: ',tc,pco2,dco2,fco2,phico2
           
-          call henry_co2_noderiv (xco2,x1m,tc,pco2*1.e5,phico2,hpco2,poynco2)
-          
+!          call henry_co2_noderiv (xco2,x1m,tc,pco2*1.e5,phico2,hpco2,poynco2)
+          call Henry_duan_sun(pref0 *1D-5, tc,  hpco2)        
           !note: hpco2 = H/phico2 [Pa]
           
-          call cowat (tc,pco2pa,dwat,uwat,ierr) ! why pco2pa here?
+ !         call cowat (tc,pco2pa,dwat,uwat,ierr) ! why pco2pa here?
           
 !         print *,'ptran-1: ',pco2pa,dwat,uwat,x1m
           
-          call denmix (tc,dwat,x1m,d1m)
+!          call denmix (tc,dwat,x1m,d1m)
           
-          wmix = xmwc*xmww/(x1m*xmww+(1.d0-x1m)*xmwc) ! [kg/mol]
+ !         wmix = xmwc*xmww/(x1m*xmww+(1.d0-x1m)*xmwc) ! [kg/mol]
           
-          cco2 = x1m*d1m/xmwc*1.e-3
+!          cco2 = x1m*d1m/xmwc*1.e-3
+           cco2= pco2 * phico2 * hpco2
 
 !         print *,'ptran_speciation3: ',xmww,xmwc,hpco2,poynco2,xco2,x1m,d1m,cco2
 
-          akeq = wmix*hpco2*1.e-2/d1m/poynco2 ! units of akeq are bars (/(mol/L))
-          alogkeq = log10(akeq)
-          eqgas(jco2g) = alogkeq-log10(phico2)
+ !         akeq = wmix*hpco2*1.e-2/d1m/poynco2 ! units of akeq are bars (/(mol/L))
+ !         alogkeq = log10(akeq)
+ !         eqgas(jco2g) = alogkeq-log10(phico2)
+          akeq = log(hpco2*phico2) / aln10 
+          eqgas(jco2g)=  - akeq 
+          !1.D0 / hpco2 /(fmwh2o * (akeq/(akeq+ cco2)))
 
 !         print *,'ptran_speciation4: ',jco2,jco2g,wmix,akeq,alogkeq,eqgas(jco2g)
           
