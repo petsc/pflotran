@@ -55,6 +55,7 @@ contains
 ! pointer assignments
   nL2G  => grid%nL2G
   nG2L  => grid%nG2L
+  NL2A  => grid%nL2A
   nd1   => grid%nd1
   nd2   => grid%nd2
   dist1 => grid%dist1
