@@ -2,7 +2,7 @@ module co2eos_module
 
   private
 
-  public HENRY_co2_noderiv,VISCO2,duanco2,denmix
+  public HENRY_co2_noderiv,VISCO2,duanco2,denmix,Henry_duan_sun
 contains
 
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
@@ -625,6 +625,34 @@ contains
       return
 
       end subroutine duanco2
+
+  subroutine Henry_duan_sun (p,tc,henry)
+
+  implicit none
+
+  real*8 :: c1,c2,c3,c4,c5,c6,c7,c8,c9,c10
+  real*8 :: p,t,tc,lnt,muco2, henry
+
+  c1  = 28.9447706d0
+  c2  = -0.0354581768
+  c3  = -4770.67077d0
+  c4  =  1.02782768d-5
+  c5  = 33.8126098d0
+  c6  =  9.04037140d-3
+  c7  = -1.14934031d-3
+  c8  = -0.307405726d0
+  c9  = -0.0907301486d0
+  c10 =  9.32713393d-4
+
+  t = tc + 273.15d0
+  lnt = log(t)
+  muco2 = c1 + c2*t + c3/t + c4*t*t + c5/(630.d0-t) + c6*p + c7*p*lnt &
+    + c8*p/t + c9*p/(630.d0-t) + c10*p*p/(630.d0-t)**2
+
+   henry = exp(-muco2)
+
+  return
+  end subroutine Henry_duan_sun
 
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 ! Subroutine: henry.f
