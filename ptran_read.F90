@@ -866,6 +866,8 @@ contains
 !....................
       
     case ('FELD')
+    
+      if (myrank==0) write(iunit2,'(/,''*FELD'')')
 
       ireg = 0
       do
@@ -897,10 +899,12 @@ contains
         call fiReadDouble(string,temp_reg(ireg),ierr)
         call fiDefaultMsg('temp',ierr)
       
-!       if (myrank==0) write(*,*) 'ptran_read: i1,i2,j1,j2,k1,k2= ', &
-!       i1reg(ireg),i2reg(ireg),j1reg(ireg),j2reg(ireg), &
-!       k1reg(ireg),k2reg(ireg),por_reg(ireg),pref_reg(ireg),temp_reg(ireg)
-      
+        if (myrank==0) then
+          write(iunit2,*) 'region: ',ireg
+          write(iunit2,*) '   i1    i2    j1    j2    k1    k2    por         pref        temp'
+          write(iunit2,'(6i6,1p3e12.4)') i1reg(ireg),i2reg(ireg),j1reg(ireg),j2reg(ireg), &
+          k1reg(ireg),k2reg(ireg),por_reg(ireg),pref_reg(ireg),temp_reg(ireg)
+        endif
       enddo
       iregfld = ireg
       
