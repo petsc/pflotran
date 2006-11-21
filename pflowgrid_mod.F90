@@ -228,10 +228,9 @@
       grid%difaq = 1.d-9 ! m^2/s read from input file
       grid%delhaq = 12.6d0 ! kJ/mol read from input file
       grid%gravity = 9.8068d0    ! m/s^2
-	  grid%tref=50D0
- !    grid%gravity = 0d0    ! m/s^2
+	  grid%tref   = 50.D0
       grid%fmwh2o = 18.01534d0 ! kg H2O/mol H2O
-	    grid%fmwco2 = 44.0098d0
+      grid%fmwco2 = 44.0098d0
       grid%eqkair = 1.d10 ! Henry's constant for air: Xl = eqkair * pa
 
       !-----------------------------------------------------------------------
@@ -560,6 +559,7 @@
       allocate(grid%dist2(grid%nconn))
       allocate(grid%area(grid%nconn))
       allocate(grid%delz(grid%nconn))
+	  allocate(grid%grav_ang(grid%nconn))
 
       allocate(grid%iperm1(grid%nconn))
       allocate(grid%iperm2(grid%nconn))
@@ -933,6 +933,7 @@
   integer*4 :: ii1, ii2, jj1, jj2, kk1, kk2
     ! Used for indexing corners of boundary regions.
   PetscScalar, pointer :: dx_loc_p(:), dy_loc_p(:), dz_loc_p(:)
+  real*8 alpha, maxstep, steptol
     ! Pointers used to access the arrays in grid%dx_loc et al.
   real*8, pointer :: volume_p(:)
     ! Used to access the contents of the local portion of grid%volume.
@@ -1228,7 +1229,21 @@
   call SNESSetTolerances(grid%snes, grid%atol, grid%rtol, grid%stol, & 
                          grid%maxit, grid%maxf, ierr)
 
+ 
+
   call SNESSetFromOptions(grid%snes, ierr)
+ if (myrank == 0) write(*,'("  Finished setting up of SNES 1")')
+  
+  call SNESLineSearchGetParams(grid%snes, alpha, maxstep, steptol, ierr) 
+if (myrank == 0) write(*,'("  Finished setting up of SNES 2")')
+  call SNESLineSearchSetParams(grid%snes, alpha, maxstep, grid%stol, ierr) 
+if (myrank == 0) write(*,'("  Finished setting up of SNES 3")')
+
+  call SNESGetKSP(grid%snes, grid%ksp, ierr)
+  call KSPSetTolerances(grid%ksp,grid%rtol,grid%atol,grid%dtol, &
+      10000,ierr)
+
+  
 
  if (myrank == 0) &
   write(*,'("  Finished setting up of SNES ")')
@@ -1327,6 +1342,7 @@
           grid%dist1(nc) = 0.5d0 * dx_loc_p(mg1)
           grid%dist2(nc) = 0.5d0 * dx_loc_p(mg2)
           grid%delz(nc) = 0.d0
+		  grid%grav_ang(nc)=0.D0
         !  abs_x = rd(i-1+grid%nxs)
           if (grid%igeom == 1) then
             grid%area(nc) = dy_loc_p(mg1) * dz_loc_p(mg1)
@@ -1356,6 +1372,7 @@
           grid%dist1(nc) = 0.5d0 * dy_loc_p(mg1)
           grid%dist2(nc) = 0.5d0 * dy_loc_p(mg2)
           grid%delz(nc) = 0.d0
+		  grid%grav_ang(nc)=0.D0
           grid%area(nc) = dx_loc_p(mg1) * dz_loc_p(mg1)
           grid%iperm1(nc) = 2
           grid%iperm2(nc) = 2
@@ -1380,6 +1397,7 @@
           grid%dist1(nc) = d1
           grid%dist2(nc) = d2
           grid%delz(nc) = d1 + d2
+		  grid%grav_ang(nc)=1.D0
           if (grid%igeom == 1) then
           grid%area(nc) = dx_loc_p(mg1) * dy_loc_p(mg1)
           else if (grid%igeom == 2) then
@@ -1807,6 +1825,10 @@
       'rank = ',myrank,' nconnbc = ',grid%nconnbc,' nc = ',nc
     stop
   endif
+   
+do nc=1,grid%nconnbc
+  print *, 'BC:', nc, grid%areabc(nc),grid%distbc(nc),  grid%mblkbc(nc) 
+enddo
 
   !-----------------------------------------------------------------------
   ! Set up boundary conditions at interfaces
@@ -2083,6 +2105,12 @@
    call Read_perm_field(grid)
  endif  
 
+
+ if(grid%iread_geom == 1)then
+   call Read_Geom_field(grid)
+ endif  
+
+
  if(grid%using_pflowGrid==0) call VecCopy(grid%Porosity, grid%Porosity0, ierr)
  call VecCopy(grid%perm_xx, grid%perm0_xx, ierr) 
  call VecCopy(grid%perm_yy, grid%perm0_yy, ierr) 
@@ -2099,6 +2127,8 @@
 
  if (myrank == 0) &
   write(*,'("  Finished setting up of INIT ")')
+
+
 
 
   !-----------------------------------------------------------------------
@@ -2222,6 +2252,9 @@
     enddo
     call VecRestoreArrayF90(grid%phis,phis_p,ierr)
   endif
+
+
+   
   
   if (myrank == 0) &
   write(*,'("  Finished setting up ")')
@@ -3324,6 +3357,10 @@ end subroutine ComputeMFJacobian
 	  
 	  call fiReadInt(string,grid%iread_perm,ierr)
       call fiDefaultMsg('iread_perm',ierr)
+	  
+	  call fiReadInt(string,grid%iread_geom,ierr)
+      call fiDefaultMsg('iread_geom',ierr)
+
 
       if (grid%myrank == 0) &
       write(IUNIT2,'(/," *OPTS",/, &
