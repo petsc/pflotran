@@ -1260,65 +1260,65 @@ module pflow_output_module
 			
 		!   call MPI_Bcast(IUNIT, 1, MPI_INTEGER, 0,PETSC_COMM_WORLD,ierr)
 		ndex=1
-        do na=0, grid%nmax-1
-          ifound=0
-          if(grid%myrank==0) then
-           ifound=0
-           do n=ndex,grid%nlmax
-             if(grid%nL2A(n) == na) then
-              ifound=1
-              jn= 1 + (n-1)*grid%ndof 
-              nv = 1 + (n-1) * size_var_node
-              iipha= iphase_p(n)
-              xxx= xx_p(jn:jn+grid%ndof-1)
-              vvar= var_p(nv:nv + size_var_use-1)
-              ndex=n
-              exit	 
-            endif
-           enddo
-           if(ifound==0)then  
-            call MPI_Recv(iipha, 1, MPI_INTEGER, MPI_ANY_SOURCE, na+6553,PETSC_COMM_WORLD, status,ierr)  
-            call MPI_Recv(xxx,grid%ndof, MPI_DOUBLE_PRECISION,MPI_ANY_SOURCE, na, PETSC_COMM_WORLD, status,ierr) 					
-            call MPI_Recv(vvar, size_var_use ,MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, na+na,PETSC_COMM_WORLD,status ,ierr) 
-           endif
-            
-          else
-            do n=ndex,grid%nlmax
-              if(grid%nL2A(n) == na) then
-                jn= 1 + (n-1)*grid%ndof 
-                nv = 1 + (n-1) * size_var_node
-                iipha=int(iphase_p(n))
-                call MPI_Send(iipha, 1, MPI_INTEGER, 0, na+6553, PETSC_COMM_WORLD, ierr)   
-               xxx= xx_p(jn:jn+grid%ndof-1)
-               call MPI_Send(xxx, grid%ndof, MPI_DOUBLE_PRECISION,0,na, PETSC_COMM_WORLD, ierr)  
-               call MPI_Send(var_p(nv:nv + size_var_use-1), size_var_use ,MPI_DOUBLE_PRECISION, 0, na+na, PETSC_COMM_WORLD, ierr)   
-               ndex=n
-               exit
-              endif
-           enddo  
-         endif     	     
-        
-          call MPI_Barrier(PETSC_COMM_WORLD, ierr)
-          
-          if(grid%myrank ==0 )then
-               do i= 1, grid%nphase
-                  if(vvar(2+i)<=1D-30)then
-                      vvar(2+4*grid%nphase+i)=0.D0
-                       do j=1, grid%nspec
-                        vvar( 2+ 7*grid%nphase + (i-1)* grid%nspec + j)=0.D0
-                     enddo   
-                   endif
-               enddo    
-                 write(IUNIT3,'(1p100e12.4)') grid%x(na+1), grid%y(na+1), grid%z(na+1), real(iipha), &
-                  vvar(1:2+grid%nphase), & ! Saturations
-                  vvar(3+4*grid%nphase:2+5*grid%nphase), &! Internal Energy
-                  vvar(3+ 7*grid%nphase: 2+ 7 *grid%nphase + grid%nphase* grid%nspec) !Mol fractions
-          
-            endif
-         
+				do na=0, grid%nmax-1
+				      ifound=0
+					  if(grid%myrank==0) then
+				       ifound=0
+					   do n=ndex,grid%nlmax
+					   	 if(grid%nL2A(n) == na) then
+					      ifound=1
+						  jn= 1 + (n-1)*grid%ndof 
+					      nv = 1 + (n-1) * size_var_node
+					      iipha= iphase_p(n)
+					      xxx= xx_p(jn:jn+grid%ndof-1)
+						  vvar= var_p(nv:nv + size_var_use-1)
+					      ndex=n
+						  exit	 
+					    endif
+					   enddo
+					   if(ifound==0)then  
+					   	call MPI_Recv(iipha, 1, MPI_INTEGER, MPI_ANY_SOURCE, na+6553,PETSC_COMM_WORLD, status,ierr)  
+					   	call MPI_Recv(xxx,grid%ndof, MPI_DOUBLE_PRECISION,MPI_ANY_SOURCE, na, PETSC_COMM_WORLD, status,ierr) 					
+					    call MPI_Recv(vvar, size_var_use ,MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, na+na,PETSC_COMM_WORLD,status ,ierr) 
+                       endif
+					    
+					  else
+					    do n=ndex,grid%nlmax
+					      if(grid%nL2A(n) == na) then
+					        jn= 1 + (n-1)*grid%ndof 
+					        nv = 1 + (n-1) * size_var_node
+							iipha=int(iphase_p(n))
+					        call MPI_Send(iipha, 1, MPI_INTEGER, 0, na+6553, PETSC_COMM_WORLD, ierr)   
+						   xxx= xx_p(jn:jn+grid%ndof-1)
+						   call MPI_Send(xxx, grid%ndof, MPI_DOUBLE_PRECISION,0,na, PETSC_COMM_WORLD, ierr)  
+				           call MPI_Send(var_p(nv:nv + size_var_use-1), size_var_use ,MPI_DOUBLE_PRECISION, 0, na+na, PETSC_COMM_WORLD, ierr)   
+					       ndex=n
+						   exit
+					      endif
+					   enddo  
+				     endif     	     
+                
+				  call MPI_Barrier(PETSC_COMM_WORLD, ierr)
+				  
+				  if(grid%myrank ==0 )then
+                       do i= 1, grid%nphase
+                          if(vvar(2+i)<=1D-30)then
+                              vvar(2+4*grid%nphase+i)=0.D0
+							   do j=1, grid%nspec
+                                vvar( 2+ 7*grid%nphase + (i-1)* grid%nspec + j)=0.D0
+                             enddo   
+                           endif
+                       enddo    
+                         write(IUNIT3,'(1p100e12.4)') grid%x(na+1), grid%y(na+1), grid%z(na+1), real(iipha), &
+                          vvar(1:2+grid%nphase), & ! Saturations
+                          vvar(3+4*grid%nphase:2+5*grid%nphase), &! Internal Energy
+                          vvar(3+ 7*grid%nphase: 2+ 7 *grid%nphase + grid%nphase* grid%nspec) !Mol fractions
+                  
+                    endif
+    	         
 
-               
-        enddo
+					   
+				enddo
 			   	
 		    
      else if (grid%nz == 1) then ! 2D x-y
