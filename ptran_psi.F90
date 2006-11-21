@@ -233,32 +233,35 @@ public :: trpsi, trdpsi
          !   call henry_co2_noderiv(xmol,x1m,tc,pgas(jco2g,n)*1.d5*rgasjj*tk, &
           !  xphico2,henry,poyn)
             
-             call henry_co2_noderiv(xmol,x1m,tc,pressloc_p(n), &
-             xphico2,henry,poyn)
+         !    call henry_co2_noderiv(xmol,x1m,tc,pressloc_p(n), &
+         !    xphico2,henry,poyn)
 
+              call Henry_duan_sun(pressloc_p(n) *1D-5, tc,  henry)  
             
             !note: henry coef. = H/xphico2
             
 !          print *,'ptran_psi: ',n,pressloc_p(n),tc,xmol,x1m,xphico2,henry
             
             ! (Vphi [cm^3/mol]: Garcia, 2001)
-            vphi= 37.51d0 + (-9.585d-2 + (8.74d-4 - 5.044d-7*tc)*tc)*tc
+           ! vphi= 37.51d0 + (-9.585d-2 + (8.74d-4 - 5.044d-7*tc)*tc)*tc
             
             ! fmwh2o, fmwco2: g/mol; rmix, rho: g/cm^3; wmix: g/mol
             ! ccloc_p: mol/L
             
-            rmix = rho(n) + fmwh2o*ccloc_p(jco2+(n-1)*ncomp)*1.d-3*(fmwco2-rho(n)*vphi)
-            wmix = rmix + (fmwh2o-fmwco2)*ccloc_p(jco2+(n-1)*ncomp)*1.d-3
+           ! rmix = rho(n) + fmwh2o*ccloc_p(jco2+(n-1)*ncomp)*1.d-3*(fmwco2-rho(n)*vphi)
+           ! wmix = rmix + (fmwh2o-fmwco2)*ccloc_p(jco2+(n-1)*ncomp)*1.d-3
 
 !           c = rho x, p = x H/phi, p = K c, K = H/(rho phi)
-            eqk = henry*1.e-5/(ccloc_p(jco2+(n-1)*ncomp)+ccloc_p(jh2o+(n-1)*ncomp))
+          !  eqk = henry*1.e-5/(ccloc_p(jco2+(n-1)*ncomp)+ccloc_p(jh2o+(n-1)*ncomp))
 !           eqk = henry*1.e-5/56d0 ! this form is only approximate-pcl
 
 !           eqk = henry*1.e-5*fmwh2o*1.d-3/xphico2/(1.d0+ &
 !           ccloc_p(jco2+(n-1)*ncomp)*1.d-3*fmwh2o)
 !           eqk = henry*1.e-8*fmwh2o/xphico2
 
-            eqgas(jco2g) = log10(eqk)
+!            eqgas(jco2g) = log10(eqk)
+            eqgas(jco2g)=  - log(henry*xphico2) / aln10 
+          
 
 !           print *,'ptran_psi: ',n,ngs,tc,henry,ssat_loc_p(n), &
 !           ccloc_p(jco2+(n-1)*ncomp),ccloc_p(jh2o+(n-1)*ncomp),log10(eqk),eqgas(jco2g) !, &
