@@ -58,16 +58,19 @@ contains
   real*8 :: csrc1,tsrc1,qsrc1,qqsrc,sl,ssl,sl1,sl2,sg,ssg,sg1,sg2,pvdt
   real*8 :: ccloc_p(*),temploc_p(*),porloc_p(*),sat_loc_p(*),ssat_loc_p(*)
   real*8 :: ff,f1,f2,dw_kg,dw_mol,enth,scalefac=1.d-6
+  real*8 :: por1,por2,tor1,tor2
 
   real*8 :: blkmat1(ncomp,ncomp),blkmat2(ncomp,ncomp)
   
-  real*8, pointer :: press_p(:)
+  real*8, pointer :: press_p(:),tort_loc_p(:)
 
   ierr = 0
 
 ! call VecView(b,PETSC_VIEWER_STDOUT_WORLD,ierr)
 
   call VecGetArrayF90(b,b_p,ierr) ! note: b = -r
+
+  call VecGetArrayF90(tort_loc,tort_loc_p,ierr)
 
 !---diagonal accumulation term - use ghosted nodes for MatSetValue(s)Local
 !   units: vb [m^3]; psi [mol/dm^3]; b [kmol/s]
@@ -168,19 +171,24 @@ contains
 
       n1 = nG2L(m1) !RTM: n1, n2 are local non-ghosted indices.
       n2 = nG2L(m2)
+      
+      tor1 = tort_loc_p(m1)
+      tor2 = tort_loc_p(m2)
+      por1 = porloc_p(m1)
+      por2 = porloc_p(m2)
 
       if (iphase == 1) then
-        wpor  = porloc_p(m1)*dist2(nc)+porloc_p(m2)*dist1(nc)
-        por12 = sat0*porloc_p(m1)*porloc_p(m2)/wpor
+        wpor  = tor1*por1*dist2(nc)+tor2*por2*dist1(nc)
+        por12 = sat0*tor1*tor2*por1*por2/wpor
       else
         sl1 = ssat_loc_p(m1)
         sl2 = ssat_loc_p(m2)
         
-        if (sl1 >= slcutoff .and. sl2 >=  slcutoff)then
-          wpor  = porloc_p(m1)*sl1*dist2(nc)+porloc_p(m2)*sl2*dist1(nc)
-          por12 = porloc_p(m1)*sl1*porloc_p(m2)*sl2/wpor
+        if (sl1 >= slcutoff .and. sl2 >=  slcutoff) then
+          wpor  = tor1*por1*sl1*dist2(nc)+tor2*por2*sl2*dist1(nc)
+          por12 = tor1*tor2*por1*por2*sl1*sl2/wpor
         else
-          por12=0.D0
+          por12 = 0.D0
         endif
       endif
       trans = por12*difaq*area(nc)
@@ -828,6 +836,7 @@ contains
     call VecRestoreArrayF90(b,b_p,ierr)
 
     call VecRestoreArrayF90(press,press_p,ierr)
+    call VecRestoreArrayF90(tortuosity,tort_loc_p,ierr)
     
 !   call VecView(b,PETSC_VIEWER_STDOUT_WORLD,ierr)
 !   call MatView(A,PETSC_VIEWER_STDOUT_WORLD,ierr)

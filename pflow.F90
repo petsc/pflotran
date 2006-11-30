@@ -1,15 +1,22 @@
 !=======================================================================
 ! PFLOTRAN v1.0 LA-CC-06-093
 !=======================================================================
-! This program was prepared by the Regents of the University of  
-! California at Los Alamos National Laboratory (the University) under  
-! contract No. W-7405-ENG-36 with the U.S. Department of Energy (DOE). 
-! All rights in the program are reserved by the DOE and the University.
-! Permission is granted to the public to copy and use this software 
-! without charge, provided that this Notice and any statement of  
-! authorship are reproduced on all copies. Neither the U.S. Government 
-! nor the University makes any warranty, express or implied, or 
-! assumes any liability or responsibility for the use of this software.
+
+! The software titled "PFLOTRAN v 1.0" has been assigned LA-CC-06-093. 
+! The software is unclassified and does not contain Unclassified 
+! Controlled Nuclear Information (UCNI).
+
+! The software is under review to be released as open source, which 
+! requires review and approval by the appropriate DOE Program Office. 
+! If DOE declines to release this software as publicly available open 
+! source, it would be subject to export control under Department of 
+! Commerce regulations, and classified as ECCN 
+! (Export Control Classification Number) EAR99. 
+ 
+! If released as open source, the software will be publicly available and 
+! not subject to export control. Until DOE approval is obtained, the 
+! software should be treated as export controlled. DOE reserves the 
+! right to release or deny release of the software as open source.
 
 ! Send all bug reports/questions/comments to:
 ! Peter C. Lichtner

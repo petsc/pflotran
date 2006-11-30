@@ -102,7 +102,7 @@
 !...........................................................
 !   transport
 !...........................................................
-    real*8 :: vlx0,vly0,vlz0,vgx0,vgy0,vgz0,por0,sat0
+    real*8 :: vlx0,vly0,vlz0,vgx0,vgy0,vgz0,por0,sat0,tor0
     real*8 :: difaq,delhaq,difgas,dgexp
 
 !...........................................................
@@ -450,7 +450,7 @@
   integer :: i1reg(nrgmx),i2reg(nrgmx), &
              j1reg(nrgmx),j2reg(nrgmx), &
              k1reg(nrgmx),k2reg(nrgmx)
-  real*8  :: por_reg(nrgmx),pref_reg(nrgmx),temp_reg(nrgmx)
+  real*8  :: por_reg(nrgmx),tor_reg(nrgmx),pref_reg(nrgmx),temp_reg(nrgmx)
   
 !...........................................................
 ! source/sink

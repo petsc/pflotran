@@ -81,6 +81,8 @@ contains
   call VecDestroy(ccloc,ierr)
   call VecDestroy(porosity,ierr)
   call VecDestroy(porloc,ierr)
+  call VecDestroy(tortuosity,ierr)
+  call VecDestroy(tort_loc,ierr)
   call VecDestroy(temp,ierr)
   call VecDestroy(temploc,ierr)
   call VecDestroy(press,ierr)

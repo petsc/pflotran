@@ -103,6 +103,9 @@
     call VecSet(b,zero,ierr)
     call VecSet(x,zero,ierr)
     call DAGlobalToLocalEnd(da_1dof,porosity,INSERT_VALUES,porloc,ierr)
+    
+    call DAGlobalToLocalBegin(da_1dof,tortuosity,INSERT_VALUES,tort_loc,ierr)
+    call DAGlobalToLocalEnd(da_1dof,tortuosity,INSERT_VALUES,tort_loc,ierr)
 
     call VecGetArrayF90(ccloc,ccloc_p,ierr)
     call VecGetArrayF90(porloc,porloc_p,ierr)

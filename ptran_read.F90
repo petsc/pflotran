@@ -327,6 +327,9 @@ contains
       
       call fiReadDouble(string,por0,ierr)
       call fiDefaultMsg('por0',ierr)
+      
+      call fiReadDouble(string,tor0,ierr)
+      call fiDefaultMsg('tor0',ierr)
 
       call fiReadDouble(string,sat0,ierr)
       call fiDefaultMsg('sat0',ierr)
@@ -343,10 +346,11 @@ contains
     & "  difgas = ",1pe12.4,/, &
     & "  dgexp  = ",1pe12.4,/, &
     & "  por0   = ",1pe12.4,/, &
+    & "  tor0   = ",1pe12.4,/, &
     & "  sat0   = ",1pe12.4,/, &
     & "  temp0  = ",1pe12.4,/, &
     & "  pref0  = ",1pe12.4)') difaq,delhaq,difgas,dgexp, &
-                              por0,sat0,temp0,pref0
+                              por0,tor0,sat0,temp0,pref0
 
       tempini = temp0
 
@@ -893,6 +897,9 @@ contains
         call fiReadDouble(string,por_reg(ireg),ierr)
         call fiDefaultMsg('por',ierr)
 
+        call fiReadDouble(string,tor_reg(ireg),ierr)
+        call fiDefaultMsg('tor',ierr)
+
         call fiReadDouble(string,pref_reg(ireg),ierr)
         call fiDefaultMsg('pref',ierr)
 
@@ -901,9 +908,10 @@ contains
       
         if (myrank==0) then
           write(iunit2,*) 'region: ',ireg
-          write(iunit2,*) '   i1    i2    j1    j2    k1    k2    por         pref        temp'
-          write(iunit2,'(6i6,1p3e12.4)') i1reg(ireg),i2reg(ireg),j1reg(ireg),j2reg(ireg), &
-          k1reg(ireg),k2reg(ireg),por_reg(ireg),pref_reg(ireg),temp_reg(ireg)
+          write(iunit2,*) '   i1    i2    j1    j2    k1    k2    por         tor        ', &
+          'pref        temp'
+          write(iunit2,'(6i6,1p4e12.4)') i1reg(ireg),i2reg(ireg),j1reg(ireg),j2reg(ireg), &
+          k1reg(ireg),k2reg(ireg),por_reg(ireg),tor_reg(ireg),pref_reg(ireg),temp_reg(ireg)
         endif
       enddo
       iregfld = ireg

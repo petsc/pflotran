@@ -57,10 +57,10 @@ contains
 #include "include/finclude/petscvec.h90"
 #include "include/finclude/petscviewer.h"
 
-  DA    :: da, da_mat, da_1dof, da_kin
+  DA :: da, da_mat, da_1dof, da_kin
 
 #ifdef USE_PETSC216
-  SLES  :: sles
+  SLES :: sles
 #endif
 
 #ifdef USE_PETSC221
@@ -162,6 +162,7 @@ contains
   
   call DACreateGlobalVector(da_1dof,porosity,ierr)
   call VecDuplicate(porosity,por,ierr)
+  call VecDuplicate(porosity,tortuosity,ierr)
   call VecDuplicate(porosity,temp,ierr)
   call VecDuplicate(porosity,press,ierr)
   call VecDuplicate(porosity,sat,ierr)
@@ -186,6 +187,7 @@ contains
   call DACreateLocalVector(da,ccloc,ierr)
   
   call DACreateLocalVector(da_1dof,porloc,ierr)
+  call VecDuplicate(porloc,tort_loc,ierr)
   call VecDuplicate(porloc,temploc,ierr)
   call VecDuplicate(porloc,pressloc,ierr)
   call VecDuplicate(porloc,sat_loc,ierr)
@@ -468,6 +470,8 @@ contains
     call VecSet(press,pref0,ierr)
     call VecSet(sat,sat0,ierr)
     call VecSet(ssat,sat0,ierr)
+    
+    call VecSet(tortuosity,tor0,ierr)
 
     call density(temp0,pref0,rho0)
     rho0 = rho0*1.d-3
@@ -487,6 +491,7 @@ contains
     call DACreateNaturalVector(da_1dof,temp1_nat_vec,ierr)
     call VecDuplicate(temp1_nat_vec, temp2_nat_vec, ierr)
     call VecDuplicate(temp1_nat_vec, temp3_nat_vec, ierr)
+    call VecDuplicate(temp1_nat_vec, temp4_nat_vec, ierr)
     if (myrank == 0) then
       do ir = 1,iregfld
         do k = k1reg(ir),k2reg(ir)
@@ -495,10 +500,12 @@ contains
               n = i+(j-1)*nx+(k-1)*nxy-1
               val = por_reg(ir)
               call VecSetValue(temp1_nat_vec,n,val,INSERT_VALUES,ierr)
-              val = pref_reg(ir)
+              val = tor_reg(ir)
               call VecSetValue(temp2_nat_vec,n,val,INSERT_VALUES,ierr)
-              val = temp_reg(ir)+tkelvin
+              val = pref_reg(ir)
               call VecSetValue(temp3_nat_vec,n,val,INSERT_VALUES,ierr)
+              val = temp_reg(ir)+tkelvin
+              call VecSetValue(temp4_nat_vec,n,val,INSERT_VALUES,ierr)
             enddo
           enddo
         enddo
@@ -514,22 +521,30 @@ contains
     call VecAssemblyBegin(temp3_nat_vec,ierr)
     call VecAssemblyEnd(temp3_nat_vec,ierr)
   
+    call VecAssemblyBegin(temp4_nat_vec,ierr)
+    call VecAssemblyEnd(temp4_nat_vec,ierr)
+  
     call DANaturalToGlobalBegin(da_1dof,temp1_nat_vec,INSERT_VALUES, &
                                 porosity,ierr)
     call DANaturalToGlobalEnd(da_1dof,temp1_nat_vec,INSERT_VALUES, &
                               porosity,ierr)
     call DANaturalToGlobalBegin(da_1dof,temp2_nat_vec,INSERT_VALUES, &
-                                press,ierr)
+                                tortuosity,ierr)
     call DANaturalToGlobalEnd(da_1dof,temp2_nat_vec,INSERT_VALUES, &
-                              press,ierr)
+                              tortuosity,ierr)
     call DANaturalToGlobalBegin(da_1dof,temp3_nat_vec,INSERT_VALUES, &
-                                temp,ierr)
+                                press,ierr)
     call DANaturalToGlobalEnd(da_1dof,temp3_nat_vec,INSERT_VALUES, &
+                              press,ierr)
+    call DANaturalToGlobalBegin(da_1dof,temp4_nat_vec,INSERT_VALUES, &
+                                temp,ierr)
+    call DANaturalToGlobalEnd(da_1dof,temp4_nat_vec,INSERT_VALUES, &
                               temp,ierr)
     
     call VecDestroy(temp1_nat_vec,ierr)
     call VecDestroy(temp2_nat_vec,ierr)
     call VecDestroy(temp3_nat_vec,ierr)
+    call VecDestroy(temp4_nat_vec,ierr)
     
 !   call VecView(temp,PETSC_VIEWER_STDOUT_WORLD,ierr)
 

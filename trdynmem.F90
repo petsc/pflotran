@@ -115,9 +115,10 @@
   real*8, allocatable :: cec(:,:),xex(:,:),xxex(:,:),glam(:,:)
   
 !...........................................................
-! porosity, saturation
+! porosity, saturation, tortuosity
 !...........................................................
-  Vec :: porosity, por, porloc, sat, sat_loc, ssat, ssat_loc
+  Vec :: porosity, por, porloc, sat, sat_loc, ssat, ssat_loc, &
+         tortuosity, tort_loc
   real*8, pointer :: por_p(:)
 
 !...........................................................
