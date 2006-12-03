@@ -1251,7 +1251,7 @@ module pflow_output_module
 		  &      "-xlco2-     -xgco2-        -Vf-     ")')
 			  else 	  
 		     write(IUNIT3,'(''VARIABLES="'',3(a6,a3),a6,100(a3,a6))')"x",q,"y",q,"z",q,"ip",q,&
-			  var_name(1), ((q,var_name(i)),i=2,nvar_out),'"'
+			  var_name(1), (q,var_name(i),i=2,nvar_out),'"'
 
 			  endif
 			endif
@@ -1329,7 +1329,7 @@ module pflow_output_module
 				'x',q,'y',q,'p',q,'T',q,'sl(g)',q,'xl',q,'xg',q,'vf','"'
 			   else
 		 write(IUNIT3,'(''VARIABLES="'',3(a6,a3),a6,100(a3,a6))')"x",q,"y",q,"z",q,"ip",q,&
-			  var_name(1), ((q,var_name(i)),i=2,nvar_out),'"'
+			  var_name(1), (q,var_name(i),i=2,nvar_out),'"'
 			   endif
 			   write(IUNIT3,'(''ZONE T= "'',1pg12.4,''",'','' I='',i4, &
 		 &    '' , J='',i4)') tyr,grid%nx,grid%ny
@@ -1416,7 +1416,7 @@ module pflow_output_module
 			  'x',q,'z',q,'phase',q,'p',q,'T',q,'sl(g)',q,'xl',q,'xg',q,'vf','"'
 			else
 			 write(IUNIT3,'(''VARIABLES="'',3(a6,a3),a6,100(a3,a6))')"x",q,"y",q,"z",q,"ip",q,&
-			  var_name(1), ((q,var_name(i)),i=2,nvar_out),'"'
+			  var_name(1), (q,var_name(i),i=2,nvar_out),'"'
 			endif	
 			write(IUNIT3,'(''ZONE T= "'',1pg12.4,''",'','' I='',i4, &
 	 &      '' , K='',i4)') tyr,grid%nx,grid%nz
@@ -1492,7 +1492,7 @@ module pflow_output_module
 			    'x',q,'z',q,'phase',q,'pl',q,'pg',q,'T',q,'sl',q,'sg',q,'xl',q,'xg',q,'vf','"'
 		    else
  		 write(IUNIT3,'(''VARIABLES="'',3(a6,a3),a6,100(a3,a6))')"x",q,"y",q,"z",q, "ip",q,&
-			  var_name(1), ((q,var_name(i)),i=2,nvar_out),'"'
+			  var_name(1), (q,var_name(i),i=2,nvar_out),'"'
 
 		    endif
         write(IUNIT3,'(''ZONE T= "'',1pg12.4,''",'','' I='',i4, &
@@ -1570,7 +1570,7 @@ module pflow_output_module
       'x',q,'y',q,'z',q,'phase',q,'p',q,'T',q,'sl(g)',q,'xl',q,'xg',q,'vf','"'
 	  else
 	 write(IUNIT3,'(''VARIABLES="'',3(a6,a3),a6,100(a3,a6))')"x",q,"y",q,"z",q,"ip",q,&
-			  var_name(1), ((q,var_name(i)),i=2,nvar_out),'"'
+			  var_name(1), (q,var_name(i),i=2,nvar_out),'"'
      endif
 	  write(IUNIT3,'(''ZONE T= "'',1pg12.4,''",'','' I='',i4, &
  &    '' , J='',i4,'' K='',i4)') tyr,grid%nx,grid%ny,grid%nz
@@ -1656,7 +1656,7 @@ module pflow_output_module
  &      "       p      ","      T      ","     sl(g)      ","       xl       xg   ")')
       else       
  write(IUNIT3,'(''VARIABLES="'',3(a6,a3),a6,100(a3,a6))')"x",q,"y",q,"z",q,"ip",q,&
-			  var_name(1), ((q,var_name(i)),i=2,nvar_out),'"'
+			  var_name(1), (q,var_name(i),i=2,nvar_out),'"'
       endif
       endif
 		
