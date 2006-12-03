@@ -44,7 +44,7 @@ module oil_eos_module
 	real*8  a,b,alaph
 	real*8  x_light, Tk
 	
-	
+        ierr = 0	
 	x_light=1.D0- x_mid- x_heavy
    
 !	Tk=t+273.15
