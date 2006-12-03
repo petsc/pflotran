@@ -1867,7 +1867,7 @@ if((SSATG_LOC(m1)>eps).or.(SSATG_LOC(m2)>eps))then
 
     SNES, intent(in) :: snes
     Vec, intent(in) :: xx
-    Mat, intent(out) :: A, B
+    Mat, intent(inout) :: A, B
     type(pflowGrid), intent(inout) :: grid
    ! integer, intent(inout) :: flag
     MatStructure flag
