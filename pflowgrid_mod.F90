@@ -2946,7 +2946,7 @@ enddo
         ! The above line won't work when scope is restricted properly!
         ! Replace this with a different function call!
         call pflowgrid_destroy(grid)
-        call PetscFinalize()
+        call PetscFinalize(ierr)
         stop
      endif
 
