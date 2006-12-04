@@ -101,7 +101,7 @@ subroutine fiReadInt(string, int, ierr)
 
   implicit none
 
-  character(len=strlen) :: string
+  character(len=*) :: string
   character(len=32) :: word
   integer :: int, ierr
 
@@ -124,7 +124,7 @@ subroutine fiReadDouble(string, double, ierr)
 
   implicit none
 
-  character(len=strlen) :: string
+  character(len=*) :: string
   character(len=32) :: word
   real*8 :: double
   integer :: ierr
@@ -148,7 +148,7 @@ subroutine fiReadMultDouble(fid, string, doubles, n, variable_name, keyword, &
 
   implicit none
 
-  character(len=strlen) :: string
+  character(len=*) :: string
   character(len=*) :: variable_name, keyword, subroutine_name
   character(len=32) :: short_string
   integer :: i, n, ierr, fid
@@ -191,7 +191,7 @@ subroutine fiReadString(fid, string, ierr)
 
   implicit none
 
-  character(len=strlen) :: string
+  character(len=*) :: string
   integer :: fid, ierr
 
 !  if (ierr /= 0) return
@@ -212,7 +212,8 @@ subroutine fiReadFlotranString(fid, string, ierr)
 
   implicit none
 
-  character(len=strlen) :: string, tempstring, word
+  character(len=*) :: string
+  character(len=strlen) ::  tempstring, word
   integer :: i, fid, ierr
 
 !  if (ierr /= 0) return
@@ -272,8 +273,8 @@ subroutine fiReadCard(word, card, ierr)
   implicit none
 
   integer :: i, ierr, length
-  character(len=32) :: word
-  character(len=4) :: card
+  character(len=*) :: word
+  character(len=*) :: card
 
   card = '    '
   if (ierr /= 0) then
@@ -303,13 +304,13 @@ subroutine fiReadWord(string, word, return_blank_error, ierr)
   integer :: i, ierr, begins, ends
   logical :: return_blank_error ! Return an error for a blank line
                                 ! Therefore, a blank line is not acceptable.
-  character(len=strlen) :: string
-  character(len=32) :: word
+  character(len=*) :: string
+  character(len=*) :: word
 
   if (ierr /= 0) return
 
   ! Initialize character string to blank.
-  do i=1,32
+  do i=1,len_trim(word)
     word(i:i) = ' '
   enddo
 
@@ -369,7 +370,7 @@ subroutine fiReadNChars(string, chars, n, return_blank_error, ierr)
   integer :: i, n, ierr, begins, ends
   logical :: return_blank_error ! Return an error for a blank line
                                 ! Therefore, a blank line is not acceptable.
-  character(len=strlen) :: string
+  character(len=*) :: string
   character(len=n) :: chars
 
   if (ierr /= 0) return
@@ -431,7 +432,7 @@ subroutine fiWordToUpper(word)
   implicit none
 
   integer :: i
-  character(len=32) :: word
+  character(len=*) :: word
 
   do i=1,32
     word(i:i) = fiToUpper(word(i:i))
@@ -451,7 +452,7 @@ subroutine fiWordToLower(word)
   implicit none
 
   integer :: i
-  character(len=32) :: word
+  character(len=*) :: word
 
   do i=1,32
     word(i:i) = fiToLower(word(i:i))
@@ -578,7 +579,8 @@ subroutine fiReadDBaseString(fid, string, ierr)
 
   implicit none
 
-  character(len=dbaselen) :: string, tempstring, word
+  character(len=*) :: string
+  character(len=dbaselen) :: tempstring, word
   integer :: i, fid, ierr
 
 !  if (ierr /= 0) return
@@ -641,15 +643,15 @@ subroutine fiReadDBaseName(fid, string, name, return_blank_error, ierr)
   logical :: return_blank_error ! Return an error for a blank line
                                 ! Therefore, a blank line is not acceptable.
   integer, parameter :: n = 20
-  character(len=dbaselen) :: string
-  character(len=n) :: name
+  character(len=*) :: string
+  character(len=*) :: name
   logical :: openquotefound
 
   if (ierr /= 0) return
 
   openquotefound = .false.
   ! Initialize character string to blank.
-  do i=1,n
+  do i=1,len_trim(name)
     name(i:i) = ' '
   enddo
 
@@ -715,13 +717,13 @@ subroutine fiReadDBaseWord(fid, string, word, return_blank_error, ierr)
   integer :: i, ierr, begins, ends, fid
   logical :: return_blank_error ! Return an error for a blank line
                                 ! Therefore, a blank line is not acceptable.
-  character(len=dbaselen) :: string
-  character(len=32) :: word
+  character(len=*) :: string
+  character(len=*) :: word
 
   if (ierr /= 0) return
 
   ! Initialize character string to blank.
-  do i=1,32
+  do i=1,len_trim(word)
     word(i:i) = ' '
   enddo
 
@@ -776,7 +778,7 @@ subroutine fiReadDBaseInt(fid, string, int, ierr)
 
   implicit none
 
-  character(len=dbaselen) :: string
+  character(len=*) :: string
   character(len=32) :: word
   integer :: int, ierr, fid
 
@@ -803,7 +805,7 @@ subroutine fiReadDBaseDouble(fid, string, double, ierr)
 
   implicit none
 
-  character(len=dbaselen) :: string
+  character(len=*) :: string
   character(len=32) :: word
   real*8 :: double
   integer :: ierr, fid
@@ -831,7 +833,7 @@ end subroutine fiReadDBaseDouble
 
   implicit none
 
-  character(len=dbaselen) :: string
+  character(len=*) :: string
   integer :: i, n, ierr, fid
   real*8 :: doubles(n)
 
