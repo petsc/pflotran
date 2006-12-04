@@ -1,6 +1,4 @@
 # $Id: makefile,v 1.3 2004/07/31 01:16:44 lichtner Exp $
-F90=f90
-FLINKER=f90
 
 objdir = ./${PETSC_ARCH}/obj
 srcdir = ./
