@@ -408,7 +408,7 @@ private
 		
 		
 	     !  if(ina2 ==0) then  !BC
-		    print *, 'Read conn:',ncna,nnc, na1,na2, grid%nd1(nnc),grid%nd2(nnc),area,dist1, dist2,grav_ang,grid%iperm1(nnc) 																					   	 			   
+		    print *, 'Read conn:',ncna,nnc, na1,na2, grid%nd1(nnc),grid%nd2(nnc),area,dist1, dist2,grav_ang,grid%iperm1(nnc)
 		   exit
 	    elseif(na2==ir)then			
           nnc = nnc +1 
