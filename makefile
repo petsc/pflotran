@@ -24,46 +24,59 @@ CLEANFILES       = pflow ptran pflotran pflotran_fc
 
 include ${PETSC_DIR}/bmake/common/base
 
-util_obj  = ${common_src}fileio.o ${common_src}water_eos.o \
-            ${common_src}co2eos.o  ${common_src}gaseos_mod.o \
-            ${common_src}co2_sw_rtsafe.o ${common_src}co2_span_wagner.o \
-            ${common_src}oil_eos.o ${common_src}oil_pckr.o \
-			${common_src}utilities.o \
-	        ${common_src}ptran_global.o ${common_src}trdynmem.o
+util_obj  = ${common_src}fileio.o \
+	${common_src}water_eos.o \
+	${common_src}co2eos.o \
+	${common_src}gaseos_mod.o \
+	${common_src}co2_sw_rtsafe.o \
+	${common_src}co2_span_wagner.o \
+	${common_src}oil_eos.o \
+	${common_src}oil_pckr.o \
+	${common_src}utilities.o \
+	${common_src}ptran_global.o \
+	${common_src}trdynmem.o
 
 pflow_obj = ${common_src}pflow_vector_ops.o \
-            ${common_src}pflow_read_gridsize.o \
-            ${common_src}pflow_gridtype.o \
-			${common_src}Readfield.o \
-	        ${common_src}pflow_pckr_mod.o \
-	        ${common_src}mixed_fluid_eos.o \
-			${common_src}translator_mixed_fluid_mph.o \
-			${common_src}translator_mixed_fluid_OWG.o \
-		    ${common_src}hydrostat.o \
-            ${common_src}pflow_LIQUID.o \
-            ${common_src}pflow_COND.o \
-            ${common_src}pflow_TH.o \
-            ${common_src}pflow_THC.o \
-            ${common_src}pflow_TWOPH.o \
-            ${common_src}pflow_2pha_ResJac.o\
-			${common_src}pflow_owg_ResJac.o\
-			${common_src}pflow_mphase_ResJac.o\
-			${common_src}pflow_solve.o \
-            ${common_src}pflow_output.o \
-			${common_src}pflowgrid_mod.o
+	${common_src}pflow_read_gridsize.o \
+	${common_src}pflow_gridtype.o \
+	${common_src}Readfield.o \
+	${common_src}pflow_pckr_mod.o \
+	${common_src}mixed_fluid_eos.o \
+	${common_src}translator_mixed_fluid_mph.o \
+	${common_src}translator_mixed_fluid_OWG.o \
+	${common_src}hydrostat.o \
+	${common_src}pflow_LIQUID.o \
+	${common_src}pflow_COND.o \
+	${common_src}pflow_TH.o \
+	${common_src}pflow_THC.o \
+	${common_src}pflow_TWOPH.o \
+	${common_src}pflow_2pha_ResJac.o\
+	${common_src}pflow_owg_ResJac.o\
+	${common_src}pflow_mphase_ResJac.o\
+	${common_src}pflow_solve.o \
+	${common_src}pflow_output.o \
+	${common_src}pflowgrid_mod.o
 
-ptran_obj = ${common_src}ptran_psi.o     ${common_src}ptran_dbase.o \
-            ${common_src}trgamdh.o       ${common_src}ptran_speciation.o \
-            ${common_src}ptran_setbnd.o  ${common_src}ptran_conn.o \
-            ${common_src}ptran_destroy.o ${common_src}ptran_dt.o \
-            ${common_src}ptran_init.o    ${common_src}ptran_out.o \
-            ${common_src}ptran_read.o \
-            ${common_src}trkinmin.o      ${common_src}trionexc.o \
-            ${common_src}ptran_multi.o   ${common_src}ptran_update.o \
-            ${common_src}trstdyst.o \
-            ${common_src}ptran_solv.o
+ptran_obj = ${common_src}ptran_psi.o \
+	${common_src}ptran_dbase.o \
+	${common_src}trgamdh.o \
+	${common_src}ptran_speciation.o \
+	${common_src}ptran_setbnd.o \
+	${common_src}ptran_conn.o \
+	${common_src}ptran_destroy.o \
+	${common_src}ptran_dt.o \
+	${common_src}ptran_init.o \
+	${common_src}ptran_out.o \
+	${common_src}ptran_read.o \
+	${common_src}trkinmin.o \
+	${common_src}trionexc.o \
+	${common_src}ptran_multi.o \
+	${common_src}ptran_update.o \
+	${common_src}trstdyst.o \
+	${common_src}ptran_solv.o
 
-pflotran_obj = ${common_src}rock_react.o    ${common_src}pflotran_couple.o
+pflotran_obj = ${common_src}rock_react.o \
+	${common_src}pflotran_couple.o
 
 pflow : $(util_obj) $(pflow_obj) ${pflow_src}pflow.o
 	${FLINKER}   -o pflow $(util_obj) $(pflow_obj) ${pflow_src}pflow.o ${PETSC_LIB}
