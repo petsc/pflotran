@@ -135,7 +135,7 @@ private
                        hen_bc(:),hen_p_bc(:),hen_t_bc(:),hen_s_bc(:),hen_c_bc(:), &
                        pc_bc(:),pc_p_bc(:),pc_t_bc(:),pc_s_bc(:),pc_c_bc(:), &
                        kvr_bc(:),kvr_p_bc(:),kvr_t_bc(:),kvr_s_bc(:),kvr_c_bc(:)
-    real*8, allocatable :: xphi_co2(:),xxphi_co2(:),den_co2(:), dden_co2(:)
+    real*8, pointer :: xphi_co2(:),xxphi_co2(:),den_co2(:), dden_co2(:)
 
     integer*4, pointer :: nL2G(:), nG2L(:), nL2A(:),nG2N(:)
       ! Arrays for indexing between local ghosted and non-ghosted, local to natural arrays.
