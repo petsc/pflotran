@@ -8,17 +8,19 @@ ptran_src    = ./
 common_src   = ./
 bindir = ./${PETSC_ARCH}/bin
 
-CFLAGS		 = 
-FFLAGS		 = 
-CPPFLAGS         =
-FPPFLAGS         =
-LOCDIR		 = /home/clu
-#MYFLAGS = ${PETSCFLAGS} -I${objdir} -DDEBUG -DUSE_COMPRESSIBILITY
-#MYFLAGS = ${PETSCFLAGS} -I${objdir} -DUSE_COMPRESSIBILITY -DUSE_PETSC216
-MYFLAGS = ${FC_FLAGS} ${PETSCFLAGS} -I${objdir} -DUSE_COMPRESSIBILITY -DUSE_PETSC221 #-DPETSC_USE_LOG
-#MYFLAGS = ${PETSCFLAGS} -I${objdir} -DUSE_COMPRESSIBILITY 
+#MYFLAGS = -I${objdir} -DDEBUG -DUSE_COMPRESSIBILITY
+#MYFLAGS = -I${objdir} -DUSE_COMPRESSIBILITY -DUSE_PETSC216
+MYFLAGS = -I${objdir} -DUSE_COMPRESSIBILITY -DUSE_PETSC221 #-DPETSC_USE_LOG
+#MYFLAGS = -I${objdir} -DUSE_COMPRESSIBILITY 
 #                                   -DHAVE_MPITOMPIZERO
 LIBS   = 
+
+CFLAGS		 = 
+FFLAGS		 = 
+CPPFLAGS         = ${MYFLAGS}
+FPPFLAGS         = ${MYFLAGS}
+LOCDIR		 = /home/clu
+CLEANFILES       = pflow ptran pflotran pflotran_fc
 
 include ${PETSC_DIR}/bmake/common/base
 
@@ -60,33 +62,28 @@ ptran_obj = ${common_src}ptran_psi.o     ${common_src}ptran_dbase.o \
             ${common_src}ptran_multi.o   ${common_src}ptran_update.o \
             ${common_src}trstdyst.o \
             ${common_src}ptran_solv.o
-			
+
 pflotran_obj = ${common_src}rock_react.o    ${common_src}pflotran_couple.o
 
 pflow : $(util_obj) $(pflow_obj) ${pflow_src}pflow.o
-	${FLINKER}   -o pflow $(util_obj) $(pflow_obj) ${pflow_src}pflow.o \
-	${MYFLAGS} ${PETSC_FORTRAN_LIB} ${PETSC_LIB}
+	${FLINKER}   -o pflow $(util_obj) $(pflow_obj) ${pflow_src}pflow.o ${PETSC_LIB}
 
 ptran : $(util_obj) $(ptran_obj) ${ptran_src}ptran.o
-	${FLINKER}   -o ptran $(util_obj) $(ptran_obj) ${ptran_src}ptran.o \
-	${MYFLAGS} ${PETSC_FORTRAN_LIB} ${PETSC_LIB}
+	${FLINKER}   -o ptran $(util_obj) $(ptran_obj) ${ptran_src}ptran.o ${PETSC_LIB}
 
 pflotran: $(util_obj) $(ptran_obj) $(pflow_obj) $(pflotran_obj) \
 	${pflotran_src}pflotran.o
 	${FLINKER}   -o pflotran $(util_obj) $(ptran_obj) $(pflow_obj) \
-	$(pflotran_obj) ${pflotran_src}pflotran.o \
-	${MYFLAGS} ${PETSC_FORTRAN_LIB} ${PETSC_LIB}
+	$(pflotran_obj) ${pflotran_src}pflotran.o ${PETSC_LIB}
 
 pflotran_fc: $(util_obj) $(ptran_obj) $(pflow_obj) $(pflotran_obj) \
 	${pflotran_src}pflotran_fc.o
 	${FLINKER}   -o pflotran_fc $(util_obj) $(ptran_obj) $(pflow_obj) \
-	$(pflotran_obj) ${pflotran_src}pflotran_fc.o \
-	${MYFLAGS} ${PETSC_FORTRAN_LIB} ${PETSC_LIB}
+	$(pflotran_obj) ${pflotran_src}pflotran_fc.o ${PETSC_LIB}
 
-%.o : %.F90
-	${FC} ${FOPTFLAGS} $< ${MYFLAGS} -c ${PETSC_INCLUDE}
+# Should add this to default PETSc targets as well?
 %.mod : %.F90
-	${FLINKER} $< -c ${PETSC_INCLUDE} 
+	${FC} -c ${FC_FLAGS} ${FFLAGS} ${FCPPFLAGS} $<
 
 # Dependencies stemming from "use" statements.
 # These ensure that the module files are built in the correct order.
