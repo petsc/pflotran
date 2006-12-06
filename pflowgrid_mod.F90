@@ -1139,7 +1139,7 @@
     endif
 
     if(grid%monitor_h == PETSC_TRUE) then
-      call SNESMonitorSet(grid%snes, pflowgrid_MonitorH, grid, &
+      call SNESSetMonitor(grid%snes, pflowgrid_MonitorH, grid, &
                           PETSC_NULL_OBJECT, ierr)
     endif
     
@@ -1163,7 +1163,7 @@
  !   endif
 !   call MatSetOption(grid%J,MAT_COLUMN_ORIENTED,ierr)
         
-    call DAGetColoring(grid%da_ndof, IS_COLORING_GHOSTED, iscoloring, ierr)
+    call DAGetColoring(grid%da_ndof, IS_COLORING_LOCAL, iscoloring, ierr)
     
     call MatFDColoringCreate(grid%J, iscoloring, grid%matfdcoloring, ierr)
     
