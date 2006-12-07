@@ -20,7 +20,7 @@
 !#include "pflowgrid_misc.F90"
 !#include "pflowgrid_monitors.F90"
 
-  module pflow_grid_module
+module pflow_grid_module
   
   use pflow_gridtype_module
   

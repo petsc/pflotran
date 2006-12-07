@@ -1,4 +1,4 @@
-  module pflow_gridtype_module
+module pflow_gridtype_module
 
 
 #include "definitions.h"
@@ -36,7 +36,7 @@ private
 !#endif
 
     integer :: myrank, commsize  ! Rank in PETSC_COMM_WORLD.
-    
+
     integer :: nphase, nvar, ndof  ! Number of phases we are dealing with.
     integer :: jh2o, jgas, jco2 ! specific phase indices
     integer :: nspec, npricomp
@@ -89,10 +89,10 @@ private
       ! Basically our target number of newton iterations per time step.
     real*8 :: dpmxe,dtmpmxe,dsmxe,dcmxe !maximum allowed changes in field vars.
     real*8 :: dpmax,dtmpmax,dsmax,dcmax
-   	
+
     ! Grid topology
     integer :: igeom
-	integer*4 :: nx, ny, nz    ! Global domain dimensions of the grid.
+    integer*4 :: nx, ny, nz    ! Global domain dimensions of the grid.
     integer*4 :: nxy, nmax     ! nx * ny, nx * ny * nz
     integer*4 :: npx, npy, npz ! Processor partition in each direction.
     integer*4 :: nlx, nly, nlz ! Local grid dimension w/o ghost nodes.
@@ -142,7 +142,7 @@ private
     DA :: da_1_dof, da_nphase_dof, da_3np_dof, da_ndof
     DA :: da_NphaNcomp_dof,da_NphaNspec_dof,da_NphaNspecNcomp_dof
     DA :: da_var_dof
-	  ! DA's for 1, 3, and multiple (number of phases) degrees of freedom.
+      ! DA's for 1, 3, and multiple (number of phases) degrees of freedom.
       ! da_ndof = total degrees of freedom per node
 
     ! Boundary conditions (BC's)
@@ -177,14 +177,14 @@ private
       ! j along BC block ibc.
     real*8, pointer :: tempbc(:),concbc(:),sgbc(:),xphi_co2_bc(:),xxphi_co2_bc(:)
     real*8, pointer :: xxbc(:,:), varbc(:)
-	integer, pointer:: iphasebc(:)
+    integer, pointer:: iphasebc(:)
 
     !block BC values read from input
     real*8, pointer :: pressurebc0(:,:)
     real*8, pointer :: velocitybc0(:,:)
     real*8, pointer :: tempbc0(:),concbc0(:),sgbc0(:)
     real*8, pointer :: xxbc0(:,:)
-	integer, pointer:: iphasebc0(:)  
+    integer, pointer:: iphasebc0(:)  
 
 !   phik
     integer :: iregperm, iran_por=0, iread_perm=0, iread_geom =1
@@ -198,8 +198,8 @@ private
     real*8, pointer :: pres_ini(:),temp_ini(:),conc_ini(:),sat_ini(:), &
                        xmol_ini(:)
     real*8, pointer :: xx_ini(:,:)
-	integer, pointer:: iphas_ini(:)
-					                      
+    integer, pointer:: iphas_ini(:)
+
 !   source term
     integer :: nblksrc = 0, ntimsrc = 0, isrc1 = 2
     integer*4, pointer :: i1src(:), i2src(:), j1src(:), j2src(:), k1src(:), k2src(:)
@@ -227,7 +227,7 @@ private
     real*8, pointer :: swir(:),lambda(:),alpha(:),pckrm(:),pcwmax(:),pcbetac(:), &
                        pwrprm(:),sir(:,:)
     integer, pointer:: icaptype(:)
-	real*8 :: difaq, delhaq, gravity, fmwh2o= 18.0153D0, fmwa=28.96D0, &
+    real*8 :: difaq, delhaq, gravity, fmwh2o= 18.0153D0, fmwa=28.96D0, &
               fmwco2=44.0098D0, eqkair, ret=1.d0, fc=1.d0
     
     integer :: ihydrostatic = 0,ideriv = 1
@@ -247,7 +247,7 @@ private
     ! One degree of freedom: Physical coordinates.
     Vec :: conc
     Vec :: porosity, porosity0, porosity_loc, tor, tor_loc
-	Vec :: dx, dy, dz, dx_loc, dy_loc, dz_loc  ! Grid spacings
+    Vec :: dx, dy, dz, dx_loc, dy_loc, dz_loc  ! Grid spacings
     Vec :: volume  ! Volume of a cell in the grid
     Vec :: ithrm, ithrm_loc, icap, icap_loc, iphas, iphas_loc, iphas_old
     Vec :: ttemp, ttemp_loc, temp ! 1 dof
@@ -256,10 +256,10 @@ private
     ! Three degrees of freedom:
 !   Vec :: perm, perm_loc
     Vec :: perm_xx, perm_xx_loc, perm_yy, perm_yy_loc, perm_zz, perm_zz_loc
-	Vec :: perm0_xx, perm0_yy, perm0_zz, perm_pow
+    Vec :: perm0_xx, perm0_yy, perm0_zz, perm_pow
     ! Multiple degrees of freedom (equal to number of phases present):
     Vec :: var,var_loc
-	Vec :: ppressure, ppressure_loc, pressure, dp
+    Vec :: ppressure, ppressure_loc, pressure, dp
     Vec :: ssat, ssat_loc, sat    ! saturation
     Vec :: xxmol, xxmol_loc, xmol ! mole fraction
     Vec :: density       ! Density at time k
@@ -309,11 +309,11 @@ private
     Vec :: r             ! The residual.  (NOT the negative of the residual.)
 
     Vec :: vl, vvl, vg, vvg ! phase (liquid and gas) velocities stored at interfaces
-	
-			
+
+
     real*8, pointer :: vl_loc(:), vvl_loc(:), vg_loc(:), vvg_loc(:)
-	real*8, pointer :: rtot(:,:),rate(:),area_var(:), delx(:,:)
-	
+    real*8, pointer :: rtot(:,:),rate(:),area_var(:), delx(:,:)
+
     ! Solution vectors
     Vec :: xx, xx_loc, dxx, yy, accum
         ! Jacobian matrix
@@ -323,12 +323,12 @@ private
 
     ! PETSc nonlinear solver context
     SNES :: snes
-	KSPType :: ksp_type
+    KSPType :: ksp_type
     PCType  :: pc_type
     KSP   ::  ksp
     PC    ::  pc
 
-	
+
     real*8 :: atol, rtol, stol, dtol
       ! Absolute, relative, and "change in norm of solution" tolerances.
     integer :: maxit, maxf
@@ -340,4 +340,4 @@ private
     ! Used to hold all values on processor 0.
 
   end type pflowGrid
- end module pflow_gridtype_module
+end module pflow_gridtype_module

@@ -110,11 +110,11 @@
 ! call VecView(grid%conc,PETSC_VIEWER_STDOUT_WORLD,ierr)
 
   if(grid%use_owg/=PETSC_TRUE) then
-     call pflow_output(grid,kplt,iplot)
+    call pflow_output(grid,kplt,iplot)
   else
     call pflow_var_output(grid,kplt,iplot)
   endif
-  	  
+
   if(myid == 0) print *, ""
   if(myid == 0) print *, ""
 
@@ -183,8 +183,8 @@
         timex_wall(2)-timex_wall(1), (timex_wall(2)-timex_wall(1))/60.d0, &
         (timex_wall(2)-timex_wall(1))/3600.d0
   endif
-      
+
   close(IUNIT2)
   if (grid%ibrkcrv > 0) close(IUNIT4)
-  
+
   end program pflow

@@ -728,16 +728,17 @@ contains
 
   end subroutine ptran_out
   
+  
  !**********************************************************************************
  
-   subroutine ptran_get_natural_psi(snpsi, snpsig, ierr)
+   subroutine ptran_get_natural_psi(snpsi, ierr)
     implicit none
     
- 	real*8  :: snpsi(:), snpsig(:)    
+ 	real*8  :: snpsi(:)    
     integer :: ierr, ndex,na, status(MPI_STATUS_SIZE)
 	integer :: ifound, jng, n
-	real*8 pppsi(ncomp), pppsig(ncomp)
-	  
+	real*8 pppsi(ncomp)
+      
 	  ierr=-1
    	  	ndex=1
 		do na=0, nmax-1
@@ -747,24 +748,22 @@ contains
 			   do n=ndex,nlmax
 				 if(nL2A(n) == na ) then
 				  ifound=1
-				  !jng= 1 + (nL2G(n)-1)*ncomp 
 				  pppsi= psi(:, nL2G(n))
-				  pppsig = psig(:, nL2G(n))
 				  ndex=n
 				  exit	 
 				endif
 			   enddo
 			   if(ifound==0)then  
-				call MPI_Recv(pppsi,ncomp, MPI_DOUBLE_PRECISION,MPI_ANY_SOURCE, na, PETSC_COMM_WORLD, status,ierr) 					
-				call MPI_Recv(pppsig, ncomp ,MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, na+na,PETSC_COMM_WORLD,status ,ierr) 
+				call MPI_Recv(pppsi,ncomp, MPI_DOUBLE_PRECISION,MPI_ANY_SOURCE, na, &
+                PETSC_COMM_WORLD, status,ierr) 					
 			   endif
 				
 			  else
 				do n=ndex,nlmax
 				  if(nL2A(n) == na) then
 					jng = 1 + (nl2G(n)-1)*ncomp 
-					 call MPI_Send(psi(1:ncomp,nL2G(n)), ncomp ,MPI_DOUBLE_PRECISION, 0, na, PETSC_COMM_WORLD, ierr)   
-				     call MPI_Send(psig(1:ncomp,nL2G(n)), ncomp ,MPI_DOUBLE_PRECISION, 0, na+na, PETSC_COMM_WORLD, ierr)
+					 call MPI_Send(psi(1:ncomp,nL2G(n)), ncomp ,MPI_DOUBLE_PRECISION, 0, na, &
+                     PETSC_COMM_WORLD, ierr)   
 				    ndex=n
 				   exit
 				  endif
@@ -775,7 +774,6 @@ contains
 		  
 		  if(myrank ==0 )then
 			 snpsi(na*ncomp+1: (na+1)*ncomp) = pppsi(1:ncomp)
-			 snpsig(na*ncomp+1: (na+1)*ncomp) = pppsig(1:ncomp) 
     	endif
 		 
 
@@ -786,6 +784,63 @@ contains
    ierr=0
 	
    end subroutine ptran_get_natural_psi	  
+  
+ !**********************************************************************************
+ 
+   subroutine ptran_get_natural_psig(snpsig, ierr)
+    implicit none
+    
+ 	real*8  :: snpsig(:)    
+    integer :: ierr, ndex,na, status(MPI_STATUS_SIZE)
+	integer :: ifound, jng, n
+	real*8 pppsig(ncomp)
+      
+	  ierr=-1
+   	  	ndex=1
+		do na=0, nmax-1
+			  ifound=0
+			  if(myrank==0) then
+			   ifound=0
+			   do n=ndex,nlmax
+				 if(nL2A(n) == na ) then
+				  ifound=1
+				  pppsig = psig(:, nL2G(n))
+				  ndex=n
+				  exit	 
+				endif
+			   enddo
+			   if(ifound==0)then  
+				call MPI_Recv(pppsig, ncomp ,MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, na+na, &
+                PETSC_COMM_WORLD,status ,ierr) 
+			   endif
+				
+			  else
+				do n=ndex,nlmax
+				  if(nL2A(n) == na) then
+					jng = 1 + (nl2G(n)-1)*ncomp 
+				     call MPI_Send(psig(1:ncomp,nL2G(n)), ncomp ,MPI_DOUBLE_PRECISION, 0, na+na, &
+                     PETSC_COMM_WORLD, ierr)
+				    ndex=n
+				   exit
+				  endif
+			   enddo  
+			 endif     	     
+		
+		  call MPI_Barrier(PETSC_COMM_WORLD, ierr)
+		  
+		  if(myrank ==0 )then
+			 snpsig(na*ncomp+1: (na+1)*ncomp) = pppsig(1:ncomp) 
+    	endif
+		 
+
+			   
+		enddo
+
+   
+   ierr=0
+	
+   end subroutine ptran_get_natural_psig	  
+
  !********************************************************************************** 
   subroutine ptran_psi_out (kplt,da,da_1dof,da_kin)
 
@@ -866,12 +921,12 @@ contains
 ! call DAGlobalToNaturalEnd(da_3np, vl, INSERT_VALUES,vl_nat,ierr)
 ! call VecConvertMPIToSeqAll(vl_nat, vl_all, ierr);  CHKERRQ(ierr)
  if (myrank == 0) then
-   allocate(snpsi(nmax*ncomp))
-   allocate(snpsig(nmax*ncomp))
+   if (iphase >= 1) allocate(snpsi(nmax*ncomp))
+   if (iphase  == 2) allocate(snpsig(nmax*ncomp))
  endif
- 
- 
-  call ptran_get_natural_psi(snpsi, snpsig, ierr)
+  
+  if (iphase >= 1) call ptran_get_natural_psi(snpsi, ierr)
+  if (iphase == 2) call ptran_get_natural_psig(snpsig, ierr)
   
   if (myrank == 0) call VecGetArrayF90(c_seq, c_p, ierr)
 
@@ -1271,8 +1326,8 @@ contains
     close(fid)
   endif
  if (myrank == 0) then
-   deallocate(snpsi)
-   deallocate(snpsig)
+   if (iphase >= 1) deallocate(snpsi)
+   if (iphase == 2) deallocate(snpsig)
  endif
  
 
@@ -1580,7 +1635,6 @@ contains
   40 format(1p100e12.4)
 
   end subroutine ptran_psi_out
-  
 
   
 end module ptran_out_module
