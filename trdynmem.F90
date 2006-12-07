@@ -186,11 +186,11 @@
 !     allocate(rkin(nkin,nlmax))
 !     allocate(rrkin(nkin,nlmax))
 !   endif
-	allocate(rtoth2o(nlmax))
-	allocate(rtotco2(nlmax))
-	
-	allocate(rrtoth2o(nlmax))
-	allocate(rrtotco2(nlmax))
+    allocate(rtoth2o(nlmax))
+    allocate(rtotco2(nlmax))
+
+    allocate(rrtoth2o(nlmax))
+    allocate(rrtotco2(nlmax))
     
     !allocate(xphi_co2(nlmax))
     !allocate(den_co2(nlmax))

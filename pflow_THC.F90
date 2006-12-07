@@ -898,9 +898,9 @@ contains
   !  J(Np+1, Np+1) = ... (T,T)
   !---------------------------------------------------------------------------
   
-	blkmat1 = 0.d0
-	blkmat2 = 0.d0
-	
+  blkmat1 = 0.d0
+  blkmat2 = 0.d0
+
   ! Accumulation terms
   do n = 1, grid%nlmax  ! For each local node do...
     ng = grid%nL2G(n)
@@ -953,7 +953,7 @@ contains
     if (grid%iblkfmt == 0) then
       call MatSetValuesLocal(A,1,p1,1,t1,elempt,ADD_VALUES,ierr)
     else
-	    blkmat1(1,2) = elempt
+      blkmat1(1,2) = elempt
     endif
 
     !energy eqn. - cross term: (T,p)
@@ -961,7 +961,7 @@ contains
     if (grid%iblkfmt == 0) then
       call MatSetValuesLocal(A,1,t1,1,p1,elem1,ADD_VALUES,ierr)
     else
-  	  blkmat1(2,1) = elem1
+      blkmat1(2,1) = elem1
     endif
 
     !energy eqn. - diagonal term: (T,T)
@@ -970,7 +970,7 @@ contains
     if (grid%iblkfmt == 0) then
       call MatSetValuesLocal(A,1,t1,1,t1,elem1,ADD_VALUES,ierr)
     else
-  	  blkmat1(2,2) = elem1
+      blkmat1(2,2) = elem1
     endif
     
     !tracer: (C,C)
@@ -978,7 +978,7 @@ contains
     if (grid%iblkfmt == 0) then
       call MatSetValuesLocal(A,1,c1,1,c1,elem1,ADD_VALUES,ierr)
     else
-  	  blkmat1(3,3) = elem1
+      blkmat1(3,3) = elem1
     endif
 
     !kinetic rate term
@@ -1024,8 +1024,8 @@ contains
       endif
     endif
     if (grid%iblkfmt == 1) then
-  	  call MatSetValuesBlockedLocal(A,1,ng-1,1,ng-1,blkmat1, &
-  	  ADD_VALUES,ierr)
+      call MatSetValuesBlockedLocal(A,1,ng-1,1,ng-1,blkmat1, &
+      ADD_VALUES,ierr)
     endif
   enddo
 
@@ -1193,10 +1193,10 @@ contains
           call MatSetValuesLocal(A,1,p1,1,p1,elem1,ADD_VALUES,ierr)
           call MatSetValuesLocal(A,1,p1,1,p2,elem2,ADD_VALUES,ierr)
         else
-	  	    blkmat1(1,1) = elem1
-		      blkmat2(1,1) = elem2
+          blkmat1(1,1) = elem1
+          blkmat2(1,1) = elem2
         endif
-		
+
         ! liquid flux terms: (p,T)
         elem1 = qdt1
         elem2 = qdt2
@@ -1217,8 +1217,8 @@ contains
           call MatSetValuesLocal(A,1,c1,1,c1,elem1,ADD_VALUES,ierr)
           call MatSetValuesLocal(A,1,c1,1,c2,elem2,ADD_VALUES,ierr)
         else
-		      blkmat1(3,3) = elem1
-		      blkmat2(3,3) = elem2
+          blkmat1(3,3) = elem1
+          blkmat2(3,3) = elem2
         endif
     
       !(T,T)
@@ -1229,8 +1229,8 @@ contains
         call MatSetValuesLocal(A,1,t1,1,t1,elem1,ADD_VALUES,ierr)
         call MatSetValuesLocal(A,1,t1,1,t2,elem2,ADD_VALUES,ierr)
       else
-		    blkmat1(2,2) = elem1
-		    blkmat2(2,2) = elem2
+        blkmat1(2,2) = elem1
+        blkmat2(2,2) = elem2
       endif
 
       ! heat flux terms: (T,p)
@@ -1241,8 +1241,8 @@ contains
         call MatSetValuesLocal(A,1,t1,1,p1,elem1,ADD_VALUES,ierr)
         call MatSetValuesLocal(A,1,t1,1,p2,elem2,ADD_VALUES,ierr)
       else
-		    blkmat1(2,1) = elem1
-		    blkmat2(2,1) = elem2
+        blkmat1(2,1) = elem1
+        blkmat2(2,1) = elem2
       endif
 
       ! tracer flux terms: (C,p)
@@ -1253,8 +1253,8 @@ contains
         call MatSetValuesLocal(A,1,c1,1,p1,elem1,ADD_VALUES,ierr)
         call MatSetValuesLocal(A,1,c1,1,p2,elem2,ADD_VALUES,ierr)
       else
-		    blkmat1(3,1) = elem1
-		    blkmat2(3,1) = elem2
+        blkmat1(3,1) = elem1
+        blkmat2(3,1) = elem2
       endif
 
       ! tracer flux terms: (C,T)
@@ -1265,14 +1265,14 @@ contains
         call MatSetValuesLocal(A,1,c1,1,t1,elem1,ADD_VALUES,ierr)
         call MatSetValuesLocal(A,1,c1,1,t2,elem2,ADD_VALUES,ierr)
       else
-		    blkmat1(3,2) = elem1
-		    blkmat2(3,2) = elem2
+        blkmat1(3,2) = elem1
+        blkmat2(3,2) = elem2
       endif
       if (grid%iblkfmt == 1) then
-	      call MatSetValuesBlockedLocal(A,1,m1-1,1,m1-1,blkmat1, &
-	      ADD_VALUES,ierr)
-	      call MatSetValuesBlockedLocal(A,1,m1-1,1,m2-1,blkmat2, &
-	      ADD_VALUES,ierr)
+        call MatSetValuesBlockedLocal(A,1,m1-1,1,m1-1,blkmat1, &
+        ADD_VALUES,ierr)
+        call MatSetValuesBlockedLocal(A,1,m1-1,1,m2-1,blkmat2, &
+        ADD_VALUES,ierr)
       endif
     endif
 
@@ -1285,8 +1285,8 @@ contains
           call MatSetValuesLocal(A,1,p2,1,p1,elem1,ADD_VALUES,ierr)
           call MatSetValuesLocal(A,1,p2,1,p2,elem2,ADD_VALUES,ierr)
         else
-		      blkmat1(1,1) = elem1
-		      blkmat2(1,1) = elem2
+          blkmat1(1,1) = elem1
+          blkmat2(1,1) = elem2
         endif
 
         ! liquid flux terms: (p,T)
@@ -1297,8 +1297,8 @@ contains
           call MatSetValuesLocal(A,1,p2,1,t1,elem1,ADD_VALUES,ierr)
           call MatSetValuesLocal(A,1,p2,1,t2,elem2,ADD_VALUES,ierr)
         else
-		      blkmat1(1,2) = elem1
-		      blkmat2(1,2) = elem2
+          blkmat1(1,2) = elem1
+          blkmat2(1,2) = elem2
         endif
 
       ! tracer flux terms: (C,C)
@@ -1309,8 +1309,8 @@ contains
           call MatSetValuesLocal(A,1,c2,1,c1,elem1,ADD_VALUES,ierr)
           call MatSetValuesLocal(A,1,c2,1,c2,elem2,ADD_VALUES,ierr)
         else
-		      blkmat1(3,3) = elem1
-		      blkmat2(3,3) = elem2
+          blkmat1(3,3) = elem1
+          blkmat2(3,3) = elem2
         endif
 
       !(T,T)
@@ -1321,8 +1321,8 @@ contains
         call MatSetValuesLocal(A,1,t2,1,t1,elem1,ADD_VALUES,ierr)
         call MatSetValuesLocal(A,1,t2,1,t2,elem2,ADD_VALUES,ierr)
       else
-		    blkmat1(2,2) = elem1
-		    blkmat2(2,2) = elem2
+        blkmat1(2,2) = elem1
+        blkmat2(2,2) = elem2
       endif
 
       ! heat flux terms: (T,p)
@@ -1333,8 +1333,8 @@ contains
         call MatSetValuesLocal(A,1,t2,1,p1,elem1,ADD_VALUES,ierr)
         call MatSetValuesLocal(A,1,t2,1,p2,elem2,ADD_VALUES,ierr)
       else
-		    blkmat1(2,1) = elem1
-		    blkmat2(2,1) = elem2
+        blkmat1(2,1) = elem1
+        blkmat2(2,1) = elem2
       endif
 
       ! tracer flux terms: (C,p)
@@ -1345,8 +1345,8 @@ contains
         call MatSetValuesLocal(A,1,c2,1,p1,elem1,ADD_VALUES,ierr)
         call MatSetValuesLocal(A,1,c2,1,p2,elem2,ADD_VALUES,ierr)
       else
-		    blkmat1(3,1) = elem1
-		    blkmat2(3,1) = elem2
+        blkmat1(3,1) = elem1
+        blkmat2(3,1) = elem2
       endif
 
       ! tracer flux terms: (C,T)
@@ -1357,17 +1357,17 @@ contains
         call MatSetValuesLocal(A,1,c2,1,t1,elem1,ADD_VALUES,ierr)
         call MatSetValuesLocal(A,1,c2,1,t2,elem2,ADD_VALUES,ierr)
       else
-		    blkmat1(3,2) = elem1
-		    blkmat2(3,2) = elem2
+        blkmat1(3,2) = elem1
+        blkmat2(3,2) = elem2
       endif
       if (grid%iblkfmt == 1) then
-	      call MatSetValuesBlockedLocal(A,1,m2-1,1,m2-1,blkmat2, &
-	      ADD_VALUES,ierr)
-	      call MatSetValuesBlockedLocal(A,1,m2-1,1,m1-1,blkmat1, &
-	      ADD_VALUES,ierr)
+        call MatSetValuesBlockedLocal(A,1,m2-1,1,m2-1,blkmat2, &
+        ADD_VALUES,ierr)
+        call MatSetValuesBlockedLocal(A,1,m2-1,1,m1-1,blkmat1, &
+        ADD_VALUES,ierr)
       endif
     endif
-		
+
   enddo ! end loop connections
 
   !------------------------------------------------------------------------
@@ -1462,7 +1462,7 @@ contains
         if (grid%iblkfmt == 0) then
           call MatSetValuesLocal(A,1,p1,1,p1,elem1,ADD_VALUES,ierr)
         else
-		      blkmat1(1,1) = elem1
+          blkmat1(1,1) = elem1
         endif
 
         ! (p,T) = 0
@@ -1494,7 +1494,7 @@ contains
         if (grid%iblkfmt == 0) then
           call MatSetValuesLocal(A,1,c1,1,p1,elem1,ADD_VALUES,ierr)
         else
-		      blkmat1(3,1) = elem1
+          blkmat1(3,1) = elem1
         endif
 
         ! (C,T)
@@ -1514,18 +1514,18 @@ contains
                 grid%distbc(nc)
         if (q < 0.d0) then
           elem1 = -grid%fc * q + trans ! check sign of q
-	        if (grid%iblkfmt == 0) then
+          if (grid%iblkfmt == 0) then
             call MatSetValuesLocal(A,1,c1,1,c1,elem1,ADD_VALUES,ierr)
           else
-		        blkmat1(3,3) = elem1
+            blkmat1(3,3) = elem1
           endif
         else
           elem1 = trans
-	        if (grid%iblkfmt == 0) then
+          if (grid%iblkfmt == 0) then
             call MatSetValuesLocal(A,1,c1,1,c1,elem1,ADD_VALUES,ierr)
-		      else
-		        blkmat1(3,3) = elem1
-		      endif
+          else
+            blkmat1(3,3) = elem1
+          endif
         endif
       enddo
 
@@ -1534,7 +1534,7 @@ contains
       if (grid%iblkfmt == 0) then
         call MatSetValuesLocal(A,1,t1,1,p1,elem1,ADD_VALUES,ierr)
       else
-	      blkmat1(2,1) = elem1
+        blkmat1(2,1) = elem1
       endif
       
       ! (T,T)
@@ -1544,13 +1544,13 @@ contains
       if (grid%iblkfmt == 0) then
         call MatSetValuesLocal(A,1,t1,1,t1,elem1,ADD_VALUES,ierr)
       else
-	      blkmat1(2,2) = elem1
+        blkmat1(2,2) = elem1
       endif
-	  
-	    if (grid%iblkfmt == 1) then
-		    call MatSetValuesBlockedLocal(A,1,ng-1,1,ng-1, &
-		    blkmat1,ADD_VALUES,ierr)
-	    endif
+
+      if (grid%iblkfmt == 1) then
+        call MatSetValuesBlockedLocal(A,1,ng-1,1,ng-1, &
+        blkmat1,ADD_VALUES,ierr)
+      endif
       
     else if(grid%ibndtyp(ibc) == 2) then 
 
@@ -1588,19 +1588,19 @@ contains
 
         ! (p,p)
         elem1 = trans1
-	      if (grid%iblkfmt == 0) then
+        if (grid%iblkfmt == 0) then
           call MatSetValuesLocal(A,1,p1,1,p1,elem1,ADD_VALUES,ierr)
-		    else
-		      blkmat1(1,1) = elem1
-		    endif
+        else
+          blkmat1(1,1) = elem1
+        endif
       
         ! (p,T)
         elem1 = qdt1
-	      if (grid%iblkfmt == 0) then
+        if (grid%iblkfmt == 0) then
           call MatSetValuesLocal(A,1,p1,1,t1,elem1,ADD_VALUES,ierr)
-		    else
-		      blkmat1(1,2) = elem1
-		    endif
+        else
+          blkmat1(1,2) = elem1
+        endif
 
 !       dfluxp = dfluxp + q * (ddensity_loc_p(jng) * h_p_loc_p(jng) &
 !         + d_p_loc_p(jng) * hh_loc_p(jng)) &
@@ -1617,49 +1617,49 @@ contains
 
         ! (C,p)
         elem1 = -grid%fc * qp1 * CCONC_LOC(ng)
-	      if (grid%iblkfmt == 0) then
+        if (grid%iblkfmt == 0) then
           call MatSetValuesLocal(A,1,c1,1,p1,elem1,ADD_VALUES,ierr)
-		    else
-		      blkmat1(3,1) = elem1
-		    endif
+        else
+          blkmat1(3,1) = elem1
+        endif
 
         ! (C,T)
         elem1 = -grid%fc * qt1 * CCONC_LOC(ng)
-	      if (grid%iblkfmt == 0) then
+        if (grid%iblkfmt == 0) then
           call MatSetValuesLocal(A,1,c1,1,t1,elem1,ADD_VALUES,ierr)
-		    else
-		      blkmat1(3,2) = elem1
-		    endif
+        else
+          blkmat1(3,2) = elem1
+        endif
       
         ! (C,C), grad C = 0
         elem1 = -grid%fc * q
-	      if (grid%iblkfmt == 0) then
+        if (grid%iblkfmt == 0) then
           call MatSetValuesLocal(A,1,c1,1,c1,elem1,ADD_VALUES,ierr)
-		    else
-		      blkmat1(3,3) = elem1
-		    endif
+        else
+          blkmat1(3,3) = elem1
+        endif
       enddo
 
       ! (T,p)
       elem1 = -dfluxp
-	    if (grid%iblkfmt == 0) then
+      if (grid%iblkfmt == 0) then
         call MatSetValuesLocal(A,1,t1,1,p1,elem1,ADD_VALUES,ierr)
-	    else
-	      blkmat1(2,1) = elem1
-	    endif
+      else
+        blkmat1(2,1) = elem1
+      endif
       
       ! (T,T), grad T = 0
       elem1 = -dfluxt
-	    if (grid%iblkfmt == 0) then
+      if (grid%iblkfmt == 0) then
         call MatSetValuesLocal(A,1,t1,1,t1,elem1,ADD_VALUES,ierr)
-	    else
-	      blkmat1(2,2) = elem1
-	    endif
-	  
-	    if (grid%iblkfmt == 1) then
-		    call MatSetValuesBlockedLocal(A,1,ng-1,1,ng-1, &
-		    blkmat1,ADD_VALUES,ierr)
-	    endif
+      else
+        blkmat1(2,2) = elem1
+      endif
+
+      if (grid%iblkfmt == 1) then
+        call MatSetValuesBlockedLocal(A,1,ng-1,1,ng-1, &
+        blkmat1,ADD_VALUES,ierr)
+      endif
     endif
   enddo
 
