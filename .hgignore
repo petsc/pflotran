@@ -5,15 +5,15 @@ syntax: glob
 ._.DS_Store
 .hgignore.orig
 .hgignore~
-build
-pflotran.xcodeproj
-pflotran.xcodeproj/clu.mode1
-pflotran.xcodeproj/clu.pbxuser
-pflotran.xcodeproj/lichtner.mode1
-pflotran.xcodeproj/lichtner.pbxuser
-pflotran
-pflotran_fc
-pflow
-ptran
+/src/build
+/src/pflotran.xcodeproj
+/src/pflotran.xcodeproj/clu.mode1
+/src/pflotran.xcodeproj/clu.pbxuser
+/src/pflotran.xcodeproj/lichtner.mode1
+/src/pflotran.xcodeproj/lichtner.pbxuser
+/src/pflotran
+/src/pflotran_fc
+/src/pflow
+/src/ptran
 
 

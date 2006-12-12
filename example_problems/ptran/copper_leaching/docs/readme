@@ -1,0 +1,64 @@
+COPPER LEACHING PROBLEM (P.C. Lichtner, 12.8.06)
+
+INTRODUCTION
+
+The copper leaching problem describes leaching of a copper ore body through injection of sulfuric acid. A quarter symmetry element of a five-spot well pattern is represented with injection of sulfuric acid at the center of the five-spot pattern and extraction from a corner well. A 2D planar geometry is used with 30 x 30 nodes. A system of 12 partial differential equations are solved simultaneously for 12 primary chemical species. Reactions take place between primary and secondary minerals in the ore body (porphyry copper deposit) and an aqueous solution. The primary ore mineral is chrysocolla which is dissolved and replaced with secondary minerals consisting of gypsum, amorphous silica, jurbanite alunite, and others. Alunite precipitates at an extremely sharp front which is difficult to resolve with a fixed grid. A more detailed description of the problem can be found in Lichtner (1996, p. 53-64, Figures 10-16). A very sharp front occurs for the mineral alunite (see Figure 16). The simulation takes approximately 2 minutes on a Mac running MacOSX 10.4.8 with two G5 processors with clock speed 2.5 GHz.
+
+SETTING UP THE PROBLEM
+
+This problem only involves ptran and uses a steady-state velocity field that is read in at the beginning of the run.
+
+To run the example problem it is necessary to install three auxiliary files that are read in during initialization of the run. These are:
+
+hanford.dat (thermodynamic chemical database---provide path in input file ptran.in under keyword DBASe):
+
+:
+DBASe
+:/Users/lichtner/flotran/database/hanford.dat
+./hanford.dat
+
+(note a colon in the first column indicates a comment line)
+
+x and y steady state velocity fields for five-spot well pattern with quarter symmetry:
+pflow_vlx1.dat 
+pflow_vly1.dat
+
+RUN EXECUTION
+
+The problem has been run with petsc-2.1.6-p16 and mpich2-1.0.3. The FORTRAN compiler used is Absoft 9.2.
+
+To run the problem on two processors enter:
+
+mpiexec -np 2 ptran -ksp_type bcgs
+
+RESULTS
+
+Screen output at end of run should appear similar to:
+
+ step   time       dt         dtmax [y]      cuts    nwt  iter   R2norm Species
+ 288  5.0000E-01 2.5000E-03 1.0000E-02   0 [    36]   4 [  1547]  5.7550E-13 H+      
+  dcmax =   3.0259E-03 dc/dt =   1.2104E+00 @ node    174 ( 24,   6,   1)
+  gmres:   4  4  4  4
+ 
+ --> write output file: conc10.dat          
+ --> write output file:  psi10.dat          
+ --> write output file: volf10.dat          
+ --> write output file: rxnrte10.dat        
+steps:                 288
+total newton iters:   1547
+total PETSc gmres:    3524
+total cuts:             36
+CPU Time:  1.0787E+02 [sec]   1.7978E+00 [min]   2.9964E-02 [hr]
+Wall Clock Time:  1.2966E+02 [sec]   2.1610E+00 [min]   3.6017E-02 [hr]
+
+Output Files
+
+ptran.out       output of initial speciation, boundary conditions, and source/sink
+conc[n].xyp     x-y output file for pH and aqueous concentrations at nth output time.
+psi[n].xyp      x-y output for total aqueous concentrations at nth output time.
+rxnrte[n].xyp   x-y output for mineral reaction rates at nth output time.
+volf[n].xyp     x-y output for mineral volume fractions at nth output time.
+
+References
+
+Lichtner, P.C. Modeling reactive flows and transport in natural systems (1996) Proceedings of the Rome Seminar on Environmental Geochemistry, Castelnuovo di Porto, May 22-26, Pacini Editore, 1-80.
