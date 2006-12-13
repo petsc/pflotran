@@ -3337,7 +3337,7 @@ subroutine pflowGrid_read_input(grid, inputfile)
         call fiDefaultMsg('iran_por',ierr)
   
         call fiReadDouble(string,grid%ran_fac,ierr)
-        call fiDefaultMsg('iran_por',ierr)
+        call fiDefaultMsg('ran_fac',ierr)
     
         call fiReadInt(string,grid%iread_perm,ierr)
         call fiDefaultMsg('iread_perm',ierr)
@@ -3355,9 +3355,12 @@ subroutine pflowGrid_read_input(grid, inputfile)
             & "  iblkfmt    = ",3x,i2,/, &
             & "  ndtcmx     = ",3x,i2,/, &
             & "  iran_por   = ",3x,i2,/, &
-            & "  ran_fac    = ",3x,1pe12.4 &
+            & "  ran_fac    = ",3x,1pe12.4,/, &
+            & "  iread_perm = ",3x,1pe12.4,/, &
+            & "  iread_geom = ",3x,1pe12.4 &
             & )') grid%write_init,grid%iprint,grid%imod,grid%itecplot, &
-            grid%iblkfmt,grid%ndtcmx,grid%iran_por,grid%ran_fac
+            grid%iblkfmt,grid%ndtcmx,grid%iran_por,grid%ran_fac, &
+            grid%iread_perm,grid%iread_geom
 
 !....................
 
