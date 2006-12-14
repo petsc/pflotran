@@ -9,12 +9,6 @@ src/.DS_Store
 src/pflotran/*.o
 src/pflotran/*.MOD
 src/pflotran/build
-src/pflotran/build/pflotran.build/pflotran/pbxindex
-src/pflotran/pflotran.xcodeproj
-src/pflotran/pflotran.xcodeproj/clu.mode1
-src/pflotran/pflotran.xcodeproj/clu.pbxuser
-src/pflotran/pflotran.xcodeproj/lichtner.mode1
-src/pflotran/pflotran.xcodeproj/lichtner.pbxuser
 src/pflotran/pflotran
 src/pflotran/pflotran_fc
 src/pflotran/pflow
