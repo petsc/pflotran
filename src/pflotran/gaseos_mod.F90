@@ -97,7 +97,7 @@ contains
  !       if (iphas(k).eq.2 .or. iphas(k).eq.0) then
 
           d   = ds *fmwa       
-          xga =0.5 ! pa /p ! for debug, set x constant
+          xga = pa /p ! for debug, set x constant
           xg1 = 1.D0 - xga
           tk  = t +273.15d0
 

@@ -82,7 +82,9 @@
  use pflow_gridtype_module
  use translator_mph_module
  use translator_owg_module
+ use translator_vad_module
  use MPHASE_module
+ use VADOSE_module
  use OWG_module
  
  implicit none
@@ -98,10 +100,16 @@
  do
  
  if(grid%use_mph==PETSc_TRUE)then
- call Translator_MPhase_Switching(grid%xx,grid,1,ichange)
- call MPHASEResidual(grid%snes,grid%xx,grid%r,grid,ierr)
+	 call Translator_MPhase_Switching(grid%xx,grid,1,ichange)
+	 call MPHASEResidual(grid%snes,grid%xx,grid%r,grid,ierr)
  endif
-  if(grid%use_owg==PETSc_TRUE)then
+ if(grid%use_vadose==PETSc_TRUE)then
+	 call Translator_vadose_Switching(grid%xx,grid,0,ichange)
+	 call MPHASEResidual(grid%snes,grid%xx,grid%r,grid,ierr)
+ endif
+
+
+ if(grid%use_owg==PETSc_TRUE)then
  call Translator_OWG_Switching(grid%xx,grid%tref,grid,1,ichange,ierr)
  call OWGResidual(grid%snes,grid%xx,grid%r,grid,ierr)
  endif
@@ -119,7 +127,9 @@
        call MPHASEJacobin(grid%snes,grid%xx,grid%J,grid%J,flag,grid,ierr)
     elseif(grid%use_owg==PETSC_TRUE)then
       call OWGJacobin(grid%snes,grid%xx,grid%J,grid%J,flag,grid,ierr)
-    endif
+     elseif(grid%use_vadose==PETSC_TRUE)then
+      call VadoseJacobin(grid%snes,grid%xx,grid%J,grid%J,flag,grid,ierr)
+	endif
    print *,' psolve; Get Joc'
    
   call VecScale(grid%r,-1D0,ierr)

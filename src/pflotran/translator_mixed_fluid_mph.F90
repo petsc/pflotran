@@ -398,7 +398,7 @@
 	  case(2)  
 	    xmol(4)= xx_p(n0+3)
 	    xmol(3)=1.D0 - xmol(4)
-	    satu(1)=1.D0; satu(2)=0.D0
+	    satu(1)=eps; satu(2)=1.D0
 	  case(3) 
         satu(2)= xx_p(n0+3) 
 	    satu(1)= 1.D0- satu(2)

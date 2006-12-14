@@ -53,7 +53,8 @@ private
     PetscScalar, pointer :: hhistory(:)
     PetscTruth :: monitor_h
       ! If true, print the value of h at the end of each SNES iteration.
-    PetscTruth :: use_liquid, use_cond, use_th, use_thc, use_2ph, use_mph, use_ksp, use_owg
+    PetscTruth :: use_liquid, use_cond, use_th, use_thc, use_2ph, &
+    use_mph, use_ksp, use_owg, use_vadose
     PetscTruth :: use_isoth, use_debug	
     ! If using_pflowGrid == PETSC_TRUE, then some parts of ptran_init 
     ! will not be executed, since they are made redundant by 

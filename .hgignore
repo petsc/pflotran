@@ -5,6 +5,9 @@ syntax: glob
 ._.DS_Store
 .hgignore.orig
 .hgignore~
+src/.DS_Store
+src/pflotran/*.o
+src/pflotran/*.MOD
 src/pflotran/build
 src/pflotran/build/pflotran.build/pflotran/pbxindex
 src/pflotran/pflotran.xcodeproj

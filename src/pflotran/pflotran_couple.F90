@@ -178,7 +178,7 @@ contains
     call VecRestoreArrayF90(grid%xx, xx_p, ierr)
   endif
 
-  if (grid%use_mph == PETSC_TRUE) then
+  if (grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE) then
 !   call VecGetArrayF90(grid%xx_loc, xx_p, ierr)
     call VecGetArrayF90(grid%xx, xx_p, ierr)
     call VecGetArrayF90(grid%yy, yy_p, ierr)

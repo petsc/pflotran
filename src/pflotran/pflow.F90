@@ -97,6 +97,7 @@
   grid = pflowGrid_new(igeom, nx, ny, nz, npx, npy, npz, nphase, nspec, &
          npricomp, ndof, icouple, idcdm, itable)
 
+  if(grid%use_mph == PETSC_TRUE .or. grid%use_owg == PETSC_TRUE) &
   call initialize_span_wagner(itable,grid%myrank)
 
   call PetscGetCPUTime(timex(1), ierr)
