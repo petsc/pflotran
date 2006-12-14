@@ -8,7 +8,7 @@ module readfield
  use pflow_gridtype_module
  ! use pflow_var_module
 
-private 
+ private 
 
 #include "include/finclude/petsc.h"
 !#include "include/petscf90.h"

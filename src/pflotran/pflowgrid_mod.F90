@@ -63,7 +63,8 @@ module pflow_grid_module
 ! cell connections, as it is cleaner to do this in pflowGrid_setup()   
 ! when the geometry of the connections is calculated.
 type(pflowGrid) function pflowGrid_new(igeom, nx, ny, nz, npx, npy, npz, &
-  nphase, nspec,npricomp,ndof, icouple, idcdm, itable)
+                                       nphase, nspec,npricomp,ndof, icouple, &
+                                       idcdm, itable)
 
   implicit none
 
@@ -83,35 +84,35 @@ type(pflowGrid) function pflowGrid_new(igeom, nx, ny, nz, npx, npy, npz, &
   grid%use_isoth=PETSC_FALSE
 
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-snes_mf", & 
-  grid%use_matrix_free, ierr)
+                           grid%use_matrix_free, ierr)
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_analytical", &
-  grid%use_analytical, ierr)
+                           grid%use_analytical, ierr)
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-print_hhistory", &
-  grid%print_hhistory, ierr)
+                           grid%print_hhistory, ierr)
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-monitor_h", &
-  grid%monitor_h, ierr)
+                           grid%monitor_h, ierr)
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_liquid", &
-  grid%use_liquid, ierr)
+                           grid%use_liquid, ierr)
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_cond", &
-  grid%use_cond, ierr)
+                           grid%use_cond, ierr)
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_th", &
-  grid%use_th, ierr)
+                           grid%use_th, ierr)
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_thc", &
-  grid%use_thc, ierr)
+                           grid%use_thc, ierr)
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_2ph", &
-  grid%use_2ph, ierr)
+                           grid%use_2ph, ierr)
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_mph", &
-  grid%use_mph, ierr)
+                           grid%use_mph, ierr)
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_owg", &
-  grid%use_owg, ierr)
+                           grid%use_owg, ierr)
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_vadose", &
-  grid%use_vadose, ierr)
+                           grid%use_vadose, ierr)
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_debug", &
-  grid%use_debug, ierr)
+                           grid%use_debug, ierr)
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_ksp", &
-  grid%use_ksp, ierr)
+                           grid%use_ksp, ierr)
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_isoth", &
-  grid%use_isoth, ierr)
+                           grid%use_isoth, ierr)
 
   if (icouple == 0) then
     grid%using_pflowGrid = PETSC_FALSE
@@ -463,7 +464,7 @@ type(pflowGrid) function pflowGrid_new(igeom, nx, ny, nz, npx, npy, npz, &
   endif  
   if (grid%use_vadose == PETSC_TRUE) then
     call DACreateGlobalVector(grid%da_var_dof, grid%var, ierr)
-	call DACreateLocalVector(grid%da_var_dof, grid%var_loc, ierr)
+    call DACreateLocalVector(grid%da_var_dof, grid%var_loc, ierr)
   endif
 
 
@@ -4198,7 +4199,8 @@ subroutine pflowGrid_read_input(grid, inputfile)
      !      do j=1, grid%nphase 
    
               if (grid%use_mph /= PETSC_TRUE .and.  &
-                  grid%use_owg /= PETSC_TRUE .and. grid%use_vadose /= PETSC_TRUE) then  
+                  grid%use_owg /= PETSC_TRUE .and. &
+                  grid%use_vadose /= PETSC_TRUE) then  
                 j=1
                 if (grid%nphase>1) j=2
                 if (grid%ibndtyp(ibc) == 1) then 

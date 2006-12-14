@@ -15,7 +15,8 @@
             fiReadString, fiReadWord, fiReadCard, fiReadNChars,   &
             fiReadFlotranString, fiIsAlpha, &
             fiReadInt, fiReadDouble, fiReadMultDouble, &
-            fiDefaultMsg, fiErrorMsg, fiReadStringErrorMsg
+            fiDefaultMsg, fiErrorMsg, fiReadStringErrorMsg, &
+            fiStringCompare
 
   public :: fiReadDBaseString, fiReadDBaseName, fiReadDBaseInt, &
             fiReadDBaseDouble, fiReadDBaseMultDouble
@@ -419,6 +420,32 @@ subroutine fiReadNChars(string, chars, n, return_blank_error, ierr)
   endif
 
 end subroutine fiReadNChars
+
+! ************************************************************************** !
+!
+! fiStringCompare: compares two strings
+! author: Glenn Hammond
+! date: 12/14/06
+!
+! ************************************************************************** !
+logical function fiStringCompare(string1,string2,n)
+
+  implicit none
+
+  integer :: i, n
+  character(len=n) :: string1, string2
+
+  do i=1,n
+    if (string1(i:i) /= string2(i:i)) then
+      fiStringCompare = .false.
+      return
+    endif
+  enddo
+
+  fiStringCompare = .true.
+  return
+
+end function fiStringCompare
 
 ! ************************************************************************** !
 !
