@@ -13,4 +13,5 @@ src/pflotran/pflotran
 src/pflotran/pflotran_fc
 src/pflotran/pflow
 src/pflotran/ptran
+src/pflotran/pflotran.xcodeproj/*.pbxuser
 
