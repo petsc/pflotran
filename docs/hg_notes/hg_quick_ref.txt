@@ -7,6 +7,21 @@ if hg commit aborts:
   hg commit
   hg push
 
+
+hg merge is equivalent to:
+
+       -> Mod1 ->
+orig /           \  merge
+     \           /
+       -> Mod2 ->
+
+So you'ld like to see all 4 versions of the file. Kdiff3 shows them
+all, with the diffs [orig -> Mod1] and [orig -> Mod2] highlighted.
+
+Satish
+
+=====================================================================
+
 Installing mercurial-0.9.2 on a Mac
 
 	From: 	  rmills@ornl.gov
