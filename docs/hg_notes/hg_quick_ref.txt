@@ -1,0 +1,61 @@
+cloning:
+hg clone https://software.lanl.gov/pflotran/hg/pflotran
+
+if hg commit aborts:
+  hg pull
+  hg merge
+  hg commit
+  hg push
+
+Installing mercurial-0.9.2 on a Mac
+
+	From: 	  rmills@ornl.gov
+	Subject: 	How to install Mercurial from source
+	Date: 	December 14, 2006 2:36:58 PM MST
+	To: 	  pflotran-dev@maillist.lanl.gov
+	Reply-To: 	  rmills@ornl.gov
+
+Hi Peter (cc: anyone else who might want to do this),
+
+To install Mercurial from source in, for example, ~lichtner/apps/mercurial-0.9.2, you would do the following:
+
+python setup.py install --home=~lichtner/apps/mercurial-0.9.2
+
+This will create the directories
+
+  ~lichtner/apps/mercurial-0.9.2/bin
+  ~lichtner/apps/mercurial-0.9.2/lib/python
+
+You would then add to your path:
+
+  export PATH=~lichtner/apps/mercurial-0.9.2/bin:$PATH
+
+And then you could get Mercurial finding the correct Python stuff by doing
+
+  export PYTHONPATH=~lichtner/apps/mercurial-0.9.2/lib/python
+
+You would probably want to put both of these export commands into your ~/.bashrc file.
+
+As an alternative to changing your PYTHONPATH, you can edit
+
+  ~lichtner/apps/mercurial-0.9.2/bin/hg
+
+and add make it look like:
+
+  ...
+  import sys
+  sys.path.insert(0,'/Users/lichtner/apps/mercurial-0.9.2/lib/python)
+  from mercurial import commands
+  ...
+
+I'm not sure if the sys.path.insert() requires a full path (as I used above) or if it is OK with things like '~lichtner'.  I'd go ahead and put the full path in.
+
+As you have noted, once 0.9.2 is installed, 'hg version' will still report 0.9.1!  To fix that, edit
+
+  ~lichtner/apps/mercurial-0.9.2/lib/python/mercurial/__version__.py
+
+and make the 'version' string read '0.9.2'.
+
+Hope that wasn't too confusing.  Email if you need more help.
+
+--Richard

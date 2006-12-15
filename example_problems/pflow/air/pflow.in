@@ -1,4 +1,4 @@
-:     igeom nx  ny  nz nphase  nspec  npricomp    ndof  idcdm
+:     igeom nx  ny  nz nphase  nspec  npricomp    ndof  idcdm  itable
 GRID    1  10   1   1   2       2       2          3     0     2
 :GRID  50   1   1   1       1       1          3     0
 :GRID  50   1   1   1    3     0
@@ -6,11 +6,11 @@ GRID    1  10   1   1   2       2       2          3     0     2
 :    npx npy npz
 :PROC  1   1   1
 :
-:    write_init iprint imod itecplot iblkfmt ndtcmx iran_por ran_fac
-OPTS      0       1      1     1      1        3      0     0.     0     0
+:write_init iprint imod itecplot iblkfmt ndtcmx iran_por ran_fac iread_perm iread_geom
+OPTS   0       1      1     1      1        3      0        0.        0         0
 :
-:      steps    iaccel newtmx    icutmx    dpmx   dtmpmx   dcmx
-TOLR   10000       6     80      16      1.e5     1.     .5    1.0   
+:      steps    iaccel newtmx    icutmx    dpmx   dtmpmx   dcmx    dsmx
+TOLR   10000       6     80        16      1.e5     1.      0.5    1.0   
 :
 DXYZ
 1.
@@ -36,7 +36,7 @@ THRM
 /
 :
 PHIK
-:i1  i2  j1  j2  k1  k2 icap ithm  por   tau   permx     permy     permz    pwrprm
+:i1  i2  j1  j2  k1  k2 icap ithm  por   tau   permx     permy     permz    permpwr
   1 10   1   1   1   1   1   1   0.5     1.0  1.e-15    1.e-15    1.e-15      1.D0
 /
 :

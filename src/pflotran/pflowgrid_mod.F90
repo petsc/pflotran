@@ -3850,7 +3850,7 @@ subroutine pflowGrid_read_input(grid, inputfile)
           call fiDefaultMsg('permz',ierr)
   
           call fiReadDouble(string,grid%perm_reg(ireg,4),ierr)
-          call fiDefaultMsg('permpow',ierr)
+          call fiDefaultMsg('permpwr',ierr)
 
 !          call fiReadDouble(string,grid%Perm_reg(ireg,5),ierr)
 !          call fiDefaultMsg('porokin',ierr)
@@ -3862,7 +3862,7 @@ subroutine pflowGrid_read_input(grid, inputfile)
         if (grid%myrank==0) then
           write(IUNIT2,'(/," *PHIK: ireg = ",i4)') grid%iregperm
           write(IUNIT2,'("  i1  i2  j1  j2  k1  k2 icap ithrm  por      tor  &
-            &",   "     permx      permy      permz [m^2]")')
+            &",   "     permx      permy      permz [m^2]   permpwr")')
           do ireg = 1, grid%iregperm
             write(IUNIT2,'(6i4,2i4,1p6e11.4)') &
               grid%i1reg(ireg),grid%i2reg(ireg), &
