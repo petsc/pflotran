@@ -44,7 +44,7 @@ pflow_obj = ${common_src}pflow_vector_ops.o \
 	${common_src}mixed_fluid_eos.o \
 	${common_src}translator_mixed_fluid_mph.o \
 	${common_src}translator_mixed_fluid_OWG.o \
-    ${common_src}translator_mixed_fluid_vad.o \
+	${common_src}translator_mixed_fluid_vad.o \
 	${common_src}hydrostat.o \
 	${common_src}pflow_LIQUID.o \
 	${common_src}pflow_COND.o \
@@ -53,7 +53,7 @@ pflow_obj = ${common_src}pflow_vector_ops.o \
 	${common_src}pflow_2pha_ResJac.o\
 	${common_src}pflow_owg_ResJac.o\
 	${common_src}pflow_mphase_ResJac.o\
-    ${common_src}pflow_vadose_ResJac.o\
+	${common_src}pflow_vadose_ResJac.o\
 	${common_src}pflow_solve.o \
 	${common_src}pflow_output.o \
 	${common_src}pflowgrid_mod.o
