@@ -1,7 +1,8 @@
 CO2 Injection Problem
 
-This problem involves injection of supercritical CO2 into a reservoir at depth. To run the code copy (or link) the file ./pflotran/database/co2data0.dat to the working directory. Use the command line:
+This problem involves injection of supercritical CO2 into a reservoir at depth. To run the code copy (or link) the file 
+../../../pflotran/database/co2data0.dat to the working directory. Use the command line:
 
-mpiexec -np xxx pflow -use_analytical -use_mph -snes_ls basic -ksp_type bcgs
+mpiexec -np xxx ../../../src/pflotran/pflow -use_analytical -use_mph -snes_ls basic -ksp_type bcgs
 
 to run pflow.
