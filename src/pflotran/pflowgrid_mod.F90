@@ -1318,12 +1318,12 @@ subroutine pflowGrid_setup(grid, inputfile)
   grid%nconnx = 0
   grid%nconny = 0
 
-  if (grid%igeom ==2) then
+  if (grid%igeom == 2) then
     allocate(grid%rd(0:grid%nx))
-    grid%rd=0.D0
-    grid%rd(0)=grid%Radius_0 
-    do i=1, grid%nx
-      grid%rd(i)=grid%rd(i-1) + grid%dx0(i)
+    grid%rd = 0.D0
+    grid%rd(0) = grid%Radius_0 
+    do i = 1, grid%nx
+      grid%rd(i) = grid%rd(i-1) + grid%dx0(i)
     enddo
   endif    
   
@@ -1348,8 +1348,9 @@ subroutine pflowGrid_setup(grid, inputfile)
             grid%area(nc) = dy_loc_p(mg1) * dz_loc_p(mg1)
           else if (grid%igeom == 2) then
             grid%area(nc) = 2.D0 * Pi * grid%rd(i+grid%nxs) * dz_loc_p(mg1)
-            print *,grid%myrank,nc,i,grid%rd(i+grid%nxs)
+            print *,'area nc: ',grid%myrank,nc,i,grid%rd(i+grid%nxs)
           else if (grid%igeom == 3) then
+            grid%area(nc) = 4.D0 * Pi * grid%rd(i+grid%nxs)**2
           endif
           grid%iperm1(nc) = 1
           grid%iperm2(nc) = 1
@@ -1405,7 +1406,6 @@ subroutine pflowGrid_setup(grid, inputfile)
                              grid%rd(i-1+grid%nxs))* &
                              (grid%rd(i+grid%nxs) - grid%rd(i-1+grid%nxs))  
             print *, 'area nc ',grid%myrank, nc, i,  grid%area(nc)
-          else if (grid%igeom == 3) then
           endif
           grid%iperm1(nc) = 3
           grid%iperm2(nc) = 3
@@ -1418,14 +1418,15 @@ subroutine pflowGrid_setup(grid, inputfile)
   call VecGetArrayF90(grid%volume, volume_p, ierr)
   do n=1, grid%nlmax
     ng = grid%nL2G(n)
-  if (grid%igeom == 1) then
+    if (grid%igeom == 1) then
       volume_p(n) = dx_loc_p(ng) * dy_loc_p(ng) * dz_loc_p(ng)
     else if (grid%igeom == 2) then
       i = mod(mod((n),grid%nlxy),grid%nlx)!+(grid%ngxs-grid%nxs)
       if (i==0) i = grid%nlx
-      volume_p(n) = Pi * (grid%rd(i+grid%nxs)+ grid%rd(i-1+grid%nxs))*&
+      volume_p(n) = Pi * (grid%rd(i+grid%nxs) + grid%rd(i-1+grid%nxs))*&
       (grid%rd(i+grid%nxs) - grid%rd(i-1+grid%nxs)) * dz_loc_p(ng)
       print *, 'setup: Vol ', grid%myrank, n,i, grid%rd(i+grid%nxs),volume_p(n)
+    else if (grid%igeom == 3) then
     endif
   enddo
   call VecRestoreArrayF90(grid%volume, volume_p, ierr)
@@ -1786,26 +1787,26 @@ subroutine pflowGrid_setup(grid, inputfile)
                     grid%delzbc(nc) = 0.d0
                   endif
                 case(2) ! cylindrical
-                  ird= mod(mod((m),grid%nlxy),grid%nlx) + grid%nxs 
+                  ird = mod(mod((m),grid%nlxy),grid%nlx) + grid%nxs 
                   if (grid%iface(ibc) == 1) then
                     grid%distbc(nc) = 0.5d0*dx_loc_p(ng)
-                    grid%areabc(nc) = 2.0D0* Pi * grid%rd(ird-1)*dz_loc_p(ng)
+                    grid%areabc(nc) = 2.0D0*Pi*grid%rd(ird-1)*dz_loc_p(ng)
                     grid%ipermbc(nc) = 1
                     grid%delzbc(nc) = 0.d0
                   else if (grid%iface(ibc) == 2) then
                     grid%distbc(nc) = 0.5d0*dx_loc_p(ng)
-                    grid%areabc(nc) =  2.0D0* Pi * grid%rd(ird)*dz_loc_p(ng)
+                    grid%areabc(nc) = 2.0D0*Pi*grid%rd(ird)*dz_loc_p(ng)
                     grid%ipermbc(nc) = 1
                     grid%delzbc(nc) = 0.d0
                   else if (grid%iface(ibc) == 3) then
                     grid%distbc(nc) = 0.5d0*dz_loc_p(ng)
-                    grid%areabc(nc) =  Pi * (grid%rd(ird)+ grid%rd(ird-1))*&
-                                       (grid%rd(ird) - grid%rd(ird-1))  
+                    grid%areabc(nc) = Pi*(grid%rd(ird) + grid%rd(ird-1))* &
+                                      (grid%rd(ird) - grid%rd(ird-1))  
                     grid%ipermbc(nc) = 2
                     grid%delzbc(nc) = grid%distbc(nc)
                   else if (grid%iface(ibc) == 4) then
                     grid%distbc(nc) = 0.5d0*dz_loc_p(ng)
-                    grid%areabc(nc) = Pi * (grid%rd(ird)+ grid%rd(ird-1))*&
+                    grid%areabc(nc) = Pi*(grid%rd(ird) + grid%rd(ird-1))* &
                                       (grid%rd(ird) - grid%rd(ird-1))
                     grid%ipermbc(nc) = 2
                     grid%delzbc(nc) = -grid%distbc(nc)

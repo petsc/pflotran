@@ -57,7 +57,7 @@
 !======================================================================
 !   input parameters: default values
 !======================================================================
-    integer :: nx, ny, nz
+    integer :: igeom, nx, ny, nz
     integer :: kmax = 2, newton_max = 32, icut_max = 8, iwarn = 0
     integer :: loglin = 1
     integer :: idebug = 0, ibg1 = 0, ibg2 = 0
@@ -65,7 +65,7 @@
     integer :: iprint = 0, iact = 0, irestart = 0
     integer :: modetr = 2, molal = 1, isothrm = 0, iphas = 1
     real*8  :: w = 0.5d0, wlam = 1.d0, tol = 1.d-12, tolexp
-    real*8, pointer :: dx0(:), dy0(:), dz0(:)
+    real*8, pointer :: dx0(:), dy0(:), dz0(:), rd(:)
 
 !======================================================================
 

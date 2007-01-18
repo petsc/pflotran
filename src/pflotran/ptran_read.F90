@@ -87,6 +87,9 @@ contains
     
       call fiReadStringErrorMsg('GRID',ierr)
 
+      call fiReadInt(string,igeom,ierr)
+      call fiDefaultMsg('igeom',ierr)
+
       call fiReadInt(string,nx,ierr)
       call fiDefaultMsg('nx',ierr)
       call fiReadInt(string,ny,ierr)
@@ -99,10 +102,11 @@ contains
       
       if (myrank == 0) &
       write(iunit2,'(" *GRID",/, &
-    & "  nx   = ",3x,i4,/, &
-    & "  ny   = ",3x,i4,/, &
-    & "  nz   = ",3x,i4,/, &
-    & "  nmax = ",i7)') nx,ny,nz,nmax
+    & "  igeom = ",3x,i4,/, &
+    & "  nx    = ",3x,i4,/, &
+    & "  ny    = ",3x,i4,/, &
+    & "  nz    = ",3x,i4,/, &
+    & "  nmax  = ",i7)') igeom,nx,ny,nz,nmax
     
 !....................
 
