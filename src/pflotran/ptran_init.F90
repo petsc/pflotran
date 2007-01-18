@@ -298,20 +298,20 @@ contains
       endif
     enddo
 	
-	 ! Local(non ghosted)->Natural(natural order starts from 0)
+	 !Local(non ghosted)->Natural(natural order starts from 0)
     n=0
-     do k=1,nlz
-        do j=1,nly
-          do i=1,nlx
-            n = n + 1
-            na = i-1+nxs+(j-1+nys)*nx+(k-1+nzs)*nxy
-			if(na>(nmax-1)) print *,'Wrong Nature order....'
-			 nL2A(n) = na
-			!print *,grid%myrank, k,j,i,n,na
-			!grid%nG2N(ng) = na
-		  enddo
+    do k=1,nlz
+      do j=1,nly
+        do i=1,nlx
+          n = n + 1
+          na = i-1+nxs+(j-1+nys)*nx+(k-1+nzs)*nxy
+          if(na>(nmax-1)) print *,'Wrong Nature order....'
+          nL2A(n) = na
+          !print *,grid%myrank, k,j,i,n,na
+          !grid%nG2N(ng) = na
         enddo
       enddo
+    enddo
 
 	
 	
@@ -447,18 +447,47 @@ contains
   call VecDestroy(temp2_nat_vec,ierr)
   call VecDestroy(temp3_nat_vec,ierr)
   call VecDestroy(temp4_nat_vec,ierr)
-
+      
+  
   ! Calculate volumes of local cells.
-  call VecGetArrayF90(dx, dx_p, ierr)
-  call VecGetArrayF90(dy, dy_p, ierr)
-  call VecGetArrayF90(dz, dz_p, ierr)
-  do n = 1, nlmax
-    vb(n) = dx_p(n) * dy_p(n) * dz_p(n)
-  enddo
-  call VecRestoreArrayF90(dx, dx_p, ierr)
-  call VecRestoreArrayF90(dy, dy_p, ierr)
-  call VecRestoreArrayF90(dz, dz_p, ierr)
-
+  if (igeom == 1) then
+    call VecGetArrayF90(dx, dx_p, ierr)
+    call VecGetArrayF90(dy, dy_p, ierr)
+    call VecGetArrayF90(dz, dz_p, ierr)
+    do n = 1, nlmax
+      vb(n) = dx_p(n) * dy_p(n) * dz_p(n)
+    enddo
+    call VecRestoreArrayF90(dx, dx_p, ierr)
+    call VecRestoreArrayF90(dy, dy_p, ierr)
+    call VecRestoreArrayF90(dz, dz_p, ierr)
+  else if (igeom == 2) then
+    call VecGetArrayF90(dz, dz_p, ierr)
+    allocate(rd(0:nx))
+    rd = 0.d0
+    rd(0) = 0.d0 
+    do i = 1, nx
+      rd(i) = rd(i-1) + dx0(i)
+    enddo
+    do n=1, nlmax
+      i = mod(mod((n),nlxy),nlx)!+(grid%ngxs-grid%nxs)
+      if (i==0) i = nlx
+      vb(n) = Pi * (rd(i+nxs) + rd(i-1+nxs))*&
+      (rd(i+nxs) - rd(i-1+nxs)) * dz_p(n)
+ !     print *, 'setup: Vol ', myrank, n,i, rd(i+nxs),vb(n)
+    enddo
+    call VecRestoreArrayF90(dz, dz_p, ierr)
+  else if (igeom == 3) then
+    allocate(rd(0:nx))
+    rd = 0.d0
+    rd(0) = 0.d0 
+    do i = 1, nx
+      rd(i) = rd(i-1) + dx0(i)
+    enddo
+    do i = 1, nlmax
+      vb(n) = 4.d0*Pi*(rd(i)+rd(i-1))*(rd(i)-rd(i-1))/3.d0
+    enddo
+  endif
+  
 ! set temperature, pressure, saturation, and porosity    
   if (iregfld == 0) then
 

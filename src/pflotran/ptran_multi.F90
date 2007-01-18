@@ -139,7 +139,8 @@ contains
             val = pvdt*(ssl*dpsi(j,l,ng)+ssg*dpsig(j,l,ng))
 
 !           print *,'ptranmulti-acc: ',myrank,n,ng,j,l,porloc_p(ng),vb(n), &
-!           ssl,ssg,sl,sg,psi(j,ng),ppsi(j,ng),dpsi(j,l,ng),dpsig(j,l,ng),b_p(jn)
+!           ssl,ssg,sl,sg,psi(j,ng),ppsi(j,ng),dpsi(j,l,ng), &
+!           dpsig(j,l,ng),b_p(jn)
 
             blkmat1(j,l) = val
             if (iblkfmt == 0 .and. dfill(j+(l-1)*ncomp).ne.0) then
@@ -485,8 +486,8 @@ contains
       
 !     if (t/yrsec > 48.5) &
 !     print *,'ptranmulti-bnd: ',myrank,nc,m,ng,ibc,ibndtyp(ibc), &
-!     vlbc(nc),trans,distbc(nc),areabc(nc), &
-!     sat0,porloc_p(ng),ppsi(1,ng),psibnd(1,ibc)
+!     distbc(nc),areabc(nc)
+!     vlbc(nc),trans,sat0,porloc_p(ng),ppsi(1,ng),psibnd(1,ibc)
 
       if (ibndtyp(ibc) == 1) then
         ! RTM: The if-else below takes care of upwinding.

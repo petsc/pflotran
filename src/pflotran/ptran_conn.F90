@@ -54,7 +54,7 @@ contains
 
   DA :: da_1dof
   
-  integer :: i,ierr,ir,j,k,m,mg1,mg2,nc,ng
+  integer :: i,ierr,ir,ird,j,k,m,mg1,mg2,nc,ng
   integer :: ii1,ii2,jj1,jj2,kk1,kk2
   
   real*8, pointer :: dx_loc_p(:), dy_loc_p(:), dz_loc_p(:)
@@ -100,8 +100,16 @@ contains
               nd2(nc) = mg2
               dist1(nc) = 0.5d0*dx_loc_p(mg1)
               dist2(nc) = 0.5d0*dx_loc_p(mg2)
-              area(nc)  = dy_loc_p(mg1)*dz_loc_p(mg1)
-              vl(nc)    = vlx0
+              if (igeom == 1) then ! cartesian
+                area(nc) = dy_loc_p(mg1)*dz_loc_p(mg1)
+              else if (igeom == 2) then ! cylindrical
+                area(nc) = 2.d0*Pi*rd(i+nxs)*dz_loc_p(mg1)
+                !print *,'ptran_conn-x: ',myrank,nc,i,nxs,mg1,mg2, &
+                !rd(i+nxs),dz_loc_p(mg1),area(nc)
+              else if (igeom == 3) then ! spherical
+                area(nc) = 4.d0*Pi*rd(i+nxs)**2
+              endif
+              vl(nc) = vlx0
               if (iphase == 2) vg(nc) = vgx0
             enddo
           enddo
@@ -122,8 +130,10 @@ contains
               nd2(nc) = mg2
               dist1(nc) = 0.5d0*dy_loc_p(mg1)
               dist2(nc) = 0.5d0*dy_loc_p(mg2)
-              area(nc)  = dx_loc_p(mg1)*dz_loc_p(mg1)
-              vl(nc)    = vly0
+              if (igeom == 1) then ! cartesian
+                area(nc) = dx_loc_p(mg1)*dz_loc_p(mg1)
+              endif
+              vl(nc) = vly0
               if (iphase == 2) vg(nc) = vgy0
             enddo
           enddo
@@ -144,8 +154,15 @@ contains
               nd2(nc) = mg2
               dist1(nc) = 0.5d0*dz_loc_p(mg1)
               dist2(nc) = 0.5d0*dz_loc_p(mg2)
-              area(nc)  = dx_loc_p(mg1)*dy_loc_p(mg1)
-              vl(nc)    = vlz0
+              if (igeom == 1) then ! cartesian
+                area(nc) = dx_loc_p(mg1)*dy_loc_p(mg1)
+              else if (igeom == 2) then ! cylindrical
+                area(nc) = Pi*(rd(i+nxs+1)+rd(i+nxs))* &
+                (rd(i+nxs+1)-rd(i+nxs))
+                !print *,'ptran_conn-z: ',myrank,nc,i,nxs,mg1,mg2, &
+                !rd(i+nxs+1),rd(i+nxs),area(nc)
+              endif
+              vl(nc) = vlz0
               if (iphase == 2) vg(nc) = vgz0
             enddo
           enddo
@@ -228,6 +245,11 @@ contains
                 mblkbc(nc) = m
                 ibconn(nc) = ibc
                 ng = nL2G(m)
+                
+                select case (igeom)
+                
+                case(1) ! cartesian
+                
                 if (iface(ibc) == 1) then
                   distbc(nc) = 0.5d0*dx_loc_p(ng)
                   areabc(nc) = dy_loc_p(ng)*dz_loc_p(ng)
@@ -259,6 +281,68 @@ contains
                   vlbc(nc)   = -vly0
                   if (iphase == 2) vgbc(nc) = -vgz0
                 endif
+                
+                case (2) ! cylindrical
+                
+!               ird = mod(mod((m),nlxy),nlx) + nxs
+                ird = i
+                if (iface(ibc) == 1) then
+                  distbc(nc) = 0.5d0*dx_loc_p(ng)
+                  areabc(nc) = 2.0d0*Pi*rd(ird-1)*dz_loc_p(ng)
+                  
+                  !print *,'ptran_conn_bc: ',nc,m,ibc,ng,ird, &
+                  !rd(ird-1),areabc(nc)
+                  
+                  vlbc(nc)   = vlx0
+                  if (iphase == 2) vgbc(nc) = vgx0
+                else if (iface(ibc) == 2) then
+                  distbc(nc) = 0.5d0*dx_loc_p(ng)
+                  areabc(nc) = 2.0d0*Pi*rd(ird)*dz_loc_p(ng)
+                  
+                  !print *,'ptran_conn_bc: ',nc,m,ibc,ng,ird, &
+                  !rd(ird-1),areabc(nc)
+                  
+                  vlbc(nc)   = -vlx0
+                  if (iphase == 2) vgbc(nc) = -vgx0
+                else if (iface(ibc) == 3) then
+                  distbc(nc) = 0.5d0*dz_loc_p(ng)
+                  areabc(nc) = Pi*(rd(ird) + rd(ird-1))* &
+                               (rd(ird) - rd(ird-1))
+                  
+                  !print *,'ptran_conn_bc: ',nc,m,ibc,ng,ird, &
+                  !rd(ird-1),areabc(nc)
+                  
+                  vlbc(nc)   = vlz0
+                  if (iphase == 2) vgbc(nc) = vgz0
+                else if (iface(ibc) == 4) then
+                  distbc(nc) = 0.5d0*dz_loc_p(ng)
+                  areabc(nc) = Pi*(rd(ird) + rd(ird-1))* &
+                               (rd(ird) - rd(ird-1))
+                  
+                  !print *,'ptran_conn_bc: ',nc,m,ibc,ng,ird, &
+                  !rd(ird-1),areabc(nc)
+                  
+                  vlbc(nc)   = -vlz0
+                  if (iphase == 2) vgbc(nc) = -vgz0
+                endif
+                
+                case (3) ! spherical
+
+!               ird = mod(mod((m),nlxy),nlx) + nxs
+                ird = i
+                if (iface(ibc) == 1) then
+                  distbc(nc) = 0.5d0*dx_loc_p(ng)
+                  areabc(nc) = 0.d0 ! 4.d0*Pi*rd(0)**2
+                  vlbc(nc)   = vlx0
+                  if (iphase == 2) vgbc(nc) = vgx0
+                else if (iface(ibc) == 2) then
+                  distbc(nc) = 0.5d0*dx_loc_p(ng)
+                  areabc(nc) = 4.d0*Pi*rd(ird)**2
+                  vlbc(nc)   = -vlx0
+                  if (iphase == 2) vgbc(nc) = -vgx0
+                endif
+                
+                end select
               enddo
             enddo
           enddo
