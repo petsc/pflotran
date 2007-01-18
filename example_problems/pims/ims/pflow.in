@@ -1,0 +1,71 @@
+:     igeom nx  ny  nz  nphase  
+GRID    1  50   1   1     2 
+:
+:    npx npy npz
+:PROC  1   1   1
+:
+:    write_init iprint imod itecplot iblkfmt  ndtcmx iran_por ran_fac readperm
+OPTS      0       0      1     1      0          10      0     0.        0
+:
+:      steps    iaccel newtmx    icutmx    dpmx   dtmpmx   dcmx   dsmx
+TOLR   50000       6     80      16      1.e5     1.     .5        0.5
+:
+DXYZ
+1.
+1.
+1.
+:    atol     rtol     stol    dtol       newton_max   maxf
+SOLV 1.d-9   1.d-9    1.d-6    1d15      50          100
+:
+PCKR
+:ist  swir   sgir    lambda  alpha pcwmax   betac    pwrprm
+  1  0.05    0.e0     0.75    1.e-3    1.e8    0.e0     1.D0
+  2  0.1     0.e0     0.75    1.e-3    1.e8    0.e0      1.D0
+  3  0.1     0.e0     0.75    1.e-3    1.e6    0.e0      1.D0
+  4  0.1     0.e0     0.762   7.5e-4   1.e1    2.e0      7.D0
+  10  0.1     0.e0    0.762   7.5e-4   1.e1    2.e0      7.D0
+/
+THRM
+:ithm rho     cpr   ckdry  cksat  tau    cdiff      cexp
+  1  2.8e3  800.d0   0.5    0.5    0.5    2.13e-5    1.8
+/
+:
+PHIK
+:i1  i2  j1  j2  k1  k2 icap ithm  por    permx     permy     permz    pwrprm
+  1 50   1   1   1   1   10   1   0.5   1.D0   1.e-14    1.e-12    1.e-12      1.D0
+/
+:
+INIT 0
+:i1  i2  j1  j2  k1  k2        pf       sl      
+ 1   50   1   1   1   1       2.e7     1.D-0      
+/
+:
+BCON
+:ibndtyp iface
+   1       1
+:i1  i2  j1  j2  k1  k2
+  1   1   1   1   1   1
+:     Pressure [Pa]       Satu
+       2.245d7            0.0D-0
+/
+:ibndtyp iface
+  3       2
+:i1  i2  j1  j2  k1  k2
+ 50    50   1   1   1   1
+:   Pressure [Pa]     Satu
+      2.00d7           1D-0
+/
+/
+:
+SKIP
+BRK
+:i1  i2  j1  j2  k1  k2  brktyp  axis
+ 50  50   1   1   1   1    1       1
+/
+NOSKIP
+:
+TIME s 8
+1E4  1E5  2E5 5E5  2.5e6 5e6 1E+7 2D7 
+DTST 1 1e10
+10e1  5D4
+:

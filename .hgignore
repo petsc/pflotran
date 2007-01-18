@@ -1,6 +1,14 @@
 syntax: glob
 *.o
 *.mod
+*.aux
+*.lof
+*.log
+*.lot
+*.out
+*.toc
+*.bst
+*.sty
 .DS_Store
 ._.DS_Store
 .hgignore.orig
@@ -15,4 +23,10 @@ src/pflotran/pflow
 src/pflotran/ptran
 src/pflotran/pflotran.xcodeproj/*.pbxuser
 src/pflotran/pflotran.xcodeproj/*.mode1
+src/pims/*.o
+src/pims/*.MOD
+src/pims/build
+src/pims/pims
+src/pims/pims.xcodeproj/*.pbxuser
+src/pims/pims.xcodeproj/*.mode1
 
