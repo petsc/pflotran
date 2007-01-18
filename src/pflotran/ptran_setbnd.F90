@@ -33,7 +33,8 @@ module ptran_setbnd_module
       use trdynmem_module
       use water_eos_module
       use ptran_speciation_module
-
+      use co2eos_module
+	  
       implicit none
 
       real*8 :: cloc(ncmx),cxloc(ncxmx),cloctot(ncmx),pgasloc(ngmx), &
@@ -42,7 +43,7 @@ module ptran_setbnd_module
       sitdnloc(nscxmx), &
       dgamdi(ncmx),gamloc(ncmx),gamxloc(ncxmx)
 
-      real*8 :: fach2o,rho1,sum,u1
+      real*8 :: fach2o,rho1,sum,u1, dco2,fc,phi
 
       integer :: i,idif=0,iireg,iisrc,iter,j,jj,k,l,m,nss
 
@@ -138,14 +139,17 @@ module ptran_setbnd_module
         endif
 
         if (iphase.eq.2 .or. iphase.eq.0) then !  conc for the gas phase
-          u1 = one/(rgasjj*tk)
-          psinam = 'psigbnd'
+          call duanco2(tempbc(ibc), pgasloc(1),dco2,fc,phi)
+          print *,"ptran_set_BC: ", ibc,  tempbc(ibc), pgasloc(1),dco2
+		  u1= (dco2/fmwco2*1D3) /pgasloc(1)
+          
+		  psinam = 'psigbnd'
           do j = 1, ncomp
             sum = zero
             do l = 1, ngas
               sum = sum + sgas(j,l)*pgasloc(l)
             enddo
-            psigbnd(j,ibc) = sum*u1                           
+            psigbnd(j,ibc) = sum * u1                        
             if (myrank==0) &
             write(iunit2,1020) nam(j),psinam,j,ibc,psigbnd(j,ibc)
           enddo

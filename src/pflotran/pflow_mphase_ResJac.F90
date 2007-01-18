@@ -729,8 +729,8 @@ private
   endif  
   call VecGetArrayF90(xx, xx_p, ierr); CHKERRQ(ierr)
   do n = 1, grid%nlmax
-    if(xx_p((n-1)*grid%ndof+3) < 0.D0)xx_p((n-1)*grid%ndof+3) = 1.D-6
-    if(xx_p((n-1)*grid%ndof+3) > 1.D0)xx_p((n-1)*grid%ndof+3) = 1.D0-1.D-6
+    if(xx_p((n-1)*grid%ndof+3) < 0.D0)xx_p((n-1)*grid%ndof+3) = 0.D0
+    if(xx_p((n-1)*grid%ndof+3) > 1.D0)xx_p((n-1)*grid%ndof+3) = 1.D0
   enddo
   call VecRestoreArrayF90(xx, xx_p, ierr)
 
@@ -1991,7 +1991,7 @@ private
 
       
   ! if (grid%rk > 0.d0) call Rock_Change(grid)
-    call Translator_MPhase_Switching(grid%xx,grid,1,ierr)
+  !  call Translator_MPhase_Switching(grid%xx,grid,1,ierr)
   !print *,'MPhase_Update done'
  
    ! if(ichange ==1)then
@@ -2005,7 +2005,7 @@ private
     iicap = icap_p(n)
 	iiphase = iphase_p(n)
     n0=(n-1)*grid%ndof
-    if(xx_p(n0+3)<0.D0) xx_p(n0+3)=1.D-6
+  !  if(xx_p(n0+3)<0.D0) xx_p(n0+3)=1.D-6
 
     !*****************
 	dif(1)= grid%difaq

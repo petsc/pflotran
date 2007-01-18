@@ -292,7 +292,7 @@ public :: trpsi, trdpsi
             pgas(ngs,n)= pgas(ngs,n)*den_co2_loc_p(n)
                 
 !          print *,'ptranpsi: ',n,pgas(ngs,n),exp(prod),eqgas(ngs), &
-!               den_co2(m)
+!               den_co2_loc_p(n)
           enddo
 
 !---------compute psig

@@ -615,9 +615,8 @@ contains
           jng = j+(ng-1)*nmat
           jm = j+(m-1)*nmat
 !         irow1(j) = jng-1
-
           qflux = u1*ppsig(j,ng)+u2*psigbnd(j,ibc)
-
+          !print *, xphibc(nc)
           b_p(jm) = b_p(jm) - qflux
           do l = 1, ncomp
             lng = l+(ng-1)*nmat

@@ -1840,11 +1840,14 @@ subroutine pflowGrid_setup(grid, inputfile)
       .or. grid%use_vadose == PETSC_TRUE) then
     allocate(grid%xxbc(grid%ndof,grid%nconnbc))
     allocate(grid%iphasebc(grid%nconnbc))
-    do nc = 1, grid%nconnbc
+    allocate(grid%xphi_co2_bc(grid%nconnbc))
+    allocate(grid%xxphi_co2_bc(grid%nconnbc))
+
+	do nc = 1, grid%nconnbc
       ibc = grid%ibconn(nc)
       grid%xxbc(:,nc)=grid%xxbc0(:,ibc)
       grid%iphasebc(nc)=grid%iphasebc0(ibc)
-      grid%velocitybc(:,nc) = grid%velocitybc0(:,ibc)
+	        grid%velocitybc(:,nc) = grid%velocitybc0(:,ibc)
     enddo
     if (grid%using_pflowGrid == PETSC_FALSE) then
       deallocate(grid%xxbc0)

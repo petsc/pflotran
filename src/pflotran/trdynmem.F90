@@ -45,7 +45,7 @@
     integer, pointer :: nd1(:), nd2(:)
     integer, pointer :: mblkbc(:), ibconn(:)
     real*8, pointer  :: dist1(:),dist2(:),distbc(:),area(:),areabc(:), &
-                        vlbc(:), vgbc(:)
+                        vlbc(:), vgbc(:)! , xphibc(:)
     real*8, pointer  :: vb(:)
 
     integer, pointer :: nL2G(:), nG2L(:), nL2A(:)

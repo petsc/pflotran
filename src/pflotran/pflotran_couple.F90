@@ -64,7 +64,8 @@ contains
   nblkbc = grid%nblkbc
   distbc => grid%distbc
   areabc => grid%areabc
-
+ ! xphibc => grid%xxphi_co2_bc
+ ! print *, 'XPHIBC:: ',xphibc
   ! nblkbc need to be changed
   mblkbc => grid%mblkbc
   ibconn => grid%ibconn

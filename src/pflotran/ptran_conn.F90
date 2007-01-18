@@ -187,6 +187,7 @@ contains
 !     if (using_pflowGrid .ne. PETSC_TRUE) then
         allocate(distbc(nconnbc))
         allocate(areabc(nconnbc))
+!		allocate(xphibc(nconnbc))
 !     endif
       allocate(vlbc(nconnbc))
       if (iphase == 2) allocate(vgbc(nconnbc))
