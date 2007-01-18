@@ -2,6 +2,6 @@ Vadose Zone Problem: Injection of Air in Saturated Medium
 
 This is a 1D problem with 10 nodes describing injection of air into a saturated porous medium. To run the code use the command line:
 
-mpiexec -np xxx pflow -use_analytical -use_vadose -snes_ls basic -ksp_type bcgs
+mpiexec -np xxx ../../../src/pflotran/pflow -use_analytical -use_vadose -snes_ls basic -ksp_type bcgs
 
 

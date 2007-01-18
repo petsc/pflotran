@@ -3423,8 +3423,8 @@ subroutine pflowGrid_read_input(grid, inputfile)
             & "  ndtcmx     = ",3x,i2,/, &
             & "  iran_por   = ",3x,i2,/, &
             & "  ran_fac    = ",3x,1pe12.4,/, &
-            & "  iread_perm = ",3x,1pe12.4,/, &
-            & "  iread_geom = ",3x,1pe12.4 &
+            & "  iread_perm = ",3x,i2,/, &
+            & "  iread_geom = ",3x,i2 &
             & )') grid%write_init,grid%iprint,grid%imod,grid%itecplot, &
             grid%iblkfmt,grid%ndtcmx,grid%iran_por,grid%ran_fac, &
             grid%iread_perm,grid%iread_geom

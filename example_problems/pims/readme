@@ -1,0 +1,19 @@
+
+To run the code on e.g. 16 processors enter:
+
+mpiexec -np 16 ../../pims_1/pims -use_analytical -pc_factor_nonzeros_along_diagonal 
+
+
+Examples:
+
+./ims2
+
+liquid displaces gas
+
+./ims
+
+gas displaces liquid
+
+./mph
+
+3 phase system
