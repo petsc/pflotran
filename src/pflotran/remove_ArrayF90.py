@@ -61,12 +61,12 @@ def ExtractSymbols(lines):
 
   return symbols
 
-# We need the !PETSCF90ARRAY_MACROS functionality when pointers defined 
+# We need the !PETSCF_ARRAYF90_MACROS functionality when pointers defined 
 # in a module are used outside of that module with ArrayF90 statements.
 # In that case, we don't need to define any variables in the code outside 
 # the module, but that code does need to have the proper macros defined.
 def PrintMacros(line):
-  line = line.replace("!PETSCF90ARRAY_MACROS","")
+  line = line.replace("!PETSC_ARRAYF90_MACROS","")
   symbols = line.split()
   for symbol in symbols:
     line = "#define "
@@ -196,7 +196,7 @@ def main(argv=None):
     no_undefs = True
 
   if len(argv) > 3 + cmd_offset:
-    sys.stderr.write("Usage: remove_f90arrays.py [--no_undefs] infile outfile")
+    sys.stderr.write("Usage: remove_ArrayF90.py [--no_undefs] infile outfile")
     return 1
   if len(argv) > 1 + cmd_offset:
     infile = open(sys.argv[1 + cmd_offset], 'r')
@@ -207,9 +207,9 @@ def main(argv=None):
 
   rgxp_getarray = re.compile("GetArrayF90", re.IGNORECASE)
   rgxp_restorearray = re.compile("RestoreArrayF90", re.IGNORECASE)
-  rgxp_beginF90 = re.compile("!BEGIN_PETSCF90ARRAY", re.IGNORECASE)
-  rgxp_endF90 = re.compile("!END_PETSCF90ARRAY", re.IGNORECASE)
-  rgxp_macroF90 = re.compile("!PETSCF90ARRAY_MACROS", re.IGNORECASE)
+  rgxp_beginF90 = re.compile("!BEGIN_PETSC_ARRAYF90", re.IGNORECASE)
+  rgxp_endF90 = re.compile("!END_PETSC_ARRAYF90", re.IGNORECASE)
+  rgxp_macroF90 = re.compile("!PETSC_ARRAYF90_MACROS", re.IGNORECASE)
   
   while True:
     line = sys.stdin.readline()
