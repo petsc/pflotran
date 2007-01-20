@@ -113,7 +113,7 @@ pflotran_fc: $(util_obj) $(ptran_obj) $(pflow_obj) $(pflotran_obj) \
 # defining that rule as blank.
 %.o : %.F90
 %.$(INTERMEDIATE_SUFFIX) : %.F90
-	remove_f90arrays.py --no_undefs $< $@
+	remove_ArrayF90.py --no_undefs $< $@
 
 %.i : %.$(INTERMEDIATE_SUFFIX)
 	cpp ${PETSC_INCLUDE} $< $@
