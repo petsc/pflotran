@@ -80,7 +80,7 @@ def PrintDummyArrays(lines):
 
   # Print the _v 1-D real*8 arrays that will be used to access the values.
   for line in lines:
-    line = line.replace("pointer", "dimension(1)")
+    line = line.replace("pointer", "dimension(1), target")
     line = line.replace("(:)", "")
     for symbol in symbols:
       # We use regular expressions here to make sure that we don't do 
