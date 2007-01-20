@@ -61,7 +61,7 @@ def ExtractSymbols(lines):
 
   return symbols
 
-# We need the !PETSCF_ARRAYF90_MACROS functionality when pointers defined 
+# We need the !PETSC_ARRAYF90_MACROS functionality when pointers defined 
 # in a module are used outside of that module with ArrayF90 statements.
 # In that case, we don't need to define any variables in the code outside 
 # the module, but that code does need to have the proper macros defined.
