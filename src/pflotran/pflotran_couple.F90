@@ -1,5 +1,4 @@
-
-!#include "pflowgrid_ptran_init.F90"
+ !#include "pflowgrid_ptran_init.F90"
 module pflotran_couple_module
 use pflow_gridtype_module
   
@@ -14,15 +13,18 @@ private
 #include "include/finclude/petscvec.h90"
 
 
+
 public pflowGrid_ptran_init, pflotranGrid_interp, ptran_bc_reassign
 
 
-contains
+ contains
+
+ 
   subroutine pflowGrid_ptran_init(grid, ierr)
 
   use ptran_global_module
   use trdynmem_module
-  
+  use translator_mph_module
   implicit none
 
   type(pflowGrid), intent(inout) :: grid
@@ -31,10 +33,16 @@ contains
 
   real*8, pointer :: por_pflow_p(:), por0_pflow_p(:),por_ptran_p(:), & !volume_p(:), 
                      temp_pflow_p(:), temp_ptran_p(:), &
-                     sat_pflow_p(:), sat_ptran_p(:)
+                     sat_pflow_p(:), sat_ptran_p(:), xx_p(:), iphase_p(:),&
+					 den_co2_p(:), xphi_co2_p(:)
   real*8 :: afac
-  integer*4 :: jn,n,nr
+  integer  :: jn,n,nr, iiphase, iicap
+  real*8 :: dif(grid%nphase)
+  integer :: size_var_use 
+  real*8, pointer:: varr(:)
   
+  size_var_use = 2 + 7*grid%nphase + 2*grid%nphase *grid%nspec
+  allocate(varr(1:size_var_use))
   grid%using_pflowGrid = PETSC_TRUE
   using_pflowGrid = PETSC_TRUE
 
@@ -76,6 +84,7 @@ contains
     tplot(n) = grid%tplot(n)
   enddo
   
+    
 ! allocate(vb(grid%nlmax))
 ! call VecGetArrayF90(grid%volume, volume_p, ierr)
   call VecGetArrayF90(grid%porosity, por_pflow_p, ierr)
@@ -85,8 +94,37 @@ contains
   call VecGetArrayF90(temp, temp_ptran_p, ierr)
   call VecGetArrayF90(grid%sat, sat_pflow_p, ierr)
   call VecGetArrayF90(sat, sat_ptran_p, ierr)
+  
+  
+    if (grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE) then
+    call VecGetArrayF90(grid%xx, xx_p, ierr)
+    call VecGetArrayF90(grid%iphas, iphase_p, ierr)
+	call VecGetArrayF90(den_co2, den_co2_p, ierr)
+    call VecGetArrayF90(xphi_co2, xphi_co2_p, ierr)
+    endif
+  
+  
+  
   !call VecGetArrayF90(phik, phik_ptran_p, ierr)
   do n = 1, grid%nlmax
+   
+		
+    if (grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE) then
+	 iiphase= int(iphase_p(n))
+	 iicap=1
+	 dif(:)=1D-9
+!	 print *,'couple :begin calling'
+  	call pri_var_trans_mph_ninc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),iiphase,&
+        grid%scale,grid%nphase,grid%nspec,&
+        iicap, grid%sir(1:grid%nphase,iicap),grid%lambda(iicap),&
+        grid%alpha(iicap),grid%pckrm(iicap),grid%pcwmax(iicap),&
+        grid%pcbetac(iicap),grid%pwrprm(iicap),dif,&
+ 	    varr, grid%itable,ierr,xphi_co2_p(n),den_co2_p(n))
+ !   print *, n, iiphase, xphi_co2_p(n), den_co2_p(n)
+	  
+  endif
+  
+  
     jn = 2+(n-1)*grid%nphase
 !   vb(n) = volume_p(n)
     temp_ptran_p(n) = temp_pflow_p(n)
@@ -107,7 +145,7 @@ contains
 
     sat_ptran_p(n) = 1.d0-sat_pflow_p(jn)
 
-!   print *,'pflowGrid_ptran_init: ',n,sat_ptran_p(n),sat_pflow_p(n),por_pflow_p(n)
+  ! print *,'pflowGrid_ptran_init: ',n,sat_ptran_p(n),sat_pflow_p(jn),por_pflow_p(n)
   enddo
 ! call VecRestoreArrayF90(grid%volume, volume_p, ierr)
   call VecRestoreArrayF90(grid%porosity, por_pflow_p, ierr)
@@ -118,7 +156,33 @@ contains
   call VecRestoreArrayF90(temp, temp_ptran_p, ierr)
   call VecRestoreArrayF90(grid%sat, sat_pflow_p, ierr)
   call VecRestoreArrayF90(sat, sat_ptran_p, ierr)
-  
+
+   if (grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE) then
+!   call VecGetArrayF90(grid%xx_loc, xx_p, ierr)
+    call VecRestoreArrayF90(grid%xx, xx_p, ierr)
+!    call VecGetArrayF90(grid%yy, yy_p, ierr)
+    call VecRestoreArrayF90(grid%iphas, iphase_p, ierr)
+   call VecRestoreArrayF90(den_co2, den_co2_p, ierr)
+    call VecRestoreArrayF90(xphi_co2, xphi_co2_p, ierr)
+! print *,"Array resotred in pflotran_couple:", grid%myrank
+
+  call DAGlobalToLocalBegin(grid%da_1_dof, xphi_co2, INSERT_VALUES, &
+                            xphi_co2_loc, ierr)
+  call DAGlobalToLocalEnd(grid%da_1_dof, xphi_co2, INSERT_VALUES, &
+                            xphi_co2_loc, ierr)
+  call DAGlobalToLocalBegin(grid%da_1_dof, den_co2, INSERT_VALUES, &
+                            den_co2_loc, ierr)
+  call DAGlobalToLocalEnd(grid%da_1_dof, den_co2, INSERT_VALUES, &
+                            den_co2_loc, ierr)
+ !print *,"Array scattered in pflotran_couple:", grid%myrank
+  endif
+ call VecCopy(sat,ssat, ierr)
+ 
+  call DAGlobalToLocalBegin(grid%da_1_dof, ssat, INSERT_VALUES, &
+                            ssat_loc, ierr)
+  call DAGlobalToLocalEnd(grid%da_1_dof, ssat, INSERT_VALUES, &
+                            ssat_loc, ierr)
+
   surf0_p(:) = surf_p(:)
   phik0_P(:) = phik_p(:)
   !call VecCopy(phik, phik0, ierr)
@@ -126,7 +190,6 @@ contains
 
   end subroutine pflowGrid_ptran_init
 
-!======================================================================
 
   subroutine pflotranGrid_interp (grid, tflow1, tflow2)
 
@@ -173,7 +236,8 @@ contains
       jm = 2+(m-1)*grid%nphase 
       ppress_p(m) = xx_p(1+(m-1)*grid%ndof) ! ppress and press defined for nphase
       ttemp_p(m) = xx_p(2+(m-1)*grid%ndof)
-      ssat_p(jm) = xx_p(4+(m-1)*grid%ndof)
+!      ssat_p(m) = xx_p(4+(m-1)*grid%ndof)  
+	  ssat_p(jm) = xx_p(4+(m-1)*grid%ndof)
 	  enddo
 !   call VecRestoreArrayF90(grid%xx_loc, xx_p, ierr)
     call VecRestoreArrayF90(grid%xx, xx_p, ierr)
@@ -214,7 +278,8 @@ contains
         case(3)
           sat_p(jm) = yy_p(3+(m-1)*grid%ndof)    	  
       end select
-    enddo
+!     print *,"pflotran_coup:: ",m, iphase_p(m), iphase_old_p(m),ssat_p(jm),sat_p(jm)
+	 enddo
 !   call VecRestoreArrayF90(grid%xx_loc, xx_p, ierr)
     call VecRestoreArrayF90(grid%xx, xx_p, ierr)
     call VecRestoreArrayF90(grid%yy, yy_p, ierr)
@@ -279,6 +344,11 @@ contains
     endif
   endif
 #endif
+
+!  call DAGlobalToLocalBegin(grid%da_1_dof, ssat, INSERT_VALUES, &
+!                            ssat_loc, ierr)
+!  call DAGlobalToLocalEnd(grid%da_1_dof, ssat, INSERT_VALUES, &
+!                            ssat_loc, ierr)
 
   call DAGlobalToLocalBegin(grid%da_1_dof, xphi_co2, INSERT_VALUES, &
                             xphi_co2_loc, ierr)
@@ -523,4 +593,3 @@ contains
   end subroutine ptran_bc_reassign
 
   end module pflotran_couple_module
-	

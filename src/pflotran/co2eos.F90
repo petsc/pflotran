@@ -562,7 +562,7 @@ contains
 
 !-----tolerance parameters
       epsilon = 1.d-8
-      itmax = 50
+      itmax = 150
 
 !-----set initial guess from ideal gas law
       videal = rgas*t/p

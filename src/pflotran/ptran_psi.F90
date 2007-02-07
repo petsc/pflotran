@@ -193,7 +193,7 @@ public :: trpsi, trdpsi
 !==============================================================
 
       if (iphase == 1) return
-
+!      print *,"ptran_psi: ", jco2, jco2g
 !-----compute total concentrations in gas phase
      call VecGetArrayF90(xphi_co2_loc, xphi_co2_loc_p, ierr)
 	  call VecGetArrayF90(den_co2_loc, den_co2_loc_p, ierr)
@@ -204,7 +204,8 @@ public :: trpsi, trdpsi
 
         m = nG2L(n)
        ! if(m<=0) print *, 'ptran_psi:',n,m
-        if(ssat_loc_p(n).ge.one) then         ! all liquid block
+    !    print *,"ptran_psi: ",n, ssat_loc_p(n)
+		 if(ssat_loc_p(n).ge.one) then         ! all liquid block
           do j = 1, ncomp 
             ppsig(j,n) = zero
             do i = 1, ngas
@@ -291,7 +292,7 @@ public :: trpsi, trdpsi
             
             pgas(ngs,n)= pgas(ngs,n)*den_co2_loc_p(n)
                 
-!          print *,'ptranpsi: ',n,pgas(ngs,n),exp(prod),eqgas(ngs), &
+!          print *,'ptranpsig:1: ',n,pgas(ngs,n),exp(prod),eqgas(ngs), &
 !               den_co2_loc_p(n)
           enddo
 
@@ -301,7 +302,7 @@ public :: trpsi, trdpsi
             do i = 1, ngas
               ppsig(j,n) = ppsig(j,n)+sgas(j,i)*pgas(i,n)
               
-!             print *,'ptranpsi: ',n,i,j, sgas(j,i),pgas(i,n),ppsig(j,n),wmix
+ !            print *,'ptranpsig:2: ',n,i,j, sgas(j,i),pgas(i,n),ppsig(j,n),wmix
             enddo
           enddo
         endif

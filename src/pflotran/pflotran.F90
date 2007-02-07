@@ -156,7 +156,10 @@
   if (grid%ihydrostatic == 1) call ptran_bc_reassign(grid)
   print *, 'finished  rebc'
 !  call ptran_conn(da_1dof)
-
+!if (iphase == 2) psig = ppsig
+!print *,psi(4,:)
+!print *,psig(4,:)
+!print *,ppsig(4,:)
   if (myrank==0) &
   write(*,*) '--> initialization complete - begin time stepping'
 

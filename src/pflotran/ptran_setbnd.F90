@@ -60,7 +60,7 @@ module ptran_setbnd_module
         ibc = ibc+1
 
 !-------skip if zero-flux boundary condition
-        if(ibndtyp(ibc).eq.zero) goto 100
+        if(ibndtyp(ibc).eq.2) goto 100
 
         if(mode.eq.2) then
           tk = tempbc(ibc)+tkelvin
@@ -93,6 +93,7 @@ module ptran_setbnd_module
         cecloc,xexloc,csorplc,ccsorplc,csorpflc,sitdnloc,alogpf, &
         gamloc,gamxloc,dgamdi,rho,tempbc(ibc),iter)
 
+        print *,"Setbnd:pgas : ", pgasloc
 !-------write to screen
         if (myrank ==0) &
         write (*,1010) ibndtyp(ibc),tempbc(ibc),iter
@@ -140,9 +141,9 @@ module ptran_setbnd_module
 
         if (iphase.eq.2 .or. iphase.eq.0) then !  conc for the gas phase
           call duanco2(tempbc(ibc), pgasloc(1),dco2,fc,phi)
-          print *,"ptran_set_BC: ", ibc,  tempbc(ibc), pgasloc(1),dco2
+         
 		  u1= (dco2/fmwco2*1D3) /pgasloc(1)
-          
+           print *,"ptran_set_BC: ", ibc,  tempbc(ibc), pgasloc(1),dco2,u1
 		  psinam = 'psigbnd'
           do j = 1, ncomp
             sum = zero
@@ -154,7 +155,8 @@ module ptran_setbnd_module
             write(iunit2,1020) nam(j),psinam,j,ibc,psigbnd(j,ibc)
           enddo
           do i = 1, ngas
-            pgasbnd(i,ibc) = pgasloc(i)*u1                        
+            pgasbnd(i,ibc) = pgasloc(i)!*u1      
+			print *,"ptran_setbnd: ",  psigbnd(i,ibc) ,  pgasloc(i)             
           enddo
         endif
   100 continue

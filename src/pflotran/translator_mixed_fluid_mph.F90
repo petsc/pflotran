@@ -46,7 +46,7 @@
 		 
  real*8, private, parameter :: fmwh2o = 18.0153D0, fmwa = 28.96D0, &
                               fmwco2 = 44.0098D0
- real*8, private, parameter :: eps=5D-7 , formeps=1D-6
+ real*8, private, parameter :: eps=5D-7 , formeps=1D-5
  real*8, private, parameter ::yh2o_in_co2=1D-2   
  real*8, private, parameter :: rgasj   = 8.3143    ![J/K/mol]
 

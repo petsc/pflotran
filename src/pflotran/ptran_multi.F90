@@ -129,9 +129,9 @@ contains
 !         irow1(j) = jng-1
           b_p(jn) = -pvdt*(ssl*ppsi(j,ng)-sl*psi(j,ng) + &
           ssg*ppsig(j,ng)-sg*psig(j,ng))
-
-!         print *,'ptranmulti-acc: ',myrank,n,ng,j,porloc_p(ng),dt,pvdt,vb(n), &
-!         ssl,ssg,sl,sg,psi(j,ng),ppsi(j,ng),b_p(jn)
+       !  if(n==400)&
+       !  print *,'ptranmulti-acc: ',myrank,n,ng,j,porloc_p(ng),dt,pvdt,vb(n), &
+       !  ssl,ssg,sl,sg,psi(j,ng),ppsi(j,ng),psig(j,ng),ppsig(j,ng),b_p(jn)
 
           do l = 1, ncomp
             lng = l+(ng-1)*nmat
@@ -535,29 +535,29 @@ contains
         
       else if (ibndtyp(ibc) == 3 .and. q.ne.zero) then ! zero gradient
       
-!       if (q > zero) then ! flow into block
-!         u1 =  zero
-!         u2 = -q
-!       else
-!         u1 = -q
-!         u2 =  zero
-!       endif
+       if (q > zero) then ! flow into block
+         u1 =  zero
+         u2 = -q
+       else
+         u1 = -q
+         u2 =  zero
+       endif
       
         do j = 1, ncomp
           jng = j+(ng-1)*nmat
           jm = j+(m-1)*nmat
 !         irow1(j) = jng-1
 
-!         qflux = u1*ppsi(j,ng)+u2*psibnd(j,ibc)
-          qflux = -q*ppsi(j,ng)
+         qflux = u1*ppsi(j,ng)+u2*psibnd(j,ibc)
+!          qflux = -q*ppsi(j,ng)
 
           b_p(jm) = b_p(jm) - qflux
           do l = 1, ncomp
             lng = l+(ng-1)*nmat
 !           icol1(l) = lng-1
 
-!           val = u1*dpsi(j,l,ng)
-            val = -q*dpsi(j,l,ng)
+           val = u1*dpsi(j,l,ng)
+!            val = -q*dpsi(j,l,ng)
       
 !     if (t/yrsec > 48.5) &
 !     print *,'ptranmulti-bnd3: ',nc,m,ng,ibc,vlbc(nc),trans,ibndtyp(ibc), &
@@ -617,6 +617,7 @@ contains
           jm = j+(m-1)*nmat
 !         irow1(j) = jng-1
           qflux = u1*ppsig(j,ng)+u2*psigbnd(j,ibc)
+	!	  print *,'Ptran-multi: 1 : psaig',q,trans,ng, j,ibc, u1,u2,ppsig(j,ng),psigbnd(j,ibc)
           !print *, xphibc(nc)
           b_p(jm) = b_p(jm) - qflux
           do l = 1, ncomp
@@ -645,30 +646,31 @@ contains
 !         blkmat1,ADD_VALUES,ierr)
         endif
         
-      else if (ibndtyp(ibc) == 3 .and. q.ne.zero) then ! zero gradient
+      else if (ibndtyp(ibc) == 3 .and. q.ne.0.D0) then ! zero gradient
       
-!       if (q > zero) then ! flow into block
-!         u1 =  zero
-!         u2 = -q
-!       else
-!         u1 = -q
-!         u2 =  zero
-!       endif
+       if (q > 0.D0) then ! flow into block
+         u1 =  0.D0
+         u2 = -q
+       else
+         u1 = -q
+         u2 =  0.D0
+       endif
       
         do j = 1, ncomp
           jng = j+(ng-1)*nmat
           jm = j+(m-1)*nmat
 !         irow1(j) = jng-1
 
-!         qflux = u1*ppsig(j,ng)+u2*psigbnd(j,ibc)
-          qflux = -q*ppsig(j,ng)
+         qflux = u1*ppsig(j,ng)+u2*psigbnd(j,ibc)
+	!	 print *,'Ptran-multi: 3 : psaig', q, ng, j,ibc, u1,u2,ppsig(j,ng),psigbnd(j,ibc)
+!          qflux = -q*ppsig(j,ng)
           
           b_p(jm) = b_p(jm) - qflux
           do l = 1, ncomp
             lng = l+(ng-1)*nmat
 !           icol1(l) = lng-1
-!           val = u1*dpsig(j,l,ng)
-            val = -q*dpsig(j,l,ng)
+           val = u1*dpsig(j,l,ng)
+!            val = -q*dpsig(j,l,ng)
             if (iblkfmt == 0) then
               if (dfill(j+(l-1)*ncomp).ne.0) then
                 call MatSetValuesLocal(A,1,jng-1,1,lng-1,val, &

@@ -35,7 +35,8 @@ contains
       use ptran_global_module
       use trdynmem_module
       use water_eos_module
-
+      use co2eos_module
+	  
       implicit none
 
 #include "include/finclude/petsc.h"
@@ -72,7 +73,7 @@ contains
       integer :: ierr,j,jj,i,k,kk,l,m,mcyc,mcyc0,n,nnreg,nruns0,irun, &
                  iflgcon,iireg,iflag,iter
       
-      real*8  :: tc,u1
+      real*8  :: tc,u1, dco2,fc,phi
       
       real*8, pointer :: temp_p(:), nreg_p(:)
 
@@ -354,15 +355,20 @@ contains
         enddo
 
         if (iphase.eq.2 .or. iphase.eq.0) then
-          do j = 1, ncomp
+             call duanco2(tempini,pgasloc(1) ,dco2,fc,phi)
+         
+		  u1= (dco2/fmwco2*1D3)
+ 	  
+		  do j = 1, ncomp
             psig0(j) = zero
             do l = 1, ngas
-              psig0(j) = psig0(j)+ sgas(j,l)*pgasloc(l)
+              psig0(j) = psig0(j)+ sgas(j,l)
             enddo
-            psig0(j) = psig0(j)/(rgasjj*(tempini+tkelvin))
-          enddo
+            psig0(j) = psig0(j) *u1!/(rgasjj*(tempini+tkelvin))
+       !    print *,"ptran_set_ini: ", l,  tempini, pgasloc(1), psig0(j),u1
+		  enddo
           do i = 1, ngas
-            pgas0(i) = pgasloc(i)
+            pgas0(i) =  pgasloc(1) !*u1
           enddo
         endif
 
@@ -406,8 +412,10 @@ contains
 
 !-----------total gaseous concentrations
             if (iphase.eq.2 .or. iphase.eq.0) then
-              do j = 1, ncomp
-                psig(j,n) = psig0(j)
+             
+			   do j = 1, ncomp
+                ppsig(j,n) = psig0(j)
+		!		print *, "ptran-spec::", j,n, ppsig(j,n)
               enddo
             endif
 
@@ -554,18 +562,37 @@ contains
               ah2o(n) = ah2o0
             endif
 
-            if (iphase.eq.2 .or. iphase.eq.0) then
-              do j = 1, ncomp
-                psig0(j) = zero
-                do l = 1, ngas
-                  psig0(j) = psig0(j)+ sgas(j,l)*pgasloc(l)
-                enddo
-                psig0(j) = psig0(j)/(rgasjj*tk)
-              enddo
-              do i = 1, ngas
-                pgas0(i) = pgasloc(i)
-              enddo
-            endif
+
+        if (iphase.eq.2 .or. iphase.eq.0) then
+             call duanco2(tempini,pgasloc(1) ,dco2,fc,phi)
+         
+		  u1= (dco2/fmwco2*1D3) 
+ 	  
+		  do j = 1, ncomp
+            psig0(j) = zero
+            do l = 1, ngas
+              psig0(j) = psig0(j)+ sgas(j,l)
+            enddo
+            psig0(j) = psig0(j) *u1!/(rgasjj*(tempini+tkelvin))
+   !        print *,"ptran_set_ini: ", l,  tempini,pgasloc(1) , psig0(j),u1
+		  enddo
+          do i = 1, ngas
+            pgas0(i) = pgasloc(1) !*u1
+          enddo
+        endif
+
+    !        if (iphase.eq.2 .or. iphase.eq.0) then
+    !          do j = 1, ncomp
+    !            psig0(j) = zero
+    !            do l = 1, ngas
+    !              psig0(j) = psig0(j)+ sgas(j,l)*pgasloc(l)
+    !            enddo
+    !            psig0(j) = psig0(j)/(rgasjj*tk)
+    !          enddo
+    !          do i = 1, ngas
+    !            pgas0(i) = pgasloc(i)
+    !          enddo
+    !        endif
 
             do j = 1, ncomp
               kk = j+(n-1)*ncomp
@@ -582,7 +609,8 @@ contains
 !             call VecSetValue(cprev,kk-1,c0(j),INSERT_VALUES,ierr)
 
 !             psi(j,n)  = cloctot(j)*rho(n)
-              if(iphase.eq.2 .or. iphase.eq.0) psig(j,n) = psig0(j)
+              if(iphase.eq.2 .or. iphase.eq.0) ppsig(j,n) = psig0(j)
+			  print *,n,j,ppsig(j,n)
 !             gam(j,n)  = gamloc(j)
 !             if (itype(j,ireg).ne.1 .and. n.eq.1) ctot(j,ireg) = &
 !             cloctot(j)
@@ -913,7 +941,8 @@ contains
       endif
     endif
     
-      if (myrank==0) call trsolprd (gam,cc,psi,pgas,ah2o0)
+!      if (myrank==0)&
+	   call trsolprd (gam,cc,psi,pgas,ah2o0)
       
       if (iflgco2>0 .and. myrank==0) then
         write(iunit2,'(/," fugacity CO2 = ",1pe12.4," [bars]", &
@@ -3274,7 +3303,7 @@ contains
 
       do ngs=1,ngas 
       
-!       write(*,*) 'trsolprd: ',ngs,isothrm,iflgco2,jco2g
+      ! write(*,*) 'trsolprd: ',ngs,isothrm,iflgco2,jco2g
         
         if (isothrm.ge.1 .and. iflgco2.eq.0) then
           ii = ncmplx + ncxkin + ngs
@@ -3305,7 +3334,7 @@ contains
           endif
           if (ak.gt.zero) prod(ngs) = prod(ngs)+log(ak)*sgas(k,ngs)
           
-!         print *,'ptran_speciation*: ',k,itype(k,ireg),ctot(k,ireg),cc(k),psi(k),prod(ngs)
+        ! print *,'ptran_speciation*: ',k,ngs, itype(k,ireg),sgas(k,ngs),ctot(k,ireg),cc(k),psi(k),prod(ngs)
         enddo
 
 !-------add correction for activity of water based on Pitzer model
@@ -3315,7 +3344,9 @@ contains
 
         pgas(ngs) = exp(prod(ngs))
         prod10 = prod(ngs)/aln10
-        if (myrank==0) &
+        
+	!	print *,'ptran_speciation**: ',  eqgas(ngs), exp(eqgas(ngs))
+		if (myrank==0) &
         write(iunit2,'(1x,a12,1pg12.4,5x,1pg12.4,4x,1pg12.5)') &
         namg(ngs),prod10,pgas(ngs),eqgas(ngs)
       enddo

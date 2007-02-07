@@ -88,7 +88,7 @@ module pckr_module
   !         print *,'in pckr nond ',sw,se,upc,kr
           end if
  !        print *,'in pckr  ',um,se,(temp-1.D0)
-
+         if(upc > pcmax) upc=pcmax  
 
        case(2) !Brooks-Corey
        

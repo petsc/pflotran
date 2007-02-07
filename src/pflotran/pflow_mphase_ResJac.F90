@@ -38,6 +38,7 @@ private
   real*8, parameter :: eps       = 1.D-5
   real*8, parameter :: floweps   = 1.D-24
   real*8, parameter :: satcuteps = 1.D-5
+  real*8, parameter :: zerocut =1D-8
   real*8, parameter :: dfac = 1.D-8
 
   integer,save :: size_var_use 
@@ -616,24 +617,41 @@ private
     Res_FL(grid%ndof)=fluxe * grid%dt
 
    case(3)
-     Dq = perm2/dd1 
-
-     do np =1,grid%nphase
-      if ((sat2(np) > sir2(np)))then
+     Dq= perm2 / dd1
+        diffdp = por2*tor2/dd1*area
+        ! Flow term
+		do np =1,grid%nphase
+         if ((sat1(np) > sir2(np)) .or. (sat2(np) > sir2(np)))then
 	  
-	     density_ave = density2(np)  
+	       upweight=.5D0
+	     if(sat1(np) <eps) then 
+             upweight=0.d0
+	        else if(sat2(np) <eps) then 
+             upweight=1.d0
+         endif
+	  density_ave = upweight*density1(np)+(1.D0-upweight)*density2(np)  
 	  
-	  gravity = density2(np)*amw2(np)* grid%gravity * grid%delzbc(nbc_no)
+	  gravity = (upweight*density1(np)*amw1(np) + (1.D0-upweight)*density2(np)*amw2(np)) &
+              * grid%gravity * grid%delzbc(nbc_no)
 			  
 	  dphi = pre_ref1-pc1(np) - pre_ref2 + pc2(np) + gravity
 	  
-	     ukvr=kvr2(np)
-	  	 uh=h2(np)
+	 
+	  if(dphi>=0.D0)then
+	     ukvr=kvr1(np)
+		!density_ave =  density1(np)
+		uh=h1(np)
+		 uxmol(:)=xmol1((np-1)*grid%nspec+1 : np*grid%nspec)
+		else
+		  ukvr=kvr2(np)
+		 ! density_ave =  density2(np)
+		 uh=h2(np)
 		 uxmol(:)=xmol2((np-1)*grid%nspec+1 : np*grid%nspec)
-	  	   
-     	  if(ukvr*Dq>floweps)then
+	   endif 	   
+     
+	  if(ukvr*Dq>floweps)then
          v_darcy= Dq * ukvr * dphi
-    !     grid%vvbc(,nbc_no) = v_darcy
+         !grid%vvl_loc(nbc_no) = v_darcy
 		 vv_darcy(np)=v_darcy
 		 
 	     q=v_darcy * area
@@ -642,11 +660,10 @@ private
 		   fluxm(m)=fluxm(m) + q*density_ave*uxmol(m)																														
 	     enddo 																																																																																										    
            fluxe = fluxe + q*density_ave*uh 
-        endif
-     endif 
- 
-     enddo
-
+       endif
+       endif 
+    enddo
+   
     Res_FL(1:grid%nspec)=fluxm(:)* grid%dt
     Res_FL(grid%ndof)=fluxe * grid%dt
 
@@ -729,8 +746,8 @@ private
   endif  
   call VecGetArrayF90(xx, xx_p, ierr); CHKERRQ(ierr)
   do n = 1, grid%nlmax
-    if(xx_p((n-1)*grid%ndof+3) < 0.D0)xx_p((n-1)*grid%ndof+3) = 0.D0
-    if(xx_p((n-1)*grid%ndof+3) > 1.D0)xx_p((n-1)*grid%ndof+3) = 1.D0
+    if(xx_p((n-1)*grid%ndof+3) < 0.D0)xx_p((n-1)*grid%ndof+3) = zerocut
+    if(xx_p((n-1)*grid%ndof+3) > 1.D0)xx_p((n-1)*grid%ndof+3) = 1.D0 - zerocut
   enddo
   call VecRestoreArrayF90(xx, xx_p, ierr)
 
@@ -1199,10 +1216,10 @@ private
       ! solve for pb from Darcy's law given qb /= 0
         grid%xxbc(:,nc) = xx_loc_p((ng-1)*grid%ndof+1: ng*grid%ndof)
         grid%iphasebc(nc) = int(iphase_loc_p(ng))
-      case(3) 
+   !   case(3) 
      !  grid%xxbc((nc-1)*grid%ndof+1)=grid%pressurebc(2,ibc)
-        grid%xxbc(2:grid%ndof,nc) = xx_loc_p((ng-1)*grid%ndof+2: ng*grid%ndof)
-        grid%iphasebc(nc)=int(iphase_loc_p(ng))
+    !    grid%xxbc(2:grid%ndof,nc) = xx_loc_p((ng-1)*grid%ndof+2: ng*grid%ndof)
+    !    grid%iphasebc(nc)=int(iphase_loc_p(ng))
     end select
 
 ! print *,'2ph bc',grid%myrank,nc,m,ng,ibc,grid%ibndtyp(ibc),grid%pressurebc(:,ibc), &
@@ -1591,12 +1608,12 @@ private
 			           xx_loc_p((ng-1)*grid%ndof+1: ng*grid%ndof)
               grid%iphasebc(nc)=int(iphase_loc_p(ng))
               delxbc=grid%delx(1:grid%ndof,ng)
-          case(3) 
+       !   case(3) 
           !    grid%xxbc(1,nc)=grid%pressurebc(2,ibc)
-			  grid%xxbc(2:grid%ndof,nc)= xx_loc_p((ng-1)*grid%ndof+2: ng*grid%ndof)
-			  grid%iphasebc(nc)=int(iphase_loc_p(ng))
-			  delxbc(1)=0.D0
-			  delxbc(2:grid%ndof)=grid%delx(2:grid%ndof,ng)
+		!	  grid%xxbc(2:grid%ndof,nc)= xx_loc_p((ng-1)*grid%ndof+2: ng*grid%ndof)
+		!	  grid%iphasebc(nc)=int(iphase_loc_p(ng))
+	 !		  delxbc(1)=0.D0
+	 !		  delxbc(2:grid%ndof)=grid%delx(2:grid%ndof,ng)
 		    end select
 
 ! print *,'2ph bc',grid%myrank,nc,m,ng,ibc,grid%ibndtyp(ibc),grid%pressurebc(:,ibc), &
@@ -2005,7 +2022,7 @@ private
     iicap = icap_p(n)
 	iiphase = iphase_p(n)
     n0=(n-1)*grid%ndof
-  !  if(xx_p(n0+3)<0.D0) xx_p(n0+3)=1.D-6
+   if(xx_p(n0+3)<0.D0) xx_p(n0+3)=zerocut
 
     !*****************
 	dif(1)= grid%difaq

@@ -1244,7 +1244,8 @@ contains
           xi = xi+0.5d0*(dx0(ix)+dx0(ix-1))
         endif
         n = ix
-         write(fid,40) xi,(snpsi(j+(n-1)*ncomp),j=1,ncomp)
+         write(fid,40) xi,(snpsi(j+(n-1)*ncomp),j=1,ncomp),&
+		 (snpsig(j+(n-1)*ncomp),j=1,ncomp)
          enddo    
      else if (nx == 1 .and. ny == 1 .and. nz > 1) then
         write(fid,21) (q,nam(j),j=1,ncomp)
@@ -1318,7 +1319,8 @@ contains
               xi = xi+0.5d0*(dx0(ix)+dx0(ix-1))
             endif
             n = ix+(jy-1)*nx+(kz-1)*nxy
-              write(fid,40) xi,yj,zk,(snpsi(j+(n-1)*ncomp),j=1,ncomp)
+              write(fid,40) xi,yj,zk,(snpsi(j+(n-1)*ncomp),j=1,ncomp),&
+			  (snpsig(j+(n-1)*ncomp),j=1,ncomp)
             enddo
         enddo
       enddo

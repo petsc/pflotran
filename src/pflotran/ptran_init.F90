@@ -744,6 +744,7 @@ contains
   call trstartup (da,da_1dof,da_kin,sles)
 
 ! initialize psi, gam, gamx
+   
   call DAGlobalToLocalBegin(da_1dof,temp,INSERT_VALUES,temploc,ierr)
   call DAGlobalToLocalEnd(da_1dof,temp,INSERT_VALUES,temploc,ierr)
 
@@ -766,6 +767,11 @@ contains
   
   gam = one
   gamx = one
+
+!   print *,"Ptran_chem:", ssat_loc_p
+
+
+  
   if (iact == 1) call trgamdh (ccloc_p,temploc_p)
   call trpsi (ccloc_p,pressloc_p,temploc_p,ssat_loc_p)
   call VecRestoreArrayF90(temploc,temploc_p,ierr)
@@ -775,6 +781,10 @@ contains
 ! initialize total concentrations
   psi = ppsi
   if (iphase == 2) psig = ppsig
+ ! print *,"Ptran_chem:"
+ ! print *, psig
+ ! print *, ppsig
+  
 
 ! initialize boundary conditions and source/sinks
   if (myrank==0) write(*,*) '--> speciate boundary/source fluid composition'
