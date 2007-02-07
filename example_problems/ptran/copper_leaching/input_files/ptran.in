@@ -1,5 +1,5 @@
 :     igeom  nx   ny  nz
-GRID    0    30   30   1
+GRID    1    30   30   1
 :    npx  npy  npz
 :PROC  8    8    1
 :
