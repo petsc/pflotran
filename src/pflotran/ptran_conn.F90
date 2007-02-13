@@ -437,7 +437,6 @@ contains
         
     allocate(vel_tmp(nmax),indices(nmax))
 
-!#if 0
 !---x-direction
 
   if (nx > 1) then
@@ -590,7 +589,6 @@ contains
       call VecRestoreArrayF90(L_vec,v_p,ierr)
     
   endif
-!#endif
 
 !===============================================
 

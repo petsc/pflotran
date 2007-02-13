@@ -10,9 +10,9 @@
   use pflow_gridtype_module
  ! use pflow_var_module
 
-private 
+private
+
 #include "include/finclude/petsc.h"
-!#include "include/petscf90.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
   ! It is VERY IMPORTANT to make sure that the above .h90 file gets included.
@@ -22,9 +22,6 @@ private
 #include "include/finclude/petscmat.h90"
 #include "include/finclude/petscda.h"
 #include "include/finclude/petscda.h90"
-!#ifdef USE_PETSC216
-!#include "include/finclude/petscsles.h"
-!#endif
 #include "include/finclude/petscsnes.h"
 #include "include/finclude/petscviewer.h"
 #include "include/finclude/petscsys.h"

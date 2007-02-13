@@ -1,11 +1,7 @@
-
-
-
  module pflow_solv_module
- 
- 
+
  private
- 
+
 #include "include/finclude/petsc.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
@@ -16,9 +12,6 @@
 #include "include/finclude/petscmat.h90"
 #include "include/finclude/petscda.h"
 #include "include/finclude/petscda.h90"
-#ifdef USE_PETSC216
-#include "include/finclude/petscsles.h"
-#endif
 #include "include/finclude/petscksp.h"
 #include "include/finclude/petscpc.h"
 #include "include/finclude/petscsnes.h"
@@ -29,14 +22,13 @@
 #include "include/finclude/petsclog.h"
 
  public pflow_solve, pflow_kspsolver_init
- 
+
  contains
- 
- 
+
  subroutine pflow_kspsolver_init(grid)
- 
+
  use pflow_gridtype_module
- 
+
  implicit none
  type(pflowGrid) :: grid 
  integer ierr
@@ -51,7 +43,6 @@
   !  grid%pc_type = PCBJACOBI
     grid%pc_type = PCILU
   endif
-! grid%pc_type = PCSLES
 ! grid%pc_type = PCASM
 ! grid%pc_type = PCNONE
   call PCSetType(grid%pc,grid%pc_type,ierr)

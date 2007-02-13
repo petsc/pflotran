@@ -71,73 +71,6 @@ private
     if (grid%myrank == 0) then
   
       ! set initial pressure and temperature fields
-#if 0
-      dz1 = 0.d0
-      dz2 = grid%dz0(1)
-      depth = 0.d0
-      pres = grid%pref
-      do k = 1, grid%nz
-        delz = 0.5d0*(dz1+dz2)
-        depth = depth + delz
-          
-        tmp = grid%dTdz * depth + grid%tref
-        
-        dz1 = dz2
-        if (k < grid%nz) dz2 = grid%dz0(k+1)
-        
-        dx1 = 0.d0
-        dx2 = grid%dx0(1)
-        horiz = 0.d0
-        
-        do i = 1, grid%nx
-          delx = 0.5d0*(dx1+dx2)
-          horiz = horiz + delx
-          dx1 = dx2
-          if (i < grid%nx) dx2 = grid%dx0(i+1)
-          
-          call wateos(tmp, pres, rho, dw_mol, dwp, &
-          dum, dum, dum, dum, grid%scale, ierr)
-          
-          betap = rho * grid%gravity * grid%beta
-          pres = pres + rho * grid%gravity * delz
-            
-          do j = 1, grid%ny
-        
-            m = i + (j-1)*grid%nx + (k-1)*grid%nxy - 1
-           
-!           print *,'hydrostatic: ',m+1,i,k,horiz,depth,tmp,pres,rho
-
-            if(grid%use_2ph /= PETSC_TRUE) then
-              jm = grid%jgas + m*grid%nphase - 1
-              ! pressure
-              call VecSetValue(temp1_nat_vec,m,pres,INSERT_VALUES,ierr)
-              ! temperature
-              call VecSetValue(temp2_nat_vec,m,tmp,INSERT_VALUES,ierr)
-              ! conc
-              call VecSetValue(temp3_nat_vec,m,grid%conc0,INSERT_VALUES,ierr)
-              ! sat
-              call VecSetValue(temp4_nat_vec,jm,1.d0,INSERT_VALUES,ierr)
-            else    
-              jm= m*grid%nphase
-              ! pressure
-              call VecSetValue(temp1_nat_vec,jm,pres,INSERT_VALUES,ierr)
-              ! temperature
-              call VecSetValue(temp1_nat_vec,jm+1,pres,INSERT_VALUES,ierr) 
-              call VecSetValue(temp2_nat_vec,m,tmp,INSERT_VALUES,ierr)
-              ! xl
-              call VecSetValue(temp3_nat_vec,jm,grid%conc0,INSERT_VALUES,ierr)
-              ! xg
-              call VecSetValue(temp3_nat_vec,jm+1,grid%conc0,INSERT_VALUES,ierr)
-              ! sl
-              call VecSetValue(temp4_nat_vec,jm,1.d0,INSERT_VALUES,ierr)
-              ! sg
-              call VecSetValue(temp4_nat_vec,jm+1,0.d0,INSERT_VALUES,ierr) 
-            endif 
-          enddo
-        enddo
-      enddo
-#endif
-!#if 0
       dz1 = 0.d0
       dz2 = grid%dz0(1)
       depth = 0.d0
@@ -208,7 +141,6 @@ private
           enddo
         enddo
       enddo
-!#endif
   
       !set co2 layer
 #if 0

@@ -30,7 +30,7 @@
 
   contains
 
-  subroutine ptran_solv (its,da,da_mat,da_1dof,da_kin,sles,ksp)
+  subroutine ptran_solv (its,da,da_mat,da_1dof,da_kin,ksp)
 
   use ptran_global_module
   use trdynmem_module
@@ -45,10 +45,6 @@
 #include "include/finclude/petscda.h"
 #include "include/finclude/petscda.h90"
 #include "include/finclude/petscmat.h"
-#ifdef USE_PETSC216
-    ! petsc-2.1.6
-#include "include/finclude/petscsles.h"
-#endif
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
 #include "include/finclude/petscksp.h"
@@ -56,14 +52,6 @@
 !#include "include/finclude/petscviewer.h"
 
   DA    :: da, da_mat, da_1dof, da_kin
-  
-#ifdef USE_PETSC216
-  SLES  :: sles
-#endif
-
-#ifdef USE_PETSC221
-  integer :: sles
-#endif
 
   KSPConvergedReason :: ksp_reason
   KSP   ::  ksp
@@ -152,25 +140,6 @@
     
     if (newton > 0 .and. iconv == 2) exit
 
-!   call VecNorm(b,NORM_2,r2norm,ierr)
-    
-!   call VecView(b,PETSC_VIEWER_STDOUT_WORLD,ierr)
-!   call MatView(A,PETSC_VIEWER_STDOUT_WORLD,ierr)
-    
-!   if (newton > 0 .and. r2norm < eps) then
-!     exit ! convergence obtained
-!   endif
-
-!   call KSPSetResidualHistory(ksp,history,maxitr,PETSC_TRUE,ierr)
-    
-#ifdef USE_PETSC216
-    ! petsc-2.1.6
-    call SLESSetOperators(sles,A,A,SAME_NONZERO_PATTERN,ierr)
-    call SLESSolve(sles,b,x,its,ierr)
-#endif
-
-#ifdef USE_PETSC221
-    ! petsc-2.2.0
     call KSPSetOperators(ksp,A,A,SAME_NONZERO_PATTERN,ierr)
     
 !   call KSPSetRHS(ksp, b, ierr)
@@ -179,7 +148,6 @@
     call KSPSolve(ksp,b,x,ierr)
     
     call KSPGetIterationNumber(ksp,its,ierr)
-#endif
     
 !   call VecView(x,PETSC_VIEWER_STDOUT_WORLD,ierr)
 
@@ -223,7 +191,7 @@
         write(*,*) 'maximum number of cuts exceeded: &
       & stop: ',' nstep= ',nstep,' newt= ',newton,' cuts= ',icut, &
       ' ksp_reason= ',ksp_reason
-        call ptran_destroy (da,da_mat,da_1dof,da_kin,sles)
+        call ptran_destroy (da,da_mat,da_1dof,da_kin)
         stop
       endif
 

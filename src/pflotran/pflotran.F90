@@ -13,10 +13,10 @@
 ! Commerce regulations, and classified as ECCN 
 ! (Export Control Classification Number) EAR99. 
  
-! If released as open source, the software will be publicly available and 
-! not subject to export control. Until DOE approval is obtained, the 
-! software should be treated as export controlled. DOE reserves the 
-! right to release or deny release of the software as open source.
+! If released as open source, the software will be publicly available  
+! and not subject to export control. Until DOE approval is obtained, 
+! the software should be treated as export controlled. DOE reserves  
+! the right to release or deny release of the software as open source.
 
 ! Send all bug reports/questions/comments to:
 ! Peter C. Lichtner
@@ -57,7 +57,6 @@
 #include "include/finclude/petscmat.h"
 #include "include/finclude/petscmat.h90"
 #include "include/finclude/petscpc.h"
-!#include "include/finclude/petscsles.h"
 #include "include/finclude/petscksp.h"
 #include "include/finclude/petscsnes.h"
 #include "include/finclude/petscsys.h"
@@ -84,14 +83,6 @@
 
 !==========trans==========
   DA    :: da, da_mat, da_1dof, da_kin
-
-#ifdef USE_PETSC216
-  SLES  :: sles
-#endif
-
-#ifdef USE_PETSC221
-  integer :: sles
-#endif
 
   KSP   :: ksp
   integer :: i,its,ix,j,jy,kstep,kz,n,ihalcnt
@@ -147,11 +138,11 @@
 
   call ptran_read
   print *, 'finished  read'
-  call ptran_init(da,da_mat,da_1dof,da_kin,sles,ksp)
+  call ptran_init(da,da_mat,da_1dof,da_kin,ksp)
   print *, 'finished  init'
   call pflowGrid_ptran_init(grid, ierr)
   print *, 'finished  flow init'
-  call ptran_chem(da,da_1dof,da_kin,sles)
+  call ptran_chem(da,da_1dof,da_kin)
   print *, 'finished  chem'
   if (grid%ihydrostatic == 1) call ptran_bc_reassign(grid)
   print *, 'finished  rebc'
@@ -221,7 +212,7 @@
       call pflotranGrid_interp(grid, tflow1, tflow2)
  
 !     solve reactive transport equations over a time step
-      call ptran_solv(its,da,da_mat,da_1dof,da_kin,sles,ksp)
+      call ptran_solv(its,da,da_mat,da_1dof,da_kin,ksp)
 
       newtcum = newtcum + newton
       icutcum = icutcum + icut
@@ -357,7 +348,7 @@
 
   call pflowgrid_destroy(grid)
 
-  call ptran_destroy(da,da_mat,da_1dof,da_kin,sles)
+  call ptran_destroy(da,da_mat,da_1dof,da_kin)
 
   if (myrank == 0) then
     close(IUNIT2)

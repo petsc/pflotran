@@ -22,9 +22,6 @@ private
 #include "include/finclude/petscmat.h90"
 #include "include/finclude/petscda.h"
 #include "include/finclude/petscda.h90"
-!#ifdef USE_PETSC216
-!#include "include/finclude/petscsles.h"
-!#endif
 #include "include/finclude/petscsnes.h"
 #include "include/finclude/petscviewer.h"
 #include "include/finclude/petscsys.h"

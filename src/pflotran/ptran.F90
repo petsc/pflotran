@@ -82,24 +82,12 @@
 #include "include/finclude/petsclog.h"
 #include "include/finclude/petscmat.h"
 #include "include/finclude/petscpc.h"
-#ifdef USE_PETSC216
-    ! petsc-2.1.6
-#include "include/finclude/petscsles.h"
-#endif
 #include "include/finclude/petscsys.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
 #include "include/finclude/petscviewer.h"
 
   DA    :: da, da_mat, da_1dof, da_kin
-
-#ifdef USE_PETSC216
-  SLES  :: sles
-#endif
-
-#ifdef USE_PETSC221
-  integer :: sles
-#endif
 
   PetscLogDouble :: timex(4), timex_wall(4)
   KSP   ::  ksp
@@ -152,9 +140,9 @@
   
   call ptran_read
                    
-  call ptran_init (da,da_mat,da_1dof,da_kin,sles,ksp)
+  call ptran_init (da,da_mat,da_1dof,da_kin,ksp)
 
-  call ptran_chem(da,da_1dof,da_kin,sles)
+  call ptran_chem(da,da_1dof,da_kin)
   
   call ptran_conn (da_1dof)
 
@@ -205,7 +193,7 @@
     endif
 
 !---solve reactive transport equations over a time step
-    call ptran_solv (its,da,da_mat,da_1dof,da_kin,sles,ksp)
+    call ptran_solv (its,da,da_mat,da_1dof,da_kin,ksp)
 
     newtcum = newtcum + newton
     icutcum = icutcum + icut
@@ -287,7 +275,7 @@
       endif
 ! -----------------------------------------
 
-  call ptran_destroy (da,da_mat,da_1dof,da_kin,sles)
+  call ptran_destroy (da,da_mat,da_1dof,da_kin)
 
   call PetscFinalize(ierr)
 

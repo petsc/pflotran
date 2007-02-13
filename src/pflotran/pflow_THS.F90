@@ -3,8 +3,8 @@
 !                            c_total :: grid%npricomp dof
 !                            p_total :: 1 dof
 !                            s_total :: (grid%nphase-1) dof
-!    stands for the accumulation term at last time step, except the /Dt part 
-!  should be updated in pflowgrid_mod.F90 :: pflowgrid_step          
+! stands for the accumulation term at last time step, except the /Dt part 
+! should be updated in pflowgrid_mod.F90 :: pflowgrid_step          
 
 #define PPRESSURE_LOC(n)   xx_loc_p(1+(n-1)*grid%ndof)
 #define PPRESSURE(n)       xx_p(1+(n-1)*grid%ndof)
@@ -19,8 +19,6 @@
 #define SSATG(n)           xx_p(4+(n-1)*grid%ndof)
 #define SATG(n)            yy_p(4+(n-1)*grid%ndof)
 
-
-               
  module THS_module
 
  use pflow_gridtype_module
@@ -36,9 +34,6 @@ private
 #include "include/finclude/petscmat.h90"
 #include "include/finclude/petscda.h"
 #include "include/finclude/petscda.h90"
-!#ifdef USE_PETSC216
-!#include "include/finclude/petscsles.h"
-!#endif
 #include "include/finclude/petscsnes.h"
 #include "include/finclude/petscviewer.h"
 #include "include/finclude/petscsys.h"

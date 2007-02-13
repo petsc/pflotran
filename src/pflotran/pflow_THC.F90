@@ -26,9 +26,6 @@ module THC_module
   ! indication of what the problem is.
 #include "include/finclude/petscmat.h"
 #include "finclude/petscda.h"
-!#ifdef USE_PETSC216
-!#include "include/finclude/petscsles.h"
-!#endif
 #include "include/finclude/petscsnes.h"
 #include "include/finclude/petscviewer.h"
 #include "include/finclude/petscsys.h"

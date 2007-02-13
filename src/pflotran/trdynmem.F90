@@ -32,10 +32,6 @@
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscmat.h"
 #include "include/finclude/petscda.h"
-#ifdef USE_PETSC216
-    ! petsc-2.1.6
-#include "include/finclude/petscsles.h"
-#endif
 #undef PETSC_AVOID_MPIF_H
 #undef PETSC_AVOID_DECLARATIONS
 

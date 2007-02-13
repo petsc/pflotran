@@ -28,7 +28,7 @@ module ptran_destroy_module
 
 contains
 
-  subroutine ptran_destroy (da,da_mat,da_1dof,da_kin,sles)
+  subroutine ptran_destroy (da,da_mat,da_1dof,da_kin)
    
   use ptran_global_module
   use trdynmem_module
@@ -41,24 +41,12 @@ contains
 #include "include/finclude/petsclog.h"
 #include "include/finclude/petscmat.h"
 #include "include/finclude/petscpc.h"
-#ifdef USE_PETSC216
-    ! petsc-2.1.6
-#include "include/finclude/petscsles.h"
-#endif
 #include "include/finclude/petscsys.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
 !#include "include/finclude/petscviewer.h"
 
   DA    :: da ,da_mat, da_1dof, da_kin
-
-#ifdef USE_PETSC216
-  SLES  :: sles
-#endif
-
-#ifdef USE_PETSC221
-  integer :: sles
-#endif
   
   integer :: ierr
   
@@ -67,10 +55,6 @@ contains
   call DADestroy(da,ierr)
   call DADestroy(da_mat,ierr)
   call DADestroy(da_1dof,ierr)
-  
-#ifdef USE_PETSC216
-  call SLESDestroy(sles,ierr)
-#endif
 
   call MatDestroy(A,ierr)
   call VecDestroy(x,ierr)

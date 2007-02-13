@@ -35,9 +35,6 @@ module pflow_grid_module
 #include "include/finclude/petscmat.h90"
 #include "include/finclude/petscda.h"
 #include "include/finclude/petscda.h90"
-#ifdef USE_PETSC216
-#include "include/finclude/petscsles.h"
-#endif
 #include "include/finclude/petscsnes.h"
 #include "include/finclude/petscviewer.h"
 #include "include/finclude/petscksp.h"
@@ -2828,36 +2825,7 @@ subroutine pflowGrid_step(grid,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
   endif
   
   do
-! call VecView(grid%r,PETSC_VIEWER_STDOUT_WORLD,ierr) 
-! call VecView(grid%xx,PETSC_VIEWER_STDOUT_WORLD,ierr) 
-#ifdef USE_PETSC216
-    ! petsc-2.1.6
     
-    print *,'Step',  grid%t,grid%dt
-
-    if (grid%use_cond == PETSC_TRUE) then
-      call SNESSolve(grid%snes, grid%ttemp, its, ierr)
-    else if (grid%use_th == PETSC_TRUE) then
-      call SNESSolve(grid%snes, grid%xx, its, ierr)
-    else if (grid%use_thc == PETSC_TRUE) then
-      call SNESSolve(grid%snes, grid%xx, its, ierr)
-    else if (grid%use_2ph == PETSC_TRUE) then
-      call SNESSolve(grid%snes, grid%xx, its, ierr)
-    else if (grid%use_mph == PETSC_TRUE) then
-      call SNESSolve(grid%snes, grid%xx, its, ierr)
-    else if (grid%use_vadose == PETSC_TRUE) then
-      call SNESSolve(grid%snes, grid%xx, its, ierr)
-    else if (grid%use_owg == PETSC_TRUE) then
-      call SNESSolve(grid%snes, grid%xx, its, ierr)
-    else
-      call SNESSolve(grid%snes, grid%ppressure, its, ierr)
-    endif
-!   call SNESGetSLES(grid%sles, ierr)
-!   call KSPGetIterationNumber(grid%ksp, kspits, ierr)
-#else
-    
-    ! petsc-2.2.0    
-  ! print *,'Step',  grid%t,grid%dt
     grid%iphch=0
     if (grid%use_cond == PETSC_TRUE) then
       call SNESSolve(grid%snes, PETSC_NULL, grid%ttemp, ierr)
@@ -2894,7 +2862,6 @@ subroutine pflowGrid_step(grid,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
    if (grid%use_ksp /= PETSC_TRUE) &
      call SNESGetIterationNumber(grid%snes, its, ierr)
 !   call KSPGetIterationNumber(grid%ksp, kspits, ierr)
-#endif
   
 !   printout residual and jacobian to screen for testing purposes
 !   call VecView(grid%r,PETSC_VIEWER_STDOUT_WORLD,ierr)

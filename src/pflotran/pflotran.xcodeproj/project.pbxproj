@@ -66,7 +66,6 @@
 		33D9A02109D9A0A9008962D9 /* oil_eos.F90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; path = oil_eos.F90; sourceTree = "<group>"; };
 		33D9A02809D9EB2C008962D9 /* oil_pckr.F90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; path = oil_pckr.F90; sourceTree = "<group>"; };
 		33E20B6909ED787000578A26 /* translator_mixed_fluid_mph.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = translator_mixed_fluid_mph.F90; sourceTree = "<group>"; };
-		33E20BAC09ED9D9000578A26 /* translator_mixed_fluid.F90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; path = translator_mixed_fluid.F90; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -123,7 +122,6 @@
 				33021ABE08A12EFD00D082B8 /* ptran_update.F90 */,
 				33C0932A09BF95D300A773C8 /* Readfield.F90 */,
 				33021AC008A12EFD00D082B8 /* rock_react.F90 */,
-				33E20BAC09ED9D9000578A26 /* translator_mixed_fluid.F90 */,
 				33E20B6909ED787000578A26 /* translator_mixed_fluid_mph.F90 */,
 				33021ACE08A1306800D082B8 /* translator_mixed_fluid_OWG.F90 */,
 				33021AC108A12EFD00D082B8 /* trdynmem.F90 */,

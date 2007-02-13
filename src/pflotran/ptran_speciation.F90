@@ -30,7 +30,7 @@ module ptran_speciation_module
 
 contains
 
-      subroutine trstartup (da,da_1dof,da_kin,sles)
+      subroutine trstartup (da,da_1dof,da_kin)
 
       use ptran_global_module
       use trdynmem_module
@@ -43,23 +43,11 @@ contains
 #include "include/finclude/petscda.h"
 #include "include/finclude/petscda.h90"
 #include "include/finclude/petsclog.h"
-#ifdef USE_PETSC216
-    ! petsc-2.1.6
-#include "include/finclude/petscsles.h"
-#endif
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
 #include "include/finclude/petscviewer.h"
 
   DA    :: da, da_1dof, da_kin
-
-#ifdef USE_PETSC216
-  SLES  :: sles
-#endif
-
-#ifdef USE_PETSC221
-  integer :: sles
-#endif
       
       real*8 :: cloctot(ncmx),gamloc(ncmx),pgasloc(ngmx),cloc(ncmx), &
                 cxloc(ncxmx),gamxloc(ncxmx),cecloc(nexmx),xexloc(nexmx),&

@@ -17,9 +17,6 @@ private
 #include "include/finclude/petscmat.h90"
 #include "include/finclude/petscda.h"
 #include "include/finclude/petscda.h90"
-#ifdef USE_PETSC216
-#include "include/finclude/petscsles.h"
-#endif
 #include "include/finclude/petscsnes.h"
 #include "include/finclude/petscksp.h"
 #include "include/finclude/petscpc.h"
@@ -30,10 +27,6 @@ private
 #include "include/finclude/petsclog.h"
 
   type, public:: pflowGrid
-! Note that preprocessor directives MUST start in the first column!
-!#ifndef DEBUG
-!   private
-!#endif
 
     integer :: myrank, commsize  ! Rank in PETSC_COMM_WORLD.
 

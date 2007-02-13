@@ -34,7 +34,7 @@ module ptran_init_module
 
 contains
 
-  subroutine ptran_init (da,da_mat,da_1dof,da_kin,sles,ksp)
+  subroutine ptran_init (da,da_mat,da_1dof,da_kin,ksp)
 
   use ptran_global_module
   use trdynmem_module
@@ -49,25 +49,11 @@ contains
 #include "include/finclude/petsclog.h"
 #include "include/finclude/petscmat.h"
 #include "include/finclude/petscpc.h"
-#ifdef USE_PETSC216
-    ! petsc-2.1.6
-#include "include/finclude/petscsles.h"
-#endif
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
 #include "include/finclude/petscviewer.h"
 
   DA :: da, da_mat, da_1dof, da_kin
-
-#ifdef USE_PETSC216
-  SLES :: sles
-#endif
-
-#ifdef USE_PETSC221
-  integer :: sles
-#endif
-
-! PetscViewer   vecviewer
 
   KSPType :: ksp_type
   PCType  :: pc_type
@@ -199,15 +185,7 @@ contains
   call VecDuplicate(porloc,dz_loc,ierr)
   call VecDuplicate(porloc,ghost_loc,ierr)
 
-#ifdef USE_PETSC216
-    ! petsc-2.1.6
-  call SLESCreate(PETSC_COMM_WORLD,sles,ierr)
-#endif
-
-#ifdef USE_PETSC221
-    ! petsc-2.2.0
   call KSPCreate(PETSC_COMM_WORLD,ksp,ierr)
-#endif
 
 ! call DAGetCorners(da,nxs,nys,nzs,nlx,nly,nlz,ierr)
   call DAGetCorners(da_mat,nxs,nys,nzs,nlx,nly,nlz,ierr)
@@ -332,15 +310,8 @@ contains
 ! call VecRestoreArrayF90(ghost_loc,ghost_loc_p,ierr)
   
 !-------preconditioner-------------------------
-#ifdef USE_PETSC216
-  ! petsc-2.1.6
-  call SLESGetPC(sles, pc, ierr)
-#endif
 
-#ifdef USE_PETSC221
-  ! petsc-2.2.0
   call KSPGetPC(ksp, pc, ierr)
-#endif
 
 ! pc_type = PCILU
   if (iblkfmt == 0) then
@@ -348,7 +319,6 @@ contains
   else
     pc_type = PCBJACOBI
   endif
-! pc_type = PCSLES
 ! pc_type = PCASM
 ! pc_type = PCNONE
   call PCSetType(pc,pc_type,ierr)
@@ -357,15 +327,7 @@ contains
 ! call PCILUSetDamping(pc,1.d-14,ierr)
 
 !-------krylov subspace method ----------------
-#ifdef USE_PETSC221
   call KSPSetFromOptions(ksp,ierr)
-#endif
-
-#ifdef USE_PETSC216
-    ! petsc-2.1.6
-  call SLESSetFromOptions(sles,ierr)
-  call SLESGetKSP(sles,ksp,ierr)
-#endif
 
   call KSPSetInitialGuessNonzero(ksp,PETSC_TRUE,ierr)
 
@@ -695,7 +657,7 @@ contains
 
   end subroutine ptran_init
   
-  subroutine ptran_chem(da,da_1dof,da_kin,sles)
+  subroutine ptran_chem(da,da_1dof,da_kin)
 
   use ptran_global_module
   use trdynmem_module
@@ -713,23 +675,11 @@ contains
 #include "include/finclude/petsclog.h"
 #include "include/finclude/petscmat.h"
 #include "include/finclude/petscpc.h"
-#ifdef USE_PETSC216
-    ! petsc-2.1.6
-#include "include/finclude/petscsles.h"
-#endif
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
 #include "include/finclude/petscviewer.h"
 
   DA    :: da, da_1dof, da_kin
-
-#ifdef USE_PETSC216
-  SLES  :: sles
-#endif
-
-#ifdef USE_PETSC221
-  integer :: sles
-#endif
 
 ! PetscViewer   vecviewer
   integer :: ierr,i,j,l,m
@@ -741,7 +691,7 @@ contains
   call trinit
 
   if (myrank == 0) write(*,*) '--> speciate initial fluid composition'
-  call trstartup (da,da_1dof,da_kin,sles)
+  call trstartup (da,da_1dof,da_kin)
 
 ! initialize psi, gam, gamx
    

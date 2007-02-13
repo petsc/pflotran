@@ -1,6 +1,3 @@
-!======================================================================
-
-!#include "pflowLIQUID.F90"
 
 #define PPRESSURE_LOC(j,n) xx_loc_p(j+(n-1)*grid%ndof)
 #define PPRESSURE(j,n) xx_p(j+(n-1)*grid%ndof)
@@ -20,17 +17,12 @@ private
 #include "include/finclude/petscmat.h90"
 #include "include/finclude/petscda.h"
 #include "include/finclude/petscda.h90"
-!#ifdef USE_PETSC216
-!#include "include/finclude/petscsles.h"
-!#endif
 #include "include/finclude/petscsnes.h"
 #include "include/finclude/petscviewer.h"
 #include "include/finclude/petscsys.h"
 #include "include/finclude/petscis.h"
 #include "include/finclude/petscis.h90"
 #include "include/finclude/petsclog.h"
-
-!#include "pflow_gridtype.h"
 
 public LiquidResidual, LiquidJacobian
 

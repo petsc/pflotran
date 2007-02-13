@@ -916,15 +916,6 @@ module pflow_output_module
   kplt = kplt + 1
   iplot = 0
 
-! call VecDestroy(grid%c_nat, ierr)
-! call VecDestroy(grid%phis_nat, ierr)
-! call VecDestroy(grid%t_nat, ierr)
-! call VecDestroy(grid%por_nat, ierr)
-! call VecDestroy(grid%p_nat, ierr)
-! call VecDestroy(grid%s_nat, ierr)
-! call VecDestroy(grid%vl_nat, ierr)
-! call VecDestroy(grid%x_nat, ierr)
-
   call VecDestroy(c_nat, ierr)
   call VecDestroy(phis_nat, ierr)
   call VecDestroy(t_nat, ierr)
@@ -958,7 +949,6 @@ module pflow_output_module
 #include "include/finclude/petscmat.h"
 #include "include/finclude/petscmat.h90"
 #include "include/finclude/petscpc.h"
-!#include "include/finclude/petscsles.h"
 #include "include/finclude/petscksp.h"
 #include "include/finclude/petscsnes.h"
 #include "include/finclude/petscsys.h"

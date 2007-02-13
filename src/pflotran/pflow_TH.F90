@@ -12,8 +12,10 @@
 
 module TH_module
 
-  use pflow_gridtype_module
+use pflow_gridtype_module
+
 private
+
 #include "include/finclude/petsc.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
@@ -24,9 +26,6 @@ private
 #include "include/finclude/petscmat.h90"
 #include "include/finclude/petscda.h"
 #include "include/finclude/petscda.h90"
-!#ifdef USE_PETSC216
-!#include "include/finclude/petscsles.h"
-!#endif
 #include "include/finclude/petscsnes.h"
 #include "include/finclude/petscviewer.h"
 #include "include/finclude/petscsys.h"
@@ -605,9 +604,6 @@ contains
   ! indication of what the problem is.
 !#include "include/finclude/petscmat.h"
 !#include "finclude/petscda.h"
-!#ifdef USE_PETSC216
-!#include "include/finclude/petscsles.h"
-!#endif
 !#include "include/finclude/petscsnes.h"
 !#include "include/finclude/petscviewer.h"
 !#include "include/finclude/petscsys.h"
