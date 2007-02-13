@@ -1,0 +1,74 @@
+  !accumulation term
+  do n = 1, grid%nlmax  ! For each local node do...
+    ng = grid%nL2G(n)   ! corresponding ghost index
+    voldt = porosity_loc_p(ng) * volume_p(n) / grid%dt
+    r_p(jn) = (ddensity_loc_p(ng) - density_p(n)) * voldt
+  enddo
+
+
+  !flux term
+  do nc = 1, grid%nconn  ! For each interior connection...
+    m1 = grid%nd1(nc) ! node indices other either side of face nc
+    m2 = grid%nd2(nc)
+
+    n1 = grid%nG2L(m1) ! local node indices
+    n2 = grid%nG2L(m2)
+    
+    dd1 = grid%dist1(nc) ! distances to interface
+    dd2 = grid%dist2(nc)
+    
+    ip1 = grid%iperm1(nc)
+    ip2 = grid%iperm2(nc)
+    
+    if (ip1 == 1) then
+      perm1 = perm_xx_loc_p(m1)
+    else if (ip1 == 2) then
+      perm1 = perm_yy_loc_p(m1)
+    else
+      perm1 = perm_zz_loc_p(m1)
+    endif
+    
+    if (ip2 == 1) then
+      perm2 = perm_xx_loc_p(m2)
+    else if (ip2 == 2) then
+      perm2 = perm_yy_loc_p(m2)
+    else
+      perm2 = perm_zz_loc_p(m2)
+    endif
+    
+    dd = dd1 + dd2
+    f1 = dd1/dd
+    f2 = dd2/dd
+    
+    gravity = grid%fmwh2o * grid%gravity * grid%delz(nc)
+
+    D1 = perm1 / viscosity_loc_p(m1)
+    D2 = perm2 / viscosity_loc_p(m2)
+
+    D = (D1 * D2) / (dd2*D1 + dd1*D2)
+
+    density_ave = f2 * ddensity_loc_p(m1) + f1* ddensity_loc_p(m2)
+
+    v_darcy = -D * (ppressure_loc_p(m2) - ppressure_loc_p(m1) & 
+                - gravity * density_ave)
+
+    q = v_darcy * grid%area(nc)
+    flux = density_ave * q
+    
+      ! Now add the flux contributions for this phase.
+      ! Note that fluxes through a downstream face should be added to the
+      ! residual component at the cell, while fluxes through an upstream face 
+      ! should be subtracted.  (The divergence gives the net OUTFLOW rate per
+      ! unit volume.)  Thus, when working with pressure differences,
+      ! (ppressure(jm2) - ppressure(jm1)) should be *subtracted* at the 
+      ! upstream node n1 because q = -D*div(P).
+    
+    if (n1 > 0) then  ! If the upstream node is not a ghost node...
+        r_p(n1) = r_p(n1) + flux
+    endif
+
+    if (n2 > 0) then ! If the downstream node is not a ghost node...
+        r_p(n2) = r_p(n2) - flux
+    endif
+  enddo
+  
