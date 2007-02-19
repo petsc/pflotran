@@ -26,7 +26,7 @@
       real*8 ,private, allocatable :: co2_prop_spwag(:,:,:)
       real*8, private :: p,t,rhosav
 
-	  public initialize_span_wagner, co2_span_wagner
+      public initialize_span_wagner, co2_span_wagner
 
       private
 
@@ -273,8 +273,7 @@
       capd(1) = 275.d0
       capd(2) = 275.d0
       capd(3) = 275.d0
-	  
-	  
+
   allocate(co2_prop_spwag(0:500,0:100,1:15))
   
   if (myrank==0) print *,' Preparing Table...',iitable
@@ -439,26 +438,26 @@
   endif
 
   if(isucc>0)then
-  	
-	if(i1==i2 .and. j1==j2)then
-	  factor(1)=1.D0
-	  factor(2:4)=0.D0
-    elseif(i2==i1) then 
-	  factor(1)=-(jindex-j2)
-	  factor(2)= 0.D0
-	  factor(3)= (jindex-j1)
-	  factor(4)= 0.D0
-    elseif(j2==j1) then 
-	  factor(1)=-(iindex-i2)
-	  factor(2)=(iindex-i1)
-	  factor(3)=0.0
-	  factor(4)=0.D0
-	else
-	  factor(1)= (iindex-i2) * (jindex-j2)
-      factor(2)= -(iindex-i1) * (jindex-j2)
-      factor(3)= -(iindex-i2) * (jindex-j1)
-      factor(4)= (iindex-i1) * (jindex-j1)
-    endif
+
+  if(i1==i2 .and. j1==j2)then
+    factor(1)=1.D0
+    factor(2:4)=0.D0
+  elseif(i2==i1) then 
+    factor(1)=-(jindex-j2)
+    factor(2)= 0.D0
+    factor(3)= (jindex-j1)
+    factor(4)= 0.D0
+  elseif(j2==j1) then 
+    factor(1)=-(iindex-i2)
+    factor(2)=(iindex-i1)
+    factor(3)=0.0
+    factor(4)=0.D0
+  else
+    factor(1)= (iindex-i2) * (jindex-j2)
+    factor(2)= -(iindex-i1) * (jindex-j2)
+    factor(3)= -(iindex-i2) * (jindex-j1)
+    factor(4)= (iindex-i1) * (jindex-j1)
+  endif
 
     i=1
     tmp = factor(1)* co2_prop_spwag(i1,j1,i) + factor(2)* co2_prop_spwag(i2,j1,i) &
@@ -556,10 +555,10 @@
 
 !     dhdt = -rg*tau*tau*((-1.d0/(tau*tau))+fiott+firtt+ &
 !         ((del*firdt)/tau)-((del*fird)/(tau*tau)))
-		  
+
       dhdt = rg*((1.d0+del*(fird-tau*firdt))**2/(1.d0+del*(2.d0*fird+del*firdd))- &
-	         tau*tau*(fiott+firtt))
-	  
+             tau*tau*(fiott+firtt))
+
       dhdp = (1000.d0/denc)*((tau*firdt)+(del*firdd)+fird)/ &
           (1.d0+(del*del*firdd)+(2.d0*del*fird))
 
@@ -718,7 +717,7 @@
 
   subroutine co2den(den,f,df)
      
-	  IMPLICIT NONE
+    IMPLICIT NONE
       real*8 :: den,tau1,del1
       real*8 :: f1,df1,f,df
 

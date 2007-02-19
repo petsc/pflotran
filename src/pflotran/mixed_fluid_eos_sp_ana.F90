@@ -31,9 +31,8 @@ module mixture_module
     use water_eos_module
     use gas_eos_module  
     use pckr_module
-	use co2eos_module
+    use co2eos_module
     use span_wagner_module
-
 
     implicit none
 
@@ -114,8 +113,8 @@ module mixture_module
       fg= fg * 1D6
       hg= hg * fmwco2
     else      
-	  call ideal_gaseos_noderiv(pa,t,energyscale,dg,hg,ug)
-	  call visco2(t,dg*fmwco2,visg)
+      call ideal_gaseos_noderiv(pa,t,energyscale,dg,hg,ug)
+      call visco2(t,dg*fmwco2,visg)
       fg=pa
     endif
 !    call duanco2(t,p*xga/1D5,dg,fugco2,co2_phi)
@@ -294,8 +293,8 @@ end subroutine mixture_eos_noderiv
     real*8  :: ps,pa,henry,henry_p,henry_t,henry_c,henry_s
     real*8  :: xla,xgw,xlw, xlco2, xmlco2
     real*8  :: tmp,tmp2,tmp1,tmp3,tmp0,tmp4,tmp5
-	real*8  co2_poyn,co2_phi,fugco2
-    real*8  dddt,dddp,fg,dfgdp,dfgdt,eng,dhdt,dhdp,dvdt,dvdp
+    real*8  :: co2_poyn,co2_phi,fugco2
+    real*8  :: dddt,dddp,fg,dfgdp,dfgdt,eng,dhdt,dhdp,dvdt,dvdp
 
     ierr=0 
     den=0.D0; den_p=0.D0; den_t=0.D0; den_c=0.D0; den_s=0.D0
@@ -314,7 +313,7 @@ end subroutine mixture_eos_noderiv
     !ps=sat_pressure
     call PSAT1(t,sat_pressure,sat_pressure_t,ierr)
     ps=sat_pressure
-	sat_pressure_t =1.D0/sat_pressure_t !in PSAT1 it is dT/dPsat
+    sat_pressure_t =1.D0/sat_pressure_t !in PSAT1 it is dT/dPsat
     sat_pressure_p=0.D0
 
 !***************  Liquid phase properties **************************
@@ -388,10 +387,10 @@ end subroutine mixture_eos_noderiv
 !********************************************************************* 
 
 
-    !call  Henry_air(p,t,sat_pressure,sat_pressure_p,sat_pressure_t, Henry,&
+    !call Henry_air(p,t,sat_pressure,sat_pressure_p,sat_pressure_t, Henry,&
     !          Henry_p,Henry_t)
     
-	!call	duanco2(t,p*xga/1D5,dg,fugco2,co2_phi)
+    !call duanco2(t,p*xga/1D5,dg,fugco2,co2_phi)
     !dg= dg * 1.D3 /fmwco2
     !call ENTHALPY(T+273.15D0,1.D-3/dg ,1.D0/co2_phi, hg)
     !hg=hg*1.D-3
@@ -403,23 +402,23 @@ end subroutine mixture_eos_noderiv
       dg= dg / fmwco2
       fg= fg * 1D6
       hg= hg * fmwco2
-	  dddt = dddt/ fmwco2
-	  dddp = dddp/ fmwco2 * 1D-6
+      dddt = dddt/ fmwco2
+      dddp = dddp/ fmwco2 * 1D-6
       dfgdp=dfgdp
-	  dfgdt=dfgdt* 1D6
-	  eng=eng*fmwco2
-	  dhdt=dhdt* fmwco2
-	  dhdp=dhdp* fmwco2*1D-6
-	  dvdp=dvdp*1D-6
-!	     print *,'Ana: ', dg,dddt/ fmwco2,dddp/ fmwco2 *1D-6,fg,&
+      dfgdt=dfgdt* 1D6
+      eng=eng*fmwco2
+      dhdt=dhdt* fmwco2
+      dhdp=dhdp* fmwco2*1D-6
+      dvdp=dvdp*1D-6
+!      print *,'Ana: ', dg,dddt/ fmwco2,dddp/ fmwco2 *1D-6,fg,&
 !      dfgdp,dfgdt* 1D6,eng*fmwco2,hg,dhdt* fmwco2,dhdp* fmwco2*1D-6,visg,dvdt,dvdp*1D-6
-     else      
-	  call ideal_gaseos_noderiv(pa,t,energyscale,dg,hg,ug)
-	  call visco2(t,dg*fmwco2,visg)
+    else      
+      call ideal_gaseos_noderiv(pa,t,energyscale,dg,hg,ug)
+      call visco2(t,dg*fmwco2,visg)
       fg=pa
     endif
-	
-	call Henry_CO2_noderiv(xla,tmp,t,p*xga, fg/p/xga, henry,co2_poyn)
+
+    call Henry_CO2_noderiv(xla,tmp,t,p*xga, fg/p/xga, henry,co2_poyn)
 
 
  !  if(sg<1.D0-eps)then
@@ -480,7 +479,7 @@ end subroutine mixture_eos_noderiv
     u(2)=  h(2)-p/den(2) * energyscale
    ! call visgas_noderiv(t,pa,p,den(2),visg)
 
- if(pa>=5D4)then
+  if(pa>=5D4)then
 
 
 
@@ -489,116 +488,112 @@ end subroutine mixture_eos_noderiv
       
        !call  ideal_gaseos(p+tmp,t,energyscale,dg,dg_p,dg_t,hg,hg_p,hg_t,ug,ug_p,ug_t) 
 
-   den_p(2) = dddp *xga + dstea_p *xgw
-   h_p(2) =  xga* dhdp*xga  + xgw * hstea_p *xgw
-   u_p(2) =  h_p(2) - (1.D0/den(2) - p/den(2)*den_p(2)/den(2)) * energyscale
-   visg_p =  dvdp 
+    den_p(2) = dddp *xga + dstea_p *xgw
+    h_p(2) =  xga* dhdp*xga  + xgw * hstea_p *xgw
+    u_p(2) =  h_p(2) - (1.D0/den(2) - p/den(2)*den_p(2)/den(2)) * energyscale
+    visg_p =  dvdp 
    
-   den_t(2) = dddt + dstea_t
-   h_t(2) =  xga* dhdt  + xgw * hstea_t
-   u_t(2) = h_t(2) + p * den_t(2)/ den(2) /den(2) * energyscale
-   visg_t = dvdt
+    den_t(2) = dddt + dstea_t
+    h_t(2) =  xga* dhdt  + xgw * hstea_t
+    u_t(2) = h_t(2) + p * den_t(2)/ den(2) /den(2) * energyscale
+    visg_t = dvdt
     
-   den_c(2) = p * (  dddp - dstea_p)
-   h_c(2) = p * ( hg-hstea + xga* p * dhdp - xgw * p *   )
-   u_c(2) = h_c(2) + p *  den_c(2)/ den(2) /den(2)  * energyscale
-   	
-	
-	else
+    den_c(2) = p * (  dddp - dstea_p)
+    h_c(2) = p * ( hg-hstea + xga* p * dhdp - xgw * p *   )
+    u_c(2) = h_c(2) + p *  den_c(2)/ den(2) /den(2)  * energyscale
+
+  else
 
  !dp 
-	  tmp=-1.D-1
-	  pa=(p+tmp)*xga
-	  call ideal_gaseos_noderiv(pa,t,energyscale,dg,hg,ug)
-	  call visco2(t,dg*fmwco2,tmp4)
-      fg=pa
+    tmp=-1.D-1
+    pa=(p+tmp)*xga
+    call ideal_gaseos_noderiv(pa,t,energyscale,dg,hg,ug)
+    call visco2(t,dg*fmwco2,tmp4)
+    fg=pa
    
-		call Henry_CO2_noderiv(xlco2,xmlco2,t,(p+tmp)*xga, fg/(p+tmp)/xga, henry,co2_poyn)		   
-						     	   
-	   if(xgw>eps)then
-          call steameos(t,p+tmp,(p+tmp)*xga,dstea,dsteamol,dstea_p,dstea_t,&
+    call Henry_CO2_noderiv(xlco2,xmlco2,t,(p+tmp)*xga, fg/(p+tmp)/xga, henry,co2_poyn)
+    
+    if(xgw>eps)then
+      call steameos(t,p+tmp,(p+tmp)*xga,dstea,dsteamol,dstea_p,dstea_t,&
                hstea,hstea_p,hstea_t,energyscale,ierr)
-       else
-          dsteamol=dg/xga*xgw
-          hstea=hg 
-       end if
+    else
+      dsteamol=dg/xga*xgw
+      hstea=hg 
+    end if
 
-      	   hen_p(2)=(tmp5-hen(2))/tmp
-       h_p(2)  = (tmp2-h(2))/tmp
-       u_p(2) = (tmp3 - u(2))/tmp
-       visg_p = (tmp4-visg)/tmp
+    hen_p(2)=(tmp5-hen(2))/tmp
+    h_p(2)  = (tmp2-h(2))/tmp
+    u_p(2) = (tmp3 - u(2))/tmp
+    visg_p = (tmp4-visg)/tmp
 
     !dt
-      tmp=1.D-3
+    tmp=1.D-3
      ! call  ideal_gaseos(p,t+tmp,energyscale,dg,dg_p,dg_t,hg,hg_p,hg_t,ug,ug_p,ug_t)
-       pa=p*xga
+    pa=p*xga
+
+    call ideal_gaseos_noderiv(pa,t+tmp,energyscale,dg,hg,ug)
+    call visco2(t+tmp,dg*fmwco2,tmp4)
+    fg=pa
     
- 	  call ideal_gaseos_noderiv(pa,t+tmp,energyscale,dg,hg,ug)
-	  call visco2(t+tmp,dg*fmwco2,tmp4)
-      fg=pa
-    
-	  call Henry_CO2_noderiv(xlco2,xmlco2,t+tmp,p*xga, fg/p/xga, henry,co2_poyn)	
-	  if(xgw>eps)then
-         call steameos(t+tmp,p,pa,dstea,dsteamol,dstea_p,dstea_t,&
+    call Henry_CO2_noderiv(xlco2,xmlco2,t+tmp,p*xga, fg/p/xga, henry,co2_poyn)
+    if(xgw>eps)then
+      call steameos(t+tmp,p,pa,dstea,dsteamol,dstea_p,dstea_t,&
              hstea ,hstea_p,hstea_t,energyscale,ierr)
-      else
-         dsteamol=dg/xga*xgw
-         hstea=hg
-       end if
-       tmp0 =  dg + dsteamol !den
-       tmp2 = hstea *xgw+ hg * xga                     !h
-       tmp3 = tmp2 - p/tmp0   * energyscale         !u
-	   tmp5 = p/henry
+    else
+      dsteamol=dg/xga*xgw
+      hstea=hg
+    end if
+    tmp0 =  dg + dsteamol !den
+    tmp2 = hstea *xgw+ hg * xga                     !h
+    tmp3 = tmp2 - p/tmp0   * energyscale         !u
+    tmp5 = p/henry
        
-       den_t(2)= (tmp0-den(2))/tmp 
-	   hen_t(2)=(tmp5-hen(2))/tmp
-       h_t(2)  = (tmp2- h(2))/tmp
-       u_t(2) = (tmp3 - u(2))/tmp
-       visg_t = (tmp4-visg)/tmp
-			
-    
+    den_t(2)= (tmp0-den(2))/tmp 
+    hen_t(2)=(tmp5-hen(2))/tmp
+    h_t(2)  = (tmp2- h(2))/tmp
+    u_t(2) = (tmp3 - u(2))/tmp
+    visg_t = (tmp4-visg)/tmp
+
     !dx   
-       tmp=-1.D-6
-       if(xga<0.1D0) tmp = 1.D-5
-       xgw=1.D0-(xga+tmp); xla=hen(2)*(xga+tmp) ; xlw=1.D0 - xla;pa=p * (xga+tmp)
-       !call  ideal_gaseos(p,t,energyscale,dg,dg_p,dg_t,hg,hg_p,hg_t,ug,ug_p,ug_t)
-	   
-	!    call duanco2(t,p*(xga+tmp)/1D5,dg,fugco2,co2_phi)
-	!	dg= dg * 1.D3 /fmwco2
-	!	call ENTHALPY(T+273.15D0,1.D-3/dg ,1.D0/co2_phi, hg)
-	!	hg=hg*1.D-3
-	!	call Henry_CO2_noderiv(xlco2,xmlco2,t,p*(xga+tmp), co2_phi, henry,co2_poyn)
-	
+    tmp=-1.D-6
+    if(xga<0.1D0) tmp = 1.D-5
+    xgw=1.D0-(xga+tmp); xla=hen(2)*(xga+tmp) ; xlw=1.D0 - xla;pa=p * (xga+tmp)
+    !call  ideal_gaseos(p,t,energyscale,dg,dg_p,dg_t,hg,hg_p,hg_t,ug,ug_p,ug_t)
 
-      call ideal_gaseos_noderiv(pa,t,energyscale,dg,hg,ug)
-	  call visco2(t,dg*fmwco2,tmp4)
-      fg=pa
-    
+  ! call duanco2(t,p*(xga+tmp)/1D5,dg,fugco2,co2_phi)
+  ! dg= dg * 1.D3 /fmwco2
+  ! call ENTHALPY(T+273.15D0,1.D-3/dg ,1.D0/co2_phi, hg)
+  ! hg=hg*1.D-3
+  ! call Henry_CO2_noderiv(xlco2,xmlco2,t,p*(xga+tmp), co2_phi, henry,co2_poyn)
 
-     call Henry_CO2_noderiv(xlco2,xmlco2,t,p*(tmp+xga), fg/p/(xga+tmp), henry,co2_poyn)		   
+    call ideal_gaseos_noderiv(pa,t,energyscale,dg,hg,ug)
+    call visco2(t,dg*fmwco2,tmp4)
+    fg=pa
 
-       if((1.D0-xga)>eps)then
-          call steameos(t,p,pa,dstea,dsteamol,dstea_p,dstea_t,&
+    call Henry_CO2_noderiv(xlco2,xmlco2,t,p*(tmp+xga), fg/p/(xga+tmp), henry,co2_poyn)  
+
+    if((1.D0-xga)>eps)then
+      call steameos(t,p,pa,dstea,dsteamol,dstea_p,dstea_t,&
                hstea,hstea_p,hstea_t,energyscale,ierr)
-       else
-          dsteamol=dg/(xga+tmp)*xgw
-          hstea=hg
-       end if
-       tmp0 =  dg + dsteamol   !den
-       tmp2= hstea *xgw+ hg *(xga+tmp)                    !h
-       tmp3 = tmp2 - p/tmp0 * energyscale             !u
-	   tmp5 = p/henry           !henry
-       
-       den_c(2)= (tmp0-den(2))/tmp
-	   hen_c(2)= (tmp5-hen(2))/tmp
-       h_c(2)  = (tmp2- h(2))/tmp
-       u_c(2) = (tmp3 - u(2))/tmp
-       visg_c = (tmp4-visg)/tmp
+    else
+      dsteamol=dg/(xga+tmp)*xgw
+      hstea=hg
+    end if
+    tmp0 =  dg + dsteamol   !den
+    tmp2= hstea *xgw+ hg *(xga+tmp)                    !h
+    tmp3 = tmp2 - p/tmp0 * energyscale             !u
+    tmp5 = p/henry           !henry
 
-  xgw=1.D0-xga; xla=hen(2)*xga ; xlw=1.D0 - xla;pa=p * xga
-  
- endif
-	  
+    den_c(2)= (tmp0-den(2))/tmp
+    hen_c(2)= (tmp5-hen(2))/tmp
+    h_c(2)  = (tmp2- h(2))/tmp
+    u_c(2) = (tmp3 - u(2))/tmp
+    visg_c = (tmp4-visg)/tmp
+
+    xgw=1.D0-xga; xla=hen(2)*xga ; xlw=1.D0 - xla;pa=p * xga
+
+  endif
+
 ! print *,'gas phase der h::',t,p,xga,h(2),u(2),hg,hstea,dsteamol
 !  dsteamol=dsteamol/xgw
 !  dstea_t=dstea_t/xgw
@@ -665,7 +660,7 @@ end subroutine mixture_eos_noderiv
 
     avgmw(2)=xgw*fmwh2o+xga*fmwco2
     avgmw(1)=xlw*fmwh2o+xla*fmwco2
-	avgmw_c(2)= fmwco2 - fmwh2o
+    avgmw_c(2)= fmwco2 - fmwh2o
     avgmw_c(1)= Hen(2)* avgmw_c(2)
 
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

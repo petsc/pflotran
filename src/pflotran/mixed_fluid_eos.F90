@@ -127,7 +127,7 @@ module mixture_module
 !    dg= dg * 1.D3 /fmwco2
 !    call ENTHALPY(T+273.15D0,1.D-3/dg ,1.D0/co2_phi, hg)
 !    hg=hg*1.D-3
-	
+
     xphi = fg/(p*xga)
 
     call Henry_CO2_noderiv(xla,tmp,t,p*xga,xphi,henry,co2_poyn)
@@ -403,7 +403,7 @@ end subroutine mixture_eos_noderiv
     !call Henry_air(p,t,sat_pressure,sat_pressure_p,sat_pressure_t, Henry,&
     !          Henry_p,Henry_t)
     
-	!call duanco2(t,p*xga/1D5,dg,fugco2,co2_phi)
+    !call duanco2(t,p*xga/1D5,dg,fugco2,co2_phi)
     !dg= dg * 1.D3 /fmwco2
     !call ENTHALPY(T+273.15D0,1.D-3/dg ,1.D0/co2_phi, hg)
     !hg=hg*1.D-3
@@ -423,7 +423,7 @@ end subroutine mixture_eos_noderiv
       call visco2(t,dg*fmwco2,visg)
       fg=pa
     endif
-	
+
     xphi = fg/(p*xga)
 
     call Henry_CO2_noderiv(xla,tmp,t,p*xga,xphi,henry,co2_poyn)
@@ -431,7 +431,7 @@ end subroutine mixture_eos_noderiv
     hen(2) = p/Henry
     hen_t(2) = -hen(2)/Henry*Henry_t
     hen_p(2) = (1.D0 - hen(2)*Henry_p)/Henry
- 
+
 !   print *,'mixture_eos: ',p,fg,p*xga,t,xla,xga,henry,den(2),xphi
 
     hen(1)=0.D0
@@ -494,8 +494,8 @@ end subroutine mixture_eos_noderiv
     endif
    
     call Henry_CO2_noderiv(xlco2,xmlco2,t,(p+tmp)*xga,fg/(p+tmp)/xga, &
-    henry,co2_poyn)		   
-						     	   
+    henry,co2_poyn)
+
     if(xgw>eps)then
       call steameos(t,p+tmp,(p+tmp)*xga,dstea,dsteamol,dstea_p,dstea_t,&
                hstea,hstea_p,hstea_t,energyscale,ierr)
@@ -532,7 +532,7 @@ end subroutine mixture_eos_noderiv
       fg=pa
     endif
 
-    call Henry_CO2_noderiv(xlco2,xmlco2,t+tmp,p*xga,fg/p/xga,henry,co2_poyn)	
+    call Henry_CO2_noderiv(xlco2,xmlco2,t+tmp,p*xga,fg/p/xga,henry,co2_poyn)
     if(xgw>eps)then
       call steameos(t+tmp,p,pa,dstea,dsteamol,dstea_p,dstea_t,&
              hstea,hstea_p,hstea_t,energyscale,ierr)
@@ -550,20 +550,19 @@ end subroutine mixture_eos_noderiv
     h_t(2) = (tmp2 - h(2))/tmp
     u_t(2) = (tmp3 - u(2))/tmp
     visg_t = (tmp4-visg)/tmp
-			
-    
+
     !dx   
     tmp=-1.D-6
     if(xga<0.1D0) tmp = 1.D-5
     xgw=1.D0-(xga+tmp); xla=hen(2)*(xga+tmp) ; xlw=1.D0 - xla;pa=p * (xga+tmp)
        !call  ideal_gaseos(p,t,energyscale,dg,dg_p,dg_t,hg,hg_p,hg_t,ug,ug_p,ug_t)
-	   
-	!    call duanco2(t,p*(xga+tmp)/1D5,dg,fugco2,co2_phi)
-	!	dg= dg * 1.D3 /fmwco2
-	!	call ENTHALPY(T+273.15D0,1.D-3/dg ,1.D0/co2_phi, hg)
-	!	hg=hg*1.D-3
-	!	call Henry_CO2_noderiv(xlco2,xmlco2,t,p*(xga+tmp),co2_phi,henry,co2_poyn)
-	
+
+  !    call duanco2(t,p*(xga+tmp)/1D5,dg,fugco2,co2_phi)
+  ! dg= dg * 1.D3 /fmwco2
+  ! call ENTHALPY(T+273.15D0,1.D-3/dg ,1.D0/co2_phi, hg)
+  ! hg=hg*1.D-3
+  ! call Henry_CO2_noderiv(xlco2,xmlco2,t,p*(xga+tmp),co2_phi,henry,co2_poyn)
+
     pa=p*(xga+tmp)
     if(pa>=5d4)then
       dg=tmpdg
@@ -579,7 +578,7 @@ end subroutine mixture_eos_noderiv
     endif
 
     call Henry_CO2_noderiv(xlco2,xmlco2,t,p*(tmp+xga),fg/p/(xga+tmp), &
-    henry,co2_poyn)		   
+    henry,co2_poyn)
 
     if((1.D0-xga)>eps)then
       call steameos(t,p,pa,dstea,dsteamol,dstea_p,dstea_t,&

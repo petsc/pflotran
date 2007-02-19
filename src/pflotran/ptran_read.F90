@@ -157,15 +157,19 @@ contains
       call fiReadInt(string,isurf,ierr)
       call fiDefaultMsg('isurf',ierr)
 
+      call fiReadInt(string,isolidss,ierr)
+      call fiDefaultMsg('isolidss',ierr)
+
       if (myrank==0) &
       write(iunit2,'(/," *OPTS ",/, &
-    & "  iact    = ",i2,/, &
-    & "  loglin  = ",i2,/, &
-    & "  iaccel  = ",i2,/, &
-    & "  icomprs = ",i2,/, &
-    & "  iblkfmt = ",i2,/, &
-    & "  isurf   = ",i2)') &
-      iact,loglin,iaccel,icomprs,iblkfmt,isurf
+    & "  iact     = ",i2,/, &
+    & "  loglin   = ",i2,/, &
+    & "  iaccel   = ",i2,/, &
+    & "  icomprs  = ",i2,/, &
+    & "  iblkfmt  = ",i2,/, &
+    & "  isurf    = ",i2,/, &
+    & "  isolidss = ",i2)') &
+      iact,loglin,iaccel,icomprs,iblkfmt,isurf,isolidss
 
 !....................
 

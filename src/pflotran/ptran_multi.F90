@@ -826,7 +826,13 @@ contains
     enddo ! loop nr over sources
     
 !---add kinetic reaction rate terms
-    if (nkin > 0) call trkinmin (ccloc_p,temploc_p)
+    if (nkin > 0) then
+      if (isolidss == 0) then
+        call trkinmin (ccloc_p,temploc_p)
+      else if (isolidss > 0) then
+        call trkinminss (ccloc_p,temploc_p)
+      endif
+    endif
     
 !---add equilibrium sorption (ion exchange + surface complexation)
 !   if (nsrfmx > 0 .or. nexmx > 0) call trionexc (ccloc_p,porloc_p)

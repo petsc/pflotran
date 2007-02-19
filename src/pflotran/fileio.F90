@@ -223,8 +223,8 @@ subroutine fiReadFlotranString(fid, string, ierr)
   do
     !read(fid,'(a128)',iostat=ierr) string
     read(fid,'(a256)',iostat=ierr) string
-	!print *,string
-	if (ierr /= 0) exit
+  !print *,string
+  if (ierr /= 0) exit
     tempstring = string
     call fiReadWord(tempstring,word,.true.,ierr)
     call fiWordToUpper(word)

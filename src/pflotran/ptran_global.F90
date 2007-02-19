@@ -170,23 +170,23 @@
 ! dimension parameters
 !...........................................................
   integer, parameter :: &
-    ncmx	= 16,	& ! primary species
-    ncxmx	= 60,	& ! secondary species
-    ngmx	= 6,	& ! gaseous species
-    nmmx	= 50,	& ! total number of minerals
-    nkmx	= 50,	& ! kinetic mineral reactions
-    npmx	= 2,	& ! max no. parallel reactions???
-    nxkmx	= 0,	& ! kinetic aqueous homogeneous reactions
-    nexmx	= 6,	& ! exchange cations
-    nsitxmx	= 4,	& ! exchange sites
-    nsitmx	= 6,	& ! surface complex sites
-    nscxmx	= 4,	& ! surface complexes
-    nrgmx	= 1200,  & ! max no. of regions (COMP+BCON+SOUR, MNIR)
-    nrgbcmx	= 1000,	& ! max no. of boundary regions
-    nsrcmx	= 10,	& ! max no. of source/sinks
+    ncmx    = 16,   & ! primary species
+    ncxmx   = 60,   & ! secondary species
+    ngmx    = 6,    & ! gaseous species
+    nmmx    = 50,   & ! total number of minerals
+    nkmx    = 50,   & ! kinetic mineral reactions
+    npmx    = 2,    & ! max no. parallel reactions???
+    nxkmx   = 0,    & ! kinetic aqueous homogeneous reactions
+    nexmx   = 6,    & ! exchange cations
+    nsitxmx = 4,    & ! exchange sites
+    nsitmx  = 6,    & ! surface complex sites
+    nscxmx  = 4,    & ! surface complexes
+    nrgmx   = 1200, & ! max no. of regions (COMP+BCON+SOUR, MNIR)
+    nrgbcmx = 1000, & ! max no. of boundary regions
+    nsrcmx  = 10,   & ! max no. of source/sinks
     nstbmx  = 100,  & ! max no. entries in source/sink
     nbrkmx  = 100,  & ! max no. breakthough points
-    ndimmx	= nmmx+ncxmx+ngmx+nxkmx ! database matrix
+    ndimmx  = nmmx+ncxmx+ngmx+nxkmx ! database matrix
 
 !...........................................................
 ! i/o parameters
@@ -461,7 +461,12 @@
              
   real*8  :: timesrc(nstbmx,nsrcmx),tempsrc(nstbmx,nsrcmx), &
              qsrc(nstbmx,nsrcmx),csrc(nstbmx,nsrcmx),ctotsrc(ncmx,nsrcmx)
-
+  
+!...........................................................
+! solid solutions
+!...........................................................
+  integer :: isolidss
+  
 !...........................................................
 ! breakthrough curves
 !...........................................................

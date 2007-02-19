@@ -574,19 +574,18 @@ private
 ! set initial pressure and temperature fields
         rho=1000.D0
         do nl=1, grid%nlmax
-		na=grid%nL2A(nl)+1 ! the natural ordering start from 0
-		depth = grid%z(na)
+    na=grid%nL2A(nl)+1 ! the natural ordering start from 0
+    depth = grid%z(na)
         horiz = grid%x(na)
             dx1 = dx2
             !print *,'mhydro', nl,na,depth,horiz
             tmp = grid%dTdz * depth + grid%tref
             betap = rho * grid%gravity * grid%beta
             pres = rho * grid%gravity * depth + grid%pref - betap * horiz
-	
-		   call wateos(tmp, 2D7, rho, dw_mol, dwp, &
+
+       call wateos(tmp, 2D7, rho, dw_mol, dwp, &
               dum, dum, dum, dum, grid%scale, ierr)
-	
-                    
+
             itrho= 0
             do 
               betap = rho * grid%gravity * grid%beta
@@ -647,7 +646,7 @@ private
       stop
     endif
     ibndtyp(ibc) = grid%ibndtyp(ibc)
-!	grid%xxbc0(:,ibc)
+!    grid%xxbc0(:,ibc)
 !    cbc(ibc) = grid%concbc0(ibc)
 !    sbc(ibc) = grid%sgbc0(ibc)
   enddo
@@ -705,11 +704,11 @@ private
 !    grid%tempbc0(ibc) = tmp
 !    grid%concbc0(ibc) = cbc(ibc0)
 !    grid%sgbc0(ibc) = sbc(ibc0)
-     grid%velocitybc0(:,ibc) = 0.d0
-     grid%xxbc0(1,ibc) = p
-     grid%xxbc0(2,ibc) = tmp
-	 grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
-	 grid%iphasebc0(ibc)=iphasebc_rec(ibc0)     
+    grid%velocitybc0(:,ibc) = 0.d0
+    grid%xxbc0(1,ibc) = p
+    grid%xxbc0(2,ibc) = tmp
+    grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
+    grid%iphasebc0(ibc)=iphasebc_rec(ibc0)     
 !   print *,'BC: ',grid%myrank,n,ibc,zz,grid%z(grid%nmax),grid%x(grid%nmax), &
 !   grid%tempbc(ibc),grid%tempbc(ibc+grid%nz), &
 !   grid%pressurebc(1,ibc),grid%pressurebc(1,ibc+grid%nz)
@@ -759,10 +758,10 @@ private
 !    grid%concbc0(ibc) = cbc(ibc0) !grid%conc0
 !    grid%sgbc0(ibc) = sbc(ibc0)
     grid%velocitybc0(:,ibc) = 0.d0
-     grid%xxbc0(1,ibc) = p
-     grid%xxbc0(2,ibc) = tmp
-	 grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
-	 grid%iphasebc0(ibc)=iphasebc_rec(ibc0)
+    grid%xxbc0(1,ibc) = p
+    grid%xxbc0(2,ibc) = tmp
+    grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
+    grid%iphasebc0(ibc)=iphasebc_rec(ibc0)
 !   print *,'BC: ',grid%myrank,n,ibc,zz,grid%z(grid%nmax),grid%x(grid%nmax), &
 !   grid%tempbc(ibc),grid%tempbc(ibc+grid%nz), &
 !   grid%pressurebc(1,ibc),grid%pressurebc(1,ibc+grid%nz)
@@ -791,12 +790,12 @@ private
 !    grid%tempbc0(ibc) = grid%tref
 !    grid%concbc0(ibc) = cbc(ibc0) !grid%conc0 0.85d0 !grid%conc0 !grid%concbc(3) !
 !    grid%sgbc0(ibc) = sbc(ibc0)
-     grid%xxbc0(1,ibc) = grid%pref
-     grid%xxbc0(2,ibc) = grid%tref
-     grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
-	 grid%iphasebc0(ibc)=iphasebc_rec(ibc0)
+    grid%xxbc0(1,ibc) = grid%pref
+    grid%xxbc0(2,ibc) = grid%tref
+    grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
+    grid%iphasebc0(ibc)=iphasebc_rec(ibc0)
     grid%velocitybc0(:,ibc) = 0.d0
-   print *,'BC: top',grid%myrank,ibc,grid%xxbc0(:,ibc)
+    print *,'BC: top',grid%myrank,ibc,grid%xxbc0(:,ibc)
 ! bottom
   
   ibc0 = ibc0 + 1
@@ -822,9 +821,9 @@ private
      grid%xxbc0(1,ibc) = p
      grid%xxbc0(2,ibc) = tmp
      grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
-	 grid%iphasebc0(ibc)=iphasebc_rec(ibc0)
+    grid%iphasebc0(ibc)=iphasebc_rec(ibc0)
     grid%velocitybc0(:,ibc) = 0.d0
- print *,'BC: bot',grid%myrank,ibc,grid%xxbc0(:,ibc)
+    print *,'BC: bot',grid%myrank,ibc,grid%xxbc0(:,ibc)
     if (grid%ny > 1) then
 !     front
   
@@ -850,8 +849,8 @@ private
      grid%xxbc0(1,ibc) = p
      grid%xxbc0(2,ibc) = tmp
      grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
-	 grid%iphasebc0(ibc)=iphasebc_rec(ibc0) 
-	  grid%velocitybc0(:,ibc) = 0.d0
+     grid%iphasebc0(ibc)=iphasebc_rec(ibc0) 
+     grid%velocitybc0(:,ibc) = 0.d0
   
 !     back
   
@@ -880,9 +879,9 @@ private
 !      grid%sgbc0(ibc) = sbc(ibc0)
       grid%xxbc0(1,ibc) = p
       grid%xxbc0(2,ibc) = tmp
-	  grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
-	  grid%iphasebc0(ibc)=iphasebc_rec(ibc0)
-	  grid%velocitybc0(:,ibc) = 0.d0
+      grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
+      grid%iphasebc0(ibc)=iphasebc_rec(ibc0)
+      grid%velocitybc0(:,ibc) = 0.d0
     endif
   
     grid%nblkbc = ibc
@@ -968,19 +967,18 @@ private
 ! set initial pressure and temperature fields
         rho=1000.D0
         do nl=1, grid%nlmax
-		na=grid%nL2A(nl)+1 ! the natural ordering start from 0
-		depth = grid%z(na)
+    na=grid%nL2A(nl)+1 ! the natural ordering start from 0
+    depth = grid%z(na)
         horiz = grid%x(na)
             dx1 = dx2
             !print *,'mhydro', nl,na,depth,horiz
             tmp = grid%dTdz * depth + grid%tref
             betap = rho * grid%gravity * grid%beta
             pres = rho * grid%gravity * depth + grid%pref - betap * horiz
-	
-		   call wateos(tmp, 2D7, rho, dw_mol, dwp, &
+
+       call wateos(tmp, 2D7, rho, dw_mol, dwp, &
               dum, dum, dum, dum, grid%scale, ierr)
-	
-                    
+
             itrho= 0
             do 
               betap = rho * grid%gravity * grid%beta
@@ -1041,7 +1039,7 @@ private
       stop
     endif
     ibndtyp(ibc) = grid%ibndtyp(ibc)
-!	grid%xxbc0(:,ibc)
+! grid%xxbc0(:,ibc)
 !    cbc(ibc) = grid%concbc0(ibc)
 !    sbc(ibc) = grid%sgbc0(ibc)
   enddo
@@ -1099,11 +1097,11 @@ private
 !    grid%tempbc0(ibc) = tmp
 !    grid%concbc0(ibc) = cbc(ibc0)
 !    grid%sgbc0(ibc) = sbc(ibc0)
-     grid%velocitybc0(:,ibc) = 0.d0
-     grid%xxbc0(1,ibc) = p
+    grid%velocitybc0(:,ibc) = 0.d0
+    grid%xxbc0(1,ibc) = p
      !grid%xxbc0(2,ibc) = tmp
-	 grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
-	 grid%iphasebc0(ibc)=iphasebc_rec(ibc0)     
+    grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
+    grid%iphasebc0(ibc)=iphasebc_rec(ibc0)     
 !   print *,'BC: ',grid%myrank,n,ibc,zz,grid%z(grid%nmax),grid%x(grid%nmax), &
 !   grid%tempbc(ibc),grid%tempbc(ibc+grid%nz), &
 !   grid%pressurebc(1,ibc),grid%pressurebc(1,ibc+grid%nz)
@@ -1153,10 +1151,10 @@ private
 !    grid%concbc0(ibc) = cbc(ibc0) !grid%conc0
 !    grid%sgbc0(ibc) = sbc(ibc0)
     grid%velocitybc0(:,ibc) = 0.d0
-     grid%xxbc0(1,ibc) = p
+    grid%xxbc0(1,ibc) = p
     ! grid%xxbc0(2,ibc) = tmp
-	 grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
-	 grid%iphasebc0(ibc)=iphasebc_rec(ibc0)
+    grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
+    grid%iphasebc0(ibc)=iphasebc_rec(ibc0)
 !   print *,'BC: ',grid%myrank,n,ibc,zz,grid%z(grid%nmax),grid%x(grid%nmax), &
 !   grid%tempbc(ibc),grid%tempbc(ibc+grid%nz), &
 !   grid%pressurebc(1,ibc),grid%pressurebc(1,ibc+grid%nz)
@@ -1185,12 +1183,12 @@ private
 !    grid%tempbc0(ibc) = grid%tref
 !    grid%concbc0(ibc) = cbc(ibc0) !grid%conc0 0.85d0 !grid%conc0 !grid%concbc(3) !
 !    grid%sgbc0(ibc) = sbc(ibc0)
-     grid%xxbc0(1,ibc) = grid%pref
-  !   grid%xxbc0(2,ibc) = grid%tref
-     grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
-	 grid%iphasebc0(ibc)=iphasebc_rec(ibc0)
+    grid%xxbc0(1,ibc) = grid%pref
+  !  grid%xxbc0(2,ibc) = grid%tref
+    grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
+    grid%iphasebc0(ibc)=iphasebc_rec(ibc0)
     grid%velocitybc0(:,ibc) = 0.d0
-   print *,'BC: top',grid%myrank,ibc,grid%xxbc0(:,ibc)
+    print *,'BC: top',grid%myrank,ibc,grid%xxbc0(:,ibc)
 ! bottom
   
   ibc0 = ibc0 + 1
@@ -1208,17 +1206,18 @@ private
     grid%i1bc(ibc) = 1
     grid%i2bc(ibc) = grid%nx
 
-!   grid%pressurebc(1,ibc) = grid%pref
+!    grid%pressurebc(1,ibc) = grid%pref
 !    grid%pressurebc0(1,ibc) = p !grid%pref + rho * grid%gravity * depth
 !    grid%tempbc0(ibc) = grid%tref + grid%dTdz * depth
 !    grid%concbc0(ibc) = cbc(ibc0) !grid%conc0
 !    grid%sgbc0(ibc) = sbc(ibc0)
-     grid%xxbc0(1,ibc) = p
+    grid%xxbc0(1,ibc) = p
 !     grid%xxbc0(2,ibc) = tmp
-     grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
-	 grid%iphasebc0(ibc)=iphasebc_rec(ibc0)
+    grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
+    grid%iphasebc0(ibc)=iphasebc_rec(ibc0)
     grid%velocitybc0(:,ibc) = 0.d0
- print *,'BC: bot',grid%myrank,ibc,grid%xxbc0(:,ibc)
+    print *,'BC: bot',grid%myrank,ibc,grid%xxbc0(:,ibc)
+
     if (grid%ny > 1) then
 !     front
   
@@ -1241,11 +1240,11 @@ private
 !      grid%tempbc0(ibc) = grid%tref
 !      grid%concbc0(ibc) = cbc(ibc0) !grid%conc0
 !      grid%sgbc0(ibc) = sbc(ibc0)
-     grid%xxbc0(1,ibc) = p
+    grid%xxbc0(1,ibc) = p
 !     grid%xxbc0(2,ibc) = tmp
-     grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
-	 grid%iphasebc0(ibc)=iphasebc_rec(ibc0) 
-	  grid%velocitybc0(:,ibc) = 0.d0
+    grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
+    grid%iphasebc0(ibc)=iphasebc_rec(ibc0) 
+    grid%velocitybc0(:,ibc) = 0.d0
   
 !     back
   
@@ -1274,9 +1273,9 @@ private
 !      grid%sgbc0(ibc) = sbc(ibc0)
       grid%xxbc0(1,ibc) = p
      ! grid%xxbc0(2,ibc) = tmp
-	  grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
-	  grid%iphasebc0(ibc)=iphasebc_rec(ibc0)
-	  grid%velocitybc0(:,ibc) = 0.d0
+      grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
+      grid%iphasebc0(ibc)=iphasebc_rec(ibc0)
+      grid%velocitybc0(:,ibc) = 0.d0
     endif
   
     grid%nblkbc = ibc
