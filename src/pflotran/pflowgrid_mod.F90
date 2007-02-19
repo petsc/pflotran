@@ -1198,10 +1198,10 @@ subroutine pflowGrid_setup(grid, inputfile)
     
     call MatFDColoringSetFromOptions(grid%matfdcoloring, ierr)
     
-! bug in petsc-2.3.2-p8: remove line temporarily (coloring not used)
-!   call SNESSetJacobian(grid%snes, grid%J, grid%J, &
-!                        SNESDefaultComputeJacobianColor,  &
-!                        grid%matfdcoloring, ierr)
+! possible bug in petsc-2.3.2-p8 when compiling on the Mac: (coloring not used)
+    call SNESSetJacobian(grid%snes, grid%J, grid%J, &
+                         SNESDefaultComputeJacobianColor,  &
+                         grid%matfdcoloring, ierr)
   endif
 
   if (myrank == 0) write(*,'("++++++++++++++++++++++++++++++++&
