@@ -196,8 +196,8 @@ public :: trpsi, trdpsi
 !      print *,"ptran_psi: ", jco2, jco2g
 !-----compute total concentrations in gas phase
      call VecGetArrayF90(xphi_co2_loc, xphi_co2_loc_p, ierr)
-	  call VecGetArrayF90(den_co2_loc, den_co2_loc_p, ierr)
-	   do n = 1, ngmax
+    call VecGetArrayF90(den_co2_loc, den_co2_loc_p, ierr)
+     do n = 1, ngmax
         if (ghost_loc_p(n) == -1) cycle
         tc = temploc_p(n)
         tk = tc + 273.15d0
@@ -205,7 +205,7 @@ public :: trpsi, trdpsi
         m = nG2L(n)
        ! if(m<=0) print *, 'ptran_psi:',n,m
     !    print *,"ptran_psi: ",n, ssat_loc_p(n)
-		 if(ssat_loc_p(n).ge.one) then         ! all liquid block
+     if(ssat_loc_p(n).ge.one) then         ! all liquid block
           do j = 1, ncomp 
             ppsig(j,n) = zero
             do i = 1, ngas
@@ -268,7 +268,7 @@ public :: trpsi, trdpsi
 !           ccloc_p(jco2+(n-1)*ncomp),ccloc_p(jh2o+(n-1)*ncomp),log10(eqk),eqgas(jco2g) !, &
 !           vphi,rmix,wmix,rgasjj*tk,pgas(jco2g,n)
       
-		     endif
+         endif
 
           fach2o = one
           if (molal.eq.0) fach2o = one/(wh2o*ccloc_p(jh2o+(n-1)*ncomp))
@@ -309,7 +309,7 @@ public :: trpsi, trdpsi
       enddo
 
       call VecRestoreArrayF90(xphi_co2_loc, xphi_co2_loc_p, ierr)
-	  call VecRestoreArrayF90(den_co2_loc, den_co2_loc_p, ierr)
+    call VecRestoreArrayF90(den_co2_loc, den_co2_loc_p, ierr)
 
       if(idebug.gt.1 .and. myrank==0) then
         do n = 1, ngmax

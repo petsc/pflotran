@@ -125,14 +125,14 @@ private
       write(IUNIT2,'('' Liq -> 2ph '',i8,1p10e12.4)') n,xx_p(n0+1:n0+4)
       iphase_p(n) = 6
       tmp= formeps
-		       ! if(tmp>1.D-6)tmp=1.D-6
-		 !     if(tmp<eps) tmp=eps
+           ! if(tmp>1.D-6)tmp=1.D-6
+     !     if(tmp<eps) tmp=eps
       xx_p(n0+4)=tmp
-		  tmp=1.D0 - grid%yh2o_in_co2 !1.D0+( xx_p(n0+3) -1.D0)*0.5D0 &
+      tmp=1.D0 - grid%yh2o_in_co2 !1.D0+( xx_p(n0+3) -1.D0)*0.5D0 &
       !xx_p(n0+3)
           ! if(tmp>1.01D0)  tmp=1.01D0 !-0.75D0*ppsat/p
           ! if(xx_p(n0+3)<tmp) 
-		  xx_p(n0+3)=tmp
+      xx_p(n0+3)=tmp
     end if
       
     if(xx_p(n0 + 4) >= (1.D0 - eps).and. iipha==6 )then
@@ -145,11 +145,11 @@ private
         tmp = 1.D0 !- ppsat / p
         xx_p(n0 + 4) = 1.00D0
         !if(xx_p(n0 + 3)>1.D0)
-		    xx_p(n0 + 3) =1.D0
+        xx_p(n0 + 3) =1.D0
        ! if(xx_p(n0 + 3)< 0.D0)xx_p(n0 + 3)=0.D0
         write(*,'('' 2ph -> Gas '',i8,1p10e12.4)') n,xx_p(n0+1:n0+4)
         write(IUNIT2,'('' 2ph -> Gas '',i8,1p10e12.4)') n,xx_p(n0+1:n0+4)
-	    end if
+      end if
     endif
 
     if(xx_p(n0 + 4)<= formeps .and. iipha==6 )then
@@ -762,7 +762,7 @@ private
 
       if(iiphase==2) then ! have liq
         r_p(p1)=r_p(p1) + pvoldt *ddensity_loc_p(jng) &
-				- grid%rtot(n,1) - grid%rtot(n,2)
+        - grid%rtot(n,1) - grid%rtot(n,2)
       endif
       if(iiphase==4) then ! have gas
         r_p(p1)=r_p(p1) + pvoldt * ddensity_loc_p(1+jng)
@@ -814,7 +814,7 @@ private
     if(iiphase==2) then ! have liq
       r_p(s1) = r_p(s1)+ pvoldt* ddensity_loc_p(jng) * xxlw
       r_p(s1) = r_p(s1) - grid%rtot(n,1)
-	  ! Liq phase water component mass balance
+    ! Liq phase water component mass balance
       !print *,'Res S ',n, xxlw ,xxla,  ddensity_loc_p(jng),pvoldt,&
       !      Hen_loc_p(2+(j-1)*grid%nspec+(ng-1)*grid%nphase*grid%nspec)
     endif   
@@ -825,7 +825,7 @@ private
       accum=accum_p(c1)
       r_p(c1) = (pvol * ddensity_loc_p(1+jng) * xxgw * SSATG_LOC(ng) &
            * grid%ret-accum)/grid%dt
-		 ! Gas phase water component mass balance  
+     ! Gas phase water component mass balance  
     else
       if(iiphase==2) r_p(c1) = SSATG_LOC(ng)
       if(iiphase==4) r_p(c1) = SSATG_LOC(ng)-1.D0
@@ -891,10 +891,10 @@ private
  
     qsrc1 = qsrc1 / grid%fmwh2o ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
     csrc1 = csrc1 / grid%fmwco2
-	
+  
   ! Here assuming regular mixture injection. i.e. no extra H from mixing 
   ! within injected fluid.
-	
+  
     if (qsrc1 > 0.d0) then ! injection
       do kk = kk1, kk2
         do jj = jj1, jj2
@@ -923,7 +923,7 @@ private
         enddo
       enddo
     endif  
-		
+    
     if (csrc1 > 0.d0) then ! injection
       do kk = kk1, kk2
         do jj = jj1, jj2
@@ -941,7 +941,7 @@ private
 !           enth_src_co2)
 !           enth_src_co2=enth_src_co2 * 1.D-3     
  
-			   !  span-wagner
+         !  span-wagner
             rho = ddensity_loc_p(jng)*grid%fmwco2 
             call co2_span_wagner(PPRESSURE_LOC(ng)*1.D-6,tsrc1+273.15D0, &
             rho,dddt,dddp,fg,dfgdp,dfgdt, &
@@ -959,9 +959,9 @@ private
           enddo
         enddo
       enddo
-	  endif
-	
-	
+    endif
+  
+  
   !  else if (qsrc1 < 0.d0) then ! withdrawal
       
     !  do kk = kk1, kk2
@@ -1590,25 +1590,25 @@ if((SSATG_LOC(m1)>eps).or.(SSATG_LOC(m2)>eps))then
           jng = j + (ng-1) * grid%nphase
           fluxv=0.D0; flux=0.D0;  fluxh=0.D0
           v_darcy = grid%velocitybc(j,nc)
-		  
-		  select case(j)
-		  case(1)
-		    grid%vvlbc(nc) = v_darcy
+      
+      select case(j)
+      case(1)
+        grid%vvlbc(nc) = v_darcy
             if (m > 0) then          ! If the upstream node is not a ghost node...
               vl_p(1+(ip1-1)*grid%nphase +3*grid%nphase*(m-1)) = -v_darcy 
               ! use for print out of velocity
             endif
   
-		  case(2)
-		    grid%vvgbc(nc) = v_darcy 
+      case(2)
+        grid%vvgbc(nc) = v_darcy 
             if (m > 0) then          ! If the upstream node is not a ghost node...
               vl_p(2+(ip1-1)*grid%nphase +3*grid%nphase*(m-1)) = -v_darcy 
               ! use for print out of velocity
             endif
 
-           end select	
+           end select  
           
-		  if(v_darcy >0.d0)then 
+      if(v_darcy >0.d0)then 
              q = v_darcy * grid%density_bc(j) * grid%areabc(nc)
              !q = 0.d0
              flux = flux - q
@@ -1741,7 +1741,7 @@ if((SSATG_LOC(m1)>eps).or.(SSATG_LOC(m2)>eps))then
              if((ukvr*Dq)>floweps)then
                ! note: darcy vel. is positive for flow INTO boundary node
                v_darcy =  Dq *  ukvr  * dphi
-			   grid%vvgbc(nc) = v_darcy
+         grid%vvgbc(nc) = v_darcy
                if (m > 0) then   ! If the upstream node is not a ghost node...
                  vl_p(2+(ip1-1)*grid%nphase +3*grid%nphase*(m-1)) = -v_darcy 
                  ! use for print out of velocity
@@ -2897,7 +2897,7 @@ tempvar=0.D0
    if(grid%iblkfmt == 1) then
      blkmat11 = 0.D0; blkmat12 = 0.D0; blkmat21 = 0.D0; blkmat22 = 0.D0;
    endif
-	 
+   
      do ii=0,3
        do jj=0,3
          select case(ii)
@@ -2986,10 +2986,10 @@ tempvar=0.D0
     enddo
   
   if (grid%iblkfmt /= 0) then
-	  call MatSetValuesBlockedLocal(A,1,m1-1,1,m1-1,blkmat11,ADD_VALUES,ierr)
-	  call MatSetValuesBlockedLocal(A,1,m2-1,1,m2-1,blkmat22,ADD_VALUES,ierr)
-	  call MatSetValuesBlockedLocal(A,1,m1-1,1,m2-1,blkmat12,ADD_VALUES,ierr)
-	  call MatSetValuesBlockedLocal(A,1,m2-1,1,m1-1,blkmat21,ADD_VALUES,ierr)
+    call MatSetValuesBlockedLocal(A,1,m1-1,1,m1-1,blkmat11,ADD_VALUES,ierr)
+    call MatSetValuesBlockedLocal(A,1,m2-1,1,m2-1,blkmat22,ADD_VALUES,ierr)
+    call MatSetValuesBlockedLocal(A,1,m1-1,1,m2-1,blkmat12,ADD_VALUES,ierr)
+    call MatSetValuesBlockedLocal(A,1,m2-1,1,m1-1,blkmat21,ADD_VALUES,ierr)
   endif
 !print *,'accum r',ra(1:5,1:8)   
  !print *,'devq:',nc,q,dphi,devq(3,:)
@@ -3711,26 +3711,26 @@ tempvar=0.D0
            select case(ii)
               case(3)
                  if(iiphas==6)then
-				   if (grid%iblkfmt == 0) then
-				     call MatSetValuesLocal(A,1,p1+ii,1,p1+jj-4,-ra(ii+1,jj+1),ADD_VALUES,ierr)
+           if (grid%iblkfmt == 0) then
+             call MatSetValuesLocal(A,1,p1+ii,1,p1+jj-4,-ra(ii+1,jj+1),ADD_VALUES,ierr)
 !                    else
  !                      call MatSetValuesLocal(A,1,p1+ii,1,p1+jj-4,-ra(5,jj+1),ADD_VALUES,ierr)
                     else
-				      blkmat11(ii+1,jj-4+1) =blkmat11(ii+1,jj-4+1) - ra(ii+1,jj+1)
-				    endif
-				   end if
+              blkmat11(ii+1,jj-4+1) =blkmat11(ii+1,jj-4+1) - ra(ii+1,jj+1)
+            endif
+           end if
               case default
-			    if (grid%iblkfmt == 0) then
+          if (grid%iblkfmt == 0) then
                    call MatSetValuesLocal(A,1,p1+ii,1,p1+jj-4,-ra(ii+1,jj+1),ADD_VALUES,ierr)
-				 else
-				   blkmat11(ii+1,jj-4+1) =blkmat11(ii+1,jj-4+1) - ra(ii+1,jj+1)
-				 endif  
+         else
+           blkmat11(ii+1,jj-4+1) =blkmat11(ii+1,jj-4+1) - ra(ii+1,jj+1)
+         endif  
               end select
         enddo
      enddo
    
   if (grid%iblkfmt == 1) then
-	  call MatSetValuesBlockedLocal(A,1,ng-1,1,ng-1,blkmat11,ADD_VALUES,ierr)
+    call MatSetValuesBlockedLocal(A,1,ng-1,1,ng-1,blkmat11,ADD_VALUES,ierr)
   endif  
    
    
@@ -4208,7 +4208,7 @@ end subroutine pflow_2phase_initaccum
           pc_p(ii1:ii2),kvr_p(ii1:ii2),&
           ierr,grid%itable)
 
-!    print *,'initadj',eps,sat_pressure,jn	
+!    print *,'initadj',eps,sat_pressure,jn  
 ! 1: Assume initially the reservoir is under thermal equilibrium
      
       if((s_p(jn+1)>eps).and.(s_p(jn+1)<(1.D0-eps)))then  

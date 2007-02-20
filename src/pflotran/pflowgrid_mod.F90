@@ -1198,7 +1198,6 @@ subroutine pflowGrid_setup(grid, inputfile)
     
     call MatFDColoringSetFromOptions(grid%matfdcoloring, ierr)
     
-! possible bug in petsc-2.3.2-p8 when compiling on the Mac: (coloring not used)
     call SNESSetJacobian(grid%snes, grid%J, grid%J, &
                          SNESDefaultComputeJacobianColor,  &
                          grid%matfdcoloring, ierr)
@@ -1843,11 +1842,11 @@ subroutine pflowGrid_setup(grid, inputfile)
     allocate(grid%xphi_co2_bc(grid%nconnbc))
     allocate(grid%xxphi_co2_bc(grid%nconnbc))
 
-	do nc = 1, grid%nconnbc
+  do nc = 1, grid%nconnbc
       ibc = grid%ibconn(nc)
       grid%xxbc(:,nc)=grid%xxbc0(:,ibc)
       grid%iphasebc(nc)=grid%iphasebc0(ibc)
-	        grid%velocitybc(:,nc) = grid%velocitybc0(:,ibc)
+          grid%velocitybc(:,nc) = grid%velocitybc0(:,ibc)
     enddo
     if (grid%using_pflowGrid == PETSC_FALSE) then
       deallocate(grid%xxbc0)

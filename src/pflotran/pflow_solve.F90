@@ -91,12 +91,12 @@
  do
  
  if(grid%use_mph==PETSc_TRUE)then
-	 call Translator_MPhase_Switching(grid%xx,grid,1,ichange)
-	 call MPHASEResidual(grid%snes,grid%xx,grid%r,grid,ierr)
+   call Translator_MPhase_Switching(grid%xx,grid,1,ichange)
+   call MPHASEResidual(grid%snes,grid%xx,grid%r,grid,ierr)
  endif
  if(grid%use_vadose==PETSc_TRUE)then
-	 call Translator_vadose_Switching(grid%xx,grid,0,ichange)
-	 call MPHASEResidual(grid%snes,grid%xx,grid%r,grid,ierr)
+   call Translator_vadose_Switching(grid%xx,grid,0,ichange)
+   call MPHASEResidual(grid%snes,grid%xx,grid%r,grid,ierr)
  endif
 
 
@@ -120,7 +120,7 @@
       call OWGJacobin(grid%snes,grid%xx,grid%J,grid%J,flag,grid,ierr)
      elseif(grid%use_vadose==PETSC_TRUE)then
       call VadoseJacobin(grid%snes,grid%xx,grid%J,grid%J,flag,grid,ierr)
-	endif
+  endif
    print *,' psolve; Get Joc'
    
   call VecScale(grid%r,-1D0,ierr)
@@ -144,9 +144,9 @@
      
 
 !---update solution after successful Newton-Raphson iteration
-	  call VecAXPY(grid%xx,1.d0,grid%dxx,ierr)
-!	  call MPhase_Update(grid%xx,grid,1,ichange)
-	enddo
+    call VecAXPY(grid%xx,1.d0,grid%dxx,ierr)
+!    call MPhase_Update(grid%xx,grid,1,ichange)
+  enddo
   print *,'Finished ksp', newton
   end subroutine pflow_solve
 

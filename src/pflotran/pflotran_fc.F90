@@ -206,7 +206,7 @@ endif
   
     tflow2 = grid%t
     grid%t=grid%t-grid%dt 
-	t = tflow1
+  t = tflow1
     if (grid%isync == 1) dt = grid%dt
 
 !   trans time step
@@ -243,8 +243,8 @@ endif
 !     time average rtot
       rtoth2o = rtoth2o + rrtoth2o*dt
       rtotco2 = rtotco2 + rrtotco2*dt
-		
-!     drtotmax=0.D0; tmp3=0.D0; tmp4=0.D0	
+    
+!     drtotmax=0.D0; tmp3=0.D0; tmp4=0.D0  
 !     do n=1,grid%nlmax
 !       tmp1=dabs(rtoth2o(n)-rrtoth2o(n))
 !       tmp2=dabs(rtotco2(n)-rrtotco2(n))
@@ -300,7 +300,7 @@ endif
     rtoth2o = rtoth2o/(tflow2-tflow1)
     rtotco2 = rtotco2/(tflow2-tflow1)
     
-	err1=0.D0; err2=0.D0; rmax1=0.D0; rmax2=0.D0
+  err1=0.D0; err2=0.D0; rmax1=0.D0; rmax2=0.D0
     do nn=1, nlmax
       if(abs(grid%rtot(nn,1)-rtoth2o(nn)) > err1) err1=abs(grid%rtot(nn,1)-rtoth2o(nn))
       if(abs(grid%rtot(nn,2)-rtotco2(nn)) > err2) err2=abs(grid%rtot(nn,2)-rtotco2(nn))
@@ -313,26 +313,26 @@ endif
           rmax2=abs((grid%rtot(nn,2)-rtotco2(nn))/rtotco2(nn))
       endif
     enddo
-	 
+   
     if(grid%commsize >1)then
-	  call MPI_ALLREDUCE(err1, err10,1, MPI_DOUBLE_PRECISION,MPI_MAX,PETSC_COMM_WORLD,ierr)
+    call MPI_ALLREDUCE(err1, err10,1, MPI_DOUBLE_PRECISION,MPI_MAX,PETSC_COMM_WORLD,ierr)
       call MPI_ALLREDUCE(err2, err20,1, MPI_DOUBLE_PRECISION,MPI_MAX,PETSC_COMM_WORLD,ierr)
-	  call MPI_ALLREDUCE(rmax1, rmax10,1, MPI_DOUBLE_PRECISION,MPI_MAX,PETSC_COMM_WORLD,ierr)
-	  call MPI_ALLREDUCE(rmax2, rmax20,1, MPI_DOUBLE_PRECISION,MPI_MAX,PETSC_COMM_WORLD,ierr)
-	  err1=err10; err2=err20
-	  rmax1=rmax10; rmax2=rmax20
-    endif		  	  
-	 
-	
+    call MPI_ALLREDUCE(rmax1, rmax10,1, MPI_DOUBLE_PRECISION,MPI_MAX,PETSC_COMM_WORLD,ierr)
+    call MPI_ALLREDUCE(rmax2, rmax20,1, MPI_DOUBLE_PRECISION,MPI_MAX,PETSC_COMM_WORLD,ierr)
+    err1=err10; err2=err20
+    rmax1=rmax10; rmax2=rmax20
+    endif          
+   
+  
     if(max(err1, err2) < eps) isucc=1
     if(max(rmax1, rmax2) < 5D-2) isucc=1
-	if(myrank == 0) print *,'R : ', err1, err2 ,rmax1, rmax2
+  if(myrank == 0) print *,'R : ', err1, err2 ,rmax1, rmax2
    
   enddo
 
   if(myrank == 0) print *,' Finished Step ****************************************'  
     grid%t=grid%t+grid%dt
-	if(nkin>0) phik_old_p(:)=phik_p(:)
+  if(nkin>0) phik_old_p(:)=phik_p(:)
 !   update pflow field variables
     call pflowgrid_update(grid)
 

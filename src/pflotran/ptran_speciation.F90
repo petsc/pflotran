@@ -36,7 +36,7 @@ contains
       use trdynmem_module
       use water_eos_module
       use co2eos_module
-	  
+    
       implicit none
 
 #include "include/finclude/petsc.h"
@@ -345,16 +345,16 @@ contains
         if (iphase.eq.2 .or. iphase.eq.0) then
              call duanco2(tempini,pgasloc(1) ,dco2,fc,phi)
          
-		  u1= (dco2/fmwco2*1D3)
- 	  
-		  do j = 1, ncomp
+      u1= (dco2/fmwco2*1D3)
+     
+      do j = 1, ncomp
             psig0(j) = zero
             do l = 1, ngas
               psig0(j) = psig0(j)+ sgas(j,l)
             enddo
             psig0(j) = psig0(j) *u1!/(rgasjj*(tempini+tkelvin))
        !    print *,"ptran_set_ini: ", l,  tempini, pgasloc(1), psig0(j),u1
-		  enddo
+      enddo
           do i = 1, ngas
             pgas0(i) =  pgasloc(1) !*u1
           enddo
@@ -401,9 +401,9 @@ contains
 !-----------total gaseous concentrations
             if (iphase.eq.2 .or. iphase.eq.0) then
              
-			   do j = 1, ncomp
+         do j = 1, ncomp
                 ppsig(j,n) = psig0(j)
-		!		print *, "ptran-spec::", j,n, ppsig(j,n)
+    !    print *, "ptran-spec::", j,n, ppsig(j,n)
               enddo
             endif
 
@@ -554,16 +554,16 @@ contains
         if (iphase.eq.2 .or. iphase.eq.0) then
              call duanco2(tempini,pgasloc(1) ,dco2,fc,phi)
          
-		  u1= (dco2/fmwco2*1D3) 
- 	  
-		  do j = 1, ncomp
+      u1= (dco2/fmwco2*1D3) 
+     
+      do j = 1, ncomp
             psig0(j) = zero
             do l = 1, ngas
               psig0(j) = psig0(j)+ sgas(j,l)
             enddo
             psig0(j) = psig0(j) *u1!/(rgasjj*(tempini+tkelvin))
    !        print *,"ptran_set_ini: ", l,  tempini,pgasloc(1) , psig0(j),u1
-		  enddo
+      enddo
           do i = 1, ngas
             pgas0(i) = pgasloc(1) !*u1
           enddo
@@ -598,7 +598,7 @@ contains
 
 !             psi(j,n)  = cloctot(j)*rho(n)
               if(iphase.eq.2 .or. iphase.eq.0) ppsig(j,n) = psig0(j)
-			  print *,n,j,ppsig(j,n)
+        print *,n,j,ppsig(j,n)
 !             gam(j,n)  = gamloc(j)
 !             if (itype(j,ireg).ne.1 .and. n.eq.1) ctot(j,ireg) = &
 !             cloctot(j)
@@ -930,7 +930,7 @@ contains
     endif
     
 !      if (myrank==0)&
-	   call trsolprd (gam,cc,psi,pgas,ah2o0)
+     call trsolprd (gam,cc,psi,pgas,ah2o0)
       
       if (iflgco2>0 .and. myrank==0) then
         write(iunit2,'(/," fugacity CO2 = ",1pe12.4," [bars]", &
@@ -1921,23 +1921,23 @@ contains
           y(m) = y(m) - shet(jh2o,m)*ah2o
         endif
         jj = 0
- 	do j = 1, ncomp
+   do j = 1, ncomp
           iflg = -1
           do i = 1, ntot
-	    if (jndx(i) .eq. nam(j)) iflg = 0
+      if (jndx(i) .eq. nam(j)) iflg = 0
           enddo
           if (iflg .eq. 0) then
 !-----------set up left hand side
-	    jj = jj + 1
+      jj = jj + 1
             jjdx(jj) = j
-	    zz(m,jj) = shet(j,m)
-	  else
+      zz(m,jj) = shet(j,m)
+    else
 !-----------set up right hand side
 !           write(*,*) 'eqlib: ',m,j,gam(j),cc(j),shet(j,m)
             if (shet(j,m) .ne. zero) then
-	      y(m) = y(m) - shet(j,m)*log(gam(j)*cc(j)*fach2o)
+        y(m) = y(m) - shet(j,m)*log(gam(j)*cc(j)*fach2o)
             endif
-	  endif
+    endif
         enddo
         if (jj .ne. ntot) then
           write(*,*) 'not enough constraints in solid: stop'
@@ -1964,8 +1964,8 @@ contains
         do j = 1, ntot
           if (svd(j).lt.1.e-12) then
             write(*,*) '        --> equilibrium problem ill posed! STOP'
-	    write(*,1313) (svd(l),l=1,ntot)
-	    if (myrank==0) write(iunit2,1313) (svd(l),l=1,ntot)
+      write(*,1313) (svd(l),l=1,ntot)
+      if (myrank==0) write(iunit2,1313) (svd(l),l=1,ntot)
  1313       format(/' singular value decomposition:'/(1p10g12.4))
             stop
           endif
@@ -1978,7 +1978,7 @@ contains
 !-----modify guesses
       do m = 1, ntot
 !       write(*,*) 'eqlib: ',nam(jjdx(m)),m,jjdx(m),cc(jjdx(m)),y(m)
-	cc(jjdx(m)) = exp(y(m))/gam(jjdx(m))
+  cc(jjdx(m)) = exp(y(m))/gam(jjdx(m))
 !       guess(jjdx(m),ireg) = cc(jjdx(m))
 !       write(*,*) 'eqlib: ',nam(jjdx(m)),m,jjdx(m),cc(jjdx(m))
       enddo
@@ -2235,7 +2235,7 @@ contains
       use ptran_global_module
       use water_eos_module
       use co2eos_module
-	  
+    
       
       implicit none
 
@@ -3333,8 +3333,8 @@ contains
         pgas(ngs) = exp(prod(ngs))
         prod10 = prod(ngs)/aln10
         
-	!	print *,'ptran_speciation**: ',  eqgas(ngs), exp(eqgas(ngs))
-		if (myrank==0) &
+  !  print *,'ptran_speciation**: ',  eqgas(ngs), exp(eqgas(ngs))
+    if (myrank==0) &
         write(iunit2,'(1x,a12,1pg12.4,5x,1pg12.4,4x,1pg12.5)') &
         namg(ngs),prod10,pgas(ngs),eqgas(ngs)
       enddo

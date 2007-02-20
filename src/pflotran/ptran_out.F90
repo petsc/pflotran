@@ -310,9 +310,9 @@ contains
           write(fid,40) zk,(c_p(j+(n-1)*ncomp),j=1,ncomp)
         else
           phx = -log10(c_p(jph+(n-1)*ncomp))
-		  
-!   	  print *,'ptran_out: ',n,kplt,jph,zk,ph,log(10.d0),c_p(jph+(n-1)*ncomp)
-		  
+      
+!       print *,'ptran_out: ',n,kplt,jph,zk,ph,log(10.d0),c_p(jph+(n-1)*ncomp)
+      
           write(fid,40) zk,phx,(c_p(j+(n-1)*ncomp),j=1,ncomp)
         endif
       enddo    
@@ -706,112 +706,112 @@ contains
    subroutine ptran_get_natural_psi(snpsi, ierr)
     implicit none
     
- 	real*8  :: snpsi(:)    
+   real*8  :: snpsi(:)    
     integer :: ierr, ndex,na, status(MPI_STATUS_SIZE)
-	integer :: ifound, jng, n
-	real*8 pppsi(ncomp)
+  integer :: ifound, jng, n
+  real*8 pppsi(ncomp)
       
-	  ierr=-1
-   	  	ndex=1
-		do na=0, nmax-1
-			  ifound=0
-			  if(myrank==0) then
-			   ifound=0
-			   do n=ndex,nlmax
-				 if(nL2A(n) == na ) then
-				  ifound=1
-				  pppsi= psi(:, nL2G(n))
-				  ndex=n
-				  exit	 
-				endif
-			   enddo
-			   if(ifound==0)then  
-				call MPI_Recv(pppsi,ncomp, MPI_DOUBLE_PRECISION,MPI_ANY_SOURCE, na, &
-                PETSC_COMM_WORLD, status,ierr) 					
-			   endif
-				
-			  else
-				do n=ndex,nlmax
-				  if(nL2A(n) == na) then
-					jng = 1 + (nl2G(n)-1)*ncomp 
-					 call MPI_Send(psi(1:ncomp,nL2G(n)), ncomp ,MPI_DOUBLE_PRECISION, 0, na, &
+    ierr=-1
+         ndex=1
+    do na=0, nmax-1
+        ifound=0
+        if(myrank==0) then
+         ifound=0
+         do n=ndex,nlmax
+         if(nL2A(n) == na ) then
+          ifound=1
+          pppsi= psi(:, nL2G(n))
+          ndex=n
+          exit   
+        endif
+         enddo
+         if(ifound==0)then  
+        call MPI_Recv(pppsi,ncomp, MPI_DOUBLE_PRECISION,MPI_ANY_SOURCE, na, &
+                PETSC_COMM_WORLD, status,ierr)           
+         endif
+        
+        else
+        do n=ndex,nlmax
+          if(nL2A(n) == na) then
+          jng = 1 + (nl2G(n)-1)*ncomp 
+           call MPI_Send(psi(1:ncomp,nL2G(n)), ncomp ,MPI_DOUBLE_PRECISION, 0, na, &
                      PETSC_COMM_WORLD, ierr)   
-				    ndex=n
-				   exit
-				  endif
-			   enddo  
-			 endif     	     
-		
-		  call MPI_Barrier(PETSC_COMM_WORLD, ierr)
-		  
-		  if(myrank ==0 )then
-			 snpsi(na*ncomp+1: (na+1)*ncomp) = pppsi(1:ncomp)
-    	endif
-		 
+            ndex=n
+           exit
+          endif
+         enddo  
+       endif            
+    
+      call MPI_Barrier(PETSC_COMM_WORLD, ierr)
+      
+      if(myrank ==0 )then
+       snpsi(na*ncomp+1: (na+1)*ncomp) = pppsi(1:ncomp)
+      endif
+     
 
-			   
-		enddo
+         
+    enddo
 
    
    ierr=0
-	
-   end subroutine ptran_get_natural_psi	  
+  
+   end subroutine ptran_get_natural_psi    
   
  !**********************************************************************************
  
    subroutine ptran_get_natural_psig(snpsig, ierr)
     implicit none
     
- 	real*8  :: snpsig(:)    
+   real*8  :: snpsig(:)    
     integer :: ierr, ndex,na, status(MPI_STATUS_SIZE)
-	integer :: ifound, jng, n
-	real*8 pppsig(ncomp)
+  integer :: ifound, jng, n
+  real*8 pppsig(ncomp)
       
-	  ierr=-1
-   	  	ndex=1
-		do na=0, nmax-1
-			  ifound=0
-			  if(myrank==0) then
-			   ifound=0
-			   do n=ndex,nlmax
-				 if(nL2A(n) == na ) then
-				  ifound=1
-				  pppsig = psig(:, nL2G(n))
-				  ndex=n
-				  exit	 
-				endif
-			   enddo
-			   if(ifound==0)then  
-				call MPI_Recv(pppsig, ncomp ,MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, na+na, &
+    ierr=-1
+         ndex=1
+    do na=0, nmax-1
+        ifound=0
+        if(myrank==0) then
+         ifound=0
+         do n=ndex,nlmax
+         if(nL2A(n) == na ) then
+          ifound=1
+          pppsig = psig(:, nL2G(n))
+          ndex=n
+          exit   
+        endif
+         enddo
+         if(ifound==0)then  
+        call MPI_Recv(pppsig, ncomp ,MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, na+na, &
                 PETSC_COMM_WORLD,status ,ierr) 
-			   endif
-				
-			  else
-				do n=ndex,nlmax
-				  if(nL2A(n) == na) then
-					jng = 1 + (nl2G(n)-1)*ncomp 
-				     call MPI_Send(psig(1:ncomp,nL2G(n)), ncomp ,MPI_DOUBLE_PRECISION, 0, na+na, &
+         endif
+        
+        else
+        do n=ndex,nlmax
+          if(nL2A(n) == na) then
+          jng = 1 + (nl2G(n)-1)*ncomp 
+             call MPI_Send(psig(1:ncomp,nL2G(n)), ncomp ,MPI_DOUBLE_PRECISION, 0, na+na, &
                      PETSC_COMM_WORLD, ierr)
-				    ndex=n
-				   exit
-				  endif
-			   enddo  
-			 endif     	     
-		
-		  call MPI_Barrier(PETSC_COMM_WORLD, ierr)
-		  
-		  if(myrank ==0 )then
-			 snpsig(na*ncomp+1: (na+1)*ncomp) = pppsig(1:ncomp) 
-    	endif
-		 
+            ndex=n
+           exit
+          endif
+         enddo  
+       endif            
+    
+      call MPI_Barrier(PETSC_COMM_WORLD, ierr)
+      
+      if(myrank ==0 )then
+       snpsig(na*ncomp+1: (na+1)*ncomp) = pppsig(1:ncomp) 
+      endif
+     
 
-			   
-		enddo
+         
+    enddo
 
    
    ierr=0
-	
-   end subroutine ptran_get_natural_psig	  
+  
+   end subroutine ptran_get_natural_psig    
 
  !********************************************************************************** 
   subroutine ptran_psi_out (kplt,da,da_1dof,da_kin)
@@ -1080,9 +1080,9 @@ contains
           write(fid,40) zk,(c_p(j+(n-1)*ncomp),j=1,ncomp)
         else
           phx = -log10(c_p(jph+(n-1)*ncomp))
-		  
-!   	  print *,'ptran_out: ',n,kplt,jph,zk,ph,log(10.d0),c_p(jph+(n-1)*ncomp)
-		  
+      
+!       print *,'ptran_out: ',n,kplt,jph,zk,ph,log(10.d0),c_p(jph+(n-1)*ncomp)
+      
           write(fid,40) zk,phx,(c_p(j+(n-1)*ncomp),j=1,ncomp)
         endif
       enddo    
@@ -1189,7 +1189,7 @@ contains
     if (myrank==0) then
     q = ','
 
-	fid = 68
+  fid = 68
     if (kplt < 10) then
       write(fname,'(a4,i1,a4)') 'psi', kplt, '.dat'
     else
@@ -1211,7 +1211,7 @@ contains
         endif
         n = ix
          write(fid,40) xi,(snpsi(j+(n-1)*ncomp),j=1,ncomp),&
-		 (snpsig(j+(n-1)*ncomp),j=1,ncomp)
+     (snpsig(j+(n-1)*ncomp),j=1,ncomp)
          enddo    
      else if (nx == 1 .and. ny == 1 .and. nz > 1) then
         write(fid,21) (q,nam(j),j=1,ncomp)
@@ -1286,7 +1286,7 @@ contains
             endif
             n = ix+(jy-1)*nx+(kz-1)*nxy
               write(fid,40) xi,yj,zk,(snpsi(j+(n-1)*ncomp),j=1,ncomp),&
-			  (snpsig(j+(n-1)*ncomp),j=1,ncomp)
+        (snpsig(j+(n-1)*ncomp),j=1,ncomp)
             enddo
         enddo
       enddo
@@ -1299,7 +1299,7 @@ contains
  endif
  
 
-! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++													      
+! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
   if (nkin > 0) then
   
 !---mineral volume fractions & porosity

@@ -34,7 +34,7 @@ module ptran_setbnd_module
       use water_eos_module
       use ptran_speciation_module
       use co2eos_module
-	  
+    
       implicit none
 
       real*8 :: cloc(ncmx),cxloc(ncxmx),cloctot(ncmx),pgasloc(ngmx), &
@@ -142,9 +142,9 @@ module ptran_setbnd_module
         if (iphase.eq.2 .or. iphase.eq.0) then !  conc for the gas phase
           call duanco2(tempbc(ibc), pgasloc(1),dco2,fc,phi)
          
-		  u1= (dco2/fmwco2*1D3) /pgasloc(1)
+      u1= (dco2/fmwco2*1D3) /pgasloc(1)
            print *,"ptran_set_BC: ", ibc,  tempbc(ibc), pgasloc(1),dco2,u1
-		  psinam = 'psigbnd'
+      psinam = 'psigbnd'
           do j = 1, ncomp
             sum = zero
             do l = 1, ngas
@@ -156,7 +156,7 @@ module ptran_setbnd_module
           enddo
           do i = 1, ngas
             pgasbnd(i,ibc) = pgasloc(i)!*u1      
-			print *,"ptran_setbnd: ",  psigbnd(i,ibc) ,  pgasloc(i)             
+      print *,"ptran_setbnd: ",  psigbnd(i,ibc) ,  pgasloc(i)             
           enddo
         endif
   100 continue

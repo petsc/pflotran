@@ -136,53 +136,53 @@ subroutine oil_pckr_init(myrank)
 
         se_w = (s_w - pckr_swir)/( 1.D0 - pckr_swir)
         se_t = (s_w + s_o - pckr_swir)/( 1.D0 - pckr_swir) 
-		!  if(se_w<1D-5)then
-		!    pc(1)=pcmax
-		!   else
-		!	 pc(1)=((se_w)**pckr_m-1D0)**(1.D0/pckr_un)/alaph_ow
-		!     if(pc(1)>pcmax) pc(1)=pcmax
-		!   endif
-		!   if(se_t<1D-5)then
-		!    pc(3)=pcmax
-		!   else
-		!	 pc(3)=((se_t)**pckr_m-1D0)**(1.D0/pckr_un)/alaph_ao
-		!     if(pc(3)>pcmax) pc(1)=pcmax
-		!   endif
+    !  if(se_w<1D-5)then
+    !    pc(1)=pcmax
+    !   else
+    !   pc(1)=((se_w)**pckr_m-1D0)**(1.D0/pckr_un)/alaph_ow
+    !     if(pc(1)>pcmax) pc(1)=pcmax
+    !   endif
+    !   if(se_t<1D-5)then
+    !    pc(3)=pcmax
+    !   else
+    !   pc(3)=((se_t)**pckr_m-1D0)**(1.D0/pckr_un)/alaph_ao
+    !     if(pc(3)>pcmax) pc(1)=pcmax
+    !   endif
 
 
-		  if (se_w<1D-5)then ! no water phase
-		     kr(1)=0.D0
-			  if( se_t<1D-5)then !no oil phase
-			      kr(2)=1.D0; kr(3)=0.D0
-			  elseif((1.D0-se_t)<1D-5)then !no gas phase
-			    kr(2)=0.D0; kr(3)=1.D0
-			  else         ! oil and gas phase
-			    kr(2)= (1-se_t)**.5D0 *(1.D0 - se_t**m_r)**(2.D0*pckr_m)	 
-			    kr(3)=  (se_t-se_w)**5D-1 *(1.D0  -(1.D0 - se_t**m_r)**pckr_m)**2.D0
-		      endif
-		  else    ! have water
-		     kr(1) = se_w **.5D0 * (1.D0 - (1.D0 - se_w**m_r)**pckr_m)**2.D0
-			 if( (se_t-se_w)<1D-5)then ! no oil phase
-			    kr(2)= (1-se_t)**.5D0 *(1.D0 - se_t**m_r)**(2.D0*pckr_m)
+      if (se_w<1D-5)then ! no water phase
+         kr(1)=0.D0
+        if( se_t<1D-5)then !no oil phase
+            kr(2)=1.D0; kr(3)=0.D0
+        elseif((1.D0-se_t)<1D-5)then !no gas phase
+          kr(2)=0.D0; kr(3)=1.D0
+        else         ! oil and gas phase
+          kr(2)= (1-se_t)**.5D0 *(1.D0 - se_t**m_r)**(2.D0*pckr_m)   
+          kr(3)=  (se_t-se_w)**5D-1 *(1.D0  -(1.D0 - se_t**m_r)**pckr_m)**2.D0
+          endif
+      else    ! have water
+         kr(1) = se_w **.5D0 * (1.D0 - (1.D0 - se_w**m_r)**pckr_m)**2.D0
+       if( (se_t-se_w)<1D-5)then ! no oil phase
+          kr(2)= (1-se_t)**.5D0 *(1.D0 - se_t**m_r)**(2.D0*pckr_m)
                 kr(3)=0.D0
-			 elseif((1.D0-se_t)<1D-5)then !no gas phase
-			    kr(2)=0.D0
-				if((se_t-se_w)<1D-5)then ! no oil phase 
-				  kr(3)=0.D0
-				else
-				  kr(3)= (se_t-se_w)**5D-1 *((1.D0 - se_w**m_r)**pckr_m -(1.D0 - se_t**m_r)**pckr_m)**2.D0
+       elseif((1.D0-se_t)<1D-5)then !no gas phase
+          kr(2)=0.D0
+        if((se_t-se_w)<1D-5)then ! no oil phase 
+          kr(3)=0.D0
+        else
+          kr(3)= (se_t-se_w)**5D-1 *((1.D0 - se_w**m_r)**pckr_m -(1.D0 - se_t**m_r)**pckr_m)**2.D0
                 endif
-			 else	 									   				  		    		  
-		  	   kr(1) = se_w **.5D0 * (1.D0 - (1.D0 - se_w**m_r)**pckr_m)**2.D0
-			   kr(2) = (1-se_t)**.5D0 *(1.D0 - se_t**m_r)**(2.D0*pckr_m)    
-	           kr(3) = (se_t-se_w)**5D-1 *((1.D0 - se_w**m_r)**pckr_m -(1.D0 - se_t**m_r)**pckr_m)**2.D0
-	         endif 
-		  endif 
-	     case(12) ! Stone I 
-	   
-	   
-	   case(13) ! Stone II		   	  
-	  end select
-	end subroutine oil_pckr_noderiv   
+       else
+           kr(1) = se_w **.5D0 * (1.D0 - (1.D0 - se_w**m_r)**pckr_m)**2.D0
+         kr(2) = (1-se_t)**.5D0 *(1.D0 - se_t**m_r)**(2.D0*pckr_m)    
+             kr(3) = (se_t-se_w)**5D-1 *((1.D0 - se_w**m_r)**pckr_m -(1.D0 - se_t**m_r)**pckr_m)**2.D0
+           endif 
+      endif 
+       case(12) ! Stone I 
+     
+     
+     case(13) ! Stone II           
+    end select
+  end subroutine oil_pckr_noderiv   
 end module oil_pckr_module
 

@@ -365,10 +365,10 @@ contains
 
             jn = j+(n1-1)*nmat
             b_p(jn) = b_p(jn) - qflux ! note: b = -r
-		
-	  ! if(j==jco2)&
+    
+    ! if(j==jco2)&
 !       print *,'ptran_multi: ',nc,jn,q,difgas,qflux,b_p(jn), &
-!		u2,ppsig(j,m2),u1,ppsig(j,m1)
+!    u2,ppsig(j,m2),u1,ppsig(j,m1)
 
             do l = 1, ncomp
               lm1 = l+(m1-1)*nmat
@@ -617,7 +617,7 @@ contains
           jm = j+(m-1)*nmat
 !         irow1(j) = jng-1
           qflux = u1*ppsig(j,ng)+u2*psigbnd(j,ibc)
-	!	  print *,'Ptran-multi: 1 : psaig',q,trans,ng, j,ibc, u1,u2,ppsig(j,ng),psigbnd(j,ibc)
+  !    print *,'Ptran-multi: 1 : psaig',q,trans,ng, j,ibc, u1,u2,ppsig(j,ng),psigbnd(j,ibc)
           !print *, xphibc(nc)
           b_p(jm) = b_p(jm) - qflux
           do l = 1, ncomp
@@ -662,7 +662,7 @@ contains
 !         irow1(j) = jng-1
 
          qflux = u1*ppsig(j,ng)+u2*psigbnd(j,ibc)
-	!	 print *,'Ptran-multi: 3 : psaig', q, ng, j,ibc, u1,u2,ppsig(j,ng),psigbnd(j,ibc)
+  !   print *,'Ptran-multi: 3 : psaig', q, ng, j,ibc, u1,u2,ppsig(j,ng),psigbnd(j,ibc)
 !          qflux = -q*ppsig(j,ng)
           
           b_p(jm) = b_p(jm) - qflux

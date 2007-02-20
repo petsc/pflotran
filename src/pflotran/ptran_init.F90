@@ -237,7 +237,7 @@ contains
 ! arrays
 ! if (using_pflowGrid .ne. PETSC_TRUE) then
     allocate(nL2A(nlmax))
-	allocate(nL2G(nlmax))
+  allocate(nL2G(nlmax))
     allocate(nG2L(ngmax))
 
     nG2L(1:ngmax) = 0
@@ -275,8 +275,8 @@ contains
         endif
       endif
     enddo
-	
-	 !Local(non ghosted)->Natural(natural order starts from 0)
+  
+   !Local(non ghosted)->Natural(natural order starts from 0)
     n=0
     do k=1,nlz
       do j=1,nly
@@ -291,9 +291,9 @@ contains
       enddo
     enddo
 
-	
-	
-	
+  
+  
+  
 ! endif
   
   ! identify corner ghost nodes

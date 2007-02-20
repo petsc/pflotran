@@ -7,8 +7,8 @@ DBASe
 :/Users/lichtner/flotran/database/hanford.dat
 ./hanford.dat
 :
-:   iact  loglin  iaccel  icomprs  iblkfmt isurf
-OPTS 1     0       5         0        1      1
+:   iact  loglin  iaccel  icomprs  iblkfmt isurf isolidss
+OPTS 1     0       5         0        1      1      0
 :
 :   kmax  newton_mx  icut_mx  tolexp iwarn iprint
 TOLR 1000    16          8      5.d0   0     1

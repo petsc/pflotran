@@ -224,8 +224,8 @@
 !     time average rtot
       rtoth2o = rtoth2o + rrtoth2o*dt
       rtotco2 = rtotco2 + rrtotco2*dt
-		
-!     drtotmax=0.D0; tmp3=0.D0; tmp4=0.D0	
+    
+!     drtotmax=0.D0; tmp3=0.D0; tmp4=0.D0  
 !     do n=1,grid%nlmax
 !       tmp1=dabs(rtoth2o(n)-rrtoth2o(n))
 !       tmp2=dabs(rtotco2(n)-rrtotco2(n))

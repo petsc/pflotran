@@ -34,7 +34,7 @@ public pflowGrid_ptran_init, pflotranGrid_interp, ptran_bc_reassign
   real*8, pointer :: por_pflow_p(:), por0_pflow_p(:),por_ptran_p(:), & !volume_p(:), 
                      temp_pflow_p(:), temp_ptran_p(:), &
                      sat_pflow_p(:), sat_ptran_p(:), xx_p(:), iphase_p(:),&
-					 den_co2_p(:), xphi_co2_p(:)
+           den_co2_p(:), xphi_co2_p(:)
   real*8 :: afac
   integer  :: jn,n,nr, iiphase, iicap
   real*8 :: dif(grid%nphase)
@@ -99,7 +99,7 @@ public pflowGrid_ptran_init, pflotranGrid_interp, ptran_bc_reassign
     if (grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE) then
     call VecGetArrayF90(grid%xx, xx_p, ierr)
     call VecGetArrayF90(grid%iphas, iphase_p, ierr)
-	call VecGetArrayF90(den_co2, den_co2_p, ierr)
+  call VecGetArrayF90(den_co2, den_co2_p, ierr)
     call VecGetArrayF90(xphi_co2, xphi_co2_p, ierr)
     endif
   
@@ -108,20 +108,20 @@ public pflowGrid_ptran_init, pflotranGrid_interp, ptran_bc_reassign
   !call VecGetArrayF90(phik, phik_ptran_p, ierr)
   do n = 1, grid%nlmax
    
-		
+    
     if (grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE) then
-	 iiphase= int(iphase_p(n))
-	 iicap=1
-	 dif(:)=1D-9
-!	 print *,'couple :begin calling'
-  	call pri_var_trans_mph_ninc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),iiphase,&
+   iiphase= int(iphase_p(n))
+   iicap=1
+   dif(:)=1D-9
+!   print *,'couple :begin calling'
+    call pri_var_trans_mph_ninc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),iiphase,&
         grid%scale,grid%nphase,grid%nspec,&
         iicap, grid%sir(1:grid%nphase,iicap),grid%lambda(iicap),&
         grid%alpha(iicap),grid%pckrm(iicap),grid%pcwmax(iicap),&
         grid%pcbetac(iicap),grid%pwrprm(iicap),dif,&
- 	    varr, grid%itable,ierr,xphi_co2_p(n),den_co2_p(n))
+       varr, grid%itable,ierr,xphi_co2_p(n),den_co2_p(n))
  !   print *, n, iiphase, xphi_co2_p(n), den_co2_p(n)
-	  
+    
   endif
   
   
@@ -237,8 +237,8 @@ public pflowGrid_ptran_init, pflotranGrid_interp, ptran_bc_reassign
       ppress_p(m) = xx_p(1+(m-1)*grid%ndof) ! ppress and press defined for nphase
       ttemp_p(m) = xx_p(2+(m-1)*grid%ndof)
 !      ssat_p(m) = xx_p(4+(m-1)*grid%ndof)  
-	  ssat_p(jm) = xx_p(4+(m-1)*grid%ndof)
-	  enddo
+    ssat_p(jm) = xx_p(4+(m-1)*grid%ndof)
+    enddo
 !   call VecRestoreArrayF90(grid%xx_loc, xx_p, ierr)
     call VecRestoreArrayF90(grid%xx, xx_p, ierr)
   endif
@@ -248,7 +248,7 @@ public pflowGrid_ptran_init, pflotranGrid_interp, ptran_bc_reassign
     call VecGetArrayF90(grid%xx, xx_p, ierr)
     call VecGetArrayF90(grid%yy, yy_p, ierr)
     call VecGetArrayF90(grid%iphas, iphase_p, ierr)
-    call VecGetArrayF90(grid%iphas_old, iphase_old_p, ierr)	
+    call VecGetArrayF90(grid%iphas_old, iphase_old_p, ierr)  
     do m = 1, grid%nlmax
 !     n = nL2G(m)
 !     ppress_p(m) = xx_p(1+(n-1)*grid%ndof) ! ppress and press defined for nphase
@@ -266,7 +266,7 @@ public pflowGrid_ptran_init, pflotranGrid_interp, ptran_bc_reassign
         case(2)
           ssat_p(jm) = 1.D0
         case(3)
-          ssat_p(jm) = xx_p(3+(m-1)*grid%ndof)    	  
+          ssat_p(jm) = xx_p(3+(m-1)*grid%ndof)        
       end select
        
       iiphas=iphase_old_p(m)
@@ -276,15 +276,15 @@ public pflowGrid_ptran_init, pflotranGrid_interp, ptran_bc_reassign
         case(2)
           sat_p(jm) = 1.D0 
         case(3)
-          sat_p(jm) = yy_p(3+(m-1)*grid%ndof)    	  
+          sat_p(jm) = yy_p(3+(m-1)*grid%ndof)        
       end select
 !     print *,"pflotran_coup:: ",m, iphase_p(m), iphase_old_p(m),ssat_p(jm),sat_p(jm)
-	 enddo
+   enddo
 !   call VecRestoreArrayF90(grid%xx_loc, xx_p, ierr)
     call VecRestoreArrayF90(grid%xx, xx_p, ierr)
     call VecRestoreArrayF90(grid%yy, yy_p, ierr)
     call VecRestoreArrayF90(grid%iphas, iphase_p, ierr)
-    call VecRestoreArrayF90(grid%iphas_old, iphase_old_p, ierr)	
+    call VecRestoreArrayF90(grid%iphas_old, iphase_old_p, ierr)  
   endif
 
   call VecGetArrayF90(den_co2, den_co2_p, ierr)
@@ -369,7 +369,7 @@ public pflowGrid_ptran_init, pflotranGrid_interp, ptran_bc_reassign
     enddo
     do nc = 1, grid%nconnbc
       vlbc(nc) = f1 * grid%vvlbc(nc) + f2 * grid%vlbc(nc)
-	  if(iphase==2)vgbc(nc) = f1 * grid%vvgbc(nc) + f2 * grid%vgbc(nc)
+    if(iphase==2)vgbc(nc) = f1 * grid%vvgbc(nc) + f2 * grid%vgbc(nc)
     enddo
   else ! first step or f2 = 0, f1 = 1
     do nc = 1, grid%nconn
@@ -398,9 +398,9 @@ public pflowGrid_ptran_init, pflotranGrid_interp, ptran_bc_reassign
       use ptran_speciation_module
 
       implicit none
-	  type(pflowGrid), intent(in) :: grid
+    type(pflowGrid), intent(in) :: grid
 
-	  integer iibndtyp(nrgbcmx)
+    integer iibndtyp(nrgbcmx)
 
       real*8 :: cloc(ncmx),cxloc(ncxmx),cloctot(ncmx),pgasloc(ngmx), &
       cecloc(nexmx),xexloc(nexmx), &
@@ -410,97 +410,97 @@ public pflowGrid_ptran_init, pflotranGrid_interp, ptran_bc_reassign
 
       real*8 :: fach2o,rho1,sum,u1
       real*8 ctot_ori(ncmx,nrgmx), prefbc(nrgmx)
-	  integer  ibndtyp_ori(nrgbcmx), iface_ori(nrgbcmx), itype_ori(ncmx,nrgmx)
-	  character(len=namlen) :: ncon_ori(ncmx,nrgmx)
-	   
+    integer  ibndtyp_ori(nrgbcmx), iface_ori(nrgbcmx), itype_ori(ncmx,nrgmx)
+    character(len=namlen) :: ncon_ori(ncmx,nrgmx)
+     
       integer :: i,idif=0,iireg,iisrc,iter,j,jj,k,l,m,nss
       integer iibc, ptran_ibcreg1,ptran_ibcreg2
 
       character :: psinam*7
 
-	   
-	   print *,'pflow bc number:',grid%nblkbc
-!	   do ibc=1,grid%nblkbc
-!	    print*,'pflotran_couple: ', ibc, grid%xxbc0(1:2,ibc)
-!	   enddo	
-	   
+     
+     print *,'pflow bc number:',grid%nblkbc
+!     do ibc=1,grid%nblkbc
+!      print*,'pflotran_couple: ', ibc, grid%xxbc0(1:2,ibc)
+!     enddo  
+     
 
       ibc = 0
         
-	  
-	  
-	  
-	  
+    
+    
+    
+    
     if(ibcreg(1).eq.0) goto 110 ! source/sink
       
-	  
-	   iibc=0;ibc=0
+    
+     iibc=0;ibc=0
        ptran_ibcreg1=ibcreg(1)
-	   ptran_ibcreg2=ibcreg(2)
-	   ibcreg(2)=ibcreg(1)+grid%nblkbc -1
-	   ibndtyp_ori(:)=ibndtyp(:) 
-	   ctot_ori(:,:)=ctot(:,:)
-	   itype_ori(:,:)=itype(:,:)
-	   iface_ori(:)=iface(:)
-	   ncon_ori(:,:)=ncon(:,:)
-	   
-	    do ireg = ptran_ibcreg1, ptran_ibcreg2
-	       ibc=ibc+1 !now ibc+ptran_ibcreg1=ireg
-		   
+     ptran_ibcreg2=ibcreg(2)
+     ibcreg(2)=ibcreg(1)+grid%nblkbc -1
+     ibndtyp_ori(:)=ibndtyp(:) 
+     ctot_ori(:,:)=ctot(:,:)
+     itype_ori(:,:)=itype(:,:)
+     iface_ori(:)=iface(:)
+     ncon_ori(:,:)=ncon(:,:)
+     
+      do ireg = ptran_ibcreg1, ptran_ibcreg2
+         ibc=ibc+1 !now ibc+ptran_ibcreg1=ireg
+       
 !          print *, ireg,ibc, iface_ori(ibc)
 !          print *,'coup_ori:ibc=', ibc, ireg,iibc, iface_ori(ibc), ibndtyp_ori(ibc),&
-!		             ctot_ori(9:10,ireg)
-		   
-		   if(iface_ori(ibc)==1 .or. iface_ori(ibc)==2)then
-		    
-			
-			
-			
-			do i=1, grid%nz
-		       iibc=iibc+1
+!                 ctot_ori(9:10,ireg)
+       
+       if(iface_ori(ibc)==1 .or. iface_ori(ibc)==2)then
+        
+      
+      
+      
+      do i=1, grid%nz
+           iibc=iibc+1
                iface(iibc)=iface_ori(ibc)
-			   ibndtyp(iibc)=ibndtyp_ori(ibc)
+         ibndtyp(iibc)=ibndtyp_ori(ibc)
 !              print *,'pflotran_couple: ', iibc,iface_ori(ibc),iface(iibc) 
 !              print *, iibc,grid%xxbc0(1:2,iibc) 
-		       tempbc(iibc)=grid%xxbc0(2,iibc) + tkelvin
-			   prefbc(iibc)=grid%xxbc0(1,iibc)
-			   !print *,iibc, iface_ori(ireg), ibndtyp_ori(ibc)
-			   itype(:,ptran_ibcreg1+iibc-1)=itype_ori(:,ireg)
-			   ctot(:,ptran_ibcreg1+iibc-1)=ctot_ori(:,ireg)
-			   ncon(:,ptran_ibcreg1+iibc-1)=ncon_ori(:,ireg)
+           tempbc(iibc)=grid%xxbc0(2,iibc) + tkelvin
+         prefbc(iibc)=grid%xxbc0(1,iibc)
+         !print *,iibc, iface_ori(ireg), ibndtyp_ori(ibc)
+         itype(:,ptran_ibcreg1+iibc-1)=itype_ori(:,ireg)
+         ctot(:,ptran_ibcreg1+iibc-1)=ctot_ori(:,ireg)
+         ncon(:,ptran_ibcreg1+iibc-1)=ncon_ori(:,ireg)
              enddo
             endif
-		  
-				   
-		   if(iface_ori(ibc)==3 .or. iface_ori(ibc)==4)then
-		       iibc=iibc+1
+      
+           
+       if(iface_ori(ibc)==3 .or. iface_ori(ibc)==4)then
+           iibc=iibc+1
                iface(iibc)=iface_ori(ibc)
-			   ibndtyp(iibc)=ibndtyp_ori(ibc)
-		         tempbc(iibc)=grid%xxbc0(2,iibc) + tkelvin
-			   prefbc(iibc)=grid%xxbc0(1,iibc)
-			   itype(:,ptran_ibcreg1+iibc-1)=itype_ori(:,ireg)
-			   ctot(:,ptran_ibcreg1+iibc-1)=ctot_ori(:,ireg)
-			   ncon(:,ptran_ibcreg1+iibc-1)=ncon_ori(:,ireg)
+         ibndtyp(iibc)=ibndtyp_ori(ibc)
+             tempbc(iibc)=grid%xxbc0(2,iibc) + tkelvin
+         prefbc(iibc)=grid%xxbc0(1,iibc)
+         itype(:,ptran_ibcreg1+iibc-1)=itype_ori(:,ireg)
+         ctot(:,ptran_ibcreg1+iibc-1)=ctot_ori(:,ireg)
+         ncon(:,ptran_ibcreg1+iibc-1)=ncon_ori(:,ireg)
 !             print *,'pflotran_couple: ', iibc,ptran_ibcreg1+iibc, ctot(:, ptran_ibcreg1+iibc-1)
-			 endif
+       endif
       
            if(iface_ori(ibc)==5 .or. iface_ori(ibc)==6)then
-		    
-			! front & back not working even in pflow part!!!
-			! only type 2 allowed i.e. ibndtyp==2 ! 
-		       iibc=iibc+1
+        
+      ! front & back not working even in pflow part!!!
+      ! only type 2 allowed i.e. ibndtyp==2 ! 
+           iibc=iibc+1
                iface(iibc)=iface_ori(ibc)
-			   ibndtyp(iibc)=ibndtyp_ori(ibc)
-		       tempbc(iibc)=grid%xxbc0(2,iibc) + tkelvin
-			   prefbc(iibc)=grid%xxbc0(1,iibc)
-			   itype(:,ptran_ibcreg1+iibc-1)=itype_ori(:,ireg)
-			   ctot(:,ptran_ibcreg1+iibc-1)=ctot_ori(:,ireg)
-			   ncon(:,ptran_ibcreg1+iibc-1)=ncon_ori(:,ireg)
+         ibndtyp(iibc)=ibndtyp_ori(ibc)
+           tempbc(iibc)=grid%xxbc0(2,iibc) + tkelvin
+         prefbc(iibc)=grid%xxbc0(1,iibc)
+         itype(:,ptran_ibcreg1+iibc-1)=itype_ori(:,ireg)
+         ctot(:,ptran_ibcreg1+iibc-1)=ctot_ori(:,ireg)
+         ncon(:,ptran_ibcreg1+iibc-1)=ncon_ori(:,ireg)
           
            endif
       enddo
     
-     				  		      
+                         
 
 
 
@@ -508,11 +508,11 @@ public pflowGrid_ptran_init, pflotranGrid_interp, ptran_bc_reassign
 
 
       do ibc = 1, grid%nblkbc
-	            ireg=ibc + ptran_ibcreg1 -1
-				call density(tempbc(iibc), prefbc(iibc),rho1)
-			   	rho(1)=1.D0!rho1
-				 	        
-			    call trspeciate (cloc,cxloc,cloctot,pgasloc, &
+              ireg=ibc + ptran_ibcreg1 -1
+        call density(tempbc(iibc), prefbc(iibc),rho1)
+           rho(1)=1.D0!rho1
+                   
+          call trspeciate (cloc,cxloc,cloctot,pgasloc, &
                  cecloc,xexloc,csorplc,ccsorplc,csorpflc,sitdnloc,alogpf, &
                  gamloc,gamxloc,dgamdi,rho,tempbc(ibc),iter)
 
@@ -541,22 +541,22 @@ public pflowGrid_ptran_init, pflotranGrid_interp, ptran_bc_reassign
                         enddo
                    enddo
 
-				if (nsrfmin .gt. 0) then
-				  psinam = ' psorpbnd'
-				  do j = 1, ncomp
-					sum = zero
-					do m = nsrfmin-ncolsrf+1,nsrfmin ! sum over colloids only !
-					  do k = nsite1(m), nsite2(m)
-						do i = nsorp1(k), nsorp2(k)
-						  sum = sum + ssorp(j,i)*ccsorplc(i)
-						enddo
-					  enddo
-					enddo
-					psorpbnd(j,ibc) = sum
-					if (myrank==0) &
-					write(iunit2,1020) nam(j),psinam,j,ibc,sum
-				  enddo
-				endif
+        if (nsrfmin .gt. 0) then
+          psinam = ' psorpbnd'
+          do j = 1, ncomp
+          sum = zero
+          do m = nsrfmin-ncolsrf+1,nsrfmin ! sum over colloids only !
+            do k = nsite1(m), nsite2(m)
+            do i = nsorp1(k), nsorp2(k)
+              sum = sum + ssorp(j,i)*ccsorplc(i)
+            enddo
+            enddo
+          enddo
+          psorpbnd(j,ibc) = sum
+          if (myrank==0) &
+          write(iunit2,1020) nam(j),psinam,j,ibc,sum
+          enddo
+        endif
 
         if (iphase.eq.2 .or. iphase.eq.0) then !  conc for the gas phase
           u1 = one/(rgasjj*tk)

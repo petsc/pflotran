@@ -67,12 +67,12 @@ private
 
  do n = 1, grid%nlmax
    !   if(iphase_p(n)==6 .or. iphase_p(n)==2)then
-			perm_xx_p(n)=perm0_xx_p(n)*&
-		  (porosity_p(n)/porosity0_p(n))**perm_pow_p(n) 
+      perm_xx_p(n)=perm0_xx_p(n)*&
+      (porosity_p(n)/porosity0_p(n))**perm_pow_p(n) 
         perm_yy_p(n)=perm0_yy_p(n)*&
-		  (porosity_p(n)/porosity0_p(n))**perm_pow_p(n) 
+      (porosity_p(n)/porosity0_p(n))**perm_pow_p(n) 
         perm_zz_p(n)=perm0_zz_p(n)*&
-		  (porosity_p(n)/porosity0_p(n))**perm_pow_p(n) 
+      (porosity_p(n)/porosity0_p(n))**perm_pow_p(n) 
     !  endif
  enddo
       

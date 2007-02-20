@@ -8,6 +8,7 @@
 
 /* Begin PBXFileReference section */
 		23CA5E010AAF411000EC6DC4 /* pflotran_fc.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = pflotran_fc.F90; sourceTree = "<group>"; };
+		23CFC3FD0B8A4881009EAE62 /* makefile_noarrayf90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = text; path = makefile_noarrayf90; sourceTree = "<group>"; };
 		33021A9208A12EFD00D082B8 /* co2_span_wagner.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = co2_span_wagner.F90; sourceTree = "<group>"; };
 		33021A9308A12EFD00D082B8 /* co2_sw_global.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = co2_sw_global.F90; sourceTree = "<group>"; };
 		33021A9408A12EFD00D082B8 /* co2_sw_rtsafe.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = co2_sw_rtsafe.F90; sourceTree = "<group>"; };
@@ -81,6 +82,7 @@
 				33021A9808A12EFD00D082B8 /* gaseos_mod.F90 */,
 				33021A9908A12EFD00D082B8 /* hydrostat.F90 */,
 				33021A9A08A12EFD00D082B8 /* makefile */,
+				23CFC3FD0B8A4881009EAE62 /* makefile_noarrayf90 */,
 				33021A9D08A12EFD00D082B8 /* mixed_fluid_eos.F90 */,
 				33021A9B08A12EFD00D082B8 /* mixed_fluid_eos_duan.F90 */,
 				33021A9C08A12EFD00D082B8 /* mixed_fluid_eos_sp_ana.F90 */,

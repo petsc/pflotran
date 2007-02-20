@@ -488,13 +488,13 @@ contains
     case ('BCON')
 
 !-----------------------------------------------------------------------
-!-----boundary conditions:	ibnd:	1-left,		2-right
-!					3-top,		4-bottom
-!					5-front,	6-back
+!-----boundary conditions:  ibnd:  1-left,    2-right
+!          3-top,    4-bottom
+!          5-front,  6-back
 !
-!				ibndtyp:	1-concentration
-!				ibndtyp:	2-flux
-!				ibndtyp:	3-zero gradient
+!        ibndtyp:  1-concentration
+!        ibndtyp:  2-flux
+!        ibndtyp:  3-zero gradient
 !-----------------------------------------------------------------------
       ibc = 0
       ir = 0
