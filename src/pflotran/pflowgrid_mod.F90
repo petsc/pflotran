@@ -937,7 +937,9 @@ subroutine pflowGrid_setup(grid, inputfile)
   Vec :: temp0_nat_vec, temp1_nat_vec, temp2_nat_vec, temp3_nat_vec, &
           temp4_nat_vec !,temp5_nat_vec,temp6_nat_vec,temp7_nat_vec
   
-! external SNESDefaultComputeJacobian
+  ! Need to declare this function as external or else gfortran complains.
+  ! Not sure why it complains and other compilers don't.
+  external SNESDefaultComputeJacobianColor
 
 #include "definitions.h"
   
