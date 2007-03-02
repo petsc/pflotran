@@ -1,0 +1,7 @@
+SACROC Grid Effects
+
+This exercise tests grid effects using the SACROC logically structured
+grid with equal dx, but variable dz. Two input files are provide for
+vertically and horizontal flow. To run each problem add the CO2 database
+file co2data0.dat and the file ./grid/geom_field.in to the local directory.
+
