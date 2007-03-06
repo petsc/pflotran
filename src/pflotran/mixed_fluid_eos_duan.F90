@@ -71,7 +71,7 @@ module mixture_module
    ! pure water
     pw=p
    if(num_phase>=2)then
-      call pflow_pckr_noderiv(ipckrtype,pckr_swir,pckr_lambda, pckr_alpha,&
+      call pflow_pckr_noderiv_org(ipckrtype,pckr_swir,pckr_lambda, pckr_alpha,&
                               pckr_m,pckr_pcmax,sg,pc,kr) 
    
       pw=p!-pc(1)

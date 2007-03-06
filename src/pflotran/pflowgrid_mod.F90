@@ -3723,7 +3723,10 @@ subroutine pflowGrid_read_input(grid, inputfile)
        
           call fiReadInt(string,idum,ierr)
           call fiDefaultMsg('idum',ierr)
-          grid%icaptype(ireg)=idum
+          
+          call fiReadInt(string,grid%icaptype(idum),ierr)
+          call fiDefaultMsg('icaptype',ierr)
+      
           if (grid%use_mph == PETSC_TRUE .or. grid%use_owg == PETSC_TRUE &
               .or. grid%use_vadose == PETSC_TRUE) then
             do np=1, grid%nphase
@@ -3737,7 +3740,7 @@ subroutine pflowGrid_read_input(grid, inputfile)
         
           call fiReadDouble(string,grid%pckrm(idum),ierr)
           call fiDefaultMsg('lambda',ierr)
-          grid%lambda(ireg) = grid%pckrm(ireg)/(-grid%pckrm(ireg) +1.D0)
+          grid%lambda(idum) = grid%pckrm(idum)/(-grid%pckrm(idum) +1.D0)
 ! Here the lambda is assigned as the same value of m
 
           call fiReadDouble(string,grid%alpha(idum),ierr)

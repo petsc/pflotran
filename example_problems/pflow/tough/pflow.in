@@ -26,11 +26,12 @@ DIFF  1.D-16       12.6
 :PHAR 1.D-12
 :
 PCKR
-:ist  swir sgir lambda  alpha pcwmax   betac   pwr
-  1  0.1   1e-4       0.75    1.e-3    1.e8    0.e0	   1.D0		
-  2  0.1   1e-4       0.75    1.e-3    1.e8    0.e0    1.D0
-  3  0.1   1e-4       0.75    1.e-3    1.e6    0.e0    1.D0
-  4  0.1   0.D-5       0.762   7.5e-4    1.e6    2.e0   7.D0
+:1-vanG, 2-BrooksCorey, 3-linear, 4-SC-W
+: ist itype swir sgir  lambda   alpha   pcwmax   betac   pwr
+  1     1  0.1   1e-4   0.75    1.e-3    1.e8    0.e0	 1.D0		
+  2     2  0.1   1e-4   0.75    1.e-3    1.e8    0.e0    1.D0
+  3     4  0.1   0.D-5  0.762   7.5e-4   1.e6    2.e0    7.D0
+  4     4  0.1   0.D-5  0.762   7.5e-4   1.e6    2.e0    7.D0
 /
 THRM
 :ithm rho     cpr   ckdry  cksat  tau    cdiff      cexp
@@ -39,7 +40,8 @@ THRM
 :
 PHIK
 :i1  i2  j1  j2  k1  k2 icap ithm  por  tor  permx     permy     permz   permpwr
-  1 107   1   1   1   51  4   1   0.15   1.0  1.e-15    1.e-15    1.e-17     1.e0
+  1  53   1   1   1   51  3   1   0.15   1.0  1.e-15    1.e-15    1.e-17     1.e0
+ 54 107   1   1   1   51  4   1   0.15   1.0  1.e-15    1.e-15    1.e-17     1.e0
 :  1 107   1   1  10   15  4   1   0.05  1.0  1.e-18    1.e-18    1.e-20    1.e0
 /
 :

@@ -735,7 +735,7 @@
 
   
   size_var_use = 2 + 7*num_phase + 2* num_phase*num_spec
-  pckr_swir=pckr_sir(1)
+  !pckr_swir=pckr_sir(1)
   
       ibase=1;               t=>var_node(ibase)
   ibase=ibase+1;           p=>var_node(ibase)
@@ -901,7 +901,7 @@
    ! pure water
     pw = p   
     if(num_phase>=2)then
-      call pflow_pckr_noderiv(ipckrtype,pckr_swir,pckr_lambda,pckr_alpha,&
+      call pflow_pckr_noderiv(ipckrtype,pckr_sir,pckr_lambda,pckr_alpha,&
                               pckr_m,pckr_pcmax,satu(2),pc,kr,pckr_betac,pckr_pwr)
       pw=p !-pc(1)
 
@@ -994,7 +994,7 @@
     u(2)=  h(2)-p/den(2) * energyscale
     pc(2)=0
    !  print *,'gas phase nonder h::',t,p,h(2),u(2),hg,hstea
-    diff(num_spec+1:num_spec*2)=dif(2) ! dirty part
+    diff(num_spec+1:num_spec*2)= kr(2)* dif(2) * 1.01325D5/p*((t+273.15)/273.15)**1.8D0 ! dirty part
     dco2=den(2)/(p/rgasj/(t+273.15D0)*1D-3)
  !if(t>=100.D0) print *, p,t,xga,xgw,dg,dsteamol,hg, hstea, h(2)
   

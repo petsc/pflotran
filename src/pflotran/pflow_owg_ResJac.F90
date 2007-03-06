@@ -817,7 +817,7 @@ private
   !*******************************************
   call pri_var_trans_owg_ninc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),iiphase,&
         grid%scale,grid%nphase,grid%nspec,&
-        iicap, grid%sir(1:grid%nphase,iicap),grid%lambda(iicap),&
+        grid%icaptype(iicap),grid%sir(1:grid%nphase,iicap),grid%lambda(iicap),&
         grid%alpha(iicap),grid%pckrm(iicap),grid%pcwmax(iicap),&
         grid%pcbetac(iicap),grid%pwrprm(iicap),dif,&
     var_p((n-1)*size_var_node+1:(n-1)*size_var_node+size_var_use),&
@@ -829,7 +829,7 @@ private
       call pri_var_trans_owg_winc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),&
       grid%delx(1:grid%ndof,ng), iiphase,&
         grid%scale,grid%nphase,grid%nspec,grid%ndof, &
-        iicap, grid%sir(1:grid%nphase,iicap),grid%lambda(iicap),&
+        grid%icaptype(iicap),grid%sir(1:grid%nphase,iicap),grid%lambda(iicap),&
         grid%alpha(iicap),grid%pckrm(iicap),grid%pcwmax(iicap),&
         grid%pcbetac(iicap),grid%pwrprm(iicap),dif,&
         var_p((n-1)*size_var_node+size_var_use+1:n*size_var_node),&
@@ -1244,7 +1244,7 @@ private
   
       call pri_var_trans_owg_ninc(grid%xxbc(:,nc),grid%iphasebc(nc),&
        grid%scale,grid%nphase,grid%nspec, &
-      iicap,grid%sir(1:grid%nphase,iicap),grid%lambda(iicap),&
+      grid%icaptype(iicap),grid%sir(1:grid%nphase,iicap),grid%lambda(iicap),&
       grid%alpha(iicap),grid%pckrm(iicap),grid%pcwmax(iicap), & !use node's value
       grid%pcbetac(iicap),grid%pwrprm(iicap),dif,&
       grid%varbc(1:size_var_use), grid%itable,ierr,grid%xxphi_co2_bc(nc), grid%tref)
@@ -1628,7 +1628,7 @@ private
   ! here should pay attention to BC type !!!
    call pri_var_trans_owg_ninc(grid%xxbc(:,nc),grid%iphasebc(nc),&
        grid%scale,grid%nphase,grid%nspec, &
-      iicap,grid%sir(1:grid%nphase,iicap),grid%lambda(iicap),&
+      grid%icaptype(iicap),grid%sir(1:grid%nphase,iicap),grid%lambda(iicap),&
       grid%alpha(iicap),grid%pckrm(iicap),grid%pcwmax(iicap), & !use node's value
       grid%pcbetac(iicap),grid%pwrprm(iicap),dif,&
       grid%varbc(1:size_var_use), grid%itable,ierr,tmp, grid%tref)
@@ -1637,7 +1637,7 @@ private
   
       call pri_var_trans_owg_winc(grid%xxbc(:,nc), delxbc,&
                        grid%iphasebc(nc), grid%scale,grid%nphase,grid%nspec,grid%ndof, &
-            iicap,grid%sir(1:grid%nphase,iicap),grid%lambda(iicap),&
+            grid%icaptype(iicap),grid%sir(1:grid%nphase,iicap),grid%lambda(iicap),&
             grid%alpha(iicap),grid%pckrm(iicap),grid%pcwmax(iicap), & !use node's value
             grid%pcbetac(iicap),grid%pwrprm(iicap),dif(1:grid%nphase),&
             grid%varbc(size_var_use+1:(grid%ndof+1)*size_var_use), grid%itable,ierr, grid%tref)
@@ -1921,7 +1921,7 @@ private
 
      call pri_var_trans_owg_ninc(yy_p((n-1)*grid%ndof+1:n*grid%ndof),iiphase,&
         grid%scale,grid%nphase,grid%nspec, &
-        iicap, grid%sir(1:grid%nphase,iicap),grid%lambda(iicap),&
+        grid%icaptype(iicap),grid%sir(1:grid%nphase,iicap),grid%lambda(iicap),&
         grid%alpha(iicap),grid%pckrm(iicap),grid%pcwmax(iicap),&
         grid%pcbetac(iicap),grid%pwrprm(iicap),dif,&
     var_p((n-1)*size_var_node+1:(n-1)*size_var_node+size_var_use),grid%itable,ierr, tmp, grid%tref)
@@ -2003,7 +2003,7 @@ private
     !*******************************************
      call pri_var_trans_owg_ninc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),iiphase,&
         grid%scale,grid%nphase,grid%nspec,&
-        iicap, grid%sir(1:grid%nphase,iicap),grid%lambda(iicap),&
+        grid%icaptype(iicap),grid%sir(1:grid%nphase,iicap),grid%lambda(iicap),&
         grid%alpha(iicap),grid%pckrm(iicap),grid%pcwmax(iicap),&
         grid%pcbetac(iicap),grid%pwrprm(iicap),dif,&
     var_p((n-1)*size_var_node+1:(n-1)*size_var_node+size_var_use),&
@@ -2094,7 +2094,7 @@ private
   
   call pri_var_trans_owg_ninc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),iiphase,&
         grid%scale,grid%nphase,grid%nspec, &
-        iicap, grid%sir(1:grid%nphase,iicap),grid%lambda(iicap),&
+        grid%icaptype(iicap),grid%sir(1:grid%nphase,iicap),grid%lambda(iicap),&
         grid%alpha(iicap),grid%pckrm(iicap),grid%pcwmax(iicap),&
         grid%pcbetac(iicap),grid%pwrprm(iicap),dif,&
     var_p((n-1)*size_var_node+1: (n-1)*size_var_node+size_var_use),&
@@ -2132,7 +2132,7 @@ private
 
           call pri_var_trans_owg_ninc(grid%xxbc(:,nc),grid%iphasebc(nc),&
            grid%scale,grid%nphase,grid%nspec, &
-             iicap,grid%sir(1:grid%nphase,iicap),grid%lambda(iicap),&
+             grid%icaptype(iicap),grid%sir(1:grid%nphase,iicap),grid%lambda(iicap),&
              grid%alpha(iicap),grid%pckrm(iicap),grid%pcwmax(iicap), & !use node's value
              grid%pcbetac(iicap),grid%pwrprm(iicap),dif,&
       grid%varbc(1:size_var_use), grid%itable,ierr, tmp, grid%tref)
