@@ -1704,9 +1704,9 @@ private
    endif     
 
    
-   if(max_dev<1D-5)then
-    print *,'Mph Jaco max dev = ', max_dev
-  endif
+!  if(max_dev<1D-5)then
+!   print *,'Mph Jaco max dev = ', max_dev
+! endif
   
   if (grid%iblkfmt == 0) then
      p1=(na1)*grid%ndof
