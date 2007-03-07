@@ -872,4 +872,34 @@ end subroutine fiReadDBaseDouble
 
   end subroutine fiReadDBaseMultDouble
 
+! ************************************************************************** !
+!
+! fiFindStringInFile: Rewinds file and finds the first occurrence of
+!                     'string'.  Note that the line must start with 'string'
+!                     in order to match and that line is NOT returned
+! author: Glenn Hammond
+! date: 03/07/07
+!
+! ************************************************************************** !
+  subroutine fiFindStringInFile(fid, string, ierr)
+
+  implicit none
+
+  character(len=*) :: string
+  character(len=strlen) :: string2
+  integer :: fid, ierr, length
+
+  ierr = 0
+
+  rewind(fid)
+
+  length = len_trim(string)
+  do 
+    call fiReadFlotranString(fid,string2,ierr)
+    if (fiStringCompare(string,string2,length)) exit
+    if (ierr /= 0) exit
+  enddo
+
+  end subroutine fiFindStringInFile
+
   end module fileio_module
