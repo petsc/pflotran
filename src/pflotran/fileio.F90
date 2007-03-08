@@ -16,7 +16,7 @@
             fiReadFlotranString, fiIsAlpha, &
             fiReadInt, fiReadDouble, fiReadMultDouble, &
             fiDefaultMsg, fiErrorMsg, fiReadStringErrorMsg, &
-            fiStringCompare
+            fiStringCompare, fiFindStringInFile
 
   public :: fiReadDBaseString, fiReadDBaseName, fiReadDBaseInt, &
             fiReadDBaseDouble, fiReadDBaseMultDouble
