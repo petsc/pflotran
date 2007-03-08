@@ -91,12 +91,13 @@ private
     integer*4 :: npx, npy, npz ! Processor partition in each direction.
     integer*4 :: nlx, nly, nlz ! Local grid dimension w/o ghost nodes.
     integer*4 :: ngx, ngy, ngz ! Local grid dimension with ghost nodes.
-    integer*4 :: nxs, nys, nzs 
-      ! Global indices of non-ghosted corner (starting) of local domain.
-    integer*4 :: ngxs, ngys, ngzs
-      ! Global indices of ghosted starting corner of local domain.
-    integer*4 :: nxe, nye, nze, ngxe, ngye, ngze
-      ! Global indices of non-ghosted/ghosted ending corner of local domain.
+    integer*4 :: nxs, nys, nzs ! Global indices of non-ghosted corner 
+                               !   (starting) of local domain.
+    integer*4 :: ngxs, ngys, ngzs ! Global indices of ghosted starting 
+                                  !   corner of local domain.
+    integer*4 :: nxe, nye, nze, ngxe, ngye, ngze ! Global indices of non-
+                                                 !   ghosted/ghosted ending 
+                                                 !   corner of local domain.
     integer*4 :: nlxy, nlxz, nlyz
     integer*4 :: ngxy, ngxz, ngyz
     integer*4 :: nlmax  ! Total number of non-ghosted nodes in local domain.
