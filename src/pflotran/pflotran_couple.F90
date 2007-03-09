@@ -200,7 +200,7 @@ public pflowGrid_ptran_init, pflotranGrid_interp, ptran_bc_reassign
 
   type(pflowGrid), intent(inout) :: grid
     
-  integer*4 :: nc, m, jm
+  integer :: nc, m, jm
   integer :: ierr, iiphas 
   real*8 :: f1, f2, tflow1, tflow2
 

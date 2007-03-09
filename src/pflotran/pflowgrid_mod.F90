@@ -65,11 +65,11 @@ type(pflowGrid) function pflowGrid_new(igeom, nx, ny, nz, npx, npy, npz, &
 
   implicit none
 
-  integer*4, intent(in) :: igeom, nx, ny, nz, npx, npy, npz
+  integer, intent(in) :: igeom, nx, ny, nz, npx, npy, npz
   integer, intent(in) :: nphase, ndof,icouple,idcdm,itable,nspec,npricomp
 !  integer, intent(in) :: equ_option
-  integer*4 :: n, ng, na
-  integer*4 :: i, j, k
+  integer :: n, ng, na
+  integer :: i, j, k
   integer :: ierr
   type(pflowGrid) grid
 ! integer, pointer::ghostind(:)
@@ -909,13 +909,13 @@ subroutine pflowGrid_setup(grid, inputfile)
   
   integer :: ierr
   integer :: myrank
-  integer*4 :: i, j, jn1, jn2, k, ird
-  integer*4 :: mg1, mg2
-  integer*4 :: m, n, ng
-  integer*4 :: nc  ! Tracks number of connections computed.
-  integer*4 :: ibc ! Used to index boundary condition blocks.
-  integer*4 :: ir ! Used to index boundary condition regions.
-  integer*4 :: ii1, ii2, jj1, jj2, kk1, kk2
+  integer :: i, j, jn1, jn2, k, ird
+  integer :: mg1, mg2
+  integer :: m, n, ng
+  integer :: nc  ! Tracks number of connections computed.
+  integer :: ibc ! Used to index boundary condition blocks.
+  integer :: ir ! Used to index boundary condition regions.
+  integer :: ii1, ii2, jj1, jj2, kk1, kk2
     ! Used for indexing corners of boundary regions.
   PetscScalar, pointer :: dx_loc_p(:), dy_loc_p(:), dz_loc_p(:)
   real*8 alpha, maxstep, steptol
@@ -932,7 +932,7 @@ subroutine pflowGrid_setup(grid, inputfile)
                      perm_pow_p(:)
   real*8 :: d1,d2,val,val1,val2,val3,val4,por,dw_kg,random_nr,frand
   real*8 :: dl,hl
-  integer*4 :: iseed,nx,ny,nz,na
+  integer :: iseed,nx,ny,nz,na
 
   Vec :: temp0_nat_vec, temp1_nat_vec, temp2_nat_vec, temp3_nat_vec, &
           temp4_nat_vec !,temp5_nat_vec,temp6_nat_vec,temp7_nat_vec
@@ -2281,13 +2281,13 @@ subroutine pflowGrid_setvel (grid, vl_loc, vlbc, ibconn, ibndtyp)
 
   real*8, pointer :: vl_loc(:), vlbc(:)
   
-  integer*4 :: ibndtyp(*), ibconn(*)
+  integer :: ibndtyp(*), ibconn(*)
 
   real*8, pointer :: xx_loc_p(:), ddensity_loc_p(:), viscosity_loc_p(:), &
                perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
 
   integer :: ierr 
-  integer*4 ibc, ibc_ptran, ip1, ip2, j, jm, jm1, jm2, jng, m, m1, m2, &
+  integer ibc, ibc_ptran, ip1, ip2, j, jm, jm1, jm2, jng, m, m1, m2, &
              n1, n2, nc, ng
   real*8 :: f1, f2, gravity, v_darcy, perm1, perm2
   real*8 :: D, D1, D2, dd, dd1, dd2, density_ave
@@ -2490,7 +2490,7 @@ subroutine pflowGrid_compute_xyz(grid)
   type(pflowGrid), intent(inout) :: grid
 
 ! integer :: ierr
-  integer*4 :: i, j, k, n
+  integer :: i, j, k, n
   integer :: prevnode
     ! prevnode is used to hold the natural numbering of the node that is the
     ! previous node in either the x, y, or z direction.
@@ -3172,7 +3172,7 @@ subroutine pflowGrid_update (grid)
   type(pflowGrid), intent(inout) :: grid
   
   integer :: ierr
-  integer*4 m, n
+  integer m, n
   real*8, pointer :: xx_p(:), conc_p(:), press_p(:), temp_p(:), phis_p(:)
 
 ! update solution vector and physical properties (VecCopy(x,y): y=x)
@@ -4455,8 +4455,8 @@ subroutine readxyz (a,n)
   
   implicit none
   
-  integer*4, intent(in) :: n
-  integer*4 :: i, i1, i2, m
+  integer, intent(in) :: n
+  integer :: i, i1, i2, m
   integer ::  ierr, nvalue=10
   real*8, intent(inout) :: a(*)
 #include "definitions.h"

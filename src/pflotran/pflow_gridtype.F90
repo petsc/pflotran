@@ -86,37 +86,37 @@ private
 
     ! Grid topology
     integer :: igeom
-    integer*4 :: nx, ny, nz    ! Global domain dimensions of the grid.
-    integer*4 :: nxy, nmax     ! nx * ny, nx * ny * nz
-    integer*4 :: npx, npy, npz ! Processor partition in each direction.
-    integer*4 :: nlx, nly, nlz ! Local grid dimension w/o ghost nodes.
-    integer*4 :: ngx, ngy, ngz ! Local grid dimension with ghost nodes.
-    integer*4 :: nxs, nys, nzs ! Global indices of non-ghosted corner 
-                               !   (starting) of local domain.
-    integer*4 :: ngxs, ngys, ngzs ! Global indices of ghosted starting 
-                                  !   corner of local domain.
-    integer*4 :: nxe, nye, nze, ngxe, ngye, ngze ! Global indices of non-
-                                                 !   ghosted/ghosted ending 
-                                                 !   corner of local domain.
-    integer*4 :: nlxy, nlxz, nlyz
-    integer*4 :: ngxy, ngxz, ngyz
-    integer*4 :: nlmax  ! Total number of non-ghosted nodes in local domain.
-    integer*4 :: ngmax  ! Number of ghosted & non-ghosted nodes in local domain.
-    integer*4 :: nldof  ! nlmax times the number of phases.
-    integer*4 :: ngdof  ! ngmax times the number of phases.
-    integer*4 :: istart, jstart, kstart, iend, jend, kend
+    integer :: nx, ny, nz    ! Global domain dimensions of the grid.
+    integer :: nxy, nmax     ! nx * ny, nx * ny * nz
+    integer :: npx, npy, npz ! Processor partition in each direction.
+    integer :: nlx, nly, nlz ! Local grid dimension w/o ghost nodes.
+    integer :: ngx, ngy, ngz ! Local grid dimension with ghost nodes.
+    integer :: nxs, nys, nzs ! Global indices of non-ghosted corner 
+                             !   (starting) of local domain.
+    integer :: ngxs, ngys, ngzs ! Global indices of ghosted starting 
+                                !   corner of local domain.
+    integer :: nxe, nye, nze, ngxe, ngye, ngze ! Global indices of non-
+                                               !   ghosted/ghosted ending 
+                                               !   corner of local domain.
+    integer :: nlxy, nlxz, nlyz
+    integer :: ngxy, ngxz, ngyz
+    integer :: nlmax  ! Total number of non-ghosted nodes in local domain.
+    integer :: ngmax  ! Number of ghosted & non-ghosted nodes in local domain.
+    integer :: nldof  ! nlmax times the number of phases.
+    integer :: ngdof  ! ngmax times the number of phases.
+    integer :: istart, jstart, kstart, iend, jend, kend
       ! istart gives the local x-index of the non-ghosted starting (lower left)
       ! corner. iend gives the local x-index of the non-ghosted ending 
       ! corner. jstart, jend correspond to y-index, kstart, kend to z-index.
     real*8 :: radius_0
 
     ! Grid connections
-    integer*4 :: nconn, nconnx, nconny
-    integer*4, pointer :: nd1(:), nd2(:)
+    integer :: nconn, nconnx, nconny
+    integer, pointer :: nd1(:), nd2(:)
       ! Nodes upstream and downstream of a connection (assuming flow in 
       ! positive direction.  These are local, ghosted indices.
       
-    integer*4, pointer :: iperm1(:), iperm2(:), ipermbc(:)
+    integer, pointer :: iperm1(:), iperm2(:), ipermbc(:)
     
     real*8, pointer :: dist1(:),dist2(:),distbc(:),area(:),areabc(:), grav_ang(:), &
                        delzbc(:), vlbc(:), vvlbc(:),vgbc(:),vvgbc(:)
@@ -138,7 +138,7 @@ private
 !                     matsetvaluesblocked ( not matsetvaluesblockedlocal)
 !nL2A :   collective, local => natural index, used for initialization 
 !                              and source/sink setup
-    integer*4, pointer :: nL2G(:), nG2L(:), nL2A(:),nG2N(:)
+    integer, pointer :: nL2G(:), nG2L(:), nL2A(:),nG2N(:)
       ! Arrays for indexing between local ghosted and non-ghosted, local to natural arrays.
     DA :: da_1_dof, da_nphase_dof, da_3np_dof, da_ndof
     DA :: da_NphaNcomp_dof,da_NphaNspec_dof,da_NphaNspecNcomp_dof
@@ -147,26 +147,26 @@ private
       ! da_ndof = total degrees of freedom per node
 
     ! Boundary conditions (BC's)
-    integer*4 :: nblkbc
+    integer :: nblkbc
       ! The number of "blocks" of boundary conditions that are defined.
       ! Such a block is a specification of a set of boundary conditions.
       ! This set of boundary conditions can apply to any number of regions,
       ! so nblkbc does NOT equal the number of boundary condition regions.
-    integer*4 :: nconnbc  ! The number of interfaces along boundaries.
-    integer*4, pointer :: i1bc(:), i2bc(:), j1bc(:), j2bc(:), k1bc(:), k2bc(:)
-    integer*4, pointer :: ibconn(:)
+    integer :: nconnbc  ! The number of interfaces along boundaries.
+    integer, pointer :: i1bc(:), i2bc(:), j1bc(:), j2bc(:), k1bc(:), k2bc(:)
+    integer, pointer :: ibconn(:)
       ! ibconn(nc) specifies the id of the of boundary condition block that
       ! applies at boundary interface nc.  
-    integer*4, pointer :: ibndtyp(:)
+    integer, pointer :: ibndtyp(:)
       ! ibndtyp(ibc) specifies the type of boundary condition that applies
       ! for boundary condition block ibc.
-    integer*4, pointer :: iface(:)
+    integer, pointer :: iface(:)
       ! iface(ibc) specifies the face (left, right, top, bottom, etc.) on
       ! which BC block ibc lies.
-    integer*4, pointer :: mblkbc(:)
+    integer, pointer :: mblkbc(:)
       ! mblkbc(nc) gives the local, non-ghosted index of the cell that has
       ! boundary connection nc.
-    integer*4, pointer :: iregbc1(:), iregbc2(:)
+    integer, pointer :: iregbc1(:), iregbc2(:)
       ! iregbc1(ibc) and iregbc2(ibc) give the id of the first region and 
       ! last region, respectively, that utilizes the boundary conditions in 
       ! boundary condition block ibc.
@@ -190,12 +190,12 @@ private
 !   phik
     integer :: iregperm, iran_por=0, iread_perm=0, iread_geom =1
     real*8 :: ran_fac=-1.d0
-    integer*4, pointer :: i1reg(:),i2reg(:),j1reg(:),j2reg(:),k1reg(:),k2reg(:)
+    integer, pointer :: i1reg(:),i2reg(:),j1reg(:),j2reg(:),k1reg(:),k2reg(:)
     real*8, pointer :: por_reg(:),tor_reg(:),perm_reg(:,:)
 
 !   initial conditions
     integer :: iregini
-    integer*4, pointer :: i1ini(:),i2ini(:),j1ini(:),j2ini(:),k1ini(:),k2ini(:)
+    integer, pointer :: i1ini(:),i2ini(:),j1ini(:),j2ini(:),k1ini(:),k2ini(:)
     real*8, pointer :: pres_ini(:),temp_ini(:),conc_ini(:),sat_ini(:), &
                        xmol_ini(:)
     real*8, pointer :: xx_ini(:,:)
@@ -203,25 +203,25 @@ private
 
 !   source term
     integer :: nblksrc = 0, ntimsrc = 0, isrc1 = 2
-    integer*4, pointer :: i1src(:), i2src(:), j1src(:), j2src(:), k1src(:), k2src(:)
+    integer, pointer :: i1src(:), i2src(:), j1src(:), j2src(:), k1src(:), k2src(:)
     real*8, pointer :: timesrc(:,:), tempsrc(:,:), qsrc(:,:), csrc(:,:)
     
 !   solid reaction rate
-    integer*4 :: ityprxn
+    integer :: ityprxn
     real*8 :: rk=0.d0, phis0, areas0, pwrsrf, vbars, ceq, delHs, delEs, wfmts
     real*8 ::qu_kin, yh2o_in_co2=0.D0
     
 !   breakthrough curves
     integer :: ibrkcrv = 0
-    integer*4, pointer :: i1brk(:),i2brk(:),j1brk(:),j2brk(:),k1brk(:),k2brk(:)
-    integer*4, pointer :: ibrktyp(:),ibrkface(:)
+    integer, pointer :: i1brk(:),i2brk(:),j1brk(:),j2brk(:),k1brk(:),k2brk(:)
+    integer, pointer :: ibrktyp(:),ibrkface(:)
     
 !   dual continuum
     integer :: idcdm = 0, idcmblk = 0
-    integer*4, pointer :: i1dcm(:),i2dcm(:),j1dcm(:),j2dcm(:),k1dcm(:),k2dcm(:)
+    integer, pointer :: i1dcm(:),i2dcm(:),j1dcm(:),j2dcm(:),k1dcm(:),k2dcm(:)
     real*8, pointer :: fracture_aperture(:), matrix_block(:)
     
-    integer*4, pointer :: icap_reg(:),ithrm_reg(:)
+    integer, pointer :: icap_reg(:),ithrm_reg(:)
     real*8 :: scale
     real*8, pointer :: rock_density(:),cpr(:),dencpr(:),ckdry(:),ckwet(:), &
                        tau(:),cdiff(:),cexp(:)

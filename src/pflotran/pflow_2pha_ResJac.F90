@@ -63,7 +63,7 @@ private
     type(pflowGrid), intent(inout) :: grid
     integer ierr
     PetscScalar, pointer :: xx_p(:)
-    integer*4 n
+    integer n
 
     call VecGetArrayF90(xx, xx_p, ierr)
  
@@ -89,7 +89,7 @@ private
   Vec, intent(in) :: xx
 
   PetscScalar, pointer :: xx_p(:), yy_p(:), iphase_p(:)
-  integer*4 :: n,n0
+  integer :: n,n0
   integer :: ierr,iipha
 
   real*8 :: pco2,p,tmp,xw
@@ -187,7 +187,7 @@ private
   integer, intent(out):: reason
   type(pflowGrid), intent(inout) :: grid
   PetscScalar, pointer :: xx_p(:)
-  integer*4 :: n,n0,re
+  integer :: n,n0,re
   integer re0, ierr
 
   call VecGetArrayF90(grid%xx, xx_p, ierr); CHKERRQ(ierr)
@@ -235,13 +235,13 @@ private
 
  
   integer :: ierr
-  integer*4 :: n, ng, nc, nr
-  integer*4 :: i, i1, i2, j, jn, jng, jm1, jm2, jmu
-  integer*4 :: m, m1, m2, mu, n1, n2, ip1, ip2, p1, p2, t1, t2, c1, c2,&
+  integer :: n, ng, nc, nr
+  integer :: i, i1, i2, j, jn, jng, jm1, jm2, jmu
+  integer :: m, m1, m2, mu, n1, n2, ip1, ip2, p1, p2, t1, t2, c1, c2,&
              s1, s2
-  integer*4 :: kk1,kk2,jj1,jj2,ii1,ii2, kk, jj, ii
-  integer*4 :: i1_hencoeff, i2_hencoeff
-  integer*4 :: ibc  ! Index that specifies a boundary condition block
+  integer :: kk1,kk2,jj1,jj2,ii1,ii2, kk, jj, ii
+  integer :: i1_hencoeff, i2_hencoeff
+  integer :: ibc  ! Index that specifies a boundary condition block
   
 ! real*8 :: term1, term2, term3
 
@@ -1870,13 +1870,13 @@ if((SSATG_LOC(m1)>eps).or.(SSATG_LOC(m2)>eps))then
     MatStructure flag
 
     integer :: ierr
-    integer*4 :: n, ng, nc
-    integer*4 :: i1, i2, j, jn, jng, jm1, jm2,jmu
-    integer*4 :: m, m1, m2, mu, n1, n2, ip1, ip2 
-    integer*4 :: i1_hencoeff, i2_hencoeff,i1_hencoeff_dc,i2_hencoeff_dc, &
-                 iu_hencoeff, iu_hencoeff_dc
-    integer*4 :: p1,p2,t1,t2,c1,c2,s1,s2
-    integer*4 :: ibc  ! Index that specifies a boundary condition block.
+    integer :: n, ng, nc
+    integer :: i1, i2, j, jn, jng, jm1, jm2,jmu
+    integer :: m, m1, m2, mu, n1, n2, ip1, ip2 
+    integer :: i1_hencoeff, i2_hencoeff,i1_hencoeff_dc,i2_hencoeff_dc, &
+               iu_hencoeff, iu_hencoeff_dc
+    integer :: p1,p2,t1,t2,c1,c2,s1,s2
+    integer :: ibc  ! Index that specifies a boundary condition block.
     real*8 ::  v_darcy, q
 
     PetscScalar, pointer :: porosity_loc_p(:), volume_p(:), &
@@ -1965,7 +1965,7 @@ if((SSATG_LOC(m1)>eps).or.(SSATG_LOC(m2)>eps))then
 
   PetscScalar, pointer :: iphase_loc_p(:), icap_loc_p(:), ithrm_loc_p(:)
   integer :: iicap,ii,jj,iiphas,iiphas1,iiphas2
-  integer*4 ibc_hencoeff
+  integer ibc_hencoeff
   real*8 :: cond, gravity, SSATW, acc, &
             density_ave, voldt, pvoldt
   real*8 :: fluxl, fluxlh, fluxlv, fluxg, fluxgh, fluxgv, &
@@ -3821,10 +3821,10 @@ end subroutine TTPHASEJacobin
 
  
   integer :: ierr
-  integer*4 :: n
-  integer*4 :: i, j, jn
-  integer*4 :: p1, t1, c1, s1
-  integer*4 :: ii1,ii2, iicap
+  integer :: n
+  integer :: i, j, jn
+  integer :: p1, t1, c1, s1
+  integer :: ii1,ii2, iicap
 
   PetscScalar, pointer ::accum_p(:),yy_p(:)
   
@@ -4003,7 +4003,7 @@ end subroutine pflow_2phase_initaccum
     PetscScalar, pointer :: t_p(:),p_p(:),c_p(:),s_p(:),cc_p(:)
     PetscScalar, pointer :: yy_p(:),pc_p(:),hen_p(:)
                         
-    integer*4 :: n, ii1, ii2, jn
+    integer :: n, ii1, ii2, jn
     integer :: ierr
  
     real*8 :: xxlw,xxla,xxga,xxgw
@@ -4135,11 +4135,11 @@ end subroutine pflow_2phase_initaccum
 
  
   integer :: ierr
-  integer*4 :: n, nc
-  integer*4 :: ibc,jn
-  integer*4 :: m
-  integer*4 :: ii1,ii2,iicap
-  integer*4 :: i1_hencoeff
+  integer :: n, nc
+  integer :: ibc,jn
+  integer :: m
+  integer :: ii1,ii2,iicap
+  integer :: i1_hencoeff
  
 
   PetscScalar, pointer ::  p_p(:), t_p(:), x_p(:), s_p(:),iphase_p(:)
@@ -4376,9 +4376,9 @@ end subroutine pflow_2phase_initadj
   
  
   integer :: ierr,icall
-  integer*4 :: n
-  integer*4 :: j, jn
-  integer*4 :: ii1,ii2,iicap
+  integer :: n
+  integer :: j, jn
+  integer :: ii1,ii2,iicap
  
 #include "definitions.h"
 

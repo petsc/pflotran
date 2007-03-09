@@ -60,13 +60,13 @@
   integer :: ierr, ihalcnt
   type(pflowGrid) :: grid
   integer :: igeom
-  integer*4 :: nx, ny, nz
-  integer*4 :: npx, npy, npz
+  integer :: nx, ny, nz
+  integer :: npx, npy, npz
   integer :: nphase, ndof, icouple, idcdm, itable
   integer :: nspec,npricomp
   integer :: kplt, iplot, iflgcut, its, ntstep
   integer :: myid
-  integer*4 :: steps
+  integer :: steps
 
 ! Initialize Startup Time
  ! call PetscGetCPUTime(timex(1), ierr)
