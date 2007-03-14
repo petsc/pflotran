@@ -410,7 +410,7 @@ contains
 ! The line below is a commented-out portion of the format string above.
 ! We have to put it here because of the stupid Sun compiler.
 !    &"  eps          = ",1pe12.4,/, &
-
+ print *,'end pckr' 
 !....................
 
     case ('THRM')
@@ -836,10 +836,10 @@ contains
 
         ibc = ibc + 1  ! RTM: Number of boundary conditions
         
-        call fiReadInt(string,grid%ibndtyp(ibc),ierr)
+        call fiReadInt(string,grid%locpat(1)%ibndtyp(ibc),ierr)
         call fiDefaultMsg('ibndtyp',ierr)
 
-        call fiReadInt(string,grid%iface(ibc),ierr)
+        call fiReadInt(string,grid%locpat(1)%iface(ibc),ierr)
         call fiDefaultMsg('iface',ierr)
 
         do ! loop over regions
@@ -868,13 +868,13 @@ contains
    !       do j=1, grid%nphase
    
 			 
-			 if (grid%ibndtyp(ibc) == 1 .or. grid%ibndtyp(ibc) == 3) then 
+			 if (grid%locpat(1)%ibndtyp(ibc) == 1 .or. grid%locpat(1)%ibndtyp(ibc) == 3) then 
 				do j=1,grid%ndof
 				  call fiReadDouble(string,grid%xxbc0(j,ibc),ierr)
 				  call fiDefaultMsg('xxbc',ierr)
 				  enddo
 			 
-			  elseif(grid%ibndtyp(ibc) == 2) then
+			  elseif(grid%locpat(1)%ibndtyp(ibc) == 2) then
 				   do j=1, grid%nphase       
 					 call fiReadDouble(string, grid%velocitybc0(j,ibc), ierr)
 					 call fiDefaultMsg("Error reading velocity BCs:", ierr)			  		  	  
@@ -898,23 +898,23 @@ contains
         endif
       enddo ! End loop over blocks.
       
-      grid%nblkbc = ibc
+      grid%locpat(1)%nblkbc = ibc
       
       if (grid%myrank == 0) then
-        write(IUNIT2,'(/," *BCON: nblkbc = ",i4)') grid%nblkbc
-        do ibc = 1, grid%nblkbc
-          write(IUNIT2,'("  ibndtyp = ",i3," iface = ",i2)') grid%ibndtyp(ibc), &
-          grid%iface(ibc)
+        write(IUNIT2,'(/," *BCON: nblkbc = ",i4)') grid%locpat(1)%nblkbc
+        do ibc = 1, grid%locpat(1)%nblkbc
+          write(IUNIT2,'("  ibndtyp = ",i3," iface = ",i2)') grid%locpat(1)%ibndtyp(ibc), &
+          grid%locpat(1)%iface(ibc)
           write(IUNIT2,'("  i1  i2  j1  j2  k1  k2       p [Pa]     t [C]    c", &
      &    " [mol/L]")')
           do ireg = grid%iregbc1(ibc), grid%iregbc2(ibc)
-             if (grid%ibndtyp(ibc) == 1 .or. grid%ibndtyp(ibc) == 3) then
+             if (grid%locpat(1)%ibndtyp(ibc) == 1 .or. grid%locpat(1)%ibndtyp(ibc) == 3) then
                 write(IUNIT2,'(7i4,1p10e12.4)') &
                 grid%i1bc(ireg),grid%i2bc(ireg), &
                 grid%j1bc(ireg),grid%j2bc(ireg), &
                 grid%k1bc(ireg),grid%k2bc(ireg), &
                 (grid%xxbc0(j,ireg),j=1,grid%ndof)
-              else if (grid%ibndtyp(ibc) == 2) then
+              else if (grid%locpat(1)%ibndtyp(ibc) == 2) then
                 write(IUNIT2,'(6i4,1p10e12.4)') &
                 grid%i1bc(ireg),grid%i2bc(ireg), &
                 grid%j1bc(ireg),grid%j2bc(ireg), &

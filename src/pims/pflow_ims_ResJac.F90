@@ -33,30 +33,173 @@ private
 #include "include/finclude/petsclog.h"
 
 
-! Cutoff parameters
-  real*8, parameter :: formeps   = 0.D-5
-  real*8, parameter :: eps       = 0.D-5
-  real*8, parameter :: floweps   = 0.D-20
-  real*8, parameter :: satcuteps = 0.D-5
-  real*8, parameter :: dfac = 1.D-8
-
-  integer,save :: size_var_use 
-  integer,save :: size_var_node
-  real*8, allocatable,save :: Resold_AR(:,:), Resold_FL(:,:)
-! Contributions to residual from accumlation/source/Reaction, flux(include diffusion)
-  
-  
   
    
 
   public IMSResidual, IMSJacobin, pflow_IMS_initaccum, &
          pflow_update_IMS,pflow_IMS_initadj, pflow_IMS_timecut,&
-         pflow_IMS_setupini, IMS_Update_Reason 
+         pflow_IMS_setupini, IMS_Update_Reason ,&
+		 pflow_ims_step_maxchange
 
 
 
   contains
 
+
+ subroutine pflow_ims_massbal(grid)
+ use pflow_gridtype_module
+  implicit none
+  type(pflowGrid) :: grid 
+  
+ 
+  integer :: ierr,icall
+  integer :: n,n0,nc,np,n2p,n2p0,ng
+  real*8 x,y,z,nzm,nzm0, nxc,nxc0,c0, c00,nyc,nyc0,nzc,nzc0,nsm,nsm0,sm 
+  integer :: index
+     
+  PetscScalar, pointer ::  porosity_p(:), volume_p(:),  var_p(:)
+                           
+   
+  real*8 ::  pvol,sum
+  real*8, pointer ::  den(:),sat(:)
+ 
+  real*8 :: tot(0:grid%nphase), tot0(0:grid%nphase)  
+  data icall/0/
+
+  call VecGetArrayF90(grid%volume, volume_p, ierr)
+  call VecGetArrayF90(grid%porosity, porosity_p, ierr)
+  var_p => grid%locpat(1)%var
+ 
+  tot=0.D0
+  n2p=0
+  nxc=0.; nyc=0.; nzc=0.D0; nzm=grid%z(grid%nmax); sm=0.; nsm=nzm; c0=0.D0
+
+  do n = 1,grid%locpat(1)%nlmax
+    n0=(n-1)* grid%ndof
+	ng=grid%locpat(1)%nL2G(n)
+    index=(ng-1)*grid%size_var_node
+    den=>var_p(index+3+grid%nphase: index+2+2*grid%nphase)
+    sat=>var_p(index+2+1:index+2+grid%nphase)
+    
+   
+    pvol=volume_p(n)*porosity_p(n)		     
+	 n2p=n2p+1
+     x=grid%x(grid%locpat(1)%nL2A(n)+1)
+	 y=grid%y(grid%locpat(1)%nL2A(n)+1)
+	 z=grid%z(grid%locpat(1)%nL2A(n)+1)
+	 
+ 	 if(z<nzm) nzm=z
+	 if(sm<sat(2))then
+	    !print *, n,grid%nL2A(n)+1,x,y,z,sat(2)
+		sm=sat(2);nsm=z
+	  endif 	 
+	 c0=c0+sat(2)*pvol
+	 nxc=nxc + pvol*sat(2)*x
+	 nyc=nyc + pvol*sat(2)*y
+	 nzc=nzc + pvol*sat(2)*z
+
+	 
+  
+      do np=1,grid%nphase
+        sum= sat(np)* den(np)
+        tot(np)= pvol*sum + tot(np)
+	    !tot(0,np)=tot(0,np)+tot(nc,np)
+	    !tot(nc,0)=tot(nc,0)+tot(nc,np)
+	  enddo
+  
+      nullify(sat, den) 
+! print *,nzc,c0
+  enddo
+ !  call PETSCBarrier(PETSC_NULL_OBJECT,ierr)
+  
+  nullify(var_p)
+  call VecRestoreArrayF90(grid%volume, volume_p, ierr)
+  call VecRestoreArrayF90(grid%porosity, porosity_p, ierr)
+ 
+ 
+ 
+  if(grid%commsize >1)then
+    call MPI_REDUCE(n2p, n2p0,1,&
+	      MPI_INTEGER,MPI_SUM,0, PETSC_COMM_WORLD,ierr)
+    call MPI_REDUCE(c0, c00,1,&
+	      MPI_DOUBLE_PRECISION,MPI_SUM,0, PETSC_COMM_WORLD,ierr)
+    call MPI_REDUCE(nxc, nxc0,1,&
+	      MPI_DOUBLE_PRECISION,MPI_SUM,0, PETSC_COMM_WORLD,ierr)
+	 call MPI_REDUCE(nyc, nyc0,1,&
+	      MPI_DOUBLE_PRECISION,MPI_SUM,0, PETSC_COMM_WORLD,ierr)
+
+    call MPI_REDUCE(nzc, nzc0,1,&
+	      MPI_DOUBLE_PRECISION,MPI_SUM,0, PETSC_COMM_WORLD,ierr)
+	call MPI_REDUCE(nzm, nzm0,1,&
+	      MPI_DOUBLE_PRECISION,MPI_MIN,0, PETSC_COMM_WORLD,ierr)
+  	call MPI_REDUCE(nsm, nsm0,1,&
+	      MPI_DOUBLE_PRECISION,MPI_MIN,0, PETSC_COMM_WORLD,ierr)
+	    
+
+      do np = 0,grid%nphase
+        call MPI_REDUCE(tot(np), tot0(np),1,&
+	          MPI_DOUBLE_PRECISION,MPI_SUM,0, PETSC_COMM_WORLD,ierr)
+   
+!       call MPI_BCAST(tot0,(grid%nphase+1)*(grid%nspec+1),&
+!	          MPI_DOUBLE_PRECISION, 0,PETSC_COMM_WORLD,ierr)
+      enddo
+
+	if(grid%myrank==0) then
+	   tot = tot0; n2p=n2p0;nxc=nxc0;nyc=nyc0;nzc=nzc0;nzm=nzm0;nsm=nsm0;c0=c00 
+	endif   
+  endif 
+  
+  
+  if(grid%myrank==0)then
+   if(c0<1D-6) c0=1.D0
+	nxc=nxc/c0; nyc=nyc/c0;nzc=nzc/c0
+	
+	
+    write(*,'(" Total CO2: liq:",1p, e13.6,&
+   &" gas:",1p, e13.6, " tot:", 1p, 2e13.6, " [kg]",1p, 3e13.6)') &
+   tot(1),tot(2),tot(1)+tot(2) !,nzc,nzm,nsm
+! & grid%t/grid%tconv,tot(2,1),tot(2,2),tot(2,0),tot(2,1)+tot(2,2) !,nzc,nzm,nsm
+    if (icall==0) then
+      open(unit=13,file='massbal.dat',status='unknown')
+      write(13,*) '# time   dt   totl   totg   tot n2p'
+      icall = 1
+    endif
+!   write(13,'(" Total CO2: t=",1pe13.6," liq:",1pe13.6,&
+! &	" gas:",1pe13.6," tot:",1p2e13.6," [kmol]")')&
+! & grid%t/grid%tconv,tot(2,1),tot(2,2),tot(2,0),tot(2,1)+tot(2,2)
+    write(13,'(1p9e12.4)') grid%t/grid%tconv,grid%dt/grid%tconv,&
+ 	tot(1),tot(2),tot(1)+tot(2),real(n2p),nzc,nzm,nsm 
+  endif    
+  
+  
+  
+  
+ end subroutine pflow_ims_massbal
+
+
+ subroutine pflow_ims_step_maxchange(grid)
+   use pflow_gridtype_module
+   type(pflowGrid), intent(inout) :: grid
+  
+
+  PetscScalar, pointer :: xx_p(:), yy_p(:)
+  real*8 :: dsm,dcm, comp1,comp, cmp  
+  real*8 :: dsm0,dcm0  
+  integer n, j
+
+   call VecWAXPY(grid%dxx,-1.d0,grid%xx,grid%yy,ierr)
+    call VecStrideNorm(grid%dxx,0,NORM_INFINITY,grid%dpmax,ierr)
+    
+	do i=1, grid%nphase-1
+	  call VecStrideNorm(grid%dxx,i,NORM_INFINITY,comp1,ierr)
+      if(grid%dsmax< comp1) grid%dsmax=comp1     
+    enddo
+
+ end  subroutine pflow_ims_step_maxchange
+ 
+  
+ 
+   
 
  subroutine pflow_IMS_timecut(grid)
  
@@ -74,7 +217,7 @@ private
  ! call VecGetArrayF90(grid%var, var_p, ierr); 
  ! call VecGetArrayF90(grid%iphas, iphase_p, ierr); 
 
-  do n=1, grid%nlmax
+  do n=1, grid%locpat(1)%nlmax
    n0=(n-1)*grid%ndof
    do re = 1, grid%ndof
    !xx_p(n0+re)= 0.5D0 * xx_p(n0+re) +.5D0 *yy_p(n0+re)
@@ -97,19 +240,21 @@ private
   PetscScalar, pointer :: xx_p(:)
   integer iln,na,nx,ny,nz,ir,ierr
   
-   size_var_use = 2 + 4*grid%nphase
-    size_var_node = (grid%ndof + 1) * size_var_use
-	
-   allocate(Resold_AR(grid%nlmax,grid%ndof))
-   allocate(Resold_FL(grid%nconn,grid%ndof))
-   allocate(grid%delx(grid%ndof,grid%ngmax))
-   grid%delx=0.D0
+   grid%size_var_use = 2 + 4*grid%nphase
+    grid%size_var_node = (grid%ndof + 1) * grid%size_var_use
+
+
+   allocate(grid%locpat(1)%var(grid%locpat(1)%ngmax * grid%size_var_node))	
+   allocate(grid%locpat(1)%Resold_AR(grid%locpat(1)%nlmax,grid%ndof))
+   allocate(grid%locpat(1)%Resold_FL(grid%locpat(1)%nconn,grid%ndof))
+   allocate(grid%locpat(1)%delx(grid%ndof,grid%locpat(1)%ngmax))
+   grid%locpat(1)%delx=0.D0
    
   call VecGetArrayF90(grid%xx, xx_p, ierr); CHKERRQ(ierr)
 
   
-  do iln=1, grid%nlmax
-    na = grid%nL2A(iln)
+  do iln=1, grid%locpat(1)%nlmax
+    na = grid%locpat(1)%nL2A(iln)
     
 !   nz = int(na/grid%nxy) + 1
 !   ny = int(mod(na,grid%nxy)/grid%nx) + 1
@@ -138,6 +283,8 @@ private
 end  subroutine pflow_IMS_setupini
   
 
+
+! Subroutine for solution checking 
  subroutine IMS_Update_Reason(reason,grid)
   
   implicit none
@@ -164,10 +311,8 @@ end  subroutine pflow_IMS_setupini
   if(re>0)then
   call VecGetArrayF90(grid%xx, xx_p, ierr); CHKERRQ(ierr)
   call VecGetArrayF90(grid%yy, yy_p, ierr)
-  call VecGetArrayF90(grid%var, var_p, ierr); 
- 
   
-  do n = 1,grid%nlmax
+  do n = 1,grid%locpat(1)%nlmax
      n0=(n-1)* grid%ndof
   	 do i=2, grid%ndof
    	   if(xx_p(n0 + i) > 1.0D0)then
@@ -185,8 +330,7 @@ end  subroutine pflow_IMS_setupini
   if(re<=0) print *,'Sat out of Region at: ',n,xx_p(n0+1:n0+grid%ndof)
     call VecRestoreArrayF90(grid%xx, xx_p, ierr); CHKERRQ(ierr)
     call VecRestoreArrayF90(grid%yy, yy_p, ierr)
-    call VecRestoreArrayF90(grid%var, var_p, ierr) 
-endif
+ endif
 
   
   if(grid%commsize >1)then
@@ -202,388 +346,19 @@ endif
   end subroutine IMS_Update_Reason
 
 
- 
-
-
-  subroutine IMSRes_ARCont(node_no, var_node,por,vol,rock_dencpr, grid, Res_AR,ireac,ierr)
-  implicit none
-  integer node_no
-  integer, optional:: ireac,ierr
-  type(pflowGrid), intent(in) :: grid
-  real*8, target:: var_node(1:size_var_use)
-  real*8 Res_AR(1:grid%ndof) 
-  real*8 vol,por,rock_dencpr
-	   
-  real*8, pointer :: temp, pre_ref   ! 1 dof
-  real*8, pointer :: sat(:), density(:), amw(:), h(:), u(:), pc(:), kvr(:)         ! nphase dof
-    
-  integer :: ibase, m,np, iireac=1
-  real*8 pvol,mol(grid%nphase),eng
-  
-  if(present(ireac)) iireac=ireac
-  pvol=vol*por
-  
-  ibase=1;                 temp=>var_node(ibase)
-  ibase=ibase+1;           pre_ref=>var_node(ibase)
-  ibase=ibase+1;           sat=>var_node(ibase:ibase+grid%nphase-1)
-  ibase=ibase+grid%nphase; density=>var_node(ibase:ibase+grid%nphase-1)
-  ibase=ibase+grid%nphase; pc=>var_node(ibase:ibase+grid%nphase-1)
-  ibase=ibase+grid%nphase; kvr=>var_node(ibase:ibase+grid%nphase-1)
-
-  !sumation of component
-  mol=0.D0; eng=0.D0
-  do np = 1, grid%nphase
-   if(sat(np)>1.D-11)then  
-   
-     mol(np) = mol(np) + sat(np)*density(np)
-     !eng = eng + density(np)*u(np) *sat(np)
-  endif
-  enddo
-
-  mol = mol * pvol
-  !eng = eng * pvol + (1.D0 - por)* vol * rock_dencpr * temp 
-  
-   Res_AR(1:grid%nphase)=mol(:)
-   !Res_AR(grid%ndof)=eng
-  nullify(temp, pre_ref, sat, density, pc, kvr) 	    
-  end subroutine  IMSRes_ARCont
-
-
- subroutine IMSRes_FLCont(nconn_no,area, &
-         var_node1,por1,tor1,sir1,dd1,perm1,Dk1,&
-		 var_node2,por2,tor2,sir2,dd2,perm2,Dk2,&
-		 grid, vv_darcy,Res_FL)
- implicit none
-  integer nconn_no
-  type(pflowGrid), intent(inout) :: grid
-  real*8 sir1(1:grid%nphase),sir2(1:grid%nphase)
-  real*8, target:: var_node1(1:2+4*grid%nphase)
-  real*8, target:: var_node2(1:2+4*grid%nphase)
-  real*8 por1,por2,tor1,tor2,perm1,perm2,Dk1,Dk2,dd1,dd2
-  real*8 vv_darcy(grid%nphase),area
-  real*8 Res_FL(1:grid%ndof) 
-	   
-  real*8, pointer :: temp1, pre_ref1   ! 1 dof
-  real*8, pointer :: sat1(:), density1(:), amw1(:), h1(:), u1(:), pc1(:), kvr1(:)         ! nphase dof
-  
-  
-  real*8, pointer :: temp2, pre_ref2   ! 1 dof
-  real*8, pointer :: sat2(:), density2(:), amw2(:), h2(:), u2(:), pc2(:), kvr2(:)         ! nphase dof
-     
-  
-  integer ibase, m,np, ind
-  real*8  fluxm(grid%nphase),fluxe, v_darcy,q
-  real*8  ukvr, DK,Dq, diffdp
-  real*8 upweight,density_ave,cond, gravity, dphi
-  
-!  m1=grid%nd1(nc); n1 = grid%nG2L(m1) ! = zero for ghost nodes 
-!  print *,'in FLcont'
-  ibase=1;                 temp1=>var_node1(ibase)
-                           temp2=>var_node2(ibase)
-						   
-  ibase=ibase+1;           pre_ref1=>var_node1(ibase)
-                           pre_ref2=>var_node2(ibase)
-						   
-  ibase=ibase+1;           sat1=>var_node1(ibase:ibase+grid%nphase-1)
-						   sat2=>var_node2(ibase:ibase+grid%nphase-1)
-  ibase=ibase+grid%nphase; density1=>var_node1(ibase:ibase+grid%nphase-1)
-                           density2=>var_node2(ibase:ibase+grid%nphase-1)
-  ibase=ibase+grid%nphase; pc1=>var_node1(ibase:ibase+grid%nphase-1)
-                           pc2=>var_node2(ibase:ibase+grid%nphase-1)
-  ibase=ibase+grid%nphase; kvr1=>var_node1(ibase:ibase+grid%nphase-1)
-                           kvr2=>var_node2(ibase:ibase+grid%nphase-1)
-  
-  !print *,' FLcont got pointers' ,var_node1,var_node2,sir1,sir2
-  !print *,' tmp=',temp1,temp2
-  !print *,'diff=',diff1,diff2
-   
-  Dq=(perm1 * perm2)/(dd1*perm2 + dd2*perm1)
-  diffdp= (por1 *tor1 * por2*tor2) / (dd2*por1*tor1 + dd1*por2*tor2)*area
-  
-  fluxm=0.D0
-  fluxe=0.D0
-  vv_darcy=0.D0  
-  
-  do np=1, grid%nphase
-
-! Flow term
-    if ((sat1(np) > sir1(np)) .or. (sat2(np) > sir2(np)))then
-	  
-	  upweight=.5D0
-	  if(sat1(np) <eps) then 
-         upweight=0.d0
-	    else if(sat2(np) <eps) then 
-         upweight=1.d0
-      endif
-	  density_ave = upweight*density1(np)+(1.D0-upweight)*density2(np)  
-	  
-	  gravity = (upweight*density1(np) + (1.D0-upweight)*density2(np)) &
-              * grid%gravity * grid%delz(nconn_no)
-			  
-	  dphi = pre_ref1-pc1(np) - pre_ref2 + pc2(np) + gravity
-!	  print *,'FLcont  dp',dphi
-	! note uxmol only contains one phase xmol
-	  if(dphi>=0.D0)then
-	     ukvr=kvr1(np)
-		else
-		 ukvr=kvr2(np)
-	  endif 	   
-     
-	 ! print *,'FLcont  uxmol',uxmol
-	  if(ukvr>floweps)then
-         v_darcy= Dq * ukvr * dphi
-         !grid%vvl_loc(nconn_no) = v_darcy
-		 vv_darcy(np)=v_darcy
-		 
-	     q=v_darcy * area
-
-         fluxm(np)=fluxm(np) + q*density_ave																														
-																																																																																								    
-          ! fluxe = fluxe + q*density_ave*uh 
-       endif
-   endif 
- !  print *,' FLcont end flow',np
- enddo
-     
-! conduction term
-        
-        !Dk = (Dk1 * Dk2) / (dd2*Dk1 + dd1*Dk2)
-		!cond=Dk*area*(temp1-temp2) 
-        !fluxe=fluxe + cond
-   !      print *,' FLcont heat cond', Dk, cond
- Res_FL(1:grid%nphase)=fluxm(:) * grid%dt
- !Res_FL(grid%ndof)=fluxe * grid%dt
- ! note: Res_FL is the flux contribution, for node 1 R = R + Res_FL
- !												   2 R = R - Res_FL	
- !print *,'end FLcont'
- 
-  nullify(temp1, pre_ref1, sat1, density1, pc1,kvr1) 	    
-  nullify(temp2, pre_ref2, sat2, density2, pc2,kvr2) 	    
- end subroutine IMSRes_FLCont
-
- subroutine IMSRes_FLBCCont(nbc_no,area, &
-             var_node1,var_node2,por2,tor2,sir2,dd1,perm2,Dk2,&
-			 grid, vv_darcy,Res_FL)
- ! Notice : index 1 stands for BC node
-   implicit none
-  
-   integer nbc_no
-  type(pflowGrid), intent(inout) :: grid
-  real*8 dd1, sir2(1:grid%nphase)
-  real*8, target:: var_node1(1:2+4*grid%nphase)
-  real*8, target:: var_node2(1:2+4*grid%nphase)
-  real*8 por2,perm2,Dk2,tor2
-  real*8 vv_darcy(grid%nphase), area
-  real*8 Res_FL(1:grid%ndof) 
-	   
-  real*8, pointer :: temp1, pre_ref1   ! 1 dof
-  real*8, pointer :: sat1(:), density1(:), pc1(:), kvr1(:)         ! nphase dof
-
-  
-  real*8, pointer :: temp2, pre_ref2   ! 1 dof
-  real*8, pointer :: sat2(:), density2(:), pc2(:), kvr2(:)         ! nphase dof
-
-  
-  integer ibase, m,np, ind, ibc,j
-  real*8  fluxm(grid%nphase),fluxe, v_darcy,q
-  real*8 uh, ukvr,diff,diffdp, DK,Dq
-  real*8 upweight,density_ave,cond,gravity, dphi
-
-  
-  ibase=1;                 temp1=>var_node1(ibase)
-                           temp2=>var_node2(ibase)
-  ibase=ibase+1;           pre_ref1=>var_node1(ibase)
-                           pre_ref2=>var_node2(ibase)
-  ibase=ibase+1;           sat1=>var_node1(ibase:ibase+grid%nphase-1)
-						   sat2=>var_node2(ibase:ibase+grid%nphase-1)
-  ibase=ibase+grid%nphase; density1=>var_node1(ibase:ibase+grid%nphase-1)
-                           density2=>var_node2(ibase:ibase+grid%nphase-1)
-  ibase=ibase+grid%nphase; pc1=>var_node1(ibase:ibase+grid%nphase-1)
-                           pc2=>var_node2(ibase:ibase+grid%nphase-1)
-  ibase=ibase+grid%nphase; kvr1=>var_node1(ibase:ibase+grid%nphase-1)
-                           kvr2=>var_node2(ibase:ibase+grid%nphase-1)
-
-
-   ibc = grid%ibconn(nbc_no)
-   fluxm=0.D0; fluxe=0.D0
-   vv_darcy=0.D0 
-   
-   select case (grid%ibndtyp(ibc))
-     case(1) 
-	   Dq= perm2 / dd1
-        diffdp = por2*tor2/dd1*area
-        ! Flow term
-		do np =1,grid%nphase
-         if ((sat1(np) > sir2(np)) .or. (sat2(np) > sir2(np)))then
-	  
-	     upweight=.5D0
-	     if(sat1(np) <eps) then 
-             upweight=0.d0
-	        else if(sat2(np) <eps) then 
-             upweight=1.d0
-         endif
-	  density_ave = upweight*density1(np)+(1.D0-upweight)*density2(np)  
-	  
-	  gravity = (upweight*density1(np)+ (1.D0-upweight)*density2(np)) &
-              * grid%gravity * grid%delzbc(nbc_no)
-			  
-	  dphi = pre_ref1-pc1(np) - pre_ref2 + pc2(np) + gravity
-	  
-	 
-	  if(dphi>=0.D0)then
-	      ukvr=kvr1(np)
-		else
-		  ukvr=kvr2(np)
-	  endif 	   
-     
-	  if(ukvr*Dq>floweps)then
-         v_darcy= Dq * ukvr * dphi
-         !grid%vvl_loc(nbc_no) = v_darcy
-		 vv_darcy(np)=v_darcy
-		 
-	     q=v_darcy * area
-		 		 
-		 fluxm(np)=fluxm(np) + q*density_ave																														
-	     																																																																																									    
-          ! fluxe = fluxe + q*density_ave*uh 
-       endif
-      endif 
-   enddo
-! conduction term
-        
-        !Dk =  Dk2 / dd1
-		!cond=Dk*area*(temp1-temp2) 
-        !fluxe=fluxe + cond
- 
-     Res_FL(1:grid%nphase)=fluxm(:)* grid%dt
-    ! Res_FL(grid%ndof)=fluxe * grid%dt
-
-  case(2)
-    if((dabs(grid%velocitybc(1,nbc_no))+dabs(grid%velocitybc(2,nbc_no)))>floweps)then
-       print *, 'FlowBC :', nbc_no,grid%velocitybc(1,nbc_no),grid%velocitybc(2,nbc_no)
-	   do j=1,grid%nphase
-          fluxm=0.D0; fluxe=0.D0
-          v_darcy = grid%velocitybc(j,nbc_no)
-		  vv_darcy(j) = grid%velocitybc(j,nbc_no)
-!		  grid%vvbc(j+(nc-2)*grid%nphase)= grid%velocitybc(j,nc)
-	    ! note different from 2 phase version
-
-         if(v_darcy >0.d0)then 
-             q = v_darcy * density1(j) * area
-             !q = 0.d0
-             !flux = flux - q
-          !   fluxe = fluxe - q  * h1(j) 
-
-                fluxm(j)=fluxm(j) + q 
-  
-           else 
-              q =  v_darcy * density2(j) * area   
-           !   fluxe = fluxe - q  * h2(j) 
-			  fluxm(j)=fluxm(j) + q 
-             
-          endif 
-   
-	enddo
-    endif
-	Res_FL(1:grid%nphase)=fluxm(:)* grid%dt
-   ! Res_FL(grid%ndof)=fluxe * grid%dt
-
-   case(3)
-     Dq = perm2/dd1 
-
-     do np =1,grid%nphase
-      if ((sat2(np) > sir2(np)))then
-	  
-	     density_ave = density2(np)  
-	  
-	     gravity = density2(np)* grid%gravity * grid%delzbc(nbc_no)
-	 		  
-	     dphi = pre_ref1-pc1(np) - pre_ref2 + pc2(np) + gravity
-	  
-	     ukvr=kvr2(np)
-	   
-	   if(ukvr*Dq>floweps)then
-         v_darcy= Dq * ukvr * dphi
-    !     grid%vvbc(,nbc_no) = v_darcy
-		 vv_darcy(np)=v_darcy
-		 
-	     q=v_darcy * area
-		 		 
-		
-		   fluxm(np)=fluxm(np) + q*density_ave																														
-	    																																																																																										    
-          ! fluxe = fluxe + q*density_ave*uh 
-        endif
-     endif 
- 
-     enddo
-
-    Res_FL(1:grid%nphase)=fluxm(:)* grid%dt
-    !Res_FL(grid%ndof)=fluxe * grid%dt
-
-  end select
-   nullify(temp1, pre_ref1, sat1, density1, pc1,kvr1) 	    
-  nullify(temp2, pre_ref2, sat2, density2, pc2,kvr2) 	    
- end  subroutine IMSRes_FLBCCont 
-
-
+! Residual called by SNESSolve
   subroutine IMSResidual(snes,xx,r,grid,ierr)
     use translator_IMS_module
-   
+    use IMS_patch_module
     implicit none
  
     SNES, intent(in) :: snes
     Vec, intent(inout) :: xx
     Vec, intent(out) :: r
     type(pflowGrid), intent(inout) :: grid
-
- 
-  integer :: ierr
-  integer*4 :: n, ng, nc, nr
-  integer*4 :: i, i1, i2, j, jn, jng, jm1, jm2, jmu
-  integer*4 :: m, m1, m2, mu, n1, n2, ip1, ip2, p1, p2, t1, t2, c1, c2,&
-             s1, s2
-  integer*4 :: kk1,kk2,jj1,jj2,ii1,ii2, kk, jj, ii
-  integer*4 :: i1_hencoeff, i2_hencoeff
-  integer*4 :: ibc  ! Index that specifies a boundary condition block
-  
-! real*8 :: term1, term2, term3
-
-
-  PetscScalar, pointer ::accum_p(:)
-
-  PetscScalar, pointer :: r_p(:), porosity_loc_p(:), volume_p(:), &
-               xx_loc_p(:), xx_p(:), yy_p(:),&
-               ddensity_p(:), ddensity_loc_p(:),&
-               phis_p(:), tor_loc_p(:),&
-               perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:), &
-               vl_p(:), var_p(:),var_loc_p(:) 
-                          
-               
-  PetscScalar, pointer :: pc_p(:), pc_loc_p(:),kvr_p(:), kvr_loc_p(:)
-
-  PetscScalar, pointer :: icap_p(:),&
-                          icap_loc_p(:), ithrm_loc_p(:),ithrm_p(:)
-
-  integer :: iicap, index_var_begin, index_var_end,iicap1,iicap2,np
-  integer :: ichange
-  real*8 :: dd1, dd2, eng, cond, den, temp,&
-            eengl,eengg, &
-            fluxcl,fluxcg,fluxe, fluxh, flux, gravity, fluxl,&
-            fluxlh,fluxlv, fluxg,fluxgh,fluxgv, fluxv, q,  &
-            v_darcy,hflx,pvoldt, voldt, accum, pvol
-  real*8 :: dd, f1, f2, ff, por1, por2, perm1, perm2
-  real*8 :: Dphi,D0
-  real*8 :: Dq, Dk  ! "Diffusion" constant for a phase.
-  real*8 :: D1, D2  ! "Diffusion" constants at upstream, downstream faces.
-  real*8 :: sat_pressure  ! Saturation pressure of water.
-  real*8 :: dw_kg, dw_mol,density_ave,dif(grid%nphase)
-  real*8 :: tsrc1, qsrc1(grid%nphase), maxqsrc
-  real*8 :: cw,cw1,cw2, xxlw,xxla,xxgw,xxga
-  real*8 :: upweight
-  real*8 :: ukvr,uhh,uconc, tmp
-  real*8 :: dddt,dddp,fg,dfgdp,dfgdt,dhdt,dhdp,dvdt,dvdp, rho, visc
-  real*8 :: Res(grid%ndof), vv_darcy(grid%nphase)
+    PetscScalar, pointer :: xx_p(:), accum_p(:),r_p(:)
+     
+   integer :: ierr, n,i
  
   !grid%vvlbc=0.D0
   !grid%vvgbc=0.D0
@@ -593,12 +368,11 @@ endif
    !print *,'xxxxxxxxx ::...........'; call VecView(xx,PETSC_VIEWER_STDOUT_WORLD,ierr)
 
   !if(grid%dt>5D5)
-    temp=grid%tref
   
-   print *,'Res ims :: in res'
+   !print *,'Res ims :: in res'
 
 	call VecGetArrayF90(xx, xx_p, ierr); CHKERRQ(ierr)
-     do n = 1, grid%nlmax
+     do n = 1, grid%locpat(1)%nlmax
 	    do i=2,grid%nphase
 		   if(xx_p((n-1)*grid%ndof+i) <0.D0)xx_p((n-1)*grid%ndof+i) =1.D-16
 		   if(xx_p((n-1)*grid%ndof+i) >1.D0)xx_p((n-1)*grid%ndof+i) =1.D0 -1D-16
@@ -611,100 +385,6 @@ endif
                             grid%xx_loc, ierr)
   call DAGlobalToLocalEnd(grid%da_ndof, xx, INSERT_VALUES, &
                           grid%xx_loc, ierr)
-
-
-   call VecGetArrayF90(grid%xx_loc, xx_loc_p, ierr); CHKERRQ(ierr)
-
-!there is potential possiblity that the pertubate of p may change the direction of pflow.
-! once that happens, code may crash, namely wrong derive. 
-  do ng = 1, grid%ngmax 
-  !ng=grid%nL2G(n)
-  
-    grid%delx(1,ng)=xx_loc_p((ng-1)*grid%ndof+1)*dfac*1e-3
-  !  grid%delx(2,ng)=xx_loc_p((ng-1)*grid%ndof+2)*dfac
-   
-   do i=2, grid%ndof		
-		  if(xx_loc_p((ng-1)*grid%ndof+i) <=0.5)then
-		   grid%delx(i,ng) = dfac *xx_loc_p((ng-1)*grid%ndof+i) 
-		  else
-		   grid%delx(i,ng) = -dfac *xx_loc_p((ng-1)*grid%ndof+i) 
-		  endif 
-		  
-		  if(grid%delx(i,ng) <1D-9 .and. grid%delx(i,ng)>=0.D0)grid%delx(i,ng) =1D-9
-		  if(grid%delx(i,ng) >-1D-9 .and. grid%delx(i,ng)<0.D0)grid%delx(i,ng) =-1D-9
-		  
-		  if((grid%delx(i,ng)+xx_loc_p((ng-1)*grid%ndof+i))>1.D0)then
-			 grid%delx(i,ng) = (1.D0-xx_loc_p((ng-1)*grid%ndof+i))/1D5
-		   endif
-		  if((grid%delx(i,ng)+xx_loc_p((ng-1)*grid%ndof+i))<0.D0)then
-			 grid%delx(i,ng) = xx_loc_p((ng-1)*grid%ndof+i)/1D5
-		   endif
-    enddo
-  
-  enddo
-  
- call VecRestoreArrayF90(grid%xx_loc, xx_loc_p, ierr); CHKERRQ(ierr)
- 
-
-  call VecGetArrayF90(xx, xx_p, ierr); CHKERRQ(ierr)
-  call VecGetArrayF90(grid%icap,icap_p,ierr)
-  call VecGetArrayF90(grid%ithrm,ithrm_p,ierr)  
-    call VecGetArrayF90(grid%var,var_p,ierr)
-  
-  !print *, 'IMS_Res: Got delx'
- ! call VecGetArrayF90(grid%ithrm,ithrm_p,ierr)
-!------------------------------------------------------ 
-
-
-
-
-!-----  phase properities ---- last time step---
-  do n = 1, grid%nlmax
-    jn = 1 + (n-1)*grid%nphase
-    ng=   grid%nL2G(n)
-    ii1 = jn  !1+(n-1)*grid%nphase
-    ii2 = n*grid%nphase
-    iicap = icap_p(n)
-
-	call pri_var_trans_IMS_ninc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),&
-        temp, grid%scale,grid%nphase,&
-        iicap, grid%sir(1:grid%nphase,iicap),grid%lambda(iicap),&
-        grid%alpha(iicap),grid%pckrm(iicap),grid%pcwmax(iicap),&
-        grid%pcbetac(iicap),grid%pwrprm(iicap),&
-		var_p((n-1)*size_var_node+1:(n-1)*size_var_node+size_var_use),&
-		ierr)
-
-
-
-	if (grid%ideriv .eq. 1) then
-      call pri_var_trans_ims_winc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),&
-	    grid%delx(1:grid%ndof,ng), temp,&
-        grid%scale,grid%nphase,&
-        iicap, grid%sir(1:grid%nphase,iicap),grid%lambda(iicap),&
-        grid%alpha(iicap),grid%pckrm(iicap),grid%pcwmax(iicap),&
-        grid%pcbetac(iicap),grid%pwrprm(iicap),&
-        var_p((n-1)*size_var_node+size_var_use+1:n*size_var_node),&
-	    ierr)
-    endif
-	
-!	print *,'var_p',n,iiphase, var_p((n-1)*size_var_node+1:n*size_var_node)					    
-!   if(n < 5) print *,'pflow_2ph: ',n,grid%ideriv,grid%xxphi_co2(n)
-  enddo
-
-  call VecRestoreArrayF90(xx, xx_p, ierr); CHKERRQ(ierr)
-  call VecRestoreArrayF90(grid%icap,icap_p,ierr)
-  call VecRestoreArrayF90(grid%ithrm,ithrm_p,ierr)
-  call VecRestoreArrayF90(grid%var,var_p,ierr)
-  ! call VecRestoreArrayF90(grid%iphase,iphase_p,ierr)
- ! print *, 'Got var with inc'
- 
-
-   
-  
-  call DAGlobalToLocalBegin(grid%da_var_dof,grid%var, &
-                           INSERT_VALUES,grid%var_loc, ierr)
-  call DAGlobalToLocalEnd(grid%da_var_dof,grid%var,INSERT_VALUES, &
-                          grid%var_loc, ierr)
    
   call DAGlobalToLocalBegin(grid%da_1_dof, grid%perm_xx, &
                             INSERT_VALUES, grid%perm_xx_loc, ierr)
@@ -728,9 +408,10 @@ endif
                           INSERT_VALUES, grid%icap_loc, ierr)
 
 
+! print *,' IMS_RES : End scatter'
 ! End distribute data 
 ! now assign access pointer to local variables
-  call VecGetArrayF90(grid%xx_loc, xx_loc_p, ierr)
+  call VecGetArrayF90(grid%xx_loc, grid%locpat(1)%xx_loc_p, ierr)
   call VecGetArrayF90(r, r_p, ierr)
   call VecGetArrayF90(grid%accum, accum_p, ierr)
 ! call VecGetArrayF90(grid%yy, yy_p, ierr)
@@ -738,338 +419,40 @@ endif
 
   ! notice:: here we assume porosity is constant
  
-  call VecGetArrayF90(grid%var_loc,var_loc_p,ierr)
-  call VecGetArrayF90(grid%yy,yy_p,ierr)
-  call VecGetArrayF90(grid%porosity_loc, porosity_loc_p, ierr)
-  call VecGetArrayF90(grid%tor_loc, tor_loc_p, ierr)
-  call VecGetArrayF90(grid%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecGetArrayF90(grid%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecGetArrayF90(grid%perm_zz_loc, perm_zz_loc_p, ierr)
-  call VecGetArrayF90(grid%volume, volume_p, ierr)
-  call VecGetArrayF90(grid%ithrm_loc, ithrm_loc_p, ierr)
-  call VecGetArrayF90(grid%icap_loc, icap_loc_p, ierr)
-  call VecGetArrayF90(grid%vl, vl_p, ierr)
-  !print *,' Finished scattering non deriv'
-
-
-  Resold_AR=0.D0; ResOld_FL=0.D0
- !accum_p =0.D0
- ! print *,' Finished scattering  var'
- !r_p=0.D0
-!--------------------------------------------------------------------------
-! Calculate accumulation term for interior and exterior nodes.
-!--------------------------------------------------------------------------
-! print *,grid%rtot
+  call VecGetArrayF90(grid%yy,grid%locpat(1)%yy_p,ierr)
+  call VecGetArrayF90(grid%porosity_loc, grid%locpat(1)%porosity_loc_p, ierr)
+  call VecGetArrayF90(grid%tor_loc, grid%locpat(1)%tor_loc_p, ierr)
+  call VecGetArrayF90(grid%perm_xx_loc, grid%locpat(1)%perm_xx_loc_p, ierr)
+  call VecGetArrayF90(grid%perm_yy_loc, grid%locpat(1)%perm_yy_loc_p, ierr)
+  call VecGetArrayF90(grid%perm_zz_loc, grid%locpat(1)%perm_zz_loc_p, ierr)
+  call VecGetArrayF90(grid%volume, grid%locpat(1)%volume_p, ierr)
+  call VecGetArrayF90(grid%ithrm_loc, grid%locpat(1)%ithrm_loc_p, ierr)
+  call VecGetArrayF90(grid%icap_loc, grid%locpat(1)%icap_loc_p, ierr)
+  call VecGetArrayF90(grid%vl, grid%locpat(1)%vl_p, ierr)
   
-  r_p = - accum_p
+ ! print *,' IMS_res : Finished scattering non deriv'
 
-  do n = 1, grid%nlmax  ! For each local node do...
-    ng = grid%nL2G(n)   ! corresponding ghost index
-    p1 = 1 + (n-1)*grid%ndof
-    index_var_begin=(ng-1)*size_var_node+1
-    index_var_end = index_var_begin -1 + size_var_use
-	  
-    pvol = volume_p(n)*porosity_loc_p(ng)
-    voldt = volume_p(n) / grid%dt
-    pvoldt = porosity_loc_p(ng) * voldt
+
+! Evaluate residual on a patch
+!  In petsc version, only one patch on a processor
+!   all processor will call IMSResidual_patch, not collective    
+  call IMSResidual_patch(grid%locpat(1)%xx_loc_p,r_p,accum_p,grid%locpat(1),grid,ierr)
+
+
   
-    i = ithrm_loc_p(ng)
-
-    accum = 0.d0
-    call IMSRes_ARCont(n, var_loc_p(index_var_begin: index_var_end),&
-	  porosity_loc_p(ng),volume_p(n),grid%dencpr(i), grid, Res, 1,ierr)
-   
-    r_p(p1:p1+grid%ndof-1) = r_p(p1:p1+grid%ndof-1) + Res(1:grid%ndof)
-    Resold_AR(n,1:grid%ndof)= Res(1:grid%ndof) 
-  end do
- ! print *,' Finished accum terms'
-
-!************************************************************************
- ! add source/sink terms
- 
-  do nr = 1, grid%nblksrc
-      
-    kk1 = grid%k1src(nr) - grid%nzs
-    kk2 = grid%k2src(nr) - grid%nzs
-    jj1 = grid%j1src(nr) - grid%nys
-    jj2 = grid%j2src(nr) - grid%nys
-    ii1 = grid%i1src(nr) - grid%nxs
-    ii2 = grid%i2src(nr) - grid%nxs
-        
-    kk1 = max(1,kk1)
-    kk2 = min(grid%nlz,kk2)
-    jj1 = max(1,jj1)
-    jj2 = min(grid%nly,jj2)
-    ii1 = max(1,ii1)
-    ii2 = min(grid%nlx,ii2)
-        
-    if (ii1 > ii2 .or. jj1 > jj2 .or. kk1 > kk2) cycle
-      
-    do i = 2, grid%ntimsrc
-      if (grid%timesrc(i,nr) == grid%t) then
-        tsrc1 = grid%tempsrc(i,nr)
-        qsrc1(:) = grid%qsrc(i,nr,:)
-        goto 10
-      else if (grid%timesrc(i,nr) > grid%t) then
-        ff = grid%timesrc(i,nr)-grid%timesrc(i-1,nr)
-        f1 = (grid%t - grid%timesrc(i-1,nr))/ff
-        f2 = (grid%timesrc(i,nr)-grid%t)/ff
-        tsrc1 = f1*grid%tempsrc(i,nr) + f2*grid%tempsrc(i-1,nr)
-        qsrc1(:) = f1*grid%qsrc(i,nr,:) + f2*grid%qsrc(i-1,nr,:)
-        goto 10
-      endif
-    enddo
- 10 continue
-    
-   !print *,'pflow2ph : ', grid%myrank,i,grid%timesrc(i,nr), &
-   !grid%timesrc(i-1,nr),grid%t,f1,f2,ff,qsrc1,csrc1,tsrc1
- 
- 	
-  ! Here assuming regular mixture injection. i.e. no extra H from mixing 
-  ! within injected fluid.
-	
-	maxqsrc=0.D0
-	do j=1, grid%nphase
-	 if(dabs(qsrc1(j))>0.D0) maxqsrc =dabs(qsrc1(j))
-	enddo 
-	
-    if (maxqsrc > 0.d0) then ! injection
-      do kk = kk1, kk2
-        do jj = jj1, jj2
-          do ii = ii1, ii2
-            n = ii+(jj-1)*grid%nlx+(kk-1)*grid%nlxy
-            ng = grid%nL2G(n)
-            
-		   
-           !           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
-
-!           qqsrc = qsrc1/dw_mol ! [kmol/s / mol/dm^3 = kmol/m^3]
-              
-            r_p((n-1)*grid%ndof +1:(n-1)*grid%ndof +grid%nphase) = &
-			    r_p((n-1)*grid%ndof +1:(n-1)*grid%ndof +grid%nphase) - qsrc1(:) *grid%dt
-          !  r_p(n*grid%ndof) = r_p(n*grid%ndof) - qsrc1*enth_src_h2o*grid%dt
-            Resold_AR(n,:)= Resold_AR(n,:) - qsrc1(:)*grid%dt
-		!	Resold_AR(n,grid%ndof)= Resold_AR(n,grid%ndof) - qsrc1 * enth_src_h2o*grid%dt
-
-          enddo
-        enddo
-      enddo
-    endif  
-		
-  enddo
-  !print *,'finished source/sink term'
-  
-
-!*********************************************************************
-
-
- 
-! stop
-!---------------------------------------------------------------------------
-! Flux terms for interior nodes
-! Be careful here, we have velocity field for every phase
-!---------------------------------------------------------------------------
- 
-  do nc = 1, grid%nconn  ! For each interior connection...
-    m1 = grid%nd1(nc) ! ghosted
-    m2 = grid%nd2(nc)
-
-    n1 = grid%nG2L(m1) ! = zero for ghost nodes
-    n2 = grid%nG2L(m2) ! Ghost to local mapping   
-
-    p1 = 1 + (n1-1)*grid%ndof 
-    p2 = 1 + (n2-1)*grid%ndof
-   
-    dd1 = grid%dist1(nc)
-    dd2 = grid%dist2(nc)
-    
-    ip1 = grid%iperm1(nc)  ! determine the normal direction of interface 
-    ip2 = grid%iperm2(nc)
-
-
-    select case(ip1)
-    case(1) 
-       perm1 = perm_xx_loc_p(m1)
-    case(2)
-       perm1 = perm_yy_loc_p(m1)
-    case(3)
-       perm1 = perm_zz_loc_p(m1)
-    end select
-    
-    select case(ip2)
-    case(1) 
-       perm2 = perm_xx_loc_p(m2)
-    case(2)
-       perm2 = perm_yy_loc_p(m2)
-    case(3)
-       perm2 = perm_zz_loc_p(m2)
-    end select
-
-       i1 = ithrm_loc_p(m1)
-       i2 = ithrm_loc_p(m2)
-	   iicap1=int(icap_loc_p(m1))
-	   iicap2=int(icap_loc_p(m2))
-	   
-       D1 = grid%ckwet(i1)
-       D2 = grid%ckwet(i2)
-
-    dd = dd1 + dd2
-    f1 = dd1/dd
-    f2 = dd2/dd
-    
-    call IMSRes_FLCont(nc ,grid%area(nc), &
-         var_loc_p((m1-1)*size_var_node+1:(m1-1)*size_var_node+size_var_use),&
-		 porosity_loc_p(m1),tor_loc_p(m1),grid%sir(1:grid%nphase,iicap1),dd1,perm1,D1,&
-		 var_loc_p((m2-1)*size_var_node+1:(m2-1)*size_var_node+size_var_use),&
-		 porosity_loc_p(m2),tor_loc_p(m2),grid%sir(1:grid%nphase,iicap2),dd2,perm2,D2,&
-		 grid, vv_darcy,Res)
-     ! grid%vvl_loc(nc) = vv_darcy(1)
-	 ! grid%vvg_loc(nc) = vv_darcy(2)  
-    
-	 
-	!   use for print out of velocity **********************************************
-	    if (n1 > 0) then               ! If the upstream node is not a ghost node...
-        do np =1, grid%nphase 
-		   vl_p(np+(ip1-1)*grid%nphase+3*grid%nphase*(n1-1)) = vv_darcy(np) 
-!note: grid%vl is indexed according to n1 numbering 
-        enddo
-	 endif
-    
-	 
-	  
-	    
-	 Resold_FL(nc,1:grid%ndof)= Res(1:grid%ndof) 
-    
-	if(n1>0)then
-	   r_p(p1:p1+grid%ndof-1) = r_p(p1:p1+grid%ndof-1) + Res(1:grid%ndof)
-     endif
-   
-    if(n2>0)then
-	   r_p(p2:p2+grid%ndof-1) = r_p(p2:p2+grid%ndof-1) - Res(1:grid%ndof)
-     endif
-
-
- end do
-!  print *,'finished NC' 
- 
-!*************** Handle boundary conditions*************
-!   print *,'xxxxxxxxx ::...........'; call VecView(xx,PETSC_VIEWER_STDOUT_WORLD,ierr)
-
-!  print *,'2ph bc-sgbc', grid%myrank, grid%sgbc    
- 
-  do nc = 1, grid%nconnbc
-
-       m = grid%mblkbc(nc)  ! Note that here, m is NOT ghosted.
-       ng = grid%nL2G(m)
-
-       if(ng<=0)then
-         print *, "Wrong boundary node index... STOP!!!"
-         stop
-       end if
-  
-       p1 = 1 + (m-1) * grid%ndof
-       
-	   ibc = grid%ibconn(nc)
-       ip1 = grid%ipermbc(nc)
-	   
-
-       i2 = ithrm_loc_p(ng)
-       D2 = grid%ckwet(i2)
-
-
-       select case(ip1)
-         case(1)
-           perm1 = perm_xx_loc_p(ng)
-         case(2)
-           perm1 = perm_yy_loc_p(ng)
-         case(3)
-           perm1 = perm_zz_loc_p(ng)
-       end select
-
-       select case(grid%ibndtyp(ibc))
-          
-          case(2)
-          ! solve for pb from Darcy's law given qb /= 0
-              grid%xxbc(:,nc)= xx_loc_p((ng-1)*grid%ndof+1: ng*grid%ndof)
-                 case(3) 
-     !         grid%xxbc((nc-1)*grid%ndof+1)=grid%pressurebc(2,ibc)
-			  grid%xxbc(2:grid%ndof,nc)= &
-			           xx_loc_p((ng-1)*grid%ndof+2: ng*grid%ndof)
-			 ! grid%iphasebc(nc)=int(iphase_loc_p(ng))
-		    end select
-
-! print *,'2ph bc',grid%myrank,nc,m,ng,ibc,grid%ibndtyp(ibc),grid%pressurebc(:,ibc), &
-! grid%tempbc(ibc),grid%sgbc(ibc),grid%concbc(ibc),grid%velocitybc(:,ibc)
-
-!   if(grid%ibndtyp(ibc) == 1) then
-
-      !need specify injection phase ratio,conc and pressure
-   !   grid%ibndphaseRate(ibc) 
-   !   grid%ibndconc(ibc)    ! 
-   !   grid%tempbc(ibc)      !1 elements 
-   !   grid%pressurebc(ibc)  !nphase elements
-!      endif
-   
-    
-     iicap=int(icap_loc_p(ng))  
-!      print *,'pflow_2pha_bc: ',grid%myrank,' nc= ',nc,' m= ',m, &
-!      ' ng= ',ng,' ibc= ',ibc,ip1,iicap, &
-!      grid%nconnbc,grid%ibndtyp(ibc),grid%concbc(nc)
-     
-!   print *,'pflow_2pha-bc: ',ibc,grid%ideriv,grid%ibndtyp(ibc),grid%density_bc,&
-!   grid%pressurebc(2,ibc),grid%tempbc(ibc),grid%concbc(ibc),grid%sgbc(ibc)
-    
-	
-      call pri_var_trans_ims_ninc(grid%xxbc(:,nc), temp,&
-	     grid%scale,grid%nphase, &
-      iicap,grid%sir(1:grid%nphase,iicap),grid%lambda(iicap),&
-      grid%alpha(iicap),grid%pckrm(iicap),grid%pcwmax(iicap), & !use node's value
-      grid%pcbetac(iicap),grid%pwrprm(iicap),&
-      grid%varbc(1:size_var_use), ierr)
-   
-     
-    call IMSRes_FLBCCont(nc,grid%areabc(nc), &
-             grid%varbc(1:size_var_use), &
-			 var_loc_p((ng-1)*size_var_node+1:(ng-1)*size_var_node+size_var_use),&
-			 porosity_loc_p(ng),tor_loc_p(ng),grid%sir(1:grid%nphase,iicap),grid%distbc(nc),&
-			 perm1,D2, grid, vv_darcy,Res)
-    grid%vvlbc(nc) = vv_darcy(1)
-	 grid%vvgbc(nc) = vv_darcy(2) 
-    r_p(p1:p1-1+grid%ndof)= r_p(p1:p1-1+grid%ndof) - Res(1:grid%ndof)
-	ResOld_AR(m,1:grid%ndof) = ResOld_AR(m,1:grid%ndof) - Res(1:grid%ndof)
-   
-   
-       !print *, ' boundary index', nc,ng,ibc,grid%ibndtyp(ibc)
-       !print *,'        xxbc', grid%iphasebc(nc), grid%xxbc(:,nc),res
-	   !print *, '       var', grid%varbc
-	!   print *, ' P  T   C   S  ', grid%pressurebc(1,ibc),grid%tempbc(ibc), &
-    !                               grid%concbc(ibc),grid%sgbc(ibc)
-    !   print *,' hh,den   ',grid%hh_bc(1:2),grid%density_bc(1:2)
-
-!print *,' Gotten BC properties ', ibc,grid%ibndtyp(ibc),iicap
-!print *,grid%pressurebc(2,ibc),grid%tempbc(ibc),grid%concbc(ibc),grid%sgbc(ibc)
-!print *,grid%density_bc,grid%avgmw_bc
-!print *,grid%hh_bc,grid%uu_bc,grid%df_bc,grid%hen_bc,grid%pc_bc,grid%kvr_bc
-
- enddo
-!  print *,'finished BC'
-
-
-
  call VecRestoreArrayF90(r, r_p, ierr)
-  call VecRestoreArrayF90(grid%yy, yy_p, ierr)
- call VecRestoreArrayF90(grid%xx_loc, xx_loc_p, ierr)
  call VecRestoreArrayF90(grid%accum, accum_p, ierr)
- call VecRestoreArrayF90(grid%var_loc,var_loc_p,ierr)
- call VecRestoreArrayF90(grid%porosity_loc, porosity_loc_p, ierr)
- call VecRestoreArrayF90(grid%tor_loc, tor_loc_p, ierr)
- call VecRestoreArrayF90(grid%perm_xx_loc, perm_xx_loc_p, ierr)
- call VecRestoreArrayF90(grid%perm_yy_loc, perm_yy_loc_p, ierr)
- call VecRestoreArrayF90(grid%perm_zz_loc, perm_zz_loc_p, ierr)
- call VecRestoreArrayF90(grid%volume, volume_p, ierr)
- call VecRestoreArrayF90(grid%ithrm_loc, ithrm_loc_p, ierr)
- call VecRestoreArrayF90(grid%icap_loc, icap_loc_p, ierr)
- call VecRestoreArrayF90(grid%vl, vl_p, ierr)
+ call VecRestoreArrayF90(grid%yy, grid%locpat(1)%yy_p, ierr)
+ call VecRestoreArrayF90(grid%xx_loc, grid%locpat(1)%xx_loc_p, ierr)
+ call VecRestoreArrayF90(grid%porosity_loc, grid%locpat(1)%porosity_loc_p, ierr)
+ call VecRestoreArrayF90(grid%tor_loc, grid%locpat(1)%tor_loc_p, ierr)
+ call VecRestoreArrayF90(grid%perm_xx_loc, grid%locpat(1)%perm_xx_loc_p, ierr)
+ call VecRestoreArrayF90(grid%perm_yy_loc, grid%locpat(1)%perm_yy_loc_p, ierr)
+ call VecRestoreArrayF90(grid%perm_zz_loc, grid%locpat(1)%perm_zz_loc_p, ierr)
+ call VecRestoreArrayF90(grid%volume, grid%locpat(1)%volume_p, ierr)
+ call VecRestoreArrayF90(grid%ithrm_loc, grid%locpat(1)%ithrm_loc_p, ierr)
+ call VecRestoreArrayF90(grid%icap_loc, grid%locpat(1)%icap_loc_p, ierr)
+ call VecRestoreArrayF90(grid%vl, grid%locpat(1)%vl_p, ierr)
  
 
 ! print *,'Residual ::...........'; call VecView(r,PETSC_VIEWER_STDOUT_WORLD,ierr)
@@ -1081,7 +464,8 @@ endif
   subroutine IMSJacobin(snes,xx,A,B,flag,grid,ierr)
        
     use translator_IMS_module
-   
+    use IMS_patch_module
+    
     implicit none
 
     SNES, intent(in) :: snes
@@ -1091,54 +475,20 @@ endif
    ! integer, intent(inout) :: flag
     MatStructure flag
 
-    integer :: ierr
-    integer*4 :: n, ng, nc,nvar,neq,nr
-    integer*4 :: i1, i2, j, jn, jng, jm1, jm2,jmu, i
-    integer   :: kk,ii1,jj1,kk1,ii2,jj2,kk2  
-    integer*4 :: m, m1, m2, mu, n1, n2, ip1, ip2 
-    integer*4 :: p1,p2,t1,t2,c1,c2,s1,s2
-    integer*4 :: ibc  ! Index that specifies a boundary condition block.
-    real*8 ::  v_darcy, q
+    integer :: ierr, n,ng, na1,na2, ind,neq,nvar
+   
+   ! matrix block, 0 to 6 should be 3D non-zero entrys.!
+	!               0 stands for diagnal element
+	!               1 left.  2. right  3 up.  4 down.  5 front. 6 back.
+	!               This is determined by the connection setup, does not really matter   
+	real*8 :: Jac_elem(1:grid%locpat(1)%nlmax,0:6,1:grid%ndof,1:grid%ndof)
 
-    PetscScalar, pointer :: porosity_loc_p(:), volume_p(:), &
-               xx_loc_p(:), phis_p(:),  tor_loc_p(:),&
-               perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
-               
-               
-               
-
-
-  PetscScalar, pointer ::  icap_loc_p(:), ithrm_loc_p(:),var_loc_p(:)
-  integer :: iicap,ii,jj,iiphas,iiphas1,iiphas2,iicap1,iicap2
-  integer :: index_var_begin, index_var_end
-  integer*4 ibc_hencoeff
-  real*8 :: dw_kg,dw_mol,enth_src_co2,enth_src_h2o,rho,dddt,dddp,fg,dfgdp,&
-            dfgdt,eng,dhdt,dhdp,visc,dvdt,dvdp
-  real*8 :: cond, gravity,  acc,  vv_darcy(grid%nphase),&
-            density_ave, voldt, pvoldt
-  real*8 :: fluxl, fluxlh, fluxlv, fluxg, fluxgh, fluxgv, &
-            flux, fluxh, fluxv, ff
-  real*8 :: tsrc1,qsrc1(grid%nphase)
-  real*8 :: dd1, dd2, dd, f1, f2, den
-! real*8 :: dfluxp, dfluxt, dfluxp1, dfluxt1, dfluxp2, dfluxt2
-  real*8 :: por1, por2, perm1, perm2
-  real*8 :: qu_rate, p_vapor,sat_pressure_t
-! real*8 :: cg1,cg2,cg,cg_p,cg_t,cg_s,cg_c
-  real*8 :: Dk, Dq,D0, Dphi, gdz  ! "Diffusion" constant for a phase.
-  real*8 :: D1, D2  ! "Diffusion" constants upstream and downstream of a face.
-  real*8 :: sat_pressure  ! Saturation pressure of water.
-  real*8 :: xxlw,xxla,xxgw,xxga,cw,cw1,cw2,cwu, sat_ave
-  real*8 :: ra(1:grid%ndof,1:2*grid%ndof)  
-  real*8 :: uhh, uconc, ukvr, tmp, temp
-  real*8 :: upweight,m1weight,m2weight,mbweight,mnweight
-  real*8 :: delxbc(1:grid%ndof)
-  real*8 :: blkmat11(1:grid%ndof,1:grid%ndof), &
-            blkmat12(1:grid%ndof,1:grid%ndof),&
-			blkmat21(1:grid%ndof,1:grid%ndof),&
-			blkmat22(1:grid%ndof,1:grid%ndof)
-  real*8 :: ResInc(1:grid%nlmax, 1:grid%ndof, 1:grid%ndof),res(1:grid%ndof)  
-  real*8 :: max_dev, maxqsrc  
-  integer  na1,na2
+	! non-zero matrix cloumn index, diagnal will be the same as row index
+	! for petsc version, it should be global index 
+	integer :: Jac_Ind(1:grid%locpat(1)%nlmax,0:6)
+    real*8 :: blkmat11(1:grid%ndof,1:grid%ndof)
+    
+    
 !-----------------------------------------------------------------------
 ! R stand for residual
 !  ra       1              2              3              4          5              6            7      8
@@ -1152,7 +502,6 @@ endif
 !   1.D0 gas phase viscocity to all p,t,c,s
 !   2. Average molecular weights to p,t,s
  flag = SAME_NONZERO_PATTERN
- temp=grid%tref
 
   !print *,'*********** In Jacobian ********************** '
   call MatZeroEntries(A,ierr)
@@ -1168,421 +517,62 @@ endif
  !call DAGlobalToLocalEnd(grid%da_1_dof, grid%iphas, &
  !                         INSERT_VALUES, grid%iphas_loc, ierr)
 
-  call VecGetArrayF90(grid%xx_loc, xx_loc_p, ierr)
-  call VecGetArrayF90(grid%porosity_loc, porosity_loc_p, ierr)
-  call VecGetArrayF90(grid%tor_loc, tor_loc_p, ierr)
+  call VecGetArrayF90(grid%xx_loc, grid%locpat(1)%xx_loc_p, ierr)
+  call VecGetArrayF90(grid%porosity_loc, grid%locpat(1)%porosity_loc_p, ierr)
+  call VecGetArrayF90(grid%tor_loc, grid%locpat(1)%tor_loc_p, ierr)
 ! call VecGetArrayF90(grid%perm_loc, perm_loc_p, ierr)
-  call VecGetArrayF90(grid%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecGetArrayF90(grid%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecGetArrayF90(grid%perm_zz_loc, perm_zz_loc_p, ierr)
-  call VecGetArrayF90(grid%volume, volume_p, ierr)
+  call VecGetArrayF90(grid%perm_xx_loc, grid%locpat(1)%perm_xx_loc_p, ierr)
+  call VecGetArrayF90(grid%perm_yy_loc, grid%locpat(1)%perm_yy_loc_p, ierr)
+  call VecGetArrayF90(grid%perm_zz_loc, grid%locpat(1)%perm_zz_loc_p, ierr)
+  call VecGetArrayF90(grid%volume, grid%locpat(1)%volume_p, ierr)
 
-  call VecGetArrayF90(grid%ithrm_loc, ithrm_loc_p, ierr)
-  call VecGetArrayF90(grid%icap_loc, icap_loc_p, ierr)
-  call VecGetArrayF90(grid%var_loc, var_loc_p, ierr)
-
- !print *,' In mph Jacobian ::  got pointers '
-! ********************************************************************
-
-! Accumulation terms
-
- ResInc=0.D0
-  do n = 1, grid%nlmax  ! For each local node do...
-    ng = grid%nL2G(n)   !get ghosted index
-    
-	voldt = volume_p(n) / grid%dt
-    pvoldt = porosity_loc_p(ng) * voldt
-
- !    iiphas=iphase_loc_p(ng)
- ! pressure equation    
-   do nvar=1, grid%ndof
-   
-      index_var_begin=(ng-1)*size_var_node+nvar*size_var_use+1
-      index_var_end = index_var_begin -1 + size_var_use
-
-       call IMSRes_ARCont(n, var_loc_p(index_var_begin : index_var_end),&
-	      porosity_loc_p(ng),volume_p(n),grid%dencpr(int(ithrm_loc_p(ng))),&
-	      grid, Res,1,ierr)
-      
-       ResInc(n,:,nvar) = ResInc(n,:,nvar) + Res(:)
-   end do
- enddo
-! print *,' Mph Jaco Finished accum terms'
-! Source / Sink term
-
-   do nr = 1, grid%nblksrc
-      
-    kk1 = grid%k1src(nr) - grid%nzs
-    kk2 = grid%k2src(nr) - grid%nzs
-    jj1 = grid%j1src(nr) - grid%nys
-    jj2 = grid%j2src(nr) - grid%nys
-    ii1 = grid%i1src(nr) - grid%nxs
-    ii2 = grid%i2src(nr) - grid%nxs
-        
-    kk1 = max(1,kk1)
-    kk2 = min(grid%nlz,kk2)
-    jj1 = max(1,jj1)
-    jj2 = min(grid%nly,jj2)
-    ii1 = max(1,ii1)
-    ii2 = min(grid%nlx,ii2)
-        
-    if (ii1 > ii2 .or. jj1 > jj2 .or. kk1 > kk2) cycle
-      
-    do i = 2, grid%ntimsrc
-      if (grid%timesrc(i,nr) == grid%t) then
-        tsrc1 = grid%tempsrc(i,nr)
-        qsrc1(:) = grid%qsrc(i,nr,:)
-        goto 10
-      else if (grid%timesrc(i,nr) > grid%t) then
-        ff = grid%timesrc(i,nr)-grid%timesrc(i-1,nr)
-        f1 = (grid%t - grid%timesrc(i-1,nr))/ff
-        f2 = (grid%timesrc(i,nr)-grid%t)/ff
-        tsrc1 = f1*grid%tempsrc(i,nr) + f2*grid%tempsrc(i-1,nr)
-        qsrc1(:) = f1*grid%qsrc(i,nr,:) + f2*grid%qsrc(i-1,nr,:)
-        goto 10
-      endif
-    enddo
- 10 continue
- 
- 
-    maxqsrc=0.D0
-	do j=1, grid%nphase
-	 if(dabs(qsrc1(j))>0.D0) maxqsrc =dabs(qsrc1(j))
-	enddo 
-
-    
-     if (maxqsrc > 0.d0) then ! injection
-      do kk = kk1, kk2
-        do jj = jj1, jj2
-          do ii = ii1, ii2
-            n = ii+(jj-1)*grid%nlx+(kk-1)*grid%nlxy
-            ng = grid%nL2G(n)
-            
-	        do nvar=1,grid%ndof 	   
-            
-!           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
-
-!           qqsrc = qsrc1/dw_mol ! [kmol/s / mol/dm^3 = kmol/m^3]
-              
-            ResInc(n,1:grid%nphase,nvar)=  ResInc(n,1:grid%nphase,nvar) - qsrc1(:)*grid%dt
-        !    ResInc(n,grid%ndof,nvar)=  ResInc(n,grid%ndof,nvar) - qsrc1*enth_src_h2o*grid%dt
-
-			
-			
-			!           print *,'pflow2ph_h2o: ',nr,n,ng,tsrc1,dw_mol,dw_mol*grid%fmwh2o, &
-!           qsrc1
-          enddo
-		  enddo
-        enddo
-      enddo
-    endif  
-	
-  enddo	
+  call VecGetArrayF90(grid%ithrm_loc, grid%locpat(1)%ithrm_loc_p, ierr)
+  call VecGetArrayF90(grid%icap_loc, grid%locpat(1)%icap_loc_p, ierr)
   
-  ! print *,' Mph Jaco Finished source terms'
-! Contribution from BC
- do nc = 1, grid%nconnbc
 
-       m = grid%mblkbc(nc)  ! Note that here, m is NOT ghosted.
-       ng = grid%nL2G(m)
-
-       if(ng<=0)then
-         print *, "Wrong boundary node index... STOP!!!"
-         stop
-       end if
-  
-       p1 = 1 + (m-1) * grid%ndof
-       
-	   ibc = grid%ibconn(nc)
-       ip1 = grid%ipermbc(nc)
-	   
-      
-       i2 = ithrm_loc_p(ng)
-       D2 = grid%ckwet(i2)
+  call IMSJacobin_patch(grid%locpat(1)%xx_loc_p, Jac_elem, Jac_ind,grid%locpat(1),grid,ierr)
 
 
-       select case(ip1)
-         case(1)
-           perm1 = perm_xx_loc_p(ng)
-         case(2)
-           perm1 = perm_yy_loc_p(ng)
-         case(3)
-           perm1 = perm_zz_loc_p(ng)
-       end select
-       
-	   delxbc=0.D0
-       select case(grid%ibndtyp(ibc))
-          case(1)
-		    delxbc=0.D0
-          case(2)
-          ! solve for pb from Darcy's law given qb /= 0
-			  grid%xxbc(:,nc)= xx_loc_p((ng-1)*grid%ndof+1: ng*grid%ndof)
-                delxbc=grid%delx(1:grid%ndof,ng)
-          case(3) 
-          !    grid%xxbc(1,nc)=grid%pressurebc(2,ibc)
-			  grid%xxbc(2:grid%ndof,nc)= xx_loc_p((ng-1)*grid%ndof+2: ng*grid%ndof)
-			 ! grid%iphasebc(nc)=int(iphase_loc_p(ng))
-			  delxbc(1)=0.D0
-			  delxbc(2:grid%ndof)=grid%delx(2:grid%ndof,ng)
-		    end select
-
-! print *,'2ph bc',grid%myrank,nc,m,ng,ibc,grid%ibndtyp(ibc),grid%pressurebc(:,ibc), &
-! grid%tempbc(ibc),grid%sgbc(ibc),grid%concbc(ibc),grid%velocitybc(:,ibc)
-
-!   if(grid%ibndtyp(ibc) == 1) then
-
-      !need specify injection phase ratio,conc and pressure
-   !   grid%ibndphaseRate(ibc) 
-   !   grid%ibndconc(ibc)    ! 
-   !   grid%tempbc(ibc)      !1 elements 
-   !   grid%pressurebc(ibc)  !nphase elements
-!      endif
-   
-    iicap=  int(icap_loc_p(ng))     
-       
-!      print *,'pflow_2pha_bc: ',grid%myrank,' nc= ',nc,' m= ',m, &
-!      ' ng= ',ng,' ibc= ',ibc,ip1,iicap, &
-!      grid%nconnbc,grid%ibndtyp(ibc),grid%concbc(nc)
-     
-!   print *,'pflow_2pha-bc: ',ibc,grid%ideriv,grid%ibndtyp(ibc),grid%density_bc,&
-!   grid%pressurebc(2,ibc),grid%tempbc(ibc),grid%concbc(ibc),grid%sgbc(ibc)
-        !*****************
-	  !  print *,' Mph Jaco BC terms: finish setup'
-	! here should pay attention to BC type !!!
-	
-	  call pri_var_trans_ims_ninc(grid%xxbc(:,nc),temp,&
-	     grid%scale,grid%nphase, &
-      iicap,grid%sir(1:grid%nphase,iicap),grid%lambda(iicap),&
-      grid%alpha(iicap),grid%pckrm(iicap),grid%pcwmax(iicap), & !use node's value
-      grid%pcbetac(iicap),grid%pwrprm(iicap),&
-      grid%varbc(1:size_var_use), ierr)
-	
-	
-	
-      call pri_var_trans_ims_winc(grid%xxbc(:,nc), delxbc, temp,&
-                   	   grid%scale,grid%nphase, &
-					  iicap,grid%sir(1:grid%nphase,iicap),grid%lambda(iicap),&
-					  grid%alpha(iicap),grid%pckrm(iicap),grid%pcwmax(iicap), & !use node's value
-					  grid%pcbetac(iicap),grid%pwrprm(iicap),&
-					  grid%varbc(size_var_use+1:(grid%ndof+1)*size_var_use),ierr)
-					  
-!	  print *,' Mph Jaco BC terms: finish increment'
-    do nvar=1,grid%ndof
-   
-    call IMSRes_FLBCCont(nc,grid%areabc(nc), &
-             grid%varbc(nvar*size_var_use+1:(nvar+1)*size_var_use), &
-			 var_loc_p((ng-1)*size_var_node+nvar*size_var_use+1:(ng-1)*size_var_node+nvar*size_var_use+size_var_use),&
-			 porosity_loc_p(ng),tor_loc_p(ng),grid%sir(1:grid%nphase,iicap),grid%distbc(nc),&
-			 perm1,D2, grid, vv_darcy,Res)
-
-    
-	ResInc(m,1:grid%ndof,nvar) = ResInc(m,1:grid%ndof,nvar) - Res(1:grid%ndof)
-   enddo
- !  print *,' Mph Jaco BC terms: finish comp'
-    !   print *, ' boundary index', nc,ng,ibc,grid%ibndtyp(ibc)
-    !   print *, ' P  T   C   S  ', grid%pressurebc(1,ibc),grid%tempbc(ibc), &
-    !                               grid%concbc(ibc),grid%sgbc(ibc)
-    !   print *,' hh,den   ',grid%hh_bc(1:2),grid%density_bc(1:2)
-
-!print *,' Gotten BC properties ', ibc,grid%ibndtyp(ibc),iicap
-!print *,grid%pressurebc(2,ibc),grid%tempbc(ibc),grid%concbc(ibc),grid%sgbc(ibc)
-!print *,grid%density_bc,grid%avgmw_bc
-!print *,grid%hh_bc,grid%uu_bc,grid%df_bc,grid%hen_bc,grid%pc_bc,grid%kvr_bc
-
- enddo
-  ! print *,' Mph Jaco Finished BC terms'
-
- do n= 1, grid%nlmax
-   ra=0.D0
-   ng = grid%nL2G(n)
-   na1= grid%nG2N(ng)
-   ! Remember, the matrix index starts from (0,0)
-    p1 = (ng-1)*grid%ndof ! = 1 + (ng-1)*grid%ndof-1
-   
-   max_dev=0.D0
-   do neq=1, grid%ndof
-     do nvar=1, grid%ndof
-       ra(neq,nvar)=ResInc(n,neq,nvar)/grid%delx(nvar,ng)-ResOld_AR(n,neq)/grid%delx(nvar,ng)
-	   if(max_dev < dabs(ra(3,nvar))) max_dev = dabs(ra(3,nvar))
-	 enddo  	  
-   enddo
-
-   
-   if(max_dev<1D-5)then
-    print *,'Mph Jaco max dev = ', max_dev
-  endif
-  
-  if (grid%iblkfmt == 0) then
-     p1=(na1)*grid%ndof
-	 do ii=0,grid%ndof-1
-      do jj=0,grid%ndof-1
-        call MatSetValue(A,p1+ii,p1+jj,ra(ii+1,jj+1),ADD_VALUES,ierr)
-      enddo
-     enddo
-   else
-     blkmat11=ra(1:grid%ndof,1:grid%ndof)
+! Then set values into matrix
+do n= 1, grid%locpat(1)%nlmax
+      ng = grid%locpat(1)%nL2G(n)
+      if(ng>0)then
+	  na1=Jac_ind(n,0)
+      !if(n==1) print *, n,na1, Jac_elem(n,0,:,:)
+	  blkmat11(:,:)=Jac_elem(n,0,:,:)
+      !if(n==1) print *, blkmat11(:,:), Jac_elem(n,0,:,:)
 	   call MatSetValuesBlocked(A,1,na1,1,na1,blkmat11,ADD_VALUES,ierr)
-   endif
-	       
- enddo
-!   print *,' Mph Jaco Finished one node terms'
-! -----------------------------contribution from transport----------------------
-
- !print *,'phase cond: ',iphase_loc_p
- ResInc=0.D0
-  do nc = 1, grid%nconn  ! For each interior connection...
-    ra=0.D0
-    m1 = grid%nd1(nc) ! ghosted
-    m2 = grid%nd2(nc)
-
-    n1 = grid%nG2L(m1) ! = zero for ghost nodes
-    n2 = grid%nG2L(m2) ! Ghost to local mapping   
-    na1= grid%nG2N(m1)
-	na2= grid%nG2N(m2)
-    !print *, grid%myrank,nc,m1,m2,n1,n2,na1,na2
-    p1 =  (m1-1)*grid%ndof
-    p2 =  (m2-1)*grid%ndof
-   
-    dd1 = grid%dist1(nc)
-    dd2 = grid%dist2(nc)
-    
-    ip1 = grid%iperm1(nc)  ! determine the normal direction of interface 
-    ip2 = grid%iperm2(nc)
-    
-  
-       i1 = ithrm_loc_p(m1)
-       i2 = ithrm_loc_p(m2)
-	    D1 = grid%ckwet(i1)
-        D2 = grid%ckwet(i2)
-
-
-
-
-    select case(ip1)
-    case(1) 
-       perm1 = perm_xx_loc_p(m1)
-    case(2)
-       perm1 = perm_yy_loc_p(m1)
-    case(3)
-       perm1 = perm_zz_loc_p(m1)
-    end select
-    
-    select case(ip2)
-    case(1) 
-       perm2 = perm_xx_loc_p(m2)
-    case(2)
-       perm2 = perm_yy_loc_p(m2)
-    case(3)
-       perm2 = perm_zz_loc_p(m2)
-    end select
-
-
-    dd = dd1 + dd2
-    f1 = dd1/dd
-    f2 = dd2/dd
-    iicap1=int(icap_loc_p(m1))
-	iicap2=int(icap_loc_p(m2))
-	
-  ! do neq = 1, grid%ndof
-    do nvar = 1, grid%ndof
-    
-		call IMSRes_FLCont(nc ,grid%area(nc), &
-         var_loc_p((m1-1)*size_var_node+nvar*size_var_use+1:(m1-1)*size_var_node+nvar*size_var_use+size_var_use),&
-		 porosity_loc_p(m1),tor_loc_p(m1),grid%sir(1:grid%nphase,iicap1),dd1,perm1,D1,&
-		 var_loc_p((m2-1)*size_var_node+1:(m2-1)*size_var_node+size_var_use),&
-		 porosity_loc_p(m2),tor_loc_p(m2),grid%sir(1:grid%nphase,iicap2),dd2,perm2,D2,&
-		 grid, vv_darcy,Res)
-
-          ra(:,nvar)= Res(:)/grid%delx(nvar,m1)-ResOld_FL(nc,:)/grid%delx(nvar,m1)
-	
-			 
-        call IMSRes_FLCont(nc ,grid%area(nc), &
-         var_loc_p((m1-1)*size_var_node+1:(m1-1)*size_var_node+size_var_use),&
-		 porosity_loc_p(m1),tor_loc_p(m1),grid%sir(1:grid%nphase,iicap1),dd1,perm1,D1,&
-		 var_loc_p((m2-1)*size_var_node+nvar*size_var_use+1:(m2-1)*size_var_node+nvar*size_var_use+size_var_use),&
-		 porosity_loc_p(m2),tor_loc_p(m2),grid%sir(1:grid%nphase,iicap2),dd2,perm2,D2,&
-		 grid, vv_darcy,Res)
- 
-          ra(:,nvar+grid%ndof)= Res(:)/grid%delx(nvar,m2)-ResOld_FL(nc,:)/grid%delx(nvar,m2)
-	 
-    enddo
-  
-   !   print *,' Mph Jaco Finished NC terms'
-  
-  ! enddo
-   
+       do ind=1,6
+         na2=Jac_ind(n,ind)
+	     if(na2>=0)then
+         blkmat11(:,:)=Jac_elem(n,ind,:,:)  
+        ! if(n==1) print *, blkmat11(:,:)   
+         call MatSetValuesBlocked(A,1,na1,1,na2,blkmat11,ADD_VALUES,ierr)
+         endif
+       enddo  
+     endif 
+enddo  
  
 
-   if(grid%iblkfmt == 1) then
-     blkmat11 = 0.D0; blkmat12 = 0.D0; blkmat21 = 0.D0; blkmat22 = 0.D0;
-   endif
-	 p1=(na1)*grid%ndof;p2=(na2)*grid%ndof
-     do ii=0,grid%ndof-1
-       do jj=0,grid%ndof-1
-          if(n1>0) then
-             if (grid%iblkfmt == 0) then
-               call MatSetValue(A,p1+ii,p1+jj,ra(ii+1,jj+1),ADD_VALUES,ierr)
-             else
-               blkmat11(ii+1,jj+1) = blkmat11(ii+1,jj+1) + ra(ii+1,jj+1)
-             endif
-           endif
-           if(n2>0) then
-             if (grid%iblkfmt == 0) then
-               call MatSetValue(A,p2+ii,p1+jj,-ra(ii+1,jj+1),ADD_VALUES,ierr)
-             else
-               blkmat21(ii+1,jj+1) = blkmat21(ii+1,jj+1) -ra(ii+1,jj+1)
-             endif
-           endif
-          enddo
-   
-		  do jj=grid%ndof,2*grid%ndof-1
-              if(n1>0) then
-                 if (grid%iblkfmt == 0) then
-                    call MatSetValue(A,p1+ii,p2+jj-grid%ndof,ra(ii+1,jj+1),ADD_VALUES,ierr)
-                  else
-                    blkmat12(ii+1,jj-grid%ndof+1) = blkmat12(ii+1,jj-grid%ndof+1) + ra(ii+1,jj+1)
-                  endif
-              endif
-              if(n2>0) then
-                  if (grid%iblkfmt == 0) then
-                    call MatSetValue(A,p2+ii,p2+jj-grid%ndof,-ra(ii+1,jj+1),ADD_VALUES,ierr)
-                  else
-                    blkmat22(ii+1,jj-grid%ndof+1) =  blkmat22(ii+1,jj-grid%ndof+1) - ra(ii+1,jj+1)
-                  endif
-              endif
-         enddo
-    enddo
-  
-  if (grid%iblkfmt /= 0) then
-      if(n1>0)call MatSetValuesBlocked(A,1,na1,1,na1,blkmat11,ADD_VALUES,ierr)
-	  if(n2>0)call MatSetValuesBlocked(A,1,na2,1,na2,blkmat22,ADD_VALUES,ierr)
-	  if(n1>0)call MatSetValuesBlocked(A,1,na1,1,na2,blkmat12,ADD_VALUES,ierr)
-	  if(n2>0)call MatSetValuesBlocked(A,1,na2,1,na1,blkmat21,ADD_VALUES,ierr)
-  endif
-!print *,'accum r',ra(1:5,1:8)   
- !print *,'devq:',nc,q,dphi,devq(3,:)
-  end do
-  !print *,' IMS Jaco Finished Two node terms'
-  
-  call VecRestoreArrayF90(grid%xx_loc, xx_loc_p, ierr)
-  call VecRestoreArrayF90(grid%porosity_loc, porosity_loc_p, ierr)
-  call VecRestoreArrayF90(grid%tor_loc, tor_loc_p, ierr)
-  call VecRestoreArrayF90(grid%var_loc, var_loc_p, ierr)
-  call VecRestoreArrayF90(grid%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecRestoreArrayF90(grid%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecRestoreArrayF90(grid%perm_zz_loc, perm_zz_loc_p, ierr)
-  call VecRestoreArrayF90(grid%volume, volume_p, ierr)
+
+  call VecRestoreArrayF90(grid%xx_loc, grid%locpat(1)%xx_loc_p, ierr)
+  call VecRestoreArrayF90(grid%porosity_loc, grid%locpat(1)%porosity_loc_p, ierr)
+  call VecRestoreArrayF90(grid%tor_loc, grid%locpat(1)%tor_loc_p, ierr)
+  call VecRestoreArrayF90(grid%perm_xx_loc, grid%locpat(1)%perm_xx_loc_p, ierr)
+  call VecRestoreArrayF90(grid%perm_yy_loc, grid%locpat(1)%perm_yy_loc_p, ierr)
+  call VecRestoreArrayF90(grid%perm_zz_loc, grid%locpat(1)%perm_zz_loc_p, ierr)
+  call VecRestoreArrayF90(grid%volume, grid%locpat(1)%volume_p, ierr)
 
    
-    call VecRestoreArrayF90(grid%ithrm_loc, ithrm_loc_p, ierr)
-    call VecRestoreArrayF90(grid%icap_loc, icap_loc_p, ierr)
+    call VecRestoreArrayF90(grid%ithrm_loc, grid%locpat(1)%ithrm_loc_p, ierr)
+    call VecRestoreArrayF90(grid%icap_loc, grid%locpat(1)%icap_loc_p, ierr)
 !    call VecRestoreArrayF90(grid%iphas_loc, iphase_loc_p, ierr)
 
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
 
-  !B = A
-  !call MatCpoy(A,B,ierr)
+
+ ! call MatCpoy(A,B,ierr)
   
  !call PetscViewerSetFormat(PETSC_VIEWER_STDOUT_WORLD, PETSC_VIEWER_ASCII_MATLAB, ierr)
    
@@ -1598,12 +588,13 @@ endif
  subroutine pflow_IMS_initaccum(grid)
  
   use translator_ims_module  
+  use IMS_patch_module, only : IMSRes_ARCont
    implicit none
     type(pflowGrid) :: grid 
 
  
   integer :: ierr
-  integer*4 :: n
+  integer*4 :: n,ng
   integer*4 :: i, index_var_begin,index_var_end
   integer*4 :: p1
   integer*4 :: ii1,ii2, iicap
@@ -1622,15 +613,17 @@ endif
   call VecGetArrayF90(grid%porosity, porosity_p, ierr)
   call VecGetArrayF90(grid%yy, yy_p, ierr); CHKERRQ(ierr)
   call VecGetArrayF90(grid%accum, accum_p, ierr)
-  call VecGetArrayF90(grid%var, var_p,ierr)
+ ! call VecGetArrayF90(grid%var, var_p,ierr)
+  var_p =>  grid%locpat(1)%var
   
   call VecGetArrayF90(grid%ithrm, ithrm_p, ierr)
   call VecGetArrayF90(grid%icap, icap_p, ierr)
   !print *,'IMS initaccum  Gotten pointers'
  
- do n = 1, grid%nlmax
+ do n = 1, grid%locpat(1)%nlmax
         
         iicap=int(icap_p(n))
+		ng =  grid%locpat(1)%nL2G(n)
 		!dif(1)= grid%difaq; dif(3)=dif(1)
         !dif(2)= grid%cdiff(int(ithrm_p(n)))
 
@@ -1639,7 +632,7 @@ endif
         iicap, grid%sir(1:grid%nphase,iicap),grid%lambda(iicap),&
         grid%alpha(iicap),grid%pckrm(iicap),grid%pcwmax(iicap),&
         grid%pcbetac(iicap),grid%pwrprm(iicap),&
-		var_p((n-1)*size_var_node+1:(n-1)*size_var_node+size_var_use),ierr)
+		var_p((ng-1)*grid%size_var_node+1:(ng-1)*grid%size_var_node+grid%size_var_use),ierr)
 
 
  enddo
@@ -1648,15 +641,16 @@ endif
   !call VecGetArrayF90(grid%var, var_p,ierr)
 
 !---------------------------------------------------------------------------
-  do n = 1, grid%nlmax  ! For each local node do...
+  do n = 1, grid%locpat(1)%nlmax  ! For each local node do...
   !  ng = grid%nL2G(n)   ! corresponding ghost index
     p1 = 1 + (n-1)*grid%ndof
-    index_var_begin=(n-1)*size_var_node+1
-    index_var_end = index_var_begin -1 + size_var_use
+	ng =  grid%locpat(1)%nL2G(n)
+    index_var_begin=(ng-1)*grid%size_var_node+1
+    index_var_end = index_var_begin -1 + grid%size_var_use
     i = ithrm_p(n)
     
      call IMSRes_ARCont(n, var_p(index_var_begin: index_var_end),&
-	  porosity_p(n),volume_p(n),grid%dencpr(i), grid, Res, 0,ierr)
+	  porosity_p(n),volume_p(n),grid%dencpr(i), grid%locpat(1),grid, Res, 0,ierr)
  
 
 	accum_p(p1:p1+grid%ndof-1)=Res(:) 
@@ -1673,7 +667,8 @@ endif
   call VecRestoreArrayF90(grid%porosity, porosity_p, ierr)
   call VecRestoreArrayF90(grid%yy, yy_p, ierr); CHKERRQ(ierr)
   call VecRestoreArrayF90(grid%accum, accum_p, ierr)
-  call VecRestoreArrayF90(grid%var, var_p,ierr)
+!  call VecRestoreArrayF90(grid%var, var_p,ierr)
+  nullify(var_p)
   call VecRestoreArrayF90(grid%ithrm, ithrm_p, ierr)
   call VecRestoreArrayF90(grid%icap, icap_p, ierr)
 
@@ -1687,7 +682,7 @@ endif
     type(pflowGrid) :: grid 
     
                       
-    integer*4 :: n, ichange,n0
+    integer :: n, ichange,n0, ng
     integer :: ierr,iicap
 	PetscScalar, pointer :: xx_p(:),icap_p(:),ithrm_p(:), var_p(:)
     real*8  tmp, temp           
@@ -1703,11 +698,13 @@ endif
    call VecGetArrayF90(grid%xx, xx_p, ierr); CHKERRQ(ierr)
    call VecGetArrayF90(grid%icap,icap_p,ierr)
    call VecGetArrayF90(grid%ithrm,ithrm_p,ierr)  
-   call VecGetArrayF90(grid%var,var_p,ierr)
+!   call VecGetArrayF90(grid%var,var_p,ierr)
+    var_p=>grid%locpat(1)%var
 
-   do n = 1, grid%nlmax
+   do n = 1, grid%locpat(1)%nlmax
     iicap = icap_p(n)
     n0=(n-1)*grid%ndof
+	ng=grid%locpat(1)%nL2G(n)
 !    if(xx_p(n0+3)<0.D0) xx_p(n0+3)=0.D0
 
      call pri_var_trans_ims_ninc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),&
@@ -1715,7 +712,7 @@ endif
         iicap, grid%sir(1:grid%nphase,iicap),grid%lambda(iicap),&
         grid%alpha(iicap),grid%pckrm(iicap),grid%pcwmax(iicap),&
         grid%pcbetac(iicap),grid%pwrprm(iicap),&
-		var_p((n-1)*size_var_node+1:(n-1)*size_var_node+size_var_use),&
+		var_p((ng-1)*grid%size_var_node+1:(ng-1)*grid%size_var_node+grid%size_var_use),&
 		ierr)
 
    enddo
@@ -1724,15 +721,18 @@ endif
    call VecRestoreArrayF90(grid%icap,icap_p,ierr)
    call VecRestoreArrayF90(grid%ithrm,ithrm_p,ierr)  
    
-   call VecRestoreArrayF90(grid%var,var_p,ierr)
+ !  call VecRestoreArrayF90(grid%var,var_p,ierr)
+   nullify(var_p) 
    
-   if(grid%nphase>1) call translator_IMS_massbal(grid)
+  
+   if(grid%nphase>1) call pflow_IMS_massbal(grid)
  ! endif 
+  ! print *, 'ims_update: end massbal' 
 
   call VecCopy(grid%xx, grid%yy, ierr)   
    
   call  pflow_ims_initaccum(grid)
-    !print *,'pflow_IMS_initaccum done'
+  !print *,'pflow_IMS_initaccum done'
  
  ! call translator_get_output(grid)
  

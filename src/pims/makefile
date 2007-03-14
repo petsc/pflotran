@@ -31,6 +31,7 @@ pflow_obj = ${common_src}pflow_gridtype.o \
             ${common_src}pflow_read_input.o \
             ${common_src}Readfield.o \
 			${common_src}translator_fluid_ims.o \
+			${common_src}pflow_ims_ResJac_patch.o\
 			${common_src}pflow_ims_ResJac.o\
 			${common_src}pflow_solve.o \
             ${common_src}pflow_output.o \

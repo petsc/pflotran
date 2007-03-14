@@ -41,51 +41,50 @@
 
 
  
- subroutine pflow_kspsolver_init(grid)
+ subroutine pflow_kspsolver_init(grid, pflowsolv)
  
  use pflow_gridtype_module
  
  implicit none
- type(pflowGrid) :: grid 
+ type(pflowGrid) :: grid
+ type(pflow_solver_context), intent(inout) :: pflowsolv 
  integer ierr
  
- call KSPCreate(PETSC_COMM_WORLD,grid%ksp,ierr)
- call KSPGetPC(grid%ksp, grid%pc, ierr)
+ call KSPCreate(PETSC_COMM_WORLD,pflowsolv%ksp,ierr)
+ call KSPGetPC(pflowsolv%ksp, pflowsolv%pc, ierr)
 
 ! pc_type = PCILU
   if (grid%iblkfmt == 0) then
-    grid%pc_type = PCJACOBI
+    pflowsolv%pc_type = PCJACOBI
   else
   !  grid%pc_type = PCBJACOBI
-    grid%pc_type = PCILU
+    pflowsolv%pc_type = PCILU
   endif
 ! grid%pc_type = PCSLES
 ! grid%pc_type = PCASM
 ! grid%pc_type = PCNONE
-  call PCSetType(grid%pc,grid%pc_type,ierr)
+  call PCSetType(pflowsolv%pc,pflowsolv%pc_type,ierr)
 
 ! call PetscOptionsSetValue('-pc_ilu_damping','1.d-10',ierr)
 ! call PCILUSetDamping(pc,1.d-14,ierr)
 
 !-------krylov subspace method ----------------
-  call KSPSetFromOptions(grid%ksp,ierr)
-  call KSPSetInitialGuessNonzero(grid%ksp,PETSC_TRUE,ierr)
+  call KSPSetFromOptions(pflowsolv%ksp,ierr)
+  call KSPSetInitialGuessNonzero(pflowsolv%ksp,PETSC_TRUE,ierr)
 
 ! ksp_type = KSPGMRES
 !  grid%ksp_type = KSPFGMRES
-  grid%ksp_type = KSPFGMRES
-  call KSPSetType(grid%ksp,grid%ksp_type,ierr)
+ pflowsolv%ksp_type = KSPFGMRES
+  call KSPSetType(pflowsolv%ksp,pflowsolv%ksp_type,ierr)
   
-  call KSPSetTolerances(grid%ksp,grid%rtol,grid%atol,grid%dtol, &
+  call KSPSetTolerances(pflowsolv%ksp,grid%rtol,grid%atol,grid%dtol, &
       grid%maxit,ierr)
 
 
-
- 
  end subroutine pflow_kspsolver_init
  
  
- subroutine pflow_solve(grid, newton,isucc,ierr)
+ subroutine pflow_solve(grid, pflowsolv,newton,isucc,ierr)
  
  use pflow_gridtype_module
  use translator_ims_module
@@ -93,6 +92,7 @@
  
  implicit none
  type(pflowGrid) :: grid 
+ type(pflow_solver_context) :: pflowsolv
  KSPConvergedReason :: ksp_reason
  integer  newton,isucc,ierr,ichange
  integer icut, its_line
@@ -103,7 +103,7 @@
  
  do
  
-  call IMSResidual(grid%snes,grid%xx,grid%r,grid,ierr)
+  call IMSResidual(pflowsolv%snes,grid%xx,grid%r,grid,ierr)
    print *,' psolve; Get Res'
  
   call VecNorm(grid%r,NORM_INFINITY,rnorm,ierr)
@@ -114,15 +114,15 @@
     exit ! convergence obtained
   endif
 
-       call IMSJacobin(grid%snes,grid%xx,grid%J,grid%J,flag,grid,ierr)
+       call IMSJacobin(pflowsolv%snes,grid%xx,grid%J,grid%J,flag,grid,ierr)
        print *,' psolve; Get Joc'
    
   call VecScale(grid%r,-1D0,ierr)
-  call KSPSetOperators(grid%ksp,grid%J,grid%J,SAME_NONZERO_PATTERN,ierr)
+  call KSPSetOperators(pflowsolv%ksp,grid%J,grid%J,SAME_NONZERO_PATTERN,ierr)
   
-  call KSPSolve(grid%ksp, grid%r,grid%dxx,ierr)
-  call KSPGetConvergedReason(grid%ksp,ksp_reason,ierr)
-  call KSPGetIterationNumber(grid%ksp,its_line,ierr)
+  call KSPSolve(pflowsolv%ksp, grid%r,grid%dxx,ierr)
+  call KSPGetConvergedReason(pflowsolv%ksp,ksp_reason,ierr)
+  call KSPGetIterationNumber(pflowsolv%ksp,its_line,ierr)
 
 
   newton = newton + 1

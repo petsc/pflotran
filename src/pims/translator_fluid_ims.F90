@@ -2,26 +2,6 @@
  
   
  private 
-#include "include/finclude/petsc.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
-  ! It is VERY IMPORTANT to make sure that the above .h90 file gets included.
-  ! Otherwise some very strange things will happen and PETSc will give no
-  ! indication of what the problem is.
-#include "include/finclude/petscmat.h"
-#include "include/finclude/petscmat.h90"
-#include "include/finclude/petscda.h"
-#include "include/finclude/petscda.h90"
-!#ifdef USE_PETSC216
-!#include "include/finclude/petscsles.h"
-!#endif
-#include "include/finclude/petscsnes.h"
-#include "include/finclude/petscviewer.h"
-#include "include/finclude/petscsys.h"
-#include "include/finclude/petscis.h"
-#include "include/finclude/petscis.h90"
-#include "include/finclude/petsclog.h"
-  
 	 
 ! **3 phase condition*************************************************
 ! phase                             Primary Variables			index
@@ -39,8 +19,7 @@
 ! within each phase component index : 1. H2O; 2. CO2; 3. Air
 
 	  
- public  pri_var_trans_ims_ninc,pri_var_trans_ims_winc ,translator_ims_step_maxchange, &
-         translator_ims_massbal		 
+ public  pri_var_trans_ims_ninc,pri_var_trans_ims_winc		 
 		 
 		 
  real*8, private, parameter :: eps=5D-7 , formeps=5D-5, Rg = 8.3145D0
@@ -51,162 +30,6 @@
 ! will:: call other EOS mod to obtain pure fluid properties
 !        apply mixing rules
 
-
- subroutine translator_ims_massbal(grid)
- use pflow_gridtype_module
-  implicit none
-  type(pflowGrid) :: grid 
-  
- 
-  integer :: ierr,icall
-  integer :: n,n0,nc,np,n2p,n2p0
-  real*8 x,y,z,nzm,nzm0, nxc,nxc0,c0, c00,nyc,nyc0,nzc,nzc0,nsm,nsm0,sm 
-  integer :: index, size_var_node
-     
-  PetscScalar, pointer ::  var_p(:),&
-                           porosity_p(:), volume_p(:)
-                           
-   
-  real*8 ::  pvol,sum
-  real*8, pointer ::  den(:),sat(:)
- 
-  real*8 :: tot(0:grid%nphase), tot0(0:grid%nphase)  
-  data icall/0/
-
-  call VecGetArrayF90(grid%var,var_p,ierr)
-  call VecGetArrayF90(grid%volume, volume_p, ierr)
-  call VecGetArrayF90(grid%porosity, porosity_p, ierr)
- 
-  size_var_node=(grid%ndof+1)*(2 + 4*grid%nphase)
-  tot=0.D0
-  n2p=0
-  nxc=0.; nyc=0.; nzc=0.D0; nzm=grid%z(grid%nmax); sm=0.; nsm=nzm; c0=0.D0
-
-  do n = 1,grid%nlmax
-    n0=(n-1)* grid%ndof
-    index=(n-1)*size_var_node
-    den=>var_p(index+3+grid%nphase: index+2+2*grid%nphase)
-    sat=>var_p(index+2+1:index+2+grid%nphase)
-    
-   
-    pvol=volume_p(n)*porosity_p(n)		     
-	 n2p=n2p+1
-     x=grid%x(grid%nL2A(n)+1)
-	 y=grid%y(grid%nL2A(n)+1)
-	 z=grid%z(grid%nL2A(n)+1)
-	 
- 	 if(z<nzm) nzm=z
-	 if(sm<sat(2))then
-	    !print *, n,grid%nL2A(n)+1,x,y,z,sat(2)
-		sm=sat(2);nsm=z
-	  endif 	 
-	 c0=c0+sat(2)*pvol
-	 nxc=nxc + pvol*sat(2)*x
-	 nyc=nyc + pvol*sat(2)*y
-	 nzc=nzc + pvol*sat(2)*z
-
-	 
-  
-      do np=1,grid%nphase
-        sum= sat(np)* den(np)
-        tot(np)= pvol*sum + tot(np)
-	    !tot(0,np)=tot(0,np)+tot(nc,np)
-	    !tot(nc,0)=tot(nc,0)+tot(nc,np)
-	  enddo
-  
-      nullify(sat, den) 
-! print *,nzc,c0
-  enddo
- !  call PETSCBarrier(PETSC_NULL_OBJECT,ierr)
-  
-  call VecRestoreArrayF90(grid%var,var_p,ierr)
-  call VecRestoreArrayF90(grid%volume, volume_p, ierr)
-  call VecRestoreArrayF90(grid%porosity, porosity_p, ierr)
- 
- 
- 
-  if(grid%commsize >1)then
-    call MPI_REDUCE(n2p, n2p0,1,&
-	      MPI_INTEGER,MPI_SUM,0, PETSC_COMM_WORLD,ierr)
-    call MPI_REDUCE(c0, c00,1,&
-	      MPI_DOUBLE_PRECISION,MPI_SUM,0, PETSC_COMM_WORLD,ierr)
-    call MPI_REDUCE(nxc, nxc0,1,&
-	      MPI_DOUBLE_PRECISION,MPI_SUM,0, PETSC_COMM_WORLD,ierr)
-	 call MPI_REDUCE(nyc, nyc0,1,&
-	      MPI_DOUBLE_PRECISION,MPI_SUM,0, PETSC_COMM_WORLD,ierr)
-
-    call MPI_REDUCE(nzc, nzc0,1,&
-	      MPI_DOUBLE_PRECISION,MPI_SUM,0, PETSC_COMM_WORLD,ierr)
-	call MPI_REDUCE(nzm, nzm0,1,&
-	      MPI_DOUBLE_PRECISION,MPI_MIN,0, PETSC_COMM_WORLD,ierr)
-  	call MPI_REDUCE(nsm, nsm0,1,&
-	      MPI_DOUBLE_PRECISION,MPI_MIN,0, PETSC_COMM_WORLD,ierr)
-	    
-
-      do np = 0,grid%nphase
-        call MPI_REDUCE(tot(np), tot0(np),1,&
-	          MPI_DOUBLE_PRECISION,MPI_SUM,0, PETSC_COMM_WORLD,ierr)
-   
-!       call MPI_BCAST(tot0,(grid%nphase+1)*(grid%nspec+1),&
-!	          MPI_DOUBLE_PRECISION, 0,PETSC_COMM_WORLD,ierr)
-      enddo
-
-	if(grid%myrank==0) then
-	   tot = tot0; n2p=n2p0;nxc=nxc0;nyc=nyc0;nzc=nzc0;nzm=nzm0;nsm=nsm0;c0=c00 
-	endif   
-  endif 
-  
-  
-  if(grid%myrank==0)then
-   if(c0<1D-6) c0=1.D0
-	nxc=nxc/c0; nyc=nyc/c0;nzc=nzc/c0
-	
-	
-    write(*,'(" Total CO2: liq:",1p, e13.6,&
-   &" gas:",1p, e13.6, " tot:", 1p, 2e13.6, " [kg]",1p, 3e13.6)') &
-   tot(1),tot(2),tot(1)+tot(2) !,nzc,nzm,nsm
-! & grid%t/grid%tconv,tot(2,1),tot(2,2),tot(2,0),tot(2,1)+tot(2,2) !,nzc,nzm,nsm
-    if (icall==0) then
-      open(unit=13,file='massbal.dat',status='unknown')
-      write(13,*) '# time   dt   totl   totg   tot n2p'
-      icall = 1
-    endif
-!   write(13,'(" Total CO2: t=",1pe13.6," liq:",1pe13.6,&
-! &	" gas:",1pe13.6," tot:",1p2e13.6," [kmol]")')&
-! & grid%t/grid%tconv,tot(2,1),tot(2,2),tot(2,0),tot(2,1)+tot(2,2)
-    write(13,'(1p9e12.4)') grid%t/grid%tconv,grid%dt/grid%tconv,&
- 	tot(1),tot(2),tot(1)+tot(2),real(n2p),nzc,nzm,nsm 
-  endif    
-  
-  
-  
-  
- end subroutine translator_ims_massbal
-
-
- subroutine translator_ims_step_maxchange(grid)
-   use pflow_gridtype_module
-   type(pflowGrid), intent(inout) :: grid
-  
-
-  PetscScalar, pointer :: xx_p(:), yy_p(:)
-  real*8 :: dsm,dcm, comp1,comp, cmp  
-  real*8 :: dsm0,dcm0  
-  integer n, j
-
-   call VecWAXPY(grid%dxx,-1.d0,grid%xx,grid%yy,ierr)
-    call VecStrideNorm(grid%dxx,0,NORM_INFINITY,grid%dpmax,ierr)
-    
-	do i=1, grid%nphase-1
-	  call VecStrideNorm(grid%dxx,i,NORM_INFINITY,comp1,ierr)
-      if(grid%dsmax< comp1) grid%dsmax=comp1     
-    enddo
-
- end  subroutine translator_ims_step_maxchange
- 
-  
- 
-   
 	   
 
  subroutine pri_var_trans_1(x,temp,energyscale,num_phase,&
@@ -225,14 +48,13 @@
 
     implicit none
     integer :: num_phase, ierr
-	integer :: size_var_use 
     real*8 x(1:num_phase),energyscale,temp
     real*8, target:: var_node(:)
 	integer ::iphase
 	integer :: ipckrtype !, ithrmtype
     real*8 :: pckr_sir(:),pckr_lambda,pckr_alpha,pckr_m,pckr_pcmax,pckr_betac,pckr_pwr
       
- !   integer size_var_node = (grid%ndof+1)*size_var_use
+ !   integergrid%size_var_node = (grid%ndof+1)*size_var_use
 
     real*8, pointer :: t ,p
 	real*8, pointer :: den(:),pc(:),kvr(:)
@@ -246,7 +68,6 @@
 	real*8 err, se
 
   
-  size_var_use = 2 + 4*num_phase
   pckr_swir=pckr_sir(1)
 	
 	  
@@ -346,7 +167,7 @@
 	
 
 
-    size_var_use = 2 + 4*num_phase 
+   size_var_use = 2 + 4*num_phase 
     call pri_var_trans_1( x,temp, energyscale,num_phase,&
                     ipckrtype,pckr_sir,pckr_lambda,pckr_alpha,&
                     pckr_m,pckr_pcmax,pckr_betac,pckr_pwr,&
@@ -377,7 +198,7 @@
     real*8 xx(1:num_phase)
 
 
-    size_var_use = 2 + 4*num_phase 
+   size_var_use = 2 + 4*num_phase 
 	size_var_node = (num_phase)*size_var_use
 	
 	 do n=1, num_phase

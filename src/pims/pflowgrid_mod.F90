@@ -80,10 +80,13 @@
 ! separately). Note that it does not set up all of the topology of the  
 ! cell connections, as it is cleaner to do this in pflowGrid_setup()   
 ! when the geometry of the connections is calculated.
-    type(pflowGrid) function pflowGrid_new(igeom, nx, ny, nz, npx, npy, npz, &
+    subroutine pflowGrid_new(grid, pflowsolv, igeom, nx, ny, nz, npx, npy, npz, &
       nphase )
   
       implicit none
+
+      type(pflowGrid) :: grid
+      type(pflow_solver_context) :: pflowsolv
 
       integer*4, intent(in) :: igeom, nx, ny, nz, npx, npy, npz
       integer, intent(in) :: nphase
@@ -91,7 +94,7 @@
       integer*4 :: n, ng, na
       integer*4 :: i, j, k
       integer :: ierr
-      type(pflowGrid) grid
+    
 	 ! integer, pointer::ghostind(:)
 
       call MPI_Comm_rank(PETSC_COMM_WORLD, grid%myrank, ierr)
@@ -195,10 +198,10 @@
            grid%da_ndof,ierr)
  
 	   
-      call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &
-               nx,ny,nz,npx,npy,npz,(grid%ndof+1)*(2+4*grid%nphase),1, &
-               PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
-               grid%da_var_dof,ierr)
+  !    call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &
+  !             nx,ny,nz,npx,npy,npz,(grid%ndof+1)*(2+4*grid%nphase),1, &
+  !             PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
+  !             grid%da_var_dof,ierr)
 
 	 
        !print DA info for each processor
@@ -256,10 +259,10 @@
 !     print *,'pflowgrid_new: ',grid%using_pflowGrid
       
  
-	   call DACreateGlobalVector(grid%da_var_dof, grid%var, ierr)
-	   call DACreateLocalVector(grid%da_var_dof, grid%var_loc, ierr)
+	   !call DACreateGlobalVector(grid%da_var_dof, grid%var, ierr)
+	   !call DACreateLocalVector(grid%da_var_dof, grid%var_loc, ierr)
 
-
+       
 
       ! ndof degrees of freedom
       call DACreateGlobalVector(grid%da_ndof, grid%xx, ierr)
@@ -287,52 +290,115 @@
       ! Set up information about corners of local domain.
 !-----------------------------------------------------------------------
 
-      call DAGetCorners(grid%da_1_dof, grid%nxs, &
-              grid%nys, grid%nzs, grid%nlx, &
-              grid%nly, grid%nlz, ierr)
+      call DAGetCorners(grid%da_1_dof, grid%locpat(1)%nxs, &
+              grid%locpat(1)%nys, grid%locpat(1)%nzs, grid%locpat(1)%nlx, &
+              grid%locpat(1)%nly, grid%locpat(1)%nlz, ierr)
 
-      grid%nxe = grid%nxs + grid%nlx
-      grid%nye = grid%nys + grid%nly
-      grid%nze = grid%nzs + grid%nlz
-      grid%nlxy = grid%nlx * grid%nly
-      grid%nlxz = grid%nlx * grid%nlz
-      grid%nlyz = grid%nly * grid%nlz
-      grid%nlmax = grid%nlx * grid%nly * grid%nlz
-      grid%nldof = grid%nlmax * grid%nphase
+      grid%locpat(1)%nxe = grid%locpat(1)%nxs + grid%locpat(1)%nlx
+      grid%locpat(1)%nye = grid%locpat(1)%nys + grid%locpat(1)%nly
+      grid%locpat(1)%nze = grid%locpat(1)%nzs + grid%locpat(1)%nlz
+      grid%locpat(1)%nlxy = grid%locpat(1)%nlx * grid%locpat(1)%nly
+      grid%locpat(1)%nlxz = grid%locpat(1)%nlx * grid%locpat(1)%nlz
+      grid%locpat(1)%nlyz = grid%locpat(1)%nly * grid%locpat(1)%nlz
+      grid%locpat(1)%nlmax = grid%locpat(1)%nlx * grid%locpat(1)%nly * grid%locpat(1)%nlz
+      grid%locpat(1)%nldof = grid%locpat(1)%nlmax * grid%nphase
 
-      call DAGetGhostCorners(grid%da_1_dof, grid%ngxs, &
-              grid%ngys, grid%ngzs, grid%ngx, &
-              grid%ngy, grid%ngz, ierr)
+      call DAGetGhostCorners(grid%da_1_dof, grid%locpat(1)%ngxs, &
+              grid%locpat(1)%ngys, grid%locpat(1)%ngzs, grid%locpat(1)%ngx, &
+              grid%locpat(1)%ngy, grid%locpat(1)%ngz, ierr)
 
-      grid%ngxe = grid%ngxs + grid%ngx
-      grid%ngye = grid%ngys + grid%ngy
-      grid%ngze = grid%ngzs + grid%ngz
-      grid%ngxy = grid%ngx * grid%ngy
-      grid%ngxz = grid%ngx * grid%ngz
-      grid%ngyz = grid%ngy * grid%ngz
-      grid%ngmax = grid%ngx * grid%ngy * grid%ngz
-      grid%ngdof = grid%ngmax * grid%nphase
+      grid%locpat(1)%ngxe = grid%locpat(1)%ngxs + grid%locpat(1)%ngx
+      grid%locpat(1)%ngye = grid%locpat(1)%ngys + grid%locpat(1)%ngy
+      grid%locpat(1)%ngze = grid%locpat(1)%ngzs + grid%locpat(1)%ngz
+      grid%locpat(1)%ngxy = grid%locpat(1)%ngx * grid%locpat(1)%ngy
+      grid%locpat(1)%ngxz = grid%locpat(1)%ngx * grid%locpat(1)%ngz
+      grid%locpat(1)%ngyz = grid%locpat(1)%ngy * grid%locpat(1)%ngz
+      grid%locpat(1)%ngmax = grid%locpat(1)%ngx * grid%locpat(1)%ngy * grid%locpat(1)%ngz
+      grid%locpat(1)%ngdof = grid%locpat(1)%ngmax * grid%nphase
 
 !-----------------------------------------------------------------------
       ! Determine number of local connections.
 !-----------------------------------------------------------------------
-      grid%nconn = (grid%ngx-1) * grid%nly &
-        * grid%nlz + grid%nlx * (grid%ngy-1) &
-        * grid%nlz + grid%nlx * grid%nly &
-        * (grid%ngz-1)
+      grid%locpat(1)%nconn = (grid%locpat(1)%ngx-1) * grid%locpat(1)%nly &
+        * grid%locpat(1)%nlz + grid%locpat(1)%nlx * (grid%locpat(1)%ngy-1) &
+        * grid%locpat(1)%nlz + grid%locpat(1)%nlx * grid%locpat(1)%nly &
+        * (grid%locpat(1)%ngz-1)
 
 !-----------------------------------------------------------------------
       ! Allocate memory for allocatable arrays.
 !-----------------------------------------------------------------------
-      allocate(grid%nL2G(grid%nlmax))
-      allocate(grid%nG2L(grid%ngmax))
-	  allocate(grid%nL2A(grid%nlmax))
-	  allocate(grid%nG2N(grid%ngmax))
+      allocate(grid%locpat(1)%nL2G(grid%locpat(1)%nlmax))
+      allocate(grid%locpat(1)%nG2L(grid%locpat(1)%ngmax))
+	  allocate(grid%locpat(1)%nL2A(grid%locpat(1)%nlmax))
+	  allocate(grid%locpat(1)%nG2N(grid%locpat(1)%ngmax))
    
-             
+ !-----------------------------------------------------------------------
+      ! Compute arrays for indexing between local ghosted and non-ghosted 
+      ! arrays.  I think the PETSc DA facilities may make these redundant,
+      ! but since the ptran code uses them, I think it is easiest to just
+      ! use these.
+!-----------------------------------------------------------------------
+
+      grid%locpat(1)%istart = grid%locpat(1)%nxs-grid%locpat(1)%ngxs
+      grid%locpat(1)%jstart = grid%locpat(1)%nys-grid%locpat(1)%ngys
+      grid%locpat(1)%kstart = grid%locpat(1)%nzs-grid%locpat(1)%ngzs
+      grid%locpat(1)%iend = grid%locpat(1)%istart+grid%locpat(1)%nlx-1
+      grid%locpat(1)%jend = grid%locpat(1)%jstart+grid%locpat(1)%nly-1
+      grid%locpat(1)%kend = grid%locpat(1)%kstart+grid%locpat(1)%nlz-1
+
+      ! Local <-> Ghosted Transformation (Two ways)
+      grid%locpat(1)%nG2L(:) = 0  ! Must initialize this to zero!
+      !grid%nL2N(:) = 0
+      n = 0
+      do k=grid%locpat(1)%kstart,grid%locpat(1)%kend
+        do j=grid%locpat(1)%jstart,grid%locpat(1)%jend
+          do i=grid%locpat(1)%istart,grid%locpat(1)%iend
+            n = n + 1
+            ng = i+j*grid%locpat(1)%ngx+k*grid%locpat(1)%ngxy+1
+			grid%locpat(1)%nL2G(n) = ng
+            grid%locpat(1)%nG2L(ng) = n
+		  enddo
+        enddo
+      enddo
+
+      do i=1,grid%locpat(1)%ngmax
+        j = grid%locpat(1)%nG2L(i)
+        if (j > 0) then
+          k = grid%locpat(1)%nL2G(j)
+          if(i /= k) then
+            print *,'Error in ghost-local node numbering for ghost node =', i
+            print *,'node_id_gtol(i) =', j
+            print *,'node_id_ltog(node_id_gtol(i)) =', k
+            stop
+          endif
+        endif
+      enddo
+	  
+	  
+  ! Local(non ghosted)->Natural(natural order starts from 0) (one way)
+    n=0
+     do k=1,grid%locpat(1)%nlz
+        do j=1,grid%locpat(1)%nly
+          do i=1,grid%locpat(1)%nlx
+            n = n + 1
+            na = i-1+grid%locpat(1)%nxs+(j-1+grid%locpat(1)%nys)*grid%nx+(k-1+grid%locpat(1)%nzs)*grid%nxy
+			if(na>(grid%nmax-1)) print *,'Wrong Nature order....'
+			grid%locpat(1)%nL2A(n) = na
+			!print *,grid%myrank, k,j,i,n,na
+			!grid%nG2N(ng) = na
+		  enddo
+        enddo
+      enddo
+    print *,grid%myrank, grid%locpat(1)%nxs,grid%locpat(1)%ngxs,grid%locpat(1)%nys,&
+            grid%locpat(1)%ngys,grid%locpat(1)%nzs,grid%locpat(1)%ngzs
+				 
+	
+ ! Loacal(include ghosted) to global mapping (one way)
+	call DAGetGlobalIndicesF90(grid%da_1_dof,grid%locpat(1)%ngmax,grid%locpat(1)%nG2N, ierr)								 
+												             
       	  
 !     if (grid%using_pflowGrid == PETSC_TRUE) &
-!     allocate(grid%vvl_loc(grid%nconn*grid%nphase))
+!     allocate(grid%vvl_loc(grid%locpat(1)%nconn*grid%nphase))
 
       ! I don't like having a fixed number of boundary condition regions.
       ! Memory for these arrays ought to allocated by parsing the input file
@@ -341,8 +407,8 @@
       ! The same goes for the number of BC blocks.
       allocate(grid%iregbc1(MAXBCREGIONS))
       allocate(grid%iregbc2(MAXBCREGIONS))
-      allocate(grid%ibndtyp(MAXBCREGIONS))
-      allocate(grid%iface(MAXBCREGIONS))
+      allocate(grid%locpat(1)%ibndtyp(MAXBCREGIONS))
+      allocate(grid%locpat(1)%iface(MAXBCREGIONS))
       allocate(grid%k1bc(MAXBCBLOCKS))
       allocate(grid%k2bc(MAXBCBLOCKS))
       allocate(grid%j1bc(MAXBCBLOCKS))
@@ -427,69 +493,7 @@
 	  grid%scale = 1.d-6
 
 
-
-!-----------------------------------------------------------------------
-      ! Compute arrays for indexing between local ghosted and non-ghosted 
-      ! arrays.  I think the PETSc DA facilities may make these redundant,
-      ! but since the ptran code uses them, I think it is easiest to just
-      ! use these.
-!-----------------------------------------------------------------------
-
-      grid%istart = grid%nxs-grid%ngxs
-      grid%jstart = grid%nys-grid%ngys
-      grid%kstart = grid%nzs-grid%ngzs
-      grid%iend = grid%istart+grid%nlx-1
-      grid%jend = grid%jstart+grid%nly-1
-      grid%kend = grid%kstart+grid%nlz-1
-
-      ! Local <-> Ghosted Transformation
-      grid%nG2L(:) = 0  ! Must initialize this to zero!
-      !grid%nL2N(:) = 0
-      n = 0
-      do k=grid%kstart,grid%kend
-        do j=grid%jstart,grid%jend
-          do i=grid%istart,grid%iend
-            n = n + 1
-            ng = i+j*grid%ngx+k*grid%ngxy+1
-			grid%nL2G(n) = ng
-            grid%nG2L(ng) = n
-		  enddo
-        enddo
-      enddo
-
-      do i=1,grid%ngmax
-        j = grid%nG2L(i)
-        if (j > 0) then
-          k = grid%nL2G(j)
-          if(i /= k) then
-            print *,'Error in ghost-local node numbering for ghost node =', i
-            print *,'node_id_gtol(i) =', j
-            print *,'node_id_ltog(node_id_gtol(i)) =', k
-            stop
-          endif
-        endif
-      enddo
-  ! Local(non ghosted)->Natural(natural order starts from 0)
-    n=0
-     do k=1,grid%nlz
-        do j=1,grid%nly
-          do i=1,grid%nlx
-            n = n + 1
-            na = i-1+grid%nxs+(j-1+grid%nys)*grid%nx+(k-1+grid%nzs)*grid%nxy
-			if(na>(grid%nmax-1)) print *,'Wrong Nature order....'
-			grid%nL2A(n) = na
-			!print *,grid%myrank, k,j,i,n,na
-			!grid%nG2N(ng) = na
-		  enddo
-        enddo
-      enddo
-    print *,grid%myrank, grid%nxs,grid%ngxs,grid%nys,grid%ngys,grid%nzs,grid%ngzs
-   
-	call DAGetGlobalIndicesF90(grid%da_1_dof,grid%ngmax,grid%nG2N, ierr)
-
-      pflowGrid_new = grid
-
-    end function pflowGrid_new
+    end subroutine pflowGrid_new
 
 
 !#include "pflowgrid_destroy.F90"
@@ -516,13 +520,18 @@
 ! up but its geometry hasn't.  pflowGrid_setup() sets up the physical
 ! geometry of the grid, the initial values of the fields, and the 
 ! boundary conditions.
-  subroutine pflowGrid_setup(grid, inputfile)
+
+ subroutine pflowGrid_setup(grid, pflowsolv, inputfile)
   use utilities_module
   use IMS_module
   use readfield                          
   implicit none
   
   type(pflowGrid), intent(inout) :: grid
+  type(pflow_solver_context) :: pflowsolv
+ 
+  
+  
   character(len=*), intent(in) :: inputfile
   
   integer :: ierr
@@ -601,7 +610,7 @@
   ! example).
   !-----------------------------------------------------------------------
   
-  call pflowGrid_Setup_SNES(grid)
+  call pflowGrid_Setup_SNES(grid, pflowsolv )
 
   !-----------------------------------------------------------------------
   ! Set up cell topology and geometry of interior connections, and 
@@ -698,15 +707,15 @@ PetscScalar, pointer ::  dx_loc_p(:), dy_loc_p(:), dz_loc_p(:), volume_p(:)
  Vec :: temp0_nat_vec, temp1_nat_vec, temp2_nat_vec, temp3_nat_vec, &
           temp4_nat_vec 
 
-      allocate(grid%nd1(grid%nconn))
-      allocate(grid%nd2(grid%nconn))
-      allocate(grid%dist1(grid%nconn))
-      allocate(grid%dist2(grid%nconn))
-      allocate(grid%area(grid%nconn))
-      allocate(grid%delz(grid%nconn))
+      allocate(grid%locpat(1)%nd1(grid%locpat(1)%nconn))
+      allocate(grid%locpat(1)%nd2(grid%locpat(1)%nconn))
+      allocate(grid%locpat(1)%dist1(grid%locpat(1)%nconn))
+      allocate(grid%locpat(1)%dist2(grid%locpat(1)%nconn))
+      allocate(grid%locpat(1)%area(grid%locpat(1)%nconn))
+      allocate(grid%locpat(1)%delz(grid%locpat(1)%nconn))
 
-      allocate(grid%iperm1(grid%nconn))
-      allocate(grid%iperm2(grid%nconn))
+      allocate(grid%locpat(1)%iperm1(grid%locpat(1)%nconn))
+      allocate(grid%locpat(1)%iperm2(grid%locpat(1)%nconn))
 
 
   call DACreateNaturalVector(grid%da_1_dof,temp1_nat_vec,ierr)
@@ -773,8 +782,8 @@ PetscScalar, pointer ::  dx_loc_p(:), dy_loc_p(:), dz_loc_p(:), volume_p(:)
   call VecGetArrayF90(grid%dz_loc, dz_loc_p, ierr)
 
   nc = 0
-  grid%nconnx = 0
-  grid%nconny = 0
+  grid%locpat(1)%nconnx = 0
+  grid%locpat(1)%nconny = 0
 
   if(grid%igeom ==2) then
     allocate(grid%rd(0:grid%nx))
@@ -788,81 +797,81 @@ PetscScalar, pointer ::  dx_loc_p(:), dy_loc_p(:), dz_loc_p(:), volume_p(:)
 ! print *,'setup-RD:: ',grid%myrank,grid%rd, grid%dx0
   
   ! x-connections
-  if(grid%ngx > 1) then
-    do k = grid%kstart, grid%kend
-      do j = grid%jstart, grid%jend
-        do i = 1, grid%ngx - 1
-          mg1 = i + j * grid%ngx + k * grid%ngxy
+  if(grid%locpat(1)%ngx > 1) then
+    do k = grid%locpat(1)%kstart, grid%locpat(1)%kend
+      do j = grid%locpat(1)%jstart, grid%locpat(1)%jend
+        do i = 1, grid%locpat(1)%ngx - 1
+          mg1 = i + j * grid%locpat(1)%ngx + k * grid%locpat(1)%ngxy
           mg2 = mg1 + 1
           nc = nc + 1
-          grid%nd1(nc) = mg1
-          grid%nd2(nc) = mg2
-          grid%dist1(nc) = 0.5d0 * dx_loc_p(mg1)
-          grid%dist2(nc) = 0.5d0 * dx_loc_p(mg2)
-          grid%delz(nc) = 0.d0
+          grid%locpat(1)%nd1(nc) = mg1
+          grid%locpat(1)%nd2(nc) = mg2
+          grid%locpat(1)%dist1(nc) = 0.5d0 * dx_loc_p(mg1)
+          grid%locpat(1)%dist2(nc) = 0.5d0 * dx_loc_p(mg2)
+          grid%locpat(1)%delz(nc) = 0.d0
         !  abs_x = rd(i-1+grid%nxs)
           if (grid%igeom == 1) then
-            grid%area(nc) = dy_loc_p(mg1) * dz_loc_p(mg1)
+            grid%locpat(1)%area(nc) = dy_loc_p(mg1) * dz_loc_p(mg1)
           else if (grid%igeom == 2) then
-            grid%area(nc) = 2.D0 * Pi * grid%rd(i+grid%nxs) * dz_loc_p(mg1)
-            print *,grid%myrank,nc,i,grid%rd(i+grid%nxs)
+            grid%locpat(1)%area(nc) = 2.D0 * Pi * grid%rd(i+grid%locpat(1)%nxs) * dz_loc_p(mg1)
+            print *,grid%myrank,nc,i,grid%rd(i+grid%locpat(1)%nxs)
           else if (grid%igeom == 3) then
           endif
-          grid%iperm1(nc) = 1
-          grid%iperm2(nc) = 1
+          grid%locpat(1)%iperm1(nc) = 1
+          grid%locpat(1)%iperm2(nc) = 1
         enddo
       enddo
     enddo
-    grid%nconnx = nc
+    grid%locpat(1)%nconnx = nc
   endif
 
   ! y-connections
-  if(grid%ngy > 1) then
-    do k = grid%kstart, grid%kend
-      do i = grid%istart, grid%iend
-        do j = 1, grid%ngy - 1
-          mg1 = i + 1 + (j-1) * grid%ngx + k * grid%ngxy
-          mg2 = mg1 + grid%ngx
+  if(grid%locpat(1)%ngy > 1) then
+    do k = grid%locpat(1)%kstart, grid%locpat(1)%kend
+      do i = grid%locpat(1)%istart, grid%locpat(1)%iend
+        do j = 1, grid%locpat(1)%ngy - 1
+          mg1 = i + 1 + (j-1) * grid%locpat(1)%ngx + k * grid%locpat(1)%ngxy
+          mg2 = mg1 + grid%locpat(1)%ngx
           nc = nc + 1
-          grid%nd1(nc) = mg1
-          grid%nd2(nc) = mg2
-          grid%dist1(nc) = 0.5d0 * dy_loc_p(mg1)
-          grid%dist2(nc) = 0.5d0 * dy_loc_p(mg2)
-          grid%delz(nc) = 0.d0
-          grid%area(nc) = dx_loc_p(mg1) * dz_loc_p(mg1)
-          grid%iperm1(nc) = 2
-          grid%iperm2(nc) = 2
+          grid%locpat(1)%nd1(nc) = mg1
+          grid%locpat(1)%nd2(nc) = mg2
+          grid%locpat(1)%dist1(nc) = 0.5d0 * dy_loc_p(mg1)
+          grid%locpat(1)%dist2(nc) = 0.5d0 * dy_loc_p(mg2)
+          grid%locpat(1)%delz(nc) = 0.d0
+          grid%locpat(1)%area(nc) = dx_loc_p(mg1) * dz_loc_p(mg1)
+          grid%locpat(1)%iperm1(nc) = 2
+          grid%locpat(1)%iperm2(nc) = 2
         enddo
       enddo
     enddo
-    grid%nconny = nc
+    grid%locpat(1)%nconny = nc
   endif
       
   ! z-connections
-  if(grid%ngz > 1) then
-    do j = grid%jstart, grid%jend
-      do i = grid%istart, grid%iend
-        do k = 1, grid%ngz - 1
-          mg1 = i + 1 + j * grid%ngx + (k-1) * grid%ngxy
-          mg2 = mg1 + grid%ngxy
+  if(grid%locpat(1)%ngz > 1) then
+    do j = grid%locpat(1)%jstart, grid%locpat(1)%jend
+      do i = grid%locpat(1)%istart, grid%locpat(1)%iend
+        do k = 1, grid%locpat(1)%ngz - 1
+          mg1 = i + 1 + j * grid%locpat(1)%ngx + (k-1) * grid%locpat(1)%ngxy
+          mg2 = mg1 + grid%locpat(1)%ngxy
           nc = nc + 1
-          grid%nd1(nc) = mg1
-          grid%nd2(nc) = mg2
+          grid%locpat(1)%nd1(nc) = mg1
+          grid%locpat(1)%nd2(nc) = mg2
           d1 = 0.5d0 * dz_loc_p(mg1)
           d2 = 0.5d0 * dz_loc_p(mg2)
-          grid%dist1(nc) = d1
-          grid%dist2(nc) = d2
-          grid%delz(nc) = d1 + d2
+          grid%locpat(1)%dist1(nc) = d1
+          grid%locpat(1)%dist2(nc) = d2
+          grid%locpat(1)%delz(nc) = d1 + d2
           if (grid%igeom == 1) then
-          grid%area(nc) = dx_loc_p(mg1) * dy_loc_p(mg1)
+          grid%locpat(1)%area(nc) = dx_loc_p(mg1) * dy_loc_p(mg1)
           else if (grid%igeom == 2) then
-            grid%area(nc) =  Pi * (grid%rd(i+grid%nxs)+ grid%rd(i-1+grid%nxs))* &
-            (grid%rd(i+grid%nxs) - grid%rd(i-1+grid%nxs))	
-            print *, 'area nc ',grid%myrank, nc, i,  grid%area(nc)
+            grid%locpat(1)%area(nc) =  Pi * (grid%rd(i+grid%locpat(1)%nxs)+ grid%rd(i-1+grid%locpat(1)%nxs))* &
+            (grid%rd(i+grid%locpat(1)%nxs) - grid%rd(i-1+grid%locpat(1)%nxs))	
+            print *, 'area nc ',grid%myrank, nc, i,  grid%locpat(1)%area(nc)
           else if (grid%igeom == 3) then
           endif
-          grid%iperm1(nc) = 3
-          grid%iperm2(nc) = 3
+          grid%locpat(1)%iperm1(nc) = 3
+          grid%locpat(1)%iperm2(nc) = 3
         enddo
       enddo
     enddo
@@ -870,16 +879,16 @@ PetscScalar, pointer ::  dx_loc_p(:), dy_loc_p(:), dz_loc_p(:), volume_p(:)
   
   ! Calculate cell volumes for local cells.
   call VecGetArrayF90(grid%volume, volume_p, ierr)
-  do n=1, grid%nlmax
-    ng = grid%nL2G(n)
+  do n=1, grid%locpat(1)%nlmax
+    ng = grid%locpat(1)%nL2G(n)
 	if (grid%igeom == 1) then
       volume_p(n) = dx_loc_p(ng) * dy_loc_p(ng) * dz_loc_p(ng)
     else if (grid%igeom == 2) then
-      i= mod(mod((n),grid%nlxy),grid%nlx)!+(grid%ngxs-grid%nxs)
-      if(i==0) i=  grid%nlx
-      volume_p(n) = Pi * (grid%rd(i+grid%nxs)+ grid%rd(i-1+grid%nxs))*&
-      (grid%rd(i+grid%nxs) - grid%rd(i-1+grid%nxs)) * dz_loc_p(ng)
-	  print *, 'setup: Vol ', grid%myrank, n,i, grid%rd(i+grid%nxs),volume_p(n)
+      i= mod(mod((n),grid%locpat(1)%nlxy),grid%locpat(1)%nlx)!+(grid%ngxs-grid%nxs)
+      if(i==0) i=  grid%locpat(1)%nlx
+      volume_p(n) = Pi * (grid%rd(i+grid%locpat(1)%nxs)+ grid%rd(i-1+grid%locpat(1)%nxs))*&
+      (grid%rd(i+grid%locpat(1)%nxs) - grid%rd(i-1+grid%locpat(1)%nxs)) * dz_loc_p(ng)
+	  print *, 'setup: Vol ', grid%myrank, n,i, grid%rd(i+grid%locpat(1)%nxs),volume_p(n)
     endif
   enddo
   call VecRestoreArrayF90(grid%volume, volume_p, ierr)
@@ -892,13 +901,15 @@ PetscScalar, pointer ::  dx_loc_p(:), dy_loc_p(:), dz_loc_p(:), volume_p(:)
   
   write(*,'(" myrank= ",i3,", nlmax= ",i6,", nlx,y,z= ",3i4, &
   & ", nxs,e = ",2i4,", nys,e = ",2i4,", nzs,e = ",2i4)') &
-  grid%myrank,grid%nlmax,grid%nlx,grid%nly,grid%nlz, &
-  grid%nxs,grid%nxe,grid%nys,grid%nye,grid%nzs,grid%nze
+  grid%myrank,grid%locpat(1)%nlmax,grid%locpat(1)%nlx,grid%locpat(1)%nly,grid%locpat(1)%nlz, &
+  grid%locpat(1)%nxs,grid%locpat(1)%nxe,grid%locpat(1)%nys,grid%locpat(1)%nye,&
+  grid%locpat(1)%nzs,grid%locpat(1)%nze
 
   write(*,'(" myrank= ",i3,", ngmax= ",i6,", ngx,y,z= ",3i4, &
   & ", ngxs,e= ",2i4,", ngys,e= ",2i4,", ngzs,e= ",2i4)') &
-  grid%myrank,grid%ngmax,grid%ngx,grid%ngy,grid%ngz, &
-  grid%ngxs,grid%ngxe,grid%ngys,grid%ngye,grid%ngzs,grid%ngze
+  grid%myrank,grid%locpat(1)%ngmax,grid%locpat(1)%ngx,grid%locpat(1)%ngy,grid%locpat(1)%ngz, &
+  grid%locpat(1)%ngxs,grid%locpat(1)%ngxe,grid%locpat(1)%ngys,grid%locpat(1)%ngye,&
+  grid%locpat(1)%ngzs,grid%locpat(1)%ngze
 
 end subroutine pflowGrid_Setup_Geom
 !=========================================================================
@@ -964,8 +975,8 @@ real*8, pointer :: icap_p(:),por_p(:),por0_p(:), ithrm_p(:), &
      call VecGetArrayF90(grid%perm_zz,perm_zz_p,ierr)
      call VecGetArrayF90(grid%perm_pow,perm_pow_p,ierr)
      call VecGetArrayF90(grid%tor,tor_p,ierr)
-     do n = 1,grid%nlmax
-          na = grid%nL2A(n)
+     do n = 1,grid%locpat(1)%nlmax
+          na = grid%locpat(1)%nL2A(n)
           nz= int(na/grid%nxy) + 1
           ny= int(mod(na,grid%nxy)/grid%nx) + 1
           nx= mod(mod(na,grid%nxy),grid%nx) + 1
@@ -1084,13 +1095,15 @@ end subroutine pflowGrid_Setup_Trans
 !==================================================================================
 
 !======================
-subroutine pflowgrid_Setup_SNES(grid)
+subroutine pflowgrid_Setup_SNES(grid, pflowsolv)
 use IMS_module
 use pflow_solv_module
 use pflow_step
 
 implicit none
-type(pflowGrid) grid
+type(pflowGrid) :: grid
+type(pflow_solver_context) :: pflowsolv
+
 ISColoring :: iscoloring
 integer myrank, ierr, maxstep
 real*8 alapha, steptol
@@ -1101,7 +1114,7 @@ real*8 alapha, steptol
 !-----------------------------------------------------------------------
       ! Set up PETSc nonlinear solver context.
 !-----------------------------------------------------------------------
-      call SNESCreate(PETSC_COMM_WORLD, grid%snes, ierr)
+      call SNESCreate(PETSC_COMM_WORLD, pflowsolv%snes, ierr)
       CHKERRQ(ierr)
 
 
@@ -1109,7 +1122,7 @@ real*8 alapha, steptol
   
     grid%ideriv = 1
   
-!   if (myrank == 0) write(*,'(" analytical jacobian as ")');print *, grid%iblkfmt
+   if (myrank == 0) write(*,'(" analytical jacobian as ")');print *, grid%iblkfmt
 
     ! call DAGetMatrix(grid%da_ndof, MATMPIAIJ, grid%J, ierr)
     ! PETSc 2.1.6 introduces the MATAIJ matrix type.
@@ -1117,13 +1130,14 @@ real*8 alapha, steptol
       call DAGetMatrix(grid%da_ndof, MATAIJ, grid%J, ierr)
     else
       call DAGetMatrix(grid%da_ndof, MATBAIJ, grid%J, ierr)
+   !   call  MatSetBlocksize(grid%J,grid%ndof,ierr)
     endif
-   ! call  MatSetBlocksize(grid%J,grid%ndof,ierr)
+   ! 
     call MatSetOption(grid%J,MAT_COLUMN_ORIENTED,ierr)
     
-    call SNESSetJacobian(grid%snes, grid%J, grid%J, IMSJacobin, &
+    call SNESSetJacobian(pflowsolv%snes, grid%J, grid%J, IMSJacobin, &
                          grid, ierr); CHKERRQ(ierr)
-    if(grid%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(grid)
+    if(grid%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(grid,pflowsolv)
 	
   else if(grid%use_matrix_free == PETSC_TRUE) then
   
@@ -1131,7 +1145,7 @@ real*8 alapha, steptol
   
     if (myrank == 0) write(*,'(" Using matrix-free Newton-Krylov")')
     
-    call MatCreateSNESMF(grid%snes, grid%xx, grid%J, ierr)
+    call MatCreateSNESMF(pflowsolv%snes, grid%xx, grid%J, ierr)
 
     
     ! It seems that I ought to call SNESSetJacobian here now, but I don't know
@@ -1140,7 +1154,7 @@ real*8 alapha, steptol
     ! actually matter if -snes_mf has been specified.
     ! Pernice thinks that perhaps the I need to provide a function which 
     ! simply calls MatAssemblyBegin/End.
-    call SNESSetJacobian(grid%snes, grid%J, grid%J, &
+    call SNESSetJacobian(pflowsolv%snes, grid%J, grid%J, &
                          ComputeMFJacobian, PETSC_NULL_OBJECT, ierr)
 
     ! Use "Walker-Pernice" differencing.
@@ -1152,7 +1166,7 @@ real*8 alapha, steptol
     endif
 
     if(grid%monitor_h == PETSC_TRUE) then
-      call SNESSetMonitor(grid%snes, pflowgrid_MonitorH, grid, &
+      call SNESSetMonitor(pflowsolv%snes, pflowgrid_MonitorH, grid, &
                           PETSC_NULL_OBJECT, ierr)
     endif
     
@@ -1187,7 +1201,7 @@ real*8 alapha, steptol
 	
 	 
     call MatFDColoringSetFromOptions(grid%matfdcoloring, ierr)
-    call SNESSetJacobian(grid%snes, grid%J, grid%J, &
+    call SNESSetJacobian(pflowsolv%snes, grid%J, grid%J, &
                          SNESDefaultComputeJacobianColor,  &
                          grid%matfdcoloring, ierr)
   endif
@@ -1195,16 +1209,16 @@ real*8 alapha, steptol
   if (myrank == 0) &
   write(*,'("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++",/)')
 
-  call SNESSetFunction(grid%snes, grid%r, IMSResidual, grid, ierr)
+  call SNESSetFunction(pflowsolv%snes, grid%r, IMSResidual, grid, ierr)
 
 
   ! Set the tolerances for the Newton solver.
-  call SNESSetTolerances(grid%snes, grid%atol, grid%rtol, grid%stol, & 
+  call SNESSetTolerances(pflowsolv%snes, grid%atol, grid%rtol, grid%stol, & 
                          grid%maxit, grid%maxf, ierr)
 
  
 
-  call SNESSetFromOptions(grid%snes, ierr)
+  call SNESSetFromOptions(pflowsolv%snes, ierr)
 ! call SNESLineSearchGetParams(grid%snes, alapha, maxstep, steptol, ierr) 
 ! call SNESLineSearchSetParams(grid%snes, alapha, maxstep, grid%stol, ierr) 
 ! print *, 'SNES setup ::', alapha,maxstep, steptol
@@ -1242,52 +1256,52 @@ end subroutine pflowgrid_Setup_SNES
   myrank=grid%myrank
   
   
-   grid%nconnbc = 0
+   grid%locpat(1)%nconnbc = 0
   if (grid%nx > 1 .and. grid%ny == 1 .and. grid%nz == 1) then
-    if (grid%nxs == grid%ngxs) grid%nconnbc = grid%nconnbc + 1
-    if (grid%nxe == grid%ngxe) grid%nconnbc = grid%nconnbc + 1
+    if (grid%locpat(1)%nxs == grid%locpat(1)%ngxs) grid%locpat(1)%nconnbc = grid%locpat(1)%nconnbc + 1
+    if (grid%locpat(1)%nxe == grid%locpat(1)%ngxe) grid%locpat(1)%nconnbc = grid%locpat(1)%nconnbc + 1
   else if (grid%nx == 1 .and. grid%ny == 1 .and. grid%nz > 1) then
-    if (grid%nzs == grid%ngzs) grid%nconnbc = grid%nconnbc + 1
-    if (grid%nze == grid%ngze) grid%nconnbc = grid%nconnbc + 1
+    if (grid%locpat(1)%nzs == grid%locpat(1)%ngzs) grid%locpat(1)%nconnbc = grid%locpat(1)%nconnbc + 1
+    if (grid%locpat(1)%nze == grid%locpat(1)%ngze) grid%locpat(1)%nconnbc = grid%locpat(1)%nconnbc + 1
   else
     if (grid%nx > 1) then
-      if (grid%nxs == grid%ngxs) grid%nconnbc = grid%nconnbc + grid%nlyz
-      if (grid%nxe == grid%ngxe) grid%nconnbc = grid%nconnbc + grid%nlyz
+      if (grid%locpat(1)%nxs == grid%locpat(1)%ngxs) grid%locpat(1)%nconnbc = grid%locpat(1)%nconnbc + grid%locpat(1)%nlyz
+      if (grid%locpat(1)%nxe == grid%locpat(1)%ngxe) grid%locpat(1)%nconnbc = grid%locpat(1)%nconnbc + grid%locpat(1)%nlyz
     endif
     if (grid%ny > 1) then
-      if (grid%nys == grid%ngys) grid%nconnbc = grid%nconnbc + grid%nlxz
-      if (grid%nye == grid%ngye) grid%nconnbc = grid%nconnbc + grid%nlxz
+      if (grid%locpat(1)%nys == grid%locpat(1)%ngys) grid%locpat(1)%nconnbc = grid%locpat(1)%nconnbc + grid%locpat(1)%nlxz
+      if (grid%locpat(1)%nye == grid%locpat(1)%ngye) grid%locpat(1)%nconnbc = grid%locpat(1)%nconnbc + grid%locpat(1)%nlxz
     endif
     if (grid%nz > 1) then
-      if (grid%nzs == grid%ngzs) grid%nconnbc = grid%nconnbc + grid%nlxy
-      if (grid%nze == grid%ngze) grid%nconnbc = grid%nconnbc + grid%nlxy
+      if (grid%locpat(1)%nzs == grid%locpat(1)%ngzs) grid%locpat(1)%nconnbc = grid%locpat(1)%nconnbc + grid%locpat(1)%nlxy
+      if (grid%locpat(1)%nze == grid%locpat(1)%ngze) grid%locpat(1)%nconnbc = grid%locpat(1)%nconnbc + grid%locpat(1)%nlxy
     endif
   endif
       
   write(*,'(" --> pflowconn: rank = ",i4, &
- &", boundary connections =", i6)') myrank,grid%nconnbc
+ &", boundary connections =", i6)') myrank,grid%locpat(1)%nconnbc
 
 
 
-  if (grid%nconnbc > 0) then
-    allocate(grid%mblkbc(grid%nconnbc))
-    allocate(grid%ibconn(grid%nconnbc))
-    allocate(grid%distbc(grid%nconnbc))
-    allocate(grid%areabc(grid%nconnbc))
-    allocate(grid%ipermbc(grid%nconnbc))
-    allocate(grid%delzbc(grid%nconnbc))
+  if (grid%locpat(1)%nconnbc > 0) then
+    allocate(grid%locpat(1)%mblkbc(grid%locpat(1)%nconnbc))
+    allocate(grid%locpat(1)%ibconn(grid%locpat(1)%nconnbc))
+    allocate(grid%locpat(1)%distbc(grid%locpat(1)%nconnbc))
+    allocate(grid%locpat(1)%areabc(grid%locpat(1)%nconnbc))
+    allocate(grid%locpat(1)%ipermbc(grid%locpat(1)%nconnbc))
+    allocate(grid%locpat(1)%delzbc(grid%locpat(1)%nconnbc))
     
-!   allocate(grid%velocitybc(grid%nphase,grid%nconnbc))
+!   allocate(grid%velocitybc(grid%nphase,grid%locpat(1)%nconnbc))
     
-    allocate(grid%vlbc(grid%nconnbc))
-    allocate(grid%vvlbc(grid%nconnbc))
-    allocate(grid%vgbc(grid%nconnbc))
-    allocate(grid%vvgbc(grid%nconnbc))
+    allocate(grid%locpat(1)%vlbc(grid%locpat(1)%nconnbc))
+    allocate(grid%locpat(1)%vvlbc(grid%locpat(1)%nconnbc))
+    allocate(grid%locpat(1)%vgbc(grid%locpat(1)%nconnbc))
+    allocate(grid%locpat(1)%vvgbc(grid%locpat(1)%nconnbc))
 	
-	grid%vlbc=0.D0
-	grid%vgbc=0.D0
+	grid%locpat(1)%vlbc=0.D0
+	grid%locpat(1)%vgbc=0.D0
   
-    allocate(grid%varbc(1:(grid%ndof+1)*(2+4*grid%nphase )))
+    allocate(grid%locpat(1)%varbc(1:(grid%ndof+1)*(2+4*grid%nphase )))
     endif
 
  call VecGetArrayF90(grid%dx_loc, dx_loc_p, ierr)
@@ -1298,28 +1312,28 @@ end subroutine pflowgrid_Setup_SNES
 
 
   nc = 0 
-  if (grid%nxs == grid%ngxs .or. grid%nxe == grid%ngxe &
-      .or. grid%nys == grid%ngys .or. grid%nye == grid%ngye &
-      .or. grid%nzs == grid%ngzs .or. grid%nze == grid%ngze) then
+  if (grid%locpat(1)%nxs == grid%locpat(1)%ngxs .or. grid%locpat(1)%nxe == grid%locpat(1)%ngxe &
+      .or. grid%locpat(1)%nys == grid%locpat(1)%ngys .or. grid%locpat(1)%nye == grid%locpat(1)%ngye &
+      .or. grid%locpat(1)%nzs == grid%locpat(1)%ngzs .or. grid%locpat(1)%nze == grid%locpat(1)%ngze) then
 
     ! calculate boundary conditions locally on only those processors which 
     ! contain a boundary!
 
-    do ibc = 1, grid%nblkbc
+    do ibc = 1, grid%locpat(1)%nblkbc
       do ir = grid%iregbc1(ibc), grid%iregbc2(ibc)
-        kk1 = grid%k1bc(ir) - grid%nzs
-        kk2 = grid%k2bc(ir) - grid%nzs
-        jj1 = grid%j1bc(ir) - grid%nys
-        jj2 = grid%j2bc(ir) - grid%nys
-        ii1 = grid%i1bc(ir) - grid%nxs
-        ii2 = grid%i2bc(ir) - grid%nxs
+        kk1 = grid%k1bc(ir) - grid%locpat(1)%nzs
+        kk2 = grid%k2bc(ir) - grid%locpat(1)%nzs
+        jj1 = grid%j1bc(ir) - grid%locpat(1)%nys
+        jj2 = grid%j2bc(ir) - grid%locpat(1)%nys
+        ii1 = grid%i1bc(ir) - grid%locpat(1)%nxs
+        ii2 = grid%i2bc(ir) - grid%locpat(1)%nxs
 
         kk1 = max(1,kk1)
-        kk2 = min(grid%nlz,kk2)
+        kk2 = min(grid%locpat(1)%nlz,kk2)
         jj1 = max(1,jj1)
-        jj2 = min(grid%nly,jj2)
+        jj2 = min(grid%locpat(1)%nly,jj2)
         ii1 = max(1,ii1)
-        ii2 = min(grid%nlx,ii2)
+        ii2 = min(grid%locpat(1)%nlx,ii2)
 
         if (ii1 > ii2 .or. jj1 > jj2 .or. kk1 > kk2) cycle 
 
@@ -1327,73 +1341,73 @@ end subroutine pflowgrid_Setup_SNES
           do j = jj1,jj2
             do i = ii1,ii2
               nc = nc + 1
-              m = i+(j-1)*grid%nlx+(k-1)*grid%nlxy
-              grid%mblkbc(nc) = m  ! m is a local index
-              grid%ibconn(nc) = ibc
-              ng = grid%nL2G(m)
+              m = i+(j-1)*grid%locpat(1)%nlx+(k-1)*grid%locpat(1)%nlxy
+              grid%locpat(1)%mblkbc(nc) = m  ! m is a local index
+              grid%locpat(1)%ibconn(nc) = ibc
+              ng = grid%locpat(1)%nL2G(m)
               ! Use ghosted index to access dx, dy, dz because we have
               ! already done a global-to-local scatter for computing the
               ! interior node connections.
         
-!       print *,'pflowgrid_mod: ',nc,ibc,ir,m,ng,ii1,ii2,kk1,kk2,grid%nblkbc,grid%igeom
+!       print *,'pflowgrid_mod: ',nc,ibc,ir,m,ng,ii1,ii2,kk1,kk2,grid%locpat(1)%nblkbc,grid%igeom
         
               select case(grid%igeom)
               case(1) ! cartesian
-                if (grid%iface(ibc) == 1) then
-                  grid%distbc(nc) = 0.5d0*dx_loc_p(ng)
-                  grid%areabc(nc) = dy_loc_p(ng)*dz_loc_p(ng)
-                  grid%ipermbc(nc) = 1
-                  grid%delzbc(nc) = 0.d0
-                else if (grid%iface(ibc) == 2) then
-                  grid%distbc(nc) = 0.5d0*dx_loc_p(ng)
-                  grid%areabc(nc) = dy_loc_p(ng)*dz_loc_p(ng)
-                  grid%ipermbc(nc) = 1
-                  grid%delzbc(nc) = 0.d0
-                else if (grid%iface(ibc) == 3) then
-                  grid%distbc(nc) = 0.5d0*dz_loc_p(ng)
-                  grid%areabc(nc) = dx_loc_p(ng)*dy_loc_p(ng)
-                  grid%ipermbc(nc) = 2
-                  grid%delzbc(nc) = grid%distbc(nc)
-                else if (grid%iface(ibc) == 4) then
-                  grid%distbc(nc) = 0.5d0*dz_loc_p(ng)
-                  grid%areabc(nc) = dx_loc_p(ng)*dy_loc_p(ng)
-                  grid%ipermbc(nc) = 2
-                  grid%delzbc(nc) = -grid%distbc(nc)
-                else if (grid%iface(ibc) == 5) then
-                  grid%distbc(nc) = 0.5d0*dy_loc_p(ng)
-                  grid%areabc(nc) = dx_loc_p(ng)*dz_loc_p(ng)
-                  grid%ipermbc(nc) = 3
-                  grid%delzbc(nc) = 0.d0
-                else if (grid%iface(ibc) == 6) then
-                  grid%distbc(nc) = 0.5d0*dy_loc_p(ng)
-                  grid%areabc(nc) = dx_loc_p(ng)*dz_loc_p(ng)
-                  grid%ipermbc(nc) = 3
-                  grid%delzbc(nc) = 0.d0
+                if (grid%locpat(1)%iface(ibc) == 1) then
+                  grid%locpat(1)%distbc(nc) = 0.5d0*dx_loc_p(ng)
+                  grid%locpat(1)%areabc(nc) = dy_loc_p(ng)*dz_loc_p(ng)
+                  grid%locpat(1)%ipermbc(nc) = 1
+                  grid%locpat(1)%delzbc(nc) = 0.d0
+                else if (grid%locpat(1)%iface(ibc) == 2) then
+                  grid%locpat(1)%distbc(nc) = 0.5d0*dx_loc_p(ng)
+                  grid%locpat(1)%areabc(nc) = dy_loc_p(ng)*dz_loc_p(ng)
+                  grid%locpat(1)%ipermbc(nc) = 1
+                  grid%locpat(1)%delzbc(nc) = 0.d0
+                else if (grid%locpat(1)%iface(ibc) == 3) then
+                  grid%locpat(1)%distbc(nc) = 0.5d0*dz_loc_p(ng)
+                  grid%locpat(1)%areabc(nc) = dx_loc_p(ng)*dy_loc_p(ng)
+                  grid%locpat(1)%ipermbc(nc) = 2
+                  grid%locpat(1)%delzbc(nc) = grid%locpat(1)%distbc(nc)
+                else if (grid%locpat(1)%iface(ibc) == 4) then
+                  grid%locpat(1)%distbc(nc) = 0.5d0*dz_loc_p(ng)
+                  grid%locpat(1)%areabc(nc) = dx_loc_p(ng)*dy_loc_p(ng)
+                  grid%locpat(1)%ipermbc(nc) = 2
+                  grid%locpat(1)%delzbc(nc) = -grid%locpat(1)%distbc(nc)
+                else if (grid%locpat(1)%iface(ibc) == 5) then
+                  grid%locpat(1)%distbc(nc) = 0.5d0*dy_loc_p(ng)
+                  grid%locpat(1)%areabc(nc) = dx_loc_p(ng)*dz_loc_p(ng)
+                  grid%locpat(1)%ipermbc(nc) = 3
+                  grid%locpat(1)%delzbc(nc) = 0.d0
+                else if (grid%locpat(1)%iface(ibc) == 6) then
+                  grid%locpat(1)%distbc(nc) = 0.5d0*dy_loc_p(ng)
+                  grid%locpat(1)%areabc(nc) = dx_loc_p(ng)*dz_loc_p(ng)
+                  grid%locpat(1)%ipermbc(nc) = 3
+                  grid%locpat(1)%delzbc(nc) = 0.d0
                 endif
               case(2) ! cylindrical
-                ird= mod(mod((m),grid%nlxy),grid%nlx) + grid%nxs 
-                if (grid%iface(ibc) == 1) then
-                  grid%distbc(nc) = 0.5d0*dx_loc_p(ng)
-                  grid%areabc(nc) = 2.0D0* Pi * grid%rd(ird-1)*dz_loc_p(ng)
-                  grid%ipermbc(nc) = 1
-                  grid%delzbc(nc) = 0.d0
-                else if (grid%iface(ibc) == 2) then
-                  grid%distbc(nc) = 0.5d0*dx_loc_p(ng)
-                  grid%areabc(nc) =  2.0D0* Pi * grid%rd(ird)*dz_loc_p(ng)
-                  grid%ipermbc(nc) = 1
-                  grid%delzbc(nc) = 0.d0
-                else if (grid%iface(ibc) == 3) then
-                  grid%distbc(nc) = 0.5d0*dz_loc_p(ng)
-                  grid%areabc(nc) =  Pi * (grid%rd(ird)+ grid%rd(ird-1))*&
+                ird= mod(mod((m),grid%locpat(1)%nlxy),grid%locpat(1)%nlx) + grid%locpat(1)%nxs 
+                if (grid%locpat(1)%iface(ibc) == 1) then
+                  grid%locpat(1)%distbc(nc) = 0.5d0*dx_loc_p(ng)
+                  grid%locpat(1)%areabc(nc) = 2.0D0* Pi * grid%rd(ird-1)*dz_loc_p(ng)
+                  grid%locpat(1)%ipermbc(nc) = 1
+                  grid%locpat(1)%delzbc(nc) = 0.d0
+                else if (grid%locpat(1)%iface(ibc) == 2) then
+                  grid%locpat(1)%distbc(nc) = 0.5d0*dx_loc_p(ng)
+                  grid%locpat(1)%areabc(nc) =  2.0D0* Pi * grid%rd(ird)*dz_loc_p(ng)
+                  grid%locpat(1)%ipermbc(nc) = 1
+                  grid%locpat(1)%delzbc(nc) = 0.d0
+                else if (grid%locpat(1)%iface(ibc) == 3) then
+                  grid%locpat(1)%distbc(nc) = 0.5d0*dz_loc_p(ng)
+                  grid%locpat(1)%areabc(nc) =  Pi * (grid%rd(ird)+ grid%rd(ird-1))*&
                        (grid%rd(ird) - grid%rd(ird-1))	
-                  grid%ipermbc(nc) = 2
-                  grid%delzbc(nc) = grid%distbc(nc)
-                else if (grid%iface(ibc) == 4) then
-                  grid%distbc(nc) = 0.5d0*dz_loc_p(ng)
-                  grid%areabc(nc) = Pi * (grid%rd(ird)+ grid%rd(ird-1))*&
+                  grid%locpat(1)%ipermbc(nc) = 2
+                  grid%locpat(1)%delzbc(nc) = grid%locpat(1)%distbc(nc)
+                else if (grid%locpat(1)%iface(ibc) == 4) then
+                  grid%locpat(1)%distbc(nc) = 0.5d0*dz_loc_p(ng)
+                  grid%locpat(1)%areabc(nc) = Pi * (grid%rd(ird)+ grid%rd(ird-1))*&
                        (grid%rd(ird) - grid%rd(ird-1))
-                  grid%ipermbc(nc) = 2
-                  grid%delzbc(nc) = -grid%distbc(nc)
+                  grid%locpat(1)%ipermbc(nc) = 2
+                  grid%locpat(1)%delzbc(nc) = -grid%locpat(1)%distbc(nc)
                 endif	
               case(3) ! spherical
               end select
@@ -1407,9 +1421,9 @@ end subroutine pflowgrid_Setup_SNES
   call VecRestoreArrayF90(grid%dy_loc, dy_loc_p, ierr)
   call VecRestoreArrayF90(grid%dz_loc, dz_loc_p, ierr)
 
-  if(grid%nconnbc .ne. nc) then
+  if(grid%locpat(1)%nconnbc .ne. nc) then
     write(*,*) 'Error in computing boundary connections: ', &
-      'rank = ',myrank,' nconnbc = ',grid%nconnbc,' nc = ',nc
+      'rank = ',myrank,' nconnbc = ',grid%locpat(1)%nconnbc,' nc = ',nc
     stop
   endif
  
@@ -1420,13 +1434,13 @@ end subroutine pflowgrid_Setup_SNES
   !-----------------------------------------------------------------------
   ! Set up boundary conditions at interfaces
   !-----------------------------------------------------------------------
-  allocate(grid%velocitybc(grid%nphase, grid%nconnbc))
-     allocate(grid%xxbc(grid%ndof,grid%nconnbc))
-!     allocate(grid%iphasebc(grid%nconnbc))
-	 do nc = 1, grid%nconnbc
-        ibc = grid%ibconn(nc)
-        grid%xxbc(:,nc)=grid%xxbc0(:,ibc)
-        grid%velocitybc(:,nc) = grid%velocitybc0(:,ibc)
+  allocate(grid%locpat(1)%velocitybc(grid%nphase, grid%locpat(1)%nconnbc))
+     allocate(grid%locpat(1)%xxbc(grid%ndof,grid%locpat(1)%nconnbc))
+!     allocate(grid%iphasebc(grid%locpat(1)%nconnbc))
+	 do nc = 1, grid%locpat(1)%nconnbc
+        ibc = grid%locpat(1)%ibconn(nc)
+        grid%locpat(1)%xxbc(:,nc)=grid%xxbc0(:,ibc)
+        grid%locpat(1)%velocitybc(:,nc) = grid%velocitybc0(:,ibc)
      enddo
    ! if(grid%using_pflowGrid == PETSC_FALSE)then
 	 deallocate(grid%xxbc0)

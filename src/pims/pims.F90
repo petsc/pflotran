@@ -31,10 +31,13 @@
 
   integer :: ierr, ihalcnt
   type(pflowGrid) :: grid
+  type(pflow_solver_context) :: pflowsolv
+!  type(pflow_localpatch_info) :: gridpatch
+    
   integer :: igeom
   integer*4 :: nx, ny, nz
   integer*4 :: npx, npy, npz
-  integer :: nphase, ndof, icouple, idcdm, itable
+  integer :: nphase, ndof, idcdm, itable
   integer :: nspec,npricomp
   integer :: kplt, iplot, iflgcut, its, ntstep
   integer :: myid
@@ -47,11 +50,16 @@
   call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
 
   call MPI_Comm_rank(PETSC_COMM_WORLD, myid, ierr)
-
-  call pflow_read_gridsize("pflow.in", igeom, nx, ny, nz, npx, npy, npz, &
+ ! call MPI_Comm_size(PETSC_COMM_WORLD, grid%commsize, ierr)
+ 
+  allocate(grid%locpat(1))
+ ! For current pims petsc version, every processor only have one patch on one level
+ 
+ 
+   call pflow_read_gridsize("pflow.in", igeom, nx, ny, nz, npx, npy, npz, &
   nphase,  ierr)
   
-  icouple = 0
+
   ntstep=1
   iflgcut = 0
 
@@ -65,21 +73,22 @@
 
 ! set up structure constructor
 ! npx = PETSC_DECIDE; npy = PETSC_DECIDE; npz = PETSC_DECIDE
-  grid = pflowGrid_new(igeom, nx, ny, nz, npx, npy, npz, nphase)
+  call pflowGrid_new(grid, pflowsolv, igeom, nx, ny, nz, npx, npy, npz, nphase)
 
  
   call PetscGetCPUTime(timex(1), ierr)
   call PetscGetTime(timex_wall(1), ierr)
 
-  call pflowGrid_setup(grid, "pflow.in")
+  call pflowGrid_setup(grid, pflowsolv,"pflow.in")
   CHKMEMQ
   kplt = 0
   iplot = 1
 
 ! call VecView(grid%conc,PETSC_VIEWER_STDOUT_WORLD,ierr)
 
+   print *,' Begin output'
       call pflow_var_output(grid,kplt,iplot)
-  
+    print *,' End output'
   	  
   if(myid == 0) print *, ""
   if(myid == 0) print *, ""
@@ -91,7 +100,7 @@
 
   do steps = 1, grid%stepmax
 
-    call pflowGrid_step(grid,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
+    call pflowGrid_step(grid,pflowsolv,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
 
 !   update field variables
     call pflowGrid_update(grid)
