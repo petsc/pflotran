@@ -1,6 +1,7 @@
 module unstructured_grid_mod
 
  use pflow_gridtype_module
+#define HASH
 
  private 
 
@@ -42,16 +43,19 @@ subroutine ReadUnstructuredGrid(grid)
  
   PetscScalar, pointer :: perm_xx_p(:),perm_yy_p(:),perm_zz_p(:),por_p(:), &
                           tor_p(:), volume_p(:)
-  integer INUNIT1,ierr
+  integer fid, ierr
   integer :: connection_id, material_id, natural_id, local_id, local_ghosted_id
   integer :: natural_id_upwind, natural_id_downwind
   integer :: local_id_upwind, local_id_downwind
   integer :: local_ghosted_id_upwind, local_ghosted_id_downwind
+  integer :: count1, count2
   real*8 :: xcoord, ycoord, zcoord, xperm, yperm, zperm
   real*8 :: area, distance, distance_upwind, distance_downwind, cosB
   real*8 :: volume, porosity, tortuosity, direction
-  real*8 :: dx, dy, dz
-  character*4 card
+  real*8 :: dx, dy, dz, delz
+  character(len=MAXCARDLENGTH) :: card
+  character(len=MAXWORDLENGTH) :: bctype
+  real*8 :: time0, time1
 
   call VecGetArrayF90(grid%volume, volume_p, ierr); CHKERRQ(ierr)
   call VecGetArrayF90(grid%perm_xx, perm_xx_p, ierr); CHKERRQ(ierr)
@@ -60,21 +64,27 @@ subroutine ReadUnstructuredGrid(grid)
   call VecGetArrayF90(grid%tor,tor_p,ierr)
   call VecGetArrayF90(grid%porosity,por_p,ierr)
 
-  open(IUNIT1, file="geom_field.in", action="read", status="old")
- 
+  time0 = secnds(0.)
+  fid = 86
+  open(fid, file="hanford.in", action="read", status="old")
+
   ! create hash table for fast lookup
+#ifdef HASH
   call CreateNaturalToLocalHash(grid)
+  call PrintHashTable
+#endif
 
 ! GRID information
   card = "GRID"
-  call fiFindStringInFile(INUNIT1,card,ierr)
+  call fiFindStringInFile(fid,card,ierr)
 
   ! report error if card does not exist
   if (ierr /= 0 .and. grid%myrank == 0) &
     print *, 'Card (',card, ') not found in file'
 
+  count1 = 0
   do
-    call fiReadFlotranString(IUNIT1,string,ierr)
+    call fiReadFlotranString(fid,string,ierr)
     call fiReadStringErrorMsg(card,ierr)
 
     if (string(1:1) == '.' .or. string(1:1) == '/') exit
@@ -117,9 +127,13 @@ subroutine ReadUnstructuredGrid(grid)
     grid%y(natural_id)=ycoord
     grid%z(natural_id)=zcoord
 
+#ifdef HASH
     local_ghosted_id = GetLocalIdFromHash(natural_id)
     if (local_ghosted_id > 0) then
       local_id = grid%nG2L(local_ghosted_id)
+#else
+    local_id = GetLocalGhostedIdFromNaturalId(natural_id,grid)
+#endif
       if (local_id > 0) then
         perm_xx_p(local_id) = xperm
         perm_yy_p(local_id) = yperm
@@ -129,13 +143,18 @@ subroutine ReadUnstructuredGrid(grid)
         tor_p(local_id) = tortuosity
         ! need something in which to store material id
       endif
+#ifdef HASH
     endif
+#endif
 
 #if DEBUG
     print *, 'Read geom 1:',natural_id,xcoord,ycoord,zcoord,volume, &
                             xperm,yperm,zperm,porosity,tortuosity
 #endif
+    count1 = count1 + 1
   enddo
+
+  print *, count1, ' cells read'
   
 ! CONNection information
 
@@ -163,18 +182,21 @@ subroutine ReadUnstructuredGrid(grid)
   grid%nconn = 0
 
   card = "CONN"
-  call fiFindStringInFile(INUNIT1,card,ierr)
+  call fiFindStringInFile(fid,card,ierr)
 
   ! report error if card does not exist
   if (ierr /= 0 .and. grid%myrank == 0) &
     print *, 'Card (',card, ') not found in file'
 
+  count1 = 0
+  count2 = 0
   do
-    call fiReadFlotranString(IUNIT1,string,ierr)
+    call fiReadFlotranString(fid,string,ierr)
     call fiReadStringErrorMsg(card,ierr)
 
     if (string(1:1) == '.' .or. string(1:1) == '/') exit
 
+! stomp2pflotran header
 ! :id idup iddn distup distdn area cosB
     call fiReadInt(string,connection_id,ierr) 
     call fiDefaultMsg('connection_id',ierr)
@@ -185,8 +207,15 @@ subroutine ReadUnstructuredGrid(grid)
     call fiReadInt(string,natural_id_downwind,ierr) 
     call fiDefaultMsg('natural_id_downwind',ierr)
 
+#ifdef HASH
     local_ghosted_id_upwind = GetLocalIdFromHash(natural_id_upwind)
     local_ghosted_id_downwind = GetLocalIdFromHash(natural_id_downwind)
+#else
+    local_ghosted_id_upwind = &
+               GetLocalGhostedIdFromNaturalId(natural_id_upwind,grid)
+    local_ghosted_id_downwind = &
+               GetLocalGhostedIdFromNaturalId(natural_id_downwind,grid)
+#endif
     if (local_ghosted_id_upwind > 0 .and. &
         local_ghosted_id_downwind > 0) then ! both cells are local ghosted
       local_id_upwind = grid%nG2L(local_ghosted_id_upwind)
@@ -194,6 +223,7 @@ subroutine ReadUnstructuredGrid(grid)
       ! at least 1 cell must be local (non-ghosted) since we don't want to
       ! create a connection between two ghosted cells
       if (local_id_upwind > 0 .or. local_id_downwind > 0) then
+        count2 = count2 + 1
 
         ! Continue reading string if local
         call fiReadDouble(string,distance_upwind,ierr) 
@@ -234,7 +264,9 @@ subroutine ReadUnstructuredGrid(grid)
         endif
       endif
     endif
+    count1 = count1 + 1
   enddo
+  print *, count2, ' of ', count1, ' connections found'
 
 
 ! BCONection information
@@ -261,29 +293,39 @@ subroutine ReadUnstructuredGrid(grid)
   grid%nconnbc = 0
 
   card = "BCON"
-  call fiFindStringInFile(INUNIT1,card,ierr)
+  call fiFindStringInFile(fid,card,ierr)
 
   ! report error if card does not exist
   if (ierr /= 0 .and. grid%myrank == 0) &
     print *, 'Card (',card, ') not found in file'
 
+  count1 = 0
+  count2 = 0
   do
-    call fiReadFlotranString(IUNIT1,string,ierr)
+    call fiReadFlotranString(fid,string,ierr)
     call fiReadStringErrorMsg(card,ierr)
 
     if (string(1:1) == '.' .or. string(1:1) == '/') exit
 
+! stomp2pflotran header
 !:id cellid dist area cosB "type" time value
+
     call fiReadInt(string,connection_id,ierr) 
     call fiDefaultMsg('connection_id',ierr)
 
     call fiReadInt(string,natural_id,ierr) 
     call fiDefaultMsg('natural_id',ierr)
 
+#ifdef HASH
     local_ghosted_id = GetLocalIdFromHash(natural_id)
     if (local_ghosted_id > 0) then 
       local_id = grid%nG2L(local_ghosted_id)
+#else
+    local_id = GetLocalGhostedIdFromNaturalId(natural_id,grid)
+#endif
       if (local_id > 0) then
+        grid%nconnbc = grid%nconnbc + 1
+        count2 = count2 + 1
 
         ! Continue reading string if local
         call fiReadDouble(string,direction,ierr) 
@@ -295,27 +337,41 @@ subroutine ReadUnstructuredGrid(grid)
         call fiReadDouble(string,area,ierr) 
         call fiDefaultMsg('area',ierr)
 
-        call fiReadDouble(string,cosB,ierr) 
-        call fiDefaultMsg('cosB',ierr)
+        call fiReadDouble(string,delz,ierr) 
+        call fiDefaultMsg('delz',ierr)
+
+        call fiReadWord(string,bctype,ierr) 
+        call fiDefaultMsg('bctype',ierr)
 
         grid%distbc(grid%nconnbc) = distance
         grid%areabc(grid%nconnbc) = area
+        grid%delz(grid%nconnbc) = delz
 
         ! setup direction of permeability
         grid%ipermbc(grid%nconnbc) = abs(direction) ! 1,2,3 -> x,y,z
 
-        if (direction == -3) then ! bottom face
-          grid%delzbc(grid%nconnbc) = distance 
-        else if (direction == 3) then ! top face
-          grid%delzbc(grid%nconnbc) = -1.d0*distance
-        else
-          grid%delzbc(grid%nconnbc) = 0.d0
+        call fiWordToLower(bctype)
+        if (StringCompare(bctype,"dirichlet",9))
+          grid%ibndtyp(grid%nconnbc) = 1
+        else if (StringCompare(bctype,"neumann",7))
+          grid%ibndtyp(grid%nconnbc) = 2
         endif
+
       endif
+#ifdef HASH
     endif
+#endif
+    count1 = count1 + 1
   enddo
+
+  print *, count2, ' of ', count1, ' connections found'
+
+#ifdef HASH
   deallocate(hash)
-  close(IUNIT1)
+#endif
+  close(fid)
+  time1 = secnds(0.) - time0
+  print *, time1, ' seconds to read unstructured grid data'
  
   call VecRestoreArrayF90(grid%volume, volume_p, ierr); CHKERRQ(ierr)     
   call VecRestoreArrayF90(grid%perm_xx, perm_xx_p, ierr); CHKERRQ(ierr)
@@ -360,7 +416,7 @@ integer function GetNumberOfLocalConnections(fid,grid)
 
   num_local_connections = 0
   do
-    call fiReadFlotranString(IUNIT1,string,ierr)
+    call fiReadFlotranString(fid,string,ierr)
     call fiReadStringErrorMsg('GRID',ierr)
 
     if (string(1:1) == '.' .or. string(1:1) == '/') exit
@@ -424,7 +480,7 @@ integer function GetNumberOfBoundaryConnections(fid,grid)
 
   num_boundary_connections = 0
   do
-    call fiReadFlotranString(IUNIT1,string,ierr)
+    call fiReadFlotranString(fid,string,ierr)
     call fiReadStringErrorMsg('GRID',ierr)
 
     if (string(1:1) == '.' .or. string(1:1) == '/') exit
@@ -552,6 +608,8 @@ subroutine CreateNaturalToLocalHash(grid)
     hash(2,num_in_hash,hash_id) = local_ghosted_id
   enddo
 
+  print *, 'num_ids_per_hash:', num_ids_per_hash
+
 end subroutine CreateNaturalToLocalHash
 
 ! ************************************************************************** !
@@ -579,5 +637,30 @@ integer function GetLocalIdFromHash(natural_id)
   GetLocalIdFromHash = 0
 
 end function GetLocalIdFromHash
+
+! ************************************************************************** !
+!
+! PrintHashTable: Prints the hashtable for viewing
+! author: Glenn Hammond
+! date: 03/09/07
+!
+! ************************************************************************** !
+subroutine PrintHashTable()
+
+  implicit none
+
+  integer :: ihash, id, fid
+
+  fid = 87 
+  open(fid,file='hashtable.dat',action='write')
+  do ihash=1,num_hash
+    write(fid,'(a4,i3,a,i5,a2,x,200(i6,x))') 'Hash',ihash,'(', &
+                         hash(1,0,ihash), &
+                         '):', &
+                         (hash(1,id,ihash),id=1,hash(1,0,ihash))
+  enddo
+  close(fid)
+
+end subroutine PrintHashTable
 
 end module unstructured_grid_mod

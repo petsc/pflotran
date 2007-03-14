@@ -900,6 +900,7 @@ subroutine pflowGrid_setup(grid, inputfile)
   
   use utilities_module
   use readfield
+  use unstructured_grid_mod
   use pflow_solv_module  
                             
   implicit none
@@ -2110,6 +2111,9 @@ subroutine pflowGrid_setup(grid, inputfile)
 
  if (grid%iread_geom == 1) then
    call Read_Geom_field(grid)
+ else if (grid%iread_geom == 2) then
+   if (myrank == 0) print *, 'Reading unstructured grid'
+   call ReadUnstructuredGrid(grid)
  endif  
 
 

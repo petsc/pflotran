@@ -30,6 +30,7 @@ util_obj  = ${common_src}fileio.o \
 	${common_src}co2_span_wagner.o \
 	${common_src}oil_eos.o \
 	${common_src}oil_pckr.o \
+	${common_src}unstructured_grid.o \
 	${common_src}utilities.o \
 	${common_src}ptran_global.o \
 	${common_src}trdynmem.o

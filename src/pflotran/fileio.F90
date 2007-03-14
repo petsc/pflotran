@@ -221,10 +221,10 @@ subroutine fiReadFlotranString(fid, string, ierr)
   ierr = 0
   
   do
-    !read(fid,'(a128)',iostat=ierr) string
     read(fid,'(a256)',iostat=ierr) string
-  !print *,string
-  if (ierr /= 0) exit
+
+    if (ierr /= 0) exit
+
     tempstring = string
     call fiReadWord(tempstring,word,.true.,ierr)
     call fiWordToUpper(word)
@@ -237,10 +237,11 @@ subroutine fiReadFlotranString(fid, string, ierr)
           stop
         endif
         call fiReadWord(tempstring,word,.false.,ierr)
+        call fiWordToUpper(word)
         if (word(1:4) == 'NOSK') exit
       enddo
     else if (word(1:1) /= ':' .and. word(1:1) /= ' ' .and. &
-             word(1:4) /= 'NOSK') then
+             word(1:4) /= 'NOSK' .and. word(1:1) /= '!') then
       exit
     endif
   enddo
@@ -327,10 +328,10 @@ subroutine fiReadWord(string, word, return_blank_error, ierr)
   else
     ierr = 0
 
-    ! Remove leading blanks
+    ! Remove leading blanks and tabs
     
     i=1
-    do while(string(i:i) == ' ') 
+    do while(string(i:i) == ' ' .or. string(i:i) == achar(9)) 
       i=i+1
     enddo
 
@@ -631,7 +632,7 @@ subroutine fiReadDBaseString(fid, string, ierr)
         if (word(1:4) == 'NOSK') exit
       enddo
     else if (word(1:1) /= ':' .and. word(1:1) /= ' ' .and. &
-             word(1:4) /= 'NOSK') then
+             word(1:4) /= 'NOSK' .and. word(1:1) /= '!') then
       exit
     endif
   enddo
