@@ -86,8 +86,8 @@ private
 !  read(60,*)ir,px,py,pz,por,tor
 !   print *, 'Read filed:',ir,nx,ny,nz,px,py,pz,por,tor
  
-	do iln=1, grid%nlmax
-       na = grid%nL2A(iln)
+	do iln=1, grid%locpat(1)%nlmax
+       na = grid%locpat(1)%nL2A(iln)
     
       if(na == ir) then
         nz = na/grid%nxy + 1
@@ -147,8 +147,8 @@ private
 !	print *,x,y,z,phase,pg,t,sg,xl,xg,vf
   endif 
 		
-   do iln=1, grid%nlmax
-       na = grid%nL2A(iln)
+   do iln=1, grid%locpat(1)%nlmax
+       na = grid%locpat(1)%nL2A(iln)
     
       if(na == ir) then
         nz = na/grid%nxy + 1

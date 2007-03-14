@@ -368,7 +368,7 @@
   integer icri,ichange 
 
   PetscScalar, pointer :: xx_p(:), yy_p(:),iphase_p(:)
-  integer*4 :: n,n0,index,ipr
+  integer :: n,n0,index,ipr
   integer :: ierr,iipha,i 
   real*8 :: p2,p,tmp,t, xla
   real*8 :: dg,dddt,dddp,fg,dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp

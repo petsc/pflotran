@@ -672,13 +672,13 @@ private
 
  
   integer :: ierr
-  integer*4 :: n, ng, nc, nr
-  integer*4 :: i, i1, i2, j, jn, jng, jm1, jm2, jmu
-  integer*4 :: m, m1, m2, mu, n1, n2, ip1, ip2, p1, p2, t1, t2, c1, c2,&
+  integer :: n, ng, nc, nr
+  integer :: i, i1, i2, j, jn, jng, jm1, jm2, jmu
+  integer :: m, m1, m2, mu, n1, n2, ip1, ip2, p1, p2, t1, t2, c1, c2,&
              s1, s2
-  integer*4 :: kk1,kk2,jj1,jj2,ii1,ii2, kk, jj, ii
-  integer*4 :: i1_hencoeff, i2_hencoeff
-  integer*4 :: ibc  ! Index that specifies a boundary condition block
+  integer :: kk1,kk2,jj1,jj2,ii1,ii2, kk, jj, ii
+  integer :: i1_hencoeff, i2_hencoeff
+  integer :: ibc  ! Index that specifies a boundary condition block
   
 ! real*8 :: term1, term2, term3
 
@@ -1321,12 +1321,12 @@ private
     MatStructure flag
 
     integer :: ierr
-    integer*4 :: n, ng, nc,nvar,neq,nr
-    integer*4 :: i1, i2, j, jn, jng, jm1, jm2,jmu, i
-    integer   :: kk,ii1,jj1,kk1,ii2,jj2,kk2  
-    integer*4 :: m, m1, m2, mu, n1, n2, ip1, ip2 
-    integer*4 :: p1,p2,t1,t2,c1,c2,s1,s2
-    integer*4 :: ibc  ! Index that specifies a boundary condition block.
+    integer :: n, ng, nc,nvar,neq,nr
+    integer :: i1, i2, j, jn, jng, jm1, jm2,jmu, i
+    integer :: kk,ii1,jj1,kk1,ii2,jj2,kk2  
+    integer :: m, m1, m2, mu, n1, n2, ip1, ip2 
+    integer :: p1,p2,t1,t2,c1,c2,s1,s2
+    integer :: ibc  ! Index that specifies a boundary condition block.
     real*8 ::  v_darcy, q
 
     PetscScalar, pointer :: porosity_loc_p(:), volume_p(:), &
@@ -1340,7 +1340,7 @@ private
   PetscScalar, pointer :: iphase_loc_p(:), icap_loc_p(:), ithrm_loc_p(:),var_loc_p(:)
   integer :: iicap,ii,jj,iiphas,iiphas1,iiphas2,iicap1,iicap2
   integer :: index_var_begin, index_var_end
-  integer*4 ibc_hencoeff
+  integer ibc_hencoeff
   real*8 :: dw_kg,dw_mol,enth_src_co2,enth_src_h2o,rho,dddt,dddp,fg,dfgdp,&
             dfgdt,eng,dhdt,dhdp,visc,dvdt,dvdp
   real*8 :: cond, gravity,  acc,  vv_darcy(grid%nphase),&
@@ -1889,10 +1889,10 @@ private
 
  
   integer :: ierr
-  integer*4 :: n
-  integer*4 :: i, index_var_begin,index_var_end
-  integer*4 :: p1
-  integer*4 :: ii1,ii2, iicap, iiphase
+  integer :: n
+  integer :: i, index_var_begin,index_var_end
+  integer :: p1
+  integer :: ii1,ii2, iicap, iiphase
 
   PetscScalar, pointer :: accum_p(:),yy_p(:),volume_p(:),porosity_p(:),&
                           var_p(:), icap_p(:),iphase_p(:),ithrm_p(:)
@@ -1973,7 +1973,7 @@ private
     type(pflowGrid) :: grid 
     
                       
-    integer*4 :: n, ichange,n0
+    integer :: n, ichange,n0
     integer :: ierr,iicap,iiphase
     PetscScalar, pointer :: xx_p(:),icap_p(:),ithrm_p(:),iphase_p(:), var_p(:)
     real*8 dif(1:grid%nphase), tmp           

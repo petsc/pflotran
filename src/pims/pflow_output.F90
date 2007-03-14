@@ -3,7 +3,6 @@ module pflow_output_module
 
   public
   
- integer,private :: size_var_use, size_var_node
   contains
 
  !======================================================================
@@ -225,7 +224,7 @@ module pflow_output_module
   real*8, pointer :: fldflx(:), fldvol(:)
   real*8 xxx(1:grid%ndof)
   real*8, allocatable:: vvar(:), vavel(:, :)
-  integer :: nxm1,nym1,nzm1, ndex, na, nv
+  integer :: nxm1,nym1,nzm1, ndex, na, nv,ng
   integer :: ierr,mm, nvar_out, status(MPI_STATUS_SIZE)
   integer :: i,ip,j,jn,k,ibrk,n,nc,nn, ipha, jj, ifound
   
@@ -252,9 +251,7 @@ module pflow_output_module
   q = '","'
   tyr = grid%t/grid%tconv
 
-  size_var_use = 2 + 4*grid%nphase
-  size_var_node = size_var_use * (1+ grid%ndof)
-  allocate(vvar(1:size_var_use))
+  allocate(vvar(1:grid%size_var_use))
   
   !save icall, icall_brk, icall_plt
   
@@ -302,9 +299,8 @@ module pflow_output_module
 ! plot spatial data (iplot > 0)
   
     call VecGetArrayF90(grid%xx,  xx_p, ierr)
-    call VecGetArrayF90(grid%var, var_p, ierr)
-  
-  
+    var_p => grid%locpat(1)%var
+	
 	if (kplt < 10) then
       write(fname,'(a7,i1,a4)') 'pflow00', kplt, '.dat'
     else if (kplt < 100) then
@@ -331,14 +327,15 @@ module pflow_output_module
 				      ifound=0
 					  if(grid%myrank==0) then
 				       ifound=0
-					   do n=ndex,grid%nlmax
-					   	 if(grid%nL2A(n) == na) then
-					      ifound=1
+					   do n=ndex,grid%locpat(1)%nlmax
+					   	 if(grid%locpat(1)%nL2A(n) == na) then
+					      ng=grid%locpat(1)%nL2G(n)
+						  ifound=1
 						  jn= 1 + (n-1)*grid%ndof 
-					      nv = 1 + (n-1) * size_var_node
+					      nv = 1 + (ng-1) * grid%size_var_node
 					     
 					      xxx= xx_p(jn:jn+grid%ndof-1)
-						  vvar= var_p(nv:nv + size_var_use-1)
+						  vvar= var_p(nv:nv + grid%size_var_use-1)
 					      ndex=n
 						  exit	 
 					    endif
@@ -346,18 +343,20 @@ module pflow_output_module
 					   if(ifound==0)then  
 					   
 					   	call MPI_Recv(xxx,grid%ndof, MPI_DOUBLE_PRECISION,MPI_ANY_SOURCE, na, PETSC_COMM_WORLD, status,ierr) 					
-					    call MPI_Recv(vvar, size_var_use ,MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, na+na,PETSC_COMM_WORLD,status ,ierr) 
+					    call MPI_Recv(vvar, grid%size_var_use ,MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, na+na,PETSC_COMM_WORLD,status ,ierr) 
                        endif
 					    
 					  else
-					    do n=ndex,grid%nlmax
-					      if(grid%nL2A(n) == na) then
-					        jn= 1 + (n-1)*grid%ndof 
-					        nv = 1 + (n-1) * size_var_node
+					    do n=ndex,grid%locpat(1)%nlmax
+					      if(grid%locpat(1)%nL2A(n) == na) then
+					        jn= 1 + (n-1)*grid%ndof
+							 ng=grid%locpat(1)%nL2G(n)
+					        nv = 1 + (ng-1) * grid%size_var_node
 		        
 						   xxx= xx_p(jn:jn+grid%ndof-1)
 						   call MPI_Send(xxx, grid%ndof, MPI_DOUBLE_PRECISION,0,na, PETSC_COMM_WORLD, ierr)  
-				           call MPI_Send(var_p(nv:nv + size_var_use-1), size_var_use ,MPI_DOUBLE_PRECISION, 0, na+na, PETSC_COMM_WORLD, ierr)   
+				           call MPI_Send(var_p(nv:nv + grid%size_var_use-1), grid%size_var_use ,MPI_DOUBLE_PRECISION, 0,&
+                                na+na, PETSC_COMM_WORLD, ierr)   
 					       ndex=n
 						   exit
 					      endif
@@ -365,7 +364,7 @@ module pflow_output_module
 				     endif     	     
                 
 				  call MPI_Barrier(PETSC_COMM_WORLD, ierr)
-				  
+				
 				  if(grid%myrank ==0 )then
                        write(IUNIT3,'(1p100e12.4)') grid%x(na+1), grid%y(na+1), grid%z(na+1), &
                           vvar(1:2+grid%nphase)! , & ! Saturations
@@ -396,30 +395,33 @@ module pflow_output_module
 				      ifound=0
 					  if(grid%myrank==0) then
 				       ifound=0
-					   do n=ndex,grid%nlmax
-					   	 if(grid%nL2A(n) == na) then
+					   do n=ndex,grid%locpat(1)%nlmax
+					   	 if(grid%locpat(1)%nL2A(n) == na) then
 					      ifound=1
 						  jn= 1 + (n-1)*grid%ndof 
-					      nv = 1 + (n-1) * size_var_node
+						  ng=grid%locpat(1)%nL2G(n)
+					      nv = 1 + (ng-1) * grid%size_var_node
 					      xxx= xx_p(jn:jn+grid%ndof-1)
-						  vvar= var_p(nv:nv + size_var_use-1)
+						  vvar= var_p(nv:nv + grid%size_var_use-1)
 					      ndex=n
 						  exit	 
 					    endif
 					   enddo
 					   if(ifound==0)then  
 					   	call MPI_Recv(xxx,grid%ndof, MPI_DOUBLE_PRECISION,MPI_ANY_SOURCE, na, PETSC_COMM_WORLD, status,ierr) 					
-					    call MPI_Recv(vvar, size_var_use ,MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, na+na,PETSC_COMM_WORLD,status ,ierr) 
+					    call MPI_Recv(vvar, grid%size_var_use ,MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, na+na,PETSC_COMM_WORLD,status ,ierr) 
                        endif
 					    
 					  else
-					    do n=ndex,grid%nlmax
-					      if(grid%nL2A(n) == na) then
-					        jn= 1 + (n-1)*grid%ndof 
-					        nv = 1 + (n-1) * size_var_node
+					    do n=ndex,grid%locpat(1)%nlmax
+					      if(grid%locpat(1)%nL2A(n) == na) then
+					        jn= 1 + (n-1)*grid%ndof
+							ng=grid%locpat(1)%nL2G(n) 
+					        nv = 1 + (ng-1) * grid%size_var_node
 						    xxx= xx_p(jn:jn+grid%ndof-1)
 						   call MPI_Send(xxx, grid%ndof, MPI_DOUBLE_PRECISION,0,na, PETSC_COMM_WORLD, ierr)  
-				           call MPI_Send(var_p(nv:nv + size_var_use-1), size_var_use ,MPI_DOUBLE_PRECISION, 0, na+na, PETSC_COMM_WORLD, ierr)   
+				           call MPI_Send(var_p(nv:nv + grid%size_var_use-1), grid%size_var_use ,MPI_DOUBLE_PRECISION,&
+                            0, na+na, PETSC_COMM_WORLD, ierr)   
 					       ndex=n
 						   exit
 					      endif
@@ -429,15 +431,11 @@ module pflow_output_module
 				  call MPI_Barrier(PETSC_COMM_WORLD, ierr)
 				  
 				  if(grid%myrank ==0 )then
-                        write(IUNIT3,'(1p100e12.4)') grid%x(na+1), grid%y(na+1), grid%z(na+1), &
-                          vvar(1:2+grid%nphase)
+                        write(IUNIT3,'(1p100e12.4)') grid%x(na+1), grid%y(na+1), grid%z(na+1), vvar(1:2+grid%nphase)
                           
                   
                     endif
-    	         
-				  
-					   
-				enddo
+   				enddo
 			  
 	endif
     
@@ -450,7 +448,8 @@ module pflow_output_module
   close (IUNIT3)
 
     call VecRestoreArrayF90(grid%xx,  xx_p, ierr)
-    call VecRestoreArrayF90(grid%var, var_p, ierr)
+  !  call VecRestoreArrayF90(grid%var, var_p, ierr)
+    nullify(var_p)
    
   if (grid%iprint >= 1) then
 

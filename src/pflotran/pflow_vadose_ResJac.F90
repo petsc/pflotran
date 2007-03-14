@@ -133,7 +133,7 @@ private
            endif
   enddo 
  enddo
-              
+
   call VecRestoreArrayF90(grid%xx, xx_p, ierr)
   call VecRestoreArrayF90(grid%iphas, iphase_p,ierr)
 
@@ -351,10 +351,10 @@ private
 !  print *,'in FLcont'
   ibase=1;                 temp1=>var_node1(ibase)
                            temp2=>var_node2(ibase)
-               
+
   ibase=ibase+1;           pre_ref1=>var_node1(ibase)
                            pre_ref2=>var_node2(ibase)
-               
+
   ibase=ibase+1;           sat1=>var_node1(ibase:ibase+grid%nphase-1)
                sat2=>var_node2(ibase:ibase+grid%nphase-1)
   ibase=ibase+grid%nphase; density1=>var_node1(ibase:ibase+grid%nphase-1)
@@ -372,7 +372,7 @@ private
   ibase=ibase+grid%nphase; xmol1=>var_node1(ibase:ibase+grid%nphase*grid%nspec-1)
                            xmol2=>var_node2(ibase:ibase+grid%nphase*grid%nspec-1)
   ibase=ibase+grid%nphase*grid%nspec;
-               diff1=>var_node1(ibase:ibase+grid%nphase*grid%nspec-1)    
+               diff1=>var_node1(ibase:ibase+grid%nphase*grid%nspec-1)
                diff2=>var_node2(ibase:ibase+grid%nphase*grid%nspec-1)
 
   !print *,' FLcont got pointers' ,var_node1,var_node2,sir1,sir2
@@ -413,8 +413,8 @@ private
      ukvr=kvr2(np)
      uh=h2(np)
      uxmol(1:grid%nspec)=xmol2((np-1)*grid%nspec+1 : np*grid%nspec)
-     endif      
-     
+     endif
+
    ! print *,'FLcont  uxmol',uxmol
     if(ukvr>floweps)then
          v_darcy= Dq * ukvr * dphi
@@ -424,11 +424,11 @@ private
        q=v_darcy * area
           
      do m=1, grid%nspec 
-       fluxm(m)=fluxm(m) + q*density_ave*uxmol(m)                                                            
-       enddo                                                                                                                                                                                         
-           fluxe = fluxe + q*density_ave*uh 
+       fluxm(m)=fluxm(m) + q*density_ave*uxmol(m)
+       enddo
+           fluxe = fluxe + q*density_ave*uh
        endif
-   endif 
+   endif
  !  print *,' FLcont end flow',np
 ! Diffusion term   
 ! Note : average rule may not be correct  
@@ -457,8 +457,8 @@ private
  !                           2 R = R - Res_FL  
  !print *,'end FLcont'
  
-  nullify(temp1, pre_ref1, sat1, density1, amw1, h1,u1, pc1,kvr1,xmol1,diff1)       
-  nullify(temp2, pre_ref2, sat2, density2, amw2, h2,u2, pc2,kvr2,xmol2,diff2)       
+  nullify(temp1, pre_ref1, sat1, density1, amw1, h1,u1, pc1,kvr1,xmol1,diff1)
+  nullify(temp2, pre_ref2, sat2, density2, amw2, h2,u2, pc2,kvr2,xmol2,diff2)
  end subroutine VadoseRes_FLCont
 
  subroutine VadoseRes_FLBCCont(nbc_no,area, &
@@ -559,9 +559,9 @@ private
        q=v_darcy * area
           
      do m=1, grid%nspec 
-       fluxm(m)=fluxm(m) + q*density_ave*uxmol(m)                                                            
-       enddo                                                                                                                                                                                         
-           fluxe = fluxe + q*density_ave*uh 
+       fluxm(m)=fluxm(m) + q*density_ave*uxmol(m)
+       enddo
+           fluxe = fluxe + q*density_ave*uh
        endif
       endif 
 ! Diffusion term   
@@ -640,20 +640,20 @@ private
        q=v_darcy * area
           
      do m=1, grid%nspec 
-       fluxm(m)=fluxm(m) + q*density_ave*uxmol(m)                                                            
-       enddo                                                                                                                                                                                         
-           fluxe = fluxe + q*density_ave*uh 
+       fluxm(m)=fluxm(m) + q*density_ave*uxmol(m)
+       enddo
+           fluxe = fluxe + q*density_ave*uh
         endif
      endif 
- 
+
      enddo
 
     Res_FL(1:grid%nspec)=fluxm(:)* grid%dt
     Res_FL(grid%ndof)=fluxe * grid%dt
 
   end select
-   nullify(temp1, pre_ref1, sat1, density1, amw1, h1,u1, pc1,kvr1,xmol1,diff1)       
-  nullify(temp2, pre_ref2, sat2, density2, amw2, h2,u2, pc2,kvr2,xmol2,diff2)       
+   nullify(temp1, pre_ref1, sat1, density1, amw1, h1,u1, pc1,kvr1,xmol1,diff1)
+  nullify(temp2, pre_ref2, sat2, density2, amw2, h2,u2, pc2,kvr2,xmol2,diff2)
  end  subroutine VadoseRes_FLBCCont 
 
 
@@ -672,13 +672,13 @@ private
 
  
   integer :: ierr
-  integer*4 :: n, ng, nc, nr
-  integer*4 :: i, i1, i2, j, jn, jng, jm1, jm2, jmu
-  integer*4 :: m, m1, m2, mu, n1, n2, ip1, ip2, p1, p2, t1, t2, c1, c2,&
+  integer :: n, ng, nc, nr
+  integer :: i, i1, i2, j, jn, jng, jm1, jm2, jmu
+  integer :: m, m1, m2, mu, n1, n2, ip1, ip2, p1, p2, t1, t2, c1, c2,&
              s1, s2
-  integer*4 :: kk1,kk2,jj1,jj2,ii1,ii2, kk, jj, ii
-  integer*4 :: i1_hencoeff, i2_hencoeff
-  integer*4 :: ibc  ! Index that specifies a boundary condition block
+  integer :: kk1,kk2,jj1,jj2,ii1,ii2, kk, jj, ii
+  integer :: i1_hencoeff, i2_hencoeff
+  integer :: ibc  ! Index that specifies a boundary condition block
   
 ! real*8 :: term1, term2, term3
 
@@ -842,7 +842,7 @@ private
       grid%itable,ierr)
     endif
   
-!  print *,'var_p',n,iiphase, var_p((n-1)*size_var_node+1:n*size_var_node)              
+!  print *,'var_p',n,iiphase, var_p((n-1)*size_var_node+1:n*size_var_node)
 !   if(n < 5) print *,'pflow_2ph: ',n,grid%ideriv,grid%xxphi_co2(n)
   enddo
 
@@ -1313,12 +1313,12 @@ private
     MatStructure flag
 
     integer :: ierr
-    integer*4 :: n, ng, nc,nvar,neq,nr
-    integer*4 :: i1, i2, j, jn, jng, jm1, jm2,jmu, i
-    integer   :: kk,ii1,jj1,kk1,ii2,jj2,kk2  
-    integer*4 :: m, m1, m2, mu, n1, n2, ip1, ip2 
-    integer*4 :: p1,p2,t1,t2,c1,c2,s1,s2
-    integer*4 :: ibc  ! Index that specifies a boundary condition block.
+    integer :: n, ng, nc,nvar,neq,nr
+    integer :: i1, i2, j, jn, jng, jm1, jm2,jmu, i
+    integer :: kk,ii1,jj1,kk1,ii2,jj2,kk2  
+    integer :: m, m1, m2, mu, n1, n2, ip1, ip2 
+    integer :: p1,p2,t1,t2,c1,c2,s1,s2
+    integer :: ibc  ! Index that specifies a boundary condition block.
     real*8 ::  v_darcy, q,dum1, dum2
 
     PetscScalar, pointer :: porosity_loc_p(:), volume_p(:), &
@@ -1332,7 +1332,7 @@ private
   PetscScalar, pointer :: iphase_loc_p(:), icap_loc_p(:), ithrm_loc_p(:),var_loc_p(:)
   integer :: iicap,ii,jj,iiphas,iiphas1,iiphas2,iicap1,iicap2
   integer :: index_var_begin, index_var_end
-  integer*4 ibc_hencoeff
+  integer ibc_hencoeff
   real*8 :: dw_kg,dw_mol,enth_src_co2,enth_src_h2o,rho,dddt,dddp,fg,dfgdp,&
             dfgdt,eng,dhdt,dhdp,visc,dvdt,dvdp
   real*8 :: cond, gravity,  acc,  vv_darcy(grid%nphase),&
@@ -1889,10 +1889,10 @@ private
 
  
   integer :: ierr
-  integer*4 :: n
-  integer*4 :: i, index_var_begin,index_var_end
-  integer*4 :: p1
-  integer*4 :: ii1,ii2, iicap, iiphase
+  integer :: n
+  integer :: i, index_var_begin,index_var_end
+  integer :: p1
+  integer :: ii1,ii2, iicap, iiphase
 
   PetscScalar, pointer :: accum_p(:),yy_p(:),volume_p(:),porosity_p(:),&
                           var_p(:), icap_p(:),iphase_p(:),ithrm_p(:)
@@ -1974,7 +1974,7 @@ private
     type(pflowGrid) :: grid 
     
                       
-    integer*4 :: n, ichange,n0
+    integer :: n, ichange,n0
     integer :: ierr,iicap,iiphase
     PetscScalar, pointer :: xx_p(:),icap_p(:),ithrm_p(:),iphase_p(:), var_p(:)
     real*8 dif(1:grid%nphase), dum1, dum2           

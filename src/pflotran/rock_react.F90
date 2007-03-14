@@ -27,7 +27,7 @@ private
 
  
   integer :: ierr
-  integer*4 :: n
+  integer :: n
  
 
 

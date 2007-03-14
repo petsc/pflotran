@@ -81,9 +81,9 @@ Contains
 
 !#include "pflowgrid_step.F90"
 
-  subroutine pflowGrid_step(grid,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
+  subroutine pflowGrid_step(grid,pflowsolv,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
   
-  use translator_ims_module, only : translator_IMS_step_maxchange
+  use IMS_module, only : pflow_ims_step_maxchange
   use pflow_output_module
   use ims_module
   use pflow_solv_module
@@ -91,6 +91,7 @@ Contains
   implicit none
 
   type(pflowGrid), intent(inout) :: grid
+  type(pflow_solver_context), intent(inout) :: pflowsolv
 
   integer :: ierr, ihalcnt, ns !i,m,n,ix,jy,kz,j
   integer :: its,kplt,iplot,ntstep !,idpmax,idtmpmax,idcmax
@@ -131,7 +132,7 @@ Contains
   call DAGlobalToLocalEnd(grid%da_1_dof, grid%ithrm, INSERT_VALUES, &
                           grid%ithrm_loc, ierr)
 
-  print *,'Step :: End trans distribute'
+ ! print *,'Step :: End trans distribute'
   grid%t = grid%t + grid%dt
   grid%flowsteps = grid%flowsteps + 1
 
@@ -187,17 +188,17 @@ Contains
   do
 ! call VecView(grid%r,PETSC_VIEWER_STDOUT_WORLD,ierr) 
 ! call VecView(grid%xx,PETSC_VIEWER_STDOUT_WORLD,ierr) 
-
+ !print *, 'Begin solving'
 	grid%iphch=0
       if(grid%use_ksp == PETSC_TRUE)then
-         call pflow_solve(grid,its,snes_reason,ierr)
+         call pflow_solve(grid,pflowsolv, its,snes_reason,ierr)
  	   else 
-         call SNESSolve(grid%snes, PETSC_NULL, grid%xx, ierr)
+         call SNESSolve(pflowsolv%snes, PETSC_NULL, grid%xx, ierr)
       endif
 
   ! print *,'pflow_step, finish SNESSolve'
    call MPI_Barrier(PETSC_COMM_WORLD,ierr)
-   if(grid%use_ksp /= PETSC_TRUE) call SNESGetIterationNumber(grid%snes, its, ierr)
+   if(grid%use_ksp /= PETSC_TRUE) call SNESGetIterationNumber(pflowsolv%snes, its, ierr)
 !   call KSPGetIterationNumber(grid%ksp, kspits, ierr)
   
 !   printout residual and jacobian to screen for testing purposes
@@ -206,7 +207,7 @@ Contains
 
 !   call SNESDefaultMonitor(grid%snes, its, r2norm, ierr)
 
-    if(grid%use_ksp /= PETSC_TRUE)call SNESGetConvergedReason(grid%snes, snes_reason, ierr)
+    if(grid%use_ksp /= PETSC_TRUE)call SNESGetConvergedReason(pflowsolv%snes, snes_reason, ierr)
 
 !   parameter (SNES_CONVERGED_ITERATING         =  0)
 !   parameter (SNES_CONVERGED_FNORM_ABS         =  2)
@@ -307,7 +308,7 @@ Contains
   
   ! calculate maxium changes in fields over a time step
 
-     call translator_ims_step_maxchange(grid)
+     call pflow_ims_step_maxchange(grid)
 	 
 			
 	 if (grid%myrank==0) then
