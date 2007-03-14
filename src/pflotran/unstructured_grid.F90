@@ -340,7 +340,7 @@ subroutine ReadUnstructuredGrid(grid)
         call fiReadDouble(string,delz,ierr) 
         call fiDefaultMsg('delz',ierr)
 
-        call fiReadWord(string,bctype,ierr) 
+        call fiReadWord(string,bctype,.true.,ierr) 
         call fiDefaultMsg('bctype',ierr)
 
         grid%distbc(grid%nconnbc) = distance
@@ -351,9 +351,9 @@ subroutine ReadUnstructuredGrid(grid)
         grid%ipermbc(grid%nconnbc) = abs(direction) ! 1,2,3 -> x,y,z
 
         call fiWordToLower(bctype)
-        if (StringCompare(bctype,"dirichlet",9))
+        if (fiStringCompare(bctype,"dirichlet",9)) then
           grid%ibndtyp(grid%nconnbc) = 1
-        else if (StringCompare(bctype,"neumann",7))
+        else if (fiStringCompare(bctype,"neumann",7)) then
           grid%ibndtyp(grid%nconnbc) = 2
         endif
 
