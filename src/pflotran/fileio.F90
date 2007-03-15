@@ -946,8 +946,6 @@ subroutine fiReadQuotedNChars(string, chars, n, return_blank_error, ierr)
       i=i+1
     enddo
 
-    print *, 'here:', i, string(i:)
-
     if (string(i:i) == '"') then
         i=i+1
         begins = i
