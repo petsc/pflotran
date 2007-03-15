@@ -1,4 +1,4 @@
-  module fileio_module
+module fileio_module
 
 ! use paramtrsmod
 
@@ -16,7 +16,7 @@
             fiReadFlotranString, fiIsAlpha, &
             fiReadInt, fiReadDouble, fiReadMultDouble, &
             fiDefaultMsg, fiErrorMsg, fiReadStringErrorMsg, &
-            fiStringCompare, fiFindStringInFile
+            fiStringCompare, fiFindStringInFile, fiReadQuotedNChars
 
   public :: fiReadDBaseString, fiReadDBaseName, fiReadDBaseInt, &
             fiReadDBaseDouble, fiReadDBaseMultDouble
@@ -329,7 +329,6 @@ subroutine fiReadWord(string, word, return_blank_error, ierr)
     ierr = 0
 
     ! Remove leading blanks and tabs
-    
     i=1
     do while(string(i:i) == ' ' .or. string(i:i) == achar(9)) 
       i=i+1
@@ -393,16 +392,17 @@ subroutine fiReadNChars(string, chars, n, return_blank_error, ierr)
   else
     ierr = 0
 
-    ! Remove leading blanks
+    ! Remove leading blanks and tabs
     i=1
-    do while(string(i:i) == ' ') 
+    do while(string(i:i) == ' ' .or. string(i:i) == achar(9)) 
       i=i+1
     enddo
 
     begins=i
 
     ! Count # of continuous characters (no blanks, commas, etc. in between)
-    do while (string(i:i) /= ' ' .and. string(i:i) /= ',')
+    do while (string(i:i) /= ' ' .and. string(i:i) /= ',' .and. &
+              string(i:i) /= achar(9)) ! 9 = tab
       i=i+1
     enddo
 
@@ -692,9 +692,9 @@ subroutine fiReadDBaseName(fid, string, name, return_blank_error, ierr)
   ierr = 0
   length = len_trim(string)
 
-  ! Remove leading blanks
+  ! Remove leading blanks and tabs
   i=1
-  do while(string(i:i) == ' ') 
+  do while(string(i:i) == ' ' .or. string(i:i) == achar(9)) 
     i=i+1
   enddo
 
@@ -712,7 +712,8 @@ subroutine fiReadDBaseName(fid, string, name, return_blank_error, ierr)
     enddo
   else
   ! Count # of continuous characters (no blanks, commas, etc. in between)
-    do while (string(i:i) /= ' ' .and. string(i:i) /= ',')
+    do while (string(i:i) /= ' ' .and. string(i:i) /= ',' .and. &
+              string(i:i) /= achar(9)) ! 9 = tab
       i=i+1
     enddo
   endif
@@ -767,9 +768,9 @@ subroutine fiReadDBaseWord(fid, string, word, return_blank_error, ierr)
 
     ierr = 0
 
-    ! Remove leading blanks
+    ! Remove leading blanks and tabs
     i=1
-    do while(string(i:i) == ' ') 
+    do while(string(i:i) == ' ' .or. string(i:i) == achar(9)) 
       i=i+1
     enddo
 
@@ -903,4 +904,80 @@ end subroutine fiReadDBaseDouble
 
   end subroutine fiFindStringInFile
 
-  end module fileio_module
+! ************************************************************************** !
+!
+! fiReadQuotedNChars: reads and removes a specified number of characters 
+!                     includign spaces from a quoted (i.e. "") substring
+! author: Glenn Hammond
+! date: 3/15/07
+!
+! ************************************************************************** !
+subroutine fiReadQuotedNChars(string, chars, n, return_blank_error, ierr)
+
+  implicit none
+
+  integer :: i, n, ierr, begins, ends
+  logical :: return_blank_error ! Return an error for a blank line
+                                ! Therefore, a blank line is not acceptable.
+  character(len=*) :: string
+  character(len=n) :: chars
+
+  if (ierr /= 0) return
+
+  ! Initialize character string to blank.
+  do i=1,n
+    chars(i:i) = ' '
+  enddo
+
+  ierr = len_trim(string)
+  if (ierr == 0) then
+    if (return_blank_error) then
+      ierr = 1
+    else
+      ierr = 0
+    endif
+    return
+  else
+    ierr = 0
+
+    ! Remove leading blanks and tabs
+    i=1
+    do while(string(i:i) == ' ' .or. string(i:i) == achar(9)) 
+      i=i+1
+    enddo
+
+    print *, 'here:', i, string(i:)
+
+    if (string(i:i) == '"') then
+        i=i+1
+        begins = i
+      ! Count # of characters between quotes
+      do while (string(i:i) /= '"')
+        i=i+1
+      enddo
+    else
+      begins=i
+      ! Count # of continuous characters (no blanks, commas, etc. in between)
+      do while (string(i:i) /= ' ' .and. string(i:i) /= ',' .and. &
+                string(i:i) /= achar(9)) ! 9 = tab
+        i=i+1
+      enddo
+    endif
+
+    ends=i-1
+
+    if (ends-begins+1 > n) then ! string read is too large for 'chars'
+      ierr = 1
+      return
+    endif
+
+    ! Copy (ends-begins) characters to 'chars'
+    chars = string(begins:ends)
+    ! Remove chars from string
+    string = string(ends+1:)
+
+  endif
+
+end subroutine fiReadQuotedNChars
+
+end module fileio_module
