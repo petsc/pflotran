@@ -1,6 +1,9 @@
-module unstructured_grid_mod
+module Unstructured_Grid_module
 
  use pflow_gridtype_module
+
+ implicit none
+
 #define HASH
 
  private 
@@ -35,6 +38,7 @@ contains
 subroutine ReadUnstructuredGrid(grid)
 
   use fileio_module
+  use Condition_module
 
   implicit none
 
@@ -48,14 +52,18 @@ subroutine ReadUnstructuredGrid(grid)
   integer :: natural_id_upwind, natural_id_downwind
   integer :: local_id_upwind, local_id_downwind
   integer :: local_ghosted_id_upwind, local_ghosted_id_downwind
-  integer :: count1, count2
+  integer :: number_of_times
+  integer :: count1, count2, i
   real*8 :: xcoord, ycoord, zcoord, xperm, yperm, zperm
   real*8 :: area, distance, distance_upwind, distance_downwind, cosB
-  real*8 :: volume, porosity, tortuosity, direction
+  real*8 :: volume, porosity, tortuosity
   real*8 :: dx, dy, dz, delz
   character(len=MAXCARDLENGTH) :: card
   character(len=MAXWORDLENGTH) :: bctype
+  integer :: direction, icond
+  real*8 :: time, value
   real*8 :: time0, time1
+  type(condition_type), pointer :: new_condition
 
   call VecGetArrayF90(grid%volume, volume_p, ierr); CHKERRQ(ierr)
   call VecGetArrayF90(grid%perm_xx, perm_xx_p, ierr); CHKERRQ(ierr)
@@ -283,8 +291,6 @@ subroutine ReadUnstructuredGrid(grid)
 !geh    allocate(grid%ipermbc(grid%nconnbc))
 !geh    allocate(grid%delzbc(grid%nconnbc))
 
-!    allocate(grid%velocitybc(grid%nphase,grid%nconnbc))
-
 !geh    allocate(grid%vlbc(grid%nconnbc))
 !geh    allocate(grid%vvlbc(grid%nconnbc))
 !geh    allocate(grid%vgbc(grid%nconnbc))
@@ -308,7 +314,7 @@ subroutine ReadUnstructuredGrid(grid)
     if (string(1:1) == '.' .or. string(1:1) == '/') exit
 
 ! stomp2pflotran header
-!:id cellid dist area cosB "type" time value
+!:id cellid dist area delz icond
 
     call fiReadInt(string,connection_id,ierr) 
     call fiDefaultMsg('connection_id',ierr)
@@ -317,6 +323,7 @@ subroutine ReadUnstructuredGrid(grid)
     call fiDefaultMsg('natural_id',ierr)
 
 #ifdef HASH
+    local_id = 0
     local_ghosted_id = GetLocalIdFromHash(natural_id)
     if (local_ghosted_id > 0) then 
       local_id = grid%nG2L(local_ghosted_id)
@@ -327,8 +334,7 @@ subroutine ReadUnstructuredGrid(grid)
         grid%nconnbc = grid%nconnbc + 1
         count2 = count2 + 1
 
-        ! Continue reading string if local
-        call fiReadDouble(string,direction,ierr) 
+        call fiReadInt(string,direction,ierr) 
         call fiDefaultMsg('direction',ierr)
 
         call fiReadDouble(string,distance,ierr) 
@@ -340,22 +346,16 @@ subroutine ReadUnstructuredGrid(grid)
         call fiReadDouble(string,delz,ierr) 
         call fiDefaultMsg('delz',ierr)
 
-        call fiReadWord(string,bctype,.true.,ierr) 
-        call fiDefaultMsg('bctype',ierr)
-
+        call fiReadInt(string,icond,ierr)
+        call fiDefaultMsg('icond',ierr)
+ 
         grid%distbc(grid%nconnbc) = distance
         grid%areabc(grid%nconnbc) = area
-        grid%delz(grid%nconnbc) = delz
+        grid%delzbc(grid%nconnbc) = delz
+        grid%icondbc(grid%nconnbc) = icond
 
         ! setup direction of permeability
         grid%ipermbc(grid%nconnbc) = abs(direction) ! 1,2,3 -> x,y,z
-
-        call fiWordToLower(bctype)
-        if (fiStringCompare(bctype,"dirichlet",9)) then
-          grid%ibndtyp(grid%nconnbc) = 1
-        else if (fiStringCompare(bctype,"neumann",7)) then
-          grid%ibndtyp(grid%nconnbc) = 2
-        endif
 
       endif
 #ifdef HASH
@@ -364,7 +364,75 @@ subroutine ReadUnstructuredGrid(grid)
     count1 = count1 + 1
   enddo
 
-  print *, count2, ' of ', count1, ' connections found'
+  print *, count2, ' of ', count1, ' boundary connections found'
+
+
+! CONDition information
+
+  card = "COND"
+  call fiFindStringInFile(fid,card,ierr)
+
+  ! report error if card does not exist
+  if (ierr /= 0 .and. grid%myrank == 0) &
+    print *, 'Card (',card, ') not found in file'
+
+  count1 = 0
+  do
+    call fiReadFlotranString(fid,string,ierr)
+    call fiReadStringErrorMsg(card,ierr)
+
+    if (string(1:1) == '.' .or. string(1:1) == '/') exit
+
+! stomp2pflotran header
+!:id "type" num_values (datum)
+
+    allocate(new_condition)
+    nullify(new_condition%next)
+    new_condition%datum = 0.d0
+
+    call fiReadInt(string,new_condition%id,ierr) 
+    call fiDefaultMsg('id',ierr)
+
+    call fiReadWord(string,new_condition%condition_type,.true.,ierr) 
+    call fiDefaultMsg('condition_type',ierr)
+
+    call fiReadInt(string,new_condition%max_time_index,ierr) 
+    call fiDefaultMsg('max_time_index',ierr)
+
+    call fiReadDouble(string,new_condition%datum,ierr) 
+    call fiDefaultMsg('max_time_index',ierr)
+
+    allocate(new_condition%times(new_condition%max_time_index))
+    allocate(new_condition%values(new_condition%max_time_index))
+
+    count2 = 0
+    do i=1,new_condition%max_time_index
+
+      call fiReadFlotranString(fid,string,ierr)
+      call fiReadStringErrorMsg(card,ierr)
+
+      call fiReadDouble(string,time,ierr)
+      call fiDefaultMsg('time',ierr)
+
+      call fiReadDouble(string,value,ierr)
+      call fiDefaultMsg('value',ierr)
+
+      count2 = count2 + 1
+
+    enddo
+
+    print *, count2, ' times read'
+
+    call AddCondition(new_condition)
+    nullify(new_condition)
+
+    count1 = count1 + 1
+
+  enddo
+
+  print *, count1, ' conditions read'
+
+  call UpdateBoundaryConditions(grid)
 
 #ifdef HASH
   deallocate(hash)
@@ -663,4 +731,4 @@ subroutine PrintHashTable()
 
 end subroutine PrintHashTable
 
-end module unstructured_grid_mod
+end module Unstructured_Grid_module

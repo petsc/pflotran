@@ -900,7 +900,7 @@ subroutine pflowGrid_setup(grid, inputfile)
   
   use utilities_module
   use readfield
-  use unstructured_grid_mod
+  use Unstructured_Grid_module
   use pflow_solv_module  
                             
   implicit none
@@ -1654,6 +1654,7 @@ subroutine pflowGrid_setup(grid, inputfile)
     allocate(grid%areabc(grid%nconnbc))
     allocate(grid%ipermbc(grid%nconnbc))
     allocate(grid%delzbc(grid%nconnbc))
+    allocate(grid%icondbc(grid%nconnbc))
     
 !    allocate(grid%velocitybc(grid%nphase,grid%nconnbc))
     
@@ -2111,7 +2112,7 @@ subroutine pflowGrid_setup(grid, inputfile)
 
  if (grid%iread_geom == 1) then
    call Read_Geom_field(grid)
- else if (grid%iread_geom == 2) then
+ else if (grid%iread_geom == -1) then
    if (myrank == 0) print *, 'Reading unstructured grid'
    call ReadUnstructuredGrid(grid)
  endif  
@@ -3170,6 +3171,7 @@ subroutine pflowGrid_update (grid)
   use MPHASE_module
   use OWG_module
   use Vadose_module
+  use Condition_module
 
   implicit none
 
@@ -3248,6 +3250,9 @@ subroutine pflowGrid_update (grid)
     enddo
     call VecRestoreArrayF90(grid%phis,phis_p,ierr)
   endif
+
+  ! update generalized boundary condition
+  if (grid%iread_geom == -1) call UpdateBoundaryConditions(grid)
 
 end subroutine pflowGrid_update
 
