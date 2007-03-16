@@ -117,7 +117,6 @@ private
       ! positive direction.  These are local, ghosted indices.
       
     integer, pointer :: iperm1(:), iperm2(:), ipermbc(:)
-    integer, pointer :: icondbc(:) ! id of condition
     
     real*8, pointer :: dist1(:),dist2(:),distbc(:),area(:),areabc(:), grav_ang(:), &
                        delzbc(:), vlbc(:), vvlbc(:),vgbc(:),vvgbc(:)

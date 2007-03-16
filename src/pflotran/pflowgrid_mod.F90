@@ -1654,7 +1654,6 @@ subroutine pflowGrid_setup(grid, inputfile)
     allocate(grid%areabc(grid%nconnbc))
     allocate(grid%ipermbc(grid%nconnbc))
     allocate(grid%delzbc(grid%nconnbc))
-    allocate(grid%icondbc(grid%nconnbc))
     
 !    allocate(grid%velocitybc(grid%nphase,grid%nconnbc))
     
@@ -1831,9 +1830,10 @@ subroutine pflowGrid_setup(grid, inputfile)
     stop
   endif
    
-  do nc=1,grid%nconnbc
-    print *, 'BC:', nc, grid%areabc(nc),grid%distbc(nc),  grid%mblkbc(nc) 
-  enddo
+! commented out by geh 
+!  do nc=1,grid%nconnbc
+!    print *, 'BC:', nc, grid%areabc(nc),grid%distbc(nc),  grid%mblkbc(nc) 
+!  enddo
 
   !-----------------------------------------------------------------------
   ! Set up boundary conditions at interfaces
@@ -1846,7 +1846,7 @@ subroutine pflowGrid_setup(grid, inputfile)
     allocate(grid%xphi_co2_bc(grid%nconnbc))
     allocate(grid%xxphi_co2_bc(grid%nconnbc))
 
-  do nc = 1, grid%nconnbc
+    do nc = 1, grid%nconnbc
       ibc = grid%ibconn(nc)
       grid%xxbc(:,nc)=grid%xxbc0(:,ibc)
       grid%iphasebc(nc)=grid%iphasebc0(ibc)
@@ -2114,7 +2114,18 @@ subroutine pflowGrid_setup(grid, inputfile)
    call Read_Geom_field(grid)
  else if (grid%iread_geom == -1) then
    if (myrank == 0) print *, 'Reading unstructured grid'
+   allocate(grid%pressurebc(grid%nphase,grid%nconnbc))
    call ReadUnstructuredGrid(grid)
+   print *, 'nconnbc:', grid%nconnbc
+   do nc = 1, grid%nconnbc
+     ibc = grid%ibndtyp(nc)
+!     print *, 'ibc:', ibc, grid%ibconn(nc)
+     if (ibc == 2) then
+       print *, grid%velocitybc(:,nc)
+     else
+       print *, grid%pressurebc(:,nc), grid%z(grid%nL2A(grid%mblkbc(nc)))
+     endif
+   enddo
  endif  
 
 

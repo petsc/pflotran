@@ -98,37 +98,37 @@ subroutine ReadUnstructuredGrid(grid)
     if (string(1:1) == '.' .or. string(1:1) == '/') exit
 
     call fiReadInt(string,natural_id,ierr) 
-    call fiDefaultMsg('natural_id',ierr)
+    call fiErrorMsg('natural_id',card,ierr)
 
     call fiReadInt(string,material_id,ierr) 
-    call fiDefaultMsg('material_id',ierr)
+    call fiErrorMsg('material_id',card,ierr)
 
     call fiReadDouble(string,xcoord,ierr)
-    call fiDefaultMsg('xcoord',ierr)
+    call fiErrorMsg('xcoord',card,ierr)
    
     call fiReadDouble(string,ycoord,ierr)
-    call fiDefaultMsg('ycoord',ierr)
+    call fiErrorMsg('ycoord',card,ierr)
 
     call fiReadDouble(string,zcoord,ierr)
-    call fiDefaultMsg('zcoord',ierr)
+    call fiErrorMsg('zcoord',card,ierr)
    
     call fiReadDouble(string,volume,ierr)
-    call fiDefaultMsg('volume',ierr)
+    call fiErrorMsg('volume',card,ierr)
    
     call fiReadDouble(string,xperm,ierr)
-    call fiDefaultMsg('xperm',ierr)
+    call fiErrorMsg('xperm',card,ierr)
 
     call fiReadDouble(string,yperm,ierr)
-    call fiDefaultMsg('yperm',ierr)
+    call fiErrorMsg('yperm',card,ierr)
    
     call fiReadDouble(string,zperm,ierr)
-    call fiDefaultMsg('zperm',ierr)
+    call fiErrorMsg('zperm',card,ierr)
 
     call fiReadDouble(string,porosity,ierr)
-    call fiDefaultMsg('porosity',ierr)
+    call fiErrorMsg('porosity',card,ierr)
 
     call fiReadDouble(string,tortuosity,ierr)
-    call fiDefaultMsg('tortuosity',ierr)
+    call fiErrorMsg('tortuosity',card,ierr)
 
 !geh In the future, 'natural_id' will be replaced by 'local_id'
     grid%x(natural_id)=xcoord
@@ -207,13 +207,13 @@ subroutine ReadUnstructuredGrid(grid)
 ! stomp2pflotran header
 ! :id idup iddn distup distdn area cosB
     call fiReadInt(string,connection_id,ierr) 
-    call fiDefaultMsg('connection_id',ierr)
+    call fiErrorMsg('connection_id',card,ierr)
 
     call fiReadInt(string,natural_id_upwind,ierr) 
-    call fiDefaultMsg('natural_id_upwind',ierr)
+    call fiErrorMsg('natural_id_upwind',card,ierr)
 
     call fiReadInt(string,natural_id_downwind,ierr) 
-    call fiDefaultMsg('natural_id_downwind',ierr)
+    call fiErrorMsg('natural_id_downwind',card,ierr)
 
 #ifdef HASH
     local_ghosted_id_upwind = GetLocalIdFromHash(natural_id_upwind)
@@ -235,16 +235,16 @@ subroutine ReadUnstructuredGrid(grid)
 
         ! Continue reading string if local
         call fiReadDouble(string,distance_upwind,ierr) 
-        call fiDefaultMsg('distance_upwind',ierr)
+        call fiErrorMsg('distance_upwind',card,ierr)
 
         call fiReadDouble(string,distance_downwind,ierr) 
-        call fiDefaultMsg('distance_downwind',ierr)
+        call fiErrorMsg('distance_downwind',card,ierr)
 
         call fiReadDouble(string,area,ierr) 
-        call fiDefaultMsg('area',ierr)
+        call fiErrorMsg('area',card,ierr)
 
         call fiReadDouble(string,cosB,ierr) 
-        call fiDefaultMsg('cosB',ierr)
+        call fiErrorMsg('cosB',card,ierr)
 
         grid%nconn = grid%nconn + 1
         grid%nd1(grid%nconn) = local_ghosted_id_upwind
@@ -284,8 +284,8 @@ subroutine ReadUnstructuredGrid(grid)
 ! Count the number of boundary connections
 !geh  grid%nconn = GetNumberOfBoundary(fid) ! function at bottom of file
 ! Allocate Arrays
-!geh    allocate(grid%mblkbc(grid%nconnbc))
-!geh    allocate(grid%ibconn(grid%nconnbc))
+!geh    allocate(grid%mblkbc(grid%nconnbc)) ! id of local cell
+!geh    allocate(grid%ibconn(grid%nconnbc)) ! id of condition (boundary)
 !geh    allocate(grid%distbc(grid%nconnbc))
 !geh    allocate(grid%areabc(grid%nconnbc))
 !geh    allocate(grid%ipermbc(grid%nconnbc))
@@ -295,6 +295,8 @@ subroutine ReadUnstructuredGrid(grid)
 !geh    allocate(grid%vvlbc(grid%nconnbc))
 !geh    allocate(grid%vgbc(grid%nconnbc))
 !geh    allocate(grid%vvgbc(grid%nconnbc))
+
+!geh    allocate(grid%ibndtyp(grid%ncond)) ! condition (boundary) type
 
   grid%nconnbc = 0
 
@@ -317,10 +319,10 @@ subroutine ReadUnstructuredGrid(grid)
 !:id cellid dist area delz icond
 
     call fiReadInt(string,connection_id,ierr) 
-    call fiDefaultMsg('connection_id',ierr)
+    call fiErrorMsg('connection_id',card,ierr)
 
     call fiReadInt(string,natural_id,ierr) 
-    call fiDefaultMsg('natural_id',ierr)
+    call fiErrorMsg('natural_id',card,ierr)
 
 #ifdef HASH
     local_id = 0
@@ -335,24 +337,25 @@ subroutine ReadUnstructuredGrid(grid)
         count2 = count2 + 1
 
         call fiReadInt(string,direction,ierr) 
-        call fiDefaultMsg('direction',ierr)
+        call fiErrorMsg('direction',card,ierr)
 
         call fiReadDouble(string,distance,ierr) 
-        call fiDefaultMsg('distance',ierr)
+        call fiErrorMsg('distance',card,ierr)
 
         call fiReadDouble(string,area,ierr) 
-        call fiDefaultMsg('area',ierr)
+        call fiErrorMsg('area',card,ierr)
 
         call fiReadDouble(string,delz,ierr) 
-        call fiDefaultMsg('delz',ierr)
+        call fiErrorMsg('delz',card,ierr)
 
         call fiReadInt(string,icond,ierr)
-        call fiDefaultMsg('icond',ierr)
+        call fiErrorMsg('icond',card,ierr)
  
+        grid%mblkbc(grid%nconnbc) = local_id
         grid%distbc(grid%nconnbc) = distance
         grid%areabc(grid%nconnbc) = area
         grid%delzbc(grid%nconnbc) = delz
-        grid%icondbc(grid%nconnbc) = icond
+        grid%ibconn(grid%nconnbc) = icond
 
         ! setup direction of permeability
         grid%ipermbc(grid%nconnbc) = abs(direction) ! 1,2,3 -> x,y,z
@@ -389,21 +392,28 @@ subroutine ReadUnstructuredGrid(grid)
     allocate(new_condition)
     nullify(new_condition%next)
     new_condition%datum = 0.d0
+    new_condition%itype = 0
 
     call fiReadInt(string,new_condition%id,ierr) 
-    call fiDefaultMsg('id',ierr)
+    call fiErrorMsg('id',card,ierr)
 
-    call fiReadWord(string,new_condition%condition_type,.true.,ierr) 
-    call fiDefaultMsg('condition_type',ierr)
+    call fiReadQuotedNChars(string,new_condition%ctype,MAXWORDLENGTH, &
+                            .true.,ierr) 
+    call fiErrorMsg('condition_type',card,ierr)
 
     call fiReadInt(string,new_condition%max_time_index,ierr) 
-    call fiDefaultMsg('max_time_index',ierr)
+    call fiErrorMsg('max_time_index',card,ierr)
 
     call fiReadDouble(string,new_condition%datum,ierr) 
-    call fiDefaultMsg('max_time_index',ierr)
+    call fiDefaultMsg('datum',ierr)
 
     allocate(new_condition%times(new_condition%max_time_index))
     allocate(new_condition%values(new_condition%max_time_index))
+    new_condition%times = 0.d0
+    new_condition%values = 0.d0
+
+    print *, new_condition%ctype
+    print *, new_condition%max_time_index
 
     count2 = 0
     do i=1,new_condition%max_time_index
@@ -412,10 +422,13 @@ subroutine ReadUnstructuredGrid(grid)
       call fiReadStringErrorMsg(card,ierr)
 
       call fiReadDouble(string,time,ierr)
-      call fiDefaultMsg('time',ierr)
+      call fiErrorMsg('time',card,ierr)
 
       call fiReadDouble(string,value,ierr)
-      call fiDefaultMsg('value',ierr)
+      call fiErrorMsg('value',card,ierr)
+
+      new_condition%times(i) = time
+      new_condition%values(i) = value
 
       count2 = count2 + 1
 
@@ -432,7 +445,7 @@ subroutine ReadUnstructuredGrid(grid)
 
   print *, count1, ' conditions read'
 
-  call UpdateBoundaryConditions(grid)
+  call InitializeBoundaryConditions(grid)
 
 #ifdef HASH
   deallocate(hash)
@@ -485,18 +498,18 @@ integer function GetNumberOfLocalConnections(fid,grid)
   num_local_connections = 0
   do
     call fiReadFlotranString(fid,string,ierr)
-    call fiReadStringErrorMsg('GRID',ierr)
+    call fiReadStringErrorMsg(card,ierr)
 
     if (string(1:1) == '.' .or. string(1:1) == '/') exit
 
     call fiReadInt(string,connection_id,ierr) 
-    call fiDefaultMsg('connection_id',ierr)
+    call fiErrorMsg('connection_id',card,ierr)
 
     call fiReadInt(string,natural_id_upwind,ierr) 
-    call fiDefaultMsg('natural_id_upwind',ierr)
+    call fiErrorMsg('natural_id_upwind',card,ierr)
 
     call fiReadInt(string,natural_id_downwind,ierr) 
-    call fiDefaultMsg('natural_id_downwind',ierr)
+    call fiErrorMsg('natural_id_downwind',card,ierr)
 
     local_ghosted_id_upwind = GetLocalIdFromHash(natural_id_upwind)
     local_ghosted_id_downwind = GetLocalIdFromHash(natural_id_downwind)
@@ -549,15 +562,15 @@ integer function GetNumberOfBoundaryConnections(fid,grid)
   num_boundary_connections = 0
   do
     call fiReadFlotranString(fid,string,ierr)
-    call fiReadStringErrorMsg('GRID',ierr)
+    call fiReadStringErrorMsg(card,ierr)
 
     if (string(1:1) == '.' .or. string(1:1) == '/') exit
 
     call fiReadInt(string,connection_id,ierr) 
-    call fiDefaultMsg('connection_id',ierr)
+    call fiErrorMsg('connection_id',card,ierr)
 
     call fiReadInt(string,natural_id,ierr) 
-    call fiDefaultMsg('natural_id',ierr)
+    call fiErrorMsg('natural_id',card,ierr)
 
     local_ghosted_id = GetLocalIdFromHash(natural_id)
     if (local_ghosted_id > 0) then 

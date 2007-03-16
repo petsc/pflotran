@@ -953,6 +953,8 @@ subroutine fiReadQuotedNChars(string, chars, n, return_blank_error, ierr)
       do while (string(i:i) /= '"')
         i=i+1
       enddo
+      ! replace quote with space
+      if (string(i:i) == '"') string(i:i) = ' '
     else
       begins=i
       ! Count # of continuous characters (no blanks, commas, etc. in between)
