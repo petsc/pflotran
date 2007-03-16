@@ -30,7 +30,7 @@ void Source::printInfo() {
 void Source::printSrcs() {
   PetscErrorCode ierr;
  
-  ierr = PetscSequentialPhaseBegin(PETSC_COMM_WORLD);
+  ierr = PetscSequentialPhaseBegin(PETSC_COMM_WORLD,1);
 #include "Globals.h" 
   if (myrank == 0) printf("\nSource Connections\n");
   printf("Processor[%d]: %d connections\n",myrank,num_srcs);
@@ -40,7 +40,7 @@ void Source::printSrcs() {
     cur_src = cur_src->next;
   }
 
-  ierr = PetscSequentialPhaseEnd(PETSC_COMM_WORLD);
+  ierr = PetscSequentialPhaseEnd(PETSC_COMM_WORLD,1);
 }
 
 Source::~Source() {

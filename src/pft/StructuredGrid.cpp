@@ -47,8 +47,8 @@ void StructuredGrid::setUpDA(double dx_, double dy_, double dz_) {
   gze = gzs+gnz;
   gnxXny = gnx*gny;
   
-  printf(" local: %d %d %d %d %d %d\n",lxs,lxe,lnx,lys,lye,lny,lzs,lze,lnz);
-  printf("global: %d %d %d %d %d %d\n",gxs,gxe,gnx,gys,gye,gny,gzs,gze,gnz);
+  printf(" local: %d %d %d %d %d %d\n",lxs,lxe,lys,lye,lzs,lze);
+  printf("global: %d %d %d %d %d %d\n",gxs,gxe,gys,gye,gzs,gze);
 
   dx = new double[gnx];
   for (int i=0; i<gnx; i++)
@@ -88,6 +88,8 @@ void StructuredGrid::setUpConnectivity(int *num_connections,
         conn[count].setDistanceUpwind(vec);
         vec[0] = 0.5*dx[i+1]; 
         conn[count].setDistanceDownwind(vec);
+        vec[0] = 1.;
+        conn[count].setNormal(vec);
         conn[count].setArea(dy[j]*dz[k]);
         count++;
       }
@@ -105,6 +107,8 @@ void StructuredGrid::setUpConnectivity(int *num_connections,
         conn[count].setDistanceUpwind(vec);
         vec[1] = 0.5*dy[j+1];
         conn[count].setDistanceDownwind(vec);
+        vec[1] = 1.;
+        conn[count].setNormal(vec);
         conn[count].setArea(dx[i]*dz[k]);
         count++;
       }
@@ -122,6 +126,8 @@ void StructuredGrid::setUpConnectivity(int *num_connections,
         conn[count].setDistanceUpwind(vec);
         vec[2] = 0.5*dz[k+1];
         conn[count].setDistanceDownwind(vec);
+        vec[2] = 1.;
+        conn[count].setNormal(vec);
         conn[count].setArea(dx[i]*dy[j]);
         count++;
       }
@@ -185,16 +191,16 @@ void StructuredGrid::mapBoundaryCondition(int istart, int iend, int jstart,
   for (int k=kstart-lzs; k<kend-lzs; k++) {
     for (int j=jstart-lys; j<jend-lys; j++) {
       for (int i=istart-lxs; i<iend-lxs; i++) {
-        int ighosted = istart+lxs-gxs;
-        int jghosted = jstart+lys-gys;
-        int kghosted = kstart+lzs-gzs;
+        int ighosted = i+lxs-gxs;
+        int jghosted = j+lys-gys;
+        int kghosted = k+lzs-gzs;
         BoundaryCondition *newbc = new BoundaryCondition();
         newbc->setId(i+j*lnx+k*lnxXny);
         dist[0] = 0.; dist[1] = 0.; dist[2] = 0.; 
         normal[0] = 0.; normal[1] = 0.; normal[2] = 0.; 
         // init at center of cell and adjust single coordinate below
-//        center[0] = 0.5*dx[ighosted]; center[1] = 0.5*dy[jghosted]; 
-//        center[2] = 0.5*dz[kghosted];
+        center[0] = 0.5*dx[ighosted]; center[1] = 0.5*dy[jghosted]; 
+        center[2] = 0.5*dz[kghosted];
         if (!strcmp(face,"west") || !strcmp(face,"east")) {
           newbc->setArea(dy[jghosted]*dz[kghosted]);
           dist[0] = 0.5*dx[ighosted];
@@ -301,10 +307,10 @@ void StructuredGrid::mapSource(int istart, int iend, int jstart,
 }
 
 void StructuredGrid::setUpCells(int num_cells, GridCell *cells) {
-  for (int k=0; k<gnz; k++) 
-    for (int j=0; j<gny; j++) 
-      for (int i=0; i<gnx; i++) 
-        cells[i].setVolume(dx[i]*dy[j]*dz[k]);
+  for (int k=0; k<gnz; k++)
+    for (int j=0; j<gny; j++)
+      for (int i=0; i<gnx; i++)
+        cells[i+j*gnx+k*gnxXny].setVolume(dx[i]*dy[j]*dz[k]);
 }
 
 void StructuredGrid::setUpMapping(int *num_nodes_local, int *num_nodes_ghosted,
@@ -372,7 +378,7 @@ void StructuredGrid::printDACorners() {
   
   PetscErrorCode ierr;
   
-  ierr = PetscSequentialPhaseBegin(PETSC_COMM_WORLD);
+  ierr = PetscSequentialPhaseBegin(PETSC_COMM_WORLD,1);
   printf("local         %d lxs:%d lxe:%d lnx:%d\n",myrank,lxs,lxe,lnx);
   printf("local         %d lys:%d lye:%d lny:%d\n",myrank,lys,lye,lny);
   printf("local         %d lzs:%d lze:%d lnz:%d\n",myrank,lzs,lze,lnz);
@@ -380,7 +386,7 @@ void StructuredGrid::printDACorners() {
   printf("local ghosted %d gxs:%d gxe:%d gnx:%d\n",myrank,gxs,gxe,gnx);
   printf("local ghosted %d gys:%d gye:%d gny:%d\n",myrank,gys,gye,gny);
   printf("local ghosted %d gzs:%d gze:%d gnz:%d\n\n",myrank,gzs,gze,gnz);
-  ierr = PetscSequentialPhaseEnd(PETSC_COMM_WORLD);
+  ierr = PetscSequentialPhaseEnd(PETSC_COMM_WORLD,1);
   
 }
 

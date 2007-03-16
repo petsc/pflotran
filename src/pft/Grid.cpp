@@ -187,7 +187,7 @@ void Grid::printISLocalToGlobalMapping() {
                                        &indices);
 
   if (rank == 0) printf("/**************************************************/\n");
-  ierr = PetscSequentialPhaseBegin(PETSC_COMM_WORLD,rank);
+  ierr = PetscSequentialPhaseBegin(PETSC_COMM_WORLD,1);
   printf("proc%d\n",rank);
   for (int i=0; i<num_neighbor_proc; i++) {
     printf("neighbor_proc: %d - %d nodes\n",neighbor_procs[i],num_indices[i]);
@@ -196,7 +196,7 @@ void Grid::printISLocalToGlobalMapping() {
     }
   }
   printf("\n");
-  ierr = PetscSequentialPhaseEnd(PETSC_COMM_WORLD,rank);
+  ierr = PetscSequentialPhaseEnd(PETSC_COMM_WORLD,1);
                                          
   ierr = ISLocalToGlobalMappingRestoreInfo(map,&num_neighbor_proc,&neighbor_procs,
                                            &num_indices,&indices);
@@ -218,23 +218,23 @@ void Grid::printAO() {
 void Grid::printConnectivity() {
   PetscErrorCode ierr;
   if (!connections) return;
-  ierr = PetscSequentialPhaseBegin(PETSC_COMM_WORLD);
+  ierr = PetscSequentialPhaseBegin(PETSC_COMM_WORLD,1);
   if (myrank == 0) printf("\nConnectivity:\n");
   printf("Processor[%d]\n",myrank);
   for (int i=0; i<num_connections; i++)
     connections[i].printInfo(); 
-  ierr = PetscSequentialPhaseEnd(PETSC_COMM_WORLD);
+  ierr = PetscSequentialPhaseEnd(PETSC_COMM_WORLD,1);
 }
 
 void Grid::printCells() {
   PetscErrorCode ierr;
   if (!cells) return;
-  ierr = PetscSequentialPhaseBegin(PETSC_COMM_WORLD);
+  ierr = PetscSequentialPhaseBegin(PETSC_COMM_WORLD,1);
   if (myrank == 0) printf("\nCells:\n");
   printf("Processor[%d]\n",myrank);
   for (int i=0; i<num_cells; i++)
     cells[i].printInfo();
-  ierr = PetscSequentialPhaseEnd(PETSC_COMM_WORLD);
+  ierr = PetscSequentialPhaseEnd(PETSC_COMM_WORLD,1);
 }
 
 
@@ -251,7 +251,7 @@ void Grid::test2(int ***array) {
   *array[0][0] = 5;
 }
 
-Grid::~Grid() {
+Grid::~Grid() {/*
   delete [] mapping_local_to_ghosted;
   delete [] mapping_ghosted_to_local;
   delete [] connections;
@@ -274,5 +274,5 @@ Grid::~Grid() {
     delete cur_src;
     cur_src = next_src;
   }
-
+*/
 }

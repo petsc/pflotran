@@ -2,40 +2,48 @@
 
 GridConnection::GridConnection() {
   area = 0.;
-  id1 = -1;
-  id2 = -1;
+  idup = -1;
+  iddown = -1;
   for (int i=0; i<3; i++) {
     center[i] = 0.;
-    dist1[i] = 0.;
-    dist2[i] = 0.;
-    normal_vector[i] = 0.;
+    distup[i] = 0.;
+    distdown[i] = 0.;
+    normal[i] = 0.;
   }
 }
 
-void GridConnection::setIdUpwind(int i) { id1 = i; }
-void GridConnection::setIdDownwind(int i) { id2 = i; }
+void GridConnection::setIdUpwind(int i) { idup = i; }
+void GridConnection::setIdDownwind(int i) { iddown = i; }
 void GridConnection::setArea(double d) { area = d; }
 void GridConnection::setDistanceUpwind(double *d) { 
-  dist1[0] = d[0];
-  dist1[1] = d[1];
-  dist1[2] = d[2];
+  distup[0] = d[0];
+  distup[1] = d[1];
+  distup[2] = d[2];
 }
 void GridConnection::setDistanceDownwind(double *d) { 
-  dist2[0] = d[0];
-  dist2[1] = d[1];
-  dist2[2] = d[2];
+  distdown[0] = d[0];
+  distdown[1] = d[1];
+  distdown[2] = d[2];
 }
+void GridConnection::setNormal(double *d) { 
+  normal[0] = d[0];
+  normal[1] = d[1];
+  normal[2] = d[2];
+}
+void GridConnection::setFlowFluxCoef(double d) { flow_flux_coef = d; }
 
-int GridConnection::getIdUpwind() { return id1; }
-int GridConnection::getIdDownwind() { return id2; }
+int GridConnection::getIdUpwind() { return idup; }
+int GridConnection::getIdDownwind() { return iddown; }
 double GridConnection::getArea() { return area; }
-double *GridConnection::getDistancePtrUpwind() { return &dist1[0]; }
-double *GridConnection::getDistancePtrDownwind() { return &dist2[0]; }
+double *GridConnection::getDistancePtrUpwind() { return &distup[0]; }
+double *GridConnection::getDistancePtrDownwind() { return &distdown[0]; }
+double *GridConnection::getNormalPtr() { return &normal[0]; }
+double GridConnection::getFlowFluxCoef() { return flow_flux_coef; }
 
 void GridConnection::printInfo() {
-  printf("id1: %d id2: %d area: %f \n",id1,id2,area);
-  printf("dx1: %f dy1: %f dz1: %f \n",dist1[0],dist1[1],dist1[2]);
-  printf("dx2: %f dy2: %f dz2: %f\n",dist2[0],dist2[1],dist2[2]);
+  printf("id1: %d id2: %d area: %f \n",idup,iddown,area);
+  printf("dx1: %f dy1: %f dz1: %f \n",distup[0],distup[1],distup[2]);
+  printf("dx2: %f dy2: %f dz2: %f\n",distdown[0],distdown[1],distdown[2]);
 }
 
 GridConnection::~GridConnection() {

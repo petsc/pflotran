@@ -3,6 +3,8 @@
 
 #include "include/petsc.h"
 
+#include "Saturation.h"
+
 class GridCell {
 public:
   int num_cells;
@@ -17,6 +19,10 @@ public:
   void setPermZ(double d);
   void setViscosity(double d);
   void setDensity(double d);
+  void setMoistureContent(double d);
+  void updateMoistureContent();
+  void updateRelativePermeability(double pressure);
+  void setFlowAccumulationCoef(double d);
   
   int getIdLocal();
   int getIdGhosted();
@@ -27,6 +33,10 @@ public:
   double *getPermPtr();
   double getViscosity();
   double getDensity();
+  double getMoistureContent();
+  double getFlowAccumulationCoef();
+  
+  double computeFlowAccumulationCoef(double one_over_dt);
   
   void printInfo();
   
@@ -38,12 +48,24 @@ private:
   
 // matrix variables
   double permeability[3];
+  double relative_permeability;
+  double relative_permeability_adj;
 
 // fluid variables
+  static Saturation saturation;
+  double flow_accumulation_coef;
+  double pressure_adj;
+  double specific_moisture_capacity;
+  double specific_moisture_capacity_adj;
+  static const double beta;
+  double one_plus_beta_h;
   double viscosity;
   double density;
+  double moisture_content;
+  double moisture_content_0;
+  int saturated;
 
-// solute variables
+  // solute variables
 
 };
 

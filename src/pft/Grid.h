@@ -67,6 +67,7 @@ public:
 private:
   PetscErrorCode ierr;
   StructuredGrid *structuredGrid;
+
 };
 
 #endif /*GRID_H_*/

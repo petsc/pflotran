@@ -38,6 +38,7 @@ void BoundaryCondition::setNormal(double *d) {
   normal[1] = d[1];
   normal[2] = d[2];
 }
+void BoundaryCondition::setFlowFluxCoef(double d) { flow_flux_coef = d; }
 
 int BoundaryCondition::getId() { return idlocal; }
 double BoundaryCondition::getArea() { return area; }
@@ -47,6 +48,7 @@ double *BoundaryCondition::getDistancePtr() { return &dist[0]; }
 double *BoundaryCondition::getCenterPtr() { return &center[0]; }
 double *BoundaryCondition::getNormalPtr() { return &normal[0]; }
 BoundaryCondition *BoundaryCondition::getNext() { return next; };
+double BoundaryCondition::getFlowFluxCoef() { return flow_flux_coef; }
  
 void BoundaryCondition::printInfo() {
 /*
@@ -68,7 +70,7 @@ void BoundaryCondition::printInfo() {
 void BoundaryCondition::printBCs() {
   PetscErrorCode ierr;
  
-  ierr = PetscSequentialPhaseBegin(PETSC_COMM_WORLD);
+  ierr = PetscSequentialPhaseBegin(PETSC_COMM_WORLD,1);
 #include "Globals.h" 
   if (myrank == 0) printf("\nBoundary Connections\n");
   printf("Processor[%d]: %d connections\n",myrank,num_bcs);
@@ -78,7 +80,7 @@ void BoundaryCondition::printBCs() {
     cur_bc = cur_bc->next;
   }
 
-  ierr = PetscSequentialPhaseEnd(PETSC_COMM_WORLD);
+  ierr = PetscSequentialPhaseEnd(PETSC_COMM_WORLD,1);
 }
 
 BoundaryCondition::~BoundaryCondition() {

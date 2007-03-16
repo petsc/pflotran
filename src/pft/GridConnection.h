@@ -13,21 +13,27 @@ public:
   void setIdDownwind(int i);
   void setDistanceUpwind(double *d);
   void setDistanceDownwind(double *d);
+  void setNormal(double *d);
   void setArea(double d);
+  void setFlowFluxCoef(double d);
   void printInfo();
 
   int getIdUpwind();
   int getIdDownwind();
   double *getDistancePtrUpwind();
   double *getDistancePtrDownwind();
+  double *getNormalPtr();
   double getArea();
+  double getFlowFluxCoef();
 
 private:
   // all boundary ids are ghosted
-  int id1, id2;
+  int idup, iddown;
   double area;
-  double center[3],dist1[3], dist2[3];
-  double normal_vector[3];
+  double center[3],distup[3], distdown[3];
+  double normal[3];
+  
+  double flow_flux_coef;
 
 };
 

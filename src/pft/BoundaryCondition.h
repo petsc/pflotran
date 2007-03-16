@@ -19,6 +19,7 @@ public:
   void setScalar(double d);
   void setType(char *str);
   void setNext(BoundaryCondition *bc);
+  void setFlowFluxCoef(double d);
     
   void printInfo();
   static void printBCs();
@@ -31,6 +32,7 @@ public:
   double getArea();
   double getScalar();
   BoundaryCondition *getNext();
+  double getFlowFluxCoef();
 
   static BoundaryCondition *list;
   static BoundaryCondition *end_of_list;
@@ -46,6 +48,9 @@ private:
   char *type;
   double scalar;
   BoundaryCondition *next;
+  
+  // flow params
+  double flow_flux_coef;
 
 };
 

@@ -4,6 +4,7 @@ pft_src = ./
 common_src   = ./
 bindir = ./${PETSC_ARCH}/bin
 
+#MYFLAGS = -I/usr/software/intel/compiler91/x86_64/include/c++ -I${objdir} 
 MYFLAGS = -I${objdir} 
 LIBS   = 
 
@@ -11,7 +12,7 @@ CFLAGS		 =
 FFLAGS		 = 
 CPPFLAGS         = ${MYFLAGS}
 FPPFLAGS         = ${MYFLAGS}
-LOCDIR		 = 
+LOCDIR		 = /home/hammond/workspace/pft++
 CLEANFILES       = pft
 
 include ${PETSC_DIR}/bmake/common/base
