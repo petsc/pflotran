@@ -6,7 +6,7 @@
 !  should be updated in pflowgrid_mod.F90 :: pflowgrid_step          
 
                
-  module MPHASE_module
+  module Flash_module
   use pflow_gridtype_module
  ! use pflow_var_module
 
@@ -47,16 +47,16 @@ private
   
    
 
-  public MPHASEResidual, MPHASEJacobin, pflow_mphase_initaccum, &
-         pflow_update_mphase,pflow_mphase_initadj, pflow_mphase_timecut,&
-         pflow_mphase_setupini, MPhase_Update, MPhase_Update_Reason
+  public FLASHResidual, FLASHJacobin, pflow_flash_initaccum, &
+         pflow_update_flash,pflow_flash_initadj, pflow_flash_timecut,&
+         pflow_flash_setupini, Flash_Update, flash_Update_Reason
 
 
 
   contains
 
 
- subroutine pflow_mphase_timecut(grid)
+ subroutine pflow_flash_timecut(grid)
  
   implicit none
   type(pflowGrid), intent(inout) :: grid
@@ -85,10 +85,10 @@ private
   !call VecCopy(grid%xx,grid%yy,ierr)
   !call pflow_mphase_initaccum(grid)
  
-  end subroutine pflow_mphase_timecut
+  end subroutine pflow_flash_timecut
   
 
- subroutine pflow_mphase_setupini(grid)
+ subroutine pflow_flash_setupini(grid)
   implicit none
   type(pflowGrid), intent(inout) :: grid
   
@@ -135,10 +135,10 @@ private
   call VecRestoreArrayF90(grid%xx, xx_p, ierr)
   call VecRestoreArrayF90(grid%iphas, iphase_p,ierr)
 
-  end  subroutine pflow_mphase_setupini
+  end  subroutine pflow_flash_setupini
   
 
- subroutine MPhase_Update_Reason(reason,grid)
+ subroutine FLASH_update_Reason(reason,grid)
   
   implicit none
  
@@ -191,9 +191,7 @@ private
      re=0; exit
     endif
  
-   select case(iipha)
-   case (1)
-     if(xx_p(n0 + 3) > 1.0D0)then
+   if(xx_p(n0 + 3) > 1.0D0)then
       re=0; exit
 !    goto 111
         endif
@@ -201,48 +199,10 @@ private
       re=0; exit
 !    goto 111
        endif
-     !if(xx_p(n0 + 3) > 1.0D0) xx_p(n0 + 3)=1.D0
-     !if(xx_p(n0 + 3) < .0D0) xx_p(n0 + 3)=0.D0
-    case (2)
-     if(xx_p(n0 + 3) > 1.0D0)then
-      re=0; exit
-!    goto 111
-        endif
-     if(xx_p(n0 + 3) < 0D-0)then
-      re=0; exit
-!    goto 111
-     endif
-    case (3)
-     if(xx_p(n0 + 3) > 1.D0)then
-      re=0; exit
-!     goto 111
-        endif
-     if(xx_p(n0 + 3) < 0.)then
-      re=0; exit
-!     goto 111
-     endif
-     !if(xx_p(n0 + 3) > 1.0D0) xx_p(n0 + 3)=1.D0
-     !if(xx_p(n0 + 3) < .0D0) xx_p(n0 + 3)=0.D0
-    end select  
-    end do
+   end do
   
-!  do n = 1,grid%nlmax
-!     n0=(n-1)* grid%ndof
-!      
-!   if(dabs(xx_p(n0+1)-yy_p(n0+1))>1D6) then
-!      re=0;exit
-!   endif
-   
-!   if(dabs(xx_p(n0+2)-yy_p(n0+2))>1D1) then
-!      re=0;exit
-!   endif
-  
-  
-!   enddo
-   ! print *, 'update reason: ',grid%myrank,grid%nlmax,n,re
 
-  !   call PETSCBarrier(PETSC_NULL_OBJECT,ierr)
-   !print *,' update reason ba MPI', ierr
+
    if(re<=0) print *,'Sat or Con out of Region at: ',n,iipha,xx_p(n0+1:n0+3)
      call VecRestoreArrayF90(grid%xx, xx_p, ierr); CHKERRQ(ierr)
      call VecRestoreArrayF90(grid%yy, yy_p, ierr)
@@ -264,12 +224,12 @@ private
   
   if(reason<=0) print *,'Sat or Con out of Region'
   
-  end subroutine MPhase_Update_Reason
+  end subroutine FLASH_Update_Reason
 
 
 
 
-  subroutine MPHASERes_ARCont(node_no, var_node,por,vol,rock_dencpr, grid, Res_AR,ireac,ierr)
+  subroutine FlashRes_ARCont(node_no, var_node,por,vol,rock_dencpr, grid, Res_AR,ireac,ierr)
   implicit none
   integer node_no
   integer, optional:: ireac,ierr
@@ -324,10 +284,10 @@ private
    Res_AR(1:grid%ndof-1)=mol(:)
    Res_AR(grid%ndof)=eng
  nullify(temp, pre_ref, sat, density, amw, h,u, pc,kvr,xmol,diff)       
-  end subroutine  MPHASERes_ARCont
+  end subroutine  flashRes_ARCont
 
 
- subroutine MPHASERes_FLCont(nconn_no,area, &
+ subroutine flashRes_FLCont(nconn_no,area, &
          var_node1,por1,tor1,sir1,dd1,perm1,Dk1,&
      var_node2,por2,tor2,sir2,dd2,perm2,Dk2,&
      grid, vv_darcy,Res_FL)
@@ -466,9 +426,9 @@ private
  
   nullify(temp1, pre_ref1, sat1, density1, amw1, h1,u1, pc1,kvr1,xmol1,diff1)       
   nullify(temp2, pre_ref2, sat2, density2, amw2, h2,u2, pc2,kvr2,xmol2,diff2)       
- end subroutine MPHASERes_FLCont
+ end subroutine flashRes_FLCont
 
- subroutine MPHASERes_FLBCCont(nbc_no,area, &
+ subroutine flashRes_FLBCCont(nbc_no,area, &
              var_node1,var_node2,por2,tor2,sir2,dd1,perm2,Dk2,&
        grid, vv_darcy,Res_FL)
  ! Notice : index 1 stands for BC node
@@ -677,14 +637,15 @@ private
   end select
    nullify(temp1, pre_ref1, sat1, density1, amw1, h1,u1, pc1,kvr1,xmol1,diff1)       
   nullify(temp2, pre_ref2, sat2, density2, amw2, h2,u2, pc2,kvr2,xmol2,diff2)       
- end  subroutine MPHASERes_FLBCCont 
+ end  subroutine flashRes_FLBCCont 
 
 
-  subroutine MPHASEResidual(snes,xx,r,grid,ierr)
+  subroutine flashResidual(snes,xx,r,grid,ierr)
 
     use water_eos_module
     use co2eos_module
-    use translator_mph_module
+   ! use translator_mph_module
+    use translator_flash_module
     use span_wagner_module
 
     implicit none
@@ -747,10 +708,6 @@ private
   grid%vvl_loc=0.D0
   grid%vvg_loc=0.D0
 
-  if(grid%iphch<=3)then
-    call Translator_MPhase_Switching(xx,grid,0,ierr)
-    grid%iphch=grid%iphch+1
-  endif  
   call VecGetArrayF90(xx, xx_p, ierr); CHKERRQ(ierr)
   do n = 1, grid%nlmax
     if(xx_p((n-1)*grid%ndof+3) < 0.D0)xx_p((n-1)*grid%ndof+3) = zerocut
@@ -779,40 +736,13 @@ private
     grid%delx(1,ng)=xx_loc_p((ng-1)*grid%ndof+1)*dfac*1e-3
     grid%delx(2,ng)=xx_loc_p((ng-1)*grid%ndof+2)*dfac
   
-  select case (iiphase)
-  case (1)
       if(xx_loc_p((ng-1)*grid%ndof+3) < 0.8)then
        grid%delx(3,ng) =  dfac *xx_loc_p((ng-1)*grid%ndof+3)
       else
        grid%delx(3,ng) =  -dfac *xx_loc_p((ng-1)*grid%ndof+3) 
       endif
-      if(grid%delx(3,ng) <1D-9 .and. grid%delx(3,ng)>=0.D0)grid%delx(3,ng) =1D-9
-      if(grid%delx(3,ng) >-1D-9 .and. grid%delx(3,ng)<0.D0)grid%delx(3,ng) =-1D-9
-   case(2)  
-      if(xx_loc_p((ng-1)*grid%ndof+3) <0.8)then
-       grid%delx(3,ng) =  dfac *xx_loc_p((ng-1)*grid%ndof+3) 
-      else
-       grid%delx(3,ng) =  -dfac *xx_loc_p((ng-1)*grid%ndof+3) 
-      endif 
-      if(grid%delx(3,ng) <1D-9 .and. grid%delx(3,ng)>=0.D0)grid%delx(3,ng) =1D-9
-      if(grid%delx(3,ng) >-1D-9.and. grid%delx(3,ng)<0.D0)grid%delx(3,ng) =-1D-9
-    case(3)
-      if(xx_loc_p((ng-1)*grid%ndof+3) <=0.9)then
-        grid%delx(3,ng) = dfac *xx_loc_p((ng-1)*grid%ndof+3) 
-      else
-        grid%delx(3,ng) = -dfac *xx_loc_p((ng-1)*grid%ndof+3) 
-      endif 
-      
-      if(grid%delx(3,ng) <1D-9 .and. grid%delx(3,ng)>=0.D0)grid%delx(3,ng) =1D-9
-      if(grid%delx(3,ng) >-1D-9 .and. grid%delx(3,ng)<0.D0)grid%delx(3,ng) =-1D-9
-      
-      if((grid%delx(3,ng)+xx_loc_p((ng-1)*grid%ndof+3))>1.D0)then
-        grid%delx(3,ng) = (1.D0-xx_loc_p((ng-1)*grid%ndof+3))/1D5
-      endif
-      if((grid%delx(3,ng)+xx_loc_p((ng-1)*grid%ndof+3))<0.D0)then
-        grid%delx(3,ng) = xx_loc_p((ng-1)*grid%ndof+3)/1D5
-      endif
-    end select
+      if(grid%delx(3,ng) <1D-9 .and. grid%delx(3,ng)>=0.D0)grid%delx(3,ng) =grid%delx(3,ng) *1D-2
+      if(grid%delx(3,ng) >-1D-9 .and. grid%delx(3,ng)<0.D0)grid%delx(3,ng) =grid%delx(3,ng)*1D-2
   enddo
   
   call VecRestoreArrayF90(grid%xx_loc, xx_loc_p, ierr); CHKERRQ(ierr)
@@ -845,7 +775,7 @@ private
     dif(2)= grid%cdiff(int(ithrm_p(n)))
   
   !*******************************************
-  call pri_var_trans_mph_ninc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),iiphase,&
+  call pri_var_trans_flash_ninc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),iiphase,&
         grid%scale,grid%nphase,grid%nspec,&
         grid%icaptype(iicap),grid%sir(1:grid%nphase,iicap),grid%lambda(iicap),&
         grid%alpha(iicap),grid%pckrm(iicap),grid%pcwmax(iicap),&
@@ -853,10 +783,10 @@ private
     var_p((n-1)*size_var_node+1:(n-1)*size_var_node+size_var_use),&
     grid%itable,ierr,grid%xxphi_co2(n), grid%dden_co2(n))
 
-
+   iphase_p(n) = iiphase
 
   if (grid%ideriv .eq. 1) then
-      call pri_var_trans_mph_winc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),&
+      call pri_var_trans_flash_winc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),&
       grid%delx(1:grid%ndof,ng), iiphase,&
         grid%scale,grid%nphase,grid%nspec, &
         grid%icaptype(iicap),grid%sir(1:grid%nphase,iicap),grid%lambda(iicap),&
@@ -956,7 +886,7 @@ private
     i = ithrm_loc_p(ng)
 
     accum = 0.d0
-    call MPHASERes_ARCont(n, var_loc_p(index_var_begin: index_var_end),&
+    call flashRes_ARCont(n, var_loc_p(index_var_begin: index_var_end),&
     porosity_loc_p(ng),volume_p(n),grid%dencpr(i), grid, Res, 1,ierr)
    
     r_p(p1:p1+grid%ndof-1) = r_p(p1:p1+grid%ndof-1) + Res(1:grid%ndof)
@@ -1156,7 +1086,7 @@ private
     f2 = dd2/dd
 !   if(dabs(perm1-1D-15)>1D-20)print *, 'perm1 error', perm1, ip1, n1,n2
 !  if(dabs(perm2-1D-15)>1D-20)print *, 'perm2 error', perm2, ip2, n1,n2
-    call MPHASERes_FLCont(nc ,grid%area(nc), &
+    call flashRes_FLCont(nc ,grid%area(nc), &
          var_loc_p((m1-1)*size_var_node+1:(m1-1)*size_var_node+size_var_use),&
      porosity_loc_p(m1),tor_loc_p(m1),grid%sir(1:grid%nphase,iicap1),dd1,perm1,D1,&
      var_loc_p((m2-1)*size_var_node+1:(m2-1)*size_var_node+size_var_use),&
@@ -1256,7 +1186,7 @@ private
     !*******************************************
 
   
-      call pri_var_trans_mph_ninc(grid%xxbc(:,nc),grid%iphasebc(nc),&
+      call pri_var_trans_flash_ninc(grid%xxbc(:,nc),grid%iphasebc(nc),&
       grid%scale,grid%nphase,grid%nspec, &
       grid%icaptype(iicap),grid%sir(1:grid%nphase,iicap),grid%lambda(iicap),&
       grid%alpha(iicap),grid%pckrm(iicap),grid%pcwmax(iicap), & !use node's value
@@ -1264,7 +1194,7 @@ private
       grid%varbc(1:size_var_use), grid%itable,ierr,grid%xxphi_co2_bc(nc), cw)
    
      
-      call MPHASERes_FLBCCont(nc,grid%areabc(nc), &
+      call flashRes_FLBCCont(nc,grid%areabc(nc), &
       grid%varbc(1:size_var_use), &
       var_loc_p((ng-1)*size_var_node+1:(ng-1)*size_var_node+size_var_use),&
       porosity_loc_p(ng),tor_loc_p(ng),grid%sir(1:grid%nphase,iicap),grid%distbc(nc),&
@@ -1328,15 +1258,16 @@ private
 
 ! print *,'Residual ::...........'; call VecView(r,PETSC_VIEWER_STDOUT_WORLD,ierr)
  !print *,'finished MPHASEResidual'
-  end subroutine MPHASEResidual
+  end subroutine FLASHResidual
                 
 ! --------------------------------------------------------------------- 
 
-  subroutine MPHASEJacobin(snes,xx,A,B,flag,grid,ierr)
+  subroutine FLASHJacobin(snes,xx,A,B,flag,grid,ierr)
        
     use water_eos_module
     use co2eos_module
-    use translator_mph_module
+   ! use translator_mph_module
+    use translator_flash_module
     use span_wagner_module
   
     implicit none
@@ -1457,7 +1388,7 @@ private
       index_var_begin=(ng-1)*size_var_node+nvar*size_var_use+1
       index_var_end = index_var_begin -1 + size_var_use
 
-       call MPHASERes_ARCont(n, var_loc_p(index_var_begin : index_var_end),&
+       call flashRes_ARCont(n, var_loc_p(index_var_begin : index_var_end),&
         porosity_loc_p(ng),volume_p(n),grid%dencpr(int(ithrm_loc_p(ng))),&
         grid, Res,1,ierr)
       
@@ -1657,7 +1588,7 @@ private
 
   !  print *,' Mph Jaco BC terms: finish setup'
   ! here should pay attention to BC type !!!
-   call pri_var_trans_mph_ninc(grid%xxbc(:,nc),grid%iphasebc(nc),&
+   call pri_var_trans_flash_ninc(grid%xxbc(:,nc),grid%iphasebc(nc),&
        grid%scale,grid%nphase,grid%nspec, &
       grid%icaptype(iicap),grid%sir(1:grid%nphase,iicap),grid%lambda(iicap),&
       grid%alpha(iicap),grid%pckrm(iicap),grid%pcwmax(iicap), & !use node's value
@@ -1666,7 +1597,7 @@ private
   
   
   
-      call pri_var_trans_mph_winc(grid%xxbc(:,nc), delxbc,&
+      call pri_var_trans_flash_winc(grid%xxbc(:,nc), delxbc,&
                        grid%iphasebc(nc), grid%scale,grid%nphase,grid%nspec, &
             grid%icaptype(iicap),grid%sir(1:grid%nphase,iicap),grid%lambda(iicap),&
             grid%alpha(iicap),grid%pckrm(iicap),grid%pcwmax(iicap), & !use node's value
@@ -1676,7 +1607,7 @@ private
 !    print *,' Mph Jaco BC terms: finish increment'
     do nvar=1,grid%ndof
    
-    call MPHASERes_FLBCCont(nc,grid%areabc(nc), &
+    call flashRes_FLBCCont(nc,grid%areabc(nc), &
              grid%varbc(nvar*size_var_use+1:(nvar+1)*size_var_use), &
        var_loc_p((ng-1)*size_var_node+nvar*size_var_use+1:(ng-1)*size_var_node+nvar*size_var_use+size_var_use),&
        porosity_loc_p(ng),tor_loc_p(ng),grid%sir(1:grid%nphase,iicap),grid%distbc(nc),&
@@ -1806,7 +1737,7 @@ private
   ! do neq = 1, grid%ndof
     do nvar = 1, grid%ndof
     
-    call MPHASERes_FLCont(nc ,grid%area(nc), &
+    call flashRes_FLCont(nc ,grid%area(nc), &
          var_loc_p((m1-1)*size_var_node+nvar*size_var_use+1:(m1-1)*size_var_node+nvar*size_var_use+size_var_use),&
      porosity_loc_p(m1),tor_loc_p(m1),grid%sir(1:grid%nphase,iicap1),dd1,perm1,D1,&
      var_loc_p((m2-1)*size_var_node+1:(m2-1)*size_var_node+size_var_use),&
@@ -1816,7 +1747,7 @@ private
           ra(:,nvar)= Res(:)/grid%delx(nvar,m1)-ResOld_FL(nc,:)/grid%delx(nvar,m1)
   
        
-        call MPHASERes_FLCont(nc ,grid%area(nc), &
+        call flashRes_FLCont(nc ,grid%area(nc), &
          var_loc_p((m1-1)*size_var_node+1:(m1-1)*size_var_node+size_var_use),&
      porosity_loc_p(m1),tor_loc_p(m1),grid%sir(1:grid%nphase,iicap1),dd1,perm1,D1,&
      var_loc_p((m2-1)*size_var_node+nvar*size_var_use+1:(m2-1)*size_var_node+nvar*size_var_use+size_var_use),&
@@ -1932,14 +1863,14 @@ private
 ! call MatView(A, PETSC_VIEWER_STDOUT_WORLD,ierr)
 ! stop
 
- end subroutine MPHASEJacobin
+ end subroutine flashJacobin
 
 
 
 
- subroutine pflow_mphase_initaccum(grid)
+ subroutine pflow_flash_initaccum(grid)
  
-  use translator_mph_module  
+  use translator_flash_module  
    implicit none
     type(pflowGrid) :: grid 
 
@@ -1975,7 +1906,7 @@ private
     dif(1)= grid%difaq
         dif(2)= grid%cdiff(int(ithrm_p(n)))
 
-     call pri_var_trans_mph_ninc(yy_p((n-1)*grid%ndof+1:n*grid%ndof),iiphase,&
+     call pri_var_trans_flash_ninc(yy_p((n-1)*grid%ndof+1:n*grid%ndof),iiphase,&
         grid%scale,grid%nphase,grid%nspec, &
         grid%icaptype(iicap), grid%sir(1:grid%nphase,iicap),grid%lambda(iicap),&
         grid%alpha(iicap),grid%pckrm(iicap),grid%pcwmax(iicap),&
@@ -1986,8 +1917,8 @@ private
 
  enddo
 
-  call VecRestoreArrayF90(grid%var, var_p,ierr)
-  call VecGetArrayF90(grid%var, var_p,ierr)
+!  call VecRestoreArrayF90(grid%var, var_p,ierr)
+!  call VecGetArrayF90(grid%var, var_p,ierr)
 
 !---------------------------------------------------------------------------
   do n = 1, grid%nlmax  ! For each local node do...
@@ -1997,7 +1928,7 @@ private
     index_var_end = index_var_begin -1 + size_var_use
     i = ithrm_p(n)
     
-     call MPHASERes_ARCont(n, var_p(index_var_begin: index_var_end),&
+     call flashRes_ARCont(n, var_p(index_var_begin: index_var_end),&
     porosity_p(n),volume_p(n),grid%dencpr(i), grid, Res, 0,ierr)
  
 
@@ -2020,11 +1951,12 @@ private
   call VecRestoreArrayF90(grid%ithrm, ithrm_p, ierr)
   call VecRestoreArrayF90(grid%icap, icap_p, ierr)
 
- end subroutine pflow_mphase_initaccum
+ end subroutine pflow_flash_initaccum
 
 
-  subroutine pflow_update_mphase(grid)
-    use translator_mph_module  
+  subroutine pflow_update_flash(grid)
+    use translator_flash_module 
+    use translator_mph_module, only : translator_mph_get_output
    ! use water_eos_module
     implicit none
     type(pflowGrid) :: grid 
@@ -2051,20 +1983,20 @@ private
     iicap = icap_p(n)
   iiphase = iphase_p(n)
     n0=(n-1)*grid%ndof
-   if(xx_p(n0+3)<0.D0) xx_p(n0+3)=zerocut
+   if(xx_p(n0+3)<0.D0) xx_p(n0+3)=0.D0
 
     !*****************
   dif(1)= grid%difaq
     dif(2)= grid%cdiff(int(ithrm_p(n)))
     !*******************************************
-     call pri_var_trans_mph_ninc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),iiphase,&
+     call pri_var_trans_flash_ninc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),iiphase,&
         grid%scale,grid%nphase,grid%nspec,&
         grid%icaptype(iicap), grid%sir(1:grid%nphase,iicap),grid%lambda(iicap),&
         grid%alpha(iicap),grid%pckrm(iicap),grid%pcwmax(iicap),&
         grid%pcbetac(iicap),grid%pwrprm(iicap),dif,&
     var_p((n-1)*size_var_node+1:(n-1)*size_var_node+size_var_use),&
     grid%itable,ierr, dum1, dum2)
-
+  !  print *,"upd_fla::", xx_p((n-1)*grid%ndof+1:n*grid%ndof), var_p((n-1)*size_var_node+1:(n-1)*size_var_node+size_var_use)
    enddo
    
    call VecRestoreArrayF90(grid%xx, xx_p, ierr); CHKERRQ(ierr)
@@ -2073,13 +2005,13 @@ private
    call VecRestoreArrayF90(grid%iphas, iphase_p, ierr)
    call VecRestoreArrayF90(grid%var,var_p,ierr)
    
-   if(grid%nphase>1) call translator_mphase_massbal(grid)
+   if(grid%nphase>1) call translator_flash_massbal(grid)
  ! endif 
 
   call VecCopy(grid%xx, grid%yy, ierr)   
   call VecCopy(grid%iphas, grid%iphas_old, ierr)   
    
-  call  pflow_mphase_initaccum(grid)
+  call  pflow_flash_initaccum(grid)
     !print *,'pflow_mphase_initaccum done'
   call translator_mph_get_output(grid)
  ! print *,'translator_get_output done'
@@ -2089,17 +2021,18 @@ private
 
 
 
- end subroutine pflow_update_mphase
+ end subroutine pflow_update_flash
 
 
 
 
 
-  subroutine pflow_mphase_initadj(grid)
+  subroutine pflow_flash_initadj(grid)
  
 ! running this subroutine will override the xmol data for initial condition in pflow.in 
 
-  use translator_mph_module  
+  use translator_flash_module
+    
   implicit none
   type(pflowGrid) :: grid 
 
@@ -2142,14 +2075,14 @@ private
        dif(1)= grid%difaq
          dif(2)= grid%cdiff(int(ithrm_p(n)))
     !*******************************************
-  call pri_var_trans_mph_ninc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),iiphase,&
+  call pri_var_trans_flash_ninc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),iiphase,&
         grid%scale,grid%nphase,grid%nspec, &
         grid%icaptype(iicap), grid%sir(1:grid%nphase,iicap),grid%lambda(iicap),&
         grid%alpha(iicap),grid%pckrm(iicap),grid%pcwmax(iicap),&
         grid%pcbetac(iicap),grid%pwrprm(iicap),dif,&
     var_p((n-1)*size_var_node+1: (n-1)*size_var_node+size_var_use),grid%itable,ierr, dum1, dum2)
    
-   if(translator_check_phase_cond(iiphase, &
+   if(flash_check_phase_cond(iiphase, &
            var_p((n-1)*size_var_node+1: (n-1)*size_var_node+size_var_use),&
        grid%nphase,grid%nspec) /= 1 ) then
     print *," Wrong internal node init...  STOP!!!"
@@ -2177,7 +2110,7 @@ private
           dif(1)= grid%difaq
           dif(2)= grid%cdiff(iithrm)
 
-          call pri_var_trans_mph_ninc(grid%xxbc(:,nc),grid%iphasebc(nc),&
+          call pri_var_trans_flash_ninc(grid%xxbc(:,nc),grid%iphasebc(nc),&
            grid%scale,grid%nphase,grid%nspec, &
              grid%icaptype(iicap),grid%sir(1:grid%nphase,iicap),grid%lambda(iicap),&
              grid%alpha(iicap),grid%pckrm(iicap),grid%pcwmax(iicap), & !use node's value
@@ -2185,7 +2118,7 @@ private
       grid%varbc(1:size_var_use), grid%itable,ierr, dum1, dum2)
       
 
-       if(translator_check_phase_cond(grid%iphasebc(nc), &
+       if(flash_check_phase_cond(grid%iphasebc(nc), &
            grid%varbc(1:size_var_use), grid%nphase,grid%nspec) &
        /=1) then
       print *," Wrong bounday node init...  STOP!!!", grid%xxbc(:,nc)
@@ -2207,7 +2140,7 @@ private
   
   !call VecCopy(grid%iphas,grid%iphas_old,ierr)
    
- end subroutine pflow_mphase_initadj
+ end subroutine pflow_flash_initadj
 
 
-end module MPHASE_module
+end module Flash_module

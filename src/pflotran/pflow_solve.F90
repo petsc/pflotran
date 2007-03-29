@@ -75,6 +75,7 @@
  use translator_owg_module
  use translator_vad_module
  use MPHASE_module
+ use Flash_module
  use VADOSE_module
  use OWG_module
  
@@ -99,6 +100,10 @@
    call MPHASEResidual(grid%snes,grid%xx,grid%r,grid,ierr)
  endif
 
+ if(grid%use_flash==PETSc_TRUE)then
+ !  call Translator_vadose_Switching(grid%xx,grid,0,ichange)
+   call FLashResidual(grid%snes,grid%xx,grid%r,grid,ierr)
+ endif
 
  if(grid%use_owg==PETSc_TRUE)then
  call Translator_OWG_Switching(grid%xx,grid%tref,grid,1,ichange,ierr)
@@ -120,7 +125,10 @@
       call OWGJacobin(grid%snes,grid%xx,grid%J,grid%J,flag,grid,ierr)
      elseif(grid%use_vadose==PETSC_TRUE)then
       call VadoseJacobin(grid%snes,grid%xx,grid%J,grid%J,flag,grid,ierr)
-  endif
+    elseif(grid%use_flash==PETSC_TRUE)then
+      call FlashJacobin(grid%snes,grid%xx,grid%J,grid%J,flag,grid,ierr)
+
+   endif
    print *,' psolve; Get Joc'
    
   call VecScale(grid%r,-1D0,ierr)

@@ -60,13 +60,13 @@
   integer :: ierr, ihalcnt
   type(pflowGrid) :: grid
   integer :: igeom
-  integer :: nx, ny, nz
-  integer :: npx, npy, npz
+  integer*4 :: nx, ny, nz
+  integer*4 :: npx, npy, npz
   integer :: nphase, ndof, icouple, idcdm, itable
   integer :: nspec,npricomp
   integer :: kplt, iplot, iflgcut, its, ntstep
   integer :: myid
-  integer :: steps
+  integer*4 :: steps
 
 ! Initialize Startup Time
  ! call PetscGetCPUTime(timex(1), ierr)
@@ -96,7 +96,8 @@
   grid = pflowGrid_new(igeom, nx, ny, nz, npx, npy, npz, nphase, nspec, &
          npricomp, ndof, icouple, idcdm, itable)
 
-  if(grid%use_mph == PETSC_TRUE .or. grid%use_owg == PETSC_TRUE) &
+  if(grid%use_mph == PETSC_TRUE .or. grid%use_owg == PETSC_TRUE &
+     .or. grid%use_flash == PETSC_TRUE) &
   call initialize_span_wagner(itable,grid%myrank)
 
   call PetscGetCPUTime(timex(1), ierr)

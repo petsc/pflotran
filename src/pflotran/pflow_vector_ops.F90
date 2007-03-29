@@ -103,7 +103,7 @@ contains
 ! print *,'pflow_vector_ops: ',v1_dof,v2_dof,v3_dof,v1_size,v2_size,v3_size
   
   if(xx_size .ne. v1_size + v2_size + v3_size) then
-    print *, "Error in pflow_pack_xx: Vector sizes are inconsistent."
+    print *, "Error in pflow_pack_xx: Vector sizes are inconsistent.xx3"
     ierr = 1
     return
   endif

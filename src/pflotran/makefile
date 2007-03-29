@@ -37,14 +37,13 @@ util_obj  = ${common_src}fileio.o \
 pflow_obj = ${common_src}pflow_vector_ops.o \
 	${common_src}pflow_read_gridsize.o \
 	${common_src}pflow_gridtype.o \
-	${common_src}condition.o \
-	${common_src}unstructured_grid.o \
 	${common_src}Readfield.o \
 	${common_src}pflow_pckr_mod.o \
 	${common_src}mixed_fluid_eos.o \
 	${common_src}translator_mixed_fluid_mph.o \
 	${common_src}translator_mixed_fluid_OWG.o \
 	${common_src}translator_mixed_fluid_vad.o \
+	${common_src}translator_mixed_fluid_flash.o \
 	${common_src}hydrostat.o \
 	${common_src}pflow_LIQUID.o \
 	${common_src}pflow_COND.o \
@@ -54,6 +53,7 @@ pflow_obj = ${common_src}pflow_vector_ops.o \
 	${common_src}pflow_owg_ResJac.o\
 	${common_src}pflow_mphase_ResJac.o\
 	${common_src}pflow_vadose_ResJac.o\
+	${common_src}pflow_flash_ResJac.o\
 	${common_src}pflow_solve.o \
 	${common_src}pflow_output.o \
 	${common_src}pflowgrid_mod.o
