@@ -10,6 +10,10 @@
 		231918480B9DD7EA00844666 /* pflow_vadose_ResJac.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = pflow_vadose_ResJac.F90; sourceTree = "<group>"; };
 		231918490B9DD7FA00844666 /* translator_mixed_fluid_vad.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = translator_mixed_fluid_vad.F90; sourceTree = "<group>"; };
 		2319184A0B9DD80900844666 /* remove_ArrayF90.py */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = text.script.python; path = remove_ArrayF90.py; sourceTree = "<group>"; };
+		2358178D0BBC662B008D3E23 /* condition.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = condition.F90; sourceTree = "<group>"; };
+		2358178E0BBC662B008D3E23 /* pflow_flash_ResJac.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = pflow_flash_ResJac.F90; sourceTree = "<group>"; };
+		2358178F0BBC662B008D3E23 /* translator_mixed_fluid_flash.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = translator_mixed_fluid_flash.F90; sourceTree = "<group>"; };
+		235817900BBC662B008D3E23 /* unstructured_grid.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = unstructured_grid.F90; sourceTree = "<group>"; };
 		23CA5E010AAF411000EC6DC4 /* pflotran_fc.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = pflotran_fc.F90; sourceTree = "<group>"; };
 		23CFC3FD0B8A4881009EAE62 /* makefile_noarrayf90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = text; path = makefile_noarrayf90; sourceTree = "<group>"; };
 		33021A9208A12EFD00D082B8 /* co2_span_wagner.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = co2_span_wagner.F90; sourceTree = "<group>"; };
@@ -80,6 +84,7 @@
 				33021A9308A12EFD00D082B8 /* co2_sw_global.F90 */,
 				33021A9408A12EFD00D082B8 /* co2_sw_rtsafe.F90 */,
 				33021A9508A12EFD00D082B8 /* co2eos.F90 */,
+				2358178D0BBC662B008D3E23 /* condition.F90 */,
 				33021A9608A12EFD00D082B8 /* definitions.h */,
 				33021A9708A12EFD00D082B8 /* fileio.F90 */,
 				33021A9808A12EFD00D082B8 /* gaseos_mod.F90 */,
@@ -97,6 +102,7 @@
 				33021AAE08A12EFD00D082B8 /* pflow.F90 */,
 				33021AA108A12EFD00D082B8 /* pflow_2pha_ResJac.F90 */,
 				33021AA208A12EFD00D082B8 /* pflow_COND.F90 */,
+				2358178E0BBC662B008D3E23 /* pflow_flash_ResJac.F90 */,
 				33021AA308A12EFD00D082B8 /* pflow_gridtype.F90 */,
 				33021AA408A12EFD00D082B8 /* pflow_LIQUID.F90 */,
 				33021AA508A12EFD00D082B8 /* pflow_mphase_ResJac.F90 */,
@@ -108,6 +114,7 @@
 				33021AA908A12EFD00D082B8 /* pflow_TH.F90 */,
 				33021AAA08A12EFD00D082B8 /* pflow_THC.F90 */,
 				33021AAB08A12EFD00D082B8 /* pflow_THS.F90 */,
+				231918480B9DD7EA00844666 /* pflow_vadose_ResJac.F90 */,
 				33021AAD08A12EFD00D082B8 /* pflow_vector_ops.F90 */,
 				33021AAF08A12EFD00D082B8 /* pflowgrid_mod.F90 */,
 				33021ABF08A12EFD00D082B8 /* ptran.F90 */,
@@ -126,17 +133,18 @@
 				33021ABD08A12EFD00D082B8 /* ptran_speciation.F90 */,
 				33021ABE08A12EFD00D082B8 /* ptran_update.F90 */,
 				33C0932A09BF95D300A773C8 /* Readfield.F90 */,
-				33021AC008A12EFD00D082B8 /* rock_react.F90 */,
-				33E20B6909ED787000578A26 /* translator_mixed_fluid_mph.F90 */,
 				2319184A0B9DD80900844666 /* remove_ArrayF90.py */,
-				231918490B9DD7FA00844666 /* translator_mixed_fluid_vad.F90 */,
-				231918480B9DD7EA00844666 /* pflow_vadose_ResJac.F90 */,
+				33021AC008A12EFD00D082B8 /* rock_react.F90 */,
+				2358178F0BBC662B008D3E23 /* translator_mixed_fluid_flash.F90 */,
+				33E20B6909ED787000578A26 /* translator_mixed_fluid_mph.F90 */,
 				33021ACE08A1306800D082B8 /* translator_mixed_fluid_OWG.F90 */,
+				231918490B9DD7FA00844666 /* translator_mixed_fluid_vad.F90 */,
 				33021AC108A12EFD00D082B8 /* trdynmem.F90 */,
 				33021AC208A12EFD00D082B8 /* trgamdh.F90 */,
 				33021AC308A12EFD00D082B8 /* trionexc.F90 */,
 				33021AC408A12EFD00D082B8 /* trkinmin.F90 */,
 				33021AC508A12EFD00D082B8 /* trstdyst.F90 */,
+				235817900BBC662B008D3E23 /* unstructured_grid.F90 */,
 				33021AC608A12EFD00D082B8 /* utilities.F90 */,
 				33021AC708A12EFD00D082B8 /* water_eos.F90 */,
 			);
