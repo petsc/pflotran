@@ -686,13 +686,14 @@ module pflow_output_module
     call VecRestoreArrayF90(s_all, s_p, ierr)
     if( grid%use_2ph == PETSC_TRUE .or. grid%use_mph == PETSC_TRUE &
                                    .or. grid%use_flash == PETSC_TRUE &
-                                   .or. grid%use_vadose == PETSC_TRUE ) &
-       call VecRestoreArrayF90(x_all, x_p, ierr)
-       call VecRestoreArrayF90(iphase_all, iphase_p, ierr)
-      if (grid%rk > 0.d0) then
-        call VecRestoreArrayF90(phis_all, phis_p, ierr)
-      endif
+                                   .or. grid%use_vadose == PETSC_TRUE) then
+      call VecRestoreArrayF90(x_all, x_p, ierr)
+      call VecRestoreArrayF90(iphase_all, iphase_p, ierr)
     endif
+    if (grid%rk > 0.d0) then
+      call VecRestoreArrayF90(phis_all, phis_p, ierr)
+    endif
+  endif
   
   call VecDestroy(p_all, ierr)
   call VecDestroy(t_all, ierr)
