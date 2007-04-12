@@ -131,12 +131,6 @@ private
                        kvr_bc(:),kvr_p_bc(:),kvr_t_bc(:),kvr_s_bc(:),kvr_c_bc(:)
     real*8, pointer :: xphi_co2(:),xxphi_co2(:),den_co2(:), dden_co2(:)
 
-    !nL2G :  not collective, local processor: local  =>  ghosted local 
-    !nG2L :  not collective, local processor:  ghosted local => local 
-    !nG2N :  collective,  ghosted local => global index , used for  
-    !                     matsetvaluesblocked ( not matsetvaluesblockedlocal) 
-    !nL2A :   collective, local => natural index, used for initialization  
-!                              and source/sink setup 
     integer*4, pointer :: nL2G(:), nG2L(:), nL2A(:),nG2N(:)
       ! Arrays for indexing between local ghosted and non-ghosted, local to natural arrays.
     DA :: da_1_dof, da_nphase_dof, da_3np_dof, da_ndof
@@ -227,6 +221,8 @@ private
     real*8, pointer :: swir(:),lambda(:),alpha(:),pckrm(:),pcwmax(:),pcbetac(:), &
                        pwrprm(:),sir(:,:)
     integer, pointer:: icaptype(:)
+!geh material id
+    integer, pointer :: imat(:)
     real*8 :: difaq, delhaq, gravity, fmwh2o= 18.0153D0, fmwa=28.96D0, &
               fmwco2=44.0098D0, eqkair, ret=1.d0, fc=1.d0
     
