@@ -37,6 +37,8 @@ util_obj  = ${common_src}fileio.o \
 pflow_obj = ${common_src}pflow_vector_ops.o \
 	${common_src}pflow_read_gridsize.o \
 	${common_src}pflow_gridtype.o \
+	${common_src}condition.o \
+	${common_src}unstructured_grid.o \
 	${common_src}Readfield.o \
 	${common_src}pflow_pckr_mod.o \
 	${common_src}mixed_fluid_eos.o \

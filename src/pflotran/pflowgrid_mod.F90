@@ -916,6 +916,7 @@ subroutine pflowGrid_setup(grid, inputfile)
   
   use utilities_module
   use readfield
+  use Unstructured_Grid_module
   use pflow_solv_module  
                             
   implicit none
@@ -2148,6 +2149,20 @@ subroutine pflowGrid_setup(grid, inputfile)
 
  if (grid%iread_geom == 1) then
    call Read_Geom_field(grid)
+ else if (grid%iread_geom == -1) then 
+   if (myrank == 0) print *, 'Reading unstructured grid' 
+   allocate(grid%pressurebc(grid%nphase,grid%nconnbc)) 
+   call ReadUnstructuredGrid(grid) 
+   print *, 'nconnbc:', grid%nconnbc 
+   do nc = 1, grid%nconnbc 
+     ibc = grid%ibndtyp(nc) 
+!     print *, 'ibc:', ibc, grid%ibconn(nc) 
+     if (ibc == 2) then 
+       print *, grid%velocitybc(:,nc) 
+     else 
+       print *, grid%pressurebc(:,nc), grid%z(grid%nL2A(grid%mblkbc(nc))) 
+     endif 
+   enddo 
  endif  
 
 
