@@ -1701,9 +1701,9 @@ subroutine pflowGrid_setup(grid, inputfile)
   
       grid%vlbc=0.D0
       grid%vgbc=0.D0
-  
-!geh
     endif
+!geh
+  endif
 
     if (grid%use_mph == PETSC_TRUE .or. grid%use_owg == PETSC_TRUE &
         .or. grid%use_vadose == PETSC_TRUE .or. grid%use_flash == PETSC_TRUE) then
@@ -1751,7 +1751,6 @@ subroutine pflowGrid_setup(grid, inputfile)
       allocate(grid%kvr_c_bc(grid%nphase*grid%npricomp))
       allocate(grid%kvr_s_bc(grid%nphase))
     endif
-  endif
 
 !geh
   if (grid%iread_geom > -1) then
