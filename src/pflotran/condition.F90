@@ -247,7 +247,7 @@ subroutine UpdateBoundaryConditions(grid)
     datum = condition_array(icond)%ptr%datum
     value = condition_array(icond)%ptr%cur_value
     if (itype == 3 .or. itype == 4) then ! correct for pressure gradient
-      delz = grid%z(grid%nL2A(grid%mblkbc(iconnbc)))-datum
+      delz = grid%z(grid%nL2A(grid%mblkbc(iconnbc))+1)-datum
       delp = delz*9.81d0*998.32
       value = value - delp
     endif

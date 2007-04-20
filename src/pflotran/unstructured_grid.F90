@@ -149,7 +149,7 @@ subroutine ReadUnstructuredGrid(grid)
         volume_p(local_id) = volume
         por_p(local_id) = porosity
         tor_p(local_id) = tortuosity
-        ! need something in which to store material id
+        grid%imat(local_id) = material_id
       endif
 #ifdef HASH
     endif
@@ -166,26 +166,24 @@ subroutine ReadUnstructuredGrid(grid)
   
 ! CONNection information
 
-!geh Right now we ignore allocation since the arrays are already allocated
-!geh larger than necessary.  This will need to be updated in the future.
 ! Count the number of local connections
-!geh  grid%nconn = GetNumberOfLocalConnections(fid) ! function at bottom of file
+  grid%nconn = GetNumberOfLocalConnections(fid,grid) ! function at bottom of file
 ! Allocate Arrays
-!geh  allocate(grid%nd1(grid%nconn))
-!geh  allocate(grid%nd2(grid%nconn))
-!geh  allocate(grid%dist1(grid%nconn))
-!geh  allocate(grid%dist2(grid%nconn))
-!geh  allocate(grid%area(grid%nconn))
-!geh  allocate(grid%delz(grid%nconn))
-!geh  allocate(grid%grav_ang(grid%nconn))
-!geh
-!geh  allocate(grid%iperm1(grid%nconn))
-!geh  allocate(grid%iperm2(grid%nconn))
-!geh
-!geh  allocate(grid%vl_loc(grid%nconn))
-!geh  allocate(grid%vvl_loc(grid%nconn))
-!geh  allocate(grid%vg_loc(grid%nconn))
-!geh  allocate(grid%vvg_loc(grid%nconn))
+  allocate(grid%nd1(grid%nconn))
+  allocate(grid%nd2(grid%nconn))
+  allocate(grid%dist1(grid%nconn))
+  allocate(grid%dist2(grid%nconn))
+  allocate(grid%area(grid%nconn))
+  allocate(grid%delz(grid%nconn))
+  allocate(grid%grav_ang(grid%nconn))
+
+  allocate(grid%iperm1(grid%nconn))
+  allocate(grid%iperm2(grid%nconn))
+
+  allocate(grid%vl_loc(grid%nconn))
+  allocate(grid%vvl_loc(grid%nconn))
+  allocate(grid%vg_loc(grid%nconn))
+  allocate(grid%vvg_loc(grid%nconn))
 
   grid%nconn = 0
 
@@ -257,9 +255,9 @@ subroutine ReadUnstructuredGrid(grid)
         grid%grav_ang(grid%nconn) = cosB
 
         ! setup direction of permeability
-        dx = abs(grid%x(natural_id_upwind)-grid%x(natural_id_downwind))
-        dy = abs(grid%y(natural_id_upwind)-grid%y(natural_id_downwind))
-        dz = abs(grid%z(natural_id_upwind)-grid%z(natural_id_downwind))
+        dx = abs(grid%x(natural_id_upwind)-grid%x(natural_id_downwind+1))
+        dy = abs(grid%y(natural_id_upwind)-grid%y(natural_id_downwind+1))
+        dz = abs(grid%z(natural_id_upwind)-grid%z(natural_id_downwind+1))
         if (dx > dy .and. dx > dz) then
           grid%iperm1(grid%nconn) = 1
           grid%iperm2(grid%nconn) = 1
@@ -282,21 +280,24 @@ subroutine ReadUnstructuredGrid(grid)
 !geh Right now we ignore allocation since the arrays are already allocated
 !geh larger than necessary.  This will need to be updated in the future.
 ! Count the number of boundary connections
-!geh  grid%nconn = GetNumberOfBoundary(fid) ! function at bottom of file
+  grid%nconnbc = GetNumberOfBoundaryConnections(fid,grid) ! function at bottom of file
 ! Allocate Arrays
-!geh    allocate(grid%mblkbc(grid%nconnbc)) ! id of local cell
-!geh    allocate(grid%ibconn(grid%nconnbc)) ! id of condition (boundary)
-!geh    allocate(grid%distbc(grid%nconnbc))
-!geh    allocate(grid%areabc(grid%nconnbc))
-!geh    allocate(grid%ipermbc(grid%nconnbc))
-!geh    allocate(grid%delzbc(grid%nconnbc))
+  allocate(grid%mblkbc(grid%nconnbc)) ! id of local cell
+  allocate(grid%ibconn(grid%nconnbc)) ! id of condition (boundary)
+  allocate(grid%distbc(grid%nconnbc))
+  allocate(grid%areabc(grid%nconnbc))
+  allocate(grid%ipermbc(grid%nconnbc))
+  allocate(grid%delzbc(grid%nconnbc))
 
-!geh    allocate(grid%vlbc(grid%nconnbc))
-!geh    allocate(grid%vvlbc(grid%nconnbc))
-!geh    allocate(grid%vgbc(grid%nconnbc))
-!geh    allocate(grid%vvgbc(grid%nconnbc))
+  allocate(grid%vlbc(grid%nconnbc))
+  allocate(grid%vvlbc(grid%nconnbc))
+  allocate(grid%vgbc(grid%nconnbc))
+  allocate(grid%vvgbc(grid%nconnbc))
 
-!geh    allocate(grid%ibndtyp(grid%ncond)) ! condition (boundary) type
+  allocate(grid%ibndtyp(grid%nconnbc)) ! condition (boundary) type
+
+  allocate(grid%velocitybc(grid%nphase, grid%nconnbc))
+  allocate(grid%iphasebc(grid%nconnbc))
 
   grid%nconnbc = 0
 
@@ -511,18 +512,26 @@ integer function GetNumberOfLocalConnections(fid,grid)
     call fiReadInt(string,natural_id_downwind,ierr) 
     call fiErrorMsg('natural_id_downwind',card,ierr)
 
+#ifdef HASH
     local_ghosted_id_upwind = GetLocalIdFromHash(natural_id_upwind)
     local_ghosted_id_downwind = GetLocalIdFromHash(natural_id_downwind)
-    if (local_ghosted_id_upwind > -1 .and. &
-        local_ghosted_id_downwind > -1) then ! both cells are local ghosted
+#else
+    local_ghosted_id_upwind = &
+               GetLocalGhostedIdFromNaturalId(natural_id_upwind,grid)
+    local_ghosted_id_downwind = &
+               GetLocalGhostedIdFromNaturalId(natural_id_downwind,grid)
+#endif
+    if (local_ghosted_id_upwind > 0 .and. &
+        local_ghosted_id_downwind > 0) then ! both cells are local ghosted
       local_id_upwind = grid%nG2L(local_ghosted_id_upwind)
       local_id_downwind = grid%nG2L(local_ghosted_id_downwind)
       ! at least 1 cell must be local (non-ghosted) since we don't want to
       ! create a connection between two ghosted cells
-      if (local_id_upwind > -1 .or. local_id_downwind > -1) then
+      if (local_id_upwind > 0 .or. local_id_downwind > 0) then
         num_local_connections = num_local_connections + 1
       endif
     endif
+
   enddo
 
   GetNumberOfLocalConnections =  num_local_connections
@@ -572,13 +581,20 @@ integer function GetNumberOfBoundaryConnections(fid,grid)
     call fiReadInt(string,natural_id,ierr) 
     call fiErrorMsg('natural_id',card,ierr)
 
+#ifdef HASH
+    local_id = 0
     local_ghosted_id = GetLocalIdFromHash(natural_id)
     if (local_ghosted_id > 0) then 
       local_id = grid%nG2L(local_ghosted_id)
+#else
+    local_id = GetLocalGhostedIdFromNaturalId(natural_id,grid)
+#endif
       if (local_id > 0) then
         num_boundary_connections = num_boundary_connections + 1
       endif
+#ifdef HASH
     endif
+#endif
   enddo
 
   GetNumberOfBoundaryConnections = num_boundary_connections
@@ -601,7 +617,7 @@ integer function GetLocalIdFromNaturalId(natural_id,grid)
   integer :: natural_id, local_id
   
   do local_id = 1, grid%nlmax
-    if (natural_id == grid%nL2A(local_id)) then
+    if (natural_id == grid%nL2A(local_id)+1) then
       GetLocalIdFromNaturalId = local_id
       return
     endif
@@ -628,7 +644,7 @@ integer function GetLocalGhostedIdFromNaturalId(natural_id,grid)
   integer :: natural_id, local_ghosted_id
   
   do local_ghosted_id = 1, grid%ngmax
-    if (natural_id == grid%nL2A(grid%nG2L(local_ghosted_id))) then
+    if (natural_id == grid%nL2A(grid%nG2L(local_ghosted_id))+1) then
       GetLocalGhostedIdFromNaturalId = local_ghosted_id
       return 
     endif
@@ -661,16 +677,18 @@ subroutine CreateNaturalToLocalHash(grid)
   allocate(hash(2,0:num_ids_per_hash,num_hash))
   hash(:,:,:) = 0
 
+  ! recall that natural ids are zero-based
   do local_ghosted_id = 1, grid%ngmax
-    natural_id = grid%nL2A(local_ghosted_id)
-    hash_id = mod(natural_id,num_hash)
-    num_in_hash = hash(1,0,hash_id)+1
+    natural_id = grid%nL2A(local_ghosted_id)+1
+    hash_id = mod(natural_id,num_hash)+1 
+    num_in_hash = hash(1,0,hash_id)
+    num_in_hash = num_in_hash+1
     ! if a hash runs out of space reallocate
     if (num_in_hash > num_ids_per_hash) then 
-      allocate(temp_hash(2,0:num_ids_per_hash,num_hash))
+      allocate(temp_hash(2,0:num_ids_per_hash,0:num_hash))
       ! copy old hash
-      temp_hash(1:2,0:num_ids_per_hash,1:num_hash) = &
-                             hash(1:2,0:num_ids_per_hash,1:num_hash)
+      temp_hash(1:2,0:num_ids_per_hash,num_hash) = &
+                             hash(1:2,0:num_ids_per_hash,num_hash)
       deallocate(hash)
       ! recompute hash 20% larger
       num_ids_per_hash = int(dble(num_ids_per_hash)*1.2)
@@ -708,7 +726,7 @@ integer function GetLocalIdFromHash(natural_id)
   integer :: natural_id
   integer :: hash_id, id
 
-  hash_id = mod(natural_id,num_hash)
+  hash_id = mod(natural_id,num_hash)+1 
   do id = 1, hash(1,0,hash_id)
     if (hash(1,id,hash_id) == natural_id) then
       GetLocalIdFromHash = hash(2,id,hash_id)

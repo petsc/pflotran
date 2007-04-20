@@ -578,13 +578,11 @@ type(pflowGrid) function pflowGrid_new(igeom, nx, ny, nz, npx, npy, npz, &
   allocate(grid%den_co2(grid%nlmax))
   allocate(grid%dden_co2(grid%nlmax))
 
-      
   grid%xphi_co2 = 1.d0
   grid%xxphi_co2 = 1.d0
   grid%den_co2 = 1.d0
   grid%dden_co2 = 1.d0
 
-    
 ! if (grid%using_pflowGrid == PETSC_TRUE) &
 ! allocate(grid%vvl_loc(grid%nconn*grid%nphase))
 
@@ -1683,26 +1681,30 @@ subroutine pflowGrid_setup(grid, inputfile)
 !************End of initial Condition Setup ***********************
 
 
+!geh
+  if (grid%iread_geom > -1) then
 
-
-  if (grid%nconnbc > 0) then
-    allocate(grid%mblkbc(grid%nconnbc))
-    allocate(grid%ibconn(grid%nconnbc))
-    allocate(grid%distbc(grid%nconnbc))
-    allocate(grid%areabc(grid%nconnbc))
-    allocate(grid%ipermbc(grid%nconnbc))
-    allocate(grid%delzbc(grid%nconnbc))
+    if (grid%nconnbc > 0) then
+      allocate(grid%mblkbc(grid%nconnbc))
+      allocate(grid%ibconn(grid%nconnbc))
+      allocate(grid%distbc(grid%nconnbc))
+      allocate(grid%areabc(grid%nconnbc))
+      allocate(grid%ipermbc(grid%nconnbc))
+      allocate(grid%delzbc(grid%nconnbc))
     
 !    allocate(grid%velocitybc(grid%nphase,grid%nconnbc))
     
-    allocate(grid%vlbc(grid%nconnbc))
-    allocate(grid%vvlbc(grid%nconnbc))
-    allocate(grid%vgbc(grid%nconnbc))
-    allocate(grid%vvgbc(grid%nconnbc))
+      allocate(grid%vlbc(grid%nconnbc))
+      allocate(grid%vvlbc(grid%nconnbc))
+      allocate(grid%vgbc(grid%nconnbc))
+      allocate(grid%vvgbc(grid%nconnbc))
   
-    grid%vlbc=0.D0
-    grid%vgbc=0.D0
+      grid%vlbc=0.D0
+      grid%vgbc=0.D0
   
+!geh
+    endif
+
     if (grid%use_mph == PETSC_TRUE .or. grid%use_owg == PETSC_TRUE &
         .or. grid%use_vadose == PETSC_TRUE .or. grid%use_flash == PETSC_TRUE) then
       allocate(grid%varbc(1:(grid%ndof+1)*(2+7*grid%nphase + 2 *  &
@@ -1751,40 +1753,43 @@ subroutine pflowGrid_setup(grid, inputfile)
     endif
   endif
 
-  nc = 0 
-  if (grid%nxs == grid%ngxs .or. grid%nxe == grid%ngxe &
-      .or. grid%nys == grid%ngys .or. grid%nye == grid%ngye &
-      .or. grid%nzs == grid%ngzs .or. grid%nze == grid%ngze) then
+!geh
+  if (grid%iread_geom > -1) then
+
+    nc = 0 
+    if (grid%nxs == grid%ngxs .or. grid%nxe == grid%ngxe &
+        .or. grid%nys == grid%ngys .or. grid%nye == grid%ngye &
+        .or. grid%nzs == grid%ngzs .or. grid%nze == grid%ngze) then
 
     ! calculate boundary conditions locally on only those processors which 
     ! contain a boundary!
 
-    do ibc = 1, grid%nblkbc
-      do ir = grid%iregbc1(ibc), grid%iregbc2(ibc)
-        kk1 = grid%k1bc(ir) - grid%nzs
-        kk2 = grid%k2bc(ir) - grid%nzs
-        jj1 = grid%j1bc(ir) - grid%nys
-        jj2 = grid%j2bc(ir) - grid%nys
-        ii1 = grid%i1bc(ir) - grid%nxs
-        ii2 = grid%i2bc(ir) - grid%nxs
+      do ibc = 1, grid%nblkbc
+        do ir = grid%iregbc1(ibc), grid%iregbc2(ibc)
+          kk1 = grid%k1bc(ir) - grid%nzs
+          kk2 = grid%k2bc(ir) - grid%nzs
+          jj1 = grid%j1bc(ir) - grid%nys
+          jj2 = grid%j2bc(ir) - grid%nys
+          ii1 = grid%i1bc(ir) - grid%nxs
+          ii2 = grid%i2bc(ir) - grid%nxs
 
-        kk1 = max(1,kk1)
-        kk2 = min(grid%nlz,kk2)
-        jj1 = max(1,jj1)
-        jj2 = min(grid%nly,jj2)
-        ii1 = max(1,ii1)
-        ii2 = min(grid%nlx,ii2)
+          kk1 = max(1,kk1)
+          kk2 = min(grid%nlz,kk2)
+          jj1 = max(1,jj1)
+          jj2 = min(grid%nly,jj2)
+          ii1 = max(1,ii1)
+          ii2 = min(grid%nlx,ii2)
 
-        if (ii1 > ii2 .or. jj1 > jj2 .or. kk1 > kk2) cycle 
+          if (ii1 > ii2 .or. jj1 > jj2 .or. kk1 > kk2) cycle 
 
-        do k = kk1,kk2
-          do j = jj1,jj2
-            do i = ii1,ii2
-              nc = nc + 1
-              m = i+(j-1)*grid%nlx+(k-1)*grid%nlxy
-              grid%mblkbc(nc) = m  ! m is a local index
-              grid%ibconn(nc) = ibc
-              ng = grid%nL2G(m)
+          do k = kk1,kk2
+            do j = jj1,jj2
+              do i = ii1,ii2
+                nc = nc + 1
+                m = i+(j-1)*grid%nlx+(k-1)*grid%nlxy
+                grid%mblkbc(nc) = m  ! m is a local index
+                grid%ibconn(nc) = ibc
+                ng = grid%nL2G(m)
               ! Use ghosted index to access dx, dy, dz because we have
               ! already done a global-to-local scatter for computing the
               ! interior node connections.
@@ -1792,147 +1797,151 @@ subroutine pflowGrid_setup(grid, inputfile)
 !               print *,'pflowgrid_mod: ',nc,ibc,ir,m,ng,ii1,ii2,kk1,kk2, &
 !                        grid%nblkbc,grid%igeom
         
-              select case(grid%igeom)
-                case(1) ! cartesian
-                  if (grid%iface(ibc) == 1) then
-                    grid%distbc(nc) = 0.5d0*dx_loc_p(ng)
-                    grid%areabc(nc) = dy_loc_p(ng)*dz_loc_p(ng)
-                    grid%ipermbc(nc) = 1
-                    grid%delzbc(nc) = 0.d0
-                  else if (grid%iface(ibc) == 2) then
-                    grid%distbc(nc) = 0.5d0*dx_loc_p(ng)
-                    grid%areabc(nc) = dy_loc_p(ng)*dz_loc_p(ng)
-                    grid%ipermbc(nc) = 1
-                    grid%delzbc(nc) = 0.d0
+                select case(grid%igeom)
+                  case(1) ! cartesian
+                    if (grid%iface(ibc) == 1) then
+                      grid%distbc(nc) = 0.5d0*dx_loc_p(ng)
+                      grid%areabc(nc) = dy_loc_p(ng)*dz_loc_p(ng)
+                      grid%ipermbc(nc) = 1
+                      grid%delzbc(nc) = 0.d0
+                    else if (grid%iface(ibc) == 2) then
+                      grid%distbc(nc) = 0.5d0*dx_loc_p(ng)
+                      grid%areabc(nc) = dy_loc_p(ng)*dz_loc_p(ng)
+                      grid%ipermbc(nc) = 1
+                      grid%delzbc(nc) = 0.d0
                     else if (grid%iface(ibc) == 3) then
-                    grid%distbc(nc) = 0.5d0*dz_loc_p(ng)
-                    grid%areabc(nc) = dx_loc_p(ng)*dy_loc_p(ng)
-                    grid%ipermbc(nc) = 2
-                    grid%delzbc(nc) = grid%distbc(nc)
-                  else if (grid%iface(ibc) == 4) then
-                    grid%distbc(nc) = 0.5d0*dz_loc_p(ng)
-                    grid%areabc(nc) = dx_loc_p(ng)*dy_loc_p(ng)
-                    grid%ipermbc(nc) = 2
-                    grid%delzbc(nc) = -grid%distbc(nc)
-                  else if (grid%iface(ibc) == 5) then
-                    grid%distbc(nc) = 0.5d0*dy_loc_p(ng)
-                    grid%areabc(nc) = dx_loc_p(ng)*dz_loc_p(ng)
-                    grid%ipermbc(nc) = 3
-                    grid%delzbc(nc) = 0.d0
-                  else if (grid%iface(ibc) == 6) then
-                    grid%distbc(nc) = 0.5d0*dy_loc_p(ng)
-                    grid%areabc(nc) = dx_loc_p(ng)*dz_loc_p(ng)
-                    grid%ipermbc(nc) = 3
-                    grid%delzbc(nc) = 0.d0
-                  endif
-                case(2) ! cylindrical
-                  ird = mod(mod((m),grid%nlxy),grid%nlx) + grid%nxs 
-                  if (grid%iface(ibc) == 1) then
-                    grid%distbc(nc) = 0.5d0*dx_loc_p(ng)
-                    grid%areabc(nc) = 2.0D0*Pi*grid%rd(ird-1)*dz_loc_p(ng)
-                    grid%ipermbc(nc) = 1
-                    grid%delzbc(nc) = 0.d0
-                  else if (grid%iface(ibc) == 2) then
-                    grid%distbc(nc) = 0.5d0*dx_loc_p(ng)
-                    grid%areabc(nc) = 2.0D0*Pi*grid%rd(ird)*dz_loc_p(ng)
-                    grid%ipermbc(nc) = 1
-                    grid%delzbc(nc) = 0.d0
-                  else if (grid%iface(ibc) == 3) then
-                    grid%distbc(nc) = 0.5d0*dz_loc_p(ng)
-                    grid%areabc(nc) = Pi*(grid%rd(ird) + grid%rd(ird-1))* &
-                                      (grid%rd(ird) - grid%rd(ird-1))  
-                    grid%ipermbc(nc) = 2
-                    grid%delzbc(nc) = grid%distbc(nc)
-                  else if (grid%iface(ibc) == 4) then
-                    grid%distbc(nc) = 0.5d0*dz_loc_p(ng)
-                    grid%areabc(nc) = Pi*(grid%rd(ird) + grid%rd(ird-1))* &
-                                      (grid%rd(ird) - grid%rd(ird-1))
-                    grid%ipermbc(nc) = 2
-                    grid%delzbc(nc) = -grid%distbc(nc)
-                  endif  
-                case(3) ! spherical
-              end select
-            enddo ! i
-          enddo ! j
-        enddo ! k
-      enddo ! ir
-    enddo ! ibc
-  endif
-  call VecRestoreArrayF90(grid%dx_loc, dx_loc_p, ierr)
-  call VecRestoreArrayF90(grid%dy_loc, dy_loc_p, ierr)
-  call VecRestoreArrayF90(grid%dz_loc, dz_loc_p, ierr)
+                      grid%distbc(nc) = 0.5d0*dz_loc_p(ng)
+                      grid%areabc(nc) = dx_loc_p(ng)*dy_loc_p(ng)
+                      grid%ipermbc(nc) = 2
+                      grid%delzbc(nc) = grid%distbc(nc)
+                    else if (grid%iface(ibc) == 4) then
+                      grid%distbc(nc) = 0.5d0*dz_loc_p(ng)
+                      grid%areabc(nc) = dx_loc_p(ng)*dy_loc_p(ng)
+                      grid%ipermbc(nc) = 2
+                      grid%delzbc(nc) = -grid%distbc(nc)
+                    else if (grid%iface(ibc) == 5) then
+                      grid%distbc(nc) = 0.5d0*dy_loc_p(ng)
+                      grid%areabc(nc) = dx_loc_p(ng)*dz_loc_p(ng)
+                      grid%ipermbc(nc) = 3
+                      grid%delzbc(nc) = 0.d0
+                    else if (grid%iface(ibc) == 6) then
+                      grid%distbc(nc) = 0.5d0*dy_loc_p(ng)
+                      grid%areabc(nc) = dx_loc_p(ng)*dz_loc_p(ng)
+                      grid%ipermbc(nc) = 3
+                      grid%delzbc(nc) = 0.d0
+                    endif
+                  case(2) ! cylindrical
+                    ird = mod(mod((m),grid%nlxy),grid%nlx) + grid%nxs 
+                    if (grid%iface(ibc) == 1) then
+                      grid%distbc(nc) = 0.5d0*dx_loc_p(ng)
+                      grid%areabc(nc) = 2.0D0*Pi*grid%rd(ird-1)*dz_loc_p(ng)
+                      grid%ipermbc(nc) = 1
+                      grid%delzbc(nc) = 0.d0
+                    else if (grid%iface(ibc) == 2) then
+                      grid%distbc(nc) = 0.5d0*dx_loc_p(ng)
+                      grid%areabc(nc) = 2.0D0*Pi*grid%rd(ird)*dz_loc_p(ng)
+                      grid%ipermbc(nc) = 1
+                      grid%delzbc(nc) = 0.d0
+                    else if (grid%iface(ibc) == 3) then
+                      grid%distbc(nc) = 0.5d0*dz_loc_p(ng)
+                      grid%areabc(nc) = Pi*(grid%rd(ird) + grid%rd(ird-1))* &
+                                        (grid%rd(ird) - grid%rd(ird-1))  
+                      grid%ipermbc(nc) = 2
+                      grid%delzbc(nc) = grid%distbc(nc)
+                    else if (grid%iface(ibc) == 4) then
+                      grid%distbc(nc) = 0.5d0*dz_loc_p(ng)
+                      grid%areabc(nc) = Pi*(grid%rd(ird) + grid%rd(ird-1))* &
+                                        (grid%rd(ird) - grid%rd(ird-1))
+                      grid%ipermbc(nc) = 2
+                      grid%delzbc(nc) = -grid%distbc(nc)
+                    endif  
+                  case(3) ! spherical
+                end select
+              enddo ! i
+            enddo ! j
+          enddo ! k
+        enddo ! ir
+      enddo ! ibc
+    endif
+    call VecRestoreArrayF90(grid%dx_loc, dx_loc_p, ierr)
+    call VecRestoreArrayF90(grid%dy_loc, dy_loc_p, ierr)
+    call VecRestoreArrayF90(grid%dz_loc, dz_loc_p, ierr)
 
-  if (grid%nconnbc .ne. nc) then
-    write(*,*) 'Error in computing boundary connections: ', &
-      'rank = ',myrank,' nconnbc = ',grid%nconnbc,' nc = ',nc
-    stop
-  endif
+    if (grid%nconnbc .ne. nc) then
+      write(*,*) 'Error in computing boundary connections: ', &
+        'rank = ',myrank,' nconnbc = ',grid%nconnbc,' nc = ',nc
+      stop
+    endif
    
-  do nc=1,grid%nconnbc
-    print *, 'BC:', nc, grid%areabc(nc),grid%distbc(nc),  grid%mblkbc(nc) 
-  enddo
+    do nc=1,grid%nconnbc
+      print *, 'BC:', nc, grid%areabc(nc),grid%distbc(nc),  grid%mblkbc(nc) 
+    enddo
 
   !-----------------------------------------------------------------------
   ! Set up boundary conditions at interfaces
   !-----------------------------------------------------------------------
-  allocate(grid%velocitybc(grid%nphase, grid%nconnbc))
-  if (grid%use_mph == PETSC_TRUE .or. grid%use_owg==PETSC_TRUE &
-      .or. grid%use_vadose == PETSC_TRUE .or. grid%use_flash == PETSC_TRUE) then
-    allocate(grid%xxbc(grid%ndof,grid%nconnbc))
-    allocate(grid%iphasebc(grid%nconnbc))
-    allocate(grid%xphi_co2_bc(grid%nconnbc))
-    allocate(grid%xxphi_co2_bc(grid%nconnbc))
+    allocate(grid%velocitybc(grid%nphase, grid%nconnbc))
+    if (grid%use_mph == PETSC_TRUE .or. grid%use_owg==PETSC_TRUE &
+        .or. grid%use_vadose == PETSC_TRUE .or. grid%use_flash == PETSC_TRUE) then
+      allocate(grid%xxbc(grid%ndof,grid%nconnbc))
+      allocate(grid%iphasebc(grid%nconnbc))
+      allocate(grid%xphi_co2_bc(grid%nconnbc))
+      allocate(grid%xxphi_co2_bc(grid%nconnbc))
 
-  do nc = 1, grid%nconnbc
-      ibc = grid%ibconn(nc)
-      grid%xxbc(:,nc)=grid%xxbc0(:,ibc)
-      grid%iphasebc(nc)=grid%iphasebc0(ibc)
-          grid%velocitybc(:,nc) = grid%velocitybc0(:,ibc)
-    enddo
-    if (grid%using_pflowGrid == PETSC_FALSE) then
-      deallocate(grid%xxbc0)
-      deallocate(grid%iphasebc0)
-    endif
-    if (grid%iread_init==2) call Boundary_adjustment(grid)
+      do nc = 1, grid%nconnbc
+        ibc = grid%ibconn(nc)
+        grid%xxbc(:,nc)=grid%xxbc0(:,ibc)
+        grid%iphasebc(nc)=grid%iphasebc0(ibc)
+        grid%velocitybc(:,nc) = grid%velocitybc0(:,ibc)
+      enddo
+      if (grid%using_pflowGrid == PETSC_FALSE) then
+        deallocate(grid%xxbc0)
+        deallocate(grid%iphasebc0)
+      endif
+      if (grid%iread_init==2) call Boundary_adjustment(grid)
   
-  else
+    else
    !   allocate(grid%velocitybc(grid%nphase, grid%nconnbc))
-    allocate(grid%pressurebc(grid%nphase, grid%nconnbc))
-    allocate(grid%tempbc(grid%nconnbc))
-    allocate(grid%sgbc(grid%nconnbc))
-    allocate(grid%concbc(grid%nconnbc))
-    allocate(grid%xphi_co2_bc(grid%nconnbc))
-    allocate(grid%xxphi_co2_bc(grid%nconnbc))
+      allocate(grid%pressurebc(grid%nphase, grid%nconnbc))
+      allocate(grid%tempbc(grid%nconnbc))
+      allocate(grid%sgbc(grid%nconnbc))
+      allocate(grid%concbc(grid%nconnbc))
+      allocate(grid%xphi_co2_bc(grid%nconnbc))
+      allocate(grid%xxphi_co2_bc(grid%nconnbc))
       
     ! initialize
-    grid%pressurebc = 0.d0
-    grid%tempbc = 0.d0
-    grid%concbc = 0.d0
-    grid%sgbc = 0.d0
-    grid%velocitybc = 0.d0
+      grid%pressurebc = 0.d0
+      grid%tempbc = 0.d0
+      grid%concbc = 0.d0
+      grid%sgbc = 0.d0
+      grid%velocitybc = 0.d0
       
-    do nc = 1, grid%nconnbc
-      ibc = grid%ibconn(nc)
-      grid%pressurebc(:,nc) = grid%pressurebc0(:,ibc)
-      grid%tempbc(nc)       = grid%tempbc0(ibc)
-      grid%concbc(nc)       = grid%concbc0(ibc)
-      grid%sgbc(nc)         = grid%sgbc0(ibc)
-      grid%velocitybc(:,nc) = grid%velocitybc0(:,ibc)
+      do nc = 1, grid%nconnbc
+        ibc = grid%ibconn(nc)
+        grid%pressurebc(:,nc) = grid%pressurebc0(:,ibc)
+        grid%tempbc(nc)       = grid%tempbc0(ibc)
+        grid%concbc(nc)       = grid%concbc0(ibc)
+        grid%sgbc(nc)         = grid%sgbc0(ibc)
+        grid%velocitybc(:,nc) = grid%velocitybc0(:,ibc)
         
 !       print *,'pflowgrid_mod: bc- ',nc,ibc,grid%pressurebc(1,nc), &
 !                grid%pressurebc(2,nc), &
 !                grid%tempbc(nc),grid%sgbc(nc),grid%concbc(nc), &
 !                grid%velocitybc(1,nc),grid%velocitybc(2,nc)
-    enddo
+      enddo
      
-    deallocate(grid%pressurebc0)
-    deallocate(grid%tempbc0)
-    deallocate(grid%concbc0)
-    deallocate(grid%sgbc0)
-  endif
-  deallocate(grid%velocitybc0)
+      deallocate(grid%pressurebc0)
+      deallocate(grid%tempbc0)
+      deallocate(grid%concbc0)
+      deallocate(grid%sgbc0)
+    endif
+    deallocate(grid%velocitybc0)
 
-  if (myrank == 0) write(*,'("  Finished setting up of Geometry ")')
+    if (myrank == 0) write(*,'("  Finished setting up of Geometry ")')
+
+!geh
+  endif
+
   !-----------------------------------------------------------------------
   ! Set up the transformation from physical coordinates
   ! to local domains.
@@ -2067,7 +2076,6 @@ subroutine pflowGrid_setup(grid, inputfile)
   call VecRestoreArrayF90(grid%perm_zz,perm_zz_p,ierr)
   call VecRestoreArrayF90(grid%perm_pow,perm_pow_p,ierr)
   call VecRestoreArrayF90(grid%tor,tor_p,ierr)
-
  
  
  ! call VecAssemblyBegin(temp0_nat_vec,ierr)
@@ -2135,6 +2143,7 @@ subroutine pflowGrid_setup(grid, inputfile)
  ! call VecDestroy(temp5_nat_vec,ierr)
  ! call VecDestroy(temp6_nat_vec,ierr)
  ! call VecDestroy(temp7_nat_vec,ierr)
+
 #if 0
   call VecSet(grid%icap,1.d0,ierr)
   call VecSet(grid%ithrm,1.d0,ierr)
@@ -2146,12 +2155,19 @@ subroutine pflowGrid_setup(grid, inputfile)
    call Read_perm_field(grid)
  endif  
 
+!geh
+ nullify(grid%imat)
 
  if (grid%iread_geom == 1) then
    call Read_Geom_field(grid)
+!geh
  else if (grid%iread_geom == -1) then 
    if (myrank == 0) print *, 'Reading unstructured grid' 
    allocate(grid%pressurebc(grid%nphase,grid%nconnbc)) 
+
+   allocate(grid%imat(grid.nlmax))  ! allocate material id array
+   grid%imat = 0      
+
    call ReadUnstructuredGrid(grid) 
    print *, 'nconnbc:', grid%nconnbc 
    do nc = 1, grid%nconnbc 
@@ -2160,7 +2176,7 @@ subroutine pflowGrid_setup(grid, inputfile)
      if (ibc == 2) then 
        print *, grid%velocitybc(:,nc) 
      else 
-       print *, grid%pressurebc(:,nc), grid%z(grid%nL2A(grid%mblkbc(nc))) 
+       print *, grid%pressurebc(:,nc), grid%z(grid%nL2A(grid%mblkbc(nc))+1) 
      endif 
    enddo 
  endif  

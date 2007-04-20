@@ -1269,6 +1269,15 @@ private
     enddo
   endif
 
+!geh - Zero out rows in matrix and residual entries for inactive cells
+  if (associated(grid%imat)) then
+    do n = 1, grid%nlmax
+      if (grid%imat(n) <= 0) then
+        p1 = (n-1)*grid%ndof
+        r_p(p1:p1+grid%ndof-1) = 0.d0
+      endif
+    enddo
+  endif
 
   call VecRestoreArrayF90(r, r_p, ierr)
   call VecRestoreArrayF90(grid%yy, yy_p, ierr)
@@ -1862,7 +1871,18 @@ private
     call VecRestoreArrayF90(grid%phis,phis_p,ierr)
   endif
 
-  
+!geh - Zero out rows in matrix and residual entries for inactive cells
+  if (associated(grid.imat)) then
+    do n = 1, grid%nlmax
+      ng = grid%nL2G(n)
+      if (grid%imat(n) <= 0) then
+        p1=(ng-1)*grid%ndof
+        do ii=0,grid%ndof-1
+          call MatZeroRowsLocal(A,1,p1+ii,1.d0,ierr)
+        enddo
+      endif
+    enddo
+  endif
 
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
@@ -2120,7 +2140,7 @@ private
           iithrm=int(ithrm_p(m)) 
           dif(1)= grid%difaq
           dif(2)= grid%cdiff(iithrm)
-
+print *, nc
   	      call pri_var_trans_vad_ninc(grid%xxbc(:,nc),grid%iphasebc(nc),&
     	     grid%scale,grid%nphase,grid%nspec, &
              grid%icaptype(iicap),grid%sir(1:grid%nphase,iicap),grid%lambda(iicap),&

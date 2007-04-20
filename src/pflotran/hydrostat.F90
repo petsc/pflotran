@@ -674,7 +674,7 @@ private
     grid%iregbc1(ibc) = n
     grid%iregbc2(ibc) = n
 !   grid%ibndtyp(ibc) = 2 
-    grid%ibndtyp(ibc) = ibndtyp(ibc0)
+    if (ibc0 <= grid%nblkbc) grid%ibndtyp(ibc) = ibndtyp(ibc0)
     grid%iface(ibc) = 1  
     grid%k1bc(ibc) = n
     grid%k2bc(ibc) = n
