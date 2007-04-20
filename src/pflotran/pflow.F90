@@ -67,6 +67,7 @@
   integer :: kplt, iplot, iflgcut, its, ntstep
   integer :: myid
   integer*4 :: steps
+  PetscInt :: stage(10)
 
 ! Initialize Startup Time
  ! call PetscGetCPUTime(timex(1), ierr)
@@ -74,8 +75,18 @@
 
   call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
 
+! Register stages for profiling.
+! We identify three stages here: setup, output, and cleanup.
+! Note that we do NOT identify a separate stage for the calculations -- 
+! we include those as part of the default "Main" stage (so we need 
+! to pop all other stages off when calculations are proceeding).
+  call PetscLogStageRegister(stage(1), "PFLOW setup", ierr)
+  call PetscLogStageRegister(stage(2), "PFLOW output", ierr)
+  call PetscLogStageRegister(stage(3), "PFLOW cleanup", ierr)
   call MPI_Comm_rank(PETSC_COMM_WORLD, myid, ierr)
 
+! Starting PFLOW setup -- push this onto the log stack.
+  call PetscLogStagePush(stage(1), ierr)
   call pflow_read_gridsize("pflow.in", igeom, nx, ny, nz, npx, npy, npz, &
   nphase, nspec, npricomp, ndof, idcdm, itable, ierr)
   
@@ -108,6 +119,11 @@
   kplt = 0
   iplot = 1
 
+! Done with PFLOW setup.
+  call PetscLogStagePop(ierr)
+
+! Now we do some initial output, so push this onto the log stack.
+  call PetscLogStagePush(stage(2), ierr)
 ! call VecView(grid%conc,PETSC_VIEWER_STDOUT_WORLD,ierr)
 
   if(grid%use_owg/=PETSC_TRUE) then
@@ -124,6 +140,8 @@
   ihalcnt = 0
   grid%isrc1 = 2
 
+  call PetscLogStagePop(ierr)
+
   do steps = 1, grid%stepmax
 
     call pflowGrid_step(grid,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
@@ -134,18 +152,23 @@
 !   comment out for now-need in pflotran (no longer needed-pcl)
 !   call pflowgrid_setvel(grid, grid%vl, grid%vlbc, ibndtyp)
 
+    call PetscLogStagePush(stage(2), ierr)
     if(grid%use_owg/=PETSC_TRUE) then
       call pflow_output(grid,kplt,iplot)
     else
       call pflow_var_output(grid,kplt,iplot)
     endif
+    call PetscLogStagePop(ierr)
 
     if (iflgcut == 0) call pflowgrid_update_dt(grid,its)
 
     if (kplt .gt. grid%kplot) exit
   enddo
 
+! Clean things up.
+  call PetscLogStagePush(stage(3), ierr)
   call pflowgrid_destroy(grid)
+  call PetscLogStagePop(ierr)
 
   call PetscFinalize (ierr)
 
