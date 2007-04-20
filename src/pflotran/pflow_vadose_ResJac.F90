@@ -2140,7 +2140,6 @@ private
           iithrm=int(ithrm_p(m)) 
           dif(1)= grid%difaq
           dif(2)= grid%cdiff(iithrm)
-print *, nc
   	      call pri_var_trans_vad_ninc(grid%xxbc(:,nc),grid%iphasebc(nc),&
     	     grid%scale,grid%nphase,grid%nspec, &
              grid%icaptype(iicap),grid%sir(1:grid%nphase,iicap),grid%lambda(iicap),&
