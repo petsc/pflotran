@@ -63,7 +63,7 @@ contains
       
       call fiReadInt(string,nphase,ierr)
       call fiDefaultMsg('nphase',ierr)
-
+      print *, "n(x,y,z)=",nx,ny,nz
     
       gridread_flag = 1
       ierr = 0
@@ -100,6 +100,7 @@ contains
     & "  npz   = ",3x,i4)') npx,npy,npz
   
       call MPI_Comm_size(PETSC_COMM_WORLD, commsize, ierr)
+    
       if (commsize .ne. npx*npy*npz) then
         if (myrank==0) write(*,*) 'Incorrect number of processors specified: ', &
         npx*npy*npz,' commsize = ',commsize
@@ -123,7 +124,7 @@ contains
 
 !#include "pflowgrid_readinput.F90"
 
-  subroutine pflowGrid_read_input(grid, inputfile)
+  subroutine pflowGrid_read_input(grid, timestep,locpat ,inputfile)
   
   ! keywords: GRID, PROC, COUP, GRAV, OPTS, TOLR, DXYZ, DIFF, RADN, HYDR,  
   !           SOLV, THRM, PCKR, PHIK, INIT, TIME, DTST, BCON, SOUR, BRK, RCTR
@@ -133,6 +134,9 @@ contains
   implicit none
 
   type(pflowGrid), intent(inout) :: grid
+  type(time_stepping_context), intent(inout) :: timestep
+  type(pflow_localpatch_info) :: locpat
+  
   character(len=*), intent(in) :: inputfile
   
   integer :: ierr
@@ -251,7 +255,7 @@ contains
       call fiReadInt(string,grid%stepmax,ierr)
       call fiDefaultMsg('stepmax',ierr)
 
-      call fiReadInt(string,grid%iaccel,ierr)
+      call fiReadInt(string,timestep%iaccel,ierr)
       call fiDefaultMsg('iaccel',ierr)
 
       call fiReadInt(string,grid%newton_max,ierr)
@@ -260,10 +264,10 @@ contains
       call fiReadInt(string,grid%icut_max,ierr)
       call fiDefaultMsg('icut_max',ierr)
 
-      call fiReadDouble(string,grid%dpmxe,ierr)
+      call fiReadDouble(string,timestep%dpmxe,ierr)
       call fiDefaultMsg('dpmxe',ierr)
 
-      call fiReadDouble(string,grid%dsmxe,ierr)
+      call fiReadDouble(string,timestep%dsmxe,ierr)
       call fiDefaultMsg('dsmxe',ierr)
 
       if (grid%myrank==0) write(IUNIT2,'(/," *TOLR ",/, &
@@ -276,8 +280,8 @@ contains
 ! For commented-out lines to work with the Sun f95 compiler, we have to 
 ! terminate the string in the line above; otherwise, the compiler tries to
 ! include the commented-out line as part of the continued string.
-      grid%stepmax,grid%iaccel,grid%newton_max,grid%icut_max, &
-      grid%dpmxe, grid%dsmxe
+      grid%stepmax,timestep%iaccel,grid%newton_max,grid%icut_max, &
+      timestep%dpmxe, timestep%dsmxe
 
 !....................
 
@@ -286,7 +290,7 @@ contains
 	  allocate(grid%dx0(grid%nx))
       allocate(grid%dy0(grid%ny))
       allocate(grid%dz0(grid%nz))
-        
+      print *,grid%nx,grid%ny,grid%nz
       call readxyz (grid%dx0,grid%nx)
       call readxyz (grid%dy0,grid%ny)
       call readxyz (grid%dz0,grid%nz)
@@ -696,34 +700,34 @@ contains
       
       call fiReadWord(string,strtim,.false.,ierr)
       
-      grid%tunit = strtim
+      timestep%tunit = strtim
 
-      if (grid%tunit == 's') then
+      if (timestep%tunit == 's') then
         grid%tconv = 1.d0
-      else if (grid%tunit == 'm') then
+      else if (timestep%tunit == 'm') then
         grid%tconv = 60.d0
-      else if (grid%tunit == 'h') then
+      else if (timestep%tunit == 'h') then
         grid%tconv = 60.d0 * 60.d0
-      else if (grid%tunit == 'd') then
+      else if (timestep%tunit == 'd') then
         grid%tconv = 60.d0 * 60.d0 * 24.d0
-      else if (grid%tunit == 'mo') then
+      else if (timestep%tunit == 'mo') then
         grid%tconv = 60.d0 * 60.d0 * 24.d0 * 30.d0
-      else if (grid%tunit == 'y') then
+      else if (timestep%tunit == 'y') then
         grid%tconv = 60.d0 * 60.d0 * 24.d0 * 365.d0
       else
         if (grid%myrank == 0) then
           write(*,'(" Time unit: ",a3,/, &
    &      " Error: time units must be one of ",/, &
    &      "   s -seconds",/,"   m -minutes",/,"   h -hours",/,"   d -days",/, &
-   &      "  mo -months",/,"   y -years")') grid%tunit
+   &      "  mo -months",/,"   y -years")') timestep%tunit
         endif
         stop
       endif
 
-      call fiReadInt(string,grid%kplot,ierr) 
+      call fiReadInt(string,timestep%kplot,ierr) 
       call fiDefaultMsg('kplot',ierr)
       
-      allocate(grid%tplot(grid%kplot))
+      allocate(timestep%tplot(timestep%kplot))
       
       call fiReadFlotranString(IUNIT1,string,ierr)
       call fiReadStringErrorMsg('TIME',ierr)
@@ -731,12 +735,12 @@ contains
       do
         i1 = i2 + 1
         i2 = i2+10
-        if (i2 > grid%kplot) i2 = grid%kplot
+        if (i2 > timestep%kplot) i2 = timestep%kplot
         do i = i1, i2
-          call fiReadDouble(string,grid%tplot(i),ierr)
+          call fiReadDouble(string,timestep%tplot(i),ierr)
           call fiDefaultMsg('tplot',ierr)
         enddo
-        if (i2 == grid%kplot) exit
+        if (i2 == timestep%kplot) exit
         call fiReadFlotranString(IUNIT1,string,ierr)
         call fiReadStringErrorMsg('TIME',ierr)
       enddo
@@ -751,15 +755,15 @@ contains
 !     call fiDefaultMsg('dt_max',ierr)
 
       if (grid%myrank==0) then
-        write(IUNIT2,'(/," *TIME ",a3,1x,i4,/,(1p10e12.4))') grid%tunit, &
-        grid%kplot,(grid%tplot(i),i=1,grid%kplot)
+        write(IUNIT2,'(/," *TIME ",a3,1x,i4,/,(1p10e12.4))') timestep%tunit, &
+        timestep%kplot,(timestep%tplot(i),i=1,timestep%kplot)
 !       write(IUNIT2,'("  dt= ",1pe12.4,", dtmax= ",1pe12.4,/)') &
 !       grid%dt,grid%dt_max
       endif
       
       ! convert time units to seconds
-      do i = 1, grid%kplot
-        grid%tplot(i) = grid%tconv * grid%tplot(i)
+      do i = 1, timestep%kplot
+        timestep%tplot(i) = grid%tconv * timestep%tplot(i)
       enddo
 !     grid%dt = grid%tconv * grid%dt
 !     grid%dt_max = grid%tconv * grid%dt_max
@@ -770,45 +774,45 @@ contains
 
       call fiReadStringErrorMsg('DTST',ierr)
 
-      call fiReadInt(string,grid%nstpmax,ierr)
+      call fiReadInt(string,timestep%nstpmax,ierr)
       call fiDefaultMsg('nstpmax',ierr)
 
-      allocate(grid%tstep(grid%nstpmax))
-      allocate(grid%dtstep(grid%nstpmax))
+      allocate(timestep%tstep(timestep%nstpmax))
+      allocate(timestep%dtstep(timestep%nstpmax))
 
       do i = 1, grid%nstpmax
-        call fiReadDouble(string,grid%tstep(i),ierr)
+        call fiReadDouble(string,timestep%tstep(i),ierr)
         call fiDefaultMsg('tstep',ierr)
       enddo
 
       call fiReadFlotranString(IUNIT1,string,ierr)
       call fiReadStringErrorMsg('DTST',ierr)
-      call fiReadDouble(string,grid%dt_min,ierr)
+      call fiReadDouble(string,timestep%dt_min,ierr)
       call fiDefaultMsg('dt_min',ierr)
-      do i = 1, grid%nstpmax
-        call fiReadDouble(string,grid%dtstep(i),ierr)
+      do i = 1, timestep%nstpmax
+        call fiReadDouble(string,timestep%dtstep(i),ierr)
         call fiDefaultMsg('dtstep',ierr)
       enddo
       
-      grid%dt_max = grid%dtstep(1)
+      timestep%dt_max = timestep%dtstep(1)
       
-      grid%dt = grid%dt_min
+      grid%dt = timestep%dt_min
       
       if (grid%myrank==0) then
-        write(IUNIT2,'(/," *DTST ",i4,/," tstep= ",(1p10e12.4))') grid%nstpmax, &
-        (grid%tstep(i),i=1,grid%nstpmax)
+        write(IUNIT2,'(/," *DTST ",i4,/," tstep= ",(1p10e12.4))') timestep%nstpmax, &
+        (timestep%tstep(i),i=1,timestep%nstpmax)
         write(IUNIT2,'(" dtstep= ",1p10e12.4,/)') &
-        grid%dt_min,(grid%dtstep(i),i=1,grid%nstpmax)
+        timestep%dt_min,(timestep%dtstep(i),i=1,timestep%nstpmax)
       endif
       
       ! convert time units to seconds
       do i = 1, grid%nstpmax
-        grid%tstep(i) = grid%tconv * grid%tstep(i)
-        grid%dtstep(i) = grid%tconv * grid%dtstep(i)
+        timestep%tstep(i) = grid%tconv * timestep%tstep(i)
+        timestep%dtstep(i) = grid%tconv * timestep%dtstep(i)
       enddo
       grid%dt = grid%tconv * grid%dt
-      grid%dt_min = grid%tconv * grid%dt_min
-      grid%dt_max = grid%tconv * grid%dt_max
+      timestep%dt_min = grid%tconv * timestep%dt_min
+      timestep%dt_max = grid%tconv * timestep%dt_max
 
 !....................
 
@@ -836,10 +840,10 @@ contains
 
         ibc = ibc + 1  ! RTM: Number of boundary conditions
         
-        call fiReadInt(string,grid%locpat(1)%ibndtyp(ibc),ierr)
+        call fiReadInt(string,locpat%ibndtyp(ibc),ierr)
         call fiDefaultMsg('ibndtyp',ierr)
 
-        call fiReadInt(string,grid%locpat(1)%iface(ibc),ierr)
+        call fiReadInt(string,locpat%iface(ibc),ierr)
         call fiDefaultMsg('iface',ierr)
 
         do ! loop over regions
@@ -868,13 +872,13 @@ contains
    !       do j=1, grid%nphase
    
 			 
-			 if (grid%locpat(1)%ibndtyp(ibc) == 1 .or. grid%locpat(1)%ibndtyp(ibc) == 3) then 
+			 if (locpat%ibndtyp(ibc) == 1 .or. locpat%ibndtyp(ibc) == 3) then 
 				do j=1,grid%ndof
 				  call fiReadDouble(string,grid%xxbc0(j,ibc),ierr)
 				  call fiDefaultMsg('xxbc',ierr)
 				  enddo
 			 
-			  elseif(grid%locpat(1)%ibndtyp(ibc) == 2) then
+			  elseif(locpat%ibndtyp(ibc) == 2) then
 				   do j=1, grid%nphase       
 					 call fiReadDouble(string, grid%velocitybc0(j,ibc), ierr)
 					 call fiDefaultMsg("Error reading velocity BCs:", ierr)			  		  	  
@@ -898,23 +902,23 @@ contains
         endif
       enddo ! End loop over blocks.
       
-      grid%locpat(1)%nblkbc = ibc
+      locpat%nblkbc = ibc
       
       if (grid%myrank == 0) then
-        write(IUNIT2,'(/," *BCON: nblkbc = ",i4)') grid%locpat(1)%nblkbc
-        do ibc = 1, grid%locpat(1)%nblkbc
-          write(IUNIT2,'("  ibndtyp = ",i3," iface = ",i2)') grid%locpat(1)%ibndtyp(ibc), &
-          grid%locpat(1)%iface(ibc)
+        write(IUNIT2,'(/," *BCON: nblkbc = ",i4)') locpat%nblkbc
+        do ibc = 1, locpat%nblkbc
+          write(IUNIT2,'("  ibndtyp = ",i3," iface = ",i2)') locpat%ibndtyp(ibc), &
+          locpat%iface(ibc)
           write(IUNIT2,'("  i1  i2  j1  j2  k1  k2       p [Pa]     t [C]    c", &
      &    " [mol/L]")')
           do ireg = grid%iregbc1(ibc), grid%iregbc2(ibc)
-             if (grid%locpat(1)%ibndtyp(ibc) == 1 .or. grid%locpat(1)%ibndtyp(ibc) == 3) then
+             if (locpat%ibndtyp(ibc) == 1 .or. locpat%ibndtyp(ibc) == 3) then
                 write(IUNIT2,'(7i4,1p10e12.4)') &
                 grid%i1bc(ireg),grid%i2bc(ireg), &
                 grid%j1bc(ireg),grid%j2bc(ireg), &
                 grid%k1bc(ireg),grid%k2bc(ireg), &
                 (grid%xxbc0(j,ireg),j=1,grid%ndof)
-              else if (grid%locpat(1)%ibndtyp(ibc) == 2) then
+              else if (locpat%ibndtyp(ibc) == 2) then
                 write(IUNIT2,'(6i4,1p10e12.4)') &
                 grid%i1bc(ireg),grid%i2bc(ireg), &
                 grid%j1bc(ireg),grid%j2bc(ireg), &

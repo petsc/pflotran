@@ -194,13 +194,13 @@ module pflow_output_module
 
 
 
- subroutine pflow_var_output(grid,kplt,iplot)
+ subroutine pflow_var_output(grid,timestep,kplt,iplot)
   
   use pflow_gridtype_module
-  
-  
   implicit none
 
+   type(time_stepping_context), intent(inout) :: timestep
+  
 #include "include/finclude/petsc.h"
 #include "include/finclude/petscda.h"
 #include "include/finclude/petscda.h90"
@@ -216,6 +216,7 @@ module pflow_output_module
 #include "definitions.h"
 
   type(pflowGrid), intent(inout) :: grid
+  
   integer, intent(inout) :: iplot, kplt
    
   Vec :: vl_nat, vl_all 
@@ -314,7 +315,7 @@ module pflow_output_module
       
  
    if(grid%myrank==0)then
-    write(IUNIT3,'(''TITLE= "'',1pg12.4,'' ['',a1,'']"'')') tyr,grid%tunit
+    write(IUNIT3,'(''TITLE= "'',1pg12.4,'' ['',a1,'']"'')') tyr,timestep%tunit
 		 write(IUNIT3,'(''VARIABLES="'',3(a6,a3),a6,100(a3,a6))')"x",q,"y",q,"z",q,&
 		  var_name(1), ((q,var_name(i)),i=2,nvar_out),'"'
     	  write(IUNIT3,'(''ZONE T= "'',1pg12.4,''",'','' I='',i4, &
@@ -513,7 +514,7 @@ module pflow_output_module
       endif
       write(*,*) '--> write output file: ',fname
       open(unit=IUNIT3,file=fname,action="write")
-      write(IUNIT3,'(''TITLE= "'',1pg12.4,'' ['',a1,'']"'')') tyr,grid%tunit
+      write(IUNIT3,'(''TITLE= "'',1pg12.4,'' ['',a1,'']"'')') tyr,timestep%tunit
       write(IUNIT3,'(''VARIABLES="'',a6,100(a3,a6))') &
           'x',q,'y',q,'z',q,'vlx',q,'vgx',q,'vly',q,'vgy',q,'vlz',q, &
           'vgz','"'

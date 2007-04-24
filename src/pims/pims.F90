@@ -32,6 +32,8 @@
   integer :: ierr, ihalcnt
   type(pflowGrid) :: grid
   type(pflow_solver_context) :: pflowsolv
+  type(time_stepping_context) timestep
+  
 !  type(pflow_localpatch_info) :: gridpatch
     
   integer :: igeom
@@ -73,21 +75,21 @@
 
 ! set up structure constructor
 ! npx = PETSC_DECIDE; npy = PETSC_DECIDE; npz = PETSC_DECIDE
-  call pflowGrid_new(grid, pflowsolv, igeom, nx, ny, nz, npx, npy, npz, nphase)
+  call pflowGrid_new(grid, pflowsolv, timestep, grid%locpat(1),igeom, nx, ny, nz, npx, npy, npz, nphase)
 
  
   call PetscGetCPUTime(timex(1), ierr)
   call PetscGetTime(timex_wall(1), ierr)
 
-  call pflowGrid_setup(grid, pflowsolv,"pflow.in")
+  call pflowGrid_setup(grid, pflowsolv,timestep,grid%locpat(1),"pflow.in")
   CHKMEMQ
   kplt = 0
   iplot = 1
 
-! call VecView(grid%conc,PETSC_VIEWER_STDOUT_WORLD,ierr)
+ call VecView(grid%porosity,PETSC_VIEWER_STDOUT_WORLD,ierr)
 
    print *,' Begin output'
-      call pflow_var_output(grid,kplt,iplot)
+      call pflow_var_output(grid,timestep,kplt,iplot)
     print *,' End output'
   	  
   if(myid == 0) print *, ""
@@ -100,19 +102,19 @@
 
   do steps = 1, grid%stepmax
 
-    call pflowGrid_step(grid,pflowsolv,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
+    call pflowGrid_step(grid,pflowsolv,timestep,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
 
 !   update field variables
     call pflowGrid_update(grid)
   ! call VecView(grid%xx,PETSC_VIEWER_STDOUT_WORLD,ierr)
 !   comment out for now-need in pflotran (no longer needed-pcl)
 !   call pflowgrid_setvel(grid, grid%vl, grid%vlbc, ibndtyp)
-      call pflow_var_output(grid,kplt,iplot)
+      call pflow_var_output(grid,timestep,kplt,iplot)
 
 
-    if (iflgcut == 0) call pflowgrid_update_dt(grid,its)
+    if (iflgcut == 0) call pflowgrid_update_dt(grid,timestep,its)
 
-    if (kplt .gt. grid%kplot) exit
+    if (kplt .gt. timestep%kplot) exit
   enddo
 
 !  call pflowgrid_destroy(grid)

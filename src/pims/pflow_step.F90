@@ -44,25 +44,27 @@ Module pflow_step
 Contains
 !#include "pflowgrid_update_dt.F90"
 
-  subroutine pflowgrid_update_dt(grid, its)
+  subroutine pflowgrid_update_dt(grid, timestep,its)
   implicit none
 
   type(pflowGrid), intent(inout) :: grid
+   type(time_stepping_context), intent(inout) :: timestep
+  
   integer, intent(in) :: its
 
   real*8 :: fac,dtt,up,utmp,uc,ut,uus
   
-  if (grid%iaccel == 0) return
+  if (timestep%iaccel == 0) return
   
     fac = 0.5d0
-    if (its >= grid%iaccel) then
+    if (its >= timestep%iaccel) then
       fac = 0.33d0
       ut = 0.d0
     else
-      up = grid%dpmxe/(grid%dpmax+0.1)
+      up = timestep%dpmxe/(grid%dpmax+0.1)
       utmp = 0.D0 !grid%dtmpmxe/(grid%dtmpmax+1.d-5)
       uc = 0.D0 !grid%dcmxe/(grid%dcmax+1.d-6)
-      uus= grid%dsmxe/(grid%dsmax+1.d-6)
+      uus= timestep%dsmxe/(grid%dsmax+1.d-6)
       ut = min(up,uus)
     endif
 
@@ -71,7 +73,7 @@ Contains
 
   
   if (dtt > 2.d0 * grid%dt) dtt = 2.d0 * grid%dt 
-  if (dtt > grid%dt_max) dtt = grid%dt_max
+  if (dtt > timestep%dt_max) dtt = timestep%dt_max
   if(dtt>.25d0*grid%t .and. grid%t>1.d-2) dtt=.25d0*grid%t
   grid%dt = dtt
 
@@ -81,7 +83,7 @@ Contains
 
 !#include "pflowgrid_step.F90"
 
-  subroutine pflowGrid_step(grid,pflowsolv,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
+  subroutine pflowGrid_step(grid,pflowsolv,timestep ,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
   
   use IMS_module, only : pflow_ims_step_maxchange
   use pflow_output_module
@@ -92,6 +94,7 @@ Contains
 
   type(pflowGrid), intent(inout) :: grid
   type(pflow_solver_context), intent(inout) :: pflowsolv
+   type(time_stepping_context), intent(inout) :: timestep  
 
   integer :: ierr, ihalcnt, ns !i,m,n,ix,jy,kz,j
   integer :: its,kplt,iplot,ntstep !,idpmax,idtmpmax,idcmax
@@ -137,14 +140,14 @@ Contains
   grid%flowsteps = grid%flowsteps + 1
 
 ! Adjust time step to plot time
-  if (grid%t + 0.2*grid%dt >= grid%tplot(kplt)) then
+  if (grid%t + 0.2*grid%dt >= timestep%tplot(kplt)) then
     grid%t = grid%t - grid%dt
-    grid%dt = grid%tplot(kplt) - grid%t
-    if (grid%dt > grid%dt_max) then
-      grid%dt = grid%dt_max
+    grid%dt = timestep%tplot(kplt) - grid%t
+    if (grid%dt > timestep%dt_max) then
+      grid%dt = timestep%dt_max
       grid%t = grid%t + grid%dt
     else
-      grid%t = grid%tplot(kplt)
+      grid%t = timestep%tplot(kplt)
       iplot = 1
     endif
   else if (grid%flowsteps == grid%stepmax) then
@@ -174,14 +177,14 @@ Contains
   endif
   
   !set maximum time step
-  if (ntstep > grid%nstpmax) then
+  if (ntstep > timestep%nstpmax) then
   ! do nothing - keep current dt_max
-  else if (grid%t > grid%tstep(ntstep)) then
+  else if (grid%t > timestep%tstep(ntstep)) then
     ntstep = ntstep + 1
-    if (ntstep <= grid%nstpmax) then
-      grid%dt_max = grid%dtstep(ntstep)
+    if (ntstep <= timestep%nstpmax) then
+      timestep%dt_max = timestep%dtstep(ntstep)
     else
-      grid%dt_max = grid%dtstep(grid%nstpmax)
+      timestep%dt_max = timestep%dtstep(timestep%nstpmax)
     endif
   endif
   
@@ -231,7 +234,7 @@ Contains
     !call PETScBarrier(PETSC_NULL_OBJECT, ierr)
     update_reason = 1
       call IMS_Update_Reason(update_reason, grid)
-      if (grid%myrank==0) print *,'update_reason: ',update_reason
+      if (grid%myrank==0) print *,'update_reason: ',update_reason, its
     
 
 !******************************************************************
@@ -296,12 +299,12 @@ Contains
     if (mod(grid%flowsteps,grid%imod) == 0 .or. grid%flowsteps == 1) then
       write(*, '(/," FLOW ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1,"]", &
  &    " snes: ",i4,/,"  newt= ",i2," [",i6,"]"," cut= ",i2," [",i4,"]")') &
-      grid%flowsteps,grid%t/grid%tconv,grid%dt/grid%tconv,grid%tunit, &
+      grid%flowsteps,grid%t/grid%tconv,grid%dt/grid%tconv,timestep%tunit, &
       snes_reason,its,grid%newtcum,icut,grid%icutcum
     
       write(IUNIT2, '(" FLOW ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1,"]", &
  &    " snes: ",i4,/,"  newt= ",i2," [",i6,"]"," cut= ",i2," [",i4,"]")') &
-      grid%flowsteps,grid%t/grid%tconv,grid%dt/grid%tconv,grid%tunit, &
+      grid%flowsteps,grid%t/grid%tconv,grid%dt/grid%tconv,timestep%tunit, &
       snes_reason,its,grid%newtcum,icut,grid%icutcum
     endif
   endif

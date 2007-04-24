@@ -762,27 +762,8 @@
 			 ! grid%iphasebc(nc)=int(iphase_loc_p(ng))
 		    end select
 
-! print *,'2ph bc',grid%myrank,nc,m,ng,ibc,grid%ibndtyp(ibc),grid%pressurebc(:,ibc), &
-! grid%tempbc(ibc),grid%sgbc(ibc),grid%concbc(ibc),grid%velocitybc(:,ibc)
-
-!   if(grid%ibndtyp(ibc) == 1) then
-
-      !need specify injection phase ratio,conc and pressure
-   !   grid%ibndphaseRate(ibc) 
-   !   grid%ibndconc(ibc)    ! 
-   !   grid%tempbc(ibc)      !1 elements 
-   !   grid%pressurebc(ibc)  !nphase elements
-!      endif
-   
     
      iicap=int(icap_loc_p(ng))  
-!      print *,'pflow_2pha_bc: ',grid%myrank,' nc= ',nc,' m= ',m, &
-!      ' ng= ',ng,' ibc= ',ibc,ip1,iicap, &
-!      grid%nconnbc,grid%ibndtyp(ibc),grid%concbc(nc)
-     
-!   print *,'pflow_2pha-bc: ',ibc,grid%ideriv,grid%ibndtyp(ibc),grid%density_bc,&
-!   grid%pressurebc(2,ibc),grid%tempbc(ibc),grid%concbc(ibc),grid%sgbc(ibc)
-    
 	
       call pri_var_trans_ims_ninc(locpat%xxbc(:,nc), temp,&
 	     grid%scale,grid%nphase, &
@@ -819,7 +800,7 @@
 !  print *,'finished BC'
  
 
-! print *,'Residual ::...........'; call VecView(r,PETSC_VIEWER_STDOUT_WORLD,ierr)
+
 ! print *,'finished IMSResidual'
  nullify(Resold_AR, Resold_FL)
  end subroutine IMSResidual_patch
@@ -1086,29 +1067,9 @@ Jac_ind = -1
 			  delxbc(2:grid%ndof)=locpat%delx(2:grid%ndof,ng)
 		    end select
 
-! print *,'2ph bc',grid%myrank,nc,m,ng,ibc,grid%ibndtyp(ibc),grid%pressurebc(:,ibc), &
-! grid%tempbc(ibc),grid%sgbc(ibc),grid%concbc(ibc),grid%velocitybc(:,ibc)
-
-!   if(grid%ibndtyp(ibc) == 1) then
-
-      !need specify injection phase ratio,conc and pressure
-   !   grid%ibndphaseRate(ibc) 
-   !   grid%ibndconc(ibc)    ! 
-   !   grid%tempbc(ibc)      !1 elements 
-   !   grid%pressurebc(ibc)  !nphase elements
-!      endif
    
     iicap=  int(icap_loc_p(ng))     
        
-!      print *,'pflow_2pha_bc: ',grid%myrank,' nc= ',nc,' m= ',m, &
-!      ' ng= ',ng,' ibc= ',ibc,ip1,iicap, &
-!      grid%nconnbc,grid%ibndtyp(ibc),grid%concbc(nc)
-     
-!   print *,'pflow_2pha-bc: ',ibc,grid%ideriv,grid%ibndtyp(ibc),grid%density_bc,&
-!   grid%pressurebc(2,ibc),grid%tempbc(ibc),grid%concbc(ibc),grid%sgbc(ibc)
-        !*****************
-	  !  print *,' Mph Jaco BC terms: finish setup'
-	! here should pay attention to BC type !!!
 	
 	  call pri_var_trans_ims_ninc(locpat%xxbc(:,nc),temp,&
 	     grid%scale,grid%nphase, &
@@ -1139,16 +1100,6 @@ Jac_ind = -1
     
 	ResInc(m,1:grid%ndof,nvar) = ResInc(m,1:grid%ndof,nvar) - Res(1:grid%ndof)
    enddo
- !  print *,' Mph Jaco BC terms: finish comp'
-    !   print *, ' boundary index', nc,ng,ibc,grid%ibndtyp(ibc)
-    !   print *, ' P  T   C   S  ', grid%pressurebc(1,ibc),grid%tempbc(ibc), &
-    !                               grid%concbc(ibc),grid%sgbc(ibc)
-    !   print *,' hh,den   ',grid%hh_bc(1:2),grid%density_bc(1:2)
-
-!print *,' Gotten BC properties ', ibc,grid%ibndtyp(ibc),iicap
-!print *,grid%pressurebc(2,ibc),grid%tempbc(ibc),grid%concbc(ibc),grid%sgbc(ibc)
-!print *,grid%density_bc,grid%avgmw_bc
-!print *,grid%hh_bc,grid%uu_bc,grid%df_bc,grid%hen_bc,grid%pc_bc,grid%kvr_bc
 
  enddo
   ! print *,' Mph Jaco Finished BC terms'
@@ -1184,10 +1135,10 @@ Jac_ind = -1
    enddo
         
  enddo
-!   print *,' Mph Jaco Finished one node terms'
+
 ! -----------------------------contribution from transport----------------------
 
- !print *,'phase cond: ',iphase_loc_p
+
  ResInc=0.D0
  
  

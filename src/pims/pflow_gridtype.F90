@@ -30,6 +30,20 @@ private
 
 
 
+ type, public :: time_stepping_context
+  
+     real*8, pointer :: tfac(:)
+     real*8 :: dt_min  ! Maximum size of the time step.
+     real*8 :: dt_max  ! Maximum size of the time step.
+         character*2 :: tunit ! Input time units
+     integer  iaccel, icut_max, nstpmax, kplot  
+     real*8, pointer :: tplot(:), tstep(:), dtstep(:)
+     real*8 :: dpmxe,dsmxe !maximum allowed changes in field vars.
+   
+
+ 
+ end   type time_stepping_context
+
 
  type, public :: pflow_localpatch_info
 
@@ -91,13 +105,11 @@ private
     integer*4, pointer :: mblkbc(:)
       ! mblkbc(nc) gives the local, non-ghosted index of the cell that has
       ! boundary connection nc.
-    real*8, pointer :: pressurebc(:,:)
-      ! For a Dirichlet BC, pressurebc(j,ibc) gives the partial pressure 
+          ! For a Dirichlet BC, pressurebc(j,ibc) gives the partial pressure 
       ! for phase j along the BC block ibc.
     real*8, pointer :: velocitybc(:,:)
       ! For a Neumann BC, velocitybc(j,ibc) gives the velocity q for phase
       ! j along BC block ibc.
-    real*8, pointer :: tempbc(:)
     real*8, pointer :: xxbc(:,:), varbc(:)
 	
  !   real*8, pointer :: vl_loc(:), vvl_loc(:), vg_loc(:), vvg_loc(:)
@@ -152,7 +164,7 @@ private
     PetscScalar, pointer :: hhistory(:)
     PetscTruth :: monitor_h
       ! If true, print the value of h at the end of each SNES iteration.
-    PetscTruth :: use_ksp
+    PetscTruth :: use_ksp, Samrai_drive
     PetscTruth :: use_isoth, use_debug	
     ! If using_pflowGrid == PETSC_TRUE, then some parts of ptran_init 
     ! will not be executed, since they are made redundant by 
@@ -160,17 +172,14 @@ private
 
     real*8 :: t  ! The time elapsed in the simulation.
     real*8 :: dt ! The size of the time step.
-    real*8 :: dt_min  ! Maximum size of the time step.
-    real*8 :: dt_max  ! Maximum size of the time step.
     real*8 :: tconv ! Input time conversion factor
-    character*2 :: tunit ! Input time units
-    real*8, pointer :: tplot(:), tstep(:), dtstep(:)
-    real*8, pointer :: tfac(:)
+   
+   
       ! An array of multiplicative factors that specify how to increase time step.
     integer :: flowsteps  ! The number of time-steps taken by the flow code.
     integer :: stepmax    ! The maximum number of time-steps taken by the flow code.
     integer :: nstpmax    ! The maximum number of time-step increments.
-    integer :: kplot      ! Printout steps.
+   ! integer :: kplot      ! Printout steps.
     integer :: write_init = 0 ! Flag to printout initial conditions.
     integer :: iprint = 0 ! Print level (-1-none, 0-fields, >=1-vel, 2-perm/por, 3-pflow.bc)
     integer :: imod = 1   ! screen printout  modulus
@@ -182,12 +191,12 @@ private
     integer :: icutcum    ! Total number of cuts in the timestep taken.
     integer :: newton_max ! Max number of Newton steps for one time step.
     integer :: icut_max   ! Max number of dt cuts for one time step.
-    integer :: iaccel,iphch
+    integer :: iphch
     integer :: iread_init = 0 ! flag for reading initial conditions.
       ! Basically our target number of newton iterations per time step.
-    real*8 :: dpmxe,dsmxe !maximum allowed changes in field vars.
-    real*8 :: dpmax,dsmax
-   	
+      real*8 :: dpmax,dsmax 
+        
+              	
     ! Grid topology
     integer :: igeom
 	integer*4 :: nx, ny, nz    ! Global domain dimensions of the grid.
@@ -300,7 +309,7 @@ private
 !   Vec :: p_all, t_all, c_all, phis_all, por_all, vl_all, s_all !, perm_all 
     ! Used to hold all values on processor 0.
 
-  type(pflow_localpatch_info), pointer :: locpat(:)			
+  type(pflow_localpatch_info), pointer :: locpat(:)
 	
   end type pflowGrid
   

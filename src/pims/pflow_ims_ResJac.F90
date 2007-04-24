@@ -455,7 +455,7 @@ end  subroutine pflow_IMS_setupini
  call VecRestoreArrayF90(grid%vl, grid%locpat(1)%vl_p, ierr)
  
 
-! print *,'Residual ::...........'; call VecView(r,PETSC_VIEWER_STDOUT_WORLD,ierr)
+ !print *,'Residual ::...........'; call VecView(r,PETSC_VIEWER_STDOUT_WORLD,ierr)
 ! print *,'finished IMSResidual'
  end subroutine IMSResidual
                 
@@ -614,13 +614,61 @@ enddo
   call VecGetArrayF90(grid%yy, yy_p, ierr); CHKERRQ(ierr)
   call VecGetArrayF90(grid%accum, accum_p, ierr)
  ! call VecGetArrayF90(grid%var, var_p,ierr)
-  var_p =>  grid%locpat(1)%var
+ 
   
   call VecGetArrayF90(grid%ithrm, ithrm_p, ierr)
   call VecGetArrayF90(grid%icap, icap_p, ierr)
   !print *,'IMS initaccum  Gotten pointers'
  
- do n = 1, grid%locpat(1)%nlmax
+ 
+ if (grid%SAMRAI_drive == PETSC_TRUE)then
+   ! SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI
+ ! var_p =>  grid%locpat(1)%var
+ 
+  !do n = 1, grid%locpat(1)%nlmax
+        
+   !     iicap=int(icap_p(n))
+!		ng =  grid%locpat(1)%nL2G(n)
+		!dif(1)= grid%difaq; dif(3)=dif(1)
+        !dif(2)= grid%cdiff(int(ithrm_p(n)))
+
+ !  	call pri_var_trans_ims_ninc(yy_p((n-1)*grid%ndof+1:n*grid%ndof), temp,&
+ !       grid%scale,grid%nphase, &
+ !       iicap, grid%sir(1:grid%nphase,iicap),grid%lambda(iicap),&
+ !       grid%alpha(iicap),grid%pckrm(iicap),grid%pcwmax(iicap),&
+ !       grid%pcbetac(iicap),grid%pwrprm(iicap),&
+!		var_p((ng-1)*grid%size_var_node+1:(ng-1)*grid%size_var_node+grid%size_var_use),ierr)
+
+
+ !enddo
+
+  !call VecRestoreArrayF90(grid%var, var_p,ierr)
+  !call VecGetArrayF90(grid%var, var_p,ierr)
+
+!---------------------------------------------------------------------------
+
+
+ ! do n = 1, grid%locpat(1)%nlmax  ! For each local node do...
+  !  ng = grid%nL2G(n)   ! corresponding ghost index
+ !   p1 = 1 + (n-1)*grid%ndof
+!	ng =  grid%locpat(1)%nL2G(n)
+!    index_var_begin=(ng-1)*grid%size_var_node+1
+!    index_var_end = index_var_begin -1 + grid%size_var_use
+!    i = ithrm_p(n)
+    
+ !    call IMSRes_ARCont(n, var_p(index_var_begin: index_var_end),&
+!	  porosity_p(n),volume_p(n),grid%dencpr(i), grid%locpat(1),grid, Res, 0,ierr)
+ 
+
+!	accum_p(p1:p1+grid%ndof-1)=Res(:) 
+
+! end do
+  
+   ! SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI
+ else
+ var_p =>  grid%locpat(1)%var
+ 
+  do n = 1, grid%locpat(1)%nlmax
         
         iicap=int(icap_p(n))
 		ng =  grid%locpat(1)%nL2G(n)
@@ -641,6 +689,8 @@ enddo
   !call VecGetArrayF90(grid%var, var_p,ierr)
 
 !---------------------------------------------------------------------------
+
+
   do n = 1, grid%locpat(1)%nlmax  ! For each local node do...
   !  ng = grid%nL2G(n)   ! corresponding ghost index
     p1 = 1 + (n-1)*grid%ndof
@@ -655,20 +705,17 @@ enddo
 
 	accum_p(p1:p1+grid%ndof-1)=Res(:) 
 
-   !print *, 'init m accum ', n,  Res 
-
-! print *,n,accum_p(p1),accum_p(t1),accum_p(c1),accum_p(s1)
- !print *,  n, PRESSURE(n),TEMP(n), density_p(jn), density_p(jn+1), u_p(jn),u_p(jn+1),&
- !hen_p(2+(j-1)*grid%nspec+(n-1)*grid%nphase*grid%nspec),kvr_p(jn),kvr_p(jn+1)
-
  end do
+  nullify(var_p)
+endif
+
 
   call VecRestoreArrayF90(grid%volume, volume_p, ierr)
   call VecRestoreArrayF90(grid%porosity, porosity_p, ierr)
   call VecRestoreArrayF90(grid%yy, yy_p, ierr); CHKERRQ(ierr)
   call VecRestoreArrayF90(grid%accum, accum_p, ierr)
 !  call VecRestoreArrayF90(grid%var, var_p,ierr)
-  nullify(var_p)
+ 
   call VecRestoreArrayF90(grid%ithrm, ithrm_p, ierr)
   call VecRestoreArrayF90(grid%icap, icap_p, ierr)
 
@@ -699,8 +746,32 @@ enddo
    call VecGetArrayF90(grid%icap,icap_p,ierr)
    call VecGetArrayF90(grid%ithrm,ithrm_p,ierr)  
 !   call VecGetArrayF90(grid%var,var_p,ierr)
-    var_p=>grid%locpat(1)%var
+  
 
+
+if (grid%SAMRAI_drive == PETSC_TRUE)then
+  print *,"SAMRAI SAMRAI SAMRAI SAMRAI"
+   ! SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI
+ !   do ipatch =1, npatch
+ !    do n = 1, grid%locpat(ipatch)%nlmax
+ !   iicap = icap_p(n)
+ !   n0=(n-1)*grid%ndof
+!	ng=grid%locpat(1)%nL2G(n)
+!    if(xx_p(n0+3)<0.D0) xx_p(n0+3)=0.D0
+
+!     call pri_var_trans_ims_ninc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),&
+!        temp, grid%scale,grid%nphase,&
+!        iicap, grid%sir(1:grid%nphase,iicap),grid%lambda(iicap),&
+!        grid%alpha(iicap),grid%pckrm(iicap),grid%pcwmax(iicap),&
+!        grid%pcbetac(iicap),grid%pwrprm(iicap),&
+!		var_p((ng-1)*grid%size_var_node+1:(ng-1)*grid%size_var_node+grid%size_var_use),&
+	!	ierr)
+  ! enddo
+ ! enddo
+ 
+   ! SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI
+ else
+   var_p=>grid%locpat(1)%var
    do n = 1, grid%locpat(1)%nlmax
     iicap = icap_p(n)
     n0=(n-1)*grid%ndof
@@ -714,15 +785,17 @@ enddo
         grid%pcbetac(iicap),grid%pwrprm(iicap),&
 		var_p((ng-1)*grid%size_var_node+1:(ng-1)*grid%size_var_node+grid%size_var_use),&
 		ierr)
-
+      ! print *,"Var::",var_p((ng-1)*grid%size_var_node+1:(ng-1)*grid%size_var_node+grid%size_var_use)
    enddo
+    nullify(var_p) 
+ endif
    
    call VecRestoreArrayF90(grid%xx, xx_p, ierr); CHKERRQ(ierr)
    call VecRestoreArrayF90(grid%icap,icap_p,ierr)
    call VecRestoreArrayF90(grid%ithrm,ithrm_p,ierr)  
    
  !  call VecRestoreArrayF90(grid%var,var_p,ierr)
-   nullify(var_p) 
+  
    
   
    if(grid%nphase>1) call pflow_IMS_massbal(grid)

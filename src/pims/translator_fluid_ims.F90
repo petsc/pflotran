@@ -102,13 +102,13 @@
 	 kr(:)=1.D0
 	 
      err=1.D0
-     !call wateos_noderiv (t,p,p1,p2,tmp,energyscale,ierr) 
+     call wateos_noderiv (t,p,p1,p2,tmp,energyscale,ierr) 
      !den(1)=p1
 	 den(1)=1D3
 	 vis(1)=5.494D-3 !, [Pa.S] water viscosity at 50C
 	 if(num_phase>=2)then 
-	 ! call ideal_gaseos_noderiv(p,t,energyscale, p1,p2, tmp)
-	 ! den(2)=p1*44D0
+	  call ideal_gaseos_noderiv(p,t,energyscale, p1,p2, tmp)
+	  !den(2)=p1*44D0
       den(2)=30D0
 	   vis(2)=14D-6    ! [Pa.S] CO2 vis
 	 endif  
