@@ -1872,7 +1872,7 @@ private
   endif
 
 !geh - Zero out rows in matrix and residual entries for inactive cells
-  if (associated(grid.imat)) then
+  if (associated(grid%imat)) then
     do n = 1, grid%nlmax
       ng = grid%nL2G(n)
       if (grid%imat(n) <= 0) then

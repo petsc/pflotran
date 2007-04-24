@@ -2164,7 +2164,7 @@ subroutine pflowGrid_setup(grid, inputfile)
    if (myrank == 0) print *, 'Reading unstructured grid' 
    allocate(grid%pressurebc(grid%nphase,grid%nconnbc)) 
 
-   allocate(grid%imat(grid.nlmax))  ! allocate material id array
+   allocate(grid%imat(grid%nlmax))  ! allocate material id array
    grid%imat = 0      
 
    call ReadUnstructuredGrid(grid) 
