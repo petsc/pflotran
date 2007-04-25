@@ -211,7 +211,7 @@ subroutine InitializeBoundaryConditions(grid)
     if (condition_array(grid%ibconn(iconnbc))%ptr%itype == 2) then
       grid%ibndtyp(iconnbc) = 2  ! neumann
     else
-      grid%ibndtyp(iconnbc) = 1  ! pressure based dirichlet
+      grid%ibndtyp(iconnbc) = 3  ! pressure based dirichlet
     endif
   enddo
 
@@ -238,6 +238,7 @@ subroutine UpdateBoundaryConditions(grid)
 
   integer :: iconnbc, icond, itype
   real*8 :: value, datum, delz, delp
+  real*8 :: patm = 101325.d0
 
   call UpdateConditions(grid%t)
 
@@ -253,8 +254,10 @@ subroutine UpdateBoundaryConditions(grid)
     endif
     if (itype == 2) then ! neumann
       grid%velocitybc(1:grid%nphase,iconnbc) = value
+      grid%xxbc(1:grid%nphase,iconnbc) = patm
     else
-      grid%pressurebc(1:grid%nphase,iconnbc) = value
+!      grid%pressurebc(1:grid%nphase,iconnbc) = value
+      grid%xxbc(1:grid%nphase,iconnbc) = value
     endif
   enddo
 
