@@ -255,9 +255,9 @@ subroutine ReadUnstructuredGrid(grid)
         grid%grav_ang(grid%nconn) = cosB
 
         ! setup direction of permeability
-        dx = abs(grid%x(natural_id_upwind)-grid%x(natural_id_downwind+1))
-        dy = abs(grid%y(natural_id_upwind)-grid%y(natural_id_downwind+1))
-        dz = abs(grid%z(natural_id_upwind)-grid%z(natural_id_downwind+1))
+        dx = abs(grid%x(natural_id_upwind)-grid%x(natural_id_downwind))
+        dy = abs(grid%y(natural_id_upwind)-grid%y(natural_id_downwind))
+        dz = abs(grid%z(natural_id_upwind)-grid%z(natural_id_downwind))
         if (dx > dy .and. dx > dz) then
           grid%iperm1(grid%nconn) = 1
           grid%iperm2(grid%nconn) = 1
@@ -298,6 +298,9 @@ subroutine ReadUnstructuredGrid(grid)
 
   allocate(grid%velocitybc(grid%nphase, grid%nconnbc))
   allocate(grid%iphasebc(grid%nconnbc))
+  allocate(grid%xxbc(grid%ndof,grid%nconnbc))
+  allocate(grid%xphi_co2_bc(grid%nconnbc))
+  allocate(grid%xxphi_co2_bc(grid%nconnbc))
 
   grid%nconnbc = 0
 
@@ -360,6 +363,9 @@ subroutine ReadUnstructuredGrid(grid)
 
         ! setup direction of permeability
         grid%ipermbc(grid%nconnbc) = abs(direction) ! 1,2,3 -> x,y,z
+
+        ! hardwired for now
+        grid%iphasebc(grid%nconnbc) = 1
 
       endif
 #ifdef HASH
