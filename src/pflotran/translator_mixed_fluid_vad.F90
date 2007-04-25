@@ -729,7 +729,6 @@
 
   end select  
 
-!geh problem here
     call PSAT(t, sat_pressure, ierr)
 
     err=1.D0
