@@ -185,7 +185,7 @@ subroutine translator_vadose_massbal(grid)
   
   
     write(*,'(" Total CO2: liq:",1p, e13.6," gas:",1p, e13.6, " tot:", 1p, &
-              2e13.6, " [kmol]",1p, 3e13.6)') &
+  &           2e13.6, " [kmol]",1p, 3e13.6)') &
           tot(2,1),tot(2,2),tot(2,0),tot(2,1)+tot(2,2) !,nzc,nzm,nsm
 ! & grid%t/grid%tconv,tot(2,1),tot(2,2),tot(2,0),tot(2,1)+tot(2,2) !,nzc,nzm,nsm
     if (icall==0) then
