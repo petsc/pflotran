@@ -47,7 +47,7 @@ private
   
    
 
-  public MPHASEResidual, MPHASEJacobin, pflow_mphase_initaccum, &
+  public MPHASEResidual, MPHASEJacobian, pflow_mphase_initaccum, &
          pflow_update_mphase,pflow_mphase_initadj, pflow_mphase_timecut,&
          pflow_mphase_setupini, MPhase_Update, MPhase_Update_Reason
 
@@ -1332,7 +1332,7 @@ private
                 
 ! --------------------------------------------------------------------- 
 
-  subroutine MPHASEJacobin(snes,xx,A,B,flag,grid,ierr)
+  subroutine MPHASEJacobian(snes,xx,A,B,flag,grid,ierr)
        
     use water_eos_module
     use co2eos_module
@@ -1932,7 +1932,7 @@ private
 ! call MatView(A, PETSC_VIEWER_STDOUT_WORLD,ierr)
 ! stop
 
- end subroutine MPHASEJacobin
+ end subroutine MPHASEJacobian
 
 
 

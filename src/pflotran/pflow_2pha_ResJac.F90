@@ -48,7 +48,7 @@ private
   real*8, parameter :: floweps   = 1.D-24
   real*8, parameter :: satcuteps = 1.D-5
 
-  public TTPHASEResidual, TTPHASEJacobin, pflow_2phase_initaccum, &
+  public TTPHASEResidual, TTPHASEJacobian, pflow_2phase_initaccum, &
   pflow_update_2phase,pflow_2phase_initadj,TTPHASESolutionBC, &
   TTPhase_Update_Reason,pflow_2phase_massbal
 
@@ -1856,7 +1856,7 @@ if((SSATG_LOC(m1)>eps).or.(SSATG_LOC(m2)>eps))then
 ! --------------------------------------------------------------------- 
 
 
-  subroutine TTPHASEJacobin(snes,xx,A,B,flag,grid,ierr)
+  subroutine TTPHASEJacobian(snes,xx,A,B,flag,grid,ierr)
       use mixture_module  
       use water_eos_module
   
@@ -3809,7 +3809,7 @@ if (grid%rk > 0.d0) then
 ! call MatView(A, PETSC_VIEWER_STDOUT_WORLD,ierr)
 ! stop
 
-end subroutine TTPHASEJacobin
+end subroutine TTPHASEJacobian
 
 
 

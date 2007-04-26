@@ -50,13 +50,13 @@ module Vadose_module
   
    
 
-  public VadoseResidual, VadoseJacobin, pflow_Vadose_initaccum, &
+  public VadoseResidual, VadoseJacobian, pflow_Vadose_initaccum, &
          pflow_update_Vadose,pflow_Vadose_initadj, pflow_Vadose_timecut,&
          pflow_Vadose_setupini, Vadose_Update, Vadose_Update_Reason
 
 
 
-  contains
+contains
 
 
 subroutine pflow_Vadose_timecut(grid)
@@ -1338,7 +1338,7 @@ end subroutine VadoseResidual
                 
 ! --------------------------------------------------------------------- 
 
-subroutine VadoseJacobin(snes,xx,A,B,flag,grid,ierr)
+subroutine VadoseJacobian(snes,xx,A,B,flag,grid,ierr)
        
   use water_eos_module
   use gas_eos_module
@@ -1944,7 +1944,7 @@ subroutine VadoseJacobin(snes,xx,A,B,flag,grid,ierr)
 ! call MatView(A, PETSC_VIEWER_STDOUT_WORLD,ierr)
 ! stop
 
-end subroutine VadoseJacobin
+end subroutine VadoseJacobian
 
 
 

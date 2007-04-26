@@ -46,7 +46,7 @@ private
   
    
 
-  public OWGResidual, OWGJacobin, pflow_OWG_initaccum, &
+  public OWGResidual, OWGJacobian, pflow_OWG_initaccum, &
          pflow_update_OWG,pflow_OWG_initadj, pflow_OWG_timecut,&
          pflow_OWG_setupini, OWG_Update, OWG_Update_Reason
 
@@ -1304,7 +1304,7 @@ private
                 
 ! --------------------------------------------------------------------- 
 
-  subroutine OWGJacobin(snes,xx,A,B,flag,grid,ierr)
+  subroutine OWGJacobian(snes,xx,A,B,flag,grid,ierr)
        
     use water_eos_module
     use co2eos_module
@@ -1876,7 +1876,7 @@ private
 ! call MatView(A, PETSC_VIEWER_STDOUT_WORLD,ierr)
 ! stop
 
- end subroutine OWGJacobin
+ end subroutine OWGJacobian
 
 
 

@@ -1104,23 +1104,23 @@ subroutine pflowGrid_setup(grid, inputfile)
       call SNESSetJacobian(grid%snes, grid%J, grid%J, THCJacobian, &
                          grid, ierr); CHKERRQ(ierr)
     else if (grid%use_2ph == PETSC_TRUE) then
-    call SNESSetJacobian(grid%snes, grid%J, grid%J, TTPHASEJacobin, &
+    call SNESSetJacobian(grid%snes, grid%J, grid%J, TTPHASEJacobian, &
                          grid, ierr); CHKERRQ(ierr)
     else if (grid%use_mph == PETSC_TRUE) then
-      call SNESSetJacobian(grid%snes, grid%J, grid%J, MPHASEJacobin, &
+      call SNESSetJacobian(grid%snes, grid%J, grid%J, MPHASEJacobian, &
                          grid, ierr); CHKERRQ(ierr)
       if (grid%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(grid)
     else if (grid%use_flash == PETSC_TRUE) then
-       call SNESSetJacobian(grid%snes, grid%J, grid%J, FlashJacobin, &
+       call SNESSetJacobian(grid%snes, grid%J, grid%J, FlashJacobian, &
                          grid, ierr); CHKERRQ(ierr)
       if (grid%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(grid)
   
     else if (grid%use_vadose == PETSC_TRUE) then
-      call SNESSetJacobian(grid%snes, grid%J, grid%J, VADOSEJacobin, &
+      call SNESSetJacobian(grid%snes, grid%J, grid%J, VADOSEJacobian, &
                          grid, ierr); CHKERRQ(ierr)
       if (grid%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(grid)
     else if (grid%use_owg == PETSC_TRUE) then
-      call SNESSetJacobian(grid%snes, grid%J, grid%J, OWGJacobin, &
+      call SNESSetJacobian(grid%snes, grid%J, grid%J, OWGJacobian, &
                          grid, ierr); CHKERRQ(ierr)
       if (grid%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(grid)
     else

@@ -47,7 +47,7 @@ private
   
    
 
-  public FLASHResidual, FLASHJacobin, pflow_flash_initaccum, &
+  public FLASHResidual, FLASHJacobian, pflow_flash_initaccum, &
          pflow_update_flash,pflow_flash_initadj, pflow_flash_timecut,&
          pflow_flash_setupini, Flash_Update, flash_Update_Reason
 
@@ -1262,7 +1262,7 @@ private
                 
 ! --------------------------------------------------------------------- 
 
-  subroutine FLASHJacobin(snes,xx,A,B,flag,grid,ierr)
+  subroutine FLASHJacobian(snes,xx,A,B,flag,grid,ierr)
        
     use water_eos_module
     use co2eos_module
@@ -1863,7 +1863,7 @@ private
 ! call MatView(A, PETSC_VIEWER_STDOUT_WORLD,ierr)
 ! stop
 
- end subroutine flashJacobin
+ end subroutine flashJacobian
 
 
 

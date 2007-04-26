@@ -120,13 +120,13 @@
   endif
 
     if(grid%use_mph==PETSC_TRUE)then
-       call MPHASEJacobin(grid%snes,grid%xx,grid%J,grid%J,flag,grid,ierr)
+       call MPHASEJacobian(grid%snes,grid%xx,grid%J,grid%J,flag,grid,ierr)
     elseif(grid%use_owg==PETSC_TRUE)then
-      call OWGJacobin(grid%snes,grid%xx,grid%J,grid%J,flag,grid,ierr)
+      call OWGJacobian(grid%snes,grid%xx,grid%J,grid%J,flag,grid,ierr)
      elseif(grid%use_vadose==PETSC_TRUE)then
-      call VadoseJacobin(grid%snes,grid%xx,grid%J,grid%J,flag,grid,ierr)
+      call VadoseJacobian(grid%snes,grid%xx,grid%J,grid%J,flag,grid,ierr)
     elseif(grid%use_flash==PETSC_TRUE)then
-      call FlashJacobin(grid%snes,grid%xx,grid%J,grid%J,flag,grid,ierr)
+      call FlashJacobian(grid%snes,grid%xx,grid%J,grid%J,flag,grid,ierr)
 
    endif
    print *,' psolve; Get Joc'
