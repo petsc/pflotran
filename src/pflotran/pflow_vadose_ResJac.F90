@@ -365,7 +365,7 @@ subroutine VadoseRes_FLCont(nconn_no,area,var_node1,por1,tor1,sir1,dd1,perm1, &
                            pre_ref2=>var_node2(ibase)
                
   ibase=ibase+1;           sat1=>var_node1(ibase:ibase+grid%nphase-1)
-               sat2=>var_node2(ibase:ibase+grid%nphase-1)
+                           sat2=>var_node2(ibase:ibase+grid%nphase-1)
   ibase=ibase+grid%nphase; density1=>var_node1(ibase:ibase+grid%nphase-1)
                            density2=>var_node2(ibase:ibase+grid%nphase-1)
   ibase=ibase+grid%nphase; amw1=>var_node1(ibase:ibase+grid%nphase-1)
@@ -378,11 +378,12 @@ subroutine VadoseRes_FLCont(nconn_no,area,var_node1,por1,tor1,sir1,dd1,perm1, &
                            pc2=>var_node2(ibase:ibase+grid%nphase-1)
   ibase=ibase+grid%nphase; kvr1=>var_node1(ibase:ibase+grid%nphase-1)
                            kvr2=>var_node2(ibase:ibase+grid%nphase-1)
-  ibase=ibase+grid%nphase; xmol1=>var_node1(ibase:ibase+grid%nphase*grid%nspec-1)
-                           xmol2=>var_node2(ibase:ibase+grid%nphase*grid%nspec-1)
+  ibase=ibase+grid%nphase; 
+                         xmol1=>var_node1(ibase:ibase+grid%nphase*grid%nspec-1)
+                         xmol2=>var_node2(ibase:ibase+grid%nphase*grid%nspec-1)
   ibase=ibase+grid%nphase*grid%nspec;
-               diff1=>var_node1(ibase:ibase+grid%nphase*grid%nspec-1)    
-               diff2=>var_node2(ibase:ibase+grid%nphase*grid%nspec-1)
+                         diff1=>var_node1(ibase:ibase+grid%nphase*grid%nspec-1)
+                         diff2=>var_node2(ibase:ibase+grid%nphase*grid%nspec-1)
 
   !print *,' FLcont got pointers' ,var_node1,var_node2,sir1,sir2
   !print *,' tmp=',temp1,temp2
@@ -504,7 +505,7 @@ subroutine VadoseRes_FLBCCont(nbc_no,area,var_node1,var_node2,por2,tor2,sir2, &
   ibase=ibase+1;           pre_ref1=>var_node1(ibase)
                            pre_ref2=>var_node2(ibase)
   ibase=ibase+1;           sat1=>var_node1(ibase:ibase+grid%nphase-1)
-               sat2=>var_node2(ibase:ibase+grid%nphase-1)
+                           sat2=>var_node2(ibase:ibase+grid%nphase-1)
   ibase=ibase+grid%nphase; density1=>var_node1(ibase:ibase+grid%nphase-1)
                            density2=>var_node2(ibase:ibase+grid%nphase-1)
   ibase=ibase+grid%nphase; amw1=>var_node1(ibase:ibase+grid%nphase-1)
@@ -517,11 +518,12 @@ subroutine VadoseRes_FLBCCont(nbc_no,area,var_node1,var_node2,por2,tor2,sir2, &
                            pc2=>var_node2(ibase:ibase+grid%nphase-1)
   ibase=ibase+grid%nphase; kvr1=>var_node1(ibase:ibase+grid%nphase-1)
                            kvr2=>var_node2(ibase:ibase+grid%nphase-1)
-  ibase=ibase+grid%nphase; xmol1=>var_node1(ibase:ibase+grid%nphase*grid%nspec-1)
-                           xmol2=>var_node2(ibase:ibase+grid%nphase*grid%nspec-1)
+  ibase=ibase+grid%nphase; 
+                         xmol1=>var_node1(ibase:ibase+grid%nphase*grid%nspec-1)
+                         xmol2=>var_node2(ibase:ibase+grid%nphase*grid%nspec-1)
   ibase=ibase+grid%nphase*grid%nspec;
-               diff1=>var_node1(ibase:ibase+grid%nphase*grid%nspec-1)    
-               diff2=>var_node2(ibase:ibase+grid%nphase*grid%nspec-1)
+                         diff1=>var_node1(ibase:ibase+grid%nphase*grid%nspec-1)    
+                         diff2=>var_node2(ibase:ibase+grid%nphase*grid%nspec-1)
 
 
   ibc = grid%ibconn(nbc_no)
@@ -1919,6 +1921,9 @@ subroutine VadoseJacobian(snes,xx,A,B,flag,grid,ierr)
     call VecRestoreArrayF90(grid%phis,phis_p,ierr)
   endif
 
+  call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
+  call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
+
 !geh - Zero out rows in matrix and residual entries for inactive cells
   if (associated(grid%imat)) then
     do n = 1, grid%nlmax
@@ -1932,11 +1937,8 @@ subroutine VadoseJacobian(snes,xx,A,B,flag,grid,ierr)
     enddo
   endif
 
-  call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
-  call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-
   !B = A
-  !call MatCpoy(A,B,ierr)
+  !call MatCopy(A,B,ierr)
   
  !call PetscViewerSetFormat(PETSC_VIEWER_STDOUT_WORLD, PETSC_VIEWER_ASCII_MATLAB, ierr)
    
