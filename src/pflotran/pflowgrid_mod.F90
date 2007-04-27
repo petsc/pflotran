@@ -1041,7 +1041,7 @@ subroutine pflowGrid_setup(grid, inputfile)
   allocate(grid%z(grid%nmax))
  
   
-    call pflowGrid_compute_xyz(grid)
+  call pflowGrid_compute_xyz(grid)
 
   if (myrank == 0) then
     write(*,'(/,"++++++++++++++++++++++++++++++++++++++++++++++++++++&
@@ -1104,17 +1104,16 @@ subroutine pflowGrid_setup(grid, inputfile)
       call SNESSetJacobian(grid%snes, grid%J, grid%J, THCJacobian, &
                          grid, ierr); CHKERRQ(ierr)
     else if (grid%use_2ph == PETSC_TRUE) then
-    call SNESSetJacobian(grid%snes, grid%J, grid%J, TTPHASEJacobian, &
+      call SNESSetJacobian(grid%snes, grid%J, grid%J, TTPHASEJacobian, &
                          grid, ierr); CHKERRQ(ierr)
     else if (grid%use_mph == PETSC_TRUE) then
       call SNESSetJacobian(grid%snes, grid%J, grid%J, MPHASEJacobian, &
                          grid, ierr); CHKERRQ(ierr)
       if (grid%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(grid)
     else if (grid%use_flash == PETSC_TRUE) then
-       call SNESSetJacobian(grid%snes, grid%J, grid%J, FlashJacobian, &
+      call SNESSetJacobian(grid%snes, grid%J, grid%J, FlashJacobian, &
                          grid, ierr); CHKERRQ(ierr)
       if (grid%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(grid)
-  
     else if (grid%use_vadose == PETSC_TRUE) then
       call SNESSetJacobian(grid%snes, grid%J, grid%J, VADOSEJacobian, &
                          grid, ierr); CHKERRQ(ierr)
@@ -1705,52 +1704,52 @@ subroutine pflowGrid_setup(grid, inputfile)
 !geh
   endif
 
-    if (grid%use_mph == PETSC_TRUE .or. grid%use_owg == PETSC_TRUE &
-        .or. grid%use_vadose == PETSC_TRUE .or. grid%use_flash == PETSC_TRUE) then
-      allocate(grid%varbc(1:(grid%ndof+1)*(2+7*grid%nphase + 2 *  &
+  if (grid%use_mph == PETSC_TRUE .or. grid%use_owg == PETSC_TRUE &
+      .or. grid%use_vadose == PETSC_TRUE .or. grid%use_flash == PETSC_TRUE) then
+    allocate(grid%varbc(1:(grid%ndof+1)*(2+7*grid%nphase + 2 *  &
                                        grid%nphase*grid%nspec)))
-    else  
-      allocate(grid%density_bc(grid%nphase))
-      allocate(grid%d_p_bc(grid%nphase))
-      allocate(grid%d_t_bc(grid%nphase))
-      allocate(grid%d_c_bc(grid%nphase))
-      allocate(grid%d_s_bc(grid%nphase))
-      allocate(grid%avgmw_bc(grid%nphase))
-      allocate(grid%avgmw_c_bc(grid%nphase*grid%npricomp))
-      allocate(grid%hh_bc(grid%nphase))
-      allocate(grid%h_p_bc(grid%nphase))
-      allocate(grid%h_t_bc(grid%nphase))
-      allocate(grid%h_c_bc(grid%nphase*grid%npricomp))
-      allocate(grid%h_s_bc(grid%nphase))
-      allocate(grid%uu_bc(grid%nphase))
-      allocate(grid%u_p_bc(grid%nphase))
-      allocate(grid%u_t_bc(grid%nphase))
-      allocate(grid%u_c_bc(grid%nphase*grid%npricomp))
-      allocate(grid%u_s_bc(grid%nphase))
-      allocate(grid%df_bc(grid%nphase*grid%nspec))
-      allocate(grid%df_p_bc(grid%nphase*grid%nspec))
-      allocate(grid%df_t_bc(grid%nphase*grid%nspec))
-      allocate(grid%df_c_bc(grid%nphase*grid%nspec*grid%npricomp))
-      allocate(grid%df_s_bc(grid%nphase*grid%nspec))
-      allocate(grid%hen_bc(grid%nphase*grid%nspec))
-      allocate(grid%hen_p_bc(grid%nphase*grid%nspec))
-      allocate(grid%hen_t_bc(grid%nphase*grid%nspec))
-      allocate(grid%hen_c_bc(grid%nphase*grid%nspec*grid%npricomp))
-      allocate(grid%hen_s_bc(grid%nphase*grid%nspec))
-      allocate(grid%viscosity_bc(grid%nphase))
-      allocate(grid%v_p_bc(grid%nphase))
-      allocate(grid%v_t_bc(grid%nphase))
-      allocate(grid%pc_bc(grid%nphase))
-      allocate(grid%pc_p_bc(grid%nphase))
-      allocate(grid%pc_t_bc(grid%nphase))
-      allocate(grid%pc_c_bc(grid%nphase*grid%npricomp))
-      allocate(grid%pc_s_bc(grid%nphase))
-      allocate(grid%kvr_bc(grid%nphase))
-      allocate(grid%kvr_p_bc(grid%nphase))
-      allocate(grid%kvr_t_bc(grid%nphase))
-      allocate(grid%kvr_c_bc(grid%nphase*grid%npricomp))
-      allocate(grid%kvr_s_bc(grid%nphase))
-    endif
+  else  
+    allocate(grid%density_bc(grid%nphase))
+    allocate(grid%d_p_bc(grid%nphase))
+    allocate(grid%d_t_bc(grid%nphase))
+    allocate(grid%d_c_bc(grid%nphase))
+    allocate(grid%d_s_bc(grid%nphase))
+    allocate(grid%avgmw_bc(grid%nphase))
+    allocate(grid%avgmw_c_bc(grid%nphase*grid%npricomp))
+    allocate(grid%hh_bc(grid%nphase))
+    allocate(grid%h_p_bc(grid%nphase))
+    allocate(grid%h_t_bc(grid%nphase))
+    allocate(grid%h_c_bc(grid%nphase*grid%npricomp))
+    allocate(grid%h_s_bc(grid%nphase))
+    allocate(grid%uu_bc(grid%nphase))
+    allocate(grid%u_p_bc(grid%nphase))
+    allocate(grid%u_t_bc(grid%nphase))
+    allocate(grid%u_c_bc(grid%nphase*grid%npricomp))
+    allocate(grid%u_s_bc(grid%nphase))
+    allocate(grid%df_bc(grid%nphase*grid%nspec))
+    allocate(grid%df_p_bc(grid%nphase*grid%nspec))
+    allocate(grid%df_t_bc(grid%nphase*grid%nspec))
+    allocate(grid%df_c_bc(grid%nphase*grid%nspec*grid%npricomp))
+    allocate(grid%df_s_bc(grid%nphase*grid%nspec))
+    allocate(grid%hen_bc(grid%nphase*grid%nspec))
+    allocate(grid%hen_p_bc(grid%nphase*grid%nspec))
+    allocate(grid%hen_t_bc(grid%nphase*grid%nspec))
+    allocate(grid%hen_c_bc(grid%nphase*grid%nspec*grid%npricomp))
+    allocate(grid%hen_s_bc(grid%nphase*grid%nspec))
+    allocate(grid%viscosity_bc(grid%nphase))
+    allocate(grid%v_p_bc(grid%nphase))
+    allocate(grid%v_t_bc(grid%nphase))
+    allocate(grid%pc_bc(grid%nphase))
+    allocate(grid%pc_p_bc(grid%nphase))
+    allocate(grid%pc_t_bc(grid%nphase))
+    allocate(grid%pc_c_bc(grid%nphase*grid%npricomp))
+    allocate(grid%pc_s_bc(grid%nphase))
+    allocate(grid%kvr_bc(grid%nphase))
+    allocate(grid%kvr_p_bc(grid%nphase))
+    allocate(grid%kvr_t_bc(grid%nphase))
+    allocate(grid%kvr_c_bc(grid%nphase*grid%npricomp))
+    allocate(grid%kvr_s_bc(grid%nphase))
+  endif
 
 !geh
   if (grid%iread_geom > -1) then
@@ -2150,48 +2149,48 @@ subroutine pflowGrid_setup(grid, inputfile)
 ! call VecSet(grid%perm,1.d-15,ierr)
 #endif
 
- if (grid%iread_perm == 1) then
-   call Read_perm_field(grid)
- endif  
+  if (grid%iread_perm == 1) then
+    call Read_perm_field(grid)
+  endif
 
 !geh
- nullify(grid%imat)
+  nullify(grid%imat)
 
- if (grid%iread_geom == 1) then
-   call Read_Geom_field(grid)
+  if (grid%iread_geom == 1) then
+    call Read_Geom_field(grid)
 !geh
- else if (grid%iread_geom == -1) then 
-   if (myrank == 0) print *, 'Reading unstructured grid' 
-   allocate(grid%pressurebc(grid%nphase,grid%nconnbc)) 
+  else if (grid%iread_geom == -1) then 
+    if (myrank == 0) print *, 'Reading unstructured grid' 
+    allocate(grid%pressurebc(grid%nphase,grid%nconnbc)) 
 
-   allocate(grid%imat(grid%nlmax))  ! allocate material id array
-   grid%imat = 0      
+    allocate(grid%imat(grid%nlmax))  ! allocate material id array
+    grid%imat = 0      
 
-   call ReadUnstructuredGrid(grid) 
-   print *, 'nconnbc:', grid%nconnbc 
-   do nc = 1, grid%nconnbc 
-     ibc = grid%ibndtyp(nc) 
+    call ReadUnstructuredGrid(grid) 
+    print *, 'nconnbc:', grid%nconnbc 
+    do nc = 1, grid%nconnbc 
+      ibc = grid%ibndtyp(nc) 
 !     print *, 'ibc:', ibc, grid%ibconn(nc) 
-     if (ibc == 2) then 
-       print *, grid%velocitybc(:,nc) 
-     else 
-       print *, grid%pressurebc(:,nc), grid%z(grid%nL2A(grid%mblkbc(nc))+1) 
-     endif 
-   enddo 
- endif  
+      if (ibc == 2) then 
+        print *, grid%velocitybc(:,nc) 
+      else 
+        print *, grid%pressurebc(:,nc), grid%z(grid%nL2A(grid%mblkbc(nc))+1) 
+      endif 
+    enddo 
+  endif  
 
 
- if (grid%using_pflowGrid==0) call VecCopy(grid%Porosity, grid%Porosity0, ierr)
- call VecCopy(grid%perm_xx, grid%perm0_xx, ierr) 
- call VecCopy(grid%perm_yy, grid%perm0_yy, ierr) 
- call VecCopy(grid%perm_zz, grid%perm0_zz, ierr) 
+  if (grid%using_pflowGrid==0) call VecCopy(grid%Porosity, grid%Porosity0, ierr)
+  call VecCopy(grid%perm_xx, grid%perm0_xx, ierr) 
+  call VecCopy(grid%perm_yy, grid%perm0_yy, ierr) 
+  call VecCopy(grid%perm_zz, grid%perm0_zz, ierr) 
  
  
 ! Note: VecAssemblyBegin/End needed to run on the Mac - pcl (11/21/03)!
   call VecAssemblyBegin(grid%conc,ierr)
   call VecAssemblyEnd(grid%conc,ierr)
 
-   call VecAssemblyBegin(grid%xmol,ierr)
+  call VecAssemblyBegin(grid%xmol,ierr)
   call VecAssemblyEnd(grid%xmol,ierr)
 ! call VecView(grid%conc,PETSC_VIEWER_STDOUT_WORLD,ierr)
 
