@@ -294,8 +294,6 @@ subroutine ReadUnstructuredGrid(grid)
   allocate(grid%vgbc(grid%nconnbc))
   allocate(grid%vvgbc(grid%nconnbc))
 
-  allocate(grid%ibndtyp(grid%nconnbc)) ! condition (boundary) type
-
   allocate(grid%velocitybc(grid%nphase, grid%nconnbc))
   allocate(grid%iphasebc(grid%nconnbc))
   allocate(grid%xxbc(grid%ndof,grid%nconnbc))
@@ -678,7 +676,7 @@ subroutine CreateNaturalToLocalHash(grid)
   integer, pointer :: temp_hash(:,:,:)
 
   ! initial guess of 10% of ids per hash
-  num_ids_per_hash = grid%nlmax/(num_hash/10)
+  num_ids_per_hash = max(grid%nlmax/(num_hash/10),grid%nlmax)
 
   allocate(hash(2,0:num_ids_per_hash,num_hash))
   hash(:,:,:) = 0

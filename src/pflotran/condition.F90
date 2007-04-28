@@ -182,7 +182,7 @@ subroutine InitializeBoundaryConditions(grid)
 
   type(pflowGrid) :: grid
 
-  integer :: icond, iconnbc
+  integer :: icond
   character(len=MAXWORDLENGTH) :: word
   type(condition_type), pointer :: cur_condition
 
@@ -207,11 +207,12 @@ subroutine InitializeBoundaryConditions(grid)
   enddo
 
   ! set up native pflotran integer pointer to boundary condition type
-  do iconnbc = 1, grid%nconnbc
-    if (condition_array(grid%ibconn(iconnbc))%ptr%itype == 2) then
-      grid%ibndtyp(iconnbc) = 2  ! neumann
+  allocate(grid%ibndtyp(num_conditions)) ! condition (boundary) type
+  do icond = 1, num_conditions
+    if (condition_array(icond)%ptr%itype == 2) then
+      grid%ibndtyp(icond) = 2  ! neumann
     else
-      grid%ibndtyp(iconnbc) = 3  ! pressure based dirichlet
+      grid%ibndtyp(icond) = 3  ! pressure based dirichlet
     endif
   enddo
 

@@ -1939,7 +1939,7 @@ subroutine pflowGrid_setup(grid, inputfile)
 
 !geh
   endif
-
+  
   !-----------------------------------------------------------------------
   ! Set up the transformation from physical coordinates
   ! to local domains.
@@ -2195,6 +2195,10 @@ subroutine pflowGrid_setup(grid, inputfile)
 ! call VecView(grid%conc,PETSC_VIEWER_STDOUT_WORLD,ierr)
 
   if (myrank == 0) write(*,'("  Finished setting up of INIT ")')
+
+  print *, 'xxbc:'
+  print *, grid%xxbc(:,:)
+  print *
 
 
 

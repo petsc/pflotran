@@ -940,7 +940,13 @@ subroutine VadoseResidual(snes,xx,r,grid,ierr)
 !--------------------------------------------------------------------------
 ! print *,grid%rtot
   
+  print *, 'Residual  (init):'
+  print *, r_p
+  
   r_p = - accum_p
+
+  print *, 'Residual  (after accum_p):'
+  print *, r_p
 
   do n = 1, grid%nlmax  ! For each local node do...
     ng = grid%nL2G(n)   ! corresponding ghost index
@@ -961,6 +967,9 @@ subroutine VadoseResidual(snes,xx,r,grid,ierr)
     r_p(p1:p1+grid%ndof-1) = r_p(p1:p1+grid%ndof-1) + Res(1:grid%ndof)
     Resold_AR(n,1:grid%ndof)= Res(1:grid%ndof) 
   enddo
+
+  print *, 'Residual  (after accum):'
+  print *, r_p
 
 !************************************************************************
 ! add source/sink terms
@@ -1095,6 +1104,8 @@ subroutine VadoseResidual(snes,xx,r,grid,ierr)
   enddo
   !print *,'finished source/sink term'
   
+  print *, 'Residual  (after source/sink):'
+  print *, r_p
 
 !*********************************************************************
 
@@ -1187,6 +1198,9 @@ subroutine VadoseResidual(snes,xx,r,grid,ierr)
   enddo
    ! print *,'finished NC' 
  
+  print *, 'Residual  (after flux):'
+  print *, r_p
+
 !*************** Handle boundary conditions*************
 !   print *,'xxxxxxxxx ::...........'; call VecView(xx,PETSC_VIEWER_STDOUT_WORLD,ierr)
 
@@ -1257,6 +1271,18 @@ subroutine VadoseResidual(snes,xx,r,grid,ierr)
     dif(2)= grid%cdiff(int(ithrm_loc_p(ng)))
     !*******************************************
 
+    print *, nc
+    print *, 'xxbc: ', grid%xxbc(:,nc)
+    print *, 'iphasebc: ', grid%iphasebc(nc)
+    print *, 'icaptype: ', grid%icaptype(iicap)
+    print *, 'sir: ', grid%sir(1:grid%nphase,iicap)
+    print *, 'lambda: ', grid%lambda(iicap)
+    print *, 'alpha: ', grid%alpha(iicap)
+    print *, 'pckrm: ', grid%pckrm(iicap)
+    print *, 'pwrprm: ', grid%pwrprm(iicap)
+    print *, 'varbc: ', grid%varbc(1:size_var_use)
+    print *, 'xxphi_co2_bc: ', grid%xxphi_co2_bc(nc)
+    print *
   
     call pri_var_trans_vad_ninc(grid%xxbc(:,nc),grid%iphasebc(nc),&
                                 grid%scale,grid%nphase,grid%nspec, &
@@ -1295,6 +1321,9 @@ subroutine VadoseResidual(snes,xx,r,grid,ierr)
   enddo
 !  print *,'finished BC'
 
+  print *, 'Residual  (after bc flux):'
+  print *, r_p
+
   if (grid%use_isoth==PETSC_TRUE) then
     do n = 1, grid%nlmax  ! For each local node do...
       ng = grid%nL2G(n)   ! corresponding ghost index
@@ -1312,6 +1341,9 @@ subroutine VadoseResidual(snes,xx,r,grid,ierr)
       endif
     enddo
   endif
+
+  print *, 'Residual  (final):'
+  print *, r_p
 
   call VecRestoreArrayF90(r, r_p, ierr)
   call VecRestoreArrayF90(grid%yy, yy_p, ierr)
@@ -1747,6 +1779,11 @@ subroutine VadoseJacobian(snes,xx,A,B,flag,grid,ierr)
     endif
          
   enddo
+  
+!  call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
+!  call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
+!  call MatView(A, PETSC_VIEWER_STDOUT_WORLD,ierr)
+
 !   print *,' Mph Jaco Finished one node terms'
 ! -----------------------------contribution from transport----------------------
 
@@ -1943,7 +1980,7 @@ subroutine VadoseJacobian(snes,xx,A,B,flag,grid,ierr)
  !call PetscViewerSetFormat(PETSC_VIEWER_STDOUT_WORLD, PETSC_VIEWER_ASCII_MATLAB, ierr)
    
 
-! call MatView(A, PETSC_VIEWER_STDOUT_WORLD,ierr)
+ call MatView(A, PETSC_VIEWER_STDOUT_WORLD,ierr)
 ! stop
 
 end subroutine VadoseJacobian
