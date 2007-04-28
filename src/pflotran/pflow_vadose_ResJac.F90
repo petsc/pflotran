@@ -1780,10 +1780,6 @@ subroutine VadoseJacobian(snes,xx,A,B,flag,grid,ierr)
          
   enddo
   
-!  call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
-!  call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-!  call MatView(A, PETSC_VIEWER_STDOUT_WORLD,ierr)
-
 !   print *,' Mph Jaco Finished one node terms'
 ! -----------------------------contribution from transport----------------------
 
@@ -1980,7 +1976,7 @@ subroutine VadoseJacobian(snes,xx,A,B,flag,grid,ierr)
  !call PetscViewerSetFormat(PETSC_VIEWER_STDOUT_WORLD, PETSC_VIEWER_ASCII_MATLAB, ierr)
    
 
- call MatView(A, PETSC_VIEWER_STDOUT_WORLD,ierr)
+! call MatView(A, PETSC_VIEWER_STDOUT_WORLD,ierr)
 ! stop
 
 end subroutine VadoseJacobian

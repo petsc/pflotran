@@ -2196,13 +2196,6 @@ subroutine pflowGrid_setup(grid, inputfile)
 
   if (myrank == 0) write(*,'("  Finished setting up of INIT ")')
 
-  print *, 'xxbc:'
-  print *, grid%xxbc(:,:)
-  print *
-
-
-
-
   !-----------------------------------------------------------------------
   ! Initialize field variables
   !-----------------------------------------------------------------------
