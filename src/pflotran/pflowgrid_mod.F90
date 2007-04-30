@@ -2169,7 +2169,7 @@ subroutine pflowGrid_setup(grid, inputfile)
     call ReadUnstructuredGrid(grid) 
     print *, 'nconnbc:', grid%nconnbc 
     do nc = 1, grid%nconnbc 
-      ibc = grid%ibndtyp(nc) 
+      ibc = grid%ibndtyp(grid%ibconn(nc))
 !     print *, 'ibc:', ibc, grid%ibconn(nc) 
       if (ibc == 2) then 
         print *, grid%velocitybc(:,nc) 

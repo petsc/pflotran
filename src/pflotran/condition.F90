@@ -253,13 +253,16 @@ subroutine UpdateBoundaryConditions(grid)
       delp = delz*9.81d0*998.32
       value = value - delp
     endif
-    if (itype == 2) then ! neumann
-      grid%velocitybc(1:grid%nphase,iconnbc) = value
-      grid%xxbc(1:grid%nphase,iconnbc) = patm
-    else
-!      grid%pressurebc(1:grid%nphase,iconnbc) = value
-      grid%xxbc(1:grid%nphase,iconnbc) = value
-    endif
+    if (itype == 1) then ! dirichlet
+      grid%xxbc(1,iconnbc) = value
+      grid%xxbc(2,iconnbc) = 50.d0  ! currently hardwired temperature
+      grid%xxbc(3,iconnbc) = 1.d-6  ! currently hardwired solute concentration
+    elseif (itype == 2) then ! neumann
+      grid%velocitybc(1:grid%nphase,iconnbc) = value  ! all xxbc dofs get over-
+     ! grid%xxbc(1:grid%nphase,iconnbc) = patm        ! written later in 
+    else                                              ! pflow_vadose_ResJac.F90
+      grid%xxbc(1,iconnbc) = value   ! dofs 2+ get overwritten later 
+    endif                            ! in pflow_vadose_ResJac.F90
   enddo
 
 end subroutine UpdateBoundaryConditions
