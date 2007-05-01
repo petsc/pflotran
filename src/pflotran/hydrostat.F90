@@ -1,5 +1,6 @@
-  module hydrostat_module
-   use pflow_gridtype_module
+module hydrostat_module
+
+  use pflow_gridtype_module
 
 private 
 #include "include/finclude/petsc.h"
@@ -15,11 +16,11 @@ private
 
 #include "definitions.h"
 
- public :: hydrostatic, mhydrostatic, owghydrostatic
+  public :: hydrostatic, mhydrostatic, owghydrostatic
  
-  contains
+contains
 
-  subroutine hydrostatic (grid)
+subroutine hydrostatic (grid)
  
   use water_eos_module
 
@@ -112,7 +113,7 @@ private
            
 !           print *,'hydrostatic: ',m+1,i,k,horiz,depth,tmp,pres,rho
 
-           if(grid%use_2ph /= PETSC_TRUE) then
+            if (grid%use_2ph /= PETSC_TRUE) then
               jm = grid%jgas + m*grid%nphase - 1
               ! pressure
               call VecSetValue(temp1_nat_vec,m,pres,INSERT_VALUES,ierr)
@@ -150,23 +151,23 @@ private
             m = i + (j-1)*grid%nx + (k-1)*grid%nxy - 1
             tmp = 50.d0
             pres = 2.d7
-              jm= m*grid%nphase
-              ! pressure
-              call VecSetValue(temp1_nat_vec,jm,pres,INSERT_VALUES,ierr)
-              ! temperature
-              call VecSetValue(temp1_nat_vec,jm+1,pres,INSERT_VALUES,ierr) 
-              call VecSetValue(temp2_nat_vec,m,tmp,INSERT_VALUES,ierr)
-              ! xl
-              call VecSetValue(temp3_nat_vec,jm,grid%conc0,INSERT_VALUES,ierr)
-              ! xg
-              call VecSetValue(temp3_nat_vec,jm+1,grid%conc0,INSERT_VALUES,ierr)
-              ! sl
-              call VecSetValue(temp4_nat_vec,jm,0.15d0,INSERT_VALUES,ierr)
-              ! sg
-              call VecSetValue(temp4_nat_vec,jm+1,0.85d0,INSERT_VALUES,ierr) 
-!           call VecSetValue(grid%pressure,m,pres,INSERT_VALUES,ierr)
-!           call VecSetValue(grid%temp,m,tmp,INSERT_VALUES,ierr)
-!           call VecSetValue(grid%conc,m,1.d0,INSERT_VALUES,ierr)
+            jm = m*grid%nphase
+            ! pressure
+            call VecSetValue(temp1_nat_vec,jm,pres,INSERT_VALUES,ierr)
+            ! temperature
+            call VecSetValue(temp1_nat_vec,jm+1,pres,INSERT_VALUES,ierr) 
+            call VecSetValue(temp2_nat_vec,m,tmp,INSERT_VALUES,ierr)
+            ! xl
+            call VecSetValue(temp3_nat_vec,jm,grid%conc0,INSERT_VALUES,ierr)
+            ! xg
+            call VecSetValue(temp3_nat_vec,jm+1,grid%conc0,INSERT_VALUES,ierr)
+            ! sl
+            call VecSetValue(temp4_nat_vec,jm,0.15d0,INSERT_VALUES,ierr)
+            ! sg
+            call VecSetValue(temp4_nat_vec,jm+1,0.85d0,INSERT_VALUES,ierr) 
+!            call VecSetValue(grid%pressure,m,pres,INSERT_VALUES,ierr)
+!            call VecSetValue(grid%temp,m,tmp,INSERT_VALUES,ierr)
+!            call VecSetValue(grid%conc,m,1.d0,INSERT_VALUES,ierr)
           enddo
         enddo
       enddo
@@ -179,7 +180,7 @@ private
           do i = 11, 31
             m = i + (j-1)*grid%nx + (k-1)*grid%nxy - 1
             tmp = 150.d0
-!           pres = 1.d7
+!            pres = 1.d7
             pres = 8396027.61
             call VecSetValue(grid%pressure,m,pres,INSERT_VALUES,ierr)
             call VecSetValue(grid%temp,m,tmp,INSERT_VALUES,ierr)
@@ -199,7 +200,7 @@ private
     call VecAssemblyEnd(temp3_nat_vec,ierr)
     call VecAssemblyBegin(temp4_nat_vec,ierr)
     call VecAssemblyEnd(temp4_nat_vec,ierr)
-    if(grid%use_2ph /= PETSC_TRUE) then
+    if (grid%use_2ph /= PETSC_TRUE) then
       call DANaturalToGlobalBegin(grid%da_1_dof,temp1_nat_vec,INSERT_VALUES, &
                                   grid%pressure,ierr)
       call DANaturalToGlobalEnd(grid%da_1_dof,temp1_nat_vec,INSERT_VALUES, &
@@ -212,27 +213,27 @@ private
                                   grid%conc,ierr)
       call DANaturalToGlobalEnd(grid%da_1_dof,temp3_nat_vec,INSERT_VALUES, &
                                 grid%conc,ierr)
-      call DANaturalToGlobalBegin(grid%da_nphase_dof,temp4_nat_vec,INSERT_VALUES, &
-                                  grid%sat,ierr)
-      call DANaturalToGlobalEnd(grid%da_nphase_dof,temp4_nat_vec,INSERT_VALUES, &
-                                grid%sat,ierr)
+      call DANaturalToGlobalBegin(grid%da_nphase_dof,temp4_nat_vec, &
+                                  INSERT_VALUES,grid%sat,ierr)
+      call DANaturalToGlobalEnd(grid%da_nphase_dof,temp4_nat_vec, &
+                                INSERT_VALUES,grid%sat,ierr)
     else
-      call DANaturalToGlobalBegin(grid%da_nphase_dof,temp1_nat_vec,INSERT_VALUES, &
-                                 grid%pressure,ierr)
-      call DANaturalToGlobalEnd(grid%da_nphase_dof,temp1_nat_vec,INSERT_VALUES, &
-                                grid%pressure,ierr)
+      call DANaturalToGlobalBegin(grid%da_nphase_dof,temp1_nat_vec, &
+                                  INSERT_VALUES,grid%pressure,ierr)
+      call DANaturalToGlobalEnd(grid%da_nphase_dof,temp1_nat_vec, &
+                                INSERT_VALUES,grid%pressure,ierr)
       call DANaturalToGlobalBegin(grid%da_1_dof,temp2_nat_vec,INSERT_VALUES, &
                                   grid%temp,ierr)
       call DANaturalToGlobalEnd(grid%da_1_dof,temp2_nat_vec,INSERT_VALUES, &
                                 grid%temp,ierr)
-      call DANaturalToGlobalBegin(grid%da_nphase_dof,temp3_nat_vec,INSERT_VALUES, &
-                                  grid%xmol,ierr)
-      call DANaturalToGlobalEnd(grid%da_nphase_dof,temp3_nat_vec,INSERT_VALUES, &
-                                grid%xmol,ierr)
-      call DANaturalToGlobalBegin(grid%da_nphase_dof,temp4_nat_vec,INSERT_VALUES, &
-                                  grid%sat,ierr)
-      call DANaturalToGlobalEnd(grid%da_nphase_dof,temp4_nat_vec,INSERT_VALUES, &
-                                grid%sat,ierr)
+      call DANaturalToGlobalBegin(grid%da_nphase_dof,temp3_nat_vec, &
+                                  INSERT_VALUES,grid%xmol,ierr)
+      call DANaturalToGlobalEnd(grid%da_nphase_dof,temp3_nat_vec, &
+                                INSERT_VALUES,grid%xmol,ierr)
+      call DANaturalToGlobalBegin(grid%da_nphase_dof,temp4_nat_vec, &
+                                  INSERT_VALUES,grid%sat,ierr)
+      call DANaturalToGlobalEnd(grid%da_nphase_dof,temp4_nat_vec, &
+                                INSERT_VALUES,grid%sat,ierr)
     endif
     call VecDestroy(temp1_nat_vec,ierr)
     call VecDestroy(temp2_nat_vec,ierr)
@@ -244,7 +245,7 @@ private
 
   p = grid%pref
   call wateos(grid%tref, p, rho, dw_mol, dwp, &
-  dum, dum, dum, dum, grid%scale, ierr)
+              dum, dum, dum, dum, grid%scale, ierr)
   
   depth = depth + 0.5d0*grid%dz0(grid%nz)
   horiz = horiz + 0.5d0*grid%dx0(grid%nx)
@@ -254,8 +255,8 @@ private
   if (grid%myrank == 0) then
     write(*,'(" --> hydrostatic: length= ",1pe11.4,"[m], depth= ",1pe11.4, &
  &          "[m], dp= ",1pe11.4,"[Pa]")') horiz,depth,dp
-    write(IUNIT2,'(" --> hydrostatic: length= ",1pe11.4,"[m], depth= ",1pe11.4, &
- &          "[m], dp= ",1pe11.4,"[Pa]")') horiz,depth,dp
+    write(IUNIT2,'(" --> hydrostatic: length= ",1pe11.4,"[m], depth= ", &
+                 &  1pe11.4, "[m], dp= ",1pe11.4,"[Pa]")') horiz,depth,dp
   endif
   
   !save input grid%ibndtyp values
@@ -392,148 +393,149 @@ private
   
   ibc0 = ibc0 + 1
 
-    ibc = ibc + 1
-    grid%iregbc1(ibc) = ibc
-    grid%iregbc2(ibc) = ibc
-!   grid%ibndtyp(ibc) = 1 
-    grid%ibndtyp(ibc) = ibndtyp(ibc0)
-    grid%iface(ibc) = 3
-    grid%k1bc(ibc) = 1
-    grid%k2bc(ibc) = 1
-    grid%j1bc(ibc) = 1
-    grid%j2bc(ibc) = grid%ny
-    grid%i1bc(ibc) = 1
-    grid%i2bc(ibc) = grid%nx
+  ibc = ibc + 1
+  grid%iregbc1(ibc) = ibc
+  grid%iregbc2(ibc) = ibc
+! grid%ibndtyp(ibc) = 1 
+  grid%ibndtyp(ibc) = ibndtyp(ibc0)
+  grid%iface(ibc) = 3
+  grid%k1bc(ibc) = 1
+  grid%k2bc(ibc) = 1
+  grid%j1bc(ibc) = 1
+  grid%j2bc(ibc) = grid%ny
+  grid%i1bc(ibc) = 1
+  grid%i2bc(ibc) = grid%nx
 
-    grid%pressurebc0(1,ibc) = grid%pref
-    grid%tempbc0(ibc) = grid%tref
-    grid%concbc0(ibc) = cbc(ibc0) !grid%conc0 0.85d0 !grid%conc0 !grid%concbc(3) !
-    grid%sgbc0(ibc) = sbc(ibc0)
-    grid%velocitybc0(1,ibc) = 0.d0
+  grid%pressurebc0(1,ibc) = grid%pref
+  grid%tempbc0(ibc) = grid%tref
+  grid%concbc0(ibc) = cbc(ibc0) !grid%conc0 0.85d0 !grid%conc0 !grid%concbc(3) !
+  grid%sgbc0(ibc) = sbc(ibc0)
+  grid%velocitybc0(1,ibc) = 0.d0
   
 ! bottom
   
   ibc0 = ibc0 + 1
+
+  ibc = ibc + 1
+  grid%iregbc1(ibc) = ibc
+  grid%iregbc2(ibc) = ibc
+! grid%ibndtyp(ibc) = 2 
+  grid%ibndtyp(ibc) = ibndtyp(ibc0)
+  grid%iface(ibc) = 4
+  grid%k1bc(ibc) = grid%nz
+  grid%k2bc(ibc) = grid%nz
+  grid%j1bc(ibc) = 1
+  grid%j2bc(ibc) = grid%ny
+  grid%i1bc(ibc) = 1
+  grid%i2bc(ibc) = grid%nx
+
+! grid%pressurebc(1,ibc) = grid%pref
+  grid%pressurebc0(1,ibc) = p !grid%pref + rho * grid%gravity * depth
+  grid%tempbc0(ibc) = grid%tref + grid%dTdz * depth
+  grid%concbc0(ibc) = cbc(ibc0) !grid%conc0
+  grid%sgbc0(ibc) = sbc(ibc0)
+  grid%velocitybc0(1,ibc) = 0.d0
+
+  if (grid%ny > 1) then
+!     front
+  
+    ibc0 = ibc0 + 1
 
     ibc = ibc + 1
     grid%iregbc1(ibc) = ibc
     grid%iregbc2(ibc) = ibc
 !   grid%ibndtyp(ibc) = 2 
     grid%ibndtyp(ibc) = ibndtyp(ibc0)
-    grid%iface(ibc) = 4
-    grid%k1bc(ibc) = grid%nz
+    grid%iface(ibc) = 5
+    grid%k1bc(ibc) = 1
     grid%k2bc(ibc) = grid%nz
     grid%j1bc(ibc) = 1
-    grid%j2bc(ibc) = grid%ny
+    grid%j2bc(ibc) = 1
     grid%i1bc(ibc) = 1
     grid%i2bc(ibc) = grid%nx
 
-!   grid%pressurebc(1,ibc) = grid%pref
-    grid%pressurebc0(1,ibc) = p !grid%pref + rho * grid%gravity * depth
-    grid%tempbc0(ibc) = grid%tref + grid%dTdz * depth
+    grid%pressurebc0(1,ibc) = grid%pref
+    grid%tempbc0(ibc) = grid%tref
     grid%concbc0(ibc) = cbc(ibc0) !grid%conc0
     grid%sgbc0(ibc) = sbc(ibc0)
     grid%velocitybc0(1,ibc) = 0.d0
-
-    if (grid%ny > 1) then
-!     front
-  
-  ibc0 = ibc0 + 1
-
-      ibc = ibc + 1
-      grid%iregbc1(ibc) = ibc
-      grid%iregbc2(ibc) = ibc
-!     grid%ibndtyp(ibc) = 2 
-      grid%ibndtyp(ibc) = ibndtyp(ibc0)
-      grid%iface(ibc) = 5
-      grid%k1bc(ibc) = 1
-      grid%k2bc(ibc) = grid%nz
-      grid%j1bc(ibc) = 1
-      grid%j2bc(ibc) = 1
-      grid%i1bc(ibc) = 1
-      grid%i2bc(ibc) = grid%nx
-
-      grid%pressurebc0(1,ibc) = grid%pref
-      grid%tempbc0(ibc) = grid%tref
-      grid%concbc0(ibc) = cbc(ibc0) !grid%conc0
-      grid%sgbc0(ibc) = sbc(ibc0)
-      grid%velocitybc0(1,ibc) = 0.d0
   
 !     back
   
-  ibc0 = ibc0 + 1
+    ibc0 = ibc0 + 1
 
-      ibc = ibc + 1
-      grid%iregbc1(ibc) = ibc
-      grid%iregbc2(ibc) = ibc
-!     grid%ibndtyp(ibc) = 2 
-      grid%ibndtyp(ibc) = ibndtyp(ibc0)
-      grid%iface(ibc) = 6
-      grid%k1bc(ibc) = 1
-      grid%k2bc(ibc) = grid%nz
-      grid%j1bc(ibc) = grid%ny
-      grid%j2bc(ibc) = grid%ny
-      grid%i1bc(ibc) = 1
-      grid%i2bc(ibc) = grid%nx
-      tmp = grid%tref + grid%dTdz * depth
-      p = grid%pref + rho * grid%gravity * depth
-      call wateos(tmp, p, rho, dw_mol, dwp, &
-      dum, dum, dum, dum, grid%scale, ierr)
+    ibc = ibc + 1
+    grid%iregbc1(ibc) = ibc
+    grid%iregbc2(ibc) = ibc
+!   grid%ibndtyp(ibc) = 2 
+    grid%ibndtyp(ibc) = ibndtyp(ibc0)
+    grid%iface(ibc) = 6
+    grid%k1bc(ibc) = 1
+    grid%k2bc(ibc) = grid%nz
+    grid%j1bc(ibc) = grid%ny
+    grid%j2bc(ibc) = grid%ny
+    grid%i1bc(ibc) = 1
+    grid%i2bc(ibc) = grid%nx
+    tmp = grid%tref + grid%dTdz * depth
+    p = grid%pref + rho * grid%gravity * depth
+    call wateos(tmp, p, rho, dw_mol, dwp, &
+                dum, dum, dum, dum, grid%scale, ierr)
 
-      grid%pressurebc0(1,ibc) = p
-      grid%tempbc0(ibc) = tmp
-      grid%concbc0(ibc) = cbc(ibc0) !grid%conc0
-      grid%sgbc0(ibc) = sbc(ibc0)
-      grid%velocitybc0(1,ibc) = 0.d0
-    endif
+    grid%pressurebc0(1,ibc) = p
+    grid%tempbc0(ibc) = tmp
+    grid%concbc0(ibc) = cbc(ibc0) !grid%conc0
+    grid%sgbc0(ibc) = sbc(ibc0)
+    grid%velocitybc0(1,ibc) = 0.d0
+  endif
   
-    grid%nblkbc = ibc
+  grid%nblkbc = ibc
     
 !   do ibc = 1, grid%nblkbc
 !     grid%pressurebc(2,ibc) = grid%pressurebc(1,ibc)
 !     grid%velocitybc(2,ibc) = grid%velocitybc(1,ibc)
 !   enddo
 
-    if (grid%myrank == 0 ) then !.and. grid%iprint >= 3) then
-      print *,'--> write out file pflow.bc'
-      open(IUNIT3, file="pflow.bc", action="write", status="unknown")
-      write(IUNIT3,'("BCON : nblkbc = ",i4)') grid%nblkbc
-      do ibc = 1, grid%nblkbc
-        write(IUNIT3,'(":ibndtyp  iface",/3x,i2,6x,i2)') grid%ibndtyp(ibc), &
-        grid%iface(ibc)
+  if (grid%myrank == 0 ) then !.and. grid%iprint >= 3) then
+    print *,'--> write out file pflow.bc'
+    open(IUNIT3, file="pflow.bc", action="write", status="unknown")
+    write(IUNIT3,'("BCON : nblkbc = ",i4)') grid%nblkbc
+    do ibc = 1, grid%nblkbc
+      write(IUNIT3,'(":ibndtyp  iface",/3x,i2,6x,i2)') grid%ibndtyp(ibc), &
+      grid%iface(ibc)
+      if (grid%ibndtyp(ibc) == 1 .or. grid%ibndtyp(ibc) == 3) then
+        write(IUNIT3,'(": i1  i2  j1  j2  k1  k2       p          T          sl          C")')
+      else if (grid%ibndtyp(ibc) == 2) then
+        write(IUNIT3,'(": i1  i2  j1  j2  k1  k2       vl         T          sl          C")')
+      endif
+      do ireg = grid%iregbc1(ibc), grid%iregbc2(ibc)
         if (grid%ibndtyp(ibc) == 1 .or. grid%ibndtyp(ibc) == 3) then
-          write(IUNIT3,'(": i1  i2  j1  j2  k1  k2       p          T          sl          C")')
-        else if (grid%ibndtyp(ibc) == 2) then
-          write(IUNIT3,'(": i1  i2  j1  j2  k1  k2       vl         T          sl          C")')
+          write(IUNIT3,'(6i4,1pe14.6,1p10e12.4)') &
+                    grid%i1bc(ireg),grid%i2bc(ireg), &
+                    grid%j1bc(ireg),grid%j2bc(ireg), &
+                    grid%k1bc(ireg),grid%k2bc(ireg), &
+                    grid%pressurebc0(1,ireg),grid%tempbc0(ireg), &
+                    1.d0-grid%sgbc0(ireg),grid%concbc0(ireg)
+        else
+          write(IUNIT3,'(6i4,1pe14.6,1p10e12.4)') &
+                    grid%i1bc(ireg),grid%i2bc(ireg), &
+                    grid%j1bc(ireg),grid%j2bc(ireg), &
+                    grid%k1bc(ireg),grid%k2bc(ireg), &
+                    grid%velocitybc0(1,ireg),grid%tempbc0(ireg), &
+                    1.d0-grid%sgbc0(ireg),grid%concbc0(ireg)
         endif
-        do ireg = grid%iregbc1(ibc), grid%iregbc2(ibc)
-          if (grid%ibndtyp(ibc) == 1 .or. grid%ibndtyp(ibc) == 3) then
-            write(IUNIT3,'(6i4,1pe14.6,1p10e12.4)') &
-            grid%i1bc(ireg),grid%i2bc(ireg), &
-            grid%j1bc(ireg),grid%j2bc(ireg), &
-            grid%k1bc(ireg),grid%k2bc(ireg), &
-            grid%pressurebc0(1,ireg),grid%tempbc0(ireg),1.d0-grid%sgbc0(ireg), &
-            grid%concbc0(ireg)
-          else
-            write(IUNIT3,'(6i4,1pe14.6,1p10e12.4)') &
-            grid%i1bc(ireg),grid%i2bc(ireg), &
-            grid%j1bc(ireg),grid%j2bc(ireg), &
-            grid%k1bc(ireg),grid%k2bc(ireg), &
-            grid%velocitybc0(1,ireg),grid%tempbc0(ireg),1.d0-grid%sgbc0(ireg), &
-            grid%concbc0(ireg)
-          endif
-        enddo
       enddo
-      close(IUNIT3)
-    endif
+    enddo
+    close(IUNIT3)
+  endif
 
-  end subroutine hydrostatic
+end subroutine hydrostatic
   
   
   
  ! the coordinate in provided by pflow_compute_xyz, make sure this subroutine is called after that 
-  subroutine mhydrostatic(grid)
-    use water_eos_module
+subroutine mhydrostatic(grid)
+
+  use water_eos_module
 
   implicit none
 
@@ -569,50 +571,50 @@ private
 !  vz = -k/mu (dp/dz - rho g z) = 0
 !  vx = -k/mu dp/dx, h = p/(rho g)
 
-  if(grid%iread_init /= 1)then
-  call VecGetArrayF90(grid%xx, xx_p, ierr)
+  if (grid%iread_init /= 1) then
+    call VecGetArrayF90(grid%xx, xx_p, ierr)
 ! set initial pressure and temperature fields
-        rho=1000.D0
-        do nl=1, grid%nlmax
-    na=grid%nL2A(nl)+1 ! the natural ordering start from 0
-    depth = grid%z(na)
-        horiz = grid%x(na)
-            dx1 = dx2
-            !print *,'mhydro', nl,na,depth,horiz
-            tmp = grid%dTdz * depth + grid%tref
-            betap = rho * grid%gravity * grid%beta
-            pres = rho * grid%gravity * depth + grid%pref - betap * horiz
+    rho=1000.D0
+    do nl=1, grid%nlmax
+      na=grid%nL2A(nl)+1 ! the natural ordering start from 0
+      depth = grid%z(na)
+      horiz = grid%x(na)
+      dx1 = dx2
+      !print *,'mhydro', nl,na,depth,horiz
+      tmp = grid%dTdz * depth + grid%tref
+      betap = rho * grid%gravity * grid%beta
+      pres = rho * grid%gravity * depth + grid%pref - betap * horiz
 
-       call wateos(tmp, 2D7, rho, dw_mol, dwp, &
-              dum, dum, dum, dum, grid%scale, ierr)
+      call wateos(tmp, 2D7, rho, dw_mol, dwp, &
+                  dum, dum, dum, dum, grid%scale, ierr)
 
-            itrho= 0
-            do 
-              betap = rho * grid%gravity * grid%beta
-              pres = rho * grid%gravity * depth + grid%pref - betap * horiz
-              call wateos(tmp, 2D7, rho1, dw_mol, dwp, &
-              dum, dum, dum, dum, grid%scale, ierr)
-              if (abs(rho-rho1) < 1.d-6) exit
-              rho = rho1
-              itrho = itrho + 1
-              if (itrho > 100) then
-                print *,' no convergence in hydrostat-stop',itrho,rho1,rho
-                stop
-              endif
-            enddo
+      itrho= 0
+      do 
+        betap = rho * grid%gravity * grid%beta
+        pres = rho * grid%gravity * depth + grid%pref - betap * horiz
+        call wateos(tmp, 2D7, rho1, dw_mol, dwp, &
+                    dum, dum, dum, dum, grid%scale, ierr)
+        if (abs(rho-rho1) < 1.d-6) exit
+        rho = rho1
+        itrho = itrho + 1
+        if (itrho > 100) then
+          print *,' no convergence in hydrostat-stop',itrho,rho1,rho
+          stop
+        endif
+      enddo
 
-          xx_p(1+ (nl-1)*grid%ndof)=pres 
-          xx_p(2+ (nl-1)*grid%ndof)=tmp
+      xx_p(1+ (nl-1)*grid%ndof)=pres 
+      xx_p(2+ (nl-1)*grid%ndof)=tmp
         
-          enddo
+    enddo
     call VecRestoreArrayF90(grid%xx, xx_p, ierr)
-   endif
+  endif
   
   ! boundary conditions
 
   p = grid%pref
   call wateos(grid%tref, p, rho, dw_mol, dwp, &
-  dum, dum, dum, dum, grid%scale, ierr)
+              dum, dum, dum, dum, grid%scale, ierr)
   
   depth = depth + 0.5d0*grid%dz0(grid%nz)
   horiz = horiz + 0.5d0*grid%dx0(grid%nx)
@@ -622,8 +624,8 @@ private
   if (grid%myrank == 0) then
     write(*,'(" --> hydrostatic: length= ",1pe11.4,"[m], depth= ",1pe11.4, &
  &          "[m], dp= ",1pe11.4,"[Pa]")') horiz,depth,dp
-    write(IUNIT2,'(" --> hydrostatic: length= ",1pe11.4,"[m], depth= ",1pe11.4, &
- &          "[m], dp= ",1pe11.4,"[Pa]")') horiz,depth,dp
+    write(IUNIT2,'(" --> hydrostatic: length= ",1pe11.4,"[m], depth= ", &
+           & 1pe11.4, "[m], dp= ",1pe11.4,"[Pa]")') horiz,depth,dp
   endif
   
   !save input grid%ibndtyp values
@@ -631,7 +633,7 @@ private
   !                                1D-top, bottom
 
 
- if (grid%nblkbc > 6) then
+  if (grid%nblkbc > 6) then
     print *,'error in bcon/hydrostatic: ',grid%nblkbc,ibndtyp
     print *,'nblkbc must be 6 or less in bcon keyword'
     stop
@@ -659,113 +661,113 @@ private
   
   if (grid%nx > 1) then
   
-  ! left face
+    ! left face
   
-  ibc0 = ibc0 + 1
+    ibc0 = ibc0 + 1
   
-  do n = 1, grid%nz
-    ibc = ibc + 1
+    do n = 1, grid%nz
+      ibc = ibc + 1
     
-!   if (ibc .gt. MAXBCREGIONS) then
-!     print *,'pflowgrid_setup: too many boundary condition regions-stop!'
-!     stop
-!   endif
+!     if (ibc .gt. MAXBCREGIONS) then
+!       print *,'pflowgrid_setup: too many boundary condition regions-stop!'
+!       stop
+!     endif
     
-    grid%iregbc1(ibc) = n
-    grid%iregbc2(ibc) = n
-!   grid%ibndtyp(ibc) = 2 
-    if (ibc0 <= grid%nblkbc) grid%ibndtyp(ibc) = ibndtyp(ibc0)
-    grid%iface(ibc) = 1  
-    grid%k1bc(ibc) = n
-    grid%k2bc(ibc) = n
-    grid%j1bc(ibc) = 1
-    grid%j2bc(ibc) = grid%ny
-    grid%i1bc(ibc) = 1
-    grid%i2bc(ibc) = 1
+      grid%iregbc1(ibc) = n
+      grid%iregbc2(ibc) = n
+!     grid%ibndtyp(ibc) = 2 
+      if (ibc0 <= grid%nblkbc) grid%ibndtyp(ibc) = ibndtyp(ibc0)
+      grid%iface(ibc) = 1  
+      grid%k1bc(ibc) = n
+      grid%k2bc(ibc) = n
+      grid%j1bc(ibc) = 1
+      grid%j2bc(ibc) = grid%ny
+      grid%i1bc(ibc) = 1
+      grid%i2bc(ibc) = 1
     
-    if (n.eq.1) then
-      dzz = 0.5d0*grid%dz0(1)
-      zz = dzz
-    else
-      dzz = 0.5d0*(grid%dz0(n)+grid%dz0(n-1))
-      zz = zz + dzz
-    endif
-    tmp = grid%tref + grid%dTdz*zz
+      if (n.eq.1) then
+        dzz = 0.5d0*grid%dz0(1)
+        zz = dzz
+      else
+        dzz = 0.5d0*(grid%dz0(n)+grid%dz0(n-1))
+        zz = zz + dzz
+      endif
+      tmp = grid%tref + grid%dTdz*zz
     
-    call wateos(tmp, 2D7, rho, dw_mol, dwp, &
-    dum, dum, dum, dum, grid%scale, ierr)
+      call wateos(tmp, 2D7, rho, dw_mol, dwp, &
+                  dum, dum, dum, dum, grid%scale, ierr)
     
-    p = grid%pref + rho*grid%gravity*zz + dp
-!   p = p0 + rho*grid%gravity*zz + dp
+      p = grid%pref + rho*grid%gravity*zz + dp
+!     p = p0 + rho*grid%gravity*zz + dp
 
-!   print *,'left: ',n,zz,tmp,p,rho,dp
+!     print *,'left: ',n,zz,tmp,p,rho,dp
 
-!    grid%pressurebc0(1,ibc) = p
-!    grid%tempbc0(ibc) = tmp
-!    grid%concbc0(ibc) = cbc(ibc0)
-!    grid%sgbc0(ibc) = sbc(ibc0)
-    grid%velocitybc0(:,ibc) = 0.d0
-    grid%xxbc0(1,ibc) = p
-    grid%xxbc0(2,ibc) = tmp
-    grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
-    grid%iphasebc0(ibc)=iphasebc_rec(ibc0)     
-!   print *,'BC: ',grid%myrank,n,ibc,zz,grid%z(grid%nmax),grid%x(grid%nmax), &
-!   grid%tempbc(ibc),grid%tempbc(ibc+grid%nz), &
-!   grid%pressurebc(1,ibc),grid%pressurebc(1,ibc+grid%nz)
-  enddo
+!      grid%pressurebc0(1,ibc) = p
+!      grid%tempbc0(ibc) = tmp
+!      grid%concbc0(ibc) = cbc(ibc0)
+!      grid%sgbc0(ibc) = sbc(ibc0)
+      grid%velocitybc0(:,ibc) = 0.d0
+      grid%xxbc0(1,ibc) = p
+      grid%xxbc0(2,ibc) = tmp
+      grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
+      grid%iphasebc0(ibc)=iphasebc_rec(ibc0)     
+!     print *,'BC: ',grid%myrank,n,ibc,zz,grid%z(grid%nmax),grid%x(grid%nmax), &
+!     grid%tempbc(ibc),grid%tempbc(ibc+grid%nz), &
+!     grid%pressurebc(1,ibc),grid%pressurebc(1,ibc+grid%nz)
+    enddo
 
-  ! right face
+    ! right face
   
-  ibc0 = ibc0 + 1
+    ibc0 = ibc0 + 1
 
-  p = grid%pref
-  do n = 1, grid%nz
-    ibc = ibc + 1
+    p = grid%pref
+    do n = 1, grid%nz
+      ibc = ibc + 1
+      
+      grid%iregbc1(ibc) = grid%nz+n
+      grid%iregbc2(ibc) = grid%nz+n
+!     grid%ibndtyp(ibc) = 2 
+      grid%ibndtyp(ibc) = ibndtyp(ibc0)
+      grid%iface(ibc) = 2
+      grid%k1bc(ibc) = n
+      grid%k2bc(ibc) = n
+      grid%j1bc(ibc) = 1
+      grid%j2bc(ibc) = grid%ny
+      grid%i1bc(ibc) = grid%nx
+      grid%i2bc(ibc) = grid%nx
     
-    grid%iregbc1(ibc) = grid%nz+n
-    grid%iregbc2(ibc) = grid%nz+n
-!   grid%ibndtyp(ibc) = 2 
-    grid%ibndtyp(ibc) = ibndtyp(ibc0)
-    grid%iface(ibc) = 2
-    grid%k1bc(ibc) = n
-    grid%k2bc(ibc) = n
-    grid%j1bc(ibc) = 1
-    grid%j2bc(ibc) = grid%ny
-    grid%i1bc(ibc) = grid%nx
-    grid%i2bc(ibc) = grid%nx
-    
-    if (n.eq.1) then
-      dzz = 0.5d0*grid%dz0(1)
-      zz = dzz
-    else
-      dzz = 0.5d0*(grid%dz0(n)+grid%dz0(n-1))
-      zz = zz + dzz
-    endif
-    tmp = grid%tref + grid%dTdz*zz
+      if (n.eq.1) then
+        dzz = 0.5d0*grid%dz0(1)
+        zz = dzz
+      else
+        dzz = 0.5d0*(grid%dz0(n)+grid%dz0(n-1))
+        zz = zz + dzz
+      endif
+      tmp = grid%tref + grid%dTdz*zz
 
-    call wateos(tmp, 2D7, rho, dw_mol, dwp, &
-    dum, dum, dum, dum, grid%scale, ierr)
+      call wateos(tmp, 2D7, rho, dw_mol, dwp, &
+                  dum, dum, dum, dum, grid%scale, ierr)
 
-!   call cowat (tmp, p, rw, uw, ierr)
+!     call cowat (tmp, p, rw, uw, ierr)
 
-    p = grid%pref + rho*grid%gravity*zz !- dp
-!   p = p0 + rho*grid%gravity*zz
+      p = grid%pref + rho*grid%gravity*zz !- dp
+!     p = p0 + rho*grid%gravity*zz
 
-!   print *,'right: ',n,zz,tmp,p,p0,rho,dp,grid%nx,grid%ny,grid%nz
+!     print *,'right: ',n,zz,tmp,p,p0,rho,dp,grid%nx,grid%ny,grid%nz
 
-!    grid%pressurebc0(1,ibc) = p
-!    grid%tempbc0(ibc) = tmp
-!    grid%concbc0(ibc) = cbc(ibc0) !grid%conc0
-!    grid%sgbc0(ibc) = sbc(ibc0)
-    grid%velocitybc0(:,ibc) = 0.d0
-    grid%xxbc0(1,ibc) = p
-    grid%xxbc0(2,ibc) = tmp
-    grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
-    grid%iphasebc0(ibc)=iphasebc_rec(ibc0)
-!   print *,'BC: ',grid%myrank,n,ibc,zz,grid%z(grid%nmax),grid%x(grid%nmax), &
-!   grid%tempbc(ibc),grid%tempbc(ibc+grid%nz), &
-!   grid%pressurebc(1,ibc),grid%pressurebc(1,ibc+grid%nz)
-  enddo
+!     grid%pressurebc0(1,ibc) = p
+!     grid%tempbc0(ibc) = tmp
+!     grid%concbc0(ibc) = cbc(ibc0) !grid%conc0
+!     grid%sgbc0(ibc) = sbc(ibc0)
+      grid%velocitybc0(:,ibc) = 0.d0
+      grid%xxbc0(1,ibc) = p
+      grid%xxbc0(2,ibc) = tmp
+      grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
+      grid%iphasebc0(ibc)=iphasebc_rec(ibc0)
+!     print *,'BC: ',grid%myrank,n,ibc,zz,grid%z(grid%nmax),grid%x(grid%nmax), &
+!     grid%tempbc(ibc),grid%tempbc(ibc+grid%nz), &
+!     grid%pressurebc(1,ibc),grid%pressurebc(1,ibc+grid%nz)
+    enddo
   
   endif
   
@@ -773,160 +775,163 @@ private
   
   ibc0 = ibc0 + 1
 
-    ibc = ibc + 1
-    grid%iregbc1(ibc) = ibc
-    grid%iregbc2(ibc) = ibc
-!   grid%ibndtyp(ibc) = 1 
-    grid%ibndtyp(ibc) = ibndtyp(ibc0)
-    grid%iface(ibc) = 3
-    grid%k1bc(ibc) = 1
-    grid%k2bc(ibc) = 1
-    grid%j1bc(ibc) = 1
-    grid%j2bc(ibc) = grid%ny
-    grid%i1bc(ibc) = 1
-    grid%i2bc(ibc) = grid%nx
+  ibc = ibc + 1
+  grid%iregbc1(ibc) = ibc
+  grid%iregbc2(ibc) = ibc
+! grid%ibndtyp(ibc) = 1 
+  grid%ibndtyp(ibc) = ibndtyp(ibc0)
+  grid%iface(ibc) = 3
+  grid%k1bc(ibc) = 1
+  grid%k2bc(ibc) = 1
+  grid%j1bc(ibc) = 1
+  grid%j2bc(ibc) = grid%ny
+  grid%i1bc(ibc) = 1
+  grid%i2bc(ibc) = grid%nx
 
-!    grid%pressurebc0(1,ibc) = grid%pref
-!    grid%tempbc0(ibc) = grid%tref
-!    grid%concbc0(ibc) = cbc(ibc0) !grid%conc0 0.85d0 !grid%conc0 !grid%concbc(3) !
-!    grid%sgbc0(ibc) = sbc(ibc0)
-    grid%xxbc0(1,ibc) = grid%pref
-    grid%xxbc0(2,ibc) = grid%tref
-    grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
-    grid%iphasebc0(ibc)=iphasebc_rec(ibc0)
-    grid%velocitybc0(:,ibc) = 0.d0
-    print *,'BC: top',grid%myrank,ibc,grid%xxbc0(:,ibc)
+!  grid%pressurebc0(1,ibc) = grid%pref
+!  grid%tempbc0(ibc) = grid%tref
+!  grid%concbc0(ibc) = cbc(ibc0) !grid%conc0 0.85d0 !grid%conc0 !grid%concbc(3) !
+!  grid%sgbc0(ibc) = sbc(ibc0)
+  grid%xxbc0(1,ibc) = grid%pref
+  grid%xxbc0(2,ibc) = grid%tref
+  grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
+  grid%iphasebc0(ibc)=iphasebc_rec(ibc0)
+  grid%velocitybc0(:,ibc) = 0.d0
+  print *,'BC: top',grid%myrank,ibc,grid%xxbc0(:,ibc)
 ! bottom
   
   ibc0 = ibc0 + 1
+
+  ibc = ibc + 1
+  grid%iregbc1(ibc) = ibc
+  grid%iregbc2(ibc) = ibc
+! grid%ibndtyp(ibc) = 2 
+  grid%ibndtyp(ibc) = ibndtyp(ibc0)
+  grid%iface(ibc) = 4
+  grid%k1bc(ibc) = grid%nz
+  grid%k2bc(ibc) = grid%nz
+  grid%j1bc(ibc) = 1
+  grid%j2bc(ibc) = grid%ny
+  grid%i1bc(ibc) = 1
+  grid%i2bc(ibc) = grid%nx
+
+! grid%pressurebc(1,ibc) = grid%pref
+! grid%pressurebc0(1,ibc) = p !grid%pref + rho * grid%gravity * depth
+! grid%tempbc0(ibc) = grid%tref + grid%dTdz * depth
+! grid%concbc0(ibc) = cbc(ibc0) !grid%conc0
+! grid%sgbc0(ibc) = sbc(ibc0)
+  grid%xxbc0(1,ibc) = p
+  grid%xxbc0(2,ibc) = tmp
+  grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
+  grid%iphasebc0(ibc)=iphasebc_rec(ibc0)
+  grid%velocitybc0(:,ibc) = 0.d0
+  print *,'BC: bot',grid%myrank,ibc,grid%xxbc0(:,ibc)
+  if (grid%ny > 1) then
+!     front
+  
+    ibc0 = ibc0 + 1
 
     ibc = ibc + 1
     grid%iregbc1(ibc) = ibc
     grid%iregbc2(ibc) = ibc
 !   grid%ibndtyp(ibc) = 2 
     grid%ibndtyp(ibc) = ibndtyp(ibc0)
-    grid%iface(ibc) = 4
-    grid%k1bc(ibc) = grid%nz
+    grid%iface(ibc) = 5
+    grid%k1bc(ibc) = 1
     grid%k2bc(ibc) = grid%nz
     grid%j1bc(ibc) = 1
-    grid%j2bc(ibc) = grid%ny
+    grid%j2bc(ibc) = 1
     grid%i1bc(ibc) = 1
     grid%i2bc(ibc) = grid%nx
 
-!   grid%pressurebc(1,ibc) = grid%pref
-!    grid%pressurebc0(1,ibc) = p !grid%pref + rho * grid%gravity * depth
-!    grid%tempbc0(ibc) = grid%tref + grid%dTdz * depth
+!    grid%pressurebc0(1,ibc) = grid%pref
+!    grid%tempbc0(ibc) = grid%tref
 !    grid%concbc0(ibc) = cbc(ibc0) !grid%conc0
 !    grid%sgbc0(ibc) = sbc(ibc0)
-     grid%xxbc0(1,ibc) = p
-     grid%xxbc0(2,ibc) = tmp
-     grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
-    grid%iphasebc0(ibc)=iphasebc_rec(ibc0)
+    grid%xxbc0(1,ibc) = p
+    grid%xxbc0(2,ibc) = tmp
+    grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
+    grid%iphasebc0(ibc)=iphasebc_rec(ibc0) 
     grid%velocitybc0(:,ibc) = 0.d0
-    print *,'BC: bot',grid%myrank,ibc,grid%xxbc0(:,ibc)
-    if (grid%ny > 1) then
-!     front
-  
-      ibc0 = ibc0 + 1
-
-      ibc = ibc + 1
-      grid%iregbc1(ibc) = ibc
-      grid%iregbc2(ibc) = ibc
-!     grid%ibndtyp(ibc) = 2 
-      grid%ibndtyp(ibc) = ibndtyp(ibc0)
-      grid%iface(ibc) = 5
-      grid%k1bc(ibc) = 1
-      grid%k2bc(ibc) = grid%nz
-      grid%j1bc(ibc) = 1
-      grid%j2bc(ibc) = 1
-      grid%i1bc(ibc) = 1
-      grid%i2bc(ibc) = grid%nx
-
-!      grid%pressurebc0(1,ibc) = grid%pref
-!      grid%tempbc0(ibc) = grid%tref
-!      grid%concbc0(ibc) = cbc(ibc0) !grid%conc0
-!      grid%sgbc0(ibc) = sbc(ibc0)
-     grid%xxbc0(1,ibc) = p
-     grid%xxbc0(2,ibc) = tmp
-     grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
-     grid%iphasebc0(ibc)=iphasebc_rec(ibc0) 
-     grid%velocitybc0(:,ibc) = 0.d0
   
 !     back
   
-     ibc0 = ibc0 + 1
+    ibc0 = ibc0 + 1
 
-      ibc = ibc + 1
-      grid%iregbc1(ibc) = ibc
-      grid%iregbc2(ibc) = ibc
-!     grid%ibndtyp(ibc) = 2 
-      grid%ibndtyp(ibc) = ibndtyp(ibc0)
-      grid%iface(ibc) = 6
-      grid%k1bc(ibc) = 1
-      grid%k2bc(ibc) = grid%nz
-      grid%j1bc(ibc) = grid%ny
-      grid%j2bc(ibc) = grid%ny
-      grid%i1bc(ibc) = 1
-      grid%i2bc(ibc) = grid%nx
-      tmp = grid%tref + grid%dTdz * depth
-      p = grid%pref + rho * grid%gravity * depth
-      call wateos(tmp, 2D7, rho, dw_mol, dwp, &
-      dum, dum, dum, dum, grid%scale, ierr)
+    ibc = ibc + 1
+    grid%iregbc1(ibc) = ibc
+    grid%iregbc2(ibc) = ibc
+!   grid%ibndtyp(ibc) = 2 
+    grid%ibndtyp(ibc) = ibndtyp(ibc0)
+    grid%iface(ibc) = 6
+    grid%k1bc(ibc) = 1
+    grid%k2bc(ibc) = grid%nz
+    grid%j1bc(ibc) = grid%ny
+    grid%j2bc(ibc) = grid%ny
+    grid%i1bc(ibc) = 1
+    grid%i2bc(ibc) = grid%nx
+    tmp = grid%tref + grid%dTdz * depth
+    p = grid%pref + rho * grid%gravity * depth
+    call wateos(tmp, 2D7, rho, dw_mol, dwp, &
+                dum, dum, dum, dum, grid%scale, ierr)
 
-!      grid%pressurebc0(1,ibc) = p
-!      grid%tempbc0(ibc) = tmp
-!      grid%concbc0(ibc) = cbc(ibc0) !grid%conc0
-!      grid%sgbc0(ibc) = sbc(ibc0)
-      grid%xxbc0(1,ibc) = p
-      grid%xxbc0(2,ibc) = tmp
-      grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
-      grid%iphasebc0(ibc)=iphasebc_rec(ibc0)
-      grid%velocitybc0(:,ibc) = 0.d0
-    endif
+!   grid%pressurebc0(1,ibc) = p
+!   grid%tempbc0(ibc) = tmp
+!   grid%concbc0(ibc) = cbc(ibc0) !grid%conc0
+!   grid%sgbc0(ibc) = sbc(ibc0)
+    grid%xxbc0(1,ibc) = p
+    grid%xxbc0(2,ibc) = tmp
+    grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
+    grid%iphasebc0(ibc)=iphasebc_rec(ibc0)
+    grid%velocitybc0(:,ibc) = 0.d0
+  endif
   
-    grid%nblkbc = ibc
+  grid%nblkbc = ibc
     
-!   do ibc = 1, grid%nblkbc
-!     grid%pressurebc(2,ibc) = grid%pressurebc(1,ibc)
-!     grid%velocitybc(2,ibc) = grid%velocitybc(1,ibc)
-!   enddo
+! do ibc = 1, grid%nblkbc
+!   grid%pressurebc(2,ibc) = grid%pressurebc(1,ibc)
+!   grid%velocitybc(2,ibc) = grid%velocitybc(1,ibc)
+! enddo
 
-    if (grid%myrank == 0 ) then !.and. grid%iprint >= 3) then
-      print *,'--> write out file pflow.bc'
-      open(IUNIT3, file="pflow.bc", action="write", status="unknown")
-      write(IUNIT3,'("BCON : nblkbc = ",i4)') grid%nblkbc
-      do ibc = 1, grid%nblkbc
-        write(IUNIT3,'(":ibndtyp  iface",/3x,i2,6x,i2)') grid%ibndtyp(ibc), &
-        grid%iface(ibc)
+  if (grid%myrank == 0 ) then !.and. grid%iprint >= 3) then
+    print *,'--> write out file pflow.bc'
+    open(IUNIT3, file="pflow.bc", action="write", status="unknown")
+    write(IUNIT3,'("BCON : nblkbc = ",i4)') grid%nblkbc
+    do ibc = 1, grid%nblkbc
+      write(IUNIT3,'(":ibndtyp  iface",/3x,i2,6x,i2)') grid%ibndtyp(ibc), &
+            grid%iface(ibc)
+      if (grid%ibndtyp(ibc) == 1 .or. grid%ibndtyp(ibc) == 3) then
+        write(IUNIT3,'(": i1  i2  j1  j2  k1  k2       p          T   ", &
+                     & "       sl          C")')
+       else if (grid%ibndtyp(ibc) == 2) then
+        write(IUNIT3,'(": i1  i2  j1  j2  k1  k2       vl         T   ", &
+                     & "       sl          C")')
+      endif
+      do ireg = grid%iregbc1(ibc), grid%iregbc2(ibc)
         if (grid%ibndtyp(ibc) == 1 .or. grid%ibndtyp(ibc) == 3) then
-          write(IUNIT3,'(": i1  i2  j1  j2  k1  k2       p          T          sl          C")')
-        else if (grid%ibndtyp(ibc) == 2) then
-          write(IUNIT3,'(": i1  i2  j1  j2  k1  k2       vl         T          sl          C")')
+          write(IUNIT3,'(6i4,1pe14.6,1p10e12.4)') &
+                        grid%i1bc(ireg),grid%i2bc(ireg), &
+                        grid%j1bc(ireg),grid%j2bc(ireg), &
+                        grid%k1bc(ireg),grid%k2bc(ireg), &
+                        grid%xxbc0(:,ireg)
+        else
+          write(IUNIT3,'(6i4,1pe14.6,1p10e12.4)') &
+                        grid%i1bc(ireg),grid%i2bc(ireg), &
+                        grid%j1bc(ireg),grid%j2bc(ireg), &
+                        grid%k1bc(ireg),grid%k2bc(ireg), &
+                        grid%velocitybc0(1,ireg),grid%xxbc0(:,ireg)
         endif
-        do ireg = grid%iregbc1(ibc), grid%iregbc2(ibc)
-          if (grid%ibndtyp(ibc) == 1 .or. grid%ibndtyp(ibc) == 3) then
-            write(IUNIT3,'(6i4,1pe14.6,1p10e12.4)') &
-            grid%i1bc(ireg),grid%i2bc(ireg), &
-            grid%j1bc(ireg),grid%j2bc(ireg), &
-            grid%k1bc(ireg),grid%k2bc(ireg), &
-            grid%xxbc0(:,ireg)
-          else
-            write(IUNIT3,'(6i4,1pe14.6,1p10e12.4)') &
-            grid%i1bc(ireg),grid%i2bc(ireg), &
-            grid%j1bc(ireg),grid%j2bc(ireg), &
-            grid%k1bc(ireg),grid%k2bc(ireg), &
-            grid%velocitybc0(1,ireg),grid%xxbc0(:,ireg)
-          endif
-        enddo
       enddo
-      close(IUNIT3)
-    endif
+    enddo
+    close(IUNIT3)
+  endif
 
-  end subroutine mhydrostatic
+end subroutine mhydrostatic
 
  ! the coordinate in provided by pflow_compute_xyz, make sure this subroutine is called after that 
-  subroutine owghydrostatic(grid)
-    use water_eos_module
+subroutine owghydrostatic(grid)
+
+  use water_eos_module
 
   implicit none
 
@@ -962,50 +967,50 @@ private
 !  vz = -k/mu (dp/dz - rho g z) = 0
 !  vx = -k/mu dp/dx, h = p/(rho g)
 
-  if(grid%iread_init /= 1)then
-  call VecGetArrayF90(grid%xx, xx_p, ierr)
+  if (grid%iread_init /= 1) then
+    call VecGetArrayF90(grid%xx, xx_p, ierr)
 ! set initial pressure and temperature fields
-        rho=1000.D0
-        do nl=1, grid%nlmax
-    na=grid%nL2A(nl)+1 ! the natural ordering start from 0
-    depth = grid%z(na)
-        horiz = grid%x(na)
-            dx1 = dx2
-            !print *,'mhydro', nl,na,depth,horiz
-            tmp = grid%dTdz * depth + grid%tref
-            betap = rho * grid%gravity * grid%beta
-            pres = rho * grid%gravity * depth + grid%pref - betap * horiz
+    rho=1000.D0
+    do nl=1, grid%nlmax
+      na=grid%nL2A(nl)+1 ! the natural ordering start from 0
+      depth = grid%z(na)
+      horiz = grid%x(na)
+      dx1 = dx2
+      !print *,'mhydro', nl,na,depth,horiz
+      tmp = grid%dTdz * depth + grid%tref
+      betap = rho * grid%gravity * grid%beta
+      pres = rho * grid%gravity * depth + grid%pref - betap * horiz
 
-       call wateos(tmp, 2D7, rho, dw_mol, dwp, &
-              dum, dum, dum, dum, grid%scale, ierr)
+      call wateos(tmp, 2D7, rho, dw_mol, dwp, &
+                  dum, dum, dum, dum, grid%scale, ierr)
 
-            itrho= 0
-            do 
-              betap = rho * grid%gravity * grid%beta
-              pres = rho * grid%gravity * depth + grid%pref - betap * horiz
-              call wateos(tmp, 2D7, rho1, dw_mol, dwp, &
-              dum, dum, dum, dum, grid%scale, ierr)
-              if (abs(rho-rho1) < 1.d-6) exit
-              rho = rho1
-              itrho = itrho + 1
-              if (itrho > 100) then
-                print *,' no convergence in hydrostat-stop',itrho,rho1,rho
-                stop
-              endif
-            enddo
+      itrho= 0
+      do 
+        betap = rho * grid%gravity * grid%beta
+        pres = rho * grid%gravity * depth + grid%pref - betap * horiz
+        call wateos(tmp, 2D7, rho1, dw_mol, dwp, &
+                    dum, dum, dum, dum, grid%scale, ierr)
+        if (abs(rho-rho1) < 1.d-6) exit
+        rho = rho1
+        itrho = itrho + 1
+        if (itrho > 100) then
+          print *,' no convergence in hydrostat-stop',itrho,rho1,rho
+          stop
+        endif
+      enddo
 
-          xx_p(1+ (nl-1)*grid%ndof)=pres 
-          !xx_p(2+ (nl-1)*grid%ndof)=tmp
+      xx_p(1+(nl-1)*grid%ndof) = pres 
+      !xx_p(2+ (nl-1)*grid%ndof)=tmp
         
-          enddo
+    enddo
     call VecRestoreArrayF90(grid%xx, xx_p, ierr)
-   endif
+  endif
   
   ! boundary conditions
 
   p = grid%pref
   call wateos(grid%tref, p, rho, dw_mol, dwp, &
-  dum, dum, dum, dum, grid%scale, ierr)
+              dum, dum, dum, dum, grid%scale, ierr)
   
   depth = depth + 0.5d0*grid%dz0(grid%nz)
   horiz = horiz + 0.5d0*grid%dx0(grid%nx)
@@ -1014,9 +1019,9 @@ private
   
   if (grid%myrank == 0) then
     write(*,'(" --> hydrostatic: length= ",1pe11.4,"[m], depth= ",1pe11.4, &
- &          "[m], dp= ",1pe11.4,"[Pa]")') horiz,depth,dp
-    write(IUNIT2,'(" --> hydrostatic: length= ",1pe11.4,"[m], depth= ",1pe11.4, &
- &          "[m], dp= ",1pe11.4,"[Pa]")') horiz,depth,dp
+             &          "[m], dp= ",1pe11.4,"[Pa]")') horiz,depth,dp
+    write(IUNIT2,'(" --> hydrostatic: length= ",1pe11.4,"[m], depth= ", &
+             & 1pe11.4, "[m], dp= ",1pe11.4,"[Pa]")') horiz,depth,dp
   endif
   
   !save input grid%ibndtyp values
@@ -1024,7 +1029,7 @@ private
   !                                1D-top, bottom
 
 
- if (grid%nblkbc > 6) then
+  if (grid%nblkbc > 6) then
     print *,'error in bcon/hydrostatic: ',grid%nblkbc,ibndtyp
     print *,'nblkbc must be 6 or less in bcon keyword'
     stop
@@ -1052,113 +1057,113 @@ private
   
   if (grid%nx > 1) then
   
-  ! left face
+    ! left face
   
-  ibc0 = ibc0 + 1
+    ibc0 = ibc0 + 1
   
-  do n = 1, grid%nz
-    ibc = ibc + 1
+    do n = 1, grid%nz
+      ibc = ibc + 1
     
-!   if (ibc .gt. MAXBCREGIONS) then
-!     print *,'pflowgrid_setup: too many boundary condition regions-stop!'
-!     stop
-!   endif
+!     if (ibc .gt. MAXBCREGIONS) then
+!       print *,'pflowgrid_setup: too many boundary condition regions-stop!'
+!       stop
+!     endif
     
-    grid%iregbc1(ibc) = n
-    grid%iregbc2(ibc) = n
-!   grid%ibndtyp(ibc) = 2 
-    grid%ibndtyp(ibc) = ibndtyp(ibc0)
-    grid%iface(ibc) = 1  
-    grid%k1bc(ibc) = n
-    grid%k2bc(ibc) = n
-    grid%j1bc(ibc) = 1
-    grid%j2bc(ibc) = grid%ny
-    grid%i1bc(ibc) = 1
-    grid%i2bc(ibc) = 1
+      grid%iregbc1(ibc) = n
+      grid%iregbc2(ibc) = n
+!     grid%ibndtyp(ibc) = 2 
+      grid%ibndtyp(ibc) = ibndtyp(ibc0)
+      grid%iface(ibc) = 1  
+      grid%k1bc(ibc) = n
+      grid%k2bc(ibc) = n
+      grid%j1bc(ibc) = 1
+      grid%j2bc(ibc) = grid%ny
+      grid%i1bc(ibc) = 1
+      grid%i2bc(ibc) = 1
+      
+      if (n.eq.1) then
+        dzz = 0.5d0*grid%dz0(1)
+        zz = dzz
+      else
+        dzz = 0.5d0*(grid%dz0(n)+grid%dz0(n-1))
+        zz = zz + dzz
+      endif
+      tmp = grid%tref + grid%dTdz*zz
     
-    if (n.eq.1) then
-      dzz = 0.5d0*grid%dz0(1)
-      zz = dzz
-    else
-      dzz = 0.5d0*(grid%dz0(n)+grid%dz0(n-1))
-      zz = zz + dzz
-    endif
-    tmp = grid%tref + grid%dTdz*zz
+      call wateos(tmp, 2D7, rho, dw_mol, dwp, &
+                  dum, dum, dum, dum, grid%scale, ierr)
     
-    call wateos(tmp, 2D7, rho, dw_mol, dwp, &
-    dum, dum, dum, dum, grid%scale, ierr)
-    
-    p = grid%pref + rho*grid%gravity*zz + dp
-!   p = p0 + rho*grid%gravity*zz + dp
+      p = grid%pref + rho*grid%gravity*zz + dp
+!     p = p0 + rho*grid%gravity*zz + dp
 
-!   print *,'left: ',n,zz,tmp,p,rho,dp
+!     print *,'left: ',n,zz,tmp,p,rho,dp
 
-!    grid%pressurebc0(1,ibc) = p
-!    grid%tempbc0(ibc) = tmp
-!    grid%concbc0(ibc) = cbc(ibc0)
-!    grid%sgbc0(ibc) = sbc(ibc0)
-    grid%velocitybc0(:,ibc) = 0.d0
-    grid%xxbc0(1,ibc) = p
-     !grid%xxbc0(2,ibc) = tmp
-    grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
-    grid%iphasebc0(ibc)=iphasebc_rec(ibc0)     
-!   print *,'BC: ',grid%myrank,n,ibc,zz,grid%z(grid%nmax),grid%x(grid%nmax), &
-!   grid%tempbc(ibc),grid%tempbc(ibc+grid%nz), &
-!   grid%pressurebc(1,ibc),grid%pressurebc(1,ibc+grid%nz)
-  enddo
+!      grid%pressurebc0(1,ibc) = p
+!      grid%tempbc0(ibc) = tmp
+!      grid%concbc0(ibc) = cbc(ibc0)
+!      grid%sgbc0(ibc) = sbc(ibc0)
+      grid%velocitybc0(:,ibc) = 0.d0
+      grid%xxbc0(1,ibc) = p
+       !grid%xxbc0(2,ibc) = tmp
+      grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
+      grid%iphasebc0(ibc)=iphasebc_rec(ibc0)     
+!     print *,'BC: ',grid%myrank,n,ibc,zz,grid%z(grid%nmax),grid%x(grid%nmax), &
+!     grid%tempbc(ibc),grid%tempbc(ibc+grid%nz), &
+!     grid%pressurebc(1,ibc),grid%pressurebc(1,ibc+grid%nz)
+    enddo
 
-  ! right face
+    ! right face
   
-  ibc0 = ibc0 + 1
+    ibc0 = ibc0 + 1
 
-  p = grid%pref
-  do n = 1, grid%nz
-    ibc = ibc + 1
+    p = grid%pref
+    do n = 1, grid%nz
+      ibc = ibc + 1
     
-    grid%iregbc1(ibc) = grid%nz+n
-    grid%iregbc2(ibc) = grid%nz+n
-!   grid%ibndtyp(ibc) = 2 
-    grid%ibndtyp(ibc) = ibndtyp(ibc0)
-    grid%iface(ibc) = 2
-    grid%k1bc(ibc) = n
-    grid%k2bc(ibc) = n
-    grid%j1bc(ibc) = 1
-    grid%j2bc(ibc) = grid%ny
-    grid%i1bc(ibc) = grid%nx
-    grid%i2bc(ibc) = grid%nx
+      grid%iregbc1(ibc) = grid%nz+n
+      grid%iregbc2(ibc) = grid%nz+n
+!     grid%ibndtyp(ibc) = 2 
+      grid%ibndtyp(ibc) = ibndtyp(ibc0)
+      grid%iface(ibc) = 2
+      grid%k1bc(ibc) = n
+      grid%k2bc(ibc) = n
+      grid%j1bc(ibc) = 1
+      grid%j2bc(ibc) = grid%ny
+      grid%i1bc(ibc) = grid%nx
+      grid%i2bc(ibc) = grid%nx
     
-    if (n.eq.1) then
-      dzz = 0.5d0*grid%dz0(1)
-      zz = dzz
-    else
-      dzz = 0.5d0*(grid%dz0(n)+grid%dz0(n-1))
-      zz = zz + dzz
-    endif
-    tmp = grid%tref + grid%dTdz*zz
+      if (n.eq.1) then
+        dzz = 0.5d0*grid%dz0(1)
+        zz = dzz
+      else
+        dzz = 0.5d0*(grid%dz0(n)+grid%dz0(n-1))
+        zz = zz + dzz
+      endif
+      tmp = grid%tref + grid%dTdz*zz
 
-    call wateos(tmp, 2D7, rho, dw_mol, dwp, &
-    dum, dum, dum, dum, grid%scale, ierr)
+      call wateos(tmp, 2D7, rho, dw_mol, dwp, &
+                  dum, dum, dum, dum, grid%scale, ierr)
 
-!   call cowat (tmp, p, rw, uw, ierr)
+!     call cowat (tmp, p, rw, uw, ierr)
 
-    p = grid%pref + rho*grid%gravity*zz !- dp
-!   p = p0 + rho*grid%gravity*zz
+      p = grid%pref + rho*grid%gravity*zz !- dp
+!     p = p0 + rho*grid%gravity*zz
 
-!   print *,'right: ',n,zz,tmp,p,p0,rho,dp,grid%nx,grid%ny,grid%nz
+!     print *,'right: ',n,zz,tmp,p,p0,rho,dp,grid%nx,grid%ny,grid%nz
 
-!    grid%pressurebc0(1,ibc) = p
-!    grid%tempbc0(ibc) = tmp
-!    grid%concbc0(ibc) = cbc(ibc0) !grid%conc0
-!    grid%sgbc0(ibc) = sbc(ibc0)
-    grid%velocitybc0(:,ibc) = 0.d0
-    grid%xxbc0(1,ibc) = p
-    ! grid%xxbc0(2,ibc) = tmp
-    grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
-    grid%iphasebc0(ibc)=iphasebc_rec(ibc0)
-!   print *,'BC: ',grid%myrank,n,ibc,zz,grid%z(grid%nmax),grid%x(grid%nmax), &
-!   grid%tempbc(ibc),grid%tempbc(ibc+grid%nz), &
-!   grid%pressurebc(1,ibc),grid%pressurebc(1,ibc+grid%nz)
-  enddo
+!      grid%pressurebc0(1,ibc) = p
+!      grid%tempbc0(ibc) = tmp
+!      grid%concbc0(ibc) = cbc(ibc0) !grid%conc0
+!      grid%sgbc0(ibc) = sbc(ibc0)
+      grid%velocitybc0(:,ibc) = 0.d0
+      grid%xxbc0(1,ibc) = p
+      ! grid%xxbc0(2,ibc) = tmp
+      grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
+      grid%iphasebc0(ibc)=iphasebc_rec(ibc0)
+!     print *,'BC: ',grid%myrank,n,ibc,zz,grid%z(grid%nmax),grid%x(grid%nmax), &
+!     grid%tempbc(ibc),grid%tempbc(ibc+grid%nz), &
+!     grid%pressurebc(1,ibc),grid%pressurebc(1,ibc+grid%nz)
+    enddo
   
   endif
   
@@ -1166,80 +1171,80 @@ private
   
   ibc0 = ibc0 + 1
 
-    ibc = ibc + 1
-    grid%iregbc1(ibc) = ibc
-    grid%iregbc2(ibc) = ibc
-!   grid%ibndtyp(ibc) = 1 
-    grid%ibndtyp(ibc) = ibndtyp(ibc0)
-    grid%iface(ibc) = 3
-    grid%k1bc(ibc) = 1
-    grid%k2bc(ibc) = 1
-    grid%j1bc(ibc) = 1
-    grid%j2bc(ibc) = grid%ny
-    grid%i1bc(ibc) = 1
-    grid%i2bc(ibc) = grid%nx
+  ibc = ibc + 1
+  grid%iregbc1(ibc) = ibc
+  grid%iregbc2(ibc) = ibc
+! grid%ibndtyp(ibc) = 1 
+  grid%ibndtyp(ibc) = ibndtyp(ibc0)
+  grid%iface(ibc) = 3
+  grid%k1bc(ibc) = 1
+  grid%k2bc(ibc) = 1
+  grid%j1bc(ibc) = 1
+  grid%j2bc(ibc) = grid%ny
+  grid%i1bc(ibc) = 1
+  grid%i2bc(ibc) = grid%nx
 
-!    grid%pressurebc0(1,ibc) = grid%pref
-!    grid%tempbc0(ibc) = grid%tref
-!    grid%concbc0(ibc) = cbc(ibc0) !grid%conc0 0.85d0 !grid%conc0 !grid%concbc(3) !
-!    grid%sgbc0(ibc) = sbc(ibc0)
-    grid%xxbc0(1,ibc) = grid%pref
+!  grid%pressurebc0(1,ibc) = grid%pref
+!  grid%tempbc0(ibc) = grid%tref
+!  grid%concbc0(ibc) = cbc(ibc0) !grid%conc0 0.85d0 !grid%conc0 !grid%concbc(3) !
+!  grid%sgbc0(ibc) = sbc(ibc0)
+  grid%xxbc0(1,ibc) = grid%pref
   !  grid%xxbc0(2,ibc) = grid%tref
-    grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
-    grid%iphasebc0(ibc)=iphasebc_rec(ibc0)
-    grid%velocitybc0(:,ibc) = 0.d0
-    print *,'BC: top',grid%myrank,ibc,grid%xxbc0(:,ibc)
+  grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
+  grid%iphasebc0(ibc)=iphasebc_rec(ibc0)
+  grid%velocitybc0(:,ibc) = 0.d0
+  print *,'BC: top',grid%myrank,ibc,grid%xxbc0(:,ibc)
 ! bottom
   
   ibc0 = ibc0 + 1
 
-    ibc = ibc + 1
-    grid%iregbc1(ibc) = ibc
-    grid%iregbc2(ibc) = ibc
-!   grid%ibndtyp(ibc) = 2 
-    grid%ibndtyp(ibc) = ibndtyp(ibc0)
-    grid%iface(ibc) = 4
-    grid%k1bc(ibc) = grid%nz
-    grid%k2bc(ibc) = grid%nz
-    grid%j1bc(ibc) = 1
-    grid%j2bc(ibc) = grid%ny
-    grid%i1bc(ibc) = 1
-    grid%i2bc(ibc) = grid%nx
+  ibc = ibc + 1
+  grid%iregbc1(ibc) = ibc
+  grid%iregbc2(ibc) = ibc
+! grid%ibndtyp(ibc) = 2 
+  grid%ibndtyp(ibc) = ibndtyp(ibc0)
+  grid%iface(ibc) = 4
+  grid%k1bc(ibc) = grid%nz
+  grid%k2bc(ibc) = grid%nz
+  grid%j1bc(ibc) = 1
+  grid%j2bc(ibc) = grid%ny
+  grid%i1bc(ibc) = 1
+  grid%i2bc(ibc) = grid%nx
 
 !    grid%pressurebc(1,ibc) = grid%pref
 !    grid%pressurebc0(1,ibc) = p !grid%pref + rho * grid%gravity * depth
 !    grid%tempbc0(ibc) = grid%tref + grid%dTdz * depth
 !    grid%concbc0(ibc) = cbc(ibc0) !grid%conc0
 !    grid%sgbc0(ibc) = sbc(ibc0)
-    grid%xxbc0(1,ibc) = p
+  grid%xxbc0(1,ibc) = p
 !     grid%xxbc0(2,ibc) = tmp
-    grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
-    grid%iphasebc0(ibc)=iphasebc_rec(ibc0)
-    grid%velocitybc0(:,ibc) = 0.d0
-    print *,'BC: bot',grid%myrank,ibc,grid%xxbc0(:,ibc)
+  grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
+  grid%iphasebc0(ibc)=iphasebc_rec(ibc0)
+  grid%velocitybc0(:,ibc) = 0.d0
+  print *,'BC: bot',grid%myrank,ibc,grid%xxbc0(:,ibc)
 
-    if (grid%ny > 1) then
+  if (grid%ny > 1) then
 !     front
   
-      ibc0 = ibc0 + 1
+    ibc0 = ibc0 + 1
 
-      ibc = ibc + 1
-      grid%iregbc1(ibc) = ibc
-      grid%iregbc2(ibc) = ibc
-!     grid%ibndtyp(ibc) = 2 
-      grid%ibndtyp(ibc) = ibndtyp(ibc0)
-      grid%iface(ibc) = 5
-      grid%k1bc(ibc) = 1
-      grid%k2bc(ibc) = grid%nz
-      grid%j1bc(ibc) = 1
-      grid%j2bc(ibc) = 1
-      grid%i1bc(ibc) = 1
-      grid%i2bc(ibc) = grid%nx
+    ibc = ibc + 1
+    grid%iregbc1(ibc) = ibc
+    grid%iregbc2(ibc) = ibc
+!   grid%ibndtyp(ibc) = 2 
+    grid%ibndtyp(ibc) = ibndtyp(ibc0)
+    grid%iface(ibc) = 5
+    grid%k1bc(ibc) = 1
+    grid%k2bc(ibc) = grid%nz
+    grid%j1bc(ibc) = 1
+    grid%j2bc(ibc) = 1
+    grid%i1bc(ibc) = 1
+    grid%i2bc(ibc) = grid%nx
 
-!      grid%pressurebc0(1,ibc) = grid%pref
-!      grid%tempbc0(ibc) = grid%tref
-!      grid%concbc0(ibc) = cbc(ibc0) !grid%conc0
-!      grid%sgbc0(ibc) = sbc(ibc0)
+!    grid%pressurebc0(1,ibc) = grid%pref
+!    grid%tempbc0(ibc) = grid%tref
+!    grid%concbc0(ibc) = cbc(ibc0) !grid%conc0
+!    grid%sgbc0(ibc) = sbc(ibc0)
     grid%xxbc0(1,ibc) = p
 !     grid%xxbc0(2,ibc) = tmp
     grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
@@ -1248,76 +1253,78 @@ private
   
 !     back
   
-     ibc0 = ibc0 + 1
+    ibc0 = ibc0 + 1
 
-      ibc = ibc + 1
-      grid%iregbc1(ibc) = ibc
-      grid%iregbc2(ibc) = ibc
-!     grid%ibndtyp(ibc) = 2 
-      grid%ibndtyp(ibc) = ibndtyp(ibc0)
-      grid%iface(ibc) = 6
-      grid%k1bc(ibc) = 1
-      grid%k2bc(ibc) = grid%nz
-      grid%j1bc(ibc) = grid%ny
-      grid%j2bc(ibc) = grid%ny
-      grid%i1bc(ibc) = 1
-      grid%i2bc(ibc) = grid%nx
-      tmp = grid%tref + grid%dTdz * depth
-      p = grid%pref + rho * grid%gravity * depth
-      call wateos(tmp, 2D7, rho, dw_mol, dwp, &
-      dum, dum, dum, dum, grid%scale, ierr)
+    ibc = ibc + 1
+    grid%iregbc1(ibc) = ibc
+    grid%iregbc2(ibc) = ibc
+!   grid%ibndtyp(ibc) = 2 
+    grid%ibndtyp(ibc) = ibndtyp(ibc0)
+    grid%iface(ibc) = 6
+    grid%k1bc(ibc) = 1
+    grid%k2bc(ibc) = grid%nz
+    grid%j1bc(ibc) = grid%ny
+    grid%j2bc(ibc) = grid%ny
+    grid%i1bc(ibc) = 1
+    grid%i2bc(ibc) = grid%nx
+    tmp = grid%tref + grid%dTdz * depth
+    p = grid%pref + rho * grid%gravity * depth
+    call wateos(tmp, 2D7, rho, dw_mol, dwp, &
+                dum, dum, dum, dum, grid%scale, ierr)
 
-!      grid%pressurebc0(1,ibc) = p
-!      grid%tempbc0(ibc) = tmp
-!      grid%concbc0(ibc) = cbc(ibc0) !grid%conc0
-!      grid%sgbc0(ibc) = sbc(ibc0)
-      grid%xxbc0(1,ibc) = p
-     ! grid%xxbc0(2,ibc) = tmp
-      grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
-      grid%iphasebc0(ibc)=iphasebc_rec(ibc0)
-      grid%velocitybc0(:,ibc) = 0.d0
-    endif
+!    grid%pressurebc0(1,ibc) = p
+!    grid%tempbc0(ibc) = tmp
+!    grid%concbc0(ibc) = cbc(ibc0) !grid%conc0
+!    grid%sgbc0(ibc) = sbc(ibc0)
+    grid%xxbc0(1,ibc) = p
+   ! grid%xxbc0(2,ibc) = tmp
+    grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
+    grid%iphasebc0(ibc)=iphasebc_rec(ibc0)
+    grid%velocitybc0(:,ibc) = 0.d0
+  endif
   
-    grid%nblkbc = ibc
+  grid%nblkbc = ibc
     
-!   do ibc = 1, grid%nblkbc
-!     grid%pressurebc(2,ibc) = grid%pressurebc(1,ibc)
-!     grid%velocitybc(2,ibc) = grid%velocitybc(1,ibc)
-!   enddo
+! do ibc = 1, grid%nblkbc
+!   grid%pressurebc(2,ibc) = grid%pressurebc(1,ibc)
+!   grid%velocitybc(2,ibc) = grid%velocitybc(1,ibc)
+! enddo
 
-    if (grid%myrank == 0 ) then !.and. grid%iprint >= 3) then
-      print *,'--> write out file pflow.bc'
-      open(IUNIT3, file="pflow.bc", action="write", status="unknown")
-      write(IUNIT3,'("BCON : nblkbc = ",i4)') grid%nblkbc
-      do ibc = 1, grid%nblkbc
-        write(IUNIT3,'(":ibndtyp  iface",/3x,i2,6x,i2)') grid%ibndtyp(ibc), &
-        grid%iface(ibc)
+  if (grid%myrank == 0 ) then !.and. grid%iprint >= 3) then
+    print *,'--> write out file pflow.bc'
+    open(IUNIT3, file="pflow.bc", action="write", status="unknown")
+    write(IUNIT3,'("BCON : nblkbc = ",i4)') grid%nblkbc
+    do ibc = 1, grid%nblkbc
+      write(IUNIT3,'(":ibndtyp  iface",/3x,i2,6x,i2)') grid%ibndtyp(ibc), &
+      grid%iface(ibc)
+      if (grid%ibndtyp(ibc) == 1 .or. grid%ibndtyp(ibc) == 3) then
+        write(IUNIT3,'(": i1  i2  j1  j2  k1  k2       p          T   ", &
+                       & "       sl          C")')
+      else if (grid%ibndtyp(ibc) == 2) then
+        write(IUNIT3,'(": i1  i2  j1  j2  k1  k2       vl         T   ", &
+                       & "       sl          C")')
+      endif
+      do ireg = grid%iregbc1(ibc), grid%iregbc2(ibc)
         if (grid%ibndtyp(ibc) == 1 .or. grid%ibndtyp(ibc) == 3) then
-          write(IUNIT3,'(": i1  i2  j1  j2  k1  k2       p          T          sl          C")')
-        else if (grid%ibndtyp(ibc) == 2) then
-          write(IUNIT3,'(": i1  i2  j1  j2  k1  k2       vl         T          sl          C")')
+          write(IUNIT3,'(6i4,1pe14.6,1p10e12.4)') &
+                        grid%i1bc(ireg),grid%i2bc(ireg), &
+                        grid%j1bc(ireg),grid%j2bc(ireg), &
+                        grid%k1bc(ireg),grid%k2bc(ireg), &
+                        grid%xxbc0(:,ireg)
+        else
+          write(IUNIT3,'(6i4,1pe14.6,1p10e12.4)') &
+                        grid%i1bc(ireg),grid%i2bc(ireg), &
+                        grid%j1bc(ireg),grid%j2bc(ireg), &
+                        grid%k1bc(ireg),grid%k2bc(ireg), &
+                        grid%velocitybc0(1,ireg),grid%xxbc0(:,ireg)
         endif
-        do ireg = grid%iregbc1(ibc), grid%iregbc2(ibc)
-          if (grid%ibndtyp(ibc) == 1 .or. grid%ibndtyp(ibc) == 3) then
-            write(IUNIT3,'(6i4,1pe14.6,1p10e12.4)') &
-            grid%i1bc(ireg),grid%i2bc(ireg), &
-            grid%j1bc(ireg),grid%j2bc(ireg), &
-            grid%k1bc(ireg),grid%k2bc(ireg), &
-            grid%xxbc0(:,ireg)
-          else
-            write(IUNIT3,'(6i4,1pe14.6,1p10e12.4)') &
-            grid%i1bc(ireg),grid%i2bc(ireg), &
-            grid%j1bc(ireg),grid%j2bc(ireg), &
-            grid%k1bc(ireg),grid%k2bc(ireg), &
-            grid%velocitybc0(1,ireg),grid%xxbc0(:,ireg)
-          endif
-        enddo
       enddo
-      close(IUNIT3)
-    endif
+    enddo
+    close(IUNIT3)
+  endif
 
-  end subroutine owghydrostatic  
+end subroutine owghydrostatic  
   
-  end module hydrostat_module
+end module hydrostat_module
 !======================================================================
 
