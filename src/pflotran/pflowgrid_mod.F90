@@ -72,6 +72,7 @@ type(pflowGrid) function pflowGrid_new(igeom, nx, ny, nz, npx, npy, npz, &
   integer*4 :: i, j, k
   integer :: ierr
   type(pflowGrid) grid
+  
 ! integer, pointer::ghostind(:)
 
   call MPI_Comm_rank(PETSC_COMM_WORLD, grid%myrank, ierr)
@@ -951,6 +952,9 @@ subroutine pflowGrid_setup(grid, inputfile)
 
   Vec :: temp0_nat_vec, temp1_nat_vec, temp2_nat_vec, temp3_nat_vec, &
           temp4_nat_vec !,temp5_nat_vec,temp6_nat_vec,temp7_nat_vec
+  
+  PetscViewer :: viewer
+  Vec :: temp_vec
   
   ! Need to declare this function as external or else gfortran complains.
   ! Not sure why it complains and other compilers don't.
@@ -2167,6 +2171,19 @@ subroutine pflowGrid_setup(grid, inputfile)
     grid%imat = 0      
 
     call ReadUnstructuredGrid(grid) 
+    
+    ! dump material ids to file in natural ordering
+    call DACreateGlobalVector(grid%da_1_dof,temp_vec,ierr)
+    call VecGetArrayF90(temp_vec,temp_p,ierr)
+    do i=1, grid%nlmax
+      temp_p(i) = grid%imat(i)*1.d0      
+    enddo
+    call VecRestoreArrayF90(temp_vec,temp_p,ierr)
+    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'materials.out',viewer,ierr)
+    call VecView(temp_vec,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+    call VecDestroy(temp_vec,ierr)
+    
     print *, 'nconnbc:', grid%nconnbc 
     do nc = 1, grid%nconnbc 
       ibc = grid%ibndtyp(grid%ibconn(nc))
