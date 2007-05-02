@@ -80,7 +80,7 @@
 ! separately). Note that it does not set up all of the topology of the  
 ! cell connections, as it is cleaner to do this in pflowGrid_setup()   
 ! when the geometry of the connections is calculated.
-    subroutine pflowGrid_new(grid, pflowsolv, timestep,locpat ,igeom, nx, ny, nz, npx, npy, npz, &
+    subroutine pflowGrid_new(grid, pflowsolv, timestep,igeom, nx, ny, nz, npx, npy, npz, &
       nphase )
   
       implicit none
@@ -88,7 +88,7 @@
       type(pflowGrid) :: grid
       type(pflow_solver_context) :: pflowsolv
       type(time_stepping_context), intent(inout) :: timestep
-      type(pflow_localpatch_info) :: locpat
+      
 
       integer*4, intent(in) :: igeom, nx, ny, nz, npx, npy, npz
       integer, intent(in) :: nphase
@@ -165,7 +165,7 @@
       timestep%dpmxe = 5.d4
       timestep%dsmxe = 5.d-1
 
-      print *,"new grid 2:",grid%nx,grid%ny,grid%nz
+      print *,"new grid 2:",grid%nx,grid%ny,grid%nz, grid%nphase
       
       grid%use_matrix_free = 1
       grid%newton_max = 16
@@ -228,7 +228,7 @@
    !-----------------------------------------------------------------------
       ! Set up information about corners of local domain.
 !-----------------------------------------------------------------------
-     call pflow_setup_index(grid,locpat)
+   
    print *,"new grid 4:",grid%nx,grid%ny,grid%nz   
       !     if (grid%using_pflowGrid == PETSC_TRUE) &
 !     allocate(grid%vvl_loc(locpat%nconn*grid%nphase))
@@ -240,8 +240,6 @@
       ! The same goes for the number of BC blocks.
       allocate(grid%iregbc1(MAXBCREGIONS))
       allocate(grid%iregbc2(MAXBCREGIONS))
-      allocate(locpat%ibndtyp(MAXBCREGIONS))
-      allocate(locpat%iface(MAXBCREGIONS))
       allocate(grid%k1bc(MAXBCBLOCKS))
       allocate(grid%k2bc(MAXBCBLOCKS))
       allocate(grid%j1bc(MAXBCBLOCKS))
@@ -404,7 +402,10 @@
   !-----------------------------------------------------------------------
   ! Parse the input file to get dx, dy, dz, fields, etc. for each cell. 
   !-----------------------------------------------------------------------
-  
+  call pflow_setup_index(grid,locpat)
+   allocate(locpat%ibndtyp(MAXBCREGIONS))
+   allocate(locpat%iface(MAXBCREGIONS))
+
   call pflowGrid_read_input(grid, timestep,locpat, inputfile)
   
  
@@ -421,7 +422,7 @@
 ! Calculate the x, y, z vectors that give the 
 ! physical coordinates of each cell.
   
-  
+
   allocate(grid%x(grid%nmax))
   allocate(grid%y(grid%nmax))
   allocate(grid%z(grid%nmax))

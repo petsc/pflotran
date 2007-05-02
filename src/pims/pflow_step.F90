@@ -135,7 +135,7 @@ Contains
   call DAGlobalToLocalEnd(grid%da_1_dof, grid%ithrm, INSERT_VALUES, &
                           grid%ithrm_loc, ierr)
 
- ! print *,'Step :: End trans distribute'
+  !print *,'Step :: End trans distribute'
   grid%t = grid%t + grid%dt
   grid%flowsteps = grid%flowsteps + 1
 
@@ -199,7 +199,7 @@ Contains
          call SNESSolve(pflowsolv%snes, PETSC_NULL, grid%xx, ierr)
       endif
 
-  ! print *,'pflow_step, finish SNESSolve'
+   !print *,'pflow_step, finish SNESSolve'
    call MPI_Barrier(PETSC_COMM_WORLD,ierr)
    if(grid%use_ksp /= PETSC_TRUE) call SNESGetIterationNumber(pflowsolv%snes, its, ierr)
 !   call KSPGetIterationNumber(grid%ksp, kspits, ierr)

@@ -75,7 +75,7 @@
 
 ! set up structure constructor
 ! npx = PETSC_DECIDE; npy = PETSC_DECIDE; npz = PETSC_DECIDE
-  call pflowGrid_new(grid, pflowsolv, timestep, grid%locpat(1),igeom, nx, ny, nz, npx, npy, npz, nphase)
+  call pflowGrid_new(grid, pflowsolv, timestep,igeom, nx, ny, nz, npx, npy, npz, nphase)
 
  
   call PetscGetCPUTime(timex(1), ierr)

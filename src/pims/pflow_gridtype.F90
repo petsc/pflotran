@@ -116,8 +116,7 @@ private
 	real*8, pointer :: rtot(:,:),rate(:),area_var(:), delx(:,:)
 
 
-    real*8, allocatable :: Resold_AR(:,:), Resold_FL(:,:)
-    real*8, pointer :: var(:) 
+       real*8, pointer :: var(:) 
   PetscScalar, pointer ::accum_p(:)
 
   PetscScalar, pointer :: r_p(:), xx_loc_p(:), xx_p(:), yy_p(:),&
