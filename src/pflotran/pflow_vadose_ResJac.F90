@@ -599,8 +599,8 @@ subroutine VadoseRes_FLBCCont(nbc_no,area,var_node1,var_node2,por2,tor2,sir2, &
   case(2)
     if ((dabs(grid%velocitybc(1,nbc_no))+ &
          dabs(grid%velocitybc(2,nbc_no)))>floweps) then
-      print *, 'FlowBC :', nbc_no,grid%velocitybc(1,nbc_no), &
-               grid%velocitybc(2,nbc_no)
+!geh      print *, 'FlowBC :', nbc_no,grid%velocitybc(1,nbc_no), &
+!geh               grid%velocitybc(2,nbc_no)
       do j=1,grid%nphase
         fluxm = 0.D0
         fluxe = 0.D0
@@ -733,6 +733,7 @@ subroutine VadoseResidual(snes,xx,r,grid,ierr)
   real*8 :: ukvr,uhh,uconc, tmp
   real*8 :: dddt,dddp,fg,dfgdp,dfgdt,dhdt,dhdp,dvdt,dvdp, rho, visc
   real*8 :: Res(grid%ndof), vv_darcy(grid%nphase)
+  PetscViewer :: viewer
  
   grid%vvlbc=0.D0
   grid%vvgbc=0.D0
@@ -1337,7 +1338,7 @@ subroutine VadoseResidual(snes,xx,r,grid,ierr)
     do n = 1, grid%nlmax
       if (grid%imat(n) <= 0) then
         p1 = (n-1)*grid%ndof
-        r_p(p1:p1+grid%ndof-1) = 0.d0
+        r_p(p1+1:p1+grid%ndof) = 0.d0
       endif
     enddo
   endif
@@ -1364,6 +1365,10 @@ subroutine VadoseResidual(snes,xx,r,grid,ierr)
     call VecRestoreArrayF90(grid%phis,phis_p,ierr)
   endif
  
+! call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'residual.out',viewer,ierr)
+! call VecView(r,viewer,ierr)
+! call PetscViewerDestroy(viewer,ierr)
+
   !print *,'XX ::...........'; call VecView(xx,PETSC_VIEWER_STDOUT_WORLD,ierr)
  !print *,'Residual ::...........'; call VecView(r,PETSC_VIEWER_STDOUT_WORLD,ierr)
  
@@ -1430,6 +1435,7 @@ subroutine VadoseJacobian(snes,xx,A,B,flag,grid,ierr)
   real*8 :: ResInc(1:grid%nlmax, 1:grid%ndof, 1:grid%ndof),res(1:grid%ndof)  
   real*8 :: max_dev  
   integer  na1,na2
+  PetscViewer :: viewer
 !-----------------------------------------------------------------------
 ! R stand for residual
 !  ra       1              2              3              4          5              6            7      8
@@ -1975,8 +1981,9 @@ subroutine VadoseJacobian(snes,xx,A,B,flag,grid,ierr)
   
  !call PetscViewerSetFormat(PETSC_VIEWER_STDOUT_WORLD, PETSC_VIEWER_ASCII_MATLAB, ierr)
    
-
-! call MatView(A, PETSC_VIEWER_STDOUT_WORLD,ierr)
+! call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian.out',viewer,ierr)
+! call MatView(A,viewer,ierr)
+! call PetscViewerDestroy(viewer,ierr)
 ! stop
 
 end subroutine VadoseJacobian
