@@ -24,8 +24,9 @@
 ## Description: makefile for application to test implicit/nonlinear solver
 ##
 
-F90=gfortran
-FLINKER=gfortran
+# for now use the SAMRAI definition for F77 which should default to pgf95 or fortran
+F90=${F77}
+FLINKER=${F77}
 
 ALL: SAMRAIDriver
 
@@ -53,7 +54,7 @@ VPATH = .
 CXXSRC=${wildcard ${SRCDIR}/*.C}
 CXXOBJS=${CXXSRC:.C=.o}
 
-F90SRC  = ${wildcard ./*.F90 $(filter-out ../../pims.F90, $(wildcard ../../*.F90))}
+F90SRC  = ${wildcard ./*.F90 $(filter-out ../../pims.F90 ../../stubs.F90, $(wildcard ../../*.F90))}
 F90OBJS = ${F90SRC:.F90=.o}
 #F90OBJS = ../pflow_gridtype.o grid_create.o
 
@@ -65,7 +66,7 @@ FFLAGS		 = -g
 FPPFLAGS         = -g
 
 
-MYFLAGS = ${PETSCFLAGS} -DSAMRAI_DRIVER -I../.. -g
+MYFLAGS = ${PETSCFLAGS} -I../.. -g
 
 include ${PETSC_DIR}/bmake/common/base
 

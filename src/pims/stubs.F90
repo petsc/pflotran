@@ -1,4 +1,3 @@
-#ifndef SAMRAI_DRIVER
 ! this is a stub function so that we don't have to always
 ! link in SAMRAI
 subroutine create_samrai_vec(p_hierarchy, dof, use_ghost, vec)
@@ -13,5 +12,3 @@ integer :: dof
 PetscTruth :: use_ghost
 Vec :: vec
 end subroutine create_samrai_vec
-
-#endif

@@ -65,6 +65,7 @@
 #include "include/finclude/petscis.h"
 #include "include/finclude/petscis.h90"
 #include "include/finclude/petsclog.h"
+#include "include/finclude/petscversion.h"
 
 !#include "pflow_gridtype.h"     
      
@@ -1210,7 +1211,7 @@ real*8 alapha, steptol
                          ComputeMFJacobian, PETSC_NULL_OBJECT, ierr)
 
     ! Use "Walker-Pernice" differencing.
-#if ((PETSC_VERSION_RELEASE)&&(PETSC_VERSION_MAJOR==2)&&(PETSC_VERSION_MINOR==3)&&(PETSC_VERSION_SUBMINOR==2)&&(PETSC_VERSION_PATCH<=10))
+#if ((PETSC_VERSION_RELEASE==1)&&(PETSC_VERSION_MAJOR==2)&&(PETSC_VERSION_MINOR==3)&&(PETSC_VERSION_SUBMINOR==2)&&(PETSC_VERSION_PATCH<=10))
     call MatSNESMFSetType(grid%J, MATSNESMF_WP, ierr)
     if(grid%print_hhistory == PETSC_TRUE) then
       allocate(grid%hhistory(HHISTORY_LENGTH))
@@ -1254,7 +1255,7 @@ real*8 alapha, steptol
  !   endif
 !   call MatSetOption(grid%J,MAT_COLUMN_ORIENTED,ierr)
         
-#if ((PETSC_VERSION_RELEASE)&&(PETSC_VERSION_MAJOR==2)&&(PETSC_VERSION_MINOR==3)&&(PETSC_VERSION_SUBMINOR==2)&&(PETSC_VERSION_PATCH==10))
+#if ((PETSC_VERSION_RELEASE)&&(PETSC_VERSION_MAJOR==2)&&(PETSC_VERSION_MINOR==3)&&(PETSC_VERSION_SUBMINOR==2)&&(PETSC_VERSION_PATCH<=10))
     call DAGetColoring(grid%da_ndof, IS_COLORING_LOCAL, iscoloring, ierr)
 #else
     call DAGetColoring(grid%da_ndof, IS_COLORING_GLOBAL, iscoloring, ierr)
