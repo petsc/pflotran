@@ -18,6 +18,7 @@ LOCDIR		 = /home/clu
 #MYFLAGS = ${PETSCFLAGS} -I${objdir} -DDEBUG -DUSE_COMPRESSIBILITY
 #MYFLAGS = ${PETSCFLAGS} -I${objdir} -DUSE_COMPRESSIBILITY -DUSE_PETSC216
 MYFLAGS = ${PETSCFLAGS} -O3 -I${objdir} -DUSE_COMPRESSIBILITY -DUSE_PETSC221
+#MYFLAGS = ${PETSCFLAGS} -g -I${objdir} -DUSE_COMPRESSIBILITY -DUSE_PETSC221
 #MYFLAGS = ${PETSCFLAGS} -I${objdir} -DUSE_COMPRESSIBILITY 
 #                                   -DHAVE_MPITOMPIZERO
 LIBS   = 
@@ -30,13 +31,14 @@ util_obj  = ${common_src}fileio.o ${common_src}utilities.o \
 pflow_obj = ${common_src}pflow_gridtype.o \
             ${common_src}pflow_read_input.o \
             ${common_src}Readfield.o \
-			${common_src}translator_fluid_ims.o \
-			${common_src}pflow_ims_ResJac_patch.o\
-			${common_src}pflow_ims_ResJac.o\
-			${common_src}pflow_solve.o \
+	    ${common_src}translator_fluid_ims.o \
+	    ${common_src}pflow_ims_ResJac_patch.o\
+	    ${common_src}pflow_ims_ResJac.o\
+	    ${common_src}pflow_solve.o \
             ${common_src}pflow_output.o \
-			 ${common_src}pflow_step.o \
-			${common_src}pflowgrid_mod.o
+	    ${common_src}pflow_step.o \
+	    ${common_src}pflowgrid_mod.o\
+	    ${common_src}stubs.o
 
 
 pims : $(util_obj) $(pflow_obj) ${pflow_src}pims.o

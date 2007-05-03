@@ -116,7 +116,8 @@ private
 	real*8, pointer :: rtot(:,:),rate(:),area_var(:), delx(:,:)
 
 
-       real*8, pointer :: var(:) 
+!    real*8, allocatable :: Resold_AR(:,:), Resold_FL(:,:)
+    real*8, pointer :: var(:) 
   PetscScalar, pointer ::accum_p(:)
 
   PetscScalar, pointer :: r_p(:), xx_loc_p(:), xx_p(:), yy_p(:),&
@@ -276,7 +277,7 @@ private
     ! One degree of freedom: Physical coordinates.
     Vec :: conc
     Vec :: porosity, porosity0, porosity_loc, tor, tor_loc
-	Vec :: dx, dy, dz, dx_loc, dy_loc, dz_loc  ! Grid spacings
+    Vec :: dx, dy, dz, dx_loc, dy_loc, dz_loc  ! Grid spacings
     Vec :: volume  ! Volume of a cell in the grid
     Vec :: ithrm, ithrm_loc, icap, icap_loc
 	Vec :: ttemp, ttemp_loc, temp ! 1 dof
@@ -309,7 +310,6 @@ private
     ! Used to hold all values on processor 0.
 
   type(pflow_localpatch_info), pointer :: locpat(:)
-  PetscFortranAddr p_samr_hierarchy
 	
   end type pflowGrid
   

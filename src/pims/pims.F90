@@ -8,6 +8,8 @@
   implicit none
 
 #include "include/finclude/petsc.h"
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
 #include "include/finclude/petscda.h"
 #include "include/finclude/petscda.h90"
 #include "include/finclude/petscdef.h"
@@ -21,8 +23,6 @@
 #include "include/finclude/petscksp.h"
 #include "include/finclude/petscsnes.h"
 #include "include/finclude/petscsys.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
 #include "include/finclude/petscviewer.h"
 
 #include "definitions.h"
@@ -75,7 +75,7 @@
 
 ! set up structure constructor
 ! npx = PETSC_DECIDE; npy = PETSC_DECIDE; npz = PETSC_DECIDE
-  call pflowGrid_new(grid, pflowsolv, timestep, grid%locpat(1),igeom, nx, ny, nz, npx, npy, npz, nphase)
+  call pflowGrid_new(grid, pflowsolv, timestep,igeom, nx, ny, nz, npx, npy, npz, nphase)
 
  
   call PetscGetCPUTime(timex(1), ierr)

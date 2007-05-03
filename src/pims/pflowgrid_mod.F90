@@ -36,6 +36,7 @@
   public pflowGrid_read_input
  ! public porperm_out
   public pflowGrid_destroy
+  public Pflow_allocate_Vec
   
 #include "definitions.h"
 
@@ -80,7 +81,7 @@
 ! separately). Note that it does not set up all of the topology of the  
 ! cell connections, as it is cleaner to do this in pflowGrid_setup()   
 ! when the geometry of the connections is calculated.
-    subroutine pflowGrid_new(grid, pflowsolv, timestep,locpat ,igeom, nx, ny, nz, npx, npy, npz, &
+    subroutine pflowGrid_new(grid, pflowsolv, timestep,igeom, nx, ny, nz, npx, npy, npz, &
       nphase )
   
       implicit none
@@ -88,7 +89,7 @@
       type(pflowGrid) :: grid
       type(pflow_solver_context) :: pflowsolv
       type(time_stepping_context), intent(inout) :: timestep
-      type(pflow_localpatch_info) :: locpat
+      
 
       integer*4, intent(in) :: igeom, nx, ny, nz, npx, npy, npz
       integer, intent(in) :: nphase
@@ -165,7 +166,7 @@
       timestep%dpmxe = 5.d4
       timestep%dsmxe = 5.d-1
 
-      print *,"new grid 2:",grid%nx,grid%ny,grid%nz
+      print *,"new grid 2:",grid%nx,grid%ny,grid%nz, grid%nphase
       
       grid%use_matrix_free = 1
       grid%newton_max = 16
@@ -228,7 +229,7 @@
    !-----------------------------------------------------------------------
       ! Set up information about corners of local domain.
 !-----------------------------------------------------------------------
-     call pflow_setup_index(grid,locpat)
+   
    print *,"new grid 4:",grid%nx,grid%ny,grid%nz   
       !     if (grid%using_pflowGrid == PETSC_TRUE) &
 !     allocate(grid%vvl_loc(locpat%nconn*grid%nphase))
@@ -240,8 +241,6 @@
       ! The same goes for the number of BC blocks.
       allocate(grid%iregbc1(MAXBCREGIONS))
       allocate(grid%iregbc2(MAXBCREGIONS))
-      allocate(locpat%ibndtyp(MAXBCREGIONS))
-      allocate(locpat%iface(MAXBCREGIONS))
       allocate(grid%k1bc(MAXBCBLOCKS))
       allocate(grid%k2bc(MAXBCBLOCKS))
       allocate(grid%j1bc(MAXBCBLOCKS))
@@ -404,7 +403,10 @@
   !-----------------------------------------------------------------------
   ! Parse the input file to get dx, dy, dz, fields, etc. for each cell. 
   !-----------------------------------------------------------------------
-  
+  call pflow_setup_index(grid,locpat)
+   allocate(locpat%ibndtyp(MAXBCREGIONS))
+   allocate(locpat%iface(MAXBCREGIONS))
+
   call pflowGrid_read_input(grid, timestep,locpat, inputfile)
   
  
@@ -421,7 +423,7 @@
 ! Calculate the x, y, z vectors that give the 
 ! physical coordinates of each cell.
   
-  
+
   allocate(grid%x(grid%nmax))
   allocate(grid%y(grid%nmax))
   allocate(grid%z(grid%nmax))
@@ -534,21 +536,16 @@
  implicit none
  
  type(pflowGrid), intent(inout) :: grid
- 
+ PetscTruth :: use_ghost
+
  integer ierr
-    
-     if(grid%Samrai_drive == PETSC_TRUE)then
-     ! SARAMI  SARAMI  SARAMI  SARAMI  SARAMI  SARAMI  SARAMI 
-     ! SARAMI create data profile here
-     ! SARAMI  SARAMI  SARAMI  SARAMI  SARAMI  SARAMI  SARAMI 
-     else
-      ! PETSc data profile here
-      call DACreateGlobalVector(grid%da_1_dof, grid%porosity, ierr)
-	  call DACreateLocalVector(grid%da_1_dof,grid%dx_loc,ierr)
-      call DACreateGlobalVector(grid%da_3np_dof, grid%vl, ierr)
-      call DACreateGlobalVector(grid%da_ndof, grid%xx, ierr)
-       call DACreateLocalVector(grid%da_ndof, grid%xx_loc, ierr)
-     endif 
+ 
+     call pflow_create_vector(grid, grid%da_1_dof, PETSC_TRUE, grid%porosity)
+     call pflow_create_vector(grid, grid%da_1_dof, PETSC_FALSE, grid%dx_loc)
+     call pflow_create_vector(grid, grid%da_3np_dof, PETSC_TRUE, grid%vl)
+     call pflow_create_vector(grid, grid%da_ndof, PETSC_TRUE, grid%xx)
+     call pflow_create_vector(grid, grid%da_ndof, PETSC_TRUE, grid%xx_loc)
+
 ! 1 degree of freedom      
       !global
       call VecDuplicate(grid%porosity, grid%porosity0, ierr)
@@ -593,6 +590,39 @@
      
  end subroutine Pflow_allocate_Vec
  
+subroutine pflow_create_vector(grid, da_info, use_ghost, vec)
+implicit none
+
+  type(pflowGrid), intent(inout) :: grid
+  DA :: da_info
+  Vec :: vec
+  PetscTruth :: use_ghost
+  integer :: ierr
+  integer :: dof
+
+  if(grid%Samrai_drive==PETSC_TRUE) then
+! in this case create a SAMRAI Vec
+     call DAGetInfo(da_info, &
+                    PETSC_NULL_INTEGER, &
+                    PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, &
+                    PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, &
+                    dof, & 
+                    PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, &
+                    ierr)
+     dof = 1
+     call create_samrai_vec(grid%p_samr_hierarchy, dof, use_ghost, vec)
+     
+  else
+! create a PETSc Vec
+     if(use_ghost == PETSC_FALSE) then
+        call DACreateGlobalVector(da_info, vec, ierr)
+     else
+        call DACreateLocalVector(da_info, vec, ierr)
+     endif
+  endif
+  
+end subroutine pflow_create_vector
+
 !Subroutine to setup index system
 
 subroutine pflow_setup_index(grid, locpat)
@@ -1125,7 +1155,7 @@ use pflow_step
 implicit none
 type(pflowGrid) :: grid
 type(pflow_solver_context) :: pflowsolv
-
+external SNESDefaultComputeJacobianColor
 ISColoring :: iscoloring
 integer myrank, ierr, maxstep
 real*8 alapha, steptol
@@ -1180,16 +1210,28 @@ real*8 alapha, steptol
                          ComputeMFJacobian, PETSC_NULL_OBJECT, ierr)
 
     ! Use "Walker-Pernice" differencing.
+#if ((PETSC_VERSION_RELEASE)&&(PETSC_VERSION_MAJOR==2)&&(PETSC_VERSION_MINOR==3)&&(PETSC_VERSION_SUBMINOR==2)&&(PETSC_VERSION_PATCH<=10))
     call MatSNESMFSetType(grid%J, MATSNESMF_WP, ierr)
-
     if(grid%print_hhistory == PETSC_TRUE) then
       allocate(grid%hhistory(HHISTORY_LENGTH))
       call MatSNESMFSetHHistory(grid%J, grid%hhistory, HHISTORY_LENGTH, ierr)
+   endif
+#else
+    call MatMFFDSetType(grid%J, MATMFFD_WP, ierr)
+    if(grid%print_hhistory == PETSC_TRUE) then
+      allocate(grid%hhistory(HHISTORY_LENGTH))
+      call MatMFFDSetHHistory(grid%J, grid%hhistory, HHISTORY_LENGTH, ierr)
     endif
+#endif
 
     if(grid%monitor_h == PETSC_TRUE) then
+#if ((PETSC_VERSION_RELEASE)&&(PETSC_VERSION_MAJOR==2)&&(PETSC_VERSION_MINOR==3)&&(PETSC_VERSION_SUBMINOR==2)&&(PETSC_VERSION_PATCH<=10))
       call SNESSetMonitor(pflowsolv%snes, pflowgrid_MonitorH, grid, &
                           PETSC_NULL_OBJECT, ierr)
+#else
+      call SNESMonitorSet(pflowsolv%snes, pflowgrid_MonitorH, grid, &
+                          PETSC_NULL_OBJECT, ierr)
+#endif
     endif
     
   else
@@ -1212,8 +1254,11 @@ real*8 alapha, steptol
  !   endif
 !   call MatSetOption(grid%J,MAT_COLUMN_ORIENTED,ierr)
         
+#if ((PETSC_VERSION_RELEASE)&&(PETSC_VERSION_MAJOR==2)&&(PETSC_VERSION_MINOR==3)&&(PETSC_VERSION_SUBMINOR==2)&&(PETSC_VERSION_PATCH==10))
     call DAGetColoring(grid%da_ndof, IS_COLORING_LOCAL, iscoloring, ierr)
-    
+#else
+    call DAGetColoring(grid%da_ndof, IS_COLORING_GLOBAL, iscoloring, ierr)
+#endif    
     call MatFDColoringCreate(grid%J, iscoloring, grid%matfdcoloring, ierr)
     
     call ISColoringDestroy(iscoloring, ierr)
@@ -1605,9 +1650,12 @@ subroutine pflowgrid_MonitorH(snes, its, norm, grid)
   integer :: ierr
   integer :: myrank
   PetscScalar :: h
-  
-  call MatSNESMFGetH(grid%J, h, ierr)
 
+#if ((PETSC_VERSION_RELEASE)&&(PETSC_VERSION_MAJOR==2)&&(PETSC_VERSION_MINOR==3)&&(PETSC_VERSION_SUBMINOR==2)&&(PETSC_VERSION_PATCH<=10))  
+  call MatSNESMFGetH(grid%J, h, ierr)
+#else
+  call MatMFFDGetH(grid%J, h, ierr)
+#endif
   call MPI_Comm_rank(PETSC_COMM_WORLD, myrank, ierr)
 
   if(myrank == 0) then

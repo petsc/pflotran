@@ -245,8 +245,6 @@ private
 
 
    allocate(grid%locpat(1)%var(grid%locpat(1)%ngmax * grid%size_var_node))	
-   allocate(grid%locpat(1)%Resold_AR(grid%locpat(1)%nlmax,grid%ndof))
-   allocate(grid%locpat(1)%Resold_FL(grid%locpat(1)%nconn,grid%ndof))
    allocate(grid%locpat(1)%delx(grid%ndof,grid%locpat(1)%ngmax))
    grid%locpat(1)%delx=0.D0
    

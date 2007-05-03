@@ -1,0 +1,37 @@
+DIRICHLET = 0
+NEUMANN   = 1
+MIXED     = 2
+ROBIN     = 4
+
+CartesianGeometry{
+   domain_boxes = [(0,0,0), (7,7,7)]
+   x_lo         = 0.0e0, 0.0e0, 0.0e0  
+   x_up         = 1.0e0, 1.0e0, 1.0e0
+}
+
+
+GriddingAlgorithm{
+   max_levels = 2
+   largest_patch_size {
+      level_0 = 256, 256, 256
+   }
+ smallest_patch_size {
+      level_0 = 4,4,4
+   }
+   ratio_to_coarser {
+      level_1  = 2, 2, 2
+   }
+   combine_efficiency = 0.95
+   efficiency_tolerance = 0.95
+}
+
+StandardTagAndInitialize{
+   tagging_method = "REFINE_BOXES"
+   RefineBoxes{
+      level_0 = [(2,2,2),(5,5,5)]
+   }
+}
+
+LoadBalancer{
+   bin_pack = "SPATIAL"
+}

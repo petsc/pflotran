@@ -8,7 +8,7 @@
   real*8, parameter :: floweps   = 0.D-20
   real*8, parameter :: satcuteps = 0.D-5
   real*8, parameter :: dfac = 1.D-8
-
+  real*8, pointer, save :: Resold_AR(:,:), Resold_FL(:,:)
  
 ! Contributions to residual from accumlation/source/Reaction, flux(include diffusion)
   
@@ -274,7 +274,7 @@
 
   case(2)
     if((dabs(locpat%velocitybc(1,nbc_no))+dabs(locpat%velocitybc(2,nbc_no)))>floweps)then
-       print *, 'FlowBC :', nbc_no,locpat%velocitybc(1,nbc_no),locpat%velocitybc(2,nbc_no)
+      ! print *, 'FlowBC :', nbc_no,locpat%velocitybc(1,nbc_no),locpat%velocitybc(2,nbc_no)
 	   do j=1,grid%nphase
           fluxm=0.D0; fluxe=0.D0
           v_darcy = locpat%velocitybc(j,nbc_no)
@@ -359,19 +359,20 @@
 	
    type(pflowGrid), intent(inout) :: grid
    type(pflow_localpatch_info) :: locpat
+   
  
   integer :: ierr
-  integer*4 :: n, ng, nc, nr
-  integer*4 :: i, i1, i2, j, jn, jng, jm1, jm2, jmu
-  integer*4 :: m, m1, m2, mu, n1, n2, ip1, ip2, p1, p2, t1, t2, c1, c2,&
+  integer :: n, ng, nc, nr
+  integer :: i, i1, i2, j, jn, jng, jm1, jm2, jmu
+  integer :: m, m1, m2, mu, n1, n2, ip1, ip2, p1, p2, t1, t2, c1, c2,&
              s1, s2
-  integer*4 :: kk1,kk2,jj1,jj2,ii1,ii2, kk, jj, ii
-  integer*4 :: i1_hencoeff, i2_hencoeff
-  integer*4 :: ibc  ! Index that specifies a boundary condition block
-  
+  integer :: kk1,kk2,jj1,jj2,ii1,ii2, kk, jj, ii
+  integer :: i1_hencoeff, i2_hencoeff
+  integer :: ibc  ! Index that specifies a boundary condition block
+  integer, save ::icall
 ! real*8 :: term1, term2, term3
 
-  real*8, pointer :: Resold_AR(:,:), Resold_FL(:,:) 
+!  real*8, pointer :: Resold_AR(:,:), Resold_FL(:,:) 
 
   real*8, pointer :: yy_p(:),&
                  porosity_loc_p(:), volume_p(:), &
@@ -406,7 +407,7 @@
   real*8 :: ukvr,uhh,uconc, tmp
   real*8 :: dddt,dddp,fg,dfgdp,dfgdt,dhdt,dhdp,dvdt,dvdp, rho, visc
   real*8 :: Res(grid%ndof), vv_darcy(grid%nphase)
- 
+  data icall/0/
  
  
  
@@ -437,9 +438,18 @@
  vl_p=> locpat%vl_p
   !print *,' Res_patch: get pinter '
 
- Resold_AR => locpat%Resold_AR
- Resold_FL => locpat%Resold_FL
-
+ !Resold_AR => locpat%Resold_AR
+ !Resold_FL => locpat%Resold_FL
+ 
+ if (icall==0)then
+   
+   allocate(Resold_AR(locpat%nlmax,grid%ndof))
+   allocate(Resold_FL(locpat%nconn,grid%ndof))
+   !print *,' Res_patch: get pinter '
+   icall =1
+ endif
+ 
+   
 !there is potential possiblity that the pertubate of p may change the direction of pflow.
 ! once that happens, code may crash, namely wrong matrix element 
  do ng = 1, locpat%ngmax 
@@ -546,7 +556,7 @@
     r_p(p1:p1+grid%ndof-1) = r_p(p1:p1+grid%ndof-1) + Res(1:grid%ndof)
     Resold_AR(n,1:grid%ndof)= Res(1:grid%ndof) 
   end do
- ! print *,' Finished accum terms'
+  !print *,' Finished accum terms'
 
 !************************************************************************
  ! add source/sink terms
@@ -797,12 +807,12 @@
 !print *,grid%hh_bc,grid%uu_bc,grid%df_bc,grid%hen_bc,grid%pc_bc,grid%kvr_bc
 
  enddo
-!  print *,'finished BC'
+  !print *,'finished BC'
  
 
 
 ! print *,'finished IMSResidual'
- nullify(Resold_AR, Resold_FL)
+! nullify(Resold_AR, Resold_FL)
  end subroutine IMSResidual_patch
 
 
@@ -843,7 +853,7 @@ subroutine IMSJacobin_patch(xx, Jac_elem, Jac_ind ,locpat,grid,ierr)
                perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
                
                
-     real*8, pointer :: Resold_AR(:,:), Resold_FL(:,:)          
+       
 
 
   real*8, pointer ::  icap_loc_p(:), ithrm_loc_p(:),var_loc_p(:)
@@ -894,7 +904,7 @@ subroutine IMSJacobin_patch(xx, Jac_elem, Jac_ind ,locpat,grid,ierr)
 Jac_elem =0.D0
 Jac_ind = -1
 
-  !print *,'*********** In Jacobian ********************** '
+ !print *,'*********** In Jacobian ********************** '
 
 !  call VecGetArrayF90(grid%xx_loc, xx_loc_p, ierr)
 !   xx_loc_p => xx
@@ -917,8 +927,8 @@ Jac_ind = -1
 !  call VecGetArrayF90(grid%var_loc, var_loc_p, ierr)
   var_loc_p=> locpat%var
 
- Resold_AR => locpat%Resold_AR
- Resold_FL => locpat%Resold_FL
+ !Resold_AR => locpat%Resold_AR
+ !Resold_FL => locpat%Resold_FL
 
  !print *,' In mph Jacobian ::  got pointers '
 ! ********************************************************************
@@ -948,7 +958,7 @@ Jac_ind = -1
        ResInc(n,:,nvar) = ResInc(n,:,nvar) + Res(:)
    end do
  enddo
-! print *,' Mph Jaco Finished accum terms'
+ !print *,' Mph Jaco Finished accum terms'
 ! Source / Sink term
 
    do nr = 1, grid%nblksrc
@@ -1020,7 +1030,7 @@ Jac_ind = -1
 	
   enddo	
   
-  ! print *,' Mph Jaco Finished source terms'
+   !print *,' Mph Jaco Finished source terms'
 ! Contribution from BC
  do nc = 1, locpat%nconnbc
 
@@ -1087,7 +1097,7 @@ Jac_ind = -1
 					  grid%pcbetac(iicap),grid%pwrprm(iicap),&
 					  locpat%varbc(grid%size_var_use+1:(grid%ndof+1)*grid%size_var_use),ierr)
 					  
-!	  print *,' Mph Jaco BC terms: finish increment'
+	  !print *,' Mph Jaco BC terms: finish increment'
     do nvar=1,grid%ndof
    
     call IMSRes_FLBCCont(nc,locpat%areabc(nc), &
@@ -1102,7 +1112,7 @@ Jac_ind = -1
    enddo
 
  enddo
-  ! print *,' Mph Jaco Finished BC terms'
+   !print *,' Mph Jaco Finished BC terms'
 
  do n= 1, locpat%nlmax
    ra=0.D0
@@ -1121,7 +1131,7 @@ Jac_ind = -1
 
    
    if(max_dev<1D-5)then
-    print *,'Mph Jaco max dev = ', max_dev
+    !print *,'Mph Jaco max dev = ', max_dev
   endif
   
     
@@ -1318,7 +1328,7 @@ endif
   end do
   !print *,' IMS Jaco Finished Two node terms'
  
-   nullify(Resold_AR, Resold_FL)
+  ! nullify(Resold_AR, Resold_FL)
   
   
  end subroutine IMSJacobin_patch
