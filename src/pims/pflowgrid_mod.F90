@@ -82,13 +82,12 @@
 ! separately). Note that it does not set up all of the topology of the  
 ! cell connections, as it is cleaner to do this in pflowGrid_setup()   
 ! when the geometry of the connections is calculated.
-    subroutine pflowGrid_new(grid, pflowsolv, timestep,igeom, nx, ny, nz, npx, npy, npz, &
+    subroutine pflowGrid_new(grid, timestep,igeom, nx, ny, nz, npx, npy, npz, &
       nphase )
   
       implicit none
 
       type(pflowGrid) :: grid
-      type(pflow_solver_context) :: pflowsolv
       type(time_stepping_context), intent(inout) :: timestep
       
 

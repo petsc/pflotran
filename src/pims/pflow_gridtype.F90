@@ -33,9 +33,9 @@ private
  type, public :: time_stepping_context
   
      real*8, pointer :: tfac(:)
-     real*8 :: dt_min  ! Maximum size of the time step.
+     real*8 :: dt_min  ! Minimum size of the time step.
      real*8 :: dt_max  ! Maximum size of the time step.
-         character*2 :: tunit ! Input time units
+     character*2 :: tunit ! Input time units
      integer  iaccel, icut_max, nstpmax, kplot  
      real*8, pointer :: tplot(:), tstep(:), dtstep(:)
      real*8 :: dpmxe,dsmxe !maximum allowed changes in field vars.
