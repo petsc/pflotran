@@ -4,9 +4,10 @@ module pflow_output_module
   public
   
  integer,private :: size_var_use, size_var_node
-  contains
 
-  subroutine pflow_output(grid,kplt,iplot)
+contains
+
+subroutine pflow_output(grid,kplt,iplot)
   
   use pflow_gridtype_module
   use TTPHASE_module
@@ -76,7 +77,7 @@ module pflow_output_module
       iplot = 0
     endif
     return
- endif
+  endif
   
 !  if(grid%nphase>1) call pflow_2phase_massbal(grid)
       
@@ -90,7 +91,7 @@ module pflow_output_module
       (i,i=1,grid%ibrkcrv)
     endif
     if (iplot == 0) return
- endif
+  endif
   
   if (grid%ndof == 1 .and. iplot == 0) return ! no time-history plot for 1 dof
 
@@ -111,32 +112,33 @@ module pflow_output_module
   if (grid%ibrkcrv > 0 .and. grid%ndof > 1) then
 
 !   concentration
-    call DAGlobalToNaturalBegin(grid%da_1_dof,grid%conc,INSERT_VALUES,c_nat,ierr)
-    call DAGlobalToNaturalEnd  (grid%da_1_dof,grid%conc,INSERT_VALUES,c_nat,ierr)
+    call DAGlobalToNaturalBegin(grid%da_1_dof,grid%conc,INSERT_VALUES,c_nat, &
+                                ierr)
+    call DAGlobalToNaturalEnd(grid%da_1_dof,grid%conc,INSERT_VALUES,c_nat,ierr)
 
 !   velocity fields
-    call DAGlobalToNaturalBegin(grid%da_3np_dof,grid%vl,INSERT_VALUES,vl_nat,ierr)
-    call DAGlobalToNaturalEnd  (grid%da_3np_dof,grid%vl,INSERT_VALUES,vl_nat,ierr)
+    call DAGlobalToNaturalBegin(grid%da_3np_dof,grid%vl,INSERT_VALUES,vl_nat, &
+                                ierr)
+    call DAGlobalToNaturalEnd(grid%da_3np_dof,grid%vl,INSERT_VALUES,vl_nat,ierr)
 
 ! note that the following routines call VecCreate(x_all) and therefore must be
 ! followed by a call to VecDestroy(x_all)
 
 
-  call VecScatterCreateToAll(c_nat, scat_1dof, c_all, ierr)
-  call VecScatterBegin(c_nat, c_all, INSERT_VALUES, SCATTER_FORWARD, &
-       scat_1dof, ierr)
-  call VecScatterEnd(c_nat, c_all, INSERT_VALUES, SCATTER_FORWARD, &
-       scat_1dof, ierr)
+    call VecScatterCreateToAll(c_nat, scat_1dof, c_all, ierr)
+    call VecScatterBegin(c_nat, c_all, INSERT_VALUES, SCATTER_FORWARD, &
+                         scat_1dof, ierr)
+    call VecScatterEnd(c_nat, c_all, INSERT_VALUES, SCATTER_FORWARD, &
+                       scat_1dof, ierr)
 
-  call VecScatterCreateToAll(vl_nat, scat_3npdof, vl_all, ierr)
-  call VecScatterBegin(vl_nat, vl_all, INSERT_VALUES, SCATTER_FORWARD, &
-       scat_3npdof, ierr)
-  call VecScatterEnd(vl_nat, vl_all, INSERT_VALUES, SCATTER_FORWARD, &
-       scat_3npdof, ierr)
+    call VecScatterCreateToAll(vl_nat, scat_3npdof, vl_all, ierr)
+    call VecScatterBegin(vl_nat, vl_all, INSERT_VALUES, SCATTER_FORWARD, &
+                         scat_3npdof, ierr)
+    call VecScatterEnd(vl_nat, vl_all, INSERT_VALUES, SCATTER_FORWARD, &
+                       scat_3npdof, ierr)
        
-  call VecScatterDestroy(scat_1dof, ierr)
-  call VecScatterDestroy(scat_3npdof, ierr)
-
+    call VecScatterDestroy(scat_1dof, ierr)
+    call VecScatterDestroy(scat_3npdof, ierr)
 
     if (grid%myrank == 0) then
       call VecGetArrayF90(c_all, c_p, ierr)
@@ -183,14 +185,15 @@ module pflow_output_module
         if (sum2v .ne. 0.d0) fldvol(ibrk) = sum1v/sum2v
       enddo
       write(IUNIT4,'(1p100e12.4)') grid%t/grid%tconv,grid%dt/grid%tconv, &
-      (fldflx(i),i=1,grid%ibrkcrv),(fldvol(i),i=1,grid%ibrkcrv)
+                                   (fldflx(i),i=1,grid%ibrkcrv), &
+                                   (fldvol(i),i=1,grid%ibrkcrv)
       call VecRestoreArrayF90(c_all, c_p, ierr)
       call VecRestoreArrayF90(vl_all, vl_p, ierr)
       deallocate(fldflx)
       deallocate(fldvol)
-   endif
-     call VecRestoreArrayF90(c_all, c_p, ierr)
-     call VecRestoreArrayF90(vl_all, vl_p, ierr)
+    endif
+    call VecRestoreArrayF90(c_all, c_p, ierr)
+    call VecRestoreArrayF90(vl_all, vl_p, ierr)
     call VecDestroy(c_all, ierr)
     call VecDestroy(vl_all, ierr)
 
@@ -206,52 +209,51 @@ module pflow_output_module
       call VecDestroy( vl_nat, ierr)
       return
     endif
- endif
+  endif
   
 ! plot spatial data (iplot > 0)
   
 ! presssure field
   call DAGlobalToNaturalBegin(grid%da_nphase_dof,grid%pressure,INSERT_VALUES, &
-  p_nat,ierr)
+                              p_nat,ierr)
   call DAGlobalToNaturalEnd(grid%da_nphase_dof,grid%pressure,INSERT_VALUES, &
-  p_nat,ierr)
+                            p_nat,ierr)
 
 ! temperature field
   call DAGlobalToNaturalBegin(grid%da_1_dof,grid%temp,INSERT_VALUES, &
-  t_nat,ierr)
-  call DAGlobalToNaturalEnd  (grid%da_1_dof,grid%temp,INSERT_VALUES, &
-  t_nat,ierr)
+                              t_nat,ierr)
+  call DAGlobalToNaturalEnd(grid%da_1_dof,grid%temp,INSERT_VALUES, &
+                            t_nat,ierr)
 
 ! saturation
   call DAGlobalToNaturalBegin(grid%da_nphase_dof,grid%sat,INSERT_VALUES, &
-  s_nat,ierr)
-  call DAGlobalToNaturalEnd  (grid%da_nphase_dof,grid%sat,INSERT_VALUES, &
-  s_nat,ierr)
+                              s_nat,ierr)
+  call DAGlobalToNaturalEnd(grid%da_nphase_dof,grid%sat,INSERT_VALUES, &
+                            s_nat,ierr)
   
 ! primary variables
-  if(grid%use_2ph == PETSC_TRUE .or. grid%use_mph == PETSC_TRUE&
-                                .or. grid%use_vadose == PETSC_TRUE &
-                                 .or. grid%use_flash == PETSC_TRUE) then
+  if (grid%use_2ph == PETSC_TRUE .or. grid%use_mph == PETSC_TRUE .or. &
+      grid%use_vadose == PETSC_TRUE .or. grid%use_flash == PETSC_TRUE) then
     call DAGlobalToNaturalBegin(grid%da_nphase_dof,grid%xmol,INSERT_VALUES, &
-    x_nat,ierr)
-    call DAGlobalToNaturalEnd  (grid%da_nphase_dof,grid%xmol,INSERT_VALUES, &
-    x_nat,ierr)
+                                x_nat,ierr)
+    call DAGlobalToNaturalEnd(grid%da_nphase_dof,grid%xmol,INSERT_VALUES, &
+                              x_nat,ierr)
   endif  
   
-  if(grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE &
+  if (grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE &
      .or. grid%use_flash == PETSC_TRUE) then
-   call DAGlobalToNaturalBegin(grid%da_1_dof,grid%iphas,INSERT_VALUES, &
-    iphase_nat,ierr)
-    call DAGlobalToNaturalEnd  (grid%da_1_dof,grid%iphas,INSERT_VALUES, &
-    iphase_nat,ierr)
+    call DAGlobalToNaturalBegin(grid%da_1_dof,grid%iphas,INSERT_VALUES, &
+                                iphase_nat,ierr)
+    call DAGlobalToNaturalEnd(grid%da_1_dof,grid%iphas,INSERT_VALUES, &
+                              iphase_nat,ierr)
   endif  
   
 ! concentration: check if already done in time-history plot
   if (grid%ibrkcrv == 0) then
     call DAGlobalToNaturalBegin(grid%da_1_dof,grid%conc,INSERT_VALUES, &
-    c_nat,ierr)
-    call DAGlobalToNaturalEnd  (grid%da_1_dof,grid%conc,INSERT_VALUES, &
-    c_nat,ierr)
+                                c_nat,ierr)
+    call DAGlobalToNaturalEnd(grid%da_1_dof,grid%conc,INSERT_VALUES, &
+                              c_nat,ierr)
   endif
   
 ! call VecView(phis,PETSC_VIEWER_STDOUT_WORLD,ierr)
@@ -259,26 +261,25 @@ module pflow_output_module
 ! solid volume fraction
   if (grid%rk > 0.d0) then
     call DAGlobalToNaturalBegin(grid%da_1_dof,grid%phis,INSERT_VALUES, &
-    phis_nat,ierr)
-    call DAGlobalToNaturalEnd  (grid%da_1_dof,grid%phis,INSERT_VALUES, &
-    phis_nat,ierr)
+                                phis_nat,ierr)
+    call DAGlobalToNaturalEnd(grid%da_1_dof,grid%phis,INSERT_VALUES, &
+                              phis_nat,ierr)
   endif
   
-    icall_plt = 0
+  icall_plt = 0
 #ifdef HAVE_MPITOMPIZERO
   call VecScatterCreateToZero(p_nat, scat_nph,  p_all, ierr)
   if (grid%ibrkcrv == 0) &
-  call VecScatterCreateToZero(c_nat,  scat_1dof, c_all, ierr)
+    call VecScatterCreateToZero(c_nat,  scat_1dof, c_all, ierr)
 !   call VecScatterCreateToZero(vl_nat,   scat_3dof, vl_all, ierr)
   call VecScatterCreateToZero(s_nat, scat_nph,  s_all, ierr)
   call VecScatterCreateToZero(t_nat, scat_1dof, t_all, ierr)
-  if(grid%use_2ph == PETSC_TRUE .or. grid%use_mph == PETSC_TRUE &
-                                .or. grid%use_vadose == PETSC_TRUE &
-                                .or. grid%use_flash == PETSC_TRUE) &
-  call VecScatterCreateToZero(x_nat, scat_nph, x_all, ierr)
+  if (grid%use_2ph == PETSC_TRUE .or. grid%use_mph == PETSC_TRUE .or. &
+      grid%use_vadose == PETSC_TRUE .or. grid%use_flash == PETSC_TRUE) &
+    call VecScatterCreateToZero(x_nat, scat_nph, x_all, ierr)
 
   if (rk > 0.d0) &
-  call VecScatterCreateToZero(phis_nat, scat_1dof, phis_all, ierr)
+    call VecScatterCreateToZero(phis_nat, scat_1dof, phis_all, ierr)
 !   call VecScatterCreateToZero(por_nat,  scat_1dof, por_all, ierr)
 #else
   call VecScatterCreateToAll(p_nat, scat_nph,  p_all, ierr)
@@ -287,20 +288,18 @@ module pflow_output_module
 ! call VecScatterCreateToAll(s_nat, scat_nph,  s_all, ierr)
 ! call VecScatterCreateToAll(t_nat, scat_1dof, t_all, ierr)
 
-    call VecDuplicate(p_all,s_all,ierr)
-    call VecDuplicate(c_all,t_all,ierr)
+  call VecDuplicate(p_all,s_all,ierr)
+  call VecDuplicate(c_all,t_all,ierr)
     
-    if(grid%use_2ph == PETSC_TRUE .or. grid%use_mph == PETSC_TRUE &
-                                .or. grid%use_vadose == PETSC_TRUE &
-                                 .or. grid%use_flash == PETSC_TRUE ) &
+  if (grid%use_2ph == PETSC_TRUE .or. grid%use_mph == PETSC_TRUE .or. &
+      grid%use_vadose == PETSC_TRUE .or. grid%use_flash == PETSC_TRUE ) &
     call VecDuplicate(p_all,x_all,ierr)
 
-    if(grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE &
-       .or. grid%use_flash == PETSC_TRUE) &
+  if (grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE &
+      .or. grid%use_flash == PETSC_TRUE) &
     call VecDuplicate(c_all,iphase_all,ierr)
 
-
-    if (grid%rk > 0.d0) then
+  if (grid%rk > 0.d0) then
 !   call VecScatterCreateToAll(phis_nat, scat_1dof, phis_all, ierr)
     call VecDuplicate(c_all,phis_all,ierr)
   endif
@@ -327,40 +326,39 @@ module pflow_output_module
   call VecScatterEnd(s_nat, s_all, INSERT_VALUES, SCATTER_FORWARD, &
        scat_nph, ierr)
 
-  if(grid%use_2ph == PETSC_TRUE .or. grid%use_mph == PETSC_TRUE &
-                                .or. grid%use_vadose == PETSC_TRUE &
-                                .or. grid%use_flash == PETSC_TRUE)then
+  if (grid%use_2ph == PETSC_TRUE .or. grid%use_mph == PETSC_TRUE .or. &
+      grid%use_vadose == PETSC_TRUE .or. grid%use_flash == PETSC_TRUE) then
     call VecScatterBegin(x_nat, x_all, INSERT_VALUES, SCATTER_FORWARD, &
-       scat_nph, ierr)
+                         scat_nph, ierr)
     call VecScatterEnd(x_nat, x_all, INSERT_VALUES, SCATTER_FORWARD, &
-       scat_nph, ierr)
+                       scat_nph, ierr)
   endif
   
 ! call VecScatterCreateToZero(t_nat, scat_1dof, t_all, ierr)
   call VecScatterBegin(t_nat, t_all, INSERT_VALUES, SCATTER_FORWARD, &
-       scat_1dof, ierr)
+                       scat_1dof, ierr)
   call VecScatterEnd(t_nat, t_all, INSERT_VALUES, SCATTER_FORWARD, &
-       scat_1dof, ierr)
+                     scat_1dof, ierr)
 
   if (ibrkcrv == 0) then
 !   call VecConvertMPIToMPIZero(c_nat, c_all, ierr)
 
 !   call VecScatterCreateToZero(c_nat, scat_1dof, c_all, ierr)
     call VecScatterBegin(c_nat, c_all, INSERT_VALUES, SCATTER_FORWARD, &
-       scat_1dof, ierr)
+                         scat_1dof, ierr)
     call VecScatterEnd(c_nat, c_all, INSERT_VALUES, SCATTER_FORWARD, &
-       scat_1dof, ierr)
+                       scat_1dof, ierr)
   endif
   
   if (rk > 0.d0) then
 !   call VecConvertMPIToMPIZero(phis_nat, phis_all, ierr)
 
 !   call VecScatterCreateToZero(phis_nat, scatter, phis_all, ierr)
-    call VecScatterBegin(phis_nat,phis_all,INSERT_VALUES, SCATTER_FORWARD, &
-       scat_1dof, ierr)
-    call VecScatterEnd(phis_nat,phis_all,INSERT_VALUES, SCATTER_FORWARD, &
-       scat_1dof, ierr)
-   endif
+    call VecScatterBegin(phis_nat, phis_all,INSERT_VALUES, SCATTER_FORWARD, &
+                         scat_1dof, ierr)
+    call VecScatterEnd(phis_nat, phis_all,INSERT_VALUES, SCATTER_FORWARD, &
+                       scat_1dof, ierr)
+  endif
 #else
 ! call VecConvertMPIToSeqAll(p_nat, p_all, ierr);    CHKERRQ(ierr)
 ! call VecConvertMPIToSeqAll(t_nat, t_all, ierr);    CHKERRQ(ierr)
@@ -368,47 +366,46 @@ module pflow_output_module
 
 ! call VecScatterCreateToAll(p_nat, scatter, p_all, ierr)
   call VecScatterBegin(p_nat, p_all, INSERT_VALUES, SCATTER_FORWARD, &
-       scat_nph, ierr)
+                       scat_nph, ierr)
   call VecScatterEnd(p_nat, p_all, INSERT_VALUES, SCATTER_FORWARD, &
-       scat_nph, ierr)
+                     scat_nph, ierr)
 
 ! call VecScatterCreateToAll(s_nat, scatter, s_all, ierr)
   call VecScatterBegin(s_nat, s_all, INSERT_VALUES, SCATTER_FORWARD, &
-       scat_nph, ierr)
+                       scat_nph, ierr)
   call VecScatterEnd(s_nat, s_all, INSERT_VALUES, SCATTER_FORWARD, &
-       scat_nph, ierr)
+                     scat_nph, ierr)
 
-  if(grid%use_2ph == PETSC_TRUE .or. grid%use_mph == PETSC_TRUE &
-                                .or. grid%use_vadose == PETSC_TRUE & 
-                                .or. grid%use_flash == PETSC_TRUE)then
+  if (grid%use_2ph == PETSC_TRUE .or. grid%use_mph == PETSC_TRUE .or. &
+      grid%use_vadose == PETSC_TRUE .or. grid%use_flash == PETSC_TRUE) then
     call VecScatterBegin(x_nat, x_all, INSERT_VALUES, SCATTER_FORWARD, &
-       scat_nph, ierr)
+                         scat_nph, ierr)
     call VecScatterEnd(x_nat, x_all, INSERT_VALUES, SCATTER_FORWARD, &
-       scat_nph, ierr)
+                       scat_nph, ierr)
   endif
   
-  if( grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE & 
-      .or. grid%use_flash == PETSC_TRUE)then
-   call VecScatterBegin(iphase_nat, iphase_all, INSERT_VALUES, SCATTER_FORWARD, &
-       scat_1dof, ierr)
-  call VecScatterEnd(iphase_nat, iphase_all, INSERT_VALUES, SCATTER_FORWARD, &
-       scat_1dof, ierr)
+  if (grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE & 
+      .or. grid%use_flash == PETSC_TRUE) then
+    call VecScatterBegin(iphase_nat, iphase_all, INSERT_VALUES, &
+                         SCATTER_FORWARD, scat_1dof, ierr)
+    call VecScatterEnd(iphase_nat, iphase_all, INSERT_VALUES, SCATTER_FORWARD, &
+                       scat_1dof, ierr)
 
   endif
 ! call VecScatterCreateToAll(t_nat, scatter, t_all, ierr)
   call VecScatterBegin(t_nat, t_all, INSERT_VALUES, SCATTER_FORWARD, &
-       scat_1dof, ierr)
+                       scat_1dof, ierr)
   call VecScatterEnd(t_nat, t_all, INSERT_VALUES, SCATTER_FORWARD, &
-       scat_1dof, ierr)
+                     scat_1dof, ierr)
 
 !  if (ibrkcrv == 0) then
 !   call VecConvertMPIToSeqAll(c_nat, c_all, ierr)
 
 !   call VecScatterCreateToAll(c_nat, scat_1dof, c_all, ierr)
-    call VecScatterBegin(c_nat, c_all, INSERT_VALUES, SCATTER_FORWARD, &
-       scat_1dof, ierr)
-    call VecScatterEnd(c_nat, c_all, INSERT_VALUES, SCATTER_FORWARD, &
-       scat_1dof, ierr)
+  call VecScatterBegin(c_nat, c_all, INSERT_VALUES, SCATTER_FORWARD, &
+                       scat_1dof, ierr)
+  call VecScatterEnd(c_nat, c_all, INSERT_VALUES, SCATTER_FORWARD, &
+                     scat_1dof, ierr)
 !  endif
 
   if (grid%rk > 0.d0) then
@@ -416,9 +413,9 @@ module pflow_output_module
 
 !   call VecScatterCreateToAll(phis_nat, scat_1dof, phis_all, ierr)
     call VecScatterBegin(phis_nat, phis_all, INSERT_VALUES, SCATTER_FORWARD, &
-       scat_1dof, ierr)
+                         scat_1dof, ierr)
     call VecScatterEnd(phis_nat, phis_all, INSERT_VALUES, SCATTER_FORWARD, &
-       scat_1dof, ierr)
+                       scat_1dof, ierr)
   endif
 
   call VecScatterDestroy(scat_nph,  ierr)
@@ -430,10 +427,10 @@ module pflow_output_module
   q = '","'
   tyr = grid%t/grid%tconv
 
-  if(grid%myrank == 0) then
-    if(grid%flowsteps == 0) then
-        call SNESGetTolerances(grid%snes, grid%atol, grid%rtol, grid%stol, &
-        grid%maxit, grid%maxf, ierr)
+  if (grid%myrank == 0) then
+    if (grid%flowsteps == 0) then
+      call SNESGetTolerances(grid%snes, grid%atol, grid%rtol, grid%stol, &
+                             grid%maxit, grid%maxf, ierr)
 !       write(*,'("%#atol, rtol, stol= ",1p3e12.4," maxit, maxf= ",2i6)') &
 !       grid%atol,grid%rtol,grid%stol,grid%maxit,grid%maxf
   
@@ -446,15 +443,14 @@ module pflow_output_module
     call VecGetArrayF90(t_all, t_p, ierr)
     call VecGetArrayF90(c_all, c_p, ierr)
     call VecGetArrayF90(s_all, s_p, ierr)
-    if(grid%use_2ph == PETSC_TRUE .or. grid%use_mph == PETSC_TRUE &
-                                .or. grid%use_vadose == PETSC_TRUE & 
-                                .or. grid%use_flash == PETSC_TRUE)&
-    call VecGetArrayF90(x_all, x_p, ierr)
+    if (grid%use_2ph == PETSC_TRUE .or. grid%use_mph == PETSC_TRUE .or. &
+        grid%use_vadose == PETSC_TRUE .or. grid%use_flash == PETSC_TRUE)&
+      call VecGetArrayF90(x_all, x_p, ierr)
 
 
-    if(grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE & 
+    if (grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE & 
         .or. grid%use_flash == PETSC_TRUE)&
-    call VecGetArrayF90(iphase_all, iphase_p, ierr)
+      call VecGetArrayF90(iphase_all, iphase_p, ierr)
 
     if (grid%rk > 0.d0) then
       call VecGetArrayF90(phis_all, phis_p, ierr)
@@ -472,71 +468,70 @@ module pflow_output_module
       
     if (grid%nx+grid%ny+grid%nz .gt. grid%nx*grid%ny*grid%nz) then ! 1D
     
-      write(IUNIT3,'("%#step: ",i6," time=",1pe12.4," sec,",1pe12.4," [",a1,"]", &
- &    " dt =",1pe12.4," sec")') &
-      grid%flowsteps,grid%t,tyr,grid%tunit,grid%dt
-      if( grid%use_2ph == PETSC_TRUE)then
+      write(IUNIT3,'("%#step: ",i6," time=",1pe12.4," sec,",1pe12.4," [",a1, &
+        & "]", " dt =",1pe12.4," sec")') &
+        grid%flowsteps,grid%t,tyr,grid%tunit,grid%dt
+      if (grid%use_2ph == PETSC_TRUE) then
         write(IUNIT3,'("%#   -x[m]-      -y[m]-      -z[m]-   ", &
- &      "  -pl[Pa]-     -pg[Pa]-     -t[C]-      -sl-        -sg-    ", &
-  &      "-xlco2-     -xgco2-        -Vf-     ")')
+          & "  -pl[Pa]-     -pg[Pa]-     -t[C]-      -sl-        -sg-    ", &
+          & "-xlco2-     -xgco2-        -Vf-     ")')
       elseif( grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE &
               .or. grid%use_flash == PETSC_TRUE ) then 
         write(IUNIT3,'("%#   -x[m]-      -y[m]-      -z[m]-   iphase ", &
- &      "  -pl[Pa]-     -pg[Pa]-     -t[C]-      -sl-        -sg-    ", &
-  &      "-xlco2-     -xgco2-        -Vf-     ")')
+          & "  -pl[Pa]-     -pg[Pa]-     -t[C]-      -sl-        -sg-    ", &
+          & "-xlco2-     -xgco2-        -Vf-     ")')
       else
         write(IUNIT3,'("%#   -x[m]-      -y[m]-      -z[m]-   ", &
- &      "  -p[Pa]-      -t[C]-      -sl(g)-      -C[mol/L]-      -Vf- &
- &      ")')
+          & "  -p[Pa]-      -t[C]-      -sl(g)-      -C[mol/L]-      -Vf- &
+          & ")')
       endif
 
       do n = 1, grid%nmax
         jn = grid%jh2o+(n-1)*grid%nphase
         vf = 0.d0
-        if(grid%rk > 0.d0) vf = phis_p(n)
-        if(grid%use_2ph == PETSC_TRUE ) then
+        if (grid%rk > 0.d0) vf = phis_p(n)
+        if (grid%use_2ph == PETSC_TRUE ) then
           write(IUNIT3,'(1p100e12.4)') grid%x(n), grid%y(n), grid%z(n), &
-          (p_p(j),j=jn,jn+grid%nphase-grid%jh2o),t_p(n),s_p(jn),s_p(jn+1), &
-          x_p(jn),x_p(jn+1),vf
-        elseif(grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE &
-               .or. grid%use_flash == PETSC_TRUE )then
-          write(IUNIT3,'(1p100e12.4)') grid%x(n), grid%y(n), grid%z(n), iphase_p(n),&
-          (p_p(j),j=jn,jn+grid%nphase-grid%jh2o),t_p(n),s_p(jn),s_p(jn+1), &
-          x_p(jn),x_p(jn+1),vf
+            (p_p(j),j=jn,jn+grid%nphase-grid%jh2o),t_p(n),s_p(jn),s_p(jn+1), &
+            x_p(jn),x_p(jn+1),vf
+        elseif (grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE &
+                .or. grid%use_flash == PETSC_TRUE )then
+          write(IUNIT3,'(1p100e12.4)') grid%x(n), grid%y(n), grid%z(n), &
+            iphase_p(n),&
+            (p_p(j),j=jn,jn+grid%nphase-grid%jh2o),t_p(n),s_p(jn),s_p(jn+1), &
+            x_p(jn),x_p(jn+1),vf
 
-    else
+        else
           write(IUNIT3,'(1p100e12.4)') grid%x(n), grid%y(n), grid%z(n), &
-          (p_p(j),j=jn,jn+grid%nphase-grid%jh2o), t_p(n), s_p(jn), c_p(n), vf
+            (p_p(j),j=jn,jn+grid%nphase-grid%jh2o), t_p(n), s_p(jn), c_p(n), vf
         endif
       enddo
 
     else if (grid%nz == 1) then ! 2D x-y
 
       write(IUNIT3,'(''TITLE= "'',1pg12.4,'' ['',a1,'']"'')') tyr,grid%tunit
-      if( grid%use_2ph == PETSC_TRUE .or. grid%use_mph == PETSC_TRUE &
-                                   .or. grid%use_vadose == PETSC_TRUE &
-                                   .or. grid%use_flash == PETSC_TRUE ) then
+      if (grid%use_2ph == PETSC_TRUE .or. grid%use_mph == PETSC_TRUE .or. &
+          grid%use_vadose == PETSC_TRUE .or. grid%use_flash == PETSC_TRUE ) then
         write(IUNIT3,'(''VARIABLES="'',a6,100(a3,a6))') &
-        'x',q,'y',q,'p',q,'T',q,'sl(g)',q,'xl',q,'xg',q,'vf','"'
+          'x',q,'y',q,'p',q,'T',q,'sl(g)',q,'xl',q,'xg',q,'vf','"'
       else
         write(IUNIT3,'(''VARIABLES="'',a6,100(a3,a6))') &
-        'x',q,'y',q,'p',q,'T',q,'sl(g)',q,'c',q,'vf','"'
+          'x',q,'y',q,'p',q,'T',q,'sl(g)',q,'c',q,'vf','"'
       endif
       write(IUNIT3,'(''ZONE T= "'',1pg12.4,''",'','' I='',i4, &
- &    '' , J='',i4)') tyr,grid%nx,grid%ny
+        & '' , J='',i4)') tyr,grid%nx,grid%ny
 
       do n = 1, grid%nmax
         jn = grid%jh2o+(n-1)*grid%nphase
         vf = 0.d0
         if (grid%rk > 0.d0) vf = phis_p(n)
-        if( grid%use_2ph == PETSC_TRUE .or. grid%use_mph == PETSC_TRUE &
-                                   .or. grid%use_vadose == PETSC_TRUE &
-                                   .or. grid%use_flash == PETSC_TRUE) then
+        if (grid%use_2ph == PETSC_TRUE .or. grid%use_mph == PETSC_TRUE .or. &
+            grid%use_vadose == PETSC_TRUE.or.grid%use_flash == PETSC_TRUE) then
           write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%y(n), &
-          p_p(jn+1), t_p(n), s_p(jn), x_p(jn), x_p(jn+1),vf
+             p_p(jn+1), t_p(n), s_p(jn), x_p(jn), x_p(jn+1),vf
         else
           write(IUNIT3,'(1p10e12.4)') grid%x(n), grid%y(n), &
-          p_p(jn+1), t_p(n), s_p(jn), c_p(n), vf
+            p_p(jn+1), t_p(n), s_p(jn), c_p(n), vf
         endif
       enddo
           
@@ -546,70 +541,70 @@ module pflow_output_module
         write(IUNIT3,'(''TITLE= "'',1pg12.4,'' ['',a1,'']"'')') tyr,grid%tunit
         if( grid%use_2ph == PETSC_TRUE ) then
           write(IUNIT3,'(''VARIABLES="'',a6,100(a3,a6))') &
-          'x',q,'z',q,'p',q,'T',q,'sl(g)',q,'xl',q,'xg',q,'vf','"'
+            'x',q,'z',q,'p',q,'T',q,'sl(g)',q,'xl',q,'xg',q,'vf','"'
          elseif(grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE & 
                 .or. grid%use_flash == PETSC_TRUE)then
           write(IUNIT3,'(''VARIABLES="'',a6,100(a3,a6))') &
-          'x',q,'z',q,'phase',q,'p',q,'T',q,'sl(g)',q,'xl',q,'xg',q,'vf','"'
+            'x',q,'z',q,'phase',q,'p',q,'T',q,'sl(g)',q,'xl',q,'xg',q,'vf','"'
         else
           write(IUNIT3,'(''VARIABLES="'',a6,100(a3,a6))') &
-          'x',q,'z',q,'p',q,'T',q,'sl(g)',q,'c',q,'vf','"'
+            'x',q,'z',q,'p',q,'T',q,'sl(g)',q,'c',q,'vf','"'
         endif
         write(IUNIT3,'(''ZONE T= "'',1pg12.4,''",'','' I='',i4, &
- &      '' , K='',i4)') tyr,grid%nx,grid%nz
+          & '' , K='',i4)') tyr,grid%nx,grid%nz
         
         do n = 1, grid%nmax
           jn = grid%jh2o+(n-1)*grid%nphase
           vf = 0.d0
           if (grid%rk > 0.d0) vf = phis_p(n)
-          if( grid%use_2ph == PETSC_TRUE)then
+          if ( grid%use_2ph == PETSC_TRUE) then
             write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%z(n), &
-            p_p(jn+1), t_p(n), s_p(jn), x_p(jn), x_p(jn+1),vf
+              p_p(jn+1), t_p(n), s_p(jn), x_p(jn), x_p(jn+1),vf
           elseif(grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE &
                  .or. grid%use_flash == PETSC_TRUE) then
             write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%z(n),iphase_p(n), &
-                  p_p(jn+1),t_p(n), s_p(jn), x_p(jn), x_p(jn+1),vf
+              p_p(jn+1),t_p(n), s_p(jn), x_p(jn), x_p(jn+1),vf
           else
             write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%z(n), &
-            p_p(jn), t_p(n), s_p(jn), c_p(n), vf
+              p_p(jn), t_p(n), s_p(jn), c_p(n), vf
           endif
         enddo
 
       else
 
         write(IUNIT3,'(''TITLE= "'',1pg12.4,'' ['',a1,'']"'')') tyr,grid%tunit
-        if( grid%use_2ph == PETSC_TRUE .or. grid%use_mph == PETSC_TRUE &
-                                   .or. grid%use_vadose == PETSC_TRUE  &
-                                   .or. grid%use_flash == PETSC_TRUE ) then
+        if (grid%use_2ph == PETSC_TRUE .or. grid%use_mph == PETSC_TRUE .or. &
+            grid%use_vadose == PETSC_TRUE.or.grid%use_flash == PETSC_TRUE ) then
            write(IUNIT3,'(''VARIABLES="'',a6,100(a3,a6))') &
-          'x',q,'z',q,'phase',q,'pl',q,'pg',q,'T',q,'sl',q,'sg',q,'xl',q,'xg',q,'vf','"'
+             'x',q,'z',q,'phase',q,'pl',q,'pg',q,'T',q,'sl',q,'sg',q,'xl',q, &
+             'xg',q,'vf','"'
         else
           write(IUNIT3,'(''VARIABLES="'',a6,100(a3,a6))') &
-          'x',q,'z',q,'p',q,'T',q,'sl(g)',q,'c',q,'vf','"'
+            'x',q,'z',q,'p',q,'T',q,'sl(g)',q,'c',q,'vf','"'
         endif
         write(IUNIT3,'(''ZONE T= "'',1pg12.4,''",'','' I='',i4, &
- &      '' , J='',i4)') tyr,grid%nx,grid%nz
+          & '' , J='',i4)') tyr,grid%nx,grid%nz
         
 !        do i = 1, grid%nx
 !          do k = 1, grid%nz
 !            n = i+(k-1)*grid%nxy
-           do n=1, grid%nmax
-            jn = grid%jh2o+(n-1)*grid%nphase
-            vf = 0.d0
-            if (grid%rk > 0.d0) vf = phis_p(n)
+        do n=1, grid%nmax
+          jn = grid%jh2o+(n-1)*grid%nphase
+          vf = 0.d0
+          if (grid%rk > 0.d0) vf = phis_p(n)
             
 !            print *,'pflow_output: ',n,jn,p_p(jn),p_p(jn+1), t_p(n), &
 !                                    s_p(jn),s_p(jn+1), x_p(jn),x_p(jn+1)
             
-            if(grid%use_2ph == PETSC_TRUE .or. grid%use_mph == PETSC_TRUE &
-                                    .or. grid%use_vadose == PETSC_TRUE &
-                                    .or. grid%use_flash == PETSC_TRUE) then
-              write(IUNIT3,'(1p100e12.4)') grid%x(n),grid%z(n),iphase_p(n), &
+          if (grid%use_2ph == PETSC_TRUE .or. grid%use_mph == PETSC_TRUE &
+              .or. grid%use_vadose == PETSC_TRUE &
+              .or. grid%use_flash == PETSC_TRUE) then
+            write(IUNIT3,'(1p100e12.4)') grid%x(n),grid%z(n),iphase_p(n), &
               p_p(jn),p_p(jn+1),t_p(n),s_p(jn),s_p(jn+1),x_p(jn),x_p(jn+1),vf
-            else
-              write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%z(n), &
+          else
+            write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%z(n), &
               p_p(jn), t_p(n), s_p(jn), c_p(n), vf
-            endif
+          endif
 !          enddo
         enddo
       endif
@@ -621,59 +616,62 @@ module pflow_output_module
                                    .or. grid%use_vadose == PETSC_TRUE &
                                    .or. grid%use_flash == PETSC_TRUE ) then
       write(IUNIT3,'(''VARIABLES="'',a6,100(a3,a6))') &
-      'x',q,'y',q,'z',q,'phase',q,'p',q,'T',q,'sl(g)',q,'xl',q,'xg',q,'vf','"'
+        'x',q,'y',q,'z',q,'phase',q,'p',q,'T',q,'sl(g)',q,'xl',q,'xg',q,'vf','"'
     else
       write(IUNIT3,'(''VARIABLES="'',a6,100(a3,a6))') &
-      'x',q,'y',q,'z',q,'p',q,'T',q,'sl(g)',q,'c',q,'vf','"'
+        'x',q,'y',q,'z',q,'p',q,'T',q,'sl(g)',q,'c',q,'vf','"'
     endif
     write(IUNIT3,'(''ZONE T= "'',1pg12.4,''",'','' I='',i4, &
- &    '' , J='',i4,'' K='',i4)') tyr,grid%nx,grid%ny,grid%nz
+      & '' , J='',i4,'' K='',i4)') tyr,grid%nx,grid%ny,grid%nz
     do n = 1,  grid%nmax
       jn = grid%jh2o+(n-1)*grid%nphase
       vf = 0.d0
       if (grid%rk > 0.d0) vf = phis_p(n)
-    if( grid%use_2ph == PETSC_TRUE .or. grid%use_mph == PETSC_TRUE &
-                                    .or. grid%use_flash == PETSC_TRUE &   
-                                   .or. grid%use_vadose == PETSC_TRUE ) then
-        write(IUNIT3,'(1p10e12.4)') grid%x(n), grid%y(n), grid%z(n),iphase_p(n), &
-          p_p(jn+1), t_p(n), s_p(jn+1), x_p(jn),x_p(jn+1), vf
+      if (grid%use_2ph == PETSC_TRUE .or. grid%use_mph == PETSC_TRUE &
+          .or. grid%use_flash == PETSC_TRUE &   
+          .or. grid%use_vadose == PETSC_TRUE ) then
+        write(IUNIT3,'(1p10e12.4)') grid%x(n), grid%y(n), grid%z(n), &
+          iphase_p(n), p_p(jn+1), t_p(n), s_p(jn+1), x_p(jn),x_p(jn+1), vf
       else
         write(IUNIT3,'(1p10e12.4)') grid%x(n), grid%y(n), grid%z(n), &
-        p_p(jn), t_p(n), s_p(jn), c_p(n), vf
+          p_p(jn), t_p(n), s_p(jn), c_p(n), vf
       endif
     enddo
   endif
 
 !   write out initial conditions
 
-    if (grid%write_init == 1) then
-      fname = 'pflow_init0.dat'
-      write(*,*) '--> write output file: ',fname
-      close (IUNIT3)
-      open(unit=IUNIT3,file=fname,action="write")
-    if( grid%use_2ph == PETSC_TRUE .or. grid%use_mph == PETSC_TRUE &
-                                   .or. grid%use_flash == PETSC_TRUE & 
-                                   .or. grid%use_vadose == PETSC_TRUE ) then
+  if (grid%write_init == 1) then
+    fname = 'pflow_init0.dat'
+    write(*,*) '--> write output file: ',fname
+    close (IUNIT3)
+    open(unit=IUNIT3,file=fname,action="write")
+    if (grid%use_2ph == PETSC_TRUE .or. grid%use_mph == PETSC_TRUE &
+        .or. grid%use_flash == PETSC_TRUE & 
+        .or. grid%use_vadose == PETSC_TRUE ) then
         write(IUNIT3,'(": i1  i2  j1  j2  k1  k2", &
- &      "       p      ","      T      ","     sl(g)      ","       xl       xg   ")')
+          & "       p      ","      T      ","     sl(g)      ", &
+          & "       xl       xg   ")')
       else       
         write(IUNIT3,'(": i1  i2  j1  j2  k1  k2", &
- &      "       p      ","      T      ","     sl(g)      ","      C      ")')
+          & "       p      ","      T      ","     sl(g)      ", &
+          & "      C      ")')
       endif
       do k = 1, grid%nz
         do j = 1, grid%ny
           do i = 1, grid%nx
             n = i+(j-1)*grid%nx+(k-1)*grid%nxy
             jn = grid%jh2o+(n-1)*grid%nphase
-          if( grid%use_2ph == PETSC_TRUE .or. grid%use_mph == PETSC_TRUE &
-                                   .or. grid%use_flash == PETSC_TRUE &
-                                   .or. grid%use_vadose == PETSC_TRUE ) then
+            if (grid%use_2ph == PETSC_TRUE .or. &
+                grid%use_mph == PETSC_TRUE .or. &
+                grid%use_flash == PETSC_TRUE .or. &
+                grid%use_vadose == PETSC_TRUE ) then
               write(IUNIT3,'(6i4,1pe14.6,1p10e12.4)') i,i,j,j,k,k, &
-              p_p(jn), t_p(n), s_p(jn), x_p(jn),x_p(jn+1)
+                p_p(jn), t_p(n), s_p(jn), x_p(jn),x_p(jn+1)
             else
               write(IUNIT3,'(6i4,1pe14.6,1p10e12.4)') i,i,j,j,k,k, &
-              p_p(jn), t_p(n), s_p(jn), c_p(n)
-           endif
+                p_p(jn), t_p(n), s_p(jn), c_p(n)
+            endif
           enddo
         enddo
       enddo
@@ -684,9 +682,9 @@ module pflow_output_module
     call VecRestoreArrayF90(t_all, t_p, ierr)
     call VecRestoreArrayF90(c_all, c_p, ierr)
     call VecRestoreArrayF90(s_all, s_p, ierr)
-    if( grid%use_2ph == PETSC_TRUE .or. grid%use_mph == PETSC_TRUE &
-                                   .or. grid%use_flash == PETSC_TRUE &
-                                   .or. grid%use_vadose == PETSC_TRUE) then
+    if (grid%use_2ph == PETSC_TRUE .or. grid%use_mph == PETSC_TRUE &
+        .or. grid%use_flash == PETSC_TRUE &
+        .or. grid%use_vadose == PETSC_TRUE) then
       call VecRestoreArrayF90(x_all, x_p, ierr)
       call VecRestoreArrayF90(iphase_all, iphase_p, ierr)
     endif
@@ -699,12 +697,13 @@ module pflow_output_module
   call VecDestroy(t_all, ierr)
   call VecDestroy(c_all, ierr)
   call VecDestroy(s_all, ierr)
-    if( grid%use_2ph == PETSC_TRUE .or. grid%use_mph == PETSC_TRUE &
-                                   .or. grid%use_flash == PETSC_TRUE &
-                                   .or. grid%use_vadose == PETSC_TRUE ) &
-     call VecDestroy(x_all, ierr)
+
+  if (grid%use_2ph == PETSC_TRUE .or. grid%use_mph == PETSC_TRUE &
+      .or. grid%use_flash == PETSC_TRUE &
+      .or. grid%use_vadose == PETSC_TRUE ) &
+    call VecDestroy(x_all, ierr)
   
-  if( grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE &
+  if ( grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE &
       .or. grid%use_flash == PETSC_TRUE)&
     call VecDestroy(iphase_all, ierr)
 
@@ -722,33 +721,33 @@ module pflow_output_module
 
 !   velocity fields
     call DAGlobalToNaturalBegin(grid%da_3np_dof,grid%vl,INSERT_VALUES, &
-    vl_nat,ierr)
-    call DAGlobalToNaturalEnd  (grid%da_3np_dof,grid%vl,INSERT_VALUES, &
-    vl_nat,ierr)
+                                vl_nat,ierr)
+    call DAGlobalToNaturalEnd(grid%da_3np_dof,grid%vl,INSERT_VALUES, &
+                             vl_nat,ierr)
 
 ! note that the following routines call VecCreate(x_all) and therefore must 
 ! be followed by a call to VecDestroy(x_all)
 
 #ifdef HAVE_MPITOMPIZERO
 ! call VecConvertMPIToMPIZero(vl_nat, vl_all, ierr)
-  call VecScatterCreateToZero(vl_nat, scat_3npdof, vl_all, ierr)
-  call VecScatterBegin(vl_nat, vl_all, INSERT_VALUES, &
-       SCATTER_FORWARD, scat_3npdof, ierr)
-  call VecScatterEnd(vl_nat, vl_all, INSERT_VALUES, SCATTER_FORWARD, &
-       scat_3npdof, ierr)
+    call VecScatterCreateToZero(vl_nat, scat_3npdof, vl_all, ierr)
+    call VecScatterBegin(vl_nat, vl_all, INSERT_VALUES, &
+                         SCATTER_FORWARD, scat_3npdof, ierr)
+    call VecScatterEnd(vl_nat, vl_all, INSERT_VALUES, SCATTER_FORWARD, &
+                       scat_3npdof, ierr)
 #else
 ! call VecConvertMPIToSeqAll(vl_nat, vl_all, ierr)
-  call VecScatterCreateToAll(vl_nat, scat_3npdof, vl_all, ierr)
-  call VecScatterBegin(vl_nat, vl_all, INSERT_VALUES, &
-       SCATTER_FORWARD, scat_3npdof, ierr)
-  call VecScatterEnd(vl_nat, vl_all, INSERT_VALUES, SCATTER_FORWARD, &
-       scat_3npdof, ierr)
- call VecScatterDestroy(scat_3npdof, ierr)
+    call VecScatterCreateToAll(vl_nat, scat_3npdof, vl_all, ierr)
+    call VecScatterBegin(vl_nat, vl_all, INSERT_VALUES, &
+                         SCATTER_FORWARD, scat_3npdof, ierr)
+    call VecScatterEnd(vl_nat, vl_all, INSERT_VALUES, SCATTER_FORWARD, &
+                     scat_3npdof, ierr)
+    call VecScatterDestroy(scat_3npdof, ierr)
 #endif
 
    ! endif
     
-    if(grid%myrank == 0 .and. kplt > 0) then
+    if (grid%myrank == 0 .and. kplt > 0) then
        
       call VecGetArrayF90(vl_all, vl_p, ierr)
       
@@ -920,7 +919,7 @@ module pflow_output_module
      call VecRestoreArrayF90(vl_all, vl_p, ierr)
     endif
    ! call VecRestoreArrayF90(vl_all, vl_p, ierr)
-   call VecDestroy(vl_all, ierr)
+    call VecDestroy(vl_all, ierr)
   endif
   
 ! if (ibrkcrv >= 0 .or. iprint >= 1) then
@@ -929,7 +928,7 @@ module pflow_output_module
 !   call VecDestroy(vl_nat, ierr)
 ! endif
 
- if (grid%iprint >= 2) call porperm_out (grid%t, grid%dt, grid%tconv, &
+  if (grid%iprint >= 2) call porperm_out (grid%t, grid%dt, grid%tconv, &
           kplt, grid%nx, grid%ny, grid%nz, grid%nmax, &
           grid%x, grid%y, grid%z, grid%flowsteps, scat_1dof, &
           grid%da_1_dof, grid%porosity, por_nat, grid%perm_xx, perm_nat, &
@@ -954,7 +953,7 @@ module pflow_output_module
  
  ! if (iprint >= 1) call VecScatterDestroy(scat_1dof, ierr)
 !call VecScatterView(scat_1dof,PETSC_VIEWER_STDOUT_SELF)
-  end subroutine pflow_output
+end subroutine pflow_output
 
 !======================================================================
 
