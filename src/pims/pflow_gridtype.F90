@@ -140,7 +140,9 @@ private
     integer :: nx, ny, nz                       ! Global domain dimensions of the grid.
     integer :: npx, npy, npz                    ! Processor partition in each direction.
     integer :: nphase                           ! Number of phases we are dealing with.
-    
+    PetscTruth :: usesamrai
+    PetscFortranAddr :: p_samr_hierarchy
+
  end type pflowGridParameters
 
   type, public:: pflowGrid

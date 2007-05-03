@@ -371,7 +371,19 @@
       grid%npx     = parameters%npx
       grid%npy     = parameters%npy
       grid%npz     = parameters%npz
-     
+
+      grid%Samrai_drive     = parameters%usesamrai
+      grid%p_samr_hierarchy = parameters%p_samr_hierarchy
+
+      nx = grid%nx
+      ny = grid%ny
+      nz = grid%nz
+      npx = grid%npx
+      npy = grid%npy
+      npz = grid%npz
+      igeom = grid%igeom
+      nphase = grid%nphase
+
 	 ! integer, pointer::ghostind(:)
 
       call MPI_Comm_rank(PETSC_COMM_WORLD, grid%myrank, ierr)
@@ -379,7 +391,6 @@
        !call pflowGrid_parse_cmdline(grid)
       grid%use_ksp=PETSC_FALSE
       grid%use_isoth=PETSC_FALSE
-      grid%samrai_drive = PETSC_FALSE
 
       call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-snes_mf", & 
       grid%use_matrix_free, ierr)
@@ -391,8 +402,6 @@
       grid%monitor_h, ierr)
        call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_ksp", &
       grid%use_ksp, ierr)
-       call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-SAMRAI", &
-      grid%samrai_drive, ierr)
       
       grid%nxy = nx*ny
       grid%nmax = nx*ny*nz
@@ -416,22 +425,6 @@
       ! seems good practice to set them to sensible values when a pflowGrid
       ! is created.
 !-----------------------------------------------------------------------
-      allocate(timestep%tfac(13))
-      
-      timestep%tfac(1)  = 2.0d0; timestep%tfac(2)  = 2.0d0
-      timestep%tfac(3)  = 2.0d0; timestep%tfac(4)  = 2.0d0
-      timestep%tfac(5)  = 2.0d0; timestep%tfac(6)  = 1.8d0
-      timestep%tfac(7)  = 1.6d0; timestep%tfac(8)  = 1.4d0
-      timestep%tfac(9)  = 1.2d0; timestep%tfac(10) = 1.0d0
-      timestep%tfac(11) = 1.0d0; timestep%tfac(12) = 1.0d0
-      timestep%tfac(13) = 1.0d0      
-      timestep%iaccel = 1
-      timestep%dt_min = 1.d0
-      timestep%dt_max = 3.1536d6 ! One-tenth of a year.
-      timestep%icut_max = 16
-      timestep%dpmxe = 5.d4
-      timestep%dsmxe = 5.d-1
-
       print *,"new grid 2:",grid%nx,grid%ny,grid%nz, grid%nphase
       
       grid%use_matrix_free = 1
@@ -568,13 +561,13 @@
       allocate(grid%cexp(MAXPERMREGIONS))
 
       allocate(grid%icaptype(MAXPERMREGIONS))
-	  allocate(grid%sir(1:grid%nphase,MAXPERMREGIONS))
-	  allocate(grid%lambda(MAXPERMREGIONS))
+      allocate(grid%sir(1:grid%nphase,MAXPERMREGIONS))
+      allocate(grid%lambda(MAXPERMREGIONS))
       allocate(grid%alpha(MAXPERMREGIONS))
       allocate(grid%pckrm(MAXPERMREGIONS))
       allocate(grid%pcwmax(MAXPERMREGIONS))
-	  allocate(grid%pcbetac(MAXPERMREGIONS))
-	  allocate(grid%pwrprm(MAXPERMREGIONS))
+      allocate(grid%pcbetac(MAXPERMREGIONS))
+      allocate(grid%pwrprm(MAXPERMREGIONS))
       
   !-----------------------------------------------------------------------
   ! Set up boundary condition storage on blocks
@@ -590,6 +583,22 @@
       !set scale factor for heat equation, i.e. use units of MJ for energy
 	  grid%scale = 1.d-6
     print *,"new grid 5:",grid%nx,grid%ny,grid%nz
+
+    allocate(timestep%tfac(13))
+    
+    timestep%tfac(1)  = 2.0d0; timestep%tfac(2)  = 2.0d0
+    timestep%tfac(3)  = 2.0d0; timestep%tfac(4)  = 2.0d0
+    timestep%tfac(5)  = 2.0d0; timestep%tfac(6)  = 1.8d0
+    timestep%tfac(7)  = 1.6d0; timestep%tfac(8)  = 1.4d0
+    timestep%tfac(9)  = 1.2d0; timestep%tfac(10) = 1.0d0
+    timestep%tfac(11) = 1.0d0; timestep%tfac(12) = 1.0d0
+    timestep%tfac(13) = 1.0d0      
+    timestep%iaccel = 1
+    timestep%dt_min = 1.d0
+    timestep%dt_max = 3.1536d6 ! One-tenth of a year.
+    timestep%icut_max = 16
+    timestep%dpmxe = 5.d4
+    timestep%dsmxe = 5.d-1
 
     end subroutine pflowGrid_newpm
 
@@ -791,11 +800,11 @@
 
  integer ierr
  
-     call pflow_create_vector(grid, grid%da_1_dof, PETSC_TRUE, grid%porosity)
-     call pflow_create_vector(grid, grid%da_1_dof, PETSC_FALSE, grid%dx_loc)
-     call pflow_create_vector(grid, grid%da_3np_dof, PETSC_TRUE, grid%vl)
-     call pflow_create_vector(grid, grid%da_ndof, PETSC_TRUE, grid%xx)
-     call pflow_create_vector(grid, grid%da_ndof, PETSC_TRUE, grid%xx_loc)
+     call pflow_create_vector(grid, grid%da_1_dof, PETSC_FALSE, grid%porosity)
+     call pflow_create_vector(grid, grid%da_1_dof, PETSC_TRUE, grid%dx_loc)
+     call pflow_create_vector(grid, grid%da_3np_dof, PETSC_FALSE, grid%vl)
+     call pflow_create_vector(grid, grid%da_ndof, PETSC_FALSE, grid%xx)
+     call pflow_create_vector(grid, grid%da_ndof, PETSC_FALSE, grid%xx_loc)
 
 ! 1 degree of freedom      
       !global
@@ -860,7 +869,6 @@ implicit none
                     dof, & 
                     PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, &
                     ierr)
-     dof = 1
      call create_samrai_vec(grid%p_samr_hierarchy, dof, use_ghost, vec)
      
   else
