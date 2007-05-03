@@ -14,6 +14,8 @@ module pflow_output_module
   implicit none
 
 #include "include/finclude/petsc.h"
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
 #include "include/finclude/petscda.h"
 #include "include/finclude/petscda.h90"
 #include "include/finclude/petscdef.h"
@@ -27,8 +29,6 @@ module pflow_output_module
 #include "include/finclude/petscksp.h"
 #include "include/finclude/petscsnes.h"
 #include "include/finclude/petscsys.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
 #include "include/finclude/petscviewer.h"
 
 #include "definitions.h"
@@ -316,10 +316,8 @@ module pflow_output_module
  
    if(grid%myrank==0)then
     write(IUNIT3,'(''TITLE= "'',1pg12.4,'' ['',a1,'']"'')') tyr,timestep%tunit
-		 write(IUNIT3,'(''VARIABLES="'',3(a6,a3),a6,100(a3,a6))')"x",q,"y",q,"z",q,&
-		  var_name(1), ((q,var_name(i)),i=2,nvar_out),'"'
-    	  write(IUNIT3,'(''ZONE T= "'',1pg12.4,''",'','' I='',i4, &
- &    '' , J='',i4,'' K='',i4)') tyr,grid%nx,grid%ny,grid%nz
+!    write(IUNIT3,'(''VARIABLES="'',3(a6,a3),a6,100(a3,a6))') "x",q,"y",q,"z",q, var_name(1), ((q,var_name(i)),i=2,nvar_out),'"'
+    write(IUNIT3,'(''ZONE T= "'',1pg12.4,''",'','' I='',i4, '' , J='',i4,'' K='',i4)') tyr,grid%nx,grid%ny,grid%nz
     endif 
 	
 	   		 
@@ -386,8 +384,7 @@ module pflow_output_module
 			  write(*,*) '--> write output file: ',fname
 			  close (IUNIT3)
 			  open(unit=IUNIT3,file=fname,action="write")
-			  write(IUNIT3,'(''VARIABLES="'',3(a6,a3),a6,100(a3,a6))')"x",q,"y",q,"z",q,"ip",q,&
-					  var_name(1), ((q,var_name(i)),i=2,nvar_out),'"'
+!			  write(IUNIT3,'(''VARIABLES="'',3(a6,a3),a6,100(a3,a6))')"x",q,"y",q,"z",q,"ip",q, var_name(1), ((q,var_name(i)),i=2,nvar_out),'"'
 		 endif
 		
 			   		 

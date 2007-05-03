@@ -309,6 +309,7 @@ private
     ! Used to hold all values on processor 0.
 
   type(pflow_localpatch_info), pointer :: locpat(:)
+  PetscFortranAddr p_samr_hierarchy
 	
   end type pflowGrid
   
