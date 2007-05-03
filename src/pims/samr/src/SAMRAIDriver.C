@@ -106,7 +106,7 @@ int main( int argc, char *argv[] )
    initializeAMRHierarchy(input_db,
 			  test_object,
 			  hierarchy);
-
+ 
 
    void *p_pflowhierarchy=NULL;
    //   pflowGrid *p_gridPtr = NULL;
