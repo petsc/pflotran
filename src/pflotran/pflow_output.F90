@@ -62,6 +62,7 @@ subroutine pflow_output(grid,kplt,iplot)
 ! ibrkcrv = 0, no time-history
 !         = 1, time-history output
   
+! iplot  = -1, Glenn's format
 ! iplot  = 0, only time-history
 !        = 1, spatial plot
 
@@ -70,6 +71,13 @@ subroutine pflow_output(grid,kplt,iplot)
 !        =  1, vl
 !        =  2, porosity, (permeability)
   !return
+
+  if (iplot == 1 .and. grid%iprint == -2) then
+    call geh_io(grid)
+    kplt = kplt + 1
+    iplot = 0
+    return
+  endif
   
   if ((grid%ibrkcrv == 0 .and. iplot == 0) .or. grid%iprint == -1) then
     if (grid%iprint==-1 .and. iplot==1) then
@@ -1909,10 +1917,96 @@ end subroutine pflow_output
 !call VecScatterView(scat_1dof,PETSC_VIEWER_STDOUT_SELF)
   end subroutine pflow_var_output
 
+subroutine geh_io(grid)
 
+  use pflow_gridtype_module
+  use TTPHASE_module
+  
+  implicit none
 
+#include "include/finclude/petsc.h"
+#include "include/finclude/petscda.h"
+#include "include/finclude/petscda.h90"
+#include "include/finclude/petscdef.h"
+#include "include/finclude/petscis.h"
+#include "include/finclude/petscis.h90"
+#include "include/finclude/petsclog.h"
+#include "include/finclude/petscsys.h"
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
+#include "include/finclude/petscviewer.h"
 
+#include "definitions.h"
 
+  type(pflowGrid), intent(inout) :: grid
 
-  end module pflow_output_module
+  integer, save :: id = 0
+  integer :: ierr
+  character(len=20) :: id_string, filename
+  Vec :: vec_1_dof
+  PetscViewer :: viewer
+
+  if (id == 0) then
+    open(unit=86,file='info.dat')
+    write(86,'(i5,x,i5,x,i5)') grid%nx, grid%ny, grid%nz
+  endif
+  write(86,'(es20.8)') grid%t/(3600.d0*24.d0*365.d0)
+  
+  write(id_string,'(i7)') id
+  
+  call DACreateGlobalVector(grid%da_1_dof,vec_1_dof,ierr)
+
+  filename = 'pl_' // trim(adjustl(id_string)) // '.dat'
+  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,filename,viewer,ierr)
+  call VecStrideGather(grid%pressure,0,vec_1_dof,INSERT_VALUES,ierr)
+  call VecView(vec_1_dof,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+
+  filename = 'pg_' // trim(adjustl(id_string)) // '.dat'
+  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,filename,viewer,ierr)
+  call VecStrideGather(grid%pressure,1,vec_1_dof,INSERT_VALUES,ierr)
+  call VecView(vec_1_dof,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+
+  filename = 'sl_' // trim(adjustl(id_string)) // '.dat'
+  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,filename,viewer,ierr)
+  call VecStrideGather(grid%sat,0,vec_1_dof,INSERT_VALUES,ierr)
+  call VecView(vec_1_dof,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+
+  filename = 'sg_' // trim(adjustl(id_string)) // '.dat'
+  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,filename,viewer,ierr)
+  call VecStrideGather(grid%sat,1,vec_1_dof,INSERT_VALUES,ierr)
+  call VecView(vec_1_dof,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+
+  filename = 'xl_' // trim(adjustl(id_string)) // '.dat'
+  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,filename,viewer,ierr)
+  call VecStrideGather(grid%xmol,0,vec_1_dof,INSERT_VALUES,ierr)
+  call VecView(vec_1_dof,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+
+  filename = 'xg_' // trim(adjustl(id_string)) // '.dat'
+  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,filename,viewer,ierr)
+  call VecStrideGather(grid%xmol,1,vec_1_dof,INSERT_VALUES,ierr)
+  call VecView(vec_1_dof,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+
+  filename = 't_' // trim(adjustl(id_string)) // '.dat'
+  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,filename,viewer,ierr)
+  call VecView(grid%temp,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+
+  filename = 'iph_' // trim(adjustl(id_string)) // '.dat'
+  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,filename,viewer,ierr)
+  call VecView(grid%iphas,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+
+  id = id + 1
+
+  call VecDestroy(vec_1_dof,ierr)
+
+end subroutine geh_io
+
+end module pflow_output_module
   

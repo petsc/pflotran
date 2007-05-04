@@ -2179,7 +2179,7 @@ subroutine pflowGrid_setup(grid, inputfile)
       temp_p(i) = grid%imat(i)*1.d0      
     enddo
     call VecRestoreArrayF90(temp_vec,temp_p,ierr)
-    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'materials.out',viewer,ierr)
+    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'materials.dat',viewer,ierr)
     call VecView(temp_vec,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
     call VecDestroy(temp_vec,ierr)
