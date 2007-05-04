@@ -15,11 +15,20 @@ subroutine allocate_patch_info(p_samr_hierarchy, patchlevel_info)
      PetscFortranAddr, intent(inout) :: p_hierarchy
      integer, intent(in) :: ln
    end function level_number_patches
+
+   logical function is_local_patch(p_hierarchy, ln, pn)
+     PetscFortranAddr, intent(inout) :: p_hierarchy
+     integer, intent(in) :: ln
+     integer, intent(in) :: pn
+   end function is_local_patch
+   
   end interface
 
   integer :: nlevels
   integer :: npatches
   integer :: ln
+  integer :: pn
+  logical :: islocal
 
   nlevels =  hierarchy_number_levels(p_samr_hierarchy)
   
@@ -28,6 +37,14 @@ subroutine allocate_patch_info(p_samr_hierarchy, patchlevel_info)
   do ln=0,nlevels-1
      npatches = level_number_patches(p_samr_hierarchy, ln )
      allocate(patchlevel_info(ln+1)%patches(npatches))
+     do pn=0,npatches-1
+        islocal = is_local_patch(p_samr_hierarchy, ln, pn);
+        if(islocal) then
+           allocate(patchlevel_info(ln+1)%patches(pn+1)%patch_ptr)
+        else              
+           nullify(patchlevel_info(ln+1)%patches(pn+1)%patch_ptr)
+        endif
+     end do
   end do
   
 end subroutine allocate_patch_info

@@ -24,5 +24,6 @@ subroutine allocate_patch_info(p_samr_hierarchy, patchlevel_info)
   type(PatchLevelInfoPtr), dimension(:), pointer :: patchlevel_info
   allocate(patchlevel_info(1))
   allocate(patchlevel_info(1)%patches(1))
+  allocate(patchlevel_info(1)%patches(1)%patch_ptr)
   
 end subroutine allocate_patch_info

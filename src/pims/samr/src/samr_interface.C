@@ -15,7 +15,11 @@ int level_number_patches_(SAMRAI::hier::PatchHierarchy<NDIM> **hierarchy, int *l
    return level->getNumberOfPatches();
 }
 
-
+bool is_local_patch_(SAMRAI::hier::PatchHierarchy<NDIM> **hierarchy, int *ln, int *pn)
+{
+    SAMRAI::tbox::Pointer<SAMRAI::hier::PatchLevel<NDIM> > level = (*hierarchy)->getPatchLevel(*ln);
+    return(level->getProcessorMapping().isMappingLocal(*pn));
+}
 
 }
 #endif
