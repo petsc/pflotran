@@ -102,6 +102,10 @@ Contains
   SNESConvergedReason :: snes_reason 
   integer update_reason
   real*8 :: tsrc
+  type(pflow_localpatch_info), pointer :: locpat
+    
+  locpat => grid%patchlevel_info(1)%patches(1)%patch_ptr
+    
 ! real*8, pointer :: xx_p(:), conc_p(:), press_p(:), temp_p(:)
 
   its = 0
@@ -233,7 +237,8 @@ Contains
 ! update_reason
     !call PETScBarrier(PETSC_NULL_OBJECT, ierr)
     update_reason = 1
-      call IMS_Update_Reason(update_reason, grid)
+
+    call IMS_Update_Reason(update_reason, grid, locpat)
       if (grid%myrank==0) print *,'update_reason: ',update_reason, its
     
 
@@ -282,7 +287,7 @@ Contains
   &   '' icut= '',i2,''['',i3,'']'','' t= '',1pe12.4, '' dt= '',1pe12.4,i2)') &
       snes_reason,icut,grid%icutcum,grid%t/grid%tconv,grid%dt/grid%tconv,iflgcut
 
-		  call pflow_ims_timecut(grid)
+      call pflow_ims_timecut(grid, locpat)
 		
 	
     else
@@ -335,22 +340,26 @@ Contains
 
 !==========================================================================
   
-  subroutine pflowGrid_update (grid)
+subroutine pflowGrid_update (grid)
   
   use ims_module
 
   implicit none
 
   type(pflowGrid), intent(inout) :: grid
+  type(pflow_localpatch_info), pointer :: locpat
   
- ! update solution vector and physical properties (VecCopy(x,y): y=x)
- 
+  locpat => grid%patchlevel_info(1)%patches(1)%patch_ptr
+  
 
-! call VecView(grid%ppressure,PETSC_VIEWER_STDOUT_WORLD,ierr)
-     call pflow_update_ims(grid)
-
-
-  end subroutine pflowGrid_update
+  ! update solution vector and physical properties (VecCopy(x,y): y=x)
+  
+  
+  ! call VecView(grid%ppressure,PETSC_VIEWER_STDOUT_WORLD,ierr)
+  call pflow_update_ims(grid, locpat)
+  
+  
+end subroutine pflowGrid_update
 
 !======================================================================
 

@@ -237,6 +237,8 @@ module pflow_output_module
   character*1 :: tab
   
   character*6, allocatable :: var_name(:)!2+grid%nphase*(2+grid%nspec))
+
+  type(pflow_localpatch_info), pointer :: locpat
   
   data icall/1/, icall_brk/1/, icall_plt/1/
   
@@ -300,7 +302,9 @@ module pflow_output_module
 ! plot spatial data (iplot > 0)
   
     call VecGetArrayF90(grid%xx,  xx_p, ierr)
-    var_p => grid%locpat(1)%var
+    locpat => grid%patchlevel_info(1)%patches(1)%patch_ptr
+
+    var_p => locpat%var
 	
 	if (kplt < 10) then
       write(fname,'(a7,i1,a4)') 'pflow00', kplt, '.dat'
@@ -326,9 +330,9 @@ module pflow_output_module
 				      ifound=0
 					  if(grid%myrank==0) then
 				       ifound=0
-					   do n=ndex,grid%locpat(1)%nlmax
-					   	 if(grid%locpat(1)%nL2A(n) == na) then
-					      ng=grid%locpat(1)%nL2G(n)
+					   do n=ndex,locpat%nlmax
+					   	 if(locpat%nL2A(n) == na) then
+					      ng=locpat%nL2G(n)
 						  ifound=1
 						  jn= 1 + (n-1)*grid%ndof 
 					      nv = 1 + (ng-1) * grid%size_var_node
@@ -346,10 +350,10 @@ module pflow_output_module
                        endif
 					    
 					  else
-					    do n=ndex,grid%locpat(1)%nlmax
-					      if(grid%locpat(1)%nL2A(n) == na) then
+					    do n=ndex,locpat%nlmax
+					      if(locpat%nL2A(n) == na) then
 					        jn= 1 + (n-1)*grid%ndof
-							 ng=grid%locpat(1)%nL2G(n)
+							 ng=locpat%nL2G(n)
 					        nv = 1 + (ng-1) * grid%size_var_node
 		        
 						   xxx= xx_p(jn:jn+grid%ndof-1)
@@ -393,11 +397,11 @@ module pflow_output_module
 				      ifound=0
 					  if(grid%myrank==0) then
 				       ifound=0
-					   do n=ndex,grid%locpat(1)%nlmax
-					   	 if(grid%locpat(1)%nL2A(n) == na) then
+					   do n=ndex,locpat%nlmax
+					   	 if(locpat%nL2A(n) == na) then
 					      ifound=1
 						  jn= 1 + (n-1)*grid%ndof 
-						  ng=grid%locpat(1)%nL2G(n)
+						  ng=locpat%nL2G(n)
 					      nv = 1 + (ng-1) * grid%size_var_node
 					      xxx= xx_p(jn:jn+grid%ndof-1)
 						  vvar= var_p(nv:nv + grid%size_var_use-1)
@@ -411,10 +415,10 @@ module pflow_output_module
                        endif
 					    
 					  else
-					    do n=ndex,grid%locpat(1)%nlmax
-					      if(grid%locpat(1)%nL2A(n) == na) then
+					    do n=ndex,locpat%nlmax
+					      if(locpat%nL2A(n) == na) then
 					        jn= 1 + (n-1)*grid%ndof
-							ng=grid%locpat(1)%nL2G(n) 
+							ng=locpat%nL2G(n) 
 					        nv = 1 + (ng-1) * grid%size_var_node
 						    xxx= xx_p(jn:jn+grid%ndof-1)
 						   call MPI_Send(xxx, grid%ndof, MPI_DOUBLE_PRECISION,0,na, PETSC_COMM_WORLD, ierr)  

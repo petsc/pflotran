@@ -46,12 +46,12 @@ private
   contains
 
 
- subroutine pflow_ims_massbal(grid)
+ subroutine pflow_ims_massbal(grid, locpat)
  use pflow_gridtype_module
   implicit none
   type(pflowGrid) :: grid 
-  
- 
+  type(pflow_localpatch_info), intent(inout) :: locpat
+   
   integer :: ierr,icall
   integer :: n,n0,nc,np,n2p,n2p0,ng
   real*8 x,y,z,nzm,nzm0, nxc,nxc0,c0, c00,nyc,nyc0,nzc,nzc0,nsm,nsm0,sm 
@@ -68,15 +68,15 @@ private
 
   call VecGetArrayF90(grid%volume, volume_p, ierr)
   call VecGetArrayF90(grid%porosity, porosity_p, ierr)
-  var_p => grid%locpat(1)%var
+  var_p => locpat%var
  
   tot=0.D0
   n2p=0
   nxc=0.; nyc=0.; nzc=0.D0; nzm=grid%z(grid%nmax); sm=0.; nsm=nzm; c0=0.D0
 
-  do n = 1,grid%locpat(1)%nlmax
+  do n = 1,locpat%nlmax
     n0=(n-1)* grid%ndof
-	ng=grid%locpat(1)%nL2G(n)
+	ng=locpat%nL2G(n)
     index=(ng-1)*grid%size_var_node
     den=>var_p(index+3+grid%nphase: index+2+2*grid%nphase)
     sat=>var_p(index+2+1:index+2+grid%nphase)
@@ -84,9 +84,9 @@ private
    
     pvol=volume_p(n)*porosity_p(n)		     
 	 n2p=n2p+1
-     x=grid%x(grid%locpat(1)%nL2A(n)+1)
-	 y=grid%y(grid%locpat(1)%nL2A(n)+1)
-	 z=grid%z(grid%locpat(1)%nL2A(n)+1)
+     x=grid%x(locpat%nL2A(n)+1)
+	 y=grid%y(locpat%nL2A(n)+1)
+	 z=grid%z(locpat%nL2A(n)+1)
 	 
  	 if(z<nzm) nzm=z
 	 if(sm<sat(2))then
@@ -201,10 +201,11 @@ private
  
    
 
- subroutine pflow_IMS_timecut(grid)
+ subroutine pflow_IMS_timecut(grid, locpat)
  
   implicit none
   type(pflowGrid), intent(inout) :: grid
+  type(pflow_localpatch_info), intent(inout) :: locpat
   
  
   PetscScalar, pointer :: xx_p(:),yy_p(:)!,var_p(:),iphase_p(:)
@@ -217,7 +218,7 @@ private
  ! call VecGetArrayF90(grid%var, var_p, ierr); 
  ! call VecGetArrayF90(grid%iphas, iphase_p, ierr); 
 
-  do n=1, grid%locpat(1)%nlmax
+  do n=1, locpat%nlmax
    n0=(n-1)*grid%ndof
    do re = 1, grid%ndof
    !xx_p(n0+re)= 0.5D0 * xx_p(n0+re) +.5D0 *yy_p(n0+re)
@@ -233,9 +234,10 @@ private
   end subroutine pflow_IMS_timecut
   
 
- subroutine pflow_IMS_setupini(grid)
+ subroutine pflow_IMS_setupini(grid, locpat)
   implicit none
   type(pflowGrid), intent(inout) :: grid
+  type(pflow_localpatch_info), intent(inout) :: locpat
   
   PetscScalar, pointer :: xx_p(:)
   integer iln,na,nx,ny,nz,ir,ierr
@@ -244,15 +246,15 @@ private
     grid%size_var_node = (grid%ndof + 1) * grid%size_var_use
 
 
-   allocate(grid%locpat(1)%var(grid%locpat(1)%ngmax * grid%size_var_node))	
-   allocate(grid%locpat(1)%delx(grid%ndof,grid%locpat(1)%ngmax))
-   grid%locpat(1)%delx=0.D0
+   allocate(locpat%var(locpat%ngmax * grid%size_var_node))	
+   allocate(locpat%delx(grid%ndof,locpat%ngmax))
+   locpat%delx=0.D0
    
   call VecGetArrayF90(grid%xx, xx_p, ierr); CHKERRQ(ierr)
 
   
-  do iln=1, grid%locpat(1)%nlmax
-    na = grid%locpat(1)%nL2A(iln)
+  do iln=1, locpat%nlmax
+    na = locpat%nL2A(iln)
     
 !   nz = int(na/grid%nxy) + 1
 !   ny = int(mod(na,grid%nxy)/grid%nx) + 1
@@ -283,12 +285,13 @@ end  subroutine pflow_IMS_setupini
 
 
 ! Subroutine for solution checking 
- subroutine IMS_Update_Reason(reason,grid)
+ subroutine IMS_Update_Reason(reason,grid, locpat)
   
   implicit none
  
   integer, intent(out):: reason
   type(pflowGrid), intent(inout) :: grid
+  type(pflow_localpatch_info), intent(inout) :: locpat
   PetscScalar, pointer :: xx_p(:),var_p(:), yy_p(:),r_p(:)
   integer :: n,n0,re, i
   integer re0, ierr, index, iipha
@@ -310,7 +313,7 @@ end  subroutine pflow_IMS_setupini
   call VecGetArrayF90(grid%xx, xx_p, ierr); CHKERRQ(ierr)
   call VecGetArrayF90(grid%yy, yy_p, ierr)
   
-  do n = 1,grid%locpat(1)%nlmax
+  do n = 1,locpat%nlmax
      n0=(n-1)* grid%ndof
   	 do i=2, grid%ndof
    	   if(xx_p(n0 + i) > 1.0D0)then
@@ -345,7 +348,7 @@ end  subroutine pflow_IMS_setupini
 
 
 ! Residual called by SNESSolve
-  subroutine IMSResidual(snes,xx,r,grid,ierr)
+  subroutine IMSResidual(snes,xx,r,grid,locpat, ierr)
     use translator_IMS_module
     use IMS_patch_module
     implicit none
@@ -354,6 +357,7 @@ end  subroutine pflow_IMS_setupini
     Vec, intent(inout) :: xx
     Vec, intent(out) :: r
     type(pflowGrid), intent(inout) :: grid
+    type(pflow_localpatch_info), intent(inout) :: locpat
     PetscScalar, pointer :: xx_p(:), accum_p(:),r_p(:)
      
    integer :: ierr, n,i
@@ -370,7 +374,7 @@ end  subroutine pflow_IMS_setupini
    !print *,'Res ims :: in res'
 
 	call VecGetArrayF90(xx, xx_p, ierr); CHKERRQ(ierr)
-     do n = 1, grid%locpat(1)%nlmax
+     do n = 1, locpat%nlmax
 	    do i=2,grid%nphase
 		   if(xx_p((n-1)*grid%ndof+i) <0.D0)xx_p((n-1)*grid%ndof+i) =1.D-16
 		   if(xx_p((n-1)*grid%ndof+i) >1.D0)xx_p((n-1)*grid%ndof+i) =1.D0 -1D-16
@@ -409,7 +413,7 @@ end  subroutine pflow_IMS_setupini
 ! print *,' IMS_RES : End scatter'
 ! End distribute data 
 ! now assign access pointer to local variables
-  call VecGetArrayF90(grid%xx_loc, grid%locpat(1)%xx_loc_p, ierr)
+  call VecGetArrayF90(grid%xx_loc, locpat%xx_loc_p, ierr)
   call VecGetArrayF90(r, r_p, ierr)
   call VecGetArrayF90(grid%accum, accum_p, ierr)
 ! call VecGetArrayF90(grid%yy, yy_p, ierr)
@@ -417,16 +421,16 @@ end  subroutine pflow_IMS_setupini
 
   ! notice:: here we assume porosity is constant
  
-  call VecGetArrayF90(grid%yy,grid%locpat(1)%yy_p,ierr)
-  call VecGetArrayF90(grid%porosity_loc, grid%locpat(1)%porosity_loc_p, ierr)
-  call VecGetArrayF90(grid%tor_loc, grid%locpat(1)%tor_loc_p, ierr)
-  call VecGetArrayF90(grid%perm_xx_loc, grid%locpat(1)%perm_xx_loc_p, ierr)
-  call VecGetArrayF90(grid%perm_yy_loc, grid%locpat(1)%perm_yy_loc_p, ierr)
-  call VecGetArrayF90(grid%perm_zz_loc, grid%locpat(1)%perm_zz_loc_p, ierr)
-  call VecGetArrayF90(grid%volume, grid%locpat(1)%volume_p, ierr)
-  call VecGetArrayF90(grid%ithrm_loc, grid%locpat(1)%ithrm_loc_p, ierr)
-  call VecGetArrayF90(grid%icap_loc, grid%locpat(1)%icap_loc_p, ierr)
-  call VecGetArrayF90(grid%vl, grid%locpat(1)%vl_p, ierr)
+  call VecGetArrayF90(grid%yy,locpat%yy_p,ierr)
+  call VecGetArrayF90(grid%porosity_loc, locpat%porosity_loc_p, ierr)
+  call VecGetArrayF90(grid%tor_loc, locpat%tor_loc_p, ierr)
+  call VecGetArrayF90(grid%perm_xx_loc, locpat%perm_xx_loc_p, ierr)
+  call VecGetArrayF90(grid%perm_yy_loc, locpat%perm_yy_loc_p, ierr)
+  call VecGetArrayF90(grid%perm_zz_loc, locpat%perm_zz_loc_p, ierr)
+  call VecGetArrayF90(grid%volume, locpat%volume_p, ierr)
+  call VecGetArrayF90(grid%ithrm_loc, locpat%ithrm_loc_p, ierr)
+  call VecGetArrayF90(grid%icap_loc, locpat%icap_loc_p, ierr)
+  call VecGetArrayF90(grid%vl, locpat%vl_p, ierr)
   
  ! print *,' IMS_res : Finished scattering non deriv'
 
@@ -434,23 +438,23 @@ end  subroutine pflow_IMS_setupini
 ! Evaluate residual on a patch
 !  In petsc version, only one patch on a processor
 !   all processor will call IMSResidual_patch, not collective    
-  call IMSResidual_patch(grid%locpat(1)%xx_loc_p,r_p,accum_p,grid%locpat(1),grid,ierr)
+  call IMSResidual_patch(locpat%xx_loc_p,r_p,accum_p,locpat,grid,ierr)
 
 
   
  call VecRestoreArrayF90(r, r_p, ierr)
  call VecRestoreArrayF90(grid%accum, accum_p, ierr)
- call VecRestoreArrayF90(grid%yy, grid%locpat(1)%yy_p, ierr)
- call VecRestoreArrayF90(grid%xx_loc, grid%locpat(1)%xx_loc_p, ierr)
- call VecRestoreArrayF90(grid%porosity_loc, grid%locpat(1)%porosity_loc_p, ierr)
- call VecRestoreArrayF90(grid%tor_loc, grid%locpat(1)%tor_loc_p, ierr)
- call VecRestoreArrayF90(grid%perm_xx_loc, grid%locpat(1)%perm_xx_loc_p, ierr)
- call VecRestoreArrayF90(grid%perm_yy_loc, grid%locpat(1)%perm_yy_loc_p, ierr)
- call VecRestoreArrayF90(grid%perm_zz_loc, grid%locpat(1)%perm_zz_loc_p, ierr)
- call VecRestoreArrayF90(grid%volume, grid%locpat(1)%volume_p, ierr)
- call VecRestoreArrayF90(grid%ithrm_loc, grid%locpat(1)%ithrm_loc_p, ierr)
- call VecRestoreArrayF90(grid%icap_loc, grid%locpat(1)%icap_loc_p, ierr)
- call VecRestoreArrayF90(grid%vl, grid%locpat(1)%vl_p, ierr)
+ call VecRestoreArrayF90(grid%yy, locpat%yy_p, ierr)
+ call VecRestoreArrayF90(grid%xx_loc, locpat%xx_loc_p, ierr)
+ call VecRestoreArrayF90(grid%porosity_loc, locpat%porosity_loc_p, ierr)
+ call VecRestoreArrayF90(grid%tor_loc, locpat%tor_loc_p, ierr)
+ call VecRestoreArrayF90(grid%perm_xx_loc, locpat%perm_xx_loc_p, ierr)
+ call VecRestoreArrayF90(grid%perm_yy_loc, locpat%perm_yy_loc_p, ierr)
+ call VecRestoreArrayF90(grid%perm_zz_loc, locpat%perm_zz_loc_p, ierr)
+ call VecRestoreArrayF90(grid%volume, locpat%volume_p, ierr)
+ call VecRestoreArrayF90(grid%ithrm_loc, locpat%ithrm_loc_p, ierr)
+ call VecRestoreArrayF90(grid%icap_loc, locpat%icap_loc_p, ierr)
+ call VecRestoreArrayF90(grid%vl, locpat%vl_p, ierr)
  
 
  !print *,'Residual ::...........'; call VecView(r,PETSC_VIEWER_STDOUT_WORLD,ierr)
@@ -459,7 +463,7 @@ end  subroutine pflow_IMS_setupini
                 
 ! --------------------------------------------------------------------- 
 
-  subroutine IMSJacobin(snes,xx,A,B,flag,grid,ierr)
+  subroutine IMSJacobin(snes,xx,A,B,flag,grid, locpat, ierr)
        
     use translator_IMS_module
     use IMS_patch_module
@@ -470,6 +474,7 @@ end  subroutine pflow_IMS_setupini
     Vec, intent(in) :: xx
     Mat, intent(out) :: A, B
     type(pflowGrid), intent(inout) :: grid
+    type(pflow_localpatch_info), intent(inout) :: locpat
    ! integer, intent(inout) :: flag
     MatStructure flag
 
@@ -479,11 +484,11 @@ end  subroutine pflow_IMS_setupini
 	!               0 stands for diagnal element
 	!               1 left.  2. right  3 up.  4 down.  5 front. 6 back.
 	!               This is determined by the connection setup, does not really matter   
-	real*8 :: Jac_elem(1:grid%locpat(1)%nlmax,0:6,1:grid%ndof,1:grid%ndof)
+	real*8 :: Jac_elem(1:locpat%nlmax,0:6,1:grid%ndof,1:grid%ndof)
 
 	! non-zero matrix cloumn index, diagnal will be the same as row index
 	! for petsc version, it should be global index 
-	integer :: Jac_Ind(1:grid%locpat(1)%nlmax,0:6)
+	integer :: Jac_Ind(1:locpat%nlmax,0:6)
     real*8 :: blkmat11(1:grid%ndof,1:grid%ndof)
     
     
@@ -515,25 +520,25 @@ end  subroutine pflow_IMS_setupini
  !call DAGlobalToLocalEnd(grid%da_1_dof, grid%iphas, &
  !                         INSERT_VALUES, grid%iphas_loc, ierr)
 
-  call VecGetArrayF90(grid%xx_loc, grid%locpat(1)%xx_loc_p, ierr)
-  call VecGetArrayF90(grid%porosity_loc, grid%locpat(1)%porosity_loc_p, ierr)
-  call VecGetArrayF90(grid%tor_loc, grid%locpat(1)%tor_loc_p, ierr)
+  call VecGetArrayF90(grid%xx_loc, locpat%xx_loc_p, ierr)
+  call VecGetArrayF90(grid%porosity_loc, locpat%porosity_loc_p, ierr)
+  call VecGetArrayF90(grid%tor_loc, locpat%tor_loc_p, ierr)
 ! call VecGetArrayF90(grid%perm_loc, perm_loc_p, ierr)
-  call VecGetArrayF90(grid%perm_xx_loc, grid%locpat(1)%perm_xx_loc_p, ierr)
-  call VecGetArrayF90(grid%perm_yy_loc, grid%locpat(1)%perm_yy_loc_p, ierr)
-  call VecGetArrayF90(grid%perm_zz_loc, grid%locpat(1)%perm_zz_loc_p, ierr)
-  call VecGetArrayF90(grid%volume, grid%locpat(1)%volume_p, ierr)
+  call VecGetArrayF90(grid%perm_xx_loc, locpat%perm_xx_loc_p, ierr)
+  call VecGetArrayF90(grid%perm_yy_loc, locpat%perm_yy_loc_p, ierr)
+  call VecGetArrayF90(grid%perm_zz_loc, locpat%perm_zz_loc_p, ierr)
+  call VecGetArrayF90(grid%volume, locpat%volume_p, ierr)
 
-  call VecGetArrayF90(grid%ithrm_loc, grid%locpat(1)%ithrm_loc_p, ierr)
-  call VecGetArrayF90(grid%icap_loc, grid%locpat(1)%icap_loc_p, ierr)
+  call VecGetArrayF90(grid%ithrm_loc, locpat%ithrm_loc_p, ierr)
+  call VecGetArrayF90(grid%icap_loc, locpat%icap_loc_p, ierr)
   
 
-  call IMSJacobin_patch(grid%locpat(1)%xx_loc_p, Jac_elem, Jac_ind,grid%locpat(1),grid,ierr)
+  call IMSJacobin_patch(locpat%xx_loc_p, Jac_elem, Jac_ind,locpat,grid,ierr)
 
 
 ! Then set values into matrix
-do n= 1, grid%locpat(1)%nlmax
-      ng = grid%locpat(1)%nL2G(n)
+do n= 1, locpat%nlmax
+      ng = locpat%nL2G(n)
       if(ng>0)then
 	  na1=Jac_ind(n,0)
       !if(n==1) print *, n,na1, Jac_elem(n,0,:,:)
@@ -553,17 +558,17 @@ enddo
  
 
 
-  call VecRestoreArrayF90(grid%xx_loc, grid%locpat(1)%xx_loc_p, ierr)
-  call VecRestoreArrayF90(grid%porosity_loc, grid%locpat(1)%porosity_loc_p, ierr)
-  call VecRestoreArrayF90(grid%tor_loc, grid%locpat(1)%tor_loc_p, ierr)
-  call VecRestoreArrayF90(grid%perm_xx_loc, grid%locpat(1)%perm_xx_loc_p, ierr)
-  call VecRestoreArrayF90(grid%perm_yy_loc, grid%locpat(1)%perm_yy_loc_p, ierr)
-  call VecRestoreArrayF90(grid%perm_zz_loc, grid%locpat(1)%perm_zz_loc_p, ierr)
-  call VecRestoreArrayF90(grid%volume, grid%locpat(1)%volume_p, ierr)
+  call VecRestoreArrayF90(grid%xx_loc, locpat%xx_loc_p, ierr)
+  call VecRestoreArrayF90(grid%porosity_loc, locpat%porosity_loc_p, ierr)
+  call VecRestoreArrayF90(grid%tor_loc, locpat%tor_loc_p, ierr)
+  call VecRestoreArrayF90(grid%perm_xx_loc, locpat%perm_xx_loc_p, ierr)
+  call VecRestoreArrayF90(grid%perm_yy_loc, locpat%perm_yy_loc_p, ierr)
+  call VecRestoreArrayF90(grid%perm_zz_loc, locpat%perm_zz_loc_p, ierr)
+  call VecRestoreArrayF90(grid%volume, locpat%volume_p, ierr)
 
    
-    call VecRestoreArrayF90(grid%ithrm_loc, grid%locpat(1)%ithrm_loc_p, ierr)
-    call VecRestoreArrayF90(grid%icap_loc, grid%locpat(1)%icap_loc_p, ierr)
+    call VecRestoreArrayF90(grid%ithrm_loc, locpat%ithrm_loc_p, ierr)
+    call VecRestoreArrayF90(grid%icap_loc, locpat%icap_loc_p, ierr)
 !    call VecRestoreArrayF90(grid%iphas_loc, iphase_loc_p, ierr)
 
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
@@ -583,14 +588,14 @@ enddo
 
 
 
- subroutine pflow_IMS_initaccum(grid)
+ subroutine pflow_IMS_initaccum(grid, locpat)
  
   use translator_ims_module  
   use IMS_patch_module, only : IMSRes_ARCont
-   implicit none
-    type(pflowGrid) :: grid 
+  implicit none
+  type(pflowGrid) :: grid 
+  type(pflow_localpatch_info), intent(inout) :: locpat
 
- 
   integer :: ierr
   integer*4 :: n,ng
   integer*4 :: i, index_var_begin,index_var_end
@@ -621,12 +626,12 @@ enddo
  
  if (grid%SAMRAI_drive == PETSC_TRUE)then
    ! SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI
- ! var_p =>  grid%locpat(1)%var
+ ! var_p =>  locpat%var
  
-  !do n = 1, grid%locpat(1)%nlmax
+  !do n = 1, locpat%nlmax
         
    !     iicap=int(icap_p(n))
-!		ng =  grid%locpat(1)%nL2G(n)
+!		ng =  locpat%nL2G(n)
 		!dif(1)= grid%difaq; dif(3)=dif(1)
         !dif(2)= grid%cdiff(int(ithrm_p(n)))
 
@@ -646,16 +651,16 @@ enddo
 !---------------------------------------------------------------------------
 
 
- ! do n = 1, grid%locpat(1)%nlmax  ! For each local node do...
+ ! do n = 1, locpat%nlmax  ! For each local node do...
   !  ng = grid%nL2G(n)   ! corresponding ghost index
  !   p1 = 1 + (n-1)*grid%ndof
-!	ng =  grid%locpat(1)%nL2G(n)
+!	ng =  locpat%nL2G(n)
 !    index_var_begin=(ng-1)*grid%size_var_node+1
 !    index_var_end = index_var_begin -1 + grid%size_var_use
 !    i = ithrm_p(n)
     
  !    call IMSRes_ARCont(n, var_p(index_var_begin: index_var_end),&
-!	  porosity_p(n),volume_p(n),grid%dencpr(i), grid%locpat(1),grid, Res, 0,ierr)
+!	  porosity_p(n),volume_p(n),grid%dencpr(i), locpat,grid, Res, 0,ierr)
  
 
 !	accum_p(p1:p1+grid%ndof-1)=Res(:) 
@@ -664,12 +669,12 @@ enddo
   
    ! SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI
  else
- var_p =>  grid%locpat(1)%var
+ var_p =>  locpat%var
  
-  do n = 1, grid%locpat(1)%nlmax
+  do n = 1, locpat%nlmax
         
         iicap=int(icap_p(n))
-		ng =  grid%locpat(1)%nL2G(n)
+		ng =  locpat%nL2G(n)
 		!dif(1)= grid%difaq; dif(3)=dif(1)
         !dif(2)= grid%cdiff(int(ithrm_p(n)))
 
@@ -689,16 +694,16 @@ enddo
 !---------------------------------------------------------------------------
 
 
-  do n = 1, grid%locpat(1)%nlmax  ! For each local node do...
+  do n = 1, locpat%nlmax  ! For each local node do...
   !  ng = grid%nL2G(n)   ! corresponding ghost index
     p1 = 1 + (n-1)*grid%ndof
-	ng =  grid%locpat(1)%nL2G(n)
+	ng =  locpat%nL2G(n)
     index_var_begin=(ng-1)*grid%size_var_node+1
     index_var_end = index_var_begin -1 + grid%size_var_use
     i = ithrm_p(n)
     
      call IMSRes_ARCont(n, var_p(index_var_begin: index_var_end),&
-	  porosity_p(n),volume_p(n),grid%dencpr(i), grid%locpat(1),grid, Res, 0,ierr)
+	  porosity_p(n),volume_p(n),grid%dencpr(i), locpat,grid, Res, 0,ierr)
  
 
 	accum_p(p1:p1+grid%ndof-1)=Res(:) 
@@ -720,13 +725,13 @@ endif
  end subroutine pflow_IMS_initaccum
 
 
-  subroutine pflow_update_IMS(grid)
+  subroutine pflow_update_IMS(grid, locpat)
     use translator_ims_module  
-   ! use water_eos_module
+    ! use water_eos_module
     implicit none
     type(pflowGrid) :: grid 
-    
-                      
+    type(pflow_localpatch_info), intent(inout) :: locpat
+                     
     integer :: n, ichange,n0, ng
     integer :: ierr,iicap
 	PetscScalar, pointer :: xx_p(:),icap_p(:),ithrm_p(:), var_p(:)
@@ -754,7 +759,7 @@ if (grid%SAMRAI_drive == PETSC_TRUE)then
  !    do n = 1, grid%locpat(ipatch)%nlmax
  !   iicap = icap_p(n)
  !   n0=(n-1)*grid%ndof
-!	ng=grid%locpat(1)%nL2G(n)
+!	ng=locpat%nL2G(n)
 !    if(xx_p(n0+3)<0.D0) xx_p(n0+3)=0.D0
 
 !     call pri_var_trans_ims_ninc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),&
@@ -769,11 +774,11 @@ if (grid%SAMRAI_drive == PETSC_TRUE)then
  
    ! SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI SAMRAI
  else
-   var_p=>grid%locpat(1)%var
-   do n = 1, grid%locpat(1)%nlmax
+   var_p=>locpat%var
+   do n = 1, locpat%nlmax
     iicap = icap_p(n)
     n0=(n-1)*grid%ndof
-	ng=grid%locpat(1)%nL2G(n)
+	ng=locpat%nL2G(n)
 !    if(xx_p(n0+3)<0.D0) xx_p(n0+3)=0.D0
 
      call pri_var_trans_ims_ninc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),&
@@ -796,13 +801,13 @@ if (grid%SAMRAI_drive == PETSC_TRUE)then
   
    
   
-   if(grid%nphase>1) call pflow_IMS_massbal(grid)
+   if(grid%nphase>1) call pflow_IMS_massbal(grid, locpat)
  ! endif 
   ! print *, 'ims_update: end massbal' 
 
   call VecCopy(grid%xx, grid%yy, ierr)   
    
-  call  pflow_ims_initaccum(grid)
+  call  pflow_ims_initaccum(grid, locpat)
   !print *,'pflow_IMS_initaccum done'
  
  ! call translator_get_output(grid)

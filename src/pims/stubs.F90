@@ -12,3 +12,17 @@ integer :: dof
 PetscTruth :: use_ghost
 Vec :: vec
 end subroutine create_samrai_vec
+
+! this stub does not make use of any SAMR information
+! it simply allocates space for one pflow_localpatch_info
+! object
+subroutine allocate_patch_info(p_samr_hierarchy, patchlevel_info)
+  use pflow_gridtype_module
+  implicit none
+
+  PetscFortranAddr :: p_samr_hierarchy
+  type(PatchLevelInfoPtr), dimension(:), pointer :: patchlevel_info
+  allocate(patchlevel_info(1))
+  allocate(patchlevel_info(1)%patches(1))
+  
+end subroutine allocate_patch_info

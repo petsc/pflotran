@@ -37,10 +37,11 @@ private
   
  contains
   
- subroutine Read_perm_field(grid)
+ subroutine Read_perm_field(grid, locpat)
   use fileio_module
   implicit none
   type(pflowGrid), intent(inout) :: grid
+  type(pflow_localpatch_info), intent(inout) :: locpat
 #include "definitions.h"
   character(len=MAXSTRINGLENGTH) :: string 
 
@@ -86,8 +87,8 @@ private
 !  read(60,*)ir,px,py,pz,por,tor
 !   print *, 'Read filed:',ir,nx,ny,nz,px,py,pz,por,tor
  
-	do iln=1, grid%locpat(1)%nlmax
-       na = grid%locpat(1)%nL2A(iln)
+         do iln=1, locpat%nlmax
+            na = locpat%nL2A(iln)
     
       if(na == ir) then
         nz = na/grid%nxy + 1
@@ -118,10 +119,11 @@ private
   end  subroutine Read_perm_field
   
   
-  subroutine Read_init_field(grid)
+  subroutine Read_init_field(grid, locpat)
   use fileio_module
   implicit none
   type(pflowGrid), intent(inout) :: grid
+  type(pflow_localpatch_info), intent(inout) :: locpat
 !#include "definitions.h"
 !  character(len=MAXSTRINGLENGTH) :: string 
 
@@ -147,8 +149,8 @@ private
 !	print *,x,y,z,phase,pg,t,sg,xl,xg,vf
   endif 
 		
-   do iln=1, grid%locpat(1)%nlmax
-       na = grid%locpat(1)%nL2A(iln)
+   do iln=1, locpat%nlmax
+       na = locpat%nL2A(iln)
     
       if(na == ir) then
         nz = na/grid%nxy + 1
