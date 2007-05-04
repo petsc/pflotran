@@ -32,6 +32,7 @@
 
   public pflowGrid
   public pflowGrid_new
+  public pflowGrid_newpm
   public pflowGrid_setup
   public pflowGrid_read_input
  ! public porperm_out
@@ -65,6 +66,7 @@
 #include "include/finclude/petscis.h"
 #include "include/finclude/petscis.h90"
 #include "include/finclude/petsclog.h"
+#include "include/finclude/petscversion.h"
 
 !#include "pflow_gridtype.h"     
      
@@ -81,21 +83,20 @@
 ! separately). Note that it does not set up all of the topology of the  
 ! cell connections, as it is cleaner to do this in pflowGrid_setup()   
 ! when the geometry of the connections is calculated.
-    subroutine pflowGrid_new(grid, pflowsolv, timestep,igeom, nx, ny, nz, npx, npy, npz, &
+    subroutine pflowGrid_new(grid, timestep,igeom, nx, ny, nz, npx, npy, npz, &
       nphase )
   
       implicit none
 
       type(pflowGrid) :: grid
-      type(pflow_solver_context) :: pflowsolv
       type(time_stepping_context), intent(inout) :: timestep
       
 
-      integer*4, intent(in) :: igeom, nx, ny, nz, npx, npy, npz
+      integer, intent(in) :: igeom, nx, ny, nz, npx, npy, npz
       integer, intent(in) :: nphase
 !      integer, intent(in) :: equ_option
-      integer*4 :: n, ng, na
-      integer*4 :: i, j, k
+      integer :: n, ng, na
+      integer :: i, j, k
       integer :: ierr
     
 	 ! integer, pointer::ghostind(:)
@@ -344,6 +345,265 @@
 
 !======================================================================
 
+    subroutine pflowGrid_newpm( parameters )
+  
+      implicit none
+
+      type(pflowGridParameters) :: parameters
+      type(pflowGrid), pointer :: grid
+      type(time_stepping_context), pointer :: timestep
+
+      integer :: igeom, nx, ny, nz, npx, npy, npz
+      integer :: nphase
+!      integer, intent(in) :: equ_option
+      integer :: n, ng, na
+      integer :: i, j, k
+      integer :: ierr
+    
+      grid =>  parameters%grid
+      timestep =>  parameters%timestep
+
+      grid%igeom   = parameters%igeom
+      grid%nx      = parameters%nx
+      grid%ny      = parameters%ny
+      grid%nz      = parameters%nz
+      grid%nphase  = parameters%nphase
+      grid%npx     = parameters%npx
+      grid%npy     = parameters%npy
+      grid%npz     = parameters%npz
+
+      grid%Samrai_drive     = parameters%usesamrai
+      grid%p_samr_hierarchy = parameters%p_samr_hierarchy
+
+      nx = grid%nx
+      ny = grid%ny
+      nz = grid%nz
+      npx = grid%npx
+      npy = grid%npy
+      npz = grid%npz
+      igeom = grid%igeom
+      nphase = grid%nphase
+
+	 ! integer, pointer::ghostind(:)
+
+      call MPI_Comm_rank(PETSC_COMM_WORLD, grid%myrank, ierr)
+      call MPI_Comm_size(PETSC_COMM_WORLD, grid%commsize, ierr)
+       !call pflowGrid_parse_cmdline(grid)
+      grid%use_ksp=PETSC_FALSE
+      grid%use_isoth=PETSC_FALSE
+
+      call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-snes_mf", & 
+      grid%use_matrix_free, ierr)
+      call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_analytical", &
+      grid%use_analytical, ierr)
+      call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-print_hhistory", &
+      grid%print_hhistory, ierr)
+      call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-monitor_h", &
+      grid%monitor_h, ierr)
+       call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_ksp", &
+      grid%use_ksp, ierr)
+      
+      grid%nxy = nx*ny
+      grid%nmax = nx*ny*nz
+      print *,"new grid 1:",grid%nx,grid%ny,grid%nz
+
+      grid%ndof = nphase
+
+    
+   
+!-----------------------------------------------------------------------
+      ! Initialize some counter variables.
+!-----------------------------------------------------------------------
+      grid%t = 0.d0
+      grid%flowsteps = 0
+      grid%newtcum = 0
+      grid%icutcum = 0
+
+      !-----------------------------------------------------------------------
+      ! Initialize some parameters to sensible values.  These are parameters
+      ! which should be set via the command line or the input file, but it
+      ! seems good practice to set them to sensible values when a pflowGrid
+      ! is created.
+!-----------------------------------------------------------------------
+      print *,"new grid 2:",grid%nx,grid%ny,grid%nz, grid%nphase
+      
+      grid%use_matrix_free = 1
+      grid%newton_max = 16
+            
+      grid%dt = 1.d0
+      grid%atol = PETSC_DEFAULT_DOUBLE_PRECISION
+      grid%rtol = PETSC_DEFAULT_DOUBLE_PRECISION
+      grid%stol = PETSC_DEFAULT_DOUBLE_PRECISION
+      grid%maxit = PETSC_DEFAULT_INTEGER
+      grid%maxf = PETSC_DEFAULT_INTEGER
+      
+      grid%ihydrostatic = 0
+      !grid%conc0 = 1.d-6
+      
+   
+      !physical constants
+      grid%gravity = 9.8068d0    ! m/s^2
+	  grid%tref=50D0
+ !    grid%gravity = 0d0    ! m/s^2
+     
+      !-----------------------------------------------------------------------
+      ! Generate the DA objects that will manage communication.
+      !-----------------------------------------------------------------------
+      call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &
+           nx,ny,nz,npx,npy,npz,1,1, &
+           PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
+           grid%da_1_dof,ierr)
+  
+   
+      call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &
+           nx,ny,nz,npx,npy,npz,3*grid%nphase,1, &
+           PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
+           grid%da_3np_dof,ierr)
+  
+      call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &
+           nx,ny,nz,npx,npy,npz,grid%ndof,1, &
+           PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
+           grid%da_ndof,ierr)
+ 
+	   
+  !    call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &
+  !             nx,ny,nz,npx,npy,npz,(grid%ndof+1)*(2+4*grid%nphase),1, &
+  !             PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
+  !             grid%da_var_dof,ierr)
+
+	 
+       !print DA info for each processor
+       call DAView(grid%da_ndof,PETSC_VIEWER_STDOUT_WORLD,ierr)
+
+      !-----------------------------------------------------------------------
+      ! Create the vectors with parallel layout corresponding to the DA's,
+      ! and, for vectors that need to be ghosted, create the corresponding
+      ! ghosted vectors.
+      !-----------------------------------------------------------------------
+
+      ! 1 degree of freedom
+   
+     call Pflow_allocate_Vec(grid) 
+     print *,"new grid 3:",grid%nx,grid%ny,grid%nz       
+   !-----------------------------------------------------------------------
+      ! Set up information about corners of local domain.
+!-----------------------------------------------------------------------
+   
+   print *,"new grid 4:",grid%nx,grid%ny,grid%nz   
+      !     if (grid%using_pflowGrid == PETSC_TRUE) &
+!     allocate(grid%vvl_loc(locpat%nconn*grid%nphase))
+
+      ! I don't like having a fixed number of boundary condition regions.
+      ! Memory for these arrays ought to allocated by parsing the input file
+      ! to determine the number of regions.  This is the lazy way... I 
+      ! should fix it eventually.
+      ! The same goes for the number of BC blocks.
+      allocate(grid%iregbc1(MAXBCREGIONS))
+      allocate(grid%iregbc2(MAXBCREGIONS))
+      allocate(grid%k1bc(MAXBCBLOCKS))
+      allocate(grid%k2bc(MAXBCBLOCKS))
+      allocate(grid%j1bc(MAXBCBLOCKS))
+      allocate(grid%j2bc(MAXBCBLOCKS))
+      allocate(grid%i1bc(MAXBCBLOCKS))
+      allocate(grid%i2bc(MAXBCBLOCKS))
+      
+	  
+	  
+	  
+      allocate(grid%k1src(MAXSRC))
+      allocate(grid%k2src(MAXSRC))
+      allocate(grid%j1src(MAXSRC))
+      allocate(grid%j2src(MAXSRC))
+      allocate(grid%i1src(MAXSRC))
+      allocate(grid%i2src(MAXSRC))
+      allocate(grid%timesrc(MAXSRCTIMES,MAXSRC))
+      allocate(grid%tempsrc(MAXSRCTIMES,MAXSRC))
+      allocate(grid%qsrc(MAXSRCTIMES,MAXSRC, grid%nphase))
+      
+      
+      allocate(grid%i1reg(MAXPERMREGIONS))
+      allocate(grid%i2reg(MAXPERMREGIONS))
+      allocate(grid%j1reg(MAXPERMREGIONS))
+      allocate(grid%j2reg(MAXPERMREGIONS))
+      allocate(grid%k1reg(MAXPERMREGIONS))
+      allocate(grid%k2reg(MAXPERMREGIONS))
+      allocate(grid%icap_reg(MAXPERMREGIONS))
+      allocate(grid%ithrm_reg(MAXPERMREGIONS))
+      allocate(grid%por_reg(MAXPERMREGIONS))
+      allocate(grid%tor_reg(MAXPERMREGIONS))
+      allocate(grid%perm_reg(MAXPERMREGIONS,4))
+      
+      allocate(grid%i1ini(MAXINITREGIONS))
+      allocate(grid%i2ini(MAXINITREGIONS))
+      allocate(grid%j1ini(MAXINITREGIONS))
+      allocate(grid%j2ini(MAXINITREGIONS))
+      allocate(grid%k1ini(MAXINITREGIONS))
+      allocate(grid%k2ini(MAXINITREGIONS))
+	  
+    allocate(grid%xx_ini(grid%ndof,MAXINITREGIONS))
+	    	  
+      allocate(grid%i1brk(MAXINITREGIONS))
+      allocate(grid%i2brk(MAXINITREGIONS))
+      allocate(grid%j1brk(MAXINITREGIONS))
+      allocate(grid%j2brk(MAXINITREGIONS))
+      allocate(grid%k1brk(MAXINITREGIONS))
+      allocate(grid%k2brk(MAXINITREGIONS))
+      allocate(grid%ibrktyp(MAXINITREGIONS))
+      allocate(grid%ibrkface(MAXINITREGIONS))
+      
+      allocate(grid%rock_density(MAXPERMREGIONS))
+      allocate(grid%cpr(MAXPERMREGIONS))
+      allocate(grid%dencpr(MAXPERMREGIONS))
+      allocate(grid%ckdry(MAXPERMREGIONS))
+      allocate(grid%ckwet(MAXPERMREGIONS))
+      allocate(grid%tau(MAXPERMREGIONS))
+      allocate(grid%cdiff(MAXPERMREGIONS))
+      allocate(grid%cexp(MAXPERMREGIONS))
+
+      allocate(grid%icaptype(MAXPERMREGIONS))
+      allocate(grid%sir(1:grid%nphase,MAXPERMREGIONS))
+      allocate(grid%lambda(MAXPERMREGIONS))
+      allocate(grid%alpha(MAXPERMREGIONS))
+      allocate(grid%pckrm(MAXPERMREGIONS))
+      allocate(grid%pcwmax(MAXPERMREGIONS))
+      allocate(grid%pcbetac(MAXPERMREGIONS))
+      allocate(grid%pwrprm(MAXPERMREGIONS))
+      
+  !-----------------------------------------------------------------------
+  ! Set up boundary condition storage on blocks
+  !-----------------------------------------------------------------------
+      allocate(grid%velocitybc0(grid%nphase, MAXBCREGIONS))
+	  grid%velocitybc0 = 0.d0
+
+
+	  allocate(grid%xxbc0(grid%ndof,MAXBCREGIONS))
+	  grid%xxbc0=0.D0
+	  	  
+      
+      !set scale factor for heat equation, i.e. use units of MJ for energy
+	  grid%scale = 1.d-6
+    print *,"new grid 5:",grid%nx,grid%ny,grid%nz
+
+    allocate(timestep%tfac(13))
+    
+    timestep%tfac(1)  = 2.0d0; timestep%tfac(2)  = 2.0d0
+    timestep%tfac(3)  = 2.0d0; timestep%tfac(4)  = 2.0d0
+    timestep%tfac(5)  = 2.0d0; timestep%tfac(6)  = 1.8d0
+    timestep%tfac(7)  = 1.6d0; timestep%tfac(8)  = 1.4d0
+    timestep%tfac(9)  = 1.2d0; timestep%tfac(10) = 1.0d0
+    timestep%tfac(11) = 1.0d0; timestep%tfac(12) = 1.0d0
+    timestep%tfac(13) = 1.0d0      
+    timestep%iaccel = 1
+    timestep%dt_min = 1.d0
+    timestep%dt_max = 3.1536d6 ! One-tenth of a year.
+    timestep%icut_max = 16
+    timestep%dpmxe = 5.d4
+    timestep%dsmxe = 5.d-1
+
+    end subroutine pflowGrid_newpm
+
+!======================================================================
+
 !#include "pflowgrid_setup.F90"
 
 ! pflowGrid_setup():
@@ -368,13 +628,13 @@
   character(len=*), intent(in) :: inputfile
   
   integer :: ierr
-  integer*4 :: i, j, jn1, jn2, k, ird
-  integer*4 :: mg1, mg2
-  integer*4 :: m, n, ng
-  integer*4 :: nc  ! Tracks number of connections computed.
-  integer*4 :: ibc ! Used to index boundary condition blocks.
-  integer*4 :: ir ! Used to index boundary condition regions.
-  integer*4 :: ii1, ii2, jj1, jj2, kk1, kk2
+  integer :: i, j, jn1, jn2, k, ird
+  integer :: mg1, mg2
+  integer :: m, n, ng
+  integer :: nc  ! Tracks number of connections computed.
+  integer :: ibc ! Used to index boundary condition blocks.
+  integer :: ir ! Used to index boundary condition regions.
+  integer :: ii1, ii2, jj1, jj2, kk1, kk2
     ! Used for indexing corners of boundary regions.
   
     ! Used to access the contents of the local portion of grid%volume.
@@ -387,7 +647,7 @@
                      perm_pow_p(:)
   real*8 :: d1,d2,val,val1,val2,val3,val4,por,dw_kg
   real*8 :: dl,hl
-  integer*4 :: iseed,nx,ny,nz,na
+  integer :: iseed,nx,ny,nz,na
 
   !,temp5_nat_vec,temp6_nat_vec,temp7_nat_vec
   
@@ -540,11 +800,11 @@
 
  integer ierr
  
-     call pflow_create_vector(grid, grid%da_1_dof, PETSC_TRUE, grid%porosity)
-     call pflow_create_vector(grid, grid%da_1_dof, PETSC_FALSE, grid%dx_loc)
-     call pflow_create_vector(grid, grid%da_3np_dof, PETSC_TRUE, grid%vl)
-     call pflow_create_vector(grid, grid%da_ndof, PETSC_TRUE, grid%xx)
-     call pflow_create_vector(grid, grid%da_ndof, PETSC_TRUE, grid%xx_loc)
+     call pflow_create_vector(grid, grid%da_1_dof, PETSC_FALSE, grid%porosity)
+     call pflow_create_vector(grid, grid%da_1_dof, PETSC_TRUE, grid%dx_loc)
+     call pflow_create_vector(grid, grid%da_3np_dof, PETSC_FALSE, grid%vl)
+     call pflow_create_vector(grid, grid%da_ndof, PETSC_FALSE, grid%xx)
+     call pflow_create_vector(grid, grid%da_ndof, PETSC_FALSE, grid%xx_loc)
 
 ! 1 degree of freedom      
       !global
@@ -609,7 +869,6 @@ implicit none
                     dof, & 
                     PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, &
                     ierr)
-     dof = 1
      call create_samrai_vec(grid%p_samr_hierarchy, dof, use_ghost, vec)
      
   else
@@ -1210,7 +1469,7 @@ real*8 alapha, steptol
                          ComputeMFJacobian, PETSC_NULL_OBJECT, ierr)
 
     ! Use "Walker-Pernice" differencing.
-#if ((PETSC_VERSION_RELEASE)&&(PETSC_VERSION_MAJOR==2)&&(PETSC_VERSION_MINOR==3)&&(PETSC_VERSION_SUBMINOR==2)&&(PETSC_VERSION_PATCH<=10))
+#if ((PETSC_VERSION_RELEASE==1)&&(PETSC_VERSION_MAJOR==2)&&(PETSC_VERSION_MINOR==3)&&(PETSC_VERSION_SUBMINOR==2)&&(PETSC_VERSION_PATCH<=10))
     call MatSNESMFSetType(grid%J, MATSNESMF_WP, ierr)
     if(grid%print_hhistory == PETSC_TRUE) then
       allocate(grid%hhistory(HHISTORY_LENGTH))
@@ -1254,7 +1513,7 @@ real*8 alapha, steptol
  !   endif
 !   call MatSetOption(grid%J,MAT_COLUMN_ORIENTED,ierr)
         
-#if ((PETSC_VERSION_RELEASE)&&(PETSC_VERSION_MAJOR==2)&&(PETSC_VERSION_MINOR==3)&&(PETSC_VERSION_SUBMINOR==2)&&(PETSC_VERSION_PATCH==10))
+#if ((PETSC_VERSION_RELEASE)&&(PETSC_VERSION_MAJOR==2)&&(PETSC_VERSION_MINOR==3)&&(PETSC_VERSION_SUBMINOR==2)&&(PETSC_VERSION_PATCH<=10))
     call DAGetColoring(grid%da_ndof, IS_COLORING_LOCAL, iscoloring, ierr)
 #else
     call DAGetColoring(grid%da_ndof, IS_COLORING_GLOBAL, iscoloring, ierr)
@@ -1531,7 +1790,7 @@ end subroutine
   type(pflowGrid), intent(inout) :: grid
 
 ! integer :: ierr
-  integer*4 :: i, j, k, n
+  integer :: i, j, k, n
   integer :: prevnode
     ! prevnode is used to hold the natural numbering of the node that is the
     ! previous node in either the x, y, or z direction.

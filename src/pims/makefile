@@ -18,7 +18,7 @@ LOCDIR		 = /home/clu
 #MYFLAGS = ${PETSCFLAGS} -I${objdir} -DDEBUG -DUSE_COMPRESSIBILITY
 #MYFLAGS = ${PETSCFLAGS} -I${objdir} -DUSE_COMPRESSIBILITY -DUSE_PETSC216
 MYFLAGS = ${PETSCFLAGS} -O3 -I${objdir} -DUSE_COMPRESSIBILITY -DUSE_PETSC221
-#MYFLAGS = ${PETSCFLAGS} -g -I${objdir} -DUSE_COMPRESSIBILITY -DUSE_PETSC221
+MYFLAGS = ${PETSCFLAGS} -g -I${objdir} -DUSE_COMPRESSIBILITY -DUSE_PETSC221
 #MYFLAGS = ${PETSCFLAGS} -I${objdir} -DUSE_COMPRESSIBILITY 
 #                                   -DHAVE_MPITOMPIZERO
 LIBS   = 
@@ -37,17 +37,20 @@ pflow_obj = ${common_src}pflow_gridtype.o \
 	    ${common_src}pflow_solve.o \
             ${common_src}pflow_output.o \
 	    ${common_src}pflow_step.o \
-	    ${common_src}pflowgrid_mod.o\
-	    ${common_src}stubs.o
+	    ${common_src}pflowgrid_mod.o
 
 
-pims : $(util_obj) $(pflow_obj) ${pflow_src}pims.o
-	${FLINKER}   -o pims $(util_obj) $(pflow_obj) ${pflow_src}pims.o \
+pims : $(util_obj) $(pflow_obj) ${pflow_src}pims.o stubs.o
+	${FLINKER}   -o pims $(util_obj) $(pflow_obj) ${pflow_src}pims.o stubs.o\
 	${MYFLAGS} ${PETSC_FORTRAN_LIB} ${PETSC_LIB}
 
+amrpims : $(util_obj) $(pflow_obj) ${pflow_src}pims.o
+	${FLINKER}   -o pims $(util_obj) $(pflow_obj) ${pflow_src}pims.o \
+	${SAMRFLAGS} ${PETSC_FORTRAN_LIB} ${PETSC_LIB}
 
 %.o : %.F90
 	${FC} ${FOPTFLAGS} $< ${MYFLAGS} -c ${PETSC_INCLUDE}
+
 %.mod : %.F90
 	${FLINKER} $< -c ${PETSC_INCLUDE} 
 

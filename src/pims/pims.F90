@@ -30,9 +30,10 @@
   PetscLogDouble :: timex(4), timex_wall(4)
 
   integer :: ierr, ihalcnt
-  type(pflowGrid) :: grid
+  type(pflowGrid), target :: grid
+  type(pflowGridParameters) :: gridparameters
   type(pflow_solver_context) :: pflowsolv
-  type(time_stepping_context) timestep
+  type(time_stepping_context), target :: timestep
   
 !  type(pflow_localpatch_info) :: gridpatch
     
@@ -61,7 +62,6 @@
    call pflow_read_gridsize("pflow.in", igeom, nx, ny, nz, npx, npy, npz, &
   nphase,  ierr)
   
-
   ntstep=1
   iflgcut = 0
 
@@ -73,11 +73,22 @@
     stop
   endif
 
+  gridparameters%grid => grid
+  gridparameters%timestep => timestep
+  gridparameters%igeom = igeom
+  gridparameters%nx    = nx
+  gridparameters%nx    = ny
+  gridparameters%nx    = nz
+  gridparameters%npx   = npx
+  gridparameters%npy   = npy
+  gridparameters%npz   = npz
+  gridparameters%nphase= nphase
+
 ! set up structure constructor
 ! npx = PETSC_DECIDE; npy = PETSC_DECIDE; npz = PETSC_DECIDE
-  call pflowGrid_new(grid, pflowsolv, timestep,igeom, nx, ny, nz, npx, npy, npz, nphase)
+  call pflowGrid_new(grid, timestep,igeom, nx, ny, nz, npx, npy, npz, nphase)
+!  call pflowGrid_newpm(gridparameters)
 
- 
   call PetscGetCPUTime(timex(1), ierr)
   call PetscGetTime(timex_wall(1), ierr)
 
