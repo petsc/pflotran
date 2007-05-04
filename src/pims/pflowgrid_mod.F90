@@ -230,6 +230,8 @@
    !-----------------------------------------------------------------------
       ! Set up information about corners of local domain.
 !-----------------------------------------------------------------------
+     ! allocate space to store information about the patch objects
+     call allocate_patch_info(grid%p_samr_hierarchy, grid%patchlevel_info)
    
    print *,"new grid 4:",grid%nx,grid%ny,grid%nz   
       !     if (grid%using_pflowGrid == PETSC_TRUE) &
