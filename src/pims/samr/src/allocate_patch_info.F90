@@ -4,7 +4,8 @@ subroutine allocate_patch_info(p_samr_hierarchy, patchlevel_info)
 
 #include "include/finclude/petsc.h"
   PetscFortranAddr :: p_samr_hierarchy
-  type(PatchLevelInfoPtr), dimension(:), pointer, intent(inout) :: patchlevel_info
+!  type(PatchLevelInfoPtr), dimension(:), pointer, intent(inout) :: patchlevel_info
+  type(PatchLevelInfoPtr), dimension(:), pointer :: patchlevel_info
 
   interface
      integer function hierarchy_number_levels(p_hierarchy)

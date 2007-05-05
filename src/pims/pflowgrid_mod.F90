@@ -66,7 +66,6 @@
 #include "include/finclude/petscis.h"
 #include "include/finclude/petscis.h90"
 #include "include/finclude/petsclog.h"
-#include "include/finclude/petscversion.h"
 
 !#include "pflow_gridtype.h"     
      
