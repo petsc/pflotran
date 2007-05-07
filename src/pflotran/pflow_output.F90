@@ -73,7 +73,7 @@ subroutine pflow_output(grid,kplt,iplot)
   !return
 
   if (iplot == 1 .and. grid%iprint == -2) then
-    call geh_io(grid)
+    call geh_io(grid,kplt)
     kplt = kplt + 1
     iplot = 0
     return
@@ -1917,7 +1917,7 @@ end subroutine pflow_output
 !call VecScatterView(scat_1dof,PETSC_VIEWER_STDOUT_SELF)
   end subroutine pflow_var_output
 
-subroutine geh_io(grid)
+subroutine geh_io(grid, kplt)
 
   use pflow_gridtype_module
   use TTPHASE_module
@@ -1939,11 +1939,13 @@ subroutine geh_io(grid)
 #include "definitions.h"
 
   type(pflowGrid), intent(inout) :: grid
+  integer :: kplt
 
   integer, save :: id = 0
-  integer :: ierr
+  integer :: i, ierr
   character(len=20) :: id_string, filename
   Vec :: vec_1_dof
+  PetscScalar, pointer :: vec_ptr(:)
   PetscViewer :: viewer
 
   if (id == 0) then
@@ -1955,6 +1957,41 @@ subroutine geh_io(grid)
   write(id_string,'(i7)') id
   
   call DACreateGlobalVector(grid%da_1_dof,vec_1_dof,ierr)
+
+  if (kplt == 0) then
+    ! x coordinates
+    filename = 'xcoord.dat'
+    call VecGetArrayF90(vec_1_dof, vec_ptr, ierr)
+    do i=1,grid%nlmax
+      vec_ptr(i) = grid%x(i)
+    enddo
+    call VecRestoreArrayF90(vec_1_dof, vec_ptr, ierr)
+    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,filename,viewer,ierr)
+    call VecView(vec_1_dof,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+
+    ! y coordinates
+    filename = 'ycoord.dat'
+    call VecGetArrayF90(vec_1_dof, vec_ptr, ierr)
+    do i=1,grid%nlmax
+      vec_ptr(i) = grid%y(i)
+    enddo
+    call VecRestoreArrayF90(vec_1_dof, vec_ptr, ierr)
+    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,filename,viewer,ierr)
+    call VecView(vec_1_dof,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+
+    ! z coordinates
+    filename = 'zcoord.dat'
+    call VecGetArrayF90(vec_1_dof, vec_ptr, ierr)
+    do i=1,grid%nlmax
+      vec_ptr(i) = grid%z(i)
+    enddo
+    call VecRestoreArrayF90(vec_1_dof, vec_ptr, ierr)
+    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,filename,viewer,ierr)
+    call VecView(vec_1_dof,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+  endif
 
   filename = 'pl_' // trim(adjustl(id_string)) // '.dat'
   call PetscViewerASCIIOpen(PETSC_COMM_WORLD,filename,viewer,ierr)
