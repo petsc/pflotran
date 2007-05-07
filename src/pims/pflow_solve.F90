@@ -98,32 +98,35 @@
  integer icut, its_line
  MatStructure flag
  real*8 rnorm
+ type(pflow_localpatch_info),pointer :: locpat
  
  newton=0
  
  do
  
-  call IMSResidual(pflowsolv%snes,grid%xx,grid%r,grid,ierr)
-   print *,' psolve; Get Res'
- 
-  call VecNorm(grid%r,NORM_INFINITY,rnorm,ierr)
- 
- ! note now grid%stol acts as convergence tolerance parameter 
- 
-  if (newton > 0 .and. rnorm < (grid%stol)) then
-    exit ! convergence obtained
-  endif
+    locpat => grid%patchlevel_info(1)%patches(1)%patch_ptr
 
-       call IMSJacobin(pflowsolv%snes,grid%xx,grid%J,grid%J,flag,grid,ierr)
-       print *,' psolve; Get Joc'
-   
+    call IMSResidual(pflowsolv%snes,grid%xx,grid%r,grid, locpat, ierr)
+    print *,' psolve; Get Res'
+    
+    call VecNorm(grid%r,NORM_INFINITY,rnorm,ierr)
+ 
+  ! note now grid%stol acts as convergence tolerance parameter 
+  
+  if (newton > 0 .and. rnorm < (grid%stol)) then
+     exit ! convergence obtained
+  endif
+  
+  call IMSJacobin(pflowsolv%snes,grid%xx,grid%J,grid%J,flag,grid,locpat,ierr)
+  print *,' psolve; Get Joc'
+  
   call VecScale(grid%r,-1D0,ierr)
   call KSPSetOperators(pflowsolv%ksp,grid%J,grid%J,SAME_NONZERO_PATTERN,ierr)
   
   call KSPSolve(pflowsolv%ksp, grid%r,grid%dxx,ierr)
   call KSPGetConvergedReason(pflowsolv%ksp,ksp_reason,ierr)
   call KSPGetIterationNumber(pflowsolv%ksp,its_line,ierr)
-
+  
 
   newton = newton + 1
   isucc= ksp_reason

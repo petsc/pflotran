@@ -66,7 +66,6 @@
 #include "include/finclude/petscis.h"
 #include "include/finclude/petscis.h90"
 #include "include/finclude/petsclog.h"
-#include "include/finclude/petscversion.h"
 
 !#include "pflow_gridtype.h"     
      
@@ -230,6 +229,8 @@
    !-----------------------------------------------------------------------
       ! Set up information about corners of local domain.
 !-----------------------------------------------------------------------
+     ! allocate space to store information about the patch objects
+     call allocate_patch_info(grid%p_samr_hierarchy, grid%patchlevel_info)
    
    print *,"new grid 4:",grid%nx,grid%ny,grid%nz   
       !     if (grid%using_pflowGrid == PETSC_TRUE) &
@@ -352,6 +353,14 @@
       type(pflowGridParameters) :: parameters
       type(pflowGrid), pointer :: grid
       type(time_stepping_context), pointer :: timestep
+      
+      interface 
+         subroutine allocate_patch_info(p_samr_hierarchy, patchlevel_info)
+           use pflow_gridtype_module
+           PetscFortranAddr :: p_samr_hierarchy
+           type(PatchLevelInfoPtr), dimension(:), pointer :: patchlevel_info
+         end subroutine allocate_patch_info
+      end interface
 
       integer :: igeom, nx, ny, nz, npx, npy, npz
       integer :: nphase
@@ -359,7 +368,8 @@
       integer :: n, ng, na
       integer :: i, j, k
       integer :: ierr
-    
+      integer :: nlevels
+
       grid =>  parameters%grid
       timestep =>  parameters%timestep
 
@@ -371,7 +381,7 @@
       grid%npx     = parameters%npx
       grid%npy     = parameters%npy
       grid%npz     = parameters%npz
-
+      
       grid%Samrai_drive     = parameters%usesamrai
       grid%p_samr_hierarchy = parameters%p_samr_hierarchy
 
@@ -485,11 +495,18 @@
    
      call Pflow_allocate_Vec(grid) 
      print *,"new grid 3:",grid%nx,grid%ny,grid%nz       
+
+     
+
    !-----------------------------------------------------------------------
       ! Set up information about corners of local domain.
 !-----------------------------------------------------------------------
    
-   print *,"new grid 4:",grid%nx,grid%ny,grid%nz   
+     print *,"new grid 4:",grid%nx,grid%ny,grid%nz   
+
+     ! allocate space to store information about the patch objects
+     call allocate_patch_info(grid%p_samr_hierarchy, grid%patchlevel_info)
+     
       !     if (grid%using_pflowGrid == PETSC_TRUE) &
 !     allocate(grid%vvl_loc(locpat%nconn*grid%nphase))
 
@@ -718,11 +735,11 @@
 ! set initial conditions by region for pressure, temperature, saturation
 ! and concentration
 
-  call pflow_IMS_setupini(grid)
+  call pflow_IMS_setupini(grid, locpat)
   
   ! set hydrostatic properties for initial and boundary conditions with depth
   
-  if(grid%iread_init==2) call Read_init_field(grid)
+  if(grid%iread_init==2) call Read_init_field(grid, locpat)
   if(grid%nphase>=2) grid%velocitybc0(2,:) = grid%velocitybc0(1,:)
 	  
   
@@ -764,7 +781,7 @@
       
    
      
-    call pflow_update_ims(grid)
+    call pflow_update_ims(grid, locpat)
     print *, "IMS finish variable packing"
   
    
@@ -780,7 +797,7 @@
 
   ! set phase index for each node and initialize accumulation terms
    
-   call pflow_ims_initaccum(grid)
+   call pflow_ims_initaccum(grid, locpat)
    
     
    
@@ -1393,7 +1410,7 @@ real*8, pointer :: icap_p(:),por_p(:),por0_p(:), ithrm_p(:), &
 #endif
 
  if(grid%iread_perm == 1)then
-   call Read_perm_field(grid)
+   call Read_perm_field(grid, locpat)
  endif  
 
  !if(grid%using_pflowGrid==0) call VecCopy(grid%Porosity, grid%Porosity0, ierr)

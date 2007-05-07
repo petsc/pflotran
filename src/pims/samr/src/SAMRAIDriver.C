@@ -109,14 +109,15 @@ int main( int argc, char *argv[] )
  
 
    void *p_pflowhierarchy=NULL;
-   //   pflowGrid *p_gridPtr = NULL;
-   void *p_samr_hierarchy=(void *)(hierarchy.getPointer());
    f_create_hierarchy_data_(&p_pflowhierarchy);
 
-   time_integrator *t_int = new time_integrator;
+   void *p_integrator = NULL;
+   f_create_integrator_(&p_integrator);
+
+   void *p_samr_hierarchy=(void *)(hierarchy.getPointer());
    gridparameters *params = new gridparameters;
    params->p_grid = p_pflowhierarchy;
-   params->p_timestep = t_int;
+   params->p_timestep = p_integrator;
    params->igeom = 1;
    params->nx = 1;
    params->ny = 1;

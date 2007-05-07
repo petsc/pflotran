@@ -46,6 +46,8 @@
   integer :: myid
   integer*4 :: steps
 
+  type(pflow_localpatch_info),pointer :: locpat
+
 ! Initialize Startup Time
  ! call PetscGetCPUTime(timex(1), ierr)
  ! call PetscGetTime(timex_wall(1), ierr)
@@ -55,7 +57,6 @@
   call MPI_Comm_rank(PETSC_COMM_WORLD, myid, ierr)
  ! call MPI_Comm_size(PETSC_COMM_WORLD, grid%commsize, ierr)
  
-  allocate(grid%locpat(1))
  ! For current pims petsc version, every processor only have one patch on one level
  
  
@@ -87,12 +88,16 @@
 ! set up structure constructor
 ! npx = PETSC_DECIDE; npy = PETSC_DECIDE; npz = PETSC_DECIDE
   call pflowGrid_new(grid, timestep,igeom, nx, ny, nz, npx, npy, npz, nphase)
-!  call pflowGrid_newpm(gridparameters)
+  !  call pflowGrid_newpm(gridparameters)
+
+  locpat => grid%patchlevel_info(1)%patches(1)%patch_ptr
 
   call PetscGetCPUTime(timex(1), ierr)
   call PetscGetTime(timex_wall(1), ierr)
 
-  call pflowGrid_setup(grid, pflowsolv,timestep,grid%locpat(1),"pflow.in")
+  
+
+  call pflowGrid_setup(grid, pflowsolv,timestep,locpat,"pflow.in")
   CHKMEMQ
   kplt = 0
   iplot = 1

@@ -132,7 +132,17 @@ private
 
  end type pflow_localpatch_info
 
- type , public:: pflowGridParameters
+ ! the next type encapsulates a pointer to a patch info object
+ type, public:: PatchInfoPtr
+    type(pflow_localpatch_info), pointer :: patch_ptr
+ end type PatchInfoPtr
+
+ ! the next type encapsulates a pointer to a patch info object
+ type, public:: PatchLevelInfoPtr
+    type(PatchInfoPtr), dimension(:), pointer :: patches
+ end type PatchLevelInfoPtr
+
+ type, public:: pflowGridParameters
 
     type(pflowGrid), pointer :: grid                     ! pflowGrid object to initialize
     type(time_stepping_context), pointer :: timestep     ! Time integrator object
@@ -140,6 +150,7 @@ private
     integer :: nx, ny, nz                       ! Global domain dimensions of the grid.
     integer :: npx, npy, npz                    ! Processor partition in each direction.
     integer :: nphase                           ! Number of phases we are dealing with.
+    integer :: nlevels                          ! Number of refinement levels
     PetscTruth :: usesamrai
     PetscFortranAddr :: p_samr_hierarchy
 
@@ -316,7 +327,8 @@ private
 !   Vec :: p_all, t_all, c_all, phis_all, por_all, vl_all, s_all !, perm_all 
     ! Used to hold all values on processor 0.
 
-  type(pflow_localpatch_info), pointer :: locpat(:)
+  type(PatchLevelInfoPtr), dimension(:), pointer :: patchlevel_info
+
   PetscFortranAddr p_samr_hierarchy
 	
   end type pflowGrid
