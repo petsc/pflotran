@@ -26,6 +26,7 @@ module pflow_grid_module
 ! PETSc header files are included.  I can get around this, though, by making
 ! the definitions in these headers private.
 #include "include/finclude/petsc.h"
+#include "petscreldefs.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
   ! It is VERY IMPORTANT to make sure that the above .h90 file gets included.
