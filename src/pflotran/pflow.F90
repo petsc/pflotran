@@ -37,6 +37,8 @@
   implicit none
 
 #include "include/finclude/petsc.h"
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
 #include "include/finclude/petscda.h"
 #include "include/finclude/petscda.h90"
 #include "include/finclude/petscdef.h"
@@ -49,8 +51,6 @@
 #include "include/finclude/petscksp.h"
 #include "include/finclude/petscsnes.h"
 #include "include/finclude/petscsys.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
 #include "include/finclude/petscviewer.h"
 
 #include "definitions.h"

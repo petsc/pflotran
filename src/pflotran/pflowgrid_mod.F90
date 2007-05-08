@@ -1138,23 +1138,23 @@ subroutine pflowGrid_setup(grid, inputfile)
     if (myrank == 0) write(*,'(" Using matrix-free Newton-Krylov")')
     
     if (grid%use_cond == PETSC_TRUE) then
-      call MatCreateSNESMF(grid%snes, grid%ttemp, grid%J, ierr)
+      call MatCreateMFFD(grid%snes, grid%ttemp, grid%J, ierr)
     else if (grid%use_th == PETSC_TRUE) then
-      call MatCreateSNESMF(grid%snes, grid%xx, grid%J, ierr)
+      call MatCreateMFFD(grid%snes, grid%xx, grid%J, ierr)
     else if (grid%use_thc == PETSC_TRUE) then
-      call MatCreateSNESMF(grid%snes, grid%xx, grid%J, ierr)
+      call MatCreateMFFD(grid%snes, grid%xx, grid%J, ierr)
     else if (grid%use_2ph == PETSC_TRUE) then
-      call MatCreateSNESMF(grid%snes, grid%xx, grid%J, ierr)
+      call MatCreateMFFD(grid%snes, grid%xx, grid%J, ierr)
     else if (grid%use_mph == PETSC_TRUE) then
-      call MatCreateSNESMF(grid%snes, grid%xx, grid%J, ierr)
+      call MatCreateMFFD(grid%snes, grid%xx, grid%J, ierr)
     else if (grid%use_flash == PETSC_TRUE) then
-      call MatCreateSNESMF(grid%snes, grid%xx, grid%J, ierr)
+      call MatCreateMFFD(grid%snes, grid%xx, grid%J, ierr)
     else if (grid%use_vadose == PETSC_TRUE) then
-      call MatCreateSNESMF(grid%snes, grid%xx, grid%J, ierr)
+      call MatCreateMFFD(grid%snes, grid%xx, grid%J, ierr)
     else if (grid%use_owg == PETSC_TRUE) then
-      call MatCreateSNESMF(grid%snes, grid%xx, grid%J, ierr)
+      call MatCreateMFFD(grid%snes, grid%xx, grid%J, ierr)
     else
-      call MatCreateSNESMF(grid%snes, grid%ppressure, grid%J, ierr)
+      call MatCreateMFFD(grid%snes, grid%ppressure, grid%J, ierr)
     endif
     
     ! It seems that I ought to call SNESSetJacobian here now, but I don't know
@@ -1167,15 +1167,15 @@ subroutine pflowGrid_setup(grid, inputfile)
                          ComputeMFJacobian, PETSC_NULL_OBJECT, ierr)
 
     ! Use "Walker-Pernice" differencing.
-    call MatSNESMFSetType(grid%J, MATSNESMF_WP, ierr)
+    call MatMFFDSetType(grid%J, MATMFFD_WP, ierr)
 
     if (grid%print_hhistory == PETSC_TRUE) then
       allocate(grid%hhistory(HHISTORY_LENGTH))
-      call MatSNESMFSetHHistory(grid%J, grid%hhistory, HHISTORY_LENGTH, ierr)
+      call MatMFFDSetHHistory(grid%J, grid%hhistory, HHISTORY_LENGTH, ierr)
     endif
 
     if (grid%monitor_h == PETSC_TRUE) then
-      call SNESSetMonitor(grid%snes, pflowgrid_MonitorH, grid, &
+      call SNESMonitorSet(grid%snes, pflowgrid_MonitorH, grid, &
                           PETSC_NULL_OBJECT, ierr)
     endif
     
@@ -1199,7 +1199,7 @@ subroutine pflowGrid_setup(grid, inputfile)
  !   endif
 !   call MatSetOption(grid%J,MAT_COLUMN_ORIENTED,ierr)
         
-    call DAGetColoring(grid%da_ndof, IS_COLORING_LOCAL, iscoloring, ierr)
+    call DAGetColoring(grid%da_ndof, IS_COLORING_GLOBAL, iscoloring, ierr)
     
     call MatFDColoringCreate(grid%J, iscoloring, grid%matfdcoloring, ierr)
     
@@ -4718,7 +4718,7 @@ subroutine pflowgrid_MonitorH(snes, its, norm, grid)
   integer :: myrank
   PetscScalar :: h
   
-  call MatSNESMFGetH(grid%J, h, ierr)
+  call MatMFFDGetH(grid%J, h, ierr)
 
   call MPI_Comm_rank(PETSC_COMM_WORLD, myrank, ierr)
 

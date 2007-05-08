@@ -15,6 +15,8 @@ subroutine pflow_output(grid,kplt,iplot)
   implicit none
 
 #include "include/finclude/petsc.h"
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
 #include "include/finclude/petscda.h"
 #include "include/finclude/petscda.h90"
 #include "include/finclude/petscdef.h"
@@ -22,8 +24,6 @@ subroutine pflow_output(grid,kplt,iplot)
 #include "include/finclude/petscis.h90"
 #include "include/finclude/petsclog.h"
 #include "include/finclude/petscsys.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
 #include "include/finclude/petscviewer.h"
 
 #include "definitions.h"
@@ -972,6 +972,8 @@ end subroutine pflow_output
   implicit none
 
 #include "include/finclude/petsc.h"
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
 #include "include/finclude/petscda.h"
 #include "include/finclude/petscda.h90"
 #include "include/finclude/petscdef.h"
@@ -984,8 +986,6 @@ end subroutine pflow_output
 #include "include/finclude/petscksp.h"
 #include "include/finclude/petscsnes.h"
 #include "include/finclude/petscsys.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
 #include "include/finclude/petscviewer.h"
 
 #include "definitions.h"
@@ -1159,6 +1159,8 @@ end subroutine pflow_output
   implicit none
 
 #include "include/finclude/petsc.h"
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
 #include "include/finclude/petscda.h"
 #include "include/finclude/petscda.h90"
 #include "include/finclude/petscdef.h"
@@ -1166,8 +1168,6 @@ end subroutine pflow_output
 #include "include/finclude/petscis.h90"
 #include "include/finclude/petsclog.h"
 #include "include/finclude/petscsys.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
 #include "include/finclude/petscviewer.h"
 !#include "include/mpiuni/mpif.h"
 #include "definitions.h"
@@ -1925,6 +1925,8 @@ subroutine geh_io(grid, kplt)
   implicit none
 
 #include "include/finclude/petsc.h"
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
 #include "include/finclude/petscda.h"
 #include "include/finclude/petscda.h90"
 #include "include/finclude/petscdef.h"
@@ -1932,8 +1934,6 @@ subroutine geh_io(grid, kplt)
 #include "include/finclude/petscis.h90"
 #include "include/finclude/petsclog.h"
 #include "include/finclude/petscsys.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
 #include "include/finclude/petscviewer.h"
 
 #include "definitions.h"
