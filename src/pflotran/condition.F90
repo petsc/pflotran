@@ -267,4 +267,73 @@ subroutine UpdateBoundaryConditions(grid)
 
 end subroutine UpdateBoundaryConditions
 
+real*8 function computeHydrostaticPressure(grid, use_eos, datum_coordinate, &
+                                           cell_coordinate, &
+                                           reference_pressure, &
+                                           pressure_gradient_X, &
+                                           pressure_gradient_Y, &
+                                           pressure_gradient_Z, &
+                                           reference_temperature, &
+                                           temperature_gradient_X, &
+                                           temperature_gradient_Y, &
+                                           temperature_gradient_Z)
+
+  use pflow_gridtype_module
+  use water_eos_module
+
+  implicit none
+
+  type(pflowGrid) :: grid
+  logical :: use_eos
+  real*8 :: datum_coordinate(3), cell_coordinate(3)
+  real*8 :: reference_pressure, pressure_gradient_X, pressure_gradient_Y,  &
+            pressure_gradient_Z
+  real*8 :: reference_temperature, temperature_gradient_X, &
+            temperature_gradient_Y, temperature_gradient_Z
+
+  integer :: i, num_increments, ierr
+  real*8 :: dx, dy, dz, z, dum, rho, dw_mol, dwp
+  real*8 :: temperature_at_xy, temperature_at_xyz
+  real*8 :: pressure_at_xy, pressure_at_xyz
+  real*8 :: increment, final_increment
+
+  dx = cell_coordinate(1) - datum_coordinate(1)
+  dy = cell_coordinate(2) - datum_coordinate(2)
+  dz = cell_coordinate(3) - datum_coordinate(3)
+
+  pressure_at_xy = reference_pressure + dx*pressure_gradient_X + &
+                                        dy*pressure_gradient_Y
+  if (use_eos) then
+    temperature_at_xy = reference_temperature + dx*temperature_gradient_X + &
+                                                dy*temperature_gradient_Y
+
+    num_increments = int(abs(dz))  ! 1m increments
+    final_increment = sign(abs(dz)-num_increments*1.d0,-dz)
+    increment = 1.d0
+    if (datum_coordinate(3) < cell_coordinate(3)) increment = -1.d0
+
+    z = datum_coordinate(3)
+    pressure_at_xyz = pressure_at_xy
+    do i=1, num_increments
+      z = z - increment
+      temperature_at_xyz = temperature_at_xy + (z-datum_coordinate(3))* &
+                                                temperature_gradient_Z
+      call wateos(temperature_at_xyz,pressure_at_xyz,rho,dw_mol,dwp, &
+                  dum,dum,dum,dum,grid%scale,ierr)
+      pressure_at_xyz = pressure_at_xyz + increment*rho*grid%gravity  
+    enddo
+    z = z - final_increment
+    temperature_at_xyz = temperature_at_xy + (z-datum_coordinate(3))* &
+                                             temperature_gradient_Z
+    call wateos(temperature_at_xyz,pressure_at_xyz,rho,dw_mol,dwp, &
+                dum,dum,dum,dum,grid%scale,ierr)
+    pressure_at_xyz = pressure_at_xyz + final_increment*rho*grid%gravity  
+  else
+    pressure_at_xyz = pressure_at_xy - dz*pressure_gradient_Z
+  endif
+
+  computeHydrostaticPressure = pressure_at_xyz
+    
+end function computeHydrostaticPressure
+
 end module Condition_module
