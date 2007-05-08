@@ -40,11 +40,11 @@ contains
       implicit none
 
 #include "include/finclude/petsc.h"
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
 #include "include/finclude/petscda.h"
 #include "include/finclude/petscda.h90"
 #include "include/finclude/petsclog.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
 #include "include/finclude/petscviewer.h"
 
   DA    :: da, da_1dof, da_kin
