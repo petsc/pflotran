@@ -237,25 +237,45 @@ subroutine UpdateBoundaryConditions(grid)
 
   type(pflowGrid) :: grid
 
+  logical :: use_eos
   integer :: iconnbc, icond, itype
   real*8 :: value, datum, delz, delp
-  real*8 :: patm = 101325.d0
+  real*8 :: patm = 101325.d0, tref, pref
+  real*8 :: datum_coord(3), cell_coord(3)
 
   call UpdateConditions(grid%t)
 
+  use_eos = .true.
+  
+  tref = 25.d0
+  
   do iconnbc = 1, grid%nconnbc
     icond = grid%ibconn(iconnbc)
     itype = condition_array(icond)%ptr%itype
-    datum = condition_array(icond)%ptr%datum
-    value = condition_array(icond)%ptr%cur_value
+    
+    datum_coord = 0.d0
+    datum_coord(3) = condition_array(icond)%ptr%datum
+    
+    cell_coord = 0.d0
+    cell_coord(3) = grid%z(grid%nL2A(grid%mblkbc(iconnbc))+1)
+    
+    pref = condition_array(icond)%ptr%cur_value
+    
     if (itype == 3 .or. itype == 4) then ! correct for pressure gradient
+#if 1
+      value = ComputeHydrostaticPressure(grid,use_eos, &
+                                         datum_coord,cell_coord, &
+                                         pref,0.d0,0.d0,9.81d0*998.32, &
+                                         tref,0.d0,0.d0,0.d0)
+#else
       delz = grid%z(grid%nL2A(grid%mblkbc(iconnbc))+1)-datum
       delp = delz*9.81d0*998.32
-      value = value - delp
+      value = pref - delp
+#endif
     endif
     if (itype == 1) then ! dirichlet
       grid%xxbc(1,iconnbc) = value
-      grid%xxbc(2,iconnbc) = 50.d0  ! currently hardwired temperature
+      grid%xxbc(2,iconnbc) = tref  ! currently hardwired temperature
       grid%xxbc(3,iconnbc) = 1.d-6  ! currently hardwired solute concentration
     elseif (itype == 2) then ! neumann
       grid%velocitybc(1:grid%nphase,iconnbc) = value  ! all xxbc dofs get over-
@@ -267,7 +287,95 @@ subroutine UpdateBoundaryConditions(grid)
 
 end subroutine UpdateBoundaryConditions
 
-real*8 function computeHydrostaticPressure(grid, use_eos, datum_coordinate, &
+
+! ************************************************************************** !
+!
+! ComputeInitialCondition: Sets up initial condition for primary variables
+! author: Glenn Hammond
+! date: 5/8/07
+!
+! ************************************************************************** !
+subroutine ComputeInitialCondition(grid, icondition)
+
+  use pflow_gridtype_module
+
+  implicit none
+
+#include "include/finclude/petsc.h"
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
+
+  type(pflowGrid) :: grid
+  integer :: icondition
+  
+  integer :: iln, na, ierr, icond
+  real*8 :: cell_coord(3), datum_coord(3)
+  real*8 :: pref, tref, sref
+  PetscScalar, pointer :: xx_p(:), iphase_p(:)
+  
+  do icond = 1, num_conditions
+    if (condition_array(icond)%ptr%id == icondition) then
+      exit
+    endif
+  enddo
+
+  if (icond > num_conditions) then
+    if (grid%myrank == 0) &
+      print *, 'Condition: ', icondition, ' not found in list of conditions'
+    stop
+  endif
+  
+  if (condition_array(icond)%ptr%itype == 2) then
+    if (grid%myrank == 0) &
+      print *, 'Neumann bc not supported for initial condition.'
+    stop
+  endif
+  
+  pref = condition_array(icond)%ptr%cur_value
+  tref = 25.d0
+  sref = 1.d-6
+  
+  datum_coord(1) = 0.d0
+  datum_coord(2) = 0.d0
+  datum_coord(3) = condition_array(icond)%ptr%datum
+  
+  call VecGetArrayF90(grid%xx, xx_p, ierr); CHKERRQ(ierr)
+  call VecGetArrayF90(grid%iphas, iphase_p,ierr)
+  
+  do iln=1, grid%nlmax
+  
+    na = grid%nL2A(iln)+1
+    cell_coord(1) = grid%x(na)
+    cell_coord(2) = grid%y(na)
+    cell_coord(3) = grid%z(na)
+    
+!geh    iphase_p(iln) = grid%iphas_ini(ir)
+    iphase_p(iln) = 1
+    xx_p(1+(iln-1)*grid%ndof) = &
+                     ComputeHydrostaticPressure(grid,.true., &
+                                                datum_coord,cell_coord, &
+                                                pref,0.d0,0.d0,0.d0, &
+                                                tref,0.d0,0.d0,0.d0)
+                                                
+    xx_p(2+(iln-1)*grid%ndof) = tref
+    xx_p(3+(iln-1)*grid%ndof) = sref
+    
+  enddo
+              
+  call VecRestoreArrayF90(grid%xx, xx_p, ierr)
+  call VecRestoreArrayF90(grid%iphas, iphase_p,ierr)
+
+end subroutine ComputeInitialCondition
+
+! ************************************************************************** !
+!
+! ComputeHydrostaticPressure: Computes the hydrostatic pressure at a given
+!                             cell
+! author: Glenn Hammond
+! date: 5/8/07
+!
+! ************************************************************************** !
+real*8 function ComputeHydrostaticPressure(grid, use_eos, datum_coordinate, &
                                            cell_coordinate, &
                                            reference_pressure, &
                                            pressure_gradient_X, &
@@ -322,18 +430,20 @@ real*8 function computeHydrostaticPressure(grid, use_eos, datum_coordinate, &
                   dum,dum,dum,dum,grid%scale,ierr)
       pressure_at_xyz = pressure_at_xyz + increment*rho*grid%gravity  
     enddo
-    z = z - final_increment
-    temperature_at_xyz = temperature_at_xy + (z-datum_coordinate(3))* &
-                                             temperature_gradient_Z
-    call wateos(temperature_at_xyz,pressure_at_xyz,rho,dw_mol,dwp, &
-                dum,dum,dum,dum,grid%scale,ierr)
-    pressure_at_xyz = pressure_at_xyz + final_increment*rho*grid%gravity  
+    if (final_increment > 0.d0) then
+      z = z - final_increment
+      temperature_at_xyz = temperature_at_xy + (z-datum_coordinate(3))* &
+                                               temperature_gradient_Z
+      call wateos(temperature_at_xyz,pressure_at_xyz,rho,dw_mol,dwp, &
+                  dum,dum,dum,dum,grid%scale,ierr)
+      pressure_at_xyz = pressure_at_xyz + final_increment*rho*grid%gravity  
+    endif
   else
     pressure_at_xyz = pressure_at_xy - dz*pressure_gradient_Z
   endif
 
   computeHydrostaticPressure = pressure_at_xyz
     
-end function computeHydrostaticPressure
+end function ComputeHydrostaticPressure
 
 end module Condition_module
