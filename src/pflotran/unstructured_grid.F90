@@ -60,7 +60,7 @@ subroutine ReadUnstructuredGrid(grid)
   real*8 :: dx, dy, dz, delz
   character(len=MAXCARDLENGTH) :: card
   character(len=MAXWORDLENGTH) :: bctype
-  integer :: direction, icond
+  integer :: direction, icond, icondition
   real*8 :: time, value
   real*8 :: time0, time1
   type(condition_type), pointer :: new_condition
@@ -87,9 +87,11 @@ subroutine ReadUnstructuredGrid(grid)
   call fiFindStringInFile(fid,card,ierr)
 
   ! report error if card does not exist
-  if (ierr /= 0 .and. grid%myrank == 0) &
-    print *, 'Card (',card, ') not found in file'
-
+  if (ierr /= 0 .and. grid%myrank == 0) then
+    print *, 'ERROR: Card (',card, ') not found in file'
+    stop
+  endif
+  
   count1 = 0
   do
     call fiReadFlotranString(fid,string,ierr)
@@ -162,6 +164,13 @@ subroutine ReadUnstructuredGrid(grid)
     count1 = count1 + 1
   enddo
 
+  call VecRestoreArrayF90(grid%volume, volume_p, ierr); CHKERRQ(ierr)     
+  call VecRestoreArrayF90(grid%perm_xx, perm_xx_p, ierr); CHKERRQ(ierr)
+  call VecRestoreArrayF90(grid%perm_yy, perm_yy_p, ierr); CHKERRQ(ierr)
+  call VecRestoreArrayF90(grid%perm_zz, perm_zz_p, ierr); CHKERRQ(ierr)              
+  call VecRestoreArrayF90(grid%tor,tor_p,ierr)
+  call VecRestoreArrayF90(grid%porosity,por_p,ierr)
+
   print *, count1, ' cells read'
   
 ! CONNection information
@@ -191,9 +200,11 @@ subroutine ReadUnstructuredGrid(grid)
   call fiFindStringInFile(fid,card,ierr)
 
   ! report error if card does not exist
-  if (ierr /= 0 .and. grid%myrank == 0) &
-    print *, 'Card (',card, ') not found in file'
-
+  if (ierr /= 0 .and. grid%myrank == 0) then
+    print *, 'ERROR: Card (',card, ') not found in file'
+    stop
+  endif
+  
   count1 = 0
   count2 = 0
   do
@@ -306,9 +317,11 @@ subroutine ReadUnstructuredGrid(grid)
   call fiFindStringInFile(fid,card,ierr)
 
   ! report error if card does not exist
-  if (ierr /= 0 .and. grid%myrank == 0) &
-    print *, 'Card (',card, ') not found in file'
-
+  if (ierr /= 0 .and. grid%myrank == 0) then
+    print *, 'ERROR: Card (',card, ') not found in file'
+    stop
+  endif
+  
   count1 = 0
   count2 = 0
   do
@@ -374,15 +387,16 @@ subroutine ReadUnstructuredGrid(grid)
 
   print *, count2, ' of ', count1, ' boundary connections found'
 
-
 ! CONDition information
 
   card = "COND"
   call fiFindStringInFile(fid,card,ierr)
 
   ! report error if card does not exist
-  if (ierr /= 0 .and. grid%myrank == 0) &
-    print *, 'Card (',card, ') not found in file'
+  if (ierr /= 0 .and. grid%myrank == 0) then
+    print *, 'ERROR: Card (',card, ') not found in file'
+    stop
+  endif
 
   count1 = 0
   do
@@ -450,7 +464,29 @@ subroutine ReadUnstructuredGrid(grid)
 
   print *, count1, ' conditions read'
 
+! Initial Condition information
+
+  card = "ICON"
+  call fiFindStringInFile(fid,card,ierr)
+
+  ! report warning if card does not exist
+  if (ierr /= 0 .and. grid%myrank == 0) then
+    print *, 'WARNING: Card (',card, ') not found in file'
+  endif
+
+  icondition = -1
+  do
+    call fiReadFlotranString(fid,string,ierr)
+    call fiReadStringErrorMsg(card,ierr)
+
+    if (string(1:1) == '.' .or. string(1:1) == '/') exit
+
+    call fiReadInt(string,icondition,ierr) 
+    call fiErrorMsg('icondition',card,ierr)
+  enddo
+
   call InitializeBoundaryConditions(grid)
+  if (icond > 0) call ComputeInitialCondition(grid,icondition)
 
 #ifdef HASH
   deallocate(hash)
@@ -459,13 +495,6 @@ subroutine ReadUnstructuredGrid(grid)
   time1 = secnds(0.) - time0
   print *, time1, ' seconds to read unstructured grid data'
  
-  call VecRestoreArrayF90(grid%volume, volume_p, ierr); CHKERRQ(ierr)     
-  call VecRestoreArrayF90(grid%perm_xx, perm_xx_p, ierr); CHKERRQ(ierr)
-  call VecRestoreArrayF90(grid%perm_yy, perm_yy_p, ierr); CHKERRQ(ierr)
-  call VecRestoreArrayF90(grid%perm_zz, perm_zz_p, ierr); CHKERRQ(ierr)              
-  call VecRestoreArrayF90(grid%tor,tor_p,ierr)
-  call VecRestoreArrayF90(grid%porosity,por_p,ierr)
-
 end subroutine ReadUnstructuredGrid
  
 ! ************************************************************************** !
