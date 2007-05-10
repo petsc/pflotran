@@ -1,5 +1,4 @@
 module PetscRelWrappers
-  implicit none
   private 
   
   public :: VecScatterBegin_wrap, VecScatterEnd_wrap
@@ -13,6 +12,8 @@ contains
 #if (PETSC_VERSION_RELEASE == 1)
 
 subroutine VecScatterBegin_wrap(inctx,x,y,addv,mode,ierr)
+  implicit none
+  
   VecScatter, intent(in) :: inctx
   Vec, intent(in) :: x
   Vec, intent(out) :: y
@@ -25,6 +26,8 @@ end subroutine VecScatterBegin_wrap
 
 
 subroutine VecScatterEnd_wrap(inctx,x,y,addv,mode,ierr)
+  implicit none
+
   VecScatter, intent(in) :: inctx
   Vec, intent(in) :: x
   Vec, intent(out) :: y
