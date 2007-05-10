@@ -1950,6 +1950,11 @@ subroutine geh_io(grid, kplt)
 
   if (id == 0) then
     open(unit=86,file='info.dat')
+    if (associated(grid%imat)) then
+      write(86,'(a8)') '+x +y +z'
+    else
+      write(86,'(a8)') '+x +y -z'
+    endif
     write(86,'(i5,x,i5,x,i5)') grid%nx, grid%ny, grid%nz
   endif
   write(86,'(es20.8)') grid%t/(3600.d0*24.d0*365.d0)
