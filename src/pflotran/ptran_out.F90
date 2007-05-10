@@ -30,9 +30,11 @@ module ptran_out_module
   use trdynmem_module
   use fileio_module
   use ptran_speciation_module
+  use PetscRelWrappers  ! For petsc-release compatibility.
 
 private
 #include "include/finclude/petsc.h"
+#include "petscreldefs.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
 #include "include/finclude/petscda.h"

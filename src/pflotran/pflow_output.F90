@@ -11,10 +11,12 @@ subroutine pflow_output(grid,kplt,iplot)
   
   use pflow_gridtype_module
   use TTPHASE_module
+  use PetscRelWrappers  ! For petsc-release compatibility.
   
   implicit none
 
 #include "include/finclude/petsc.h"
+#include "petscreldefs.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
 #include "include/finclude/petscda.h"
@@ -969,6 +971,8 @@ end subroutine pflow_output
                          x, y, z, flowsteps, scat_1dof, da_1_dof, &
                          porosity, por_nat, perm, perm_nat, myrank)
   
+  use PetscRelWrappers  ! For petsc-release compatibility.
+
   implicit none
 
 #include "include/finclude/petsc.h"
@@ -1155,7 +1159,8 @@ end subroutine pflow_output
   
   use pflow_gridtype_module
   use TTPHASE_module
-  
+  use PetscRelWrappers  ! For petsc-release compatibility.
+
   implicit none
 
 #include "include/finclude/petsc.h"

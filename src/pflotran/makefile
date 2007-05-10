@@ -32,7 +32,8 @@ util_obj  = ${common_src}fileio.o \
 	${common_src}oil_pckr.o \
 	${common_src}utilities.o \
 	${common_src}ptran_global.o \
-	${common_src}trdynmem.o
+	${common_src}trdynmem.o \
+  ${common_src}petscrelwrappers.o
 
 pflow_obj = ${common_src}pflow_vector_ops.o \
 	${common_src}pflow_read_gridsize.o \
@@ -109,7 +110,7 @@ pflowgrid_mod.o : pflow_gridtype.o water_eos.o pflow_vector_ops.o \
                   pflow_output.o ptran_global.o \
                   trdynmem.o fileio.o
 pflow_vector_ops.o : water_eos.o
-pflow_output.o : pflow_gridtype.o
+pflow_output.o : pflow_gridtype.o petscrelwrappers.o
 pflow_COND.o : pflow_gridtype.o 
 pflow_LIQUID.o : pflow_gridtype.o water_eos.o
 pflow_TH.o : pflow_gridtype.o water_eos.o
