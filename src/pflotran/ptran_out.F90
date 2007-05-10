@@ -30,9 +30,11 @@ module ptran_out_module
   use trdynmem_module
   use fileio_module
   use ptran_speciation_module
+  use PetscRelWrappers  ! For petsc-release compatibility.
 
 private
 #include "include/finclude/petsc.h"
+#include "petscreldefs.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
 #include "include/finclude/petscda.h"
@@ -113,10 +115,10 @@ contains
   call DAGlobalToNaturalEnd(da,c,INSERT_VALUES,c_nat,ierr)
 
   call VecScatterCreateToAll(c_nat,scatter,c_seq,ierr)
-  call VecScatterBegin(c_nat, c_seq, INSERT_VALUES, SCATTER_FORWARD, &
-       scatter, ierr)
-  call VecScatterEnd(c_nat, c_seq, INSERT_VALUES, SCATTER_FORWARD, &
-       scatter, ierr)
+  call VecScatterBegin(scatter, c_nat, c_seq, INSERT_VALUES, SCATTER_FORWARD, &
+                       ierr)
+  call VecScatterEnd(scatter, c_nat, c_seq, INSERT_VALUES, SCATTER_FORWARD, &
+                     ierr)
 
 ! velocity fields
 ! call DACreateNaturalVector(da_3np, vl_nat, ierr)
@@ -425,20 +427,20 @@ contains
     call DAGlobalToNaturalEnd(da_kin,phik,INSERT_VALUES,pk_nat,ierr)
 
     call VecScatterCreateToAll(pk_nat,scatter,pk_seq,ierr)
-    call VecScatterBegin(pk_nat, pk_seq, INSERT_VALUES, SCATTER_FORWARD, &
-         scatter, ierr)
-    call VecScatterEnd(pk_nat, pk_seq, INSERT_VALUES, SCATTER_FORWARD, &
-         scatter, ierr)
+    call VecScatterBegin(scatter, pk_nat, pk_seq, INSERT_VALUES, &
+                         SCATTER_FORWARD, ierr)
+    call VecScatterEnd(scatter, pk_nat, pk_seq, INSERT_VALUES, &
+                       SCATTER_FORWARD, ierr)
 
     call DACreateNaturalVector(da_1dof,por_nat,ierr)
     call DAGlobalToNaturalBegin(da_1dof,por,INSERT_VALUES,por_nat,ierr)
     call DAGlobalToNaturalEnd(da_1dof,por,INSERT_VALUES,por_nat,ierr)
 
     call VecScatterCreateToAll(por_nat,scatter,por_seq,ierr)
-    call VecScatterBegin(por_nat, por_seq, INSERT_VALUES, SCATTER_FORWARD, &
-         scatter, ierr)
-    call VecScatterEnd(por_nat, por_seq, INSERT_VALUES, SCATTER_FORWARD, &
-         scatter, ierr)
+    call VecScatterBegin(scatter, por_nat, por_seq, INSERT_VALUES, &
+                         SCATTER_FORWARD, ierr)
+    call VecScatterEnd(scatter, por_nat, por_seq, INSERT_VALUES, &
+                       SCATTER_FORWARD, ierr)
   
     call VecGetArrayF90(por_seq,por_p,ierr)
     call VecGetArrayF90(pk_seq,pk_p,ierr)
@@ -567,10 +569,10 @@ contains
     call DAGlobalToNaturalEnd(da_kin,rkin,INSERT_VALUES,rte_nat,ierr)
 
     call VecScatterCreateToAll(rte_nat,scatter,rte_seq,ierr)
-    call VecScatterBegin(rte_nat, rte_seq, INSERT_VALUES, SCATTER_FORWARD, &
-         scatter, ierr)
-    call VecScatterEnd(rte_nat, rte_seq, INSERT_VALUES, SCATTER_FORWARD, &
-         scatter, ierr)
+    call VecScatterBegin(scatter, rte_nat, rte_seq, INSERT_VALUES, &
+                         SCATTER_FORWARD, ierr)
+    call VecScatterEnd(scatter, rte_nat, rte_seq, INSERT_VALUES, &
+                       SCATTER_FORWARD, ierr)
 
     call VecGetArrayF90(rte_seq,rte_p,ierr)
 
@@ -876,10 +878,10 @@ contains
   call DAGlobalToNaturalEnd(da,c,INSERT_VALUES,c_nat,ierr)
 
   call VecScatterCreateToAll(c_nat,scatter,c_seq,ierr)
-  call VecScatterBegin(c_nat, c_seq, INSERT_VALUES, SCATTER_FORWARD, &
-       scatter, ierr)
-  call VecScatterEnd(c_nat, c_seq, INSERT_VALUES, SCATTER_FORWARD, &
-       scatter, ierr)
+  call VecScatterBegin(scatter, c_nat, c_seq, INSERT_VALUES, SCATTER_FORWARD, &
+                       ierr)
+  call VecScatterEnd(scatter, c_nat, c_seq, INSERT_VALUES, SCATTER_FORWARD, &
+                     ierr)
 
 ! velocity fields
 ! call DACreateNaturalVector(da_3np, vl_nat, ierr)
@@ -1311,20 +1313,20 @@ contains
     call DAGlobalToNaturalEnd(da_kin,phik,INSERT_VALUES,pk_nat,ierr)
 
     call VecScatterCreateToAll(pk_nat,scatter,pk_seq,ierr)
-    call VecScatterBegin(pk_nat, pk_seq, INSERT_VALUES, SCATTER_FORWARD, &
-         scatter, ierr)
-    call VecScatterEnd(pk_nat, pk_seq, INSERT_VALUES, SCATTER_FORWARD, &
-         scatter, ierr)
+    call VecScatterBegin(scatter, pk_nat, pk_seq, INSERT_VALUES, &
+                         SCATTER_FORWARD, ierr)
+    call VecScatterEnd(scatter, pk_nat, pk_seq, INSERT_VALUES, &
+                       SCATTER_FORWARD, ierr)
 
     call DACreateNaturalVector(da_1dof,por_nat,ierr)
     call DAGlobalToNaturalBegin(da_1dof,por,INSERT_VALUES,por_nat,ierr)
     call DAGlobalToNaturalEnd(da_1dof,por,INSERT_VALUES,por_nat,ierr)
 
     call VecScatterCreateToAll(por_nat,scatter,por_seq,ierr)
-    call VecScatterBegin(por_nat, por_seq, INSERT_VALUES, SCATTER_FORWARD, &
-         scatter, ierr)
-    call VecScatterEnd(por_nat, por_seq, INSERT_VALUES, SCATTER_FORWARD, &
-         scatter, ierr)
+    call VecScatterBegin(scatter, por_nat, por_seq, INSERT_VALUES, &
+                         SCATTER_FORWARD, ierr)
+    call VecScatterEnd(scatter, por_nat, por_seq, INSERT_VALUES, &
+                       SCATTER_FORWARD, ierr)
   
     call VecGetArrayF90(por_seq,por_p,ierr)
     call VecGetArrayF90(pk_seq,pk_p,ierr)
@@ -1453,10 +1455,10 @@ contains
     call DAGlobalToNaturalEnd(da_kin,rkin,INSERT_VALUES,rte_nat,ierr)
 
     call VecScatterCreateToAll(rte_nat,scatter,rte_seq,ierr)
-    call VecScatterBegin(rte_nat, rte_seq, INSERT_VALUES, SCATTER_FORWARD, &
-         scatter, ierr)
-    call VecScatterEnd(rte_nat, rte_seq, INSERT_VALUES, SCATTER_FORWARD, &
-         scatter, ierr)
+    call VecScatterBegin(scatter, rte_nat, rte_seq, INSERT_VALUES, &
+                         SCATTER_FORWARD, ierr)
+    call VecScatterEnd(scatter, rte_nat, rte_seq, INSERT_VALUES, &
+                       SCATTER_FORWARD, ierr)
 
     call VecGetArrayF90(rte_seq,rte_p,ierr)
 
