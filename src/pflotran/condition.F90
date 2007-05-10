@@ -298,6 +298,8 @@ end subroutine UpdateBoundaryConditions
 subroutine ComputeInitialCondition(grid, icondition)
 
   use pflow_gridtype_module
+  use translator_vad_module
+  use Vadose_module
 
   implicit none
 
@@ -308,9 +310,10 @@ subroutine ComputeInitialCondition(grid, icondition)
   type(pflowGrid) :: grid
   integer :: icondition
   
-  integer :: iln, na, ierr, icond
+  integer :: iln, na, ierr, icond, itype
   real*8 :: cell_coord(3), datum_coord(3)
-  real*8 :: pref, tref, sref
+  real*8 :: pref, tref, sref, value
+  real*8 :: patm = 101325.d0
   PetscScalar, pointer :: xx_p(:), iphase_p(:)
   
   do icond = 1, num_conditions
@@ -325,7 +328,8 @@ subroutine ComputeInitialCondition(grid, icondition)
     stop
   endif
   
-  if (condition_array(icond)%ptr%itype == 2) then
+  itype = condition_array(icond)%ptr%itype
+  if (itype == 2) then
     if (grid%myrank == 0) &
       print *, 'Neumann bc not supported for initial condition.'
     stop
@@ -349,14 +353,23 @@ subroutine ComputeInitialCondition(grid, icondition)
     cell_coord(2) = grid%y(na)
     cell_coord(3) = grid%z(na)
     
+    if (itype == 3 .or. itype == 4) then ! correct for pressure gradient
+      value = ComputeHydrostaticPressure(grid,.true., &
+                                         datum_coord,cell_coord, &
+                                         pref,0.d0,0.d0,0.d0, &
+                                         tref,0.d0,0.d0,0.d0)
+    else
+      value = pref
+    endif     
+
 !geh    iphase_p(iln) = grid%iphas_ini(ir)
-    iphase_p(iln) = 1
-    xx_p(1+(iln-1)*grid%ndof) = &
-                     ComputeHydrostaticPressure(grid,.true., &
-                                                datum_coord,cell_coord, &
-                                                pref,0.d0,0.d0,0.d0, &
-                                                tref,0.d0,0.d0,0.d0)
-                                                
+    if (value > patm) then
+      iphase_p(iln) = 1
+    else
+      iphase_p(iln) = 3
+    endif
+
+    xx_p(1+(iln-1)*grid%ndof) = value  
     xx_p(2+(iln-1)*grid%ndof) = tref
     xx_p(3+(iln-1)*grid%ndof) = sref
     
@@ -364,6 +377,9 @@ subroutine ComputeInitialCondition(grid, icondition)
               
   call VecRestoreArrayF90(grid%xx, xx_p, ierr)
   call VecRestoreArrayF90(grid%iphas, iphase_p,ierr)
+
+  call pflow_update_vadose(grid)
+  call Translator_Vadose_Switching(grid%xx,grid,0,ierr)
 
 end subroutine ComputeInitialCondition
 

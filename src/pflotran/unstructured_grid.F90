@@ -470,23 +470,24 @@ subroutine ReadUnstructuredGrid(grid)
   call fiFindStringInFile(fid,card,ierr)
 
   ! report warning if card does not exist
-  if (ierr /= 0 .and. grid%myrank == 0) then
+  if (ierr /= 0 .and. grid%myrank == 0) &
     print *, 'WARNING: Card (',card, ') not found in file'
-  endif
 
   icondition = -1
-  do
-    call fiReadFlotranString(fid,string,ierr)
-    call fiReadStringErrorMsg(card,ierr)
+  if (ierr == 0) then
+    do
+      call fiReadFlotranString(fid,string,ierr)
+      call fiReadStringErrorMsg(card,ierr)
 
-    if (string(1:1) == '.' .or. string(1:1) == '/') exit
+      if (string(1:1) == '.' .or. string(1:1) == '/') exit
 
-    call fiReadInt(string,icondition,ierr) 
-    call fiErrorMsg('icondition',card,ierr)
-  enddo
+      call fiReadInt(string,icondition,ierr) 
+      call fiErrorMsg('icondition',card,ierr)
+    enddo
+  endif
 
   call InitializeBoundaryConditions(grid)
-  if (icond > 0) call ComputeInitialCondition(grid,icondition)
+  if (icondition > 0) call ComputeInitialCondition(grid,icondition)
 
 #ifdef HASH
   deallocate(hash)
