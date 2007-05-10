@@ -134,16 +134,16 @@ subroutine pflow_output(grid,kplt,iplot)
 
 
     call VecScatterCreateToAll(c_nat, scat_1dof, c_all, ierr)
-    call VecScatterBegin(c_nat, c_all, INSERT_VALUES, SCATTER_FORWARD, &
-                         scat_1dof, ierr)
-    call VecScatterEnd(c_nat, c_all, INSERT_VALUES, SCATTER_FORWARD, &
-                       scat_1dof, ierr)
+    call VecScatterBegin(scat_1dof, c_nat, c_all, INSERT_VALUES, &
+                         SCATTER_FORWARD, ierr)
+    call VecScatterEnd(scat_1dof, c_nat, c_all, INSERT_VALUES, &
+                       SCATTER_FORWARD, ierr)
 
     call VecScatterCreateToAll(vl_nat, scat_3npdof, vl_all, ierr)
-    call VecScatterBegin(vl_nat, vl_all, INSERT_VALUES, SCATTER_FORWARD, &
-                         scat_3npdof, ierr)
-    call VecScatterEnd(vl_nat, vl_all, INSERT_VALUES, SCATTER_FORWARD, &
-                       scat_3npdof, ierr)
+    call VecScatterBegin(scat_3npdof, vl_nat, vl_all, INSERT_VALUES, &
+                         SCATTER_FORWARD, ierr)
+    call VecScatterEnd(scat_3npdof, vl_nat, vl_all, INSERT_VALUES, &
+                       SCATTER_FORWARD, ierr)
        
     call VecScatterDestroy(scat_1dof, ierr)
     call VecScatterDestroy(scat_3npdof, ierr)
@@ -323,49 +323,49 @@ subroutine pflow_output(grid,kplt,iplot)
 ! call VecConvertMPIToMPIZero(s_nat, s_all, ierr);   CHKERRQ(ierr)
 
 ! call VecScatterCreateToZero(p_nat, scat_nph, p_all, ierr)
-  call VecScatterBegin(p_nat, p_all, INSERT_VALUES, SCATTER_FORWARD, &
-       scat_nph, ierr)
-  call VecScatterEnd(p_nat, p_all, INSERT_VALUES, SCATTER_FORWARD, &
-       scat_nph, ierr)
+  call VecScatterBegin(scat_nph, p_nat, p_all, INSERT_VALUES, SCATTER_FORWARD, &
+                       ierr)
+  call VecScatterEnd(scat_nph, p_nat, p_all, INSERT_VALUES, SCATTER_FORWARD, &
+                     ierr)
 
 ! call VecScatterCreateToZero(s_nat, scat_nph, s_all, ierr)
-  call VecScatterBegin(s_nat, s_all, INSERT_VALUES, SCATTER_FORWARD, &
-       scat_nph, ierr)
-  call VecScatterEnd(s_nat, s_all, INSERT_VALUES, SCATTER_FORWARD, &
-       scat_nph, ierr)
+  call VecScatterBegin(scat_nph, s_nat, s_all, INSERT_VALUES, SCATTER_FORWARD, &
+                       ierr)
+  call VecScatterEnd(scat_nph, s_nat, s_all, INSERT_VALUES, SCATTER_FORWARD, &
+                     ierr)
 
   if (grid%use_2ph == PETSC_TRUE .or. grid%use_mph == PETSC_TRUE .or. &
       grid%use_vadose == PETSC_TRUE .or. grid%use_flash == PETSC_TRUE) then
-    call VecScatterBegin(x_nat, x_all, INSERT_VALUES, SCATTER_FORWARD, &
-                         scat_nph, ierr)
-    call VecScatterEnd(x_nat, x_all, INSERT_VALUES, SCATTER_FORWARD, &
-                       scat_nph, ierr)
+    call VecScatterBegin(scat_nph, x_nat, x_all, INSERT_VALUES, &
+                         SCATTER_FORWARD, ierr)
+    call VecScatterEnd(scat_nph, x_nat, x_all, INSERT_VALUES, SCATTER_FORWARD, &
+                       ierr)
   endif
   
 ! call VecScatterCreateToZero(t_nat, scat_1dof, t_all, ierr)
-  call VecScatterBegin(t_nat, t_all, INSERT_VALUES, SCATTER_FORWARD, &
-                       scat_1dof, ierr)
-  call VecScatterEnd(t_nat, t_all, INSERT_VALUES, SCATTER_FORWARD, &
-                     scat_1dof, ierr)
+  call VecScatterBegin(scat_1dof, t_nat, t_all, INSERT_VALUES, &
+                       SCATTER_FORWARD, ierr)
+  call VecScatterEnd(scat_1dof, t_nat, t_all, INSERT_VALUES, SCATTER_FORWARD, &
+                     ierr)
 
   if (ibrkcrv == 0) then
 !   call VecConvertMPIToMPIZero(c_nat, c_all, ierr)
 
 !   call VecScatterCreateToZero(c_nat, scat_1dof, c_all, ierr)
-    call VecScatterBegin(c_nat, c_all, INSERT_VALUES, SCATTER_FORWARD, &
-                         scat_1dof, ierr)
-    call VecScatterEnd(c_nat, c_all, INSERT_VALUES, SCATTER_FORWARD, &
-                       scat_1dof, ierr)
+    call VecScatterBegin(scat_1dof, c_nat, c_all, INSERT_VALUES, &
+                         SCATTER_FORWARD, ierr)
+    call VecScatterEnd(scat_1dof, c_nat, c_all, INSERT_VALUES, &
+                       SCATTER_FORWARD, ierr)
   endif
   
   if (rk > 0.d0) then
 !   call VecConvertMPIToMPIZero(phis_nat, phis_all, ierr)
 
 !   call VecScatterCreateToZero(phis_nat, scatter, phis_all, ierr)
-    call VecScatterBegin(phis_nat, phis_all,INSERT_VALUES, SCATTER_FORWARD, &
-                         scat_1dof, ierr)
-    call VecScatterEnd(phis_nat, phis_all,INSERT_VALUES, SCATTER_FORWARD, &
-                       scat_1dof, ierr)
+    call VecScatterBegin(scat_1dof, phis_nat, phis_all, INSERT_VALUES, &
+                         SCATTER_FORWARD, ierr)
+    call VecScatterEnd(scat_1dof, phis_nat, phis_all, INSERT_VALUES, &
+                       SCATTER_FORWARD, ierr)
   endif
 #else
 ! call VecConvertMPIToSeqAll(p_nat, p_all, ierr);    CHKERRQ(ierr)
@@ -373,57 +373,57 @@ subroutine pflow_output(grid,kplt,iplot)
 ! call VecConvertMPIToSeqAll(s_nat, s_all, ierr);    CHKERRQ(ierr)
 
 ! call VecScatterCreateToAll(p_nat, scatter, p_all, ierr)
-  call VecScatterBegin(p_nat, p_all, INSERT_VALUES, SCATTER_FORWARD, &
-                       scat_nph, ierr)
-  call VecScatterEnd(p_nat, p_all, INSERT_VALUES, SCATTER_FORWARD, &
-                     scat_nph, ierr)
+  call VecScatterBegin(scat_nph, p_nat, p_all, INSERT_VALUES, SCATTER_FORWARD, &
+                       ierr)
+  call VecScatterEnd(scat_nph, p_nat, p_all, INSERT_VALUES, SCATTER_FORWARD, &
+                     ierr)
 
 ! call VecScatterCreateToAll(s_nat, scatter, s_all, ierr)
-  call VecScatterBegin(s_nat, s_all, INSERT_VALUES, SCATTER_FORWARD, &
-                       scat_nph, ierr)
-  call VecScatterEnd(s_nat, s_all, INSERT_VALUES, SCATTER_FORWARD, &
-                     scat_nph, ierr)
+  call VecScatterBegin(scat_nph, s_nat, s_all, INSERT_VALUES, SCATTER_FORWARD, &
+                       ierr)
+  call VecScatterEnd(scat_nph, s_nat, s_all, INSERT_VALUES, SCATTER_FORWARD, &
+                     ierr)
 
   if (grid%use_2ph == PETSC_TRUE .or. grid%use_mph == PETSC_TRUE .or. &
       grid%use_vadose == PETSC_TRUE .or. grid%use_flash == PETSC_TRUE) then
-    call VecScatterBegin(x_nat, x_all, INSERT_VALUES, SCATTER_FORWARD, &
-                         scat_nph, ierr)
-    call VecScatterEnd(x_nat, x_all, INSERT_VALUES, SCATTER_FORWARD, &
-                       scat_nph, ierr)
+    call VecScatterBegin(scat_nph, x_nat, x_all, INSERT_VALUES, &
+                         SCATTER_FORWARD, ierr)
+    call VecScatterEnd(scat_nph, x_nat, x_all, INSERT_VALUES, SCATTER_FORWARD, &
+                       ierr)
   endif
   
   if (grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE & 
       .or. grid%use_flash == PETSC_TRUE) then
-    call VecScatterBegin(iphase_nat, iphase_all, INSERT_VALUES, &
-                         SCATTER_FORWARD, scat_1dof, ierr)
-    call VecScatterEnd(iphase_nat, iphase_all, INSERT_VALUES, SCATTER_FORWARD, &
-                       scat_1dof, ierr)
+    call VecScatterBegin(scat_1dof, iphase_nat, iphase_all, INSERT_VALUES, &
+                         SCATTER_FORWARD, ierr)
+    call VecScatterEnd(scat_1dof, iphase_nat, iphase_all, INSERT_VALUES, &
+                       SCATTER_FORWARD, ierr)
 
   endif
 ! call VecScatterCreateToAll(t_nat, scatter, t_all, ierr)
-  call VecScatterBegin(t_nat, t_all, INSERT_VALUES, SCATTER_FORWARD, &
-                       scat_1dof, ierr)
-  call VecScatterEnd(t_nat, t_all, INSERT_VALUES, SCATTER_FORWARD, &
-                     scat_1dof, ierr)
+  call VecScatterBegin(scat_1dof, t_nat, t_all, INSERT_VALUES, &
+                       SCATTER_FORWARD, ierr)
+  call VecScatterEnd(scat_1dof, t_nat, t_all, INSERT_VALUES, SCATTER_FORWARD, &
+                     ierr)
 
 !  if (ibrkcrv == 0) then
 !   call VecConvertMPIToSeqAll(c_nat, c_all, ierr)
 
 !   call VecScatterCreateToAll(c_nat, scat_1dof, c_all, ierr)
-  call VecScatterBegin(c_nat, c_all, INSERT_VALUES, SCATTER_FORWARD, &
-                       scat_1dof, ierr)
-  call VecScatterEnd(c_nat, c_all, INSERT_VALUES, SCATTER_FORWARD, &
-                     scat_1dof, ierr)
+  call VecScatterBegin(scat_1dof, c_nat, c_all, INSERT_VALUES, &
+                       SCATTER_FORWARD, ierr)
+  call VecScatterEnd(scat_1dof, c_nat, c_all, INSERT_VALUES, SCATTER_FORWARD, &
+                     ierr)
 !  endif
 
   if (grid%rk > 0.d0) then
 !   call VecConvertMPIToSeqAll(phis_nat, phis_all, ierr)
 
 !   call VecScatterCreateToAll(phis_nat, scat_1dof, phis_all, ierr)
-    call VecScatterBegin(phis_nat, phis_all, INSERT_VALUES, SCATTER_FORWARD, &
-                         scat_1dof, ierr)
-    call VecScatterEnd(phis_nat, phis_all, INSERT_VALUES, SCATTER_FORWARD, &
-                       scat_1dof, ierr)
+    call VecScatterBegin(scat_1dof, phis_nat, phis_all, INSERT_VALUES, &
+                         SCATTER_FORWARD, ierr)
+    call VecScatterEnd(scat_1dof, phis_nat, phis_all, INSERT_VALUES, &
+                       SCATTER_FORWARD, ierr)
   endif
 
   call VecScatterDestroy(scat_nph,  ierr)
@@ -739,17 +739,17 @@ subroutine pflow_output(grid,kplt,iplot)
 #ifdef HAVE_MPITOMPIZERO
 ! call VecConvertMPIToMPIZero(vl_nat, vl_all, ierr)
     call VecScatterCreateToZero(vl_nat, scat_3npdof, vl_all, ierr)
-    call VecScatterBegin(vl_nat, vl_all, INSERT_VALUES, &
-                         SCATTER_FORWARD, scat_3npdof, ierr)
-    call VecScatterEnd(vl_nat, vl_all, INSERT_VALUES, SCATTER_FORWARD, &
-                       scat_3npdof, ierr)
+    call VecScatterBegin(scat_3npdof, vl_nat, vl_all, INSERT_VALUES, &
+                         SCATTER_FORWARD, ierr)
+    call VecScatterEnd(scat_3npdof, vl_nat, vl_all, INSERT_VALUES, &
+                       SCATTER_FORWARD, ierr)
 #else
 ! call VecConvertMPIToSeqAll(vl_nat, vl_all, ierr)
     call VecScatterCreateToAll(vl_nat, scat_3npdof, vl_all, ierr)
-    call VecScatterBegin(vl_nat, vl_all, INSERT_VALUES, &
-                         SCATTER_FORWARD, scat_3npdof, ierr)
-    call VecScatterEnd(vl_nat, vl_all, INSERT_VALUES, SCATTER_FORWARD, &
-                     scat_3npdof, ierr)
+    call VecScatterBegin(scat_3npdof, vl_nat, vl_all, INSERT_VALUES, &
+                         SCATTER_FORWARD, ierr)
+    call VecScatterEnd(scat_3npdof, vl_nat, vl_all, INSERT_VALUES, &
+                       SCATTER_FORWARD, ierr)
     call VecScatterDestroy(scat_3npdof, ierr)
 #endif
 
@@ -1035,38 +1035,38 @@ end subroutine pflow_output
 #ifdef HAVE_MPITOMPIZERO
 ! call VecConvertMPIToMPIZero(por_nat, por_all, ierr); CHKERRQ(ierr)
 ! call VecScatterCreateToZero(por_nat, scatter, por_all, ierr)
-  call VecScatterBegin(por_nat, por_all, INSERT_VALUES, SCATTER_FORWARD, &
-       scat_1dof, ierr)
-  call VecScatterEnd(por_nat, por_all, INSERT_VALUES, SCATTER_FORWARD, &
-       scat_1dof, ierr)
+  call VecScatterBegin(scat_1dof, por_nat, por_all, INSERT_VALUES, &
+                       SCATTER_FORWARD, ierr)
+  call VecScatterEnd(scat_1dof, por_nat, por_all, INSERT_VALUES, &
+                     SCATTER_FORWARD, ierr)
 ! call VecConvertMPIToMPIZero(perm_nat, perm_all, ierr); CHKERRQ(ierr)
-  call VecScatterBegin(perm_nat, perm_all, INSERT_VALUES, SCATTER_FORWARD, &
-       scat_1dof, ierr)
-  call VecScatterEnd(perm_nat, perm_all, INSERT_VALUES, SCATTER_FORWARD, &
-       scat_1dof, ierr)
+  call VecScatterBegin(scat_1dof, perm_nat, perm_all, INSERT_VALUES, &
+                       SCATTER_FORWARD, ierr)
+  call VecScatterEnd(scat_1dof, perm_nat, perm_all, INSERT_VALUES, &
+                     SCATTER_FORWARD, ierr)
 #else
 ! call VecConvertMPIToSeqAll(por_nat, por_all, ierr); CHKERRQ(ierr)
 ! call VecScatterCreateToAll(por_nat, scatter, por_all, ierr)
 
-! call VecScatterBegin(por_nat, por_all, INSERT_VALUES, SCATTER_FORWARD, &
-!      scat_1dof, ierr)
-! call VecScatterEnd(por_nat, por_all, INSERT_VALUES, SCATTER_FORWARD, &
-!      scat_1dof, ierr)
+! call VecScatterBegin(scat_1dof, por_nat, por_all, INSERT_VALUES, &
+!                      SCATTER_FORWARD, ierr)
+! call VecScatterEnd(scat_1dof, por_nat, por_all, INSERT_VALUES, &
+!                    SCATTER_FORWARD, ierr)
 
 ! call VecConvertMPIToSeqAll(perm_nat, perm_all, ierr); CHKERRQ(ierr)
 
   call VecScatterCreateToAll(por_nat, scat_1dof, por_all, ierr)
-  call VecScatterBegin(por_nat, por_all, INSERT_VALUES, SCATTER_FORWARD, &
-       scat_1dof, ierr)
-  call VecScatterEnd(por_nat, por_all, INSERT_VALUES, SCATTER_FORWARD, &
-       scat_1dof, ierr)
+  call VecScatterBegin(scat_1dof, por_nat, por_all, INSERT_VALUES, &
+                       SCATTER_FORWARD, ierr)
+  call VecScatterEnd(scat_1dof, por_nat, por_all, INSERT_VALUES, &
+                     SCATTER_FORWARD, ierr)
 ! call VecScatterDestroy(scat_1dof, ierr)
 
   call VecScatterCreateToAll(perm_nat, scat_1dof, perm_all, ierr)
-  call VecScatterBegin(perm_nat, perm_all, INSERT_VALUES, SCATTER_FORWARD, &
-       scat_1dof, ierr)
-  call VecScatterEnd(perm_nat, perm_all, INSERT_VALUES, SCATTER_FORWARD, &
-       scat_1dof, ierr)
+  call VecScatterBegin(scat_1dof, perm_nat, perm_all, INSERT_VALUES, &
+                       SCATTER_FORWARD, ierr)
+  call VecScatterEnd(scat_1dof, perm_nat, perm_all, INSERT_VALUES, &
+                     SCATTER_FORWARD, ierr)
   call VecScatterDestroy(scat_1dof, ierr)
 #endif
 
@@ -1786,17 +1786,17 @@ end subroutine pflow_output
 #ifdef HAVE_MPITOMPIZERO
 ! call VecConvertMPIToMPIZero(vl_nat, vl_all, ierr)
   call VecScatterCreateToZero(vl_nat, scat_3npdof, vl_all, ierr)
-  call VecScatterBegin(vl_nat, vl_all, INSERT_VALUES, &
-       SCATTER_FORWARD, scat_3npdof, ierr)
-  call VecScatterEnd(vl_nat, vl_all, INSERT_VALUES, SCATTER_FORWARD, &
-       scat_3npdof, ierr)
+  call VecScatterBegin(scat_3npdof, vl_nat, vl_all, INSERT_VALUES, &
+                       SCATTER_FORWARD, ierr)
+  call VecScatterEnd(scat_3npdof, vl_nat, vl_all, INSERT_VALUES, &
+                     SCATTER_FORWARD, ierr)
 #else
 ! call VecConvertMPIToSeqAll(vl_nat, vl_all, ierr)
   call VecScatterCreateToAll(vl_nat, scat_3npdof, vl_all, ierr)
-  call VecScatterBegin(vl_nat, vl_all, INSERT_VALUES, &
-       SCATTER_FORWARD, scat_3npdof, ierr)
-  call VecScatterEnd(vl_nat, vl_all, INSERT_VALUES, SCATTER_FORWARD, &
-       scat_3npdof, ierr)
+  call VecScatterBegin(scat_3npdof, vl_nat, vl_all, INSERT_VALUES, &
+                       SCATTER_FORWARD, ierr)
+  call VecScatterEnd(scat_3npdof, vl_nat, vl_all, INSERT_VALUES, &
+                     SCATTER_FORWARD, ierr)
  call VecScatterDestroy(scat_3npdof, ierr)
 #endif
 
