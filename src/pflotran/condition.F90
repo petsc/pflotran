@@ -10,8 +10,8 @@ module Condition_module
 #include "definitions.h"
 
   type condition_type
-    real*8, allocatable :: times(:)
-    real*8, allocatable :: values(:)
+    real*8, pointer :: times(:)
+    real*8, pointer :: values(:)
     real*8 :: cur_value
     real*8 :: datum
     integer :: id
