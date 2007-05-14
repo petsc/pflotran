@@ -25,6 +25,8 @@ subroutine pflowGridCheckpoint(grid, kplt)
   implicit none
 
 #include "include/finclude/petsc.h"
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
 #include "include/finclude/petscda.h"
 #include "include/finclude/petscda.h90"
 #include "include/finclude/petscdef.h"
@@ -32,9 +34,8 @@ subroutine pflowGridCheckpoint(grid, kplt)
 #include "include/finclude/petscis.h90"
 #include "include/finclude/petsclog.h"
 #include "include/finclude/petscsys.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
 #include "include/finclude/petscviewer.h"
+#include "include/finclude/petscbag.h"
 
 #include "definitions.h"
 
@@ -83,8 +84,8 @@ subroutine pflowGridCheckpoint(grid, kplt)
 
   ! If we are running with multiple phases, we need to dump the vector 
   ! that indicates what phases are present. 
-  if(grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE &
-     .or. grid%use_flash == PETSC_TRUE .or. grid@use_2ph == PETSC_TRUE) then
+  if(grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE .or. &
+     grid%use_flash == PETSC_TRUE .or. grid%use_2ph == PETSC_TRUE) then
     call VecView(grid%iphas, viewer, ierr)
   endif  
 
@@ -104,7 +105,7 @@ subroutine pflowGridCheckpoint(grid, kplt)
   ! We are finished, so clean up.
   call PetscViewerDestroy(viewer, ierr)
 
-end subroutine pflowGridCheckpoint(grid, kplt)
+end subroutine pflowGridCheckpoint
 
 
 subroutine pflowGridTHCBinaryOut(grid, kplt)
@@ -188,6 +189,6 @@ subroutine pflowGridTHCBinaryOut(grid, kplt)
   ! We are finished, so clean up.
   call PetscViewerDestroy(viewer, ierr)
 
-end subroutine pflowGridTHCBinaryOut(grid, kplt)
+end subroutine pflowGridTHCBinaryOut
 
-module pflow_checkpoint
+end module pflow_checkpoint
