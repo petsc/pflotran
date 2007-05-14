@@ -26,7 +26,7 @@ module Condition_module
   end type condition_type_ptr
 
   type(condition_type), pointer :: condition_list
-  type(condition_type_ptr), allocatable :: condition_array(:)
+  type(condition_type_ptr), pointer :: condition_array(:)
 
   integer, private :: num_conditions
 
@@ -260,7 +260,7 @@ subroutine UpdateBoundaryConditions(grid)
     cell_coord(3) = grid%z(grid%nL2A(grid%mblkbc(iconnbc))+1)
     
     pref = condition_array(icond)%ptr%cur_value
-    
+    value = pref
     if (itype == 3 .or. itype == 4) then ! correct for pressure gradient
 #if 1
       value = ComputeHydrostaticPressure(grid,use_eos, &
