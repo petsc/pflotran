@@ -7,9 +7,9 @@ module PetscRelWrappers
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
 
-contains
-
 #if (PETSC_VERSION_RELEASE == 1)
+
+contains
 
 subroutine VecScatterBegin_wrap(inctx,x,y,addv,mode,ierr)
   implicit none
