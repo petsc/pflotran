@@ -1,28 +1,25 @@
-module pflow_checkpoint
-
-  private
-  
-  public :: pflowGridCheckpoint, pflowGridRestart
-
-  ! The header for the binary checkpoint files.
-  ! RTM: This is pretty makeshift.  We need to think about what should 
-  ! go into this header and how it should be organized.
-  type :: pflowChkPtHeader
+! The header for the binary checkpoint files.
+! This needs to go in its own module for some reason, because otherwise 
+! some compilers won't like the INTERFACE block needed to allow us to 
+! use the PetscBagGetData() routine.
+! RTM: This is pretty makeshift.  We need to think about what should 
+! go into this header and how it should be organized.
+module pflow_chkptheader
+  type, public :: pflowChkPtHeader
     real*8 :: t
     real*8 :: dt
     integer :: flowsteps 
     integer :: kplot
     integer :: newtcum
   end type pflowChkPtHeader
+end module pflow_chkptheader
 
-contains
+module pflow_checkpoint
+  use pflow_chkptheader
 
-subroutine pflowGridCheckpoint(grid, kplt)
+  private
 
-  use pflow_gridtype_module
-  use TTPHASE_module
-
-  implicit none
+  public :: pflowGridCheckpoint, pflowGridRestart
 
 #include "include/finclude/petsc.h"
 #include "include/finclude/petscvec.h"
@@ -37,10 +34,28 @@ subroutine pflowGridCheckpoint(grid, kplt)
 #include "include/finclude/petscviewer.h"
 #include "include/finclude/petscbag.h"
 
+  Interface PetscBagGetData
+    Subroutine PetscBagGetData(bag,ctx,ierr)
+      use pflow_chkptheader
+      PetscBag bag
+      type(pflowChkPtHeader), pointer :: ctx
+      PetscErrorCode ierr
+    End Subroutine
+  End Interface PetscBagGetData
+
+contains
+
+subroutine pflowGridCheckpoint(grid, id)
+
+  use pflow_gridtype_module
+  use TTPHASE_module
+
+  implicit none
+
 #include "definitions.h"
 
-  type(pflowGrid), intent(inout) :: grid
-  integer, intent(inout) :: kplt
+  type(pflowGrid) :: grid
+  integer, intent(in) :: id
 
   character(len=256) :: fname
   PetscViewer viewer
@@ -49,7 +64,7 @@ subroutine pflowGridCheckpoint(grid, kplt)
   integer ierr
 
   ! Open the checkpoint file.
-  write(fname, '(a10,i2)') 'pflow.chk.', kplt
+  write(fname, '(a10,i2)') 'pflow.chk.', id
   call PetscViewerBinaryOpen(PETSC_COMM_WORLD, fname, FILE_MODE_WRITE, &
                         viewer, ierr)
 
@@ -62,7 +77,7 @@ subroutine pflowGridCheckpoint(grid, kplt)
   ! checkpoint header, since sizeof() is not supported by some Fortran 
   ! compilers.  To be on the safe side, we assume an integer is 8 bytes.
   call PetscBagCreate(PETSC_COMM_WORLD,40,bag,ierr)
-  call PetscBagGetData(bag, header, ierr)
+  call PetscBagGetData(bag, header, ierr); CHKERRQ(ierr)
   call PetscBagRegisterReal(bag, header%t, grid%t, "t", &
                             "Simulation time (years)", ierr)
   call PetscBagRegisterReal(bag, header%dt, grid%dt, "dt", &
@@ -73,6 +88,8 @@ subroutine pflowGridCheckpoint(grid, kplt)
                             "Printout steps", ierr)
   call PetscBagRegisterInt(bag, header%newtcum, grid%newtcum, "newtcum", &
                             "Total number of Newton steps taken", ierr)
+  call PetscBagView(bag, viewer, ierr)
+  call PetscBagDestroy(bag, ierr)
 
   !--------------------------------------------------------------------
   ! Dump all the relevant vectors.
