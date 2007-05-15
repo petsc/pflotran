@@ -209,10 +209,12 @@ subroutine InitializeBoundaryConditions(grid)
   ! set up native pflotran integer pointer to boundary condition type
   allocate(grid%ibndtyp(num_conditions)) ! condition (boundary) type
   do icond = 1, num_conditions
-    if (condition_array(icond)%ptr%itype == 2) then
+    if (condition_array(icond)%ptr%itype == 1) then
+      grid%ibndtyp(icond) = 1  ! pressure based dirichlet
+    else if (condition_array(icond)%ptr%itype == 2) then
       grid%ibndtyp(icond) = 2  ! neumann
     else
-      grid%ibndtyp(icond) = 3  ! pressure based dirichlet
+      grid%ibndtyp(icond) = 3  ! pressure based hydraulic gradient
     endif
   enddo
 
