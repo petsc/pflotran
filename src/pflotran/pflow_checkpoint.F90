@@ -32,6 +32,7 @@ module pflow_checkpoint
 #include "include/finclude/petsclog.h"
 #include "include/finclude/petscsys.h"
 #include "include/finclude/petscviewer.h"
+#if (PETSC_VERSION_RELEASE == 0)
 #include "include/finclude/petscbag.h"
 
   Interface PetscBagGetData
@@ -42,8 +43,21 @@ module pflow_checkpoint
       PetscErrorCode ierr
     End Subroutine
   End Interface PetscBagGetData
+#endif
 
 contains
+
+#if (PETSC_VERSION_RELEASE == 1)
+
+subroutine pflowGridCheckpoint(grid, id)
+  use pflow_gridtype_module
+  type(pflowGrid), intent(inout) :: grid
+  integer, intent(in) :: id
+
+  print *, "Warning: pflowGridCheckpoint() not supported with PETSc 2.3.2."
+end subroutine pflowGridCheckpoint
+
+#else
 
 subroutine pflowGridCheckpoint(grid, id)
 
@@ -54,7 +68,7 @@ subroutine pflowGridCheckpoint(grid, id)
 
 #include "definitions.h"
 
-  type(pflowGrid) :: grid
+  type(pflowGrid), intent(inout) :: grid
   integer, intent(in) :: id
 
   character(len=256) :: fname
@@ -66,7 +80,7 @@ subroutine pflowGridCheckpoint(grid, id)
   ! Open the checkpoint file.
   write(fname, '(a10,i2)') 'pflow.chk.', id
   call PetscViewerBinaryOpen(PETSC_COMM_WORLD, fname, FILE_MODE_WRITE, &
-                        viewer, ierr)
+                             viewer, ierr)
 
   !--------------------------------------------------------------------
   ! Dump some important information such as simulation time, 
@@ -124,6 +138,69 @@ subroutine pflowGridCheckpoint(grid, id)
 
 end subroutine pflowGridCheckpoint
 
+#endif
+
+#if (PETSC_VERSION_RELEASE == 1)
+
+subroutine pflowGridRestart(grid, fname)
+  use pflow_gridtype_module
+  type(pflowGrid), intent(inout) :: grid
+  character(len=256) :: fname
+
+  print *, "Warning: pflowGridRestart() not supported with PETSc 2.3.2."
+end subroutine pflowGridRestart
+
+#else
+
+subroutine pflowGridRestart(grid, fname)
+  use pflow_gridtype_module
+  use TTPHASE_module
+
+  implicit none
+
+#include "definitions.h"
+
+  type(pflowGrid), intent(inout) :: grid
+  character(len=256) :: fname
+
+  PetscViewer viewer
+  PetscBag bag
+  type(pflowChkPtHeader), pointer :: header
+  integer ierr
+
+  call PetscViewerBinaryOpen(PETSC_COMM_WORLD, fname, FILE_MODE_READ, &
+                             viewer, ierr)
+ 
+  ! Get the header data.
+  call PetscBagLoad(viewer, bag, ierr)
+  call PetscBagGetData(bag, header, ierr)
+  grid%t = header%t
+  grid%dt = header%dt
+  grid%flowsteps = header%flowsteps
+  !grid%kplot = header%kplot
+  grid%newtcum = header%newtcum
+  call PetscBagDestroy(bag, ierr)
+  
+  ! Load the PETSc vectors.
+  call VecLoadIntoVector(viewer, grid%xx, ierr)
+  if(grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE .or. &
+     grid%use_flash == PETSC_TRUE .or. grid%use_2ph == PETSC_TRUE) then
+    call VecLoadIntoVector(viewer, grid%iphas, ierr)
+  endif
+  if (grid%rk > 0.d0) then
+    call VecLoadIntoVector(viewer, grid%phis, ierr)
+  endif
+  call VecLoadIntoVector(viewer, grid%porosity, ierr)
+  call VecLoadIntoVector(viewer, grid%perm_xx, ierr)
+  call VecLoadIntoVector(viewer, grid%perm_yy, ierr)
+  call VecLoadIntoVector(viewer, grid%perm_zz, ierr)
+ 
+  ! We are finished, so clean up.
+  call PetscViewerDestroy(viewer, ierr)
+end subroutine pflowGridRestart
+
+#endif
+
 
 subroutine pflowGridTHCBinaryOut(grid, kplt)
 
@@ -153,7 +230,7 @@ subroutine pflowGridTHCBinaryOut(grid, kplt)
   PetscViewer viewer
   integer ierr
 
-  ! Open the checkpoint file.
+  ! Open the output file.
   write(fname, '(a10,i2)') 'pflow.chk.', kplt
   call PetscViewerBinaryOpen(PETSC_COMM_WORLD, fname, FILE_MODE_WRITE, &
                         viewer, ierr)

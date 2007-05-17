@@ -33,6 +33,7 @@
   use pflow_read_gridsize_module
   use pflow_output_module
   use span_wagner_module
+  use pflow_checkpoint
   
   implicit none
 
@@ -68,6 +69,13 @@
   integer :: myid
   integer*4 :: steps
   PetscInt :: stage(10)
+  PetscTruth :: restartflag
+  character(len=256) :: restartfile
+  PetscInt :: chkptfreq  
+    ! The number of flow steps between checkpoints.
+    ! RTM: Note that this variable doesn't *do* anything yet!
+    ! Right now I only dump a checkpoint at the end of the time stepping loop.
+  PetscTruth :: chkptflag
 
 ! Initialize Startup Time
  ! call PetscGetCPUTime(timex(1), ierr)
@@ -140,6 +148,14 @@
   ihalcnt = 0
   grid%isrc1 = 2
 
+  call PetscOptionsGetString(PETSC_NULL_CHARACTER, '-restart', restartfile, &
+                             restartflag, ierr)
+  if(restartflag == PETSC_TRUE) then
+    call pflowGridRestart(grid, restartfile)
+  endif
+  call PetscOptionsGetInt(PETSC_NULL_CHARACTER, '-chkptfreq', chkptfreq, &
+                          chkptflag, ierr)
+                             
   call PetscLogStagePop(ierr)
 
   do steps = 1, grid%stepmax
@@ -164,6 +180,10 @@
 
     if (kplt .gt. grid%kplot) exit
   enddo
+
+  if(chkptflag == PETSC_TRUE) then
+    call pflowGridCheckpoint(grid, steps-1)
+  endif
 
 ! Clean things up.
   call PetscLogStagePush(stage(3), ierr)
