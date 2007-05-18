@@ -9,6 +9,7 @@
 #include "include/petscmat.h"
 #include "include/petscsnes.h"
 #include "include/petscksp.h"
+#include "include/petscviewer.h"
 
 class Flow {
 public:
@@ -23,6 +24,7 @@ public:
   
 private:
 
+  void init(Grid *g);
   void computeAccumulationR(Grid *g, double dt);
   void computeAccumulationJ(Grid *g, double dt);
   void computeFluxR(Grid *g);
@@ -30,13 +32,12 @@ private:
   void computeBoundaryFluxR(Grid *g);
   void computeBoundaryFluxJ(Grid *g);
   void computeSourceFluxR(Grid *g);
+  void computeNumericalJacobian(Grid *g);
   void printMatrix();
   
   PetscErrorCode ierr;
   int fdof; // number of flow degrees of freedom
   Vec residual_vec;
-  Vec ppressure_vec;
-  Vec pressure_vec;
   Vec work_vec;
   Mat Jac;
   PetscScalar *pressure_ptr;
@@ -46,6 +47,7 @@ private:
   SNES snes;
   KSP ksp;
   PC pc;
+  PetscViewer viewer;
   Grid *grid;
   double flow_dt;
 

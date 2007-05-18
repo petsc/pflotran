@@ -37,13 +37,22 @@ public:
   void printAO();
   
   
-  void get1dofVectorGlobal(Vec *v);
   void get1dofVectorLocal(Vec *v);
+  void get1dofVectorGlobal(Vec *v);
+  void get1dofVectorNatural(Vec *v);
   void getFdofMatrix(Mat *m, MatType mtype);
   void getFdofVectorGlobal(Vec *v);
   void getFdofVectorLocal(Vec *v);
   void getTdofVectorGlobal(Vec *v);
   void getTdofVectorLocal(Vec *v);
+  void globalToNatural(Vec global, Vec natural);
+  int getNx();
+  int getNy();
+  int getNz();
+  int getN();
+  double getDx(int i);
+  double getDy(int j);
+  double getDz(int k);
   
 private:
 

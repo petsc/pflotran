@@ -36,18 +36,30 @@ public:
   void test2(int ***array);
   void addBoundaryCondition(int is, int ie, int js, int je, int ks, int ke, 
                             char *face, char *type, double scalar);
+  void setInitialHydrostaticPressure(double reference_pressure, 
+                                     double datum);
   void addSource(int is, int ie, int js, int je, int ks, int ke, 
                  char *type, double scalar);
 
-  void get1dofVectorGlobal(Vec *v);
+  void get1dofVectorNatural(Vec *v);
   void get1dofVectorLocal(Vec *v);
+  void get1dofVectorGlobal(Vec *v);
   void getFdofMatrix(Mat *m, MatType mtype);
   void getFdofVectorGlobal(Vec *v);
   void getFdofVectorLocal(Vec *v);
   void getTdofVectorGlobal(Vec *v);
   void getTdofVectorLocal(Vec *v);
+  void globalToNatural(Vec global, Vec natural);
   BoundaryCondition *getBoundaryConditions();
   Source *getSources();
+  int getNx();
+  int getNy();
+  int getNz();
+  int getN();
+  double getDx(int i);
+  double getDy(int j);
+  double getDz(int k);
+  void zeroFlux();
   
   int num_cells;
   int num_nodes_local;
@@ -59,7 +71,6 @@ public:
   GridConnection *connections;
   
   Vec pressure_vec;
-  Vec ppressure_vec;
   Vec density_vec;
 //  Vec porosity_vec;
 //  Vec saturation_vec;

@@ -22,8 +22,9 @@ pft_obj = ${common_src}Grid.o \
 	${common_src}GridConnection.o \
 	${common_src}BoundaryCondition.o \
 	${common_src}Source.o \
+	${common_src}GridCell.o \
+	${common_src}Output.o \
 	${common_src}Flow.o \
-	${common_src}GridCell.o 
 
 pft: $(pft_obj) \
 	${pft_src}Pft.o

@@ -7,6 +7,7 @@ int myrank = 0;
 #include "Globals.h"
 #include "Grid.h"
 #include "Flow.h"
+#include "Output.h"
 
 #undef __FUNCT__
 #define __FUNCT__ "main"
@@ -18,17 +19,22 @@ int main(int argc, char **args) {
   double dx,dy,dz;
   int commsize;
 
+/*
 // test case 1
   nx = 3;
   ny = 2;
   nz = 2;
-
+*/
 /*
 // test case 2
   nx = 60;
   ny = 40;
   nz = 40;
 */
+// test case 3
+  nx = 1;
+  ny = 1;
+  nz = 10;
 
   dx = 1.;
   dy = 1.;
@@ -53,9 +59,18 @@ int main(int argc, char **args) {
 //  grid->printCells();
 
   // initialize boundary conditions and sources
-  grid->addBoundaryCondition(1,1,1,ny,1,nz,"west","hydrostatic head",100.);
-  grid->addBoundaryCondition(nx,nx,1,ny,1,nz,"east","hydrostatic head",90.);
-  grid->addSource(nx/2,nx/2+1,ny/2,ny/2+1,nz/2,nz/2+1,"mass",90.);
+//  grid->addBoundaryCondition(1,1,1,ny,1,nz,"west","hydrostatic head",100.);
+//  grid->addBoundaryCondition(nx,nx,1,ny,1,nz,"east","hydrostatic head",90.);
+
+  // partially saturated (bottom half of column)
+  //grid->addBoundaryCondition(1,nx,1,ny,1,1,"bottom","dirichlet",113566.899); 
+  //grid->addBoundaryCondition(1,nx,1,ny,nz,nz,"top","dirichlet",89083.101);
+
+  grid->addBoundaryCondition(1,nx,1,ny,1,1,"bottom","dirichlet",160000.); 
+  grid->addBoundaryCondition(1,nx,1,ny,nz,nz,"top","dirichlet",125516.202);
+  grid->setInitialHydrostaticPressure(150000.,0.);
+
+  //  grid->addSource(nx/2,nx/2+1,ny/2,ny/2+1,nz/2,nz/2+1,"mass",90.);
 //  BoundaryCondition::printBCs();
 //  Source::printSrcs();
   
@@ -72,21 +87,27 @@ int main(int argc, char **args) {
 //  ierr = TSSetProblemType(ts,TS_NONLINEAR);
 //  ierr = TSSetRHSFunction(ts,flow->computeRHS(),&grid)
   
+  Output *output = new Output();
+
   // Manual time stepping for now
-  double final_time = 1.;
+  double final_time = 1000.;
   double time = 0.;
-  double dt = 0.01;
+  double dt = 10;
   if (myrank == 0) printf("Time: %f\n",time);
+  output->printGMSGrid(grid);
+  output->printGMSOutput(grid,time);
   while (time < final_time) {
-    flow->solve(dt);
     if (time+dt > final_time) dt = final_time-time;
-    else time += dt;
+    flow->solve(dt);
+    time += dt;
+    if (int(time/dt+1.e-5)%(int(final_time/dt+1.e-5)/10) == 0) output->printGMSOutput(grid,time);
     if (myrank == 0) printf("Time: %f\n",time);
   }
   
   // clean up
   delete grid;
   delete flow;
+  delete output;
   //delete tran;
   //delete react;
 

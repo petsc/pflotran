@@ -3,7 +3,7 @@
 
 #include "include/petsc.h"
 
-#include "Saturation.h"
+#include "SaturationFunction.h"
 
 class GridCell {
 public:
@@ -13,6 +13,10 @@ public:
   virtual ~GridCell();
   void setIdLocal(int i);
   void setIdGhosted(int i);
+  void setCentroid(double x, double y, double z);
+  void setX(double x);
+  void setY(double y);
+  void setZ(double z);
   void setVolume(double d);
   void setPermX(double d);
   void setPermY(double d);
@@ -20,12 +24,21 @@ public:
   void setViscosity(double d);
   void setDensity(double d);
   void setMoistureContent(double d);
-  void updateMoistureContent();
+  void setPressure(double d);
+  void updateMoistureContent0();
+  void updateMoistureContentN(); 
   void updateRelativePermeability(double pressure);
   void setFlowAccumulationCoef(double d);
+  void addFlux(double qDarcy, double *norm);
+  void zeroFlux();
+  double *getFlux();
   
   int getIdLocal();
   int getIdGhosted();
+  double *getCentroidPtr();
+  double getX();
+  double getY();
+  double getZ();
   double getVolume();
   double getPermX();
   double getPermY();
@@ -35,6 +48,11 @@ public:
   double getDensity();
   double getMoistureContent();
   double getFlowAccumulationCoef();
+  double getPressure0_t();
+  double getPressureN_t();
+  double getMoistureContent0();
+  double getMoistureContentN();
+  double getSpecificMoistureCapacity_t(); 
   
   double computeFlowAccumulationCoef(double one_over_dt);
   
@@ -43,27 +61,28 @@ public:
 private:
   int id_local, id_ghosted;
   double volume;
-  double centoid[3];
+  double centroid[3];
   GridCell *neighbor_cells;
   
 // matrix variables
   double permeability[3];
   double relative_permeability;
-  double relative_permeability_adj;
+  double relative_permeability_t;
 
 // fluid variables
-  static Saturation saturation;
+  SaturationFunction *saturationfunction;
   double flow_accumulation_coef;
-  double pressure_adj;
+  double pressure_0_t;
+  double pressure_n_t;
   double specific_moisture_capacity;
-  double specific_moisture_capacity_adj;
-  static const double beta;
-  double one_plus_beta_h;
+  double specific_moisture_capacity_t;
   double viscosity;
   double density;
-  double moisture_content;
   double moisture_content_0;
-  int saturated;
+  double moisture_content_n;
+  double moisture_content;
+
+  double q[3];
 
   // solute variables
 

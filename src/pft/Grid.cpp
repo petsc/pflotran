@@ -32,7 +32,6 @@ void Grid::nullifyArrays() {
   connections = NULL;
   cells = NULL;
   pressure_vec = PETSC_NULL;
-  ppressure_vec = PETSC_NULL;
   density_vec = PETSC_NULL;
 
 }
@@ -44,7 +43,6 @@ void Grid::setUp(int nx, int ny, int nz, double dx, double dy, double dz,
   setUpMapping();
   setUpCells();
   getFdofVectorLocal(&pressure_vec);
-  ierr = VecDuplicate(pressure_vec,&ppressure_vec);
   ierr = VecDuplicate(pressure_vec,&density_vec);
 }
 
@@ -59,6 +57,7 @@ void Grid::setUpCells() {
     cells[i].setIdGhosted(i);
     cells[i].setIdLocal(mapping_ghosted_to_local[i]);
   }
+  zeroFlux();
   if (structuredGrid)
     structuredGrid->setUpCells(num_cells,cells);
 }
@@ -90,7 +89,7 @@ void Grid::addBoundaryCondition(int is, int ie, int js, int je, int ks,
   // set the type and scalar values for the newly created bcs, which
   // are between the lastbc (from above) and the end of the 
   // list.  if lastbc is null, BoundaryCondition::list points to the first.
-  BoundaryCondition *cur_bc = lastbc ? lastbc : BoundaryCondition::list;
+  BoundaryCondition *cur_bc = lastbc ? lastbc->getNext() : BoundaryCondition::list;
 
   // add the bc type and scalar; these are independent of the grid type
   while (cur_bc) {
@@ -131,6 +130,22 @@ void Grid::addSource(int is, int ie, int js, int je, int ks,
   }
 }
 
+void Grid::setInitialHydrostaticPressure(double reference_pressure, 
+                                         double datum) {
+  
+  int ierr;
+  PetscScalar *pressure_ptr = NULL;
+
+  ierr = VecGetArray(pressure_vec,&pressure_ptr);
+  for (int inodelocal=0; inodelocal < num_nodes_local; inodelocal++) {
+    int inodeghosted = mapping_local_to_ghosted[inodelocal];
+    double pressure = reference_pressure-
+                      (cells[inodeghosted].getZ()-datum)*gravity*density0;
+    pressure_ptr[inodeghosted] = pressure;
+  }
+  ierr = VecRestoreArray(pressure_vec,&pressure_ptr);
+}
+
 Source *Grid::getSources() {
   return Source::list;
 }
@@ -143,6 +158,11 @@ void Grid::get1dofVectorLocal(Vec *v) {
 void Grid::get1dofVectorGlobal(Vec *v) {
   if (structuredGrid)
     structuredGrid->get1dofVectorGlobal(v);
+}
+
+void Grid::get1dofVectorNatural(Vec *v) {
+  if (structuredGrid)
+    structuredGrid->get1dofVectorNatural(v);
 }
 
 void Grid::getFdofMatrix(Mat *m, MatType mtype) {
@@ -168,6 +188,11 @@ void Grid::getTdofVectorLocal(Vec *v) {
 void Grid::getTdofVectorGlobal(Vec *v) {
   if (structuredGrid)
     return structuredGrid->getTdofVectorGlobal(v);
+}
+
+void Grid::globalToNatural(Vec global, Vec natural) {
+  if (structuredGrid)
+    structuredGrid->globalToNatural(global,natural);
 }
 
 #if 0
@@ -237,6 +262,38 @@ void Grid::printCells() {
   ierr = PetscSequentialPhaseEnd(PETSC_COMM_WORLD,1);
 }
 
+int Grid::getNx() {
+  if (structuredGrid) return structuredGrid->getNx();
+}
+
+int Grid::getNy() {
+  if (structuredGrid) return structuredGrid->getNy();
+}
+
+int Grid::getNz() {
+  if (structuredGrid) return structuredGrid->getNz();
+}
+
+int Grid::getN() {
+  if (structuredGrid) return structuredGrid->getN();
+}
+
+double Grid::getDx(int i) {
+  if (structuredGrid) return structuredGrid->getDx(i);
+}
+
+double Grid::getDy(int j) {
+  if (structuredGrid) return structuredGrid->getDy(j);
+}
+
+double Grid::getDz(int k) {
+  if (structuredGrid) return structuredGrid->getDz(k);
+}
+
+void Grid::zeroFlux() {
+  for (int i=0; i<num_cells; i++)
+    cells[i].zeroFlux();
+}
 
 void Grid::test(int **array) {
   printf("test1\n");

@@ -8,6 +8,8 @@ PetscErrorCode dummyJacobian(SNES snes, Vec x, Mat *J, Mat *B,
   return ((Flow *)ctx)->computeFlowJ(snes,x,J,B,m,PETSC_NULL);
 }
 
+int solve_count = 0;
+
 Flow::Flow(int fdof_, Grid *g) {
   
   fdof = fdof_;
@@ -15,11 +17,11 @@ Flow::Flow(int fdof_, Grid *g) {
   pressure_ptr = NULL;
   ppressure_ptr = NULL;
   residual_ptr = NULL;
-  grid->getFdofVectorGlobal(&residual_vec);
-  grid->getFdofVectorGlobal(&ppressure_vec);
-  ierr = VecDuplicate(residual_vec,&pressure_vec);
-  ierr = VecDuplicate(residual_vec,&work_vec);
+  grid->getFdofVectorGlobal(&work_vec);
+  ierr = VecDuplicate(work_vec,&residual_vec);
   grid->getFdofMatrix(&Jac,MATMPIAIJ); 
+
+  PetscOptionsSetValue("-snes_ls","basic");
 
   ierr = SNESCreate(PETSC_COMM_WORLD,&snes);
   ierr = SNESSetFromOptions(snes);
@@ -29,22 +31,37 @@ Flow::Flow(int fdof_, Grid *g) {
   ierr = KSPGetPC(ksp,&pc);
   ierr = PCSetType(pc,PCBJACOBI);
 
+  init(g);
+
+}
+
+void Flow::init(Grid *g) {
+  
+  ierr = 0;
+
+  ierr = PetscViewerASCIIOpen(PETSC_COMM_WORLD,"initial_pressure.out",&viewer);
+  ierr = VecView(g->pressure_vec,viewer);
+  ierr = PetscViewerDestroy(viewer);
+
 }
 
 void Flow::solve(double dt) {
 
+  solve_count = 0;
   flow_dt = dt;
+  grid->zeroFlux();
 //  ierr = SNESView(snes,PETSC_VIEWER_STDOUT_WORLD);
-  ierr = VecCopy(ppressure_vec,work_vec);
+  ierr = VecCopy(grid->pressure_vec,work_vec);
   ierr = SNESSolve(snes,PETSC_NULL,work_vec);
 //  ierr = SNESView(snes,PETSC_VIEWER_STDOUT_WORLD);
-  ierr = VecCopy(ppressure_vec,pressure_vec);
-  ierr = VecCopy(work_vec,ppressure_vec);
+  ierr = VecCopy(work_vec,grid->pressure_vec);
+
 }
 
 PetscErrorCode Flow::computeFlowR(SNES snes, Vec p_vec, Vec f_vec, 
                                   void *ctx) {
 
+  ierr = VecZeroEntries(f_vec);
   ierr = VecGetArray(p_vec,&ppressure_ptr);
   ierr = VecGetArray(grid->pressure_vec,&pressure_ptr);
   ierr = VecGetArray(f_vec,&residual_ptr);
@@ -60,7 +77,17 @@ PetscErrorCode Flow::computeFlowR(SNES snes, Vec p_vec, Vec f_vec,
   ierr = VecRestoreArray(p_vec,&ppressure_ptr);
   ierr = VecRestoreArray(grid->pressure_vec,&pressure_ptr);CHKERRQ(ierr);
   ierr = VecRestoreArray(f_vec,&residual_ptr);CHKERRQ(ierr);
+  //ierr = VecScale(f_vec,-1.);
 
+  ierr = PetscViewerASCIIOpen(PETSC_COMM_WORLD,"residual.out",&viewer);
+  ierr = VecView(f_vec,viewer);
+  ierr = PetscViewerDestroy(viewer);
+
+  double norm;
+  VecNorm(f_vec,NORM_INFINITY,&norm);
+  solve_count++;
+  printf("Solve: %d %f\n",solve_count,norm);
+ 
   return ierr;
 }
 
@@ -78,6 +105,12 @@ PetscErrorCode Flow::computeFlowJ(SNES snes, Vec p_vec, Mat *J, Mat *B,
   ierr = MatAssemblyEnd(Jac,MAT_FINAL_ASSEMBLY);
 
 //  printMatrix();
+  ierr = PetscViewerASCIIOpen(PETSC_COMM_WORLD,"jacobian.out",&viewer);
+  ierr = MatView(Jac,viewer);
+  ierr = PetscViewerDestroy(viewer);
+
+ // computeNumericalJacobian(grid);
+
   return ierr;
 
 }
@@ -90,13 +123,30 @@ void Flow::computeAccumulationR(Grid *g, double dt) {
     int offset = inodelocal*fdof;
     double accumulation_coef = 
       g->cells[inodeghosted].computeFlowAccumulationCoef(one_over_dt);
-    g->cells[inodeghosted].setFlowAccumulationCoef(accumulation_coef);
+    double accumulation_coef_t = accumulation_coef*
+                          g->cells[inodeghosted].getSpecificMoistureCapacity_t();
+    g->cells[inodeghosted].setFlowAccumulationCoef(accumulation_coef_t);
     for (int idof=0; idof<fdof; idof++) {
-      residual_ptr[offset+idof] = (ppressure_ptr[inodeghosted] - 
-                                   pressure_ptr[inodeghosted])*
-                                  accumulation_coef;
+      double pp = ppressure_ptr[inodeghosted];
+      double p = pressure_ptr[inodeghosted];
+      
+      if (abs(pp-p) < p_threshhold) {
+//        residual_ptr[offset+idof] = (g->cells[inodeghosted].getPressureN_t()-
+//                                     g->cells[inodeghosted].getPressure0_t())*
+        residual_ptr[offset+idof] = (pp-p)*
+                                    accumulation_coef_t;
+      }
+      else {
+        // the below is correct and will always be zero, just using as a place holder
+//        residual_ptr[offset+idof] = (g->cells[inodeghosted].getPressureN_t()-
+//                                     g->cells[inodeghosted].getPressureN_t())*
+//                                    accumulation_coef_t;
+//        residual_ptr[offset+idof] -= (g->cells[inodeghosted].getMoistureContentN()-
+//                                      g->cells[inodeghosted].getMoistureContent0())*
+        residual_ptr[offset+idof] = (pp-p)*
+                                     accumulation_coef;
+      }
     }
-
   }
 }
 
@@ -133,9 +183,9 @@ void Flow::computeFluxR(Grid *g) {
     double densityup = g->cells[inodeghostedup].getDensity();
     double densitydn = g->cells[inodeghostedup].getDensity();
 
-    double dx = distup[0]+distdn[0]; // terribly inefficient for now
-    double dy = distup[1]+distdn[1];
-    double dz = distup[2]+distdn[2];
+    double dx = abs(distup[0]+distdn[0]); // terribly inefficient for now
+    double dy = abs(distup[1]+distdn[1]);
+    double dz = abs(distup[2]+distdn[2]);
     double dup = sqrt(distup[0]*distup[0]+distup[1]*distup[1]+
                       distup[2]*distup[2]);
     double ddn = sqrt(distdn[0]*distdn[0]+distdn[1]*distdn[1]+
@@ -152,38 +202,39 @@ void Flow::computeFluxR(Grid *g) {
     double mu_ave = dist*muup*mudn/(dup*mudn+ddn*muup);
     
     double coef = 0.;
-    if (dx > 0.) coef += norm[0]*permx_ave/dx;
-    if (dy > 0.) coef += norm[1]*permy_ave/dy;
-    if (dz > 0.) coef += norm[2]*permz_ave/dz;
+    if (dx > 0.) coef += abs(norm[0]*permx_ave/dx);
+    if (dy > 0.) coef += abs(norm[1]*permy_ave/dy);
+    if (dz > 0.) coef += abs(norm[2]*permz_ave/dz);
     coef /= mu_ave;
     // the above is essentially:
     //    coef = -(permx_ave/dx+permy_ave/dy+permz_ave/dz)/mu_ave;
 
 
     double vDarcy = -coef*(ppressure_ptr[inodeghosteddn]-
-                           ppressure_ptr[inodeghostedup]-
+                           ppressure_ptr[inodeghostedup]+
                            gravity*density_ave*dz);
     double qDarcy = vDarcy*area;
-    double flux = qDarcy*density_ave;
+    double flux = qDarcy; //*density_ave;
 
     g->connections[i].setFlowFluxCoef(coef);
 
-    double neg_coef = -coef;
-    
+    g->cells[inodeghostedup].addFlux(-1.*qDarcy,norm);
+    g->cells[inodeghosteddn].addFlux(qDarcy,norm);
+
     // upwind row (downwind flux for upwind cell)
     int inodelocalup = g->cells[inodeghostedup].getIdLocal();
     if (inodelocalup > -1) { // not ghosted
       int offset = inodelocalup*fdof;
-      for (int idof=1; idof<fdof; idof++) {
-        residual_ptr[offset+idof] -= flux;
+      for (int idof=0; idof<fdof; idof++) {
+        residual_ptr[offset+idof] += flux;
       }
     }
     // downwind row (upwind flux for downwind cell)
     int inodelocaldn = g->cells[inodeghosteddn].getIdLocal();
     if (inodelocaldn > -1) { // not ghosted
       int offset = inodelocaldn*fdof;
-      for (int idof=1; idof<fdof; idof++) {
-        residual_ptr[offset+idof] += flux;
+      for (int idof=0; idof<fdof; idof++) {
+        residual_ptr[offset+idof] -= flux;
       }
     }
   }
@@ -254,25 +305,27 @@ void Flow::computeBoundaryFluxR(Grid *g) {
     double permz = perm[2];
     
     double coef = 0.;
-    if (dx > 0.) coef += norm[0]*permx/dx;
-    if (dy > 0.) coef += norm[1]*permy/dy;
-    if (dz > 0.) coef += norm[2]*permz/dz;
+    if (abs(dx) > 0.) coef += abs(norm[0]*permx/dx);
+    if (abs(dy) > 0.) coef += abs(norm[1]*permy/dy);
+    if (abs(dz) > 0.) coef += abs(norm[2]*permz/dz);
     coef /= mu;
     // the above is essentially:
     //    coef = -(permx_ave/dx+permy_ave/dy+permz_ave/dz)/mu_ave;
  
     cur_bc->setFlowFluxCoef(coef);
- 
+
     double pressure_bc = cur_bc->getScalar();
 
-    double vDarcy = -coef*(ppressure_ptr[inodeghosted]-pressure_bc-
-                          gravity*density*dz);
+    double vDarcy = -coef*(ppressure_ptr[inodeghosted]-pressure_bc+
+                           gravity*density*dz);
     double qDarcy = vDarcy*area;
-    double flux = qDarcy*density;
+    double flux = qDarcy; //*density;
 
+    g->cells[inodeghosted].addFlux(qDarcy,norm);
+ 
     int offset = inodelocal*fdof;
     for (int idof=0; idof<fdof; idof++) {
-      residual_ptr[offset+idof] += flux;
+      residual_ptr[offset+idof] -= flux;
     }
     
     cur_bc = cur_bc->getNext();
@@ -291,7 +344,7 @@ void Flow::computeBoundaryFluxJ(Grid *g) {
     int offset = inodeghosted*fdof;
     for (int idof=0; idof<fdof; idof++) {
       int id = offset+idof;
-    ierr = MatSetValuesLocal(Jac,1,&id,1,&id,&coef,ADD_VALUES);
+      ierr = MatSetValuesLocal(Jac,1,&id,1,&id,&coef,ADD_VALUES);
     }
     cur_bc = cur_bc->getNext();
   }
@@ -307,14 +360,69 @@ void Flow::computeSourceFluxR(Grid *g) {
   }
 }
 
+void Flow::computeNumericalJacobian(Grid *g) {
+
+  double *temp_ptr = NULL;
+
+  Vec temp_f_baseline_vec;
+  Vec temp_p_vec;
+  Vec temp_f_vec;
+  Mat nJac;
+
+  g->getFdofVectorGlobal(&temp_p_vec);
+  g->getFdofMatrix(&nJac,MATMPIAIJ); 
+
+  ierr = VecDuplicate(temp_p_vec,&temp_f_baseline_vec);
+  ierr = VecDuplicate(temp_p_vec,&temp_f_vec);
+
+  computeFlowR(PETSC_NULL,grid->pressure_vec,temp_f_baseline_vec,NULL);
+
+  double tol = 1.e-6;
+  for (int inodelocal=0; inodelocal < g->num_nodes_local; inodelocal++) {
+    ierr = VecCopy(grid->pressure_vec,temp_p_vec);
+    ierr = VecGetArray(temp_p_vec,&temp_ptr);
+
+    double perturbation;
+    if (temp_ptr[inodelocal] > 0.)
+      perturbation = temp_ptr[inodelocal]*tol;
+    else
+      perturbation = 1.;
+    temp_ptr[inodelocal] += perturbation;
+
+    ierr = VecRestoreArray(temp_p_vec,&temp_ptr);
+
+    computeFlowR(PETSC_NULL,temp_p_vec,temp_f_vec,NULL);
+
+    ierr = VecAXPY(temp_f_vec,-1.,temp_f_baseline_vec);
+    ierr = VecScale(temp_f_vec,1./perturbation);
+    ierr = VecGetArray(temp_f_vec,&temp_ptr);
+
+    for (int j=0; j<g->num_nodes_local; j++) {
+      if (abs(temp_ptr[j]) > 0.)
+        ierr = MatSetValuesLocal(nJac,1,&j,1,&inodelocal,&(temp_ptr[j]),INSERT_VALUES);
+    }
+
+    ierr = VecRestoreArray(temp_f_vec,&temp_ptr);
+  }
+
+  ierr = MatAssemblyBegin(nJac,MAT_FINAL_ASSEMBLY);
+  ierr = MatAssemblyEnd(nJac,MAT_FINAL_ASSEMBLY);
+
+  ierr = PetscViewerASCIIOpen(PETSC_COMM_WORLD,"nJac.out",&viewer);
+  ierr = MatView(nJac,viewer);
+  ierr = PetscViewerDestroy(viewer);
+
+  ierr = MatDestroy(nJac);
+  ierr = VecDestroy(temp_f_baseline_vec);
+  ierr = VecDestroy(temp_p_vec);
+  ierr = VecDestroy(temp_f_vec);
+}
+
 void Flow::printMatrix() {
   MatView(Jac,PETSC_VIEWER_STDOUT_SELF);
 }
 
 Flow::~Flow() {
-  VecDestroy(residual_vec);
-  VecDestroy(ppressure_vec);
-  VecDestroy(pressure_vec);
   VecDestroy(work_vec);
   MatDestroy(Jac);
   SNESDestroy(snes);

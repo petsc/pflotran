@@ -203,27 +203,36 @@ void StructuredGrid::mapBoundaryCondition(int istart, int iend, int jstart,
         center[2] = 0.5*dz[kghosted];
         if (!strcmp(face,"west") || !strcmp(face,"east")) {
           newbc->setArea(dy[jghosted]*dz[kghosted]);
-          dist[0] = 0.5*dx[ighosted];
-          if (!strcmp(face,"west"))
-            normal[0] = 1.;
-          else if (!strcmp(face,"east"))
+          if (!strcmp(face,"west")) {
             normal[0] = -1.;
+            dist[0] = -0.5*dx[ighosted];
+          }
+          else if (!strcmp(face,"east")) {
+            normal[0] = 1.;
+            dist[0] = 0.5*dx[ighosted];
+          }
         }
         else if (!strcmp(face,"north") || !strcmp(face,"south")) {
           newbc->setArea(dx[ighosted]*dz[kghosted]);
-          dist[1] = 0.5*dy[jghosted];
-          if (!strcmp(face,"north"))
+          if (!strcmp(face,"north")) {
             normal[1] = -1.;
-          else if (!strcmp(face,"south"))
+            dist[1] = -0.5*dy[jghosted];
+          }
+          else if (!strcmp(face,"south")) {
             normal[1] = 1.;
+            dist[1] = 0.5*dy[jghosted];
+          }
         }
         else if (!strcmp(face,"top") || !strcmp(face,"bottom")) {
           newbc->setArea(dx[ighosted]*dy[jghosted]);
-          dist[2] = 0.5*dz[kghosted];
-          if (!strcmp(face,"top"))
+          if (!strcmp(face,"top")) {
             normal[2] = -1.;
-          else if (!strcmp(face,"bottom"))
+            dist[2] = -0.5*dz[kghosted];
+          }
+          else if (!strcmp(face,"bottom")) {
             normal[2] = 1.;
+            dist[2] = 0.5*dz[kghosted];
+          }
         }
         newbc->setDistance(dist);
         newbc->setNormal(normal);
@@ -307,10 +316,21 @@ void StructuredGrid::mapSource(int istart, int iend, int jstart,
 }
 
 void StructuredGrid::setUpCells(int num_cells, GridCell *cells) {
-  for (int k=0; k<gnz; k++)
-    for (int j=0; j<gny; j++)
-      for (int i=0; i<gnx; i++)
-        cells[i+j*gnx+k*gnxXny].setVolume(dx[i]*dy[j]*dz[k]);
+  double z = 0.5*dz[0];
+  for (int k=0; k<gnz; k++) {
+    double y = 0.5*dy[0];
+    for (int j=0; j<gny; j++) {
+      double x = 0.5*dx[0];
+      for (int i=0; i<gnx; i++) {
+        int id = i+j*gnx+k*gnxXny;
+        cells[id].setVolume(dx[i]*dy[j]*dz[k]);
+        cells[id].setCentroid(x,y,z);
+        if (i < gnx-1) x += 0.5*(dx[i]+dx[i+1]);
+      }
+      if (j < gny-1) y += 0.5*(dy[j]+dy[j+1]);
+    }
+    if (k < gnz-1) z += 0.5*(dz[k]+dz[k+1]);
+  }
 }
 
 void StructuredGrid::setUpMapping(int *num_nodes_local, int *num_nodes_ghosted,
@@ -354,6 +374,10 @@ void StructuredGrid::get1dofVectorGlobal(Vec *v) {
   DACreateGlobalVector(da_1dof,v);
 }
 
+void StructuredGrid::get1dofVectorNatural(Vec *v) {
+  DACreateNaturalVector(da_1dof,v);
+}
+
 void StructuredGrid::getFdofMatrix(Mat *m, MatType mtype) {
   DAGetMatrix(da_fdof,mtype,m);
 }
@@ -374,6 +398,11 @@ void StructuredGrid::getTdofVectorGlobal(Vec *v) {
   DACreateGlobalVector(da_fdof,v);
 }
 
+void StructuredGrid::globalToNatural(Vec global, Vec natural) {
+  DAGlobalToNaturalBegin(da_1dof,global,INSERT_VALUES,natural);
+  DAGlobalToNaturalEnd(da_1dof,global,INSERT_VALUES,natural);
+}
+
 void StructuredGrid::printDACorners() {
   
   PetscErrorCode ierr;
@@ -389,6 +418,14 @@ void StructuredGrid::printDACorners() {
   ierr = PetscSequentialPhaseEnd(PETSC_COMM_WORLD,1);
   
 }
+
+int StructuredGrid::getNx() { return nx; }
+int StructuredGrid::getNy() { return ny; }
+int StructuredGrid::getNz() { return nz; }
+int StructuredGrid::getN() { return nx*ny*nz; }
+double StructuredGrid::getDx(int i) { return dx[i]; }
+double StructuredGrid::getDy(int j) { return dy[j]; }
+double StructuredGrid::getDz(int k) { return dz[k]; }
 
 void StructuredGrid::printAO() {
 
