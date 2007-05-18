@@ -13,7 +13,12 @@ module Condition_module
     real*8, pointer :: times(:)
     real*8, pointer :: values(:)
     real*8 :: cur_value
-    real*8 :: datum
+    real*8 :: xdatum
+    real*8 :: ydatum
+    real*8 :: zdatum
+    real*8 :: xgrad
+    real*8 :: ygrad
+    real*8 :: zgrad
     integer :: id
     integer :: itype
     character(len=MAXWORDLENGTH) :: ctype
@@ -256,7 +261,9 @@ subroutine UpdateBoundaryConditions(grid)
     itype = condition_array(icond)%ptr%itype
     
     datum_coord = 0.d0
-    datum_coord(3) = condition_array(icond)%ptr%datum
+    datum_coord(1) = condition_array(icond)%ptr%xdatum
+    datum_coord(2) = condition_array(icond)%ptr%ydatum
+    datum_coord(3) = condition_array(icond)%ptr%zdatum
     
     cell_coord = 0.d0
     cell_coord(3) = grid%z(grid%nL2A(grid%mblkbc(iconnbc))+1)
@@ -267,13 +274,17 @@ subroutine UpdateBoundaryConditions(grid)
 #if 1
       value = ComputeHydrostaticPressure(grid,use_eos, &
                                          datum_coord,cell_coord, &
-                                         pref,0.d0,0.d0,9.81d0*998.32, &
+                                         pref, &
+                                         condition_array(icond)%ptr%xgrad, &
+                                         condition_array(icond)%ptr%ygrad, &
+                                         9.81d0*998.32, &
                                          tref,0.d0,0.d0,0.d0)
 #else
       delz = grid%z(grid%nL2A(grid%mblkbc(iconnbc))+1)-datum
       delp = delz*9.81d0*998.32
       value = pref - delp
 #endif
+      if (itype == 4) value = max(value,patm)
     endif
     if (itype == 1) then ! dirichlet
       grid%xxbc(1,iconnbc) = value
@@ -301,7 +312,7 @@ subroutine ComputeInitialCondition(grid, icondition)
 
   use pflow_gridtype_module
   use translator_vad_module
-  use Vadose_module
+ ! use Vadose_module
 
   implicit none
 
@@ -343,7 +354,7 @@ subroutine ComputeInitialCondition(grid, icondition)
   
   datum_coord(1) = 0.d0
   datum_coord(2) = 0.d0
-  datum_coord(3) = condition_array(icond)%ptr%datum
+  datum_coord(3) = condition_array(icond)%ptr%zdatum
   
   call VecGetArrayF90(grid%xx, xx_p, ierr); CHKERRQ(ierr)
   call VecGetArrayF90(grid%iphas, iphase_p,ierr)
@@ -358,7 +369,7 @@ subroutine ComputeInitialCondition(grid, icondition)
     if (itype == 3 .or. itype == 4) then ! correct for pressure gradient
       value = ComputeHydrostaticPressure(grid,.true., &
                                          datum_coord,cell_coord, &
-                                         pref,0.d0,0.d0,0.d0, &
+                                         pref,0.d0,0.d0,9.81d0*998.32, &
                                          tref,0.d0,0.d0,0.d0)
     else
       value = pref
@@ -380,8 +391,8 @@ subroutine ComputeInitialCondition(grid, icondition)
   call VecRestoreArrayF90(grid%xx, xx_p, ierr)
   call VecRestoreArrayF90(grid%iphas, iphase_p,ierr)
 
-  call pflow_update_vadose(grid)
-  call Translator_Vadose_Switching(grid%xx,grid,0,ierr)
+!  call pflow_update_vadose(grid)
+!  call Translator_Vadose_Switching(grid%xx,grid,0,ierr)
 
 end subroutine ComputeInitialCondition
 

@@ -60,9 +60,10 @@ subroutine ReadUnstructuredGrid(grid)
   real*8 :: dx, dy, dz, delz
   character(len=MAXCARDLENGTH) :: card
   character(len=MAXWORDLENGTH) :: bctype
+  character(len=MAXWORDLENGTH) :: time_unit
   integer :: direction, icond, icondition
   real*8 :: time, value
-  real*8 :: time0, time1
+  real*8 :: time0, time1, time_multiplier
   type(condition_type), pointer :: new_condition
 
   call VecGetArrayF90(grid%volume, volume_p, ierr); CHKERRQ(ierr)
@@ -261,7 +262,8 @@ subroutine ReadUnstructuredGrid(grid)
         grid% dist1(grid%nconn) = distance_upwind
         grid% dist2(grid%nconn) = distance_downwind
         if (area>0.D0) grid%area(grid%nconn)= area
-        grid%delz(grid%nconn) = abs(grid%z(natural_id_downwind)-  &
+        ! negate to account for left-hand rule in pflotran
+        grid%delz(grid%nconn) = -1.d0*abs(grid%z(natural_id_downwind)-  &
                                     grid%z(natural_id_upwind))
         grid%grav_ang(grid%nconn) = cosB
 
@@ -369,7 +371,8 @@ subroutine ReadUnstructuredGrid(grid)
         grid%mblkbc(grid%nconnbc) = local_id
         grid%distbc(grid%nconnbc) = distance
         grid%areabc(grid%nconnbc) = area
-        grid%delzbc(grid%nconnbc) = delz
+        ! negate to account for left-hand rule in pflotran
+        grid%delzbc(grid%nconnbc) = -1.d0*delz
         grid%ibconn(grid%nconnbc) = icond
 
         ! setup direction of permeability
@@ -410,8 +413,13 @@ subroutine ReadUnstructuredGrid(grid)
 
     allocate(new_condition)
     nullify(new_condition%next)
-    new_condition%datum = 0.d0
     new_condition%itype = 0
+    new_condition%xdatum = 0.d0
+    new_condition%ydatum = 0.d0
+    new_condition%zdatum = 0.d0
+    new_condition%xgrad = 0.d0
+    new_condition%ygrad = 0.d0
+    new_condition%zgrad = 0.d0
 
     call fiReadInt(string,new_condition%id,ierr) 
     call fiErrorMsg('id',card,ierr)
@@ -419,20 +427,66 @@ subroutine ReadUnstructuredGrid(grid)
     call fiReadQuotedNChars(string,new_condition%ctype,MAXWORDLENGTH, &
                             .true.,ierr) 
     call fiErrorMsg('condition_type',card,ierr)
+    call fiWordToLower(new_condition%ctype)
 
     call fiReadInt(string,new_condition%max_time_index,ierr) 
     call fiErrorMsg('max_time_index',card,ierr)
 
-    call fiReadDouble(string,new_condition%datum,ierr) 
-    call fiDefaultMsg('datum',ierr)
+    call fiReadWord(string,time_unit,.true.,ierr) 
+    call fiErrorMsg('time unit',card,ierr)
+
+    if (.not.fiStringCompare("neumann",new_condition%ctype,7)) then
+
+      call fiReadFlotranString(fid,string,ierr)
+      call fiReadStringErrorMsg(card,ierr)
+
+      call fiReadDouble(string,new_condition%xdatum,ierr) 
+      call fiErrorMsg('x datum',card,ierr)
+
+      call fiReadDouble(string,new_condition%ydatum,ierr) 
+      call fiErrorMsg('y datum',card,ierr)
+
+      call fiReadDouble(string,new_condition%zdatum,ierr) 
+      call fiErrorMsg('z datum',card,ierr)
+
+      call fiReadFlotranString(fid,string,ierr)
+      call fiReadStringErrorMsg(card,ierr)
+
+      call fiReadDouble(string,new_condition%xgrad,ierr) 
+      call fiErrorMsg('x gradient',card,ierr)
+
+      call fiReadDouble(string,new_condition%ygrad,ierr) 
+      call fiErrorMsg('y gradient',card,ierr)
+
+      call fiReadDouble(string,new_condition%zgrad,ierr) 
+      call fiErrorMsg('z gradient',card,ierr)
+    endif
 
     allocate(new_condition%times(new_condition%max_time_index))
     allocate(new_condition%values(new_condition%max_time_index))
     new_condition%times = 0.d0
     new_condition%values = 0.d0
 
-    print *, new_condition%ctype
-    print *, new_condition%max_time_index
+    call fiWordToLower(time_unit)
+    if (fiStringCompare("y",time_unit,1)) then
+      time_multiplier = 365.d0*24.d0*3600.d0
+    else if (fiStringCompare("d",time_unit,1)) then
+      time_multiplier = 24.d0*3600.d0
+    else if (fiStringCompare("h",time_unit,1)) then
+      time_multiplier = 3600.d0
+    else if (fiStringCompare("m",time_unit,1)) then
+      time_multiplier = 60.d0
+    else if (fiStringCompare("s",time_unit,1)) then
+      time_multiplier = 1.d0
+    else
+      if (grid%myrank == 0) then
+        print *, 'Time unit: ', trim(time_unit), ' not recognized'
+      endif
+      stop
+    endif
+
+    if (grid%myrank == 0) print *, new_condition%ctype
+    if (grid%myrank == 0) print *, new_condition%max_time_index
 
     count2 = 0
     do i=1,new_condition%max_time_index
@@ -445,8 +499,8 @@ subroutine ReadUnstructuredGrid(grid)
 
       call fiReadDouble(string,value,ierr)
       call fiErrorMsg('value',card,ierr)
-
-      new_condition%times(i) = time
+      ! times are all in seconds   yr -> seconds
+      new_condition%times(i) = time*time_multiplier
       new_condition%values(i) = value
 
       count2 = count2 + 1
