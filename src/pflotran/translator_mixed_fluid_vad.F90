@@ -401,6 +401,12 @@ subroutine Translator_vadose_Switching(xx,grid,icri,ichange)
 
   ichange = 0
   do n = 1,grid%nlmax
+
+    !geh - Ignore inactive cells with inactive materials
+    if (associated(grid%imat)) then
+      if (grid%imat(n) <= 0) cycle
+    endif
+
     ipr=0
     n0=(n-1)* grid%ndof
     iipha=iphase_p(n)

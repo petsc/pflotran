@@ -110,6 +110,12 @@ subroutine pflow_Vadose_setupini(grid)
   call VecGetArrayF90(grid%iphas, iphase_p,ierr)
   
   do iln=1, grid%nlmax
+
+    !geh - Ignore inactive cells with inactive materials
+    if (associated(grid%imat)) then
+      if (grid%imat(iln) <= 0) cycle
+    endif
+
     na = grid%nL2A(iln)
     
 !   nz = int(na/grid%nxy) + 1
@@ -171,6 +177,12 @@ subroutine Vadose_Update_Reason(reason,grid)
     call VecGetArrayF90(grid%iphas, iphase_p, ierr); 
   
     do n = 1,grid%nlmax
+
+      !geh - Ignore inactive cells with inactive materials
+      if (associated(grid%imat)) then
+        if (grid%imat(n) <= 0) cycle
+      endif
+
       n0=(n-1)* grid%ndof
       !index=(n-1)*size_var_node
       !sat=>var_p(index+2+1:index+2+grid%nphase)
@@ -827,6 +839,12 @@ subroutine VadoseResidual(snes,xx,r,grid,ierr)
 
 !-----  phase properities ---- last time step---
   do n = 1, grid%nlmax
+
+    !geh - Ignore inactive cells with inactive materials
+    if (associated(grid%imat)) then
+      if (grid%imat(n) <= 0) cycle
+    endif
+
     jn = 1 + (n-1)*grid%nphase
     ng = grid%nL2G(n)
     ii1 = jn  !1+(n-1)*grid%nphase
@@ -950,6 +968,12 @@ subroutine VadoseResidual(snes,xx,r,grid,ierr)
 !  print *, r_p
 
   do n = 1, grid%nlmax  ! For each local node do...
+
+    !geh - Ignore inactive cells with inactive materials
+    if (associated(grid%imat)) then
+      if (grid%imat(n) <= 0) cycle
+    endif
+
     ng = grid%nL2G(n)   ! corresponding ghost index
     p1 = 1 + (n-1)*grid%ndof
     index_var_begin=(ng-1)*size_var_node+1
@@ -1327,6 +1351,12 @@ subroutine VadoseResidual(snes,xx,r,grid,ierr)
 
   if (grid%use_isoth==PETSC_TRUE) then
     do n = 1, grid%nlmax  ! For each local node do...
+
+      !geh - Ignore inactive cells with inactive materials
+      if (associated(grid%imat)) then
+        if (grid%imat(n) <= 0) cycle
+      endif
+
       ng = grid%nL2G(n)   ! corresponding ghost index
       p1 = 3 + (n-1)*grid%ndof
       r_p(p1)=xx_loc_p(2 + (ng-1)*grid%ndof)-yy_p(p1-1)
@@ -1364,10 +1394,12 @@ subroutine VadoseResidual(snes,xx,r,grid,ierr)
   if (grid%rk > 0.d0) then
     call VecRestoreArrayF90(grid%phis,phis_p,ierr)
   endif
- 
-! call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'residual.out',viewer,ierr)
-! call VecView(r,viewer,ierr)
-! call PetscViewerDestroy(viewer,ierr)
+!#define DEBUG_GEH
+#ifdef DEBUG_GEH 
+ call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'residual.out',viewer,ierr)
+ call VecView(r,viewer,ierr)
+ call PetscViewerDestroy(viewer,ierr)
+#endif
 
   !print *,'XX ::...........'; call VecView(xx,PETSC_VIEWER_STDOUT_WORLD,ierr)
  !print *,'Residual ::...........'; call VecView(r,PETSC_VIEWER_STDOUT_WORLD,ierr)
@@ -1485,6 +1517,12 @@ subroutine VadoseJacobian(snes,xx,A,B,flag,grid,ierr)
 
   ResInc=0.D0
   do n = 1, grid%nlmax  ! For each local node do...
+
+    !geh - Ignore inactive cells with inactive materials
+    if (associated(grid%imat)) then
+      if (grid%imat(n) <= 0) cycle
+    endif
+
     ng = grid%nL2G(n)   !get ghosted index
     
     voldt = volume_p(n) / grid%dt
@@ -1747,6 +1785,12 @@ subroutine VadoseJacobian(snes,xx,A,B,flag,grid,ierr)
   ! print *,' Mph Jaco Finished BC terms'
 
   do n= 1, grid%nlmax
+
+    !geh - Ignore inactive cells with inactive materials
+    if (associated(grid%imat)) then
+      if (grid%imat(n) <= 0) cycle
+    endif
+
     ra=0.D0
     ng = grid%nL2G(n)
     na1= grid%nG2N(ng)
@@ -1980,10 +2024,12 @@ subroutine VadoseJacobian(snes,xx,A,B,flag,grid,ierr)
   !call MatCopy(A,B,ierr)
   
  !call PetscViewerSetFormat(PETSC_VIEWER_STDOUT_WORLD, PETSC_VIEWER_ASCII_MATLAB, ierr)
-   
-! call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian.out',viewer,ierr)
-! call MatView(A,viewer,ierr)
-! call PetscViewerDestroy(viewer,ierr)
+
+#ifdef DEBUG_GEH    
+ call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian.out',viewer,ierr)
+ call MatView(A,viewer,ierr)
+ call PetscViewerDestroy(viewer,ierr)
+#endif
 ! stop
 
 end subroutine VadoseJacobian
@@ -2026,6 +2072,11 @@ subroutine pflow_Vadose_initaccum(grid)
  
   do n = 1, grid%nlmax
         
+    !geh - Ignore inactive cells with inactive materials
+    if (associated(grid%imat)) then
+      if (grid%imat(n) <= 0) cycle
+    endif
+
     iicap=int(icap_p(n))
     iiphase = int(iphase_p(n))
     dif(1)= grid%difaq
@@ -2048,6 +2099,12 @@ subroutine pflow_Vadose_initaccum(grid)
 
 !---------------------------------------------------------------------------
   do n = 1, grid%nlmax  ! For each local node do...
+
+    !geh - Ignore inactive cells with inactive materials
+    if (associated(grid%imat)) then
+      if (grid%imat(n) <= 0) cycle
+    endif
+
   !  ng = grid%nL2G(n)   ! corresponding ghost index
     p1 = 1 + (n-1)*grid%ndof
     index_var_begin=(n-1)*size_var_node+1
@@ -2083,7 +2140,8 @@ end subroutine pflow_Vadose_initaccum
 
 subroutine pflow_update_Vadose(grid)
 
-  use translator_vad_module  
+  use translator_vad_module
+  use Condition_module
    ! use water_eos_module
   implicit none
 
@@ -2096,6 +2154,8 @@ subroutine pflow_update_Vadose(grid)
   real*8 dif(1:grid%nphase), dum1, dum2           
 
       
+  if (associated(grid%imat)) call UpdateBoundaryConditions(grid)
+
   ! if (grid%rk > 0.d0) call Rock_Change(grid)
   ! call  Translator_vadose_Switching(grid%xx,grid,1,ichange)
   !print *,'Vadose_Update done'
@@ -2108,6 +2168,12 @@ subroutine pflow_update_Vadose(grid)
   call VecGetArrayF90(grid%var,var_p,ierr)
 
   do n = 1, grid%nlmax
+
+    !geh - Ignore inactive cells with inactive materials
+    if (associated(grid%imat)) then
+      if (grid%imat(n) <= 0) cycle
+    endif
+
     iicap = icap_p(n)
     iiphase = iphase_p(n)
     n0 = (n-1)*grid%ndof
@@ -2194,6 +2260,12 @@ subroutine pflow_Vadose_initadj(grid)
 
 
   do n = 1, grid%nlmax
+
+    !geh - Ignore inactive cells with inactive materials
+    if (associated(grid%imat)) then
+      if (grid%imat(n) <= 0) cycle
+    endif
+
     jn = 1 + (n-1)*grid%nphase
     ii1=1+(n-1)*grid%nphase; ii2=n*grid%nphase
     iicap=int(icap_p(n))
