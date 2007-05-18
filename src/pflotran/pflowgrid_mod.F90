@@ -2184,7 +2184,7 @@ subroutine pflowGrid_setup(grid, inputfile)
     call VecView(temp_vec,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
     call VecDestroy(temp_vec,ierr)
-    
+#if 0    
     print *, 'nconnbc:', grid%nconnbc 
     do nc = 1, grid%nconnbc 
       ibc = grid%ibndtyp(grid%ibconn(nc))
@@ -2195,6 +2195,7 @@ subroutine pflowGrid_setup(grid, inputfile)
         print *, grid%pressurebc(:,nc), grid%z(grid%nL2A(grid%mblkbc(nc))+1) 
       endif 
     enddo 
+#endif
   endif  
 
 
