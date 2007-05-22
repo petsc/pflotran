@@ -53,9 +53,12 @@ contains
 
 #if (PETSC_VERSION_RELEASE == 1)
 
-subroutine pflowGridCheckpoint(grid, id)
+subroutine pflowGridCheckpoint(grid, ntstep, kplt, iplot, iflgcut, ihalcnt, &
+                               its, id)
   use pflow_gridtype_module
+
   type(pflowGrid), intent(inout) :: grid
+  integer, intent(in) :: ntstep, kplt, iplot, iflgcut, ihalcnt, its
   integer, intent(in) :: id
 
   print *, "Warning: pflowGridCheckpoint() not supported with PETSc 2.3.2."
@@ -168,10 +171,13 @@ end subroutine pflowGridCheckpoint
 
 #if (PETSC_VERSION_RELEASE == 1)
 
-subroutine pflowGridRestart(grid, fname)
+subroutine pflowGridRestart(grid, fname, ntstep, kplt, iplot, iflgcut, &
+                            ihalcnt, its)
   use pflow_gridtype_module
+
   type(pflowGrid), intent(inout) :: grid
   character(len=256) :: fname
+  integer, intent(out) :: ntstep, kplt, iplot, iflgcut, ihalcnt, its
 
   print *, "Warning: pflowGridRestart() not supported with PETSc 2.3.2."
 end subroutine pflowGridRestart
