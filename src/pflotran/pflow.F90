@@ -151,14 +151,15 @@
   call PetscOptionsGetString(PETSC_NULL_CHARACTER, '-restart', restartfile, &
                              restartflag, ierr)
   if(restartflag == PETSC_TRUE) then
-    call pflowGridRestart(grid, restartfile)
+    call pflowGridRestart(grid, restartfile, ntstep, kplt, iplot, iflgcut, &
+                          ihalcnt,its)
   endif
   call PetscOptionsGetInt(PETSC_NULL_CHARACTER, '-chkptfreq', chkptfreq, &
                           chkptflag, ierr)
                              
   call PetscLogStagePop(ierr)
 
-  do steps = 1, grid%stepmax
+  do steps = grid%flowsteps+1, grid%stepmax
 
     call pflowGrid_step(grid,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
 
@@ -178,11 +179,19 @@
 
     if (iflgcut == 0) call pflowgrid_update_dt(grid,its)
 
+    call PetscLogStagePush(stage(2), ierr)
+    if(chkptflag == PETSC_TRUE .and. mod(steps, chkptfreq) == 0) then
+      call pflowGridCheckpoint(grid, ntstep, kplt, iplot, iflgcut, ihalcnt, &
+                               its, steps)
+    endif
+    call PetscLogStagePop(ierr)
+
     if (kplt .gt. grid%kplot) exit
   enddo
 
   if(chkptflag == PETSC_TRUE) then
-    call pflowGridCheckpoint(grid, steps-1)
+    call pflowGridCheckpoint(grid, ntstep, kplt, iplot, iflgcut, ihalcnt, &
+                             its, steps-1)
   endif
 
 ! Clean things up.
