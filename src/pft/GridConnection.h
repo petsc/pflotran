@@ -16,6 +16,7 @@ public:
   void setNormal(double *d);
   void setArea(double d);
   void setFlowFluxCoef(double d);
+  void setFlowFluxCoefVSat(double dup, double ddn);
   void printInfo();
 
   int getIdUpwind();
@@ -25,6 +26,7 @@ public:
   double *getNormalPtr();
   double getArea();
   double getFlowFluxCoef();
+  void getFlowFluxCoefVSat(double *dup, double *ddn);
 
 private:
   // all boundary ids are ghosted
@@ -34,6 +36,8 @@ private:
   double normal[3];
   
   double flow_flux_coef;
+  double flow_flux_coef_vsat_up;
+  double flow_flux_coef_vsat_dn;
 
 };
 
