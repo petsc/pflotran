@@ -9,13 +9,12 @@ GridCell::GridCell() {
   density = 1.;
   moisture_content = 1.;
   relative_permeability = 1.;
-  relative_permeability_t = 1.;
-  pressure_0_t = 0.;
-  pressure_n_t = 0.;
+  deriv_rel_perm = 1.;
+  pressure_n = 0.;
   specific_moisture_capacity = 1.;
-  specific_moisture_capacity_t = 1.;
   viscosity = viscosity0;
   density = density0;
+  porosity = porosity0;
   moisture_content_0 = 1.;
   moisture_content_n = 1.;
   moisture_content = 1.;
@@ -25,7 +24,7 @@ GridCell::GridCell() {
     permeability[i] = permeability0;
   }
   neighbor_cells = NULL;
-  saturationfunction = new SaturationFunction();
+  sat_func = NULL;
   
 }
 
@@ -46,26 +45,40 @@ void GridCell::setPermZ(double d) { permeability[2] = d; }
 void GridCell::setViscosity(double d) { viscosity = d; }
 void GridCell::setDensity(double d) { density = d; }
 void GridCell::setMoistureContent(double d) { moisture_content = d; }
-void GridCell::setPressure(double d) { pressure_0_t = d; }
+//void GridCell::setPressure(double d) { pressure_0_t = d; }
+
 void GridCell::updateMoistureContent0() { 
   moisture_content_0 = moisture_content; 
 }
 void GridCell::updateMoistureContentN() { 
   moisture_content_n = moisture_content; 
 }
+
+void GridCell::setSaturationFunction(SaturationFunction *sat_func_) {
+  sat_func = sat_func_;
+}
+
 void GridCell::updateRelativePermeability(double pressure) {
 
+  moisture_content_n = moisture_content;
+
   double capillary_pressure = pressure-patm;
-  saturationfunction->computeRelativePermeability(capillary_pressure,
+  sat_func->computeRelativePermeability(capillary_pressure,
                                          &moisture_content,
                                          &relative_permeability,
-                                         &specific_moisture_capacity);
-  relative_permeability_t = relative_permeability;
-  specific_moisture_capacity_t = specific_moisture_capacity;
-  saturationfunction->transformPressure(&capillary_pressure,
-                                        &relative_permeability_t,
-                                        &specific_moisture_capacity_t);
+                                         &specific_moisture_capacity,
+                                         &deriv_rel_perm,
+                                         &deriv_spec_moist_cap);
+ // relative_permeability_t = relative_permeability;
+//  specific_moisture_capacity_t = specific_moisture_capacity;
+//  pressure_n_t = capillary_pressure;
+//  sat_func->transformPressure(&pressure_n_t,
+//                              &relative_permeability_t,
+//                              &specific_moisture_capacity_t);
+//  for (int i=0; i<3; i++)
+//    permeability_t[i] = permeability[i]*relative_permeability_t;
 }
+
 void GridCell::setFlowAccumulationCoef(double d) { 
   flow_accumulation_coef = d; 
 }
@@ -96,28 +109,23 @@ double GridCell::getPermZ() { return permeability[2]; }
 double GridCell::getViscosity() { return viscosity; }
 double GridCell::getDensity() { return density; }
 double GridCell::getMoistureContent() { return moisture_content; }
-double GridCell::getPressure0_t() { return pressure_0_t; }
-double GridCell::getPressureN_t() { return pressure_n_t; }
+double GridCell::getPressure0() { return pressure_0; }
+double GridCell::getPressureN() { return pressure_n; }
 double GridCell::getMoistureContent0() { return moisture_content_0; }
 double GridCell::getMoistureContentN() { return moisture_content_n; }
-double GridCell::getSpecificMoistureCapacity_t() { return specific_moisture_capacity_t; }
+double GridCell::getSpecificMoistureCapacity() { return specific_moisture_capacity; }
+double GridCell::getDerivSpecMoistCap() { return deriv_spec_moist_cap; }
 double GridCell::getFlowAccumulationCoef() { 
   return flow_accumulation_coef; 
 }
 
 double GridCell::computeFlowAccumulationCoef(double one_over_dt) {
-
   return volume*one_over_dt;
-  /*
-  double temp = vol_over_dt;
-  if (capillary_pressure < 
-  if (capillary_pressure < 0.) 
-    temp += (moisture_content_0-moisture_content)*vol_over_dt;
-
-  return temp;*/
 }
 
 double *GridCell::getPermPtr() { return &permeability[0]; }
+double GridCell::getRPerm() { return relative_permeability; }
+double GridCell::getDRelPerm() { return deriv_rel_perm; }
 
 void GridCell::printInfo() {
   printf("lid: %d gid: %d vol: %f\n",

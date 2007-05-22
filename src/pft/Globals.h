@@ -11,5 +11,7 @@ const double gravity = 9.81;
 const double patm = 101325.;
 const double p_threshhold = 0.03*gravity*density0;
 const double permeability0 = 1.e-6;
+const double porosity0 = 0.33;
+const double betap = -4./(density0*gravity);
 
 #endif /*GLOBALS_H_*/

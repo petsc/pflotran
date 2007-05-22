@@ -6,6 +6,10 @@
 ! go into this header and how it should be organized.
 module pflow_chkptheader
   type, public :: pflowChkPtHeader
+    ! Paramters passed into pflowGrid_step().
+    integer :: ntstep, kplt, iplot, iflgcut, ihalcnt, its
+
+    ! Necessary components of the pflowGrid (excluding PETSc Vecs).
     real*8 :: t
     real*8 :: dt
     integer :: flowsteps 
@@ -49,9 +53,12 @@ contains
 
 #if (PETSC_VERSION_RELEASE == 1)
 
-subroutine pflowGridCheckpoint(grid, id)
+subroutine pflowGridCheckpoint(grid, ntstep, kplt, iplot, iflgcut, ihalcnt, &
+                               its, id)
   use pflow_gridtype_module
+
   type(pflowGrid), intent(inout) :: grid
+  integer, intent(in) :: ntstep, kplt, iplot, iflgcut, ihalcnt, its
   integer, intent(in) :: id
 
   print *, "Warning: pflowGridCheckpoint() not supported with PETSc 2.3.2."
@@ -59,7 +66,8 @@ end subroutine pflowGridCheckpoint
 
 #else
 
-subroutine pflowGridCheckpoint(grid, id)
+subroutine pflowGridCheckpoint(grid, ntstep, kplt, iplot, iflgcut, ihalcnt, &
+                               its, id)
 
   use pflow_gridtype_module
   use TTPHASE_module
@@ -69,6 +77,7 @@ subroutine pflowGridCheckpoint(grid, id)
 #include "definitions.h"
 
   type(pflowGrid), intent(inout) :: grid
+  integer, intent(in) :: ntstep, kplt, iplot, iflgcut, ihalcnt, its
   integer, intent(in) :: id
 
   character(len=256) :: fname
@@ -78,7 +87,7 @@ subroutine pflowGridCheckpoint(grid, id)
   integer ierr
 
   ! Open the checkpoint file.
-  write(fname, '(a10,i2)') 'pflow.chk.', id
+  write(fname, '(a10,i6.6)') 'pflow.chk.', id
   call PetscViewerBinaryOpen(PETSC_COMM_WORLD, fname, FILE_MODE_WRITE, &
                              viewer, ierr)
 
@@ -90,8 +99,24 @@ subroutine pflowGridCheckpoint(grid, id)
   ! We manually specify the number of bytes required for the 
   ! checkpoint header, since sizeof() is not supported by some Fortran 
   ! compilers.  To be on the safe side, we assume an integer is 8 bytes.
-  call PetscBagCreate(PETSC_COMM_WORLD,40,bag,ierr)
+  call PetscBagCreate(PETSC_COMM_WORLD, 88, bag, ierr)
   call PetscBagGetData(bag, header, ierr); CHKERRQ(ierr)
+
+  ! Register variables that are passed into pflowGrid_step().
+  call PetscBagRegisterInt(bag, header%ntstep, ntstep, "ntstep", &
+                           "ntstep", ierr)
+  call PetscBagRegisterInt(bag, header%kplt, kplt, "kplt", &
+                           "kplt", ierr)
+  call PetscBagRegisterInt(bag, header%iplot, iplot, "iplot", &
+                           "iplot", ierr)
+  call PetscBagRegisterInt(bag, header%iflgcut, iflgcut, "iflgcut", &
+                           "iflgcut", ierr)
+  call PetscBagRegisterInt(bag, header%ihalcnt, ihalcnt, "ihalcnt", &
+                           "ihalcnt", ierr)
+  call PetscBagRegisterInt(bag, header%its, its, "its", &
+                           "its", ierr)
+  
+  ! Register relevant components of the pflowGrid.
   call PetscBagRegisterReal(bag, header%t, grid%t, "t", &
                             "Simulation time (years)", ierr)
   call PetscBagRegisterReal(bag, header%dt, grid%dt, "dt", &
@@ -102,6 +127,8 @@ subroutine pflowGridCheckpoint(grid, id)
                             "Printout steps", ierr)
   call PetscBagRegisterInt(bag, header%newtcum, grid%newtcum, "newtcum", &
                             "Total number of Newton steps taken", ierr)
+
+  ! Actually write the components of the PetscBag and then free it.
   call PetscBagView(bag, viewer, ierr)
   call PetscBagDestroy(bag, ierr)
 
@@ -136,23 +163,29 @@ subroutine pflowGridCheckpoint(grid, id)
   ! We are finished, so clean up.
   call PetscViewerDestroy(viewer, ierr)
 
+  write(*, '(a23, a16)') "Dumped checkpoint file ", fname
+
 end subroutine pflowGridCheckpoint
 
 #endif
 
 #if (PETSC_VERSION_RELEASE == 1)
 
-subroutine pflowGridRestart(grid, fname)
+subroutine pflowGridRestart(grid, fname, ntstep, kplt, iplot, iflgcut, &
+                            ihalcnt, its)
   use pflow_gridtype_module
+
   type(pflowGrid), intent(inout) :: grid
   character(len=256) :: fname
+  integer, intent(out) :: ntstep, kplt, iplot, iflgcut, ihalcnt, its
 
   print *, "Warning: pflowGridRestart() not supported with PETSc 2.3.2."
 end subroutine pflowGridRestart
 
 #else
 
-subroutine pflowGridRestart(grid, fname)
+subroutine pflowGridRestart(grid, fname, ntstep, kplt, iplot, iflgcut, &
+                            ihalcnt, its)
   use pflow_gridtype_module
   use TTPHASE_module
 
@@ -162,6 +195,7 @@ subroutine pflowGridRestart(grid, fname)
 
   type(pflowGrid), intent(inout) :: grid
   character(len=256) :: fname
+  integer, intent(out) :: ntstep, kplt, iplot, iflgcut, ihalcnt, its
 
   PetscViewer viewer
   PetscBag bag
@@ -174,10 +208,16 @@ subroutine pflowGridRestart(grid, fname)
   ! Get the header data.
   call PetscBagLoad(viewer, bag, ierr)
   call PetscBagGetData(bag, header, ierr)
+  ntstep = header%ntstep
+  kplt = header%kplt
+  iplot = header%iplot
+  iflgcut = header%iflgcut
+  ihalcnt = header%ihalcnt
+  its = header%its
   grid%t = header%t
   grid%dt = header%dt
   grid%flowsteps = header%flowsteps
-  !grid%kplot = header%kplot
+  grid%kplot = header%kplot
   grid%newtcum = header%newtcum
   call PetscBagDestroy(bag, ierr)
   

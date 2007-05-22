@@ -11,6 +11,7 @@
 #include "GridConnection.h"
 #include "Source.h"
 #include "StructuredGrid.h"
+#include "SaturationFunction.h"
 
 class Grid {
   
@@ -52,6 +53,11 @@ public:
   void globalToNatural(Vec global, Vec natural);
   BoundaryCondition *getBoundaryConditions();
   Source *getSources();
+
+  void initSaturationFunction(double theta_res, double theta_sat,
+                              double alpha, double n);
+  void updateRelativePermeability(double *pressure);
+
   int getNx();
   int getNy();
   int getNz();

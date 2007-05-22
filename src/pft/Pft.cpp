@@ -66,9 +66,19 @@ int main(int argc, char **args) {
   //grid->addBoundaryCondition(1,nx,1,ny,1,1,"bottom","dirichlet",113566.899); 
   //grid->addBoundaryCondition(1,nx,1,ny,nz,nz,"top","dirichlet",89083.101);
 
-  grid->addBoundaryCondition(1,nx,1,ny,1,1,"bottom","dirichlet",160000.); 
+//#define SAT
+#ifdef SAT
+  // for saturated
+  grid->addBoundaryCondition(1,nx,1,ny,1,1,"bottom","dirichlet",150000.); 
   grid->addBoundaryCondition(1,nx,1,ny,nz,nz,"top","dirichlet",125516.202);
   grid->setInitialHydrostaticPressure(150000.,0.);
+
+#else
+  // for half-saturated
+  grid->addBoundaryCondition(1,nx,1,ny,1,1,"bottom","dirichlet",113566.899); 
+  grid->addBoundaryCondition(1,nx,1,ny,nz,nz,"top","dirichlet",89083.101);
+  grid->setInitialHydrostaticPressure(113566.899,0.);
+#endif
 
   //  grid->addSource(nx/2,nx/2+1,ny/2,ny/2+1,nz/2,nz/2+1,"mass",90.);
 //  BoundaryCondition::printBCs();
