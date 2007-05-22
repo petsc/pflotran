@@ -187,6 +187,61 @@ module pckr_module
 
 !_________________________________________________________________
 
+
+subroutine pflow_pckr_richard(ipckrtype,pckr_swir,pckr_lambda, &
+                 pckr_alpha,pckr_m,pckr_pcmax,sw,pc,kr,pckr_beta,pckr_pwr) 
+      
+      implicit none 
+
+
+      integer ipckrtype
+   !formation type, in pflow should be refered by grid%icap_loc
+      real*8 :: pckr_swir,pckr_lambda,pckr_alpha,pckr_m,pckr_pcmax
+      real*8 :: pckr_beta,pckr_pwr
+      real*8 :  sw
+      real*8 :: pc(*),kr(*)
+       
+      real*8 :: se,swir,sw0,lam,ala,um,un,upc,upc_s,kr_s, krg_s
+      real*8 :: temp,ser,pcmax
+      real*8 :: uum,pckr_betac,betac,st
+     
+     
+    ! if(present(pckr_beta))
+      pckr_betac=pckr_beta
+           
+      sw0=1.d0
+      pcmax=pckr_pcmax
+      swir=pckr_swir
+      select case(ipckrtype)
+
+      case(1) ! van Gennuchten
+          ala=pckr_alpha
+      !    swir=pckr_swir
+          um=pckr_m
+          un=1.D0/(1.D0-um)
+          se=(1.D0 + ala* pc(1)**un)**(-um)
+          kr(1)=sqrt(se)*(1.D0-(1.D0-1.D0/temp)**um)**2.d0
+          sw = se* (sw0-swir) + swir
+    
+        case(2) !Brooks-Corey
+      
+          lam=pckr_lambda
+          ala=pckr_alpha
+       !  swir=pckr_swir
+
+          se = (ala * pc(1))**(-lam)
+          kr(1)=se**(2.d0/lam+3.d0)
+          sw = se* (sw0-swir) + swir
+        case(3) !linear intropolation ,need pcmax, assign krmax=1.
+           se =1.D0 - pc(1)/ pcmax
+           kr(1)= se
+           sw = se* (sw0-swir) + swir
+       end select pflow_pckr_richard
+      
+end subroutine 
+
+!------------------------------------------------------------------------
+
     subroutine pflow_pckr(ipckrtype,pckr_swir,pckr_lambda,pckr_alpha,&
               pckr_m ,pckr_pcmax,sg,pc,pc_s,kr,kr_s,pckr_beta,pckr_pwr) 
        

@@ -1,4 +1,4 @@
-module translator_vad_module
+module translator_Richard_module
  
   
   private 
@@ -39,9 +39,9 @@ module translator_vad_module
 ! within each phase component index : 1. H2O; 2. CO2; 3. Air
 
     
-  public  pri_var_trans_vad_ninc,pri_var_trans_vad_winc ,translator_vad_step_maxchange, &
-          translator_vad_get_output,translator_check_phase_cond_vad,translator_vadose_massbal, &
-          Translator_vadose_Switching
+  public  pri_var_trans_Richard_ninc,pri_var_trans_Richard_winc ,translator_Richard_step_maxchange, &
+          translator_Richard_get_output,translator_check_phase_cond_Richard,translator_Richardose_massbal, &
+          Translator_Richardose_Switching
      
      
   real*8, private, parameter :: fmwh2o = 18.0153D0, fmwa = 28.96D0, &
@@ -56,7 +56,7 @@ contains
 !        apply mixing rules
 
 
-subroutine translator_vadose_massbal(grid)
+subroutine translator_Richardose_massbal(grid)
  
   use pflow_gridtype_module
   
@@ -200,10 +200,10 @@ subroutine translator_vadose_massbal(grid)
                            tot(2,2),tot(2,1)+tot(2,2),real(n2p),nzc,nzm,nsm 
   endif    
   
-end subroutine translator_vadose_massbal
+end subroutine translator_Richardose_massbal
 
 
-integer function translator_check_phase_cond_vad(iphase, var_node,num_phase,num_spec)
+integer function translator_check_phase_cond_Richard(iphase, var_node,num_phase,num_spec)
 
   implicit none
 
@@ -251,12 +251,12 @@ integer function translator_check_phase_cond_vad(iphase, var_node,num_phase,num_
     enddo
   endif
   nullify(t, p, satu, den, avgmw, h,u, pc,kvr,xmol,diff)
-  translator_check_phase_cond_vad = succ
+  translator_check_phase_cond_Richard = succ
 
-end function translator_check_phase_cond_vad
+end function translator_check_phase_cond_Richard
 
 
-subroutine translator_vad_get_output(grid)
+subroutine translator_Richard_get_output(grid)
 
   use pflow_gridtype_module
 
@@ -304,10 +304,10 @@ subroutine translator_vad_get_output(grid)
   call VecRestoreArrayF90(grid%conc, cc_p, ierr)
  
 ! work only for 2 phases
-end subroutine translator_vad_get_output
+end subroutine translator_Richard_get_output
 
 
-subroutine translator_vad_step_maxchange(grid)
+subroutine translator_Richard_step_maxchange(grid)
 
   use pflow_gridtype_module
 
@@ -371,10 +371,10 @@ subroutine translator_vad_step_maxchange(grid)
    grid%dsmax=comp1
    grid%dcmax=comp
 !   print *, 'max change',grid%dpmax,grid%dtmpmax,grid%dsmax,grid%dcmax
-end subroutine translator_vad_step_maxchange
+end subroutine translator_Richard_step_maxchange
 
 
-subroutine Translator_vadose_Switching(xx,grid,icri,ichange)
+subroutine Translator_Richardose_Switching(xx,grid,icri,ichange)
 
   use pflow_gridtype_module
   use water_eos_module
@@ -615,19 +615,18 @@ subroutine Translator_vadose_Switching(xx,grid,icri,ichange)
   call VecRestoreArrayF90(xx, xx_p, ierr); CHKERRQ(ierr)
   call VecRestoreArrayF90(grid%yy, yy_p, ierr); CHKERRQ(ierr)
 
-end subroutine Translator_vadose_Switching
+end subroutine Translator_Richardose_Switching
   
-! **2 phase condition**************************************************
+! **richard phase condition**************************************************
 ! phase                             Primary Variables      index
 !   e                p, T, X(e,c)                  1
 !   g                p, T, X(g,a)                  2 
 !   eg                              p, T, S(g)                    3
 !**********************************************************************
-subroutine pri_var_trans_vad_ninc_2_2(x,iphase,energyscale,num_phase,num_spec,&
+subroutine pri_var_trans_Richard_ninc_2_2(x,iphase,energyscale,num_phase,num_spec,&
                                       ipckrtype,pckr_sir,pckr_lambda, &
                                       pckr_alpha,pckr_m,pckr_pcmax,pckr_betac, &
-                                      pckr_pwr,dif,var_node,itable,ierr,xphi, &
-                                      dco2)
+                                      pckr_pwr,dif,var_node,itable,ierr, pref)
 ! xgw: water molar fraction in gas phase
 ! P/Pa, t/(Degree Centigreed), Pc/Pa, Hen(xla=Hen*xga, dimensionless)
  
@@ -679,129 +678,48 @@ subroutine pri_var_trans_vad_ninc_2_2(x,iphase,energyscale,num_phase,num_spec,&
   ibase=ibase+num_phase; xmol=>var_node(ibase:ibase+num_phase*num_spec-1)
   ibase=ibase+num_phase*num_spec; diff=>var_node(ibase:ibase+num_phase*num_spec-1)
 
+!note: xmol means molar concentration, room for multiple tracers test. 
 
-  select case(iphase)
+ satu =0.D0
+ h=0.D0
+ u=0.D0
+ den=0.D0
+ avgmw =0.D0
+ xmol =0.D0
+ kr=0.D0
+ diff =0.D0
+  
+ t=x(2)
+ pc(1) = pref - x(1)
+ xmol(1)=1.D0
+ if(nspec>1) xmol(2:num_spec)=x(3: nspec +1)   
 
-    case(1) ! only water phase
-      p = x(1)
-      t = x(2)
-      xmol(2)= x(3)
-  ! if(xmol(2)<0.D0) xmol(2)=0.D0
-  ! if(xmol(2)>1.D0) xmol(2)=1.D0
-      if (xmol(2)<0.D0) print *,'tran:',iphase, x(1:3)
-      if (xmol(2)>1.D0) print *,'tran:',iphase, x(1:3)
-      xmol(1)=1.D0 - xmol(2)
-  ! if(xmol(3)<0.D0)xmol(3)=0.D0
-      pc(1)=0.D0
-      pc(2)=0.D0
-      satu(1)=1.D0
-      satu(2)= 0.D0
-     !p2=p
-   ! if( p2>5d4)then
-   !  call co2_span_wagner(p2*1.D-6,t+273.15D0,dg,dddt,dddp,fg,&
-     ! dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,itable)
-     ! xphi=fg*1D6/p2
-   !else 
-      !    call ideal_gaseos_noderiv(p2,t,energyscale,dg,hg,ug)
-      !   call visco2(t,dg*fmwco2,visg)
-    !endif
-   
-   
-     ! call Henry_CO2_noderiv(xla,tmp,t,p2, xphi, henry,co2_poyn)
-  ! print *,'Henry', xphi,p2, t, henry, co2_poyn  
-     
-    
-     ! xmol(4)=henry*xmol(2)/p
-   ! xmol(3)=1.D0-xmol(4)
-     ! if(xmol(1)<0.D0) xmol(1)=0.D0
-  
-    case(2) ! only supercritical CO2 Phase
-     
-      p = x(1)
-      t = x(2)
-      xmol(4)= x(3)
-      if (xmol(4)<0.D0) print *,'tran:',iphase, x(1:3)
-      if (xmol(4)>1.D0) print *,'tran:',iphase, x(1:3)
-     
-      xmol(3)=1.D0 - xmol(4)
-  !   if(xmol(3)<0.D0)xmol(3)=0.D0
-   !    pc(1)=0.D0
-      pc(2)=0.D0
-      satu(1)=eps
-      satu(2)=1.D0
-  
-    case(3) ! water + gas 
-      p = x(1)
-      t = x(2)
-      satu(2)= x(3)
-      if (satu(2)<0.D0) print *,'tran:',iphase, x(1:3)
-      if (satu(2)>1.D0) print *,'tran:',iphase, x(1:3)
-      satu(1) = 1.D0 - satu(2)
-      if ( satu(2)<0.D0) satu(2)=0.D0
-      pc(2) = 0.D0
-
-  end select  
-
-  call PSAT(t, sat_pressure, ierr)
-
-  err=1.D0
-     
-  call ideal_gaseos_noderiv(p,t,energyscale,dg,hg,ug)
-   
-  xphi = 1.D0
-  call   Henry_air_noderiv(p,t,sat_pressure , Henry)   
-  
-  select case(iphase)     
-    case(1)
-      xmol(4)=xmol(2)*henry/p   
-   
- ! if(iphase /= 1)then
-      xmol(3)=1.D0-xmol(4)
-      if (xmol(3)<0.D0) xmol(3) = 0.D0
-  !if(xmol(3)<0.D0) xmol(3)=0.D0
-    case(2)
-  
-      xmol(2)= p*xmol(4)/henry
-    !xmol(2)= 1.D0/(1.D0 + 1.D0 /(henry * xmol(4) * p* 1D-5 *xphi * grid%fmwh2o ))
-        
-      xmol(1)=1.D0-xmol(2)
-  !if(xmol(1)<0.D0) xmol(1)=0.D0
-  !endif
-    case(3)
-      xmol(1) = (Henry - p)/(Henry -sat_pressure)
-      xmol(2) = 1.D0- xmol(1)
-      xmol(3) = xmol(1) * sat_pressure / p
-      xmol(4) = 1.D0-xmol(3)
-    
-  end select
-  
-  p2 = p*xmol(4);fg=p2
-  call visgas_noderiv(t,p2,p,dg,visg)
-
-  
 !***************  Liquid phase properties **************************
-  avgmw(1)= xmol(1)* fmwh2o + xmol(2) * fmwa 
-  avgmw(2)= xmol(3)* fmwh2o + xmol(4) * fmwa 
-  
+  avgmw(1)=  fmwh2o 
 
-   ! pure water
-  pw = p   
-  if (num_phase>=2) then
-    call pflow_pckr_noderiv(ipckrtype,pckr_sir,pckr_lambda,pckr_alpha, &
-                            pckr_m,pckr_pcmax,satu(2),pc,kr,pckr_betac, &
-                            pckr_pwr)
-  endif
-
-    
+ ! no more calculation on gas phase
+!  avgmw(2)= xmol(3)* fmwh2o + xmol(4) * fmwa 
+     
   call wateos_noderiv(t,pw,dw_kg,dw_mol,hw,energyscale,ierr)
    !    call VISW(t,pw,sat_pressure,visl,tmp,tmp2,ierr)
    ! call VISW_FLO(t,dw_mol,visl)
-  call VISW_noderiv(t,pw,sat_pressure,visl,ierr)
+  call psat(t, sat_pressure, ierr)
+   call VISW_noderiv(t,pw,sat_pressure,visl,ierr)
   !  print *,'visw  ',visl,tmp
   ! dif= 1.D-7 !effective diffusion coeff in liquid phase: check pcl
-  diff(1:num_spec) = dif(1)
-  diff(num_spec +1: 2*num_spec) = dif(2) ! m^2/s @ 25C
+  
+   if(pc(1)>0)then
+    call pflow_pckr_richard(ipckrtype,pckr_sir,pckr_lambda,pckr_alpha, &
+                            pckr_m,pckr_pcmax,satu(1),pc,kr,pckr_betac, &
+                            pckr_pwr)
+  else
+    pc(1)=0.D0
+    satu(1)= 1.D0  
+    kr(1)=1.D0    
+  endif  
 
+  
+  diff(1:num_spec) = dif(1)
     !apply mixing rules
     ! should be careful with the consistance of mixing rules
 
@@ -818,73 +736,17 @@ subroutine pri_var_trans_vad_ninc_2_2(x,iphase,energyscale,num_phase,num_spec,&
   kvr(1) = kr(1)/visl
     !xlw = 1.D0
     !avgmw(1) = xlw*fmwh2o+(1.d0-xlw)*fmwco2
-
-!*****************Gas phase properties 2*************************
+ ! no more gas phase
  
-    
-  if (xmol(3)>eps) then
-    call steameos(t,p,p2,dstea,dsteamol,dstea_p,dstea_t,&
-                  hstea,hstea_p,hstea_t,energyscale,ierr) 
-!print *,'steameos', t,p,pa,p-pa,sat_pressure, dsteamol,hstea,dg,hg,dsteamol/xgw
-    dsteamol=dsteamol
-    hstea=hstea!/xgw
-    tmp=dsteamol
-  else
-    dsteamol=dg
-    hstea=hg 
-  endif
-
-
-!if((p*xgw)>sat_pressure)then 
-
- !call steameos(t,p,p-sat_pressure,dstea,dsteamol,dstea_p,dstea_t,&
- !                 hstea,hstea_p,hstea_t,energyscale,ierr) 
-! dsteamol=tmp
- !   dstea_p=dg_p
- !   dstea_t=dg_t
-!  hstea=tmp
-!    hstea_p=hg_p
-!    hstea_t=hg_t
-!  Now just make the steam same as ideal gas   
- !endif
-!**********************************************************************
-
-
-  ! den(2)= dg*xmol(4) + dw_mol*xmol(3)
-  ! den(2)= 1.D0/(xmol(4)/dg + xmol(3)/dsteamol)
-  den(2)=dg
-!   call visgas_noderiv(t,pa,p,den(2),visg)
-!call visgas_noderiv(t,pa,p,den(2),visg)
-! call visco2(t,dg ,visg)
-!    visg=8.d-6
-  kvr(2)=kr(2)/visg
-
-  
-!    den(2)=1.D0/( xga/dg + xgw/dsteamol)  !*c 
-  !  den(2)=1.D0/( xga/dg + 1.D0/dsteamol)
-     h(2)=  hg ! *xmol(4) + hstea * xmol(3)
- !   h(2)= ( hg*xga  + hstea*xgw ) 
- !   h(2)= ( hg *xga + hstea ) 
-  u(2) =  h(2)-p/den(2) * energyscale
-  pc(2) = 0
-   !  print *,'gas phase nonder h::',t,p,h(2),u(2),hg,hstea
-  diff(num_spec+1:num_spec*2) = dif(2) ! dirty part
-  dco2 = 1.D0  ! the Compressibility factor of gas phase
- !if(t>=100.D0) print *, p,t,xga,xgw,dg,dsteamol,hg, hstea, h(2)
-  
-!~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-! remember: henry coeff is arranged in the vector as 
-!    phase          1(water)          2(gas)            3(co2)
-!   species      1    2    3       1    2    3        1   2    3
-!   values                        1.0  1.0  1.0
-!_________________________________________________________________
-
-  
+ ! note nphase=1, nspec = 1 + num_tracer, ndof = nspec +1  
+ ! if assign nphase=2, it will still run, but gas phase properties will be  
+ ! meaningless, wasting memory.
+ 
   nullify(t, p, satu, den, avgmw, h,u, pc,kvr,xmol,diff)
-end subroutine pri_var_trans_vad_ninc_2_2
+end subroutine pri_var_trans_Richard_ninc_2_2
 
  
-subroutine pri_var_trans_vad_ninc(x,iphase,energyscale,num_phase,num_spec, &
+subroutine pri_var_trans_Richard_ninc(x,iphase,energyscale,num_phase,num_spec, &
                                   ipckrtype,pckr_sir,pckr_lambda,pckr_alpha, &
                                   pckr_m,pckr_pcmax,pckr_betac,pckr_pwr,dif, &
                                   var_node,itable,ierr,phi_co2, den_co2)
@@ -909,7 +771,7 @@ subroutine pri_var_trans_vad_ninc(x,iphase,energyscale,num_phase,num_spec, &
 
   size_var_use = 2 + 7*num_phase + 2* num_phase*num_spec
   if ((num_phase == 2).and.( num_spec == 2)) then
-    call pri_var_trans_vad_ninc_2_2(x,iphase,energyscale,num_phase,num_spec, &
+    call pri_var_trans_Richard_ninc_2_2(x,iphase,energyscale,num_phase,num_spec, &
                                     ipckrtype,pckr_sir,pckr_lambda,pckr_alpha, &
                                     pckr_m,pckr_pcmax,pckr_betac,pckr_pwr,dif, &
                                     var_node,itable,ierr,xphi_co2, denco2)
@@ -920,10 +782,10 @@ subroutine pri_var_trans_vad_ninc(x,iphase,energyscale,num_phase,num_spec, &
     stop
   endif
 
-end subroutine pri_var_trans_vad_ninc   
+end subroutine pri_var_trans_Richard_ninc   
   
   
-subroutine pri_var_trans_vad_winc(x,delx,iphase,energyscale,num_phase,num_spec,&
+subroutine pri_var_trans_Richard_winc(x,delx,iphase,energyscale,num_phase,num_spec,&
                                   ipckrtype,pckr_sir,pckr_lambda,pckr_alpha,&
                                   pckr_m,pckr_pcmax,pckr_betac,pckr_pwr,dif,&
                                  var_node,itable,ierr)
@@ -950,13 +812,13 @@ subroutine pri_var_trans_vad_winc(x,delx,iphase,energyscale,num_phase,num_spec,&
     xx = x
     xx(n) = x(n)+ delx(n)
   ! note: var_node here starts from 1 to grid%ndof*size_var_use
-    call pri_var_trans_vad_ninc(xx,iphase,energyscale,num_phase,num_spec,&
+    call pri_var_trans_Richard_ninc(xx,iphase,energyscale,num_phase,num_spec,&
                                 ipckrtype,pckr_sir,pckr_lambda,pckr_alpha,&
                                 pckr_m,pckr_pcmax,pckr_betac,pckr_pwr,dif,&
                                 var_node((n-1)*size_var_use+1:n*size_var_use), &
                                 itable,ierr)
   enddo
 
-end subroutine pri_var_trans_vad_winc
+end subroutine pri_var_trans_Richard_winc
   
-end module translator_vad_module
+end module translator_Richard_module

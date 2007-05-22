@@ -1,12 +1,12 @@
 ! introduced grid variables: e_total :: 1 dof
-!Vadose translator_module                           c_total :: grid%nspec dof
+!Richard translator_module                           c_total :: grid%nspec dof
 !                            p_total :: 1 dof
 !                            s_total :: (grid%nphase-1) dof
 !  stands for the accumulation term at last time step, except the /Dt part 
 !  should be updated in pflowgrid_mod.F90 :: pflowgrid_step          
 
                
-module Vadose_module
+module Richard_module
 
   use pflow_gridtype_module
  ! use pflow_var_module
@@ -67,7 +67,7 @@ subroutine pflow_Richard_timecut(grid)
  
   PetscScalar, pointer :: xx_p(:),yy_p(:)!,var_p(:),iphase_p(:)
   integer :: n,n0,re,ierr
-  !integer re0, ierr, index, iiphaVadose
+  !integer re0, ierr, index, iiphaRichard
   !real*8, pointer :: sat(:),xmol(:)
 
   call VecGetArrayF90(grid%xx, xx_p, ierr)
@@ -86,7 +86,7 @@ subroutine pflow_Richard_timecut(grid)
   call VecRestoreArrayF90(grid%yy, yy_p, ierr)
   
   !call VecCopy(grid%xx,grid%yy,ierr)
-  !call pflow_Vadose_initaccum(grid)
+  !call pflow_Richard_initaccum(grid)
  
 end subroutine pflow_Richard_timecut
   
@@ -127,7 +127,7 @@ subroutine pflow_Richard_setupini(grid)
     ny = (na - (nz-1)*grid%nxy)/grid%nx + 1
     nx = na + 1 - (ny-1)*grid%nx - (nz-1)*grid%nxy
     
-!   print *,'pflow_Vadose_resjac: ',na,nx,ny,nz
+!   print *,'pflow_Richard_resjac: ',na,nx,ny,nz
     
     do ir = 1,grid%iregini
       if ((nz>=grid%k1ini(ir)) .and. (nz<=grid%k2ini(ir)) .and.&
@@ -340,7 +340,7 @@ subroutine RichardRes_ARCont(node_no, var_node,por,vol,rock_dencpr, grid, Res_AR
 end subroutine  RichardRes_ARCont
 
 
-subroutine VadoseRes_FLCont(nconn_no,area,var_node1,por1,tor1,sir1,dd1,perm1, &
+subroutine RichardRes_FLCont(nconn_no,area,var_node1,por1,tor1,sir1,dd1,perm1, &
                             Dk1,var_node2,por2,tor2,sir2,dd2,perm2,Dk2,grid, &
                             vv_darcy,Res_FL)
 
@@ -482,9 +482,9 @@ subroutine VadoseRes_FLCont(nconn_no,area,var_node1,por1,tor1,sir1,dd1,perm1, &
   nullify(temp1, pre_ref1, sat1, density1, amw1, h1,u1, pc1,kvr1,xmol1,diff1)       
   nullify(temp2, pre_ref2, sat2, density2, amw2, h2,u2, pc2,kvr2,xmol2,diff2)       
 
-end subroutine VadoseRes_FLCont
+end subroutine RichardRes_FLCont
 
-subroutine VadoseRes_FLBCCont(nbc_no,area,var_node1,var_node2,por2,tor2,sir2, &
+subroutine RichardRes_FLBCCont(nbc_no,area,var_node1,var_node2,por2,tor2,sir2, &
                               dd1,perm2,Dk2,grid,vv_darcy,Res_FL)
  ! Notice : index 1 stands for BC node
   implicit none
@@ -682,10 +682,10 @@ subroutine VadoseRes_FLBCCont(nbc_no,area,var_node1,var_node2,por2,tor2,sir2, &
   nullify(temp1, pre_ref1, sat1, density1, amw1, h1,u1, pc1,kvr1,xmol1,diff1)       
   nullify(temp2, pre_ref2, sat2, density2, amw2, h2,u2, pc2,kvr2,xmol2,diff2)       
 
-end  subroutine VadoseRes_FLBCCont 
+end  subroutine RichardRes_FLBCCont 
 
 
-subroutine VadoseResidual(snes,xx,r,grid,ierr)
+subroutine RichardResidual(snes,xx,r,grid,ierr)
 
   use water_eos_module
   use Gas_Eos_Module
@@ -774,41 +774,7 @@ subroutine VadoseResidual(snes,xx,r,grid,ierr)
     grid%delx(1,ng)=xx_loc_p((ng-1)*grid%ndof+1)*dfac*1e-3
     grid%delx(2,ng)=xx_loc_p((ng-1)*grid%ndof+2)*dfac
   
-  select case (iiphase)
-    case (1)
-      if (xx_loc_p((ng-1)*grid%ndof+3) < 0.8) then
-        grid%delx(3,ng) =  dfac *xx_loc_p((ng-1)*grid%ndof+3)
-      else
-       grid%delx(3,ng) =  -dfac *xx_loc_p((ng-1)*grid%ndof+3) 
-      endif
-      if (grid%delx(3,ng) <1D-9 .and. grid%delx(3,ng)>=0.D0) grid%delx(3,ng) = 1.D-9
-      if (grid%delx(3,ng) >-1D-9 .and. grid%delx(3,ng)<0.D0) grid%delx(3,ng) = -1.D-9
-   case(2)  
-      if (xx_loc_p((ng-1)*grid%ndof+3) <0.8) then
-        grid%delx(3,ng) =  dfac *xx_loc_p((ng-1)*grid%ndof+3) 
-      else
-        grid%delx(3,ng) =  -dfac *xx_loc_p((ng-1)*grid%ndof+3) 
-      endif 
-      if (grid%delx(3,ng) <1D-9 .and. grid%delx(3,ng)>=0.D0) grid%delx(3,ng) = 1.D-9
-      if (grid%delx(3,ng) >-1D-9.and. grid%delx(3,ng)<0.D0) grid%delx(3,ng) = -1.D-9
-    case(3)
-      if (xx_loc_p((ng-1)*grid%ndof+3) <=0.9) then
-        grid%delx(3,ng) = dfac *xx_loc_p((ng-1)*grid%ndof+3) 
-      else
-        grid%delx(3,ng) = -dfac *xx_loc_p((ng-1)*grid%ndof+3) 
-      endif 
-      
-      if (grid%delx(3,ng) <1D-9 .and. grid%delx(3,ng)>=0.D0) grid%delx(3,ng) = 1.D-9
-      if (grid%delx(3,ng) >-1D-9 .and. grid%delx(3,ng)<0.D0) grid%delx(3,ng) = -1.D-9
-      
-      if ((grid%delx(3,ng)+xx_loc_p((ng-1)*grid%ndof+3))>1.D0) then
-        grid%delx(3,ng) = (1.D0-xx_loc_p((ng-1)*grid%ndof+3))/1.D5
-      endif
-      if ((grid%delx(3,ng)+xx_loc_p((ng-1)*grid%ndof+3))<0.D0) then
-        grid%delx(3,ng) = xx_loc_p((ng-1)*grid%ndof+3)/1D5
-      endif
-    end select
-  enddo
+   enddo
   
   call VecRestoreArrayF90(grid%xx_loc, xx_loc_p, ierr); CHKERRQ(ierr)
   call VecRestoreArrayF90(grid%iphas_loc, iphase_loc_p, ierr)
@@ -846,7 +812,7 @@ subroutine VadoseResidual(snes,xx,r,grid,ierr)
     dif(2)= grid%cdiff(int(ithrm_p(n)))
   
   !*******************************************
-    call pri_var_trans_vad_ninc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),iiphase, &
+    call pri_var_trans_richard_ninc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),iiphase, &
                                 grid%scale,grid%nphase,grid%nspec, &
                                 grid%icaptype(iicap), &
                                 grid%sir(1:grid%nphase,iicap), &
@@ -861,7 +827,7 @@ subroutine VadoseResidual(snes,xx,r,grid,ierr)
 
 
     if (grid%ideriv .eq. 1) then
-      call pri_var_trans_vad_winc(xx_p((n-1)*grid%ndof+1:n*grid%ndof), &
+      call pri_var_trans_richard_winc(xx_p((n-1)*grid%ndof+1:n*grid%ndof), &
                                   grid%delx(1:grid%ndof,ng),iiphase, &
                                   grid%scale,grid%nphase,grid%nspec, &
                                   grid%icaptype(iicap), &
@@ -976,7 +942,7 @@ subroutine VadoseResidual(snes,xx,r,grid,ierr)
     i = ithrm_loc_p(ng)
 
     accum = 0.d0
-    call VadoseRes_ARCont(n, var_loc_p(index_var_begin: index_var_end),&
+    call RichardRes_ARCont(n, var_loc_p(index_var_begin: index_var_end),&
     porosity_loc_p(ng),volume_p(n),grid%dencpr(i), grid, Res, 1,ierr)
    
     r_p(p1:p1+grid%ndof-1) = r_p(p1:p1+grid%ndof-1) + Res(1:grid%ndof)
@@ -1180,7 +1146,7 @@ subroutine VadoseResidual(snes,xx,r,grid,ierr)
     f2 = dd2/dd
 !   if(dabs(perm1-1D-15)>1D-20)print *, 'perm1 error', perm1, ip1, n1,n2
 !  if(dabs(perm2-1D-15)>1D-20)print *, 'perm2 error', perm2, ip2, n1,n2
-    call VadoseRes_FLCont(nc ,grid%area(nc), &
+    call RichardRes_FLCont(nc ,grid%area(nc), &
                           var_loc_p((m1-1)*size_var_node+1:(m1-1)* &
                             size_var_node+size_var_use), &
                           porosity_loc_p(m1),tor_loc_p(m1), &
@@ -1299,7 +1265,7 @@ subroutine VadoseResidual(snes,xx,r,grid,ierr)
 !    print *, 'xxphi_co2_bc: ', grid%xxphi_co2_bc(nc)
 !    print *
   
-    call pri_var_trans_vad_ninc(grid%xxbc(:,nc),grid%iphasebc(nc),&
+    call pri_var_trans_Richard_ninc(grid%xxbc(:,nc),grid%iphasebc(nc),&
                                 grid%scale,grid%nphase,grid%nspec, &
                                 grid%icaptype(iicap), &
                                 grid%sir(1:grid%nphase,iicap), &
@@ -1310,7 +1276,7 @@ subroutine VadoseResidual(snes,xx,r,grid,ierr)
                                 grid%xxphi_co2_bc(nc),cw)
    
      
-    call VadoseRes_FLBCCont(nc,grid%areabc(nc),grid%varbc(1:size_var_use), &
+    call RichardRes_FLBCCont(nc,grid%areabc(nc),grid%varbc(1:size_var_use), &
                             var_loc_p((ng-1)*size_var_node+1:(ng-1)* &
                             size_var_node+size_var_use),porosity_loc_p(ng), &
                             tor_loc_p(ng),grid%sir(1:grid%nphase,iicap), &
@@ -1394,16 +1360,16 @@ subroutine VadoseResidual(snes,xx,r,grid,ierr)
   !print *,'XX ::...........'; call VecView(xx,PETSC_VIEWER_STDOUT_WORLD,ierr)
  !print *,'Residual ::...........'; call VecView(r,PETSC_VIEWER_STDOUT_WORLD,ierr)
  
- !print *,'finished VadoseResidual'
-end subroutine VadoseResidual
+ !print *,'finished RichardResidual'
+end subroutine RichardResidual
                 
 ! --------------------------------------------------------------------- 
 
-subroutine VadoseJacobian(snes,xx,A,B,flag,grid,ierr)
+subroutine RichardJacobian(snes,xx,A,B,flag,grid,ierr)
        
   use water_eos_module
   use gas_eos_module
-  use translator_vad_module
+  use translator_Richard_module
   
   implicit none
 
@@ -1525,7 +1491,7 @@ subroutine VadoseJacobian(snes,xx,A,B,flag,grid,ierr)
       index_var_begin=(ng-1)*size_var_node+nvar*size_var_use+1
       index_var_end = index_var_begin -1 + size_var_use
 
-      call VadoseRes_ARCont(n, var_loc_p(index_var_begin : index_var_end), &
+      call RichardRes_ARCont(n, var_loc_p(index_var_begin : index_var_end), &
                             porosity_loc_p(ng),volume_p(n), &
                             grid%dencpr(int(ithrm_loc_p(ng))),grid, Res,1,ierr)
       
@@ -1723,7 +1689,7 @@ subroutine VadoseJacobian(snes,xx,A,B,flag,grid,ierr)
 
   !  print *,' Mph Jaco BC terms: finish setup'
   ! here should pay attention to BC type !!!
-    call pri_var_trans_vad_ninc(grid%xxbc(:,nc),grid%iphasebc(nc), &
+    call pri_var_trans_Richard_ninc(grid%xxbc(:,nc),grid%iphasebc(nc), &
                                 grid%scale,grid%nphase,grid%nspec, &
                                 grid%icaptype(iicap), &
                                 grid%sir(1:grid%nphase,iicap), &
@@ -1733,7 +1699,7 @@ subroutine VadoseJacobian(snes,xx,A,B,flag,grid,ierr)
                                 grid%varbc(1:size_var_use),grid%itable,ierr, &
                                 dum1, dum2)
   
-    call pri_var_trans_vad_winc(grid%xxbc(:,nc),delxbc,grid%iphasebc(nc), &
+    call pri_var_trans_Richard_winc(grid%xxbc(:,nc),delxbc,grid%iphasebc(nc), &
                                 grid%scale,grid%nphase,grid%nspec, &
                                 grid%icaptype(iicap), &
                                 grid%sir(1:grid%nphase,iicap), &
@@ -1748,7 +1714,7 @@ subroutine VadoseJacobian(snes,xx,A,B,flag,grid,ierr)
 !    print *,' Mph Jaco BC terms: finish increment'
     do nvar=1,grid%ndof
    
-      call VadoseRes_FLBCCont(nc,grid%areabc(nc), &
+      call RichardRes_FLBCCont(nc,grid%areabc(nc), &
                               grid%varbc(nvar*size_var_use+1:(nvar+1)* &
                                 size_var_use), &
                               var_loc_p((ng-1)*size_var_node+nvar* &
@@ -1881,7 +1847,7 @@ subroutine VadoseJacobian(snes,xx,A,B,flag,grid,ierr)
   ! do neq = 1, grid%ndof
     do nvar = 1, grid%ndof
     
-      call VadoseRes_FLCont(nc ,grid%area(nc), &
+      call RichardRes_FLCont(nc ,grid%area(nc), &
                             var_loc_p((m1-1)*size_var_node+nvar* &
                               size_var_use+1:(m1-1)*size_var_node+nvar* &
                               size_var_use+size_var_use),&
@@ -1893,9 +1859,9 @@ subroutine VadoseJacobian(snes,xx,A,B,flag,grid,ierr)
                             grid%sir(1:grid%nphase,iicap2),dd2,perm2,D2,grid, &
                             vv_darcy,Res)
 
-      ra(:,nvar)= Res(:)/grid%delx(nvar,m1)-ResOld_FL(nc,:)/grid%delx(nvar,m1)
+      ra(:,nvar)= (Res(:)-ResOld_FL(nc,:))/grid%delx(nvar,m1)
        
-      call VadoseRes_FLCont(nc,grid%area(nc), &
+      call RichardRes_FLCont(nc,grid%area(nc), &
                             var_loc_p((m1-1)*size_var_node+1:(m1-1)* &
                               size_var_node+size_var_use),&
                             porosity_loc_p(m1),tor_loc_p(m1), &
@@ -1907,7 +1873,7 @@ subroutine VadoseJacobian(snes,xx,A,B,flag,grid,ierr)
                             grid%sir(1:grid%nphase,iicap2),dd2,perm2,D2,grid, &
                             vv_darcy,Res)
  
-      ra(:,nvar+grid%ndof)= Res(:)/grid%delx(nvar,m2)-ResOld_FL(nc,:)/grid%delx(nvar,m2)
+      ra(:,nvar+grid%ndof)= (Res(:)-ResOld_FL(nc,:))/grid%delx(nvar,m2)
    
     enddo
   
@@ -2022,14 +1988,14 @@ subroutine VadoseJacobian(snes,xx,A,B,flag,grid,ierr)
 #endif
 ! stop
 
-end subroutine VadoseJacobian
+end subroutine RichardJacobian
 
 
 
 
-subroutine pflow_Vadose_initaccum(grid)
+subroutine pflow_Richard_initaccum(grid)
  
-  use translator_vad_module  
+  use translator_Richard_module  
  
   implicit none
   
@@ -2058,7 +2024,7 @@ subroutine pflow_Vadose_initaccum(grid)
   call VecGetArrayF90(grid%iphas, iphase_p, ierr)
   call VecGetArrayF90(grid%ithrm, ithrm_p, ierr)
   call VecGetArrayF90(grid%icap, icap_p, ierr)
-  !print *,'Vadoseinitaccum  Gotten pointers'
+  !print *,'Richardinitaccum  Gotten pointers'
  
   do n = 1, grid%nlmax
         
@@ -2072,7 +2038,7 @@ subroutine pflow_Vadose_initaccum(grid)
     dif(1)= grid%difaq
     dif(2)= grid%cdiff(int(ithrm_p(n)))
 
-    call pri_var_trans_vad_ninc(yy_p((n-1)*grid%ndof+1:n*grid%ndof),iiphase,&
+    call pri_var_trans_Richard_ninc(yy_p((n-1)*grid%ndof+1:n*grid%ndof),iiphase,&
                                 grid%scale,grid%nphase,grid%nspec, &
                                 grid%icaptype(iicap), &
                                 grid%sir(1:grid%nphase,iicap), &
@@ -2101,7 +2067,7 @@ subroutine pflow_Vadose_initaccum(grid)
     index_var_end = index_var_begin -1 + size_var_use
     i = ithrm_p(n)
     
-    call VadoseRes_ARCont(n,var_p(index_var_begin:index_var_end), &
+    call RichardRes_ARCont(n,var_p(index_var_begin:index_var_end), &
                           porosity_p(n),volume_p(n),grid%dencpr(i),grid,Res, &
                           0,ierr)
  
@@ -2125,12 +2091,12 @@ subroutine pflow_Vadose_initaccum(grid)
   call VecRestoreArrayF90(grid%ithrm, ithrm_p, ierr)
   call VecRestoreArrayF90(grid%icap, icap_p, ierr)
 
-end subroutine pflow_Vadose_initaccum
+end subroutine pflow_Richard_initaccum
 
 
-subroutine pflow_update_Vadose(grid)
+subroutine pflow_update_Richard(grid)
 
-  use translator_vad_module
+  use translator_Richard_module
   use Condition_module
    ! use water_eos_module
   implicit none
@@ -2147,8 +2113,8 @@ subroutine pflow_update_Vadose(grid)
   if (associated(grid%imat)) call UpdateBoundaryConditions(grid)
 
   ! if (grid%rk > 0.d0) call Rock_Change(grid)
-  ! call  Translator_vadose_Switching(grid%xx,grid,1,ichange)
-  !print *,'Vadose_Update done'
+  ! call  Translator_Richard_Switching(grid%xx,grid,1,ichange)
+  !print *,'Richard_Update done'
  
    ! if(ichange ==1)then
   call VecGetArrayF90(grid%xx, xx_p, ierr); CHKERRQ(ierr)
@@ -2173,7 +2139,7 @@ subroutine pflow_update_Vadose(grid)
     dif(1) = grid%difaq
     dif(2) = grid%cdiff(int(ithrm_p(n)))
     !*******************************************
-    call pri_var_trans_vad_ninc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),iiphase, &
+    call pri_var_trans_Richard_ninc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),iiphase, &
                                 grid%scale,grid%nphase,grid%nspec, &
                                 grid%icaptype(iicap), &
                                 grid%sir(1:grid%nphase,iicap), &
@@ -2193,30 +2159,30 @@ subroutine pflow_update_Vadose(grid)
   call VecRestoreArrayF90(grid%iphas, iphase_p, ierr)
   call VecRestoreArrayF90(grid%var,var_p,ierr)
    
-  if (grid%nphase>1) call translator_Vadose_massbal(grid)
+  if (grid%nphase>1) call translator_Richard_massbal(grid)
  ! endif 
 
   call VecCopy(grid%xx, grid%yy, ierr)   
   call VecCopy(grid%iphas, grid%iphas_old, ierr)   
    
-  call  pflow_Vadose_initaccum(grid)
-    !print *,'pflow_Vadose_initaccum done'
-  call translator_vad_get_output(grid)
+  call  pflow_Richard_initaccum(grid)
+    !print *,'pflow_Richard_initaccum done'
+  call translator_Richard_get_output(grid)
  ! print *,'translator_get_output done'
   ! the output variables should be put into grid%pressure, temp,xmol,sat...
   ! otherwise need to rewrite the pflow_output
 
-end subroutine pflow_update_Vadose
+end subroutine pflow_update_Richard
 
 
 
 
 
-subroutine pflow_Vadose_initadj(grid)
+subroutine pflow_Richard_initadj(grid)
  
 ! running this subroutine will override the xmol data for initial condition in pflow.in 
 
-  use translator_vad_module  
+  use translator_Richard_module  
 
   implicit none
 
@@ -2265,7 +2231,7 @@ subroutine pflow_Vadose_initadj(grid)
     dif(1)= grid%difaq
     dif(2)= grid%cdiff(int(ithrm_p(n)))
     !*******************************************
-    call pri_var_trans_vad_ninc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),iiphase, &
+    call pri_var_trans_Richard_ninc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),iiphase, &
                                 grid%scale,grid%nphase,grid%nspec, &
                                 grid%icaptype(iicap), &
                                 grid%sir(1:grid%nphase,iicap), & 
@@ -2276,7 +2242,7 @@ subroutine pflow_Vadose_initadj(grid)
                                   size_var_node+size_var_use), &
                                 grid%itable,ierr, dum1, dum2)
    
-    if (translator_check_phase_cond_vad(iiphase, &
+    if (translator_check_phase_cond_Richard(iiphase, &
                                         var_p((n-1)*size_var_node+1:(n-1)* &
                                         size_var_node+size_var_use), &
                                         grid%nphase,grid%nspec) /= 1 ) then
@@ -2303,7 +2269,7 @@ subroutine pflow_Vadose_initadj(grid)
       iithrm=int(ithrm_p(m)) 
       dif(1)= grid%difaq
       dif(2)= grid%cdiff(iithrm)
-      call pri_var_trans_vad_ninc(grid%xxbc(:,nc),grid%iphasebc(nc), &
+      call pri_var_trans_Richard_ninc(grid%xxbc(:,nc),grid%iphasebc(nc), &
                                   grid%scale,grid%nphase,grid%nspec, &
                                   grid%icaptype(iicap), &
                                   grid%sir(1:grid%nphase,iicap), &
@@ -2314,7 +2280,7 @@ subroutine pflow_Vadose_initadj(grid)
                                   grid%varbc(1:size_var_use),grid%itable,ierr, &
                                   dum1, dum2)
       
-      if (translator_check_phase_cond_vad(grid%iphasebc(nc), &
+      if (translator_check_phase_cond_Richard(grid%iphasebc(nc), &
                                           grid%varbc(1:size_var_use), &
                                           grid%nphase,grid%nspec) /=1) then
         print *," Wrong bounday node init...  STOP!!!", grid%xxbc(:,nc)
@@ -2336,7 +2302,7 @@ subroutine pflow_Vadose_initadj(grid)
   
   !call VecCopy(grid%iphas,grid%iphas_old,ierr)
    
-end subroutine pflow_Vadose_initadj
+end subroutine pflow_Richard_initadj
 
 
-end module Vadose_module
+end module Richard_module
