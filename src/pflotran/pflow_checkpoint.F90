@@ -15,6 +15,9 @@ module pflow_chkptheader
     integer :: flowsteps 
     integer :: kplot
     integer :: newtcum
+    real*8 :: dpmax, dtmpmax, dsmax, dcmax
+      ! Maximum change in pressure, temperature, etc. between current 
+      ! and previous timesteps.  Needed for timestep control.
   end type pflowChkPtHeader
 end module pflow_chkptheader
 
@@ -99,7 +102,7 @@ subroutine pflowGridCheckpoint(grid, ntstep, kplt, iplot, iflgcut, ihalcnt, &
   ! We manually specify the number of bytes required for the 
   ! checkpoint header, since sizeof() is not supported by some Fortran 
   ! compilers.  To be on the safe side, we assume an integer is 8 bytes.
-  call PetscBagCreate(PETSC_COMM_WORLD, 88, bag, ierr)
+  call PetscBagCreate(PETSC_COMM_WORLD, 120, bag, ierr)
   call PetscBagGetData(bag, header, ierr); CHKERRQ(ierr)
 
   ! Register variables that are passed into pflowGrid_step().
@@ -127,6 +130,15 @@ subroutine pflowGridCheckpoint(grid, ntstep, kplt, iplot, iflgcut, ihalcnt, &
                             "Printout steps", ierr)
   call PetscBagRegisterInt(bag, header%newtcum, grid%newtcum, "newtcum", &
                             "Total number of Newton steps taken", ierr)
+  call PetscBagRegisterReal(bag, header%dpmax, grid%dpmax, "dpmax", &
+                            "Maximum change in pressure", ierr)
+  call PetscBagRegisterReal(bag, header%dtmpmax, grid%dtmpmax, "dtmpmax", &
+                            "Maximum change in temperature", ierr)
+  call PetscBagRegisterReal(bag, header%dsmax, grid%dsmax, "dsmax", &
+                            "Maximum change in saturation", ierr)
+                            ! RTM: *Is* dsmax max change in saturation?
+  call PetscBagRegisterReal(bag, header%dcmax, grid%dcmax, "dcmax", &
+                            "Maximum change in concentration", ierr)
 
   ! Actually write the components of the PetscBag and then free it.
   call PetscBagView(bag, viewer, ierr)
@@ -219,6 +231,10 @@ subroutine pflowGridRestart(grid, fname, ntstep, kplt, iplot, iflgcut, &
   grid%flowsteps = header%flowsteps
   grid%kplot = header%kplot
   grid%newtcum = header%newtcum
+  grid%dpmax = header%dpmax
+  grid%dtmpmax = header%dtmpmax
+  grid%dsmax = header%dsmax
+  grid%dcmax = header%dcmax
   call PetscBagDestroy(bag, ierr)
   
   ! Load the PETSc vectors.
