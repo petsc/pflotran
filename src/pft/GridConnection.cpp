@@ -31,6 +31,11 @@ void GridConnection::setNormal(double *d) {
   normal[2] = d[2];
 }
 void GridConnection::setFlowFluxCoef(double d) { flow_flux_coef = d; }
+void GridConnection::setFlowFluxCoefVSat(double flow_flux_coef_up, 
+                                         double flow_flux_coef_dn) {
+  flow_flux_coef_vsat_up = flow_flux_coef_up;
+  flow_flux_coef_vsat_dn = flow_flux_coef_dn;
+}
 
 int GridConnection::getIdUpwind() { return idup; }
 int GridConnection::getIdDownwind() { return iddown; }
@@ -39,6 +44,11 @@ double *GridConnection::getDistancePtrUpwind() { return &distup[0]; }
 double *GridConnection::getDistancePtrDownwind() { return &distdown[0]; }
 double *GridConnection::getNormalPtr() { return &normal[0]; }
 double GridConnection::getFlowFluxCoef() { return flow_flux_coef; }
+void GridConnection::getFlowFluxCoefVSat(double *flow_flux_coef_up, 
+                                         double *flow_flux_coef_dn) {
+  *flow_flux_coef_up = flow_flux_coef_vsat_up;
+  *flow_flux_coef_dn = flow_flux_coef_vsat_dn;
+}
 
 void GridConnection::printInfo() {
   printf("id1: %d id2: %d area: %f \n",idup,iddown,area);

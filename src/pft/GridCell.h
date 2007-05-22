@@ -27,7 +27,10 @@ public:
   void setPressure(double d);
   void updateMoistureContent0();
   void updateMoistureContentN(); 
+
+  void setSaturationFunction(SaturationFunction *sat_func_);
   void updateRelativePermeability(double pressure);
+
   void setFlowAccumulationCoef(double d);
   void addFlux(double qDarcy, double *norm);
   void zeroFlux();
@@ -44,15 +47,18 @@ public:
   double getPermY();
   double getPermZ();
   double *getPermPtr();
+  double getRPerm();
+  double getDRelPerm();
   double getViscosity();
   double getDensity();
   double getMoistureContent();
   double getFlowAccumulationCoef();
-  double getPressure0_t();
-  double getPressureN_t();
+  double getPressure0();
+  double getPressureN();
   double getMoistureContent0();
   double getMoistureContentN();
-  double getSpecificMoistureCapacity_t(); 
+  double getSpecificMoistureCapacity(); 
+  double getDerivSpecMoistCap();
   
   double computeFlowAccumulationCoef(double one_over_dt);
   
@@ -67,16 +73,17 @@ private:
 // matrix variables
   double permeability[3];
   double relative_permeability;
-  double relative_permeability_t;
+  double deriv_rel_perm;
+  double deriv_spec_moist_cap;
 
 // fluid variables
-  SaturationFunction *saturationfunction;
+  SaturationFunction *sat_func;
   double flow_accumulation_coef;
-  double pressure_0_t;
-  double pressure_n_t;
+  double pressure_0;
+  double pressure_n;
   double specific_moisture_capacity;
-  double specific_moisture_capacity_t;
   double viscosity;
+  double porosity;
   double density;
   double moisture_content_0;
   double moisture_content_n;

@@ -26,13 +26,23 @@ private:
 
   void init(Grid *g);
   void computeAccumulationR(Grid *g, double dt);
-  void computeAccumulationJ(Grid *g, double dt);
+  void computeAccumulationJ(Grid *g);
   void computeFluxR(Grid *g);
   void computeFluxJ(Grid *g);
   void computeBoundaryFluxR(Grid *g);
   void computeBoundaryFluxJ(Grid *g);
   void computeSourceFluxR(Grid *g);
   void computeNumericalJacobian(Grid *g);
+
+  void computeAccumulationRVSat(Grid *g, double dt);
+  void computeAccumulationJVSat(Grid *g);
+  void computeFluxRVSat(Grid *g);
+  void computeFluxJVSat(Grid *g);
+  void computeBoundaryFluxRVSat(Grid *g);
+  void computeBoundaryFluxJVSat(Grid *g);
+
+  double convertP(double p);
+
   void printMatrix();
   
   PetscErrorCode ierr;

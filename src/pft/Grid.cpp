@@ -262,32 +262,51 @@ void Grid::printCells() {
   ierr = PetscSequentialPhaseEnd(PETSC_COMM_WORLD,1);
 }
 
+void Grid::initSaturationFunction(double theta_res, double theta_sat,
+                                  double alpha, double n) {
+  SaturationFunction *sat_func = new SaturationFunction(theta_res,theta_sat,alpha,n);
+  for (int inodeghosted=0; inodeghosted<num_cells; inodeghosted++)
+    cells[inodeghosted].setSaturationFunction(sat_func);
+}
+
+void Grid::updateRelativePermeability(double *pressure) {
+  for (int inodeghosted=0; inodeghosted<num_cells; inodeghosted++) 
+    cells[inodeghosted].updateRelativePermeability(pressure[inodeghosted]);
+}
+
 int Grid::getNx() {
   if (structuredGrid) return structuredGrid->getNx();
+  else return -999;
 }
 
 int Grid::getNy() {
   if (structuredGrid) return structuredGrid->getNy();
+  else return -999;
 }
 
 int Grid::getNz() {
   if (structuredGrid) return structuredGrid->getNz();
+  else return -999;
 }
 
 int Grid::getN() {
   if (structuredGrid) return structuredGrid->getN();
+  else return -999;
 }
 
 double Grid::getDx(int i) {
   if (structuredGrid) return structuredGrid->getDx(i);
+  else return -999.;
 }
 
 double Grid::getDy(int j) {
   if (structuredGrid) return structuredGrid->getDy(j);
+  else return -999.;
 }
 
 double Grid::getDz(int k) {
   if (structuredGrid) return structuredGrid->getDz(k);
+  else return -999.;
 }
 
 void Grid::zeroFlux() {
