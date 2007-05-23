@@ -96,7 +96,8 @@ public pflowGrid_ptran_init, pflotranGrid_interp, ptran_bc_reassign
   call VecGetArrayF90(sat, sat_ptran_p, ierr)
   
   
-    if (grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE) then
+    if (grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE &
+       .or. grid%use_richard == PETSC_TRUE ) then
     call VecGetArrayF90(grid%xx, xx_p, ierr)
     call VecGetArrayF90(grid%iphas, iphase_p, ierr)
   call VecGetArrayF90(den_co2, den_co2_p, ierr)
@@ -109,7 +110,8 @@ public pflowGrid_ptran_init, pflotranGrid_interp, ptran_bc_reassign
   do n = 1, grid%nlmax
    
     
-    if (grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE) then
+    if (grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE &
+     .or. grid%use_richard == PETSC_TRUE ) then
    iiphase= int(iphase_p(n))
    iicap=1
    dif(:)=1D-9
@@ -157,7 +159,8 @@ public pflowGrid_ptran_init, pflotranGrid_interp, ptran_bc_reassign
   call VecRestoreArrayF90(grid%sat, sat_pflow_p, ierr)
   call VecRestoreArrayF90(sat, sat_ptran_p, ierr)
 
-   if (grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE) then
+   if (grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE &
+        .or. grid%use_richard == PETSC_TRUE ) then
 !   call VecGetArrayF90(grid%xx_loc, xx_p, ierr)
     call VecRestoreArrayF90(grid%xx, xx_p, ierr)
 !    call VecGetArrayF90(grid%yy, yy_p, ierr)
@@ -243,7 +246,8 @@ public pflowGrid_ptran_init, pflotranGrid_interp, ptran_bc_reassign
     call VecRestoreArrayF90(grid%xx, xx_p, ierr)
   endif
 
-  if (grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE) then
+  if (grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE &
+       .or. grid%use_richard == PETSC_TRUE ) then
 !   call VecGetArrayF90(grid%xx_loc, xx_p, ierr)
     call VecGetArrayF90(grid%xx, xx_p, ierr)
     call VecGetArrayF90(grid%yy, yy_p, ierr)

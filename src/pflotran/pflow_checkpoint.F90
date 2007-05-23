@@ -143,7 +143,8 @@ subroutine pflowGridCheckpoint(grid, ntstep, kplt, iplot, iflgcut, ihalcnt, &
   ! If we are running with multiple phases, we need to dump the vector 
   ! that indicates what phases are present. 
   if(grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE .or. &
-     grid%use_flash == PETSC_TRUE .or. grid%use_2ph == PETSC_TRUE) then
+     grid%use_flash == PETSC_TRUE .or. grid%use_2ph == PETSC_TRUE &
+      .or. grid%use_richard == PETSC_TRUE ) then
     call VecView(grid%iphas, viewer, ierr)
   endif  
 
@@ -224,7 +225,8 @@ subroutine pflowGridRestart(grid, fname, ntstep, kplt, iplot, iflgcut, &
   ! Load the PETSc vectors.
   call VecLoadIntoVector(viewer, grid%xx, ierr)
   if(grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE .or. &
-     grid%use_flash == PETSC_TRUE .or. grid%use_2ph == PETSC_TRUE) then
+     grid%use_flash == PETSC_TRUE .or. grid%use_2ph == PETSC_TRUE 
+      .or. grid%use_richard == PETSC_TRUE ) then
     call VecLoadIntoVector(viewer, grid%iphas, ierr)
   endif
   if (grid%rk > 0.d0) then
@@ -299,11 +301,13 @@ subroutine pflowGridTHCBinaryOut(grid, kplt)
   ! primary variables
   if(grid%use_2ph == PETSC_TRUE .or. grid%use_mph == PETSC_TRUE &
                                 .or. grid%use_vadose == PETSC_TRUE &
-                                .or. grid%use_flash == PETSC_TRUE) then
+                                .or. grid%use_flash == PETSC_TRUE &
+                                 .or. grid%use_richard == PETSC_TRUE) then
     call VecView(grid%xmol, viewer, ierr)
   endif  
   if(grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE &
-     .or. grid%use_flash == PETSC_TRUE) then
+     .or. grid%use_flash == PETSC_TRUE &
+      .or. grid%use_richard == PETSC_TRUE ) then
     call VecView(grid%iphas, viewer, ierr)
   endif  
 

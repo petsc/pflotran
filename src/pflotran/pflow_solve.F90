@@ -74,10 +74,12 @@
  use translator_mph_module
  use translator_owg_module
  use translator_vad_module
+ use translator_Richard_module
  use MPHASE_module
  use Flash_module
  use VADOSE_module
  use OWG_module
+ use Richard_module
  
  implicit none
  type(pflowGrid) :: grid 
@@ -98,6 +100,11 @@
  if(grid%use_vadose==PETSc_TRUE)then
    call Translator_vadose_Switching(grid%xx,grid,0,ichange)
    call MPHASEResidual(grid%snes,grid%xx,grid%r,grid,ierr)
+ endif
+
+ if(grid%use_richard==PETSc_TRUE)then
+!   call Translator_richard_Switching(grid%xx,grid,0,ichange)
+   call RichardResidual(grid%snes,grid%xx,grid%r,grid,ierr)
  endif
 
  if(grid%use_flash==PETSc_TRUE)then
@@ -127,6 +134,8 @@
       call VadoseJacobian(grid%snes,grid%xx,grid%J,grid%J,flag,grid,ierr)
     elseif(grid%use_flash==PETSC_TRUE)then
       call FlashJacobian(grid%snes,grid%xx,grid%J,grid%J,flag,grid,ierr)
+   elseif(grid%use_richard==PETSC_TRUE)then
+      call RichardJacobian(grid%snes,grid%xx,grid%J,grid%J,flag,grid,ierr)
 
    endif
    print *,' psolve; Get Joc'

@@ -22,7 +22,7 @@ module translator_Richard_module
 #include "include/finclude/petscis.h90"
 #include "include/finclude/petsclog.h"
   
-   
+
 ! **3 phase condition*************************************************
 ! phase                             Primary Variables      index
 !  e                p, T, X(e,a), X(e,c)          1
@@ -39,9 +39,9 @@ module translator_Richard_module
 ! within each phase component index : 1. H2O; 2. CO2; 3. Air
 
     
-  public  pri_var_trans_Richard_ninc,pri_var_trans_Richard_winc ,translator_Richard_step_maxchange, &
-          translator_Richard_get_output,translator_check_phase_cond_Richard,translator_Richardose_massbal, &
-          Translator_Richardose_Switching
+  public  pri_var_trans_Richard_ninc,pri_var_trans_Richard_winc ,translator_Ric_step_maxchange, &
+          translator_Richard_get_output,translator_check_cond_Richard,translator_Richard_massbal, &
+          Translator_Richard_Switching
      
      
   real*8, private, parameter :: fmwh2o = 18.0153D0, fmwa = 28.96D0, &
@@ -56,7 +56,7 @@ contains
 !        apply mixing rules
 
 
-subroutine translator_Richardose_massbal(grid)
+subroutine translator_Richard_massbal(grid)
  
   use pflow_gridtype_module
   
@@ -88,9 +88,7 @@ subroutine translator_Richardose_massbal(grid)
  
   size_var_node=(grid%ndof+1)*(2+7*grid%nphase +2*grid%nphase*grid%nspec)
   tot=0.D0
-  n2p=0
-  nxc=0.; nyc=0.; nzc=0.D0; nzm=grid%z(grid%nmax); sm=0.; nsm=nzm; c0=0.D0
-
+  
   do n = 1,grid%nlmax
     n0=(n-1)* grid%ndof
     index=(n-1)*size_var_node
@@ -100,24 +98,6 @@ subroutine translator_Richardose_massbal(grid)
                 grid%nphase*grid%nspec)    
 
     pvol=volume_p(n)*porosity_p(n)
-    if (dabs(iphase_p(n)- 3.D0)<.25D0) then
-      n2p=n2p+1
-      x = grid%x(grid%nL2A(n)+1)
-      y = grid%y(grid%nL2A(n)+1)
-      z = grid%z(grid%nL2A(n)+1)
-   
-      if (z<nzm) nzm = z
-      if (sm<sat(2)) then
-      !print *, n,grid%nL2A(n)+1,x,y,z,sat(2)
-        sm = sat(2)
-        nsm = z
-      endif    
-      c0 = c0+sat(2)*pvol
-      nxc = nxc + pvol*sat(2)*x
-      nyc = nyc + pvol*sat(2)*y
-      nzc = nzc + pvol*sat(2)*z
-
-    endif
   
   
      
@@ -140,21 +120,7 @@ subroutine translator_Richardose_massbal(grid)
  
  
   if (grid%commsize >1) then
-    call MPI_REDUCE(n2p,n2p0,1,MPI_INTEGER,MPI_SUM,0, PETSC_COMM_WORLD,ierr)
-    call MPI_REDUCE(c0,c00,1,MPI_DOUBLE_PRECISION,MPI_SUM,0, &
-                    PETSC_COMM_WORLD,ierr)
-    call MPI_REDUCE(nxc,nxc0,1,MPI_DOUBLE_PRECISION,MPI_SUM,0, &
-                    PETSC_COMM_WORLD,ierr)
-    call MPI_REDUCE(nyc,nyc0,1,MPI_DOUBLE_PRECISION,MPI_SUM,0, &
-                    PETSC_COMM_WORLD,ierr)
-
-    call MPI_REDUCE(nzc,nzc0,1,MPI_DOUBLE_PRECISION,MPI_SUM,0, &
-                    PETSC_COMM_WORLD,ierr)
-    call MPI_REDUCE(nzm, nzm0,1,MPI_DOUBLE_PRECISION,MPI_MIN,0, &
-                    PETSC_COMM_WORLD,ierr)
-    call MPI_REDUCE(nsm,nsm0,1,MPI_DOUBLE_PRECISION,MPI_MIN,0, &
-                    PETSC_COMM_WORLD,ierr)
-      
+          
     do nc = 0,grid%nspec
       do np = 0,grid%nphase
         call MPI_REDUCE(tot(nc,np),tot0(nc,np),1,MPI_DOUBLE_PRECISION, &
@@ -164,24 +130,11 @@ subroutine translator_Richardose_massbal(grid)
 !            MPI_DOUBLE_PRECISION, 0,PETSC_COMM_WORLD,ierr)
       enddo
     enddo
-    if (grid%myrank==0) then
-      tot = tot0
-      n2p = n2p0
-      nxc = nxc0
-      nyc = nyc0
-      nzc = nzc0
-      nzm = nzm0
-      nsm = nsm0
-      c0 = c00 
-    endif   
   endif 
-  
+   if (grid%myrank==0) tot = tot0
+
   
   if (grid%myrank==0) then
-    if (c0<1D-6) c0 = 1.D0
-    nxc = nxc/c0
-    nyc = nyc/c0
-    nzc = nzc/c0
   
   
     write(*,'(" Total CO2: liq:",1p, e13.6," gas:",1p, e13.6, " tot:", 1p, &
@@ -196,14 +149,13 @@ subroutine translator_Richardose_massbal(grid)
 !   write(13,'(" Total CO2: t=",1pe13.6," liq:",1pe13.6,&
 ! &  " gas:",1pe13.6," tot:",1p2e13.6," [kmol]")')&
 ! & grid%t/grid%tconv,tot(2,1),tot(2,2),tot(2,0),tot(2,1)+tot(2,2)
-    write(13,'(1p9e12.4)') grid%t/grid%tconv,grid%dt/grid%tconv,tot(2,1), &
-                           tot(2,2),tot(2,1)+tot(2,2),real(n2p),nzc,nzm,nsm 
+    write(13,'(1p9e12.4)') grid%t/grid%tconv,grid%dt/grid%tconv,tot(:,1)
   endif    
   
-end subroutine translator_Richardose_massbal
+end subroutine translator_Richard_massbal
 
 
-integer function translator_check_phase_cond_Richard(iphase, var_node,num_phase,num_spec)
+integer function translator_check_cond_Richard(iphase, var_node,num_phase,num_spec)
 
   implicit none
 
@@ -231,29 +183,17 @@ integer function translator_check_phase_cond_Richard(iphase, var_node,num_phase,
   succ=1
   if (iphase == 3) then
     do np =1, num_phase
-      if (satu(np)>1D0-eps .or.satu(np)<eps) then
+      if (satu(np)>1D0 .or.satu(np)<0D0) then
         succ = -1  
-        print *, 'phase=',iphase,satu(1:2)
+        print *, 'phase=',iphase,satu
       endif
     enddo
   endif
   
-  if (iphase == 1 .or. iphase== 2) then
-    do np=1, num_phase
-      sum=0D0
-      do nc=1, num_spec
-        sum = sum + xmol((np-1)*num_spec+nc)
-      enddo 
-      if (sum > 1.D0+eps) then
-        succ = -1 
-        print *,'phase=',iphase,sum,xmol(1:4)
-      endif 
-    enddo
-  endif
-  nullify(t, p, satu, den, avgmw, h,u, pc,kvr,xmol,diff)
-  translator_check_phase_cond_Richard = succ
+   nullify(t, p, satu, den, avgmw, h,u, pc,kvr,xmol,diff)
+ translator_check_cond_Richard = succ
 
-end function translator_check_phase_cond_Richard
+end function translator_check_cond_Richard
 
 
 subroutine translator_Richard_get_output(grid)
@@ -284,16 +224,16 @@ subroutine translator_Richard_get_output(grid)
     jn = 1 + (n-1)*grid%nphase 
     
     p_p(jn) = var_p(index_var_begin + 2) - var_p(index_var_begin+5*grid%nphase+3)
-    p_p(jn+1) = var_p(index_var_begin + 2) - var_p(index_var_begin+5*grid%nphase+4)
+   ! p_p(jn+1) = var_p(index_var_begin + 2) - var_p(index_var_begin+5*grid%nphase+4)
    
     t_p(n) = var_p(index_var_begin + 1)
 
     c_p(jn) = var_p(index_var_begin+7*grid%nphase+4)
-    c_p(jn+1) = var_p(index_var_begin+7*grid%nphase+6)
+   ! c_p(jn+1) = var_p(index_var_begin+7*grid%nphase+6)
     cc_p(n) = c_p(jn+1)
   
     s_p(jn) = var_p(index_var_begin + 3) 
-    s_p(jn+1)= var_p(index_var_begin + 4) 
+    s_p(jn+1)=1.D0 -  s_p(jn)
   enddo
  
   call VecRestoreArrayF90(grid%var, var_p, ierr)
@@ -307,7 +247,7 @@ subroutine translator_Richard_get_output(grid)
 end subroutine translator_Richard_get_output
 
 
-subroutine translator_Richard_step_maxchange(grid)
+subroutine translator_Ric_step_maxchange(grid)
 
   use pflow_gridtype_module
 
@@ -371,10 +311,10 @@ subroutine translator_Richard_step_maxchange(grid)
    grid%dsmax=comp1
    grid%dcmax=comp
 !   print *, 'max change',grid%dpmax,grid%dtmpmax,grid%dsmax,grid%dcmax
-end subroutine translator_Richard_step_maxchange
+end subroutine translator_Ric_step_maxchange
 
 
-subroutine Translator_Richardose_Switching(xx,grid,icri,ichange)
+subroutine Translator_Richard_Switching(xx,grid,icri,ichange)
 
   use pflow_gridtype_module
   use water_eos_module
@@ -615,7 +555,7 @@ subroutine Translator_Richardose_Switching(xx,grid,icri,ichange)
   call VecRestoreArrayF90(xx, xx_p, ierr); CHKERRQ(ierr)
   call VecRestoreArrayF90(grid%yy, yy_p, ierr); CHKERRQ(ierr)
 
-end subroutine Translator_Richardose_Switching
+end subroutine Translator_Richard_Switching
   
 ! **richard phase condition**************************************************
 ! phase                             Primary Variables      index
@@ -653,7 +593,7 @@ subroutine pri_var_trans_Richard_ninc_2_2(x,iphase,energyscale,num_phase,num_spe
   real*8, pointer :: xmol(:),satu(:),diff(:)
   integer :: ibase 
   
-  real*8 :: p1,p2,tmp
+  real*8 :: p1,p2,tmp, pref
   real*8 :: pw,dw_kg,dw_mol,hw,sat_pressure,visl,xphi, dco2
   real*8 :: dg,dddt,dddp,fg, dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp
   real*8 :: ug
@@ -688,11 +628,12 @@ subroutine pri_var_trans_Richard_ninc_2_2(x,iphase,energyscale,num_phase,num_spe
  xmol =0.D0
  kr=0.D0
  diff =0.D0
-  
+ 
+ p=x(1)  
  t=x(2)
  pc(1) = pref - x(1)
  xmol(1)=1.D0
- if(nspec>1) xmol(2:num_spec)=x(3: nspec +1)   
+ if(num_spec>1) xmol(2:num_spec)=x(3: num_spec +1)   
 
 !***************  Liquid phase properties **************************
   avgmw(1)=  fmwh2o 
@@ -709,10 +650,12 @@ subroutine pri_var_trans_Richard_ninc_2_2(x,iphase,energyscale,num_phase,num_spe
   ! dif= 1.D-7 !effective diffusion coeff in liquid phase: check pcl
   
    if(pc(1)>0)then
-    call pflow_pckr_richard(ipckrtype,pckr_sir,pckr_lambda,pckr_alpha, &
+    iphase = 3
+    call pflow_pckr_richard(ipckrtype,pckr_sir(1),pckr_lambda,pckr_alpha, &
                             pckr_m,pckr_pcmax,satu(1),pc,kr,pckr_betac, &
                             pckr_pwr)
   else
+    iphase = 1
     pc(1)=0.D0
     satu(1)= 1.D0  
     kr(1)=1.D0    
@@ -749,7 +692,7 @@ end subroutine pri_var_trans_Richard_ninc_2_2
 subroutine pri_var_trans_Richard_ninc(x,iphase,energyscale,num_phase,num_spec, &
                                   ipckrtype,pckr_sir,pckr_lambda,pckr_alpha, &
                                   pckr_m,pckr_pcmax,pckr_betac,pckr_pwr,dif, &
-                                  var_node,itable,ierr,phi_co2, den_co2)
+                                  var_node,itable,ierr,pref)
 ! xgw: water molar fraction in gas phase
 ! P/Pa, t/(Degree Centigreed), Pc/Pa, Hen(xla=Hen*xga, dimensionless)
  
@@ -765,19 +708,17 @@ subroutine pri_var_trans_Richard_ninc(x,iphase,energyscale,num_phase,num_spec, &
      
     
   real*8 :: pckr_sir(:),pckr_lambda,pckr_alpha,pckr_m,pckr_pcmax,pckr_betac,pckr_pwr 
-  real*8, optional :: phi_co2, den_co2
+  real*8 :: pref
   
-  real*8 :: xphi_co2=1.D0, denco2=1.D0
+ 
 
   size_var_use = 2 + 7*num_phase + 2* num_phase*num_spec
   if ((num_phase == 2).and.( num_spec == 2)) then
     call pri_var_trans_Richard_ninc_2_2(x,iphase,energyscale,num_phase,num_spec, &
                                     ipckrtype,pckr_sir,pckr_lambda,pckr_alpha, &
                                     pckr_m,pckr_pcmax,pckr_betac,pckr_pwr,dif, &
-                                    var_node,itable,ierr,xphi_co2, denco2)
-    if (present(phi_co2)) phi_co2 = xphi_co2
-      if (present(den_co2)) den_co2 = denco2
-  else 
+                                    var_node,itable,ierr, pref)
+   else 
     print *, 'Wrong phase-specise combination. Stop.'
     stop
   endif
@@ -788,14 +729,14 @@ end subroutine pri_var_trans_Richard_ninc
 subroutine pri_var_trans_Richard_winc(x,delx,iphase,energyscale,num_phase,num_spec,&
                                   ipckrtype,pckr_sir,pckr_lambda,pckr_alpha,&
                                   pckr_m,pckr_pcmax,pckr_betac,pckr_pwr,dif,&
-                                 var_node,itable,ierr)
+                                 var_node,itable,ierr, pref)
 
   implicit none
 
   integer :: num_phase,num_spec
   integer :: size_var_use,size_var_node
 
-  real*8 :: x(1:num_spec+1),delx(1:num_spec+1),energyscale
+  real*8 :: x(1:num_spec+1),delx(1:num_spec+1),energyscale, pref
   real*8 :: var_node(:)
   real*8 :: dif(:)
   integer ::iphase,itable,ierr
@@ -816,7 +757,7 @@ subroutine pri_var_trans_Richard_winc(x,delx,iphase,energyscale,num_phase,num_sp
                                 ipckrtype,pckr_sir,pckr_lambda,pckr_alpha,&
                                 pckr_m,pckr_pcmax,pckr_betac,pckr_pwr,dif,&
                                 var_node((n-1)*size_var_use+1:n*size_var_use), &
-                                itable,ierr)
+                                itable,ierr,pref)
   enddo
 
 end subroutine pri_var_trans_Richard_winc

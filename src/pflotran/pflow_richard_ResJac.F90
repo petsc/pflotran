@@ -425,7 +425,7 @@ subroutine RichardRes_FLCont(nconn_no,area,var_node1,por1,tor1,sir1,dd1,perm1, &
                 (1.D0-upweight)*density2(np)*amw2(np)) &
                 * grid%gravity * grid%delz(nconn_no) * grid%grav_ang(nconn_no)
         
-      dphi = pre_ref1-pc1(np) - pre_ref2 + pc2(np) + gravity
+      dphi = pre_ref1 - pre_ref2  + gravity
 !    print *,'FLcont  dp',dphi
   ! note uxmol only contains one phase xmol
       if (dphi>=0.D0) then
@@ -562,7 +562,7 @@ subroutine RichardRes_FLBCCont(nbc_no,area,var_node1,var_node2,por2,tor2,sir2, &
                   (1.D0-upweight)*density2(np)*amw2(np)) &
                   * grid%gravity * grid%delzbc(nbc_no)
        
-        dphi = pre_ref1-pc1(np) - pre_ref2 + pc2(np) + gravity
+        dphi = pre_ref1- pre_ref2 + gravity
    
    
         if (dphi>=0.D0) then
@@ -609,8 +609,7 @@ subroutine RichardRes_FLBCCont(nbc_no,area,var_node1,var_node2,por2,tor2,sir2, &
     Res_FL(grid%ndof)=fluxe * grid%dt
 
   case(2)
-    if ((dabs(grid%velocitybc(1,nbc_no))+ &
-         dabs(grid%velocitybc(2,nbc_no)))>floweps) then
+    if ((dabs(grid%velocitybc(1,nbc_no)))>floweps) then
 !geh      print *, 'FlowBC :', nbc_no,grid%velocitybc(1,nbc_no), &
 !geh               grid%velocitybc(2,nbc_no)
       do j=1,grid%nphase
@@ -821,8 +820,7 @@ subroutine RichardResidual(snes,xx,r,grid,ierr)
                                 grid%pcbetac(iicap),grid%pwrprm(iicap),dif, &
                                 var_p((n-1)*size_var_node+1:(n-1)* &
                                   size_var_node+size_var_use), &
-                                grid%itable,ierr,grid%xxphi_co2(n), &
-                                grid%dden_co2(n))
+                                grid%itable,ierr, grid%pref)
 
 
 
@@ -837,7 +835,7 @@ subroutine RichardResidual(snes,xx,r,grid,ierr)
                                   grid%pcbetac(iicap),grid%pwrprm(iicap),dif, &
                                   var_p((n-1)*size_var_node+size_var_use+1:n* &
                                     size_var_node), &
-                                  grid%itable,ierr)
+                                  grid%itable,ierr, grid%pref)
     endif
   
 !  print *,'var_p',n,iiphase, var_p((n-1)*size_var_node+1:n*size_var_node)              
@@ -1273,7 +1271,7 @@ subroutine RichardResidual(snes,xx,r,grid,ierr)
                                 grid%pckrm(iicap),grid%pcwmax(iicap), & !use node's value
                                 grid%pcbetac(iicap),grid%pwrprm(iicap),dif,&
                                 grid%varbc(1:size_var_use),grid%itable,ierr, &
-                                grid%xxphi_co2_bc(nc),cw)
+                                grid%pref)
    
      
     call RichardRes_FLBCCont(nc,grid%areabc(nc),grid%varbc(1:size_var_use), &
@@ -1696,8 +1694,7 @@ subroutine RichardJacobian(snes,xx,A,B,flag,grid,ierr)
                                 grid%lambda(iicap),grid%alpha(iicap), &
                                 grid%pckrm(iicap),grid%pcwmax(iicap), & !use node's value
                                 grid%pcbetac(iicap),grid%pwrprm(iicap),dif, &
-                                grid%varbc(1:size_var_use),grid%itable,ierr, &
-                                dum1, dum2)
+                                grid%varbc(1:size_var_use),grid%itable,ierr, grid%pref)
   
     call pri_var_trans_Richard_winc(grid%xxbc(:,nc),delxbc,grid%iphasebc(nc), &
                                 grid%scale,grid%nphase,grid%nspec, &
@@ -1709,7 +1706,7 @@ subroutine RichardJacobian(snes,xx,A,B,flag,grid,ierr)
                                 dif(1:grid%nphase),&
                                 grid%varbc(size_var_use+1:(grid%ndof+1)* &
                                   size_var_use), &
-                                grid%itable,ierr)
+                                grid%itable,ierr, grid%pref)
             
 !    print *,' Mph Jaco BC terms: finish increment'
     do nvar=1,grid%ndof
@@ -2047,7 +2044,7 @@ subroutine pflow_Richard_initaccum(grid)
                                 grid%pcbetac(iicap),grid%pwrprm(iicap),dif, &
                                 var_p((n-1)*size_var_node+1:(n-1)* &
                                 size_var_node+size_var_use),grid%itable,ierr, &
-                                satw, pvol)
+                                grid%pref)
   enddo
 
   call VecRestoreArrayF90(grid%var, var_p,ierr)
@@ -2149,7 +2146,7 @@ subroutine pflow_update_Richard(grid)
                                 grid%pwrprm(iicap),dif,&
                                 var_p((n-1)*size_var_node+1:(n-1)* &
                                   size_var_node+size_var_use),&
-                                grid%itable,ierr, dum1, dum2)
+                                grid%itable,ierr, grid%pref)
 
   enddo
    
@@ -2159,7 +2156,7 @@ subroutine pflow_update_Richard(grid)
   call VecRestoreArrayF90(grid%iphas, iphase_p, ierr)
   call VecRestoreArrayF90(grid%var,var_p,ierr)
    
-  if (grid%nphase>1) call translator_Richard_massbal(grid)
+  call translator_Richard_massbal(grid)
  ! endif 
 
   call VecCopy(grid%xx, grid%yy, ierr)   
@@ -2240,9 +2237,9 @@ subroutine pflow_Richard_initadj(grid)
                                 grid%pcbetac(iicap),grid%pwrprm(iicap),dif, &
                                 var_p((n-1)*size_var_node+1:(n-1)* &
                                   size_var_node+size_var_use), &
-                                grid%itable,ierr, dum1, dum2)
+                                grid%itable,ierr, grid%pref)
    
-    if (translator_check_phase_cond_Richard(iiphase, &
+    if (translator_check_cond_Richard(iiphase, &
                                         var_p((n-1)*size_var_node+1:(n-1)* &
                                         size_var_node+size_var_use), &
                                         grid%nphase,grid%nspec) /= 1 ) then
@@ -2278,9 +2275,9 @@ subroutine pflow_Richard_initadj(grid)
                                   grid%pcwmax(iicap), & !use node's value
                                   grid%pcbetac(iicap),grid%pwrprm(iicap),dif, &
                                   grid%varbc(1:size_var_use),grid%itable,ierr, &
-                                  dum1, dum2)
+                                  grid%pref)
       
-      if (translator_check_phase_cond_Richard(grid%iphasebc(nc), &
+      if (translator_check_cond_Richard(grid%iphasebc(nc), &
                                           grid%varbc(1:size_var_use), &
                                           grid%nphase,grid%nspec) /=1) then
         print *," Wrong bounday node init...  STOP!!!", grid%xxbc(:,nc)
