@@ -15,9 +15,6 @@ module pflow_chkptheader
     integer :: flowsteps 
     integer :: kplot
     integer :: newtcum
-    real*8 :: dpmax, dtmpmax, dsmax, dcmax
-      ! Maximum change in pressure, temperature, etc. between current 
-      ! and previous timesteps.  Needed for timestep control.
   end type pflowChkPtHeader
 end module pflow_chkptheader
 
@@ -102,7 +99,7 @@ subroutine pflowGridCheckpoint(grid, ntstep, kplt, iplot, iflgcut, ihalcnt, &
   ! We manually specify the number of bytes required for the 
   ! checkpoint header, since sizeof() is not supported by some Fortran 
   ! compilers.  To be on the safe side, we assume an integer is 8 bytes.
-  call PetscBagCreate(PETSC_COMM_WORLD, 120, bag, ierr)
+  call PetscBagCreate(PETSC_COMM_WORLD, 88, bag, ierr)
   call PetscBagGetData(bag, header, ierr); CHKERRQ(ierr)
 
   ! Register variables that are passed into pflowGrid_step().
@@ -130,15 +127,6 @@ subroutine pflowGridCheckpoint(grid, ntstep, kplt, iplot, iflgcut, ihalcnt, &
                             "Printout steps", ierr)
   call PetscBagRegisterInt(bag, header%newtcum, grid%newtcum, "newtcum", &
                             "Total number of Newton steps taken", ierr)
-  call PetscBagRegisterReal(bag, header%dpmax, grid%dpmax, "dpmax", &
-                            "Maximum change in pressure", ierr)
-  call PetscBagRegisterReal(bag, header%dtmpmax, grid%dtmpmax, "dtmpmax", &
-                            "Maximum change in temperature", ierr)
-  call PetscBagRegisterReal(bag, header%dsmax, grid%dsmax, "dsmax", &
-                            "Maximum change in saturation", ierr)
-                            ! RTM: *Is* dsmax max change in saturation?
-  call PetscBagRegisterReal(bag, header%dcmax, grid%dcmax, "dcmax", &
-                            "Maximum change in concentration", ierr)
 
   ! Actually write the components of the PetscBag and then free it.
   call PetscBagView(bag, viewer, ierr)
@@ -151,12 +139,16 @@ subroutine pflowGridCheckpoint(grid, ntstep, kplt, iplot, iflgcut, ihalcnt, &
   ! grid%xx is the vector into which all of the primary variables are 
   ! packed for the SNESSolve().
   call VecView(grid%xx, viewer, ierr)
+  call VecView(grid%hh, viewer, ierr)
+  call VecView(grid%ddensity, viewer, ierr)
 
   ! If we are running with multiple phases, we need to dump the vector 
-  ! that indicates what phases are present. 
+  ! that indicates what phases are present, as well as the 'var' vector 
+  ! that holds variables derived from the primary ones via the translator.
   if(grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE .or. &
      grid%use_flash == PETSC_TRUE .or. grid%use_2ph == PETSC_TRUE) then
     call VecView(grid%iphas, viewer, ierr)
+    call VecView(grid%var, viewer, ierr)
   endif  
 
   ! solid volume fraction
@@ -231,18 +223,24 @@ subroutine pflowGridRestart(grid, fname, ntstep, kplt, iplot, iflgcut, &
   grid%flowsteps = header%flowsteps
   grid%kplot = header%kplot
   grid%newtcum = header%newtcum
-  grid%dpmax = header%dpmax
-  grid%dtmpmax = header%dtmpmax
-  grid%dsmax = header%dsmax
-  grid%dcmax = header%dcmax
   call PetscBagDestroy(bag, ierr)
   
   ! Load the PETSc vectors.
   call VecLoadIntoVector(viewer, grid%xx, ierr)
+  call VecCopy(grid%xx, grid%yy, ierr)
+  
   if(grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE .or. &
      grid%use_flash == PETSC_TRUE .or. grid%use_2ph == PETSC_TRUE) then
     call VecLoadIntoVector(viewer, grid%iphas, ierr)
+    call VecCopy(grid%iphas, grid%iphas_old, ierr)
+    call VecLoadIntoVector(viewer, grid%var, ierr)
+  else
+    call VecLoadIntoVector(viewer, grid%hh, ierr)
+    call VecCopy(grid%hh, grid%h, ierr)
+    call VecLoadIntoVector(viewer, grid%ddensity, ierr)
+    call VecCopy(grid%ddensity, grid%density, ierr)
   endif
+  
   if (grid%rk > 0.d0) then
     call VecLoadIntoVector(viewer, grid%phis, ierr)
   endif
@@ -250,7 +248,7 @@ subroutine pflowGridRestart(grid, fname, ntstep, kplt, iplot, iflgcut, &
   call VecLoadIntoVector(viewer, grid%perm_xx, ierr)
   call VecLoadIntoVector(viewer, grid%perm_yy, ierr)
   call VecLoadIntoVector(viewer, grid%perm_zz, ierr)
- 
+
   ! We are finished, so clean up.
   call PetscViewerDestroy(viewer, ierr)
 end subroutine pflowGridRestart
