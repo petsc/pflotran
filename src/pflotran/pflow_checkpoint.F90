@@ -61,7 +61,9 @@ subroutine pflowGridCheckpoint(grid, ntstep, kplt, iplot, iflgcut, ihalcnt, &
   integer, intent(in) :: ntstep, kplt, iplot, iflgcut, ihalcnt, its
   integer, intent(in) :: id
 
-  print *, "Warning: pflowGridCheckpoint() not supported with PETSc 2.3.2."
+  if(grid%myrank == 0) then
+    print *, "Warning: pflowGridCheckpoint() not supported with PETSc 2.3.2."
+  endif
 end subroutine pflowGridCheckpoint
 
 #else
@@ -168,7 +170,7 @@ subroutine pflowGridCheckpoint(grid, ntstep, kplt, iplot, iflgcut, ihalcnt, &
   ! We are finished, so clean up.
   call PetscViewerDestroy(viewer, ierr)
 
-  write(*, '(a23, a16)') "Dumped checkpoint file ", fname
+  if(grid%myrank == 0) write(*, '(a23, a16)') "Dumped checkpoint file ", fname
 
 end subroutine pflowGridCheckpoint
 
@@ -184,7 +186,9 @@ subroutine pflowGridRestart(grid, fname, ntstep, kplt, iplot, iflgcut, &
   character(len=256) :: fname
   integer, intent(out) :: ntstep, kplt, iplot, iflgcut, ihalcnt, its
 
-  print *, "Warning: pflowGridRestart() not supported with PETSc 2.3.2."
+  if(grid%myrank == 0) then
+    print *, "Warning: pflowGridRestart() not supported with PETSc 2.3.2."
+  endif
 end subroutine pflowGridRestart
 
 #else
