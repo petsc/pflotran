@@ -625,13 +625,13 @@ subroutine VadoseRes_FLBCCont(nbc_no,area,var_node1,var_node2,por2,tor2,sir2, &
           q = v_darcy * density1(j) * area
              !q = 0.d0
              !flux = flux - q
-          fluxe = fluxe - q  * h1(j) 
+          fluxe = fluxe + q  * h1(j) 
           do m=1, grid%nspec
             fluxm(m) = fluxm(m) + q * xmol1(m + (j-1)*grid%nspec)
           enddo 
         else 
           q = v_darcy * density2(j) * area   
-          fluxe = fluxe - q  * h2(j) 
+          fluxe = fluxe + q  * h2(j) 
           do m=1, grid%nspec
             fluxm(m) = fluxm(m) + q * xmol2(m + (j-1)*grid%nspec)
           enddo 

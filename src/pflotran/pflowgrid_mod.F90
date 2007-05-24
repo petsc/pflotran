@@ -1837,7 +1837,9 @@ subroutine pflowGrid_setup(grid, inputfile)
                 nc = nc + 1
                 m = i+(j-1)*grid%nlx+(k-1)*grid%nlxy
                 grid%mblkbc(nc) = m  ! m is a local index
-                grid%ibconn(nc) = ibc
+                ! old way
+                !grid%ibconn(nc) = ibc
+                grid%ibconn(nc) = ir
                 ng = grid%nL2G(m)
               ! Use ghosted index to access dx, dy, dz because we have
               ! already done a global-to-local scatter for computing the
@@ -4474,21 +4476,21 @@ subroutine pflowGrid_read_input(grid, inputfile)
       
               else
      
-                call fiReadInt(string,grid%iphasebc0(ibc),ierr)
+                call fiReadInt(string,grid%iphasebc0(ir),ierr)
                 call fiDefaultMsg('iphase',ierr)
        
-                if (grid%ibndtyp(ibc) == 1 .or. grid%ibndtyp(ibc) == 3) then 
+                if (grid%ibndtyp(ir) == 1 .or. grid%ibndtyp(ir) == 3) then 
                   do j=1,grid%ndof
-                    call fiReadDouble(string,grid%xxbc0(j,ibc),ierr)
+                    call fiReadDouble(string,grid%xxbc0(j,ir),ierr)
                     call fiDefaultMsg('xxbc',ierr)
                   enddo
-                elseif (grid%ibndtyp(ibc) == 2) then
+                elseif (grid%ibndtyp(ir) == 2) then
                   do j=1, grid%nphase       
-                    call fiReadDouble(string, grid%velocitybc0(j,ibc), ierr)
+                    call fiReadDouble(string, grid%velocitybc0(j,ir), ierr)
                     call fiDefaultMsg("Error reading velocity BCs:", ierr)
                   enddo
                   do j=2,grid%ndof
-                    call fiReadDouble(string,grid%xxbc0(j,ibc),ierr)
+                    call fiReadDouble(string,grid%xxbc0(j,ir),ierr)
                     call fiDefaultMsg('xxbc',ierr)
                   enddo
                 endif
