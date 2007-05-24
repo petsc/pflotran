@@ -231,8 +231,8 @@ subroutine pflowGridRestart(grid, fname, ntstep, kplt, iplot, iflgcut, &
   call VecCopy(grid%xx, grid%yy, ierr)
   
   if(grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE .or. &
-     grid%use_flash == PETSC_TRUE .or. grid%use_2ph == PETSC_TRUE 
-      .or. grid%use_richard == PETSC_TRUE ) then
+     grid%use_flash == PETSC_TRUE .or. grid%use_2ph == PETSC_TRUE .or. &
+     grid%use_richard == PETSC_TRUE ) then
     call VecLoadIntoVector(viewer, grid%iphas, ierr)
     call VecCopy(grid%iphas, grid%iphas_old, ierr)
     call VecLoadIntoVector(viewer, grid%var, ierr)
