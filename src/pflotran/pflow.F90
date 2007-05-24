@@ -76,6 +76,8 @@
     ! RTM: Note that this variable doesn't *do* anything yet!
     ! Right now I only dump a checkpoint at the end of the time stepping loop.
   PetscTruth :: chkptflag
+  PetscTruth :: option_found  ! For testing presence of a command-line option.
+  character(len=MAXSTRINGLENGTH) :: pflowin
 
 ! Initialize Startup Time
  ! call PetscGetCPUTime(timex(1), ierr)
@@ -95,7 +97,12 @@
 
 ! Starting PFLOW setup -- push this onto the log stack.
   call PetscLogStagePush(stage(1), ierr)
-  call pflow_read_gridsize("pflow.in", igeom, nx, ny, nz, npx, npy, npz, &
+  
+  call PetscOptionsGetString(PETSC_NULL_CHARACTER, "-pflowin", &
+    pflowin, option_found, ierr)
+  if(option_found /= PETSC_TRUE) pflowin = "pflow.in"
+  
+  call pflow_read_gridsize(pflowin, igeom, nx, ny, nz, npx, npy, npz, &
   nphase, nspec, npricomp, ndof, idcdm, itable, ierr)
   
   icouple = 0
@@ -122,7 +129,7 @@
   call PetscGetCPUTime(timex(1), ierr)
   call PetscGetTime(timex_wall(1), ierr)
 
-  call pflowGrid_setup(grid, "pflow.in")
+  call pflowGrid_setup(grid, pflowin)
   CHKMEMQ
   kplt = 0
   iplot = 1
