@@ -182,6 +182,8 @@ subroutine pflowGridRestart(grid, fname, ntstep, kplt, iplot, iflgcut, &
                             ihalcnt, its)
   use pflow_gridtype_module
 
+#include "definitions.h"
+
   type(pflowGrid), intent(inout) :: grid
   character(len=MAXSTRINGLENGTH) :: fname
   integer, intent(out) :: ntstep, kplt, iplot, iflgcut, ihalcnt, its
