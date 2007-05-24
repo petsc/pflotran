@@ -82,7 +82,7 @@ subroutine pflowGridCheckpoint(grid, ntstep, kplt, iplot, iflgcut, ihalcnt, &
   integer, intent(in) :: ntstep, kplt, iplot, iflgcut, ihalcnt, its
   integer, intent(in) :: id
 
-  character(len=256) :: fname
+  character(len=MAXSTRINGLENGTH) :: fname
   PetscViewer viewer
   PetscBag bag
   type(pflowChkPtHeader), pointer :: header
@@ -183,7 +183,7 @@ subroutine pflowGridRestart(grid, fname, ntstep, kplt, iplot, iflgcut, &
   use pflow_gridtype_module
 
   type(pflowGrid), intent(inout) :: grid
-  character(len=256) :: fname
+  character(len=MAXSTRINGLENGTH) :: fname
   integer, intent(out) :: ntstep, kplt, iplot, iflgcut, ihalcnt, its
 
   if(grid%myrank == 0) then
@@ -203,7 +203,7 @@ subroutine pflowGridRestart(grid, fname, ntstep, kplt, iplot, iflgcut, &
 #include "definitions.h"
 
   type(pflowGrid), intent(inout) :: grid
-  character(len=256) :: fname
+  character(len=MAXSTRINGLENGTH) :: fname
   integer, intent(out) :: ntstep, kplt, iplot, iflgcut, ihalcnt, its
 
   PetscViewer viewer
@@ -286,7 +286,7 @@ subroutine pflowGridTHCBinaryOut(grid, kplt)
   type(pflowGrid), intent(inout) :: grid
   integer, intent(inout) :: kplt
 
-  character(len=256) :: fname
+  character(len=MAXSTRINGLENGTH) :: fname
   PetscViewer viewer
   integer ierr
 

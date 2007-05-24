@@ -70,7 +70,7 @@
   integer*4 :: steps
   PetscInt :: stage(10)
   PetscTruth :: restartflag
-  character(len=256) :: restartfile
+  character(len=MAXSTRINGLENGTH) :: restartfile
   PetscInt :: chkptfreq  
     ! The number of flow steps between checkpoints.
     ! RTM: Note that this variable doesn't *do* anything yet!
