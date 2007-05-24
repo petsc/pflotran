@@ -73,8 +73,6 @@
   character(len=MAXSTRINGLENGTH) :: restartfile
   PetscInt :: chkptfreq  
     ! The number of flow steps between checkpoints.
-    ! RTM: Note that this variable doesn't *do* anything yet!
-    ! Right now I only dump a checkpoint at the end of the time stepping loop.
   PetscTruth :: chkptflag
   PetscTruth :: option_found  ! For testing presence of a command-line option.
   character(len=MAXSTRINGLENGTH) :: pflowin
