@@ -9,6 +9,7 @@ extern "C"{
    void f_create_hierarchy_data_(void **p_data);
    void f_create_integrator_(void **p_data);
    void f_initialize_hierarchy_data_(void **p_data);
+   void f_setup_hierarchy_data_(void **p_data);
 
 struct gridparameters{
    void *p_grid;

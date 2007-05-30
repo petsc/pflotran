@@ -22,6 +22,12 @@ subroutine allocate_patch_info(p_samr_hierarchy, patchlevel_info)
      integer, intent(in) :: ln
      integer, intent(in) :: pn
    end function is_local_patch
+
+   PetscFortranAddr function hierarchy_get_patch(p_hierarchy, ln, pn)
+     PetscFortranAddr, intent(inout) :: p_hierarchy
+     integer, intent(in) :: ln
+     integer, intent(in) :: pn
+   end function hierarchy_get_patch
    
   end interface
 
@@ -42,6 +48,7 @@ subroutine allocate_patch_info(p_samr_hierarchy, patchlevel_info)
         islocal = is_local_patch(p_samr_hierarchy, ln, pn);
         if(islocal) then
            allocate(patchlevel_info(ln+1)%patches(pn+1)%patch_ptr)
+           patchlevel_info(ln+1)%patches(pn+1)%patch_ptr%p_samr_patch = hierarchy_get_patch(p_samr_hierarchy, ln, pn)
         else              
            nullify(patchlevel_info(ln+1)%patches(pn+1)%patch_ptr)
         endif

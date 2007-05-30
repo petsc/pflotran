@@ -130,6 +130,8 @@ private
                           icap_loc_p(:), ithrm_loc_p(:),ithrm_p(:)
 
 
+  PetscFortranAddr p_samr_patch
+
  end type pflow_localpatch_info
 
  ! the next type encapsulates a pointer to a patch info object
@@ -182,7 +184,8 @@ private
     PetscScalar, pointer :: hhistory(:)
     PetscTruth :: monitor_h
       ! If true, print the value of h at the end of each SNES iteration.
-    PetscTruth :: use_ksp, Samrai_drive
+    PetscTruth :: use_ksp
+    PetscTruth :: Samrai_drive
     PetscTruth :: use_isoth, use_debug	
     ! If using_pflowGrid == PETSC_TRUE, then some parts of ptran_init 
     ! will not be executed, since they are made redundant by 

@@ -132,6 +132,8 @@ int main( int argc, char *argv[] )
 
    f_initialize_hierarchy_data_((void **)&params);
 
+   f_setup_hierarchy_data_((void **)&p_pflowhierarchy);
+
    /* 
     * That's all, folks!
     */
