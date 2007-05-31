@@ -126,10 +126,13 @@ int main( int argc, char *argv[] )
    params->npy = 1;
    params->npz = 1;
    params->nphase = 1;
-   params->usesamrai = true;
+   params->nlevels = hierarchy->getNumberLevels();
+   params->usesamrai = PETSC_TRUE;
    params->p_samr_hierarchy = p_samr_hierarchy;
 
    f_initialize_hierarchy_data_((void **)&params);
+
+   f_setup_hierarchy_data_((void **)&p_pflowhierarchy);
 
    /* 
     * That's all, folks!

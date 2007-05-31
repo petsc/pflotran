@@ -38,7 +38,9 @@
  ! public porperm_out
   public pflowGrid_destroy
   public Pflow_allocate_Vec
-  
+  public pflowgrid_Setup_SNES
+  public pflow_setup_index   ! should make private later on
+
 #include "definitions.h"
 
 ! Apparently the PETSc authors believe that Fortran 90 modules should ensure
@@ -630,14 +632,13 @@
 ! geometry of the grid, the initial values of the fields, and the 
 ! boundary conditions.
 
- subroutine pflowGrid_setup(grid, pflowsolv, timestep,locpat ,inputfile)
+ subroutine pflowGrid_setup(grid, timestep, locpat, inputfile)
   use utilities_module
   use IMS_module
   use readfield                          
   implicit none
   
   type(pflowGrid), intent(inout) :: grid
-  type(pflow_solver_context) :: pflowsolv
   type(time_stepping_context), intent(inout) :: timestep
   type(pflow_localpatch_info) :: locpat
   
@@ -681,8 +682,8 @@
   ! Parse the input file to get dx, dy, dz, fields, etc. for each cell. 
   !-----------------------------------------------------------------------
   call pflow_setup_index(grid,locpat)
-   allocate(locpat%ibndtyp(MAXBCREGIONS))
-   allocate(locpat%iface(MAXBCREGIONS))
+  allocate(locpat%ibndtyp(MAXBCREGIONS))
+  allocate(locpat%iface(MAXBCREGIONS))
 
   call pflowGrid_read_input(grid, timestep,locpat, inputfile)
   
@@ -690,40 +691,34 @@
 ! check number of dofs and phases
 
 
-    if(grid%ndof .ne. (grid%nphase)) then
-      write(*,*) 'Specified number of dofs or phases not correct-stop: MPH ', &
-      'ndof= ',grid%ndof,' nph= ',grid%nphase
-      stop
-    endif
+  if(grid%ndof .ne. (grid%nphase)) then
+     write(*,*) 'Specified number of dofs or phases not correct-stop: MPH ', &
+          'ndof= ',grid%ndof,' nph= ',grid%nphase
+     stop
+  endif
   	
   
 ! Calculate the x, y, z vectors that give the 
 ! physical coordinates of each cell.
   
 
-  allocate(grid%x(grid%nmax))
-  allocate(grid%y(grid%nmax))
-  allocate(grid%z(grid%nmax))
- 
-  
-    call pflowGrid_compute_xyz(grid)
-
-  if (grid%myrank == 0) then
-    write(*,'(/,"++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")')
-    write(*,'(" number of processors = ",i5,", npx,y,z= ",3i5)') &
-    grid%commsize,grid%npx,grid%npy,grid%npz
-    write(*,'(" number of dofs = ",i3,", number of phases = ",i3,i2)') &
-    grid%ndof,grid%nphase
+  if(grid% Samrai_drive==PETSC_FALSE) then
+     allocate(grid%x(grid%nmax))
+     allocate(grid%y(grid%nmax))
+     allocate(grid%z(grid%nmax))
+     
+     
+     call pflowGrid_compute_xyz(grid)
+     
+     if (grid%myrank == 0) then
+        write(*,'(/,"++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")')
+        write(*,'(" number of processors = ",i5,", npx,y,z= ",3i5)') &
+             grid%commsize,grid%npx,grid%npy,grid%npz
+        write(*,'(" number of dofs = ",i3,", number of phases = ",i3,i2)') &
+             grid%ndof,grid%nphase
+     endif
   endif
 
-  !-----------------------------------------------------------------------
-  ! Set up the Jacobian matrix.  We do this here instead of in 
-  ! pflowgrid_new() because we may have to parse the input file to 
-  ! determine how we want to do the Jacobian (matrix vs. matrix-free, for
-  ! example).
-  !-----------------------------------------------------------------------
-  
-  call pflowGrid_Setup_SNES(grid, pflowsolv )
 
   !-----------------------------------------------------------------------
   ! Set up cell topology and geometry of interior connections, and 
@@ -899,6 +894,40 @@ implicit none
   
 end subroutine pflow_create_vector
 
+subroutine grid_get_corners(grid, locpat, use_ghost)
+implicit none
+
+  type(pflowGrid), intent(inout) :: grid
+  DA :: da_info
+  type(pflow_localpatch_info), intent(inout) :: locpat
+  PetscTruth, intent(in) :: use_ghost
+  integer :: ierr
+
+  if(grid%Samrai_drive==PETSC_FALSE) then
+     if(use_ghost==PETSC_FALSE) then
+        call DAGetCorners(grid%da_1_dof, locpat%nxs, &
+                          locpat%nys, locpat%nzs, locpat%nlx, &
+                          locpat%nly, locpat%nlz, ierr)
+     else
+        call DAGetGhostCorners(grid%da_1_dof, locpat%ngxs, &
+                               locpat%ngys, locpat%ngzs, locpat%ngx, &
+                               locpat%ngy, locpat%ngz, ierr)
+
+     endif
+  else
+     if(use_ghost==PETSC_FALSE) then
+        call samr_patch_get_corners(locpat%p_samr_patch, &
+                               locpat%nxs, locpat%nys, locpat%nzs, &
+                               locpat%nlx, locpat%nly, locpat%nlz)
+     else
+        call samr_patch_get_ghostcorners(locpat%p_samr_patch, &
+                                    locpat%ngxs, locpat%ngys, locpat%ngzs, &
+                                    locpat%ngx, locpat%ngy, locpat%ngz)
+     endif
+  endif
+
+end subroutine grid_get_corners
+
 !Subroutine to setup index system
 
 subroutine pflow_setup_index(grid, locpat)
@@ -907,34 +936,37 @@ implicit none
 type(pflowGrid), intent(inout) :: grid
 type(pflow_localpatch_info), intent(inout) :: locpat
 
-integer i,j,k,n,ng, na, ierr
+   integer i,j,k,n,ng, na, ierr
 
+   call grid_get_corners(grid, locpat, PETSC_FALSE)
 
-call DAGetCorners(grid%da_1_dof, locpat%nxs, &
-              locpat%nys, locpat%nzs, locpat%nlx, &
-              locpat%nly, locpat%nlz, ierr)
+!   call DAGetCorners(grid%da_1_dof, locpat%nxs, &
+!        locpat%nys, locpat%nzs, locpat%nlx, &
+!        locpat%nly, locpat%nlz, ierr)
 
-      locpat%nxe = locpat%nxs + locpat%nlx
-      locpat%nye = locpat%nys + locpat%nly
-      locpat%nze = locpat%nzs + locpat%nlz
-      locpat%nlxy = locpat%nlx * locpat%nly
-      locpat%nlxz = locpat%nlx * locpat%nlz
-      locpat%nlyz = locpat%nly * locpat%nlz
-      locpat%nlmax = locpat%nlx * locpat%nly * locpat%nlz
-      locpat%nldof = locpat%nlmax * grid%nphase
+   locpat%nxe = locpat%nxs + locpat%nlx
+   locpat%nye = locpat%nys + locpat%nly
+   locpat%nze = locpat%nzs + locpat%nlz
+   locpat%nlxy = locpat%nlx * locpat%nly
+   locpat%nlxz = locpat%nlx * locpat%nlz
+   locpat%nlyz = locpat%nly * locpat%nlz
+   locpat%nlmax = locpat%nlx * locpat%nly * locpat%nlz
+   locpat%nldof = locpat%nlmax * grid%nphase
+   
+   call grid_get_corners(grid, locpat, PETSC_TRUE)
 
-      call DAGetGhostCorners(grid%da_1_dof, locpat%ngxs, &
-              locpat%ngys, locpat%ngzs, locpat%ngx, &
-              locpat%ngy, locpat%ngz, ierr)
-
-      locpat%ngxe = locpat%ngxs + locpat%ngx
-      locpat%ngye = locpat%ngys + locpat%ngy
-      locpat%ngze = locpat%ngzs + locpat%ngz
-      locpat%ngxy = locpat%ngx * locpat%ngy
-      locpat%ngxz = locpat%ngx * locpat%ngz
-      locpat%ngyz = locpat%ngy * locpat%ngz
-      locpat%ngmax = locpat%ngx * locpat%ngy * locpat%ngz
-      locpat%ngdof = locpat%ngmax * grid%nphase
+!   call DAGetGhostCorners(grid%da_1_dof, locpat%ngxs, &
+!        locpat%ngys, locpat%ngzs, locpat%ngx, &
+!        locpat%ngy, locpat%ngz, ierr)
+   
+   locpat%ngxe = locpat%ngxs + locpat%ngx
+   locpat%ngye = locpat%ngys + locpat%ngy
+   locpat%ngze = locpat%ngzs + locpat%ngz
+   locpat%ngxy = locpat%ngx * locpat%ngy
+   locpat%ngxz = locpat%ngx * locpat%ngz
+   locpat%ngyz = locpat%ngy * locpat%ngz
+   locpat%ngmax = locpat%ngx * locpat%ngy * locpat%ngz
+   locpat%ngdof = locpat%ngmax * grid%nphase
 
 !-----------------------------------------------------------------------
       ! Determine number of local connections.
@@ -949,9 +981,12 @@ call DAGetCorners(grid%da_1_dof, locpat%nxs, &
 !-----------------------------------------------------------------------
       allocate(locpat%nL2G(locpat%nlmax))
       allocate(locpat%nG2L(locpat%ngmax))
-	  allocate(locpat%nL2A(locpat%nlmax))
-	  allocate(locpat%nG2N(locpat%ngmax))
-   
+
+      if(grid%Samrai_drive==PETSC_FALSE) then
+         allocate(locpat%nL2A(locpat%nlmax))
+         allocate(locpat%nG2N(locpat%ngmax))
+      endif
+
  !-----------------------------------------------------------------------
       ! Compute arrays for indexing between local ghosted and non-ghosted 
       ! arrays.  I think the PETSc DA facilities may make these redundant,
@@ -995,26 +1030,28 @@ call DAGetCorners(grid%da_1_dof, locpat%nxs, &
       enddo
 	  
 	  
-  ! Local(non ghosted)->Natural(natural order starts from 0) (one way)
-    n=0
-     do k=1,locpat%nlz
-        do j=1,locpat%nly
-          do i=1,locpat%nlx
-            n = n + 1
-            na = i-1+locpat%nxs+(j-1+locpat%nys)*grid%nx+(k-1+locpat%nzs)*grid%nxy
-			if(na>(grid%nmax-1)) print *,'Wrong Nature order....'
-			locpat%nL2A(n) = na
-			!print *,grid%myrank, k,j,i,n,na
-			!grid%nG2N(ng) = na
-		  enddo
-        enddo
-      enddo
-    print *,grid%myrank, locpat%nxs,locpat%ngxs,locpat%nys,&
-            locpat%ngys,locpat%nzs,locpat%ngzs
-				 
-	
- ! Loacal(include ghosted) to global mapping (one way)
-	call DAGetGlobalIndicesF90(grid%da_1_dof,locpat%ngmax,locpat%nG2N, ierr)								 
+      if(grid%Samrai_drive==PETSC_FALSE) then
+         ! Local(non ghosted)->Natural(natural order starts from 0) (one way)
+         n=0
+         do k=1,locpat%nlz
+            do j=1,locpat%nly
+               do i=1,locpat%nlx
+                  n = n + 1
+                  na = i-1+locpat%nxs+(j-1+locpat%nys)*grid%nx+(k-1+locpat%nzs)*grid%nxy
+                  if(na>(grid%nmax-1)) print *,'Wrong Nature order....'
+                  locpat%nL2A(n) = na
+                  !print *,grid%myrank, k,j,i,n,na
+                  !grid%nG2N(ng) = na
+               enddo
+            enddo
+         enddo
+         print *,grid%myrank, locpat%nxs,locpat%ngxs,locpat%nys,&
+              locpat%ngys,locpat%nzs,locpat%ngzs
+         
+         ! Loacal(include ghosted) to global mapping (one way)
+         call DAGetGlobalIndicesF90(grid%da_1_dof,locpat%ngmax,locpat%nG2N, ierr)
+      endif
+
 end subroutine pflow_setup_index												             
       	  
 
