@@ -36,7 +36,7 @@ module pflow_checkpoint
 #include "include/finclude/petsclog.h"
 #include "include/finclude/petscsys.h"
 #include "include/finclude/petscviewer.h"
-#if (PETSC_VERSION_RELEASE == 0)
+#if (PETSC_VERSION_RELEASE == 0 || PETSC_VERSION_SUBMINOR == 3)
 #include "include/finclude/petscbag.h"
 
   Interface PetscBagGetData
@@ -51,7 +51,7 @@ module pflow_checkpoint
 
 contains
 
-#if (PETSC_VERSION_RELEASE == 1)
+#if (PETSC_VERSION_RELEASE == 1 && PETSC_VERSION_SUBMINOR < 3)
 
 subroutine pflowGridCheckpoint(grid, ntstep, kplt, iplot, iflgcut, ihalcnt, &
                                its, id)
@@ -176,7 +176,7 @@ end subroutine pflowGridCheckpoint
 
 #endif
 
-#if (PETSC_VERSION_RELEASE == 1)
+#if (PETSC_VERSION_RELEASE == 1 && PETSC_VERSION_SUBMINOR < 3)
 
 subroutine pflowGridRestart(grid, fname, ntstep, kplt, iplot, iflgcut, &
                             ihalcnt, its)
