@@ -976,6 +976,8 @@ subroutine pflowGrid_setup(grid, inputfile)
   
   PetscViewer :: viewer
   Vec :: temp_vec
+
+  PetscTruth :: option_found ! For testing presence of a command-line option.
   
   ! Need to declare this function as external or else gfortran complains.
   ! Not sure why it complains and other compilers don't.
@@ -1922,9 +1924,13 @@ subroutine pflowGrid_setup(grid, inputfile)
       stop
     endif
    
-    do nc=1,grid%nconnbc
-      print *, 'BC:', nc, grid%areabc(nc),grid%distbc(nc),  grid%mblkbc(nc) 
-    enddo
+    call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-print_bcinfo", &
+                             option_found, ierr)
+    if(option_found == PETSC_TRUE) then
+      do nc=1,grid%nconnbc
+        print *, 'BC:', nc, grid%areabc(nc),grid%distbc(nc),  grid%mblkbc(nc) 
+      enddo
+    endif
 
   !-----------------------------------------------------------------------
   ! Set up boundary conditions at interfaces
