@@ -4717,8 +4717,7 @@ subroutine pflowGrid_read_input(grid, inputfile)
         if (grid%myrank==0) write(IUNIT2,'(/," *SDST ",/, &
           &"  dpdt        = ",1pe12.4,/, &
           &"  dtmpdt        = ",1pe12.4,/, &
-          &"  dcdt        = ",1pe12.4,/, &
-          &)') &
+          &"  dcdt        = ",1pe12.4)') &
           grid%steady_eps
 
 !....................
