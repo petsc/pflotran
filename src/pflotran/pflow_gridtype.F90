@@ -331,6 +331,7 @@ private
 
 
     real*8 :: atol, rtol, stol, dtol
+    real*8, pointer :: steady_eps(:)
       ! Absolute, relative, and "change in norm of solution" tolerances.
     integer :: maxit, maxf
       ! The maximum number of iterations and function evaluations, respectively

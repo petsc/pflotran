@@ -212,6 +212,8 @@ type(pflowGrid) function pflowGrid_new(igeom, nx, ny, nz, npx, npy, npz, &
   grid%fmwco2 = 44.0098d0
   grid%eqkair = 1.d10 ! Henry's constant for air: Xl = eqkair * pa
 
+  allocate(grid%steady_eps(ndof))
+  grid%steady_eps = -1.D0
   !-----------------------------------------------------------------------
   ! Generate the DA objects that will manage communication.
   !-----------------------------------------------------------------------
@@ -1615,7 +1617,7 @@ subroutine pflowGrid_setup(grid, inputfile)
       enddo
     endif
 
- 
+
     call VecAssemblyBegin(temp1_nat_vec,ierr)
     call VecAssemblyEnd(temp1_nat_vec,ierr)
     call VecAssemblyBegin(temp2_nat_vec,ierr)
@@ -4705,7 +4707,21 @@ subroutine pflowGrid_read_input(grid, inputfile)
         if (grid%ndof == 1) grid%ibrkcrv = 0
 
 !....................
+      case('SDST')
+         
+          
+          do j=1,grid%ndof
+            call fiReadDouble(string,grid%steady_eps(j),ierr)
+            call fiDefaultMsg('steady tol',ierr)
+          enddo
+        if (grid%myrank==0) write(IUNIT2,'(/," *SDST ",/, &
+          &"  dpdt        = ",1pe12.4,/, &
+          &"  dtmpdt        = ",1pe12.4,/, &
+          &"  dcdt        = ",1pe12.4,/, &
+          &)') &
+          grid%steady_eps
 
+!....................
       case default
     
         if (grid%myrank == 0) then
