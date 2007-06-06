@@ -223,9 +223,9 @@
     if (kplt .gt. grid%kplot) exit
   enddo
 
-  if(chkptflag == PETSC_TRUE) then
+  if(chkptflag == PETSC_TRUE .and. mod(steps, chkptfreq) /= 0) then
     call pflowGridCheckpoint(grid, ntstep, kplt, iplot, iflgcut, ihalcnt, &
-                             its, steps-1)
+                             its, steps)
   endif
 
 ! Clean things up.
