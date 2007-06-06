@@ -95,9 +95,17 @@
   call PetscGetCPUTime(timex(1), ierr)
   call PetscGetTime(timex_wall(1), ierr)
 
-  
+  call pflowGrid_setup(grid, timestep,locpat,"pflow.in")
 
-  call pflowGrid_setup(grid, pflowsolv,timestep,locpat,"pflow.in")
+  !-----------------------------------------------------------------------
+  ! Set up the Jacobian matrix.  We do this here instead of in 
+  ! pflowgrid_new() because we may have to parse the input file to 
+  ! determine how we want to do the Jacobian (matrix vs. matrix-free, for
+  ! example).
+  !-----------------------------------------------------------------------
+  
+  call pflowGrid_Setup_SNES(grid, pflowsolv )
+
   CHKMEMQ
   kplt = 0
   iplot = 1

@@ -7,7 +7,7 @@ module PetscRelWrappers
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
 
-#if (PETSC_VERSION_RELEASE == 1)
+#if (PETSC_VERSION_RELEASE == 1 && PETSC_VERSION_SUBMINOR < 3)
 
 contains
 

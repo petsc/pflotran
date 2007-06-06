@@ -13,6 +13,26 @@ PetscTruth :: use_ghost
 Vec :: vec
 end subroutine create_samrai_vec
 
+subroutine samr_patch_get_corners(p_patch, nxs, nys, nzs, nlx, nly, nlz)
+implicit none
+
+#include "include/finclude/petsc.h"
+
+PetscFortranAddr :: p_patch
+integer :: nxs, nys, nzs, nlx, nly, nlz
+
+end subroutine samr_patch_get_corners
+
+subroutine samr_patch_get_ghostcorners(p_patch, nxs, nys, nzs, nlx, nly, nlz)
+implicit none
+
+#include "include/finclude/petsc.h"
+
+PetscFortranAddr :: p_patch
+integer :: nxs, nys, nzs, nlx, nly, nlz
+
+end subroutine samr_patch_get_ghostcorners
+
 ! this stub does not make use of any SAMR information
 ! it simply allocates space for one pflow_localpatch_info
 ! object

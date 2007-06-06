@@ -61,13 +61,14 @@
   integer :: ierr, ihalcnt
   type(pflowGrid) :: grid
   integer :: igeom
-  integer*4 :: nx, ny, nz
-  integer*4 :: npx, npy, npz
+  integer :: nx, ny, nz
+  integer :: npx, npy, npz
   integer :: nphase, ndof, icouple, idcdm, itable
   integer :: nspec,npricomp
   integer :: kplt, iplot, iflgcut, its, ntstep
   integer :: myid
-  integer*4 :: steps
+  integer :: steps
+  integer :: idx, ista=0
   PetscInt :: stage(10)
   PetscTruth :: restartflag
   character(len=MAXSTRINGLENGTH) :: restartfile
@@ -76,6 +77,8 @@
   PetscTruth :: chkptflag
   PetscTruth :: option_found  ! For testing presence of a command-line option.
   character(len=MAXSTRINGLENGTH) :: pflowin
+  real*8 dt_cur
+  real*8, pointer :: dxdt(:)
 
 ! Initialize Startup Time
  ! call PetscGetCPUTime(timex(1), ierr)
@@ -102,6 +105,8 @@
   
   call pflow_read_gridsize(pflowin, igeom, nx, ny, nz, npx, npy, npz, &
   nphase, nspec, npricomp, ndof, idcdm, itable, ierr)
+  
+  allocate(dxdt(1:ndof))
   
   icouple = 0
   ntstep=1
@@ -171,8 +176,37 @@
 !   update field variables
     call pflowGrid_update(grid)
 
+    dt_cur = grid%dt 
+   
+    
+    if(grid%use_thc == PETSC_TRUE)then
+      dxdt(1)=grid%dpmax/dt_cur
+      dxdt(2)=grid%dtmpmax/dt_cur
+      dxdt(3)=grid%dcmax/dt_cur
+    endif  
+
+    call PetscLogStagePush(stage(2), ierr)
+    if(chkptflag == PETSC_TRUE .and. mod(steps, chkptfreq) == 0) then
+      call pflowGridCheckpoint(grid, ntstep, kplt, iplot, iflgcut, ihalcnt, &
+                               its, steps)
+    endif
+    call PetscLogStagePop(ierr)
+    
+    ista=0
+    if(grid%use_thc == PETSC_TRUE)then
+      do idx = 1, grid%ndof
+        if(dxdt(idx) < grid%steady_eps(idx)) ista=ista+1
+      enddo 
+      
+      if(ista >= grid%ndof)then
+        kplt=grid%kplot; iplot=1     
+      endif
+    endif   
 !   comment out for now-need in pflotran (no longer needed-pcl)
 !   call pflowgrid_setvel(grid, grid%vl, grid%vlbc, ibndtyp)
+
+
+
 
     call PetscLogStagePush(stage(2), ierr)
     if(grid%use_owg/=PETSC_TRUE) then
@@ -182,22 +216,17 @@
       call pflow_var_output(grid,kplt,iplot)
     endif
     call PetscLogStagePop(ierr)
-
+  
+  
     if (iflgcut == 0) call pflowgrid_update_dt(grid,its)
-
-    call PetscLogStagePush(stage(2), ierr)
-    if(chkptflag == PETSC_TRUE .and. mod(steps, chkptfreq) == 0) then
-      call pflowGridCheckpoint(grid, ntstep, kplt, iplot, iflgcut, ihalcnt, &
-                               its, steps)
-    endif
-    call PetscLogStagePop(ierr)
-
+      
+    
     if (kplt .gt. grid%kplot) exit
   enddo
 
-  if(chkptflag == PETSC_TRUE) then
+  if(chkptflag == PETSC_TRUE .and. mod(steps, chkptfreq) /= 0) then
     call pflowGridCheckpoint(grid, ntstep, kplt, iplot, iflgcut, ihalcnt, &
-                             its, steps-1)
+                             its, steps)
   endif
 
 ! Clean things up.

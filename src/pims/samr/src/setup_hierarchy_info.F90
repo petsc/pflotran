@@ -1,11 +1,14 @@
-subroutine allocate_patch_info(p_samr_hierarchy, patchlevel_info)
-  use pflow_gridtype_module
-  implicit none
+subroutine f_setup_hierarchy_data(pgrid)
 
+ use pflow_gridtype_module
+ use pflow_grid_module
+
+ implicit none
+ 
 #include "include/finclude/petsc.h"
-  PetscFortranAddr :: p_samr_hierarchy
-!  type(PatchLevelInfoPtr), dimension(:), pointer, intent(inout) :: patchlevel_info
-  type(PatchLevelInfoPtr), dimension(:), pointer :: patchlevel_info
+
+ external pflow_setup_index
+ type(pflowGrid), pointer :: pgrid
 
   interface
      integer function hierarchy_number_levels(p_hierarchy)
@@ -30,29 +33,22 @@ subroutine allocate_patch_info(p_samr_hierarchy, patchlevel_info)
    end function hierarchy_get_patch
    
   end interface
-
+ 
   integer :: nlevels
   integer :: npatches
   integer :: ln
   integer :: pn
   logical :: islocal
-
-  nlevels =  hierarchy_number_levels(p_samr_hierarchy)
-  
-  allocate(patchlevel_info(nlevels))
-
+ 
+  nlevels =  hierarchy_number_levels(pgrid%p_samr_hierarchy)
+ 
   do ln=0,nlevels-1
-     npatches = level_number_patches(p_samr_hierarchy, ln )
-     allocate(patchlevel_info(ln+1)%patches(npatches))
+     npatches = level_number_patches(pgrid%p_samr_hierarchy, ln )
      do pn=0,npatches-1
-        islocal = is_local_patch(p_samr_hierarchy, ln, pn);
-        if(islocal) then
-           allocate(patchlevel_info(ln+1)%patches(pn+1)%patch_ptr)
-           patchlevel_info(ln+1)%patches(pn+1)%patch_ptr%p_samr_patch = hierarchy_get_patch(p_samr_hierarchy, ln, pn)
-        else              
-           nullify(patchlevel_info(ln+1)%patches(pn+1)%patch_ptr)
+        if(associated(pgrid%patchlevel_info(ln+1)%patches(pn+1)%patch_ptr) .eq. .TRUE. ) then
+           call pflow_setup_index(pgrid, pgrid%patchlevel_info(ln+1)%patches(pn+1)%patch_ptr)
         endif
      end do
   end do
-  
-end subroutine allocate_patch_info
+
+end subroutine f_setup_hierarchy_data
