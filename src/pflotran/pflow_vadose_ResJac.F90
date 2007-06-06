@@ -52,7 +52,8 @@ module Vadose_module
 
   public VadoseResidual, VadoseJacobian, pflow_Vadose_initaccum, &
          pflow_update_Vadose,pflow_Vadose_initadj, pflow_Vadose_timecut,&
-         pflow_Vadose_setupini, Vadose_Update, Vadose_Update_Reason
+         pflow_Vadose_setupini, Vadose_Update, Vadose_Update_Reason, &
+         pflow_Vadose_bcadj
 
 
 
@@ -2154,7 +2155,10 @@ subroutine pflow_update_Vadose(grid)
   real*8 dif(1:grid%nphase), dum1, dum2           
 
       
-  if (associated(grid%imat)) call UpdateBoundaryConditions(grid)
+  if (associated(grid%imat)) then
+    call UpdateBoundaryConditions(grid)
+    call pflow_Vadose_bcadj(grid)
+  endif
 
   ! if (grid%rk > 0.d0) call Rock_Change(grid)
   ! call  Translator_vadose_Switching(grid%xx,grid,1,ichange)
@@ -2348,5 +2352,73 @@ subroutine pflow_Vadose_initadj(grid)
    
 end subroutine pflow_Vadose_initadj
 
+!geh We need to be able to update transient boundary conditions.  The
+!    below provides the functionality above, but only for bcs.
+subroutine pflow_Vadose_bcadj(grid)
+ 
+! running this subroutine will override the xmol data for initial condition in pflow.in 
+
+  use translator_vad_module  
+
+  implicit none
+
+  type(pflowGrid) :: grid 
+
+ 
+  integer :: ierr
+  integer :: nc, ibc, m, iicap, iithrm                           
+
+  PetscScalar, pointer :: ithrm_p(:),icap_p(:)
+  
+  real*8  dif(grid%nphase), dum1, dum2
+  
+  call VecGetArrayF90(grid%icap, icap_p, ierr)
+  call VecGetArrayF90(grid%ithrm, ithrm_p, ierr)
+  do nc = 1, grid%nconnbc
+
+    m = grid%mblkbc(nc)  ! Note that here, m is NOT ghosted.
+       
+    if (m<0) then
+      print *, "Wrong boundary node index... STOP!!!"
+      stop
+    endif
+
+    ibc = grid%ibconn(nc)
+       
+!      print *,'initadj_bc',nc,ibc,grid%ibndtyp(ibc),grid%nconnbc
+
+    if (grid%ibndtyp(ibc)==1) then
+      iicap=int(icap_p(m))
+      iithrm=int(ithrm_p(m)) 
+      dif(1)= grid%difaq
+      dif(2)= grid%cdiff(iithrm)
+      call pri_var_trans_vad_ninc(grid%xxbc(:,nc),grid%iphasebc(nc), &
+                                  grid%scale,grid%nphase,grid%nspec, &
+                                  grid%icaptype(iicap), &
+                                  grid%sir(1:grid%nphase,iicap), &
+                                  grid%lambda(iicap), &
+                                  grid%alpha(iicap),grid%pckrm(iicap), &
+                                  grid%pcwmax(iicap), & !use node's value
+                                  grid%pcbetac(iicap),grid%pwrprm(iicap),dif, &
+                                  grid%varbc(1:size_var_use),grid%itable,ierr, &
+                                  dum1, dum2)
+      
+      if (translator_check_phase_cond_vad(grid%iphasebc(nc), &
+                                          grid%varbc(1:size_var_use), &
+                                          grid%nphase,grid%nspec) /=1) then
+        print *," Wrong bounday node init...  STOP!!!", grid%xxbc(:,nc)
+      
+        print *,grid%varbc
+        stop    
+      endif 
+    endif
+
+
+  enddo
+
+  call VecRestoreArrayF90(grid%icap, icap_p, ierr)
+  call VecRestoreArrayF90(grid%ithrm, ithrm_p, ierr)
+   
+end subroutine pflow_Vadose_bcadj
 
 end module Vadose_module

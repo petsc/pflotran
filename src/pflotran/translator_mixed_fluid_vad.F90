@@ -293,7 +293,7 @@ subroutine translator_vad_get_output(grid)
     cc_p(n) = c_p(jn+1)
   
     s_p(jn) = var_p(index_var_begin + 3) 
-    s_p(jn+1)= var_p(index_var_begin + 4) 
+    s_p(jn+1)= var_p(index_var_begin + 4)
   enddo
  
   call VecRestoreArrayF90(grid%var, var_p, ierr)
