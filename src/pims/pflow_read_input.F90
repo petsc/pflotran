@@ -128,7 +128,7 @@ contains
   
   ! keywords: GRID, PROC, COUP, GRAV, OPTS, TOLR, DXYZ, DIFF, RADN, HYDR,  
   !           SOLV, THRM, PCKR, PHIK, INIT, TIME, DTST, BCON, SOUR, BRK, RCTR
-   use pflow_gridtype_module
+    use pflow_gridtype_module
   use fileio_module
   
   implicit none

@@ -358,7 +358,7 @@ private
 ! Flow term
     if ((sat1(np) > sir1(np)) .or. (sat2(np) > sir2(np)))then
     
-    upweight=.5D0
+    upweight=dd1/(dd1+dd2)
     if(sat1(np) <eps) then 
          upweight=0.d0
       else if(sat2(np) <eps) then 
@@ -494,7 +494,7 @@ private
     do np =1,grid%nphase
          if ((sat1(np) > sir2(np)) .or. (sat2(np) > sir2(np)))then
     
-       upweight=.5D0
+       upweight=1.D0
        if(sat1(np) <eps) then 
              upweight=0.d0
           else if(sat2(np) <eps) then 
@@ -590,7 +590,7 @@ private
     do np =1,grid%nphase
          if ((sat1(np) > sir2(np)) .or. (sat2(np) > sir2(np)))then
     
-         upweight=.5D0
+         upweight=1.D0
        if(sat1(np) <eps) then 
              upweight=0.d0
           else if(sat2(np) <eps) then 

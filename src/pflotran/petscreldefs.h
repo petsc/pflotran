@@ -1,4 +1,4 @@
-#if (PETSC_VERSION_RELEASE == 1)
+#if (PETSC_VERSION_RELEASE == 1 && PETSC_VERSION_SUBMINOR < 3)
 
 ! Name differences between petsc-dev and petsc-release.
 #define SNESMonitorSet SNESSetMonitor

@@ -1,4 +1,4 @@
-module translator_Richard_module
+module translator_Richards_module
  
   
   private 
@@ -39,9 +39,9 @@ module translator_Richard_module
 ! within each phase component index : 1. H2O; 2. CO2; 3. Air
 
     
-  public  pri_var_trans_Richard_ninc,pri_var_trans_Richard_winc ,translator_Ric_step_maxchange, &
-          translator_Richard_get_output,translator_check_cond_Richard,translator_Richard_massbal, &
-          Translator_Richard_Switching
+  public  pri_var_trans_Richards_ninc,pri_var_trans_Richards_winc ,translator_Ric_step_maxchange, &
+          translator_Richards_get_output,translator_check_cond_Richards,translator_Richards_massbal, &
+          Translator_Richards_Switching
      
      
   real*8, private, parameter :: fmwh2o = 18.0153D0, fmwa = 28.96D0, &
@@ -56,7 +56,7 @@ contains
 !        apply mixing rules
 
 
-subroutine translator_Richard_massbal(grid)
+subroutine translator_Richards_massbal(grid)
  
   use pflow_gridtype_module
   
@@ -152,10 +152,10 @@ subroutine translator_Richard_massbal(grid)
     write(13,'(1p9e12.4)') grid%t/grid%tconv,grid%dt/grid%tconv,tot(:,1)
   endif    
   
-end subroutine translator_Richard_massbal
+end subroutine translator_Richards_massbal
 
 
-integer function translator_check_cond_Richard(iphase, var_node,num_phase,num_spec)
+integer function translator_check_cond_Richards(iphase, var_node,num_phase,num_spec)
 
   implicit none
 
@@ -191,12 +191,12 @@ integer function translator_check_cond_Richard(iphase, var_node,num_phase,num_sp
   endif
   
    nullify(t, p, satu, den, avgmw, h,u, pc,kvr,xmol,diff)
- translator_check_cond_Richard = succ
+ translator_check_cond_Richards = succ
 
-end function translator_check_cond_Richard
+end function translator_check_cond_Richards
 
 
-subroutine translator_Richard_get_output(grid)
+subroutine translator_Richards_get_output(grid)
 
   use pflow_gridtype_module
 
@@ -223,17 +223,18 @@ subroutine translator_Richard_get_output(grid)
     index_var_begin = (n-1) * size_var_node
     jn = 1 + (n-1)*grid%nphase 
     
-    p_p(jn) = var_p(index_var_begin + 2) - var_p(index_var_begin+5*grid%nphase+3)
+    p_p(jn) = var_p(index_var_begin + 2)! - var_p(index_var_begin+5*grid%nphase+3)
    ! p_p(jn+1) = var_p(index_var_begin + 2) - var_p(index_var_begin+5*grid%nphase+4)
    
     t_p(n) = var_p(index_var_begin + 1)
 
-    c_p(jn) = var_p(index_var_begin+7*grid%nphase+4)
+    c_p(jn) = 0.D0!var_p(index_var_begin+7*grid%nphase+4)
+    if(grid%nspec>1)  c_p(jn) = var_p(index_var_begin +2+ 7*7*grid%nphase +2)
    ! c_p(jn+1) = var_p(index_var_begin+7*grid%nphase+6)
-    cc_p(n) = c_p(jn+1)
+ !   cc_p(n) = c_p(jn+1)
   
     s_p(jn) = var_p(index_var_begin + 3) 
-    s_p(jn+1)=1.D0 -  s_p(jn)
+ !   s_p(jn+1)=1.D0 -  s_p(jn)
   enddo
  
   call VecRestoreArrayF90(grid%var, var_p, ierr)
@@ -244,7 +245,7 @@ subroutine translator_Richard_get_output(grid)
   call VecRestoreArrayF90(grid%conc, cc_p, ierr)
  
 ! work only for 2 phases
-end subroutine translator_Richard_get_output
+end subroutine translator_Richards_get_output
 
 
 subroutine translator_Ric_step_maxchange(grid)
@@ -265,56 +266,13 @@ subroutine translator_Ric_step_maxchange(grid)
   call VecStrideNorm(grid%dxx,0,NORM_INFINITY,grid%dpmax,ierr)
   call VecStrideNorm(grid%dxx,1,NORM_INFINITY,grid%dtmpmax,ierr)
 
-  call VecGetArrayF90(grid%xx, xx_p, ierr); CHKERRQ(ierr)
-  call VecGetArrayF90(grid%yy, yy_p, ierr); CHKERRQ(ierr)
-  call VecGetArrayF90(grid%iphas, iphase_p,ierr)
-  call VecGetArrayF90(grid%iphas_old, iphase_old_p,ierr)
-  call VecGetArrayF90(grid%var, var_p, ierr)
-  
-  comp = 0.D0
-  comp1 = 0.D0
-  do  n=1, grid%nlmax
-    n0=(n-1)*grid%ndof 
-    if (int(iphase_p(n)) == int(iphase_old_p(n))) then
-      cmp = dabs(xx_p(n0+3)-yy_p(n0+3))
-      if (int(iphase_p(n))==1 .or.int(iphase_p(n))==2) then
-        if (comp<cmp) comp = cmp
-     
-      endif   
-      if (int(iphase_p(n))==3) then
-        if (comp1<cmp) comp1 = cmp
-      endif   
-    else
-!  print *,'phase changed', n, iphase_p(n), iphase_old_p(n)
-
-    endif
-  enddo
-  !call PETSCBarrier(PETSC_NULL_OBJECT,ierr)
-  call VecRestoreArrayF90(grid%xx, xx_p, ierr); CHKERRQ(ierr)
-  call VecRestoreArrayF90(grid%yy, yy_p, ierr); CHKERRQ(ierr)
-  call VecRestoreArrayF90(grid%iphas, iphase_p,ierr)
-  call VecRestoreArrayF90(grid%iphas_old, iphase_old_p,ierr)
-  call VecRestoreArrayF90(grid%var, var_p, ierr)
- 
-  
-  if (grid%commsize >1) then
-    call MPI_ALLREDUCE(comp1,dsm0,1,MPI_DOUBLE_PRECISION,MPI_MAX, &
-                       PETSC_COMM_WORLD,ierr)
-    !call MPI_BCAST(dsm0,1, MPI_DOUBLE_PRECISION, 0,PETSC_COMM_WORLD,ierr)
-    call MPI_ALLREDUCE(comp,dcm0,1,MPI_DOUBLE_PRECISION,MPI_MAX, &
-                       PETSC_COMM_WORLD,ierr)
-    !call MPI_BCAST(dcm0,1, MPI_DOUBLE_PRECISION, 0,PETSC_COMM_WORLD,ierr)
-    comp1 = dsm0
-    comp = dcm0
-  endif 
-        
-   grid%dsmax=comp1
-   grid%dcmax=comp
-!   print *, 'max change',grid%dpmax,grid%dtmpmax,grid%dsmax,grid%dcmax
+   grid%dsmax=0.D0
+   grid%dcmax=0.D0
+   print *, 'ric max change',grid%dpmax,grid%dtmpmax,grid%dsmax,grid%dcmax
 end subroutine translator_Ric_step_maxchange
 
 
-subroutine Translator_Richard_Switching(xx,grid,icri,ichange)
+subroutine Translator_Richards_Switching(xx,grid,icri,ichange)
 
   use pflow_gridtype_module
   use water_eos_module
@@ -351,9 +309,8 @@ subroutine Translator_Richard_Switching(xx,grid,icri,ichange)
     n0=(n-1)* grid%ndof
     iipha=iphase_p(n)
     p = xx_p(n0+1); t= xx_p(n0+2)
-    call PSAT(t, sat_pressure, ierr)  
-  
-    select case(iipha) 
+    
+     select case(iipha) 
       case(1) 
         xmol(2)= xx_p(n0+3)
         xmol(1)=1.D0 - xmol(2)
@@ -555,15 +512,15 @@ subroutine Translator_Richard_Switching(xx,grid,icri,ichange)
   call VecRestoreArrayF90(xx, xx_p, ierr); CHKERRQ(ierr)
   call VecRestoreArrayF90(grid%yy, yy_p, ierr); CHKERRQ(ierr)
 
-end subroutine Translator_Richard_Switching
+end subroutine Translator_Richards_Switching
   
-! **richard phase condition**************************************************
+! **richards phase condition**************************************************
 ! phase                             Primary Variables      index
 !   e                p, T, X(e,c)                  1
 !   g                p, T, X(g,a)                  2 
 !   eg                              p, T, S(g)                    3
 !**********************************************************************
-subroutine pri_var_trans_Richard_ninc_2_2(x,iphase,energyscale,num_phase,num_spec,&
+subroutine pri_var_trans_Richards_ninc_2_2(x,iphase,energyscale,num_phase,num_spec,&
                                       ipckrtype,pckr_sir,pckr_lambda, &
                                       pckr_alpha,pckr_m,pckr_pcmax,pckr_betac, &
                                       pckr_pwr,dif,var_node,itable,ierr, pref)
@@ -631,7 +588,8 @@ subroutine pri_var_trans_Richard_ninc_2_2(x,iphase,energyscale,num_phase,num_spe
  
  p=x(1)  
  t=x(2)
- pc(1) = pref - x(1)
+ 
+ pc(1) = pref - p
  xmol(1)=1.D0
  if(num_spec>1) xmol(2:num_spec)=x(3: num_spec +1)   
 
@@ -640,7 +598,7 @@ subroutine pri_var_trans_Richard_ninc_2_2(x,iphase,energyscale,num_phase,num_spe
 
  ! no more calculation on gas phase
 !  avgmw(2)= xmol(3)* fmwh2o + xmol(4) * fmwa 
-     
+  pw=pref   
   call wateos_noderiv(t,pw,dw_kg,dw_mol,hw,energyscale,ierr)
    !    call VISW(t,pw,sat_pressure,visl,tmp,tmp2,ierr)
    ! call VISW_FLO(t,dw_mol,visl)
@@ -649,9 +607,9 @@ subroutine pri_var_trans_Richard_ninc_2_2(x,iphase,energyscale,num_phase,num_spe
   !  print *,'visw  ',visl,tmp
   ! dif= 1.D-7 !effective diffusion coeff in liquid phase: check pcl
   
-   if(pc(1)>0)then
+   if(pc(1)>0.D0)then
     iphase = 3
-    call pflow_pckr_richard(ipckrtype,pckr_sir(1),pckr_lambda,pckr_alpha, &
+    call pflow_pckr_richards(ipckrtype,pckr_sir(1),pckr_lambda,pckr_alpha, &
                             pckr_m,pckr_pcmax,satu(1),pc,kr,pckr_betac, &
                             pckr_pwr)
   else
@@ -680,16 +638,16 @@ subroutine pri_var_trans_Richard_ninc_2_2(x,iphase,energyscale,num_phase,num_spe
     !xlw = 1.D0
     !avgmw(1) = xlw*fmwh2o+(1.d0-xlw)*fmwco2
  ! no more gas phase
- 
+ !print *,'Trans-richards', x, t,p, satu
  ! note nphase=1, nspec = 1 + num_tracer, ndof = nspec +1  
  ! if assign nphase=2, it will still run, but gas phase properties will be  
  ! meaningless, wasting memory.
  
   nullify(t, p, satu, den, avgmw, h,u, pc,kvr,xmol,diff)
-end subroutine pri_var_trans_Richard_ninc_2_2
+end subroutine pri_var_trans_Richards_ninc_2_2
 
  
-subroutine pri_var_trans_Richard_ninc(x,iphase,energyscale,num_phase,num_spec, &
+subroutine pri_var_trans_Richards_ninc(x,iphase,energyscale,num_phase,num_spec, &
                                   ipckrtype,pckr_sir,pckr_lambda,pckr_alpha, &
                                   pckr_m,pckr_pcmax,pckr_betac,pckr_pwr,dif, &
                                   var_node,itable,ierr,pref)
@@ -713,20 +671,20 @@ subroutine pri_var_trans_Richard_ninc(x,iphase,energyscale,num_phase,num_spec, &
  
 
   size_var_use = 2 + 7*num_phase + 2* num_phase*num_spec
-  if ((num_phase == 2).and.( num_spec == 2)) then
-    call pri_var_trans_Richard_ninc_2_2(x,iphase,energyscale,num_phase,num_spec, &
+!  if ((num_phase == 1).and.( num_spec == 2)) then
+    call pri_var_trans_Richards_ninc_2_2(x,iphase,energyscale,num_phase,num_spec, &
                                     ipckrtype,pckr_sir,pckr_lambda,pckr_alpha, &
                                     pckr_m,pckr_pcmax,pckr_betac,pckr_pwr,dif, &
                                     var_node,itable,ierr, pref)
-   else 
-    print *, 'Wrong phase-specise combination. Stop.'
-    stop
-  endif
+ !  else 
+ !   print *, 'Wrong phase-specise combination. Stop.'
+ !   stop
+!  endif
 
-end subroutine pri_var_trans_Richard_ninc   
+end subroutine pri_var_trans_Richards_ninc   
   
   
-subroutine pri_var_trans_Richard_winc(x,delx,iphase,energyscale,num_phase,num_spec,&
+subroutine pri_var_trans_Richards_winc(x,delx,iphase,energyscale,num_phase,num_spec,&
                                   ipckrtype,pckr_sir,pckr_lambda,pckr_alpha,&
                                   pckr_m,pckr_pcmax,pckr_betac,pckr_pwr,dif,&
                                  var_node,itable,ierr, pref)
@@ -753,13 +711,13 @@ subroutine pri_var_trans_Richard_winc(x,delx,iphase,energyscale,num_phase,num_sp
     xx = x
     xx(n) = x(n)+ delx(n)
   ! note: var_node here starts from 1 to grid%ndof*size_var_use
-    call pri_var_trans_Richard_ninc(xx,iphase,energyscale,num_phase,num_spec,&
+    call pri_var_trans_Richards_ninc(xx,iphase,energyscale,num_phase,num_spec,&
                                 ipckrtype,pckr_sir,pckr_lambda,pckr_alpha,&
                                 pckr_m,pckr_pcmax,pckr_betac,pckr_pwr,dif,&
                                 var_node((n-1)*size_var_use+1:n*size_var_use), &
                                 itable,ierr,pref)
   enddo
 
-end subroutine pri_var_trans_Richard_winc
+end subroutine pri_var_trans_Richards_winc
   
-end module translator_Richard_module
+end module translator_Richards_module

@@ -485,7 +485,7 @@ subroutine Translator_vadose_Switching(xx,grid,icri,ichange)
        ! gas ->  2ph 
 
     !if (xx_p(n0+3) > 1.025D0  .and. iipha==1) then
-        if ((xmol(4)+ xmol(3)) > 1.025D0  .and. iipha==1) then
+        if ((xmol(4)+ xmol(3)) > 1.05D0  .and. iipha==1) then
           write(*,'('' Liq -> 2ph '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3), &
                                                      xmol(3)+xmol(4),xmol(3), &
                                                      xmol(4)

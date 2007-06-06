@@ -48,7 +48,7 @@ private
       ! If true, print the value of h at the end of each SNES iteration.
     PetscTruth :: use_liquid, use_cond, use_th, use_thc, use_2ph, &
     use_mph, use_ksp, use_owg, use_vadose, use_flash
-    PetscTruth :: use_isoth, use_debug, use_richard  
+    PetscTruth :: use_isoth, use_debug, use_richards  
     ! If using_pflowGrid == PETSC_TRUE, then some parts of ptran_init 
     ! will not be executed, since they are made redundant by 
     ! pflowGrid_new() and pflowGrid_setup().
@@ -331,6 +331,7 @@ private
 
 
     real*8 :: atol, rtol, stol, dtol
+    real*8, pointer :: steady_eps(:)
       ! Absolute, relative, and "change in norm of solution" tolerances.
     integer :: maxit, maxf
       ! The maximum number of iterations and function evaluations, respectively

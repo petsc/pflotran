@@ -40,10 +40,12 @@ module Vadose_module
   real*8, parameter :: floweps   = 1.D-24
   real*8, parameter :: satcuteps = 1.D-5
   real*8, parameter :: dfac = 1.D-8
+  
 
   integer,save :: size_var_use 
   integer,save :: size_var_node
   real*8, allocatable,save :: Resold_AR(:,:), Resold_FL(:,:)
+  real*8, pointer, save :: yybc(:,:), vel_bc(:,:)
 ! Contributions to residual from accumlation/source/Reaction, flux(include diffusion)
   
   
@@ -414,7 +416,7 @@ subroutine VadoseRes_FLCont(nconn_no,area,var_node1,por1,tor1,sir1,dd1,perm1, &
 ! Flow term
     if ((sat1(np) > sir1(np)) .or. (sat2(np) > sir2(np))) then
     
-      upweight=.5D0
+      upweight=dd1/(dd1+dd2)
       if (sat1(np) <eps) then 
         upweight=0.d0
       else if (sat2(np) <eps) then 
@@ -614,9 +616,32 @@ subroutine VadoseRes_FLBCCont(nbc_no,area,var_node1,var_node2,por2,tor2,sir2, &
          dabs(grid%velocitybc(2,nbc_no)))>floweps) then
 !geh      print *, 'FlowBC :', nbc_no,grid%velocitybc(1,nbc_no), &
 !geh               grid%velocitybc(2,nbc_no)
+
+           ! select case(grid%iphasebc(nbc_no))
+           ! case(1)
+           np = 2
+           upweight=.5
+            gravity = (upweight*density1(np)*amw1(np) + &
+                  (1.D0-upweight)*density2(np)*amw2(np)) &
+                  * grid%gravity * grid%delzbc(nbc_no)
+       
+            dphi = pre_ref1 -  pre_ref2  + gravity  
+            Dq = perm2 / dd1
+             grid%velocitybc(1,nbc_no) = vel_bc(1,nbc_no)
+             grid%velocitybc(2,nbc_no) = Dq * kvr2(2) * dphi
+          !print *,'FLBC:: ',grid%velocitybc(:,nbc_no), pre_ref1, pre_ref2, temp1, temp2,h1,h2 
+           ! case(2)
+           !  grid%velocitybc(2,nbc_no) = vel_bc(2,nbc_no)
+           !  grid%velocitybc(1,nbc_no) =0.D0
+  
+           ! case(3)
+           !    grid%velocitybc(1,nbc_no) = vel_bc(1,nbc_no)
+               !grid%velocitybc(2,nbc_no) = grid%velocitybc(1,nbc_no) *kvr1(2)/kvr1(1) 
+            !  grid%velocitybc(2,nbc_no) = grid%velocitybc(1,nbc_no) *kvr1(2)/kvr1(1)
+            !  print *, grid%velocitybc(:,nbc_no)!, kvr2(:)
+           ! end select     
+
       do j=1,grid%nphase
-        fluxm = 0.D0
-        fluxe = 0.D0
         v_darcy = grid%velocitybc(j,nbc_no)
         vv_darcy(j) = grid%velocitybc(j,nbc_no)
 !      grid%vvbc(j+(nc-2)*grid%nphase)= grid%velocitybc(j,nc)
@@ -624,15 +649,16 @@ subroutine VadoseRes_FLBCCont(nbc_no,area,var_node1,var_node2,por2,tor2,sir2, &
 
         if (v_darcy >0.d0) then 
           q = v_darcy * density1(j) * area
+       !   print *, density1(j), v_darcy
              !q = 0.d0
              !flux = flux - q
-          fluxe = fluxe - q  * h1(j) 
+          fluxe = fluxe + q  * h1(j) 
           do m=1, grid%nspec
             fluxm(m) = fluxm(m) + q * xmol1(m + (j-1)*grid%nspec)
           enddo 
         else 
           q = v_darcy * density2(j) * area   
-          fluxe = fluxe - q  * h2(j) 
+          fluxe = fluxe + q  * h2(j) 
           do m=1, grid%nspec
             fluxm(m) = fluxm(m) + q * xmol2(m + (j-1)*grid%nspec)
           enddo 
@@ -640,41 +666,62 @@ subroutine VadoseRes_FLBCCont(nbc_no,area,var_node1,var_node2,por2,tor2,sir2, &
    
       enddo
     endif
+    
+    Dk =  Dk2 / dd1
+    cond = Dk*area*(temp1-temp2) 
+    fluxe=fluxe + cond
+
     Res_FL(1:grid%nspec) = fluxm(:)*grid%dt
     Res_FL(grid%ndof) = fluxe * grid%dt
 
   case(3)
-    Dq = perm2/dd1 
-
+     Dq= perm2 / dd1
+        diffdp = por2*tor2/dd1*area
+        ! Flow term
     do np =1,grid%nphase
-      if ((sat2(np) > sir2(np))) then
+         if ((sat1(np) > sir2(np)) .or. (sat2(np) > sir2(np)))then
     
-        density_ave = density2(np)  
+         upweight=.5D0
+       if(sat1(np) <eps) then 
+             upweight=0.d0
+          else if(sat2(np) <eps) then 
+             upweight=1.d0
+         endif
+    density_ave = upweight*density1(np)+(1.D0-upweight)*density2(np)  
     
-        gravity = density2(np)*amw2(np)* grid%gravity * grid%delzbc(nbc_no)
+    gravity = (upweight*density1(np)*amw1(np) + (1.D0-upweight)*density2(np)*amw2(np)) &
+              * grid%gravity * grid%delzbc(nbc_no)
         
-        dphi = pre_ref1-pc1(np) - pre_ref2 + pc2(np) + gravity
+    dphi = pre_ref1-pc1(np) - pre_ref2 + pc2(np) + gravity
     
-        ukvr = kvr2(np)
-        uh = h2(np)
-        uxmol(:) = xmol2((np-1)*grid%nspec+1 : np*grid%nspec)
-         
-        if (ukvr*Dq>floweps) then
-          v_darcy = Dq * ukvr * dphi
-    !     grid%vvbc(,nbc_no) = v_darcy
-          vv_darcy(np) = v_darcy
+   
+    if(dphi>=0.D0)then
+       ukvr=kvr1(np)
+    !density_ave =  density1(np)
+    uh=h1(np)
+     uxmol(:)=xmol1((np-1)*grid%nspec+1 : np*grid%nspec)
+    else
+      ukvr=kvr2(np)
+     ! density_ave =  density2(np)
+     uh=h2(np)
+     uxmol(:)=xmol2((np-1)*grid%nspec+1 : np*grid%nspec)
+     endif      
      
-          q = v_darcy * area
+    if(ukvr*Dq>floweps)then
+         v_darcy= Dq * ukvr * dphi
+         !grid%vvl_loc(nbc_no) = v_darcy
+     vv_darcy(np)=v_darcy
+     
+       q=v_darcy * area
           
-          do m=1, grid%nspec 
-            fluxm(m) = fluxm(m) + q*density_ave*uxmol(m)                                                            
-          enddo                                                                                                                                                                                         
-          fluxe = fluxe + q*density_ave*uh 
-        endif
-      endif 
- 
+     do m=1, grid%nspec 
+       fluxm(m)=fluxm(m) + q*density_ave*uxmol(m)
+       enddo
+           fluxe = fluxe + q*density_ave*uh 
+       endif
+       endif 
     enddo
-
+   
     Res_FL(1:grid%nspec)=fluxm(:)* grid%dt
     Res_FL(grid%ndof)=fluxe * grid%dt
 
@@ -1262,9 +1309,20 @@ subroutine VadoseResidual(snes,xx,r,grid,ierr)
     select case(grid%ibndtyp(ibc))
           
       case(2)
-      ! solve for pb from Darcy's law given qb /= 0
-        grid%xxbc(:,nc) = xx_loc_p((ng-1)*grid%ndof+1: ng*grid%ndof)
-        grid%iphasebc(nc) = int(iphase_loc_p(ng))
+     ! solve for pb from Darcy's law given qb /= 0
+         grid%xxbc(:,nc)=xx_loc_p((ng-1)*grid%ndof+1:ng*grid%ndof)
+         grid%iphasebc(nc) = int(iphase_loc_p(ng))
+        if(dabs(grid%velocitybc(1,nc))>1D-20)then
+         
+            
+          if( grid%velocitybc(1,nc)>0) then
+             grid%xxbc(1:2,nc)= yybc(1:2,nc)
+          endif     
+        endif    
+            
+            
+         
+         
       case(3) 
      !  grid%xxbc((nc-1)*grid%ndof+1)=grid%pressurebc(2,ibc)
         grid%xxbc(2:grid%ndof,nc) = xx_loc_p((ng-1)*grid%ndof+2: ng*grid%ndof)
@@ -1320,7 +1378,7 @@ subroutine VadoseResidual(snes,xx,r,grid,ierr)
                                 grid%varbc(1:size_var_use),grid%itable,ierr, &
                                 grid%xxphi_co2_bc(nc),cw)
    
-     
+     !print *,"bc: ", nc, grid%xxbc(:,nc), grid%varbc(1:size_var_use)
     call VadoseRes_FLBCCont(nc,grid%areabc(nc),grid%varbc(1:size_var_use), &
                             var_loc_p((ng-1)*size_var_node+1:(ng-1)* &
                             size_var_node+size_var_use),porosity_loc_p(ng), &
@@ -1679,7 +1737,7 @@ subroutine VadoseJacobian(snes,xx,A,B,flag,grid,ierr)
      
     i2 = ithrm_loc_p(ng)
     D2 = grid%ckwet(i2)
-
+  
 
     select case(ip1)
       case(1)
@@ -1699,6 +1757,17 @@ subroutine VadoseJacobian(snes,xx,A,B,flag,grid,ierr)
         grid%xxbc(:,nc) = xx_loc_p((ng-1)*grid%ndof+1: ng*grid%ndof)
         grid%iphasebc(nc) = int(iphase_loc_p(ng))
         delxbc = grid%delx(1:grid%ndof,ng)
+        
+  
+       if(dabs(grid%velocitybc(1,nc))>1D-20)then
+         if( grid%velocitybc(1,nc)>0) then
+             grid%xxbc(1:2,nc)= yybc(1:2,nc)
+             delxbc(1:2)=0.D0
+          endif     
+        endif    
+            
+
+         
       case(3) 
         !    grid%xxbc(1,nc)=grid%pressurebc(2,ibc)
         grid%xxbc(2:grid%ndof,nc) = xx_loc_p((ng-1)*grid%ndof+2:ng*grid%ndof)
@@ -2299,6 +2368,12 @@ subroutine pflow_Vadose_initadj(grid)
     endif 
   enddo
 
+
+  allocate(yybc(grid%ndof,grid%nconnbc))
+  allocate(vel_bc(grid%nphase, grid%nconnbc))
+  yybc =grid%xxbc
+  vel_bc = grid%velocitybc
+  
   do nc = 1, grid%nconnbc
 
     m = grid%mblkbc(nc)  ! Note that here, m is NOT ghosted.
@@ -2327,7 +2402,7 @@ subroutine pflow_Vadose_initadj(grid)
                                   grid%pcbetac(iicap),grid%pwrprm(iicap),dif, &
                                   grid%varbc(1:size_var_use),grid%itable,ierr, &
                                   dum1, dum2)
-      
+     ! print *, 'yybc', grid%varbc(1:size_var_use)
       if (translator_check_phase_cond_vad(grid%iphasebc(nc), &
                                           grid%varbc(1:size_var_use), &
                                           grid%nphase,grid%nspec) /=1) then
@@ -2336,8 +2411,18 @@ subroutine pflow_Vadose_initadj(grid)
         print *,grid%varbc
         stop    
       endif 
+    
+               
+              
     endif
 
+    if (grid%ibndtyp(ibc)==2) then
+  
+       yybc(1,nc)= grid%velocitybc(2,nc)
+       grid%velocitybc(2,nc) =0.D0
+       vel_bc(1,nc) = grid%velocitybc(1,nc)
+
+    endif 
 
   enddo
 
@@ -2348,6 +2433,8 @@ subroutine pflow_Vadose_initadj(grid)
   call VecRestoreArrayF90(grid%var, var_p, ierr)
   !print *,kgjkdf
   
+  !need to record initial BC input
+  !print *, 'yybc',yybc,grid%varbc
   !call VecCopy(grid%iphas,grid%iphas_old,ierr)
    
 end subroutine pflow_Vadose_initadj

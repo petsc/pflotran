@@ -87,7 +87,7 @@ SAMRAIDriver: SAMRAIDriver.o $(CXXOBJS) ${F90OBJS}
 	$(CXX) -g $(CXXOBJS) ${F90OBJS} ${FOBJS} ${MYFLAGS} ${PETSC_FORTRAN_LIB} $(LDFLAGS) $(LIBSAMRAI3D) $(LIBSAMRAI)  $(LDLIBS) -o $@
 
 clean:
-	$(RM) SAMRAIDriver *.f core *~
+	$(RM) SAMRAIDriver *.f core *~ *.mod
 	$(RM) *.o *.ii *.int.c
 	$(RM) -r ti_files ii_files
 
