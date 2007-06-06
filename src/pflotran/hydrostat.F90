@@ -585,7 +585,7 @@ subroutine mhydrostatic(grid)
       betap = rho * grid%gravity * grid%beta
       pres = rho * grid%gravity * depth + grid%pref - betap * horiz
 
-      call wateos(tmp, 2D7, rho, dw_mol, dwp, &
+      call wateos(tmp, pres, rho, dw_mol, dwp, &
                   dum, dum, dum, dum, grid%scale, ierr)
 
       itrho= 0
@@ -927,6 +927,8 @@ subroutine mhydrostatic(grid)
   endif
 
 end subroutine mhydrostatic
+
+
 
  ! the coordinate in provided by pflow_compute_xyz, make sure this subroutine is called after that 
 subroutine owghydrostatic(grid)

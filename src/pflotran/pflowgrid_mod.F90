@@ -108,8 +108,8 @@ type(pflowGrid) function pflowGrid_new(igeom, nx, ny, nz, npx, npy, npz, &
                            grid%use_owg, ierr)
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_vadose", &
                            grid%use_vadose, ierr)
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_richard", &
-                           grid%use_richard, ierr)
+  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_richards", &
+                           grid%use_richards, ierr)
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_debug", &
                            grid%use_debug, ierr)
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_ksp", &
@@ -268,7 +268,7 @@ type(pflowGrid) function pflowGrid_new(igeom, nx, ny, nz, npx, npy, npz, &
 
   endif
   
- if (grid%use_richard == PETSC_TRUE) then
+ if (grid%use_richards == PETSC_TRUE) then
     call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &
                     nx,ny,nz,npx,npy,npz,(grid%ndof+1)*(2+7*grid%nphase + 2* &
                     grid%nspec*grid%nphase),1, &
@@ -478,7 +478,7 @@ type(pflowGrid) function pflowGrid_new(igeom, nx, ny, nz, npx, npy, npz, &
     call DACreateLocalVector(grid%da_var_dof, grid%var_loc, ierr)
   endif
 
-  if (grid%use_richard == PETSC_TRUE) then
+  if (grid%use_richards == PETSC_TRUE) then
     call DACreateGlobalVector(grid%da_var_dof, grid%var, ierr)
     call DACreateLocalVector(grid%da_var_dof, grid%var_loc, ierr)
   endif
@@ -652,7 +652,7 @@ type(pflowGrid) function pflowGrid_new(igeom, nx, ny, nz, npx, npy, npz, &
 
   if (grid%use_mph == PETSC_TRUE .or. grid%use_owg == PETSC_TRUE &
       .or. grid%use_vadose == PETSC_TRUE .or. grid%use_flash == PETSC_TRUE &
-      .or. grid%use_richard == PETSC_TRUE) then
+      .or. grid%use_richards == PETSC_TRUE) then
     allocate(grid%xx_ini(grid%ndof,MAXINITREGIONS))
     allocate(grid%iphas_ini(MAXINITREGIONS))
   else
@@ -695,7 +695,7 @@ type(pflowGrid) function pflowGrid_new(igeom, nx, ny, nz, npx, npy, npz, &
   allocate(grid%icaptype(MAXPERMREGIONS))
   if (grid%use_mph == PETSC_TRUE .or. grid%use_owg == PETSC_TRUE &
       .or. grid%use_vadose == PETSC_TRUE .or. grid%use_flash == PETSC_TRUE &
-      .or. grid%use_richard == PETSC_TRUE) then
+      .or. grid%use_richards == PETSC_TRUE) then
     allocate(grid%sir(1:grid%nphase,MAXPERMREGIONS))
   else
     allocate(grid%swir(MAXPERMREGIONS))
@@ -713,7 +713,7 @@ type(pflowGrid) function pflowGrid_new(igeom, nx, ny, nz, npx, npy, npz, &
   allocate(grid%velocitybc0(grid%nphase, MAXBCREGIONS))
   if (grid%use_mph==PETSC_TRUE .or. grid%use_owg == PETSC_TRUE &
       .or. grid%use_vadose == PETSC_TRUE .or. grid%use_flash == PETSC_TRUE &
-      .or. grid%use_richard == PETSC_TRUE) then
+      .or. grid%use_richards == PETSC_TRUE) then
     allocate(grid%xxbc0(grid%ndof,MAXBCREGIONS))
     allocate(grid%iphasebc0(MAXBCREGIONS))
 !    allocate(grid%dmax(0:grid%ndof-1))
@@ -932,7 +932,7 @@ subroutine pflowGrid_setup(grid, inputfile)
   use MPHASE_module
   use OWG_module
   use Vadose_module
-  use Richard_module
+  use Richards_module
   
   use utilities_module
   use readfield
@@ -1027,9 +1027,9 @@ subroutine pflowGrid_setup(grid, inputfile)
         'ndof= ',grid%ndof,' nph= ',grid%nphase
       stop
     endif
-  else if (grid%use_richard == PETSC_TRUE) then
+  else if (grid%use_richards == PETSC_TRUE) then
     if (grid%ndof .ne. (grid%nspec+1)) then
-      write(*,*) 'Specified number of dofs or phases not correct-stop: Richard ', &
+      write(*,*) 'Specified number of dofs or phases not correct-stop: Richards ', &
         'ndof= ',grid%ndof,' nph= ',grid%nphase
       stop
     endif
@@ -1096,8 +1096,8 @@ subroutine pflowGrid_setup(grid, inputfile)
       write(*,'(" mode = flash: p, T, z")')
     else if (grid%use_vadose == PETSC_TRUE) then
       write(*,'(" mode = VAD: p, T, s/C")')
-    else if (grid%use_richard == PETSC_TRUE) then
-      write(*,'(" mode = Richard: p, T, s/C")')
+    else if (grid%use_richards == PETSC_TRUE) then
+      write(*,'(" mode = Richards: p, T, s/C")')
     else if (grid%use_owg == PETSC_TRUE) then
       write(*,'(" mode = O+W+G: p, T, s/C")')
     else
@@ -1152,8 +1152,8 @@ subroutine pflowGrid_setup(grid, inputfile)
       call SNESSetJacobian(grid%snes, grid%J, grid%J, VADOSEJacobian, &
                          grid, ierr); CHKERRQ(ierr)
       if (grid%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(grid)
-    else if (grid%use_richard == PETSC_TRUE) then
-      call SNESSetJacobian(grid%snes, grid%J, grid%J, RichardJacobian, &
+    else if (grid%use_richards == PETSC_TRUE) then
+      call SNESSetJacobian(grid%snes, grid%J, grid%J, RichardsJacobian, &
                          grid, ierr); CHKERRQ(ierr)
       if (grid%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(grid)
     else if (grid%use_owg == PETSC_TRUE) then
@@ -1183,7 +1183,7 @@ subroutine pflowGrid_setup(grid, inputfile)
       call MatCreateMFFD(grid%snes, grid%xx, grid%J, ierr)
     else if (grid%use_flash == PETSC_TRUE) then
       call MatCreateMFFD(grid%snes, grid%xx, grid%J, ierr)
-    else if (grid%use_richard == PETSC_TRUE) then
+    else if (grid%use_richards == PETSC_TRUE) then
       call MatCreateMFFD(grid%snes, grid%xx, grid%J, ierr)
     else if (grid%use_vadose == PETSC_TRUE) then
       call MatCreateMFFD(grid%snes, grid%xx, grid%J, ierr)
@@ -1262,8 +1262,8 @@ subroutine pflowGrid_setup(grid, inputfile)
     else if (grid%use_vadose == PETSC_TRUE) then
       call MatFDColoringSetFunctionSNES(grid%matfdcoloring, VADOSEResidual, &
                                       grid, ierr)
-    else if (grid%use_richard == PETSC_TRUE) then
-      call MatFDColoringSetFunctionSNES(grid%matfdcoloring, RichardResidual, &
+    else if (grid%use_richards == PETSC_TRUE) then
+      call MatFDColoringSetFunctionSNES(grid%matfdcoloring, RichardsResidual, &
                                       grid, ierr)
     else if (grid%use_owg == PETSC_TRUE) then
       call MatFDColoringSetFunctionSNES(grid%matfdcoloring, OWGResidual, &
@@ -1297,8 +1297,8 @@ subroutine pflowGrid_setup(grid, inputfile)
     call SNESSetFunction(grid%snes, grid%r, FlashResidual, grid, ierr)
   else if (grid%use_vadose == PETSC_TRUE) then
     call SNESSetFunction(grid%snes, grid%r, VADOSEResidual, grid, ierr)
-  else if (grid%use_Richard == PETSC_TRUE) then
-    call SNESSetFunction(grid%snes, grid%r, RichardResidual, grid, ierr)
+  else if (grid%use_Richards == PETSC_TRUE) then
+    call SNESSetFunction(grid%snes, grid%r, RichardsResidual, grid, ierr)
   else if (grid%use_owg == PETSC_TRUE) then
     call SNESSetFunction(grid%snes, grid%r, OWGResidual, grid, ierr)
   else
@@ -1556,8 +1556,8 @@ subroutine pflowGrid_setup(grid, inputfile)
     call pflow_mphase_setupini(grid)
    else if (grid%use_flash == PETSC_TRUE) then
     call pflow_flash_setupini(grid)
-   else if (grid%use_richard == PETSC_TRUE) then
-    call pflow_richard_setupini(grid)
+   else if (grid%use_richards == PETSC_TRUE) then
+    call pflow_richards_setupini(grid)
    else if (grid%use_owg == PETSC_TRUE) then
     call pflow_owg_setupini(grid)
    else if (grid%use_vadose == PETSC_TRUE) then
@@ -1587,7 +1587,7 @@ subroutine pflowGrid_setup(grid, inputfile)
               call VecSetValue(temp2_nat_vec,n,val,INSERT_VALUES,ierr)
              
               val = grid%sat_ini(ir)
-              if (grid%nphase == 1) then
+              if (grid%nphase == 1 ) then
                 call VecSetValue(temp4_nat_vec,jn1,val,INSERT_VALUES,ierr)
               else
                 ! need to decide if sg or sl is to be read in-use sl for now!
@@ -1673,7 +1673,7 @@ subroutine pflowGrid_setup(grid, inputfile)
   ! set hydrostatic properties for initial and boundary conditions with depth
   if (grid%ihydrostatic == 1) then
     if (grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE &
-     .or. grid%use_flash == PETSC_TRUE .or. grid%use_richard == PETSC_TRUE) then
+     .or. grid%use_flash == PETSC_TRUE .or. grid%use_richards == PETSC_TRUE) then
       print *,'in hydro'
       call mhydrostatic(grid)
     elseif (grid%use_owg == PETSC_TRUE) then
@@ -1689,9 +1689,9 @@ subroutine pflowGrid_setup(grid, inputfile)
   print *,'Finished Hydro'
   if (grid%use_mph == PETSC_TRUE .or. grid%use_owg == PETSC_TRUE &
       .or. grid%use_vadose == PETSC_TRUE .or. grid%use_flash == PETSC_TRUE&
-       .or. grid%use_richard == PETSC_TRUE ) then
+       .or. grid%use_richards == PETSC_TRUE ) then
   !  grid%pressurebc0(2,:) = grid%pressurebc0(1,:)
-    grid%velocitybc0(2,:) = grid%velocitybc0(1,:)
+  !  grid%velocitybc0(2,:) = grid%velocitybc0(1,:)
   endif
  
   if (grid%use_2ph == PETSC_TRUE) then
@@ -1715,7 +1715,7 @@ subroutine pflowGrid_setup(grid, inputfile)
   
   if (grid%use_mph == PETSC_TRUE .or. grid%use_owg==PETSC_TRUE &
       .or. grid%use_vadose == PETSC_TRUE .or. grid%use_flash == PETSC_TRUE&
-      .or. grid%use_richard == PETSC_TRUE) then
+      .or. grid%use_richards == PETSC_TRUE) then
     deallocate(grid%xx_ini)
     deallocate(grid%iphas_ini)
   else 
@@ -1756,7 +1756,7 @@ subroutine pflowGrid_setup(grid, inputfile)
 
   if (grid%use_mph == PETSC_TRUE .or. grid%use_owg == PETSC_TRUE &
       .or. grid%use_vadose == PETSC_TRUE .or. grid%use_flash == PETSC_TRUE&
-      .or. grid%use_richard == PETSC_TRUE) then
+      .or. grid%use_richards == PETSC_TRUE) then
     allocate(grid%varbc(1:(grid%ndof+1)*(2+7*grid%nphase + 2 *  &
                                        grid%nphase*grid%nspec)))
   else  
@@ -1914,6 +1914,8 @@ subroutine pflowGrid_setup(grid, inputfile)
         enddo ! ir
       enddo ! ibc
     endif
+ 
+  endif  
     call VecRestoreArrayF90(grid%dx_loc, dx_loc_p, ierr)
     call VecRestoreArrayF90(grid%dy_loc, dy_loc_p, ierr)
     call VecRestoreArrayF90(grid%dz_loc, dz_loc_p, ierr)
@@ -1934,7 +1936,7 @@ subroutine pflowGrid_setup(grid, inputfile)
     allocate(grid%velocitybc(grid%nphase, grid%nconnbc))
     if (grid%use_mph == PETSC_TRUE .or. grid%use_owg==PETSC_TRUE &
         .or. grid%use_vadose == PETSC_TRUE .or. grid%use_flash == PETSC_TRUE&
-        .or. grid%use_richard == PETSC_TRUE) then
+        .or. grid%use_richards == PETSC_TRUE) then
       allocate(grid%xxbc(grid%ndof,grid%nconnbc))
       allocate(grid%iphasebc(grid%nconnbc))
       allocate(grid%xphi_co2_bc(grid%nconnbc))
@@ -1989,10 +1991,17 @@ subroutine pflowGrid_setup(grid, inputfile)
     endif
     deallocate(grid%velocitybc0)
 
+ if (grid%ihydrostatic == 2) then
+    if (grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE &
+     .or. grid%use_flash == PETSC_TRUE .or. grid%use_richards == PETSC_TRUE) then
+      print *,'in hydro'
+    !  call mmhydrostatic(grid)
+    endif
+
     if (myrank == 0) write(*,'("  Finished setting up of Geometry ")')
 
 !geh
-  endif
+    endif
   
   !-----------------------------------------------------------------------
   ! Set up the transformation from physical coordinates
@@ -2266,26 +2275,28 @@ subroutine pflowGrid_setup(grid, inputfile)
 
   !-----------------------------------------------------------------------
   ! Initialize field variables
-  !-----------------------------------------------------------------------
-  select case(grid%ndof)
-    case(1)
-      call VecCopy(grid%pressure, grid%ppressure, ierr)
-      call VecCopy(grid%temp, grid%ttemp, ierr)
-    case(2) 
-      call pflow_pack_xx2(grid%yy, grid%pressure, grid%nphase, grid%temp, 1, &
-                          ierr)
-      call VecCopy(grid%yy, grid%xx, ierr)     
-    case(3)
-      if (grid%use_mph /= PETSC_TRUE .and. grid%use_owg /= PETSC_TRUE &
+  !-----------------------------------------------------------------------  
+  if (grid%use_mph /= PETSC_TRUE .and. grid%use_owg /= PETSC_TRUE &
           .and. grid%use_vadose /= PETSC_TRUE .and. grid%use_flash /= PETSC_TRUE&
-          .and. grid%use_richard /= PETSC_TRUE) then   
-        call pflow_pack_xx3(grid%yy, grid%pressure, grid%nphase, grid%temp, 1, &
-                            grid%conc, 1, ierr)
-     
-        call VecCopy(grid%yy, grid%xx, ierr)      
-      endif 
-  end select
-   
+          .and. grid%use_richards /= PETSC_TRUE) then   
+
+     select case(grid%ndof)
+       case(1)
+          call VecCopy(grid%pressure, grid%ppressure, ierr)
+          call VecCopy(grid%temp, grid%ttemp, ierr)
+        case(2)
+         call pflow_pack_xx2(grid%yy, grid%pressure, grid%nphase, grid%temp, 1, &
+                              ierr)
+          call VecCopy(grid%yy, grid%xx, ierr)     
+        case(3)
+              call pflow_pack_xx3(grid%yy, grid%pressure, grid%nphase, grid%temp, 1, &
+                                grid%conc, 1, ierr)
+            call VecCopy(grid%yy, grid%xx, ierr)      
+      end select
+    endif
+      
+         
+               
   if (grid%use_2ph == PETSC_TRUE) then 
     print *, "2 ph begin var arrange"
     call pflow_2phase_initadj(grid)
@@ -2307,12 +2318,13 @@ subroutine pflowGrid_setup(grid, inputfile)
     call pflow_update_mphase(grid)
   endif 
 
-  if (grid%use_richard == PETSC_TRUE) then 
-    call pflow_richard_initadj(grid)
+  if (grid%use_richards == PETSC_TRUE) then 
+    call pflow_richards_initadj(grid)
     call VecCopy(grid%iphas, grid%iphas_old,ierr)
     call VecCopy(grid%xx, grid%yy, ierr)
-    print *, "richard finish variable packing"
-    call pflow_update_richard(grid)
+    call VecView(grid%xx,PETSC_VIEWER_STDOUT_WORLD,ierr)
+    print *, "richards finish variable packing"
+    call pflow_update_richards(grid)
   endif 
 
   if (grid%use_flash == PETSC_TRUE) then 
@@ -2361,8 +2373,8 @@ subroutine pflowGrid_setup(grid, inputfile)
     call pflow_owg_initaccum(grid)
   else if (grid%use_mph == PETSC_TRUE) then
     call pflow_mphase_initaccum(grid)
-  else if (grid%use_richard == PETSC_TRUE) then
-    call pflow_richard_initaccum(grid)
+  else if (grid%use_richards == PETSC_TRUE) then
+    call pflow_richards_initaccum(grid)
   else if (grid%use_flash == PETSC_TRUE) then
     call pflow_flash_initaccum(grid)
   else if (grid%use_vadose == PETSC_TRUE) then
@@ -2800,7 +2812,7 @@ subroutine pflowgrid_update_dt(grid, its)
     endif
     dtt = fac * grid%dt * (1.d0 + ut)
     
-  else if (grid%use_richard == PETSC_TRUE) then
+  else if (grid%use_richards == PETSC_TRUE) then
   
     fac = 0.5d0
     if (its >= grid%iaccel) then
@@ -2908,14 +2920,14 @@ subroutine pflowGrid_step(grid,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
   use translator_owg_module, only : translator_owg_step_maxchange
   use translator_vad_module, only : translator_vad_step_maxchange
   use translator_flash_module, only : translator_flash_step_maxchange
-  use translator_Richard_module, only : translator_ric_step_maxchange
+  use translator_Richards_module, only : translator_ric_step_maxchange
   use pflow_output_module
   use TTPHASE_module
   use MPHASE_module
   use Flash_module
   use OWG_module
   use vadose_module
-  use Richard_module
+  use Richards_module
   use pflow_solv_module
   implicit none
 
@@ -3034,7 +3046,7 @@ subroutine pflowGrid_step(grid,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
       else 
         call SNESSolve(grid%snes, PETSC_NULL, grid%xx, ierr)
       endif
-    else if (grid%use_richard == PETSC_TRUE) then
+    else if (grid%use_richards == PETSC_TRUE) then
       if (grid%use_ksp == PETSC_TRUE) then
         call pflow_solve(grid,its,snes_reason,ierr)
       else 
@@ -3117,8 +3129,9 @@ subroutine pflowGrid_step(grid,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
       if (grid%myrank==0) print *,'update_reason: ',update_reason
     endif
 
-    if ((grid%use_richard == PETSC_TRUE).and.(snes_reason >= 0)) then
-      call Vadose_Update_Reason(update_reason, grid)
+    if ((grid%use_richards == PETSC_TRUE).and.(snes_reason >= 0)) then
+     update_reason=1
+     ! call Richards_Update_Reason(update_reason, grid)
       if (grid%myrank==0) print *,'update_reason: ',update_reason
     endif
 
@@ -3132,7 +3145,7 @@ subroutine pflowGrid_step(grid,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
 
 !******************************************************************
     
-    if (snes_reason < 0 .or. update_reason <= 0) then
+    if (snes_reason <= 0 .or. update_reason <= 0) then
       ! The Newton solver diverged, so try reducing the time step.
       icut = icut + 1
       iflgcut = 1
@@ -3187,8 +3200,8 @@ subroutine pflowGrid_step(grid,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
           call pflow_mphase_timecut(grid)
         elseif (grid%use_flash==PETSC_TRUE) then
           call pflow_flash_timecut(grid)
-        elseif (grid%use_richard==PETSC_TRUE) then
-          call pflow_richard_timecut(grid)
+        elseif (grid%use_richards==PETSC_TRUE) then
+          call pflow_richards_timecut(grid)
         elseif (grid%use_vadose==PETSC_TRUE) then
           call pflow_vadose_timecut(grid)
         else
@@ -3323,7 +3336,7 @@ subroutine pflowGrid_step(grid,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
     endif
 
 
-  else if (grid%use_richard == PETSC_TRUE) then
+  else if (grid%use_richards == PETSC_TRUE) then
      call translator_ric_step_maxchange(grid)
     ! note use mph will use variable switching, the x and s change is not meaningful 
     if (grid%myrank==0) then
@@ -3416,7 +3429,7 @@ subroutine pflowGrid_update (grid)
   use Flash_module
   use OWG_module
   use Vadose_module
-  use Richard_module
+  use Richards_module
 
   implicit none
 
@@ -3434,7 +3447,7 @@ subroutine pflowGrid_update (grid)
   else
     if (grid%ndof <= 3 .and. grid%use_mph/=PETSC_TRUE .and.  &
         grid%use_owg/=PETSC_TRUE .and. grid%use_vadose/=PETSC_TRUE &
-         .and. grid%use_flash/=PETSC_TRUE .and. grid%use_richard/=PETSC_TRUE) then
+         .and. grid%use_flash/=PETSC_TRUE .and. grid%use_richards/=PETSC_TRUE) then
       call VecCopy(grid%xx, grid%yy, ierr)
       call VecCopy(grid%hh, grid%h, ierr)
       call VecCopy(grid%ddensity, grid%density, ierr)
@@ -3447,8 +3460,8 @@ subroutine pflowGrid_update (grid)
     call pflow_update_owg(grid)
   elseif (grid%use_mph == PETSC_TRUE) then
     call pflow_update_mphase(grid)
-  elseif (grid%use_richard == PETSC_TRUE) then
-    call pflow_update_richard(grid)
+  elseif (grid%use_richards == PETSC_TRUE) then
+    call pflow_update_richards(grid)
   elseif (grid%use_flash == PETSC_TRUE) then
     call pflow_update_flash(grid)
   elseif (grid%use_vadose == PETSC_TRUE) then
@@ -3843,7 +3856,10 @@ subroutine pflowGrid_read_input(grid, inputfile)
       case ('HYDR')
 
         call fiReadStringErrorMsg('HYDR',ierr)
-
+  
+        call fiReadInt(string,grid%ihydrostatic,ierr)
+        call fiDefaultMsg('ihydrostatic',ierr)
+       
         call fiReadDouble(string,grid%dTdz,ierr)
         call fiDefaultMsg('dTdz',ierr)
 
@@ -3859,7 +3875,7 @@ subroutine pflowGrid_read_input(grid, inputfile)
         call fiReadDouble(string,grid%conc0,ierr)
         call fiDefaultMsg('conc0',ierr)
 
-        grid%ihydrostatic = 1
+        if(grid%ihydrostatic < 1) grid%ihydrostatic =1
       
         if (grid%myrank==0) write(IUNIT2,'(/," *HYDR ",/, &
           &"  ihydro      = ",i3,/, &
@@ -3992,7 +4008,7 @@ subroutine pflowGrid_read_input(grid, inputfile)
       
           if (grid%use_mph == PETSC_TRUE .or. grid%use_owg == PETSC_TRUE &
               .or. grid%use_vadose == PETSC_TRUE .or. grid%use_flash == PETSC_TRUE&
-              .or. grid%use_richard == PETSC_TRUE) then
+              .or. grid%use_richards == PETSC_TRUE) then
             do np=1, grid%nphase
               call fiReadDouble(string,grid%sir(np,idum),ierr)
               call fiDefaultMsg('sir',ierr)
@@ -4028,7 +4044,7 @@ subroutine pflowGrid_read_input(grid, inputfile)
             i=grid%icaptype(j)
             if (grid%use_mph==PETSC_TRUE .or. grid%use_owg==PETSC_TRUE &
                  .or. grid%use_vadose == PETSC_TRUE .or. grid%use_flash == PETSC_TRUE&
-                 .or. grid%use_richard == PETSC_TRUE) then
+                 .or. grid%use_richards == PETSC_TRUE) then
               write(IUNIT2,'(i4,1p8e12.4)') i,(grid%sir(np,i),np=1, &
                 grid%nphase),grid%lambda(i),grid%alpha(i),grid%pcwmax(i), &
                 grid%pcbetac(i),grid%pwrprm(i)
@@ -4152,7 +4168,7 @@ subroutine pflowGrid_read_input(grid, inputfile)
          
             if (grid%use_mph==PETSC_TRUE .or. grid%use_owg==PETSC_TRUE &
                  .or. grid%use_vadose == PETSC_TRUE .or. grid%use_flash == PETSC_TRUE&
-                 .or. grid%use_richard == PETSC_TRUE) then
+                 .or. grid%use_richards == PETSC_TRUE) then
               call fiReadInt(string,grid%iphas_ini(ireg),ierr)
               call fiDefaultMsg('iphase',ierr)
          
@@ -4185,7 +4201,7 @@ subroutine pflowGrid_read_input(grid, inputfile)
             do ireg = 1, grid%iregini
               if (grid%use_mph==PETSC_TRUE .or. grid%use_owg==PETSC_TRUE &
                   .or. grid%use_vadose == PETSC_TRUE .or. grid%use_flash == PETSC_TRUE&
-                  .or. grid%use_richard == PETSC_TRUE) then
+                  .or. grid%use_richards == PETSC_TRUE) then
                 write(IUNIT2,'(7i4,1p10e12.4)') &
                   grid%i1ini(ireg),grid%i2ini(ireg), &
                   grid%j1ini(ireg),grid%j2ini(ireg), &
@@ -4234,7 +4250,7 @@ subroutine pflowGrid_read_input(grid, inputfile)
   
               if (grid%use_mph==PETSC_TRUE .or. grid%use_owg==PETSC_TRUE &
                   .or. grid%use_vadose == PETSC_TRUE .or. grid%use_flash == PETSC_TRUE&
-                  .or. grid%use_richard == PETSC_TRUE) then
+                  .or. grid%use_richards == PETSC_TRUE) then
                 call fiReadInt(string,grid%iphas_ini(ireg),ierr)
                 call fiDefaultMsg('iphase_ini',ierr)
             
@@ -4447,7 +4463,7 @@ subroutine pflowGrid_read_input(grid, inputfile)
                   grid%use_owg /= PETSC_TRUE .and. &
                   grid%use_vadose /= PETSC_TRUE .and. &
                   grid%use_flash /= PETSC_TRUE .and. &
-                  grid%use_richard /= PETSC_TRUE) then  
+                  grid%use_richards /= PETSC_TRUE) then  
                 j=1
                 if (grid%nphase>1) j=2
                 if (grid%ibndtyp(ibc) == 1) then 
@@ -4519,7 +4535,7 @@ subroutine pflowGrid_read_input(grid, inputfile)
             do ireg = grid%iregbc1(ibc), grid%iregbc2(ibc)
               if (grid%use_mph== PETSC_TRUE .or. grid%use_owg== PETSC_TRUE &
                   .or. grid%use_vadose == PETSC_TRUE .or. grid%use_flash == PETSC_TRUE&
-                  .or. grid%use_richard == PETSC_TRUE) then
+                  .or. grid%use_richards == PETSC_TRUE) then
                 if (grid%ibndtyp(ibc) == 1 .or. grid%ibndtyp(ibc) == 3) then
                   write(IUNIT2,'(7i4,1p10e12.4)') &
                     grid%i1bc(ireg),grid%i2bc(ireg), &
@@ -4803,8 +4819,8 @@ subroutine pflowGrid_parse_cmdline(grid)
     grid%use_2ph, ierr)
    call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_mph", &
     grid%use_mph, ierr)
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_richard", &
-    grid%use_richard, ierr)
+  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_richards", &
+    grid%use_richards, ierr)
    call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_flash", &
     grid%use_flash, ierr)
 

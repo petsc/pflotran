@@ -149,7 +149,7 @@ subroutine pflowGridCheckpoint(grid, ntstep, kplt, iplot, iflgcut, ihalcnt, &
   ! that holds variables derived from the primary ones via the translator.
   if(grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE .or. &
      grid%use_flash == PETSC_TRUE .or. grid%use_2ph == PETSC_TRUE &
-      .or. grid%use_richard == PETSC_TRUE ) then
+      .or. grid%use_richards == PETSC_TRUE ) then
     call VecView(grid%iphas, viewer, ierr)
     call VecView(grid%var, viewer, ierr)
   endif  
@@ -238,7 +238,7 @@ subroutine pflowGridRestart(grid, fname, ntstep, kplt, iplot, iflgcut, &
   
   if(grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE .or. &
      grid%use_flash == PETSC_TRUE .or. grid%use_2ph == PETSC_TRUE .or. &
-     grid%use_richard == PETSC_TRUE ) then
+     grid%use_richards == PETSC_TRUE ) then
     call VecLoadIntoVector(viewer, grid%iphas, ierr)
     call VecCopy(grid%iphas, grid%iphas_old, ierr)
     call VecLoadIntoVector(viewer, grid%var, ierr)
@@ -322,12 +322,12 @@ subroutine pflowGridTHCBinaryOut(grid, kplt)
   if(grid%use_2ph == PETSC_TRUE .or. grid%use_mph == PETSC_TRUE &
                                 .or. grid%use_vadose == PETSC_TRUE &
                                 .or. grid%use_flash == PETSC_TRUE &
-                                 .or. grid%use_richard == PETSC_TRUE) then
+                                 .or. grid%use_richards == PETSC_TRUE) then
     call VecView(grid%xmol, viewer, ierr)
   endif  
   if(grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE &
      .or. grid%use_flash == PETSC_TRUE &
-      .or. grid%use_richard == PETSC_TRUE ) then
+      .or. grid%use_richards == PETSC_TRUE ) then
     call VecView(grid%iphas, viewer, ierr)
   endif  
 

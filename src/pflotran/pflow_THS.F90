@@ -924,7 +924,7 @@ contains
        jm2= j + (m2-1) * grid%nphase
                       
 
-       upweight=0.5  ! weight for m1
+       upweight=dd1/(dd1+dd2)  ! weight for m1
       if((1.D0-SSATG_LOC(m1))<grid%swir(int(icap_loc_p(m1))))then
          upweight=0.
       else if((1.D0-SSATG_LOC(m2))<grid%swir(int(icap_loc_p(m2))))then

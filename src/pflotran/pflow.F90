@@ -177,6 +177,7 @@
     call PetscLogStagePush(stage(2), ierr)
     if(grid%use_owg/=PETSC_TRUE) then
       call pflow_output(grid,kplt,iplot)
+     ! print *,'XX ::...........'; call VecView(grid%xx,PETSC_VIEWER_STDOUT_WORLD,ierr)
     else
       call pflow_var_output(grid,kplt,iplot)
     endif
