@@ -14,7 +14,7 @@ MYFLAGS = -I${objdir} -DUSE_COMPRESSIBILITY #-DPETSC_USE_LOG
 LIBS   = 
 
 CFLAGS		 = 
-FFLAGS		 = 
+FFLAGS		 = -Rb
 CPPFLAGS         = ${MYFLAGS}
 FPPFLAGS         = ${MYFLAGS}
 LOCDIR		 = /home/clu

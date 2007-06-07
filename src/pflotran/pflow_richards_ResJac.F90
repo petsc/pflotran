@@ -305,7 +305,7 @@ subroutine RichardsRes_ARCont(node_no, var_node,por,vol,rock_dencpr, grid, Res_A
 !H2O
     mol(1)= mol(1) - grid%dt * grid%rtot(node_no,1)
 !CO2
-    mol(2)= mol(2) - grid%dt * grid%rtot(node_no,2)
+!    mol(2)= mol(2) - grid%dt * grid%rtot(node_no,2)
 !should include related energy change here
   endif
   Res_AR(1:grid%ndof-1)=mol(:)
@@ -787,7 +787,7 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
     iiphase = iphase_p(n)
     !*****************
     dif(1)= grid%difaq
-    dif(2)= grid%cdiff(int(ithrm_p(n)))
+    !dif(2)= grid%cdiff(int(ithrm_p(n)))
   
   !*******************************************
     call pri_var_trans_richards_ninc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),iiphase, &
@@ -1134,7 +1134,7 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
                           grid%sir(1:grid%nphase,iicap2),dd2,perm2,D2,grid, &
                           vv_darcy,Res)
     grid%vvl_loc(nc) = vv_darcy(1)
-    grid%vvg_loc(nc) = vv_darcy(2)  
+!    grid%vvg_loc(nc) = vv_darcy(2)  
     if (n1 > 0) then               ! If the upstream node is not a ghost node...
       do np =1, grid%nphase 
         vl_p(np+(ip1-1)*grid%nphase+3*grid%nphase*(n1-1)) = vv_darcy(np) 
@@ -1235,7 +1235,7 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
        
         !*****************
     dif(1)= grid%difaq
-    dif(2)= grid%cdiff(int(ithrm_loc_p(ng)))
+!    dif(2)= grid%cdiff(int(ithrm_loc_p(ng)))
     !*******************************************
 
 !    print *, nc
@@ -1268,7 +1268,7 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
                             tor_loc_p(ng),grid%sir(1:grid%nphase,iicap), &
                             grid%distbc(nc),perm1,D2, grid, vv_darcy,Res)
     grid%vvlbc(nc) = vv_darcy(1)
-    grid%vvgbc(nc) = vv_darcy(2) 
+ !   grid%vvgbc(nc) = vv_darcy(2) 
     r_p(p1:p1-1+grid%ndof)= r_p(p1:p1-1+grid%ndof) - Res(1:grid%ndof)
     ResOld_AR(m,1:grid%ndof) = ResOld_AR(m,1:grid%ndof) - Res(1:grid%ndof)
    
@@ -1685,7 +1685,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
 !   grid%pressurebc(2,ibc),grid%tempbc(ibc),grid%concbc(ibc),grid%sgbc(ibc)
         !*****************
     dif(1) = grid%difaq
-    dif(2) = grid%cdiff(int(ithrm_loc_p(ng)))
+  !  dif(2) = grid%cdiff(int(ithrm_loc_p(ng)))
     !*******************************************
 
   !  print *,' Mph Jaco BC terms: finish setup'
@@ -2036,7 +2036,7 @@ subroutine pflow_Richards_initaccum(grid)
     iicap=int(icap_p(n))
     iiphase = int(iphase_p(n))
     dif(1)= grid%difaq
-    dif(2)= grid%cdiff(int(ithrm_p(n)))
+ !   dif(2)= grid%cdiff(int(ithrm_p(n)))
 
     call pri_var_trans_Richards_ninc(yy_p((n-1)*grid%ndof+1:n*grid%ndof),iiphase,&
                                 grid%scale,grid%nphase,grid%nspec, &
@@ -2310,13 +2310,13 @@ subroutine pflow_Richards_initadj(grid)
 
     ibc = grid%ibconn(nc)
        
-!      print *,'initadj_bc',nc,ibc,grid%ibndtyp(ibc),grid%nconnbc
+      print *,'initadj_bc',nc,ibc,grid%ibndtyp(ibc),grid%nconnbc
 
     if (grid%ibndtyp(ibc)==1 .or.grid%ibndtyp(ibc)==3) then
       iicap=int(icap_p(m))
       iithrm=int(ithrm_p(m)) 
       dif(1)= grid%difaq
-      dif(2)= grid%cdiff(iithrm)
+    !  dif(2)= grid%cdiff(iithrm)
       
      if(grid%iphasebc(nc) ==3)then
        sw= grid%xxbc(1,nc)
