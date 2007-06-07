@@ -640,7 +640,7 @@
   
   type(pflowGrid), intent(inout) :: grid
   type(time_stepping_context), intent(inout) :: timestep
-  type(pflow_localpatch_info) :: locpat
+   type(pflow_localpatch_info), intent(inout) :: locpat
   
   
   character(len=*), intent(in) :: inputfile
@@ -682,10 +682,10 @@
   ! Parse the input file to get dx, dy, dz, fields, etc. for each cell. 
   !-----------------------------------------------------------------------
   call pflow_setup_index(grid,locpat)
-  allocate(locpat%ibndtyp(MAXBCREGIONS))
-  allocate(locpat%iface(MAXBCREGIONS))
+  allocate(grid%ibndtyp(MAXBCREGIONS))
+  allocate(grid%iface(MAXBCREGIONS))
 
-  call pflowGrid_read_input(grid, timestep,locpat, inputfile)
+  call pflowGrid_read_input(grid, timestep, inputfile)
   
  
 ! check number of dofs and phases
@@ -1701,7 +1701,7 @@ end subroutine pflowgrid_Setup_SNES
     ! calculate boundary conditions locally on only those processors which 
     ! contain a boundary!
 
-    do ibc = 1, locpat%nblkbc
+    do ibc = 1, grid%nblkbc
       do ir = grid%iregbc1(ibc), grid%iregbc2(ibc)
         kk1 = grid%k1bc(ir) - locpat%nzs
         kk2 = grid%k2bc(ir) - locpat%nzs
@@ -1735,32 +1735,32 @@ end subroutine pflowgrid_Setup_SNES
         
               select case(grid%igeom)
               case(1) ! cartesian
-                if (locpat%iface(ibc) == 1) then
+                if (grid%iface(ibc) == 1) then
                   locpat%distbc(nc) = 0.5d0*dx_loc_p(ng)
                   locpat%areabc(nc) = dy_loc_p(ng)*dz_loc_p(ng)
                   locpat%ipermbc(nc) = 1
                   locpat%delzbc(nc) = 0.d0
-                else if (locpat%iface(ibc) == 2) then
+                else if (grid%iface(ibc) == 2) then
                   locpat%distbc(nc) = 0.5d0*dx_loc_p(ng)
                   locpat%areabc(nc) = dy_loc_p(ng)*dz_loc_p(ng)
                   locpat%ipermbc(nc) = 1
                   locpat%delzbc(nc) = 0.d0
-                else if (locpat%iface(ibc) == 3) then
+                else if (grid%iface(ibc) == 3) then
                   locpat%distbc(nc) = 0.5d0*dz_loc_p(ng)
                   locpat%areabc(nc) = dx_loc_p(ng)*dy_loc_p(ng)
                   locpat%ipermbc(nc) = 2
                   locpat%delzbc(nc) = locpat%distbc(nc)
-                else if (locpat%iface(ibc) == 4) then
+                else if (grid%iface(ibc) == 4) then
                   locpat%distbc(nc) = 0.5d0*dz_loc_p(ng)
                   locpat%areabc(nc) = dx_loc_p(ng)*dy_loc_p(ng)
                   locpat%ipermbc(nc) = 2
                   locpat%delzbc(nc) = -locpat%distbc(nc)
-                else if (locpat%iface(ibc) == 5) then
+                else if (grid%iface(ibc) == 5) then
                   locpat%distbc(nc) = 0.5d0*dy_loc_p(ng)
                   locpat%areabc(nc) = dx_loc_p(ng)*dz_loc_p(ng)
                   locpat%ipermbc(nc) = 3
                   locpat%delzbc(nc) = 0.d0
-                else if (locpat%iface(ibc) == 6) then
+                else if (grid%iface(ibc) == 6) then
                   locpat%distbc(nc) = 0.5d0*dy_loc_p(ng)
                   locpat%areabc(nc) = dx_loc_p(ng)*dz_loc_p(ng)
                   locpat%ipermbc(nc) = 3
@@ -1768,23 +1768,23 @@ end subroutine pflowgrid_Setup_SNES
                 endif
               case(2) ! cylindrical
                 ird= mod(mod((m),locpat%nlxy),locpat%nlx) + locpat%nxs 
-                if (locpat%iface(ibc) == 1) then
+                if (grid%iface(ibc) == 1) then
                   locpat%distbc(nc) = 0.5d0*dx_loc_p(ng)
                   locpat%areabc(nc) = 2.0D0* Pi * grid%rd(ird-1)*dz_loc_p(ng)
                   locpat%ipermbc(nc) = 1
                   locpat%delzbc(nc) = 0.d0
-                else if (locpat%iface(ibc) == 2) then
+                else if (grid%iface(ibc) == 2) then
                   locpat%distbc(nc) = 0.5d0*dx_loc_p(ng)
                   locpat%areabc(nc) =  2.0D0* Pi * grid%rd(ird)*dz_loc_p(ng)
                   locpat%ipermbc(nc) = 1
                   locpat%delzbc(nc) = 0.d0
-                else if (locpat%iface(ibc) == 3) then
+                else if (grid%iface(ibc) == 3) then
                   locpat%distbc(nc) = 0.5d0*dz_loc_p(ng)
                   locpat%areabc(nc) =  Pi * (grid%rd(ird)+ grid%rd(ird-1))*&
                        (grid%rd(ird) - grid%rd(ird-1))	
                   locpat%ipermbc(nc) = 2
                   locpat%delzbc(nc) = locpat%distbc(nc)
-                else if (locpat%iface(ibc) == 4) then
+                else if (grid%iface(ibc) == 4) then
                   locpat%distbc(nc) = 0.5d0*dz_loc_p(ng)
                   locpat%areabc(nc) = Pi * (grid%rd(ird)+ grid%rd(ird-1))*&
                        (grid%rd(ird) - grid%rd(ird-1))

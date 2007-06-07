@@ -222,7 +222,7 @@
    fluxm=0.D0; fluxe=0.D0
    vv_darcy=0.D0 
    
-   select case (locpat%ibndtyp(ibc))
+   select case (grid%ibndtyp(ibc))
      case(1) 
 	   Dq= perm2 / dd1
         diffdp = por2*tor2/dd1*area
@@ -760,7 +760,7 @@
            perm1 = perm_zz_loc_p(ng)
        end select
 
-       select case(locpat%ibndtyp(ibc))
+       select case(grid%ibndtyp(ibc))
           
           case(2)
           ! solve for pb from Darcy's law given qb /= 0
@@ -1062,7 +1062,7 @@ Jac_ind = -1
        end select
        
 	   delxbc=0.D0
-       select case(locpat%ibndtyp(ibc))
+       select case(grid%ibndtyp(ibc))
           case(1)
 		    delxbc=0.D0
           case(2)
