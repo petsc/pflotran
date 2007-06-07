@@ -272,13 +272,6 @@ subroutine UpdateBoundaryConditions(grid)
     icond = grid%ibconn(iconnbc)
     itype = condition_array(icond)%ptr%itype
 
-    if (itype == 5) then
-      if (grid%myrank == 0) &
-        print *, 'Saturation bc not supported for boundary condition.'
-      stop
-    endif
-    
-
     grid%xxbc(2,iconnbc) = tref
     if (itype == 1) then
       grid%xxbc(1,iconnbc) = condition_array(icond)%ptr%cur_value

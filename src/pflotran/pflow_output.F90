@@ -2081,10 +2081,10 @@ subroutine geh_io(grid, kplt)
 !  call VecView(vec_1_dof,viewer,ierr)
 !  call PetscViewerDestroy(viewer,ierr)
 
-!  filename = 't_' // trim(adjustl(id_string)) // '.dat'
-!  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,filename,viewer,ierr)
-!  call VecView(grid%temp,viewer,ierr)
-!  call PetscViewerDestroy(viewer,ierr)
+  filename = 't_' // trim(adjustl(id_string)) // '.dat'
+  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,filename,viewer,ierr)
+  call VecView(grid%temp,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
 
   filename = 'iph_' // trim(adjustl(id_string)) // '.dat'
   call PetscViewerASCIIOpen(PETSC_COMM_WORLD,filename,viewer,ierr)

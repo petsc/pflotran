@@ -2240,13 +2240,8 @@ subroutine pflowGrid_setup(grid, inputfile)
     grid%imat = 0      
 
     call ReadUnstructuredGrid(grid) 
-    if (grid%use_vadose) then
-      call pflow_Vadose_initadj(grid)
-      call pflow_update_vadose(grid)
-    elseif (grid%use_richards) then
-      call pflow_Richards_initadj(grid)
-      call pflow_update_richards(grid)
-    endif
+!    call pflow_Richards_initadj(grid)  ! not necessary, already init in condition
+    call pflow_update_richards(grid)
     
     ! dump material ids to file in natural ordering
     call DACreateGlobalVector(grid%da_1_dof,temp_vec,ierr)

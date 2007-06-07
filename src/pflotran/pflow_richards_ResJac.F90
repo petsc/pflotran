@@ -399,7 +399,7 @@ subroutine RichardsRes_FLCont(nconn_no,area,var_node1,por1,tor1,sir1,dd1,perm1, 
       gravity = (upweight*density1(np)*amw1(np) + &
                 (1.D0-upweight)*density2(np)*amw2(np)) &
                 * grid%gravity * grid%delz(nconn_no) * grid%grav_ang(nconn_no)
-        
+
       dphi = pre_ref1 - pre_ref2  + gravity
 !    print *,'FLcont  dp',dphi
   ! note uxmol only contains one phase xmol
@@ -1337,6 +1337,7 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
     call VecRestoreArrayF90(grid%phis,phis_p,ierr)
   endif
 !#define DEBUG_GEH
+!#define DEBUG_GEH_ALL
 #ifdef DEBUG_GEH 
  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'residual.out',viewer,ierr)
  call VecView(r,viewer,ierr)
@@ -1486,6 +1487,13 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
   enddo
 ! print *,' Mph Jaco Finished accum terms'
 ! Source / Sink term
+#ifdef DEBUG_GEH_ALL  
+ call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
+ call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
+ call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian.out',viewer,ierr)
+ call MatView(A,viewer,ierr)
+ call PetscViewerDestroy(viewer,ierr)
+#endif
 
   do nr = 1, grid%nblksrc
       
@@ -1739,7 +1747,13 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
 
   enddo
   ! print *,' Mph Jaco Finished BC terms'
-
+#ifdef DEBUG_GEH_ALL  
+ call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
+ call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
+ call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian.out',viewer,ierr)
+ call MatView(A,viewer,ierr)
+ call PetscViewerDestroy(viewer,ierr)
+#endif
   do n= 1, grid%nlmax
 
     !geh - Ignore inactive cells with inactive materials
@@ -1785,6 +1799,13 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
     endif
          
   enddo
+#ifdef DEBUG_GEH_ALL    
+ call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
+ call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
+ call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian.out',viewer,ierr)
+ call MatView(A,viewer,ierr)
+ call PetscViewerDestroy(viewer,ierr)
+#endif
   
 !   print *,' Mph Jaco Finished one node terms'
 ! -----------------------------contribution from transport----------------------
