@@ -1,5 +1,8 @@
-:    igeom nx  ny   nz nphase  nspec  npricomp    ndof  idcdm  itable
-GRID    1  398  1   66   2       2       2         3     0       2
+: Description: 2D simulation of simplified sat/unsat flow at Hanford 300 Area
+: Author: Glenn Hammond
+:
+:    igeom nx  ny  nz nphase  nspec  npricomp  ndof  idcdm  itable
+GRID    1  34  1  30 1       1      1         2     0      0
 :
 :    npx npy npz
 :PROC  1   1   1
@@ -7,92 +10,126 @@ GRID    1  398  1   66   2       2       2         3     0       2
 :RAD0 0.d0
 :
 :write_init iprint imod itecplot iblkfmt ndtcmx iran_por ran_fac iread_perm iread_geom
-OPTS   0       0     1     1      1         3          0   0.D0       0        -1 
- :
+:OPTS   0      -2     1     1      1        3        0   0.D0       0        0
+OPTS   0      -2     1     1      1        3        0   0.D0       0        -1 
+:
 :      steps    iaccel newtmx icutmx    dpmx   dtmpmx   dcmx    dsmx
-TOLR   30000       6     16      16     5.e4     5.     1.5e-0   1.5e-0
+TOLR   30000       6     16      16     5.e4     5.     1.5e-1   1.5e-2
 :
 DXYZ
-3.
-1.
+10.
+10.
 1.
 :    atol     rtol     stol   dtol   newton_max   maxf
 SOLV 1.d-9    1.d-9    1.d-6   1D15      25        100
 :  d0[m^2/s] delhaq[kJ/mol]
 DIFF  1.D-16       12.6
-: ReacKincoeff
-:PHAR 1.D-12
+:
+: Richards Equation Pref
+RICH 101315.
 :
 PCKR
 :1-vanG, 2-BrooksCorey, 3-linear, 4-SC-W
-: ist itype swir sgir  lambda   alpha   pcwmax   betac   pwr
-  1     2  0.1   1e-4   0.75    1.e-3    1.e8    0.e0    1.D0
-  2     2  0.1   1e-4   0.75    1.e-3    1.e8    0.e0    1.D0
-  3     2  0.1   1e-4   0.75    1.e-3    1.e8    0.e0    1.D0
-  4     2  0.1   1e-4   0.75    1.e-3    1.e8    0.e0    1.D0
-  5     2  0.1   1e-4   0.75    1.e-3    1.e8    0.e0    1.D0
-  6     2  0.1   1e-4   0.75    1.e-3    1.e8    0.e0    1.D0
+:geh note: itype, swir, lambda, alpha all from STOMP input, all other left as is
+:geh note:  Assume that swir = residual saturation; alpha = entry head (m)
+: ist itype swir    sgir  lambda   alpha    pcwmax   betac   pwr
+  1     2   0.1471  0.7465   0.7131    1.e8    0.e0    1.D0
+  2     2   0.1299  0.5193   0.7131    1.e8    0.e0    1.D0
+  3     2   0.1299  0.5193   0.7131    1.e8    0.e0    1.D0
+  4     2   0.1299  0.5193   0.7131    1.e8    0.e0    1.D0
+  5     2   0.1299  0.5193   0.7131    1.e8    0.e0    1.D0
+  6     2   0.1299  0.5193   0.7131    1.e8    0.e0    1.D0
 /
 THRM
-:ithm rho     cpr   ckdry  cksat  tau    cdiff      cexp
-  1  2.75e3 1000.e0   0.5    0.5    0.5    2.13e-5    1.8
-  2  2.75e3 1000.e0   0.5    0.5    0.5    2.13e-5    1.8
-  3  2.75e3 1000.e0   0.5    0.5    0.5    2.13e-5    1.8
-  4  2.75e3 1000.e0   0.5    0.5    0.5    2.13e-5    1.8
-  5  2.75e3 1000.e0   0.5    0.5    0.5    2.13e-5    1.8
-  6  2.75e3 1000.e0   0.5    0.5    0.5    2.13e-5    1.8
+:geh note: rho from STOMP input, all other left as is
+:geh note: cpr=rock heat capacity (all capillary func in PCKR keywor-pcl)
+:ithm rho     cpr      ckdry  cksat  tau    cdiff      cexp
+  1   2.75e3  1000.e0  0.5    0.5    0.5    2.13e-5    1.8
+  2   2.75e3  1000.e0  0.5    0.5    0.5    2.13e-5    1.8
+  3   2.75e3  1000.e0  0.5    0.5    0.5    2.13e-5    1.8
+  4   2.75e3  1000.e0  0.5    0.5    0.5    2.13e-5    1.8
+  5   2.75e3  1000.e0  0.5    0.5    0.5    2.13e-5    1.8
+  6   2.75e3  1000.e0  0.5    0.5    0.5    2.13e-5    1.8
 /
 :
 PHIK
-:i1  i2  j1  j2  k1  k2 icap ithm  por  tor  permx    permy    permz   permpwr
-  1 398   1   1   1  66  3   1   0.15   1.0  1.e-15   1.e-15   1.e-17     1.e0
+:geh note: Using soil 1 as the default
+:geh note: Where do you specify which PCKR to use?
+:geh note: for soil(s) (1) por = 0.25 (2-7) por = 0.18
+:geh note: perm for soils
+:geh note:   permx(1) = permy(1) = 1.578e-9 m^2 permz(1) = 1.578e-10 m^2
+:geh note:   permx(2) = permy(2) = 1.578e-10 m^2 permz(2) = 1.578e-11 m^2
+:geh note:   permx(3) = permy(3) = 1.052e-14 m^2 permz(2) = 1.052e-15 m^2
+:geh note:   permx(4) = permy(4) = 4.523e-11 m^2 permz(4) = 4.207e-12 m^2
+:geh note:   permx(5) = permy(5) = 5.259e-17 m^2 permz(5) = 5.259-18 m^2
+:geh note:   permx(6) = permy(6) = 5.259e-17 m^2 permz(6) = 5.259-18 m^2
+:geh note: STOMP input specifies "Millington and Quirk" tortuosity function.  
+:geh note:   Not sure what this translates to as far as a constant tortuosity.
+:i1  i2  j1  j2  k1  k2 icap ithm por  tor permx     permy     permz     permpwr
+  1 34   1   1   1  30   2    1  0.25 0.5 1.578d-9  1.578d-9  1.578d-11 1.e0
 /
 :
 INIT 0
+:geh note: Hydrostatic initial condition with the pressure at the bottom of
+:geh note:   the grid set to 422486 Pa with a vertical gradient of -9802.2501
+:geh note:   Pa/m
 :i1  i2  j1  j2  k1  k2     iphase          pf    tf    sl        conc
-  1 398   1   1   1  66       1          422486.  50.0   1D-6
+ 1 34   1   1   1  30       3              0.5   25.0   0.5 
 /
-:
-skip
+:skip
 BCON
+:geh note: ------------------------------------------------------------
+:geh note: West BC
+:geh note: Assuming bottom of grid is at z=0, hydrostatic bc based on datum of
+:geh note: z = 0.5m and pressure = 422233. Pa
 :ibndtyp iface
-   2       1
+   3       1
 :i1  i2  j1  j2  k1  k2
-  1   1   1  1   1   51
-: iphase  Pressure [Pa] Temp [C]  sl       Conc
-    1      0.D0   0.D0        50.e0     1.e-6
+  1   1   1   1   1  30
+:iphase Pressure [Pa] Temp [C]   sg/conc
+    3   0.d0     0.d0  25.0e0     0.77746
 /
+:geh note: ------------------------------------------------------------
+:geh note: East BC - actually a seepage bc in STOMP
+:geh note: Assuming bottom of grid is at z=0, hydrostatic bc based on datum of
+:geh note: z = 98.25m and pressure = 219729. Pa
 :ibndtyp iface
-  2       2
+   3       2
 :i1  i2  j1  j2  k1  k2
-107  107   1  1   1   51
-:iphase Pressure [Pa] Temp [C]   sl      Conc
-    1     0.D0    0.D0        50.0e0     1.e-6
+  1   1   1   1   1  30
+:iphase Pressure [Pa] Temp [C]   sg/conc
+    3   0.d0  0.d0    25.0e0     0.77746
 /
+:geh note: ------------------------------------------------------------
+:geh note: Top BC - Recharge (STOMP input at 60mm/yr but most of Hanford is 
+:geh note:          10mm/yr)
+:geh note: set to 60mm/yr
 :ibndtyp iface
-  3       3
+   2       3
 :i1  i2  j1  j2  k1  k2
-  1 107   1   1   1   1
-: iphase  Pressure [Pa] Temp [C]   sl      Conc
-     1      2.00e7        50.0e0     1.e-6
+  1 34   1   1   1   1
+:iphase Liq vel    Gas Vel  Temp [C]   sg/conc
+   3    1.903e-9   0.D0     25.0       1.e-6
 /
+:geh note: ------------------------------------------------------------
+:geh note: Bottom BC - no flow
 :ibndtyp iface
-  2       4
+   2       4
 :i1  i2  j1  j2  k1  k2
-  1 107  1   1    51  51
-: iphase     Pressure [Pa] Temp [C]   sl      Conc
-    1         0.D0   0.D0        50.0e0     1.e-6
+  1 34   1   1  30  30
+:iphase Liq vel Gas Vel  Temp [C]   sg/conc
+    1   0.D0    0.D0     25.0     1.e-6
 /
 /
 :
-noskip
 :
 :   alpha [C/m]  beta [m/m]  tref [C]  pref [Pa]  conc
-HYDR 0.025e0      0.e-2       50.e0       2.e7     1D-6
+:HYDR 0.0      0.      25.e0    101315.     1D-6
 :
 :
-TIME y 3
- 1.  2. 3.
-DTST  1  5000.
-1.e-3 50.0
+TIME h 4
+:1.e-3 2.362e-2 1. 10. 100.
+2000 4000 6000 8000
+DTST  1  1.
+1.e-3 1.
 :
