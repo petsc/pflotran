@@ -435,7 +435,8 @@ subroutine ReadUnstructuredGrid(grid)
     call fiReadWord(string,time_unit,.true.,ierr) 
     call fiErrorMsg('time unit',card,ierr)
 
-    if (.not.fiStringCompare("neumann",new_condition%ctype,7)) then
+    if (.not.fiStringCompare("neumann",new_condition%ctype,7) .and. &
+        .not.fiStringCompare("saturation",new_condition%ctype,10)) then
 
       call fiReadFlotranString(fid,string,ierr)
       call fiReadStringErrorMsg(card,ierr)

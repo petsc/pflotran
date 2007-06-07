@@ -204,6 +204,8 @@ subroutine InitializeBoundaryConditions(grid)
       condition_array(icond)%ptr%itype = 3
     else if (fiStringCompare("seepage face",word,12)) then
       condition_array(icond)%ptr%itype = 4
+    else if (fiStringCompare("saturation",word,10)) then
+      condition_array(icond)%ptr%itype = 5
     else
       if (grid%myrank == 0) print *, 'Condition type: ', word, ' not supported'
       stop
@@ -214,12 +216,14 @@ subroutine InitializeBoundaryConditions(grid)
   ! set up native pflotran integer pointer to boundary condition type
   allocate(grid%ibndtyp(num_conditions)) ! condition (boundary) type
   do icond = 1, num_conditions
-    if (condition_array(icond)%ptr%itype == 1) then
+    if (condition_array(icond)%ptr%itype == 1 .or. &
+        condition_array(icond)%ptr%itype == 3 .or. &
+        condition_array(icond)%ptr%itype == 5) then
       grid%ibndtyp(icond) = 1  ! pressure based dirichlet
     else if (condition_array(icond)%ptr%itype == 2) then
       grid%ibndtyp(icond) = 2  ! neumann
-    else
-      grid%ibndtyp(icond) = 3  ! pressure based hydraulic gradient
+    else if (condition_array(icond)%ptr%itype == 4) then
+      grid%ibndtyp(icond) = 4  ! seepage face
     endif
   enddo
 
@@ -239,75 +243,83 @@ end subroutine InitializeBoundaryConditions
 subroutine UpdateBoundaryConditions(grid)
 
   use pflow_gridtype_module
+  use pckr_module
 
   implicit none
 
+#include "include/finclude/petsc.h"
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
 
   type(pflowGrid) :: grid
 
   logical :: use_eos
-  integer :: iconnbc, icond, itype, ierr
-  real*8 :: value, datum, delz, delp
-  real*8 :: patm = 101325.d0, tref, pref
+  integer :: iconnbc, icond, itype, icap, ierr
+  real*8 :: value,delz, delp
+  real*8 :: patm = 101325.d0, tref, pref, sref
   real*8 :: datum_coord(3), cell_coord(3)
+  real*8 :: kr(2), pc(2)
+  PetscScalar, pointer :: icap_p(:)
 
   call UpdateConditions(grid%t)
 
+  call VecGetArrayF90(grid%icap,icap_p,ierr)
+
   use_eos = .true.
-  
   tref = 25.d0
   
   do iconnbc = 1, grid%nconnbc
     icond = grid%ibconn(iconnbc)
     itype = condition_array(icond)%ptr%itype
+
+    if (itype == 5) then
+      if (grid%myrank == 0) &
+        print *, 'Saturation bc not supported for boundary condition.'
+      stop
+    endif
     
-    datum_coord = 0.d0
-    datum_coord(1) = condition_array(icond)%ptr%xdatum
-    datum_coord(2) = condition_array(icond)%ptr%ydatum
-    datum_coord(3) = condition_array(icond)%ptr%zdatum
+
+    grid%xxbc(2,iconnbc) = tref
+    if (itype == 1) then
+      grid%xxbc(1,iconnbc) = condition_array(icond)%ptr%cur_value
+    elseif (itype == 3 .or. itype == 4) then ! correct for pressure gradient
+      datum_coord = 0.d0
+      datum_coord(1) = condition_array(icond)%ptr%xdatum
+      datum_coord(2) = condition_array(icond)%ptr%ydatum
+      datum_coord(3) = condition_array(icond)%ptr%zdatum
     
-    cell_coord = 0.d0
-    cell_coord(3) = grid%z(grid%nL2A(grid%mblkbc(iconnbc))+1)
-    
-    pref = condition_array(icond)%ptr%cur_value
-    value = pref
-    if (itype == 3 .or. itype == 4) then ! correct for pressure gradient
+      cell_coord = 0.d0
+      cell_coord(3) = grid%z(grid%nL2A(grid%mblkbc(iconnbc))+1)
 #if 1
       value = ComputeHydrostaticPressure(grid,use_eos, &
                                          datum_coord,cell_coord, &
-                                         pref, &
+                                         condition_array(icond)%ptr%cur_value, &
                                          condition_array(icond)%ptr%xgrad, &
                                          condition_array(icond)%ptr%ygrad, &
                                          9.81d0*998.32, &
                                          tref,0.d0,0.d0,0.d0)
 #else
-      delz = grid%z(grid%nL2A(grid%mblkbc(iconnbc))+1)-datum
+      delz = grid%z(grid%nL2A(grid%mblkbc(iconnbc))+1)-datum_coord(3)
       delp = delz*9.81d0*998.32
       value = pref - delp
 #endif
-    endif
-    if (itype == 1) then ! dirichlet
       grid%xxbc(1,iconnbc) = value
-      grid%xxbc(2,iconnbc) = tref  ! currently hardwired temperature
-      grid%xxbc(3,iconnbc) = 1.d-6  ! currently hardwired solute concentration
-      if (value > patm) then
-        grid%iphasebc(iconnbc) = 1
-      else 
-        grid%iphasebc(iconnbc) = 3
-      endif
-    elseif (itype == 2) then ! neumann
-      grid%velocitybc(1:grid%nphase,iconnbc) = value  ! all xxbc dofs get over-
-     ! grid%xxbc(1:grid%nphase,iconnbc) = patm        ! written later 
-    else                                              !
-      grid%xxbc(1,iconnbc) = value   ! dofs 2+ get overwritten later 
-      if (value > patm) then
-        grid%iphasebc(iconnbc) = 1
-      else 
-        grid%iphasebc(iconnbc) = 3
-      endif
-    endif                            
+    elseif (itype == 5) then
+      icap = icap_p(grid%nL2G(grid%mblkbc(iconnbc)))
+      sref = condition_array(icond)%ptr%cur_value
+      call pflow_pckr_richards_fw(grid%icaptype(icap),grid%sir(1,icap), &
+                                  grid%lambda(icap),grid%alpha(icap), &
+                                  grid%pckrm(icap),grid%pcwmax(icap), &
+                                  sref,pc,kr,grid%pcbetac(icap), &
+                                  grid%pwrprm(icap))    
+      grid%xxbc(1,iconnbc) =  patm - pc(1)
+    elseif (itype == 2) then
+      grid%velocitybc(1:grid%nphase,iconnbc) = &
+                                     condition_array(icond)%ptr%cur_value
+    endif
   enddo
 
+  call VecRestoreArrayF90(grid%icap,icap_p,ierr)
 
 end subroutine UpdateBoundaryConditions
 
@@ -322,8 +334,7 @@ end subroutine UpdateBoundaryConditions
 subroutine ComputeInitialCondition(grid, icondition)
 
   use pflow_gridtype_module
-  use translator_richards_module
- ! use Richards_module
+  use pckr_module
 
   implicit none
 
@@ -334,11 +345,12 @@ subroutine ComputeInitialCondition(grid, icondition)
   type(pflowGrid) :: grid
   integer :: icondition
   
-  integer :: iln, na, ierr, icond, itype
+  integer :: iln, na, ierr, icond, itype, icap
   real*8 :: cell_coord(3), datum_coord(3)
   real*8 :: pref, tref, sref, value
   real*8 :: patm = 101325.d0
-  PetscScalar, pointer :: xx_p(:), iphase_p(:)
+  real*8 :: pc(2), kr(2)
+  PetscScalar, pointer :: xx_p(:), iphase_p(:), icap_p(:)
   
   do icond = 1, num_conditions
     if (condition_array(icond)%ptr%id == icondition) then
@@ -359,16 +371,13 @@ subroutine ComputeInitialCondition(grid, icondition)
     stop
   endif
   
-  pref = condition_array(icond)%ptr%cur_value
-  tref = 25.d0
-  sref = 1.d-6
-  
   datum_coord(1) = 0.d0
   datum_coord(2) = 0.d0
   datum_coord(3) = condition_array(icond)%ptr%zdatum
   
-  call VecGetArrayF90(grid%xx,xx_p, ierr); CHKERRQ(ierr)
+  call VecGetArrayF90(grid%xx,xx_p,ierr); CHKERRQ(ierr)
   call VecGetArrayF90(grid%iphas,iphase_p,ierr)
+  call VecGetArrayF90(grid%icap,icap_p,ierr)
   
   do iln=1, grid%nlmax
   
@@ -377,30 +386,41 @@ subroutine ComputeInitialCondition(grid, icondition)
     cell_coord(2) = grid%y(na)
     cell_coord(3) = grid%z(na)
     
-    if (itype == 3 .or. itype == 4) then ! correct for pressure gradient
+    if (itype == 1) then
+      pref = condition_array(icond)%ptr%cur_value
+      tref = 25.d0
+      sref = 1.d-6  
+      value = pref
+    elseif (itype == 3 .or. itype == 4) then ! correct for pressure gradient
+      pref = condition_array(icond)%ptr%cur_value
+      tref = 25.d0
+      sref = 1.d-6  
       value = ComputeHydrostaticPressure(grid,.true., &
                                          datum_coord,cell_coord, &
                                          pref,0.d0,0.d0,9.81d0*998.32, &
                                          tref,0.d0,0.d0,0.d0)
-    else
-      value = pref
+    elseif (itype == 5) then
+      icap = icap_p(iln)
+      pref = condition_array(icond)%ptr%cur_value
+      tref = 25.d0
+      sref = condition_array(icond)%ptr%cur_value
+      call pflow_pckr_richards_fw(grid%icaptype(icap),grid%sir(1,icap), &
+                                  grid%lambda(icap),grid%alpha(icap), &
+                                  grid%pckrm(icap),grid%pcwmax(icap), &
+                                  sref,pc,kr,grid%pcbetac(icap), &
+                                  grid%pwrprm(icap))    
+      value =  patm - pc(1)
     endif     
 
-!geh    iphase_p(iln) = grid%iphas_ini(ir)
-    if (value > patm) then
-      iphase_p(iln) = 1
-    else
-      iphase_p(iln) = 3
-    endif
-
+    iphase_p(iln) = 1
     xx_p(1+(iln-1)*grid%ndof) = value  
-    xx_p(2+(iln-1)*grid%ndof) = tref
-    xx_p(3+(iln-1)*grid%ndof) = sref
     
   enddo
               
-  call VecRestoreArrayF90(grid%xx,xx_p, ierr)
+  call VecRestoreArrayF90(grid%xx,xx_p,ierr)
   call VecRestoreArrayF90(grid%iphas,iphase_p,ierr)
+  call VecRestoreArrayF90(grid%icap,icap_p,ierr)
+
 
 !  call pflow_update_richards(grid)
 !  call Translator_Richards_Switching(grid%xx,grid,0,ierr)

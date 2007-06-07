@@ -2051,11 +2051,11 @@ subroutine geh_io(grid, kplt)
   call VecView(vec_1_dof,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 
-  filename = 'pg_' // trim(adjustl(id_string)) // '.dat'
-  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,filename,viewer,ierr)
-  call VecStrideGather(grid%pressure,1,vec_1_dof,INSERT_VALUES,ierr)
-  call VecView(vec_1_dof,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+!  filename = 'pg_' // trim(adjustl(id_string)) // '.dat'
+!  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,filename,viewer,ierr)
+!  call VecStrideGather(grid%pressure,1,vec_1_dof,INSERT_VALUES,ierr)
+!  call VecView(vec_1_dof,viewer,ierr)
+!  call PetscViewerDestroy(viewer,ierr)
 
   filename = 'sl_' // trim(adjustl(id_string)) // '.dat'
   call PetscViewerASCIIOpen(PETSC_COMM_WORLD,filename,viewer,ierr)
@@ -2063,11 +2063,11 @@ subroutine geh_io(grid, kplt)
   call VecView(vec_1_dof,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 
-  filename = 'sg_' // trim(adjustl(id_string)) // '.dat'
-  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,filename,viewer,ierr)
-  call VecStrideGather(grid%sat,1,vec_1_dof,INSERT_VALUES,ierr)
-  call VecView(vec_1_dof,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+!  filename = 'sg_' // trim(adjustl(id_string)) // '.dat'
+!  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,filename,viewer,ierr)
+!  call VecStrideGather(grid%sat,1,vec_1_dof,INSERT_VALUES,ierr)
+!  call VecView(vec_1_dof,viewer,ierr)
+!  call PetscViewerDestroy(viewer,ierr)
 
   filename = 'xl_' // trim(adjustl(id_string)) // '.dat'
   call PetscViewerASCIIOpen(PETSC_COMM_WORLD,filename,viewer,ierr)
@@ -2075,16 +2075,16 @@ subroutine geh_io(grid, kplt)
   call VecView(vec_1_dof,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 
-  filename = 'xg_' // trim(adjustl(id_string)) // '.dat'
-  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,filename,viewer,ierr)
-  call VecStrideGather(grid%xmol,1,vec_1_dof,INSERT_VALUES,ierr)
-  call VecView(vec_1_dof,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+!  filename = 'xg_' // trim(adjustl(id_string)) // '.dat'
+!  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,filename,viewer,ierr)
+!  call VecStrideGather(grid%xmol,1,vec_1_dof,INSERT_VALUES,ierr)
+!  call VecView(vec_1_dof,viewer,ierr)
+!  call PetscViewerDestroy(viewer,ierr)
 
-  filename = 't_' // trim(adjustl(id_string)) // '.dat'
-  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,filename,viewer,ierr)
-  call VecView(grid%temp,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
+!  filename = 't_' // trim(adjustl(id_string)) // '.dat'
+!  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,filename,viewer,ierr)
+!  call VecView(grid%temp,viewer,ierr)
+!  call PetscViewerDestroy(viewer,ierr)
 
   filename = 'iph_' // trim(adjustl(id_string)) // '.dat'
   call PetscViewerASCIIOpen(PETSC_COMM_WORLD,filename,viewer,ierr)
