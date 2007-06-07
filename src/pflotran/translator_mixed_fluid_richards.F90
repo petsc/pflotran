@@ -229,7 +229,7 @@ subroutine translator_Richards_get_output(grid)
     t_p(n) = var_p(index_var_begin + 1)
 
     c_p(jn) = 0.D0!var_p(index_var_begin+7*grid%nphase+4)
-    if(grid%nspec>1)  c_p(jn) = var_p(index_var_begin +2+ 7*7*grid%nphase +2)
+    if(grid%nspec>1)  c_p(jn) = var_p(index_var_begin +2+ 7*grid%nphase +2)
    ! c_p(jn+1) = var_p(index_var_begin+7*grid%nphase+6)
  !   cc_p(n) = c_p(jn+1)
   

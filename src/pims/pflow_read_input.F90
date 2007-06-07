@@ -124,7 +124,7 @@ contains
 
 !#include "pflowgrid_readinput.F90"
 
-  subroutine pflowGrid_read_input(grid, timestep,locpat ,inputfile)
+  subroutine pflowGrid_read_input(grid, timestep,inputfile)
   
   ! keywords: GRID, PROC, COUP, GRAV, OPTS, TOLR, DXYZ, DIFF, RADN, HYDR,  
   !           SOLV, THRM, PCKR, PHIK, INIT, TIME, DTST, BCON, SOUR, BRK, RCTR
@@ -135,7 +135,7 @@ contains
 
   type(pflowGrid), intent(inout) :: grid
   type(time_stepping_context), intent(inout) :: timestep
-  type(pflow_localpatch_info) :: locpat
+ ! type(pflow_localpatch_info) :: locpat
   
   character(len=*), intent(in) :: inputfile
   
@@ -840,10 +840,10 @@ contains
 
         ibc = ibc + 1  ! RTM: Number of boundary conditions
         
-        call fiReadInt(string,locpat%ibndtyp(ibc),ierr)
+        call fiReadInt(string,grid%ibndtyp(ibc),ierr)
         call fiDefaultMsg('ibndtyp',ierr)
 
-        call fiReadInt(string,locpat%iface(ibc),ierr)
+        call fiReadInt(string,grid%iface(ibc),ierr)
         call fiDefaultMsg('iface',ierr)
 
         do ! loop over regions
@@ -872,13 +872,13 @@ contains
    !       do j=1, grid%nphase
    
 			 
-			 if (locpat%ibndtyp(ibc) == 1 .or. locpat%ibndtyp(ibc) == 3) then 
+			 if (grid%ibndtyp(ibc) == 1 .or. grid%ibndtyp(ibc) == 3) then 
 				do j=1,grid%ndof
 				  call fiReadDouble(string,grid%xxbc0(j,ibc),ierr)
 				  call fiDefaultMsg('xxbc',ierr)
 				  enddo
 			 
-			  elseif(locpat%ibndtyp(ibc) == 2) then
+			  elseif(grid%ibndtyp(ibc) == 2) then
 				   do j=1, grid%nphase       
 					 call fiReadDouble(string, grid%velocitybc0(j,ibc), ierr)
 					 call fiDefaultMsg("Error reading velocity BCs:", ierr)			  		  	  
@@ -902,23 +902,23 @@ contains
         endif
       enddo ! End loop over blocks.
       
-      locpat%nblkbc = ibc
+      grid%nblkbc = ibc
       
       if (grid%myrank == 0) then
-        write(IUNIT2,'(/," *BCON: nblkbc = ",i4)') locpat%nblkbc
-        do ibc = 1, locpat%nblkbc
-          write(IUNIT2,'("  ibndtyp = ",i3," iface = ",i2)') locpat%ibndtyp(ibc), &
-          locpat%iface(ibc)
+        write(IUNIT2,'(/," *BCON: nblkbc = ",i4)') grid%nblkbc
+        do ibc = 1, grid%nblkbc
+          write(IUNIT2,'("  ibndtyp = ",i3," iface = ",i2)') grid%ibndtyp(ibc), &
+          grid%iface(ibc)
           write(IUNIT2,'("  i1  i2  j1  j2  k1  k2       p [Pa]     t [C]    c", &
      &    " [mol/L]")')
           do ireg = grid%iregbc1(ibc), grid%iregbc2(ibc)
-             if (locpat%ibndtyp(ibc) == 1 .or. locpat%ibndtyp(ibc) == 3) then
+             if (grid%ibndtyp(ibc) == 1 .or. grid%ibndtyp(ibc) == 3) then
                 write(IUNIT2,'(7i4,1p10e12.4)') &
                 grid%i1bc(ireg),grid%i2bc(ireg), &
                 grid%j1bc(ireg),grid%j2bc(ireg), &
                 grid%k1bc(ireg),grid%k2bc(ireg), &
                 (grid%xxbc0(j,ireg),j=1,grid%ndof)
-              else if (locpat%ibndtyp(ibc) == 2) then
+              else if (grid%ibndtyp(ibc) == 2) then
                 write(IUNIT2,'(6i4,1p10e12.4)') &
                 grid%i1bc(ireg),grid%i2bc(ireg), &
                 grid%j1bc(ireg),grid%j2bc(ireg), &

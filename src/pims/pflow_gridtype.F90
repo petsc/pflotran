@@ -84,22 +84,11 @@ private
 
     integer, pointer :: nL2G(:), nG2L(:), nL2A(:),nG2N(:)
 
-    ! Boundary conditions (BC's)
-    integer :: nblkbc
-      ! The number of "blocks" of boundary conditions that are defined.
-      ! Such a block is a specification of a set of boundary conditions.
-      ! This set of boundary conditions can apply to any number of regions,
-      ! so nblkbc does NOT equal the number of boundary condition regions.
+
     integer :: nconnbc  ! The number of interfaces along boundaries.
     integer, pointer :: ibconn(:)
       ! ibconn(nc) specifies the index of the boundary condition block that
       ! applies at boundary interface nc.  
-    integer, pointer :: ibndtyp(:)
-      ! ibndtyp(ibc) specifies the type of boundary condition that applies
-      ! for boundary condition block ibc.
-    integer, pointer :: iface(:)
-      ! iface(ibc) specifies the face (left, right, top, bottom, etc.) on
-      ! which BC block ibc lies.
     integer, pointer :: mblkbc(:)
       ! mblkbc(nc) gives the local, non-ghosted index of the cell that has
       ! boundary connection nc.
@@ -249,6 +238,21 @@ private
     integer :: iregini
     integer, pointer :: i1ini(:),i2ini(:),j1ini(:),j2ini(:),k1ini(:),k2ini(:)
     real*8, pointer :: xx_ini(:,:)
+
+! BC type
+    ! Boundary conditions (BC's)
+    integer :: nblkbc
+      ! The number of "blocks" of boundary conditions that are defined.
+      ! Such a block is a specification of a set of boundary conditions.
+      ! This set of boundary conditions can apply to any number of regions,
+      ! so nblkbc does NOT equal the number of boundary condition regions.
+      
+      integer, pointer :: ibndtyp(:)
+      ! ibndtyp(ibc) specifies the type of boundary condition that applies
+      ! for boundary condition block ibc.
+    integer, pointer :: iface(:)
+      ! iface(ibc) specifies the face (left, right, top, bottom, etc.) on
+      ! which BC block ibc lies.
 	
 					                      
 !   source term
