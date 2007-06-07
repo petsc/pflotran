@@ -311,8 +311,8 @@ end subroutine UpdateBoundaryConditions
 subroutine ComputeInitialCondition(grid, icondition)
 
   use pflow_gridtype_module
-  use translator_vad_module
- ! use Vadose_module
+  use translator_richards_module
+ ! use Richards_module
 
   implicit none
 
@@ -391,8 +391,8 @@ subroutine ComputeInitialCondition(grid, icondition)
   call VecRestoreArrayF90(grid%xx, xx_p, ierr)
   call VecRestoreArrayF90(grid%iphas, iphase_p,ierr)
 
-!  call pflow_update_vadose(grid)
-!  call Translator_Vadose_Switching(grid%xx,grid,0,ierr)
+!  call pflow_update_richards(grid)
+!  call Translator_Richards_Switching(grid%xx,grid,0,ierr)
 
 end subroutine ComputeInitialCondition
 

@@ -1920,7 +1920,6 @@ print *, grid%ndof, grid%nspec
       enddo ! ibc
     endif
  
-  endif  
     call VecRestoreArrayF90(grid%dx_loc, dx_loc_p, ierr)
     call VecRestoreArrayF90(grid%dy_loc, dy_loc_p, ierr)
     call VecRestoreArrayF90(grid%dz_loc, dz_loc_p, ierr)
@@ -2000,17 +1999,20 @@ print *, grid%ndof, grid%nspec
     endif
     deallocate(grid%velocitybc0)
 
- if (grid%ihydrostatic == 2) then
-    if (grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE &
-     .or. grid%use_flash == PETSC_TRUE .or. grid%use_richards == PETSC_TRUE) then
-      print *,'in hydro'
+    if (grid%ihydrostatic == 2) then
+      if (grid%use_mph == PETSC_TRUE .or. &
+          grid%use_vadose == PETSC_TRUE .or. &
+          grid%use_flash == PETSC_TRUE .or. &
+          grid%use_richards == PETSC_TRUE) then
+        print *,'in hydro'
     !  call mmhydrostatic(grid)
+      endif
     endif
 
     if (myrank == 0) write(*,'("  Finished setting up of Geometry ")')
 
 !geh
-    endif
+  endif
   
   !-----------------------------------------------------------------------
   ! Set up the transformation from physical coordinates
@@ -2239,8 +2241,8 @@ print *, grid%ndof, grid%nspec
     grid%imat = 0      
 
     call ReadUnstructuredGrid(grid) 
-    call pflow_Vadose_initadj(grid)
-    call pflow_update_vadose(grid)
+    call pflow_Richards_initadj(grid)
+    call pflow_update_richards(grid)
     
     ! dump material ids to file in natural ordering
     call DACreateGlobalVector(grid%da_1_dof,temp_vec,ierr)
