@@ -242,10 +242,11 @@ subroutine UpdateBoundaryConditions(grid)
 
   implicit none
 
+
   type(pflowGrid) :: grid
 
   logical :: use_eos
-  integer :: iconnbc, icond, itype
+  integer :: iconnbc, icond, itype, ierr
   real*8 :: value, datum, delz, delp
   real*8 :: patm = 101325.d0, tref, pref
   real*8 :: datum_coord(3), cell_coord(3)
@@ -284,19 +285,29 @@ subroutine UpdateBoundaryConditions(grid)
       delp = delz*9.81d0*998.32
       value = pref - delp
 #endif
-      if (itype == 4) value = max(value,patm)
     endif
     if (itype == 1) then ! dirichlet
       grid%xxbc(1,iconnbc) = value
       grid%xxbc(2,iconnbc) = tref  ! currently hardwired temperature
       grid%xxbc(3,iconnbc) = 1.d-6  ! currently hardwired solute concentration
+      if (value > patm) then
+        grid%iphasebc(iconnbc) = 1
+      else 
+        grid%iphasebc(iconnbc) = 3
+      endif
     elseif (itype == 2) then ! neumann
       grid%velocitybc(1:grid%nphase,iconnbc) = value  ! all xxbc dofs get over-
-     ! grid%xxbc(1:grid%nphase,iconnbc) = patm        ! written later in 
-    else                                              ! pflow_vadose_ResJac.F90
+     ! grid%xxbc(1:grid%nphase,iconnbc) = patm        ! written later 
+    else                                              !
       grid%xxbc(1,iconnbc) = value   ! dofs 2+ get overwritten later 
-    endif                            ! in pflow_vadose_ResJac.F90
+      if (value > patm) then
+        grid%iphasebc(iconnbc) = 1
+      else 
+        grid%iphasebc(iconnbc) = 3
+      endif
+    endif                            
   enddo
+
 
 end subroutine UpdateBoundaryConditions
 
@@ -356,8 +367,8 @@ subroutine ComputeInitialCondition(grid, icondition)
   datum_coord(2) = 0.d0
   datum_coord(3) = condition_array(icond)%ptr%zdatum
   
-  call VecGetArrayF90(grid%xx, xx_p, ierr); CHKERRQ(ierr)
-  call VecGetArrayF90(grid%iphas, iphase_p,ierr)
+  call VecGetArrayF90(grid%xx,xx_p, ierr); CHKERRQ(ierr)
+  call VecGetArrayF90(grid%iphas,iphase_p,ierr)
   
   do iln=1, grid%nlmax
   
@@ -388,8 +399,8 @@ subroutine ComputeInitialCondition(grid, icondition)
     
   enddo
               
-  call VecRestoreArrayF90(grid%xx, xx_p, ierr)
-  call VecRestoreArrayF90(grid%iphas, iphase_p,ierr)
+  call VecRestoreArrayF90(grid%xx,xx_p, ierr)
+  call VecRestoreArrayF90(grid%iphas,iphase_p,ierr)
 
 !  call pflow_update_richards(grid)
 !  call Translator_Richards_Switching(grid%xx,grid,0,ierr)
