@@ -1045,7 +1045,6 @@ subroutine pflowGrid_setup(grid, inputfile)
       stop
     endif
   else if (grid%use_vadose == PETSC_TRUE) then
-print *, grid%ndof, grid%nspec
     if (grid%ndof .ne. (grid%nspec+1)) then
       write(*,*) 'Specified number of dofs or phases not correct-stop: VAD ', &
         'ndof= ',grid%ndof,' nph= ',grid%nphase
@@ -2241,8 +2240,13 @@ print *, grid%ndof, grid%nspec
     grid%imat = 0      
 
     call ReadUnstructuredGrid(grid) 
-    call pflow_Richards_initadj(grid)
-    call pflow_update_richards(grid)
+    if (grid%use_vadose) then
+      call pflow_Vadose_initadj(grid)
+      call pflow_update_vadose(grid)
+    elseif (grid%use_richards) then
+      call pflow_Richards_initadj(grid)
+      call pflow_update_richards(grid)
+    endif
     
     ! dump material ids to file in natural ordering
     call DACreateGlobalVector(grid%da_1_dof,temp_vec,ierr)
