@@ -404,7 +404,7 @@ subroutine Translator_vadose_Switching(xx,grid,icri,ichange)
 
     !geh - Ignore inactive cells with inactive materials
     if (associated(grid%imat)) then
-      if (grid%imat(n) <= 0) cycle
+      if (grid%imat(grid%nL2G(n)) <= 0) cycle
     endif
 
     ipr=0
