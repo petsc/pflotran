@@ -2236,7 +2236,7 @@ subroutine pflowGrid_setup(grid, inputfile)
     if (myrank == 0) print *, 'Reading unstructured grid' 
     allocate(grid%pressurebc(grid%nphase,grid%nconnbc)) 
 
-    allocate(grid%imat(grid%nlmax))  ! allocate material id array
+    allocate(grid%imat(grid%ngmax))  ! allocate material id array
     grid%imat = 0      
 
     call ReadUnstructuredGrid(grid) 
@@ -2247,7 +2247,7 @@ subroutine pflowGrid_setup(grid, inputfile)
     call DACreateGlobalVector(grid%da_1_dof,temp_vec,ierr)
     call VecGetArrayF90(temp_vec,temp_p,ierr)
     do i=1, grid%nlmax
-      temp_p(i) = grid%imat(i)*1.d0      
+      temp_p(i) = grid%imat(grid%nL2G(i))*1.d0      
     enddo
     call VecRestoreArrayF90(temp_vec,temp_p,ierr)
     call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'materials.dat',viewer,ierr)
