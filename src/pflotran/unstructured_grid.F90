@@ -5,6 +5,7 @@ module Unstructured_Grid_module
  implicit none
 
 #define HASH
+#define INVERT
 
  private 
 
@@ -263,8 +264,13 @@ subroutine ReadUnstructuredGrid(grid)
         grid% dist2(grid%nconn) = distance_downwind
         if (area>0.D0) grid%area(grid%nconn)= area
         ! negate to account for left-hand rule in pflotran
+#ifdef INVERT
         grid%delz(grid%nconn) = -1.d0*abs(grid%z(natural_id_downwind)-  &
                                     grid%z(natural_id_upwind))
+#else
+        grid%delz(grid%nconn) = +1.d0*abs(grid%z(natural_id_downwind)-  &
+                                    grid%z(natural_id_upwind))
+#endif
         grid%grav_ang(grid%nconn) = cosB
 
         ! setup direction of permeability
@@ -372,7 +378,11 @@ subroutine ReadUnstructuredGrid(grid)
         grid%distbc(grid%nconnbc) = distance
         grid%areabc(grid%nconnbc) = area
         ! negate to account for left-hand rule in pflotran
-        grid%delzbc(grid%nconnbc) = -1.d0*delz
+#ifdef INVERT
+        grid%delzbc(grid%nconnbc) = +1.d0*delz
+#else
+        grid%delzbc(grid%nconnbc) = +1.d0*delz
+#endif
         grid%ibconn(grid%nconnbc) = icond
 
         ! setup direction of permeability
@@ -435,8 +445,8 @@ subroutine ReadUnstructuredGrid(grid)
     call fiReadWord(string,time_unit,.true.,ierr) 
     call fiErrorMsg('time unit',card,ierr)
 
-    if (.not.fiStringCompare("neumann",new_condition%ctype,7) .and. &
-        .not.fiStringCompare("saturation",new_condition%ctype,10)) then
+    if (fiStringCompare("hydraulic gradient",new_condition%ctype,18) .or. &
+        fiStringCompare("seepage",new_condition%ctype,7)) then
 
       call fiReadFlotranString(fid,string,ierr)
       call fiReadStringErrorMsg(card,ierr)
