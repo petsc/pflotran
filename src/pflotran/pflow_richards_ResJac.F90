@@ -182,7 +182,7 @@ subroutine Richards_Update_Reason(reason,grid)
 
       !geh - Ignore inactive cells with inactive materials
       if (associated(grid%imat)) then
-        if (grid%imat(n) <= 0) cycle
+        if (grid%imat(grid%nL2G(n)) <= 0) cycle
       endif
 
       n0=(n-1)* grid%ndof
@@ -776,7 +776,7 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
 
     !geh - Ignore inactive cells with inactive materials
     if (associated(grid%imat)) then
-      if (grid%imat(n) <= 0) cycle
+      if (grid%imat(grid%nL2G(n)) <= 0) cycle
     endif
 
     jn = 1 + (n-1)*grid%nphase
@@ -904,7 +904,7 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
 
     !geh - Ignore inactive cells with inactive materials
     if (associated(grid%imat)) then
-      if (grid%imat(n) <= 0) cycle
+      if (grid%imat(grid%nL2G(n)) <= 0) cycle
     endif
 
     ng = grid%nL2G(n)   ! corresponding ghost index
@@ -1296,7 +1296,7 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
 
       !geh - Ignore inactive cells with inactive materials
       if (associated(grid%imat)) then
-        if (grid%imat(n) <= 0) cycle
+        if (grid%imat(grid%nL2G(n)) <= 0) cycle
       endif
 
       ng = grid%nL2G(n)   ! corresponding ghost index
@@ -1308,7 +1308,7 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
 !geh - Zero out rows in matrix and residual entries for inactive cells
   if (associated(grid%imat)) then
     do n = 1, grid%nlmax
-      if (grid%imat(n) <= 0) then
+      if (grid%imat(grid%nL2G(n)) <= 0) then
         p1 = (n-1)*grid%ndof
         r_p(p1+1:p1+grid%ndof) = 0.d0
       endif
@@ -1463,7 +1463,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
 
     !geh - Ignore inactive cells with inactive materials
     if (associated(grid%imat)) then
-      if (grid%imat(n) <= 0) cycle
+      if (grid%imat(grid%nL2G(n)) <= 0) cycle
     endif
 
     ng = grid%nL2G(n)   !get ghosted index
@@ -1758,7 +1758,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
 
     !geh - Ignore inactive cells with inactive materials
     if (associated(grid%imat)) then
-      if (grid%imat(n) <= 0) cycle
+      if (grid%imat(grid%nL2G(n)) <= 0) cycle
     endif
 
     ra=0.D0
@@ -1988,7 +1988,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
   if (associated(grid%imat)) then
     do n = 1, grid%nlmax
       ng = grid%nL2G(n)
-      if (grid%imat(n) <= 0) then
+      if (grid%imat(ng) <= 0) then
         p1=(ng-1)*grid%ndof
         do ii=0,grid%ndof-1
           call MatZeroRowsLocal(A,1,p1+ii,1.d0,ierr)
@@ -2051,7 +2051,7 @@ subroutine pflow_Richards_initaccum(grid)
         
     !geh - Ignore inactive cells with inactive materials
     if (associated(grid%imat)) then
-      if (grid%imat(n) <= 0) cycle
+      if (grid%imat(grid%nL2G(n)) <= 0) cycle
     endif
 
     iicap=int(icap_p(n))
@@ -2079,7 +2079,7 @@ subroutine pflow_Richards_initaccum(grid)
 
     !geh - Ignore inactive cells with inactive materials
     if (associated(grid%imat)) then
-      if (grid%imat(n) <= 0) cycle
+      if (grid%imat(grid%nL2G(n)) <= 0) cycle
     endif
 
   !  ng = grid%nL2G(n)   ! corresponding ghost index
@@ -2118,6 +2118,7 @@ end subroutine pflow_Richards_initaccum
 subroutine pflow_update_Richards(grid)
 
   use translator_Richards_module
+  use pckr_module
   use Condition_module
    ! use water_eos_module
   implicit none
@@ -2126,12 +2127,21 @@ subroutine pflow_update_Richards(grid)
     
                       
   integer :: n, ichange,n0
+!geh added for transient boundary conditons
+  integer :: nc, ibc, iithrm, m
+  real*8 :: sw, pc(2), kr(2)
   integer :: ierr,iicap,iiphase, iiphase_old
   PetscScalar, pointer :: xx_p(:),icap_p(:),ithrm_p(:),iphase_p(:), var_p(:), yy_p(:), iphase_old_p(:)
   real*8 dif(1:grid%nphase), dum1, dum2           
 
       
-  if (associated(grid%imat)) call UpdateBoundaryConditions(grid)
+!geh added for transient boundary conditions      
+  if (associated(grid%imat)) then
+    call UpdateBoundaryConditions(grid)
+    yybc =grid%xxbc
+    vel_bc = grid%velocitybc
+  endif
+!geh end
 
   ! if (grid%rk > 0.d0) call Rock_Change(grid)
   ! call  Translator_Richards_Switching(grid%xx,grid,1,ichange)
@@ -2150,7 +2160,7 @@ subroutine pflow_update_Richards(grid)
 
     !geh - Ignore inactive cells with inactive materials
     if (associated(grid%imat)) then
-      if (grid%imat(n) <= 0) cycle
+      if (grid%imat(grid%nL2G(n)) <= 0) cycle
     endif
 
     iicap = icap_p(n)
@@ -2195,7 +2205,70 @@ subroutine pflow_update_Richards(grid)
   !size_var_node+4)
  
    enddo
-   
+
+  !geh added for transient boundary conditions  
+  if (associated(grid%imat)) then
+    do nc = 1, grid%nconnbc
+
+      m = grid%mblkbc(nc)  ! Note that here, m is NOT ghosted.
+       
+      if (m<0) then
+        print *, "Wrong boundary node index... STOP!!!"
+        stop
+      endif
+
+      ibc = grid%ibconn(nc)
+       
+    !print *,'initadj_bc',nc,ibc,grid%ibndtyp(ibc),grid%nconnbc
+
+      if (grid%ibndtyp(ibc)==1 .or.grid%ibndtyp(ibc)==3) then
+        iicap=int(icap_p(m))
+        iithrm=int(ithrm_p(m)) 
+        dif(1)= grid%difaq
+      !  dif(2)= grid%cdiff(iithrm)
+      
+        if(grid%iphasebc(nc) ==3)then
+          sw= grid%xxbc(1,nc)
+          call pflow_pckr_richards_fw(grid%icaptype(iicap),grid%sir(1,iicap), grid%lambda(iicap), &
+                    grid%alpha(iicap),grid%pckrm(iicap),grid%pcwmax(iicap),sw,pc,kr,&
+                    grid%pcbetac(iicap),grid%pwrprm(iicap))    
+          if(pc(1)>grid%pcwmax(iicap))then
+            print *,'INIT Warning: Pc>pcmax'
+            pc(1)=grid%pcwmax(iicap)
+          endif 
+          grid%xxbc(1,nc) =  grid%pref - pc(1)
+        endif
+      
+        call pri_var_trans_Richards_ninc(grid%xxbc(:,nc),grid%iphasebc(nc), &
+                                         grid%scale,grid%nphase,grid%nspec, &
+                                         grid%icaptype(iicap), &
+                                         grid%sir(1:grid%nphase,iicap), &
+                                         grid%lambda(iicap), &
+                                         grid%alpha(iicap),grid%pckrm(iicap), &
+                                         grid%pcwmax(iicap), & !use node's value
+                                         grid%pcbetac(iicap),grid%pwrprm(iicap),dif, &
+                                         grid%varbc(1:size_var_use),grid%itable,ierr, &
+                                         grid%pref)
+      
+        if (translator_check_cond_Richards(grid%iphasebc(nc), &
+                                           grid%varbc(1:size_var_use), &
+                                           grid%nphase,grid%nspec) /=1) then
+          print *," Wrong bounday node init...  STOP!!!", grid%xxbc(:,nc)
+      
+          print *,grid%varbc
+          stop    
+        endif 
+      endif
+
+      if (grid%ibndtyp(ibc)==2) then
+        yybc(2:grid%ndof,nc)= grid%xxbc(2:grid%ndof,nc)
+        vel_bc(1,nc) = grid%velocitybc(1,nc)
+!        print *,'initadj', nc, yybc(:,nc), vel_bc(:,nc)
+      endif 
+
+    enddo
+  endif
+ 
   call VecRestoreArrayF90(grid%xx, xx_p, ierr); CHKERRQ(ierr)
   call VecRestoreArrayF90(grid%yy, yy_p, ierr);
   call VecRestoreArrayF90(grid%icap,icap_p,ierr)
@@ -2265,7 +2338,7 @@ subroutine pflow_Richards_initadj(grid)
 
     !geh - Ignore inactive cells with inactive materials
     if (associated(grid%imat)) then
-      if (grid%imat(n) <= 0) cycle
+      if (grid%imat(grid%nL2G(n)) <= 0) cycle
     endif
 
     jn = 1 + (n-1)*grid%nphase
