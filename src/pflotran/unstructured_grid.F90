@@ -80,7 +80,7 @@ subroutine ReadUnstructuredGrid(grid)
 
   ! create hash table for fast lookup
 #ifdef HASH
-  call CreateNaturalToLocalHash(grid)
+  call CreateNaturalToLocalGhostedHash(grid)
   call PrintHashTable
 #endif
 
@@ -140,12 +140,12 @@ subroutine ReadUnstructuredGrid(grid)
     grid%z(natural_id)=zcoord
 
 #ifdef HASH
-    local_ghosted_id = GetLocalIdFromHash(natural_id)
+    local_ghosted_id = GetLocalGhostedIdFromHash(natural_id)
+#else
+    local_ghosted_id = GetLocalGhostedIdFromNaturalId(natural_id,grid)
+#endif
     if (local_ghosted_id > 0) then
       local_id = grid%nG2L(local_ghosted_id)
-#else
-    local_id = GetLocalGhostedIdFromNaturalId(natural_id,grid)
-#endif
       if (local_id > 0) then
         perm_xx_p(local_id) = xperm
         perm_yy_p(local_id) = yperm
@@ -153,11 +153,9 @@ subroutine ReadUnstructuredGrid(grid)
         volume_p(local_id) = volume
         por_p(local_id) = porosity
         tor_p(local_id) = tortuosity
-        grid%imat(local_id) = material_id
       endif
-#ifdef HASH
+      grid%imat(local_ghosted_id) = material_id
     endif
-#endif
 
 #if DEBUG
     print *, 'Read geom 1:',natural_id,xcoord,ycoord,zcoord,volume, &
@@ -227,8 +225,8 @@ subroutine ReadUnstructuredGrid(grid)
     call fiErrorMsg('natural_id_downwind',card,ierr)
 
 #ifdef HASH
-    local_ghosted_id_upwind = GetLocalIdFromHash(natural_id_upwind)
-    local_ghosted_id_downwind = GetLocalIdFromHash(natural_id_downwind)
+    local_ghosted_id_upwind = GetLocalGhostedIdFromHash(natural_id_upwind)
+    local_ghosted_id_downwind = GetLocalGhostedIdFromHash(natural_id_downwind)
 #else
     local_ghosted_id_upwind = &
                GetLocalGhostedIdFromNaturalId(natural_id_upwind,grid)
@@ -348,13 +346,12 @@ subroutine ReadUnstructuredGrid(grid)
     call fiErrorMsg('natural_id',card,ierr)
 
 #ifdef HASH
-    local_id = 0
-    local_ghosted_id = GetLocalIdFromHash(natural_id)
+    local_ghosted_id = GetLocalGhostedIdFromHash(natural_id)
+#else
+    local_ghosted)id = GetLocalGhostedIdFromNaturalId(natural_id,grid)
+#endif
     if (local_ghosted_id > 0) then 
       local_id = grid%nG2L(local_ghosted_id)
-#else
-    local_id = GetLocalGhostedIdFromNaturalId(natural_id,grid)
-#endif
       if (local_id > 0) then
         grid%nconnbc = grid%nconnbc + 1
         count2 = count2 + 1
@@ -392,9 +389,7 @@ subroutine ReadUnstructuredGrid(grid)
         grid%iphasebc(grid%nconnbc) = 1
 
       endif
-#ifdef HASH
     endif
-#endif
     count1 = count1 + 1
   enddo
 
@@ -612,8 +607,8 @@ integer function GetNumberOfLocalConnections(fid,grid)
     call fiErrorMsg('natural_id_downwind',card,ierr)
 
 #ifdef HASH
-    local_ghosted_id_upwind = GetLocalIdFromHash(natural_id_upwind)
-    local_ghosted_id_downwind = GetLocalIdFromHash(natural_id_downwind)
+    local_ghosted_id_upwind = GetLocalGhostedIdFromHash(natural_id_upwind)
+    local_ghosted_id_downwind = GetLocalGhostedIdFromHash(natural_id_downwind)
 #else
     local_ghosted_id_upwind = &
                GetLocalGhostedIdFromNaturalId(natural_id_upwind,grid)
@@ -681,19 +676,16 @@ integer function GetNumberOfBoundaryConnections(fid,grid)
     call fiErrorMsg('natural_id',card,ierr)
 
 #ifdef HASH
-    local_id = 0
-    local_ghosted_id = GetLocalIdFromHash(natural_id)
+    local_ghosted_id = GetLocalGhostedIdFromHash(natural_id)
+#else
+    local_ghosted_id = GetLocalGhostedIdFromNaturalId(natural_id,grid)
+#endif
     if (local_ghosted_id > 0) then 
       local_id = grid%nG2L(local_ghosted_id)
-#else
-    local_id = GetLocalGhostedIdFromNaturalId(natural_id,grid)
-#endif
       if (local_id > 0) then
         num_boundary_connections = num_boundary_connections + 1
       endif
-#ifdef HASH
     endif
-#endif
   enddo
 
   GetNumberOfBoundaryConnections = num_boundary_connections
@@ -760,7 +752,7 @@ end function GetLocalGhostedIdFromNaturalId
 ! date: 03/07/07
 !
 ! ************************************************************************** !
-subroutine CreateNaturalToLocalHash(grid)
+subroutine CreateNaturalToLocalGhostedHash(grid)
 
   implicit none
 
@@ -808,7 +800,7 @@ subroutine CreateNaturalToLocalHash(grid)
 
   print *, 'num_ids_per_hash:', num_ids_per_hash
 
-end subroutine CreateNaturalToLocalHash
+end subroutine CreateNaturalToLocalGhostedHash
 
 ! ************************************************************************** !
 !
@@ -818,23 +810,23 @@ end subroutine CreateNaturalToLocalHash
 ! date: 03/07/07
 !
 ! ************************************************************************** !
-integer function GetLocalIdFromHash(natural_id)
+integer function GetLocalGhostedIdFromHash(natural_id)
 
   implicit none
 
   integer :: natural_id
   integer :: hash_id, id
 
+  GetLocalGhostedIdFromHash = 0
   hash_id = mod(natural_id,num_hash)+1 
   do id = 1, hash(1,0,hash_id)
     if (hash(1,id,hash_id) == natural_id) then
-      GetLocalIdFromHash = hash(2,id,hash_id)
+      GetLocalGhostedIdFromHash = hash(2,id,hash_id)
       return
     endif
   enddo
-  GetLocalIdFromHash = 0
 
-end function GetLocalIdFromHash
+end function GetLocalGhostedIdFromHash
 
 ! ************************************************************************** !
 !
