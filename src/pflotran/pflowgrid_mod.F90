@@ -2241,7 +2241,7 @@ subroutine pflowGrid_setup(grid, inputfile)
 
     call ReadUnstructuredGrid(grid) 
 !    call pflow_Richards_initadj(grid)  ! not necessary, already init in condition
-    call pflow_update_richards(grid)
+!    call pflow_update_richards(grid)
     
     ! dump material ids to file in natural ordering
     call DACreateGlobalVector(grid%da_1_dof,temp_vec,ierr)
