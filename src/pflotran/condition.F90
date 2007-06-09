@@ -273,6 +273,7 @@ subroutine UpdateBoundaryConditions(grid)
     itype = condition_array(icond)%ptr%itype
 
     grid%xxbc(2,iconnbc) = tref
+    grid%iphasebc(iconnbc) = 1
     if (itype == 1) then
       grid%xxbc(1,iconnbc) = condition_array(icond)%ptr%cur_value
     elseif (itype == 3 .or. itype == 4) then ! correct for pressure gradient
@@ -298,18 +299,21 @@ subroutine UpdateBoundaryConditions(grid)
 #endif
       grid%xxbc(1,iconnbc) = value
     elseif (itype == 5) then
-      icap = icap_p(grid%nL2G(grid%mblkbc(iconnbc)))
-      sref = condition_array(icond)%ptr%cur_value
-      call pflow_pckr_richards_fw(grid%icaptype(icap),grid%sir(1,icap), &
-                                  grid%lambda(icap),grid%alpha(icap), &
-                                  grid%pckrm(icap),grid%pcwmax(icap), &
-                                  sref,pc,kr,grid%pcbetac(icap), &
-                                  grid%pwrprm(icap))    
-      grid%xxbc(1,iconnbc) =  patm - pc(1)
+      grid%iphasebc(iconnbc) = 3
+!      icap = icap_p(grid%nL2G(grid%mblkbc(iconnbc)))
+!      sref = condition_array(icond)%ptr%cur_value
+!      call pflow_pckr_richards_fw(grid%icaptype(icap),grid%sir(1,icap), &
+!                                  grid%lambda(icap),grid%alpha(icap), &
+!                                  grid%pckrm(icap),grid%pcwmax(icap), &
+!                                  sref,pc,kr,grid%pcbetac(icap), &
+!                                  grid%pwrprm(icap))    
+!      grid%xxbc(1,iconnbc) =  patm - pc(1)
+      grid%xxbc(1,iconnbc) = condition_array(icond)%ptr%cur_value
     elseif (itype == 2) then
       grid%velocitybc(1:grid%nphase,iconnbc) = &
                                      condition_array(icond)%ptr%cur_value
     endif
+    !print *, 'iconnbc: ', iconnbc, grid%xxbc(:,iconnbc)
   enddo
 
   call VecRestoreArrayF90(grid%icap,icap_p,ierr)
@@ -379,6 +383,7 @@ subroutine ComputeInitialCondition(grid, icondition)
     cell_coord(2) = grid%y(na)
     cell_coord(3) = grid%z(na)
     
+    iphase_p(iln) = 1
     if (itype == 1) then
       pref = condition_array(icond)%ptr%cur_value
       tref = 25.d0
@@ -393,19 +398,10 @@ subroutine ComputeInitialCondition(grid, icondition)
                                          pref,0.d0,0.d0,9.81d0*998.32, &
                                          tref,0.d0,0.d0,0.d0)
     elseif (itype == 5) then
-      icap = icap_p(iln)
-      pref = condition_array(icond)%ptr%cur_value
-      tref = 25.d0
-      sref = condition_array(icond)%ptr%cur_value
-      call pflow_pckr_richards_fw(grid%icaptype(icap),grid%sir(1,icap), &
-                                  grid%lambda(icap),grid%alpha(icap), &
-                                  grid%pckrm(icap),grid%pcwmax(icap), &
-                                  sref,pc,kr,grid%pcbetac(icap), &
-                                  grid%pwrprm(icap))    
-      value =  patm - pc(1)
+      iphase_p(iln) = 3
+      value = condition_array(icond)%ptr%cur_value
     endif     
 
-    iphase_p(iln) = 1
     xx_p(1+(iln-1)*grid%ndof) = value  
     
   enddo
