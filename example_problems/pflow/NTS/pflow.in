@@ -131,8 +131,8 @@ BCON
 /
 /
 :
-:   alpha [C/m]  beta [m/m]  tref [C]  pref [Pa]   conc
-HYDR 0.01069d0     1.d-3     32.8d0      8.e6     1.e-12
+:    ihydrostatic  alpha [C/m]  beta [m/m]  tref [C]  pref [Pa]   conc
+HYDR      1        0.01069d0     1.d-3     32.8d0      8.e6     1.e-12
 :
 :     ret  fc
 RADN 1.d0 1.03
