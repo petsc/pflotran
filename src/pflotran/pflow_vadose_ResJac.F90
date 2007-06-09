@@ -116,7 +116,7 @@ subroutine pflow_Vadose_setupini(grid)
 
     !geh - Ignore inactive cells with inactive materials
     if (associated(grid%imat)) then
-      if (grid%imat(iln) <= 0) cycle
+      if (grid%imat(grid%nL2G(iln)) <= 0) cycle
     endif
 
     na = grid%nL2A(iln)
@@ -183,7 +183,7 @@ subroutine Vadose_Update_Reason(reason,grid)
 
       !geh - Ignore inactive cells with inactive materials
       if (associated(grid%imat)) then
-        if (grid%imat(n) <= 0) cycle
+        if (grid%imat(grid%nL2G(n)) <= 0) cycle
       endif
 
       n0=(n-1)* grid%ndof
@@ -890,7 +890,7 @@ subroutine VadoseResidual(snes,xx,r,grid,ierr)
 
     !geh - Ignore inactive cells with inactive materials
     if (associated(grid%imat)) then
-      if (grid%imat(n) <= 0) cycle
+      if (grid%imat(grid%nL2G(n)) <= 0) cycle
     endif
 
     jn = 1 + (n-1)*grid%nphase
@@ -1019,7 +1019,7 @@ subroutine VadoseResidual(snes,xx,r,grid,ierr)
 
     !geh - Ignore inactive cells with inactive materials
     if (associated(grid%imat)) then
-      if (grid%imat(n) <= 0) cycle
+      if (grid%imat(grid%nL2G(n)) <= 0) cycle
     endif
 
     ng = grid%nL2G(n)   ! corresponding ghost index
@@ -1413,7 +1413,7 @@ subroutine VadoseResidual(snes,xx,r,grid,ierr)
 
       !geh - Ignore inactive cells with inactive materials
       if (associated(grid%imat)) then
-        if (grid%imat(n) <= 0) cycle
+        if (grid%imat(grid%nL2G(n)) <= 0) cycle
       endif
 
       ng = grid%nL2G(n)   ! corresponding ghost index
@@ -1425,7 +1425,7 @@ subroutine VadoseResidual(snes,xx,r,grid,ierr)
 !geh - Zero out rows in matrix and residual entries for inactive cells
   if (associated(grid%imat)) then
     do n = 1, grid%nlmax
-      if (grid%imat(n) <= 0) then
+      if (grid%imat(grid%nL2G(n)) <= 0) then
         p1 = (n-1)*grid%ndof
         r_p(p1+1:p1+grid%ndof) = 0.d0
       endif
@@ -1579,7 +1579,7 @@ subroutine VadoseJacobian(snes,xx,A,B,flag,grid,ierr)
 
     !geh - Ignore inactive cells with inactive materials
     if (associated(grid%imat)) then
-      if (grid%imat(n) <= 0) cycle
+      if (grid%imat(grid%nL2G(n)) <= 0) cycle
     endif
 
     ng = grid%nL2G(n)   !get ghosted index
@@ -1858,7 +1858,7 @@ subroutine VadoseJacobian(snes,xx,A,B,flag,grid,ierr)
 
     !geh - Ignore inactive cells with inactive materials
     if (associated(grid%imat)) then
-      if (grid%imat(n) <= 0) cycle
+      if (grid%imat(grid%nL2G(n)) <= 0) cycle
     endif
 
     ra=0.D0
@@ -2081,7 +2081,7 @@ subroutine VadoseJacobian(snes,xx,A,B,flag,grid,ierr)
   if (associated(grid%imat)) then
     do n = 1, grid%nlmax
       ng = grid%nL2G(n)
-      if (grid%imat(n) <= 0) then
+      if (grid%imat(ng) <= 0) then
         p1=(ng-1)*grid%ndof
         do ii=0,grid%ndof-1
           call MatZeroRowsLocal(A,1,p1+ii,1.d0,ierr)
@@ -2144,7 +2144,7 @@ subroutine pflow_Vadose_initaccum(grid)
         
     !geh - Ignore inactive cells with inactive materials
     if (associated(grid%imat)) then
-      if (grid%imat(n) <= 0) cycle
+      if (grid%imat(grid%nL2G(n)) <= 0) cycle
     endif
 
     iicap=int(icap_p(n))
@@ -2172,7 +2172,7 @@ subroutine pflow_Vadose_initaccum(grid)
 
     !geh - Ignore inactive cells with inactive materials
     if (associated(grid%imat)) then
-      if (grid%imat(n) <= 0) cycle
+      if (grid%imat(grid%nL2G(n)) <= 0) cycle
     endif
 
   !  ng = grid%nL2G(n)   ! corresponding ghost index
@@ -2244,7 +2244,7 @@ subroutine pflow_update_Vadose(grid)
 
     !geh - Ignore inactive cells with inactive materials
     if (associated(grid%imat)) then
-      if (grid%imat(n) <= 0) cycle
+      if (grid%imat(grid%nL2G(n)) <= 0) cycle
     endif
 
     iicap = icap_p(n)
@@ -2336,7 +2336,7 @@ subroutine pflow_Vadose_initadj(grid)
 
     !geh - Ignore inactive cells with inactive materials
     if (associated(grid%imat)) then
-      if (grid%imat(n) <= 0) cycle
+      if (grid%imat(grid%nL2G(n)) <= 0) cycle
     endif
 
     jn = 1 + (n-1)*grid%nphase
