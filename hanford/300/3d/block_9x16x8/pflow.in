@@ -76,7 +76,7 @@ INIT 0
 :geh note:   the grid set to 422486 Pa with a vertical gradient of -9802.2501
 :geh note:   Pa/m
 :i1  i2  j1  j2  k1  k2     iphase          pf    tf  
- #1  9   1   16  1   8       3              0.5   25.0  
+:1  9   1   16  1   8       3              0.5   25.0  
  1  9   1   16  1   8       1              -140894.254   25.0  
 /
 skip
