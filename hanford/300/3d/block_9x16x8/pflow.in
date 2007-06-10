@@ -1,0 +1,211 @@
+: Description: 2D simulation of simplified sat/unsat flow at Hanford 300 Area
+: Author: Glenn Hammond
+:
+:    igeom nx  ny  nz nphase  nspec  npricomp  ndof  idcdm  itable
+GRID    1   9  16   8 1       1      1         2     0      0
+:
+:    npx npy npz
+:PROC  1   1   1
+:
+:RAD0 0.d0
+:
+:write_init iprint imod itecplot iblkfmt ndtcmx iran_por ran_fac iread_perm iread_geom
+:OPTS   0      0     1     1      1        3        0   0.D0       0        0
+OPTS   0      0     1     1      1        3        0   0.D0       0       -1 
+:OPTS   0      -2     1     1      1        3        0   0.D0       0        0
+:OPTS   0      -2     1     1      1        3        0   0.D0       0        -1 
+:
+:      steps    iaccel newtmx icutmx    dpmx   dtmpmx   dcmx    dsmx
+TOLR   30000       6     16      16     5.e4     5.     1.5e-1   1.5e-2
+:
+DXYZ
+160.
+160.
+8.
+:    atol     rtol     stol   dtol   newton_max   maxf
+SOLV 1.d-9    1.d-9    1.d-6   1D15      25        100
+:  d0[m^2/s] delhaq[kJ/mol]
+DIFF  1.D-16       12.6
+:
+: Richards Equation Pref
+RICH 101325.
+:
+PCKR
+:1-vanG, 2-BrooksCorey, 3-linear, 4-SC-W
+:geh note: itype, swir, lambda, alpha all from STOMP input, all other left as is
+:geh note:  Assume that swir = residual saturation; alpha = entry head (m)
+: ist itype swir    sgir  lambda   alpha    pcwmax   betac   pwr
+  1     2   0.1471  0.7465   0.7131    1.e8    0.e0    1.D0
+  2     1   0.1299  0.5193   0.7131    1.e8    0.e0    1.D0
+  3     2   0.1299  0.5193   0.7131    1.e8    0.e0    1.D0
+  4     2   0.1299  0.5193   0.7131    1.e8    0.e0    1.D0
+  5     2   0.1299  0.5193   0.7131    1.e8    0.e0    1.D0
+  6     2   0.1299  0.5193   0.7131    1.e8    0.e0    1.D0
+/
+THRM
+:geh note: rho from STOMP input, all other left as is
+:geh note: cpr=rock heat capacity (all capillary func in PCKR keywor-pcl)
+:ithm rho     cpr      ckdry  cksat  tau    cdiff      cexp
+  1   2.75e3  1000.e0  0.5    0.5    0.5    2.13e-5    1.8
+  2   2.75e3  1000.e0  0.5    0.5    0.5    2.13e-5    1.8
+  3   2.75e3  1000.e0  0.5    0.5    0.5    2.13e-5    1.8
+  4   2.75e3  1000.e0  0.5    0.5    0.5    2.13e-5    1.8
+  5   2.75e3  1000.e0  0.5    0.5    0.5    2.13e-5    1.8
+  6   2.75e3  1000.e0  0.5    0.5    0.5    2.13e-5    1.8
+/
+:
+PHIK
+:geh note: Using soil 1 as the default
+:geh note: Where do you specify which PCKR to use?
+:geh note: for soil(s) (1) por = 0.25 (2-7) por = 0.18
+:geh note: perm for soils
+:geh note:   permx(1) = permy(1) = 1.578e-9 m^2 permz(1) = 1.578e-10 m^2
+:geh note:   permx(2) = permy(2) = 1.578e-10 m^2 permz(2) = 1.578e-11 m^2
+:geh note:   permx(3) = permy(3) = 1.052e-14 m^2 permz(2) = 1.052e-15 m^2
+:geh note:   permx(4) = permy(4) = 4.523e-11 m^2 permz(4) = 4.207e-12 m^2
+:geh note:   permx(5) = permy(5) = 5.259e-17 m^2 permz(5) = 5.259-18 m^2
+:geh note:   permx(6) = permy(6) = 5.259e-17 m^2 permz(6) = 5.259-18 m^2
+:geh note: STOMP input specifies "Millington and Quirk" tortuosity function.  
+:geh note:   Not sure what this translates to as far as a constant tortuosity.
+:i1  i2  j1  j2  k1  k2 icap ithm por  tor permx     permy     permz     permpwr
+  1  9   1   16   1   8   2    1  0.25 0.5  1.e-12    1.e-12    1.e-13   1.e0
+/
+:
+INIT 0
+:geh note: Hydrostatic initial condition with the pressure at the bottom of
+:geh note:   the grid set to 422486 Pa with a vertical gradient of -9802.2501
+:geh note:   Pa/m
+:i1  i2  j1  j2  k1  k2     iphase          pf    tf  
+ #1  9   1   16  1   8       3              0.5   25.0  
+ 1  9   1   16  1   8       1              -140894.254   25.0  
+/
+:skip
+BCON
+:geh note: ------------------------------------------------------------
+:geh note: West BC - Dirichlet @ 4.2223310e+005 Pa @ 72.5 m
+:ibndtyp iface
+   3       1
+:i1  i2  j1  j2  k1  k2
+  1   1   1  16   1   8
+:iphase Pressure [Pa] Temp [C]   sg/conc
+    1   -140894.254    25.0e0     0.77746
+/
+:geh note: ------------------------------------------------------------
+:geh note: East BC - Dirichlet @ 2.1972900e+005 Pa @ 92.75 m
+:ibndtyp iface
+   3       2
+:i1  i2  j1  j2  k1  k2
+  9   9   1  16   1   8
+:iphase Pressure [Pa] Temp [C]   sg/conc
+    1   -145079.5902  25.0e0     0.77746
+/
+:geh note: ------------------------------------------------------------
+:geh note: Top BC - no flow
+:ibndtyp iface
+   2       3
+:i1  i2  j1  j2  k1  k2
+  1  9   1   16   1   1
+:iphase Liq vel Temp [C]   sg/conc
+   1    0.D0     25.0       1.e-6
+/
+:geh note: ------------------------------------------------------------
+:geh note: Bottom BC - no flow
+:ibndtyp iface
+   2       4
+:i1  i2  j1  j2  k1  k2
+  1  9    1   16   8   8
+:iphase Liq vel Temp [C]   sg/conc
+    1   0.D0     25.0     1.e-6
+/
+:geh note: ------------------------------------------------------------
+:geh note: Bottom BC - no flow
+:ibndtyp iface
+   2       5
+:i1  i2  j1  j2  k1  k2
+  1  9    1   1   1   8
+:iphase Liq vel Temp [C]   sg/conc
+    1   0.D0     25.0     1.e-6
+/
+:geh note: ------------------------------------------------------------
+:geh note: North BC - no flow
+:ibndtyp iface
+   2       6
+:i1  i2  j1  j2  k1  k2
+  1  9   16  16   1   8
+:iphase Liq vel Temp [C]   sg/conc
+   1    0.D0     25.0       1.e-6
+/
+/
+:
+:
+:   alpha [C/m]  beta [m/m]  tref [C]  pref [Pa]  conc
+HYDR 0.0      0.      25.e0    -140894.254    1D-6
+:noskip
+:
+:
+:TIME h 3
+:.0001 0.0002 1.
+skip
+TIME h 4
+1. 10. 50. 100.
+noskip
+
+: Weekly output w/ printout immediately before failure at 3103.???
+TIME h 20
+168	336	504	672	840	1008	1176	1344	1512	1680
+1848	2016	2184	2352	2520	2688	2856	3024	3103	3104
+
+skip
+: Weekly output
+TIME h 52
+168	336	504	672	840	1008	1176	1344	1512	1680
+1848	2016	2184	2352	2520	2688	2856	3024	3192	3360
+3528	3696	3864	4032	4200	4368	4536	4704	4872	5040
+5208	5376	5544	5712	5880	6048	6216	6384	6552	6720
+6888	7056	7224	7392	7560	7728	7896	8064	8232	8400
+8568	8736
+noskip
+skip
+: Daily output
+TIME h 365
+24	48	72	96	120	144	168	192	216	240
+264	288	312	336	360	384	408	432	456	480
+504	528	552	576	600	624	648	672	696	720
+744	768	792	816	840	864	888	912	936	960
+984	1008	1032	1056	1080	1104	1128	1152	1176	1200
+1224	1248	1272	1296	1320	1344	1368	1392	1416	1440
+1464	1488	1512	1536	1560	1584	1608	1632	1656	1680
+1704	1728	1752	1776	1800	1824	1848	1872	1896	1920
+1944	1968	1992	2016	2040	2064	2088	2112	2136	2160
+2184	2208	2232	2256	2280	2304	2328	2352	2376	2400
+2424	2448	2472	2496	2520	2544	2568	2592	2616	2640
+2664	2688	2712	2736	2760	2784	2808	2832	2856	2880
+2904	2928	2952	2976	3000	3024	3048	3072	3096	3120
+3144	3168	3192	3216	3240	3264	3288	3312	3336	3360
+3384	3408	3432	3456	3480	3504	3528	3552	3576	3600
+3624	3648	3672	3696	3720	3744	3768	3792	3816	3840
+3864	3888	3912	3936	3960	3984	4008	4032	4056	4080
+4104	4128	4152	4176	4200	4224	4248	4272	4296	4320
+4344	4368	4392	4416	4440	4464	4488	4512	4536	4560
+4584	4608	4632	4656	4680	4704	4728	4752	4776	4800
+4824	4848	4872	4896	4920	4944	4968	4992	5016	5040
+5064	5088	5112	5136	5160	5184	5208	5232	5256	5280
+5304	5328	5352	5376	5400	5424	5448	5472	5496	5520
+5544	5568	5592	5616	5640	5664	5688	5712	5736	5760
+5784	5808	5832	5856	5880	5904	5928	5952	5976	6000
+6024	6048	6072	6096	6120	6144	6168	6192	6216	6240
+6264	6288	6312	6336	6360	6384	6408	6432	6456	6480
+6504	6528	6552	6576	6600	6624	6648	6672	6696	6720
+6744	6768	6792	6816	6840	6864	6888	6912	6936	6960
+6984	7008	7032	7056	7080	7104	7128	7152	7176	7200
+7224	7248	7272	7296	7320	7344	7368	7392	7416	7440
+7464	7488	7512	7536	7560	7584	7608	7632	7656	7680
+7704	7728	7752	7776	7800	7824	7848	7872	7896	7920
+7944	7968	7992	8016	8040	8064	8088	8112	8136	8160
+8184	8208	8232	8256	8280	8304	8328	8352	8376	8400
+8424	8448	8472	8496	8520	8544	8568	8592	8616	8640
+8664	8688	8712	8736	8760
+noskip
+DTST  1  1.
+1.e-3 1.
+:
