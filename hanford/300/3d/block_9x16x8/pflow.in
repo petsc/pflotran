@@ -79,7 +79,7 @@ INIT 0
  #1  9   1   16  1   8       3              0.5   25.0  
  1  9   1   16  1   8       1              -140894.254   25.0  
 /
-:skip
+skip
 BCON
 :geh note: ------------------------------------------------------------
 :geh note: West BC - Dirichlet @ 4.2223310e+005 Pa @ 72.5 m
@@ -140,7 +140,7 @@ BCON
 :
 :   alpha [C/m]  beta [m/m]  tref [C]  pref [Pa]  conc
 HYDR 0.0      0.      25.e0    -140894.254    1D-6
-:noskip
+noskip
 :
 :
 :TIME h 3
