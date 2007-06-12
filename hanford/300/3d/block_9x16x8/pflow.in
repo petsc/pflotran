@@ -34,13 +34,13 @@ PCKR
 :1-vanG, 2-BrooksCorey, 3-linear, 4-SC-W
 :geh note: itype, swir, lambda, alpha all from STOMP input, all other left as is
 :geh note:  Assume that swir = residual saturation; alpha = entry head (m)
-: ist itype swir    sgir  lambda   alpha    pcwmax   betac   pwr
-  1     2   0.1471  0.7465   0.7131    1.e8    0.e0    1.D0
-  2     1   0.1299  0.5193   0.7131    1.e8    0.e0    1.D0
-  3     2   0.1299  0.5193   0.7131    1.e8    0.e0    1.D0
-  4     2   0.1299  0.5193   0.7131    1.e8    0.e0    1.D0
-  5     2   0.1299  0.5193   0.7131    1.e8    0.e0    1.D0
-  6     2   0.1299  0.5193   0.7131    1.e8    0.e0    1.D0
+: ist itype swir    lambda   alpha    pcwmax   betac   pwr
+  1     1   0.1471  0.7465   4.4317e-4 1.e8    0.e0    1.D0
+  2     1   0.1299  0.5193   1.4319e-4 1.e8    0.e0    1.D0
+  3     1   0.1299  0.5193   1.4319e-4 1.e8    0.e0    1.D0
+  4     1   0.1299  0.5193   1.4319e-4 1.e8    0.e0    1.D0
+  5     1   0.1299  0.5193   1.4319e-4 1.e8    0.e0    1.D0
+  6     1   0.1299  0.5193   1.4319e-4 1.e8    0.e0    1.D0
 /
 THRM
 :geh note: rho from STOMP input, all other left as is
@@ -69,8 +69,7 @@ PHIK
 :geh note:   Not sure what this translates to as far as a constant tortuosity.
 :i1  i2  j1  j2  k1  k2 icap ithm por  tor permx     permy     permz     permpwr
   1  9   1   16   1   8   2    1  0.25 0.5  1.e-12    1.e-12    1.e-13   1.e0
-/
-:
+/ :
 INIT 0
 :geh note: Hydrostatic initial condition with the pressure at the bottom of
 :geh note:   the grid set to 422486 Pa with a vertical gradient of -9802.2501
