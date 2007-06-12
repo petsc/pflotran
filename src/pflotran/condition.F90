@@ -131,6 +131,18 @@ subroutine UpdateConditions(time)
 
     if (.not.associated(cur_condition)) exit
 
+    ! if more than 10 times specified, cycle the transient condition
+    ! note that 10 is just an arbitrary number
+    if (cur_time_index == cur_condition%max_time_index .and. &
+        cur_condition%max_time_index > 10) then
+      do cur_time_index = 1, cur_condition%max_time_index
+        cur_condition%times(cur_time_index) = &     
+              cur_condition%times(cur_time_index) + &     
+              cur_condition%times(cur_condition%max_time_index)
+      enddo
+      cur_time_index = 1
+    endif
+
     cur_time_index = cur_condition%cur_time_index
     next_time_index = min(cur_condition%cur_time_index+1, &
                           cur_condition%max_time_index)
