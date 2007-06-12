@@ -1305,6 +1305,14 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
     enddo
   endif
 
+#ifdef ISOTHERMAL
+!geh - zero out temperature
+  do n = 1, grid%nlmax
+    p1 = (n-1)*grid%ndof
+    r_p(p1+2) = 0.
+  enddo
+#endif
+
 !geh - Zero out rows in matrix and residual entries for inactive cells
   if (associated(grid%imat)) then
     do n = 1, grid%nlmax
@@ -1983,6 +1991,15 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
 
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
+
+#ifdef ISOTHERMAL
+!geh - zero out temperature
+  do n = 1, grid%nlmax
+    ng = grid%nL2G(n)
+    p1=(ng-1)*grid%ndof
+    call MatZeroRowsLocal(A,1,p1+1,1.d0,ierr)
+  enddo
+#endif
 
 !geh - Zero out rows in matrix and residual entries for inactive cells
   if (associated(grid%imat)) then
