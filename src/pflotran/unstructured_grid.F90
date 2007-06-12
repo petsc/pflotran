@@ -549,7 +549,9 @@ subroutine ReadUnstructuredGrid(grid)
 ! set capillary function ids based on material id
   call VecGetArrayF90(grid%icap,icap_p,ierr)
   do local_id=1,grid%nlmax
-    icap_p(local_id) = grid%imat(grid%nL2G(local_id))
+    if (grid%imat(grid%nL2G(local_id)) > 0) then
+      icap_p(local_id) = grid%imat(grid%nL2G(local_id))
+    endif
   enddo
   call VecRestoreArrayF90(grid%icap,icap_p,ierr)
 
