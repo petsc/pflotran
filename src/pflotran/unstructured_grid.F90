@@ -172,7 +172,7 @@ subroutine ReadUnstructuredGrid(grid)
   call VecRestoreArrayF90(grid%tor,tor_p,ierr)
   call VecRestoreArrayF90(grid%porosity,por_p,ierr)
 
-  print *, count1, ' cells read'
+  if (grid%myrank == 0) print *, count1, ' cells read'
   
 ! CONNection information
 
@@ -293,7 +293,7 @@ subroutine ReadUnstructuredGrid(grid)
     count1 = count1 + 1
 !print *, grid%myrank, local_ghosted_id_upwind, local_id_upwind, local_ghosted_id_downwind, local_id_downwind
   enddo
-  print *, count2, ' of ', count1, ' connections found'
+  if (grid%myrank == 0) print *, count2, ' of ', count1, ' connections found'
 
 
 ! BCONection information
@@ -397,7 +397,7 @@ subroutine ReadUnstructuredGrid(grid)
     count1 = count1 + 1
   enddo
 
-  print *, count2, ' of ', count1, ' boundary connections found'
+  if (grid%myrank == 0) print *, count2, ' of ', count1, ' boundary connections found'
 
 ! CONDition information
 
@@ -517,7 +517,7 @@ subroutine ReadUnstructuredGrid(grid)
 
     enddo
 
-    print *, count2, ' times read'
+    if (grid%myrank == 0) print *, count2, ' times read'
 
     call AddCondition(new_condition)
     nullify(new_condition)
@@ -526,7 +526,7 @@ subroutine ReadUnstructuredGrid(grid)
 
   enddo
 
-  print *, count1, ' conditions read'
+  if (grid%myrank == 0) print *, count1, ' conditions read'
 
 ! Initial Condition information
 
@@ -567,7 +567,7 @@ subroutine ReadUnstructuredGrid(grid)
 #endif
   close(fid)
   time1 = secnds(0.) - time0
-  print *, time1, ' seconds to read unstructured grid data'
+  if (grid%myrank == 0) print *, time1, ' seconds to read unstructured grid data'
  
 end subroutine ReadUnstructuredGrid
  
@@ -811,7 +811,7 @@ subroutine CreateNaturalToLocalGhostedHash(grid)
     hash(2,num_in_hash,hash_id) = local_ghosted_id
   enddo
 
-  print *, 'num_ids_per_hash:', num_ids_per_hash
+  if (grid%myrank == 0) print *, 'num_ids_per_hash:', num_ids_per_hash
 
 end subroutine CreateNaturalToLocalGhostedHash
 
