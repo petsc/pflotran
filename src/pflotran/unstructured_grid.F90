@@ -47,7 +47,7 @@ subroutine ReadUnstructuredGrid(grid)
   character(len=MAXSTRINGLENGTH) :: string 
  
   PetscScalar, pointer :: perm_xx_p(:),perm_yy_p(:),perm_zz_p(:),por_p(:), &
-                          tor_p(:), volume_p(:)
+                          tor_p(:), volume_p(:), icap_p(:)
   integer fid, ierr
   integer :: connection_id, material_id, natural_id, local_id, local_ghosted_id
   integer :: natural_id_upwind, natural_id_downwind
@@ -545,6 +545,15 @@ subroutine ReadUnstructuredGrid(grid)
       call fiErrorMsg('icondition',card,ierr)
     enddo
   endif
+
+! set capillary function ids based on material id
+  call VecGetArrayF90(grid%icap,icap_p,ierr)
+  do local_id=1,grid%nlmax
+    if (grid%imat(grid%nL2G(local_id)) > 0) then
+      icap_p(local_id) = grid%imat(grid%nL2G(local_id))
+    endif
+  enddo
+  call VecRestoreArrayF90(grid%icap,icap_p,ierr)
 
   call InitializeBoundaryConditions(grid)
   if (icondition > 0) call ComputeInitialCondition(grid,icondition)

@@ -153,11 +153,13 @@ subroutine pflow_output(grid,kplt,iplot)
     if (grid%myrank == 0) then
       call VecGetArrayF90(c_all, c_p, ierr)
       call VecGetArrayF90(vl_all, vl_p, ierr)
+      
       allocate(fldflx(grid%ibrkcrv))
       allocate(fldvol(grid%ibrkcrv))
+      
+      fldflx = 0.d0
+      fldvol = 0.d0
       do ibrk = 1, grid%ibrkcrv
-        fldflx(ibrk) = 0.d0
-        fldvol(ibrk) = 0.d0
         sum1 = 0.d0
         sum2 = 0.d0
         sum1v = 0.d0
@@ -194,9 +196,11 @@ subroutine pflow_output(grid,kplt,iplot)
         if (sum2 .ne. 0.d0) fldflx(ibrk) = sum1/sum2
         if (sum2v .ne. 0.d0) fldvol(ibrk) = sum1v/sum2v
       enddo
+
       write(IUNIT4,'(1p100e12.4)') grid%t/grid%tconv,grid%dt/grid%tconv, &
                                    (fldflx(i),i=1,grid%ibrkcrv), &
                                    (fldvol(i),i=1,grid%ibrkcrv)
+      
       call VecRestoreArrayF90(c_all, c_p, ierr)
       call VecRestoreArrayF90(vl_all, vl_p, ierr)
       deallocate(fldflx)
