@@ -573,6 +573,7 @@ type(pflowGrid) function pflowGrid_new(igeom, nx, ny, nz, npx, npy, npz, &
   allocate(grid%nG2L(grid%ngmax))
   allocate(grid%nL2A(grid%nlmax))
   allocate(grid%nG2N(grid%ngmax))
+  allocate(grid%nG2A(grid%ngmax))
   allocate(grid%nd1(grid%nconn))
   allocate(grid%nd2(grid%nconn))
   allocate(grid%dist1(grid%nconn))
@@ -797,6 +798,20 @@ type(pflowGrid) function pflowGrid_new(igeom, nx, ny, nz, npx, npy, npz, &
         if (na>(grid%nmax-1)) print *,'Wrong Nature order....'
         grid%nL2A(n) = na
         !print *,grid%myrank, k,j,i,n,na
+        !grid%nG2N(ng) = na
+      enddo
+    enddo
+  enddo
+  ! Local(ghosted)->Natural(natural order starts from 0)
+  n=0
+  do k=1,grid%ngz
+    do j=1,grid%ngy
+      do i=1,grid%ngx
+        n = n + 1
+        na = i-1+grid%ngxs+(j-1+grid%ngys)*grid%nx+(k-1+grid%ngzs)*grid%nxy
+        if (na>(grid%nmax-1)) print *,'Wrong Nature order....'
+        grid%nG2A(n) = na
+!        print *,grid%myrank, k,j,i,n,na
         !grid%nG2N(ng) = na
       enddo
     enddo
@@ -2240,6 +2255,8 @@ subroutine pflowGrid_setup(grid, inputfile)
     grid%imat = 0      
 
     call ReadUnstructuredGrid(grid) 
+! this call is to set up an array for zeroing inactive and isothermal cells
+    call createRichardsZeroArray(grid)
 !    call pflow_Richards_initadj(grid)  ! not necessary, already init in condition
 !    call pflow_update_richards(grid)
     
