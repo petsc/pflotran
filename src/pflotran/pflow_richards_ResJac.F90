@@ -55,7 +55,10 @@ module Richards_module
          pflow_update_Richards,pflow_Richards_initadj, pflow_Richards_timecut,&
          pflow_Richards_setupini, Richards_Update, Richards_Update_Reason
 
-
+  public :: createRichardsZeroArray
+  integer, save :: n_zero_rows = 0
+  integer, pointer, save :: zero_rows_local(:)  ! 1-based indexing
+  integer, pointer, save :: zero_rows_local_ghosted(:) ! 0-based indexing
 
 contains
 
@@ -110,6 +113,7 @@ subroutine pflow_Richards_setupini(grid)
   call VecGetArrayF90(grid%xx, xx_p, ierr); CHKERRQ(ierr)
   call VecGetArrayF90(grid%iphas, iphase_p,ierr)
   
+print *, 'here0'
   do iln=1, grid%nlmax
 
     !geh - Ignore inactive cells with inactive materials
@@ -1305,21 +1309,9 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
     enddo
   endif
 
-#ifdef ISOTHERMAL
-!geh - zero out temperature
-  do n = 1, grid%nlmax
-    p1 = (n-1)*grid%ndof
-    r_p(p1+2) = 0.
-  enddo
-#endif
-
-!geh - Zero out rows in matrix and residual entries for inactive cells
-  if (associated(grid%imat)) then
-    do n = 1, grid%nlmax
-      if (grid%imat(grid%nL2G(n)) <= 0) then
-        p1 = (n-1)*grid%ndof
-        r_p(p1+1:p1+grid%ndof) = 0.d0
-      endif
+  if (n_zero_rows > 0) then
+    do n=1,n_zero_rows
+      r_p(zero_rows_local(n)) = 0.
     enddo
   endif
 
@@ -1992,26 +1984,9 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
 
-#ifdef ISOTHERMAL
-!geh - zero out temperature
-  do n = 1, grid%nlmax
-    ng = grid%nL2G(n)
-    p1=(ng-1)*grid%ndof
-    call MatZeroRowsLocal(A,1,p1+1,1.d0,ierr)
-  enddo
-#endif
-
-!geh - Zero out rows in matrix and residual entries for inactive cells
-  if (associated(grid%imat)) then
-    do n = 1, grid%nlmax
-      ng = grid%nL2G(n)
-      if (grid%imat(ng) <= 0) then
-        p1=(ng-1)*grid%ndof
-        do ii=0,grid%ndof-1
-          call MatZeroRowsLocal(A,1,p1+ii,1.d0,ierr)
-        enddo
-      endif
-    enddo
+! zero out isothermal and inactive cells
+  if (n_zero_rows > 0) then
+    call MatZeroRowsLocal(A,n_zero_rows,zero_rows_local_ghosted,1.d0,ierr) 
   endif
 
   !B = A
@@ -2024,7 +1999,6 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
  call MatView(A,viewer,ierr)
  call PetscViewerDestroy(viewer,ierr)
 #endif
-! stop
 
 end subroutine RichardsJacobian
 
@@ -2483,6 +2457,64 @@ subroutine pflow_Richards_initadj(grid)
   !call VecCopy(grid%iphas,grid%iphas_old,ierr)
    
 end subroutine pflow_Richards_initadj
+
+
+subroutine createRichardsZeroArray(grid)
+
+  type(pflowGrid), intent(inout) :: grid
+  integer :: n, ng, ncount
+
+  n_zero_rows = 0
+#ifdef ISOTHERMAL
+  n_zero_rows = n_zero_rows + grid%nlmax
+#endif
+
+  if (associated(grid%imat)) then
+    do n = 1, grid%nlmax
+      ng = grid%nL2G(n)
+      if (grid%imat(ng) <= 0) then
+        n_zero_rows = n_zero_rows + 1
+      endif
+    enddo
+  endif
+
+  allocate(zero_rows_local(n_zero_rows))
+  allocate(zero_rows_local_ghosted(n_zero_rows))
+  zero_rows = 0
+
+  ncount = 0
+
+  if (associated(grid%imat)) then
+    do n = 1, grid%nlmax
+      ng = grid%nL2G(n)
+      if (grid%imat(ng) <= 0) then
+        ncount = ncount + 1
+        zero_rows_local(ncount) = (n-1)*grid%ndof+1
+        zero_rows_local_ghosted(ncount) = (ng-1)*grid%ndof
+      endif
+#ifdef ISOTHERMAL
+      ncount = ncount +1
+      zero_rows_local(ncount) = (n-1)*grid%ndof+2
+      zero_rows_local_ghosted(ncount) = (ng-1)*grid%ndof+1
+#endif
+    enddo
+  else
+#ifdef ISOTHERMAL
+    do n = 1, grid%nlmax
+      ng = grid%nL2G(n)
+      ncount = ncount +1
+      zero_rows_local(ncount) = (n-1)*grid%ndof+2
+      zero_rows_local_ghosted(ncount) = (ng-1)*grid%ndof+1
+    enddo
+#endif
+  endif
+
+  if (ncount /= n_zero_rows) then
+    print *, 'Error:  Mismatch in non-zero row count!'
+    stop
+  endif
+
+end subroutine createRichardsZeroArray
 
 
 end module Richards_module
