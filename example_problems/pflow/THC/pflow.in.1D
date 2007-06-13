@@ -1,21 +1,24 @@
-:     nx  ny  nz nphase ndof
-GRID  50   1   1   1    3
+:     igeom   nx  ny  nz  nphase npec  npricomp ndof idcdm itable 
+GRID  1       50   1   1    1     1       1       3    0     0
 :
 :    npx npy npz
 :PROC  1   1   1
 :
-:    write_init iprint imod itecplt
-OPTS      1       1      1     0
+:options: write_init iprint imod itecplot iblkfmt  ndtcmx iran_por ran_fac read_perm read_geom
+OPTS         1         1     1      1        1       3       0       0.d0    0          0
 :
-:    steps iaccel newtmx icutmx dpmx   dtmpmx   dcmx
-TOLR 300     3      16      8   1.e5     3.     0.05
+:    steps iaccel newtmx icutmx dpmx   dtmpmx   dcmx   dsmx
+TOLR 10000     3      16      8   1.e5     3.     0.05    1d0
 :
 DXYZ
+:(dx(k),i=1,nx)
 0.02
+:(dy(j),j=1,ny)
 1.
+:(dz(k),k=1,nz)
 1.
-:    atol     rtol     stol   newton_max   maxf
-SOLV 1.d-12   1.d-12    1.d-8   100          1000
+:    atol     rtol     stol     dtol   newton_max   maxf
+SOLV 1.d-12   1.d-12    1.d-8   1d10      100       1000
 :
 :  d0[m^2/s] delhaq[kJ/mol]
 DIFF 1.d-9        12.6
@@ -30,8 +33,8 @@ THRM
 /
 :
 PHIK
-:i1 i2 j1 j2 k1 k2 icap ithm  por    permx     permy     permz
-  1 50  1  1  1  1   1   1   0.5    1.e-15    1.e-15    1.e-15
+:i1 i2 j1 j2 k1 k2 icap ithm  por   tau   permx     permy     permz   permpwr
+  1 50  1  1  1  1   1   1   0.5    1d0   1.e-15    1.e-15    1.e-15    1d0
 /
 :
 INIT 0
@@ -44,15 +47,15 @@ BCON
    1       1
 :i1  i2  j1  j2  k1  k2
   1   1   1   1   1   1
-:Pressure [Pa] Temp [C]  Conc
-1.1215d5       75.d0     1.e-0
+:Pressure [Pa] Temp [C]  sl    Conc [mol/L]
+1.1215d5       75.d0     1d0   1.e-0
 /
 :ibndtyp iface
    3       2
 :i1  i2  j1  j2  k1  k2
  50  50   1   1   1   1
-:Pressure [Pa] Temp [C]  Conc
-1.d5           25.d0     1.e-6
+:Pressure [Pa] Temp [C]  sl     Conc [mol/L]
+1.d5           25.d0     1do    1.e-6
 /
 /
 :
@@ -61,7 +64,8 @@ BRK
  50  50   1   1   1   1    1       1
 /
 :
-TIME y 2
-0.1 0.25
-1.d-7 2.e-3
+TIME y 6
+0.1 0.25 0.5 1. 5 10
+DTST 1 10
+1.d-6 1.e-1
 :
