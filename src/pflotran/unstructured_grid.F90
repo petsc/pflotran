@@ -4,7 +4,7 @@ module Unstructured_Grid_module
 
  implicit none
 
-#define HASH
+!#define HASH
 #define INVERT
 
  private 
@@ -156,6 +156,7 @@ subroutine ReadUnstructuredGrid(grid)
       endif
       grid%imat(local_ghosted_id) = material_id
     endif
+!    print *, grid%myrank, local_ghosted_id, local_id
 
 #if DEBUG
     print *, 'Read geom 1:',natural_id,xcoord,ycoord,zcoord,volume, &
@@ -224,6 +225,8 @@ subroutine ReadUnstructuredGrid(grid)
     call fiReadInt(string,natural_id_downwind,ierr) 
     call fiErrorMsg('natural_id_downwind',card,ierr)
 
+    local_id_upwind = 0
+    local_id_downwind = 0
 #ifdef HASH
     local_ghosted_id_upwind = GetLocalGhostedIdFromHash(natural_id_upwind)
     local_ghosted_id_downwind = GetLocalGhostedIdFromHash(natural_id_downwind)
@@ -288,6 +291,7 @@ subroutine ReadUnstructuredGrid(grid)
       endif
     endif
     count1 = count1 + 1
+!print *, grid%myrank, local_ghosted_id_upwind, local_id_upwind, local_ghosted_id_downwind, local_id_downwind
   enddo
   print *, count2, ' of ', count1, ' connections found'
 
@@ -348,7 +352,7 @@ subroutine ReadUnstructuredGrid(grid)
 #ifdef HASH
     local_ghosted_id = GetLocalGhostedIdFromHash(natural_id)
 #else
-    local_ghosted)id = GetLocalGhostedIdFromNaturalId(natural_id,grid)
+    local_ghosted_id = GetLocalGhostedIdFromNaturalId(natural_id,grid)
 #endif
     if (local_ghosted_id > 0) then 
       local_id = grid%nG2L(local_ghosted_id)
@@ -744,7 +748,7 @@ integer function GetLocalGhostedIdFromNaturalId(natural_id,grid)
   integer :: natural_id, local_ghosted_id
   
   do local_ghosted_id = 1, grid%ngmax
-    if (natural_id == grid%nL2A(grid%nG2L(local_ghosted_id))+1) then
+    if (natural_id == grid%nG2A(local_ghosted_id)+1) then
       GetLocalGhostedIdFromNaturalId = local_ghosted_id
       return 
     endif
@@ -779,7 +783,7 @@ subroutine CreateNaturalToLocalGhostedHash(grid)
 
   ! recall that natural ids are zero-based
   do local_ghosted_id = 1, grid%ngmax
-    natural_id = grid%nL2A(local_ghosted_id)+1
+    natural_id = grid%nG2A(local_ghosted_id)+1
     hash_id = mod(natural_id,num_hash)+1 
     num_in_hash = hash(1,0,hash_id)
     num_in_hash = num_in_hash+1
