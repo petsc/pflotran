@@ -137,6 +137,7 @@ private
     !nL2A :   collective, local => natural index, used for initialization   
     !                              and source/sink setup  
     integer*4, pointer :: nL2G(:), nG2L(:), nL2A(:),nG2N(:)
+    integer*4, pointer :: nG2A(:)
       ! Arrays for indexing between local ghosted and non-ghosted, local to natural arrays.
     DA :: da_1_dof, da_nphase_dof, da_3np_dof, da_ndof
     DA :: da_NphaNcomp_dof,da_NphaNspec_dof,da_NphaNspecNcomp_dof
