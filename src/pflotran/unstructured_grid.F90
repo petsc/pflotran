@@ -4,7 +4,7 @@ module Unstructured_Grid_module
 
  implicit none
 
-!#define HASH
+#define HASH
 #define INVERT
 
  private 

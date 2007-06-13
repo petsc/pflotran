@@ -113,7 +113,6 @@ subroutine pflow_Richards_setupini(grid)
   call VecGetArrayF90(grid%xx, xx_p, ierr); CHKERRQ(ierr)
   call VecGetArrayF90(grid%iphas, iphase_p,ierr)
   
-print *, 'here0'
   do iln=1, grid%nlmax
 
     !geh - Ignore inactive cells with inactive materials
@@ -140,7 +139,7 @@ print *, 'here0'
           (nx>= grid%i1ini(ir)) .and. (nx<=grid%i2ini(ir))) then
         iphase_p(iln)=grid%iphas_ini(ir)
         xx_p(1+(iln-1)*grid%ndof:iln*grid%ndof) = grid%xx_ini(:,ir)
-        print *,'pflow_Richards_resjac: ', xx_p(1+(iln-1)*grid%ndof:iln*grid%ndof)
+!geh        print *,'pflow_Richards_resjac: ', xx_p(1+(iln-1)*grid%ndof:iln*grid%ndof)
                 !exit
       endif
     enddo 
@@ -2395,7 +2394,7 @@ subroutine pflow_Richards_initadj(grid)
 
     ibc = grid%ibconn(nc)
        
-      print *,'initadj_bc',nc,ibc,grid%ibndtyp(ibc),grid%nconnbc
+!geh      print *,'initadj_bc',nc,ibc,grid%ibndtyp(ibc),grid%nconnbc
 
     if (grid%ibndtyp(ibc)==1 .or.grid%ibndtyp(ibc)==3) then
       iicap=int(icap_p(m))
@@ -2442,7 +2441,7 @@ subroutine pflow_Richards_initadj(grid)
   
        yybc(2:grid%ndof,nc)= grid%xxbc(2:grid%ndof,nc)
        vel_bc(1,nc) = grid%velocitybc(1,nc)
-       print *,'initadj', nc, yybc(:,nc), vel_bc(:,nc)
+!geh       print *,'initadj', nc, yybc(:,nc), vel_bc(:,nc)
     endif 
 
   enddo
