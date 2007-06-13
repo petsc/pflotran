@@ -48,7 +48,8 @@ subroutine ReadUnstructuredGrid(grid)
  
   PetscScalar, pointer :: perm_xx_p(:),perm_yy_p(:),perm_zz_p(:),por_p(:), &
                           tor_p(:), volume_p(:), icap_p(:)
-  integer fid, ierr
+  PetscTruth :: option_found
+  integer fid, iostatus, ierr
   integer :: connection_id, material_id, natural_id, local_id, local_ghosted_id
   integer :: natural_id_upwind, natural_id_downwind
   integer :: local_id_upwind, local_id_downwind
@@ -62,6 +63,7 @@ subroutine ReadUnstructuredGrid(grid)
   character(len=MAXCARDLENGTH) :: card
   character(len=MAXWORDLENGTH) :: bctype
   character(len=MAXWORDLENGTH) :: time_unit
+  character(len=MAXSTRINGLENGTH) :: filename
   integer :: direction, icond, icondition
   real*8 :: time, value
   real*8 :: time0, time1, time_multiplier
@@ -75,8 +77,19 @@ subroutine ReadUnstructuredGrid(grid)
   call VecGetArrayF90(grid%porosity,por_p,ierr)
 
   time0 = secnds(0.)
+
+  call PetscOptionsGetString(PETSC_NULL_CHARACTER, "-unstructured_filename", &
+    filename, option_found, ierr)
+  if(option_found /= PETSC_TRUE) filename = "hanford.in"
+
   fid = 86
-  open(fid, file="hanford.in", action="read", status="old")
+  open(fid, file=filename, action="read", status="old", iostat=iostatus)
+  if (iostatus /= 0) then
+    print *, 'Error opening file: ', trim(filename), ' on Processor ', &
+             grid%myrank
+    call PetscFinalize()
+    stop
+  endif
 
   ! create hash table for fast lookup
 #ifdef HASH
