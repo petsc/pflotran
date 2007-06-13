@@ -2351,7 +2351,7 @@ subroutine pflowGrid_setup(grid, inputfile)
     call pflow_richards_initadj(grid)
     call VecCopy(grid%iphas, grid%iphas_old,ierr)
     call VecCopy(grid%xx, grid%yy, ierr)
-    call VecView(grid%xx,PETSC_VIEWER_STDOUT_WORLD,ierr)
+!geh    call VecView(grid%xx,PETSC_VIEWER_STDOUT_WORLD,ierr)
     print *, "richards finish variable packing"
     call pflow_update_richards(grid)
   endif 
