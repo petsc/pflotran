@@ -599,14 +599,6 @@ subroutine pri_var_trans_Richards_ninc_2_2(x,iphase,energyscale,num_phase,num_sp
  ! no more calculation on gas phase
 !  avgmw(2)= xmol(3)* fmwh2o + xmol(4) * fmwa 
   pw=pref   
-  call wateos_noderiv(t,pw,dw_kg,dw_mol,hw,energyscale,ierr)
-   !    call VISW(t,pw,sat_pressure,visl,tmp,tmp2,ierr)
-   ! call VISW_FLO(t,dw_mol,visl)
-  call psat(t, sat_pressure, ierr)
-   call VISW_noderiv(t,pw,sat_pressure,visl,ierr)
-  !  print *,'visw  ',visl,tmp
-  ! dif= 1.D-7 !effective diffusion coeff in liquid phase: check pcl
-  
    if(pc(1)>0.D0)then
     iphase = 3
     call pflow_pckr_richards(ipckrtype,pckr_sir(1),pckr_lambda,pckr_alpha, &
@@ -617,7 +609,17 @@ subroutine pri_var_trans_Richards_ninc_2_2(x,iphase,energyscale,num_phase,num_sp
     pc(1)=0.D0
     satu(1)= 1.D0  
     kr(1)=1.D0    
+    pw=p
   endif  
+
+  call wateos_noderiv(t,pw,dw_kg,dw_mol,hw,energyscale,ierr)
+   !    call VISW(t,pw,sat_pressure,visl,tmp,tmp2,ierr)
+   ! call VISW_FLO(t,dw_mol,visl)
+  call psat(t, sat_pressure, ierr)
+   call VISW_noderiv(t,pw,sat_pressure,visl,ierr)
+  !  print *,'visw  ',visl,tmp
+  ! dif= 1.D-7 !effective diffusion coeff in liquid phase: check pcl
+  
 
   
   diff(1:num_spec) = dif(1)
