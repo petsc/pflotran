@@ -118,7 +118,7 @@ subroutine translator_Richards_massbal(grid)
   call VecRestoreArrayF90(grid%porosity, porosity_p, ierr)
   call VecRestoreArrayF90(grid%iphas, iphase_p, ierr)
  
- 
+ !print *,'massbal: ', sat,den, xmol, tot
   if (grid%commsize >1) then
           
     do nc = 0,grid%nspec
@@ -130,26 +130,25 @@ subroutine translator_Richards_massbal(grid)
 !            MPI_DOUBLE_PRECISION, 0,PETSC_COMM_WORLD,ierr)
       enddo
     enddo
-  endif 
+ 
    if (grid%myrank==0) tot = tot0
-
+ endif 
   
   if (grid%myrank==0) then
   
   
-    write(*,'(" Total H2O: liq:",1p, e13.6," gas:",1p, e13.6, " tot:", 1p, &
-  &           2e13.6, " [kmol]",1p, 3e13.6)') &
-          tot !,nzc,nzm,nsm
+    write(*,'(" Total Mass [Kmol]: H2O:",1p, e13.6," Tracer:",1p, e13.6)')&      
+          tot(1:grid%nspec,1) !,nzc,nzm,nsm
 ! & grid%t/grid%tconv,tot(2,1),tot(2,2),tot(2,0),tot(2,1)+tot(2,2) !,nzc,nzm,nsm
     if (icall==0) then
       open(unit=13,file='massbal.dat',status='unknown')
-      write(13,*) '# time   dt   totl   totg   tot n2p'
+      write(13,*) '# time      dt      tot-H2O      tot-Tracer'
       icall = 1
     endif
 !   write(13,'(" Total CO2: t=",1pe13.6," liq:",1pe13.6,&
 ! &  " gas:",1pe13.6," tot:",1p2e13.6," [kmol]")')&
 ! & grid%t/grid%tconv,tot(2,1),tot(2,2),tot(2,0),tot(2,1)+tot(2,2)
-    write(13,'(1p9e12.4)') grid%t/grid%tconv,grid%dt/grid%tconv,tot(:,1)
+    write(13,'(1p9e12.4)') grid%t/grid%tconv,grid%dt/grid%tconv,tot(1:grid%nspec,1) 
   endif    
   
 end subroutine translator_Richards_massbal
