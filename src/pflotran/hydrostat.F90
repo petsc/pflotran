@@ -249,6 +249,7 @@ subroutine hydrostatic (grid)
   
   depth = depth + 0.5d0*grid%dz0(grid%nz)
   horiz = horiz + 0.5d0*grid%dx0(grid%nx)
+
   
   dp = rho * grid%gravity * grid%beta * horiz
   
@@ -289,6 +290,7 @@ subroutine hydrostatic (grid)
   
   ibc0 = ibc0 + 1
   
+  p=grid%pref + dp
   do n = 1, grid%nz
     ibc = ibc + 1
     
@@ -318,11 +320,28 @@ subroutine hydrostatic (grid)
     endif
     tmp = grid%tref + grid%dTdz*zz
     
+    
     call wateos(tmp, p, rho, dw_mol, dwp, &
     dum, dum, dum, dum, grid%scale, ierr)
-    
-    p = grid%pref + rho*grid%gravity*zz + dp
-!   p = p0 + rho*grid%gravity*zz + dp
+            
+        itrho= 0
+          do 
+             ! betap = rho * grid%gravity * grid%beta
+              pres = p + rho * grid%gravity * dzz !+  betap * horiz
+              call wateos(tmp, pres, rho1, dw_mol, dwp, &
+              dum, dum, dum, dum, grid%scale, ierr)
+              if (abs(rho-rho1) < 1.d-6) exit
+              rho = rho1
+              itrho = itrho + 1
+              if (itrho > 100) then
+                print *,' no convergence in hydrostat-stop',itrho,rho1,rho
+                stop
+              endif
+            enddo
+
+     p = pres
+ !   p = grid%pref + rho*grid%gravity*zz + dp
+
 
 !   print *,'left: ',n,zz,tmp,p,rho,dp
 
@@ -371,10 +390,32 @@ subroutine hydrostatic (grid)
 
 !   call cowat (tmp, p, rw, uw, ierr)
 
-    p = grid%pref + rho*grid%gravity*zz !- dp
+!    p = grid%pref + rho*grid%gravity*zz !- dp
 !   p = p0 + rho*grid%gravity*zz
 
 !   print *,'right: ',n,zz,tmp,p,p0,rho,dp,grid%nx,grid%ny,grid%nz
+
+
+    call wateos(tmp, p, rho, dw_mol, dwp, &
+    dum, dum, dum, dum, grid%scale, ierr)
+            
+        itrho= 0
+          do 
+              betap = rho * grid%gravity * grid%beta
+              pres = p + rho * grid%gravity * dzz !+ grid%pref! + betap * horiz
+              call wateos(tmp, pres, rho1, dw_mol, dwp, &
+              dum, dum, dum, dum, grid%scale, ierr)
+              if (abs(rho-rho1) < 1.d-6) exit
+              rho = rho1
+              itrho = itrho + 1
+              if (itrho > 100) then
+                print *,' no convergence in hydrostat-stop',itrho,rho1,rho
+                stop
+              endif
+            enddo
+
+     p = pres
+
 
     grid%pressurebc0(1,ibc) = p
     grid%tempbc0(ibc) = tmp
@@ -574,7 +615,7 @@ subroutine mhydrostatic(grid)
   if (grid%iread_init /= 1) then
     call VecGetArrayF90(grid%xx, xx_p, ierr)
 ! set initial pressure and temperature fields
-    rho=1000.D0
+    pres=grid%pref     
     do nl=1, grid%nlmax
       na=grid%nL2A(nl)+1 ! the natural ordering start from 0
       depth = grid%z(na)
@@ -583,16 +624,17 @@ subroutine mhydrostatic(grid)
       !print *,'mhydro', nl,na,depth,horiz
       tmp = grid%dTdz * depth + grid%tref
       betap = rho * grid%gravity * grid%beta
-      pres = rho * grid%gravity * depth + grid%pref - betap * horiz
-
+    
       call wateos(tmp, pres, rho, dw_mol, dwp, &
                   dum, dum, dum, dum, grid%scale, ierr)
+      
+        pres = rho * grid%gravity * depth + grid%pref - betap * horiz
 
       itrho= 0
       do 
         betap = rho * grid%gravity * grid%beta
         pres = rho * grid%gravity * depth + grid%pref - betap * horiz
-        call wateos(tmp, 2D7, rho1, dw_mol, dwp, &
+        call wateos(tmp, pres, rho1, dw_mol, dwp, &
                     dum, dum, dum, dum, grid%scale, ierr)
         if (abs(rho-rho1) < 1.d-6) exit
         rho = rho1
@@ -664,7 +706,7 @@ subroutine mhydrostatic(grid)
     ! left face
   
     ibc0 = ibc0 + 1
-  
+    p = grid%pref + dp
     do n = 1, grid%nz
       ibc = ibc + 1
     
@@ -694,10 +736,27 @@ subroutine mhydrostatic(grid)
       endif
       tmp = grid%tref + grid%dTdz*zz
     
-      call wateos(tmp, 2D7, rho, dw_mol, dwp, &
-                  dum, dum, dum, dum, grid%scale, ierr)
-    
-      p = grid%pref + rho*grid%gravity*zz + dp
+     call wateos(tmp, p, rho, dw_mol, dwp, &
+      dum, dum, dum, dum, grid%scale, ierr)
+            
+        itrho= 0
+          do 
+              !betap = rho * grid%gravity * grid%beta
+              pres = p + rho * grid%gravity * dzz 
+              call wateos(tmp, pres, rho1, dw_mol, dwp, &
+              dum, dum, dum, dum, grid%scale, ierr)
+              if (abs(rho-rho1) < 1.d-6) exit
+              rho = rho1
+              itrho = itrho + 1
+              if (itrho > 100) then
+                print *,' no convergence in hydrostat-stop',itrho,rho1,rho
+                stop
+              endif
+            enddo
+
+     p = pres
+
+!      p = grid%pref + rho*grid%gravity*zz + dp
 !     p = p0 + rho*grid%gravity*zz + dp
 
 !     print *,'left: ',n,zz,tmp,p,rho,dp
@@ -745,12 +804,32 @@ subroutine mhydrostatic(grid)
       endif
       tmp = grid%tref + grid%dTdz*zz
 
-      call wateos(tmp, 2D7, rho, dw_mol, dwp, &
+      call wateos(tmp, grid%pref, rho, dw_mol, dwp, &
                   dum, dum, dum, dum, grid%scale, ierr)
 
 !     call cowat (tmp, p, rw, uw, ierr)
+    call wateos(tmp, p, rho, dw_mol, dwp, &
+    dum, dum, dum, dum, grid%scale, ierr)
+            
+        itrho= 0
+          do 
+            
+              pres = p + rho * grid%gravity * dzz 
+              call wateos(tmp, pres, rho1, dw_mol, dwp, &
+              dum, dum, dum, dum, grid%scale, ierr)
+              if (abs(rho-rho1) < 1.d-6) exit
+              rho = rho1
+              itrho = itrho + 1
+              if (itrho > 100) then
+                print *,' no convergence in hydrostat-stop',itrho,rho1,rho
+                stop
+              endif
+            enddo
 
-      p = grid%pref + rho*grid%gravity*zz !- dp
+     p = pres
+
+
+!      p = grid%pref + rho*grid%gravity*zz !- dp
 !     p = p0 + rho*grid%gravity*zz
 
 !     print *,'right: ',n,zz,tmp,p,p0,rho,dp,grid%nx,grid%ny,grid%nz
@@ -848,8 +927,8 @@ subroutine mhydrostatic(grid)
 !    grid%tempbc0(ibc) = grid%tref
 !    grid%concbc0(ibc) = cbc(ibc0) !grid%conc0
 !    grid%sgbc0(ibc) = sbc(ibc0)
-    grid%xxbc0(1,ibc) = p
-    grid%xxbc0(2,ibc) = tmp
+    grid%xxbc0(1,ibc) = grid%pref
+    grid%xxbc0(2,ibc) = grid%tref
     grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
     grid%iphasebc0(ibc)=iphasebc_rec(ibc0) 
     grid%velocitybc0(:,ibc) = 0.d0
@@ -870,9 +949,9 @@ subroutine mhydrostatic(grid)
     grid%j2bc(ibc) = grid%ny
     grid%i1bc(ibc) = 1
     grid%i2bc(ibc) = grid%nx
-    tmp = grid%tref + grid%dTdz * depth
-    p = grid%pref + rho * grid%gravity * depth
-    call wateos(tmp, 2D7, rho, dw_mol, dwp, &
+    tmp = grid%tref !+ grid%dTdz * depth
+    p = grid%pref !+ rho * grid%gravity * depth
+    call wateos(tmp, grid%pref, rho, dw_mol, dwp, &
                 dum, dum, dum, dum, grid%scale, ierr)
 
 !   grid%pressurebc0(1,ibc) = p
