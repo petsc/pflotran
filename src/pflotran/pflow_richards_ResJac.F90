@@ -2464,23 +2464,29 @@ subroutine createRichardsZeroArray(grid)
   integer :: n, ng, ncount
 
   n_zero_rows = 0
-#ifdef ISOTHERMAL
-  n_zero_rows = n_zero_rows + grid%nlmax
-#endif
 
   if (associated(grid%imat)) then
     do n = 1, grid%nlmax
       ng = grid%nL2G(n)
       if (grid%imat(ng) <= 0) then
+        n_zero_rows = n_zero_rows + 2
+      else
+!#if 0
+#ifdef ISOTHERMAL
         n_zero_rows = n_zero_rows + 1
+#endif
       endif
     enddo
+  else
+!#if 0
+#ifdef ISOTHERMAL
+    n_zero_rows = n_zero_rows + grid%nlmax
+#endif
   endif
 
   allocate(zero_rows_local(n_zero_rows))
   allocate(zero_rows_local_ghosted(n_zero_rows))
   zero_rows = 0
-
   ncount = 0
 
   if (associated(grid%imat)) then
@@ -2490,14 +2496,20 @@ subroutine createRichardsZeroArray(grid)
         ncount = ncount + 1
         zero_rows_local(ncount) = (n-1)*grid%ndof+1
         zero_rows_local_ghosted(ncount) = (ng-1)*grid%ndof
-      endif
+        ncount = ncount + 1
+        zero_rows_local(ncount) = (n-1)*grid%ndof+2
+        zero_rows_local_ghosted(ncount) = (ng-1)*grid%ndof+1
+      else
+!#if 0
 #ifdef ISOTHERMAL
-      ncount = ncount +1
-      zero_rows_local(ncount) = (n-1)*grid%ndof+2
-      zero_rows_local_ghosted(ncount) = (ng-1)*grid%ndof+1
+        ncount = ncount + 1
+        zero_rows_local(ncount) = (n-1)*grid%ndof+2
+        zero_rows_local_ghosted(ncount) = (ng-1)*grid%ndof+1
 #endif
+      endif
     enddo
   else
+!#if 0
 #ifdef ISOTHERMAL
     do n = 1, grid%nlmax
       ng = grid%nL2G(n)

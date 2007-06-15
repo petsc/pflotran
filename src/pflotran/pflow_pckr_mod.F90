@@ -222,10 +222,24 @@ subroutine pflow_pckr_richards(ipckrtype,pckr_swir,pckr_lambda, &
           un=1.D0/(1.D0-um)
           se=(1.D0 + (ala*pc(1))**un)**(-um)
           if(se>1.D0) se=1.D0
-           temp=se**(-1.D0/um)
+#if 0
+! before Chuan's fix
+          temp=se**(-1.D0/um)
           kr(1)=sqrt(se)*(1.D0-(1.D0-1.D0/temp)**um)**2.d0
           sw = se* (sw0-swir) + swir
-    
+          ! temp=se**(-1.D0/um)
+#else 
+! Chuan's fix          
+          sw = se* (sw0-swir) + swir
+          se=(sw-swir*1.05)/(sw0-swir*1.05)
+          if (se <= 0.D0) then
+            se=0.D0
+            kr(1)=0.D0; 
+          else
+            temp=se**(-1.D0/um)
+            kr(1)=sqrt(se)*(1.D0-(1.D0-1.D0/temp)**um)**2.d0
+          endif 
+#endif
           case(2) !Brooks-Corey
       
             lam=pckr_lambda
