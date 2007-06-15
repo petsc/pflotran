@@ -3367,16 +3367,15 @@ subroutine pflowGrid_step(grid,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
 
   else if (grid%use_richards == PETSC_TRUE) then
      call translator_ric_step_maxchange(grid)
-    ! note use mph will use variable switching, the x and s change is not meaningful 
     if (grid%myrank==0) then
       if (mod(grid%flowsteps,grid%imod) == 0 .or. grid%flowsteps == 1) then
         write(*,'("  --> max chng: dpmx= ",1pe12.4, &
-          & " dtmpmx= ",1pe12.4," dsmx= ",1pe12.4)') &
-          grid%dpmax,grid%dtmpmax, grid%dsmax
+          & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4)') &
+          grid%dpmax,grid%dtmpmax, grid%dcmax
         
         write(IUNIT2,'("  --> max chng: dpmx= ",1pe12.4, &
-          & " dtmpmx= ",1pe12.4," dsmx= ",1pe12.4)') &
-          grid%dpmax,grid%dtmpmax,grid%dsmax
+          & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4)') &
+          grid%dpmax,grid%dtmpmax,grid%dcmax
       endif
     endif
 

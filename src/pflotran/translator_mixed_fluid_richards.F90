@@ -262,14 +262,17 @@ subroutine translator_Ric_step_maxchange(grid)
   real*8 :: dsm0,dcm0  
   integer :: n, j, n0, ierr
 
+  grid%dcmax=0.D0
+  grid%dsmax=0.D0
+
   call VecWAXPY(grid%dxx,-1.d0,grid%xx,grid%yy,ierr)
   call VecStrideNorm(grid%dxx,0,NORM_INFINITY,grid%dpmax,ierr)
   call VecStrideNorm(grid%dxx,1,NORM_INFINITY,grid%dtmpmax,ierr)
+  if (grid%ndof > 2) &
+    call VecStrideNorm(grid%dxx,3,NORM_INFINITY,grid%dcmax,ierr)
 
-   grid%dsmax=0.D0
-   grid%dcmax=0.D0
-   if (grid%myrank == 0) &
-     print *, 'ric max change',grid%dpmax,grid%dtmpmax,grid%dsmax,grid%dcmax
+!  if (grid%myrank == 0) &
+!    print *, 'ric max change',grid%dpmax,grid%dtmpmax,grid%dsmax,grid%dcmax
 end subroutine translator_Ric_step_maxchange
 
 
