@@ -55,7 +55,7 @@ subroutine ReadUnstructuredGrid(grid)
   integer :: local_id_upwind, local_id_downwind
   integer :: local_ghosted_id_upwind, local_ghosted_id_downwind
   integer :: number_of_times
-  integer :: count1, count2, i
+  integer :: count1, count2, irecv, i
   real*8 :: xcoord, ycoord, zcoord, xperm, yperm, zperm
   real*8 :: area, distance, distance_upwind, distance_downwind, cosB
   real*8 :: volume, porosity, tortuosity
@@ -65,8 +65,8 @@ subroutine ReadUnstructuredGrid(grid)
   character(len=MAXWORDLENGTH) :: time_unit
   character(len=MAXSTRINGLENGTH) :: filename
   integer :: direction, icond, icondition
-  real*8 :: time, value
-  real*8 :: time0, time1, time_multiplier
+  real*8 :: time, value, time_multiplier
+  PetscLogDouble :: time0, time1
   type(condition_type), pointer :: new_condition
 
   call VecGetArrayF90(grid%volume, volume_p, ierr); CHKERRQ(ierr)
@@ -76,7 +76,7 @@ subroutine ReadUnstructuredGrid(grid)
   call VecGetArrayF90(grid%tor,tor_p,ierr)
   call VecGetArrayF90(grid%porosity,por_p,ierr)
 
-  time0 = secnds(0.)
+  call PetscGetTime(time0, ierr)
 
   call PetscOptionsGetString(PETSC_NULL_CHARACTER, "-unstructured_filename", &
     filename, option_found, ierr)
@@ -94,7 +94,7 @@ subroutine ReadUnstructuredGrid(grid)
   ! create hash table for fast lookup
 #ifdef HASH
   call CreateNaturalToLocalGhostedHash(grid)
-  call PrintHashTable
+!  call PrintHashTable
 #endif
 
 ! GRID information
@@ -102,8 +102,9 @@ subroutine ReadUnstructuredGrid(grid)
   call fiFindStringInFile(fid,card,ierr)
 
   ! report error if card does not exist
-  if (ierr /= 0 .and. grid%myrank == 0) then
-    print *, 'ERROR: Card (',card, ') not found in file'
+  if (ierr /= 0) then
+    if (grid%myrank == 0) print *, 'ERROR: Card (',card, ') not found in file'
+    call PetscFinalize()
     stop
   endif
   
@@ -214,8 +215,9 @@ subroutine ReadUnstructuredGrid(grid)
   call fiFindStringInFile(fid,card,ierr)
 
   ! report error if card does not exist
-  if (ierr /= 0 .and. grid%myrank == 0) then
-    print *, 'ERROR: Card (',card, ') not found in file'
+  if (ierr /= 0) then
+    if (grid%myrank == 0) print *, 'ERROR: Card (',card, ') not found in file'
+    call PetscFinalize()
     stop
   endif
   
@@ -306,7 +308,9 @@ subroutine ReadUnstructuredGrid(grid)
     count1 = count1 + 1
 !print *, grid%myrank, local_ghosted_id_upwind, local_id_upwind, local_ghosted_id_downwind, local_id_downwind
   enddo
-  if (grid%myrank == 0) print *, count2, ' of ', count1, ' connections found'
+  call mpi_reduce(count2,irecv,1,MPI_INTEGER,MPI_SUM,0, &
+                     PETSC_COMM_WORLD,ierr)
+  if (grid%myrank == 0) print *, irecv, ' of ', count1, ' connections found'
 
 
 ! BCONection information
@@ -340,8 +344,9 @@ subroutine ReadUnstructuredGrid(grid)
   call fiFindStringInFile(fid,card,ierr)
 
   ! report error if card does not exist
-  if (ierr /= 0 .and. grid%myrank == 0) then
-    print *, 'ERROR: Card (',card, ') not found in file'
+  if (ierr /= 0) then
+    if (grid%myrank == 0) print *, 'ERROR: Card (',card, ') not found in file'
+    call PetscFinalize()
     stop
   endif
   
@@ -410,7 +415,9 @@ subroutine ReadUnstructuredGrid(grid)
     count1 = count1 + 1
   enddo
 
-  if (grid%myrank == 0) print *, count2, ' of ', count1, ' boundary connections found'
+  call mpi_reduce(count2,irecv,1,MPI_INTEGER,MPI_SUM,0, &
+                     PETSC_COMM_WORLD,ierr)
+  if (grid%myrank == 0) print *, irecv, ' of ', count1, ' connections found'
 
 ! CONDition information
 
@@ -418,8 +425,9 @@ subroutine ReadUnstructuredGrid(grid)
   call fiFindStringInFile(fid,card,ierr)
 
   ! report error if card does not exist
-  if (ierr /= 0 .and. grid%myrank == 0) then
-    print *, 'ERROR: Card (',card, ') not found in file'
+  if (ierr /= 0) then
+    if (grid%myrank == 0) print *, 'ERROR: Card (',card, ') not found in file'
+    call PetscFinalize()
     stop
   endif
 
@@ -505,6 +513,7 @@ subroutine ReadUnstructuredGrid(grid)
       if (grid%myrank == 0) then
         print *, 'Time unit: ', trim(time_unit), ' not recognized'
       endif
+      call PetscFinalize()
       stop
     endif
 
@@ -579,7 +588,8 @@ subroutine ReadUnstructuredGrid(grid)
   deallocate(hash)
 #endif
   close(fid)
-  time1 = secnds(0.) - time0
+  call PetscGetTime(time1, ierr)
+  time1 = time1 - time0
   if (grid%myrank == 0) print *, time1, ' seconds to read unstructured grid data'
  
 end subroutine ReadUnstructuredGrid
@@ -613,8 +623,11 @@ integer function GetNumberOfLocalConnections(fid,grid)
   call fiFindStringInFile(fid,card,ierr)
 
   ! report error if card does not exist
-  if (ierr /= 0 .and. grid%myrank == 0) &
-    print *, 'Card (',card, ') not found in file'
+  if (ierr /= 0) then 
+    if (grid%myrank == 0) print *, 'Card (',card, ') not found in file'
+    call PetscFinalize()
+    stop
+  endif
 
   num_local_connections = 0
   do
@@ -685,8 +698,11 @@ integer function GetNumberOfBoundaryConnections(fid,grid)
   call fiFindStringInFile(fid,card,ierr)
 
   ! report error if card does not exist
-  if (ierr /= 0 .and. grid%myrank == 0) &
-    print *, 'Card (',card, ') not found in file'
+  if (ierr /= 0) then
+    if (grid%myrank == 0) print *, 'Card (',card, ') not found in file'
+    call PetscFinalize()
+    stop
+  endif
 
   num_boundary_connections = 0
   do
