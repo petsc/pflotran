@@ -269,7 +269,7 @@ subroutine translator_Ric_step_maxchange(grid)
   call VecStrideNorm(grid%dxx,0,NORM_INFINITY,grid%dpmax,ierr)
   call VecStrideNorm(grid%dxx,1,NORM_INFINITY,grid%dtmpmax,ierr)
   if (grid%ndof > 2) &
-    call VecStrideNorm(grid%dxx,3,NORM_INFINITY,grid%dcmax,ierr)
+    call VecStrideNorm(grid%dxx,2,NORM_INFINITY,grid%dcmax,ierr)
 
 !  if (grid%myrank == 0) &
 !    print *, 'ric max change',grid%dpmax,grid%dtmpmax,grid%dsmax,grid%dcmax
