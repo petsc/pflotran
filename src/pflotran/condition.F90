@@ -268,7 +268,7 @@ subroutine UpdateBoundaryConditions(grid)
   logical :: use_eos
   integer :: iconnbc, icond, itype, icap, ierr
   real*8 :: value,delz, delp
-  real*8 :: patm = 101325.d0, tref, pref, sref
+  real*8 :: patm = 101325.d0, tref, pref, sref, cref
   real*8 :: datum_coord(3), cell_coord(3)
   real*8 :: kr(2), pc(2)
   PetscScalar, pointer :: icap_p(:)
@@ -279,16 +279,17 @@ subroutine UpdateBoundaryConditions(grid)
 
   use_eos = .true.
   tref = 25.d0
+  cref = 1.d-6
   
   do iconnbc = 1, grid%nconnbc
     icond = grid%ibconn(iconnbc)
     itype = condition_array(icond)%ptr%itype
 
-    grid%xxbc(grid%ndof,iconnbc) = tref
+    grid%xxbc(2,iconnbc) = tref
+    if (grid%ndof > 2) grid%xxbc(3:grid%ndof,iconnbc) = cref
     grid%iphasebc(iconnbc) = 1
     if (itype == 1) then
       grid%xxbc(1,iconnbc) = condition_array(icond)%ptr%cur_value
-      grid%xxbc(grid%ndof,iconnbc) = condition_array(icond)%ptr%cur_value
     elseif (itype == 3 .or. itype == 4) then ! correct for pressure gradient
       datum_coord = 0.d0
       datum_coord(1) = condition_array(icond)%ptr%xdatum
@@ -311,7 +312,6 @@ subroutine UpdateBoundaryConditions(grid)
       value = pref - delp
 #endif
       grid%xxbc(1,iconnbc) = value
-      grid%xxbc(grid%ndof,iconnbc) = tref
     elseif (itype == 5) then
       grid%iphasebc(iconnbc) = 3
 !      icap = icap_p(grid%nL2G(grid%mblkbc(iconnbc)))
@@ -417,7 +417,7 @@ subroutine ComputeInitialCondition(grid, icondition)
     endif     
 
     xx_p(1+(iln-1)*grid%ndof) = value  
-    xx_p(grid%ndof+(iln-1)*grid%ndof) = tref  
+    xx_p(2+(iln-1)*grid%ndof) = tref  
     
   enddo
               
