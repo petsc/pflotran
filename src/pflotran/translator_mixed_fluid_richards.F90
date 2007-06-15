@@ -268,7 +268,8 @@ subroutine translator_Ric_step_maxchange(grid)
 
    grid%dsmax=0.D0
    grid%dcmax=0.D0
-   print *, 'ric max change',grid%dpmax,grid%dtmpmax,grid%dsmax,grid%dcmax
+   if (grid%myrank == 0) &
+     print *, 'ric max change',grid%dpmax,grid%dtmpmax,grid%dsmax,grid%dcmax
 end subroutine translator_Ric_step_maxchange
 
 
