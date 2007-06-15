@@ -2502,8 +2502,8 @@ subroutine createRichardsZeroArray(grid)
       else
 #ifdef ISOTHERMAL
         ncount = ncount + 1
-        zero_rows_local(ncount) = n*grid%ndof
-        zero_rows_local_ghosted(ncount) = ng*grid%ndof-1
+        zero_rows_local(ncount) = (n-1)*grid%ndof+2
+        zero_rows_local_ghosted(ncount) = (ng-1)*grid%ndof+1
 #endif
       endif
     enddo
@@ -2512,8 +2512,8 @@ subroutine createRichardsZeroArray(grid)
     do n = 1, grid%nlmax
       ng = grid%nL2G(n)
       ncount = ncount +1
-      zero_rows_local(ncount) = n*grid%ndof
-      zero_rows_local_ghosted(ncount) = ng*grid%ndof-1
+      zero_rows_local(ncount) = (n-1)*grid%ndof+2
+      zero_rows_local_ghosted(ncount) = (ng-1)*grid%ndof+1
     enddo
 #endif
   endif
