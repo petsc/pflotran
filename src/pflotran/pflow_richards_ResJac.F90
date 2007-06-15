@@ -2460,8 +2460,10 @@ end subroutine pflow_Richards_initadj
 
 subroutine createRichardsZeroArray(grid)
 
+  implicit none
+
   type(pflowGrid), intent(inout) :: grid
-  integer :: n, ng, ncount
+  integer :: n, ng, ncount, idof
 
   n_zero_rows = 0
 
@@ -2469,16 +2471,14 @@ subroutine createRichardsZeroArray(grid)
     do n = 1, grid%nlmax
       ng = grid%nL2G(n)
       if (grid%imat(ng) <= 0) then
-        n_zero_rows = n_zero_rows + 2
+        n_zero_rows = n_zero_rows + grid%ndof
       else
-!#if 0
 #ifdef ISOTHERMAL
         n_zero_rows = n_zero_rows + 1
 #endif
       endif
     enddo
   else
-!#if 0
 #ifdef ISOTHERMAL
     n_zero_rows = n_zero_rows + grid%nlmax
 #endif
@@ -2486,42 +2486,40 @@ subroutine createRichardsZeroArray(grid)
 
   allocate(zero_rows_local(n_zero_rows))
   allocate(zero_rows_local_ghosted(n_zero_rows))
-  zero_rows = 0
+  zero_rows_local = 0
+  zero_rows_local_ghosted = 0
   ncount = 0
 
   if (associated(grid%imat)) then
     do n = 1, grid%nlmax
       ng = grid%nL2G(n)
       if (grid%imat(ng) <= 0) then
-        ncount = ncount + 1
-        zero_rows_local(ncount) = (n-1)*grid%ndof+1
-        zero_rows_local_ghosted(ncount) = (ng-1)*grid%ndof
-        ncount = ncount + 1
-        zero_rows_local(ncount) = (n-1)*grid%ndof+2
-        zero_rows_local_ghosted(ncount) = (ng-1)*grid%ndof+1
+        do idof = 1, grid%ndof
+          ncount = ncount + 1
+          zero_rows_local(ncount) = (n-1)*grid%ndof+idof
+          zero_rows_local_ghosted(ncount) = (ng-1)*grid%ndof+idof-1
+        enddo
       else
-!#if 0
 #ifdef ISOTHERMAL
         ncount = ncount + 1
-        zero_rows_local(ncount) = (n-1)*grid%ndof+2
-        zero_rows_local_ghosted(ncount) = (ng-1)*grid%ndof+1
+        zero_rows_local(ncount) = n*grid%ndof
+        zero_rows_local_ghosted(ncount) = ng*grid%ndof-1
 #endif
       endif
     enddo
   else
-!#if 0
 #ifdef ISOTHERMAL
     do n = 1, grid%nlmax
       ng = grid%nL2G(n)
       ncount = ncount +1
-      zero_rows_local(ncount) = (n-1)*grid%ndof+2
-      zero_rows_local_ghosted(ncount) = (ng-1)*grid%ndof+1
+      zero_rows_local(ncount) = n*grid%ndof
+      zero_rows_local_ghosted(ncount) = ng*grid%ndof-1
     enddo
 #endif
   endif
 
   if (ncount /= n_zero_rows) then
-    print *, 'Error:  Mismatch in non-zero row count!'
+    print *, 'Error:  Mismatch in non-zero row count!', ncount, n_zero_rows
     stop
   endif
 
