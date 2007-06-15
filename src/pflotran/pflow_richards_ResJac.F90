@@ -754,6 +754,8 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
     endif  
       
     grid%delx(2,ng)=xx_loc_p((ng-1)*grid%ndof+2)*dfac
+    if (grid%ndof > 2) &
+      grid%delx(3:grid%ndof,ng)=xx_loc_p((ng-1)*grid%ndof+3:ng*grid%ndof)*dfac
   
    enddo
   
@@ -2472,16 +2474,9 @@ subroutine createRichardsZeroArray(grid)
       ng = grid%nL2G(n)
       if (grid%imat(ng) <= 0) then
         n_zero_rows = n_zero_rows + grid%ndof
-      else
-#ifdef ISOTHERMAL
-        n_zero_rows = n_zero_rows + 1
-#endif
       endif
     enddo
   else
-#ifdef ISOTHERMAL
-    n_zero_rows = n_zero_rows + grid%nlmax
-#endif
   endif
 
   allocate(zero_rows_local(n_zero_rows))
@@ -2499,23 +2494,8 @@ subroutine createRichardsZeroArray(grid)
           zero_rows_local(ncount) = (n-1)*grid%ndof+idof
           zero_rows_local_ghosted(ncount) = (ng-1)*grid%ndof+idof-1
         enddo
-      else
-#ifdef ISOTHERMAL
-        ncount = ncount + 1
-        zero_rows_local(ncount) = (n-1)*grid%ndof+2
-        zero_rows_local_ghosted(ncount) = (ng-1)*grid%ndof+1
-#endif
       endif
     enddo
-  else
-#ifdef ISOTHERMAL
-    do n = 1, grid%nlmax
-      ng = grid%nL2G(n)
-      ncount = ncount +1
-      zero_rows_local(ncount) = (n-1)*grid%ndof+2
-      zero_rows_local_ghosted(ncount) = (ng-1)*grid%ndof+1
-    enddo
-#endif
   endif
 
   if (ncount /= n_zero_rows) then
