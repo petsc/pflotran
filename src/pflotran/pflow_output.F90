@@ -496,8 +496,7 @@ subroutine pflow_output(grid,kplt,iplot)
           & "  -pl[Pa]-     -pg[Pa]-     -t[C]-      -sl-        -sg-    ", &
           & "-xlco2-     -xgco2-        -Vf-     ")')
       elseif( grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE &
-              .or. grid%use_flash == PETSC_TRUE &
-              .or. grid%use_richards == PETSC_TRUE) then 
+              .or. grid%use_flash == PETSC_TRUE) then 
         write(IUNIT3,'("%#   -x[m]-      -y[m]-      -z[m]-   iphase ", &
           & "  -pl[Pa]-     -pg[Pa]-     -t[C]-      -sl-        -sg-    ", &
           & "-xlco2-     -xgco2-        -Vf-     ")')
@@ -516,13 +515,13 @@ subroutine pflow_output(grid,kplt,iplot)
             (p_p(j),j=jn,jn+grid%nphase-grid%jh2o),t_p(n),s_p(jn),s_p(jn+1), &
             x_p(jn),x_p(jn+1),vf
         elseif (grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE &
-                .or. grid%use_flash == PETSC_TRUE .or. grid%use_richards == PETSC_TRUE)then
+                .or. grid%use_flash == PETSC_TRUE)then !.or. grid%use_richards == PETSC_TRUE)then
           write(IUNIT3,'(1p100e12.4)') grid%x(n), grid%y(n), grid%z(n), &
             iphase_p(n),&
             (p_p(j),j=jn,jn+grid%nphase-grid%jh2o),t_p(n),s_p(jn:jn+grid%nphase-1), &
             x_p(jn:jn+grid%nphase-1),vf
-          print *,'output', grid%nphase, n, (p_p(j),j=jn,jn+grid%nphase-grid%jh2o),t_p(n),s_p(jn:jn+grid%nphase-1), &
-            x_p(jn:jn+grid%nphase-1),vf
+      !    print *,'output', grid%nphase, n, (p_p(j),j=jn,jn+grid%nphase-grid%jh2o),t_p(n),s_p(jn:jn+grid%nphase-1), &
+      !      x_p(jn:jn+grid%nphase-1),vf
         else
           write(IUNIT3,'(1p100e12.4)') grid%x(n), grid%y(n), grid%z(n), &
             (p_p(j),j=jn,jn+grid%nphase-grid%jh2o), t_p(n), s_p(jn), c_p(n), vf
@@ -533,8 +532,8 @@ subroutine pflow_output(grid,kplt,iplot)
 
       write(IUNIT3,'(''TITLE= "'',1pg12.4,'' ['',a1,'']"'')') tyr,grid%tunit
       if (grid%use_2ph == PETSC_TRUE .or. grid%use_mph == PETSC_TRUE .or. &
-          grid%use_vadose == PETSC_TRUE .or. grid%use_flash == PETSC_TRUE &
-           .or. grid%use_richards == PETSC_TRUE) then
+          grid%use_vadose == PETSC_TRUE .or. grid%use_flash == PETSC_TRUE)then
+  
         write(IUNIT3,'(''VARIABLES="'',a6,100(a3,a6))') &
           'x',q,'y',q,'p',q,'T',q,'sl(g)',q,'xl',q,'xg',q,'vf','"'
       else
@@ -567,7 +566,7 @@ subroutine pflow_output(grid,kplt,iplot)
           write(IUNIT3,'(''VARIABLES="'',a6,100(a3,a6))') &
             'x',q,'z',q,'p',q,'T',q,'sl(g)',q,'xl',q,'xg',q,'vf','"'
          elseif(grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE & 
-                .or. grid%use_flash == PETSC_TRUE .or. grid%use_richards == PETSC_TRUE)then
+                .or. grid%use_flash == PETSC_TRUE )then
           write(IUNIT3,'(''VARIABLES="'',a6,100(a3,a6))') &
             'x',q,'z',q,'phase',q,'p',q,'T',q,'sl(g)',q,'xl',q,'xg',q,'vf','"'
         else
