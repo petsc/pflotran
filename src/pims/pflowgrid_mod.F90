@@ -92,6 +92,13 @@
       type(pflowGrid) :: grid
       type(time_stepping_context), intent(inout) :: timestep
       
+      interface 
+         subroutine allocate_patch_info(p_samr_hierarchy, patchlevel_info)
+           use pflow_gridtype_module
+           PetscFortranAddr :: p_samr_hierarchy
+           type(PatchLevelInfoPtr), dimension(:), pointer :: patchlevel_info
+         end subroutine allocate_patch_info
+      end interface
 
       integer, intent(in) :: igeom, nx, ny, nz, npx, npy, npz
       integer, intent(in) :: nphase
