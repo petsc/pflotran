@@ -325,18 +325,22 @@ subroutine hydrostatic (grid)
     endif
     tmp = grid%tref + grid%dTdz*zz
     
-    
     call wateos(tmp, p, rho, dw_mol, dwp, &
-    dum, dum, dum, dum, grid%scale, ierr)
-            
-        itrho= 0
+        dum, dum, dum, dum, grid%scale, ierr)
+
+              
+    itrho= 0
          
              ! betap = rho * grid%gravity * grid%beta
-              if(n==1)then
+          if(n==1)then
                 pres = p + rho0 * grid%gravity * dzz !+  betap * horiz
-               else
+          !      tmp=tmp = grid%tref + grid%dTdz*zz
+                call wateos(tmp, pres, rho0, dw_mol, dwp, &
+                     dum, dum, dum, dum, grid%scale, ierr)
+
+                else
                do  
-                pres = p + (rho0*grid%dz0(n-1) + rho* grid%dz0(n))/(grid%dz0(n)+grid%dz0(n-1))&
+                pres = p + (rho0*grid%dz0(n-1) + rho*grid%dz0(n))/(grid%dz0(n)+grid%dz0(n-1))&
                      * grid%gravity * dzz 
                 
               call wateos(tmp, pres, rho1, dw_mol, dwp, &
@@ -416,7 +420,10 @@ subroutine hydrostatic (grid)
                       ! betap = rho * grid%gravity * grid%beta
               if(n==1)then
                 pres = p + rho0 * grid%gravity * dzz !+  betap * horiz
-               else
+               call wateos(tmp, pres, rho0, dw_mol, dwp, &
+                     dum, dum, dum, dum, grid%scale, ierr)
+ 
+              else
                  do 
   
                  pres = p + (rho0*grid%dz0(n-1) + rho* grid%dz0(n))/(grid%dz0(n)+grid%dz0(n-1))&

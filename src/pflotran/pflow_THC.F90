@@ -1062,7 +1062,9 @@ contains
   do nc = 1, grid%nconn  ! For each interior connection...
     m1 = grid%nd1(nc)
     m2 = grid%nd2(nc)
-
+    blkmat1 =0.D0
+    blkmat2 =0.D0
+    
     n1 = grid%nG2L(m1)
     n2 = grid%nG2L(m2)
 
@@ -1583,8 +1585,7 @@ contains
 
  !#if 0
       ! (T,T)
-      blkmat1=0.D0
-      i1 = ithrm_loc_p(ng)
+         i1 = ithrm_loc_p(ng)
       cond = grid%ckwet(i1) * grid%areabc(nc) / grid%distbc(nc)
       elem1 =  cond
       if (grid%iblkfmt == 0) then
