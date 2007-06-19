@@ -144,7 +144,7 @@ type(pflowGrid) function pflowGrid_new(igeom, nx, ny, nz, npx, npy, npz, &
   grid%itable = itable
       
   !set specific phase indices
-  grid%jh2o = 1
+  grid%jh2o = 1; grid%jgas =1
   select case(grid%nphase)
     case(2)
       if (grid%use_2ph == PETSC_TRUE) then
@@ -1617,7 +1617,7 @@ subroutine pflowGrid_setup(grid, inputfile)
               
               if (grid%ndof == 3) then
                 val = grid%conc_ini(ir)
- !              print *,'pflowgrid_setup: ',n+1,i,j,k,ir,val
+               !print *,'pflowgrid_setup: ',n+1,i,j,k,ir,val
                 call VecSetValue(temp3_nat_vec,n,val,INSERT_VALUES,ierr)
               endif
  
@@ -1641,6 +1641,9 @@ subroutine pflowGrid_setup(grid, inputfile)
     call VecAssemblyEnd(temp3_nat_vec,ierr)
     call VecAssemblyBegin(temp4_nat_vec,ierr)
     call VecAssemblyEnd(temp4_nat_vec,ierr)
+    
+  !   print *,'pflowgrid_setup: Assem End'
+    
     call DANaturalToGlobalBegin(grid%da_nphase_dof,temp1_nat_vec, &
                                 INSERT_VALUES,grid%pressure,ierr)
     call DANaturalToGlobalEnd(grid%da_nphase_dof,temp1_nat_vec,INSERT_VALUES, &
@@ -1664,10 +1667,12 @@ subroutine pflowGrid_setup(grid, inputfile)
     if (grid%ndof == 3) then
       call VecAssemblyBegin(temp3_nat_vec,ierr)
       call VecAssemblyEnd(temp3_nat_vec,ierr)
+  
       call DANaturalToGlobalBegin(grid%da_1_dof,temp3_nat_vec,INSERT_VALUES, &
                                   grid%conc,ierr)
       call DANaturalToGlobalEnd(grid%da_1_dof,temp3_nat_vec,INSERT_VALUES, &
                                 grid%conc,ierr)
+  !     print *,'pflowgrid_setup: scatter End'                          
       call VecDestroy(temp3_nat_vec,ierr)
     
 !     call VecView(grid%conc,PETSC_VIEWER_STDOUT_WORLD,ierr)
@@ -3458,6 +3463,7 @@ subroutine pflowGrid_update (grid)
   use OWG_module
   use Vadose_module
   use Richards_module
+  use hydrostat_module, only: recondition_bc
 
   implicit none
 
@@ -3479,6 +3485,7 @@ subroutine pflowGrid_update (grid)
       call VecCopy(grid%xx, grid%yy, ierr)
       call VecCopy(grid%hh, grid%h, ierr)
       call VecCopy(grid%ddensity, grid%density, ierr)
+     ! if (grid%use_thc == PETSC_TRUE) call recondition_bc(grid)
     endif    
   endif
  
@@ -4500,6 +4507,9 @@ subroutine pflowGrid_read_input(grid, inputfile)
                 else if (grid%ibndtyp(ibc) == 2) then
                   call fiReadDouble(string, grid%velocitybc0(j,ibc), ierr)
                   call fiDefaultMsg("Error reading velocity BCs:", ierr)
+                else if (grid%ibndtyp(ibc) == 4) then
+                  call fiReadDouble(string, grid%velocitybc0(j,ibc), ierr)
+                  call fiDefaultMsg("Error reading velocity BCs:", ierr)  
                 else
                   call fiReadDouble(string, grid%pressurebc0(j,ibc), ierr)
                   call fiDefaultMsg("Error reading pressure BCs:", ierr)
@@ -4570,7 +4580,7 @@ subroutine pflowGrid_read_input(grid, inputfile)
                     grid%j1bc(ireg),grid%j2bc(ireg), &
                     grid%k1bc(ireg),grid%k2bc(ireg), &
                     grid%iphasebc0(ireg),(grid%xxbc0(j,ireg),j=1,grid%ndof)
-                else if (grid%ibndtyp(ibc) == 2) then
+                else if (grid%ibndtyp(ibc) == 2 .or. grid%ibndtyp(ibc) == 4) then
                   write(IUNIT2,'(6i4,1p10e12.4)') &
                     grid%i1bc(ireg),grid%i2bc(ireg), &
                     grid%j1bc(ireg),grid%j2bc(ireg), &
@@ -4587,7 +4597,7 @@ subroutine pflowGrid_read_input(grid, inputfile)
                     (grid%pressurebc0(j,ireg),j=1,grid%nphase), &
                     grid%tempbc0(ireg), &
                     grid%concbc0(ireg)
-                else if (grid%ibndtyp(ibc) == 2) then
+                else if (grid%ibndtyp(ibc) == 2 .or. grid%ibndtyp(ibc) == 4) then
                   write(IUNIT2,'(6i4,1p10e12.4)') &
                     grid%i1bc(ireg),grid%i2bc(ireg), &
                     grid%j1bc(ireg),grid%j2bc(ireg), &

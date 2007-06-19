@@ -16,7 +16,7 @@ private
 
 #include "definitions.h"
 
-  public :: hydrostatic, mhydrostatic, owghydrostatic
+  public :: hydrostatic, mhydrostatic, owghydrostatic,recondition_bc
  
 contains
 
@@ -29,7 +29,7 @@ subroutine hydrostatic (grid)
   type(pflowGrid), intent(inout) :: grid
   
   integer :: i,ibc,ibc0,ierr,itrho,ireg,j,jm,k,m,n !,nx,ny,nz
-  real*8 :: betap,depth,dz1,dz2,horiz,dx1,dx2, &
+  real*8 :: betap,depth,dz1,dz2,horiz,dx1,dx2, rho0,&
             dum,dwp,rho,rho1,dw_mol,zz,dzz,tmp,pres,p,dp
 
   real*8 :: ibndtyp(grid%nblkbc),cbc(grid%nblkbc),sbc(grid%nblkbc)
@@ -62,6 +62,7 @@ subroutine hydrostatic (grid)
       call VecDuplicate(temp1_nat_vec,temp2_nat_vec,ierr)  ! temperature
       call VecDuplicate(temp1_nat_vec,temp3_nat_vec,ierr)  ! concentration
       call DACreateNaturalVector(grid%da_nphase_dof,temp4_nat_vec,ierr) ! saturation
+       print *,'hydro: Create End'
     else
       call DACreateNaturalVector(grid%da_nphase_dof,temp1_nat_vec,ierr) ! pressure
       call VecDuplicate(temp1_nat_vec,temp4_nat_vec,ierr)  ! saturation
@@ -116,6 +117,7 @@ subroutine hydrostatic (grid)
             if (grid%use_2ph /= PETSC_TRUE) then
               jm = grid%jgas + m*grid%nphase - 1
               ! pressure
+              ! print *,'hydro: set Val', grid%jgas, grid%nphase,m,jm
               call VecSetValue(temp1_nat_vec,m,pres,INSERT_VALUES,ierr)
               ! temperature
               call VecSetValue(temp2_nat_vec,m,tmp,INSERT_VALUES,ierr)
@@ -291,6 +293,9 @@ subroutine hydrostatic (grid)
   ibc0 = ibc0 + 1
   
   p=grid%pref + dp
+  call wateos(grid%tref, p, rho0, dw_mol, dwp, &
+    dum, dum, dum, dum, grid%scale, ierr)
+  
   do n = 1, grid%nz
     ibc = ibc + 1
     
@@ -325,9 +330,15 @@ subroutine hydrostatic (grid)
     dum, dum, dum, dum, grid%scale, ierr)
             
         itrho= 0
-          do 
+         
              ! betap = rho * grid%gravity * grid%beta
-              pres = p + rho * grid%gravity * dzz !+  betap * horiz
+              if(n==1)then
+                pres = p + rho0 * grid%gravity * dzz !+  betap * horiz
+               else
+               do  
+                pres = p + (rho0*grid%dz0(n-1) + rho* grid%dz0(n))/(grid%dz0(n)+grid%dz0(n-1))&
+                     * grid%gravity * dzz 
+                
               call wateos(tmp, pres, rho1, dw_mol, dwp, &
               dum, dum, dum, dum, grid%scale, ierr)
               if (abs(rho-rho1) < 1.d-6) exit
@@ -338,8 +349,9 @@ subroutine hydrostatic (grid)
                 stop
               endif
             enddo
-
+           endif
      p = pres
+     rho0=rho
  !   p = grid%pref + rho*grid%gravity*zz + dp
 
 
@@ -361,6 +373,10 @@ subroutine hydrostatic (grid)
   ibc0 = ibc0 + 1
 
   p = grid%pref
+
+  call wateos(grid%tref, p, rho0, dw_mol, dwp, &
+    dum, dum, dum, dum, grid%scale, ierr)
+
   do n = 1, grid%nz
     ibc = ibc + 1
     
@@ -396,14 +412,18 @@ subroutine hydrostatic (grid)
 !   print *,'right: ',n,zz,tmp,p,p0,rho,dp,grid%nx,grid%ny,grid%nz
 
 
-    call wateos(tmp, p, rho, dw_mol, dwp, &
-    dum, dum, dum, dum, grid%scale, ierr)
-            
-        itrho= 0
-          do 
-              betap = rho * grid%gravity * grid%beta
-              pres = p + rho * grid%gravity * dzz !+ grid%pref! + betap * horiz
-              call wateos(tmp, pres, rho1, dw_mol, dwp, &
+      itrho= 0
+                      ! betap = rho * grid%gravity * grid%beta
+              if(n==1)then
+                pres = p + rho0 * grid%gravity * dzz !+  betap * horiz
+               else
+                 do 
+  
+                 pres = p + (rho0*grid%dz0(n-1) + rho* grid%dz0(n))/(grid%dz0(n)+grid%dz0(n-1))&
+                     * grid%gravity * dzz 
+              
+             
+               call wateos(tmp, pres, rho1, dw_mol, dwp, &
               dum, dum, dum, dum, grid%scale, ierr)
               if (abs(rho-rho1) < 1.d-6) exit
               rho = rho1
@@ -413,9 +433,9 @@ subroutine hydrostatic (grid)
                 stop
               endif
             enddo
-
+           endif   
      p = pres
-
+     rho0=rho
 
     grid%pressurebc0(1,ibc) = p
     grid%tempbc0(ibc) = tmp
@@ -571,6 +591,89 @@ subroutine hydrostatic (grid)
 
 end subroutine hydrostatic
   
+subroutine recondition_bc(grid)
+  use water_eos_module
+
+  implicit none
+    type(pflowGrid), intent(inout) :: grid
+     real*8 :: p, pres, rho, rho1, rho0,  dum
+     integer nx,ny,nz, na,  nc, m, iln, ng, itrho, ierr,ibc  
+     real*8  tmp, dzz,zz 
+     real*8, pointer :: xx_p(:)
+               
+ ! only work for right boundary now                                 
+     if (grid%ihydrostatic >= 1 .and. grid%nxe == grid%nx)then
+       call VecGetArrayF90(grid%xx, xx_p, ierr)
+       nx=grid%nx
+        do ny=1, grid%ny
+            p=grid%pref
+             do nz=1, grid%nz   
+               na= nx-1 + (ny-1)*grid%nx + (nz-1)*grid%nxy  
+               do iln = 1, grid%nlmax
+                 if(na == grid%nL2A(iln))then 
+                    exit 
+                 endif
+               enddo    
+               !tmp = xx_p((iln-1)*grid%ndof +2)
+                       
+               if(nz==1)then
+                 p=grid%pref  
+                 dzz=0.5d0*grid%dz0(1) 
+                 zz=dzz
+                 tmp = grid%tref
+                  call wateos(tmp, p, rho0, dum, dum, &
+                    dum, dum, dum, dum, grid%scale, ierr)
+                  pres = p + rho0 * grid%gravity * dzz
+                  rho=rho0  
+               else  
+                 dzz = 0.5d0*(grid%dz0(nz)+grid%dz0(nz-1))
+                 zz = zz + dzz
+                 
+                 tmp = grid%tref + grid%dTdz*zz
+                 itrho= 0
+                
+                do 
+                   pres = p + (rho0*grid%dz0(nz-1) + rho* grid%dz0(nz))/(grid%dz0(nz)+grid%dz0(nz-1))&
+                     * grid%gravity * dzz 
+                                        
+                   call wateos(tmp, pres, rho1, dum,dum, &
+                      dum, dum, dum, dum, grid%scale, ierr)
+                   if (abs(rho-rho1) < 1.d-6) exit
+                   rho = rho1
+                   itrho = itrho + 1
+                   if (itrho > 100) then
+                    print *,' no convergence in hydrostat-stop',itrho,rho1,rho
+                    stop
+                   endif
+                 enddo
+                endif
+                
+                p = pres
+                rho0=rho
+                
+                do nc = 1, grid%nconnbc
+                 ibc=  grid%ibconn(nc) 
+                 if( grid%ibndtyp(ibc) == 3 .and. grid%iface(ibc)==2)then 
+                    m = grid%mblkbc(nc)  ! Note that here, m is NOT ghosted.
+                    ng = grid%nL2G(m)
+                    !print *, nx,ny, nz,na, p, tmp
+                    if(na == grid%nL2A(m)) then
+                         grid%pressurebc(1,nc) = p
+                        ! print *, nc, p, tmp, nx,ny,nz,na,m
+                         grid%tempbc(nc) = tmp
+                         exit
+                    endif
+                  endif       
+                 enddo
+             enddo
+            enddo  
+        call VecRestoreArrayF90(grid%xx, xx_p, ierr)
+        endif
+ 
+            
+
+
+end subroutine recondition_bc
   
   
  ! the coordinate in provided by pflow_compute_xyz, make sure this subroutine is called after that 
@@ -584,7 +687,7 @@ subroutine mhydrostatic(grid)
   PetscScalar, pointer :: xx_p(:) 
   
   integer i,ibc,ibc0,ierr,itrho,ireg,j,jm,k,m,n,nl,na !,nx,ny,nz
-  real*8 :: betap,depth,dz1,dz2,horiz,dx1,dx2, &
+  real*8 :: betap,depth,dz1,dz2,horiz,dx1,dx2, rho0,&
             dum,dwp,rho,rho1,dw_mol,zz,dzz,tmp,pres,p,dp
 
   real*8 :: ibndtyp(grid%nblkbc),cbc(grid%nblkbc),sbc(grid%nblkbc)
@@ -707,6 +810,10 @@ subroutine mhydrostatic(grid)
   
     ibc0 = ibc0 + 1
     p = grid%pref + dp
+    call wateos(grid%tref, p, rho0, dw_mol, dwp, &
+    dum, dum, dum, dum, grid%scale, ierr)
+
+    
     do n = 1, grid%nz
       ibc = ibc + 1
     
@@ -742,7 +849,14 @@ subroutine mhydrostatic(grid)
         itrho= 0
           do 
               !betap = rho * grid%gravity * grid%beta
-              pres = p + rho * grid%gravity * dzz 
+              if(n==1)then
+                pres = p + rho0 * grid%gravity * dzz !+  betap * horiz
+               else
+                pres = p + (rho0*grid%dz0(n-1) + rho* grid%dz0(n))/(grid%dz0(n)+grid%dz0(n-1))&
+                     * grid%gravity * dzz 
+              endif  
+
+                          
               call wateos(tmp, pres, rho1, dw_mol, dwp, &
               dum, dum, dum, dum, grid%scale, ierr)
               if (abs(rho-rho1) < 1.d-6) exit
@@ -755,7 +869,7 @@ subroutine mhydrostatic(grid)
             enddo
 
      p = pres
-
+     rho0=rho
 !      p = grid%pref + rho*grid%gravity*zz + dp
 !     p = p0 + rho*grid%gravity*zz + dp
 
@@ -780,6 +894,10 @@ subroutine mhydrostatic(grid)
     ibc0 = ibc0 + 1
 
     p = grid%pref
+    call wateos(grid%tref, p, rho0, dw_mol, dwp, &
+    dum, dum, dum, dum, grid%scale, ierr)
+
+    
     do n = 1, grid%nz
       ibc = ibc + 1
       
@@ -804,16 +922,19 @@ subroutine mhydrostatic(grid)
       endif
       tmp = grid%tref + grid%dTdz*zz
 
-      call wateos(tmp, grid%pref, rho, dw_mol, dwp, &
+      call wateos(tmp, p, rho, dw_mol, dwp, &
                   dum, dum, dum, dum, grid%scale, ierr)
 
-!     call cowat (tmp, p, rw, uw, ierr)
-    call wateos(tmp, p, rho, dw_mol, dwp, &
-    dum, dum, dum, dum, grid%scale, ierr)
             
         itrho= 0
           do 
-            
+              if(n==1)then
+                pres = p + rho0 * grid%gravity * dzz !+  betap * horiz
+               else
+                pres = p + (rho0*grid%dz0(n-1) + rho* grid%dz0(n))/(grid%dz0(n)+grid%dz0(n-1))&
+                     * grid%gravity * dzz 
+              endif  
+
               pres = p + rho * grid%gravity * dzz 
               call wateos(tmp, pres, rho1, dw_mol, dwp, &
               dum, dum, dum, dum, grid%scale, ierr)

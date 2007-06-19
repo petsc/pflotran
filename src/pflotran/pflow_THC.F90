@@ -41,7 +41,7 @@ contains
   subroutine THCResidual(snes, xx, r, grid)
   
   use water_eos_module
-
+   use hydrostat_module, only: recondition_bc
   implicit none
 
   SNES, intent(in) :: snes
@@ -94,7 +94,7 @@ contains
   ! Calculate the density and viscosity of water at step k+1 at each local
   ! node.
   !---------------------------------------------------------------------------
-
+ !  call recondition_bc(grid)
   call VecGetArrayF90(xx, xx_p, ierr); CHKERRQ(ierr)
   call VecGetArrayF90(grid%ddensity, ddensity_p, ierr)
   call VecGetArrayF90(grid%hh, hh_p, ierr)
@@ -613,7 +613,7 @@ contains
       enddo
 
       r_p(p1) = r_p(p1) + fluxp
-      
+
       !heat residual: specified temperature
 !     i1 = ithrm_loc_p(ng)
 !     cond = grid%ckwet(i1) * grid%areabc(nc) / grid%distbc(nc)
@@ -671,6 +671,36 @@ contains
 
       !solute (tracer)
       r_p(c1) = r_p(c1) - grid%fc * fluxc
+
+    else if(grid%ibndtyp(ibc) == 4) then ! grad p = 0, fixed T, grad C = 0
+
+     ! fluxp = 0.d0
+     ! do j = 1, grid%nphase
+     !   jm = j + (m-1) * grid%nphase
+     !   jng = j + (ng-1) * grid%nphase
+        
+     !   v_darcy = grid%velocitybc(j,nc)
+     !   
+     !   q = v_darcy * grid%density_bc(j) * grid%areabc(nc)
+     !   fluxp = fluxp - q
+     ! enddo
+
+      ! r_p(p1) = r_p(p1) + fluxp
+      
+      !heat residual: specified temperature
+      i1 = ithrm_loc_p(ng)
+      cond = grid%ckwet(i1) * grid%areabc(nc) / grid%distbc(nc)
+      r_p(t1) = r_p(t1) + cond * (TTEMP_LOC(ng) - grid%tempbc(nc)) 
+                          ! + fluxh
+!     print *, 'thc:res:bc4: ',   
+      !tracer: specified concentration
+!     trans = grid%difaq * grid%areabc(nc) / grid%distbc(nc)
+      !check for upstreaming weighting and iface even or odd etc.
+      !use zero gradient BC
+      
+!     r_p(c1) = r_p(c1) + trans * (CCONC_LOC(ng) - grid%concbc(ibc)) &
+!                               + fluxc
+      
     endif
     grid%vvlbc(nc) = v_darcy
   enddo
@@ -1375,7 +1405,7 @@ contains
 
     m = grid%mblkbc(nc)  ! Note that here, m is NOT ghosted.
     ng = grid%nL2G(m)
-    
+    blkmat1 =0.D0
     p1 = (ng-1)*grid%ndof
     t1 = p1 + 1
     c1 = t1 + 1
@@ -1548,7 +1578,27 @@ contains
         call MatSetValuesBlockedLocal(A,1,ng-1,1,ng-1, &
         blkmat1,ADD_VALUES,ierr)
       endif
-      
+  
+   else if(grid%ibndtyp(ibc) == 4) then 
+
+ !#if 0
+      ! (T,T)
+      blkmat1=0.D0
+      i1 = ithrm_loc_p(ng)
+      cond = grid%ckwet(i1) * grid%areabc(nc) / grid%distbc(nc)
+      elem1 =  cond
+      if (grid%iblkfmt == 0) then
+        call MatSetValuesLocal(A,1,t1,1,t1,elem1,ADD_VALUES,ierr)
+      else
+        blkmat1(2,2) = elem1
+      endif
+
+      if (grid%iblkfmt == 1) then
+        call MatSetValuesBlockedLocal(A,1,ng-1,1,ng-1, &
+        blkmat1,ADD_VALUES,ierr)
+      endif
+!#endif
+       
     else if(grid%ibndtyp(ibc) == 2) then 
 
     ! constant velocity q, grad T, C = 0
