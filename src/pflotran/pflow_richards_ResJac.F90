@@ -1986,9 +1986,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
 
 ! zero out isothermal and inactive cells
-  if (n_zero_rows > 0) then
-    call MatZeroRowsLocal(A,n_zero_rows,zero_rows_local_ghosted,1.d0,ierr) 
-  endif
+  call MatZeroRowsLocal(A,n_zero_rows,zero_rows_local_ghosted,1.d0,ierr) 
 
   !B = A
   !call MatCopy(A,B,ierr)
