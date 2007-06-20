@@ -2273,9 +2273,9 @@ subroutine pflowGrid_setup(grid, inputfile)
       temp_p(i) = grid%imat(grid%nL2G(i))*1.d0      
     enddo
     call VecRestoreArrayF90(temp_vec,temp_p,ierr)
-    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'materials.dat',viewer,ierr)
-    call VecView(temp_vec,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
+!    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'materials.dat',viewer,ierr)
+!    call VecView(temp_vec,viewer,ierr)
+!    call PetscViewerDestroy(viewer,ierr)
     call VecDestroy(temp_vec,ierr)
 #if 0    
     print *, 'nconnbc:', grid%nconnbc 
@@ -2290,7 +2290,16 @@ subroutine pflowGrid_setup(grid, inputfile)
     enddo 
 #endif
   endif  
+!geh - added for parallel input
+  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-read_material", &
+                           option_found, ierr)
+  if (option_found == PETSC_TRUE .and. grid%iread_geom == 0) then
+    allocate(grid%imat(grid%ngmax))  ! allocate material id array
+    grid%imat = 0      
 
+    call ReadMaterials(grid) 
+    call createRichardsZeroArray(grid)
+  endif
 
   if (grid%using_pflowGrid==0) call VecCopy(grid%Porosity, grid%Porosity0, ierr)
   call VecCopy(grid%perm_xx, grid%perm0_xx, ierr) 

@@ -23,7 +23,7 @@ module Unstructured_Grid_module
   integer, pointer :: hash(:,:,:)
   integer :: num_hash = 100
    
-  public ReadUnstructuredGrid
+  public ReadUnstructuredGrid, ReadMaterials
   
 contains
   
@@ -581,6 +581,11 @@ subroutine ReadUnstructuredGrid(grid)
   enddo
   call VecRestoreArrayF90(grid%icap,icap_p,ierr)
 
+  call DAGlobalToLocalBegin(grid%da_1_dof, grid%icap, INSERT_VALUES, &
+                            grid%icap_loc, ierr)
+  call DAGlobalToLocalEnd(grid%da_1_dof, grid%icap, INSERT_VALUES, &
+                          grid%icap_loc, ierr)
+
   call InitializeBoundaryConditions(grid)
   if (icondition > 0) call ComputeInitialCondition(grid,icondition)
 
@@ -594,6 +599,119 @@ subroutine ReadUnstructuredGrid(grid)
  
 end subroutine ReadUnstructuredGrid
  
+! ************************************************************************** !
+!
+! ReadMaterials: Reads just the materials from the unstructured input file
+! author: Glenn Hammond
+! date: 06/20/07
+!
+! ************************************************************************** !
+subroutine ReadMaterials(grid)
+
+  use fileio_module
+
+  implicit none
+
+  type(pflowGrid) :: grid
+  character(len=MAXSTRINGLENGTH) :: string 
+ 
+  PetscScalar, pointer :: icap_p(:)
+  PetscTruth :: option_found
+  integer fid, iostatus, ierr
+  integer :: material_id, natural_id, local_id, local_ghosted_id
+  integer :: number_of_times
+  integer :: count1, count2, irecv, i
+  character(len=MAXCARDLENGTH) :: card
+  character(len=MAXSTRINGLENGTH) :: filename
+  PetscLogDouble :: time0, time1
+
+  call PetscOptionsGetString(PETSC_NULL_CHARACTER, "-unstructured_filename", &
+    filename, option_found, ierr)
+  if(option_found /= PETSC_TRUE) filename = "hanford.in"
+
+  call PetscGetTime(time0, ierr)
+
+  fid = 86
+  open(fid, file=filename, action="read", status="old", iostat=iostatus)
+  if (iostatus /= 0) then
+    print *, 'Error opening file: ', trim(filename), ' on Processor ', &
+             grid%myrank
+    call PetscFinalize()
+    stop
+  endif
+
+  ! create hash table for fast lookup
+#ifdef HASH
+  call CreateNaturalToLocalGhostedHash(grid)
+!  call PrintHashTable
+#endif
+
+! GRID information
+  card = "GRID"
+  call fiFindStringInFile(fid,card,ierr)
+
+  ! report error if card does not exist
+  if (ierr /= 0) then
+    if (grid%myrank == 0) print *, 'ERROR: Card (',card, ') not found in file'
+    call PetscFinalize()
+    stop
+  endif
+  
+  count1 = 0
+  do
+    call fiReadFlotranString(fid,string,ierr)
+    call fiReadStringErrorMsg(card,ierr)
+
+    if (string(1:1) == '.' .or. string(1:1) == '/') exit
+
+    call fiReadInt(string,natural_id,ierr) 
+    call fiErrorMsg('natural_id',card,ierr)
+
+    call fiReadInt(string,material_id,ierr) 
+    call fiErrorMsg('material_id',card,ierr)
+
+#ifdef HASH
+    local_ghosted_id = GetLocalGhostedIdFromHash(natural_id)
+#else
+    local_ghosted_id = GetLocalGhostedIdFromNaturalId(natural_id,grid)
+#endif
+    if (local_ghosted_id > 0) then
+      grid%imat(local_ghosted_id) = material_id
+    endif
+
+#if DEBUG
+    print *, 'Read geom 1:',natural_id,xcoord,ycoord,zcoord,volume, &
+                            xperm,yperm,zperm,porosity,tortuosity
+#endif
+    count1 = count1 + 1
+  enddo
+
+  if (grid%myrank == 0) print *, count1, ' cells read'
+  
+! set capillary function ids based on material id
+  call VecGetArrayF90(grid%icap,icap_p,ierr)
+  do local_id=1,grid%nlmax
+    if (grid%imat(grid%nL2G(local_id)) > 0) then
+      icap_p(local_id) = grid%imat(grid%nL2G(local_id))
+    endif
+  enddo
+  call VecRestoreArrayF90(grid%icap,icap_p,ierr)
+
+  call DAGlobalToLocalBegin(grid%da_1_dof, grid%icap, INSERT_VALUES, &
+                            grid%icap_loc, ierr)
+  call DAGlobalToLocalEnd(grid%da_1_dof, grid%icap, INSERT_VALUES, &
+                          grid%icap_loc, ierr)
+
+#ifdef HASH
+  deallocate(hash)
+#endif
+  close(fid)
+  call PetscGetTime(time1, ierr)
+  time1 = time1 - time0
+  if (grid%myrank == 0) print *, time1, ' seconds to read materials data'
+ 
+end subroutine ReadMaterials
+
 ! ************************************************************************** !
 !
 ! GetNumberOfLocalConnection: Returns the number of connections involving

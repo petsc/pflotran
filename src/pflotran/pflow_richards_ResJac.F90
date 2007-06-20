@@ -1174,6 +1174,10 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
     m = grid%mblkbc(nc)  ! Note that here, m is NOT ghosted.
     ng = grid%nL2G(m)
 
+    if (associated(grid%imat)) then
+      if (grid%imat(ng) <= 0) cycle
+    endif
+
     if (ng<=0) then
       print *, "Wrong boundary node index... STOP!!!"
       stop
@@ -1619,6 +1623,10 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
 
     m = grid%mblkbc(nc)  ! Note that here, m is NOT ghosted.
     ng = grid%nL2G(m)
+
+    if (associated(grid%imat)) then
+      if (grid%imat(ng) <= 0) cycle
+    endif
 
     if (ng<=0) then
       print *, "Wrong boundary node index... STOP!!!"
@@ -2142,7 +2150,7 @@ subroutine pflow_update_Richards(grid)
                       
   integer :: n, ichange,n0
 !geh added for transient boundary conditons
-  integer :: nc, ibc, iithrm, m
+  integer :: nc, ibc, iithrm, m, ng
   real*8 :: sw, pc(2), kr(2)
   integer :: ierr,iicap,iiphase, iiphase_old
   PetscScalar, pointer :: xx_p(:),icap_p(:),ithrm_p(:),iphase_p(:), var_p(:), yy_p(:), iphase_old_p(:)
@@ -2150,7 +2158,7 @@ subroutine pflow_update_Richards(grid)
 
       
 !geh added for transient boundary conditions      
-  if (associated(grid%imat)) then
+  if (associated(grid%imat) .and. grid%iread_geom < 0) then
     call UpdateBoundaryConditions(grid)
     yybc =grid%xxbc
     vel_bc = grid%velocitybc
@@ -2221,10 +2229,15 @@ subroutine pflow_update_Richards(grid)
    enddo
 
   !geh added for transient boundary conditions  
-  if (associated(grid%imat)) then
+  if (associated(grid%imat) .and. grid%iread_geom < 0) then
     do nc = 1, grid%nconnbc
 
       m = grid%mblkbc(nc)  ! Note that here, m is NOT ghosted.
+      ng = grid%nL2G(m)
+
+      if (associated(grid%imat)) then
+        if (grid%imat(ng) <= 0) cycle
+      endif
        
       if (m<0) then
         print *, "Wrong boundary node index... STOP!!!"
@@ -2322,7 +2335,7 @@ subroutine pflow_Richards_initadj(grid)
 
  
   integer :: ierr
-  integer :: n, nc
+  integer :: n, nc, ng
   integer :: ibc,jn
   integer :: m
   integer :: ii1,ii2,iicap
@@ -2410,6 +2423,11 @@ subroutine pflow_Richards_initadj(grid)
   do nc = 1, grid%nconnbc
 
     m = grid%mblkbc(nc)  ! Note that here, m is NOT ghosted.
+    ng = grid%nL2G(m)
+
+    if (associated(grid%imat)) then
+      if (grid%imat(ng) <= 0) cycle
+    endif
        
     if (m<0) then
       print *, "Wrong boundary node index... STOP!!!"
