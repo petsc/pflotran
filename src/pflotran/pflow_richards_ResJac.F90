@@ -1087,6 +1087,10 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
     n1 = grid%nG2L(m1) ! = zero for ghost nodes
     n2 = grid%nG2L(m2) ! Ghost to local mapping   
 
+    if (associated(grid%imat)) then
+      if (grid%imat(m1) <= 0 .or. grid%imat(m2) <= 0) cycle
+    endif
+
     p1 = 1 + (n1-1)*grid%ndof 
     p2 = 1 + (n2-1)*grid%ndof
    
@@ -1828,6 +1832,10 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
     ra = 0.D0
     m1 = grid%nd1(nc) ! ghosted
     m2 = grid%nd2(nc)
+
+    if (associated(grid%imat)) then
+      if (grid%imat(m1) <= 0 .or. grid%imat(m2) <= 0) cycle
+    endif
 
     n1 = grid%nG2L(m1) ! = zero for ghost nodes
     n2 = grid%nG2L(m2) ! Ghost to local mapping   
