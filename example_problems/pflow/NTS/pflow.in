@@ -102,14 +102,14 @@ BCON
 1.53d6              25.d0    1.0  1.d-12
 /
 :ibndtyp iface
-   2       3
+   4       3
 :i1  i2  j1  j2  k1  k2
   1  95   1  50   1   1
 :vel [m/s]   Temp   sl   Conc
 0.d0         25.d0  1.0  1.d-12
 /
 :ibndtyp iface
-   2       4
+   4       4
 :i1  i2  j1  j2  k1  k2
   1  95   1  50  65  65
 :vel [m/s]   Temp   sl    Conc
