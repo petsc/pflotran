@@ -2313,7 +2313,7 @@ subroutine pflowGrid_setup(grid, inputfile)
         por_p(n) = grid%por_reg(i)
       endif
     enddo
-    call VecRestoreArrayF90(grid%perm_xx,perm_xx_p,ierr)
+    call VecRestoreArrayF90(grid%porosity,por_p,ierr)
     call VecRestoreArrayF90(grid%perm_xx,perm_xx_p,ierr)
     call VecRestoreArrayF90(grid%perm_yy,perm_yy_p,ierr)
     call VecRestoreArrayF90(grid%perm_zz,perm_zz_p,ierr)
