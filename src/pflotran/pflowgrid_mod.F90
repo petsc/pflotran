@@ -2296,9 +2296,50 @@ subroutine pflowGrid_setup(grid, inputfile)
   if (option_found == PETSC_TRUE .and. grid%iread_geom == 0) then
     allocate(grid%imat(grid%ngmax))  ! allocate material id array
     grid%imat = 0      
-
     call ReadMaterials(grid) 
     call createRichardsZeroArray(grid)
+
+#if 0
+    call VecGetArrayF90(grid%porosity,por_p,ierr)
+    call VecGetArrayF90(grid%perm_xx,perm_xx_p,ierr)
+    call VecGetArrayF90(grid%perm_yy,perm_yy_p,ierr)
+    call VecGetArrayF90(grid%perm_zz,perm_zz_p,ierr)
+    do n = 1,grid%nlmax
+      i = grid%imat(grid%nL2G(n))
+      if (i > 0) then
+        perm_xx_p(n) = grid%perm_reg(i,1)
+        perm_yy_p(n) = grid%perm_reg(i,2)
+        perm_zz_p(n) = grid%perm_reg(i,3)
+        por_p(n) = grid%por_reg(i)
+      endif
+    enddo
+    call VecRestoreArrayF90(grid%perm_xx,perm_xx_p,ierr)
+    call VecRestoreArrayF90(grid%perm_xx,perm_xx_p,ierr)
+    call VecRestoreArrayF90(grid%perm_yy,perm_yy_p,ierr)
+    call VecRestoreArrayF90(grid%perm_zz,perm_zz_p,ierr)
+
+    ! perm_xx
+    call DAGlobalToLocalBegin(grid%da_1_dof, grid%perm_xx, INSERT_VALUES, &
+                              grid%perm_xx_loc, ierr)
+    call DAGlobalToLocalEnd(grid%da_1_dof, grid%perm_xx, INSERT_VALUES, &
+                            grid%perm_xx_loc, ierr)
+    ! perm_yy
+    call DAGlobalToLocalBegin(grid%da_1_dof, grid%perm_yy, INSERT_VALUES, &
+                              grid%perm_yy_loc, ierr)
+    call DAGlobalToLocalEnd(grid%da_1_dof, grid%perm_yy, INSERT_VALUES, &
+                            grid%perm_yy_loc, ierr)
+    ! perm_zz
+    call DAGlobalToLocalBegin(grid%da_1_dof, grid%perm_zz, INSERT_VALUES, &
+                              grid%perm_zz_loc, ierr)
+    call DAGlobalToLocalEnd(grid%da_1_dof, grid%perm_zz, INSERT_VALUES, &
+                          grid%perm_zz_loc, ierr)
+    ! por
+    call DAGlobalToLocalBegin(grid%da_1_dof, grid%porosity, INSERT_VALUES, &
+                              grid%porosity_loc, ierr)
+    call DAGlobalToLocalEnd(grid%da_1_dof, grid%porosity, INSERT_VALUES, &
+                            grid%porosity_loc, ierr)
+#endif
+
   endif
 
   if (grid%using_pflowGrid==0) call VecCopy(grid%Porosity, grid%Porosity0, ierr)
