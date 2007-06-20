@@ -249,9 +249,8 @@ subroutine hydrostatic (grid)
   call wateos(grid%tref, p, rho, dw_mol, dwp, &
               dum, dum, dum, dum, grid%scale, ierr)
   
-  depth = depth + 0.5d0*grid%dz0(grid%nz)
-  horiz = horiz + 0.5d0*grid%dx0(grid%nx)
-
+  depth = grid%z(grid%nmax) + 0.5d0*grid%dz0(grid%nz)
+  horiz = grid%x(grid%nmax) + 0.5d0*grid%dx0(grid%nx)
   
   dp = rho * grid%gravity * grid%beta * horiz
   
@@ -335,7 +334,7 @@ subroutine hydrostatic (grid)
           if(n==1)then
                 pres = p + rho0 * grid%gravity * dzz !+  betap * horiz
           !      tmp=tmp = grid%tref + grid%dTdz*zz
-                call wateos(tmp, pres, rho0, dw_mol, dwp, &
+                call wateos(tmp, pres, rho, dw_mol, dwp, &
                      dum, dum, dum, dum, grid%scale, ierr)
 
                 else
@@ -420,7 +419,7 @@ subroutine hydrostatic (grid)
                       ! betap = rho * grid%gravity * grid%beta
               if(n==1)then
                 pres = p + rho0 * grid%gravity * dzz !+  betap * horiz
-               call wateos(tmp, pres, rho0, dw_mol, dwp, &
+               call wateos(tmp, pres, rho, dw_mol, dwp, &
                      dum, dum, dum, dum, grid%scale, ierr)
  
               else
@@ -768,8 +767,8 @@ subroutine mhydrostatic(grid)
   call wateos(grid%tref, p, rho, dw_mol, dwp, &
               dum, dum, dum, dum, grid%scale, ierr)
   
-  depth = depth + 0.5d0*grid%dz0(grid%nz)
-  horiz = horiz + 0.5d0*grid%dx0(grid%nx)
+  depth = grid%z(grid%nmax) + 0.5d0*grid%dz0(grid%nz)
+  horiz = grid%x(grid%nmax) + 0.5d0*grid%dx0(grid%nx)
   
   dp = rho * grid%gravity * grid%beta * horiz
   
@@ -854,14 +853,18 @@ subroutine mhydrostatic(grid)
       dum, dum, dum, dum, grid%scale, ierr)
             
         itrho= 0
-          do 
+          
               !betap = rho * grid%gravity * grid%beta
               if(n==1)then
                 pres = p + rho0 * grid%gravity * dzz !+  betap * horiz
+                 call wateos(tmp, pres, rho, dw_mol, dwp, &
+                        dum, dum, dum, dum, grid%scale, ierr)
+
                else
+               do
                 pres = p + (rho0*grid%dz0(n-1) + rho* grid%dz0(n))/(grid%dz0(n)+grid%dz0(n-1))&
                      * grid%gravity * dzz 
-              endif  
+               
 
                           
               call wateos(tmp, pres, rho1, dw_mol, dwp, &
@@ -874,7 +877,7 @@ subroutine mhydrostatic(grid)
                 stop
               endif
             enddo
-
+          endif
      p = pres
      rho0=rho
 !      p = grid%pref + rho*grid%gravity*zz + dp
@@ -934,16 +937,16 @@ subroutine mhydrostatic(grid)
 
             
         itrho= 0
-          do 
+          
               if(n==1)then
                 pres = p + rho0 * grid%gravity * dzz !+  betap * horiz
+                call wateos(tmp, pres, rho, dw_mol, dwp, &
+                  dum, dum, dum, dum, grid%scale, ierr)
                else
-                pres = p + (rho0*grid%dz0(n-1) + rho* grid%dz0(n))/(grid%dz0(n)+grid%dz0(n-1))&
+                do
+                  pres = p + (rho0*grid%dz0(n-1) + rho* grid%dz0(n))/(grid%dz0(n)+grid%dz0(n-1))&
                      * grid%gravity * dzz 
-              endif  
-
-              pres = p + rho * grid%gravity * dzz 
-              call wateos(tmp, pres, rho1, dw_mol, dwp, &
+               call wateos(tmp, pres, rho1, dw_mol, dwp, &
               dum, dum, dum, dum, grid%scale, ierr)
               if (abs(rho-rho1) < 1.d-6) exit
               rho = rho1
@@ -953,9 +956,9 @@ subroutine mhydrostatic(grid)
                 stop
               endif
             enddo
-
+         endif
      p = pres
-
+     rho0=rho
 
 !      p = grid%pref + rho*grid%gravity*zz !- dp
 !     p = p0 + rho*grid%gravity*zz
@@ -1028,7 +1031,7 @@ subroutine mhydrostatic(grid)
 ! grid%concbc0(ibc) = cbc(ibc0) !grid%conc0
 ! grid%sgbc0(ibc) = sbc(ibc0)
   grid%xxbc0(1,ibc) = p
-  grid%xxbc0(2,ibc) = tmp
+  grid%xxbc0(2,ibc) = grid%tref + grid%dTdz * depth
   grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
   grid%iphasebc0(ibc)=iphasebc_rec(ibc0)
   grid%velocitybc0(:,ibc) = 0.d0
