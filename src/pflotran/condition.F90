@@ -133,14 +133,14 @@ subroutine UpdateConditions(time)
 
     ! if more than 10 times specified, cycle the transient condition
     ! note that 10 is just an arbitrary number
-    if (cur_time_index == cur_condition%max_time_index .and. &
+    if (cur_condition%cur_time_index == cur_condition%max_time_index .and. &
         cur_condition%max_time_index > 10) then
       do cur_time_index = 1, cur_condition%max_time_index
         cur_condition%times(cur_time_index) = &     
               cur_condition%times(cur_time_index) + &     
               cur_condition%times(cur_condition%max_time_index)
       enddo
-      cur_time_index = 1
+      cur_condition%cur_time_index = 1
     endif
 
     cur_time_index = cur_condition%cur_time_index
@@ -163,6 +163,7 @@ subroutine UpdateConditions(time)
       enddo
 
       ! interpolate value based on time
+      cur_condition%cur_time_index = cur_time_index
       if (cur_time_index < cur_condition%max_time_index) then
         time_fraction = (time-cur_condition%times(cur_time_index)) / &
                         (cur_condition%times(next_time_index) - &
