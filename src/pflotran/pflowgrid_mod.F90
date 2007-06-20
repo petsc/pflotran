@@ -1145,6 +1145,7 @@ subroutine pflowGrid_setup(grid, inputfile)
       call DAGetMatrix(grid%da_ndof, MATBAIJ, grid%J, ierr)
     endif
    ! call  MatSetBlocksize(grid%J,grid%ndof,ierr)
+    call MatSetOption(grid%J,MAT_KEEP_ZEROED_ROWS,ierr)
     call MatSetOption(grid%J,MAT_COLUMN_ORIENTED,ierr)
     
     if (grid%use_cond == PETSC_TRUE) then

@@ -1343,6 +1343,9 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'residual.out',viewer,ierr)
  call VecView(r,viewer,ierr)
  call PetscViewerDestroy(viewer,ierr)
+ call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'xx.out',viewer,ierr)
+ call VecView(xx,viewer,ierr)
+ call PetscViewerDestroy(viewer,ierr)
 #endif
 
   !print *,'XX ::...........'; call VecView(xx,PETSC_VIEWER_STDOUT_WORLD,ierr)
@@ -1986,7 +1989,28 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
 
 ! zero out isothermal and inactive cells
-  call MatZeroRowsLocal(A,n_zero_rows,zero_rows_local_ghosted,1.d0,ierr) 
+#ifdef ISOTHERMAL
+  f1 = 0.d0
+  call MatZeroRowsLocal(A,n_zero_rows,zero_rows_local_ghosted,f1,ierr) 
+  do i=1, n_zero_rows
+    n = mod(zero_rows_local(i),grid%ndof)
+    p1 = zero_rows_local_ghosted(i)
+    if (n == 1) then
+      p2 = p1
+    elseif (n == 0) then
+      p2 = p1-grid%ndof+2
+    else
+      p2 = p1+1
+    endif
+    call MatSetValuesLocal(A,1,p1,1,p2,1.d0,INSERT_VALUES,ierr)
+  enddo
+
+  call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
+  call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
+#else
+  f1 = 1.d0
+  call MatZeroRowsLocal(A,n_zero_rows,zero_rows_local_ghosted,f1,ierr) 
+#endif
 
   !B = A
   !call MatCopy(A,B,ierr)
@@ -2472,9 +2496,16 @@ subroutine createRichardsZeroArray(grid)
       ng = grid%nL2G(n)
       if (grid%imat(ng) <= 0) then
         n_zero_rows = n_zero_rows + grid%ndof
+      else
+#ifdef ISOTHERMAL
+        n_zero_rows = n_zero_rows + 1
+#endif
       endif
     enddo
   else
+#ifdef ISOTHERMAL
+    n_zero_rows = n_zero_rows + grid%nlmax
+#endif
   endif
 
   allocate(zero_rows_local(n_zero_rows))
@@ -2492,8 +2523,23 @@ subroutine createRichardsZeroArray(grid)
           zero_rows_local(ncount) = (n-1)*grid%ndof+idof
           zero_rows_local_ghosted(ncount) = (ng-1)*grid%ndof+idof-1
         enddo
+      else
+#ifdef ISOTHERMAL
+        ncount = ncount + 1
+        zero_rows_local(ncount) = n*grid%ndof
+        zero_rows_local_ghosted(ncount) = ng*grid%ndof-1
+#endif
       endif
     enddo
+  else
+#ifdef ISOTHERMAL
+    do n = 1, grid%nlmax
+      ng = grid%nL2G(n)
+      ncount = ncount + 1
+      zero_rows_local(ncount) = n*grid%ndof
+      zero_rows_local_ghosted(ncount) = ng*grid%ndof-1
+    enddo
+#endif
   endif
 
   if (ncount /= n_zero_rows) then
