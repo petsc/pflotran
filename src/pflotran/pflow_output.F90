@@ -2380,11 +2380,13 @@ subroutine pflow_soutput(grid,kplt,iplot)
   call VecGetSize(p_nat, vecsize, ierr)
   if (grid%myrank == 0) allocate(p_p(vecsize))
   call svectompizero(p_nat, p_p, ierr)
+  call VecDestroy(p_nat, ierr)
 
 ! call VecScatterCreateToAll(s_nat, scatter, s_all, ierr)
   call VecGetSize(s_nat, vecsize, ierr)
   if (grid%myrank == 0) allocate(s_p(vecsize))
   call svectompizero(s_nat, s_p, ierr)
+  call VecDestroy(s_nat, ierr)
 
   if (grid%use_2ph == PETSC_TRUE .or. grid%use_mph == PETSC_TRUE .or. &
       grid%use_vadose == PETSC_TRUE .or. grid%use_flash == PETSC_TRUE &
@@ -2392,6 +2394,7 @@ subroutine pflow_soutput(grid,kplt,iplot)
     call VecGetSize(x_nat, vecsize, ierr)
     if (grid%myrank == 0) allocate(x_p(vecsize))
     call svectompizero(x_nat, x_p, ierr)
+    call VecDestroy(x_nat, ierr)
   endif
   
   if (grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE & 
@@ -2399,20 +2402,24 @@ subroutine pflow_soutput(grid,kplt,iplot)
     call VecGetSize(iphase_nat, vecsize, ierr)
     if (grid%myrank == 0) allocate(iphase_p(vecsize))
     call svectompizero(iphase_nat, iphase_p, ierr)
+    call VecDestroy(iphase_nat, ierr)
   endif
 
   call VecGetSize(t_nat, vecsize, ierr)
   if (grid%myrank == 0) allocate(t_p(vecsize))
   call svectompizero(t_nat, t_p, ierr)
+  call VecDestroy(t_nat, ierr)
 
   call VecGetSize(c_nat, vecsize, ierr)
   if (grid%myrank == 0) allocate(c_p(vecsize))
   call svectompizero(c_nat, c_p, ierr)
+  call VecDestroy(c_nat, ierr)
 
   if (grid%rk > 0.d0) then
     call VecGetSize(phis_nat, vecsize, ierr)
     if (grid%myrank == 0) allocate(phis_p(vecsize))
     call svectompizero(phis_nat, phis_p, ierr)
+    call VecDestroy(phis_nat, ierr)
   endif
 
   tab = char(9)
@@ -2696,6 +2703,7 @@ subroutine pflow_soutput(grid,kplt,iplot)
     call VecGetSize(vl_nat, vecsize, ierr)
     if (grid%myrank == 0) allocate(vl_p(vecsize))
     call svectompizero(vl_nat, vl_p, ierr)
+    call VecDestroy(vl_nat, ierr)
 
    ! endif
     
@@ -2906,16 +2914,8 @@ subroutine pflow_soutput(grid,kplt,iplot)
   kplt = kplt + 1
   iplot = 0
 
-  call VecDestroy(c_nat, ierr)
-  call VecDestroy(phis_nat, ierr)
-  call VecDestroy(t_nat, ierr)
   call VecDestroy(por_nat, ierr)
   call VecDestroy(perm_nat, ierr)
-  call VecDestroy(p_nat, ierr)
-  call VecDestroy(s_nat, ierr)
-  call VecDestroy(vl_nat, ierr)
-  call VecDestroy(x_nat, ierr)
-  call VecDestroy(iphase_nat,ierr)
  
  ! if (iprint >= 1) call VecScatterDestroy(scat_1dof, ierr)
 !call VecScatterView(scat_1dof,PETSC_VIEWER_STDOUT_SELF)
@@ -3004,10 +3004,12 @@ end subroutine pflow_soutput
   call VecGetSize(por_nat, vecsize, ierr)
   if (myrank == 0) allocate(por_p(vecsize))
   call svectompizero(por_nat, por_p, ierr)
+  call VecDestroy(por_nat, ierr)
 
   call VecGetSize(perm_nat, vecsize, ierr)
   if (myrank == 0) allocate(perm_p(vecsize))
   call svectompizero(perm_nat, perm_p, ierr)
+  call VecDestroy(perm_nat, ierr)
 
   if(myrank == 0) then
     
