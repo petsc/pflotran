@@ -23,7 +23,7 @@ module Unstructured_Grid_module
   integer, pointer :: hash(:,:,:)
   integer :: num_hash = 100
    
-  public ReadUnstructuredGrid, ReadMaterials
+  public ReadUnstructuredGrid, ReadMaterials, ReadMaterials2
   
 contains
   
@@ -151,7 +151,7 @@ subroutine ReadUnstructuredGrid(grid)
 !geh In the future, 'natural_id' will be replaced by 'local_id'
     grid%x(natural_id)=xcoord
     grid%y(natural_id)=ycoord
-    grid%z(natural_id)=zcoord
+!    grid%z(natural_id)=zcoord
 
 #ifdef HASH
     local_ghosted_id = GetLocalGhostedIdFromHash(natural_id)
@@ -170,7 +170,6 @@ subroutine ReadUnstructuredGrid(grid)
       endif
       grid%imat(local_ghosted_id) = material_id
     endif
-!    print *, grid%myrank, local_ghosted_id, local_id
 
 #if DEBUG
     print *, 'Read geom 1:',natural_id,xcoord,ycoord,zcoord,volume, &
@@ -615,7 +614,7 @@ subroutine ReadMaterials(grid)
   character(len=MAXSTRINGLENGTH) :: string 
  
   PetscScalar, pointer :: perm_xx_p(:),perm_yy_p(:),perm_zz_p(:),por_p(:), &
-                          tor_p(:), volume_p(:), icap_p(:)
+                          tor_p(:), volume_p(:), icap_p(:), temp_ptr(:)
   PetscTruth :: option_found
   integer fid, iostatus, ierr
   integer :: connection_id, material_id, natural_id, local_id, local_ghosted_id
@@ -636,15 +635,6 @@ subroutine ReadMaterials(grid)
   real*8 :: time, value, time_multiplier
   PetscLogDouble :: time0, time1
   type(condition_type), pointer :: new_condition
-  real*8, pointer :: temp_ptr(:)
-
-  call VecDestroy(grid%perm_xx,ierr)
-  call VecDestroy(grid%perm_yy,ierr)
-  call VecDestroy(grid%perm_zz,ierr)
-
-  call VecDuplicate(grid%porosity,grid%perm_zz,ierr) 
-  call VecDuplicate(grid%porosity,grid%perm_yy,ierr) 
-  call VecDuplicate(grid%porosity,grid%perm_xx,ierr) 
 
   call VecGetArrayF90(grid%volume, volume_p, ierr); CHKERRQ(ierr)
   call VecGetArrayF90(grid%perm_xx, perm_xx_p, ierr); CHKERRQ(ierr)
@@ -739,6 +729,7 @@ subroutine ReadMaterials(grid)
     if (local_ghosted_id > 0) then
       local_id = grid%nG2L(local_ghosted_id)
       if (local_id > 0 .and. abs(material_id) > 0) then
+!      if (local_id > 0) then
         perm_xx_p(local_id) = xperm
         perm_yy_p(local_id) = yperm
         perm_zz_p(local_id) = zperm
@@ -943,6 +934,298 @@ subroutine ReadMaterials(grid)
   if (grid%myrank == 0) print *, time1, ' seconds to read materials data'
  
 end subroutine ReadMaterials
+
+! ************************************************************************** !
+!
+! ReadMaterials2: Reads just the materials from the unstructured input file
+! author: Glenn Hammond
+! date: 06/20/07
+!
+! ************************************************************************** !
+subroutine ReadMaterials2(grid)
+
+  use fileio_module
+  use Condition_module
+
+  implicit none
+
+  type(pflowGrid) :: grid
+  character(len=MAXSTRINGLENGTH) :: string 
+ 
+  PetscScalar, pointer :: icap_p(:)
+
+  PetscTruth :: option_found
+  integer fid, iostatus, ierr
+  integer :: material_id, natural_id, local_id, local_ghosted_id
+  integer :: number_of_times
+  integer :: count1, count2, irecv, i
+  real*8 :: xcoord, ycoord, zcoord
+  character(len=MAXCARDLENGTH) :: card
+  character(len=MAXWORDLENGTH) :: time_unit
+  character(len=MAXSTRINGLENGTH) :: filename
+  integer :: direction, icond, icondition
+  real*8 :: time, value, time_multiplier
+  PetscLogDouble :: time0, time1
+  type(condition_type), pointer :: new_condition
+
+  string = " "
+  filename = "hanford.in"
+  call PetscOptionsGetString(PETSC_NULL_CHARACTER, "-unstructured_filename", &
+    filename, option_found, ierr)
+
+  call PetscGetTime(time0, ierr)
+
+  fid = 86
+  open(fid, file=filename, action="read", status="old", iostat=iostatus)
+  if (iostatus /= 0) then
+    print *, 'Error opening file: ', trim(filename), ' on Processor ', &
+             grid%myrank
+    call PetscFinalize()
+    stop
+  endif
+
+  ! create hash table for fast lookup
+#ifdef HASH
+  call CreateNaturalToLocalGhostedHash(grid)
+!  call PrintHashTable
+#endif
+
+! GRID information
+  card = "GRID"
+  call fiFindStringInFile(fid,card,ierr)
+
+  ! report error if card does not exist
+  if (ierr /= 0) then
+    if (grid%myrank == 0) print *, 'ERROR: Card (',card, ') not found in file'
+    call PetscFinalize()
+    stop
+  endif
+
+  count1 = 0
+  do
+
+    call fiReadFlotranString(fid,string,ierr)
+    call fiReadStringErrorMsg(card,ierr)
+
+    if (string(1:1) == '.' .or. string(1:1) == '/') exit
+
+    call fiReadInt(string,natural_id,ierr) 
+    call fiErrorMsg('natural_id',card,ierr)
+
+    call fiReadInt(string,material_id,ierr) 
+    call fiErrorMsg('material_id',card,ierr)
+
+    call fiReadDouble(string,xcoord,ierr)
+    call fiErrorMsg('xcoord',card,ierr)
+   
+    call fiReadDouble(string,ycoord,ierr)
+    call fiErrorMsg('ycoord',card,ierr)
+
+    call fiReadDouble(string,zcoord,ierr)
+    call fiErrorMsg('zcoord',card,ierr)
+   
+!geh In the future, 'natural_id' will be replaced by 'local_id'
+    grid%x(natural_id)=xcoord
+    grid%y(natural_id)=ycoord
+    grid%z(natural_id)=zcoord
+
+#ifdef HASH
+    local_ghosted_id = GetLocalGhostedIdFromHash(natural_id)
+#else
+    local_ghosted_id = GetLocalGhostedIdFromNaturalId(natural_id,grid)
+#endif
+    if (local_ghosted_id > 0) then
+      local_id = grid%nG2L(local_ghosted_id)
+      grid%imat(local_ghosted_id) = material_id
+    endif
+
+#if DEBUG
+    print *, 'Read geom 1:',natural_id,xcoord,ycoord,zcoord,volume, &
+                            xperm,yperm,zperm,porosity,tortuosity
+#endif
+    count1 = count1 + 1
+  enddo
+
+  if (grid%myrank == 0) print *, count1, ' cells read'
+  
+! CONDition information
+
+  card = "COND"
+  call fiFindStringInFile(fid,card,ierr)
+
+  ! report error if card does not exist
+  if (ierr /= 0) then
+    if (grid%myrank == 0) print *, 'ERROR: Card (',card, ') not found in file'
+    call PetscFinalize()
+    stop
+  endif
+
+  count1 = 0
+  do
+    call fiReadFlotranString(fid,string,ierr)
+    call fiReadStringErrorMsg(card,ierr)
+
+    if (string(1:1) == '.' .or. string(1:1) == '/') exit
+
+! stomp2pflotran header
+!:id "type" num_values (datum)
+
+    allocate(new_condition)
+    nullify(new_condition%next)
+    new_condition%itype = 0
+    new_condition%xdatum = 0.d0
+    new_condition%ydatum = 0.d0
+    new_condition%zdatum = 0.d0
+    new_condition%xgrad = 0.d0
+    new_condition%ygrad = 0.d0
+    new_condition%zgrad = 0.d0
+
+    call fiReadInt(string,new_condition%id,ierr) 
+    call fiErrorMsg('id',card,ierr)
+
+    call fiReadQuotedNChars(string,new_condition%ctype,MAXWORDLENGTH, &
+                            .true.,ierr) 
+    call fiErrorMsg('condition_type',card,ierr)
+    call fiWordToLower(new_condition%ctype)
+
+    call fiReadInt(string,new_condition%max_time_index,ierr) 
+    call fiErrorMsg('max_time_index',card,ierr)
+
+    call fiReadWord(string,time_unit,.true.,ierr) 
+    call fiErrorMsg('time unit',card,ierr)
+
+    if (fiStringCompare("hydraulic gradient",new_condition%ctype,18) .or. &
+        fiStringCompare("seepage",new_condition%ctype,7)) then
+
+      call fiReadFlotranString(fid,string,ierr)
+      call fiReadStringErrorMsg(card,ierr)
+
+      call fiReadDouble(string,new_condition%xdatum,ierr) 
+      call fiErrorMsg('x datum',card,ierr)
+
+      call fiReadDouble(string,new_condition%ydatum,ierr) 
+      call fiErrorMsg('y datum',card,ierr)
+
+      call fiReadDouble(string,new_condition%zdatum,ierr) 
+      call fiErrorMsg('z datum',card,ierr)
+
+      call fiReadFlotranString(fid,string,ierr)
+      call fiReadStringErrorMsg(card,ierr)
+
+      call fiReadDouble(string,new_condition%xgrad,ierr) 
+      call fiErrorMsg('x gradient',card,ierr)
+
+      call fiReadDouble(string,new_condition%ygrad,ierr) 
+      call fiErrorMsg('y gradient',card,ierr)
+
+      call fiReadDouble(string,new_condition%zgrad,ierr) 
+      call fiErrorMsg('z gradient',card,ierr)
+    endif
+
+    allocate(new_condition%times(new_condition%max_time_index))
+    allocate(new_condition%values(new_condition%max_time_index))
+    new_condition%times = 0.d0
+    new_condition%values = 0.d0
+
+    call fiWordToLower(time_unit)
+    if (fiStringCompare("y",time_unit,1)) then
+      time_multiplier = 365.d0*24.d0*3600.d0
+    else if (fiStringCompare("d",time_unit,1)) then
+      time_multiplier = 24.d0*3600.d0
+    else if (fiStringCompare("h",time_unit,1)) then
+      time_multiplier = 3600.d0
+    else if (fiStringCompare("m",time_unit,1)) then
+      time_multiplier = 60.d0
+    else if (fiStringCompare("s",time_unit,1)) then
+      time_multiplier = 1.d0
+    else
+      if (grid%myrank == 0) then
+        print *, 'Time unit: ', trim(time_unit), ' not recognized'
+      endif
+      call PetscFinalize()
+      stop
+    endif
+
+    if (grid%myrank == 0) print *, new_condition%ctype
+    if (grid%myrank == 0) print *, new_condition%max_time_index
+
+    count2 = 0
+    do i=1,new_condition%max_time_index
+
+      call fiReadFlotranString(fid,string,ierr)
+      call fiReadStringErrorMsg(card,ierr)
+
+      call fiReadDouble(string,time,ierr)
+      call fiErrorMsg('time',card,ierr)
+
+      call fiReadDouble(string,value,ierr)
+      call fiErrorMsg('value',card,ierr)
+      ! times are all in seconds   yr -> seconds
+      new_condition%times(i) = time*time_multiplier
+      new_condition%values(i) = value
+
+      count2 = count2 + 1
+
+    enddo
+
+    if (grid%myrank == 0) print *, count2, ' times read'
+
+    call AddCondition(new_condition)
+    nullify(new_condition)
+
+    count1 = count1 + 1
+
+  enddo
+
+  if (grid%myrank == 0) print *, count1, ' conditions read'
+
+! Initial Condition information
+
+  card = "ICON"
+  call fiFindStringInFile(fid,card,ierr)
+
+  ! report warning if card does not exist
+  if (ierr /= 0 .and. grid%myrank == 0) &
+    print *, 'WARNING: Card (',card, ') not found in file'
+
+  icondition = -1
+  if (ierr == 0) then
+    do
+      call fiReadFlotranString(fid,string,ierr)
+      call fiReadStringErrorMsg(card,ierr)
+
+      if (string(1:1) == '.' .or. string(1:1) == '/') exit
+
+      call fiReadInt(string,icondition,ierr) 
+      call fiErrorMsg('icondition',card,ierr)
+    enddo
+  endif
+
+! set capillary function ids based on material id
+  call VecGetArrayF90(grid%icap,icap_p,ierr)
+  do local_id=1,grid%nlmax
+    if (abs(grid%imat(grid%nL2G(local_id))) > 0) then
+      icap_p(local_id) = abs(grid%imat(grid%nL2G(local_id)))
+    else
+      icap_p(local_id) = 1
+    endif
+  enddo
+  call VecRestoreArrayF90(grid%icap,icap_p,ierr)
+
+  call InitializeBoundaryConditions(grid)
+#if 1
+  if (icondition > 0) call ComputeInitialCondition(grid,icondition)
+#endif
+
+#ifdef HASH
+  deallocate(hash)
+#endif
+  close(fid)
+  call PetscGetTime(time1, ierr)
+  time1 = time1 - time0
+  if (grid%myrank == 0) print *, time1, ' seconds to read materials data'
+ 
+end subroutine ReadMaterials2
 
 ! ************************************************************************** !
 !
