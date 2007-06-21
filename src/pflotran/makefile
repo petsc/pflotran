@@ -60,6 +60,7 @@ pflow_obj = ${common_src}pflow_vector_ops.o \
 	${common_src}pflow_flash_ResJac.o\
 	${common_src}pflow_richards_ResJac.o\
 	${common_src}pflow_solve.o \
+	${common_src}vectompizero.o \
 	${common_src}pflow_output.o \
 	${common_src}pflow_checkpoint.o \
 	${common_src}pflowgrid_mod.o
