@@ -649,7 +649,7 @@ subroutine pflow_output(grid,kplt,iplot)
         'x',q,'y',q,'z',q,'p',q,'T',q,'sl(g)',q,'c',q,'vf','"'
     endif
     write(IUNIT3,'(''ZONE T= "'',1pg12.4,''",'','' I='',i4, &
-      & '' , J='',i4,'' K='',i4)') tyr,grid%nx,grid%ny,grid%nz
+      & '' , J='',i4,'' , K='',i4)') tyr,grid%nx,grid%ny,grid%nz
     do n = 1,  grid%nmax
       jn = grid%jh2o+(n-1)*grid%nphase
       vf = 0.d0
@@ -1656,7 +1656,7 @@ end subroutine pflow_output
         var_name(1), (q,var_name(i),i=2,nvar_out),'"'
      endif
     write(IUNIT3,'(''ZONE T= "'',1pg12.4,''",'','' I='',i4, &
- &    '' , J='',i4,'' K='',i4)') tyr,grid%nx,grid%ny,grid%nz
+ &    '' , J='',i4,'' , K='',i4)') tyr,grid%nx,grid%ny,grid%nz
     endif 
 
 
