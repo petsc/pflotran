@@ -1,0 +1,10 @@
+To get an interactive shell with 40 processors (20 nodes) do
+
+qsub -I -V -q debug -lwalltime=1:00:00,size=20 -A GEO002
+
+You can then cd to $PBS_O_WORKDIR to get to the place that you launched 
+your job from.
+
+From inside the interactive shell, run your job with
+
+yod ./pflotran -use_analytical -use_mph -snes_ls basic
