@@ -135,7 +135,7 @@ BCON
 HYDR      1        0.01069d0     1.d-3     32.8d0      8.d6     1.d-12
 :
 :     ret  fc
-RADN 1.d0 1.03
+:RADN 1.d0 1.03
 :
 BRK
 :i1  i2  j1  j2  k1  k2  brktyp  axis
