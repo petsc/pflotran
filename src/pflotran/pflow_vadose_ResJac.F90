@@ -905,12 +905,7 @@ subroutine VadoseResidual(snes,xx,r,grid,ierr)
   
   !*******************************************
     call pri_var_trans_vad_ninc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),iiphase, &
-                                grid%scale,grid%nphase,grid%nspec, &
-                                grid%icaptype(iicap), &
-                                grid%sir(1:grid%nphase,iicap), &
-                                grid%lambda(iicap),grid%alpha(iicap), &
-                                grid%pckrm(iicap),grid%pcwmax(iicap), &
-                                grid%pcbetac(iicap),grid%pwrprm(iicap),dif, &
+                                grid%scale,grid%nphase,grid%nspec, iicap, dif, &
                                 var_p((n-1)*size_var_node+1:(n-1)* &
                                   size_var_node+size_var_use), &
                                 grid%itable,ierr,grid%xxphi_co2(n), &
@@ -921,12 +916,7 @@ subroutine VadoseResidual(snes,xx,r,grid,ierr)
     if (grid%ideriv .eq. 1) then
       call pri_var_trans_vad_winc(xx_p((n-1)*grid%ndof+1:n*grid%ndof), &
                                   grid%delx(1:grid%ndof,ng),iiphase, &
-                                  grid%scale,grid%nphase,grid%nspec, &
-                                  grid%icaptype(iicap), &
-                                  grid%sir(1:grid%nphase,iicap), &
-                                  grid%lambda(iicap),grid%alpha(iicap), &
-                                  grid%pckrm(iicap),grid%pcwmax(iicap), &
-                                  grid%pcbetac(iicap),grid%pwrprm(iicap),dif, &
+                                  grid%scale,grid%nphase,grid%nspec, iicap, dif,&
                                   var_p((n-1)*size_var_node+size_var_use+1:n* &
                                     size_var_node), &
                                   grid%itable,ierr)
@@ -1369,12 +1359,7 @@ subroutine VadoseResidual(snes,xx,r,grid,ierr)
 !    print *
   
     call pri_var_trans_vad_ninc(grid%xxbc(:,nc),grid%iphasebc(nc),&
-                                grid%scale,grid%nphase,grid%nspec, &
-                                grid%icaptype(iicap), &
-                                grid%sir(1:grid%nphase,iicap), &
-                                grid%lambda(iicap),grid%alpha(iicap), &
-                                grid%pckrm(iicap),grid%pcwmax(iicap), & !use node's value
-                                grid%pcbetac(iicap),grid%pwrprm(iicap),dif,&
+                                grid%scale,grid%nphase,grid%nspec, iicap, dif,&
                                 grid%varbc(1:size_var_use),grid%itable,ierr, &
                                 grid%xxphi_co2_bc(nc),cw)
    
@@ -1804,23 +1789,12 @@ subroutine VadoseJacobian(snes,xx,A,B,flag,grid,ierr)
   !  print *,' Mph Jaco BC terms: finish setup'
   ! here should pay attention to BC type !!!
     call pri_var_trans_vad_ninc(grid%xxbc(:,nc),grid%iphasebc(nc), &
-                                grid%scale,grid%nphase,grid%nspec, &
-                                grid%icaptype(iicap), &
-                                grid%sir(1:grid%nphase,iicap), &
-                                grid%lambda(iicap),grid%alpha(iicap), &
-                                grid%pckrm(iicap),grid%pcwmax(iicap), & !use node's value
-                                grid%pcbetac(iicap),grid%pwrprm(iicap),dif, &
+                                grid%scale,grid%nphase,grid%nspec, iicap, dif, &
                                 grid%varbc(1:size_var_use),grid%itable,ierr, &
                                 dum1, dum2)
   
     call pri_var_trans_vad_winc(grid%xxbc(:,nc),delxbc,grid%iphasebc(nc), &
-                                grid%scale,grid%nphase,grid%nspec, &
-                                grid%icaptype(iicap), &
-                                grid%sir(1:grid%nphase,iicap), &
-                                grid%lambda(iicap),grid%alpha(iicap), &
-                                grid%pckrm(iicap),grid%pcwmax(iicap), & !use node's value
-                                grid%pcbetac(iicap),grid%pwrprm(iicap), &
-                                dif(1:grid%nphase),&
+                                grid%scale,grid%nphase,grid%nspec, iicap,dif(1:grid%nphase),&
                                 grid%varbc(size_var_use+1:(grid%ndof+1)* &
                                   size_var_use), &
                                 grid%itable,ierr)
@@ -2153,12 +2127,7 @@ subroutine pflow_Vadose_initaccum(grid)
     dif(2)= grid%cdiff(int(ithrm_p(n)))
 
     call pri_var_trans_vad_ninc(yy_p((n-1)*grid%ndof+1:n*grid%ndof),iiphase,&
-                                grid%scale,grid%nphase,grid%nspec, &
-                                grid%icaptype(iicap), &
-                                grid%sir(1:grid%nphase,iicap), &
-                                grid%lambda(iicap),grid%alpha(iicap), &
-                                grid%pckrm(iicap),grid%pcwmax(iicap), &
-                                grid%pcbetac(iicap),grid%pwrprm(iicap),dif, &
+                                grid%scale,grid%nphase,grid%nspec, iicap, dif, &
                                 var_p((n-1)*size_var_node+1:(n-1)* &
                                 size_var_node+size_var_use),grid%itable,ierr, &
                                 satw, pvol)
@@ -2257,13 +2226,7 @@ subroutine pflow_update_Vadose(grid)
     dif(2) = grid%cdiff(int(ithrm_p(n)))
     !*******************************************
     call pri_var_trans_vad_ninc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),iiphase, &
-                                grid%scale,grid%nphase,grid%nspec, &
-                                grid%icaptype(iicap), &
-                                grid%sir(1:grid%nphase,iicap), &
-                                grid%lambda(iicap), &
-                                grid%alpha(iicap),grid%pckrm(iicap), &
-                                grid%pcwmax(iicap),grid%pcbetac(iicap), &
-                                grid%pwrprm(iicap),dif,&
+                                grid%scale,grid%nphase,grid%nspec, iicap, dif,&
                                 var_p((n-1)*size_var_node+1:(n-1)* &
                                   size_var_node+size_var_use),&
                                 grid%itable,ierr, dum1, dum2)
@@ -2349,12 +2312,7 @@ subroutine pflow_Vadose_initadj(grid)
     dif(2)= grid%cdiff(int(ithrm_p(n)))
     !*******************************************
     call pri_var_trans_vad_ninc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),iiphase, &
-                                grid%scale,grid%nphase,grid%nspec, &
-                                grid%icaptype(iicap), &
-                                grid%sir(1:grid%nphase,iicap), & 
-                                grid%lambda(iicap),grid%alpha(iicap), &
-                                grid%pckrm(iicap),grid%pcwmax(iicap), &
-                                grid%pcbetac(iicap),grid%pwrprm(iicap),dif, &
+                                grid%scale,grid%nphase,grid%nspec, iicap, dif, &
                                 var_p((n-1)*size_var_node+1:(n-1)* &
                                   size_var_node+size_var_use), &
                                 grid%itable,ierr, dum1, dum2)
@@ -2393,13 +2351,7 @@ subroutine pflow_Vadose_initadj(grid)
       dif(1)= grid%difaq
       dif(2)= grid%cdiff(iithrm)
       call pri_var_trans_vad_ninc(grid%xxbc(:,nc),grid%iphasebc(nc), &
-                                  grid%scale,grid%nphase,grid%nspec, &
-                                  grid%icaptype(iicap), &
-                                  grid%sir(1:grid%nphase,iicap), &
-                                  grid%lambda(iicap), &
-                                  grid%alpha(iicap),grid%pckrm(iicap), &
-                                  grid%pcwmax(iicap), & !use node's value
-                                  grid%pcbetac(iicap),grid%pwrprm(iicap),dif, &
+                                  grid%scale,grid%nphase,grid%nspec, iicap, dif, &
                                   grid%varbc(1:size_var_use),grid%itable,ierr, &
                                   dum1, dum2)
      ! print *, 'yybc', grid%varbc(1:size_var_use)
@@ -2480,13 +2432,7 @@ subroutine pflow_Vadose_bcadj(grid)
       dif(1)= grid%difaq
       dif(2)= grid%cdiff(iithrm)
       call pri_var_trans_vad_ninc(grid%xxbc(:,nc),grid%iphasebc(nc), &
-                                  grid%scale,grid%nphase,grid%nspec, &
-                                  grid%icaptype(iicap), &
-                                  grid%sir(1:grid%nphase,iicap), &
-                                  grid%lambda(iicap), &
-                                  grid%alpha(iicap),grid%pckrm(iicap), &
-                                  grid%pcwmax(iicap), & !use node's value
-                                  grid%pcbetac(iicap),grid%pwrprm(iicap),dif, &
+                                  grid%scale,grid%nphase,grid%nspec, iicap, dif, &
                                   grid%varbc(1:size_var_use),grid%itable,ierr, &
                                   dum1, dum2)
       

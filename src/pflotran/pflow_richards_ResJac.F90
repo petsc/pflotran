@@ -797,11 +797,7 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
   !*******************************************
     call pri_var_trans_richards_ninc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),iiphase, &
                                 grid%scale,grid%nphase,grid%nspec, &
-                                grid%icaptype(iicap), &
-                                grid%sir(1:grid%nphase,iicap), &
-                                grid%lambda(iicap),grid%alpha(iicap), &
-                                grid%pckrm(iicap),grid%pcwmax(iicap), &
-                                grid%pcbetac(iicap),grid%pwrprm(iicap),dif, &
+                                iicap, dif, &
                                 var_p((n-1)*size_var_node+1:(n-1)* &
                                   size_var_node+size_var_use), &
                                 grid%itable,ierr, grid%pref)
@@ -812,11 +808,7 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
       call pri_var_trans_richards_winc(xx_p((n-1)*grid%ndof+1:n*grid%ndof), &
                                   grid%delx(1:grid%ndof,ng),iiphase, &
                                   grid%scale,grid%nphase,grid%nspec, &
-                                  grid%icaptype(iicap), &
-                                  grid%sir(1:grid%nphase,iicap), &
-                                  grid%lambda(iicap),grid%alpha(iicap), &
-                                  grid%pckrm(iicap),grid%pcwmax(iicap), &
-                                  grid%pcbetac(iicap),grid%pwrprm(iicap),dif, &
+                                  iicap ,dif, &
                                   var_p((n-1)*size_var_node+size_var_use+1:n* &
                                     size_var_node), &
                                   grid%itable,ierr, grid%pref)
@@ -1266,11 +1258,7 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
   
     call pri_var_trans_Richards_ninc(grid%xxbc(:,nc),grid%iphasebc(nc),&
                                 grid%scale,grid%nphase,grid%nspec, &
-                                grid%icaptype(iicap), &
-                                grid%sir(1:grid%nphase,iicap), &
-                                grid%lambda(iicap),grid%alpha(iicap), &
-                                grid%pckrm(iicap),grid%pcwmax(iicap), & !use node's value
-                                grid%pcbetac(iicap),grid%pwrprm(iicap),dif,&
+                                iicap, dif,&
                                 grid%varbc(1:size_var_use),grid%itable,ierr, &
                                 grid%pref)
    
@@ -1716,21 +1704,12 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
   ! here should pay attention to BC type !!!
     call pri_var_trans_Richards_ninc(grid%xxbc(:,nc),grid%iphasebc(nc), &
                                 grid%scale,grid%nphase,grid%nspec, &
-                                grid%icaptype(iicap), &
-                                grid%sir(1:grid%nphase,iicap), &
-                                grid%lambda(iicap),grid%alpha(iicap), &
-                                grid%pckrm(iicap),grid%pcwmax(iicap), & !use node's value
-                                grid%pcbetac(iicap),grid%pwrprm(iicap),dif, &
+                                iicap,  dif, &
                                 grid%varbc(1:size_var_use),grid%itable,ierr, grid%pref)
   
     call pri_var_trans_Richards_winc(grid%xxbc(:,nc),delxbc,grid%iphasebc(nc), &
                                 grid%scale,grid%nphase,grid%nspec, &
-                                grid%icaptype(iicap), &
-                                grid%sir(1:grid%nphase,iicap), &
-                                grid%lambda(iicap),grid%alpha(iicap), &
-                                grid%pckrm(iicap),grid%pcwmax(iicap), & !use node's value
-                                grid%pcbetac(iicap),grid%pwrprm(iicap), &
-                                dif(1:grid%nphase),&
+                                iicap, dif(1:grid%nphase),&
                                 grid%varbc(size_var_use+1:(grid%ndof+1)* &
                                   size_var_use), &
                                 grid%itable,ierr, grid%pref)
@@ -2091,11 +2070,7 @@ subroutine pflow_Richards_initaccum(grid)
 
     call pri_var_trans_Richards_ninc(yy_p((n-1)*grid%ndof+1:n*grid%ndof),iiphase,&
                                 grid%scale,grid%nphase,grid%nspec, &
-                                grid%icaptype(iicap), &
-                                grid%sir(1:grid%nphase,iicap), &
-                                grid%lambda(iicap),grid%alpha(iicap), &
-                                grid%pckrm(iicap),grid%pcwmax(iicap), &
-                                grid%pcbetac(iicap),grid%pwrprm(iicap),dif, &
+                                iicap , dif, &
                                 var_p((n-1)*size_var_node+1:(n-1)* &
                                 size_var_node+size_var_use),grid%itable,ierr, &
                                 grid%pref)
@@ -2222,12 +2197,7 @@ subroutine pflow_update_Richards(grid)
     !*******************************************
     call pri_var_trans_Richards_ninc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),iiphase, &
                                 grid%scale,grid%nphase,grid%nspec, &
-                                grid%icaptype(iicap), &
-                                grid%sir(1:grid%nphase,iicap), &
-                                grid%lambda(iicap), &
-                                grid%alpha(iicap),grid%pckrm(iicap), &
-                                grid%pcwmax(iicap),grid%pcbetac(iicap), &
-                                grid%pwrprm(iicap),dif,&
+                                iicap, dif,&
                                 var_p((n-1)*size_var_node+1:(n-1)* &
                                   size_var_node+size_var_use),&
                                 grid%itable,ierr, grid%pref)
@@ -2264,24 +2234,17 @@ subroutine pflow_update_Richards(grid)
       
         if(grid%iphasebc(nc) ==3)then
           sw= grid%xxbc(1,nc)
-          call pflow_pckr_richards_fw(grid%icaptype(iicap),grid%sir(1,iicap), grid%lambda(iicap), &
-                    grid%alpha(iicap),grid%pckrm(iicap),grid%pcwmax(iicap),sw,pc,kr,&
-                    grid%pcbetac(iicap),grid%pwrprm(iicap))    
-          if(pc(1)>grid%pcwmax(iicap))then
-            print *,'INIT Warning: Pc>pcmax'
-            pc(1)=grid%pcwmax(iicap)
-          endif 
+          call pflow_pckr_richards_fw(iicap ,sw,pc,kr)    
+          !if(pc(1)>grid%pcwmax(iicap))then
+          !  print *,'INIT Warning: Pc>pcmax'
+          !  pc(1)=grid%pcwmax(iicap)
+          !endif 
           grid%xxbc(1,nc) =  grid%pref - pc(1)
         endif
       
         call pri_var_trans_Richards_ninc(grid%xxbc(:,nc),grid%iphasebc(nc), &
                                          grid%scale,grid%nphase,grid%nspec, &
-                                         grid%icaptype(iicap), &
-                                         grid%sir(1:grid%nphase,iicap), &
-                                         grid%lambda(iicap), &
-                                         grid%alpha(iicap),grid%pckrm(iicap), &
-                                         grid%pcwmax(iicap), & !use node's value
-                                         grid%pcbetac(iicap),grid%pwrprm(iicap),dif, &
+                                         iicap,dif, &
                                          grid%varbc(1:size_var_use),grid%itable,ierr, &
                                          grid%pref)
       
@@ -2388,12 +2351,10 @@ subroutine pflow_Richards_initadj(grid)
    if(iiphase ==3)then
      sw= xx_p((n-1)*grid%ndof+1)
      print *,'Richards: Conv: ',n, sw, iicap,grid%pcwmax(iicap)
-     call pflow_pckr_richards_fw(grid%icaptype(iicap),grid%sir(1,iicap), grid%lambda(iicap), &
-                 grid%alpha(iicap),grid%pckrm(iicap),grid%pcwmax(iicap),sw,pc,kr,&
-                 grid%pcbetac(iicap),grid%pwrprm(iicap))    
-     print *,'INIT ', sw, pc(1), iicap, grid%pcwmax(iicap), grid%icaptype(iicap),grid%sir(1,iicap), grid%lambda(iicap), &
-                 grid%alpha(iicap),grid%pckrm(iicap),grid%pcwmax(iicap),sw,pc,kr,&
-                 grid%pcbetac(iicap),grid%pwrprm(iicap)
+     call pflow_pckr_richards_fw(iicap,sw,pc,kr)    
+    ! print *,'INIT ', sw, pc(1), iicap, grid%pcwmax(iicap), grid%icaptype(iicap),grid%sir(1,iicap), grid%lambda(iicap), &
+    !             grid%alpha(iicap),grid%pckrm(iicap),grid%pcwmax(iicap),sw,pc,kr,&
+    !             grid%pcbetac(iicap),grid%pwrprm(iicap)
                  
      if(pc(1)>grid%pcwmax(iicap))then
         print *,'INIT Warning: Pc>pcmax', sw, pc(1), iicap, grid%pcwmax(iicap)
@@ -2404,11 +2365,7 @@ subroutine pflow_Richards_initadj(grid)
     
     call pri_var_trans_Richards_ninc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),iiphase, &
                                 grid%scale,grid%nphase,grid%nspec, &
-                                grid%icaptype(iicap), &
-                                grid%sir(1:grid%nphase,iicap), & 
-                                grid%lambda(iicap),grid%alpha(iicap), &
-                                grid%pckrm(iicap),grid%pcwmax(iicap), &
-                                grid%pcbetac(iicap),grid%pwrprm(iicap),dif, &
+                                iicap,  dif, &
                                 var_p((n-1)*size_var_node+1:(n-1)* &
                                   size_var_node+size_var_use), &
                                 grid%itable,ierr, grid%pref)
@@ -2454,13 +2411,11 @@ subroutine pflow_Richards_initadj(grid)
       
      if(grid%iphasebc(nc) ==3)then
        sw= grid%xxbc(1,nc)
-       call pflow_pckr_richards_fw(grid%icaptype(iicap),grid%sir(1,iicap), grid%lambda(iicap), &
-                 grid%alpha(iicap),grid%pckrm(iicap),grid%pcwmax(iicap),sw,pc,kr,&
-                 grid%pcbetac(iicap),grid%pwrprm(iicap))    
-       if(pc(1)>grid%pcwmax(iicap))then
-         print *,'INIT Warning: Pc>pcmax'
-         pc(1)=grid%pcwmax(iicap)
-       endif 
+       call pflow_pckr_richards_fw(iicap,sw,pc,kr)    
+    !   if(pc(1)>grid%pcwmax(iicap))then
+    !     print *,'INIT Warning: Pc>pcmax'
+    !     pc(1)=grid%pcwmax(iicap)
+    !   endif 
         grid%xxbc(1,nc) =  grid%pref - pc(1)
      endif
 
@@ -2468,12 +2423,7 @@ subroutine pflow_Richards_initadj(grid)
       
       call pri_var_trans_Richards_ninc(grid%xxbc(:,nc),grid%iphasebc(nc), &
                                   grid%scale,grid%nphase,grid%nspec, &
-                                  grid%icaptype(iicap), &
-                                  grid%sir(1:grid%nphase,iicap), &
-                                  grid%lambda(iicap), &
-                                  grid%alpha(iicap),grid%pckrm(iicap), &
-                                  grid%pcwmax(iicap), & !use node's value
-                                  grid%pcbetac(iicap),grid%pwrprm(iicap),dif, &
+                                  iicap, dif, &
                                   grid%varbc(1:size_var_use),grid%itable,ierr, &
                                   grid%pref)
       

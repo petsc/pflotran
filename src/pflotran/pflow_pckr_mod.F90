@@ -15,9 +15,56 @@ module pckr_module
   public
 
   real*8, private, parameter:: pckr_sat_water_cut = 1.D0 - 5.D-7
+  
+   type, private :: pckr_info
+     integer idum
+     integer itype
+     integer ihyst
+     real*8 pckr_par(16)
+     real*8, pointer :: hyst_para(:,:) 
+  end type pckr_info
 
-
+#include "definitions.h"
+  
+  type(pckr_info), private, pointer :: pckr_para(:)  
+   
   contains 
+
+
+  subroutine pckr_init(nphase, max_reg_reqion, nlmax,ipckrtype, sir, krm, lambda, alpha, pcmax,&
+                  betac,pwr)
+     
+    integer max_reg_reqion,ipckrtype(*), nphase
+    real*8 sir(1:nphase,max_reg_reqion), lambda(max_reg_reqion), krm(max_reg_reqion), alpha(max_reg_reqion)&
+         , pcmax(max_reg_reqion), betac(max_reg_reqion),pwr(max_reg_reqion)
+    
+    integer ireg, idum
+ 
+                                
+! build pckr data base                                                                                              
+    allocate(pckr_para(max_reg_reqion))
+      
+    do ireg = 1, max_reg_reqion
+        pckr_para(ireg)%idum = ireg
+        
+        pckr_para(ireg)%itype =  ipckrtype(pckr_para(ireg)%idum)
+        idum = pckr_para(ireg)%idum
+        pckr_para(ireg)%ihyst =  0    
+        if(pckr_para(ireg)%ihyst >=1) &
+          allocate(pckr_para(ireg)%hyst_para(4, nlmax))
+         pckr_para(ireg)%pckr_par(1:nphase)=sir(1:nphase, idum)
+         pckr_para(ireg)%pckr_par(1+nphase)=krm(idum)
+         pckr_para(ireg)%pckr_par(2+nphase)=lambda(idum) 
+         pckr_para(ireg)%pckr_par(3+nphase)=alpha(idum)            
+         pckr_para(ireg)%pckr_par(4+nphase)=pcmax(idum)
+         pckr_para(ireg)%pckr_par(5+nphase)=betac(idum)
+         pckr_para(ireg)%pckr_par(6+nphase)=pwr(idum)
+        ! print *, ireg, pckr_para(ireg)%itype, pckr_para(ireg)%pckr_par
+     enddo
+           
+  end subroutine  
+
+
 
       subroutine pflow_pckr_noderiv_org(ipckrtype,pckr_swir,pckr_lambda, &
                  pckr_alpha,pckr_m,pckr_pcmax,sg,pc,kr,pckr_beta,pckr_pwr) 
@@ -188,7 +235,7 @@ module pckr_module
 !_________________________________________________________________
 
 
-subroutine pflow_pckr_richards(ipckrtype,pckr_swir,pckr_lambda, &
+subroutine pflow_pckr_richards_exec(ipckrtype,pckr_swir,pckr_lambda, &
                  pckr_alpha,pckr_m,pckr_pcmax,sw,pc,kr,pckr_beta,pckr_pwr) 
       
       implicit none 
@@ -255,10 +302,12 @@ subroutine pflow_pckr_richards(ipckrtype,pckr_swir,pckr_lambda, &
             sw = se* (sw0-swir) + swir
        end select
       
-end subroutine  pflow_pckr_richards
+end subroutine  pflow_pckr_richards_exec
 
 
-subroutine pflow_pckr_richards_fw(ipckrtype,pckr_swir,pckr_lambda, &
+
+
+subroutine pflow_pckr_richards_fw_exec(ipckrtype,pckr_swir,pckr_lambda, &
                  pckr_alpha,pckr_m,pckr_pcmax,sw,pc,kr,pckr_beta,pckr_pwr) 
       
       implicit none 
@@ -315,7 +364,7 @@ subroutine pflow_pckr_richards_fw(ipckrtype,pckr_swir,pckr_lambda, &
            
        end select
       
-end subroutine  pflow_pckr_richards_fw
+end subroutine  pflow_pckr_richards_fw_exec
 
 
 !------------------------------------------------------------------------
@@ -557,7 +606,10 @@ end subroutine  pflow_pckr_richards_fw
 ! -----------------------
 ! New pckr routine for mph, vadose, owg
 
-      subroutine pflow_pckr_noderiv(ipckrtype,pckr_sir,pckr_lambda, &
+
+
+
+      subroutine pflow_pckr_noderiv_exec(ipckrtype,pckr_sir,pckr_lambda, &
                  pckr_alpha,pckr_m,pckr_pcmax,sg,pc,kr,pckr_beta,pckr_pwr) 
       
       implicit none 
@@ -721,12 +773,103 @@ end subroutine  pflow_pckr_richards_fw
 
       return
 
-    end subroutine pflow_pckr_noderiv
+    end subroutine pflow_pckr_noderiv_exec
 
 !_________________________________________________________________
 
 
+subroutine pflow_pckr_richards(ipckrreg,saturation,pc,kr)
+  integer ipckrreg
+  real*8 saturation,pc(*),kr(*)
+ 
+  real*8 pckr_swir,pckr_lambda, &
+         pckr_alpha,pckr_m,pckr_pcmax,sw ,pckr_beta,pckr_pwr
+  
+       ireg= ipckrreg
+       ipckrtype = pckr_para(ireg)%itype
+       
+        pckr_para(ireg)%ihyst =  0    
+         pckr_swir = pckr_para(ireg)%pckr_par(1)
+         pckr_m = pckr_para(ireg)%pckr_par(2)
+         pckr_lambda = pckr_para(ireg)%pckr_par(3) 
+         pckr_alpha = pckr_para(ireg)%pckr_par(4)            
+         pckr_pcmax = pckr_para(ireg)%pckr_par(5)
+         pckr_beta = pckr_para(ireg)%pckr_par(6)
+         pckr_pwr  = pckr_para(ireg)%pckr_par(7)
+
+     sw = saturation
 
 
+  call pflow_pckr_richards_exec(ipckrtype,pckr_swir,pckr_lambda, &
+                 pckr_alpha,pckr_m,pckr_pcmax,sw,pc,kr,pckr_beta,pckr_pwr) 
+
+
+
+end subroutine pflow_pckr_richards
+
+
+subroutine pflow_pckr_richards_fw(ipckrreg,saturation,pc,kr)
+  integer ipckrreg
+  real*8 saturation,pc(*),kr(*)
+ 
+  real*8 pckr_swir,pckr_lambda, &
+         pckr_alpha,pckr_m,pckr_pcmax,sw ,pckr_beta,pckr_pwr
+  
+       ireg= ipckrreg
+       ipckrtype = pckr_para(ireg)%itype
+       
+        pckr_para(ireg)%ihyst =  0    
+         pckr_swir = pckr_para(ireg)%pckr_par(1)
+         pckr_m = pckr_para(ireg)%pckr_par(2)
+         pckr_lambda = pckr_para(ireg)%pckr_par(3) 
+         pckr_alpha = pckr_para(ireg)%pckr_par(4)            
+         pckr_pcmax = pckr_para(ireg)%pckr_par(5)
+         pckr_beta = pckr_para(ireg)%pckr_par(6)
+         pckr_pwr  = pckr_para(ireg)%pckr_par(7)
+
+     
+
+
+   call pflow_pckr_richards_fw_exec(ipckrtype,pckr_swir,pckr_lambda, &
+                 pckr_alpha,pckr_m,pckr_pcmax,sw,pc,kr,pckr_beta,pckr_pwr) 
+ 
+      if(pc(1)>pckr_pcmax)then
+         print *,'INIT Warning: Pc>pcmax'
+         pc(1)=pckr_pcmax
+       endif 
+      
+      saturation =sw
+      
+      
+end subroutine pflow_pckr_richards_fw
+
+
+subroutine pflow_pckr_noderiv(nphase, ipckrreg,saturation,pc,kr)
+  integer ipckrreg, nphase
+  real*8 saturation(nphase),pc(nphase),kr(nphase)
+  
+  integer ireg, ipckrtype
+  
+  real*8 pckr_sir(nphase),pckr_lambda, &
+         pckr_alpha,pckr_m,pckr_pcmax,sg ,pckr_beta,pckr_pwr
+  
+       ireg= ipckrreg
+       ipckrtype = pckr_para(ireg)%itype
+       
+        pckr_para(ireg)%ihyst =  0    
+         pckr_sir(:) = pckr_para(ireg)%pckr_par(:)
+         pckr_m = pckr_para(ireg)%pckr_par(1+nphase)
+         pckr_lambda = pckr_para(ireg)%pckr_par(2+nphase) 
+         pckr_alpha = pckr_para(ireg)%pckr_par(3+nphase)            
+         pckr_pcmax = pckr_para(ireg)%pckr_par(4+nphase)
+         pckr_beta = pckr_para(ireg)%pckr_par(5+nphase)
+         pckr_pwr  = pckr_para(ireg)%pckr_par(6+nphase)
+
+        sg= saturation(2)
+
+        call pflow_pckr_noderiv_exec(ipckrtype,pckr_sir,pckr_lambda, &
+                 pckr_alpha,pckr_m,pckr_pcmax,sg,pc,kr,pckr_beta,pckr_pwr) 
+      
+ end subroutine pflow_pckr_noderiv
 
   end module pckr_module

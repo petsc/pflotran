@@ -118,9 +118,7 @@ public pflowGrid_ptran_init, pflotranGrid_interp, ptran_bc_reassign
 !   print *,'couple :begin calling'
     call pri_var_trans_mph_ninc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),iiphase,&
         grid%scale,grid%nphase,grid%nspec,&
-        iicap, grid%sir(1:grid%nphase,iicap),grid%lambda(iicap),&
-        grid%alpha(iicap),grid%pckrm(iicap),grid%pcwmax(iicap),&
-        grid%pcbetac(iicap),grid%pwrprm(iicap),dif,&
+        iicap, dif,&
        varr, grid%itable,ierr,xphi_co2_p(n),den_co2_p(n))
  !   print *, n, iiphase, xphi_co2_p(n), den_co2_p(n)
     

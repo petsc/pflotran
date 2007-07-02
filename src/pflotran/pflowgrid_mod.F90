@@ -3634,6 +3634,7 @@ subroutine pflowGrid_read_input(grid, inputfile)
   !           SOLV, THRM, PCKR, PHIK, INIT, TIME, DTST, BCON, SOUR, BRK, RCTR
   
   use fileio_module
+  use pckr_module
   
   implicit none
 
@@ -4122,6 +4123,14 @@ subroutine pflowGrid_read_input(grid, inputfile)
           call fiDefaultMsg('pwrprm',ierr)
 
         enddo
+
+          if (grid%use_mph == PETSC_TRUE &
+              .or. grid%use_vadose == PETSC_TRUE .or. grid%use_flash == PETSC_TRUE&
+              .or. grid%use_richards == PETSC_TRUE) then
+              call pckr_init(grid%nphase,ireg,grid%nlmax, grid%icaptype,grid%sir, grid%pckrm,&
+                   grid%lambda,grid%alpha, grid%pcwmax, grid%pcbetac, grid%pwrprm)
+           endif 
+
       
         if (grid%myrank==0) then
           write(IUNIT2,'(/," *PCKR: ",i3)') ireg
@@ -4141,6 +4150,14 @@ subroutine pflowGrid_read_input(grid, inputfile)
             endif
           enddo
         end if
+
+         if (grid%use_mph == PETSC_TRUE  &
+              .or. grid%use_vadose == PETSC_TRUE .or. grid%use_flash == PETSC_TRUE&
+              .or. grid%use_richards == PETSC_TRUE) then
+              deallocate(grid%icaptype, grid%pckrm,&
+                   grid%lambda,grid%alpha, grid%pcwmax, grid%pcbetac, grid%pwrprm)
+           endif 
+ 
 
 !....................
       

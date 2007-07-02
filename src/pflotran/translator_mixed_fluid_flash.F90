@@ -265,9 +265,7 @@
 
 
  subroutine pri_var_trans_flash_ninc_2_2(x,iphase,energyscale,num_phase,num_spec,&
-                    ipckrtype,pckr_sir,pckr_lambda,pckr_alpha,&
-                    pckr_m,pckr_pcmax,pckr_betac,pckr_pwr, dif,&
-          var_node,itable,ierr,xphi,dco2)
+                    ipckrreg, dif, var_node,itable,ierr,xphi,dco2)
 ! xgw: water molar fraction in gas phase
 ! P/Pa, t/(Degree Centigreed), Pc/Pa, Hen(xla=Hen*xga, dimensionless)
  
@@ -284,8 +282,8 @@
     real*8 x(1:num_spec+1),energyscale
     real*8, target:: var_node(:)
   integer ::iphase
-  integer :: ipckrtype !, ithrmtype
-    real*8 :: pckr_sir(:),pckr_lambda,pckr_alpha,pckr_m,pckr_pcmax,pckr_betac,pckr_pwr
+  integer :: ipckrreg !, ithrmtype
+   
     real*8 :: dif(:)
 
    
@@ -434,8 +432,7 @@
    ! pure water
       
     if(num_phase>=2)then
-      call pflow_pckr_noderiv(ipckrtype,pckr_sir,pckr_lambda,pckr_alpha,&
-                              pckr_m,pckr_pcmax,satu(2),pc,kr,pckr_betac,pckr_pwr)
+      call pflow_pckr_noderiv(num_phase,ipckrreg,satu,pc,kr)
      end if
     
    !    call VISW(t,pw,sat_pressure,visl,tmp,tmp2,ierr)
@@ -520,25 +517,21 @@
 
  
  subroutine pri_var_trans_flash_ninc(x,iphase,energyscale,num_phase,num_spec,&
-                    ipckrtype,pckr_sir,pckr_lambda,pckr_alpha,&
-                    pckr_m,pckr_pcmax,pckr_betac,pckr_pwr,dif,&
-          var_node,itable,ierr,phi_co2, den_co2)
+                    ipckrreg, dif, var_node,itable,ierr,phi_co2, den_co2)
 ! xgw: water molar fraction in gas phase
 ! P/Pa, t/(Degree Centigreed), Pc/Pa, Hen(xla=Hen*xga, dimensionless)
  
-    implicit none
-    integer :: num_phase,num_spec,num_pricomp
-    integer :: size_var_use
+  implicit none
+  integer :: num_phase,num_spec,num_pricomp
+  integer :: size_var_use
   real*8 x(1:num_spec+1),energyscale
-    real*8 var_node(1:2 + 7*num_phase + 2* num_phase*num_spec)
+  real*8 var_node(1:2 + 7*num_phase + 2* num_phase*num_spec)
   real*8 :: dif(:)
   integer ::iphase, itable,ierr
-  integer :: ipckrtype !, ithrmtype
+  integer :: ipckrreg !, ithrmtype
      
     
-    real*8 :: pckr_sir(:),pckr_lambda,pckr_alpha,pckr_m,pckr_pcmax,pckr_betac,pckr_pwr 
-    real*8, optional :: phi_co2, den_co2
-  
+  real*8, optional :: phi_co2, den_co2
   real*8 :: xphi_co2=1.D0, denco2=1.D0
   
   
@@ -546,9 +539,7 @@
   size_var_use = 2 + 7*num_phase + 2* num_phase*num_spec
   if((num_phase == 2).and.( num_spec ==2)) then
     call pri_var_trans_flash_ninc_2_2( x,iphase,energyscale,num_phase,num_spec,&
-                    ipckrtype,pckr_sir,pckr_lambda,pckr_alpha,&
-                    pckr_m,pckr_pcmax,pckr_betac,pckr_pwr,dif,&
-                    var_node,itable,ierr,xphi_co2, denco2)
+                    ipckrreg,dif, var_node,itable,ierr,xphi_co2, denco2)
     if(present(phi_co2)) phi_co2=xphi_co2        
     if(present(den_co2))den_co2=denco2
   else 
@@ -560,9 +551,7 @@
   
   
  subroutine pri_var_trans_flash_winc(x,delx,iphase,energyscale,num_phase,num_spec,&
-                    ipckrtype,pckr_sir,pckr_lambda,pckr_alpha,&
-                    pckr_m,pckr_pcmax,pckr_betac,pckr_pwr,dif,&
-          var_node,itable,ierr)
+                    ipckrreg,dif, var_node,itable,ierr)
   integer :: num_phase,num_spec
   integer :: size_var_use,size_var_node
     
@@ -571,11 +560,9 @@
     real*8 var_node(:)
   real*8 :: dif(:)
   integer ::iphase,itable,ierr
-  integer :: ipckrtype !, ithrmtype
+  integer :: ipckrreg !, ithrmtype
    
-    real*8 :: pckr_sir(:),pckr_lambda,pckr_alpha,pckr_m,pckr_pcmax,pckr_betac,pckr_pwr 
-
-    real*8 xx(1:num_spec+1)
+  real*8 xx(1:num_spec+1)
 
 
     size_var_use = 2 + 7*num_phase + 2* num_phase*num_spec
@@ -585,9 +572,8 @@
          xx=x;  xx(n)=x(n)+ delx(n)
   ! note: var_node here starts from 1 to grid%ndof*size_var_use
        call pri_var_trans_flash_ninc(xx,iphase,energyscale,num_phase,num_spec,&
-                    ipckrtype,pckr_sir,pckr_lambda,pckr_alpha,&
-                    pckr_m,pckr_pcmax,pckr_betac,pckr_pwr,dif,&
-          var_node((n-1)*size_var_use+1:n*size_var_use),itable,ierr)
+                    ipckrreg,dif, var_node((n-1)*size_var_use+1:n*size_var_use),&
+                    itable,ierr)
     enddo
 
 

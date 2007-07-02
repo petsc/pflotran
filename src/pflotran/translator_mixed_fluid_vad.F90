@@ -624,9 +624,7 @@ end subroutine Translator_vadose_Switching
 !   eg                              p, T, S(g)                    3
 !**********************************************************************
 subroutine pri_var_trans_vad_ninc_2_2(x,iphase,energyscale,num_phase,num_spec,&
-                                      ipckrtype,pckr_sir,pckr_lambda, &
-                                      pckr_alpha,pckr_m,pckr_pcmax,pckr_betac, &
-                                      pckr_pwr,dif,var_node,itable,ierr,xphi, &
+                                      ipckrreg,dif,var_node,itable,ierr,xphi, &
                                       dco2)
 ! xgw: water molar fraction in gas phase
 ! P/Pa, t/(Degree Centigreed), Pc/Pa, Hen(xla=Hen*xga, dimensionless)
@@ -642,8 +640,7 @@ subroutine pri_var_trans_vad_ninc_2_2(x,iphase,energyscale,num_phase,num_spec,&
   real*8 :: x(1:num_spec+1),energyscale
   real*8, target:: var_node(:)
   integer ::iphase
-  integer :: ipckrtype !, ithrmtype
-  real*8 :: pckr_sir(:),pckr_lambda,pckr_alpha,pckr_m,pckr_pcmax,pckr_betac,pckr_pwr
+  integer :: ipckrreg !, ithrmtype
   real*8 :: dif(:)
 
    
@@ -787,9 +784,7 @@ subroutine pri_var_trans_vad_ninc_2_2(x,iphase,energyscale,num_phase,num_spec,&
    ! pure water
   pw = p   
   if (num_phase>=2) then
-    call pflow_pckr_noderiv(ipckrtype,pckr_sir,pckr_lambda,pckr_alpha, &
-                            pckr_m,pckr_pcmax,satu(2),pc,kr,pckr_betac, &
-                            pckr_pwr)
+    call pflow_pckr_noderiv(num_phase,ipckrreg,satu,pc,kr)
   endif
 
     
@@ -885,9 +880,8 @@ end subroutine pri_var_trans_vad_ninc_2_2
 
  
 subroutine pri_var_trans_vad_ninc(x,iphase,energyscale,num_phase,num_spec, &
-                                  ipckrtype,pckr_sir,pckr_lambda,pckr_alpha, &
-                                  pckr_m,pckr_pcmax,pckr_betac,pckr_pwr,dif, &
-                                  var_node,itable,ierr,phi_co2, den_co2)
+                                  ipckrreg,dif,var_node,itable,ierr,phi_co2,&
+                                  den_co2)
 ! xgw: water molar fraction in gas phase
 ! P/Pa, t/(Degree Centigreed), Pc/Pa, Hen(xla=Hen*xga, dimensionless)
  
@@ -899,10 +893,9 @@ subroutine pri_var_trans_vad_ninc(x,iphase,energyscale,num_phase,num_spec, &
   real*8 :: var_node(1:2 + 7*num_phase + 2* num_phase*num_spec)
   real*8 :: dif(:)
   integer :: iphase, itable,ierr
-  integer :: ipckrtype !, ithrmtype
+  integer :: ipckrreg !, ithrmtype
      
     
-  real*8 :: pckr_sir(:),pckr_lambda,pckr_alpha,pckr_m,pckr_pcmax,pckr_betac,pckr_pwr 
   real*8, optional :: phi_co2, den_co2
   
   real*8 :: xphi_co2=1.D0, denco2=1.D0
@@ -910,9 +903,7 @@ subroutine pri_var_trans_vad_ninc(x,iphase,energyscale,num_phase,num_spec, &
   size_var_use = 2 + 7*num_phase + 2* num_phase*num_spec
   if ((num_phase == 2).and.( num_spec == 2)) then
     call pri_var_trans_vad_ninc_2_2(x,iphase,energyscale,num_phase,num_spec, &
-                                    ipckrtype,pckr_sir,pckr_lambda,pckr_alpha, &
-                                    pckr_m,pckr_pcmax,pckr_betac,pckr_pwr,dif, &
-                                    var_node,itable,ierr,xphi_co2, denco2)
+                                    ipckrreg,dif,var_node,itable,ierr,xphi_co2, denco2)
     if (present(phi_co2)) phi_co2 = xphi_co2
       if (present(den_co2)) den_co2 = denco2
   else 
@@ -924,9 +915,7 @@ end subroutine pri_var_trans_vad_ninc
   
   
 subroutine pri_var_trans_vad_winc(x,delx,iphase,energyscale,num_phase,num_spec,&
-                                  ipckrtype,pckr_sir,pckr_lambda,pckr_alpha,&
-                                  pckr_m,pckr_pcmax,pckr_betac,pckr_pwr,dif,&
-                                 var_node,itable,ierr)
+                                  ipckrreg,dif,var_node,itable,ierr)
 
   implicit none
 
@@ -937,10 +926,9 @@ subroutine pri_var_trans_vad_winc(x,delx,iphase,energyscale,num_phase,num_spec,&
   real*8 :: var_node(:)
   real*8 :: dif(:)
   integer ::iphase,itable,ierr
-  integer :: ipckrtype !, ithrmtype
+  integer :: ipckrreg !, ithrmtype
    
   integer :: n
-  real*8 :: pckr_sir(:),pckr_lambda,pckr_alpha,pckr_m,pckr_pcmax,pckr_betac,pckr_pwr 
   real*8 xx(1:num_spec+1)
 
   size_var_use = 2 + 7*num_phase + 2* num_phase*num_spec
@@ -951,8 +939,7 @@ subroutine pri_var_trans_vad_winc(x,delx,iphase,energyscale,num_phase,num_spec,&
     xx(n) = x(n)+ delx(n)
   ! note: var_node here starts from 1 to grid%ndof*size_var_use
     call pri_var_trans_vad_ninc(xx,iphase,energyscale,num_phase,num_spec,&
-                                ipckrtype,pckr_sir,pckr_lambda,pckr_alpha,&
-                                pckr_m,pckr_pcmax,pckr_betac,pckr_pwr,dif,&
+                                ipckrreg,dif,&
                                 var_node((n-1)*size_var_use+1:n*size_var_use), &
                                 itable,ierr)
   enddo

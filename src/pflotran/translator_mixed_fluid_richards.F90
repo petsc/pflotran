@@ -524,9 +524,7 @@ end subroutine Translator_Richards_Switching
 !   eg                              p, T, S(g)                    3
 !**********************************************************************
 subroutine pri_var_trans_Richards_ninc_2_2(x,iphase,energyscale,num_phase,num_spec,&
-                                      ipckrtype,pckr_sir,pckr_lambda, &
-                                      pckr_alpha,pckr_m,pckr_pcmax,pckr_betac, &
-                                      pckr_pwr,dif,var_node,itable,ierr, pref)
+                                      ipckrreg ,dif,var_node,itable,ierr, pref)
 ! xgw: water molar fraction in gas phase
 ! P/Pa, t/(Degree Centigreed), Pc/Pa, Hen(xla=Hen*xga, dimensionless)
  
@@ -541,8 +539,8 @@ subroutine pri_var_trans_Richards_ninc_2_2(x,iphase,energyscale,num_phase,num_sp
   real*8 :: x(1:num_spec+1),energyscale
   real*8, target:: var_node(:)
   integer ::iphase
-  integer :: ipckrtype !, ithrmtype
-  real*8 :: pckr_sir(:),pckr_lambda,pckr_alpha,pckr_m,pckr_pcmax,pckr_betac,pckr_pwr
+  integer :: ipckrreg !, ithrmtype
+  
   real*8 :: dif(:)
 
    
@@ -604,9 +602,7 @@ subroutine pri_var_trans_Richards_ninc_2_2(x,iphase,energyscale,num_phase,num_sp
   pw=pref   
    if(pc(1)>0.D0)then
     iphase = 3
-    call pflow_pckr_richards(ipckrtype,pckr_sir(1),pckr_lambda,pckr_alpha, &
-                            pckr_m,pckr_pcmax,satu(1),pc,kr,pckr_betac, &
-                            pckr_pwr)
+    call pflow_pckr_richards(ipckrreg,satu(1),pc,kr)
   else
     iphase = 1
     pc(1)=0.D0
@@ -653,8 +649,7 @@ end subroutine pri_var_trans_Richards_ninc_2_2
 
  
 subroutine pri_var_trans_Richards_ninc(x,iphase,energyscale,num_phase,num_spec, &
-                                  ipckrtype,pckr_sir,pckr_lambda,pckr_alpha, &
-                                  pckr_m,pckr_pcmax,pckr_betac,pckr_pwr,dif, &
+                                  ipckrreg, dif, &
                                   var_node,itable,ierr,pref)
 ! xgw: water molar fraction in gas phase
 ! P/Pa, t/(Degree Centigreed), Pc/Pa, Hen(xla=Hen*xga, dimensionless)
@@ -667,10 +662,9 @@ subroutine pri_var_trans_Richards_ninc(x,iphase,energyscale,num_phase,num_spec, 
   real*8 :: var_node(1:2 + 7*num_phase + 2* num_phase*num_spec)
   real*8 :: dif(:)
   integer :: iphase, itable,ierr
-  integer :: ipckrtype !, ithrmtype
+  integer :: ipckrreg !, ithrmtype
      
     
-  real*8 :: pckr_sir(:),pckr_lambda,pckr_alpha,pckr_m,pckr_pcmax,pckr_betac,pckr_pwr 
   real*8 :: pref
   
  
@@ -678,8 +672,7 @@ subroutine pri_var_trans_Richards_ninc(x,iphase,energyscale,num_phase,num_spec, 
   size_var_use = 2 + 7*num_phase + 2* num_phase*num_spec
 !  if ((num_phase == 1).and.( num_spec == 2)) then
     call pri_var_trans_Richards_ninc_2_2(x,iphase,energyscale,num_phase,num_spec, &
-                                    ipckrtype,pckr_sir,pckr_lambda,pckr_alpha, &
-                                    pckr_m,pckr_pcmax,pckr_betac,pckr_pwr,dif, &
+                                    ipckrreg,dif, &
                                     var_node,itable,ierr, pref)
  !  else 
  !   print *, 'Wrong phase-specise combination. Stop.'
@@ -690,8 +683,7 @@ end subroutine pri_var_trans_Richards_ninc
   
   
 subroutine pri_var_trans_Richards_winc(x,delx,iphase,energyscale,num_phase,num_spec,&
-                                  ipckrtype,pckr_sir,pckr_lambda,pckr_alpha,&
-                                  pckr_m,pckr_pcmax,pckr_betac,pckr_pwr,dif,&
+                                  ipckrreg, dif,&
                                  var_node,itable,ierr, pref)
 
   implicit none
@@ -703,10 +695,9 @@ subroutine pri_var_trans_Richards_winc(x,delx,iphase,energyscale,num_phase,num_s
   real*8 :: var_node(:)
   real*8 :: dif(:)
   integer ::iphase,itable,ierr
-  integer :: ipckrtype !, ithrmtype
+  integer :: ipckrreg !, ithrmtype
    
   integer :: n
-  real*8 :: pckr_sir(:),pckr_lambda,pckr_alpha,pckr_m,pckr_pcmax,pckr_betac,pckr_pwr 
   real*8 xx(1:num_spec+1)
 
   size_var_use = 2 + 7*num_phase + 2* num_phase*num_spec
@@ -717,8 +708,7 @@ subroutine pri_var_trans_Richards_winc(x,delx,iphase,energyscale,num_phase,num_s
     xx(n) = x(n)+ delx(n)
   ! note: var_node here starts from 1 to grid%ndof*size_var_use
     call pri_var_trans_Richards_ninc(xx,iphase,energyscale,num_phase,num_spec,&
-                                ipckrtype,pckr_sir,pckr_lambda,pckr_alpha,&
-                                pckr_m,pckr_pcmax,pckr_betac,pckr_pwr,dif,&
+                                ipckrreg, dif,&
                                 var_node((n-1)*size_var_use+1:n*size_var_use), &
                                 itable,ierr,pref)
   enddo
