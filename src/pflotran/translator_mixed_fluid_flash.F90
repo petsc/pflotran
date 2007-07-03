@@ -257,8 +257,8 @@
     call VecStrideNorm(grid%dxx,0,NORM_INFINITY,grid%dpmax,ierr)
     call VecStrideNorm(grid%dxx,1,NORM_INFINITY,grid%dtmpmax,ierr)
     call VecStrideNorm(grid%dxx,2,NORM_INFINITY,grid%dcmax,ierr)
-  
-  
+  grid%dsmax =0.D0
+   
     !   print *, 'max change',grid%dpmax,grid%dtmpmax,grid%dsmax,grid%dcmax
  end  subroutine translator_flash_step_maxchange
 

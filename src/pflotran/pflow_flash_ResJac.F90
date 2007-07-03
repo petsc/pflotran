@@ -165,8 +165,8 @@ private
   if(re>0)then
   call VecGetArrayF90(grid%xx, xx_p, ierr); CHKERRQ(ierr)
   call VecGetArrayF90(grid%yy, yy_p, ierr)
-  call VecGetArrayF90(grid%var, var_p, ierr); 
-  call VecGetArrayF90(grid%iphas, iphase_p, ierr); 
+  call VecGetArrayF90(grid%var, var_p, ierr) 
+  call VecGetArrayF90(grid%iphas, iphase_p, ierr) 
   
   do n = 1,grid%nlmax
      n0=(n-1)* grid%ndof
@@ -1947,7 +1947,7 @@ private
                       
     integer*4 :: n, ichange,n0
     integer :: ierr,iicap,iiphase
-    PetscScalar, pointer :: xx_p(:),icap_p(:),ithrm_p(:),iphase_p(:), var_p(:)
+    PetscScalar, pointer :: xx_p(:),icap_p(:),ithrm_p(:),iphase_p(:), var_p(:),ssat_p(:)
     real*8 dif(1:grid%nphase), dum1, dum2           
 
       
@@ -1961,6 +1961,8 @@ private
    call VecGetArrayF90(grid%ithrm,ithrm_p,ierr)  
    call VecGetArrayF90(grid%iphas, iphase_p, ierr)
    call VecGetArrayF90(grid%var,var_p,ierr)
+   call VecGetArrayF90(grid%ssat,ssat_p, ierr)
+   
 
    do n = 1, grid%nlmax
     iicap = icap_p(n)
@@ -1977,6 +1979,10 @@ private
     var_p((n-1)*size_var_node+1:(n-1)*size_var_node+size_var_use),&
     grid%itable,ierr, dum1, dum2)
   !  print *,"upd_fla::", xx_p((n-1)*grid%ndof+1:n*grid%ndof), var_p((n-1)*size_var_node+1:(n-1)*size_var_node+size_var_use)
+    ssat_p((n-1)*grid%nphase: n*grid%nphase) = var_p((n-1)*size_var_node+3:(n-1)*size_var_node+grid%nphase)
+   
+   
+   
    enddo
    
    call VecRestoreArrayF90(grid%xx, xx_p, ierr); CHKERRQ(ierr)
@@ -1984,12 +1990,14 @@ private
    call VecRestoreArrayF90(grid%ithrm,ithrm_p,ierr)  
    call VecRestoreArrayF90(grid%iphas, iphase_p, ierr)
    call VecRestoreArrayF90(grid%var,var_p,ierr)
+   call VecRestoreArrayF90(grid%ssat,ssat_p, ierr)
    
    if(grid%nphase>1) call translator_flash_massbal(grid)
  ! endif 
 
   call VecCopy(grid%xx, grid%yy, ierr)   
   call VecCopy(grid%iphas, grid%iphas_old, ierr)   
+  call VecCopy(grid%ssat, grid%sat, ierr)
    
   call  pflow_flash_initaccum(grid)
     !print *,'pflow_mphase_initaccum done'

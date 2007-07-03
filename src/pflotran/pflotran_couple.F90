@@ -97,7 +97,8 @@ public pflowGrid_ptran_init, pflotranGrid_interp, ptran_bc_reassign
   
   
     if (grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE &
-       .or. grid%use_richards == PETSC_TRUE ) then
+       .or. grid%use_richards == PETSC_TRUE &
+       .or. grid%use_flash == PETSC_TRUE ) then
     call VecGetArrayF90(grid%xx, xx_p, ierr)
     call VecGetArrayF90(grid%iphas, iphase_p, ierr)
   call VecGetArrayF90(den_co2, den_co2_p, ierr)
@@ -118,8 +119,7 @@ public pflowGrid_ptran_init, pflotranGrid_interp, ptran_bc_reassign
 !   print *,'couple :begin calling'
     call pri_var_trans_mph_ninc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),iiphase,&
         grid%scale,grid%nphase,grid%nspec,&
-        iicap, dif,&
-       varr, grid%itable,ierr,xphi_co2_p(n),den_co2_p(n))
+        iicap, dif, varr, grid%itable,ierr,xphi_co2_p(n),den_co2_p(n))
  !   print *, n, iiphase, xphi_co2_p(n), den_co2_p(n)
     
   endif
@@ -158,12 +158,13 @@ public pflowGrid_ptran_init, pflotranGrid_interp, ptran_bc_reassign
   call VecRestoreArrayF90(sat, sat_ptran_p, ierr)
 
    if (grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE &
-        .or. grid%use_richards == PETSC_TRUE ) then
+        .or. grid%use_richards == PETSC_TRUE &
+        .or. grid%use_flash == PETSC_TRUE ) then
 !   call VecGetArrayF90(grid%xx_loc, xx_p, ierr)
     call VecRestoreArrayF90(grid%xx, xx_p, ierr)
 !    call VecGetArrayF90(grid%yy, yy_p, ierr)
     call VecRestoreArrayF90(grid%iphas, iphase_p, ierr)
-   call VecRestoreArrayF90(den_co2, den_co2_p, ierr)
+    call VecRestoreArrayF90(den_co2, den_co2_p, ierr)
     call VecRestoreArrayF90(xphi_co2, xphi_co2_p, ierr)
 ! print *,"Array resotred in pflotran_couple:", grid%myrank
 
@@ -227,6 +228,10 @@ public pflowGrid_ptran_init, pflotranGrid_interp, ptran_bc_reassign
   call VecGetArrayF90(grid%ssat,ssat_p,ierr)
   call VecGetArrayF90(ssat,ptran_sat_p,ierr)
 
+
+
+
+!**********************************************************************
   if (grid%use_2ph == PETSC_TRUE) then
 !   call VecGetArrayF90(grid%xx_loc, xx_p, ierr)
     call VecGetArrayF90(grid%xx, xx_p, ierr)
@@ -244,6 +249,10 @@ public pflowGrid_ptran_init, pflotranGrid_interp, ptran_bc_reassign
     call VecRestoreArrayF90(grid%xx, xx_p, ierr)
   endif
 
+
+
+!**********************************************************************
+! parts for mph type varible switching use
   if (grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE &
        .or. grid%use_richards == PETSC_TRUE ) then
 !   call VecGetArrayF90(grid%xx_loc, xx_p, ierr)
@@ -288,6 +297,64 @@ public pflowGrid_ptran_init, pflotranGrid_interp, ptran_bc_reassign
     call VecRestoreArrayF90(grid%iphas, iphase_p, ierr)
     call VecRestoreArrayF90(grid%iphas_old, iphase_old_p, ierr)  
   endif
+
+
+
+
+! ************************************************************************
+! Part for flash use only::
+   if (grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE &
+       .or. grid%use_richards == PETSC_TRUE ) then
+!   call VecGetArrayF90(grid%xx_loc, xx_p, ierr)
+    call VecGetArrayF90(grid%xx, xx_p, ierr)
+    call VecGetArrayF90(grid%yy, yy_p, ierr)
+    call VecGetArrayF90(grid%iphas, iphase_p, ierr)
+    call VecGetArrayF90(grid%iphas_old, iphase_old_p, ierr)  
+    do m = 1, grid%nlmax
+!     n = nL2G(m)
+!     ppress_p(m) = xx_p(1+(n-1)*grid%ndof) ! ppress and press defined for nphase
+!     ttemp_p(m) = xx_p(2+(n-1)*grid%ndof)
+      jm = 2+(m-1)*grid%nphase 
+      ppress_p(m) = xx_p(1+(m-1)*grid%ndof) ! ppress and press defined for nphase
+      press_p(m) = yy_p(1+(m-1)*grid%ndof)
+      ttemp_p(m) = xx_p(2+(m-1)*grid%ndof)
+      temp_p(m) = yy_p(2+(m-1)*grid%ndof)
+      
+      iiphas=iphase_p(m)
+      select case(iiphas)
+        case(1)
+          ssat_p(jm) = 0.D0
+        case(2)
+          ssat_p(jm) = 1.D0
+        case(3)
+          !ssat_p(jm) = ssat_p((m-1)*grid%nphase+1: m*grid%nphase)        
+      end select
+       
+      iiphas=iphase_old_p(m)
+      select case(iiphas)
+        case(1)
+          sat_p(jm) = 0.D0
+        case(2)
+          sat_p(jm) = 1.D0 
+        case(3)
+         ! sat_p(jm) = yy_p(3+(m-1)*grid%ndof)        
+      end select
+!     print *,"pflotran_coup:: ",m, iphase_p(m), iphase_old_p(m),ssat_p(jm),sat_p(jm)
+   enddo
+!   call VecRestoreArrayF90(grid%xx_loc, xx_p, ierr)
+    call VecRestoreArrayF90(grid%xx, xx_p, ierr)
+    call VecRestoreArrayF90(grid%yy, yy_p, ierr)
+    call VecRestoreArrayF90(grid%iphas, iphase_p, ierr)
+    call VecRestoreArrayF90(grid%iphas_old, iphase_old_p, ierr)  
+  endif
+
+
+
+
+
+
+
+
 
   call VecGetArrayF90(den_co2, den_co2_p, ierr)
   call VecGetArrayF90(xphi_co2, xphi_co2_p, ierr)
