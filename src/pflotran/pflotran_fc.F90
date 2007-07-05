@@ -73,7 +73,7 @@
 ! integer :: nx, ny, nz
 ! integer :: npx, npy, npz
   integer :: nphase, ndof, icouple, itable
-  integer :: nspec,npricomp
+  integer :: nspec,npricomp,mcomp, mphas
   integer :: kplt, iplot, iigeom, iflgcut_pflow, its_pflow, ntstep
   integer :: myid
   integer :: steps
@@ -105,7 +105,7 @@
 
 !======================= initialize pflow =======================
   call pflow_read_gridsize("pflow.in", iigeom, nx, ny, nz, npx, npy, npz, &
-  nphase, nspec, npricomp, ndof, idcdm, itable, ierr)
+  nphase, nspec, npricomp, ndof, idcdm, itable, mcomp, mphas,ierr)
   
   icouple = 1
 
@@ -120,7 +120,7 @@
 ! set up structure constructor
 ! npx = PETSC_DECIDE; npy = PETSC_DECIDE; npz = PETSC_DECIDE
   grid = pflowGrid_new(iigeom, nx, ny, nz, npx, npy, npz, nphase, nspec, npricomp, &
-         ndof, icouple, idcdm, itable)
+         ndof, icouple, idcdm, itable, mcomp, mphas)
   if (nphase>=2) call initialize_span_wagner(itable,grid%myrank)
   
   call pflowGrid_setup(grid, "pflow.in")

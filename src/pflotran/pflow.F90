@@ -63,7 +63,7 @@
   integer :: igeom
   integer :: nx, ny, nz
   integer :: npx, npy, npz
-  integer :: nphase, ndof, icouple, idcdm, itable
+  integer :: nphase, ndof, icouple, idcdm, itable, mcomp, mphas
   integer :: nspec,npricomp
   integer :: kplt, iplot, iflgcut, its, ntstep
   integer :: myid
@@ -104,7 +104,7 @@
   if(option_found /= PETSC_TRUE) pflowin = "pflow.in"
   
   call pflow_read_gridsize(pflowin, igeom, nx, ny, nz, npx, npy, npz, &
-  nphase, nspec, npricomp, ndof, idcdm, itable, ierr)
+  nphase, nspec, npricomp, ndof, idcdm, itable, mcomp, mphas,ierr)
   
   allocate(dxdt(1:ndof))
   
@@ -123,7 +123,7 @@
 ! set up structure constructor
 ! npx = PETSC_DECIDE; npy = PETSC_DECIDE; npz = PETSC_DECIDE
   grid = pflowGrid_new(igeom, nx, ny, nz, npx, npy, npz, nphase, nspec, &
-         npricomp, ndof, icouple, idcdm, itable)
+         npricomp, ndof, icouple, idcdm, itable, mcomp, mphas)
 
   if(grid%use_mph == PETSC_TRUE .or. grid%use_owg == PETSC_TRUE &
      .or. grid%use_flash == PETSC_TRUE) &

@@ -62,12 +62,13 @@ module pflow_grid_module
 ! when the geometry of the connections is calculated.
 type(pflowGrid) function pflowGrid_new(igeom, nx, ny, nz, npx, npy, npz, &
                                        nphase, nspec,npricomp,ndof, icouple, &
-                                       idcdm, itable)
+                                       idcdm, itable, mcomp,mphas)
 
   implicit none
 
   integer*4, intent(in) :: igeom, nx, ny, nz, npx, npy, npz
   integer, intent(in) :: nphase, ndof,icouple,idcdm,itable,nspec,npricomp
+  integer, intent(in) :: mcomp, mphas
 !  integer, intent(in) :: equ_option
   integer*4 :: n, ng, na
   integer*4 :: i, j, k
@@ -82,6 +83,8 @@ type(pflowGrid) function pflowGrid_new(igeom, nx, ny, nz, npx, npy, npz, &
   grid%use_ksp=PETSC_FALSE
   grid%use_isoth=PETSC_FALSE
 
+
+   
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-snes_mf", & 
                            grid%use_matrix_free, ierr)
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_analytical", &
@@ -117,6 +120,79 @@ type(pflowGrid) function pflowGrid_new(igeom, nx, ny, nz, npx, npy, npz, &
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_isoth", &
                            grid%use_isoth, ierr)
 
+  grid%nphase = nphase
+  grid%ndof = ndof
+  grid%nspec = nspec
+  grid%npricomp = npricomp
+
+
+
+if( grid%use_liquid ==PETSC_FALSE .and.&
+    grid%use_cond==PETSC_FALSE  .and.&
+    grid%use_th==PETSC_FALSE  .and.&
+    grid%use_thc==PETSC_FALSE  .and.&
+    grid%use_2ph==PETSC_FALSE  .and.&
+    grid%use_mph==PETSC_FALSE  .and.&
+    grid%use_flash==PETSC_FALSE  .and.&
+    grid%use_owg==PETSC_FALSE  .and.&
+    grid%use_vadose==PETSC_FALSE  .and.&
+    grid%use_richards==PETSC_FALSE) then
+
+ if(mcomp >0 .and. mphas>0)then
+   if( grid%use_liquid == PETSC_FALSE .and. mcomp ==1)then
+       grid%use_liquid = PETSC_TRUE
+       grid% nphase = 1; grid% ndof =1
+   endif
+   if( grid%use_cond == PETSC_FALSE .and. mcomp == 32)then
+       grid%use_cond = PETSC_TRUE
+       grid% nphase = 1; grid% ndof =1
+   endif
+   if( grid%use_th == PETSC_FALSE .and. mcomp == 33 .and. mphas == 3)then
+       grid%use_th = PETSC_TRUE
+       grid% nphase = 1; grid% ndof =2
+   endif
+   if( grid%use_thc == PETSC_FALSE .and. mcomp == 37)then
+       grid%use_thc = PETSC_TRUE
+       grid% nphase = 1; grid% ndof =3
+   endif
+   if( grid%use_mph == PETSC_FALSE .and. mcomp == 35)then
+       grid%use_mph = PETSC_TRUE
+       grid% nphase = 2; grid% ndof =3; grid%nspec =2 
+   endif
+   if( grid%use_vadose == PETSC_FALSE .and. mcomp == 49)then
+       grid%use_vadose = PETSC_TRUE
+       grid% nphase = 2; grid% ndof =3; grid%nspec =2 
+   endif
+   if( grid%use_richards == PETSC_FALSE .and. mcomp == 33 .and. mphas == 11)then
+       grid%use_richards = PETSC_TRUE
+       grid% nphase = 1; grid% ndof = 2;  grid%nspec =1
+       if(nspec > 1) then
+           grid% ndof = nspec +1 ;  grid%nspec = nspec
+       endif
+   endif
+    if( grid%use_owg == PETSC_FALSE .and. mcomp == 11)then
+       grid%use_owg = PETSC_TRUE
+       grid% nphase = 3; grid% ndof =3; grid%nspec =3 
+   endif
+  endif
+ if( grid%use_liquid ==PETSC_FALSE .and.&
+    grid%use_cond==PETSC_FALSE  .and.&
+    grid%use_th==PETSC_FALSE  .and.&
+    grid%use_thc==PETSC_FALSE  .and.&
+    grid%use_2ph==PETSC_FALSE  .and.&
+    grid%use_mph==PETSC_FALSE  .and.&
+    grid%use_flash==PETSC_FALSE  .and.&
+    grid%use_owg==PETSC_FALSE  .and.&
+    grid%use_vadose==PETSC_FALSE  .and.&
+    grid%use_richards==PETSC_FALSE) then
+     print *,'No method determined, stop:'
+     stop
+ endif       
+                         
+endif  
+
+
+
   if (icouple == 0) then
     grid%using_pflowGrid = PETSC_FALSE
   else
@@ -133,12 +209,6 @@ type(pflowGrid) function pflowGrid_new(igeom, nx, ny, nz, npx, npy, npz, &
   grid%npx = npx
   grid%npy = npy
   grid%npz = npz
-
-  grid%nphase = nphase
-  grid%ndof = ndof
-  grid%nspec = nspec
-  grid%npricomp = npricomp
-
   grid%idcdm = idcdm
       
   grid%itable = itable
@@ -3662,7 +3732,7 @@ subroutine pflowGrid_read_input(grid, inputfile)
     call fiCharsToUpper(word,len_trim(word))
     call fiReadCard(word,card,ierr)
 
-    if (grid%myrank == 0) print *, card
+    if (grid%myrank == 0) print *, 'pflow_read:: ',card
 
     select case(card)
 
@@ -3673,7 +3743,23 @@ subroutine pflowGrid_read_input(grid, inputfile)
 !....................
 
       case ('PROC')
-
+!.....................
+      case ('COMP') 
+      do
+        call fiReadFlotranString(IUNIT1,string,ierr)
+        call fiReadStringErrorMsg('COMP',ierr)
+      
+        if (string(1:1) == '.' .or. string(1:1) == '/') exit
+       enddo
+!.....................
+      case ('PHAS')
+       do
+        call fiReadFlotranString(IUNIT1,string,ierr)
+        call fiReadStringErrorMsg('PHASE',ierr)
+      
+        if (string(1:1) == '.' .or. string(1:1) == '/') exit
+       enddo 
+      
 !....................
 
       case ('COUP')
