@@ -348,7 +348,7 @@ end  subroutine pflow_IMS_setupini
 
 
 ! Residual called by SNESSolve
-  subroutine IMSResidual(snes,xx,r,grid,locpat, ierr)
+  subroutine IMSResidual(snes,xx,r,grid, ierr)
     use translator_IMS_module
     use IMS_patch_module
     implicit none
@@ -357,7 +357,7 @@ end  subroutine pflow_IMS_setupini
     Vec, intent(inout) :: xx
     Vec, intent(out) :: r
     type(pflowGrid), intent(inout) :: grid
-    type(pflow_localpatch_info), intent(inout) :: locpat
+    type(pflow_localpatch_info), pointer:: locpat
     PetscScalar, pointer :: xx_p(:), accum_p(:),r_p(:)
      
    integer :: ierr, n,i
@@ -367,11 +367,11 @@ end  subroutine pflow_IMS_setupini
   !grid%vvl_loc=0.D0
   !grid%vvg_loc=0.D0
 
-   !print *,'xxxxxxxxx ::...........'; call VecView(xx,PETSC_VIEWER_STDOUT_WORLD,ierr)
+  ! print *,'xxxxxxxxx ::...........'; call VecView(xx,PETSC_VIEWER_STDOUT_WORLD,ierr)
 
   !if(grid%dt>5D5)
-  
-   !print *,'Res ims :: in res'
+   locpat => grid%patchlevel_info(1)%patches(1)%patch_ptr
+   !print *,'Res ims :: in res', locpat%nlmax
 
 	call VecGetArrayF90(xx, xx_p, ierr); CHKERRQ(ierr)
      do n = 1, locpat%nlmax
@@ -379,9 +379,11 @@ end  subroutine pflow_IMS_setupini
 		   if(xx_p((n-1)*grid%ndof+i) <0.D0)xx_p((n-1)*grid%ndof+i) =1.D-16
 		   if(xx_p((n-1)*grid%ndof+i) >1.D0)xx_p((n-1)*grid%ndof+i) =1.D0 -1D-16
         enddo
+      
      enddo
     call VecRestoreArrayF90(xx, xx_p, ierr)
 	
+  !print *,' IMS_RES : Begin scatter'
 	
   call DAGlobalToLocalBegin(grid%da_ndof, xx, INSERT_VALUES, &
                             grid%xx_loc, ierr)
@@ -410,7 +412,7 @@ end  subroutine pflow_IMS_setupini
                           INSERT_VALUES, grid%icap_loc, ierr)
 
 
-! print *,' IMS_RES : End scatter'
+ !print *,' IMS_RES : End scatter'
 ! End distribute data 
 ! now assign access pointer to local variables
   call VecGetArrayF90(grid%xx_loc, locpat%xx_loc_p, ierr)
@@ -463,7 +465,7 @@ end  subroutine pflow_IMS_setupini
                 
 ! --------------------------------------------------------------------- 
 
-  subroutine IMSJacobin(snes,xx,A,B,flag,grid, locpat, ierr)
+  subroutine IMSJacobin(snes,xx,A,B,flag,grid, ierr)
        
     use translator_IMS_module
     use IMS_patch_module
@@ -474,23 +476,25 @@ end  subroutine pflow_IMS_setupini
     Vec, intent(in) :: xx
     Mat, intent(out) :: A, B
     type(pflowGrid), intent(inout) :: grid
-    type(pflow_localpatch_info), intent(inout) :: locpat
+    type(pflow_localpatch_info), pointer :: locpat
    ! integer, intent(inout) :: flag
     MatStructure flag
 
     integer :: ierr, n,ng, na1,na2, ind,neq,nvar
    
+    real*8 :: blkmat11(1:grid%ndof,1:grid%ndof)
+
    ! matrix block, 0 to 6 should be 3D non-zero entrys.!
 	!               0 stands for diagnal element
 	!               1 left.  2. right  3 up.  4 down.  5 front. 6 back.
 	!               This is determined by the connection setup, does not really matter   
-	real*8 :: Jac_elem(1:locpat%nlmax,0:6,1:grid%ndof,1:grid%ndof)
+
+  	real*8, pointer :: Jac_elem(:,:,:,:)
 
 	! non-zero matrix cloumn index, diagnal will be the same as row index
 	! for petsc version, it should be global index 
-	integer :: Jac_Ind(1:locpat%nlmax,0:6)
-    real*8 :: blkmat11(1:grid%ndof,1:grid%ndof)
-    
+	integer,pointer :: Jac_Ind(:,:)
+
     
 !-----------------------------------------------------------------------
 ! R stand for residual
@@ -505,7 +509,13 @@ end  subroutine pflow_IMS_setupini
 !   1.D0 gas phase viscocity to all p,t,c,s
 !   2. Average molecular weights to p,t,s
  flag = SAME_NONZERO_PATTERN
+ locpat => grid%patchlevel_info(1)%patches(1)%patch_ptr
 
+
+	allocate(Jac_elem(1:locpat%nlmax,0:6,1:grid%ndof,1:grid%ndof))
+	allocate(Jac_Ind(1:locpat%nlmax,0:6))
+ 
+ 
   !print *,'*********** In Jacobian ********************** '
   call MatZeroEntries(A,ierr)
 
