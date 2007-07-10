@@ -2,7 +2,7 @@ module co2eos_module
 
   private
 
-  public HENRY_co2_noderiv,VISCO2,duanco2,denmix,Henry_duan_sun
+  public HENRY_co2_noderiv,VISCO2,duanco2,denmix,Henry_duan_sun,Henry_duan_sun_0NaCl
 contains
 
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
@@ -625,8 +625,8 @@ contains
       return
 
       end subroutine duanco2
-
-  subroutine Henry_duan_sun (p,tc,henry)
+!----------------------------------------------
+  subroutine Henry_duan_sun_0NaCl (p,tc,henry)
 
   implicit none
 
@@ -652,7 +652,80 @@ contains
    henry = exp(-muco2)
 
   return
+  end subroutine Henry_duan_sun_0NaCl
+
+
+
+
+
+
+
+  subroutine Henry_duan_sun(tc,p,mco2,phico2,mc,ma,psat)
+  
+! t[c], p[bar], mco2[mol/Kg-H2O], mc[cation: mol/kg-H2O], 
+! ma[anion: mol/kg-H2O], psat[bars]
+
+  implicit none
+  real*8, save :: coef(3,11)
+  real*8 :: tc,p,mco2,phico2,mc,ma,psat, t
+
+  real*8 :: lngamco2, tmp, mu0, lamc, lamca, yco2
+
+  data coef / 28.9447706, -0.411370585, 3.36389723e-4, &
+  -0.0354581768,  6.07632013e-4,  -1.98298980e-5, &
+  -4770.67077,    97.5347708,     0., &
+  1.02782768e-5,  0.,             0., &
+  33.8126098,     0.,             0., &
+  9.04037140e-3,  0.,             0., &
+  -1.14934031e-3, 0.,             0., &
+  -0.307405726,  -0.0237622469,   2.12220830e-3, & 
+  -0.0907301486,  0.0170656236,  -5.24873303e-3, & 
+  9.32713393e-4,  0.,             0., &
+  0.,             1.41335834e-5,  0./
+
+
+  t=tc+273.15
+  call duan_sun_param(t,p,coef(1,:),mu0)
+  call duan_sun_param(t,p,coef(2,:),lamc)
+  call duan_sun_param(t,p,coef(3,:),lamca)
+  
+  !activity coef. co2
+  lngamco2 = 2.d0*lamc*mc + lamca*mc*ma ! = log(gam(jco2))
+  
+  tmp = mu0 + lngamco2 !- log(phico2)
+  
+  yco2 = (p-psat)/p
+  
+  !molality co2
+ 
+  ! mco2 = yco2 * exp(-tmp) * p
+  
+  mco2= exp(-tmp) 
+  !print *, 'mco2: ', mu0,lngamco2,phico2,psat,yco2,t,p
+  return
   end subroutine Henry_duan_sun
+  
+  subroutine duan_sun_param(t,p,c,par)
+  
+  implicit none
+  
+  real*8 :: t,p,par,fac,c(11)
+  
+  fac = 1.d0/(630.d0-t)
+  
+  par = c(1) + c(2) * t + c(3) / t + c(4) * t * t &
+  + c(5) * fac + c(6) * p + c(7) * p * log(t) &
+  + c(8) * p / t + c(9) * p * fac &
+  + C(10) * p * p * fac * fac + c(11) * t * log(p)
+
+
+ 
+  return
+  end subroutine duan_sun_param
+
+
+
+
 
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 ! Subroutine: henry.f

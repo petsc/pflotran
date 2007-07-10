@@ -65,7 +65,7 @@ module pflow_output_module
               por_nat, ierr)
   call DAGlobalToNaturalEnd(da_1_dof, porosity, INSERT_VALUES, &
               por_nat, ierr)
-
+print *, 'Scatter:: por'
 ! permeability field
 ! call DAGlobalToNaturalBegin(da_3, perm, INSERT_VALUES, perm_nat, ierr)
 ! call DAGlobalToNaturalEnd(da_3, perm, INSERT_VALUES, perm_nat, ierr)
@@ -248,7 +248,8 @@ module pflow_output_module
   var_name(1) = 'T'
   var_name(2) = 'p'
   do i = 1,grid%nphase
-    write(var_name(i+2),'(a2,i3,a1)')'p(',i,')', 's(',i,')'
+    write(var_name(i+2),'(a2,i3,a1)')'p(',i,')'
+  !  print *, var_name(i+2)
    enddo
   tab = char(9)
   q = '","'

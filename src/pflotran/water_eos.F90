@@ -1121,5 +1121,71 @@ contains
 
     return
   end subroutine density
+  
+  
+
+subroutine nacl_den (t,p,xnacl,dnacl)
+
+!density: Batzle & Wang (1992)
+
+implicit none
+
+real*8 :: rw0,dnacl,t,p,xnacl
+
+!units: t [C], p [MPa], xnacl [mass fraction NaCl], dnacl [g/cm^3]
+
+rw0 = 1.d0 + 1.d-6*(-80.d0*t - 3.3d0*t**2 + 0.00175d0*t**3 &
+      + 489.d0*p - 2.d0*t*p + 0.016d0*t**2*p - 1.3d-5*t**3*p &
+      - 0.333d0*p**2 - 0.002d0*t*p**2)
+
+dnacl = rw0 + xnacl*(0.668d0 + 0.44d0*xnacl  &
+        + 1.d-6*(300d0*p - 2400d0*p*xnacl + t*(80d0 &
+        + 3.d0*t - 3300.d0*xnacl - 13.d0*p + 47.d0*p*xnacl)))
+
+return
+end subroutine nacl_den
+
+subroutine nacl_vis (t,p,xnacl,visnacl)
+
+!viscosity: Kestin et al. (1981)
+
+implicit none
+
+!units: t [C], p [MPa], xnacl [mass fraction NaCl], visnacl [Pa s]
+
+real*8, save :: a1,a2,a3,b1,b2,b3,c1,c2,c3,c4,wnacl
+real*8 :: ak,bk,ck
+real*8 :: beta,betap,betas,betaw
+real*8 :: t,tt,p,mnacl,xnacl,visnacl,fac,mu0,ms
+
+data a1,a2,a3 / 3.324d-2, 3.624d-3, -1.879d-4 /
+data b1,b2,b3 / -3.96d-2, 1.02d-2, -7.02d-4 /
+data c1,c2,c3,c4 / 1.2378d0, -1.303d-3, 3.06d-6, 2.55d-8 /
+
+data wnacl / 58.44277d-3 / ! (kg/mol NaCl)
+
+!convert pressure to GPa
+p = p*1.d-3
+
+mnacl = xnacl/(1.d0-xnacl)/wnacl
+
+tt = 20.d0-t
+ck = (c1 + (c2 + (c3+c4*tt)*tt)*tt)*tt/(96.d0+t)
+ak = (a1 + (a2 + a3*mnacl)*mnacl)*mnacl
+bk = (b1 + (b2 + b3*mnacl)*mnacl)*mnacl
+
+ms = 6.044d0 + (2.8d-3 + 3.6d-5*t)*t
+fac = mnacl/ms
+betaw = -1.297d0 + (5.74d-2 + (-6.97d-4 + (4.47d-6 - 1.05d-8*t)*t)*t)*t
+betas = 0.545d0 + 2.8d-3 * t - betaw
+betap = (2.5d0 + (-2.d0 + 0.5d0*fac)*fac)*fac
+beta = betas*betap + betaw
+
+mu0 = 1001.74d-6 * 10.d0**(ak + ck*(bk + 1.d0))
+
+visnacl = mu0*(1.d0 + beta*p)
+
+return
+end subroutine nacl_vis
 
 end module water_eos_module

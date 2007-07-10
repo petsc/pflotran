@@ -26,6 +26,7 @@ contains
   call MPI_Comm_rank(PETSC_COMM_WORLD, myrank, ierr)
 
   open(IUNIT1, file=inputfile, action="read", status="old") 
+if (myrank==0)&
   open(IUNIT2, file='pflow.out', action="write", status="unknown")
 
   npx = PETSC_DECIDE; npy = PETSC_DECIDE; npz = PETSC_DECIDE
@@ -644,7 +645,7 @@ contains
 			write(IUNIT2,'("  i1  i2  j1  j2  k1  k2       p [Pa]     t [C]      ", &
 		&   "sl [-]      c [mol/L]")')
 			do ireg = 1, grid%iregini
-			  write(IUNIT2,'(7i4,1p10e12.4)') &
+			  write(IUNIT2,'(6i6,1p10e12.4)') &
 			  grid%i1ini(ireg),grid%i2ini(ireg), &
 			  grid%j1ini(ireg),grid%j2ini(ireg), &
 			  grid%k1ini(ireg),grid%k2ini(ireg), &
@@ -780,7 +781,8 @@ contains
       allocate(timestep%tstep(timestep%nstpmax))
       allocate(timestep%dtstep(timestep%nstpmax))
 
-      do i = 1, grid%nstpmax
+
+      do i = 1, timestep%nstpmax
         call fiReadDouble(string,timestep%tstep(i),ierr)
         call fiDefaultMsg('tstep',ierr)
       enddo
@@ -806,7 +808,7 @@ contains
       endif
       
       ! convert time units to seconds
-      do i = 1, grid%nstpmax
+      do i = 1, timestep%nstpmax
         timestep%tstep(i) = grid%tconv * timestep%tstep(i)
         timestep%dtstep(i) = grid%tconv * timestep%dtstep(i)
       enddo
@@ -913,7 +915,7 @@ contains
      &    " [mol/L]")')
           do ireg = grid%iregbc1(ibc), grid%iregbc2(ibc)
              if (grid%ibndtyp(ibc) == 1 .or. grid%ibndtyp(ibc) == 3) then
-                write(IUNIT2,'(7i4,1p10e12.4)') &
+                write(IUNIT2,'(6i6,1p10e12.4)') &
                 grid%i1bc(ireg),grid%i2bc(ireg), &
                 grid%j1bc(ireg),grid%j2bc(ireg), &
                 grid%k1bc(ireg),grid%k2bc(ireg), &

@@ -188,7 +188,7 @@ private
       ! An array of multiplicative factors that specify how to increase time step.
     integer :: flowsteps  ! The number of time-steps taken by the flow code.
     integer :: stepmax    ! The maximum number of time-steps taken by the flow code.
-    integer :: nstpmax    ! The maximum number of time-step increments.
+   ! integer :: nstpmax    ! The maximum number of time-step increments.
    ! integer :: kplot      ! Printout steps.
     integer :: write_init = 0 ! Flag to printout initial conditions.
     integer :: iprint = 0 ! Print level (-1-none, 0-fields, >=1-vel, 2-perm/por, 3-pflow.bc)

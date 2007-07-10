@@ -237,7 +237,7 @@ public :: trpsi, trdpsi
          !    call henry_co2_noderiv(xmol,x1m,tc,pressloc_p(n), &
          !    xphico2,henry,poyn)
 
-              call Henry_duan_sun(pressloc_p(n) *1D-5, tc,  henry)  
+              call Henry_duan_sun_0NaCl(pressloc_p(n) *1D-5, tc,  henry)  
             
             !note: henry coef. = H/xphico2
             

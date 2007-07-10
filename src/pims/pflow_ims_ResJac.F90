@@ -156,7 +156,7 @@ private
 	
 	
     write(*,'(" Total CO2: liq:",1p, e13.6,&
-   &" gas:",1p, e13.6, " tot:", 1p, 2e13.6, " [kg]",1p, 3e13.6)') &
+   &" gas:",1p, e13.6, " tot:", 1p, e13.6, " [kg]")') &
    tot(1),tot(2),tot(1)+tot(2) !,nzc,nzm,nsm
 ! & grid%t/grid%tconv,tot(2,1),tot(2,2),tot(2,0),tot(2,1)+tot(2,2) !,nzc,nzm,nsm
     if (icall==0) then
@@ -167,8 +167,8 @@ private
 !   write(13,'(" Total CO2: t=",1pe13.6," liq:",1pe13.6,&
 ! &	" gas:",1pe13.6," tot:",1p2e13.6," [kmol]")')&
 ! & grid%t/grid%tconv,tot(2,1),tot(2,2),tot(2,0),tot(2,1)+tot(2,2)
-    write(13,'(1p9e12.4)') grid%t/grid%tconv,grid%dt/grid%tconv,&
- 	tot(1),tot(2),tot(1)+tot(2),real(n2p),nzc,nzm,nsm 
+    write(13,'(1p5e12.4)') grid%t/grid%tconv,grid%dt/grid%tconv,&
+ 	tot(1),tot(2),tot(1)+tot(2)!,real(n2p),nzc,nzm,nsm 
   endif    
   
   
@@ -272,7 +272,7 @@ private
           (ny>=grid%j1ini(ir)) .and. (ny<=grid%j2ini(ir)) .and.&
           (nx>= grid%i1ini(ir)) .and. (nx<=grid%i2ini(ir)))then
                  xx_p(1+(iln-1)*grid%ndof: iln*grid%ndof)=grid%xx_ini(:,ir)
-			print *,'Setup ini ::', na,xx_p(1+(iln-1)*grid%ndof: iln*grid%ndof) 		   
+		!	print *,'Setup ini ::', na,xx_p(1+(iln-1)*grid%ndof: iln*grid%ndof) 		   
                 !exit
            endif
 	enddo 
@@ -813,7 +813,7 @@ if (grid%SAMRAI_drive == PETSC_TRUE)then
   
    if(grid%nphase>1) call pflow_IMS_massbal(grid, locpat)
  ! endif 
-  ! print *, 'ims_update: end massbal' 
+!   print *, 'ims_update: end massbal' 
 
   call VecCopy(grid%xx, grid%yy, ierr)   
    

@@ -2611,7 +2611,7 @@ contains
 !         print *,'ptran_speciation2: ',tc,pco2,dco2,fco2,phico2
           
 !          call henry_co2_noderiv (xco2,x1m,tc,pco2*1.e5,phico2,hpco2,poynco2)
-          call Henry_duan_sun(pref0 *1D-5, tc,  hpco2)        
+          call Henry_duan_sun_0NaCl(pref0 *1D-5, tc,  hpco2)        
           !note: hpco2 = H/phico2 [Pa]
           
  !         call cowat (tc,pco2pa,dwat,uwat,ierr) ! why pco2pa here?

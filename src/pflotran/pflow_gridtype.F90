@@ -229,6 +229,7 @@ private
     integer, pointer:: icaptype(:)
 !geh material id
     integer, pointer :: imat(:)
+    real*8 :: m_nacl
     real*8 :: difaq, delhaq, gravity, fmwh2o= 18.0153D0, fmwa=28.96D0, &
               fmwco2=44.0098D0, eqkair, ret=1.d0, fc=1.d0
     

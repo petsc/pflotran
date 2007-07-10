@@ -58,7 +58,7 @@
  ! call MPI_Comm_size(PETSC_COMM_WORLD, grid%commsize, ierr)
  
  ! For current pims petsc version, every processor only have one patch on one level
- 
+  print *,' Begin reading'
  
    call pflow_read_gridsize("pflow.in", igeom, nx, ny, nz, npx, npy, npz, &
   nphase,  ierr)

@@ -101,12 +101,12 @@
  type(pflow_localpatch_info),pointer :: locpat
  
  newton=0
- 
+ locpat => grid%patchlevel_info(1)%patches(1)%patch_ptr
  do
  
-    locpat => grid%patchlevel_info(1)%patches(1)%patch_ptr
+    
 
-    call IMSResidual(pflowsolv%snes,grid%xx,grid%r,grid, locpat, ierr)
+    call IMSResidual(pflowsolv%snes,grid%xx,grid%r,grid, ierr)
     print *,' psolve; Get Res'
     
     call VecNorm(grid%r,NORM_INFINITY,rnorm,ierr)
@@ -117,7 +117,7 @@
      exit ! convergence obtained
   endif
   
-  call IMSJacobin(pflowsolv%snes,grid%xx,grid%J,grid%J,flag,grid,locpat,ierr)
+  call IMSJacobin(pflowsolv%snes,grid%xx,grid%J,grid%J,flag,grid,ierr)
   print *,' psolve; Get Joc'
   
   call VecScale(grid%r,-1D0,ierr)

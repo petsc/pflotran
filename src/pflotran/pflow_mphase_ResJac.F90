@@ -843,12 +843,12 @@ private
     !*****************
   dif(1)= grid%difaq
     dif(2)= grid%cdiff(int(ithrm_p(n)))
-  !print *, n,iicap,xx_p((n-1)*grid%ndof+1:n*grid%ndof) 
+ ! print *, n,iicap,xx_p((n-1)*grid%ndof+1:n*grid%ndof) 
   !*******************************************
   call pri_var_trans_mph_ninc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),iiphase,&
         grid%scale,grid%nphase,grid%nspec,iicap, dif,&
     var_p((n-1)*size_var_node+1:(n-1)*size_var_node+size_var_use),&
-    grid%itable,ierr,grid%xxphi_co2(n), grid%dden_co2(n))
+    grid%itable,grid%m_nacl,ierr,grid%xxphi_co2(n), grid%dden_co2(n))
 
 
 
@@ -857,7 +857,7 @@ private
       grid%delx(1:grid%ndof,ng), iiphase,&
         grid%scale,grid%nphase,grid%nspec, iicap, dif,&
         var_p((n-1)*size_var_node+size_var_use+1:n*size_var_node),&
-      grid%itable,ierr)
+      grid%itable,grid%m_nacl,ierr)
     endif
   
 !  print *,'var_p',n,iicap,iiphase, var_p((n-1)*size_var_node+1:n*size_var_node)              
@@ -921,7 +921,7 @@ private
   call VecGetArrayF90(grid%icap_loc, icap_loc_p, ierr)
   call VecGetArrayF90(grid%vl, vl_p, ierr)
   call VecGetArrayF90(grid%iphas_loc, iphase_loc_p, ierr)
- ! print *,' Finished scattering non deriv'
+  !print *,' Finished scattering non deriv'
 
 
   if (grid%rk > 0.d0) then
@@ -1089,7 +1089,7 @@ private
    !   enddo
   !  endif
   enddo
-!  print *,'finished source/sink term'
+ ! print *,'finished source/sink term'
   
 
 !*********************************************************************
@@ -1177,7 +1177,7 @@ private
 
 
   end do
- !  print *,'finished NC' 
+!  print *,'finished NC' 
  
 !*************** Handle boundary conditions*************
 !   print *,'xxxxxxxxx ::...........'; call VecView(xx,PETSC_VIEWER_STDOUT_WORLD,ierr)
@@ -1252,7 +1252,7 @@ private
   
       call pri_var_trans_mph_ninc(grid%xxbc(:,nc),grid%iphasebc(nc),&
       grid%scale,grid%nphase,grid%nspec, iicap, dif,&
-      grid%varbc(1:size_var_use), grid%itable,ierr,grid%xxphi_co2_bc(nc), cw)
+      grid%varbc(1:size_var_use), grid%itable,grid%m_nacl,ierr,grid%xxphi_co2_bc(nc), cw)
    
      
       call MPHASERes_FLBCCont(nc,grid%areabc(nc), &
@@ -1281,7 +1281,7 @@ private
  enddo
  
  
-!  print *,'finished BC'
+ ! print *,'finished BC'
  do n = 1, grid%nlmax
    p1 = 1 + (n-1)*grid%ndof
    if(volume_p(n)>1.D0) r_p (p1:p1+2)=r_p(p1:p1+2)/volume_p(n)
@@ -1429,7 +1429,7 @@ private
   call VecGetArrayF90(grid%iphas_loc, iphase_loc_p, ierr)
   call VecGetArrayF90(grid%var_loc, var_loc_p, ierr)
 
- !print *,' In mph Jacobian ::  got pointers '
+! print *,' In mph Jacobian ::  got pointers '
 ! ********************************************************************
 
 ! Accumulation terms
@@ -1646,18 +1646,18 @@ private
     dif(2)= grid%cdiff(int(ithrm_loc_p(ng)))
     !*******************************************
 
-  !  print *,' Mph Jaco BC terms: finish setup'
+   ! print *,' Mph Jaco BC terms: finish setup'
   ! here should pay attention to BC type !!!
    call pri_var_trans_mph_ninc(grid%xxbc(:,nc),grid%iphasebc(nc),&
        grid%scale,grid%nphase,grid%nspec, iicap, dif,&
-      grid%varbc(1:size_var_use), grid%itable,ierr, dum1, dum2)
+      grid%varbc(1:size_var_use), grid%itable,grid%m_nacl,ierr, dum1, dum2)
   
   
   
       call pri_var_trans_mph_winc(grid%xxbc(:,nc), delxbc,&
                        grid%iphasebc(nc), grid%scale,grid%nphase,grid%nspec, iicap,&
              dif(1:grid%nphase),&
-            grid%varbc(size_var_use+1:(grid%ndof+1)*size_var_use), grid%itable,ierr)
+            grid%varbc(size_var_use+1:(grid%ndof+1)*size_var_use), grid%itable,grid%m_nacl,ierr)
             
 !    print *,' Mph Jaco BC terms: finish increment'
     do nvar=1,grid%ndof
@@ -1683,7 +1683,7 @@ private
 !print *,grid%hh_bc,grid%uu_bc,grid%df_bc,grid%hen_bc,grid%pc_bc,grid%kvr_bc
 
  enddo
-  ! print *,' Mph Jaco Finished BC terms'
+ !  print *,' Mph Jaco Finished BC terms'
 
  do n= 1, grid%nlmax
    ra=0.D0
@@ -1963,8 +1963,8 @@ private
 
      call pri_var_trans_mph_ninc(yy_p((n-1)*grid%ndof+1:n*grid%ndof),iiphase,&
         grid%scale,grid%nphase,grid%nspec, iicap, dif,&
-    var_p((n-1)*size_var_node+1:(n-1)*size_var_node+size_var_use),grid%itable,ierr,&
-    satw, pvol)
+    var_p((n-1)*size_var_node+1:(n-1)*size_var_node+size_var_use),grid%itable,&
+    grid%m_nacl,ierr, satw, pvol)
 
 
  enddo
@@ -2043,7 +2043,7 @@ private
      call pri_var_trans_mph_ninc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),iiphase,&
         grid%scale,grid%nphase,grid%nspec, iicap, dif,&
     var_p((n-1)*size_var_node+1:(n-1)*size_var_node+size_var_use),&
-    grid%itable,ierr, dum1, dum2)
+    grid%itable,grid%m_nacl,ierr, dum1, dum2)
 
    enddo
    
@@ -2124,7 +2124,7 @@ private
     !*******************************************
   call pri_var_trans_mph_ninc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),iiphase,&
         grid%scale,grid%nphase,grid%nspec, iicap,  dif,&
-    var_p((n-1)*size_var_node+1: (n-1)*size_var_node+size_var_use),grid%itable,ierr, dum1, dum2)
+    var_p((n-1)*size_var_node+1: (n-1)*size_var_node+size_var_use),grid%itable,grid%m_nacl,ierr, dum1, dum2)
    
    if(translator_check_phase_cond(iiphase, &
            var_p((n-1)*size_var_node+1: (n-1)*size_var_node+size_var_use),&
@@ -2156,7 +2156,7 @@ private
 
           call pri_var_trans_mph_ninc(grid%xxbc(:,nc),grid%iphasebc(nc),&
            grid%scale,grid%nphase,grid%nspec, iicap, dif,&
-      grid%varbc(1:size_var_use), grid%itable,ierr, dum1, dum2)
+      grid%varbc(1:size_var_use), grid%itable,grid%m_nacl,ierr, dum1, dum2)
       
 
        if(translator_check_phase_cond(grid%iphasebc(nc), &

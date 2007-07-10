@@ -42,7 +42,7 @@
      
      
  real*8, private, parameter :: fmwh2o = 18.0153D0, fmwa = 28.96D0, &
-                              fmwco2 = 44.0098D0
+                              fmwco2 = 44.0098D0, fmwnacl = 58.44277D0
  real*8, private, parameter :: eps=5D-7 , formeps=1D-5
  real*8, private, parameter ::yh2o_in_co2=1D-2   
  real*8, private, parameter :: rgasj   = 8.3143    ![J/K/mol]
@@ -372,7 +372,7 @@
   integer :: ierr,iipha,i 
   real*8 :: p2,p,tmp,t, xla
   real*8 :: dg,dddt,dddp,fg,dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp
-  real*8 :: ug,xphi,henry,co2_poyn
+  real*8 :: ug,xphi,henry,co2_poyn, sat_pressure
   real*8 :: xmol(grid%nphase*grid%nspec ),satu(grid%nphase) 
 
 ! mphase code need assemble 
@@ -424,7 +424,10 @@
 
 !   call Henry_CO2_noderiv(xla,tmp,t,p*xmol(4),xphi,henry,co2_poyn)
 !  call Henry_CO2_noderiv(xla,tmp,t,p*xmol(4),xphi,henry,co2_poyn)
-       call Henry_duan_sun(p2 *1D-5, t,  henry)
+       
+       call PSAT(t, sat_pressure, ierr)
+       sat_pressure =sat_pressure /1D5
+       call Henry_duan_sun(t, p2 *1D-5, henry,xphi,grid%m_nacl,grid%m_nacl,sat_pressure)
     
      henry= 1D0 / (fmwh2o*1D-3) / (henry*1D-5) /xphi 
     !note: henry = H/phi
@@ -693,7 +696,7 @@
 
 
  subroutine pri_var_trans_mph_ninc_2_2(x,iphase,energyscale,num_phase,num_spec,&
-                    ipckrreg, dif, var_node,itable,ierr,xphi,dco2)
+                    ipckrreg, dif, var_node,itable,m_nacl,ierr,xphi,dco2)
 ! xgw: water molar fraction in gas phase
 ! P/Pa, t/(Degree Centigreed), Pc/Pa, Hen(xla=Hen*xga, dimensionless)
  
@@ -725,10 +728,10 @@
   real*8 pw,dw_kg,dw_mol,hw,sat_pressure,visl,xphi, dco2
   real*8 dg,dddt,dddp,fg, dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp
   real*8 ug
-  real*8 co2_phi, henry,co2_poyn
+  real*8 co2_phi, henry,co2_poyn, m_nacl
     real*8 stea,dsteamol,dstea_p,dstea_t, hstea,hstea_p,hstea_t,dstea
   real*8 kr(num_phase), pckr_swir
-  real*8 err,xla,vphi
+  real*8 err,xla,vphi, xm_nacl, x_nacl
 
   
   size_var_use = 2 + 7*num_phase + 2* num_phase*num_spec
@@ -850,8 +853,10 @@
 !   xphi  = 1.d0 ! test-pcl
     
 !    call Henry_CO2_noderiv(xla,tmp,t,p*xmol(4),xphi,henry,co2_poyn)
-    call Henry_duan_sun(p2*1D-5, t,  henry) ! henry = mol/kg/bars
-    
+  !  call Henry_duan_sun(p2*1D-5, t,  henry) ! henry = mol/kg/bars
+   
+     call Henry_duan_sun(t, p2 *1D-5, henry,xphi,m_nacl, m_nacl,sat_pressure*1D-5)
+      
      henry= 1D0 / (fmwh2o *1D-3) / (henry*1D-5 )/xphi 
      
      !print *, "translator :; henry ", henry, xphi, p*.99/henry        
@@ -907,10 +912,17 @@
     call wateos_noderiv(t,pw,dw_kg,dw_mol,hw,energyscale,ierr)
    !    call VISW(t,pw,sat_pressure,visl,tmp,tmp2,ierr)
    ! call VISW_FLO(t,dw_mol,visl)
-    call VISW_noderiv(t,pw,sat_pressure,visl,ierr)
-  !  print *,'visw  ',visl,tmp
-  ! dif= 1.D-7 !effective diffusion coeff in liquid phase: check pcl
-  diff(1:num_spec)=dif(1)
+   ! call VISW_noderiv(t,pw,sat_pressure,visl,ierr)
+   !  print *,'visw  ',visl,tmp
+   ! dif= 1.D-7 !effective diffusion coeff in liquid phase: check pcl
+
+    xm_nacl = m_nacl * fmwnacl
+    xm_nacl = xm_nacl /(1.D0 + xm_nacl)
+    call nacl_den(t, p*1D-6, xm_nacl, dw_kg) 
+    dw_kg = dw_kg * 1D3
+    call nacl_vis(t,p*1D-6,xm_nacl,visl)
+
+    diff(1:num_spec)=dif(1)
     diff(num_spec +1: 2*num_spec)=dif(2) ! m^2/s @ 25C
 
     !apply mixing rules
@@ -922,17 +934,20 @@
   !den(1) = 1.D0/(xmol(2)/dg + xmol(1)/dw_mol) !*c+(1-c)* 
 
 ! Garcia mixing
+   x_nacl = m_nacl/(m_nacl + 1D3/fmwh2o)
+   
+   avgmw(1)= (xmol(1) -x_nacl)* fmwh2o + x_nacl * fmwnacl + xmol(2)* fmwco2
    vphi=1D-6*(37.51D0 + t*(-9.585D-2 + t*(8.74D-4 - t*5.044D-7)))
-   den(1)=dw_mol*fmwh2o/(1D0-(fmwco2*1D-3-dw_mol*fmwh2o*vphi)*xmol(2)/(avgmw(1)*1D-3))
+   den(1)=dw_kg/(1D0-(fmwco2*1D-3-dw_kg*vphi)*xmol(2)/(avgmw(1)*1D-3))
    den(1)=den(1)/avgmw(1)
   
-    
+      
  ! Hebach, J. Chem.Eng.Data 2004 (49),p950 
  !   den(1)= 949.7109D0 + p * (0.559684D-6 - 0.00097D-12 * p) &  
  !      + (t+273.15)*(0.883148 - 0.00228*(t+273.15))  
  !  den(1)=dw_kg + (den(1)-dw_kg)*xmol(2)/p*henry
  !  den(1)=den(1)/avgmw(1)
-
+ call wateos_noderiv(t,pw,dw_kg,dw_mol,hw,energyscale,ierr)
 
     h(1) = hw * xmol(1) + hg*xmol(2) 
     u(1) = h(1) - pw /den(1)* energyscale
@@ -994,6 +1009,8 @@
     dco2=den(2)/(p/rgasj/(t+273.15D0)*1D-3)
  !if(t>=100.D0) print *, p,t,xga,xgw,dg,dsteamol,hg, hstea, h(2)
   
+!  print *,m_nacl,x_nacl,xm_nacl,visl,den,kr
+  
 !~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ! remember: henry coeff is arranged in the vector as 
 !    phase          1(water)          2(gas)            3(co2)
@@ -1008,7 +1025,7 @@
 
  
  subroutine pri_var_trans_mph_ninc(x,iphase,energyscale,num_phase,num_spec,&
-                    ipckrreg,dif, var_node,itable,ierr,phi_co2, den_co2)
+                    ipckrreg,dif, var_node,itable,m_nacl,ierr,phi_co2, den_co2)
 ! xgw: water molar fraction in gas phase
 ! P/Pa, t/(Degree Centigreed), Pc/Pa, Hen(xla=Hen*xga, dimensionless)
  
@@ -1017,12 +1034,11 @@
     integer :: size_var_use
   real*8 x(1:num_spec+1),energyscale
     real*8 var_node(1:2 + 7*num_phase + 2* num_phase*num_spec)
-  real*8 :: dif(:)
+  real*8 :: dif(:), m_nacl
   integer ::iphase, itable,ierr
   integer :: ipckrreg !, ithrmtype
        
-    real*8, optional :: phi_co2, den_co2
-  
+    real*8, optional :: phi_co2, den_co2  
   real*8 :: xphi_co2=1.D0, denco2=1.D0
   
   
@@ -1030,24 +1046,26 @@
   size_var_use = 2 + 7*num_phase + 2* num_phase*num_spec
   if((num_phase == 2).and.( num_spec ==2)) then
     call pri_var_trans_mph_ninc_2_2( x,iphase,energyscale,num_phase,num_spec,&
-                    ipckrreg,dif, var_node,itable,ierr,xphi_co2, denco2)
+                    ipckrreg,dif, var_node,itable,m_nacl,ierr,xphi_co2, denco2)
      if(present(phi_co2)) phi_co2=xphi_co2        
       if(present(den_co2))den_co2=denco2
    else 
      print *, 'Wrong phase-specise combination. Stop.'
      stop
    endif
+  ! print *, 'ninc: ',x, var_node
+   
   end subroutine pri_var_trans_mph_ninc   
   
   
  subroutine pri_var_trans_mph_winc(x,delx,iphase,energyscale,num_phase,num_spec,&
-                    ipckrreg,dif, var_node,itable,ierr)
+                    ipckrreg,dif, var_node,itable,m_nacl,ierr)
   integer :: num_phase,num_spec
   integer :: size_var_use,size_var_node
     
 
     real*8 x(1:num_spec+1),delx(1:num_spec+1),energyscale
-    real*8 var_node(:)
+    real*8 var_node(:),m_nacl
   real*8 :: dif(:)
   integer ::iphase,itable,ierr
   integer :: ipckrreg !, ithrmtype
@@ -1064,7 +1082,7 @@
   ! note: var_node here starts from 1 to grid%ndof*size_var_use
        call pri_var_trans_mph_ninc(xx,iphase,energyscale,num_phase,num_spec,&
                     ipckrreg, dif,&
-          var_node((n-1)*size_var_use+1:n*size_var_use),itable,ierr)
+          var_node((n-1)*size_var_use+1:n*size_var_use),itable,m_nacl,ierr)
     enddo
 
 

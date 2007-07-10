@@ -3710,7 +3710,7 @@ subroutine pflowGrid_read_input(grid, inputfile)
 
   type(pflowGrid), intent(inout) :: grid
   character(len=*), intent(in) :: inputfile
-  
+  real*8, parameter:: fmwnacl = 58.44277D0, fmwh2o  = 18.01534d0
   integer :: ierr
 #include "definitions.h"
   character(len=MAXSTRINGLENGTH) :: string 
@@ -3721,7 +3721,7 @@ subroutine pflowGrid_read_input(grid, inputfile)
   
   
  
-
+  grid%m_nacl =0.D0
   open(IUNIT1, file=inputfile, action="read", status="old")
   
   do
@@ -4021,11 +4021,32 @@ subroutine pflowGrid_read_input(grid, inputfile)
 !......................
 
        case('RICH')
-           call fiReadStringErrorMsg('PHAR',ierr)
+           call fiReadStringErrorMsg('RICH',ierr)
            call fiReadDouble(string,grid%pref,ierr)
            call fiDefaultMsg('Ref. Pressure',ierr) 
-     
+
 !......................
+
+       case('BRIN')
+        call fiReadStringErrorMsg('BRIN',ierr)
+        call fiReadDouble(string,grid%m_nacl,ierr)
+        call fiDefaultMsg('NaCl Concentration',ierr) 
+
+        call fiReadWord(string,strtim,.false.,ierr)
+        call fiWordToUpper(strtim)
+        select case(strtim(1:len_trim(strtim)))
+             case('MOLAL')
+             case('MASS')
+                grid%m_nacl = grid%m_nacl /fmwnacl/(1.D0-grid%m_nacl)
+             case('MOLE')    
+                grid%m_nacl = grid%m_nacl /fmwh2o/(1.D0-grid%m_nacl)
+             case default
+                print *, 'Wrong unit: ', strtim(1:len_trim(strtim))
+                stop
+        end select 
+      print *, grid%m_nacl
+!......................
+
       case ('HYDR')
 
         call fiReadStringErrorMsg('HYDR',ierr)
