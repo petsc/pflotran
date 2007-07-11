@@ -16,6 +16,8 @@ private
 
 #include "definitions.h"
 
+  real*8, parameter ::  fmwnacl = 58.44277D0,  fmwh2o = 18.0153D0
+
   public :: hydrostatic, mhydrostatic, owghydrostatic,recondition_bc
  
 contains
@@ -698,7 +700,7 @@ subroutine mhydrostatic(grid)
 
   real*8 :: ibndtyp(grid%nblkbc),cbc(grid%nblkbc),sbc(grid%nblkbc)
   real*8 :: xxbc_rec(grid%ndof,grid%nblkbc),iphasebc_rec(grid%nblkbc)
-
+  real*8 :: xm_nacl, dw_kg
 
   !Vec :: temp1_nat_vec, temp2_nat_vec, temp3_nat_vec, temp4_nat_vec
 
@@ -720,6 +722,12 @@ subroutine mhydrostatic(grid)
 
 !  vz = -k/mu (dp/dz - rho g z) = 0
 !  vx = -k/mu dp/dx, h = p/(rho g)
+   
+    xm_nacl = grid%m_nacl * fmwnacl
+    xm_nacl = xm_nacl /(1.D3 + xm_nacl)
+   ! call nacl_den(t, p*1D-6, xm_nacl, dw_kg) 
+   !  dw_kg = dw_kg * 1D3
+  
 
   if (grid%iread_init /= 1) then
     call VecGetArrayF90(grid%xx, xx_p, ierr)
@@ -734,8 +742,11 @@ subroutine mhydrostatic(grid)
       tmp = grid%dTdz * depth + grid%tref
       betap = rho * grid%gravity * grid%beta
     
-      call wateos(tmp, pres, rho, dw_mol, dwp, &
-                  dum, dum, dum, dum, grid%scale, ierr)
+     ! call wateos(tmp, pres, rho, dw_mol, dwp, &
+     !             dum, dum, dum, dum, grid%scale, ierr)
+      
+      call nacl_den(tmp, pres*1D-6, xm_nacl, dw_kg) 
+      rho = dw_kg * 1D3
       
         pres = rho * grid%gravity * depth + grid%pref - betap * horiz
 
@@ -743,8 +754,11 @@ subroutine mhydrostatic(grid)
       do 
         betap = rho * grid%gravity * grid%beta
         pres = rho * grid%gravity * depth + grid%pref - betap * horiz
-        call wateos(tmp, pres, rho1, dw_mol, dwp, &
-                    dum, dum, dum, dum, grid%scale, ierr)
+        !call wateos(tmp, pres, rho1, dw_mol, dwp, &
+        !            dum, dum, dum, dum, grid%scale, ierr)
+        call nacl_den(tmp, pres*1D-6, xm_nacl, dw_kg) 
+         rho1 = dw_kg * 1D3
+  
         if (abs(rho-rho1) < 1.d-6) exit
         rho = rho1
         itrho = itrho + 1
@@ -764,9 +778,11 @@ subroutine mhydrostatic(grid)
   ! boundary conditions
 
   p = grid%pref
-  call wateos(grid%tref, p, rho, dw_mol, dwp, &
-              dum, dum, dum, dum, grid%scale, ierr)
-  
+!  call wateos(grid%tref, p, rho, dw_mol, dwp, &
+!              dum, dum, dum, dum, grid%scale, ierr)
+    call nacl_den(grid%tref, p*1D-6, xm_nacl, dw_kg) 
+    rho = dw_kg * 1D3
+ 
   depth = grid%z(grid%nmax) + 0.5d0*grid%dz0(grid%nz)
   horiz = grid%x(grid%nmax) + 0.5d0*grid%dx0(grid%nx)
   
@@ -816,8 +832,10 @@ subroutine mhydrostatic(grid)
   
     ibc0 = ibc0 + 1
     p = grid%pref + dp
-    call wateos(grid%tref, p, rho0, dw_mol, dwp, &
-    dum, dum, dum, dum, grid%scale, ierr)
+!    call wateos(grid%tref, p, rho0, dw_mol, dwp, &
+!    dum, dum, dum, dum, grid%scale, ierr)
+     call nacl_den(grid%tref, p*1D-6, xm_nacl, dw_kg) 
+     rho0 = dw_kg * 1D3
 
     
     do n = 1, grid%nz
@@ -849,34 +867,39 @@ subroutine mhydrostatic(grid)
       endif
       tmp = grid%tref + grid%dTdz*zz
     
-     call wateos(tmp, p, rho, dw_mol, dwp, &
-      dum, dum, dum, dum, grid%scale, ierr)
-            
+  !   call wateos(tmp, p, rho, dw_mol, dwp, &
+  !    dum, dum, dum, dum, grid%scale, ierr)
+      call nacl_den(tmp, p*1D-6, xm_nacl, dw_kg) 
+      rho = dw_kg * 1D3
+ 
+                  
         itrho= 0
           
               !betap = rho * grid%gravity * grid%beta
               if(n==1)then
                 pres = p + rho0 * grid%gravity * dzz !+  betap * horiz
-                 call wateos(tmp, pres, rho, dw_mol, dwp, &
-                        dum, dum, dum, dum, grid%scale, ierr)
+         !        call wateos(tmp, pres, rho, dw_mol, dwp, &
+         !               dum, dum, dum, dum, grid%scale, ierr)
+                  call nacl_den(tmp, pres*1D-6, xm_nacl, dw_kg) 
+                  rho = dw_kg * 1D3
+                  
 
                else
                do
                 pres = p + (rho0*grid%dz0(n-1) + rho* grid%dz0(n))/(grid%dz0(n)+grid%dz0(n-1))&
                      * grid%gravity * dzz 
-               
-
-                          
-              call wateos(tmp, pres, rho1, dw_mol, dwp, &
-              dum, dum, dum, dum, grid%scale, ierr)
-              if (abs(rho-rho1) < 1.d-6) exit
-              rho = rho1
-              itrho = itrho + 1
-              if (itrho > 100) then
-                print *,' no convergence in hydrostat-stop',itrho,rho1,rho
-                stop
-              endif
-            enddo
+              !  call wateos(tmp, pres, rho1, dw_mol, dwp, &
+              !  dum, dum, dum, dum, grid%scale, ierr)
+                 call nacl_den(tmp, pres*1D-6, xm_nacl, dw_kg) 
+                 rho1 = dw_kg * 1D3
+                if (abs(rho-rho1) < 1.d-6) exit
+                rho = rho1
+                itrho = itrho + 1
+                if (itrho > 100) then
+                  print *,' no convergence in hydrostat-stop',itrho,rho1,rho
+                  stop
+                endif
+              enddo
           endif
      p = pres
      rho0=rho
@@ -904,8 +927,10 @@ subroutine mhydrostatic(grid)
     ibc0 = ibc0 + 1
 
     p = grid%pref
-    call wateos(grid%tref, p, rho0, dw_mol, dwp, &
-    dum, dum, dum, dum, grid%scale, ierr)
+!    call wateos(grid%tref, p, rho0, dw_mol, dwp, &
+!    dum, dum, dum, dum, grid%scale, ierr)
+      call nacl_den(grid%tref, p*1D-6, xm_nacl, dw_kg) 
+      rho0 = dw_kg * 1D3
 
     
     do n = 1, grid%nz
@@ -932,22 +957,30 @@ subroutine mhydrostatic(grid)
       endif
       tmp = grid%tref + grid%dTdz*zz
 
-      call wateos(tmp, p, rho, dw_mol, dwp, &
-                  dum, dum, dum, dum, grid%scale, ierr)
-
+     ! call wateos(tmp, p, rho, dw_mol, dwp, &
+     !             dum, dum, dum, dum, grid%scale, ierr)
+       call nacl_den(tmp, p*1D-6, xm_nacl, dw_kg) 
+       rho = dw_kg * 1D3
             
         itrho= 0
           
               if(n==1)then
                 pres = p + rho0 * grid%gravity * dzz !+  betap * horiz
-                call wateos(tmp, pres, rho, dw_mol, dwp, &
-                  dum, dum, dum, dum, grid%scale, ierr)
+               ! call wateos(tmp, pres, rho, dw_mol, dwp, &
+               !   dum, dum, dum, dum, grid%scale, ierr)
+                call nacl_den(tmp, pres*1D-6, xm_nacl, dw_kg) 
+                rho = dw_kg * 1D3
+
                else
                 do
                   pres = p + (rho0*grid%dz0(n-1) + rho* grid%dz0(n))/(grid%dz0(n)+grid%dz0(n-1))&
                      * grid%gravity * dzz 
-               call wateos(tmp, pres, rho1, dw_mol, dwp, &
-              dum, dum, dum, dum, grid%scale, ierr)
+                  !call wateos(tmp, pres, rho1, dw_mol, dwp, &
+                  !  dum, dum, dum, dum, grid%scale, ierr)
+                   call nacl_den(tmp, pres*1D-6, xm_nacl, dw_kg) 
+                   rho1 = dw_kg * 1D3
+
+              
               if (abs(rho-rho1) < 1.d-6) exit
               rho = rho1
               itrho = itrho + 1
@@ -1082,8 +1115,10 @@ subroutine mhydrostatic(grid)
     grid%i2bc(ibc) = grid%nx
     tmp = grid%tref !+ grid%dTdz * depth
     p = grid%pref !+ rho * grid%gravity * depth
-    call wateos(tmp, grid%pref, rho, dw_mol, dwp, &
-                dum, dum, dum, dum, grid%scale, ierr)
+  !  call wateos(tmp, grid%pref, rho, dw_mol, dwp, &
+  !              dum, dum, dum, dum, grid%scale, ierr)
+      call nacl_den(tmp, grid%pref*1D-6, xm_nacl, dw_kg) 
+      rho = dw_kg * 1D3
 
 !   grid%pressurebc0(1,ibc) = p
 !   grid%tempbc0(ibc) = tmp
