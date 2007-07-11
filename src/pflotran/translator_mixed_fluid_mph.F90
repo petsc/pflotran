@@ -917,7 +917,7 @@
    ! dif= 1.D-7 !effective diffusion coeff in liquid phase: check pcl
 
     xm_nacl = m_nacl * fmwnacl
-    xm_nacl = xm_nacl /(1.D0 + xm_nacl)
+    xm_nacl = xm_nacl /(1.D3 + xm_nacl)
     call nacl_den(t, p*1D-6, xm_nacl, dw_kg) 
     dw_kg = dw_kg * 1D3
     call nacl_vis(t,p*1D-6,xm_nacl,visl)
@@ -936,7 +936,8 @@
 ! Garcia mixing
    x_nacl = m_nacl/(m_nacl + 1D3/fmwh2o)
    
-   avgmw(1)= (xmol(1) -x_nacl)* fmwh2o + x_nacl * fmwnacl + xmol(2)* fmwco2
+   ! xmol(1) = xh2o + xnacl
+   avgmw(1)= (xmol(1) - x_nacl) * fmwh2o + x_nacl * fmwnacl + xmol(2) * fmwco2
    vphi=1D-6*(37.51D0 + t*(-9.585D-2 + t*(8.74D-4 - t*5.044D-7)))
    den(1)=dw_kg/(1D0-(fmwco2*1D-3-dw_kg*vphi)*xmol(2)/(avgmw(1)*1D-3))
    den(1)=den(1)/avgmw(1)

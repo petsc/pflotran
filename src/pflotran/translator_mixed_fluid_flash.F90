@@ -345,7 +345,7 @@
 !   xphi  = 1.d0 ! test-pcl
     
 !    call Henry_CO2_noderiv(xla,tmp,t,p*xmol(4),xphi,henry,co2_poyn)
-    call Henry_duan_sun_0NaCl(p2*1D-5, t,  henry) ! henry = mol/kg/bars
+    call Henry_duan_sun_0NaCl(p2*1D-5, t, henry) ! henry = mol/kg/bars
     
     henry= 1D0 / (fmwh2o *1D-3) / (henry*1D-5 )/xphi 
     
