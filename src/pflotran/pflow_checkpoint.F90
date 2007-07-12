@@ -273,17 +273,17 @@ subroutine pflowGridTHCBinaryOut(grid, kplt)
 
   implicit none
 
-#include "include/finclude/petsc.h"
-#include "include/finclude/petscda.h"
-#include "include/finclude/petscda.h90"
-#include "include/finclude/petscdef.h"
-#include "include/finclude/petscis.h"
-#include "include/finclude/petscis.h90"
-#include "include/finclude/petsclog.h"
-#include "include/finclude/petscsys.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
-#include "include/finclude/petscviewer.h"
+!#include "include/finclude/petsc.h"
+!#include "include/finclude/petscda.h"
+!#include "include/finclude/petscda.h90"
+!#include "include/finclude/petscdef.h"
+!#include "include/finclude/petscis.h"
+!#include "include/finclude/petscis.h90"
+!#include "include/finclude/petsclog.h"
+!#include "include/finclude/petscsys.h"
+!#include "include/finclude/petscvec.h"
+!#include "include/finclude/petscvec.h90"
+!#include "include/finclude/petscviewer.h"
 
 #include "definitions.h"
 
