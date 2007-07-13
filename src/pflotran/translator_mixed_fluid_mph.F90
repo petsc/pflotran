@@ -909,7 +909,7 @@
      end if
 
     
-    call wateos_noderiv(t,pw,dw_kg,dw_mol,hw,energyscale,ierr)
+  !  call wateos_noderiv(t,pw,dw_kg,dw_mol,hw,energyscale,ierr)
    !    call VISW(t,pw,sat_pressure,visl,tmp,tmp2,ierr)
    ! call VISW_FLO(t,dw_mol,visl)
    ! call VISW_noderiv(t,pw,sat_pressure,visl,ierr)
@@ -951,7 +951,7 @@
  call wateos_noderiv(t,pw,dw_kg,dw_mol,hw,energyscale,ierr)
 
     h(1) = hw * xmol(1) + hg*xmol(2) 
-    u(1) = h(1) - pw /den(1)* energyscale
+    u(1) = h(1) - pw /dw_mol* energyscale
     diff(1:num_spec) = dif(1)
     kvr(1) = kr(1)/visl
     !xlw = 1.D0
