@@ -4666,63 +4666,61 @@ subroutine pflowGrid_read_input(grid, inputfile)
             ! Now read the velocities or pressures, depending on the BC type
             call fiReadFlotranString(IUNIT1,string,ierr)
             call fiReadStringErrorMsg('BCON',ierr)
-! due to this commented out loop, the below is left indented - geh
-     !      do j=1, grid%nphase 
    
-              if (grid%use_mph /= PETSC_TRUE .and.  &
-                  grid%use_owg /= PETSC_TRUE .and. &
-                  grid%use_vadose /= PETSC_TRUE .and. &
-                  grid%use_flash /= PETSC_TRUE .and. &
-                  grid%use_richards /= PETSC_TRUE) then  
-                j=1
-                if (grid%nphase>1) j=2
-                if (grid%ibndtyp(ibc) == 1) then 
-                  call fiReadDouble(string, grid%pressurebc0(j,ibc), ierr)
-                  call fiDefaultMsg("Error reading pressure BCs:", ierr)
-                else if (grid%ibndtyp(ibc) == 2) then
-                  call fiReadDouble(string, grid%velocitybc0(j,ibc), ierr)
-                  call fiDefaultMsg("Error reading velocity BCs:", ierr)
-                else if (grid%ibndtyp(ibc) == 4) then
-                  call fiReadDouble(string, grid%velocitybc0(j,ibc), ierr)
-                  call fiDefaultMsg("Error reading velocity BCs:", ierr)  
-                else
-                  call fiReadDouble(string, grid%pressurebc0(j,ibc), ierr)
-                  call fiDefaultMsg("Error reading pressure BCs:", ierr)
-                endif
-                !enddo
-                if (grid%nphase>1) grid%pressurebc0(1,ibc) = &
+            if (grid%use_mph /= PETSC_TRUE .and.  &
+                grid%use_owg /= PETSC_TRUE .and. &
+                grid%use_vadose /= PETSC_TRUE .and. &
+                grid%use_flash /= PETSC_TRUE .and. &
+                grid%use_richards /= PETSC_TRUE) then  
+              j=1
+              if (grid%nphase>1) j=2
+              if (grid%ibndtyp(ibc) == 1) then 
+                call fiReadDouble(string, grid%pressurebc0(j,ibc), ierr)
+                call fiDefaultMsg("Error reading pressure BCs:", ierr)
+              else if (grid%ibndtyp(ibc) == 2) then
+                call fiReadDouble(string, grid%velocitybc0(j,ibc), ierr)
+                call fiDefaultMsg("Error reading velocity BCs:", ierr)
+              else if (grid%ibndtyp(ibc) == 4) then
+                call fiReadDouble(string, grid%velocitybc0(j,ibc), ierr)
+                call fiDefaultMsg("Error reading velocity BCs:", ierr)  
+              else
+                call fiReadDouble(string, grid%pressurebc0(j,ibc), ierr)
+                call fiDefaultMsg("Error reading pressure BCs:", ierr)
+              endif
+
+              if (grid%nphase>1) grid%pressurebc0(1,ibc) = &
                   grid%pressurebc0(2,ibc)
                 ! For simple input
-                call fiReadDouble(string,grid%tempbc0(ibc),ierr)
-                call fiDefaultMsg('tempbc',ierr)
+              call fiReadDouble(string,grid%tempbc0(ibc),ierr)
+              call fiDefaultMsg('tempbc',ierr)
 
-                call fiReadDouble(string,grid%sgbc0(ibc),ierr)
-                call fiDefaultMsg('sgbc',ierr)
-                grid%sgbc0(ibc) = 1.D0 - grid%sgbc0(ibc) ! read in sl
+              call fiReadDouble(string,grid%sgbc0(ibc),ierr)
+              call fiDefaultMsg('sgbc',ierr)
+              grid%sgbc0(ibc) = 1.D0 - grid%sgbc0(ibc) ! read in sl
 
-                call fiReadDouble(string,grid%concbc0(ibc),ierr)
-                call fiDefaultMsg('concbc',ierr)
+              call fiReadDouble(string,grid%concbc0(ibc),ierr)
+              call fiDefaultMsg('concbc',ierr)
       
-              else
+            else
      
-                call fiReadInt(string,grid%iphasebc0(ir),ierr)
-                call fiDefaultMsg('iphase',ierr)
+              call fiReadInt(string,grid%iphasebc0(ir),ierr)
+              call fiDefaultMsg('iphase',ierr)
        
-                if (grid%ibndtyp(ir) == 1 .or. grid%ibndtyp(ir) == 3) then 
-                  do j=1,grid%ndof
-                    call fiReadDouble(string,grid%xxbc0(j,ir),ierr)
-                    call fiDefaultMsg('xxbc',ierr)
-                  enddo
-                elseif (grid%ibndtyp(ir) == 2) then
-                  do j=1, grid%nphase       
-                    call fiReadDouble(string, grid%velocitybc0(j,ir), ierr)
-                    call fiDefaultMsg("Error reading velocity BCs:", ierr)
-                  enddo
-                  do j=2,grid%ndof
-                    call fiReadDouble(string,grid%xxbc0(j,ir),ierr)
-                    call fiDefaultMsg('xxbc',ierr)
-                  enddo
-                endif
+              if (grid%ibndtyp(ir) == 1 .or. grid%ibndtyp(ir) == 3) then 
+                do j=1,grid%ndof
+                  call fiReadDouble(string,grid%xxbc0(j,ir),ierr)
+                  call fiDefaultMsg('xxbc',ierr)
+                enddo
+              elseif (grid%ibndtyp(ir) == 2) then
+                do j=1, grid%nphase       
+                  call fiReadDouble(string, grid%velocitybc0(j,ir), ierr)
+                  call fiDefaultMsg("Error reading velocity BCs:", ierr)
+                enddo
+                do j=2,grid%ndof
+                  call fiReadDouble(string,grid%xxbc0(j,ir),ierr)
+                  call fiDefaultMsg('xxbc',ierr)
+                enddo
+              endif
             endif               
           enddo ! End loop over regions.
         
