@@ -171,8 +171,8 @@
     nxc=nxc/c0; nyc=nyc/c0;nzc=nzc/c0
   
   
-    write(*,'(" Total CO2: liq:",1p, e13.6,&
-   &" gas:",1p, e13.6, " tot:", 1p, 2e13.6, " [kmol]",1p, 3e13.6)') &
+    write(*,'(" Total CO2: t= ",1pe12.4," dt= ",1pe12.4," liq:",1pe13.6,&
+   &" gas:",1pe13.6, " tot:", 1p2e13.6, " [kmol]",1p3e13.6)') &
     grid%t/grid%tconv,grid%dt/grid%tconv,tot(2,1),tot(2,2),tot(2,1)+tot(2,2) !,nzc,nzm,nsm
 ! & grid%t/grid%tconv,tot(2,1),tot(2,2),tot(2,0),tot(2,1)+tot(2,2) !,nzc,nzm,nsm
     if (icall==0) then
