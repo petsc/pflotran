@@ -74,7 +74,7 @@ BCON
   2       2
 :i1  i2  j1  j2  k1  k2
 107  107   1  1   1   51
-:iphase Pressure [Pa] Temp [C]   sl      Conc
+:iphase liqvel gasvel Temp [C]   sl      Conc
     1     0.D0    0.D0        50.0e0     1.e-6
 /
 :ibndtyp iface
@@ -88,8 +88,8 @@ BCON
   2       4
 :i1  i2  j1  j2  k1  k2
   1 107  1   1    51  51
-: iphase     Pressure [Pa] Temp [C]   sl      Conc
-    1         0.D0   0.D0        50.0e0     1.e-6
+: iphase  liqvel gasvel  Temp [C]   sl      Conc
+    1      0.D0   0.D0    50.0e0     1.e-6
 /
 /
 :
