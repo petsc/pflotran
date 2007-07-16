@@ -115,15 +115,15 @@
   
   
      
-    do nc =1,grid%nspec
-      do np=1,grid%nphase
-        sum= sat(np)* xmol((np-1)*grid%nspec +nc)*den(np)
-        tot(nc,np)= pvol*sum + tot(nc,np)
+  do nc =1,grid%nspec
+    do np=1,grid%nphase
+      sum= sat(np)* xmol((np-1)*grid%nspec +nc)*den(np)
+      tot(nc,np)= pvol*sum + tot(nc,np)
       !tot(0,np)=tot(0,np)+tot(nc,np)
       !tot(nc,0)=tot(nc,0)+tot(nc,np)
     enddo
-    enddo
- nullify(sat, den,xmol) 
+  enddo
+  nullify(sat, den,xmol) 
 ! print *,nzc,c0
   enddo
  !  call PETSCBarrier(PETSC_NULL_OBJECT,ierr)
@@ -140,12 +140,12 @@
         MPI_DOUBLE_PRECISION,MPI_SUM,0, PETSC_COMM_WORLD,ierr)
     call MPI_REDUCE(nxc, nxc0,1,&
         MPI_DOUBLE_PRECISION,MPI_SUM,0, PETSC_COMM_WORLD,ierr)
-   call MPI_REDUCE(nyc, nyc0,1,&
+    call MPI_REDUCE(nyc, nyc0,1,&
         MPI_DOUBLE_PRECISION,MPI_SUM,0, PETSC_COMM_WORLD,ierr)
 
     call MPI_REDUCE(nzc, nzc0,1,&
         MPI_DOUBLE_PRECISION,MPI_SUM,0, PETSC_COMM_WORLD,ierr)
-  call MPI_REDUCE(nzm, nzm0,1,&
+    call MPI_REDUCE(nzm, nzm0,1,&
         MPI_DOUBLE_PRECISION,MPI_MIN,0, PETSC_COMM_WORLD,ierr)
     call MPI_REDUCE(nsm, nsm0,1,&
         MPI_DOUBLE_PRECISION,MPI_MIN,0, PETSC_COMM_WORLD,ierr)
@@ -158,21 +158,21 @@
 !       call MPI_BCAST(tot0,(grid%nphase+1)*(grid%nspec+1),&
 !            MPI_DOUBLE_PRECISION, 0,PETSC_COMM_WORLD,ierr)
       enddo
-  enddo
-  if(grid%myrank==0) then
-     tot = tot0; n2p=n2p0;nxc=nxc0;nyc=nyc0;nzc=nzc0;nzm=nzm0;nsm=nsm0;c0=c00 
-  endif   
+    enddo
+    if(grid%myrank==0) then
+      tot = tot0; n2p=n2p0;nxc=nxc0;nyc=nyc0;nzc=nzc0;nzm=nzm0;nsm=nsm0;c0=c00 
+    endif   
   endif 
   
   
   if(grid%myrank==0)then
-   if(c0<1D-6) c0=1.D0
-   nxc=nxc/c0; nyc=nyc/c0;nzc=nzc/c0
+    if(c0<1D-6) c0=1.D0
+    nxc=nxc/c0; nyc=nyc/c0;nzc=nzc/c0
   
   
     write(*,'(" Total CO2: liq:",1p, e13.6,&
    &" gas:",1p, e13.6, " tot:", 1p, 2e13.6, " [kmol]",1p, 3e13.6)') &
-   tot(2,1),tot(2,2),tot(2,0),tot(2,1)+tot(2,2) !,nzc,nzm,nsm
+    tot(2,1),tot(2,2),tot(2,0),tot(2,1)+tot(2,2) !,nzc,nzm,nsm
 ! & grid%t/grid%tconv,tot(2,1),tot(2,2),tot(2,0),tot(2,1)+tot(2,2) !,nzc,nzm,nsm
     if (icall==0) then
       open(unit=13,file='massbal.dat',status='unknown')
@@ -183,7 +183,7 @@
 ! &  " gas:",1pe13.6," tot:",1p2e13.6," [kmol]")')&
 ! & grid%t/grid%tconv,tot(2,1),tot(2,2),tot(2,0),tot(2,1)+tot(2,2)
     write(13,'(1p9e12.4)') grid%t/grid%tconv,grid%dt/grid%tconv,&
-   tot(2,1),tot(2,2),tot(2,1)+tot(2,2),real(n2p),nzc,nzm,nsm 
+    tot(2,1),tot(2,2),tot(2,1)+tot(2,2),real(n2p),nzc,nzm,nsm 
   endif    
   
   
