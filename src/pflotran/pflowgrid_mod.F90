@@ -1007,6 +1007,7 @@ subroutine pflowGrid_destroy(grid)
 ! boundary conditions.
 subroutine pflowGrid_setup(grid, inputfile)
   use hydrostat_module
+  use nhydrostatic_module
   use water_eos_module
   use pflow_vector_ops_module
   use COND_module
@@ -2094,8 +2095,8 @@ subroutine pflowGrid_setup(grid, inputfile)
           grid%use_vadose == PETSC_TRUE .or. &
           grid%use_flash == PETSC_TRUE .or. &
           grid%use_richards == PETSC_TRUE) then
-        print *,'in hydro'
-    !  call mmhydrostatic(grid)
+        print *,'in nhydro'
+      call nhydrostatic(grid)
       endif
     endif
 

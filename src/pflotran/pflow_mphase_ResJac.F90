@@ -2126,6 +2126,7 @@ private
         grid%scale,grid%nphase,grid%nspec, iicap,  dif,&
     var_p((n-1)*size_var_node+1: (n-1)*size_var_node+size_var_use),grid%itable,grid%m_nacl,ierr, dum1, dum2)
    
+   !print *, xx_p((n-1)*grid%ndof+1:n*grid%ndof)
    if(translator_check_phase_cond(iiphase, &
            var_p((n-1)*size_var_node+1: (n-1)*size_var_node+size_var_use),&
        grid%nphase,grid%nspec) /= 1 ) then

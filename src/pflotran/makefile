@@ -50,6 +50,7 @@ pflow_obj = ${common_src}pflow_vector_ops.o \
 	${common_src}pflow_vadose_ResJac.o\
 	${common_src}unstructured_grid.o \
 	${common_src}hydrostat.o \
+	${common_src}nhydrostatic.o \
 	${common_src}pflow_LIQUID.o \
 	${common_src}pflow_COND.o \
 	${common_src}pflow_TH.o \

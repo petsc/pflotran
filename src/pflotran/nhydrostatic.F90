@@ -1,63 +1,123 @@
 
 ! This subroutine works only for stuctured grid 
+module nhydrostatic_module
 
-subroutine Get_Hydrosta_Pres(nz,ndz,dz,pref, tref, p,t,grid,ierr) 
+  use pflow_gridtype_module
+
+private 
+#include "include/finclude/petsc.h"
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
+  ! It is VERY IMPORTANT to make sure that the above .h90 file gets included.
+  ! Otherwise some very strange things will happen and PETSc will give no
+  ! indication of what the problem is.
+#include "include/finclude/petscsys.h"
+#include "include/finclude/petscis.h"
+#include "include/finclude/petscis.h90"
+#include "include/finclude/petsclog.h"
+
+#include "definitions.h"
+
+real*8, parameter ::  fmwnacl = 58.44277D0,  fmwh2o = 18.0153D0
+
+real*8, pointer :: hys_pres(:), hys_temp(:)
+
+public nhydrostatic
+
+contains
+
+subroutine Get_Hydrosta_Pres(nz, dz, pref0, tref, dtdz, gravity, m_nacl) 
   use water_eos_module
   implicit none
   
-  real*8 depth, pref, tref, p, t, dz(1:ndz), dx(1:ndx)
-  integer ndz, nz, ierr
-  
-  !note: ndy and dy list not used for now.
-  
-    call wateos(tref, pref, rho, dw_mol, dwp, &
-                dum, dum, dum, dum, grid%scale, ierr)
-
+  integer nz
+  real*8 pref0, tref, dz(1:nz), dtdz, gravity, m_nacl
+  real*8,save :: pref 
+  data pref/-10.D0/ 
+     
+  integer n, itrho
+  real*8 depth, pres0, tmp, rho0, rho1, rho, pres, dw_kg
+  real*8 dzz,zz, xm_nacl, p 
 ! first go with z
       
+   if(pref==pref0) return   
+      
+     xm_nacl = m_nacl * fmwnacl
+     xm_nacl = xm_nacl /(1.D3 + xm_nacl)
+
+
+      pref=pref0
       depth =0.D0
-      pres0=pref
-      tmp = grdi%tref
-      rho0=rho
-        
-      do n =1, nz
-         if(n==1)
-          depth =  0.5* dz(n)
-         else
-           depth = 0.5d0*(dz(n-1) + dz(n))
-           weight=0.5 
-         endif   
-          tmp = grid%dTdz * depth + tmp
-          weight = dz(n-1)/(dz(n-1) + dz(n))
-         itrho= 0
-        do 
-       ! betap = rho * grid%gravity * grid%beta
-        pres = ((1.D0-weight)*rho+ weight * rho0) * grid%gravity * depth  + pres0! - betap * horiz
-        call wateos(tmp, pres, rho1, dw_mol, dwp, &
-                    dum, dum, dum, dum, grid%scale, ierr)
-        if (abs(rho-rho1) < 1.d-6) exit
-        rho = rho1
-        itrho = itrho + 1
-        if (itrho > 100) then
-          print *,' no convergence in hydrostat-stop',itrho,rho1,rho
-          stop
-        endif
-      enddo
-    pres0=pres; rho0=rho 
-   enddo
-! then go with x direction
- 
-    do  n=1,ndx
-       
-       
-    enddo   
+      pres0= pref
+      tmp = tref
     
+      
+      rho0=rho
+      p=pres0
+      
+    
+    
+      call nacl_den(tmp, p*1D-6, xm_nacl, dw_kg) 
+      rho0 = dw_kg * 1D3
+
+    
+      
+        do n = 1, nz
+           if (n.eq.1) then
+            dzz = 0.5d0*dz(1)
+             zz = dzz
+      else
+        dzz = 0.5d0*(dz(n)+ dz(n-1))
+        zz = zz + dzz
+      endif
+      tmp = tref +  dTdz*zz
+    
+  !   call wateos(tmp, p, rho, dw_mol, dwp, &
+  !    dum, dum, dum, dum, grid%scale, ierr)
+      call nacl_den(tmp, p*1D-6, xm_nacl, dw_kg) 
+      rho = dw_kg * 1D3
+ 
+                  
+        itrho= 0
+          
+              !betap = rho * grid%gravity * grid%beta
+              if(n==1)then
+                pres = p + rho0 * gravity * dzz !+  betap * horiz
+         !        call wateos(tmp, pres, rho, dw_mol, dwp, &
+         !               dum, dum, dum, dum, grid%scale, ierr)
+                  call nacl_den(tmp, pres*1D-6, xm_nacl, dw_kg) 
+                  rho = dw_kg * 1D3
+                  
+
+               else
+               do
+                pres = p + (rho0*dz(n-1) + rho* dz(n))/(dz(n)+dz(n-1))&
+                     * gravity * dzz 
+              !  call wateos(tmp, pres, rho1, dw_mol, dwp, &
+              !  dum, dum, dum, dum, grid%scale, ierr)
+                 call nacl_den(tmp, pres*1D-6, xm_nacl, dw_kg) 
+                 rho1 = dw_kg * 1D3
+                if (abs(rho-rho1) < 1.d-6) exit
+                rho = rho1
+                itrho = itrho + 1
+                if (itrho > 100) then
+                  print *,' no convergence in hydrostat-stop',itrho,rho1,rho
+                  stop
+                endif
+              enddo
+          endif
+     p = pres
+     rho0=rho
+     hys_pres(n)=p ; hys_temp(n)= tmp
+ 
+
+   enddo
 end subroutine  Get_Hydrosta_Pres   
      
     
 
 
-subroutine mmhydrostatic(grid)
+subroutine nhydrostatic(grid)
 
   use water_eos_module
 
@@ -66,13 +126,15 @@ subroutine mmhydrostatic(grid)
   type(pflowGrid), intent(inout) :: grid
   PetscScalar, pointer :: xx_p(:) 
   
-  integer i,ibc,ibc0,ierr,itrho,ireg,j,jm,k,m,n,nl,na !,nx,ny,nz
-  real*8 :: betap,depth,dz1,dz2,horiz,dx1,dx2, &
+  integer  ierr,itrho,i,j,k !,nx,ny,nz
+  real*8 :: betap,depth,dz1,dz2,horiz,dx1,dx2, dw_kg, &
             dum,dwp,rho,rho1,dw_mol,zz,dzz,tmp,pres,p,dp
 
   real*8 :: ibndtyp(grid%nblkbc),cbc(grid%nblkbc),sbc(grid%nblkbc)
   real*8 :: xxbc_rec(grid%ndof,grid%nblkbc),iphasebc_rec(grid%nblkbc)
-
+  real*8 :: rho_ref, xm_nacl, pref
+  
+  integer na,nz, nc, m, nl, ibc
   
   !Vec :: temp1_nat_vec, temp2_nat_vec, temp3_nat_vec, temp4_nat_vec
 
@@ -95,38 +157,55 @@ subroutine mmhydrostatic(grid)
 !  vz = -k/mu (dp/dz - rho g z) = 0
 !  vx = -k/mu dp/dx, h = p/(rho g)
 
+ allocate(hys_pres(grid%nz))
+ allocate(hys_temp(grid%nz))
+
 
   ! this 
   if (grid%iread_init /= 1) then
     call VecGetArrayF90(grid%xx, xx_p, ierr)
 
-    do nl=1, grid%nlmax
-      na=grid%nL2A(nl)+1 ! the natural ordering start from 0
-  !   Get nx,ny,nz
-      nz= int(na/grid%nxy) + 1
-      depth = grid%z(na)
-      horiz = grid%x(na)
-      
-        
-      call Get_Hydrosta_Pres(nz,grid%nz,grid%dz0,grid%pref, grid%tref, pres,tmp,grid,ierr) 
+    !do nl=1, grid%nlmax
+      xm_nacl = grid%m_nacl * fmwnacl
+      xm_nacl = xm_nacl /(1.D3 + xm_nacl)
+       call nacl_den(grid%tref, grid%pref*1D-6, xm_nacl, dw_kg) 
+      rho_ref = dw_kg * 1D3
 
-      xx_p(1+ (nl-1)*grid%ndof)=pres 
-      xx_p(2+ (nl-1)*grid%ndof)=tmp
-        
-    enddo
+     do i=grid%istart,grid%iend
+       
+         do j=grid%jstart,grid%jend
+         do k=grid%kstart,grid%kend
+            
+            nl = 1 + (i-grid%istart) + (j-grid%jstart)*grid%nlx + (k-grid%kstart)*grid%nlxy  
+            na=grid%nL2A(nl)+1 ! the natural ordering start from 0
+        !   Get nx,ny,nz
+            
+            nz= floor(((real(na)-.5))/grid%nxy) + 1
+            
+            
+            depth = grid%z(na)
+            horiz = grid%x(na)
+            dp = rho_ref * grid%gravity * grid%beta * horiz
+            pref =  grid%pref + dp 
+            call Get_Hydrosta_Pres(grid%nz,grid%dz0,pref, grid%tref, grid%dtdz, grid%gravity, grid%m_nacl) 
+            xx_p(1+ (nl-1)*grid%ndof)=hys_pres(nz) 
+            xx_p(2+ (nl-1)*grid%ndof)=hys_temp(nz)
+           ! print *, i,j,k,nl,na,nz, hys_pres(nz), hys_temp(nz)
+           enddo
+         enddo  
+       enddo
     call VecRestoreArrayF90(grid%xx, xx_p, ierr)
   endif
   
   ! boundary conditions
 
   p = grid%pref
-  call wateos(grid%tref, p, rho, dw_mol, dwp, &
-              dum, dum, dum, dum, grid%scale, ierr)
+  
   
   depth = depth + 0.5d0*grid%dz0(grid%nz)
   horiz = horiz + 0.5d0*grid%dx0(grid%nx)
   
-  dp = rho * grid%gravity * grid%beta * horiz
+  dp = rho_ref * grid%gravity * grid%beta * horiz
   
   if (grid%myrank == 0) then
     write(*,'(" --> hydrostatic: length= ",1pe11.4,"[m], depth= ",1pe11.4, &
@@ -139,16 +218,11 @@ subroutine mmhydrostatic(grid)
   !note-bcon must be in the order: 3D-left, right, top, bottom, front, back
   !                                1D-top, bottom
 
-
-
+   call VecGetArrayF90(grid%xx, xx_p, ierr)
   do nc = 1, grid%nconnbc
      m = grid%mblkbc(nc)  ! Note that here, m is NOT ghosted.
       
-    if(ng<=0)then
-      print *, "Wrong boundary node index... STOP!!!"
-      stop
-     end if
-
+  
      ibc= grid%ibconn(nc)
      if(grid%iface(ibc)/=3 .and. grid%iface(ibc)/=4)then
        select case(grid%ibndtyp(ibc))
@@ -159,15 +233,20 @@ subroutine mmhydrostatic(grid)
         case(1) 
           na=grid%nL2A(m)+1
           nz= int(na/grid%nxy) + 1
-          call Get_Hydrosta_Pres(nz,grid%nz,grid%dz0,grid%xxbc0(1,ibc), grid%xxbc0(2,ibc), pres,tmp,grid,ierr)  
-          grid%xxbc(1,nc) = pres
-          grid%xxbc(2,nc) = tmp
+          pref =  grid%pref + dp
+          call Get_Hydrosta_Pres(grid%nz,grid%dz0,pref, grid%tref, grid%dtdz, grid%gravity, grid%m_nacl)  
+          grid%xxbc(1,nc) = hys_pres(nz)
+          grid%xxbc(2,nc) = hys_temp(nz)
        end select 
      ! elseif( grid%iface(ibc)==4 .and. grid%ibndtyp(ibc) == ) then 
       endif
            
   enddo
+ call VecRestoreArrayF90(grid%xx, xx_p, ierr)
  
- end subroutine mmhydrostatic
+ deallocate(hys_pres)
+ deallocate(hys_temp)
 
+ end subroutine nhydrostatic
+end module nhydrostatic_module
 
