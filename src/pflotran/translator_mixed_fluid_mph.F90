@@ -55,12 +55,16 @@
 
 
  subroutine translator_mphase_massbal(grid)
- use pflow_gridtype_module
+ 
+  use pflow_gridtype_module
+  
   implicit none
+  
   type(pflowGrid) :: grid 
   
  
-  integer :: ierr,icall
+  integer, save :: icall
+  integer :: ierr
   integer :: n,n0,nc,np,n2p,n2p0
   real*8 x,y,z,nzm,nzm0, nxc,nxc0,c0, c00,nyc,nyc0,nzc,nzc0,nsm,nsm0,sm 
   integer :: index, size_var_node
@@ -96,35 +100,32 @@
    
     pvol=volume_p(n)*porosity_p(n)         
     if(dabs(iphase_p(n)- 3.D0)<.25D0)then
-   n2p=n2p+1
-     x=grid%x(grid%nL2A(n)+1)
-   y=grid%y(grid%nL2A(n)+1)
-   z=grid%z(grid%nL2A(n)+1)
+      n2p=n2p+1
+      x=grid%x(grid%nL2A(n)+1)
+      y=grid%y(grid%nL2A(n)+1)
+      z=grid%z(grid%nL2A(n)+1)
    
-    if(z<nzm) nzm=z
-   if(sm<sat(2))then
+      if(z<nzm) nzm=z
+      if(sm<sat(2))then
       !print *, n,grid%nL2A(n)+1,x,y,z,sat(2)
-    sm=sat(2);nsm=z
-    endif    
-   c0=c0+sat(2)*pvol
-   nxc=nxc + pvol*sat(2)*x
-   nyc=nyc + pvol*sat(2)*y
-   nzc=nzc + pvol*sat(2)*z
+        sm=sat(2);nsm=z
+      endif    
+      c0=c0+sat(2)*pvol
+      nxc=nxc + pvol*sat(2)*x
+      nyc=nyc + pvol*sat(2)*y
+      nzc=nzc + pvol*sat(2)*z
+    endif
 
-  endif
-  
-  
-     
     do nc =1,grid%nspec
       do np=1,grid%nphase
         sum= sat(np)* xmol((np-1)*grid%nspec +nc)*den(np)
         tot(nc,np)= pvol*sum + tot(nc,np)
-      !tot(0,np)=tot(0,np)+tot(nc,np)
-      !tot(nc,0)=tot(nc,0)+tot(nc,np)
+       !tot(0,np)=tot(0,np)+tot(nc,np)
+       !tot(nc,0)=tot(nc,0)+tot(nc,np)
+      enddo
     enddo
-    enddo
- nullify(sat, den,xmol) 
-! print *,nzc,c0
+    nullify(sat, den,xmol) 
+!   print *,nzc,c0
   enddo
  !  call PETSCBarrier(PETSC_NULL_OBJECT,ierr)
   call VecRestoreArrayF90(grid%var,var_p,ierr)
@@ -140,12 +141,12 @@
         MPI_DOUBLE_PRECISION,MPI_SUM,0, PETSC_COMM_WORLD,ierr)
     call MPI_REDUCE(nxc, nxc0,1,&
         MPI_DOUBLE_PRECISION,MPI_SUM,0, PETSC_COMM_WORLD,ierr)
-   call MPI_REDUCE(nyc, nyc0,1,&
+    call MPI_REDUCE(nyc, nyc0,1,&
         MPI_DOUBLE_PRECISION,MPI_SUM,0, PETSC_COMM_WORLD,ierr)
 
     call MPI_REDUCE(nzc, nzc0,1,&
         MPI_DOUBLE_PRECISION,MPI_SUM,0, PETSC_COMM_WORLD,ierr)
-  call MPI_REDUCE(nzm, nzm0,1,&
+    call MPI_REDUCE(nzm, nzm0,1,&
         MPI_DOUBLE_PRECISION,MPI_MIN,0, PETSC_COMM_WORLD,ierr)
     call MPI_REDUCE(nsm, nsm0,1,&
         MPI_DOUBLE_PRECISION,MPI_MIN,0, PETSC_COMM_WORLD,ierr)
@@ -158,32 +159,32 @@
 !       call MPI_BCAST(tot0,(grid%nphase+1)*(grid%nspec+1),&
 !            MPI_DOUBLE_PRECISION, 0,PETSC_COMM_WORLD,ierr)
       enddo
-  enddo
-  if(grid%myrank==0) then
-     tot = tot0; n2p=n2p0;nxc=nxc0;nyc=nyc0;nzc=nzc0;nzm=nzm0;nsm=nsm0;c0=c00 
-  endif   
+    enddo
+    if(grid%myrank==0) then
+      tot = tot0; n2p=n2p0;nxc=nxc0;nyc=nyc0;nzc=nzc0;nzm=nzm0;nsm=nsm0;c0=c00 
+    endif   
   endif 
   
   
   if(grid%myrank==0)then
-   if(c0<1D-6) c0=1.D0
-   nxc=nxc/c0; nyc=nyc/c0;nzc=nzc/c0
+    if(c0<1D-6) c0=1.D0
+    nxc=nxc/c0; nyc=nyc/c0;nzc=nzc/c0
   
   
     write(*,'(" Total CO2: liq:",1p, e13.6,&
    &" gas:",1p, e13.6, " tot:", 1p, 2e13.6, " [kmol]",1p, 3e13.6)') &
-   tot(2,1),tot(2,2),tot(2,0),tot(2,1)+tot(2,2) !,nzc,nzm,nsm
+    grid%t/grid%tconv,grid%dt/grid%tconv,tot(2,1),tot(2,2),tot(2,1)+tot(2,2) !,nzc,nzm,nsm
 ! & grid%t/grid%tconv,tot(2,1),tot(2,2),tot(2,0),tot(2,1)+tot(2,2) !,nzc,nzm,nsm
     if (icall==0) then
       open(unit=13,file='massbal.dat',status='unknown')
-      write(13,*) '# time   dt   totl   totg   tot n2p'
+      write(13,'(''# time   dt   totl   totg   tot n2p'')')
       icall = 1
     endif
 !   write(13,'(" Total CO2: t=",1pe13.6," liq:",1pe13.6,&
 ! &  " gas:",1pe13.6," tot:",1p2e13.6," [kmol]")')&
 ! & grid%t/grid%tconv,tot(2,1),tot(2,2),tot(2,0),tot(2,1)+tot(2,2)
     write(13,'(1p9e12.4)') grid%t/grid%tconv,grid%dt/grid%tconv,&
-   tot(2,1),tot(2,2),tot(2,1)+tot(2,2),real(n2p),nzc,nzm,nsm 
+    tot(2,1),tot(2,2),tot(2,1)+tot(2,2),real(n2p),nzc,nzm,nsm 
   endif    
   
   
@@ -202,44 +203,44 @@
    real*8, pointer :: t,p,satu(:),den(:), avgmw(:),h(:),u(:),pc(:),&
                       kvr(:),xmol(:),diff(:)
       
-  real*8 sum     
+   real*8 sum     
     
-  ibase=1;               t=>var_node(ibase)
-  ibase=ibase+1;         p=>var_node(ibase)
-  ibase=ibase+1;         satu=>var_node(ibase:ibase+num_phase-1)
-  ibase=ibase+num_phase; den=>var_node(ibase:ibase+num_phase-1)
-  ibase=ibase+num_phase; avgmw=>var_node(ibase:ibase+num_phase-1)
-  ibase=ibase+num_phase; h=>var_node(ibase:ibase+num_phase-1)
-  ibase=ibase+num_phase; u=>var_node(ibase:ibase+num_phase-1)
-  ibase=ibase+num_phase; pc=>var_node(ibase:ibase+num_phase-1)
-  ibase=ibase+num_phase; kvr=>var_node(ibase:ibase+num_phase-1)
-  ibase=ibase+num_phase; xmol=>var_node(ibase:ibase+num_phase*num_spec-1)
-  ibase=ibase+num_phase*num_spec; diff=>var_node(ibase:ibase+num_phase*num_spec-1)
+   ibase=1;               t=>var_node(ibase)
+   ibase=ibase+1;         p=>var_node(ibase)
+   ibase=ibase+1;         satu=>var_node(ibase:ibase+num_phase-1)
+   ibase=ibase+num_phase; den=>var_node(ibase:ibase+num_phase-1)
+   ibase=ibase+num_phase; avgmw=>var_node(ibase:ibase+num_phase-1)
+   ibase=ibase+num_phase; h=>var_node(ibase:ibase+num_phase-1)
+   ibase=ibase+num_phase; u=>var_node(ibase:ibase+num_phase-1)
+   ibase=ibase+num_phase; pc=>var_node(ibase:ibase+num_phase-1)
+   ibase=ibase+num_phase; kvr=>var_node(ibase:ibase+num_phase-1)
+   ibase=ibase+num_phase; xmol=>var_node(ibase:ibase+num_phase*num_spec-1)
+   ibase=ibase+num_phase*num_spec; diff=>var_node(ibase:ibase+num_phase*num_spec-1)
    
    succ=1
-  if(iphase ==3)then
-    do np =1, num_phase
-    if(satu(np)>1D0-eps .or.satu(np)<eps)then
-     succ=-1  
-       print *, 'phase=',iphase,satu(1:2)
-     endif
-    enddo
-  endif
+   if(iphase ==3)then
+     do np =1, num_phase
+       if(satu(np)>1D0-eps .or.satu(np)<eps)then
+         succ=-1  
+         print *, 'phase=',iphase,satu(1:2)
+       endif
+     enddo
+   endif
   
-  if(iphase ==1 .or. iphase==2)then
-    do np =1, num_phase
-    sum=0D0
-    do nc = 1, num_spec
-     sum =sum + xmol((np-1)*num_spec+nc)
-    enddo 
-    if(sum > 1.D0+eps)then
-     succ=-1 
-     print *,'phase=',iphase,sum,xmol(1:4)
-     endif 
-    enddo
-  endif
-  nullify(t, p, satu, den, avgmw, h,u, pc,kvr,xmol,diff)     
- translator_check_phase_cond = succ
+   if(iphase ==1 .or. iphase==2)then
+     do np =1, num_phase
+       sum=0D0
+       do nc = 1, num_spec
+         sum =sum + xmol((np-1)*num_spec+nc)
+       enddo 
+       if(sum > 1.D0+eps)then
+         succ=-1 
+         print *,'phase=',iphase,sum,xmol(1:4)
+       endif 
+     enddo
+   endif
+   nullify(t, p, satu, den, avgmw, h,u, pc,kvr,xmol,diff)     
+   translator_check_phase_cond = succ
  end function translator_check_phase_cond
 
 
