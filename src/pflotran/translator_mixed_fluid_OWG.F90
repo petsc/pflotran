@@ -35,10 +35,9 @@
 ! phase index 1.e; 2. l; 3. g
 ! within each phase component index : 1. H2O; 2. CO2; 3. Air
 
-    
- public  pri_var_trans_owg_ninc,pri_var_trans_owg_winc , &
-         translator_owg_check_phase_cond,translator_owg_step_maxchange,&
-     translator_owg_massbal,translator_owg_switching
+ public pri_var_trans_owg_ninc,pri_var_trans_owg_winc, &
+ translator_owg_check_phase_cond,translator_owg_step_maxchange,&
+ translator_owg_massbal,translator_owg_switching
   
  real*8, private, parameter:: fmwh2o = 18.0153D0, fmwa = 28.96D0, &
                               fmwco2 = 44.0098D0, fmwoil= 142.D0
@@ -60,7 +59,8 @@
   type(pflowGrid) :: grid 
   
  
-  integer :: ierr,icall
+  integer :: ierr
+  integer,save :: icall
   integer :: n,n0,nc,np
   integer :: index, size_var_node
      
@@ -196,7 +196,7 @@
     enddo
   endif
   nullify(t, p, satu, den, avgmw, h,u, pc,kvr,xmol,diff)     
- translator_owg_check_phase_cond = succ
+  translator_owg_check_phase_cond = succ
  end function translator_owg_check_phase_cond
 
 
@@ -207,15 +207,16 @@
   
 
   PetscScalar, pointer :: xx_p(:), yy_p(:), iphase_p(:),var_p(:),iphase_old_p(:)
-  real*8 :: dsm,dcm, comp1,comp, cmp  
+! real*8 :: dsm,dcm
+  real*8 :: comp1,comp,cmp  
   real*8 :: dsm0,dcm0  
   integer n, j, iipha
 
-   call VecWAXPY(grid%dxx,-1.d0,grid%xx,grid%yy,ierr)
-    call VecStrideNorm(grid%dxx,0,NORM_INFINITY,grid%dpmax,ierr)
-   ! call VecStrideNorm(grid%dxx,1,NORM_INFINITY,grid%dtmpmax,ierr)
+  call VecWAXPY(grid%dxx,-1.d0,grid%xx,grid%yy,ierr)
+  call VecStrideNorm(grid%dxx,0,NORM_INFINITY,grid%dpmax,ierr)
+! call VecStrideNorm(grid%dxx,1,NORM_INFINITY,grid%dtmpmax,ierr)
  
-    grid%dtmpmax =0.D0
+  grid%dtmpmax =0.D0
   
   call VecGetArrayF90(grid%xx, xx_p, ierr); CHKERRQ(ierr)
   call VecGetArrayF90(grid%yy, yy_p, ierr); CHKERRQ(ierr)
@@ -283,28 +284,31 @@
 
 
   subroutine Translator_OWG_Switching(xx,t,grid,icri,ichange,ierr)
+  
   use pflow_gridtype_module
-    use water_eos_module
-    use gas_eos_module  
-    use co2eos_module
-    use span_wagner_module
+  use water_eos_module
+  use gas_eos_module  
+  use co2eos_module
+  use span_wagner_module
 
   implicit none
   
   type(pflowGrid), intent(inout) :: grid
   Vec, intent(in) :: xx
-  integer icri,ichange, itable, ierr 
+  integer icri,ichange,ierr 
+! integer itable,index,i
 
   PetscScalar, pointer :: xx_p(:), yy_p(:),iphase_p(:)
-  integer :: n,n0,index,ipr
-  integer :: iipha,i 
-  real*8 :: p2,p,tmp,t, xla
+  integer :: n,n0,ipr
+  integer :: iipha 
+  real*8 :: p2,p,tmp,t,xla
   real*8 :: dg,dddt,dddp,fg,dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp
-  real*8 :: ug,  xphi,henry,co2_poyn
-  real*8 :: xmol(grid%nphase*grid%nspec ),satu(grid%nphase) 
+  real*8 :: ug,xphi,co2_poyn
+  real*8 :: xmol(grid%nphase*grid%nspec),satu(grid%nphase) 
   real*8 :: x(1:grid%ndof)
-  real*8 :: m11,m12, m21, m22, mb1, mb2, mm
-  real*8 :: Henry_co2_oil, Henry_co2_water
+  real*8 :: m11,m12,m21,m22,mb1,mb2,mm
+  real*8 :: Henry_co2_water
+! real*8 :: henry,Henry_co2_oil
   
  !print *, ' Translator_OWG_Switching begin'
 ! mphase code need assemble 
@@ -856,10 +860,10 @@
 
 
 
-  subroutine pri_var_trans_owg_ninc_3_3(x,tref,iphase,energyscale,num_phase,num_spec,&
-                    ipckrtype,pckr_sir,pckr_lambda,pckr_alpha,&
-                    pckr_m,pckr_pcmax,pckr_betac,pckr_pwr,dif,&
-          var_node,itable,ierr)
+  subroutine pri_var_trans_owg_ninc_3_3(x,tref,iphase,energyscale,num_phase,&
+            num_spec,ipckrtype,pckr_sir,pckr_lambda,pckr_alpha,&
+            pckr_m,pckr_pcmax,pckr_betac,pckr_pwr,dif,&
+            var_node,itable,ierr)
 ! xgw: water molar fraction in gas phase
 ! P/Pa, t/(Degree Centigreed), Pc/Pa, Hen(xla=Hen*xga, dimensionless)
  
@@ -871,47 +875,51 @@
     use oil_pckr_module
   
     implicit none
-    integer :: num_phase,num_spec,num_pricomp
+    
+!   integer :: num_pricomp
+    integer :: num_phase,num_spec
     integer :: size_var_use
-    real*8 energyscale, tref
-    real*8,target:: var_node(:)
+    real*8 :: energyscale,tref
+    real*8,target :: var_node(:)
     integer :: iphase,itable,ierr
     integer :: ipckrtype !, ithrmtype
     
-    real*8  :: pckr_sir(1:num_phase),pckr_lambda,pckr_alpha,pckr_m,pckr_pcmax,pckr_betac,pckr_pwr
-    real*8  :: dif(1:num_phase)
-  real*8 :: x(1:num_spec)
-  real*8 :: m11,m12, m21, m22, mb1, mb2,mm
+    real*8 :: pckr_sir(1:num_phase),pckr_lambda,pckr_alpha,pckr_m, &
+              pckr_pcmax,pckr_betac,pckr_pwr
+    real*8 :: dif(1:num_phase)
+    real*8 :: x(1:num_spec)
+    real*8 :: m11,m12, m21, m22, mb1, mb2,mm
 
   
      
   real*8, pointer :: p,t
-  real*8, pointer:: den(:),h(:),u(:),avgmw(:),pc(:),kvr(:)
-    real*8, pointer :: diff(:),xmol(:),satu(:)
+  real*8, pointer :: den(:),h(:),u(:),avgmw(:),pc(:),kvr(:)
+  real*8, pointer :: diff(:),xmol(:),satu(:)
   integer ibase 
-    real*8 err
+! real*8 err,p1,co2_phi,henry,stea,dsteamol,dstea_p,dstea_t, &
+! hstea,hstea_p,hstea_t,pckr_swir,Henry_co2_oil,
   
-  real*8 p1,p2,tmp
+  real*8 p2,tmp
   real*8 pw,dw_kg,dw_mol,hw,sat_pressure,vis_w,xphi
-  real*8 dg,dddt,dddp,fg, dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp
+  real*8 dg,dddt,dddp,fg,dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp
   real*8 ug
-  real*8 co2_phi, henry,co2_poyn
-    real*8 stea,dsteamol,dstea_p,dstea_t, hstea,hstea_p,hstea_t,dstea
-  real*8 den_oil, h_oil, visc_oil
-  real*8 kr(num_phase), pckr_swir
+  real*8 co2_poyn
+! real*8 dstea
+  real*8 den_oil,h_oil,visc_oil
+  real*8 kr(num_phase)
   
   real*8 xla,vphi
-    real*8 :: Henry_co2_oil, Henry_co2_water, x1, x2
+  real*8 :: Henry_co2_water, x1, x2
 
   
   
    
-   size_var_use = 2 + 7*num_phase + 2* num_phase*num_spec 
+  size_var_use = 2 + 7*num_phase + 2* num_phase*num_spec 
     !print *, 'pri_var_trans_owg_3-3 begin', num_phase, num_spec, size_var_use
    
-    ibase=1;               t=>var_node(ibase)
-  ibase=ibase+1;           p=>var_node(ibase)
-  ibase=ibase+1;           satu=>var_node(ibase:ibase+num_phase-1)
+  ibase=1;               t=>var_node(ibase)
+  ibase=ibase+1;         p=>var_node(ibase)
+  ibase=ibase+1;         satu=>var_node(ibase:ibase+num_phase-1)
   ibase=ibase+num_phase; den=>var_node(ibase:ibase+num_phase-1)
   ibase=ibase+num_phase; avgmw=>var_node(ibase:ibase+num_phase-1)
   ibase=ibase+num_phase; h=>var_node(ibase:ibase+num_phase-1)
@@ -1167,7 +1175,7 @@
     kvr(2)=kr(2)/ tmp
   !print *, 'trans vis', kvr, xmol
   
-  nullify(t, p, satu, den, avgmw, h,u, pc,kvr,xmol,diff)
+   nullify(t, p, satu, den, avgmw, h,u, pc,kvr,xmol,diff)
  end subroutine pri_var_trans_owg_ninc_3_3
   
 
@@ -1183,42 +1191,44 @@
 
 
  
- subroutine pri_var_trans_owg_ninc(x,iphase,energyscale,num_phase,num_spec,&
-                    ipckrtype,pckr_sir,pckr_lambda,pckr_alpha,&
-                    pckr_m,pckr_pcmax,pckr_betac,pckr_pwr,dif,&
-          var_node,itable,ierr,phi_co2, tref)
+ subroutine pri_var_trans_owg_ninc(x,iphase,energyscale,num_phase, &
+            num_spec,ipckrtype,pckr_sir,pckr_lambda,pckr_alpha,&
+            pckr_m,pckr_pcmax,pckr_betac,pckr_pwr,dif,&
+            var_node,itable,ierr,phi_co2,tref)
 ! xgw: water molar fraction in gas phase
 ! P/Pa, t/(Degree Centigreed), Pc/Pa, Hen(xla=Hen*xga, dimensionless)
  
-    implicit none
-    integer :: num_phase,num_spec,num_pricomp
-    integer :: size_var_use
+  implicit none
+  integer :: num_phase,num_spec
+  integer :: size_var_use
   real*8 x(:),energyscale
-    real*8 var_node(1:2 + 7*num_phase + 2* num_phase*num_spec)
+  real*8 var_node(1:2 + 7*num_phase + 2* num_phase*num_spec)
   real*8 :: dif(:)
   integer ::iphase, itable,ierr
   integer :: ipckrtype !, ithrmtype
-     
+! integer :: num_pricomp
     
-    real*8 :: pckr_sir(:),pckr_lambda,pckr_alpha,pckr_m,pckr_pcmax,pckr_betac,pckr_pwr 
-    real*8 :: phi_co2
+  real*8 :: pckr_sir(:),pckr_lambda,pckr_alpha,pckr_m,pckr_pcmax, &
+            pckr_betac,pckr_pwr 
+  real*8 :: phi_co2
   
   real*8 :: xphi_co2=1.D0
   real*8 :: tref
   
 
-    size_var_use = 2 + 7*num_phase + 2* num_phase*num_spec
-    if((num_phase == 3).and.( num_spec ==3)) then
+  size_var_use = 2 + 7*num_phase + 2* num_phase*num_spec
+  if((num_phase == 3).and.( num_spec ==3)) then
    ! print *, 'pri_var_trans_owg_ninc begin 3-3',x, tref,iphase
-     call pri_var_trans_owg_ninc_3_3( x,tref,iphase,energyscale,num_phase,num_spec,&
-                    ipckrtype,pckr_sir,pckr_lambda,pckr_alpha,&
-                    pckr_m,pckr_pcmax,pckr_betac,pckr_pwr,dif,&
-          var_node,itable,ierr)
+     call pri_var_trans_owg_ninc_3_3(x,tref,iphase,energyscale, &
+     num_phase,num_spec,&
+     ipckrtype,pckr_sir,pckr_lambda,pckr_alpha,&
+     pckr_m,pckr_pcmax,pckr_betac,pckr_pwr,dif,&
+     var_node,itable,ierr)
   !print *, 'pri_var_trans_owg_ninc end 3-3',  var_node      
-    else 
-   print *, 'Wrong phase-specise combination. Stop.'
-   stop
-   endif
+  else 
+    print *, 'Wrong phase-specise combination. Stop.'
+    stop
+  endif
   end subroutine pri_var_trans_owg_ninc   
   
   

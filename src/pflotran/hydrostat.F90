@@ -694,14 +694,16 @@ subroutine mhydrostatic(grid)
   type(pflowGrid), intent(inout) :: grid
   PetscScalar, pointer :: xx_p(:) 
   
-  integer i,ibc,ibc0,ierr,itrho,ireg,j,jm,k,m,n,nl,na !,nx,ny,nz
-  real*8 :: betap,depth,dz1,dz2,horiz,dx1,dx2, rho0,&
-            dum,dwp,rho,rho1,dw_mol,zz,dzz,tmp,pres,p,dp
+  integer ibc,ibc0,ierr,itrho,ireg,n,nl,na
+! integer :: i,j,jm,k,m,
+  real*8 :: betap,depth,horiz,dx1,dx2,rho0,&
+            rho,rho1,zz,dzz,tmp,pres,p,dp
 
-  real*8 :: ibndtyp(grid%nblkbc),cbc(grid%nblkbc),sbc(grid%nblkbc)
+  real*8 :: ibndtyp(grid%nblkbc) !,cbc(grid%nblkbc),sbc(grid%nblkbc)
   real*8 :: xxbc_rec(grid%ndof,grid%nblkbc),iphasebc_rec(grid%nblkbc)
   real*8 :: xm_nacl, dw_kg
 
+! real*8 :: dz1,dz2,dum,dwp,dw_mol,
   !Vec :: temp1_nat_vec, temp2_nat_vec, temp3_nat_vec, temp4_nat_vec
 
 !#include "definitions.h"
@@ -1185,14 +1187,15 @@ subroutine owghydrostatic(grid)
   type(pflowGrid), intent(inout) :: grid
   PetscScalar, pointer :: xx_p(:) 
   
-  integer i,ibc,ibc0,ierr,itrho,ireg,j,jm,k,m,n,nl,na !,nx,ny,nz
-  real*8 :: betap,depth,dz1,dz2,horiz,dx1,dx2, &
+  integer ibc,ibc0,ierr,itrho,ireg,n,nl,na
+! integer :: i,j,jm,k,m
+  real*8 :: betap,depth,horiz,dx1,dx2, &
             dum,dwp,rho,rho1,dw_mol,zz,dzz,tmp,pres,p,dp
 
-  real*8 :: ibndtyp(grid%nblkbc),cbc(grid%nblkbc),sbc(grid%nblkbc)
+  real*8 :: ibndtyp(grid%nblkbc) !,cbc(grid%nblkbc),sbc(grid%nblkbc)
   real*8 :: xxbc_rec(grid%ndof,grid%nblkbc),iphasebc_rec(grid%nblkbc)
 
-
+! real*8 :: dz1,dz2
   !Vec :: temp1_nat_vec, temp2_nat_vec, temp3_nat_vec, temp4_nat_vec
 
 !#include "definitions.h"

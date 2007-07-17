@@ -4375,7 +4375,8 @@ end subroutine pflow_2phase_initadj
   type(pflowGrid) :: grid 
   
  
-  integer :: ierr,icall
+  integer :: ierr
+  integer,save :: icall
   integer*4 :: n
   integer*4 :: j, jn
   integer*4 :: ii1,ii2,iicap

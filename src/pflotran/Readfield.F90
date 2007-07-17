@@ -215,7 +215,8 @@ subroutine Read_Geom_field(grid)
   integer iln,na,nx,ny,nz,ir,ierr
   real*8 ::  xc,yc,zc,vc
   real*8 ::  px,py,pz, por, tor
-  real*8 ::  area, x,y,z, dist1, dist2, grav_ang
+  real*8 ::  area, dist1, dist2, grav_ang
+! real*8 ::  x,y,z
   character*4 card, word
   ! character(len=MAXSTRINGLENGTH) :: string 
 

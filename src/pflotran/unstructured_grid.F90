@@ -54,14 +54,14 @@ subroutine ReadUnstructuredGrid(grid)
   integer :: natural_id_upwind, natural_id_downwind
   integer :: local_id_upwind, local_id_downwind
   integer :: local_ghosted_id_upwind, local_ghosted_id_downwind
-  integer :: number_of_times
+! integer :: number_of_times
   integer :: count1, count2, irecv, i
   real*8 :: xcoord, ycoord, zcoord, xperm, yperm, zperm
   real*8 :: area, distance, distance_upwind, distance_downwind, cosB
   real*8 :: volume, porosity, tortuosity
   real*8 :: dx, dy, dz, delz
   character(len=MAXCARDLENGTH) :: card
-  character(len=MAXWORDLENGTH) :: bctype
+! character(len=MAXWORDLENGTH) :: bctype
   character(len=MAXWORDLENGTH) :: time_unit
   character(len=MAXSTRINGLENGTH) :: filename
   integer :: direction, icond, icondition
@@ -614,24 +614,27 @@ subroutine ReadMaterials(grid)
   character(len=MAXSTRINGLENGTH) :: string 
  
   PetscScalar, pointer :: perm_xx_p(:),perm_yy_p(:),perm_zz_p(:),por_p(:), &
-                          tor_p(:), volume_p(:), icap_p(:), temp_ptr(:)
+                          tor_p(:), volume_p(:), icap_p(:) !, temp_ptr(:)
   PetscTruth :: option_found
   integer fid, iostatus, ierr
-  integer :: connection_id, material_id, natural_id, local_id, local_ghosted_id
-  integer :: natural_id_upwind, natural_id_downwind
-  integer :: local_id_upwind, local_id_downwind
-  integer :: local_ghosted_id_upwind, local_ghosted_id_downwind
-  integer :: number_of_times
-  integer :: count1, count2, irecv, i
+  integer :: material_id, natural_id, local_id, local_ghosted_id
+! integer :: connection_id
+! integer :: natural_id_upwind, natural_id_downwind
+! integer :: local_id_upwind, local_id_downwind
+! integer :: local_ghosted_id_upwind, local_ghosted_id_downwind
+! integer :: number_of_times
+  integer :: count1, count2, i
+! integer :: irecv
   real*8 :: xcoord, ycoord, zcoord, xperm, yperm, zperm
-  real*8 :: area, distance, distance_upwind, distance_downwind, cosB
+! real*8 :: area, distance, distance_upwind, distance_downwind, cosB
   real*8 :: volume, porosity, tortuosity
-  real*8 :: dx, dy, dz, delz
+! real*8 :: dx, dy, dz, delz
   character(len=MAXCARDLENGTH) :: card
-  character(len=MAXWORDLENGTH) :: bctype
+! character(len=MAXWORDLENGTH) :: bctype
   character(len=MAXWORDLENGTH) :: time_unit
   character(len=MAXSTRINGLENGTH) :: filename
-  integer :: direction, icond, icondition
+! integer :: direction, icond
+  integer :: icondition
   real*8 :: time, value, time_multiplier
   PetscLogDouble :: time0, time1
   type(condition_type), pointer :: new_condition
@@ -957,13 +960,15 @@ subroutine ReadMaterials2(grid)
   PetscTruth :: option_found
   integer fid, iostatus, ierr
   integer :: material_id, natural_id, local_id, local_ghosted_id
-  integer :: number_of_times
-  integer :: count1, count2, irecv, i
+! integer :: number_of_times
+  integer :: count1, count2, i
+! integer :: irecv
   real*8 :: xcoord, ycoord, zcoord
   character(len=MAXCARDLENGTH) :: card
   character(len=MAXWORDLENGTH) :: time_unit
   character(len=MAXSTRINGLENGTH) :: filename
-  integer :: direction, icond, icondition
+! integer :: direction, icond
+  integer :: icondition
   real*8 :: time, value, time_multiplier
   PetscLogDouble :: time0, time1
   type(condition_type), pointer :: new_condition

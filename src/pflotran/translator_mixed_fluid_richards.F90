@@ -39,8 +39,10 @@ module translator_Richards_module
 ! within each phase component index : 1. H2O; 2. CO2; 3. Air
 
     
-  public  pri_var_trans_Richards_ninc,pri_var_trans_Richards_winc ,translator_Ric_step_maxchange, &
-          translator_Richards_get_output,translator_check_cond_Richards,translator_Richards_massbal, &
+  public  pri_var_trans_Richards_ninc,pri_var_trans_Richards_winc, &
+          translator_Ric_step_maxchange, &
+          translator_Richards_get_output,translator_check_cond_Richards, &
+          translator_Richards_massbal, &
           Translator_Richards_Switching
      
      
@@ -65,20 +67,25 @@ subroutine translator_Richards_massbal(grid)
   type(pflowGrid) :: grid 
   
  
-  integer :: ierr,icall
-  integer :: n,n0,nc,np,n2p,n2p0
-  real*8 x,y,z,nzm,nzm0, nxc,nxc0,c0, c00,nyc,nyc0,nzc,nzc0,nsm,nsm0,sm 
-  integer :: index, size_var_node
-     
-  PetscScalar, pointer ::  var_p(:),&
-                           porosity_p(:), volume_p(:)
-                           
-  PetscScalar, pointer ::iphase_p(:)
+  integer :: ierr
+  integer,save :: icall
+  integer :: n,n0,nc,np
+! real*8 :: nsm,nsm0,sm 
+  integer :: index,size_var_node
   
-  real*8 ::  pvol,sum
-  real*8, pointer ::  den(:),sat(:),xmol(:)
+! real*8 :: x,y,z,c0,c00,
+  
+! integer :: n2p,n2p0,nzm,nzm0,nxc,nxc0,nyc,nyc0,nzc,nzc0,
+     
+  PetscScalar, pointer :: var_p(:),porosity_p(:),volume_p(:)
+                           
+  PetscScalar, pointer :: iphase_p(:)
+  
+  real*8 :: pvol,sum
+  real*8, pointer :: den(:),sat(:),xmol(:)
  
-  real*8 :: tot(0:grid%nspec,0:grid%nphase), tot0(0:grid%nspec,0:grid%nphase)  
+  real*8 :: tot(0:grid%nspec,0:grid%nphase), tot0(0:grid%nspec,0:grid%nphase)
+  
   data icall/0/
 
   call VecGetArrayF90(grid%var,var_p,ierr)
@@ -154,18 +161,20 @@ subroutine translator_Richards_massbal(grid)
 end subroutine translator_Richards_massbal
 
 
-integer function translator_check_cond_Richards(iphase, var_node,num_phase,num_spec)
+integer function translator_check_cond_Richards(iphase, &
+  var_node,num_phase,num_spec)
 
   implicit none
 
-  integer iphase, num_phase, num_spec
-  real*8, target:: var_node(:)
+  integer iphase,num_phase,num_spec
+  real*8, target :: var_node(:)
     
-  integer ibase,succ,np,nc
+  integer ibase,succ,np
+! integer nc
   real*8, pointer :: t,p,satu(:),den(:), avgmw(:),h(:),u(:),pc(:),&
                      kvr(:),xmol(:),diff(:)
       
-  real*8 sum
+! real*8 sum
     
   ibase=1;               t=>var_node(ibase)
   ibase=ibase+1;         p=>var_node(ibase)
@@ -206,7 +215,7 @@ subroutine translator_Richards_get_output(grid)
   
   PetscScalar, pointer :: t_p(:),p_p(:),c_p(:),s_p(:),cc_p(:),var_P(:)
   integer :: n, index_var_begin ,jn, size_var_node
-  PetscScalar, pointer :: p,t,satu(:),xmol(:)
+! PetscScalar, pointer :: p,t,satu(:),xmol(:)
   
   call VecGetArrayF90(grid%var, var_p, ierr)
   call VecGetArrayF90(grid%pressure, p_p, ierr)
@@ -256,10 +265,12 @@ subroutine translator_Ric_step_maxchange(grid)
   type(pflowGrid), intent(inout) :: grid
   
 
-  PetscScalar, pointer :: xx_p(:), yy_p(:), iphase_p(:),var_p(:),iphase_old_p(:)
-  real*8 :: dsm,dcm, comp1,comp, cmp  
-  real*8 :: dsm0,dcm0  
-  integer :: n, j, n0, ierr
+! PetscScalar, pointer :: xx_p(:),yy_p(:),iphase_p(:),var_p(:),iphase_old_p(:)
+! real*8 :: dsm,dcm
+! real*8 :: comp1,comp,cmp  
+! real*8 :: dsm0,dcm0  
+! integer :: n, j, n0
+  integer :: ierr
 
   grid%dcmax=0.D0
   grid%dsmax=0.D0
@@ -288,12 +299,16 @@ subroutine Translator_Richards_Switching(xx,grid,icri,ichange)
   integer :: icri,ichange 
 
   PetscScalar, pointer :: xx_p(:), yy_p(:),iphase_p(:)
-  integer :: n,n0,index,ipr
-  integer :: ierr,iipha,i 
-  real*8 :: p2,p,tmp,t, xla, sat_pressure
-  real*8 :: dg,dddt,dddp,fg,dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp
-  real*8 :: ug,xphi,henry,co2_poyn
-  real*8 :: xmol(grid%nphase*grid%nspec ),satu(grid%nphase) 
+  integer :: n,n0,ipr
+  integer :: ierr,iipha
+! integer :: index,i
+  
+  real*8 :: p2,p,tmp,t, sat_pressure
+  real*8 :: dg,fg,hg,visg
+  real*8 :: ug,xphi,henry
+  real*8 :: xmol(grid%nphase*grid%nspec),satu(grid%nphase)
+  
+! real*8 :: xla,dddt,dddp,dfgdp,dfgdt,eng,dhdt,dhdp,dvdt,dvdp,co2_poyn
 
 ! mphase code need assemble 
   call VecGetArrayF90(xx, xx_p, ierr); CHKERRQ(ierr)
@@ -551,14 +566,17 @@ subroutine pri_var_trans_Richards_ninc_2_2(x,iphase,energyscale,num_phase,num_sp
   real*8, pointer :: xmol(:),satu(:),diff(:)
   integer :: ibase 
   
-  real*8 :: p1,p2,tmp, pref
-  real*8 :: pw,dw_kg,dw_mol,hw,sat_pressure,visl,xphi, dco2
-  real*8 :: dg,dddt,dddp,fg, dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp
-  real*8 :: ug
-  real*8 :: co2_phi, henry,co2_poyn
-  real*8 :: stea,dsteamol,dstea_p,dstea_t, hstea,hstea_p,hstea_t,dstea
-  real*8 :: kr(num_phase), pckr_swir
-  real*8 :: err,xla,vphi
+! real*8 :: p1,p2,tmp
+  real*8 :: pref
+  real*8 :: pw,dw_kg,dw_mol,hw,sat_pressure,visl
+! real*8 :: fg,dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp
+! real*8 :: ug
+! real*8 :: co2_poyn
+! real*8 :: stea,dsteamol,dstea_p,dstea_t,hstea,hstea_p,hstea_t,dstea
+  real*8 :: kr(num_phase)
+! real*8 :: err,xla,vphi
+  
+! real*8 :: xphi,dco2,dg,dddt,dddp,co2_phi,henry,pckr_swir,
 
   
   size_var_use = 2 + 7*num_phase + 2* num_phase*num_spec
@@ -656,7 +674,8 @@ subroutine pri_var_trans_Richards_ninc(x,iphase,energyscale,num_phase,num_spec, 
  
   implicit none
   
-  integer :: num_phase,num_spec,num_pricomp
+  integer :: num_phase,num_spec
+! integer :: num_pricomp
   integer :: size_var_use
   real*8 :: x(1:num_spec+1),energyscale
   real*8 :: var_node(1:2 + 7*num_phase + 2* num_phase*num_spec)

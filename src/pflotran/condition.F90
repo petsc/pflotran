@@ -268,10 +268,11 @@ subroutine UpdateBoundaryConditions(grid)
 
   logical :: use_eos
   integer :: iconnbc, icond, itype, icap, ierr
-  real*8 :: value,delz, delp
-  real*8 :: patm = 101325.d0, tref, pref, sref, cref
+  real*8 :: value
+! real*8 :: delz, delp, pref, sref
+  real*8 :: patm = 101325.d0, tref, cref
   real*8 :: datum_coord(3), cell_coord(3)
-  real*8 :: kr(2), pc(2)
+! real*8 :: kr(2), pc(2)
   PetscScalar, pointer :: icap_p(:)
 
   call UpdateConditions(grid%t)
@@ -361,7 +362,7 @@ subroutine ComputeInitialCondition(grid, icondition)
   real*8 :: cell_coord(3), datum_coord(3)
   real*8 :: pref, tref, sref, value
   real*8 :: patm = 101325.d0
-  real*8 :: pc(2), kr(2)
+! real*8 :: pc(2), kr(2)
   PetscScalar, pointer :: xx_p(:), iphase_p(:), icap_p(:)
   
   do icond = 1, num_conditions

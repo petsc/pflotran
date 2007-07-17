@@ -63,7 +63,8 @@ contains
   Vec :: c_nat, c_seq, por_nat, por_seq, pk_nat, pk_seq, rte_nat, rte_seq
   VecScatter :: scatter
 
-  integer :: i,ibrk,icall,ierr,iflgam,ii,ix,j,jj,jy,k,kplt,kz,n,nn,fid,nr
+  integer :: i,ibrk,ierr,iflgam,ii,ix,j,jj,jy,k,kplt,kz,n,nn,fid,nr
+  integer, save :: icall
   character(len=20) :: fname
   character(len=1) :: q
   real*8 :: xi, yj, zk
@@ -75,8 +76,6 @@ contains
                      cc0(:),cx0(:),gam0(:),gamx0(:),dgamdi(:),ph(:)
   
   data icall/1/
-  
-  save icall
 
 ! -----------------------------------------
   
@@ -825,7 +824,8 @@ contains
   Vec :: c_nat, c_seq, por_nat, por_seq, pk_nat, pk_seq, rte_nat, rte_seq
   VecScatter :: scatter
 
-  integer :: i,ibrk,icall,ierr,iflgam,ii,ix,j,jj,jy,k,kplt,kz,n,nn,fid,nr
+  integer :: i,ibrk,ierr,iflgam,ii,ix,j,jj,jy,k,kplt,kz,n,nn,fid,nr
+  integer,save :: icall
   character(len=20) :: fname
   character(len=1) :: q
   real*8 :: xi, yj, zk
@@ -838,8 +838,6 @@ contains
   real*8, allocatable :: snpsi(:), snpsig(:)  
   
   data icall/1/
-  
-  save icall
 
 ! -----------------------------------------
   

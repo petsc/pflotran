@@ -251,7 +251,7 @@
   
   PetscScalar, pointer :: t_p(:),p_p(:),c_p(:),s_p(:),cc_p(:),var_P(:)
   integer n, index_var_begin ,jn, size_var_node
-  PetscScalar, pointer :: p,t,satu(:),xmol(:)
+! PetscScalar, pointer :: p,t,satu(:),xmol(:)
   
   call VecGetArrayF90(grid%var, var_p, ierr)
   call VecGetArrayF90(grid%pressure, p_p, ierr)
@@ -297,9 +297,11 @@
   
 
   PetscScalar, pointer :: xx_p(:), yy_p(:), iphase_p(:),var_p(:),iphase_old_p(:)
-  real*8 :: dsm,dcm, comp1,comp, cmp  
+  real*8 :: comp1,comp,cmp  
+! real*8 :: dsm,dcm  
   real*8 :: dsm0,dcm0  
-  integer n, j
+  integer n
+! integer j
 
    call VecWAXPY(grid%dxx,-1.d0,grid%xx,grid%yy,ierr)
     call VecStrideNorm(grid%dxx,0,NORM_INFINITY,grid%dpmax,ierr)
@@ -369,12 +371,14 @@
   integer icri,ichange 
 
   PetscScalar, pointer :: xx_p(:), yy_p(:),iphase_p(:)
-  integer :: n,n0,index,ipr
-  integer :: ierr,iipha,i 
-  real*8 :: p2,p,tmp,t, xla
+  integer :: n,n0,ipr
+  integer :: ierr,iipha 
+! integer :: index,i
+  real*8 :: p2,p,tmp,t
   real*8 :: dg,dddt,dddp,fg,dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp
-  real*8 :: ug,xphi,henry,co2_poyn, sat_pressure
-  real*8 :: xmol(grid%nphase*grid%nspec ),satu(grid%nphase) 
+  real*8 :: ug,xphi,henry,sat_pressure
+  real*8 :: xmol(grid%nphase*grid%nspec),satu(grid%nphase)
+! real*8 :: xla,co2_poyn
 
 ! mphase code need assemble 
   call VecGetArrayF90(xx, xx_p, ierr); CHKERRQ(ierr)
@@ -632,12 +636,13 @@
 
 
     implicit none
-    integer :: num_phase,num_spec,num_pricomp
+    integer :: num_phase,num_spec
     integer :: size_var_use
     real*8 x(1:num_spec+1),energyscale
     real*8,target:: var_node(:)
     integer :: iphase,itable,ierr
     integer :: ipckrtype !, ithrmtype
+!   integer :: num_pricomp
     
     real*8  :: pckr_sir(:),pckr_lambda,pckr_alpha,pckr_m,pckr_pcmax,pckr_betac,pckr_pwr
     real*8  :: dif(:)
@@ -646,12 +651,12 @@
      
   real*8, pointer :: t,p
   real*8, pointer:: den(:),h(:),u(:),avgmw(:),pc(:),kvr(:)
-    real*8, pointer :: diff(:),xmol(:),satu(:)
+  real*8, pointer :: diff(:),xmol(:),satu(:)
   integer ibase 
-    real*8 err
+! real*8 err
 
-   size_var_use = 2 + 7*num_phase + 2* num_phase*num_spec 
-    ibase=1;               t=>var_node(ibase)
+  size_var_use = 2 + 7*num_phase + 2* num_phase*num_spec 
+  ibase=1;               t=>var_node(ibase)
   ibase=ibase+1;           p=>var_node(ibase)
   ibase=ibase+1;           satu=>var_node(ibase:ibase+num_phase-1)
   ibase=ibase+num_phase; den=>var_node(ibase:ibase+num_phase-1)
@@ -710,37 +715,39 @@
 
     implicit none
     integer :: num_phase,num_spec, itable, ierr
-  integer :: size_var_use 
+    integer :: size_var_use 
     real*8 x(1:num_spec+1),energyscale
     real*8, target:: var_node(:)
-  integer ::iphase
-  integer :: ipckrreg !, ithrmtype
-     real*8 :: dif(:)
+    integer ::iphase
+    integer :: ipckrreg !, ithrmtype
+    real*8 :: dif(:)
 
    
  !   integer size_var_node = (grid%ndof+1)*size_var_use
 
-    real*8, pointer :: t ,p
+  real*8, pointer :: t ,p
   real*8, pointer :: den(:),h(:),u(:),avgmw(:),pc(:),kvr(:)
-    real*8, pointer :: xmol(:),satu(:),diff(:)
-    integer ibase 
+  real*8, pointer :: xmol(:),satu(:),diff(:)
+  integer ibase 
   
-    real*8 p1,p2,tmp
-  real*8 pw,dw_kg,dw_mol,hw,sat_pressure,visl,xphi, dco2
-  real*8 dg,dddt,dddp,fg, dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp
+! real*8 p1,tmp,co2_phi,co2_poyn,stea,dstea_p,dstea_t,hstea_p,hstea_t,dstea
+! real*8 pckr_swir,xla
+  real*8 p2
+  real*8 pw,dw_kg,dw_mol,hw,sat_pressure,visl,xphi,dco2
+  real*8 dg,dddt,dddp,fg,dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp
   real*8 ug
-  real*8 co2_phi, henry,co2_poyn, m_nacl
-    real*8 stea,dsteamol,dstea_p,dstea_t, hstea,hstea_p,hstea_t,dstea
-  real*8 kr(num_phase), pckr_swir
-  real*8 err,xla,vphi, xm_nacl, x_nacl
+  real*8 henry,m_nacl
+  real*8 dsteamol,hstea
+  real*8 kr(num_phase)
+  real*8 err,vphi,xm_nacl,x_nacl
 
   
   size_var_use = 2 + 7*num_phase + 2* num_phase*num_spec
   !pckr_swir=pckr_sir(1)
   
-      ibase=1;               t=>var_node(ibase)
-  ibase=ibase+1;           p=>var_node(ibase)
-  ibase=ibase+1;           satu=>var_node(ibase:ibase+num_phase-1)
+  ibase=1;               t=>var_node(ibase)
+  ibase=ibase+1;         p=>var_node(ibase)
+  ibase=ibase+1;         satu=>var_node(ibase:ibase+num_phase-1)
   ibase=ibase+num_phase; den=>var_node(ibase:ibase+num_phase-1)
   ibase=ibase+num_phase; avgmw=>var_node(ibase:ibase+num_phase-1)
   ibase=ibase+num_phase; h=>var_node(ibase:ibase+num_phase-1)
@@ -748,7 +755,8 @@
   ibase=ibase+num_phase; pc=>var_node(ibase:ibase+num_phase-1)
   ibase=ibase+num_phase; kvr=>var_node(ibase:ibase+num_phase-1)
   ibase=ibase+num_phase; xmol=>var_node(ibase:ibase+num_phase*num_spec-1)
-  ibase=ibase+num_phase*num_spec; diff=>var_node(ibase:ibase+num_phase*num_spec-1)
+  ibase=ibase+num_phase*num_spec;
+  diff=>var_node(ibase:ibase+num_phase*num_spec-1)
 
 
   select case(iphase)
@@ -1031,16 +1039,17 @@
 ! xgw: water molar fraction in gas phase
 ! P/Pa, t/(Degree Centigreed), Pc/Pa, Hen(xla=Hen*xga, dimensionless)
  
-    implicit none
-    integer :: num_phase,num_spec,num_pricomp
-    integer :: size_var_use
+  implicit none
+  integer :: num_phase,num_spec
+! integer :: num_pricomp
+  integer :: size_var_use
   real*8 x(1:num_spec+1),energyscale
-    real*8 var_node(1:2 + 7*num_phase + 2* num_phase*num_spec)
+  real*8 var_node(1:2 + 7*num_phase + 2* num_phase*num_spec)
   real*8 :: dif(:), m_nacl
   integer ::iphase, itable,ierr
   integer :: ipckrreg !, ithrmtype
        
-    real*8, optional :: phi_co2, den_co2  
+  real*8, optional :: phi_co2, den_co2  
   real*8 :: xphi_co2=1.D0, denco2=1.D0
   
   

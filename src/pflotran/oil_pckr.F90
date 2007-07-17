@@ -15,12 +15,13 @@ module oil_pckr_module
   contains 
 
 subroutine oil_pckr_init(myrank)
-   use fileio_module
+
+  use fileio_module
    
-   integer myrank
+  integer myrank
 #include "definitions.h"
   character(len=MAXSTRINGLENGTH) :: string 
-  character(len=MAXWORDLENGTH) :: word, strtim
+  character(len=MAXWORDLENGTH) :: word !, strtim
   character(len=MAXCARDLENGTH) :: card
 
   open(60, file="3ph_perm.in", action="read", status="old")
@@ -95,9 +96,10 @@ subroutine oil_pckr_init(myrank)
     real*8 :: pc(1:3),kr(1:3)
     real*8 :: pckr_beta
 
-    real*8 :: se_w,se_t,se,swir,sw0,lam,ala,um,un,upc,upc_s
-    real*8 :: temp,pcmax,ser
-    real*8 :: uum,pckr_betac,betac,st, pckr_un, m_r
+    real*8 :: se_w,se_t,swir,sw0
+    real*8 :: pcmax
+    real*8 :: pckr_betac,pckr_un, m_r
+!   real*8 :: lam,ala,se,um,un,upc,upc_s,temp,ser,uum,betac,st
 
     ! if(present(pckr_beta))
       pckr_betac=pckr_beta

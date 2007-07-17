@@ -39,9 +39,10 @@ module oil_eos_module
     real*8, intent(out) :: h
     integer, intent(out) :: ierr
     
-    real*8  Pc,Tc,w
-    real*8  a,b,alaph
-    real*8  x_light, Tk
+!   real*8  Pc,Tc,w
+!   real*8  a,b,alaph
+!   real*8  Tk
+    real*8  x_light
 
     ierr = 0
     x_light=1.D0- x_mid- x_heavy

@@ -36,15 +36,16 @@
 ! within each phase component index : 1. H2O; 2. CO2; 3. Air
 
     
- public  pri_var_trans_flash_ninc,pri_var_trans_flash_winc ,translator_flash_step_maxchange, &
+ public  pri_var_trans_flash_ninc,pri_var_trans_flash_winc, &
+         translator_flash_step_maxchange, &
          flash_check_phase_cond,translator_flash_massbal
          
           
  real*8, private, parameter :: fmwh2o = 18.0153D0, fmwa = 28.96D0, &
-                              fmwco2 = 44.0098D0
- real*8, private, parameter :: eps=5D-7 , formeps=1D-5
- real*8, private, parameter ::yh2o_in_co2=1D-2   
- real*8, private, parameter :: rgasj   = 8.3143    ![J/K/mol]
+                               fmwco2 = 44.0098D0
+ real*8, private, parameter :: eps=5D-7, formeps=1D-5
+ real*8, private, parameter :: yh2o_in_co2=1D-2   
+ real*8, private, parameter :: rgasj = 8.3143    ![J/K/mol]
 
  contains
 
@@ -59,7 +60,8 @@
   type(pflowGrid) :: grid 
   
  
-  integer :: ierr,icall
+  integer :: ierr
+  integer,save :: icall
   integer :: n,n0,nc,np,n2p,n2p0
   real*8 x,y,z,nzm,nzm0, nxc,nxc0,c0, c00,nyc,nyc0,nzc,nzc0,nsm,nsm0,sm 
   integer :: index, size_var_node
@@ -244,19 +246,20 @@
 
 
  subroutine translator_flash_step_maxchange(grid)
-   use pflow_gridtype_module
-   type(pflowGrid), intent(inout) :: grid
+  use pflow_gridtype_module
+  type(pflowGrid), intent(inout) :: grid
   
 
-  PetscScalar, pointer :: xx_p(:), yy_p(:), iphase_p(:),var_p(:),iphase_old_p(:)
-  real*8 :: dsm,dcm, comp1,comp, cmp  
-  real*8 :: dsm0,dcm0  
-  integer n, j
+! PetscScalar, pointer :: xx_p(:), yy_p(:), iphase_p(:),var_p(:),iphase_old_p(:)
+! real*8 :: dsm,dcm,comp1,comp,cmp  
+! real*8 :: dsm0,dcm0  
+! integer n
+! integer j
 
-   call VecWAXPY(grid%dxx,-1.d0,grid%xx,grid%yy,ierr)
-    call VecStrideNorm(grid%dxx,0,NORM_INFINITY,grid%dpmax,ierr)
-    call VecStrideNorm(grid%dxx,1,NORM_INFINITY,grid%dtmpmax,ierr)
-    call VecStrideNorm(grid%dxx,2,NORM_INFINITY,grid%dcmax,ierr)
+  call VecWAXPY(grid%dxx,-1.d0,grid%xx,grid%yy,ierr)
+  call VecStrideNorm(grid%dxx,0,NORM_INFINITY,grid%dpmax,ierr)
+  call VecStrideNorm(grid%dxx,1,NORM_INFINITY,grid%dtmpmax,ierr)
+  call VecStrideNorm(grid%dxx,2,NORM_INFINITY,grid%dcmax,ierr)
   grid%dsmax =0.D0
    
     !   print *, 'max change',grid%dpmax,grid%dtmpmax,grid%dsmax,grid%dcmax
@@ -278,32 +281,34 @@
 
     implicit none
     integer :: num_phase,num_spec, itable, ierr
-  integer :: size_var_use 
-    real*8 x(1:num_spec+1),energyscale
-    real*8, target:: var_node(:)
-  integer ::iphase
-  integer :: ipckrreg !, ithrmtype
+    integer :: size_var_use 
+    real*8 :: x(1:num_spec+1),energyscale
+    real*8, target :: var_node(:)
+    integer :: iphase
+    integer :: ipckrreg !, ithrmtype
    
     real*8 :: dif(:)
 
    
- !   integer size_var_node = (grid%ndof+1)*size_var_use
+ !  integer size_var_node = (grid%ndof+1)*size_var_use
 
     real*8, pointer :: t ,p
-  real*8, pointer :: den(:),h(:),u(:),avgmw(:),pc(:),kvr(:)
+    real*8, pointer :: den(:),h(:),u(:),avgmw(:),pc(:),kvr(:)
     real*8, pointer :: xmol(:),satu(:),diff(:)
     integer ibase 
   
-    real*8 p1,p2,tmp, temp1
+  real*8 p2,tmp,temp1
   real*8 pw,dw_kg,dw_mol,hw,sat_pressure,visl,xphi, dco2
-  real*8 dg,fg, eng,hg,visg
-  real*8 ug, dddt,dddp, dfgdp,dfgdt, dhdt,dhdp, dvdt,dvdp
-  real*8 co2_phi, henry,co2_poyn
-    real*8 stea,dsteamol,dstea_p,dstea_t, hstea,hstea_p,hstea_t,dstea
-  real*8 kr(num_phase), pckr_swir
-  real*8 err,xla,vphi
+  real*8 dg,fg,eng,hg,visg
+  real*8 ug,dddt,dddp,dfgdp,dfgdt,dhdt,dhdp, dvdt,dvdp
+  real*8 henry
+  real*8 dsteamol,hstea
+  real*8 kr(num_phase)
+  real*8 xla,vphi
 
-  
+! real*8 :: p1,co2_phi,co2_poyn,stea,dstea_p,dstea_t,hstea_p,hstea_t,dstea
+! real*8 :: err,pckr_swir
+
   size_var_use = 2 + 7*num_phase + 2* num_phase*num_spec
   !pckr_swir=pckr_sir(1)
   
@@ -522,7 +527,8 @@
 ! P/Pa, t/(Degree Centigreed), Pc/Pa, Hen(xla=Hen*xga, dimensionless)
  
   implicit none
-  integer :: num_phase,num_spec,num_pricomp
+  integer :: num_phase,num_spec
+! integer :: num_pricomp
   integer :: size_var_use
   real*8 x(1:num_spec+1),energyscale
   real*8 var_node(1:2 + 7*num_phase + 2* num_phase*num_spec)

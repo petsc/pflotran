@@ -126,14 +126,17 @@ subroutine nhydrostatic(grid)
   type(pflowGrid), intent(inout) :: grid
   PetscScalar, pointer :: xx_p(:) 
   
-  integer  ierr,itrho,i,j,k !,nx,ny,nz
-  real*8 :: betap,depth,dz1,dz2,horiz,dx1,dx2, dw_kg, &
-            dum,dwp,rho,rho1,dw_mol,zz,dzz,tmp,pres,p,dp
+! integer :: itrho
+  integer  ierr,i,j,k
+  real*8 :: depth,horiz,dw_kg,p,dp
+!           dum,dwp,rho,rho1,dw_mol,zz,dzz,tmp,pres,
+            
 
-  real*8 :: ibndtyp(grid%nblkbc),cbc(grid%nblkbc),sbc(grid%nblkbc)
-  real*8 :: xxbc_rec(grid%ndof,grid%nblkbc),iphasebc_rec(grid%nblkbc)
+! real*8 :: ibndtyp(grid%nblkbc),cbc(grid%nblkbc),sbc(grid%nblkbc)
+! real*8 :: xxbc_rec(grid%ndof,grid%nblkbc),iphasebc_rec(grid%nblkbc)
   real*8 :: rho_ref, xm_nacl, pref
   
+! real*8 :: betap,dz1,dz2,dx1,dx2, 
   integer na,nz, nc, m, nl, ibc
   
   !Vec :: temp1_nat_vec, temp2_nat_vec, temp3_nat_vec, temp4_nat_vec
