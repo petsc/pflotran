@@ -1230,18 +1230,21 @@ end subroutine pflow_output
   integer, intent(inout) :: iplot, kplt
    
   Vec :: vl_nat, vl_all 
-  real*8, pointer :: p_p(:), t_p(:), xx_p(:), phis_p(:), vl_p(:), var_p(:)
-  real*8, pointer :: x_p(:), iphase_p(:)
-  real*8, pointer :: fldflx(:), fldvol(:)
+! real*8, pointer :: p_p(:), t_p(:), phis_p(:), x_p(:)
+  real*8, pointer :: xx_p(:), vl_p(:), var_p(:)
+  real*8, pointer :: iphase_p(:)
+! real*8, pointer :: fldflx(:), fldvol(:)
   real*8 xxx(1:grid%ndof)
   real*8, allocatable:: vvar(:), vavel(:, :)
   integer :: nxm1,nym1,nzm1, ndex, na, nv
-  integer :: ierr,mm, nvar_out, status(MPI_STATUS_SIZE)
-  integer :: i,ip,j,jn,k,ibrk,n,nc,nn, ipha, jj, ifound
-  
-  real*8 :: tyr, sum1, sum2, sum1v, sum2v, area, vol, vel, vf, iipha
+  integer :: ierr,nvar_out, status(MPI_STATUS_SIZE)
+  integer :: i,ip,j,jn,k,n,nc,ipha, jj, ifound
+! integer :: mm,ibrk,nn 
+  real*8 :: tyr
+! real*8 :: sum1, sum2, sum1v, sum2v, area, vol, vel, vf
+  real*8 :: iipha
   integer, save :: icall, icall_brk, icall_plt
-   VecScatter :: scat_3npdof
+  VecScatter :: scat_3npdof
   character(len=20) :: fname
   character*3 :: q
   character*1 :: tab

@@ -84,10 +84,11 @@
  implicit none
  type(pflowGrid) :: grid 
  KSPConvergedReason :: ksp_reason
- integer  newton,isucc,ierr,ichange
- integer icut, its_line
+ integer :: newton,isucc,ierr,ichange
+ integer :: its_line
+!integer icut
  MatStructure flag
- real*8 rnorm
+ real*8 :: rnorm
  
  newton=0
  

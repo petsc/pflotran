@@ -1062,7 +1062,7 @@ subroutine pflowGrid_setup(grid, inputfile)
   Vec :: temp0_nat_vec, temp1_nat_vec, temp2_nat_vec, temp3_nat_vec, &
           temp4_nat_vec !,temp5_nat_vec,temp6_nat_vec,temp7_nat_vec
   
-  PetscViewer :: viewer
+! PetscViewer :: viewer
   Vec :: temp_vec
 
   PetscTruth :: option_found ! For testing presence of a command-line option.
