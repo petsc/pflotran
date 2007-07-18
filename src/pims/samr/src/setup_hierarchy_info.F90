@@ -6,6 +6,7 @@ subroutine f_setup_hierarchy_data(pgrid)
  implicit none
  
 #include "include/finclude/petsc.h"
+#include "../../definitions.h"
 
  external pflow_setup_index
  type(pflowGrid), pointer :: pgrid
@@ -50,5 +51,8 @@ subroutine f_setup_hierarchy_data(pgrid)
         endif
      end do
   end do
+
+  allocate(pgrid%ibndtyp(MAXBCREGIONS))
+  allocate(pgrid%iface(MAXBCREGIONS))
 
 end subroutine f_setup_hierarchy_data
