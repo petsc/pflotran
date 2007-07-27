@@ -1216,6 +1216,7 @@ private
 
  enddo
  
+ r_p(:)=r_p(:)/grid%dt
  
 !  print *,'finished BC'
  do n = 1, grid%nlmax
@@ -1649,6 +1650,7 @@ private
   !  print *,'Mph Jaco max dev = ', max_dev
  !  endif
   
+  ra =ra/ grid%dt 
   if (grid%iblkfmt == 0) then
      p1=(na1)*grid%ndof
    do ii=0,grid%ndof-1
@@ -1766,7 +1768,8 @@ private
      blkmat11 = 0.D0; blkmat12 = 0.D0; blkmat21 = 0.D0; blkmat22 = 0.D0;
    endif
    p1=(na1)*grid%ndof;p2=(na2)*grid%ndof
-     do ii=0,grid%ndof-1
+    ra=ra/grid%dt
+      do ii=0,grid%ndof-1
        do jj=0,grid%ndof-1
           if(n1>0) then
              if (grid%iblkfmt == 0) then

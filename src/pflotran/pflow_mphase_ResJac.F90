@@ -1286,6 +1286,10 @@ private
 
  enddo
  
+
+! adjust residual to R/dt
+
+ r_p(:) = r_p(:)/grid%dt
  
  ! print *,'finished BC'
  do n = 1, grid%nlmax
@@ -1719,13 +1723,15 @@ private
   
   if (grid%iblkfmt == 0) then
      p1=(na1)*grid%ndof
-   do ii=0,grid%ndof-1
+     ra(1:grid%ndof,1:grid%ndof) =ra(1:grid%ndof,1:grid%ndof) /grid%dt
+    do ii=0,grid%ndof-1
       do jj=0,grid%ndof-1
         call MatSetValue(A,p1+ii,p1+jj,ra(ii+1,jj+1)/ volume_p(n),ADD_VALUES,ierr)
       enddo
      enddo
    else
-     blkmat11=ra(1:grid%ndof,1:grid%ndof)
+     ra(1:grid%ndof,1:grid%ndof) =ra(1:grid%ndof,1:grid%ndof) /grid%dt
+      blkmat11=ra(1:grid%ndof,1:grid%ndof)
     
     if(volume_p(n)>1.D0 ) blkmat11=blkmat11 / volume_p(n)
    
@@ -1834,6 +1840,7 @@ private
      blkmat11 = 0.D0; blkmat12 = 0.D0; blkmat21 = 0.D0; blkmat22 = 0.D0;
    endif
    p1=(na1)*grid%ndof;p2=(na2)*grid%ndof
+    ra =ra / grid%dt
      do ii=0,grid%ndof-1
        do jj=0,grid%ndof-1
           if(n1>0) then
