@@ -64,6 +64,7 @@ pflow_obj = ${common_src}pflow_vector_ops.o \
 	${common_src}vectompizero.o \
 	${common_src}pflow_output.o \
 	${common_src}pflow_checkpoint.o \
+    ${common_src}pflow_output_new.o \
 	${common_src}pflowgrid_mod.o
 
 ptran_obj = ${common_src}ptran_psi.o \

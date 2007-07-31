@@ -273,7 +273,7 @@ endif
   grid%dsmxe = 5.d0
   grid%dcmxe = 5.d0
 
-  !physical constants
+  !physical constants and defult variables
   grid%difaq = 1.d-9 ! m^2/s read from input file
   grid%delhaq = 12.6d0 ! kJ/mol read from input file
   grid%gravity = 9.8068d0    ! m/s^2
@@ -284,6 +284,51 @@ endif
 
   allocate(grid%steady_eps(ndof))
   grid%steady_eps = -1.D0
+
+ ! initialize default values  
+  grid%m_nacl =0.D0  ! default brine concentration
+  
+ ! default output variables
+  if(grid%use_2ph == PETSC_TRUE .or. grid%use_mph == PETSC_TRUE &
+              .or. grid%use_vadose == PETSC_TRUE &
+              .or. grid%use_flash == PETSC_TRUE )then
+    grid%var_plot_num = 11
+    allocate(grid%var_plot_nm(11))
+    grid%var_plot_nm(1) = 'x'
+    grid%var_plot_nm(2) = 'y'
+    grid%var_plot_nm(3) = 'z'
+    grid%var_plot_nm(4) = 'iphase'
+    grid%var_plot_nm(5) = 'pl'
+    grid%var_plot_nm(6) = 'pg'
+    grid%var_plot_nm(7) = 'temp'
+    grid%var_plot_nm(8) = 'Sg'
+    grid%var_plot_nm(9) = 'Xg_Aq'
+    grid%var_plot_nm(10) = 'Xg_G'
+    grid%var_plot_nm(11) = 'Vf'
+    if(grid%use_mph == PETSC_TRUE &
+              .or. grid%use_vadose == PETSC_TRUE &
+              .or. grid%use_flash == PETSC_TRUE) then 
+      allocate(grid%var_plot_ind(5:10))  
+      grid%var_plot_ind(5)= 2
+      grid%var_plot_ind(6)= -5
+      grid%var_plot_ind(7)= 1
+         
+    endif
+  else 
+    grid%var_plot_num = 8
+    allocate(grid%var_plot_nm(8))
+    grid%var_plot_nm(1) = 'x'
+    grid%var_plot_nm(2) = 'y'
+    grid%var_plot_nm(3) = 'z'
+    grid%var_plot_nm(4) = 'p'
+    grid%var_plot_nm(5) = 'T'
+    grid%var_plot_nm(6) = 'Sl'
+    grid%var_plot_nm(7) = 'Conc'
+    grid%var_plot_nm(8) = 'Vf'
+ endif 
+
+
+
   !-----------------------------------------------------------------------
   ! Generate the DA objects that will manage communication.
   !-----------------------------------------------------------------------
@@ -3077,7 +3122,6 @@ subroutine pflowGrid_step(grid,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
   use translator_vad_module, only : translator_vad_step_maxchange
   use translator_flash_module, only : translator_flash_step_maxchange
   use translator_Richards_module, only : translator_ric_step_maxchange
-  use pflow_output_module
   use TTPHASE_module
   use MPHASE_module
   use Flash_module
@@ -3721,8 +3765,31 @@ subroutine pflowGrid_read_input(grid, inputfile)
   integer :: ibc, ibrk, ir,np
   
   
- 
-  grid%m_nacl =0.D0
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
   open(IUNIT1, file=inputfile, action="read", status="old")
   
   do

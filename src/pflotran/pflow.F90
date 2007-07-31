@@ -32,6 +32,7 @@
   use pflow_grid_module
   use pflow_read_gridsize_module
   use pflow_output_module
+  use pflow_output_module_new
   use span_wagner_module
   use pflow_checkpoint
   
@@ -145,7 +146,7 @@
 ! call VecView(grid%conc,PETSC_VIEWER_STDOUT_WORLD,ierr)
 
   if(grid%use_owg/=PETSC_TRUE) then
-    call pflow_output(grid,kplt,iplot)
+    call pflow_output_new(grid,kplt,iplot)
   else
     call pflow_var_output(grid,kplt,iplot)
   endif
@@ -210,7 +211,7 @@
 
     call PetscLogStagePush(stage(2), ierr)
     if(grid%use_owg/=PETSC_TRUE) then
-      call pflow_output(grid,kplt,iplot)
+      call pflow_output_new(grid,kplt,iplot)
      ! print *,'XX ::...........'; call VecView(grid%xx,PETSC_VIEWER_STDOUT_WORLD,ierr)
     else
       call pflow_var_output(grid,kplt,iplot)
