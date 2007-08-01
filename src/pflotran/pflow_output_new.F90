@@ -15,9 +15,9 @@ private
 #include "include/finclude/petsclog.h"
 #include "include/finclude/petscsys.h"
 #include "include/finclude/petscviewer.h"
-#include "include/finclude/petscbag.h"
-#if (PETSC_VERSION_RELEASE == 0 || PETSC_VERSION_SUBMINOR == 3)
 
+#if (PETSC_VERSION_RELEASE == 0 || PETSC_VERSION_SUBMINOR == 3)
+#include "include/finclude/petscbag.h"
 
   Interface PetscBagGetData
     Subroutine PetscBagGetData(bag,ctx,ierr)
@@ -53,9 +53,10 @@ private
   type(pflowGrid), intent(inout) :: grid
   integer, intent(inout) :: iplot, kplt
   PetscViewer viewer
+#if (PETSC_VERSION_RELEASE == 0 || PETSC_VERSION_SUBMINOR == 3)
   PetscBag bag
   type(pflowChkPtHeader), pointer :: header
-
+#endif
 
   real*8, pointer :: p_p(:), t_p(:), c_p(:), phis_p(:), vl_p(:), s_p(:)
   real*8, pointer :: x_p(:), iphase_p(:), xx_p(:), var_p(:), var_plot_p(:)
@@ -124,7 +125,7 @@ private
   
 !  if(grid%nphase>1) call pflow_2phase_massbal(grid)
       
-  if(grid%iprint >=1 .and. icall==1)then
+  if(icall==1)then
     call DACreateLocalVector(grid%da_3np_dof, vl_plot_loc, ierr)
     if(grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE & 
         .or. grid%use_flash == PETSC_TRUE  .or. grid%use_richards == PETSC_TRUE)then 
@@ -137,8 +138,10 @@ private
                     PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
                     da_var_plot,ierr)
           call DACreateGlobalVector(da_var_plot, var_plot, ierr)
-          if (grid%itecplot ==PETSC_TRUE)then
+         ! print *, ' created varplot'
+           if (grid%itecplot ==PETSC_TRUE)then
              allocate(vvar(1:size_var_use))
+            
        !      if(grid%iprint>=1)allocate(vavel(3*grid%nphase))
           endif
      endif         
@@ -400,11 +403,13 @@ private
                                    .or. grid%use_flash == PETSC_TRUE &
                                    .or. grid%use_richards == PETSC_TRUE) then
       write(IUNIT3,'(''VARIABLES="'',a6,100(a3,a6))') &
-      'x',q,'y',q,'z',q,'phase',q,'p',q,'T',q,'sl(g)',q,'xl',q,'xg',q,'vf','"'
+      'x',q,'y',q,'z',q,'phase',q,'T',q,'p',q,'s(l)',q,'s(g)',q,&
+       'U(l)',q,'U(g)',q,'xl(1)',q,'xl(2)',q,'xg(1)',q,'xg(2)',q,&
+       'vf','"'
     else
  
    write(IUNIT3,'(''VARIABLES="'',3(a6,a3),a6,100(a3,a6))')"x",q,"y",q,"z",q,"ip",q,&
-        'pressure',q,'temp', q,'sat',q,'conc' 
+        'pressure',q,'temp', q,'sat',q,'conc',q,'vf','"' 
    endif
     write(IUNIT3,'(''ZONE T= "'',1pg12.4,''",'','' I='',i4, &
  &    '' , J='',i4,'' , K='',i4)') tyr,grid%nx,grid%ny,grid%nz
@@ -546,8 +551,8 @@ private
           write(IUNIT3,'(1p100e12.4)') grid%x(na+1), grid%y(na+1), grid%z(na+1), real(iipha), &
           vvar(1:2+grid%nphase), & ! Saturations
           vvar(3+4*grid%nphase:2+5*grid%nphase), &! Internal Energy
-          vvar(3+ 7*grid%nphase: 2+ 7 *grid%nphase + grid%nphase* grid%nspec) !Mol fractio
-      
+          vvar(3+ 7*grid%nphase: 2+ 7 *grid%nphase + grid%nphase* grid%nspec),& !Mol fractio
+          vf
       else
         write(IUNIT3,'(1p10e12.4)') grid%x(na+1), grid%y(na+1), grid%z(na+1), &
           pres, temp, sat, conc, vf      
@@ -899,7 +904,7 @@ enddo
   ! Dump some important information such as simulation time, 
   ! time step size, etc.
   !--------------------------------------------------------------------
-
+#if (PETSC_VERSION_RELEASE == 0 || PETSC_VERSION_SUBMINOR == 3)
   ! We manually specify the number of bytes required for the 
   ! checkpoint header, since sizeof() is not supported by some Fortran 
   ! compilers.  To be on the safe side, we assume an integer is 8 bytes.
@@ -935,7 +940,7 @@ enddo
   ! Actually write the components of the PetscBag and then free it.
   call PetscBagView(bag, viewer, ierr)
   call PetscBagDestroy(bag, ierr)
-
+#endif
   !--------------------------------------------------------------------
   ! Dump all the relevant vectors.
   !--------------------------------------------------------------------
