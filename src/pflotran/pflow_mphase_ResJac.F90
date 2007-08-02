@@ -152,7 +152,7 @@ private
 ! real*8, pointer :: sat(:),xmol(:)
 ! real*8 rmax(grid%ndof)
 
-  call MPI_Barrier(PETSC_COMM_WORLD,ierr)
+
   
   re=1
  ! call SNESComputeFunction(grid%snes,grid%xx,grid%r,ierr)
@@ -252,7 +252,7 @@ private
     call VecRestoreArrayF90(grid%iphas, iphase_p, ierr) 
    endif
  ! print *,' update reason', grid%myrank, re,n,grid%nlmax
-
+  call MPI_Barrier(PETSC_COMM_WORLD,ierr)
   
   if(grid%commsize >1)then
     call MPI_ALLREDUCE(re, re0,1, MPI_INTEGER,MPI_SUM, &
@@ -264,7 +264,7 @@ private
   endif
   reason=re
   
-  if(reason<=0) print *,'Sat or Con out of Region'
+  if(reason<=0 .and.grid%myrank ==0) print *,'Sat or Con out of Region', re0
   
   end subroutine MPhase_Update_Reason
 
