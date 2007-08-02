@@ -2063,7 +2063,8 @@ subroutine pflowGrid_setup(grid, inputfile)
     if (grid%nconnbc .ne. nc) then
       write(*,*) 'Error in computing boundary connections: ', &
         'rank = ',myrank,' nconnbc = ',grid%nconnbc,' nc = ',nc
-      stop
+   !   grid%nconnbc = nc
+     stop
     endif
    
     call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-print_bcinfo", &
@@ -4774,7 +4775,8 @@ subroutine pflowGrid_read_input(grid, inputfile)
               call fiReadInt(string,grid%iphasebc0(ir),ierr)
               call fiDefaultMsg('iphase',ierr)
        
-              if (grid%ibndtyp(ir) == 1 .or. grid%ibndtyp(ir) == 3) then 
+              if (grid%ibndtyp(ir) == 1 .or. grid%ibndtyp(ir) == 3 &
+                  .or. grid%ibndtyp(ir) == 4) then 
                 do j=1,grid%ndof
                   call fiReadDouble(string,grid%xxbc0(j,ir),ierr)
                   call fiDefaultMsg('xxbc',ierr)
