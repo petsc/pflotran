@@ -43,7 +43,7 @@
      
  real*8, private, parameter :: fmwh2o = 18.0153D0, fmwa = 28.96D0, &
                               fmwco2 = 44.0098D0, fmwnacl = 58.44277D0
- real*8, private, parameter :: eps=5D-7 , formeps=1D-5
+ real*8, private, parameter :: eps=5D-7 , formeps=1D-2
  real*8, private, parameter ::yh2o_in_co2=1D-2   
  real*8, private, parameter :: rgasj   = 8.3143    ![J/K/mol]
 
@@ -463,30 +463,34 @@
      xmol(1)=1.D0-xmol(2)
    if(xmol(1)<0.D0) xmol(1)=0.D0
     case(3)
-      xmol(2)=99.D0/(1D2*Henry/p -1D0)
+    tmp = sat_pressure/p 
+    xmol(2)=(1.D0-tmp)/(Henry/p -tmp)
     xmol(1)= 1.D0- xmol(2)
     xmol(3)=xmol(1)/1D2
     xmol(4)= 1.D0-xmol(3)            
     end select
 
-
     
 
  select case(icri)
   case(0)
-    if (xmol(3)*1D2 >1.0D0 .and. iipha==2 )then
+    tmp = sat_pressure* 1D5 /p 
+    if (xmol(3) >tmp .and. iipha==2 )then
       write(*,'('' Gas -> 2ph '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3)
       !write(IUNIT2,'('' Gas -> 2ph '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3)
       iphase_p(n) = 3
-      xx_p(n0+3)=1D0-eps
+      xx_p(n0+3)=1D0-formeps
     ichange = 1 ;ipr=1
 !       xx_p(n0+1)= yy_p(n0+1);xx_p(n0+2)= yy_p(n0+2)
     end if
        ! gas ->  2ph 
-
+ 
+    
+    tmp = (1.D0-tmp)/(henry/p -tmp) *henry/p
+    ! print *,n, tmp, henry,sat_pressure,p
     !if (xx_p(n0+3) > 1.025D0  .and. iipha==1) then
-     if (xmol(4) > 1.025D0  .and. iipha==1) then
-       write(*,'('' Liq -> 2ph '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3),xmol(3)+xmol(4),xmol(3),xmol(4)
+     if (xmol(4) > 1.05D0 *tmp  .and. iipha==1) then
+       write(*,'('' Liq -> 2ph '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3),xmol(4), tmp
       !write(IUNIT2,'('' Liq -> 2ph '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3)
       iphase_p(n) = 3
      
@@ -516,7 +520,7 @@
       ! write(IUNIT2,'('' 2ph -> Liq '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3)
       iphase_p(n) = 1 ! 2ph -> Liq
       ichange = 1;ipr=1
-    tmp = xmol(2) * 0.9995
+      tmp = xmol(2) * 0.99
       xx_p(n0 + 3)=tmp
 !    xx_p(n0+1)= yy_p(n0+1);xx_p(n0+2)= yy_p(n0+2)
     !xx_p(n0+2) =  xx_p(n0+2)*(1.D0-eps)
@@ -526,26 +530,26 @@
 !  if(ichange ==1) then
 !    call 
   case(1)
-  
-      if (xmol(3)*1D2 >1.D0 .and. iipha==2 )then
+       tmp = sat_pressure*1D5/p    
+      if (xmol(3) >tmp .and. iipha==2 )then
       write(*,'('' Gas -> 2ph '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3)
       !write(IUNIT2,'('' Gas -> 2ph '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3)
       iphase_p(n) = 3
-      xx_p(n0+3)=1D0-eps
+      xx_p(n0+3) = 1D0 - eps
     ichange = 1 ;ipr=1
         !  xx_p(n0+2)= yy_p(n0+2)
     end if
        ! gas ->  2ph 
-
-    if (xmol(4) > 1.0D0  .and. iipha==1) then
-      write(*,'('' Liq -> 2ph '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3),xmol(3)+xmol(4),xmol(3),xmol(4)
+      tmp = (1.D0-tmp)/(henry/p -tmp)*henry/p
+    if (xmol(4) > 1.025*tmp  .and. iipha==1) then
+      write(*,'('' Liq -> 2ph '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3),xmol(4), tmp
       !write(IUNIT2,'('' Liq -> 2ph '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3)
       iphase_p(n) = 3
      
      !tmp= (xmol(4)-1.D0)/(xmol(4)/xmol(2))*den(1)/den(2)
     !if(tmp>eps) tmp=eps
      ! xx_p(n0+3)=max(tmp,formeps)
-     xx_p(n0+3)=formeps
+     xx_p(n0+3) = eps
     !if(dabs(xmol(4)-1.D0) < eps) xx_p(n0+1)=xx_p(n0+1)* (1.D0-eps)
     ichange = 1;ipr=1
     end if
@@ -566,7 +570,7 @@
       !write(IUNIT2,'('' 2ph -> Liq '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3)
       iphase_p(n) = 1 ! 2ph -> Liq
       ichange = 1;ipr=1
-    tmp = xmol(4) * 0.9995
+    tmp = xmol(4) * 0.9999995
       xx_p(n0 + 3)=tmp
     !xx_p(n0+2) =  xx_p(n0+2)*(1.D0-eps)
     endif
@@ -740,7 +744,7 @@
   real*8 dsteamol,hstea
   real*8 kr(num_phase)
   real*8 err,vphi,xm_nacl,x_nacl
-
+  real*8 temp
   
   size_var_use = 2 + 7*num_phase + 2* num_phase*num_spec
   !pckr_swir=pckr_sir(1)
@@ -821,7 +825,8 @@
       satu(1)=1.D0  - satu(2)
       if( satu(2)<0.D0)satu(2)=0.D0
       pc(2)=0.D0
-      xmol(1)=1.D0; xmol(2)=0.D0; xmol(3)=yh2o_in_co2; xmol(4)=1.D0-xmol(3)
+      temp = 1D-2
+      xmol(1)=1.D0; xmol(2)=0.D0; xmol(3)=temp; xmol(4)=1.D0-xmol(3)
 
   
   end select  
@@ -896,9 +901,10 @@
   !if(xmol(1)<0.D0) xmol(1)=0.D0
   !endif
      case(3)
-      xmol(2)=99.D0/(1D2*Henry/p -1D0)
+     temp= sat_pressure /p
+     xmol(2)=(1.D0-temp)/(Henry/p - temp)
     xmol(1)= 1.D0- xmol(2)
-    xmol(3)=xmol(1)/1D2
+    xmol(3)=xmol(1) * temp
     xmol(4)= 1.D0-xmol(3)            
     end select
 

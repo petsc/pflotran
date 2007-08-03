@@ -374,7 +374,7 @@
     xmol(3)=1.D0-xmol(4) 
     xmol(2)=xmol(4)/tmp
     xmol(1)=1.D0- xmol(2)
-    satu(1)=0.D0
+    satu(1)=1.D-8
     satu(2)=1.D0
    else 
     iphase = 3
