@@ -733,7 +733,7 @@
   !-----------------------------------------------------------------------
   
   call pflowGrid_Setup_Geom(grid,locpat)
-  
+
 ! set initial conditions by region for pressure, temperature, saturation
 ! and concentration
 
@@ -1071,21 +1071,34 @@ implicit none
 type(pflowGrid) grid
 type(pflow_localpatch_info) :: locpat
 
+interface
+   subroutine pims_vecgetarrayf90(grid, patch, vec, f90ptr, ierr)
+     use pflow_gridtype_module
+     implicit none
+#include "include/finclude/petsc.h"
+
+     type(pflowGrid), intent(inout) :: grid
+     type(pflow_localpatch_info) :: patch
+     Vec :: vec
+     PetscScalar, dimension(:), pointer :: f90ptr
+     integer :: ierr
+   end subroutine pims_vecgetarrayf90
+end interface
 integer i,j,k, nc, mg1, mg2, n, ierr, ng
 real*8 val, d1,d2
 PetscScalar, pointer ::  dx_loc_p(:), dy_loc_p(:), dz_loc_p(:), volume_p(:)
  Vec :: temp0_nat_vec, temp1_nat_vec, temp2_nat_vec, temp3_nat_vec, &
           temp4_nat_vec 
 
-      allocate(locpat%nd1(locpat%nconn))
-      allocate(locpat%nd2(locpat%nconn))
-      allocate(locpat%dist1(locpat%nconn))
-      allocate(locpat%dist2(locpat%nconn))
-      allocate(locpat%area(locpat%nconn))
-      allocate(locpat%delz(locpat%nconn))
-
-      allocate(locpat%iperm1(locpat%nconn))
-      allocate(locpat%iperm2(locpat%nconn))
+ allocate(locpat%nd1(locpat%nconn))
+ allocate(locpat%nd2(locpat%nconn))
+ allocate(locpat%dist1(locpat%nconn))
+ allocate(locpat%dist2(locpat%nconn))
+ allocate(locpat%area(locpat%nconn))
+ allocate(locpat%delz(locpat%nconn))
+ 
+ allocate(locpat%iperm1(locpat%nconn))
+ allocate(locpat%iperm2(locpat%nconn))
 
 
   call DACreateNaturalVector(grid%da_1_dof,temp1_nat_vec,ierr)
@@ -1147,10 +1160,16 @@ PetscScalar, pointer ::  dx_loc_p(:), dy_loc_p(:), dz_loc_p(:), volume_p(:)
                             grid%dz_loc, ierr)
   call DAGlobalToLocalEnd(grid%da_1_dof, grid%dz, INSERT_VALUES, &
                           grid%dz_loc,ierr)
+
+#if 0  
   call VecGetArrayF90(grid%dx_loc, dx_loc_p, ierr)
   call VecGetArrayF90(grid%dy_loc, dy_loc_p, ierr)
   call VecGetArrayF90(grid%dz_loc, dz_loc_p, ierr)
-
+#else
+  call pims_vecgetarrayf90(grid, locpat, grid%dx_loc, dx_loc_p, ierr)
+  call pims_vecgetarrayf90(grid, locpat, grid%dy_loc, dy_loc_p, ierr)
+  call pims_vecgetarrayf90(grid, locpat, grid%dz_loc, dz_loc_p, ierr)
+#endif
   nc = 0
   locpat%nconnx = 0
   locpat%nconny = 0

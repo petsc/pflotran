@@ -51,6 +51,9 @@ endif
 SRCDIR = .
 VPATH = .
 
+CSRC=${wildcard ${SRCDIR}/*.c}
+COBJS=${CSRC:.c=.o}
+
 CXXSRC=${wildcard ${SRCDIR}/*.C}
 CXXOBJS=${CXXSRC:.C=.o}
 
@@ -83,8 +86,8 @@ CPPFLAGS_EXTRA += -I.
 
 LDFLAGS_EXTRA +=
 
-SAMRAIDriver: SAMRAIDriver.o $(CXXOBJS) ${F90OBJS}
-	$(CXX) -g $(CXXOBJS) ${F90OBJS} ${FOBJS} ${MYFLAGS} ${PETSC_FORTRAN_LIB} $(LDFLAGS) $(LIBSAMRAI3D) $(LIBSAMRAI)  $(LDLIBS) -o $@
+SAMRAIDriver: SAMRAIDriver.o $(COBJS) $(CXXOBJS) ${F90OBJS}
+	$(CXX) -g $(CXXOBJS) $(COBJS) ${F90OBJS} ${FOBJS} ${MYFLAGS} ${PETSC_FORTRAN_LIB} $(LDFLAGS) $(LIBSAMRAI3D) $(LIBSAMRAI)  $(LDLIBS) -o $@
 
 clean:
 	$(RM) SAMRAIDriver *.f core *~ *.mod
