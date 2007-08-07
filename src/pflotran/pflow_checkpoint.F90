@@ -141,19 +141,18 @@ subroutine pflowGridCheckpoint(grid, ntstep, kplt, iplot, iflgcut, ihalcnt, &
   ! grid%xx is the vector into which all of the primary variables are 
   ! packed for the SNESSolve().
   call VecView(grid%xx, viewer, ierr)
-  if (.not.(grid%use_richards == PETSC_TRUE)) then
-    call VecView(grid%hh, viewer, ierr)
-    call VecView(grid%ddensity, viewer, ierr)
-  endif
 
   ! If we are running with multiple phases, we need to dump the vector 
   ! that indicates what phases are present, as well as the 'var' vector 
   ! that holds variables derived from the primary ones via the translator.
   if(grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE .or. &
-     grid%use_flash == PETSC_TRUE .or. grid%use_2ph == PETSC_TRUE &
-      .or. grid%use_richards == PETSC_TRUE ) then
+     grid%use_flash == PETSC_TRUE .or. grid%use_2ph == PETSC_TRUE .or. &
+     grid%use_richards == PETSC_TRUE ) then
     call VecView(grid%iphas, viewer, ierr)
     call VecView(grid%var, viewer, ierr)
+  else
+    call VecView(grid%hh, viewer, ierr)
+    call VecView(grid%ddensity, viewer, ierr)
   endif  
 
   ! solid volume fraction

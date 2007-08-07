@@ -626,7 +626,7 @@ end subroutine  pflow_pckr_richards_fw_exec
       real*8 :: se,swir,sw0,lam,ala,um,un,upc,upc_s,kr_s, krg_s
       real*8 :: temp,ser,pcmax,sw
       real*8 :: uum,pckr_betac,betac,st
-     
+      real*8 :: se0, upc0,upc_s0
      
     ! if(present(pckr_beta))
       pckr_betac=pckr_beta
@@ -650,36 +650,39 @@ end subroutine  pflow_pckr_richards_fw_exec
             upc=(temp-1.D0)**(1.d0/un)/ala
             kr(1)=sqrt(se)*(1.D0-(1.D0-1.D0/temp)**um)**2.d0
             !kr(2)=1.D0-kr(1)
-      kr(2)=sqrt(1.D0 - se)*((1.D0-se**(1.D0/um))**um)**2.D0
+            kr(2)=sqrt(1.D0 - se)*((1.D0-se**(1.D0/um))**um)**2.D0
        !    print *,'in pckr nond ',sw,se,upc,kr
           else  ! use linear extropolation
-            se=(0.05D0*swir)/(1.D0-swir)
-            temp=se**(-1.D0/um)
-            upc=(temp-1.D0)**(1.d0/un)/ala
-            upc_s=-1.D0/um/un*upc*(se**(-1.D0-1.D0/um))/(se**(-1.D0/um)-1.d0)
+            se0=(0.05D0*swir)/(1.D0-swir)
+            temp=se0**(-1.D0/um)
+            upc0=(temp-1.D0)**(1.d0/un)/ala
+            upc_s0 = -1.D0/um/un*upc0*(se0**(-1.D0-1.D0/um))/(se0**(-1.D0/um)-1.d0)
+            upc_s0 = upc_s0 /(1.D0 - swir)
             if(sw>swir)then
+              se = (sw-swir)/(1.D0 - swir)
+              temp = se **(-1.D0/um)
               kr(1)=sqrt(se)*(1.D0-(1.D0-1.D0/temp)**um)**2.D0
-        kr(2)=sqrt(1.D0 - se)*((1.D0-se**(1.D0/um))**um)**2.D0
-              temp=1.D0/temp
-              kr_s=0.5d0*kr(1)/se+2.d0*sqrt(se)*(1.d0-(1.d0-temp)**um)* &
-                     (1.d0-temp)**(um-1.d0)*temp/se
-              krg_s=-0.5D0/(1.D0-se)*kr(2) -2.D0*sqrt(1.D0-se)*((1.D0-se**(1.D0/um))**um)&
-               *((1.D0-se**(1.D0/um))**(um-1.D0)) * (se**(1.D0/um-1.D0))
-        ser=(sw-swir)/(1.D0-swir)
-              upc=upc+(ser-se)*upc_s
-              kr(1)=kr(1)+(ser-se)*kr_s
-              kr(2)=kr(2)+ (ser-se)*krg_s
+              kr(2)=sqrt(1.D0 - se)*((1.D0-se**(1.D0/um))**um)**2.D0
+             ! temp=1.D0/temp
+             ! kr_s=0.5d0*kr(1)/se+2.d0*sqrt(se)*(1.d0-(1.d0-temp)**um)* &
+             !        (1.d0-temp)**(um-1.d0)*temp/se
+             ! krg_s=-0.5D0/(1.D0-se)*kr(2) -2.D0*sqrt(1.D0-se)*((1.D0-se**(1.D0/um))**um)&
+             !  *((1.D0-se**(1.D0/um))**(um-1.D0)) * (se**(1.D0/um-1.D0))
+             ! ser=(sw-swir)/(1.D0-swir)
+              upc= upc0 + (sw - 1.05D0 * swir) * upc_s0   
+             ! kr(1)=kr(1)+(ser-se)*kr_s
+             ! kr(2)=kr(2)+ (ser-se)*krg_s
               
         !kr(2)=1.D0-kr(1)
             else
-              upc=upc-upc_s*se
+              upc= upc0 + (sw - 1.05D0 * swir) * upc_s0
               kr(1)=0.D0
               kr(2)=1.D0
             end if
   !         print *,'in pckr nond ',sw,se,upc,kr
           end if
  !        print *,'in pckr  ',um,se,(temp-1.D0)
-         if(upc > pcmax) upc=pcmax  
+  !       if(upc > pcmax) upc=pcmax  
 
        case(2) !Brooks-Corey
        
@@ -693,21 +696,26 @@ end subroutine  pflow_pckr_richards_fw_exec
             kr(1)=se**(2.d0/lam+3.d0)
             !kr(2)=1.D0- kr(1)
             kr(2)=(1.D0 - se)**2.D0 * (1.D0 -se**(2.D0/lam +1.D0)) 
-      else   ! use linear extropolation
-            se=(0.05d0*swir)/(1.D0-swir)
-            upc=se**(-1.D0/lam)/ala
-            upc_s=-upc/se/lam
+          else   ! use linear extropolation
+            se0=(0.05d0*swir)/(1.D0-swir)
+            upc0=se0**(-1.D0/lam)/ala
+            upc_s0=-upc0/se0/lam
+            upc_s0 = upc_s0 /(1.D0 - swir) 
             if(sw>swir)then
+              se =  (sw-swir)/(1.D0 - swir)
               kr(1)=se**(2.D0/lam+3.d0)
-              kr_s=(2.d0/lam+3.d0)*kr(1)/se
-              krg_s = -2.D0*kr(2)/(1.D0-se) -(2.D0+lam)/lam*(1.D0-se)**2.D0*(se**(2.D0/lam)) 
-        ser=(sw-swir)/(1.D0-swir)
-              upc=upc+(ser-se)*upc_s
-              kr(1)=kr(1)+(ser-se)*kr_s
-        kr(2)=kr(2)+(ser-se)*krg_s
+              kr(2)=(1.D0 - se)**2.D0 * (1.D0 -se**(2.D0/lam +1.D0)) 
+              upc= upc0 + (sw - 1.05D0 * swir) * upc_s0
+
+              ! kr_s=(2.d0/lam+3.d0)*kr(1)/se
+             ! krg_s = -2.D0*kr(2)/(1.D0-se) -(2.D0+lam)/lam*(1.D0-se)**2.D0*(se**(2.D0/lam)) 
+              ! ser=(sw-swir)/(1.D0-swir)
+            
+              !kr(1)=kr(1)+(ser-se)*kr_s
+        !    kr(2)=kr(2)+(ser-se)*krg_s
               !kr(2)=1.D0-kr(1)
             else
-              upc=upc-upc_s*se
+              upc= upc0 + (sw - 1.05D0 * swir) * upc_s0
               kr(1)=0.D0
               kr(2)=1.D0
             end if

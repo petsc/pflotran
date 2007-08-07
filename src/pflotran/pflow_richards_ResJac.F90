@@ -655,6 +655,15 @@ subroutine RichardsRes_FLBCCont(nbc_no,area,var_node1,var_node2,por2,tor2,sir2, 
     Res_FL(1:grid%nspec)=fluxm(:)* grid%dt
     Res_FL(grid%ndof)=fluxe * grid%dt
 
+  case(4)
+          
+    Dk =  Dk2 / dd1
+    cond = Dk*area*(temp1-temp2) 
+    fluxe=fluxe + cond
+   
+    Res_FL(1:grid%nspec)= 0.D0
+    Res_FL(grid%ndof)=fluxe * grid%dt
+ 
   end select
 
   nullify(temp1, pre_ref1, sat1, density1, amw1, h1,u1, pc1,kvr1,xmol1,diff1)       
@@ -1222,6 +1231,12 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
      !  grid%xxbc((nc-1)*grid%ndof+1)=grid%pressurebc(2,ibc)
         grid%xxbc(2:grid%ndof,nc) = xx_loc_p((ng-1)*grid%ndof+2: ng*grid%ndof)
         grid%iphasebc(nc)=int(iphase_loc_p(ng))
+    
+     case(4)
+        grid%xxbc(1,nc) = xx_loc_p((ng-1)*grid%ndof+1)
+         grid%xxbc(3:grid%ndof,nc) = xx_loc_p((ng-1)*grid%ndof+3: ng*grid%ndof)    
+        grid%iphasebc(nc)=int(iphase_loc_p(ng))
+        
     end select
 
 ! print *,'2ph bc',grid%myrank,nc,m,ng,ibc,grid%ibndtyp(ibc),grid%pressurebc(:,ibc), &
@@ -1686,6 +1701,14 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
         grid%iphasebc(nc) = int(iphase_loc_p(ng))
         delxbc(1) = 0.D0
         delxbc(2:grid%ndof) = grid%delx(2:grid%ndof,ng)
+        
+        case(4)
+        grid%xxbc(1,nc) = xx_loc_p((ng-1)*grid%ndof+1)
+        grid%xxbc(3:grid%ndof,nc) = xx_loc_p((ng-1)*grid%ndof+3: ng*grid%ndof)    
+        delxbc(1)=grid%delx(1,ng)
+        delxbc(3:grid%ndof) = grid%delx(3:grid%ndof,ng) 
+        grid%iphasebc(nc)=int(iphase_loc_p(ng))
+    
     end select
 
 ! print *,'2ph bc',grid%myrank,nc,m,ng,ibc,grid%ibndtyp(ibc),grid%pressurebc(:,ibc), &

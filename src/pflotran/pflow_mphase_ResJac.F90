@@ -152,7 +152,7 @@ private
 ! real*8, pointer :: sat(:),xmol(:)
 ! real*8 rmax(grid%ndof)
 
-  call MPI_Barrier(PETSC_COMM_WORLD,ierr)
+
   
   re=1
  ! call SNESComputeFunction(grid%snes,grid%xx,grid%r,ierr)
@@ -252,7 +252,7 @@ private
     call VecRestoreArrayF90(grid%iphas, iphase_p, ierr) 
    endif
  ! print *,' update reason', grid%myrank, re,n,grid%nlmax
-
+  call MPI_Barrier(PETSC_COMM_WORLD,ierr)
   
   if(grid%commsize >1)then
     call MPI_ALLREDUCE(re, re0,1, MPI_INTEGER,MPI_SUM, &
@@ -264,7 +264,7 @@ private
   endif
   reason=re
   
-  if(reason<=0) print *,'Sat or Con out of Region'
+  if(reason<=0 .and.grid%myrank ==0) print *,'Sat or Con out of Region', re0
   
   end subroutine MPhase_Update_Reason
 
@@ -675,6 +675,16 @@ private
    
     Res_FL(1:grid%nspec)=fluxm(:)* grid%dt
     Res_FL(grid%ndof)=fluxe * grid%dt
+    
+     case(4)
+          
+    Dk =  Dk2 / dd1
+    cond = Dk*area*(temp1-temp2) 
+    fluxe=fluxe + cond
+   
+    Res_FL(1:grid%nspec)= 0.D0
+    Res_FL(grid%ndof)=fluxe * grid%dt
+
 
   end select
    nullify(temp1, pre_ref1, sat1, density1, amw1, h1,u1, pc1,kvr1,xmol1,diff1)       
@@ -1227,7 +1237,13 @@ private
      !  grid%xxbc((nc-1)*grid%ndof+1)=grid%pressurebc(2,ibc)
     !    grid%xxbc(2:grid%ndof,nc) = xx_loc_p((ng-1)*grid%ndof+2: ng*grid%ndof)
     !    grid%iphasebc(nc)=int(iphase_loc_p(ng))
-    end select
+      case(4)
+         grid%xxbc(1,nc) = xx_loc_p((ng-1)*grid%ndof+1)
+         grid%xxbc(3:grid%ndof,nc) = xx_loc_p((ng-1)*grid%ndof+3: ng*grid%ndof)    
+        grid%iphasebc(nc)=int(iphase_loc_p(ng))
+
+      
+      end select
 
 ! print *,'2ph bc',grid%myrank,nc,m,ng,ibc,grid%ibndtyp(ibc),grid%pressurebc(:,ibc), &
 ! grid%tempbc(ibc),grid%sgbc(ibc),grid%concbc(ibc),grid%velocitybc(:,ibc)
@@ -1286,6 +1302,10 @@ private
 
  enddo
  
+
+! adjust residual to R/dt
+
+ r_p(:) = r_p(:)/grid%dt
  
  ! print *,'finished BC'
  do n = 1, grid%nlmax
@@ -1625,7 +1645,14 @@ private
     !    grid%iphasebc(nc)=int(iphase_loc_p(ng))
    !      delxbc(1)=0.D0
    !      delxbc(2:grid%ndof)=grid%delx(2:grid%ndof,ng)
-        end select
+        case(4)
+        grid%xxbc(1,nc) = xx_loc_p((ng-1)*grid%ndof+1)
+        grid%xxbc(3:grid%ndof,nc) = xx_loc_p((ng-1)*grid%ndof+3: ng*grid%ndof)    
+        delxbc(1)=grid%delx(1,ng)
+        delxbc(3:grid%ndof) = grid%delx(3:grid%ndof,ng) 
+        grid%iphasebc(nc)=int(iphase_loc_p(ng))
+
+          end select
 
 ! print *,'2ph bc',grid%myrank,nc,m,ng,ibc,grid%ibndtyp(ibc),grid%pressurebc(:,ibc), &
 ! grid%tempbc(ibc),grid%sgbc(ibc),grid%concbc(ibc),grid%velocitybc(:,ibc)
@@ -1719,13 +1746,15 @@ private
   
   if (grid%iblkfmt == 0) then
      p1=(na1)*grid%ndof
-   do ii=0,grid%ndof-1
+     ra(1:grid%ndof,1:grid%ndof) =ra(1:grid%ndof,1:grid%ndof) /grid%dt
+    do ii=0,grid%ndof-1
       do jj=0,grid%ndof-1
         call MatSetValue(A,p1+ii,p1+jj,ra(ii+1,jj+1)/ volume_p(n),ADD_VALUES,ierr)
       enddo
      enddo
    else
-     blkmat11=ra(1:grid%ndof,1:grid%ndof)
+     ra(1:grid%ndof,1:grid%ndof) =ra(1:grid%ndof,1:grid%ndof) /grid%dt
+      blkmat11=ra(1:grid%ndof,1:grid%ndof)
     
     if(volume_p(n)>1.D0 ) blkmat11=blkmat11 / volume_p(n)
    
@@ -1834,6 +1863,7 @@ private
      blkmat11 = 0.D0; blkmat12 = 0.D0; blkmat21 = 0.D0; blkmat22 = 0.D0;
    endif
    p1=(na1)*grid%ndof;p2=(na2)*grid%ndof
+    ra =ra / grid%dt
      do ii=0,grid%ndof-1
        do jj=0,grid%ndof-1
           if(n1>0) then
@@ -2028,7 +2058,7 @@ private
 
       
   ! if (grid%rk > 0.d0) call Rock_Change(grid)
-  !  call Translator_MPhase_Switching(grid%xx,grid,1,ierr)
+    call Translator_MPhase_Switching(grid%xx,grid,1,ierr)
   !print *,'MPhase_Update done'
  
    ! if(ichange ==1)then
