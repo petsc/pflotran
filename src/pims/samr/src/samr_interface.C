@@ -1,6 +1,14 @@
 #include "tbox/Pointer.h"
 #include "PatchHierarchy.h"
 #include "PatchLevel.h"
+#include "PETSc_SAMRAIVectorReal.h"
+#include "CellData.h"
+
+extern "C" {
+#include "petscvec.h"
+void  cf90bridge_(void *, int*, void *);
+
+}
 
 #ifdef __cplusplus
 extern "C" {
@@ -61,6 +69,20 @@ void samr_patch_get_ghostcorners_(SAMRAI::hier::Patch<NDIM> **patch,
    
 }
 
+void samr_vecgetarrayf90_(SAMRAI::hier::Patch<NDIM> **patch, 
+                          Vec *petscVec,
+                          void **f90wrap)
+
+{
+   SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM, double > > sVec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM, double>::getSAMRAIVector(*petscVec);
+   SAMRAI::tbox::Pointer< SAMRAI::pdat::CellData<NDIM, double> > pData = sVec->getComponentPatchData(0, *(*patch));
+   int len = pData->getGhostBox().size();
+
+   void *p_data_ptr = pData->getPointer(0);
+
+   cf90bridge_(p_data_ptr, &len, *f90wrap);
+   
+}
 
 }
 #endif

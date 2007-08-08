@@ -47,3 +47,28 @@ subroutine allocate_patch_info(p_samr_hierarchy, patchlevel_info)
   allocate(patchlevel_info(1)%patches(1)%patch_ptr)
   
 end subroutine allocate_patch_info
+
+subroutine pims_vecgetarrayf90(grid, patch, vec, f90ptr, ierr)
+  use pflow_gridtype_module
+ 
+  implicit none
+
+#include "include/finclude/petsc.h"
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
+
+  type(pflowGrid), intent(inout) :: grid
+  type(pflow_localpatch_info) :: patch
+  Vec :: vec
+  PetscScalar, dimension(:), pointer :: f90ptr
+  integer :: ierr
+
+  PetscScalar, dimension(:), pointer :: f90iptr
+
+  nullify(f90iptr)
+
+  call VecGetArrayF90(vec, f90iptr, ierr)
+
+  f90ptr => f90iptr 
+
+end subroutine pims_vecgetarrayf90
