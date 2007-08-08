@@ -170,7 +170,7 @@ private
 ! time-history plots
   
   if (grid%ibrkcrv > 0 .and. grid%ndof > 1) then
- 
+  print *, 'begin his' 
 !   concentration
 !    call DAGlobalToNaturalBegin(grid%da_1_dof,grid%conc,INSERT_VALUES,c_nat, &
 !                                ierr)
@@ -188,7 +188,7 @@ private
       call VecGetArrayF90(grid%conc, c_p, ierr)
       call VecGetArrayF90(grid%vl, vl_p, ierr)
       
-!     print *,'pflow_output_new: ',vl_p
+    ! print *,'pflow_output_new: ',vl_p
       
       if(grid%myrank == 0)then
         allocate(fldflx(grid%ibrkcrv))
@@ -219,19 +219,20 @@ private
                 nn = i+(j-1)*grid%nx+(k-2)*grid%nxy
                 area = grid%dx0(i)*grid%dy0(j)
               endif
-
+              if (nn==0) nn=1
 ! look up for velocity
-                       
+              ! print *, 'pflow_output_new: vel', nn        
               if(grid%myrank==0) then
-                  ifound=0
+                  ifound=0 
+                  
                   do n=ndex,grid%nlmax
                     if(grid%nL2A(n) == (nn-1)) then
                       ifound=1
                       vel = vl_p(1+ (grid%ibrkface(ibrk)-1)*grid%nphase + 3*grid%nphase*(n-1))
                       ndex=n
                       
-!                     print *,'pflow_output_new: ',n,nn,ifound,grid%ibrkface(ibrk),vel,&
-!                       vl_p(1+3*(n-1):3*n)
+            !         print *,'pflow_output_new: vel',n,nn,ifound,grid%ibrkface(ibrk),vel,&
+            !           vl_p(1+3*(n-1):3*n)
                       exit
                     endif
                   enddo
@@ -413,7 +414,27 @@ private
    endif
     write(IUNIT3,'(''ZONE T= "'',1pg12.4,''",'','' I='',i4, &
  &    '' , J='',i4,'' , K='',i4)') tyr,grid%nx,grid%ny,grid%nz
+
+   if  (grid%write_init == 1) then
+         fname = 'pflow_init0.dat'
+         write(*,*) '--> write output file: ',fname
+         open(unit=1100,file=fname,action="write")
+         if (grid%use_2ph == PETSC_TRUE .or. grid%use_mph == PETSC_TRUE &
+             .or. grid%use_flash == PETSC_TRUE & 
+             .or. grid%use_vadose == PETSC_TRUE &
+             .or. grid%use_richards == PETSC_TRUE) then
+             write(1100,'(": i1  i2  j1  j2  k1  k2", &
+               & "       p      ","      T      ","     sl(g)      ", &
+                  & "       xl       xg   ")')
+           else       
+              write(1100,'(": i1  i2  j1  j2  k1  k2", &
+                & "       p      ","      T      ","     sl(g)      ", &
+                & "      C      ")')
+          endif
+   endif
+  
   endif 
+
   !----------------------------------------------------------    
   !close(IUNIT3)
   !open(unit=IUNIT3,file=fname,action="write")
@@ -557,7 +578,28 @@ private
         write(IUNIT3,'(1p10e12.4)') grid%x(na+1), grid%y(na+1), grid%z(na+1), &
           pres, temp, sat, conc, vf      
      endif
-    endif  ! endif of myrank
+   
+
+
+   if (grid%write_init == 1) then
+              k= int(na/grid%nxy) + 1
+              j= int(mod(na,grid%nxy)/grid%nx) + 1
+              i= mod(mod(na,grid%nxy),grid%nx) + 1
+     
+           if (grid%use_2ph == PETSC_TRUE .or. &
+                grid%use_mph == PETSC_TRUE .or. &
+                grid%use_flash == PETSC_TRUE .or. &
+                grid%use_vadose == PETSC_TRUE .or.&
+                grid%use_richards == PETSC_TRUE ) then
+                 write(1100,'(6i4,1pe14.6,1p10e12.4)') i,i,j,j,k,k, &
+                 vvar(2), vvar(1), vvar(3),vvar(2+ 7*grid%nphase + 2),&
+                 vvar(2+ 7*grid%nphase + grid%nspec +2 )    
+            else
+                  write(1100,'(6i4,1pe14.6,1p10e12.4)') i,i,j,j,k,k, &
+                    pres, temp, sat, conc
+            endif
+   endif
+   endif  ! endif of myrank     
  enddo  ! end loop of grid%nmax 
 
  
@@ -578,9 +620,10 @@ private
       call VecRestoreArrayF90(grid%phis, phis_p, ierr)
     endif
 
-    
-  close (IUNIT3)
-  
+  if(grid%myrank ==0) then    
+    close (IUNIT3)
+    if(grid%write_init == 1) close(1100)
+  endif 
  ! call MPI_BCast(kplt, 
  if (grid%iprint >= 1 .and. kplt > 0) then ! print out velocity field
    
