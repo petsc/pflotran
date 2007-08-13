@@ -229,7 +229,7 @@ subroutine pflowGridRestart(grid, fname, ntstep, kplt, iplot, iflgcut, &
   grid%t = header%t
   grid%dt = header%dt
   grid%flowsteps = header%flowsteps
-  grid%kplot = header%kplot
+  !grid%kplot = header%kplot !removed by L.C.  
   grid%newtcum = header%newtcum
   call PetscBagDestroy(bag, ierr)
   

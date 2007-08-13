@@ -164,6 +164,7 @@
   if(restartflag == PETSC_TRUE) then
     call pflowGridRestart(grid, restartfile, ntstep, kplt, iplot, iflgcut, &
                           ihalcnt,its)
+    call pflowGridInitAccum(grid)
   endif
   call PetscOptionsGetInt(PETSC_NULL_CHARACTER, '-chkptfreq', chkptfreq, &
                           chkptflag, ierr)
@@ -187,6 +188,19 @@
     endif  
 
     call PetscLogStagePush(stage(2), ierr)
+    if(grid%use_owg/=PETSC_TRUE) then
+      call pflow_output_new(grid,kplt,iplot)
+     ! print *,'XX ::...........'; call VecView(grid%xx,PETSC_VIEWER_STDOUT_WORLD,ierr)
+    else
+      call pflow_var_output(grid,kplt,iplot)
+    endif
+    call PetscLogStagePop(ierr)
+  
+  
+    if (iflgcut == 0) call pflowgrid_update_dt(grid,its)
+
+
+    call PetscLogStagePush(stage(2), ierr)
     if(chkptflag == PETSC_TRUE .and. mod(steps, chkptfreq) == 0) then
       call pflowGridCheckpoint(grid, ntstep, kplt, iplot, iflgcut, ihalcnt, &
                                its, steps)
@@ -208,18 +222,17 @@
 
 
 
-
-    call PetscLogStagePush(stage(2), ierr)
-    if(grid%use_owg/=PETSC_TRUE) then
-      call pflow_output_new(grid,kplt,iplot)
+!    call PetscLogStagePush(stage(2), ierr)
+!    if(grid%use_owg/=PETSC_TRUE) then
+!      call pflow_output_new(grid,kplt,iplot)
      ! print *,'XX ::...........'; call VecView(grid%xx,PETSC_VIEWER_STDOUT_WORLD,ierr)
-    else
-      call pflow_var_output(grid,kplt,iplot)
-    endif
-    call PetscLogStagePop(ierr)
+!    else
+!      call pflow_var_output(grid,kplt,iplot)
+!    endif
+!    call PetscLogStagePop(ierr)
   
   
-    if (iflgcut == 0) call pflowgrid_update_dt(grid,its)
+!    if (iflgcut == 0) call pflowgrid_update_dt(grid,its)
       
     
     if (kplt .gt. grid%kplot) exit

@@ -18,6 +18,7 @@ module pflow_grid_module
   public pflowGrid_setvel
   public pflowGrid_destroy
   public pflowGrid_parse_cmdline
+  public pflowGridInitAccum
   
 #include "definitions.h"
 
@@ -1095,13 +1096,11 @@ subroutine pflowGrid_setup(grid, inputfile)
   ISColoring :: iscoloring
     ! Used for coloring the Jacobian so that we can take advantage of its
     ! sparsity when calculating it via finite differences.
-  real*8, pointer :: den_p(:), &
-                     pressure_p(:), temp_p(:), h_p(:), ran_p(:),&
+  real*8, pointer :: temp_p(:), ran_p(:),&
                      phis_p(:), icap_p(:),ithrm_p(:), por_p(:),por0_p(:),&
                      tor_p(:),perm_xx_p(:),perm_yy_p(:),perm_zz_p(:),&
                      perm_pow_p(:)
-  real*8 :: d1,d2,val,val1,val2,val3,val4,por,dw_kg,random_nr,frand
-  real*8 :: dl,hl
+  real*8 :: d1,d2,val,val1,val2,val3,val4,por,random_nr,frand
   integer*4 :: iseed,nx,ny,nz,na
 
   Vec :: temp0_nat_vec, temp1_nat_vec, temp2_nat_vec, temp3_nat_vec, &
@@ -2570,7 +2569,44 @@ subroutine pflowGrid_setup(grid, inputfile)
 ! call VecView(grid%yy,PETSC_VIEWER_STDOUT_WORLD,ierr)
 
   ! set phase index for each node and initialize accumulation terms
+  call pflowGridInitAccum(grid)
    
+  !initial solid reaction  
+  if (grid%rk > 0.d0) then
+    allocate(grid%area_var(grid%nlmax))
+    allocate(grid%rate(grid%nlmax))
+    call VecGetArrayF90(grid%phis,phis_p,ierr)
+    do n = 1, grid%nlmax
+      phis_p(n) = grid%phis0
+      grid%area_var(n) = 1.d0
+    enddo
+    call VecRestoreArrayF90(grid%phis,phis_p,ierr)
+  endif
+
+
+   
+  
+  if (myrank == 0) write(*,'("  Finished setting up ")')
+
+end subroutine pflowGrid_setup
+
+
+
+subroutine pflowGridInitAccum(grid)
+  use pflow_gridtype_module
+  use water_eos_module
+  use TTPHASE_module
+  use Flash_module
+  use MPHASE_module
+  use OWG_module
+  use Vadose_module
+  use Richards_module
+
+type(pflowGrid), intent(inout) :: grid
+ real*8, pointer :: den_p(:), pressure_p(:), temp_p(:), h_p(:)
+real*8 dw_kg,dl,hl
+integer m, ierr
+
   if ( grid%use_owg == PETSC_TRUE) then
     call pflow_owg_initaccum(grid)
   else if (grid%use_mph == PETSC_TRUE) then
@@ -2613,24 +2649,7 @@ subroutine pflowGrid_setup(grid, inputfile)
     call VecRestoreArrayF90(grid%density, den_p, ierr)
   endif
   
-  !initial solid reaction  
-  if (grid%rk > 0.d0) then
-    allocate(grid%area_var(grid%nlmax))
-    allocate(grid%rate(grid%nlmax))
-    call VecGetArrayF90(grid%phis,phis_p,ierr)
-    do n = 1, grid%nlmax
-      phis_p(n) = grid%phis0
-      grid%area_var(n) = 1.d0
-    enddo
-    call VecRestoreArrayF90(grid%phis,phis_p,ierr)
-  endif
-
-
-   
-  
-  if (myrank == 0) write(*,'("  Finished setting up ")')
-
-end subroutine pflowGrid_setup
+end subroutine pflowGridInitAccum
 
 
 
