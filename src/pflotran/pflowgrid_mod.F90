@@ -3784,32 +3784,6 @@ subroutine pflowGrid_read_input(grid, inputfile)
   integer :: i, i1, i2, idum, ireg, isrc, j
   integer :: ibc, ibrk, ir,np
   
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
   open(IUNIT1, file=inputfile, action="read", status="old")
   
   do
@@ -3833,20 +3807,20 @@ subroutine pflowGrid_read_input(grid, inputfile)
       case ('PROC')
 !.....................
       case ('COMP') 
-      do
-        call fiReadFlotranString(IUNIT1,string,ierr)
-        call fiReadStringErrorMsg('COMP',ierr)
+        do
+          call fiReadFlotranString(IUNIT1,string,ierr)
+          call fiReadStringErrorMsg('COMP',ierr)
       
-        if (string(1:1) == '.' .or. string(1:1) == '/') exit
-       enddo
+          if (string(1:1) == '.' .or. string(1:1) == '/') exit
+        enddo
 !.....................
       case ('PHAS')
-       do
-        call fiReadFlotranString(IUNIT1,string,ierr)
-        call fiReadStringErrorMsg('PHASE',ierr)
+        do
+          call fiReadFlotranString(IUNIT1,string,ierr)
+          call fiReadStringErrorMsg('PHASE',ierr)
       
-        if (string(1:1) == '.' .or. string(1:1) == '/') exit
-       enddo 
+          if (string(1:1) == '.' .or. string(1:1) == '/') exit
+        enddo 
       
 !....................
 
@@ -4109,9 +4083,9 @@ subroutine pflowGrid_read_input(grid, inputfile)
 !......................
 
        case('RICH')
-           call fiReadStringErrorMsg('RICH',ierr)
-           call fiReadDouble(string,grid%pref,ierr)
-           call fiDefaultMsg('Ref. Pressure',ierr) 
+         call fiReadStringErrorMsg('RICH',ierr)
+         call fiReadDouble(string,grid%pref,ierr)
+         call fiDefaultMsg('Ref. Pressure',ierr) 
 
 !......................
 
@@ -4324,7 +4298,7 @@ subroutine pflowGrid_read_input(grid, inputfile)
               .or. grid%use_richards == PETSC_TRUE) then
               call pckr_init(grid%nphase,ireg,grid%nlmax, grid%icaptype,grid%sir, grid%pckrm,&
                    grid%lambda,grid%alpha, grid%pcwmax, grid%pcbetac, grid%pwrprm)
-           endif 
+          endif 
 
       
         if (grid%myrank==0) then
@@ -4346,12 +4320,12 @@ subroutine pflowGrid_read_input(grid, inputfile)
           enddo
         end if
 
-         if (grid%use_mph == PETSC_TRUE  &
-              .or. grid%use_vadose == PETSC_TRUE .or. grid%use_flash == PETSC_TRUE&
-              .or. grid%use_richards == PETSC_TRUE) then
-              deallocate(grid%icaptype, grid%pckrm,&
-                   grid%lambda,grid%alpha, grid%pcwmax, grid%pcbetac, grid%pwrprm)
-           endif 
+        if (grid%use_mph == PETSC_TRUE  &
+            .or. grid%use_vadose == PETSC_TRUE .or. grid%use_flash == PETSC_TRUE&
+            .or. grid%use_richards == PETSC_TRUE) then
+          deallocate(grid%icaptype, grid%pckrm, grid%lambda, grid%alpha, &
+                     grid%pcwmax, grid%pcbetac, grid%pwrprm)
+        endif 
  
 
 !....................
@@ -4421,12 +4395,12 @@ subroutine pflowGrid_read_input(grid, inputfile)
             &",   "     permx      permy      permz [m^2]   permpwr")')
           do ireg = 1, grid%iregperm
             write(IUNIT2,'(6i4,2i4,1p6e11.4)') &
-              grid%i1reg(ireg),grid%i2reg(ireg), &
-              grid%j1reg(ireg),grid%j2reg(ireg), &
-              grid%k1reg(ireg),grid%k2reg(ireg), &
-              grid%icap_reg(ireg),grid%ithrm_reg(ireg), &
-              grid%por_reg(ireg),grid%tor_reg(ireg), &
-              (grid%perm_reg(ireg,i),i=1,4)
+                  grid%i1reg(ireg),grid%i2reg(ireg), &
+                  grid%j1reg(ireg),grid%j2reg(ireg), &
+                  grid%k1reg(ireg),grid%k2reg(ireg), &
+                  grid%icap_reg(ireg),grid%ithrm_reg(ireg), &
+                  grid%por_reg(ireg),grid%tor_reg(ireg), &
+                  (grid%perm_reg(ireg,i),i=1,4)
           enddo
         endif
 
