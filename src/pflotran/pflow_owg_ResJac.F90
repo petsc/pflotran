@@ -592,7 +592,7 @@ private
     if((dabs(grid%velocitybc(1,nbc_no))+dabs(grid%velocitybc(2,nbc_no)))>floweps)then
        print *, 'FlowBC :', nbc_no,grid%velocitybc(1,nbc_no),grid%velocitybc(2,nbc_no)
      do j=1,grid%nphase
-          fluxm=0.D0; fluxe=0.D0
+!          fluxm=0.D0; fluxe=0.D0
           v_darcy = grid%velocitybc(j,nbc_no)
       vv_darcy(j) = grid%velocitybc(j,nbc_no)
 !      grid%vvbc(j+(nc-2)*grid%nphase)= grid%velocitybc(j,nc)
