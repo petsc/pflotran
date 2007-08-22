@@ -45,8 +45,6 @@ pims : $(util_obj) $(pflow_obj) ${pflow_src}pims.o stubs.o
 	${MYFLAGS} ${PETSC_FORTRAN_LIB} ${PETSC_LIB}
 
 amrpims : $(util_obj) $(pflow_obj) ${pflow_src}pims.o
-	${FLINKER}   -o pims $(util_obj) $(pflow_obj) ${pflow_src}pims.o \
-	${SAMRFLAGS} ${PETSC_FORTRAN_LIB} ${PETSC_LIB}
 
 %.o : %.F90
 	${FC} ${FOPTFLAGS} $< ${MYFLAGS} -c ${PETSC_INCLUDE}

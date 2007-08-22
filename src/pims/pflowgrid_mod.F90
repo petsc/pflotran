@@ -935,6 +935,23 @@ implicit none
 
 end subroutine grid_get_corners
 
+function pims_patch_touches_boundary(grid, locpat, axis, dim)
+  implicit none
+  integer :: pims_patch_touches_boundary
+  type(pflowGrid), intent(inout) :: grid
+  type(pflow_localpatch_info), intent(inout) :: locpat
+  integer :: axis
+  integer :: dim
+  integer :: samr_patch_touches_physicalboundary
+
+  if(grid%Samrai_drive==PETSC_TRUE) then
+     pims_patch_touches_boundary =  samr_patch_touches_physicalboundary(locpat%p_samr_patch, axis, dim)
+  else
+     pims_patch_touches_boundary = 1
+  endif
+
+end function pims_patch_touches_boundary
+
 !Subroutine to setup index system
 
 subroutine pflow_setup_index(grid, locpat)
@@ -944,7 +961,6 @@ type(pflowGrid), intent(inout) :: grid
 type(pflow_localpatch_info), intent(inout) :: locpat
 
    integer i,j,k,n,ng, na, ierr
-
    call grid_get_corners(grid, locpat, PETSC_FALSE)
 
 !   call DAGetCorners(grid%da_1_dof, locpat%nxs, &
