@@ -1824,7 +1824,7 @@ subroutine pflowGrid_setup(grid, inputfile)
     endif
   endif
   
-  if (grid%iread_init==2) call Read_init_field(grid)
+  !if (grid%iread_init==2) call Read_init_field(grid)
   
   print *,'Finished Hydro'
   if (grid%use_mph == PETSC_TRUE .or. grid%use_owg == PETSC_TRUE &
@@ -3199,6 +3199,9 @@ subroutine pflowGrid_step(grid,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
   grid%t = grid%t + grid%dt
   grid%flowsteps = grid%flowsteps + 1
 
+!print *, 'pflow_step:1:',  ntstep, grid%dt
+ 
+
 ! Adjust time step to plot time
   if (grid%t + 0.2*grid%dt >= grid%tplot(kplt)) then
     grid%t = grid%t - grid%dt
@@ -3213,7 +3216,7 @@ subroutine pflowGrid_step(grid,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
   else if (grid%flowsteps == grid%stepmax) then
     iplot = 1
   endif
-
+!print *, 'pflow_step:2:',  ntstep, grid%dt, grid%dt_max, grid%tplot(kplt) - grid%t
 ! source/sink time step control
   if (grid%nblksrc > 0) then
     ns = 1
@@ -3227,7 +3230,7 @@ subroutine pflowGrid_step(grid,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
       grid%isrc1 = grid%isrc1 + 1
     endif
   endif
-  
+ ! print *, 'pflow_step:3:',  ntstep, grid%dt
   if (iflgcut == 1) then
     ihalcnt = ihalcnt + 1
     if (ihalcnt > grid%ndtcmx) then
@@ -3248,6 +3251,7 @@ subroutine pflowGrid_step(grid,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
     endif
   endif
   
+ !print *, 'pflow_step:4:',  ntstep, grid%dt
   do
     
     grid%iphch=0

@@ -423,9 +423,9 @@ private
              .or. grid%use_flash == PETSC_TRUE & 
              .or. grid%use_vadose == PETSC_TRUE &
              .or. grid%use_richards == PETSC_TRUE) then
-             write(1100,'(": i1  i2  j1  j2  k1  k2", &
-               & "       p      ","      T      ","     sl(g)      ", &
-                  & "       xl       xg   ")')
+             write(1100,'(":kplt        steps     t       dt")')
+             write(1100,'(2i10, 1p2e16.8)') kplt, grid%flowsteps, grid%t, grid%dt
+             write(1100,'(":na  x   y   z          iphase           xx")') 
            else       
               write(1100,'(": i1  i2  j1  j2  k1  k2", &
                 & "       p      ","      T      ","     sl(g)      ", &
@@ -591,9 +591,9 @@ private
                 grid%use_flash == PETSC_TRUE .or. &
                 grid%use_vadose == PETSC_TRUE .or.&
                 grid%use_richards == PETSC_TRUE ) then
-                 write(1100,'(6i4,1pe14.6,1p10e12.4)') i,i,j,j,k,k, &
-                 vvar(2), vvar(1), vvar(3),vvar(2+ 7*grid%nphase + 2),&
-                 vvar(2+ 7*grid%nphase + grid%nspec +2 )    
+                 write(1100,'(i10,1p10e16.8)')na,grid%x(na+1), grid%y(na+1), grid%z(na+1),&
+                            real(iipha), xxx   
+                 
             else
                   write(1100,'(6i4,1pe14.6,1p10e12.4)') i,i,j,j,k,k, &
                     pres, temp, sat, conc

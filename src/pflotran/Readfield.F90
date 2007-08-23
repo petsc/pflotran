@@ -118,8 +118,10 @@ subroutine Read_perm_field(grid)
 
 end  subroutine Read_perm_field
   
-  
-subroutine Read_init_field(grid)
+!  subroutine pflowGridRestart(grid, fname, ntstep, kplt, iplot, iflgcut, &
+ !                           ihalcnt, its)
+
+subroutine Read_init_field(grid, kplt)
 
   use fileio_module
 
@@ -129,30 +131,33 @@ subroutine Read_init_field(grid)
 
   type(pflowGrid), intent(inout) :: grid
 !  character(len=MAXSTRINGLENGTH) :: string 
+  integer kplt
 
   PetscScalar, pointer :: xx_p(:), iphase_p(:)
-  integer iln,na,nx,ny,nz,ir,ierr,n
+  integer iln,na,nx,ny,nz,ir,ierr,n, ii
+  real*8 xxx(1:grid%ndof)
   real*8 :: x,y,z,phase,pl,pg,t,sl,sg,xl,xg,vf 
   
   open(60, file="pflow_init.dat", action="read", status="old")
-  read(60,*)
-  read(60,*)
-  read(60,*)
-     
+  read(60)
+!  read(60,'(2i10, 1p2e16.8)') kplt, grid%flowsteps, grid%t, grid%dt
+  read(60)
+  read(60)
+       
   call VecGetArrayF90(grid%xx, xx_p, ierr); CHKERRQ(ierr)
   call VecGetArrayF90(grid%iphas, iphase_p,ierr)
 
   do n=1, grid%nmax 
     ir=n-1
   
-    if (grid%ny==1) then 
-     read(60,'(1p11e12.4)')x,z,phase,pl,pg,t,sl,sg,xl,xg,vf
+!    if (grid%ny==1) then 
+!     read(60,'(1p11e12.4)')x,z,phase,pl,pg,t,sl,sg,xl,xg,vf
  !    print *, x,z,phase,pl,pg,t,sl,sg,xl,xg,vf
-    else
-      read(60,'(1p10e12.4)')x,y,z,phase,pg,t,sg,xl,xg,vf
+ !   else
+      read(60,'(i10, 1p20e16.8)') ii, x,y,z,phase, xxx
 !    print *,x,y,z,phase,pg,t,sg,xl,xg,vf
-    endif 
-    
+ !   endif 
+
     do iln=1, grid%nlmax
       na = grid%nL2A(iln)
     
@@ -161,19 +166,21 @@ subroutine Read_init_field(grid)
         ny = (na - (nz-1)*grid%nxy)/grid%nx + 1
         nx = na + 1 - (ny-1)*grid%nx - (nz-1)*grid%nxy
         iphase_p(iln)= phase
-        if ((dabs(phase-1.D0)<1e-1) .or. (dabs(phase-2.D0)<1e-1)) then  
-          xx_p(1+(iln-1)*grid%ndof) = pg 
-          xx_p(2+(iln-1)*grid%ndof) = t
-          xx_p(3+(iln-1)*grid%ndof) = xg
+        xx_p(1+(iln-1)*grid%ndof: iln* grid%ndof) = xxx(:)
+!        print *, na, ii,ir, xxx, phase  
+   !      if ((dabs(phase-1.D0)<1e-1) .or. (dabs(phase-2.D0)<1e-1)) then  
+  !        xx_p(1+(iln-1)*grid%ndof) = pg 
+  !        xx_p(2+(iln-1)*grid%ndof) = t
+   !       xx_p(3+(iln-1)*grid%ndof) = xg
     !      print*,'ass:', iln,ir,na,xx_p(
-        elseif (dabs(phase-3.D0)<1e-1) then
-          xx_p(1+(iln-1)*grid%ndof) = pg 
-          xx_p(2+(iln-1)*grid%ndof) = t
-          xx_p(3+(iln-1)*grid%ndof) = sg
-        else
-          print *, "error in phase cond:",phase
-          stop        
-        endif
+    !    elseif (dabs(phase-3.D0)<1e-1) then
+    !      xx_p(1+(iln-1)*grid%ndof) = pg 
+    !      xx_p(2+(iln-1)*grid%ndof) = t
+    !      xx_p(3+(iln-1)*grid%ndof) = sg
+    !    else
+    !      print *, "error in phase cond:",phase
+    !      stop        
+    !    endif
         exit   
       endif    
     enddo 
@@ -183,6 +190,9 @@ subroutine Read_init_field(grid)
     
   call VecRestoreArrayF90(grid%xx, xx_p, ierr)
   call VecRestoreArrayF90(grid%iphas, iphase_p,ierr)
+  
+  call VecCopy(grid%xx, grid%yy, ierr)
+  call VecCopy(grid%iphas, grid%iphas_old, ierr)
   !propo0to034
 end subroutine Read_init_field
   

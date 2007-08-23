@@ -35,7 +35,7 @@
   use pflow_output_module_new
   use span_wagner_module
   use pflow_checkpoint
-  
+  use readfield, only: Read_init_field
   implicit none
 
 #include "include/finclude/petsc.h"
@@ -159,6 +159,8 @@
   ihalcnt = 0
   grid%isrc1 = 2
 
+  
+
   call PetscOptionsGetString(PETSC_NULL_CHARACTER, '-restart', restartfile, &
                              restartflag, ierr)
   if(restartflag == PETSC_TRUE) then
@@ -171,6 +173,15 @@
                              
   call PetscLogStagePop(ierr)
 
+ if (grid%iread_init==2 .and. restartflag == PETSC_FALSE)then
+      call Read_init_field(grid, kplt)
+      call pflowGridInitAccum(grid)
+      print *, 'Restart from ASCII file: pflow_init.dat'
+      print *, 't, dt, kplt :: ', grid%t,grid%dt, kplt, grid%flowsteps 
+  endif
+
+
+           
   do steps = grid%flowsteps+1, grid%stepmax
 
     call pflowGrid_step(grid,ntstep,kplt,iplot,iflgcut,ihalcnt,its)

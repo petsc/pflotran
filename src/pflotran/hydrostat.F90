@@ -1044,6 +1044,72 @@ subroutine mhydrostatic(grid)
   grid%velocitybc0(:,ibc) = 0.d0
   print *,'BC: top',grid%myrank,ibc,grid%xxbc0(:,ibc)
 ! bottom
+
+  p=grid%pref
+  do n = 1, grid%nz
+    if (n.eq.1) then
+      dzz = 0.5d0*grid%dz0(1)
+      zz = dzz
+      else
+        dzz = 0.5d0*(grid%dz0(n)+grid%dz0(n-1))
+        zz = zz + dzz
+      endif
+      tmp = grid%tref + grid%dTdz*zz
+    
+  !   call wateos(tmp, p, rho, dw_mol, dwp, &
+  !    dum, dum, dum, dum, grid%scale, ierr)
+      call nacl_den(tmp, p*1D-6, xm_nacl, dw_kg) 
+      rho = dw_kg * 1D3
+                  
+        itrho= 0
+          
+              !betap = rho * grid%gravity * grid%beta
+              if(n==1)then
+                pres = p + rho0 * grid%gravity * dzz !+  betap * horiz
+         !        call wateos(tmp, pres, rho, dw_mol, dwp, &
+         !               dum, dum, dum, dum, grid%scale, ierr)
+                  call nacl_den(tmp, pres*1D-6, xm_nacl, dw_kg) 
+                  rho = dw_kg * 1D3
+                  
+
+               else
+               do
+                pres = p + (rho0*grid%dz0(n-1) + rho* grid%dz0(n))/(grid%dz0(n)+grid%dz0(n-1))&
+                     * grid%gravity * dzz 
+              !  call wateos(tmp, pres, rho1, dw_mol, dwp, &
+              !  dum, dum, dum, dum, grid%scale, ierr)
+                 call nacl_den(tmp, pres*1D-6, xm_nacl, dw_kg) 
+                 rho1 = dw_kg * 1D3
+                if (abs(rho-rho1) < 1.d-6) exit
+                rho = rho1
+                itrho = itrho + 1
+                if (itrho > 100) then
+                  print *,' no convergence in hydrostat-stop',itrho,rho1,rho
+                  stop
+                endif
+              enddo
+          endif
+     p = pres
+     rho0=rho
+    enddo
+
+    itrho =0; dzz= 0.5d0 * grid%dz0(grid%nz)
+    do
+       pres = p + rho * grid%gravity * dzz 
+            !  call wateos(tmp, pres, rho1, dw_mol, dwp, &
+              !  dum, dum, dum, dum, grid%scale, ierr)
+       call nacl_den(tmp, pres*1D-6, xm_nacl, dw_kg) 
+       rho1 = dw_kg * 1D3
+       if (abs(rho-rho1) < 1.d-6) exit
+         rho = rho1
+         itrho = itrho + 1
+         if (itrho > 100) then
+            print *,' no convergence in hydrostat-stop',itrho,rho1,rho
+            stop
+         endif
+    enddo
+
+
   
   ibc0 = ibc0 + 1
 
