@@ -334,6 +334,7 @@ private
 
     real*8 :: atol, rtol, stol, dtol
     real*8, pointer :: steady_eps(:)
+    integer idt_switch
     integer var_plot_num
     character*16, pointer :: var_plot_nm(:)
     integer, pointer :: var_plot_ind(:)  

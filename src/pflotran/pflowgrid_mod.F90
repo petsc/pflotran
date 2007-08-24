@@ -265,6 +265,7 @@ endif
   grid%stol = PETSC_DEFAULT_DOUBLE_PRECISION
   grid%maxit = PETSC_DEFAULT_INTEGER
   grid%maxf = PETSC_DEFAULT_INTEGER
+  grid%idt_switch = 0
   
   grid%ihydrostatic = 0
   grid%conc0 = 1.d-6
@@ -3269,8 +3270,7 @@ subroutine pflowGrid_step(grid,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
         call pflow_solve(grid,its,snes_reason,ierr)
       else 
         call SNESSolve(grid%snes, PETSC_NULL, grid%xx, ierr)
-        call SNESGetFunctionNorm(grid%snes,r2norm)
-        
+        call SNESGetFunctionNorm(grid%snes,r2norm, ierr)
         if (grid%myrank == 0) print *,'SNES R2Norm = ',r2norm
       endif
     else if (grid%use_richards == PETSC_TRUE) then
@@ -4179,16 +4179,20 @@ subroutine pflowGrid_read_input(grid, inputfile)
       
         call fiReadInt(string,grid%maxf,ierr)
         call fiDefaultMsg('maxf',ierr)
-
+       
+        call fiReadInt(string,grid%idt_switch,ierr)
+        call fiDefaultMsg('idt',ierr)
+ 
         if (grid%myrank==0) write(IUNIT2,'(/," *SOLV ",/, &
           &"  atol_petsc   = ",1pe12.4,/, &
           &"  rtol_petsc   = ",1pe12.4,/, &
           &"  stol_petsc   = ",1pe12.4,/, &
           &"  dtol_petsc   = ",1pe12.4,/, &
           &"  maxit        = ",8x,i5,/, &
-          &"  maxf         = ",8x,i5 &
+          &"  maxf        = ",8x,i5,/, &
+          &"  idt         = ",8x,i5 &
           &    )') &
-           grid%atol,grid%rtol,grid%stol,grid%dtol,grid%maxit,grid%maxf
+           grid%atol,grid%rtol,grid%stol,grid%dtol,grid%maxit,grid%maxf, grid%idt_switch
 
 ! The line below is a commented-out portion of the format string above.
 ! We have to put it here because of the stupid Sun compiler.

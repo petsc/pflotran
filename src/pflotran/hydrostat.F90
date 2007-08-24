@@ -761,7 +761,7 @@ subroutine mhydrostatic(grid)
         call nacl_den(tmp, pres*1D-6, xm_nacl, dw_kg) 
          rho1 = dw_kg * 1D3
   
-        if (abs(rho-rho1) < 1.d-6) exit
+        if (abs(rho-rho1) < 1.d-10) exit
         rho = rho1
         itrho = itrho + 1
         if (itrho > 100) then
@@ -894,7 +894,7 @@ subroutine mhydrostatic(grid)
               !  dum, dum, dum, dum, grid%scale, ierr)
                  call nacl_den(tmp, pres*1D-6, xm_nacl, dw_kg) 
                  rho1 = dw_kg * 1D3
-                if (abs(rho-rho1) < 1.d-6) exit
+                if (abs(rho-rho1) < 1.d-10) exit
                 rho = rho1
                 itrho = itrho + 1
                 if (itrho > 100) then
@@ -983,7 +983,7 @@ subroutine mhydrostatic(grid)
                    rho1 = dw_kg * 1D3
 
               
-              if (abs(rho-rho1) < 1.d-6) exit
+              if (abs(rho-rho1) < 1.d-10) exit
               rho = rho1
               itrho = itrho + 1
               if (itrho > 100) then
@@ -1080,7 +1080,7 @@ subroutine mhydrostatic(grid)
               !  dum, dum, dum, dum, grid%scale, ierr)
                  call nacl_den(tmp, pres*1D-6, xm_nacl, dw_kg) 
                  rho1 = dw_kg * 1D3
-                if (abs(rho-rho1) < 1.d-6) exit
+                if (abs(rho-rho1) < 1.d-10) exit
                 rho = rho1
                 itrho = itrho + 1
                 if (itrho > 100) then
@@ -1100,7 +1100,7 @@ subroutine mhydrostatic(grid)
               !  dum, dum, dum, dum, grid%scale, ierr)
        call nacl_den(tmp, pres*1D-6, xm_nacl, dw_kg) 
        rho1 = dw_kg * 1D3
-       if (abs(rho-rho1) < 1.d-6) exit
+       if (abs(rho-rho1) < 1.d-10) exit
          rho = rho1
          itrho = itrho + 1
          if (itrho > 100) then

@@ -1193,7 +1193,7 @@ private
 
 
   end do
-!  print *,'finished NC' 
+ ! print *,'finished NC' 
  
 !*************** Handle boundary conditions*************
 !   print *,'xxxxxxxxx ::...........'; call VecView(xx,PETSC_VIEWER_STDOUT_WORLD,ierr)
@@ -1233,10 +1233,10 @@ private
       ! solve for pb from Darcy's law given qb /= 0
         grid%xxbc(:,nc) = xx_loc_p((ng-1)*grid%ndof+1: ng*grid%ndof)
         grid%iphasebc(nc) = int(iphase_loc_p(ng))
-   !   case(3) 
+      case(3) 
      !  grid%xxbc((nc-1)*grid%ndof+1)=grid%pressurebc(2,ibc)
-    !    grid%xxbc(2:grid%ndof,nc) = xx_loc_p((ng-1)*grid%ndof+2: ng*grid%ndof)
-    !    grid%iphasebc(nc)=int(iphase_loc_p(ng))
+        grid%xxbc(2:grid%ndof,nc) = xx_loc_p((ng-1)*grid%ndof+2: ng*grid%ndof)
+        grid%iphasebc(nc)=int(iphase_loc_p(ng))
       case(4)
          grid%xxbc(1,nc) = xx_loc_p((ng-1)*grid%ndof+1)
          grid%xxbc(3:grid%ndof,nc) = xx_loc_p((ng-1)*grid%ndof+3: ng*grid%ndof)    
@@ -1267,7 +1267,7 @@ private
 !   grid%pressurebc(2,ibc),grid%tempbc(ibc),grid%concbc(ibc),grid%sgbc(ibc)
        
         !*****************
-  dif(1)= grid%difaq
+    dif(1)= grid%difaq
     dif(2)= grid%cdiff(int(ithrm_loc_p(ng)))
     !*******************************************
 
@@ -1288,7 +1288,7 @@ private
       ResOld_AR(m,1:grid%ndof) = ResOld_AR(m,1:grid%ndof) - Res(1:grid%ndof)
    
    
-       !print *, ' boundary index', nc,ng,ibc,grid%ibndtyp(ibc)
+ !      print *, ' boundary index', nc,ng,ibc,grid%ibndtyp(ibc)
        !print *,'        xxbc', grid%iphasebc(nc), grid%xxbc(:,nc),res
      !print *, '       var', grid%varbc
   !   print *, ' P  T   C   S  ', grid%pressurebc(1,ibc),grid%tempbc(ibc), &
@@ -1305,15 +1305,20 @@ private
 
 ! adjust residual to R/dt
 
- r_p(:) = r_p(:)/grid%dt
- 
- ! print *,'finished BC'
+  select case (grid%idt_switch) 
+   case(1) 
+     r_p(:) = r_p(:)/grid%dt
+   case(-1)
+    if(grid%dt>1.D0)  r_p(:) = r_p(:)/grid%dt
+  end select    
+! print *,'finished rp dt scale'
+  
  do n = 1, grid%nlmax
    p1 = 1 + (n-1)*grid%ndof
    if(volume_p(n)>1.D0) r_p (p1:p1+2)=r_p(p1:p1+2)/volume_p(n)
  enddo  
 
-
+!print *,'finished rp vol scale'
   if(grid%use_isoth==PETSC_TRUE)then
     do n = 1, grid%nlmax  ! For each local node do...
       ng = grid%nL2G(n)   ! corresponding ghost index
@@ -1322,7 +1327,7 @@ private
     enddo
   endif
    
-
+!print *,'res closeing pointer'
   call VecRestoreArrayF90(r, r_p, ierr)
   call VecRestoreArrayF90(grid%yy, yy_p, ierr)
   call VecRestoreArrayF90(grid%xx_loc, xx_loc_p, ierr)
@@ -1427,7 +1432,7 @@ private
 !   2. Average molecular weights to p,t,s
  flag = SAME_NONZERO_PATTERN
 
- ! print *,'*********** In Jacobian ********************** '
+!  print *,'*********** In Jacobian ********************** '
   call MatZeroEntries(A,ierr)
 
 ! Is the following necessary-pcl??? We've already done this in residual call.
@@ -1639,12 +1644,12 @@ private
                  xx_loc_p((ng-1)*grid%ndof+1: ng*grid%ndof)
               grid%iphasebc(nc)=int(iphase_loc_p(ng))
               delxbc=grid%delx(1:grid%ndof,ng)
-       !   case(3) 
+      case(3) 
           !    grid%xxbc(1,nc)=grid%pressurebc(2,ibc)
-    !    grid%xxbc(2:grid%ndof,nc)= xx_loc_p((ng-1)*grid%ndof+2: ng*grid%ndof)
-    !    grid%iphasebc(nc)=int(iphase_loc_p(ng))
-   !      delxbc(1)=0.D0
-   !      delxbc(2:grid%ndof)=grid%delx(2:grid%ndof,ng)
+        grid%xxbc(2:grid%ndof,nc)= xx_loc_p((ng-1)*grid%ndof+2: ng*grid%ndof)
+        grid%iphasebc(nc)=int(iphase_loc_p(ng))
+         delxbc(1)=0.D0
+         delxbc(2:grid%ndof)=grid%delx(2:grid%ndof,ng)
         case(4)
         grid%xxbc(1,nc) = xx_loc_p((ng-1)*grid%ndof+1)
         grid%xxbc(3:grid%ndof,nc) = xx_loc_p((ng-1)*grid%ndof+3: ng*grid%ndof)    
@@ -1744,16 +1749,24 @@ private
   !  print *,'Mph Jaco max dev = ', max_dev
  !  endif
   
+     select case(grid%idt_switch)
+     case(1) 
+      ra(1:grid%ndof,1:grid%ndof) =ra(1:grid%ndof,1:grid%ndof) /grid%dt
+     case(-1)
+      if(grid%dt>1) ra(1:grid%ndof,1:grid%ndof) =ra(1:grid%ndof,1:grid%ndof) /grid%dt
+     end select
+      
+
   if (grid%iblkfmt == 0) then
      p1=(na1)*grid%ndof
-     ra(1:grid%ndof,1:grid%ndof) =ra(1:grid%ndof,1:grid%ndof) /grid%dt
-    do ii=0,grid%ndof-1
+     
+     do ii=0,grid%ndof-1
       do jj=0,grid%ndof-1
         call MatSetValue(A,p1+ii,p1+jj,ra(ii+1,jj+1)/ volume_p(n),ADD_VALUES,ierr)
       enddo
      enddo
    else
-     ra(1:grid%ndof,1:grid%ndof) =ra(1:grid%ndof,1:grid%ndof) /grid%dt
+      !ra(1:grid%ndof,1:grid%ndof) =ra(1:grid%ndof,1:grid%ndof) /grid%dt
       blkmat11=ra(1:grid%ndof,1:grid%ndof)
     
     if(volume_p(n)>1.D0 ) blkmat11=blkmat11 / volume_p(n)
@@ -1863,7 +1876,14 @@ private
      blkmat11 = 0.D0; blkmat12 = 0.D0; blkmat21 = 0.D0; blkmat22 = 0.D0;
    endif
    p1=(na1)*grid%ndof;p2=(na2)*grid%ndof
-    ra =ra / grid%dt
+ 
+    select case(grid%idt_switch)
+    case(1)
+      ra =ra / grid%dt
+    case(-1)  
+      if(grid%dt>1)  ra =ra / grid%dt
+    end select  
+       
      do ii=0,grid%ndof-1
        do jj=0,grid%ndof-1
           if(n1>0) then
@@ -1920,7 +1940,7 @@ private
 !print *,'accum r',ra(1:5,1:8)   
  !print *,'devq:',nc,q,dphi,devq(3,:)
   end do
-  ! print *,' Mph Jaco Finished Two node terms'
+ !print *,' Mph Jaco Finished Two node terms'
   
   call VecRestoreArrayF90(grid%xx_loc, xx_loc_p, ierr)
   call VecRestoreArrayF90(grid%porosity_loc, porosity_loc_p, ierr)
