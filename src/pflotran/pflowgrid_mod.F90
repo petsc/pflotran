@@ -3158,7 +3158,7 @@ subroutine pflowGrid_step(grid,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
   integer :: icut, iflgcut ! Tracks the number of time step reductions applied
   SNESConvergedReason :: snes_reason 
   integer update_reason
-  real*8 :: tsrc
+  real*8 :: tsrc,r2norm
 ! real*8, pointer :: xx_p(:), conc_p(:), press_p(:), temp_p(:)
 
   its = 0
@@ -3269,6 +3269,9 @@ subroutine pflowGrid_step(grid,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
         call pflow_solve(grid,its,snes_reason,ierr)
       else 
         call SNESSolve(grid%snes, PETSC_NULL, grid%xx, ierr)
+        call SNESGetFunctionNorm(grid%snes,r2norm)
+        
+        if (grid%myrank == 0) print *,'SNES R2Norm = ',r2norm
       endif
     else if (grid%use_richards == PETSC_TRUE) then
       if (grid%use_ksp == PETSC_TRUE) then
@@ -3358,7 +3361,6 @@ subroutine pflowGrid_step(grid,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
      ! call Richards_Update_Reason(update_reason, grid)
       if (grid%myrank==0) print *,'update_reason: ',update_reason
     endif
-
 
     if ((grid%use_owg == PETSC_TRUE).and.(snes_reason >= 0)) then
       call OWG_Update_Reason(update_reason, grid)

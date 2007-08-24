@@ -88,82 +88,84 @@
  integer :: its_line
 !integer icut
  MatStructure flag
- real*8 :: rnorm
+ real*8 :: rnorm, epstol
  
  newton=0
  
  do
  
- if(grid%use_mph==PETSc_TRUE)then
-   call Translator_MPhase_Switching(grid%xx,grid,1,ichange)
-   call MPHASEResidual(grid%snes,grid%xx,grid%r,grid,ierr)
- endif
- if(grid%use_vadose==PETSc_TRUE)then
-   call Translator_vadose_Switching(grid%xx,grid,0,ichange)
-   call MPHASEResidual(grid%snes,grid%xx,grid%r,grid,ierr)
- endif
+   if(grid%use_mph==PETSc_TRUE)then
+     call Translator_MPhase_Switching(grid%xx,grid,1,ichange)
+     call MPHASEResidual(grid%snes,grid%xx,grid%r,grid,ierr)
+   endif
+   if(grid%use_vadose==PETSc_TRUE)then
+     call Translator_vadose_Switching(grid%xx,grid,0,ichange)
+     call MPHASEResidual(grid%snes,grid%xx,grid%r,grid,ierr)
+   endif
 
- if(grid%use_richards==PETSc_TRUE)then
-!   call Translator_richards_Switching(grid%xx,grid,0,ichange)
-   call RichardsResidual(grid%snes,grid%xx,grid%r,grid,ierr)
- endif
+   if(grid%use_richards==PETSc_TRUE)then
+  !   call Translator_richards_Switching(grid%xx,grid,0,ichange)
+     call RichardsResidual(grid%snes,grid%xx,grid%r,grid,ierr)
+   endif
 
- if(grid%use_flash==PETSc_TRUE)then
- !  call Translator_vadose_Switching(grid%xx,grid,0,ichange)
-   call FLashResidual(grid%snes,grid%xx,grid%r,grid,ierr)
- endif
+   if(grid%use_flash==PETSc_TRUE) then
+   !  call Translator_vadose_Switching(grid%xx,grid,0,ichange)
+     call FLashResidual(grid%snes,grid%xx,grid%r,grid,ierr)
+   endif
 
- if(grid%use_owg==PETSc_TRUE)then
- call Translator_OWG_Switching(grid%xx,grid%tref,grid,1,ichange,ierr)
- call OWGResidual(grid%snes,grid%xx,grid%r,grid,ierr)
- endif
- print *,' psolve; Get Res'
- 
- call VecNorm(grid%r,NORM_INFINITY,rnorm,ierr)
- 
- ! note now grid%stol acts as convergence tolerance parameter 
- 
-  if (newton > 0 .and. rnorm < (grid%stol)) then
-    exit ! convergence obtained
-  endif
+   if(grid%use_owg==PETSc_TRUE) then
+     call Translator_OWG_Switching(grid%xx,grid%tref,grid,1,ichange,ierr)
+     call OWGResidual(grid%snes,grid%xx,grid%r,grid,ierr)
+   endif
+   print *,' psolve; Get Res'
+   
+   call VecNorm(grid%r,NORM_INFINITY,rnorm,ierr)
+   
+   ! note now grid%stol acts as convergence tolerance parameter 
+   
+    epstol = 1.d-12
+    
+    if (grid%myrank == 0) print *,'R2Norm = ', rnorm,epstol
+    if (newton > 0 .and. rnorm < epstol) then
+!   if (newton > 0 .and. rnorm < grid%stol) then
+      exit ! convergence obtained
+    endif
 
     if(grid%use_mph==PETSC_TRUE)then
-       call MPHASEJacobian(grid%snes,grid%xx,grid%J,grid%J,flag,grid,ierr)
+      call MPHASEJacobian(grid%snes,grid%xx,grid%J,grid%J,flag,grid,ierr)
     elseif(grid%use_owg==PETSC_TRUE)then
       call OWGJacobian(grid%snes,grid%xx,grid%J,grid%J,flag,grid,ierr)
-     elseif(grid%use_vadose==PETSC_TRUE)then
+    elseif(grid%use_vadose==PETSC_TRUE)then
       call VadoseJacobian(grid%snes,grid%xx,grid%J,grid%J,flag,grid,ierr)
     elseif(grid%use_flash==PETSC_TRUE)then
       call FlashJacobian(grid%snes,grid%xx,grid%J,grid%J,flag,grid,ierr)
-   elseif(grid%use_richards==PETSC_TRUE)then
+    elseif(grid%use_richards==PETSC_TRUE)then
       call RichardsJacobian(grid%snes,grid%xx,grid%J,grid%J,flag,grid,ierr)
-
-   endif
-   print *,' psolve; Get Joc'
-   
-  call VecScale(grid%r,-1D0,ierr)
-  call KSPSetOperators(grid%ksp,grid%J,grid%J,SAME_NONZERO_PATTERN,ierr)
-  
-  call KSPSolve(grid%ksp, grid%r,grid%dxx,ierr)
-  call KSPGetConvergedReason(grid%ksp,ksp_reason,ierr)
-  call KSPGetIterationNumber(grid%ksp,its_line,ierr)
-
-
-  newton = newton + 1
-  isucc= ksp_reason
-
-  if (newton > grid%newton_max .or. ksp_reason < 0 ) then
-    if (grid%myrank==0) &
-    print *,'pflowsolv: failed: ',its_line, newton,isucc,rnorm
-    isucc=-1
-    return    
-  endif
-
+    endif
      
+    call VecScale(grid%r,-1D0,ierr)
+    call KSPSetOperators(grid%ksp,grid%J,grid%J,SAME_NONZERO_PATTERN,ierr)
+    
+    call KSPSolve(grid%ksp, grid%r,grid%dxx,ierr)
+    call KSPGetConvergedReason(grid%ksp,ksp_reason,ierr)
+    call KSPGetIterationNumber(grid%ksp,its_line,ierr)
 
-!---update solution after successful Newton-Raphson iteration
-    call VecAXPY(grid%xx,1.d0,grid%dxx,ierr)
-!    call MPhase_Update(grid%xx,grid,1,ichange)
+
+    newton = newton + 1
+    isucc= ksp_reason
+
+    if (newton > grid%newton_max .or. ksp_reason < 0 ) then
+      if (grid%myrank==0) &
+      print *,'pflowsolv: failed: ',its_line, newton,isucc,rnorm
+      isucc=-1
+      return    
+    endif
+
+       
+
+  !---update solution after successful Newton-Raphson iteration
+      call VecAXPY(grid%xx,1.d0,grid%dxx,ierr)
+  !    call MPhase_Update(grid%xx,grid,1,ichange)
   enddo
   print *,'Finished ksp', newton
   end subroutine pflow_solve
