@@ -935,22 +935,22 @@ implicit none
 
 end subroutine grid_get_corners
 
-function pims_patch_touches_boundary(grid, locpat, axis, dim)
+function pims_patch_at_boundary(grid,locpat, axis, dim)
   implicit none
-  integer :: pims_patch_touches_boundary
+  integer :: pims_patch_at_boundary
   type(pflowGrid), intent(inout) :: grid
   type(pflow_localpatch_info), intent(inout) :: locpat
   integer :: axis
   integer :: dim
-  integer :: samr_patch_touches_physicalboundary
+  integer :: samr_patch_at_bc
 
   if(grid%Samrai_drive==PETSC_TRUE) then
-     pims_patch_touches_boundary =  samr_patch_touches_physicalboundary(locpat%p_samr_patch, axis, dim)
+     pims_patch_at_boundary  =  samr_patch_at_bc(locpat%p_samr_patch, axis, dim)
   else
-     pims_patch_touches_boundary = 1
+     pims_patch_at_boundary = 1
   endif
 
-end function pims_patch_touches_boundary
+end function pims_patch_at_boundary
 
 !Subroutine to setup index system
 
@@ -999,6 +999,27 @@ type(pflow_localpatch_info), intent(inout) :: locpat
         * locpat%nlz + locpat%nlx * locpat%nly &
         * (locpat%ngz-1)
 
+  if(use_ghost==PETSC_TRUE) then
+     if(pims_patch_at_boundary(grid,locpat, 0, 0) ==1 ) then !x, left
+        locpat%nconn = locpat%nconn - locpat%nlyz
+     endif  
+     if(pims_patch_at_boundary(grid,locpat, 0, 1) ==1) then 
+        locpat%nconn = locpat%nconn - locpat%nlyz
+     endif  
+     if(pims_patch_at_boundary(grid,locpat, 1, 0) ==1) then
+        locpat%nconn = locpat%nconn - locpat%nlxz
+     endif  
+     if(pims_patch_at_boundary(grid,locpat, 1, 1) ==1) then
+        locpat%nconn = locpat%nconn - locpat%nlxz
+     endif  
+     if(pims_patch_at_boundary(grid,locpat, 2, 0) ==1) then
+        locpat%nconn = locpat%nconn - locpat%nlxy
+     endif  
+     if(pims_patch_at_boundary(grid,locpat, 2, 1) ==1) then
+        locpat%nconn = locpat%nconn - locpat%nlxy
+     endif  
+   endif
+
 !-----------------------------------------------------------------------
       ! Allocate memory for allocatable arrays.
 !-----------------------------------------------------------------------
@@ -1016,7 +1037,10 @@ type(pflow_localpatch_info), intent(inout) :: locpat
       ! but since the ptran code uses them, I think it is easiest to just
       ! use these.
 !-----------------------------------------------------------------------
-
+      ! Local <-> Ghosted Transformation (Two ways)
+      locpat%nG2L(:) = 0  ! Must initialize this to zero!
+      !grid%nL2N(:) = 0
+      n = 0
       locpat%istart = locpat%nxs-locpat%ngxs
       locpat%jstart = locpat%nys-locpat%ngys
       locpat%kstart = locpat%nzs-locpat%ngzs
@@ -1024,10 +1048,6 @@ type(pflow_localpatch_info), intent(inout) :: locpat
       locpat%jend = locpat%jstart+locpat%nly-1
       locpat%kend = locpat%kstart+locpat%nlz-1
 
-      ! Local <-> Ghosted Transformation (Two ways)
-      locpat%nG2L(:) = 0  ! Must initialize this to zero!
-      !grid%nL2N(:) = 0
-      n = 0
       do k=locpat%kstart,locpat%kend
         do j=locpat%jstart,locpat%jend
           do i=locpat%istart,locpat%iend
@@ -1051,7 +1071,6 @@ type(pflow_localpatch_info), intent(inout) :: locpat
           endif
         endif
       enddo
-	  
 	  
       if(grid%Samrai_drive==PETSC_FALSE) then
          ! Local(non ghosted)->Natural(natural order starts from 0) (one way)
@@ -1202,11 +1221,17 @@ PetscScalar, pointer ::  dx_loc_p(:), dy_loc_p(:), dz_loc_p(:), volume_p(:)
 ! print *,'setup-RD:: ',grid%myrank,grid%rd, grid%dx0
   
   ! x-connections
-  if(locpat%ngx > 1) then
+  if(locpat%nlx > 1) then
+   
     do k = locpat%kstart, locpat%kend
       do j = locpat%jstart, locpat%jend
-        do i = 1, locpat%ngx - 1
+         leng = locpat%ngx - 1
+         if(grid%Samrai_drive==PETSC_TRUE) then
+           if(pims_patch_at_boundary(grid,locpat, 0, 1) ==1) leng = leng - 1
+         endif
+        do i = 1, leng
           mg1 = i + j * locpat%ngx + k * locpat%ngxy
+          if(grid%use_ghostbc == PETSC_TRUE) mg1 = mg1 + 1 
           mg2 = mg1 + 1
           nc = nc + 1
           locpat%nd1(nc) = mg1
@@ -1227,6 +1252,11 @@ PetscScalar, pointer ::  dx_loc_p(:), dy_loc_p(:), dz_loc_p(:), volume_p(:)
         enddo
       enddo
     enddo
+
+
+
+
+
     locpat%nconnx = nc
   endif
 
@@ -1234,8 +1264,13 @@ PetscScalar, pointer ::  dx_loc_p(:), dy_loc_p(:), dz_loc_p(:), volume_p(:)
   if(locpat%ngy > 1) then
     do k = locpat%kstart, locpat%kend
       do i = locpat%istart, locpat%iend
-        do j = 1, locpat%ngy - 1
+         leng = locpat%ngy - 1
+         if(grid%Samrai_drive==PETSC_TRUE) then
+           if(pims_patch_at_boundary(grid,locpat, 1, 1) ==1) leng = leng - 1
+         endif
+        do j = 1, leng
           mg1 = i + 1 + (j-1) * locpat%ngx + k * locpat%ngxy
+          if(grid%use_ghostbc == PETSC_TRUE) mg1 = mg1 +  locpat%ngx
           mg2 = mg1 + locpat%ngx
           nc = nc + 1
           locpat%nd1(nc) = mg1
@@ -1256,8 +1291,13 @@ PetscScalar, pointer ::  dx_loc_p(:), dy_loc_p(:), dz_loc_p(:), volume_p(:)
   if(locpat%ngz > 1) then
     do j = locpat%jstart, locpat%jend
       do i = locpat%istart, locpat%iend
-        do k = 1, locpat%ngz - 1
+         leng = locpat%ngz - 1
+         if(grid%Samrai_drive==PETSC_TRUE) then
+           if(pims_patch_at_boundary(grid,locpat, 2, 1) ==1) leng = leng - 1
+         endif
+        do k = 1, leng
           mg1 = i + 1 + j * locpat%ngx + (k-1) * locpat%ngxy
+          if(grid%use_ghostbc == PETSC_TRUE) mg1 = mg1 + locpat%ngxy
           mg2 = mg1 + locpat%ngxy
           nc = nc + 1
           locpat%nd1(nc) = mg1

@@ -1,5 +1,19 @@
 ! this is a stub function so that we don't have to always
 ! link in SAMRAI
+
+
+
+
+integer function samr_patch_at_bc(p_patch, axis, dim)
+
+#include "include/finclude/petsc.h"
+
+PetscFortranAddr :: p_patch
+integer :: axis,dim
+
+end function samr_patch_at_bc
+
+
 subroutine create_samrai_vec(p_hierarchy, dof, use_ghost, vec)
 implicit none
 
