@@ -3159,7 +3159,7 @@ subroutine pflowGrid_step(grid,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
   integer :: icut, iflgcut ! Tracks the number of time step reductions applied
   SNESConvergedReason :: snes_reason 
   integer :: update_reason, it_linear, it_snes
-  real*8 :: tsrc,r2norm
+  real*8 :: tsrc
 ! real*8, pointer :: xx_p(:), conc_p(:), press_p(:), temp_p(:)
 
   its = 0
@@ -3270,11 +3270,6 @@ subroutine pflowGrid_step(grid,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
         call pflow_solve(grid,its,snes_reason,ierr)
       else 
         call SNESSolve(grid%snes, PETSC_NULL, grid%xx, ierr)
-!       call SNESGetFunctionNorm(grid%snes,r2norm, ierr)
-        call SNESGetIterationNumber(grid%snes, it_snes, ierr)
-        call SNESGetLinearSolveIterations(grid%snes, it_linear, ierr)
-!       if (grid%myrank == 0) print *,'SNES R2Norm = ',r2norm,' linear Interations = ',it_linear
-        if (grid%myrank == 0) print *,'SNES Linear/Non-Linear Interations = ',it_linear,it_snes
       endif
     else if (grid%use_richards == PETSC_TRUE) then
       if (grid%use_ksp == PETSC_TRUE) then
@@ -3304,20 +3299,16 @@ subroutine pflowGrid_step(grid,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
       call SNESSolve(grid%snes, PETSC_NULL, grid%ppressure, ierr)
     endif
   ! print *,'pflow_step, finish SNESSolve'
-   call MPI_Barrier(PETSC_COMM_WORLD,ierr)
-   if (grid%use_ksp /= PETSC_TRUE) &
-     call SNESGetIterationNumber(grid%snes, its, ierr)
-!   call KSPGetIterationNumber(grid%ksp, kspits, ierr)
-  
-!   printout residual and jacobian to screen for testing purposes
-!   call VecView(grid%r,PETSC_VIEWER_STDOUT_WORLD,ierr)
-!   call MatView(grid%J,PETSC_VIEWER_STDOUT_WORLD,ierr)
-
-!   call SNESDefaultMonitor(grid%snes, its, r2norm, ierr)
-
-    if (grid%use_ksp /= PETSC_TRUE) &
+    call MPI_Barrier(PETSC_COMM_WORLD,ierr)
+    if (grid%use_ksp /= PETSC_TRUE) then
+      call SNESGetIterationNumber(grid%snes, its, ierr)
+      it_snes = its
+!     call SNESGetFunctionNorm(grid%snes,r2norm, ierr)
+      call SNESGetLinearSolveIterations(grid%snes, it_linear, ierr)
+!     if (grid%myrank == 0) print *,'SNES R2Norm = ',r2norm, &
+!   ' linear Interations = ',it_linear
       call SNESGetConvergedReason(grid%snes, snes_reason, ierr)
-
+    endif
 !   parameter (SNES_CONVERGED_ITERATING         =  0)
 !   parameter (SNES_CONVERGED_FNORM_ABS         =  2)
 !   parameter (SNES_CONVERGED_FNORM_RELATIVE    =  3)
@@ -3338,34 +3329,28 @@ subroutine pflowGrid_step(grid,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
 ! since calculation on saturation has special requirments, need special treatment
 ! update_reason
     !call PETScBarrier(PETSC_NULL_OBJECT, ierr)
+    if (grid%myrank == 0) then
+      write(*,'(/,60("="))')
+    endif
+    
     update_reason = 1
     if ((grid%use_2ph == PETSC_TRUE).and.(snes_reason >= 0)) then
       call TTPhase_Update_Reason(update_reason, grid)
       if (grid%myrank==0) print *,'update_reason: ',update_reason
-    endif
-
-    if ((grid%use_mph == PETSC_TRUE).and.(snes_reason >= 0)) then
+    else if ((grid%use_mph == PETSC_TRUE).and.(snes_reason >= 0)) then
       call MPhase_Update_Reason(update_reason, grid)
       if (grid%myrank==0) print *,'update_reason: ',update_reason
-    endif
-
-    if ((grid%use_flash == PETSC_TRUE).and.(snes_reason >= 0)) then
+    else if ((grid%use_flash == PETSC_TRUE).and.(snes_reason >= 0)) then
       call flash_Update_Reason(update_reason, grid)
       if (grid%myrank==0) print *,'update_reason: ',update_reason
-    endif
-
-    if ((grid%use_vadose == PETSC_TRUE).and.(snes_reason >= 0)) then
+    else if ((grid%use_vadose == PETSC_TRUE).and.(snes_reason >= 0)) then
       call Vadose_Update_Reason(update_reason, grid)
       if (grid%myrank==0) print *,'update_reason: ',update_reason
-    endif
-
-    if ((grid%use_richards == PETSC_TRUE).and.(snes_reason >= 0)) then
-     update_reason=1
-     ! call Richards_Update_Reason(update_reason, grid)
+    else if ((grid%use_richards == PETSC_TRUE).and.(snes_reason >= 0)) then
+      update_reason=1
+     !call Richards_Update_Reason(update_reason, grid)
       if (grid%myrank==0) print *,'update_reason: ',update_reason
-    endif
-
-    if ((grid%use_owg == PETSC_TRUE).and.(snes_reason >= 0)) then
+    else if ((grid%use_owg == PETSC_TRUE).and.(snes_reason >= 0)) then
       call OWG_Update_Reason(update_reason, grid)
       if (grid%myrank==0) print *,'update_reason: ',update_reason
     endif
@@ -3454,14 +3439,18 @@ subroutine pflowGrid_step(grid,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
   if (grid%myrank == 0) then
     if (mod(grid%flowsteps,grid%imod) == 0 .or. grid%flowsteps == 1) then
       write(*, '(/," FLOW ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1,"]", &
-        & " snes: ",i4,/,"  newt= ",i2," [",i6,"]"," cut= ",i2," [",i4,"]")') &
-        grid%flowsteps,grid%t/grid%tconv,grid%dt/grid%tconv,grid%tunit, &
-        snes_reason,its,grid%newtcum,icut,grid%icutcum
+      & " snes_conv_reason: ",i4,/,"  newt= ",i2," [",i6,"]"," cut= ",i2," [",i4,"]")') &
+      grid%flowsteps,grid%t/grid%tconv,grid%dt/grid%tconv,grid%tunit, &
+      snes_reason,its,grid%newtcum,icut,grid%icutcum
+
+      if (grid%use_ksp /= PETSC_TRUE) then
+        print *,' --> SNES Linear/Non-Linear Interations = ',it_linear,it_snes
+      endif
     
       write(IUNIT2, '(" FLOW ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1, &
-        & "]"," snes: ",i4,/,"  newt= ",i2," [",i6,"]"," cut= ",i2," [",i4, &
-        & "]")') grid%flowsteps,grid%t/grid%tconv,grid%dt/grid%tconv, &
-        grid%tunit, snes_reason,its,grid%newtcum,icut,grid%icutcum
+      & "]"," snes_conv_reason: ",i4,/,"  newt= ",i2," [",i6,"]"," cut= ",i2," [",i4, &
+      & "]")') grid%flowsteps,grid%t/grid%tconv,grid%dt/grid%tconv, &
+      grid%tunit, snes_reason,its,grid%newtcum,icut,grid%icutcum
     endif
   endif
   
