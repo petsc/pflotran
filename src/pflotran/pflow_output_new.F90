@@ -350,7 +350,7 @@ private
 
 ! Varibale Get pointers
 
- print *, 'begin rebuild output var'
+!print *, 'begin rebuild output var'
  if (grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE & 
         .or. grid%use_flash == PETSC_TRUE  .or. grid%use_richards == PETSC_TRUE)then
     call VecGetArrayF90(grid%var, var_p, ierr)
@@ -362,7 +362,7 @@ private
     call VecRestoreArrayF90(var_plot, var_plot_p, ierr)
   endif
 
- print *, 'end rebuild output var'
+! print *, 'end rebuild output var'
 
  if (grid%itecplot ==PETSC_TRUE)then
    if (grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE & 
@@ -438,8 +438,8 @@ private
   !----------------------------------------------------------    
   !close(IUNIT3)
   !open(unit=IUNIT3,file=fname,action="write")
- 
-  print *, 'pflow_output_new: begin write in tecplot format'         
+   if (grid%myrank == 0) &
+   print *, 'pflow_output_new: tecplot format'         
    ndex=1
     do na=0, grid%nmax-1
       ifound=0

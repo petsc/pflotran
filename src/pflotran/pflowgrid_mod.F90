@@ -1827,7 +1827,7 @@ subroutine pflowGrid_setup(grid, inputfile)
   
   !if (grid%iread_init==2) call Read_init_field(grid)
   
-  print *,'Finished Hydro'
+! print *,'Finished Hydro'
   if (grid%use_mph == PETSC_TRUE .or. grid%use_owg == PETSC_TRUE &
       .or. grid%use_vadose == PETSC_TRUE .or. grid%use_flash == PETSC_TRUE&
        .or. grid%use_richards == PETSC_TRUE ) then
@@ -1866,7 +1866,7 @@ subroutine pflowGrid_setup(grid, inputfile)
     deallocate(grid%xmol_ini)
     deallocate(grid%conc_ini)
   endif
-  print *,'deallocate ini'
+! print *,'deallocate ini'
 
 !************End of initial Condition Setup ***********************
 
@@ -2516,7 +2516,7 @@ subroutine pflowGrid_setup(grid, inputfile)
     call pflow_mphase_initadj(grid)
     call VecCopy(grid%iphas, grid%iphas_old,ierr)
     call VecCopy(grid%xx, grid%yy, ierr)
-    print *, "m ph finish variable packing"
+!   print *, "m ph finish variable packing"
     call pflow_update_mphase(grid)
   endif 
 
