@@ -1286,32 +1286,17 @@ private
       grid%vvgbc(nc) = vv_darcy(2) 
       r_p(p1:p1-1+grid%ndof)= r_p(p1:p1-1+grid%ndof) - Res(1:grid%ndof)
       ResOld_AR(m,1:grid%ndof) = ResOld_AR(m,1:grid%ndof) - Res(1:grid%ndof)
-   
-   
- !      print *, ' boundary index', nc,ng,ibc,grid%ibndtyp(ibc)
-       !print *,'        xxbc', grid%iphasebc(nc), grid%xxbc(:,nc),res
-     !print *, '       var', grid%varbc
-  !   print *, ' P  T   C   S  ', grid%pressurebc(1,ibc),grid%tempbc(ibc), &
-    !                               grid%concbc(ibc),grid%sgbc(ibc)
-    !   print *,' hh,den   ',grid%hh_bc(1:2),grid%density_bc(1:2)
-
-!print *,' Gotten BC properties ', ibc,grid%ibndtyp(ibc),iicap
-!print *,grid%pressurebc(2,ibc),grid%tempbc(ibc),grid%concbc(ibc),grid%sgbc(ibc)
-!print *,grid%density_bc,grid%avgmw_bc
-!print *,grid%hh_bc,grid%uu_bc,grid%df_bc,grid%hen_bc,grid%pc_bc,grid%kvr_bc
-
  enddo
  
 
-! adjust residual to R/dt
+!adjust residual to R/dt
 
   select case (grid%idt_switch) 
-   case(1) 
-     r_p(:) = r_p(:)/grid%dt
-   case(-1)
-    if(grid%dt>1.D0)  r_p(:) = r_p(:)/grid%dt
+    case(1) 
+      r_p(:) = r_p(:)/grid%dt
+    case(-1)
+      if(grid%dt>1.D0) r_p(:) = r_p(:)/grid%dt
   end select    
-! print *,'finished rp dt scale'
   
  do n = 1, grid%nlmax
    p1 = 1 + (n-1)*grid%ndof
@@ -1323,11 +1308,11 @@ private
     do n = 1, grid%nlmax  ! For each local node do...
       ng = grid%nL2G(n)   ! corresponding ghost index
       p1 = 3 + (n-1)*grid%ndof
-      r_p(p1)=xx_loc_p(2 + (ng-1)*grid%ndof)-yy_p(p1-1)
+      r_p(p1) = xx_loc_p(2 + (ng-1)*grid%ndof) - yy_p(p1-1)
     enddo
   endif
    
-!print *,'res closeing pointer'
+!print *,'res closing pointer'
   call VecRestoreArrayF90(r, r_p, ierr)
   call VecRestoreArrayF90(grid%yy, yy_p, ierr)
   call VecRestoreArrayF90(grid%xx_loc, xx_loc_p, ierr)

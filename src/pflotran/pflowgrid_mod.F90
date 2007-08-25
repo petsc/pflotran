@@ -3158,7 +3158,7 @@ subroutine pflowGrid_step(grid,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
   integer :: its,kplt,iplot,ntstep !,idpmax,idtmpmax,idcmax
   integer :: icut, iflgcut ! Tracks the number of time step reductions applied
   SNESConvergedReason :: snes_reason 
-  integer :: update_reason, it_linear
+  integer :: update_reason, it_linear, it_snes
   real*8 :: tsrc,r2norm
 ! real*8, pointer :: xx_p(:), conc_p(:), press_p(:), temp_p(:)
 
@@ -3271,10 +3271,10 @@ subroutine pflowGrid_step(grid,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
       else 
         call SNESSolve(grid%snes, PETSC_NULL, grid%xx, ierr)
 !       call SNESGetFunctionNorm(grid%snes,r2norm, ierr)
-!       call SNESGetIterationNumber(grid%snes, it_snes, ierr)
+        call SNESGetIterationNumber(grid%snes, it_snes, ierr)
         call SNESGetLinearSolveIterations(grid%snes, it_linear, ierr)
 !       if (grid%myrank == 0) print *,'SNES R2Norm = ',r2norm,' linear Interations = ',it_linear
-        if (grid%myrank == 0) print *,'SNES linear Interations = ',it_linear
+        if (grid%myrank == 0) print *,'SNES Linear/Non-Linear Interations = ',it_linear,it_snes
       endif
     else if (grid%use_richards == PETSC_TRUE) then
       if (grid%use_ksp == PETSC_TRUE) then
