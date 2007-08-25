@@ -3252,6 +3252,10 @@ subroutine pflowGrid_step(grid,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
     endif
   endif
   
+  if (grid%myrank == 0) then
+    write(*,'(/,60("="))')
+  endif
+  
  !print *, 'pflow_step:4:',  ntstep, grid%dt
   do
     
@@ -3329,9 +3333,6 @@ subroutine pflowGrid_step(grid,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
 ! since calculation on saturation has special requirments, need special treatment
 ! update_reason
     !call PETScBarrier(PETSC_NULL_OBJECT, ierr)
-    if (grid%myrank == 0) then
-      write(*,'(/,60("="))')
-    endif
     
     update_reason = 1
     if ((grid%use_2ph == PETSC_TRUE).and.(snes_reason >= 0)) then
