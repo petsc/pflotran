@@ -2078,7 +2078,7 @@ private
 
       
   ! if (grid%rk > 0.d0) call Rock_Change(grid)
-    call Translator_MPhase_Switching(grid%xx,grid,1,ierr)
+  ! call Translator_MPhase_Switching(grid%xx,grid,1,ierr)
   !print *,'MPhase_Update done'
  
    ! if(ichange ==1)then

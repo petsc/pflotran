@@ -1563,7 +1563,7 @@ subroutine pflowGrid_setup(grid, inputfile)
             grid%area(nc) = dy_loc_p(mg1) * dz_loc_p(mg1)
           else if (grid%igeom == 2) then
             grid%area(nc) = 2.D0 * Pi * grid%rd(i+grid%nxs) * dz_loc_p(mg1)
-            print *,'area nc: ',grid%myrank,nc,i,grid%rd(i+grid%nxs)
+!           print *,'area nc: ',grid%myrank,nc,i,grid%rd(i+grid%nxs)
           else if (grid%igeom == 3) then
             grid%area(nc) = 4.D0 * Pi * grid%rd(i+grid%nxs)**2
           endif
@@ -1620,7 +1620,7 @@ subroutine pflowGrid_setup(grid, inputfile)
             grid%area(nc) =  Pi * (grid%rd(i+grid%nxs)+  &
                              grid%rd(i-1+grid%nxs))* &
                              (grid%rd(i+grid%nxs) - grid%rd(i-1+grid%nxs))  
-            print *, 'area nc ',grid%myrank, nc, i,  grid%area(nc)
+!           print *, 'area nc ',grid%myrank, nc, i,  grid%area(nc)
           endif
           grid%iperm1(nc) = 3
           grid%iperm2(nc) = 3
@@ -1640,7 +1640,7 @@ subroutine pflowGrid_setup(grid, inputfile)
       if (i==0) i = grid%nlx
       volume_p(n) = Pi * (grid%rd(i+grid%nxs) + grid%rd(i-1+grid%nxs))*&
       (grid%rd(i+grid%nxs) - grid%rd(i-1+grid%nxs)) * dz_loc_p(ng)
-      print *, 'setup: Vol ', grid%myrank, n,i, grid%rd(i+grid%nxs),volume_p(n)
+!     print *, 'setup: Vol ', grid%myrank, n,i, grid%rd(i+grid%nxs),volume_p(n)
     else if (grid%igeom == 3) then
     endif
   enddo
@@ -3158,7 +3158,7 @@ subroutine pflowGrid_step(grid,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
   integer :: its,kplt,iplot,ntstep !,idpmax,idtmpmax,idcmax
   integer :: icut, iflgcut ! Tracks the number of time step reductions applied
   SNESConvergedReason :: snes_reason 
-  integer update_reason
+  integer :: update_reason, it_linear
   real*8 :: tsrc,r2norm
 ! real*8, pointer :: xx_p(:), conc_p(:), press_p(:), temp_p(:)
 
@@ -3270,8 +3270,11 @@ subroutine pflowGrid_step(grid,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
         call pflow_solve(grid,its,snes_reason,ierr)
       else 
         call SNESSolve(grid%snes, PETSC_NULL, grid%xx, ierr)
-        call SNESGetFunctionNorm(grid%snes,r2norm, ierr)
-        if (grid%myrank == 0) print *,'SNES R2Norm = ',r2norm
+!       call SNESGetFunctionNorm(grid%snes,r2norm, ierr)
+!       call SNESGetIterationNumber(grid%snes, it_snes, ierr)
+        call SNESGetLinearSolveIterations(grid%snes, it_linear, ierr)
+!       if (grid%myrank == 0) print *,'SNES R2Norm = ',r2norm,' linear Interations = ',it_linear
+        if (grid%myrank == 0) print *,'SNES linear Interations = ',it_linear
       endif
     else if (grid%use_richards == PETSC_TRUE) then
       if (grid%use_ksp == PETSC_TRUE) then
