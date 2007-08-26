@@ -89,7 +89,19 @@ subroutine pflowGridCheckpoint(grid, ntstep, kplt, iplot, iflgcut, ihalcnt, &
   integer ierr
 
   ! Open the checkpoint file.
-  write(fname, '(a10,i6.6)') 'pflow.chk.', id
+  if (id < 10) then
+    write(fname, '(a9,i1)') 'pflow.chk', id
+  else if (id < 100) then
+    write(fname, '(a9,i2)') 'pflow.chk', id
+  else if (id < 1000) then
+    write(fname, '(a9,i3)') 'pflow.chk', id
+  else if (id < 10000) then
+    write(fname, '(a9,i4)') 'pflow.chk', id
+  else if (id < 100000) then
+    write(fname, '(a9,i5)') 'pflow.chk', id
+  else if (id < 1000000) then
+    write(fname, '(a9,i6)') 'pflow.chk', id
+  endif
   call PetscViewerBinaryOpen(PETSC_COMM_WORLD, fname, FILE_MODE_WRITE, &
                              viewer, ierr)
 
@@ -171,7 +183,7 @@ subroutine pflowGridCheckpoint(grid, ntstep, kplt, iplot, iflgcut, ihalcnt, &
   ! We are finished, so clean up.
   call PetscViewerDestroy(viewer, ierr)
 
-  if(grid%myrank == 0) write(*, '(a23, a16)') "Dumped checkpoint file ", fname
+  if(grid%myrank == 0) write(*, '(" --> Dump checkpoint file: ", a16)') fname
 
 end subroutine pflowGridCheckpoint
 
@@ -214,6 +226,7 @@ subroutine pflowGridRestart(grid, fname, ntstep, kplt, iplot, iflgcut, &
   type(pflowChkPtHeader), pointer :: header
   integer ierr
 
+  if (grid%myrank == 0) print *,'--> Open checkpoint file: ',fname
   call PetscViewerBinaryOpen(PETSC_COMM_WORLD, fname, FILE_MODE_READ, &
                              viewer, ierr)
  
@@ -238,8 +251,8 @@ subroutine pflowGridRestart(grid, fname, ntstep, kplt, iplot, iflgcut, &
   call VecCopy(grid%xx, grid%yy, ierr)
   
   if(grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE .or. &
-     grid%use_flash == PETSC_TRUE .or. grid%use_2ph == PETSC_TRUE .or. &
-     grid%use_richards == PETSC_TRUE ) then
+    grid%use_flash == PETSC_TRUE .or. grid%use_2ph == PETSC_TRUE .or. &
+    grid%use_richards == PETSC_TRUE ) then
     call VecLoadIntoVector(viewer, grid%iphas, ierr)
     call VecCopy(grid%iphas, grid%iphas_old, ierr)
     call VecLoadIntoVector(viewer, grid%var, ierr)
@@ -294,7 +307,7 @@ subroutine pflowGridTHCBinaryOut(grid, kplt)
   integer ierr
 
   ! Open the output file.
-  write(fname, '(a10,i2)') 'pflow.chk.', kplt
+  write(fname, '(a9,i2)') 'pflow.chk', kplt
   call PetscViewerBinaryOpen(PETSC_COMM_WORLD, fname, FILE_MODE_WRITE, &
                         viewer, ierr)
 

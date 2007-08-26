@@ -939,7 +939,20 @@ enddo
  else    ! Switch to binary output using method in pflow_checkpoint
   !call DAGetCoordinate()     
   
-  write(fname, '(a10,i6.6)') 'pflow.bin.', kplt
+! write(fname, '(a10,i6.6)') 'pflow.bin.', kplt
+  if (kplt < 10) then
+    write(fname, '(a9,i1)') 'pflow.bin', kplt
+  else if (kplt < 100) then
+    write(fname, '(a9,i2)') 'pflow.bin', kplt
+  else if (kplt < 1000) then
+    write(fname, '(a9,i3)') 'pflow.bin', kplt
+  else if (kplt < 10000) then
+    write(fname, '(a9,i4)') 'pflow.bin', kplt
+  else if (kplt < 100000) then
+    write(fname, '(a9,i5)') 'pflow.bin', kplt
+  else if (kplt < 1000000) then
+    write(fname, '(a9,i6)') 'pflow.bin', kplt
+  endif
   call PetscViewerBinaryOpen(PETSC_COMM_WORLD, fname, FILE_MODE_WRITE, &
                              viewer, ierr)
 
@@ -1036,7 +1049,7 @@ endif
   ! We are finished, so clean up.
   call PetscViewerDestroy(viewer, ierr)
 
-  if(grid%myrank == 0) write(*, '(a23, a16)') "Dumped binary file ", fname
+  if(grid%myrank == 0) write(*, '("  --> Dump binary file: ", a16)') fname
     
  endif  ! endif of tecplot
    
