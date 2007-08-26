@@ -692,7 +692,7 @@ private
    
    
    
-   print *,'Write out velocity field'
+!  print *,'Write out velocity field'
    call DAGlobalToLocalBegin(grid%da_3np_dof, grid%vl, INSERT_VALUES, &
                             vl_plot_loc, ierr)
    call DAGlobalToLocalend(grid%da_3np_dof, grid%vl, INSERT_VALUES, &
@@ -700,7 +700,7 @@ private
    
    call VecGetArrayF90(vl_plot_loc, vl_plot_loc_p,ierr)
    call VecGetArrayF90(grid%vl, vl_p,ierr)
-   print *,'velocity field got pointer' 
+!  print *,'velocity field got pointer' 
        ndex=1
   
       do k = 1, grid%nz
