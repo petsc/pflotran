@@ -1815,10 +1815,10 @@ subroutine pflowGrid_setup(grid, inputfile)
   if (grid%ihydrostatic == 1) then
     if (grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE &
      .or. grid%use_flash == PETSC_TRUE .or. grid%use_richards == PETSC_TRUE) then
-      print *,'in hydro'
+!     print *,'in hydro'
       call mhydrostatic(grid)
     elseif (grid%use_owg == PETSC_TRUE) then
-      print *,'in hydro'
+!     print *,'in hydro'
       call owghydrostatic(grid)
     else
       call hydrostatic(grid)
