@@ -3365,13 +3365,13 @@ subroutine pflowGrid_step(grid,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
       icut = icut + 1
       iflgcut = 1
 
-      if (icut > grid%icut_max .or. grid%dt<1d-9 ) then
+      if (icut > grid%icut_max .or. grid%dt<1.d-20) then
 !       call MPI_Comm_rank(PETSC_COMM_WORLD, myrank, ierr)
         if (grid%myrank == 0) then
 !         t = pflowgrid_get_t(grid)
-          print *,"icut_max exceeded. icut= ",icut, "t= ",grid%t/grid%tconv, &
-                   grid%dt, ". Stopping execution."
-          print *, "Final state:"
+          print *,"--> icut_max exceeded: icut/icutmax= ",icut,grid%icut_max, &
+                  "t= ",grid%t/grid%tconv, " dt= ",grid%dt/grid%tconv
+          print *,"Stopping execution!"
         endif
         iplot = 1
  !       call pflow_output(grid%ppressure,grid%ttemp,grid%conc,grid%phis,grid%porosity, &
