@@ -763,10 +763,12 @@ private
   grid%vvl_loc=0.D0
   grid%vvg_loc=0.D0
 
-  if(grid%iphch<=3)then
-    call Translator_MPhase_Switching(xx,grid,0,ierr)
-    grid%iphch=grid%iphch+1
+ ! if(grid%iphch>0 .and. grid%iphch<=3)then
+ if(grid%iphch<=3)then
+       call Translator_MPhase_Switching(xx,grid,0,ierr)   
   endif  
+   grid%iphch=grid%iphch+1
+   
   call VecGetArrayF90(xx, xx_p, ierr); CHKERRQ(ierr)
   do n = 1, grid%nlmax
     if(xx_p((n-1)*grid%ndof+3) < 0.D0)xx_p((n-1)*grid%ndof+3) = zerocut

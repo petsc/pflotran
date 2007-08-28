@@ -750,7 +750,13 @@ end subroutine  pflow_pckr_richards_fw_exec
 
             se=sw
             temp=se**uum
-            upc=(1.D0/temp - 1.D0)**(1.D0 - um) / ala / betac
+            if(sw<0.95D0)then 
+             upc=(1.D0/temp - 1.D0)**(1.D0 - um) / ala / betac
+            else
+             temp = 0.95D0 ** uum
+             upc= (1.D0/temp - 1.D0)**(1.D0 - um) / ala / betac
+             upc= upc/0.05D0 * (1.D0 - se) 
+            endif     
        
        if(upc>pcmax) upc=pcmax
             se=(sw-swir)/(1.D0-swir)

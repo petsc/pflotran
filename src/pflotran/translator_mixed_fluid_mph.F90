@@ -444,7 +444,7 @@
  !    err= dabs(tmp-xmol(4))
 !   tmp=xmol(4)
  ! enddo
-  
+ ! sat_pressure =sat_pressure * 1D5
       
  !print *, 'out 2 phase solver'
  select case(iipha)     
@@ -463,10 +463,10 @@
      xmol(1)=1.D0-xmol(2)
    if(xmol(1)<0.D0) xmol(1)=0.D0
     case(3)
-    tmp = sat_pressure/p 
+    tmp = sat_pressure*1D5 / p 
     xmol(2)=(1.D0-tmp)/(Henry/p -tmp)
     xmol(1)= 1.D0- xmol(2)
-    xmol(3)=xmol(1)/1D2
+    xmol(3)=xmol(1) * tmp
     xmol(4)= 1.D0-xmol(3)            
     end select
 
@@ -475,8 +475,8 @@
  select case(icri)
   case(0)
     tmp = sat_pressure* 1D5 /p 
-    if (xmol(3) >tmp .and. iipha==2 )then
-      write(*,'('' Gas -> 2ph '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3)
+    if (xmol(3) >tmp*1.05 .and. iipha==2 )then
+      write(*,'('' Gas -> 2ph '',2i8,1p10e12.4)') grid%iphch,n,xx_p(n0+1:n0+3)
       !write(IUNIT2,'('' Gas -> 2ph '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3)
       iphase_p(n) = 3
       xx_p(n0+3)=1D0-formeps
@@ -490,7 +490,7 @@
     ! print *,n, tmp, henry,sat_pressure,p
     !if (xx_p(n0+3) > 1.025D0  .and. iipha==1) then
      if (xmol(4) > 1.05D0 *tmp  .and. iipha==1) then
-       write(*,'('' Liq -> 2ph '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3),xmol(4), tmp
+       write(*,'('' Liq -> 2ph '',2i8,1p10e12.4)') grid%iphch,n,xx_p(n0+1:n0+3),xmol(4), tmp
       !write(IUNIT2,'('' Liq -> 2ph '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3)
       iphase_p(n) = 3
      
@@ -505,10 +505,10 @@
       
     if(satu(2)>1.0D0.and. iipha==3 )then
   !if(xx_p(n0+3)> 1.D0 .and. iipha==3 )then
-        write(*,'('' 2ph -> Gas '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3)
+        write(*,'('' 2ph -> Gas '',2i8,1p10e12.4)') grid%iphch,n,xx_p(n0+1:n0+3)
        ! write(IUNIT2,'('' 2ph -> Gas '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3)
       iphase_p(n) = 2
-    xx_p(n0 + 3) = xmol(4)
+    xx_p(n0 + 3) = xmol(4) + (1.D0 - xmol(4)) * formeps
 !    xx_p(n0+1)= yy_p(n0+1);xx_p(n0+2)= yy_p(n0+2)  
         ichange =1    ;ipr=1  
         end if
@@ -516,7 +516,7 @@
 
    ! if(sat(2)<= -formeps .and. iipha==3 )then
      if(satu(2)<= 0.0D0 .and. iipha==3 )then
-    write(*,'('' 2ph -> Liq '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3),satu(1),satu(2)
+    write(*,'('' 2ph -> Liq '',2i8,1p10e12.4)') grid%iphch,n,xx_p(n0+1:n0+3),satu(1),satu(2)
       ! write(IUNIT2,'('' 2ph -> Liq '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3)
       iphase_p(n) = 1 ! 2ph -> Liq
       ichange = 1;ipr=1

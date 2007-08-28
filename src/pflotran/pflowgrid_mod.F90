@@ -1640,7 +1640,7 @@ subroutine pflowGrid_setup(grid, inputfile)
       if (i==0) i = grid%nlx
       volume_p(n) = Pi * (grid%rd(i+grid%nxs) + grid%rd(i-1+grid%nxs))*&
       (grid%rd(i+grid%nxs) - grid%rd(i-1+grid%nxs)) * dz_loc_p(ng)
-!     print *, 'setup: Vol ', grid%myrank, n,i, grid%rd(i+grid%nxs),volume_p(n)
+     print *, 'setup: Vol ', grid%myrank, n,i, grid%rd(i+grid%nxs),volume_p(n)
     else if (grid%igeom == 3) then
     endif
   enddo
