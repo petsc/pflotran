@@ -59,34 +59,31 @@ subroutine OutputHDF5(grid)
 #ifndef SERIAL_HDF5
   call h5pset_fapl_mpio_f(prop_id,PETSC_COMM_WORLD,MPI_INFO_NULL,hdferr);
 #endif
-  print *, len(filename)
   call h5fcreate_f(filename,H5F_ACC_TRUNC_F,file_id,hdferr,H5P_DEFAULT_F,prop_id)
   call h5pclose_f(prop_id,hdferr)
   
-  if (grid%myrank == 0) then
-    ! write out coordinates in x, y, and z directions
-    string = "X-coordinates"
-    allocate(array(grid%nx))
-    array = grid%x(1:grid%nx)
-    call WriteCoordinate(string,grid%nx,array,file_id)
-    deallocate(array)
-  
-    string = "Y-coordinates"
-    allocate(array(grid%ny))
-    do i=1,grid%ny
-      array(i) = grid%y(i*grid%nx)
-    enddo
-    call WriteCoordinate(string,grid%ny,array,file_id)
-    deallocate(array)
-  
-    string = "Z-coordinates"
-    allocate(array(grid%nz))
-    do i=1,grid%nz
-      array(i) = grid%z(i*grid%nx*grid%ny)
-    enddo
-    call WriteCoordinate(string,grid%nz,array,file_id)
-    deallocate(array)
-  endif
+  ! write out coordinates in x, y, and z directions
+  string = "X-coordinates"
+  allocate(array(grid%nx))
+  array = grid%x(1:grid%nx)
+  call WriteCoordinate(string,grid,grid%nx,array,file_id)
+  deallocate(array)
+
+  string = "Y-coordinates"
+  allocate(array(grid%ny))
+  do i=1,grid%ny
+    array(i) = grid%y(i*grid%nx)
+  enddo
+  call WriteCoordinate(string,grid,grid%ny,array,file_id)
+  deallocate(array)
+
+  string = "Z-coordinates"
+  allocate(array(grid%nz))
+  do i=1,grid%nz
+    array(i) = grid%z(i*grid%nx*grid%ny)
+  enddo
+  call WriteCoordinate(string,grid,grid%nz,array,file_id)
+  deallocate(array)
   
   ! write out data sets  
   call DACreateGlobalVector(grid%da_1_dof,global,ierr)
@@ -154,11 +151,12 @@ subroutine OutputHDF5(grid)
 
 end subroutine OutputHDF5
 
-subroutine WriteCoordinate(name,length,array,file_id)
+subroutine WriteCoordinate(name,grid,length,array,file_id)
 
   implicit none
   
   character(len=32) :: name
+  type(pflowGrid) :: grid
   integer :: length
   real*8 :: array(:)
   integer(HID_T) :: file_id
@@ -184,8 +182,10 @@ subroutine WriteCoordinate(name,length,array,file_id)
 #ifndef SERIAL_HDF5
   call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F,hdferr); ! must be independent and only from p0
 #endif
-  call h5dwrite_f(data_set_id,H5T_NATIVE_DOUBLE,array,dims, &
-                  hdferr,H5S_ALL_F,H5S_ALL_F,prop_id)
+  if (grid%myrank == 0) then
+    call h5dwrite_f(data_set_id,H5T_NATIVE_DOUBLE,array,dims, &
+                    hdferr,H5S_ALL_F,H5S_ALL_F,prop_id)
+  endif
   call h5pclose_f(prop_id,hdferr)
   call h5dclose_f(data_set_id,hdferr)
   call h5sclose_f(file_space_id,hdferr)
@@ -272,7 +272,7 @@ subroutine WriteDataSet(name,grid,array,file_id,data_type)
       int_array(i) = int(array(i))
     enddo
     call h5dwrite_f(data_set_id,data_type,int_array,dims, &
-                    hdferr,H5S_ALL_F,H5S_ALL_F,prop_id)
+                    hdferr,memory_space_id,file_space_id,prop_id)
     deallocate(int_array)
   else
     call h5dwrite_f(data_set_id,data_type,array,dims, &
