@@ -999,7 +999,7 @@ type(pflow_localpatch_info), intent(inout) :: locpat
         * locpat%nlz + locpat%nlx * locpat%nly &
         * (locpat%ngz-1)
 
-  if(use_ghost==PETSC_TRUE) then
+  if(grid%samrai_drive == PETSC_TRUE) then
      if(pims_patch_at_boundary(grid,locpat, 0, 0) ==1 ) then !x, left
         locpat%nconn = locpat%nconn - locpat%nlyz
      endif  
@@ -1119,7 +1119,7 @@ interface
      integer :: ierr
    end subroutine pims_vecgetarrayf90
 end interface
-integer i,j,k, nc, mg1, mg2, n, ierr, ng
+integer i,j,k, nc, mg1, mg2, n, ierr, ng, leng
 real*8 val, d1,d2
 PetscScalar, pointer ::  dx_loc_p(:), dy_loc_p(:), dz_loc_p(:), volume_p(:)
  Vec :: temp0_nat_vec, temp1_nat_vec, temp2_nat_vec, temp3_nat_vec, &
@@ -1231,7 +1231,7 @@ PetscScalar, pointer ::  dx_loc_p(:), dy_loc_p(:), dz_loc_p(:), volume_p(:)
          endif
         do i = 1, leng
           mg1 = i + j * locpat%ngx + k * locpat%ngxy
-          if(grid%use_ghostbc == PETSC_TRUE) mg1 = mg1 + 1 
+          if(grid%Samrai_drive == PETSC_TRUE) mg1 = mg1 + 1 
           mg2 = mg1 + 1
           nc = nc + 1
           locpat%nd1(nc) = mg1
@@ -1270,7 +1270,7 @@ PetscScalar, pointer ::  dx_loc_p(:), dy_loc_p(:), dz_loc_p(:), volume_p(:)
          endif
         do j = 1, leng
           mg1 = i + 1 + (j-1) * locpat%ngx + k * locpat%ngxy
-          if(grid%use_ghostbc == PETSC_TRUE) mg1 = mg1 +  locpat%ngx
+          if(grid%Samrai_drive == PETSC_TRUE) mg1 = mg1 +  locpat%ngx
           mg2 = mg1 + locpat%ngx
           nc = nc + 1
           locpat%nd1(nc) = mg1
@@ -1292,12 +1292,12 @@ PetscScalar, pointer ::  dx_loc_p(:), dy_loc_p(:), dz_loc_p(:), volume_p(:)
     do j = locpat%jstart, locpat%jend
       do i = locpat%istart, locpat%iend
          leng = locpat%ngz - 1
-         if(grid%Samrai_drive==PETSC_TRUE) then
+         if(grid%Samrai_drive == PETSC_TRUE) then
            if(pims_patch_at_boundary(grid,locpat, 2, 1) ==1) leng = leng - 1
          endif
         do k = 1, leng
           mg1 = i + 1 + j * locpat%ngx + (k-1) * locpat%ngxy
-          if(grid%use_ghostbc == PETSC_TRUE) mg1 = mg1 + locpat%ngxy
+          if(grid%Samrai_drive == PETSC_TRUE) mg1 = mg1 + locpat%ngxy
           mg2 = mg1 + locpat%ngxy
           nc = nc + 1
           locpat%nd1(nc) = mg1
@@ -1709,8 +1709,8 @@ end subroutine pflowgrid_Setup_SNES
  
  subroutine pflowGrid_setup_BC(grid, locpat)	  
  implicit none
- type(pflowGrid) grid
- type(pflow_localpatch_info)  locpat
+ type(pflowGrid) :: grid
+ type(pflow_localpatch_info) :: locpat
  
  integer :: myrank, nc, ibc, ir, ii1,ii2,jj1, jj2, kk1, kk2, i,j,k
  integer :: m,n,ng,ird, ierr
@@ -1722,23 +1722,50 @@ end subroutine pflowgrid_Setup_SNES
   
    locpat%nconnbc = 0
   if (grid%nx > 1 .and. grid%ny == 1 .and. grid%nz == 1) then
-    if (locpat%nxs == locpat%ngxs) locpat%nconnbc = locpat%nconnbc + 1
-    if (locpat%nxe == locpat%ngxe) locpat%nconnbc = locpat%nconnbc + 1
+    if(grid%Samrai_drive == PETSC_TRUE)then
+      if(pims_patch_at_boundary(grid,locpat, 0, 0) ==1)locpat%nconnbc = locpat%nconnbc + 1
+      if(pims_patch_at_boundary(grid,locpat, 0, 1) ==1)locpat%nconnbc = locpat%nconnbc + 1
+     else  
+      if (locpat%nxs == locpat%ngxs) locpat%nconnbc = locpat%nconnbc + 1
+      if (locpat%nxe == locpat%ngxe) locpat%nconnbc = locpat%nconnbc + 1
+    endif
   else if (grid%nx == 1 .and. grid%ny == 1 .and. grid%nz > 1) then
-    if (locpat%nzs == locpat%ngzs) locpat%nconnbc = locpat%nconnbc + 1
-    if (locpat%nze == locpat%ngze) locpat%nconnbc = locpat%nconnbc + 1
+    if(grid%Samrai_drive == PETSC_TRUE)then
+      if(pims_patch_at_boundary(grid,locpat, 2, 0) ==1)locpat%nconnbc = locpat%nconnbc + 1
+      if(pims_patch_at_boundary(grid,locpat, 2, 1) ==1)locpat%nconnbc = locpat%nconnbc + 1
+     else  
+      if (locpat%nzs == locpat%ngzs) locpat%nconnbc = locpat%nconnbc + 1
+      if (locpat%nze == locpat%ngze) locpat%nconnbc = locpat%nconnbc + 1
+     endif 
+  elseif(grid%nx == 1 .and. grid%ny > 1 .and. grid%nz == 1) then
+     print *, '1D problem: limited to x or z direction. STOP'; stop
   else
     if (grid%nx > 1) then
-      if (locpat%nxs == locpat%ngxs) locpat%nconnbc = locpat%nconnbc + locpat%nlyz
-      if (locpat%nxe == locpat%ngxe) locpat%nconnbc = locpat%nconnbc + locpat%nlyz
+      if(grid%Samrai_drive == PETSC_TRUE)then
+         if(pims_patch_at_boundary(grid,locpat, 0, 0) ==1)locpat%nconnbc = locpat%nconnbc + locpat%nlyz  
+         if(pims_patch_at_boundary(grid,locpat, 0, 1) ==1)locpat%nconnbc = locpat%nconnbc + locpat%nlyz
+       else 
+        if (locpat%nxs == locpat%ngxs) locpat%nconnbc = locpat%nconnbc + locpat%nlyz
+        if (locpat%nxe == locpat%ngxe) locpat%nconnbc = locpat%nconnbc + locpat%nlyz
+       endif
     endif
     if (grid%ny > 1) then
-      if (locpat%nys == locpat%ngys) locpat%nconnbc = locpat%nconnbc + locpat%nlxz
-      if (locpat%nye == locpat%ngye) locpat%nconnbc = locpat%nconnbc + locpat%nlxz
+      if(grid%Samrai_drive == PETSC_TRUE)then
+         if(pims_patch_at_boundary(grid,locpat, 1, 0) ==1)locpat%nconnbc = locpat%nconnbc + locpat%nlxz  
+         if(pims_patch_at_boundary(grid,locpat, 1, 1) ==1)locpat%nconnbc = locpat%nconnbc + locpat%nlxz
+       else 
+         if (locpat%nys == locpat%ngys) locpat%nconnbc = locpat%nconnbc + locpat%nlxz
+         if (locpat%nye == locpat%ngye) locpat%nconnbc = locpat%nconnbc + locpat%nlxz
+      endif 
     endif
     if (grid%nz > 1) then
-      if (locpat%nzs == locpat%ngzs) locpat%nconnbc = locpat%nconnbc + locpat%nlxy
-      if (locpat%nze == locpat%ngze) locpat%nconnbc = locpat%nconnbc + locpat%nlxy
+       if(grid%Samrai_drive == PETSC_TRUE)then
+         if(pims_patch_at_boundary(grid,locpat, 2, 0) ==1)locpat%nconnbc = locpat%nconnbc + locpat%nlxy  
+         if(pims_patch_at_boundary(grid,locpat, 2, 1) ==1)locpat%nconnbc = locpat%nconnbc + locpat%nlxy
+       else 
+         if (locpat%nzs == locpat%ngzs) locpat%nconnbc = locpat%nconnbc + locpat%nlxy
+         if (locpat%nze == locpat%ngze) locpat%nconnbc = locpat%nconnbc + locpat%nlxy
+       endif
     endif
   endif
       
@@ -1776,9 +1803,7 @@ end subroutine pflowgrid_Setup_SNES
 
 
   nc = 0 
-  if (locpat%nxs == locpat%ngxs .or. locpat%nxe == locpat%ngxe &
-      .or. locpat%nys == locpat%ngys .or. locpat%nye == locpat%ngye &
-      .or. locpat%nzs == locpat%ngzs .or. locpat%nze == locpat%ngze) then
+  if ( locpat%nconnbc > 0) then
 
     ! calculate boundary conditions locally on only those processors which 
     ! contain a boundary!
@@ -1805,7 +1830,7 @@ end subroutine pflowgrid_Setup_SNES
           do j = jj1,jj2
             do i = ii1,ii2
               nc = nc + 1
-              m = i+(j-1)*locpat%nlx+(k-1)*locpat%nlxy
+                m = i+(j-1)*locpat%nlx+(k-1)*locpat%nlxy
               locpat%mblkbc(nc) = m  ! m is a local index
               locpat%ibconn(nc) = ibc
               ng = locpat%nL2G(m)
