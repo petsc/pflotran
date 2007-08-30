@@ -23,6 +23,7 @@ module hdf5_output_module
 #define PHASE 9
 
   integer :: hdferr
+  logical :: first = .true.
   PetscErrorCode :: ierr
 
   public :: OutputHDF5
@@ -36,6 +37,7 @@ subroutine OutputHDF5(grid)
   type(pflowGrid) :: grid
 
   integer(HID_T) :: file_id
+  integer(HID_T) :: grp_id
   integer(HID_T) :: file_space_id
   integer(HID_T) :: data_set_id
   integer(HID_T) :: prop_id
@@ -47,7 +49,7 @@ subroutine OutputHDF5(grid)
   PetscScalar, pointer :: v_ptr
   
   character(len=32) :: filename = "pflow.h5"
-  character(len=32) :: string, string2
+  character(len=128) :: string
   real*8, pointer :: array(:)
   integer :: i
 
@@ -59,14 +61,23 @@ subroutine OutputHDF5(grid)
 #ifndef SERIAL_HDF5
   call h5pset_fapl_mpio_f(prop_id,PETSC_COMM_WORLD,MPI_INFO_NULL,hdferr);
 #endif
-  call h5fcreate_f(filename,H5F_ACC_TRUNC_F,file_id,hdferr,H5P_DEFAULT_F,prop_id)
+  if (.not.first) call h5fopen_f(filename,H5F_ACC_RDWR_F,file_id,hdferr,prop_id)
+  if (hdferr < 0 .or. first) then 
+    first = .false.
+    call h5fcreate_f(filename,H5F_ACC_TRUNC_F,file_id,hdferr,H5P_DEFAULT_F,prop_id)
+  endif
   call h5pclose_f(prop_id,hdferr)
+  
+  ! create a group for the data set
+  write(string,'(''Time Step:'',i5,2x,'' Time:'',pg12.4,x,a1)') &
+        grid%flowsteps,grid%t/grid%tconv,grid%tunit
+  call h5gcreate_f(file_id,string,grp_id,hdferr,OBJECT_NAMELEN_DEFAULT_F)
   
   ! write out coordinates in x, y, and z directions
   string = "X-coordinates"
   allocate(array(grid%nx))
   array = grid%x(1:grid%nx)
-  call WriteCoordinate(string,grid,grid%nx,array,file_id)
+  call WriteCoordinate(string,grid,grid%nx,array,grp_id)
   deallocate(array)
   
   string = "Y-coordinates"
@@ -74,7 +85,7 @@ subroutine OutputHDF5(grid)
   do i=1,grid%ny
     array(i) = grid%y(i*grid%nx)
   enddo
-  call WriteCoordinate(string,grid,grid%ny,array,file_id)
+  call WriteCoordinate(string,grid,grid%ny,array,grp_id)
   deallocate(array)
   
   string = "Z-coordinates"
@@ -82,7 +93,7 @@ subroutine OutputHDF5(grid)
   do i=1,grid%nz
     array(i) = grid%z(i*grid%nx*grid%ny)
   enddo
-  call WriteCoordinate(string,grid,grid%nz,array,file_id)
+  call WriteCoordinate(string,grid,grid%nz,array,grp_id)
   deallocate(array)
   
   ! write out data sets  
@@ -94,60 +105,58 @@ subroutine OutputHDF5(grid)
   !call DAGlobalToNaturalBegin(grid%da_1_dof,global,INSERT_VALUES,natural,ierr)
   !call DAGlobalToNaturalEnd(grid%da_1_dof,global,INSERT_VALUES,natural,ierr)
   string = "Temperature"
-  call WriteDataSetFromVec(string,grid,global,file_id,H5T_NATIVE_DOUBLE)
+  call WriteDataSetFromVec(string,grid,global,grp_id,H5T_NATIVE_DOUBLE)
 
   ! pressure
   call GetVarFromArray(grid,global,PRESSURE,0)
   string = "Pressure"
-  call WriteDataSetFromVec(string,grid,global,file_id,H5T_NATIVE_DOUBLE)
+  call WriteDataSetFromVec(string,grid,global,grp_id,H5T_NATIVE_DOUBLE)
 
   ! liquid saturation
   call GetVarFromArray(grid,global,LIQUID_SATURATION,0)
   string = "Liquid Saturation"
-  call WriteDataSetFromVec(string,grid,global,file_id,H5T_NATIVE_DOUBLE)  
+  call WriteDataSetFromVec(string,grid,global,grp_id,H5T_NATIVE_DOUBLE)  
 
   ! gas saturation
   call GetVarFromArray(grid,global,GAS_SATURATION,0)
   string = "Gas Saturation"
-  call WriteDataSetFromVec(string,grid,global,file_id,H5T_NATIVE_DOUBLE) 
+  call WriteDataSetFromVec(string,grid,global,grp_id,H5T_NATIVE_DOUBLE) 
   
   ! liquid energy
   call GetVarFromArray(grid,global,LIQUID_ENERGY,0)
   string = "Liquid Energy"
-  call WriteDataSetFromVec(string,grid,global,file_id,H5T_NATIVE_DOUBLE) 
+  call WriteDataSetFromVec(string,grid,global,grp_id,H5T_NATIVE_DOUBLE) 
   
   ! gas energy
   call GetVarFromArray(grid,global,GAS_ENERGY,0)
   string = "Gas Energy"
-  call WriteDataSetFromVec(string,grid,global,file_id,H5T_NATIVE_DOUBLE) 
+  call WriteDataSetFromVec(string,grid,global,grp_id,H5T_NATIVE_DOUBLE) 
   
   ! mole fractions
   do i=1,grid%nspec
     call GetVarFromArray(grid,global,MOLE_FRACTION,i-1)
-    write(string2,'(i4)') i
-    string = "Mole Fraction(" // trim(adjustl(string2)) // ")"
-    call WriteDataSetFromVec(string,grid,global,file_id,H5T_NATIVE_DOUBLE) 
+    write(string,'(''Mole Fraction('',i4,'')'')') i
+    call WriteDataSetFromVec(string,grid,global,grp_id,H5T_NATIVE_DOUBLE) 
   enddo
   
   ! Volume Fraction
   if (grid%rk > 0.d0) then
     call GetVarFromArray(grid,global,VOLUME_FRACTION,0)
     string = "Volume Fraction"
-    call WriteDataSetFromVec(string,grid,global,file_id,H5T_NATIVE_DOUBLE) 
+    call WriteDataSetFromVec(string,grid,global,grp_id,H5T_NATIVE_DOUBLE) 
   endif
   
   ! phase
   call GetVarFromArray(grid,global,PHASE,0)
   string = "Phase"
-  call WriteDataSetFromVec(string,grid,global,file_id,H5T_NATIVE_INTEGER) 
+  call WriteDataSetFromVec(string,grid,global,grp_id,H5T_NATIVE_INTEGER) 
   
   ! call VecDestroy(natural,ierr)
   call VecDestroy(global,ierr)
 
+  call h5gclose_f(grp_id,hdferr)
   call h5fclose_f(file_id,hdferr)
   call h5close_f(hdferr)
-
-  stop
 
 end subroutine OutputHDF5
 
@@ -287,16 +296,12 @@ subroutine WriteDataSet(name,grid,array,file_id,data_type)
   if (data_type == H5T_NATIVE_INTEGER) then
     allocate(int_array(grid%nlmax))
 #ifdef INVERT
-    print *, array
     count = 0
-!    do i=1,grid%nlx
-        do k=1,grid%nlz
+    do k=1,grid%nlz
       do j=1,grid%nly
-!        do k=1,grid%nlz
-    do i=1,grid%nlx
+        do i=1,grid%nlx
           id = k+(j-1)*grid%nlz+(i-1)*grid%nlyz
           count = count+1
-          print *, id, count, array(count)
           int_array(id) = int(array(count))
         enddo
       enddo
@@ -306,7 +311,6 @@ subroutine WriteDataSet(name,grid,array,file_id,data_type)
       int_array(i) = int(array(i))
     enddo
 #endif
-    print *, int_array
     call h5dwrite_f(data_set_id,data_type,int_array,dims, &
                     hdferr,memory_space_id,file_space_id,prop_id)
     deallocate(int_array)
@@ -314,10 +318,10 @@ subroutine WriteDataSet(name,grid,array,file_id,data_type)
 #ifdef INVERT
     allocate(double_array(grid%nlmax))
     count = 0
-    do i=1,grid%nlx
+    do k=1,grid%nlz
       do j=1,grid%nly
-        do k=1,grid%nlz
-          id = i+(j-1)*grid%nlx+(k-1)*grid%nlxy
+        do i=1,grid%nlx
+          id = k+(j-1)*grid%nlz+(i-1)*grid%nlyz
           count = count+1
           double_array(id) = int(array(count))
         enddo

@@ -24,7 +24,7 @@ contains
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXCARDLENGTH) :: card
-  character(len=20)name
+  character(len=MAXWORDLENGTH) :: name
   
   call MPI_Comm_rank(PETSC_COMM_WORLD, myrank, ierr)
 
