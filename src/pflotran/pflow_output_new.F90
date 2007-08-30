@@ -121,7 +121,7 @@ private
   endif
   
 #ifdef USE_HDF5
-  if (grid%iprint == -3) then
+  if (iplot == 1 .and. grid%print_hdf5) then
     call OutputHDF5(grid)
   endif
 #endif 
