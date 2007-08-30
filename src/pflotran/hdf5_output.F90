@@ -1,4 +1,4 @@
-module HDF5_output_module
+module hdf5_output_module
 
   use HDF5
   use pflow_gridtype_module
@@ -57,7 +57,7 @@ subroutine OutputHDF5(grid)
 !  string = "pflow.h5"
   call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdferr)
 #ifndef SERIAL_HDF5
-  call h5pset_fapl_mpio_f(prop_id,PETSC_COMM_WORLD,MPI_INFO_NULL);
+  call h5pset_fapl_mpio_f(prop_id,PETSC_COMM_WORLD,MPI_INFO_NULL,hdferr);
 #endif
   print *, len(filename)
   call h5fcreate_f(filename,H5F_ACC_TRUNC_F,file_id,hdferr,H5P_DEFAULT_F,prop_id)
@@ -150,6 +150,8 @@ subroutine OutputHDF5(grid)
   call h5fclose_f(file_id,hdferr)
   call h5close_f(hdferr)
 
+  stop
+
 end subroutine OutputHDF5
 
 subroutine WriteCoordinate(name,length,array,file_id)
@@ -164,8 +166,8 @@ subroutine WriteCoordinate(name,length,array,file_id)
   integer(HID_T) :: file_space_id
   integer(HID_T) :: data_set_id
   integer(HID_T) :: prop_id
-  integer(HSIZE_T) :: rank
   integer(HSIZE_T) :: dims(3)
+  integer :: rank
   
   ! write out grid structure
   rank = 1
@@ -180,7 +182,7 @@ subroutine WriteCoordinate(name,length,array,file_id)
 
   call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdferr)
 #ifndef SERIAL_HDF5
-  call h5pset_dxpl_mpio(prop_id,H5FD_MPIO_INDEPENDENT_F); ! must be independent and only from p0
+  call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F,hdferr); ! must be independent and only from p0
 #endif
   call h5dwrite_f(data_set_id,H5T_NATIVE_DOUBLE,array,dims, &
                   hdferr,H5S_ALL_F,H5S_ALL_F,prop_id)
@@ -191,6 +193,8 @@ subroutine WriteCoordinate(name,length,array,file_id)
 end subroutine WriteCoordinate
   
 subroutine WriteDataSetFromVec(name,grid,vector,file_id,data_type)
+
+  implicit none
 
   character(len=32) :: name
   type(pflowGrid) :: grid
@@ -220,8 +224,8 @@ subroutine WriteDataSet(name,grid,array,file_id,data_type)
   integer(HID_T) :: memory_space_id
   integer(HID_T) :: data_set_id
   integer(HID_T) :: prop_id
-  integer(HSIZE_T) :: rank
   integer(HSIZE_T) :: dims(3)
+  integer :: rank
   
   integer, pointer :: int_array(:)
   integer :: i
@@ -260,7 +264,7 @@ subroutine WriteDataSet(name,grid,array,file_id,data_type)
   ! write the data
   call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdferr)
 #ifndef SERIAL_HDF5
-  call h5pset_dxpl_mpio(prop_id,H5FD_MPIO_COLLECTIVE_F); ! must be independent and only from p0
+  call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_COLLECTIVE_F,hdferr); ! must be independent and only from p0
 #endif
   if (data_type == H5T_NATIVE_INTEGER) then
     allocate(int_array(grid%nlmax))
@@ -350,4 +354,4 @@ subroutine GetVarFromArray(grid,vector,ivar,isubvar)
 end subroutine GetVarFromArray
  
 
-end module HDF5_output_module
+end module hdf5_output_module
