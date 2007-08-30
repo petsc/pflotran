@@ -40,11 +40,16 @@ private
   
   subroutine pflow_output_new(grid, kplt,iplot)
  
-   use pflow_gridtype_module
+  use pflow_gridtype_module
   use TTPHASE_module
   use PetscRelWrappers  ! For petsc-release compatibility.
   use pflow_output_module, only: geh_io
   use pflow_checkpoint
+
+#ifdef USE_HDF5  
+  use hdf5_output_module
+#endif
+
   implicit none
 
 
@@ -115,6 +120,12 @@ private
 !    return
   endif
   
+#ifdef USE_HDF5
+  if (grid%iprint == -3) then
+    call OutputHDF5(grid)
+  endif
+#endif 
+ 
   if ((grid%ibrkcrv == 0 .and. iplot == 0) .or. grid%iprint == -1) then
     if (grid%iprint==-1 .and. iplot==1) then
       kplt = kplt + 1

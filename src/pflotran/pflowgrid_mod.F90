@@ -3158,8 +3158,11 @@ subroutine pflowGrid_step(grid,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
   integer :: its,kplt,iplot,ntstep !,idpmax,idtmpmax,idcmax
   integer :: icut, iflgcut ! Tracks the number of time step reductions applied
   SNESConvergedReason :: snes_reason 
-  integer :: update_reason, it_linear, it_snes
+  integer :: update_reason, it_linear=0, it_snes
+  integer n, nmax_inf
+  real*8 m_r2norm, s_r2norm, norm_inf, s_r2norm0, norm_inf0, r2norm
   real*8 :: tsrc
+  real*8, pointer :: r_p(:)  
 ! real*8, pointer :: xx_p(:), conc_p(:), press_p(:), temp_p(:)
 
   its = 0
@@ -3308,7 +3311,32 @@ subroutine pflowGrid_step(grid,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
       call SNESGetIterationNumber(grid%snes, its, ierr)
       it_snes = its
 !     call SNESGetFunctionNorm(grid%snes,r2norm, ierr)
+      call VecNorm(grid%r, NORM_2, r2norm, ierr) 
+      call VecGetArrayF90(grid%r, r_p, ierr)
+      
+      s_r2norm = 0.D0 ; norm_inf = -1.D0 ; nmax_inf =-1
+      do n=1, grid%nlmax
+         s_r2norm = s_r2norm + r_p(n)* r_p(n)
+         if(dabs(r_p(n))> norm_inf)then
+            norm_inf = dabs(r_p(n))
+            nmax_inf = grid%nL2A(n)
+         endif     
+      enddo 
+     call VecRestoreArrayF90(grid%r, r_p, ierr)
+     
+      if(grid%commsize >1)then 
+      call MPI_REDUCE(s_r2norm, s_r2norm0,1, MPI_DOUBLE_PRECISION ,MPI_SUM,0, PETSC_COMM_WORLD,ierr)
+      call MPI_REDUCE(norm_inf, norm_inf0,1, MPI_DOUBLE_PRECISION, MPI_MAX,0, PETSC_COMM_WORLD,ierr)
+      if(grid%myrank==0) then
+        s_r2norm =s_r2norm0
+        norm_inf =norm_inf0
+      endif
+     endif
+      s_r2norm = dsqrt(s_r2norm)
+      m_r2norm = s_r2norm/grid%nmax   
+#if (PETSC_VERSION_RELEASE == 0 || PETSC_VERSION_SUBMINOR == 3)      
       call SNESGetLinearSolveIterations(grid%snes, it_linear, ierr)
+#endif      
 !     if (grid%myrank == 0) print *,'SNES R2Norm = ',r2norm, &
 !   ' linear Interations = ',it_linear
       call SNESGetConvergedReason(grid%snes, snes_reason, ierr)
@@ -3446,8 +3474,10 @@ subroutine pflowGrid_step(grid,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
 
       if (grid%use_ksp /= PETSC_TRUE) then
         print *,' --> SNES Linear/Non-Linear Interations = ',it_linear,it_snes
+        print *,' --> SNES Residual: ', r2norm, s_r2norm, m_r2norm, norm_inf 
       endif
-    
+       
+       
       write(IUNIT2, '(" FLOW ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1, &
       & "]"," snes_conv_reason: ",i4,/,"  newt= ",i2," [",i6,"]"," cut= ",i2," [",i4, &
       & "]")') grid%flowsteps,grid%t/grid%tconv,grid%dt/grid%tconv, &
