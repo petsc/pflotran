@@ -59,34 +59,31 @@ subroutine OutputHDF5(grid)
 #ifndef SERIAL_HDF5
   call h5pset_fapl_mpio_f(prop_id,PETSC_COMM_WORLD,MPI_INFO_NULL,hdferr);
 #endif
-  print *, len(filename)
   call h5fcreate_f(filename,H5F_ACC_TRUNC_F,file_id,hdferr,H5P_DEFAULT_F,prop_id)
   call h5pclose_f(prop_id,hdferr)
   
-  if (grid%myrank == 0) then
-    ! write out coordinates in x, y, and z directions
-    string = "X-coordinates"
-    allocate(array(grid%nx))
-    array = grid%x(1:grid%nx)
-    call WriteCoordinate(string,grid%nx,array,file_id)
-    deallocate(array)
+  ! write out coordinates in x, y, and z directions
+  string = "X-coordinates"
+  allocate(array(grid%nx))
+  array = grid%x(1:grid%nx)
+  call WriteCoordinate(string,grid,grid%nx,array,file_id)
+  deallocate(array)
   
-    string = "Y-coordinates"
-    allocate(array(grid%ny))
-    do i=1,grid%ny
-      array(i) = grid%y(i*grid%nx)
-    enddo
-    call WriteCoordinate(string,grid%ny,array,file_id)
-    deallocate(array)
+  string = "Y-coordinates"
+  allocate(array(grid%ny))
+  do i=1,grid%ny
+    array(i) = grid%y(i*grid%nx)
+  enddo
+  call WriteCoordinate(string,grid,grid%ny,array,file_id)
+  deallocate(array)
   
-    string = "Z-coordinates"
-    allocate(array(grid%nz))
-    do i=1,grid%nz
-      array(i) = grid%z(i*grid%nx*grid%ny)
-    enddo
-    call WriteCoordinate(string,grid%nz,array,file_id)
-    deallocate(array)
-  endif
+  string = "Z-coordinates"
+  allocate(array(grid%nz))
+  do i=1,grid%nz
+    array(i) = grid%z(i*grid%nx*grid%ny)
+  enddo
+  call WriteCoordinate(string,grid,grid%nz,array,file_id)
+  deallocate(array)
   
   ! write out data sets  
   call DACreateGlobalVector(grid%da_1_dof,global,ierr)
@@ -154,11 +151,12 @@ subroutine OutputHDF5(grid)
 
 end subroutine OutputHDF5
 
-subroutine WriteCoordinate(name,length,array,file_id)
+subroutine WriteCoordinate(name,grid,length,array,file_id)
 
   implicit none
   
   character(len=32) :: name
+  type(pflowGrid) :: grid
   integer :: length
   real*8 :: array(:)
   integer(HID_T) :: file_id
@@ -184,8 +182,10 @@ subroutine WriteCoordinate(name,length,array,file_id)
 #ifndef SERIAL_HDF5
   call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F,hdferr); ! must be independent and only from p0
 #endif
-  call h5dwrite_f(data_set_id,H5T_NATIVE_DOUBLE,array,dims, &
-                  hdferr,H5S_ALL_F,H5S_ALL_F,prop_id)
+  if (grid%myrank == 0) then
+    call h5dwrite_f(data_set_id,H5T_NATIVE_DOUBLE,array,dims, &
+                    hdferr,H5S_ALL_F,H5S_ALL_F,prop_id)
+  endif
   call h5pclose_f(prop_id,hdferr)
   call h5dclose_f(data_set_id,hdferr)
   call h5sclose_f(file_space_id,hdferr)
@@ -228,7 +228,8 @@ subroutine WriteDataSet(name,grid,array,file_id,data_type)
   integer :: rank
   
   integer, pointer :: int_array(:)
-  integer :: i
+  real*8, pointer :: double_array(:)
+  integer :: i, j, k, count, id
   integer(HSIZE_T) :: start(3), length(3), stride(3)
 
   ! memory space which is a 1D vector  
@@ -239,9 +240,17 @@ subroutine WriteDataSet(name,grid,array,file_id,data_type)
 
   ! file space which is a 3D block
   rank = 3
+#define INVERT
+#ifndef INVERT
   dims(1) = grid%nx
   dims(2) = grid%ny
   dims(3) = grid%nz
+#else
+! have to trick hdf5 for now with inverted ordering
+  dims(3) = grid%nx
+  dims(2) = grid%ny
+  dims(1) = grid%nz
+#endif
   call h5screate_simple_f(rank,dims,file_space_id,hdferr,dims);
 
 
@@ -251,12 +260,21 @@ subroutine WriteDataSet(name,grid,array,file_id,data_type)
   call h5pclose_f(prop_id,hdferr)
   
   ! create the hyperslab
+#ifndef INVERT
   start(1) = grid%nxs
   start(2) = grid%nys
   start(3) = grid%nzs
   length(1) =  grid%nlx
   length(2) =  grid%nly
   length(3) =  grid%nlz
+#else
+  start(3) = grid%nxs
+  start(2) = grid%nys
+  start(1) = grid%nzs
+  length(3) =  grid%nlx
+  length(2) =  grid%nly
+  length(1) =  grid%nlz
+#endif
   stride = 1
   call h5sselect_hyperslab_f(file_space_id,H5S_SELECT_SET_F,start,length, &
                              hdferr,stride,stride)
@@ -268,15 +286,50 @@ subroutine WriteDataSet(name,grid,array,file_id,data_type)
 #endif
   if (data_type == H5T_NATIVE_INTEGER) then
     allocate(int_array(grid%nlmax))
+#ifdef INVERT
+    print *, array
+    count = 0
+!    do i=1,grid%nlx
+        do k=1,grid%nlz
+      do j=1,grid%nly
+!        do k=1,grid%nlz
+    do i=1,grid%nlx
+          id = k+(j-1)*grid%nlz+(i-1)*grid%nlyz
+          count = count+1
+          print *, id, count, array(count)
+          int_array(id) = int(array(count))
+        enddo
+      enddo
+    enddo
+#else
     do i=1,grid%nlmax
       int_array(i) = int(array(i))
     enddo
+#endif
+    print *, int_array
     call h5dwrite_f(data_set_id,data_type,int_array,dims, &
-                    hdferr,H5S_ALL_F,H5S_ALL_F,prop_id)
+                    hdferr,memory_space_id,file_space_id,prop_id)
     deallocate(int_array)
   else
+#ifdef INVERT
+    allocate(double_array(grid%nlmax))
+    count = 0
+    do i=1,grid%nlx
+      do j=1,grid%nly
+        do k=1,grid%nlz
+          id = i+(j-1)*grid%nlx+(k-1)*grid%nlxy
+          count = count+1
+          double_array(id) = int(array(count))
+        enddo
+      enddo
+    enddo
+    call h5dwrite_f(data_set_id,data_type,double_array,dims, &
+                    hdferr,memory_space_id,file_space_id,prop_id)  
+    deallocate(double_array)
+#else
     call h5dwrite_f(data_set_id,data_type,array,dims, &
                     hdferr,memory_space_id,file_space_id,prop_id)  
+#endif
   endif
   call h5pclose_f(prop_id,hdferr)
   call h5dclose_f(data_set_id,hdferr)
