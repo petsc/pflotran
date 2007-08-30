@@ -47,7 +47,7 @@ private
   use pflow_checkpoint
 
 #ifdef USE_HDF5  
-  use HDF5_output_module
+  use hdf5_output_module
 #endif
 
   implicit none
