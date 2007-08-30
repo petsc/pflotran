@@ -3881,6 +3881,12 @@ subroutine pflowGrid_read_input(grid, inputfile)
 
 !....................
 
+      case ('HDF5')
+        grid%print_hdf5 = .true.
+
+!....................
+
+
       case ('OPTS')
 
         call fiReadStringErrorMsg('OPTS',ierr)

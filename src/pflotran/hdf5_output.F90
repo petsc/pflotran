@@ -23,7 +23,7 @@ module hdf5_output_module
 #define PHASE 9
 
   integer :: hdferr
-  logical :: first = .true.
+  logical, save :: first = .true.
   PetscErrorCode :: ierr
 
   public :: OutputHDF5
@@ -63,38 +63,47 @@ subroutine OutputHDF5(grid)
 #endif
   if (.not.first) call h5fopen_f(filename,H5F_ACC_RDWR_F,file_id,hdferr,prop_id)
   if (hdferr < 0 .or. first) then 
-    first = .false.
     call h5fcreate_f(filename,H5F_ACC_TRUNC_F,file_id,hdferr,H5P_DEFAULT_F,prop_id)
   endif
   call h5pclose_f(prop_id,hdferr)
   
+  if (first) then
+
+    ! create a group for the coordinates data set
+    string = "Coordinates"
+    call h5gcreate_f(file_id,string,grp_id,hdferr,OBJECT_NAMELEN_DEFAULT_F)
+  
+    ! write out coordinates in x, y, and z directions
+    string = "X-coordinates"
+    allocate(array(grid%nx))
+    array = grid%x(1:grid%nx)
+    call WriteCoordinate(string,grid,grid%nx,array,grp_id)
+    deallocate(array)
+  
+    string = "Y-coordinates"
+    allocate(array(grid%ny))
+    do i=1,grid%ny
+      array(i) = grid%y(i*grid%nx)
+    enddo
+    call WriteCoordinate(string,grid,grid%ny,array,grp_id)
+    deallocate(array)
+  
+    string = "Z-coordinates"
+    allocate(array(grid%nz))
+    do i=1,grid%nz
+      array(i) = grid%z(i*grid%nx*grid%ny)
+    enddo
+    call WriteCoordinate(string,grid,grid%nz,array,grp_id)
+    deallocate(array)
+    
+    call h5gclose_f(grp_id,hdferr)
+    
+  endif
+
   ! create a group for the data set
-  write(string,'(''Time Step:'',i5,2x,'' Time:'',pg12.4,x,a1)') &
+  write(string,'('' Time('',i4,''):'',pg12.4,x,a1)') &
         grid%flowsteps,grid%t/grid%tconv,grid%tunit
   call h5gcreate_f(file_id,string,grp_id,hdferr,OBJECT_NAMELEN_DEFAULT_F)
-  
-  ! write out coordinates in x, y, and z directions
-  string = "X-coordinates"
-  allocate(array(grid%nx))
-  array = grid%x(1:grid%nx)
-  call WriteCoordinate(string,grid,grid%nx,array,grp_id)
-  deallocate(array)
-  
-  string = "Y-coordinates"
-  allocate(array(grid%ny))
-  do i=1,grid%ny
-    array(i) = grid%y(i*grid%nx)
-  enddo
-  call WriteCoordinate(string,grid,grid%ny,array,grp_id)
-  deallocate(array)
-  
-  string = "Z-coordinates"
-  allocate(array(grid%nz))
-  do i=1,grid%nz
-    array(i) = grid%z(i*grid%nx*grid%ny)
-  enddo
-  call WriteCoordinate(string,grid,grid%nz,array,grp_id)
-  deallocate(array)
   
   ! write out data sets  
   call DACreateGlobalVector(grid%da_1_dof,global,ierr)
@@ -157,6 +166,7 @@ subroutine OutputHDF5(grid)
   call h5gclose_f(grp_id,hdferr)
   call h5fclose_f(file_id,hdferr)
   call h5close_f(hdferr)
+  first = .false.
 
 end subroutine OutputHDF5
 
