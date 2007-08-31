@@ -1458,7 +1458,7 @@ subroutine pflowGrid_setup(grid, inputfile)
 ! shell for custom convergence test.  The default SNES convergence test 
 ! is call within this function.
   call SNESSetConvergenceTest(grid%snes,PFLOWConvergenceTest, &
-                              PETSC_NULL_OBJECT,ierr)
+                              grid,ierr)
                               
   if (myrank == 0) write(*,'("  Finished setting up of SNES 1")')
   

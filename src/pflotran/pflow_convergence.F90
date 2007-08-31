@@ -14,7 +14,9 @@ module pflow_convergence_module
   
 contains
 
-subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,ctx,ierr)
+subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,grid,ierr)
+
+  use pflow_gridtype_module
 
   implicit none
   
@@ -24,9 +26,11 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,ctx,ierr)
   PetscReal :: pnorm
   PetscReal :: fnorm
   SNESConvergedReason :: reason
-  PetscInt :: ctx
+  type(pflowGrid) :: grid
   PetscErrorCode :: ierr
   
+  PetscInt :: ctx = 0
+
   Vec :: solution
   Vec :: update
   Vec :: residual
@@ -65,6 +69,16 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,ctx,ierr)
 !  call VecNorm(residual,NORM_INFINITY,inorm_update,ierr)
 !  call VecNorm(residual,NORM_INFINITY,inorm_residual,ierr)
 
+
+!  if (grid%myrank == 0) then
+!    print *, 'its :', it
+!    print *, 'xnorm2: ', xnorm
+!    print *, 'pnorm2: ', pnorm
+!    print *, 'fnorm2: ', fnorm
+!    print *, 'inf_norm_solution: ', inorm_solution
+!    print *, 'inf_norm_update: ', inorm_update
+!    print *, 'inf_norm_residual: ', inorm_residual
+!  endif
 
 end subroutine PFLOWConvergenceTest
 
