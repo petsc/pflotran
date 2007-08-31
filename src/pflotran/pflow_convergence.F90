@@ -55,7 +55,7 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,grid,ierr)
 !              SNES_CONVERGED_ITERATING         =  0} SNESConvergedReason;
 
 ! first call the default convergence test
-  call SNESDefaultConverged(snes_,it,xnorm,pnorm,fnorm,reason,ctx,ierr)
+  call SNESDefaultConverged(snes_,it,xnorm,pnorm,fnorm,reason,PETSC_NULL_OBJECT,ierr)
  
 ! if you are not happy, apply some other criteria
 
@@ -65,11 +65,11 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,grid,ierr)
 !  call SNESGetSolutionUpdate(snes_,update)
 !  
 !  ! infinity norms
-!  call VecNorm(residual,NORM_INFINITY,inorm_solution,ierr)
-!  call VecNorm(residual,NORM_INFINITY,inorm_update,ierr)
+!  call VecNorm(solution,NORM_INFINITY,inorm_solution,ierr)
+!  call VecNorm(update,NORM_INFINITY,inorm_update,ierr)
 !  call VecNorm(residual,NORM_INFINITY,inorm_residual,ierr)
-
-
+!
+!
 !  if (grid%myrank == 0) then
 !    print *, 'its :', it
 !    print *, 'xnorm2: ', xnorm
