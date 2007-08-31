@@ -18,9 +18,10 @@ module hdf5_output_module
 #define GAS_SATURATION 4
 #define LIQUID_ENERGY 5
 #define GAS_ENERGY 6
-#define MOLE_FRACTION 7
-#define VOLUME_FRACTION 8
-#define PHASE 9
+#define LIQUID_MOLE_FRACTION 7
+#define GAS_MOLE_FRACTION 8
+#define VOLUME_FRACTION 9
+#define PHASE 10
 
   integer :: hdferr
   logical, save :: first = .true.
@@ -141,10 +142,17 @@ subroutine OutputHDF5(grid)
   string = "Gas Energy"
   call WriteDataSetFromVec(string,grid,global,grp_id,H5T_NATIVE_DOUBLE) 
   
-  ! mole fractions
+  ! liquid mole fractions
   do i=1,grid%nspec
-    call GetVarFromArray(grid,global,MOLE_FRACTION,i-1)
-    write(string,'(''Mole Fraction('',i4,'')'')') i
+    call GetVarFromArray(grid,global,LIQUID_MOLE_FRACTION,i-1)
+    write(string,'(''Liquid Mole Fraction('',i4,'')'')') i
+    call WriteDataSetFromVec(string,grid,global,grp_id,H5T_NATIVE_DOUBLE) 
+  enddo
+  
+  ! gas mole fractions
+  do i=1,grid%nspec
+    call GetVarFromArray(grid,global,GAS_MOLE_FRACTION,i-1)
+    write(string,'(''Gas Mole Fraction('',i4,'')'')') i
     call WriteDataSetFromVec(string,grid,global,grp_id,H5T_NATIVE_DOUBLE) 
   enddo
   
@@ -333,7 +341,7 @@ subroutine WriteDataSet(name,grid,array,file_id,data_type)
         do i=1,grid%nlx
           id = k+(j-1)*grid%nlz+(i-1)*grid%nlyz
           count = count+1
-          double_array(id) = int(array(count))
+          double_array(id) = array(count)
         enddo
       enddo
     enddo
@@ -374,7 +382,7 @@ subroutine GetVarFromArray(grid,vector,ivar,isubvar)
       
   select case(ivar)
     case(TEMPERATURE,PRESSURE,LIQUID_SATURATION,GAS_SATURATION, &
-         LIQUID_ENERGY,GAS_ENERGY,MOLE_FRACTION)
+         LIQUID_ENERGY,GAS_ENERGY,LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION)
       select case(ivar)
         case(TEMPERATURE)
           offset = 1
@@ -388,8 +396,10 @@ subroutine GetVarFromArray(grid,vector,ivar,isubvar)
           offset = 11
         case(GAS_ENERGY)
           offset = 12    
-        case(MOLE_FRACTION)
+        case(LIQUID_MOLE_FRACTION)
           offset = 17+isubvar
+        case(GAS_MOLE_FRACTION)
+          offset = 17+grid%nspec+isubvar
       end select
     
       size_var_use = 2 + 7*grid%nphase + 2* grid%nphase*grid%nspec
