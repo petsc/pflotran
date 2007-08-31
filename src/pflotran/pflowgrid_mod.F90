@@ -66,8 +66,6 @@ module pflow_grid_module
 type(pflowGrid) function pflowGrid_new(igeom, nx, ny, nz, npx, npy, npz, &
                                        nphase, nspec,npricomp,ndof, icouple, &
                                        idcdm, itable, mcomp,mphas)
-  
-  use pflow_convergence_module
 
   implicit none
 
@@ -652,10 +650,6 @@ endif
   ! Set up PETSc nonlinear solver context.
 !-----------------------------------------------------------------------
   call SNESCreate(PETSC_COMM_WORLD, grid%snes, ierr)
-! shell for custom convergence test.  The default SNES convergence test 
-! is call within this function.
-  call SNESSetConvergenceTest(grid%snes,PFLOWConvergenceTest, &
-                              PETSC_NULL_OBJECT,ierr)
   CHKERRQ(ierr)
 !-----------------------------------------------------------------------
   ! Set up information about corners of local domain.
@@ -1085,6 +1079,7 @@ subroutine pflowGrid_setup(grid, inputfile)
   use readfield
   use Unstructured_Grid_module
   use pflow_solv_module  
+  use pflow_convergence_module
                             
   implicit none
   
@@ -1458,10 +1453,13 @@ subroutine pflowGrid_setup(grid, inputfile)
   call SNESSetTolerances(grid%snes, grid%atol, grid%rtol, grid%stol, & 
                          grid%maxit, grid%maxf, ierr)
 
-  call SNESSetConvergenceTest(grid%snes, snes_converge_test, grid%it_norm, &
-                              grid%step_norm, snes_reason,  grid, ierr) 
-
   call SNESSetFromOptions(grid%snes, ierr)
+  
+! shell for custom convergence test.  The default SNES convergence test 
+! is call within this function.
+  call SNESSetConvergenceTest(grid%snes,PFLOWConvergenceTest, &
+                              PETSC_NULL_OBJECT,ierr)
+                              
   if (myrank == 0) write(*,'("  Finished setting up of SNES 1")')
   
   call SNESLineSearchGetParams(grid%snes, alpha, maxstep, steptol, ierr) 
@@ -3276,9 +3274,6 @@ subroutine pflowGrid_step(grid,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
  !print *, 'pflow_step:4:',  ntstep, grid%dt
   do
     call SNESGetIterationNumber(grid%snes, its, ierr)
-    call SNESSetConvergenceTest(grid%snes, snes_converge_test, its, &
-                              grid%step_norm, snes_reason,  grid, ierr) 
-
     
     grid%iphch=0
     if (grid%use_cond == PETSC_TRUE) then
