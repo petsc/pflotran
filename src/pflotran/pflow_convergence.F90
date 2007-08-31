@@ -57,10 +57,32 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,grid,ierr)
 !              SNES_CONVERGED_ITERATING         =  0} SNESConvergedReason;
 
 ! first call the default convergence test
+
+#ifdef CHUAN
+ call SNESGetIterationNumber(grid%snes, it, ierr)
+if(it == 0) then
+ reason = 0
+ return
+endif
+#endif
+
+  
   call SNESDefaultConverged(snes_,it,xnorm,pnorm,fnorm,reason,PETSC_NULL_OBJECT,ierr)
  
 ! if you are not happy, apply some other criteria
 #ifdef CHUAN
+  call SNESGetFunction(snes_,residual,PETSC_NULL_OBJECT,PETSC_NULL_INTEGER, &
+                       ierr)
+  if(reason >0) return
+   call VecNorm(residual,NORM_INFINITY,inorm_residual,ierr)
+  if(inorm_residual < grid%inf_tol) then
+   if (grid%myrank == 0) print *, 'converged from infinity', inorm_residual
+    reason = 1
+!    return
+ endif    
+ 
+ if (grid%myrank == 0) print*, 'snes_default', xnorm,pnorm,fnorm,reason
+
 #endif
 
 #ifdef GLENN
@@ -119,5 +141,8 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,grid,ierr)
 #endif
 
 end subroutine PFLOWConvergenceTest
+
+
+
 
 end module pflow_convergence_module

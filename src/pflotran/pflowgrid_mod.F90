@@ -48,8 +48,9 @@ module pflow_grid_module
 !#include "pflow_gridtype.h"     
  
   real*8, parameter :: Pi=3.1415926D0 
-  Vec :: x_new, x_d, func
-     
+!  Vec :: x_new, x_d, func
+ ! integer newton_it
+          
   contains
 
 !======================================================================
@@ -626,9 +627,6 @@ endif
   call VecDuplicate(grid%xx, grid%dxx, ierr)
   call VecDuplicate(grid%xx, grid%r, ierr)
   call VecDuplicate(grid%xx, grid%accum, ierr)
-  call VecDuplicate(grid%xx, x_new, ierr)
-  call VecDuplicate(grid%xx, x_d, ierr)
-  call VecDuplicate(grid%xx, func, ierr)
 
      
   call VecSetBlocksize(grid%dxx, grid%ndof, ierr)
@@ -3273,7 +3271,7 @@ subroutine pflowGrid_step(grid,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
   
  !print *, 'pflow_step:4:',  ntstep, grid%dt
   do
-    call SNESGetIterationNumber(grid%snes, its, ierr)
+   
     
     grid%iphch=0
     if (grid%use_cond == PETSC_TRUE) then
@@ -4224,6 +4222,9 @@ subroutine pflowGrid_read_input(grid, inputfile)
        
         call fiReadInt(string,grid%idt_switch,ierr)
         call fiDefaultMsg('idt',ierr)
+        
+        call fiReadDouble(string,grid%inf_tol,ierr)
+        call fiDefaultMsg('inf_tol_pflow',ierr)
  
         if (grid%myrank==0) write(IUNIT2,'(/," *SOLV ",/, &
           &"  atol_petsc   = ",1pe12.4,/, &
@@ -5185,56 +5186,6 @@ real*8 function pflowGrid_get_t(grid)
 end function pflowGrid_get_t
 
 !======================================================================
-
-
-subroutine snes_converge_test(snes, it_num, xnorm, gnorm, fnorm, reason, grid, ierr)
-implicit none
-
-SNES :: snes
-integer it_num
-real*8 xnorm,gnorm, fnorm
-type(pflowGrid) :: grid
- 
-SNESConvergedReason :: reason
-
-integer ierr
-integer myrank
-
-integer n
-real*8, pointer :: r_p
-!data icall/0/
-
-!if(icall ==0)then
-!  icall = 10
-!endif
-
-if(it_num == 0) then
- reason = 0
- return
-endif
-
-call SNESGetSolution(snes, x_new)
-call SNESGetSolutionUpdate(snes, x_d)
-call SNESGetFunction(snes, func)
-call VecNorm(x_new, NORM_2, xnorm, ierr)
-call VecNorm(x_d, NORM_2, gnorm,ierr)
-call VecNorm(func, NORM_2,fnorm, ierr)
-call SNESDefaultConverged(snes,it_num,xnorm,gnorm,fnorm,reason,grid, ierr )
-
-if(reason >0) return
-call VecNorm(func, NORM_INFINITY,fnorm, ierr)
-if(fnorm < 1E-5) then
-
-  print *, 'converged from infinity', fnorm
-  reason = 2
-endif    
- 
-!if(grid%myrank ==0) &
-  print*, 'snes_default', grid%myrank,  xnorm,gnorm,fnorm,reason
-
-end subroutine snes_converge_test
-!#include "pflowgrid_monitors.F90"
-
 
 
 subroutine pflowgrid_MonitorH(snes, its, norm, grid)

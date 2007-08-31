@@ -333,7 +333,7 @@ private
     PC    ::  pc
    
 
-    real*8 :: atol, rtol, stol, dtol
+    real*8 :: atol, rtol, stol, dtol, inf_tol
     real*8 it_norm, step_norm
     real*8, pointer :: steady_eps(:)
     integer idt_switch
