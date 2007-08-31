@@ -66,6 +66,8 @@ module pflow_grid_module
 type(pflowGrid) function pflowGrid_new(igeom, nx, ny, nz, npx, npy, npz, &
                                        nphase, nspec,npricomp,ndof, icouple, &
                                        idcdm, itable, mcomp,mphas)
+  
+  use pflow_convergence_module
 
   implicit none
 
@@ -650,6 +652,10 @@ endif
   ! Set up PETSc nonlinear solver context.
 !-----------------------------------------------------------------------
   call SNESCreate(PETSC_COMM_WORLD, grid%snes, ierr)
+! shell for custom convergence test.  The default SNES convergence test 
+! is call within this function.
+  call SNESSetConvergenceTest(grid%snes,PFLOWConvergenceTest, &
+                              PETSC_NULL_OBJECT,ierr)
   CHKERRQ(ierr)
 !-----------------------------------------------------------------------
   ! Set up information about corners of local domain.
@@ -3892,6 +3898,12 @@ subroutine pflowGrid_read_input(grid, inputfile)
             & )') grid%gravity
 
 !....................
+
+      case ('HDF5')
+        grid%print_hdf5 = .true.
+
+!....................
+
 
       case ('OPTS')
 
