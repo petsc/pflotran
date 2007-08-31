@@ -31,7 +31,7 @@ subroutine Get_Hydrosta_Pres(nz, dz, pref0, tref, dtdz, gravity, m_nacl)
   implicit none
   
   integer nz
-  real*8 pref0, tref, dz(1:nz), dtdz, gravity, m_nacl
+  real*8 pref0, tref, dz(1:nz+1), dtdz, gravity, m_nacl
   real*8,save :: pref 
   data pref/-10.D0/ 
      
@@ -40,7 +40,7 @@ subroutine Get_Hydrosta_Pres(nz, dz, pref0, tref, dtdz, gravity, m_nacl)
   real*8 dzz,zz, xm_nacl, p 
 ! first go with z
       
-   if(pref==pref0) return   
+   if(dabs(pref-pref0)<1D-10) return   
       
      xm_nacl = m_nacl * fmwnacl
      xm_nacl = xm_nacl /(1.D3 + xm_nacl)
@@ -62,13 +62,15 @@ subroutine Get_Hydrosta_Pres(nz, dz, pref0, tref, dtdz, gravity, m_nacl)
 
     
       
-        do n = 1, nz
+        do n = 1, nz+1
            if (n.eq.1) then
             dzz = 0.5d0*dz(1)
              zz = dzz
-      else
-        dzz = 0.5d0*(dz(n)+ dz(n-1))
-        zz = zz + dzz
+           elseif(n.eq.nz+1)then 
+             dzz = 0.5d0*dz(nz)
+           else
+             dzz = 0.5d0*(dz(n)+ dz(n-1))
+             zz = zz + dzz
       endif
       tmp = tref +  dTdz*zz
     
@@ -135,9 +137,9 @@ subroutine nhydrostatic(grid)
 ! real*8 :: ibndtyp(grid%nblkbc),cbc(grid%nblkbc),sbc(grid%nblkbc)
 ! real*8 :: xxbc_rec(grid%ndof,grid%nblkbc),iphasebc_rec(grid%nblkbc)
   real*8 :: rho_ref, xm_nacl, pref
-  
+
 ! real*8 :: betap,dz1,dz2,dx1,dx2, 
-  integer na,nz, nc, m, nl, ibc
+  integer na,nz, nx,nc, m, nl, ibc
   
   !Vec :: temp1_nat_vec, temp2_nat_vec, temp3_nat_vec, temp4_nat_vec
 
@@ -160,8 +162,8 @@ subroutine nhydrostatic(grid)
 !  vz = -k/mu (dp/dz - rho g z) = 0
 !  vx = -k/mu dp/dx, h = p/(rho g)
 
- allocate(hys_pres(grid%nz))
- allocate(hys_temp(grid%nz))
+ allocate(hys_pres(grid%nz+1))
+ allocate(hys_temp(grid%nz+1))
 
 
   ! this 
@@ -229,8 +231,15 @@ subroutine nhydrostatic(grid)
      ibc= grid%ibconn(nc)
      if(grid%iface(ibc)/=3 .and. grid%iface(ibc)/=4)then
        select case(grid%ibndtyp(ibc))
+        case(4)
+      
         case(3)
-          grid%xxbc(:,nc) = xx_p(1+ (m-1)*grid%ndof: 2+ (m-1)*grid%ndof)
+          na=grid%nL2A(m)+1
+          nz= int(na/grid%nxy) + 1
+          pref =  grid%pref
+          call Get_Hydrosta_Pres(grid%nz,grid%dz0,pref, grid%tref, grid%dtdz, grid%gravity, grid%m_nacl)  
+          grid%xxbc(1,nc) = hys_pres(nz)
+          grid%xxbc(2:grid%ndof,nc) = xx_p(1+ (m-1)*grid%ndof: 2+ (m-1)*grid%ndof)
         case(2)
           grid%xxbc(:,nc) = xx_p(1+ (m-1)*grid%ndof: 2+ (m-1)*grid%ndof)
         case(1) 
@@ -241,9 +250,47 @@ subroutine nhydrostatic(grid)
           grid%xxbc(1,nc) = hys_pres(nz)
           grid%xxbc(2,nc) = hys_temp(nz)
        end select 
-     ! elseif( grid%iface(ibc)==4 .and. grid%ibndtyp(ibc) == ) then 
+      elseif( grid%iface(ibc)==4 ) then
+        select case(grid%ibndtyp(ibc))
+        case(4)
+      
+        case(3)
+          nz = grid%nz
+          nx= mod(mod(na,grid%nxy),grid%nx) + 1
+          pref =  grid%pref + rho_ref * grid%gravity * grid%beta *grid%x(nx)
+          call Get_Hydrosta_Pres(grid%nz,grid%dz0,pref, grid%tref, grid%dtdz, grid%gravity, grid%m_nacl)  
+          grid%xxbc(1,nc) = hys_pres(nz+1)
+          grid%xxbc(2:grid%ndof,nc) = xx_p(1+ (m-1)*grid%ndof: 2+ (m-1)*grid%ndof)
+        case(2)
+          grid%xxbc(:,nc) = xx_p(1+ (m-1)*grid%ndof: 2+ (m-1)*grid%ndof)
+        case(1) 
+          nz = grid%nz
+          nx= mod(mod(na,grid%nxy),grid%nx) + 1
+          pref =  grid%pref + rho_ref * grid%gravity * grid%beta *grid%x(nx)
+          call Get_Hydrosta_Pres(grid%nz,grid%dz0,pref, grid%tref, grid%dtdz, grid%gravity, grid%m_nacl)  
+          grid%xxbc(1,nc) = hys_pres(nz+1)
+          grid%xxbc(2,nc) = hys_temp(nz+1)
+       end select 
+     elseif( grid%iface(ibc)== 3 ) then
+        select case(grid%ibndtyp(ibc))
+        case(4)
+      
+        case(3,1)
+          na=grid%nL2A(m)+1
+          nx= mod(mod(na,grid%nxy),grid%nx) + 1
+          pref =  grid%pref + rho_ref * grid%gravity * grid%beta *grid%x(nx)
+          grid%xxbc(1,nc) = pref
+          grid%xxbc(2:grid%ndof,nc) = grid%tref
+        case(2)
+          grid%xxbc(:,nc) = xx_p(1+ (m-1)*grid%ndof: 2+ (m-1)*grid%ndof)
+       end select 
+ 
+ 
       endif
-           
+   
+   
+   
+                   
   enddo
  call VecRestoreArrayF90(grid%xx, xx_p, ierr)
  

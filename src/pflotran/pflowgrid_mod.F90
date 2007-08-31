@@ -2,11 +2,10 @@ module pflow_grid_module
   
   use pflow_gridtype_module
   
+ 
   implicit none
   
-  private
-  real*8, parameter :: Pi=3.1415926D0 
-
+ private
   public pflowGrid
   public pflowGrid_new
   public pflowGrid_setup
@@ -47,6 +46,9 @@ module pflow_grid_module
 #include "include/finclude/petsclog.h"
 
 !#include "pflow_gridtype.h"     
+ 
+  real*8, parameter :: Pi=3.1415926D0 
+  Vec :: x_new, x_d, func
      
   contains
 
@@ -624,7 +626,11 @@ endif
   call VecDuplicate(grid%xx, grid%dxx, ierr)
   call VecDuplicate(grid%xx, grid%r, ierr)
   call VecDuplicate(grid%xx, grid%accum, ierr)
-  
+  call VecDuplicate(grid%xx, x_new, ierr)
+  call VecDuplicate(grid%xx, x_d, ierr)
+  call VecDuplicate(grid%xx, func, ierr)
+
+     
   call VecSetBlocksize(grid%dxx, grid%ndof, ierr)
 
   call DACreateLocalVector(grid%da_ndof, grid%xx_loc, ierr)
@@ -1095,6 +1101,7 @@ subroutine pflowGrid_setup(grid, inputfile)
   real*8, pointer :: volume_p(:)
     ! Used to access the contents of the local portion of grid%volume.
   ISColoring :: iscoloring
+  SNESConvergedReason :: snes_reason 
     ! Used for coloring the Jacobian so that we can take advantage of its
     ! sparsity when calculating it via finite differences.
   real*8, pointer :: temp_p(:), ran_p(:),&
@@ -1445,7 +1452,8 @@ subroutine pflowGrid_setup(grid, inputfile)
   call SNESSetTolerances(grid%snes, grid%atol, grid%rtol, grid%stol, & 
                          grid%maxit, grid%maxf, ierr)
 
- 
+  call SNESSetConvergenceTest(grid%snes, snes_converge_test, grid%it_norm, &
+                              grid%step_norm, snes_reason,  grid, ierr) 
 
   call SNESSetFromOptions(grid%snes, ierr)
   if (myrank == 0) write(*,'("  Finished setting up of SNES 1")')
@@ -3261,6 +3269,10 @@ subroutine pflowGrid_step(grid,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
   
  !print *, 'pflow_step:4:',  ntstep, grid%dt
   do
+    call SNESGetIterationNumber(grid%snes, its, ierr)
+    call SNESSetConvergenceTest(grid%snes, snes_converge_test, its, &
+                              grid%step_norm, snes_reason,  grid, ierr) 
+
     
     grid%iphch=0
     if (grid%use_cond == PETSC_TRUE) then
@@ -5167,7 +5179,56 @@ end function pflowGrid_get_t
 
 !======================================================================
 
+
+subroutine snes_converge_test(snes, it_num, xnorm, gnorm, fnorm, reason, grid, ierr)
+implicit none
+
+SNES :: snes
+integer it_num
+real*8 xnorm,gnorm, fnorm
+type(pflowGrid) :: grid
+ 
+SNESConvergedReason :: reason
+
+integer ierr
+integer myrank
+
+integer n
+real*8, pointer :: r_p
+!data icall/0/
+
+!if(icall ==0)then
+!  icall = 10
+!endif
+
+if(it_num == 0) then
+ reason = 0
+ return
+endif
+
+call SNESGetSolution(snes, x_new)
+call SNESGetSolutionUpdate(snes, x_d)
+call SNESGetFunction(snes, func)
+call VecNorm(x_new, NORM_2, xnorm, ierr)
+call VecNorm(x_d, NORM_2, gnorm,ierr)
+call VecNorm(func, NORM_2,fnorm, ierr)
+call SNESDefaultConverged(snes,it_num,xnorm,gnorm,fnorm,reason,grid, ierr )
+
+if(reason >0) return
+call VecNorm(func, NORM_INFINITY,fnorm, ierr)
+if(fnorm < 1E-5) then
+
+  print *, 'converged from infinity', fnorm
+  reason = 2
+endif    
+ 
+!if(grid%myrank ==0) &
+  print*, 'snes_default', grid%myrank,  xnorm,gnorm,fnorm,reason
+
+end subroutine snes_converge_test
 !#include "pflowgrid_monitors.F90"
+
+
 
 subroutine pflowgrid_MonitorH(snes, its, norm, grid)
   

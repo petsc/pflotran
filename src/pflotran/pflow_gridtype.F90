@@ -330,9 +330,10 @@ private
     PCType  :: pc_type
     KSP   ::  ksp
     PC    ::  pc
-
+   
 
     real*8 :: atol, rtol, stol, dtol
+    real*8 it_norm, step_norm
     real*8, pointer :: steady_eps(:)
     integer idt_switch
     integer var_plot_num
