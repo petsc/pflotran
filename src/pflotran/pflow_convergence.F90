@@ -58,27 +58,31 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,grid,ierr)
   call SNESDefaultConverged(snes_,it,xnorm,pnorm,fnorm,reason,PETSC_NULL_OBJECT,ierr)
  
 ! if you are not happy, apply some other criteria
+#ifdef CHUAN
+#endif
 
-!  call SNESGetSolution(snes_,solution)
-!  call SNESGetFunction(snes_,residual,PETSC_NULL_INTEGER,PETSC_NULL_OBJECT, &
-!                       ierr)
-!  call SNESGetSolutionUpdate(snes_,update)
-!  
-!  ! infinity norms
-!  call VecNorm(solution,NORM_INFINITY,inorm_solution,ierr)
-!  call VecNorm(update,NORM_INFINITY,inorm_update,ierr)
-!  call VecNorm(residual,NORM_INFINITY,inorm_residual,ierr)
-!
-!
-!  if (grid%myrank == 0) then
-!    print *, 'its :', it
-!    print *, 'xnorm2: ', xnorm
-!    print *, 'pnorm2: ', pnorm
-!    print *, 'fnorm2: ', fnorm
-!    print *, 'inf_norm_solution: ', inorm_solution
-!    print *, 'inf_norm_update: ', inorm_update
-!    print *, 'inf_norm_residual: ', inorm_residual
-!  endif
+#ifdef GLENN
+  call SNESGetSolution(snes_,solution)
+  call SNESGetFunction(snes_,residual,PETSC_NULL_INTEGER,PETSC_NULL_OBJECT, &
+                       ierr)
+  call SNESGetSolutionUpdate(snes_,update)
+  
+  ! infinity norms
+  call VecNorm(solution,NORM_INFINITY,inorm_solution,ierr)
+  call VecNorm(update,NORM_INFINITY,inorm_update,ierr)
+  call VecNorm(residual,NORM_INFINITY,inorm_residual,ierr)
+
+
+  if (grid%myrank == 0) then
+    print *, 'its :', it
+    print *, 'xnorm2: ', xnorm
+    print *, 'pnorm2: ', pnorm
+    print *, 'fnorm2: ', fnorm
+    print *, 'inf_norm_solution: ', inorm_solution
+    print *, 'inf_norm_update: ', inorm_update
+    print *, 'inf_norm_residual: ', inorm_residual
+  endif
+#endif
 
 end subroutine PFLOWConvergenceTest
 
