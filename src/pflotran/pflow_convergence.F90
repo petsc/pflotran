@@ -62,10 +62,11 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,grid,ierr)
 #endif
 
 #ifdef GLENN
-  call SNESGetSolution(snes_,solution)
-  call SNESGetFunction(snes_,residual,PETSC_NULL_INTEGER,PETSC_NULL_OBJECT, &
+  call SNESGetSolution(snes_,solution,ierr)
+                              ! the ctx object should really be PETSC_NULL_OBJECT.  A bug in petsc
+  call SNESGetFunction(snes_,residual,PETSC_NULL_OBJECT,PETSC_NULL_INTEGER, &
                        ierr)
-  call SNESGetSolutionUpdate(snes_,update)
+  call SNESGetSolutionUpdate(snes_,update,ierr)
   
   ! infinity norms
   call VecNorm(solution,NORM_INFINITY,inorm_solution,ierr)
@@ -81,6 +82,7 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,grid,ierr)
     print *, 'inf_norm_solution: ', inorm_solution
     print *, 'inf_norm_update: ', inorm_update
     print *, 'inf_norm_residual: ', inorm_residual
+    print *
   endif
 #endif
 
