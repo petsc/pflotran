@@ -38,6 +38,8 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,grid,ierr)
   PetscReal :: inorm_update  !infinity norm
   PetscReal :: inorm_residual  !infinity norm
   
+  character(len=128) :: string
+  
 !typedef enum {/* converged */
 !              SNES_CONVERGED_FNORM_ABS         =  2, /* F < F_minabs */
 !              SNES_CONVERGED_FNORM_RELATIVE    =  3, /* F < F_mintol*F_initial */
@@ -75,6 +77,36 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,grid,ierr)
 
 
   if (grid%myrank == 0) then
+    select case(reason)
+      case(SNES_CONVERGED_FNORM_ABS)
+        string = "SNES_CONVERGED_FNORM_ABS"
+      case(SNES_CONVERGED_FNORM_RELATIVE)
+        string = "SNES_CONVERGED_FNORM_RELATIVE"
+      case(SNES_CONVERGED_PNORM_RELATIVE)
+        string = "SNES_CONVERGED_PNORM_RELATIVE"
+      case(SNES_CONVERGED_ITS)
+        string = "SNES_CONVERGED_ITS"
+      case(SNES_CONVERGED_TR_DELTA)
+        string = "SNES_CONVERGED_TR_DELTA"
+!      case(SNES_DIVERGED_FUNCTION_DOMAIN)
+!        string = "SNES_DIVERGED_FUNCTION_DOMAIN"
+      case(SNES_DIVERGED_FUNCTION_COUNT)
+        string = "SNES_DIVERGED_FUNCTION_COUNT"
+      case(SNES_DIVERGED_LINEAR_SOLVE)
+        string = "SNES_DIVERGED_LINEAR_SOLVE"
+      case(SNES_DIVERGED_FNORM_NAN)
+        string = "SNES_DIVERGED_FNORM_NAN"
+      case(SNES_DIVERGED_MAX_IT)
+        string = "SNES_DIVERGED_MAX_IT"
+      case(SNES_DIVERGED_LS_FAILURE)
+        string = "SNES_DIVERGED_LS_FAILURE"
+      case(SNES_DIVERGED_LOCAL_MIN)
+        string = "SNES_DIVERGED_LOCAL_MIN"
+      case(SNES_CONVERGED_ITERATING)
+        string = "SNES_CONVERGED_ITERATING"
+    end select
+
+    print *, 'reason: ', reason, ' - ', trim(string)
     print *, 'its :', it
     print *, 'xnorm2: ', xnorm
     print *, 'pnorm2: ', pnorm
