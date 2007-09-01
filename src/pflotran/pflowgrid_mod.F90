@@ -4223,6 +4223,7 @@ subroutine pflowGrid_read_input(grid, inputfile)
         call fiReadInt(string,grid%idt_switch,ierr)
         call fiDefaultMsg('idt',ierr)
         
+        grid%inf_tol = grid%atol
         call fiReadDouble(string,grid%inf_tol,ierr)
         call fiDefaultMsg('inf_tol_pflow',ierr)
  
