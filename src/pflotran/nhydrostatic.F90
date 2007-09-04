@@ -40,7 +40,7 @@ subroutine Get_Hydrosta_Pres(nz, dz, pref0, tref, dtdz, gravity, m_nacl)
   real*8 dzz,zz, xm_nacl, p 
 ! first go with z
       
-   if(dabs(pref-pref0)<1D-10) return   
+   if(dabs(pref-pref0)<1D-6) return   
       
      xm_nacl = m_nacl * fmwnacl
      xm_nacl = xm_nacl /(1.D3 + xm_nacl)
@@ -112,7 +112,7 @@ subroutine Get_Hydrosta_Pres(nz, dz, pref0, tref, dtdz, gravity, m_nacl)
      p = pres
      rho0=rho
      hys_pres(n)=p ; hys_temp(n)= tmp
-     print *, n, p, tmp
+   !  print *, n, p, tmp
 
    enddo
 end subroutine  Get_Hydrosta_Pres   

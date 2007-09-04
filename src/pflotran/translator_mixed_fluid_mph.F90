@@ -67,6 +67,7 @@
   integer :: ierr
   integer :: n,n0,nc,np,n2p,n2p0
   real*8 x,y,z,nzm,nzm0, nxc,nxc0,c0, c00,nyc,nyc0,nzc,nzc0,nsm,nsm0,sm 
+  real*8 nxm,nxm0
   integer :: index, size_var_node
      
   PetscScalar, pointer ::  var_p(:),&
@@ -76,7 +77,8 @@
   
   real*8 ::  pvol,sum
   real*8, pointer ::  den(:),sat(:),xmol(:)
- 
+  real*8   sat_avg, sat_max, sat_min, sat_var
+  real*8   sat_avg0, sat_max0, sat_min0, sat_var0
   real*8 :: tot(0:grid%nspec,0:grid%nphase), tot0(0:grid%nspec,0:grid%nphase)  
   data icall/0/
 
@@ -88,7 +90,10 @@
   size_var_node=(grid%ndof+1)*(2+7*grid%nphase +2*grid%nphase*grid%nspec)
   tot=0.D0
   n2p=0
-  nxc=0.; nyc=0.; nzc=0.D0; nzm=grid%z(grid%nmax); sm=0.; nsm=nzm; c0=0.D0
+  nxc=0.; nyc=0.; nzc=0.D0; nzm=0 !grid%z(grid%nmax); 
+  sm=0.; nsm=nzm; c0=0.D0 ; nxm =0
+  sat_avg =0.D0; sat_max =0.D0; sat_min =1.D0 ; sat_var =0.D0
+ ! pvol_tot =0.D0
 
   do n = 1,grid%nlmax
     n0=(n-1)* grid%ndof
@@ -105,16 +110,19 @@
       y=grid%y(grid%nL2A(n)+1)
       z=grid%z(grid%nL2A(n)+1)
    
-      if(z<nzm) nzm=z
+      if(z>nzm) nzm=z
+      if(x>nxm) nxm=x
       if(sm<sat(2))then
       !print *, n,grid%nL2A(n)+1,x,y,z,sat(2)
         sm=sat(2);nsm=z
       endif    
-      c0=c0+sat(2)*pvol
-      nxc=nxc + pvol*sat(2)*x
-      nyc=nyc + pvol*sat(2)*y
-      nzc=nzc + pvol*sat(2)*z
-    endif
+       sat_avg = sat_avg + sat(2) !* pvol
+       sat_var = sat_var + sat(2) * sat(2)! * pvol *pvol
+      ! pvol_tot =pvol_tot + pvol
+       if(sat_max < sat(2))sat_max = sat(2)
+       if(sat_min > sat(2))sat_min = sat(2)      
+
+     endif
 
     do nc =1,grid%nspec
       do np=1,grid%nphase
@@ -135,21 +143,15 @@
  
  
   if(grid%commsize >1)then
-    call MPI_REDUCE(n2p, n2p0,1,&
-        MPI_INTEGER,MPI_SUM,0, PETSC_COMM_WORLD,ierr)
-    call MPI_REDUCE(c0, c00,1,&
-        MPI_DOUBLE_PRECISION,MPI_SUM,0, PETSC_COMM_WORLD,ierr)
-    call MPI_REDUCE(nxc, nxc0,1,&
-        MPI_DOUBLE_PRECISION,MPI_SUM,0, PETSC_COMM_WORLD,ierr)
-    call MPI_REDUCE(nyc, nyc0,1,&
-        MPI_DOUBLE_PRECISION,MPI_SUM,0, PETSC_COMM_WORLD,ierr)
-
-    call MPI_REDUCE(nzc, nzc0,1,&
-        MPI_DOUBLE_PRECISION,MPI_SUM,0, PETSC_COMM_WORLD,ierr)
-    call MPI_REDUCE(nzm, nzm0,1,&
-        MPI_DOUBLE_PRECISION,MPI_MIN,0, PETSC_COMM_WORLD,ierr)
-    call MPI_REDUCE(nsm, nsm0,1,&
-        MPI_DOUBLE_PRECISION,MPI_MIN,0, PETSC_COMM_WORLD,ierr)
+    call MPI_REDUCE(n2p, n2p0,1, MPI_INTEGER,MPI_SUM,0, PETSC_COMM_WORLD,ierr)
+    call MPI_REDUCE(nzm, nzm0,1, MPI_DOUBLE_PRECISION,MPI_MAX,0, PETSC_COMM_WORLD,ierr)
+    call MPI_REDUCE(nxm, nxm0,1, MPI_DOUBLE_PRECISION,MPI_MAX,0, PETSC_COMM_WORLD,ierr)
+!    call MPI_REDUCE(pvol_tot, pvol_tot0,1, MPI_DOUBLE_PRECISION,MPI_SUM,0, PETSC_COMM_WORLD,ierr)
+    call MPI_REDUCE(sat_avg, sat_avg0,1, MPI_DOUBLE_PRECISION,MPI_SUM,0, PETSC_COMM_WORLD,ierr)
+    call MPI_REDUCE(sat_var, sat_var0,1, MPI_DOUBLE_PRECISION,MPI_SUM,0, PETSC_COMM_WORLD,ierr)
+    call MPI_REDUCE(sat_min, sat_min0,1, MPI_DOUBLE_PRECISION,MPI_MIN,0, PETSC_COMM_WORLD,ierr)
+    call MPI_REDUCE(sat_max, sat_max0,1, MPI_DOUBLE_PRECISION,MPI_MAX,0, PETSC_COMM_WORLD,ierr)
+   
       
     do nc = 0,grid%nspec
       do np = 0,grid%nphase
@@ -161,7 +163,8 @@
       enddo
     enddo
     if(grid%myrank==0) then
-      tot = tot0; n2p=n2p0;nxc=nxc0;nyc=nyc0;nzc=nzc0;nzm=nzm0;nsm=nsm0;c0=c00 
+      tot = tot0; n2p=n2p0;nxc=nxc0;nyc=nyc0;nzc=nzc0;nzm=nzm0;nsm=nsm0;c0=c00
+      nxm =nxm0; sat_avg=sat_avg0; sat_var =sat_var0; sat_min=sat_min0; sat_max=sat_max0
     endif   
   endif 
   
@@ -169,6 +172,8 @@
   if(grid%myrank==0)then
     if(c0<1D-6) c0=1.D0
     nxc=nxc/c0; nyc=nyc/c0;nzc=nzc/c0
+    if(n2p>0)sat_avg = sat_avg/n2p
+  !  sat_var = sat_var / n2p  -  sat_avg*sat_avg
   
   
     write(*,'(" Total CO2: t= ",1pe12.4," dt= ",1pe12.4," liq:",1pe13.6,&
@@ -183,8 +188,9 @@
 !   write(13,'(" Total CO2: t=",1pe13.6," liq:",1pe13.6,&
 ! &  " gas:",1pe13.6," tot:",1p2e13.6," [kmol]")')&
 ! & grid%t/grid%tconv,tot(2,1),tot(2,2),tot(2,0),tot(2,1)+tot(2,2)
-    write(13,'(1p9e12.4)') grid%t/grid%tconv,grid%dt/grid%tconv,&
-    tot(2,1),tot(2,2),tot(2,1)+tot(2,2),real(n2p),nzc,nzm,nsm 
+    write(13,'(1p19e12.4)') grid%t/grid%tconv,grid%dt/grid%tconv,&
+    tot(2,1),tot(2,2),tot(2,1)+tot(2,2),real(n2p), nzm, nxm,&
+    sat_avg, sat_min, sat_max, sat_var 
   endif    
   
   
