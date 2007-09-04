@@ -209,8 +209,8 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,grid,ierr)
 
     ! uncomment the lines below to determine data printed
     
-    print_sol_norm_info = .true.  ! solution norm information
-    print_upd_norm_info = .true.  ! update norm information
+    !print_sol_norm_info = .true.  ! solution norm information
+    !print_upd_norm_info = .true.  ! update norm information
     print_res_norm_info = .true.  ! residual norm information
   
     print_norm_by_dof_info = .true.
