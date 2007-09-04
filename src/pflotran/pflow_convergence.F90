@@ -62,6 +62,14 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,grid,ierr)
   PetscReal, allocatable :: max_residual_val(:)
   
   character(len=128) :: string
+  logical :: print_sol_norm_info = .false.
+  logical :: print_upd_norm_info = .false.
+  logical :: print_res_norm_info = .false.
+  logical :: print_norm_by_dof_info = .false.
+  logical :: print_max_val_and_loc_info = .false.
+  logical :: print_1_norm_info = .false.
+  logical :: print_2_norm_info = .false.
+  logical :: print_inf_norm_info = .false.
   
 #endif
 
@@ -84,12 +92,16 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,grid,ierr)
 #ifdef CHUAN
   ! always take one iteration
   call SNESGetIterationNumber(grid%snes,it,ierr)
+  if (it == 0) then
+    reason = 0
+    return
+  endif
 #endif
 
   call SNESDefaultConverged(snes_,it,xnorm,pnorm,fnorm,reason,PETSC_NULL_OBJECT,ierr)
  
 #ifdef CHUAN
-  if (reason <= 0 .and. it > 0) then
+  if (reason <= 0) then
   
     call SNESGetFunction(snes_,residual,PETSC_NULL_OBJECT,PETSC_NULL_INTEGER, &
                          ierr)
@@ -101,8 +113,6 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,grid,ierr)
       reason = 1
     endif
 
-  else
-    reason = 0
   endif    
  
   if (grid%myrank == 0) print *, 'snes_default', xnorm,pnorm,fnorm,reason
@@ -111,7 +121,7 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,grid,ierr)
 
 #ifdef GLENN
   call SNESGetSolution(snes_,solution,ierr)
-                              ! the ctx object should really be PETSC_NULL_OBJECT.  A bug in petsc
+  ! the ctx object should really be PETSC_NULL_OBJECT.  A bug in petsc
   call SNESGetFunction(snes_,residual,PETSC_NULL_OBJECT,PETSC_NULL_INTEGER, &
                        ierr)
   call SNESGetSolutionUpdate(snes_,update,ierr)
@@ -197,39 +207,83 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,grid,ierr)
         string = "UNKNOWN"
     end select
 
+    ! uncomment the lines below to determine data printed
+    
+    print_sol_norm_info = .true.  ! solution norm information
+    print_upd_norm_info = .true.  ! update norm information
+    print_res_norm_info = .true.  ! residual norm information
+  
+    print_norm_by_dof_info = .true.
+    print_max_val_and_loc_info = .true.
+
+    print_1_norm_info = .true.
+    print_2_norm_info = .true.
+    print_inf_norm_info = .true.
+
+    print *
     print *, 'reason: ', reason, ' - ', trim(string)
     print *, 'its :', it
-    print *, 'norm1_solution: ', norm1_solution
-    print *, 'norm1_update: ', norm1_update
-    print *, 'norm1_residual: ', norm1_residual
-    print *, 'norm2_solution: ', xnorm
-    print *, 'norm2_update: ', pnorm
-    print *, 'norm2_residual: ', fnorm
-    print *, 'inf_norm_solution: ', inorm_solution
-    print *, 'inf_norm_update: ', inorm_update
-    print *, 'inf_norm_residual: ', inorm_residual
-    print *, 'max locations by dof:'
-    do i=1,grid%ndof
-      print *, '  dof: ', i
-      print *, '    solution max: ', imax_solution(i), max_solution_val(i)
-      print *, '    update max: ', imax_update(i), max_update_val(i)
-      print *, '    residual max: ', imax_residual(i), max_residual_val(i)
-    enddo
-    print *, 'norm by dof:'
-    do i=1,grid%ndof
-      print *, '  dof: ', i
-      print *, '    norm1_solution_stride: ', norm1_solution_stride(i)
-      print *, '    norm2_solution_stride: ', fnorm_solution_stride(i)
-      print *, '    inf_norm_solution_stride: ', inorm_solution_stride(i)
-      print *, '    -'
-      print *, '    norm1_update_stride: ', norm1_update_stride(i)
-      print *, '    norm2_update_stride: ', fnorm_update_stride(i)
-      print *, '    inf_norm_update_stride: ', inorm_update_stride(i)
-      print *, '    -'
-      print *, '    norm1_residual_stride: ', norm1_residual_stride(i)
-      print *, '    norm2_residual_stride: ', fnorm_residual_stride(i)
-      print *, '    inf_norm_residual_stride: ', inorm_residual_stride(i)
-    enddo
+    if (print_1_norm_info) then
+      if (print_sol_norm_info) print *, 'norm_1_solution:   ', norm1_solution
+      if (print_upd_norm_info) print *, 'norm_1_update:     ', norm1_update
+      if (print_res_norm_info) print *, 'norm_1_residual:   ', norm1_residual
+    endif
+    if (print_2_norm_info) then
+      if (print_sol_norm_info) print *, 'norm_2_solution:   ', xnorm
+      if (print_upd_norm_info) print *, 'norm_2_update:     ', pnorm
+      if (print_res_norm_info) print *, 'norm_2_residual:   ', fnorm
+    endif
+    if (print_inf_norm_info) then
+      if (print_sol_norm_info) print *, 'norm_inf_solution: ', inorm_solution
+      if (print_upd_norm_info) print *, 'norm_inf_update:   ', inorm_update
+      if (print_res_norm_info) print *, 'norm_inf_residual: ', inorm_residual
+    endif
+    if (print_max_val_and_loc_info) then
+      print *, 'max locations by dof:'
+      do i=1,grid%ndof
+        print *, '  dof: ', i
+        if (print_sol_norm_info) &
+          print *, '    solution max: ', imax_solution(i), max_solution_val(i)
+        if (print_upd_norm_info) &
+          print *, '    update max:   ', imax_update(i), max_update_val(i)
+        if (print_res_norm_info) &
+          print *, '    residual max: ', imax_residual(i), max_residual_val(i)
+      enddo
+    endif
+    if (print_norm_by_dof_info) then
+      print *, 'norm by dof:'
+      do i=1,grid%ndof
+        print *, '  dof: ', i
+        if (print_sol_norm_info) then
+          if (print_1_norm_info) &
+            print *, '    norm_1_solution:   ', norm1_solution_stride(i)
+          if (print_2_norm_info) &
+            print *, '    norm_2_solution:   ', fnorm_solution_stride(i)
+          if (print_inf_norm_info) &
+            print *, '    norm_inf_solution: ', inorm_solution_stride(i)
+          if (print_1_norm_info .or. print_2_norm_info .or. &
+              print_inf_norm_info) print *, '    -'
+        endif
+        if (print_upd_norm_info) then
+          if (print_1_norm_info) &
+            print *, '    norm_1_update:   ', norm1_update_stride(i)
+          if (print_2_norm_info) &
+            print *, '    norm_2_update:   ', fnorm_update_stride(i)
+          if (print_inf_norm_info) &
+            print *, '    norm_inf_update: ', inorm_update_stride(i)
+          if (print_1_norm_info .or. print_2_norm_info .or. &
+              print_inf_norm_info) print *, '    -'
+        endif
+        if (print_res_norm_info) then
+          if (print_1_norm_info) &
+            print *, '    norm_1_residual:   ', norm1_residual_stride(i)
+          if (print_2_norm_info) &
+            print *, '    norm_2_residual:   ', fnorm_residual_stride(i)
+          if (print_inf_norm_info) &
+            print *, '    norm_inf_residual: ', inorm_residual_stride(i)
+        endif
+      enddo
+    endif
     print *
   endif
   
