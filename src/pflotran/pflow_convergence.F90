@@ -82,11 +82,11 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,grid,ierr)
 #ifdef CHUAN
   call SNESGetFunction(snes_,residual,PETSC_NULL_OBJECT,PETSC_NULL_INTEGER, &
                        ierr)
-  if(reason > 0) return
+! if(reason > 0) return
   
   call VecNorm(residual,NORM_INFINITY,inorm_residual,ierr)
   
-  if(inorm_residual < grid%inf_tol) then
+  if(inorm_residual < grid%inf_tol .and. reason <= 0) then
     if (grid%myrank == 0) print *, 'converged from infinity', inorm_residual
     reason = 1
   endif    
@@ -125,6 +125,8 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,grid,ierr)
 
   if (grid%myrank == 0) then
     select case(reason)
+      case (1)
+        string = "CONVERGED_USER_NORM_INF"
       case(SNES_CONVERGED_FNORM_ABS)
         string = "SNES_CONVERGED_FNORM_ABS"
       case(SNES_CONVERGED_FNORM_RELATIVE)
