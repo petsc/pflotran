@@ -34,12 +34,23 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,grid,ierr)
   Vec :: solution
   Vec :: update
   Vec :: residual
-  PetscReal :: inorm_solution  !infinity norm
-  PetscReal :: inorm_update  !infinity norm
-  PetscReal :: inorm_residual  !infinity norm
+  PetscReal :: inorm_solution  !infinity norms
+  PetscReal :: inorm_update  
+  PetscReal :: inorm_residual  
+  
+#ifdef GLENN
+  integer :: i
+  PetscReal, allocatable :: fnorm_solution_stride(:)
+  PetscReal, allocatable :: fnorm_update_stride(:)
+  PetscReal, allocatable :: fnorm_residual_stride(:)
+  PetscReal, allocatable :: inorm_solution_stride(:)
+  PetscReal, allocatable :: inorm_update_stride(:)
+  PetscReal, allocatable :: inorm_residual_stride(:)
   
   character(len=128) :: string
   
+#endif
+
 !typedef enum {/* converged */
 !              SNES_CONVERGED_FNORM_ABS         =  2, /* F < F_minabs */
 !              SNES_CONVERGED_FNORM_RELATIVE    =  3, /* F < F_mintol*F_initial */
@@ -95,6 +106,21 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,grid,ierr)
   call VecNorm(solution,NORM_INFINITY,inorm_solution,ierr)
   call VecNorm(update,NORM_INFINITY,inorm_update,ierr)
   call VecNorm(residual,NORM_INFINITY,inorm_residual,ierr)
+  
+  allocate(fnorm_solution_stride(grid%ndof))
+  allocate(fnorm_update_stride(grid%ndof))
+  allocate(fnorm_residual_stride(grid%ndof))
+  allocate(inorm_solution_stride(grid%ndof))
+  allocate(inorm_update_stride(grid%ndof))
+  allocate(inorm_residual_stride(grid%ndof))
+  do i=1,grid%ndof
+    call VecStrideNorm(solution,i-1,NORM_2,fnorm_solution_stride(i),ierr)
+    call VecStrideNorm(update,i-1,NORM_2,fnorm_update_stride(i),ierr)
+    call VecStrideNorm(residual,i-1,NORM_2,fnorm_residual_stride(i),ierr)
+    call VecStrideNorm(solution,i-1,NORM_INFINITY,inorm_solution_stride(i),ierr)
+    call VecStrideNorm(update,i-1,NORM_INFINITY,inorm_update_stride(i),ierr)
+    call VecStrideNorm(residual,i-1,NORM_INFINITY,inorm_residual_stride(i),ierr)
+  enddo
 
 
   if (grid%myrank == 0) then
@@ -135,8 +161,26 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,grid,ierr)
     print *, 'inf_norm_solution: ', inorm_solution
     print *, 'inf_norm_update: ', inorm_update
     print *, 'inf_norm_residual: ', inorm_residual
+    print *, 'norm by dof:'
+    do i=1,grid%ndof
+      print *, '  dof: ', i
+      print *, '  fnorm_solution_stride: ', fnorm_solution_stride(i)
+      print *, '  fnorm_update_stride: ', fnorm_update_stride(i)
+      print *, '  fnorm_residual_stride: ', fnorm_residual_stride(i)
+      print *, '  inf_norm_solution_stride: ', inorm_solution_stride(i)
+      print *, '  inf_norm_update_stride: ', inorm_update_stride(i)
+      print *, '  inf_norm_residual_stride: ', inorm_residual_stride(i)
+    enddo
     print *
   endif
+  
+  deallocate(fnorm_solution_stride)
+  deallocate(fnorm_update_stride)
+  deallocate(fnorm_residual_stride)
+  deallocate(inorm_solution_stride)
+  deallocate(inorm_update_stride)
+  deallocate(inorm_residual_stride)
+  
 #endif
 
 end subroutine PFLOWConvergenceTest
