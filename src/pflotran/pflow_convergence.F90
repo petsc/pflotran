@@ -81,17 +81,19 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,grid,ierr)
 !              SNES_DIVERGED_LOCAL_MIN          = -8,  /* || J^T b || is small, implies converged to local minimum of F() */
 !              SNES_CONVERGED_ITERATING         =  0} SNESConvergedReason;
 
+#ifdef CHUAN
+  ! always take one iteration
+  call SNESGetIterationNumber(grid%snes,it,ierr)
+#endif
+
   call SNESDefaultConverged(snes_,it,xnorm,pnorm,fnorm,reason,PETSC_NULL_OBJECT,ierr)
  
 #ifdef CHUAN
-  ! always take one iteration
-  call SNESGetIterationNumber(grid%snes, it, ierr)
-  if (it == 0) reason = 0
-
-  if (reason <= 0) then
+  if (reason <= 0 .and. it > 0) then
   
     call SNESGetFunction(snes_,residual,PETSC_NULL_OBJECT,PETSC_NULL_INTEGER, &
                          ierr)
+
     call VecNorm(residual,NORM_INFINITY,inorm_residual,ierr)
   
     if (inorm_residual < grid%inf_tol) then
@@ -99,6 +101,8 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,grid,ierr)
       reason = 1
     endif
 
+  else
+    reason = 0
   endif    
  
   if (grid%myrank == 0) print *, 'snes_default', xnorm,pnorm,fnorm,reason
