@@ -6,9 +6,7 @@
 #include "include/petscmat.h"
 #include "include/petscis.h"
 
-#include "BoundaryConnection.h"
 #include "BoundarySet.h"
-#include "Condition.h"
 #include "Globals.h"
 #include "GridCell.h"
 #include "GridVertex.h"

@@ -3,7 +3,7 @@
 FileIO::FileIO(char *filename) {
 
   cout << filename << "\n";
-  file.open(filename,ios.in);
+  file.open(filename,fstream::in);
   if (!file.is_open()) cout << "ERROR opening file " << filename << ".\n";
   buffer = NULL;
 

@@ -12,8 +12,8 @@ class Condition {
   
 public:
   Condition();
-  Condition::Condition(Condition *old_condition);
-  Condition::Condition(char *filename);
+  Condition(Condition *old_condition);
+  Condition(char *filename);
   virtual ~Condition();
 
   void nullify();
@@ -29,9 +29,9 @@ public:
 
   double computeHydrostaticPressure(double *coord);
 
-  static void Condition::convertListToArray();
-  static void Condition::updateConditions(double time);
-  static void Condition::initializeConditions();
+  static void convertListToArray();
+  static void updateConditions(double time);
+  static void initializeConditions();
 
   void printInfo();
 

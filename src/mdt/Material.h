@@ -5,7 +5,7 @@
 
 #include "include/petsc.h"
 
-#include "globals.h"
+#include "Globals.h"
 
 class Material {
   

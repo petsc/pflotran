@@ -8,16 +8,24 @@ ptran_src    = ./
 common_src   = ./
 bindir = ./${PETSC_ARCH}/bin
 
-#MYFLAGS = -I${objdir} -DDEBUG -DUSE_COMPRESSIBILITY
-MYFLAGS = -I${objdir} -DUSE_COMPRESSIBILITY -DGLENN -DCHUAN #-DPETSC_USE_LOG
-#MYFLAGS = -I${objdir} -DUSE_COMPRESSIBILITY -DHAVE_MPITOMPIZERO
-LIBS   = 
+ifdef custom_convergence
+  CUSTOM_CONVERGENCE_FLAGS = -DCHUAN
+endif
+ifdef debug_convergence
+  DEBUG_CONVERGENCE_FLAGS = -DGLENN
+endif
+ifdef hdf5
+  HDF5_FLAGS = -I$(HDF5_INCLUDE)
+  HDF5_LIBS = -L$(HDF5_LIB) -lhdf5_fortran -lhdf5 -lz  
+endif
+MYFLAGS = -I${objdir} -DUSE_COMPRESSIBILITY $(CUSTOM_CONVERGENCE_FLAGS) \
+          $(DEBUG_CONVERGENCE_FLAGS) $(HDF5_FLAGS)
+LIBS = $(HDF5_LIBS)
 
 CFLAGS		 = 
 FFLAGS		 = #-Rb
 CPPFLAGS         = ${MYFLAGS}
 FPPFLAGS         = ${MYFLAGS}
-LOCDIR		 = /home/clu
 CLEANFILES       = pflow ptran pflotran pflotran_fc
 
 include ${PETSC_DIR}/bmake/common/base
@@ -33,7 +41,7 @@ util_obj  = ${common_src}fileio.o \
 	${common_src}utilities.o \
 	${common_src}ptran_global.o \
 	${common_src}trdynmem.o \
-  ${common_src}petscrelwrappers.o
+	${common_src}petscrelwrappers.o
 
 pflow_obj = ${common_src}pflow_vector_ops.o \
 	${common_src}pflow_read_gridsize.o \

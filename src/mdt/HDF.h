@@ -3,7 +3,7 @@
 
 #include "include/petsc.h"
 
-#include "HDF5.h"
+#include "hdf5.h"
 
 class HDF {
 

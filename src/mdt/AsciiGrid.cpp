@@ -112,6 +112,7 @@ double AsciiGrid::computeElevationFromCoordinate(double x, double y) {
     PetscPrintf(PETSC_COMM_WORLD,
                 "ERROR:  row or column index outsite ASCII Grid bounds %d %d\n",
                 irow,icol);
+    return -999.;
   }
   else {
     double z1 = values[icol+irow*ncols];

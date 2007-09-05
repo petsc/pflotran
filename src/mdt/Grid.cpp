@@ -66,7 +66,10 @@ int *Grid::getLocalCellMaterialNaturalIDs() {
 int *Grid::getLocalCellVertexNaturalIDs() {
 // return a list of vertex ids for each grid cells 
 // currently assuming only hex cells
-  if (structuredGrid) return structuredGrid->getLocalCellVertexNaturalIDs(cells,vertices);
+  if (structuredGrid) 
+    return structuredGrid->getLocalCellVertexNaturalIDs(cells,vertices);
+  else
+    return NULL;
 }
 
 void Grid::convertLocalCellDataGtoN(int *data) {

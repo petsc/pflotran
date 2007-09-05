@@ -6,7 +6,6 @@
 #include "include/petsc.h"
 
 #include "Condition.h"
-#include "GridCell.h"
 
 class BoundaryConnection {
   
@@ -27,7 +26,7 @@ public:
     
   void printInfo();
 
-  static void BoundaryConnection::convertListToArray();
+  static void convertListToArray();
   static void printBCs();
 
   int getId();
