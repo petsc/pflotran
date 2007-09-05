@@ -3255,7 +3255,7 @@ subroutine pflowGrid_step(grid,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
   
   !set maximum time step
   if (ntstep > grid%nstpmax) then
-  ! do nothing - keep current dt_max
+    grid%dt_max = grid%dtstep(grid%nstpmax)
   else if (grid%t > grid%tstep(ntstep)) then
     ntstep = ntstep + 1
     if (ntstep <= grid%nstpmax) then
