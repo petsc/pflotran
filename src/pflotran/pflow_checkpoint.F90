@@ -15,6 +15,7 @@ module pflow_chkptheader
     integer :: flowsteps 
     integer :: kplot
     integer :: newtcum
+    integer :: isrc
   end type pflowChkPtHeader
 end module pflow_chkptheader
 
@@ -129,6 +130,8 @@ subroutine pflowGridCheckpoint(grid, ntstep, kplt, iplot, iflgcut, ihalcnt, &
                            "ihalcnt", ierr)
   call PetscBagRegisterInt(bag, header%its, its, "its", &
                            "its", ierr)
+  call PetscBagRegisterInt(bag, header%isrc, grid%isrc1, "isrc1", &
+                           "isrc1", ierr)
   
   ! Register relevant components of the pflowGrid.
   call PetscBagRegisterReal(bag, header%t, grid%t, "t", &
@@ -183,7 +186,7 @@ subroutine pflowGridCheckpoint(grid, ntstep, kplt, iplot, iflgcut, ihalcnt, &
   ! We are finished, so clean up.
   call PetscViewerDestroy(viewer, ierr)
 
-  if(grid%myrank == 0) write(*, '(" --> Dump checkpoint file: ", a16)') fname
+  if(grid%myrank == 0) write(*, '(" --> Dump checkpoint file: ", a16)') trim(fname)
 
 end subroutine pflowGridCheckpoint
 
@@ -226,7 +229,7 @@ subroutine pflowGridRestart(grid, fname, ntstep, kplt, iplot, iflgcut, &
   type(pflowChkPtHeader), pointer :: header
   integer ierr
 
-  if (grid%myrank == 0) print *,'--> Open checkpoint file: ',fname
+  if (grid%myrank == 0) print *,'--> Open checkpoint file: ', trim(fname)
   call PetscViewerBinaryOpen(PETSC_COMM_WORLD, fname, FILE_MODE_READ, &
                              viewer, ierr)
  
@@ -239,6 +242,7 @@ subroutine pflowGridRestart(grid, fname, ntstep, kplt, iplot, iflgcut, &
   iflgcut = header%iflgcut
   ihalcnt = header%ihalcnt
   its = header%its
+  grid%isrc1 = header%isrc
   grid%t = header%t
   grid%dt = header%dt
   grid%flowsteps = header%flowsteps
