@@ -111,8 +111,8 @@ subroutine Get_Hydrosta_Pres(nz, dz, pref0, tref, dtdz, gravity, m_nacl)
           endif
      p = pres
      rho0=rho
-     hys_pres(n)=p ; hys_temp(n)= tmp
-     print *, n, p, tmp
+     hys_pres(n)=p; hys_temp(n)= tmp
+!    print *, 'nhydro: ', n, p, tmp
 
    enddo
 end subroutine  Get_Hydrosta_Pres   
