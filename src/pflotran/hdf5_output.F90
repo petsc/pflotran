@@ -1,7 +1,10 @@
 module hdf5_output_module
 
-  use HDF5
+! if USE_HDF5 is not defined, this is merely a dummy module
+#ifdef USE_HDF5
+
   use pflow_gridtype_module
+  use hdf5
 
   implicit none
 
@@ -430,5 +433,6 @@ subroutine GetVarFromArray(grid,vector,ivar,isubvar)
 
 end subroutine GetVarFromArray
  
+#endif
 
 end module hdf5_output_module

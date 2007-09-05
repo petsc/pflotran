@@ -23,7 +23,7 @@ ifdef debug_convergence
   DEBUG_CONVERGENCE_FLAGS = -DGLENN
 endif
 ifdef hdf5
-  HDF5_FLAGS = -I$(HDF5_INCLUDE)
+  HDF5_FLAGS = -DUSE_HDF5 -I$(HDF5_INCLUDE)
   HDF5_LIBS = -L$(HDF5_LIB) -lhdf5_fortran -lhdf5 -lz  
 endif
 MYFLAGS = -I${objdir} -DUSE_COMPRESSIBILITY $(CUSTOM_CONVERGENCE_FLAGS) \
@@ -54,6 +54,7 @@ util_obj  = ${common_src}fileio.o \
 pflow_obj = ${common_src}pflow_vector_ops.o \
 	${common_src}pflow_read_gridsize.o \
 	${common_src}pflow_gridtype.o \
+	${common_src}hdf5_output.o \
 	${common_src}Readfield.o \
 	${common_src}pflow_pckr_mod.o \
 	${common_src}mixed_fluid_eos.o \
@@ -106,7 +107,7 @@ pflotran_obj = ${common_src}rock_react.o \
 	${common_src}pflotran_couple.o
 
 pflow : $(util_obj) $(pflow_obj) ${pflow_src}pflow.o
-	${FLINKER}   -o pflow $(util_obj) $(pflow_obj) ${pflow_src}pflow.o ${PETSC_LIB}
+	${FLINKER}   -o pflow $(util_obj) $(pflow_obj) ${pflow_src}pflow.o ${PETSC_LIB} $(LIBS)
 
 ptran : $(util_obj) $(ptran_obj) ${ptran_src}ptran.o
 	${FLINKER}   -o ptran $(util_obj) $(ptran_obj) ${ptran_src}ptran.o ${PETSC_LIB}
@@ -134,6 +135,8 @@ pflowgrid_mod.o : pflow_gridtype.o water_eos.o pflow_vector_ops.o \
                   trdynmem.o fileio.o
 pflow_vector_ops.o : water_eos.o
 pflow_output.o : pflow_gridtype.o petscrelwrappers.o
+pflow_output_new.o : pflow_gridtype.o petscrelwrappers.o hdf5_output.o
+hdf5_output.o : pflow_gridtype.o 
 pflow_COND.o : pflow_gridtype.o 
 pflow_LIQUID.o : pflow_gridtype.o water_eos.o
 pflow_TH.o : pflow_gridtype.o water_eos.o
