@@ -8,6 +8,14 @@ ptran_src    = ./
 common_src   = ./
 bindir = ./${PETSC_ARCH}/bin
 
+# To use the definitions below, set them equal to something on the command
+# line, i.e.
+#
+# make pflow custom_convergence=1 hdf5=1
+#
+# Ensure that environment variables are defined (e.g. HDF5_INCLUDE, HDF5_LIB)
+# It is probably best to define them in your .cshrc or .bashrc file.
+
 ifdef custom_convergence
   CUSTOM_CONVERGENCE_FLAGS = -DCHUAN
 endif
