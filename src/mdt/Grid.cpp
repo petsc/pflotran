@@ -32,45 +32,133 @@ void Grid::createStructured(int nx, int ny, int nz) {
   structuredGrid->createDA();
 }
 
-int *Grid::getLocalCellNaturalIDs() {
+int *Grid::getCellIds() {
+
+  int *ids = new int[num_cells_local];
+  for (int icell=0; icell<num_cells_local; icell++)
+    ids[icell] = -999;
+  for (int icell=0; icell<num_cells_ghosted; icell++) {
+    int cell_local_id = cells[icell].getIdLocal();
+    if (cell_local_id > -1)
+      ids[cell_local_id] = cell_local_id;
+  }
+  return ids;
+
+}
+
+int *Grid::getCellIdsNatural() {
 
   int *natural_ids = new int[num_cells_local];
   for (int icell=0; icell<num_cells_local; icell++)
     natural_ids[icell] = -999;
-  for (int icell=0; icell<num_cells; icell++) {
+  for (int icell=0; icell<num_cells_ghosted; icell++) {
     int cell_local_id = cells[icell].getIdLocal();
     if (cell_local_id > -1)
       natural_ids[cell_local_id] = cells[icell].getIdNatural();
   }
-  convertLocalCellDataGtoN(natural_ids);
   return natural_ids;
 
 }
 
-int *Grid::getLocalCellMaterialNaturalIDs() {
+int *Grid::getCellMaterialIds() {
 
   int *material_ids = new int[num_cells_local];
   for (int icell=0; icell<num_cells_local; icell++)
     material_ids[icell] = -999;
-  for (int icell=0; icell<num_cells; icell++) {
+  for (int icell=0; icell<num_cells_ghosted; icell++) {
     int cell_local_id = cells[icell].getIdLocal();
     if (cell_local_id > -1)
       material_ids[cell_local_id] = cells[icell].getMaterialId();
   }
-  convertLocalCellDataGtoN(material_ids);
   return material_ids;
 
 }
 
 
-int *Grid::getLocalCellVertexNaturalIDs() {
-// return a list of vertex ids for each grid cells 
-// currently assuming only hex cells
-  if (structuredGrid) 
-    return structuredGrid->getLocalCellVertexNaturalIDs(cells,vertices);
-  else
-    return NULL;
+int Grid::getVertexIdsNaturalLocal(int *natural_ids) {
+
+/* need to decide whether we want to print hte vertices truly in natural ordering.  I guess
+  natural ordering will always start at zero, thus we can create a vector of size num_vertices_global
+  and set the values in the vector.  This vector will automatically be numbered naturally and
+  sequentially from proc 0 to proc size-1. */
+
+  Vec vec;
+  PetscScalar *vec_ptr = NULL;
+  VecCreate(PETSC_COMM_WORLD,&vec);
+  VecSetSizes(vec,PETSC_DECIDE,getNumberOfVerticesGlobal());
+
+  natural_ids = new int[num_vertices_local];
+  for (int ivert=0; ivert<num_vertices_local; ivert++)
+    natural_ids[ivert] = -999;
+  for (int ivert=0; ivert<num_vertices_ghosted; ivert++) {
+    int vert_local_id = vertices[ivert].getIdLocal();
+    if (vert_local_id > -1)
+      natural_ids[vert_local_id] = vertices[ivert].getIdNatural();
+  }
+
+  PetscScalar *double_ids = new double[num_vertices_local];
+  for (int ivert=0; ivert<num_vertices_local; ivert++)
+    double_ids[ivert] = (double)natural_ids[ivert];
+  VecSetValues(vec,num_vertices_local,natural_ids,double_ids,INSERT_VALUES);
+  VecAssemblyBegin(vec);
+  VecAssemblyEnd(vec);
+  delete double_ids;
+  delete natural_ids;
+
+  int n = VecGetLocalSize(vec);
+  natural_ids = new int[n];
+  VecGetArray(vec,&vec_ptr);
+  for (int ivert=0; ivert<num_vertices_local; ivert++)
+    natural_ids[ivert] = (int)(vec_ptr[ivert]+0.0001);
+  VecRestoreArray(vec,&vec_ptr);
+  VecDestroy(vec);
+  return n;
+
 }
+
+int Grid::getVertexCoordinatesNaturalLocal(double *coordinates, int direction) {
+
+  Vec vec;
+  PetscScalar *vec_ptr = NULL;
+  VecCreate(PETSC_COMM_WORLD,&vec);
+  VecSetSizes(vec,PETSC_DECIDE,getNumberOfVerticesGlobal());
+
+  int *natural_ids = new int[num_vertices_local];
+  coordinates = new double[num_vertices_local];
+  for (int ivert=0; ivert<num_vertices_local; ivert++) {
+    coordinates[ivert] = -999.;
+    natural_ids[ivert] = -999;
+  }
+  for (int ivert=0; ivert<num_vertices_ghosted; ivert++) {
+    int vert_local_id = vertices[ivert].getIdLocal();
+    if (vert_local_id > -1) {
+      natural_ids[vert_local_id] = vertices[ivert].getIdNatural();
+      if (direction == 0) // x-direction
+        coordinates[vert_local_id] = vertices[ivert].getX();
+      else if (direction == 1) // y-direction
+        coordinates[vert_local_id] = vertices[ivert].getY();
+      else // z-direction
+        coordinates[vert_local_id] = vertices[ivert].getZ();
+    }
+  }
+
+  VecSetValues(vec,num_vertices_local,natural_ids,coordinates,INSERT_VALUES);
+  VecAssemblyBegin(vec);
+  VecAssemblyEnd(vec);
+  delete [] natural_ids;
+  delete [] coordinates;
+
+  int n = VecGetLocalSize(vec);
+  coordinates = new double[n];
+  VecGetArray(vec,&vec_ptr);
+  for (int ivert=0; ivert<num_vertices_local; ivert++)
+    coordinates[ivert] = vec_ptr[ivert];
+  VecRestoreArray(vec,&vec_ptr);
+  VecDestroy(vec);
+  return n;
+
+}
+
 
 void Grid::convertLocalCellDataGtoN(int *data) {
 
@@ -117,27 +205,25 @@ void Grid::setRotation(double r) {
 
 
 void Grid::setUpCells() {
-  num_cells = num_cells_ghosted;
-  cells = new GridCell[num_cells];
-  for (int i=0; i<num_cells; i++) {
+  cells = new GridCell[num_cells_ghosted];
+  for (int i=0; i<num_cells_ghosted; i++) {
     cells[i].setIdGhosted(i);
     cells[i].setIdLocal(cell_mapping_ghosted_to_local[i]);
     cells[i].setIdNatural(cell_mapping_ghosted_to_natural[i]);
   }
   if (structuredGrid)
-    structuredGrid->setUpCells(num_cells,cells);
+    structuredGrid->setUpCells(num_cells_ghosted,cells);
 }
 
 void Grid::setUpVertices() {
-  num_vertices = num_vertices_ghosted;
-  vertices = new GridVertex[num_vertices];
-  for (int i=0; i<num_vertices; i++) {
+  vertices = new GridVertex[num_vertices_ghosted];
+  for (int i=0; i<num_vertices_ghosted; i++) {
     vertices[i].setIdGhosted(i);
     vertices[i].setIdLocal(vertex_mapping_ghosted_to_local[i]);
     vertices[i].setIdNatural(vertex_mapping_ghosted_to_natural[i]);
   }
   if (structuredGrid)
-    structuredGrid->setUpVertices(num_vertices,vertices);
+    structuredGrid->setUpVertices(num_vertices_ghosted,vertices);
 }
 
 void Grid::mapVerticesToCells() {
@@ -287,7 +373,7 @@ void Grid::printCells() {
   ierr = PetscSequentialPhaseBegin(PETSC_COMM_WORLD,1);
   if (myrank == 0) printf("\nCells:\n");
   printf("Processor[%d]\n",myrank);
-  for (int i=0; i<num_cells; i++)
+  for (int i=0; i<num_cells_ghosted; i++)
     cells[i].printInfo();
   ierr = PetscSequentialPhaseEnd(PETSC_COMM_WORLD,1);
 }
@@ -298,33 +384,38 @@ void Grid::printVertices() {
   ierr = PetscSequentialPhaseBegin(PETSC_COMM_WORLD,1);
   if (myrank == 0) printf("\nVertice:\n");
   printf("Processor[%d]\n",myrank);
-  for (int i=0; i<num_vertices; i++)
+  for (int i=0; i<num_vertices_ghosted; i++)
     vertices[i].printInfo();
   ierr = PetscSequentialPhaseEnd(PETSC_COMM_WORLD,1);
 }
 
-int Grid::getGlobalNumberOfCells() {
+int Grid::getNumberOfCellsGlobal() {
   if (structuredGrid) return structuredGrid->getN();
   else return -1;
 }
 
-int Grid::getNumberOfCells() {
-  return num_cells;
+int Grid::getNumberOfCellsGhosted() {
+  return num_cells_ghosted;
 }
 
-int Grid::getNumberOfLocalCells() {
+int Grid::getNumberOfCellsLocal() {
   return num_cells_local;
 }
 
-int Grid::getGlobalNumberOfVertices() {
+int Grid::getNumberOfVerticesGlobal() {
   if (structuredGrid) return (structuredGrid->getNx()+1)*
                              (structuredGrid->getNy()+1)*
                              (structuredGrid->getNz()+1);
   else return -1;
 }
 
-int Grid::getNumberOfVertices() {
-  return num_vertices;
+int Grid::getNumberOfVerticesGhosted() {
+  return num_vertices_ghosted;
+}
+
+
+int Grid::getNumberOfVerticesLocal() {
+  return num_vertices_local;
 }
 
 int Grid::getNx() {
@@ -348,14 +439,14 @@ int Grid::getN() {
 }
 
 
-void Grid::getCorners(int *xs, int *ys, int *zs, 
-                                int *nx, int *ny, int *nz) {
+void Grid::getCorners(int *xs, int *ys, int *zs,
+                      int *nx, int *ny, int *nz) {
   if (structuredGrid) structuredGrid->getCorners(xs,ys,zs,nx,ny,nz);
   else { *xs=-999; *ys=-999; *zs=-999; *nx=-999; *ny=-999; *nz=-999; }
 }
 
 void Grid::getGhostCorners(int *xs, int *ys, int *zs, 
-                                     int *nx, int *ny, int *nz) {
+                           int *nx, int *ny, int *nz) {
   if (structuredGrid) structuredGrid->getGhostCorners(xs,ys,zs,nx,ny,nz);
   else { *xs=-999; *ys=-999; *zs=-999; *nx=-999; *ny=-999; *nz=-999; }
 }

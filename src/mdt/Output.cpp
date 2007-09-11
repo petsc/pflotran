@@ -355,28 +355,35 @@ void Output::printHDFMesh2() {
   PetscPrintf(PETSC_COMM_WORLD,"Printing HDF grid.\n");
 
   HDF *file = new HDF("grid.h5",1);
-  int compress = 1;
+  int compress = 0;
 
 // write cells
   file->createGroup("Cells");
 
-  file->createDataSpace(2,grid->getGlobalNumberOfCells(),8,0);
-  file->createDataSet("VertexIds",H5T_NATIVE_INT,compress);
+  file->createDataSpace(2,grid->getNumberOfCellsGlobal(),9,0);
+  file->createDataSet("CellIds",H5T_NATIVE_INT,compress);
 
-  int *vertex_ids = grid->getLocalCellVertexNaturalIDs();
+  int *cell_ids = grid->getCellIds();
+  grid->convertLocalCellDataGtoN(cell_ids);
 
-  file->writeInt(vertex_ids);
-  delete [] vertex_ids;
+  file->setHyperSlab(grid->getNumberOfCellsLocal(),1);
+  file->writeInt(cell_ids);
+
+  delete [] cell_ids;
 
   file->closeDataSet();
   file->closeDataSpace();
 
 // natural ids
-  file->createDataSpace(1,grid->getGlobalNumberOfCells(),0,0);
+  file->createDataSpace(1,grid->getNumberOfCellsGlobal(),0,0);
   file->createDataSet("NaturalIds",H5T_NATIVE_INT,compress);
 
-  int *natural_ids = grid->getLocalCellNaturalIDs();
+  int *natural_ids = grid->getCellIdsNatural();
+  grid->convertLocalCellDataGtoN(natural_ids);
+
+  file->setHyperSlab(grid->getNumberOfCellsLocal());
   file->writeInt(natural_ids);
+
   delete [] natural_ids;
 
   file->closeDataSet();
@@ -385,8 +392,10 @@ void Output::printHDFMesh2() {
   // use same data space
   file->createDataSet("Materials",H5T_NATIVE_INT,compress);
 
-  int *material_ids = grid->getLocalCellMaterialNaturalIDs();
+  int *material_ids = grid->getCellMaterialIds();
+  grid->convertLocalCellDataGtoN(material_ids);
 
+  file->setHyperSlab(grid->getNumberOfCellsLocal());
   file->writeInt(material_ids);
   delete [] material_ids;
 
@@ -397,13 +406,14 @@ void Output::printHDFMesh2() {
 
 // vertices
   file->createGroup("Vertices");
-  file->createDataSpace(1,grid->getGlobalNumberOfVertices(),0,0);
+  file->createDataSpace(1,grid->getNumberOfVerticesGlobal(),0,0);
 
 // natural ids
   file->createDataSet("NaturalIds",H5T_NATIVE_INT,compress);
 
-  natural_ids = grid->getLocalCellVertexNaturalIDs();
+  int num_print_vertices_local = grid->getVertexIdsNaturalLocal(natural_ids);
 
+  file->setHyperSlab(num_print_vertices_local);
   file->writeInt(natural_ids);
   file->closeDataSet();
 
@@ -412,40 +422,39 @@ void Output::printHDFMesh2() {
 // x-coordinate
   file->createDataSet("X-Coordinates",H5T_NATIVE_DOUBLE,compress);
 
-  double *coordinate = new double[grid->getNumberOfVertices()];
-  for (int ivert=0; ivert<grid->getNumberOfVertices(); ivert++)
-    coordinate[ivert] = -999.;
-  for (int ivert=0; ivert<grid->getNumberOfVertices(); ivert++)
-    coordinate[ivert] = grid->vertices[ivert].getX();
+  double *coordinates = NULL;
+  num_print_vertices_local = 
+                grid->getVertexCoordinatesNaturalLocal(coordinates,0); // 0 = X
 
-  file->writeDouble(coordinate);
+  file->setHyperSlab(num_print_vertices_local);
+  file->writeDouble(coordinates);
   file->closeDataSet();
+
+  delete [] coordinates;
 
 // y-coordinate
   file->createDataSet("Y-Coordinates",H5T_NATIVE_DOUBLE,compress);
 
-  coordinate = new double[grid->getNumberOfVertices()];
-  for (int ivert=0; ivert<grid->getNumberOfVertices(); ivert++)
-    coordinate[ivert] = -999.;
-  for (int ivert=0; ivert<grid->getNumberOfVertices(); ivert++)
-    coordinate[ivert] = grid->vertices[ivert].getY();
+  num_print_vertices_local = 
+                grid->getVertexCoordinatesNaturalLocal(coordinates,1); // 1 = Y
 
-  file->writeDouble(coordinate);
+  file->setHyperSlab(num_print_vertices_local);
+  file->writeDouble(coordinates);
   file->closeDataSet();
+
+  delete [] coordinates;
 
 // z-coordinate
   file->createDataSet("Z-Coordinates",H5T_NATIVE_DOUBLE,compress);
 
-  coordinate = new double[grid->getNumberOfVertices()];
-  for (int ivert=0; ivert<grid->getNumberOfVertices(); ivert++)
-    coordinate[ivert] = -999.;
-  for (int ivert=0; ivert<grid->getNumberOfVertices(); ivert++)
-    coordinate[ivert] = grid->vertices[ivert].getZ();
+  num_print_vertices_local = 
+                grid->getVertexCoordinatesNaturalLocal(coordinates,2); // 2 = Z
 
-  file->writeDouble(coordinate);
+  file->setHyperSlab(num_print_vertices_local);
+  file->writeDouble(coordinates);
   file->closeDataSet();
 
-  delete [] coordinate;
+  delete [] coordinates;
 
   file->closeDataSpace();
   file->closeGroup();

@@ -654,27 +654,22 @@ void StructuredGrid::computeVertexMapping(int *num_vertices_local,
   }
 
 }
-
+#if 0
 int *StructuredGrid::getLocalCellVertexNaturalIDs(GridCell *cells, GridVertex *vertices) {
 
-  Vec global;
-  Vec natural;
+  Vec vec;
   PetscScalar *v_ptr;
 
-  int num_cells_local = lnx*lny*lnz;
-  int num_cells_ghosted = gnx*gny*gnz;
+  int num_vertices_local = (lnx+1)*(lny+1)*(lnz+1);
 
-  DACreateGlobalVector(da,&global);
-  DACreateNaturalVector(da,&natural);
-
-  int *vertex_ids = new int[num_cells_local*8];
+  int *vertex_ids = new int[num_verts_local];
   for (int ivert=0; ivert<8; ivert++) {
 
     VecGetArray(global,&v_ptr);
     for (int icell=0; icell<num_cells_ghosted; icell++) {
       int cell_id_local = cells[icell].getIdLocal();
       if (cell_id_local > -1) {
-          v_ptr[cell_id_local] = (double)vertices[cells[icell].vertices[ivert+1]].getIdNatural();
+          vertex_ids[cell_id_local] = (double)vertices[cells[icell].vertices[ivert+1]].getIdNatural();
       }
     }
     VecRestoreArray(global,&v_ptr);
@@ -693,7 +688,7 @@ int *StructuredGrid::getLocalCellVertexNaturalIDs(GridCell *cells, GridVertex *v
   return vertex_ids;
 
 }
-
+#endif
 void StructuredGrid::getVectorLocal(Vec *v) {
   DACreateLocalVector(da,v);
 }

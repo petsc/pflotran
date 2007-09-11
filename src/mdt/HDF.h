@@ -20,6 +20,7 @@ public:
                               int idim2, int max_dim0, int max_dim1, 
                               int max_dim2);
   void setHyperSlab(int n);
+  void setHyperSlab(int n, int stride);
   void createDataSet(char *data_set_name, hid_t type, int compress);
   void closeGroup();
   void closeDataSpace();
@@ -40,10 +41,10 @@ private:
 
   int ngrp;
 
-  hsize_t hyperslab_start;
-  hsize_t hyperslab_stride;
-  hsize_t hyperslab_count;
-  hsize_t hyperslab_block;
+  hsize_t hyperslab_start[3];
+  hsize_t hyperslab_stride[3];
+  hsize_t hyperslab_count[3];
+  hsize_t hyperslab_block[3];
   
 };
 

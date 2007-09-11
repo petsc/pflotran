@@ -12,10 +12,12 @@ HDF::HDF(char *filename, int overwrite) {
   data_set_id = -1;
   ngrp = 0;
 
-  hyperslab_start = 0;
-  hyperslab_stride = 0;
-  hyperslab_count = 0;
-  hyperslab_block = 0;
+  for (int i=0; i<3; i++) {
+    hyperslab_start[i] = 0;
+    hyperslab_stride[i] = 0;
+    hyperslab_count[i] = 0;
+    hyperslab_block[i] = 0;
+  }
 
   hid_t prop_id = H5Pcreate(H5P_FILE_ACCESS);
 #ifdef PARALLEL
@@ -118,17 +120,23 @@ void HDF::closeDataSpace(hid_t *space_id) {
 }
 
 void HDF::setHyperSlab(int n) {
+  setHyperSlab(n,1);
+}
+
+void HDF::setHyperSlab(int n, int stride) {
 
   int offset = 0;
   MPI_Exscan(&n,&offset,1,MPI_INT,MPI_SUM,PETSC_COMM_WORLD);
-  hyperslab_start = (hsize_t)offset;
-  hyperslab_stride = 1;
-  hyperslab_count = n;
-  hyperslab_block = 1;
+  hyperslab_start[0] = (hsize_t)offset;
+  hyperslab_stride[0] = stride;
+  hyperslab_stride[1] = 1;
+  hyperslab_count[0] = n;
+  hyperslab_count[0] = 1;
+  hyperslab_block[0] = 1;
 
   hsize_t dims[3];
   int ndim = H5Sget_simple_extent_dims(file_space_id,dims,NULL);
-  dims[0] = hyperslab_count;
+  dims[0] = hyperslab_count[0];
   HDF::closeDataSpace(&memory_space_id);
   HDF::createDataSpace(&memory_space_id,ndim,dims[0],dims[1],dims[2]); 
 
@@ -137,8 +145,8 @@ void HDF::setHyperSlab(int n) {
 //  printf("%d %d %d\n",myrank,(int)hyperslab_start,(int)hyperslab_count);
 
   status = H5Sselect_hyperslab(file_space_id,H5S_SELECT_SET,
-                               &hyperslab_start,
-                               NULL,&hyperslab_count,NULL);
+                               hyperslab_start,
+                               hyperslab_stride,hyperslab_count,NULL);
 
 }
 
@@ -172,8 +180,14 @@ void HDF::createDataSet(char *data_set_name, hid_t type, int compress) {
     status = H5Pset_deflate(prop_id,9); // 0 - 9
   }
 
-  double d = -999.;
-  H5Pset_fill_value(prop_id,H5T_NATIVE_DOUBLE,&d);
+  if (type == H5T_NATIVE_INT) {
+    double d = -999.;
+    H5Pset_fill_value(prop_id,type,&d);
+  }
+  else {
+    int i = -999.;
+    H5Pset_fill_value(prop_id,type,&i);
+  }
 
   if (ngrp > 0 && grp_id[ngrp-1] > -1)
     data_set_id = H5Dcreate(grp_id[ngrp-1],data_set_name,type,file_space_id,

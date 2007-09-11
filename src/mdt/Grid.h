@@ -49,12 +49,13 @@ public:
 //  BoundaryConnection *getBoundaryConnections();
   Source *getSources();
 
-  int getGlobalNumberOfCells();
-  int getNumberOfCells();
-  int getNumberOfLocalCells();
+  int getNumberOfCellsGlobal();
+  int getNumberOfCellsGhosted();
+  int getNumberOfCellsLocal();
 
-  int getGlobalNumberOfVertices();
-  int getNumberOfVertices();
+  int getNumberOfVerticesGlobal();
+  int getNumberOfVerticesGhosted();
+  int getNumberOfVerticesLocal();
 
   int getNx();
   int getNy();
@@ -81,11 +82,13 @@ public:
 
   void convertLocalCellDataGtoN(int *data);
   void convertLocalCellDataGtoN(double *data);
-  int *getLocalCellVertexNaturalIDs();
-  int *getLocalCellMaterialNaturalIDs();
-  int *getLocalCellNaturalIDs();
+  int getVertexIdsNaturalLocal(int *natural_ids);
+  int getVertexCoordinatesNaturalLocal(double *coordinates, int direction);
+  int *getCellMaterialIds();
+  int *getCellIds();
+  int *getCellIdsNatural();
 
-  int num_cells;
+  int num_cells_global;
   int num_cells_local;
   int num_cells_ghosted;
 //  int num_connections;
@@ -94,7 +97,7 @@ public:
   int *cell_mapping_ghosted_to_natural;
   GridCell *cells;
 
-  int num_vertices;
+  int num_vertices_global;
   int num_vertices_local;
   int num_vertices_ghosted;
   int *vertex_mapping_local_to_ghosted;

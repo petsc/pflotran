@@ -47,9 +47,9 @@ Hanford300::Hanford300(Grid **grid_) {
 //  int nz = 15; //debug1
   int n = nx*ny*nz;
 
-  int dx = 10.*mx;
-  int dy = 10.*my;
-  int dz = 1.*mz;// */
+  double dx = 10.*mx;
+  double dy = 10.*my;
+  double dz = 1.*mz;// */
 #endif
 
   *grid_ = new Grid(nx,ny,nz);
@@ -109,8 +109,8 @@ Hanford300::Hanford300(Grid **grid_) {
   ascii_grids[5]->setMaterialId(5);
   ascii_grids[6]->setMaterialId(1);
 
-  int mod = grid->num_cells/10;
-  for (int i=0; i<grid->num_cells; i++) {
+  int mod = grid->num_cells_ghosted/10;
+  for (int i=0; i<grid->num_cells_ghosted; i++) {
     int material_id = 0;
     double x = grid->cells[i].getX();
     double y = grid->cells[i].getY();
@@ -127,7 +127,7 @@ Hanford300::Hanford300(Grid **grid_) {
     if (!river_polygon->pointInPolygon(x,y)) grid->cells[i].setActive(0);
     if (i%mod == 0) {
       PetscPrintf(PETSC_COMM_WORLD,"%d of %d cells mapped with materials and activity.\n",
-                  i,grid->num_cells);
+                  i,grid->num_cells_ghosted);
     }
   }
 

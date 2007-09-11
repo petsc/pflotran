@@ -44,6 +44,7 @@ private
   use TTPHASE_module
   use PetscRelWrappers  ! For petsc-release compatibility.
   use pflow_output_module, only: geh_io
+  use tecplot_output_module
   use pflow_checkpoint
 
 #ifdef USE_HDF5  
@@ -115,6 +116,7 @@ private
   
   if (iplot == 1 .and. grid%iprint == -2) then
     call geh_io(grid,kplt)
+!    call OutputTecplot(grid,kplt)
 !    kplt = kplt + 1
 !    iplot = 0
 !    return
