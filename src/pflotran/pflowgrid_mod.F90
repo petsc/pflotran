@@ -1495,54 +1495,6 @@ subroutine pflowGrid_setup(grid, inputfile)
   call VecRestoreArrayF90(grid%dy,dy_p,ierr)
   call VecRestoreArrayF90(grid%dz,dz_p,ierr)
 
-! old version below - geh
-#if 0  
-  call DACreateNaturalVector(grid%da_1_dof,temp1_nat_vec,ierr)
-  call VecDuplicate(temp1_nat_vec, temp2_nat_vec, ierr)
-  call VecDuplicate(temp1_nat_vec, temp3_nat_vec, ierr)
-  if (myrank == 0) then
-!---set dx, dy, dz
-    do k = 1,grid%nz
-      do j = 1,grid%ny
-        do i = 1,grid%nx
-          n = i+(j-1)*grid%nx+(k-1)*grid%nxy-1
-          val = grid%dx0(i)
-          call VecSetValue(temp1_nat_vec,n,val,INSERT_VALUES,ierr)
-          val = grid%dy0(j)
-          call VecSetValue(temp2_nat_vec,n,val,INSERT_VALUES,ierr)
-          val = grid%dz0(k)
-          call VecSetValue(temp3_nat_vec,n,val,INSERT_VALUES,ierr)
-        enddo
-      enddo
-    enddo
-  endif
-
-  call VecAssemblyBegin(temp1_nat_vec,ierr)
-  call VecAssemblyEnd(temp1_nat_vec,ierr)
-  call VecAssemblyBegin(temp2_nat_vec,ierr)
-  call VecAssemblyEnd(temp2_nat_vec,ierr)
-  call VecAssemblyBegin(temp3_nat_vec,ierr)
-  call VecAssemblyEnd(temp3_nat_vec,ierr)
-  
-  call DANaturalToGlobalBegin(grid%da_1_dof,temp1_nat_vec,INSERT_VALUES, &
-                              grid%dx,ierr)
-  call DANaturalToGlobalEnd(grid%da_1_dof,temp1_nat_vec,INSERT_VALUES, &
-                            grid%dx,ierr)
-  call DANaturalToGlobalBegin(grid%da_1_dof,temp2_nat_vec,INSERT_VALUES, &
-                              grid%dy,ierr)
-  call DANaturalToGlobalEnd(grid%da_1_dof,temp2_nat_vec,INSERT_VALUES, &
-                            grid%dy,ierr)
-  call DANaturalToGlobalBegin(grid%da_1_dof,temp3_nat_vec,INSERT_VALUES, &
-                              grid%dz,ierr)
-  call DANaturalToGlobalEnd(grid%da_1_dof,temp3_nat_vec,INSERT_VALUES, &
-                            grid%dz,ierr)
-  
-  call VecDestroy(temp1_nat_vec,ierr)
-  call VecDestroy(temp2_nat_vec,ierr)
-  call VecDestroy(temp3_nat_vec,ierr)
-#endif
-! end of old version - geh
-
   ! Extract local, ghosted portions of dx, dy, dz vectors.
   call DAGlobalToLocalBegin(grid%da_1_dof, grid%dx, INSERT_VALUES, &
                             grid%dx_loc, ierr)
