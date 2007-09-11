@@ -3870,6 +3870,11 @@ subroutine pflowGrid_read_input(grid, inputfile)
 
 !....................
 
+      case ('TECP')
+        grid%print_tecplot = .true.
+
+!....................
+
 
       case ('OPTS')
 

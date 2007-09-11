@@ -120,12 +120,15 @@ private
   endif
 #endif 
  
-  if (iplot == 1 .and. grid%iprint == -2) then
-!    call geh_io(grid,kplt)
+  if (iplot == 1 .and. grid%print_tecplot) then
     call OutputTecplot(grid,kplt)
-    kplt = kplt + 1
-    iplot = 0
-    return
+  endif
+
+  if (iplot == 1 .and. grid%iprint == -2) then
+    call geh_io(grid,kplt)
+!    kplt = kplt + 1
+!    iplot = 0
+!    return
   endif
   
   if ((grid%ibrkcrv == 0 .and. iplot == 0) .or. grid%iprint == -1) then
