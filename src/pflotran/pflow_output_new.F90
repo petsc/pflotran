@@ -44,7 +44,7 @@ private
   use TTPHASE_module
   use PetscRelWrappers  ! For petsc-release compatibility.
   use pflow_output_module, only: geh_io
-  use tecplot_output_module
+!  use tecplot_output_module
   use pflow_checkpoint
 
 #ifdef USE_HDF5  
