@@ -1094,6 +1094,7 @@ subroutine pflowGrid_setup(grid, inputfile)
   integer*4 :: ir ! Used to index boundary condition regions.
   integer*4 :: ii1, ii2, jj1, jj2, kk1, kk2
     ! Used for indexing corners of boundary regions.
+  PetscScalar, pointer :: dx_p(:), dy_p(:), dz_p(:)
   PetscScalar, pointer :: dx_loc_p(:), dy_loc_p(:), dz_loc_p(:)
   real*8 alpha, maxstep, steptol
     ! Pointers used to access the arrays in grid%dx_loc et al.
@@ -1478,6 +1479,24 @@ subroutine pflowGrid_setup(grid, inputfile)
   ! calculate interior interface areas and cell volumes.
   !-----------------------------------------------------------------------
   
+  call VecGetArrayF90(grid%dx,dx_p,ierr)
+  call VecGetArrayF90(grid%dy,dy_p,ierr)
+  call VecGetArrayF90(grid%dz,dz_p,ierr)
+  do n = 1,grid%nlmax
+    na = grid%nL2A(n)
+    i= int(na/grid%nxy) + 1
+    j= int(mod(na,grid%nxy)/grid%nx) + 1
+    k= mod(mod(na,grid%nxy),grid%nx) + 1
+    dx_p(n) = grid%dx0(i)
+    dy_p(n) = grid%dy0(j)
+    dz_p(n) = grid%dz0(k)
+  enddo
+  call VecRestoreArrayF90(grid%dx,dx_p,ierr)
+  call VecRestoreArrayF90(grid%dy,dy_p,ierr)
+  call VecRestoreArrayF90(grid%dz,dz_p,ierr)
+
+! old version below - geh
+#if 0  
   call DACreateNaturalVector(grid%da_1_dof,temp1_nat_vec,ierr)
   call VecDuplicate(temp1_nat_vec, temp2_nat_vec, ierr)
   call VecDuplicate(temp1_nat_vec, temp3_nat_vec, ierr)
@@ -1521,6 +1540,8 @@ subroutine pflowGrid_setup(grid, inputfile)
   call VecDestroy(temp1_nat_vec,ierr)
   call VecDestroy(temp2_nat_vec,ierr)
   call VecDestroy(temp3_nat_vec,ierr)
+#endif
+! end of old version - geh
 
   ! Extract local, ghosted portions of dx, dy, dz vectors.
   call DAGlobalToLocalBegin(grid%da_1_dof, grid%dx, INSERT_VALUES, &
