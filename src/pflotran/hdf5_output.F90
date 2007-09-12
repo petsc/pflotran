@@ -60,7 +60,6 @@ subroutine OutputHDF5(grid)
   ! initialize fortran interface
   call h5open_f(hdferr)
 
-!  string = "pflow001.dat"
   call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdferr)
 #ifndef SERIAL_HDF5
   call h5pset_fapl_mpio_f(prop_id,PETSC_COMM_WORLD,MPI_INFO_NULL,hdferr);
