@@ -60,7 +60,7 @@ subroutine OutputHDF5(grid)
   ! initialize fortran interface
   call h5open_f(hdferr)
 
-!  string = "pflow.h5"
+!  string = "pflow001.dat"
   call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdferr)
 #ifndef SERIAL_HDF5
   call h5pset_fapl_mpio_f(prop_id,PETSC_COMM_WORLD,MPI_INFO_NULL,hdferr);
@@ -399,7 +399,7 @@ subroutine GetVarFromArray(grid,vector,ivar,isubvar)
   integer :: isubvar
 
   integer :: i
-  integer :: offset
+  integer :: offset, saturation_offset
   integer :: size_var_use
   integer :: size_var_node
   PetscScalar, pointer :: var_ptr(:)
@@ -409,7 +409,7 @@ subroutine GetVarFromArray(grid,vector,ivar,isubvar)
       
   select case(ivar)
     case(TEMPERATURE,PRESSURE,LIQUID_SATURATION,GAS_SATURATION, &
-         LIQUID_ENERGY,GAS_ENERGY,LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION)
+         LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION)
       select case(ivar)
         case(TEMPERATURE)
           offset = 1
@@ -419,10 +419,6 @@ subroutine GetVarFromArray(grid,vector,ivar,isubvar)
           offset = 3
         case(GAS_SATURATION)
           offset = 4
-        case(LIQUID_ENERGY)
-          offset = 11
-        case(GAS_ENERGY)
-          offset = 12    
         case(LIQUID_MOLE_FRACTION)
           offset = 17+isubvar
         case(GAS_MOLE_FRACTION)
@@ -435,6 +431,30 @@ subroutine GetVarFromArray(grid,vector,ivar,isubvar)
       call VecGetArrayF90(grid%var,var_ptr,ierr)
       do i=1,grid%nlmax
         vec_ptr(i) = var_ptr((i-1)*size_var_node+offset)
+      enddo
+      call VecRestoreArrayF90(grid%var,var_ptr,ierr)
+
+    case(LIQUID_ENERGY,GAS_ENERGY)
+
+      select case (ivar)
+        case(LIQUID_ENERGY)
+          offset = 11
+          saturation_offset = 3
+        case(GAS_ENERGY)
+          offset = 12
+          saturation_offset = 4  
+      end select
+
+      size_var_use = 2 + 7*grid%nphase + 2* grid%nphase*grid%nspec
+      size_var_node = (grid%ndof + 1) * size_var_use
+        
+      call VecGetArrayF90(grid%var,var_ptr,ierr)
+      do i=1,grid%nlmax
+        if (var_ptr((i-1)*size_var_node+saturation_offset) > 1.d-30) then
+          vec_ptr(i) = var_ptr((i-1)*size_var_node+offset)
+        else
+          vec_ptr(i) = 0.d0
+        endif
       enddo
       call VecRestoreArrayF90(grid%var,var_ptr,ierr)
 
