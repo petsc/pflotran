@@ -267,17 +267,17 @@ end interface
   call pims_vecgetarrayf90(grid, locpat, grid%xx, xx_p, ierr); CHKERRQ(ierr)
   
   do iln=1, locpat%nlmax
-    na = locpat%nL2A(iln)
-    
-!   nz = int(na/grid%nxy) + 1
-!   ny = int(mod(na,grid%nxy)/grid%nx) + 1
-!   nx = mod(mod(na,grid%nxy),grid%nx) + 1
-    
+    if(grid%Samrai_drive==PETSC_TRUE) then
+         nz = int(iln/locpat%nlxy) + 1
+         ny = int(mod(iln,locpat%nlxy)/locpat%nlx) + 1
+         nx = mod(mod(iln,locpat%nlxy),locpat%nlx) + 1  
+     else
+     na = locpat%nL2A(iln)
     !compute i,j,k indices from na: note-na starts at 0
-    nz = na/grid%nxy + 1
-    ny = (na - (nz-1)*grid%nxy)/grid%nx + 1
-    nx = na + 1 - (ny-1)*grid%nx - (nz-1)*grid%nxy
-    
+      nz = na/grid%nxy + 1
+      ny = (na - (nz-1)*grid%nxy)/grid%nx + 1
+      nx = na + 1 - (ny-1)*grid%nx - (nz-1)*grid%nxy
+    endif
 !   print *,'pflow_IMS_resjac: ',na,nx,ny,nz
     
     do ir = 1,grid%iregini
