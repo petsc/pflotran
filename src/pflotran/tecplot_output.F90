@@ -48,19 +48,18 @@ subroutine OutputTecplot(grid,kplot)
   integer :: i
   character(len=MAXNAMELENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: string, string2
-  character(len=MAXNAMELENGTH) :: variables(20)
   Vec :: global
   Vec :: natural
   
   ! open file
   if (kplot < 10) then
-    write(filename,'("pflow00",i1,".dat")') kplot  
+    write(filename,'("pflow00",i1,".tec")') kplot  
   else if (kplot < 100) then
-    write(filename,'("pflow0",i2,".dat")') kplot  
+    write(filename,'("pflow0",i2,".tec")') kplot  
   else if (kplot < 1000) then
-    write(filename,'("pflow",i3,".dat")') kplot  
+    write(filename,'("pflow",i3,".tec")') kplot  
   else if (kplot < 10000) then
-    write(filename,'("pflow",i4,".dat")') kplot  
+    write(filename,'("pflow",i4,".tec")') kplot  
   endif
   
   if (grid%myrank == 0) then
