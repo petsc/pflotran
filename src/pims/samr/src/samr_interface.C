@@ -84,8 +84,8 @@ void samr_vecgetarrayf90_(SAMRAI::hier::Patch<NDIM> **patch,
    
 }
 
-int samr_patch_touches_physicalboundary_(SAMRAI::hier::Patch<NDIM> **patch, 
-                                       int *axis, int *side)
+int samr_patch_at_bc_(SAMRAI::hier::Patch<NDIM> **patch, 
+                      int *axis, int *side)
 {
    int istouching = (int)(*patch)->getPatchGeometry()->getTouchesRegularBoundary(*axis, *side);
    return istouching;
