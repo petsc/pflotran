@@ -104,7 +104,7 @@ subroutine OutputHDF5(grid)
   endif
 
   ! create a group for the data set
-  write(string,'('' Time('',i4,''):'',pg12.4,x,a1)') &
+  write(string,'('' Time('',i4,''):'',es12.4,x,a1)') &
         grid%flowsteps,grid%t/grid%tconv,grid%tunit
   call h5gcreate_f(file_id,string,grp_id,hdferr,OBJECT_NAMELEN_DEFAULT_F)
   
