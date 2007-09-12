@@ -113,64 +113,88 @@ subroutine OutputHDF5(grid)
   call DACreateGlobalVector(grid%da_1_dof,global,ierr)
   !call DACreateNaturalVector(grid%da_1_dof,natural,ierr)
 
-  ! temperature
-  call GetVarFromArray(grid,global,TEMPERATURE,0)
-  !call DAGlobalToNaturalBegin(grid%da_1_dof,global,INSERT_VALUES,natural,ierr)
-  !call DAGlobalToNaturalEnd(grid%da_1_dof,global,INSERT_VALUES,natural,ierr)
-  string = "Temperature"
-  call WriteDataSetFromVec(string,grid,global,grp_id,H5T_NATIVE_DOUBLE)
+  if (grid%use_2ph == PETSC_TRUE .or. grid%use_mph == PETSC_TRUE .or. &
+      grid%use_vadose == PETSC_TRUE .or. grid%use_flash == PETSC_TRUE .or. &
+      grid%use_richards == PETSC_TRUE) then
+  
+    ! temperature
+    call GetVarFromArray(grid,global,TEMPERATURE,0)
+    !call DAGlobalToNaturalBegin(grid%da_1_dof,global,INSERT_VALUES,natural,ierr)
+    !call DAGlobalToNaturalEnd(grid%da_1_dof,global,INSERT_VALUES,natural,ierr)
+    string = "Temperature"
+    call WriteDataSetFromVec(string,grid,global,grp_id,H5T_NATIVE_DOUBLE)
 
-  ! pressure
-  call GetVarFromArray(grid,global,PRESSURE,0)
-  string = "Pressure"
-  call WriteDataSetFromVec(string,grid,global,grp_id,H5T_NATIVE_DOUBLE)
+    ! pressure
+    call GetVarFromArray(grid,global,PRESSURE,0)
+    string = "Pressure"
+    call WriteDataSetFromVec(string,grid,global,grp_id,H5T_NATIVE_DOUBLE)
 
-  ! liquid saturation
-  call GetVarFromArray(grid,global,LIQUID_SATURATION,0)
-  string = "Liquid Saturation"
-  call WriteDataSetFromVec(string,grid,global,grp_id,H5T_NATIVE_DOUBLE)  
+    ! liquid saturation
+    call GetVarFromArray(grid,global,LIQUID_SATURATION,0)
+    string = "Liquid Saturation"
+    call WriteDataSetFromVec(string,grid,global,grp_id,H5T_NATIVE_DOUBLE)  
 
-  ! gas saturation
-  call GetVarFromArray(grid,global,GAS_SATURATION,0)
-  string = "Gas Saturation"
-  call WriteDataSetFromVec(string,grid,global,grp_id,H5T_NATIVE_DOUBLE) 
-  
-  ! liquid energy
-  call GetVarFromArray(grid,global,LIQUID_ENERGY,0)
-  string = "Liquid Energy"
-  call WriteDataSetFromVec(string,grid,global,grp_id,H5T_NATIVE_DOUBLE) 
-  
-  ! gas energy
-  call GetVarFromArray(grid,global,GAS_ENERGY,0)
-  string = "Gas Energy"
-  call WriteDataSetFromVec(string,grid,global,grp_id,H5T_NATIVE_DOUBLE) 
-  
-  ! liquid mole fractions
-  do i=1,grid%nspec
-    call GetVarFromArray(grid,global,LIQUID_MOLE_FRACTION,i-1)
-    write(string,'(''Liquid Mole Fraction('',i4,'')'')') i
+    ! gas saturation
+    call GetVarFromArray(grid,global,GAS_SATURATION,0)
+    string = "Gas Saturation"
     call WriteDataSetFromVec(string,grid,global,grp_id,H5T_NATIVE_DOUBLE) 
-  enddo
-  
-  ! gas mole fractions
-  do i=1,grid%nspec
-    call GetVarFromArray(grid,global,GAS_MOLE_FRACTION,i-1)
-    write(string,'(''Gas Mole Fraction('',i4,'')'')') i
+    
+    ! liquid energy
+    call GetVarFromArray(grid,global,LIQUID_ENERGY,0)
+    string = "Liquid Energy"
     call WriteDataSetFromVec(string,grid,global,grp_id,H5T_NATIVE_DOUBLE) 
-  enddo
-  
-  ! Volume Fraction
-  if (grid%rk > 0.d0) then
-    call GetVarFromArray(grid,global,VOLUME_FRACTION,0)
-    string = "Volume Fraction"
+    
+    ! gas energy
+    call GetVarFromArray(grid,global,GAS_ENERGY,0)
+    string = "Gas Energy"
     call WriteDataSetFromVec(string,grid,global,grp_id,H5T_NATIVE_DOUBLE) 
+    
+    ! liquid mole fractions
+    do i=1,grid%nspec
+      call GetVarFromArray(grid,global,LIQUID_MOLE_FRACTION,i-1)
+      write(string,'(''Liquid Mole Fraction('',i4,'')'')') i
+      call WriteDataSetFromVec(string,grid,global,grp_id,H5T_NATIVE_DOUBLE) 
+    enddo
+    
+    ! gas mole fractions
+    do i=1,grid%nspec
+      call GetVarFromArray(grid,global,GAS_MOLE_FRACTION,i-1)
+      write(string,'(''Gas Mole Fraction('',i4,'')'')') i
+      call WriteDataSetFromVec(string,grid,global,grp_id,H5T_NATIVE_DOUBLE) 
+    enddo
+    
+    ! Volume Fraction
+    if (grid%rk > 0.d0) then
+      call GetVarFromArray(grid,global,VOLUME_FRACTION,0)
+      string = "Volume Fraction"
+      call WriteDataSetFromVec(string,grid,global,grp_id,H5T_NATIVE_DOUBLE) 
+    endif
+    
+    ! phase
+    call GetVarFromArray(grid,global,PHASE,0)
+    string = "Phase"
+    call WriteDataSetFromVec(string,grid,global,grp_id,H5T_NATIVE_INTEGER) 
+  
+  else
+  
+    ! temperature
+    string = "Temperature"
+    call WriteDataSetFromVec(string,grid,grid%temp,grp_id,H5T_NATIVE_DOUBLE)
+
+    ! pressure
+    string = "Pressure"
+    call WriteDataSetFromVec(string,grid,grid%pressure,grp_id,H5T_NATIVE_DOUBLE)
+
+    ! saturation
+    string = "Saturation"
+    call WriteDataSetFromVec(string,grid,grid%sat,grp_id,H5T_NATIVE_DOUBLE)
+
+    ! concentration
+    string = "Concentration"
+    call WriteDataSetFromVec(string,grid,grid%conc,grp_id,H5T_NATIVE_DOUBLE)
+  
   endif
-  
-  ! phase
-  call GetVarFromArray(grid,global,PHASE,0)
-  string = "Phase"
-  call WriteDataSetFromVec(string,grid,global,grp_id,H5T_NATIVE_INTEGER) 
-  
+    
   ! call VecDestroy(natural,ierr)
   call VecDestroy(global,ierr)
 

@@ -119,7 +119,7 @@ subroutine OutputTecplot(grid,kplot)
     write(IUNIT3,'(a)') trim(string)
 
   endif
-
+  
   ! write blocks
   ! write out data sets  
   call DACreateGlobalVector(grid%da_1_dof,global,ierr)
@@ -138,61 +138,85 @@ subroutine OutputTecplot(grid,kplot)
   call ConvertGlobalToNatural(grid,global,natural)
   call WriteDataSetFromVec(IUNIT3,grid,natural,TECPLOT_REAL)
 
-  ! temperature
-  call GetVarFromArray(grid,global,TEMPERATURE,0)
-  call ConvertGlobalToNatural(grid,global,natural)
-  call WriteDataSetFromVec(IUNIT3,grid,natural,TECPLOT_REAL)
+  if (grid%use_2ph == PETSC_TRUE .or. grid%use_mph == PETSC_TRUE .or. &
+      grid%use_vadose == PETSC_TRUE .or. grid%use_flash == PETSC_TRUE .or. &
+      grid%use_richards == PETSC_TRUE) then
 
-  ! pressure
-  call GetVarFromArray(grid,global,PRESSURE,0)
-  call ConvertGlobalToNatural(grid,global,natural)
-  call WriteDataSetFromVec(IUNIT3,grid,natural,TECPLOT_REAL)
-
-  ! liquid saturation
-  call GetVarFromArray(grid,global,LIQUID_SATURATION,0)
-  call ConvertGlobalToNatural(grid,global,natural)
-  call WriteDataSetFromVec(IUNIT3,grid,natural,TECPLOT_REAL)
-
-  ! gas saturation
-  call GetVarFromArray(grid,global,GAS_SATURATION,0)
-  call ConvertGlobalToNatural(grid,global,natural)
-  call WriteDataSetFromVec(IUNIT3,grid,natural,TECPLOT_REAL)
-  
-  ! liquid energy
-  call GetVarFromArray(grid,global,LIQUID_ENERGY,0)
-  call ConvertGlobalToNatural(grid,global,natural)
-  call WriteDataSetFromVec(IUNIT3,grid,natural,TECPLOT_REAL)
-  
-  ! gas energy
-  call GetVarFromArray(grid,global,GAS_ENERGY,0)
-  call ConvertGlobalToNatural(grid,global,natural)
-  call WriteDataSetFromVec(IUNIT3,grid,natural,TECPLOT_REAL)
-  
-  ! liquid mole fractions
-  do i=1,grid%nspec
-    call GetVarFromArray(grid,global,LIQUID_MOLE_FRACTION,i-1)
+    ! temperature
+    call GetVarFromArray(grid,global,TEMPERATURE,0)
     call ConvertGlobalToNatural(grid,global,natural)
     call WriteDataSetFromVec(IUNIT3,grid,natural,TECPLOT_REAL)
-  enddo
-  
-  ! gas mole fractions
-  do i=1,grid%nspec
-    call GetVarFromArray(grid,global,GAS_MOLE_FRACTION,i-1)
+
+    ! pressure
+    call GetVarFromArray(grid,global,PRESSURE,0)
     call ConvertGlobalToNatural(grid,global,natural)
     call WriteDataSetFromVec(IUNIT3,grid,natural,TECPLOT_REAL)
-  enddo
-  
-  ! Volume Fraction
-  if (grid%rk > 0.d0) then
-    call GetVarFromArray(grid,global,VOLUME_FRACTION,0)
+
+    ! liquid saturation
+    call GetVarFromArray(grid,global,LIQUID_SATURATION,0)
     call ConvertGlobalToNatural(grid,global,natural)
     call WriteDataSetFromVec(IUNIT3,grid,natural,TECPLOT_REAL)
+
+    ! gas saturation
+    call GetVarFromArray(grid,global,GAS_SATURATION,0)
+    call ConvertGlobalToNatural(grid,global,natural)
+    call WriteDataSetFromVec(IUNIT3,grid,natural,TECPLOT_REAL)
+    
+    ! liquid energy
+    call GetVarFromArray(grid,global,LIQUID_ENERGY,0)
+    call ConvertGlobalToNatural(grid,global,natural)
+    call WriteDataSetFromVec(IUNIT3,grid,natural,TECPLOT_REAL)
+    
+    ! gas energy
+    call GetVarFromArray(grid,global,GAS_ENERGY,0)
+    call ConvertGlobalToNatural(grid,global,natural)
+    call WriteDataSetFromVec(IUNIT3,grid,natural,TECPLOT_REAL)
+    
+    ! liquid mole fractions
+    do i=1,grid%nspec
+      call GetVarFromArray(grid,global,LIQUID_MOLE_FRACTION,i-1)
+      call ConvertGlobalToNatural(grid,global,natural)
+      call WriteDataSetFromVec(IUNIT3,grid,natural,TECPLOT_REAL)
+    enddo
+    
+    ! gas mole fractions
+    do i=1,grid%nspec
+      call GetVarFromArray(grid,global,GAS_MOLE_FRACTION,i-1)
+      call ConvertGlobalToNatural(grid,global,natural)
+      call WriteDataSetFromVec(IUNIT3,grid,natural,TECPLOT_REAL)
+    enddo
+    
+    ! Volume Fraction
+    if (grid%rk > 0.d0) then
+      call GetVarFromArray(grid,global,VOLUME_FRACTION,0)
+      call ConvertGlobalToNatural(grid,global,natural)
+      call WriteDataSetFromVec(IUNIT3,grid,natural,TECPLOT_REAL)
+    endif
+    
+    ! phase
+    call GetVarFromArray(grid,global,PHASE,0)
+    call ConvertGlobalToNatural(grid,global,natural)
+    call WriteDataSetFromVec(IUNIT3,grid,natural,TECPLOT_INTEGER)
+  
+  else
+  
+    ! temperature
+    call ConvertGlobalToNatural(grid,grid%temp,natural)
+    call WriteDataSetFromVec(IUNIT3,grid,natural,TECPLOT_REAL)
+
+    ! pressure
+    call ConvertGlobalToNatural(grid,grid%pressure,natural)
+    call WriteDataSetFromVec(IUNIT3,grid,natural,TECPLOT_REAL)
+
+    ! saturation
+    call ConvertGlobalToNatural(grid,grid%sat,natural)
+    call WriteDataSetFromVec(IUNIT3,grid,natural,TECPLOT_REAL)
+
+    ! concentration
+    call ConvertGlobalToNatural(grid,grid%conc,natural)
+    call WriteDataSetFromVec(IUNIT3,grid,natural,TECPLOT_REAL)
+
   endif
-  
-  ! phase
-  call GetVarFromArray(grid,global,PHASE,0)
-  call ConvertGlobalToNatural(grid,global,natural)
-  call WriteDataSetFromVec(IUNIT3,grid,natural,TECPLOT_INTEGER)
   
   call VecDestroy(natural,ierr)
   call VecDestroy(global,ierr)
