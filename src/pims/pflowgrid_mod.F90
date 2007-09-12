@@ -1196,15 +1196,10 @@ PetscScalar, pointer ::  dx_loc_p(:), dy_loc_p(:), dz_loc_p(:), volume_p(:)
   call DAGlobalToLocalEnd(grid%da_1_dof, grid%dz, INSERT_VALUES, &
                           grid%dz_loc,ierr)
 
-#if 0  
-  call VecGetArrayF90(grid%dx_loc, dx_loc_p, ierr)
-  call VecGetArrayF90(grid%dy_loc, dy_loc_p, ierr)
-  call VecGetArrayF90(grid%dz_loc, dz_loc_p, ierr)
-#else
   call pims_vecgetarrayf90(grid, locpat, grid%dx_loc, dx_loc_p, ierr)
   call pims_vecgetarrayf90(grid, locpat, grid%dy_loc, dy_loc_p, ierr)
   call pims_vecgetarrayf90(grid, locpat, grid%dz_loc, dz_loc_p, ierr)
-#endif
+
   nc = 0
   locpat%nconnx = 0
   locpat%nconny = 0
@@ -1323,7 +1318,8 @@ PetscScalar, pointer ::  dx_loc_p(:), dy_loc_p(:), dz_loc_p(:), volume_p(:)
   endif
   
   ! Calculate cell volumes for local cells.
-  call VecGetArrayF90(grid%volume, volume_p, ierr)
+  call pims_vecgetarrayf90(grid, locpat, grid%volume, volume_p, ierr)
+
   do n=1, locpat%nlmax
     ng = locpat%nL2G(n)
 	if (grid%igeom == 1) then
@@ -1337,12 +1333,13 @@ PetscScalar, pointer ::  dx_loc_p(:), dy_loc_p(:), dz_loc_p(:), volume_p(:)
 	  print *, 'setup: Vol ', grid%myrank, n,i, grid%rd(i+locpat%nxs),volume_p(n)
     endif
   enddo
-  call VecRestoreArrayF90(grid%volume, volume_p, ierr)
-  
-   call VecRestoreArrayF90(grid%dx_loc, dx_loc_p, ierr)
-  call VecRestoreArrayF90(grid%dy_loc, dy_loc_p, ierr)
-  call VecRestoreArrayF90(grid%dz_loc, dz_loc_p, ierr)
 
+  if(grid%Samrai_drive==PETSC_FALSE) then
+     call VecRestoreArrayF90(grid%volume, volume_p, ierr)
+     call VecRestoreArrayF90(grid%dx_loc, dx_loc_p, ierr)
+     call VecRestoreArrayF90(grid%dy_loc, dy_loc_p, ierr)
+     call VecRestoreArrayF90(grid%dz_loc, dz_loc_p, ierr)
+  endif
   
   
   write(*,'(" myrank= ",i3,", nlmax= ",i6,", nlx,y,z= ",3i4, &

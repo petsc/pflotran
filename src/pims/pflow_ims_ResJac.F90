@@ -239,6 +239,20 @@ private
   type(pflowGrid), intent(inout) :: grid
   type(pflow_localpatch_info), intent(inout) :: locpat
   
+interface
+   subroutine pims_vecgetarrayf90(grid, patch, vec, f90ptr, ierr)
+     use pflow_gridtype_module
+     implicit none
+#include "include/finclude/petsc.h"
+
+     type(pflowGrid), intent(inout) :: grid
+     type(pflow_localpatch_info) :: patch
+     Vec :: vec
+     PetscScalar, dimension(:), pointer :: f90ptr
+     integer :: ierr
+   end subroutine pims_vecgetarrayf90
+end interface
+
   PetscScalar, pointer :: xx_p(:)
   integer iln,na,nx,ny,nz,ir,ierr
   
@@ -250,8 +264,7 @@ private
    allocate(locpat%delx(grid%ndof,locpat%ngmax))
    locpat%delx=0.D0
    
-  call VecGetArrayF90(grid%xx, xx_p, ierr); CHKERRQ(ierr)
-
+  call pims_vecgetarrayf90(grid, locpat, grid%xx, xx_p, ierr); CHKERRQ(ierr)
   
   do iln=1, locpat%nlmax
     na = locpat%nL2A(iln)
@@ -277,9 +290,11 @@ private
            endif
 	enddo 
  enddo
-							
-  call VecRestoreArrayF90(grid%xx, xx_p, ierr)
-  
+ 
+ if(grid%Samrai_drive==PETSC_FALSE) then						
+    call VecRestoreArrayF90(grid%xx, xx_p, ierr)
+ endif
+
 end  subroutine pflow_IMS_setupini
   
 
