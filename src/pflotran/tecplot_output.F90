@@ -87,6 +87,8 @@ subroutine OutputTecplot(grid,kplot)
       do i=1,grid%nspec
         write(string2,'(''"Liquid Mole Fraction('',i2,'')",'')') i
         string = trim(string) // trim(string2)
+      enddo
+      do i=1,grid%nspec
         write(string2,'(''"Gas Mole Fraction('',i2,'')",'')') i
         string = trim(string) // trim(string2)
       enddo
@@ -116,18 +118,25 @@ subroutine OutputTecplot(grid,kplot)
     string = trim(string) // ' DATAPACKING=BLOCK'
     write(IUNIT3,'(a)') trim(string)
 
-    ! write blocks
-  
-    ! write out coorindates
-    write(IUNIT3,'(10(es11.4,x))') (grid%x(i),i=1,grid%nmax)
-    write(IUNIT3,'(10(es11.4,x))') (grid%y(i),i=1,grid%nmax)
-    write(IUNIT3,'(10(es11.4,x))') (grid%z(i),i=1,grid%nmax)
-    
   endif
-    
+
+  ! write blocks
   ! write out data sets  
   call DACreateGlobalVector(grid%da_1_dof,global,ierr)
   call DACreateNaturalVector(grid%da_1_dof,natural,ierr)
+
+  ! write out coorindates
+  call GetCoordinates(grid,global,X_COORDINATE)
+  call ConvertGlobalToNatural(grid,global,natural)
+  call WriteDataSetFromVec(IUNIT3,grid,natural,TECPLOT_REAL)
+
+  call GetCoordinates(grid,global,Y_COORDINATE)
+  call ConvertGlobalToNatural(grid,global,natural)
+  call WriteDataSetFromVec(IUNIT3,grid,natural,TECPLOT_REAL)
+
+  call GetCoordinates(grid,global,Z_COORDINATE)
+  call ConvertGlobalToNatural(grid,global,natural)
+  call WriteDataSetFromVec(IUNIT3,grid,natural,TECPLOT_REAL)
 
   ! temperature
   call GetVarFromArray(grid,global,TEMPERATURE,0)
@@ -191,6 +200,37 @@ subroutine OutputTecplot(grid,kplot)
   close(IUNIT3)
       
 end subroutine OutputTecplot
+
+subroutine GetCoordinates(grid,vec,direction)
+
+  implicit none
+  
+  type(pflowGrid) :: grid
+  Vec :: vec
+  integer :: direction
+  
+  integer :: i
+  PetscScalar, pointer :: vec_ptr(:)
+  
+  call VecGetArrayF90(vec,vec_ptr,ierr)
+  
+  if (direction == X_COORDINATE) then
+    do i = 1,grid%nlmax
+      vec_ptr(i) = grid%x(grid%nL2A(i)+1)
+    enddo
+  else if (direction == Y_COORDINATE) then
+    do i = 1,grid%nlmax
+      vec_ptr(i) = grid%y(grid%nL2A(i)+1)
+    enddo
+  else if (direction == Z_COORDINATE) then
+    do i = 1,grid%nlmax
+      vec_ptr(i) = grid%z(grid%nL2A(i)+1)
+    enddo
+  endif
+  
+  call VecRestoreArrayF90(vec,vec_ptr,ierr)
+  
+end subroutine GetCoordinates
 
 subroutine GetVarFromArray(grid,vec,ivar,isubvar)
 
