@@ -129,14 +129,14 @@ int Grid::getVertexIdsNaturalLocal(int **natural_ids) {
   delete [] *natural_ids;
   *natural_ids = NULL;
 
-  int n = VecGetLocalSize(vec);
-  (*natural_ids) = new int[n];
+  int new_local_size = VecGetLocalSize(vec);
+  *natural_ids = new int[new_local_size];
   VecGetArray(vec,&vec_ptr);
-  for (int ivert=0; ivert<num_vertices_local; ivert++)
+  for (int ivert=0; ivert<new_local_size; ivert++)
     (*natural_ids)[ivert] = (int)(vec_ptr[ivert]+0.0001);
   VecRestoreArray(vec,&vec_ptr);
   VecDestroy(vec);
-  return n;
+  return new_local_size;
 
 }
 
@@ -175,14 +175,14 @@ int Grid::getVertexCoordinatesNaturalLocal(double **coordinates, int direction) 
   delete [] *coordinates;
   *coordinates = NULL;
 
-  int n = VecGetLocalSize(vec);
-  *coordinates = new double[n];
+  int new_local_size = VecGetLocalSize(vec);
+  *coordinates = new double[new_local_size];
   VecGetArray(vec,&vec_ptr);
-  for (int ivert=0; ivert<num_vertices_local; ivert++)
+  for (int ivert=0; ivert<new_local_size; ivert++)
     (*coordinates)[ivert] = vec_ptr[ivert];
   VecRestoreArray(vec,&vec_ptr);
   VecDestroy(vec);
-  return n;
+  return new_local_size;
 
 }
 
@@ -400,6 +400,11 @@ void Grid::printCells() {
   ierr = PetscSequentialPhaseBegin(PETSC_COMM_WORLD,1);
   if (myrank == 0) printf("\nCells:\n");
   printf("Processor[%d]\n",myrank);
+
+//  for (int i=0; i<num_cells_ghosted; i++)
+//    printf("%d ",cell_mapping_ghosted_to_natural[i]);
+//  printf("\n");
+
   for (int i=0; i<num_cells_ghosted; i++)
     cells[i].printInfo();
   ierr = PetscSequentialPhaseEnd(PETSC_COMM_WORLD,1);
@@ -411,6 +416,11 @@ void Grid::printVertices() {
   ierr = PetscSequentialPhaseBegin(PETSC_COMM_WORLD,1);
   if (myrank == 0) printf("\nVertice:\n");
   printf("Processor[%d]\n",myrank);
+
+//  for (int i=0; i<num_vertices_ghosted; i++)
+//    printf("%d ",vertex_mapping_ghosted_to_natural[i]);
+//  printf("\n");
+
   for (int i=0; i<num_vertices_ghosted; i++)
     vertices[i].printInfo();
   ierr = PetscSequentialPhaseEnd(PETSC_COMM_WORLD,1);
@@ -510,13 +520,13 @@ Vec Grid::getGridCellMaterialIDs() {
   VecGetArray(v,&ptr);
   for (int i=0; i<num_cells_local; i++)
     ptr[i] = -999;
-  for (int icell=0; icell<num_cells_local; icell++) {
+  for (int icell=0; icell<num_cells_ghosted; icell++) {
     int local_id = cells[icell].getIdLocal();
     if (local_id > -1) ptr[local_id] = cells[icell].getMaterialId();
   }
   for (int i=0; i<num_cells_local; i++) {
     if (ptr[i] < -998) 
-      printf("ERROR: Grid material ids not set correctly on processor %d\n",myrank);
+      printf("ERROR: Grid material ids (%d,%d) not set correctly on processor %d\n",i,(int)ptr[i],myrank);
   }
   VecRestoreArray(v,&ptr);
   return v;
@@ -529,13 +539,13 @@ Vec Grid::getGridCellActivities() {
   VecGetArray(v,&ptr);
   for (int i=0; i<num_cells_local; i++)
     ptr[i] = -999;
-  for (int icell=0; icell<num_cells_local; icell++) {
+  for (int icell=0; icell<num_cells_ghosted; icell++) {
     int local_id = cells[icell].getIdLocal();
     if (local_id > -1) ptr[local_id] = cells[icell].getActive();
   }
   for (int i=0; i<num_cells_local; i++) {
     if (ptr[i] < -998) 
-      printf("ERROR: Grid activity not set correctly on processor %d\n",myrank);
+      printf("ERROR: Grid activity (%d,%d) not set correctly on processor %d\n",i,(int)ptr[i],myrank);
   }
   VecRestoreArray(v,&ptr);
   return v;

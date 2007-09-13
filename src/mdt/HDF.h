@@ -27,11 +27,15 @@ public:
   void createDataSet(char *data_set_name, hid_t type, int compress);
   void closeGroup();
   void closeDataSpaces();
+  void printDataSpaceInfo(); 
   static void closeDataSpace(hid_t *space_id);
   void closeDataSet();
   void writeInt(int *values);
+  void writeInt(int *values, int collective);
   void writeDouble(double *values);
+  void writeDouble(double *values, int collective);
   void writeString(char *title, char *string);
+  void writeString(char *title, char *string, int collective);
 
 private:
 

@@ -28,21 +28,22 @@ TestCase::TestCase(Grid **grid_) {
   grid->setUpVertices();
   grid->mapVerticesToCells();
 
-  for (int i=0; i<grid->getN(); i++)
-    grid->cells[i].setMaterialId(1);
-  for (int i=5; i<grid->getN(); i++)
-    grid->cells[i].setMaterialId(2);
-  for (int i=11; i<grid->getN(); i++)
-    grid->cells[i].setMaterialId(3);
-  grid->cells[9].setMaterialId(1);
-  grid->cells[12].setMaterialId(2);
-  grid->cells[13].setMaterialId(2);
-  grid->cells[15].setMaterialId(2);
-  grid->cells[26].setMaterialId(4);
+  for (int ia=0; ia<grid->getN(); ia++)
+    setMaterialIdBasedOnNaturalId(ia,1,grid);
+  for (int ia=5; ia<grid->getN(); ia++)
+    setMaterialIdBasedOnNaturalId(ia,2,grid);
+  for (int ia=11; ia<grid->getN(); ia++)
+    setMaterialIdBasedOnNaturalId(ia,3,grid);
+
+  setMaterialIdBasedOnNaturalId(9,1,grid);
+  setMaterialIdBasedOnNaturalId(12,2,grid);
+  setMaterialIdBasedOnNaturalId(13,2,grid);
+  setMaterialIdBasedOnNaturalId(15,2,grid);
+  setMaterialIdBasedOnNaturalId(26,4,grid);
   
-  grid->cells[10].setActive(0);
-  grid->cells[17].setActive(0);
-  grid->cells[24].setActive(0);
+  setActiveBasedOnNaturalId(10,0,grid);
+  setActiveBasedOnNaturalId(17,0,grid);
+  setActiveBasedOnNaturalId(24,0,grid);
     
   grid->printCells();
   grid->printVertices();
@@ -442,6 +443,22 @@ void TestCase::computeSouthBoundary(Grid *grid) {
   }
   grid->addBoundarySet(south);
   south = NULL;
+}
+
+void TestCase::setMaterialIdBasedOnNaturalId(int natural_id, int material_id,
+                                             Grid *grid) {
+  for (int i=0; i<grid->getNumberOfCellsGhosted(); i++) 
+    if (grid->cells[i].getIdNatural() == natural_id)//  {
+      grid->cells[i].setMaterialId(material_id);
+//printf("%d %d %d %d\n",myrank,i,grid->cells[i].getIdNatural(),grid->cells[i].getMaterialId());
+//}
+}
+
+void TestCase::setActiveBasedOnNaturalId(int natural_id, int active,
+                                         Grid *grid) {
+  for (int i=0; i<grid->getNumberOfCellsGhosted(); i++) 
+    if (grid->cells[i].getIdNatural() == natural_id) 
+      grid->cells[i].setActive(active);
 }
 
 TestCase::~TestCase() {

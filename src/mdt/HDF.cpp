@@ -20,7 +20,7 @@ HDF::HDF(char *filename, int overwrite) {
   }
 
   hid_t prop_id = H5Pcreate(H5P_FILE_ACCESS);
-#ifdef PARALLEL
+#ifndef SERIAL
   H5Pset_fapl_mpio(prop_id,PETSC_COMM_WORLD,MPI_INFO_NULL);
 #endif
 
@@ -111,10 +111,16 @@ void HDF::createDataSpace(hid_t *space_id, int rank, int dim0, int dim1,
     dims[2] = dim2;
     max_dims[2] = max_dim2;
   }
+//  if (dims[0] == 0) dims[0] = 1;
+//  if (max_dims[0] == 0) max_dims[0] = 1;
   *space_id = H5Screate_simple(rank,dims,max_dims);
   delete [] dims;
   delete [] max_dims;
 
+//printf("DataSpace %d rank: %d  dim[0]: %d",*space_id,rank,(int)dims[0]);
+//if (rank > 1) printf(" %d",(int)dims[1]);
+//if (rank > 2) printf(" %d",(int)dims[2]);
+//printf("\n");
 }
 
 void HDF::closeDataSpaces() {
@@ -183,13 +189,14 @@ void HDF::setHyperSlab(int *start, int *stride, int *count, int *block) {
       hyperslab_block[i] = 1;
   }
 
-//  int myrank;
-//  MPI_Comm_rank(PETSC_COMM_WORLD,&myrank);
-//  printf("%d %d %d\n",myrank,(int)hyperslab_start,(int)hyperslab_count);
-
   status = H5Sselect_hyperslab(file_space_id,H5S_SELECT_SET,
                                hyperslab_start,
                                hyperslab_stride,hyperslab_count,NULL);
+
+//  int myrank;
+//  MPI_Comm_rank(PETSC_COMM_WORLD,&myrank);
+//  printf("%d %d %d\n",myrank,(int)hyperslab_start[0],(int)hyperslab_count[0]);
+//  printf("%d H5Sselect_hyperslab %d\n", myrank,status);
 
 }
 
@@ -247,12 +254,42 @@ void HDF::closeDataSet() {
 }
 
 void HDF::writeInt(int *values) {
+  writeInt(values,1);
+}
+
+void HDF::writeInt(int *values, int collective) {
 
   hid_t prop_id = H5Pcreate(H5P_DATASET_XFER);
-#ifdef PARALLEL
-  H5Pset_dxpl_mpio(prop_id,H5FD_MPIO_COLLECTIVE);
+#ifndef SERIAL
+  if (collective)
+    H5Pset_dxpl_mpio(prop_id,H5FD_MPIO_COLLECTIVE);
+  else
+    H5Pset_dxpl_mpio(prop_id,H5FD_MPIO_INDEPENDENT);
 #endif
   if (memory_space_id > -1) {
+
+/*
+    if (collective) {
+      PetscErrorCode ierr;
+    }
+    int myrank;
+    MPI_Comm_rank(PETSC_COMM_WORLD,&myrank);
+    hsize_t dims[3];
+    int rank = H5Sget_simple_extent_dims(memory_space_id,dims,NULL);
+    ierr = PetscSequentialPhaseBegin(PETSC_COMM_WORLD,1);
+    printf("proc: %d - writeInt - ",myrank);
+    int count = 1;
+    for (int i=0; i< rank; i++)
+      count *= (int)dims[i];
+    for (int i=0; i<count; i++)
+      printf(" %d",values[i]);
+    printf("\n");
+    printDataSpaceInfo(); 
+    if (collective) {
+      ierr = PetscSequentialPhaseEnd(PETSC_COMM_WORLD,1);
+    }
+//*/
+
     H5Dwrite(data_set_id,H5T_NATIVE_INT,memory_space_id,file_space_id,
              prop_id,values);
   }
@@ -263,16 +300,40 @@ void HDF::writeInt(int *values) {
 }
 
 void HDF::writeDouble(double *values) {
+  writeDouble(values,1);
+}
+
+void HDF::writeDouble(double *values, int collective) {
 
   hid_t prop_id = H5Pcreate(H5P_DATASET_XFER);
-#ifdef PARALLEL
-  H5Pset_dxpl_mpio(prop_id,H5FD_MPIO_COLLECTIVE);
-//  H5Pset_dxpl_mpio(prop_id,H5FD_MPIO_INDEPENDENT);
+#ifndef SERIAL
+  if (collective)
+    H5Pset_dxpl_mpio(prop_id,H5FD_MPIO_COLLECTIVE);
+  else
+    H5Pset_dxpl_mpio(prop_id,H5FD_MPIO_INDEPENDENT);
 #endif
   if (memory_space_id > -1) {
-//    int myrank;
-//    MPI_Comm_rank(PETSC_COMM_WORLD,&myrank);
-//    printf("%d %d %d\n",myrank,file_space_id,memory_space_id);
+/*
+    printDataSpaceInfo(); 
+    PetscErrorCode ierr;
+    int myrank;
+    MPI_Comm_rank(PETSC_COMM_WORLD,&myrank);
+    hsize_t dims[3];
+    int rank = H5Sget_simple_extent_dims(memory_space_id,dims,NULL);
+    if (collective) {
+      ierr = PetscSequentialPhaseBegin(PETSC_COMM_WORLD,1);
+    }
+    printf("proc: %d - writeInt - ",myrank);
+    int count = 1;
+    for (int i=0; i< rank; i++)
+      count *= dims[i];
+    for (int i=0; i<count; i++)
+      printf(" %f",values[i]);
+    printf("\n");
+    if (collective) {
+      ierr = PetscSequentialPhaseEnd(PETSC_COMM_WORLD,1);
+    }
+//*/
     H5Dwrite(data_set_id,H5T_NATIVE_DOUBLE,memory_space_id,file_space_id,
              prop_id,values);
   }
@@ -282,15 +343,54 @@ void HDF::writeDouble(double *values) {
 
 }
 
+void HDF::printDataSpaceInfo() {
+  int myrank;
+  MPI_Comm_rank(PETSC_COMM_WORLD,&myrank);
+  hsize_t dims[3];
+  char string[512];
+  char string2[512];
+  char string3[512];
+  int rank = H5Sget_simple_extent_dims(file_space_id,dims,NULL);
+  sprintf(string,"filespace (%d)  - proc: %d  rank: %d  dim0: %d",
+          (int)file_space_id,myrank,rank,(int)dims[0]);
+  if (rank > 1) {
+    sprintf(string2," dim1: %d",(int)dims[1]);
+    strcat(string,string2);
+  }
+  if (rank > 2) {
+    sprintf(string2," dim2: %d",(int)dims[2]);
+    strcat(string,string2);
+  }
+  rank = H5Sget_simple_extent_dims(memory_space_id,dims,NULL);
+  sprintf(string2,"memoryspace (%d)  - proc: %d  rank: %d  dim0: %d",
+          (int)memory_space_id,myrank,rank,(int)dims[0]);
+  if (rank > 1) {
+    sprintf(string3," dim1: %d",(int)dims[1]);
+    strcat(string2,string3);
+  }
+  if (rank > 2) {
+    sprintf(string3," dim2: %d",(int)dims[2]);
+    strcat(string2,string3);
+  }
+  printf("%s\n%s\n",string,string2);
+}
+
 void HDF::writeString(char *title, char *string) {
+  writeString(title,string,1);
+}
+
+void HDF::writeString(char *title, char *string, int collective) {
   hid_t string_type = H5Tcopy(H5T_C_S1);
   H5Tset_strpad(string_type,H5T_STR_NULLTERM);
   H5Tset_size(string_type,strlen(string)+1);
   createDataSpace(1,1,0,0);
   createDataSet(title,string_type,0);
   hid_t prop_id = H5Pcreate(H5P_DATASET_XFER);
-#ifdef PARALLEL
-  H5Pset_dxpl_mpio(prop_id,H5FD_MPIO_COLLECTIVE);
+#ifndef SERIAL
+  if (collective)
+    H5Pset_dxpl_mpio(prop_id,H5FD_MPIO_COLLECTIVE);
+  else
+    H5Pset_dxpl_mpio(prop_id,H5FD_MPIO_INDEPENDENT);
 #endif
   H5Dwrite(data_set_id,string_type,H5S_ALL,H5S_ALL,prop_id,string);
   H5Pclose(prop_id);

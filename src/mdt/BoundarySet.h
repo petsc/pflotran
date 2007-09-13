@@ -20,7 +20,7 @@ public:
   int getNumberOfConnectionsLocal();
   int getNumberOfConnectionsGlobal();
   void setCondition(Condition *condition_);
-  int *getCellIdsNatural();
+  int *getCellIdsLocal();
   int *getFaceVertexIds(int ivert);
   void printInfo();
 

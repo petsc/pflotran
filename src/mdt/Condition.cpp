@@ -207,7 +207,7 @@ void Condition::printConditions() {
  
   ierr = PetscSequentialPhaseBegin(PETSC_COMM_WORLD,1);
 #include "Globals.h" 
-  if (myrank == 0) printf("\nBoundary Connections\n");
+  PetscPrintf(PETSC_COMM_WORLD,"\nBoundary Connections\n");
   printf("Processor[%d]: %d connections\n",myrank,num_conditions);
   Condition *cur_cond = list;
   while (cur_cond) {

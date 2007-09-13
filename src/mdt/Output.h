@@ -8,6 +8,9 @@
 #include "Grid.h"
 #include "HDF.h"
 
+#define COLLECTIVE 1
+#define INDEPENDENT 0
+
 class Output {
 public:
   Output(Grid *g);

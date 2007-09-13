@@ -22,6 +22,11 @@ public:
 
 private:
 
+  void setMaterialIdBasedOnNaturalId(int natural_id, int material_id,
+                                     Grid *grid);
+  void setActiveBasedOnNaturalId(int natural_id, int active,
+                                 Grid *grid);
+
 };
 
 #endif /*TESTCASE_H_*/

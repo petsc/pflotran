@@ -596,11 +596,19 @@ void StructuredGrid::computeCellMapping(int *num_cells_local, int *num_cells_gho
     for (int j=jstart; j<jend; j++) {
       for (int i=istart; i<iend; i++) {
         int ghosted_id = i+j*gnx+k*gnxXny;
-        int natural_id = (i+gxs)+(j+gys)*nx+(k+gzs)*nx*ny;
         (*cell_mapping_local_to_ghosted)[local_id] = ghosted_id;
         (*cell_mapping_ghosted_to_local)[ghosted_id] = local_id;
-        (*cell_mapping_ghosted_to_natural)[ghosted_id] = natural_id;
         local_id = local_id + 1;
+      }
+    }
+  }
+  int ghosted_id = 0;
+  for (int k=0; k<gnz; k++) {
+    for (int j=0; j<gny; j++) {
+      for (int i=0; i<gnx; i++) {
+        int natural_id = (i+gxs)+(j+gys)*nx+(k+gzs)*nx*ny;
+        (*cell_mapping_ghosted_to_natural)[ghosted_id] = natural_id;
+        ghosted_id = ghosted_id + 1;
       }
     }
   }
@@ -647,8 +655,17 @@ void StructuredGrid::computeVertexMapping(int *num_vertices_local,
         int natural_id = (i+gxs)+(j+gys)*nxp1+(k+gzs)*nxp1*nyp1;
         (*vertex_mapping_local_to_ghosted)[local_id] = ghosted_id;
         (*vertex_mapping_ghosted_to_local)[ghosted_id] = local_id;
-        (*vertex_mapping_ghosted_to_natural)[ghosted_id] = natural_id;
         local_id = local_id + 1;
+      }
+    }
+  }
+  int ghosted_id = 0;
+  for (int k=0; k<gnzp1; k++) {
+    for (int j=0; j<gnyp1; j++) {
+      for (int i=0; i<gnxp1; i++) {
+        int natural_id = (i+gxs)+(j+gys)*nxp1+(k+gzs)*nxp1*nyp1;
+        (*vertex_mapping_ghosted_to_natural)[ghosted_id] = natural_id;
+        ghosted_id = ghosted_id + 1;
       }
     }
   }
@@ -724,10 +741,28 @@ void StructuredGrid::convertLocalCellDataGtoN(double *data) {
 
   globalToNatural(global,natural);
 
-  VecGetArray(global,&v_ptr);
+  VecGetArray(natural,&v_ptr);
   for (int i=0; i<num_cells_local; i++)
     data[i] = v_ptr[i];
+  VecRestoreArray(natural,&v_ptr);
+
+/*
+  PetscErrorCode ierr;
+  ierr = PetscSequentialPhaseBegin(PETSC_COMM_WORLD,1);
+  VecGetArray(global,&v_ptr);
+  printf("proc: %d - global - ",myrank);
+  for (int i=0; i<num_cells_local; i++)
+    printf(" %.1f",v_ptr[i]);
+  printf("\n");
   VecRestoreArray(global,&v_ptr);
+  VecGetArray(natural,&v_ptr);
+  printf("proc: %d - natural - ",myrank);
+  for (int i=0; i<num_cells_local; i++)
+    printf(" %.1f",v_ptr[i]);
+  printf("\n");
+  VecRestoreArray(natural,&v_ptr);
+  ierr = PetscSequentialPhaseEnd(PETSC_COMM_WORLD,1);
+*/
 
   VecDestroy(global);
   VecDestroy(natural);

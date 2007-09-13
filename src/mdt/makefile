@@ -1,8 +1,9 @@
 common_src   = ./
 
+hdf5 = 1
 ifdef hdf5
   HDF5_FLAGS = -I${HDF5_INCLUDE}
-  HDF5_LIBS = -L${HDF5_LIB} -lhdf5_fortran -lhdf5 -lz
+  HDF5_LIBS = -L${HDF5_LIB} -lhdf5 -lz
 endif
 
 LIBS = ${HDF5_LIBS}
@@ -12,6 +13,8 @@ FFLAGS		 =
 CPPFLAGS         = ${HDF5_FLAGS}
 FPPFLAGS         = 
 CLEANFILES       = mdt
+
+
 
 include ${PETSC_DIR}/bmake/common/base
 
@@ -31,7 +34,8 @@ mdt_obj = ${common_src}AsciiGrid.o \
 	${common_src}Output.o \
 	${common_src}Polygon.o \
 	${common_src}Source.o \
-	${common_src}StructuredGrid.o
+	${common_src}StructuredGrid.o \
+	${common_src}TestCase.o
 
 mdt: $(mdt_obj)
 	${CLINKER} -o mdt ${mdt_obj} \
@@ -55,4 +59,4 @@ Output.o : BoundarySet.o Grid.o HDF.o
 Polygon.o :
 Source.o :
 StructuredGrid.o : BoundaryConnection.o GridCell.o GridVertex.o Source.o
-
+TestCase.o : BoundarySet.o Connection.o Grid.o 

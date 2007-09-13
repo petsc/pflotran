@@ -43,7 +43,7 @@ int BoundarySet::getNumberOfConnectionsGlobal() {
   return num_connections_global;
 }
 
-int *BoundarySet::getCellIdsNatural() {
+int *BoundarySet::getCellIdsLocal() {
   int count = 0;
   int *cell_ids = new int[num_connections_local];
   Connection *cur_connection = list;

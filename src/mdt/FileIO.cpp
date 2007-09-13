@@ -2,7 +2,7 @@
 
 FileIO::FileIO(char *filename) {
 
-  cout << filename << "\n";
+  PetscPrintf(PETSC_COMM_WORLD,"%s\n",filename);
   file.open(filename,fstream::in);
   if (!file.is_open()) cout << "ERROR opening file " << filename << ".\n";
   buffer = NULL;
