@@ -87,6 +87,7 @@ public:
   int *getCellMaterialIds();
   int *getCellIds();
   int *getCellIdsNatural();
+  int *getCellVertexIds(int ivert);
 
   int num_cells_global;
   int num_cells_local;

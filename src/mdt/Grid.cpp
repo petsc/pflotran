@@ -74,6 +74,27 @@ int *Grid::getCellMaterialIds() {
 
 }
 
+int *Grid::getCellVertexIds(int ivert) {
+
+  // the grid vertices array is of size num_vertices_ghosted
+  // the cell vertices array is of size 9, where value 0 is the # of vertices in the cell
+  // ivert is the index of the vertex in the cell N vertices
+
+  int *vertex_ids = new int[num_cells_local];
+  for (int icell=0; icell<num_cells_local; icell++)
+    vertex_ids[icell] = -999;
+  for (int icell=0; icell<num_cells_ghosted; icell++) {
+    int cell_local_id = cells[icell].getIdLocal();
+    if (cell_local_id > -1) {
+      if (ivert <= cells[icell].vertices[0]) {
+        vertex_ids[cell_local_id] = 
+              vertices[cells[icell].vertices[ivert]].getIdNatural();
+      }
+    }
+  }
+  return vertex_ids;
+
+}
 
 int Grid::getVertexIdsNaturalLocal(int *natural_ids) {
 
@@ -86,6 +107,7 @@ int Grid::getVertexIdsNaturalLocal(int *natural_ids) {
   PetscScalar *vec_ptr = NULL;
   VecCreate(PETSC_COMM_WORLD,&vec);
   VecSetSizes(vec,PETSC_DECIDE,getNumberOfVerticesGlobal());
+  VecSetType(vec,VECMPI);
 
   natural_ids = new int[num_vertices_local];
   for (int ivert=0; ivert<num_vertices_local; ivert++)

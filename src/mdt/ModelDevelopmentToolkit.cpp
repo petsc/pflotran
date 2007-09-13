@@ -7,6 +7,7 @@ int commsize = 0;
 #include "Globals.h"
 #include "Grid.h"
 #include "Hanford300.h"
+#include "TestCase.h"
 #include "Output.h"
 
 #undef __FUNCT__
@@ -23,7 +24,11 @@ int main(int argc, char **args) {
   if (myrank == 0) printf("commsize: %d\n",commsize);
 
   Grid *grid = NULL;
-  Hanford300 *hanford300 = new Hanford300(&grid);
+  Hanford300 *hanford300 = NULL;
+  TestCase *testcase = NULL;
+
+//  hanford300 = new Hanford300(&grid);
+  testcase = new TestCase(&grid);
 
   Output *out = new Output(grid);
 //  out->printGMSGrid();
@@ -33,6 +38,7 @@ int main(int argc, char **args) {
 
   delete out;
   delete hanford300;
+  delete testcase;
   delete grid;
 
   if (myrank == 0) printf("Done!\n");

@@ -17,8 +17,11 @@ public:
 
   void addConnection(Connection *new_connection);
   void convertListToArray();
-  int getNumberOfConnections();
+  int getNumberOfConnectionsLocal();
+  int getNumberOfConnectionsGlobal();
   void setCondition(Condition *condition_);
+  int *getCellIdsNatural();
+  int *getFaceVertexIds(int ivert);
   void printInfo();
 
   Connection *list;
@@ -31,7 +34,7 @@ private:
   Connection *end_of_list;
   Connection **_array;
   Connection *connections;
-  int num_connections;
+  int num_connections_local;
 
 };
 

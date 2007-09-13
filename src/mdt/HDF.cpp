@@ -78,6 +78,14 @@ void HDF::closeGroup() {
   }
 }
 
+void HDF::createFileSpace(int rank, int dim0, int dim1, int dim2) {
+  HDF::createDataSpace(&file_space_id,rank,dim0,dim1,dim2,dim0,dim1,dim2);
+}
+
+void HDF::createMemorySpace(int rank, int dim0, int dim1, int dim2) {
+  HDF::createDataSpace(&memory_space_id,rank,dim0,dim1,dim2,dim0,dim1,dim2);
+}
+
 void HDF::createDataSpace(int rank, int dim0, int dim1, int dim2) {
   HDF::createDataSpace(&file_space_id,rank,dim0,dim1,dim2,dim0,dim1,dim2);
 }
@@ -90,6 +98,7 @@ void HDF::createDataSpace(hid_t *space_id, int rank, int dim0, int dim1,
 void HDF::createDataSpace(hid_t *space_id, int rank, int dim0, int dim1,
                            int dim2, int max_dim0, int max_dim1, int max_dim2) {
 
+  if (*space_id > -1) H5Sclose(*space_id);
   hsize_t *dims = new hsize_t[rank];
   hsize_t *max_dims = new hsize_t[rank];
   dims[0] = dim0;
@@ -108,7 +117,7 @@ void HDF::createDataSpace(hid_t *space_id, int rank, int dim0, int dim1,
 
 }
 
-void HDF::closeDataSpace() {
+void HDF::closeDataSpaces() {
   HDF::closeDataSpace(&file_space_id);
 // just do this automatically
   HDF::closeDataSpace(&memory_space_id);
@@ -123,22 +132,56 @@ void HDF::setHyperSlab(int n) {
   setHyperSlab(n,1);
 }
 
-void HDF::setHyperSlab(int n, int stride) {
-
+void HDF::setHyperSlab(int n, int stride0) {
   int offset = 0;
   MPI_Exscan(&n,&offset,1,MPI_INT,MPI_SUM,PETSC_COMM_WORLD);
-  hyperslab_start[0] = (hsize_t)offset;
-  hyperslab_stride[0] = stride;
-  hyperslab_stride[1] = 1;
-  hyperslab_count[0] = n;
-  hyperslab_count[0] = 1;
-  hyperslab_block[0] = 1;
+  int start[3] = {0,0,0};
+  int stride[3] = {1,1,1};
+  int count[3] = {1,1,1};
+  start[0] = offset;
+  stride[0] = stride0;
+  count[0] = n;
+  setHyperSlab(start,stride,count,NULL);
+}
 
-  hsize_t dims[3];
-  int ndim = H5Sget_simple_extent_dims(file_space_id,dims,NULL);
-  dims[0] = hyperslab_count[0];
-  HDF::closeDataSpace(&memory_space_id);
-  HDF::createDataSpace(&memory_space_id,ndim,dims[0],dims[1],dims[2]); 
+void HDF::setHyperSlab(int *start, int *stride, int *count, int *block) {
+
+  if (start) {
+    hyperslab_start[0] = (hsize_t)start[0];
+    hyperslab_start[1] = (hsize_t)start[1];
+    hyperslab_start[2] = (hsize_t)start[2];
+  }
+  else {
+    for (int i=0; i<3; i++)
+      hyperslab_start[i] = (hsize_t)0;
+  }
+  if (stride) {
+    hyperslab_stride[0] = stride[0];
+    hyperslab_stride[1] = stride[1];
+    hyperslab_stride[2] = stride[2];
+  }
+  else {
+    for (int i=0; i<3; i++)
+      hyperslab_stride[i] = 1;
+  }
+  if (count) {
+    hyperslab_count[0] = count[0];
+    hyperslab_count[1] = count[1];
+    hyperslab_count[2] = count[2];
+  }
+  else {
+    for (int i=0; i<3; i++)
+      hyperslab_count[i] = 1;
+  }
+  if (block) {
+    hyperslab_block[0] = 1;
+    hyperslab_block[1] = 1;
+    hyperslab_block[2] = 1;
+  }
+  else {
+    for (int i=0; i<3; i++)
+      hyperslab_block[i] = 1;
+  }
 
 //  int myrank;
 //  MPI_Comm_rank(PETSC_COMM_WORLD,&myrank);
@@ -181,12 +224,12 @@ void HDF::createDataSet(char *data_set_name, hid_t type, int compress) {
   }
 
   if (type == H5T_NATIVE_INT) {
-    double d = -999.;
-    H5Pset_fill_value(prop_id,type,&d);
+    int i = -999;
+    H5Pset_fill_value(prop_id,type,&i);
   }
   else {
-    int i = -999.;
-    H5Pset_fill_value(prop_id,type,&i);
+    double d = -999.;
+    H5Pset_fill_value(prop_id,type,&d);
   }
 
   if (ngrp > 0 && grp_id[ngrp-1] > -1)

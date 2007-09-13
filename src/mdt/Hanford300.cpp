@@ -213,7 +213,9 @@ void Hanford300::computeRiverBoundary(Grid *grid) {
         if (grid->cells[ghosted_id].getActive() && 
             (gxe-lxe == 0 || !grid->cells[ghosted_id+1].getActive()) &&
             grid->cells[ghosted_id].getZ() <= river_stage) {
-          river->addConnection(new Connection(grid->cells[ghosted_id].getIdLocal(),EAST));
+          int vertex_list[5] = {4,0,0,0,0};
+          grid->cells[ghosted_id].getHexFaceVertices(EAST,vertex_list);
+          river->addConnection(new Connection(grid->cells[ghosted_id].getIdLocal(),vertex_list));
           // Look downwind in y and z to see if the bc cell is located at
           // the same distance x.  If not, we need to set the same bc along
           // the y and z faces to the next cell in x
@@ -230,11 +232,13 @@ void Hanford300::computeRiverBoundary(Grid *grid) {
                   for (int ii=iistart; ii>iiend; ii--) {
                     if (i > ijp1) {
                       int id = ii+j*gnx+k*gnxXny;
-                      river->addConnection(new Connection(grid->cells[id].getIdLocal(),NORTH));
+                      grid->cells[ghosted_id].getHexFaceVertices(NORTH,vertex_list);
+                      river->addConnection(new Connection(grid->cells[id].getIdLocal(),vertex_list));
                     }
                     else {
                       int id = ii+(j+1)*gnx+k*gnxXny;
-                      river->addConnection(new Connection(grid->cells[id].getIdLocal(),SOUTH));
+                      grid->cells[ghosted_id].getHexFaceVertices(SOUTH,vertex_list);
+                      river->addConnection(new Connection(grid->cells[id].getIdLocal(),vertex_list));
                     }
                   }
                 }
@@ -254,11 +258,13 @@ void Hanford300::computeRiverBoundary(Grid *grid) {
                   for (int ii=iistart; ii>iiend; ii--) {
                     if (i > ikp1) {
                       int id = ii+j*gnx+k*gnxXny;
-                      river->addConnection(new Connection(grid->cells[id].getIdLocal(),TOP));
+                      grid->cells[ghosted_id].getHexFaceVertices(TOP,vertex_list);
+                      river->addConnection(new Connection(grid->cells[id].getIdLocal(),vertex_list));
                     }
                     else {
                       int id = ii+j*gnx+(k+1)*gnxXny;
-                      river->addConnection(new Connection(grid->cells[id].getIdLocal(),BOTTOM));
+                      grid->cells[ghosted_id].getHexFaceVertices(BOTTOM,vertex_list);
+                      river->addConnection(new Connection(grid->cells[id].getIdLocal(),vertex_list));
                     }
                   }
                 }
@@ -311,7 +317,10 @@ void Hanford300::computeWestBoundary(Grid *grid) {
         if (grid->cells[ghosted_id].getActive() && 
             (lxs-gxs == 0 || !grid->cells[ghosted_id-1].getActive()) &&
             grid->cells[ghosted_id].getZ() <= west_stage) {
-          west->addConnection(new Connection(grid->cells[ghosted_id].getIdLocal(),WEST));
+          int vertex_list[5] = {4,0,0,0,0};
+          grid->cells[ghosted_id].getHexFaceVertices(WEST,vertex_list);
+          west->addConnection(new Connection(grid->cells[ghosted_id].getIdLocal(),
+                                             vertex_list));
           // Look downwind in y and z to see if the bc cell is located at
           // the same distance x.  If not, we need to set the same bc along
           // the y and z faces to the next cell in x
@@ -328,11 +337,13 @@ void Hanford300::computeWestBoundary(Grid *grid) {
                   for (int ii=iistart; ii<iiend; ii++) {
                     if (i < ijp1) {
                       int id = ii+j*gnx+k*gnxXny;
-                      west->addConnection(new Connection(grid->cells[id].getIdLocal(),NORTH));
+                      grid->cells[ghosted_id].getHexFaceVertices(NORTH,vertex_list);
+                      west->addConnection(new Connection(grid->cells[id].getIdLocal(),vertex_list));
                     }
                     else {
                       int id = ii+(j+1)*gnx+k*gnxXny;
-                      west->addConnection(new Connection(grid->cells[id].getIdLocal(),SOUTH));
+                      grid->cells[ghosted_id].getHexFaceVertices(SOUTH,vertex_list);
+                      west->addConnection(new Connection(grid->cells[id].getIdLocal(),vertex_list));
                     }
                   }
                 }
@@ -352,11 +363,13 @@ void Hanford300::computeWestBoundary(Grid *grid) {
                   for (int ii=iistart; ii<iiend; ii++) {
                     if (i < ikp1) {
                       int id = ii+j*gnx+k*gnxXny;
-                      west->addConnection(new Connection(grid->cells[id].getIdLocal(),TOP));
+                      grid->cells[ghosted_id].getHexFaceVertices(TOP,vertex_list);
+                      west->addConnection(new Connection(grid->cells[id].getIdLocal(),vertex_list));
                     }
                     else {
                       int id = ii+j*gnx+(k+1)*gnxXny;
-                      west->addConnection(new Connection(grid->cells[id].getIdLocal(),BOTTOM));
+                      grid->cells[ghosted_id].getHexFaceVertices(BOTTOM,vertex_list);
+                      west->addConnection(new Connection(grid->cells[id].getIdLocal(),vertex_list));
                     }
                   }
                 }
@@ -407,7 +420,10 @@ void Hanford300::computeRechargeBoundary(Grid *grid) {
         int ghosted_id = i+j*gnx+k*gnxXny;
         if (grid->cells[ghosted_id].getActive() && 
             (gze-lze == 0 || !grid->cells[ghosted_id+gnxXny].getActive())) {
-          recharge->addConnection(new Connection(grid->cells[ghosted_id].getIdLocal(),TOP));
+          int vertex_list[5] = {4,0,0,0,0};
+          grid->cells[ghosted_id].getHexFaceVertices(TOP,vertex_list);
+          recharge->addConnection(new Connection(grid->cells[ghosted_id].getIdLocal(),
+                                                 vertex_list));
           break;
         }
       }
@@ -453,7 +469,10 @@ void Hanford300::computeSouthBoundary(Grid *grid) {
         if (grid->cells[ghosted_id].getActive() && 
             (lys-gys == 0 || !grid->cells[ghosted_id-gnx].getActive()) &&
             grid->cells[ghosted_id].getZ() <= south_stage) {
-          south->addConnection(new Connection(grid->cells[ghosted_id].getIdLocal(),SOUTH));
+          int vertex_list[5] = {4,0,0,0,0};
+          grid->cells[ghosted_id].getHexFaceVertices(SOUTH,vertex_list);
+          south->addConnection(new Connection(grid->cells[ghosted_id].getIdLocal(),
+                                              vertex_list));
           // Look downwind in y and z to see if the bc cell is located at
           // the same distance x.  If not, we need to set the same bc along
           // the y and z faces to the next cell in x
@@ -470,11 +489,15 @@ void Hanford300::computeSouthBoundary(Grid *grid) {
                   for (int jj=jjstart; jj<jjend; jj++) {
                     if (j < jip1) {
                       int id = i+jj*gnx+k*gnxXny;
-                      south->addConnection(new Connection(grid->cells[id].getIdLocal(),EAST));
+                      grid->cells[id].getHexFaceVertices(EAST,vertex_list);
+                      south->addConnection(new Connection(grid->cells[id].getIdLocal(),
+                                                          vertex_list));
                     }
                     else {
                       int id = (i+1)+jj*gnx+k*gnxXny;
-                      south->addConnection(new Connection(grid->cells[id].getIdLocal(),WEST));
+                      grid->cells[id].getHexFaceVertices(WEST,vertex_list);
+                      south->addConnection(new Connection(grid->cells[id].getIdLocal(),
+                                                          vertex_list));
                     }
                   }
                 }
@@ -494,11 +517,15 @@ void Hanford300::computeSouthBoundary(Grid *grid) {
                   for (int jj=jjstart; jj<jjend; jj++) {
                     if (j < jkp1) {
                       int id = i+jj*gnx+k*gnxXny;
-                      south->addConnection(new Connection(grid->cells[id].getIdLocal(),TOP));
+                      grid->cells[id].getHexFaceVertices(TOP,vertex_list);
+                      south->addConnection(new Connection(grid->cells[id].getIdLocal(),
+                                                          vertex_list));
                     }
                     else {
                       int id = i+jj*gnx+(k+1)*gnxXny;
-                      south->addConnection(new Connection(grid->cells[id].getIdLocal(),BOTTOM));
+                      grid->cells[id].getHexFaceVertices(BOTTOM,vertex_list);
+                      south->addConnection(new Connection(grid->cells[id].getIdLocal(),
+                                                          vertex_list));
                     }
                   }
                 }

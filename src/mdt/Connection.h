@@ -9,13 +9,17 @@ class Connection {
   
 public:
 
-  Connection(int icell, int iface);
+//  Connection(int icell, int iface);
+  Connection(int icell, int *vertices);
   virtual ~Connection();
 
-  void printInfo();
+  int getFaceVertex(int ivert);
 
+  void printInfo();
+// these are local ids
   int cell;
-  int face;
+//  int face;
+  int vertices[5];
   Connection *next;
 
 };

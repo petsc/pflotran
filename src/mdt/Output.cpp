@@ -360,22 +360,25 @@ void Output::printHDFMesh2() {
 // write cells
   file->createGroup("Cells");
 
-  file->createDataSpace(2,grid->getNumberOfCellsGlobal(),9,0);
+  // just to be sure everything is closed.
+  file->closeDataSpaces();
+
+//  file->createFileSpace(2,grid->getNumberOfCellsGlobal(),9,0);
+  file->createFileSpace(1,grid->getNumberOfCellsGlobal(),NULL,NULL);
   file->createDataSet("CellIds",H5T_NATIVE_INT,compress);
 
   int *cell_ids = grid->getCellIds();
   grid->convertLocalCellDataGtoN(cell_ids);
 
-  file->setHyperSlab(grid->getNumberOfCellsLocal(),1);
+  file->setHyperSlab(grid->getNumberOfCellsLocal());
   file->writeInt(cell_ids);
 
   delete [] cell_ids;
 
   file->closeDataSet();
-  file->closeDataSpace();
 
 // natural ids
-  file->createDataSpace(1,grid->getNumberOfCellsGlobal(),0,0);
+  file->createFileSpace(1,grid->getNumberOfCellsGlobal(),NULL,NULL);
   file->createDataSet("NaturalIds",H5T_NATIVE_INT,compress);
 
   int *natural_ids = grid->getCellIdsNatural();
@@ -400,12 +403,42 @@ void Output::printHDFMesh2() {
   delete [] material_ids;
 
   file->closeDataSet();
-  file->closeDataSpace();
+  file->closeDataSpaces();
 
+  // cell vertices
+  file->createFileSpace(2,grid->getNumberOfCellsGlobal(),8,NULL);
+  file->createDataSet("CellVertices",H5T_NATIVE_INT,compress);
+  file->createMemorySpace(1,grid->getNumberOfCellsGlobal(),NULL,NULL);
+
+  int offset = 0;
+  int n = grid->getNumberOfCellsLocal();
+  MPI_Exscan(&n,&offset,1,MPI_INT,MPI_SUM,PETSC_COMM_WORLD);
+
+  for (int ivert=0; ivert<8; ivert++) {
+
+    int *vertex_ids = grid->getCellVertexIds(ivert+1);
+    grid->convertLocalCellDataGtoN(vertex_ids);
+
+    int start[3] = {offset,ivert,0};
+    int stride[3] = {1,8,1};
+    int count[3] = {n,1,1};
+    int block[3] = {1,1,1};
+    file->setHyperSlab(start,stride,count,NULL);
+    file->writeInt(vertex_ids);
+    delete [] vertex_ids;
+  }
+
+  file->closeDataSet();
+  file->closeDataSpaces();
+
+  // close cell group
   file->closeGroup();
+
+#if 1
 
 // vertices
   file->createGroup("Vertices");
+
   file->createDataSpace(1,grid->getNumberOfVerticesGlobal(),0,0);
 
 // natural ids
@@ -418,7 +451,6 @@ void Output::printHDFMesh2() {
   file->closeDataSet();
 
   delete [] natural_ids;
-
 // x-coordinate
   file->createDataSet("X-Coordinates",H5T_NATIVE_DOUBLE,compress);
 
@@ -456,8 +488,12 @@ void Output::printHDFMesh2() {
 
   delete [] coordinates;
 
-  file->closeDataSpace();
+  file->closeDataSpaces();
   file->closeGroup();
+
+#endif
+
+#if 0
 
 // boundary connections
   file->createGroup("BoundaryConnections");
@@ -468,30 +504,55 @@ void Output::printHDFMesh2() {
 // condition id
     char *name = cur_set->condition->getName();
     file->writeString("Condition",name);
-// face vertex ids
-    file->createDataSpace(2,cur_set->getNumberOfConnections(),4,0);
-    file->createDataSet("FaceVertexIds",H5T_NATIVE_INT,compress);
 
-    int *vertex_ids = new int[4*cur_set->getNumberOfConnections()];
-    Connection *cur_conn = cur_set->list;
-    int count = 0;
-    int face_vertices[4];
+// cell ids
+    file->createDataSpace(1,cur_set->getNumberOfConnectionsGlobal(),0,0);
+    file->createDataSet("CellIds",H5T_NATIVE_INT,compress);
 
-    while (cur_conn) {
-      grid->cells[cur_conn->cell].getHexFaceVertices(cur_conn->face,face_vertices);
-      for (int i=0; i<4; i++)
-        vertex_ids[count*4+i] = face_vertices[i];
-      count++;
-      cur_conn = cur_conn->next;
+    int num_connections_local = cur_set->getNumberOfConnectionsLocal();
+    cell_ids = cur_set->getCellIdsNatural();
+    // convert cell_ids in local numbering to natural, no need to reorder for now
+    for (int i=0; i<num_connections_local; i++) {
+      cell_ids[i] = grid->cell_mapping_ghosted_to_natural[
+                          grid->cell_mapping_local_to_ghosted[cell_ids[i]]];
     }
-    file->writeInt(vertex_ids);
+
+    file->setHyperSlab(num_connections_local);
+    file->writeInt(cell_ids);
+    delete [] cell_ids;
+    file->closeDataSet();
+    file->closeDataSpaces();
+
+// face vertex ids
+
+    file->createFileSpace(2,cur_set->getNumberOfConnectionsGlobal(),4,NULL);
+    file->createDataSet("FaceVertexIds",H5T_NATIVE_INT,compress);
+    file->createMemorySpace(1,cur_set->getNumberOfConnectionsGlobal(),NULL,NULL);
+
+    offset = 0;
+    n = num_connections_local;
+    MPI_Exscan(&n,&offset,1,MPI_INT,MPI_SUM,PETSC_COMM_WORLD);
+
+    for (int ivert=0; ivert<4; ivert++) {
+
+      int *vertex_ids = cur_set->getFaceVertexIds(ivert+1);
+      int start[3] = {offset,ivert,0};
+      int stride[3] = {1,4,1};
+      int count[3] = {n,1,1};
+      int block[3] = {1,1,1};
+      file->setHyperSlab(start,stride,count,NULL);
+      file->writeInt(vertex_ids);
+      delete [] vertex_ids;
+    }
 
     file->closeDataSet();
-    file->closeDataSpace();
+    file->closeDataSpaces();
     file->closeGroup();
     cur_set = cur_set->next;
   }
   file->closeGroup();
+
+#endif
 
 // conditions
   file->createGroup("Conditions");
@@ -518,7 +579,7 @@ void Output::printHDFMesh2() {
 
     file->closeDataSet();
 
-    file->closeDataSpace();
+    file->closeDataSpaces();
     file->closeGroup();
     cur_conn = cur_conn->next;
   } 

@@ -13,6 +13,8 @@ public:
   virtual ~HDF();
 
   void createGroup(char *group_name);
+  void createFileSpace(int rank, int dim0, int dim1, int idim2);
+  void createMemorySpace(int rank, int dim0, int dim1, int idim2);
   void createDataSpace(int rank, int dim0, int dim1, int idim2);
   void createDataSpace(hid_t *space_id, int rank, int dim0, int dim1, 
                        int idim2);
@@ -20,10 +22,11 @@ public:
                               int idim2, int max_dim0, int max_dim1, 
                               int max_dim2);
   void setHyperSlab(int n);
-  void setHyperSlab(int n, int stride);
+  void setHyperSlab(int n, int stride0);
+  void setHyperSlab(int *start, int *stride, int *count, int *block);
   void createDataSet(char *data_set_name, hid_t type, int compress);
   void closeGroup();
-  void closeDataSpace();
+  void closeDataSpaces();
   static void closeDataSpace(hid_t *space_id);
   void closeDataSet();
   void writeInt(int *values);
