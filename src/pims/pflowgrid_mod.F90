@@ -1709,6 +1709,20 @@ end subroutine pflowgrid_Setup_SNES
  type(pflowGrid) :: grid
  type(pflow_localpatch_info) :: locpat
  
+interface
+   subroutine pims_vecgetarrayf90(grid, patch, vec, f90ptr, ierr)
+     use pflow_gridtype_module
+     implicit none
+#include "include/finclude/petsc.h"
+
+     type(pflowGrid), intent(inout) :: grid
+     type(pflow_localpatch_info) :: patch
+     Vec :: vec
+     PetscScalar, dimension(:), pointer :: f90ptr
+     integer :: ierr
+   end subroutine pims_vecgetarrayf90
+end interface
+
  integer :: myrank, nc, ibc, ir, ii1,ii2,jj1, jj2, kk1, kk2, i,j,k
  integer :: m,n,ng,ird, ierr
  PetscScalar, pointer :: dx_loc_p(:), dy_loc_p(:), dz_loc_p(:)
@@ -1792,9 +1806,11 @@ end subroutine pflowgrid_Setup_SNES
     allocate(locpat%varbc(1:(grid%ndof+1)*(2+4*grid%nphase )))
     endif
 
- call VecGetArrayF90(grid%dx_loc, dx_loc_p, ierr)
-  call VecGetArrayF90(grid%dy_loc, dy_loc_p, ierr)
-  call VecGetArrayF90(grid%dz_loc, dz_loc_p, ierr)
+    
+
+ call pims_vecgetarrayf90(grid, locpat, grid%dx_loc, dx_loc_p, ierr)
+  call pims_vecgetarrayf90(grid, locpat, grid%dy_loc, dy_loc_p, ierr)
+  call pims_vecgetarrayf90(grid, locpat, grid%dz_loc, dz_loc_p, ierr)
 
 
 
@@ -1903,9 +1919,13 @@ end subroutine pflowgrid_Setup_SNES
       enddo ! ir
     enddo ! ibc
   endif
-  call VecRestoreArrayF90(grid%dx_loc, dx_loc_p, ierr)
-  call VecRestoreArrayF90(grid%dy_loc, dy_loc_p, ierr)
-  call VecRestoreArrayF90(grid%dz_loc, dz_loc_p, ierr)
+  
+  
+  if(grid%Samrai_drive==PETSC_FALSE) then
+     call VecRestoreArrayF90(grid%dx_loc, dx_loc_p, ierr)
+     call VecRestoreArrayF90(grid%dy_loc, dy_loc_p, ierr)
+     call VecRestoreArrayF90(grid%dz_loc, dz_loc_p, ierr)
+  endif
 
   if(locpat%nconnbc .ne. nc) then
     write(*,*) 'Error in computing boundary connections: ', &
