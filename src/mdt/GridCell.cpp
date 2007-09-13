@@ -56,41 +56,42 @@ int GridCell::getMaterialId() { return material_id; }
 int GridCell::getActive() { return active; }
 
 void GridCell::getHexFaceVertices(int face, int *vertex_list) {
+  vertex_list[0] = 4;
   if (face == WEST) {
-    vertex_list[0] = vertices[1];
-    vertex_list[1] = vertices[5];
-    vertex_list[2] = vertices[8];
-    vertex_list[3] = vertices[4];
+    vertex_list[1] = vertices[1];
+    vertex_list[2] = vertices[5];
+    vertex_list[3] = vertices[8];
+    vertex_list[4] = vertices[4];
   }
   else if (face == EAST) {
-    vertex_list[0] = vertices[2];
-    vertex_list[1] = vertices[3];
-    vertex_list[2] = vertices[7];
-    vertex_list[3] = vertices[6];
+    vertex_list[1] = vertices[2];
+    vertex_list[2] = vertices[3];
+    vertex_list[3] = vertices[7];
+    vertex_list[4] = vertices[6];
   }
   else if (face == SOUTH) {
-    vertex_list[0] = vertices[1];
-    vertex_list[1] = vertices[2];
-    vertex_list[2] = vertices[8];
-    vertex_list[3] = vertices[5];
+    vertex_list[1] = vertices[1];
+    vertex_list[2] = vertices[2];
+    vertex_list[3] = vertices[8];
+    vertex_list[4] = vertices[5];
   }
   else if (face == NORTH) {
-    vertex_list[0] = vertices[3];
-    vertex_list[1] = vertices[4];
-    vertex_list[2] = vertices[8];
-    vertex_list[3] = vertices[7];
+    vertex_list[1] = vertices[3];
+    vertex_list[2] = vertices[4];
+    vertex_list[3] = vertices[8];
+    vertex_list[4] = vertices[7];
   }
   else if (face == BOTTOM) {
-    vertex_list[0] = vertices[1];
-    vertex_list[1] = vertices[4];
-    vertex_list[2] = vertices[3];
-    vertex_list[3] = vertices[2];
+    vertex_list[1] = vertices[1];
+    vertex_list[2] = vertices[4];
+    vertex_list[3] = vertices[3];
+    vertex_list[4] = vertices[2];
   }
   else if (face == TOP) {
-    vertex_list[0] = vertices[5];
-    vertex_list[1] = vertices[6];
-    vertex_list[2] = vertices[7];
-    vertex_list[3] = vertices[8];
+    vertex_list[1] = vertices[5];
+    vertex_list[2] = vertices[6];
+    vertex_list[3] = vertices[7];
+    vertex_list[4] = vertices[8];
   }
 }
 

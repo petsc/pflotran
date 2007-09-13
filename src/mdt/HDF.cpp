@@ -293,6 +293,9 @@ void HDF::writeString(char *title, char *string) {
   H5Pset_dxpl_mpio(prop_id,H5FD_MPIO_COLLECTIVE);
 #endif
   H5Dwrite(data_set_id,string_type,H5S_ALL,H5S_ALL,prop_id,string);
+  H5Pclose(prop_id);
+  closeDataSet();
+  closeDataSpaces();
 }
 
 HDF::~HDF() {

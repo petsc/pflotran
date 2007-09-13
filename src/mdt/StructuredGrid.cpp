@@ -134,11 +134,11 @@ void StructuredGrid::setOrigin(double origx, double origy, double origz) {
   local_origin[2] = global_origin[2] + sumz;
 
   /*
-  delete(dx);
+  delete [] dx;
   dx = NULL;
-  delete(dy);
+  delete [] dy;
   dy = NULL;
-  delete(dz);
+  delete [] dz;
   dz = NULL;
   */
 }

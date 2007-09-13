@@ -124,7 +124,7 @@ void Output::writeIntVectorInNaturalOrder(FILE *fp, Vec v, int one_per_line) {
     MPI_Send(values,grid->num_cells_local,MPI_INTEGER,0,grid->num_cells_local,
              PETSC_COMM_WORLD);
   }
-  delete(values);
+  delete [] values;
 }
 
 void Output::printBoundarySets() {
@@ -152,205 +152,6 @@ void Output::printBoundarySets() {
 }
 
 void Output::printHDFMesh() {
-#if 0
-  char filename[32];
-  strcpy(filename,"grid.h5");
-
-  hid_t file_id; // file identifier
-  hid_t prop_id; // property list
-  hid_t cell_grp_id; // cell group identifier
-  hid_t vert_grp_id; // vertex group identifier
-  hid_t data_space_id; // data space identifier (file space)
-  hid_t data_set_id; // data set identifier (memory space)
-  herr_t status;
-
-  // set up parallel access, if applicable
-  prop_id = H5Pcreate(H5P_FILE_ACCESS);
-#ifdef PARALLEL
-  H5Pset_fapl_mpio(prop_id,PETSC_COMM_WORLD,MPI_INFO_NULL);
-#endif
-
-// Create a new file collectively and release property list identifier
-  /* Access flags:
-     H5F_ACC_TRUNC  - overwrites existing file, deleting original contents
-     H5F_ACC_EXCL   - open should fail if file exist
-     H5F_ACC_RDONLY - read access only
-     H5F_ACC_RDWR   - read and write access
-  */                                          // create id // access id
-  file_id = H5Fcreate(filename, H5F_ACC_TRUNC, H5P_DEFAULT, prop_id);
-  H5Pclose(prop_id);
-
-// Open cell group  
-/*
-  herr_t (*old_func)(void*);
-  void  *old_client_data;
-  H5Eget_auto(&old_func, &old_client_data);
-  H5Eset_auto(NULL,NULL);
-  cell_grp_id = H5Gopen(file_id,"Cells");
-  H5Eset_auto(old_func,old_client_data);
-  if (cell_grp_id < 0)      */ // does not matter since file is being overwritten
-                                     // < 0 sets to default hint
-    cell_grp_id = H5Gcreate(file_id,"Cells",-1) ;
-
-// Write cells
-  // Create data space 
-  int rank = 2;
-  hsize_t dims[3];
-  hsize_t max_dims[3];
-  dims[0] = grid->getNumberOfCells();
-  dims[1] = 8;
-  max_dims[0] = grid->getNumberOfCells();
-  max_dims[1] = 8;
-  data_space_id = H5Screate_simple(rank,dims,max_dims);
-
-  // Create data set
-  prop_id = H5Pcreate(H5P_DATASET_CREATE);
-  // here is where you set chunking, shuffle, compression, deflate, fill_value, etc.
-  data_set_id = H5Dcreate(cell_grp_id,"VertexIds",H5T_NATIVE_INT,data_space_id,
-                          prop_id);
-  H5Pclose(prop_id);
-
-  prop_id = H5Pcreate(H5P_DATASET_XFER);
-#ifdef PARALLEL
-  H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
-#endif
-
-  int *vertex_ids = new int[grid->getNumberOfCells()*8];
-  for (int i=0; i<grid->getNumberOfCells()*8; i++)
-    vertex_ids[i] = -999;
-  for (int icell=0; icell<grid->getNumberOfCells(); icell++)
-    for (int ivert=0; ivert<grid->cells[icell].vertices[0]; ivert++)
-      vertex_ids[ivert+icell*8] = grid->cells[icell].vertices[ivert+1]; // vertices[0] store the number of verts
-
-  H5Dwrite(data_set_id,H5T_NATIVE_INT,H5S_ALL,H5S_ALL,prop_id,vertex_ids);
-  H5Pclose(prop_id);
-
-  delete [] vertex_ids;
-
-  H5Dclose(data_set_id);
-  H5Sclose(data_space_id);
-  H5Gclose(cell_grp_id);
-
-// Open vertex group  
-/*
-  herr_t (*old_func)(void*);
-  void  *old_client_data;
-  H5Eget_auto(&old_func, &old_client_data);
-  H5Eset_auto(NULL,NULL);
-  cell_grp_id = H5Gopen(file_id,"Cells");
-  H5Eset_auto(old_func,old_client_data);
-  if (cell_grp_id < 0)      */ // does not matter since file is being overwritten
-                                     // < 0 sets to default hint
-    vert_grp_id = H5Gcreate(file_id,"Vertices",-1) ;
-
-// Write vertices
-  // Create data space 
-  rank = 1;
-  dims[0] = grid->getNumberOfVertices();
-  max_dims[0] = grid->getNumberOfVertices();
-  data_space_id = H5Screate_simple(rank,dims,max_dims);
-
-// vertex natural ids
-  // Create data set
-  prop_id = H5Pcreate(H5P_DATASET_CREATE);
-  // here is where you set chunking, shuffle, compression, deflate, fill_value, etc.
-  data_set_id = H5Dcreate(vert_grp_id,"Ids",H5T_NATIVE_INT,data_space_id,
-                          prop_id);
-  H5Pclose(prop_id);
-
-  prop_id = H5Pcreate(H5P_DATASET_XFER);
-#ifdef PARALLEL
-  H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
-#endif
-
-  vertex_ids = new int[grid->getNumberOfVertices()];
-  for (int ivert=0; ivert<grid->getNumberOfVertices(); ivert++)
-    vertex_ids[ivert] = -999;
-  for (int ivert=0; ivert<grid->getNumberOfVertices(); ivert++)
-    vertex_ids[ivert] = grid->vertices[ivert].getIdNatural();
-
-  H5Dwrite(data_set_id,H5T_NATIVE_INT,H5S_ALL,H5S_ALL,prop_id,vertex_ids);
-  H5Pclose(prop_id);
-  H5Dclose(data_set_id);
-
-  delete [] vertex_ids;
-
-// x-coordinate
-  // Create data set
-  prop_id = H5Pcreate(H5P_DATASET_CREATE);
-  // here is where you set chunking, shuffle, compression, deflate, fill_value, etc.
-  data_set_id = H5Dcreate(vert_grp_id,"X-Coordinates",H5T_NATIVE_DOUBLE,data_space_id,
-                          prop_id);
-  H5Pclose(prop_id);
-
-  prop_id = H5Pcreate(H5P_DATASET_XFER);
-#ifdef PARALLEL
-  H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
-#endif
-
-  double *coordinate = new double[grid->getNumberOfVertices()];
-  for (int ivert=0; ivert<grid->getNumberOfVertices(); ivert++)
-    coordinate[ivert] = -999.;
-  for (int ivert=0; ivert<grid->getNumberOfVertices(); ivert++)
-    coordinate[ivert] = grid->vertices[ivert].getX();
-
-  H5Dwrite(data_set_id,H5T_NATIVE_DOUBLE,H5S_ALL,H5S_ALL,prop_id,coordinate);
-  H5Pclose(prop_id);
-  H5Dclose(data_set_id);
-
-// y-coordinate
-  // Create data set
-  prop_id = H5Pcreate(H5P_DATASET_CREATE);
-  // here is where you set chunking, shuffle, compression, deflate, fill_value, etc.
-  data_set_id = H5Dcreate(vert_grp_id,"Y-Coordinates",H5T_NATIVE_DOUBLE,data_space_id,
-                          prop_id);
-  H5Pclose(prop_id);
-
-  prop_id = H5Pcreate(H5P_DATASET_XFER);
-#ifdef PARALLEL
-  H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
-#endif
-
-  coordinate = new double[grid->getNumberOfVertices()];
-  for (int ivert=0; ivert<grid->getNumberOfVertices(); ivert++)
-    coordinate[ivert] = -999.;
-  for (int ivert=0; ivert<grid->getNumberOfVertices(); ivert++)
-    coordinate[ivert] = grid->vertices[ivert].getY();
-
-  H5Dwrite(data_set_id,H5T_NATIVE_DOUBLE,H5S_ALL,H5S_ALL,prop_id,coordinate);
-  H5Pclose(prop_id);
-  H5Dclose(data_set_id);
-
-// z-coordinate
-  // Create data set
-  prop_id = H5Pcreate(H5P_DATASET_CREATE);
-  // here is where you set chunking, shuffle, compression, deflate, fill_value, etc.
-  data_set_id = H5Dcreate(vert_grp_id,"Z-Coordinates",H5T_NATIVE_DOUBLE,data_space_id,
-                          prop_id);
-  H5Pclose(prop_id);
-
-  prop_id = H5Pcreate(H5P_DATASET_XFER);
-#ifdef PARALLEL
-  H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
-#endif
-
-  for (int ivert=0; ivert<grid->getNumberOfVertices(); ivert++)
-    coordinate[ivert] = -999.;
-  for (int ivert=0; ivert<grid->getNumberOfVertices(); ivert++)
-    coordinate[ivert] = grid->vertices[ivert].getZ();
-
-  H5Dwrite(data_set_id,H5T_NATIVE_DOUBLE,H5S_ALL,H5S_ALL,prop_id,coordinate);
-  H5Pclose(prop_id);
-  H5Dclose(data_set_id);
-
-  H5Sclose(data_space_id);
-  H5Gclose(vert_grp_id);
-
-  H5Fclose(file_id);
-#endif
-}
-
-void Output::printHDFMesh2() {
 
   PetscPrintf(PETSC_COMM_WORLD,"Printing HDF grid.\n");
 
@@ -374,6 +175,7 @@ void Output::printHDFMesh2() {
   file->writeInt(cell_ids);
 
   delete [] cell_ids;
+  cell_ids = NULL;
 
   file->closeDataSet();
 
@@ -388,6 +190,7 @@ void Output::printHDFMesh2() {
   file->writeInt(natural_ids);
 
   delete [] natural_ids;
+  natural_ids = NULL;
 
   file->closeDataSet();
 
@@ -401,6 +204,7 @@ void Output::printHDFMesh2() {
   file->setHyperSlab(grid->getNumberOfCellsLocal());
   file->writeInt(material_ids);
   delete [] material_ids;
+  material_ids = NULL;
 
   file->closeDataSet();
   file->closeDataSpaces();
@@ -426,6 +230,7 @@ void Output::printHDFMesh2() {
     file->setHyperSlab(start,stride,count,NULL);
     file->writeInt(vertex_ids);
     delete [] vertex_ids;
+    vertex_ids = NULL;
   }
 
   file->closeDataSet();
@@ -434,66 +239,68 @@ void Output::printHDFMesh2() {
   // close cell group
   file->closeGroup();
 
-#if 1
-
 // vertices
   file->createGroup("Vertices");
 
   file->createDataSpace(1,grid->getNumberOfVerticesGlobal(),0,0);
 
 // natural ids
+
   file->createDataSet("NaturalIds",H5T_NATIVE_INT,compress);
 
-  int num_print_vertices_local = grid->getVertexIdsNaturalLocal(natural_ids);
+  int num_print_vertices_local = grid->getVertexIdsNaturalLocal(&natural_ids);
 
   file->setHyperSlab(num_print_vertices_local);
   file->writeInt(natural_ids);
-  file->closeDataSet();
 
   delete [] natural_ids;
+  natural_ids = NULL;
+
+  file->closeDataSet();
+
 // x-coordinate
   file->createDataSet("X-Coordinates",H5T_NATIVE_DOUBLE,compress);
 
   double *coordinates = NULL;
   num_print_vertices_local = 
-                grid->getVertexCoordinatesNaturalLocal(coordinates,0); // 0 = X
+                grid->getVertexCoordinatesNaturalLocal(&coordinates,0); // 0 = X
 
   file->setHyperSlab(num_print_vertices_local);
   file->writeDouble(coordinates);
   file->closeDataSet();
 
   delete [] coordinates;
+  coordinates = NULL;
 
 // y-coordinate
   file->createDataSet("Y-Coordinates",H5T_NATIVE_DOUBLE,compress);
 
   num_print_vertices_local = 
-                grid->getVertexCoordinatesNaturalLocal(coordinates,1); // 1 = Y
+                grid->getVertexCoordinatesNaturalLocal(&coordinates,1); // 1 = Y
 
   file->setHyperSlab(num_print_vertices_local);
   file->writeDouble(coordinates);
   file->closeDataSet();
 
   delete [] coordinates;
+  coordinates = NULL;
 
 // z-coordinate
   file->createDataSet("Z-Coordinates",H5T_NATIVE_DOUBLE,compress);
 
   num_print_vertices_local = 
-                grid->getVertexCoordinatesNaturalLocal(coordinates,2); // 2 = Z
+                grid->getVertexCoordinatesNaturalLocal(&coordinates,2); // 2 = Z
 
   file->setHyperSlab(num_print_vertices_local);
   file->writeDouble(coordinates);
   file->closeDataSet();
 
   delete [] coordinates;
+  coordinates = NULL;
 
   file->closeDataSpaces();
+
   file->closeGroup();
-
-#endif
-
-#if 0
 
 // boundary connections
   file->createGroup("BoundaryConnections");
@@ -520,10 +327,12 @@ void Output::printHDFMesh2() {
     file->setHyperSlab(num_connections_local);
     file->writeInt(cell_ids);
     delete [] cell_ids;
+    cell_ids = NULL;
     file->closeDataSet();
     file->closeDataSpaces();
 
-// face vertex ids
+#if 1
+    // face vertex ids
 
     file->createFileSpace(2,cur_set->getNumberOfConnectionsGlobal(),4,NULL);
     file->createDataSet("FaceVertexIds",H5T_NATIVE_INT,compress);
@@ -535,7 +344,7 @@ void Output::printHDFMesh2() {
 
     for (int ivert=0; ivert<4; ivert++) {
 
-      int *vertex_ids = cur_set->getFaceVertexIds(ivert+1);
+      int *vertex_ids = cur_set->getFaceVertexIds(ivert);
       int start[3] = {offset,ivert,0};
       int stride[3] = {1,4,1};
       int count[3] = {n,1,1};
@@ -543,16 +352,17 @@ void Output::printHDFMesh2() {
       file->setHyperSlab(start,stride,count,NULL);
       file->writeInt(vertex_ids);
       delete [] vertex_ids;
+      vertex_ids = NULL;
     }
 
     file->closeDataSet();
     file->closeDataSpaces();
+#endif
     file->closeGroup();
     cur_set = cur_set->next;
   }
-  file->closeGroup();
 
-#endif
+  file->closeGroup();
 
 // conditions
   file->createGroup("Conditions");

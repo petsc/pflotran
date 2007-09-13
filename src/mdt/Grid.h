@@ -82,8 +82,8 @@ public:
 
   void convertLocalCellDataGtoN(int *data);
   void convertLocalCellDataGtoN(double *data);
-  int getVertexIdsNaturalLocal(int *natural_ids);
-  int getVertexCoordinatesNaturalLocal(double *coordinates, int direction);
+  int getVertexIdsNaturalLocal(int **natural_ids);
+  int getVertexCoordinatesNaturalLocal(double **coordinates, int direction);
   int *getCellMaterialIds();
   int *getCellIds();
   int *getCellIdsNatural();

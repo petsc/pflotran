@@ -96,7 +96,7 @@ int *Grid::getCellVertexIds(int ivert) {
 
 }
 
-int Grid::getVertexIdsNaturalLocal(int *natural_ids) {
+int Grid::getVertexIdsNaturalLocal(int **natural_ids) {
 
 /* need to decide whether we want to print hte vertices truly in natural ordering.  I guess
   natural ordering will always start at zero, thus we can create a vector of size num_vertices_global
@@ -109,46 +109,49 @@ int Grid::getVertexIdsNaturalLocal(int *natural_ids) {
   VecSetSizes(vec,PETSC_DECIDE,getNumberOfVerticesGlobal());
   VecSetType(vec,VECMPI);
 
-  natural_ids = new int[num_vertices_local];
+  *natural_ids = new int[num_vertices_local];
   for (int ivert=0; ivert<num_vertices_local; ivert++)
-    natural_ids[ivert] = -999;
+    (*natural_ids)[ivert] = -999;
   for (int ivert=0; ivert<num_vertices_ghosted; ivert++) {
     int vert_local_id = vertices[ivert].getIdLocal();
     if (vert_local_id > -1)
-      natural_ids[vert_local_id] = vertices[ivert].getIdNatural();
+      (*natural_ids)[vert_local_id] = vertices[ivert].getIdNatural();
   }
 
   PetscScalar *double_ids = new double[num_vertices_local];
   for (int ivert=0; ivert<num_vertices_local; ivert++)
-    double_ids[ivert] = (double)natural_ids[ivert];
-  VecSetValues(vec,num_vertices_local,natural_ids,double_ids,INSERT_VALUES);
+    double_ids[ivert] = (double)(*natural_ids)[ivert];
+  VecSetValues(vec,num_vertices_local,*natural_ids,double_ids,INSERT_VALUES);
   VecAssemblyBegin(vec);
   VecAssemblyEnd(vec);
-  delete double_ids;
-  delete natural_ids;
+  delete [] double_ids;
+  double_ids = NULL;
+  delete [] *natural_ids;
+  *natural_ids = NULL;
 
   int n = VecGetLocalSize(vec);
-  natural_ids = new int[n];
+  (*natural_ids) = new int[n];
   VecGetArray(vec,&vec_ptr);
   for (int ivert=0; ivert<num_vertices_local; ivert++)
-    natural_ids[ivert] = (int)(vec_ptr[ivert]+0.0001);
+    (*natural_ids)[ivert] = (int)(vec_ptr[ivert]+0.0001);
   VecRestoreArray(vec,&vec_ptr);
   VecDestroy(vec);
   return n;
 
 }
 
-int Grid::getVertexCoordinatesNaturalLocal(double *coordinates, int direction) {
+int Grid::getVertexCoordinatesNaturalLocal(double **coordinates, int direction) {
 
   Vec vec;
   PetscScalar *vec_ptr = NULL;
   VecCreate(PETSC_COMM_WORLD,&vec);
   VecSetSizes(vec,PETSC_DECIDE,getNumberOfVerticesGlobal());
+  VecSetType(vec,VECMPI);
 
   int *natural_ids = new int[num_vertices_local];
-  coordinates = new double[num_vertices_local];
+  *coordinates = new double[num_vertices_local];
   for (int ivert=0; ivert<num_vertices_local; ivert++) {
-    coordinates[ivert] = -999.;
+    (*coordinates)[ivert] = -999.;
     natural_ids[ivert] = -999;
   }
   for (int ivert=0; ivert<num_vertices_ghosted; ivert++) {
@@ -156,25 +159,27 @@ int Grid::getVertexCoordinatesNaturalLocal(double *coordinates, int direction) {
     if (vert_local_id > -1) {
       natural_ids[vert_local_id] = vertices[ivert].getIdNatural();
       if (direction == 0) // x-direction
-        coordinates[vert_local_id] = vertices[ivert].getX();
+        (*coordinates)[vert_local_id] = vertices[ivert].getX();
       else if (direction == 1) // y-direction
-        coordinates[vert_local_id] = vertices[ivert].getY();
+        (*coordinates)[vert_local_id] = vertices[ivert].getY();
       else // z-direction
-        coordinates[vert_local_id] = vertices[ivert].getZ();
+        (*coordinates)[vert_local_id] = vertices[ivert].getZ();
     }
   }
 
-  VecSetValues(vec,num_vertices_local,natural_ids,coordinates,INSERT_VALUES);
+  VecSetValues(vec,num_vertices_local,natural_ids,*coordinates,INSERT_VALUES);
   VecAssemblyBegin(vec);
   VecAssemblyEnd(vec);
   delete [] natural_ids;
-  delete [] coordinates;
+  natural_ids = NULL;
+  delete [] *coordinates;
+  *coordinates = NULL;
 
   int n = VecGetLocalSize(vec);
-  coordinates = new double[n];
+  *coordinates = new double[n];
   VecGetArray(vec,&vec_ptr);
   for (int ivert=0; ivert<num_vertices_local; ivert++)
-    coordinates[ivert] = vec_ptr[ivert];
+    (*coordinates)[ivert] = vec_ptr[ivert];
   VecRestoreArray(vec,&vec_ptr);
   VecDestroy(vec);
   return n;

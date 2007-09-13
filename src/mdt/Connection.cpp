@@ -8,11 +8,11 @@
 //
 //}
 
-Connection::Connection(int icell, int *vertices) {
+Connection::Connection(int icell, int *vertices_) {
 
   cell = icell;
-  for (int i=0; i<=vertices[0]; i++)
-    vertices[i] = vertices[i];
+  for (int i=0; i<=vertices_[0]; i++)
+    vertices[i] = vertices_[i];
   next = NULL;
 
 }
