@@ -227,6 +227,10 @@ void Grid::setGridSpacing(double dx, double dy, double dz) {
   structuredGrid->setGridSpacing(dx,dy,dz);
 }
 
+void Grid::setLocalGridSpacing() {
+  structuredGrid->setLocalGridSpacing();
+}
+
 void Grid::setOrigin(double x, double y, double z) {
   structuredGrid->setOrigin(x,y,z);
 }

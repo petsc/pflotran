@@ -77,6 +77,7 @@ public:
   Vec getGridCellActivities();
   void setGridSpacing(double *dx, double *dy, double *dz);
   void setGridSpacing(double dx, double dy, double dz);
+  void setLocalGridSpacing();
   void setOrigin(double x, double y, double z);
   void setRotation(double r);
   void computeCoordinates();

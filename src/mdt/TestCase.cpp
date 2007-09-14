@@ -6,18 +6,35 @@ TestCase::TestCase(Grid **grid_) {
   double my = 1.;
   double mz = 1.;
 
+//#define GRID_3X3X3
+#ifdef GRID_3X3X3
+
   int nx = 3;
   int ny = 3;
   int nz = 3;
-  int n = nx*ny*nz;
 
   double dx = 1.;
   double dy = 1.;
   double dz = 1.;
 
+#else
+
+  int nx = 5;
+  int ny = 4;
+  int nz = 3;
+
+  double dx[5] = {1.,2.,3.,2.,1.};
+  double dy[4] = {1.,2.,3.,4.};
+  double dz[3] = {1.,2.,1.};
+
+#endif
+
+  int n = nx*ny*nz;
+
   *grid_ = new Grid(nx,ny,nz);
   Grid *grid = *grid_;
   grid->setGridSpacing(dx,dy,dz);
+  grid->setLocalGridSpacing();
 
   grid->setOrigin(0.,0.,0.);
   grid->computeCoordinates();
@@ -28,6 +45,7 @@ TestCase::TestCase(Grid **grid_) {
   grid->setUpVertices();
   grid->mapVerticesToCells();
 
+#ifdef GRID_3X3X3
   for (int ia=0; ia<grid->getN(); ia++)
     setMaterialIdBasedOnNaturalId(ia,1,grid);
   for (int ia=5; ia<grid->getN(); ia++)
@@ -44,7 +62,48 @@ TestCase::TestCase(Grid **grid_) {
   setActiveBasedOnNaturalId(10,0,grid);
   setActiveBasedOnNaturalId(17,0,grid);
   setActiveBasedOnNaturalId(24,0,grid);
-    
+#else
+  for (int ia=0; ia<grid->getN(); ia++)
+    setMaterialIdBasedOnNaturalId(ia,1,grid);
+  for (int ia=9; ia<grid->getN(); ia++)
+    setMaterialIdBasedOnNaturalId(ia,2,grid);
+  for (int ia=23; ia<grid->getN(); ia++)
+    setMaterialIdBasedOnNaturalId(ia,3,grid);
+
+  setMaterialIdBasedOnNaturalId(11,1,grid);
+  setMaterialIdBasedOnNaturalId(12,1,grid);
+  setMaterialIdBasedOnNaturalId(21,1,grid);
+  setMaterialIdBasedOnNaturalId(22,1,grid);
+  setMaterialIdBasedOnNaturalId(27,1,grid);
+
+  setMaterialIdBasedOnNaturalId(25,2,grid);
+  setMaterialIdBasedOnNaturalId(26,2,grid);
+  setMaterialIdBasedOnNaturalId(31,2,grid);
+  setMaterialIdBasedOnNaturalId(32,2,grid);
+  setMaterialIdBasedOnNaturalId(37,2,grid);
+  setMaterialIdBasedOnNaturalId(40,2,grid);
+
+  setMaterialIdBasedOnNaturalId(24,4,grid);
+  setMaterialIdBasedOnNaturalId(43,4,grid);
+  setMaterialIdBasedOnNaturalId(44,4,grid);
+  setMaterialIdBasedOnNaturalId(48,4,grid);
+  setMaterialIdBasedOnNaturalId(49,4,grid);
+
+  setActiveBasedOnNaturalId(21,0,grid);
+  setActiveBasedOnNaturalId(23,0,grid);
+  setActiveBasedOnNaturalId(26,0,grid);
+  setActiveBasedOnNaturalId(33,0,grid);
+  setActiveBasedOnNaturalId(34,0,grid);
+  setActiveBasedOnNaturalId(38,0,grid);
+  setActiveBasedOnNaturalId(39,0,grid);
+  setActiveBasedOnNaturalId(46,0,grid);
+  setActiveBasedOnNaturalId(47,0,grid);
+  setActiveBasedOnNaturalId(51,0,grid);
+  setActiveBasedOnNaturalId(52,0,grid);
+  setActiveBasedOnNaturalId(55,0,grid);
+
+#endif    
+
   grid->printCells();
   grid->printVertices();
 
