@@ -1484,9 +1484,9 @@ subroutine pflowGrid_setup(grid, inputfile)
   call VecGetArrayF90(grid%dz,dz_p,ierr)
   do n = 1,grid%nlmax
     na = grid%nL2A(n)
-    i= int(na/grid%nxy) + 1
+    k= int(na/grid%nxy) + 1
     j= int(mod(na,grid%nxy)/grid%nx) + 1
-    k= mod(mod(na,grid%nxy),grid%nx) + 1
+    i= mod(mod(na,grid%nxy),grid%nx) + 1
     dx_p(n) = grid%dx0(i)
     dy_p(n) = grid%dy0(j)
     dz_p(n) = grid%dz0(k)
@@ -1546,7 +1546,7 @@ subroutine pflowGrid_setup(grid, inputfile)
             grid%area(nc) = dy_loc_p(mg1) * dz_loc_p(mg1)
           else if (grid%igeom == 2) then
             grid%area(nc) = 2.D0 * Pi * grid%rd(i+grid%nxs) * dz_loc_p(mg1)
-!           print *,'area nc: ',grid%myrank,nc,i,grid%rd(i+grid%nxs)
+           print *,'area nc: r:',grid%myrank,nc,i,grid%rd(i+grid%nxs), grid%area(nc)
           else if (grid%igeom == 3) then
             grid%area(nc) = 4.D0 * Pi * grid%rd(i+grid%nxs)**2
           endif
@@ -1600,10 +1600,11 @@ subroutine pflowGrid_setup(grid, inputfile)
           if (grid%igeom == 1) then
             grid%area(nc) = dx_loc_p(mg1) * dy_loc_p(mg1)
           else if (grid%igeom == 2) then
-            grid%area(nc) =  Pi * (grid%rd(i+grid%nxs)+  &
-                             grid%rd(i-1+grid%nxs))* &
-                             (grid%rd(i+grid%nxs) - grid%rd(i-1+grid%nxs))  
-!           print *, 'area nc ',grid%myrank, nc, i,  grid%area(nc)
+            grid%area(nc) =  Pi * (grid%rd(i+1+grid%nxs- grid%istart)+  &
+                             grid%rd(i+grid%nxs-grid%istart))* &
+                             (grid%rd(i+1+grid%nxs-grid%istart) - &
+                             grid%rd(i+grid%nxs-grid%istart))  
+           print *, 'area nc: z:',grid%myrank, grid%nxs,nc, i,  grid%area(nc)
           endif
           grid%iperm1(nc) = 3
           grid%iperm2(nc) = 3
@@ -1623,7 +1624,7 @@ subroutine pflowGrid_setup(grid, inputfile)
       if (i==0) i = grid%nlx
       volume_p(n) = Pi * (grid%rd(i+grid%nxs) + grid%rd(i-1+grid%nxs))*&
       (grid%rd(i+grid%nxs) - grid%rd(i-1+grid%nxs)) * dz_loc_p(ng)
-     print *, 'setup: Vol ', grid%myrank, n,i, grid%rd(i+grid%nxs),volume_p(n)
+  !   print *, 'setup: Vol ', grid%myrank, n,ng,i, dz_loc_p(ng),grid%rd(i+grid%nxs),volume_p(n)
     else if (grid%igeom == 3) then
     endif
   enddo
@@ -2006,7 +2007,9 @@ subroutine pflowGrid_setup(grid, inputfile)
                       grid%delzbc(nc) = 0.d0
                     endif
                   case(2) ! cylindrical
-                    ird = mod(mod((m),grid%nlxy),grid%nlx) + grid%nxs 
+                    ird = mod(mod((m),grid%nlxy),grid%nlx)
+                    if(ird ==0) ird = grid%nlx
+                     ird =ird + grid%nxs
                     if (grid%iface(ibc) == 1) then
                       grid%distbc(nc) = 0.5d0*dx_loc_p(ng)
                       grid%areabc(nc) = 2.0D0*Pi*grid%rd(ird-1)*dz_loc_p(ng)
@@ -2030,6 +2033,7 @@ subroutine pflowGrid_setup(grid, inputfile)
                       grid%ipermbc(nc) = 2
                       grid%delzbc(nc) = -grid%distbc(nc)
                     endif  
+                    print *, 'cybc:', nc, ird, grid%iface(ibc),grid%areabc(nc)                        
                   case(3) ! spherical
                 end select
               enddo ! i
