@@ -17,15 +17,23 @@ public:
   Hanford300(Grid **grid);
   virtual ~Hanford300();
 
-  void computeRiverBoundary(Grid *grid);
-  void computeWestBoundary(Grid *grid);
-  void computeSouthBoundary(Grid *grid);
-  void computeRechargeBoundary(Grid *grid);
+  void computeTopBoundary(Grid *grid, int complete);
+  void computeBottomBoundary(Grid *grid, int complete);
+  void computeNorthBoundary(Grid *grid, int complete);
+  void computeSouthBoundary(Grid *grid, int complete);
+  void computeEastBoundary(Grid *grid, int complete);
+  void computeWestBoundary(Grid *grid, int complete);
+  void flagGridCells(Grid *grid);
 
 private:
 
   Polygon *river_polygon;
   AsciiGrid **ascii_grids;
+
+  void setMaterialIdBasedOnNaturalId(int natural_id, int material_id,
+                                     Grid *grid);
+  void setActiveBasedOnNaturalId(int natural_id, int active,
+                                 Grid *grid);
 
 };
 
