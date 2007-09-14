@@ -1,5 +1,12 @@
 #include "TestCase.h"
 
+#ifndef MAX
+#define MAX(X,Y) ((X) > (Y) ? (X) : (Y))
+#endif
+#ifndef MIN
+#define MIN(X,Y) ((X) < (Y) ? (X) : (Y))
+#endif
+
 TestCase::TestCase(Grid **grid_) {
 
   double mx = 1.;
