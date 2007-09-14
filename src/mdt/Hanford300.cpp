@@ -106,7 +106,10 @@ Hanford300::Hanford300(Grid **grid_) {
     }
     if (material_id == 0) grid->cells[i].setActive(0);
     grid->cells[i].setMaterialId(material_id);
-    if (!river_polygon->pointInPolygon(x,y)) grid->cells[i].setActive(0);
+    if (!river_polygon->pointInPolygon(x,y)) {
+      grid->cells[i].setActive(0);
+      grid->cells[i].negateMaterialId();
+    }
     if (i%mod == 0) {
       PetscPrintf(PETSC_COMM_WORLD,"%d of %d cells mapped with materials and activity.\n",
                   i,grid->num_cells_ghosted);

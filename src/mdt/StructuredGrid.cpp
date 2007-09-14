@@ -809,6 +809,55 @@ double StructuredGrid::getDz(int k) { return dz[k]; }
 double *StructuredGrid::getOriginPtr() { return &(global_origin[0]); }
 double StructuredGrid::getRotationDegrees() { return rotationZdegrees; }
 
+int StructuredGrid::getNeighboringProcessor(int direction) {
+
+  int pnx, pny, pnz;
+  DAGetInfo(da,PETSC_NULL,PETSC_NULL,PETSC_NULL,PETSC_NULL,
+            &pnx,&pny,&pnz,PETSC_NULL,PETSC_NULL,PETSC_NULL,PETSC_NULL);
+  int iproc = myrank%pnx;
+  int jproc = myrank%(pnx*pny)/pnx;
+  int kproc = myrank/(pnx*pny);
+  int neighbor;
+  switch(direction) {
+    case(NORTH):
+      neighbor = jproc < pny-1 ? iproc+(jproc+1)*pnx+kproc*(pnx*pny) : 
+                                 iproc+kproc*(pnx*pny); // cycle
+      break;
+    case(SOUTH):
+      neighbor = jproc > 0 ? iproc+(jproc-1)*pnx+kproc*(pnx*pny) : 
+                             iproc+(pny-1)*pnx+kproc*(pnx*pny);
+      break;
+    case(EAST):
+      neighbor = iproc < pnx-1 ? iproc+1+jproc*pnx+kproc*(pnx*pny) :
+                                 jproc*pnx+kproc*(pnx*pny);
+      break;
+    case(WEST):
+      neighbor = iproc > 0 ? iproc-1+jproc*pnx+kproc*(pnx*pny) : 
+                             pnx-1+jproc*pnx+kproc*(pnx*pny);
+      break;
+    case(TOP):
+      neighbor = kproc < pnz-1 ? iproc+jproc*pnx+(kproc+1)*(pnx*pny) :
+                                 iproc+jproc*pnx;
+      break;
+    case(BOTTOM):
+      neighbor = kproc > 0 ? iproc+jproc*pnx+(kproc-1)*(pnx*pny) :
+                             iproc+jproc*pnx+(pnz-1)*(pnx*pny);
+      break;
+  }
+  return neighbor;
+}
+
+void StructuredGrid::sendFlag(int *flag, int direction) {
+  MPI_Send(&flag,3,MPI_INTEGER,getNeighboringProcessor(direction),0,
+           PETSC_COMM_WORLD);
+}
+
+void StructuredGrid::receiveFlag(int *flag, int direction) {
+  MPI_Status status;
+  MPI_Recv(&flag,3,MPI_INTEGER,getNeighboringProcessor(direction),0,
+           PETSC_COMM_WORLD,&status);
+}
+
 void StructuredGrid::printAO() {
 
 #include "include/petscao.h"

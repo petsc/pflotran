@@ -327,9 +327,11 @@ void Output::printHDFMesh() {
     PetscPrintf(PETSC_COMM_WORLD," %s\n",cur_set->name);
     file->createGroup(cur_set->name);
 // condition id
-    char *name = cur_set->condition->getName();
-    PetscPrintf(PETSC_COMM_WORLD,"  Condition %s\n",name);
-    file->writeString("Condition",name,INDEPENDENT);
+    if (cur_set->condition) {
+      char *name = cur_set->condition->getName();
+      PetscPrintf(PETSC_COMM_WORLD,"  Condition %s\n",name);
+      file->writeString("Condition",name,INDEPENDENT);
+    }
 
 // cell ids
     file->createDataSpace(1,cur_set->getNumberOfConnectionsGlobal(),0,0);

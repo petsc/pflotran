@@ -59,7 +59,11 @@ public:
   int getNy();
   int getNz();
   int getN();
-  
+
+  int getNeighboringProcessor(int direction);
+  void sendFlag(int *flag, int direction);
+  void receiveFlag(int *flag, int direction);
+
   void getCorners(int *xs, int *ys, int *zs, int *nx, int *ny, int *nz);
   void getGhostCorners(int *xs, int *ys, int *zs, int *nx, int *ny, int *nz);
   

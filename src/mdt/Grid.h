@@ -61,6 +61,9 @@ public:
   int getNy();
   int getNz();
   int getN();
+
+  void sendFlag(int *flag, int direction);
+  void receiveFlag(int *flag, int direction);
   
   void getCorners(int *xs, int *ys, int *zs, int *nx, int *ny, int *nz);
   void getGhostCorners(int *xs, int *ys, int *zs, int *nx, int *ny, int *nz);
@@ -74,6 +77,7 @@ public:
   Vec getGridCellActivities();
   void setGridSpacing(double *dx, double *dy, double *dz);
   void setGridSpacing(double dx, double dy, double dz);
+  void setLocalGridSpacing();
   void setOrigin(double x, double y, double z);
   void setRotation(double r);
   void computeCoordinates();
@@ -88,6 +92,8 @@ public:
   int *getCellIds();
   int *getCellIdsNatural();
   int *getCellVertexIds(int ivert);
+
+  void zeroGridCellFlags();
 
   int num_cells_global;
   int num_cells_local;

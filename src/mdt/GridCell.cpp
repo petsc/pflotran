@@ -40,6 +40,7 @@ void GridCell::setMaterialId(int i) { material_id = i; }
 void GridCell::setActive(int i) { active = i; }
 void GridCell::setActive() { active = 1; }
 void GridCell::setInactive() { active = 0; }
+void GridCell::negateMaterialId() { material_id = -abs(material_id); }
 
 int GridCell::getIdLocal() { return id_local; }
 int GridCell::getIdGhosted() { return id_ghosted; }
@@ -72,7 +73,7 @@ void GridCell::getHexFaceVertices(int face, int *vertex_list) {
   else if (face == SOUTH) {
     vertex_list[1] = vertices[1];
     vertex_list[2] = vertices[2];
-    vertex_list[3] = vertices[8];
+    vertex_list[3] = vertices[6];
     vertex_list[4] = vertices[5];
   }
   else if (face == NORTH) {
