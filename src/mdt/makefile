@@ -1,8 +1,8 @@
 common_src   = ./
 
-hdf5 = 1
+#hdf5 = 1
 ifdef hdf5
-  HDF5_FLAGS = -I${HDF5_INCLUDE}
+  HDF5_FLAGS = -I${HDF5_INCLUDE} -DUSE_HDF5
   HDF5_LIBS = -L${HDF5_LIB} -lhdf5 -lz
 endif
 

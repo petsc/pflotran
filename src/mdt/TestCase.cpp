@@ -104,9 +104,8 @@ TestCase::TestCase(Grid **grid_) {
 
 #endif    
 
-  grid->printCells();
-  grid->printVertices();
-
+//  grid->printCells();
+//  grid->printVertices();
 
   flagGridCells(grid);
 
@@ -124,15 +123,16 @@ TestCase::TestCase(Grid **grid_) {
   BoundarySet *bottom = grid->getBoundarySet("Bottom");
   BoundarySet *top = grid->getBoundarySet("Top");
 
-  Condition *new_condition = new Condition("river.bc");
+  Condition *new_condition = NULL;
+//  new_condition = new Condition("river.bc");
   east->condition = new_condition;
 
-  new_condition = new Condition("west.bc");
+//  new_condition = new Condition("west.bc");
   west->condition = new_condition;
   south->condition = new_condition;
   north->condition = new_condition;
 
-  new_condition = new Condition("recharge.bc");
+//  new_condition = new Condition("recharge.bc");
   top->condition = new_condition;
   
   new_condition = NULL;
@@ -443,15 +443,18 @@ void TestCase::flagGridCells(Grid *grid) {
           int j = jglobal-gys;
           int k = kglobal-gzs;
 
-          int flag[3] = {0,0,0};
-
+          int flag[3];
+          flag[0] = 0;
+          flag[1] = 0;
+          flag[2] = 0;
           if (lxs > 0) grid->receiveFlag(flag,WEST);
           if (flag[0] == 0) {
 
           // loop over local cells
             for (int i=0; i<gnx; i++) {
               int ghosted_id = i+j*gnx+k*gnxXny;
-              if (grid->cells[ghosted_id].getActive() && 
+              if (grid->cells[ghosted_id].getIdLocal() > -1 &&
+                  grid->cells[ghosted_id].getActive() && 
                   grid->cells[ghosted_id].getZ() <= west_stage) {
                 grid->cells[ghosted_id].flag |= WEST_DIR_WEST_FACE;
                 flag[0] = 1;
@@ -465,7 +468,7 @@ void TestCase::flagGridCells(Grid *grid) {
       }
     }
   }
-  MPI_Allreduce(MPI_IN_PLACE,&matrix,ny*nz,MPI_INTEGER,MPI_MAX,
+  MPI_Allreduce(MPI_IN_PLACE,matrix,ny*nz,MPI_INTEGER,MPI_MAX,
                 PETSC_COMM_WORLD);
 
   for (int k=0; k<gnz; k++) {
@@ -478,10 +481,14 @@ void TestCase::flagGridCells(Grid *grid) {
         int idown = matrix[jglobal+1+kglobal*ny];
         if (iup>-1 && idown>-1 && iup != idown) {
           if (iup > idown) {                        
+            iup = MIN(iup-gxs,gnx-1);
+            idown = MAX(idown-gxs,0);
             for (int i=idown; i<iup; i++)
               grid->cells[i+(j+1)*gnx+k*gnxXny].flag |= WEST_DIR_SOUTH_FACE;     
           }                                         
           else {                                    
+            idown = MIN(idown-gxs,gnx-1);
+            iup = MAX(iup-gxs,0);
             for (int i=iup; i<idown; i++)
               grid->cells[i+j*gnx+k*gnxXny].flag |= WEST_DIR_NORTH_FACE;     
           }
@@ -493,10 +500,14 @@ void TestCase::flagGridCells(Grid *grid) {
         int idown = matrix[jglobal+(kglobal+1)*ny];
         if (iup>-1 && idown>-1 && iup != idown) {
           if (iup > idown) {                        
+            iup = MIN(iup-gxs,gnx-1);
+            idown = MAX(idown-gxs,0);
             for (int i=idown; i<iup; i++)
               grid->cells[i+j*gnx+(k+1)*gnxXny].flag |= WEST_DIR_BOTTOM_FACE;     
           }                                         
           else {                                    
+            idown = MIN(idown-gxs,gnx-1);
+            iup = MAX(iup-gxs,0);
             for (int i=iup; i<idown; i++)
               grid->cells[i+j*gnx+k*gnxXny].flag |= WEST_DIR_TOP_FACE;     
           }                                         
@@ -527,7 +538,8 @@ void TestCase::flagGridCells(Grid *grid) {
           // loop over local cells
             for (int i=gnx-1; i>=0; i--) {
               int ghosted_id = i+j*gnx+k*gnxXny;
-              if (grid->cells[ghosted_id].getActive() && 
+              if (grid->cells[ghosted_id].getIdLocal() > -1 &&
+                  grid->cells[ghosted_id].getActive() && 
                   grid->cells[ghosted_id].getZ() <= east_stage) {
                 grid->cells[ghosted_id].flag |= EAST_DIR_EAST_FACE;
                 flag[0] = 1;
@@ -541,7 +553,7 @@ void TestCase::flagGridCells(Grid *grid) {
       }
     }
   }
-  MPI_Allreduce(MPI_IN_PLACE,&matrix,ny*nz,MPI_INTEGER,MPI_MAX,
+  MPI_Allreduce(MPI_IN_PLACE,matrix,ny*nz,MPI_INTEGER,MPI_MAX,
                 PETSC_COMM_WORLD);
 
   for (int k=0; k<gnz; k++) {
@@ -554,10 +566,14 @@ void TestCase::flagGridCells(Grid *grid) {
         int idown = matrix[jglobal+1+kglobal*ny];
         if (iup>-1 && idown>-1 && iup != idown) {
           if (iup > idown) {                        
+            iup = MIN(iup-gxs,gnx-1);
+            idown = MAX(idown-gxs,0);
             for (int i=iup; i>idown; i--)
               grid->cells[i+j*gnx+k*gnxXny].flag |= EAST_DIR_NORTH_FACE;     
           }                                         
           else {                                    
+            idown = MIN(idown-gxs,gnx-1);
+            iup = MAX(iup-gxs,0);
             for (int i=idown; i>iup; i--)
               grid->cells[i+(j+1)*gnx+k*gnxXny].flag |= EAST_DIR_SOUTH_FACE;     
           }
@@ -569,10 +585,14 @@ void TestCase::flagGridCells(Grid *grid) {
         int idown = matrix[jglobal+(kglobal+1)*ny];
         if (iup>-1 && idown>-1 && iup != idown) {
           if (iup > idown) {                        
+            iup = MIN(iup-gxs,gnx-1);
+            idown = MAX(idown-gxs,0);
             for (int i=iup; i>idown; i--)
               grid->cells[i+j*gnx+k*gnxXny].flag |= EAST_DIR_TOP_FACE;     
           }                                         
           else {                                    
+            idown = MIN(idown-gxs,gnx-1);
+            iup = MAX(iup-gxs,0);
             for (int i=idown; i>iup; i--)
               grid->cells[i+j*gnx+(k+1)*gnxXny].flag |= EAST_DIR_BOTTOM_FACE;     
           }                                         
@@ -603,7 +623,8 @@ void TestCase::flagGridCells(Grid *grid) {
           // loop over local cells
             for (int j=0; j<gny; j++) {
               int ghosted_id = i+j*gnx+k*gnxXny;
-              if (grid->cells[ghosted_id].getActive() && 
+              if (grid->cells[ghosted_id].getIdLocal() > -1 &&
+                  grid->cells[ghosted_id].getActive() && 
                   grid->cells[ghosted_id].getZ() <= south_stage) {
                 grid->cells[ghosted_id].flag |= SOUTH_DIR_SOUTH_FACE;
                 flag[0] = 1;
@@ -617,7 +638,7 @@ void TestCase::flagGridCells(Grid *grid) {
       }
     }
   }
-  MPI_Allreduce(MPI_IN_PLACE,&matrix,nx*nz,MPI_INTEGER,MPI_MAX,
+  MPI_Allreduce(MPI_IN_PLACE,matrix,nx*nz,MPI_INTEGER,MPI_MAX,
                 PETSC_COMM_WORLD);
 
   for (int k=0; k<gnz; k++) {
@@ -630,10 +651,14 @@ void TestCase::flagGridCells(Grid *grid) {
         int jdown = matrix[iglobal+1+kglobal*nx];
         if (jup>-1 && jdown>-1 && jup != jdown) {
           if (jup > jdown) {                        
+            jup = MIN(jup-gys,gny-1);
+            jdown = MAX(jdown-gys,0);
             for (int j=jdown; j<jup; j++)
               grid->cells[i+1+j*gnx+k*gnxXny].flag |= SOUTH_DIR_WEST_FACE;     
           }                                         
           else {                                    
+            jdown = MIN(jdown-gys,gny-1);
+            jup = MAX(jup-gys,0);
             for (int j=jup; j<jdown; j++)
               grid->cells[i+j*gnx+k*gnxXny].flag |= SOUTH_DIR_EAST_FACE;     
           }                                         
@@ -645,10 +670,14 @@ void TestCase::flagGridCells(Grid *grid) {
         int jdown = matrix[iglobal+(kglobal+1)*nx];
         if (jup>-1 && jdown>-1 && jup != jdown) {
           if (jup > jdown) {                        
+            jup = MIN(jup-gys,gny-1);
+            jdown = MAX(jdown-gys,0);
             for (int j=jdown; j<jup; j++)
               grid->cells[i+j*gnx+(k+1)*gnxXny].flag |= SOUTH_DIR_BOTTOM_FACE;     
           }                                         
           else {                                    
+            jdown = MIN(jdown-gys,gny-1);
+            jup = MAX(jup-gys,0);
             for (int j=jup; j<jdown; j++)
               grid->cells[i+j*gnx+k*gnxXny].flag |= SOUTH_DIR_TOP_FACE;     
           }                                         
@@ -679,7 +708,8 @@ void TestCase::flagGridCells(Grid *grid) {
           // loop over local cells
             for (int j=gny-1; j>=0; j--) {
               int ghosted_id = i+j*gnx+k*gnxXny;
-              if (grid->cells[ghosted_id].getActive() && 
+              if (grid->cells[ghosted_id].getIdLocal() > -1 &&
+                  grid->cells[ghosted_id].getActive() && 
                   grid->cells[ghosted_id].getZ() <= north_stage) {
                 grid->cells[ghosted_id].flag |= NORTH_DIR_NORTH_FACE;
                 flag[0] = 1;
@@ -693,7 +723,7 @@ void TestCase::flagGridCells(Grid *grid) {
       }
     }
   }
-  MPI_Allreduce(MPI_IN_PLACE,&matrix,nx*nz,MPI_INTEGER,MPI_MAX,
+  MPI_Allreduce(MPI_IN_PLACE,matrix,nx*nz,MPI_INTEGER,MPI_MAX,
                 PETSC_COMM_WORLD);
 
   for (int k=0; k<gnz; k++) {
@@ -706,10 +736,14 @@ void TestCase::flagGridCells(Grid *grid) {
         int jdown = matrix[iglobal+1+kglobal*nx];
         if (jup>-1 && jdown>-1 && jup != jdown) {
           if (jup > jdown) {                        
+            jup = MIN(jup-gys,gny-1);
+            jdown = MAX(jdown-gys,0);
             for (int j=jup; j>jdown; j--)
               grid->cells[i+j*gnx+k*gnxXny].flag |= NORTH_DIR_EAST_FACE;     
           }                                         
           else {                                    
+            jdown = MIN(jdown-gys,gny-1);
+            jup = MAX(jup-gys,0);
             for (int j=jdown; j>jup; j--)
               grid->cells[i+1+j*gnx+k*gnxXny].flag |= NORTH_DIR_WEST_FACE;     
           }                                         
@@ -721,12 +755,16 @@ void TestCase::flagGridCells(Grid *grid) {
         int jdown = matrix[iglobal+(kglobal+1)*nx];
         if (jup>-1 && jdown>-1 && jup != jdown) {
           if (jup > jdown) {                        
+            jup = MIN(jup-gys,gny-1);
+            jdown = MAX(jdown-gys,0);
             for (int j=jup; j>jdown; j--)
               grid->cells[i+j*gnx+k*gnxXny].flag |= NORTH_DIR_TOP_FACE;     
           }                                         
           else {                                    
-            for (int j=jdown; j>jup; j--)
-              grid->cells[i+j*gnx+(k+1)*gnxXny].flag |= NORTH_DIR_BOTTOM_FACE;     
+            jdown = MIN(jdown-gys,gny-1);
+            jup = MAX(jup-gys,0);
+            for (int j=jdown-1; j>=jup; j--)
+              grid->cells[i+j*gnx+(k+1)*gnxXny].flag |= NORTH_DIR_BOTTOM_FACE;
           }                                         
         }
       }
@@ -755,7 +793,8 @@ void TestCase::flagGridCells(Grid *grid) {
           // loop over local cells
             for (int k=0; k<gnz; k++) {
               int ghosted_id = i+j*gnx+k*gnxXny;
-              if (grid->cells[ghosted_id].getActive() && 
+              if (grid->cells[ghosted_id].getIdLocal() > -1 &&
+                  grid->cells[ghosted_id].getActive() && 
                   grid->cells[ghosted_id].getZ() <= bottom_stage) {
                 grid->cells[ghosted_id].flag |= BOTTOM_DIR_BOTTOM_FACE;
                 flag[0] = 1;
@@ -769,7 +808,7 @@ void TestCase::flagGridCells(Grid *grid) {
       }
     }
   }
-  MPI_Allreduce(MPI_IN_PLACE,&matrix,nx*ny,MPI_INTEGER,MPI_MAX,
+  MPI_Allreduce(MPI_IN_PLACE,matrix,nx*ny,MPI_INTEGER,MPI_MAX,
                 PETSC_COMM_WORLD);
  
   for (int j=0; j<gny; j++) {
@@ -782,10 +821,14 @@ void TestCase::flagGridCells(Grid *grid) {
         int kdown = matrix[iglobal+1+jglobal*nx];
         if (kup>-1 && kdown>-1 && kup != kdown) {
           if (kup > kdown) {                        
+            kup = MIN(kup-gzs,gnz-1);
+            kdown = MAX(kdown-gzs,0);
             for (int k=kdown; k<kup; k++)
               grid->cells[i+1+j*gnx+k*gnxXny].flag |= BOTTOM_DIR_WEST_FACE;     
           }                                         
           else {                                    
+            kdown = MIN(kdown-gzs,gnz-1);
+            kup = MAX(kup-gzs,0);
             for (int k=kup; k<kdown; k++)
               grid->cells[i+j*gnx+k*gnxXny].flag |= BOTTOM_DIR_EAST_FACE;     
           }                                         
@@ -797,10 +840,14 @@ void TestCase::flagGridCells(Grid *grid) {
         int kdown = matrix[iglobal+(jglobal+1)*nx];
         if (kup>-1 && kdown>-1 && kup != kdown) {
           if (kup > kdown) {                        
+            kup = MIN(kup-gzs,gnz-1);
+            kdown = MAX(kdown-gzs,0);
             for (int k=kdown; k<kup; k++)
               grid->cells[i+j*gnx+(k+1)*gnxXny].flag |= BOTTOM_DIR_SOUTH_FACE;     
           }                                         
           else {                                    
+            kdown = MIN(kdown-gzs,gnz-1);
+            kup = MAX(kup-gzs,0);
             for (int k=kup; k<kdown; k++)
               grid->cells[i+j*gnx+k*gnxXny].flag |= BOTTOM_DIR_NORTH_FACE;     
           }                                         
@@ -831,7 +878,8 @@ void TestCase::flagGridCells(Grid *grid) {
           // loop over local cells
             for (int k=gnz-1; k>=0; k--) {
               int ghosted_id = i+j*gnx+k*gnxXny;
-              if (grid->cells[ghosted_id].getActive() && 
+              if (grid->cells[ghosted_id].getIdLocal() > -1 &&
+                  grid->cells[ghosted_id].getActive() && 
                   grid->cells[ghosted_id].getZ() <= top_stage) {
                 grid->cells[ghosted_id].flag |= TOP_DIR_TOP_FACE;
                 flag[0] = 1;
@@ -846,7 +894,7 @@ void TestCase::flagGridCells(Grid *grid) {
     }
   }
 #if 0
-  MPI_Allreduce(MPI_IN_PLACE,&matrix,nx*ny,MPI_INTEGER,MPI_MAX,
+  MPI_Allreduce(MPI_IN_PLACE,matrix,nx*ny,MPI_INTEGER,MPI_MAX,
                 PETSC_COMM_WORLD);
  
   for (int j=0; j<gny; j++) {
@@ -859,10 +907,14 @@ void TestCase::flagGridCells(Grid *grid) {
         int kdown = matrix[iglobal+1+jglobal*nx];
         if (kup>-1 && kdown>-1 && kup != kdown) {
           if (kup > kdown) {                        
+            kup = MIN(kup-gzs,gnz-1);
+            kdown = MAX(kdown-gzs,0);
             for (int k=kup; k>kdown; k--)
               grid->cells[i+j*gnx+k*gnxXny].flag |= TOP_DIR_EAST_FACE;     
           }                                         
           else {                                    
+            kdown = MIN(kdown-gzs,gnz-1);
+            kup = MAX(kup-gzs,0);
             for (int k=kdown; k>kup; k--)
               grid->cells[i+1+j*gnx+k*gnxXny].flag |= TOP_DIR_WEST_FACE;     
           }                                         
@@ -874,10 +926,14 @@ void TestCase::flagGridCells(Grid *grid) {
         int kdown = matrix[iglobal+(jglobal+1)*nx];
         if (kup>-1 && kdown>-1 && kup != kdown) {
           if (kup > kdown) {                        
+            kup = MIN(kup-gzs,gnz-1);
+            kdown = MAX(kdown-gzs,0);
             for (int k=kdown; k<kup; k++)
               grid->cells[i+j*gnx+k*gnxXny].flag |= TOP_DIR_NORTH_FACE;     
           }                                         
           else {                                    
+            kdown = MIN(kdown-gzs,gnz-1);
+            kup = MAX(kup-gzs,0);
             for (int k=kup; k<kdown; k++)
               grid->cells[i+(j+1)*gnx+k*gnxXny].flag |= TOP_DIR_SOUTH_FACE;     
           }                                         

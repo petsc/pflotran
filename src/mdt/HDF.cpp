@@ -1,3 +1,5 @@
+#ifdef USE_HDF5
+
 #include "HDF.h"
 
 static int neg_one = -1;
@@ -83,6 +85,10 @@ void HDF::createFileSpace(int rank, int dim0, int dim1, int dim2) {
 }
 
 void HDF::createMemorySpace(int rank, int dim0, int dim1, int dim2) {
+  int product = dim0;
+  if (rank > 1) product *= dim1;
+  if (rank > 2) product *= dim2;
+  if (!product) dim0 = 1;
   HDF::createDataSpace(&memory_space_id,rank,dim0,dim1,dim2,dim0,dim1,dim2);
 }
 
@@ -146,7 +152,7 @@ void HDF::setHyperSlab(int n, int stride0) {
   int count[3] = {1,1,1};
   start[0] = offset;
   stride[0] = stride0;
-  count[0] = n;
+  count[0] = n > 0 ? n : 1;
   setHyperSlab(start,stride,count,NULL);
 }
 
@@ -409,3 +415,5 @@ HDF::~HDF() {
     PetscPrintf(PETSC_COMM_WORLD,"ERROR: %d groups not freed.\n",ngrp);
   H5Fclose(file_id);
 }
+
+#endif

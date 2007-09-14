@@ -37,8 +37,8 @@ void StructuredGrid::createDA() {
   gze = gzs+gnz;
   gnxXny = gnx*gny;
   
-  printf(" local: %d %d %d %d %d %d\n",lxs,lxe,lys,lye,lzs,lze);
-  printf("global: %d %d %d %d %d %d\n",gxs,gxe,gys,gye,gzs,gze);
+  printf(" local(%d): %d %d %d %d %d %d\n",myrank,lxs,lxe,lys,lye,lzs,lze);
+  printf("global(%d): %d %d %d %d %d %d\n",myrank,gxs,gxe,gys,gye,gzs,gze);
 
 }
 
@@ -848,13 +848,13 @@ int StructuredGrid::getNeighboringProcessor(int direction) {
 }
 
 void StructuredGrid::sendFlag(int *flag, int direction) {
-  MPI_Send(&flag,3,MPI_INTEGER,getNeighboringProcessor(direction),0,
+  MPI_Send(flag,3,MPI_INTEGER,getNeighboringProcessor(direction),0,
            PETSC_COMM_WORLD);
 }
 
 void StructuredGrid::receiveFlag(int *flag, int direction) {
   MPI_Status status;
-  MPI_Recv(&flag,3,MPI_INTEGER,getNeighboringProcessor(direction),0,
+  MPI_Recv(flag,3,MPI_INTEGER,getNeighboringProcessor(direction),0,
            PETSC_COMM_WORLD,&status);
 }
 

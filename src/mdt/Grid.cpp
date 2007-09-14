@@ -29,7 +29,7 @@ Grid::Grid() {
 
 void Grid::zeroGridCellFlags() {
   for (int i=0; i<num_cells_ghosted; i++)
-    cells[i].flag = NULL_FLAG;
+    cells[i].flag = ZERO_FLAG;
 }
 
 void Grid::createStructured(int nx, int ny, int nz) {
@@ -119,8 +119,9 @@ int Grid::getVertexIdsNaturalLocal(int **natural_ids) {
     (*natural_ids)[ivert] = -999;
   for (int ivert=0; ivert<num_vertices_ghosted; ivert++) {
     int vert_local_id = vertices[ivert].getIdLocal();
-    if (vert_local_id > -1)
+    if (vert_local_id > -1) {
       (*natural_ids)[vert_local_id] = vertices[ivert].getIdNatural();
+    }
   }
 
   PetscScalar *double_ids = new double[num_vertices_local];
@@ -141,6 +142,7 @@ int Grid::getVertexIdsNaturalLocal(int **natural_ids) {
     (*natural_ids)[ivert] = (int)(vec_ptr[ivert]+0.0001);
   VecRestoreArray(vec,&vec_ptr);
   VecDestroy(vec);
+
   return new_local_size;
 
 }
@@ -253,11 +255,14 @@ void Grid::setUpCells() {
 
 void Grid::setUpVertices() {
   vertices = new GridVertex[num_vertices_ghosted];
+//  ierr = PetscSequentialPhaseBegin(PETSC_COMM_WORLD,1);
   for (int i=0; i<num_vertices_ghosted; i++) {
     vertices[i].setIdGhosted(i);
     vertices[i].setIdLocal(vertex_mapping_ghosted_to_local[i]);
     vertices[i].setIdNatural(vertex_mapping_ghosted_to_natural[i]);
+//    printf("Proc[%d]: ghst id: %d  loc id: %d  nat id: %d\n", myrank,i,vertex_mapping_ghosted_to_local[i], vertex_mapping_ghosted_to_natural[i]);
   }
+//  ierr = PetscSequentialPhaseEnd(PETSC_COMM_WORLD,1);
   if (structuredGrid)
     structuredGrid->setUpVertices(num_vertices_ghosted,vertices);
 }

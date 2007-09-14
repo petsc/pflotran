@@ -153,6 +153,7 @@ void Output::printBoundarySets() {
 
 void Output::printHDFMesh() {
 
+#ifdef USE_HDF5
   PetscPrintf(PETSC_COMM_WORLD,"Printing HDF grid.\n");
 
   HDF *file = new HDF("grid.h5",1);
@@ -216,14 +217,23 @@ void Output::printHDFMesh() {
   file->closeDataSpaces();
 
   // cell vertices
-  file->createFileSpace(2,grid->getNumberOfCellsGlobal(),8,NULL);
+  int num_cells_global = grid->getNumberOfCellsGlobal();
+  file->createFileSpace(2,num_cells_global,8,NULL);
   PetscPrintf(PETSC_COMM_WORLD,"CellVertices\n");
   file->createDataSet("CellVertices",H5T_NATIVE_INT,compress);
   file->createMemorySpace(1,grid->getNumberOfCellsGlobal(),NULL,NULL);
 
   int offset = 0;
-  int n = grid->getNumberOfCellsLocal();
-  MPI_Exscan(&n,&offset,1,MPI_INT,MPI_SUM,PETSC_COMM_WORLD);
+  int num_cells_local = grid->getNumberOfCellsLocal();
+  MPI_Exscan(&num_cells_local,&offset,1,MPI_INT,MPI_SUM,PETSC_COMM_WORLD);
+  if (offset > num_cells_global)
+    printf("Proc[%d]: ERROR - offset(%d) > num_cells_global(%d)\n",
+           myrank, offset, num_cells_global);
+  if (offset == num_cells_global) {
+    printf("Proc[%d]: WARNING - offset(%d) == num_cells_global(%d)\n",
+           myrank, offset, num_cells_global);
+    offset--;
+  }
 
   for (int ivert=0; ivert<8; ivert++) {
 
@@ -232,7 +242,7 @@ void Output::printHDFMesh() {
 
     int start[3] = {offset,ivert,0};
     int stride[3] = {1,8,1};
-    int count[3] = {n,1,1};
+    int count[3] = {num_cells_local,1,1};
     int block[3] = {1,1,1};
     file->setHyperSlab(start,stride,count,NULL);
     file->createMemorySpace(1,count[0]*count[1]*count[2],NULL,NULL);
@@ -257,6 +267,7 @@ void Output::printHDFMesh() {
 
   PetscPrintf(PETSC_COMM_WORLD,"NaturalIds\n");
   file->createDataSet("NaturalIds",H5T_NATIVE_INT,compress); 
+
   int num_print_vertices_local = grid->getVertexIdsNaturalLocal(&natural_ids);
 
   file->setHyperSlab(num_print_vertices_local);
@@ -334,57 +345,72 @@ void Output::printHDFMesh() {
     }
 
 // cell ids
-    file->createDataSpace(1,cur_set->getNumberOfConnectionsGlobal(),0,0);
-    PetscPrintf(PETSC_COMM_WORLD,"  CellIds\n");
-    file->createDataSet("CellIds",H5T_NATIVE_INT,compress);
-
+    int num_connections_global = cur_set->getNumberOfConnectionsGlobal();
     int num_connections_local = cur_set->getNumberOfConnectionsLocal();
 // hdf5 cannot handle a zero-length memory space and hyperslab.  Therefore,
 // trick it by setting then length to 1 and writing independently (non-
 // collective) for those procs with num_connections_local > 0).
-    int trick_hdf5 = num_connections_local > 0 ? num_connections_local : 1;
+    int trick_hdf5_local = num_connections_local > 0 ? 
+                                             num_connections_local : 1;
+    int trick_hdf5_global = num_connections_global > 0 ? 
+                                             num_connections_global : 1;
 
-    cell_ids = cur_set->getCellIdsLocal();
+    file->createDataSpace(1,trick_hdf5_global,0,0);
+    PetscPrintf(PETSC_COMM_WORLD,"  CellIds\n");
+    file->createDataSet("CellIds",H5T_NATIVE_INT,compress);
+
+    if (num_connections_global > 0) {
+
+      cell_ids = cur_set->getCellIdsLocal();
     // convert cell_ids in local numbering to natural, no need to reorder for now
-    for (int i=0; i<num_connections_local; i++) {
-      cell_ids[i] = grid->cell_mapping_ghosted_to_natural[
-                          grid->cell_mapping_local_to_ghosted[cell_ids[i]]];
-    }
+      for (int i=0; i<num_connections_local; i++) {
+        cell_ids[i] = grid->cell_mapping_ghosted_to_natural[
+                            grid->cell_mapping_local_to_ghosted[cell_ids[i]]];
+      }
 
-    file->setHyperSlab(trick_hdf5);
-    file->createMemorySpace(1,trick_hdf5,NULL,NULL);
-    if (num_connections_local > 0) {
-      file->writeInt(cell_ids,INDEPENDENT);
+      file->setHyperSlab(num_connections_local);
+      file->createMemorySpace(1,num_connections_local,NULL,NULL);
+      if (num_connections_local > 0) {
+        file->writeInt(cell_ids,INDEPENDENT);
+      }
+      delete [] cell_ids;
+      cell_ids = NULL;
     }
-    delete [] cell_ids;
-    cell_ids = NULL;
     file->closeDataSet();
     file->closeDataSpaces();
 
     // face vertex ids
 
-    file->createFileSpace(2,cur_set->getNumberOfConnectionsGlobal(),4,NULL);
+    file->createFileSpace(2,trick_hdf5_global,4,NULL);
     PetscPrintf(PETSC_COMM_WORLD,"  FaceVertexIds\n");
     file->createDataSet("FaceVertexIds",H5T_NATIVE_INT,compress);
-
-    offset = 0;
-    n = trick_hdf5; // see above for explanation of trick_hdf5
-    MPI_Exscan(&n,&offset,1,MPI_INT,MPI_SUM,PETSC_COMM_WORLD);
-
-    for (int ivert=0; ivert<4; ivert++) {
-
-      int *vertex_ids = cur_set->getFaceVertexIds(ivert);
-      int start[3] = {offset,ivert,0};
-      int stride[3] = {1,4,1};
-      int count[3] = {n,1,1};
-      int block[3] = {1,1,1};
-      file->setHyperSlab(start,stride,count,NULL);
-      file->createMemorySpace(1,count[0]*count[1]*count[2],NULL,NULL);
-      if (num_connections_local > 0) {
-        file->writeInt(vertex_ids,INDEPENDENT);
+    if (num_connections_global > 0) {
+      offset = 0;
+      MPI_Exscan(&num_connections_local,&offset,1,MPI_INT,MPI_SUM,
+                 PETSC_COMM_WORLD);
+      if (offset > num_connections_global)
+        printf("Proc[%d]: ERROR - offset(%d) > num_connections_global(%d)\n",
+               myrank, offset, num_connections_global);
+      if (offset == num_connections_global) {
+        printf("Proc[%d]: WARNING - offset(%d) == num_connections_global(%d)\n",
+               myrank, offset, num_connections_global);
+        offset--;
       }
-      delete [] vertex_ids;
-      vertex_ids = NULL;
+      for (int ivert=0; ivert<4; ivert++) {
+
+        int *vertex_ids = cur_set->getFaceVertexIds(ivert);
+        int start[3] = {offset,ivert,0};
+        int stride[3] = {1,4,1};
+        int count[3] = {trick_hdf5_local,1,1};
+        int block[3] = {1,1,1};
+        file->setHyperSlab(start,stride,count,NULL);
+        file->createMemorySpace(1,count[0]*count[1]*count[2],NULL,NULL);
+        if (num_connections_local > 0) {
+          file->writeInt(vertex_ids,INDEPENDENT);
+        }
+        delete [] vertex_ids;
+        vertex_ids = NULL;
+      }
     }
 
     file->closeDataSet();
@@ -432,6 +458,7 @@ void Output::printHDFMesh() {
 
   delete file;
   PetscPrintf(PETSC_COMM_WORLD,"Done with HDF5\n");
+#endif
 
 }
 

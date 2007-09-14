@@ -1,6 +1,8 @@
 #ifndef GRIDCELL_H_ 
 #define GRIDCELL_H_ 
  
+#include <stdlib.h>
+
 #include "include/petsc.h" 
  
 #include "Globals.h" 

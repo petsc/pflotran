@@ -6,7 +6,9 @@
 #include "include/petsc.h"
 
 #include "Grid.h"
+#ifdef USE_HDF5
 #include "HDF.h"
+#endif
 
 #define COLLECTIVE 1
 #define INDEPENDENT 0

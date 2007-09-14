@@ -27,7 +27,7 @@ const double perm_to_hc = density0*gravity/viscosity0;
 const double hc_to_perm = 1./perm_to_hc;
 const double day_to_sec = 24.*3600.;
 
-#define NULL_FLAG 0             ((unsigned long int) 0)        
+#define ZERO_FLAG             ((unsigned long int) 0)        
 #define WEST_DIR_WEST_FACE      ((unsigned long int) (1 << 0)) 
 #define WEST_DIR_EAST_FACE      ((unsigned long int) (1 << 1)) 
 #define WEST_DIR_SOUTH_FACE     ((unsigned long int) (1 << 2)) 
