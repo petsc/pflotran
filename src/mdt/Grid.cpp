@@ -27,6 +27,11 @@ Grid::Grid() {
   nullifyArrays();
 }
 
+void Grid::zeroGridCellFlags() {
+  for (int i=0; i<num_cells_ghosted; i++)
+    cells[i].flag = NULL_FLAG;
+}
+
 void Grid::createStructured(int nx, int ny, int nz) {
   structuredGrid = new StructuredGrid(nx,ny,nz);
   structuredGrid->createDA();
@@ -549,6 +554,14 @@ Vec Grid::getGridCellActivities() {
   }
   VecRestoreArray(v,&ptr);
   return v;
+}
+
+void Grid::receiveFlag(int *flag, int direction) {
+  structuredGrid->receiveFlag(flag,direction);
+}
+
+void Grid::sendFlag(int *flag, int direction) {
+  structuredGrid->sendFlag(flag,direction);
 }
 
 Grid::~Grid() {

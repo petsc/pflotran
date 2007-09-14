@@ -3,12 +3,7 @@
  
 #include "include/petsc.h" 
  
-#define EAST 2 
-#define WEST 4 
-#define NORTH 3 
-#define SOUTH 1 
-#define TOP 6 
-#define BOTTOM 5 
+#include "Globals.h" 
  
 class GridCell { 
 public: 
@@ -35,6 +30,7 @@ public:
   void setActive(int i); 
   void setActive(); 
   void setInactive(); 
+  void negateMaterialId();
    
   int getIdLocal(); 
   int getIdGhosted(); 
@@ -55,14 +51,16 @@ public:
   void printInfo(); 
    
   int vertices[9]; 
+  unsigned long int flag;
  
 private: 
   int id_local, id_ghosted, id_natural; 
+  // materials of inactive cells outside the boundary are set to -material_id
   int material_id; 
   int active; 
+
   double volume; 
   double centroid[3]; 
- 
  
 // matrix variables 
   double permeability[3]; 

@@ -61,6 +61,9 @@ public:
   int getNy();
   int getNz();
   int getN();
+
+  void sendFlag(int *flag, int direction);
+  void receiveFlag(int *flag, int direction);
   
   void getCorners(int *xs, int *ys, int *zs, int *nx, int *ny, int *nz);
   void getGhostCorners(int *xs, int *ys, int *zs, int *nx, int *ny, int *nz);
@@ -88,6 +91,8 @@ public:
   int *getCellIds();
   int *getCellIdsNatural();
   int *getCellVertexIds(int ivert);
+
+  void zeroGridCellFlags();
 
   int num_cells_global;
   int num_cells_local;

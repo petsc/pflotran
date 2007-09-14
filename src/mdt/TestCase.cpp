@@ -49,311 +49,317 @@ TestCase::TestCase(Grid **grid_) {
   grid->printVertices();
 
 
-  computeRiverBoundary(grid);
-  computeWestBoundary(grid);
-  computeRechargeBoundary(grid);
-//  computeSouthBoundary(grid);
+  flagGridCells(grid);
 
-  BoundarySet *river = grid->getBoundarySet("River");
+  computeWestBoundary(grid,1);
+  computeEastBoundary(grid,1);
+  computeSouthBoundary(grid,0);
+  computeNorthBoundary(grid,0);
+  computeBottomBoundary(grid,0);
+  computeTopBoundary(grid,0);
+
   BoundarySet *west = grid->getBoundarySet("West");
-  BoundarySet *recharge = grid->getBoundarySet("Recharge");
+  BoundarySet *east = grid->getBoundarySet("East");
+  BoundarySet *south = grid->getBoundarySet("South");
+  BoundarySet *north = grid->getBoundarySet("North");
+  BoundarySet *bottom = grid->getBoundarySet("Bottom");
+  BoundarySet *top = grid->getBoundarySet("Top");
 
   Condition *new_condition = new Condition("river.bc");
-  river->condition = new_condition;
+  east->condition = new_condition;
+
   new_condition = new Condition("west.bc");
   west->condition = new_condition;
+  south->condition = new_condition;
+  north->condition = new_condition;
+
   new_condition = new Condition("recharge.bc");
-  recharge->condition = new_condition;
+  top->condition = new_condition;
   
   new_condition = NULL;
 
 }
 
-void TestCase::computeRiverBoundary(Grid *grid) {
 
-  double river_stage = 106.;
-
-  int lnx,lny,lnz,lxs,lys,lzs,lxe,lye,lze;
-  int gnx,gny,gnz,gxs,gys,gzs,gxe,gye,gze;
-
-  grid->getCorners(&lxs,&lys,&lzs,&lnx,&lny,&lnz);
-  grid->getGhostCorners(&gxs,&gys,&gzs,&gnx,&gny,&gnz);
-
-  lxe = lxs+lnx;
-  lye = lys+lny;
-  lze = lzs+lnz;
-  gxe = gxs+gnx;
-  gye = gys+gny;
-  gze = gzs+gnz;
-
-  int gnxXny = gnx*gny;
-
-  BoundarySet *river = new BoundarySet("River");
-
-  int istart = lxs-gxs;
-  int jstart = lys-gys;
-  int kstart = lzs-gzs;
-  int iend = istart+lnx;
-  int jend = jstart+lny;
-  int kend = kstart+lnz;
-
-  // loop over local cells
-  for (int k=kstart; k<kend; k++) {
-    for (int j=jstart; j<jend; j++) {
-      // start from east side
-      for (int i=iend-1; i>=istart; i--) {
-        int ghosted_id = i+j*gnx+k*gnxXny;
-        if (((i == iend-1 && gxe-lxe == 0) || 
-             (i<iend-1 && !grid->cells[ghosted_id+1].getActive())) &&
-            grid->cells[ghosted_id].getActive() && 
-            grid->cells[ghosted_id].getZ() <= river_stage) {
-          int vertex_list[5] = {4,0,0,0,0};
-          grid->cells[ghosted_id].getHexFaceVertices(EAST,vertex_list);
-          river->addConnection(new Connection(grid->cells[ghosted_id].getIdLocal(),vertex_list));
-          // Look downwind in y and z to see if the bc cell is located at
-          // the same distance x.  If not, we need to set the same bc along
-          // the y and z faces to the next cell in x
-          // y-direction
-          if (j < jend-1+(gye-lye)) {
-            for (int ijp1=iend-1; ijp1>=istart; ijp1--) {
-              int ghosted_id_jp1 = ijp1+(j+1)*gnx+k*gnxXny;
-              if (((ijp1 == iend-1 && gxe-lxe == 0) || 
-                   (ijp1<iend-1 && !grid->cells[ghosted_id_jp1+1].getActive())) &&
-                  grid->cells[ghosted_id_jp1].getActive() && 
-                  grid->cells[ghosted_id_jp1].getZ() <= river_stage) {
-                if (ijp1 != i) {
-                  int iistart = i > ijp1 ? i : ijp1;
-                  int iiend = i < ijp1 ? i : ijp1;
-                  for (int ii=iistart; ii>iiend; ii--) {
-                    if (i > ijp1) {
-                      int id = ii+j*gnx+k*gnxXny;
-                      grid->cells[ghosted_id].getHexFaceVertices(NORTH,vertex_list);
-                      river->addConnection(new Connection(grid->cells[id].getIdLocal(),vertex_list));
-                    }
-                    else {
-                      int id = ii+(j+1)*gnx+k*gnxXny;
-                      grid->cells[ghosted_id].getHexFaceVertices(SOUTH,vertex_list);
-                      river->addConnection(new Connection(grid->cells[id].getIdLocal(),vertex_list));
-                    }
-                  }
-                }
-                break;
-              }
-            }
-          }
-          if (k < kend-1+(gze-lze)) {
-            for (int ikp1=iend-1; ikp1>=istart; ikp1--) {
-              int ghosted_id_kp1 = ikp1+j*gnx+(k+1)*gnxXny;
-              if (((ikp1 == iend-1 && gxe-lxe == 0) || 
-                   (ikp1<iend-1 && !grid->cells[ghosted_id_kp1+1].getActive())) &&
-                  grid->cells[ghosted_id_kp1].getActive() && 
-                  grid->cells[ghosted_id_kp1].getZ() <= river_stage) {
-                if (ikp1 != i) {
-                  int iistart = i > ikp1 ? i : ikp1;
-                  int iiend = i < ikp1 ? i : ikp1;
-                  for (int ii=iistart; ii>iiend; ii--) {
-                    if (i > ikp1) {
-                      int id = ii+j*gnx+k*gnxXny;
-                      grid->cells[ghosted_id].getHexFaceVertices(TOP,vertex_list);
-                      river->addConnection(new Connection(grid->cells[id].getIdLocal(),vertex_list));
-                    }
-                    else {
-                      int id = ii+j*gnx+(k+1)*gnxXny;
-                      grid->cells[ghosted_id].getHexFaceVertices(BOTTOM,vertex_list);
-                      river->addConnection(new Connection(grid->cells[id].getIdLocal(),vertex_list));
-                    }
-                  }
-                }
-                break;
-              }
-            }
-          }
-          break;
-        }
-      }
-    }
-  }
-  grid->addBoundarySet(river);
-  river = NULL;
-}
-
-void TestCase::computeWestBoundary(Grid *grid) {
-
-  double west_stage = 115.;
-
-  int lnx,lny,lnz,lxs,lys,lzs,lxe,lye,lze;
-  int gnx,gny,gnz,gxs,gys,gzs,gxe,gye,gze;
-
-  grid->getCorners(&lxs,&lys,&lzs,&lnx,&lny,&lnz);
-  grid->getGhostCorners(&gxs,&gys,&gzs,&gnx,&gny,&gnz);
-
-  lxe = lxs+lnx;
-  lye = lys+lny;
-  lze = lzs+lnz;
-  gxe = gxs+gnx;
-  gye = gys+gny;
-  gze = gzs+gnz;
-
-  int gnxXny = gnx*gny;
+void TestCase::computeWestBoundary(Grid *grid, int complete) {
 
   BoundarySet *west = new BoundarySet("West");
 
-  int istart = lxs-gxs;
-  int jstart = lys-gys;
-  int kstart = lzs-gzs;
-  int iend = istart+lnx;
-  int jend = jstart+lny;
-  int kend = kstart+lnz;
-
-  // loop over local cells
-  for (int k=kstart; k<kend; k++) {
-    for (int j=jstart; j<jend; j++) {
-      for (int i=istart; i<iend; i++) {
-        int ghosted_id = i+j*gnx+k*gnxXny;
-        if (((i == 0 && lxs-gxs == 0) || 
-             (i>istart && !grid->cells[ghosted_id-1].getActive())) &&
-            grid->cells[ghosted_id].getActive() && 
-            grid->cells[ghosted_id].getZ() <= west_stage) {
+  for (int i=0; i<grid->getNumberOfCellsGhosted(); i++) {
+    int local_id = grid->cells[i].getIdLocal();
+    if (local_id > -1) {
+      if (grid->cells[i].flag & WEST_DIR_WEST_FACE) {
+        int vertex_list[5] = {4,0,0,0,0};
+        grid->cells[i].getHexFaceVertices(WEST,vertex_list);
+        west->addConnection(new Connection(local_id,vertex_list));
+      }
+      if (complete) {
+        if (grid->cells[i].flag & WEST_DIR_SOUTH_FACE) {
           int vertex_list[5] = {4,0,0,0,0};
-          grid->cells[ghosted_id].getHexFaceVertices(WEST,vertex_list);
-          west->addConnection(new Connection(grid->cells[ghosted_id].getIdLocal(),
-                                             vertex_list));
-          // Look downwind in y and z to see if the bc cell is located at
-          // the same distance x.  If not, we need to set the same bc along
-          // the y and z faces to the next cell in x
-          // y-direction
-          if (j < jend-1+(gye-lye)) {
-            for (int ijp1=istart; ijp1<iend; ijp1++) {
-              int ghosted_id_jp1 = ijp1+(j+1)*gnx+k*gnxXny;
-              if (((ijp1 == 0 && lxs-gxs == 0) || 
-                   (ijp1>istart && !grid->cells[ghosted_id_jp1-1].getActive())) &&
-                  grid->cells[ghosted_id_jp1].getActive() && 
-                  grid->cells[ghosted_id_jp1].getZ() <= west_stage) {
-                if (ijp1 != i) {
-                  int iistart = i < ijp1 ? i : ijp1;
-                  int iiend = i > ijp1 ? i : ijp1;
-                  for (int ii=iistart; ii<iiend; ii++) {
-                    if (i < ijp1) {
-                      int id = ii+j*gnx+k*gnxXny;
-                      grid->cells[ghosted_id].getHexFaceVertices(NORTH,vertex_list);
-                      west->addConnection(new Connection(grid->cells[id].getIdLocal(),vertex_list));
-                    }
-                    else {
-                      int id = ii+(j+1)*gnx+k*gnxXny;
-                      grid->cells[ghosted_id].getHexFaceVertices(SOUTH,vertex_list);
-                      west->addConnection(new Connection(grid->cells[id].getIdLocal(),vertex_list));
-                    }
-                  }
-                }
-                break;
-              }
-            }
-          }
-          if (k < kend-1+(gze-lze)) {
-            for (int ikp1=istart; ikp1<iend; ikp1++) {
-              int ghosted_id_kp1 = ikp1+j*gnx+(k+1)*gnxXny;
-              if (((ikp1 == 0 && lxs-gxs == 0) || 
-                   (ikp1>istart && !grid->cells[ghosted_id_kp1-1].getActive())) &&
-                  grid->cells[ghosted_id_kp1].getActive() && 
-                  grid->cells[ghosted_id_kp1].getZ() <= west_stage) {
-                if (ikp1 != i) {
-                  int iistart = i < ikp1 ? i : ikp1;
-                  int iiend = i > ikp1 ? i : ikp1;
-                  for (int ii=iistart; ii<iiend; ii++) {
-                    if (i < ikp1) {
-                      int id = ii+j*gnx+k*gnxXny;
-                      grid->cells[ghosted_id].getHexFaceVertices(TOP,vertex_list);
-                      west->addConnection(new Connection(grid->cells[id].getIdLocal(),vertex_list));
-                    }
-                    else {
-                      int id = ii+j*gnx+(k+1)*gnxXny;
-                      grid->cells[ghosted_id].getHexFaceVertices(BOTTOM,vertex_list);
-                      west->addConnection(new Connection(grid->cells[id].getIdLocal(),vertex_list));
-                    }
-                  }
-                }
-                break;
-              }
-            }
-          }
-          break;
+          grid->cells[i].getHexFaceVertices(SOUTH,vertex_list);
+          west->addConnection(new Connection(local_id,vertex_list));
+        }
+        if (grid->cells[i].flag & WEST_DIR_NORTH_FACE) {
+          int vertex_list[5] = {4,0,0,0,0};
+          grid->cells[i].getHexFaceVertices(NORTH,vertex_list);
+          west->addConnection(new Connection(local_id,vertex_list));
+        }
+        if (grid->cells[i].flag & WEST_DIR_BOTTOM_FACE) {
+          int vertex_list[5] = {4,0,0,0,0};
+          grid->cells[i].getHexFaceVertices(BOTTOM,vertex_list);
+          west->addConnection(new Connection(local_id,vertex_list));
+        }
+        if (grid->cells[i].flag & WEST_DIR_TOP_FACE) {
+          int vertex_list[5] = {4,0,0,0,0};
+          grid->cells[i].getHexFaceVertices(TOP,vertex_list);
+          west->addConnection(new Connection(local_id,vertex_list));
         }
       }
     }
   }
+
   grid->addBoundarySet(west);
   west = NULL;
+
 }
 
-void TestCase::computeRechargeBoundary(Grid *grid) {
+void TestCase::computeEastBoundary(Grid *grid, int complete) {
 
-  int lnx,lny,lnz,lxs,lys,lzs,lxe,lye,lze;
-  int gnx,gny,gnz,gxs,gys,gzs,gxe,gye,gze;
+  BoundarySet *east = new BoundarySet("East");
 
-  grid->getCorners(&lxs,&lys,&lzs,&lnx,&lny,&lnz);
-  grid->getGhostCorners(&gxs,&gys,&gzs,&gnx,&gny,&gnz);
-
-  lxe = lxs+lnx;
-  lye = lys+lny;
-  lze = lzs+lnz;
-  gxe = gxs+gnx;
-  gye = gys+gny;
-  gze = gzs+gnz;
-
-  int gnxXny = gnx*gny;
-
-  BoundarySet *recharge = new BoundarySet("Recharge");
-
-  int istart = lxs-gxs;
-  int jstart = lys-gys;
-  int kstart = lzs-gzs;
-  int iend = istart+lnx;
-  int jend = jstart+lny;
-  int kend = kstart+lnz;
-
-  // loop over local cells
-  for (int j=jstart; j<jend; j++) {
-    for (int i=istart; i<iend; i++) {
-      // start from top side
-      for (int k=kend-1; k>=kstart; k--) {
-        int ghosted_id = i+j*gnx+k*gnxXny;
-        if (((k == kend-1 && gze-lze == 0) || 
-             (k<kend-1 && !grid->cells[ghosted_id+gnxXny].getActive())) &&
-            grid->cells[ghosted_id].getActive()) {
+  for (int i=0; i<grid->getNumberOfCellsGhosted(); i++) {
+    int local_id = grid->cells[i].getIdLocal();
+    if (local_id > -1) {
+      if (grid->cells[i].flag & EAST_DIR_EAST_FACE) {
+        int vertex_list[5] = {4,0,0,0,0};
+        grid->cells[i].getHexFaceVertices(EAST,vertex_list);
+        east->addConnection(new Connection(local_id,vertex_list));
+      }
+      if (complete) {
+        if (grid->cells[i].flag & EAST_DIR_SOUTH_FACE) {
           int vertex_list[5] = {4,0,0,0,0};
-          grid->cells[ghosted_id].getHexFaceVertices(TOP,vertex_list);
-          recharge->addConnection(new Connection(grid->cells[ghosted_id].getIdLocal(),
-                                                 vertex_list));
-          break;
+          grid->cells[i].getHexFaceVertices(SOUTH,vertex_list);
+          east->addConnection(new Connection(local_id,vertex_list));
+        }
+        if (grid->cells[i].flag & EAST_DIR_NORTH_FACE) {
+          int vertex_list[5] = {4,0,0,0,0};
+          grid->cells[i].getHexFaceVertices(NORTH,vertex_list);
+          east->addConnection(new Connection(local_id,vertex_list));
+        }
+        if (grid->cells[i].flag & EAST_DIR_BOTTOM_FACE) {
+          int vertex_list[5] = {4,0,0,0,0};
+          grid->cells[i].getHexFaceVertices(BOTTOM,vertex_list);
+          east->addConnection(new Connection(local_id,vertex_list));
+        }
+        if (grid->cells[i].flag & EAST_DIR_TOP_FACE) {
+          int vertex_list[5] = {4,0,0,0,0};
+          grid->cells[i].getHexFaceVertices(TOP,vertex_list);
+          east->addConnection(new Connection(local_id,vertex_list));
         }
       }
     }
   }
-  grid->addBoundarySet(recharge);
-  recharge = NULL;
+
+  grid->addBoundarySet(east);
+  east = NULL;
+
 }
 
-void TestCase::computeSouthBoundary(Grid *grid) {
-
-  double south_stage = 115.;
-
-  int lnx,lny,lnz,lxs,lys,lzs,lxe,lye,lze;
-  int gnx,gny,gnz,gxs,gys,gzs,gxe,gye,gze;
-
-  grid->getCorners(&lxs,&lys,&lzs,&lnx,&lny,&lnz);
-  grid->getGhostCorners(&gxs,&gys,&gzs,&gnx,&gny,&gnz);
-
-  lxe = lxs+lnx;
-  lye = lys+lny;
-  lze = lzs+lnz;
-  gxe = gxs+gnx;
-  gye = gys+gny;
-  gze = gzs+gnz;
-
-  int gnxXny = gnx*gny;
+void TestCase::computeSouthBoundary(Grid *grid, int complete) {
 
   BoundarySet *south = new BoundarySet("South");
 
+  for (int i=0; i<grid->getNumberOfCellsGhosted(); i++) {
+    int local_id = grid->cells[i].getIdLocal();
+    if (local_id > -1) {
+      if (grid->cells[i].flag & SOUTH_DIR_SOUTH_FACE) {
+        int vertex_list[5] = {4,0,0,0,0};
+        grid->cells[i].getHexFaceVertices(SOUTH,vertex_list);
+        south->addConnection(new Connection(local_id,vertex_list));
+      }
+      if (complete) {
+        if (grid->cells[i].flag & SOUTH_DIR_WEST_FACE) {
+          int vertex_list[5] = {4,0,0,0,0};
+          grid->cells[i].getHexFaceVertices(WEST,vertex_list);
+          south->addConnection(new Connection(local_id,vertex_list));
+        }
+        if (grid->cells[i].flag & SOUTH_DIR_EAST_FACE) {
+          int vertex_list[5] = {4,0,0,0,0};
+          grid->cells[i].getHexFaceVertices(EAST,vertex_list);
+          south->addConnection(new Connection(local_id,vertex_list));
+        }
+        if (grid->cells[i].flag & SOUTH_DIR_BOTTOM_FACE) {
+          int vertex_list[5] = {4,0,0,0,0};
+          grid->cells[i].getHexFaceVertices(BOTTOM,vertex_list);
+          south->addConnection(new Connection(local_id,vertex_list));
+        }
+        if (grid->cells[i].flag & SOUTH_DIR_TOP_FACE) {
+          int vertex_list[5] = {4,0,0,0,0};
+          grid->cells[i].getHexFaceVertices(TOP,vertex_list);
+          south->addConnection(new Connection(local_id,vertex_list));
+        }
+      }
+    }
+  }
+
+  grid->addBoundarySet(south);
+  south = NULL;
+}
+
+void TestCase::computeNorthBoundary(Grid *grid, int complete) {
+
+  BoundarySet *north = new BoundarySet("North");
+
+  for (int i=0; i<grid->getNumberOfCellsGhosted(); i++) {
+    int local_id = grid->cells[i].getIdLocal();
+    if (local_id > -1) {
+      if (grid->cells[i].flag & NORTH_DIR_NORTH_FACE) {
+        int vertex_list[5] = {4,0,0,0,0};
+        grid->cells[i].getHexFaceVertices(NORTH,vertex_list);
+        north->addConnection(new Connection(local_id,vertex_list));
+      }
+      if (complete) {
+        if (grid->cells[i].flag & NORTH_DIR_WEST_FACE) {
+          int vertex_list[5] = {4,0,0,0,0};
+          grid->cells[i].getHexFaceVertices(WEST,vertex_list);
+          north->addConnection(new Connection(local_id,vertex_list));
+        }
+        if (grid->cells[i].flag & NORTH_DIR_EAST_FACE) {
+          int vertex_list[5] = {4,0,0,0,0};
+          grid->cells[i].getHexFaceVertices(EAST,vertex_list);
+          north->addConnection(new Connection(local_id,vertex_list));
+        }
+        if (grid->cells[i].flag & NORTH_DIR_BOTTOM_FACE) {
+          int vertex_list[5] = {4,0,0,0,0};
+          grid->cells[i].getHexFaceVertices(TOP,vertex_list);
+          north->addConnection(new Connection(local_id,vertex_list));
+        }
+        if (grid->cells[i].flag & NORTH_DIR_TOP_FACE) {
+          int vertex_list[5] = {4,0,0,0,0};
+          grid->cells[i].getHexFaceVertices(TOP,vertex_list);
+          north->addConnection(new Connection(local_id,vertex_list));
+        }
+      }
+    }
+  }
+
+  grid->addBoundarySet(north);
+  north = NULL;
+
+}
+
+void TestCase::computeBottomBoundary(Grid *grid, int complete) {
+
+  BoundarySet *bottom = new BoundarySet("Bottom");
+
+  for (int i=0; i<grid->getNumberOfCellsGhosted(); i++) {
+    int local_id = grid->cells[i].getIdLocal();
+    if (local_id > -1) {
+      if (grid->cells[i].flag & BOTTOM_DIR_BOTTOM_FACE) {
+        int vertex_list[5] = {4,0,0,0,0};
+        grid->cells[i].getHexFaceVertices(BOTTOM,vertex_list);
+        bottom->addConnection(new Connection(local_id,vertex_list));
+      }
+      if (complete) {
+        if (grid->cells[i].flag & BOTTOM_DIR_WEST_FACE) {
+          int vertex_list[5] = {4,0,0,0,0};
+          grid->cells[i].getHexFaceVertices(WEST,vertex_list);
+          bottom->addConnection(new Connection(local_id,vertex_list));
+        }
+        if (grid->cells[i].flag & BOTTOM_DIR_EAST_FACE) {
+          int vertex_list[5] = {4,0,0,0,0};
+          grid->cells[i].getHexFaceVertices(EAST,vertex_list);
+          bottom->addConnection(new Connection(local_id,vertex_list));
+        }
+        if (grid->cells[i].flag & BOTTOM_DIR_SOUTH_FACE) {
+          int vertex_list[5] = {4,0,0,0,0};
+          grid->cells[i].getHexFaceVertices(SOUTH,vertex_list);
+          bottom->addConnection(new Connection(local_id,vertex_list));
+        }
+        if (grid->cells[i].flag & BOTTOM_DIR_NORTH_FACE) {
+          int vertex_list[5] = {4,0,0,0,0};
+          grid->cells[i].getHexFaceVertices(NORTH,vertex_list);
+          bottom->addConnection(new Connection(local_id,vertex_list));
+        }
+      }
+    }
+  }
+
+  grid->addBoundarySet(bottom);
+  bottom = NULL;
+
+}
+
+void TestCase::computeTopBoundary(Grid *grid, int complete) {
+
+  BoundarySet *top = new BoundarySet("Top");
+
+  for (int i=0; i<grid->getNumberOfCellsGhosted(); i++) {
+    int local_id = grid->cells[i].getIdLocal();
+    if (local_id > -1) {
+      if (grid->cells[i].flag & TOP_DIR_TOP_FACE) {
+        int vertex_list[5] = {4,0,0,0,0};
+        grid->cells[i].getHexFaceVertices(TOP,vertex_list);
+        top->addConnection(new Connection(local_id,vertex_list));
+      }
+#if 0
+      if (grid->cells[i].flag & TOP_DIR_WEST_FACE) {
+        int vertex_list[5] = {4,0,0,0,0};
+        grid->cells[i].getHexFaceVertices(WEST,vertex_list);
+        top->addConnection(new Connection(local_id,vertex_list));
+      }
+      if (grid->cells[i].flag & TOP_DIR_EAST_FACE) {
+        int vertex_list[5] = {4,0,0,0,0};
+        grid->cells[i].getHexFaceVertices(EAST,vertex_list);
+        top->addConnection(new Connection(local_id,vertex_list));
+      }
+      if (grid->cells[i].flag & TOP_DIR_SOUTH_FACE) {
+        int vertex_list[5] = {4,0,0,0,0};
+        grid->cells[i].getHexFaceVertices(SOUTH,vertex_list);
+        top->addConnection(new Connection(local_id,vertex_list));
+      }
+      if (grid->cells[i].flag & TOP_DIR_NORTH_FACE) {
+        int vertex_list[5] = {4,0,0,0,0};
+        grid->cells[i].getHexFaceVertices(NORTH,vertex_list);
+        top->addConnection(new Connection(local_id,vertex_list));
+      }
+#endif
+    }
+  }
+
+  grid->addBoundarySet(top);
+  top = NULL;
+
+}
+
+void TestCase::flagGridCells(Grid *grid) {
+
+  double top_stage = 1.e20;
+  double bottom_stage = 1.e20;
+  double north_stage = 115.;
+  double south_stage = 115.;
+  double west_stage = 115.;
+  double east_stage = 106.;
+
+  int nx = grid->getNx();
+  int ny = grid->getNy();
+  int nz = grid->getNz();
+
+  int lnx,lny,lnz,lxs,lys,lzs,lxe,lye,lze;
+  int gnx,gny,gnz,gxs,gys,gzs,gxe,gye,gze;
+
+  grid->getCorners(&lxs,&lys,&lzs,&lnx,&lny,&lnz);
+  grid->getGhostCorners(&gxs,&gys,&gzs,&gnx,&gny,&gnz);
+
+  lxe = lxs+lnx;
+  lye = lys+lny;
+  lze = lzs+lnz;
+  gxe = gxs+gnx;
+  gye = gys+gny;
+  gze = gzs+gnz;
+
+  int gnxXny = gnx*gny;
+
   int istart = lxs-gxs;
   int jstart = lys-gys;
   int kstart = lzs-gzs;
@@ -361,88 +367,469 @@ void TestCase::computeSouthBoundary(Grid *grid) {
   int jend = jstart+lny;
   int kend = kstart+lnz;
 
-  // loop over local cells
-  for (int k=kstart; k<kend; k++) {
-    for (int i=istart; i<iend; i++) {
-      for (int j=jstart; j<jend; j++) {
-        int ghosted_id = i+j*gnx+k*gnxXny;
-        if (((j == 0 && lys-gys == 0) || 
-             (j>jstart && !grid->cells[ghosted_id-gnx].getActive())) &&
-            grid->cells[ghosted_id].getActive() && 
-            grid->cells[ghosted_id].getZ() <= south_stage) {
-          int vertex_list[5] = {4,0,0,0,0};
-          grid->cells[ghosted_id].getHexFaceVertices(SOUTH,vertex_list);
-          south->addConnection(new Connection(grid->cells[ghosted_id].getIdLocal(),
-                                              vertex_list));
-          // Look downwind in y and z to see if the bc cell is located at
-          // the same distance x.  If not, we need to set the same bc along
-          // the y and z faces to the next cell in x
-          // y-direction
-          if (i < iend-1+(gxe-lxe)) {
-            for (int jip1=jstart; jip1<jend; jip1++) {
-              int ghosted_id_ip1 = (i+1)+jip1*gnx+k*gnxXny;
-              if (((jip1 == 0 && lys-gys == 0) || 
-                   (jip1>jstart && !grid->cells[ghosted_id_ip1-gnx].getActive())) &&
-                  grid->cells[ghosted_id_ip1].getActive() && 
-                  grid->cells[ghosted_id_ip1].getZ() <= south_stage) {
-                if (jip1 != j) {
-                  int jjstart = j < jip1 ? j : jip1;
-                  int jjend = j > jip1 ? j : jip1;
-                  for (int jj=jjstart; jj<jjend; jj++) {
-                    if (j < jip1) {
-                      int id = i+jj*gnx+k*gnxXny;
-                      grid->cells[id].getHexFaceVertices(EAST,vertex_list);
-                      south->addConnection(new Connection(grid->cells[id].getIdLocal(),
-                                                          vertex_list));
-                    }
-                    else {
-                      int id = (i+1)+jj*gnx+k*gnxXny;
-                      grid->cells[id].getHexFaceVertices(WEST,vertex_list);
-                      south->addConnection(new Connection(grid->cells[id].getIdLocal(),
-                                                          vertex_list));
-                    }
-                  }
-                }
+
+  grid->zeroGridCellFlags();
+
+  int *matrix = NULL;
+
+  // west
+  matrix = new int[ny*nz];
+  for (int i=0; i<ny*nz; i++)
+    matrix[i] = -1;
+
+  for (int kglobal=0; kglobal<nz; kglobal++) {
+    if (lzs <= kglobal && kglobal < lze) {
+      for (int jglobal=0; jglobal<ny; jglobal++) {
+        if (lys <= jglobal && jglobal < lye) {
+          int j = jglobal-gys;
+          int k = kglobal-gzs;
+
+          int flag[3] = {0,0,0};
+
+          if (lxs > 0) grid->receiveFlag(flag,WEST);
+          if (flag[0] == 0) {
+
+          // loop over local cells
+            for (int i=0; i<gnx; i++) {
+              int ghosted_id = i+j*gnx+k*gnxXny;
+              if (grid->cells[ghosted_id].getActive() && 
+                  grid->cells[ghosted_id].getZ() <= west_stage) {
+                grid->cells[ghosted_id].flag |= WEST_DIR_WEST_FACE;
+                flag[0] = 1;
+                matrix[jglobal+kglobal*ny] = i+gxs;
                 break;
               }
             }
           }
-          if (k < kend-1+(gze-lze)) {
-            for (int jkp1=istart; jkp1<iend; jkp1++) {
-              int ghosted_id_kp1 = i+jkp1*gnx+(k+1)*gnxXny;
-              if (((jkp1 == 0 && lys-gys == 0) || 
-                   (jkp1>jstart && !grid->cells[ghosted_id_kp1-gnx].getActive())) &&
-                  grid->cells[ghosted_id_kp1].getActive() && 
-                  grid->cells[ghosted_id_kp1].getZ() <= south_stage) {
-                if (jkp1 != j) {
-                  int jjstart = j < jkp1 ? j : jkp1;
-                  int jjend = j > jkp1 ? j : jkp1;
-                  for (int jj=jjstart; jj<jjend; jj++) {
-                    if (j < jkp1) {
-                      int id = i+jj*gnx+k*gnxXny;
-                      grid->cells[id].getHexFaceVertices(TOP,vertex_list);
-                      south->addConnection(new Connection(grid->cells[id].getIdLocal(),
-                                                          vertex_list));
-                    }
-                    else {
-                      int id = i+jj*gnx+(k+1)*gnxXny;
-                      grid->cells[id].getHexFaceVertices(BOTTOM,vertex_list);
-                      south->addConnection(new Connection(grid->cells[id].getIdLocal(),
-                                                          vertex_list));
-                    }
-                  }
-                }
-                break;
-              }
-            }
-          }
-          break;
+          if (lxe < nx) grid->sendFlag(flag,EAST);
         }
       }
     }
   }
-  grid->addBoundarySet(south);
-  south = NULL;
+  MPI_Allreduce(MPI_IN_PLACE,&matrix,ny*nz,MPI_INTEGER,MPI_MAX,
+                PETSC_COMM_WORLD);
+
+  for (int k=0; k<gnz; k++) {
+    int kglobal = k+gzs;
+    for (int j=0; j<gny; j++) {
+      int jglobal = j+gys;
+      // y-direction
+      if (j < gny-1) {
+        int iup = matrix[jglobal+kglobal*ny];
+        int idown = matrix[jglobal+1+kglobal*ny];
+        if (iup>-1 && idown>-1 && iup != idown) {
+          if (iup > idown) {                        
+            for (int i=idown; i<iup; i++)
+              grid->cells[i+(j+1)*gnx+k*gnxXny].flag |= WEST_DIR_SOUTH_FACE;     
+          }                                         
+          else {                                    
+            for (int i=iup; i<idown; i++)
+              grid->cells[i+j*gnx+k*gnxXny].flag |= WEST_DIR_NORTH_FACE;     
+          }
+        }
+      }
+      // z-direction
+      if (k < gnz-1) {
+        int iup = matrix[jglobal+kglobal*ny];
+        int idown = matrix[jglobal+(kglobal+1)*ny];
+        if (iup>-1 && idown>-1 && iup != idown) {
+          if (iup > idown) {                        
+            for (int i=idown; i<iup; i++)
+              grid->cells[i+j*gnx+(k+1)*gnxXny].flag |= WEST_DIR_BOTTOM_FACE;     
+          }                                         
+          else {                                    
+            for (int i=iup; i<idown; i++)
+              grid->cells[i+j*gnx+k*gnxXny].flag |= WEST_DIR_TOP_FACE;     
+          }                                         
+        }
+      }
+    }
+  }
+  delete [] matrix;
+  matrix = NULL;
+
+  // east
+  matrix = new int[ny*nz];
+  for (int i=0; i<ny*nz; i++)
+    matrix[i] = -1;
+
+  for (int kglobal=0; kglobal<nz; kglobal++) {
+    if (lzs <= kglobal && kglobal < lze) {
+      for (int jglobal=0; jglobal<ny; jglobal++) {
+        if (lys <= jglobal && jglobal < lye) {
+          int j = jglobal-gys;
+          int k = kglobal-gzs;
+
+          int flag[3] = {0,0,0};
+
+          if (lxe < nx) grid->receiveFlag(flag,EAST);
+          if (flag[0] == 0) {
+
+          // loop over local cells
+            for (int i=gnx-1; i>=0; i--) {
+              int ghosted_id = i+j*gnx+k*gnxXny;
+              if (grid->cells[ghosted_id].getActive() && 
+                  grid->cells[ghosted_id].getZ() <= east_stage) {
+                grid->cells[ghosted_id].flag |= EAST_DIR_EAST_FACE;
+                flag[0] = 1;
+                matrix[jglobal+kglobal*ny] = i+gxs;
+                break;
+              }
+            }
+          }
+          if (lxs > 0) grid->sendFlag(flag,WEST);
+        }
+      }
+    }
+  }
+  MPI_Allreduce(MPI_IN_PLACE,&matrix,ny*nz,MPI_INTEGER,MPI_MAX,
+                PETSC_COMM_WORLD);
+
+  for (int k=0; k<gnz; k++) {
+    int kglobal = k+gzs;
+    for (int j=0; j<gny; j++) {
+      int jglobal = j+gys;
+      // y-direction
+      if (j < gny-1) {
+        int iup = matrix[jglobal+kglobal*ny];
+        int idown = matrix[jglobal+1+kglobal*ny];
+        if (iup>-1 && idown>-1 && iup != idown) {
+          if (iup > idown) {                        
+            for (int i=iup; i>idown; i--)
+              grid->cells[i+j*gnx+k*gnxXny].flag |= EAST_DIR_NORTH_FACE;     
+          }                                         
+          else {                                    
+            for (int i=idown; i>iup; i--)
+              grid->cells[i+(j+1)*gnx+k*gnxXny].flag |= EAST_DIR_SOUTH_FACE;     
+          }
+        }
+      }
+      // z-direction
+      if (k < gnz-1) {
+        int iup = matrix[jglobal+kglobal*ny];
+        int idown = matrix[jglobal+(kglobal+1)*ny];
+        if (iup>-1 && idown>-1 && iup != idown) {
+          if (iup > idown) {                        
+            for (int i=iup; i>idown; i--)
+              grid->cells[i+j*gnx+k*gnxXny].flag |= EAST_DIR_TOP_FACE;     
+          }                                         
+          else {                                    
+            for (int i=idown; i>iup; i--)
+              grid->cells[i+j*gnx+(k+1)*gnxXny].flag |= EAST_DIR_BOTTOM_FACE;     
+          }                                         
+        }
+      }
+    }
+  }
+  delete [] matrix;
+  matrix = NULL;
+
+  // south
+  matrix = new int[nx*nz];
+  for (int i=0; i<nx*nz; i++)
+    matrix[i] = -1;
+
+  for (int kglobal=0; kglobal<nz; kglobal++) {
+    if (lzs <= kglobal && kglobal < lze) {
+      for (int iglobal=0; iglobal<nx; iglobal++) {
+        if (lxs <= iglobal && iglobal < lxe) {
+          int k = kglobal-gzs;
+          int i = iglobal-gxs;
+
+          int flag[3] = {0,0,0};
+
+          if (lys > 0) grid->receiveFlag(flag,SOUTH);
+          if (flag[0] == 0) {
+
+          // loop over local cells
+            for (int j=0; j<gny; j++) {
+              int ghosted_id = i+j*gnx+k*gnxXny;
+              if (grid->cells[ghosted_id].getActive() && 
+                  grid->cells[ghosted_id].getZ() <= south_stage) {
+                grid->cells[ghosted_id].flag |= SOUTH_DIR_SOUTH_FACE;
+                flag[0] = 1;
+                matrix[iglobal+kglobal*nx] = j+gys;
+                break;
+              }
+            }
+          }
+          if (lye < ny) grid->sendFlag(flag,NORTH);
+        }
+      }
+    }
+  }
+  MPI_Allreduce(MPI_IN_PLACE,&matrix,nx*nz,MPI_INTEGER,MPI_MAX,
+                PETSC_COMM_WORLD);
+
+  for (int k=0; k<gnz; k++) {
+    int kglobal = k+gzs;
+    for (int i=0; i<gnx; i++) {
+      int iglobal = i+gxs;
+      // x-direction
+      if (i < gnx-1) {
+        int jup = matrix[iglobal+kglobal*nx];
+        int jdown = matrix[iglobal+1+kglobal*nx];
+        if (jup>-1 && jdown>-1 && jup != jdown) {
+          if (jup > jdown) {                        
+            for (int j=jdown; j<jup; j++)
+              grid->cells[i+1+j*gnx+k*gnxXny].flag |= SOUTH_DIR_WEST_FACE;     
+          }                                         
+          else {                                    
+            for (int j=jup; j<jdown; j++)
+              grid->cells[i+j*gnx+k*gnxXny].flag |= SOUTH_DIR_EAST_FACE;     
+          }                                         
+        }
+      }
+      // z-direction
+      if (k < gnz-1) {
+        int jup = matrix[iglobal+kglobal*nx];
+        int jdown = matrix[iglobal+(kglobal+1)*nx];
+        if (jup>-1 && jdown>-1 && jup != jdown) {
+          if (jup > jdown) {                        
+            for (int j=jdown; j<jup; j++)
+              grid->cells[i+j*gnx+(k+1)*gnxXny].flag |= SOUTH_DIR_BOTTOM_FACE;     
+          }                                         
+          else {                                    
+            for (int j=jup; j<jdown; j++)
+              grid->cells[i+j*gnx+k*gnxXny].flag |= SOUTH_DIR_TOP_FACE;     
+          }                                         
+        }
+      }
+    }
+  }
+  delete [] matrix;
+  matrix = NULL;
+      
+  // north
+  matrix = new int[nx*nz];
+  for (int i=0; i<nx*nz; i++)
+    matrix[i] = -1;
+
+  for (int kglobal=0; kglobal<nz; kglobal++) {
+    if (lzs <= kglobal && kglobal < lze) {
+      for (int iglobal=0; iglobal<nx; iglobal++) {
+        if (lxs <= iglobal && iglobal < lxe) {
+          int k = kglobal-gzs;
+          int i = iglobal-gxs;
+
+          int flag[3] = {0,0,0};
+
+          if (lye < ny) grid->receiveFlag(flag,NORTH);
+          if (flag[0] == 0) {
+
+          // loop over local cells
+            for (int j=gny-1; j>=0; j--) {
+              int ghosted_id = i+j*gnx+k*gnxXny;
+              if (grid->cells[ghosted_id].getActive() && 
+                  grid->cells[ghosted_id].getZ() <= north_stage) {
+                grid->cells[ghosted_id].flag |= NORTH_DIR_NORTH_FACE;
+                flag[0] = 1;
+                matrix[iglobal+kglobal*nx] = j+gys;
+                break;
+              }
+            }
+          }
+          if (lys > 0) grid->sendFlag(flag,SOUTH);
+        }
+      }
+    }
+  }
+  MPI_Allreduce(MPI_IN_PLACE,&matrix,nx*nz,MPI_INTEGER,MPI_MAX,
+                PETSC_COMM_WORLD);
+
+  for (int k=0; k<gnz; k++) {
+    int kglobal = k+gzs;
+    for (int i=0; i<gnx; i++) {
+      int iglobal = i+gxs;
+      // x-direction
+      if (i < gnx-1) {
+        int jup = matrix[iglobal+kglobal*nx];
+        int jdown = matrix[iglobal+1+kglobal*nx];
+        if (jup>-1 && jdown>-1 && jup != jdown) {
+          if (jup > jdown) {                        
+            for (int j=jup; j>jdown; j--)
+              grid->cells[i+j*gnx+k*gnxXny].flag |= NORTH_DIR_EAST_FACE;     
+          }                                         
+          else {                                    
+            for (int j=jdown; j>jup; j--)
+              grid->cells[i+1+j*gnx+k*gnxXny].flag |= NORTH_DIR_WEST_FACE;     
+          }                                         
+        }
+      }
+      // z-direction
+      if (k < gnz-1) {
+        int jup = matrix[iglobal+kglobal*nx];
+        int jdown = matrix[iglobal+(kglobal+1)*nx];
+        if (jup>-1 && jdown>-1 && jup != jdown) {
+          if (jup > jdown) {                        
+            for (int j=jup; j>jdown; j--)
+              grid->cells[i+j*gnx+k*gnxXny].flag |= NORTH_DIR_TOP_FACE;     
+          }                                         
+          else {                                    
+            for (int j=jdown; j>jup; j--)
+              grid->cells[i+j*gnx+(k+1)*gnxXny].flag |= NORTH_DIR_BOTTOM_FACE;     
+          }                                         
+        }
+      }
+    }
+  }
+  delete [] matrix;
+  matrix = NULL;
+
+  // bottom
+  matrix = new int[nx*ny];
+  for (int i=0; i<nx*ny; i++)
+    matrix[i] = -1;
+
+  for (int jglobal=0; jglobal<ny; jglobal++) {
+    if (lys <= jglobal && jglobal < lye) {
+      for (int iglobal=0; iglobal<nx; iglobal++) {
+        if (lxs <= iglobal && iglobal < lxe) {
+          int j = jglobal-gys;
+          int i = iglobal-gxs;
+
+          int flag[3] = {0,0,0};
+
+          if (lzs > 0) grid->receiveFlag(flag,BOTTOM);
+          if (flag[0] == 0) {
+
+          // loop over local cells
+            for (int k=0; k<gnz; k++) {
+              int ghosted_id = i+j*gnx+k*gnxXny;
+              if (grid->cells[ghosted_id].getActive() && 
+                  grid->cells[ghosted_id].getZ() <= bottom_stage) {
+                grid->cells[ghosted_id].flag |= BOTTOM_DIR_BOTTOM_FACE;
+                flag[0] = 1;
+                matrix[iglobal+jglobal*nx] = k+gzs;
+                break;
+              }
+            }
+          }
+          if (lze < nz) grid->sendFlag(flag,TOP);
+        }
+      }
+    }
+  }
+  MPI_Allreduce(MPI_IN_PLACE,&matrix,nx*ny,MPI_INTEGER,MPI_MAX,
+                PETSC_COMM_WORLD);
+ 
+  for (int j=0; j<gny; j++) {
+    int jglobal = j+gys;
+    for (int i=0; i<gnx; i++) {
+      int iglobal = i+gxs;
+      // x-direction
+      if (i < gnx-1) {
+        int kup = matrix[iglobal+jglobal*nx];
+        int kdown = matrix[iglobal+1+jglobal*nx];
+        if (kup>-1 && kdown>-1 && kup != kdown) {
+          if (kup > kdown) {                        
+            for (int k=kdown; k<kup; k++)
+              grid->cells[i+1+j*gnx+k*gnxXny].flag |= BOTTOM_DIR_WEST_FACE;     
+          }                                         
+          else {                                    
+            for (int k=kup; k<kdown; k++)
+              grid->cells[i+j*gnx+k*gnxXny].flag |= BOTTOM_DIR_EAST_FACE;     
+          }                                         
+        }
+      }
+      // y-direction
+      if (j < gny-1) {
+        int kup = matrix[iglobal+jglobal*nx];
+        int kdown = matrix[iglobal+(jglobal+1)*nx];
+        if (kup>-1 && kdown>-1 && kup != kdown) {
+          if (kup > kdown) {                        
+            for (int k=kdown; k<kup; k++)
+              grid->cells[i+j*gnx+(k+1)*gnxXny].flag |= BOTTOM_DIR_SOUTH_FACE;     
+          }                                         
+          else {                                    
+            for (int k=kup; k<kdown; k++)
+              grid->cells[i+j*gnx+k*gnxXny].flag |= BOTTOM_DIR_NORTH_FACE;     
+          }                                         
+        }
+      }
+    }
+  }
+  delete [] matrix;
+  matrix = NULL;
+
+  // top
+  matrix = new int[nx*ny];
+  for (int i=0; i<nx*ny; i++)
+    matrix[i] = -1;
+
+  for (int jglobal=0; jglobal<ny; jglobal++) {
+    if (lys <= jglobal && jglobal < lye) {
+      for (int iglobal=0; iglobal<nx; iglobal++) {
+        if (lxs <= iglobal && iglobal < lxe) {
+          int j = jglobal-gys;
+          int i = iglobal-gxs;
+
+          int flag[3] = {0,0,0};
+
+          if (lze < nz) grid->receiveFlag(flag,TOP);
+          if (flag[0] == 0) {
+
+          // loop over local cells
+            for (int k=gnz-1; k>=0; k--) {
+              int ghosted_id = i+j*gnx+k*gnxXny;
+              if (grid->cells[ghosted_id].getActive() && 
+                  grid->cells[ghosted_id].getZ() <= top_stage) {
+                grid->cells[ghosted_id].flag |= TOP_DIR_TOP_FACE;
+                flag[0] = 1;
+                matrix[iglobal+jglobal*nx] = k+gzs;
+                break;
+              }
+            }
+          }
+          if (lzs > 0) grid->sendFlag(flag,BOTTOM);
+        }
+      }
+    }
+  }
+#if 0
+  MPI_Allreduce(MPI_IN_PLACE,&matrix,nx*ny,MPI_INTEGER,MPI_MAX,
+                PETSC_COMM_WORLD);
+ 
+  for (int j=0; j<gny; j++) {
+    int jglobal = j+gys;
+    for (int i=0; i<gnx; i++) {
+      int iglobal = i+gxs;
+      // x-direction
+      if (i < gnx-1) {
+        int kup = matrix[iglobal+jglobal*nx];
+        int kdown = matrix[iglobal+1+jglobal*nx];
+        if (kup>-1 && kdown>-1 && kup != kdown) {
+          if (kup > kdown) {                        
+            for (int k=kup; k>kdown; k--)
+              grid->cells[i+j*gnx+k*gnxXny].flag |= TOP_DIR_EAST_FACE;     
+          }                                         
+          else {                                    
+            for (int k=kdown; k>kup; k--)
+              grid->cells[i+1+j*gnx+k*gnxXny].flag |= TOP_DIR_WEST_FACE;     
+          }                                         
+        }
+      }
+      // y-direction
+      if (j < gny-1) {
+        int kup = matrix[iglobal+jglobal*nx];
+        int kdown = matrix[iglobal+(jglobal+1)*nx];
+        if (kup>-1 && kdown>-1 && kup != kdown) {
+          if (kup > kdown) {                        
+            for (int k=kdown; k<kup; k++)
+              grid->cells[i+j*gnx+k*gnxXny].flag |= TOP_DIR_NORTH_FACE;     
+          }                                         
+          else {                                    
+            for (int k=kup; k<kdown; k++)
+              grid->cells[i+(j+1)*gnx+k*gnxXny].flag |= TOP_DIR_SOUTH_FACE;     
+          }                                         
+        }
+      }
+    }
+  }
+#endif
+  delete [] matrix;
+  matrix = NULL;
+
 }
 
 void TestCase::setMaterialIdBasedOnNaturalId(int natural_id, int material_id,
