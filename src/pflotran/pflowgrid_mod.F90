@@ -1484,9 +1484,9 @@ subroutine pflowGrid_setup(grid, inputfile)
   call VecGetArrayF90(grid%dz,dz_p,ierr)
   do n = 1,grid%nlmax
     na = grid%nL2A(n)
-    i= int(na/grid%nxy) + 1
+    k= int(na/grid%nxy) + 1
     j= int(mod(na,grid%nxy)/grid%nx) + 1
-    k= mod(mod(na,grid%nxy),grid%nx) + 1
+    i= mod(mod(na,grid%nxy),grid%nx) + 1
     dx_p(n) = grid%dx0(i)
     dy_p(n) = grid%dy0(j)
     dz_p(n) = grid%dz0(k)
