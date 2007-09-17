@@ -37,6 +37,7 @@ subroutine hydrostatic (grid)
   real*8 :: ibndtyp(grid%nblkbc),cbc(grid%nblkbc),sbc(grid%nblkbc)
 
   Vec :: temp1_nat_vec, temp2_nat_vec, temp3_nat_vec, temp4_nat_vec
+  PetscScalar, pointer :: pres_p(:), temp_p(:), conc_p(:), xmol_p(:), sat_p(:)
 
 !#include "definitions.h"
 
@@ -59,6 +60,21 @@ subroutine hydrostatic (grid)
 
   if (grid%iread_init == 0) then
   
+#define GEH_SCALABLE
+#ifdef GEH_SCALABLE
+    if (grid%use_2ph /= PETSC_TRUE) then
+      call VecGetArrayF90(grid%pressure,pres_p,ierr)
+      call VecGetArrayF90(grid%temp,temp_p,ierr)
+      call VecGetArrayF90(grid%conc,conc_p,ierr)
+      call VecGetArrayF90(grid%sat,sat_p,ierr)
+    else
+      call VecGetArrayF90(grid%pressure,pres_p,ierr)
+      call VecGetArrayF90(grid%temp,temp_p,ierr)
+      call VecGetArrayF90(grid%xmol,xmol_p,ierr)
+      call VecGetArrayF90(grid%sat,sat_p,ierr)
+    endif
+#else
+!begin removed by geh  - not scalable memory-wise; see solution below
     if(grid%use_2ph /= PETSC_TRUE) then
       call DACreateNaturalVector(grid%da_1_dof,temp1_nat_vec,ierr) ! pressure
       call VecDuplicate(temp1_nat_vec,temp2_nat_vec,ierr)  ! temperature
@@ -73,7 +89,7 @@ subroutine hydrostatic (grid)
     endif
      
     if (grid%myrank == 0) then
-  
+#endif
       ! set initial pressure and temperature fields
       dz1 = 0.d0
       dz2 = grid%dz0(1)
@@ -112,8 +128,31 @@ subroutine hydrostatic (grid)
               endif
             enddo
         
-            m = i + (j-1)*grid%nx + (k-1)*grid%nxy - 1
            
+#ifdef GEH_SCALABLE
+            if (i > grid%nxs .and. i <= grid%nxe .and. &
+                j > grid%nys .and. j <= grid%nye .and. &
+                k > grid%nzs .and. k <= grid%nze) then
+              m = i-grid%nxs+(j-grid%nys-1)*grid%nlx+(k-grid%nzs-1)*grid%nlxy
+              if (grid%use_2ph /= PETSC_TRUE) then
+                jm = grid%jgas + m*grid%nphase - 1
+                pres_p(m) = pres
+                temp_p(m) = tmp
+                conc_p(m) = grid%conc0
+                sat_p(jm) = 1.d0
+              else
+                jm= m*grid%nphase
+                pres_p(jm) = pres
+                pres_p(jm+1) = pres
+                temp_p(m) = tmp
+                xmol_p(jm) = grid%conc0
+                xmol_p(jm+1) = grid%conc0
+                sat_p(jm) = 1.d0
+                sat_p(jm+1) = 0.d0
+              endif
+            endif
+#else
+            m = i + (j-1)*grid%nx + (k-1)*grid%nxy - 1
 !           print *,'hydrostatic: ',m+1,i,k,horiz,depth,tmp,pres,rho
 
             if (grid%use_2ph /= PETSC_TRUE) then
@@ -143,18 +182,39 @@ subroutine hydrostatic (grid)
               ! sg
               call VecSetValue(temp4_nat_vec,jm+1,0.d0,INSERT_VALUES,ierr) 
             endif 
+#endif
           enddo
         enddo
       enddo
   
       !set co2 layer
 #if 0
+      if (grid%use_2ph /= PETSC_TRUE) then
+        print *, 'ERROR: CO2 layer can only be set in mph mode'
+        stop
+      endif
+      tmp = 50.d0
+      pres = 2.d7
       do k = 1, 5
         do j = 1, 1
           do i = 1, 64
+#ifdef GEH_SCALABLE
+            if (i > grid%nxs .and. i <= grid%nxe .and. &
+                j > grid%nys .and. j <= grid%nye .and. &
+                k > grid%nzs .and. k <= grid%nze) then
+              m = i-grid%nxs+(j-grid%nys-1)*grid%nlx+(k-grid%nzs-1)*grid%nlxy
+              jm= m*grid%nphase
+              pres_p(jm) = pres
+              pres_p(jm+1) = pres
+              temp_p(m) = tmp
+              xmol_p(jm) = grid%conc0
+              xmol_p(jm+1) = grid%conc0
+              sat_p(jm) = 0.15d0
+              sat_p(jm+1) = 0.85d0
+              endif
+            endif
+#else
             m = i + (j-1)*grid%nx + (k-1)*grid%nxy - 1
-            tmp = 50.d0
-            pres = 2.d7
             jm = m*grid%nphase
             ! pressure
             call VecSetValue(temp1_nat_vec,jm,pres,INSERT_VALUES,ierr)
@@ -172,6 +232,7 @@ subroutine hydrostatic (grid)
 !            call VecSetValue(grid%pressure,m,pres,INSERT_VALUES,ierr)
 !            call VecSetValue(grid%temp,m,tmp,INSERT_VALUES,ierr)
 !            call VecSetValue(grid%conc,m,1.d0,INSERT_VALUES,ierr)
+#endif
           enddo
         enddo
       enddo
@@ -179,21 +240,50 @@ subroutine hydrostatic (grid)
   
       !set melt glass pressure, temperature, and tracer
 #if 0
+      if (grid%use_2ph == PETSC_TRUE) then
+        print *, 'ERROR: Melt glass cannot be set in mph mode'
+        stop
+      endif
+      tmp = 150.d0
+!      pres = 1.d7
+      pres = 8396027.61
       do k = 41, 45
         do j = 1, 1
           do i = 11, 31
+#ifdef GEH_SCALABLE
+            if (i > grid%nxs .and. i <= grid%nxe .and. &
+                j > grid%nys .and. j <= grid%nye .and. &
+                k > grid%nzs .and. k <= grid%nze) then
+              m = i-grid%nxs+(j-grid%nys-1)*grid%nlx+(k-grid%nzs-1)*grid%nlxy
+              pres_p(m) = pres
+              temp_p(m) = tmp
+              conc_p(m) = grid%conc0
+              endif
+            endif
+#else
             m = i + (j-1)*grid%nx + (k-1)*grid%nxy - 1
-            tmp = 150.d0
-!            pres = 1.d7
-            pres = 8396027.61
             call VecSetValue(grid%pressure,m,pres,INSERT_VALUES,ierr)
             call VecSetValue(grid%temp,m,tmp,INSERT_VALUES,ierr)
             call VecSetValue(grid%conc,m,1.d0,INSERT_VALUES,ierr)
+#endif
           enddo
         enddo
       enddo
 #endif
 
+#ifdef GEH_SCALABLE
+    if (grid%use_2ph /= PETSC_TRUE) then
+      call VecRestoreArrayF90(grid%pressure,pres_p,ierr)
+      call VecRestoreArrayF90(grid%temp,temp_p,ierr)
+      call VecRestoreArrayF90(grid%sat,sat_p,ierr)
+      call VecRestoreArrayF90(grid%conc,conc_p,ierr)
+    else
+      call VecRestoreArrayF90(grid%pressure,pres_p,ierr)
+      call VecRestoreArrayF90(grid%temp,temp_p,ierr)
+      call VecRestoreArrayF90(grid%sat,sat_p,ierr)
+      call VecRestoreArrayF90(grid%xmol,xmol_p,ierr)
+    endif
+#else
     endif
     
     call VecAssemblyBegin(temp1_nat_vec,ierr)
@@ -243,6 +333,7 @@ subroutine hydrostatic (grid)
     call VecDestroy(temp2_nat_vec,ierr)
     call VecDestroy(temp3_nat_vec,ierr)
     call VecDestroy(temp4_nat_vec,ierr)
+#endif
   endif
 
 ! boundary conditions

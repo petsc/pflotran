@@ -1113,7 +1113,9 @@ subroutine pflowGrid_setup(grid, inputfile)
 
   Vec :: temp0_nat_vec, temp1_nat_vec, temp2_nat_vec, temp3_nat_vec, &
           temp4_nat_vec !,temp5_nat_vec,temp6_nat_vec,temp7_nat_vec
-  
+
+  PetscScalar, pointer :: pressure_p(:), sat_p(:), conc_p(:), xmol_p(:) 
+
 ! PetscViewer :: viewer
   Vec :: temp_vec
 
@@ -1683,6 +1685,9 @@ subroutine pflowGrid_setup(grid, inputfile)
    else if (grid%use_vadose == PETSC_TRUE) then
     call pflow_vadose_setupini(grid)
    else 
+#define GEH_SCALABLE
+#ifndef GEH_SCALABLE
+!begin removed by geh  - not scalable memory-wise; see solution below
     call DACreateNaturalVector(grid%da_nphase_dof,temp1_nat_vec,ierr)
     call VecDuplicate(temp1_nat_vec, temp4_nat_vec, ierr)
     call DACreateNaturalVector(grid%da_1_dof,temp2_nat_vec,ierr)
@@ -1791,6 +1796,62 @@ subroutine pflowGrid_setup(grid, inputfile)
     
 !     call VecView(grid%conc,PETSC_VIEWER_STDOUT_WORLD,ierr)
     endif
+!end removed by geh
+#else
+!begin added by geh
+    call VecGetArrayF90(grid%pressure,pressure_p,ierr)
+    call VecGetArrayF90(grid%temp,temp_p,ierr)
+    call VecGetArrayF90(grid%sat,sat_p,ierr)
+    if (grid%ndof == 3) call VecGetArrayF90(grid%conc,conc_p,ierr)
+    if (grid%ndof == 4) call VecGetArrayF90(grid%xmol,xmol_p,ierr)
+    do ir = 1,grid%iregini
+      kk1 = grid%k1ini(ir) - grid%nzs
+      kk2 = grid%k2ini(ir) - grid%nzs
+      jj1 = grid%j1ini(ir) - grid%nys
+      jj2 = grid%j2ini(ir) - grid%nys
+      ii1 = grid%i1ini(ir) - grid%nxs
+      ii2 = grid%i2ini(ir) - grid%nxs
+
+      kk1 = max(1,kk1)
+      kk2 = min(grid%nlz,kk2)
+      jj1 = max(1,jj1)
+      jj2 = min(grid%nly,jj2)
+      ii1 = max(1,ii1)
+      ii2 = min(grid%nlx,ii2)
+
+      if (ii1 > ii2 .or. jj1 > jj2 .or. kk1 > kk2) cycle
+
+      do k = kk1,kk2
+        do j = jj1,jj2
+          do i = ii1,ii2
+            n = i+(j-1)*grid%nlx+(k-1)*grid%nlxy
+
+            jn1 = 1+n*grid%nphase-1
+            jn2 = 2+n*grid%nphase-1
+
+            pressure_p(jn1) = grid%pres_ini(ir)
+            if (grid%nphase>1) pressure_p(jn2) = grid%pres_ini(ir)
+
+            temp_p(n) = grid%temp_ini(ir)
+
+            sat_p(jn1) = grid%sat_ini(ir)
+            if (grid%nphase>1) sat_p(jn2) = 1.d0 - grid%sat_ini(ir)
+
+            if (grid%ndof == 3) conc_p(n) = grid%conc_ini(i)
+            if (grid%ndof == 4) xmol_p(jn2) = grid%conc_ini(i)
+          enddo
+        enddo
+      enddo
+    enddo
+    call VecRestoreArrayF90(grid%pressure,pressure_p,ierr)
+    call VecRestoreArrayF90(grid%temp,temp_p,ierr)
+    call VecRestoreArrayF90(grid%sat,sat_p,ierr)
+    if (grid%ndof == 3) call VecRestoreArrayF90(grid%conc,conc_p,ierr)
+    if (grid%ndof == 4) call VecRestoreArrayF90(grid%xmol,xmol_p,ierr)
+
+!end added by geh
+
+#endif
  
   endif 
  
@@ -2155,7 +2216,8 @@ subroutine pflowGrid_setup(grid, inputfile)
 ! call DACreateNaturalVector(grid%da_3_dof,temp3_nat_vec,ierr)
 
 ! set capillary index, thermal index, porosity and permeability by region
-  
+#ifndef GEH_SCALABLE
+!begin removed by geh  - not scalable memory-wise; see solution below
   if (myrank == 0) then 
 
     iseed = 345678912
@@ -2172,6 +2234,28 @@ subroutine pflowGrid_setup(grid, inputfile)
                               grid%ttemp,ierr)
   call DANaturalToGlobalEnd(grid%da_1_dof,temp0_nat_vec,INSERT_VALUES, &
                             grid%ttemp,ierr)
+#else
+!begin added by geh
+  iseed = 345678912
+  call VecGetArrayF90(grid%ttemp,temp_p,ierr)
+  do na=0,grid%nmax
+
+    random_nr = 1.d0
+    if (grid%ran_fac > 0.d0) random_nr = ran1(na+1)
+
+    k= int(na/grid%nxy) - grid%nzs
+    j= int(mod(na,grid%nxy)/grid%nx) - grid%nys
+    i= mod(mod(na,grid%nxy),grid%nx) - grid%nxs
+
+    if (k>=0 .and. k < grid%nlz .and. &
+        j>=0 .and. j < grid%nly .and. &
+        i>=0 .and. i < grid%nlx) then
+      temp_p(i+1+j*grid%nlx+k*grid%nlxy) = random_nr
+    endif
+
+  enddo
+  call VecRestoreArrayF90(grid%ttemp,temp_p,ierr)
+#endif
 
   call VecGetArrayF90(grid%ttemp,ran_p,ierr)
   call VecGetArrayF90(grid%icap,icap_p,ierr)
@@ -2183,6 +2267,9 @@ subroutine pflowGrid_setup(grid, inputfile)
   call VecGetArrayF90(grid%perm_zz,perm_zz_p,ierr)
   call VecGetArrayF90(grid%perm_pow,perm_pow_p,ierr)
   call VecGetArrayF90(grid%tor,tor_p,ierr)
+#ifndef GEH_SCALABLE
+!begin removed by geh  - the current implementation will result in inconsistent
+!                        random fields depending on processor distribution
   do n = 1,grid%nlmax
     na = grid%nL2A(n)
     nz= int(na/grid%nxy) + 1
@@ -2261,6 +2348,52 @@ subroutine pflowGrid_setup(grid, inputfile)
           
     enddo
   enddo
+#else
+!begin added by geh
+  do ir = 1,grid%iregperm        
+
+    ! in order to keep the random numbers consistent between processor
+    ! decompositions, must loop over ALL indices in perm region
+    do k=grid%k1reg(ir),grid%k2reg(ir)
+      do j=grid%j1reg(ir),grid%j2reg(ir)
+        do i=grid%i1reg(ir),grid%i2reg(ir)
+      
+          random_nr=1.D0
+          frand = 1.d0
+          if (grid%ran_fac > 0.d0) then
+            frand = ran1(n)
+            random_nr = grid%ran_fac*frand+1.d-6
+          endif
+ 
+          if (k > grid%nzs .and. k <= grid%nze .and. &
+              j > grid%nys .and. j <= grid%nye .and. &
+              i > grid%nxs .and. i <= grid%nxe) then
+
+            n = i-grid%nxs+(j-grid%nys-1)*grid%nlx+(k-grid%nzs-1)*grid%nlxy
+
+            por = grid%por_reg(ir)
+            por0_p(n)=por
+            if (grid%iran_por==1) then
+              por=por*(2.D0**0.666667D0*(frand)**1.5D0)
+              if (por<1D-2) por=1D-2 
+            endif
+            por_p(n)= por
+
+            perm_xx_p(n) = random_nr * grid%perm_reg(ir,1)
+            perm_yy_p(n) = random_nr * grid%perm_reg(ir,2)
+            perm_zz_p(n) = random_nr * grid%perm_reg(ir,3)
+            perm_pow_p(n) = grid%perm_reg(ir,4)
+
+            icap_p(n) = grid%icap_reg(ir)
+            ithrm_p(n) = grid%ithrm_reg(ir)
+            tor_p(n) = grid%tor_reg(ir)
+
+          endif
+        enddo
+      enddo
+    enddo
+  enddo
+#endif
       
  
   call VecRestoreArrayF90(grid%ttemp,ran_p,ierr)
