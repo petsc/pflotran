@@ -553,7 +553,7 @@ private
                    na, PETSC_COMM_WORLD, ierr)  
               call MPI_Send(temp, 1, MPI_DOUBLE_PRECISION,0, &
                    na, PETSC_COMM_WORLD, ierr)  
-              call MPI_Send(pres, 1, MPI_DOUBLE_PRECISION,0, &
+              call MPI_Send(conc, 1, MPI_DOUBLE_PRECISION,0, &
                    na, PETSC_COMM_WORLD, ierr)  
               call MPI_Send(sat, grid%nphase, MPI_DOUBLE_PRECISION,0, &
                    na, PETSC_COMM_WORLD, ierr)  
