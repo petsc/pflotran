@@ -2160,7 +2160,7 @@ subroutine pflowGrid_setup(grid, inputfile)
 
     iseed = 345678912
     do n=1,grid%nmax
-      val=1.D0
+      random_nr=1.D0
       if (grid%ran_fac > 0.d0) random_nr = ran1(n)
       val = random_nr
       call VecSetValue(temp0_nat_vec,n-1,val,INSERT_VALUES,ierr)
@@ -2203,6 +2203,7 @@ subroutine pflowGrid_setup(grid, inputfile)
         ithrm_p(n)=val
            
         random_nr=1.D0
+        frand = 1.d0
         if (grid%ran_fac > 0.d0) then
 !          frand = rand(0)
           frand = ran1(n)
