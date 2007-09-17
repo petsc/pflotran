@@ -1,5 +1,12 @@
 #include "Hanford300.h"
 
+#ifndef MAX
+#define MAX(X,Y) ((X) > (Y) ? (X) : (Y))
+#endif
+#ifndef MIN
+#define MIN(X,Y) ((X) < (Y) ? (X) : (Y))
+#endif
+
 Hanford300::Hanford300(Grid **grid_) {
 
   river_polygon = NULL;
