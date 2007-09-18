@@ -69,6 +69,13 @@ subroutine OutputHDF5(grid)
     call h5fcreate_f(filename,H5F_ACC_TRUNC_F,file_id,hdferr,H5P_DEFAULT_F,prop_id)
   endif
   call h5pclose_f(prop_id,hdferr)
+
+  if (first) then
+    if (grid%myrank == 0) print *, '--> creating hdf5 output file: ', filename
+  else
+    if (grid%myrank == 0) print *, '--> appending to hdf5 output file: ', &
+                                   filename
+  endif
   
   if (first) then
 

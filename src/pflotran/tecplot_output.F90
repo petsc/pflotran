@@ -416,13 +416,6 @@ subroutine WriteDataSet(fid,grid,vec_ptr,datatype)
   
   ! communicate data to processor 0, round robin style
   if (grid%myrank == 0) then
-#if 0
-    if (datatype == TECPLOT_INTEGER) then
-      write(IUNIT3,'(10(i3,x))') (integer_data(i),i=1,grid%nlmax)
-    else
-      write(IUNIT3,'(10(es11.4,x))') (real_data(i),i=1,grid%nlmax)
-    endif
-#else
     if (datatype == TECPLOT_INTEGER) then
       ! This approach makes output files identical, regardless of processor
       ! distribution.  It is necessary when diffing files.
@@ -448,21 +441,9 @@ subroutine WriteDataSet(fid,grid,vec_ptr,datatype)
       real_data(1:grid%nlmax-iend) = real_data(iend+1:grid%nlmax)
       num_in_array = grid%nlmax-iend
     endif
-#endif
     do iproc=1,grid%commsize-1
       call MPI_Probe(iproc,MPI_ANY_TAG,PETSC_COMM_WORLD,status,ierr)
       recv_size = status(MPI_TAG)
-#if 0
-      if (datatype == 0) then
-        call MPI_Recv(integer_data,recv_size,MPI_INTEGER,iproc,MPI_ANY_TAG, &
-                      PETSC_COMM_WORLD,status,ierr)
-        write(IUNIT3,'(10(i3,x))') (integer_data(i),i=1,recv_size)
-      else
-        call MPI_Recv(real_data,recv_size,MPI_DOUBLE_PRECISION,iproc, &
-                      MPI_ANY_TAG,PETSC_COMM_WORLD,status,ierr)
-        write(IUNIT3,'(10(es11.4,x))') (real_data(i),i=1,recv_size)
-      endif
-#else
       if (datatype == 0) then
         call MPI_Recv(integer_data_recv,recv_size,MPI_INTEGER,iproc, &
                       MPI_ANY_TAG,PETSC_COMM_WORLD,status,ierr)
@@ -502,7 +483,6 @@ subroutine WriteDataSet(fid,grid,vec_ptr,datatype)
           num_in_array = num_in_array-iend
         endif
       endif
-#endif
     enddo
     ! Print the remaining values, if they exist
     if (datatype == 0) then
