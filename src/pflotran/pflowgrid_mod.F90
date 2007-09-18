@@ -4558,7 +4558,12 @@ subroutine pflowGrid_read_input(grid, inputfile)
     
         enddo
         grid%iregperm = ireg
-            
+        
+        if (ireg > MAXINITREGIONS) then
+          print *,'error: increase MAXINITREGIONS: regions ',ireg,' > ',MAXINITREGIONS
+          stop
+        endif
+
         if (grid%myrank==0) then
           write(IUNIT2,'(/," *PHIK: ireg = ",i4)') grid%iregperm
           write(IUNIT2,'("  i1  i2  j1  j2  k1  k2 icap ithrm  por      tor  &

@@ -172,34 +172,33 @@ subroutine nhydrostatic(grid)
     call VecGetArrayF90(grid%xx, xx_p, ierr)
 
     !do nl=1, grid%nlmax
-      xm_nacl = grid%m_nacl * fmwnacl
-      xm_nacl = xm_nacl /(1.D3 + xm_nacl)
-       call nacl_den(grid%tref, grid%pref*1D-6, xm_nacl, dw_kg) 
-      rho_ref = dw_kg * 1D3
+    xm_nacl = grid%m_nacl * fmwnacl
+    xm_nacl = xm_nacl /(1.D3 + xm_nacl)
+    call nacl_den(grid%tref, grid%pref*1D-6, xm_nacl, dw_kg) 
+    rho_ref = dw_kg * 1D3
 
-     do i=grid%istart,grid%iend
-       
-         do j=grid%jstart,grid%jend
-         do k=grid%kstart,grid%kend
+    do i=grid%istart,grid%iend
+      do j=grid%jstart,grid%jend
+        do k=grid%kstart,grid%kend
             
-            nl = 1 + (i-grid%istart) + (j-grid%jstart)*grid%nlx + (k-grid%kstart)*grid%nlxy  
-            na=grid%nL2A(nl)+1 ! the natural ordering start from 0
-        !   Get nx,ny,nz
+          nl = 1 + (i-grid%istart) + (j-grid%jstart)*grid%nlx + (k-grid%kstart)*grid%nlxy  
+          na=grid%nL2A(nl)+1 ! the natural ordering start from 0
+        ! Get nx,ny,nz
             
-            nz= floor(((real(na)-.5))/grid%nxy) + 1
-            if(nz ==11) print*, i,j,k,nl, na
-            
-            depth = grid%z(na)
-            horiz = grid%x(na)
-            dp = rho_ref * grid%gravity * grid%beta *  (grid%x(grid%nmax) - grid%x(na))
-            pref =  grid%pref + dp 
-            call Get_Hydrosta_Pres(grid%nz,grid%dz0,pref, grid%tref, grid%dtdz, grid%gravity, grid%m_nacl) 
-            xx_p(1+ (nl-1)*grid%ndof)=hys_pres(nz) 
-            xx_p(2+ (nl-1)*grid%ndof)=hys_temp(nz)
-        !    print *, i,j,k,nl,na,nz, hys_pres(nz), hys_temp(nz)
-           enddo
-         enddo  
-       enddo
+          nz= floor(((real(na)-.5))/grid%nxy) + 1
+          if(nz ==11) print*, i,j,k,nl, na
+
+          depth = grid%z(na)
+          horiz = grid%x(na)
+          dp = rho_ref * grid%gravity * grid%beta *  (grid%x(grid%nmax) - grid%x(na))
+          pref =  grid%pref + dp 
+          call Get_Hydrosta_Pres(grid%nz,grid%dz0,pref, grid%tref, grid%dtdz, grid%gravity, grid%m_nacl) 
+          xx_p(1+ (nl-1)*grid%ndof)=hys_pres(nz) 
+          xx_p(2+ (nl-1)*grid%ndof)=hys_temp(nz)
+        ! print *, i,j,k,nl,na,nz, hys_pres(nz), hys_temp(nz)
+        enddo
+      enddo  
+    enddo
     call VecRestoreArrayF90(grid%xx, xx_p, ierr)
   endif
   
@@ -224,27 +223,27 @@ subroutine nhydrostatic(grid)
   !note-bcon must be in the order: 3D-left, right, top, bottom, front, back
   !                                1D-top, bottom
 
-   call VecGetArrayF90(grid%xx, xx_p, ierr)
+  call VecGetArrayF90(grid%xx, xx_p, ierr)
   do nc = 1, grid%nconnbc
-     m = grid%mblkbc(nc)  ! Note that here, m is NOT ghosted.
-     na=grid%nL2A(m) +1 
+    m = grid%mblkbc(nc)  ! Note that here, m is NOT ghosted.
+    na=grid%nL2A(m) +1 
    !  nz= floor(((real(na)-.5))/grid%nxy) + 1
    !  nx= floor(((real(na-(nz-1)*grid%nlzy)/grid%ny 1
   
-     ibc= grid%ibconn(nc)
-     if(grid%iface(ibc)/=3 .and. grid%iface(ibc)/=4)then
-       select case(grid%ibndtyp(ibc))
+    ibc= grid%ibconn(nc)
+    if(grid%iface(ibc)/=3 .and. grid%iface(ibc)/=4)then
+      select case(grid%ibndtyp(ibc))
         case(4)
       
         case(3)
           na=grid%nL2A(m) +1 
-           nz= floor(((real(na)-.5))/grid%nxy) + 1
+          nz= floor(((real(na)-.5))/grid%nxy) + 1
           if(grid%iface(ibc) ==1)then
             dp = rho_ref * grid%gravity * grid%beta * grid%x(grid%nmax) 
           elseif(grid%iface(ibc) ==2)then
             dp=0.D0
           else   
-           dp = rho_ref * grid%gravity * grid%beta * (grid%x(grid%nmax) - grid%x(na))
+            dp = rho_ref * grid%gravity * grid%beta * (grid%x(grid%nmax) - grid%x(na))
           endif
           pref =  grid%pref + dp 
           call Get_Hydrosta_Pres(grid%nz,grid%dz0,pref, grid%tref, grid%dtdz, grid%gravity, grid%m_nacl)  
@@ -253,20 +252,20 @@ subroutine nhydrostatic(grid)
         case(2)
           grid%xxbc(:,nc) = xx_p(1+ (m-1)*grid%ndof: m *grid%ndof)
         case(1) 
-           na=grid%nL2A(m) +1
-           nz= floor(((real(na)-.5))/grid%nxy) + 1
+          na=grid%nL2A(m) +1
+          nz= floor(((real(na)-.5))/grid%nxy) + 1
           if(grid%iface(ibc) ==1)then
             dp = rho_ref * grid%gravity * grid%beta * grid%x(grid%nmax) 
           elseif(grid%iface(ibc) ==2)then
             dp=0.D0
           else   
-           dp = rho_ref * grid%gravity * grid%beta * (grid%x(grid%nmax) - grid%x(na))
+            dp = rho_ref * grid%gravity * grid%beta * (grid%x(grid%nmax) - grid%x(na))
           endif
-           pref =  grid%pref + dp
+          pref =  grid%pref + dp
           call Get_Hydrosta_Pres(grid%nz,grid%dz0,pref, grid%tref, grid%dtdz, grid%gravity, grid%m_nacl)  
           grid%xxbc(1,nc) = hys_pres(nz)
           grid%xxbc(2,nc) = hys_temp(nz)
-       end select 
+        end select 
       elseif( grid%iface(ibc)==4 ) then
         select case(grid%ibndtyp(ibc))
         case(4)
@@ -275,7 +274,7 @@ subroutine nhydrostatic(grid)
           nz = grid%nz
           !nx= mod(mod(na,grid%nxy),grid%nx) + 1
           dp = rho_ref * grid%gravity * grid%beta * (grid%x(grid%nmax) - grid%x(na))
-           pref =  grid%pref + dp 
+          pref =  grid%pref + dp 
           call Get_Hydrosta_Pres(grid%nz,grid%dz0,pref, grid%tref, grid%dtdz, grid%gravity, grid%m_nacl)  
           grid%xxbc(1,nc) = hys_pres(nz+1)
           grid%xxbc(2:grid%ndof,nc) = xx_p(2+ (m-1)*grid%ndof: m *grid%ndof)
@@ -284,37 +283,34 @@ subroutine nhydrostatic(grid)
         case(1) 
           nz = grid%nz
           dp = rho_ref * grid%gravity * grid%beta * (grid%x(grid%nmax) - grid%x(na))
-           pref =  grid%pref + dp 
+          pref =  grid%pref + dp 
           call Get_Hydrosta_Pres(grid%nz,grid%dz0,pref, grid%tref, grid%dtdz, grid%gravity, grid%m_nacl)  
           grid%xxbc(1,nc) = hys_pres(nz+1)
           grid%xxbc(2,nc) = hys_temp(nz+1)
-       end select 
-     elseif( grid%iface(ibc)== 3 ) then
+        end select 
+      elseif( grid%iface(ibc)== 3 ) then
         select case(grid%ibndtyp(ibc))
         case(4)
       
         case(3,1)
           na=grid%nL2A(m)+1
           dp = rho_ref * grid%gravity * grid%beta * (grid%x(grid%nmax) - grid%x(na))
-           pref =  grid%pref + dp 
+          pref =  grid%pref + dp 
           grid%xxbc(1,nc) = pref
           grid%xxbc(2:grid%ndof,nc) = grid%tref
         case(2)
           grid%xxbc(:,nc) = xx_p(1+ (m-1)*grid%ndof: m*grid%ndof)
-       end select 
- 
- 
-      endif
+      end select
+    endif
  !  if(nz ==11) stop
  !  print *, m,na,nz, nc, ibc, grid%iface(ibc),grid%ibndtyp(ibc),  grid%xxbc(:,nc), xx_p(1+ (m-1)*grid%ndof: 2+ (m-1)*grid%ndof)
-   
-                   
-  enddo
- call VecRestoreArrayF90(grid%xx, xx_p, ierr)
- 
- deallocate(hys_pres)
- deallocate(hys_temp)
 
- end subroutine nhydrostatic
+  enddo
+  call VecRestoreArrayF90(grid%xx, xx_p, ierr)
+ 
+  deallocate(hys_pres)
+  deallocate(hys_temp)
+
+  end subroutine nhydrostatic
 end module nhydrostatic_module
 

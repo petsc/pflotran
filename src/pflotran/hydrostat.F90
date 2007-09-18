@@ -1691,6 +1691,11 @@ subroutine owghydrostatic(grid)
   endif
   
   grid%nblkbc = ibc
+  
+  if (ibc > MAXBCREGIONS) then
+    print *,'error: increase MAXBCREGIONS: ', ibc,' > ',MAXBCREGIONS
+    stop
+  endif
     
 ! do ibc = 1, grid%nblkbc
 !   grid%pressurebc(2,ibc) = grid%pressurebc(1,ibc)
