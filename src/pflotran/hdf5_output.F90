@@ -79,14 +79,24 @@ subroutine OutputHDF5(grid)
     ! write out coordinates in x, y, and z directions
     string = "X-coordinates"
     allocate(array(grid%nx))
-    array = grid%x(1:grid%nx)
+    do i=1,grid%nx
+      if (i == 1) then
+        array(i) = 0.5d0*grid%dx0(1)
+      else
+        array(i) = array(i-1) + 0.5d0*(grid%dx0(i-1)+grid%dx0(i))
+      endif
+    enddo
     call WriteCoordinate(string,grid,grid%nx,array,grp_id)
     deallocate(array)
   
     string = "Y-coordinates"
     allocate(array(grid%ny))
     do i=1,grid%ny
-      array(i) = grid%y(i*grid%nx)
+      if (i == 1) then
+        array(i) = 0.5d0*grid%dy0(1)
+      else
+        array(i) = array(i-1) + 0.5d0*(grid%dy0(i-1)+grid%dy0(i))
+      endif
     enddo
     call WriteCoordinate(string,grid,grid%ny,array,grp_id)
     deallocate(array)
@@ -94,7 +104,11 @@ subroutine OutputHDF5(grid)
     string = "Z-coordinates"
     allocate(array(grid%nz))
     do i=1,grid%nz
-      array(i) = grid%z(i*grid%nx*grid%ny)
+      if (i == 1) then
+        array(i) = 0.5d0*grid%dz0(1)
+      else
+        array(i) = array(i-1) + 0.5d0*(grid%dz0(i-1)+grid%dz0(i))
+      endif
     enddo
     call WriteCoordinate(string,grid,grid%nz,array,grp_id)
     deallocate(array)

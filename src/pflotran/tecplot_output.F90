@@ -63,7 +63,7 @@ subroutine OutputTecplot(grid,kplot)
   endif
   
   if (grid%myrank == 0) then
-    print *, '--> write output file: ', filename
+    print *, '--> write tecplot output file: ', filename
     open(unit=IUNIT3,file=filename,action="write")
   
     ! write header
@@ -387,9 +387,10 @@ subroutine WriteDataSet(fid,grid,vec_ptr,datatype)
   integer :: datatype
   
   integer :: i, iproc, recv_size
+  integer :: istart, iend, num_in_array
   integer :: status(MPI_STATUS_SIZE)
-  PetscInt, allocatable :: integer_data(:)
-  PetscReal, allocatable :: real_data(:)
+  PetscInt, allocatable :: integer_data(:), integer_data_recv(:)
+  PetscReal, allocatable :: real_data(:), real_data_recv(:)
   
   ! if first time, determine the maximum size of any local array across all procs
   if (max_local_size < 0) then
@@ -400,12 +401,14 @@ subroutine WriteDataSet(fid,grid,vec_ptr,datatype)
   
   ! transfer the data to an integer or real array
   if (datatype == TECPLOT_INTEGER) then
-    allocate(integer_data(max_local_size))
+    allocate(integer_data(max_local_size+10))
+    allocate(integer_data_recv(max_local_size))
     do i=1,grid%nlmax
       integer_data(i) = int(vec_ptr(i))
     enddo
   else
-    allocate(real_data(max_local_size))
+    allocate(real_data(max_local_size+10))
+    allocate(real_data_recv(max_local_size))
     do i=1,grid%nlmax
       real_data(i) = vec_ptr(i)
     enddo
@@ -413,14 +416,43 @@ subroutine WriteDataSet(fid,grid,vec_ptr,datatype)
   
   ! communicate data to processor 0, round robin style
   if (grid%myrank == 0) then
+#if 0
     if (datatype == TECPLOT_INTEGER) then
       write(IUNIT3,'(10(i3,x))') (integer_data(i),i=1,grid%nlmax)
     else
       write(IUNIT3,'(10(es11.4,x))') (real_data(i),i=1,grid%nlmax)
     endif
+#else
+    if (datatype == TECPLOT_INTEGER) then
+      ! This approach makes output files identical, regardless of processor
+      ! distribution.  It is necessary when diffing files.
+      iend = 0
+      do
+        istart = iend+1
+        if (iend+10 > grid%nlmax) exit
+        iend = istart+9
+        write(IUNIT3,'(10(i3,x))') integer_data(istart:iend)
+      enddo
+      ! shift remaining data to front of array
+      integer_data(1:grid%nlmax-iend) = integer_data(iend+1:grid%nlmax)
+      num_in_array = grid%nlmax-iend
+    else
+      iend = 0
+      do
+        istart = iend+1
+        if (iend+10 > grid%nlmax) exit
+        iend = istart+9
+        write(IUNIT3,'(10(es11.4,x))') real_data(istart:iend)
+      enddo
+      ! shift remaining data to front of array
+      real_data(1:grid%nlmax-iend) = real_data(iend+1:grid%nlmax)
+      num_in_array = grid%nlmax-iend
+    endif
+#endif
     do iproc=1,grid%commsize-1
       call MPI_Probe(iproc,MPI_ANY_TAG,PETSC_COMM_WORLD,status,ierr)
       recv_size = status(MPI_TAG)
+#if 0
       if (datatype == 0) then
         call MPI_Recv(integer_data,recv_size,MPI_INTEGER,iproc,MPI_ANY_TAG, &
                       PETSC_COMM_WORLD,status,ierr)
@@ -430,7 +462,56 @@ subroutine WriteDataSet(fid,grid,vec_ptr,datatype)
                       MPI_ANY_TAG,PETSC_COMM_WORLD,status,ierr)
         write(IUNIT3,'(10(es11.4,x))') (real_data(i),i=1,recv_size)
       endif
+#else
+      if (datatype == 0) then
+        call MPI_Recv(integer_data_recv,recv_size,MPI_INTEGER,iproc, &
+                      MPI_ANY_TAG,PETSC_COMM_WORLD,status,ierr)
+        if (recv_size > 0) then
+          integer_data(num_in_array+1:num_in_array+recv_size) = &
+                                             integer_data_recv(1:recv_size)
+          num_in_array = num_in_array+recv_size
+        endif
+        iend = 0
+        do
+          istart = iend+1
+          if (iend+10 > num_in_array) exit
+          iend = istart+9
+          write(IUNIT3,'(10(i3,x))') integer_data(istart:iend)
+        enddo
+        if (iend > 0) then
+          integer_data(1:num_in_array-iend) = integer_data(iend+1:num_in_array)
+          num_in_array = num_in_array-iend
+        endif
+      else
+        call MPI_Recv(real_data_recv,recv_size,MPI_DOUBLE_PRECISION,iproc, &
+                      MPI_ANY_TAG,PETSC_COMM_WORLD,status,ierr)
+        if (recv_size > 0) then
+          real_data(num_in_array+1:num_in_array+recv_size) = &
+                                             real_data_recv(1:recv_size)
+          num_in_array = num_in_array+recv_size
+        endif
+        iend = 0
+        do
+          istart = iend+1
+          if (iend+10 > num_in_array) exit
+          iend = istart+9
+          write(IUNIT3,'(10(es11.4,x))') real_data(istart:iend)
+        enddo
+        if (iend > 0) then
+          real_data(1:num_in_array-iend) = real_data(iend+1:num_in_array)
+          num_in_array = num_in_array-iend
+        endif
+      endif
+#endif
     enddo
+    ! Print the remaining values, if they exist
+    if (datatype == 0) then
+      if (num_in_array > 0) &
+        write(IUNIT3,'(10(i3,x))') integer_data(1:num_in_array)
+    else
+      if (num_in_array > 0) &
+        write(IUNIT3,'(10(es11.4,x))') real_data(1:num_in_array)
+    endif
   else
     if (datatype == TECPLOT_INTEGER) then
       call MPI_Send(integer_data,grid%nlmax,MPI_INTEGER,0,grid%nlmax, &
