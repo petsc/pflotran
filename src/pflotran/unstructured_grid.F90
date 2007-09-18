@@ -148,17 +148,17 @@ subroutine ReadUnstructuredGrid(grid)
     call fiReadDouble(string,tortuosity,ierr)
     call fiErrorMsg('tortuosity',card,ierr)
 
-!geh In the future, 'natural_id' will be replaced by 'local_id'
-    grid%x(natural_id)=xcoord
-    grid%y(natural_id)=ycoord
-!    grid%z(natural_id)=zcoord
-
 #ifdef HASH
     local_ghosted_id = GetLocalGhostedIdFromHash(natural_id)
 #else
     local_ghosted_id = GetLocalGhostedIdFromNaturalId(natural_id,grid)
 #endif
     if (local_ghosted_id > 0) then
+
+      grid%x(local_ghosted_id)=xcoord
+      grid%y(local_ghosted_id)=ycoord
+!      grid%z(local_ghosted_id)=zcoord
+
       local_id = grid%nG2L(local_ghosted_id)
       if (local_id > 0 .and. abs(material_id) > 0) then
         perm_xx_p(local_id) = xperm
@@ -280,18 +280,18 @@ subroutine ReadUnstructuredGrid(grid)
         if (area>0.D0) grid%area(grid%nconn)= area
         ! negate to account for left-hand rule in pflotran
 #ifdef INVERT
-        grid%delz(grid%nconn) = -1.d0*abs(grid%z(natural_id_downwind)-  &
-                                    grid%z(natural_id_upwind))
+        grid%delz(grid%nconn) = -1.d0*abs(grid%z(local_ghosted_id_downwind)-  &
+                                    grid%z(local_ghosted_id_upwind))
 #else
-        grid%delz(grid%nconn) = +1.d0*abs(grid%z(natural_id_downwind)-  &
-                                    grid%z(natural_id_upwind))
+        grid%delz(grid%nconn) = +1.d0*abs(grid%z(local_ghosted_id_downwind)-  &
+                                    grid%z(local_ghosted_id_upwind))
 #endif
         grid%grav_ang(grid%nconn) = cosB
 
         ! setup direction of permeability
-        dx = abs(grid%x(natural_id_upwind)-grid%x(natural_id_downwind))
-        dy = abs(grid%y(natural_id_upwind)-grid%y(natural_id_downwind))
-        dz = abs(grid%z(natural_id_upwind)-grid%z(natural_id_downwind))
+        dx = abs(grid%x(local_ghosted_id_upwind)-grid%x(local_ghosted_id_downwind))
+        dy = abs(grid%y(local_ghosted_id_upwind)-grid%y(local_ghosted_id_downwind))
+        dz = abs(grid%z(local_ghosted_id_upwind)-grid%z(local_ghosted_id_downwind))
         if (dx > dy .and. dx > dz) then
           grid%iperm1(grid%nconn) = 1
           grid%iperm2(grid%nconn) = 1
@@ -719,17 +719,17 @@ subroutine ReadMaterials(grid)
     call fiReadDouble(string,tortuosity,ierr)
     call fiErrorMsg('tortuosity',card,ierr)
 
-!geh In the future, 'natural_id' will be replaced by 'local_id'
-    grid%x(natural_id)=xcoord
-    grid%y(natural_id)=ycoord
-    grid%z(natural_id)=zcoord
-
 #ifdef HASH
     local_ghosted_id = GetLocalGhostedIdFromHash(natural_id)
 #else
     local_ghosted_id = GetLocalGhostedIdFromNaturalId(natural_id,grid)
 #endif
     if (local_ghosted_id > 0) then
+
+      grid%x(local_ghosted_id)=xcoord
+      grid%y(local_ghosted_id)=ycoord
+      grid%z(local_ghosted_id)=zcoord
+
       local_id = grid%nG2L(local_ghosted_id)
       if (local_id > 0 .and. abs(material_id) > 0) then
 !      if (local_id > 0) then
@@ -1029,7 +1029,6 @@ subroutine ReadMaterials2(grid)
     call fiReadDouble(string,zcoord,ierr)
     call fiErrorMsg('zcoord',card,ierr)
    
-!geh In the future, 'natural_id' will be replaced by 'local_id'
     grid%x(natural_id)=xcoord
     grid%y(natural_id)=ycoord
     grid%z(natural_id)=zcoord
@@ -1039,6 +1038,11 @@ subroutine ReadMaterials2(grid)
 #else
     local_ghosted_id = GetLocalGhostedIdFromNaturalId(natural_id,grid)
 #endif
+
+    grid%x(local_ghosted_id)=xcoord
+    grid%y(local_ghosted_id)=ycoord
+    grid%z(local_ghosted_id)=zcoord
+
     if (local_ghosted_id > 0) then
       local_id = grid%nG2L(local_ghosted_id)
       grid%imat(local_ghosted_id) = material_id

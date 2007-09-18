@@ -79,6 +79,8 @@ private
   real*8 :: tyr, sum1, sum2, sum1v, sum2v, area, vol, vel, vf
   integer, save :: icall, icall_brk, icall_plt
   
+  real*8, allocatable :: x(:), y(:), z(:)
+  
   character(len=20) :: fname
   character*3 :: q
   character*1 :: tab
@@ -403,6 +405,33 @@ private
 
  ! Open output file , write out title       
   if(grid%myrank==0)then 
+  
+    allocate(x(grid%nmax),y(grid%nmax),z(grid%nmax))
+    n = 0
+    do k=1,grid%nz
+      do j=1,grid%ny
+        do i=1,grid%nx
+          n = n+1
+          if (i == 1) then
+            x(n) = 0.5d0*grid%dx0(i)
+          else
+            x(n) = x(n-1) + 0.5d0*(grid%dx0(i-1)+grid%dx0(i))
+          endif 
+          if (j == 1) then
+            y(n) = 0.5d0*grid%dy0(j)
+          else
+            y(n) = y(n-grid%nx) + 0.5d0*(grid%dy0(j-1)+grid%dy0(j))
+          endif
+          if (k == 1) then
+            z(n) = 0.5d0*grid%dz0(k)
+          else
+            z(n) = z(n-grid%nxy) + 0.5d0*(grid%dz0(k-1)+grid%dz0(k))
+          endif
+        enddo
+      enddo
+    enddo
+   
+  
     if (kplt < 10) then
       write(fname,'(a7,i1,a4)') 'pflow00', kplt, '.dat'
     else if (kplt < 100) then
@@ -585,13 +614,15 @@ private
               enddo   
             endif
           enddo    
-          write(IUNIT3,'(1p100e12.4)') grid%x(na+1), grid%y(na+1), grid%z(na+1), real(iipha), &
+!geh          write(IUNIT3,'(1p100e12.4)') grid%x(na+1), grid%y(na+1), grid%z(na+1), real(iipha), &
+          write(IUNIT3,'(1p100e12.4)') x(na+1), y(na+1), z(na+1), real(iipha), &
           vvar(1:2+grid%nphase), & ! Saturations
           vvar(3+4*grid%nphase:2+5*grid%nphase), &! Internal Energy
           vvar(3+ 7*grid%nphase: 2+ 7 *grid%nphase + grid%nphase* grid%nspec),& !Mol fractio
           vf
       else
-        write(IUNIT3,'(1p10e12.4)') grid%x(na+1), grid%y(na+1), grid%z(na+1), &
+!geh        write(IUNIT3,'(1p10e12.4)') grid%x(na+1), grid%y(na+1), grid%z(na+1), &
+        write(IUNIT3,'(1p10e12.4)')x(na+1), y(na+1), z(na+1), &
           pres, temp, sat, conc, vf      
      endif
    
@@ -607,7 +638,8 @@ private
                 grid%use_flash == PETSC_TRUE .or. &
                 grid%use_vadose == PETSC_TRUE .or.&
                 grid%use_richards == PETSC_TRUE ) then
-                 write(1100,'(i10,1p10e16.8)')na,grid%x(na+1), grid%y(na+1), grid%z(na+1),&
+!geh                 write(1100,'(i10,1p10e16.8)')na,grid%x(na+1), grid%y(na+1), grid%z(na+1),&
+                 write(1100,'(i10,1p10e16.8)')na,x(na+1), y(na+1), z(na+1),&
                             real(iipha), xxx   
                  
             else
@@ -911,22 +943,26 @@ private
     call MPI_Barrier(PETSC_COMM_WORLD, ierr)
     
     if(grid%myrank ==0 )then
-     write(IUNIT3,'(1p30e12.4)') grid%x(na+1),grid%y(na+1),grid%z(na+1), &
+!geh     write(IUNIT3,'(1p30e12.4)') grid%x(na+1),grid%y(na+1),grid%z(na+1), &
+     write(IUNIT3,'(1p30e12.4)') x(na+1),y(na+1),z(na+1), &
               (vavel(ip),ip=1,3*grid%nphase)
 
       if(grid%nx>1) then
-         write(1001,'(1p10e12.4)') grid%x(na+1),grid%y(na+1),grid%z(na+1), &
+!geh         write(1001,'(1p10e12.4)') grid%x(na+1),grid%y(na+1),grid%z(na+1), &
+         write(1001,'(1p10e12.4)') x(na+1),y(na+1),z(na+1), &
               velo(1:grid%nphase) * grid%tconv
        endif 
 
 
       if(grid%ny>1) then
-         write(1002,'(1p10e12.4)') grid%x(na+1),grid%y(na+1),grid%z(na+1), &
+!geh         write(1002,'(1p10e12.4)') grid%x(na+1),grid%y(na+1),grid%z(na+1), &
+         write(1002,'(1p10e12.4)') x(na+1),y(na+1),z(na+1), &
               velo(grid%nphase + 1: 2*grid%nphase)  *grid%tconv
        endif 
        
       if(grid%nz>1) then
-         write(1003,'(1p10e12.4)') grid%x(na+1),grid%y(na+1),grid%z(na+1), &
+!geh         write(1003,'(1p10e12.4)') grid%x(na+1),grid%y(na+1),grid%z(na+1), &
+         write(1003,'(1p10e12.4)') x(na+1),y(na+1),z(na+1), &
               velo(2*grid%nphase+1: 3*grid%nphase) * grid%tconv
        endif 
 
@@ -948,7 +984,7 @@ enddo
      
  if (grid%iprint >= 2) call porperm_out (grid%t, grid%dt, grid%tconv, &
           kplt, grid%nx, grid%ny, grid%nz, grid%nmax, &
-          grid%x, grid%y, grid%z, grid%flowsteps, grid%porosity,grid%perm_xx,&
+          x, y, z, grid%flowsteps, grid%porosity,grid%perm_xx,&
           grid%myrank,grid%nlmax,grid%nL2A)
                         
 
@@ -1070,7 +1106,7 @@ endif
  endif  ! endif of tecplot
    
         
- 
+ if (grid%myrank == 0) deallocate(x,y,z)
     
   
   

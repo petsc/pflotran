@@ -51,6 +51,8 @@ subroutine pflow_output(grid,kplt,iplot)
   
   real*8 :: tyr, sum1, sum2, sum1v, sum2v, area, vol, vel, vf
   integer, save :: icall, icall_brk, icall_plt
+
+  real*8, allocatable :: x(:), y(:), z(:) 
   
   character(len=20) :: fname
   character*3 :: q
@@ -456,6 +458,33 @@ subroutine pflow_output(grid,kplt,iplot)
   tyr = grid%t/grid%tconv
 
   if (grid%myrank == 0) then
+
+    allocate(x(grid%nmax),y(grid%nmax),z(grid%nmax))
+    n = 0
+    do k=1,grid%nz
+      do j=1,grid%ny
+        do i=1,grid%nx
+          n = n+1
+          if (i == 1) then
+            x(n) = 0.5d0*grid%dx0(i)
+          else
+            x(n) = x(n-1) + 0.5d0*(grid%dx0(i-1)+grid%dx0(i))
+          endif 
+          if (j == 1) then
+            y(n) = 0.5d0*grid%dy0(j)
+          else
+            y(n) = y(n-grid%nx) + 0.5d0*(grid%dy0(j-1)+grid%dy0(j))
+          endif
+          if (k == 1) then
+            z(n) = 0.5d0*grid%dz0(k)
+          else
+            z(n) = z(n-grid%nxy) + 0.5d0*(grid%dz0(k-1)+grid%dz0(k))
+          endif
+        enddo
+      enddo
+    enddo
+
+
     if (grid%flowsteps == 0) then
       call SNESGetTolerances(grid%snes, grid%atol, grid%rtol, grid%stol, &
                              grid%maxit, grid%maxf, ierr)
@@ -520,19 +549,22 @@ subroutine pflow_output(grid,kplt,iplot)
         vf = 0.d0
         if (grid%rk > 0.d0) vf = phis_p(n)
         if (grid%use_2ph == PETSC_TRUE ) then
-          write(IUNIT3,'(1p100e12.4)') grid%x(n), grid%y(n), grid%z(n), &
+!geh          write(IUNIT3,'(1p100e12.4)') grid%x(n), grid%y(n), grid%z(n), &
+          write(IUNIT3,'(1p100e12.4)') x(n),y(n),z(n), &
             (p_p(j),j=jn,jn+grid%nphase-grid%jh2o),t_p(n),s_p(jn),s_p(jn+1), &
             x_p(jn),x_p(jn+1),vf
         elseif (grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE &
                 .or. grid%use_flash == PETSC_TRUE)then !.or. grid%use_richards == PETSC_TRUE)then
-          write(IUNIT3,'(1p100e12.4)') grid%x(n), grid%y(n), grid%z(n), &
+!geh          write(IUNIT3,'(1p100e12.4)') grid%x(n), grid%y(n), grid%z(n), &
+          write(IUNIT3,'(1p100e12.4)') x(n), y(n), z(n), &
             iphase_p(n),&
             (p_p(j),j=jn,jn+grid%nphase-grid%jh2o),t_p(n),s_p(jn:jn+grid%nphase-1), &
             x_p(jn:jn+grid%nphase-1),vf
       !    print *,'output', grid%nphase, n, (p_p(j),j=jn,jn+grid%nphase-grid%jh2o),t_p(n),s_p(jn:jn+grid%nphase-1), &
       !      x_p(jn:jn+grid%nphase-1),vf
         else
-          write(IUNIT3,'(1p100e12.4)') grid%x(n), grid%y(n), grid%z(n), &
+!geh          write(IUNIT3,'(1p100e12.4)') grid%x(n), grid%y(n), grid%z(n), &
+          write(IUNIT3,'(1p100e12.4)') x(n), y(n), z(n), &
             (p_p(j),j=jn,jn+grid%nphase-grid%jh2o), t_p(n), s_p(jn), c_p(n), vf
         endif
       enddo
@@ -559,10 +591,12 @@ subroutine pflow_output(grid,kplt,iplot)
         if (grid%use_2ph == PETSC_TRUE .or. grid%use_mph == PETSC_TRUE .or. &
             grid%use_vadose == PETSC_TRUE.or.grid%use_flash == PETSC_TRUE &
              ) then
-          write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%y(n), &
+!geh          write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%y(n), &
+          write(IUNIT3,'(1p10e12.4)') x(n),y(n), &
              p_p(jn+1), t_p(n), s_p(jn), x_p(jn), x_p(jn+1),vf
         else
-          write(IUNIT3,'(1p10e12.4)') grid%x(n), grid%y(n), &
+!geh          write(IUNIT3,'(1p10e12.4)') grid%x(n), grid%y(n), &
+          write(IUNIT3,'(1p10e12.4)') x(n), y(n), &
             p_p(jn), t_p(n), s_p(jn), c_p(n), vf
         endif
       enddo
@@ -590,15 +624,18 @@ subroutine pflow_output(grid,kplt,iplot)
           vf = 0.d0
           if (grid%rk > 0.d0) vf = phis_p(n)
           if ( grid%use_2ph == PETSC_TRUE) then
-            write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%z(n), &
+!geh            write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%z(n), &
+            write(IUNIT3,'(1p10e12.4)') x(n),z(n), &
               p_p(jn+1), t_p(n), s_p(jn), x_p(jn), x_p(jn+1),vf
           elseif(grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE &
                  .or. grid%use_flash == PETSC_TRUE &
                  ) then
-            write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%z(n),iphase_p(n), &
+!geh            write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%z(n),iphase_p(n), &
+            write(IUNIT3,'(1p10e12.4)') x(n),z(n),iphase_p(n), &
               p_p(jn+1),t_p(n), s_p(jn), x_p(jn), x_p(jn+1),vf
           else
-            write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%z(n), &
+!geh            write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%z(n), &
+            write(IUNIT3,'(1p10e12.4)') x(n),z(n), &
               p_p(jn), t_p(n), s_p(jn), c_p(n), vf
           endif
         enddo
@@ -634,10 +671,12 @@ subroutine pflow_output(grid,kplt,iplot)
               .or. grid%use_vadose == PETSC_TRUE &
               .or. grid%use_flash == PETSC_TRUE &
               ) then
-            write(IUNIT3,'(1p100e12.4)') grid%x(n),grid%z(n),iphase_p(n), &
+!geh            write(IUNIT3,'(1p100e12.4)') grid%x(n),grid%z(n),iphase_p(n), &
+            write(IUNIT3,'(1p100e12.4)') x(n),z(n),iphase_p(n), &
               p_p(jn),p_p(jn+1),t_p(n),s_p(jn),s_p(jn+1),x_p(jn),x_p(jn+1),vf
           else
-            write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%z(n), &
+!geh            write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%z(n), &
+            write(IUNIT3,'(1p10e12.4)') x(n),z(n), &
               p_p(jn), t_p(n), s_p(jn), c_p(n), vf
           endif
 !          enddo
@@ -666,10 +705,12 @@ subroutine pflow_output(grid,kplt,iplot)
       if (grid%use_2ph == PETSC_TRUE .or. grid%use_mph == PETSC_TRUE &
           .or. grid%use_flash == PETSC_TRUE &   
           .or. grid%use_vadose == PETSC_TRUE) then
-        write(IUNIT3,'(1p10e12.4)') grid%x(n), grid%y(n), grid%z(n), &
+!geh        write(IUNIT3,'(1p10e12.4)') grid%x(n), grid%y(n), grid%z(n), &
+        write(IUNIT3,'(1p10e12.4)') x(n), y(n), z(n), &
           iphase_p(n), p_p(jn+1), t_p(n), s_p(jn+1), x_p(jn),x_p(jn+1), vf
       else
-        write(IUNIT3,'(1p10e12.4)') grid%x(n), grid%y(n), grid%z(n), &
+!geh        write(IUNIT3,'(1p10e12.4)') grid%x(n), grid%y(n), grid%z(n), &
+        write(IUNIT3,'(1p10e12.4)') x(n), y(n), z(n), &
           p_p(jn), t_p(n), s_p(jn), c_p(n), vf
       endif
     enddo
@@ -862,10 +903,12 @@ subroutine pflow_output(grid,kplt,iplot)
             endif
             
             if(grid%nphase>1)then
-              write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%y(n),grid%z(n), &
+!geh              write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%y(n),grid%z(n), &
+              write(IUNIT3,'(1p10e12.4)') x(n),y(n),z(n), &
               (vavel(ip),vaveg(ip),ip=1,3)
             else
-              write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%y(n),grid%z(n), &
+!geh              write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%y(n),grid%z(n), &
+              write(IUNIT3,'(1p10e12.4)') x(n),y(n),z(n), &
               (vavel(ip),ip=1,3)
             endif 
 !           write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%y(n),grid%z(n), &
@@ -896,11 +939,13 @@ subroutine pflow_output(grid,kplt,iplot)
             do i = 1, grid%nx-1
               n = i+(j-1)*grid%nx+(k-1)*grid%nxy
                if(grid%nphase>1)then
-                 write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%y(n),grid%z(n), &
+!geh                 write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%y(n),grid%z(n), &
+                 write(IUNIT3,'(1p10e12.4)') x(n),y(n),z(n), &
                  vl_p(1+(n-1)*3*grid%nphase)*grid%tconv,&
                  vl_p(2+(n-1)*3*grid%nphase)*grid%tconv
                else
-                 write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%y(n),grid%z(n), &
+!geh                 write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%y(n),grid%z(n), &
+                 write(IUNIT3,'(1p10e12.4)') x(n),y(n),z(n), &
                  vl_p(1+(n-1)*3*grid%nphase)*grid%tconv!,&
                  !vl_p(2+(n-1)*3*grid%nphase)*grid%tconv
                endif                 
@@ -929,11 +974,13 @@ subroutine pflow_output(grid,kplt,iplot)
             do j = 1, grid%ny-1
               n = i+(j-1)*grid%nx+(k-1)*grid%nxy
                if(grid%nphase>1)then
-                 write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%y(n),grid%z(n), &
+!geh                 write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%y(n),grid%z(n), &
+                 write(IUNIT3,'(1p10e12.4)') x(n),y(n),z(n), &
                  vl_p(1+grid%nphase+(n-1)*3*grid%nphase)*grid%tconv, &
                  vl_p(2+grid%nphase+(n-1)*3*grid%nphase)*grid%tconv
                else
-                 write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%y(n),grid%z(n), &
+!geh                 write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%y(n),grid%z(n), &
+                 write(IUNIT3,'(1p10e12.4)') x(n),y(n),z(n), &
                  vl_p(1+grid%nphase+(n-1)*3*grid%nphase)*grid%tconv
                endif                  
             enddo
@@ -961,17 +1008,20 @@ subroutine pflow_output(grid,kplt,iplot)
             do k = 1, grid%nz-1
               n = i+(j-1)*grid%nx+(k-1)*grid%nxy
               if(grid%nphase>1)then
-                write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%y(n),grid%z(n), &
+!geh                write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%y(n),grid%z(n), &
+                write(IUNIT3,'(1p10e12.4)') x(n),y(n),z(n), &
                 vl_p(1+2*grid%nphase+(n-1)*3*grid%nphase)*grid%tconv,&
                 vl_p(2+2*grid%nphase+(n-1)*3*grid%nphase)*grid%tconv
               else
-               write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%y(n),grid%z(n), &
+!geh               write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%y(n),grid%z(n), &
+               write(IUNIT3,'(1p10e12.4)') x(n),y(n),z(n), &
                 vl_p(1+2*grid%nphase+(n-1)*3*grid%nphase)*grid%tconv
               endif 
             enddo
           enddo
         enddo
         close(IUNIT3)
+        
       endif
 !#endif
 
@@ -989,10 +1039,11 @@ subroutine pflow_output(grid,kplt,iplot)
 
   if (grid%iprint >= 2) call porperm_out (grid%t, grid%dt, grid%tconv, &
           kplt, grid%nx, grid%ny, grid%nz, grid%nmax, &
-          grid%x, grid%y, grid%z, grid%flowsteps, scat_1dof, &
+          x, y, z, grid%flowsteps, scat_1dof, &
           grid%da_1_dof, grid%porosity, por_nat, grid%perm_xx, perm_nat, &
           grid%myrank)
 
+  if (grid%myrank == 0) deallocate(x,y,z)
   
     ! if (grid%iprint >= 1) call VecScatterDestroy(scat_1dof, ierr)
 
@@ -1124,7 +1175,7 @@ end subroutine pflow_output
 #endif
 
   if(myrank == 0) then
-    
+  
     if (kplt < 10) then
       write(fname,'(a10,i1,a4)') 'pflow_por0', kplt, '.dat'
     else
@@ -1195,6 +1246,7 @@ end subroutine pflow_output
     call VecRestoreArrayF90(por_all, por_p, ierr)
     call VecRestoreArrayF90(perm_all, perm_p, ierr)
     close (IUNIT3)
+    
   endif
   call VecDestroy(por_all, ierr)
   call VecDestroy(perm_all, ierr)
@@ -1248,6 +1300,8 @@ end subroutine pflow_output
   character(len=20) :: fname
   character*3 :: q
   character*1 :: tab
+  
+  real*8, allocatable :: x(:), y(:), z(:) 
   
   character*6, allocatable :: var_name(:)!2+grid%nphase*(2+grid%nspec))
   
@@ -1318,11 +1372,41 @@ end subroutine pflow_output
 
 ! plot spatial data (iplot > 0)
   
+  
+    if (grid%myrank == 0) then
+      allocate(x(grid%nmax),y(grid%nmax),z(grid%nmax))
+      n = 0
+      do k=1,grid%nz
+        do j=1,grid%ny
+          do i=1,grid%nx
+            n = n+1
+            if (i == 1) then
+              x(n) = 0.5d0*grid%dx0(i)
+            else
+              x(n) = x(n-1) + 0.5d0*(grid%dx0(i-1)+grid%dx0(i))
+            endif 
+            if (j == 1) then
+              y(n) = 0.5d0*grid%dy0(j)
+            else
+              y(n) = y(n-grid%nx) + 0.5d0*(grid%dy0(j-1)+grid%dy0(j))
+            endif
+            if (k == 1) then
+              z(n) = 0.5d0*grid%dz0(k)
+            else
+              z(n) = z(n-grid%nxy) + 0.5d0*(grid%dz0(k-1)+grid%dz0(k))
+            endif
+          enddo
+        enddo
+      enddo
+    endif
+
+  
+  
     call VecGetArrayF90(grid%xx,  xx_p, ierr)
     call VecGetArrayF90(grid%var, var_p, ierr)
     call VecGetArrayF90(grid%iphas, iphase_p, ierr)
   
-  if (kplt < 10) then
+    if (kplt < 10) then
       write(fname,'(a7,i1,a4)') 'pflow00', kplt, '.dat'
     else if (kplt < 100) then
       write(fname,'(a6,i2,a4)') 'pflow0', kplt, '.dat'
@@ -1355,7 +1439,7 @@ end subroutine pflow_output
         endif
       endif
     ! close(IUNIT3)
-
+    
     ! call MPI_Bcast(IUNIT, 1, MPI_INTEGER, 0,PETSC_COMM_WORLD,ierr)
     ndex=1
     do na=0, grid%nmax-1
@@ -1410,7 +1494,8 @@ end subroutine pflow_output
           enddo   
         endif
       enddo    
-      write(IUNIT3,'(1p100e12.4)') grid%x(na+1), grid%y(na+1), grid%z(na+1), real(iipha), &
+!geh      write(IUNIT3,'(1p100e12.4)') grid%x(na+1), grid%y(na+1), grid%z(na+1), real(iipha), &
+      write(IUNIT3,'(1p100e12.4)') x(na+1), y(na+1), z(na+1), real(iipha), &
       vvar(1:2+grid%nphase), & ! Saturations
       vvar(3+4*grid%nphase:2+5*grid%nphase), &! Internal Energy
       vvar(3+ 7*grid%nphase: 2+ 7 *grid%nphase + grid%nphase* grid%nspec) !Mol fractions
@@ -1488,7 +1573,8 @@ end subroutine pflow_output
                 enddo   
               endif
             enddo    
-            write(IUNIT3,'(1p100e12.4)') grid%x(na+1), grid%y(na+1), grid%z(na+1), real(iipha), &
+!geh            write(IUNIT3,'(1p100e12.4)') grid%x(na+1), grid%y(na+1), grid%z(na+1), real(iipha), &
+            write(IUNIT3,'(1p100e12.4)')x(na+1), y(na+1), z(na+1), real(iipha), &
             vvar(1:2+grid%nphase), & ! Saturations
             vvar(3+4*grid%nphase:2+5*grid%nphase), &! Internal Energy
             vvar(3+ 7*grid%nphase: 2+ 7 *grid%nphase + grid%nphase* grid%nspec) !Mol fractions
@@ -1569,7 +1655,8 @@ end subroutine pflow_output
                 enddo
               endif
             enddo
-            write(IUNIT3,'(1p100e12.4)') grid%x(na+1), grid%y(na+1), grid%z(na+1), real(iipha), &
+!geh            write(IUNIT3,'(1p100e12.4)') grid%x(na+1), grid%y(na+1), grid%z(na+1), real(iipha), &
+            write(IUNIT3,'(1p100e12.4)') x(na+1), y(na+1), z(na+1), real(iipha), &
             vvar(1:2+grid%nphase), & ! Saturations
             vvar(3+4*grid%nphase:2+5*grid%nphase), &! Internal Energy
             vvar(3+ 7*grid%nphase: 2+ 7 *grid%nphase + grid%nphase* grid%nspec) !Mol fractions
@@ -1646,7 +1733,8 @@ end subroutine pflow_output
                 enddo   
               endif
             enddo    
-            write(IUNIT3,'(1p100e12.4)') grid%x(na+1), grid%y(na+1), grid%z(na+1), real(iipha), &
+!geh            write(IUNIT3,'(1p100e12.4)') grid%x(na+1), grid%y(na+1), grid%z(na+1), real(iipha), &
+            write(IUNIT3,'(1p100e12.4)') x(na+1), y(na+1), z(na+1), real(iipha), &
             vvar(1:2+grid%nphase), & ! Saturations
             vvar(3+4*grid%nphase:2+5*grid%nphase), &! Internal Energy
             vvar(3+ 7*grid%nphase: 2+ 7 *grid%nphase + grid%nphase* grid%nspec) !Mol fractions
@@ -1726,7 +1814,8 @@ end subroutine pflow_output
               enddo   
             endif
           enddo    
-          write(IUNIT3,'(1p100e12.4)') grid%x(na+1), grid%y(na+1), grid%z(na+1), real(iipha), &
+!geh          write(IUNIT3,'(1p100e12.4)') grid%x(na+1), grid%y(na+1), grid%z(na+1), real(iipha), &
+          write(IUNIT3,'(1p100e12.4)') x(na+1), y(na+1), z(na+1), real(iipha), &
           vvar(1:2+grid%nphase), & ! Saturations
           vvar(3+4*grid%nphase:2+5*grid%nphase), &! Internal Energy
           vvar(3+ 7*grid%nphase: 2+ 7 *grid%nphase + grid%nphase* grid%nspec) !Mol fractions
@@ -1808,7 +1897,8 @@ end subroutine pflow_output
                 enddo   
               endif
             enddo    
-            write(IUNIT3,'(1p100e12.4)') grid%x(na+1), grid%y(na+1), grid%z(na+1), real(iipha), &
+!geh            write(IUNIT3,'(1p100e12.4)') grid%x(na+1), grid%y(na+1), grid%z(na+1), real(iipha), &
+            write(IUNIT3,'(1p100e12.4)') x(na+1), y(na+1), z(na+1), real(iipha), &
             vvar(1:2+grid%nphase), & ! Saturations
             vvar(3+4*grid%nphase:2+5*grid%nphase), &! Internal Energy
             vvar(3+ 7*grid%nphase: 2+ 7 *grid%nphase + grid%nphase* grid%nspec) !Mol fractions
@@ -1823,6 +1913,7 @@ end subroutine pflow_output
  ! call VecScatterDestroy(scat_nph, ierr)
 
   close (IUNIT3)
+  if (grid%myrank == 0) deallocate(x,y,z)
 
     call VecRestoreArrayF90(grid%xx,  xx_p, ierr)
     call VecRestoreArrayF90(grid%var, var_p, ierr)
@@ -1936,7 +2027,8 @@ end subroutine pflow_output
               endif
             enddo
 
-            write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%y(n),grid%z(n), &
+!geh            write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%y(n),grid%z(n), &
+            write(IUNIT3,'(1p10e12.4)') x(n),y(n),z(n), &
             ((vavel(ip,jj),jj=1,grid%nphase),ip=1,3)
 
 !           write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%y(n),grid%z(n), &
@@ -2026,11 +2118,12 @@ subroutine geh_io(grid, kplt)
   call DACreateGlobalVector(grid%da_1_dof,vec_1_dof,ierr)
 
   if (kplt == 0) then
+  
     ! x coordinates
     filename = 'xcoord.dat'
     call VecGetArrayF90(vec_1_dof, vec_ptr, ierr)
     do i=1,grid%nlmax
-      vec_ptr(i) = grid%x(i)
+      vec_ptr(i) = grid%x(grid%nL2G(i))
     enddo
     call VecRestoreArrayF90(vec_1_dof, vec_ptr, ierr)
     call PetscViewerASCIIOpen(PETSC_COMM_WORLD,filename,viewer,ierr)
@@ -2041,7 +2134,7 @@ subroutine geh_io(grid, kplt)
     filename = 'ycoord.dat'
     call VecGetArrayF90(vec_1_dof, vec_ptr, ierr)
     do i=1,grid%nlmax
-      vec_ptr(i) = grid%y(i)
+      vec_ptr(i) = grid%y(grid%nL2G(i))
     enddo
     call VecRestoreArrayF90(vec_1_dof, vec_ptr, ierr)
     call PetscViewerASCIIOpen(PETSC_COMM_WORLD,filename,viewer,ierr)
@@ -2052,7 +2145,7 @@ subroutine geh_io(grid, kplt)
     filename = 'zcoord.dat'
     call VecGetArrayF90(vec_1_dof, vec_ptr, ierr)
     do i=1,grid%nlmax
-      vec_ptr(i) = grid%z(i)
+      vec_ptr(i) = grid%z(grid%nL2G(i))
     enddo
     call VecRestoreArrayF90(vec_1_dof, vec_ptr, ierr)
     call PetscViewerASCIIOpen(PETSC_COMM_WORLD,filename,viewer,ierr)
@@ -2149,6 +2242,8 @@ subroutine pflow_soutput(grid,kplt,iplot)
   
   real*8 :: vavel(3),vaveg(3)
   integer :: nxm1,nym1,nzm1
+  
+  real*8, allocatable :: x(:), y(:), z(:) 
   
   integer :: ierr
   integer :: i,ip,j,jn,k,ibrk,n,nc,nn
@@ -2430,6 +2525,36 @@ subroutine pflow_soutput(grid,kplt,iplot)
   tyr = grid%t/grid%tconv
 
   if (grid%myrank == 0) then
+  
+    allocate(x(grid%nmax),y(grid%nmax),z(grid%nmax))
+    n = 0
+    do k=1,grid%nz
+      do j=1,grid%ny
+        do i=1,grid%nx
+          n = n+1
+          if (i == 1) then
+            x(n) = 0.5d0*grid%dx0(i)
+          else
+            x(n) = x(n-1) + 0.5d0*(grid%dx0(i-1)+grid%dx0(i))
+          endif 
+          if (j == 1) then
+            y(n) = 0.5d0*grid%dy0(j)
+          else
+            y(n) = y(n-grid%nx) + 0.5d0*(grid%dy0(j-1)+grid%dy0(j))
+          endif
+          if (k == 1) then
+            z(n) = 0.5d0*grid%dz0(k)
+          else
+            z(n) = z(n-grid%nxy) + 0.5d0*(grid%dz0(k-1)+grid%dz0(k))
+          endif
+        enddo
+      enddo
+    enddo
+
+  endif
+  
+  if (grid%myrank == 0) then
+  
     if (grid%flowsteps == 0) then
       call SNESGetTolerances(grid%snes, grid%atol, grid%rtol, grid%stol, &
                              grid%maxit, grid%maxf, ierr)
@@ -2476,19 +2601,22 @@ subroutine pflow_soutput(grid,kplt,iplot)
         vf = 0.d0
         if (grid%rk > 0.d0) vf = phis_p(n)
         if (grid%use_2ph == PETSC_TRUE ) then
-          write(IUNIT3,'(1p100e12.4)') grid%x(n), grid%y(n), grid%z(n), &
+!geh          write(IUNIT3,'(1p100e12.4)') grid%x(n), grid%y(n), grid%z(n), &
+          write(IUNIT3,'(1p100e12.4)') x(n), y(n), z(n), &
             (p_p(j),j=jn,jn+grid%nphase-grid%jh2o),t_p(n),s_p(jn),s_p(jn+1), &
             x_p(jn),x_p(jn+1),vf
         elseif (grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE &
                 .or. grid%use_flash == PETSC_TRUE)then !.or. grid%use_richards == PETSC_TRUE)then
-          write(IUNIT3,'(1p100e12.4)') grid%x(n), grid%y(n), grid%z(n), &
+!geh          write(IUNIT3,'(1p100e12.4)') grid%x(n), grid%y(n), grid%z(n), &
+          write(IUNIT3,'(1p100e12.4)') x(n), y(n), z(n), &
             iphase_p(n),&
             (p_p(j),j=jn,jn+grid%nphase-grid%jh2o),t_p(n),s_p(jn:jn+grid%nphase-1), &
             x_p(jn:jn+grid%nphase-1),vf
       !    print *,'output', grid%nphase, n, (p_p(j),j=jn,jn+grid%nphase-grid%jh2o),t_p(n),s_p(jn:jn+grid%nphase-1), &
       !      x_p(jn:jn+grid%nphase-1),vf
         else
-          write(IUNIT3,'(1p100e12.4)') grid%x(n), grid%y(n), grid%z(n), &
+!geh          write(IUNIT3,'(1p100e12.4)') grid%x(n), grid%y(n), grid%z(n), &
+          write(IUNIT3,'(1p100e12.4)') x(n), y(n), z(n), &
             (p_p(j),j=jn,jn+grid%nphase-grid%jh2o), t_p(n), s_p(jn), c_p(n), vf
         endif
       enddo
@@ -2515,10 +2643,12 @@ subroutine pflow_soutput(grid,kplt,iplot)
         if (grid%use_2ph == PETSC_TRUE .or. grid%use_mph == PETSC_TRUE .or. &
             grid%use_vadose == PETSC_TRUE.or.grid%use_flash == PETSC_TRUE &
              ) then
-          write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%y(n), &
+!geh          write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%y(n), &
+          write(IUNIT3,'(1p10e12.4)') x(n),y(n), &
              p_p(jn+1), t_p(n), s_p(jn), x_p(jn), x_p(jn+1),vf
         else
-          write(IUNIT3,'(1p10e12.4)') grid%x(n), grid%y(n), &
+!geh          write(IUNIT3,'(1p10e12.4)') grid%x(n), grid%y(n), &
+          write(IUNIT3,'(1p10e12.4)') x(n), y(n), &
             p_p(jn), t_p(n), s_p(jn), c_p(n), vf
         endif
       enddo
@@ -2546,15 +2676,18 @@ subroutine pflow_soutput(grid,kplt,iplot)
           vf = 0.d0
           if (grid%rk > 0.d0) vf = phis_p(n)
           if ( grid%use_2ph == PETSC_TRUE) then
-            write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%z(n), &
+!geh            write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%z(n), &
+            write(IUNIT3,'(1p10e12.4)') x(n),z(n), &
               p_p(jn+1), t_p(n), s_p(jn), x_p(jn), x_p(jn+1),vf
           elseif(grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE &
                  .or. grid%use_flash == PETSC_TRUE &
                  ) then
-            write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%z(n),iphase_p(n), &
+!geh            write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%z(n),iphase_p(n), &
+            write(IUNIT3,'(1p10e12.4)') x(n),z(n),iphase_p(n), &
               p_p(jn+1),t_p(n), s_p(jn), x_p(jn), x_p(jn+1),vf
           else
-            write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%z(n), &
+!geh            write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%z(n), &
+            write(IUNIT3,'(1p10e12.4)') x(n),z(n), &
               p_p(jn), t_p(n), s_p(jn), c_p(n), vf
           endif
         enddo
@@ -2590,10 +2723,12 @@ subroutine pflow_soutput(grid,kplt,iplot)
               .or. grid%use_vadose == PETSC_TRUE &
               .or. grid%use_flash == PETSC_TRUE &
               ) then
-            write(IUNIT3,'(1p100e12.4)') grid%x(n),grid%z(n),iphase_p(n), &
+!geh            write(IUNIT3,'(1p100e12.4)') grid%x(n),grid%z(n),iphase_p(n), &
+            write(IUNIT3,'(1p100e12.4)') x(n),z(n),iphase_p(n), &
               p_p(jn),p_p(jn+1),t_p(n),s_p(jn),s_p(jn+1),x_p(jn),x_p(jn+1),vf
           else
-            write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%z(n), &
+!geh            write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%z(n), &
+            write(IUNIT3,'(1p10e12.4)') x(n),z(n), &
               p_p(jn), t_p(n), s_p(jn), c_p(n), vf
           endif
 !          enddo
@@ -2622,10 +2757,12 @@ subroutine pflow_soutput(grid,kplt,iplot)
       if (grid%use_2ph == PETSC_TRUE .or. grid%use_mph == PETSC_TRUE &
           .or. grid%use_flash == PETSC_TRUE &   
           .or. grid%use_vadose == PETSC_TRUE) then
-        write(IUNIT3,'(1p10e12.4)') grid%x(n), grid%y(n), grid%z(n), &
+!geh        write(IUNIT3,'(1p10e12.4)') grid%x(n), grid%y(n), grid%z(n), &
+        write(IUNIT3,'(1p10e12.4)') x(n), y(n), z(n), &
           iphase_p(n), p_p(jn+1), t_p(n), s_p(jn+1), x_p(jn),x_p(jn+1), vf
       else
-        write(IUNIT3,'(1p10e12.4)') grid%x(n), grid%y(n), grid%z(n), &
+!geh        write(IUNIT3,'(1p10e12.4)') grid%x(n), grid%y(n), grid%z(n), &
+        write(IUNIT3,'(1p10e12.4)') x(n), y(n), z(n), &
           p_p(jn), t_p(n), s_p(jn), c_p(n), vf
       endif
     enddo
@@ -2784,10 +2921,12 @@ subroutine pflow_soutput(grid,kplt,iplot)
             endif
             
             if(grid%nphase>1)then
-              write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%y(n),grid%z(n), &
+!geh              write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%y(n),grid%z(n), &
+              write(IUNIT3,'(1p10e12.4)')x(n),y(n),z(n), &
               (vavel(ip),vaveg(ip),ip=1,3)
             else
-              write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%y(n),grid%z(n), &
+!geh              write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%y(n),grid%z(n), &
+              write(IUNIT3,'(1p10e12.4)') x(n),y(n),z(n), &
               (vavel(ip),ip=1,3)
             endif 
 !           write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%y(n),grid%z(n), &
@@ -2817,11 +2956,13 @@ subroutine pflow_soutput(grid,kplt,iplot)
             do i = 1, grid%nx-1
               n = i+(j-1)*grid%nx+(k-1)*grid%nxy
                if(grid%nphase>1)then
-                 write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%y(n),grid%z(n), &
+!geh                 write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%y(n),grid%z(n), &
+                 write(IUNIT3,'(1p10e12.4)') x(n),y(n),z(n), &
                  vl_p(1+(n-1)*3*grid%nphase)*grid%tconv,&
                  vl_p(2+(n-1)*3*grid%nphase)*grid%tconv
                else
-                 write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%y(n),grid%z(n), &
+!geh                 write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%y(n),grid%z(n), &
+                 write(IUNIT3,'(1p10e12.4)') x(n),y(n),z(n), &
                  vl_p(1+(n-1)*3*grid%nphase)*grid%tconv!,&
                  !vl_p(2+(n-1)*3*grid%nphase)*grid%tconv
                endif                 
@@ -2850,11 +2991,13 @@ subroutine pflow_soutput(grid,kplt,iplot)
             do j = 1, grid%ny-1
               n = i+(j-1)*grid%nx+(k-1)*grid%nxy
                if(grid%nphase>1)then
-                 write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%y(n),grid%z(n), &
+!geh                 write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%y(n),grid%z(n), &
+                 write(IUNIT3,'(1p10e12.4)') x(n),y(n),z(n), &
                  vl_p(1+grid%nphase+(n-1)*3*grid%nphase)*grid%tconv, &
                  vl_p(2+grid%nphase+(n-1)*3*grid%nphase)*grid%tconv
                else
-                 write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%y(n),grid%z(n), &
+!geh                 write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%y(n),grid%z(n), &
+                 write(IUNIT3,'(1p10e12.4)') x(n),y(n),z(n), &
                  vl_p(1+grid%nphase+(n-1)*3*grid%nphase)*grid%tconv
                endif                  
             enddo
@@ -2882,11 +3025,13 @@ subroutine pflow_soutput(grid,kplt,iplot)
             do k = 1, grid%nz-1
               n = i+(j-1)*grid%nx+(k-1)*grid%nxy
               if(grid%nphase>1)then
-                write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%y(n),grid%z(n), &
+!geh                write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%y(n),grid%z(n), &
+                write(IUNIT3,'(1p10e12.4)') x(n),y(n),z(n), &
                 vl_p(1+2*grid%nphase+(n-1)*3*grid%nphase)*grid%tconv,&
                 vl_p(2+2*grid%nphase+(n-1)*3*grid%nphase)*grid%tconv
               else
-               write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%y(n),grid%z(n), &
+!geh               write(IUNIT3,'(1p10e12.4)') grid%x(n),grid%y(n),grid%z(n), &
+               write(IUNIT3,'(1p10e12.4)') x(n),y(n),z(n), &
                 vl_p(1+2*grid%nphase+(n-1)*3*grid%nphase)*grid%tconv
               endif 
             enddo
@@ -2898,6 +3043,8 @@ subroutine pflow_soutput(grid,kplt,iplot)
      deallocate(vl_p)
     endif
   endif
+  
+  if (grid%myrank == 0) deallocate(x,y,z)
   
 ! if (ibrkcrv >= 0 .or. iprint >= 1) then
 !   call VecDestroy(vl_allMPI_Recv, ierr)

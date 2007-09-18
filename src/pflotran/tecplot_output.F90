@@ -240,15 +240,15 @@ subroutine GetCoordinates(grid,vec,direction)
   
   if (direction == X_COORDINATE) then
     do i = 1,grid%nlmax
-      vec_ptr(i) = grid%x(grid%nL2A(i)+1)
+      vec_ptr(i) = grid%x(grid%nL2G(i))
     enddo
   else if (direction == Y_COORDINATE) then
     do i = 1,grid%nlmax
-      vec_ptr(i) = grid%y(grid%nL2A(i)+1)
+      vec_ptr(i) = grid%y(grid%nL2G(i))
     enddo
   else if (direction == Z_COORDINATE) then
     do i = 1,grid%nlmax
-      vec_ptr(i) = grid%z(grid%nL2A(i)+1)
+      vec_ptr(i) = grid%z(grid%nL2G(i))
     enddo
   endif
   

@@ -222,7 +222,7 @@ subroutine Read_Geom_field(grid)
  
   PetscScalar, pointer :: perm_xx_p(:),perm_yy_p(:),perm_zz_p(:),por_p(:), &
                           tor_p(:), volume_p(:)
-  integer iln,na,nx,ny,nz,ir,ierr
+  integer iln,na,nx,ny,nz,ir,ierr,ng
   real*8 ::  xc,yc,zc,vc
   real*8 ::  px,py,pz, por, tor
   real*8 ::  area, dist1, dist2, grav_ang
@@ -296,9 +296,18 @@ subroutine Read_Geom_field(grid)
           call fiReadDouble(string,tor,ierr)
           call fiDefaultMsg('tor',ierr)
 
-          grid%x(ir+1)=xc
-          grid%y(ir+1)=yc
-          grid%z(ir+1)=zc
+!geh          grid%x(ir+1)=xc
+!geh          grid%y(ir+1)=yc
+!geh          grid%z(ir+1)=zc
+
+          do ng=1,grid%ngmax
+            na = grid%nG2A(ng)
+            if (na == ir) then
+              grid%x(ng)=xc
+              grid%y(ng)=yc
+              grid%z(ng)=zc
+            endif
+          enddo
 
 !          read(60,*)ir,px,py,pz,por,tor
           print *, 'Read geom 0:',ir,xc,yc,zc,vc, px,py, pz,por,tor

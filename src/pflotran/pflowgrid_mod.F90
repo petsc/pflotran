@@ -1212,9 +1212,9 @@ subroutine pflowGrid_setup(grid, inputfile)
 ! physical coordinates of each cell.
   
   
-  allocate(grid%x(grid%nmax))
-  allocate(grid%y(grid%nmax))
-  allocate(grid%z(grid%nmax))
+  allocate(grid%x(grid%ngmax))
+  allocate(grid%y(grid%ngmax))
+  allocate(grid%z(grid%ngmax))
  
   
   call pflowGrid_compute_xyz(grid)
@@ -3000,104 +3000,49 @@ subroutine pflowGrid_compute_xyz(grid)
 
 ! integer :: ierr
   integer*4 :: i, j, k, n
+  real*8 :: x, y, z
   integer :: prevnode
-    ! prevnode is used to hold the natural numbering of the node that is the
-    ! previous node in either the x, y, or z direction.
-! Vec :: dx_nat, dy_nat, dz_nat
-! Vec :: dx_all, dy_all, dz_all  ! Holds contents of dx_nat et al. on proc 0.
-! real*8, pointer :: dx_p(:), dy_p(:), dz_p(:)
 
-! call DACreateNaturalVector(grid%da_1_dof, dx_nat, ierr)
-! call DACreateNaturalVector(grid%da_1_dof, dy_nat, ierr)
-! call DACreateNaturalVector(grid%da_1_dof, dz_nat, ierr)
+! set min and max bounds of domain in coordinate directions
+  grid%x_min = 0.d0
+  grid%y_min = 0.d0
+  grid%z_min = 0.d0
+  do i=1,grid%nx
+    grid%x_max = grid%x_max + grid%dx0(i)
+  enddo
+  do j=1,grid%ny
+    grid%y_max = grid%y_max + grid%dy0(j)
+  enddo
+  do k=1,grid%nz
+    grid%z_max = grid%z_max + grid%dz0(k)
+  enddo
 
-! call DAGlobalToNaturalBegin(grid%da_1_dof,grid%dx,INSERT_VALUES,dx_nat,ierr)
-! call DAGlobalToNaturalEnd(grid%da_1_dof,grid%dx,INSERT_VALUES,dx_nat,ierr)
-! call DAGlobalToNaturalBegin(grid%da_1_dof,grid%dy,INSERT_VALUES,dy_nat,ierr)
-! call DAGlobalToNaturalEnd(grid%da_1_dof,grid%dy,INSERT_VALUES,dy_nat,ierr)
-! call DAGlobalToNaturalBegin(grid%da_1_dof,grid%dz,INSERT_VALUES,dz_nat,ierr)
-! call DAGlobalToNaturalEnd(grid%da_1_dof,grid%dz,INSERT_VALUES,dz_nat,ierr)
-
-#ifdef HAVE_MPITOMPIZERO
-! call VecConvertMPIToMPIZero(dx_nat, dx_all, ierr)
-! call VecConvertMPIToMPIZero(dy_nat, dy_all, ierr)
-! call VecConvertMPIToMPIZero(dz_nat, dz_all, ierr)
-#else
-! call VecConvertMPIToSeqAll(dx_nat, dx_all, ierr)
-! call VecConvertMPIToSeqAll(dy_nat, dy_all, ierr)
-! call VecConvertMPIToSeqAll(dz_nat, dz_all, ierr)
-#endif
-
-!  if (grid%myrank == 0) then
-!   note changed by clu 2005/08/24/17:06, now every node have coordinate of the whole domain
-!    ordered in natural     
-!   call VecGetArrayF90(dx_all, dx_p, ierr)
-!   call VecGetArrayF90(dy_all, dy_p, ierr)
-!   call VecGetArrayF90(dz_all, dz_p, ierr)
-
-!   num_nodes = grid%nx * grid%ny * grid%nz
-!   allocate(grid%x(num_nodes))
-!   allocate(grid%y(num_nodes))
-!   allocate(grid%z(num_nodes))
-    n = 0
-    do k=1, grid%nz
-      do j=1, grid%ny
-        do i=1, grid%nx
+! set min and max bounds of domain in coordinate directions
+  n = 0
+  z = 0.5d0*grid%dz0(1)
+  do k=1, grid%nz
+    y = 0.5d0*grid%dy0(1)
+    do j=1, grid%ny
+      x = 0.5d0*grid%dx0(1)
+      do i=1, grid%nx
+        if (i > grid%ngxs .and. i <= grid%ngxe .and. &
+            j > grid%ngys .and. j <= grid%ngye .and. &
+            k > grid%ngzs .and. k <= grid%ngze) then
           n = n + 1
-    
-!   print *,'compute-xyz: ',n,i,j,k,dx_p(n),dy_p(n),dz_p(n)
-
-          if (i == 1) then
-!           grid%x(n) = 0.5d0 * dx_p(n) 
-            grid%x(n) = 0.5d0 * grid%dx0(i) 
-          else
-            prevnode = n-1
-!           grid%x(n) = grid%x(prevnode) + 0.5d0*(dx_p(prevnode) + dx_p(n))
-            grid%x(n) = grid%x(prevnode) + 0.5d0*(grid%dx0(i-1) + grid%dx0(i))
-          endif
-
-          if (j == 1) then
-!           grid%y(n) = 0.5d0 * dy_p(n)
-            grid%y(n) = 0.5d0 * grid%dy0(j)
-          else
-!           prevnode = i + (j-2)*grid%nx + (k-1)*grid%nx*grid%ny
-            prevnode = n - grid%nx
-!           grid%y(n) = grid%y(prevnode) + 0.5d0*(dy_p(prevnode) + dy_p(n))
-            grid%y(n) = grid%y(prevnode) + 0.5d0*(grid%dy0(j-1) + grid%dy0(j))
-          endif
-
-          if (k == 1) then
-!           grid%z(n) = 0.5d0 * dz_p(n)
-            grid%z(n) = 0.5d0 * grid%dz0(k)
-          else
-!           prevnode = i + (j-1)*grid%nx + (k-2)*grid%nx*grid%ny
-            prevnode = n - grid%nx*grid%ny
-!           grid%z(n) = grid%z(prevnode) + 0.5d0*(dz_p(prevnode) + dz_p(n))
-            grid%z(n) = grid%z(prevnode) + 0.5d0*(grid%dz0(k-1) + grid%dz0(k))
-          endif
-          
-!         print *,'compute-xyz: ',n,i,j,k,grid%x(n),grid%y(n),grid%z(n), &
-!         dx_p(n),dy_p(n),dz_p(n)
-        enddo
+          grid%x(n) = x
+          grid%y(n) = y
+          grid%z(n) = z
+        endif
+        if (i < grid%nx) x = x + 0.5d0*(grid%dx0(i)+grid%dx0(i+1))
       enddo
+      if (j < grid%ny) y = y + 0.5d0*(grid%dy0(j)+grid%dy0(j+1))
     enddo
-!   call VecRestoreArrayF90(dx_all, dx_p, ierr)
-!   call VecRestoreArrayF90(dy_all, dy_p, ierr)
-!   call VecRestoreArrayF90(dz_all, dz_p, ierr)
-!  endif
-  
- 
-  
-  
-  
-  
-! call VecDestroy(dx_nat, ierr)
-! call VecDestroy(dy_nat, ierr)
-! call VecDestroy(dz_nat, ierr)
-! call VecDestroy(dx_all, ierr)
-! call VecDestroy(dy_all, ierr)
-! call VecDestroy(dz_all, ierr)
-  
+    if (k < grid%nz) z = z + 0.5d0*(grid%dz0(k)+grid%dz0(k+1))
+  enddo
+  if (n /= grid%ngmax) &
+    print *, 'ERROR: Number of coordinates (',n, ') ', &
+             'does not match number of ghosted cells (', grid%ngmax, ')'
+    
 end subroutine pflowGrid_compute_xyz
 
 !======================================================================

@@ -341,9 +341,12 @@ subroutine hydrostatic (grid)
   p = grid%pref
   call wateos(grid%tref, p, rho, dw_mol, dwp, &
               dum, dum, dum, dum, grid%scale, ierr)
-  
-  depth = grid%z(grid%nmax) + 0.5d0*grid%dz0(grid%nz)
-  horiz = grid%x(grid%nmax) + 0.5d0*grid%dx0(grid%nx)
+              
+!geh  depth = grid%z(grid%nmax) + 0.5d0*grid%dz0(grid%nz)
+!geh  horiz = grid%x(grid%nmax) + 0.5d0*grid%dx0(grid%nx)
+  depth = grid%z_max
+  horiz = grid%x_max
+
   
   dp = rho * grid%gravity * grid%beta * horiz
   
@@ -785,7 +788,7 @@ subroutine mhydrostatic(grid)
   type(pflowGrid), intent(inout) :: grid
   PetscScalar, pointer :: xx_p(:) 
   
-  integer ibc,ibc0,ierr,itrho,ireg,n,nl,na
+  integer ibc,ibc0,ierr,itrho,ireg,n,nl,ng
 ! integer :: i,j,jm,k,m,
   real*8 :: betap,depth,horiz,dx1,dx2,rho0,&
             rho,rho1,zz,dzz,tmp,pres,p,dp
@@ -827,9 +830,12 @@ subroutine mhydrostatic(grid)
 ! set initial pressure and temperature fields
     pres=grid%pref     
     do nl=1, grid%nlmax
-      na=grid%nL2A(nl)+1 ! the natural ordering start from 0
-      depth = grid%z(na)
-      horiz = grid%x(na)
+!geh      na=grid%nL2A(nl)+1 ! the natural ordering start from 0
+!geh      depth = grid%z(na)
+!geh      horiz = grid%x(na)
+      ng=grid%nL2G(nl)
+      depth = grid%z(ng)
+      horiz = grid%x(ng)
       dx1 = dx2
       !print *,'mhydro', nl,na,depth,horiz
       tmp = grid%dTdz * depth + grid%tref
@@ -876,8 +882,11 @@ subroutine mhydrostatic(grid)
     call nacl_den(grid%tref, p*1D-6, xm_nacl, dw_kg) 
     rho = dw_kg * 1D3
  
-  depth = grid%z(grid%nmax) + 0.5d0*grid%dz0(grid%nz)
-  horiz = grid%x(grid%nmax) + 0.5d0*grid%dx0(grid%nx)
+!geh  depth = grid%z(grid%nmax) + 0.5d0*grid%dz0(grid%nz)
+!geh  horiz = grid%x(grid%nmax) + 0.5d0*grid%dx0(grid%nx)
+
+  depth = grid%z_max
+  horiz = grid%x_max
   
   dp = rho * grid%gravity * grid%beta * horiz
   
@@ -1344,7 +1353,7 @@ subroutine owghydrostatic(grid)
   type(pflowGrid), intent(inout) :: grid
   PetscScalar, pointer :: xx_p(:) 
   
-  integer ibc,ibc0,ierr,itrho,ireg,n,nl,na
+  integer ibc,ibc0,ierr,itrho,ireg,n,nl,ng
 ! integer :: i,j,jm,k,m
   real*8 :: betap,depth,horiz,dx1,dx2, &
             dum,dwp,rho,rho1,dw_mol,zz,dzz,tmp,pres,p,dp
@@ -1379,9 +1388,13 @@ subroutine owghydrostatic(grid)
 ! set initial pressure and temperature fields
     rho=1000.D0
     do nl=1, grid%nlmax
-      na=grid%nL2A(nl)+1 ! the natural ordering start from 0
-      depth = grid%z(na)
-      horiz = grid%x(na)
+!geh      na=grid%nL2A(nl)+1 ! the natural ordering start from 0
+!geh      depth = grid%z(na)
+!geh      horiz = grid%x(na)
+      ng=grid%nL2G(nl)
+      depth = grid%z(ng)
+      horiz = grid%x(ng)
+      
       dx1 = dx2
       !print *,'mhydro', nl,na,depth,horiz
       tmp = grid%dTdz * depth + grid%tref

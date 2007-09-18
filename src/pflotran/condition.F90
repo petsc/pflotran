@@ -358,7 +358,7 @@ subroutine ComputeInitialCondition(grid, icondition)
   type(pflowGrid) :: grid
   integer :: icondition
   
-  integer :: iln, na, ierr, icond, itype, icap
+  integer :: iln, ng, ierr, icond, itype, icap
   real*8 :: cell_coord(3), datum_coord(3)
   real*8 :: pref, tref, sref, value
   real*8 :: patm = 101325.d0
@@ -394,10 +394,14 @@ subroutine ComputeInitialCondition(grid, icondition)
   
   do iln=1, grid%nlmax
   
-    na = grid%nL2A(iln)+1
-    cell_coord(1) = grid%x(na)
-    cell_coord(2) = grid%y(na)
-    cell_coord(3) = grid%z(na)
+!geh    na = grid%nL2A(iln)+1
+!geh    cell_coord(1) = grid%x(na)
+!geh    cell_coord(2) = grid%y(na)
+!geh    cell_coord(3) = grid%z(na)
+    ng = grid%nL2G(iln)
+    cell_coord(1) = grid%x(ng)
+    cell_coord(2) = grid%y(ng)
+    cell_coord(3) = grid%z(ng)
     
     iphase_p(iln) = 1
     if (itype == 1) then

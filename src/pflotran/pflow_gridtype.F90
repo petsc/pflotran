@@ -243,6 +243,7 @@ private
     
     real*8, pointer :: dx0(:), dy0(:), dz0(:), rd(:)
     real*8, pointer :: x(:), y(:), z(:), delz(:) 
+    real*8 :: x_max, x_min, y_max, y_min, z_max, z_min
     !-------------------------------------------------------------------
     ! Quantities defined at each grid point.
     ! NOTE: I adopt the convention that _loc indicates the local portion

@@ -106,10 +106,13 @@
     pvol=volume_p(n)*porosity_p(n)         
     if(dabs(iphase_p(n)- 3.D0)<.25D0)then
       n2p=n2p+1
-      x=grid%x(grid%nL2A(n)+1)
-      y=grid%y(grid%nL2A(n)+1)
-      z=grid%z(grid%nL2A(n)+1)
-   
+!geh      x=grid%x(grid%nL2A(n)+1)
+!geh      y=grid%y(grid%nL2A(n)+1)
+!geh      z=grid%z(grid%nL2A(n)+1)
+      x=grid%x(grid%nL2G(n))
+      y=grid%y(grid%nL2G(n))
+      z=grid%z(grid%nL2G(n))
+      
       if(z>nzm) nzm=z
       if(x>nxm) nxm=x
       if(sm<sat(2))then
