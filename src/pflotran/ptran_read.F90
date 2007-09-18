@@ -1631,7 +1631,9 @@ contains
       call fiReadStringErrorMsg('DXYZ',ierr)
       do i = i1, i2
         call fiReadDouble(string, a(i), ierr)
-        if (ierr .eq. 1) a(i) = 0.d0
+!geh - must use ierr /= 0 since ierr can be any non-zero value
+!        if (ierr .eq. 1) a(i) = 0.d0
+        if (ierr /= 0) a(i) = 0.d0
 !       print *,i,i1,i2,nvalue,a(i),n,ierr
 !       call fiDefaultMsg("Error reading grid spacing", ierr)
       enddo
