@@ -40,38 +40,32 @@ subroutine Get_Hydrosta_Pres(nz, dz, pref0, tref, dtdz, gravity, m_nacl)
   real*8 dzz,zz, xm_nacl, p 
 ! first go with z
       
-   if(dabs(pref-pref0)<1D-10) return   
+  if(dabs(pref-pref0)<1D-10) return   
       
-     xm_nacl = m_nacl * fmwnacl
-     xm_nacl = xm_nacl /(1.D3 + xm_nacl)
+    xm_nacl = m_nacl * fmwnacl
+    xm_nacl = xm_nacl /(1.D3 + xm_nacl)
 
+    pref = pref0
+    depth = 0.D0
+    pres0 = pref
+    tmp = tref
 
-      pref=pref0
-      depth =0.D0
-      pres0= pref
-      tmp = tref
-    
-      
-      rho0=rho
-      p=pres0
-      
-    
-    
-      call nacl_den(tmp, p*1D-6, xm_nacl, dw_kg) 
-      rho0 = dw_kg * 1D3
+    rho0=rho
+    p=pres0
 
-    
-      
-        do n = 1, nz+1
-           if (n.eq.1) then
-            dzz = 0.5d0*dz(1)
-             zz = dzz
-           elseif(n.eq.nz+1)then 
-             dzz = 0.5d0*dz(nz)
-             zz= zz+ dzz 
-           else
-             dzz = 0.5d0*(dz(n)+ dz(n-1))
-             zz = zz + dzz
+    call nacl_den(tmp, p*1D-6, xm_nacl, dw_kg) 
+    rho0 = dw_kg * 1D3
+
+    do n = 1, nz+1
+      if (n.eq.1) then
+        dzz = 0.5d0*dz(1)
+        zz = dzz
+      elseif(n.eq.nz+1)then 
+        dzz = 0.5d0*dz(nz)
+        zz= zz+ dzz 
+      else
+        dzz = 0.5d0*(dz(n)+ dz(n-1))
+        zz = zz + dzz
       endif
       tmp = tref +  dTdz*zz
     
@@ -81,40 +75,38 @@ subroutine Get_Hydrosta_Pres(nz, dz, pref0, tref, dtdz, gravity, m_nacl)
       rho = dw_kg * 1D3
  
                   
-        itrho= 0
+      itrho= 0
           
               !betap = rho * grid%gravity * grid%beta
-              if(n==1)then
-                pres = p + rho0 * gravity * dzz !+  betap * horiz
+      if (n==1) then
+        pres = p + rho0 * gravity * dzz !+  betap * horiz
          !        call wateos(tmp, pres, rho, dw_mol, dwp, &
          !               dum, dum, dum, dum, grid%scale, ierr)
-                  call nacl_den(tmp, pres*1D-6, xm_nacl, dw_kg) 
-                  rho = dw_kg * 1D3
-                  
+        call nacl_den(tmp, pres*1D-6, xm_nacl, dw_kg) 
+        rho = dw_kg * 1D3
 
-               else
-               do
-                pres = p + (rho0*dz(n-1) + rho* dz(n))/(dz(n)+dz(n-1))&
+      else
+        do
+          pres = p + (rho0*dz(n-1) + rho* dz(n))/(dz(n)+dz(n-1))&
                      * gravity * dzz 
               !  call wateos(tmp, pres, rho1, dw_mol, dwp, &
               !  dum, dum, dum, dum, grid%scale, ierr)
-                 call nacl_den(tmp, pres*1D-6, xm_nacl, dw_kg) 
-                 rho1 = dw_kg * 1D3
-                if (abs(rho1-rho) < 1.d-10) exit
-                rho = rho1
-                itrho = itrho + 1
-                if (itrho > 100) then
-                  print *,' no convergence in hydrostat-stop',itrho,rho1,rho
-                  stop
-                endif
-              enddo
+          call nacl_den(tmp, pres*1D-6, xm_nacl, dw_kg) 
+          rho1 = dw_kg * 1D3
+          if (abs(rho1-rho) < 1.d-10) exit
+          rho = rho1
+          itrho = itrho + 1
+          if (itrho > 100) then
+            print *,' no convergence in hydrostat-stop',itrho,rho1,rho
+            stop
           endif
-     p = pres
-     rho0=rho
-     hys_pres(n)=p; hys_temp(n)= tmp
+        enddo
+    endif
+    p = pres
+    rho0=rho
+    hys_pres(n)=p; hys_temp(n)= tmp
 !    print *, 'nhydro: ', n, p, tmp
-
-   enddo
+  enddo
 end subroutine  Get_Hydrosta_Pres   
      
     
@@ -186,7 +178,7 @@ subroutine nhydrostatic(grid)
         ! Get nx,ny,nz
             
           nz= floor(((real(na)-.5))/grid%nxy) + 1
-          if(nz ==11) print*, i,j,k,nl, na
+!         if(nz ==11) print *, 'nhydro: ',i,j,k,nl,na
 
           ng=grid%nL2G(nl)
 !geh          depth = grid%z(na)

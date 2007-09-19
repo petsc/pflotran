@@ -2190,7 +2190,8 @@ subroutine pflowGrid_setup(grid, inputfile)
           grid%use_flash == PETSC_TRUE .or. &
           grid%use_richards == PETSC_TRUE) then
         ! print *,'in nhydro'
-      call nhydrostatic(grid)
+        call nhydrostatic(grid)
+        ! print *,'out nhydro'
       endif
     endif
 
