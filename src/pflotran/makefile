@@ -70,8 +70,7 @@ pflow_obj = ${common_src}pflow_vector_ops.o \
 	${common_src}pflow_richards_ResJac.o\
 	${common_src}pflow_solve.o \
 	${common_src}vectompizero.o \
-	${common_src}hdf5_output.o \
-	${common_src}tecplot_output.o \
+	${common_src}pflow_output2.o \
 	${common_src}pflow_output.o \
 	${common_src}pflow_checkpoint.o \
 	${common_src}pflow_output_new.o \
