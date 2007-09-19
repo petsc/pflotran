@@ -127,8 +127,7 @@ pflowgrid_mod.o : pflow_gridtype.o water_eos.o pflow_vector_ops.o \
                   trdynmem.o fileio.o
 pflow_vector_ops.o : water_eos.o
 pflow_output_new.o : pflow_output.o
-pflow_output.o : pflow_gridtype.o petscrelwrappers.o hdf5_output.o \
-                 tecplot_output.o
+pflow_output.o : pflow_gridtype.o petscrelwrappers.o pflow_output2.o
 pflow_COND.o : pflow_gridtype.o 
 pflow_LIQUID.o : pflow_gridtype.o water_eos.o
 pflow_TH.o : pflow_gridtype.o water_eos.o
