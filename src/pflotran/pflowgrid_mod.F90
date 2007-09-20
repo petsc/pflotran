@@ -1548,7 +1548,7 @@ subroutine pflowGrid_setup(grid, inputfile)
             grid%area(nc) = dy_loc_p(mg1) * dz_loc_p(mg1)
           else if (grid%igeom == 2) then
             grid%area(nc) = 2.D0 * Pi * grid%rd(i+grid%nxs) * dz_loc_p(mg1)
-           print *,'area nc: r:',grid%myrank,nc,i,grid%rd(i+grid%nxs), grid%area(nc)
+         !  print *,'area nc: r:',grid%myrank,nc,i,grid%rd(i+grid%nxs), grid%area(nc)
           else if (grid%igeom == 3) then
             grid%area(nc) = 4.D0 * Pi * grid%rd(i+grid%nxs)**2
           endif
@@ -1606,7 +1606,7 @@ subroutine pflowGrid_setup(grid, inputfile)
                              grid%rd(i+grid%nxs-grid%istart))* &
                              (grid%rd(i+1+grid%nxs-grid%istart) - &
                              grid%rd(i+grid%nxs-grid%istart))  
-           print *, 'area nc: z:',grid%myrank, grid%nxs,nc, i,  grid%area(nc)
+        !   print *, 'area nc: z:',grid%myrank, grid%nxs,nc, i,  grid%area(nc)
           endif
           grid%iperm1(nc) = 3
           grid%iperm2(nc) = 3
@@ -2096,7 +2096,7 @@ subroutine pflowGrid_setup(grid, inputfile)
                       grid%ipermbc(nc) = 2
                       grid%delzbc(nc) = -grid%distbc(nc)
                     endif  
-                    print *, 'cybc:', nc, ird, grid%iface(ibc),grid%areabc(nc)                        
+                 !  print *, 'cybc:', nc, ird, grid%iface(ibc),grid%areabc(nc)                        
                   case(3) ! spherical
                 end select
               enddo ! i
@@ -2191,8 +2191,9 @@ subroutine pflowGrid_setup(grid, inputfile)
           grid%use_vadose == PETSC_TRUE .or. &
           grid%use_flash == PETSC_TRUE .or. &
           grid%use_richards == PETSC_TRUE) then
-        print *,'in nhydro'
-      call nhydrostatic(grid)
+        ! print *,'in nhydro'
+        call nhydrostatic(grid)
+        ! print *,'out nhydro'
       endif
     endif
 
@@ -3968,6 +3969,9 @@ subroutine pflowGrid_read_input(grid, inputfile)
             
         enddo
 
+        if (grid%myrank == 0) &
+          write(IUNIT2,'(/," *HDF5",10x,i1,/)') grid%print_hdf5
+
 !....................
 
       case ('TECP')
@@ -3987,6 +3991,9 @@ subroutine pflowGrid_read_input(grid, inputfile)
           end select
           
         enddo
+
+        if (grid%myrank == 0) &
+          write(IUNIT2,'(/," *TECP",10x,i1,/)') grid%print_tecplot
 
 !....................
 
