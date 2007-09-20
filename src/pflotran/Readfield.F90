@@ -309,8 +309,8 @@ subroutine Read_Geom_field(grid)
             endif
           enddo
 
-!          read(60,*)ir,px,py,pz,por,tor
-          print *, 'Read geom 0:',ir,xc,yc,zc,vc, px,py, pz,por,tor
+!         read(60,*)ir,px,py,pz,por,tor
+!         print *, 'Read geom 0:',ir,xc,yc,zc,vc, px,py, pz,por,tor
  
           do iln=1, grid%nlmax
             na = grid%nL2A(iln)
@@ -324,12 +324,12 @@ subroutine Read_Geom_field(grid)
               perm_zz_p(iln)= pz
               if (por>=0.D0 .AND. por <= 1.D0) por_p(iln)=por
               if (tor>=0.D0 .and. tor <= 1.D0) tor_p(iln)=tor
-              print *, 'Read geom 1:',na,xc,yc,zc,vc, px,py, pz,por,tor
+!             print *, 'Read geom 1:',na,xc,yc,zc,vc, px,py, pz,por,tor
               exit
             endif
           enddo 
         enddo
-        print *, grid%x
+!       print *, grid%x
    
    ! then need to compute connection
    
