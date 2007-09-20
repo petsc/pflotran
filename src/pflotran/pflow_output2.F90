@@ -16,6 +16,9 @@ module pflow_output2_module
 #define X_COORDINATE 1
 #define Y_COORDINATE 2
 #define Z_COORDINATE 3
+#define X_DIRECTION 1
+#define Y_DIRECTION 2
+#define Z_DIRECTION 3
 #define TEMPERATURE 4
 #define PRESSURE 5
 #define LIQUID_SATURATION 6
@@ -33,8 +36,11 @@ module pflow_output2_module
 #define TECPLOT_FILE 0
 #define HDF5_FILE 1
 
+#define LIQUID_PHASE 1
+#define GAS_PHASE 2
+
   integer :: hdf5_err
-  logical, save :: hdf5_first = .true.
+  logical :: trick_hdf5 = .false.
   PetscErrorCode :: ierr
   
   public :: OutputTecplot, OutputHDF5
@@ -80,9 +86,9 @@ subroutine OutputTecplot(grid,kplot)
         grid%use_vadose == PETSC_TRUE .or. grid%use_flash == PETSC_TRUE .or. &
         grid%use_richards == PETSC_TRUE) then
       string = 'VARIABLES=' // &
-               '"X-coordinates",' // &
-               '"Y-coordinates",' // &
-               '"Z-coordinates",' // &
+               '"X-Coordinates",' // &
+               '"Y-Coordinates",' // &
+               '"Z-Coordinates",' // &
                '"Temperature",' // &
                '"Pressure",' // &
                '"Liquid Saturation",' // &
@@ -102,9 +108,9 @@ subroutine OutputTecplot(grid,kplot)
       endif
       string = trim(string) // '"Phase"'
     else
-      string = '"X-coordinates",' // &
-               '"Y-coordinates",' // &
-               '"Z-coordinates",' // &
+      string = '"X-Coordinates",' // &
+               '"Y-Coordinates",' // &
+               '"Z-Coordinates",' // &
                '"Temperature",' // &
                '"Pressure",' // &
                '"Saturation",' // &
@@ -227,8 +233,375 @@ subroutine OutputTecplot(grid,kplot)
   call VecDestroy(global,ierr)
 
   close(IUNIT3)
+  
+  call OutputVelocitiesTecplot(grid,kplot)
+  call OutputFluxVelocitiesTecplot(grid,kplot,LIQUID_PHASE,X_DIRECTION)
+  call OutputFluxVelocitiesTecplot(grid,kplot,LIQUID_PHASE,Y_DIRECTION)
+  call OutputFluxVelocitiesTecplot(grid,kplot,LIQUID_PHASE,Z_DIRECTION)
+  call OutputFluxVelocitiesTecplot(grid,kplot,GAS_PHASE,X_DIRECTION)
+  call OutputFluxVelocitiesTecplot(grid,kplot,GAS_PHASE,Y_DIRECTION)
+  call OutputFluxVelocitiesTecplot(grid,kplot,GAS_PHASE,Z_DIRECTION)
       
 end subroutine OutputTecplot
+
+subroutine OutputVelocitiesTecplot(grid,kplot)
+ 
+  implicit none
+
+#include "definitions.h"
+
+  type(pflowGrid) :: grid
+  integer :: kplot
+  
+  character(len=MAXNAMELENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: string
+  Vec :: global
+  Vec :: natural
+
+  real*8, pointer :: vec_ptr(:)
+  
+  ! open file
+  if (kplot < 10) then
+    write(filename,'("pflow_vel00",i1,".tec")') kplot  
+  else if (kplot < 100) then
+    write(filename,'("pflow_vel0",i2,".tec")') kplot  
+  else if (kplot < 1000) then
+    write(filename,'("pflow_vel",i3,".tec")') kplot  
+  else if (kplot < 10000) then
+    write(filename,'("pflow_vel",i4,".tec")') kplot  
+  endif
+  
+  if (grid%myrank == 0) then
+    print *, '--> write tecplot velocity output file: ', filename
+    open(unit=IUNIT3,file=filename,action="write")
+  
+    ! write header
+    ! write title
+    write(IUNIT3,'(''TITLE = "'',1es12.4," [",a1,'']"'')') &
+                 grid%t/grid%tconv, grid%tunit
+    ! write variables
+    string = 'VARIABLES=' // &
+             '"X-Coordinates",' // &
+             '"Y-Coordinates",' // &
+             '"Z-Coordinates",' // &
+             '"Liquid X-Velocity",' // &
+             '"Liquid Y-Velocity",' // &
+             '"Liquid Z-Velocity",' // &
+             '"Gas X-Velocity",' // &
+             '"Gas Y-Velocity",' // &
+             '"Gas Z-Velocity"'
+    write(IUNIT3,'(a)') trim(string)
+  
+    ! write zone header
+    write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
+                 &'', K='',i4,'','')') &
+                 grid%t/grid%tconv,grid%nx,grid%ny,grid%nz 
+    string = trim(string) // ' DATAPACKING=BLOCK'
+    write(IUNIT3,'(a)') trim(string)
+
+  endif
+  
+  ! write blocks
+  ! write out data sets  
+  call DACreateGlobalVector(grid%da_1_dof,global,ierr)
+  call DACreateNaturalVector(grid%da_1_dof,natural,ierr)
+
+  ! write out coorindates
+  call GetCoordinates(grid,global,X_COORDINATE)
+  call ConvertGlobalToNatural(grid,global,natural)
+  call WriteTecplotDataSetFromVec(IUNIT3,grid,natural,TECPLOT_REAL)
+
+  call GetCoordinates(grid,global,Y_COORDINATE)
+  call ConvertGlobalToNatural(grid,global,natural)
+  call WriteTecplotDataSetFromVec(IUNIT3,grid,natural,TECPLOT_REAL)
+
+  call GetCoordinates(grid,global,Z_COORDINATE)
+  call ConvertGlobalToNatural(grid,global,natural)
+  call WriteTecplotDataSetFromVec(IUNIT3,grid,natural,TECPLOT_REAL)
+
+  call GetCellCenteredVelocities(grid,global,LIQUID_PHASE,X_DIRECTION)
+  call ConvertGlobalToNatural(grid,global,natural)
+  call WriteTecplotDataSetFromVec(IUNIT3,grid,natural,TECPLOT_REAL)
+
+  call GetCellCenteredVelocities(grid,global,LIQUID_PHASE,Y_DIRECTION)
+  call ConvertGlobalToNatural(grid,global,natural)
+  call WriteTecplotDataSetFromVec(IUNIT3,grid,natural,TECPLOT_REAL)
+
+  call GetCellCenteredVelocities(grid,global,LIQUID_PHASE,Z_DIRECTION)
+  call ConvertGlobalToNatural(grid,global,natural)
+  call WriteTecplotDataSetFromVec(IUNIT3,grid,natural,TECPLOT_REAL)
+
+  call GetCellCenteredVelocities(grid,global,GAS_PHASE,X_DIRECTION)
+  call ConvertGlobalToNatural(grid,global,natural)
+  call WriteTecplotDataSetFromVec(IUNIT3,grid,natural,TECPLOT_REAL)
+
+  call GetCellCenteredVelocities(grid,global,GAS_PHASE,Y_DIRECTION)
+  call ConvertGlobalToNatural(grid,global,natural)
+  call WriteTecplotDataSetFromVec(IUNIT3,grid,natural,TECPLOT_REAL)
+
+  call GetCellCenteredVelocities(grid,global,GAS_PHASE,Z_DIRECTION)
+  call ConvertGlobalToNatural(grid,global,natural)
+  call WriteTecplotDataSetFromVec(IUNIT3,grid,natural,TECPLOT_REAL)
+
+  call VecDestroy(natural,ierr)
+  call VecDestroy(global,ierr)
+
+  close(IUNIT3)
+  
+end subroutine OutputVelocitiesTecplot
+
+subroutine OutputFluxVelocitiesTecplot(grid,kplot,iphase,direction)
+!geh - specifically, the flow velocities at the interfaces between cells
+ 
+  implicit none
+
+#include "definitions.h"
+
+  type(pflowGrid) :: grid
+  integer :: kplot
+  integer :: iphase
+  integer :: direction
+  
+  character(len=MAXNAMELENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: string
+  
+  integer :: local_size, global_size
+  integer :: nx_local, ny_local, nz_local
+  integer :: nx_global, ny_global, nz_global
+  integer :: i, j, k
+  integer :: local_id
+  integer :: adjusted_size
+  integer :: count
+  PetscReal, pointer :: vec_ptr(:)
+  PetscReal, allocatable :: array(:)
+  PetscInt, allocatable :: indices(:)
+  
+  ! open file
+  filename = 'pflow_'
+  
+  select case(iphase)
+    case(LIQUID_PHASE)
+      filename = trim(filename) // 'vl'
+    case(GAS_PHASE)
+      filename = trim(filename) // 'vg'
+  end select
+  
+  select case(direction)
+    case(X_DIRECTION)
+      filename = trim(filename) // 'x'
+    case(Y_DIRECTION)
+      filename = trim(filename) // 'y'
+    case(Z_DIRECTION)
+      filename = trim(filename) // 'z'
+  end select 
+  
+  if (kplot < 10) then
+    write(string,'("00",i1,".tec")') kplot  
+  else if (kplot < 100) then
+    write(string,'("0",i2,".tec")') kplot  
+  else if (kplot < 1000) then
+    write(string,'(i3,".tec")') kplot  
+  else if (kplot < 10000) then
+    write(string,'(i4,".tec")') kplot  
+  endif
+  
+  filename = trim(filename) // trim(string)
+  
+  if (grid%myrank == 0) then
+    print *, '--> write tecplot velocity flux output file: ', filename
+    open(unit=IUNIT3,file=filename,action="write")
+  
+    ! write header
+    ! write title
+    write(IUNIT3,'(''TITLE = "'',1es12.4," [",a1,'']"'')') &
+                 grid%t/grid%tconv, grid%tunit
+    ! write variables
+    string = 'VARIABLES=' // &
+             '"X-Coordinates",' // &
+             '"Y-Coordinates",' // &
+             '"Z-Coordinates",'
+    select case(iphase)
+      case(LIQUID_PHASE)
+        string = trim(string) // '"Liquid'
+      case(GAS_PHASE)
+        string = trim(string) // '"Gas'
+    end select
+  
+    select case(direction)
+      case(X_DIRECTION)
+        string = trim(string) // ' X-Velocity"'
+      case(Y_DIRECTION)
+        string = trim(string) // ' Y-Velocity"'
+      case(Z_DIRECTION)
+        string = trim(string) // ' Z-Velocity"'
+    end select 
+    
+    write(IUNIT3,'(a)') trim(string)
+  
+    ! write zone header
+    select case(direction)
+      case(X_DIRECTION)
+        write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
+                     &'', K='',i4,'','')') &
+                     grid%t/grid%tconv,grid%nx-1,grid%ny,grid%nz 
+      case(Y_DIRECTION)
+        write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
+                     &'', K='',i4,'','')') &
+                     grid%t/grid%tconv,grid%nx,grid%ny-1,grid%nz 
+      case(Z_DIRECTION)
+        write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
+                     &'', K='',i4,'','')') &
+                     grid%t/grid%tconv,grid%nx,grid%ny,grid%nz-1
+    end select 
+  
+  
+    string = trim(string) // ' DATAPACKING=BLOCK'
+    write(IUNIT3,'(a)') trim(string)
+
+  endif
+  
+  ! write blocks
+  
+  ! face coordinates
+  local_size = grid%nlmax
+  global_size = grid%nmax
+  nx_local = grid%nlx
+  ny_local = grid%nly
+  nz_local = grid%nlz
+  nx_global = grid%nx
+  ny_global = grid%ny
+  nz_global = grid%nz
+  select case(direction)
+    case(X_DIRECTION)
+      global_size = grid%nmax-grid%ny*grid%nz
+      nx_global = grid%nx-1
+      if (grid%ngxe-grid%nxe == 0) then
+        local_size = grid%nlmax-grid%nlyz
+        nx_local = grid%nlx-1
+      endif
+    case(Y_DIRECTION)
+      global_size = grid%nmax-grid%nx*grid%nz
+      ny_global = grid%ny-1
+      if (grid%ngye-grid%nye == 0) then
+        local_size = grid%nlmax-grid%nlxz
+        ny_local = grid%nly-1
+      endif
+    case(Z_DIRECTION)
+      global_size = grid%nmax-grid%nxy
+      nz_global = grid%nz-1
+      if (grid%ngze-grid%nze == 0) then
+        local_size = grid%nlmax-grid%nlxy
+        nz_local = grid%nlz-1
+      endif
+  end select  
+  allocate(indices(local_size))
+
+  ! fill indices array with natural ids in newly sized array
+  count = 0
+  do k=1,nz_local
+    do j=1,ny_local
+      do i=1,nx_local
+        count = count + 1
+        indices(count) = i+grid%nxs+(j-1+grid%nys)*nx_global+ &
+                         (k-1+grid%nzs)*nx_global*ny_global
+      enddo
+    enddo
+  enddo
+  
+  ! X-coordinates
+  call VecGetArrayF90(grid%dx,vec_ptr,ierr)
+  count = 0
+  allocate(array(local_size))
+  do k=1,nz_local
+    do j=1,ny_local
+      do i=1,nx_local
+        count = count + 1
+        local_id = i+(j-1)*grid%nlx+(k-1)*grid%nlxy
+        array(count) = grid%x(grid%nL2G(local_id))
+        if (direction == X_DIRECTION) &
+          array(count) = array(count) + 0.5d0*vec_ptr(local_id)
+      enddo
+    enddo
+  enddo
+  call VecRestoreArrayF90(grid%dx,vec_ptr,ierr)
+  ! warning: adjusted size will be changed in ConvertArrayToNatural
+  ! thus, you cannot pass in local_size, since it is needed later
+  adjusted_size = local_size
+  call ConvertArrayToNatural(grid,indices,array,adjusted_size,global_size)
+  call WriteTecplotDataSet(IUNIT3,grid,array,TECPLOT_REAL,adjusted_size)
+  ! since the array has potentially been resized, must reallocate
+  deallocate(array)
+
+  ! Y-coordinates
+  count = 0
+  allocate(array(local_size))
+  call VecGetArrayF90(grid%dy,vec_ptr,ierr)
+  do k=1,nz_local
+    do j=1,ny_local
+      do i=1,nx_local
+        count = count + 1
+        local_id = i+(j-1)*grid%nlx+(k-1)*grid%nlxy
+        array(count) = grid%y(grid%nL2G(local_id))
+        if (direction == Y_DIRECTION) &
+          array(count) = array(count) + 0.5d0*vec_ptr(local_id)
+      enddo
+    enddo
+  enddo
+  call VecRestoreArrayF90(grid%dy,vec_ptr,ierr)
+  adjusted_size = local_size
+  call ConvertArrayToNatural(grid,indices,array,adjusted_size,global_size)
+  call WriteTecplotDataSet(IUNIT3,grid,array,TECPLOT_REAL,adjusted_size)
+  deallocate(array)
+
+  ! Z-coordinates
+  count = 0
+  allocate(array(local_size))
+  call VecGetArrayF90(grid%dz,vec_ptr,ierr)
+  do k=1,nz_local
+    do j=1,ny_local
+      do i=1,nx_local
+        count = count + 1
+        local_id = i+(j-1)*grid%nlx+(k-1)*grid%nlxy
+        array(count) = grid%z(grid%nL2G(local_id))
+        if (direction == Z_DIRECTION) &
+          array(count) = array(count) + 0.5d0*vec_ptr(local_id)
+      enddo
+    enddo
+  enddo
+  call VecRestoreArrayF90(grid%dz,vec_ptr,ierr)
+  adjusted_size = local_size
+  call ConvertArrayToNatural(grid,indices,array,adjusted_size,global_size)
+  call WriteTecplotDataSet(IUNIT3,grid,array,TECPLOT_REAL,adjusted_size)
+  deallocate(array)
+  
+  ! write out data set
+  call VecGetArrayF90(grid%vl,vec_ptr,ierr)
+  count = 0
+  allocate(array(local_size))
+  do k=1,nz_local
+    do j=1,ny_local
+      do i=1,nx_local
+        count = count + 1
+        local_id = i+(j-1)*grid%nlx+(k-1)*grid%nlxy
+        array(count) = vec_ptr(iphase+(direction-1)*grid%nphase+ &
+                               3*grid%nphase*(local_id-1))
+      enddo
+    enddo
+  enddo
+  call VecRestoreArrayF90(grid%vl,vec_ptr,ierr)
+  
+  array(1:local_size) = array(1:local_size)*grid%tconv ! convert time units
+  
+  adjusted_size = local_size
+  call ConvertArrayToNatural(grid,indices,array,adjusted_size,global_size)
+  call WriteTecplotDataSet(IUNIT3,grid,array,TECPLOT_REAL,adjusted_size)
+  deallocate(array)
+  
+  deallocate(indices)
+
+  close(IUNIT3)
+  
+end subroutine OutputFluxVelocitiesTecplot
 
 subroutine WriteTecplotDataSetFromVec(fid,grid,vec,datatype)
 
@@ -242,46 +615,58 @@ subroutine WriteTecplotDataSetFromVec(fid,grid,vec,datatype)
   PetscScalar, pointer :: vec_ptr(:)
   
   call VecGetArrayF90(vec,vec_ptr,ierr)
-  call WriteTecplotDataSet(fid,grid,vec_ptr,datatype)
+  call WriteTecplotDataSet(fid,grid,vec_ptr,datatype,0) ! 0 implies grid%nlmax
   call VecRestoreArrayF90(vec,vec_ptr,ierr)
   
 end subroutine WriteTecplotDataSetFromVec
 
-subroutine WriteTecplotDataSet(fid,grid,vec_ptr,datatype)
+subroutine WriteTecplotDataSet(fid,grid,array,datatype,size_flag)
 
   implicit none
   
   integer :: fid
   type(pflowGrid) :: grid
-  PetscReal, pointer :: vec_ptr(:)
-  integer, save :: max_local_size = -1
+  PetscReal :: array(:)
+  integer, save :: max_local_size_saved = -1
   integer :: datatype
+  integer :: size_flag ! if size_flag /= 0, use size_flag as the local size
   
   integer :: i, iproc, recv_size
+  integer :: max_local_size, local_size
   integer :: istart, iend, num_in_array
   integer :: status(MPI_STATUS_SIZE)
   PetscInt, allocatable :: integer_data(:), integer_data_recv(:)
   PetscReal, allocatable :: real_data(:), real_data_recv(:)
   
-  ! if first time, determine the maximum size of any local array across all procs
-  if (max_local_size < 0) then
-    call MPI_Allreduce(grid%nlmax,max_local_size,1,MPI_INTEGER,MPI_MAX, &
+  if (size_flag /= 0) then
+    call MPI_Allreduce(size_flag,max_local_size,1,MPI_INTEGER,MPI_MAX, &
                        PETSC_COMM_WORLD,ierr)
-    if (grid%myrank == 0) print *, 'max_local_size: ', max_local_size
+    local_size = size_flag
+  else 
+  ! if first time, determine the maximum size of any local array across 
+  ! all procs
+    if (max_local_size_saved < 0) then
+      call MPI_Allreduce(grid%nlmax,max_local_size,1,MPI_INTEGER,MPI_MAX, &
+                         PETSC_COMM_WORLD,ierr)
+      max_local_size_saved = max_local_size
+      if (grid%myrank == 0) print *, 'max_local_size_saved: ', max_local_size
+    endif
+    max_local_size = max_local_size_saved
+    local_size = grid%nlmax
   endif
   
   ! transfer the data to an integer or real array
   if (datatype == TECPLOT_INTEGER) then
     allocate(integer_data(max_local_size+10))
     allocate(integer_data_recv(max_local_size))
-    do i=1,grid%nlmax
-      integer_data(i) = int(vec_ptr(i))
+    do i=1,local_size
+      integer_data(i) = int(array(i))
     enddo
   else
     allocate(real_data(max_local_size+10))
     allocate(real_data_recv(max_local_size))
-    do i=1,grid%nlmax
-      real_data(i) = vec_ptr(i)
+    do i=1,local_size
+      real_data(i) = array(i)
     enddo
   endif
   
@@ -293,24 +678,24 @@ subroutine WriteTecplotDataSet(fid,grid,vec_ptr,datatype)
       iend = 0
       do
         istart = iend+1
-        if (iend+10 > grid%nlmax) exit
+        if (iend+10 > local_size) exit
         iend = istart+9
         write(IUNIT3,'(10(i3,x))') integer_data(istart:iend)
       enddo
       ! shift remaining data to front of array
-      integer_data(1:grid%nlmax-iend) = integer_data(iend+1:grid%nlmax)
-      num_in_array = grid%nlmax-iend
+      integer_data(1:local_size-iend) = integer_data(iend+1:local_size)
+      num_in_array = local_size-iend
     else
       iend = 0
       do
         istart = iend+1
-        if (iend+10 > grid%nlmax) exit
+        if (iend+10 > local_size) exit
         iend = istart+9
         write(IUNIT3,'(10(es11.4,x))') real_data(istart:iend)
       enddo
       ! shift remaining data to front of array
-      real_data(1:grid%nlmax-iend) = real_data(iend+1:grid%nlmax)
-      num_in_array = grid%nlmax-iend
+      real_data(1:local_size-iend) = real_data(iend+1:local_size)
+      num_in_array = local_size-iend
     endif
     do iproc=1,grid%commsize-1
       call MPI_Probe(iproc,MPI_ANY_TAG,PETSC_COMM_WORLD,status,ierr)
@@ -365,10 +750,10 @@ subroutine WriteTecplotDataSet(fid,grid,vec_ptr,datatype)
     endif
   else
     if (datatype == TECPLOT_INTEGER) then
-      call MPI_Send(integer_data,grid%nlmax,MPI_INTEGER,0,grid%nlmax, &
+      call MPI_Send(integer_data,local_size,MPI_INTEGER,0,local_size, &
                     PETSC_COMM_WORLD,ierr)
     else
-      call MPI_Send(real_data,grid%nlmax,MPI_DOUBLE_PRECISION,0,grid%nlmax, &
+      call MPI_Send(real_data,local_size,MPI_DOUBLE_PRECISION,0,local_size, &
                     PETSC_COMM_WORLD,ierr)
     endif
   endif
@@ -419,8 +804,9 @@ subroutine OutputHDF5(grid)
   Vec :: natural
   PetscScalar, pointer :: v_ptr
   
-  character(len=32) :: filename = "pflow.h5"
-  character(len=128) :: string
+  character(len=MAXNAMELENGTH) :: filename = "pflow.h5"
+  character(len=MAXSTRINGLENGTH) :: string
+  logical, save :: first = .true.
   real*8, pointer :: array(:)
   integer :: i
 
@@ -429,31 +815,31 @@ subroutine OutputHDF5(grid)
 
   call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
 #ifndef SERIAL_HDF5
-  call h5pset_fapl_mpio_f(prop_id,PETSC_COMM_WORLD,MPI_INFO_NULL,hdf5_err);
+  call h5pset_fapl_mpio_f(prop_id,PETSC_COMM_WORLD,MPI_INFO_NULL,hdf5_err)
 #endif
-  if (.not.hdf5_first) call h5fopen_f(filename,H5F_ACC_RDWR_F,file_id, &
+  if (.not.first) call h5fopen_f(filename,H5F_ACC_RDWR_F,file_id, &
                                       hdf5_err,prop_id)
-  if (hdf5_err < 0 .or. hdf5_first) then 
+  if (hdf5_err < 0 .or. first) then 
     call h5fcreate_f(filename,H5F_ACC_TRUNC_F,file_id,hdf5_err,H5P_DEFAULT_F, &
                      prop_id)
   endif
   call h5pclose_f(prop_id,hdf5_err)
 
-  if (hdf5_first) then
+  if (first) then
     if (grid%myrank == 0) print *, '--> creating hdf5 output file: ', filename
   else
     if (grid%myrank == 0) print *, '--> appending to hdf5 output file: ', &
                                    filename
   endif
   
-  if (hdf5_first) then
+  if (first) then
 
     ! create a group for the coordinates data set
     string = "Coordinates"
     call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
   
     ! write out coordinates in x, y, and z directions
-    string = "X-coordinates"
+    string = "X-Coordinates"
     allocate(array(grid%nx))
     do i=1,grid%nx
       if (i == 1) then
@@ -465,7 +851,7 @@ subroutine OutputHDF5(grid)
     call WriteHDF5Coordinates(string,grid,grid%nx,array,grp_id)
     deallocate(array)
   
-    string = "Y-coordinates"
+    string = "Y-Coordinates"
     allocate(array(grid%ny))
     do i=1,grid%ny
       if (i == 1) then
@@ -477,7 +863,7 @@ subroutine OutputHDF5(grid)
     call WriteHDF5Coordinates(string,grid,grid%ny,array,grp_id)
     deallocate(array)
   
-    string = "Z-coordinates"
+    string = "Z-Coordinates"
     allocate(array(grid%nz))
     do i=1,grid%nz
       if (i == 1) then
@@ -584,18 +970,178 @@ subroutine OutputHDF5(grid)
     string = "Concentration"
     call WriteHDF5DataSetFromVec(string,grid,grid%conc,grp_id, &
                                  H5T_NATIVE_DOUBLE)
-  
+
   endif
-    
+
+  if (grid%print_hdf5_velocities) then
+
+    ! velocities
+    call GetCellCenteredVelocities(grid,global,LIQUID_PHASE,X_DIRECTION)
+    string = "Liquid X-Velocity"
+    call WriteHDF5DataSetFromVec(string,grid,global,grp_id, &
+                                 H5T_NATIVE_DOUBLE)
+    call GetCellCenteredVelocities(grid,global,LIQUID_PHASE,Y_DIRECTION)
+    string = "Liquid Y-Velocity"
+    call WriteHDF5DataSetFromVec(string,grid,global,grp_id, &
+                                 H5T_NATIVE_DOUBLE)
+  
+    call GetCellCenteredVelocities(grid,global,LIQUID_PHASE,Z_DIRECTION)
+    string = "Liquid Z-Velocity"
+    call WriteHDF5DataSetFromVec(string,grid,global,grp_id, &
+                                 H5T_NATIVE_DOUBLE)
+
+    call GetCellCenteredVelocities(grid,global,GAS_PHASE,X_DIRECTION)
+    string = "Gas X-Velocity"
+    call WriteHDF5DataSetFromVec(string,grid,global,grp_id, &
+                               H5T_NATIVE_DOUBLE)
+  
+    call GetCellCenteredVelocities(grid,global,GAS_PHASE,Y_DIRECTION)
+    string = "Gas Y-Velocity"
+    call WriteHDF5DataSetFromVec(string,grid,global,grp_id, &
+                                 H5T_NATIVE_DOUBLE)
+  
+    call GetCellCenteredVelocities(grid,global,GAS_PHASE,Z_DIRECTION)
+    string = "Gas Z-Velocity"
+    call WriteHDF5DataSetFromVec(string,grid,global,grp_id, &
+                                 H5T_NATIVE_DOUBLE)
+  endif
+
+  if (grid%print_hdf5_flux_velocities) then
+  
+    ! internal flux velocities
+    string = "Liquid X-Flux Velocities"
+    call WriteHDF5FluxVelocities(string,grid,LIQUID_PHASE,X_DIRECTION,grp_id)
+    string = "Liquid Y-Flux Velocities"
+    call WriteHDF5FluxVelocities(string,grid,LIQUID_PHASE,Y_DIRECTION,grp_id)
+    string = "Liquid Z-Flux Velocities"
+    call WriteHDF5FluxVelocities(string,grid,LIQUID_PHASE,Z_DIRECTION,grp_id)
+
+    string = "Gas X-Flux Velocities"
+    call WriteHDF5FluxVelocities(string,grid,GAS_PHASE,X_DIRECTION,grp_id)
+    string = "Gas Y-Flux Velocities"
+    call WriteHDF5FluxVelocities(string,grid,GAS_PHASE,Y_DIRECTION,grp_id)
+    string = "Gas Z-Flux Velocities"
+    call WriteHDF5FluxVelocities(string,grid,GAS_PHASE,Z_DIRECTION,grp_id)
+
+  endif 
+  
   ! call VecDestroy(natural,ierr)
   call VecDestroy(global,ierr)
 
   call h5gclose_f(grp_id,hdf5_err)
   call h5fclose_f(file_id,hdf5_err)
   call h5close_f(hdf5_err)
-  hdf5_first = .false.
+  first = .false.
 
 end subroutine OutputHDF5
+
+subroutine WriteHDF5FluxVelocities(name,grid,iphase,direction,file_id)
+
+  use hdf5
+
+  implicit none
+  
+  character(len=32) :: name
+  type(pflowGrid) :: grid
+  integer :: iphase
+  integer :: direction
+  integer(HID_T) :: file_id
+
+  integer :: i, j, k
+  integer :: count
+  integer :: local_id
+  integer :: nx_local, ny_local, nz_local
+  integer :: nx_global, ny_global, nz_global
+  
+  real*8, allocatable :: array(:)
+  PetscReal, pointer :: vec_ptr(:)
+
+  logical, save :: first = .true.
+  logical, save :: trick_flux_vel_x = .false.
+  logical, save :: trick_flux_vel_y = .false.
+  logical, save :: trick_flux_vel_z = .false.
+  
+  ! in a few cases (i.e. for small test problems), some processors may
+  ! have no velocities to print.  This results in zero-length arrays
+  ! in collective H5Dwrite().  To avoid, we switch to independent
+  ! H5Dwrite() and don't write from the zero-length procs. 
+  if (first) then
+    nx_local = grid%nlx
+    ny_local = grid%nly
+    nz_local = grid%nlz
+    if (grid%ngxe-grid%nxe == 0) then
+      nx_local = grid%nlx-1
+    endif
+    call MPI_Allreduce(nx_local,i,1,MPI_INTEGER,MPI_MIN,PETSC_COMM_WORLD,ierr)
+    if (i == 0) trick_flux_vel_x = .true.
+    if (grid%ngye-grid%nye == 0) then
+      ny_local = grid%nly-1
+    endif
+    call MPI_Allreduce(ny_local,j,1,MPI_INTEGER,MPI_MIN,PETSC_COMM_WORLD,ierr)
+    if (j == 0) trick_flux_vel_y = .true.
+    if (grid%ngze-grid%nze == 0) then
+      nz_local = grid%nlz-1
+    endif
+    call MPI_Allreduce(nz_local,k,1,MPI_INTEGER,MPI_MIN,PETSC_COMM_WORLD,ierr)
+    if (k == 0) trick_flux_vel_z = .true.
+  endif
+
+  nx_local = grid%nlx
+  ny_local = grid%nly
+  nz_local = grid%nlz
+  nx_global = grid%nx
+  ny_global = grid%ny
+  nz_global = grid%nz
+
+  select case(direction)
+    case(X_DIRECTION)
+      nx_global = grid%nx-1
+      if (grid%ngxe-grid%nxe == 0) then
+        nx_local = grid%nlx-1
+      endif
+      if (trick_flux_vel_x) trick_hdf5 = .true.
+    case(Y_DIRECTION)
+      ny_global = grid%ny-1
+      if (grid%ngye-grid%nye == 0) then
+        ny_local = grid%nly-1
+      endif
+      if (trick_flux_vel_y) trick_hdf5 = .true.
+    case(Z_DIRECTION)
+      nz_global = grid%nz-1
+      if (grid%ngze-grid%nze == 0) then
+        nz_local = grid%nlz-1
+      endif
+      if (trick_flux_vel_z) trick_hdf5 = .true.
+  end select  
+  allocate(array(nx_local*ny_local*nz_local))
+
+  call VecGetArrayF90(grid%vl,vec_ptr,ierr)
+  count = 0
+  do k=1,nz_local
+    do j=1,ny_local
+      do i=1,nx_local
+        count = count + 1
+        local_id = i+(j-1)*grid%nlx+(k-1)*grid%nlxy
+        array(count) = vec_ptr(iphase+(direction-1)*grid%nphase+ &
+                               3*grid%nphase*(local_id-1))
+      enddo
+    enddo
+  enddo
+  call VecRestoreArrayF90(grid%vl,vec_ptr,ierr)
+  
+  array(1:nx_local*ny_local*nz_local) = &  ! convert time units
+    array(1:nx_local*ny_local*nz_local) * grid%tconv
+
+  call WriteHDF5DataSet(name,array,file_id,H5T_NATIVE_DOUBLE, &
+                        nx_global,ny_global,nz_global, &
+                        nx_local,ny_local,nz_local, &
+                        grid%nxs,grid%nys,grid%nzs)
+
+  deallocate(array)
+  trick_hdf5 = .false.
+  first = .false.
+
+end subroutine WriteHDF5FluxVelocities
 
 subroutine WriteHDF5Coordinates(name,grid,length,array,file_id)
 
@@ -620,7 +1166,7 @@ subroutine WriteHDF5Coordinates(name,grid,length,array,file_id)
   dims = 0
   ! x-direction
   dims(1) = length
-  call h5screate_simple_f(rank,dims,file_space_id,hdf5_err,dims);
+  call h5screate_simple_f(rank,dims,file_space_id,hdf5_err,dims)
   call h5pcreate_f(H5P_DATASET_CREATE_F,prop_id,hdf5_err)
   call h5dcreate_f(file_id,name,H5T_NATIVE_DOUBLE,file_space_id, &
                    data_set_id,hdf5_err,prop_id)
@@ -628,7 +1174,7 @@ subroutine WriteHDF5Coordinates(name,grid,length,array,file_id)
 
   call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
 #ifndef SERIAL_HDF5
-  call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F,hdf5_err); ! must be independent and only from p0
+  call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F,hdf5_err) ! must be independent and only from p0
 #endif
   if (grid%myrank == 0) then
     call h5dwrite_f(data_set_id,H5T_NATIVE_DOUBLE,array,dims, &
@@ -655,22 +1201,30 @@ subroutine WriteHDF5DataSetFromVec(name,grid,vec,file_id,data_type)
   PetscScalar, pointer :: vec_ptr(:)
   
   call VecGetArrayF90(vec,vec_ptr,ierr)
-  call WriteHDF5DataSet(name,grid,vec_ptr,file_id,data_type)
+  call WriteHDF5DataSet(name,vec_ptr,file_id,data_type, &
+                        grid%nx,grid%ny,grid%nz, &
+                        grid%nlx,grid%nly,grid%nlz, &
+                        grid%nxs,grid%nys,grid%nzs)
   call VecRestoreArrayF90(vec,vec_ptr,ierr)
   
 end subroutine WriteHDF5DataSetFromVec
 
-subroutine WriteHDF5DataSet(name,grid,array,file_id,data_type)
+subroutine WriteHDF5DataSet(name,array,file_id,data_type, &
+                            nx_global,ny_global,nz_global, &
+                            nx_local,ny_local,nz_local, &
+                            istart_local,jstart_local,kstart_local)
 
   use hdf5
   
   implicit none
   
   character(len=32) :: name
-  type(pflowGrid) :: grid
   real*8 :: array(:)
   integer(HID_T) :: file_id
   integer(HID_T) :: data_type
+  integer :: nx_local, ny_local, nz_local
+  integer :: nx_global, ny_global, nz_global
+  integer :: istart_local, jstart_local, kstart_local
   
   integer(HID_T) :: file_space_id
   integer(HID_T) :: memory_space_id
@@ -683,27 +1237,33 @@ subroutine WriteHDF5DataSet(name,grid,array,file_id,data_type)
   real*8, pointer :: double_array(:)
   integer :: i, j, k, count, id
   integer(HSIZE_T) :: start(3), length(3), stride(3)
+  integer :: ny_local_X_nz_local
+  integer :: num_to_write
 
+  ny_local_X_nz_local = ny_local*nz_local
+  num_to_write = nx_local*ny_local_X_nz_local
+  
   ! memory space which is a 1D vector  
   rank = 1
   dims = 0
-  dims(1) = grid%nlmax
-  call h5screate_simple_f(rank,dims,memory_space_id,hdf5_err,dims);
+  dims(1) = num_to_write
+  if (num_to_write == 0) dims(1) = 1
+  call h5screate_simple_f(rank,dims,memory_space_id,hdf5_err,dims)
 
   ! file space which is a 3D block
   rank = 3
 #define INVERT
 #ifndef INVERT
-  dims(1) = grid%nx
-  dims(2) = grid%ny
-  dims(3) = grid%nz
+    dims(1) = nx_global
+    dims(2) = ny_global
+    dims(3) = nz_global
 #else
 ! have to trick hdf5 for now with inverted ordering
-  dims(3) = grid%nx
-  dims(2) = grid%ny
-  dims(1) = grid%nz
+    dims(3) = nx_global
+    dims(2) = ny_global
+    dims(1) = nz_global
 #endif
-  call h5screate_simple_f(rank,dims,file_space_id,hdf5_err,dims);
+  call h5screate_simple_f(rank,dims,file_space_id,hdf5_err,dims)
 
 
   call h5pcreate_f(H5P_DATASET_CREATE_F,prop_id,hdf5_err)
@@ -713,75 +1273,84 @@ subroutine WriteHDF5DataSet(name,grid,array,file_id,data_type)
   
   ! create the hyperslab
 #ifndef INVERT
-  start(1) = grid%nxs
-  start(2) = grid%nys
-  start(3) = grid%nzs
-  length(1) =  grid%nlx
-  length(2) =  grid%nly
-  length(3) =  grid%nlz
+  start(1) = istart_local
+  start(2) = jstart_local
+  start(3) = kstart_local
+  length(1) =  nx_local
+  length(2) =  ny_local
+  length(3) =  nz_local
 #else
-  start(3) = grid%nxs
-  start(2) = grid%nys
-  start(1) = grid%nzs
-  length(3) =  grid%nlx
-  length(2) =  grid%nly
-  length(1) =  grid%nlz
+  start(3) = istart_local
+  start(2) = jstart_local
+  start(1) = kstart_local
+  length(3) =  nx_local
+  length(2) =  ny_local
+  length(1) =  nz_local
 #endif
+  if (num_to_write == 0) length(1) = 1
   stride = 1
   call h5sselect_hyperslab_f(file_space_id,H5S_SELECT_SET_F,start,length, &
                              hdf5_err,stride,stride)
 
-  ! write the data
+    ! write the data
   call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
 #ifndef SERIAL_HDF5
-  call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_COLLECTIVE_F,hdf5_err); ! must be independent and only from p0
-#endif
-  if (data_type == H5T_NATIVE_INTEGER) then
-    allocate(int_array(grid%nlmax))
-#ifdef INVERT
-    count = 0
-    do k=1,grid%nlz
-      do j=1,grid%nly
-        do i=1,grid%nlx
-          id = k+(j-1)*grid%nlz+(i-1)*grid%nlyz
-          count = count+1
-          int_array(id) = int(array(count))
-        enddo
-      enddo
-    enddo
-#else
-    do i=1,grid%nlmax
-      int_array(i) = int(array(i))
-    enddo
-#endif
-    call h5dwrite_f(data_set_id,data_type,int_array,dims, &
-                    hdf5_err,memory_space_id,file_space_id,prop_id)
-    deallocate(int_array)
+  if (trick_hdf5) then
+    call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F, &
+                            hdf5_err) ! must be independent and only from p0
   else
+    call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_COLLECTIVE_F, &
+                            hdf5_err) ! must be independent and only from p0
+  endif
+#endif
+  if (num_to_write > 0) then
+    if (data_type == H5T_NATIVE_INTEGER) then
+      allocate(int_array(nx_local*ny_local*nz_local))
 #ifdef INVERT
-    allocate(double_array(grid%nlmax))
-    count = 0
-    do k=1,grid%nlz
-      do j=1,grid%nly
-        do i=1,grid%nlx
-          id = k+(j-1)*grid%nlz+(i-1)*grid%nlyz
-          count = count+1
-          double_array(id) = array(count)
+      count = 0
+      do k=1,nz_local
+        do j=1,ny_local
+          do i=1,nx_local
+            id = k+(j-1)*nz_local+(i-1)*ny_local_X_nz_local
+            count = count+1
+            int_array(id) = int(array(count))
+          enddo
         enddo
       enddo
-    enddo
-    call h5dwrite_f(data_set_id,data_type,double_array,dims, &
-                    hdf5_err,memory_space_id,file_space_id,prop_id)  
-    deallocate(double_array)
 #else
-    call h5dwrite_f(data_set_id,data_type,array,dims, &
-                    hdf5_err,memory_space_id,file_space_id,prop_id)  
+      do i=1,grid%nlmax
+        int_array(i) = int(array(i))
+      enddo
 #endif
+      call h5dwrite_f(data_set_id,data_type,int_array,dims, &
+                      hdf5_err,memory_space_id,file_space_id,prop_id)
+      deallocate(int_array)
+    else
+#ifdef INVERT
+      allocate(double_array(nx_local*ny_local*nz_local))
+      count = 0
+      do k=1,nz_local
+        do j=1,ny_local
+          do i=1,nx_local
+            id = k+(j-1)*nz_local+(i-1)*ny_local_X_nz_local
+            count = count+1
+            double_array(id) = array(count)
+          enddo
+        enddo
+      enddo
+      call h5dwrite_f(data_set_id,data_type,double_array,dims, &
+                      hdf5_err,memory_space_id,file_space_id,prop_id)  
+      deallocate(double_array)
+#else
+      call h5dwrite_f(data_set_id,data_type,array,dims, &
+                      hdf5_err,memory_space_id,file_space_id,prop_id)  
+#endif
+    endif
+    call h5pclose_f(prop_id,hdf5_err)
   endif
-  call h5pclose_f(prop_id,hdf5_err)
   call h5dclose_f(data_set_id,hdf5_err)
-  call h5sclose_f(memory_space_id,hdf5_err)
   call h5sclose_f(file_space_id,hdf5_err)
+  call h5sclose_f(memory_space_id,hdf5_err)
 
 end subroutine WriteHDF5DataSet
 #endif
@@ -829,6 +1398,46 @@ subroutine ConvertGlobalToNatural(grid,global,natural)
   call DAGlobalToNaturalEnd(grid%da_1_dof,global,INSERT_VALUES,natural,ierr)
 
 end subroutine 
+
+subroutine ConvertArrayToNatural(grid,indices,array, &
+                                 local_size,global_size)
+
+  implicit none
+  
+  type(pflowGrid) :: grid
+  
+  integer :: local_size, global_size
+  integer :: indices(:)
+  real*8, allocatable :: array(:)
+  
+  Vec :: natural
+  integer, allocatable :: indices_zero_based(:)
+  real*8, pointer :: vec_ptr(:)
+  
+  call VecCreate(PETSC_COMM_WORLD,natural,ierr)
+  call VecSetSizes(natural,PETSC_DECIDE,global_size,ierr)
+  call VecSetType(natural,VECMPI,ierr)
+
+  allocate(indices_zero_based(local_size))
+  indices_zero_based(1:local_size) = indices(1:local_size)-1
+
+  call VecSetValues(natural,local_size,indices_zero_based, &
+                    array,INSERT_VALUES,ierr)
+
+  call VecAssemblyBegin(natural,ierr)
+  call VecAssemblyEnd(natural,ierr)
+
+  call VecGetLocalSize(natural,local_size,ierr)
+  deallocate(array)
+  allocate(array(local_size))
+  
+  call VecGetArrayF90(natural,vec_ptr,ierr)
+  array(1:local_size) = vec_ptr(1:local_size)
+  call VecRestoreArrayF90(natural,vec_ptr,ierr)
+
+  call VecDestroy(natural,ierr)
+  
+end subroutine ConvertArrayToNatural
 
 subroutine GetVarFromArray(grid,vec,ivar,isubvar)
 
@@ -919,6 +1528,120 @@ subroutine GetVarFromArray(grid,vec,ivar,isubvar)
   call VecRestoreArrayF90(vec,vec_ptr,ierr)
 
 end subroutine GetVarFromArray
+
+subroutine GetCellCenteredVelocities(grid,vec,iphase,direction)
+
+  use pflow_gridtype_module
+
+  implicit none
+  
+  type(pflowGrid) :: grid
+  Vec :: vec
+  integer :: direction
+  integer :: iphase
+  
+  integer :: i, j, k, local_id, iconn
+  Vec :: local_vec
+  
+  PetscScalar, pointer :: vec_ptr(:)
+  PetscScalar, pointer :: vl_ptr(:)
+  PetscScalar, pointer :: loc_vec_ptr(:)
+  PetscInt, allocatable :: num_additions(:)
+  
+  allocate(num_additions(grid%nlmax))
+  num_additions(1:grid%nlmax) = 0
+  
+  call VecSet(vec,0.d0,ierr)
+  call VecGetArrayF90(vec,vec_ptr,ierr)
+  call VecGetArrayF90(grid%vl,vl_ptr,ierr)
+  do i=1,grid%nlmax
+  ! I believe that vl_ptr contains the downwind vel for all local nodes
+    vec_ptr(i) = vl_ptr(iphase+(direction-1)*grid%nphase+3*grid%nphase*(i-1))
+  enddo
+  call VecRestoreArrayF90(grid%vl,vl_ptr,ierr)
+  call VecRestoreArrayF90(vec,vec_ptr,ierr)
+    
+  call DACreateLocalVector(grid%da_1_dof,local_vec,ierr)
+  call DAGlobalToLocalBegin(grid%da_1_dof,vec,INSERT_VALUES,local_vec,ierr)
+  call DAGlobalToLocalEnd(grid%da_1_dof,vec,INSERT_VALUES,local_vec,ierr)
+
+  call VecSet(vec,0.d0,ierr)
+
+  call VecGetArrayF90(vec,vec_ptr,ierr)
+  do iconn = 1, grid%nconnbc
+    if (grid%ipermbc(iconn) == direction) then ! direction 1=x,2=y,3=z
+      local_id = grid%mblkbc(iconn)  ! node of bc m = local id
+      if (iphase == LIQUID_PHASE) then
+        vec_ptr(local_id) = vec_ptr(local_id) + grid%vvlbc(iconn)
+      else
+        vec_ptr(local_id) = vec_ptr(local_id) + grid%vvgbc(iconn)
+      endif
+      num_additions(local_id) = num_additions(local_id) + 1
+    endif
+  enddo
+  call VecRestoreArrayF90(vec,vec_ptr,ierr)
+
+  call VecGetArrayF90(vec,vec_ptr,ierr)
+  call VecGetArrayF90(local_vec,loc_vec_ptr,ierr)
+  ! add in upwind portion from local vector
+  select case(direction)
+    case(X_DIRECTION)
+      do local_id=1,grid%nlmax
+        i= mod(local_id-1,grid%nlx) + 1
+        if (i > 1 .or. grid%nxs-grid%ngxs > 0) then
+          vec_ptr(local_id) = vec_ptr(local_id) + &
+                              loc_vec_ptr(grid%nL2G(local_id)-1)
+          num_additions(local_id) = num_additions(local_id) + 1
+        endif
+        if (i < grid%nlx .or. grid%ngxe-grid%nxe > 0) then
+          vec_ptr(local_id) = vec_ptr(local_id) + &
+                              loc_vec_ptr(grid%nL2G(local_id))
+          num_additions(local_id) = num_additions(local_id) + 1
+        endif
+      enddo
+    case(Y_DIRECTION)
+      do local_id=1,grid%nlmax
+        j= int(mod(local_id-1,grid%nlxy)/grid%nlx) + 1
+        if (j > 1 .or. grid%nys-grid%ngys > 0) then
+          vec_ptr(local_id) = vec_ptr(local_id) + &
+                              loc_vec_ptr(grid%nL2G(local_id)-grid%ngx)
+          num_additions(local_id) = num_additions(local_id) + 1
+        endif
+        if (j < grid%nly .or. grid%ngye-grid%nye > 0) then
+          vec_ptr(local_id) = vec_ptr(local_id) + &
+                              loc_vec_ptr(grid%nL2G(local_id))
+          num_additions(local_id) = num_additions(local_id) + 1
+        endif
+      enddo
+    case(Z_DIRECTION)
+      do local_id=1,grid%nlmax
+        k= int((local_id-1)/grid%nlxy) + 1
+        if (k > 1 .or. grid%nzs-grid%ngzs > 0) then
+          vec_ptr(local_id) = vec_ptr(local_id) + &
+                              loc_vec_ptr(grid%nL2G(local_id)-grid%ngxy)
+          num_additions(local_id) = num_additions(local_id) + 1
+        endif
+        if (k < grid%nlz .or. grid%ngze-grid%nze > 0) then
+          vec_ptr(local_id) = vec_ptr(local_id) + &
+                              loc_vec_ptr(grid%nL2G(local_id))
+          num_additions(local_id) = num_additions(local_id) + 1
+        endif
+      enddo
+  end select
+  call VecRestoreArrayF90(local_vec,loc_vec_ptr,ierr)
+  call VecRestoreArrayF90(vec,vec_ptr,ierr)
+
+  call VecGetArrayF90(vec,vec_ptr,ierr)
+  do i=1,grid%nlmax
+    if (num_additions(i) > 0) &
+      vec_ptr(i) = vec_ptr(i)/real(num_additions(i))*grid%tconv
+  enddo
+  call VecRestoreArrayF90(vec,vec_ptr,ierr)
+
+  call VecDestroy(local_vec,ierr)
+  deallocate(num_additions)
+
+end subroutine GetCellCenteredVelocities
 
 end module pflow_output2_module
 
