@@ -1936,6 +1936,8 @@ subroutine pflowGrid_setup(grid, inputfile)
   
       grid%vlbc=0.D0
       grid%vgbc=0.D0
+      grid%vvlbc = 0.D0
+      grid%vvgbc = 0.D0
     endif
 !geh
   endif
@@ -3950,11 +3952,41 @@ subroutine pflowGrid_read_input(grid, inputfile)
 
       case ('HDF5')
         grid%print_hdf5 = .true.
+        do
+          call fiReadWord(string,word,.true.,ierr)
+          if (ierr /= 0) exit
+          call fiCharsToUpper(word,len_trim(word))
+          call fiReadCard(word,card,ierr)
+
+          select case(card)
+            case('VELO')
+              grid%print_hdf5_velocities = .true.
+            case('FLUX')
+              grid%print_hdf5_flux_velocities = .true.
+            case default
+          end select
+            
+        enddo
 
 !....................
 
       case ('TECP')
         grid%print_tecplot = .true.
+        do
+          call fiReadWord(string,word,.true.,ierr)
+          if (ierr /= 0) exit
+          call fiCharsToUpper(word,len_trim(word))
+          call fiReadCard(word,card,ierr)
+
+          select case(card)
+            case('VELO')
+              grid%print_tecplot_velocities = .true.
+            case('FLUX')
+              grid%print_tecplot_flux_velocities = .true.
+            case default
+          end select
+          
+        enddo
 
 !....................
 
