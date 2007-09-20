@@ -70,7 +70,11 @@ private
     integer :: write_init = 0 ! Flag to printout initial conditions.
     integer :: iprint = 0 ! Print level (-1-none, 0-fields, >=1-vel, 2-perm/por, 3-pflow.bc)
     logical :: print_hdf5 = .false. ! toggle for printing hdf5
+    logical :: print_hdf5_velocities = .false.
+    logical :: print_hdf5_flux_velocities = .false.
     logical :: print_tecplot = .false. ! toggle for printing tecplot
+    logical :: print_tecplot_velocities = .false.
+    logical :: print_tecplot_flux_velocities = .false.
     integer :: imod = 1   ! screen printout modulus
     integer :: itecplot = 0 ! tecplot print format (1-interchange x and z)
     integer :: iblkfmt = 0 ! blocked format
