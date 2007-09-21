@@ -730,6 +730,7 @@ contains
         tsrc1 = grid%tempsrc(i,nr)
         qsrc1 = grid%qsrc(i,nr)
         csrc1 = grid%csrc(i,nr)
+        hsrc1 = grid%hsrc(i,nr)
         goto 10
       else if (grid%timesrc(i,nr) > grid%t) then
         ff = grid%timesrc(i,nr)-grid%timesrc(i-1,nr)
@@ -738,6 +739,7 @@ contains
         tsrc1 = f1*grid%tempsrc(i,nr) + f2*grid%tempsrc(i-1,nr)
         qsrc1 = f1*grid%qsrc(i,nr) + f2*grid%qsrc(i-1,nr)
         csrc1 = f1*grid%csrc(i,nr) + f2*grid%csrc(i-1,nr)
+        hsrc1 = f1*grid%hsrc(i,nr) + f2*grid%hsrc(i-1,nr)
         goto 10
       endif
     enddo
@@ -745,7 +747,8 @@ contains
     
 !   print *,'pflowTHC: ', grid%myrank,i,grid%timesrc(i,nr), &
 !   grid%timesrc(i-1,nr),grid%t,f1,f2,ff,qsrc1,csrc1
- 
+
+    r_p(t1) = r_p(t1) - hsrc1 
     qsrc1 = qsrc1 / grid%fmwh2o
 
     if (qsrc1 > 0.d0) then ! injection
@@ -1603,7 +1606,23 @@ contains
     else if(grid%ibndtyp(ibc) == 2) then 
 
     ! constant velocity q, grad T, C = 0
-      
+    
+    else if(grid%ibndtyp(ibc) == 4) then
+        ! (T,T)
+         i1 = ithrm_loc_p(ng)
+      cond = grid%ckwet(i1) * grid%areabc(nc) / grid%distbc(nc)
+      elem1 =  cond
+      if (grid%iblkfmt == 0) then
+        call MatSetValuesLocal(A,1,t1,1,t1,elem1,ADD_VALUES,ierr)
+      else
+        blkmat1(2,2) = elem1
+      endif
+
+      if (grid%iblkfmt == 1) then
+        call MatSetValuesBlockedLocal(A,1,ng-1,1,ng-1, &
+        blkmat1,ADD_VALUES,ierr)
+      endif
+
     else if(grid%ibndtyp(ibc) == 3) then 
     
     ! Dirichlet BC: fixed p, grad T, C = 0

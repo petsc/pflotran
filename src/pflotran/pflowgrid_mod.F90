@@ -754,7 +754,9 @@ endif
   allocate(grid%tempsrc(MAXSRCTIMES,MAXSRC))
   allocate(grid%qsrc(MAXSRCTIMES,MAXSRC))
   allocate(grid%csrc(MAXSRCTIMES,MAXSRC))
-      
+  allocate(grid%hsrc(MAXSRCTIMES,MAXSRC))
+  grid%qsrc =0.D0; grid%csrc =0.D0; grid%hsrc =0.D0
+          
   allocate(grid%i1reg(MAXPERMREGIONS))
   allocate(grid%i2reg(MAXPERMREGIONS))
   allocate(grid%j1reg(MAXPERMREGIONS))
@@ -5063,7 +5065,10 @@ subroutine pflowGrid_read_input(grid, inputfile)
       
             call fiReadDouble(string,grid%csrc(i,isrc),ierr)
             call fiDefaultMsg('csrc',ierr)
-
+          
+            call fiReadDouble(string,grid%hsrc(i,isrc),ierr)
+            call fiDefaultMsg('hsrc',ierr)
+          
           enddo ! End loop over time.
 
           grid%ntimsrc = i

@@ -968,6 +968,7 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
         tsrc1 = grid%tempsrc(i,nr)
         qsrc1 = grid%qsrc(i,nr)
         csrc1 = grid%csrc(i,nr)
+        hsrc1=  grid%hsrc(i,nr)
         goto 10
       else if (grid%timesrc(i,nr) > grid%t) then
         ff = grid%timesrc(i,nr)-grid%timesrc(i-1,nr)
@@ -976,6 +977,7 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
         tsrc1 = f1*grid%tempsrc(i,nr) + f2*grid%tempsrc(i-1,nr)
         qsrc1 = f1*grid%qsrc(i,nr) + f2*grid%qsrc(i-1,nr)
         csrc1 = f1*grid%csrc(i,nr) + f2*grid%csrc(i-1,nr)
+        hsrc1 = f1*grid%hsrc(i,nr) + f2*grid%hsrc(i-1,nr)
         goto 10
       endif
     enddo
@@ -989,7 +991,7 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
   
   ! Here assuming regular mixture injection. i.e. no extra H from mixing 
   ! within injected fluid.
-  
+  r_p(n*grid%ndof) =r_p(n*grid%ndof)  -hsrc1 *grid%dt
     if (qsrc1 > 0.d0) then ! injection
       do kk = kk1, kk2
         do jj = jj1, jj2
