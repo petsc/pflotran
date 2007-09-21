@@ -110,7 +110,7 @@
   kplt = 0
   iplot = 1
 
- call VecView(grid%porosity,PETSC_VIEWER_STDOUT_WORLD,ierr)
+! call VecView(grid%porosity,PETSC_VIEWER_STDOUT_WORLD,ierr)
 
    print *,' Begin output'
       call pflow_var_output(grid,timestep,kplt,iplot)

@@ -1122,8 +1122,9 @@ end interface
 integer i,j,k, nc, mg1, mg2, n, ierr, ng, leng
 real*8 val, d1,d2
 PetscScalar, pointer ::  dx_loc_p(:), dy_loc_p(:), dz_loc_p(:), volume_p(:)
- Vec :: temp0_nat_vec, temp1_nat_vec, temp2_nat_vec, temp3_nat_vec, &
-          temp4_nat_vec 
+PetscScalar, pointer ::  dx_p(:), dy_p(:), dz_p(:)
+! Vec :: temp0_nat_vec, temp1_nat_vec, temp2_nat_vec, temp3_nat_vec, &
+!          temp4_nat_vec 
 
  allocate(locpat%nd1(locpat%nconn))
  allocate(locpat%nd2(locpat%nconn))
@@ -1136,6 +1137,8 @@ PetscScalar, pointer ::  dx_loc_p(:), dy_loc_p(:), dz_loc_p(:), volume_p(:)
  allocate(locpat%iperm2(locpat%nconn))
 
 
+! old version **********************
+#if 0
   call DACreateNaturalVector(grid%da_1_dof,temp1_nat_vec,ierr)
   call VecDuplicate(temp1_nat_vec, temp2_nat_vec, ierr)
   call VecDuplicate(temp1_nat_vec, temp3_nat_vec, ierr)
@@ -1155,6 +1158,8 @@ PetscScalar, pointer ::  dx_loc_p(:), dy_loc_p(:), dz_loc_p(:), volume_p(:)
       enddo
     enddo
   endif
+
+
 
   call VecAssemblyBegin(temp1_nat_vec,ierr)
   call VecAssemblyEnd(temp1_nat_vec,ierr)
@@ -1181,7 +1186,37 @@ PetscScalar, pointer ::  dx_loc_p(:), dy_loc_p(:), dz_loc_p(:), volume_p(:)
   call VecDestroy(temp1_nat_vec,ierr)
   call VecDestroy(temp2_nat_vec,ierr)
   call VecDestroy(temp3_nat_vec,ierr)
+#endif
+!old version end
 
+!#if 0
+  call pims_vecgetarrayf90(grid, locpat, grid%dx, dx_p, ierr)
+  call pims_vecgetarrayf90(grid, locpat, grid%dy, dy_p, ierr)
+  call pims_vecgetarrayf90(grid, locpat, grid%dz, dz_p, ierr)
+   
+
+
+      n=0
+      do k=1,locpat%nlz
+            do j=1,locpat%nly
+               do i=1,locpat%nlx
+                  n = n + 1
+                  dx_p(n) = grid%dx0(i + locpat%nxs)
+                  dy_p(n)=  grid%dy0(j + locpat%nys)
+                  dz_p(n)=  grid%dz0(k + locpat%nzs)
+                enddo
+            enddo      
+      enddo 
+      
+  call VecRestoreArrayF90( grid%dx, dx_p, ierr)   
+  call VecRestoreArrayF90( grid%dy, dy_p, ierr)
+  call VecRestoreArrayF90( grid%dz, dz_p, ierr)
+!  call VecView(grid%dx,PETSC_VIEWER_STDOUT_WORLD,ierr)
+
+!#endif
+  
+  
+  
   ! Extract local, ghosted portions of dx, dy, dz vectors.
   call DAGlobalToLocalBegin(grid%da_1_dof, grid%dx, INSERT_VALUES, &
                             grid%dx_loc, ierr)
@@ -1324,7 +1359,7 @@ PetscScalar, pointer ::  dx_loc_p(:), dy_loc_p(:), dz_loc_p(:), volume_p(:)
     ng = locpat%nL2G(n)
 	if (grid%igeom == 1) then
       volume_p(n) = dx_loc_p(ng) * dy_loc_p(ng) * dz_loc_p(ng)
-      ! print *, 'setup: Vol ', grid%myrank, n,volume_p(n)
+      print *, 'setup_geom: Vol ', grid%myrank, n,volume_p(n), dx_loc_p(ng),dy_loc_p(ng),dz_loc_p(ng)
     else if (grid%igeom == 2) then
       i= mod(mod((n),locpat%nlxy),locpat%nlx)!+(grid%ngxs-grid%nxs)
       if(i==0) i=  locpat%nlx
@@ -1370,7 +1405,7 @@ subroutine pflowGrid_Setup_Trans(grid, locpat)
  type(pflowGrid), intent(inout) :: grid
  type(pflow_localpatch_info) :: locpat
  
-integer :: iseed, n, na, nx, ny, nz, ir, ierr
+integer :: iseed, n, nla, nx, ny, nz, ir, ierr
 real*8, pointer :: icap_p(:),por_p(:),por0_p(:), ithrm_p(:), &
                    tor_p(:),perm_xx_p(:),perm_yy_p(:),perm_zz_p(:),&
                    perm_pow_p(:), ran_p(:)
@@ -1378,7 +1413,8 @@ real*8, pointer :: icap_p(:),por_p(:),por0_p(:), ithrm_p(:), &
  Vec :: temp0_nat_vec
 
 
-
+! old version
+#if 0
   call DACreateNaturalVector(grid%da_1_dof,temp0_nat_vec,ierr)
 !  call VecDuplicate(temp0_nat_vec, temp1_nat_vec, ierr)
 !  call VecDuplicate(temp0_nat_vec, temp2_nat_vec, ierr)
@@ -1408,8 +1444,22 @@ real*8, pointer :: icap_p(:),por_p(:),por0_p(:), ithrm_p(:), &
                                 grid%ttemp,ierr)
      call DANaturalToGlobalEnd(grid%da_1_dof,temp0_nat_vec,INSERT_VALUES, &
                               grid%ttemp,ierr)
+#endif
+! old version end
 
      call VecGetArrayF90(grid%ttemp,ran_p,ierr)
+ ! call pims_vecgetarrayf90(grid, locpat, grid%ttemp, ran_p, ierr)
+ ! Clu change, Bobby please note the  pims_vecgetarrayf90 not working for me
+!#if 0
+    do n = 1,locpat%nlmax
+       random_nr=1.D0
+       if (grid%ran_fac > 0.d0) random_nr = ran1(n)
+       val = random_nr
+       ran_p(n)=val
+    enddo   
+  
+!#endif
+     print *, 'end random'
      call VecGetArrayF90(grid%icap,icap_p,ierr)
      call VecGetArrayF90(grid%ithrm,ithrm_p,ierr)
      call VecGetArrayF90(grid%porosity,por_p,ierr)
@@ -1420,10 +1470,15 @@ real*8, pointer :: icap_p(:),por_p(:),por0_p(:), ithrm_p(:), &
      call VecGetArrayF90(grid%perm_pow,perm_pow_p,ierr)
      call VecGetArrayF90(grid%tor,tor_p,ierr)
      do n = 1,locpat%nlmax
-          na = locpat%nL2A(n)
-          nz= int(na/grid%nxy) + 1
-          ny= int(mod(na,grid%nxy)/grid%nx) + 1
-          nx= mod(mod(na,grid%nxy),grid%nx) + 1
+          !na = locpat%nL2A(n)
+          !nz= int(na/grid%nxy) + 1
+          !ny= int(mod(na,grid%nxy)/grid%nx) + 1
+          !nx= mod(mod(na,grid%nxy),grid%nx) + 1
+          nla=n-1
+          nz = int(nla/locpat%nlxy) + 1 + locpat%nzs
+          ny = int(mod(nla,locpat%nlxy)/locpat%nlx) + 1 + locpat%nys
+          nx = mod(mod(nla,locpat%nlxy),locpat%nlx) + 1 + locpat%nxs
+
 
           do ir = 1,grid%iregperm        
           if ((nz>=grid%k1reg(ir)) .and. (nz<=grid%k2reg(ir)) .and.&
@@ -1491,7 +1546,7 @@ real*8, pointer :: icap_p(:),por_p(:),por0_p(:), ithrm_p(:), &
 	 		!call VecSetValue(temp7_nat_vec,n,val3,INSERT_VALUES,ierr)
             tor_p(n)=val3
             
-!          print *,'setup: ',n+1,ir,i,j,k,val1,val2,val3,random_nr
+   !       print *,'setup trans: ',ir, n,nx,ny,nz,locpat%nxs,perm_xx_p(n),   tor_p(n)
    !         exit
           endif
           
@@ -1510,7 +1565,7 @@ real*8, pointer :: icap_p(:),por_p(:),por0_p(:), ithrm_p(:), &
      call VecRestoreArrayF90(grid%perm_pow,perm_pow_p,ierr)
      call VecRestoreArrayF90(grid%tor,tor_p,ierr)
 
-  call VecDestroy(temp0_nat_vec,ierr)
+!  call VecDestroy(temp0_nat_vec,ierr)
  ! call VecDestroy(temp1_nat_vec,ierr)
  ! call VecDestroy(temp2_nat_vec,ierr)
  ! call VecDestroy(temp3_nat_vec,ierr)

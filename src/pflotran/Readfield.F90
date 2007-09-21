@@ -30,9 +30,65 @@ module readfield
 
    
 
-  public Read_perm_field, Read_init_field, Read_Geom_field, Boundary_adjustment
+  public Read_perm_field, Read_init_field, Read_Geom_field, Boundary_adjustment, &
+         Natural2LocalIndex
   
 contains
+
+!======================================================================
+  subroutine Natural2LocalIndex(ir, nl, llist, llength)
+  implicit none
+  integer nl, ir,na, l_search, itt, llength
+  integer llist(*)
+  
+  integer  nori0, nori1, nori
+  
+  
+  nl=-1
+  l_search = llength
+  
+  na = ir!-1 
+  itt=0
+  nori0 =1
+  nori1 = llength
+  if(na>=llist(1) .and. na <= llist(llength))then
+  do while(l_search > 1 .and.itt<=50)
+  
+    itt=itt+1
+    if(na == llist(nori0))then
+      nl = nori0
+      exit
+    elseif(na == llist(nori1))then
+       nl = nori1
+      exit
+    endif   
+     
+     ! nori = int((real(nori0 + nori1))/ 2.) + mod ( nori0 + nori1,2 )
+    nori =  int(floor(real(nori0+nori1)/2D0 + .75D0))
+    if( na > llist(nori)) then
+      nori0 = nori
+    elseif(na < llist(nori))then
+      nori1 = nori
+    else
+      if(na == llist(nori))then
+        nl = nori
+        exit
+      else
+        print *, 'wrong index', na, nori, llist(nori); stop
+      endif  
+    endif
+    l_search = nori1-nori0
+    if (itt>=40)then
+      print *, na, nori0,nori1,nori, llist(nori0), llist(nori1)
+      if (itt>=50) stop
+    endif
+  enddo  
+ endif         
+          
+  end subroutine Natural2LocalIndex
+
+
+
   
 subroutine Read_perm_field(grid)
 
@@ -158,10 +214,8 @@ subroutine Read_init_field(grid, kplt)
 !    print *,x,y,z,phase,pg,t,sg,xl,xg,vf
  !   endif 
 
-    do iln=1, grid%nlmax
-      na = grid%nL2A(iln)
-    
-      if (na == ir) then
+            call Natural2LocalIndex(ir,iln, grid%nL2A, grid%nlmax)
+      if (iln>0) then
         nz = na/grid%nxy + 1
         ny = (na - (nz-1)*grid%nxy)/grid%nx + 1
         nx = na + 1 - (ny-1)*grid%nx - (nz-1)*grid%nxy
@@ -181,9 +235,9 @@ subroutine Read_init_field(grid, kplt)
     !      print *, "error in phase cond:",phase
     !      stop        
     !    endif
-        exit   
+        
       endif    
-    enddo 
+     
   enddo
   
   close(60)
@@ -211,7 +265,7 @@ end function nxyz2na
 subroutine Read_Geom_field(grid)
 
   use fileio_module
-
+  
   implicit none
 
 #include "definitions.h"
@@ -231,6 +285,7 @@ subroutine Read_Geom_field(grid)
   ! character(len=MAXSTRINGLENGTH) :: string 
 
   integer nx1, nx2, ny1, ny2, nz1,nz2, ina1, ina2,nnc, na1,na2, ncna
+  integer iln1, iln2
   
  ! if (grid%igeom /=-1) then
  !   print *, ' Wrong geomtry entry:: STOP !'
@@ -300,34 +355,30 @@ subroutine Read_Geom_field(grid)
 !geh          grid%y(ir+1)=yc
 !geh          grid%z(ir+1)=zc
 
-          do ng=1,grid%ngmax
-            na = grid%nG2A(ng)
-            if (na == ir) then
-              grid%x(ng)=xc
-              grid%y(ng)=yc
-              grid%z(ng)=zc
-            endif
-          enddo
 
 !         read(60,*)ir,px,py,pz,por,tor
 !         print *, 'Read geom 0:',ir,xc,yc,zc,vc, px,py, pz,por,tor
- 
-          do iln=1, grid%nlmax
-            na = grid%nL2A(iln)
-            if (na == ir) then
+          call Natural2LocalIndex(ir,iln, grid%nL2A, grid%nlmax)
+            if (iln > 0 ) then
               nz = na/grid%nxy + 1
               ny = (na - (nz-1)*grid%nxy)/grid%nx + 1
               nx = na + 1 - (ny-1)*grid%nx - (nz-1)*grid%nxy
+              grid%x(iln)=xc
+              grid%y(iln)=yc
+              grid%z(iln)=zc
+
               volume_p(iln)=vc
+              
               perm_xx_p(iln)= px
               perm_yy_p(iln)= py
               perm_zz_p(iln)= pz
               if (por>=0.D0 .AND. por <= 1.D0) por_p(iln)=por
               if (tor>=0.D0 .and. tor <= 1.D0) tor_p(iln)=tor
-!             print *, 'Read geom 1:',na,xc,yc,zc,vc, px,py, pz,por,tor
-              exit
+             print *, 'Read geom 1:',ir,iln,xc,yc,zc,vc
+            else
+             print *, 'not found', ir,iln; stop
             endif
-          enddo 
+
         enddo
 !       print *, grid%x
    
@@ -366,12 +417,10 @@ subroutine Read_Geom_field(grid)
           call fiDefaultMsg('cos(B)',ierr)
     
    
-          do iln=1, grid%nlmax
-            !iln= grid%nG2L(ign) 
-            ir=-1
-            if (iln>0) ir = grid%nL2A(iln)
-                     
-            if (na1 ==ir) then
+          call Natural2LocalIndex(na1,iln1, grid%nL2A, grid%nlmax)
+          call Natural2LocalIndex(na2,iln2, grid%nL2A, grid%nlmax)           
+            if (iln1>0) then
+              iln = iln1
               nnc = nnc +1 
               grid%nd1(nnc)=grid%nL2G(iln)
               grid% dist1(nnc) = dist1
@@ -462,8 +511,8 @@ subroutine Read_Geom_field(grid)
                print *, 'Read conn:',ncna,nnc, na1,na2, grid%nd1(nnc), &
                          grid%nd2(nnc),area,dist1, dist2,grav_ang, &
                          grid%iperm1(nnc)
-               exit
-            elseif (na2==ir) then      
+            elseif (iln2 >0 ) then      
+              iln = iln2
               nnc = nnc +1 
               grid%nd2(nnc)=grid%nL2G(iln)
               grid% dist1(nnc) = dist1
@@ -553,11 +602,11 @@ subroutine Read_Geom_field(grid)
     
     
             !  if (ina2 ==0) then  !BC
-                                                                 
-              exit
- 
+            
+            else
+              print *, 'not found conn', na1,na2, iln1,iln2    
             endif
-          enddo 
+  
         enddo
     end select
   enddo
