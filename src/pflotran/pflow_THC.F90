@@ -488,6 +488,9 @@ contains
 
     m = grid%mblkbc(nc)  ! Note that here, m is NOT ghosted.
     ng = grid%nL2G(m)
+
+    ! this must be zeroed since grid%vvlbc references it.  
+    v_darcy = 0.d0
     
     p1 = 1 + (m-1) * grid%ndof
     t1 = p1 + 1
