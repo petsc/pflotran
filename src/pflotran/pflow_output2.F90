@@ -234,11 +234,11 @@ subroutine OutputTecplot(grid,kplot)
 
   close(IUNIT3)
   
-  if (grid%print_hdf5_velocities) then
+  if (grid%print_tecplot_velocities) then
     call OutputVelocitiesTecplot(grid,kplot)
   endif
   
-  if (grid%print_hdf5_flux_velocities) then
+  if (grid%print_tecplot_flux_velocities) then
     if (grid%nx > 1) then
       call OutputFluxVelocitiesTecplot(grid,kplot,LIQUID_PHASE,X_DIRECTION)
       call OutputFluxVelocitiesTecplot(grid,kplot,GAS_PHASE,X_DIRECTION)
