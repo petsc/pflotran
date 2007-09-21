@@ -81,7 +81,7 @@ contains
   real*8 :: D1, D2  ! "Diffusion" constants upstream and downstream of a face.
   real*8 :: sat_pressure  ! Saturation pressure of water.
   real*8 :: dw_kg, dw_mol
-  real*8 :: tsrc1, qsrc1, qqsrc, csrc1, enth_src
+  real*8 :: tsrc1, qsrc1, qqsrc, csrc1, hsrc1,enth_src
   
   eps = 1.d-6
 

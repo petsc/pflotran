@@ -701,7 +701,7 @@ private
   real*8 :: D1, D2  ! "Diffusion" constants at upstream, downstream faces.
 ! real*8 :: sat_pressure  ! Saturation pressure of water.
   real*8 :: dw_kg, dw_mol,dif(grid%nphase)
-  real*8 :: tsrc1, qsrc1, csrc1, enth_src_h2o, enth_src_co2 !, qqsrc
+  real*8 :: tsrc1, qsrc1, csrc1, enth_src_h2o, enth_src_co2, hsrc1 !, qqsrc
   real*8 :: cw
 ! real*8 :: cw1,cw2, xxlw,xxla,xxgw,xxga
 ! real*8 :: upweight
