@@ -114,6 +114,10 @@ pflotran_fc: $(util_obj) $(ptran_obj) $(pflow_obj) $(pflotran_obj) \
 	${FLINKER}   -o pflotran_fc $(util_obj) $(ptran_obj) $(pflow_obj) \
 	$(pflotran_obj) ${pflotran_src}pflotran_fc.o ${PETSC_LIB}
 
+ascii_to_hdf5: ascii_to_hdf5.o hdf5_dataset.o fileio.o
+	${FLINKER} -o asci_to_hdf5 ascii_to_hdf5.o hdf5_dataset.o fileio.o \
+	$(LIBS)
+
 # Should add this to default PETSc targets as well?
 %.mod : %.F90
 	${FC} -c ${FC_FLAGS} ${FFLAGS} ${FCPPFLAGS} $<
