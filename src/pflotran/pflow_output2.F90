@@ -373,8 +373,10 @@ subroutine OutputFluxVelocitiesTecplot(grid,kplot,iphase,direction)
   integer :: adjusted_size
   integer :: count
   PetscReal, pointer :: vec_ptr(:)
-  PetscReal, allocatable :: array(:)
+  PetscReal, pointer :: array(:)
   PetscInt, allocatable :: indices(:)
+  
+  nullify(array)
   
   ! open file
   filename = 'pflow_'
@@ -531,6 +533,7 @@ subroutine OutputFluxVelocitiesTecplot(grid,kplot,iphase,direction)
   call WriteTecplotDataSet(IUNIT3,grid,array,TECPLOT_REAL,adjusted_size)
   ! since the array has potentially been resized, must reallocate
   deallocate(array)
+  nullify(array)
 
   ! Y-coordinates
   count = 0
@@ -552,6 +555,7 @@ subroutine OutputFluxVelocitiesTecplot(grid,kplot,iphase,direction)
   call ConvertArrayToNatural(grid,indices,array,adjusted_size,global_size)
   call WriteTecplotDataSet(IUNIT3,grid,array,TECPLOT_REAL,adjusted_size)
   deallocate(array)
+  nullify(array)
 
   ! Z-coordinates
   count = 0
@@ -573,6 +577,7 @@ subroutine OutputFluxVelocitiesTecplot(grid,kplot,iphase,direction)
   call ConvertArrayToNatural(grid,indices,array,adjusted_size,global_size)
   call WriteTecplotDataSet(IUNIT3,grid,array,TECPLOT_REAL,adjusted_size)
   deallocate(array)
+  nullify(array)
   
   ! write out data set
   call VecGetArrayF90(grid%vl,vec_ptr,ierr)
@@ -596,6 +601,7 @@ subroutine OutputFluxVelocitiesTecplot(grid,kplot,iphase,direction)
   call ConvertArrayToNatural(grid,indices,array,adjusted_size,global_size)
   call WriteTecplotDataSet(IUNIT3,grid,array,TECPLOT_REAL,adjusted_size)
   deallocate(array)
+  nullify(array)
   
   deallocate(indices)
 
@@ -1408,7 +1414,7 @@ subroutine ConvertArrayToNatural(grid,indices,array, &
   
   integer :: local_size, global_size
   integer :: indices(:)
-  real*8, allocatable :: array(:)
+  real*8, pointer :: array(:)
   
   Vec :: natural
   integer, allocatable :: indices_zero_based(:)
