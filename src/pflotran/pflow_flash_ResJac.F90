@@ -942,7 +942,17 @@ private
   
   ! Here assuming regular mixture injection. i.e. no extra H from mixing 
   ! within injected fluid.
-    r_p(n*grid%ndof) = r_p(n*grid%ndof) - hsrc1 *grid%dt
+      if(dabs(hsrc1)>1D-20)then 
+       do kk = kk1, kk2
+        do jj = jj1, jj2
+          do ii = ii1, ii2
+            n = ii+(jj-1)*grid%nlx+(kk-1)*grid%nlxy
+             r_p(n*grid%ndof) = r_p(n*grid%ndof) - hsrc1 * grid%dt   
+           enddo
+          enddo
+       enddo
+  endif         
+
     if (qsrc1 > 0.d0) then ! injection
       do kk = kk1, kk2
         do jj = jj1, jj2
@@ -956,7 +966,7 @@ private
 !           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
 
 !           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
-              
+            
             r_p((n-1)*grid%ndof + grid%jh2o) = r_p((n-1)*grid%ndof +grid%jh2o) - qsrc1 *grid%dt
             r_p(n*grid%ndof) = r_p(n*grid%ndof) - qsrc1*enth_src_h2o*grid%dt
             Resold_AR(n,grid%jh2o)= Resold_AR(n,grid%jh2o) - qsrc1*grid%dt
@@ -993,7 +1003,7 @@ private
          !  units: rho [kg/m^3]; csrc1 [kmol/s]
 
             enth_src_co2 = enth_src_co2 * grid%fmwco2
-
+            
             r_p((n-1)*grid%ndof + grid%jco2) = r_p((n-1)*grid%ndof + grid%jco2) - csrc1*grid%dt
             r_p(n*grid%ndof) = r_p(n*grid%ndof) - csrc1 * enth_src_co2 *grid%dt
             Resold_AR(n,grid%jco2)= Resold_AR(n,grid%jco2) - csrc1*grid%dt

@@ -751,8 +751,21 @@ contains
 !   print *,'pflowTHC: ', grid%myrank,i,grid%timesrc(i,nr), &
 !   grid%timesrc(i-1,nr),grid%t,f1,f2,ff,qsrc1,csrc1
 
-    r_p(t1) = r_p(t1) - hsrc1 
+   
     qsrc1 = qsrc1 / grid%fmwh2o
+
+  if(dabs(hsrc1)>1D-20)then 
+       do kk = kk1, kk2
+        do jj = jj1, jj2
+          do ii = ii1, ii2
+            n = ii+(jj-1)*grid%nlx+(kk-1)*grid%nlxy
+             p1 = 1+(n-1)*grid%ndof
+              t1 = p1 + 1
+             r_p(t1) = r_p(t1) - hsrc1    
+           enddo
+          enddo
+       enddo
+  endif         
 
     if (qsrc1 > 0.d0) then ! injection
       do kk = kk1, kk2
@@ -766,6 +779,7 @@ contains
               call wateos_noderiv(tsrc1,PPRESSURE_LOC(grid%jh2o,ng), &
               dw_kg,dw_mol,enth_src,grid%scale,ierr)
               qqsrc = qsrc1/dw_mol
+            
               r_p(p1) = r_p(p1) - qsrc1
               r_p(t1) = r_p(t1) - qsrc1*enth_src
               r_p(c1) = r_p(c1) - qqsrc*csrc1
@@ -788,6 +802,7 @@ contains
               c1 = t1 + 1
               qqsrc = qsrc1/ddensity_loc_p(ng)
               enth_src = hh_loc_p(ng)
+                
               r_p(p1) = r_p(p1) - qsrc1
               r_p(t1) = r_p(t1) - qsrc1*enth_src
               r_p(c1) = r_p(c1) - qqsrc*CCONC_LOC(ng)

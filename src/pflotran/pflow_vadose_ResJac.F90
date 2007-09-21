@@ -1086,7 +1086,18 @@ subroutine VadoseResidual(snes,xx,r,grid,ierr)
   
   ! Here assuming regular mixture injection. i.e. no extra H from mixing 
   ! within injected fluid.
-   r_p(n*grid%ndof) =  r_p(n*grid%ndof) - hsrc1 * grid%dt
+
+  if(dabs(hsrc1)>1D-20)then 
+       do kk = kk1, kk2
+        do jj = jj1, jj2
+          do ii = ii1, ii2
+            n = ii+(jj-1)*grid%nlx+(kk-1)*grid%nlxy
+             r_p(n*grid%ndof) = r_p(n*grid%ndof) - hsrc1 * grid%dt   
+           enddo
+          enddo
+       enddo
+  endif         
+
     if (qsrc1 > 0.d0) then ! injection
       do kk = kk1, kk2
         do jj = jj1, jj2
