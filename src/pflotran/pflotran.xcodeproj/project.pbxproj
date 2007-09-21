@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXFileReference section */
+		2311D0100CA34C8D003AF8E9 /* ascii_to_hdf5.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = ascii_to_hdf5.F90; sourceTree = "<group>"; };
+		2311D0110CA34CA7003AF8E9 /* hdf5_dataset.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = hdf5_dataset.F90; sourceTree = "<group>"; };
 		231918480B9DD7EA00844666 /* pflow_vadose_ResJac.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = pflow_vadose_ResJac.F90; sourceTree = "<group>"; };
 		231918490B9DD7FA00844666 /* translator_mixed_fluid_vad.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = translator_mixed_fluid_vad.F90; sourceTree = "<group>"; };
 		2319184A0B9DD80900844666 /* remove_ArrayF90.py */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = text.script.python; path = remove_ArrayF90.py; sourceTree = "<group>"; };
@@ -92,6 +94,7 @@
 		33021A8608A12EC800D082B8 = {
 			isa = PBXGroup;
 			children = (
+				2311D0100CA34C8D003AF8E9 /* ascii_to_hdf5.F90 */,
 				33021A9208A12EFD00D082B8 /* co2_span_wagner.F90 */,
 				33021A9308A12EFD00D082B8 /* co2_sw_global.F90 */,
 				33021A9408A12EFD00D082B8 /* co2_sw_rtsafe.F90 */,
@@ -100,6 +103,7 @@
 				33021A9608A12EFD00D082B8 /* definitions.h */,
 				33021A9708A12EFD00D082B8 /* fileio.F90 */,
 				33021A9808A12EFD00D082B8 /* gaseos_mod.F90 */,
+				2311D0110CA34CA7003AF8E9 /* hdf5_dataset.F90 */,
 				33021A9908A12EFD00D082B8 /* hydrostat.F90 */,
 				33021A9A08A12EFD00D082B8 /* makefile */,
 				23CFC3FD0B8A4881009EAE62 /* makefile_noarrayf90 */,
