@@ -234,13 +234,24 @@ subroutine OutputTecplot(grid,kplot)
 
   close(IUNIT3)
   
-  call OutputVelocitiesTecplot(grid,kplot)
-  call OutputFluxVelocitiesTecplot(grid,kplot,LIQUID_PHASE,X_DIRECTION)
-  call OutputFluxVelocitiesTecplot(grid,kplot,LIQUID_PHASE,Y_DIRECTION)
-  call OutputFluxVelocitiesTecplot(grid,kplot,LIQUID_PHASE,Z_DIRECTION)
-  call OutputFluxVelocitiesTecplot(grid,kplot,GAS_PHASE,X_DIRECTION)
-  call OutputFluxVelocitiesTecplot(grid,kplot,GAS_PHASE,Y_DIRECTION)
-  call OutputFluxVelocitiesTecplot(grid,kplot,GAS_PHASE,Z_DIRECTION)
+  if (grid%print_hdf5_velocities) then
+    call OutputVelocitiesTecplot(grid,kplot)
+  endif
+  
+  if (grid%print_hdf5_flux_velocities) then
+    if (grid%nx > 1) then
+      call OutputFluxVelocitiesTecplot(grid,kplot,LIQUID_PHASE,X_DIRECTION)
+      call OutputFluxVelocitiesTecplot(grid,kplot,GAS_PHASE,X_DIRECTION)
+    endif
+    if (grid%ny > 1) then
+      call OutputFluxVelocitiesTecplot(grid,kplot,LIQUID_PHASE,Y_DIRECTION)
+      call OutputFluxVelocitiesTecplot(grid,kplot,GAS_PHASE,Y_DIRECTION)
+    endif
+    if (grid%nz > 1) then
+      call OutputFluxVelocitiesTecplot(grid,kplot,LIQUID_PHASE,Z_DIRECTION)
+      call OutputFluxVelocitiesTecplot(grid,kplot,GAS_PHASE,Z_DIRECTION)
+    endif
+  endif
       
 end subroutine OutputTecplot
 
@@ -1015,20 +1026,27 @@ subroutine OutputHDF5(grid)
   if (grid%print_hdf5_flux_velocities) then
   
     ! internal flux velocities
-    string = "Liquid X-Flux Velocities"
-    call WriteHDF5FluxVelocities(string,grid,LIQUID_PHASE,X_DIRECTION,grp_id)
-    string = "Liquid Y-Flux Velocities"
-    call WriteHDF5FluxVelocities(string,grid,LIQUID_PHASE,Y_DIRECTION,grp_id)
-    string = "Liquid Z-Flux Velocities"
-    call WriteHDF5FluxVelocities(string,grid,LIQUID_PHASE,Z_DIRECTION,grp_id)
-
-    string = "Gas X-Flux Velocities"
-    call WriteHDF5FluxVelocities(string,grid,GAS_PHASE,X_DIRECTION,grp_id)
-    string = "Gas Y-Flux Velocities"
-    call WriteHDF5FluxVelocities(string,grid,GAS_PHASE,Y_DIRECTION,grp_id)
-    string = "Gas Z-Flux Velocities"
-    call WriteHDF5FluxVelocities(string,grid,GAS_PHASE,Z_DIRECTION,grp_id)
-
+    if (grid%nx > 1) then
+      string = "Liquid X-Flux Velocities"
+      call WriteHDF5FluxVelocities(string,grid,LIQUID_PHASE,X_DIRECTION,grp_id)
+      string = "Gas X-Flux Velocities"
+      call WriteHDF5FluxVelocities(string,grid,GAS_PHASE,X_DIRECTION,grp_id)
+    endif
+    
+    if (grid%ny > 1) then
+      string = "Liquid Y-Flux Velocities"
+      call WriteHDF5FluxVelocities(string,grid,LIQUID_PHASE,Y_DIRECTION,grp_id)
+      string = "Gas Y-Flux Velocities"
+      call WriteHDF5FluxVelocities(string,grid,GAS_PHASE,Y_DIRECTION,grp_id)
+    endif
+    
+    if (grid%nz > 1) then
+      string = "Liquid Z-Flux Velocities"
+      call WriteHDF5FluxVelocities(string,grid,LIQUID_PHASE,Z_DIRECTION,grp_id)
+      string = "Gas Z-Flux Velocities"
+      call WriteHDF5FluxVelocities(string,grid,GAS_PHASE,Z_DIRECTION,grp_id)
+    endif
+    
   endif 
   
   ! call VecDestroy(natural,ierr)
