@@ -474,7 +474,7 @@ end  subroutine pflow_IMS_setupini
  call VecRestoreArrayF90(grid%vl, locpat%vl_p, ierr)
  
 
- !print *,'Residual ::...........'; call VecView(r,PETSC_VIEWER_STDOUT_WORLD,ierr)
+!print *,'Residual ::...........'; call VecView(r,PETSC_VIEWER_STDOUT_WORLD,ierr)
 ! print *,'finished IMSResidual'
  end subroutine IMSResidual
                 
