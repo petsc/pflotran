@@ -30,9 +30,9 @@ TestCase::TestCase(Grid **grid_) {
   int ny = 4;
   int nz = 3;
 
-  double dx[5] = {1.,2.,3.,2.,1.};
-  double dy[4] = {1.,2.,3.,4.};
-  double dz[3] = {1.,2.,1.};
+  double dx[5] = {10.,11.,12.,13.,14.};
+  double dy[4] = {13.,12.,11.,10.};
+  double dz[3] = {15.,20.,25.};
 
 #endif
 
