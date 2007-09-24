@@ -1474,7 +1474,7 @@ subroutine ReadStructuredGridHDF5(grid)
   call ReadIntegerArray(grid,grp_id,grid%nconn,indices,string,integer_array)
   do i=1,grid%nconn
     local_ghosted_id = GetLocalGhostedIdFromHash(integer_array(i))
-    grid%nd1(i) = local_ghosted_id
+    grid%nd2(i) = local_ghosted_id
   enddo
   deallocate(integer_array)
   
