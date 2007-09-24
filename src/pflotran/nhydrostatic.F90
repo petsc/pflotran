@@ -235,7 +235,7 @@ subroutine nhydrostatic(grid)
         case(3)
           na=grid%nL2A(m) +1 
           ng = grid%nL2G(m)
-          nz= floor(((real(na)-.5))/grid%nxy) + 1
+          nz= floor(((real(na)-.5D0))/grid%nxy) + 1
           if(grid%iface(ibc) ==1)then
 !geh            dp = rho_ref * grid%gravity * grid%beta * grid%x(grid%nmax) 
             dp = rho_ref * grid%gravity * grid%beta * (grid%x_max-0.5d0*grid%x(grid%nx))
@@ -311,7 +311,7 @@ subroutine nhydrostatic(grid)
                                                      grid%x(ng))
           pref =  grid%pref + dp 
           grid%xxbc(1,nc) = pref
-          grid%xxbc(2:grid%ndof,nc) = grid%tref
+          grid%xxbc(2,nc) = grid%tref
         case(2)
           grid%xxbc(:,nc) = xx_p(1+ (m-1)*grid%ndof: m*grid%ndof)
       end select

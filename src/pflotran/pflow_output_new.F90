@@ -39,7 +39,7 @@ private
   contains
   
   subroutine pflow_output_new(grid, kplt,iplot)
- 
+  use utilities_module 
   use pflow_gridtype_module
   use TTPHASE_module
   use PetscRelWrappers  ! For petsc-release compatibility.
@@ -236,25 +236,22 @@ private
               ! print *, 'pflow_output_new: vel', nn        
               if(grid%myrank==0) then
                   ifound=0 
-                  
-                  do n=ndex,grid%nlmax
-                    if(grid%nL2A(n) == (nn-1)) then
+                  call Natural2LocalIndex(nn-1,n, grid%nL2A, grid%nlmax)
+                  if(n>0) then
                       ifound=1
                       vel = vl_p(1+ (grid%ibrkface(ibrk)-1)*grid%nphase + 3*grid%nphase*(n-1))
                       ndex=n
                       
             !         print *,'pflow_output_new: vel',n,nn,ifound,grid%ibrkface(ibrk),vel,&
             !           vl_p(1+3*(n-1):3*n)
-                      exit
-                    endif
-                  enddo
+                     endif
                   if(ifound==0)then  
                     call MPI_Recv(vel,1, MPI_DOUBLE_PRECISION,MPI_ANY_SOURCE, &
                                   na, PETSC_COMM_WORLD, status,ierr)
                    endif
                else
-                     do n=ndex,grid%nlmax
-                       if(grid%nL2A(n) == (nn-1)) then
+                    call Natural2LocalIndex(nn-1,n, grid%nL2A, grid%nlmax)
+                      if(n > 0) then
                           ifound=1
                           vel = vl_p(1+ (grid%ibrkface(ibrk)-1)*grid%nphase + 3*grid%nphase*(n-1))                        
                            
@@ -262,40 +259,36 @@ private
                              na, PETSC_COMM_WORLD, ierr)  
 
                           ndex=n
-                          exit
+                        
                        endif
-                     enddo
+                     
                endif
 
 !look up for concentration
 
               if(grid%myrank==0) then
                   ifound=0
-                  do n=ndex2,grid%nlmax
-                    if(grid%nL2A(n) == na) then
+                    call Natural2LocalIndex(na,n, grid%nL2A, grid%nlmax)
+                    if(n>0) then
                       ifound=1
                       conc=  c_p(n)
                       ndex2=n
-                      exit
-                    endif
-                  enddo
+                     endif
                   if(ifound==0)then  
                     call MPI_Recv(conc, 1, MPI_DOUBLE_PRECISION,MPI_ANY_SOURCE, &
                                   na, PETSC_COMM_WORLD, status,ierr)
                     endif
-               else
-                     do n=ndex2,grid%nlmax
-                       if(grid%nL2A(n) == na) then
+                else
+                      call Natural2LocalIndex(na,n, grid%nL2A, grid%nlmax)
+                       if(n>0) then
                           ifound=1
                           conc=  c_p(n)
                           call MPI_Send(conc, 1, MPI_DOUBLE_PRECISION,0, &
                              na, PETSC_COMM_WORLD, ierr)  
                         
                           ndex2=n
-                          exit
                        endif
-                     enddo
-               endif
+                     endif
 
 
                 
@@ -399,7 +392,7 @@ private
 
  ! Open output file , write out title       
   if(grid%myrank==0)then 
-  
+  ! this part is wrong if Read_geom =1
     allocate(x(grid%nmax),y(grid%nmax),z(grid%nmax))
     n = 0
     do k=1,grid%nz
@@ -448,7 +441,7 @@ private
        'vf','"'
     else
  
-   write(IUNIT3,'(''VARIABLES="'',3(a6,a3),a6,100(a3,a6))')"x",q,"y",q,"z",q,"ip",q,&
+   write(IUNIT3,'(''VARIABLES="'',3(a6,a3),a6,100(a3,a6))')"x",q,"y",q,"z",q,&
         'pressure',q,'temp', q,'sat',q,'conc',q,'vf','"' 
    endif
     write(IUNIT3,'(''ZONE T= "'',1pg12.4,''",'','' I='',i4, &
@@ -484,8 +477,8 @@ private
       ifound=0
       if(grid%myrank==0) then
         ifound=0; vf=0.D0
-        do n=ndex,grid%nlmax
-          if(grid%nL2A(n) == na) then
+          call Natural2LocalIndex(na,n, grid%nL2A, grid%nlmax)
+          if( n > 0) then
             ifound=1
             jn= 1 + (n-1)*grid%ndof 
             nv = 1 + (n-1) * size_var_node
@@ -509,11 +502,9 @@ private
                if (grid%rk > 0.d0) vf = phis_p(n)
             endif  
             ndex=n
-            exit
           endif
-        enddo
-      if(ifound==0)then  
-        if  (grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE & 
+       if(ifound==0)then  
+         if  (grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE & 
                .or. grid%use_flash == PETSC_TRUE  .or. grid%use_richards == PETSC_TRUE)then
             call MPI_Recv(iipha, 1, MPI_INTEGER, MPI_ANY_SOURCE, na+6553,PETSC_COMM_WORLD, status,ierr)  
             call MPI_Recv(xxx,grid%ndof, MPI_DOUBLE_PRECISION,MPI_ANY_SOURCE, &
@@ -522,7 +513,7 @@ private
             MPI_ANY_SOURCE, na+na,PETSC_COMM_WORLD,status ,ierr)
             if (grid%rk > 0.d0) call MPI_Recv(vf,1, MPI_DOUBLE_PRECISION,MPI_ANY_SOURCE, &
             na, PETSC_COMM_WORLD, status,ierr)
-         else
+          else
             call MPI_Recv(pres,grid%nphase, MPI_DOUBLE_PRECISION,MPI_ANY_SOURCE, &
                  na, PETSC_COMM_WORLD, status,ierr)
             call MPI_Recv(temp,1, MPI_DOUBLE_PRECISION,MPI_ANY_SOURCE, &
@@ -542,8 +533,8 @@ private
        endif
 
         else ! other processors
-          do n=ndex,grid%nlmax
-            if(grid%nL2A(n) == na) then
+          call Natural2LocalIndex(na,n, grid%nL2A, grid%nlmax)
+            if(n > 0) then
               jn= 1 + (n-1)*grid%ndof 
               nv = 1 + (n-1) * size_var_node
              
@@ -587,9 +578,8 @@ private
               na, PETSC_COMM_WORLD, ierr)  
               endif                    
               ndex=n
-              exit
             endif
-          enddo  
+          
         endif            
 
         call MPI_Barrier(PETSC_COMM_WORLD, ierr)
@@ -755,9 +745,8 @@ private
       ifound=0
       if(grid%myrank==0) then
         ifound=0 
-        if(na >= grid%nL2A(1) .and. na <= grid%nL2A(grid%nlmax))then
-        do n=ndex,grid%nlmax
-          if(grid%nL2A(n) == na) then
+        call Natural2LocalIndex(na,n, grid%nL2A, grid%nlmax)
+         if(n > 0) then
             ifound=1
             ng=grid%nL2G(n) -1
              
@@ -832,10 +821,7 @@ private
             endif
            endif 
             ndex=n
-            exit
           endif
-        enddo
-       endif
       if(ifound==0)then  
         call MPI_Recv(vavel,3*grid%nphase, MPI_DOUBLE_PRECISION,MPI_ANY_SOURCE, &
         na, PETSC_COMM_WORLD, status,ierr)
@@ -845,10 +831,9 @@ private
        endif
 
     else
-      if(na >= grid%nL2A(1) .and. na <= grid%nL2A(grid%nlmax))then
-       do n=ndex,grid%nlmax
-        if(grid%nL2A(n) == na) then
-                         ifound=1
+        call Natural2LocalIndex(na,n, grid%nL2A, grid%nlmax)
+        if(n>0) then
+            ifound=1
             ng=grid%nL2G(n) -1
             
              if(grid%nx>1)then
@@ -874,7 +859,7 @@ private
             endif
          endif
 
-            if(grid%ny>1)then            
+         if(grid%ny>1)then            
                ! y-direction
             ip = 1; ng_upstream = ng - grid%ngx
             velo(ip *grid%nphase +1:(ip +1)* grid%nphase) = &
@@ -927,11 +912,7 @@ private
              ndex=n
              call MPI_Send(velo, 3*grid%nphase, MPI_DOUBLE_PRECISION,0,na, PETSC_COMM_WORLD, ierr)  
              ndex=n
-
-          exit
         endif
-      enddo
-     endif 
     endif
                 
     call MPI_Barrier(PETSC_COMM_WORLD, ierr)
@@ -1116,7 +1097,7 @@ endif
                          x, y, z, flowsteps, porosity, perm, myrank, nlmax,nla)
   
   use PetscRelWrappers  ! For petsc-release compatibility.
-
+  use utilities_module
   implicit none
 
 
@@ -1180,19 +1161,17 @@ endif
            
      ndex =1                  
     do na = 0, nmax-1
-        
-            ifound=0
+      ifound=0
       if(myrank==0) then
         ifound=0
-        do n=ndex,nlmax
-          if(nLA(n) == na) then
+        call Natural2LocalIndex(na,n, nLA, nlmax)
+          if( n>0 ) then
             ifound=1
             permm =perm_p(n)
             poro = por_p(n)
             ndex=n
-            exit
-          endif
-        enddo
+           endif
+       
       if(ifound==0)then  
         call MPI_Recv(permm,1, MPI_DOUBLE_PRECISION,MPI_ANY_SOURCE, &
         na, PETSC_COMM_WORLD, status,ierr)
@@ -1201,16 +1180,14 @@ endif
         endif
 
     else
-      do n=ndex,nlmax
-        if( nLA(n) == na) then
+       call Natural2LocalIndex(na,n, nLA, nlmax)
+        if( n>0) then
             permm =perm_p(n)
             poro = por_p(n)
           call MPI_Send(permm, 1, MPI_DOUBLE_PRECISION,0,na, PETSC_COMM_WORLD, ierr)
           call MPI_Send(poro, 1, MPI_DOUBLE_PRECISION,0,na, PETSC_COMM_WORLD, ierr)    
           ndex=n
-          exit
         endif
-      enddo
     endif
                 
     call MPI_Barrier(PETSC_COMM_WORLD, ierr)
