@@ -754,7 +754,8 @@ endif
   allocate(grid%tempsrc(MAXSRCTIMES,MAXSRC))
   allocate(grid%qsrc(MAXSRCTIMES,MAXSRC))
   allocate(grid%csrc(MAXSRCTIMES,MAXSRC))
-      
+  allocate(grid%hsrc(MAXSRCTIMES,MAXSRC))
+          
   allocate(grid%i1reg(MAXPERMREGIONS))
   allocate(grid%i2reg(MAXPERMREGIONS))
   allocate(grid%j1reg(MAXPERMREGIONS))
