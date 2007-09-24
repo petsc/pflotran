@@ -178,6 +178,10 @@ program ascii_to_hdf5
   print *, 'Writing ', trim(string), ' to HDF5 file.'
   call WriteHDF5DataSet(string,dummy_int,z,num_cells,grp_id, &
                         H5T_NATIVE_DOUBLE)
+  string = "Volume"
+  print *, 'Writing ', trim(string), ' to HDF5 file.'
+  call WriteHDF5DataSet(string,dummy_int,volume,num_cells,grp_id, &
+                        H5T_NATIVE_DOUBLE)
   string = "X-Permeability"
   print *, 'Writing ', trim(string), ' to HDF5 file.'
   call WriteHDF5DataSet(string,dummy_int,permx,num_cells,grp_id, &
@@ -286,7 +290,7 @@ program ascii_to_hdf5
   !write the connection data to hdf5
   string = "Connections"
   call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
-  string = "Connection Ids"
+  string = "Connection Id"
   print *, 'Writing ', trim(string), ' to HDF5 file.'
   call WriteHDF5DataSet(string,connection_id,dummy_real,num_connections, &
                         grp_id,H5T_NATIVE_INTEGER)
