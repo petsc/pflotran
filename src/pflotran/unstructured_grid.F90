@@ -22,8 +22,11 @@ module Unstructured_Grid_module
 
   integer, pointer :: hash(:,:,:)
   integer :: num_hash = 100
+  
+  integer :: hdf5_err
+  PetscErrorCode :: ierr
    
-  public ReadUnstructuredGrid, ReadMaterials, ReadMaterials2
+  public ReadUnstructuredGrid, ReadMaterials, ReadMaterials2, ReadStructuredGridHDF5
   
 contains
   
@@ -1236,6 +1239,744 @@ subroutine ReadMaterials2(grid)
  
 end subroutine ReadMaterials2
 
+#ifndef USE_HDF5
+subroutine ReadStructuredGridHDF5(grid)
+
+  implicit none
+  
+  type(pflowGrid) :: grid
+
+  if (grid%myrank == 0) then
+    print *
+    print *, 'PFLOTRAN must be compiled with -DUSE_HDF5 to ', &
+             'read HDF5 formatted structured grids.'
+    print *
+  endif
+  stop
+  
+end subroutine ReadStructuredGridHDF5
+
+#else
+! ************************************************************************** !
+!
+! ReadHDF5StructuredGrid: Reads in a structured grid in HDF5 format
+! author: Glenn Hammond
+! date: 09/21/07
+!
+! ************************************************************************** !
+subroutine ReadStructuredGridHDF5(grid)
+
+  use hdf5
+  
+  implicit none
+
+  type(pflowGrid) :: grid
+
+  character(len=MAXSTRINGLENGTH) :: string 
+  character(len=MAXSTRINGLENGTH) :: filename
+  
+  integer(HID_T) :: file_id
+  integer(HID_T) :: grp_id
+  integer(HID_T) :: prop_id
+
+  integer :: i
+  integer, allocatable :: indices(:)
+  integer, allocatable :: integer_array(:)
+  real*8, allocatable :: real_array(:)
+  
+  Vec :: global
+  Vec :: local
+  PetscScalar, pointer :: vec_ptr(:)
+      
+  PetscTruth :: option_found
+
+  PetscLogDouble :: time0, time1
+
+  call PetscGetTime(time0, ierr)
+
+  filename = "543.h5"
+  call PetscOptionsGetString(PETSC_NULL_CHARACTER, '-hdf5_grid', &
+                             filename, option_found, ierr)
+
+  ! create hash table for fast lookup
+#ifdef HASH
+  call CreateNaturalToLocalGhostedHash(grid)
+!  call PrintHashTable
+#endif
+
+  ! initialize fortran hdf5 interface
+  call h5open_f(hdf5_err)
+
+  call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
+#ifndef SERIAL_HDF5
+  call h5pset_fapl_mpio_f(prop_id,PETSC_COMM_WORLD,MPI_INFO_NULL,hdf5_err)
+#endif
+  call h5fopen_f(filename,H5F_ACC_RDONLY_F,file_id,hdf5_err,prop_id)
+  call h5pclose_f(prop_id,hdf5_err)
+
+  ! open the grid cells group
+  string = 'Grid Cells'
+  call h5gopen_f(file_id,string,grp_id,hdf5_err)
+  
+  allocate(indices(grid%nlmax))
+  
+  call SetupCellIndices(grid,grp_id,indices)
+
+  call DACreateGlobalVector(grid%da_1_dof,global,ierr)
+  call DACreateLocalVector(grid%da_1_dof,local,ierr)
+  
+  allocate(integer_array(grid%nlmax))
+  string = "Material Id"
+  call ReadIntegerArray(grid,grp_id,grid%nlmax,indices,string,integer_array)
+  call VecGetArrayF90(global,vec_ptr,ierr)
+  do i=1,grid%nlmax
+    vec_ptr(i) = integer_array(i)
+  enddo
+  deallocate(integer_array)
+  call VecRestoreArrayF90(global,vec_ptr,ierr)
+  call DAGlobalToLocalBegin(grid%da_1_dof,global,INSERT_VALUES,local,ierr)  
+  call DAGlobalToLocalEnd(grid%da_1_dof,global,INSERT_VALUES,local,ierr)  
+  call VecGetArrayF90(local,vec_ptr,ierr)
+  do i=1,grid%ngmax
+    grid%imat(i) = int(vec_ptr(i)+0.0001d0)
+  enddo
+  call VecRestoreArrayF90(local,vec_ptr,ierr)
+  
+  
+  allocate(real_array(grid%nlmax))
+  string = "X-Coordinate"
+  call ReadRealArray(grid,grp_id,grid%nlmax,indices,string,real_array)
+  call VecGetArrayF90(global,vec_ptr,ierr)
+  do i=1,grid%nlmax
+    vec_ptr(i) = real_array(i)
+  enddo
+  call VecRestoreArrayF90(global,vec_ptr,ierr)
+  call DAGlobalToLocalBegin(grid%da_1_dof,global,INSERT_VALUES,local,ierr)  
+  call DAGlobalToLocalEnd(grid%da_1_dof,global,INSERT_VALUES,local,ierr)  
+  call VecGetArrayF90(local,vec_ptr,ierr)
+  do i=1,grid%ngmax
+    grid%x(i) = vec_ptr(i)
+  enddo
+  call VecRestoreArrayF90(local,vec_ptr,ierr)
+
+  string = "Y-Coordinate"
+  call ReadRealArray(grid,grp_id,grid%nlmax,indices,string,real_array)
+  call VecGetArrayF90(global,vec_ptr,ierr)
+  do i=1,grid%nlmax
+    vec_ptr(i) = real_array(i)
+  enddo
+  call VecRestoreArrayF90(global,vec_ptr,ierr)
+  call DAGlobalToLocalBegin(grid%da_1_dof,global,INSERT_VALUES,local,ierr)  
+  call DAGlobalToLocalEnd(grid%da_1_dof,global,INSERT_VALUES,local,ierr)  
+  call VecGetArrayF90(local,vec_ptr,ierr)
+  do i=1,grid%ngmax
+    grid%y(i) = vec_ptr(i)
+  enddo
+  call VecRestoreArrayF90(local,vec_ptr,ierr)
+
+  string = "Z-Coordinate"
+  call ReadRealArray(grid,grp_id,grid%nlmax,indices,string,real_array)
+  call VecGetArrayF90(global,vec_ptr,ierr)
+  do i=1,grid%nlmax
+    vec_ptr(i) = real_array(i)
+  enddo
+  call VecRestoreArrayF90(global,vec_ptr,ierr)
+  call DAGlobalToLocalBegin(grid%da_1_dof,global,INSERT_VALUES,local,ierr)  
+  call DAGlobalToLocalEnd(grid%da_1_dof,global,INSERT_VALUES,local,ierr)  
+  call VecGetArrayF90(local,vec_ptr,ierr)
+  do i=1,grid%ngmax
+    grid%z(i) = vec_ptr(i)
+  enddo
+  call VecRestoreArrayF90(local,vec_ptr,ierr)
+  deallocate(real_array)
+  
+  call VecDestroy(global,ierr)
+  call VecDestroy(local,ierr)
+  
+  
+  string = "Volume"
+  call VecGetArrayF90(grid%volume,vec_ptr,ierr); CHKERRQ(ierr)
+  call ReadRealArray(grid,grp_id,grid%nlmax,indices,string,vec_ptr)
+  call VecRestoreArrayF90(grid%volume,vec_ptr,ierr); CHKERRQ(ierr)
+  
+  string = "X-Permeability"
+  call VecGetArrayF90(grid%perm_xx,vec_ptr,ierr); CHKERRQ(ierr)
+  call ReadRealArray(grid,grp_id,grid%nlmax,indices,string,vec_ptr)
+  call VecRestoreArrayF90(grid%perm_xx,vec_ptr,ierr); CHKERRQ(ierr)
+  
+  string = "Y-Permeability"
+  call VecGetArrayF90(grid%perm_yy,vec_ptr,ierr); CHKERRQ(ierr)
+  call ReadRealArray(grid,grp_id,grid%nlmax,indices,string,vec_ptr)
+  call VecRestoreArrayF90(grid%perm_yy,vec_ptr,ierr); CHKERRQ(ierr)
+
+  string = "Z-Permeability"
+  call VecGetArrayF90(grid%perm_zz,vec_ptr,ierr); CHKERRQ(ierr)
+  call ReadRealArray(grid,grp_id,grid%nlmax,indices,string,vec_ptr)
+  call VecRestoreArrayF90(grid%perm_zz,vec_ptr,ierr); CHKERRQ(ierr)
+
+  string = "Porosity"
+  call VecGetArrayF90(grid%porosity,vec_ptr,ierr); CHKERRQ(ierr)
+  call ReadRealArray(grid,grp_id,grid%nlmax,indices,string,vec_ptr)
+  call VecRestoreArrayF90(grid%porosity,vec_ptr,ierr); CHKERRQ(ierr)
+
+  string = "Tortuosity"
+  call VecGetArrayF90(grid%tor,vec_ptr,ierr); CHKERRQ(ierr)
+  call ReadRealArray(grid,grp_id,grid%nlmax,indices,string,vec_ptr)
+  call VecRestoreArrayF90(grid%tor,vec_ptr,ierr); CHKERRQ(ierr)
+
+  ! update local vectors
+  
+  ! perm_xx
+  call DAGlobalToLocalBegin(grid%da_1_dof, grid%perm_xx, INSERT_VALUES, &
+                            grid%perm_xx_loc, ierr)
+  call DAGlobalToLocalEnd(grid%da_1_dof, grid%perm_xx, INSERT_VALUES, &
+                          grid%perm_xx_loc, ierr)
+  ! perm_yy
+  call DAGlobalToLocalBegin(grid%da_1_dof, grid%perm_yy, INSERT_VALUES, &
+                            grid%perm_yy_loc, ierr)
+  call DAGlobalToLocalEnd(grid%da_1_dof, grid%perm_yy, INSERT_VALUES, &
+                          grid%perm_yy_loc, ierr)
+  ! perm_zz
+  call DAGlobalToLocalBegin(grid%da_1_dof, grid%perm_zz, INSERT_VALUES, &
+                            grid%perm_zz_loc, ierr)
+  call DAGlobalToLocalEnd(grid%da_1_dof, grid%perm_zz, INSERT_VALUES, &
+                        grid%perm_zz_loc, ierr)
+  ! porosity
+  call DAGlobalToLocalBegin(grid%da_1_dof, grid%porosity, INSERT_VALUES, &
+                            grid%porosity_loc, ierr)
+  call DAGlobalToLocalEnd(grid%da_1_dof, grid%porosity, INSERT_VALUES, &
+                          grid%porosity_loc, ierr)
+  ! porosity
+  call DAGlobalToLocalBegin(grid%da_1_dof, grid%tor, INSERT_VALUES, &
+                            grid%tor_loc, ierr)
+  call DAGlobalToLocalEnd(grid%da_1_dof, grid%tor, INSERT_VALUES, &
+                          grid%tor_loc, ierr)
+
+  deallocate(indices)
+  call h5gclose_f(grp_id,hdf5_err)
+  
+  string = 'Connections'
+  call h5gopen_f(file_id,string,grp_id,hdf5_err)
+
+  allocate(indices(grid%nconn))
+
+  call SetupConnectionIndices(grid,grp_id,indices)
+
+  string = "Id Upwind"
+  call ReadIntegerArray(grid,grp_id,grid%nconn,indices,string,grid%nd1)
+
+  string = "Id Downwind"
+  call ReadIntegerArray(grid,grp_id,grid%nconn,indices,string,grid%nd2)
+  
+  string = "Distance Upwind"
+  call ReadRealArray(grid,grp_id,grid%nconn,indices,string,grid%dist1) 
+
+  string = "Distance Downwind"
+  call ReadRealArray(grid,grp_id,grid%nconn,indices,string,grid%dist2) 
+
+  string = "Area"
+  call ReadRealArray(grid,grp_id,grid%nconn,indices,string,grid%area) 
+
+  string = "CosB"
+  call ReadRealArray(grid,grp_id,grid%nconn,indices,string,grid%grav_ang) 
+
+  deallocate(indices)
+
+  call h5gclose_f(grp_id,hdf5_err)
+  call h5fclose_f(file_id,hdf5_err)
+   
+  call h5close_f(hdf5_err)
+  
+  ! set up delz array
+  do i=1,grid%nconn
+    grid%delz(i) = grid%z(grid%nd2(i))-grid%z(grid%nd1(i))
+  enddo
+  
+end subroutine ReadStructuredGridHDF5
+
+! ************************************************************************** !
+!
+! SetupCellIndices: Set up indices array that map local cells to entries in
+!                   HDF5 grid cell vectors
+! author: Glenn Hammond
+! date: 09/21/07
+!
+! ************************************************************************** !
+subroutine SetupCellIndices(grid,file_id,indices)
+
+  use hdf5
+  
+  implicit none
+  
+  type(pflowGrid) :: grid
+  
+  integer(HID_T) :: file_id
+  integer :: indices(:)
+  
+  character(len=MAXSTRINGLENGTH) :: string 
+  integer(HID_T) :: file_space_id
+  integer(HID_T) :: memory_space_id
+  integer(HID_T) :: data_set_id
+  integer(HID_T) :: prop_id
+  integer(HSIZE_T) :: dims(3)
+  integer(HSIZE_T) :: offset(3), length(3), stride(3)
+  integer :: rank
+  integer :: local_ghosted_id, local_id, natural_id
+  integer :: index_count
+  integer :: cell_count
+  integer :: num_cells_in_file
+  integer ::temp_int, i
+  
+  integer, allocatable :: cell_ids(:)
+  
+  integer :: read_block_size = 100000
+
+  string = "Cell Id"
+  call h5dopen_f(file_id,string,data_set_id,hdf5_err)
+  call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
+  ! should be a rank=1 data space
+  call h5sget_simple_extent_npoints_f(file_space_id,num_cells_in_file,hdf5_err)
+  if (num_cells_in_file /= grid%nmax) then
+    if (grid%myrank == 0) then
+      print *, 'ERROR: ', trim(string), ' data space dimension (', &
+               num_cells_in_file, ') does not match the dimensions of the ', &
+               'domain (', grid%nmax, ').'
+      call PetscFinalize(ierr)
+      stop
+    endif
+  endif
+  
+  allocate(cell_ids(read_block_size))
+  
+  rank = 1
+  offset = 0
+  length = 0
+  stride = 1
+  
+  call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
+#ifndef SERIAL_HDF5
+  call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F,hdf5_err)
+#endif
+  
+  dims = 0
+  cell_count = 0
+  index_count = 0
+  memory_space_id = -1
+  do
+    if (cell_count >= num_cells_in_file) exit
+    temp_int = min(num_cells_in_file-cell_count,read_block_size)
+    if (dims(1) /= temp_int) then
+      if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
+      dims(1) = temp_int
+    endif
+    call h5screate_simple_f(rank,dims,memory_space_id,hdf5_err,dims)
+    ! offset is zero-based
+    offset = cell_count
+    length(1) = dims(1)
+    call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset,length, &
+                               hdf5_err,stride,stride) 
+#ifdef HDF5_BROADCAST
+    if (grid%myrank == 0) then                           
+#endif
+      call h5dread_f(data_set_id,H5T_NATIVE_INTEGER,cell_ids,dims,hdf5_err, &
+                     file_space_id,memory_space_id,prop_id)                     
+#ifdef HDF5_BROADCAST
+    endif
+    call mpi_bcast(cell_ids,dims(1),MPI_INTEGER,0,PETSC_COMM_WORLD,ierr)
+#endif     
+    do i=1,dims(1)
+      cell_count = cell_count + 1
+      natural_id = cell_ids(i)
+      local_ghosted_id = GetLocalGhostedIdFromHash(natural_id)
+      if (local_ghosted_id > 0) then
+        local_id = grid%nG2L(local_ghosted_id)
+        if (local_id > 0) then
+          index_count = index_count + 1
+          indices(index_count) = cell_count
+        endif
+      endif
+    enddo
+  enddo
+  
+  deallocate(cell_ids)
+  
+  call h5pclose_f(prop_id,hdf5_err)
+  call h5sclose_f(memory_space_id,hdf5_err)
+  call h5sclose_f(file_space_id,hdf5_err)
+  call h5dclose_f(data_set_id,hdf5_err)
+
+  if (index_count /= grid%nlmax) then
+    if (grid%myrank == 0) &
+      print *, 'ERROR: Number of indices read (', index_count, ') does not ', &
+               'match the number of local grid cells (', grid%nlmax, ').'
+      call PetscFinalize(ierr)
+      stop
+  endif
+
+end subroutine SetupCellIndices
+
+! ************************************************************************** !
+!
+! SetupConnectionIndices: Set up indices array that map local connection to  
+!                         entriesin HDF5 grid connection vectors
+! author: Glenn Hammond
+! date: 09/21/07
+!
+! ************************************************************************** !
+subroutine SetupConnectionIndices(grid,file_id,indices)
+
+  use hdf5
+  
+  implicit none
+  
+  type(pflowGrid) :: grid
+  
+  integer(HID_T) :: file_id
+  integer :: indices(:)
+  
+  character(len=MAXSTRINGLENGTH) :: string 
+  integer(HID_T) :: file_space_id_up, file_space_id_down
+  integer(HID_T) :: memory_space_id
+  integer(HID_T) :: data_set_id_up, data_set_id_down
+  integer(HID_T) :: prop_id
+  integer(HSIZE_T) :: dims(3)
+  integer(HSIZE_T) :: offset(3), length(3), stride(3)
+  integer :: rank
+  integer :: local_ghosted_id_up, local_id_up, natural_id_up
+  integer :: local_ghosted_id_down, local_id_down, natural_id_down
+  integer :: index_count
+  integer :: connection_count
+  integer :: num_connections_in_file
+  integer ::temp_int, i
+  
+  integer, allocatable :: upwind_ids(:), downwind_ids(:)
+  
+  integer :: read_block_size = 100000
+
+  string = "Id Upwind"
+  call h5dopen_f(file_id,string,data_set_id_up,hdf5_err)
+  call h5dget_space_f(data_set_id_up,file_space_id_up,hdf5_err)
+  string = "Id Downwind"
+  call h5dopen_f(file_id,string,data_set_id_down,hdf5_err)
+  call h5dget_space_f(data_set_id_down,file_space_id_down,hdf5_err)
+  ! should be a rank=1 data space
+  call h5sget_simple_extent_npoints_f(file_space_id_up, &
+                                      num_connections_in_file,hdf5_err)
+#if 0
+  if (num_connections_in_file /= grid%nconn) then
+    if (grid%myrank == 0) then
+      print *, 'ERROR: ', trim(string), ' data space dimension (', &
+               num_connections_in_file, ') does not match the dimensions ', &
+               'of the domain (', grid%nconn, ').'
+      call PetscFinalize(ierr)
+      stop
+    endif
+  endif
+#endif
+  
+  allocate(upwind_ids(read_block_size),downwind_ids(read_block_size))
+  
+  rank = 1
+  offset = 0
+  length = 0
+  stride = 1
+  
+  call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
+#ifndef SERIAL_HDF5
+  call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F,hdf5_err)
+#endif
+  
+  dims = 0
+  connection_count = 0
+  index_count = 0
+  memory_space_id = -1
+  do
+    if (connection_count >= num_connections_in_file) exit
+    temp_int = min(num_connections_in_file-connection_count,read_block_size)
+    if (dims(1) /= temp_int) then
+      if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
+      dims(1) = temp_int
+    endif
+    call h5screate_simple_f(rank,dims,memory_space_id,hdf5_err,dims)
+    ! offset is zero-based
+    offset = connection_count
+    length(1) = dims(1)
+    call h5sselect_hyperslab_f(file_space_id_up, H5S_SELECT_SET_F,offset, &
+                               length,hdf5_err,stride,stride) 
+#ifdef HDF5_BROADCAST
+    if (grid%myrank == 0) then                           
+#endif
+      call h5dread_f(data_set_id_up,H5T_NATIVE_INTEGER,upwind_ids,dims, &
+                     hdf5_err,file_space_id_up,memory_space_id,prop_id)                     
+#ifdef HDF5_BROADCAST
+    endif
+    call mpi_bcast(upwind_ids,dims(1),MPI_INTEGER,0, &
+                   PETSC_COMM_WORLD,ierr)
+#endif    
+    call h5sselect_hyperslab_f(file_space_id_down, H5S_SELECT_SET_F,offset, &
+                               length,hdf5_err,stride,stride) 
+#ifdef HDF5_BROADCAST
+    if (grid%myrank == 0) then                           
+#endif
+      call h5dread_f(data_set_id_down,H5T_NATIVE_INTEGER,downwind_ids,dims, &
+                     hdf5_err,file_space_id_down,memory_space_id,prop_id)                     
+#ifdef HDF5_BROADCAST
+    endif
+    call mpi_bcast(downwind_ids,dims(1),MPI_INTEGER,0, &
+                   PETSC_COMM_WORLD,ierr)
+#endif    
+    do i=1,dims(1)
+      connection_count = connection_count + 1
+      natural_id_up = upwind_ids(i)
+      natural_id_down = downwind_ids(i)
+      local_ghosted_id_up = GetLocalGhostedIdFromHash(natural_id_up)
+      local_ghosted_id_down = GetLocalGhostedIdFromHash(natural_id_down)
+      if (local_ghosted_id_up > 0 .and. local_ghosted_id_down > 0) then
+        local_id_up = grid%nG2L(local_ghosted_id_up)
+        local_id_down = grid%nG2L(local_ghosted_id_down)
+        if (local_id_up > 0 .or. local_id_down > 0) then
+          index_count = index_count + 1
+          indices(index_count) = connection_count
+        endif
+      endif
+    enddo
+  enddo
+  
+  deallocate(upwind_ids,downwind_ids)
+  
+  call h5pclose_f(prop_id,hdf5_err)
+  call h5sclose_f(memory_space_id,hdf5_err)
+  call h5sclose_f(file_space_id_up,hdf5_err)
+  call h5sclose_f(file_space_id_down,hdf5_err)
+  call h5dclose_f(data_set_id_up,hdf5_err)
+  call h5dclose_f(data_set_id_down,hdf5_err)
+
+  if (index_count /= grid%nconn) then
+    if (grid%myrank == 0) &
+      print *, 'ERROR: Number of indices read (', index_count, ') does not ', &
+               'match the number of local grid connections (', grid%nlmax, ').'
+      call PetscFinalize(ierr)
+      stop
+  endif
+
+end subroutine SetupConnectionIndices
+
+! ************************************************************************** !
+!
+! ReadRealArray: Read in local real values from hdf5 global file
+! author: Glenn Hammond
+! date: 09/21/07
+!
+! ************************************************************************** !
+subroutine ReadRealArray(grid,file_id,num_indices,indices,string,real_array)
+
+  use hdf5
+  
+  implicit none
+  
+  type(pflowGrid) :: grid
+  
+  integer(HID_T) :: file_id
+  integer :: num_indices
+  integer :: indices(:)
+  character(len=MAXSTRINGLENGTH) :: string 
+  real*8 :: real_array(:)
+  
+  integer(HID_T) :: file_space_id
+  integer(HID_T) :: memory_space_id
+  integer(HID_T) :: data_set_id
+  integer(HID_T) :: prop_id
+  integer(HSIZE_T) :: dims(3)
+  integer(HSIZE_T) :: offset(3), length(3), stride(3)
+  integer :: rank
+  integer :: index_count
+  integer :: real_count
+  integer :: num_reals_in_file
+  integer :: temp_int, i, index
+  
+  real*8, allocatable :: real_buffer(:)
+  
+  integer :: read_block_size = 100000
+
+  call h5dopen_f(file_id,string,data_set_id,hdf5_err)
+  call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
+  ! should be a rank=1 data space
+  call h5sget_simple_extent_npoints_f(file_space_id,num_reals_in_file,hdf5_err)
+#if 0
+  if (num_reals_in_file /= grid%nmax) then
+    if (grid%myrank == 0) then
+      print *, 'ERROR: ', trim(string), ' data space dimension (', &
+               num_reals_in_file, ') does not match the dimensions of the ', &
+               'domain (', grid%nmax, ').'
+      call PetscFinalize(ierr)
+      stop
+    endif
+  endif
+#endif
+  allocate(real_buffer(read_block_size))
+  
+  rank = 1
+  offset = 0
+  length = 0
+  stride = 1
+  
+  call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
+#ifndef SERIAL_HDF5
+  call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F,hdf5_err)
+#endif
+  
+  dims = 0
+  real_count = 0
+  index_count = 0
+  memory_space_id = -1
+  do i=1,num_indices
+    index = indices(i)
+    if (index > real_count) then
+      temp_int = min(num_reals_in_file-real_count,read_block_size)
+      if (dims(1) /= temp_int) then
+        if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
+        dims(1) = temp_int
+      endif
+      call h5screate_simple_f(rank,dims,memory_space_id,hdf5_err,dims)
+      ! offset is zero-based
+      offset = real_count
+      length(1) = dims(1)
+      call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset, &
+                                 length,hdf5_err,stride,stride) 
+#ifdef HDF5_BROADCAST
+      if (grid%myrank == 0) then                           
+#endif
+        call h5dread_f(data_set_id,H5T_NATIVE_DOUBLE,real_buffer,dims, &
+                       hdf5_err,file_space_id,memory_space_id,prop_id)
+#ifdef HDF5_BROADCAST
+      endif
+      call mpi_bcast(real_buffer,dims(1),MPI_DOUBLE_PRECISION,0, &
+                     PETSC_COMM_WORLD,ierr)
+#endif
+      real_count = real_count + length(1)                  
+    endif
+    real_array(i) = real_buffer(index)
+  enddo
+
+  deallocate(real_buffer)
+  
+  call h5pclose_f(prop_id,hdf5_err)
+  call h5sclose_f(memory_space_id,hdf5_err)
+  call h5sclose_f(file_space_id,hdf5_err)
+  call h5dclose_f(data_set_id,hdf5_err)
+
+end subroutine ReadRealArray
+
+! ************************************************************************** !
+!
+! ReadIntegerArray: Read in local integer values from hdf5 global file
+! author: Glenn Hammond
+! date: 09/21/07
+!
+! ************************************************************************** !
+subroutine ReadIntegerArray(grid,file_id,num_indices,indices,string, &
+                            integer_array)
+
+  use hdf5
+  
+  implicit none
+  
+  type(pflowGrid) :: grid
+  
+  integer(HID_T) :: file_id
+  integer :: num_indices
+  integer :: indices(:)
+  character(len=MAXSTRINGLENGTH) :: string 
+  integer :: integer_array(:)
+  
+  integer(HID_T) :: file_space_id
+  integer(HID_T) :: memory_space_id
+  integer(HID_T) :: data_set_id
+  integer(HID_T) :: prop_id
+  integer(HSIZE_T) :: dims(3)
+  integer(HSIZE_T) :: offset(3), length(3), stride(3)
+  integer :: rank
+  integer :: index_count
+  integer :: integer_count
+  integer :: num_integers_in_file
+  integer :: temp_int, i, index
+  
+  integer, allocatable :: integer_buffer(:)
+  
+  integer :: read_block_size = 100000
+
+  call h5dopen_f(file_id,string,data_set_id,hdf5_err)
+  call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
+  ! should be a rank=1 data space
+  call h5sget_simple_extent_npoints_f(file_space_id,num_integers_in_file, &
+                                      hdf5_err)
+#if 0
+  if (num_integers_in_file /= grid%nmax) then
+    if (grid%myrank == 0) then
+      print *, 'ERROR: ', trim(string), ' data space dimension (', &
+               num_integers_in_file, ') does not match the dimensions of ', &
+               'the domain (', grid%nmax, ').'
+      call PetscFinalize(ierr)
+      stop
+    endif
+  endif
+#endif
+  
+  allocate(integer_buffer(read_block_size))
+  
+  rank = 1
+  offset = 0
+  length = 0
+  stride = 1
+  
+  call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
+#ifndef SERIAL_HDF5
+  call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F,hdf5_err)
+#endif
+  
+  dims = 0
+  integer_count = 0
+  index_count = 0
+  memory_space_id = -1
+  do i=1,num_indices
+    index = indices(i)
+    if (index > integer_count) then
+      temp_int = min(num_integers_in_file-integer_count,read_block_size)
+      if (dims(1) /= temp_int) then
+        if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
+        dims(1) = temp_int
+      endif
+      call h5screate_simple_f(rank,dims,memory_space_id,hdf5_err,dims)
+      ! offset is zero-based
+      offset = integer_count
+      length(1) = dims(1)
+      call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset, &
+                                 length,hdf5_err,stride,stride) 
+#ifdef HDF5_BROADCAST
+      if (grid%myrank == 0) then                           
+#endif
+      call h5dread_f(data_set_id,H5T_NATIVE_INTEGER,integer_buffer,dims, &
+                     hdf5_err,file_space_id,memory_space_id,prop_id)   
+#ifdef HDF5_BROADCAST
+      endif
+      call mpi_bcast(integer_buffer,dims(1),MPI_INTEGER,0, &
+                     PETSC_COMM_WORLD,ierr)
+#endif
+      integer_count = integer_count + length(1)                  
+    endif
+    integer_array(i) = integer_buffer(index)
+  enddo
+
+  deallocate(integer_buffer)
+  
+  call h5pclose_f(prop_id,hdf5_err)
+  call h5sclose_f(memory_space_id,hdf5_err)
+  call h5sclose_f(file_space_id,hdf5_err)
+  call h5dclose_f(data_set_id,hdf5_err)
+
+end subroutine ReadIntegerArray
+
+#endif
 ! ************************************************************************** !
 !
 ! UpdateGlobalToLocal: Updated global vec values to local

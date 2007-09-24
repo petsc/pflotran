@@ -2494,6 +2494,11 @@ subroutine pflowGrid_setup(grid, inputfile)
   if (grid%iread_geom == 1) then
     call Read_Geom_field(grid)
 !geh
+!geh
+  else if (grid%iread_geom == 10) then 
+    if (myrank == 0) print *, 'Reading structured grid from hdf5' 
+    allocate(grid%imat(grid%ngmax))  ! allocate material id array
+    call ReadStructuredGridHDF5(grid)
   else if (grid%iread_geom == -1) then 
     if (myrank == 0) print *, 'Reading unstructured grid' 
     allocate(grid%pressurebc(grid%nphase,grid%nconnbc)) 
