@@ -114,11 +114,10 @@ subroutine OutputTecplot(grid,kplot)
                '"Temperature",' // &
                '"Pressure",' // &
                '"Saturation",' // &
-               '"Concentration",'
+               '"Concentration"'
       if (grid%rk > 0.d0) then
-        string = trim(string) // '"Volume Fraction",'
+        string = trim(string) // ',"Volume Fraction"'
       endif
-      string = trim(string) // '"Phase"'
     endif
     write(IUNIT3,'(a)') trim(string)
   
@@ -227,6 +226,13 @@ subroutine OutputTecplot(grid,kplot)
     call ConvertGlobalToNatural(grid,grid%conc,natural)
     call WriteTecplotDataSetFromVec(IUNIT3,grid,natural,TECPLOT_REAL)
 
+    ! volume fraction
+    if (grid%rk > 0.d0) then
+      call GetVarFromArray(grid,global,VOLUME_FRACTION,0)
+      call ConvertGlobalToNatural(grid,global,natural)
+      call WriteTecplotDataSetFromVec(IUNIT3,grid,natural,TECPLOT_REAL)
+    endif
+    
   endif
   
   call VecDestroy(natural,ierr)
