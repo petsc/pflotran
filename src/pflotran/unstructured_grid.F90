@@ -1524,7 +1524,7 @@ subroutine SetupCellIndices(grid,file_id,indices)
   integer :: local_ghosted_id, local_id, natural_id
   integer :: index_count
   integer :: cell_count
-  integer :: num_cells_in_file
+  integer(HSIZE_T) :: num_cells_in_file
   integer ::temp_int, i
   
   integer, allocatable :: cell_ids(:)
@@ -1646,7 +1646,7 @@ subroutine SetupConnectionIndices(grid,file_id,indices)
   integer :: local_ghosted_id_down, local_id_down, natural_id_down
   integer :: index_count
   integer :: connection_count
-  integer :: num_connections_in_file
+  integer(HSIZE_T) :: num_connections_in_file
   integer ::temp_int, i
   
   integer, allocatable :: upwind_ids(:), downwind_ids(:)
@@ -1791,7 +1791,7 @@ subroutine ReadRealArray(grid,file_id,num_indices,indices,string,real_array)
   integer :: rank
   integer :: index_count
   integer :: real_count
-  integer :: num_reals_in_file
+  integer(HSIZE_T) :: num_reals_in_file
   integer :: temp_int, i, index
   
   real*8, allocatable :: real_buffer(:)
@@ -1898,7 +1898,7 @@ subroutine ReadIntegerArray(grid,file_id,num_indices,indices,string, &
   integer :: rank
   integer :: index_count
   integer :: integer_count
-  integer :: num_integers_in_file
+  integer(HSIZE_T) :: num_integers_in_file
   integer :: temp_int, i, index
   
   integer, allocatable :: integer_buffer(:)
