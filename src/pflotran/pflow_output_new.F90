@@ -182,7 +182,7 @@ private
 ! time-history plots
   
   if (grid%ibrkcrv > 0 .and. grid%ndof > 1) then
-  print *, 'begin his' 
+!  print *, 'begin his' 
 !   concentration
 !    call DAGlobalToNaturalBegin(grid%da_1_dof,grid%conc,INSERT_VALUES,c_nat, &
 !                                ierr)
