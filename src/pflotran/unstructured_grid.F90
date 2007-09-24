@@ -1279,7 +1279,7 @@ subroutine ReadStructuredGridHDF5(grid)
   integer(HID_T) :: grp_id
   integer(HID_T) :: prop_id
 
-  integer :: i
+  integer :: i, local_ghosted_id
   integer, allocatable :: indices(:)
   integer, allocatable :: integer_array(:)
   real*8, allocatable :: real_array(:)
@@ -1446,7 +1446,7 @@ subroutine ReadStructuredGridHDF5(grid)
                             grid%porosity_loc, ierr)
   call DAGlobalToLocalEnd(grid%da_1_dof, grid%porosity, INSERT_VALUES, &
                           grid%porosity_loc, ierr)
-  ! porosity
+  ! tortuosity
   call DAGlobalToLocalBegin(grid%da_1_dof, grid%tor, INSERT_VALUES, &
                             grid%tor_loc, ierr)
   call DAGlobalToLocalEnd(grid%da_1_dof, grid%tor, INSERT_VALUES, &
@@ -1462,11 +1462,21 @@ subroutine ReadStructuredGridHDF5(grid)
 
   call SetupConnectionIndices(grid,grp_id,indices)
 
+  allocate(integer_array(grid%nconn))
   string = "Id Upwind"
-  call ReadIntegerArray(grid,grp_id,grid%nconn,indices,string,grid%nd1)
+  call ReadIntegerArray(grid,grp_id,grid%nconn,indices,string,integer_array)
+  do i=1,grid%nconn
+    local_ghosted_id = GetLocalGhostedIdFromHash(integer_array(i))
+    grid%nd1(i) = local_ghosted_id
+  enddo
 
   string = "Id Downwind"
-  call ReadIntegerArray(grid,grp_id,grid%nconn,indices,string,grid%nd2)
+  call ReadIntegerArray(grid,grp_id,grid%nconn,indices,string,integer_array)
+  do i=1,grid%nconn
+    local_ghosted_id = GetLocalGhostedIdFromHash(integer_array(i))
+    grid%nd1(i) = local_ghosted_id
+  enddo
+  deallocate(integer_array)
   
   string = "Distance Upwind"
   call ReadRealArray(grid,grp_id,grid%nconn,indices,string,grid%dist1) 
@@ -1582,7 +1592,8 @@ subroutine SetupCellIndices(grid,file_id,indices)
                      file_space_id,memory_space_id,prop_id)                     
 #ifdef HDF5_BROADCAST
     endif
-    call mpi_bcast(cell_ids,dims(1),MPI_INTEGER,0,PETSC_COMM_WORLD,ierr)
+    if (grid%commsize > 1) &
+      call mpi_bcast(cell_ids,dims(1),MPI_INTEGER,0,PETSC_COMM_WORLD,ierr)
 #endif     
     do i=1,dims(1)
       cell_count = cell_count + 1
@@ -1710,8 +1721,9 @@ subroutine SetupConnectionIndices(grid,file_id,indices)
                      hdf5_err,file_space_id_up,memory_space_id,prop_id)                     
 #ifdef HDF5_BROADCAST
     endif
-    call mpi_bcast(upwind_ids,dims(1),MPI_INTEGER,0, &
-                   PETSC_COMM_WORLD,ierr)
+    if (grid%commsize > 1) &
+      call mpi_bcast(upwind_ids,dims(1),MPI_INTEGER,0, &
+                     PETSC_COMM_WORLD,ierr)
 #endif    
     call h5sselect_hyperslab_f(file_space_id_down, H5S_SELECT_SET_F,offset, &
                                length,hdf5_err,stride,stride) 
@@ -1722,8 +1734,9 @@ subroutine SetupConnectionIndices(grid,file_id,indices)
                      hdf5_err,file_space_id_down,memory_space_id,prop_id)                     
 #ifdef HDF5_BROADCAST
     endif
-    call mpi_bcast(downwind_ids,dims(1),MPI_INTEGER,0, &
-                   PETSC_COMM_WORLD,ierr)
+    if (grid%commsize > 1) &
+      call mpi_bcast(downwind_ids,dims(1),MPI_INTEGER,0, &
+                     PETSC_COMM_WORLD,ierr)
 #endif    
     do i=1,dims(1)
       connection_count = connection_count + 1
@@ -1850,8 +1863,9 @@ subroutine ReadRealArray(grid,file_id,num_indices,indices,string,real_array)
                        hdf5_err,file_space_id,memory_space_id,prop_id)
 #ifdef HDF5_BROADCAST
       endif
-      call mpi_bcast(real_buffer,dims(1),MPI_DOUBLE_PRECISION,0, &
-                     PETSC_COMM_WORLD,ierr)
+      if (grid%commsize > 1) &
+        call mpi_bcast(real_buffer,dims(1),MPI_DOUBLE_PRECISION,0, &
+                       PETSC_COMM_WORLD,ierr)
 #endif
       real_count = real_count + length(1)                  
     endif
@@ -1938,6 +1952,7 @@ subroutine ReadIntegerArray(grid,file_id,num_indices,indices,string, &
   integer_count = 0
   index_count = 0
   memory_space_id = -1
+
   do i=1,num_indices
     index = indices(i)
     if (index > integer_count) then
@@ -1955,12 +1970,13 @@ subroutine ReadIntegerArray(grid,file_id,num_indices,indices,string, &
 #ifdef HDF5_BROADCAST
       if (grid%myrank == 0) then                           
 #endif
-      call h5dread_f(data_set_id,H5T_NATIVE_INTEGER,integer_buffer,dims, &
-                     hdf5_err,file_space_id,memory_space_id,prop_id)   
+        call h5dread_f(data_set_id,H5T_NATIVE_INTEGER,integer_buffer,dims, &
+                       hdf5_err,file_space_id,memory_space_id,prop_id)   
 #ifdef HDF5_BROADCAST
       endif
-      call mpi_bcast(integer_buffer,dims(1),MPI_INTEGER,0, &
-                     PETSC_COMM_WORLD,ierr)
+      if (grid%commsize > 1) &
+        call mpi_bcast(integer_buffer,dims(1),MPI_INTEGER,0, &
+                       PETSC_COMM_WORLD,ierr)
 #endif
       integer_count = integer_count + length(1)                  
     endif
