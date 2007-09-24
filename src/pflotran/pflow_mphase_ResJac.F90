@@ -748,7 +748,7 @@ private
   real*8 :: D1, D2  ! "Diffusion" constants at upstream, downstream faces.
 ! real*8 :: sat_pressure  ! Saturation pressure of water.
   real*8 :: dw_kg, dw_mol,dif(grid%nphase)
-  real*8 :: tsrc1, qsrc1, csrc1, enth_src_h2o, enth_src_co2 !, qqsrc
+  real*8 :: tsrc1, qsrc1, csrc1, enth_src_h2o, enth_src_co2 , hsrc1!, qqsrc
 ! real*8 :: cw1,cw2, xxlw,xxla,xxgw,xxga
   real*8 :: cw
 ! real*8 :: upweight
@@ -1001,6 +1001,7 @@ private
         tsrc1 = grid%tempsrc(i,nr)
         qsrc1 = grid%qsrc(i,nr)
         csrc1 = grid%csrc(i,nr)
+        hsrc1 = grid%hsrc(i,nr)
         goto 10
       else if (grid%timesrc(i,nr) > grid%t) then
         ff = grid%timesrc(i,nr)-grid%timesrc(i-1,nr)
@@ -1009,6 +1010,7 @@ private
         tsrc1 = f1*grid%tempsrc(i,nr) + f2*grid%tempsrc(i-1,nr)
         qsrc1 = f1*grid%qsrc(i,nr) + f2*grid%qsrc(i-1,nr)
         csrc1 = f1*grid%csrc(i,nr) + f2*grid%csrc(i-1,nr)
+        hsrc1 = f1*grid%hsrc(i,nr) + f2*grid%hsrc(i-1,nr)
         goto 10
       endif
     enddo
@@ -1023,6 +1025,17 @@ private
   ! Here assuming regular mixture injection. i.e. no extra H from mixing 
   ! within injected fluid.
   
+  if(dabs(hsrc1)>1D-20)then 
+       do kk = kk1, kk2
+        do jj = jj1, jj2
+          do ii = ii1, ii2
+            n = ii+(jj-1)*grid%nlx+(kk-1)*grid%nlxy
+             r_p(n*grid%ndof) = r_p(n*grid%ndof) - hsrc1 * grid%dt   
+           enddo
+          enddo
+       enddo
+  endif         
+     
     if (qsrc1 > 0.d0) then ! injection
       do kk = kk1, kk2
         do jj = jj1, jj2
@@ -1036,7 +1049,7 @@ private
 !           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
 
 !           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
-              
+            
             r_p((n-1)*grid%ndof + grid%jh2o) = r_p((n-1)*grid%ndof +grid%jh2o) - qsrc1 *grid%dt
             r_p(n*grid%ndof) = r_p(n*grid%ndof) - qsrc1*enth_src_h2o*grid%dt
             Resold_AR(n,grid%jh2o)= Resold_AR(n,grid%jh2o) - qsrc1*grid%dt
@@ -1073,7 +1086,7 @@ private
          !  units: rho [kg/m^3]; csrc1 [kmol/s]
 
             enth_src_co2 = enth_src_co2 * grid%fmwco2
-
+           
             r_p((n-1)*grid%ndof + grid%jco2) = r_p((n-1)*grid%ndof + grid%jco2) - csrc1*grid%dt
             r_p(n*grid%ndof) = r_p(n*grid%ndof) - csrc1 * enth_src_co2 *grid%dt
             Resold_AR(n,grid%jco2)= Resold_AR(n,grid%jco2) - csrc1*grid%dt

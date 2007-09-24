@@ -81,7 +81,7 @@ contains
   real*8 :: D1, D2  ! "Diffusion" constants upstream and downstream of a face.
   real*8 :: sat_pressure  ! Saturation pressure of water.
   real*8 :: dw_kg, dw_mol
-  real*8 :: tsrc1, qsrc1, qqsrc, csrc1, enth_src
+  real*8 :: tsrc1, qsrc1, qqsrc, csrc1, hsrc1,enth_src
   
   eps = 1.d-6
 
@@ -733,6 +733,7 @@ contains
         tsrc1 = grid%tempsrc(i,nr)
         qsrc1 = grid%qsrc(i,nr)
         csrc1 = grid%csrc(i,nr)
+        hsrc1 = grid%hsrc(i,nr)
         goto 10
       else if (grid%timesrc(i,nr) > grid%t) then
         ff = grid%timesrc(i,nr)-grid%timesrc(i-1,nr)
@@ -741,6 +742,7 @@ contains
         tsrc1 = f1*grid%tempsrc(i,nr) + f2*grid%tempsrc(i-1,nr)
         qsrc1 = f1*grid%qsrc(i,nr) + f2*grid%qsrc(i-1,nr)
         csrc1 = f1*grid%csrc(i,nr) + f2*grid%csrc(i-1,nr)
+        hsrc1 = f1*grid%hsrc(i,nr) + f2*grid%hsrc(i-1,nr)
         goto 10
       endif
     enddo
@@ -748,8 +750,22 @@ contains
     
 !   print *,'pflowTHC: ', grid%myrank,i,grid%timesrc(i,nr), &
 !   grid%timesrc(i-1,nr),grid%t,f1,f2,ff,qsrc1,csrc1
- 
+
+   
     qsrc1 = qsrc1 / grid%fmwh2o
+
+  if(dabs(hsrc1)>1D-20)then 
+       do kk = kk1, kk2
+        do jj = jj1, jj2
+          do ii = ii1, ii2
+            n = ii+(jj-1)*grid%nlx+(kk-1)*grid%nlxy
+             p1 = 1+(n-1)*grid%ndof
+              t1 = p1 + 1
+             r_p(t1) = r_p(t1) - hsrc1    
+           enddo
+          enddo
+       enddo
+  endif         
 
     if (qsrc1 > 0.d0) then ! injection
       do kk = kk1, kk2
@@ -763,6 +779,7 @@ contains
               call wateos_noderiv(tsrc1,PPRESSURE_LOC(grid%jh2o,ng), &
               dw_kg,dw_mol,enth_src,grid%scale,ierr)
               qqsrc = qsrc1/dw_mol
+            
               r_p(p1) = r_p(p1) - qsrc1
               r_p(t1) = r_p(t1) - qsrc1*enth_src
               r_p(c1) = r_p(c1) - qqsrc*csrc1
@@ -785,6 +802,7 @@ contains
               c1 = t1 + 1
               qqsrc = qsrc1/ddensity_loc_p(ng)
               enth_src = hh_loc_p(ng)
+                
               r_p(p1) = r_p(p1) - qsrc1
               r_p(t1) = r_p(t1) - qsrc1*enth_src
               r_p(c1) = r_p(c1) - qqsrc*CCONC_LOC(ng)
@@ -1606,7 +1624,23 @@ contains
     else if(grid%ibndtyp(ibc) == 2) then 
 
     ! constant velocity q, grad T, C = 0
-      
+    
+    else if(grid%ibndtyp(ibc) == 4) then
+        ! (T,T)
+         i1 = ithrm_loc_p(ng)
+      cond = grid%ckwet(i1) * grid%areabc(nc) / grid%distbc(nc)
+      elem1 =  cond
+      if (grid%iblkfmt == 0) then
+        call MatSetValuesLocal(A,1,t1,1,t1,elem1,ADD_VALUES,ierr)
+      else
+        blkmat1(2,2) = elem1
+      endif
+
+      if (grid%iblkfmt == 1) then
+        call MatSetValuesBlockedLocal(A,1,ng-1,1,ng-1, &
+        blkmat1,ADD_VALUES,ierr)
+      endif
+
     else if(grid%ibndtyp(ibc) == 3) then 
     
     ! Dirichlet BC: fixed p, grad T, C = 0

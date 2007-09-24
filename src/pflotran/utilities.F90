@@ -117,4 +117,57 @@
       return
       end function ran2
       
+      
+  subroutine Natural2LocalIndex(ir, nl, llist, llength)
+  implicit none
+  integer nl, ir,na, l_search, itt, llength
+  integer llist(*)
+  
+  integer  nori0, nori1, nori
+  
+  
+  nl=-1
+  l_search = llength
+  
+  na = ir!-1 
+  itt=0
+  nori0 =1
+  nori1 = llength
+  if(na>=llist(1) .and. na <= llist(llength))then
+  do while(l_search > 1 .and.itt<=50)
+  
+    itt=itt+1
+    if(na == llist(nori0))then
+      nl = nori0
+      exit
+    elseif(na == llist(nori1))then
+       nl = nori1
+      exit
+    endif   
+     
+     ! nori = int((real(nori0 + nori1))/ 2.) + mod ( nori0 + nori1,2 )
+    nori =  int(floor(real(nori0+nori1)/2D0 + .75D0))
+    if( na > llist(nori)) then
+      nori0 = nori
+    elseif(na < llist(nori))then
+      nori1 = nori
+    else
+      if(na == llist(nori))then
+        nl = nori
+        exit
+      else
+        print *, 'wrong index', na, nori, llist(nori); stop
+      endif  
+    endif
+    l_search = nori1-nori0
+    if (itt>=40)then
+      print *, na, nori0,nori1,nori, llist(nori0), llist(nori1)
+      if (itt>=50) stop
+    endif
+  enddo  
+ endif         
+          
+  end subroutine Natural2LocalIndex
+
+
       end module utilities_module

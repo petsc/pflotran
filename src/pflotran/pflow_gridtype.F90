@@ -209,7 +209,7 @@ private
 !   source term
     integer :: nblksrc = 0, ntimsrc = 0, isrc1 = 2
     integer*4, pointer :: i1src(:), i2src(:), j1src(:), j2src(:), k1src(:), k2src(:)
-    real*8, pointer :: timesrc(:,:), tempsrc(:,:), qsrc(:,:), csrc(:,:)
+    real*8, pointer :: timesrc(:,:), tempsrc(:,:), qsrc(:,:), csrc(:,:), hsrc(:,:)
     
 !   solid reaction rate
     integer*4 :: ityprxn
