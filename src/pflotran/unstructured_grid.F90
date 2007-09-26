@@ -4,8 +4,7 @@ module Unstructured_Grid_module
 
  implicit none
 
-!#define READ_BUFFER_SIZE 100000
-#define READ_BUFFER_SIZE 19
+#define READ_BUFFER_SIZE 1000000
 !#define HDF5_BROADCAST
 
 #define HASH
@@ -1919,6 +1918,31 @@ subroutine ReadRealArray(grid,file_id,num_indices,indices,string,real_array)
     real_array(i) = real_buffer(index-prev_real_count)
   enddo
 
+#ifdef HDF5_BROADCAST
+  do 
+    if (real_count >= num_reals_in_file) exit
+    temp_int = min(num_reals_in_file-real_count,read_block_size)
+    if (dims(1) /= temp_int) then
+      if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
+      dims(1) = temp_int
+      call h5screate_simple_f(rank,dims,memory_space_id,hdf5_err,dims)
+    endif
+    ! offset is zero-based
+    offset(1) = real_count
+    length(1) = dims(1)
+    call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset, &
+                               length,hdf5_err,stride,stride) 
+    if (grid%myrank == 0) then                           
+      call h5dread_f(data_set_id,H5T_NATIVE_DOUBLE,real_buffer,dims, &
+                     hdf5_err,memory_space_id,file_space_id,prop_id)
+    endif
+    if (grid%commsize > 1) &
+      call mpi_bcast(real_buffer,dims(1),MPI_DOUBLE_PRECISION,0, &
+                     PETSC_COMM_WORLD,ierr)
+    real_count = real_count + length(1)                  
+  enddo
+#endif
+
   deallocate(real_buffer)
   
   call h5pclose_f(prop_id,hdf5_err)
@@ -2034,6 +2058,31 @@ subroutine ReadIntegerArray(grid,file_id,num_indices,indices,string, &
     endif
     integer_array(i) = integer_buffer(index-prev_integer_count)
   enddo
+
+#ifdef HDF5_BROADCAST
+  do
+    if (integer_count >= num_integers_in_file) exit
+    temp_int = min(num_integers_in_file-integer_count,read_block_size)
+    if (dims(1) /= temp_int) then
+      if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
+      dims(1) = temp_int
+      call h5screate_simple_f(rank,dims,memory_space_id,hdf5_err,dims)
+    endif
+    ! offset is zero-based
+    offset(1) = integer_count
+    length(1) = dims(1)
+    call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset, &
+                               length,hdf5_err,stride,stride) 
+    if (grid%myrank == 0) then                           
+      call h5dread_f(data_set_id,H5T_NATIVE_INTEGER,integer_buffer,dims, &
+                     hdf5_err,memory_space_id,file_space_id,prop_id)   
+    endif
+    if (grid%commsize > 1) &
+      call mpi_bcast(integer_buffer,dims(1),MPI_INTEGER,0, &
+                     PETSC_COMM_WORLD,ierr)
+    integer_count = integer_count + length(1)                  
+  enddo
+#endif
 
   deallocate(integer_buffer)
   
