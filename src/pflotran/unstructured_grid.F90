@@ -4,7 +4,8 @@ module Unstructured_Grid_module
 
  implicit none
 
-#define READ_BUFFER_SIZE 100000
+!#define READ_BUFFER_SIZE 100000
+#define READ_BUFFER_SIZE 19
 !#define HDF5_BROADCAST
 
 #define HASH
@@ -1359,9 +1360,6 @@ subroutine ReadStructuredGridHDF5(grid)
   string = "X-Coordinate"
   if (grid%myrank == 0) print *, 'Reading dataset: ', trim(string)
   call ReadRealArray(grid,grp_id,grid%nlmax,indices,string,real_array)
-
-print *, grid%myrank, ':', real_array(1:grid%nlmax)
-
   call VecGetArrayF90(global,vec_ptr,ierr)
   do i=1,grid%nlmax
     vec_ptr(i) = real_array(i)
@@ -1918,7 +1916,6 @@ subroutine ReadRealArray(grid,file_id,num_indices,indices,string,real_array)
         real_count = real_count + length(1)                  
       enddo
     endif
-print *, grid%myrank, index, index-prev_real_count, real_buffer(index-prev_real_count)
     real_array(i) = real_buffer(index-prev_real_count)
   enddo
 
