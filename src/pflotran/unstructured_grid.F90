@@ -4,8 +4,8 @@ module Unstructured_Grid_module
 
  implicit none
 
-!#define READ_BUFFER_SIZE 100000
-#define READ_BUFFER_SIZE 19
+#define READ_BUFFER_SIZE 100000
+!#define HDF5_BROADCAST
 
 #define HASH
 #define INVERT
@@ -1293,7 +1293,7 @@ subroutine ReadStructuredGridHDF5(grid)
       
   PetscTruth :: option_found
 
-  PetscLogDouble :: time0, time1
+  PetscLogDouble :: time0, time1, time3, time4
 
   call PetscGetTime(time0, ierr)
 
@@ -1310,7 +1310,7 @@ subroutine ReadStructuredGridHDF5(grid)
   ! initialize fortran hdf5 interface
   call h5open_f(hdf5_err)
 
-  if (grid%myrank == 0) print *, 'Opening file: ', trim(filename)
+  if (grid%myrank == 0) print *, 'Opening hdf5 file: ', trim(filename)
   call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
 #ifndef SERIAL_HDF5
   call h5pset_fapl_mpio_f(prop_id,PETSC_COMM_WORLD,MPI_INFO_NULL,hdf5_err)
@@ -1326,7 +1326,12 @@ subroutine ReadStructuredGridHDF5(grid)
   allocate(indices(grid%nlmax))
   
   if (grid%myrank == 0) print *, 'Setting up grid cell indices'
+  call PetscGetTime(time3, ierr)
   call SetupCellIndices(grid,grp_id,indices)
+  call PetscGetTime(time4, ierr)
+  time4 = time4 - time3
+  if (grid%myrank == 0) print *, time4, &
+       ' seconds to set up grid cell indices for hdf5 file'
 
   call DACreateGlobalVector(grid%da_1_dof,global,ierr)
   call DACreateLocalVector(grid%da_1_dof,local,ierr)
@@ -1482,7 +1487,12 @@ print *, grid%myrank, ':', real_array(1:grid%nlmax)
   allocate(indices(grid%nconn))
 
   if (grid%myrank == 0) print *, 'Setting up connection indices'
+  call PetscGetTime(time3, ierr)
   call SetupConnectionIndices(grid,grp_id,indices)
+  call PetscGetTime(time4, ierr)
+  time4 = time4 - time3
+  if (grid%myrank == 0) print *, time4, &
+       ' seconds to set up connection indices for hdf5 file'
 
   allocate(integer_array(grid%nconn))
   string = "Id Upwind"
@@ -1522,6 +1532,7 @@ print *, grid%myrank, ':', real_array(1:grid%nlmax)
 
   if (grid%myrank == 0) print *, 'Closing group: Connections'
   call h5gclose_f(grp_id,hdf5_err)
+  if (grid%myrank == 0) print *, 'Closing hdf5 file: ', filename
   call h5fclose_f(file_id,hdf5_err)
    
   call h5close_f(hdf5_err)
@@ -1530,7 +1541,11 @@ print *, grid%myrank, ':', real_array(1:grid%nlmax)
   do i=1,grid%nconn
     grid%delz(i) = grid%z(grid%nd2(i))-grid%z(grid%nd1(i))
   enddo
-  
+
+  call PetscGetTime(time1, ierr)
+  time1 = time1 - time0
+  if (grid%myrank == 0) print *, time1, &
+       ' seconds to read unstructured grid data from hdf5 file'
 end subroutine ReadStructuredGridHDF5
 
 ! ************************************************************************** !
