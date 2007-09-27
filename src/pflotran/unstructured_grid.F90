@@ -1615,7 +1615,8 @@ subroutine SetupCellIndices(grid,file_id,indices)
   memory_space_id = -1
   do
     if (cell_count >= num_cells_in_file) exit
-    temp_int = min(num_cells_in_file-cell_count,read_block_size)
+    temp_int = num_cells_in_file-cell_count
+    temp_int = min(temp_int,read_block_size)
     if (dims(1) /= temp_int) then
       if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
       dims(1) = temp_int
@@ -1744,7 +1745,8 @@ subroutine SetupConnectionIndices(grid,file_id,indices)
   memory_space_id = -1
   do
     if (connection_count >= num_connections_in_file) exit
-    temp_int = min(num_connections_in_file-connection_count,read_block_size)
+    temp_int = num_connections_in_file-connection_count
+    temp_int = min(temp_int,read_block_size)
     if (dims(1) /= temp_int) then
       if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
       dims(1) = temp_int
@@ -1889,7 +1891,8 @@ subroutine ReadRealArray(grid,file_id,num_indices,indices,string,real_array)
     if (index > real_count) then
       do 
         if (index <= real_count) exit
-        temp_int = min(num_reals_in_file-real_count,read_block_size)
+        temp_int = num_reals_in_file-real_count
+        temp_int = min(temp_int,read_block_size)
         if (dims(1) /= temp_int) then
           if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
           dims(1) = temp_int
@@ -1921,7 +1924,8 @@ subroutine ReadRealArray(grid,file_id,num_indices,indices,string,real_array)
 #ifdef HDF5_BROADCAST
   do 
     if (real_count >= num_reals_in_file) exit
-    temp_int = min(num_reals_in_file-real_count,read_block_size)
+    temp_int = num_reals_in_file-real_count
+    temp_int = min(temp_int,read_block_size)
     if (dims(1) /= temp_int) then
       if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
       dims(1) = temp_int
@@ -2030,7 +2034,8 @@ subroutine ReadIntegerArray(grid,file_id,num_indices,indices,string, &
     if (index > integer_count) then
       do
         if (index <= integer_count) exit
-        temp_int = min(num_integers_in_file-integer_count,read_block_size)
+        temp_int = num_integers_in_file-integer_count
+        temp_int = min(temp_int,read_block_size)
         if (dims(1) /= temp_int) then
           if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
           dims(1) = temp_int
@@ -2062,7 +2067,8 @@ subroutine ReadIntegerArray(grid,file_id,num_indices,indices,string, &
 #ifdef HDF5_BROADCAST
   do
     if (integer_count >= num_integers_in_file) exit
-    temp_int = min(num_integers_in_file-integer_count,read_block_size)
+    temp_int = num_integers_in_file-integer_count
+    temp_int = min(temp_int,read_block_size)
     if (dims(1) /= temp_int) then
       if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
       dims(1) = temp_int
