@@ -167,6 +167,7 @@
     call pflowGridRestart(grid, restartfile, ntstep, kplt, iplot, iflgcut, &
                           ihalcnt,its)
     call pflowGridInitAccum(grid)
+    grid%dt_max = grid%dtstep(ntstep)
   endif
   call PetscOptionsGetInt(PETSC_NULL_CHARACTER, '-chkptfreq', chkptfreq, &
                           chkptflag, ierr)
@@ -177,10 +178,8 @@
       call Read_init_field(grid, kplt)
       call pflowGridInitAccum(grid)
       print *, 'Restart from ASCII file: pflow_init.dat'
-      print *, 't, dt, kplt :: ', grid%t,grid%dt, kplt, grid%flowsteps 
+    !  print *, 't, dt, kplt :: ',grid%t,grid%dt,kplt,grid%flowsteps,iplot,ntstep
   endif
-
-
            
   do steps = grid%flowsteps+1, grid%stepmax
 
