@@ -108,7 +108,8 @@ subroutine OutputTecplot(grid,kplot)
       endif
       string = trim(string) // '"Phase"'
     else
-      string = '"X-Coordinates",' // &
+      string = 'VARIABLES=' // &
+               '"X-Coordinates",' // &
                '"Y-Coordinates",' // &
                '"Z-Coordinates",' // &
                '"Temperature",' // &
