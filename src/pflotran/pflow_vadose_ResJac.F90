@@ -451,8 +451,9 @@ subroutine VadoseRes_FLCont(nconn_no,area,var_node1,por1,tor1,sir1,dd1,perm1, &
         q = v_darcy * area
           
         do m=1, grid%nspec 
-          fluxm(m)=fluxm(m) + q*density_ave*uxmol(m)                                                            
-        enddo                                                                                                                                                                                         
+          fluxm(m)=fluxm(m) + q*density_ave*uxmol(m)
+        enddo
+
         fluxe = fluxe + q*density_ave*uh 
       endif
     endif 
@@ -587,8 +588,9 @@ subroutine VadoseRes_FLBCCont(nbc_no,area,var_node1,var_node2,por2,tor2,sir2, &
           q = v_darcy * area
           
           do m=1, grid%nspec 
-            fluxm(m) = fluxm(m) + q*density_ave*uxmol(m)                                                            
-          enddo                                                                                                                                                                                         
+            fluxm(m) = fluxm(m) + q*density_ave*uxmol(m)
+          enddo 
+
           fluxe = fluxe + q*density_ave*uh 
         endif
       endif 
