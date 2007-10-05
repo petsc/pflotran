@@ -707,7 +707,7 @@ private
     type(pflowGrid), intent(inout) :: grid
 
 ! integer :: j, jm1, jm2, jmu, mu
-  integer :: ierr
+  integer :: ierr, ierr0
   integer*4 :: n, ng, nc, nr
   integer*4 :: i, i1, i2, jn, jng
   integer*4 :: m, m1, m2, n1, n2, ip1, ip2, p1, p2
@@ -763,17 +763,38 @@ private
   grid%vvl_loc=0.D0
   grid%vvg_loc=0.D0
 
- ! if(grid%iphch>0 .and. grid%iphch<=3)then
- if(grid%iphch<=3)then
-       call Translator_MPhase_Switching(xx,grid,0,ierr)   
-  endif  
-   grid%iphch=grid%iphch+1
-   
+
   call VecGetArrayF90(xx, xx_p, ierr); CHKERRQ(ierr)
+  
+  ierr = 0
   do n = 1, grid%nlmax
     if(xx_p((n-1)*grid%ndof+3) < 0.D0)xx_p((n-1)*grid%ndof+3) = zerocut
     if(xx_p((n-1)*grid%ndof+3) > 1.D0)xx_p((n-1)*grid%ndof+3) = 1.D0 - zerocut
+!   check if p,T within range of table  
+    if(xx_p((n-1)*grid%ndof+1)< p0_tab*1D6 &
+       .or. xx_p((n-1)*grid%ndof+1)>(ntab_p*dp_tab + p0_tab)*1D6) ierr=-1  
+    if(xx_p((n-1)*grid%ndof+2)< t0_tab -273.15D0 &
+       .or. xx_p((n-1)*grid%ndof+2)>ntab_t*dt_tab + t0_tab-273.15D0) ierr=-1
+  
   enddo
+  
+  ierr0 = 0
+  if(grid%commsize >1)then
+    call MPI_ALLREDUCE(ierr, ierr0,1, MPI_INTEGER,MPI_SUM, PETSC_COMM_WORLD,ierr)
+    if(ierr0 < 0) ierr=-1
+  endif
+  
+  if(ierr<0) return
+  
+
+
+! allow phase change for first 3 newton iterations except zeroth iteration
+  if(grid%iphch>0 .and. grid%iphch<=3)then
+!  if(grid%iphch<=3)then
+    call Translator_MPhase_Switching(xx,grid,0,ierr)   
+  endif  
+  grid%iphch=grid%iphch+1
+   
   call VecRestoreArrayF90(xx, xx_p, ierr)
 
   call DAGlobalToLocalBegin(grid%da_ndof, xx, INSERT_VALUES, &

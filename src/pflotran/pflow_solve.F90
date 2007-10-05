@@ -95,11 +95,11 @@
  do
  
    if(grid%use_mph==PETSc_TRUE)then
-     call Translator_MPhase_Switching(grid%xx,grid,1,ichange)
+ !    call Translator_MPhase_Switching(grid%xx,grid,1,ichange)
      call MPHASEResidual(grid%snes,grid%xx,grid%r,grid,ierr)
    endif
    if(grid%use_vadose==PETSc_TRUE)then
-     call Translator_vadose_Switching(grid%xx,grid,0,ichange)
+  !   call Translator_vadose_Switching(grid%xx,grid,0,ichange)
      call MPHASEResidual(grid%snes,grid%xx,grid%r,grid,ierr)
    endif
 
@@ -118,13 +118,24 @@
      call OWGResidual(grid%snes,grid%xx,grid%r,grid,ierr)
    endif
    print *,' psolve; Get Res'
-   
+ 
+   if (ierr < 0) then
+      if (grid%myrank==0) &
+      print *,'pflowsolv: failed: out of range',its_line, newton,isucc,rnorm
+      isucc=-1
+      return    
+    endif
+  
+       
+           
    call VecNorm(grid%r,NORM_INFINITY,rnorm,ierr)
    
    ! note now grid%stol acts as convergence tolerance parameter 
    
-    epstol = 1.d-12
-    
+    epstol = grid%inf_tol
+   
+        
+       
     if (grid%myrank == 0) print *,'R2Norm = ', rnorm,epstol
     if (newton > 0 .and. rnorm < epstol) then
 !   if (newton > 0 .and. rnorm < grid%stol) then
