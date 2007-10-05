@@ -82,6 +82,9 @@
  use Richards_module
  
  implicit none
+ 
+#include "include/finclude/petscerror.h"
+
  type(pflowGrid) :: grid 
  KSPConvergedReason :: ksp_reason
  integer :: newton,isucc,ierr,ichange
@@ -119,7 +122,7 @@
    endif
    print *,' psolve; Get Res'
  
-   if (ierr < 0) then
+   if (ierr < 0 .or. ierr ==PETSC_ERR_ARG_DOMAIN) then
       if (grid%myrank==0) &
       print *,'pflowsolv: failed: out of range',its_line, newton,isucc,rnorm
       isucc=-1

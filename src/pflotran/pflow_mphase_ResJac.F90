@@ -28,7 +28,7 @@ private
 #include "include/finclude/petscis.h"
 #include "include/finclude/petscis.h90"
 #include "include/finclude/petsclog.h"
-
+#include "include/finclude/petscerror.h" 
 
 ! Cutoff parameters
   real*8, parameter :: formeps   = 5.D-5
@@ -700,7 +700,7 @@ private
     use span_wagner_module
 
     implicit none
- 
+  
     SNES, intent(in) :: snes
     Vec, intent(inout) :: xx
     Vec, intent(out) :: r
@@ -784,8 +784,10 @@ private
     if(ierr0 < 0) ierr=-1
   endif
   
-  if(ierr<0) return
-  
+  if(ierr<0)then
+    ierr = PETSC_ERR_ARG_DOMAIN
+    return
+  endif 
 
 
 ! allow phase change for first 3 newton iterations except zeroth iteration
