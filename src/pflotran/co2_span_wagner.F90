@@ -13,8 +13,8 @@
       save
       
 !     table lookup parameters
-      integer :: ntab_t = 100, ntab_p = 500
-      real*8 :: dt_tab = 2.5d0, dp_tab = 0.5d0, &
+      integer, public :: ntab_t = 100, ntab_p = 500
+      real*8, public :: dt_tab = 2.5d0, dp_tab = 0.5d0, &
                 t0_tab = 35.d0+273.15D0, p0_tab = 0.01d0
 
       real*8, private :: n(42),ti(40),gamma(5),phic(8),c(40),d(40),a(8)
