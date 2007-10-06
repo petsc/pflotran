@@ -96,14 +96,14 @@ public pflowGrid_ptran_init, pflotranGrid_interp, ptran_bc_reassign
   call VecGetArrayF90(sat, sat_ptran_p, ierr)
   
   
-    if (grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE &
+  if (grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE &
        .or. grid%use_richards == PETSC_TRUE &
        .or. grid%use_flash == PETSC_TRUE ) then
     call VecGetArrayF90(grid%xx, xx_p, ierr)
     call VecGetArrayF90(grid%iphas, iphase_p, ierr)
-  call VecGetArrayF90(den_co2, den_co2_p, ierr)
+    call VecGetArrayF90(den_co2, den_co2_p, ierr)
     call VecGetArrayF90(xphi_co2, xphi_co2_p, ierr)
-    endif
+  endif
   
   
   
@@ -113,13 +113,14 @@ public pflowGrid_ptran_init, pflotranGrid_interp, ptran_bc_reassign
     
     if (grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE &
      .or. grid%use_richards == PETSC_TRUE ) then
-   iiphase= int(iphase_p(n))
-   iicap=1
-   dif(:)=1D-9
+    iiphase= int(iphase_p(n))
+    iicap=1
+    dif(:)=1D-9
 !   print *,'couple :begin calling'
     call pri_var_trans_mph_ninc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),iiphase,&
         grid%scale,grid%nphase,grid%nspec,&
-        iicap, dif, varr, grid%itable,grid%m_nacl,ierr,xphi_co2_p(n),den_co2_p(n))
+        iicap, dif, varr, grid%itable,grid%m_nacl,ierr, &
+        xphi_co2_p(n),den_co2_p(n))
  !   print *, n, iiphase, xphi_co2_p(n), den_co2_p(n)
     
   endif

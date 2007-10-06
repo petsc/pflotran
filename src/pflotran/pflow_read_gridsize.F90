@@ -159,7 +159,7 @@ contains
              stop
           end select 
       enddo
-      print *,'comp : ',mcomp   
+!     print *,'comp: ',mcomp   
           
 !....................................................................
 
@@ -195,7 +195,7 @@ contains
              stop
           end select 
       enddo
-      print *,'phase : ',mphas     
+!     print *,'phase: ',mphas     
 !....................................................................
 
 

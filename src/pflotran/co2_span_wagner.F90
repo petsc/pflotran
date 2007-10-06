@@ -276,7 +276,7 @@
 
   allocate(co2_prop_spwag(0:500,0:100,1:15))
   
-  if (myrank==0) print *,' Preparing Table...',iitable
+  if (myrank==0) print *,'Preparing Table...',iitable
   if(iitable == 1) then
       ! Generate the table: 3 dimensional array
          !  1 p,     2  T
@@ -365,7 +365,7 @@
   endif
   
   if (iitable == 2) then
-    print *,'Reading Table ...'
+    if (myrank==0) print *,'Reading Table ...'
     if (myrank==0) print *,'--> open co2data0.dat'
     open(unit=122,file='co2data0.dat',status='unknown')
     read(122,*)

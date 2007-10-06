@@ -424,7 +424,7 @@ endif
   endif
 
   !print DA info for each processor
-  call DAView(grid%da_ndof,PETSC_VIEWER_STDOUT_WORLD,ierr)
+! call DAView(grid%da_ndof,PETSC_VIEWER_STDOUT_WORLD,ierr)
 
  !-----------------------------------------------------------------------
  ! Create the vectors with parallel layout corresponding to the DA's,
@@ -940,7 +940,8 @@ endif
       enddo
     enddo
   enddo
-  print *,grid%myrank, grid%nxs,grid%ngxs,grid%nys,grid%ngys,grid%nzs,grid%ngzs
+! print *,'pflowGrid_new: rank= ',grid%myrank, &
+! grid%nxs,grid%ngxs,grid%nys,grid%ngys,grid%nzs,grid%ngzs
    
   call DAGetGlobalIndicesF90(grid%da_1_dof,grid%ngmax,grid%nG2N, ierr)
 
@@ -1635,12 +1636,12 @@ subroutine pflowGrid_setup(grid, inputfile)
   enddo
   call VecRestoreArrayF90(grid%volume, volume_p, ierr)
   
-  write(*,'(" myrank= ",i3,", nlmax= ",i6,", nlx,y,z= ",3i4, &
+  write(*,'(" rank= ",i3,", nlmax= ",i6,", nlx,y,z= ",3i4, &
     & ", nxs,e = ",2i4,", nys,e = ",2i4,", nzs,e = ",2i4)') &
     myrank,grid%nlmax,grid%nlx,grid%nly,grid%nlz, &
     grid%nxs,grid%nxe,grid%nys,grid%nye,grid%nzs,grid%nze
 
-  write(*,'(" myrank= ",i3,", ngmax= ",i6,", ngx,y,z= ",3i4, &
+  write(*,'(" rank= ",i3,", ngmax= ",i6,", ngx,y,z= ",3i4, &
     & ", ngxs,e= ",2i4,", ngys,e= ",2i4,", ngzs,e= ",2i4)') &
     myrank,grid%ngmax,grid%ngx,grid%ngy,grid%ngz, &
     grid%ngxs,grid%ngxe,grid%ngys,grid%ngye,grid%ngzs,grid%ngze
@@ -5044,7 +5045,7 @@ subroutine pflowGrid_read_input(grid, inputfile)
           call fiDefaultMsg('k1',ierr)
           call fiReadInt(string,grid%k2src(ir),ierr)
           call fiDefaultMsg('k2',ierr)    
-          print *,'Source', isrc, ir   
+!         print *,'pflowgrid_mod: Source', isrc, ir   
           ! Read time, temperature, q-source
           i = 0
           do ! loop over time intervals
