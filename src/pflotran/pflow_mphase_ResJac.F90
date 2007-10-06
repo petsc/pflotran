@@ -768,20 +768,24 @@ private
   
   ierr = 0
   do n = 1, grid%nlmax
+!   insure zero liquid sat not passed to ptran (no effect on pflow)
     if(xx_p((n-1)*grid%ndof+3) < 0.D0)xx_p((n-1)*grid%ndof+3) = zerocut
     if(xx_p((n-1)*grid%ndof+3) > 1.D0)xx_p((n-1)*grid%ndof+3) = 1.D0 - zerocut
+    
 !   check if p,T within range of table  
     if(xx_p((n-1)*grid%ndof+1)< p0_tab*1D6 &
-       .or. xx_p((n-1)*grid%ndof+1)>(ntab_p*dp_tab + p0_tab)*1D6) ierr=-1  
+      .or. xx_p((n-1)*grid%ndof+1)>(ntab_p*dp_tab + p0_tab)*1D6) ierr=-1  
     if(xx_p((n-1)*grid%ndof+2)< t0_tab -273.15D0 &
-       .or. xx_p((n-1)*grid%ndof+2)>ntab_t*dt_tab + t0_tab-273.15D0) ierr=-1
-  
+      .or. xx_p((n-1)*grid%ndof+2)>ntab_t*dt_tab + t0_tab-273.15D0) ierr=-1
   enddo
   
   ierr0 = 0
   if(grid%commsize >1)then
     call MPI_ALLREDUCE(ierr, ierr0,1, MPI_INTEGER,MPI_SUM, PETSC_COMM_WORLD,ierr)
-    if(ierr0 < 0) ierr=-1
+    if(ierr0 < 0) then
+      ierr=-1
+      if (grid%myrank==0) print *,'table out of range: ',ierr0
+    endif
   endif
   
   if(ierr<0)then

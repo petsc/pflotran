@@ -120,7 +120,7 @@
      call Translator_OWG_Switching(grid%xx,grid%tref,grid,1,ichange,ierr)
      call OWGResidual(grid%snes,grid%xx,grid%r,grid,ierr)
    endif
-   print *,' psolve; Get Res'
+!  print *,' psolve; Get Res'
  
    if (ierr < 0 .or. ierr ==PETSC_ERR_ARG_DOMAIN) then
       if (grid%myrank==0) &
@@ -181,7 +181,7 @@
       call VecAXPY(grid%xx,1.d0,grid%dxx,ierr)
   !    call MPhase_Update(grid%xx,grid,1,ichange)
   enddo
-  print *,'Finished ksp', newton
+! print *,'Finished ksp', newton
   end subroutine pflow_solve
 
 end module pflow_solv_module
