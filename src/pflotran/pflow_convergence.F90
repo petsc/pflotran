@@ -86,7 +86,8 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,grid,ierr)
 !              SNES_DIVERGED_FNORM_NAN          = -4, 
 !              SNES_DIVERGED_MAX_IT             = -5,
 !              SNES_DIVERGED_LS_FAILURE         = -6,
-!              SNES_DIVERGED_LOCAL_MIN          = -8,  /* || J^T b || is small, implies converged to local minimum of F() */
+!              SNES_DIVERGED_LOCAL_MIN          = -8,  /* || J^T b || is small,
+!                                        implies converged to local minimum of F() */
 !              SNES_CONVERGED_ITERATING         =  0} SNESConvergedReason;
 
 #ifdef CHUAN
