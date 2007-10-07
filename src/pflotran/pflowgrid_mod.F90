@@ -1237,9 +1237,9 @@ subroutine pflowGrid_setup(grid, inputfile)
     else if (grid%use_thc == PETSC_TRUE) then
       write(*,'(" mode = THC: p, T, C")')
     else if (grid%use_2ph == PETSC_TRUE) then
-      write(*,'(" mode = 2PH: p, T, s, C")')
+      write(*,'(" mode = 2-PH: p, T, s, C")')
     else if (grid%use_mph == PETSC_TRUE) then
-      write(*,'(" mode = mPH: p, T, s/C")')
+      write(*,'(" mode = MPH: p, T, s/C")')
     else if (grid%use_flash == PETSC_TRUE) then
       write(*,'(" mode = flash: p, T, z")')
     else if (grid%use_vadose == PETSC_TRUE) then
@@ -1672,8 +1672,8 @@ subroutine pflowGrid_setup(grid, inputfile)
     endif
   endif
       
-  write(*,'(" --> pflowconn: rank = ",i4, &
-       &", boundary connections =", i6)') myrank,grid%nconnbc
+! write(*,'(" --> pflowconn: rank = ",i4, &
+!      &", boundary connections =", i6)') myrank,grid%nconnbc
   
 ! set initial conditions by region for pressure, temperature, saturation
 ! and concentration

@@ -1142,7 +1142,7 @@ subroutine mhydrostatic(grid)
   grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
   grid%iphasebc0(ibc)=iphasebc_rec(ibc0)
   grid%velocitybc0(:,ibc) = 0.d0
-  print *,'BC: top',grid%myrank,ibc,grid%xxbc0(:,ibc)
+! print *,'BC: top',grid%myrank,ibc,grid%xxbc0(:,ibc)
 ! bottom
 
   p=grid%pref
@@ -1236,7 +1236,7 @@ subroutine mhydrostatic(grid)
   grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
   grid%iphasebc0(ibc)=iphasebc_rec(ibc0)
   grid%velocitybc0(:,ibc) = 0.d0
-  print *,'BC: bot',grid%myrank,ibc,grid%xxbc0(:,ibc)
+! print *,'BC: bot',grid%myrank,ibc,grid%xxbc0(:,ibc)
   if (grid%ny > 1) then
 !     front
   
@@ -1613,7 +1613,7 @@ subroutine owghydrostatic(grid)
   grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
   grid%iphasebc0(ibc)=iphasebc_rec(ibc0)
   grid%velocitybc0(:,ibc) = 0.d0
-  print *,'BC: top',grid%myrank,ibc,grid%xxbc0(:,ibc)
+! print *,'BC: top',grid%myrank,ibc,grid%xxbc0(:,ibc)
 ! bottom
   
   ibc0 = ibc0 + 1
@@ -1641,7 +1641,7 @@ subroutine owghydrostatic(grid)
   grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
   grid%iphasebc0(ibc)=iphasebc_rec(ibc0)
   grid%velocitybc0(:,ibc) = 0.d0
-  print *,'BC: bot',grid%myrank,ibc,grid%xxbc0(:,ibc)
+! print *,'BC: bot',grid%myrank,ibc,grid%xxbc0(:,ibc)
 
   if (grid%ny > 1) then
 !     front
