@@ -36,6 +36,9 @@ public:
   void writeDouble(double *values, int collective);
   void writeString(char *title, char *string);
   void writeString(char *title, char *string, int collective);
+  void writeAttribute(char *title, char *string);
+  void writeAttribute(char *title, int value);
+  void writeAttribute(char *title, double value);
 
 private:
 

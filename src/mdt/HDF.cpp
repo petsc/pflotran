@@ -404,6 +404,45 @@ void HDF::writeString(char *title, char *string, int collective) {
   closeDataSpaces();
 }
 
+void HDF::writeAttribute(char *title, char *string) {
+  hid_t string_type = H5Tcopy(H5T_C_S1);
+  H5Tset_strpad(string_type,H5T_STR_NULLTERM);
+  H5Tset_size(string_type,32);
+
+  hsize_t dims = 1;
+  hid_t space_id = H5Screate_simple(1,&dims,&dims);
+    
+  hid_t attribute_id = H5Acreate(grp_id[ngrp-1],title,string_type,space_id,
+                                 H5P_DEFAULT);
+  H5Awrite(attribute_id,string_type,string);
+  H5Aclose(attribute_id);
+  H5Sclose(space_id);
+}
+
+void HDF::writeAttribute(char *title, int value) {
+
+  hsize_t dims = 1;
+  hid_t space_id = H5Screate_simple(1,&dims,&dims);
+    
+  hid_t attribute_id = H5Acreate(grp_id[ngrp-1],title,H5T_NATIVE_INT,space_id,
+                                 H5P_DEFAULT);
+  H5Awrite(attribute_id,H5T_NATIVE_INT,&value);
+  H5Aclose(attribute_id);
+  H5Sclose(space_id);
+}
+
+void HDF::writeAttribute(char *title, double value) {
+
+  hsize_t dims = 1;
+  hid_t space_id = H5Screate_simple(1,&dims,&dims);
+    
+  hid_t attribute_id = H5Acreate(grp_id[ngrp-1],title,H5T_NATIVE_DOUBLE,
+                                 space_id,H5P_DEFAULT);
+  H5Awrite(attribute_id,H5T_NATIVE_DOUBLE,&value);
+  H5Aclose(attribute_id);
+  H5Sclose(space_id);
+}
+
 HDF::~HDF() {
   if (file_space_id > -1) 
     PetscPrintf(PETSC_COMM_WORLD,"ERROR: file_space not freed.\n");

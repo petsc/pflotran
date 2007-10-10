@@ -457,7 +457,132 @@ void Output::printHDFMesh() {
   file->closeGroup();
 
   delete file;
-  PetscPrintf(PETSC_COMM_WORLD,"Done with HDF5\n");
+  PetscPrintf(PETSC_COMM_WORLD,"Done with HDF5 Mesh\n");
+#endif
+
+}
+
+void Output::printHDFSieveMesh() {
+
+#ifdef USE_HDF5
+  PetscPrintf(PETSC_COMM_WORLD,"Printing HDF Sieve grid.\n");
+
+  HDF *file = new HDF("sieve.h5",1);
+  int compress = 0;
+
+// write cells
+  PetscPrintf(PETSC_COMM_WORLD,"Group: Connectivity\n");
+  file->createGroup("Connectivity");
+
+  // just to be sure everything is closed.
+  file->closeDataSpaces();
+
+  int num_cells_global = grid->getNumberOfCellsGlobal();
+
+  file->writeAttribute("Number of Elements", num_cells_global);
+  file->writeAttribute("Element Type", "hex");
+
+  // cell vertices
+  file->createFileSpace(2,num_cells_global,8,NULL);
+  PetscPrintf(PETSC_COMM_WORLD,"Connectivity\n");
+  file->createDataSet("Connectivity",H5T_NATIVE_INT,compress);
+  file->createMemorySpace(1,grid->getNumberOfCellsGlobal(),NULL,NULL);
+
+  int offset = 0;
+  int num_cells_local = grid->getNumberOfCellsLocal();
+  MPI_Exscan(&num_cells_local,&offset,1,MPI_INT,MPI_SUM,PETSC_COMM_WORLD);
+  if (offset > num_cells_global)
+    printf("Proc[%d]: ERROR - offset(%d) > num_cells_global(%d)\n",
+           myrank, offset, num_cells_global);
+  if (offset == num_cells_global) {
+    printf("Proc[%d]: WARNING - offset(%d) == num_cells_global(%d)\n",
+           myrank, offset, num_cells_global);
+    offset--;
+  }
+
+  for (int ivert=0; ivert<8; ivert++) {
+
+    int *vertex_ids = grid->getCellVertexIds(ivert+1);
+    grid->convertLocalCellDataGtoN(vertex_ids);
+
+    int start[3] = {offset,ivert,0};
+    int stride[3] = {1,8,1};
+    int count[3] = {num_cells_local,1,1};
+    int block[3] = {1,1,1};
+    file->setHyperSlab(start,stride,count,NULL);
+    file->createMemorySpace(1,count[0]*count[1]*count[2],NULL,NULL);
+    file->writeInt(vertex_ids);
+    delete [] vertex_ids;
+    vertex_ids = NULL;
+  }
+
+  file->closeDataSet();
+  file->closeDataSpaces();
+
+  // close cell group
+  file->closeGroup();
+
+// vertices
+  PetscPrintf(PETSC_COMM_WORLD,"Group: Coordinates\n");
+  file->createGroup("Coordinates");
+
+  int num_vertices_global = grid->getNumberOfVerticesGlobal();
+  file->writeAttribute("Number of Vertices", num_vertices_global);
+
+  file->createDataSpace(1,num_vertices_global,0,0);
+
+// x-coordinate
+  PetscPrintf(PETSC_COMM_WORLD,"X-Coordinates\n");
+  file->createDataSet("X-Coordinates",H5T_NATIVE_DOUBLE,compress);
+
+  double *coordinates = NULL;
+  int num_print_vertices_local = 
+                grid->getVertexCoordinatesNaturalLocal(&coordinates,0); // 0 = X
+
+  file->setHyperSlab(num_print_vertices_local);
+  file->createMemorySpace(1,num_print_vertices_local,NULL,NULL);
+  file->writeDouble(coordinates);
+  file->closeDataSet();
+
+  delete [] coordinates;
+  coordinates = NULL;
+
+// y-coordinate
+  PetscPrintf(PETSC_COMM_WORLD,"Y-Coordinates\n");
+  file->createDataSet("Y-Coordinates",H5T_NATIVE_DOUBLE,compress);
+
+  num_print_vertices_local = 
+                grid->getVertexCoordinatesNaturalLocal(&coordinates,1); // 1 = Y
+
+  file->setHyperSlab(num_print_vertices_local);
+  file->createMemorySpace(1,num_print_vertices_local,NULL,NULL);
+  file->writeDouble(coordinates);
+  file->closeDataSet();
+
+  delete [] coordinates;
+  coordinates = NULL;
+
+// z-coordinate
+  PetscPrintf(PETSC_COMM_WORLD,"Z-Coordinates\n");
+  file->createDataSet("Z-Coordinates",H5T_NATIVE_DOUBLE,compress);
+
+  num_print_vertices_local = 
+                grid->getVertexCoordinatesNaturalLocal(&coordinates,2); // 2 = Z
+
+  file->setHyperSlab(num_print_vertices_local);
+  file->createMemorySpace(1,num_print_vertices_local,NULL,NULL);
+  file->writeDouble(coordinates);
+  file->closeDataSet();
+
+  delete [] coordinates;
+  coordinates = NULL;
+
+  file->closeDataSpaces();
+
+  file->closeGroup();
+
+  delete file;
+  PetscPrintf(PETSC_COMM_WORLD,"Done with HDF5 Sieve Mesh\n");
 #endif
 
 }
