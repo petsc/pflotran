@@ -92,6 +92,8 @@ private
 
     ! Grid topology
     integer :: igeom
+    
+!GEH - Structured Grid Dependence - Begin
     integer*4 :: nx, ny, nz    ! Global domain dimensions of the grid.
     integer*4 :: nxy, nmax     ! nx * ny, nx * ny * nz
     integer*4 :: npx, npy, npz ! Processor partition in each direction.
@@ -105,18 +107,27 @@ private
       ! Global indices of non-ghosted/ghosted ending corner of local domain.
     integer*4 :: nlxy, nlxz, nlyz
     integer*4 :: ngxy, ngxz, ngyz
+!GEH - Structured Grid Dependence - End
+
     integer*4 :: nlmax  ! Total number of non-ghosted nodes in local domain.
     integer*4 :: ngmax  ! Number of ghosted & non-ghosted nodes in local domain.
     integer*4 :: nldof  ! nlmax times the number of phases.
     integer*4 :: ngdof  ! ngmax times the number of phases.
+
+!GEH - Structured Grid Dependence - Begin
     integer*4 :: istart, jstart, kstart, iend, jend, kend
       ! istart gives the local x-index of the non-ghosted starting (lower left)
       ! corner. iend gives the local x-index of the non-ghosted ending 
       ! corner. jstart, jend correspond to y-index, kstart, kend to z-index.
+!GEH - Structured Grid Dependence - End
+
     real*8 :: radius_0
 
     ! Grid connections
+!GEH - Structured Grid Dependence - Begin
     integer*4 :: nconn, nconnx, nconny
+!GEH - Structured Grid Dependence - End
+
     integer*4, pointer :: nd1(:), nd2(:)
       ! Nodes upstream and downstream of a connection (assuming flow in 
       ! positive direction.  These are local, ghosted indices.
@@ -158,7 +169,9 @@ private
       ! This set of boundary conditions can apply to any number of regions,
       ! so nblkbc does NOT equal the number of boundary condition regions.
     integer*4 :: nconnbc  ! The number of interfaces along boundaries.
+!GEH - Structured Grid Dependence - Begin
     integer*4, pointer :: i1bc(:), i2bc(:), j1bc(:), j2bc(:), k1bc(:), k2bc(:)
+!GEH - Structured Grid Dependence - End
     integer*4, pointer :: ibconn(:)
       ! ibconn(nc) specifies the id of the of boundary condition block that
       ! applies at boundary interface nc.  
@@ -195,12 +208,16 @@ private
 !   phik
     integer :: iregperm, iran_por=0, iread_perm=0, iread_geom =1
     real*8 :: ran_fac=-1.d0
+!GEH - Structured Grid Dependence - Begin
     integer*4, pointer :: i1reg(:),i2reg(:),j1reg(:),j2reg(:),k1reg(:),k2reg(:)
+!GEH - Structured Grid Dependence - End
     real*8, pointer :: por_reg(:),tor_reg(:),perm_reg(:,:)
 
 !   initial conditions
     integer :: iregini
+!GEH - Structured Grid Dependence - Begin
     integer*4, pointer :: i1ini(:),i2ini(:),j1ini(:),j2ini(:),k1ini(:),k2ini(:)
+!GEH - Structured Grid Dependence - End
     real*8, pointer :: pres_ini(:),temp_ini(:),conc_ini(:),sat_ini(:), &
                        xmol_ini(:)
     real*8, pointer :: xx_ini(:,:)
@@ -208,7 +225,9 @@ private
 
 !   source term
     integer :: nblksrc = 0, ntimsrc = 0, isrc1 = 2
+!GEH - Structured Grid Dependence - Begin
     integer*4, pointer :: i1src(:), i2src(:), j1src(:), j2src(:), k1src(:), k2src(:)
+!GEH - Structured Grid Dependence - End
     real*8, pointer :: timesrc(:,:), tempsrc(:,:), qsrc(:,:), csrc(:,:), hsrc(:,:)
     
 !   solid reaction rate
@@ -218,12 +237,16 @@ private
     
 !   breakthrough curves
     integer :: ibrkcrv = 0
+!GEH - Structured Grid Dependence - Begin
     integer*4, pointer :: i1brk(:),i2brk(:),j1brk(:),j2brk(:),k1brk(:),k2brk(:)
+!GEH - Structured Grid Dependence - End
     integer*4, pointer :: ibrktyp(:),ibrkface(:)
     
 !   dual continuum
     integer :: idcdm = 0, idcmblk = 0
+!GEH - Structured Grid Dependence - Begin
     integer*4, pointer :: i1dcm(:),i2dcm(:),j1dcm(:),j2dcm(:),k1dcm(:),k2dcm(:)
+!GEH - Structured Grid Dependence - End
     real*8, pointer :: fracture_aperture(:), matrix_block(:)
     
     integer*4, pointer :: icap_reg(:),ithrm_reg(:)
@@ -244,8 +267,10 @@ private
     
 !   table lookup
     integer :: itable=0
-    
+
+!GEH - Structured Grid Dependence - Begin    
     real*8, pointer :: dx0(:), dy0(:), dz0(:), rd(:)
+!GEH - Structured Grid Dependence - End
     real*8, pointer :: x(:), y(:), z(:), delz(:) 
     real*8 :: x_max, x_min, y_max, y_min, z_max, z_min
     !-------------------------------------------------------------------
@@ -257,7 +282,9 @@ private
     ! One degree of freedom: Physical coordinates.
     Vec :: conc
     Vec :: porosity, porosity0, porosity_loc, tor, tor_loc
+!GEH - Structured Grid Dependence - Begin
     Vec :: dx, dy, dz, dx_loc, dy_loc, dz_loc  ! Grid spacings
+!GEH - Structured Grid Dependence - End
     Vec :: volume  ! Volume of a cell in the grid
     Vec :: ithrm, ithrm_loc, icap, icap_loc, iphas, iphas_loc, iphas_old
     Vec :: ttemp, ttemp_loc, temp ! 1 dof

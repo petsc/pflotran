@@ -202,8 +202,9 @@ endif
   else
     grid%using_pflowGrid = PETSC_TRUE
   endif
-      
+
   grid%igeom = igeom
+!GEH - Structured Grid Dependence - Begin      
   grid%nx = nx
   grid%ny = ny
   grid%nz = nz
@@ -213,6 +214,7 @@ endif
   grid%npx = npx
   grid%npy = npy
   grid%npz = npz
+!GEH - Structured Grid Dependence - End      
   grid%idcdm = idcdm
       
   grid%itable = itable
@@ -333,7 +335,7 @@ endif
  endif 
 
 
-
+!GEH - Structured Grid Dependence - Begin
   !-----------------------------------------------------------------------
   ! Generate the DA objects that will manage communication.
   !-----------------------------------------------------------------------
@@ -425,7 +427,7 @@ endif
 
   !print DA info for each processor
 ! call DAView(grid%da_ndof,PETSC_VIEWER_STDOUT_WORLD,ierr)
-
+!GEH - Structured Grid Dependence - End
  !-----------------------------------------------------------------------
  ! Create the vectors with parallel layout corresponding to the DA's,
  ! and, for vectors that need to be ghosted, create the corresponding
@@ -652,7 +654,7 @@ endif
 !-----------------------------------------------------------------------
   ! Set up information about corners of local domain.
 !-----------------------------------------------------------------------
-
+!GEH - Structured Grid Dependence - Begin
   call DAGetCorners(grid%da_nphase_dof, grid%nxs, &
                     grid%nys, grid%nzs, grid%nlx, &
                     grid%nly, grid%nlz, ierr)
@@ -686,7 +688,7 @@ endif
                grid%nlz + grid%nlx * (grid%ngy-1) * &
                grid%nlz + grid%nlx * grid%nly * &
                (grid%ngz-1)
-
+!GEH - Structured Grid Dependence - End
 !-----------------------------------------------------------------------
       ! Allocate memory for allocatable arrays.
 !-----------------------------------------------------------------------
@@ -736,6 +738,7 @@ endif
   allocate(grid%iregbc1(MAXBCREGIONS))
   allocate(grid%iregbc2(MAXBCREGIONS))
   allocate(grid%ibndtyp(MAXBCREGIONS))
+!GEH - Structured Grid Dependence - Begin
   allocate(grid%iface(MAXBCREGIONS))
   allocate(grid%k1bc(MAXBCBLOCKS))
   allocate(grid%k2bc(MAXBCBLOCKS))
@@ -750,6 +753,7 @@ endif
   allocate(grid%j2src(MAXSRC))
   allocate(grid%i1src(MAXSRC))
   allocate(grid%i2src(MAXSRC))
+!GEH - Structured Grid Dependence - End
   allocate(grid%timesrc(MAXSRCTIMES,MAXSRC))
   allocate(grid%tempsrc(MAXSRCTIMES,MAXSRC))
   allocate(grid%qsrc(MAXSRCTIMES,MAXSRC))
@@ -757,13 +761,14 @@ endif
   allocate(grid%hsrc(MAXSRCTIMES,MAXSRC))
   grid%qsrc =0.D0; grid%csrc =0.D0; grid%hsrc =0.D0
 
-          
+!GEH - Structured Grid Dependence - Begin          
   allocate(grid%i1reg(MAXPERMREGIONS))
   allocate(grid%i2reg(MAXPERMREGIONS))
   allocate(grid%j1reg(MAXPERMREGIONS))
   allocate(grid%j2reg(MAXPERMREGIONS))
   allocate(grid%k1reg(MAXPERMREGIONS))
   allocate(grid%k2reg(MAXPERMREGIONS))
+!GEH - Structured Grid Dependence - End
   allocate(grid%icap_reg(MAXPERMREGIONS))
   allocate(grid%ithrm_reg(MAXPERMREGIONS))
   allocate(grid%por_reg(MAXPERMREGIONS))
@@ -789,23 +794,27 @@ endif
     allocate(grid%xmol_ini(MAXINITREGIONS))
     allocate(grid%conc_ini(MAXINITREGIONS))
   endif
-    
+
+!GEH - Structured Grid Dependence - Begin    
   allocate(grid%i1brk(MAXINITREGIONS))
   allocate(grid%i2brk(MAXINITREGIONS))
   allocate(grid%j1brk(MAXINITREGIONS))
   allocate(grid%j2brk(MAXINITREGIONS))
   allocate(grid%k1brk(MAXINITREGIONS))
   allocate(grid%k2brk(MAXINITREGIONS))
+!GEH - Structured Grid Dependence - End
   allocate(grid%ibrktyp(MAXINITREGIONS))
   allocate(grid%ibrkface(MAXINITREGIONS))
   
   if (idcdm == 1) then
+!GEH - Structured Grid Dependence - Begin
     allocate(grid%i1dcm(MAXINITREGIONS))
     allocate(grid%i2dcm(MAXINITREGIONS))
     allocate(grid%j1dcm(MAXINITREGIONS))
     allocate(grid%j2dcm(MAXINITREGIONS))
     allocate(grid%k1dcm(MAXINITREGIONS))
     allocate(grid%k2dcm(MAXINITREGIONS))
+!GEH - Structured Grid Dependence - End
     allocate(grid%fracture_aperture(MAXINITREGIONS))
     allocate(grid%matrix_block(MAXINITREGIONS))
   endif
@@ -871,6 +880,7 @@ endif
   grid%rtot=0.D0
 !  grid%qu_rate=0.D0
 
+!GEH - Structured Grid Dependence - Begin
 !-----------------------------------------------------------------------
   ! Compute arrays for indexing between local ghosted and non-ghosted 
   ! arrays.  I think the PETSc DA facilities may make these redundant,
@@ -944,7 +954,7 @@ endif
 ! grid%nxs,grid%ngxs,grid%nys,grid%ngys,grid%nzs,grid%ngzs
    
   call DAGetGlobalIndicesF90(grid%da_1_dof,grid%ngmax,grid%nG2N, ierr)
-
+!GEH - Structured Grid Dependence - End
   pflowGrid_new = grid
 
 end function pflowGrid_new
@@ -961,13 +971,13 @@ subroutine pflowGrid_destroy(grid)
   integer :: ierr
 
   ! Deallocate all of the arrays contained within grid.
-  
+!GEH - Structured Grid Dependence - Begin  
   call DADestroy(grid%da_1_dof,ierr)
 ! call DADestroy(grid%da_3_dof,ierr)
   call DADestroy(grid%da_nphase_dof,ierr)
   call DADestroy(grid%da_3np_dof,ierr)
   call DADestroy(grid%da_ndof,ierr)
-
+!GEH - Structured Grid Dependence - End
   call SNESDestroy(grid%snes,ierr)
   
 ! if (grid%use_numerical == PETSC_TRUE) then
@@ -1485,6 +1495,7 @@ subroutine pflowGrid_setup(grid, inputfile)
   ! calculate interior interface areas and cell volumes.
   !-----------------------------------------------------------------------
   
+!GEH - Structured Grid Dependence - Begin  
   call VecGetArrayF90(grid%dx,dx_p,ierr)
   call VecGetArrayF90(grid%dy,dy_p,ierr)
   call VecGetArrayF90(grid%dz,dz_p,ierr)
@@ -1671,6 +1682,7 @@ subroutine pflowGrid_setup(grid, inputfile)
       if (grid%nze == grid%ngze) grid%nconnbc = grid%nconnbc + grid%nlxy
     endif
   endif
+!GEH - Structured Grid Dependence - End
       
 ! write(*,'(" --> pflowconn: rank = ",i4, &
 !      &", boundary connections =", i6)') myrank,grid%nconnbc
@@ -1697,13 +1709,16 @@ subroutine pflowGrid_setup(grid, inputfile)
     call DACreateNaturalVector(grid%da_1_dof,temp2_nat_vec,ierr)
     if  (grid%ndof == 3) call VecDuplicate(temp2_nat_vec, temp3_nat_vec, ierr)
     if  (grid%ndof == 4) call VecDuplicate(temp1_nat_vec, temp3_nat_vec, ierr)
- 
+    
+!GEH - Structured Grid Dependence - Begin 
     if (myrank == 0) then
       do ir = 1,grid%iregini
         do k = grid%k1ini(ir),grid%k2ini(ir)
           do j = grid%j1ini(ir),grid%j2ini(ir)
             do i = grid%i1ini(ir),grid%i2ini(ir)
               n = i+(j-1)*grid%nx+(k-1)*grid%nxy-1
+!GEH - Structured Grid Dependence - End
+
               jn1 = 1+n*grid%nphase-1
               jn2 = 2+n*grid%nphase-1
               
@@ -1741,7 +1756,6 @@ subroutine pflowGrid_setup(grid, inputfile)
         enddo
       enddo
     endif
-
 
     call VecAssemblyBegin(temp1_nat_vec,ierr)
     call VecAssemblyEnd(temp1_nat_vec,ierr)
@@ -1808,6 +1822,8 @@ subroutine pflowGrid_setup(grid, inputfile)
     call VecGetArrayF90(grid%sat,sat_p,ierr)
     if (grid%ndof == 3) call VecGetArrayF90(grid%conc,conc_p,ierr)
     if (grid%ndof == 4) call VecGetArrayF90(grid%xmol,xmol_p,ierr)
+    
+!GEH - Structured Grid Dependence - Begin
     do ir = 1,grid%iregini
       kk1 = grid%k1ini(ir) - grid%nzs
       kk2 = grid%k2ini(ir) - grid%nzs
@@ -1829,6 +1845,7 @@ subroutine pflowGrid_setup(grid, inputfile)
         do j = jj1,jj2
           do i = ii1,ii2
             n = i+(j-1)*grid%nlx+(k-1)*grid%nlxy
+!GEH - Structured Grid Dependence - End
 
             jn1 = 1+n*grid%nphase-1
             jn2 = 2+n*grid%nphase-1
@@ -1896,13 +1913,15 @@ subroutine pflowGrid_setup(grid, inputfile)
 !  call VecView(grid%xmol,PETSC_VIEWER_STDOUT_WORLD,ierr)
 !  call VecView(grid%sat,PETSC_VIEWER_STDOUT_WORLD,ierr)
 
+!GEH - Structured Grid Dependence - Begin
   deallocate(grid%k1ini)
   deallocate(grid%k2ini)
   deallocate(grid%j1ini)
   deallocate(grid%j2ini)
   deallocate(grid%i1ini)
   deallocate(grid%i2ini)
-  
+!GEH - Structured Grid Dependence - End
+
   if (grid%use_mph == PETSC_TRUE .or. grid%use_owg==PETSC_TRUE &
       .or. grid%use_vadose == PETSC_TRUE .or. grid%use_flash == PETSC_TRUE&
       .or. grid%use_richards == PETSC_TRUE) then
@@ -1998,6 +2017,7 @@ subroutine pflowGrid_setup(grid, inputfile)
   if (grid%iread_geom > -1) then
 
     nc = 0 
+!GEH - Structured Grid Dependence - Begin
     if (grid%nxs == grid%ngxs .or. grid%nxe == grid%ngxe &
         .or. grid%nys == grid%ngys .or. grid%nye == grid%ngye &
         .or. grid%nzs == grid%ngzs .or. grid%nze == grid%ngze) then
@@ -2028,6 +2048,8 @@ subroutine pflowGrid_setup(grid, inputfile)
               do i = ii1,ii2
                 nc = nc + 1
                 m = i+(j-1)*grid%nlx+(k-1)*grid%nlxy
+!GEH - Structured Grid Dependence - End
+
                 grid%mblkbc(nc) = m  ! m is a local index
                 ! old way
                 !grid%ibconn(nc) = ibc
@@ -2109,10 +2131,12 @@ subroutine pflowGrid_setup(grid, inputfile)
         enddo ! ir
       enddo ! ibc
     endif
- 
+
+!GEH - Structured Grid Dependence - Begin 
     call VecRestoreArrayF90(grid%dx_loc, dx_loc_p, ierr)
     call VecRestoreArrayF90(grid%dy_loc, dy_loc_p, ierr)
     call VecRestoreArrayF90(grid%dz_loc, dz_loc_p, ierr)
+!GEH - Structured Grid Dependence - End
 
     if (grid%nconnbc .ne. nc) then
       write(*,*) 'Error in computing boundary connections: ', &
@@ -2250,6 +2274,7 @@ subroutine pflowGrid_setup(grid, inputfile)
     random_nr = 1.d0
     if (grid%ran_fac > 0.d0) random_nr = ran1(na+1)
 
+!GEH - Structured Grid Dependence - Begin
     k= int(na/grid%nxy) - grid%nzs
     j= int(mod(na,grid%nxy)/grid%nx) - grid%nys
     i= mod(mod(na,grid%nxy),grid%nx) - grid%nxs
@@ -2259,6 +2284,7 @@ subroutine pflowGrid_setup(grid, inputfile)
         i>=0 .and. i < grid%nlx) then
       temp_p(i+1+j*grid%nlx+k*grid%nlxy) = random_nr
     endif
+!GEH - Structured Grid Dependence - End
 
   enddo
   call VecRestoreArrayF90(grid%ttemp,temp_p,ierr)
@@ -2279,6 +2305,8 @@ subroutine pflowGrid_setup(grid, inputfile)
 !                        random fields depending on processor distribution
   do n = 1,grid%nlmax
     na = grid%nL2A(n)
+    
+!GEH - Structured Grid Dependence - Begin
     nz= int(na/grid%nxy) + 1
     ny= int(mod(na,grid%nxy)/grid%nx) + 1
     nx= mod(mod(na,grid%nxy),grid%nx) + 1
@@ -2287,7 +2315,8 @@ subroutine pflowGrid_setup(grid, inputfile)
       if ((nz>=grid%k1reg(ir)) .and. (nz<=grid%k2reg(ir)) .and.&
           (ny>=grid%j1reg(ir)) .and. (ny<=grid%j2reg(ir)) .and.&
           (nx>= grid%i1reg(ir)) .and. (nx<=grid%i2reg(ir))) then
-                                
+!GEH - Structured Grid Dependence - End
+                  
         val = grid%icap_reg(ir)
        ! call VecSetValue(temp0_nat_vec,n,val,INSERT_VALUES,ierr)
         icap_p(n)=val
@@ -2361,9 +2390,12 @@ subroutine pflowGrid_setup(grid, inputfile)
 
     ! in order to keep the random numbers consistent between processor
     ! decompositions, must loop over ALL indices in perm region
+    
+!GEH - Structured Grid Dependence - Begin
     do k=grid%k1reg(ir),grid%k2reg(ir)
       do j=grid%j1reg(ir),grid%j2reg(ir)
         do i=grid%i1reg(ir),grid%i2reg(ir)
+!GEH - Structured Grid Dependence - End
       
           random_nr=1.D0
           frand = 1.d0
@@ -2371,12 +2403,14 @@ subroutine pflowGrid_setup(grid, inputfile)
             frand = ran1(n)
             random_nr = grid%ran_fac*frand+1.d-6
           endif
- 
+
+!GEH - Structured Grid Dependence - Begin 
           if (k > grid%nzs .and. k <= grid%nze .and. &
               j > grid%nys .and. j <= grid%nye .and. &
               i > grid%nxs .and. i <= grid%nxe) then
 
             n = i-grid%nxs+(j-grid%nys-1)*grid%nlx+(k-grid%nzs-1)*grid%nlxy
+!GEH - Structured Grid Dependence - End
 
             por = grid%por_reg(ir)
             por0_p(n)=por
@@ -2408,9 +2442,13 @@ subroutine pflowGrid_setup(grid, inputfile)
   call VecRestoreArrayF90(grid%ithrm,ithrm_p,ierr)
   call VecRestoreArrayF90(grid%porosity,por_p,ierr)
   call VecRestoreArrayF90(grid%porosity0,por0_p,ierr)
+  
+!GEH - Structured Grid Dependence - Begin
   call VecRestoreArrayF90(grid%perm_xx,perm_xx_p,ierr)
   call VecRestoreArrayF90(grid%perm_yy,perm_yy_p,ierr)
   call VecRestoreArrayF90(grid%perm_zz,perm_zz_p,ierr)
+!GEH - Structured Grid Dependence - End
+
   call VecRestoreArrayF90(grid%perm_pow,perm_pow_p,ierr)
   call VecRestoreArrayF90(grid%tor,tor_p,ierr)
  
@@ -2851,6 +2889,7 @@ subroutine pflowGrid_setvel (grid, vl_loc, vlbc, ibconn, ibndtyp)
     dd1 = grid%dist1(nc)
     dd2 = grid%dist2(nc)
     
+!GEH - Structured Grid Dependence - Begin    
     ip1 = grid%iperm1(nc)
     ip2 = grid%iperm2(nc)
 
@@ -2872,6 +2911,7 @@ subroutine pflowGrid_setvel (grid, vl_loc, vlbc, ibconn, ibndtyp)
     else
       perm2 = perm_zz_loc_p(m2)
     endif
+!GEH - Structured Grid Dependence - End
 
     dd = dd1 + dd2
     f1 = dd1/dd
@@ -2923,6 +2963,8 @@ subroutine pflowGrid_setvel (grid, vl_loc, vlbc, ibconn, ibndtyp)
 
     ibc = grid%ibconn(nc)
     ibc_ptran = ibconn(nc)
+    
+!GEH - Structured Grid Dependence - Begin
     ip1 = grid%ipermbc(nc)
     
 !   perm1 = perm_loc_p(ip1+3*(ng-1))
@@ -2933,6 +2975,8 @@ subroutine pflowGrid_setvel (grid, vl_loc, vlbc, ibconn, ibndtyp)
     else
       perm1 = perm_zz_loc_p(ng)
     endif
+!GEH - Structured Grid Dependence - End
+
     gravity = grid%fmwh2o * grid%gravity * grid%delzbc(nc)
     
 !   print *,'pflowgrid_setvel: ',nc,grid%nconnbc,ibc,ibc_ptran,ibndtyp(ibc_ptran)
@@ -3004,6 +3048,7 @@ subroutine pflowGrid_setvel (grid, vl_loc, vlbc, ibconn, ibndtyp)
 
 !#include "pflowgrid_compute_xyz.F90"
 
+!GEH - Structured Grid Dependence - Begin
 subroutine pflowGrid_compute_xyz(grid)
   
   implicit none
@@ -3056,6 +3101,7 @@ subroutine pflowGrid_compute_xyz(grid)
              'does not match number of ghosted cells (', grid%ngmax, ')'
     
 end subroutine pflowGrid_compute_xyz
+!GEH - Structured Grid Dependence - End
 
 !======================================================================
 
@@ -4105,6 +4151,7 @@ subroutine pflowGrid_read_input(grid, inputfile)
 
 !....................
 
+!GEH - Structured Grid Dependence - Begin
       case ('DXYZ')
 
         allocate(grid%dx0(grid%nx))
@@ -4122,6 +4169,7 @@ subroutine pflowGrid_read_input(grid, inputfile)
           write(IUNIT2,'("  dy  ",/,(1p10e12.4))') (grid%dy0(i),i=1,grid%ny)
           write(IUNIT2,'("  dz  ",/,(1p10e12.4))') (grid%dz0(i),i=1,grid%nz)
         endif
+!GEH - Structured Grid Dependence - End
 
 !....................
 
@@ -4499,7 +4547,7 @@ subroutine pflowGrid_read_input(grid, inputfile)
         do
           call fiReadFlotranString(IUNIT1,string,ierr)
           call fiReadStringErrorMsg('PHIK',ierr)
-      
+
           if (string(1:1) == '.' .or. string(1:1) == '/') exit
           ireg = ireg + 1
         
@@ -4508,6 +4556,7 @@ subroutine pflowGrid_read_input(grid, inputfile)
             stop
           endif
       
+!GEH - Structured Grid Dependence - Begin      
           call fiReadInt(string,grid%i1reg(ireg),ierr) 
           call fiDefaultMsg('i1',ierr)
           call fiReadInt(string,grid%i2reg(ireg),ierr)
@@ -4520,6 +4569,7 @@ subroutine pflowGrid_read_input(grid, inputfile)
           call fiDefaultMsg('k1',ierr)
           call fiReadInt(string,grid%k2reg(ireg),ierr)
           call fiDefaultMsg('k2',ierr)
+!GEH - Structured Grid Dependence - End
   
           call fiReadInt(string,grid%icap_reg(ireg),ierr)
           call fiDefaultMsg('icap',ierr)
@@ -4562,6 +4612,7 @@ subroutine pflowGrid_read_input(grid, inputfile)
           write(IUNIT2,'("  i1  i2  j1  j2  k1  k2 icap ithrm  por      tor  &
             &",   "     permx      permy      permz [m^2]   permpwr")')
           do ireg = 1, grid%iregperm
+!GEH - Structured Grid Dependence - Begin
             write(IUNIT2,'(6i4,2i4,1p6e11.4)') &
                   grid%i1reg(ireg),grid%i2reg(ireg), &
                   grid%j1reg(ireg),grid%j2reg(ireg), &
@@ -4569,6 +4620,7 @@ subroutine pflowGrid_read_input(grid, inputfile)
                   grid%icap_reg(ireg),grid%ithrm_reg(ireg), &
                   grid%por_reg(ireg),grid%tor_reg(ireg), &
                   (grid%perm_reg(ireg,i),i=1,4)
+!GEH - Structured Grid Dependence - End
           enddo
         endif
 
@@ -4592,7 +4644,8 @@ subroutine pflowGrid_read_input(grid, inputfile)
 
             if (string(1:1) == '.' .or. string(1:1) == '/') exit
             ireg = ireg + 1
-
+            
+!GEH - Structured Grid Dependence - Begin
             call fiReadInt(string,grid%i1ini(ireg),ierr) 
             call fiDefaultMsg('i1',ierr)
             call fiReadInt(string,grid%i2ini(ireg),ierr)
@@ -4605,7 +4658,8 @@ subroutine pflowGrid_read_input(grid, inputfile)
             call fiDefaultMsg('k1',ierr)
             call fiReadInt(string,grid%k2ini(ireg),ierr)
             call fiDefaultMsg('k2',ierr)
-         
+!GEH - Structured Grid Dependence - End
+
             if (grid%use_mph==PETSC_TRUE .or. grid%use_owg==PETSC_TRUE &
                  .or. grid%use_vadose == PETSC_TRUE .or. grid%use_flash == PETSC_TRUE&
                  .or. grid%use_richards == PETSC_TRUE) then
@@ -4639,6 +4693,7 @@ subroutine pflowGrid_read_input(grid, inputfile)
             write(IUNIT2,'("  i1  i2  j1  j2  k1  k2       p [Pa]     t [C]   &
               &   ",    "sl [-]      c [mol/L]")')
             do ireg = 1, grid%iregini
+!GEH - Structured Grid Dependence - Begin
               if (grid%use_mph==PETSC_TRUE .or. grid%use_owg==PETSC_TRUE &
                   .or. grid%use_vadose == PETSC_TRUE .or. grid%use_flash == PETSC_TRUE&
                   .or. grid%use_richards == PETSC_TRUE) then
@@ -4655,6 +4710,7 @@ subroutine pflowGrid_read_input(grid, inputfile)
                   grid%pres_ini(ireg),grid%temp_ini(ireg),grid%sat_ini(ireg), &
                   grid%conc_ini(ireg)
               endif
+!GEH - Structured Grid Dependence - End
             enddo
           endif
 
@@ -4675,6 +4731,7 @@ subroutine pflowGrid_read_input(grid, inputfile)
               if (string(1:1) == '.' .or. string(1:1) == '/') exit
               ireg = ireg + 1
 
+!GEH - Structured Grid Dependence - Begin
               call fiReadInt(string,grid%i1ini(ireg),ierr) 
               call fiDefaultMsg('i1',ierr)
               call fiReadInt(string,grid%i2ini(ireg),ierr)
@@ -4687,7 +4744,8 @@ subroutine pflowGrid_read_input(grid, inputfile)
               call fiDefaultMsg('k1',ierr)
               call fiReadInt(string,grid%k2ini(ireg),ierr)
               call fiDefaultMsg('k2',ierr)
-  
+!GEH - Structured Grid Dependence - End
+
               if (grid%use_mph==PETSC_TRUE .or. grid%use_owg==PETSC_TRUE &
                   .or. grid%use_vadose == PETSC_TRUE .or. grid%use_flash == PETSC_TRUE&
                   .or. grid%use_richards == PETSC_TRUE) then
@@ -4880,6 +4938,7 @@ subroutine pflowGrid_read_input(grid, inputfile)
             if (string(1:1) == '.' .or. string(1:1) == '/') exit
             ir = ir + 1
 
+!GEH - Structured Grid Dependence - Begin
             call fiReadInt(string,grid%i1bc(ir),ierr)
             call fiDefaultMsg('i1',ierr)
             call fiReadInt(string,grid%i2bc(ir),ierr)
@@ -4892,6 +4951,7 @@ subroutine pflowGrid_read_input(grid, inputfile)
             call fiDefaultMsg('k1',ierr)
             call fiReadInt(string,grid%k2bc(ir),ierr)
             call fiDefaultMsg('k2',ierr)    
+!GEH - Structured Grid Dependence - End
 
             ! Now read the velocities or pressures, depending on the BC type
             call fiReadFlotranString(IUNIT1,string,ierr)
@@ -4966,7 +5026,8 @@ subroutine pflowGrid_read_input(grid, inputfile)
         enddo ! End loop over blocks.
       
         grid%nblkbc = ibc
-      
+
+!GEH - Structured Grid Dependence - Begin
         if (grid%myrank == 0) then
           write(IUNIT2,'(/," *BCON: nblkbc = ",i4)') grid%nblkbc
           do ibc = 1, grid%nblkbc
@@ -5014,6 +5075,7 @@ subroutine pflowGrid_read_input(grid, inputfile)
             enddo
           enddo
         endif
+!GEH - Structured Grid Dependence - End
 
 !....................
 
@@ -5033,6 +5095,7 @@ subroutine pflowGrid_read_input(grid, inputfile)
 
           ir = ir + 1
 
+!GEH - Structured Grid Dependence - Begin
           call fiReadInt(string,grid%i1src(ir),ierr)
           call fiDefaultMsg('i1',ierr)
           call fiReadInt(string,grid%i2src(ir),ierr)
@@ -5045,6 +5108,8 @@ subroutine pflowGrid_read_input(grid, inputfile)
           call fiDefaultMsg('k1',ierr)
           call fiReadInt(string,grid%k2src(ir),ierr)
           call fiDefaultMsg('k2',ierr)    
+!GEH - Structured Grid Dependence - End
+
 !         print *,'pflowgrid_mod: Source', isrc, ir   
           ! Read time, temperature, q-source
           i = 0
@@ -5096,6 +5161,7 @@ subroutine pflowGrid_read_input(grid, inputfile)
 
         grid%nblksrc = isrc
 
+!GEH - Structured Grid Dependence - Begin
         if (grid%myrank == 0) then
           write(IUNIT2,'(/," *SOURce: nblksrc = ",i4)') grid%nblksrc
           do isrc = 1, grid%nblksrc
@@ -5114,6 +5180,7 @@ subroutine pflowGrid_read_input(grid, inputfile)
             enddo
           enddo
         endif
+!GEH - Structured Grid Dependence - End
 
 !....................
       
@@ -5126,7 +5193,8 @@ subroutine pflowGrid_read_input(grid, inputfile)
       
           if (string(1:1) == '.' .or. string(1:1) == '/') exit
           ibrk = ibrk + 1
-      
+
+!GEH - Structured Grid Dependence - Begin
           call fiReadInt(string,grid%i1brk(ibrk),ierr) 
           call fiDefaultMsg('i1',ierr)
           call fiReadInt(string,grid%i2brk(ibrk),ierr)
@@ -5139,6 +5207,7 @@ subroutine pflowGrid_read_input(grid, inputfile)
           call fiDefaultMsg('k1',ierr)
           call fiReadInt(string,grid%k2brk(ibrk),ierr)
           call fiDefaultMsg('k2',ierr)
+!GEH - Structured Grid Dependence - End
 
           call fiReadInt(string,grid%ibrktyp(ibrk),ierr)
           call fiDefaultMsg('ibrktyp',ierr)
@@ -5195,6 +5264,7 @@ end subroutine pflowgrid_read_input
 
 !======================================================================
 
+!GEH - Structured Grid Dependence - Begin
 subroutine readxyz (a,n)
 
   use fileio_module
@@ -5248,6 +5318,7 @@ subroutine readxyz (a,n)
   enddo
     
 end subroutine readxyz
+!GEH - Structured Grid Dependence - End
 
 !======================================================================
 

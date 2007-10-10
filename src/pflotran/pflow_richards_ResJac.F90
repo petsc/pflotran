@@ -127,10 +127,10 @@ subroutine pflow_Richards_setupini(grid)
 !   nx = mod(mod(na,grid%nxy),grid%nx) + 1
     
     !compute i,j,k indices from na: note-na starts at 0
+!GEH - Structured Grid Dependence - Begin
     nz = na/grid%nxy + 1
     ny = (na - (nz-1)*grid%nxy)/grid%nx + 1
     nx = na + 1 - (ny-1)*grid%nx - (nz-1)*grid%nxy
-    
 
     
     do ir = 1,grid%iregini
@@ -143,6 +143,7 @@ subroutine pflow_Richards_setupini(grid)
                 !exit
       endif
     enddo 
+!GEH - Structured Grid Dependence - End
   enddo
               
   call VecRestoreArrayF90(grid%xx, xx_p, ierr)
@@ -947,7 +948,8 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
 
 !************************************************************************
 ! add source/sink terms
- 
+
+!GEH - Structured Grid Dependence - Begin
   do nr = 1, grid%nblksrc
       
     kk1 = grid%k1src(nr) - grid%nzs
@@ -965,7 +967,8 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
     ii2 = min(grid%nlx,ii2)
         
     if (ii1 > ii2 .or. jj1 > jj2 .or. kk1 > kk2) cycle
-      
+
+!geh - there has to be a better way than the below.
     do i = 2, grid%ntimsrc
       if (grid%timesrc(i,nr) == grid%t) then
         tsrc1 = grid%tempsrc(i,nr)
@@ -1088,6 +1091,9 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
    !   enddo
   !  endif
   enddo
+
+!GEH - Structured Grid Dependence - End
+
   !print *,'finished source/sink term'
   
 !  print *, 'Residual  (after source/sink):'
@@ -1123,7 +1129,7 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
     ip1 = grid%iperm1(nc)  ! determine the normal direction of interface 
     ip2 = grid%iperm2(nc)
 
-
+!GEH - Structured Grid Dependence - Begin
     select case(ip1)
       case(1) 
         perm1 = perm_xx_loc_p(m1)
@@ -1141,6 +1147,7 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
       case(3)
         perm2 = perm_zz_loc_p(m2)
     end select
+!GEH - Structured Grid Dependence - End
 
     i1 = ithrm_loc_p(m1)
     i2 = ithrm_loc_p(m2)
@@ -1213,11 +1220,14 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
     p1 = 1 + (m-1) * grid%ndof
 
     ibc = grid%ibconn(nc)
+!GEH - Structured Grid Dependence - Begin
     ip1 = grid%ipermbc(nc)
+!GEH - Structured Grid Dependence - End
 
     i2 = ithrm_loc_p(ng)
     D2 = grid%ckwet(i2)
 
+!GEH - Structured Grid Dependence - Begin
     select case(ip1)
       case(1)
         perm1 = perm_xx_loc_p(ng)
@@ -1226,6 +1236,7 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
       case(3)
         perm1 = perm_zz_loc_p(ng)
     end select
+!GEH - Structured Grid Dependence - End
 
     select case(grid%ibndtyp(ibc))
           
@@ -1538,6 +1549,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
  call PetscViewerDestroy(viewer,ierr)
 #endif
 
+!GEH - Structured Grid Dependence - Begin
   do nr = 1, grid%nblksrc
       
     kk1 = grid%k1src(nr) - grid%nzs
@@ -1651,7 +1663,9 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
       enddo
     endif
   enddo  
-  
+
+!GEH - Structured Grid Dependence - End
+
   ! print *,' Mph Jaco Finished source terms'
 ! Contribution from BC
   do nc = 1, grid%nconnbc
@@ -1671,12 +1685,13 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
     p1 = 1 + (m-1) * grid%ndof
        
     ibc = grid%ibconn(nc)
+!GEH - Structured Grid Dependence - Begin
     ip1 = grid%ipermbc(nc)
-     
+!GEH - Structured Grid Dependence - End
     i2 = ithrm_loc_p(ng)
     D2 = grid%ckwet(i2)
 
-
+!GEH - Structured Grid Dependence - Begin
     select case(ip1)
       case(1)
         perm1 = perm_xx_loc_p(ng)
@@ -1685,7 +1700,8 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
       case(3)
         perm1 = perm_zz_loc_p(ng)
     end select
-       
+!GEH - Structured Grid Dependence - End
+
     delxbc=0.D0
     select case(grid%ibndtyp(ibc))
       case(1)
@@ -1877,9 +1893,11 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
    
     dd1 = grid%dist1(nc)
     dd2 = grid%dist2(nc)
-    
+
+!GEH - Structured Grid Dependence - Begin    
     ip1 = grid%iperm1(nc)  ! determine the normal direction of interface 
     ip2 = grid%iperm2(nc)
+!GEH - Structured Grid Dependence - End
     
     iiphas1 = iphase_loc_p(m1)
     iiphas2 = iphase_loc_p(m2)
@@ -1890,6 +1908,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
     D1 = grid%ckwet(i1)
     D2 = grid%ckwet(i2)
 
+!GEH - Structured Grid Dependence - Begin
     select case(ip1)
       case(1) 
         perm1 = perm_xx_loc_p(m1)
@@ -1907,7 +1926,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
       case(3)
         perm2 = perm_zz_loc_p(m2)
     end select
-
+!GEH - Structured Grid Dependence - End
 
     dd = dd1 + dd2
     f1 = dd1/dd

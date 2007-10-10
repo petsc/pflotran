@@ -485,6 +485,7 @@ subroutine OutputFluxVelocitiesTecplot(grid,kplot,iphase,direction)
   ! face coordinates
   local_size = grid%nlmax
   global_size = grid%nmax
+!GEH - Structured Grid Dependence - Begin
   nx_local = grid%nlx
   ny_local = grid%nly
   nz_local = grid%nlz
@@ -612,6 +613,7 @@ subroutine OutputFluxVelocitiesTecplot(grid,kplot,iphase,direction)
     enddo
   enddo
   call VecRestoreArrayF90(grid%vl,vec_ptr,ierr)
+!GEH - Structured Grid Dependence - End
   
   array(1:local_size) = array(1:local_size)*grid%tconv ! convert time units
   
@@ -861,7 +863,8 @@ subroutine OutputHDF5(grid)
     ! create a group for the coordinates data set
     string = "Coordinates"
     call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
-  
+
+!GEH - Structured Grid Dependence - Begin
     ! write out coordinates in x, y, and z directions
     string = "X-Coordinates"
     allocate(array(grid%nx))
@@ -898,7 +901,8 @@ subroutine OutputHDF5(grid)
     enddo
     call WriteHDF5Coordinates(string,grid,grid%nz,array,grp_id)
     deallocate(array)
-    
+!GEH - Structured Grid Dependence - End
+
     call h5gclose_f(grp_id,hdf5_err)
     
   endif
@@ -1096,6 +1100,7 @@ subroutine WriteHDF5FluxVelocities(name,grid,iphase,direction,file_id)
   ! have no velocities to print.  This results in zero-length arrays
   ! in collective H5Dwrite().  To avoid, we switch to independent
   ! H5Dwrite() and don't write from the zero-length procs. 
+!GEH - Structured Grid Dependence - Begin
   if (first) then
     nx_local = grid%nlx
     ny_local = grid%nly
@@ -1167,6 +1172,7 @@ subroutine WriteHDF5FluxVelocities(name,grid,iphase,direction,file_id)
                         nx_global,ny_global,nz_global, &
                         nx_local,ny_local,nz_local, &
                         grid%nxs,grid%nys,grid%nzs)
+!GEH - Structured Grid Dependence - End
 
   deallocate(array)
   trick_hdf5 = .false.
@@ -1232,14 +1238,17 @@ subroutine WriteHDF5DataSetFromVec(name,grid,vec,file_id,data_type)
   PetscScalar, pointer :: vec_ptr(:)
   
   call VecGetArrayF90(vec,vec_ptr,ierr)
+!GEH - Structured Grid Dependence - Begin
   call WriteHDF5DataSet(name,vec_ptr,file_id,data_type, &
                         grid%nx,grid%ny,grid%nz, &
                         grid%nlx,grid%nly,grid%nlz, &
                         grid%nxs,grid%nys,grid%nzs)
+!GEH - Structured Grid Dependence - End
   call VecRestoreArrayF90(vec,vec_ptr,ierr)
   
 end subroutine WriteHDF5DataSetFromVec
 
+!GEH - Structured Grid Dependence - Begin
 subroutine WriteHDF5DataSet(name,array,file_id,data_type, &
                             nx_global,ny_global,nz_global, &
                             nx_local,ny_local,nz_local, &
@@ -1384,6 +1393,7 @@ subroutine WriteHDF5DataSet(name,array,file_id,data_type, &
   call h5sclose_f(memory_space_id,hdf5_err)
 
 end subroutine WriteHDF5DataSet
+!GEH - Structured Grid Dependence - End
 #endif
 
 subroutine GetCoordinates(grid,vec,direction)
@@ -1615,6 +1625,8 @@ subroutine GetCellCenteredVelocities(grid,vec,iphase,direction)
   call VecGetArrayF90(vec,vec_ptr,ierr)
   call VecGetArrayF90(local_vec,loc_vec_ptr,ierr)
   ! add in upwind portion from local vector
+  
+!GEH - Structured Grid Dependence - Begin
   select case(direction)
     case(X_DIRECTION)
       do local_id=1,grid%nlmax
@@ -1659,6 +1671,8 @@ subroutine GetCellCenteredVelocities(grid,vec,iphase,direction)
         endif
       enddo
   end select
+!GEH - Structured Grid Dependence - End
+
   call VecRestoreArrayF90(local_vec,loc_vec_ptr,ierr)
   call VecRestoreArrayF90(vec,vec_ptr,ierr)
 
