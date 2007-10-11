@@ -1337,10 +1337,10 @@ subroutine WriteHDF5DataSet(name,array,file_id,data_type, &
 #ifndef SERIAL_HDF5
   if (trick_hdf5) then
     call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F, &
-                            hdf5_err) ! must be independent and only from p0
+                            hdf5_err) 
   else
     call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_COLLECTIVE_F, &
-                            hdf5_err) ! must be independent and only from p0
+                            hdf5_err)
   endif
 #endif
   if (num_to_write > 0) then
