@@ -185,12 +185,14 @@ private
    ! if(sat(2) > 1.) re=0;goto 1
 
    if(dabs(xx_p(n0 + 1)- yy_p(n0 + 1))> (10.0D0 * grid%dpmxe))then
-     re=0; exit
+     re=0; print *,'huge change in p', xx_p(n0 + 1), yy_p(n0 + 1)
+     exit
     endif
 
 
    if(dabs(xx_p(n0 + 2)- yy_p(n0 + 2))> (10.0D0 * grid%dtmpmxe))then
-     re=0; exit
+     re=0; print *,'huge change in T', xx_p(n0 + 2), yy_p(n0 + 2)
+     exit
     endif
  
    select case(iipha)

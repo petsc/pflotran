@@ -208,7 +208,28 @@ integer function nxyz2na(grid,nx,ny,nz)
   nxyz2na = nx -1 + (ny-1)*grid%nx + (nz-1)* grid%nxy
 
 end function nxyz2na
+ 
    
+integer function GetLocalGhostedIdFromNaturalId(natural_id,grid)
+
+  implicit none
+
+  type(pflowGrid) :: grid
+
+  integer :: natural_id, local_ghosted_id
+  
+  do local_ghosted_id = 1, grid%ngmax
+    if (natural_id == grid%nG2A(local_ghosted_id)+1) then
+      GetLocalGhostedIdFromNaturalId = local_ghosted_id
+      return 
+    endif
+  enddo
+  GetLocalGhostedIdFromNaturalId = 0
+
+end function GetLocalGhostedIdFromNaturalId
+    
+       
+           
 subroutine Read_Geom_field(grid)
 
   use fileio_module
@@ -224,7 +245,7 @@ subroutine Read_Geom_field(grid)
   PetscScalar, pointer :: perm_xx_p(:),perm_yy_p(:),perm_zz_p(:),por_p(:), &
                           tor_p(:), volume_p(:)
   integer iln,na,nx,ny,nz,ir,ierr,ng
-  real*8 ::  xc,yc,zc,vc
+  real*8 ::  xc,yc,zc,vc, dx,dy,dz
   real*8 ::  px,py,pz, por, tor
   real*8 ::  area, dist1, dist2, grav_ang
 ! real*8 ::  x,y,z
@@ -232,7 +253,7 @@ subroutine Read_Geom_field(grid)
   ! character(len=MAXSTRINGLENGTH) :: string 
 
   integer nx1, nx2, ny1, ny2, nz1,nz2, ina1, ina2,nnc, na1,na2, ncna
-  integer iln1, iln2
+  integer iln1, iln2, ng1,ng2, mconn
   
  ! if (grid%igeom /=-1) then
  !   print *, ' Wrong geomtry entry:: STOP !'
@@ -310,9 +331,10 @@ subroutine Read_Geom_field(grid)
               nz = na/grid%nxy + 1
               ny = (na - (nz-1)*grid%nxy)/grid%nx + 1
               nx = na + 1 - (ny-1)*grid%nx - (nz-1)*grid%nxy
-              grid%x(iln)=xc
-              grid%y(iln)=yc
-              grid%z(iln)=zc
+              ng1=grid%nL2G(iln)
+              grid%x(ng1)=xc
+              grid%y(ng1)=yc
+              grid%z(ng1)=zc
 
               volume_p(iln)=vc
               
@@ -332,6 +354,9 @@ subroutine Read_Geom_field(grid)
    ! then need to compute connection
    
       case('CONN')  
+        mconn = grid%nconn
+        print *,'structured conn= ', mconn
+        grid%nconn =0
         nnc=0
         do 
      
@@ -363,201 +388,51 @@ subroutine Read_Geom_field(grid)
           call fiReadDouble(string,grav_ang,ierr)
           call fiDefaultMsg('cos(B)',ierr)
     
-   
-          call Natural2LocalIndex(na1,iln1, grid%nL2A, grid%nlmax)
-          call Natural2LocalIndex(na2,iln2, grid%nL2A, grid%nlmax)           
-            if (iln1>0) then
-              iln = iln1
-              nnc = nnc +1 
-              grid%nd1(nnc)=grid%nL2G(iln)
-              grid% dist1(nnc) = dist1
-              grid% dist2(nnc) = dist2 
-              if (area>0D0) grid%area(nnc)= area
-              grid%delz(nnc) = grid%z(na1)- grid%z(na2)
-              grid%grav_ang(nnc)= grav_ang
-      
-           ! then need to locate na2 and determine iperm
-              nz1 = na1/grid%nxy + 1
-              ny1 = (na1 - (nz1-1)*grid%nxy)/grid%nx + 1
-              nx1 = na1 + 1 - (ny1-1)*grid%nx - (nz1-1)*grid%nxy
-              ina2=0
-          ! z+1
-       
-              nx=nx1; ny=ny1; nz=nz1+1
-              ir = nxyz2na(grid,nx,ny,nz)
-              if (na2 ==ir) then
-                grid%nd2(nnc) = nx- grid%ngxs + (ny-1-grid%ngys)*grid%ngx + &
-                                (nz-1-grid%ngzs)*grid%ngxy
-                ina2=1
-                grid%iperm1(nnc) = 3
-                grid%iperm2(nnc) = 3
-              endif
-       
-              nx=nx1
-              ny=ny1
-              nz=nz1-1
-              ir = nxyz2na(grid,nx,ny,nz)
-              if (na2 ==ir) then
-                grid%nd2(nnc) = nx- grid%ngxs + (ny-1-grid%ngys)*grid%ngx + &
-                                (nz-1-grid%ngzs)*grid%ngxy
-                ina2=1
-                grid%iperm1(nnc) = 3
-                grid%iperm2(nnc) = 3
-              endif
+           ng1 = GetLocalGhostedIdFromNaturalId(na1,grid)
+           ng2 = GetLocalGhostedIdFromNaturalId(na2,grid)
            
-              nx=nx1+1
-              ny=ny1
-              nz=nz1
-              ir = nxyz2na(grid,nx,ny,nz)
-              if (na2 ==ir) then
-                grid%nd2(nnc) = nx- grid%ngxs + (ny-1-grid%ngys)*grid%ngx + &
-                                (nz-1-grid%ngzs)*grid%ngxy
-                ina2=1
-                grid%iperm1(nnc) = 1
-                grid%iperm2(nnc) = 1
-              endif
-                    
-              nx=nx1-1
-              ny=ny1
-              nz=nz1
-              ir = nxyz2na(grid,nx,ny,nz)
-              if (na2 ==ir) then
-                grid%nd2(nnc) = nx- grid%ngxs + (ny-1-grid%ngys)*grid%ngx + &
-                                (nz-1-grid%ngzs)*grid%ngxy
-                ina2=1
-                grid%iperm1(nnc) = 1
-                grid%iperm2(nnc) = 1
-              endif
-                         
-            !  nx=nx1
-            !  ny=ny1+1
-            !   nz=nz1
-            ! ir = nxyz2na(grid,nx,ny,nz)
-            ! if (na2 ==ir) then
-            !   grid%nd2(nnc) = nx- grid%ngxs + (ny-1-grid%ngys)*grid%ngx + &
-            !                   (nz-1-grid%ngzs)*grid%ngxy
-            !   ina2=1
-            !   grid%iperm1(nnc) = 2
-            !   grid%iperm2(nnc) = 2
-            ! endif
+        if (ng1 > 0 .and. ng2 > 0) then ! both cells are local ghosted
+               iln1 = grid%nG2L(ng1)
+               iln2 = grid%nG2L(ng2)
+      ! at least 1 cell must be local (non-ghosted) since we don't want to
+      ! create a connection between two ghosted cells
+          if (iln1 > 0 .or. iln2 > 0) then
+               grid%nconn = grid%nconn + 1
+               grid%nd1(grid%nconn) = ng1
+               grid%nd2(grid%nconn) = ng2
+               grid%dist1(grid%nconn) = dist1
+               grid% dist2(grid%nconn) = dist2
+               if (area>0.D0) grid%area(grid%nconn)= area
+               grid%delz(grid%nconn) = +1.d0*abs(grid%z(ng1)-  &
+                                    grid%z(ng2))
+               grid%grav_ang(grid%nconn) = grav_ang
 
-           !  nx=nx1
-           !  ny=ny1-1
-           !  nz=nz1
-           !  ir = nxyz2na(grid,nx,ny,nz)
-           !  if (na2 ==ir) then
-           !    grid%nd2(nnc) = nx- grid%ngxs + (ny-1-grid%ngys)*grid%ngx + &
-           !    (nz-1-grid%ngzs)*grid%ngxy
-           !    ina2=1
-           !    grid%iperm1(nnc) = 2
-           !    grid%iperm2(nnc) = 2
-           !  endif
-    
-    
-           !  if (ina2 ==0) then  !BC
-               print *, 'Read conn:',ncna,nnc, na1,na2, grid%nd1(nnc), &
-                         grid%nd2(nnc),area,dist1, dist2,grav_ang, &
-                         grid%iperm1(nnc)
-            elseif (iln2 >0 ) then      
-              iln = iln2
-              nnc = nnc +1 
-              grid%nd2(nnc)=grid%nL2G(iln)
-              grid% dist1(nnc) = dist1
-              grid% dist2(nnc) = dist2 
-              if (area>0D0) grid%area(nnc)= area
-              grid%delz(nnc) = grid%z(na1)- grid%z(na2)
-              grid%grav_ang(nnc)= grav_ang
-      
-              ! then need to locate na2 and determine iperm
-              nz2 = na2/grid%nxy + 1
-              ny2 = (na2 - (nz2-1)*grid%nxy)/grid%nx + 1
-              nx2 = na2 + 1 - (ny2-1)*grid%nx - (nz2-1)*grid%nxy
-              ina1=0
-              ! z+1
-       
-              nx=nx2
-              ny=ny2
-              nz=nz2+1
-              ir = nxyz2na(grid,nx,ny,nz)
-              if (na1 ==ir) then
-                grid%nd1(nnc) = nx- grid%ngxs + (ny-1-grid%ngys)*grid%ngx + &
-                                (nz-1-grid%ngzs)*grid%ngxy
-                ina1=1
-                grid%iperm1(nnc) = 3
-                grid%iperm2(nnc) = 3
-              endif
-       
-              nx=nx2
-              ny=ny2
-              nz=nz2-1
-              ir = nxyz2na(grid,nx,ny,nz)
-              if (na1 ==ir) then
-                grid%nd1(nnc) = nx- grid%ngxs + (ny-1-grid%ngys)*grid%ngx + &
-                                (nz-1-grid%ngzs)*grid%ngxy
-                ina1=1
-                grid%iperm1(nnc) = 3
-                grid%iperm2(nnc) = 3
-              endif
-           
-              nx=nx2+1
-              ny=ny2
-              nz=nz2
-              ir = nxyz2na(grid,nx,ny,nz)
-              if (na2 ==ir) then
-                grid%nd1(nnc) = nx- grid%ngxs + (ny-1-grid%ngys)*grid%ngx + &
-                                (nz-1-grid%ngzs)*grid%ngxy
-                ina1=1
-                grid%iperm1(nnc) = 1
-                grid%iperm2(nnc) = 1
-              endif
-                    
-              nx=nx2-1
-              ny=ny2
-              nz=nz2
-              ir = nxyz2na(grid,nx,ny,nz)
-              if (na1 ==ir) then
-                grid%nd1(nnc) = nx- grid%ngxs + (ny-1-grid%ngys)*grid%ngx + &
-                                (nz-1-grid%ngzs)*grid%ngxy
-                ina1=1
-                grid%iperm1(nnc) = 1
-                grid%iperm2(nnc) = 1
-              endif
-              print *, 'Read conn: error !!'                     
-            !  nx=nx2
-            !  ny=ny2+1
-            !  nz=nz2
-            !  ir = nxyz2na(grid,nx,ny,nz)
-            !  if (na1 ==ir) then
-            !    grid%nd1(nnc) = nx- grid%ngxs + (ny-1-grid%ngys)*grid%ngx + &
-            !                    (nz-1-grid%ngzs)*grid%ngxy
-            !    ina1=1
-            !    grid%iperm1(nnc) = 2
-            !    grid%iperm2(nnc) =2
-            !  endif
 
-            !  nx=nx2
-            !  ny=ny2-1
-            !  nz=nz2
-            !  ir = nxyz2na(grid,nx,ny,nz)
-            !  if (na1 ==ir) then
-            !    grid%nd1(nnc) = nx- grid%ngxs + (ny-1-grid%ngys)*grid%ngx + &
-            !                    (nz-1-grid%ngzs)*grid%ngxy
-            !    ina1=1
-            !    grid%iperm1(nnc) = 2 
-            !    grid%iperm2(nnc) =2
-            !  endif
+        dx = abs(grid%x(ng1)-grid%x(ng2))
+        dy = abs(grid%y(ng1)-grid%y(ng2))
+        dz = abs(grid%z(ng1)-grid%z(ng2))
     
-    
-            !  if (ina2 ==0) then  !BC
-            
-            else
-              print *, 'not found conn', na1,na2, iln1,iln2    
-            endif
-  
-        enddo
+        if (dx > dy .and. dx > dz) then
+          grid%iperm1(grid%nconn) = 1
+          grid%iperm2(grid%nconn) = 1
+        else if (dy > dx .and. dy > dz) then
+          grid%iperm1(grid%nconn) = 2
+          grid%iperm2(grid%nconn) = 2
+        else if (dz > dx .and. dz > dy) then
+          grid%iperm1(grid%nconn) = 3
+          grid%iperm2(grid%nconn) = 3
+        endif
+        print *, 'Read conn ',  grid%nconn,na1,na2,iln1,iln2,&
+              grid%iperm1(grid%nconn), grid%delz(grid%nconn)
+       endif
+    endif
+
+!print *, grid%myrank, local_ghosted_id_upwind, local_id_upwind, local_ghosted_id_downwind, local_id_downwind
+  enddo
+
     end select
   enddo
-  close(IUNIT1)
+ close(IUNIT1)
  
  ! select case(card)
  ! case('LOGO' 

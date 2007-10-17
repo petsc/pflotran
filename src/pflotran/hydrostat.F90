@@ -834,7 +834,7 @@ subroutine mhydrostatic(grid)
 !geh      depth = grid%z(na)
 !geh      horiz = grid%x(na)
       ng=grid%nL2G(nl)
-      depth = grid%z(ng)
+      depth = dabs(grid%z(ng))
       horiz = grid%x(ng)
       dx1 = dx2
       !print *,'mhydro', nl,na,depth,horiz

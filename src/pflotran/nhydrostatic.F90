@@ -3,7 +3,7 @@
 module nhydrostatic_module
 
   use pflow_gridtype_module
-
+  
 private 
 #include "include/finclude/petsc.h"
 #include "include/finclude/petscvec.h"
@@ -23,6 +23,7 @@ real*8, parameter ::  fmwnacl = 58.44277D0,  fmwh2o = 18.0153D0
 real*8, pointer :: hys_pres(:), hys_temp(:)
 
 public nhydrostatic
+public nhydrostatic3
 
 contains
 
@@ -326,5 +327,97 @@ subroutine nhydrostatic(grid)
   deallocate(hys_temp)
 
   end subroutine nhydrostatic
+  
+  
+! clu: developed for 9M node SACROC case only.
+!      it is a right hand coordinate system    
+subroutine nhydrostatic3(grid)
+  use water_eos_module
+  implicit none
+  
+! mostly copied from condition.F90 :ComputeHydrostaticPressure   
+  type(pflowGrid) :: grid
+  real*8 :: ref_coordinate(3), cell_coordinate(3)
+  real*8 :: reference_pressure, pressure_gradient_X, pressure_gradient_Y,  &
+            pressure_gradient_Z
+  real*8 :: reference_temperature, temperature_gradient_X, &
+            temperature_gradient_Y, temperature_gradient_Z
+
+  integer :: i, num_increments, ierr
+  real*8 :: dx, dy, dz, z, dum, rho, dw_mol, dwp
+  real*8 :: temperature_at_xy, temperature_at_xyz
+  real*8 :: pressure_at_xy, pressure_at_xyz
+  real*8 :: increment, final_increment
+  PetscScalar, pointer :: xx_p(:) 
+  integer n, ng, nc, m, ibc
+   
+  ref_coordinate = grid%hydro_ref_xyz
+  reference_pressure = grid% pref
+  pressure_gradient_X = grid%beta *1.01325D4
+  pressure_gradient_Y =0.D0
+  pressure_gradient_Z =0.D0
+  reference_temperature = grid%tref
+  temperature_gradient_X = 0.D0
+  temperature_gradient_Y = 0.D0
+  temperature_gradient_Z = grid%dTdz
+   
+  
+  call VecGetArrayF90(grid%xx, xx_p, ierr)
+  
+  do n=1, grid%nlmax
+       ng = grid%nL2G(n)
+       cell_coordinate(1)= grid%x(ng)
+       cell_coordinate(2)= grid%y(ng)
+       cell_coordinate(3)= grid%z(ng)
+
+        dx = cell_coordinate(1) - ref_coordinate(1)
+        dy = cell_coordinate(2) - ref_coordinate(2)
+        dz = cell_coordinate(3) - ref_coordinate(3)
+
+        pressure_at_xy = reference_pressure + dx*pressure_gradient_X + &
+                                        dy*pressure_gradient_Y
+        temperature_at_xy = reference_temperature + dx*temperature_gradient_X + &
+                                                dy*temperature_gradient_Y
+
+          num_increments = int(abs(dz))  ! 1m increments
+          final_increment = sign(abs(dz)-num_increments*1.d0,-dz)
+          increment = 1.d0
+         if (ref_coordinate(3) < cell_coordinate(3)) increment = -1.d0
+
+          z = ref_coordinate(3)
+          pressure_at_xyz = pressure_at_xy
+          do i=1, num_increments
+             z = z - increment
+             temperature_at_xyz = temperature_at_xy + (z-ref_coordinate(3))* &
+                                                temperature_gradient_Z
+             call wateos(temperature_at_xyz,pressure_at_xyz,rho,dw_mol,dwp, &
+                  dum,dum,dum,dum,grid%scale,ierr)
+              pressure_at_xyz = pressure_at_xyz + increment*rho*grid%gravity  
+          enddo
+         if (final_increment > 0.d0) then
+          z = z - final_increment
+          temperature_at_xyz = temperature_at_xy + (z-ref_coordinate(3))* &
+                                               temperature_gradient_Z
+         call wateos(temperature_at_xyz,pressure_at_xyz,rho,dw_mol,dwp, &
+                  dum,dum,dum,dum,grid%scale,ierr)
+          pressure_at_xyz = pressure_at_xyz + final_increment*rho*grid%gravity  
+         endif
+          xx_p((n-1)*grid%ndof +1) = pressure_at_xyz
+          xx_p((n-1)*grid%ndof +2) = temperature_at_xyz
+     enddo    
+       
+     do nc = 1, grid%nconnbc
+        m = grid%mblkbc(nc)  ! Note that here, m is NOT ghosted.
+        ibc= grid%ibconn(nc)
+        if(grid%ibndtyp(ibc) == 3)then
+         grid%xxbc(1,nc) = xx_p((m-1)*grid%ndof +1)
+         grid%xxbc(2,nc) = xx_p((m-1)*grid%ndof +2)     
+         print *, nc,  grid%xxbc(:,nc)
+        endif
+     enddo
+  call VecRestoreArrayF90(grid%xx, xx_p, ierr)
+  
+end subroutine nhydrostatic3
+  
 end module nhydrostatic_module
 

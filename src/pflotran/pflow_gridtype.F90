@@ -264,6 +264,7 @@ private
     
     integer :: ihydrostatic = 0,ideriv = 1
     real*8 :: dTdz,beta,tref,pref,conc0
+    real*8 :: hydro_ref_xyz(3)
     
 !   table lookup
     integer :: itable=0

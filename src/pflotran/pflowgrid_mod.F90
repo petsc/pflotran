@@ -2534,6 +2534,7 @@ subroutine pflowGrid_setup(grid, inputfile)
   nullify(grid%imat)
 
   if (grid%iread_geom == 1) then
+   ! call ReadUnstructuredGrid(grid)
     call Read_Geom_field(grid)
 !geh
 !geh
@@ -2541,6 +2542,7 @@ subroutine pflowGrid_setup(grid, inputfile)
     if (myrank == 0) print *, 'Reading structured grid from hdf5' 
     allocate(grid%imat(grid%ngmax))  ! allocate material id array
     call ReadStructuredGridHDF5(grid)
+    
   else if (grid%iread_geom == -1) then 
     if (myrank == 0) print *, 'Reading unstructured grid' 
     allocate(grid%pressurebc(grid%nphase,grid%nconnbc)) 
@@ -2561,6 +2563,10 @@ subroutine pflowGrid_setup(grid, inputfile)
       temp_p(i) = grid%imat(grid%nL2G(i))*1.d0      
     enddo
     call VecRestoreArrayF90(temp_vec,temp_p,ierr)
+
+
+
+
 !    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'materials.dat',viewer,ierr)
 !    call VecView(temp_vec,viewer,ierr)
 !    call PetscViewerDestroy(viewer,ierr)
@@ -2634,6 +2640,19 @@ subroutine pflowGrid_setup(grid, inputfile)
   call VecCopy(grid%perm_xx, grid%perm0_xx, ierr) 
   call VecCopy(grid%perm_yy, grid%perm0_yy, ierr) 
   call VecCopy(grid%perm_zz, grid%perm0_zz, ierr) 
+
+
+  if (grid%ihydrostatic == 3) then
+    if (grid%use_mph == PETSC_TRUE .or. &
+          grid%use_vadose == PETSC_TRUE .or. &
+          grid%use_flash == PETSC_TRUE .or. &
+          grid%use_richards == PETSC_TRUE) then
+        ! print *,'in nhydro'
+        call nhydrostatic3(grid)
+        ! print *,'out nhydro'
+      endif
+    endif
+
  
  
 ! Note: VecAssemblyBegin/End needed to run on the Mac - pcl (11/21/03)!
@@ -4319,6 +4338,10 @@ subroutine pflowGrid_read_input(grid, inputfile)
         call fiReadInt(string,grid%ihydrostatic,ierr)
         call fiDefaultMsg('ihydrostatic',ierr)
        
+       if(grid%ihydrostatic < 1) grid%ihydrostatic =1
+      
+       select case(grid%ihydrostatic)
+        case(1,2)
         call fiReadDouble(string,grid%dTdz,ierr)
         call fiDefaultMsg('dTdz',ierr)
 
@@ -4334,8 +4357,34 @@ subroutine pflowGrid_read_input(grid, inputfile)
         call fiReadDouble(string,grid%conc0,ierr)
         call fiDefaultMsg('conc0',ierr)
 
-        if(grid%ihydrostatic < 1) grid%ihydrostatic =1
-      
+       case(3)
+        
+        call fiReadDouble(string,grid%hydro_ref_xyz(1),ierr)
+        call fiDefaultMsg('ref_x',ierr)
+
+        call fiReadDouble(string,grid%hydro_ref_xyz(2),ierr)
+        call fiDefaultMsg('ref_y',ierr)
+
+        call fiReadDouble(string,grid%hydro_ref_xyz(3),ierr)
+        call fiDefaultMsg('ref_z',ierr)
+        
+        call fiReadDouble(string,grid%dTdz,ierr)
+        call fiDefaultMsg('dTdz',ierr)
+
+        call fiReadDouble(string,grid%beta,ierr)
+        call fiDefaultMsg('beta',ierr)
+
+        call fiReadDouble(string,grid%tref,ierr)
+        call fiDefaultMsg('tref',ierr)
+
+        call fiReadDouble(string,grid%pref,ierr)
+        call fiDefaultMsg('pref',ierr)
+
+        call fiReadDouble(string,grid%conc0,ierr)
+        call fiDefaultMsg('conc0',ierr)
+
+
+      end select  
         if (grid%myrank==0) write(IUNIT2,'(/," *HYDR ",/, &
           &"  ihydro      = ",i3,/, &
           &"  dT/dz       = ",1pe12.4,/, &
