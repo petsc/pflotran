@@ -28,11 +28,7 @@ CPPFLAGS         = ${MYFLAGS}
 FPPFLAGS         = ${MYFLAGS}
 CLEANFILES       = pflow ptran pflotran pflotran_fc
 
-ifdef dev 
-  include ${PETSC_DIR}/conf/base
-else
-  include ${PETSC_DIR}/bmake/common/base
-endif
+include ${PETSC_DIR}/bmake/common/base
 
 util_obj  = ${common_src}fileio.o \
 	${common_src}water_eos.o \
