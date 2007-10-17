@@ -412,7 +412,7 @@ subroutine nhydrostatic3(grid)
         if(grid%ibndtyp(ibc) == 3)then
          grid%xxbc(1,nc) = xx_p((m-1)*grid%ndof +1)
          grid%xxbc(2,nc) = xx_p((m-1)*grid%ndof +2)     
-         print *, nc,  grid%xxbc(:,nc)
+     !    print *, nc,  grid%xxbc(:,nc)
         endif
      enddo
   call VecRestoreArrayF90(grid%xx, xx_p, ierr)

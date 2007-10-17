@@ -343,7 +343,7 @@ subroutine Read_Geom_field(grid)
               perm_zz_p(iln)= pz
               if (por>=0.D0 .AND. por <= 1.D0) por_p(iln)=por
               if (tor>=0.D0 .and. tor <= 1.D0) tor_p(iln)=tor
-             print *, 'Read geom 1:',ir,iln,xc,yc,zc,vc
+!            print *, 'Read geom 1:',ir,iln,xc,yc,zc,vc
             else
              print *, 'not found', ir,iln; stop
             endif
@@ -422,8 +422,8 @@ subroutine Read_Geom_field(grid)
           grid%iperm1(grid%nconn) = 3
           grid%iperm2(grid%nconn) = 3
         endif
-        print *, 'Read conn ',  grid%nconn,na1,na2,iln1,iln2,&
-              grid%iperm1(grid%nconn), grid%delz(grid%nconn)
+     !   print *, 'Read conn ',  grid%nconn,na1,na2,iln1,iln2,&
+     !         grid%iperm1(grid%nconn), grid%delz(grid%nconn),grid%grav_ang(grid%nconn)
        endif
     endif
 
