@@ -5045,13 +5045,13 @@ subroutine pflowGrid_read_input(grid, inputfile)
               call fiReadInt(string,grid%iphasebc0(ir),ierr)
               call fiDefaultMsg('iphase',ierr)
        
-              if (grid%ibndtyp(ir) == 1 .or. grid%ibndtyp(ir) == 3 &
-                  .or. grid%ibndtyp(ir) == 4) then 
+              if (grid%ibndtyp(ibc) == 1 .or. grid%ibndtyp(ibc) == 3 &
+                  .or. grid%ibndtyp(ibc) == 4) then 
                 do j=1,grid%ndof
                   call fiReadDouble(string,grid%xxbc0(j,ir),ierr)
                   call fiDefaultMsg('xxbc',ierr)
                 enddo
-              elseif (grid%ibndtyp(ir) == 2) then
+              elseif (grid%ibndtyp(ibc) == 2) then
                 do j=1, grid%nphase       
                   call fiReadDouble(string, grid%velocitybc0(j,ir), ierr)
                   call fiDefaultMsg("Error reading velocity BCs:", ierr)
