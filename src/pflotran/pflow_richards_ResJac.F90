@@ -2404,7 +2404,7 @@ subroutine pflow_Richards_initadj(grid)
 
 
   do n = 1, grid%nlmax
-
+   
     !geh - Ignore inactive cells with inactive materials
     if (associated(grid%imat)) then
       if (grid%imat(grid%nL2G(n)) <= 0) cycle
@@ -2420,18 +2420,19 @@ subroutine pflow_Richards_initadj(grid)
  !   dif(2)= grid%cdiff(int(ithrm_p(n)))
     !*******************************************
    if(iiphase ==3)then
+    ! print *, 'rich iniadj: ',n, iiphase, xx_p((n-1)*grid%ndof+1: n*grid%ndof)
      sw= xx_p((n-1)*grid%ndof+1)
-     print *,'Richards: Conv: ',n, sw, iicap,grid%pcwmax(iicap)
      call pflow_pckr_richards_fw(iicap,sw,pc,kr)    
-    ! print *,'INIT ', sw, pc(1), iicap, grid%pcwmax(iicap), grid%icaptype(iicap),grid%sir(1,iicap), grid%lambda(iicap), &
-    !             grid%alpha(iicap),grid%pckrm(iicap),grid%pcwmax(iicap),sw,pc,kr,&
-    !             grid%pcbetac(iicap),grid%pwrprm(iicap)
+  !   print *,'INIT ', sw, pc(1), iicap, grid%pcwmax(iicap), grid%icaptype(iicap),grid%sir(1,iicap), grid%lambda(iicap), &
+  !               grid%alpha(iicap),grid%pckrm(iicap),grid%pcwmax(iicap),sw,pc,kr,&
+  !               grid%pcbetac(iicap),grid%pwrprm(iicap)
                  
      if(pc(1)>grid%pcwmax(iicap))then
         print *,'INIT Warning: Pc>pcmax', sw, pc(1), iicap, grid%pcwmax(iicap)
         pc(1)=grid%pcwmax(iicap)
      endif 
      xx_p((n-1)*grid%ndof+1)= grid%pref - pc(1)
+     print *,'Richards: Conv: ',n, sw, iicap, sw, pc(1),xx_p((n-1)*grid%ndof+1: n*grid%ndof)
     endif
     
     call pri_var_trans_Richards_ninc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),iiphase, &

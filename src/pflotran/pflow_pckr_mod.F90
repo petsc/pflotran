@@ -816,7 +816,7 @@ subroutine pflow_pckr_richards(ipckrreg,saturation,pc,kr)
 
 
   call pflow_pckr_richards_exec(ipckrtype,pckr_swir,pckr_lambda, &
-                 pckr_alpha,pckr_m,pckr_pcmax,sw,pc,kr,pckr_beta,pckr_pwr) 
+                 pckr_alpha,pckr_m,pckr_pcmax,saturation,pc,kr,pckr_beta,pckr_pwr) 
 
 
 
@@ -842,18 +842,18 @@ subroutine pflow_pckr_richards_fw(ipckrreg,saturation,pc,kr)
          pckr_beta = pckr_para(ireg)%pckr_par(6)
          pckr_pwr  = pckr_para(ireg)%pckr_par(7)
 
-     
-
+  !   print *,'richards_fw: ', saturation, pckr_swir, pckr_m, pckr_lambda,pckr_alpha, pckr_pcmax
 
    call pflow_pckr_richards_fw_exec(ipckrtype,pckr_swir,pckr_lambda, &
-                 pckr_alpha,pckr_m,pckr_pcmax,sw,pc,kr,pckr_beta,pckr_pwr) 
+                 pckr_alpha,pckr_m,pckr_pcmax,saturation,pc,kr,pckr_beta,pckr_pwr) 
+    
  
       if(pc(1)>pckr_pcmax)then
          print *,'INIT Warning: Pc>pcmax'
          pc(1)=pckr_pcmax
        endif 
       
-      saturation =sw
+      !saturation =sw
       
       
 end subroutine pflow_pckr_richards_fw

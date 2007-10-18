@@ -4584,7 +4584,7 @@ subroutine pflowGrid_read_input(grid, inputfile)
             .or. grid%use_vadose == PETSC_TRUE .or. grid%use_flash == PETSC_TRUE&
             .or. grid%use_richards == PETSC_TRUE) then
           deallocate(grid%icaptype, grid%pckrm, grid%lambda, grid%alpha, &
-                     grid%pcwmax, grid%pcbetac, grid%pwrprm)
+                     grid%pcbetac, grid%pwrprm)
         endif 
  
 
