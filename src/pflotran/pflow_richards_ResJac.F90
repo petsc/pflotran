@@ -364,8 +364,12 @@ subroutine RichardsRes_FLCont(nconn_no,area,var_node1,por1,tor1,sir1,dd1,perm1, 
   real*8  fluxm(grid%nspec),fluxe, v_darcy,q
   real*8 uh,uxmol(1:grid%nspec), ukvr,difff,diffdp, DK,Dq
   real*8 upweight,density_ave,cond, gravity, dphi
-  
+
+#ifndef OVERHAUL_V2
+#ifdef OVERHAUL  
   type(connection_type) :: connection_object
+#endif
+#endif
   
 !  m1=grid%nd1(nc); n1 = grid%nG2L(m1) ! = zero for ghost nodes 
 !  print *,'in FLcont'
@@ -411,7 +415,9 @@ subroutine RichardsRes_FLCont(nconn_no,area,var_node1,por1,tor1,sir1,dd1,perm1, 
 
 ! Flow term
     if ((sat1(np) > sir1(np)) .or. (sat2(np) > sir2(np))) then
+#ifndef OVERHAUL_V2    
       upweight=dd1/(dd1+dd2)
+#endif      
       if (sat1(np) <eps) then 
         upweight=0.d0
       else if (sat2(np) <eps) then 
@@ -539,8 +545,10 @@ subroutine RichardsRes_FLBCCont(nbc_no,area,var_node1,var_node2,por2,tor2,sir2, 
   real*8 uh,uxmol(1:grid%nspec), ukvr,diff,diffdp, DK,Dq
   real*8 upweight,density_ave,cond,gravity, dphi
 
+#ifndef OVERHAUL_V2
 #ifdef OVERHAUL
     type(connection_type) :: connection_object
+#endif
 #endif
   
   ibase=1;                 temp1=>var_node1(ibase)
@@ -694,9 +702,13 @@ subroutine RichardsRes_FLBCCont(nbc_no,area,var_node1,var_node2,por2,tor2,sir2, 
 #ifndef OVERHAUL    
         gravity = density2(np)*amw2(np)* grid%gravity * grid%delzbc(nbc_no)
 #else
+#ifdef OVERHAUL_V2
+        gravity = density2(np)*amw2(np)* grid%gravity * dist_gravity
+#else
         gravity = density2(np)*amw2(np)* grid%gravity * &
                   connection_object%dist(3,nbc_no) * &
                   connection_object%dist(0,nbc_no)
+#endif
 #endif        
         dphi = pre_ref1-pc1(np) - pre_ref2 + pc2(np) + gravity
     
@@ -816,7 +828,7 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
   type(connection_list_type), pointer :: connection_list
   type(connection_type), pointer :: cur_connection_object
   integer :: iconn
-  real*8 :: distance, fraction_upwind, area
+  real*8 :: distance, fraction_upwind
   real*8 :: distance_gravity
 #endif
  
@@ -1241,11 +1253,9 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
     fraction_upwind = cur_connection_object%dist(-1,iconn)
     distance = cur_connection_object%dist(0,iconn)
     ! The below assumes a unit gravity vector of [0,0,1]
-    distance_gravity = cur_connection_object%dist(3,iconn) * &
-                       cur_connection_object%dist(0,iconn)
+    distance_gravity = cur_connection_object%dist(3,iconn)*distance
     dd1 = distance*fraction_upwind
     dd2 = distance-dd1 ! should avoid truncation error
-    area = cur_connection_object%area(iconn)
     
     ! for now, just assume diagonal tensor
     perm1 = perm_xx_loc_p(m1)*cur_connection_object%dist(1,iconn)+ &
@@ -1274,7 +1284,7 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
 !  if(dabs(perm2-1D-15)>1D-20)print *, 'perm2 error', perm2, ip2, n1,n2
 #ifdef OVERHAUL
 #ifdef OVERHAUL_V2
-    call RichardsRes_FLCont(iconn ,area, &
+    call RichardsRes_FLCont(iconn,cur_connection_object%area(iconn), &
                           var_loc_p((m1-1)*size_var_node+1:(m1-1)* &
                             size_var_node+size_var_use), &
                           porosity_loc_p(m1),tor_loc_p(m1), &
@@ -1286,7 +1296,7 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
                           distance_gravity,fraction_upwind,grid, &
                           vv_darcy,Res)
 #else
-    call RichardsRes_FLCont(iconn ,area, &
+    call RichardsRes_FLCont(iconn,cur_connection_object%area(iconn), &
                           var_loc_p((m1-1)*size_var_node+1:(m1-1)* &
                             size_var_node+size_var_use), &
                           porosity_loc_p(m1),tor_loc_p(m1), &
@@ -1671,7 +1681,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
   type(connection_list_type), pointer :: connection_list
   type(connection_type), pointer :: cur_connection_object
   integer :: iconn
-  real*8 :: distance, fraction_upwind, area
+  real*8 :: distance, fraction_upwind
   real*8 :: distance_gravity  
 #endif  
   
@@ -2199,11 +2209,9 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
     fraction_upwind = cur_connection_object%dist(-1,iconn)
     distance = cur_connection_object%dist(0,iconn)
     ! The below assumes a unit gravity vector of [0,0,1]
-    distance_gravity = cur_connection_object%dist(3,iconn) * &
-                       cur_connection_object%dist(0,iconn)
+    distance_gravity = cur_connection_object%dist(3,iconn)*distance
     dd1 = distance*fraction_upwind
     dd2 = distance-dd1 ! should avoid truncation error
-    area = cur_connection_object%area(iconn)
     
     ! for now, just assume diagonal tensor
     perm1 = perm_xx_loc_p(m1)*cur_connection_object%dist(1,iconn)+ &
@@ -2236,7 +2244,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
     do nvar = 1, grid%ndof
 #ifdef OVERHAUL    
 #ifdef OVERHAUL_V2  
-      call RichardsRes_FLCont(nc ,area, &
+      call RichardsRes_FLCont(nc,cur_connection_object%area(iconn), &
                             var_loc_p((m1-1)*size_var_node+nvar* &
                               size_var_use+1:(m1-1)*size_var_node+nvar* &
                               size_var_use+size_var_use),&
@@ -2249,7 +2257,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
                             distance_gravity,fraction_upwind, &
                             grid,vv_darcy,Res)
 #else
-      call RichardsRes_FLCont(nc ,area, &
+      call RichardsRes_FLCont(nc,cur_connection_object%area(iconn), &
                             var_loc_p((m1-1)*size_var_node+nvar* &
                               size_var_use+1:(m1-1)*size_var_node+nvar* &
                               size_var_use+size_var_use),&
@@ -2278,7 +2286,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
        
 #ifdef OVERHAUL 
 #ifdef OVERHAUL_V2   
-      call RichardsRes_FLCont(nc,area, &
+      call RichardsRes_FLCont(nc,cur_connection_object%area(iconn), &
                             var_loc_p((m1-1)*size_var_node+1:(m1-1)* &
                               size_var_node+size_var_use),&
                             porosity_loc_p(m1),tor_loc_p(m1), &
@@ -2292,7 +2300,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
                             grid, &
                             vv_darcy,Res)
 #else
-      call RichardsRes_FLCont(nc,area, &
+      call RichardsRes_FLCont(nc,cur_connection_object%area(iconn), &
                             var_loc_p((m1-1)*size_var_node+1:(m1-1)* &
                               size_var_node+size_var_use),&
                             porosity_loc_p(m1),tor_loc_p(m1), &
