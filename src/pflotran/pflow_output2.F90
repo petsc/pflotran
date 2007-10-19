@@ -1573,6 +1573,8 @@ end subroutine GetVarFromArray
 subroutine GetCellCenteredVelocities(grid,vec,iphase,direction)
 
   use pflow_gridtype_module
+  
+  use Connection_module
 
   implicit none
   
@@ -1588,6 +1590,9 @@ subroutine GetCellCenteredVelocities(grid,vec,iphase,direction)
   PetscScalar, pointer :: vl_ptr(:)
   PetscScalar, pointer :: loc_vec_ptr(:)
   PetscInt, allocatable :: num_additions(:)
+  
+  type(connection_list_type), pointer :: connection_list
+  type(connection_type), pointer :: cur_connection_object
   
   allocate(num_additions(grid%nlmax))
   num_additions(1:grid%nlmax) = 0
@@ -1609,6 +1614,24 @@ subroutine GetCellCenteredVelocities(grid,vec,iphase,direction)
   call VecSet(vec,0.d0,ierr)
 
   call VecGetArrayF90(vec,vec_ptr,ierr)
+#ifdef OVERHAUL
+  connection_list => getBoundaryConnectionList()
+  cur_connection_object => connection_list%first
+  do 
+    if (.not.associated(cur_connection_object)) exit
+    do iconn = 1, cur_connection_object%num_connections
+      if (cur_connection_object%dist(direction,iconn) < 0.99d0) cycle
+      local_id = cur_connection_object%id_dn(iconn)
+      if (iphase == LIQUID_PHASE) then
+        vec_ptr(local_id) = vec_ptr(local_id) + grid%vvlbc(iconn)
+      else
+        vec_ptr(local_id) = vec_ptr(local_id) + grid%vvgbc(iconn)
+      endif
+      num_additions(local_id) = num_additions(local_id) + 1
+    enddo
+    cur_connection_object => cur_connection_object%next
+  enddo
+#else
   do iconn = 1, grid%nconnbc
     if (grid%ipermbc(iconn) == direction) then ! direction 1=x,2=y,3=z
       local_id = grid%mblkbc(iconn)  ! node of bc m = local id
@@ -1620,6 +1643,7 @@ subroutine GetCellCenteredVelocities(grid,vec,iphase,direction)
       num_additions(local_id) = num_additions(local_id) + 1
     endif
   enddo
+#endif  
   call VecRestoreArrayF90(vec,vec_ptr,ierr)
 
   call VecGetArrayF90(vec,vec_ptr,ierr)

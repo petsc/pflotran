@@ -37,7 +37,7 @@ module Connection_module
 
   public :: allocateConnectionLists, createConnection, addConnectionToList, &
             getInternalConnectionList, getBoundaryConnectionList, &
-            getNumberOfBoundaryConnections
+            getNumberOfInternalConnections, getNumberOfBoundaryConnections
   
 contains
 
@@ -88,6 +88,22 @@ function getNumberOfBoundaryConnections()
   getNumberOfBoundaryConnections = boundary_connection_list%first%num_connections
 
 end function getNumberOfBoundaryConnections
+
+! ************************************************************************** !
+!
+! getNumberOfInternalConnections: Returns pointer to internal_connection_list
+! author: Glenn Hammond
+! date: 10/15/07
+!
+! ************************************************************************** !
+function getNumberOfInternalConnections()
+
+  implicit none
+  
+  integer :: getNumberOfInternalConnections
+  getNumberOfInternalConnections = internal_connection_list%first%num_connections
+
+end function getNumberOfInternalConnections
 
 ! ************************************************************************** !
 !
