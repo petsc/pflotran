@@ -327,15 +327,17 @@ private
  endif
    Res_AR(1:grid%ndof-1)=mol(:)
    Res_AR(grid%ndof)=eng
- nullify(temp, pre_ref, sat, density, amw, h,u, pc,kvr,xmol,diff)       
-  end subroutine  MPHASERes_ARCont
+  nullify(temp, pre_ref, sat, density, amw, h,u, pc,kvr,xmol,diff)       
+end subroutine  MPHASERes_ARCont
 
-
- subroutine MPHASERes_FLCont(nconn_no,area, &
-         var_node1,por1,tor1,sir1,dd1,perm1,Dk1,&
-     var_node2,por2,tor2,sir2,dd2,perm2,Dk2,&
-     grid, vv_darcy,Res_FL)
- implicit none
+subroutine MPHASERes_FLCont(nconn_no,area,var_node1,por1,tor1,sir1,dd1, &
+                             perm1,Dk1,var_node2,por2,tor2,sir2,dd2,perm2, &
+                             Dk2,dist_gravity,upweight, &
+                             grid, vv_darcy,Res_FL)
+  use Connection_module
+  
+  implicit none
+  
   integer nconn_no
   type(pflowGrid), intent(inout) :: grid
   real*8 sir1(1:grid%nphase),sir2(1:grid%nphase)
@@ -344,6 +346,8 @@ private
   real*8 por1,por2,tor1,tor2,perm1,perm2,Dk1,Dk2,dd1,dd2
   real*8 vv_darcy(grid%nphase),area
   real*8 Res_FL(1:grid%ndof) 
+  
+  real*8 :: dist_gravity
      
   real*8, pointer :: temp1, pre_ref1   ! 1 dof
   real*8, pointer :: sat1(:), density1(:), amw1(:), h1(:), u1(:), pc1(:), kvr1(:)         ! nphase dof
@@ -401,18 +405,14 @@ private
 
 ! Flow term
     if ((sat1(np) > sir1(np)) .or. (sat2(np) > sir2(np)))then
-    
-    upweight= dd1/(dd1+dd2)
     if(sat1(np) <eps) then 
          upweight=0.d0
       else if(sat2(np) <eps) then 
          upweight=1.d0
       endif
     density_ave = upweight*density1(np)+(1.D0-upweight)*density2(np)  
-    
     gravity = (upweight*density1(np)*amw1(np) + (1.D0-upweight)*density2(np)*amw2(np)) &
-              * grid%gravity * grid%delz(nconn_no) * grid%grav_ang(nconn_no)
-        
+              * grid%gravity * dist_gravity
     dphi = pre_ref1-pc1(np) - pre_ref2 + pc2(np) + gravity
 !    print *,'FLcont  dp',dphi
   ! note uxmol only contains one phase xmol
@@ -472,9 +472,9 @@ private
   nullify(temp2, pre_ref2, sat2, density2, amw2, h2,u2, pc2,kvr2,xmol2,diff2)       
  end subroutine MPHASERes_FLCont
 
- subroutine MPHASERes_FLBCCont(nbc_no,area, &
-             var_node1,var_node2,por2,tor2,sir2,dd1,perm2,Dk2,&
-       grid, vv_darcy,Res_FL)
+ subroutine MPHASERes_FLBCCont(nbc_no,area,var_node1,var_node2,por2,tor2, &
+                               sir2,dd1,perm2,Dk2,dist_gravity, &
+                               grid, vv_darcy,Res_FL)
  ! Notice : index 1 stands for BC node
    implicit none
   
@@ -486,6 +486,8 @@ private
   real*8 por2,perm2,Dk2,tor2
   real*8 vv_darcy(grid%nphase), area
   real*8 Res_FL(1:grid%ndof) 
+  
+  real*8 :: dist_gravity
      
   real*8, pointer :: temp1, pre_ref1   ! 1 dof
   real*8, pointer :: sat1(:), density1(:), amw1(:), h1(:), u1(:), pc1(:), kvr1(:)         ! nphase dof
@@ -547,7 +549,7 @@ private
     density_ave = upweight*density1(np)+(1.D0-upweight)*density2(np)  
     
     gravity = (upweight*density1(np)*amw1(np) + (1.D0-upweight)*density2(np)*amw2(np)) &
-              * grid%gravity * grid%delzbc(nbc_no)
+              * grid%gravity * dist_gravity
         
     dphi = pre_ref1-pc1(np) - pre_ref2 + pc2(np) + gravity
     
@@ -643,7 +645,7 @@ private
     density_ave = upweight*density1(np)+(1.D0-upweight)*density2(np)  
     
     gravity = (upweight*density1(np)*amw1(np) + (1.D0-upweight)*density2(np)*amw2(np)) &
-              * grid%gravity * grid%delzbc(nbc_no)
+              * grid%gravity * dist_gravity
         
     dphi = pre_ref1-pc1(np) - pre_ref2 + pc2(np) + gravity
     
@@ -694,23 +696,25 @@ private
  end  subroutine MPHASERes_FLBCCont 
 
 
-  subroutine MPHASEResidual(snes,xx,r,grid,ierr)
+subroutine MPHASEResidual(snes,xx,r,grid,ierr)
 
-    use water_eos_module
-    use co2eos_module
-    use translator_mph_module
-    use span_wagner_module
+  use water_eos_module
+  use co2eos_module
+  use translator_mph_module
+  use span_wagner_module
 
-    implicit none
+  use Connection_module
+
+  implicit none
   
-    SNES, intent(in) :: snes
-    Vec, intent(inout) :: xx
-    Vec, intent(out) :: r
-    type(pflowGrid), intent(inout) :: grid
+  SNES, intent(in) :: snes
+  Vec, intent(inout) :: xx
+  Vec, intent(out) :: r
+  type(pflowGrid), intent(inout) :: grid
 
 ! integer :: j, jm1, jm2, jmu, mu
   integer :: ierr, ierr0
-  integer*4 :: n, ng, nc, nr
+  integer*4 :: n, ng, nr
   integer*4 :: i, i1, i2, jn, jng
   integer*4 :: m, m1, m2, n1, n2, ip1, ip2, p1, p2
   !, t1, t2, c1, c2, s1, s2
@@ -759,6 +763,13 @@ private
   real*8 :: Res(grid%ndof), vv_darcy(grid%nphase)
  
 ! real*8 :: cond, den,
+
+  ! Connection variables
+  type(connection_list_type), pointer :: connection_list
+  type(connection_type), pointer :: cur_connection_object
+  integer :: iconn
+  real*8 :: distance, fraction_upwind, area
+  real*8 :: distance_gravity  
   
   grid%vvlbc=0.D0
   grid%vvgbc=0.D0
@@ -1166,79 +1177,81 @@ private
 ! Be careful here, we have velocity field for every phase
 !---------------------------------------------------------------------------
  
-  do nc = 1, grid%nconn  ! For each interior connection...
-    m1 = grid%nd1(nc) ! ghosted
-    m2 = grid%nd2(nc)
+  ! loop over internal connections
+  connection_list => getInternalConnectionList()
+  cur_connection_object => connection_list%first
+  do 
+    if (.not.associated(cur_connection_object)) exit
+    do iconn = 1, cur_connection_object%num_connections
+      m1 = cur_connection_object%id_up(iconn)
+      m2 = cur_connection_object%id_dn(iconn)
 
-    n1 = grid%nG2L(m1) ! = zero for ghost nodes
-    n2 = grid%nG2L(m2) ! Ghost to local mapping   
+      n1 = grid%nG2L(m1) ! = zero for ghost nodes
+      n2 = grid%nG2L(m2) ! Ghost to local mapping   
 
-    p1 = 1 + (n1-1)*grid%ndof 
-    p2 = 1 + (n2-1)*grid%ndof
-   
-    dd1 = grid%dist1(nc)
-    dd2 = grid%dist2(nc)
+      p1 = 1 + (n1-1)*grid%ndof 
+      p2 = 1 + (n2-1)*grid%ndof
+
+      fraction_upwind = cur_connection_object%dist(-1,iconn)
+      distance = cur_connection_object%dist(0,iconn)
+      ! The below assumes a unit gravity vector of [0,0,1]
+      distance_gravity = cur_connection_object%dist(3,iconn)*distance
+      dd1 = distance*fraction_upwind
+      dd2 = distance-dd1 ! should avoid truncation error
     
-    ip1 = grid%iperm1(nc)  ! determine the normal direction of interface 
-    ip2 = grid%iperm2(nc)
+      ! for now, just assume diagonal tensor
+      perm1 = perm_xx_loc_p(m1)*cur_connection_object%dist(1,iconn)+ &
+              perm_yy_loc_p(m1)*cur_connection_object%dist(2,iconn)+ &
+              perm_zz_loc_p(m1)*cur_connection_object%dist(3,iconn)
 
+      perm2 = perm_xx_loc_p(m2)*cur_connection_object%dist(1,iconn)+ &
+              perm_yy_loc_p(m2)*cur_connection_object%dist(2,iconn)+ &
+              perm_zz_loc_p(m2)*cur_connection_object%dist(3,iconn)
 
-    select case(ip1)
-    case(1) 
-      perm1 = perm_xx_loc_p(m1)
-    case(2)
-      perm1 = perm_yy_loc_p(m1)
-    case(3)
-      perm1 = perm_zz_loc_p(m1)
-    end select
-    
-    select case(ip2)
-    case(1) 
-      perm2 = perm_xx_loc_p(m2)
-    case(2)
-      perm2 = perm_yy_loc_p(m2)
-    case(3)
-      perm2 = perm_zz_loc_p(m2)
-    end select
-
-    i1 = ithrm_loc_p(m1)
-    i2 = ithrm_loc_p(m2)
-    iicap1=int(icap_loc_p(m1))
-    iicap2=int(icap_loc_p(m2))
+      i1 = ithrm_loc_p(m1)
+      i2 = ithrm_loc_p(m2)
+      iicap1=int(icap_loc_p(m1))
+      iicap2=int(icap_loc_p(m2))
    
-    D1 = grid%ckwet(i1)
-    D2 = grid%ckwet(i2)
+      D1 = grid%ckwet(i1)
+      D2 = grid%ckwet(i2)
 
-    dd = dd1 + dd2
-    f1 = dd1/dd
-    f2 = dd2/dd
-!   if(dabs(perm1-1D-15)>1D-20)print *, 'perm1 error', perm1, ip1, n1,n2
-!  if(dabs(perm2-1D-15)>1D-20)print *, 'perm2 error', perm2, ip2, n1,n2
-    call MPHASERes_FLCont(nc ,grid%area(nc), &
-         var_loc_p((m1-1)*size_var_node+1:(m1-1)*size_var_node+size_var_use),&
-     porosity_loc_p(m1),tor_loc_p(m1),grid%sir(1:grid%nphase,iicap1),dd1,perm1,D1,&
-     var_loc_p((m2-1)*size_var_node+1:(m2-1)*size_var_node+size_var_use),&
-     porosity_loc_p(m2),tor_loc_p(m2),grid%sir(1:grid%nphase,iicap2),dd2,perm2,D2,&
-     grid, vv_darcy,Res)
-    grid%vvl_loc(nc) = vv_darcy(1)
-    grid%vvg_loc(nc) = vv_darcy(2)  
-    if (n1 > 0) then               ! If the upstream node is not a ghost node...
-      do np =1, grid%nphase 
-        vl_p(np+(ip1-1)*grid%nphase+3*grid%nphase*(n1-1)) = vv_darcy(np) 
-        ! use for print out of velocity
-      enddo
-    endif
+      call MPHASERes_FLCont(iconn,cur_connection_object%area(iconn), &
+                            var_loc_p((m1-1)*size_var_node+1: &
+                                      (m1-1)*size_var_node+size_var_use),&
+                            porosity_loc_p(m1),tor_loc_p(m1), &
+                            grid%sir(1:grid%nphase,iicap1),dd1,perm1,D1,&
+                            var_loc_p((m2-1)*size_var_node+1: &
+                                      (m2-1)*size_var_node+size_var_use),&
+                            porosity_loc_p(m2),tor_loc_p(m2), &
+                            grid%sir(1:grid%nphase,iicap2),dd2,perm2,D2,&
+                            distance_gravity,fraction_upwind,grid,vv_darcy,Res)
+      grid%vvl_loc(iconn) = vv_darcy(1)
+      grid%vvg_loc(iconn) = vv_darcy(2)  
+      if (n1 > 0) then               ! If the upstream node is not a ghost node...
+        do np =1, grid%nphase 
+          vl_p(np+(0)*grid%nphase+3*grid%nphase*(n1-1)) = &
+                              vv_darcy(np)*cur_connection_object%dist(1,iconn) 
+          vl_p(np+(1)*grid%nphase+3*grid%nphase*(n1-1)) = &
+                              vv_darcy(np)*cur_connection_object%dist(2,iconn) 
+          vl_p(np+(2)*grid%nphase+3*grid%nphase*(n1-1)) = &
+                              vv_darcy(np)*cur_connection_object%dist(3,iconn) 
+        enddo
+      endif
      
-    Resold_FL(nc,1:grid%ndof)= Res(1:grid%ndof) 
+      Resold_FL(iconn,1:grid%ndof) = Res(1:grid%ndof) 
     
-  if(n1>0)then
-      r_p(p1:p1+grid%ndof-1) = r_p(p1:p1+grid%ndof-1) + Res(1:grid%ndof)
-    endif
+      if(n1>0)then
+        r_p(p1:p1+grid%ndof-1) = r_p(p1:p1+grid%ndof-1) + Res(1:grid%ndof)
+      endif
    
-    if(n2>0)then
-      r_p(p2:p2+grid%ndof-1) = r_p(p2:p2+grid%ndof-1) - Res(1:grid%ndof)
-    endif
+      if(n2>0)then
+        r_p(p2:p2+grid%ndof-1) = r_p(p2:p2+grid%ndof-1) - Res(1:grid%ndof)
+      endif
 
+    enddo
+  
+    cur_connection_object => cur_connection_object%next
 
   end do
  ! print *,'finished NC' 
@@ -1248,49 +1261,50 @@ private
 
 !  print *,'2ph bc-sgbc', grid%myrank, grid%sgbc    
  
-  do nc = 1, grid%nconnbc
+  connection_list => getBoundaryConnectionList()
+  cur_connection_object => connection_list%first
+  do 
+    if (.not.associated(cur_connection_object)) exit
+    do iconn = 1, cur_connection_object%num_connections
+      m = cur_connection_object%id_dn(iconn)
 
-    m = grid%mblkbc(nc)  ! Note that here, m is NOT ghosted.
-    ng = grid%nL2G(m)
+      ng = grid%nL2G(m)
 
-    if(ng<=0)then
-      print *, "Wrong boundary node index... STOP!!!"
-      stop
-    end if
+      if(ng<=0)then
+        print *, "Wrong boundary node index... STOP!!!"
+        stop
+      end if
 
-    p1 = 1 + (m-1) * grid%ndof
+      p1 = 1 + (m-1) * grid%ndof
 
-    ibc = grid%ibconn(nc)
-    ip1 = grid%ipermbc(nc)
+      ibc = grid%ibconn(iconn)
 
-    i2 = ithrm_loc_p(ng)
-    D2 = grid%ckwet(i2)
+      i2 = ithrm_loc_p(ng)
+      D2 = grid%ckwet(i2)
 
-    select case(ip1)
-      case(1)
-        perm1 = perm_xx_loc_p(ng)
-      case(2)
-        perm1 = perm_yy_loc_p(ng)
-      case(3)
-        perm1 = perm_zz_loc_p(ng)
-    end select
+      ! for now, just assume diagonal tensor
+      perm1 = perm_xx_loc_p(ng)*cur_connection_object%dist(1,iconn)+ &
+              perm_yy_loc_p(ng)*cur_connection_object%dist(2,iconn)+ &
+              perm_zz_loc_p(ng)*cur_connection_object%dist(3,iconn)
+      ! The below assumes a unit gravity vector of [0,0,1]
+      distance_gravity = cur_connection_object%dist(3,iconn) * &
+                         cur_connection_object%dist(0,iconn)
 
-    select case(grid%ibndtyp(ibc))
+      select case(grid%ibndtyp(ibc))
           
-      case(2)
-      ! solve for pb from Darcy's law given qb /= 0
-        grid%xxbc(:,nc) = xx_loc_p((ng-1)*grid%ndof+1: ng*grid%ndof)
-        grid%iphasebc(nc) = int(iphase_loc_p(ng))
-      case(3) 
-     !  grid%xxbc((nc-1)*grid%ndof+1)=grid%pressurebc(2,ibc)
-        grid%xxbc(2:grid%ndof,nc) = xx_loc_p((ng-1)*grid%ndof+2: ng*grid%ndof)
-        grid%iphasebc(nc)=int(iphase_loc_p(ng))
-      case(4)
-         grid%xxbc(1,nc) = xx_loc_p((ng-1)*grid%ndof+1)
-         grid%xxbc(3:grid%ndof,nc) = xx_loc_p((ng-1)*grid%ndof+3: ng*grid%ndof)    
-        grid%iphasebc(nc)=int(iphase_loc_p(ng))
+        case(2)
+        ! solve for pb from Darcy's law given qb /= 0
+          grid%xxbc(:,iconn) = xx_loc_p((ng-1)*grid%ndof+1: ng*grid%ndof)
+          grid%iphasebc(iconn) = int(iphase_loc_p(ng))
+        case(3) 
+       !  grid%xxbc((nc-1)*grid%ndof+1)=grid%pressurebc(2,ibc)
+          grid%xxbc(2:grid%ndof,iconn) = xx_loc_p((ng-1)*grid%ndof+2: ng*grid%ndof)
+          grid%iphasebc(iconn)=int(iphase_loc_p(ng))
+        case(4)
+           grid%xxbc(1,iconn) = xx_loc_p((ng-1)*grid%ndof+1)
+           grid%xxbc(3:grid%ndof,iconn) = xx_loc_p((ng-1)*grid%ndof+3: ng*grid%ndof)    
+           grid%iphasebc(iconn)=int(iphase_loc_p(ng))
 
-      
       end select
 
 ! print *,'2ph bc',grid%myrank,nc,m,ng,ibc,grid%ibndtyp(ibc),grid%pressurebc(:,ibc), &
@@ -1306,7 +1320,7 @@ private
 !      endif
    
     
-     iicap=int(icap_loc_p(ng))  
+      iicap=int(icap_loc_p(ng))  
 !      print *,'pflow_2pha_bc: ',grid%myrank,' nc= ',nc,' m= ',m, &
 !      ' ng= ',ng,' ibc= ',ibc,ip1,iicap, &
 !      grid%nconnbc,grid%ibndtyp(ibc),grid%concbc(nc)
@@ -1315,26 +1329,32 @@ private
 !   grid%pressurebc(2,ibc),grid%tempbc(ibc),grid%concbc(ibc),grid%sgbc(ibc)
        
         !*****************
-    dif(1)= grid%difaq
-    dif(2)= grid%cdiff(int(ithrm_loc_p(ng)))
+      dif(1)= grid%difaq
+      dif(2)= grid%cdiff(int(ithrm_loc_p(ng)))
     !*******************************************
 
   
-      call pri_var_trans_mph_ninc(grid%xxbc(:,nc),grid%iphasebc(nc),&
-      grid%scale,grid%nphase,grid%nspec, iicap, dif,&
-      grid%varbc(1:size_var_use), grid%itable,grid%m_nacl,ierr,grid%xxphi_co2_bc(nc), cw)
-   
+      call pri_var_trans_mph_ninc(grid%xxbc(:,iconn),grid%iphasebc(iconn), &
+                                  grid%scale,grid%nphase,grid%nspec,iicap, &
+                                  dif,grid%varbc(1:size_var_use),grid%itable, &
+                                  grid%m_nacl,ierr,grid%xxphi_co2_bc(iconn),cw)
      
-      call MPHASERes_FLBCCont(nc,grid%areabc(nc), &
-      grid%varbc(1:size_var_use), &
-      var_loc_p((ng-1)*size_var_node+1:(ng-1)*size_var_node+size_var_use),&
-      porosity_loc_p(ng),tor_loc_p(ng),grid%sir(1:grid%nphase,iicap),grid%distbc(nc),&
-      perm1,D2, grid, vv_darcy,Res)
-      grid%vvlbc(nc) = vv_darcy(1)
-      grid%vvgbc(nc) = vv_darcy(2) 
+      call MPHASERes_FLBCCont(iconn,cur_connection_object%area(iconn), &
+                              grid%varbc(1:size_var_use), &
+                              var_loc_p((ng-1)*size_var_node+1: &
+                                        (ng-1)*size_var_node+size_var_use), &
+                              porosity_loc_p(ng),tor_loc_p(ng), &
+                              grid%sir(1:grid%nphase,iicap), &
+                              cur_connection_object%dist(0,iconn),perm1,D2, &
+                              distance_gravity,grid,vv_darcy,Res)
+                              
+      grid%vvlbc(iconn) = vv_darcy(1)
+      grid%vvgbc(iconn) = vv_darcy(2) 
       r_p(p1:p1-1+grid%ndof)= r_p(p1:p1-1+grid%ndof) - Res(1:grid%ndof)
       ResOld_AR(m,1:grid%ndof) = ResOld_AR(m,1:grid%ndof) - Res(1:grid%ndof)
- enddo
+    enddo
+    cur_connection_object => cur_connection_object%next
+  enddo
  
 
 !adjust residual to R/dt
@@ -1383,38 +1403,40 @@ private
 
 ! print *,'Residual ::...........'; call VecView(r,PETSC_VIEWER_STDOUT_WORLD,ierr)
 ! print *,'finished MPHASEResidual'
-  end subroutine MPHASEResidual
+end subroutine MPHASEResidual
                 
 ! --------------------------------------------------------------------- 
 
-  subroutine MPHASEJacobian(snes,xx,A,B,flag,grid,ierr)
+subroutine MPHASEJacobian(snes,xx,A,B,flag,grid,ierr)
        
-    use water_eos_module
-    use co2eos_module
-    use translator_mph_module
-    use span_wagner_module
+  use water_eos_module
+  use co2eos_module
+  use translator_mph_module
+  use span_wagner_module
   
-    implicit none
+  use Connection_module
+    
+  implicit none
 
-    SNES, intent(in) :: snes
-    Vec, intent(in) :: xx
-    Mat, intent(inout) :: A, B
-    type(pflowGrid), intent(inout) :: grid
-   ! integer, intent(inout) :: flag
-    MatStructure flag
+  SNES, intent(in) :: snes
+  Vec, intent(in) :: xx
+  Mat, intent(inout) :: A, B
+  type(pflowGrid), intent(inout) :: grid
+ ! integer, intent(inout) :: flag
+  MatStructure flag
 
-!   integer :: j, jn, jm1, jm2,jmu,mu, 
-    integer :: ierr
-    integer*4 :: n, ng, nc,nvar,neq,nr
-    integer*4 :: i1, i2, jng, i
-    integer   :: kk,ii1,jj1,kk1,ii2,jj2,kk2  
-    integer*4 :: m, m1, m2, n1, n2, ip1, ip2 
-    integer*4 :: p1,p2 !,t1,t2,c1,c2,s1,s2
-    integer*4 :: ibc  ! Index that specifies a boundary condition block.
-!   real*8 ::  v_darcy, q,
-    real*8 :: dum1, dum2
+! integer :: j, jn, jm1, jm2,jmu,mu, 
+  integer :: ierr
+  integer*4 :: n, ng, nvar,neq,nr
+  integer*4 :: i1, i2, jng, i
+  integer   :: kk,ii1,jj1,kk1,ii2,jj2,kk2  
+  integer*4 :: m, m1, m2, n1, n2, ip1, ip2 
+  integer*4 :: p1,p2 !,t1,t2,c1,c2,s1,s2
+  integer*4 :: ibc  ! Index that specifies a boundary condition block.
+! real*8 ::  v_darcy, q,
+  real*8 :: dum1, dum2
 
-    PetscScalar, pointer :: porosity_loc_p(:), volume_p(:), &
+  PetscScalar, pointer :: porosity_loc_p(:), volume_p(:), &
                xx_loc_p(:), phis_p(:),  tor_loc_p(:),&
                perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
 
@@ -1451,6 +1473,14 @@ private
   real*8 :: ResInc(1:grid%nlmax, 1:grid%ndof, 1:grid%ndof),res(1:grid%ndof)  
   real*8 :: max_dev  
   integer  na1,na2
+  
+  ! connection variables
+  type(connection_list_type), pointer :: connection_list
+  type(connection_type), pointer :: cur_connection_object
+  integer :: iconn
+  real*8 :: distance, fraction_upwind, area
+  real*8 :: distance_gravity  
+  
 !-----------------------------------------------------------------------
 ! R stand for residual
 !  ra       1              2              3              4          5              6            7      8
@@ -1637,60 +1667,60 @@ private
   enddo  
   
   ! print *,' Mph Jaco Finished source terms'
-! Contribution from BC
- do nc = 1, grid%nconnbc
-
-       m = grid%mblkbc(nc)  ! Note that here, m is NOT ghosted.
-       ng = grid%nL2G(m)
-
-       if(ng<=0)then
-         print *, "Wrong boundary node index... STOP!!!"
-         stop
-       end if
   
-       p1 = 1 + (m-1) * grid%ndof
+! Contribution from BC
+  ! loop over boundary connections
+  connection_list => getBoundaryConnectionList()
+  cur_connection_object => connection_list%first
+  do 
+    if (.not.associated(cur_connection_object)) exit
+    do iconn = 1, cur_connection_object%num_connections
+      m = cur_connection_object%id_dn(iconn)
+      ng = grid%nL2G(m)
+
+      if(ng<=0)then
+        print *, "Wrong boundary node index... STOP!!!"
+        stop
+      end if
+  
+      p1 = 1 + (m-1) * grid%ndof
        
-     ibc = grid%ibconn(nc)
-       ip1 = grid%ipermbc(nc)
-     
+      ibc = grid%ibconn(iconn)
       
-       i2 = ithrm_loc_p(ng)
-       D2 = grid%ckwet(i2)
+      i2 = ithrm_loc_p(ng)
+      D2 = grid%ckwet(i2)
 
-
-       select case(ip1)
-         case(1)
-           perm1 = perm_xx_loc_p(ng)
-         case(2)
-           perm1 = perm_yy_loc_p(ng)
-         case(3)
-           perm1 = perm_zz_loc_p(ng)
-       end select
+      ! for now, just assume diagonal tensor
+      perm1 = perm_xx_loc_p(ng)*cur_connection_object%dist(1,iconn)+ &
+              perm_yy_loc_p(ng)*cur_connection_object%dist(2,iconn)+ &
+              perm_zz_loc_p(ng)*cur_connection_object%dist(3,iconn)
+      ! The below assumes a unit gravity vector of [0,0,1]
+      distance_gravity = cur_connection_object%dist(3,iconn) * &
+                         cur_connection_object%dist(0,iconn)
        
-     delxbc=0.D0
-       select case(grid%ibndtyp(ibc))
-          case(1)
-        delxbc=0.D0
-          case(2)
+      delxbc=0.D0
+      select case(grid%ibndtyp(ibc))
+        case(1)
+          delxbc=0.D0
+        case(2)
           ! solve for pb from Darcy's law given qb /= 0
-        grid%xxbc(:,nc)= &
-                 xx_loc_p((ng-1)*grid%ndof+1: ng*grid%ndof)
-              grid%iphasebc(nc)=int(iphase_loc_p(ng))
-              delxbc=grid%delx(1:grid%ndof,ng)
-      case(3) 
-          !    grid%xxbc(1,nc)=grid%pressurebc(2,ibc)
-        grid%xxbc(2:grid%ndof,nc)= xx_loc_p((ng-1)*grid%ndof+2: ng*grid%ndof)
-        grid%iphasebc(nc)=int(iphase_loc_p(ng))
-         delxbc(1)=0.D0
-         delxbc(2:grid%ndof)=grid%delx(2:grid%ndof,ng)
+         grid%xxbc(:,iconn)=xx_loc_p((ng-1)*grid%ndof+1: ng*grid%ndof)
+          grid%iphasebc(iconn)=int(iphase_loc_p(ng))
+             delxbc=grid%delx(1:grid%ndof,ng)
+        case(3) 
+          ! grid%xxbc(1,iconn)=grid%pressurebc(2,ibc)
+          grid%xxbc(2:grid%ndof,iconn)= xx_loc_p((ng-1)*grid%ndof+2: ng*grid%ndof)
+          grid%iphasebc(iconn)=int(iphase_loc_p(ng))
+          delxbc(1)=0.D0
+          delxbc(2:grid%ndof)=grid%delx(2:grid%ndof,ng)
         case(4)
-        grid%xxbc(1,nc) = xx_loc_p((ng-1)*grid%ndof+1)
-        grid%xxbc(3:grid%ndof,nc) = xx_loc_p((ng-1)*grid%ndof+3: ng*grid%ndof)    
-        delxbc(1)=grid%delx(1,ng)
-        delxbc(3:grid%ndof) = grid%delx(3:grid%ndof,ng) 
-        grid%iphasebc(nc)=int(iphase_loc_p(ng))
+          grid%xxbc(1,iconn) = xx_loc_p((ng-1)*grid%ndof+1)
+          grid%xxbc(3:grid%ndof,iconn) = xx_loc_p((ng-1)*grid%ndof+3: ng*grid%ndof)    
+          delxbc(1)=grid%delx(1,ng)
+          delxbc(3:grid%ndof) = grid%delx(3:grid%ndof,ng) 
+          grid%iphasebc(iconn)=int(iphase_loc_p(ng))
 
-          end select
+      end select
 
 ! print *,'2ph bc',grid%myrank,nc,m,ng,ibc,grid%ibndtyp(ibc),grid%pressurebc(:,ibc), &
 ! grid%tempbc(ibc),grid%sgbc(ibc),grid%concbc(ibc),grid%velocitybc(:,ibc)
@@ -1704,7 +1734,7 @@ private
    !   grid%pressurebc(ibc)  !nphase elements
 !      endif
    
-    iicap=  int(icap_loc_p(ng))     
+      iicap = int(icap_loc_p(ng))     
        
 !      print *,'pflow_2pha_bc: ',grid%myrank,' nc= ',nc,' m= ',m, &
 !      ' ng= ',ng,' ibc= ',ibc,ip1,iicap, &
@@ -1713,35 +1743,41 @@ private
 !   print *,'pflow_2pha-bc: ',ibc,grid%ideriv,grid%ibndtyp(ibc),grid%density_bc,&
 !   grid%pressurebc(2,ibc),grid%tempbc(ibc),grid%concbc(ibc),grid%sgbc(ibc)
         !*****************
-  dif(1)= grid%difaq
-    dif(2)= grid%cdiff(int(ithrm_loc_p(ng)))
+      dif(1)= grid%difaq
+      dif(2)= grid%cdiff(int(ithrm_loc_p(ng)))
     !*******************************************
 
-   ! print *,' Mph Jaco BC terms: finish setup'
   ! here should pay attention to BC type !!!
-   call pri_var_trans_mph_ninc(grid%xxbc(:,nc),grid%iphasebc(nc),&
-       grid%scale,grid%nphase,grid%nspec, iicap, dif,&
-      grid%varbc(1:size_var_use), grid%itable,grid%m_nacl,ierr, dum1, dum2)
+      call pri_var_trans_mph_ninc(grid%xxbc(:,iconn),grid%iphasebc(iconn),&
+                              grid%scale,grid%nphase,grid%nspec,iicap,dif,&
+                              grid%varbc(1:size_var_use),grid%itable, &
+                              grid%m_nacl,ierr, dum1, dum2)
   
-  
-  
-      call pri_var_trans_mph_winc(grid%xxbc(:,nc), delxbc,&
-                       grid%iphasebc(nc), grid%scale,grid%nphase,grid%nspec, iicap,&
-             dif(1:grid%nphase),&
-            grid%varbc(size_var_use+1:(grid%ndof+1)*size_var_use), grid%itable,grid%m_nacl,ierr)
+      call pri_var_trans_mph_winc(grid%xxbc(:,iconn),delxbc,&
+                              grid%iphasebc(iconn),grid%scale,grid%nphase, &
+                              grid%nspec,iicap,dif(1:grid%nphase), &
+                              grid%varbc(size_var_use+1: &
+                                         (grid%ndof+1)*size_var_use), &
+                              grid%itable,grid%m_nacl,ierr)
             
 !    print *,' Mph Jaco BC terms: finish increment'
-    do nvar=1,grid%ndof
+      do nvar=1,grid%ndof
    
-    call MPHASERes_FLBCCont(nc,grid%areabc(nc), &
-             grid%varbc(nvar*size_var_use+1:(nvar+1)*size_var_use), &
-       var_loc_p((ng-1)*size_var_node+nvar*size_var_use+1:(ng-1)*size_var_node+nvar*size_var_use+size_var_use),&
-       porosity_loc_p(ng),tor_loc_p(ng),grid%sir(1:grid%nphase,iicap),grid%distbc(nc),&
-       perm1,D2, grid, vv_darcy,Res)
+        call MPHASERes_FLBCCont(iconn,cur_connection_object%area(iconn), &
+                                grid%varbc(nvar*size_var_use+1: &
+                                           (nvar+1)*size_var_use), &
+                                var_loc_p((ng-1)*size_var_node+ &
+                                             nvar*size_var_use+1: &
+                                          (ng-1)*size_var_node+ &
+                                             nvar*size_var_use+size_var_use), &
+                                porosity_loc_p(ng),tor_loc_p(ng), &
+                                grid%sir(1:grid%nphase,iicap), &
+                                cur_connection_object%dist(0,iconn),&
+                                perm1,D2,distance_gravity,grid,vv_darcy,Res)
 
     
-  ResInc(m,1:grid%ndof,nvar) = ResInc(m,1:grid%ndof,nvar) - Res(1:grid%ndof)
-   enddo
+        ResInc(m,1:grid%ndof,nvar) = ResInc(m,1:grid%ndof,nvar) - Res(1:grid%ndof)
+      enddo
  !  print *,' Mph Jaco BC terms: finish comp'
     !   print *, ' boundary index', nc,ng,ibc,grid%ibndtyp(ibc)
     !   print *, ' P  T   C   S  ', grid%pressurebc(1,ibc),grid%tempbc(ibc), &
@@ -1752,227 +1788,231 @@ private
 !print *,grid%pressurebc(2,ibc),grid%tempbc(ibc),grid%concbc(ibc),grid%sgbc(ibc)
 !print *,grid%density_bc,grid%avgmw_bc
 !print *,grid%hh_bc,grid%uu_bc,grid%df_bc,grid%hen_bc,grid%pc_bc,grid%kvr_bc
-
- enddo
+    enddo
+    cur_connection_object => cur_connection_object%next
+  enddo
  !  print *,' Mph Jaco Finished BC terms'
 
- do n= 1, grid%nlmax
-   ra=0.D0
-   ng = grid%nL2G(n)
-   na1= grid%nG2N(ng)
+  do n= 1, grid%nlmax
+    ra=0.D0
+    ng = grid%nL2G(n)
+    na1= grid%nG2N(ng)
    ! Remember, the matrix index starts from (0,0)
     p1 = (ng-1)*grid%ndof ! = 1 + (ng-1)*grid%ndof-1
    
-   max_dev=0.D0
-   do neq=1, grid%ndof
-     do nvar=1, grid%ndof
-       ra(neq,nvar)=ResInc(n,neq,nvar)/grid%delx(nvar,ng)-ResOld_AR(n,neq)/grid%delx(nvar,ng)
-         if(max_dev < dabs(ra(3,nvar))) max_dev = dabs(ra(3,nvar))
+    max_dev=0.D0
+    do neq=1, grid%ndof
+      do nvar=1, grid%ndof
+        ra(neq,nvar)=ResInc(n,neq,nvar)/grid%delx(nvar,ng)-ResOld_AR(n,neq)/grid%delx(nvar,ng)
+          if(max_dev < dabs(ra(3,nvar))) max_dev = dabs(ra(3,nvar))
      
-   enddo      
-   enddo
-   if(grid%use_isoth==PETSC_TRUE)then
+      enddo      
+    enddo
+    if(grid%use_isoth==PETSC_TRUE)then
       ra(:,2)=0.D0
-    ra(3,1:grid%ndof)=0.D0
+      ra(3,1:grid%ndof)=0.D0
       ra(3,2)=1.D0
-   endif     
+    endif     
 
    
   ! if(max_dev<1D-5)then
   !  print *,'Mph Jaco max dev = ', max_dev
  !  endif
   
-     select case(grid%idt_switch)
-     case(1) 
-      ra(1:grid%ndof,1:grid%ndof) =ra(1:grid%ndof,1:grid%ndof) /grid%dt
-     case(-1)
-      if(grid%dt>1) ra(1:grid%ndof,1:grid%ndof) =ra(1:grid%ndof,1:grid%ndof) /grid%dt
-     end select
+    select case(grid%idt_switch)
+      case(1) 
+        ra(1:grid%ndof,1:grid%ndof) =ra(1:grid%ndof,1:grid%ndof) /grid%dt
+      case(-1)
+        if(grid%dt>1) ra(1:grid%ndof,1:grid%ndof) =ra(1:grid%ndof,1:grid%ndof) /grid%dt
+    end select
       
 
-  if (grid%iblkfmt == 0) then
-     p1=(na1)*grid%ndof
+    if (grid%iblkfmt == 0) then
+      p1=(na1)*grid%ndof
      
-     do ii=0,grid%ndof-1
-      do jj=0,grid%ndof-1
-        call MatSetValue(A,p1+ii,p1+jj,ra(ii+1,jj+1)/ volume_p(n),ADD_VALUES,ierr)
-      enddo
-     enddo
-   else
+      do ii=0,grid%ndof-1
+        do jj=0,grid%ndof-1
+          call MatSetValue(A,p1+ii,p1+jj,ra(ii+1,jj+1)/ volume_p(n),ADD_VALUES,ierr)
+        enddo
+       enddo
+    else
       !ra(1:grid%ndof,1:grid%ndof) =ra(1:grid%ndof,1:grid%ndof) /grid%dt
       blkmat11=ra(1:grid%ndof,1:grid%ndof)
     
-    if(volume_p(n)>1.D0 ) blkmat11=blkmat11 / volume_p(n)
+      if(volume_p(n)>1.D0 ) blkmat11=blkmat11 / volume_p(n)
    
      ! if(n==1) print *,  blkmat11, volume_p(n), ra
-     call MatSetValuesBlocked(A,1,na1,1,na1,blkmat11,ADD_VALUES,ierr)
-   endif
+      call MatSetValuesBlocked(A,1,na1,1,na1,blkmat11,ADD_VALUES,ierr)
+    endif
          
- enddo
+  enddo
 !   print *,' Mph Jaco Finished one node terms'
 ! -----------------------------contribution from transport----------------------
 
  !print *,'phase cond: ',iphase_loc_p
- ResInc=0.D0
-  do nc = 1, grid%nconn  ! For each interior connection...
-    ra=0.D0
-    m1 = grid%nd1(nc) ! ghosted
-    m2 = grid%nd2(nc)
+  ResInc=0.D0
+ 
+  connection_list => getInternalConnectionList()
+  cur_connection_object => connection_list%first
+  do 
+    if (.not.associated(cur_connection_object)) exit
+    do iconn = 1, cur_connection_object%num_connections
+      m1 = cur_connection_object%id_up(iconn)
+      m2 = cur_connection_object%id_dn(iconn)
 
-    n1 = grid%nG2L(m1) ! = zero for ghost nodes
-    n2 = grid%nG2L(m2) ! Ghost to local mapping   
-    na1= grid%nG2N(m1)
-  na2= grid%nG2N(m2)
+      n1 = grid%nG2L(m1) ! = zero for ghost nodes
+      n2 = grid%nG2L(m2) ! Ghost to local mapping   
+      na1= grid%nG2N(m1)
+      na2= grid%nG2N(m2)
     !print *, grid%myrank,nc,m1,m2,n1,n2,na1,na2
-    p1 =  (m1-1)*grid%ndof
-    p2 =  (m2-1)*grid%ndof
+      p1 =  (m1-1)*grid%ndof
+      p2 =  (m2-1)*grid%ndof
    
-    dd1 = grid%dist1(nc)
-    dd2 = grid%dist2(nc)
-    
-    ip1 = grid%iperm1(nc)  ! determine the normal direction of interface 
-    ip2 = grid%iperm2(nc)
-    
-    iiphas1 = iphase_loc_p(m1)
-    iiphas2 = iphase_loc_p(m2)
+      iiphas1 = iphase_loc_p(m1)
+      iiphas2 = iphase_loc_p(m2)
 
-
-       i1 = ithrm_loc_p(m1)
-       i2 = ithrm_loc_p(m2)
+      i1 = ithrm_loc_p(m1)
+      i2 = ithrm_loc_p(m2)
       D1 = grid%ckwet(i1)
-        D2 = grid%ckwet(i2)
+      D2 = grid%ckwet(i2)
 
-
-
-
-    select case(ip1)
-    case(1) 
-       perm1 = perm_xx_loc_p(m1)
-    case(2)
-       perm1 = perm_yy_loc_p(m1)
-    case(3)
-       perm1 = perm_zz_loc_p(m1)
-    end select
+      fraction_upwind = cur_connection_object%dist(-1,iconn)
+      distance = cur_connection_object%dist(0,iconn)
+      ! The below assumes a unit gravity vector of [0,0,1]
+      distance_gravity = cur_connection_object%dist(3,iconn)*distance
+      dd1 = distance*fraction_upwind
+      dd2 = distance-dd1 ! should avoid truncation error
     
-    select case(ip2)
-    case(1) 
-       perm2 = perm_xx_loc_p(m2)
-    case(2)
-       perm2 = perm_yy_loc_p(m2)
-    case(3)
-       perm2 = perm_zz_loc_p(m2)
-    end select
+    ! for now, just assume diagonal tensor
+      perm1 = perm_xx_loc_p(m1)*cur_connection_object%dist(1,iconn)+ &
+              perm_yy_loc_p(m1)*cur_connection_object%dist(2,iconn)+ &
+              perm_zz_loc_p(m1)*cur_connection_object%dist(3,iconn)
 
-
-    dd = dd1 + dd2
-    f1 = dd1/dd
-    f2 = dd2/dd
-    iicap1=int(icap_loc_p(m1))
-  iicap2=int(icap_loc_p(m2))
+      perm2 = perm_xx_loc_p(m2)*cur_connection_object%dist(1,iconn)+ &
+              perm_yy_loc_p(m2)*cur_connection_object%dist(2,iconn)+ &
+              perm_zz_loc_p(m2)*cur_connection_object%dist(3,iconn)
+            
+      iicap1=int(icap_loc_p(m1))
+      iicap2=int(icap_loc_p(m2))
   
   ! do neq = 1, grid%ndof
-    do nvar = 1, grid%ndof
+      do nvar = 1, grid%ndof
     
-    call MPHASERes_FLCont(nc ,grid%area(nc), &
-         var_loc_p((m1-1)*size_var_node+nvar*size_var_use+1:(m1-1)*size_var_node+nvar*size_var_use+size_var_use),&
-     porosity_loc_p(m1),tor_loc_p(m1),grid%sir(1:grid%nphase,iicap1),dd1,perm1,D1,&
-     var_loc_p((m2-1)*size_var_node+1:(m2-1)*size_var_node+size_var_use),&
-     porosity_loc_p(m2),tor_loc_p(m2),grid%sir(1:grid%nphase,iicap2),dd2,perm2,D2,&
-     grid, vv_darcy,Res)
+        call MPHASERes_FLCont(iconn,cur_connection_object%area(iconn), &
+                              var_loc_p((m1-1)*size_var_node+ &
+                                          nvar*size_var_use+1: &
+                                        (m1-1)*size_var_node+ &
+                                          nvar*size_var_use+size_var_use), &
+                              porosity_loc_p(m1),tor_loc_p(m1), &
+                              grid%sir(1:grid%nphase,iicap1),dd1,perm1,D1, &
+                              var_loc_p((m2-1)*size_var_node+1: &
+                                        (m2-1)*size_var_node+size_var_use), &
+                              porosity_loc_p(m2),tor_loc_p(m2), &
+                              grid%sir(1:grid%nphase,iicap2),dd2,perm2,D2, &
+                              distance_gravity,fraction_upwind, &
+                              grid, vv_darcy,Res)
 
-          ra(:,nvar)= Res(:)/grid%delx(nvar,m1)-ResOld_FL(nc,:)/grid%delx(nvar,m1)
+        ra(:,nvar)= Res(:)/grid%delx(nvar,m1)-ResOld_FL(iconn,:)/grid%delx(nvar,m1)
   
        
-        call MPHASERes_FLCont(nc ,grid%area(nc), &
-         var_loc_p((m1-1)*size_var_node+1:(m1-1)*size_var_node+size_var_use),&
-     porosity_loc_p(m1),tor_loc_p(m1),grid%sir(1:grid%nphase,iicap1),dd1,perm1,D1,&
-     var_loc_p((m2-1)*size_var_node+nvar*size_var_use+1:(m2-1)*size_var_node+nvar*size_var_use+size_var_use),&
-     porosity_loc_p(m2),tor_loc_p(m2),grid%sir(1:grid%nphase,iicap2),dd2,perm2,D2,&
-     grid, vv_darcy,Res)
+        call MPHASERes_FLCont(iconn,cur_connection_object%area(iconn), &
+                              var_loc_p((m1-1)*size_var_node+1: &
+                                        (m1-1)*size_var_node+size_var_use), &
+                              porosity_loc_p(m1),tor_loc_p(m1), &
+                              grid%sir(1:grid%nphase,iicap1),dd1,perm1,D1, &
+                              var_loc_p((m2-1)*size_var_node+ &
+                                          nvar*size_var_use+1: &
+                                        (m2-1)*size_var_node+ &
+                                          nvar*size_var_use+size_var_use), &
+                              porosity_loc_p(m2),tor_loc_p(m2), &
+                              grid%sir(1:grid%nphase,iicap2),dd2,perm2,D2, &
+                              distance_gravity,fraction_upwind, &
+                              grid, vv_darcy,Res)
  
-          ra(:,nvar+grid%ndof)= Res(:)/grid%delx(nvar,m2)-ResOld_FL(nc,:)/grid%delx(nvar,m2)
+        ra(:,nvar+grid%ndof)= Res(:)/grid%delx(nvar,m2)-ResOld_FL(iconn,:)/grid%delx(nvar,m2)
    
-    enddo
+      enddo
   
    !   print *,' Mph Jaco Finished NC terms'
   
   ! enddo
    
-  if(grid%use_isoth==PETSC_TRUE)then
-         ra(3,1:2*grid%ndof)=0.D0
-       ra(:,2)=0.D0
-       ra(:,2+grid%ndof)=0.D0
-    endif   
+      if (grid%use_isoth==PETSC_TRUE) then
+        ra(3,1:2*grid%ndof)=0.D0
+        ra(:,2)=0.D0
+        ra(:,2+grid%ndof)=0.D0
+      endif   
  
 
-   if(grid%iblkfmt == 1) then
-     blkmat11 = 0.D0; blkmat12 = 0.D0; blkmat21 = 0.D0; blkmat22 = 0.D0;
-   endif
-   p1=(na1)*grid%ndof;p2=(na2)*grid%ndof
+      if (grid%iblkfmt == 1) then
+        blkmat11 = 0.D0; blkmat12 = 0.D0; blkmat21 = 0.D0; blkmat22 = 0.D0;
+      endif
+    
+      p1=(na1)*grid%ndof;p2=(na2)*grid%ndof
  
-    select case(grid%idt_switch)
-    case(1)
-      ra =ra / grid%dt
-    case(-1)  
-      if(grid%dt>1)  ra =ra / grid%dt
-    end select  
+      select case(grid%idt_switch)
+        case(1)
+          ra =ra / grid%dt
+        case(-1)  
+          if (grid%dt>1) ra =ra / grid%dt
+      end select  
        
-     do ii=0,grid%ndof-1
-       do jj=0,grid%ndof-1
-          if(n1>0) then
-             if (grid%iblkfmt == 0) then
-               call MatSetValue(A,p1+ii,p1+jj,ra(ii+1,jj+1)/volume_p(n1),ADD_VALUES,ierr)
-             else
-               blkmat11(ii+1,jj+1) = blkmat11(ii+1,jj+1) + ra(ii+1,jj+1)
-             endif
-           endif
-           if(n2>0) then
-             if (grid%iblkfmt == 0) then
-               call MatSetValue(A,p2+ii,p1+jj,-ra(ii+1,jj+1)/volume_p(n2),ADD_VALUES,ierr)
-             else
-               blkmat21(ii+1,jj+1) = blkmat21(ii+1,jj+1) -ra(ii+1,jj+1)
-             endif
-           endif
-          enddo
+      do ii=0,grid%ndof-1
+        do jj=0,grid%ndof-1
+          if (n1>0) then
+            if (grid%iblkfmt == 0) then
+              call MatSetValue(A,p1+ii,p1+jj,ra(ii+1,jj+1)/volume_p(n1),ADD_VALUES,ierr)
+            else
+              blkmat11(ii+1,jj+1) = blkmat11(ii+1,jj+1) + ra(ii+1,jj+1)
+            endif
+          endif
+          if (n2>0) then
+            if (grid%iblkfmt == 0) then
+              call MatSetValue(A,p2+ii,p1+jj,-ra(ii+1,jj+1)/volume_p(n2),ADD_VALUES,ierr)
+            else
+              blkmat21(ii+1,jj+1) = blkmat21(ii+1,jj+1) -ra(ii+1,jj+1)
+            endif
+          endif
+        enddo
    
-      do jj=grid%ndof,2*grid%ndof-1
-              if(n1>0) then
-                 if (grid%iblkfmt == 0) then
-                    call MatSetValue(A,p1+ii,p2+jj-grid%ndof,ra(ii+1,jj+1)/volume_p(n1),ADD_VALUES,ierr)
-                  else
-                    blkmat12(ii+1,jj-grid%ndof+1) = blkmat12(ii+1,jj-grid%ndof+1) + ra(ii+1,jj+1)
-                  endif
-              endif
-              if(n2>0) then
-                  if (grid%iblkfmt == 0) then
-                    call MatSetValue(A,p2+ii,p2+jj-grid%ndof,-ra(ii+1,jj+1)/volume_p(n2),ADD_VALUES,ierr)
-                  else
-                    blkmat22(ii+1,jj-grid%ndof+1) =  blkmat22(ii+1,jj-grid%ndof+1) - ra(ii+1,jj+1)
-                  endif
-              endif
-         enddo
-    enddo
+        do jj=grid%ndof,2*grid%ndof-1
+          if (n1>0) then
+            if (grid%iblkfmt == 0) then
+              call MatSetValue(A,p1+ii,p2+jj-grid%ndof,ra(ii+1,jj+1)/volume_p(n1),ADD_VALUES,ierr)
+            else
+              blkmat12(ii+1,jj-grid%ndof+1) = blkmat12(ii+1,jj-grid%ndof+1) + ra(ii+1,jj+1)
+            endif
+          endif
+          if (n2>0) then
+            if (grid%iblkfmt == 0) then
+              call MatSetValue(A,p2+ii,p2+jj-grid%ndof,-ra(ii+1,jj+1)/volume_p(n2),ADD_VALUES,ierr)
+            else
+              blkmat22(ii+1,jj-grid%ndof+1) =  blkmat22(ii+1,jj-grid%ndof+1) - ra(ii+1,jj+1)
+            endif
+          endif
+        enddo
+      enddo
   
-  
-  
-  if (grid%iblkfmt /= 0) then
-    if(volume_p(n1)>1.D0)then
-      blkmat11=blkmat11/volume_p(n1); blkmat12=blkmat12/volume_p(n1)
-    endif
-    if(volume_p(n2)>1.D0)then
-      blkmat21=blkmat21/volume_p(n2); blkmat22=blkmat22/volume_p(n2)
-    endif 
+      if (grid%iblkfmt /= 0) then
+        if (volume_p(n1)>1.D0) then
+          blkmat11=blkmat11/volume_p(n1); blkmat12=blkmat12/volume_p(n1)
+        endif
+        if (volume_p(n2)>1.D0) then
+          blkmat21=blkmat21/volume_p(n2); blkmat22=blkmat22/volume_p(n2)
+        endif 
    
        !  if(dabs(volume_p(n1)-3.D0)>1D-5 .and. n1>0) print *, n1,  volume_p(n1)
    !   if(dabs(volume_p(n2)-3.D0)>1D-5 .and. n2>0) print *, n2,  volume_p(n2)
-     if(n1>0)call MatSetValuesBlocked(A,1,na1,1,na1,blkmat11,ADD_VALUES,ierr)
-     if(n2>0)call MatSetValuesBlocked(A,1,na2,1,na2,blkmat22,ADD_VALUES,ierr)
-     if(n1>0)call MatSetValuesBlocked(A,1,na1,1,na2,blkmat12,ADD_VALUES,ierr)
-     if(n2>0)call MatSetValuesBlocked(A,1,na2,1,na1,blkmat21,ADD_VALUES,ierr)
-  endif
+        if(n1>0)call MatSetValuesBlocked(A,1,na1,1,na1,blkmat11,ADD_VALUES,ierr)
+        if(n2>0)call MatSetValuesBlocked(A,1,na2,1,na2,blkmat22,ADD_VALUES,ierr)
+        if(n1>0)call MatSetValuesBlocked(A,1,na1,1,na2,blkmat12,ADD_VALUES,ierr)
+        if(n2>0)call MatSetValuesBlocked(A,1,na2,1,na1,blkmat21,ADD_VALUES,ierr)
+      endif
 !print *,'accum r',ra(1:5,1:8)   
  !print *,'devq:',nc,q,dphi,devq(3,:)
-  end do
+    enddo
+    cur_connection_object => cur_connection_object%next
+  enddo
  !print *,' Mph Jaco Finished Two node terms'
   
   call VecRestoreArrayF90(grid%xx_loc, xx_loc_p, ierr)
@@ -1985,15 +2025,13 @@ private
   call VecRestoreArrayF90(grid%volume, volume_p, ierr)
 
    
-    call VecRestoreArrayF90(grid%ithrm_loc, ithrm_loc_p, ierr)
-    call VecRestoreArrayF90(grid%icap_loc, icap_loc_p, ierr)
-    call VecRestoreArrayF90(grid%iphas_loc, iphase_loc_p, ierr)
+  call VecRestoreArrayF90(grid%ithrm_loc, ithrm_loc_p, ierr)
+  call VecRestoreArrayF90(grid%icap_loc, icap_loc_p, ierr)
+  call VecRestoreArrayF90(grid%iphas_loc, iphase_loc_p, ierr)
 
- if (grid%rk > 0.d0) then
+  if (grid%rk > 0.d0) then
     call VecRestoreArrayF90(grid%phis,phis_p,ierr)
   endif
-
-  
 
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
@@ -2097,41 +2135,43 @@ private
  end subroutine pflow_mphase_initaccum
 
 
-  subroutine pflow_update_mphase(grid)
-    use translator_mph_module  
-   ! use water_eos_module
-    implicit none
-    type(pflowGrid) :: grid 
+subroutine pflow_update_mphase(grid)
+
+  use translator_mph_module  
+  ! use water_eos_module
+  
+  implicit none
+  
+  type(pflowGrid) :: grid 
     
 !   integer*4 :: ichange
-    integer*4 :: n, n0
-    integer :: ierr,iicap,iiphase
-    PetscScalar, pointer :: xx_p(:),icap_p(:),ithrm_p(:),iphase_p(:), var_p(:)
-    real*8 dif(1:grid%nphase), dum1, dum2           
-
-      
+  integer*4 :: n, n0
+  integer :: ierr,iicap,iiphase
+  PetscScalar, pointer :: xx_p(:),icap_p(:),ithrm_p(:),iphase_p(:), var_p(:)
+  real*8 dif(1:grid%nphase), dum1, dum2           
+       
   ! if (grid%rk > 0.d0) call Rock_Change(grid)
   ! call Translator_MPhase_Switching(grid%xx,grid,1,ierr)
   !print *,'MPhase_Update done'
  
    ! if(ichange ==1)then
-   call VecGetArrayF90(grid%xx, xx_p, ierr); CHKERRQ(ierr)
-   call VecGetArrayF90(grid%icap,icap_p,ierr)
-   call VecGetArrayF90(grid%ithrm,ithrm_p,ierr)  
-   call VecGetArrayF90(grid%iphas, iphase_p, ierr)
-   call VecGetArrayF90(grid%var,var_p,ierr)
+  call VecGetArrayF90(grid%xx, xx_p, ierr); CHKERRQ(ierr)
+  call VecGetArrayF90(grid%icap,icap_p,ierr)
+  call VecGetArrayF90(grid%ithrm,ithrm_p,ierr)  
+  call VecGetArrayF90(grid%iphas, iphase_p, ierr)
+  call VecGetArrayF90(grid%var,var_p,ierr)
 
-   do n = 1, grid%nlmax
+  do n = 1, grid%nlmax
     iicap = icap_p(n)
-  iiphase = iphase_p(n)
+    iiphase = iphase_p(n)
     n0=(n-1)*grid%ndof
-   if(xx_p(n0+3)<0.D0) xx_p(n0+3)=zerocut
+    if (xx_p(n0+3)<0.D0) xx_p(n0+3)=zerocut
 
     !*****************
-  dif(1)= grid%difaq
+    dif(1)= grid%difaq
     dif(2)= grid%cdiff(int(ithrm_p(n)))
     !*******************************************
-     call pri_var_trans_mph_ninc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),iiphase,&
+    call pri_var_trans_mph_ninc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),iiphase,&
         grid%scale,grid%nphase,grid%nspec, iicap, dif,&
     var_p((n-1)*size_var_node+1:(n-1)*size_var_node+size_var_use),&
     grid%itable,grid%m_nacl,ierr, dum1, dum2)
@@ -2166,17 +2206,20 @@ private
 
 
 
-  subroutine pflow_mphase_initadj(grid)
+subroutine pflow_mphase_initadj(grid)
  
 ! running this subroutine will override the xmol data for initial condition in pflow.in 
 
   use translator_mph_module  
+  
+  use Connection_module
+  
   implicit none
   type(pflowGrid) :: grid 
 
  
   integer :: ierr
-  integer :: n, nc
+  integer :: n
   integer :: ibc,jn
   integer :: m
   integer :: ii1,ii2,iicap
@@ -2193,7 +2236,10 @@ private
 ! real*8 :: temp1
 !  real*8, parameter :: Rg=8.31415D0
 
-
+  ! connection variables
+  type(connection_list_type), pointer :: connection_list
+  type(connection_type), pointer :: cur_connection_object
+  integer :: iconn
 
   call VecGetArrayF90(grid%icap, icap_p, ierr)
   call VecGetArrayF90(grid%ithrm, ithrm_p, ierr)
@@ -2203,66 +2249,73 @@ private
 ! print *,'initadj gotten pointers' 
 
 
- do n = 1, grid%nlmax
-        jn = 1 + (n-1)*grid%nphase
-        ii1=1+(n-1)*grid%nphase; ii2=n*grid%nphase
-        iicap=int(icap_p(n))
+  do n = 1, grid%nlmax
+    jn = 1 + (n-1)*grid%nphase
+    ii1=1+(n-1)*grid%nphase; ii2=n*grid%nphase
+    iicap=int(icap_p(n))
         
-        iiphase = iphase_p(n)
+    iiphase = iphase_p(n)
         !*****************
-       dif(1)= grid%difaq
-         dif(2)= grid%cdiff(int(ithrm_p(n)))
+    dif(1)= grid%difaq
+    dif(2)= grid%cdiff(int(ithrm_p(n)))
     !*******************************************
-  call pri_var_trans_mph_ninc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),iiphase,&
-        grid%scale,grid%nphase,grid%nspec, iicap,  dif,&
-    var_p((n-1)*size_var_node+1: (n-1)*size_var_node+size_var_use),grid%itable,grid%m_nacl,ierr, dum1, dum2)
+    call pri_var_trans_mph_ninc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),iiphase, &
+                                grid%scale,grid%nphase,grid%nspec,iicap,dif, &
+                                var_p((n-1)*size_var_node+1: &
+                                      (n-1)*size_var_node+size_var_use), &
+                                grid%itable,grid%m_nacl,ierr, dum1, dum2)
    
    !print *, xx_p((n-1)*grid%ndof+1:n*grid%ndof)
-   if(translator_check_phase_cond(iiphase, &
-           var_p((n-1)*size_var_node+1: (n-1)*size_var_node+size_var_use),&
-       grid%nphase,grid%nspec) /= 1 ) then
-    print *," Wrong internal node init...  STOP!!!"
-    stop    
+    if (translator_check_phase_cond(iiphase, &
+                                    var_p((n-1)*size_var_node+1: &
+                                          (n-1)*size_var_node+size_var_use),&
+                                    grid%nphase,grid%nspec) /= 1 ) then
+      print *," Wrong internal node init...  STOP!!!"
+      stop    
     endif 
   enddo
 
-   do nc = 1, grid%nconnbc
+  connection_list => getBoundaryConnectionList()
+  cur_connection_object => connection_list%first
+  do 
+    if (.not.associated(cur_connection_object)) exit
+    do iconn = 1, cur_connection_object%num_connections
+      m = cur_connection_object%id_dn(iconn)
 
-       m = grid%mblkbc(nc)  ! Note that here, m is NOT ghosted.
-       
+      if(m<0)then
+         print *, "Wrong boundary node index... STOP!!!"
+         stop
+      end if
 
-       if(m<0)then
-          print *, "Wrong boundary node index... STOP!!!"
-          stop
-       end if
-
-       ibc = grid%ibconn(nc)
+      ibc = grid%ibconn(iconn)
        
 !      print *,'initadj_bc',nc,ibc,grid%ibndtyp(ibc),grid%nconnbc
 
-       if(grid%ibndtyp(ibc)==1)then
-          iicap=int(icap_p(m))
-          iithrm=int(ithrm_p(m)) 
-          dif(1)= grid%difaq
-          dif(2)= grid%cdiff(iithrm)
+      if (grid%ibndtyp(ibc)==1) then
+        iicap=int(icap_p(m))
+        iithrm=int(ithrm_p(m)) 
+        dif(1)= grid%difaq
+        dif(2)= grid%cdiff(iithrm)
 
-          call pri_var_trans_mph_ninc(grid%xxbc(:,nc),grid%iphasebc(nc),&
-           grid%scale,grid%nphase,grid%nspec, iicap, dif,&
-      grid%varbc(1:size_var_use), grid%itable,grid%m_nacl,ierr, dum1, dum2)
+        call pri_var_trans_mph_ninc(grid%xxbc(:,iconn),grid%iphasebc(iconn),&
+                                    grid%scale,grid%nphase,grid%nspec,iicap, &
+                                    dif,grid%varbc(1:size_var_use), &
+                                    grid%itable,grid%m_nacl,ierr, dum1, dum2)
       
-
-       if(translator_check_phase_cond(grid%iphasebc(nc), &
-           grid%varbc(1:size_var_use), grid%nphase,grid%nspec) &
-       /=1) then
-      print *," Wrong bounday node init...  STOP!!!", grid%xxbc(:,nc)
+        if (translator_check_phase_cond(grid%iphasebc(iconn), &
+                                        grid%varbc(1:size_var_use), &
+                                        grid%nphase,grid%nspec) &
+            /=1) then
+          print *," Wrong bounday node init...  STOP!!!", grid%xxbc(:,iconn)
       
-      print *,grid%varbc
-      stop    
+          print *,grid%varbc
+          stop    
         endif 
-       end if
-
+      endif
 
     enddo
+    cur_connection_object => cur_connection_object%next
+  enddo
 
   call VecRestoreArrayF90(grid%icap, icap_p, ierr)
   call VecRestoreArrayF90(grid%ithrm, ithrm_p, ierr)
