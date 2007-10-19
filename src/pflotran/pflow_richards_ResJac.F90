@@ -321,9 +321,16 @@ subroutine RichardsRes_ARCont(node_no, var_node,por,vol,rock_dencpr, grid, Res_A
 end subroutine  RichardsRes_ARCont
 
 
+#ifdef OVERHAUL
+subroutine RichardsRes_FLCont(nconn_no,area,var_node1,por1,tor1,sir1,dd1,perm1, &
+                            Dk1,var_node2,por2,tor2,sir2,dd2,perm2,Dk2,grid, &
+                            vv_darcy,connection_object,Res_FL)
+  use Connection_module
+#else
 subroutine RichardsRes_FLCont(nconn_no,area,var_node1,por1,tor1,sir1,dd1,perm1, &
                             Dk1,var_node2,por2,tor2,sir2,dd2,perm2,Dk2,grid, &
                             vv_darcy,Res_FL)
+#endif
 
   implicit none
   
@@ -348,6 +355,8 @@ subroutine RichardsRes_FLCont(nconn_no,area,var_node1,por1,tor1,sir1,dd1,perm1, 
   real*8  fluxm(grid%nspec),fluxe, v_darcy,q
   real*8 uh,uxmol(1:grid%nspec), ukvr,difff,diffdp, DK,Dq
   real*8 upweight,density_ave,cond, gravity, dphi
+  
+  type(connection_type) :: connection_object
   
 !  m1=grid%nd1(nc); n1 = grid%nG2L(m1) ! = zero for ghost nodes 
 !  print *,'in FLcont'
@@ -401,10 +410,17 @@ subroutine RichardsRes_FLCont(nconn_no,area,var_node1,por1,tor1,sir1,dd1,perm1, 
         upweight=1.d0
       endif
       density_ave = upweight*density1(np)+(1.D0-upweight)*density2(np)  
-    
+
+#ifndef OVERHAUL    
       gravity = (upweight*density1(np)*amw1(np) + &
                 (1.D0-upweight)*density2(np)*amw2(np)) &
                 * grid%gravity * grid%delz(nconn_no) * grid%grav_ang(nconn_no)
+#else
+      gravity = (upweight*density1(np)*amw1(np) + &
+                (1.D0-upweight)*density2(np)*amw2(np)) &
+                * grid%gravity * connection_object%dist(3,nconn_no) * &
+                connection_object%dist(0,nconn_no) 
+#endif
 
       dphi = pre_ref1 - pre_ref2  + gravity
 !    print *,'FLcont  dp',dphi
@@ -466,9 +482,16 @@ subroutine RichardsRes_FLCont(nconn_no,area,var_node1,por1,tor1,sir1,dd1,perm1, 
 
 end subroutine RichardsRes_FLCont
 
+#ifndef OVERHAUL
 subroutine RichardsRes_FLBCCont(nbc_no,area,var_node1,var_node2,por2,tor2,sir2, &
                               dd1,perm2,Dk2,grid,vv_darcy,Res_FL)
+#else
+subroutine RichardsRes_FLBCCont(nbc_no,area,var_node1,var_node2,por2,tor2,sir2, &
+                              dd1,perm2,Dk2,grid,vv_darcy,connection_object,Res_FL)
+  use Connection_module
+#endif
  ! Notice : index 1 stands for BC node
+ 
   implicit none
   
   integer nbc_no
@@ -493,6 +516,9 @@ subroutine RichardsRes_FLBCCont(nbc_no,area,var_node1,var_node2,por2,tor2,sir2, 
   real*8 uh,uxmol(1:grid%nspec), ukvr,diff,diffdp, DK,Dq
   real*8 upweight,density_ave,cond,gravity, dphi
 
+#ifdef OVERHAUL
+    type(connection_type) :: connection_object
+#endif
   
   ibase=1;                 temp1=>var_node1(ibase)
                            temp2=>var_node2(ibase)
@@ -539,11 +565,17 @@ subroutine RichardsRes_FLBCCont(nbc_no,area,var_node1,var_node2,por2,tor2,sir2, 
           upweight=1.d0
         endif
         density_ave = upweight*density1(np)+(1.D0-upweight)*density2(np)  
-   
+
+#ifndef OVERHAUL   
         gravity = (upweight*density1(np)*amw1(np) + &
                   (1.D0-upweight)*density2(np)*amw2(np)) &
                   * grid%gravity * grid%delzbc(nbc_no)
-       
+#else
+        gravity = (upweight*density1(np)*amw1(np) + &
+                  (1.D0-upweight)*density2(np)*amw2(np)) &
+                  * grid%gravity * connection_object%dist(3,nbc_no) * &
+                  connection_object%dist(0,nbc_no)
+#endif       
         dphi = pre_ref1- pre_ref2 + gravity
    
    
@@ -630,9 +662,13 @@ subroutine RichardsRes_FLBCCont(nbc_no,area,var_node1,var_node2,por2,tor2,sir2, 
       if ((sat2(np) > sir2(np))) then
     
         density_ave = density2(np)  
-    
+#ifndef OVERHAUL    
         gravity = density2(np)*amw2(np)* grid%gravity * grid%delzbc(nbc_no)
-        
+#else
+        gravity = density2(np)*amw2(np)* grid%gravity * &
+                  connection_object%dist(3,nbc_no) * &
+                  connection_object%dist(0,nbc_no)
+#endif        
         dphi = pre_ref1-pc1(np) - pre_ref2 + pc2(np) + gravity
     
         ukvr = kvr2(np)
@@ -681,6 +717,10 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
   use water_eos_module
   use Gas_Eos_Module
   use translator_Richards_module
+
+#ifdef OVERHAUL  
+  use Connection_module
+#endif  
   
   implicit none
  
@@ -741,7 +781,14 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
 ! real*8 :: dddt,dddp,fg,dfgdp,dfgdt,dhdt,dhdp,dvdt,dvdp, visc
   real*8 :: rho
   real*8 :: Res(grid%ndof), vv_darcy(grid%nphase)
-! PetscViewer :: viewer
+ PetscViewer :: viewer
+
+#ifdef OVERHAUL 
+  type(connection_list_type), pointer :: connection_list
+  type(connection_type), pointer :: cur_connection_object
+  integer :: iconn
+  real*8 :: distance, fraction_upwind, area
+#endif
  
   grid%vvlbc=0.D0
   grid%vvgbc=0.D0
@@ -1108,10 +1155,21 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
 ! Flux terms for interior nodes
 ! Be careful here, we have velocity field for every phase
 !---------------------------------------------------------------------------
- 
+
+#ifndef OVERHAUL
   do nc = 1, grid%nconn  ! For each interior connection...
     m1 = grid%nd1(nc) ! ghosted
     m2 = grid%nd2(nc)
+#else
+  connection_list => getInternalConnectionList()
+  cur_connection_object => connection_list%first
+  do 
+    if (.not.associated(cur_connection_object)) exit
+    do iconn = 1, cur_connection_object%num_connections
+      m1 = cur_connection_object%id_up(iconn)
+      m2 = cur_connection_object%id_dn(iconn)
+      nc = iconn
+#endif
 
     n1 = grid%nG2L(m1) ! = zero for ghost nodes
     n2 = grid%nG2L(m2) ! Ghost to local mapping   
@@ -1122,7 +1180,8 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
 
     p1 = 1 + (n1-1)*grid%ndof 
     p2 = 1 + (n2-1)*grid%ndof
-   
+
+#ifndef OVERHAUL    
     dd1 = grid%dist1(nc)
     dd2 = grid%dist2(nc)
     
@@ -1148,6 +1207,22 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
         perm2 = perm_zz_loc_p(m2)
     end select
 !GEH - Structured Grid Dependence - End
+#else
+    fraction_upwind = cur_connection_object%dist(-1,iconn)
+    distance = cur_connection_object%dist(0,iconn)
+    dd1 = distance*fraction_upwind
+    dd2 = distance-dd1 ! should avoid truncation error
+    area = cur_connection_object%area(iconn)
+    
+    ! for now, just assume diagonal tensor
+    perm1 = perm_xx_loc_p(m1)*cur_connection_object%dist(1,iconn)+ &
+            perm_yy_loc_p(m1)*cur_connection_object%dist(2,iconn)+ &
+            perm_zz_loc_p(m1)*cur_connection_object%dist(3,iconn)
+
+    perm2 = perm_xx_loc_p(m2)*cur_connection_object%dist(1,iconn)+ &
+            perm_yy_loc_p(m2)*cur_connection_object%dist(2,iconn)+ &
+            perm_zz_loc_p(m2)*cur_connection_object%dist(3,iconn)
+#endif
 
     i1 = ithrm_loc_p(m1)
     i2 = ithrm_loc_p(m2)
@@ -1157,11 +1232,29 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
     D1 = grid%ckwet(i1)
     D2 = grid%ckwet(i2)
 
+#ifndef OVERHAUL
     dd = dd1 + dd2
     f1 = dd1/dd
     f2 = dd2/dd
+#else
+    dd = distance
+    f1 = fraction_upwind
+    f2 = dd2/dd
+#endif
 !   if(dabs(perm1-1D-15)>1D-20)print *, 'perm1 error', perm1, ip1, n1,n2
 !  if(dabs(perm2-1D-15)>1D-20)print *, 'perm2 error', perm2, ip2, n1,n2
+#ifdef OVERHAUL
+    call RichardsRes_FLCont(iconn ,area, &
+                          var_loc_p((m1-1)*size_var_node+1:(m1-1)* &
+                            size_var_node+size_var_use), &
+                          porosity_loc_p(m1),tor_loc_p(m1), &
+                          grid%sir(1:grid%nphase,iicap1),dd1,perm1,D1, &
+                          var_loc_p((m2-1)*size_var_node+1:(m2-1)* &
+                            size_var_node+size_var_use), &
+                          porosity_loc_p(m2),tor_loc_p(m2), &
+                          grid%sir(1:grid%nphase,iicap2),dd2,perm2,D2,grid, &
+                          vv_darcy,cur_connection_object,Res)
+#else
     call RichardsRes_FLCont(nc ,grid%area(nc), &
                           var_loc_p((m1-1)*size_var_node+1:(m1-1)* &
                             size_var_node+size_var_use), &
@@ -1172,11 +1265,21 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
                           porosity_loc_p(m2),tor_loc_p(m2), &
                           grid%sir(1:grid%nphase,iicap2),dd2,perm2,D2,grid, &
                           vv_darcy,Res)
+#endif
     grid%vvl_loc(nc) = vv_darcy(1)
 !    grid%vvg_loc(nc) = vv_darcy(2)  
     if (n1 > 0) then               ! If the upstream node is not a ghost node...
       do np =1, grid%nphase 
+#ifndef OVERHAUL      
         vl_p(np+(ip1-1)*grid%nphase+3*grid%nphase*(n1-1)) = vv_darcy(np) 
+#else
+        vl_p(np+(0)*grid%nphase+3*grid%nphase*(n1-1)) = &
+                                     vv_darcy(np)*cur_connection_object%dist(1,iconn) 
+        vl_p(np+(1)*grid%nphase+3*grid%nphase*(n1-1)) = &
+                                     vv_darcy(np)*cur_connection_object%dist(2,iconn) 
+        vl_p(np+(2)*grid%nphase+3*grid%nphase*(n1-1)) = &
+                                     vv_darcy(np)*cur_connection_object%dist(3,iconn) 
+#endif        
         ! use for print out of velocity
       enddo
     endif
@@ -1191,8 +1294,13 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
       r_p(p2:p2+grid%ndof-1) = r_p(p2:p2+grid%ndof-1) - Res(1:grid%ndof)
     endif
 
-
+#ifndef OVERHAUL
   enddo
+#else
+    enddo
+    cur_connection_object => cur_connection_object%next
+  enddo
+#endif
    ! print *,'finished NC' 
  
 !  print *, 'Residual  (after flux):'
@@ -1203,9 +1311,19 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
 
 !  print *,'2ph bc-sgbc', grid%myrank, grid%sgbc    
  
+#ifndef OVERHAUL
   do nc = 1, grid%nconnbc
 
     m = grid%mblkbc(nc)  ! Note that here, m is NOT ghosted.
+#else
+  connection_list => getBoundaryConnectionList()
+  cur_connection_object => connection_list%first
+  do 
+    if (.not.associated(cur_connection_object)) exit
+    do iconn = 1, cur_connection_object%num_connections
+      m= cur_connection_object%id_dn(iconn)
+      nc = iconn
+#endif
     ng = grid%nL2G(m)
 
     if (associated(grid%imat)) then
@@ -1220,12 +1338,14 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
     p1 = 1 + (m-1) * grid%ndof
 
     ibc = grid%ibconn(nc)
+    
+    i2 = ithrm_loc_p(ng)
+    D2 = grid%ckwet(i2)
+
+#ifndef OVERHAUL    
 !GEH - Structured Grid Dependence - Begin
     ip1 = grid%ipermbc(nc)
 !GEH - Structured Grid Dependence - End
-
-    i2 = ithrm_loc_p(ng)
-    D2 = grid%ckwet(i2)
 
 !GEH - Structured Grid Dependence - Begin
     select case(ip1)
@@ -1237,6 +1357,13 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
         perm1 = perm_zz_loc_p(ng)
     end select
 !GEH - Structured Grid Dependence - End
+
+#else
+    ! for now, just assume diagonal tensor
+    perm1 = perm_xx_loc_p(ng)*cur_connection_object%dist(1,iconn)+ &
+            perm_yy_loc_p(ng)*cur_connection_object%dist(2,iconn)+ &
+            perm_zz_loc_p(ng)*cur_connection_object%dist(3,iconn)
+#endif
 
     select case(grid%ibndtyp(ibc))
           
@@ -1310,12 +1437,21 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
                                 grid%varbc(1:size_var_use),grid%itable,ierr, &
                                 grid%pref)
    
-     
+#ifdef OVERHAUL
+    call RichardsRes_FLBCCont(nc,cur_connection_object%area(iconn), &
+                            grid%varbc(1:size_var_use), &
+                            var_loc_p((ng-1)*size_var_node+1:(ng-1)* &
+                            size_var_node+size_var_use),porosity_loc_p(ng), &
+                            tor_loc_p(ng),grid%sir(1:grid%nphase,iicap), &
+                            cur_connection_object%dist(0,iconn),perm1,D2, grid, &
+                            vv_darcy,cur_connection_object,Res)
+#else
     call RichardsRes_FLBCCont(nc,grid%areabc(nc),grid%varbc(1:size_var_use), &
                             var_loc_p((ng-1)*size_var_node+1:(ng-1)* &
                             size_var_node+size_var_use),porosity_loc_p(ng), &
                             tor_loc_p(ng),grid%sir(1:grid%nphase,iicap), &
                             grid%distbc(nc),perm1,D2, grid, vv_darcy,Res)
+#endif     
     grid%vvlbc(nc) = vv_darcy(1)
  !   grid%vvgbc(nc) = vv_darcy(2) 
     r_p(p1:p1-1+grid%ndof)= r_p(p1:p1-1+grid%ndof) - Res(1:grid%ndof)
@@ -1333,8 +1469,13 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
 !print *,grid%pressurebc(2,ibc),grid%tempbc(ibc),grid%concbc(ibc),grid%sgbc(ibc)
 !print *,grid%density_bc,grid%avgmw_bc
 !print *,grid%hh_bc,grid%uu_bc,grid%df_bc,grid%hen_bc,grid%pc_bc,grid%kvr_bc
-
+#ifndef OVERHAUL
   enddo
+#else
+    enddo
+    cur_connection_object => cur_connection_object%next
+  enddo
+#endif
 !  print *,'finished BC'
 
 !  print *, 'Residual  (after bc flux):'
@@ -1405,6 +1546,10 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
   use water_eos_module
   use gas_eos_module
   use translator_Richards_module
+
+#ifdef OVERHAUL  
+  use Connection_module
+#endif  
   
   implicit none
 
@@ -1464,7 +1609,15 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
   real*8 :: ResInc(1:grid%nlmax, 1:grid%ndof, 1:grid%ndof),res(1:grid%ndof)  
   real*8 :: max_dev  
   integer  na1,na2
-! PetscViewer :: viewer
+  
+#ifdef OVERHAUL 
+  type(connection_list_type), pointer :: connection_list
+  type(connection_type), pointer :: cur_connection_object
+  integer :: iconn
+  real*8 :: distance, fraction_upwind, area
+#endif  
+  
+ PetscViewer :: viewer
 !-----------------------------------------------------------------------
 ! R stand for residual
 !  ra       1              2              3              4          5              6            7      8
@@ -1668,9 +1821,19 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
 
   ! print *,' Mph Jaco Finished source terms'
 ! Contribution from BC
+#ifndef OVERHAUL
   do nc = 1, grid%nconnbc
 
     m = grid%mblkbc(nc)  ! Note that here, m is NOT ghosted.
+#else
+  connection_list => getBoundaryConnectionList()
+  cur_connection_object => connection_list%first
+  do 
+    if (.not.associated(cur_connection_object)) exit
+    do iconn = 1, cur_connection_object%num_connections
+      m = cur_connection_object%id_dn(iconn)
+      nc = iconn
+#endif
     ng = grid%nL2G(m)
 
     if (associated(grid%imat)) then
@@ -1685,11 +1848,14 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
     p1 = 1 + (m-1) * grid%ndof
        
     ibc = grid%ibconn(nc)
+    
+    i2 = ithrm_loc_p(ng)
+    D2 = grid%ckwet(i2)
+
+#ifndef OVERHAUL 
 !GEH - Structured Grid Dependence - Begin
     ip1 = grid%ipermbc(nc)
 !GEH - Structured Grid Dependence - End
-    i2 = ithrm_loc_p(ng)
-    D2 = grid%ckwet(i2)
 
 !GEH - Structured Grid Dependence - Begin
     select case(ip1)
@@ -1701,7 +1867,12 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
         perm1 = perm_zz_loc_p(ng)
     end select
 !GEH - Structured Grid Dependence - End
-
+#else
+    ! for now, just assume diagonal tensor
+    perm1 = perm_xx_loc_p(ng)*cur_connection_object%dist(1,iconn)+ &
+            perm_yy_loc_p(ng)*cur_connection_object%dist(2,iconn)+ &
+            perm_zz_loc_p(ng)*cur_connection_object%dist(3,iconn)
+#endif
     delxbc=0.D0
     select case(grid%ibndtyp(ibc))
       case(1)
@@ -1783,7 +1954,18 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
             
 !    print *,' Mph Jaco BC terms: finish increment'
     do nvar=1,grid%ndof
-   
+#ifdef OVERHAUL
+      call RichardsRes_FLBCCont(nc,cur_connection_object%area(iconn), &
+                              grid%varbc(nvar*size_var_use+1:(nvar+1)* &
+                                size_var_use), &
+                              var_loc_p((ng-1)*size_var_node+nvar* &
+                                size_var_use+1:(ng-1)*size_var_node+nvar* &
+                                size_var_use+size_var_use), &
+                              porosity_loc_p(ng),tor_loc_p(ng), &
+                              grid%sir(1:grid%nphase,iicap), &
+                              cur_connection_object%dist(0,iconn),perm1,D2, &
+                              grid,vv_darcy,cur_connection_object,Res)
+#else   
       call RichardsRes_FLBCCont(nc,grid%areabc(nc), &
                               grid%varbc(nvar*size_var_use+1:(nvar+1)* &
                                 size_var_use), &
@@ -1793,7 +1975,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
                               porosity_loc_p(ng),tor_loc_p(ng), &
                               grid%sir(1:grid%nphase,iicap), &
                               grid%distbc(nc),perm1,D2,grid,vv_darcy,Res)
-    
+#endif    
       ResInc(m,1:grid%ndof,nvar) = ResInc(m,1:grid%ndof,nvar) - Res(1:grid%ndof)
     enddo
  !  print *,' Mph Jaco BC terms: finish comp'
@@ -1807,7 +1989,13 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
 !print *,grid%density_bc,grid%avgmw_bc
 !print *,grid%hh_bc,grid%uu_bc,grid%df_bc,grid%hen_bc,grid%pc_bc,grid%kvr_bc
 
+#ifndef OVERHAUL
   enddo
+#else
+    enddo
+    cur_connection_object => cur_connection_object%next
+  enddo
+#endif
   ! print *,' Mph Jaco Finished BC terms'
 #ifdef DEBUG_GEH_ALL  
  call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
@@ -1874,10 +2062,22 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
 
  !print *,'phase cond: ',iphase_loc_p
   ResInc=0.D0
+  
+#ifndef OVERHAUL  
   do nc = 1, grid%nconn  ! For each interior connection...
     ra = 0.D0
     m1 = grid%nd1(nc) ! ghosted
     m2 = grid%nd2(nc)
+#else
+  connection_list => getInternalConnectionList()
+  cur_connection_object => connection_list%first
+  do 
+    if (.not.associated(cur_connection_object)) exit
+    do iconn = 1, cur_connection_object%num_connections
+      m1 = cur_connection_object%id_up(iconn)
+      m2 = cur_connection_object%id_dn(iconn)
+      nc = iconn
+#endif
 
     if (associated(grid%imat)) then
       if (grid%imat(m1) <= 0 .or. grid%imat(m2) <= 0) cycle
@@ -1891,6 +2091,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
     p1 =  (m1-1)*grid%ndof
     p2 =  (m2-1)*grid%ndof
    
+#ifndef OVERHAUL    
     dd1 = grid%dist1(nc)
     dd2 = grid%dist2(nc)
 
@@ -1898,15 +2099,6 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
     ip1 = grid%iperm1(nc)  ! determine the normal direction of interface 
     ip2 = grid%iperm2(nc)
 !GEH - Structured Grid Dependence - End
-    
-    iiphas1 = iphase_loc_p(m1)
-    iiphas2 = iphase_loc_p(m2)
-
-
-    i1 = ithrm_loc_p(m1)
-    i2 = ithrm_loc_p(m2)
-    D1 = grid%ckwet(i1)
-    D2 = grid%ckwet(i2)
 
 !GEH - Structured Grid Dependence - Begin
     select case(ip1)
@@ -1928,15 +2120,59 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
     end select
 !GEH - Structured Grid Dependence - End
 
+#else
+    fraction_upwind = cur_connection_object%dist(-1,iconn)
+    distance = cur_connection_object%dist(0,iconn)
+    dd1 = distance*fraction_upwind
+    dd2 = distance-dd1 ! should avoid truncation error
+    area = cur_connection_object%area(iconn)
+    
+    ! for now, just assume diagonal tensor
+    perm1 = perm_xx_loc_p(m1)*cur_connection_object%dist(1,iconn)+ &
+            perm_yy_loc_p(m1)*cur_connection_object%dist(2,iconn)+ &
+            perm_zz_loc_p(m1)*cur_connection_object%dist(3,iconn)
+
+    perm2 = perm_xx_loc_p(m2)*cur_connection_object%dist(1,iconn)+ &
+            perm_yy_loc_p(m2)*cur_connection_object%dist(2,iconn)+ &
+            perm_zz_loc_p(m2)*cur_connection_object%dist(3,iconn)
+#endif
+    
+    iiphas1 = iphase_loc_p(m1)
+    iiphas2 = iphase_loc_p(m2)
+
+    i1 = ithrm_loc_p(m1)
+    i2 = ithrm_loc_p(m2)
+    D1 = grid%ckwet(i1)
+    D2 = grid%ckwet(i2)
+
+#ifndef OVERHAUL
     dd = dd1 + dd2
     f1 = dd1/dd
     f2 = dd2/dd
+#else
+    dd = distance
+    f1 = fraction_upwind
+    f2 = dd2/dd
+#endif    
+    
     iicap1 = int(icap_loc_p(m1))
     iicap2 = int(icap_loc_p(m2))
  
   ! do neq = 1, grid%ndof
     do nvar = 1, grid%ndof
-    
+#ifdef OVERHAUL    
+      call RichardsRes_FLCont(nc ,area, &
+                            var_loc_p((m1-1)*size_var_node+nvar* &
+                              size_var_use+1:(m1-1)*size_var_node+nvar* &
+                              size_var_use+size_var_use),&
+                            porosity_loc_p(m1),tor_loc_p(m1), &
+                            grid%sir(1:grid%nphase,iicap1),dd1,perm1,D1,&
+                            var_loc_p((m2-1)*size_var_node+1:(m2-1)* &
+                              size_var_node+size_var_use),&
+                            porosity_loc_p(m2),tor_loc_p(m2), &
+                            grid%sir(1:grid%nphase,iicap2),dd2,perm2,D2,grid, &
+                            vv_darcy,cur_connection_object,Res)
+#else
       call RichardsRes_FLCont(nc ,grid%area(nc), &
                             var_loc_p((m1-1)*size_var_node+nvar* &
                               size_var_use+1:(m1-1)*size_var_node+nvar* &
@@ -1948,9 +2184,22 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
                             porosity_loc_p(m2),tor_loc_p(m2), &
                             grid%sir(1:grid%nphase,iicap2),dd2,perm2,D2,grid, &
                             vv_darcy,Res)
-
+#endif
       ra(:,nvar)= (Res(:)-ResOld_FL(nc,:))/grid%delx(nvar,m1)
        
+#ifdef OVERHAUL    
+      call RichardsRes_FLCont(nc,area, &
+                            var_loc_p((m1-1)*size_var_node+1:(m1-1)* &
+                              size_var_node+size_var_use),&
+                            porosity_loc_p(m1),tor_loc_p(m1), &
+                            grid%sir(1:grid%nphase,iicap1),dd1,perm1,D1,&
+                            var_loc_p((m2-1)*size_var_node+nvar* &
+                              size_var_use+1:(m2-1)*size_var_node+nvar* &
+                              size_var_use+size_var_use),&
+                            porosity_loc_p(m2),tor_loc_p(m2), &
+                            grid%sir(1:grid%nphase,iicap2),dd2,perm2,D2,grid, &
+                            vv_darcy,cur_connection_object,Res)
+#else
       call RichardsRes_FLCont(nc,grid%area(nc), &
                             var_loc_p((m1-1)*size_var_node+1:(m1-1)* &
                               size_var_node+size_var_use),&
@@ -1962,6 +2211,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
                             porosity_loc_p(m2),tor_loc_p(m2), &
                             grid%sir(1:grid%nphase,iicap2),dd2,perm2,D2,grid, &
                             vv_darcy,Res)
+#endif
  
       ra(:,nvar+grid%ndof)= (Res(:)-ResOld_FL(nc,:))/grid%delx(nvar,m2)
    
@@ -2029,7 +2279,13 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
     endif
 !print *,'accum r',ra(1:5,1:8)   
  !print *,'devq:',nc,q,dphi,devq(3,:)
+#ifndef OVERHAUL
   enddo
+#else
+    enddo
+    cur_connection_object => cur_connection_object%next
+  enddo
+#endif
   ! print *,' Mph Jaco Finished Two node terms'
   
   call VecRestoreArrayF90(grid%xx_loc, xx_loc_p, ierr)
@@ -2198,6 +2454,10 @@ subroutine pflow_update_Richards(grid)
   use pckr_module
   use Condition_module
    ! use water_eos_module
+#ifdef OVERHAUL  
+  use Connection_module
+#endif 
+
   implicit none
 
   type(pflowGrid) :: grid 
@@ -2212,6 +2472,11 @@ subroutine pflow_update_Richards(grid)
   real*8 :: dif(1:grid%nphase)
 ! real*8 :: dum1, dum2           
 
+#ifdef OVERHAUL 
+  type(connection_list_type), pointer :: connection_list
+  type(connection_type), pointer :: cur_connection_object
+  integer :: iconn
+#endif
       
 !geh added for transient boundary conditions      
   if (associated(grid%imat) .and. grid%iread_geom < 0) then
@@ -2281,9 +2546,20 @@ subroutine pflow_update_Richards(grid)
 
   !geh added for transient boundary conditions  
   if (associated(grid%imat) .and. grid%iread_geom < 0) then
+#ifndef OVERHAUL
     do nc = 1, grid%nconnbc
 
       m = grid%mblkbc(nc)  ! Note that here, m is NOT ghosted.
+#else
+    connection_list => getBoundaryConnectionList() 
+    cur_connection_object => connection_list%first
+    do 
+      if (.not.associated(cur_connection_object)) exit
+      do iconn = 1, cur_connection_object%num_connections
+        m = cur_connection_object%id_dn(iconn)
+        nc = iconn
+#endif
+
       ng = grid%nL2G(m)
 
       if (associated(grid%imat)) then
@@ -2296,6 +2572,7 @@ subroutine pflow_update_Richards(grid)
       endif
 
       ibc = grid%ibconn(nc)
+
        
     !print *,'initadj_bc',nc,ibc,grid%ibndtyp(ibc),grid%nconnbc
 
@@ -2336,8 +2613,14 @@ subroutine pflow_update_Richards(grid)
         vel_bc(1,nc) = grid%velocitybc(1,nc)
 !        print *,'initadj', nc, yybc(:,nc), vel_bc(:,nc)
       endif 
-
+      
+#ifndef OVERHAUL
     enddo
+#else
+      enddo
+      cur_connection_object => cur_connection_object%next
+    enddo
+#endif
   endif
  
   call VecRestoreArrayF90(grid%xx, xx_p, ierr); CHKERRQ(ierr)
@@ -2373,6 +2656,10 @@ subroutine pflow_Richards_initadj(grid)
 
   use translator_Richards_module  
   use pckr_module, only: pflow_pckr_richards_fw
+#ifdef OVERHAUL  
+  use Connection_module
+#endif 
+  
   implicit none
 
   type(pflowGrid) :: grid 
@@ -2391,6 +2678,12 @@ subroutine pflow_Richards_initadj(grid)
   real*8 :: dif(grid%nphase)
 ! real*8 :: dum1, dum2
   real*8 :: pc(1:grid%nphase), kr(1:grid%nphase), sw
+
+#ifdef OVERHAUL 
+  type(connection_list_type), pointer :: connection_list
+  type(connection_type), pointer :: cur_connection_object
+  integer :: iconn
+#endif
   
 ! real*8 :: temp1
 !  real*8, parameter :: Rg=8.31415D0
@@ -2456,10 +2749,20 @@ subroutine pflow_Richards_initadj(grid)
   yybc =grid%xxbc
   vel_bc = grid%velocitybc
 
-
+#ifndef OVERHAUL
   do nc = 1, grid%nconnbc
 
     m = grid%mblkbc(nc)  ! Note that here, m is NOT ghosted.
+#else
+  connection_list => getBoundaryConnectionList()
+  cur_connection_object => connection_list%first
+  do 
+    if (.not.associated(cur_connection_object)) exit
+    do iconn = 1, cur_connection_object%num_connections
+      m = cur_connection_object%id_dn(iconn)
+      nc = iconn
+#endif
+
     ng = grid%nL2G(m)
 
     if (associated(grid%imat)) then
@@ -2515,8 +2818,13 @@ subroutine pflow_Richards_initadj(grid)
        vel_bc(1,nc) = grid%velocitybc(1,nc)
 !geh       print *,'initadj', nc, yybc(:,nc), vel_bc(:,nc)
     endif 
-
+#ifndef OVERHAUL
   enddo
+#else
+    enddo
+    cur_connection_object => cur_connection_object%next
+  enddo
+#endif
 
   call VecRestoreArrayF90(grid%icap, icap_p, ierr)
   call VecRestoreArrayF90(grid%ithrm, ithrm_p, ierr)

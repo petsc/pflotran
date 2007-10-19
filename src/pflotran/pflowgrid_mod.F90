@@ -697,6 +697,7 @@ endif
   allocate(grid%nL2A(grid%nlmax))
   allocate(grid%nG2N(grid%ngmax))
   allocate(grid%nG2A(grid%ngmax))
+#ifndef OVERHAUL
   allocate(grid%nd1(grid%nconn))
   allocate(grid%nd2(grid%nconn))
   allocate(grid%dist1(grid%nconn))
@@ -707,7 +708,7 @@ endif
 
   allocate(grid%iperm1(grid%nconn))
   allocate(grid%iperm2(grid%nconn))
-
+#endif
   allocate(grid%vl_loc(grid%nconn))
   allocate(grid%vvl_loc(grid%nconn))
   allocate(grid%vg_loc(grid%nconn))
@@ -1092,6 +1093,9 @@ subroutine pflowGrid_setup(grid, inputfile)
   use Unstructured_Grid_module
   use pflow_solv_module  
   use pflow_convergence_module
+  
+  use Structured_Grid_module
+  use Connection_module
                             
   implicit none
   
@@ -1525,6 +1529,12 @@ subroutine pflowGrid_setup(grid, inputfile)
                             grid%dz_loc, ierr)
   call DAGlobalToLocalEnd(grid%da_1_dof, grid%dz, INSERT_VALUES, &
                           grid%dz_loc,ierr)
+#ifdef OVERHAUL                          
+  call computeInternalConnectivity(grid)
+  call VecGetArrayF90(grid%dx_loc, dx_loc_p, ierr)
+  call VecGetArrayF90(grid%dy_loc, dy_loc_p, ierr)
+  call VecGetArrayF90(grid%dz_loc, dz_loc_p, ierr)
+#else
   call VecGetArrayF90(grid%dx_loc, dx_loc_p, ierr)
   call VecGetArrayF90(grid%dy_loc, dy_loc_p, ierr)
   call VecGetArrayF90(grid%dz_loc, dz_loc_p, ierr)
@@ -1629,6 +1639,7 @@ subroutine pflowGrid_setup(grid, inputfile)
       enddo
     enddo
   endif
+#endif
   
   ! Calculate cell volumes for local cells.
   call VecGetArrayF90(grid%volume, volume_p, ierr)
@@ -1660,7 +1671,8 @@ subroutine pflowGrid_setup(grid, inputfile)
   !-----------------------------------------------------------------------
   ! Set up boundary connections.
   !-----------------------------------------------------------------------
-      
+
+#ifndef OVERHAUL
   grid%nconnbc = 0
   if (grid%nx > 1 .and. grid%ny == 1 .and. grid%nz == 1) then
     if (grid%nxs == grid%ngxs) grid%nconnbc = grid%nconnbc + 1
@@ -1683,6 +1695,7 @@ subroutine pflowGrid_setup(grid, inputfile)
     endif
   endif
 !GEH - Structured Grid Dependence - End
+#endif
       
 ! write(*,'(" --> pflowconn: rank = ",i4, &
 !      &", boundary connections =", i6)') myrank,grid%nconnbc
@@ -1942,6 +1955,7 @@ subroutine pflowGrid_setup(grid, inputfile)
 !geh
   if (grid%iread_geom > -1) then
 
+#ifndef OVERHAUL
     if (grid%nconnbc > 0) then
       allocate(grid%mblkbc(grid%nconnbc))
       allocate(grid%ibconn(grid%nconnbc))
@@ -1949,7 +1963,6 @@ subroutine pflowGrid_setup(grid, inputfile)
       allocate(grid%areabc(grid%nconnbc))
       allocate(grid%ipermbc(grid%nconnbc))
       allocate(grid%delzbc(grid%nconnbc))
-    
 !    allocate(grid%velocitybc(grid%nphase,grid%nconnbc))
     
       allocate(grid%vlbc(grid%nconnbc))
@@ -1963,6 +1976,7 @@ subroutine pflowGrid_setup(grid, inputfile)
       grid%vvgbc = 0.D0
     endif
 !geh
+#endif
   endif
 
   if (grid%use_mph == PETSC_TRUE .or. grid%use_owg == PETSC_TRUE &
@@ -2016,6 +2030,7 @@ subroutine pflowGrid_setup(grid, inputfile)
 !geh
   if (grid%iread_geom > -1) then
 
+#ifndef OVERHAUL
     nc = 0 
 !GEH - Structured Grid Dependence - Begin
     if (grid%nxs == grid%ngxs .or. grid%nxe == grid%ngxe &
@@ -2131,19 +2146,39 @@ subroutine pflowGrid_setup(grid, inputfile)
         enddo ! ir
       enddo ! ibc
     endif
-
+    
+#endif
+    
 !GEH - Structured Grid Dependence - Begin 
     call VecRestoreArrayF90(grid%dx_loc, dx_loc_p, ierr)
     call VecRestoreArrayF90(grid%dy_loc, dy_loc_p, ierr)
     call VecRestoreArrayF90(grid%dz_loc, dz_loc_p, ierr)
 !GEH - Structured Grid Dependence - End
 
+#ifndef OVERHAUL
     if (grid%nconnbc .ne. nc) then
       write(*,*) 'Error in computing boundary connections: ', &
         'rank = ',myrank,' nconnbc = ',grid%nconnbc,' nc = ',nc
    !   grid%nconnbc = nc
      stop
     endif
+#else
+  call computeBoundaryConnectivity(grid)
+  grid%nconnbc = getNumberOfBoundaryConnections()
+  
+  ! already allocated within computeBoundaryConnectivity
+  !geh allocate(grid%ibconn(grid%nconnbc))
+  allocate(grid%vlbc(grid%nconnbc))
+  allocate(grid%vvlbc(grid%nconnbc))
+  allocate(grid%vgbc(grid%nconnbc))
+  allocate(grid%vvgbc(grid%nconnbc))
+  
+  grid%vlbc=0.D0
+  grid%vgbc=0.D0
+  grid%vvlbc = 0.D0
+  grid%vvgbc = 0.D0
+  
+#endif
    
     call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-print_bcinfo", &
                              option_found, ierr)
