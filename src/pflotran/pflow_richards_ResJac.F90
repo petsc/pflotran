@@ -322,9 +322,16 @@ end subroutine  RichardsRes_ARCont
 
 
 #ifdef OVERHAUL
+#ifdef OVERHAUL_V2
+subroutine RichardsRes_FLCont(nconn_no,area,var_node1,por1,tor1,sir1,dd1,perm1, &
+                            Dk1,var_node2,por2,tor2,sir2,dd2,perm2,Dk2, &
+                            dist_gravity,upweight, &
+                            grid,vv_darcy,Res_FL)
+#else
 subroutine RichardsRes_FLCont(nconn_no,area,var_node1,por1,tor1,sir1,dd1,perm1, &
                             Dk1,var_node2,por2,tor2,sir2,dd2,perm2,Dk2,grid, &
                             vv_darcy,connection_object,Res_FL)
+#endif
   use Connection_module
 #else
 subroutine RichardsRes_FLCont(nconn_no,area,var_node1,por1,tor1,sir1,dd1,perm1, &
@@ -342,6 +349,8 @@ subroutine RichardsRes_FLCont(nconn_no,area,var_node1,por1,tor1,sir1,dd1,perm1, 
   real*8 por1,por2,tor1,tor2,perm1,perm2,Dk1,Dk2,dd1,dd2
   real*8 vv_darcy(grid%nphase),area
   real*8 Res_FL(1:grid%ndof) 
+  
+  real*8 :: dist_gravity  ! distance along gravity vector
      
   real*8, pointer :: temp1, pre_ref1   ! 1 dof
   real*8, pointer :: sat1(:), density1(:), amw1(:), h1(:), u1(:), pc1(:), kvr1(:)         ! nphase dof
@@ -402,7 +411,6 @@ subroutine RichardsRes_FLCont(nconn_no,area,var_node1,por1,tor1,sir1,dd1,perm1, 
 
 ! Flow term
     if ((sat1(np) > sir1(np)) .or. (sat2(np) > sir2(np))) then
-    
       upweight=dd1/(dd1+dd2)
       if (sat1(np) <eps) then 
         upweight=0.d0
@@ -416,10 +424,16 @@ subroutine RichardsRes_FLCont(nconn_no,area,var_node1,por1,tor1,sir1,dd1,perm1, 
                 (1.D0-upweight)*density2(np)*amw2(np)) &
                 * grid%gravity * grid%delz(nconn_no) * grid%grav_ang(nconn_no)
 #else
+#ifdef OVERHAUL_V2
+      gravity = (upweight*density1(np)*amw1(np) + &
+                (1.D0-upweight)*density2(np)*amw2(np)) &
+                * grid%gravity * dist_gravity
+#else
       gravity = (upweight*density1(np)*amw1(np) + &
                 (1.D0-upweight)*density2(np)*amw2(np)) &
                 * grid%gravity * connection_object%dist(3,nconn_no) * &
                 connection_object%dist(0,nconn_no) 
+#endif                
 #endif
 
       dphi = pre_ref1 - pre_ref2  + gravity
@@ -482,13 +496,20 @@ subroutine RichardsRes_FLCont(nconn_no,area,var_node1,por1,tor1,sir1,dd1,perm1, 
 
 end subroutine RichardsRes_FLCont
 
-#ifndef OVERHAUL
+#ifdef OVERHAUL
+#ifdef OVERHAUL_V2
 subroutine RichardsRes_FLBCCont(nbc_no,area,var_node1,var_node2,por2,tor2,sir2, &
-                              dd1,perm2,Dk2,grid,vv_darcy,Res_FL)
+                              dd1,perm2,Dk2,dist_gravity,grid,vv_darcy, &
+                              Res_FL)
 #else
 subroutine RichardsRes_FLBCCont(nbc_no,area,var_node1,var_node2,por2,tor2,sir2, &
                               dd1,perm2,Dk2,grid,vv_darcy,connection_object,Res_FL)
+#endif                              
   use Connection_module
+
+#else
+subroutine RichardsRes_FLBCCont(nbc_no,area,var_node1,var_node2,por2,tor2,sir2, &
+                              dd1,perm2,Dk2,grid,vv_darcy,Res_FL)
 #endif
  ! Notice : index 1 stands for BC node
  
@@ -502,7 +523,9 @@ subroutine RichardsRes_FLBCCont(nbc_no,area,var_node1,var_node2,por2,tor2,sir2, 
   real*8 por2,perm2,Dk2,tor2
   real*8 vv_darcy(grid%nphase), area
   real*8 Res_FL(1:grid%ndof) 
-     
+  
+  real*8 :: dist_gravity  ! distance along gravity vector
+          
   real*8, pointer :: temp1, pre_ref1   ! 1 dof
   real*8, pointer :: sat1(:), density1(:), amw1(:), h1(:), u1(:), pc1(:), kvr1(:)         ! nphase dof
   real*8, pointer :: xmol1(:), diff1(:)            ! 
@@ -571,10 +594,16 @@ subroutine RichardsRes_FLBCCont(nbc_no,area,var_node1,var_node2,por2,tor2,sir2, 
                   (1.D0-upweight)*density2(np)*amw2(np)) &
                   * grid%gravity * grid%delzbc(nbc_no)
 #else
+#ifdef OVERHAUL_V2
+        gravity = (upweight*density1(np)*amw1(np) + &
+                  (1.D0-upweight)*density2(np)*amw2(np)) &
+                  * grid%gravity * dist_gravity
+#else
         gravity = (upweight*density1(np)*amw1(np) + &
                   (1.D0-upweight)*density2(np)*amw2(np)) &
                   * grid%gravity * connection_object%dist(3,nbc_no) * &
                   connection_object%dist(0,nbc_no)
+#endif       
 #endif       
         dphi = pre_ref1- pre_ref2 + gravity
    
@@ -788,6 +817,7 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
   type(connection_type), pointer :: cur_connection_object
   integer :: iconn
   real*8 :: distance, fraction_upwind, area
+  real*8 :: distance_gravity
 #endif
  
   grid%vvlbc=0.D0
@@ -1210,6 +1240,9 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
 #else
     fraction_upwind = cur_connection_object%dist(-1,iconn)
     distance = cur_connection_object%dist(0,iconn)
+    ! The below assumes a unit gravity vector of [0,0,1]
+    distance_gravity = cur_connection_object%dist(3,iconn) * &
+                       cur_connection_object%dist(0,iconn)
     dd1 = distance*fraction_upwind
     dd2 = distance-dd1 ! should avoid truncation error
     area = cur_connection_object%area(iconn)
@@ -1236,14 +1269,23 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
     dd = dd1 + dd2
     f1 = dd1/dd
     f2 = dd2/dd
-#else
-    dd = distance
-    f1 = fraction_upwind
-    f2 = dd2/dd
 #endif
 !   if(dabs(perm1-1D-15)>1D-20)print *, 'perm1 error', perm1, ip1, n1,n2
 !  if(dabs(perm2-1D-15)>1D-20)print *, 'perm2 error', perm2, ip2, n1,n2
 #ifdef OVERHAUL
+#ifdef OVERHAUL_V2
+    call RichardsRes_FLCont(iconn ,area, &
+                          var_loc_p((m1-1)*size_var_node+1:(m1-1)* &
+                            size_var_node+size_var_use), &
+                          porosity_loc_p(m1),tor_loc_p(m1), &
+                          grid%sir(1:grid%nphase,iicap1),dd1,perm1,D1, &
+                          var_loc_p((m2-1)*size_var_node+1:(m2-1)* &
+                            size_var_node+size_var_use), &
+                          porosity_loc_p(m2),tor_loc_p(m2), &
+                          grid%sir(1:grid%nphase,iicap2),dd2,perm2,D2, &
+                          distance_gravity,fraction_upwind,grid, &
+                          vv_darcy,Res)
+#else
     call RichardsRes_FLCont(iconn ,area, &
                           var_loc_p((m1-1)*size_var_node+1:(m1-1)* &
                             size_var_node+size_var_use), &
@@ -1254,6 +1296,7 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
                           porosity_loc_p(m2),tor_loc_p(m2), &
                           grid%sir(1:grid%nphase,iicap2),dd2,perm2,D2,grid, &
                           vv_darcy,cur_connection_object,Res)
+#endif
 #else
     call RichardsRes_FLCont(nc ,grid%area(nc), &
                           var_loc_p((m1-1)*size_var_node+1:(m1-1)* &
@@ -1363,6 +1406,9 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
     perm1 = perm_xx_loc_p(ng)*cur_connection_object%dist(1,iconn)+ &
             perm_yy_loc_p(ng)*cur_connection_object%dist(2,iconn)+ &
             perm_zz_loc_p(ng)*cur_connection_object%dist(3,iconn)
+    ! The below assumes a unit gravity vector of [0,0,1]
+    distance_gravity = cur_connection_object%dist(3,iconn) * &
+                       cur_connection_object%dist(0,iconn)
 #endif
 
     select case(grid%ibndtyp(ibc))
@@ -1438,6 +1484,16 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
                                 grid%pref)
    
 #ifdef OVERHAUL
+#ifdef OVERHAUL_V2
+    call RichardsRes_FLBCCont(nc,cur_connection_object%area(iconn), &
+                            grid%varbc(1:size_var_use), &
+                            var_loc_p((ng-1)*size_var_node+1:(ng-1)* &
+                            size_var_node+size_var_use),porosity_loc_p(ng), &
+                            tor_loc_p(ng),grid%sir(1:grid%nphase,iicap), &
+                            cur_connection_object%dist(0,iconn),perm1,D2, &
+                            distance_gravity,grid, &
+                            vv_darcy,Res)
+#else
     call RichardsRes_FLBCCont(nc,cur_connection_object%area(iconn), &
                             grid%varbc(1:size_var_use), &
                             var_loc_p((ng-1)*size_var_node+1:(ng-1)* &
@@ -1445,6 +1501,7 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
                             tor_loc_p(ng),grid%sir(1:grid%nphase,iicap), &
                             cur_connection_object%dist(0,iconn),perm1,D2, grid, &
                             vv_darcy,cur_connection_object,Res)
+#endif
 #else
     call RichardsRes_FLBCCont(nc,grid%areabc(nc),grid%varbc(1:size_var_use), &
                             var_loc_p((ng-1)*size_var_node+1:(ng-1)* &
@@ -1615,6 +1672,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
   type(connection_type), pointer :: cur_connection_object
   integer :: iconn
   real*8 :: distance, fraction_upwind, area
+  real*8 :: distance_gravity  
 #endif  
   
  PetscViewer :: viewer
@@ -1872,6 +1930,9 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
     perm1 = perm_xx_loc_p(ng)*cur_connection_object%dist(1,iconn)+ &
             perm_yy_loc_p(ng)*cur_connection_object%dist(2,iconn)+ &
             perm_zz_loc_p(ng)*cur_connection_object%dist(3,iconn)
+    ! The below assumes a unit gravity vector of [0,0,1]
+    distance_gravity = cur_connection_object%dist(3,iconn) * &
+                       cur_connection_object%dist(0,iconn)
 #endif
     delxbc=0.D0
     select case(grid%ibndtyp(ibc))
@@ -1955,6 +2016,19 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
 !    print *,' Mph Jaco BC terms: finish increment'
     do nvar=1,grid%ndof
 #ifdef OVERHAUL
+#ifdef OVERHAUL_V2
+      call RichardsRes_FLBCCont(nc,cur_connection_object%area(iconn), &
+                              grid%varbc(nvar*size_var_use+1:(nvar+1)* &
+                                size_var_use), &
+                              var_loc_p((ng-1)*size_var_node+nvar* &
+                                size_var_use+1:(ng-1)*size_var_node+nvar* &
+                                size_var_use+size_var_use), &
+                              porosity_loc_p(ng),tor_loc_p(ng), &
+                              grid%sir(1:grid%nphase,iicap), &
+                              cur_connection_object%dist(0,iconn),perm1,D2, &
+                              distance_gravity,grid,vv_darcy, &
+                              Res)
+#else
       call RichardsRes_FLBCCont(nc,cur_connection_object%area(iconn), &
                               grid%varbc(nvar*size_var_use+1:(nvar+1)* &
                                 size_var_use), &
@@ -1965,6 +2039,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
                               grid%sir(1:grid%nphase,iicap), &
                               cur_connection_object%dist(0,iconn),perm1,D2, &
                               grid,vv_darcy,cur_connection_object,Res)
+#endif                              
 #else   
       call RichardsRes_FLBCCont(nc,grid%areabc(nc), &
                               grid%varbc(nvar*size_var_use+1:(nvar+1)* &
@@ -2123,6 +2198,9 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
 #else
     fraction_upwind = cur_connection_object%dist(-1,iconn)
     distance = cur_connection_object%dist(0,iconn)
+    ! The below assumes a unit gravity vector of [0,0,1]
+    distance_gravity = cur_connection_object%dist(3,iconn) * &
+                       cur_connection_object%dist(0,iconn)
     dd1 = distance*fraction_upwind
     dd2 = distance-dd1 ! should avoid truncation error
     area = cur_connection_object%area(iconn)
@@ -2149,10 +2227,6 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
     dd = dd1 + dd2
     f1 = dd1/dd
     f2 = dd2/dd
-#else
-    dd = distance
-    f1 = fraction_upwind
-    f2 = dd2/dd
 #endif    
     
     iicap1 = int(icap_loc_p(m1))
@@ -2161,6 +2235,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
   ! do neq = 1, grid%ndof
     do nvar = 1, grid%ndof
 #ifdef OVERHAUL    
+#ifdef OVERHAUL_V2  
       call RichardsRes_FLCont(nc ,area, &
                             var_loc_p((m1-1)*size_var_node+nvar* &
                               size_var_use+1:(m1-1)*size_var_node+nvar* &
@@ -2170,8 +2245,22 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
                             var_loc_p((m2-1)*size_var_node+1:(m2-1)* &
                               size_var_node+size_var_use),&
                             porosity_loc_p(m2),tor_loc_p(m2), &
-                            grid%sir(1:grid%nphase,iicap2),dd2,perm2,D2,grid, &
-                            vv_darcy,cur_connection_object,Res)
+                            grid%sir(1:grid%nphase,iicap2),dd2,perm2,D2, &
+                            distance_gravity,fraction_upwind, &
+                            grid,vv_darcy,Res)
+#else
+      call RichardsRes_FLCont(nc ,area, &
+                            var_loc_p((m1-1)*size_var_node+nvar* &
+                              size_var_use+1:(m1-1)*size_var_node+nvar* &
+                              size_var_use+size_var_use),&
+                            porosity_loc_p(m1),tor_loc_p(m1), &
+                            grid%sir(1:grid%nphase,iicap1),dd1,perm1,D1,&
+                            var_loc_p((m2-1)*size_var_node+1:(m2-1)* &
+                              size_var_node+size_var_use),&
+                            porosity_loc_p(m2),tor_loc_p(m2), &
+                            grid%sir(1:grid%nphase,iicap2),dd2,perm2,D2, &
+                            grid,vv_darcy,cur_connection_object,Res)
+#endif
 #else
       call RichardsRes_FLCont(nc ,grid%area(nc), &
                             var_loc_p((m1-1)*size_var_node+nvar* &
@@ -2187,7 +2276,22 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
 #endif
       ra(:,nvar)= (Res(:)-ResOld_FL(nc,:))/grid%delx(nvar,m1)
        
-#ifdef OVERHAUL    
+#ifdef OVERHAUL 
+#ifdef OVERHAUL_V2   
+      call RichardsRes_FLCont(nc,area, &
+                            var_loc_p((m1-1)*size_var_node+1:(m1-1)* &
+                              size_var_node+size_var_use),&
+                            porosity_loc_p(m1),tor_loc_p(m1), &
+                            grid%sir(1:grid%nphase,iicap1),dd1,perm1,D1,&
+                            var_loc_p((m2-1)*size_var_node+nvar* &
+                              size_var_use+1:(m2-1)*size_var_node+nvar* &
+                              size_var_use+size_var_use),&
+                            porosity_loc_p(m2),tor_loc_p(m2), &
+                            grid%sir(1:grid%nphase,iicap2),dd2,perm2,D2, &
+                            distance_gravity,fraction_upwind, &
+                            grid, &
+                            vv_darcy,Res)
+#else
       call RichardsRes_FLCont(nc,area, &
                             var_loc_p((m1-1)*size_var_node+1:(m1-1)* &
                               size_var_node+size_var_use),&
@@ -2199,6 +2303,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,grid,ierr)
                             porosity_loc_p(m2),tor_loc_p(m2), &
                             grid%sir(1:grid%nphase,iicap2),dd2,perm2,D2,grid, &
                             vv_darcy,cur_connection_object,Res)
+#endif
 #else
       call RichardsRes_FLCont(nc,grid%area(nc), &
                             var_loc_p((m1-1)*size_var_node+1:(m1-1)* &
