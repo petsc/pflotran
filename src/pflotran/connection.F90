@@ -151,12 +151,12 @@ end subroutine InitConnectionList
 ! date: 10/15/07
 !
 ! ************************************************************************** !
-function createConnection(num_connections,num_phases)
+function createConnection(num_connections,num_dof)
 
   implicit none
   
   integer :: num_connections
-  integer :: num_phases
+  integer :: num_dof
   
   type(connection_type), pointer :: createConnection
   allocate(createConnection)
@@ -166,7 +166,7 @@ function createConnection(num_connections,num_phases)
   allocate(createConnection%id_dn(num_connections))
   allocate(createConnection%dist(-1:3,num_connections))
   allocate(createConnection%area(num_connections))
-  allocate(createConnection%velocity(num_connections,num_phases))
+  allocate(createConnection%velocity(num_dof,num_connections))
   createConnection%id_up = 0
   createConnection%id_dn = 0
   createConnection%dist = 0.d0
