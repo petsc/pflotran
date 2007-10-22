@@ -237,7 +237,8 @@ subroutine computeInternalConnectivity(grid)
   
   connections => createConnection((grid%ngx-1)*grid%nly*grid%nlz+ &
                                   grid%nlx*(grid%ngy-1)*grid%nlz+ &
-                                  grid%nlx*grid%nly*(grid%ngz-1))
+                                  grid%nlx*grid%nly*(grid%ngz-1), &
+                                  grid%nphase)
 
   iconn = 0
   ! x-connections
@@ -368,7 +369,7 @@ subroutine computeBoundaryConnectivity(grid)
   endif
 
   num_conn_hypothetically = iconn
-  connections => createConnection(iconn)
+  connections => createConnection(iconn,grid%nphase)
 
   allocate(grid%ibconn(iconn)) 
 

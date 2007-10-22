@@ -16,6 +16,7 @@ module Connection_module
                                       !   0 = magnitude of distance 
                                       !   1-3 = components of unit vector
     real*8, pointer :: area(:)        ! list of areas of faces normal to distance vectors
+    real*8, pointer :: velocity(:,:)  ! velocity scalars for each phase
     type(connection_type), pointer :: next
   end type connection_type
 
@@ -150,20 +151,27 @@ end subroutine InitConnectionList
 ! date: 10/15/07
 !
 ! ************************************************************************** !
-function createConnection(n)
+function createConnection(num_connections,num_phases)
 
   implicit none
   
-  integer :: n
+  integer :: num_connections
+  integer :: num_phases
   
   type(connection_type), pointer :: createConnection
   allocate(createConnection)
   createConnection%id = 0
-  createConnection%num_connections = n
-  allocate(createConnection%id_up(n))
-  allocate(createConnection%id_dn(n))
-  allocate(createConnection%dist(-1:3,n))
-  allocate(createConnection%area(n))
+  createConnection%num_connections = num_connections
+  allocate(createConnection%id_up(num_connections))
+  allocate(createConnection%id_dn(num_connections))
+  allocate(createConnection%dist(-1:3,num_connections))
+  allocate(createConnection%area(num_connections))
+  allocate(createConnection%velocity(num_connections,num_phases))
+  createConnection%id_up = 0
+  createConnection%id_dn = 0
+  createConnection%dist = 0.d0
+  createConnection%area = 0.d0
+  createConnection%velocity = 0.d0
   nullify(createConnection%next)
 
 end function createConnection
@@ -241,6 +249,12 @@ subroutine destroyConnectionList(list)
   cur_connection => list%first
   do 
     if (.not.associated(cur_connection)) exit
+    if (associated(cur_connection%id_up)) deallocate(cur_connection%id_up)
+    if (associated(cur_connection%id_dn)) deallocate(cur_connection%id_dn)
+    if (associated(cur_connection%dist)) deallocate(cur_connection%dist)
+    if (associated(cur_connection%area)) deallocate(cur_connection%area)
+    if (associated(cur_connection%velocity)) &
+      deallocate(cur_connection%velocity)
     prev_connection => cur_connection
     cur_connection => cur_connection%next
     deallocate(prev_connection)

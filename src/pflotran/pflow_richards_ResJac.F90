@@ -1319,8 +1319,12 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
                           grid%sir(1:grid%nphase,iicap2),dd2,perm2,D2,grid, &
                           vv_darcy,Res)
 #endif
+#ifndef OVERHAUL
     grid%vvl_loc(nc) = vv_darcy(1)
 !    grid%vvg_loc(nc) = vv_darcy(2)  
+#else
+    cur_connection_object%velocity(1,iconn) = vv_darcy(1)
+#endif    
     if (n1 > 0) then               ! If the upstream node is not a ghost node...
       do np =1, grid%nphase 
 #ifndef OVERHAUL      
@@ -1519,8 +1523,12 @@ subroutine RichardsResidual(snes,xx,r,grid,ierr)
                             tor_loc_p(ng),grid%sir(1:grid%nphase,iicap), &
                             grid%distbc(nc),perm1,D2, grid, vv_darcy,Res)
 #endif     
+#ifndef OVERHAUL
     grid%vvlbc(nc) = vv_darcy(1)
  !   grid%vvgbc(nc) = vv_darcy(2) 
+#else
+    cur_connection_object%velocity(1,iconn) = vv_darcy(1)
+#endif    
     r_p(p1:p1-1+grid%ndof)= r_p(p1:p1-1+grid%ndof) - Res(1:grid%ndof)
     ResOld_AR(m,1:grid%ndof) = ResOld_AR(m,1:grid%ndof) - Res(1:grid%ndof)
    

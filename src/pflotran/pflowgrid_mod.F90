@@ -2165,19 +2165,6 @@ subroutine pflowGrid_setup(grid, inputfile)
 #else
   call computeBoundaryConnectivity(grid)
   grid%nconnbc = getNumberOfBoundaryConnections()
-  
-  ! already allocated within computeBoundaryConnectivity
-  !geh allocate(grid%ibconn(grid%nconnbc))
-  allocate(grid%vlbc(grid%nconnbc))
-  allocate(grid%vvlbc(grid%nconnbc))
-  allocate(grid%vgbc(grid%nconnbc))
-  allocate(grid%vvgbc(grid%nconnbc))
-  
-  grid%vlbc=0.D0
-  grid%vgbc=0.D0
-  grid%vvlbc = 0.D0
-  grid%vvgbc = 0.D0
-  
 #endif
    
     call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-print_bcinfo", &
@@ -3921,11 +3908,13 @@ subroutine pflowGrid_update (grid)
   endif
 
   if (grid%using_pflowGrid == PETSC_TRUE) then
+#ifndef OVERHAUL
 !   call VecCopy(grid%vvl,grid%vl,ierr)
     grid%vl_loc = grid%vvl_loc
     grid%vlbc = grid%vvlbc
     grid%vg_loc = grid%vvg_loc
     grid%vgbc = grid%vvgbc
+#endif    
     grid%xphi_co2 = grid%xxphi_co2
     grid%den_co2=grid%dden_co2
   endif
