@@ -2573,7 +2573,7 @@ subroutine pflow_update_Richards(grid)
 
   use translator_Richards_module
   use pckr_module
-  use Condition_module
+  use Condition_module_old
    ! use water_eos_module
 #ifdef OVERHAUL  
   use Connection_module

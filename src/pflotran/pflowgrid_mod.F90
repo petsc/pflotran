@@ -1090,7 +1090,7 @@ subroutine pflowGrid_setup(grid, inputfile)
   
   use utilities_module
   use readfield
-  use Unstructured_Grid_module
+  use General_Grid_module
   use pflow_solv_module  
   use pflow_convergence_module
   
@@ -1542,15 +1542,7 @@ subroutine pflowGrid_setup(grid, inputfile)
   nc = 0
   grid%nconnx = 0
   grid%nconny = 0
-
-  if (grid%igeom == 2) then
-    allocate(grid%rd(0:grid%nx))
-    grid%rd = 0.D0
-    grid%rd(0) = grid%Radius_0 
-    do i = 1, grid%nx
-      grid%rd(i) = grid%rd(i-1) + grid%dx0(i)
-    enddo
-  endif    
+   
   
 ! print *,'setup-RD:: ',grid%myrank,grid%rd, grid%dx0
   

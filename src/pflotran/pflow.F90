@@ -36,6 +36,10 @@
   use span_wagner_module
   use pflow_checkpoint
   use readfield, only: Read_init_field
+  
+  use Solution_module
+  use Grid_module
+  
   implicit none
 
 #include "include/finclude/petsc.h"
@@ -80,6 +84,9 @@
   character(len=MAXSTRINGLENGTH) :: pflowin
   real*8 dt_cur
   real*8, pointer :: dxdt(:)
+  
+  type(solution_type) :: solution
+  type(grid_type) :: new_grid
 
 ! Initialize Startup Time
  ! call PetscGetCPUTime(timex(1), ierr)
@@ -121,6 +128,7 @@
     stop
   endif
 
+#ifndef OVERHAUL
 ! set up structure constructor
 ! npx = PETSC_DECIDE; npy = PETSC_DECIDE; npz = PETSC_DECIDE
   grid = pflowGrid_new(igeom, nx, ny, nz, npx, npy, npz, nphase, nspec, &
@@ -135,6 +143,9 @@
 
   call pflowGrid_setup(grid, pflowin)
   CHKMEMQ
+#else
+  call pflow_init(new_grid,pflowin)
+#endif
   kplt = 0
   iplot = 1
 

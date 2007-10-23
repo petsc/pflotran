@@ -33,8 +33,8 @@ module Connection_module
     type(connection_ptr_type), pointer :: array(:)
   end type connection_list_type
   
-  type(connection_list_type), pointer, private :: internal_connection_list, &
-                                                  boundary_connection_list
+!  type(connection_list_type), pointer, private :: internal_connection_list, &
+!                                                  boundary_connection_list
 
   public :: allocateConnectionLists, createConnection, addConnectionToList, &
             getInternalConnectionList, getBoundaryConnectionList, &

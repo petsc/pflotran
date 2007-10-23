@@ -2208,7 +2208,7 @@ end subroutine pflow_Vadose_initaccum
 subroutine pflow_update_Vadose(grid)
 
   use translator_vad_module
-  use Condition_module
+  use Condition_module_old
    ! use water_eos_module
   implicit none
 
