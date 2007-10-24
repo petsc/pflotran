@@ -36,12 +36,15 @@ module Connection_module
 !  type(connection_list_type), pointer, private :: internal_connection_list, &
 !                                                  boundary_connection_list
 
-  public :: allocateConnectionLists, createConnection, addConnectionToList, &
+  public :: createConnection, addConnectionToList
+#if 0  
+allocateConnectionLists, 
+  , &
             getInternalConnectionList, getBoundaryConnectionList, &
             getNumberOfInternalConnections, getNumberOfBoundaryConnections
-  
+#endif  
 contains
-
+#if 0
 ! ************************************************************************** !
 !
 ! getInternalConnectionList: Returns pointer to internal_connection_list
@@ -123,7 +126,7 @@ subroutine allocateConnectionLists()
   call initConnectionList(boundary_connection_list)
   
 end subroutine
-
+#endif
 ! ************************************************************************** !
 !
 ! InitConnectionModule: Initializes module variables, lists, arrays.
@@ -230,6 +233,35 @@ end subroutine convertConnectionListToArray
 
 ! ************************************************************************** !
 !
+! destroyConnection: Deallocates a connection
+! author: Glenn Hammond
+! date: 10/23/07
+!
+! ************************************************************************** !
+subroutine destroyConnection(connection)
+
+  implicit none
+  
+  type(connection_type), pointer :: connection
+  
+  if (associated(connection%id_up)) deallocate(connection%id_up)
+  nullify(connection%id_up)
+  if (associated(connection%id_dn)) deallocate(connection%id_dn)
+  nullify(connection%id_dn)
+  if (associated(connection%dist)) deallocate(connection%dist)
+  nullify(connection%dist)
+  if (associated(connection%area)) deallocate(connection%area)
+  nullify(connection%area)
+  if (associated(connection%velocity)) deallocate(connection%velocity)
+  nullify(connection%velocity)
+  nullify(connection%next)
+  deallocate(connection)
+  nullify(connection)
+
+end subroutine destroyConnection
+
+! ************************************************************************** !
+!
 ! destroyConnectionList: Deallocates the module global list and array of regions
 ! author: Glenn Hammond
 ! date: 10/15/07
@@ -249,15 +281,9 @@ subroutine destroyConnectionList(list)
   cur_connection => list%first
   do 
     if (.not.associated(cur_connection)) exit
-    if (associated(cur_connection%id_up)) deallocate(cur_connection%id_up)
-    if (associated(cur_connection%id_dn)) deallocate(cur_connection%id_dn)
-    if (associated(cur_connection%dist)) deallocate(cur_connection%dist)
-    if (associated(cur_connection%area)) deallocate(cur_connection%area)
-    if (associated(cur_connection%velocity)) &
-      deallocate(cur_connection%velocity)
     prev_connection => cur_connection
     cur_connection => cur_connection%next
-    deallocate(prev_connection)
+    call destroyConnection(prev_connection)
   enddo
   
   nullify(list%first)

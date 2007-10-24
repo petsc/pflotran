@@ -14,9 +14,9 @@ module pflow_convergence_module
   
 contains
 
-subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,grid,ierr)
+subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,option,ierr)
 
-  use pflow_gridtype_module
+  use Option_module
 
   implicit none
   
@@ -26,7 +26,7 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,grid,ierr)
   PetscReal :: pnorm
   PetscReal :: fnorm
   SNESConvergedReason :: reason
-  type(pflowGrid) :: grid
+  type(option_type) :: option
   PetscErrorCode :: ierr
   
   PetscInt :: ctx = 0
@@ -92,7 +92,7 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,grid,ierr)
 
 #ifdef CHUAN
   ! always take one iteration
-  call SNESGetIterationNumber(grid%snes,it,ierr)
+  call SNESGetIterationNumber(option%snes,it,ierr)
   if (it == 0) then
     reason = 0
     return
@@ -109,14 +109,14 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,grid,ierr)
 
     call VecNorm(residual,NORM_INFINITY,inorm_residual,ierr)
   
-    if (inorm_residual < grid%inf_tol) then
-      if (grid%myrank == 0) print *, 'converged from infinity', inorm_residual
+    if (inorm_residual < option%inf_tol) then
+      if (option%myrank == 0) print *, 'converged from infinity', inorm_residual
       reason = 1
     endif
 
   endif    
  
-  if (grid%myrank == 0) print *, 'snes_default', xnorm,pnorm,fnorm,reason
+  if (option%myrank == 0) print *, 'snes_default', xnorm,pnorm,fnorm,reason
 
 #endif
 
@@ -136,22 +136,22 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,grid,ierr)
   call VecNorm(update,NORM_1,norm1_update,ierr)
   call VecNorm(residual,NORM_1,norm1_residual,ierr)
   
-  allocate(fnorm_solution_stride(grid%ndof))
-  allocate(fnorm_update_stride(grid%ndof))
-  allocate(fnorm_residual_stride(grid%ndof))
-  allocate(inorm_solution_stride(grid%ndof))
-  allocate(inorm_update_stride(grid%ndof))
-  allocate(inorm_residual_stride(grid%ndof))
-  allocate(norm1_solution_stride(grid%ndof))
-  allocate(norm1_update_stride(grid%ndof))
-  allocate(norm1_residual_stride(grid%ndof))
+  allocate(fnorm_solution_stride(option%ndof))
+  allocate(fnorm_update_stride(option%ndof))
+  allocate(fnorm_residual_stride(option%ndof))
+  allocate(inorm_solution_stride(option%ndof))
+  allocate(inorm_update_stride(option%ndof))
+  allocate(inorm_residual_stride(option%ndof))
+  allocate(norm1_solution_stride(option%ndof))
+  allocate(norm1_update_stride(option%ndof))
+  allocate(norm1_residual_stride(option%ndof))
   
-  allocate(imax_solution(grid%ndof))
-  allocate(imax_update(grid%ndof))
-  allocate(imax_residual(grid%ndof))
-  allocate(max_solution_val(grid%ndof))
-  allocate(max_update_val(grid%ndof))
-  allocate(max_residual_val(grid%ndof))
+  allocate(imax_solution(option%ndof))
+  allocate(imax_update(option%ndof))
+  allocate(imax_residual(option%ndof))
+  allocate(max_solution_val(option%ndof))
+  allocate(max_update_val(option%ndof))
+  allocate(max_residual_val(option%ndof))
 
   call VecStrideNormAll(solution,NORM_1,norm1_solution_stride,ierr)
   call VecStrideNormAll(update,NORM_1,norm1_update_stride,ierr)
@@ -164,17 +164,17 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,grid,ierr)
   call VecStrideNormAll(residual,NORM_INFINITY,inorm_residual_stride,ierr)
   
   ! can't use VecStrideMaxAll since the index location is not currently supported.
-  do i=1,grid%ndof
+  do i=1,option%ndof
     call VecStrideMax(solution,i-1,imax_solution(i),max_solution_val(i),ierr)
     call VecStrideMax(update,i-1,imax_update(i),max_update_val(i),ierr)
     call VecStrideMax(residual,i-1,imax_residual(i),max_residual_val(i),ierr)
     ! tweak the index to get the cell id from the mdof vector
-    imax_solution(i) = imax_solution(i)/grid%ndof
-    imax_update(i) = imax_update(i)/grid%ndof
-    imax_residual(i) = imax_residual(i)/grid%ndof
+    imax_solution(i) = imax_solution(i)/option%ndof
+    imax_update(i) = imax_update(i)/option%ndof
+    imax_residual(i) = imax_residual(i)/option%ndof
   enddo
 
-  if (grid%myrank == 0) then
+  if (option%myrank == 0) then
     select case(reason)
       case (1)
         string = "CONVERGED_USER_NORM_INF"
@@ -241,7 +241,7 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,grid,ierr)
     endif
     if (print_max_val_and_loc_info) then
       print *, 'max locations by dof:'
-      do i=1,grid%ndof
+      do i=1,option%ndof
         print *, '  dof: ', i
         if (print_sol_norm_info) &
           print *, '    solution max: ', imax_solution(i), max_solution_val(i)
@@ -253,7 +253,7 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,grid,ierr)
     endif
     if (print_norm_by_dof_info) then
       print *, 'norm by dof:'
-      do i=1,grid%ndof
+      do i=1,option%ndof
         print *, '  dof: ', i
         if (print_sol_norm_info) then
           if (print_1_norm_info) &

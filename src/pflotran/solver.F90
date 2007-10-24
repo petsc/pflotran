@@ -19,8 +19,9 @@ module Solver_module
   ! indication of what the problem is.
 #include "include/finclude/petscmat.h"
 #include "include/finclude/petscmat.h90"
-#include "include/finclude/petscda.h"
-#include "include/finclude/petscda.h90"
+#include "include/finclude/petscksp.h"
+#include "include/finclude/petscpc.h"
+#include "include/finclude/petscsnes.h"
 
   type, public :: solver_type
     real*8 :: atol       ! absolute tolerance
@@ -32,5 +33,64 @@ module Solver_module
     integer :: maxf      ! maximum number of function evaluations
     integer :: idt_switch
   end type solver_type
+  
+  public :: ComputeMFJacobian, &
+            MonitorH
+  
+contains
+  
+! ************************************************************************** !
+!
+! ComputeMFJacobian: Sets Jacobian B = J
+! author:
+! date: 
+!
+! ************************************************************************** !
+subroutine ComputeMFJacobian(snes, x, J, B, flag, ctx, ierr)
+  
+  implicit none
+
+  SNES, intent(in) :: snes
+  Vec, intent(in) :: x
+  Mat, intent(out) :: J, B
+  MatStructure, intent(in) :: flag
+  integer, intent(inout) :: ctx(*)
+  integer, intent(out) :: ierr
+
+  call MatAssemblyBegin(J, MAT_FINAL_ASSEMBLY, ierr)
+  call MatAssemblyEnd(J, MAT_FINAL_ASSEMBLY, ierr)
+  B = J
+  
+end subroutine ComputeMFJacobian
+
+! ************************************************************************** !
+!
+! MonitorH: Sets Jacobian B = J
+! author:
+! date: 
+!
+! ************************************************************************** !
+subroutine MonitorH(snes, its, norm, option)
+  
+  use Option_module
+  
+  implicit none
+
+  SNES, intent(in) :: snes
+  integer, intent(in) :: its
+  PetscReal, intent(in) :: norm
+  type(option_type) :: option
+  
+  integer :: ierr
+  integer :: myrank
+  PetscScalar :: h
+  
+  call MatMFFDGetH(option%J, h, ierr)
+
+  if (option%myrank == 0) then
+    write(*,*) "#At SNES iteration ", its, "h is ", h
+  endif
+
+end subroutine MonitorH
   
 end module Solver_module

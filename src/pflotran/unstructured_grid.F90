@@ -42,14 +42,14 @@ end subroutine initUnstructuredGrid
 ! date: 10/22/07
 !
 ! ************************************************************************** !
-subroutine createUnstructuredDMs(solution,unstructured_grid)
+subroutine createUnstructuredDMs(unstructured_grid,option)
       
-  use Solution_module
+  use Option_module
       
   implicit none
   
-  type(solution_type) :: solution
   type(unstructured_grid_type) :: unstructured_grid
+  type(option_type) :: option
   
 end subroutine createUnstructuredDMs
   
@@ -61,16 +61,16 @@ end subroutine createUnstructuredDMs
 ! date: 10/17/07
 !
 ! ************************************************************************** !
-function computeUnstructInternalConnect(solution,unstructured_grid)
+function computeUnstructInternalConnect(unstructured_grid,option)
 
   use Connection_module
-  use Solution_module
+  use Option_module
   
   implicit none
   
   type(connection_type), pointer :: computeUnstructInternalConnect
-  type(solution_type) :: solution
   type(unstructured_grid_type) :: unstructured_grid
+  type(option_type) :: option
 
   nullify(computeUnstructInternalConnect)
   
@@ -84,16 +84,16 @@ end function computeUnstructInternalConnect
 ! date: 10/15/07
 !
 ! ************************************************************************** !
-function computeUnstructBoundaryConnect(solution,unstructured_grid)
+function computeUnstructBoundaryConnect(unstructured_grid,option)
 
   use Connection_module
-  use Solution_module
+  use Option_module
   
   implicit none
 
   type(connection_type), pointer :: computeUnstructBoundaryConnect  
-  type(solution_type) :: solution
   type(unstructured_grid_type) :: unstructured_grid
+  type(option_type) :: option
   
   nullify(computeUnstructBoundaryConnect)
   

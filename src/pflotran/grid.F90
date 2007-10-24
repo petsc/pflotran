@@ -29,7 +29,10 @@ module Grid_module
   type, public :: grid_type
   
     logical :: is_structured
-  
+    
+    integer :: nlmax  ! Total number of non-ghosted nodes in local domain.
+    integer :: ngmax  ! Number of ghosted & non-ghosted nodes in local domain.
+#if 1    
     !nL2G :  not collective, local processor: local  =>  ghosted local  
     !nG2L :  not collective, local processor:  ghosted local => local  
     !nG2N :  collective,  ghosted local => global index , used for   
@@ -38,16 +41,15 @@ module Grid_module
     !                              and source/sink setup  
     integer, pointer :: nL2G(:), nG2L(:), nL2A(:),nG2N(:)
     integer, pointer :: nG2A(:)
+#endif
     
     integer, pointer :: ibconn(:)
     
+#if 1  
     real*8, pointer :: x(:), y(:), z(:), delz(:) 
-    real*8 :: x_max, x_min, y_max, y_min, z_max, z_min
+#endif    
     
     integer :: igeom
-    
-    Vec :: volume  ! Volume of a cell in the grid
-    
     type(structured_grid_type), pointer :: structured_grid
     type(unstructured_grid_type), pointer :: unstructured_grid
     
@@ -60,7 +62,11 @@ module Grid_module
   public :: createGrid, &
             createStructuredDMs, &
             computeInternalConnectivity, &
-            computeBoundaryConnectivity
+            computeBoundaryConnectivity, &
+            createPetscVector, &
+            createJacobian, &
+            createColoring, &
+            DMGlobalToLocal
   
 contains
 
@@ -116,51 +122,58 @@ end subroutine initGrid
 
 ! ************************************************************************** !
 !
-! setNPXYZ: Initializes the decomposition of a structrued grid
-! author: Glenn Hammond
-! date: 10/23/07
-!
-! ************************************************************************** !
-subroutine setNPXYZ(grid,npx,npy,npz)
-
-  implicit none
-  
-  type(grid_type) :: grid
-  integer :: npx, npy, npz
-  
-  if (grid%is_structured) then
-    call setStructuredNPXYZ(grid%structured_grid,npx,npy,npz)
-  else
-    print *, 'ERROR: NPX,NPY,NPZ not supported for unstructured grid'
-    stop
-  endif
-
-end subroutine setNPXYZ
-
-! ************************************************************************** !
-!
 ! createDMs: creates distributed, parallel meshes/grids
 ! author: Glenn Hammond
 ! date: 10/22/07
 !
 ! ************************************************************************** !
-subroutine createDMs(solution,grid)
+subroutine createDMs(grid,option)
       
-  use Solution_module    
+  use Option_module    
       
   implicit none
   
-  type(solution_type) :: solution
   type(grid_type) :: grid
+  type(option_type) :: option
   
   if (grid%is_structured) then
-    call createStructuredDMs(solution,grid%structured_grid)
+    call createStructuredDMs(grid%structured_grid,option)
+    grid%nlmax = grid%structured_grid%nlmax
+    grid%ngmax = grid%structured_grid%ngmax
   else 
-    call createUnstructuredDMs(solution,grid%unstructured_grid)
+    call createUnstructuredDMs(grid%unstructured_grid,option)
   endif
+
+  ! allocate coordinate arrays  
+  allocate(grid%x(grid%ngmax))
+  allocate(grid%y(grid%ngmax))
+  allocate(grid%z(grid%ngmax))
 
 end subroutine createDMs
 
+! ************************************************************************** !
+!
+! createPetscVector: Creates a global PETSc vector
+! author: Glenn Hammond
+! date: 10/24/07
+!
+! ************************************************************************** !
+subroutine createPetscVector(grid,dm_index,vector,vector_type)
+
+  implicit none
+  
+  type(grid_type) :: grid
+  integer :: dm_index
+  Vec :: vector
+  integer :: vector_type
+  
+  if (grid%is_structured) then
+    call createPetscVectorFromDA(grid%structured_grid,dm_index,vector, &
+                                 vector_type)
+  else
+  endif
+  
+end subroutine createPetscVector
 ! ************************************************************************** !
 !
 ! computeInternalConnectivity: computes internal connectivity of a grid
@@ -168,24 +181,24 @@ end subroutine createDMs
 ! date: 10/17/07
 !
 ! ************************************************************************** !
-subroutine computeInternalConnectivity(solution,grid)
+subroutine computeInternalConnectivity(grid,option)
 
   use Connection_module
-  use Solution_module    
+  use Option_module    
     
   implicit none
   
-  type(solution_type) :: solution
   type(grid_type) :: grid
+  type(option_type) :: option
   
   type(connection_type), pointer :: connection
   
   if (grid%is_structured) then
     connection => &
-      computeStructInternalConnect(solution,grid%structured_grid)
+      computeStructInternalConnect(grid%structured_grid,option)
   else 
     connection => &
-      computeUnstructInternalConnect(solution,grid%unstructured_grid)
+      computeUnstructInternalConnect(grid%unstructured_grid,option)
   endif
   
   call addConnectionToList(connection,grid%internal_connection_list)
@@ -199,29 +212,149 @@ end subroutine computeInternalConnectivity
 ! date: 10/15/07
 !
 ! ************************************************************************** !
-subroutine computeBoundaryConnectivity(solution,grid)
+subroutine computeBoundaryConnectivity(grid,option)
 
   use Connection_module
-  use Solution_module    
+  use Option_module    
 
   implicit none
   
-  type(solution_type) :: solution
   type(grid_type) :: grid
+  type(option_type) :: option
   
   type(connection_type), pointer :: connection
   
   if (grid%is_structured) then
     connection => &
-      computeStructBoundaryConnect(solution,grid%structured_grid,grid%ibconn, &
+      computeStructBoundaryConnect(grid%structured_grid,option,grid%ibconn, &
                                    grid%nL2G)
   else 
     connection => &
-      computeUnstructBoundaryConnect(solution,grid%unstructured_grid)
+      computeUnstructBoundaryConnect(grid%unstructured_grid,option)
   endif
   
   call addConnectionToList(connection,grid%boundary_connection_list)
 
 end subroutine computeBoundaryConnectivity
 
+! ************************************************************************** !
+!
+! mapGridIndices: maps global, local and natural indices of cells 
+!                 to each other
+! author: Glenn Hammond
+! date: 10/24/07
+!
+! ************************************************************************** !
+subroutine mapGridIndices(grid)
+
+  implicit none
+  
+  type(grid_type) :: grid
+  
+  if (grid%is_structured) then
+    call mapStructuredGridIndictes(grid%structured_grid,grid%nG2L,grid%nL2G, &
+                                   grid%nL2A,grid%nL2A,grid%nG2N)
+  else
+  endif
+
+end subroutine mapGridIndices
+
+! ************************************************************************** !
+!
+! computeGridCoordinates: Computes x,y,z coordinates of grid cells
+! author: Glenn Hammond
+! date: 10/24/07
+!
+! ************************************************************************** !
+subroutine computeGridCoordinates(grid,option)
+
+  use Option_module
+  
+  implicit none
+  
+  type(grid_type) :: grid
+  type(option_type) :: option
+  
+  if (grid%is_structured) then
+    call computeStructuredGridCoordinates(grid%structured_grid,option, &
+                                          grid%x,grid%y,grid%z)
+  else
+  endif
+
+end subroutine
+
+! ************************************************************************** !
+!
+! createJacobian: Creates Jacobian matrix associated with grid
+! author: Glenn Hammond
+! date: 10/24/07
+!
+! ************************************************************************** !
+subroutine createJacobian(grid,option)
+
+  use Option_module
+  
+  implicit none
+  
+  type(grid_type) :: grid
+  type(option_type) :: option
+  
+  if (grid%is_structured) then
+    call createStructuredGridJacobian(grid%structured_grid,option)
+  else
+  endif
+
+end subroutine createJacobian
+
+! ************************************************************************** !
+!
+! createColoring: Creates ISColoring for grid
+! author: Glenn Hammond
+! date: 10/24/07
+!
+! ************************************************************************** !
+subroutine createColoring(grid,option,coloring)
+
+  use Option_module
+  
+  implicit none
+
+#include "include/finclude/petscis.h"
+#include "include/finclude/petscis.h90"
+  
+  type(grid_type) :: grid
+  type(option_type) :: option
+  ISColoring :: coloring
+  
+  if (grid%is_structured) then
+    call createStructuredGridColoring(grid%structured_grid,option,coloring)
+  else
+  endif
+  
+end subroutine createColoring
+
+! ************************************************************************** !
+!
+! DMGlobalToLocal: Performs global to local communication with DM
+! author: Glenn Hammond
+! date: 10/24/07
+!
+! ************************************************************************** !
+subroutine DMGlobalToLocal(grid,global_vec,local_vec,dm_index)
+
+  implicit none
+  
+  type(grid_type) :: grid
+  Vec :: global_vec
+  Vec :: local_vec
+  integer :: dm_index
+  
+  if (grid%is_structured) then
+    call DMStructGlobalToLocal(grid%structured_grid,global_vec,local_vec, &
+                               dm_index)
+  else
+  endif
+  
+end subroutine DMGlobalToLocal
+  
 end module Grid_module

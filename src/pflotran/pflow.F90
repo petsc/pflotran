@@ -39,6 +39,7 @@
   
   use Solution_module
   use Grid_module
+  use Option_module
   
   implicit none
 
@@ -134,8 +135,8 @@
   grid = pflowGrid_new(igeom, nx, ny, nz, npx, npy, npz, nphase, nspec, &
          npricomp, ndof, icouple, idcdm, itable, mcomp, mphas)
 
-  if(grid%use_mph == PETSC_TRUE .or. grid%use_owg == PETSC_TRUE &
-     .or. grid%use_flash == PETSC_TRUE) &
+  if(option%use_mph == PETSC_TRUE .or. option%use_owg == PETSC_TRUE &
+     .or. option%use_flash == PETSC_TRUE) &
   call initialize_span_wagner(itable,grid%myrank)
 
   call PetscGetCPUTime(timex(1), ierr)
@@ -144,7 +145,7 @@
   call pflowGrid_setup(grid, pflowin)
   CHKMEMQ
 #else
-  call pflow_init(new_grid,pflowin)
+  call pflow_init(solution,new_grid,pflowin)
 #endif
   kplt = 0
   iplot = 1
@@ -156,7 +157,7 @@
   call PetscLogStagePush(stage(2), ierr)
 ! call VecView(grid%conc,PETSC_VIEWER_STDOUT_WORLD,ierr)
 
-  if(grid%use_owg/=PETSC_TRUE) then
+  if(option%use_owg/=PETSC_TRUE) then
     call pflow_output_new(grid,kplt,iplot)
   else
     call pflow_var_output(grid,kplt,iplot)
@@ -202,14 +203,14 @@
     dt_cur = grid%dt 
    
     
-    if(grid%use_thc == PETSC_TRUE)then
+    if(option%use_thc == PETSC_TRUE)then
       dxdt(1)=grid%dpmax/dt_cur
       dxdt(2)=grid%dtmpmax/dt_cur
       dxdt(3)=grid%dcmax/dt_cur
     endif  
 
     call PetscLogStagePush(stage(2), ierr)
-    if(grid%use_owg/=PETSC_TRUE) then
+    if(option%use_owg/=PETSC_TRUE) then
       call pflow_output_new(grid,kplt,iplot)
      ! print *,'XX ::...........'; call VecView(grid%xx,PETSC_VIEWER_STDOUT_WORLD,ierr)
     else
@@ -229,7 +230,7 @@
     call PetscLogStagePop(ierr)
     
     ista=0
-    if(grid%use_thc == PETSC_TRUE)then
+    if(option%use_thc == PETSC_TRUE)then
       do idx = 1, grid%ndof
         if(dxdt(idx) < grid%steady_eps(idx)) ista=ista+1
       enddo 
@@ -244,7 +245,7 @@
 
 
 !    call PetscLogStagePush(stage(2), ierr)
-!    if(grid%use_owg/=PETSC_TRUE) then
+!    if(option%use_owg/=PETSC_TRUE) then
 !      call pflow_output_new(grid,kplt,iplot)
      ! print *,'XX ::...........'; call VecView(grid%xx,PETSC_VIEWER_STDOUT_WORLD,ierr)
 !    else

@@ -16,3 +16,16 @@
 #define HHISTORY_LENGTH 1000
 ! HHISTORY_LENGTH is the length of the array used to store the differencing
 ! values h.
+
+#define ONEDOF 1
+#define NPHASEDOF 2
+#define THREENPDOF 3
+#define NDOF 4
+#define NPHANCOMPDOF 5
+#define NPHANSPECDOF 6
+#define NPHANSPECNCOMPDOF 7
+#define VARDOF 8
+
+#define GLOBAL 1
+#define LOCAL 2
+#define NATURAL 3

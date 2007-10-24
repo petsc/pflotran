@@ -25,24 +25,29 @@ module Structured_Grid_module
 
   type, public :: structured_grid_type
 
-    integer*4 :: nx, ny, nz    ! Global domain dimensions of the grid.
-    integer*4 :: nxy, nmax     ! nx * ny, nx * ny * nz
-    integer*4 :: npx, npy, npz ! Processor partition in each direction.
-    integer*4 :: nlx, nly, nlz ! Local grid dimension w/o ghost nodes.
-    integer*4 :: ngx, ngy, ngz ! Local grid dimension with ghost nodes.
-    integer*4 :: nxs, nys, nzs 
+    integer :: nx, ny, nz    ! Global domain dimensions of the grid.
+    integer :: nxy, nmax     ! nx * ny, nx * ny * nz
+    integer :: npx, npy, npz ! Processor partition in each direction.
+    integer :: nlx, nly, nlz ! Local grid dimension w/o ghost nodes.
+    integer :: ngx, ngy, ngz ! Local grid dimension with ghost nodes.
+    integer :: nxs, nys, nzs 
       ! Global indices of non-ghosted corner (starting) of local domain.
-    integer*4 :: ngxs, ngys, ngzs
+    integer :: ngxs, ngys, ngzs
       ! Global indices of ghosted starting corner of local domain.
-    integer*4 :: nxe, nye, nze, ngxe, ngye, ngze
+    integer :: nxe, nye, nze, ngxe, ngye, ngze
       ! Global indices of non-ghosted/ghosted ending corner of local domain.
-    integer*4 :: nlxy, nlxz, nlyz
-    integer*4 :: ngxy, ngxz, ngyz
+    integer :: nlxy, nlxz, nlyz
+    integer :: ngxy, ngxz, ngyz
     
-    integer*4 :: istart, jstart, kstart, iend, jend, kend
+    integer :: istart, jstart, kstart, iend, jend, kend
       ! istart gives the local x-index of the non-ghosted starting (lower left)
       ! corner. iend gives the local x-index of the non-ghosted ending 
       ! corner. jstart, jend correspond to y-index, kstart, kend to z-index.    
+
+    integer :: nlmax  ! Total number of non-ghosted nodes in local domain.
+    integer :: ngmax  ! Number of ghosted & non-ghosted nodes in local domain.
+    
+    real*8 :: x_max, x_min, y_max, y_min, z_max, z_min
 
     real*8, pointer :: dx0(:), dy0(:), dz0(:), rd(:)
     
@@ -50,35 +55,6 @@ module Structured_Grid_module
     
     real*8 :: radius_0
     
-    
-    integer*4 :: nblkbc
-      ! The number of "blocks" of boundary conditions that are defined.
-      ! Such a block is a specification of a set of boundary conditions.
-      ! This set of boundary conditions can apply to any number of regions,
-      ! so nblkbc does NOT equal the number of boundary condition regions.
-    integer*4 :: nconnbc  ! The number of interfaces along boundaries.
-!GEH - Structured Grid Dependence - Begin
-    integer*4, pointer :: i1bc(:), i2bc(:), j1bc(:), j2bc(:), k1bc(:), k2bc(:)
-!GEH - Structured Grid Dependence - End
-#if 0
-    integer*4, pointer :: ibconn(:)
-#endif
-      ! ibconn(nc) specifies the id of the of boundary condition block that
-      ! applies at boundary interface nc.  
-    integer*4, pointer :: ibndtyp(:)
-      ! ibndtyp(ibc) specifies the type of boundary condition that applies
-      ! for boundary condition block ibc.
-    integer*4, pointer :: iface(:)
-      ! iface(ibc) specifies the face (left, right, top, bottom, etc.) on
-      ! which BC block ibc lies.
-    integer*4, pointer :: mblkbc(:)
-      ! mblkbc(nc) gives the local, non-ghosted index of the cell that has
-      ! boundary connection nc.
-    integer*4, pointer :: iregbc1(:), iregbc2(:)
-      ! iregbc1(ibc) and iregbc2(ibc) give the id of the first region and 
-      ! last region, respectively, that utilizes the boundary conditions in 
-      ! boundary condition block ibc.
-          
     Vec :: dx, dy, dz, dx_loc, dy_loc, dz_loc  ! Grid spacings
 
     DA :: da_1_dof, da_nphase_dof, da_3np_dof, da_ndof, da_nphancomp_dof, &
@@ -86,11 +62,16 @@ module Structured_Grid_module
     
   end type
 
-
   public :: createStructuredDMs, &
             computeStructInternalConnect, &
-            computeStructBoundaryConnect
-  
+            computeStructBoundaryConnect, &
+            createPetscVectorFromDA, &
+            mapStructuredGridIndices, &
+            computeStructuredGridCoordinates, &
+            createStructuredGridJacobian, &
+            createStructuredGridColoring, &
+            DMStructGlobalToLocal
+
 contains
 
 ! ************************************************************************** !
@@ -100,18 +81,18 @@ contains
 ! date: 10/22/07
 !
 ! ************************************************************************** !
-subroutine initStructuredGrid(grid)
+subroutine initStructuredGrid(structured_grid)
 
   implicit none
   
-  type(structured_grid_type) :: grid
+  type(structured_grid_type) :: structured_grid
 
-  grid%nx = 0
-  grid%ny = 0
-  grid%nz = 0
-  grid%npx = PETSC_DECIDE
-  grid%npy = PETSC_DECIDE
-  grid%npz = PETSC_DECIDE
+  structured_grid%nx = 0
+  structured_grid%ny = 0
+  structured_grid%nz = 0
+  structured_grid%npx = PETSC_DECIDE
+  structured_grid%npy = PETSC_DECIDE
+  structured_grid%npz = PETSC_DECIDE
   
 end subroutine initStructuredGrid
   
@@ -122,16 +103,16 @@ end subroutine initStructuredGrid
 ! date: 10/22/07
 !
 ! ************************************************************************** !
-subroutine createStructuredDMs(solution,structured_grid)
+subroutine createStructuredDMs(structured_grid,option)
       
-  use Solution_module
+  use Option_module
       
   implicit none
   
-  type(solution_type) :: solution
   type(structured_grid_type) :: structured_grid
-  PetscErrorCode :: ierr
+  type(option_type) :: option
 
+  PetscErrorCode :: ierr
   !-----------------------------------------------------------------------
   ! Generate the DA objects that will manage communication.
   !-----------------------------------------------------------------------
@@ -140,91 +121,195 @@ subroutine createStructuredDMs(solution,structured_grid)
        PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
        structured_grid%da_1_dof,ierr)
 
+
 ! call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &
 !      structured_grid%nx,structured_grid%ny,structured_grid%nz,structured_grid%npx,structured_grid%npy,structured_grid%npz,3,1, &
 !      PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
 !      structured_grid%da_3_dof,ierr)
  
   call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &
-       structured_grid%nx,structured_grid%ny,structured_grid%nz,structured_grid%npx,structured_grid%npy,structured_grid%npz,solution%nphase,1, &
+       structured_grid%nx,structured_grid%ny,structured_grid%nz,structured_grid%npx,structured_grid%npy,structured_grid%npz,option%nphase,1, &
        PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
        structured_grid%da_nphase_dof,ierr)
 
   call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &
-       structured_grid%nx,structured_grid%ny,structured_grid%nz,structured_grid%npx,structured_grid%npy,structured_grid%npz,3*solution%nphase,1, &
+       structured_grid%nx,structured_grid%ny,structured_grid%nz,structured_grid%npx,structured_grid%npy,structured_grid%npz,3*option%nphase,1, &
        PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
        structured_grid%da_3np_dof,ierr)
 
   call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &
-       structured_grid%nx,structured_grid%ny,structured_grid%nz,structured_grid%npx,structured_grid%npy,structured_grid%npz,solution%ndof,1, &
+       structured_grid%nx,structured_grid%ny,structured_grid%nz,structured_grid%npx,structured_grid%npy,structured_grid%npz,option%ndof,1, &
        PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
        structured_grid%da_ndof,ierr)
 
-  if (solution%use_2ph == PETSC_TRUE) then
+  if (option%use_2ph == PETSC_TRUE) then
     print *,' 2ph create DA'
     call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &
-                    structured_grid%nx,structured_grid%ny,structured_grid%nz,structured_grid%npx,structured_grid%npy,structured_grid%npz,solution%nphase*solution%npricomp,1, &
+                    structured_grid%nx,structured_grid%ny,structured_grid%nz,structured_grid%npx,structured_grid%npy,structured_grid%npz,option%nphase*option%npricomp,1, &
                     PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
                     structured_grid%da_nphancomp_dof,ierr)
 
     call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &
-                    structured_grid%nx,structured_grid%ny,structured_grid%nz,structured_grid%npx,structured_grid%npy,structured_grid%npz,solution%nphase*solution%nspec,1, &
+                    structured_grid%nx,structured_grid%ny,structured_grid%nz,structured_grid%npx,structured_grid%npy,structured_grid%npz,option%nphase*option%nspec,1, &
                     PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
                     structured_grid%da_nphanspec_dof,ierr)
 
     call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &
                     structured_grid%nx,structured_grid%ny,structured_grid%nz,structured_grid%npx,structured_grid%npy,structured_grid%npz, &
-                    solution%nphase*solution%nspec*solution%npricomp,1, &
+                    option%nphase*option%nspec*option%npricomp,1, &
                     PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
                     structured_grid%da_nphanspecncomp_dof,ierr)
   endif
-       
-  if (solution%use_mph == PETSC_TRUE) then
+ 
+  if (option%use_mph == PETSC_TRUE) then
     call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &
-                    structured_grid%nx,structured_grid%ny,structured_grid%nz,structured_grid%npx,structured_grid%npy,structured_grid%npz,(solution%ndof+1)*(2+7*solution%nphase + 2* &
-                    solution%nspec*solution%nphase),1, &
+                    structured_grid%nx,structured_grid%ny,structured_grid%nz,structured_grid%npx,structured_grid%npy,structured_grid%npz,(option%ndof+1)*(2+7*option%nphase + 2* &
+                    option%nspec*option%nphase),1, &
                     PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
                     structured_grid%da_var_dof,ierr)
 
   endif
   
- if (solution%use_richards == PETSC_TRUE) then
+ if (option%use_richards == PETSC_TRUE) then
     call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &
-                    structured_grid%nx,structured_grid%ny,structured_grid%nz,structured_grid%npx,structured_grid%npy,structured_grid%npz,(solution%ndof+1)*(2+7*solution%nphase + 2* &
-                    solution%nspec*solution%nphase),1, &
+                    structured_grid%nx,structured_grid%ny,structured_grid%nz,structured_grid%npx,structured_grid%npy,structured_grid%npz,(option%ndof+1)*(2+7*option%nphase + 2* &
+                    option%nspec*option%nphase),1, &
                     PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
                     structured_grid%da_var_dof,ierr)
 
   endif
     
-  if (solution%use_vadose == PETSC_TRUE) then
+  if (option%use_vadose == PETSC_TRUE) then
     call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &
-                    structured_grid%nx,structured_grid%ny,structured_grid%nz,structured_grid%npx,structured_grid%npy,structured_grid%npz,(solution%ndof+1)*(2+7*solution%nphase + 2* &
-                    solution%nspec*solution%nphase),1, &
+                    structured_grid%nx,structured_grid%ny,structured_grid%nz,structured_grid%npx,structured_grid%npy,structured_grid%npz,(option%ndof+1)*(2+7*option%nphase + 2* &
+                    option%nspec*option%nphase),1, &
                     PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
                     structured_grid%da_var_dof,ierr)
   endif
 
-  if (solution%use_flash == PETSC_TRUE) then
+  if (option%use_flash == PETSC_TRUE) then
     call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &
-                    structured_grid%nx,structured_grid%ny,structured_grid%nz,structured_grid%npx,structured_grid%npy,structured_grid%npz,(solution%ndof+1)*(2+7*solution%nphase + 2* &
-                    solution%nspec*solution%nphase),1, &
+                    structured_grid%nx,structured_grid%ny,structured_grid%nz,structured_grid%npx,structured_grid%npy,structured_grid%npz,(option%ndof+1)*(2+7*option%nphase + 2* &
+                    option%nspec*option%nphase),1, &
                     PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
                     structured_grid%da_var_dof,ierr)
   endif
-     
-  if (solution%use_owg == PETSC_TRUE) then
+        
+  if (option%use_owg == PETSC_TRUE) then
     call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &
-                    structured_grid%nx,structured_grid%ny,structured_grid%nz,structured_grid%npx,structured_grid%npy,structured_grid%npz,(solution%ndof+1)*(2+7*solution%nphase + 2* &
-                    solution%nspec*solution%nphase),1, &
+                    structured_grid%nx,structured_grid%ny,structured_grid%nz,structured_grid%npx,structured_grid%npy,structured_grid%npz,(option%ndof+1)*(2+7*option%nphase + 2* &
+                    option%nspec*option%nphase),1, &
                     PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
                     structured_grid%da_var_dof,ierr)
   endif
 
-  !print DA info for each processor
-! call DAView(structured_grid%da_ndof,PETSC_VIEWER_STDOUT_WORLD,ierr)
+ ! get corner information
+  call DAGetCorners(structured_grid%da_nphase_dof, structured_grid%nxs, &
+                    structured_grid%nys, structured_grid%nzs, structured_grid%nlx, &
+                    structured_grid%nly, structured_grid%nlz, ierr)
+
+  structured_grid%nxe = structured_grid%nxs + structured_grid%nlx
+  structured_grid%nye = structured_grid%nys + structured_grid%nly
+  structured_grid%nze = structured_grid%nzs + structured_grid%nlz
+  structured_grid%nlxy = structured_grid%nlx * structured_grid%nly
+  structured_grid%nlxz = structured_grid%nlx * structured_grid%nlz
+  structured_grid%nlyz = structured_grid%nly * structured_grid%nlz
+  structured_grid%nlmax = structured_grid%nlx * structured_grid%nly * structured_grid%nlz
+
+  ! get ghosted corner information
+  call DAGetGhostCorners(structured_grid%da_nphase_dof, structured_grid%ngxs, &
+                         structured_grid%ngys, structured_grid%ngzs, structured_grid%ngx, &
+                         structured_grid%ngy, structured_grid%ngz, ierr)
+
+  structured_grid%ngxe = structured_grid%ngxs + structured_grid%ngx
+  structured_grid%ngye = structured_grid%ngys + structured_grid%ngy
+  structured_grid%ngze = structured_grid%ngzs + structured_grid%ngz
+  structured_grid%ngxy = structured_grid%ngx * structured_grid%ngy
+  structured_grid%ngxz = structured_grid%ngx * structured_grid%ngz
+  structured_grid%ngyz = structured_grid%ngy * structured_grid%ngz
+  structured_grid%ngmax = structured_grid%ngx * structured_grid%ngy * structured_grid%ngz
 
 end subroutine createStructuredDMs
+
+! ************************************************************************** !
+!
+! createPetscVectorFromDA: Creates a global PETSc vector
+! author: Glenn Hammond
+! date: 10/24/07
+!
+! ************************************************************************** !
+subroutine createPetscVectorFromDA(structured_grid,da_index,vector, &
+                                   vector_type)
+
+  implicit none
+  type(structured_grid_type) :: structured_grid
+  integer :: da_index
+  Vec :: vector
+  integer :: vector_type
+  
+  PetscErrorCode :: ierr
+
+  select case (vector_type)
+    case(GLOBAL)
+      select case (da_index)
+        case(ONEDOF)
+          call DACreateGlobalVector(structured_grid%da_1_dof,vector,ierr)
+        case(NPHASEDOF)
+          call DACreateGlobalVector(structured_grid%da_nphase_dof,vector,ierr)
+        case(THREENPDOF)
+          call DACreateGlobalVector(structured_grid%da_3np_dof,vector,ierr)
+        case(NDOF)
+          call DACreateGlobalVector(structured_grid%da_ndof,vector,ierr)
+        case(NPHANCOMPDOF)
+          call DACreateGlobalVector(structured_grid%da_nphancomp_dof,vector,ierr)
+        case(NPHANSPECDOF)
+          call DACreateGlobalVector(structured_grid%da_nphanspec_dof,vector,ierr)
+        case(NPHANSPECNCOMPDOF)
+          call DACreateGlobalVector(structured_grid%da_nphanspecncomp_dof,vector,ierr)
+        case(VARDOF)
+          call DACreateGlobalVector(structured_grid%da_var_dof,vector,ierr)
+      end select    
+    case(LOCAL)
+      select case (da_index)
+        case(ONEDOF)
+          call DACreateLocalVector(structured_grid%da_1_dof,vector,ierr)
+        case(NPHASEDOF)
+          call DACreateLocalVector(structured_grid%da_nphase_dof,vector,ierr)
+        case(THREENPDOF)
+          call DACreateLocalVector(structured_grid%da_3np_dof,vector,ierr)
+        case(NDOF)
+          call DACreateLocalVector(structured_grid%da_ndof,vector,ierr)
+        case(NPHANCOMPDOF)
+          call DACreateLocalVector(structured_grid%da_nphancomp_dof,vector,ierr)
+        case(NPHANSPECDOF)
+          call DACreateLocalVector(structured_grid%da_nphanspec_dof,vector,ierr)
+        case(NPHANSPECNCOMPDOF)
+          call DACreateLocalVector(structured_grid%da_nphanspecncomp_dof,vector,ierr)
+        case(VARDOF)
+          call DACreateLocalVector(structured_grid%da_var_dof,vector,ierr)
+      end select    
+    case(NATURAL)
+      select case (da_index)
+        case(ONEDOF)
+          call DACreateNaturalVector(structured_grid%da_1_dof,vector,ierr)
+        case(NPHASEDOF)
+          call DACreateNaturalVector(structured_grid%da_nphase_dof,vector,ierr)
+        case(THREENPDOF)
+          call DACreateNaturalVector(structured_grid%da_3np_dof,vector,ierr)
+        case(NDOF)
+          call DACreateNaturalVector(structured_grid%da_ndof,vector,ierr)
+        case(NPHANCOMPDOF)
+          call DACreateNaturalVector(structured_grid%da_nphancomp_dof,vector,ierr)
+        case(NPHANSPECDOF)
+          call DACreateNaturalVector(structured_grid%da_nphanspec_dof,vector,ierr)
+        case(NPHANSPECNCOMPDOF)
+          call DACreateNaturalVector(structured_grid%da_nphanspecncomp_dof,vector,ierr)
+        case(VARDOF)
+          call DACreateNaturalVector(structured_grid%da_var_dof,vector,ierr)
+      end select    
+  end select
+
+end subroutine createPetscVectorFromDA
 
 ! ************************************************************************** !
 !
@@ -233,14 +318,14 @@ end subroutine createStructuredDMs
 ! date: 10/23/07
 !
 ! ************************************************************************** !
-subroutine readStructuredDXYZ(solution,structured_grid)
+subroutine readStructuredDXYZ(structured_grid,option)
 
-  use Solution_module
+  use Option_module
   
   implicit none
   
-  type(solution_type) :: solution
   type(structured_grid_type) :: structured_grid
+  type(option_type) :: option
   
   integer :: i
 
@@ -252,7 +337,7 @@ subroutine readStructuredDXYZ(solution,structured_grid)
   call readDXYZ(structured_grid%dy0,structured_grid%ny)
   call readDXYZ(structured_grid%dz0,structured_grid%nz)
     
-  if (solution%myrank==0) then
+  if (option%myrank==0) then
     write(IUNIT2,'(/," *DXYZ ")')
     write(IUNIT2,'("  dx  ",/,(1p10e12.4))') (structured_grid%dx0(i),i=1,structured_grid%nx)
     write(IUNIT2,'("  dy  ",/,(1p10e12.4))') (structured_grid%dy0(i),i=1,structured_grid%ny)
@@ -279,7 +364,6 @@ subroutine readDXYZ(a,n)
   integer*4 :: i, i1, i2, m
   integer ::  ierr, nvalue=10
   real*8, intent(inout) :: a(*)
-#include "definitions.h"
   character(len=MAXSTRINGLENGTH) :: string 
 
   save nvalue
@@ -325,21 +409,87 @@ end subroutine readDXYZ
 
 ! ************************************************************************** !
 !
+! computeStructuredGridCoordinates: Computes structured coordinates in x,y,z
+! author: Glenn Hammond
+! date: 10/24/07
+!
+! ************************************************************************** !
+subroutine computeStructuredGridCoordinates(structured_grid,option, &
+                                            grid_x,grid_y,grid_z)
+
+  use Option_module
+  
+  implicit none
+  
+  type(structured_grid_type) :: structured_grid
+  type(option_type) :: option
+  real*8 :: grid_x(:), grid_y(:), grid_z(:)
+  real*8 :: x_min, y_min, z_min
+
+! integer :: ierr
+  integer*4 :: i, j, k, n
+  real*8 :: x, y, z
+  integer :: prevnode
+
+! set min and max bounds of domain in coordinate directions
+  structured_grid%x_min = 0.d0
+  structured_grid%y_min = 0.d0
+  structured_grid%z_min = 0.d0
+  do i=1,structured_grid%nx
+    structured_grid%x_max = structured_grid%x_max + structured_grid%dx0(i)
+  enddo
+  do j=1,structured_grid%ny
+    structured_grid%y_max = structured_grid%y_max + structured_grid%dy0(j)
+  enddo
+  do k=1,structured_grid%nz
+    structured_grid%z_max = structured_grid%z_max + structured_grid%dz0(k)
+  enddo
+
+! set min and max bounds of domain in coordinate directions
+  n = 0
+  z = 0.5d0*structured_grid%dz0(1)
+  do k=1, structured_grid%nz
+    y = 0.5d0*structured_grid%dy0(1)
+    do j=1, structured_grid%ny
+      x = 0.5d0*structured_grid%dx0(1)
+      do i=1, structured_grid%nx
+        if (i > structured_grid%ngxs .and. i <= structured_grid%ngxe .and. &
+            j > structured_grid%ngys .and. j <= structured_grid%ngye .and. &
+            k > structured_grid%ngzs .and. k <= structured_grid%ngze) then
+          n = n + 1
+          grid_x(n) = x
+          grid_y(n) = y
+          grid_z(n) = z
+        endif
+        if (i < structured_grid%nx) x = x + 0.5d0*(structured_grid%dx0(i)+structured_grid%dx0(i+1))
+      enddo
+      if (j < structured_grid%ny) y = y + 0.5d0*(structured_grid%dy0(j)+structured_grid%dy0(j+1))
+    enddo
+    if (k < structured_grid%nz) z = z + 0.5d0*(structured_grid%dz0(k)+structured_grid%dz0(k+1))
+  enddo
+  if (n /= structured_grid%ngmax .and. option%myrank == 0) &
+      print *, 'ERROR: Number of coordinates (',n, ') ', &
+             'does not match number of ghosted cells (', structured_grid%ngmax, ')'             
+    
+end subroutine computeStructuredGridCoordinates
+
+! ************************************************************************** !
+!
 ! computeStructInternalConnect: computes internal connectivity of a  
 !                               structured grid
 ! author: Glenn Hammond
 ! date: 10/17/07
 !
 ! ************************************************************************** !
-function computeStructInternalConnect(solution,structured_grid)
+function computeStructInternalConnect(structured_grid,option)
 
   use Connection_module
-  use Solution_module
+  use option_module
   
   implicit none
   
   type(connection_type), pointer :: computeStructInternalConnect
-  type(solution_type) :: solution
+  type(option_type) :: option
   type(structured_grid_type) :: structured_grid
   
   
@@ -363,7 +513,7 @@ function computeStructInternalConnect(solution,structured_grid)
                           structured_grid%nlz+ &
                         structured_grid%nlx*structured_grid%nly* &
                           (structured_grid%ngz-1), &
-                        solution%nphase)
+                        option%nphase)
 
   iconn = 0
   ! x-connections
@@ -457,15 +607,15 @@ end function computeStructInternalConnect
 ! date: 10/15/07
 !
 ! ************************************************************************** !
-function computeStructBoundaryConnect(solution,structured_grid,ibconn,nL2G)
+function computeStructBoundaryConnect(structured_grid,option,ibconn,nL2G)
 
   use Connection_module
-  use Solution_module
+  use Option_module
   
   implicit none
 
   type(connection_type), pointer :: computeStructBoundaryConnect  
-  type(solution_type) :: solution
+  type(option_type) :: option
   type(structured_grid_type) :: structured_grid
   integer, pointer :: ibconn(:)
   integer :: nL2G(:)
@@ -515,7 +665,7 @@ function computeStructBoundaryConnect(solution,structured_grid,ibconn,nL2G)
   endif
 
   num_conn_hypothetically = iconn
-  connections => createConnection(iconn,solution%nphase)
+  connections => createConnection(iconn,option%nphase)
 
   allocate(ibconn(iconn)) 
 
@@ -530,14 +680,14 @@ function computeStructBoundaryConnect(solution,structured_grid,ibconn,nL2G)
     ! calculate boundary conditions locally on only those processors which 
     ! contain a boundary!
 
-    do ibc = 1, structured_grid%nblkbc
-      do ir = structured_grid%iregbc1(ibc), structured_grid%iregbc2(ibc)
-        kk1 = structured_grid%k1bc(ir) - structured_grid%nzs
-        kk2 = structured_grid%k2bc(ir) - structured_grid%nzs
-        jj1 = structured_grid%j1bc(ir) - structured_grid%nys
-        jj2 = structured_grid%j2bc(ir) - structured_grid%nys
-        ii1 = structured_grid%i1bc(ir) - structured_grid%nxs
-        ii2 = structured_grid%i2bc(ir) - structured_grid%nxs
+    do ibc = 1, option%nblkbc
+      do ir = option%iregbc1(ibc), option%iregbc2(ibc)
+        kk1 = option%k1bc(ir) - structured_grid%nzs
+        kk2 = option%k2bc(ir) - structured_grid%nzs
+        jj1 = option%j1bc(ir) - structured_grid%nys
+        jj2 = option%j2bc(ir) - structured_grid%nys
+        ii1 = option%i1bc(ir) - structured_grid%nxs
+        ii2 = option%i2bc(ir) - structured_grid%nxs
 
         kk1 = max(1,kk1)
         kk2 = min(structured_grid%nlz,kk2)
@@ -569,37 +719,37 @@ function computeStructBoundaryConnect(solution,structured_grid,ibconn,nL2G)
         
               select case(structured_grid%igeom)
                 case(1) ! cartesian
-                  if (structured_grid%iface(ibc) == 1) then
+                  if (option%iface(ibc) == 1) then
                     connections%dist(:,iconn) = 0.d0
                     connections%dist(0,iconn) = 0.5d0*dx_loc_p(cell_id_ghosted)
                     connections%dist(1,iconn) = 1.d0
                     connections%area(iconn) = dy_loc_p(cell_id_ghosted)* &
                                               dz_loc_p(cell_id_ghosted)
-                  else if (structured_grid%iface(ibc) == 2) then
+                  else if (option%iface(ibc) == 2) then
                     connections%dist(:,iconn) = 0.d0
                     connections%dist(0,iconn) = 0.5d0*dx_loc_p(cell_id_ghosted)
                     connections%dist(1,iconn) = 1.d0
                     connections%area(iconn) = dy_loc_p(cell_id_ghosted)* &
                                               dz_loc_p(cell_id_ghosted)
-                  else if (structured_grid%iface(ibc) == 3) then
+                  else if (option%iface(ibc) == 3) then
                     connections%dist(:,iconn) = 0.d0
                     connections%dist(0,iconn) = 0.5d0*dz_loc_p(cell_id_ghosted)
                     connections%dist(3,iconn) = 1.d0
                     connections%area(iconn) = dx_loc_p(cell_id_ghosted)* &
                                               dy_loc_p(cell_id_ghosted)
-                  else if (structured_grid%iface(ibc) == 4) then
+                  else if (option%iface(ibc) == 4) then
                     connections%dist(:,iconn) = 0.d0
                     connections%dist(0,iconn) = 0.5d0*dz_loc_p(cell_id_ghosted)
                     connections%dist(3,iconn) = 1.d0
                     connections%area(iconn) = dx_loc_p(cell_id_ghosted)* &
                                               dy_loc_p(cell_id_ghosted)
-                  else if (structured_grid%iface(ibc) == 5) then
+                  else if (option%iface(ibc) == 5) then
                     connections%dist(:,iconn) = 0.d0
                     connections%dist(0,iconn) = 0.5d0*dy_loc_p(cell_id_ghosted)
                     connections%dist(2,iconn) = 1.d0
                     connections%area(iconn) = dx_loc_p(cell_id_ghosted)* &
                                               dz_loc_p(cell_id_ghosted)
-                  else if (structured_grid%iface(ibc) == 6) then
+                  else if (option%iface(ibc) == 6) then
                     connections%dist(:,iconn) = 0.d0
                     connections%dist(0,iconn) = 0.5d0*dy_loc_p(cell_id_ghosted)
                     connections%dist(2,iconn) = 1.d0
@@ -629,4 +779,218 @@ function computeStructBoundaryConnect(solution,structured_grid,ibconn,nL2G)
   
 end function computeStructBoundaryConnect
 
+! ************************************************************************** !
+!
+! mapStructuredGridIndices: maps global, local and natural indices of cells 
+!                          to each other
+! author: Glenn Hammond
+! date: 10/24/07
+!
+! ************************************************************************** !
+subroutine mapStructuredGridIndices(structured_grid,nG2L,nL2G,nL2A,nG2A,nG2N)
+
+  implicit none
+  
+  type(structured_grid_type) :: structured_grid
+  integer, pointer :: nG2L(:), nL2G(:), nL2A(:), nG2A(:), nG2N(:)
+
+  integer :: i, j, k, n, ng, na
+  PetscErrorCode :: ierr
+  
+  allocate(nL2G(structured_grid%nlmax))
+  allocate(nG2L(structured_grid%ngmax))
+  allocate(nL2A(structured_grid%nlmax))
+  allocate(nG2N(structured_grid%ngmax))
+  allocate(nG2A(structured_grid%ngmax))
+  
+  structured_grid%istart = structured_grid%nxs-structured_grid%ngxs
+  structured_grid%jstart = structured_grid%nys-structured_grid%ngys
+  structured_grid%kstart = structured_grid%nzs-structured_grid%ngzs
+  structured_grid%iend = structured_grid%istart+structured_grid%nlx-1
+  structured_grid%jend = structured_grid%jstart+structured_grid%nly-1
+  structured_grid%kend = structured_grid%kstart+structured_grid%nlz-1
+
+  ! Local <-> Ghosted Transformation
+  nG2L = 0  ! Must initialize this to zero!
+  nL2G = 0
+  nG2A = 0
+  nL2A = 0
+  nG2N = 0
+  
+  n = 0
+  do k=structured_grid%kstart,structured_grid%kend
+    do j=structured_grid%jstart,structured_grid%jend
+      do i=structured_grid%istart,structured_grid%iend
+        n = n + 1
+        ng = i+j*structured_grid%ngx+k*structured_grid%ngxy+1
+        nL2G(n) = ng
+        nG2L(ng) = n
+      enddo
+    enddo
+  enddo
+
+  do i=1,structured_grid%ngmax
+    j = nG2L(i)
+    if (j > 0) then
+      k = nL2G(j)
+      if (i /= k) then
+        print *,'Error in ghost-local node numbering for ghost node =', i
+        print *,'node_id_gtol(i) =', j
+        print *,'node_id_ltog(node_id_gtol(i)) =', k
+        stop
+      endif
+    endif
+  enddo
+  ! Local(non ghosted)->Natural(natural order starts from 0)
+  n=0
+  do k=1,structured_grid%nlz
+    do j=1,structured_grid%nly
+      do i=1,structured_grid%nlx
+        n = n + 1
+        na = i-1+structured_grid%nxs+(j-1+structured_grid%nys)*structured_grid%nx+(k-1+structured_grid%nzs)*structured_grid%nxy
+        if (na>(structured_grid%nmax-1)) print *,'Wrong Nature order....'
+        nL2A(n) = na
+        !print *,grid%myrank, k,j,i,n,na
+        !grid%nG2N(ng) = na
+      enddo
+    enddo
+  enddo
+  ! Local(ghosted)->Natural(natural order starts from 0)
+  n=0
+  do k=1,structured_grid%ngz
+    do j=1,structured_grid%ngy
+      do i=1,structured_grid%ngx
+        n = n + 1
+        na = i-1+structured_grid%ngxs+(j-1+structured_grid%ngys)*structured_grid%nx+(k-1+structured_grid%ngzs)*structured_grid%nxy
+        if (na>(structured_grid%nmax-1)) print *,'Wrong Nature order....'
+        nG2A(n) = na
+!        print *,grid%myrank, k,j,i,n,na
+        !grid%nG2N(ng) = na
+      enddo
+    enddo
+  enddo
+   
+  call DAGetGlobalIndicesF90(structured_grid%da_1_dof,structured_grid%ngmax,nG2N, ierr)
+
+end subroutine mapStructuredGridIndices
+
+! ************************************************************************** !
+!
+! createStructuredGridJacobian: Creates Jacobian matrix associated with grid
+! author: Glenn Hammond
+! date: 10/24/07
+!
+! ************************************************************************** !
+subroutine createStructuredGridJacobian(structured_grid,option)
+
+  use Option_module
+  
+  implicit none
+  
+  type(structured_grid_type) :: structured_grid
+  type(option_type) :: option
+  
+  PetscErrorCode :: ierr
+  
+  if (option%iblkfmt == 0) then
+    call DAGetMatrix(structured_grid%da_ndof, MATAIJ, option%J, ierr)
+  else
+    call DAGetMatrix(structured_grid%da_ndof, MATBAIJ, option%J, ierr)
+  endif
+ ! call  MatSetBlocksize(grid%J,grid%ndof,ierr)
+  call MatSetOption(option%J,MAT_KEEP_ZEROED_ROWS,ierr)
+  call MatSetOption(option%J,MAT_COLUMN_ORIENTED,ierr)
+  
+end subroutine createStructuredGridJacobian
+
+! ************************************************************************** !
+!
+! createStructuredGridColoring: Creates ISColoring for grid
+! author: Glenn Hammond
+! date: 10/24/07
+!
+! ************************************************************************** !
+subroutine createStructuredGridColoring(structured_grid,option,coloring)
+
+  use Option_module
+  
+  implicit none
+
+#include "include/finclude/petscis.h"
+#include "include/finclude/petscis.h90"
+  
+  type(structured_grid_type) :: structured_grid
+  type(option_type) :: option
+  ISColoring :: coloring
+  PetscErrorCode :: ierr
+  
+  call DAGetColoring(structured_grid%da_ndof,IS_COLORING_GLOBAL,coloring,ierr)
+
+end subroutine createStructuredGridColoring
+
+! ************************************************************************** !
+!
+! DMStructGlobalToLocal: Performs global to local communication with DA
+! author: Glenn Hammond
+! date: 10/24/07
+!
+! ************************************************************************** !
+subroutine DMStructGlobalToLocal(structured_grid,global_vec,local_vec,da_index)
+
+  implicit none
+  
+  type(structured_grid_type) :: structured_grid
+  Vec :: global_vec
+  Vec :: local_vec
+  integer :: da_index
+  
+  DA :: da_ptr
+  PetscErrorCode :: ierr
+
+  da_ptr = getDAPtrFromIndex(structured_grid,da_index)
+
+  call DAGlobalToLocalBegin(da_ptr,global_vec,INSERT_VALUES, &
+                            local_vec,ierr)
+  call DAGlobalToLocalEnd(da_ptr,global_vec, INSERT_VALUES, &
+                          local_vec, ierr)
+                          
+end subroutine DMStructGlobalToLocal
+
+! ************************************************************************** !
+!
+! getDAPtrFromIndex: Returns the integer pointer for the DA referenced
+! author: Glenn Hammond
+! date: 10/24/07
+!
+! ************************************************************************** !
+function getDAPtrFromIndex(structured_grid,da_index)
+
+  implicit none
+  
+  type(structured_grid_type) :: structured_grid
+  integer :: da_index
+  
+  DA :: getDAPtrFromIndex
+  
+  select case (da_index)
+    case(ONEDOF)
+      getDAPtrFromIndex = structured_grid%da_1_dof
+    case(NPHASEDOF)
+      getDAPtrFromIndex = structured_grid%da_nphase_dof
+    case(THREENPDOF)
+      getDAPtrFromIndex = structured_grid%da_3np_dof
+    case(NDOF)
+      getDAPtrFromIndex = structured_grid%da_ndof
+    case(NPHANCOMPDOF)
+      getDAPtrFromIndex = structured_grid%da_nphancomp_dof
+    case(NPHANSPECDOF)
+      getDAPtrFromIndex = structured_grid%da_nphanspec_dof
+    case(NPHANSPECNCOMPDOF)
+      getDAPtrFromIndex = structured_grid%da_nphanspecncomp_dof
+    case(VARDOF)
+      getDAPtrFromIndex = structured_grid%da_var_dof
+  end select  
+  
+end function getDAPtrFromIndex
+                          
 end module Structured_Grid_module

@@ -58,14 +58,18 @@ contains
 !        apply mixing rules
 
 
-subroutine translator_Richards_massbal(grid)
+subroutine translator_Richards_massbal(solution)
  
-  use pflow_gridtype_module
+  use Solution_module
+  use Grid_module
+  use Option_module
   
   implicit none
 
-  type(pflowGrid) :: grid 
+  type(solution_type) :: solution
   
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
  
   integer :: ierr
   integer,save :: icall
@@ -84,33 +88,36 @@ subroutine translator_Richards_massbal(grid)
   real*8 :: pvol,sum
   real*8, pointer :: den(:),sat(:),xmol(:)
  
-  real*8 :: tot(0:grid%nspec,0:grid%nphase), tot0(0:grid%nspec,0:grid%nphase)
+  real*8 :: tot(0:solution%option%nspec,0:solution%option%nphase), tot0(0:solution%option%nspec,0:solution%option%nphase)
   
   data icall/0/
 
-  call VecGetArrayF90(grid%var,var_p,ierr)
-  call VecGetArrayF90(grid%volume, volume_p, ierr)
-  call VecGetArrayF90(grid%porosity, porosity_p, ierr)
-  call VecGetArrayF90(grid%iphas, iphase_p, ierr)
+  grid => solution%grid
+  option => solution%option
+
+  call VecGetArrayF90(option%var,var_p,ierr)
+  call VecGetArrayF90(option%volume, volume_p, ierr)
+  call VecGetArrayF90(option%porosity, porosity_p, ierr)
+  call VecGetArrayF90(option%iphas, iphase_p, ierr)
  
-  size_var_node=(grid%ndof+1)*(2+7*grid%nphase +2*grid%nphase*grid%nspec)
+  size_var_node=(option%ndof+1)*(2+7*option%nphase +2*option%nphase*option%nspec)
   tot=0.D0
   
   do n = 1,grid%nlmax
-    n0=(n-1)* grid%ndof
+    n0=(n-1)* option%ndof
     index=(n-1)*size_var_node
-    den=>var_p(index+3+grid%nphase: index+2+2*grid%nphase)
-    sat=>var_p(index+2+1:index+2+grid%nphase)
-    xmol=>var_p(index+2+7*grid%nphase+1:index+2+7*grid%nphase +&
-                grid%nphase*grid%nspec)    
+    den=>var_p(index+3+option%nphase: index+2+2*option%nphase)
+    sat=>var_p(index+2+1:index+2+option%nphase)
+    xmol=>var_p(index+2+7*option%nphase+1:index+2+7*option%nphase +&
+                option%nphase*option%nspec)    
 
     pvol=volume_p(n)*porosity_p(n)
   
   
      
-    do nc =1,grid%nspec
-      do np=1,grid%nphase
-        sum= sat(np)* xmol((np-1)*grid%nspec +nc)*den(np)
+    do nc =1,option%nspec
+      do np=1,option%nphase
+        sum= sat(np)* xmol((np-1)*option%nspec +nc)*den(np)
         tot(nc,np)= pvol*sum + tot(nc,np)
       !tot(0,np)=tot(0,np)+tot(nc,np)
       !tot(nc,0)=tot(nc,0)+tot(nc,np)
@@ -120,32 +127,32 @@ subroutine translator_Richards_massbal(grid)
 ! print *,nzc,c0
   enddo
  !  call PETSCBarrier(PETSC_NULL_OBJECT,ierr)
-  call VecRestoreArrayF90(grid%var,var_p,ierr)
-  call VecRestoreArrayF90(grid%volume, volume_p, ierr)
-  call VecRestoreArrayF90(grid%porosity, porosity_p, ierr)
-  call VecRestoreArrayF90(grid%iphas, iphase_p, ierr)
+  call VecRestoreArrayF90(option%var,var_p,ierr)
+  call VecRestoreArrayF90(option%volume, volume_p, ierr)
+  call VecRestoreArrayF90(option%porosity, porosity_p, ierr)
+  call VecRestoreArrayF90(option%iphas, iphase_p, ierr)
  
  !print *,'massbal: ', sat,den, xmol, tot
-  if (grid%commsize >1) then
+  if (option%commsize >1) then
           
-    do nc = 0,grid%nspec
-      do np = 0,grid%nphase
+    do nc = 0,option%nspec
+      do np = 0,option%nphase
         call MPI_REDUCE(tot(nc,np),tot0(nc,np),1,MPI_DOUBLE_PRECISION, &
                         MPI_SUM,0,PETSC_COMM_WORLD,ierr)
    
-!       call MPI_BCAST(tot0,(grid%nphase+1)*(grid%nspec+1),&
+!       call MPI_BCAST(tot0,(option%nphase+1)*(option%nspec+1),&
 !            MPI_DOUBLE_PRECISION, 0,PETSC_COMM_WORLD,ierr)
       enddo
     enddo
  
-   if (grid%myrank==0) tot = tot0
+   if (option%myrank==0) tot = tot0
  endif 
   
-  if (grid%myrank==0) then
+  if (option%myrank==0) then
   
   
     write(*,'(" Total Mass [Kmol]: H2O:",1p, e13.6," Tracer:",1p, e13.6)')&      
-          tot(1:grid%nspec,1) !,nzc,nzm,nsm
+          tot(1:option%nspec,1) !,nzc,nzm,nsm
 ! & grid%t/grid%tconv,tot(2,1),tot(2,2),tot(2,0),tot(2,1)+tot(2,2) !,nzc,nzm,nsm
     if (icall==0) then
       open(unit=13,file='massbal.dat',status='unknown')
@@ -155,7 +162,7 @@ subroutine translator_Richards_massbal(grid)
 !   write(13,'(" Total CO2: t=",1pe13.6," liq:",1pe13.6,&
 ! &  " gas:",1pe13.6," tot:",1p2e13.6," [kmol]")')&
 ! & grid%t/grid%tconv,tot(2,1),tot(2,2),tot(2,0),tot(2,1)+tot(2,2)
-    write(13,'(1p9e12.4)') grid%t/grid%tconv,grid%dt/grid%tconv,tot(1:grid%nspec,1) 
+    write(13,'(1p9e12.4)') option%t/option%tconv,option%dt/option%tconv,tot(1:option%nspec,1) 
   endif    
   
 end subroutine translator_Richards_massbal
@@ -204,65 +211,72 @@ integer function translator_check_cond_Richards(iphase, &
 end function translator_check_cond_Richards
 
 
-subroutine translator_Richards_get_output(grid)
+subroutine translator_Richards_get_output(solution)
 
-  use pflow_gridtype_module
+  use Solution_module
 
   implicit none
 
-  type(pflowGrid), intent(inout) :: grid
+  type(solution_type) :: solution
+  
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  
   integer :: ierr
   
   PetscScalar, pointer :: t_p(:),p_p(:),c_p(:),s_p(:),cc_p(:),var_P(:)
   integer :: n, index_var_begin ,jn, size_var_node
 ! PetscScalar, pointer :: p,t,satu(:),xmol(:)
   
-  call VecGetArrayF90(grid%var, var_p, ierr)
-  call VecGetArrayF90(grid%pressure, p_p, ierr)
-  call VecGetArrayF90(grid%temp, t_p, ierr)
-  call VecGetArrayF90(grid%xmol, c_p, ierr)
-  call VecGetArrayF90(grid%sat, s_p, ierr)
-  call VecGetArrayF90(grid%conc, cc_p, ierr)
+  grid => solution%grid
+  option => solution%option
+  
+  call VecGetArrayF90(option%var, var_p, ierr)
+  call VecGetArrayF90(option%pressure, p_p, ierr)
+  call VecGetArrayF90(option%temp, t_p, ierr)
+  call VecGetArrayF90(option%xmol, c_p, ierr)
+  call VecGetArrayF90(option%sat, s_p, ierr)
+  call VecGetArrayF90(option%conc, cc_p, ierr)
   !print *,' translator_mph_get_output gotten pointers'
   
-  size_var_node=(grid%ndof+1)*(2+7*grid%nphase +2*grid%nphase*grid%nspec)
+  size_var_node=(option%ndof+1)*(2+7*option%nphase +2*option%nphase*option%nspec)
   
   do n = 1, grid%nlmax
     index_var_begin = (n-1) * size_var_node
-    jn = 1 + (n-1)*grid%nphase 
+    jn = 1 + (n-1)*option%nphase 
     
-    p_p(jn) = var_p(index_var_begin + 2)! - var_p(index_var_begin+5*grid%nphase+3)
-   ! p_p(jn+1) = var_p(index_var_begin + 2) - var_p(index_var_begin+5*grid%nphase+4)
+    p_p(jn) = var_p(index_var_begin + 2)! - var_p(index_var_begin+5*option%nphase+3)
+   ! p_p(jn+1) = var_p(index_var_begin + 2) - var_p(index_var_begin+5*option%nphase+4)
    
     t_p(n) = var_p(index_var_begin + 1)
 
-    c_p(jn) = 0.D0!var_p(index_var_begin+7*grid%nphase+4)
-    if(grid%nspec>1)  c_p(jn) = var_p(index_var_begin +2+ 7*grid%nphase +2)
-   ! c_p(jn+1) = var_p(index_var_begin+7*grid%nphase+6)
+    c_p(jn) = 0.D0!var_p(index_var_begin+7*option%nphase+4)
+    if(option%nspec>1)  c_p(jn) = var_p(index_var_begin +2+ 7*option%nphase +2)
+   ! c_p(jn+1) = var_p(index_var_begin+7*option%nphase+6)
     cc_p(n) = c_p(jn)
   
     s_p(jn) = var_p(index_var_begin + 3) 
  !   s_p(jn+1)=1.D0 -  s_p(jn)
   enddo
  
-  call VecRestoreArrayF90(grid%var, var_p, ierr)
-  call VecRestoreArrayF90(grid%pressure, p_p, ierr)
-  call VecRestoreArrayF90(grid%temp, t_p, ierr)
-  call VecRestoreArrayF90(grid%xmol, c_p, ierr)
-  call VecRestoreArrayF90(grid%sat, s_p, ierr)
-  call VecRestoreArrayF90(grid%conc, cc_p, ierr)
+  call VecRestoreArrayF90(option%var, var_p, ierr)
+  call VecRestoreArrayF90(option%pressure, p_p, ierr)
+  call VecRestoreArrayF90(option%temp, t_p, ierr)
+  call VecRestoreArrayF90(option%xmol, c_p, ierr)
+  call VecRestoreArrayF90(option%sat, s_p, ierr)
+  call VecRestoreArrayF90(option%conc, cc_p, ierr)
  
 ! work only for 2 phases
 end subroutine translator_Richards_get_output
 
 
-subroutine translator_Ric_step_maxchange(grid)
+subroutine translator_Ric_step_maxchange(option)
 
-  use pflow_gridtype_module
-
+  use Option_module
+  
   implicit none
   
-  type(pflowGrid), intent(inout) :: grid
+  type(option_type) :: option
   
 
 ! PetscScalar, pointer :: xx_p(:),yy_p(:),iphase_p(:),var_p(:),iphase_old_p(:)
@@ -272,31 +286,36 @@ subroutine translator_Ric_step_maxchange(grid)
 ! integer :: n, j, n0
   integer :: ierr
 
-  grid%dcmax=0.D0
-  grid%dsmax=0.D0
+  option%dcmax=0.D0
+  option%dsmax=0.D0
 
-  call VecWAXPY(grid%dxx,-1.d0,grid%xx,grid%yy,ierr)
-  call VecStrideNorm(grid%dxx,0,NORM_INFINITY,grid%dpmax,ierr)
-  call VecStrideNorm(grid%dxx,1,NORM_INFINITY,grid%dtmpmax,ierr)
-  if (grid%ndof > 2) &
-    call VecStrideNorm(grid%dxx,2,NORM_INFINITY,grid%dcmax,ierr)
+  call VecWAXPY(option%dxx,-1.d0,option%xx,option%yy,ierr)
+  call VecStrideNorm(option%dxx,0,NORM_INFINITY,option%dpmax,ierr)
+  call VecStrideNorm(option%dxx,1,NORM_INFINITY,option%dtmpmax,ierr)
+  if (option%ndof > 2) &
+    call VecStrideNorm(option%dxx,2,NORM_INFINITY,option%dcmax,ierr)
 
 !  if (grid%myrank == 0) &
 !    print *, 'ric max change',grid%dpmax,grid%dtmpmax,grid%dsmax,grid%dcmax
 end subroutine translator_Ric_step_maxchange
 
 
-subroutine Translator_Richards_Switching(xx,grid,icri,ichange)
+subroutine Translator_Richards_Switching(xx,solution,icri,ichange)
 
-  use pflow_gridtype_module
+  use Solution_module
+  use Grid_module
+  use Option_module
   use water_eos_module
   use gas_eos_module  
     
   implicit none
   
-  type(pflowGrid), intent(inout) :: grid
+  type(solution_type) :: solution
   Vec, intent(in) :: xx
   integer :: icri,ichange 
+  
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
 
   PetscScalar, pointer :: xx_p(:), yy_p(:),iphase_p(:)
   integer :: n,n0,ipr
@@ -306,25 +325,28 @@ subroutine Translator_Richards_Switching(xx,grid,icri,ichange)
   real*8 :: p2,p,tmp,t, sat_pressure
   real*8 :: dg,fg,hg,visg
   real*8 :: ug,xphi,henry
-  real*8 :: xmol(grid%nphase*grid%nspec),satu(grid%nphase)
+  real*8 :: xmol(solution%option%nphase*solution%option%nspec),satu(solution%option%nphase)
   
 ! real*8 :: xla,dddt,dddp,dfgdp,dfgdt,eng,dhdt,dhdp,dvdt,dvdp,co2_poyn
 
+  grid => solution%grid
+  option => solution%option
+
 ! mphase code need assemble 
   call VecGetArrayF90(xx, xx_p, ierr); CHKERRQ(ierr)
-  call VecGetArrayF90(grid%yy, yy_p, ierr); CHKERRQ(ierr)
-  call VecGetArrayF90(grid%iphas, iphase_p,ierr)
+  call VecGetArrayF90(option%yy, yy_p, ierr); CHKERRQ(ierr)
+  call VecGetArrayF90(option%iphas, iphase_p,ierr)
 
   ichange = 0
   do n = 1,grid%nlmax
 
     !geh - Ignore inactive cells with inactive materials
-    if (associated(grid%imat)) then
-      if (grid%imat(grid%nL2G(n)) <= 0) cycle
+    if (associated(option%imat)) then
+      if (option%imat(grid%nL2G(n)) <= 0) cycle
     endif
 
     ipr=0
-    n0=(n-1)* grid%ndof
+    n0=(n-1)* option%ndof
     iipha=iphase_p(n)
     p = xx_p(n0+1); t= xx_p(n0+2)
     
@@ -346,7 +368,7 @@ subroutine Translator_Richards_Switching(xx,grid,icri,ichange)
     p2=p*xmol(4)
 !    p2=p*xmol(4)
     
-    call ideal_gaseos_noderiv(p ,t,grid%scale,dg,hg,ug)
+    call ideal_gaseos_noderiv(p ,t,option%scale,dg,hg,ug)
     call visgas_noderiv(t,p2,p,dg,visg)
     fg = p2
    
@@ -502,9 +524,9 @@ subroutine Translator_Richards_Switching(xx,grid,icri,ichange)
 !        dif(2)= grid%cdiff(int(ithrm_p(n)))
 !        i=ithrm_p(n) 
 
-!  call pri_var_trans_ninc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),iipha,&
- !       grid%scale,grid%nphase,grid%nspec,&
- !       iicap, grid%sir(1:grid%nphase,iicap),grid%lambda(iicap),&
+!  call pri_var_trans_ninc(xx_p((n-1)*option%ndof+1:n*option%ndof),iipha,&
+ !       grid%scale,option%nphase,option%nspec,&
+ !       iicap, grid%sir(1:option%nphase,iicap),grid%lambda(iicap),&
  !       grid%alpha(iicap),grid%pckrm(iicap),grid%pcwmax(iicap),&
  !       grid%pcbetac(iicap),grid%pwrprm(iicap),dif,&
 !    var_p((n-1)*size_var_node+1:(n-1)*size_var_node+size_var_use),&
@@ -514,21 +536,21 @@ subroutine Translator_Richards_Switching(xx,grid,icri,ichange)
  !    index_var_begin=(n-1)*size_var_node+1
   !   index_var_end = index_var_begin -1 + size_var_use
      
-   !  p1 = 1 + (n-1)*grid%ndof    
+   !  p1 = 1 + (n-1)*option%ndof    
    !  call MPHASERes_ARCont(n, var_p(index_var_begin: index_var_end),&
 !    porosity_p(n),volume_p(n),grid%dencpr(i), grid, Res, 0,ierr)
 
- !  print *,res,accum_p(p1:p1-1+grid%ndof)
-   !accum_p(p1:p1-1+grid%ndof) =res
+ !  print *,res,accum_p(p1:p1-1+option%ndof)
+   !accum_p(p1:p1-1+option%ndof) =res
       ipr=0
     endif
 
   end do
 
   !print *,iphase_p
-  call VecRestoreArrayF90(grid%iphas, iphase_p,ierr)
+  call VecRestoreArrayF90(option%iphas, iphase_p,ierr)
   call VecRestoreArrayF90(xx, xx_p, ierr); CHKERRQ(ierr)
-  call VecRestoreArrayF90(grid%yy, yy_p, ierr); CHKERRQ(ierr)
+  call VecRestoreArrayF90(option%yy, yy_p, ierr); CHKERRQ(ierr)
 
 end subroutine Translator_Richards_Switching
   
@@ -559,7 +581,7 @@ subroutine pri_var_trans_Richards_ninc_2_2(x,iphase,energyscale,num_phase,num_sp
   real*8 :: dif(:)
 
    
- !   integer size_var_node = (grid%ndof+1)*size_var_use
+ !   integer size_var_node = (option%ndof+1)*size_var_use
 
   real*8, pointer :: t ,p
   real*8, pointer :: den(:),h(:),u(:),avgmw(:),pc(:),kvr(:)
@@ -725,7 +747,7 @@ subroutine pri_var_trans_Richards_winc(x,delx,iphase,energyscale,num_phase,num_s
   do n=1, num_spec+1
     xx = x
     xx(n) = x(n)+ delx(n)
-  ! note: var_node here starts from 1 to grid%ndof*size_var_use
+  ! note: var_node here starts from 1 to option%ndof*size_var_use
     call pri_var_trans_Richards_ninc(xx,iphase,energyscale,num_phase,num_spec,&
                                 ipckrreg, dif,&
                                 var_node((n-1)*size_var_use+1:n*size_var_use), &
