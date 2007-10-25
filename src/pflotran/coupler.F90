@@ -70,24 +70,26 @@ subroutine destroyCoupler(coupler)
   
   type(coupler_type), pointer :: coupler
   
-  if (associated(createCoupler%flow_condition)) then
-    call destroyCondition(createCoupler%flow_condition)
-    nullify(createCoupler%flow_condition)
+  if (associated(coupler%flow_condition)) then
+    call destroyCondition(coupler%flow_condition)
+    nullify(coupler%flow_condition)
   endif
   
-  if (associated(createCoupler%transport_condition)) then
-    call destroyCondition(createCoupler%transport_condition)
-    nullify(createCoupler%transport_condition)
+  if (associated(coupler%transport_condition)) then
+    call destroyCondition(coupler%transport_condition)
+    nullify(coupler%transport_condition)
   endif
 
-  if (associated(createCoupler%region)) then
-    call destroyRegion(createCoupler%region)
-    nullify(createCoupler%region)
+  if (associated(coupler%region)) then
+    call destroyRegion(coupler%region)
+    nullify(coupler%region)
   endif
   
-  if (associated(createCoupler%connection)) then
-    call destroyConnection(createCoupler%connection)
-    nullify(createCoupler%connection)
+  if (associated(coupler%connection)) then
+    call destroyConnection(coupler%connection)
+    nullify(coupler%connection)
   endif
+
+end subroutine destroyCoupler
 
 end module Coupler_module

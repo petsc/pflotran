@@ -25,42 +25,50 @@
 
  contains
 
- subroutine pflow_kspsolver_init(grid)
+ subroutine pflow_kspsolver_init(solution,solver)
 
- use pflow_gridtype_module
+ use Solution_module
+ use Option_module
+ use Solver_module
 
  implicit none
- type(pflowGrid) :: grid 
+
+ type(solution_type) :: solution
+ type(solver_type) :: solver
  integer ierr
  
- call KSPCreate(PETSC_COMM_WORLD,grid%ksp,ierr)
- call KSPGetPC(grid%ksp, grid%pc, ierr)
+ type(option_type), pointer :: option
+ 
+ option => solution%option
+ 
+ call KSPCreate(PETSC_COMM_WORLD,option%ksp,ierr)
+ call KSPGetPC(option%ksp, option%pc, ierr)
 
 ! pc_type = PCILU
-  if (grid%iblkfmt == 0) then
-    grid%pc_type = PCJACOBI
+  if (option%iblkfmt == 0) then
+    option%pc_type = PCJACOBI
   else
-  !  grid%pc_type = PCBJACOBI
-    grid%pc_type = PCILU
+  !  option%pc_type = PCBJACOBI
+    option%pc_type = PCILU
   endif
-! grid%pc_type = PCASM
-! grid%pc_type = PCNONE
-  call PCSetType(grid%pc,grid%pc_type,ierr)
+! option%pc_type = PCASM
+! option%pc_type = PCNONE
+  call PCSetType(option%pc,option%pc_type,ierr)
 
 ! call PetscOptionsSetValue('-pc_ilu_damping','1.d-10',ierr)
 ! call PCILUSetDamping(pc,1.d-14,ierr)
 
 !-------krylov subspace method ----------------
-  call KSPSetFromOptions(grid%ksp,ierr)
-  call KSPSetInitialGuessNonzero(grid%ksp,PETSC_TRUE,ierr)
+  call KSPSetFromOptions(option%ksp,ierr)
+  call KSPSetInitialGuessNonzero(option%ksp,PETSC_TRUE,ierr)
 
 ! ksp_type = KSPGMRES
-!  grid%ksp_type = KSPFGMRES
-  grid%ksp_type = KSPFGMRES
-  call KSPSetType(grid%ksp,grid%ksp_type,ierr)
+!  option%ksp_type = KSPFGMRES
+  option%ksp_type = KSPFGMRES
+  call KSPSetType(option%ksp,option%ksp_type,ierr)
   
-  call KSPSetTolerances(grid%ksp,grid%rtol,grid%atol,grid%dtol, &
-      grid%maxit,ierr)
+  call KSPSetTolerances(option%ksp,solver%rtol,solver%atol,solver%dtol, &
+      solver%maxit,ierr)
 
 
 
@@ -68,9 +76,12 @@
  end subroutine pflow_kspsolver_init
  
  
- subroutine pflow_solve(grid, newton,isucc,ierr)
+ subroutine pflow_solve(solution,isucc,ierr)
  
- use pflow_gridtype_module
+ use Solution_module
+ use Option_module
+ use Solver_module
+ 
  use translator_mph_module
  use translator_owg_module
  use translator_vad_module
@@ -85,45 +96,52 @@
  
 #include "include/finclude/petscerror.h"
 
- type(pflowGrid) :: grid 
+ type(solution_type) :: solution
  KSPConvergedReason :: ksp_reason
  integer :: newton,isucc,ierr,ichange
  integer :: its_line
 !integer icut
  MatStructure flag
  real*8 :: rnorm, epstol
- 
+
+ type(option_type), pointer :: option
+ type(solver_type), pointer :: solver 
+
+ option => solution%option
+ !grid => solution%grid
+  
  newton=0
  
  do
  
-   if(grid%use_mph==PETSc_TRUE)then
- !    call Translator_MPhase_Switching(grid%xx,grid,1,ichange)
-     call MPHASEResidual(grid%snes,grid%xx,grid%r,grid,ierr)
+#if 0
+   if(option%use_mph==PETSc_TRUE)then
+ !    call Translator_MPhase_Switching(option%xx,grid,1,ichange)
+     call MPHASEResidual(option%snes,option%xx,option%r,grid,ierr)
    endif
-   if(grid%use_vadose==PETSc_TRUE)then
-  !   call Translator_vadose_Switching(grid%xx,grid,0,ichange)
-     call MPHASEResidual(grid%snes,grid%xx,grid%r,grid,ierr)
+   if(option%use_vadose==PETSc_TRUE)then
+  !   call Translator_vadose_Switching(option%xx,grid,0,ichange)
+     call MPHASEResidual(option%snes,option%xx,option%r,grid,ierr)
+   endif
+#endif
+   if(option%use_richards==PETSc_TRUE)then
+  !   call Translator_richards_Switching(option%xx,grid,0,ichange)
+     call RichardsResidual(option%snes,option%xx,option%r,solution,ierr)
+   endif
+#if 0
+   if(option%use_flash==PETSc_TRUE) then
+   !  call Translator_vadose_Switching(option%xx,grid,0,ichange)
+     call FLashResidual(option%snes,option%xx,option%r,grid,ierr)
    endif
 
-   if(grid%use_richards==PETSc_TRUE)then
-  !   call Translator_richards_Switching(grid%xx,grid,0,ichange)
-     call RichardsResidual(grid%snes,grid%xx,grid%r,grid,ierr)
-   endif
-
-   if(grid%use_flash==PETSc_TRUE) then
-   !  call Translator_vadose_Switching(grid%xx,grid,0,ichange)
-     call FLashResidual(grid%snes,grid%xx,grid%r,grid,ierr)
-   endif
-
-   if(grid%use_owg==PETSc_TRUE) then
-     call Translator_OWG_Switching(grid%xx,grid%tref,grid,1,ichange,ierr)
-     call OWGResidual(grid%snes,grid%xx,grid%r,grid,ierr)
+   if(option%use_owg==PETSc_TRUE) then
+     call Translator_OWG_Switching(option%xx,option%tref,grid,1,ichange,ierr)
+     call OWGResidual(option%snes,option%xx,option%r,grid,ierr)
    endif
 !  print *,' psolve; Get Res'
- 
+#endif
    if (ierr < 0 .or. ierr ==PETSC_ERR_ARG_DOMAIN) then
-      if (grid%myrank==0) &
+      if (option%myrank==0) &
       print *,'pflowsolv: failed: out of range',its_line, newton,isucc,rnorm
       isucc=-1
       return    
@@ -131,45 +149,47 @@
   
        
            
-   call VecNorm(grid%r,NORM_INFINITY,rnorm,ierr)
+   call VecNorm(option%r,NORM_INFINITY,rnorm,ierr)
    
-   ! note now grid%stol acts as convergence tolerance parameter 
+   ! note now option%stol acts as convergence tolerance parameter 
    
-    epstol = grid%inf_tol
+    epstol = option%inf_tol
    
         
        
-    if (grid%myrank == 0) print *,'R2Norm = ', rnorm,epstol
+    if (option%myrank == 0) print *,'R2Norm = ', rnorm,epstol
     if (newton > 0 .and. rnorm < epstol) then
-!   if (newton > 0 .and. rnorm < grid%stol) then
+!   if (newton > 0 .and. rnorm < option%stol) then
       exit ! convergence obtained
     endif
-
-    if(grid%use_mph==PETSC_TRUE)then
-      call MPHASEJacobian(grid%snes,grid%xx,grid%J,grid%J,flag,grid,ierr)
-    elseif(grid%use_owg==PETSC_TRUE)then
-      call OWGJacobian(grid%snes,grid%xx,grid%J,grid%J,flag,grid,ierr)
-    elseif(grid%use_vadose==PETSC_TRUE)then
-      call VadoseJacobian(grid%snes,grid%xx,grid%J,grid%J,flag,grid,ierr)
-    elseif(grid%use_flash==PETSC_TRUE)then
-      call FlashJacobian(grid%snes,grid%xx,grid%J,grid%J,flag,grid,ierr)
-    elseif(grid%use_richards==PETSC_TRUE)then
-      call RichardsJacobian(grid%snes,grid%xx,grid%J,grid%J,flag,grid,ierr)
+#if 0
+    if(option%use_mph==PETSC_TRUE)then
+      call MPHASEJacobian(option%snes,option%xx,option%J,option%J,flag,grid,ierr)
+    elseif(option%use_owg==PETSC_TRUE)then
+      call OWGJacobian(option%snes,option%xx,option%J,option%J,flag,grid,ierr)
+    elseif(option%use_vadose==PETSC_TRUE)then
+      call VadoseJacobian(option%snes,option%xx,option%J,option%J,flag,grid,ierr)
+    elseif(option%use_flash==PETSC_TRUE)then
+      call FlashJacobian(option%snes,option%xx,option%J,option%J,flag,grid,ierr)
+    elseif(option%use_richards==PETSC_TRUE)then
+#endif    
+    if(option%use_richards==PETSC_TRUE)then
+      call RichardsJacobian(option%snes,option%xx,option%J,option%J,flag,solution,ierr)
     endif
      
-    call VecScale(grid%r,-1D0,ierr)
-    call KSPSetOperators(grid%ksp,grid%J,grid%J,SAME_NONZERO_PATTERN,ierr)
+    call VecScale(option%r,-1D0,ierr)
+    call KSPSetOperators(option%ksp,option%J,option%J,SAME_NONZERO_PATTERN,ierr)
     
-    call KSPSolve(grid%ksp, grid%r,grid%dxx,ierr)
-    call KSPGetConvergedReason(grid%ksp,ksp_reason,ierr)
-    call KSPGetIterationNumber(grid%ksp,its_line,ierr)
+    call KSPSolve(option%ksp, option%r,option%dxx,ierr)
+    call KSPGetConvergedReason(option%ksp,ksp_reason,ierr)
+    call KSPGetIterationNumber(option%ksp,its_line,ierr)
 
 
     newton = newton + 1
     isucc= ksp_reason
 
-    if (newton > grid%newton_max .or. ksp_reason < 0 ) then
-      if (grid%myrank==0) &
+    if (newton > option%newton_max .or. ksp_reason < 0 ) then
+      if (option%myrank==0) &
       print *,'pflowsolv: failed: ',its_line, newton,isucc,rnorm
       isucc=-1
       return    
@@ -178,8 +198,8 @@
        
 
   !---update solution after successful Newton-Raphson iteration
-      call VecAXPY(grid%xx,1.d0,grid%dxx,ierr)
-  !    call MPhase_Update(grid%xx,grid,1,ichange)
+      call VecAXPY(option%xx,1.d0,option%dxx,ierr)
+  !    call MPhase_Update(option%xx,grid,1,ichange)
   enddo
 ! print *,'Finished ksp', newton
   end subroutine pflow_solve

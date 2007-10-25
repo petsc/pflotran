@@ -23,6 +23,8 @@ module Condition_module
   
   integer, save :: condition_count = 0
   
+  public :: destroyCondition
+  
 contains
 
 ! ************************************************************************** !

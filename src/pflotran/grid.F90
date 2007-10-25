@@ -30,6 +30,7 @@ module Grid_module
   
     logical :: is_structured
     
+    integer :: nmax   ! Total number of nodes in global domain
     integer :: nlmax  ! Total number of non-ghosted nodes in local domain.
     integer :: ngmax  ! Number of ghosted & non-ghosted nodes in local domain.
 #if 1    
@@ -60,13 +61,16 @@ module Grid_module
 
 
   public :: createGrid, &
-            createStructuredDMs, &
             computeInternalConnectivity, &
             computeBoundaryConnectivity, &
             createPetscVector, &
             createJacobian, &
             createColoring, &
-            DMGlobalToLocal
+            DMGlobalToLocal, &
+            DMGlobalToNatural, &
+            mapGridIndices, &
+            createDMs, &
+            computeGridCoordinates
   
 contains
 
@@ -252,8 +256,8 @@ subroutine mapGridIndices(grid)
   type(grid_type) :: grid
   
   if (grid%is_structured) then
-    call mapStructuredGridIndictes(grid%structured_grid,grid%nG2L,grid%nL2G, &
-                                   grid%nL2A,grid%nL2A,grid%nG2N)
+    call mapStructuredGridIndices(grid%structured_grid,grid%nG2L,grid%nL2G, &
+                                  grid%nL2A,grid%nL2A,grid%nG2N)
   else
   endif
 
@@ -281,7 +285,7 @@ subroutine computeGridCoordinates(grid,option)
   else
   endif
 
-end subroutine
+end subroutine computeGridCoordinates
 
 ! ************************************************************************** !
 !
@@ -356,5 +360,29 @@ subroutine DMGlobalToLocal(grid,global_vec,local_vec,dm_index)
   endif
   
 end subroutine DMGlobalToLocal
+  
+! ************************************************************************** !
+!
+! DMGlobalToNatural: Performs global to natural communication with DM
+! author: Glenn Hammond
+! date: 10/24/07
+!
+! ************************************************************************** !
+subroutine DMGlobalToNatural(grid,global_vec,natural_vec,dm_index)
+
+  implicit none
+  
+  type(grid_type) :: grid
+  Vec :: global_vec
+  Vec :: natural_vec
+  integer :: dm_index
+  
+  if (grid%is_structured) then
+    call DMStructGlobalToLocal(grid%structured_grid,global_vec,natural_vec, &
+                               dm_index)
+  else
+  endif
+  
+end subroutine DMGlobalToNatural
   
 end module Grid_module

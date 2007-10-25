@@ -33,18 +33,18 @@ module Connection_module
     type(connection_ptr_type), pointer :: array(:)
   end type connection_list_type
   
-!  type(connection_list_type), pointer, private :: internal_connection_list, &
-!                                                  boundary_connection_list
+  type(connection_list_type), pointer, private :: internal_connection_list, &
+                                                  boundary_connection_list
 
-  public :: createConnection, addConnectionToList
-#if 0  
-allocateConnectionLists, 
-  , &
+#if 1  
+  public :: createConnection, addConnectionToList, &
+            allocateConnectionLists, &
             getInternalConnectionList, getBoundaryConnectionList, &
-            getNumberOfInternalConnections, getNumberOfBoundaryConnections
+            getNumberOfInternalConnections, getNumberOfBoundaryConnections, &
+            destroyConnection
 #endif  
 contains
-#if 0
+#if 1
 ! ************************************************************************** !
 !
 ! getInternalConnectionList: Returns pointer to internal_connection_list

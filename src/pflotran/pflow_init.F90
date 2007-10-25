@@ -1,8 +1,5 @@
 module Init_module
 
-  use pflow_gridtype_module
-  use Grid_module
-
   implicit none
 
   private
@@ -32,6 +29,8 @@ module Init_module
 #include "include/finclude/petscis.h"
 #include "include/finclude/petscis.h90"
 #include "include/finclude/petsclog.h"
+
+  public :: initPFLOW
  
 contains
 
@@ -42,8 +41,9 @@ contains
 ! date: 10/23/07
 !
 ! **************************************************************************
-subroutine initPFLOW(solution,filename)
+subroutine initPFLOW(simulation,filename)
 
+  use Simulation_module
   use Option_module
   use Grid_module
   use Solver_module
@@ -55,15 +55,17 @@ subroutine initPFLOW(solution,filename)
 !  use MPHASE_module
   use Richards_module
   use pflow_convergence_module
+  use pflow_solv_module 
     
   implicit none
   
-  type(solution_type) :: solution
+  type(simulation_type) :: simulation
   character(len=MAXWORDLENGTH) :: filename
 
+  type(solver_type), pointer :: solver
+  type(solution_type), pointer :: solution
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
-  type(solver_type), pointer :: solver
   
   ISColoring :: iscoloring
 
@@ -75,9 +77,10 @@ subroutine initPFLOW(solution,filename)
   
   PetscErrorCode :: ierr
   
+  solver => simulation%stepper%solver
+  solution => simulation%solution
   option => solution%option
   grid => solution%grid
-  solver = solution%stepper%solver
   
   call readSelectCardsFromInput(solution,filename,mcomp,mphas)
   
@@ -543,7 +546,7 @@ endif
 !-----------------------------------------------------------------------
   ! Set up indexing of grid ids (local to global, global to local, etc
 !-----------------------------------------------------------------------
-  call mapGridIndices
+  call mapGridIndices(grid)
 
   option%nldof = grid%nlmax * option%nphase
   option%ngdof = grid%ngmax * option%nphase
@@ -725,7 +728,7 @@ endif
 !  grid%qu_rate=0.D0
 
 
-  call readInput(solution,filename)
+  call readInput(simulation,filename)
 
 ! check number of dofs and phases
   if (option%use_cond == PETSC_TRUE) then
@@ -872,7 +875,7 @@ endif
     if (option%use_richards == PETSC_TRUE) then
       call SNESSetJacobian(option%snes, option%J, option%J, RichardsJacobian, &
                          grid, ierr); CHKERRQ(ierr)
-      if (option%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(grid)
+      if (option%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(solution,solver)
 #if 0      
     else if (option%use_owg == PETSC_TRUE) then
       call SNESSetJacobian(option%snes, option%J, option%J, OWGJacobian, &
@@ -1133,6 +1136,7 @@ subroutine readSelectCardsFromInput(solution,filename,mcomp,mphas)
     grid%structured_grid%nxy = grid%structured_grid%nx*grid%structured_grid%ny
     grid%structured_grid%nmax = grid%structured_grid%nxy * &
                                 grid%structured_grid%nz
+    grid%nmax = grid%structured_grid%nmax
   else ! unstructured
   endif
       
@@ -1298,20 +1302,24 @@ end subroutine readSelectCardsFromInput
 ! author: Glenn Hammond
 ! date: 10/23/07
 !
-! **************************************************************************
-subroutine readInput(solution,filename)
+! ************************************************************************** !
+subroutine readInput(simulation,filename)
 
+  use Simulation_module
   use Option_module
   use Grid_module
+  use Structured_Grid_module
   use Solver_module
   use Material_module
   use fileio_module
   use Solution_module
   use Timestepper_module
 
+  use pckr_module 
+  
   implicit none
   
-  type(solution_type) :: solution
+  type(simulation_type) :: simulation
   character(len=MAXWORDLENGTH) :: filename
 
   integer :: ierr
@@ -1327,13 +1335,15 @@ subroutine readInput(solution,filename)
 ! keywords: GRID, PROC, COUP, GRAV, OPTS, TOLR, DXYZ, DIFF, RADN, HYDR,  
 !           SOLV, THRM, PCKR, PHIK, INIT, TIME, DTST, BCON, SOUR, BRK, RCTR
 
+  type(solution_type), pointer :: solution
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(solver_type), pointer :: solver
   
+  solution => simulation%solution
   grid => solution%grid
   option => solution%option
-  solver => solution%stepper%solver
+  solver => simulation%stepper%solver
     
   do
     call fiReadFlotranString(IUNIT1, string, ierr)

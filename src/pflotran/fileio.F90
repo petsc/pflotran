@@ -16,7 +16,8 @@ module fileio_module
             fiReadFlotranString, fiIsAlpha, &
             fiReadInt, fiReadDouble, fiReadMultDouble, &
             fiDefaultMsg, fiErrorMsg, fiReadStringErrorMsg, &
-            fiStringCompare, fiFindStringInFile, fiReadQuotedNChars
+            fiStringCompare, fiFindStringInFile, fiReadQuotedNChars, &
+            fiFindStringErrorMsg
 
   public :: fiReadDBaseString, fiReadDBaseName, fiReadDBaseInt, &
             fiReadDBaseDouble, fiReadDBaseMultDouble
@@ -90,6 +91,28 @@ subroutine fiReadStringErrorMsg(string, ierr)
   endif
 
 end subroutine fiReadStringErrorMsg
+
+! ************************************************************************** !
+!
+! fiFindStringErrorMsg: If ierr /= 0, informs user of error and stops.
+! author: Glenn Hammond
+! date: 11/06/00
+!
+! ************************************************************************** !
+subroutine fiFindStringErrorMsg(string, ierr)
+
+  implicit none
+
+  character(len=*) :: string
+  integer :: i, ierr
+
+  if (ierr /= 0) then
+    print *, 'Error: Card (', (string(i:i),i=1,len_trim(string)), ') not ', &
+             'found in file.'
+    stop
+  endif
+
+end subroutine fiFindStringErrorMsg
 
 ! ************************************************************************** !
 !
@@ -901,6 +924,8 @@ end subroutine fiReadDBaseDouble
     if (fiStringCompare(string,string2,length)) exit
     if (ierr /= 0) exit
   enddo
+  
+  if (ierr == 0) string = trim(string2)
 
   end subroutine fiFindStringInFile
 

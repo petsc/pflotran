@@ -62,7 +62,8 @@ module Structured_Grid_module
     
   end type
 
-  public :: createStructuredDMs, &
+  public :: initStructuredGrid, &
+            createStructuredDMs, &
             computeStructInternalConnect, &
             computeStructBoundaryConnect, &
             createPetscVectorFromDA, &
@@ -70,7 +71,9 @@ module Structured_Grid_module
             computeStructuredGridCoordinates, &
             createStructuredGridJacobian, &
             createStructuredGridColoring, &
-            DMStructGlobalToLocal
+            DMStructGlobalToLocal, &
+            DMStructGlobalToNatural, &
+            readStructuredDXYZ
 
 contains
 
@@ -955,6 +958,35 @@ subroutine DMStructGlobalToLocal(structured_grid,global_vec,local_vec,da_index)
                           local_vec, ierr)
                           
 end subroutine DMStructGlobalToLocal
+
+! ************************************************************************** !
+!
+! DMStructGlobalToNatural: Performs global to natural communication with DA
+! author: Glenn Hammond
+! date: 10/24/07
+!
+! ************************************************************************** !
+subroutine DMStructGlobalToNatural(structured_grid,global_vec,natural_vec, &
+                                   da_index)
+
+  implicit none
+  
+  type(structured_grid_type) :: structured_grid
+  Vec :: global_vec
+  Vec :: natural_vec
+  integer :: da_index
+  
+  DA :: da_ptr
+  PetscErrorCode :: ierr
+
+  da_ptr = getDAPtrFromIndex(structured_grid,da_index)
+
+  call DAGlobalToNaturalBegin(da_ptr,global_vec,INSERT_VALUES, &
+                            natural_vec,ierr)
+  call DAGlobalToNaturalEnd(da_ptr,global_vec, INSERT_VALUES, &
+                          natural_vec, ierr)
+                          
+end subroutine DMStructGlobalToNatural
 
 ! ************************************************************************** !
 !

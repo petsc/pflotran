@@ -34,10 +34,28 @@ module Solver_module
     integer :: idt_switch
   end type solver_type
   
-  public :: ComputeMFJacobian, &
+  public :: createSolver, &
+            ComputeMFJacobian, &
             MonitorH
   
 contains
+
+! ************************************************************************** !
+!
+! createSolver: Allocates and initializes a new Solver object
+! author: Glenn Hammond
+! date: 10/25/07
+!
+! ************************************************************************** !
+function createSolver()
+
+  implicit none
+  
+  type(solver_type), pointer :: createSolver
+  
+  allocate(createSolver)
+  
+end function createSolver
   
 ! ************************************************************************** !
 !

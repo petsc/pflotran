@@ -27,6 +27,8 @@ module Region_module
     module procedure createRegionWithNothing
   end interface createRegion
   
+  public :: createRegion, destroyRegion
+  
 contains
 
 ! ************************************************************************** !
