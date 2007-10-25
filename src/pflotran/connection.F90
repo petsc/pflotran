@@ -41,7 +41,7 @@ module Connection_module
             allocateConnectionLists, &
             getInternalConnectionList, getBoundaryConnectionList, &
             getNumberOfInternalConnections, getNumberOfBoundaryConnections, &
-            destroyConnection
+            initConnectionList, destroyConnection
 #endif  
 contains
 #if 1

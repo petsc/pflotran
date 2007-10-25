@@ -76,7 +76,7 @@
  end subroutine pflow_kspsolver_init
  
  
- subroutine pflow_solve(solution,isucc,ierr)
+ subroutine pflow_solve(solution,newton,isucc,ierr)
  
  use Solution_module
  use Option_module
@@ -153,7 +153,7 @@
    
    ! note now option%stol acts as convergence tolerance parameter 
    
-    epstol = option%inf_tol
+    epstol = solver%inf_tol
    
         
        

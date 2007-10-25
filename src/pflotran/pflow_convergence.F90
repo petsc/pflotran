@@ -14,8 +14,12 @@ module pflow_convergence_module
   
 contains
 
-subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,option,ierr)
+subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,simulation,ierr)
 
+  use Simulation_module
+  use Solution_module
+  use Timestepper_module
+  use Solver_module
   use Option_module
 
   implicit none
@@ -26,30 +30,33 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,option,ierr)
   PetscReal :: pnorm
   PetscReal :: fnorm
   SNESConvergedReason :: reason
-  type(option_type) :: option
+  type(simulation_type) :: simulation
   PetscErrorCode :: ierr
   
   PetscInt :: ctx = 0
 
-  Vec :: solution
-  Vec :: update
-  Vec :: residual
+  type(solver_type), pointer :: solver
+  type(option_type), pointer :: option
+  
+  Vec :: solution_vec
+  Vec :: update_vec
+  Vec :: residual_vec
   PetscReal :: inorm_solution  !infinity norms
   PetscReal :: inorm_update  
   PetscReal :: inorm_residual  
   
 #ifdef GLENN
   integer :: i
-  PetscReal, allocatable :: fnorm_data_stride(:)
+  PetscReal, allocatable :: fnorm_solution_stride(:)
   PetscReal, allocatable :: fnorm_update_stride(:)
   PetscReal, allocatable :: fnorm_residual_stride(:)
-  PetscReal, allocatable :: inorm_data_stride(:)
+  PetscReal, allocatable :: inorm_solution_stride(:)
   PetscReal, allocatable :: inorm_update_stride(:)
   PetscReal, allocatable :: inorm_residual_stride(:)
   
-  PetscReal :: norm1_solution
-  PetscReal :: norm1_update
-  PetscReal :: norm1_residual
+  PetscReal :: norm1solution
+  PetscReal :: norm1update
+  PetscReal :: norm1residual
   PetscReal, allocatable :: norm1_data_stride(:)
   PetscReal, allocatable :: norm1_update_stride(:)
   PetscReal, allocatable :: norm1_residual_stride(:)
@@ -57,7 +64,7 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,option,ierr)
   integer, allocatable :: imax_solution(:)
   integer, allocatable :: imax_update(:)
   integer, allocatable :: imax_residual(:)
-  PetscReal, allocatable :: max_data_val(:)
+  PetscReal, allocatable :: max_solution_val(:)
   PetscReal, allocatable :: max_update_val(:)
   PetscReal, allocatable :: max_residual_val(:)
   
@@ -90,6 +97,13 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,option,ierr)
 !                                        implies converged to local minimum of F() */
 !              SNES_CONVERGED_ITERATING         =  0} SNESConvergedReason;
 
+  if (associated(simulation%stepper)) then
+    solver => simulation%stepper%solver
+  else
+    solver => simulation%solver
+  endif
+  option => simulation%solution%option
+
 #ifdef CHUAN
   ! always take one iteration
   call SNESGetIterationNumber(option%snes,it,ierr)
@@ -104,12 +118,12 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,option,ierr)
 #ifdef CHUAN
   if (reason <= 0) then
   
-    call SNESGetFunction(snes_,residual,PETSC_NULL_OBJECT,PETSC_NULL_INTEGER, &
+    call SNESGetFunction(snes_,residual_vec,PETSC_NULL_OBJECT,PETSC_NULL_INTEGER, &
                          ierr)
 
-    call VecNorm(residual,NORM_INFINITY,inorm_residual,ierr)
+    call VecNorm(residual_vec,NORM_INFINITY,inorm_residual,ierr)
   
-    if (inorm_residual < option%inf_tol) then
+    if (inorm_residual < solver%inf_tol) then
       if (option%myrank == 0) print *, 'converged from infinity', inorm_residual
       reason = 1
     endif
@@ -121,53 +135,53 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,option,ierr)
 #endif
 
 #ifdef GLENN
-  call SNESGetSolution(snes_,solution,ierr)
+  call SNESGetSolution(snes_,solution_vec,ierr)
   ! the ctx object should really be PETSC_NULL_OBJECT.  A bug in petsc
-  call SNESGetFunction(snes_,residual,PETSC_NULL_OBJECT,PETSC_NULL_INTEGER, &
+  call SNESGetFunction(snes_,residual_vec,PETSC_NULL_OBJECT,PETSC_NULL_INTEGER, &
                        ierr)
-  call SNESGetSolutionUpdate(snes_,update,ierr)
+  call SNESGetSolutionUpdate(snes_,update_vec,ierr)
   
   ! infinity norms
-  call VecNorm(solution,NORM_INFINITY,inorm_data,ierr)
-  call VecNorm(update,NORM_INFINITY,inorm_update,ierr)
-  call VecNorm(residual,NORM_INFINITY,inorm_residual,ierr)
+  call VecNorm(solution_vec,NORM_INFINITY,inorm_solution,ierr)
+  call VecNorm(update_vec,NORM_INFINITY,inorm_update,ierr)
+  call VecNorm(residual_vec,NORM_INFINITY,inorm_residual,ierr)
 
-  call VecNorm(solution,NORM_1,norm1_data,ierr)
-  call VecNorm(update,NORM_1,norm1_update,ierr)
-  call VecNorm(residual,NORM_1,norm1_residual,ierr)
+  call VecNorm(solution_vec,NORM_1,norm1_solution,ierr)
+  call VecNorm(update_vec,NORM_1,norm1_update,ierr)
+  call VecNorm(residual_vec,NORM_1,norm1_residual,ierr)
   
-  allocate(fnorm_data_stride(option%ndof))
+  allocate(fnorm_solution_stride(option%ndof))
   allocate(fnorm_update_stride(option%ndof))
-  allocate(fnorm_residual_stride(option%ndof))
-  allocate(inorm_data_stride(option%ndof))
+  allocate(fnormresidual_stride(option%ndof))
+  allocate(inorm_solution_stride(option%ndof))
   allocate(inorm_update_stride(option%ndof))
   allocate(inorm_residual_stride(option%ndof))
-  allocate(norm1_data_stride(option%ndof))
+  allocate(norm1_solution_stride(option%ndof))
   allocate(norm1_update_stride(option%ndof))
   allocate(norm1_residual_stride(option%ndof))
   
   allocate(imax_solution(option%ndof))
   allocate(imax_update(option%ndof))
   allocate(imax_residual(option%ndof))
-  allocate(max_data_val(option%ndof))
+  allocate(max_solution_val(option%ndof))
   allocate(max_update_val(option%ndof))
   allocate(max_residual_val(option%ndof))
 
-  call VecStrideNormAll(solution,NORM_1,norm1_data_stride,ierr)
-  call VecStrideNormAll(update,NORM_1,norm1_update_stride,ierr)
-  call VecStrideNormAll(residual,NORM_1,norm1_residual_stride,ierr)
-  call VecStrideNormAll(solution,NORM_2,fnorm_data_stride,ierr)
-  call VecStrideNormAll(update,NORM_2,fnorm_update_stride,ierr)
-  call VecStrideNormAll(residual,NORM_2,fnorm_residual_stride,ierr)
-  call VecStrideNormAll(solution,NORM_INFINITY,inorm_data_stride,ierr)
-  call VecStrideNormAll(update,NORM_INFINITY,inorm_update_stride,ierr)
-  call VecStrideNormAll(residual,NORM_INFINITY,inorm_residual_stride,ierr)
+  call VecStrideNormAll(solution_vec,NORM_1,norm1_solution_stride,ierr)
+  call VecStrideNormAll(update_vec,NORM_1,norm1_update_stride,ierr)
+  call VecStrideNormAll(residual_vec,NORM_1,norm1_residual_stride,ierr)
+  call VecStrideNormAll(solution_vec,NORM_2,fnorm_solution_stride,ierr)
+  call VecStrideNormAll(update_vec,NORM_2,fnorm_update_stride,ierr)
+  call VecStrideNormAll(residual_vec,NORM_2,fnorm_residual_stride,ierr)
+  call VecStrideNormAll(solution_vec,NORM_INFINITY,inorm_solution_stride,ierr)
+  call VecStrideNormAll(update_vec,NORM_INFINITY,inorm_update_stride,ierr)
+  call VecStrideNormAll(residual_vec,NORM_INFINITY,inorm_residual_stride,ierr)
   
   ! can't use VecStrideMaxAll since the index location is not currently supported.
   do i=1,option%ndof
-    call VecStrideMax(solution,i-1,imax_solution(i),max_data_val(i),ierr)
-    call VecStrideMax(update,i-1,imax_update(i),max_update_val(i),ierr)
-    call VecStrideMax(residual,i-1,imax_residual(i),max_residual_val(i),ierr)
+    call VecStrideMax(solution_vec,i-1,imax_solution(i),max_solution_val(i),ierr)
+    call VecStrideMax(update_vec,i-1,imax_update(i),max_update_val(i),ierr)
+    call VecStrideMax(residual_vec,i-1,imax_residual(i),max_residual_val(i),ierr)
     ! tweak the index to get the cell id from the mdof vector
     imax_solution(i) = imax_solution(i)/option%ndof
     imax_update(i) = imax_update(i)/option%ndof
@@ -210,9 +224,9 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,option,ierr)
 
     ! uncomment the lines below to determine data printed
     
-    !print_sol_norm_info = .true.  ! solution norm information
-    !print_upd_norm_info = .true.  ! update norm information
-    print_res_norm_info = .true.  ! residual norm information
+    !print_sol_norm_info = .true.  ! solution_vec norm information
+    !print_upd_norm_info = .true.  ! update_vec norm information
+    print_res_norm_info = .true.  ! residual_vec norm information
   
     print_norm_by_dof_info = .true.
     print_max_val_and_loc_info = .true.
@@ -244,11 +258,11 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,option,ierr)
       do i=1,option%ndof
         print *, '  dof: ', i
         if (print_sol_norm_info) &
-          print *, '    solution max: ', imax_solution(i), max_data_val(i)
+          print *, '    solution_vec max: ', imax_solution(i), max_data_val(i)
         if (print_upd_norm_info) &
-          print *, '    update max:   ', imax_update(i), max_update_val(i)
+          print *, '    update_vec max:   ', imax_update(i), max_update_val(i)
         if (print_res_norm_info) &
-          print *, '    residual max: ', imax_residual(i), max_residual_val(i)
+          print *, '    residual_vec max: ', imax_residual(i), max_residual_val(i)
       enddo
     endif
     if (print_norm_by_dof_info) then
@@ -257,11 +271,11 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,option,ierr)
         print *, '  dof: ', i
         if (print_sol_norm_info) then
           if (print_1_norm_info) &
-            print *, '    norm_1_solution:   ', norm1_data_stride(i)
+            print *, '    norm_1_solution:   ', norm1_solution_stride(i)
           if (print_2_norm_info) &
-            print *, '    norm_2_solution:   ', fnorm_data_stride(i)
+            print *, '    norm_2_solution:   ', fnorm_solution_stride(i)
           if (print_inf_norm_info) &
-            print *, '    norm_inf_solution: ', inorm_data_stride(i)
+            print *, '    norm_inf_solution: ', inorm_solution_stride(i)
           if (print_1_norm_info .or. print_2_norm_info .or. &
               print_inf_norm_info) print *, '    -'
         endif
@@ -288,13 +302,13 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,option,ierr)
     print *
   endif
   
-  deallocate(fnorm_data_stride)
+  deallocate(fnorm_solution_stride)
   deallocate(fnorm_update_stride)
   deallocate(fnorm_residual_stride)
-  deallocate(inorm_data_stride)
+  deallocate(inorm_solution_stride)
   deallocate(inorm_update_stride)
   deallocate(inorm_residual_stride)
-  deallocate(norm1_data_stride)
+  deallocate(norm1_solution_stride)
   deallocate(norm1_update_stride)
   deallocate(norm1_residual_stride)
   

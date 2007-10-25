@@ -41,10 +41,12 @@ subroutine updateDT(option, its)
   
   implicit none
 
+#include "include/finclude/petsc.h"
+
   type(option_type) :: option
   integer, intent(in) :: its
   
-#if 0
+#if 1
   real*8 :: fac,dtt,up,utmp,uc,ut,uus
   
   if (option%iaccel == 0) return
@@ -213,7 +215,10 @@ subroutine step(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
   
   implicit none
 
+#include "definitions.h"
 #include "include/finclude/petsc.h"
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
 #include "include/finclude/petscsnes.h"
 
   type(solution_type) :: solution
@@ -235,7 +240,7 @@ subroutine step(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
   option => solution%option
   grid => solution%grid
 
-#if 0  
+#if 1  
 ! real*8, pointer :: xx_p(:), conc_p(:), press_p(:), temp_p(:)
 
   its = 0
@@ -278,14 +283,14 @@ subroutine step(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
 ! source/sink time step control
   if (option%nblksrc > 0) then
     ns = 1
-    tsrc = option%timesrc(grid%isrc1,ns)
+    tsrc = option%timesrc(option%isrc1,ns)
     if (option%t >= tsrc ) then
       if (option%t > tsrc +1D2) then
         option%t = option%t - option%dt
         option%dt = tsrc - option%t
         option%t = tsrc
       endif
-      grid%isrc1 = grid%isrc1 + 1
+      option%isrc1 = option%isrc1 + 1
     endif
   endif
  ! print *, 'pflow_step:3:',  ntstep, option%dt
@@ -317,7 +322,8 @@ subroutine step(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
   do
    
     
-    grid%iphch=0
+    option%iphch=0
+#if 0    
     if (option%use_cond == PETSC_TRUE) then
       call SNESSolve(option%snes, PETSC_NULL, option%ttemp, ierr)
     else if (option%use_th == PETSC_TRUE) then
@@ -334,11 +340,14 @@ subroutine step(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
         call SNESSolve(option%snes, PETSC_NULL, option%xx, ierr)
       endif
     else if (option%use_richards == PETSC_TRUE) then
+#endif    
+    if (option%use_richards == PETSC_TRUE) then
       if (option%use_ksp == PETSC_TRUE) then
-        call pflow_solve(grid,its,snes_reason,ierr)
+        call pflow_solve(solution,its,snes_reason,ierr)
       else 
         call SNESSolve(option%snes, PETSC_NULL, option%xx, ierr)
       endif
+#if 0      
    else if (option%use_flash == PETSC_TRUE) then
       if (option%use_ksp == PETSC_TRUE) then
         call pflow_solve(grid,its,snes_reason,ierr)
@@ -359,6 +368,7 @@ subroutine step(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
       endif
     else
       call SNESSolve(option%snes, PETSC_NULL, grid%ppressure, ierr)
+#endif      
     endif
   ! print *,'pflow_step, finish SNESSolve'
     call MPI_Barrier(PETSC_COMM_WORLD,ierr)
@@ -379,7 +389,7 @@ subroutine step(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
       enddo 
      call VecRestoreArrayF90(option%r, r_p, ierr)
      
-      if(grid%commsize >1)then 
+      if(option%commsize >1)then 
       call MPI_REDUCE(s_r2norm, s_r2norm0,1, MPI_DOUBLE_PRECISION ,MPI_SUM,0, PETSC_COMM_WORLD,ierr)
       call MPI_REDUCE(norm_inf, norm_inf0,1, MPI_DOUBLE_PRECISION, MPI_MAX,0, PETSC_COMM_WORLD,ierr)
       if(option%myrank==0) then
@@ -418,6 +428,7 @@ subroutine step(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
     !call PETScBarrier(PETSC_NULL_OBJECT, ierr)
     
     update_reason = 1
+#if 0    
     if ((option%use_2ph == PETSC_TRUE).and.(snes_reason >= 0)) then
       call TTPhase_Update_Reason(update_reason, grid)
       if (option%myrank==0) print *,'update_reason: ',update_reason
@@ -431,12 +442,16 @@ subroutine step(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
       call Vadose_Update_Reason(update_reason, grid)
       if (option%myrank==0) print *,'update_reason: ',update_reason
     else if ((option%use_richards == PETSC_TRUE).and.(snes_reason >= 0)) then
+#endif    
+    if ((option%use_richards == PETSC_TRUE).and.(snes_reason >= 0)) then
       update_reason=1
      !call Richards_Update_Reason(update_reason, grid)
       if (option%myrank==0) print *,'update_reason: ',update_reason
+#if 0      
     else if ((option%use_owg == PETSC_TRUE).and.(snes_reason >= 0)) then
       call OWG_Update_Reason(update_reason, grid)
       if (option%myrank==0) print *,'update_reason: ',update_reason
+#endif      
     endif
 
 
@@ -448,11 +463,11 @@ subroutine step(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
       icut = icut + 1
       iflgcut = 1
 
-      if (icut > grid%icut_max .or. option%dt<1.d-20) then
+      if (icut > option%icut_max .or. option%dt<1.d-20) then
 !       call MPI_Comm_rank(PETSC_COMM_WORLD, myrank, ierr)
         if (option%myrank == 0) then
 !         t = pflowgrid_get_t(grid)
-          print *,"--> icut_max exceeded: icut/icutmax= ",icut,grid%icut_max, &
+          print *,"--> icut_max exceeded: icut/icutmax= ",icut,option%icut_max, &
                   "t= ",option%t/option%tconv, " dt= ",option%dt/option%tconv
           print *,"Stopping execution!"
         endif
@@ -473,7 +488,7 @@ subroutine step(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
   !      call pflow_output(grid,kplt,iplot)
         ! The above line won't work when scope is restricted properly!
         ! Replace this with a different function call!
-        call pflowgrid_destroy(grid)
+ !       call pflowgrid_destroy(grid)
         call PetscFinalize(ierr)
         stop
       endif
@@ -484,14 +499,15 @@ subroutine step(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
     
       if (option%myrank == 0) write(*,'('' -> Cut time step: snes='',i3, &
         &   '' icut= '',i2,''['',i3,'']'','' t= '',1pe12.4, '' dt= '', &
-        &   1pe12.4,i2)')  snes_reason,icut,grid%icutcum, &
+        &   1pe12.4,i2)')  snes_reason,icut,option%icutcum, &
             option%t/option%tconv,option%dt/option%tconv,iflgcut
 
       if (option%ndof == 1) then
         ! VecCopy(x,y): y=x
-        call VecCopy(grid%pressure, grid%ppressure, ierr)
+        call VecCopy(option%pressure, option%ppressure, ierr)
         call VecCopy(option%temp, option%ttemp, ierr)
       else
+#if 0      
         if (option%use_owg==PETSC_TRUE) then
           call pflow_owg_timecut(grid)
         elseif (option%use_mph==PETSC_TRUE) then
@@ -499,15 +515,19 @@ subroutine step(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
         elseif (option%use_flash==PETSC_TRUE) then
           call pflow_flash_timecut(grid)
         elseif (option%use_richards==PETSC_TRUE) then
-          call pflow_richards_timecut(grid)
+#endif        
+        if (option%use_richards==PETSC_TRUE) then
+          call pflow_richards_timecut(solution)
+#if 0          
         elseif (option%use_vadose==PETSC_TRUE) then
           call pflow_vadose_timecut(grid)
         else
           call VecCopy(grid%h, grid%hh, ierr)
           call VecCopy(grid%yy, option%xx, ierr)
           call VecCopy(grid%density, grid%ddensity, ierr)
+#endif          
         endif
-        call VecCopy(grid%iphas_old, grid%iphas, ierr)
+        call VecCopy(option%iphas_old, option%iphas, ierr)
       endif
 
     else
@@ -516,16 +536,16 @@ subroutine step(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
     endif
   enddo
 
-  grid%newtcum = grid%newtcum + its
-  grid%icutcum = grid%icutcum + icut
+  option%newtcum = option%newtcum + its
+  option%icutcum = option%icutcum + icut
 
 ! print screen output
   if (option%myrank == 0) then
-    if (mod(option%flowsteps,grid%imod) == 0 .or. option%flowsteps == 1) then
+    if (mod(option%flowsteps,option%imod) == 0 .or. option%flowsteps == 1) then
       write(*, '(/," FLOW ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1,"]", &
       & " snes_conv_reason: ",i4,/,"  newt= ",i2," [",i6,"]"," cut= ",i2," [",i4,"]")') &
       option%flowsteps,option%t/option%tconv,option%dt/option%tconv,option%tunit, &
-      snes_reason,its,grid%newtcum,icut,grid%icutcum
+      snes_reason,its,option%newtcum,icut,option%icutcum
 
       if (option%use_ksp /= PETSC_TRUE) then
         print *,' --> SNES Linear/Non-Linear Interations = ',it_linear,it_snes
@@ -536,18 +556,18 @@ subroutine step(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
       write(IUNIT2, '(" FLOW ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1, &
       & "]"," snes_conv_reason: ",i4,/,"  newt= ",i2," [",i6,"]"," cut= ",i2," [",i4, &
       & "]")') option%flowsteps,option%t/option%tconv,option%dt/option%tconv, &
-      option%tunit, snes_reason,its,grid%newtcum,icut,grid%icutcum
+      option%tunit, snes_reason,its,option%newtcum,icut,option%icutcum
     endif
   endif
   
   ! calculate maxium changes in fields over a time step
-
+#if 0
   if (option%ndof == 1 .and. option%use_cond == PETSC_TRUE) then
   
     call VecWAXPY(option%dp,-1.d0,option%ttemp,option%temp,ierr)
     call VecStrideNorm(option%dp,0,NORM_INFINITY,option%dpmax,ierr)
     if (option%myrank==0) then
-      if (mod(option%flowsteps,grid%imod) == 0) then
+      if (mod(option%flowsteps,option%imod) == 0) then
         write(*,'("  --> max chng: dTmx= ",1pe12.4)') option%dpmax
         write(IUNIT2,'("  --> max chng: dTmx= ",1pe12.4)') option%dpmax
       endif
@@ -555,22 +575,22 @@ subroutine step(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
     
   else if (option%ndof == 2 .and. option%use_th == PETSC_TRUE) then
   
-    call VecWAXPY(grid%dxx,-1.d0,option%xx,grid%yy,ierr)
-!   call VecAbs(grid%dxx,ierr)
-!   call VecMax(grid%dxx,grid%idxxmax,grid%dxxmax,ierr)
-!   call VecStrideMax(grid%dxx,1,PETSC_NULL,grid%dxxmax,ierr)
-    call VecStrideNorm(grid%dxx,0,NORM_INFINITY,option%dpmax,ierr)
-    call VecStrideNorm(grid%dxx,1,NORM_INFINITY,option%dtmpmax,ierr)
-!   call VecStrideNorm(grid%dxx,2,NORM_INFINITY,option%dcmax,ierr)
-!   n = grid%idxxmax/option%ndof+1
+    call VecWAXPY(option%dxx,-1.d0,option%xx,option%yy,ierr)
+!   call VecAbs(option%dxx,ierr)
+!   call VecMax(option%dxx,option%idxxmax,option%dxxmax,ierr)
+!   call VecStrideMax(option%dxx,1,PETSC_NULL,option%dxxmax,ierr)
+    call VecStrideNorm(option%dxx,0,NORM_INFINITY,option%dpmax,ierr)
+    call VecStrideNorm(option%dxx,1,NORM_INFINITY,option%dtmpmax,ierr)
+!   call VecStrideNorm(option%dxx,2,NORM_INFINITY,option%dcmax,ierr)
+!   n = option%idxxmax/option%ndof+1
 !   kz = n/grid%nxy+1
 !   jy = n/grid%nx+1 - (kz-1)*grid%ny
 !   ix = n - (jy-1)*grid%nx - (kz-1)*grid%nxy
-!   j = grid%idxxmax - (n-1)*option%ndof
-!   if (option%myrank==0) print *,'  --> max chng: ',grid%idxxmax,grid%dxxmax, &
+!   j = option%idxxmax - (n-1)*option%ndof
+!   if (option%myrank==0) print *,'  --> max chng: ',option%idxxmax,option%dxxmax, &
 !     ' @ node ',ix,jy,kz,j,option%ndof,grid%nx,grid%nxy
     if (option%myrank==0) then
-      if (mod(option%flowsteps,grid%imod) == 0 .or. option%flowsteps == 1) then
+      if (mod(option%flowsteps,option%imod) == 0 .or. option%flowsteps == 1) then
         write(*,'("  --> max chng: dpmx= ",1pe12.4, &
           & " dtmpmx= ",1pe12.4)') option%dpmax,option%dtmpmax
         write(IUNIT2,'("  --> max chng: dpmx= ",1pe12.4, &
@@ -580,22 +600,22 @@ subroutine step(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
     
   else if (option%ndof == 3 .and. option%use_thc == PETSC_TRUE) then
   
-    call VecWAXPY(grid%dxx,-1.d0,option%xx,grid%yy,ierr)
-!   call VecAbs(grid%dxx,ierr)
-!   call VecMax(grid%dxx,grid%idxxmax,grid%dxxmax,ierr)
-!   call VecStrideMax(grid%dxx,1,PETSC_NULL,grid%dxxmax,ierr)
-    call VecStrideNorm(grid%dxx,0,NORM_INFINITY,option%dpmax,ierr)
-    call VecStrideNorm(grid%dxx,1,NORM_INFINITY,option%dtmpmax,ierr)
-    call VecStrideNorm(grid%dxx,2,NORM_INFINITY,option%dcmax,ierr)
-!   n = grid%idxxmax/option%ndof+1
+    call VecWAXPY(option%dxx,-1.d0,option%xx,option%yy,ierr)
+!   call VecAbs(option%dxx,ierr)
+!   call VecMax(option%dxx,option%idxxmax,option%dxxmax,ierr)
+!   call VecStrideMax(option%dxx,1,PETSC_NULL,option%dxxmax,ierr)
+    call VecStrideNorm(option%dxx,0,NORM_INFINITY,option%dpmax,ierr)
+    call VecStrideNorm(option%dxx,1,NORM_INFINITY,option%dtmpmax,ierr)
+    call VecStrideNorm(option%dxx,2,NORM_INFINITY,option%dcmax,ierr)
+!   n = option%idxxmax/option%ndof+1
 !   kz = n/grid%nxy+1
 !   jy = n/grid%nx+1 - (kz-1)*grid%ny
 !   ix = n - (jy-1)*grid%nx - (kz-1)*grid%nxy
-!   j = grid%idxxmax - (n-1)*option%ndof
-!   if (option%myrank==0) print *,'  --> max chng: ',grid%idxxmax,grid%dxxmax, &
+!   j = option%idxxmax - (n-1)*option%ndof
+!   if (option%myrank==0) print *,'  --> max chng: ',option%idxxmax,option%dxxmax, &
 !     ' @ node ',ix,jy,kz,j,option%ndof,grid%nx,grid%nxy
     if (option%myrank==0) then
-      if (mod(option%flowsteps,grid%imod) == 0 .or. option%flowsteps == 1) then
+      if (mod(option%flowsteps,option%imod) == 0 .or. option%flowsteps == 1) then
         write(*,'("  --> max chng: dpmx= ",1pe12.4, &
           & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4)') &
           option%dpmax,option%dtmpmax,option%dcmax
@@ -607,13 +627,13 @@ subroutine step(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
     
   else if (option%ndof == 4 .and. option%use_2ph == PETSC_TRUE) then
   
-    call VecWAXPY(grid%dxx,-1.d0,option%xx,grid%yy,ierr)
-    call VecStrideNorm(grid%dxx,0,NORM_INFINITY,option%dpmax,ierr)
-    call VecStrideNorm(grid%dxx,1,NORM_INFINITY,option%dtmpmax,ierr)
-    call VecStrideNorm(grid%dxx,2,NORM_INFINITY,option%dcmax,ierr)
-    call VecStrideNorm(grid%dxx,3,NORM_INFINITY,option%dsmax,ierr)
+    call VecWAXPY(option%dxx,-1.d0,option%xx,option%yy,ierr)
+    call VecStrideNorm(option%dxx,0,NORM_INFINITY,option%dpmax,ierr)
+    call VecStrideNorm(option%dxx,1,NORM_INFINITY,option%dtmpmax,ierr)
+    call VecStrideNorm(option%dxx,2,NORM_INFINITY,option%dcmax,ierr)
+    call VecStrideNorm(option%dxx,3,NORM_INFINITY,option%dsmax,ierr)
     if (option%myrank==0) then
-      if (mod(option%flowsteps,grid%imod) == 0 .or. option%flowsteps == 1) then
+      if (mod(option%flowsteps,option%imod) == 0 .or. option%flowsteps == 1) then
         write(*,'("  --> max chng: dpmx= ",1pe12.4, &
           & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4," dsmx= ",1pe12.4)') &
           option%dpmax,option%dtmpmax,option%dcmax,option%dsmax
@@ -628,7 +648,7 @@ subroutine step(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
      call translator_mph_step_maxchange(grid)
     ! note use mph will use variable switching, the x and s change is not meaningful 
     if (option%myrank==0) then
-      if (mod(option%flowsteps,grid%imod) == 0 .or. option%flowsteps == 1) then
+      if (mod(option%flowsteps,option%imod) == 0 .or. option%flowsteps == 1) then
         write(*,'("  --> max chng: dpmx= ",1pe12.4, &
           & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4," dsmx= ",1pe12.4)') &
           option%dpmax,option%dtmpmax,option%dcmax,option%dsmax
@@ -639,11 +659,12 @@ subroutine step(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
       endif
     endif
 
-
   else if (option%use_richards == PETSC_TRUE) then
-     call translator_ric_step_maxchange(grid)
+#endif
+  if (option%use_richards == PETSC_TRUE) then
+     call translator_ric_step_maxchange(option)
     if (option%myrank==0) then
-      if (mod(option%flowsteps,grid%imod) == 0 .or. option%flowsteps == 1) then
+      if (mod(option%flowsteps,option%imod) == 0 .or. option%flowsteps == 1) then
         write(*,'("  --> max chng: dpmx= ",1pe12.4, &
           & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4)') &
           option%dpmax,option%dtmpmax, option%dcmax
@@ -653,13 +674,13 @@ subroutine step(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
           option%dpmax,option%dtmpmax,option%dcmax
       endif
     endif
-
+#if 0
 
   else if (option%use_flash == PETSC_TRUE) then
      call translator_flash_step_maxchange(grid)
     ! note use mph will use variable switching, the x and s change is not meaningful 
     if (option%myrank==0) then
-      if (mod(option%flowsteps,grid%imod) == 0 .or. option%flowsteps == 1) then
+      if (mod(option%flowsteps,option%imod) == 0 .or. option%flowsteps == 1) then
         write(*,'("  --> max chng: dpmx= ",1pe12.4, &
           & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4," dsmx= ",1pe12.4)') &
           option%dpmax,option%dtmpmax,option%dcmax,option%dsmax
@@ -675,7 +696,7 @@ subroutine step(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
      call translator_vad_step_maxchange(grid)
     ! note use mph will use variable switching, the x and s change is not meaningful 
     if (option%myrank==0) then
-      if (mod(option%flowsteps,grid%imod) == 0 .or. option%flowsteps == 1) then
+      if (mod(option%flowsteps,option%imod) == 0 .or. option%flowsteps == 1) then
         write(*,'("  --> max chng: dpmx= ",1pe12.4, &
           & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4," dsmx= ",1pe12.4)') &
           option%dpmax,option%dtmpmax,option%dcmax,option%dsmax
@@ -691,7 +712,7 @@ subroutine step(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
    
       
     if (option%myrank==0) then
-      if (mod(option%flowsteps,grid%imod) == 0 .or. option%flowsteps == 1) then
+      if (mod(option%flowsteps,option%imod) == 0 .or. option%flowsteps == 1) then
         write(*,'("  --> max chng: dpmx= ",1pe12.4, &
           & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4," dsmx= ",1pe12.4)') &
           option%dpmax,option%dtmpmax,option%dcmax,option%dsmax
@@ -704,19 +725,20 @@ subroutine step(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
     
   else ! use_liquid
   
-    call VecWAXPY(option%dp,-1.d0,grid%ppressure,grid%pressure,ierr)
+    call VecWAXPY(option%dp,-1.d0,option%ppressure,option%pressure,ierr)
 !   call VecAbs(option%dp,ierr)
 !   call VecMax(option%dp,idpmax,dpmax,ierr)
     call VecStrideNorm(option%dp,0,NORM_INFINITY,option%dpmax,ierr)
     if (option%myrank==0) then
-      if (mod(option%flowsteps,grid%imod) == 0 .or. option%flowsteps == 1) then
+      if (mod(option%flowsteps,option%imod) == 0 .or. option%flowsteps == 1) then
         write(*,'("  --> max chng: dpmx= ",1pe12.4)') option%dpmax
         write(IUNIT2,'("  --> max chng: dpmx= ",1pe12.4)') option%dpmax
       endif
     endif
+#endif    
   endif
 
-  if (option%myrank == 0 .and. mod(option%flowsteps,grid%imod) == 0) then
+  if (option%myrank == 0 .and. mod(option%flowsteps,option%imod) == 0) then
     print *, ""
   endif
 #endif

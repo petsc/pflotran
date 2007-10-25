@@ -69,9 +69,13 @@ subroutine initPFLOW(simulation,filename)
   
   ISColoring :: iscoloring
 
-  integer :: nphase, ndof, nspec, npricomp
-  integer :: mcomp, mphas, idcdm, itable
+  integer :: mcomp, mphas
   integer :: i
+  
+  ! remove later
+  PetscScalar, pointer :: phis_p(:)
+  PetscTruth :: option_found
+  integer :: nc, ibc
   
   real*8 :: alpha, maxstep, steptol
   
@@ -80,9 +84,9 @@ subroutine initPFLOW(simulation,filename)
   solver => simulation%stepper%solver
   solution => simulation%solution
   option => solution%option
-  grid => solution%grid
   
   call readSelectCardsFromInput(solution,filename,mcomp,mphas)
+  grid => solution%grid
   
   option%use_ksp=PETSC_FALSE
   option%use_isoth=PETSC_FALSE
@@ -107,7 +111,7 @@ subroutine initPFLOW(simulation,filename)
                            option%use_2ph, ierr)
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_mph", &
                            option%use_mph, ierr)
-   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_flash", &
+  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_flash", &
                            option%use_flash, ierr)
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_owg", &
                            option%use_owg, ierr)
@@ -122,86 +126,76 @@ subroutine initPFLOW(simulation,filename)
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_isoth", &
                            option%use_isoth, ierr)
 
-  option%nphase = nphase
-  option%ndof = ndof
-  option%nspec = nspec
-  option%npricomp = npricomp
+  if (option%use_liquid ==PETSC_FALSE .and.&
+      option%use_cond==PETSC_FALSE  .and.&
+      option%use_th==PETSC_FALSE  .and.&
+      option%use_thc==PETSC_FALSE  .and.&
+      option%use_2ph==PETSC_FALSE  .and.&
+      option%use_mph==PETSC_FALSE  .and.&
+      option%use_flash==PETSC_FALSE  .and.&
+      option%use_owg==PETSC_FALSE  .and.&
+      option%use_vadose==PETSC_FALSE  .and.&
+      option%use_richards==PETSC_FALSE) then
 
-if( option%use_liquid ==PETSC_FALSE .and.&
-    option%use_cond==PETSC_FALSE  .and.&
-    option%use_th==PETSC_FALSE  .and.&
-    option%use_thc==PETSC_FALSE  .and.&
-    option%use_2ph==PETSC_FALSE  .and.&
-    option%use_mph==PETSC_FALSE  .and.&
-    option%use_flash==PETSC_FALSE  .and.&
-    option%use_owg==PETSC_FALSE  .and.&
-    option%use_vadose==PETSC_FALSE  .and.&
-    option%use_richards==PETSC_FALSE) then
-
- if(mcomp >0 .and. mphas>0)then
-   if( option%use_liquid == PETSC_FALSE .and. mcomp ==1)then
-       option%use_liquid = PETSC_TRUE
-       option%nphase = 1; option%ndof =1
-   endif
-   if( option%use_cond == PETSC_FALSE .and. mcomp == 32)then
-       option%use_cond = PETSC_TRUE
-       option%nphase = 1; option%ndof =1
-   endif
-   if( option%use_th == PETSC_FALSE .and. mcomp == 33 .and. mphas == 3)then
-       option%use_th = PETSC_TRUE
-       option%nphase = 1; option%ndof =2
-   endif
-   if( option%use_thc == PETSC_FALSE .and. mcomp == 37)then
-       option%use_thc = PETSC_TRUE
-       option%nphase = 1; option%ndof =3
-   endif
-   if( option%use_mph == PETSC_FALSE .and. mcomp == 35)then
-       option%use_mph = PETSC_TRUE
-       option%nphase = 2; option%ndof =3; option%nspec =2 
-   endif
-   if( option%use_vadose == PETSC_FALSE .and. mcomp == 49)then
-       option%use_vadose = PETSC_TRUE
-       option%nphase = 2; option%ndof =3; option%nspec =2 
-   endif
-   if( option%use_richards == PETSC_FALSE .and. mcomp == 33 .and. mphas == 11)then
-       option%use_richards = PETSC_TRUE
-       option%nphase = 1; option%ndof = 2;  option%nspec =1
-       if(nspec > 1) then
-           option%ndof = nspec +1 ;  option%nspec = nspec
-       endif
-   endif
-    if( option%use_owg == PETSC_FALSE .and. mcomp == 11)then
-       option%use_owg = PETSC_TRUE
-       option%nphase = 3; option%ndof =3; option%nspec =3 
-   endif
+    if (mcomp >0 .and. mphas>0)then
+      if (option%use_liquid == PETSC_FALSE .and. mcomp ==1)then
+        option%use_liquid = PETSC_TRUE
+        option%nphase = 1; option%ndof =1
+      endif
+      if (option%use_cond == PETSC_FALSE .and. mcomp == 32)then
+        option%use_cond = PETSC_TRUE
+        option%nphase = 1; option%ndof =1
+      endif
+      if (option%use_th == PETSC_FALSE .and. mcomp == 33 .and. mphas == 3)then
+        option%use_th = PETSC_TRUE
+        option%nphase = 1; option%ndof =2
+      endif
+      if (option%use_thc == PETSC_FALSE .and. mcomp == 37)then
+        option%use_thc = PETSC_TRUE
+        option%nphase = 1; option%ndof =3
+      endif
+      if (option%use_mph == PETSC_FALSE .and. mcomp == 35)then
+        option%use_mph = PETSC_TRUE
+        option%nphase = 2; option%ndof =3; option%nspec =2 
+      endif
+      if (option%use_vadose == PETSC_FALSE .and. mcomp == 49)then
+        option%use_vadose = PETSC_TRUE
+        option%nphase = 2; option%ndof =3; option%nspec =2 
+      endif
+      if (option%use_richards == PETSC_FALSE .and. mcomp == 33 .and. mphas == 11)then
+        option%use_richards = PETSC_TRUE
+        option%nphase = 1; option%ndof = 2
+        if (option%nspec > 1) then
+          option%ndof = option%nspec +1
+        endif
+      endif
+    endif
+    if (option%use_owg == PETSC_FALSE .and. mcomp == 11)then
+      option%use_owg = PETSC_TRUE
+      option%nphase = 3; option%ndof =3; option%nspec =3 
+    endif
   endif
- if( option%use_liquid ==PETSC_FALSE .and.&
-    option%use_cond==PETSC_FALSE  .and.&
-    option%use_th==PETSC_FALSE  .and.&
-    option%use_thc==PETSC_FALSE  .and.&
-    option%use_2ph==PETSC_FALSE  .and.&
-    option%use_mph==PETSC_FALSE  .and.&
-    option%use_flash==PETSC_FALSE  .and.&
-    option%use_owg==PETSC_FALSE  .and.&
-    option%use_vadose==PETSC_FALSE  .and.&
-    option%use_richards==PETSC_FALSE) then
-     print *,'No method determined, stop:'
-     stop
- endif       
+  if (option%use_liquid ==PETSC_FALSE .and.&
+      option%use_cond==PETSC_FALSE  .and.&
+      option%use_th==PETSC_FALSE  .and.&
+      option%use_thc==PETSC_FALSE  .and.&
+      option%use_2ph==PETSC_FALSE  .and.&
+      option%use_mph==PETSC_FALSE  .and.&
+      option%use_flash==PETSC_FALSE  .and.&
+      option%use_owg==PETSC_FALSE  .and.&
+      option%use_vadose==PETSC_FALSE  .and.&
+      option%use_richards==PETSC_FALSE) then
+    print *,'No method determined, stop:'
+    stop
+  endif       
                          
-endif  
-
 ! hardwire to uncoupled for now
 !  if (icouple == 0) then
-    option%using_pflowGrid = PETSC_FALSE
+  option%using_pflowGrid = PETSC_FALSE
 !  else
 !    option%using_pflowGrid = PETSC_TRUE
 !  endif
 
-  option%idcdm = idcdm
-      
-  option%itable = itable
-      
   !set specific phase indices
   option%jh2o = 1; option%jgas =1
   select case(option%nphase)
@@ -272,7 +266,7 @@ endif
   option%fmwco2 = 44.0098d0
   option%eqkair = 1.d10 ! Henry's constant for air: Xl = eqkair * pa
 
-  allocate(option%steady_eps(ndof))
+  allocate(option%steady_eps(option%ndof))
   option%steady_eps = -1.D0
 
  ! initialize default values  
@@ -554,16 +548,6 @@ endif
 !-----------------------------------------------------------------------
       ! Allocate memory for allocatable arrays.
 !-----------------------------------------------------------------------
-  i = grid%internal_connection_list%first%num_connections
-  allocate(option%vl_loc(i))
-  allocate(option%vvl_loc(i))
-  allocate(option%vg_loc(i))
-  allocate(option%vvg_loc(i))
-    
-    
-  option%vl_loc = 0.D0
-  option%vg_loc = 0.D0
-      
   allocate(option%xphi_co2(grid%nlmax))
   allocate(option%xxphi_co2(grid%nlmax))
   allocate(option%den_co2(grid%nlmax))
@@ -653,7 +637,7 @@ endif
   allocate(option%ibrktyp(MAXINITREGIONS))
   allocate(option%ibrkface(MAXINITREGIONS))
   
-  if (idcdm == 1) then
+  if (option%idcdm == 1) then
 !GEH - Structured Grid Dependence - Begin
     allocate(option%i1dcm(MAXINITREGIONS))
     allocate(option%i2dcm(MAXINITREGIONS))
@@ -729,6 +713,18 @@ endif
 
 
   call readInput(simulation,filename)
+  
+  call computeInternalConnectivity(grid,option)
+
+  i = grid%internal_connection_list%first%num_connections
+  allocate(option%vl_loc(i))
+  allocate(option%vvl_loc(i))
+  allocate(option%vg_loc(i))
+  allocate(option%vvg_loc(i))
+    
+    
+  option%vl_loc = 0.D0
+  option%vg_loc = 0.D0
 
 ! check number of dofs and phases
   if (option%use_cond == PETSC_TRUE) then
@@ -1024,7 +1020,7 @@ endif
 #endif    
   !else if (option%use_Richards == PETSC_TRUE) then
   if (option%use_Richards == PETSC_TRUE) then
-    call SNESSetFunction(option%snes, option%r, RichardsResidual, grid, ierr)
+    call SNESSetFunction(option%snes, option%r, RichardsResidual, solution, ierr)
 #if 0    
   else if (option%use_owg == PETSC_TRUE) then
     call SNESSetFunction(option%snes, option%r, OWGResidual, grid, ierr)
@@ -1034,30 +1030,601 @@ endif
   endif
 
   ! Set the tolerances for the Newton solver.
-  call SNESSetTolerances(option%snes, option%atol, option%rtol, option%stol, & 
-                         option%maxit, option%maxf, ierr)
+  call SNESSetTolerances(option%snes, solver%atol, solver%rtol, solver%stol, & 
+                         solver%maxit, solver%maxf, ierr)
 
   call SNESSetFromOptions(option%snes, ierr)
   
 ! shell for custom convergence test.  The default SNES convergence test 
 ! is call within this function.
   call SNESSetConvergenceTest(option%snes,PFLOWConvergenceTest, &
-                              option,ierr)
+                              simulation,ierr)
                               
   if (option%myrank == 0) write(*,'("  Finished setting up of SNES 1")')
   
   call SNESLineSearchGetParams(option%snes, alpha, maxstep, steptol, ierr) 
   if (option%myrank == 0) write(*,'("  Finished setting up of SNES 2")')
-  call SNESLineSearchSetParams(option%snes, alpha, maxstep, option%stol, ierr) 
+  call SNESLineSearchSetParams(option%snes, alpha, maxstep, solver%stol, ierr) 
   if (option%myrank == 0) write(*,'("  Finished setting up of SNES 3")')
 
   call SNESGetKSP(option%snes, option%ksp, ierr)
-  call KSPSetTolerances(option%ksp,option%rtol,option%atol,option%dtol, &
+  call KSPSetTolerances(option%ksp,solver%rtol,solver%atol,solver%dtol, &
       10000,ierr)
 
+  if (option%myrank == 0) write(*,'("  Finished setting up of SNES ")')
+ 
+  ! Calculate cell volumes for local cells.
+  call computeCellVolumes(grid,option)
+
+! set initial conditions by region for pressure, temperature, saturation
+! and concentration
+
+#if 0
+  if (grid%use_mph == PETSC_TRUE) then
+    call pflow_mphase_setupini(grid)
+  else if (grid%use_flash == PETSC_TRUE) then
+    call pflow_flash_setupini(grid)
+  else if (grid%use_richards == PETSC_TRUE) then
+#endif  
+  if (option%use_richards == PETSC_TRUE) then
+    call pflow_richards_setupini(solution)
+#if 0
+  else if (grid%use_owg == PETSC_TRUE) then
+    call pflow_owg_setupini(grid)
+  else if (grid%use_vadose == PETSC_TRUE) then
+    call pflow_vadose_setupini(grid)
+  else 
+    call VecGetArrayF90(grid%pressure,pressure_p,ierr)
+    call VecGetArrayF90(grid%temp,temp_p,ierr)
+    call VecGetArrayF90(grid%sat,sat_p,ierr)
+    if (grid%ndof == 3) call VecGetArrayF90(grid%conc,conc_p,ierr)
+    if (grid%ndof == 4) call VecGetArrayF90(grid%xmol,xmol_p,ierr)
+    
+!GEH - Structured Grid Dependence - Begin
+    do ir = 1,grid%iregini
+      kk1 = grid%k1ini(ir) - grid%nzs
+      kk2 = grid%k2ini(ir) - grid%nzs
+      jj1 = grid%j1ini(ir) - grid%nys
+      jj2 = grid%j2ini(ir) - grid%nys
+      ii1 = grid%i1ini(ir) - grid%nxs
+      ii2 = grid%i2ini(ir) - grid%nxs
+
+      kk1 = max(1,kk1)
+      kk2 = min(grid%nlz,kk2)
+      jj1 = max(1,jj1)
+      jj2 = min(grid%nly,jj2)
+      ii1 = max(1,ii1)
+      ii2 = min(grid%nlx,ii2)
+
+      if (ii1 > ii2 .or. jj1 > jj2 .or. kk1 > kk2) cycle
+
+      do k = kk1,kk2
+        do j = jj1,jj2
+          do i = ii1,ii2
+            n = i+(j-1)*grid%nlx+(k-1)*grid%nlxy
+!GEH - Structured Grid Dependence - End
+
+            jn1 = 1+n*grid%nphase-1
+            jn2 = 2+n*grid%nphase-1
+
+            pressure_p(jn1) = grid%pres_ini(ir)
+            if (grid%nphase>1) pressure_p(jn2) = grid%pres_ini(ir)
+
+            temp_p(n) = grid%temp_ini(ir)
+
+            sat_p(jn1) = grid%sat_ini(ir)
+            if (grid%nphase>1) sat_p(jn2) = 1.d0 - grid%sat_ini(ir)
+
+            if (grid%ndof == 3) conc_p(n) = grid%conc_ini(i)
+            if (grid%ndof == 4) xmol_p(jn2) = grid%conc_ini(i)
+          enddo
+        enddo
+      enddo
+    enddo
+    call VecRestoreArrayF90(grid%pressure,pressure_p,ierr)
+    call VecRestoreArrayF90(grid%temp,temp_p,ierr)
+    call VecRestoreArrayF90(grid%sat,sat_p,ierr)
+    if (grid%ndof == 3) call VecRestoreArrayF90(grid%conc,conc_p,ierr)
+    if (grid%ndof == 4) call VecRestoreArrayF90(grid%xmol,xmol_p,ierr)
+
+!end added by geh
+
+#endif
+ 
+  endif 
+
+#if 0 
+  ! set hydrostatic properties for initial and boundary conditions with depth
+  if (option%ihydrostatic == 1) then
+    if (option%use_mph == PETSC_TRUE .or. option%use_vadose == PETSC_TRUE &
+     .or. option%use_flash == PETSC_TRUE .or. option%use_richards == PETSC_TRUE) then
+!     print *,'in hydro'
+      call mhydrostatic(grid)
+    elseif (grid%use_owg == PETSC_TRUE) then
+!     print *,'in hydro'
+      call owghydrostatic(grid)
+    else
+      call hydrostatic(grid)
+    endif
+  endif
+#endif  
+  !if (grid%iread_init==2) call Read_init_field(grid)
+  
+  if (option%use_2ph == PETSC_TRUE) then
+    option%pressurebc0(2,:) = option%pressurebc0(1,:)
+    option%velocitybc0(2,:) = option%velocitybc0(1,:)
+  endif
+
+!GEH - Structured Grid Dependence - Begin
+  deallocate(option%k1ini)
+  deallocate(option%k2ini)
+  deallocate(option%j1ini)
+  deallocate(option%j2ini)
+  deallocate(option%i1ini)
+  deallocate(option%i2ini)
+!GEH - Structured Grid Dependence - End
+
+  if (option%use_mph == PETSC_TRUE .or. option%use_owg==PETSC_TRUE &
+      .or. option%use_vadose == PETSC_TRUE .or. option%use_flash == PETSC_TRUE&
+      .or. option%use_richards == PETSC_TRUE) then
+    deallocate(option%xx_ini)
+    deallocate(option%iphas_ini)
+  else 
+    deallocate(option%pres_ini)
+    deallocate(option%temp_ini)
+    deallocate(option%sat_ini)
+    deallocate(option%xmol_ini)
+    deallocate(option%conc_ini)
+  endif
+! print *,'deallocate ini'
+
+!************End of initial Condition Setup ***********************
+
+  if (option%use_mph == PETSC_TRUE .or. option%use_owg == PETSC_TRUE &
+      .or. option%use_vadose == PETSC_TRUE .or. option%use_flash == PETSC_TRUE&
+      .or. option%use_richards == PETSC_TRUE) then
+    allocate(option%varbc(1:(option%ndof+1)*(2+7*option%nphase + 2 *  &
+                                       option%nphase*option%nspec)))
+  else  
+    allocate(option%density_bc(option%nphase))
+    allocate(option%d_p_bc(option%nphase))
+    allocate(option%d_t_bc(option%nphase))
+    allocate(option%d_c_bc(option%nphase))
+    allocate(option%d_s_bc(option%nphase))
+    allocate(option%avgmw_bc(option%nphase))
+    allocate(option%avgmw_c_bc(option%nphase*option%npricomp))
+    allocate(option%hh_bc(option%nphase))
+    allocate(option%h_p_bc(option%nphase))
+    allocate(option%h_t_bc(option%nphase))
+    allocate(option%h_c_bc(option%nphase*option%npricomp))
+    allocate(option%h_s_bc(option%nphase))
+    allocate(option%uu_bc(option%nphase))
+    allocate(option%u_p_bc(option%nphase))
+    allocate(option%u_t_bc(option%nphase))
+    allocate(option%u_c_bc(option%nphase*option%npricomp))
+    allocate(option%u_s_bc(option%nphase))
+    allocate(option%df_bc(option%nphase*option%nspec))
+    allocate(option%df_p_bc(option%nphase*option%nspec))
+    allocate(option%df_t_bc(option%nphase*option%nspec))
+    allocate(option%df_c_bc(option%nphase*option%nspec*option%npricomp))
+    allocate(option%df_s_bc(option%nphase*option%nspec))
+    allocate(option%hen_bc(option%nphase*option%nspec))
+    allocate(option%hen_p_bc(option%nphase*option%nspec))
+    allocate(option%hen_t_bc(option%nphase*option%nspec))
+    allocate(option%hen_c_bc(option%nphase*option%nspec*option%npricomp))
+    allocate(option%hen_s_bc(option%nphase*option%nspec))
+    allocate(option%viscosity_bc(option%nphase))
+    allocate(option%v_p_bc(option%nphase))
+    allocate(option%v_t_bc(option%nphase))
+    allocate(option%pc_bc(option%nphase))
+    allocate(option%pc_p_bc(option%nphase))
+    allocate(option%pc_t_bc(option%nphase))
+    allocate(option%pc_c_bc(option%nphase*option%npricomp))
+    allocate(option%pc_s_bc(option%nphase))
+    allocate(option%kvr_bc(option%nphase))
+    allocate(option%kvr_p_bc(option%nphase))
+    allocate(option%kvr_t_bc(option%nphase))
+    allocate(option%kvr_c_bc(option%nphase*option%npricomp))
+    allocate(option%kvr_s_bc(option%nphase))
+  endif
+
+  call computeBoundaryConnectivity(grid,option)
+   
+  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-print_bcinfo", &
+                           option_found, ierr)
+  if(option_found == PETSC_TRUE) then
+    if (option%myrank == 0) print *, 'Someone will have to rewrite print_bcinfo'
+#if 0
+    do nc=1,grid%nconnbc
+      print *, 'BC:', nc, grid%areabc(nc),grid%distbc(nc),  grid%mblkbc(nc) 
+    enddo
+#endif    
+  endif
+
+  !-----------------------------------------------------------------------
+  ! Allocate boundary condition arrays
+  !-----------------------------------------------------------------------
+  i = grid%boundary_connection_list%first%num_connections
+  allocate(option%velocitybc(option%nphase,i))
+  if (option%use_mph == PETSC_TRUE .or. option%use_owg==PETSC_TRUE &
+      .or. option%use_vadose == PETSC_TRUE .or. option%use_flash == PETSC_TRUE&
+      .or. option%use_richards == PETSC_TRUE) then
+    allocate(option%xxbc(option%ndof,i))
+    allocate(option%iphasebc(i))
+    allocate(option%xphi_co2_bc(i))
+    allocate(option%xxphi_co2_bc(i))
+
+    do nc = 1, i
+      ibc = option%ibconn(nc)
+      option%xxbc(:,nc)=option%xxbc0(:,ibc)
+      option%iphasebc(nc)=option%iphasebc0(ibc)
+      option%velocitybc(:,nc) = option%velocitybc0(:,ibc)
+    enddo
+    if (option%using_pflowGrid == PETSC_FALSE) then
+      deallocate(option%xxbc0)
+      deallocate(option%iphasebc0)
+    endif
+    if (option%iread_init==2) call Boundary_adjustment(grid)
+  
+  else
+ !   allocate(option%velocitybc(option%nphase, option%nconnbc))
+    allocate(option%pressurebc(option%nphase,i))
+    allocate(option%tempbc(i))
+    allocate(option%sgbc(i))
+    allocate(option%concbc(i))
+    allocate(option%xphi_co2_bc(i))
+    allocate(option%xxphi_co2_bc(i))
+      
+    ! initialize
+    option%pressurebc = 0.d0
+    option%tempbc = 0.d0
+    option%concbc = 0.d0
+    option%sgbc = 0.d0
+    option%velocitybc = 0.d0
+      
+    do nc = 1, i
+      ibc = option%ibconn(nc)
+      option%pressurebc(:,nc) = option%pressurebc0(:,ibc)
+      option%tempbc(nc)       = option%tempbc0(ibc)
+      option%concbc(nc)       = option%concbc0(ibc)
+      option%sgbc(nc)         = option%sgbc0(ibc)
+      option%velocitybc(:,nc) = option%velocitybc0(:,ibc)
+        
+    enddo
+     
+    deallocate(option%pressurebc0)
+    deallocate(option%tempbc0)
+    deallocate(option%concbc0)
+    deallocate(option%sgbc0)
+  endif
+  deallocate(option%velocitybc0)
+
+  if (option%ihydrostatic == 2) then
+    if (option%use_mph == PETSC_TRUE .or. &
+        option%use_vadose == PETSC_TRUE .or. &
+        option%use_flash == PETSC_TRUE .or. &
+        option%use_richards == PETSC_TRUE) then
+      ! print *,'in nhydro'
+      print *, 'fix nhydrostatic'
+      stop
+#if 0      
+      call nhydrostatic(grid)
+      ! print *,'out nhydro'
+#endif      
+    endif
+  endif
+
+#if 0
+  call DACreateNaturalVector(grid%da_1_dof,temp0_nat_vec,ierr)
+
+! set capillary index, thermal index, porosity and permeability by region
+!begin added by geh
+  iseed = 345678912
+  call VecGetArrayF90(grid%ttemp,temp_p,ierr)
+  do na=0,grid%nmax
+
+    random_nr = 1.d0
+    if (grid%ran_fac > 0.d0) random_nr = ran1(na+1)
+
+!GEH - Structured Grid Dependence - Begin
+    k= int(na/grid%nxy) - grid%nzs
+    j= int(mod(na,grid%nxy)/grid%nx) - grid%nys
+    i= mod(mod(na,grid%nxy),grid%nx) - grid%nxs
+
+    if (k>=0 .and. k < grid%nlz .and. &
+        j>=0 .and. j < grid%nly .and. &
+        i>=0 .and. i < grid%nlx) then
+      temp_p(i+1+j*grid%nlx+k*grid%nlxy) = random_nr
+    endif
+!GEH - Structured Grid Dependence - End
+
+  enddo
+  
+  call VecRestoreArrayF90(grid%ttemp,temp_p,ierr)
+  call VecGetArrayF90(grid%ttemp,ran_p,ierr)
+  call VecGetArrayF90(grid%icap,icap_p,ierr)
+  call VecGetArrayF90(grid%ithrm,ithrm_p,ierr)
+  call VecGetArrayF90(grid%porosity,por_p,ierr)
+  call VecGetArrayF90(grid%porosity0,por0_p,ierr)
+  call VecGetArrayF90(grid%perm_xx,perm_xx_p,ierr)
+  call VecGetArrayF90(grid%perm_yy,perm_yy_p,ierr)
+  call VecGetArrayF90(grid%perm_zz,perm_zz_p,ierr)
+  call VecGetArrayF90(grid%perm_pow,perm_pow_p,ierr)
+  call VecGetArrayF90(grid%tor,tor_p,ierr)
+  do ir = 1,grid%iregperm        
+
+    ! in order to keep the random numbers consistent between processor
+    ! decompositions, must loop over ALL indices in perm region
+    
+!GEH - Structured Grid Dependence - Begin
+    do k=grid%k1reg(ir),grid%k2reg(ir)
+      do j=grid%j1reg(ir),grid%j2reg(ir)
+        do i=grid%i1reg(ir),grid%i2reg(ir)
+!GEH - Structured Grid Dependence - End
+      
+          random_nr=1.D0
+          frand = 1.d0
+          if (grid%ran_fac > 0.d0) then
+            frand = ran1(n)
+            random_nr = grid%ran_fac*frand+1.d-6
+          endif
+
+!GEH - Structured Grid Dependence - Begin 
+          if (k > grid%nzs .and. k <= grid%nze .and. &
+              j > grid%nys .and. j <= grid%nye .and. &
+              i > grid%nxs .and. i <= grid%nxe) then
+
+            n = i-grid%nxs+(j-grid%nys-1)*grid%nlx+(k-grid%nzs-1)*grid%nlxy
+!GEH - Structured Grid Dependence - End
+
+            por = grid%por_reg(ir)
+            por0_p(n)=por
+            if (grid%iran_por==1) then
+              por=por*(2.D0**0.666667D0*(frand)**1.5D0)
+              if (por<1D-2) por=1D-2 
+            endif
+            por_p(n)= por
+
+            perm_xx_p(n) = random_nr * grid%perm_reg(ir,1)
+            perm_yy_p(n) = random_nr * grid%perm_reg(ir,2)
+            perm_zz_p(n) = random_nr * grid%perm_reg(ir,3)
+            perm_pow_p(n) = grid%perm_reg(ir,4)
+
+            icap_p(n) = grid%icap_reg(ir)
+            ithrm_p(n) = grid%ithrm_reg(ir)
+            tor_p(n) = grid%tor_reg(ir)
+
+          endif
+        enddo
+      enddo
+    enddo
+  enddo
+ 
+  call VecRestoreArrayF90(grid%ttemp,ran_p,ierr)
+  call VecRestoreArrayF90(grid%icap,icap_p,ierr)
+  call VecRestoreArrayF90(grid%ithrm,ithrm_p,ierr)
+  call VecRestoreArrayF90(grid%porosity,por_p,ierr)
+  call VecRestoreArrayF90(grid%porosity0,por0_p,ierr)
+  
+!GEH - Structured Grid Dependence - Begin
+  call VecRestoreArrayF90(grid%perm_xx,perm_xx_p,ierr)
+  call VecRestoreArrayF90(grid%perm_yy,perm_yy_p,ierr)
+  call VecRestoreArrayF90(grid%perm_zz,perm_zz_p,ierr)
+!GEH - Structured Grid Dependence - End
+
+  call VecRestoreArrayF90(grid%perm_pow,perm_pow_p,ierr)
+  call VecRestoreArrayF90(grid%tor,tor_p,ierr)
+ 
+  call VecDestroy(temp0_nat_vec,ierr)
+
+#endif
+
+#if 0
+  if (grid%iread_perm == 1) then
+    call Read_perm_field(grid)
+  endif
+#endif
+!geh
+  nullify(option%imat)
+
+#if 0
+  if (grid%iread_geom == 1) then
+   ! call ReadUnstructuredGrid(grid)
+    call Read_Geom_field(grid)
+!geh
+!geh
+  else if (grid%iread_geom == 10) then 
+    if (myrank == 0) print *, 'Reading structured grid from hdf5' 
+    allocate(grid%imat(grid%ngmax))  ! allocate material id array
+    call ReadStructuredGridHDF5(grid)
+    
+  else if (grid%iread_geom == -1) then 
+    if (myrank == 0) print *, 'Reading unstructured grid' 
+    allocate(grid%pressurebc(grid%nphase,grid%nconnbc)) 
+
+    allocate(grid%imat(grid%ngmax))  ! allocate material id array
+    grid%imat = 0      
+
+    call ReadUnstructuredGrid(grid) 
+! this call is to set up an array for zeroing inactive and isothermal cells
+    call createRichardsZeroArray(grid)
+!    call pflow_Richards_initadj(grid)  ! not necessary, already init in condition
+!    call pflow_update_richards(grid)
+    
+    ! dump material ids to file in natural ordering
+    call DACreateGlobalVector(grid%da_1_dof,temp_vec,ierr)
+    call VecGetArrayF90(temp_vec,temp_p,ierr)
+    do i=1, grid%nlmax
+      temp_p(i) = grid%imat(grid%nL2G(i))*1.d0      
+    enddo
+    call VecRestoreArrayF90(temp_vec,temp_p,ierr)
+
+
+
+
+!    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'materials.dat',viewer,ierr)
+!    call VecView(temp_vec,viewer,ierr)
+!    call PetscViewerDestroy(viewer,ierr)
+    call VecDestroy(temp_vec,ierr)
+  endif 
+#endif   
+
+#if 0
+!geh - added for parallel input
+  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-read_material", &
+                           option_found, ierr)
+  if (option_found == PETSC_TRUE .and. grid%iread_geom == 0) then
+    allocate(grid%imat(grid%ngmax))  ! allocate material id array
+    grid%imat = 0      
+    call ReadMaterials(grid) 
+    call createRichardsZeroArray(grid)
+  endif
+#endif
+
+  if (option%using_pflowGrid==0) call VecCopy(option%Porosity, option%Porosity0, ierr)
+  call VecCopy(option%perm_xx, option%perm0_xx, ierr) 
+  call VecCopy(option%perm_yy, option%perm0_yy, ierr) 
+  call VecCopy(option%perm_zz, option%perm0_zz, ierr) 
+
+
+  if (option%ihydrostatic == 3) then
+    if (option%use_mph == PETSC_TRUE .or. &
+          option%use_vadose == PETSC_TRUE .or. &
+          option%use_flash == PETSC_TRUE .or. &
+          option%use_richards == PETSC_TRUE) then
+        ! print *,'in nhydro'
+      print *, 'fix nhydrostatic3'
+      stop
+#if 0      
+      call nhydrostatic3(grid)
+      ! print *,'out nhydro'
+#endif        
+    endif
+  endif
+ 
+! Note: VecAssemblyBegin/End needed to run on the Mac - pcl (11/21/03)!
+  call VecAssemblyBegin(option%conc,ierr)
+  call VecAssemblyEnd(option%conc,ierr)
+
+  call VecAssemblyBegin(option%xmol,ierr)
+  call VecAssemblyEnd(option%xmol,ierr)
+! call VecView(grid%conc,PETSC_VIEWER_STDOUT_WORLD,ierr)
+
+  if (option%myrank == 0) write(*,'("  Finished setting up of INIT ")')
+
+  !-----------------------------------------------------------------------
+  ! Initialize field variables
+  !-----------------------------------------------------------------------  
+  if (option%use_mph /= PETSC_TRUE .and. option%use_owg /= PETSC_TRUE &
+          .and. option%use_vadose /= PETSC_TRUE .and. option%use_flash /= PETSC_TRUE&
+          .and. option%use_richards /= PETSC_TRUE) then   
+
+     select case(option%ndof)
+       case(1)
+          call VecCopy(option%pressure, option%ppressure, ierr)
+          call VecCopy(option%temp, option%ttemp, ierr)
+        case(2)
+         call pflow_pack_xx2(option%yy, option%pressure, option%nphase, option%temp, 1, &
+                              ierr)
+          call VecCopy(option%yy, option%xx, ierr)     
+        case(3)
+              call pflow_pack_xx3(option%yy, option%pressure, option%nphase, option%temp, 1, &
+                                option%conc, 1, ierr)
+            call VecCopy(option%yy, option%xx, ierr)      
+      end select
+    endif
+      
+         
+#if 0               
+  if (grid%use_2ph == PETSC_TRUE) then 
+    print *, "2 ph begin var arrange"
+    call pflow_2phase_initadj(grid)
+    print *, "2 ph finish variable initadj"
+    call VecCopy(grid%iphas, grid%iphas_old,ierr)
+    call pflow_pack_xx4(grid%yy, grid%pressure, grid%nphase, grid%temp, 1, &
+         grid%xmol,grid%nphase , grid%sat,grid%nphase , ierr)
+    print *, "2 ph finish variable packing"      
+    call VecCopy(grid%yy, grid%xx, ierr)
+    call pflow_update_2phase(grid)
+    print *, "2 ph finish variable update"
+  endif 
+  
+  if (grid%use_mph == PETSC_TRUE) then 
+    call pflow_mphase_initadj(grid)
+    call VecCopy(grid%iphas, grid%iphas_old,ierr)
+    call VecCopy(grid%xx, grid%yy, ierr)
+!   print *, "m ph finish variable packing"
+    call pflow_update_mphase(grid)
+  endif 
+#endif
+  if (option%use_richards == PETSC_TRUE) then 
+    call pflow_richards_initadj(solution)
+    call VecCopy(option%iphas, option%iphas_old,ierr)
+    call VecCopy(option%xx, option%yy, ierr)
+!geh    call VecView(option%xx,PETSC_VIEWER_STDOUT_WORLD,ierr)
+    if (option%myrank == 0) print *, "richards finish variable packing"
+    call pflow_update_richards(solution)
+  endif 
+#if 0
+  if (grid%use_flash == PETSC_TRUE) then 
+    call pflow_flash_initadj(grid)
+    call VecCopy(grid%iphas, grid%iphas_old,ierr)
+    call VecCopy(grid%xx, grid%yy, ierr)
+    print *, "flash finish variable packing"
+    !call VecView(grid%xx,PETSC_VIEWER_STDOUT_WORLD,ierr)
+    call pflow_update_flash(grid)
+  endif 
+
+  if (grid%use_owg == PETSC_TRUE) then 
+    call pflow_owg_initadj(grid)
+    print*, 'finished owg initadj'
+    call VecCopy(grid%iphas, grid%iphas_old,ierr)
+    call VecCopy(grid%xx, grid%yy, ierr)
+    print *, "OWG finish variable packing"
+    call pflow_update_owg(grid)
+  endif 
+
+  if (grid%use_vadose == PETSC_TRUE) then 
+    call pflow_vadose_initadj(grid)
+    call VecCopy(grid%iphas, grid%iphas_old,ierr)
+    call VecCopy(grid%xx, grid%yy, ierr)
+    print *, "vadose finish variable packing"
+    call pflow_update_vadose(grid)
+   endif 
+#endif
+  
+  
+  
+!  call VecView(grid%xmol,PETSC_VIEWER_STDOUT_WORLD,ierr)
+!  call VecView(grid%yy,PETSC_VIEWER_STDOUT_WORLD,ierr)
+! zero initial velocity
+  call VecSet(option%vl,0.d0,ierr)
+  if (option%using_pflowGrid == PETSC_TRUE) call VecSet(option%vvl,0.d0,ierr)
+ 
+  if (option%myrank == 0) &
+    write(*,'("  Finished setting up of INIT2 ")')
+
+  ! set phase index for each node and initialize accumulation terms
+  call initAccumulation(solution)
+   
+  !initial solid reaction  
+  if (option%rk > 0.d0) then
+    allocate(option%area_var(grid%nlmax))
+    allocate(option%rate(grid%nlmax))
+    call VecGetArrayF90(option%phis,phis_p,ierr)
+    do i = 1, grid%nlmax
+      phis_p(i) = option%phis0
+      option%area_var(i) = 1.d0
+    enddo
+    call VecRestoreArrayF90(option%phis,phis_p,ierr)
+  endif
+
+
+   
+  
+  if (option%myrank == 0) write(*,'("  Finished setting up ")')
   
 
- if (option%myrank == 0) write(*,'("  Finished setting up of SNES ")')
 
 
   
@@ -1094,11 +1661,7 @@ subroutine readSelectCardsFromInput(solution,filename,mcomp,mphas)
   
   integer :: igeom
   
-  grid => solution%grid
   option => solution%option
-  
-  call MPI_Comm_rank(PETSC_COMM_WORLD,option%myrank, ierr)
-  call MPI_Comm_size(PETSC_COMM_WORLD,option%commsize,ierr)
   
   open(IUNIT1, file=filename, action="read", status="old") 
   open(IUNIT2, file='pflow.out', action="write", status="unknown")
@@ -1121,7 +1684,8 @@ subroutine readSelectCardsFromInput(solution,filename,mcomp,mphas)
   call fiReadInt(string,igeom,ierr)
   call fiDefaultMsg('igeom',ierr)
   
-  grid => createGrid(igeom) 
+  solution%grid => createGrid(igeom) 
+  grid => solution%grid
 
   if (grid%is_structured) then ! structured
     call fiReadInt(string,grid%structured_grid%nx,ierr)
@@ -1184,32 +1748,31 @@ subroutine readSelectCardsFromInput(solution,filename,mcomp,mphas)
     string = "PROC"
     call fiFindStringInFile(IUNIT1,string,ierr)
 
-    if (ierr /= 0) then
+    if (ierr == 0) then
 
       ! strip card from front of string
       call fiReadWord(string,word,.false.,ierr)
-      call fiReadInt(string,grid%structured_grid%nx,ierr)
+      call fiReadInt(string,grid%structured_grid%npx,ierr)
       call fiDefaultMsg('npx',ierr)
-      call fiReadInt(string,grid%structured_grid%ny,ierr)
+      call fiReadInt(string,grid%structured_grid%npy,ierr)
       call fiDefaultMsg('npy',ierr)
-      call fiReadInt(string,grid%structured_grid%nz,ierr)
+      call fiReadInt(string,grid%structured_grid%npz,ierr)
       call fiDefaultMsg('npz',ierr)
  
       if (option%myrank == 0) &
         write(IUNIT2,'(/," *PROC",/, &
           & "  npx   = ",3x,i4,/, &
           & "  npy   = ",3x,i4,/, &
-          & "  npz   = ",3x,i4)') grid%structured_grid%nx, &
-            grid%structured_grid%ny, grid%structured_grid%nz
+          & "  npz   = ",3x,i4)') grid%structured_grid%npx, &
+            grid%structured_grid%npy, grid%structured_grid%npz
   
-        call MPI_Comm_size(PETSC_COMM_WORLD,option%commsize,ierr)
-        if (option%commsize /= grid%structured_grid%nx * &
-                                 grid%structured_grid%ny * &
-                                 grid%structured_grid%nz) then
-          if (option%myrank==0) &
-            write(*,*) 'Incorrect number of processors specified: ', &
-                       grid%structured_grid%nx*grid%structured_grid%ny* &
-                       grid%structured_grid%nz,' commsize = ',option%commsize
+      if (option%commsize /= grid%structured_grid%npx * &
+                             grid%structured_grid%npy * &
+                             grid%structured_grid%npz) then
+        if (option%myrank==0) &
+          write(*,*) 'Incorrect number of processors specified: ', &
+                       grid%structured_grid%npx*grid%structured_grid%npy* &
+                       grid%structured_grid%npz,' commsize = ',option%commsize
         stop
       endif
     endif
@@ -1221,7 +1784,7 @@ subroutine readSelectCardsFromInput(solution,filename,mcomp,mphas)
   string = "COMP"
   call fiFindStringInFile(IUNIT1,string,ierr)
 
-  if (ierr /= 0) then
+  if (ierr == 0) then
 
     mcomp = 0
     do
@@ -1260,7 +1823,7 @@ subroutine readSelectCardsFromInput(solution,filename,mcomp,mphas)
   string = "PHAS"
   call fiFindStringInFile(IUNIT1,string,ierr)
 
-  if (ierr /= 0) then
+  if (ierr == 0) then
 
     mphas = 0
     do
@@ -1344,6 +1907,8 @@ subroutine readInput(simulation,filename)
   grid => solution%grid
   option => solution%option
   solver => simulation%stepper%solver
+    
+  rewind(IUNIT1)  
     
   do
     call fiReadFlotranString(IUNIT1, string, ierr)
@@ -2683,5 +3248,78 @@ subroutine readInput(simulation,filename)
   close(IUNIT1)
   
 end subroutine readInput
+
+! ************************************************************************** !
+!
+! initAccumulation: Initializes accumulation term?
+! author: Glenn Hammond
+! date: 10/25/07
+!
+! ************************************************************************** !
+subroutine initAccumulation(solution)
+
+  use water_eos_module
+  use TTPHASE_module
+  use Flash_module
+  use MPHASE_module
+  use OWG_module
+  use Vadose_module
+  use Richards_module
+  
+  use Solution_module
+
+  type(solution_type) :: solution
+  real*8, pointer :: den_p(:), pressure_p(:), temp_p(:), h_p(:)
+  real*8 :: dw_kg,dl,hl
+  integer :: m, ierr
+
+#if 0
+  if ( grid%use_owg == PETSC_TRUE) then
+    call pflow_owg_initaccum(grid)
+  else if (grid%use_mph == PETSC_TRUE) then
+    call pflow_mphase_initaccum(grid)
+  else if (grid%use_richards == PETSC_TRUE) then
+#endif    
+  if (grid%use_richards == PETSC_TRUE) then
+    call pflow_richards_initaccum(solution)
+#if 0    
+  else if (grid%use_flash == PETSC_TRUE) then
+    call pflow_flash_initaccum(grid)
+  else if (grid%use_vadose == PETSC_TRUE) then
+    call pflow_vadose_initaccum(grid)
+  else if (grid%use_2ph == PETSC_TRUE) then
+    call pflow_2phase_initaccum(grid)
+  else if (grid%ndof > 1) then
+ !   call VecSet(grid%iphas,1.d0,ierr)
+    call VecGetArrayF90(grid%pressure, pressure_p, ierr)
+    call VecGetArrayF90(grid%temp, temp_p, ierr)
+    call VecGetArrayF90(grid%density, den_p, ierr)
+    call VecGetArrayF90(grid%h, h_p, ierr)
+    do m = 1, grid%nlmax
+      call wateos_noderiv(temp_p(m),pressure_p(m),dw_kg,dl,hl,grid%scale,ierr)
+      den_p(m) = dl
+      h_p(m) = hl
+    enddo
+    call VecRestoreArrayF90(grid%pressure, pressure_p, ierr)
+    call VecRestoreArrayF90(grid%temp, temp_p, ierr)
+    call VecRestoreArrayF90(grid%density, den_p, ierr)
+    call VecRestoreArrayF90(grid%h, h_p, ierr)
+
+  else
+
+    call VecGetArrayF90(grid%pressure, pressure_p, ierr)
+    call VecGetArrayF90(grid%temp, temp_p, ierr)
+    call VecGetArrayF90(grid%density, den_p, ierr)
+    do m = 1, grid%nlmax
+      call wateos_noderiv(temp_p(m),pressure_p(m),dw_kg,dl,hl,grid%scale,ierr)
+      den_p(m) = dl
+    enddo
+    call VecRestoreArrayF90(grid%pressure, pressure_p, ierr)
+    call VecRestoreArrayF90(grid%temp, temp_p, ierr)
+    call VecRestoreArrayF90(grid%density, den_p, ierr)
+#endif
+  endif
+  
+end subroutine initAccumulation
 
 end module Init_module

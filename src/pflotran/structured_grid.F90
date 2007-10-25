@@ -73,7 +73,8 @@ module Structured_Grid_module
             createStructuredGridColoring, &
             DMStructGlobalToLocal, &
             DMStructGlobalToNatural, &
-            readStructuredDXYZ
+            readStructuredDXYZ, &
+            computeStructuredCellVolumes
 
 contains
 
@@ -438,6 +439,9 @@ subroutine computeStructuredGridCoordinates(structured_grid,option, &
   structured_grid%x_min = 0.d0
   structured_grid%y_min = 0.d0
   structured_grid%z_min = 0.d0
+  structured_grid%x_max = 0.d0
+  structured_grid%y_max = 0.d0
+  structured_grid%z_max = 0.d0
   do i=1,structured_grid%nx
     structured_grid%x_max = structured_grid%x_max + structured_grid%dx0(i)
   enddo
@@ -781,6 +785,63 @@ function computeStructBoundaryConnect(structured_grid,option,ibconn,nL2G)
   computeStructBoundaryConnect => connections
   
 end function computeStructBoundaryConnect
+
+! ************************************************************************** !
+!
+! computeStructuredCellVolumes: Computes the volumes of cells in structured grid
+! author: Glenn Hammond
+! date: 10/25/07
+!
+! ************************************************************************** !
+subroutine computeStructuredCellVolumes(structured_grid,option,nL2G)
+
+  use Option_module
+  
+  implicit none
+  
+  type(structured_grid_type) :: structured_grid
+  type(option_type) :: option
+  integer :: nL2G(:)
+  
+  real*8, parameter :: Pi=3.1415926d0
+  
+  integer :: i, n, ng
+  PetscScalar, pointer :: volume_p(:), dx_loc_p(:), dy_loc_p(:), dz_loc_p(:)
+  PetscErrorCode :: ierr
+  
+  call VecGetArrayF90(option%volume,volume_p, ierr)
+  call VecGetArrayF90(structured_grid%dx_loc,dx_loc_p,ierr)
+  call VecGetArrayF90(structured_grid%dy_loc,dy_loc_p,ierr)
+  call VecGetArrayF90(structured_grid%dz_loc,dz_loc_p,ierr)
+  do n=1, structured_grid%nlmax
+    ng = nL2G(n)
+    if (structured_grid%igeom == 1) then
+      volume_p(n) = dx_loc_p(ng) * dy_loc_p(ng) * dz_loc_p(ng)
+    else if (structured_grid%igeom == 2) then
+      i = mod(mod((n),structured_grid%nlxy),structured_grid%nlx)!+(grid%ngxs-grid%nxs)
+      if (i==0) i = structured_grid%nlx
+      volume_p(n) = Pi * (structured_grid%rd(i+structured_grid%nxs) + structured_grid%rd(i-1+structured_grid%nxs))*&
+      (structured_grid%rd(i+structured_grid%nxs) - structured_grid%rd(i-1+structured_grid%nxs)) * dz_loc_p(ng)
+  !   print *, 'setup: Vol ', grid%myrank, n,ng,i, dz_loc_p(ng),grid%rd(i+grid%nxs),volume_p(n)
+    else if (structured_grid%igeom == 3) then
+    endif
+  enddo
+  call VecRestoreArrayF90(option%volume,volume_p, ierr)
+  call VecRestoreArrayF90(structured_grid%dx_loc,dx_loc_p,ierr)
+  call VecRestoreArrayF90(structured_grid%dy_loc,dy_loc_p,ierr)
+  call VecRestoreArrayF90(structured_grid%dz_loc,dz_loc_p,ierr)
+  
+  write(*,'(" rank= ",i3,", nlmax= ",i6,", nlx,y,z= ",3i4, &
+    & ", nxs,e = ",2i4,", nys,e = ",2i4,", nzs,e = ",2i4)') &
+    option%myrank,structured_grid%nlmax,structured_grid%nlx,structured_grid%nly,structured_grid%nlz, &
+    structured_grid%nxs,structured_grid%nxe,structured_grid%nys,structured_grid%nye,structured_grid%nzs,structured_grid%nze
+
+  write(*,'(" rank= ",i3,", ngmax= ",i6,", ngx,y,z= ",3i4, &
+    & ", ngxs,e= ",2i4,", ngys,e= ",2i4,", ngzs,e= ",2i4)') &
+    option%myrank,structured_grid%ngmax,structured_grid%ngx,structured_grid%ngy,structured_grid%ngz, &
+    structured_grid%ngxs,structured_grid%ngxe,structured_grid%ngys,structured_grid%ngye,structured_grid%ngzs,structured_grid%ngze
+
+end subroutine computeStructuredCellVolumes
 
 ! ************************************************************************** !
 !

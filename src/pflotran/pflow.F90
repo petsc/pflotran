@@ -93,6 +93,8 @@
  ! call PetscGetTime(timex_wall(1), ierr)
 
   call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
+  call MPI_Comm_rank(PETSC_COMM_WORLD,option%myrank, ierr)
+  call MPI_Comm_size(PETSC_COMM_WORLD,option%commsize,ierr)
 
 ! Register stages for profiling.
 ! We identify three stages here: setup, output, and cleanup.
@@ -102,7 +104,6 @@
   call PetscLogStageRegister(stage(1), "PFLOW setup", ierr)
   call PetscLogStageRegister(stage(2), "PFLOW output", ierr)
   call PetscLogStageRegister(stage(3), "PFLOW cleanup", ierr)
-  call MPI_Comm_rank(PETSC_COMM_WORLD,option%myrank, ierr)
 
 ! Starting PFLOW setup -- push this onto the log stack.
   call PetscLogStagePush(stage(1), ierr)

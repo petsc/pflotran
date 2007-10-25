@@ -70,7 +70,8 @@ module Grid_module
             DMGlobalToNatural, &
             mapGridIndices, &
             createDMs, &
-            computeGridCoordinates
+            computeGridCoordinates, &
+            computeCellVolumes
   
 contains
 
@@ -205,6 +206,8 @@ subroutine computeInternalConnectivity(grid,option)
       computeUnstructInternalConnect(grid%unstructured_grid,option)
   endif
   
+  allocate(grid%internal_connection_list)
+  call initConnectionList(grid%internal_connection_list)
   call addConnectionToList(connection,grid%internal_connection_list)
   
 end subroutine computeInternalConnectivity
@@ -236,7 +239,9 @@ subroutine computeBoundaryConnectivity(grid,option)
     connection => &
       computeUnstructBoundaryConnect(grid%unstructured_grid,option)
   endif
-  
+
+  allocate(grid%boundary_connection_list)
+  call initConnectionList(grid%boundary_connection_list)  
   call addConnectionToList(connection,grid%boundary_connection_list)
 
 end subroutine computeBoundaryConnectivity
@@ -286,6 +291,29 @@ subroutine computeGridCoordinates(grid,option)
   endif
 
 end subroutine computeGridCoordinates
+
+! ************************************************************************** !
+!
+! computeCellVolumes: Computes the volumes of cells in structured grid
+! author: Glenn Hammond
+! date: 10/25/07
+!
+! ************************************************************************** !
+subroutine computeCellVolumes(grid,option)
+
+  use Option_module
+  
+  implicit none
+  
+  type(grid_type) :: grid
+  type(option_type) :: option
+  
+  if (grid%is_structured) then
+    call computeStructuredCellVolumes(grid%structured_grid,option,grid%nL2G)
+  else
+  endif
+
+end subroutine computeCellVolumes
 
 ! ************************************************************************** !
 !
