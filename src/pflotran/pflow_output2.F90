@@ -70,6 +70,11 @@ subroutine Output(solution,kplot,iplot)
   if (iplot == 1 .and. solution%option%print_tecplot) then
     call OutputTecplot(solution,kplot)
   endif
+  
+  if (iplot == 1) then
+    iplot = 0
+    kplot = kplot + 1
+  endif
 
 end subroutine Output
 
@@ -125,44 +130,43 @@ subroutine OutputTecplot(solution,kplot)
     write(IUNIT3,'(''TITLE = "'',1es12.4," [",a1,'']"'')') &
                  option%t/option%tconv, option%tunit
     ! write variables
-    if (option%use_2ph == PETSC_TRUE .or. option%use_mph == PETSC_TRUE .or. &
-        option%use_vadose == PETSC_TRUE .or. option%use_flash == PETSC_TRUE .or. &
-        option%use_richards == PETSC_TRUE) then
-      string = 'VARIABLES=' // &
-               '"X-Coordinates",' // &
-               '"Y-Coordinates",' // &
-               '"Z-Coordinates",' // &
-               '"Temperature",' // &
-               '"Pressure",' // &
-               '"Liquid Saturation",' // &
-               '"Gas Saturation",' // &
-               '"Liquid Energy",' // &
-               '"Gas Energy",'
-      do i=1,option%nspec
-        write(string2,'(''"Liquid Mole Fraction('',i2,'')",'')') i
-        string = trim(string) // trim(string2)
-      enddo
-      do i=1,option%nspec
-        write(string2,'(''"Gas Mole Fraction('',i2,'')",'')') i
-        string = trim(string) // trim(string2)
-      enddo
-      if (option%rk > 0.d0) then
-        string = trim(string) // '"Volume Fraction",'
-      endif
-      string = trim(string) // '"Phase"'
-    else
-      string = 'VARIABLES=' // &
-               '"X-Coordinates",' // &
-               '"Y-Coordinates",' // &
-               '"Z-Coordinates",' // &
-               '"Temperature",' // &
-               '"Pressure",' // &
-               '"Saturation",' // &
-               '"Concentration"'
-      if (option%rk > 0.d0) then
-        string = trim(string) // ',"Volume Fraction"'
-      endif
-    endif
+    select case(option%imode)
+      case (TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
+        string = 'VARIABLES=' // &
+                 '"X-Coordinates",' // &
+                 '"Y-Coordinates",' // &
+                 '"Z-Coordinates",' // &
+                 '"Temperature",' // &
+                 '"Pressure",' // &
+                 '"Liquid Saturation",' // &
+                 '"Gas Saturation",' // &
+                 '"Liquid Energy",' // &
+                 '"Gas Energy",'
+        do i=1,option%nspec
+          write(string2,'(''"Liquid Mole Fraction('',i2,'')",'')') i
+          string = trim(string) // trim(string2)
+        enddo
+        do i=1,option%nspec
+          write(string2,'(''"Gas Mole Fraction('',i2,'')",'')') i
+          string = trim(string) // trim(string2)
+        enddo
+        if (option%rk > 0.d0) then
+          string = trim(string) // '"Volume Fraction",'
+        endif
+        string = trim(string) // '"Phase"'
+      case default
+        string = 'VARIABLES=' // &
+                 '"X-Coordinates",' // &
+                 '"Y-Coordinates",' // &
+                 '"Z-Coordinates",' // &
+                 '"Temperature",' // &
+                 '"Pressure",' // &
+                 '"Saturation",' // &
+                 '"Concentration"'
+        if (option%rk > 0.d0) then
+          string = trim(string) // ',"Volume Fraction"'
+        endif
+    end select
     write(IUNIT3,'(a)') trim(string)
   
     ! write zone header
@@ -192,92 +196,91 @@ subroutine OutputTecplot(solution,kplot)
   call DMGlobalToNatural(grid,global,natural,ONEDOF)
   call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
 
-  if (option%use_2ph == PETSC_TRUE .or. option%use_mph == PETSC_TRUE .or. &
-      option%use_vadose == PETSC_TRUE .or. option%use_flash == PETSC_TRUE .or. &
-      option%use_richards == PETSC_TRUE) then
+  select case(option%imode)
+    case (TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
 
-    ! temperature
-    call GetVarFromArray(solution,global,TEMPERATURE,0)
-    call DMGlobalToNatural(grid,global,natural,ONEDOF)
-    call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
-
-    ! pressure
-    call GetVarFromArray(solution,global,PRESSURE,0)
-    call DMGlobalToNatural(grid,global,natural,ONEDOF)
-    call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
-
-    ! liquid saturation
-    call GetVarFromArray(solution,global,LIQUID_SATURATION,0)
-    call DMGlobalToNatural(grid,global,natural,ONEDOF)
-    call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
-
-    ! gas saturation
-    call GetVarFromArray(solution,global,GAS_SATURATION,0)
-    call DMGlobalToNatural(grid,global,natural,ONEDOF)
-    call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
-    
-    ! liquid energy
-    call GetVarFromArray(solution,global,LIQUID_ENERGY,0)
-    call DMGlobalToNatural(grid,global,natural,ONEDOF)
-    call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
-    
-    ! gas energy
-    call GetVarFromArray(solution,global,GAS_ENERGY,0)
-    call DMGlobalToNatural(grid,global,natural,ONEDOF)
-    call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
-    
-    ! liquid mole fractions
-    do i=1,option%nspec
-      call GetVarFromArray(solution,global,LIQUID_MOLE_FRACTION,i-1)
+      ! temperature
+      call GetVarFromArray(solution,global,TEMPERATURE,0)
       call DMGlobalToNatural(grid,global,natural,ONEDOF)
       call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
-    enddo
-    
-    ! gas mole fractions
-    do i=1,option%nspec
-      call GetVarFromArray(solution,global,GAS_MOLE_FRACTION,i-1)
+
+      ! pressure
+      call GetVarFromArray(solution,global,PRESSURE,0)
       call DMGlobalToNatural(grid,global,natural,ONEDOF)
       call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
-    enddo
-    
-    ! Volume Fraction
-    if (option%rk > 0.d0) then
-      call GetVarFromArray(solution,global,VOLUME_FRACTION,0)
+
+      ! liquid saturation
+      call GetVarFromArray(solution,global,LIQUID_SATURATION,0)
       call DMGlobalToNatural(grid,global,natural,ONEDOF)
       call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
-    endif
+
+      ! gas saturation
+      call GetVarFromArray(solution,global,GAS_SATURATION,0)
+      call DMGlobalToNatural(grid,global,natural,ONEDOF)
+      call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
     
-    ! phase
-    call GetVarFromArray(solution,global,PHASE,0)
-    call DMGlobalToNatural(grid,global,natural,ONEDOF)
-    call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_INTEGER)
+      ! liquid energy
+      call GetVarFromArray(solution,global,LIQUID_ENERGY,0)
+      call DMGlobalToNatural(grid,global,natural,ONEDOF)
+      call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
+    
+      ! gas energy
+      call GetVarFromArray(solution,global,GAS_ENERGY,0)
+      call DMGlobalToNatural(grid,global,natural,ONEDOF)
+      call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
+    
+      ! liquid mole fractions
+      do i=1,option%nspec
+        call GetVarFromArray(solution,global,LIQUID_MOLE_FRACTION,i-1)
+        call DMGlobalToNatural(grid,global,natural,ONEDOF)
+        call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
+      enddo
+    
+      ! gas mole fractions
+      do i=1,option%nspec
+        call GetVarFromArray(solution,global,GAS_MOLE_FRACTION,i-1)
+        call DMGlobalToNatural(grid,global,natural,ONEDOF)
+        call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
+      enddo
+    
+      ! Volume Fraction
+      if (option%rk > 0.d0) then
+        call GetVarFromArray(solution,global,VOLUME_FRACTION,0)
+        call DMGlobalToNatural(grid,global,natural,ONEDOF)
+        call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
+      endif
+    
+      ! phase
+      call GetVarFromArray(solution,global,PHASE,0)
+      call DMGlobalToNatural(grid,global,natural,ONEDOF)
+      call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_INTEGER)
   
-  else
+    case default
   
-    ! temperature
-    call DMGlobalToNatural(grid,option%temp,natural,ONEDOF)
-    call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
-
-    ! pressure
-    call DMGlobalToNatural(grid,option%pressure,natural,ONEDOF)
-    call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
-
-    ! saturation
-    call DMGlobalToNatural(grid,option%sat,natural,ONEDOF)
-    call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
-
-    ! concentration
-    call DMGlobalToNatural(grid,option%conc,natural,ONEDOF)
-    call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
-
-    ! volume fraction
-    if (option%rk > 0.d0) then
-      call GetVarFromArray(solution,global,VOLUME_FRACTION,0)
-      call DMGlobalToNatural(grid,global,natural,ONEDOF)
+      ! temperature
+      call DMGlobalToNatural(grid,option%temp,natural,ONEDOF)
       call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
-    endif
+
+      ! pressure
+      call DMGlobalToNatural(grid,option%pressure,natural,ONEDOF)
+      call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
+
+      ! saturation
+      call DMGlobalToNatural(grid,option%sat,natural,ONEDOF)
+      call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
+
+      ! concentration
+      call DMGlobalToNatural(grid,option%conc,natural,ONEDOF)
+      call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
+
+      ! volume fraction
+      if (option%rk > 0.d0) then
+        call GetVarFromArray(solution,global,VOLUME_FRACTION,0)
+        call DMGlobalToNatural(grid,global,natural,ONEDOF)
+        call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
+      endif
     
-  endif
+  end select
   
   call VecDestroy(natural,ierr)
   call VecDestroy(global,ierr)
@@ -1031,89 +1034,88 @@ subroutine OutputHDF5(solution)
   ! write out data sets 
   call createPetscVector(grid,ONEDOF,global,GLOBAL)   
 
-  if (option%use_2ph == PETSC_TRUE .or. option%use_mph == PETSC_TRUE .or. &
-      option%use_vadose == PETSC_TRUE .or. option%use_flash == PETSC_TRUE .or. &
-      option%use_richards == PETSC_TRUE) then
+  select case(option%imode)
   
-    ! temperature
-    call GetVarFromArray(solution,global,TEMPERATURE,0)
-    string = "Temperature"
-    call WriteHDF5DataSetFromVec(string,solution,global,grp_id,H5T_NATIVE_DOUBLE)
-
-    ! pressure
-    call GetVarFromArray(solution,global,PRESSURE,0)
-    string = "Pressure"
-    call WriteHDF5DataSetFromVec(string,solution,global,grp_id,H5T_NATIVE_DOUBLE)
-
-    ! liquid saturation
-    call GetVarFromArray(solution,global,LIQUID_SATURATION,0)
-    string = "Liquid Saturation"
-    call WriteHDF5DataSetFromVec(string,solution,global,grp_id,H5T_NATIVE_DOUBLE)  
-
-    ! gas saturation
-    call GetVarFromArray(solution,global,GAS_SATURATION,0)
-    string = "Gas Saturation"
-    call WriteHDF5DataSetFromVec(string,solution,global,grp_id,H5T_NATIVE_DOUBLE) 
-    
-    ! liquid energy
-    call GetVarFromArray(solution,global,LIQUID_ENERGY,0)
-    string = "Liquid Energy"
-    call WriteHDF5DataSetFromVec(string,solution,global,grp_id,H5T_NATIVE_DOUBLE) 
-    
-    ! gas energy
-    call GetVarFromArray(solution,global,GAS_ENERGY,0)
-    string = "Gas Energy"
-    call WriteHDF5DataSetFromVec(string,solution,global,grp_id,H5T_NATIVE_DOUBLE) 
-    
-    ! liquid mole fractions
-    do i=1,option%nspec
-      call GetVarFromArray(solution,global,LIQUID_MOLE_FRACTION,i-1)
-      write(string,'(''Liquid Mole Fraction('',i4,'')'')') i
+    case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
+ 
+      ! temperature
+      call GetVarFromArray(solution,global,TEMPERATURE,0)
+      string = "Temperature"
       call WriteHDF5DataSetFromVec(string,solution,global,grp_id,H5T_NATIVE_DOUBLE)
-    enddo
-    
-    ! gas mole fractions
-    do i=1,option%nspec
-      call GetVarFromArray(solution,global,GAS_MOLE_FRACTION,i-1)
-      write(string,'(''Gas Mole Fraction('',i4,'')'')') i
+
+      ! pressure
+      call GetVarFromArray(solution,global,PRESSURE,0)
+      string = "Pressure"
       call WriteHDF5DataSetFromVec(string,solution,global,grp_id,H5T_NATIVE_DOUBLE)
-    enddo
+
+      ! liquid saturation
+      call GetVarFromArray(solution,global,LIQUID_SATURATION,0)
+      string = "Liquid Saturation"
+      call WriteHDF5DataSetFromVec(string,solution,global,grp_id,H5T_NATIVE_DOUBLE)  
+
+      ! gas saturation
+      call GetVarFromArray(solution,global,GAS_SATURATION,0)
+      string = "Gas Saturation"
+      call WriteHDF5DataSetFromVec(string,solution,global,grp_id,H5T_NATIVE_DOUBLE) 
     
-    ! Volume Fraction
-    if (option%rk > 0.d0) then
-      call GetVarFromArray(solution,global,VOLUME_FRACTION,0)
-      string = "Volume Fraction"
-      call WriteHDF5DataSetFromVec(string,solution,global,grp_id,H5T_NATIVE_DOUBLE)
-    endif
+      ! liquid energy
+      call GetVarFromArray(solution,global,LIQUID_ENERGY,0)
+      string = "Liquid Energy"
+      call WriteHDF5DataSetFromVec(string,solution,global,grp_id,H5T_NATIVE_DOUBLE) 
     
-    ! phase
-    call GetVarFromArray(solution,global,PHASE,0)
-    string = "Phase"
-    call WriteHDF5DataSetFromVec(string,solution,global,grp_id,H5T_NATIVE_INTEGER) 
+      ! gas energy
+      call GetVarFromArray(solution,global,GAS_ENERGY,0)
+      string = "Gas Energy"
+      call WriteHDF5DataSetFromVec(string,solution,global,grp_id,H5T_NATIVE_DOUBLE) 
+    
+      ! liquid mole fractions
+      do i=1,option%nspec
+        call GetVarFromArray(solution,global,LIQUID_MOLE_FRACTION,i-1)
+        write(string,'(''Liquid Mole Fraction('',i4,'')'')') i
+        call WriteHDF5DataSetFromVec(string,solution,global,grp_id,H5T_NATIVE_DOUBLE)
+      enddo
+    
+      ! gas mole fractions
+      do i=1,option%nspec
+        call GetVarFromArray(solution,global,GAS_MOLE_FRACTION,i-1)
+        write(string,'(''Gas Mole Fraction('',i4,'')'')') i
+        call WriteHDF5DataSetFromVec(string,solution,global,grp_id,H5T_NATIVE_DOUBLE)
+      enddo
+    
+      ! Volume Fraction
+      if (option%rk > 0.d0) then
+        call GetVarFromArray(solution,global,VOLUME_FRACTION,0)
+        string = "Volume Fraction"
+        call WriteHDF5DataSetFromVec(string,solution,global,grp_id,H5T_NATIVE_DOUBLE)
+      endif
+    
+      ! phase
+      call GetVarFromArray(solution,global,PHASE,0)
+      string = "Phase"
+      call WriteHDF5DataSetFromVec(string,solution,global,grp_id,H5T_NATIVE_INTEGER) 
   
-  else
+    case default
+      ! temperature
+      string = "Temperature"
+      call WriteHDF5DataSetFromVec(string,solution,option%temp,grp_id, &
+                                   H5T_NATIVE_DOUBLE)
+
+      ! pressure
+      string = "Pressure"
+      call WriteHDF5DataSetFromVec(string,solution,option%pressure,grp_id, &
+                                   H5T_NATIVE_DOUBLE)
+
+      ! saturation
+      string = "Saturation"
+      call WriteHDF5DataSetFromVec(string,solution,option%sat,grp_id,H5T_NATIVE_DOUBLE)
+
+      ! concentration
+      string = "Concentration"
+      call WriteHDF5DataSetFromVec(string,solution,option%conc,grp_id, &
+                                   H5T_NATIVE_DOUBLE)
+
+  end select
   
-    ! temperature
-    string = "Temperature"
-    call WriteHDF5DataSetFromVec(string,solution,option%temp,grp_id, &
-                                 H5T_NATIVE_DOUBLE)
-
-    ! pressure
-    string = "Pressure"
-    call WriteHDF5DataSetFromVec(string,solution,option%pressure,grp_id, &
-                                 H5T_NATIVE_DOUBLE)
-
-    ! saturation
-    string = "Saturation"
-    call WriteHDF5DataSetFromVec(string,solution,option%sat,grp_id,H5T_NATIVE_DOUBLE)
-
-    ! concentration
-    string = "Concentration"
-    call WriteHDF5DataSetFromVec(string,solution,option%conc,grp_id, &
-                                 H5T_NATIVE_DOUBLE)
-
-  endif
-
   if (option%print_hdf5_velocities) then
 
     ! velocities

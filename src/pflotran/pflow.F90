@@ -109,19 +109,9 @@
   call PetscLogStagePush(stage(1), ierr)
   
   call PetscOptionsGetString(PETSC_NULL_CHARACTER, "-pflowin", &
-    pflowin, option_found, ierr)
+                             pflowin, option_found, ierr)
   if(option_found /= PETSC_TRUE) pflowin = "pflow.in"
   
-  ntstep=1
-  iflgcut = 0
-
-  if(ierr /= 0) then
-    if(option%myrank == 0) then
-      print *, "Error reading gridsize--exiting."
-    endif 
-    call PetscFinalize(ierr)
-    stop
-  endif
 
   if(option%use_mph == PETSC_TRUE .or. &
      option%use_owg == PETSC_TRUE .or. &
@@ -153,30 +143,30 @@
   if(option%myrank == 0) print *, ""
   if(option%myrank == 0) print *, ""
 
+  ntstep=1
+  iflgcut = 0
+
   kplt = 1
   iplot = 0
   ihalcnt = 0
   option%isrc1 = 2
 
-  call PetscOptionsGetString(PETSC_NULL_CHARACTER, '-restart', restartfile, &
-                             restartflag, ierr)
+
 #if 0                             
-  if(restartflag == PETSC_TRUE) then
-    call pflowGridRestart(grid, restartfile, ntstep, kplt, iplot, iflgcut, &
+  if(option%restartflag == PETSC_TRUE) then
+    call pflowGridRestart(grid, option%restartfile, ntstep, kplt, iplot, iflgcut, &
                           ihalcnt,its)
-    call pflowGridInitAccum(grid)
+    call InitAccumulation(solution)
     option%dt_max = grid%dtstep(ntstep)
   endif
 #endif  
-  call PetscOptionsGetInt(PETSC_NULL_CHARACTER, '-chkptfreq', chkptfreq, &
-                          chkptflag, ierr)
-                             
+                          
   call PetscLogStagePop(ierr)
 
 #if 0
- if (grid%iread_init==2 .and. restartflag == PETSC_FALSE)then
+ if (grid%iread_init==2 .and. option%restartflag == PETSC_FALSE)then
       call Read_init_field(grid, kplt)
-      call pflowGridInitAccum(grid)
+      call initAccumulation(solution)
       print *, 'Restart from ASCII file: pflow_init.dat'
     !  print *, 't, dt, kplt :: ',grid%t,grid%dt,kplt,grid%flowsteps,iplot,ntstep
   endif
@@ -185,11 +175,11 @@
   do steps = option%flowsteps+1, option%stepmax
 
 !    call pflowGrid_step(solution,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
-    call step(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
+    call stepDT(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
 
 !   update field variables
 !    call pflowGrid_update(solution)
-    call update(solution)
+    call updateSolution(solution)
 
     dt_cur = option%dt 
    

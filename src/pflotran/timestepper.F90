@@ -10,7 +10,7 @@ module Timestepper_module
     type(solver_type), pointer :: solver
   end type stepper_type
   
-  public :: createTimestepper, updateDT, step, update
+  public :: createTimestepper, updateDT, stepDT, updateSolution
   
 contains
 
@@ -42,158 +42,97 @@ subroutine updateDT(option, its)
   implicit none
 
 #include "include/finclude/petsc.h"
+#include "definitions.h"
 
   type(option_type) :: option
   integer, intent(in) :: its
   
-#if 1
   real*8 :: fac,dtt,up,utmp,uc,ut,uus
   
   if (option%iaccel == 0) return
 
-  if (option%use_thc == PETSC_TRUE) then
-  
-    fac = 0.5d0
-    if (its >= option%iaccel) fac = 0.33d0
-    up = option%dpmxe/(option%dpmax+0.1)
-    utmp = option%dtmpmxe/(option%dtmpmax+1.d-5)
-    uc = option%dcmxe/(option%dcmax+1.d-6)
-    ut = min(up,utmp,uc)
-    dtt = fac * option%dt * (1.d0 + ut)
-
-  else if (option%use_2ph == PETSC_TRUE) then
-  
-    fac = 0.5d0
-    if (its >= option%iaccel) then
-      fac = 0.33d0
-      ut = 0.d0
-    else
+  select case(option%imode)
+    case(THC_MODE)
+      fac = 0.5d0
+      if (its >= option%iaccel) fac = 0.33d0
       up = option%dpmxe/(option%dpmax+0.1)
       utmp = option%dtmpmxe/(option%dtmpmax+1.d-5)
       uc = option%dcmxe/(option%dcmax+1.d-6)
-      uus=(0.01D0/(option%dsmax+1.d-6))**2
       ut = min(up,utmp,uc)
-    endif
-    dtt = fac * option%dt * (1.d0 + ut)
-   
-   else if (option%use_mph == PETSC_TRUE) then
-  
-    fac = 0.5d0
-    if (its >= option%iaccel) then
-      fac = 0.33d0
-      ut = 0.d0
-    else
-      up = option%dpmxe/(option%dpmax+0.1)
-      utmp = option%dtmpmxe/(option%dtmpmax+1.d-5)
-      uc = option%dcmxe/(option%dcmax+1.d-6)
-      uus= option%dsmxe/(option%dsmax+1.d-6)
-      ut = min(up,utmp,uc,uus)
-    endif
-    dtt = fac * option%dt * (1.d0 + ut)
-    
-  else if (option%use_richards == PETSC_TRUE) then
-  
-    fac = 0.5d0
-    if (its >= option%iaccel) then
-      fac = 0.33d0
-      ut = 0.d0
-    else
-      up = option%dpmxe/(option%dpmax+0.1)
-      utmp = option%dtmpmxe/(option%dtmpmax+1.d-5)
-      uus= option%dsmxe/(option%dsmax+1.d-6)
-      ut = min(up,utmp,uus)
-    endif
-    dtt = fac * option%dt * (1.d0 + ut)
- 
-!************** FLASH *************************
-   else if (option%use_flash == PETSC_TRUE) then
-  
-    fac = 0.5d0
-    if (its >= option%iaccel) then
-      fac = 0.33d0
-      ut = 0.d0
-    else
-      up = option%dpmxe/(option%dpmax+0.1)
-      utmp = option%dtmpmxe/(option%dtmpmax+1.d-5)
-      uc = option%dcmxe/(option%dcmax+1.d-6)
-      uus= option%dsmxe/(option%dsmax+1.d-6)
-      ut = min(up,utmp,uc,uus)
-    endif
-    dtt = fac * option%dt * (1.d0 + ut)
-
-
-   else if (option%use_owg == PETSC_TRUE) then
-  
-    fac = 0.5d0
-    if (its >= option%iaccel) then
-      fac = 0.33d0
-      ut = 0.d0
-    else
-      up = option%dpmxe/(option%dpmax+0.1)
-      utmp = option%dtmpmxe/(option%dtmpmax+1.d-5)
-      uc = option%dcmxe/(option%dcmax+1.d-6)
-      uus= option%dsmxe/(option%dsmax+1.d-6)
-      ut = min(up,utmp,uc,uus)
-    endif
-    dtt = fac * option%dt * (1.d0 + ut)
-
-   else if (option%use_vadose == PETSC_TRUE) then
-  
-    fac = 0.5d0
-    if (its >= option%iaccel) then
-      fac = 0.33d0
-      ut = 0.d0
-
-    else
-      up = option%dpmxe/(option%dpmax+0.1)
-      utmp = option%dtmpmxe/(option%dtmpmax+1.d-5)
-      uc = option%dcmxe/(option%dcmax+1.d-6)
-      uus= option%dsmxe/(option%dsmax+1.d-6)
-      ut = min(up,utmp,uc,uus)
-    endif
-    dtt = fac * option%dt * (1.d0 + ut)
-  
-
-  else if (option%use_th == PETSC_TRUE) then
-  
-    fac = 0.5d0
-    if (its >= option%iaccel) fac = 0.33d0
-    up = option%dpmxe/(option%dpmax+0.1)
-    utmp = option%dtmpmxe/(option%dtmpmax+1.d-5)
-    ut = min(up,utmp)
-    dtt = fac * option%dt * (1.d0 + ut)
-
-  else if (option%use_cond == PETSC_TRUE) then
-
-    fac = 0.5d0
-    if (its >= option%iaccel) fac = 0.33d0
-    ut = option%dtmpmxe/(option%dpmax+1.e-5)
-    dtt = fac * option%dt * (1.d0 + ut)
-    if (dtt > 2.d0 * option%dt) dtt = 2.d0 * option%dt 
-
-  else
-  
-    if (its <= option%iaccel .and. its <= size(option%tfac)) then
-      if (its == 0) then
-        dtt = option%tfac(1) * option%dt
+      dtt = fac * option%dt * (1.d0 + ut)
+    case(TWOPH_MODE)
+      fac = 0.5d0
+      if (its >= option%iaccel) then
+        fac = 0.33d0
+        ut = 0.d0
       else
-        dtt = option%tfac(its) * option%dt
+        up = option%dpmxe/(option%dpmax+0.1)
+        utmp = option%dtmpmxe/(option%dtmpmax+1.d-5)
+        uc = option%dcmxe/(option%dcmax+1.d-6)
+        uus=(0.01D0/(option%dsmax+1.d-6))**2
+        ut = min(up,utmp,uc)
       endif
-    endif
-  endif
+      dtt = fac * option%dt * (1.d0 + ut)
+    case(MPH_MODE,FLASH_MODE,OWG_MODE,VADOSE_MODE)   
+      fac = 0.5d0
+      if (its >= option%iaccel) then
+        fac = 0.33d0
+        ut = 0.d0
+      else
+        up = option%dpmxe/(option%dpmax+0.1)
+        utmp = option%dtmpmxe/(option%dtmpmax+1.d-5)
+        uc = option%dcmxe/(option%dcmax+1.d-6)
+        uus= option%dsmxe/(option%dsmax+1.d-6)
+        ut = min(up,utmp,uc,uus)
+      endif
+      dtt = fac * option%dt * (1.d0 + ut)
+    case(RICHARDS_MODE)
+      fac = 0.5d0
+      if (its >= option%iaccel) then
+        fac = 0.33d0
+        ut = 0.d0
+      else
+        up = option%dpmxe/(option%dpmax+0.1)
+        utmp = option%dtmpmxe/(option%dtmpmax+1.d-5)
+        uus= option%dsmxe/(option%dsmax+1.d-6)
+        ut = min(up,utmp,uus)
+      endif
+      dtt = fac * option%dt * (1.d0 + ut)
+    case(TH_MODE)
+      fac = 0.5d0
+      if (its >= option%iaccel) fac = 0.33d0
+      up = option%dpmxe/(option%dpmax+0.1)
+      utmp = option%dtmpmxe/(option%dtmpmax+1.d-5)
+      ut = min(up,utmp)
+      dtt = fac * option%dt * (1.d0 + ut)
+    case(COND_MODE)
+      fac = 0.5d0
+      if (its >= option%iaccel) fac = 0.33d0
+      ut = option%dtmpmxe/(option%dpmax+1.e-5)
+      dtt = fac * option%dt * (1.d0 + ut)
+      if (dtt > 2.d0 * option%dt) dtt = 2.d0 * option%dt 
+    case default
+      if (its <= option%iaccel .and. its <= size(option%tfac)) then
+        if (its == 0) then
+          dtt = option%tfac(1) * option%dt
+        else
+          dtt = option%tfac(its) * option%dt
+        endif
+      endif
+  end select
   
   if (dtt > 2.d0 * option%dt) dtt = 2.d0 * option%dt 
   if (dtt > option%dt_max) dtt = option%dt_max
   if (dtt>.25d0*option%t .and. option%t>1.d-2) dtt=.25d0*option%t
   option%dt = dtt
-#endif
+
   end subroutine updateDT
 
 !======================================================================
 
 !#include "pflowgrid_step.F90"
 
-subroutine step(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
+subroutine stepDT(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
   
   use translator_mph_module, only : translator_mph_step_maxchange
   use translator_owg_module, only : translator_owg_step_maxchange
@@ -323,53 +262,50 @@ subroutine step(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
    
     
     option%iphch=0
-#if 0    
-    if (option%use_cond == PETSC_TRUE) then
-      call SNESSolve(option%snes, PETSC_NULL, option%ttemp, ierr)
-    else if (option%use_th == PETSC_TRUE) then
-      call SNESSolve(option%snes, PETSC_NULL, option%xx, ierr)
-    else if (option%use_thc == PETSC_TRUE) then
-      call SNESSolve(option%snes, PETSC_NULL, option%xx, ierr)
-    else if (option%use_2ph == PETSC_TRUE) then
-   ! call  TTPhase_Update(option%xx,grid)
-      call SNESSolve(option%snes, PETSC_NULL, option%xx, ierr)
-    else if (option%use_mph == PETSC_TRUE) then
-      if (option%use_ksp == PETSC_TRUE) then
-        call pflow_solve(grid,its,snes_reason,ierr)
-      else 
+    select case(option%imode)
+      case(COND_MODE)
+        call SNESSolve(option%snes, PETSC_NULL, option%ttemp, ierr)
+      case(TH_MODE)
         call SNESSolve(option%snes, PETSC_NULL, option%xx, ierr)
-      endif
-    else if (option%use_richards == PETSC_TRUE) then
-#endif    
-    if (option%use_richards == PETSC_TRUE) then
-      if (option%use_ksp == PETSC_TRUE) then
-        call pflow_solve(solution,its,snes_reason,ierr)
-      else 
+      case(THC_MODE)
         call SNESSolve(option%snes, PETSC_NULL, option%xx, ierr)
-      endif
-#if 0      
-   else if (option%use_flash == PETSC_TRUE) then
-      if (option%use_ksp == PETSC_TRUE) then
-        call pflow_solve(grid,its,snes_reason,ierr)
-      else 
+      case(TWOPH_MODE)
+     ! call  TTPhase_Update(option%xx,grid)
         call SNESSolve(option%snes, PETSC_NULL, option%xx, ierr)
-      endif
-    else if (option%use_vadose == PETSC_TRUE) then
-      if (option%use_ksp == PETSC_TRUE) then
-        call pflow_solve(grid,its,snes_reason,ierr)
-      else 
-        call SNESSolve(option%snes, PETSC_NULL, option%xx, ierr)
-      endif
-    else if (option%use_owg == PETSC_TRUE) then
-      if (option%use_ksp == PETSC_TRUE) then
-        call pflow_solve(grid,its,snes_reason,ierr)
-      else 
-        call SNESSolve(option%snes, PETSC_NULL, option%xx, ierr)
-      endif
-    else
-      call SNESSolve(option%snes, PETSC_NULL, grid%ppressure, ierr)
-#endif      
-    endif
+      case(MPH_MODE)
+        if (option%use_ksp == PETSC_TRUE) then
+          call pflow_solve(solution,its,snes_reason,ierr)
+        else 
+          call SNESSolve(option%snes, PETSC_NULL, option%xx, ierr)
+        endif
+      case(RICHARDS_MODE)
+        if (option%use_ksp == PETSC_TRUE) then
+          call pflow_solve(solution,its,snes_reason,ierr)
+        else 
+          call SNESSolve(option%snes, PETSC_NULL, option%xx, ierr)
+        endif
+      case(FLASH_MODE)
+        if (option%use_ksp == PETSC_TRUE) then
+          call pflow_solve(solution,its,snes_reason,ierr)
+        else 
+          call SNESSolve(option%snes, PETSC_NULL, option%xx, ierr)
+        endif
+      case(VADOSE_MODE)
+        if (option%use_ksp == PETSC_TRUE) then
+          call pflow_solve(solution,its,snes_reason,ierr)
+        else 
+          call SNESSolve(option%snes, PETSC_NULL, option%xx, ierr)
+        endif
+      case(OWG_MODE)
+        if (option%use_ksp == PETSC_TRUE) then
+          call pflow_solve(solution,its,snes_reason,ierr)
+        else 
+          call SNESSolve(option%snes, PETSC_NULL, option%xx, ierr)
+        endif
+      case default
+        call SNESSolve(option%snes, PETSC_NULL, option%ppressure, ierr)
+    end select
+
   ! print *,'pflow_step, finish SNESSolve'
     call MPI_Barrier(PETSC_COMM_WORLD,ierr)
     if (option%use_ksp /= PETSC_TRUE) then
@@ -428,33 +364,30 @@ subroutine step(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
     !call PETScBarrier(PETSC_NULL_OBJECT, ierr)
     
     update_reason = 1
-#if 0    
-    if ((option%use_2ph == PETSC_TRUE).and.(snes_reason >= 0)) then
-      call TTPhase_Update_Reason(update_reason, grid)
-      if (option%myrank==0) print *,'update_reason: ',update_reason
-    else if ((option%use_mph == PETSC_TRUE).and.(snes_reason >= 0)) then
-      call MPhase_Update_Reason(update_reason, grid)
-      if (option%myrank==0) print *,'update_reason: ',update_reason
-    else if ((option%use_flash == PETSC_TRUE).and.(snes_reason >= 0)) then
-      call flash_Update_Reason(update_reason, grid)
-      if (option%myrank==0) print *,'update_reason: ',update_reason
-    else if ((option%use_vadose == PETSC_TRUE).and.(snes_reason >= 0)) then
-      call Vadose_Update_Reason(update_reason, grid)
-      if (option%myrank==0) print *,'update_reason: ',update_reason
-    else if ((option%use_richards == PETSC_TRUE).and.(snes_reason >= 0)) then
-#endif    
-    if ((option%use_richards == PETSC_TRUE).and.(snes_reason >= 0)) then
-      update_reason=1
-     !call Richards_Update_Reason(update_reason, grid)
-      if (option%myrank==0) print *,'update_reason: ',update_reason
+    
+    if (snes_reason >= 0) then
+    
+      select case(option%imode)
 #if 0      
-    else if ((option%use_owg == PETSC_TRUE).and.(snes_reason >= 0)) then
-      call OWG_Update_Reason(update_reason, grid)
+        case(TWOPH_MODE)
+          call TTPhase_Update_Reason(update_reason,solution)
+        case(MPH_MODE)
+          call MPhase_Update_Reason(update_reason,solution)
+        case(FLASH_MODE)
+          call flash_Update_Reason(update_reason,solution)
+        case(VADOSE_MODE)
+          call Vadose_Update_Reason(update_reason,solution)
+#endif          
+        case(RICHARDS_MODE)
+          update_reason=1
+         !call Richards_Update_Reason(update_reason,solution)
+#if 0         
+        case(OWG_MODE)
+          call OWG_Update_Reason(update_reason,solution)
+#endif          
+      end select   
       if (option%myrank==0) print *,'update_reason: ',update_reason
-#endif      
     endif
-
-
 
 !******************************************************************
     
@@ -507,26 +440,26 @@ subroutine step(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
         call VecCopy(option%pressure, option%ppressure, ierr)
         call VecCopy(option%temp, option%ttemp, ierr)
       else
-#if 0      
-        if (option%use_owg==PETSC_TRUE) then
-          call pflow_owg_timecut(grid)
-        elseif (option%use_mph==PETSC_TRUE) then
-          call pflow_mphase_timecut(grid)
-        elseif (option%use_flash==PETSC_TRUE) then
-          call pflow_flash_timecut(grid)
-        elseif (option%use_richards==PETSC_TRUE) then
-#endif        
-        if (option%use_richards==PETSC_TRUE) then
-          call pflow_richards_timecut(solution)
-#if 0          
-        elseif (option%use_vadose==PETSC_TRUE) then
-          call pflow_vadose_timecut(grid)
-        else
-          call VecCopy(grid%h, grid%hh, ierr)
-          call VecCopy(grid%yy, option%xx, ierr)
-          call VecCopy(grid%density, grid%ddensity, ierr)
-#endif          
-        endif
+        select case(option%imode)
+#if 0        
+          case(OWG_MODE)
+            call pflow_owg_timecut(grid)
+          case(MPH_MODE)
+            call pflow_mphase_timecut(grid)
+          case(FLASH_MODE)
+            call pflow_flash_timecut(grid)
+#endif            
+          case(RICHARDS_MODE)
+            call pflow_richards_timecut(solution)
+#if 0            
+          case(VADOSE_MODE)
+            call pflow_vadose_timecut(grid)
+          case default
+            call VecCopy(grid%h, grid%hh, ierr)
+            call VecCopy(grid%yy, option%xx, ierr)
+            call VecCopy(grid%density, grid%ddensity, ierr)
+#endif            
+        end select
         call VecCopy(option%iphas_old, option%iphas, ierr)
       endif
 
@@ -661,7 +594,7 @@ subroutine step(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
 
   else if (option%use_richards == PETSC_TRUE) then
 #endif
-  if (option%use_richards == PETSC_TRUE) then
+  if (option%imode == RICHARDS_MODE) then
      call translator_ric_step_maxchange(option)
     if (option%myrank==0) then
       if (mod(option%flowsteps,option%imod) == 0 .or. option%flowsteps == 1) then
@@ -742,11 +675,11 @@ subroutine step(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
     print *, ""
   endif
 #endif
-end subroutine step
+end subroutine stepDT
 
 !==========================================================================
   
-subroutine update (solution)
+subroutine updateSolution(solution)
   
   use pflow_vector_ops_module
   use TTPHASE_module
@@ -754,79 +687,83 @@ subroutine update (solution)
   use Flash_module
   use OWG_module
   use Vadose_module
-  use Richards_module
+  use Richards_module, only: pflow_update_richards
   use hydrostat_module, only: recondition_bc
 
   use Solution_module
   use Option_module
+  use Grid_module
 
   implicit none
+
+#include "include/finclude/petsc.h"  
 
   type(solution_type) :: solution
 
   type(option_type), pointer :: option
+  type(grid_type), pointer :: grid
   
   integer :: ierr
   integer*4 m, n
   real*8, pointer :: xx_p(:), conc_p(:), press_p(:), temp_p(:), phis_p(:)
   
   option => solution%option
+  grid => solution%grid
   
-#if 0
 ! update solution vector and physical properties (VecCopy(x,y): y=x)
   if (option%ndof == 1) then
-    call VecCopy(grid%ppressure, grid%pressure, ierr)
+    call VecCopy(option%ppressure, option%pressure, ierr)
     call VecCopy(option%ttemp, option%temp, ierr)
-    call VecCopy(grid%ddensity, grid%density, ierr)
+    call VecCopy(option%ddensity, option%density, ierr)
   else
-    if (option%ndof <= 3 .and. option%use_mph/=PETSC_TRUE .and.  &
-        option%use_owg/=PETSC_TRUE .and. option%use_vadose/=PETSC_TRUE &
-         .and. option%use_flash/=PETSC_TRUE .and. option%use_richards/=PETSC_TRUE) then
-      call VecCopy(option%xx, grid%yy, ierr)
-      call VecCopy(grid%hh, grid%h, ierr)
-      call VecCopy(grid%ddensity, grid%density, ierr)
+    if (option%ndof <= 3 .and. &
+        option%imode /= MPH_MODE .and. &
+        option%imode /= OWG_MODE .and. &
+        option%imode /= VADOSE_MODE .and. &
+        option%imode /= FLASH_MODE .and. &
+        option%imode /= RICHARDS_MODE) then
+      call VecCopy(option%xx, option%yy, ierr)
+      call VecCopy(option%hh, option%h, ierr)
+      call VecCopy(option%ddensity, option%density, ierr)
      ! if (option%use_thc == PETSC_TRUE) call recondition_bc(grid)
     endif    
   endif
  
+  select case(option%imode)
+#if 0  
+    case(OWG_MODE)
+      call pflow_update_owg(grid)
+    case(MPH_MODE)
+      call pflow_update_mphase(grid)
+#endif      
+    case(RICHARDS_MODE)
+      call pflow_update_richards(solution)
+#if 0      
+    case(FLASH_MODE)
+      call pflow_update_flash(grid)
+    case(VADOSE_MODE)
+      call pflow_update_vadose(grid)
+    case(TWOPH_MODE)
+      call pflow_update_2phase(grid)  
+    case default
+      if (option%ndof > 1) then
+        call VecGetArrayF90(option%xx, xx_p, ierr)
+        call VecGetArrayF90(grid%pressure, press_p, ierr)
+        call VecGetArrayF90(option%temp, temp_p, ierr)
+        if (option%ndof == 3) call VecGetArrayF90(grid%conc, conc_p, ierr)
+        do m = 1, grid%nlmax
+          press_p(m) = xx_p(1+(m-1)*option%ndof)
+          temp_p(m) = xx_p(2+(m-1)*option%ndof)
+          if (option%ndof == 3) conc_p(m) = xx_p(3+(m-1)*option%ndof)
+        enddo
+        call VecRestoreArrayF90(option%xx, xx_p, ierr)
+        call VecRestoreArrayF90(grid%pressure, press_p, ierr)
+        call VecRestoreArrayF90(option%temp, temp_p, ierr)
+        if (option%ndof == 3) call VecRestoreArrayF90(grid%conc, conc_p, ierr)
+#endif        
+  end select    
 
-! call VecView(grid%ppressure,PETSC_VIEWER_STDOUT_WORLD,ierr)
-  if (option%use_owg == PETSC_TRUE) then
-    call pflow_update_owg(grid)
-  elseif (option%use_mph == PETSC_TRUE) then
-    call pflow_update_mphase(grid)
-  elseif (option%use_richards == PETSC_TRUE) then
-    call pflow_update_richards(grid)
-  elseif (option%use_flash == PETSC_TRUE) then
-    call pflow_update_flash(grid)
-  elseif (option%use_vadose == PETSC_TRUE) then
-    call pflow_update_vadose(grid)
-  elseif (option%use_2ph == PETSC_TRUE) then
-!   call pflow_update_fldvar (grid%yy, grid%pressure, option%temp, grid%sat, &
-!   grid%xmol, grid%density, grid%porosity, grid%h, grid%accum, &
-!   grid%dencpr, grid%ithrm, grid%iphas, grid%scale, &
-!   grid%eqkair, grid%nlmax, option%ndof, grid%nphase, grid%jgas, grid%jh2o)
-   !print *,' Into pflow_update_2phase'
-    call pflow_update_2phase(grid)  
-   !print *,' out pflow_update_2phase'
-  else if (option%ndof > 1) then
-
-    call VecGetArrayF90(option%xx, xx_p, ierr)
-    call VecGetArrayF90(grid%pressure, press_p, ierr)
-    call VecGetArrayF90(option%temp, temp_p, ierr)
-    if (option%ndof == 3) call VecGetArrayF90(grid%conc, conc_p, ierr)
-    do m = 1, grid%nlmax
-      press_p(m) = xx_p(1+(m-1)*option%ndof)
-      temp_p(m) = xx_p(2+(m-1)*option%ndof)
-      if (option%ndof == 3) conc_p(m) = xx_p(3+(m-1)*option%ndof)
-    enddo
-    call VecRestoreArrayF90(option%xx, xx_p, ierr)
-    call VecRestoreArrayF90(grid%pressure, press_p, ierr)
-    call VecRestoreArrayF90(option%temp, temp_p, ierr)
-    if (option%ndof == 3) call VecRestoreArrayF90(grid%conc, conc_p, ierr)
-  endif
-
-  if (grid%using_pflowGrid == PETSC_TRUE) then
+  if (option%run_coupled == PETSC_TRUE) then
 #ifndef OVERHAUL
 !   call VecCopy(grid%vvl,grid%vl,ierr)
     grid%vl_loc = grid%vvl_loc
@@ -834,23 +771,23 @@ subroutine update (solution)
     grid%vg_loc = grid%vvg_loc
     grid%vgbc = grid%vvgbc
 #endif    
-    grid%xphi_co2 = option%xxphi_co2
-    grid%den_co2=grid%dden_co2
+    option%xphi_co2 = option%xxphi_co2
+    option%den_co2=option%dden_co2
   endif
   
   !integrate solid volume fraction using explicit finite difference
   if (option%rk > 0.d0) then
-    call VecGetArrayF90(grid%phis,phis_p,ierr)
+    call VecGetArrayF90(option%phis,phis_p,ierr)
     do n = 1, grid%nlmax
-      phis_p(n) = phis_p(n) + option%dt * grid%vbars * option%rate(n)
+      phis_p(n) = phis_p(n) + option%dt * option%vbars * option%rate(n)
       if (phis_p(n) < 0.d0) phis_p(n) = 0.d0
-      grid%area_var(n) = (phis_p(n)/grid%phis0)**grid%pwrsrf
+      option%area_var(n) = (phis_p(n)/option%phis0)**option%pwrsrf
       
 !     print *,'update: ',n,phis_p(n),option%rate(n),grid%area_var(n)
     enddo
-    call VecRestoreArrayF90(grid%phis,phis_p,ierr)
+    call VecRestoreArrayF90(option%phis,phis_p,ierr)
   endif
-#endif
-end subroutine update
+
+end subroutine updateSolution
   
 end module Timestepper_module

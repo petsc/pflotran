@@ -70,8 +70,9 @@ module Grid_module
             DMGlobalToNatural, &
             mapGridIndices, &
             createDMs, &
+            computeGridSpacing, &
             computeGridCoordinates, &
-            computeCellVolumes
+            computeGridCellVolumes
   
 contains
 
@@ -98,6 +99,7 @@ function createGrid(igeom_)
     createGrid%is_structured = .true.
     allocate(createGrid%structured_grid)
     call initStructuredGrid(createGrid%structured_grid)
+    createGrid%structured_grid%igeom = igeom_
   else
     createGrid%is_structured = .false.
     allocate(createGrid%unstructured_grid)
@@ -270,6 +272,25 @@ end subroutine mapGridIndices
 
 ! ************************************************************************** !
 !
+! computeGridSpacing: Computes grid spacing (only for structured grid
+! author: Glenn Hammond
+! date: 10/26/07
+!
+! ************************************************************************** !
+subroutine computeGridSpacing(grid)
+
+  implicit none
+  
+  type(grid_type) :: grid
+  
+  if (grid%is_structured) then
+    call computeStructuredGridSpacing(grid%structured_grid,grid%nL2A)
+  endif
+  
+end subroutine computeGridSpacing
+
+! ************************************************************************** !
+!
 ! computeGridCoordinates: Computes x,y,z coordinates of grid cells
 ! author: Glenn Hammond
 ! date: 10/24/07
@@ -294,12 +315,12 @@ end subroutine computeGridCoordinates
 
 ! ************************************************************************** !
 !
-! computeCellVolumes: Computes the volumes of cells in structured grid
+! computeGridCellVolumes: Computes the volumes of cells in structured grid
 ! author: Glenn Hammond
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine computeCellVolumes(grid,option)
+subroutine computeGridCellVolumes(grid,option)
 
   use Option_module
   
@@ -313,7 +334,7 @@ subroutine computeCellVolumes(grid,option)
   else
   endif
 
-end subroutine computeCellVolumes
+end subroutine computeGridCellVolumes
 
 ! ************************************************************************** !
 !

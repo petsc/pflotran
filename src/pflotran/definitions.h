@@ -29,3 +29,16 @@
 #define GLOBAL 1
 #define LOCAL 2
 #define NATURAL 3
+
+! modes
+#define NULL_MODE 0
+#define RICHARDS_MODE 1
+#define MPH_MODE 2
+#define COND_MODE 3
+#define TWOPH_MODE 4
+#define VADOSE_MODE 5
+#define LIQUID_MODE 6
+#define OWG_MODE 7
+#define FLASH_MODE 8
+#define TH_MODE 9
+#define THC_MODE 10

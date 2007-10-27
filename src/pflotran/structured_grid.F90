@@ -68,6 +68,7 @@ module Structured_Grid_module
             computeStructBoundaryConnect, &
             createPetscVectorFromDA, &
             mapStructuredGridIndices, &
+            computeStructuredGridSpacing, &
             computeStructuredGridCoordinates, &
             createStructuredGridJacobian, &
             createStructuredGridColoring, &
@@ -116,96 +117,77 @@ subroutine createStructuredDMs(structured_grid,option)
   type(structured_grid_type) :: structured_grid
   type(option_type) :: option
 
+  integer :: ndof
+  integer, parameter :: stencil_width = 1
   PetscErrorCode :: ierr
+
   !-----------------------------------------------------------------------
   ! Generate the DA objects that will manage communication.
   !-----------------------------------------------------------------------
+  ndof = 1
   call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &
-       structured_grid%nx,structured_grid%ny,structured_grid%nz,structured_grid%npx,structured_grid%npy,structured_grid%npz,1,1, &
-       PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
+                  structured_grid%nx,structured_grid%ny,structured_grid%nz, &
+                  structured_grid%npx,structured_grid%npy,structured_grid%npz, &
+                  ndof,stencil_width, &
+                  PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
        structured_grid%da_1_dof,ierr)
 
-
-! call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &
-!      structured_grid%nx,structured_grid%ny,structured_grid%nz,structured_grid%npx,structured_grid%npy,structured_grid%npz,3,1, &
-!      PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
-!      structured_grid%da_3_dof,ierr)
- 
+  ndof = option%nphase
   call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &
-       structured_grid%nx,structured_grid%ny,structured_grid%nz,structured_grid%npx,structured_grid%npy,structured_grid%npz,option%nphase,1, &
-       PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
-       structured_grid%da_nphase_dof,ierr)
+                  structured_grid%nx,structured_grid%ny,structured_grid%nz, &
+                  structured_grid%npx,structured_grid%npy,structured_grid%npz, &
+                  ndof,stencil_width, &
+                  PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
+                  structured_grid%da_nphase_dof,ierr)
 
+  ndof = 3*option%nphase
   call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &
-       structured_grid%nx,structured_grid%ny,structured_grid%nz,structured_grid%npx,structured_grid%npy,structured_grid%npz,3*option%nphase,1, &
-       PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
-       structured_grid%da_3np_dof,ierr)
+                  structured_grid%nx,structured_grid%ny,structured_grid%nz, &
+                  structured_grid%npx,structured_grid%npy,structured_grid%npz, &
+                  ndof,stencil_width, &
+                  PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
+                  structured_grid%da_3np_dof,ierr)
 
+  ndof = option%ndof
   call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &
-       structured_grid%nx,structured_grid%ny,structured_grid%nz,structured_grid%npx,structured_grid%npy,structured_grid%npz,option%ndof,1, &
-       PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
-       structured_grid%da_ndof,ierr)
+                  structured_grid%nx,structured_grid%ny,structured_grid%nz, &
+                  structured_grid%npx,structured_grid%npy,structured_grid%npz, &
+                  option%ndof,stencil_width, &
+                  PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
+                  structured_grid%da_ndof,ierr)
 
-  if (option%use_2ph == PETSC_TRUE) then
-    print *,' 2ph create DA'
-    call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &
-                    structured_grid%nx,structured_grid%ny,structured_grid%nz,structured_grid%npx,structured_grid%npy,structured_grid%npz,option%nphase*option%npricomp,1, &
-                    PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
-                    structured_grid%da_nphancomp_dof,ierr)
-
-    call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &
-                    structured_grid%nx,structured_grid%ny,structured_grid%nz,structured_grid%npx,structured_grid%npy,structured_grid%npz,option%nphase*option%nspec,1, &
-                    PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
-                    structured_grid%da_nphanspec_dof,ierr)
-
-    call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &
-                    structured_grid%nx,structured_grid%ny,structured_grid%nz,structured_grid%npx,structured_grid%npy,structured_grid%npz, &
-                    option%nphase*option%nspec*option%npricomp,1, &
-                    PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
-                    structured_grid%da_nphanspecncomp_dof,ierr)
-  endif
- 
-  if (option%use_mph == PETSC_TRUE) then
-    call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &
-                    structured_grid%nx,structured_grid%ny,structured_grid%nz,structured_grid%npx,structured_grid%npy,structured_grid%npz,(option%ndof+1)*(2+7*option%nphase + 2* &
-                    option%nspec*option%nphase),1, &
-                    PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
-                    structured_grid%da_var_dof,ierr)
-
-  endif
-  
- if (option%use_richards == PETSC_TRUE) then
-    call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &
-                    structured_grid%nx,structured_grid%ny,structured_grid%nz,structured_grid%npx,structured_grid%npy,structured_grid%npz,(option%ndof+1)*(2+7*option%nphase + 2* &
-                    option%nspec*option%nphase),1, &
-                    PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
-                    structured_grid%da_var_dof,ierr)
-
-  endif
-    
-  if (option%use_vadose == PETSC_TRUE) then
-    call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &
-                    structured_grid%nx,structured_grid%ny,structured_grid%nz,structured_grid%npx,structured_grid%npy,structured_grid%npz,(option%ndof+1)*(2+7*option%nphase + 2* &
-                    option%nspec*option%nphase),1, &
-                    PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
-                    structured_grid%da_var_dof,ierr)
-  endif
-
-  if (option%use_flash == PETSC_TRUE) then
-    call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &
-                    structured_grid%nx,structured_grid%ny,structured_grid%nz,structured_grid%npx,structured_grid%npy,structured_grid%npz,(option%ndof+1)*(2+7*option%nphase + 2* &
-                    option%nspec*option%nphase),1, &
-                    PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
-                    structured_grid%da_var_dof,ierr)
-  endif
-        
-  if (option%use_owg == PETSC_TRUE) then
-    call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &
-                    structured_grid%nx,structured_grid%ny,structured_grid%nz,structured_grid%npx,structured_grid%npy,structured_grid%npz,(option%ndof+1)*(2+7*option%nphase + 2* &
-                    option%nspec*option%nphase),1, &
-                    PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
-                    structured_grid%da_var_dof,ierr)
-  endif
+  select case(option%imode) 
+    case(TWOPH_MODE)
+      ndof = option%nphase*option%npricomp
+      call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &
+                      structured_grid%nx,structured_grid%ny,structured_grid%nz, &
+                      structured_grid%npx,structured_grid%npy,structured_grid%npz, &
+                      ndof,stencil_width, &
+                      PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
+                      structured_grid%da_nphancomp_dof,ierr)
+      ndof = option%nphase*option%nspec
+      call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &
+                      structured_grid%nx,structured_grid%ny,structured_grid%nz, &
+                      structured_grid%npx,structured_grid%npy,structured_grid%npz, &
+                      ndof,stencil_width, &
+                      PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
+                      structured_grid%da_nphanspec_dof,ierr)
+      ndof = option%nphase*option%nspec*option%npricomp
+      call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &
+                      structured_grid%nx,structured_grid%ny,structured_grid%nz, &
+                      structured_grid%npx,structured_grid%npy,structured_grid%npz, &
+                      ndof,stencil_width, &
+                      PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
+                      structured_grid%da_nphanspecncomp_dof,ierr)
+    case(MPH_MODE,RICHARDS_MODE,VADOSE_MODE,FLASH_MODE,OWG_MODE)
+      ndof = (option%ndof+1)*(2+7*option%nphase + 2*option%nspec*option%nphase)
+      call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &
+                      structured_grid%nx,structured_grid%ny,structured_grid%nz, &
+                      structured_grid%npx,structured_grid%npy,structured_grid%npz, &
+                      ndof,stencil_width, &
+                      PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
+                      structured_grid%da_var_dof,ierr)
+  end select
 
  ! get corner information
   call DAGetCorners(structured_grid%da_nphase_dof, structured_grid%nxs, &
@@ -410,6 +392,55 @@ subroutine readDXYZ(a,n)
   enddo
     
 end subroutine readDXYZ
+
+! ************************************************************************** !
+!
+! computeStructuredGridSpacing: Computes structured grid spacing
+! author: Glenn Hammond
+! date: 10/26/07
+!
+! ************************************************************************** !
+subroutine computeStructuredGridSpacing(structured_grid,nL2A)
+
+  implicit none
+  
+  type(structured_grid_type) :: structured_grid
+  integer :: nL2A(:)
+  
+  integer :: i, j, k, n, na
+  PetscScalar, pointer :: dx_p(:), dy_p(:), dz_p(:)
+  PetscErrorCode :: ierr
+  
+  call VecGetArrayF90(structured_grid%dx,dx_p,ierr)
+  call VecGetArrayF90(structured_grid%dy,dy_p,ierr)
+  call VecGetArrayF90(structured_grid%dz,dz_p,ierr)
+  do n = 1,structured_grid%nlmax
+    na = nL2A(n)
+    k= int(na/structured_grid%nxy) + 1
+    j= int(mod(na,structured_grid%nxy)/structured_grid%nx) + 1
+    i= mod(mod(na,structured_grid%nxy),structured_grid%nx) + 1
+    dx_p(n) = structured_grid%dx0(i)
+    dy_p(n) = structured_grid%dy0(j)
+    dz_p(n) = structured_grid%dz0(k)
+  enddo
+  call VecRestoreArrayF90(structured_grid%dx,dx_p,ierr)
+  call VecRestoreArrayF90(structured_grid%dy,dy_p,ierr)
+  call VecRestoreArrayF90(structured_grid%dz,dz_p,ierr)
+  
+  call DAGlobalToLocalBegin(structured_grid%da_1_dof, structured_grid%dx, INSERT_VALUES, &
+                            structured_grid%dx_loc, ierr)
+  call DAGlobalToLocalEnd(structured_grid%da_1_dof, structured_grid%dx, INSERT_VALUES, &
+                          structured_grid%dx_loc, ierr)
+  call DAGlobalToLocalBegin(structured_grid%da_1_dof, structured_grid%dy, INSERT_VALUES, &
+                            structured_grid%dy_loc, ierr)
+  call DAGlobalToLocalEnd(structured_grid%da_1_dof, structured_grid%dy, INSERT_VALUES, &
+                          structured_grid%dy_loc,ierr)
+  call DAGlobalToLocalBegin(structured_grid%da_1_dof, structured_grid%dz, INSERT_VALUES, &
+                            structured_grid%dz_loc, ierr)
+  call DAGlobalToLocalEnd(structured_grid%da_1_dof, structured_grid%dz, INSERT_VALUES, &
+                          structured_grid%dz_loc,ierr)
+  
+end subroutine computeStructuredGridSpacing
 
 ! ************************************************************************** !
 !

@@ -56,6 +56,8 @@ subroutine initPFLOW(simulation,filename)
   use Richards_module
   use pflow_convergence_module
   use pflow_solv_module 
+  use pflow_vector_ops_module
+  use utilities_module
     
   implicit none
   
@@ -71,12 +73,17 @@ subroutine initPFLOW(simulation,filename)
 
   integer :: mcomp, mphas
   integer :: i
+  PetscTruth :: iflag
   
   ! remove later
-  PetscScalar, pointer :: phis_p(:)
   PetscTruth :: option_found
-  integer :: nc, ibc
-  
+  integer :: nc, ibc, ir, j, k, n
+  real*8 :: random_nr, frand, por
+  real*8, pointer :: temp_p(:), ran_p(:),&
+                     phis_p(:), icap_p(:),ithrm_p(:), por_p(:),por0_p(:),&
+                     tor_p(:),perm_xx_p(:),perm_yy_p(:),perm_zz_p(:),&
+                     perm_pow_p(:)
+                       
   real*8 :: alpha, maxstep, steptol
   
   PetscErrorCode :: ierr
@@ -87,120 +94,23 @@ subroutine initPFLOW(simulation,filename)
   
   call readSelectCardsFromInput(solution,filename,mcomp,mphas)
   grid => solution%grid
+
+  call setMode(option)
+  call checkPetscOptions(option)
   
-  option%use_ksp=PETSC_FALSE
-  option%use_isoth=PETSC_FALSE
-   
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-snes_mf", & 
-                           option%use_matrix_free, ierr)
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_analytical", &
-                           option%use_analytical, ierr)
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-print_hhistory", &
-                           option%print_hhistory, ierr)
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-monitor_h", &
-                           option%monitor_h, ierr)
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_liquid", &
-                           option%use_liquid, ierr)
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_cond", &
-                           option%use_cond, ierr)
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_th", &
-                           option%use_th, ierr)
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_thc", &
-                           option%use_thc, ierr)
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_2ph", &
-                           option%use_2ph, ierr)
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_mph", &
-                           option%use_mph, ierr)
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_flash", &
-                           option%use_flash, ierr)
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_owg", &
-                           option%use_owg, ierr)
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_vadose", &
-                           option%use_vadose, ierr)
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_richards", &
-                           option%use_richards, ierr)
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_debug", &
-                           option%use_debug, ierr)
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_ksp", &
-                           option%use_ksp, ierr)
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_isoth", &
-                           option%use_isoth, ierr)
-
-  if (option%use_liquid ==PETSC_FALSE .and.&
-      option%use_cond==PETSC_FALSE  .and.&
-      option%use_th==PETSC_FALSE  .and.&
-      option%use_thc==PETSC_FALSE  .and.&
-      option%use_2ph==PETSC_FALSE  .and.&
-      option%use_mph==PETSC_FALSE  .and.&
-      option%use_flash==PETSC_FALSE  .and.&
-      option%use_owg==PETSC_FALSE  .and.&
-      option%use_vadose==PETSC_FALSE  .and.&
-      option%use_richards==PETSC_FALSE) then
-
-    if (mcomp >0 .and. mphas>0)then
-      if (option%use_liquid == PETSC_FALSE .and. mcomp ==1)then
-        option%use_liquid = PETSC_TRUE
-        option%nphase = 1; option%ndof =1
-      endif
-      if (option%use_cond == PETSC_FALSE .and. mcomp == 32)then
-        option%use_cond = PETSC_TRUE
-        option%nphase = 1; option%ndof =1
-      endif
-      if (option%use_th == PETSC_FALSE .and. mcomp == 33 .and. mphas == 3)then
-        option%use_th = PETSC_TRUE
-        option%nphase = 1; option%ndof =2
-      endif
-      if (option%use_thc == PETSC_FALSE .and. mcomp == 37)then
-        option%use_thc = PETSC_TRUE
-        option%nphase = 1; option%ndof =3
-      endif
-      if (option%use_mph == PETSC_FALSE .and. mcomp == 35)then
-        option%use_mph = PETSC_TRUE
-        option%nphase = 2; option%ndof =3; option%nspec =2 
-      endif
-      if (option%use_vadose == PETSC_FALSE .and. mcomp == 49)then
-        option%use_vadose = PETSC_TRUE
-        option%nphase = 2; option%ndof =3; option%nspec =2 
-      endif
-      if (option%use_richards == PETSC_FALSE .and. mcomp == 33 .and. mphas == 11)then
-        option%use_richards = PETSC_TRUE
-        option%nphase = 1; option%ndof = 2
-        if (option%nspec > 1) then
-          option%ndof = option%nspec +1
-        endif
-      endif
-    endif
-    if (option%use_owg == PETSC_FALSE .and. mcomp == 11)then
-      option%use_owg = PETSC_TRUE
-      option%nphase = 3; option%ndof =3; option%nspec =3 
-    endif
-  endif
-  if (option%use_liquid ==PETSC_FALSE .and.&
-      option%use_cond==PETSC_FALSE  .and.&
-      option%use_th==PETSC_FALSE  .and.&
-      option%use_thc==PETSC_FALSE  .and.&
-      option%use_2ph==PETSC_FALSE  .and.&
-      option%use_mph==PETSC_FALSE  .and.&
-      option%use_flash==PETSC_FALSE  .and.&
-      option%use_owg==PETSC_FALSE  .and.&
-      option%use_vadose==PETSC_FALSE  .and.&
-      option%use_richards==PETSC_FALSE) then
-    print *,'No method determined, stop:'
-    stop
-  endif       
-                         
+               
 ! hardwire to uncoupled for now
 !  if (icouple == 0) then
-  option%using_pflowGrid = PETSC_FALSE
+  option%run_coupled = PETSC_FALSE
 !  else
-!    option%using_pflowGrid = PETSC_TRUE
+!    option%run_coupled = PETSC_TRUE
 !  endif
 
   !set specific phase indices
   option%jh2o = 1; option%jgas =1
   select case(option%nphase)
     case(2)
-      if (option%use_2ph == PETSC_TRUE) then
+      if (option%imode == TWOPH_MODE) then
         option%jgas=  2
         option%jco2 = 3
       else
@@ -273,43 +183,40 @@ subroutine initPFLOW(simulation,filename)
   option%m_nacl =0.D0  ! default brine concentration
   
  ! default output variables
-  if(option%use_2ph == PETSC_TRUE .or. option%use_mph == PETSC_TRUE &
-              .or. option%use_vadose == PETSC_TRUE &
-              .or. option%use_flash == PETSC_TRUE )then
-    option%var_plot_num = 11
-    allocate(option%var_plot_nm(11))
-    option%var_plot_nm(1) = 'x'
-    option%var_plot_nm(2) = 'y'
-    option%var_plot_nm(3) = 'z'
-    option%var_plot_nm(4) = 'iphase'
-    option%var_plot_nm(5) = 'pl'
-    option%var_plot_nm(6) = 'pg'
-    option%var_plot_nm(7) = 'temp'
-    option%var_plot_nm(8) = 'Sg'
-    option%var_plot_nm(9) = 'Xg_Aq'
-    option%var_plot_nm(10) = 'Xg_G'
-    option%var_plot_nm(11) = 'Vf'
-    if(option%use_mph == PETSC_TRUE &
-              .or. option%use_vadose == PETSC_TRUE &
-              .or. option%use_flash == PETSC_TRUE) then 
-      allocate(option%var_plot_ind(5:10))  
-      option%var_plot_ind(5)= 2
-      option%var_plot_ind(6)= -5
-      option%var_plot_ind(7)= 1
-         
-    endif
-  else 
-    option%var_plot_num = 8
-    allocate(option%var_plot_nm(8))
-    option%var_plot_nm(1) = 'x'
-    option%var_plot_nm(2) = 'y'
-    option%var_plot_nm(3) = 'z'
-    option%var_plot_nm(4) = 'p'
-    option%var_plot_nm(5) = 'T'
-    option%var_plot_nm(6) = 'Sl'
-    option%var_plot_nm(7) = 'Conc'
-    option%var_plot_nm(8) = 'Vf'
- endif 
+  select case(option%imode)
+    case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE)
+      option%var_plot_num = 11
+      allocate(option%var_plot_nm(11))
+      option%var_plot_nm(1) = 'x'
+      option%var_plot_nm(2) = 'y'
+      option%var_plot_nm(3) = 'z'
+      option%var_plot_nm(4) = 'iphase'
+      option%var_plot_nm(5) = 'pl'
+      option%var_plot_nm(6) = 'pg'
+      option%var_plot_nm(7) = 'temp'
+      option%var_plot_nm(8) = 'Sg'
+      option%var_plot_nm(9) = 'Xg_Aq'
+      option%var_plot_nm(10) = 'Xg_G'
+      option%var_plot_nm(11) = 'Vf'
+      select case(option%imode)
+        case(MPH_MODE,VADOSE_MODE,FLASH_MODE)
+          allocate(option%var_plot_ind(5:10))  
+          option%var_plot_ind(5)= 2
+          option%var_plot_ind(6)= -5
+          option%var_plot_ind(7)= 1
+      end select   
+    case default 
+      option%var_plot_num = 8
+      allocate(option%var_plot_nm(8))
+      option%var_plot_nm(1) = 'x'
+      option%var_plot_nm(2) = 'y'
+      option%var_plot_nm(3) = 'z'
+      option%var_plot_nm(4) = 'p'
+      option%var_plot_nm(5) = 'T'
+      option%var_plot_nm(6) = 'Sl'
+      option%var_plot_nm(7) = 'Conc'
+      option%var_plot_nm(8) = 'Vf'
+ end select 
 
   
   call createDMs(grid,option)
@@ -403,16 +310,16 @@ subroutine initPFLOW(simulation,filename)
   ! 3 * nphase degrees of freedom (velocity vector)
   call createPetscVector(grid,THREENPDOF, option%vl, GLOBAL)
       
-! print *,'pflowgrid_new: ',option%using_pflowGrid
+! print *,'pflowgrid_new: ',option%run_coupled
       
-  if (option%using_pflowGrid == PETSC_TRUE) &
+  if (option%run_coupled == PETSC_TRUE) &
     call VecDuplicate(option%vl, option%vvl, ierr)
       
   ! nvar * nphase degrees of freedom
 !  call DACreateGlobalVector(option%da_ncnp_dof, option%xmol, ierr)
 
 
-  if (option%use_2ph == PETSC_TRUE) then
+  if (option%imode == TWOPH_MODE) then
     print *,'2ph add var'
     call VecDuplicate(option%sat, option%d_s, ierr)
     call VecDuplicate(option%sat, option%h_s, ierr)
@@ -483,31 +390,11 @@ subroutine initPFLOW(simulation,filename)
     call VecDuplicate(option%hen_c_loc, option%df_c_loc, ierr)
   end if  
 
-  if (option%use_mph == PETSC_TRUE) then 
-    call createPetscVector(grid,VARDOF, option%var,GLOBAL)
-    call createPetscVector(grid,VARDOF, option%var_loc,LOCAL)
-  endif
-
-  if (option%use_richards == PETSC_TRUE) then
-    call createPetscVector(grid,VARDOF, option%var,GLOBAL)
-    call createPetscVector(grid,VARDOF, option%var_loc, LOCAL)
-  endif
- 
- if (option%use_flash == PETSC_TRUE) then
-    call createPetscVector(grid,VARDOF, option%var, GLOBAL)
-    call createPetscVector(grid,VARDOF, option%var_loc, LOCAL)
-  endif
-     
-  if (option%use_owg == PETSC_TRUE) then
-    call createPetscVector(grid,VARDOF, option%var, GLOBAL)
-    call createPetscVector(grid,VARDOF, option%var_loc, LOCAL)
-  endif  
-  if (option%use_vadose == PETSC_TRUE) then
-    call createPetscVector(grid,VARDOF, option%var, GLOBAL)
-    call createPetscVector(grid,VARDOF, option%var_loc, LOCAL)
-  endif
-
-
+  select case(option%imode)
+    case(MPH_MODE,RICHARDS_MODE,FLASH_MODE,OWG_MODE,VADOSE_MODE)
+      call createPetscVector(grid,VARDOF, option%var,GLOBAL)
+      call createPetscVector(grid,VARDOF, option%var_loc,LOCAL)
+  end select
 
       ! ndof degrees of freedom
   call createPetscVector(grid,NDOF, option%xx, GLOBAL)
@@ -558,7 +445,7 @@ subroutine initPFLOW(simulation,filename)
   option%den_co2 = 1.d0
   option%dden_co2 = 1.d0
 
-! if (grid%using_pflowGrid == PETSC_TRUE) &
+! if (grid%run_coupled == PETSC_TRUE) &
 ! allocate(grid%vvl_loc(grid%nconn*grid%nphase))
 
   ! I don't like having a fixed number of boundary condition regions.
@@ -613,18 +500,18 @@ subroutine initPFLOW(simulation,filename)
   allocate(option%k1ini(MAXINITREGIONS))
   allocate(option%k2ini(MAXINITREGIONS))
 
-  if (option%use_mph == PETSC_TRUE .or. option%use_owg == PETSC_TRUE .or. &
-      option%use_vadose == PETSC_TRUE .or. option%use_flash == PETSC_TRUE .or. &
-      option%use_richards == PETSC_TRUE) then
-    allocate(option%xx_ini(option%ndof,MAXINITREGIONS))
-    allocate(option%iphas_ini(MAXINITREGIONS))
-  else
-    allocate(option%pres_ini(MAXINITREGIONS))
-    allocate(option%temp_ini(MAXINITREGIONS))
-    allocate(option%sat_ini(MAXINITREGIONS))
-    allocate(option%xmol_ini(MAXINITREGIONS))
-    allocate(option%conc_ini(MAXINITREGIONS))
-  endif
+
+  select case(option%imode)
+    case(MPH_MODE,RICHARDS_MODE,FLASH_MODE,OWG_MODE,VADOSE_MODE)      
+      allocate(option%xx_ini(option%ndof,MAXINITREGIONS))
+      allocate(option%iphas_ini(MAXINITREGIONS))
+    case default
+      allocate(option%pres_ini(MAXINITREGIONS))
+      allocate(option%temp_ini(MAXINITREGIONS))
+      allocate(option%sat_ini(MAXINITREGIONS))
+      allocate(option%xmol_ini(MAXINITREGIONS))
+      allocate(option%conc_ini(MAXINITREGIONS))
+  end select
 
 !GEH - Structured Grid Dependence - Begin    
   allocate(option%i1brk(MAXINITREGIONS))
@@ -660,13 +547,14 @@ subroutine initPFLOW(simulation,filename)
   allocate(option%cexp(MAXPERMREGIONS))
 
   allocate(option%icaptype(MAXPERMREGIONS))
-  if (option%use_mph == PETSC_TRUE .or. option%use_owg == PETSC_TRUE .or. &
-      option%use_vadose == PETSC_TRUE .or. option%use_flash == PETSC_TRUE .or. &
-      option%use_richards == PETSC_TRUE) then
-    allocate(option%sir(1:option%nphase,MAXPERMREGIONS))
-  else
-    allocate(option%swir(MAXPERMREGIONS))
-  endif
+  
+  select case(option%imode)
+    case(MPH_MODE,OWG_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
+      allocate(option%sir(1:option%nphase,MAXPERMREGIONS))
+    case default
+      allocate(option%swir(MAXPERMREGIONS))
+  end select
+  
   allocate(option%lambda(MAXPERMREGIONS))
   allocate(option%alpha(MAXPERMREGIONS))
   allocate(option%pckrm(MAXPERMREGIONS))
@@ -678,28 +566,27 @@ subroutine initPFLOW(simulation,filename)
   ! Set up boundary condition storage on blocks
   !-----------------------------------------------------------------------
   allocate(option%velocitybc0(option%nphase, MAXBCREGIONS))
-  if (option%use_mph==PETSC_TRUE .or. option%use_owg == PETSC_TRUE &
-      .or. option%use_vadose == PETSC_TRUE .or. option%use_flash == PETSC_TRUE &
-      .or. option%use_richards == PETSC_TRUE) then
-    allocate(option%xxbc0(option%ndof,MAXBCREGIONS))
-    allocate(option%iphasebc0(MAXBCREGIONS))
-!    allocate(option%dmax(0:option%ndof-1))
-    option%xxbc0=0.D0
-    option%iphasebc0=0
-  else
-    allocate(option%pressurebc0(option%nphase, MAXBCREGIONS))
-    allocate(option%tempbc0(MAXBCREGIONS))
-    allocate(option%sgbc0(MAXBCREGIONS))
-    allocate(option%concbc0(MAXBCREGIONS))
+  
+  select case(option%imode)
+    case(MPH_MODE,OWG_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
+      allocate(option%xxbc0(option%ndof,MAXBCREGIONS))
+      allocate(option%iphasebc0(MAXBCREGIONS))
+!      allocate(option%dmax(0:option%ndof-1))
+      option%xxbc0=0.D0
+      option%iphasebc0=0
+    case default
+      allocate(option%pressurebc0(option%nphase, MAXBCREGIONS))
+      allocate(option%tempbc0(MAXBCREGIONS))
+      allocate(option%sgbc0(MAXBCREGIONS))
+      allocate(option%concbc0(MAXBCREGIONS))
     
-      
-    ! initialize
-    option%pressurebc0 = 0.d0
-    option%tempbc0 = 0.d0
-    option%concbc0 = 0.d0
-    option%sgbc0 = 0.d0
-     
-  endif
+      ! initialize
+      option%pressurebc0 = 0.d0
+      option%tempbc0 = 0.d0
+      option%concbc0 = 0.d0
+      option%sgbc0 = 0.d0
+  end select
+  
   option%velocitybc0 = 0.d0
   !set scale factor for heat equation, i.e. use units of MJ for energy
   option%scale = 1.d-6
@@ -714,7 +601,13 @@ subroutine initPFLOW(simulation,filename)
 
   call readInput(simulation,filename)
   
+  call computeGridSpacing(grid)
+  call computeGridCoordinates(grid,option)
+  call computeGridCellVolumes(grid,option)
   call computeInternalConnectivity(grid,option)
+  call computeBoundaryConnectivity(grid,option)
+
+
 
   i = grid%internal_connection_list%first%num_connections
   allocate(option%vl_loc(i))
@@ -727,70 +620,30 @@ subroutine initPFLOW(simulation,filename)
   option%vg_loc = 0.D0
 
 ! check number of dofs and phases
-  if (option%use_cond == PETSC_TRUE) then
-    if (option%ndof .ne. 1 .or. option%nphase .ne. 1) then
-      write(*,*) 'Specified number of dofs or phases not correct-stop: COND ', &
-        'ndof= ',option%ndof,' nph= ',option%nphase
-      stop
-    endif
-  else if (option%use_th == PETSC_TRUE) then
-    if (option%ndof .ne. 2 .or. option%nphase .ne. 1) then
-      write(*,*) 'Specified number of dofs or phases not correct-stop: TH ', &
-        'ndof= ',option%ndof,' nph= ',option%nphase
-      stop
-    endif
-  else if (option%use_thc == PETSC_TRUE) then
-    if (option%ndof .ne. 3 .or. option%nphase .ne. 1) then
-      write(*,*) 'Specified number of dofs or phases not correct-stop: THC ', &
-        'ndof= ',option%ndof,' nph= ',option%nphase
-      stop
-    endif
-  else if (option%use_2ph == PETSC_TRUE) then
-    if (option%ndof .ne. 4 .or. option%nphase .ne. 2) then
-      write(*,*) 'Specified number of dofs or phases not correct-stop: 2PH ', &
-        'ndof= ',option%ndof,' nph= ',option%nphase
-      stop
-    endif
-  else if (option%use_mph == PETSC_TRUE) then
-    if (option%ndof .ne. (option%nspec+1)) then
-      write(*,*) 'Specified number of dofs or phases not correct-stop: MPH ', &
-        'ndof= ',option%ndof,' nph= ',option%nphase
-      stop
-    endif
-  else if (option%use_richards == PETSC_TRUE) then
-    if (option%ndof .ne. (option%nspec+1)) then
-      write(*,*) 'Specified number of dofs or phases not correct-stop: Richards ', &
-        'ndof= ',option%ndof,' nph= ',option%nphase
-      stop
-    endif
-  else if (option%use_flash == PETSC_TRUE) then
-    if (option%ndof .ne. (option%nspec+1)) then
-      write(*,*) 'Specified number of dofs or phases not correct-stop: FLA ', &
-        'ndof= ',option%ndof,' nph= ',option%nphase
-      stop
-    endif
-  else if (option%use_vadose == PETSC_TRUE) then
-    if (option%ndof .ne. (option%nspec+1)) then
-      write(*,*) 'Specified number of dofs or phases not correct-stop: VAD ', &
-        'ndof= ',option%ndof,' nph= ',option%nphase
-      stop
-    endif
-  else if (option%use_owg == PETSC_TRUE) then
-    if (option%ndof .ne. (option%nspec)) then
-      write(*,*) 'Specified number of dofs or phases not correct-stop: OWG ', &
-        'ndof= ',option%ndof,' nph= ',option%nphase
-      stop
-    endif
-  else
-    if (option%ndof .ne. 1 .or. option%nphase .ne. 1) then
-      write(*,*) 'Specified number of dofs or phases not correct-stop: &
-        &LIQUID ', &
-        'ndof= ',option%ndof,' nph= ',option%nphase
-      stop
-    endif
-  endif
+  iflag = PETSC_FALSE
+  select case(option%imode)
+    case(COND_MODE)
+      if (option%ndof .ne. 1 .or. option%nphase .ne. 1) iflag = PETSC_TRUE
+    case(TH_MODE)
+      if (option%ndof .ne. 2 .or. option%nphase .ne. 1) iflag = PETSC_TRUE
+    case(THC_MODE)
+      if (option%ndof .ne. 3 .or. option%nphase .ne. 1) iflag = PETSC_TRUE
+    case(TWOPH_MODE)
+      if (option%ndof .ne. 4 .or. option%nphase .ne. 2) iflag = PETSC_TRUE
+    case(MPH_MODE,RICHARDS_MODE,FLASH_MODE,VADOSE_MODE)
+      if (option%ndof .ne. (option%nspec+1)) iflag = PETSC_TRUE
+    case(OWG_MODE)
+      if (option%ndof .ne. (option%nspec)) iflag = PETSC_TRUE
+    case default
+      if (option%ndof .ne. 1 .or. option%nphase .ne. 1) iflag = PETSC_TRUE
+  end select
   
-  call computeGridCoordinates(grid,option)
+  if (iflag == PETSC_TRUE) then
+    write(*,*) 'Specified number of dofs or phases not correct-stop: ', &
+               trim(option%mode), 'ndof= ',option%ndof,' nph= ', &
+               option%nphase
+    stop
+  endif
 
 
   if (option%myrank == 0) then
@@ -803,28 +656,28 @@ subroutine initPFLOW(simulation,filename)
     endif
     write(*,'(" number of dofs = ",i3,", number of phases = ",i3,i2)') &
       option%ndof,option%nphase
-    if (option%use_cond == PETSC_TRUE) then
-      write(*,'(" mode = Conduction: T")')
-    else if (option%use_th == PETSC_TRUE) then
-      write(*,'(" mode = TH: p, T")')
-    else if (option%use_thc == PETSC_TRUE) then
-      write(*,'(" mode = THC: p, T, C")')
-    else if (option%use_2ph == PETSC_TRUE) then
-      write(*,'(" mode = 2-PH: p, T, s, C")')
-    else if (option%use_mph == PETSC_TRUE) then
-      write(*,'(" mode = MPH: p, T, s/C")')
-    else if (option%use_flash == PETSC_TRUE) then
-      write(*,'(" mode = flash: p, T, z")')
-    else if (option%use_vadose == PETSC_TRUE) then
-      write(*,'(" mode = VAD: p, T, s/C")')
-    else if (option%use_richards == PETSC_TRUE) then
-      write(*,'(" mode = Richards: p, T, s/C")')
-    else if (option%use_owg == PETSC_TRUE) then
-      write(*,'(" mode = O+W+G: p, T, s/C")')
-    else
-      write(*,'(" mode = Single Liquid Phase: p")')
-    endif
-  endif
+    select case(option%imode)
+      case(COND_MODE)
+        write(*,'(" mode = Conduction: T")')
+      case(TH_MODE)
+        write(*,'(" mode = TH: p, T")')
+      case(THC_MODE)
+        write(*,'(" mode = THC: p, T, C")')
+      case(TWOPH_MODE)
+        write(*,'(" mode = 2-PH: p, T, s, C")')
+      case(MPH_MODE)
+        write(*,'(" mode = MPH: p, T, s/C")')
+      case(FLASH_MODE)
+        write(*,'(" mode = flash: p, T, z")')
+      case(VADOSE_MODE)
+        write(*,'(" mode = VAD: p, T, s/C")')
+      case(RICHARDS_MODE)
+        write(*,'(" mode = Richards: p, T, s/C")')
+      case(OWG_MODE)
+        write(*,'(" mode = O+W+G: p, T, s/C")')
+      case default
+        write(*,'(" mode = Single Liquid Phase: p")')
+  end select
 
   !-----------------------------------------------------------------------
   ! Set up the Jacobian matrix.  We do this here instead of in 
@@ -870,7 +723,7 @@ subroutine initPFLOW(simulation,filename)
 !    else if (option%use_richards == PETSC_TRUE) then
     if (option%use_richards == PETSC_TRUE) then
       call SNESSetJacobian(option%snes, option%J, option%J, RichardsJacobian, &
-                         grid, ierr); CHKERRQ(ierr)
+                           solution, ierr); CHKERRQ(ierr)
       if (option%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(solution,solver)
 #if 0      
     else if (option%use_owg == PETSC_TRUE) then
@@ -1053,9 +906,6 @@ subroutine initPFLOW(simulation,filename)
 
   if (option%myrank == 0) write(*,'("  Finished setting up of SNES ")')
  
-  ! Calculate cell volumes for local cells.
-  call computeCellVolumes(grid,option)
-
 ! set initial conditions by region for pressure, temperature, saturation
 ! and concentration
 
@@ -1227,8 +1077,6 @@ subroutine initPFLOW(simulation,filename)
     allocate(option%kvr_c_bc(option%nphase*option%npricomp))
     allocate(option%kvr_s_bc(option%nphase))
   endif
-
-  call computeBoundaryConnectivity(grid,option)
    
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-print_bcinfo", &
                            option_found, ierr)
@@ -1249,22 +1097,23 @@ subroutine initPFLOW(simulation,filename)
   if (option%use_mph == PETSC_TRUE .or. option%use_owg==PETSC_TRUE &
       .or. option%use_vadose == PETSC_TRUE .or. option%use_flash == PETSC_TRUE&
       .or. option%use_richards == PETSC_TRUE) then
+! already allocated    allocate(grid%ibconn(i))
     allocate(option%xxbc(option%ndof,i))
     allocate(option%iphasebc(i))
     allocate(option%xphi_co2_bc(i))
     allocate(option%xxphi_co2_bc(i))
 
     do nc = 1, i
-      ibc = option%ibconn(nc)
+      ibc = grid%ibconn(nc)
       option%xxbc(:,nc)=option%xxbc0(:,ibc)
       option%iphasebc(nc)=option%iphasebc0(ibc)
       option%velocitybc(:,nc) = option%velocitybc0(:,ibc)
     enddo
-    if (option%using_pflowGrid == PETSC_FALSE) then
+    if (option%run_coupled == PETSC_FALSE) then
       deallocate(option%xxbc0)
       deallocate(option%iphasebc0)
     endif
-    if (option%iread_init==2) call Boundary_adjustment(grid)
+!    if (option%iread_init==2) call Boundary_adjustment(grid)
   
   else
  !   allocate(option%velocitybc(option%nphase, option%nconnbc))
@@ -1283,7 +1132,7 @@ subroutine initPFLOW(simulation,filename)
     option%velocitybc = 0.d0
       
     do nc = 1, i
-      ibc = option%ibconn(nc)
+      ibc = grid%ibconn(nc)
       option%pressurebc(:,nc) = option%pressurebc0(:,ibc)
       option%tempbc(nc)       = option%tempbc0(ibc)
       option%concbc(nc)       = option%concbc0(ibc)
@@ -1341,58 +1190,60 @@ subroutine initPFLOW(simulation,filename)
   enddo
   
   call VecRestoreArrayF90(grid%ttemp,temp_p,ierr)
+
   call VecGetArrayF90(grid%ttemp,ran_p,ierr)
-  call VecGetArrayF90(grid%icap,icap_p,ierr)
-  call VecGetArrayF90(grid%ithrm,ithrm_p,ierr)
-  call VecGetArrayF90(grid%porosity,por_p,ierr)
-  call VecGetArrayF90(grid%porosity0,por0_p,ierr)
-  call VecGetArrayF90(grid%perm_xx,perm_xx_p,ierr)
-  call VecGetArrayF90(grid%perm_yy,perm_yy_p,ierr)
-  call VecGetArrayF90(grid%perm_zz,perm_zz_p,ierr)
-  call VecGetArrayF90(grid%perm_pow,perm_pow_p,ierr)
-  call VecGetArrayF90(grid%tor,tor_p,ierr)
-  do ir = 1,grid%iregperm        
+#endif
+  call VecGetArrayF90(option%icap,icap_p,ierr)
+  call VecGetArrayF90(option%ithrm,ithrm_p,ierr)
+  call VecGetArrayF90(option%porosity,por_p,ierr)
+  call VecGetArrayF90(option%porosity0,por0_p,ierr)
+  call VecGetArrayF90(option%perm_xx,perm_xx_p,ierr)
+  call VecGetArrayF90(option%perm_yy,perm_yy_p,ierr)
+  call VecGetArrayF90(option%perm_zz,perm_zz_p,ierr)
+  call VecGetArrayF90(option%perm_pow,perm_pow_p,ierr)
+  call VecGetArrayF90(option%tor,tor_p,ierr)
+  do ir = 1,option%iregperm        
 
     ! in order to keep the random numbers consistent between processor
     ! decompositions, must loop over ALL indices in perm region
     
 !GEH - Structured Grid Dependence - Begin
-    do k=grid%k1reg(ir),grid%k2reg(ir)
-      do j=grid%j1reg(ir),grid%j2reg(ir)
-        do i=grid%i1reg(ir),grid%i2reg(ir)
+    do k=option%k1reg(ir),option%k2reg(ir)
+      do j=option%j1reg(ir),option%j2reg(ir)
+        do i=option%i1reg(ir),option%i2reg(ir)
 !GEH - Structured Grid Dependence - End
       
           random_nr=1.D0
           frand = 1.d0
-          if (grid%ran_fac > 0.d0) then
+          if (option%ran_fac > 0.d0) then
             frand = ran1(n)
-            random_nr = grid%ran_fac*frand+1.d-6
+            random_nr = option%ran_fac*frand+1.d-6
           endif
 
 !GEH - Structured Grid Dependence - Begin 
-          if (k > grid%nzs .and. k <= grid%nze .and. &
-              j > grid%nys .and. j <= grid%nye .and. &
-              i > grid%nxs .and. i <= grid%nxe) then
+          if (k > grid%structured_grid%nzs .and. k <= grid%structured_grid%nze .and. &
+              j > grid%structured_grid%nys .and. j <= grid%structured_grid%nye .and. &
+              i > grid%structured_grid%nxs .and. i <= grid%structured_grid%nxe) then
 
-            n = i-grid%nxs+(j-grid%nys-1)*grid%nlx+(k-grid%nzs-1)*grid%nlxy
+            n = i-grid%structured_grid%nxs+(j-grid%structured_grid%nys-1)*grid%structured_grid%nlx+(k-grid%structured_grid%nzs-1)*grid%structured_grid%nlxy
 !GEH - Structured Grid Dependence - End
 
-            por = grid%por_reg(ir)
+            por = option%por_reg(ir)
             por0_p(n)=por
-            if (grid%iran_por==1) then
+            if (option%iran_por==1) then
               por=por*(2.D0**0.666667D0*(frand)**1.5D0)
               if (por<1D-2) por=1D-2 
             endif
             por_p(n)= por
 
-            perm_xx_p(n) = random_nr * grid%perm_reg(ir,1)
-            perm_yy_p(n) = random_nr * grid%perm_reg(ir,2)
-            perm_zz_p(n) = random_nr * grid%perm_reg(ir,3)
-            perm_pow_p(n) = grid%perm_reg(ir,4)
+            perm_xx_p(n) = random_nr * option%perm_reg(ir,1)
+            perm_yy_p(n) = random_nr * option%perm_reg(ir,2)
+            perm_zz_p(n) = random_nr * option%perm_reg(ir,3)
+            perm_pow_p(n) = option%perm_reg(ir,4)
 
-            icap_p(n) = grid%icap_reg(ir)
-            ithrm_p(n) = grid%ithrm_reg(ir)
-            tor_p(n) = grid%tor_reg(ir)
+            icap_p(n) = option%icap_reg(ir)
+            ithrm_p(n) = option%ithrm_reg(ir)
+            tor_p(n) = option%tor_reg(ir)
 
           endif
         enddo
@@ -1400,23 +1251,25 @@ subroutine initPFLOW(simulation,filename)
     enddo
   enddo
  
+#if 0
   call VecRestoreArrayF90(grid%ttemp,ran_p,ierr)
-  call VecRestoreArrayF90(grid%icap,icap_p,ierr)
-  call VecRestoreArrayF90(grid%ithrm,ithrm_p,ierr)
-  call VecRestoreArrayF90(grid%porosity,por_p,ierr)
-  call VecRestoreArrayF90(grid%porosity0,por0_p,ierr)
+#endif
+  call VecRestoreArrayF90(option%icap,icap_p,ierr)
+  call VecRestoreArrayF90(option%ithrm,ithrm_p,ierr)
+  call VecRestoreArrayF90(option%porosity,por_p,ierr)
+  call VecRestoreArrayF90(option%porosity0,por0_p,ierr)
   
 !GEH - Structured Grid Dependence - Begin
-  call VecRestoreArrayF90(grid%perm_xx,perm_xx_p,ierr)
-  call VecRestoreArrayF90(grid%perm_yy,perm_yy_p,ierr)
-  call VecRestoreArrayF90(grid%perm_zz,perm_zz_p,ierr)
+  call VecRestoreArrayF90(option%perm_xx,perm_xx_p,ierr)
+  call VecRestoreArrayF90(option%perm_yy,perm_yy_p,ierr)
+  call VecRestoreArrayF90(option%perm_zz,perm_zz_p,ierr)
 !GEH - Structured Grid Dependence - End
 
-  call VecRestoreArrayF90(grid%perm_pow,perm_pow_p,ierr)
-  call VecRestoreArrayF90(grid%tor,tor_p,ierr)
- 
-  call VecDestroy(temp0_nat_vec,ierr)
+  call VecRestoreArrayF90(option%perm_pow,perm_pow_p,ierr)
+  call VecRestoreArrayF90(option%tor,tor_p,ierr)
 
+#if 0 
+  call VecDestroy(temp0_nat_vec,ierr)
 #endif
 
 #if 0
@@ -1481,7 +1334,7 @@ subroutine initPFLOW(simulation,filename)
   endif
 #endif
 
-  if (option%using_pflowGrid==0) call VecCopy(option%Porosity, option%Porosity0, ierr)
+  if (option%run_coupled==0) call VecCopy(option%Porosity, option%Porosity0, ierr)
   call VecCopy(option%perm_xx, option%perm0_xx, ierr) 
   call VecCopy(option%perm_yy, option%perm0_yy, ierr) 
   call VecCopy(option%perm_zz, option%perm0_zz, ierr) 
@@ -1599,13 +1452,13 @@ subroutine initPFLOW(simulation,filename)
 !  call VecView(grid%yy,PETSC_VIEWER_STDOUT_WORLD,ierr)
 ! zero initial velocity
   call VecSet(option%vl,0.d0,ierr)
-  if (option%using_pflowGrid == PETSC_TRUE) call VecSet(option%vvl,0.d0,ierr)
+  if (option%run_coupled == PETSC_TRUE) call VecSet(option%vvl,0.d0,ierr)
  
   if (option%myrank == 0) &
     write(*,'("  Finished setting up of INIT2 ")')
 
   ! set phase index for each node and initialize accumulation terms
-  call initAccumulation(solution)
+!  call initAccumulation(solution)
    
   !initial solid reaction  
   if (option%rk > 0.d0) then
@@ -1670,6 +1523,20 @@ subroutine readSelectCardsFromInput(solution,filename,mcomp,mphas)
   mcomp = 0
 
 ! Read in select required cards
+!.........................................................................
+
+  ! MODE information
+  string = "MODE"
+  call fiFindStringInFile(IUNIT1,string,ierr)
+  call fiFindStringErrorMsg(string,ierr)
+
+  ! strip card from front of string
+  call fiReadWord(string,word,.false.,ierr)
+ 
+  ! read in keyword 
+  call fiReadWord(string,option%mode,ierr)
+  call fiErrorMsg('mode','mode',ierr)
+
 !.........................................................................
 
   ! GRID information
@@ -3252,35 +3119,41 @@ end subroutine readInput
 ! ************************************************************************** !
 !
 ! initAccumulation: Initializes accumulation term?
-! author: Glenn Hammond
-! date: 10/25/07
+! author: 
+! date:
 !
 ! ************************************************************************** !
 subroutine initAccumulation(solution)
+!  use water_eos_module
+!  use TTPHASE_module
+!  use Flash_module
+!  use MPHASE_module
+!  use OWG_module
+!  use Vadose_module
+ use Richards_module , only: pflow_richards_initaccum  ! for some reason intel compiler fails without "only" clause
 
-  use water_eos_module
-  use TTPHASE_module
-  use Flash_module
-  use MPHASE_module
-  use OWG_module
-  use Vadose_module
-  use Richards_module
-  
   use Solution_module
+  use Option_module
+
+  implicit none
 
   type(solution_type) :: solution
+  
+  type(option_type), pointer :: option
   real*8, pointer :: den_p(:), pressure_p(:), temp_p(:), h_p(:)
   real*8 :: dw_kg,dl,hl
   integer :: m, ierr
-
-#if 0
+  
+  option => solution%option
+  
+#if 0  
   if ( grid%use_owg == PETSC_TRUE) then
     call pflow_owg_initaccum(grid)
   else if (grid%use_mph == PETSC_TRUE) then
     call pflow_mphase_initaccum(grid)
   else if (grid%use_richards == PETSC_TRUE) then
 #endif    
-  if (grid%use_richards == PETSC_TRUE) then
+  if (option%imode == RICHARDS_MODE) then
     call pflow_richards_initaccum(solution)
 #if 0    
   else if (grid%use_flash == PETSC_TRUE) then
@@ -3319,7 +3192,96 @@ subroutine initAccumulation(solution)
     call VecRestoreArrayF90(grid%density, den_p, ierr)
 #endif
   endif
-  
+
 end subroutine initAccumulation
+
+! ************************************************************************** !
+!
+! setMode: Sets the flow mode (richards, vadose, mph, etc.)
+! author: Glenn Hammond
+! date: 10/26/07
+!
+! ************************************************************************** !
+subroutine setMode(option)
+
+  use Option_module
+
+  implicit none
+  
+#include "definitions.h"  
+
+  type(option_type) :: option  
+  
+  call fiCharsToLower(option%mode,len_trim(option%mode))
+  if (fiStringCompare(option%mode,"richards",8)) then
+    option%imode = RICHARDS_MODE
+#if 0  
+  else if (fiStringCompare(option%mode,"MPH",3)) then
+  else if (fiStringCompare(option%mode,"",#)) then
+#endif  
+  endif 
+  
+  if (option%imode /= LIQUID_MODE .and. &
+      option%imode /= COND_MODE .and. &
+      option%imode /= TH_MODE .and. &
+      option%imode /= THC_MODE .and. &
+      option%imode /= TWOPH_MODE .and. &
+      option%imode /= MPH_MODE .and. &
+      option%imode /= FLASH_MODE .and. &
+      option%imode /= OWG_MODE .and. &
+      option%imode /= VADOSE_MODE .and. &
+      option%imode /= RICHARDS_MODE) then 
+
+    if (mcomp >0 .and. mphas>0)then
+      if (option%imode /= COND_MODE .and. mcomp ==1)then
+        option%imode = COND_MODE
+        option%mode = 'cond'
+        option%nphase = 1; option%ndof =1
+      endif
+      if (option%imode /= PETSC_FALSE .and. mcomp == 32)then
+        option%imode = COND_MODE
+        option%mode = 'cond'
+        option%nphase = 1; option%ndof =1
+      endif
+      if (option%use_th /= TH_MODE .and. mcomp == 33 .and. mphas == 3)then
+        option%imode = TH_MODE
+        option%mode = 'th'
+        option%nphase = 1; option%ndof =2
+      endif
+      if (option%imode /= THC_MODE .and. mcomp == 37)then
+        option%imode = THC_MODE
+        option%mode = 'thc'
+        option%nphase = 1; option%ndof =3
+      endif
+      if (option%imode /= MPH_MODE .and. mcomp == 35)then
+        option%imode = MPH_MODE
+        option%mode = 'mph'
+        option%nphase = 2; option%ndof =3; option%nspec =2 
+      endif
+      if (option%imode /= VADOSE_MODE .and. mcomp == 49)then
+        option%imode = VADOSE_MODE
+        option%mode = 'vadose'
+        option%nphase = 2; option%ndof =3; option%nspec =2 
+      endif
+      if (option%imode /= RICHARDS_MODE .and. mcomp == 33 .and. mphas == 11) then
+        option%imode = RICHARDS_MODE
+        option%mode = 'richards'
+        option%nphase = 1; option%ndof = 2
+        if (option%nspec > 1) then
+          option%ndof = option%nspec +1
+        endif
+      endif
+    endif
+    if (option%imode /= OWG_MODE .and. mcomp == 11)then
+      option%imode = OWG_MODE
+      option%mode = 'owg'
+      option%nphase = 3; option%ndof =3; option%nspec =3 
+    endif
+  endif
+  if (option%imode == NULL_MODE) then
+    call printErrMsg(option,"No mode specified")
+  endif       
+
+end subroutine setMode
 
 end module Init_module

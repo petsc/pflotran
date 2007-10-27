@@ -2915,8 +2915,8 @@ subroutine pflow_Richards_initadj(solution)
     endif 
   enddo
 
-  allocate(yybc(option%ndof,option%nconnbc))
-  allocate(vel_bc(option%nphase, option%nconnbc))
+  allocate(yybc(option%ndof,grid%boundary_connection_list%first%num_connections))
+  allocate(vel_bc(option%nphase,grid%boundary_connection_list%first%num_connections))
   yybc =option%xxbc
   vel_bc = option%velocitybc
 

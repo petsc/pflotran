@@ -916,14 +916,26 @@ end subroutine fiReadDBaseDouble
 
   ierr = 0
 
-  rewind(fid)
-
   length = len_trim(string)
+
   do 
     call fiReadFlotranString(fid,string2,ierr)
     if (fiStringCompare(string,string2,length)) exit
     if (ierr /= 0) exit
   enddo
+  
+  ! if not found, rewind once and try again.  this approach avoids excessive 
+  ! reading if successive searches for strings are in descending order in 
+  ! the file.
+  if (ierr /= 0) then
+    ierr = 0
+    rewind(fid)
+    do 
+      call fiReadFlotranString(fid,string2,ierr)
+      if (fiStringCompare(string,string2,length)) exit
+      if (ierr /= 0) exit
+    enddo
+  endif    
   
   if (ierr == 0) string = trim(string2)
 

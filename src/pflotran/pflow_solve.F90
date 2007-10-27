@@ -95,6 +95,7 @@
  implicit none
  
 #include "include/finclude/petscerror.h"
+#include "definitions.h"
 
  type(solution_type) :: solution
  KSPConvergedReason :: ksp_reason
@@ -114,6 +115,7 @@
  
  do
  
+   select case(option%imode)
 #if 0
    if(option%use_mph==PETSc_TRUE)then
  !    call Translator_MPhase_Switching(option%xx,grid,1,ichange)
@@ -124,10 +126,9 @@
      call MPHASEResidual(option%snes,option%xx,option%r,grid,ierr)
    endif
 #endif
-   if(option%use_richards==PETSc_TRUE)then
-  !   call Translator_richards_Switching(option%xx,grid,0,ichange)
-     call RichardsResidual(option%snes,option%xx,option%r,solution,ierr)
-   endif
+     case(RICHARDS_MODE)
+    !   call Translator_richards_Switching(option%xx,grid,0,ichange)
+       call RichardsResidual(option%snes,option%xx,option%r,solution,ierr)
 #if 0
    if(option%use_flash==PETSc_TRUE) then
    !  call Translator_vadose_Switching(option%xx,grid,0,ichange)
@@ -140,6 +141,8 @@
    endif
 !  print *,' psolve; Get Res'
 #endif
+   end select
+
    if (ierr < 0 .or. ierr ==PETSC_ERR_ARG_DOMAIN) then
       if (option%myrank==0) &
       print *,'pflowsolv: failed: out of range',its_line, newton,isucc,rnorm
@@ -162,6 +165,8 @@
 !   if (newton > 0 .and. rnorm < option%stol) then
       exit ! convergence obtained
     endif
+    
+    select case(option%imode)
 #if 0
     if(option%use_mph==PETSC_TRUE)then
       call MPHASEJacobian(option%snes,option%xx,option%J,option%J,flag,grid,ierr)
@@ -173,9 +178,10 @@
       call FlashJacobian(option%snes,option%xx,option%J,option%J,flag,grid,ierr)
     elseif(option%use_richards==PETSC_TRUE)then
 #endif    
-    if(option%use_richards==PETSC_TRUE)then
-      call RichardsJacobian(option%snes,option%xx,option%J,option%J,flag,solution,ierr)
-    endif
+      case (RICHARDS_MODE)
+        call RichardsJacobian(option%snes,option%xx,option%J,option%J, &
+                              flag,solution,ierr)
+    end select
      
     call VecScale(option%r,-1D0,ierr)
     call KSPSetOperators(option%ksp,option%J,option%J,SAME_NONZERO_PATTERN,ierr)
