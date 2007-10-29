@@ -53,7 +53,19 @@ function createSolver()
   
   type(solver_type), pointer :: createSolver
   
-  allocate(createSolver)
+  type(solver_type), pointer :: solver
+  
+  allocate(solver)
+  
+  ! initialize to default values
+  solver%atol = PETSC_DEFAULT_DOUBLE_PRECISION
+  solver%rtol = PETSC_DEFAULT_DOUBLE_PRECISION
+  solver%stol = PETSC_DEFAULT_DOUBLE_PRECISION
+  solver%maxit = PETSC_DEFAULT_INTEGER
+  solver%maxf = PETSC_DEFAULT_INTEGER
+  solver%idt_switch = 0
+  
+  createSolver => solver
   
 end function createSolver
   

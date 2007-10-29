@@ -342,7 +342,7 @@ end subroutine readStructuredDXYZ
 ! ************************************************************************** !
 subroutine readDXYZ(a,n)
 
-  use fileio_module
+  use Fileio_module
   
   implicit none
   

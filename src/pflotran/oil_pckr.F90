@@ -16,7 +16,7 @@ module oil_pckr_module
 
 subroutine oil_pckr_init(myrank)
 
-  use fileio_module
+  use Fileio_module
    
   integer myrank
 #include "definitions.h"

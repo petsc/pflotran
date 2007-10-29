@@ -8,6 +8,9 @@ module Timestepper_module
  
   type, public :: stepper_type
     type(solver_type), pointer :: solver
+    
+    real*8, pointer :: steady_eps(:)  ! tolerance for stead state convergence
+    
   end type stepper_type
   
   public :: createTimestepper, updateDT, stepDT, updateSolution

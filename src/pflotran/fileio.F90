@@ -1,4 +1,4 @@
-module fileio_module
+module Fileio_module
 
 ! use paramtrsmod
 
@@ -1017,4 +1017,4 @@ subroutine fiReadQuotedNChars(string, chars, n, return_blank_error, ierr)
 
 end subroutine fiReadQuotedNChars
 
-end module fileio_module
+end module Fileio_module

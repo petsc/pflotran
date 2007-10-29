@@ -194,7 +194,7 @@ end subroutine UpdateConditions
 subroutine InitializeBoundaryConditions(grid)
 
   use pflow_gridtype_module
-  use fileio_module
+  use Fileio_module
 
   implicit none
 

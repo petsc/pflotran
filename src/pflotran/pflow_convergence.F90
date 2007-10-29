@@ -97,11 +97,7 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,simulation,ier
 !                                        implies converged to local minimum of F() */
 !              SNES_CONVERGED_ITERATING         =  0} SNESConvergedReason;
 
-  if (associated(simulation%stepper)) then
-    solver => simulation%stepper%solver
-  else
-    solver => simulation%solver
-  endif
+  solver => simulation%stepper%solver
   option => simulation%solution%option
 
 #ifdef CHUAN

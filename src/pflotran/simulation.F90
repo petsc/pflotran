@@ -12,7 +12,6 @@ module Simulation_module
 
     type(solution_type), pointer :: solution
     type(stepper_type), pointer :: stepper
-    type(solver_type), pointer :: solver
 
   end type simulation_type
   
@@ -36,7 +35,6 @@ function createSimulation()
   allocate(createSimulation)
   createSimulation%solution => createSolution()
   nullify(createSimulation%stepper) ! nullify these since we are not sure 
-  nullify(createSimulation%solver)  ! whether we need them yet
   
 end function createSimulation  
   

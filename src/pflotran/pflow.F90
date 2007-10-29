@@ -79,6 +79,7 @@
   
   type(simulation_type), pointer :: simulation
   type(solver_type), pointer :: solver
+  type(stepper_type), pointer :: stepper
   type(solution_type), pointer :: solution
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -87,6 +88,7 @@
   simulation%stepper => createTimestepper()
   solution => simulation%solution
   option => solution%option
+  stepper => simulation%stepper
 
 ! Initialize Startup Time
  ! call PetscGetCPUTime(timex(1), ierr)
@@ -113,9 +115,9 @@
   if(option_found /= PETSC_TRUE) pflowin = "pflow.in"
   
 
-  if(option%use_mph == PETSC_TRUE .or. &
-     option%use_owg == PETSC_TRUE .or. &
-     option%use_flash == PETSC_TRUE) &
+  if(option%imode == MPH_MODE .or. &
+     option%imode == OWG_MODE .or. &
+     option%imode == FLASH_MODE) &
     call initialize_span_wagner(option%itable,option%myrank)
 
   call PetscGetCPUTime(timex(1), ierr)
@@ -134,7 +136,7 @@
   call PetscLogStagePush(stage(2), ierr)
 ! call VecView(grid%conc,PETSC_VIEWER_STDOUT_WORLD,ierr)
 
-  if(option%use_owg/=PETSC_TRUE) then
+  if(option%imode /= OWG_MODE) then
     call Output(solution,kplt,iplot)
   else
  !   call pflow_var_output(grid,kplt,iplot)
@@ -184,14 +186,14 @@
     dt_cur = option%dt 
    
     
-    if(option%use_thc == PETSC_TRUE)then
+    if(option%imode == THC_MODE)then
       dxdt(1)=option%dpmax/dt_cur
       dxdt(2)=option%dtmpmax/dt_cur
       dxdt(3)=option%dcmax/dt_cur
     endif  
 
     call PetscLogStagePush(stage(2), ierr)
-    if(option%use_owg/=PETSC_TRUE) then
+    if(option%imode /= OWG_MODE) then
       call Output(solution,kplt,iplot)
      ! print *,'XX ::...........'; call VecView(grid%xx,PETSC_VIEWER_STDOUT_WORLD,ierr)
     else
@@ -213,9 +215,9 @@
 #endif
     
     ista=0
-    if(option%use_thc == PETSC_TRUE)then
+    if(option%imode == THC_MODE)then
       do idx = 1, option%ndof
-        if(dxdt(idx) < option%steady_eps(idx)) ista=ista+1
+        if(dxdt(idx) < stepper%steady_eps(idx)) ista=ista+1
       enddo 
       
       if(ista >= option%ndof)then

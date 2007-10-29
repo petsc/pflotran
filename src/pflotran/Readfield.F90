@@ -39,7 +39,7 @@ contains
    
 subroutine Read_perm_field(grid)
 
-  use fileio_module
+  use Fileio_module
 
   implicit none
 
@@ -126,8 +126,8 @@ end  subroutine Read_perm_field
 
 subroutine Read_init_field(grid, kplt)
 
-  use fileio_module
-  use utilities_module
+  use Fileio_module
+  use Utility_module
   implicit none
 
 !#include "definitions.h"
@@ -232,8 +232,8 @@ end function GetLocalGhostedIdFromNaturalId
            
 subroutine Read_Geom_field(grid)
 
-  use fileio_module
-  use utilities_module
+  use Fileio_module
+  use Utility_module
   implicit none
 
 #include "definitions.h"
