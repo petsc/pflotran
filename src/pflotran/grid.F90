@@ -427,7 +427,7 @@ subroutine DMGlobalToNatural(grid,global_vec,natural_vec,dm_index)
   integer :: dm_index
   
   if (grid%is_structured) then
-    call DMStructGlobalToLocal(grid%structured_grid,global_vec,natural_vec, &
+    call DMStructGlobalToNatural(grid%structured_grid,global_vec,natural_vec, &
                                dm_index)
   else
   endif

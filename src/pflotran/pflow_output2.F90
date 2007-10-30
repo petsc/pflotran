@@ -1182,9 +1182,10 @@ subroutine OutputHDF5(solution)
   call h5fclose_f(file_id,hdf5_err)
   call h5close_f(hdf5_err)
   first = .false.
-
+#endif
 end subroutine OutputHDF5
 
+#ifdef USE_HDF5
 ! ************************************************************************** !
 !
 ! WriteHDF5FluxVelocities: Print flux velocities to HDF5 file
