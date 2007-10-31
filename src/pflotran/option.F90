@@ -244,7 +244,7 @@ module Option_module
     Vec :: conc
     Vec :: porosity, porosity0, porosity_loc, tor, tor_loc
 !GEH - Structured Grid Dependence - Begin
-    Vec :: dx, dy, dz, dx_loc, dy_loc, dz_loc  ! Grid spacings
+!transferred to structured_grid.F90    Vec :: dx, dy, dz, dx_loc, dy_loc, dz_loc  ! Grid spacings
 !GEH - Structured Grid Dependence - End
     Vec :: volume  ! Volume of a cell in the grid
     Vec :: ithrm, ithrm_loc, icap, icap_loc, iphas, iphas_loc, iphas_old
