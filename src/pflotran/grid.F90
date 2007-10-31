@@ -264,7 +264,7 @@ subroutine mapGridIndices(grid)
   
   if (grid%is_structured) then
     call mapStructuredGridIndices(grid%structured_grid,grid%nG2L,grid%nL2G, &
-                                  grid%nL2A,grid%nL2A,grid%nG2N)
+                                  grid%nL2A,grid%nG2A,grid%nG2N)
   else
   endif
 
@@ -330,7 +330,8 @@ subroutine computeGridCellVolumes(grid,option)
   type(option_type) :: option
   
   if (grid%is_structured) then
-    call computeStructuredCellVolumes(grid%structured_grid,option,grid%nL2G)
+    call computeStructuredCellVolumes(grid%structured_grid,option, &
+                                      grid%nL2G)
   else
   endif
 
