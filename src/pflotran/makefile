@@ -19,7 +19,7 @@ ifdef hdf5
   HDF5_LIBS = -L$(HDF5_LIB) -lhdf5_fortran -lhdf5 -lz  
 endif
 MYFLAGS = -I${objdir} -DUSE_COMPRESSIBILITY $(CUSTOM_CONVERGENCE_FLAGS) \
-          $(DEBUG_CONVERGENCE_FLAGS) $(HDF5_FLAGS)
+          $(DEBUG_CONVERGENCE_FLAGS) $(HDF5_FLAGS) -DOVERHAUL -DOVERHAUL_V2
 LIBS = $(HDF5_LIBS)
 
 CFLAGS		 = 
@@ -38,7 +38,7 @@ util_obj  = ${common_src}fileio.o \
 	${common_src}co2_span_wagner.o \
 	${common_src}oil_eos.o \
 	${common_src}oil_pckr.o \
-	${common_src}utilities.o \
+	${common_src}utility.o \
 	${common_src}ptran_global.o \
 	${common_src}trdynmem.o \
 	${common_src}petscrelwrappers.o
@@ -46,6 +46,18 @@ util_obj  = ${common_src}fileio.o \
 pflow_obj = ${common_src}pflow_vector_ops.o \
 	${common_src}pflow_read_gridsize.o \
 	${common_src}pflow_gridtype.o \
+	${common_src}option.o \
+	${common_src}material.o \
+	${common_src}connection.o \
+	${common_src}general_grid.o \
+	${common_src}unstructured_grid.o \
+	${common_src}structured_grid.o \
+	${common_src}grid.o \
+	${common_src}region.o \
+	${common_src}condition.o \
+	${common_src}condition_old.o \
+	${common_src}solver.o \
+	${common_src}pflow_init.o \
 	${common_src}Readfield.o \
 	${common_src}pflow_pckr_mod.o \
 	${common_src}mixed_fluid_eos.o \
@@ -54,9 +66,7 @@ pflow_obj = ${common_src}pflow_vector_ops.o \
 	${common_src}translator_mixed_fluid_vad.o \
 	${common_src}translator_mixed_fluid_richards.o \
 	${common_src}translator_mixed_fluid_flash.o \
-	${common_src}condition.o \
 	${common_src}pflow_vadose_ResJac.o\
-	${common_src}unstructured_grid.o \
 	${common_src}hydrostat.o \
 	${common_src}nhydrostatic.o \
 	${common_src}pflow_LIQUID.o \
@@ -70,12 +80,13 @@ pflow_obj = ${common_src}pflow_vector_ops.o \
 	${common_src}pflow_richards_ResJac.o\
 	${common_src}pflow_solve.o \
 	${common_src}vectompizero.o \
+	${common_src}timestepper.o \
+	${common_src}solution.o \
+	${common_src}simulation.o \
 	${common_src}pflow_output2.o \
-	${common_src}pflow_output.o \
 	${common_src}pflow_checkpoint.o \
-	${common_src}pflow_output_new.o \
-	${common_src}pflow_convergence.o \
-	${common_src}pflowgrid_mod.o
+	${common_src}pflow_convergence.o 
+#	${common_src}pflowgrid_mod.o
 
 ptran_obj = ${common_src}ptran_psi.o \
 	${common_src}ptran_dbase.o \
@@ -124,13 +135,34 @@ ascii_to_hdf5: fileio.o hdf5_dataset.o ascii_to_hdf5.o
 
 # Dependencies stemming from "use" statements.
 # These ensure that the module files are built in the correct order.
-pflow.o : pflowgrid_mod.o
-pflowgrid_mod.o : pflow_gridtype.o water_eos.o pflow_vector_ops.o \
-                  pflow_COND.o pflow_LIQUID.o pflow_TH.o pflow_THC.o \
-                  pflow_output.o ptran_global.o \
-                  trdynmem.o fileio.o
+pflow.o : pflow_init.o timestepper.o
+pflow_init.o : option.o grid.o solution.o solver.o timestepper.o simulation.o \
+               fileio.o material.o region.o condition.o pflow_convergence.o
+grid.o : structured_grid.o unstructured_grid.o option.o
+general_grid.o : condition_old.o
+condition.o : pflow_pckr_mod.o
+condition_old.o : pflow_pckr_mod.o
+solution.o : grid.o option.o region.o
 pflow_vector_ops.o : water_eos.o
 pflow_output_new.o : pflow_output.o
+pflow_richards_ResJac.o : solution.o option.o grid.o \
+                          translator_mixed_fluid_richards.o
+timestepper.o : \
+	        mixed_fluid_eos.o \
+                translator_mixed_fluid_mph.o \
+                translator_mixed_fluid_OWG.o \
+                translator_mixed_fluid_vad.o \
+                translator_mixed_fluid_flash.o \
+                translator_mixed_fluid_richards.o \
+                pflow_richards_ResJac.o \
+                pflow_vadose_ResJac.o \
+                pflow_2pha_ResJac.o \
+                pflow_owg_ResJac.o \
+                pflow_mphase_ResJac.o \
+                pflow_flash_ResJac.o \
+                pflow_solve.o \
+                pflow_init.o \
+                hydrostat.o
 pflow_output.o : pflow_gridtype.o petscrelwrappers.o pflow_output2.o
 pflow_COND.o : pflow_gridtype.o 
 pflow_LIQUID.o : pflow_gridtype.o water_eos.o
