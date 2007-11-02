@@ -61,6 +61,7 @@ module Grid_module
 
 
   public :: createGrid, &
+            destroyGrid, &
             computeInternalConnectivity, &
             computeBoundaryConnectivity, &
             createPetscVector, &
@@ -72,7 +73,9 @@ module Grid_module
             createDMs, &
             computeGridSpacing, &
             computeGridCoordinates, &
-            computeGridCellVolumes
+            computeGridCellVolumes, &
+            computeBoundaryConnectivity2, &
+            localizeRegions
   
 contains
 
@@ -247,6 +250,42 @@ subroutine computeBoundaryConnectivity(grid,option)
   call addConnectionToList(connection,grid%boundary_connection_list)
 
 end subroutine computeBoundaryConnectivity
+
+! ************************************************************************** !
+!
+! computeBoundaryConnectivity2: computes boundary connectivity of a grid
+! author: Glenn Hammond
+! date: 10/15/07
+!
+! ************************************************************************** !
+subroutine computeBoundaryConnectivity2(grid,option,boundary_condition_list)
+
+  use Connection_module
+  use Option_module  
+  use Coupler_module  
+
+  implicit none
+  
+  type(grid_type) :: grid
+  type(option_type) :: option
+  type(coupler_list_type) :: boundary_condition_list
+  
+  type(connection_type), pointer :: connection
+  
+  if (grid%is_structured) then
+    connection => &
+      computeStructBoundaryConnect2(grid%structured_grid,option,grid%ibconn, &
+                                   grid%nL2G,boundary_condition_list)
+  else 
+    connection => &
+      computeUnstructBoundaryConnect(grid%unstructured_grid,option)
+  endif
+
+  allocate(grid%boundary_connection_list)
+  call initConnectionList(grid%boundary_connection_list)  
+  call addConnectionToList(connection,grid%boundary_connection_list)
+
+end subroutine computeBoundaryConnectivity2
 
 ! ************************************************************************** !
 !
@@ -434,5 +473,160 @@ subroutine DMGlobalToNatural(grid,global_vec,natural_vec,dm_index)
   endif
   
 end subroutine DMGlobalToNatural
+
+! ************************************************************************** !
+!
+! localizeRegions: Resticts regions to cells local to processor
+! author: Glenn Hammond
+! date: 10/29/07
+!
+! ************************************************************************** !
+subroutine localizeRegions(region_list,grid,option)
+
+  use Option_module
+  use Region_module
+
+  implicit none
+  
+  type(region_list_type), pointer :: region_list
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  
+  type(region_type), pointer :: region
+  integer, allocatable :: temp_int_array(:)
+  integer :: i, j, k, count, local_count, local_ghosted_id, local_id
+  
+  region => region_list%first
+  do
+  
+    if (.not.associated(region)) exit
+    
+    if (.not.associated(region%cell_ids) .and. &
+        region%i1 > 0 .and. region%i2 > 0 .and. &
+        region%j1 > 0 .and. region%j2 > 0 .and. &
+        region%k1 > 0 .and. region%k2 > 0) then
+        
+      ! clip region to within local processor domain
+      region%i1 = max(region%i1,grid%structured_grid%nxs+1)
+      region%i2 = min(region%i2,grid%structured_grid%nxe)
+      region%j1 = max(region%j1,grid%structured_grid%nys+1)
+      region%j2 = min(region%j2,grid%structured_grid%nye)
+      region%k1 = max(region%k1,grid%structured_grid%nzs+1)
+      region%k2 = min(region%k2,grid%structured_grid%nze)
+        
+      region%num_cells = (region%i2-region%i1+1)* &
+                         (region%j2-region%j1+1)* &
+                         (region%k2-region%k1+1)
+                         
+      allocate(region%cell_ids(region%num_cells))
+      region%cell_ids = 0
+        
+      count = 0  
+      do k=region%k1,region%k2
+        do j=region%j1,region%j2
+          do i=region%i1,region%i2
+            count = count + 1
+            region%cell_ids(count) = &
+                   i + (j-1)*grid%structured_grid%nlx + &
+                   (k-1)*grid%structured_grid%nlxy
+          enddo
+        enddo
+      enddo
+      if (count /= region%num_cells) &
+        call printErrMsg(option,"Mismatch in number of cells in block region")
+    else
+      allocate(temp_int_array(region%num_cells))
+      temp_int_array = 0
+      if (grid%is_structured) then
+        do count=1,region%num_cells
+          i = mod(region%cell_ids(count),grid%structured_grid%nx) - &
+                grid%structured_grid%nxs
+          j = mod((region%cell_ids(count)-1)/grid%structured_grid%nx, &
+                  grid%structured_grid%ny)+1 - &
+                grid%structured_grid%nys
+          k = ((region%cell_ids(count)-1)/grid%structured_grid%nxy)+1 - &
+                grid%structured_grid%nzs
+          if (i > 0 .and. i <= grid%structured_grid%nlx .and. &
+              j > 0 .and. j <= grid%structured_grid%nly .and. &
+              k > 0 .and. k <= grid%structured_grid%nlz) then
+            temp_int_array(local_count) = &
+                i + (j-1)*grid%structured_grid%nlx + &
+                (k-1)*grid%structured_grid%nlxy
+            local_count = local_count + 1
+          endif
+        enddo
+      else
+        do count=1,region%num_cells
+          local_ghosted_id = GetLocalGhostedIdFromHash(grid%unstructured_grid, &
+                                                       region%cell_ids(count))
+          if (local_ghosted_id > -1) then
+            local_id = grid%nG2L(local_ghosted_id)
+            if (local_id > -1) then
+              temp_int_array(local_count) = local_id
+              local_count = local_count + 1
+            endif
+          endif
+        enddo
+      endif
+      if (local_count /= region%num_cells) then
+        deallocate(region%cell_ids)
+        allocate(region%cell_ids(local_count))
+        region%cell_ids(1:local_count) = temp_int_array(1:local_count)
+      endif
+      deallocate(temp_int_array)
+    endif
+    
+    if (region%num_cells == 0) deallocate(region%cell_ids)
+    region => region%next
+    
+  enddo
+
+end subroutine localizeRegions
+
+! ************************************************************************** !
+!
+! destroyGrid: Deallocates a grid
+! author: Glenn Hammond
+! date: 11/01/07
+!
+! ************************************************************************** !
+subroutine destroyGrid(grid)
+
+  implicit none
+  
+  type(grid_type), pointer :: grid
+    
+  if (.not.associated(grid)) return
+      
+  if (associated(grid%nL2G)) deallocate(grid%nL2G)
+  nullify(grid%nL2G)
+  if (associated(grid%nG2L)) deallocate(grid%nG2L)
+  nullify(grid%nG2L)
+  if (associated(grid%nL2A)) deallocate(grid%nL2A)
+  nullify(grid%nL2A)
+  if (associated(grid%nG2N)) deallocate(grid%nG2N)
+  nullify(grid%nG2N)
+  if (associated(grid%nG2A)) deallocate(grid%nG2A)
+  nullify(grid%nG2A)
+
+  if (associated(grid%ibconn)) deallocate(grid%ibconn)
+  nullify(grid%ibconn)
+
+  if (associated(grid%x)) deallocate(grid%x)
+  nullify(grid%x)
+  if (associated(grid%y)) deallocate(grid%y)
+  nullify(grid%y)
+  if (associated(grid%z)) deallocate(grid%z)
+  nullify(grid%z)
+  if (associated(grid%delz)) deallocate(grid%delz)
+  nullify(grid%delz)
+  
+  call destroyUnstructuredGrid(grid%unstructured_grid)    
+  call destroyStructuredGrid(grid%structured_grid)
+                                           
+  call destroyConnectionList(grid%internal_connection_list)
+  call destroyConnectionList(grid%boundary_connection_list)
+
+end subroutine destroyGrid
   
 end module Grid_module

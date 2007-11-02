@@ -188,6 +188,7 @@ subroutine reallocateIntArray(array,size)
   array2(1:size) = array(1:size)
   deallocate(array)
   allocate(array(2*size))
+  array = 0
   array(1:size) = array2(1:size)
   size = 2*size
   deallocate(array2)
@@ -213,6 +214,7 @@ subroutine reallocateRealArray(array,size)
   allocate(array2(size))
   array2(1:size) = array(1:size)
   deallocate(array)
+  array = 0.d0
   allocate(array(2*size))
   array(1:size) = array2(1:size)
   size = 2*size

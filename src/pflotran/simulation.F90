@@ -15,7 +15,7 @@ module Simulation_module
 
   end type simulation_type
   
-  public :: createSimulation
+  public :: createSimulation, destroySimulation
   
 contains
 
@@ -37,5 +37,25 @@ function createSimulation()
   nullify(createSimulation%stepper) ! nullify these since we are not sure 
   
 end function createSimulation  
+
+! ************************************************************************** !
+!
+! destroySimulation: Deallocates a simulation
+! author: Glenn Hammond
+! date: 11/01/07
+!
+! ************************************************************************** !
+subroutine destroySimulation(simulation)
+
+  implicit none
+  
+  type(simulation_type), pointer :: simulation
+  
+  if (.not.associated(simulation)) return
+    
+  call destroySolution(simulation%solution)
+  call destroyTimestepper(simulation%stepper)
+  
+end subroutine destroySimulation
   
 end module Simulation_module

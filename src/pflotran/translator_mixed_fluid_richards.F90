@@ -211,26 +211,19 @@ integer function translator_check_cond_Richards(iphase, &
 end function translator_check_cond_Richards
 
 
-subroutine translator_Richards_get_output(solution)
+subroutine translator_Richards_get_output(nvals,option)
 
-  use Solution_module
+  use Option_module
 
-  implicit none
-
-  type(solution_type) :: solution
-  
-  type(grid_type), pointer :: grid
-  type(option_type), pointer :: option
+  integer :: nvals
+  type(option_type) :: option
   
   integer :: ierr
   
   PetscScalar, pointer :: t_p(:),p_p(:),c_p(:),s_p(:),cc_p(:),var_P(:)
   integer :: n, index_var_begin ,jn, size_var_node
 ! PetscScalar, pointer :: p,t,satu(:),xmol(:)
-  
-  grid => solution%grid
-  option => solution%option
-  
+    
   call VecGetArrayF90(option%var, var_p, ierr)
   call VecGetArrayF90(option%pressure, p_p, ierr)
   call VecGetArrayF90(option%temp, t_p, ierr)
@@ -241,7 +234,8 @@ subroutine translator_Richards_get_output(solution)
   
   size_var_node=(option%ndof+1)*(2+7*option%nphase +2*option%nphase*option%nspec)
   
-  do n = 1, grid%nlmax
+  do n = 1, nvals
+
     index_var_begin = (n-1) * size_var_node
     jn = 1 + (n-1)*option%nphase 
     
@@ -257,8 +251,8 @@ subroutine translator_Richards_get_output(solution)
   
     s_p(jn) = var_p(index_var_begin + 3) 
  !   s_p(jn+1)=1.D0 -  s_p(jn)
+
   enddo
- 
   call VecRestoreArrayF90(option%var, var_p, ierr)
   call VecRestoreArrayF90(option%pressure, p_p, ierr)
   call VecRestoreArrayF90(option%temp, t_p, ierr)

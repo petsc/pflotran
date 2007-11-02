@@ -296,6 +296,8 @@
         (timex_wall(2)-timex_wall(1))/3600.d0
   endif
 
+  call destroySimulation(simulation)
+
   close(IUNIT2)
   if (option%ibrkcrv > 0) close(IUNIT4)
 

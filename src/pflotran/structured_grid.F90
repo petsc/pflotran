@@ -22,6 +22,16 @@ module Structured_Grid_module
 #include "include/finclude/petscda.h"
 #include "include/finclude/petscda.h90"
 
+#define X_DIRECTION 1
+#define Y_DIRECTION 2
+#define Z_DIRECTION 3
+
+#define WEST 1
+#define EAST 2
+#define SOUTH 3
+#define NORTH 4
+#define BOTTOM 5
+#define TOP 6
 
   type, public :: structured_grid_type
 
@@ -63,6 +73,7 @@ module Structured_Grid_module
   end type
 
   public :: initStructuredGrid, &
+            destroyStructuredGrid, &
             createStructuredDMs, &
             computeStructInternalConnect, &
             computeStructBoundaryConnect, &
@@ -75,7 +86,8 @@ module Structured_Grid_module
             DMStructGlobalToLocal, &
             DMStructGlobalToNatural, &
             readStructuredDXYZ, &
-            computeStructuredCellVolumes
+            computeStructuredCellVolumes, &
+            computeStructBoundaryConnect2
 
 contains
 
@@ -98,6 +110,88 @@ subroutine initStructuredGrid(structured_grid)
   structured_grid%npx = PETSC_DECIDE
   structured_grid%npy = PETSC_DECIDE
   structured_grid%npz = PETSC_DECIDE
+  
+  structured_grid%nx = 0
+  structured_grid%ny = 0
+  structured_grid%nz = 0
+  
+  structured_grid%nxy = 0
+  structured_grid%nmax = 0
+  
+  structured_grid%nlx = 0
+  structured_grid%nly = 0
+  structured_grid%nlz = 0
+  structured_grid%nlxy = 0
+  structured_grid%nlxz = 0
+  structured_grid%nlyz = 0
+  structured_grid%nlmax = 0
+  
+  structured_grid%ngx = 0
+  structured_grid%ngy = 0
+  structured_grid%ngz = 0
+  structured_grid%ngxy = 0
+  structured_grid%ngxz = 0
+  structured_grid%ngyz = 0
+  structured_grid%ngmax = 0
+
+  structured_grid%nxs = 0
+  structured_grid%nys = 0
+  structured_grid%nzs = 0
+
+  structured_grid%ngxs = 0
+  structured_grid%ngys = 0
+  structured_grid%ngzs = 0
+
+  structured_grid%nxe = 0
+  structured_grid%nye = 0
+  structured_grid%nze = 0
+
+  structured_grid%ngxe = 0
+  structured_grid%ngye = 0
+  structured_grid%ngze = 0
+
+  structured_grid%istart = 0
+  structured_grid%jstart = 0
+  structured_grid%kstart = 0
+  structured_grid%iend = 0
+  structured_grid%jend = 0
+  structured_grid%kend = 0
+  
+  structured_grid%x_max = 0.d0
+  structured_grid%y_max = 0.d0
+  structured_grid%z_max = 0.d0
+  structured_grid%x_min = 0.d0
+  structured_grid%y_min = 0.d0
+  structured_grid%z_min = 0.d0
+  
+  nullify(structured_grid%dx0)
+  nullify(structured_grid%dy0)
+  nullify(structured_grid%dz0)
+  
+  nullify(structured_grid%rd)
+  
+  structured_grid%igeom = 0
+  structured_grid%radius_0 = 0.d0
+  
+  ! nullify Vec pointers
+  structured_grid%dx = 0
+  structured_grid%dy = 0
+  structured_grid%dz = 0
+  structured_grid%dx_loc = 0
+  structured_grid%dy_loc = 0
+  structured_grid%dz_loc = 0
+  
+  ! nullify DA pointers
+  structured_grid%da_1_dof = 0
+  structured_grid%da_nphase_dof = 0
+  structured_grid%da_3np_dof = 0
+  structured_grid%da_ndof = 0
+  structured_grid%da_nphancomp_dof = 0
+  structured_grid%da_nphanspec_dof = 0
+  structured_grid%da_nphanspecncomp_dof = 0
+  structured_grid%da_var_dof = 0
+  structured_grid%da_1_dof = 0
+  structured_grid%da_1_dof = 0  
   
 end subroutine initStructuredGrid
   
@@ -819,6 +913,138 @@ end function computeStructBoundaryConnect
 
 ! ************************************************************************** !
 !
+! computeStructBoundaryConnect2: computes boundary connectivity of a 
+!                               structured grid
+! author: Glenn Hammond
+! date: 11/01/07
+!
+! ************************************************************************** !
+function computeStructBoundaryConnect2(structured_grid,option,ibconn,nL2G, &
+                                       boundary_condition_list)
+
+  use Connection_module
+  use Option_module
+  use Coupler_module
+  use Region_module
+  
+  implicit none
+
+  type(connection_type), pointer :: computeStructBoundaryConnect2  
+  type(option_type) :: option
+  type(structured_grid_type) :: structured_grid
+  integer, pointer :: ibconn(:)
+  integer :: nL2G(:)
+  type(coupler_list_type) :: boundary_condition_list
+  
+  integer :: num_conn_hypothetically
+  integer :: iconn, iconn2
+  integer :: cell_id_local, cell_id_ghosted
+  type(connection_type), pointer :: connections
+  type(region_type), pointer :: region
+  type(coupler_type), pointer :: boundary_condition
+  PetscErrorCode :: ierr
+  
+  PetscScalar, pointer :: dx_loc_p(:), dy_loc_p(:), dz_loc_p(:)
+  
+  num_conn_hypothetically = 0
+
+  boundary_condition => boundary_condition_list%first
+  do
+    if (.not.associated(boundary_condition)) exit  
+    num_conn_hypothetically = num_conn_hypothetically + boundary_condition%region%num_cells
+    boundary_condition => boundary_condition%next
+  enddo
+  
+  call VecGetArrayF90(structured_grid%dx_loc, dx_loc_p, ierr)
+  call VecGetArrayF90(structured_grid%dy_loc, dy_loc_p, ierr)
+  call VecGetArrayF90(structured_grid%dz_loc, dz_loc_p, ierr)
+
+  print *, 'Need a check to ensure that boundary conditions connect to exterior boundary'
+  
+  connections => createConnection(num_conn_hypothetically,option%nphase)
+
+  allocate(ibconn(num_conn_hypothetically)) 
+  ibconn = 0
+
+  iconn = 0
+
+  boundary_condition => boundary_condition_list%first
+  do
+    if (.not.associated(boundary_condition)) exit  
+    
+    region => boundary_condition%region
+
+    do iconn2 = 1,region%num_cells
+      iconn = iconn + 1
+      
+      cell_id_local = region%cell_ids(iconn2)
+      
+      connections%id_dn(iconn) = cell_id_local
+      ibconn(iconn) = boundary_condition%icondition
+
+      cell_id_ghosted = nL2G(cell_id_local)
+      ! Use ghosted index to access dx, dy, dz because we have
+      ! already done a global-to-local scatter for computing the
+      ! interior node connections.
+      
+      select case(structured_grid%igeom)
+        case(1) ! cartesian
+          select case(boundary_condition%iface)
+            case(WEST,EAST)
+              connections%dist(:,iconn) = 0.d0
+              connections%dist(0,iconn) = 0.5d0*dx_loc_p(cell_id_ghosted)
+              connections%area(iconn) = dy_loc_p(cell_id_ghosted)* &
+                                        dz_loc_p(cell_id_ghosted)
+              if (boundary_condition%iface ==  WEST) then
+                connections%dist(1,iconn) = 1.d0
+              else
+                connections%dist(1,iconn) = -1.d0
+              endif
+            case(SOUTH,NORTH)
+              connections%dist(:,iconn) = 0.d0
+              connections%dist(0,iconn) = 0.5d0*dy_loc_p(cell_id_ghosted)
+              connections%area(iconn) = dx_loc_p(cell_id_ghosted)* &
+                                        dz_loc_p(cell_id_ghosted)
+              if (boundary_condition%iface ==  SOUTH) then
+                connections%dist(2,iconn) = 1.d0
+              else
+                connections%dist(2,iconn) = -1.d0
+              endif
+            case(BOTTOM,TOP)
+              connections%dist(:,iconn) = 0.d0
+              connections%dist(0,iconn) = 0.5d0*dz_loc_p(cell_id_ghosted)
+              connections%area(iconn) = dx_loc_p(cell_id_ghosted)* &
+                                        dy_loc_p(cell_id_ghosted)
+              if (boundary_condition%iface ==  BOTTOM) then
+                connections%dist(3,iconn) = 1.d0
+              else
+                connections%dist(3,iconn) = -1.d0
+              endif
+          end select
+        case(2) ! cylindrical
+        case(3) ! spherical
+      end select
+      ibconn(iconn) = boundary_condition%id
+    enddo
+
+    boundary_condition => boundary_condition%next
+  enddo
+   
+  if (num_conn_hypothetically /= iconn) then
+    print *, 'ERROR: Number of actual connections does not match hypothetical value'
+    stop
+  endif
+
+  call VecRestoreArrayF90(structured_grid%dx_loc, dx_loc_p, ierr)
+  call VecRestoreArrayF90(structured_grid%dy_loc, dy_loc_p, ierr)
+  call VecRestoreArrayF90(structured_grid%dz_loc, dz_loc_p, ierr)
+  
+  computeStructBoundaryConnect2 => connections
+  
+end function computeStructBoundaryConnect2
+
+! ************************************************************************** !
+!
 ! computeStructuredCellVolumes: Computes the volumes of cells in structured grid
 ! author: Glenn Hammond
 ! date: 10/25/07
@@ -1116,5 +1342,59 @@ function getDAPtrFromIndex(structured_grid,da_index)
   end select  
   
 end function getDAPtrFromIndex
+
+! ************************************************************************** !
+!
+! destroyStructuredGrid: Deallocates a structured grid
+! author: Glenn Hammond
+! date: 11/01/07
+!
+! ************************************************************************** !
+subroutine destroyStructuredGrid(structured_grid)
+
+  implicit none
+  
+  type(structured_grid_type), pointer :: structured_grid
+    
+  if (.not.associated(structured_grid)) return
+  
+
+  if (associated(structured_grid%dx0)) deallocate(structured_grid%dx0)
+  nullify(structured_grid%dx0)
+  if (associated(structured_grid%dy0)) deallocate(structured_grid%dy0)
+  nullify(structured_grid%dy0)
+  if (associated(structured_grid%dz0)) deallocate(structured_grid%dz0)
+  nullify(structured_grid%dz0)
+  if (associated(structured_grid%rd)) deallocate(structured_grid%rd)
+  nullify(structured_grid%rd)
+
+  if (structured_grid%dx /= 0) call VecDestroy(structured_grid%dx)
+  if (structured_grid%dy /= 0) call VecDestroy(structured_grid%dy)
+  if (structured_grid%dz /= 0) call VecDestroy(structured_grid%dz)
+  if (structured_grid%dx_loc /= 0) call VecDestroy(structured_grid%dx_loc)
+  if (structured_grid%dy_loc /= 0) call VecDestroy(structured_grid%dy_loc)
+  if (structured_grid%dz_loc /= 0) call VecDestroy(structured_grid%dz_loc)
+
+  if (structured_grid%da_1_dof /= 0) &
+    call DADestroy(structured_grid%da_1_dof)
+  if (structured_grid%da_nphase_dof /= 0) &
+    call DADestroy(structured_grid%da_nphase_dof)
+  if (structured_grid%da_3np_dof /= 0) &
+    call DADestroy(structured_grid%da_3np_dof)
+  if (structured_grid%da_ndof /= 0) &
+    call DADestroy(structured_grid%da_ndof)
+  if (structured_grid%da_nphancomp_dof /= 0) &
+    call DADestroy(structured_grid%da_nphancomp_dof)
+  if (structured_grid%da_nphanspec_dof /= 0) &
+    call DADestroy(structured_grid%da_nphanspec_dof)
+  if (structured_grid%da_nphanspecncomp_dof /= 0) &
+    call DADestroy(structured_grid%da_nphanspecncomp_dof)
+  if (structured_grid%da_var_dof /= 0) &
+    call DADestroy(structured_grid%da_var_dof)
+
+  deallocate(structured_grid)
+  nullify(structured_grid)
+
+end subroutine destroyStructuredGrid
                           
 end module Structured_Grid_module

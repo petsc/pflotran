@@ -35,6 +35,7 @@ module Solver_module
   end type solver_type
   
   public :: createSolver, &
+            destroySolver, &
             ComputeMFJacobian, &
             MonitorH
   
@@ -122,5 +123,25 @@ subroutine MonitorH(snes, its, norm, option)
   endif
 
 end subroutine MonitorH
+
+! ************************************************************************** !
+!
+! destroySolver: Deallocates a solver
+! author: Glenn Hammond
+! date: 11/01/07
+!
+! ************************************************************************** !
+subroutine destroySolver(solver)
+
+  implicit none
+  
+  type(solver_type), pointer :: solver
+
+  if (.not.associated(solver)) return
+    
+  deallocate(solver)
+  nullify(solver)
+  
+end subroutine destroySolver
   
 end module Solver_module

@@ -2803,7 +2803,7 @@ subroutine pflow_update_Richards(solution)
    
   call  pflow_Richards_initaccum(solution)
     !print *,'pflow_Richards_initaccum done'
-  call translator_Richards_get_output(solution)
+  call translator_Richards_get_output(grid%nlmax,option)
  ! print *,'translator_get_output done'
   ! the output variables should be put into grid%pressure, temp,xmol,sat...
   ! otherwise need to rewrite the pflow_output

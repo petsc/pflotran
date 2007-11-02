@@ -13,7 +13,8 @@ module Timestepper_module
     
   end type stepper_type
   
-  public :: createTimestepper, updateDT, stepDT, updateSolution
+  public :: createTimestepper, updateDT, stepDT, updateSolution, &
+            destroyTimestepper
   
 contains
 
@@ -25,8 +26,6 @@ contains
 !
 ! ************************************************************************** !
 function createTimestepper()
-
-  use Solver_module
 
   implicit none
   
@@ -792,5 +791,27 @@ subroutine updateSolution(solution)
   endif
 
 end subroutine updateSolution
+
+! ************************************************************************** !
+!
+! destroyTimestepper: Deallocates a time stepper
+! author: Glenn Hammond
+! date: 11/01/07
+!
+! ************************************************************************** !
+subroutine destroyTimestepper(stepper)
+
+  implicit none
+  
+  type(stepper_type), pointer :: stepper
+  
+  if (.not.associated(stepper)) return
+    
+  call destroySolver(stepper%solver)
+
+  deallocate(stepper)
+  nullify(stepper)
+  
+end subroutine destroyTimestepper
   
 end module Timestepper_module

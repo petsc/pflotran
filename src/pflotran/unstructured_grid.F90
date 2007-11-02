@@ -21,7 +21,8 @@ module Unstructured_Grid_module
             createUnstructuredDMs, &
             computeUnstructInternalConnect, &
             computeUnstructBoundaryConnect, &
-            GetLocalGhostedIdFromHash
+            getLocalGhostedIdFromHash, &
+            destroyUnstructuredGrid
 
 contains
 
@@ -32,11 +33,11 @@ contains
 ! date: 10/22/07
 !
 ! ************************************************************************** !
-subroutine initUnstructuredGrid(grid)
+subroutine initUnstructuredGrid(unstructured_grid)
 
   implicit none
   
-  type(unstructured_grid_type) :: grid
+  type(unstructured_grid_type) :: unstructured_grid
 
 end subroutine initUnstructuredGrid
 
@@ -170,13 +171,13 @@ end subroutine CreateNaturalToLocalGhostedHash
 
 ! ************************************************************************** !
 !
-! GetLocalIdFromHash: Returns the local ghosted id of a natural id, if it 
+! getLocalIdFromHash: Returns the local ghosted id of a natural id, if it 
 !                     exists.  Otherwise 0 is returned
 ! author: Glenn Hammond
 ! date: 03/07/07
 !
 ! ************************************************************************** !
-integer function GetLocalGhostedIdFromHash(unstructured_grid,natural_id)
+integer function getLocalGhostedIdFromHash(unstructured_grid,natural_id)
 
   implicit none
   
@@ -194,7 +195,7 @@ integer function GetLocalGhostedIdFromHash(unstructured_grid,natural_id)
     endif
   enddo
 
-end function GetLocalGhostedIdFromHash
+end function getLocalGhostedIdFromHash
 
 ! ************************************************************************** !
 !
@@ -223,5 +224,29 @@ subroutine PrintHashTable(unstructured_grid)
   close(fid)
 
 end subroutine PrintHashTable
+
+! ************************************************************************** !
+!
+! destroyUnstructuredGrid: Deallocates a unstructured grid
+! author: Glenn Hammond
+! date: 11/01/07
+!
+! ************************************************************************** !
+subroutine destroyUnstructuredGrid(unstructured_grid)
+
+  implicit none
+  
+  type(unstructured_grid_type), pointer :: unstructured_grid
+    
+  if (.not.associated(unstructured_grid)) return
+  
+
+  if (associated(unstructured_grid%hash)) deallocate(unstructured_grid%hash)
+  nullify(unstructured_grid%hash)
+
+  deallocate(unstructured_grid)
+  nullify(unstructured_grid)
+
+end subroutine destroyUnstructuredGrid
 
 end module Unstructured_Grid_module

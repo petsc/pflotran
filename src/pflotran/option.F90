@@ -337,7 +337,8 @@ module Option_module
   public :: createOption, &
             checkPetscOptions, &
             printErrMsg, &
-            printWrnMsg
+            printWrnMsg, &
+            destroyOption
 
 contains
 
@@ -540,5 +541,22 @@ subroutine printWrnMsg(option,string)
   if (option%myrank == 0) print *, 'WARNING: ', string
   
 end subroutine printWrnMsg
+
+! ************************************************************************** !
+!
+! destroyOption: Deallocates an option
+! author: Glenn Hammond
+! date: 10/26/07
+!
+! ************************************************************************** !
+subroutine destroyOption(option)
+
+  implicit none
+  
+  type(option_type) :: option
+  
+  ! all kinds of stuff needs to be added here.
+  
+end subroutine destroyOption
 
 end module Option_module

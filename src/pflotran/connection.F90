@@ -36,15 +36,15 @@ module Connection_module
   type(connection_list_type), pointer, private :: internal_connection_list, &
                                                   boundary_connection_list
 
-#if 1  
+
   public :: createConnection, addConnectionToList, &
             allocateConnectionLists, &
             getInternalConnectionList, getBoundaryConnectionList, &
             getNumberOfInternalConnections, getNumberOfBoundaryConnections, &
-            initConnectionList, destroyConnection
-#endif  
+            initConnectionList, destroyConnectionList, destroyConnection
+  
 contains
-#if 1
+
 ! ************************************************************************** !
 !
 ! getInternalConnectionList: Returns pointer to internal_connection_list
@@ -126,7 +126,7 @@ subroutine allocateConnectionLists()
   call initConnectionList(boundary_connection_list)
   
 end subroutine
-#endif
+
 ! ************************************************************************** !
 !
 ! InitConnectionModule: Initializes module variables, lists, arrays.
@@ -244,6 +244,8 @@ subroutine destroyConnection(connection)
   
   type(connection_type), pointer :: connection
   
+  if (.not.associated(connection)) return
+  
   if (associated(connection%id_up)) deallocate(connection%id_up)
   nullify(connection%id_up)
   if (associated(connection%id_dn)) deallocate(connection%id_dn)
@@ -255,6 +257,7 @@ subroutine destroyConnection(connection)
   if (associated(connection%velocity)) deallocate(connection%velocity)
   nullify(connection%velocity)
   nullify(connection%next)
+  
   deallocate(connection)
   nullify(connection)
 
@@ -271,9 +274,11 @@ subroutine destroyConnectionList(list)
 
   implicit none
   
-  type(connection_list_type) :: list
+  type(connection_list_type), pointer :: list
     
   type(connection_type), pointer :: cur_connection, prev_connection
+  
+  if (.not.associated(list)) return
   
   deallocate(list%array)
   nullify(list%array)
@@ -289,6 +294,9 @@ subroutine destroyConnectionList(list)
   nullify(list%first)
   nullify(list%last)
   list%num_connection_objects = 0
+  
+  deallocate(list)
+  nullify(list)
 
 end subroutine destroyConnectionList
 

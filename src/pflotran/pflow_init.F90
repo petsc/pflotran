@@ -553,8 +553,13 @@ subroutine initPFLOW(simulation,filename)
   call computeGridSpacing(grid)
   call computeGridCoordinates(grid,option)
   call computeGridCellVolumes(grid,option)
+
+  ! set up internal connectivity, distance, etc.
   call computeInternalConnectivity(grid,option)
-  call computeBoundaryConnectivity(grid,option)
+  ! clip regions and set up boundary connectivity, distance
+  call processSolutionCouplers(solution)
+  
+!  call computeBoundaryConnectivity(grid,option)
 
 
 
@@ -1678,6 +1683,8 @@ subroutine readInput(simulation,filename)
   use Solution_module
   use Timestepper_module
   use Region_module
+  use Condition_module
+  use Coupler_module
 
   use pckr_module 
   
@@ -1690,7 +1697,7 @@ subroutine readInput(simulation,filename)
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXNAMELENGTH) :: name
-  character(len=MAXCARDLENGTH) :: card
+  character(len=MAXWORDLENGTH) :: card
     
   real*8, parameter:: fmwnacl = 58.44277D0, fmwh2o  = 18.01534d0
   integer :: i, i1, i2, idum, ireg, isrc, j
@@ -1700,6 +1707,8 @@ subroutine readInput(simulation,filename)
 !           SOLV, THRM, PCKR, PHIK, INIT, TIME, DTST, BCON, SOUR, BRK, RCTR
 
   type(region_type), pointer :: region
+  type(condition_type), pointer :: condition
+  type(coupler_type), pointer :: coupler
 
   type(solution_type), pointer :: solution
   type(grid_type), pointer :: grid
@@ -1721,11 +1730,12 @@ subroutine readInput(simulation,filename)
 
     call fiReadWord(string,word,.false.,ierr)
     call fiCharsToUpper(word,len_trim(word))
-    call fiReadCard(word,card,ierr)
+!    call fiReadCard(word,card,ierr)
+    card = trim(word)
 
     if (option%myrank == 0) print *, 'pflow_read:: ',card
 
-    select case(card)
+    select case(trim(card))
 
 !....................
       case ('MODE')
@@ -1737,13 +1747,15 @@ subroutine readInput(simulation,filename)
       case ('PROC')
       
 !....................
-      case ('REGN')
+      case ('REGION','REGN')
         region => createRegion()
         call fiReadWord(string,region%name,.true.,ierr)
         call fiErrorMsg('regn','name',ierr) 
         call fiReadFlotranString(IUNIT1,string,ierr)
         call fiReadStringErrorMsg('REGN',ierr)
-        if (fiStringCompare(string,"BLOCK",5)) then ! block region
+        call fiReadWord(string,word,.true.,ierr)
+        call fiErrorMsg('type','REGN', ierr)
+        if (fiStringCompare(word,"BLOCK",5)) then ! block region
           if (.not.grid%is_structured) then
             call printErrMsg(option,"BLOCK region not supported for &
                              &unstructured grid")
@@ -1751,21 +1763,25 @@ subroutine readInput(simulation,filename)
           call fiReadFlotranString(IUNIT1,string,ierr)
           call fiReadStringErrorMsg('REGN',ierr)
           call fiReadInt(string,region%i1,ierr) 
-          call fiDefaultMsg('i1',ierr)
+          call fiErrorMsg('i1','REGN', ierr)
           call fiReadInt(string,region%i2,ierr)
-          call fiDefaultMsg('i2',ierr)
+          call fiErrorMsg('i2','REGN', ierr)
           call fiReadInt(string,region%j1,ierr)
-          call fiDefaultMsg('j1',ierr)
+          call fiErrorMsg('j1','REGN', ierr)
           call fiReadInt(string,region%j2,ierr)
-          call fiDefaultMsg('j2',ierr)
+          call fiErrorMsg('j2','REGN', ierr)
           call fiReadInt(string,region%k1,ierr)
-          call fiDefaultMsg('k1',ierr)
+          call fiErrorMsg('k1','REGN', ierr)
           call fiReadInt(string,region%k2,ierr)
-          call fiDefaultMsg('k2',ierr)
-        else if (fiStringCompare(string,"LIST",4)) then
+          call fiErrorMsg('k2','REGN', ierr)
+        else if (fiStringCompare(word,"LIST",4)) then
           word = ""
           call fiReadWord(string,word,.true.,ierr)
           if (fiStringCompare(word,"FILE",4)) then
+            call fiReadFlotranString(IUNIT1,string,ierr)
+            call fiReadStringErrorMsg('REGN',ierr)
+            call fiReadWord(string,word,.true.,ierr)
+            call fiErrorMsg('filename','REGN', ierr)
             call readRegionFromFile(region,word)
           else
             call readRegionFromFile(region,IUNIT1)
@@ -1774,6 +1790,32 @@ subroutine readInput(simulation,filename)
           call printErrMsg(option,"REGION type not recognized")
         endif
         call addRegionToList(region,solution%regions)      
+
+!....................
+      case ('CONDITION','COND')
+        condition => createCondition(option)
+        call fiReadWord(string,condition%name,.true.,ierr)
+        call fiErrorMsg('cond','name',ierr) 
+        call readCondition(condition,option,IUNIT1)
+        call addConditionToList(condition,solution%conditions)
+      
+!....................
+      case ('BOUNDARY_CONDITION')
+        coupler => createCoupler()
+        call readCoupler(coupler,IUNIT1)
+        call addCouplerToList(coupler,solution%boundary_conditions)
+      
+!....................
+      case ('INITIAL_CONDITION')
+        coupler => createCoupler()
+        call readCoupler(coupler,IUNIT1)
+        call addCouplerToList(coupler,solution%initial_conditions)
+      
+!....................
+      case ('SOURCE_SINK')
+        coupler => createCoupler()
+        call readCoupler(coupler,IUNIT1)
+        call addCouplerToList(coupler,solution%source_sinks)
       
 !.....................
       case ('COMP') 
@@ -3075,7 +3117,8 @@ subroutine readInput(simulation,filename)
       case default
     
         if (option%myrank == 0) then
-          print *, "Error reading input file: keyword not found. Terminating."
+          print *, "Error reading input file: keyword (", trim(word), &
+                   ") not found. Terminating."
         endif
         call PetscFinalize(ierr)
         stop
