@@ -106,16 +106,20 @@ subroutine pflow_Richards_setupini(solution)
   use Solution_module
   use Option_module
   use Grid_module
+  use Region_module
   use Structured_Grid_module
+  use Coupler_module
+  use Condition_module
  
   implicit none
   
   type(solution_type) :: solution
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
+  type(coupler_type), pointer :: initial_condition
 
   PetscScalar, pointer :: xx_p(:), iphase_p(:)
-  integer iln,na,nx,ny,nz,ir,nconn,ierr
+  integer local_id, ibegin, iend, icell, ierr
   
   grid => solution%grid
   option => solution%option
@@ -123,48 +127,34 @@ subroutine pflow_Richards_setupini(solution)
   size_var_use = 2 + 7*option%nphase + 2* option%nphase*option%nspec
   size_var_node = (option%ndof + 1) * size_var_use
   
-  nconn = grid%internal_connection_list%first%num_connections
   allocate(Resold_AR(grid%nlmax,option%ndof))
-  allocate(Resold_FL(nconn,option%ndof))
+  allocate(Resold_FL(grid%internal_connection_list%first%num_connections, &
+                     option%ndof))
   allocate(option%delx(option%ndof,grid%ngmax))
   option%delx=0.D0
    
   call VecGetArrayF90(option%xx, xx_p, ierr); CHKERRQ(ierr)
   call VecGetArrayF90(option%iphas, iphase_p,ierr)
   
-  do iln=1, grid%nlmax
-
-    !geh - Ignore inactive cells with inactive materials
-    if (associated(option%imat)) then
-      if (option%imat(iln) <= 0) cycle
-    endif
-
-    na = grid%nL2A(iln)
+  initial_condition => solution%initial_conditions%first
+  
+  do
+  
+    if (.not.associated(initial_condition)) exit
     
-!   nz = int(na/grid%nxy) + 1
-!   ny = int(mod(na,grid%nxy)/grid%nx) + 1
-!   nx = mod(mod(na,grid%nxy),grid%nx) + 1
-    
-    !compute i,j,k indices from na: note-na starts at 0
-!GEH - Structured Grid Dependence - Begin
-    nz = na/grid%structured_grid%nxy + 1
-    ny = (na - (nz-1)*grid%structured_grid%nxy)/grid%structured_grid%nx + 1
-    nx = na + 1 - (ny-1)*grid%structured_grid%nx - (nz-1)*grid%structured_grid%nxy
-
-    
-    do ir = 1,option%iregini
-      if ((nz>=option%k1ini(ir)) .and. (nz<=option%k2ini(ir)) .and.&
-          (ny>=option%j1ini(ir)) .and. (ny<=option%j2ini(ir)) .and.&
-          (nx>= option%i1ini(ir)) .and. (nx<=option%i2ini(ir))) then
-        iphase_p(iln)=option%iphas_ini(ir)
-        xx_p(1+(iln-1)*option%ndof:iln*option%ndof) = option%xx_ini(:,ir)
-!geh        print *,'pflow_Richards_resjac: ', xx_p(1+(iln-1)*option%ndof:iln*option%ndof)
-                !exit
-      endif
-    enddo 
-!GEH - Structured Grid Dependence - End
+    do icell=1,initial_condition%region%num_cells
+      local_id = initial_condition%region%cell_ids(icell)
+      iend = local_id*option%ndof
+      ibegin = iend-option%ndof+1
+      xx_p(ibegin:iend) = &
+        initial_condition%flow_condition%cur_value(1:option%ndof)
+      iphase_p(local_id)=initial_condition%flow_condition%iphase
+    enddo
+  
+    initial_condition => initial_condition%next
+  
   enddo
-              
+  
   call VecRestoreArrayF90(option%xx, xx_p, ierr)
   call VecRestoreArrayF90(option%iphas, iphase_p,ierr)
 

@@ -402,14 +402,14 @@ subroutine initPFLOW(simulation,filename)
   ! to determine the number of regions.  This is the lazy way... I 
   ! should fix it eventually.
   ! The same goes for the number of BC blocks.
-  allocate(option%iregbc1(MAXBCREGIONS))
-  allocate(option%iregbc2(MAXBCREGIONS))
+!  allocate(option%iregbc1(MAXBCREGIONS))
+!  allocate(option%iregbc2(MAXBCREGIONS))
   allocate(option%ibndtyp(MAXBCREGIONS))
 !GEH - Structured Grid Dependence - Begin
   allocate(option%iface(MAXBCREGIONS))
-  allocate(option%k1bc(MAXBCBLOCKS))
-  allocate(option%k2bc(MAXBCBLOCKS))
-  allocate(option%j1bc(MAXBCBLOCKS))
+!  allocate(option%k1bc(MAXBCBLOCKS))
+!  allocate(option%k2bc(MAXBCBLOCKS))
+!  allocate(option%j1bc(MAXBCBLOCKS))
   allocate(option%j2bc(MAXBCBLOCKS))
   allocate(option%i1bc(MAXBCBLOCKS))
   allocate(option%i2bc(MAXBCBLOCKS))
@@ -428,6 +428,7 @@ subroutine initPFLOW(simulation,filename)
   allocate(option%hsrc(MAXSRCTIMES,MAXSRC))
   option%qsrc =0.D0; option%csrc =0.D0; option%hsrc =0.D0
 
+#if 0
 !GEH - Structured Grid Dependence - Begin          
   allocate(option%i1reg(MAXPERMREGIONS))
   allocate(option%i2reg(MAXPERMREGIONS))
@@ -461,7 +462,7 @@ subroutine initPFLOW(simulation,filename)
       allocate(option%xmol_ini(MAXINITREGIONS))
       allocate(option%conc_ini(MAXINITREGIONS))
   end select
-
+#endif
 !GEH - Structured Grid Dependence - Begin    
   allocate(option%i1brk(MAXINITREGIONS))
   allocate(option%i2brk(MAXINITREGIONS))
@@ -485,31 +486,7 @@ subroutine initPFLOW(simulation,filename)
     allocate(option%fracture_aperture(MAXINITREGIONS))
     allocate(option%matrix_block(MAXINITREGIONS))
   endif
-      
-  allocate(option%rock_density(MAXPERMREGIONS))
-  allocate(option%cpr(MAXPERMREGIONS))
-  allocate(option%dencpr(MAXPERMREGIONS))
-  allocate(option%ckdry(MAXPERMREGIONS))
-  allocate(option%ckwet(MAXPERMREGIONS))
-  allocate(option%tau(MAXPERMREGIONS))
-  allocate(option%cdiff(MAXPERMREGIONS))
-  allocate(option%cexp(MAXPERMREGIONS))
 
-  allocate(option%icaptype(MAXPERMREGIONS))
-  
-  select case(option%imode)
-    case(MPH_MODE,OWG_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
-      allocate(option%sir(1:option%nphase,MAXPERMREGIONS))
-    case default
-      allocate(option%swir(MAXPERMREGIONS))
-  end select
-  
-  allocate(option%lambda(MAXPERMREGIONS))
-  allocate(option%alpha(MAXPERMREGIONS))
-  allocate(option%pckrm(MAXPERMREGIONS))
-  allocate(option%pcwmax(MAXPERMREGIONS))
-  allocate(option%pcbetac(MAXPERMREGIONS))
-  allocate(option%pwrprm(MAXPERMREGIONS))
   
   !-----------------------------------------------------------------------
   ! Set up boundary condition storage on blocks
@@ -561,7 +538,7 @@ subroutine initPFLOW(simulation,filename)
   
 !  call computeBoundaryConnectivity(grid,option)
 
-
+  call assignMaterialPropertiesToRegions(solution)
 
   i = grid%internal_connection_list%first%num_connections
   allocate(option%vl_loc(i))
@@ -862,123 +839,6 @@ subroutine initPFLOW(simulation,filename)
 
   if (option%myrank == 0) write(*,'("  Finished setting up of SNES ")')
  
-! set initial conditions by region for pressure, temperature, saturation
-! and concentration
-
-  select case(option%imode)
-#if 0
-    case(MPH_MODE)
-      call pflow_mphase_setupini(solution)
-    case(FLASH_MODE)
-      call pflow_flash_setupini(solution)
-#endif  
-    case(RICHARDS_MODE)
-      call pflow_richards_setupini(solution)
-#if 0
-    case(OWG_MODE)
-      call pflow_owg_setupini(solution)
-    case(FADOSE_MODE)
-      call pflow_vadose_setupini(solution)
-    case default
-      call VecGetArrayF90(option%pressure,pressure_p,ierr)
-      call VecGetArrayF90(option%temp,temp_p,ierr)
-      call VecGetArrayF90(option%sat,sat_p,ierr)
-      if (option%ndof == 3) call VecGetArrayF90(option%conc,conc_p,ierr)
-      if (option%ndof == 4) call VecGetArrayF90(option%xmol,xmol_p,ierr)
-    
-!GEH - Structured Grid Dependence - Begin
-      do ir = 1,option%iregini
-        kk1 = option%k1ini(ir) - grid%nzs
-        kk2 = option%k2ini(ir) - grid%nzs
-        jj1 = option%j1ini(ir) - grid%nys
-        jj2 = option%j2ini(ir) - grid%nys
-        ii1 = option%i1ini(ir) - grid%nxs
-        ii2 = option%i2ini(ir) - grid%nxs
-
-        kk1 = max(1,kk1)
-        kk2 = min(grid%nlz,kk2)
-        jj1 = max(1,jj1)
-        jj2 = min(grid%nly,jj2)
-        ii1 = max(1,ii1)
-        ii2 = min(grid%nlx,ii2)
-
-        if (ii1 > ii2 .or. jj1 > jj2 .or. kk1 > kk2) cycle
-        
-        do k = kk1,kk2
-          do j = jj1,jj2
-            do i = ii1,ii2
-              n = i+(j-1)*grid%nlx+(k-1)*grid%nlxy
-!GEH - Structured Grid Dependence - End
-
-              jn1 = 1+n*option%nphase-1
-              jn2 = 2+n*option%nphase-1
-
-              pressure_p(jn1) = option%pres_ini(ir)
-              if (option%nphase>1) pressure_p(jn2) = option%pres_ini(ir)
-
-              temp_p(n) = grid%temp_ini(ir)
-
-              sat_p(jn1) = grid%sat_ini(ir)
-              if (option%nphase>1) sat_p(jn2) = 1.d0 - option%sat_ini(ir)
-
-              if (option%ndof == 3) conc_p(n) = option%conc_ini(i)
-              if (option%ndof == 4) xmol_p(jn2) = option%conc_ini(i)
-            enddo
-          enddo
-        enddo
-      enddo
-      call VecRestoreArrayF90(option%pressure,pressure_p,ierr)
-      call VecRestoreArrayF90(option%temp,temp_p,ierr)
-      call VecRestoreArrayF90(option%sat,sat_p,ierr)
-      if (option%ndof == 3) call VecRestoreArrayF90(option%conc,conc_p,ierr)
-      if (option%ndof == 4) call VecRestoreArrayF90(option%xmol,xmol_p,ierr)
-
-!end added by geh
-#endif
-  end select 
-
-#if 0 
-  ! set hydrostatic properties for initial and boundary conditions with depth
-  if (option%ihydrostatic == 1) then
-    select case(option%imode)
-      case(MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
-        call mhydrostatic(solution)
-      case(OWG_MODE)
-        call owghydrostatic(solution)
-      case default
-        call hydrostatic(solution)
-    endif
-  endif
-#endif  
-  !if (grid%iread_init==2) call Read_init_field(grid)
-  
-  if (option%imode == TWOPH_MODE) then
-    option%pressurebc0(2,:) = option%pressurebc0(1,:)
-    option%velocitybc0(2,:) = option%velocitybc0(1,:)
-  endif
-
-!GEH - Structured Grid Dependence - Begin
-  deallocate(option%k1ini)
-  deallocate(option%k2ini)
-  deallocate(option%j1ini)
-  deallocate(option%j2ini)
-  deallocate(option%i1ini)
-  deallocate(option%i2ini)
-!GEH - Structured Grid Dependence - End
-
-  select case(option%imode)
-    case(MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE,OWG_MODE)
-      deallocate(option%xx_ini)
-      deallocate(option%iphas_ini)
-    case default
-      deallocate(option%pres_ini)
-      deallocate(option%temp_ini)
-      deallocate(option%sat_ini)
-      deallocate(option%xmol_ini)
-      deallocate(option%conc_ini)
-  end select
-
-!************End of initial Condition Setup ***********************
 
   select case(option%imode)
     case(MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE,OWG_MODE)
@@ -1110,114 +970,6 @@ subroutine initPFLOW(simulation,filename)
     endif
   endif
 
-#if 0
-  call DACreateNaturalVector(grid%da_1_dof,temp0_nat_vec,ierr)
-
-! set capillary index, thermal index, porosity and permeability by region
-!begin added by geh
-  iseed = 345678912
-  call VecGetArrayF90(grid%ttemp,temp_p,ierr)
-  do na=0,grid%nmax
-
-    random_nr = 1.d0
-    if (grid%ran_fac > 0.d0) random_nr = ran1(na+1)
-
-!GEH - Structured Grid Dependence - Begin
-    k= int(na/grid%nxy) - grid%nzs
-    j= int(mod(na,grid%nxy)/grid%nx) - grid%nys
-    i= mod(mod(na,grid%nxy),grid%nx) - grid%nxs
-
-    if (k>=0 .and. k < grid%nlz .and. &
-        j>=0 .and. j < grid%nly .and. &
-        i>=0 .and. i < grid%nlx) then
-      temp_p(i+1+j*grid%nlx+k*grid%nlxy) = random_nr
-    endif
-!GEH - Structured Grid Dependence - End
-
-  enddo
-  
-  call VecRestoreArrayF90(grid%ttemp,temp_p,ierr)
-
-  call VecGetArrayF90(grid%ttemp,ran_p,ierr)
-#endif
-  call VecGetArrayF90(option%icap,icap_p,ierr)
-  call VecGetArrayF90(option%ithrm,ithrm_p,ierr)
-  call VecGetArrayF90(option%porosity,por_p,ierr)
-  call VecGetArrayF90(option%porosity0,por0_p,ierr)
-  call VecGetArrayF90(option%perm_xx,perm_xx_p,ierr)
-  call VecGetArrayF90(option%perm_yy,perm_yy_p,ierr)
-  call VecGetArrayF90(option%perm_zz,perm_zz_p,ierr)
-  call VecGetArrayF90(option%perm_pow,perm_pow_p,ierr)
-  call VecGetArrayF90(option%tor,tor_p,ierr)
-  do ir = 1,option%iregperm        
-
-    ! in order to keep the random numbers consistent between processor
-    ! decompositions, must loop over ALL indices in perm region
-    
-!GEH - Structured Grid Dependence - Begin
-    do k=option%k1reg(ir),option%k2reg(ir)
-      do j=option%j1reg(ir),option%j2reg(ir)
-        do i=option%i1reg(ir),option%i2reg(ir)
-!GEH - Structured Grid Dependence - End
-      
-          random_nr=1.D0
-          frand = 1.d0
-          if (option%ran_fac > 0.d0) then
-            frand = ran1(n)
-            random_nr = option%ran_fac*frand+1.d-6
-          endif
-
-!GEH - Structured Grid Dependence - Begin 
-          if (k > grid%structured_grid%nzs .and. k <= grid%structured_grid%nze .and. &
-              j > grid%structured_grid%nys .and. j <= grid%structured_grid%nye .and. &
-              i > grid%structured_grid%nxs .and. i <= grid%structured_grid%nxe) then
-
-            n = i-grid%structured_grid%nxs+(j-grid%structured_grid%nys-1)*grid%structured_grid%nlx+(k-grid%structured_grid%nzs-1)*grid%structured_grid%nlxy
-!GEH - Structured Grid Dependence - End
-
-            por = option%por_reg(ir)
-            por0_p(n)=por
-            if (option%iran_por==1) then
-              por=por*(2.D0**0.666667D0*(frand)**1.5D0)
-              if (por<1D-2) por=1D-2 
-            endif
-            por_p(n)= por
-
-            perm_xx_p(n) = random_nr * option%perm_reg(ir,1)
-            perm_yy_p(n) = random_nr * option%perm_reg(ir,2)
-            perm_zz_p(n) = random_nr * option%perm_reg(ir,3)
-            perm_pow_p(n) = option%perm_reg(ir,4)
-
-            icap_p(n) = option%icap_reg(ir)
-            ithrm_p(n) = option%ithrm_reg(ir)
-            tor_p(n) = option%tor_reg(ir)
-
-          endif
-        enddo
-      enddo
-    enddo
-  enddo
- 
-#if 0
-  call VecRestoreArrayF90(grid%ttemp,ran_p,ierr)
-#endif
-  call VecRestoreArrayF90(option%icap,icap_p,ierr)
-  call VecRestoreArrayF90(option%ithrm,ithrm_p,ierr)
-  call VecRestoreArrayF90(option%porosity,por_p,ierr)
-  call VecRestoreArrayF90(option%porosity0,por0_p,ierr)
-  
-!GEH - Structured Grid Dependence - Begin
-  call VecRestoreArrayF90(option%perm_xx,perm_xx_p,ierr)
-  call VecRestoreArrayF90(option%perm_yy,perm_yy_p,ierr)
-  call VecRestoreArrayF90(option%perm_zz,perm_zz_p,ierr)
-!GEH - Structured Grid Dependence - End
-
-  call VecRestoreArrayF90(option%perm_pow,perm_pow_p,ierr)
-  call VecRestoreArrayF90(option%tor,tor_p,ierr)
-
-#if 0 
-  call VecDestroy(temp0_nat_vec,ierr)
-#endif
 
 #if 0
   if (grid%iread_perm == 1) then
@@ -1280,11 +1032,6 @@ subroutine initPFLOW(simulation,filename)
     call createRichardsZeroArray(grid)
   endif
 #endif
-
-  if (option%run_coupled==0) call VecCopy(option%Porosity, option%Porosity0, ierr)
-  call VecCopy(option%perm_xx, option%perm0_xx, ierr) 
-  call VecCopy(option%perm_yy, option%perm0_yy, ierr) 
-  call VecCopy(option%perm_zz, option%perm0_zz, ierr) 
 
 
   if (option%ihydrostatic == 3) then
@@ -1685,6 +1432,8 @@ subroutine readInput(simulation,filename)
   use Region_module
   use Condition_module
   use Coupler_module
+  use Material_module
+  use Strata_module
 
   use pckr_module 
   
@@ -1703,12 +1452,19 @@ subroutine readInput(simulation,filename)
   integer :: i, i1, i2, idum, ireg, isrc, j
   integer :: ibc, ibrk, ir,np  
   
+  integer :: count, id
+  
 ! keywords: GRID, PROC, COUP, GRAV, OPTS, TOLR, DXYZ, DIFF, RADN, HYDR,  
 !           SOLV, THRM, PCKR, PHIK, INIT, TIME, DTST, BCON, SOUR, BRK, RCTR
 
   type(region_type), pointer :: region
   type(condition_type), pointer :: condition
   type(coupler_type), pointer :: coupler
+  type(strata_type), pointer :: strata
+  
+  type(material_type), pointer :: material
+  type(thermal_property_type), pointer :: thermal_property
+  type(saturation_function_type), pointer :: saturation_function
 
   type(solution_type), pointer :: solution
   type(grid_type), pointer :: grid
@@ -1810,6 +1566,12 @@ subroutine readInput(simulation,filename)
         coupler => createCoupler()
         call readCoupler(coupler,IUNIT1)
         call addCouplerToList(coupler,solution%initial_conditions)
+      
+!....................
+      case ('STRATIGRAPHY')
+        strata => createStrata()
+        call readStrata(strata,IUNIT1)
+        call addStrataToList(strata,solution%strata)
       
 !....................
       case ('SOURCE_SINK')
@@ -2256,45 +2018,92 @@ subroutine readInput(simulation,filename)
 
 !....................
 
-      case ('THRM')
+      case ('THRM','THERMAL_PROPERTY','THERMAL_PROPERTIES')
 
-        ireg = 0
+        count = 0
         do
           call fiReadFlotranString(IUNIT1,string,ierr)
           call fiReadStringErrorMsg('THRM',ierr)
+
+          if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
+              fiStringCompare(string,'END',3)) exit
+       
+          count = count + 1
+          thermal_property => createThermalProperty()
       
-          if (string(1:1) == '.' .or. string(1:1) == '/') exit
-          ireg = ireg + 1
-      
-          call fiReadInt(string,idum,ierr)
-          call fiDefaultMsg('idum',ierr)
+          call fiReadInt(string,thermal_property%id,ierr)
+          call fiErrorMsg('id','THRM', ierr)
 
-          call fiReadDouble(string,option%rock_density(ireg),ierr)
-          call fiDefaultMsg('rock_density',ierr)
+          call fiReadDouble(string,thermal_property%rock_density,ierr)
+          call fiErrorMsg('rock density','THRM', ierr)
 
-          call fiReadDouble(string,option%cpr(ireg),ierr)
-          call fiDefaultMsg('cpr',ierr)
+          call fiReadDouble(string,thermal_property%spec_heat,ierr)
+          call fiErrorMsg('cpr','THRM', ierr)
         
-          call fiReadDouble(string,option%ckdry(ireg),ierr)
-          call fiDefaultMsg('ckdry',ierr)
+          call fiReadDouble(string,thermal_property%therm_cond_dry,ierr)
+          call fiErrorMsg('ckdry','THRM', ierr)
         
-          call fiReadDouble(string,option%ckwet(ireg),ierr)
-          call fiDefaultMsg('ckwet',ierr)
+          call fiReadDouble(string,thermal_property%therm_cond_wet,ierr)
+          call fiErrorMsg('ckwet','THRM', ierr)
         
-          call fiReadDouble(string,option%tau(ireg),ierr)
-          call fiDefaultMsg('tau',ierr)
+          call fiReadDouble(string,thermal_property%tort_bin_diff,ierr)
+          call fiErrorMsg('tau','THRM', ierr)
 
-          call fiReadDouble(string,option%cdiff(ireg),ierr)
-          call fiDefaultMsg('cdiff',ierr)
+          call fiReadDouble(string,thermal_property%vap_air_diff_coef,ierr)
+          call fiErrorMsg('cdiff','THRM', ierr)
 
-          call fiReadDouble(string,option%cexp(ireg),ierr)
-          call fiDefaultMsg('cexp',ierr)
+          call fiReadDouble(string,thermal_property%exp_binary_diff,ierr)
+          call fiErrorMsg('cexp','THRM', ierr)
 
         !scale thermal properties
-          option%cpr(ireg) = option%scale * option%cpr(ireg)
-          option%dencpr(ireg) = option%rock_density(ireg) * option%cpr(ireg)
-          option%ckdry(ireg) = option%scale * option%ckdry(ireg)
-          option%ckwet(ireg) = option%scale * option%ckwet(ireg)
+          thermal_property%spec_heat = option%scale * &
+                                       thermal_property%spec_heat
+          thermal_property%therm_cond_dry = option%scale * &
+                                            thermal_property%therm_cond_dry
+          thermal_property%therm_cond_wet = option%scale * &
+                                            thermal_property%therm_cond_wet
+          
+          call addThermalPropertyToList(thermal_property, &
+                                        solution%thermal_properties)
+        enddo
+        
+        ! allocate dynamic arrays holding saturation function information
+        allocate(option%rock_density(count))
+        allocate(option%cpr(count))
+        allocate(option%dencpr(count))
+        allocate(option%ckdry(count))
+        allocate(option%ckwet(count))
+        allocate(option%tau(count))
+        allocate(option%cdiff(count))
+        allocate(option%cexp(count))
+        
+        ! fill arrays with values from linked list
+        thermal_property => solution%thermal_properties
+        do
+          if (.not.associated(thermal_property)) exit
+          id = thermal_property%id
+          
+          if (id > count) then
+            call printErrMsg(option,'Thermal property id greater than &
+                                    &number of thermal properties')
+          endif
+                    
+          option%rock_density(id) = thermal_property%rock_density
+          option%cpr(id) = thermal_property%spec_heat
+          option%dencpr(id) = thermal_property%rock_density * &
+                              thermal_property%spec_heat
+          option%ckdry(id) = thermal_property%therm_cond_dry
+          option%ckwet(id) = thermal_property%therm_cond_wet
+          option%tau(id) = thermal_property%tort_bin_diff
+          option%cdiff(id) = thermal_property%vap_air_diff_coef
+          option%cexp(id) = thermal_property%exp_binary_diff
+        enddo
+        
+        do i=1,count
+          if (option%rock_density(id) > 1.d-40) then
+            call printErrMsg(option,'Thermal property ids must be numbered &
+                             &consecutively from 1 to N')
+          endif
         enddo
       
         if (option%myrank==0) then
@@ -2312,50 +2121,111 @@ subroutine readInput(simulation,filename)
 
 !....................
 
-      case ('PCKR')
-
-        ireg = 0
+      case ('PCKR','SATURATION_FUNCTION','SATURATION_FUNCTIONS')
+      
+        count = 0
         do
           call fiReadFlotranString(IUNIT1,string,ierr)
           call fiReadStringErrorMsg('PCKR',ierr)
 
-          if (string(1:1) == '.' .or. string(1:1) == '/') exit
-          ireg = ireg + 1
+          if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
+              fiStringCompare(string,'END',3)) exit
        
-          call fiReadInt(string,idum,ierr)
-          call fiDefaultMsg('idum',ierr)
+          count = count + 1
+          saturation_function => createSaturationFunction(option)
           
-          call fiReadInt(string,option%icaptype(idum),ierr)
-          call fiDefaultMsg('icaptype',ierr)
+          call fiReadInt(string,saturation_function%id,ierr)
+          call fiErrorMsg('id','PCKR', ierr)
+          
+          call fiReadInt(string,saturation_function%itype,ierr)
+          call fiErrorMsg('icaptype','PCKR', ierr)
       
           select case(option%imode)
             case(MPH_MODE,OWG_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
               do np=1, option%nphase
-                call fiReadDouble(string,option%sir(np,idum),ierr)
-                call fiDefaultMsg('sir',ierr)
+                call fiReadDouble(string,saturation_function%Sr(np),ierr)
+          call fiErrorMsg('Sr','PCKR', ierr)
               enddo 
             case default
-              call fiReadDouble(string,option%swir(idum),ierr)
-              call fiDefaultMsg('swir',ierr)
+              call fiReadDouble(string,saturation_function%Sr(1),ierr)
+          call fiErrorMsg('Sr','PCKR', ierr)
           end select
         
-          call fiReadDouble(string,option%pckrm(idum),ierr)
-          call fiDefaultMsg('lambda',ierr)
-          option%lambda(idum) = option%pckrm(idum)/(-option%pckrm(idum) +1.D0)
-! Here the lambda is assigned as the same value of m
+          call fiReadDouble(string,saturation_function%m,ierr)
+          call fiErrorMsg('pckrm','PCKR', ierr)
+          saturation_function%lambda = saturation_function%m / &
+                                      (1.d0-saturation_function%m)
 
-          call fiReadDouble(string,option%alpha(idum),ierr)
-          call fiDefaultMsg('alpha',ierr)
+          call fiReadDouble(string,saturation_function%alpha,ierr)
+          call fiErrorMsg('alpha','PCKR', ierr)
 
-          call fiReadDouble(string,option%pcwmax(idum),ierr)
-          call fiDefaultMsg('pcwmax',ierr)
+          call fiReadDouble(string,saturation_function%pcwmax,ierr)
+          call fiErrorMsg('pcwmax','PCKR', ierr)
       
-          call fiReadDouble(string,option%pcbetac(idum),ierr)
-          call fiDefaultMsg('pcbetac',ierr)
+          call fiReadDouble(string,saturation_function%betac,ierr)
+          call fiErrorMsg('pbetac','PCKR', ierr)
       
-          call fiReadDouble(string,option%pwrprm(idum),ierr)
-          call fiDefaultMsg('pwrprm',ierr)
+          call fiReadDouble(string,saturation_function%power,ierr)
+          call fiErrorMsg('pwrprm','PCKR', ierr)
+          
+          call addSaturationFunctionToList(saturation_function, &
+                                           solution%saturation_functions)
 
+        enddo
+        
+        ! allocate dynamic arrays holding saturation function information
+        allocate(option%icaptype(count))
+        option%icaptype = 0
+  
+        select case(option%imode)
+          case(MPH_MODE,OWG_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
+            allocate(option%sir(1:option%nphase,count))
+          case default
+            allocate(option%swir(count))
+        end select
+  
+        allocate(option%lambda(count))
+        allocate(option%alpha(count))
+        allocate(option%pckrm(count))
+        allocate(option%pcwmax(count))
+        allocate(option%pcbetac(count))
+        allocate(option%pwrprm(count))
+
+        ! fill arrays with values from linked list
+        saturation_function => solution%saturation_functions
+        do 
+          if (.not.associated(saturation_function)) exit
+          
+          id = saturation_function%id
+          
+          if (id > count) then
+            call printErrMsg(option,'Saturation function id greater than &
+                                    &number of saturation functions')
+          endif
+          
+          option%icaptype(id) = saturation_function%itype
+          select case(option%imode)
+            case(MPH_MODE,OWG_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
+              do i=1,option%nphase
+                option%sir(i,id) = saturation_function%Sr(i)
+              enddo
+            case default
+              option%swir(id) = saturation_function%Sr(1)
+          end select
+          option%lambda(id) = saturation_function%lambda
+          option%alpha(id) = saturation_function%alpha
+          option%pckrm(id) = saturation_function%m
+          option%pcwmax(id) = saturation_function%pcwmax
+          option%pcbetac(id) = saturation_function%betac
+          option%pwrprm(id) = saturation_function%power
+        enddo
+        
+        ! check to ensure that all saturation functions were set based on id
+        do id = 1,count
+          if (option%icaptype(id) == 0) then
+            call printErrMsg(option,'Saturation function ids must be numbered &
+                               &consecutively from 1 to N')
+          endif
         enddo
 
         if (option%imode == MPH_MODE .or. &
@@ -2402,83 +2272,56 @@ subroutine readInput(simulation,filename)
 
 !....................
       
-      case ('PHIK')
-      
-        ireg = 0
+      case ('PHIK','MATERIAL','MATERIALS')
+
+        count = 0
         do
           call fiReadFlotranString(IUNIT1,string,ierr)
           call fiReadStringErrorMsg('PHIK',ierr)
 
-          if (string(1:1) == '.' .or. string(1:1) == '/') exit
-          ireg = ireg + 1
-        
-          if (ireg > MAXPERMREGIONS) then
-            print *,'Error reading PHIK keyword: too many regions-stop',ireg
-            stop
-          endif
-      
-!GEH - Structured Grid Dependence - Begin      
-          call fiReadInt(string,option%i1reg(ireg),ierr) 
-          call fiDefaultMsg('i1',ierr)
-          call fiReadInt(string,option%i2reg(ireg),ierr)
-          call fiDefaultMsg('i2',ierr)
-          call fiReadInt(string,option%j1reg(ireg),ierr)
-          call fiDefaultMsg('j1',ierr)
-          call fiReadInt(string,option%j2reg(ireg),ierr)
-          call fiDefaultMsg('j2',ierr)
-          call fiReadInt(string,option%k1reg(ireg),ierr)
-          call fiDefaultMsg('k1',ierr)
-          call fiReadInt(string,option%k2reg(ireg),ierr)
-          call fiDefaultMsg('k2',ierr)
-!GEH - Structured Grid Dependence - End
-  
-          call fiReadInt(string,option%icap_reg(ireg),ierr)
-          call fiDefaultMsg('icap',ierr)
-  
-          call fiReadInt(string,option%ithrm_reg(ireg),ierr)
-          call fiDefaultMsg('ithrm',ierr)
-  
-          call fiReadDouble(string,option%por_reg(ireg),ierr)
-          call fiDefaultMsg('por',ierr)
-  
-          call fiReadDouble(string,option%tor_reg(ireg),ierr)
-          call fiDefaultMsg('tor',ierr)
-  
-          call fiReadDouble(string,option%perm_reg(ireg,1),ierr)
-          call fiDefaultMsg('permx',ierr)
-  
-          call fiReadDouble(string,option%perm_reg(ireg,2),ierr)
-          call fiDefaultMsg('permy',ierr)
-  
-          call fiReadDouble(string,option%perm_reg(ireg,3),ierr)
-          call fiDefaultMsg('permz',ierr)
-  
-          call fiReadDouble(string,option%perm_reg(ireg,4),ierr)
-          call fiDefaultMsg('permpwr',ierr)
+          if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
+              fiStringCompare(string,'END',3)) exit
+       
+          count = count + 1
+          material => createMaterial()
 
-!          call fiReadDouble(string,option%Perm_reg(ireg,5),ierr)
-!          call fiDefaultMsg('porokin',ierr)
+          call fiReadWord(string,material%name,.true.,ierr)
+          call fiErrorMsg('name','PHIK', ierr)
+                
+          call fiReadInt(string,material%id,ierr)
+          call fiErrorMsg('id','PHIK', ierr)
+                
+          call fiReadInt(string,material%icap,ierr)
+          call fiErrorMsg('icap','PHIK', ierr)
+  
+          call fiReadInt(string,material%ithrm,ierr)
+          call fiErrorMsg('ithrm','PHIK', ierr)
+  
+          call fiReadDouble(string,material%porosity,ierr)
+          call fiErrorMsg('por','PHIK', ierr)
+          
+          call fiReadDouble(string,material%tortuosity,ierr)
+          call fiErrorMsg('tor','PHIK', ierr)
+  
+          call fiReadDouble(string,material%permeability(1,1),ierr)
+          call fiErrorMsg('permx','PHIK', ierr)
+  
+          call fiReadDouble(string,material%permeability(2,2),ierr)
+          call fiErrorMsg('permy','PHIK', ierr)
+  
+          call fiReadDouble(string,material%permeability(3,3),ierr)
+          call fiErrorMsg('permz','PHIK', ierr)
+  
+          call fiReadDouble(string,material%permeability_pwr,ierr)
+          call fiErrorMsg('permpwr','PHIK', ierr)
+          
+          material%permeability(2,1:4) = material%permeability(1,1:4)
+          
+          call addMaterialToList(material,solution%materials)
+          
+        enddo          
 
-    
 #if 0
-          call readRegion(string)
-          word = adjustl(string(1:min(31,len_trim(string))))  ! remove leading spaces
-          call fiCharsToLower(string,4)
-          if (fiStringCompare(string,'file',4)) then ! unstructured
-            id = readUnstructuredRegion()
-          else
-            id = readStructuredRegion(string)
-          endif
-#endif          
-    
-        enddo
-        option%iregperm = ireg
-        
-        if (ireg > MAXINITREGIONS) then
-          print *,'error: increase MAXINITREGIONS: regions ',ireg,' > ',MAXINITREGIONS
-          stop
-        endif
-
         if (option%myrank==0) then
           write(IUNIT2,'(/," *PHIK: ireg = ",i4)') option%iregperm
           write(IUNIT2,'("  i1  i2  j1  j2  k1  k2 icap ithrm  por      tor  &
@@ -2486,15 +2329,13 @@ subroutine readInput(simulation,filename)
           do ireg = 1, option%iregperm
 !GEH - Structured Grid Dependence - Begin
             write(IUNIT2,'(6i4,2i4,1p6e11.4)') &
-                  option%i1reg(ireg),option%i2reg(ireg), &
-                  option%j1reg(ireg),option%j2reg(ireg), &
-                  option%k1reg(ireg),option%k2reg(ireg), &
                   option%icap_reg(ireg),option%ithrm_reg(ireg), &
                   option%por_reg(ireg),option%tor_reg(ireg), &
                   (option%perm_reg(ireg,i),i=1,4)
 !GEH - Structured Grid Dependence - End
           enddo
         endif
+#endif
 
 !....................
       
@@ -3300,5 +3141,242 @@ subroutine setMode(option,mcomp,mphas)
   endif       
 
 end subroutine setMode
+
+! ************************************************************************** !
+!
+! assignMaterialPropertiesToRegions: Assigns material properties to 
+!                                    associated regions in the model
+! author: Glenn Hammond
+! date: 11/02/07
+!
+! ************************************************************************** !
+subroutine assignMaterialPropertiesToRegions(solution)
+
+  use Solution_module
+  use Strata_module
+  use Region_module
+  use Material_module
+  use Option_module
+
+  implicit none
+  
+  type(solution_type) :: solution
+  
+  PetscScalar, pointer :: icap_p(:)
+  PetscScalar, pointer :: ithrm_p(:)
+  PetscScalar, pointer :: por_p(:)
+  PetscScalar, pointer :: por0_p(:)
+  PetscScalar, pointer :: perm_xx_p(:)
+  PetscScalar, pointer :: perm_yy_p(:)
+  PetscScalar, pointer :: perm_zz_p(:)
+  PetscScalar, pointer :: perm_pow_p(:)
+  PetscScalar, pointer :: tor_p(:)
+  
+  integer :: icell, local_id
+  PetscErrorCode :: ierr
+  
+  type(option_type), pointer :: option
+  type(strata_type), pointer :: strata
+  
+  type(material_type), pointer :: material
+  type(region_type), pointer :: region
+  
+  option => solution%option
+  
+  call VecGetArrayF90(option%icap,icap_p,ierr)
+  call VecGetArrayF90(option%ithrm,ithrm_p,ierr)
+  call VecGetArrayF90(option%porosity,por_p,ierr)
+  call VecGetArrayF90(option%porosity0,por0_p,ierr)
+  call VecGetArrayF90(option%tor,tor_p,ierr)
+  call VecGetArrayF90(option%perm_xx,perm_xx_p,ierr)
+  call VecGetArrayF90(option%perm_yy,perm_yy_p,ierr)
+  call VecGetArrayF90(option%perm_zz,perm_zz_p,ierr)
+  call VecGetArrayF90(option%perm_pow,perm_pow_p,ierr)
+
+  strata => solution%strata%first
+  do
+    if (.not.associated(strata)) exit
+    
+    region => strata%region
+    material => strata%material
+    do icell=1,region%num_cells
+      local_id = region%cell_ids(icell)
+      icap_p(local_id) = material%icap
+      ithrm_p(local_id) = material%ithrm
+      por_p(local_id) = material%porosity
+      por0_p(local_id) = material%porosity
+      tor_p(local_id) = material%tortuosity
+      perm_xx_p(local_id) = material%permeability(1,1)
+      perm_yy_p(local_id) = material%permeability(2,2)
+      perm_zz_p(local_id) = material%permeability(3,3)
+      perm_pow_p(local_id) = material%permeability_pwr
+    enddo
+    strata => strata%next
+  enddo
+
+  call VecRestoreArrayF90(option%icap,icap_p,ierr)
+  call VecRestoreArrayF90(option%ithrm,ithrm_p,ierr)
+  call VecRestoreArrayF90(option%porosity,por_p,ierr)
+  call VecRestoreArrayF90(option%porosity0,por0_p,ierr)
+  call VecRestoreArrayF90(option%perm_xx,perm_xx_p,ierr)
+  call VecRestoreArrayF90(option%perm_yy,perm_yy_p,ierr)
+  call VecRestoreArrayF90(option%perm_zz,perm_zz_p,ierr)
+  call VecRestoreArrayF90(option%perm_pow,perm_pow_p,ierr)
+  call VecRestoreArrayF90(option%tor,tor_p,ierr)
+
+  if (option%run_coupled==0) &
+    call VecCopy(option%Porosity, option%Porosity0, ierr)
+  call VecCopy(option%perm_xx, option%perm0_xx, ierr) 
+  call VecCopy(option%perm_yy, option%perm0_yy, ierr) 
+  call VecCopy(option%perm_zz, option%perm0_zz, ierr) 
+  
+end subroutine assignMaterialPropertiesToRegions
+
+! ************************************************************************** !
+!
+! assignInitialConditions: Assigns initial conditions to model
+! author: Glenn Hammond
+! date: 11/02/07
+!
+! ************************************************************************** !
+subroutine assignInitialConditions(solution)
+
+  use Solution_module
+  use Region_module
+  use Option_module
+  use Coupler_module
+  use Condition_module
+  
+  use Richards_module, only : pflow_Richards_setupini
+
+  implicit none
+  
+  type(solution_type) :: solution
+  
+  PetscScalar, pointer :: pressure_p(:)
+  PetscScalar, pointer :: temp_p(:)
+  PetscScalar, pointer :: sat_p(:)
+  PetscScalar, pointer :: conc_p(:)
+  PetscScalar, pointer :: xmol_p(:)
+  
+  integer :: icell, local_id, count, jn1, jn2
+  PetscErrorCode :: ierr
+  
+  type(option_type), pointer :: option
+  type(coupler_type), pointer :: initial_condition
+    
+  option => solution%option
+    
+  select case(option%imode)
+#if 0
+    case(MPH_MODE)
+      call pflow_mphase_setupini(solution)
+    case(FLASH_MODE)
+      call pflow_flash_setupini(solution)
+#endif  
+    case(RICHARDS_MODE)
+      call pflow_richards_setupini(solution)
+#if 0
+    case(OWG_MODE)
+      call pflow_owg_setupini(solution)
+    case(FADOSE_MODE)
+      call pflow_vadose_setupini(solution)
+#endif      
+    case default
+      call VecGetArrayF90(option%pressure,pressure_p,ierr)
+      call VecGetArrayF90(option%temp,temp_p,ierr)
+      call VecGetArrayF90(option%sat,sat_p,ierr)
+      if (option%ndof == 3) call VecGetArrayF90(option%conc,conc_p,ierr)
+      if (option%ndof == 4) call VecGetArrayF90(option%xmol,xmol_p,ierr)
+    
+      initial_condition => solution%initial_conditions%first
+      do
+      
+        if (.not.associated(initial_condition)) exit
+        
+        do icell=1,initial_condition%region%num_cells
+          local_id = initial_condition%region%cell_ids(icell)
+          jn1 = 1+local_id*option%nphase-1
+          jn2 = jn1+1
+              
+          count = 1
+          pressure_p(jn1) = initial_condition%flow_condition%cur_value(1)
+          count = count + 1
+          
+          if (option%nphase>1) then
+            pressure_p(jn2) = initial_condition%flow_condition%cur_value(count)
+            count = count + 1
+          endif
+          
+          temp_p(local_id) = initial_condition%flow_condition%cur_value(count)
+          count = count + 1
+          
+          sat_p(jn1) = initial_condition%flow_condition%cur_value(count)
+          count = count + 1          
+          
+          if (option%nphase>1) then
+            sat_p(jn2) = 1.d0 - sat_p(jn1)
+            count = count + 1
+          endif
+          
+          if (option%ndof == 3) then
+            conc_p(local_id) = initial_condition%flow_condition%cur_value(count)
+            count = count + 1
+          endif
+
+          if (option%ndof == 4) then
+            xmol_p(jn2) = initial_condition%flow_condition%cur_value(count)
+            count = count + 1
+          endif
+               
+        enddo
+  
+        initial_condition => initial_condition%next
+  
+      enddo   
+       
+      call VecRestoreArrayF90(option%pressure,pressure_p,ierr)
+      call VecRestoreArrayF90(option%temp,temp_p,ierr)
+      call VecRestoreArrayF90(option%sat,sat_p,ierr)
+      if (option%ndof == 3) call VecRestoreArrayF90(option%conc,conc_p,ierr)
+      if (option%ndof == 4) call VecRestoreArrayF90(option%xmol,xmol_p,ierr)
+  end select 
+
+#if 0 
+  ! set hydrostatic properties for initial and boundary conditions with depth
+  if (option%ihydrostatic == 1) then
+    select case(option%imode)
+      case(MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
+        call mhydrostatic(solution)
+      case(OWG_MODE)
+        call owghydrostatic(solution)
+      case default
+        call hydrostatic(solution)
+    endif
+  endif
+#endif  
+  !if (grid%iread_init==2) call Read_init_field(grid)
+  
+  if (option%imode == TWOPH_MODE) then
+    option%pressurebc0(2,:) = option%pressurebc0(1,:)
+    option%velocitybc0(2,:) = option%velocitybc0(1,:)
+  endif
+
+
+  select case(option%imode)
+    case(MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE,OWG_MODE)
+      deallocate(option%xx_ini)
+      deallocate(option%iphas_ini)
+    case default
+      deallocate(option%pres_ini)
+      deallocate(option%temp_ini)
+      deallocate(option%sat_ini)
+      deallocate(option%xmol_ini)
+      deallocate(option%conc_ini)
+  end select
+
+!************End of initial Condition Setup ***********************
+
+end subroutine assignInitialConditions
 
 end module Init_module

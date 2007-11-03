@@ -5,6 +5,8 @@ module Solution_module
   use Region_module
   use Condition_module
   use Coupler_module
+  use Material_module
+  use Strata_module
 
   implicit none
 
@@ -21,6 +23,11 @@ private
     type(coupler_list_type), pointer :: boundary_conditions
     type(coupler_list_type), pointer :: initial_conditions
     type(coupler_list_type), pointer :: source_sinks
+    type(strata_list_type), pointer :: strata
+    
+    type(material_type), pointer :: materials
+    type(thermal_property_type), pointer :: thermal_properties
+    type(saturation_function_type), pointer :: saturation_functions
 
   end type solution_type
 
@@ -56,6 +63,12 @@ function createSolution()
   call initCouplerList(solution%initial_conditions)
   allocate(solution%source_sinks)
   call initCouplerList(solution%source_sinks)
+  allocate(solution%strata)
+  call initStrataList(solution%strata)
+  
+  nullify(solution%materials)
+  nullify(solution%thermal_properties)
+  nullify(solution%saturation_functions)
   
   createSolution => solution
   
@@ -78,12 +91,14 @@ subroutine processSolutionCouplers(solution)
   
   character(len=MAXSTRINGLENGTH) :: string
   type(coupler_type), pointer :: coupler
+  type(strata_type), pointer :: strata
 
-  ! connect pointers from couplers to regions
+
   ! boundary conditions
   coupler => solution%boundary_conditions%first
   do
     if (.not.associated(coupler)) exit
+    ! pointer to region
     coupler%region => getRegionPtrFromList(coupler%region_name, &
                                            solution%regions)
     if (.not.associated(coupler%region)) then
@@ -91,40 +106,7 @@ subroutine processSolutionCouplers(solution)
                ' not found in boundary condition list'
       call printErrMsg(solution%option,string)
     endif
-    coupler => coupler%next
-  enddo
-  ! initial conditions
-  coupler => solution%initial_conditions%first
-  do
-    if (.not.associated(coupler)) exit
-    coupler%region => getRegionPtrFromList(coupler%region_name, &
-                                           solution%regions)
-    if (.not.associated(coupler%region)) then
-      string = 'Region ' // trim(coupler%region_name) // &
-               ' not found in initial condition list'
-      call printErrMsg(solution%option,string)
-    endif
-    coupler => coupler%next
-  enddo
-  ! source/sinks
-  coupler => solution%boundary_conditions%first
-  do
-    if (.not.associated(coupler)) exit
-    coupler%region => getRegionPtrFromList(coupler%region_name, &
-                                           solution%regions)
-    if (.not.associated(coupler%region)) then
-      string = 'Region ' // trim(coupler%region_name) // &
-               ' not found in source/sink list'
-      call printErrMsg(solution%option,string)
-    endif
-    coupler => coupler%next
-  enddo
-  
-  ! connect pointers from couplers to conditions
-  ! boundary conditions
-  coupler => solution%boundary_conditions%first
-  do
-    if (.not.associated(coupler)) exit
+    ! pointer to flow condition
     coupler%flow_condition => getConditionPtrFromList(coupler%condition_name, &
                                                       solution%conditions)
     if (.not.associated(coupler%flow_condition)) then
@@ -134,10 +116,21 @@ subroutine processSolutionCouplers(solution)
     endif
     coupler => coupler%next
   enddo
+
+
   ! initial conditions
   coupler => solution%initial_conditions%first
   do
     if (.not.associated(coupler)) exit
+    ! pointer to region
+    coupler%region => getRegionPtrFromList(coupler%region_name, &
+                                           solution%regions)
+    if (.not.associated(coupler%region)) then
+      string = 'Region ' // trim(coupler%region_name) // &
+               ' not found in initial condition list'
+      call printErrMsg(solution%option,string)
+    endif
+    ! pointer to flow condition
     coupler%flow_condition => getConditionPtrFromList(coupler%condition_name, &
                                                       solution%conditions)
     if (.not.associated(coupler%flow_condition)) then
@@ -147,10 +140,20 @@ subroutine processSolutionCouplers(solution)
     endif
     coupler => coupler%next
   enddo
+
   ! source/sinks
   coupler => solution%boundary_conditions%first
   do
     if (.not.associated(coupler)) exit
+    ! pointer to region
+    coupler%region => getRegionPtrFromList(coupler%region_name, &
+                                           solution%regions)
+    if (.not.associated(coupler%region)) then
+      string = 'Region ' // trim(coupler%region_name) // &
+               ' not found in source/sink list'
+      call printErrMsg(solution%option,string)
+    endif
+    ! pointer to flow condition
     coupler%flow_condition => getConditionPtrFromList(coupler%condition_name, &
                                                       solution%conditions)
     if (.not.associated(coupler%flow_condition)) then
@@ -160,8 +163,34 @@ subroutine processSolutionCouplers(solution)
     endif
     coupler => coupler%next
   enddo
-
   
+    
+  ! strata
+  ! connect pointers from strata to regions
+  strata => solution%strata%first
+  do
+    if (.not.associated(strata)) exit
+    ! pointer to region
+    strata%region => getRegionPtrFromList(strata%region_name, &
+                                                solution%regions)
+    if (.not.associated(strata%region)) then
+      string = 'Region ' // trim(strata%region_name) // &
+               ' not found in strata list'
+      call printErrMsg(solution%option,string)
+    endif
+    ! pointer to material
+    strata%material => &
+                          getMaterialPtrFromList(strata%material_name, &
+                                                 solution%materials)
+    if (.not.associated(strata%material)) then
+      string = 'Material ' // trim(strata%material_name) // &
+               ' not found in unit list'
+      call printErrMsg(solution%option,string)
+    endif
+    strata => strata%next
+  enddo  
+  
+    
   call localizeRegions(solution%regions,solution%grid,solution%option)
   call computeBoundaryConnectivity2(solution%grid,solution%option, &
                                     solution%boundary_conditions)
@@ -190,7 +219,8 @@ subroutine destroySolution(solution)
   call destroyCouplerList(solution%boundary_conditions)
   call destroyCouplerList(solution%initial_conditions)
   call destroyCouplerList(solution%source_sinks)
-  
+  call destroyStrataList(solution%strata)
+    
 end subroutine destroySolution
   
 end module Solution_module
