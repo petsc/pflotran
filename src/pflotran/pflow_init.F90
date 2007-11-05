@@ -539,6 +539,7 @@ subroutine initPFLOW(simulation,filename)
 !  call computeBoundaryConnectivity(grid,option)
 
   call assignMaterialPropertiesToRegions(solution)
+  call assignInitialConditions(solution)
 
   i = grid%internal_connection_list%first%num_connections
   allocate(option%vl_loc(i))
@@ -3374,8 +3375,6 @@ subroutine assignInitialConditions(solution)
       deallocate(option%xmol_ini)
       deallocate(option%conc_ini)
   end select
-
-!************End of initial Condition Setup ***********************
 
 end subroutine assignInitialConditions
 
