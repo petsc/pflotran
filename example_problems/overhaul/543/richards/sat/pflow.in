@@ -1,0 +1,289 @@
+:Description: 3D toy problem for richards equation
+:
+MODE RICHARDS
+:
+:    igeom nx  ny  nz  nphase  nspec  npricomp  ndof  idcdm  itable
+GRID   1   5   4   3   1       2      1         3     0      0
+:
+:    npx npy npz
+:PROC  2   2   2
+:
+:RAD0 0.d0
+:
+:write_init iprint imod itecplot iblkfmt ndtcmx   iran_por  ran_fac readfield
+OPTS   0       -1      1     1      1          10      0       0.        0     0
+:OPTS   0       -1      1     1      1          10      0       0.        0     10
+:HDF5 VELO FLUX
+TECP !VELO !FLUX
+:
+:      steps    iaccel newtmx icutmx dpmx dtmpmx dcmx   dsmx
+TOLR   50000    5      16     16     1.e5 2.     .25d-1 0.2
+:
+:    isync
+COUP   0
+:
+DXYZ
+10. 11. 12. 13. 14.
+13. 12. 11. 10.
+15. 20. 25.
+:    atol  rtol  stol   dtol  newton_max maxf
+SOLV 1.d-9 1.d-9 1.d-6 1.D10 25         100  1  1.d-8
+:  d0[m^2/s] delhaq[kJ/mol]
+DIFF  1.D-9       12.6
+:
+: Richards Equation Pref
+RICH 101325.
+:
+SATURATION_FUNCTIONS
+:id itype swir   lambda alpha     pcwmax betac pwr
+ 1  1     0.1299 0.5193 1.4319d-4 1.e8   0.d0  1.d0 
+ 1  1     0.1299 0.5193 1.4319d-4 1.e8   0.d0  1.d0 
+ 1  1     0.1299 0.5193 1.4319d-4 1.e8   0.d0  1.d0 
+ 1  1     0.1471 0.7465 4.4317d-4 1.e8   0.d0  1.d0
+END
+
+THERMAL_PROPERTIES
+:ithm rho    cpr     ckdry cksat tau cdiff   cexp
+  1   2.75e3 1000.e0 0.5   0.5   0.5 2.13d-5 1.8
+END
+:
+MATERIALS
+:name id icap ithm por  tau permx  permy  permz   permpwr
+soil1 1  1    1    0.25 0.5 1.d-12 2.d-12 3.d-12  1.e0
+END
+:
+skip
+INIT 0
+:i1 i2 j1 j2 k1 k2 ipha pf        tf    conc
+:  1 5  1  4  1  1  3    0.5d0        25.d0 1.d-6
+  1 5  1  4  1  1  1    174776.394d0 25.d0 1.d-6
+  1 5  1  4  2  2  1    346162.980d0 25.d0 1.d-6
+  1 5  1  4  3  3  1    566517.162d0 25.d0 1.d-6
+/
+noskip
+:
+BCON
+:ibndtyp iface west
+   1       1
+:i1  i2   j1  j2  k1  k2
+  1   1   1   4   1    1
+: iphase Pressure Temp Conc
+:  1      174776.394d0 25.d0 1.d-6
+  1      174876.394d0 25.d0 1.d-3
+/
+   1       1
+  1 1 1 4 2 2
+:  1      346162.980d0 25.d0 1.d-6
+  1      346262.980d0 25.d0 1.d-6
+/
+   1       1
+  1 1 1 4 3 3
+:  1      566517.162d0 25.d0 1.d-6
+  1      566617.162d0 30.d0 1.d-6
+/
+:ibndtyp iface east
+  1       2
+:i1  i2  j1  j2  k1  k2
+  5  5   1   4   1    1
+: iphase Pressure Temp Conc
+  1      174776.394d0 25.d0 1.d-6
+/
+  1       2
+  5 5 1 4 2 2
+  1      346162.980d0 25.d0 1.d-6
+/
+  1       2
+  5 5 1 4 3 3
+  1      566517.162d0 25.d0 1.d-6
+/
+:ibndtyp iface top
+  2       3
+:i1  i2  j1  j2  k1  k2
+  1  5   1   4   1   1
+: iphase flux temp  conc
+  1      0.d0 25.d0 1.d-6
+/
+:ibndtyp iface bottom
+  2       4
+:i1  i2  j1  j2    k1   k2
+  1  5   1   4   3   3
+: iphase flux temp  conc
+  1      0.d0 25.d0 1.d-6
+/
+:ibndtyp iface south
+  2       5
+:i1  i2  j1  j2  k1  k2
+  1  5   1   1   1   3
+: iphase flux temp  conc
+  1      0.d0 25.d0 1.d-6
+/
+:ibndtyp iface north
+  2       6
+:i1  i2  j1   j2  k1  k2
+  1  5   4  4   1   3
+: iphase flux temp  conc
+  1      0.d0 25.d0 1.d-6
+/
+/
+:
+:
+TIME y 3
+0.1 1. 10.
+:
+DTST  3  10.   500.   1000. 
+1.d-6    0.1   0.5     0.5   
+:
+REGN all
+BLOCK 
+1 5 1 4 1 3
+
+REGN west_top
+BLOCK 
+1 1 1 4 3 3
+REGN west_middle
+BLOCK 
+1 1 1 4 2 2 
+REGN west_bottom
+BLOCK 
+1 1 1 4 1 1 
+
+REGN east_top
+BLOCK 
+5 5 1 4 3 3
+REGN east_middle
+BLOCK 
+5 5 1 4 2 2 
+REGN east_bottom
+BLOCK 
+5 5 1 4 1 1 
+
+REGN south_top
+BLOCK 
+1 5 1 1 3 3
+REGN south_middle
+BLOCK 
+1 5 1 1 2 2 
+REGN south_bottom
+BLOCK 
+1 5 1 1 1 1 
+
+REGN north_top
+BLOCK 
+1 5 4 4 3 3
+REGN north_middle
+BLOCK 
+1 5 4 4 2 2 
+REGN north_bottom
+BLOCK 
+1 5 4 4 1 1 
+
+REGN top
+BLOCK 
+1 5 1 4 3 3
+REGN middle
+BLOCK 
+1 5 1 4 2 2 
+REGN bottom
+BLOCK 
+1 5 1 4 1 1 
+
+skip
+REGN top_cells
+LIST FILE
+region.txt
+REGN side_cells
+LIST
+22 24 \
+27
+noskip
+
+CONDITION initial_top
+UNITS Pa,C,M,yr
+CLASS flow dirichlet
+PRESSURE 174776.394d0 KPa
+TEMPERATURE 25.d0 C
+CONCENTRATION 1.d-6 M
+END
+
+CONDITION initial_middle
+UNITS Pa,C,M,yr
+CLASS flow dirichlet
+PRESSURE 346162.980d0 KPa
+TEMPERATURE 25.d0 C
+CONCENTRATION 1.d-6 M
+END
+
+CONDITION initial_bottom
+UNITS Pa,C,M,yr
+CLASS flow dirichlet
+PRESSURE 566517.162d0 KPa
+TEMPERATURE 25.d0 C
+CONCENTRATION 1.d-6 M
+END
+
+skip
+CONDITION inlet
+UNITS KPa,C,yr
+CLASS flow dirichlet
+PRESSURE file condition.txt Pa
+TEMPERATURE file condition2.txt K
+CONCENTRATION 5.d-6 M
+DATUM 100. 200. 300. meter
+GRADIENT 0. 0. -9793.5192d0 Pa/meter
+END
+noskip
+
+: initial condition
+INITIAL_CONDITION
+CONDITION initial_top
+REGION top
+END
+
+INITIAL_CONDITION
+CONDITION initial_middle
+REGION middle
+END
+
+INITIAL_CONDITION
+CONDITION initial_bottom
+REGION bottom
+END
+
+: west boundary condition
+BOUNDARY_CONDITION
+FACE west
+CONDITION initial_top
+REGION west_top
+END
+
+BOUNDARY_CONDITION
+FACE west
+CONDITION initial_middle
+REGION west_middle
+END
+
+BOUNDARY_CONDITION
+FACE west
+CONDITION initial_bottom
+REGION west_bottom
+END
+
+: east boundary condition
+BOUNDARY_CONDITION
+FACE east
+CONDITION initial_top
+REGION east_top
+END
+
+BOUNDARY_CONDITION
+FACE east
+CONDITION initial_middle
+REGION east_middle
+END
+
+BOUNDARY_CONDITION
+FACE east
+CONDITION initial_bottom
+REGION east_bottom
+END
+

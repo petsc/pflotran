@@ -37,23 +37,23 @@ module Coupler_module
   
   integer, save :: num_couplers = 0
   
-  public :: createCoupler, destroyCoupler, initCouplerList, addCouplerToList, &
-            readCoupler, destroyCouplerList
+  public :: CouplerCreate, CouplerDestroy, CouplerInitList, CouplerAddToList, &
+            CouplerRead, CouplerCreateList
   
 contains
 
 ! ************************************************************************** !
 !
-! createCoupler: Creates a coupler
+! CouplerCreate: Creates a coupler
 ! author: Glenn Hammond
 ! date: 10/23/07
 !
 ! ************************************************************************** !
-function createCoupler()
+function CouplerCreate()
 
   implicit none
 
-  type(coupler_type), pointer :: createCoupler
+  type(coupler_type), pointer :: CouplerCreate
   
   type(coupler_type), pointer :: coupler
   
@@ -73,18 +73,18 @@ function createCoupler()
   num_couplers = num_couplers + 1
   coupler%id = num_couplers
   
-  createCoupler => coupler
+  CouplerCreate => coupler
 
-end function createCoupler
+end function CouplerCreate
 
 ! ************************************************************************** !
 !
-! initCouplerList: Initializes a coupler list
+! CouplerInitList: Initializes a coupler list
 ! author: Glenn Hammond
 ! date: 11/01/07
 !
 ! ************************************************************************** !
-subroutine initCouplerList(list)
+subroutine CouplerInitList(list)
 
   implicit none
 
@@ -95,16 +95,16 @@ subroutine initCouplerList(list)
   nullify(list%array)
   list%num_couplers = 0
 
-end subroutine initCouplerList
+end subroutine CouplerInitList
 
 ! ************************************************************************** !
 !
-! readCoupler: Reads a coupler from the input file
+! CouplerRead: Reads a coupler from the input file
 ! author: Glenn Hammond
 ! date: 11/01/07
 !
 ! ************************************************************************** !
-subroutine readCoupler(coupler,fid)
+subroutine CouplerRead(coupler,fid)
 
   use Fileio_module
   
@@ -158,16 +158,16 @@ subroutine readCoupler(coupler,fid)
   
   enddo  
 
-end subroutine readCoupler
+end subroutine CouplerRead
 
 ! ************************************************************************** !
 !
-! addCouplerToList: Adds a new coupler to a coupler list
+! CouplerAddToList: Adds a new coupler to a coupler list
 ! author: Glenn Hammond
 ! date: 11/01/07
 !
 ! ************************************************************************** !
-subroutine addCouplerToList(new_coupler,list)
+subroutine CouplerAddToList(new_coupler,list)
 
   implicit none
   
@@ -180,16 +180,16 @@ subroutine addCouplerToList(new_coupler,list)
   if (associated(list%last)) list%last%next => new_coupler
   list%last => new_coupler
   
-end subroutine addCouplerToList
+end subroutine CouplerAddToList
 
 ! ************************************************************************** !
 !
-! destroyCouplerList: Deallocates a list of couplers
+! CouplerCreateList: Deallocates a list of couplers
 ! author: Glenn Hammond
 ! date: 11/01/07
 !
 ! ************************************************************************** !
-subroutine destroyCouplerList(coupler_list)
+subroutine CouplerCreateList(coupler_list)
 
   implicit none
   
@@ -203,7 +203,7 @@ subroutine destroyCouplerList(coupler_list)
     if (.not.associated(coupler)) exit
     prev_coupler => coupler
     coupler => coupler%next
-    call destroyCoupler(prev_coupler)
+    call CouplerDestroy(prev_coupler)
   enddo
   
   coupler_list%num_couplers = 0
@@ -215,16 +215,16 @@ subroutine destroyCouplerList(coupler_list)
   deallocate(coupler_list)
   nullify(coupler_list)
 
-end subroutine destroyCouplerList
+end subroutine CouplerCreateList
 
 ! ************************************************************************** !
 !
-! destroyCoupler: Destroys a coupler
+! CouplerDestroy: Destroys a coupler
 ! author: Glenn Hammond
 ! date: 10/23/07
 !
 ! ************************************************************************** !
-subroutine destroyCoupler(coupler)
+subroutine CouplerDestroy(coupler)
 
   implicit none
   
@@ -232,18 +232,18 @@ subroutine destroyCoupler(coupler)
   
   if (.not.associated(coupler)) return
   
-  call destroyCondition(coupler%flow_condition)
+  call ConditionDestroy(coupler%flow_condition)
   nullify(coupler%flow_condition)
-  call destroyCondition(coupler%transport_condition)
+  call ConditionDestroy(coupler%transport_condition)
   nullify(coupler%transport_condition)
-  call destroyRegion(coupler%region)
+  call RegionDestroy(coupler%region)
   nullify(coupler%region)
-  call destroyConnection(coupler%connection)
+  call ConnectionDestroy(coupler%connection)
   nullify(coupler%connection)
   
   deallocate(coupler)
   nullify(coupler)
 
-end subroutine destroyCoupler
+end subroutine CouplerDestroy
 
 end module Coupler_module

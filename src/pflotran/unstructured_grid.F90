@@ -17,38 +17,38 @@ module Unstructured_Grid_module
     integer :: num_hash = 100
   end type
   
-  public :: initUnstructuredGrid, &
-            createUnstructuredDMs, &
-            computeUnstructInternalConnect, &
-            computeUnstructBoundaryConnect, &
-            getLocalGhostedIdFromHash, &
-            destroyUnstructuredGrid
+  public :: UnstructuredGridInit, &
+            UnstructuredGridCreateDMs, &
+            UnstGridComputeInternConnect, &
+            UnstGridComputeBoundConnect, &
+            UnstructGridGetGhostedIdFromHash, &
+            UnstructuredGridDestroy
 
 contains
 
 ! ************************************************************************** !
 !
-! initUnstructuredGrid: Initializes an unstructured grid object
+! UnstructuredGridInit: Initializes an unstructured grid object
 ! author: Glenn Hammond
 ! date: 10/22/07
 !
 ! ************************************************************************** !
-subroutine initUnstructuredGrid(unstructured_grid)
+subroutine UnstructuredGridInit(unstructured_grid)
 
   implicit none
   
   type(unstructured_grid_type) :: unstructured_grid
 
-end subroutine initUnstructuredGrid
+end subroutine UnstructuredGridInit
 
 ! ************************************************************************** !
 !
-! createStructuredDMs: creates unstructured distributed, parallel meshes/grids
+! StructuredGridCreateDMs: creates unstructured distributed, parallel meshes/grids
 ! author: Glenn Hammond
 ! date: 10/22/07
 !
 ! ************************************************************************** !
-subroutine createUnstructuredDMs(unstructured_grid,option)
+subroutine UnstructuredGridCreateDMs(unstructured_grid,option)
       
   use Option_module
       
@@ -57,53 +57,53 @@ subroutine createUnstructuredDMs(unstructured_grid,option)
   type(unstructured_grid_type) :: unstructured_grid
   type(option_type) :: option
   
-end subroutine createUnstructuredDMs
+end subroutine UnstructuredGridCreateDMs
   
 ! ************************************************************************** !
 !
-! computeUnstructInternalConnect: computes internal connectivity of an  
+! UnstGridComputeInternConnect: computes internal connectivity of an  
 !                                 unstructured grid
 ! author: Glenn Hammond
 ! date: 10/17/07
 !
 ! ************************************************************************** !
-function computeUnstructInternalConnect(unstructured_grid,option)
+function UnstGridComputeInternConnect(unstructured_grid,option)
 
   use Connection_module
   use Option_module
   
   implicit none
   
-  type(connection_type), pointer :: computeUnstructInternalConnect
+  type(connection_type), pointer :: UnstGridComputeInternConnect
   type(unstructured_grid_type) :: unstructured_grid
   type(option_type) :: option
 
-  nullify(computeUnstructInternalConnect)
+  nullify(UnstGridComputeInternConnect)
   
-end function computeUnstructInternalConnect
+end function UnstGridComputeInternConnect
 
 ! ************************************************************************** !
 !
-! computeUnstructBoundaryConnect: computes boundary connectivity of an 
+! UnstGridComputeBoundConnect: computes boundary connectivity of an 
 !                                 unstructured grid
 ! author: Glenn Hammond
 ! date: 10/15/07
 !
 ! ************************************************************************** !
-function computeUnstructBoundaryConnect(unstructured_grid,option)
+function UnstGridComputeBoundConnect(unstructured_grid,option)
 
   use Connection_module
   use Option_module
   
   implicit none
 
-  type(connection_type), pointer :: computeUnstructBoundaryConnect  
+  type(connection_type), pointer :: UnstGridComputeBoundConnect  
   type(unstructured_grid_type) :: unstructured_grid
   type(option_type) :: option
   
-  nullify(computeUnstructBoundaryConnect)
+  nullify(UnstGridComputeBoundConnect)
   
-end function computeUnstructBoundaryConnect
+end function UnstGridComputeBoundConnect
 
 ! ************************************************************************** !
 !
@@ -113,7 +113,7 @@ end function computeUnstructBoundaryConnect
 ! date: 03/07/07
 !
 ! ************************************************************************** !
-subroutine CreateNaturalToLocalGhostedHash(unstructured_grid,nG2A)
+subroutine UnstGridCreateNatToGhostedHash(unstructured_grid,nG2A)
 
   implicit none
 
@@ -167,7 +167,7 @@ subroutine CreateNaturalToLocalGhostedHash(unstructured_grid,nG2A)
 
 !  if (grid%myrank == 0) print *, 'num_ids_per_hash:', num_ids_per_hash
 
-end subroutine CreateNaturalToLocalGhostedHash
+end subroutine UnstGridCreateNatToGhostedHash
 
 ! ************************************************************************** !
 !
@@ -177,7 +177,7 @@ end subroutine CreateNaturalToLocalGhostedHash
 ! date: 03/07/07
 !
 ! ************************************************************************** !
-integer function getLocalGhostedIdFromHash(unstructured_grid,natural_id)
+integer function UnstructGridGetGhostedIdFromHash(unstructured_grid,natural_id)
 
   implicit none
   
@@ -186,25 +186,25 @@ integer function getLocalGhostedIdFromHash(unstructured_grid,natural_id)
   integer :: natural_id
   integer :: hash_id, id
 
-  GetLocalGhostedIdFromHash = 0
+  UnstructGridGetGhostedIdFromHash = 0
   hash_id = mod(natural_id,unstructured_grid%num_hash)+1 
   do id = 1, unstructured_grid%hash(1,0,hash_id)
     if (unstructured_grid%hash(1,id,hash_id) == natural_id) then
-      GetLocalGhostedIdFromHash = unstructured_grid%hash(2,id,hash_id)
+      UnstructGridGetGhostedIdFromHash = unstructured_grid%hash(2,id,hash_id)
       return
     endif
   enddo
 
-end function getLocalGhostedIdFromHash
+end function UnstructGridGetGhostedIdFromHash
 
 ! ************************************************************************** !
 !
-! PrintHashTable: Prints the hashtable for viewing
+! UnstructGridPrintHashTable: Prints the hashtable for viewing
 ! author: Glenn Hammond
 ! date: 03/09/07
 !
 ! ************************************************************************** !
-subroutine PrintHashTable(unstructured_grid)
+subroutine UnstructGridPrintHashTable(unstructured_grid)
 
   implicit none
 
@@ -223,16 +223,16 @@ subroutine PrintHashTable(unstructured_grid)
   enddo
   close(fid)
 
-end subroutine PrintHashTable
+end subroutine UnstructGridPrintHashTable
 
 ! ************************************************************************** !
 !
-! destroyUnstructuredGrid: Deallocates a unstructured grid
+! UnstructuredGridDestroy: Deallocates a unstructured grid
 ! author: Glenn Hammond
 ! date: 11/01/07
 !
 ! ************************************************************************** !
-subroutine destroyUnstructuredGrid(unstructured_grid)
+subroutine UnstructuredGridDestroy(unstructured_grid)
 
   implicit none
   
@@ -247,6 +247,6 @@ subroutine destroyUnstructuredGrid(unstructured_grid)
   deallocate(unstructured_grid)
   nullify(unstructured_grid)
 
-end subroutine destroyUnstructuredGrid
+end subroutine UnstructuredGridDestroy
 
 end module Unstructured_Grid_module

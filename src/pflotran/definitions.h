@@ -42,3 +42,7 @@
 #define FLASH_MODE 8
 #define TH_MODE 9
 #define THC_MODE 10
+
+!grid types
+#define STRUCTURED 1
+#define UNSTRUCTURED 2

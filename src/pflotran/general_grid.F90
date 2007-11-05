@@ -99,8 +99,8 @@ subroutine ReadUnstructuredGrid(grid)
 
   ! create hash table for fast lookup
 #ifdef HASH
-  call CreateNaturalToLocalGhostedHash(grid)
-!  call PrintHashTable
+  call UnstGridCreateNatToGhostedHash(grid)
+!  call UnstructGridPrintHashTable
 #endif
 
 ! GRID information
@@ -670,8 +670,8 @@ subroutine ReadMaterials(grid)
 
   ! create hash table for fast lookup
 #ifdef HASH
-  call CreateNaturalToLocalGhostedHash(grid)
-!  call PrintHashTable
+  call UnstGridCreateNatToGhostedHash(grid)
+!  call UnstructGridPrintHashTable
 #endif
 
 ! GRID information
@@ -997,8 +997,8 @@ subroutine ReadMaterials2(grid)
 
   ! create hash table for fast lookup
 #ifdef HASH
-  call CreateNaturalToLocalGhostedHash(grid)
-!  call PrintHashTable
+  call UnstGridCreateNatToGhostedHash(grid)
+!  call UnstructGridPrintHashTable
 #endif
 
 ! GRID information
@@ -1307,13 +1307,13 @@ subroutine ReadStructuredGridHDF5(grid)
                              filename, option_found, ierr)
  
   ! grab connection object
-  connection_list => getInternalConnectionList()
+  connection_list => ConnectionGetInternalConnList()
   cur_connection_object => connection_list%first
   
   ! create hash table for fast lookup
 #ifdef HASH
-  call CreateNaturalToLocalGhostedHash(grid)
-!  call PrintHashTable
+  call UnstGridCreateNatToGhostedHash(grid)
+!  call UnstructGridPrintHashTable
 #endif
 
   ! initialize fortran hdf5 interface
@@ -1753,7 +1753,7 @@ subroutine SetupConnectionIndices(grid,file_id,indices)
   
   integer :: read_block_size = READ_BUFFER_SIZE
 
-  num_internal_connections = getNumberOfBoundaryConnections()
+  num_internal_connections = ConnectionGetNumBoundaryConnect()
   
   string = "Id Upwind"
   call h5dopen_f(file_id,string,data_set_id_up,hdf5_err)
@@ -2395,7 +2395,7 @@ end function GetLocalGhostedIdFromNaturalId
 ! date: 03/07/07
 !
 ! ************************************************************************** !
-subroutine CreateNaturalToLocalGhostedHash(grid)
+subroutine UnstGridCreateNatToGhostedHash(grid)
 
   implicit none
 
@@ -2443,7 +2443,7 @@ subroutine CreateNaturalToLocalGhostedHash(grid)
 
   if (grid%myrank == 0) print *, 'num_ids_per_hash:', num_ids_per_hash
 
-end subroutine CreateNaturalToLocalGhostedHash
+end subroutine UnstGridCreateNatToGhostedHash
 
 ! ************************************************************************** !
 !
@@ -2473,12 +2473,12 @@ end function GetLocalGhostedIdFromHash
 
 ! ************************************************************************** !
 !
-! PrintHashTable: Prints the hashtable for viewing
+! UnstructGridPrintHashTable: Prints the hashtable for viewing
 ! author: Glenn Hammond
 ! date: 03/09/07
 !
 ! ************************************************************************** !
-subroutine PrintHashTable()
+subroutine UnstructGridPrintHashTable()
 
   implicit none
 
@@ -2494,6 +2494,6 @@ subroutine PrintHashTable()
   enddo
   close(fid)
 
-end subroutine PrintHashTable
+end subroutine UnstructGridPrintHashTable
 
 end module General_Grid_module

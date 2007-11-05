@@ -68,30 +68,31 @@ module Material_module
     real*8 :: pcwmax
     real*8 :: betac
     real*8 :: power
+    integer :: ihist 
     type(saturation_function_type), pointer :: next
   end type saturation_function_type
   
-  public :: createMaterial, createThermalProperty, createSaturationFunction, &
-            destroyMaterial, destroyThermalProperty, &
-            destroySaturationFunction, &
-            addMaterialToList, addThermalPropertyToList, &
-            addSaturationFunctionToList, &
-            getMaterialPtrFromList
+  public :: MaterialCreate, ThermalPropertyCreate, SaturationFunctionCreate, &
+            MaterialDestroy, ThermalPropertyDestroy, &
+            SaturationFunctionDestroy, &
+            MaterialAddToList, ThermalAddPropertyToList, &
+            SaturationFunctionAddToList, &
+            MaterialGetPtrFromList
   
 contains
 
 ! ************************************************************************** !
 !
-! createMaterial: Creates a material
+! MaterialCreate: Creates a material
 ! author: Glenn Hammond
 ! date: 11/02/07
 !
 ! ************************************************************************** !
-function createMaterial()
+function MaterialCreate()
   
   implicit none
 
-  type(material_type), pointer :: createMaterial
+  type(material_type), pointer :: MaterialCreate
   
   type(material_type), pointer :: material
   
@@ -105,22 +106,22 @@ function createMaterial()
   material%ithrm = 0
   material%icap = 0
   nullify(material%next)
-  createMaterial => material
+  MaterialCreate => material
 
-end function createMaterial
+end function MaterialCreate
 
 ! ************************************************************************** !
 !
-! createMaterial: Creates a thermal property
+! MaterialCreate: Creates a thermal property
 ! author: Glenn Hammond
 ! date: 11/02/07
 !
 ! ************************************************************************** !
-function createThermalProperty()
+function ThermalPropertyCreate()
   
   implicit none
 
-  type(thermal_property_type), pointer :: createThermalProperty
+  type(thermal_property_type), pointer :: ThermalPropertyCreate
   
   type(thermal_property_type), pointer :: thermal_property
   
@@ -137,24 +138,24 @@ function createThermalProperty()
   thermal_property%exp_binary_diff = 0.d0
   thermal_property%enh_binary_diff_coef = 0.d0
   nullify(thermal_property%next)
-  createThermalProperty => thermal_property
+  ThermalPropertyCreate => thermal_property
 
-end function createThermalProperty
+end function ThermalPropertyCreate
 
 ! ************************************************************************** !
 !
-! createSaturationFunction: Creates a saturation function
+! SaturationFunctionCreate: Creates a saturation function
 ! author: Glenn Hammond
 ! date: 11/02/07
 !
 ! ************************************************************************** !
-function createSaturationFunction(option)
+function SaturationFunctionCreate(option)
   
   use Option_module
   
   implicit none
 
-  type(saturation_function_type), pointer :: createSaturationFunction
+  type(saturation_function_type), pointer :: SaturationFunctionCreate
   type(option_type) :: option
   
   type(saturation_function_type), pointer :: saturation_function
@@ -171,19 +172,20 @@ function createSaturationFunction(option)
   saturation_function%pcwmax = 0.d0
   saturation_function%betac = 0.d0
   saturation_function%power = 0.d0
+  saturation_function%ihist = 0
   nullify(saturation_function%next)
-  createSaturationFunction => saturation_function
+  SaturationFunctionCreate => saturation_function
 
-end function createSaturationFunction
+end function SaturationFunctionCreate
 
 ! ************************************************************************** !
 !
-! addMaterialToList: Adds a thermal property to linked list
+! MaterialAddToList: Adds a thermal property to linked list
 ! author: Glenn Hammond
 ! date: 11/02/07
 !
 ! ************************************************************************** !
-recursive subroutine addMaterialToList(material,list)
+recursive subroutine MaterialAddToList(material,list)
 
   implicit none
   
@@ -204,16 +206,16 @@ recursive subroutine addMaterialToList(material,list)
     list => material
   endif
   
-end subroutine addMaterialToList
+end subroutine MaterialAddToList
 
 ! ************************************************************************** !
 !
-! addThermalPropertyToList: Adds a thermal property to linked list
+! ThermalAddPropertyToList: Adds a thermal property to linked list
 ! author: Glenn Hammond
 ! date: 11/02/07
 !
 ! ************************************************************************** !
-recursive subroutine addThermalPropertyToList(thermal_property,list)
+recursive subroutine ThermalAddPropertyToList(thermal_property,list)
 
   implicit none
   
@@ -234,16 +236,16 @@ recursive subroutine addThermalPropertyToList(thermal_property,list)
     list => thermal_property
   endif
   
-end subroutine addThermalPropertyToList
+end subroutine ThermalAddPropertyToList
 
 ! ************************************************************************** !
 !
-! addSaturationFunctionToList: Adds a saturation function to linked list
+! SaturationFunctionAddToList: Adds a saturation function to linked list
 ! author: Glenn Hammond
 ! date: 11/02/07
 !
 ! ************************************************************************** !
-recursive subroutine addSaturationFunctionToList(saturation_function,list)
+recursive subroutine SaturationFunctionAddToList(saturation_function,list)
 
   implicit none
   
@@ -264,51 +266,51 @@ recursive subroutine addSaturationFunctionToList(saturation_function,list)
     list => saturation_function
   endif
   
-end subroutine addSaturationFunctionToList
+end subroutine SaturationFunctionAddToList
 
 ! ************************************************************************** !
 !
-! getMaterialPtrFromList: Returns a pointer to the material matching 
+! MaterialGetPtrFromList: Returns a pointer to the material matching 
 !                         material_name
 ! author: Glenn Hammond
 ! date: 11/02/07
 !
 ! ************************************************************************** !
-function getMaterialPtrFromList(material_name,material_list)
+function MaterialGetPtrFromList(material_name,material_list)
 
   use Fileio_module
 
   implicit none
   
-  type(material_type), pointer :: getMaterialPtrFromList
+  type(material_type), pointer :: MaterialGetPtrFromList
   character(len=MAXNAMELENGTH) :: material_name
   type(material_type), pointer :: material_list
 
   type(material_type), pointer :: material
     
-  nullify(getMaterialPtrFromList)
+  nullify(MaterialGetPtrFromList)
   material => material_list
   
   do 
     if (.not.associated(material)) exit
     if (fiStringCompare(material%name,material_name, &
                         len_trim(material_name))) then
-      getMaterialPtrFromList => material
+      MaterialGetPtrFromList => material
       return
     endif
     material => material%next
   enddo
   
-end function getMaterialPtrFromList
+end function MaterialGetPtrFromList
 
 ! ************************************************************************** !
 !
-! destroyMaterial: Destroys a material
+! MaterialDestroy: Destroys a material
 ! author: Glenn Hammond
 ! date: 11/02/07
 !
 ! ************************************************************************** !
-recursive subroutine destroyMaterial(material)
+recursive subroutine MaterialDestroy(material)
 
   implicit none
   
@@ -316,21 +318,21 @@ recursive subroutine destroyMaterial(material)
   
   if (.not.associated(material)) return
   
-  call destroyMaterial(material%next)
+  call MaterialDestroy(material%next)
   
   deallocate(material)
   nullify(material)
   
-end subroutine destroyMaterial
+end subroutine MaterialDestroy
 
 ! ************************************************************************** !
 !
-! destroySaturationFunction: Destroys a saturation function
+! SaturationFunctionDestroy: Destroys a saturation function
 ! author: Glenn Hammond
 ! date: 11/02/07
 !
 ! ************************************************************************** !
-recursive subroutine destroyThermalProperty(thermal_property)
+recursive subroutine ThermalPropertyDestroy(thermal_property)
 
   implicit none
   
@@ -338,21 +340,21 @@ recursive subroutine destroyThermalProperty(thermal_property)
   
   if (.not.associated(thermal_property)) return
   
-  call destroyThermalProperty(thermal_property%next)
+  call ThermalPropertyDestroy(thermal_property%next)
 
   deallocate(thermal_property)
   nullify(thermal_property)
   
-end subroutine destroyThermalProperty
+end subroutine ThermalPropertyDestroy
 
 ! ************************************************************************** !
 !
-! destroySaturationFunction: Destroys a saturation function
+! SaturationFunctionDestroy: Destroys a saturation function
 ! author: Glenn Hammond
 ! date: 11/02/07
 !
 ! ************************************************************************** !
-recursive subroutine destroySaturationFunction(saturation_function)
+recursive subroutine SaturationFunctionDestroy(saturation_function)
 
   implicit none
   
@@ -360,7 +362,7 @@ recursive subroutine destroySaturationFunction(saturation_function)
   
   if (.not.associated(saturation_function)) return
   
-  call destroySaturationFunction(saturation_function%next)
+  call SaturationFunctionDestroy(saturation_function%next)
     
   if (associated(saturation_function%Sr)) deallocate(saturation_function%Sr)
   nullify(saturation_function%Sr)
@@ -368,6 +370,6 @@ recursive subroutine destroySaturationFunction(saturation_function)
   deallocate(saturation_function)
   nullify(saturation_function)
   
-end subroutine destroySaturationFunction
+end subroutine SaturationFunctionDestroy
 
 end module Material_module

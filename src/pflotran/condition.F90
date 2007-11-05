@@ -44,27 +44,27 @@ module Condition_module
   
   integer, save :: condition_count = 0
   
-  public :: createCondition, destroyCondition, readCondition, &
-            addConditionToList, initConditionList, destroyConditionList, &
-            getConditionPtrFromList
+  public :: ConditionCreate, ConditionDestroy, ConditionRead, &
+            ConditionAddToList, ConditionInitList, ConditionDestroyList, &
+            ConditionGetPtrFromList
     
 contains
 
 ! ************************************************************************** !
 !
-! createCondition: Creates a condition
+! ConditionCreate: Creates a condition
 ! author: Glenn Hammond
 ! date: 10/23/07
 !
 ! ************************************************************************** !
-function createCondition(option)
+function ConditionCreate(option)
 
   use Option_module
   
   implicit none
   
   type(option_type) :: option
-  type(condition_type), pointer :: createCondition
+  type(condition_type), pointer :: ConditionCreate
   
   type(condition_type), pointer :: condition
   
@@ -99,18 +99,18 @@ function createCondition(option)
       condition%units(5) = 'M'
   end select
   
-  createCondition => condition
+  ConditionCreate => condition
 
-end function createCondition
+end function ConditionCreate
 
 ! ************************************************************************** !
 !
-! readCondition: Reads a condition from the input file
+! ConditionRead: Reads a condition from the input file
 ! author: Glenn Hammond
 ! date: 10/31/07
 !
 ! ************************************************************************** !
-subroutine readCondition(condition,option,fid)
+subroutine ConditionRead(condition,option,fid)
 
   use Option_module
   use Fileio_module
@@ -219,13 +219,13 @@ subroutine readCondition(condition,option,fid)
         call fiReadDouble(string,condition%gradient(Z_DIRECTION),ierr)
         call fiErrorMsg('Z Gradient','CONDITION', ierr)   
       case('TEMPERATURE','TEMP')
-        call readValues(option,word,string,times,temperature,units(temp_dof))
+        call ConditionReadValues(option,word,string,times,temperature,units(temp_dof))
       case('PRESSURE','PRES','PRESS')
-        call readValues(option,word,string,times,pressure,units(pres_dof))
+        call ConditionReadValues(option,word,string,times,pressure,units(pres_dof))
       case('FLUX','VELOCITY','VEL')
-        call readValues(option,word,string,times,flux,units(pres_dof))
+        call ConditionReadValues(option,word,string,times,flux,units(pres_dof))
       case('CONC','CONCENTRATION')
-        call readValues(option,word,string,times,concentration,units(conc_dof))
+        call ConditionReadValues(option,word,string,times,concentration,units(conc_dof))
       case('END')
         exit
     end select 
@@ -310,16 +310,16 @@ subroutine readCondition(condition,option,fid)
   
   condition%cur_value(1:option%ndof) = condition%values(1:option%ndof,1)
 
-end subroutine readCondition
+end subroutine ConditionRead
 
 ! ************************************************************************** !
 !
-! readValues: Read the value(s) of a condition variable
+! ConditionReadValues: Read the value(s) of a condition variable
 ! author: Glenn Hammond
 ! date: 10/31/07
 !
 ! ************************************************************************** !
-subroutine readValues(option,keyword,string,times,values,units)
+subroutine ConditionReadValues(option,keyword,string,times,values,units)
 
   use Fileio_module
   use Option_module
@@ -342,7 +342,7 @@ subroutine readValues(option,keyword,string,times,values,units)
   if (fiStringCompare(word,'file',4)) then
     call fiReadWord(string,word,.true.,ierr)
     call fiErrorMsg('PRESSURE FILE','CONDITION', ierr)
-    call readValuesFromFile(word,times,values)
+    call ConditionReadValuesFromFile(word,times,values)
   else
     allocate(values(1))
     call fiReadDouble(word,values(1),ierr)
@@ -356,16 +356,16 @@ subroutine readValues(option,keyword,string,times,values,units)
     units = trim(word)
   endif
 
-end subroutine readValues
+end subroutine ConditionReadValues
 
 ! ************************************************************************** !
 !
-! readValuesFromFile: Read values from a external file
+! ConditionReadValuesFromFile: Read values from a external file
 ! author: Glenn Hammond
 ! date: 10/31/07
 !
 ! ************************************************************************** !
-subroutine readValuesFromFile(filename,times,values)
+subroutine ConditionReadValuesFromFile(filename,times,values)
 
   use Fileio_module
   use Utility_module
@@ -445,16 +445,16 @@ subroutine readValuesFromFile(filename,times,values)
   
   close(fid)
 
-end subroutine
+end subroutine ConditionReadValuesFromFile
 
 ! ************************************************************************** !
 !
-! updateCondition: Updates a transient condition
+! ConditionUpdate: Updates a transient condition
 ! author: Glenn Hammond
 ! date: 11/02/07
 !
 ! ************************************************************************** !
-subroutine updateCondition(condition,option)
+subroutine ConditionUpdate(condition,option)
 
   use Option_module
   use Fileio_module
@@ -559,13 +559,13 @@ subroutine updateCondition(condition,option)
         call fiReadDouble(string,condition%gradient(Z_DIRECTION),ierr)
         call fiErrorMsg('Z Gradient','CONDITION', ierr)   
       case('TEMPERATURE','TEMP')
-        call readValues(option,word,string,times,temperature,units(temp_dof))
+        call ConditionReadValues(option,word,string,times,temperature,units(temp_dof))
       case('PRESSURE','PRES','PRESS')
-        call readValues(option,word,string,times,pressure,units(pres_dof))
+        call ConditionReadValues(option,word,string,times,pressure,units(pres_dof))
       case('FLUX','VELOCITY','VEL')
-        call readValues(option,word,string,times,flux,units(pres_dof))
+        call ConditionReadValues(option,word,string,times,flux,units(pres_dof))
       case('CONC','CONCENTRATION')
-        call readValues(option,word,string,times,concentration,units(conc_dof))
+        call ConditionReadValues(option,word,string,times,concentration,units(conc_dof))
       case('END')
         exit
     end select 
@@ -650,16 +650,16 @@ subroutine updateCondition(condition,option)
   
   condition%cur_value(1:option%ndof) = condition%values(1:option%ndof,1)
 #endif
-end subroutine updateCondition
+end subroutine ConditionUpdate
 
 ! ************************************************************************** !
 !
-! initConditionList: Initializes a condition list
+! ConditionInitList: Initializes a condition list
 ! author: Glenn Hammond
 ! date: 11/01/07
 !
 ! ************************************************************************** !
-subroutine initConditionList(list)
+subroutine ConditionInitList(list)
 
   implicit none
 
@@ -670,16 +670,16 @@ subroutine initConditionList(list)
   nullify(list%array)
   list%num_conditions = 0
 
-end subroutine initConditionList
+end subroutine ConditionInitList
 
 ! ************************************************************************** !
 !
-! addConditionToList: Adds a new condition to a condition list
+! ConditionAddToList: Adds a new condition to a condition list
 ! author: Glenn Hammond
 ! date: 11/01/07
 !
 ! ************************************************************************** !
-subroutine addConditionToList(new_condition,list)
+subroutine ConditionAddToList(new_condition,list)
 
   implicit none
   
@@ -692,51 +692,51 @@ subroutine addConditionToList(new_condition,list)
   if (associated(list%last)) list%last%next => new_condition
   list%last => new_condition
   
-end subroutine addConditionToList
+end subroutine ConditionAddToList
 
 ! ************************************************************************** !
 !
-! getConditionPtrFromList: Returns a pointer to the condition matching &
+! ConditionGetPtrFromList: Returns a pointer to the condition matching &
 !                          condition_name
 ! author: Glenn Hammond
 ! date: 11/01/07
 !
 ! ************************************************************************** !
-function getConditionPtrFromList(condition_name,condition_list)
+function ConditionGetPtrFromList(condition_name,condition_list)
 
   use Fileio_module
 
   implicit none
   
-  type(condition_type), pointer :: getConditionPtrFromList
+  type(condition_type), pointer :: ConditionGetPtrFromList
   character(len=MAXNAMELENGTH) :: condition_name
   type(condition_list_type) :: condition_list
 
   type(condition_type), pointer :: condition
     
-  nullify(getConditionPtrFromList)
+  nullify(ConditionGetPtrFromList)
   condition => condition_list%first
   
   do 
     if (.not.associated(condition)) exit
     if (fiStringCompare(condition%name,condition_name, &
                         len_trim(condition_name))) then
-      getConditionPtrFromList => condition
+      ConditionGetPtrFromList => condition
       return
     endif
     condition => condition%next
   enddo
   
-end function getConditionPtrFromList
+end function ConditionGetPtrFromList
 
 ! ************************************************************************** !
 !
-! destroyConditionList: Deallocates a list of conditions
+! ConditionDestroyList: Deallocates a list of conditions
 ! author: Glenn Hammond
 ! date: 11/01/07
 !
 ! ************************************************************************** !
-subroutine destroyConditionList(condition_list)
+subroutine ConditionDestroyList(condition_list)
 
   implicit none
   
@@ -750,7 +750,7 @@ subroutine destroyConditionList(condition_list)
     if (.not.associated(condition)) exit
     prev_condition => condition
     condition => condition%next
-    call destroyCondition(prev_condition)
+    call ConditionDestroy(prev_condition)
   enddo
   
   condition_list%num_conditions = 0
@@ -762,16 +762,16 @@ subroutine destroyConditionList(condition_list)
   deallocate(condition_list)
   nullify(condition_list)
 
-end subroutine destroyConditionList
+end subroutine ConditionDestroyList
 
 ! ************************************************************************** !
 !
-! destroyCondition: Deallocates a condition
+! ConditionDestroy: Deallocates a condition
 ! author: Glenn Hammond
 ! date: 10/23/07
 !
 ! ************************************************************************** !
-subroutine destroyCondition(condition)
+subroutine ConditionDestroy(condition)
 
   implicit none
   
@@ -792,6 +792,6 @@ subroutine destroyCondition(condition)
   deallocate(condition)
   nullify(condition)
 
-end subroutine destroyCondition
+end subroutine ConditionDestroy
   
 end module Condition_module

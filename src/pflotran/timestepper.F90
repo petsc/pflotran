@@ -13,31 +13,31 @@ module Timestepper_module
     
   end type stepper_type
   
-  public :: createTimestepper, updateDT, stepDT, updateSolution, &
-            destroyTimestepper
+  public :: TimestepperCreate, StepperUpdateDT, StepperStepDT, StepperUpdateSolution, &
+            TimestepperDestroy
   
 contains
 
 ! ************************************************************************** !
 !
-! createTimestepper: Allocates and initializes a new Timestepper object
+! TimestepperCreate: Allocates and initializes a new Timestepper object
 ! author: Glenn Hammond
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-function createTimestepper()
+function TimestepperCreate()
 
   implicit none
   
-  type(stepper_type), pointer :: createTimestepper
+  type(stepper_type), pointer :: TimestepperCreate
   
-  allocate(createTimestepper)
-  createTimestepper%solver => createSolver()
+  allocate(TimestepperCreate)
+  TimestepperCreate%solver => SolverCreate()
   
-end function createTimestepper 
+end function TimestepperCreate 
 
 ! ************************************************************************** !
-subroutine updateDT(option, its)
+subroutine StepperUpdateDT(option, its)
 
   use Option_module
   
@@ -128,13 +128,13 @@ subroutine updateDT(option, its)
   if (dtt>.25d0*option%t .and. option%t>1.d-2) dtt=.25d0*option%t
   option%dt = dtt
 
-  end subroutine updateDT
+  end subroutine StepperUpdateDT
 
 !======================================================================
 
 !#include "pflowgrid_step.F90"
 
-subroutine stepDT(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
+subroutine StepperStepDT(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
   
   use translator_mph_module, only : translator_mph_step_maxchange
   use translator_owg_module, only : translator_owg_step_maxchange
@@ -194,11 +194,11 @@ subroutine stepDT(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
   ! vector, as that needs to be done within the residual calculation routine
   ! because that routine may get called several times during one Newton step
   ! if a method such as line search is being used.
-  call DMGlobalToLocal(grid,option%porosity,option%porosity_loc,ONEDOF)
-  call DMGlobalToLocal(grid,option%tor,option%tor_loc,ONEDOF)
-  call DMGlobalToLocal(grid,option%icap,option%icap_loc,ONEDOF)
-  call DMGlobalToLocal(grid,option%ithrm,option%ithrm_loc,ONEDOF)
-  call DMGlobalToLocal(grid,option%iphas,option%iphas_loc,ONEDOF)
+  call GridGlobalToLocal(grid,option%porosity,option%porosity_loc,ONEDOF)
+  call GridGlobalToLocal(grid,option%tor,option%tor_loc,ONEDOF)
+  call GridGlobalToLocal(grid,option%icap,option%icap_loc,ONEDOF)
+  call GridGlobalToLocal(grid,option%ithrm,option%ithrm_loc,ONEDOF)
+  call GridGlobalToLocal(grid,option%iphas,option%iphas_loc,ONEDOF)
 
   option%t = option%t + option%dt
   option%flowsteps = option%flowsteps + 1
@@ -677,11 +677,11 @@ subroutine stepDT(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
     print *, ""
   endif
 #endif
-end subroutine stepDT
+end subroutine StepperStepDT
 
 !==========================================================================
   
-subroutine updateSolution(solution)
+subroutine StepperUpdateSolution(solution)
   
   use pflow_vector_ops_module
   use TTPHASE_module
@@ -790,16 +790,16 @@ subroutine updateSolution(solution)
     call VecRestoreArrayF90(option%phis,phis_p,ierr)
   endif
 
-end subroutine updateSolution
+end subroutine StepperUpdateSolution
 
 ! ************************************************************************** !
 !
-! destroyTimestepper: Deallocates a time stepper
+! TimestepperDestroy: Deallocates a time stepper
 ! author: Glenn Hammond
 ! date: 11/01/07
 !
 ! ************************************************************************** !
-subroutine destroyTimestepper(stepper)
+subroutine TimestepperDestroy(stepper)
 
   implicit none
   
@@ -807,11 +807,11 @@ subroutine destroyTimestepper(stepper)
   
   if (.not.associated(stepper)) return
     
-  call destroySolver(stepper%solver)
+  call SolverDestroy(stepper%solver)
 
   deallocate(stepper)
   nullify(stepper)
   
-end subroutine destroyTimestepper
+end subroutine TimestepperDestroy
   
 end module Timestepper_module

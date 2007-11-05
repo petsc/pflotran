@@ -15,37 +15,41 @@ module Simulation_module
 
   end type simulation_type
   
-  public :: createSimulation, destroySimulation
+  public :: SimulationCreate, SimulationDestroy
   
 contains
 
 ! ************************************************************************** !
 !
-! createSolution: Allocates and initializes a new Solution object
+! SolutionCreate: Allocates and initializes a new Solution object
 ! author: Glenn Hammond
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-function createSimulation()
+function SimulationCreate()
 
   implicit none
   
-  type(simulation_type), pointer :: createSimulation
+  type(simulation_type), pointer :: SimulationCreate
   
-  allocate(createSimulation)
-  createSimulation%solution => createSolution()
-  nullify(createSimulation%stepper) ! nullify these since we are not sure 
+  type(simulation_type), pointer :: simulation
   
-end function createSimulation  
+  allocate(simulation)
+  simulation%solution => SolutionCreate()
+  simulation%stepper => TimestepperCreate()
+  
+  SimulationCreate => simulation
+  
+end function SimulationCreate  
 
 ! ************************************************************************** !
 !
-! destroySimulation: Deallocates a simulation
+! SimulationDestroy: Deallocates a simulation
 ! author: Glenn Hammond
 ! date: 11/01/07
 !
 ! ************************************************************************** !
-subroutine destroySimulation(simulation)
+subroutine SimulationDestroy(simulation)
 
   implicit none
   
@@ -53,9 +57,9 @@ subroutine destroySimulation(simulation)
   
   if (.not.associated(simulation)) return
     
-  call destroySolution(simulation%solution)
-  call destroyTimestepper(simulation%stepper)
+  call SolutionDestroy(simulation%solution)
+  call TimestepperDestroy(simulation%stepper)
   
-end subroutine destroySimulation
+end subroutine SimulationDestroy
   
 end module Simulation_module

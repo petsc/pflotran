@@ -34,25 +34,25 @@ module Solver_module
     integer :: idt_switch
   end type solver_type
   
-  public :: createSolver, &
-            destroySolver, &
-            ComputeMFJacobian, &
-            MonitorH
+  public :: SolverCreate, &
+            SolverDestroy, &
+            SolverComputeMFJacobian, &
+            SolverMonitorH
   
 contains
 
 ! ************************************************************************** !
 !
-! createSolver: Allocates and initializes a new Solver object
+! SolverCreate: Allocates and initializes a new Solver object
 ! author: Glenn Hammond
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-function createSolver()
+function SolverCreate()
 
   implicit none
   
-  type(solver_type), pointer :: createSolver
+  type(solver_type), pointer :: SolverCreate
   
   type(solver_type), pointer :: solver
   
@@ -66,18 +66,18 @@ function createSolver()
   solver%maxf = PETSC_DEFAULT_INTEGER
   solver%idt_switch = 0
   
-  createSolver => solver
+  SolverCreate => solver
   
-end function createSolver
+end function SolverCreate
   
 ! ************************************************************************** !
 !
-! ComputeMFJacobian: Sets Jacobian B = J
+! SolverComputeMFJacobian: Sets Jacobian B = J
 ! author:
 ! date: 
 !
 ! ************************************************************************** !
-subroutine ComputeMFJacobian(snes, x, J, B, flag, ctx, ierr)
+subroutine SolverComputeMFJacobian(snes, x, J, B, flag, ctx, ierr)
   
   implicit none
 
@@ -92,16 +92,16 @@ subroutine ComputeMFJacobian(snes, x, J, B, flag, ctx, ierr)
   call MatAssemblyEnd(J, MAT_FINAL_ASSEMBLY, ierr)
   B = J
   
-end subroutine ComputeMFJacobian
+end subroutine SolverComputeMFJacobian
 
 ! ************************************************************************** !
 !
-! MonitorH: Sets Jacobian B = J
+! SolverMonitorH: Sets Jacobian B = J
 ! author:
 ! date: 
 !
 ! ************************************************************************** !
-subroutine MonitorH(snes, its, norm, option)
+subroutine SolverMonitorH(snes, its, norm, option)
   
   use Option_module
   
@@ -122,16 +122,16 @@ subroutine MonitorH(snes, its, norm, option)
     write(*,*) "#At SNES iteration ", its, "h is ", h
   endif
 
-end subroutine MonitorH
+end subroutine SolverMonitorH
 
 ! ************************************************************************** !
 !
-! destroySolver: Deallocates a solver
+! SolverDestroy: Deallocates a solver
 ! author: Glenn Hammond
 ! date: 11/01/07
 !
 ! ************************************************************************** !
-subroutine destroySolver(solver)
+subroutine SolverDestroy(solver)
 
   implicit none
   
@@ -142,6 +142,6 @@ subroutine destroySolver(solver)
   deallocate(solver)
   nullify(solver)
   
-end subroutine destroySolver
+end subroutine SolverDestroy
   
 end module Solver_module

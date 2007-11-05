@@ -37,93 +37,93 @@ module Connection_module
                                                   boundary_connection_list
 
 
-  public :: createConnection, addConnectionToList, &
-            allocateConnectionLists, &
-            getInternalConnectionList, getBoundaryConnectionList, &
-            getNumberOfInternalConnections, getNumberOfBoundaryConnections, &
-            initConnectionList, destroyConnectionList, destroyConnection
+  public :: ConnectionCreate, ConnectionAddToList, &
+            ConnectionAllocateLists, &
+            ConnectionGetInternalConnList, ConnectionGetBoundaryConnList, &
+            ConnectionGetNumInternalConnect, ConnectionGetNumBoundaryConnect, &
+            ConnectionInitList, ConnectionDestroyList, ConnectionDestroy
   
 contains
 
 ! ************************************************************************** !
 !
-! getInternalConnectionList: Returns pointer to internal_connection_list
+! ConnectionGetInternalConnList: Returns pointer to internal_connection_list
 ! author: Glenn Hammond
 ! date: 10/15/07
 !
 ! ************************************************************************** !
-function getInternalConnectionList()
+function ConnectionGetInternalConnList()
 
   implicit none
   
-  type(connection_list_type), pointer :: getInternalConnectionList
-  getInternalConnectionList => internal_connection_list
+  type(connection_list_type), pointer :: ConnectionGetInternalConnList
+  ConnectionGetInternalConnList => internal_connection_list
 
-end function getInternalConnectionList
+end function ConnectionGetInternalConnList
 
 ! ************************************************************************** !
 !
-! getBoundaryConnectionList: Returns pointer to boundary_connection_list
+! ConnectionGetBoundaryConnList: Returns pointer to boundary_connection_list
 ! author: Glenn Hammond
 ! date: 10/15/07
 !
 ! ************************************************************************** !
-function getBoundaryConnectionList()
+function ConnectionGetBoundaryConnList()
 
   implicit none
   
-  type(connection_list_type), pointer :: getBoundaryConnectionList
-  getBoundaryConnectionList => boundary_connection_list
+  type(connection_list_type), pointer :: ConnectionGetBoundaryConnList
+  ConnectionGetBoundaryConnList => boundary_connection_list
 
-end function getBoundaryConnectionList
+end function ConnectionGetBoundaryConnList
 
 ! ************************************************************************** !
 !
-! getNumberOfBoundaryConnections: Returns pointer to boundary_connection_list
+! ConnectionGetNumBoundaryConnect: Returns pointer to boundary_connection_list
 ! author: Glenn Hammond
 ! date: 10/15/07
 !
 ! ************************************************************************** !
-function getNumberOfBoundaryConnections()
+function ConnectionGetNumBoundaryConnect()
 
   implicit none
   
-  integer :: getNumberOfBoundaryConnections
-  getNumberOfBoundaryConnections = boundary_connection_list%first%num_connections
+  integer :: ConnectionGetNumBoundaryConnect
+  ConnectionGetNumBoundaryConnect = boundary_connection_list%first%num_connections
 
-end function getNumberOfBoundaryConnections
+end function ConnectionGetNumBoundaryConnect
 
 ! ************************************************************************** !
 !
-! getNumberOfInternalConnections: Returns pointer to internal_connection_list
+! ConnectionGetNumInternalConnect: Returns pointer to internal_connection_list
 ! author: Glenn Hammond
 ! date: 10/15/07
 !
 ! ************************************************************************** !
-function getNumberOfInternalConnections()
+function ConnectionGetNumInternalConnect()
 
   implicit none
   
-  integer :: getNumberOfInternalConnections
-  getNumberOfInternalConnections = internal_connection_list%first%num_connections
+  integer :: ConnectionGetNumInternalConnect
+  ConnectionGetNumInternalConnect = internal_connection_list%first%num_connections
 
-end function getNumberOfInternalConnections
+end function ConnectionGetNumInternalConnect
 
 ! ************************************************************************** !
 !
-! allocateConnectionLists: Allocates connections lists
+! ConnectionAllocateLists: Allocates connections lists
 ! author: Glenn Hammond
 ! date: 10/15/07
 !
 ! ************************************************************************** !
-subroutine allocateConnectionLists()
+subroutine ConnectionAllocateLists()
 
   implicit none
   
   allocate(internal_connection_list)
-  call initConnectionList(internal_connection_list)
+  call ConnectionInitList(internal_connection_list)
   allocate(boundary_connection_list)
-  call initConnectionList(boundary_connection_list)
+  call ConnectionInitList(boundary_connection_list)
   
 end subroutine
 
@@ -134,7 +134,7 @@ end subroutine
 ! date: 10/15/07
 !
 ! ************************************************************************** !
-subroutine initConnectionList(list)
+subroutine ConnectionInitList(list)
 
   implicit none
 
@@ -145,49 +145,49 @@ subroutine initConnectionList(list)
   nullify(list%array)
   list%num_connection_objects = 0
 
-end subroutine InitConnectionList
+end subroutine ConnectionInitList
 
 ! ************************************************************************** !
 !
-! createConnection: Allocates and initializes a new connection
+! ConnectionCreate: Allocates and initializes a new connection
 ! author: Glenn Hammond
 ! date: 10/15/07
 !
 ! ************************************************************************** !
-function createConnection(num_connections,num_dof)
+function ConnectionCreate(num_connections,num_dof)
 
   implicit none
   
   integer :: num_connections
   integer :: num_dof
   
-  type(connection_type), pointer :: createConnection
-  allocate(createConnection)
-  createConnection%id = 0
-  createConnection%num_connections = num_connections
-  allocate(createConnection%id_up(num_connections))
-  allocate(createConnection%id_dn(num_connections))
-  allocate(createConnection%dist(-1:3,num_connections))
-  allocate(createConnection%area(num_connections))
-  allocate(createConnection%velocity(num_dof,num_connections))
-  createConnection%id_up = 0
-  createConnection%id_dn = 0
-  createConnection%dist = 0.d0
-  createConnection%area = 0.d0
-  createConnection%velocity = 0.d0
-  nullify(createConnection%next)
+  type(connection_type), pointer :: ConnectionCreate
+  allocate(ConnectionCreate)
+  ConnectionCreate%id = 0
+  ConnectionCreate%num_connections = num_connections
+  allocate(ConnectionCreate%id_up(num_connections))
+  allocate(ConnectionCreate%id_dn(num_connections))
+  allocate(ConnectionCreate%dist(-1:3,num_connections))
+  allocate(ConnectionCreate%area(num_connections))
+  allocate(ConnectionCreate%velocity(num_dof,num_connections))
+  ConnectionCreate%id_up = 0
+  ConnectionCreate%id_dn = 0
+  ConnectionCreate%dist = 0.d0
+  ConnectionCreate%area = 0.d0
+  ConnectionCreate%velocity = 0.d0
+  nullify(ConnectionCreate%next)
 
-end function createConnection
+end function ConnectionCreate
 
 ! ************************************************************************** !
 !
-! addConnectionToList: Adds a new connection of the module global list of 
+! ConnectionAddToList: Adds a new connection of the module global list of 
 !                      connections
 ! author: Glenn Hammond
 ! date: 10/15/07
 !
 ! ************************************************************************** !
-subroutine addConnectionToList(new_connection,list)
+subroutine ConnectionAddToList(new_connection,list)
 
   implicit none
   
@@ -200,17 +200,17 @@ subroutine addConnectionToList(new_connection,list)
   if (associated(list%last)) list%last%next => new_connection
   list%last => new_connection
   
-end subroutine addConnectionToList
+end subroutine ConnectionAddToList
 
 ! ************************************************************************** !
 !
-! convertConnectionListToArray: Creates an array of pointers to the 
+! ConnectionConvertListToArray: Creates an array of pointers to the 
 !                               connections in the connection list
 ! author: Glenn Hammond
 ! date: 10/15/07
 !
 ! ************************************************************************** !
-subroutine convertConnectionListToArray(list)
+subroutine ConnectionConvertListToArray(list)
 
   implicit none
   
@@ -229,16 +229,16 @@ subroutine convertConnectionListToArray(list)
     cur_connection => cur_connection%next
   enddo
 
-end subroutine convertConnectionListToArray
+end subroutine ConnectionConvertListToArray
 
 ! ************************************************************************** !
 !
-! destroyConnection: Deallocates a connection
+! ConnectionDestroy: Deallocates a connection
 ! author: Glenn Hammond
 ! date: 10/23/07
 !
 ! ************************************************************************** !
-subroutine destroyConnection(connection)
+subroutine ConnectionDestroy(connection)
 
   implicit none
   
@@ -261,16 +261,16 @@ subroutine destroyConnection(connection)
   deallocate(connection)
   nullify(connection)
 
-end subroutine destroyConnection
+end subroutine ConnectionDestroy
 
 ! ************************************************************************** !
 !
-! destroyConnectionList: Deallocates the module global list and array of regions
+! ConnectionDestroyList: Deallocates the module global list and array of regions
 ! author: Glenn Hammond
 ! date: 10/15/07
 !
 ! ************************************************************************** !
-subroutine destroyConnectionList(list)
+subroutine ConnectionDestroyList(list)
 
   implicit none
   
@@ -288,7 +288,7 @@ subroutine destroyConnectionList(list)
     if (.not.associated(cur_connection)) exit
     prev_connection => cur_connection
     cur_connection => cur_connection%next
-    call destroyConnection(prev_connection)
+    call ConnectionDestroy(prev_connection)
   enddo
   
   nullify(list%first)
@@ -298,6 +298,6 @@ subroutine destroyConnectionList(list)
   deallocate(list)
   nullify(list)
 
-end subroutine destroyConnectionList
+end subroutine ConnectionDestroyList
 
 end module Connection_module

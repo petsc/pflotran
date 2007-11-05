@@ -872,8 +872,8 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
   option%vvg_loc=0.D0
 
  
-  call DMGlobalToLocal(grid,xx,option%xx_loc,NDOF)
-  call DMGlobalToLocal(grid,option%iphas,option%iphas_loc,ONEDOF)
+  call GridGlobalToLocal(grid,xx,option%xx_loc,NDOF)
+  call GridGlobalToLocal(grid,option%iphas,option%iphas_loc,ONEDOF)
 
   call VecGetArrayF90(option%xx_loc, xx_loc_p, ierr); CHKERRQ(ierr)
   call VecGetArrayF90(option%iphas_loc, iphase_loc_p, ierr); CHKERRQ(ierr)
@@ -962,12 +962,12 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
   call VecRestoreArrayF90(option%var,var_p,ierr)
   ! call VecRestoreArrayF90(option%iphase,iphase_p,ierr)
   
-  call DMGlobalToLocal(grid,option%var,option%var_loc,VARDOF)
-  call DMGlobalToLocal(grid,option%perm_xx,option%perm_xx_loc,ONEDOF)
-  call DMGlobalToLocal(grid,option%perm_yy,option%perm_yy_loc,ONEDOF)
-  call DMGlobalToLocal(grid,option%perm_zz,option%perm_zz_loc,ONEDOF)
-  call DMGlobalToLocal(grid,option%ithrm,option%ithrm_loc,ONEDOF)
-  call DMGlobalToLocal(grid,option%icap,option%icap_loc,ONEDOF)
+  call GridGlobalToLocal(grid,option%var,option%var_loc,VARDOF)
+  call GridGlobalToLocal(grid,option%perm_xx,option%perm_xx_loc,ONEDOF)
+  call GridGlobalToLocal(grid,option%perm_yy,option%perm_yy_loc,ONEDOF)
+  call GridGlobalToLocal(grid,option%perm_zz,option%perm_zz_loc,ONEDOF)
+  call GridGlobalToLocal(grid,option%ithrm,option%ithrm_loc,ONEDOF)
+  call GridGlobalToLocal(grid,option%icap,option%icap_loc,ONEDOF)
 
 ! End distribute data 
 ! now assign access pointer to local variables
