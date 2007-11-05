@@ -62,6 +62,8 @@
 
   PetscLogDouble :: timex(4), timex_wall(4)
 
+  integer :: myrank, commsize
+
   integer :: ierr, ihalcnt
   integer :: kplt, iplot, iflgcut, its, ntstep
   integer :: steps
@@ -85,13 +87,16 @@
   type(option_type), pointer :: option
   
   call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
-  call MPI_Comm_rank(PETSC_COMM_WORLD,option%myrank, ierr)
-  call MPI_Comm_size(PETSC_COMM_WORLD,option%commsize,ierr)
+  call MPI_Comm_rank(PETSC_COMM_WORLD,myrank, ierr)
+  call MPI_Comm_size(PETSC_COMM_WORLD,commsize,ierr)
 
   simulation => SimulationCreate()
   solution => simulation%solution
   option => solution%option
   stepper => simulation%stepper
+
+  option%myrank = myrank
+  option%commsize = commsize
 
 ! Initialize Startup Time
  ! call PetscGetCPUTime(timex(1), ierr)
