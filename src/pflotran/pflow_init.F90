@@ -540,6 +540,7 @@ subroutine initPFLOW(simulation,filename)
 
   call assignMaterialPropertiesToRegions(solution)
   call assignInitialConditions(solution)
+  call assignBoundaryConditions(solution)
 
   i = grid%internal_connection_list%first%num_connections
   allocate(option%vl_loc(i))
@@ -901,6 +902,8 @@ subroutine initPFLOW(simulation,filename)
   !-----------------------------------------------------------------------
   ! Allocate boundary condition arrays
   !-----------------------------------------------------------------------
+#if 0 
+  ! moved above
   i = grid%boundary_connection_list%first%num_connections
   allocate(option%velocitybc(option%nphase,i))
 
@@ -970,7 +973,7 @@ subroutine initPFLOW(simulation,filename)
 #endif      
     endif
   endif
-
+#endif
 
 #if 0
   if (grid%iread_perm == 1) then
@@ -1240,7 +1243,7 @@ subroutine readSelectCardsFromInput(solution,filename,mcomp,mphas)
   solution%grid => GridCreate(igeom) 
   grid => solution%grid
 
-    if (grid%igrid == STRUCTURED) then ! structured
+  if (grid%igrid == STRUCTURED) then ! structured
     call fiReadInt(string,grid%structured_grid%nx,ierr)
     call fiDefaultMsg('nx',ierr)
     
@@ -1513,7 +1516,7 @@ subroutine readInput(simulation,filename)
         call fiReadWord(string,word,.true.,ierr)
         call fiErrorMsg('type','REGN', ierr)
         if (fiStringCompare(word,"BLOCK",5)) then ! block region
-          if (grid%igrid == STRUCTURED) then
+          if (grid%igrid /= STRUCTURED) then
             call printErrMsg(option,"BLOCK region not supported for &
                              &unstructured grid")
           endif
@@ -1579,6 +1582,12 @@ subroutine readInput(simulation,filename)
         coupler => CouplerCreate()
         call CouplerRead(coupler,IUNIT1)
         call CouplerAddToList(coupler,solution%source_sinks)
+      
+!.....................
+      case ('STRATA')
+        strata => StrataCreate()
+        call StrataRead(strata,IUNIT1)
+        call StrataAddToList(strata,solution%strata)
       
 !.....................
       case ('COMP') 
@@ -2081,7 +2090,9 @@ subroutine readInput(simulation,filename)
         ! fill arrays with values from linked list
         thermal_property => solution%thermal_properties
         do
+        
           if (.not.associated(thermal_property)) exit
+          
           id = thermal_property%id
           
           if (id > count) then
@@ -2098,22 +2109,25 @@ subroutine readInput(simulation,filename)
           option%tau(id) = thermal_property%tort_bin_diff
           option%cdiff(id) = thermal_property%vap_air_diff_coef
           option%cexp(id) = thermal_property%exp_binary_diff
+          
+          thermal_property => thermal_property%next
+          
         enddo
         
         do i=1,count
-          if (option%rock_density(id) > 1.d-40) then
+          if (option%rock_density(i) < 1.d-40) then
             call printErrMsg(option,'Thermal property ids must be numbered &
                              &consecutively from 1 to N')
           endif
         enddo
       
         if (option%myrank==0) then
-          write(IUNIT2,'(/," *THRM: ",i3)') ireg
+          write(IUNIT2,'(/," *THRM: ",i3)') count
           write(IUNIT2,'("  itm rock_density  cpr        ckdry", &
             &                 "     ckwet       tau       cdiff     cexp")')
           write(IUNIT2,'("        [kg/m^3]  [J/kg/K]   [J/m/K/s]", &
             &              "     [J/m/K/s]     [-]        [m^2/s]       [-]")')
-          do i = 1, ireg
+          do i = 1, count
             write(IUNIT2,'(i4,1p7e11.4)') i,option%rock_density(i), &
             option%cpr(i),option%ckdry(i),option%ckwet(i), &
             option%tau(i),option%cdiff(i),option%cexp(i)
@@ -2195,6 +2209,7 @@ subroutine readInput(simulation,filename)
         ! fill arrays with values from linked list
         saturation_function => solution%saturation_functions
         do 
+        
           if (.not.associated(saturation_function)) exit
           
           id = saturation_function%id
@@ -2219,6 +2234,9 @@ subroutine readInput(simulation,filename)
           option%pcwmax(id) = saturation_function%pcwmax
           option%pcbetac(id) = saturation_function%betac
           option%pwrprm(id) = saturation_function%power
+          
+          saturation_function => saturation_function%next
+          
         enddo
         
         ! check to ensure that all saturation functions were set based on id
@@ -2233,7 +2251,7 @@ subroutine readInput(simulation,filename)
             option%imode == VADOSE_MODE .or. &
             option%imode == FLASH_MODE .or. &
             option%imode == RICHARDS_MODE) then
-          call pckr_init(option%nphase,ireg,grid%nlmax, &
+          call pckr_init(option%nphase,count,grid%nlmax, &
                          option%icaptype,option%sir, option%pckrm, &
                          option%lambda,option%alpha,option%pcwmax, &
                          option%pcbetac,option%pwrprm)
@@ -2243,7 +2261,7 @@ subroutine readInput(simulation,filename)
         if (option%myrank==0) then
           write(IUNIT2,'(/," *PCKR: ",i3)') ireg
           write(IUNIT2,'("  icp swir    lambda         alpha")')
-          do j = 1, ireg
+          do j = 1, count
             i=option%icaptype(j)
             if (option%imode == MPH_MODE .or. &
                 option%imode == OWG_MODE .or. &
@@ -2316,32 +2334,17 @@ subroutine readInput(simulation,filename)
           call fiReadDouble(string,material%permeability_pwr,ierr)
           call fiErrorMsg('permpwr','PHIK', ierr)
           
-          material%permeability(2,1:4) = material%permeability(1,1:4)
+          material%permeability(1:3,1:3) = material%permeability(1:3,1:3)
           
           call MaterialAddToList(material,solution%materials)
           
         enddo          
 
-#if 0
-        if (option%myrank==0) then
-          write(IUNIT2,'(/," *PHIK: ireg = ",i4)') option%iregperm
-          write(IUNIT2,'("  i1  i2  j1  j2  k1  k2 icap ithrm  por      tor  &
-            &",   "     permx      permy      permz [m^2]   permpwr")')
-          do ireg = 1, option%iregperm
-!GEH - Structured Grid Dependence - Begin
-            write(IUNIT2,'(6i4,2i4,1p6e11.4)') &
-                  option%icap_reg(ireg),option%ithrm_reg(ireg), &
-                  option%por_reg(ireg),option%tor_reg(ireg), &
-                  (option%perm_reg(ireg,i),i=1,4)
-!GEH - Structured Grid Dependence - End
-          enddo
-        endif
-#endif
-
 !....................
       
       case ('INIT')
     
+#if 0
         call fiReadInt(string,option%iread_init,ierr) 
         call fiDefaultMsg('iread_init',ierr)
       
@@ -2488,7 +2491,7 @@ subroutine readInput(simulation,filename)
             close(IUNIT3)
           endif
         endif
-
+#endif
 !....................
 
       case ('TIME')
@@ -3280,7 +3283,7 @@ subroutine assignInitialConditions(solution)
 #if 0
     case(OWG_MODE)
       call pflow_owg_setupini(solution)
-    case(FADOSE_MODE)
+    case(VADOSE_MODE)
       call pflow_vadose_setupini(solution)
 #endif      
     case default
@@ -3363,7 +3366,7 @@ subroutine assignInitialConditions(solution)
     option%velocitybc0(2,:) = option%velocitybc0(1,:)
   endif
 
-
+#if 0
   select case(option%imode)
     case(MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE,OWG_MODE)
       deallocate(option%xx_ini)
@@ -3375,7 +3378,147 @@ subroutine assignInitialConditions(solution)
       deallocate(option%xmol_ini)
       deallocate(option%conc_ini)
   end select
-
+#endif
 end subroutine assignInitialConditions
+
+! ************************************************************************** !
+!
+! assignBoundaryConditions: Assigns boundary conditions to model
+! author: Glenn Hammond
+! date: 11/02/07
+!
+! ************************************************************************** !
+subroutine assignBoundaryConditions(solution)
+
+  use Solution_module
+  use Region_module
+  use Grid_module
+  use Option_module
+  use Coupler_module
+  use Condition_module
+
+  implicit none
+  
+  type(solution_type) :: solution
+  
+  Vec :: temp_xx
+  
+  PetscScalar, pointer :: xx_p(:)
+  PetscScalar, pointer :: pressure_p(:)
+  PetscScalar, pointer :: temp_p(:)
+  PetscScalar, pointer :: sat_p(:)
+  PetscScalar, pointer :: conc_p(:)
+  PetscScalar, pointer :: xmol_p(:)
+  
+  integer :: icell, local_id, count
+  PetscErrorCode :: ierr
+  
+  type(option_type), pointer :: option
+  type(coupler_type), pointer :: boundary_condition
+  type(connection_type), pointer :: boundary_connection
+    
+  option => solution%option
+    
+  select case(option%imode)
+
+    case(MPH_MODE,FLASH_MODE,RICHARDS_MODE,OWG_MODE,VADOSE_MODE)
+    
+      call GridCreateVector(solution%grid,NDOF,temp_xx,GLOBAL)
+      call VecZeroEntries(temp_xx,ierr)
+      call VecGetArrayF90(temp_xx,xx_p,ierr)
+      
+      count = 0
+      boundary_condition => solution%boundary_conditions%first
+      do
+        if (.not.associated(boundary_condition)) exit
+        do icell=1,boundary_condition%region%num_cells
+          local_id = boundary_condition%region%cell_ids(icell)
+          xx_p((local_id-1)*option%ndof+1:option%ndof*local_id) = &
+            boundary_condition%flow_condition%cur_value(1:option%ndof)
+          count = count + 1
+        enddo
+        boundary_condition => boundary_condition%next
+      enddo
+      
+      allocate(option%xxbc(option%ndof,count))
+      allocate(option%velocitybc(option%nphase,count))      
+      option%xxbc = 0.d0
+
+      boundary_connection => solution%grid%boundary_connection_list%first
+      do 
+        if (.not.associated(boundary_connection)) exit
+        do icell = 1, boundary_connection%num_connections
+          local_id = boundary_connection%id_dn(icell)
+          option%xxbc(1:option%ndof,icell) = &
+            xx_p((local_id-1)*option%ndof+1:option%ndof*local_id)
+        enddo
+        boundary_connection => boundary_connection%next
+      enddo
+      call VecRestoreArrayF90(temp_xx,xx_p,ierr)
+      call VecDestroy(temp_xx,ierr)
+      
+    case default
+#if 0
+      call VecGetArrayF90(option%pressure,pressure_p,ierr)
+      call VecGetArrayF90(option%temp,temp_p,ierr)
+      call VecGetArrayF90(option%sat,sat_p,ierr)
+      if (option%ndof == 3) call VecGetArrayF90(option%conc,conc_p,ierr)
+      if (option%ndof == 4) call VecGetArrayF90(option%xmol,xmol_p,ierr)
+    
+      initial_condition => solution%initial_conditions%first
+      do
+      
+        if (.not.associated(initial_condition)) exit
+        
+        do icell=1,initial_condition%region%num_cells
+          local_id = initial_condition%region%cell_ids(icell)
+          jn1 = 1+local_id*option%nphase-1
+          jn2 = jn1+1
+              
+          count = 1
+          pressure_p(jn1) = initial_condition%flow_condition%cur_value(1)
+          count = count + 1
+          
+          if (option%nphase>1) then
+            pressure_p(jn2) = initial_condition%flow_condition%cur_value(count)
+            count = count + 1
+          endif
+          
+          temp_p(local_id) = initial_condition%flow_condition%cur_value(count)
+          count = count + 1
+          
+          sat_p(jn1) = initial_condition%flow_condition%cur_value(count)
+          count = count + 1          
+          
+          if (option%nphase>1) then
+            sat_p(jn2) = 1.d0 - sat_p(jn1)
+            count = count + 1
+          endif
+          
+          if (option%ndof == 3) then
+            conc_p(local_id) = initial_condition%flow_condition%cur_value(count)
+            count = count + 1
+          endif
+
+          if (option%ndof == 4) then
+            xmol_p(jn2) = initial_condition%flow_condition%cur_value(count)
+            count = count + 1
+          endif
+               
+        enddo
+  
+        initial_condition => initial_condition%next
+  
+      enddo   
+       
+      call VecRestoreArrayF90(option%pressure,pressure_p,ierr)
+      call VecRestoreArrayF90(option%temp,temp_p,ierr)
+      call VecRestoreArrayF90(option%sat,sat_p,ierr)
+      if (option%ndof == 3) call VecRestoreArrayF90(option%conc,conc_p,ierr)
+      if (option%ndof == 4) call VecRestoreArrayF90(option%xmol,xmol_p,ierr)
+#endif      
+  end select 
+
+end subroutine assignBoundaryConditions
 
 end module Init_module

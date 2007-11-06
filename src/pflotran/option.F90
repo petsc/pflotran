@@ -170,14 +170,17 @@ module Option_module
     real*8, pointer :: xxbc0(:,:)
     integer, pointer:: iphasebc0(:)  
 
-!   phik
-    integer :: iregperm, iran_por=0, iread_perm=0, iread_geom =1
+    integer :: iran_por=0, iread_perm=0, iread_geom =1
     real*8 :: ran_fac=-1.d0
+#if 0
+!   phik
+    integer :: iregperm
 !GEH - Structured Grid Dependence - Begin
     integer*4, pointer :: i1reg(:),i2reg(:),j1reg(:),j2reg(:),k1reg(:),k2reg(:)
 !GEH - Structured Grid Dependence - End
     real*8, pointer :: por_reg(:),tor_reg(:),perm_reg(:,:)
-
+#endif
+#if 0
 !   initial conditions
     integer :: iregini
 !GEH - Structured Grid Dependence - Begin
@@ -187,6 +190,7 @@ module Option_module
                        xmol_ini(:)
     real*8, pointer :: xx_ini(:,:)
     integer, pointer:: iphas_ini(:)
+#endif
 
 !   source term
     integer :: nblksrc = 0, ntimsrc = 0, isrc1 = 2
