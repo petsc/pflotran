@@ -6,9 +6,15 @@ module Region_module
 
 #include "definitions.h"
  
+  type, public :: block_type
+    integer :: i1,i2,j1,j2,k1,k2    
+    type(block_type), pointer :: next
+  end type block_type
+ 
   type, public :: region_type
     integer :: id
     character(len=MAXWORDLENGTH) :: name
+    type(block_type), pointer :: block_list
     integer :: i1,i2,j1,j2,k1,k2
     integer :: num_cells
     integer, pointer :: cell_ids(:)
@@ -28,111 +34,111 @@ module Region_module
   
   integer, save :: num_regions = 0
   
-  interface createRegion
-    module procedure createRegionWithBlock
-    module procedure createRegionWithList
-    module procedure createRegionWithNothing
-  end interface createRegion
+  interface RegionCreate
+    module procedure RegionCreateWithBlock
+    module procedure RegionCreateWithList
+    module procedure RegionCreateWithNothing
+  end interface RegionCreate
   
-  interface readRegionFromFile
-    module procedure readRegionFromInputFile
-    module procedure readRegionFromExternalFile
-  end interface readRegionFromFile
+  interface RegionReadFromFile
+    module procedure RegionReadFromInputFile
+    module procedure RegionReadFromExternalFile
+  end interface RegionReadFromFile
   
-  public :: createRegion, destroyRegion, addRegionToList, readRegionFromFile, &
-            initRegionList, destroyRegionList, getRegionPtrFromList
+  public :: RegionCreate, RegionDestroy, RegionAddToList, RegionReadFromFile, &
+            RegionInitList, RegionDestroyList, RegionGetPtrFromList
   
 contains
 
 ! ************************************************************************** !
 !
-! createRegionWithNothing: Creates a region with no arguments
+! RegionCreateWithNothing: Creates a region with no arguments
 ! author: Glenn Hammond
 ! date: 10/23/07
 !
 ! ************************************************************************** !
-function createRegionWithNothing()
+function RegionCreateWithNothing()
 
   implicit none
   
-  type(region_type), pointer :: createRegionWithNothing
+  type(region_type), pointer :: RegionCreateWithNothing
   
-  allocate(createRegionWithNothing)
-  createRegionWithNothing%id = 0
-  createRegionWithNothing%name = ""
-  createRegionWithNothing%i1 = 0
-  createRegionWithNothing%i2 = 0
-  createRegionWithNothing%j1 = 0
-  createRegionWithNothing%j2 = 0
-  createRegionWithNothing%k1 = 0
-  createRegionWithNothing%k2 = 0
-  createRegionWithNothing%num_cells = 0
-  nullify(createRegionWithNothing%cell_ids)
-  nullify(createRegionWithNothing%next)
+  allocate(RegionCreateWithNothing)
+  RegionCreateWithNothing%id = 0
+  RegionCreateWithNothing%name = ""
+  RegionCreateWithNothing%i1 = 0
+  RegionCreateWithNothing%i2 = 0
+  RegionCreateWithNothing%j1 = 0
+  RegionCreateWithNothing%j2 = 0
+  RegionCreateWithNothing%k1 = 0
+  RegionCreateWithNothing%k2 = 0
+  RegionCreateWithNothing%num_cells = 0
+  nullify(RegionCreateWithNothing%cell_ids)
+  nullify(RegionCreateWithNothing%next)
   
   num_regions = num_regions + 1
   
-  createRegionWithNothing%id = num_regions
+  RegionCreateWithNothing%id = num_regions
 
-end function createRegionWithNothing
+end function RegionCreateWithNothing
 
 ! ************************************************************************** !
 !
-! createRegionWithBlock: Creates a region with i,j,k indices for arguments
+! RegionCreateWithBlock: Creates a region with i,j,k indices for arguments
 ! author: Glenn Hammond
 ! date: 10/23/07
 !
 ! ************************************************************************** !
-function createRegionWithBlock(i1,i2,j1,j2,k1,k2)
+function RegionCreateWithBlock(i1,i2,j1,j2,k1,k2)
 
   implicit none
   
   integer :: i1, i2, j1, j2, k1, k2
   
-  type(region_type), pointer :: createRegionWithBlock
+  type(region_type), pointer :: RegionCreateWithBlock
   
-  createRegionWithBlock => createRegionWithNothing()
-  createRegionWithBlock%i1 = i1
-  createRegionWithBlock%i2 = i2
-  createRegionWithBlock%j1 = j2
-  createRegionWithBlock%j2 = j2
-  createRegionWithBlock%k1 = k1
-  createRegionWithBlock%k2 = k2
-  createRegionWithBlock%num_cells = (abs(i2-i1)+1)*(abs(j2-j1)+1)* &
+  RegionCreateWithBlock => RegionCreateWithNothing()
+  RegionCreateWithBlock%i1 = i1
+  RegionCreateWithBlock%i2 = i2
+  RegionCreateWithBlock%j1 = j2
+  RegionCreateWithBlock%j2 = j2
+  RegionCreateWithBlock%k1 = k1
+  RegionCreateWithBlock%k2 = k2
+  RegionCreateWithBlock%num_cells = (abs(i2-i1)+1)*(abs(j2-j1)+1)* &
                                     (abs(k2-k1)+1)
 
-end function createRegionWithBlock
+end function RegionCreateWithBlock
 
 ! ************************************************************************** !
 !
-! createRegion: Creates a region from a list of cells
+! RegionCreate: Creates a region from a list of cells
 ! author: Glenn Hammond
 ! date: 10/23/07
 !
 ! ************************************************************************** !
-function createRegionWithList(list)
+function RegionCreateWithList(list)
 
   implicit none
   
   integer :: list(:)
   
-  type(region_type), pointer :: createRegionWithList
+  type(region_type), pointer :: RegionCreateWithList
   
-  createRegionWithList => createRegionWithNothing()
-  createRegionWithList%num_cells = size(list)
-  allocate(createRegionWithList%cell_ids(createRegionWithList%num_cells))
-  createRegionWithList%cell_ids = list
+  RegionCreateWithList => RegionCreateWithNothing()
+  RegionCreateWithList%num_cells = size(list)
+  allocate(RegionCreateWithList%cell_ids(RegionCreateWithList%num_cells))
+  RegionCreateWithList%cell_ids = list
 
-end function createRegionWithList
+end function RegionCreateWithList
 
 ! ************************************************************************** !
 !
-! initRegionList: Initializes a region list
+! RegionInitList: Initializes a region list
 ! author: Glenn Hammond
 ! date: 10/29/07
 !
 ! ************************************************************************** !
-subroutine initRegionList(list)
+subroutine RegionInitList(list)
 
   implicit none
 
@@ -143,16 +149,16 @@ subroutine initRegionList(list)
   nullify(list%array)
   list%num_regions = 0
 
-end subroutine initRegionList
+end subroutine RegionInitList
 
 ! ************************************************************************** !
 !
-! addRegionToList: Adds a new region to a region list
+! RegionAddToList: Adds a new region to a region list
 ! author: Glenn Hammond
 ! date: 10/29/07
 !
 ! ************************************************************************** !
-subroutine addRegionToList(new_region,list)
+subroutine RegionAddToList(new_region,list)
 
   implicit none
   
@@ -165,16 +171,16 @@ subroutine addRegionToList(new_region,list)
   if (associated(list%last)) list%last%next => new_region
   list%last => new_region
   
-end subroutine addRegionToList
+end subroutine RegionAddToList
 
 ! ************************************************************************** !
 !
-! readRegionFromExternalFile: Reads a list of cells from an external file
+! RegionReadFromExternalFile: Reads a list of cells from an external file
 ! author: Glenn Hammond
 ! date: 10/29/07
 !
 ! ************************************************************************** !
-subroutine readRegionFromExternalFile(region,filename)
+subroutine RegionReadFromExternalFile(region,filename)
 
   use Fileio_module
   use Utility_module
@@ -228,16 +234,16 @@ subroutine readRegionFromExternalFile(region,filename)
           
   close(fid)          
 
-end subroutine readRegionFromExternalFile
+end subroutine RegionReadFromExternalFile
 
 ! ************************************************************************** !
 !
-! readRegionFromInputFile: Reads a list of cells from the pflotran input file
+! RegionReadFromInputFile: Reads a list of cells from the pflotran input file
 ! author: Glenn Hammond
 ! date: 10/29/07
 !
 ! ************************************************************************** !
-subroutine readRegionFromInputFile(region,fid)
+subroutine RegionReadFromInputFile(region,fid)
 
   use Fileio_module
   use Utility_module
@@ -290,49 +296,49 @@ subroutine readRegionFromInputFile(region,fid)
 
   deallocate(temp_int_array) 
 
-end subroutine readRegionFromInputFile
+end subroutine RegionReadFromInputFile
 
 ! ************************************************************************** !
 !
-! getRegionPtrFromList: Returns a pointer to the region matching region_name
+! RegionGetPtrFromList: Returns a pointer to the region matching region_name
 ! author: Glenn Hammond
 ! date: 11/01/07
 !
 ! ************************************************************************** !
-function getRegionPtrFromList(region_name,region_list)
+function RegionGetPtrFromList(region_name,region_list)
 
   use Fileio_module
 
   implicit none
   
-  type(region_type), pointer :: getRegionPtrFromList
+  type(region_type), pointer :: RegionGetPtrFromList
   character(len=MAXNAMELENGTH) :: region_name
   type(region_list_type) :: region_list
 
   type(region_type), pointer :: region
     
-  nullify(getRegionPtrFromList)
+  nullify(RegionGetPtrFromList)
   region => region_list%first
   
   do 
     if (.not.associated(region)) exit
     if (fiStringCompare(region%name,region_name,len_trim(region_name))) then
-      getRegionPtrFromList => region
+      RegionGetPtrFromList => region
       return
     endif
     region => region%next
   enddo
   
-end function getRegionPtrFromList
+end function RegionGetPtrFromList
 
 ! ************************************************************************** !
 !
-! destroyRegionList: Deallocates a list of regions
+! RegionDestroyList: Deallocates a list of regions
 ! author: Glenn Hammond
 ! date: 11/01/07
 !
 ! ************************************************************************** !
-subroutine destroyRegionList(region_list)
+subroutine RegionDestroyList(region_list)
 
   implicit none
   
@@ -346,7 +352,7 @@ subroutine destroyRegionList(region_list)
     if (.not.associated(region)) exit
     prev_region => region
     region => region%next
-    call destroyRegion(prev_region)
+    call RegionDestroy(prev_region)
   enddo
   
   region_list%num_regions = 0
@@ -358,16 +364,16 @@ subroutine destroyRegionList(region_list)
   deallocate(region_list)
   nullify(region_list)
 
-end subroutine destroyRegionList
+end subroutine RegionDestroyList
 
 ! ************************************************************************** !
 !
-! destroyRegion: Deallocates a region
+! RegionDestroy: Deallocates a region
 ! author: Glenn Hammond
 ! date: 10/23/07
 !
 ! ************************************************************************** !
-subroutine destroyRegion(region)
+subroutine RegionDestroy(region)
 
   implicit none
   
@@ -382,6 +388,6 @@ subroutine destroyRegion(region)
   deallocate(region)
   nullify(region)
 
-end subroutine destroyRegion
+end subroutine RegionDestroy
 
 end module Region_module

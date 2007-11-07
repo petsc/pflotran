@@ -42,3 +42,11 @@
 #define FLASH_MODE 8
 #define TH_MODE 9
 #define THC_MODE 10
+
+! grid types
+#define STRUCTURED 1
+#define UNSTRUCTURED 2
+
+! boundary condition types
+#define DIRICHLET_BC 1
+#define NEUMANN_BC 2

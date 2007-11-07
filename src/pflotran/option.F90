@@ -170,14 +170,17 @@ module Option_module
     real*8, pointer :: xxbc0(:,:)
     integer, pointer:: iphasebc0(:)  
 
-!   phik
-    integer :: iregperm, iran_por=0, iread_perm=0, iread_geom =1
+    integer :: iran_por=0, iread_perm=0, iread_geom =1
     real*8 :: ran_fac=-1.d0
+#if 0
+!   phik
+    integer :: iregperm
 !GEH - Structured Grid Dependence - Begin
     integer*4, pointer :: i1reg(:),i2reg(:),j1reg(:),j2reg(:),k1reg(:),k2reg(:)
 !GEH - Structured Grid Dependence - End
     real*8, pointer :: por_reg(:),tor_reg(:),perm_reg(:,:)
-
+#endif
+#if 0
 !   initial conditions
     integer :: iregini
 !GEH - Structured Grid Dependence - Begin
@@ -187,6 +190,7 @@ module Option_module
                        xmol_ini(:)
     real*8, pointer :: xx_ini(:,:)
     integer, pointer:: iphas_ini(:)
+#endif
 
 !   source term
     integer :: nblksrc = 0, ntimsrc = 0, isrc1 = 2
@@ -334,28 +338,28 @@ module Option_module
    
   end type option_type
   
-  public :: createOption, &
-            checkPetscOptions, &
+  public :: OptionCreate, &
+            OptionCheckCommandLine, &
             printErrMsg, &
             printWrnMsg, &
-            destroyOption
+            OptionDestroy
 
 contains
 
 ! ************************************************************************** !
 !
-! createOption: Allocates and initializes a new Option object
+! OptionCreate: Allocates and initializes a new Option object
 ! author: Glenn Hammond
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-function createOption()
+function OptionCreate()
 
   implicit none
 
 #include "definitions.h"
   
-  type(option_type), pointer :: createOption
+  type(option_type), pointer :: OptionCreate
   
   type(option_type), pointer :: option
   
@@ -418,18 +422,18 @@ function createOption()
   option%fmwco2 = 44.0098d0
   option%eqkair = 1.d10 ! Henry's constant for air: Xl = eqkair * pa
 
-  createOption => option
+  OptionCreate => option
   
-end function createOption
+end function OptionCreate
 
 ! ************************************************************************** !
 !
-! checkPetscOptions: Checks all PETSc options on input
+! OptionCheckCommandLine: Checks all PETSc options on input
 ! author: Glenn Hammond
 ! date: 10/26/07
 !
 ! ************************************************************************** !
-subroutine checkPetscOptions(option)
+subroutine OptionCheckCommandLine(option)
   
   implicit none
   
@@ -500,7 +504,7 @@ subroutine checkPetscOptions(option)
                            option_found, ierr)
   if (option_found == PETSC_TRUE) option%mode = "vadose"                                                     
  
-end subroutine checkPetscOptions
+end subroutine OptionCheckCommandLine
 
 ! ************************************************************************** !
 !
@@ -544,12 +548,12 @@ end subroutine printWrnMsg
 
 ! ************************************************************************** !
 !
-! destroyOption: Deallocates an option
+! OptionDestroy: Deallocates an option
 ! author: Glenn Hammond
 ! date: 10/26/07
 !
 ! ************************************************************************** !
-subroutine destroyOption(option)
+subroutine OptionDestroy(option)
 
   implicit none
   
@@ -557,6 +561,6 @@ subroutine destroyOption(option)
   
   ! all kinds of stuff needs to be added here.
   
-end subroutine destroyOption
+end subroutine OptionDestroy
 
 end module Option_module

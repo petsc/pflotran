@@ -180,20 +180,20 @@ subroutine OutputTecplot(solution,kplot)
   
   ! write blocks
   ! write out data sets  
-  call createPetscVector(grid,ONEDOF,global,GLOBAL)  
-  call createPetscVector(grid,ONEDOF,natural,NATURAL)  
+  call GridCreateVector(grid,ONEDOF,global,GLOBAL)  
+  call GridCreateVector(grid,ONEDOF,natural,NATURAL)  
 
   ! write out coorindates
   call GetCoordinates(grid,global,X_COORDINATE)
-  call DMGlobalToNatural(grid,global,natural,ONEDOF)
+  call GridlobalToNatural(grid,global,natural,ONEDOF)
   call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
 
   call GetCoordinates(grid,global,Y_COORDINATE)
-  call DMGlobalToNatural(grid,global,natural,ONEDOF)
+  call GridlobalToNatural(grid,global,natural,ONEDOF)
   call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
 
   call GetCoordinates(grid,global,Z_COORDINATE)
-  call DMGlobalToNatural(grid,global,natural,ONEDOF)
+  call GridlobalToNatural(grid,global,natural,ONEDOF)
   call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
 
   select case(option%imode)
@@ -201,82 +201,82 @@ subroutine OutputTecplot(solution,kplot)
 
       ! temperature
       call GetVarFromArray(solution,global,TEMPERATURE,0)
-      call DMGlobalToNatural(grid,global,natural,ONEDOF)
+      call GridlobalToNatural(grid,global,natural,ONEDOF)
       call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
 
       ! pressure
       call GetVarFromArray(solution,global,PRESSURE,0)
-      call DMGlobalToNatural(grid,global,natural,ONEDOF)
+      call GridlobalToNatural(grid,global,natural,ONEDOF)
       call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
 
       ! liquid saturation
       call GetVarFromArray(solution,global,LIQUID_SATURATION,0)
-      call DMGlobalToNatural(grid,global,natural,ONEDOF)
+      call GridlobalToNatural(grid,global,natural,ONEDOF)
       call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
 
       ! gas saturation
       call GetVarFromArray(solution,global,GAS_SATURATION,0)
-      call DMGlobalToNatural(grid,global,natural,ONEDOF)
+      call GridlobalToNatural(grid,global,natural,ONEDOF)
       call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
     
       ! liquid energy
       call GetVarFromArray(solution,global,LIQUID_ENERGY,0)
-      call DMGlobalToNatural(grid,global,natural,ONEDOF)
+      call GridlobalToNatural(grid,global,natural,ONEDOF)
       call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
     
       ! gas energy
       call GetVarFromArray(solution,global,GAS_ENERGY,0)
-      call DMGlobalToNatural(grid,global,natural,ONEDOF)
+      call GridlobalToNatural(grid,global,natural,ONEDOF)
       call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
     
       ! liquid mole fractions
       do i=1,option%nspec
         call GetVarFromArray(solution,global,LIQUID_MOLE_FRACTION,i-1)
-        call DMGlobalToNatural(grid,global,natural,ONEDOF)
+        call GridlobalToNatural(grid,global,natural,ONEDOF)
         call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
       enddo
     
       ! gas mole fractions
       do i=1,option%nspec
         call GetVarFromArray(solution,global,GAS_MOLE_FRACTION,i-1)
-        call DMGlobalToNatural(grid,global,natural,ONEDOF)
+        call GridlobalToNatural(grid,global,natural,ONEDOF)
         call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
       enddo
     
       ! Volume Fraction
       if (option%rk > 0.d0) then
         call GetVarFromArray(solution,global,VOLUME_FRACTION,0)
-        call DMGlobalToNatural(grid,global,natural,ONEDOF)
+        call GridlobalToNatural(grid,global,natural,ONEDOF)
         call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
       endif
     
       ! phase
       call GetVarFromArray(solution,global,PHASE,0)
-      call DMGlobalToNatural(grid,global,natural,ONEDOF)
+      call GridlobalToNatural(grid,global,natural,ONEDOF)
       call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_INTEGER)
   
     case default
   
       ! temperature
-      call DMGlobalToNatural(grid,option%temp,natural,ONEDOF)
+      call GridlobalToNatural(grid,option%temp,natural,ONEDOF)
       call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
 
       ! pressure
-      call DMGlobalToNatural(grid,option%pressure,natural,ONEDOF)
+      call GridlobalToNatural(grid,option%pressure,natural,ONEDOF)
       call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
 
       ! saturation
-      call DMGlobalToNatural(grid,option%sat,natural,ONEDOF)
+      call GridlobalToNatural(grid,option%sat,natural,ONEDOF)
       call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
 
       ! concentration
-      call DMGlobalToNatural(grid,option%conc,natural,ONEDOF)
+      call GridlobalToNatural(grid,option%conc,natural,ONEDOF)
       call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
 
       ! volume fraction
       if (option%rk > 0.d0) then
         call GetVarFromArray(solution,global,VOLUME_FRACTION,0)
-        call DMGlobalToNatural(grid,global,natural,ONEDOF)
+        call GridlobalToNatural(grid,global,natural,ONEDOF)
         call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
       endif
     
@@ -383,44 +383,44 @@ subroutine OutputVelocitiesTecplot(solution,kplot)
   
   ! write blocks
   ! write out data sets  
-  call createPetscVector(grid,ONEDOF,global,GLOBAL)  
-  call createPetscVector(grid,ONEDOF,natural,NATURAL)    
+  call GridCreateVector(grid,ONEDOF,global,GLOBAL)  
+  call GridCreateVector(grid,ONEDOF,natural,NATURAL)    
 
   ! write out coorindates
   call GetCoordinates(grid,global,X_COORDINATE)
-  call DMGlobalToNatural(grid,global,natural,ONEDOF)
+  call GridlobalToNatural(grid,global,natural,ONEDOF)
   call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
 
   call GetCoordinates(grid,global,Y_COORDINATE)
-  call DMGlobalToNatural(grid,global,natural,ONEDOF)
+  call GridlobalToNatural(grid,global,natural,ONEDOF)
   call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
 
   call GetCoordinates(grid,global,Z_COORDINATE)
-  call DMGlobalToNatural(grid,global,natural,ONEDOF)
+  call GridlobalToNatural(grid,global,natural,ONEDOF)
   call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
 
   call GetCellCenteredVelocities(solution,global,LIQUID_PHASE,X_DIRECTION)
-  call DMGlobalToNatural(grid,global,natural,ONEDOF)
+  call GridlobalToNatural(grid,global,natural,ONEDOF)
   call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
 
   call GetCellCenteredVelocities(solution,global,LIQUID_PHASE,Y_DIRECTION)
-  call DMGlobalToNatural(grid,global,natural,ONEDOF)
+  call GridlobalToNatural(grid,global,natural,ONEDOF)
   call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
 
   call GetCellCenteredVelocities(solution,global,LIQUID_PHASE,Z_DIRECTION)
-  call DMGlobalToNatural(grid,global,natural,ONEDOF)
+  call GridlobalToNatural(grid,global,natural,ONEDOF)
   call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
 
   call GetCellCenteredVelocities(solution,global,GAS_PHASE,X_DIRECTION)
-  call DMGlobalToNatural(grid,global,natural,ONEDOF)
+  call GridlobalToNatural(grid,global,natural,ONEDOF)
   call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
 
   call GetCellCenteredVelocities(solution,global,GAS_PHASE,Y_DIRECTION)
-  call DMGlobalToNatural(grid,global,natural,ONEDOF)
+  call GridlobalToNatural(grid,global,natural,ONEDOF)
   call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
 
   call GetCellCenteredVelocities(solution,global,GAS_PHASE,Z_DIRECTION)
-  call DMGlobalToNatural(grid,global,natural,ONEDOF)
+  call GridlobalToNatural(grid,global,natural,ONEDOF)
   call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
 
   call VecDestroy(natural,ierr)
@@ -1032,7 +1032,7 @@ subroutine OutputHDF5(solution)
   call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
   
   ! write out data sets 
-  call createPetscVector(grid,ONEDOF,global,GLOBAL)   
+  call GridCreateVector(grid,ONEDOF,global,GLOBAL)   
 
   select case(option%imode)
   
@@ -1797,8 +1797,8 @@ subroutine GetCellCenteredVelocities(solution,vec,iphase,direction)
   call VecRestoreArrayF90(option%vl,vl_ptr,ierr)
   call VecRestoreArrayF90(vec,vec_ptr,ierr)
     
-  call createPetscVector(grid,ONEDOF,local_vec,LOCAL)  
-  call DMGlobalToLocal(grid,vec,local_vec,ONEDOF)
+  call GridCreateVector(grid,ONEDOF,local_vec,LOCAL)  
+  call GridGlobalToLocal(grid,vec,local_vec,ONEDOF)
 
   call VecSet(vec,0.d0,ierr)
 

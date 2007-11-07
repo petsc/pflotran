@@ -1178,7 +1178,7 @@ subroutine MPHASEResidual(snes,xx,r,grid,ierr)
 !---------------------------------------------------------------------------
  
   ! loop over internal connections
-  connection_list => getInternalConnectionList()
+  connection_list => ConnectionGetInternalConnList()
   cur_connection_object => connection_list%first
   do 
     if (.not.associated(cur_connection_object)) exit
@@ -1261,7 +1261,7 @@ subroutine MPHASEResidual(snes,xx,r,grid,ierr)
 
 !  print *,'2ph bc-sgbc', grid%myrank, grid%sgbc    
  
-  connection_list => getBoundaryConnectionList()
+  connection_list => ConnectionGetBoundaryConnList()
   cur_connection_object => connection_list%first
   do 
     if (.not.associated(cur_connection_object)) exit
@@ -1670,7 +1670,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,grid,ierr)
   
 ! Contribution from BC
   ! loop over boundary connections
-  connection_list => getBoundaryConnectionList()
+  connection_list => ConnectionGetBoundaryConnList()
   cur_connection_object => connection_list%first
   do 
     if (.not.associated(cur_connection_object)) exit
@@ -1852,7 +1852,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,grid,ierr)
  !print *,'phase cond: ',iphase_loc_p
   ResInc=0.D0
  
-  connection_list => getInternalConnectionList()
+  connection_list => ConnectionGetInternalConnList()
   cur_connection_object => connection_list%first
   do 
     if (.not.associated(cur_connection_object)) exit
@@ -2275,7 +2275,7 @@ subroutine pflow_mphase_initadj(grid)
     endif 
   enddo
 
-  connection_list => getBoundaryConnectionList()
+  connection_list => ConnectionGetBoundaryConnList()
   cur_connection_object => connection_list%first
   do 
     if (.not.associated(cur_connection_object)) exit

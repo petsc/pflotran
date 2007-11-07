@@ -30,8 +30,9 @@ module Init_module
 #include "include/finclude/petscis.h90"
 #include "include/finclude/petsclog.h"
 
+
   public :: initPFLOW
- 
+
 contains
 
 ! ************************************************************************** !
@@ -96,7 +97,7 @@ subroutine initPFLOW(simulation,filename)
   grid => solution%grid
 
   call setMode(option,mcomp,mphas)
-  call checkPetscOptions(option)
+  call OptionCheckCommandLine(option)
   
                
 ! hardwire to uncoupled for now
@@ -164,7 +165,7 @@ subroutine initPFLOW(simulation,filename)
  end select 
 
   
-  call createDMs(grid,option)
+  call GridCreateDMs(grid,option)
   
    !-----------------------------------------------------------------------
  ! Create the vectors with parallel layout corresponding to the DA's,
@@ -173,7 +174,7 @@ subroutine initPFLOW(simulation,filename)
  !-----------------------------------------------------------------------
 
   ! 1 degree of freedom
-  call createPetscVector(grid,ONEDOF,option%porosity,GLOBAL)
+  call GridCreateVector(grid,ONEDOF,option%porosity,GLOBAL)
   call VecDuplicate(option%porosity, option%porosity0, ierr)
   call VecDuplicate(option%porosity, option%tor, ierr)
   call VecDuplicate(option%porosity, option%conc, ierr)
@@ -194,7 +195,7 @@ subroutine initPFLOW(simulation,filename)
   call VecDuplicate(option%porosity, option%perm0_zz, ierr)
   call VecDuplicate(option%porosity, option%perm_pow, ierr)
       
-  call createPetscVector(grid,ONEDOF,option%porosity_loc,LOCAL)
+  call GridCreateVector(grid,ONEDOF,option%porosity_loc,LOCAL)
   call VecDuplicate(option%porosity_loc, option%tor_loc, ierr)
   call VecDuplicate(option%porosity_loc, option%ithrm_loc, ierr)
   call VecDuplicate(option%porosity_loc, option%icap_loc, ierr)
@@ -220,7 +221,7 @@ subroutine initPFLOW(simulation,filename)
 ! call DACreateLocalVector(option%da_3_dof, option%perm_loc, ierr)
 
   ! nphase degrees of freedom
-  call createPetscVector(grid,NPHASEDOF,option%pressure,GLOBAL)
+  call GridCreateVector(grid,NPHASEDOF,option%pressure,GLOBAL)
   call VecDuplicate(option%pressure, option%ppressure, ierr)
   call VecDuplicate(option%pressure, option%ssat, ierr)
   call VecDuplicate(option%pressure, option%sat, ierr)
@@ -242,7 +243,7 @@ subroutine initPFLOW(simulation,filename)
   call VecDuplicate(option%pressure, option%xmol, ierr)
 
 
-  call createPetscVector(grid,NPHASEDOF, option%ppressure_loc, LOCAL)
+  call GridCreateVector(grid,NPHASEDOF, option%ppressure_loc, LOCAL)
   call VecDuplicate(option%ppressure_loc, option%ssat_loc, ierr)
   call VecDuplicate(option%ppressure_loc, option%xxmol_loc, ierr)
   call VecDuplicate(option%ppressure_loc, option%ddensity_loc, ierr)
@@ -257,7 +258,7 @@ subroutine initPFLOW(simulation,filename)
   call VecDuplicate(option%ppressure_loc, option%v_t_loc, ierr)
       
   ! 3 * nphase degrees of freedom (velocity vector)
-  call createPetscVector(grid,THREENPDOF, option%vl, GLOBAL)
+  call GridCreateVector(grid,THREENPDOF, option%vl, GLOBAL)
       
 ! print *,'pflowgrid_new: ',option%run_coupled
       
@@ -301,22 +302,22 @@ subroutine initPFLOW(simulation,filename)
     call VecDuplicate(option%ssat_loc, option%kvr_t_loc, ierr)
     call VecDuplicate(option%ssat_loc, option%kvr_s_loc, ierr)
 
-    call createPetscVector(grid,NPHANCOMPDOF, option%h_c,GLOBAL)
+    call GridCreateVector(grid,NPHANCOMPDOF, option%h_c,GLOBAL)
     call VecDuplicate(option%h_c, option%u_c, ierr)
     call VecDuplicate(option%h_c, option%avgmw_c, ierr)
     call VecDuplicate(option%h_c, option%d_c, ierr)
     call VecDuplicate(option%h_c, option%pc_c, ierr)
     call VecDuplicate(option%h_c, option%kvr_c, ierr)
         
-    call createPetscVector(grid,NPHANCOMPDOF, option%h_c_loc,LOCAL)
+    call GridCreateVector(grid,NPHANCOMPDOF, option%h_c_loc,LOCAL)
     call VecDuplicate(option%h_c_loc, option%avgmw_c_loc, ierr)
     call VecDuplicate(option%h_c_loc, option%d_c_loc, ierr)
     call VecDuplicate(option%h_c_loc, option%pc_c_loc, ierr)
     call VecDuplicate(option%h_c_loc, option%kvr_c_loc, ierr)
 
 
-    call createPetscVector(grid,NPHANSPECDOF, option%hen,GLOBAL)
-    call createPetscVector(grid,NPHANSPECDOF, option%hen_loc,LOCAL)
+    call GridCreateVector(grid,NPHANSPECDOF, option%hen,GLOBAL)
+    call GridCreateVector(grid,NPHANSPECDOF, option%hen_loc,LOCAL)
     call VecDuplicate(option%hen, option%hen_p, ierr)
     call VecDuplicate(option%hen_loc, option%hen_p_loc, ierr)
     call VecDuplicate(option%hen, option%hen_t, ierr)
@@ -332,8 +333,8 @@ subroutine initPFLOW(simulation,filename)
     call VecDuplicate(option%df, option%df_s, ierr)
     call VecDuplicate(option%df_loc, option%df_s_loc, ierr)
   
-    call createPetscVector(grid,NPHANSPECNCOMPDOF, option%hen_c, GLOBAL)
-    call createPetscVector(grid,NPHANSPECNCOMPDOF, option%hen_c_loc,LOCAL)
+    call GridCreateVector(grid,NPHANSPECNCOMPDOF,option%hen_c, GLOBAL)
+    call GridCreateVector(grid,NPHANSPECNCOMPDOF,option%hen_c_loc,LOCAL)
       
     call VecDuplicate(option%hen_c, option%df_c, ierr)
     call VecDuplicate(option%hen_c_loc, option%df_c_loc, ierr)
@@ -341,12 +342,12 @@ subroutine initPFLOW(simulation,filename)
 
   select case(option%imode)
     case(MPH_MODE,RICHARDS_MODE,FLASH_MODE,OWG_MODE,VADOSE_MODE)
-      call createPetscVector(grid,VARDOF, option%var,GLOBAL)
-      call createPetscVector(grid,VARDOF, option%var_loc,LOCAL)
+      call GridCreateVector(grid,VARDOF, option%var,GLOBAL)
+      call GridCreateVector(grid,VARDOF, option%var_loc,LOCAL)
   end select
 
       ! ndof degrees of freedom
-  call createPetscVector(grid,NDOF, option%xx, GLOBAL)
+  call GridCreateVector(grid,NDOF, option%xx, GLOBAL)
   call VecDuplicate(option%xx, option%yy, ierr)
   call VecDuplicate(option%xx, option%dxx, ierr)
   call VecDuplicate(option%xx, option%r, ierr)
@@ -355,7 +356,7 @@ subroutine initPFLOW(simulation,filename)
      
   call VecSetBlocksize(option%dxx, option%ndof, ierr)
 
-  call createPetscVector(grid,NDOF, option%xx_loc, LOCAL)
+  call GridCreateVector(grid,NDOF, option%xx_loc, LOCAL)
   
   ! Create Natural Vec for output: use VecDuplicate here?
 !  call DACreateNaturalVector(option%da_1_dof,      option%c_nat,    ierr)
@@ -376,7 +377,7 @@ subroutine initPFLOW(simulation,filename)
 !-----------------------------------------------------------------------
   ! Set up indexing of grid ids (local to global, global to local, etc
 !-----------------------------------------------------------------------
-  call mapGridIndices(grid)
+  call GridMapIndices(grid)
 
   option%nldof = grid%nlmax * option%nphase
   option%ngdof = grid%ngmax * option%nphase
@@ -394,6 +395,7 @@ subroutine initPFLOW(simulation,filename)
   option%den_co2 = 1.d0
   option%dden_co2 = 1.d0
 
+#if 0
 ! if (grid%run_coupled == PETSC_TRUE) &
 ! allocate(grid%vvl_loc(grid%nconn*grid%nphase))
 
@@ -427,6 +429,7 @@ subroutine initPFLOW(simulation,filename)
   allocate(option%csrc(MAXSRCTIMES,MAXSRC))
   allocate(option%hsrc(MAXSRCTIMES,MAXSRC))
   option%qsrc =0.D0; option%csrc =0.D0; option%hsrc =0.D0
+#endif
 
 #if 0
 !GEH - Structured Grid Dependence - Begin          
@@ -462,7 +465,6 @@ subroutine initPFLOW(simulation,filename)
       allocate(option%xmol_ini(MAXINITREGIONS))
       allocate(option%conc_ini(MAXINITREGIONS))
   end select
-#endif
 !GEH - Structured Grid Dependence - Begin    
   allocate(option%i1brk(MAXINITREGIONS))
   allocate(option%i2brk(MAXINITREGIONS))
@@ -514,6 +516,8 @@ subroutine initPFLOW(simulation,filename)
   end select
   
   option%velocitybc0 = 0.d0
+#endif
+  
   !set scale factor for heat equation, i.e. use units of MJ for energy
   option%scale = 1.d-6
 
@@ -527,19 +531,23 @@ subroutine initPFLOW(simulation,filename)
 
   call readInput(simulation,filename)
   
-  call computeGridSpacing(grid)
-  call computeGridCoordinates(grid,option)
-  call computeGridCellVolumes(grid,option)
+  call GridComputeSpacing(grid)
+  call GridComputeCoordinates(grid,option)
+  call GRidComputeVolumes(grid,option)
 
   ! set up internal connectivity, distance, etc.
-  call computeInternalConnectivity(grid,option)
+  call GridComputeInternalConnect(grid,option)
   ! clip regions and set up boundary connectivity, distance
-  call processSolutionCouplers(solution)
-  
-!  call computeBoundaryConnectivity(grid,option)
+  call SolutionProcessCouplers(solution)
+    
+  call GridLocalizeRegions(solution%regions,solution%grid,solution%option)
 
+  call GridComputeBoundaryConnect(grid,option, &
+                                  solution%boundary_conditions%first)                                
   call assignMaterialPropertiesToRegions(solution)
   call assignInitialConditions(solution)
+  call SolutionUpdateBoundaryConditions(solution)
+  call SolutionSetIBNDTYPE(solution)
 
   i = grid%internal_connection_list%first%num_connections
   allocate(option%vl_loc(i))
@@ -581,7 +589,7 @@ subroutine initPFLOW(simulation,filename)
   if (option%myrank == 0) then
     write(*,'(/,"++++++++++++++++++++++++++++++++++++++++++++++++++++&
       &++++++++")')
-    if (grid%is_structured) then
+    if (grid%igrid == STRUCTURED) then
       write(*,'(" number of processors = ",i5,", npx,y,z= ",3i5)') &
         option%commsize,grid%structured_grid%npx,grid%structured_grid%npy, &
         grid%structured_grid%npz
@@ -622,7 +630,7 @@ subroutine initPFLOW(simulation,filename)
   
     option%ideriv = 1
   
-    call createJacobian(grid,option)
+    call GridCreateJacobian(grid,option)
   
 !   if (myrank == 0) write(*,'(" analytical jacobian as ")'); &
 !                    print *, grid%iblkfmt
@@ -705,7 +713,7 @@ subroutine initPFLOW(simulation,filename)
     ! Pernice thinks that perhaps the I need to provide a function which 
     ! simply calls MatAssemblyBegin/End.
     call SNESSetJacobian(option%snes, option%J, option%J, &
-                         ComputeMFJacobian, PETSC_NULL_OBJECT, ierr)
+                         SolverComputeMFJacobian, PETSC_NULL_OBJECT, ierr)
 
     ! Use "Walker-Pernice" differencing.
     call MatMFFDSetType(option%J, MATMFFD_WP, ierr)
@@ -716,7 +724,7 @@ subroutine initPFLOW(simulation,filename)
     endif
 
     if (option%monitor_h == PETSC_TRUE) then
-      call SNESMonitorSet(option%snes, MonitorH, grid, &
+      call SNESMonitorSet(option%snes, SolverMonitorH, grid, &
                           PETSC_NULL_OBJECT, ierr)
     endif
     
@@ -733,10 +741,10 @@ subroutine initPFLOW(simulation,filename)
       
     i = option%iblkfmt
     option%iblkfmt = 0   ! to turn off MATMPIBAIJ
-    call createJacobian(grid,option)
+    call GridCreateJacobian(grid,option)
     option%iblkfmt = i
 
-    call createColoring(grid,option,iscoloring)
+    call GridCreateColoring(grid,option,iscoloring)
         
     call MatFDColoringCreate(option%J, iscoloring, option%matfdcoloring, ierr)
     
@@ -901,6 +909,8 @@ subroutine initPFLOW(simulation,filename)
   !-----------------------------------------------------------------------
   ! Allocate boundary condition arrays
   !-----------------------------------------------------------------------
+#if 0 
+  ! moved above
   i = grid%boundary_connection_list%first%num_connections
   allocate(option%velocitybc(option%nphase,i))
 
@@ -970,7 +980,7 @@ subroutine initPFLOW(simulation,filename)
 #endif      
     endif
   endif
-
+#endif
 
 #if 0
   if (grid%iread_perm == 1) then
@@ -1158,14 +1168,7 @@ subroutine initPFLOW(simulation,filename)
     call VecRestoreArrayF90(option%phis,phis_p,ierr)
   endif
 
-
-   
-  
   if (option%myrank == 0) write(*,'("  Finished setting up ")')
-  
-
-
-
   
 end subroutine initPFLOW
 
@@ -1237,10 +1240,10 @@ subroutine readSelectCardsFromInput(solution,filename,mcomp,mphas)
   call fiReadInt(string,igeom,ierr)
   call fiDefaultMsg('igeom',ierr)
   
-  solution%grid => createGrid(igeom) 
+  solution%grid => GridCreate(igeom) 
   grid => solution%grid
 
-  if (grid%is_structured) then ! structured
+  if (grid%igrid == STRUCTURED) then ! structured
     call fiReadInt(string,grid%structured_grid%nx,ierr)
     call fiDefaultMsg('nx',ierr)
     
@@ -1276,7 +1279,7 @@ subroutine readSelectCardsFromInput(solution,filename,mcomp,mphas)
   call fiDefaultMsg('itable',ierr)
 
   if (option%myrank==0) then
-    if (grid%is_structured) then
+    if (grid%igrid == STRUCTURED) then
       write(IUNIT2,'(/," *GRID ",/, &
         &"  igeom   = ",i4,/, &
         &"  nx      = ",i4,/, &
@@ -1295,7 +1298,7 @@ subroutine readSelectCardsFromInput(solution,filename,mcomp,mphas)
 
 !.........................................................................
 
-  if (grid%is_structured) then  ! look for processor decomposition
+  if (grid%igrid == STRUCTURED) then  ! look for processor decomposition
     
     ! PROC information
     string = "PROC"
@@ -1505,7 +1508,7 @@ subroutine readInput(simulation,filename)
       
 !....................
       case ('REGION','REGN')
-        region => createRegion()
+        region => RegionCreate()
         call fiReadWord(string,region%name,.true.,ierr)
         call fiErrorMsg('regn','name',ierr) 
         call fiReadFlotranString(IUNIT1,string,ierr)
@@ -1513,7 +1516,7 @@ subroutine readInput(simulation,filename)
         call fiReadWord(string,word,.true.,ierr)
         call fiErrorMsg('type','REGN', ierr)
         if (fiStringCompare(word,"BLOCK",5)) then ! block region
-          if (.not.grid%is_structured) then
+          if (grid%igrid /= STRUCTURED) then
             call printErrMsg(option,"BLOCK region not supported for &
                              &unstructured grid")
           endif
@@ -1539,46 +1542,52 @@ subroutine readInput(simulation,filename)
             call fiReadStringErrorMsg('REGN',ierr)
             call fiReadWord(string,word,.true.,ierr)
             call fiErrorMsg('filename','REGN', ierr)
-            call readRegionFromFile(region,word)
+            call RegionReadFromFile(region,word)
           else
-            call readRegionFromFile(region,IUNIT1)
+            call RegionReadFromFile(region,IUNIT1)
           endif            
         else
           call printErrMsg(option,"REGION type not recognized")
         endif
-        call addRegionToList(region,solution%regions)      
+        call RegionAddToList(region,solution%regions)      
 
 !....................
       case ('CONDITION','COND')
-        condition => createCondition(option)
+        condition => ConditionCreate(option)
         call fiReadWord(string,condition%name,.true.,ierr)
         call fiErrorMsg('cond','name',ierr) 
-        call readCondition(condition,option,IUNIT1)
-        call addConditionToList(condition,solution%conditions)
+        call ConditionRead(condition,option,IUNIT1)
+        call ConditionAddToList(condition,solution%conditions)
       
 !....................
       case ('BOUNDARY_CONDITION')
-        coupler => createCoupler()
-        call readCoupler(coupler,IUNIT1)
-        call addCouplerToList(coupler,solution%boundary_conditions)
+        coupler => CouplerCreate()
+        call CouplerRead(coupler,IUNIT1)
+        call CouplerAddToList(coupler,solution%boundary_conditions)
       
 !....................
       case ('INITIAL_CONDITION')
-        coupler => createCoupler()
-        call readCoupler(coupler,IUNIT1)
-        call addCouplerToList(coupler,solution%initial_conditions)
+        coupler => CouplerCreate()
+        call CouplerRead(coupler,IUNIT1)
+        call CouplerAddToList(coupler,solution%initial_conditions)
       
 !....................
       case ('STRATIGRAPHY')
-        strata => createStrata()
-        call readStrata(strata,IUNIT1)
-        call addStrataToList(strata,solution%strata)
+        strata => StrataCreate()
+        call StrataRead(strata,IUNIT1)
+        call StrataAddToList(strata,solution%strata)
       
 !....................
       case ('SOURCE_SINK')
-        coupler => createCoupler()
-        call readCoupler(coupler,IUNIT1)
-        call addCouplerToList(coupler,solution%source_sinks)
+        coupler => CouplerCreate()
+        call CouplerRead(coupler,IUNIT1)
+        call CouplerAddToList(coupler,solution%source_sinks)
+      
+!.....................
+      case ('STRATA')
+        strata => StrataCreate()
+        call StrataRead(strata,IUNIT1)
+        call StrataAddToList(strata,solution%strata)
       
 !.....................
       case ('COMP') 
@@ -1774,8 +1783,8 @@ subroutine readInput(simulation,filename)
 
       case ('DXYZ')
       
-        if (grid%is_structured) then  ! look for processor decomposition
-          call readStructuredDXYZ(grid%structured_grid,option)
+        if (grid%igrid == STRUCTURED) then  ! look for processor decomposition
+          call StructuredGridReadDXYZ(grid%structured_grid,option)
         else
           if (option%myrank == 0) &
             print *, 'ERROR: Keyword "DXYZ" not supported for unstructured grid'
@@ -1787,7 +1796,7 @@ subroutine readInput(simulation,filename)
 
       case('RAD0')
     
-        if (grid%is_structured) then  ! look for processor decomposition
+        if (grid%igrid == STRUCTURED) then  ! look for processor decomposition
           call fiReadDouble(string,grid%structured_grid%Radius_0,ierr)
           call fiDefaultMsg('R_0',ierr)
         else
@@ -2030,7 +2039,7 @@ subroutine readInput(simulation,filename)
               fiStringCompare(string,'END',3)) exit
        
           count = count + 1
-          thermal_property => createThermalProperty()
+          thermal_property => ThermalPropertyCreate()
       
           call fiReadInt(string,thermal_property%id,ierr)
           call fiErrorMsg('id','THRM', ierr)
@@ -2064,7 +2073,7 @@ subroutine readInput(simulation,filename)
           thermal_property%therm_cond_wet = option%scale * &
                                             thermal_property%therm_cond_wet
           
-          call addThermalPropertyToList(thermal_property, &
+          call ThermalAddPropertyToList(thermal_property, &
                                         solution%thermal_properties)
         enddo
         
@@ -2081,7 +2090,9 @@ subroutine readInput(simulation,filename)
         ! fill arrays with values from linked list
         thermal_property => solution%thermal_properties
         do
+        
           if (.not.associated(thermal_property)) exit
+          
           id = thermal_property%id
           
           if (id > count) then
@@ -2098,22 +2109,25 @@ subroutine readInput(simulation,filename)
           option%tau(id) = thermal_property%tort_bin_diff
           option%cdiff(id) = thermal_property%vap_air_diff_coef
           option%cexp(id) = thermal_property%exp_binary_diff
+          
+          thermal_property => thermal_property%next
+          
         enddo
         
         do i=1,count
-          if (option%rock_density(id) > 1.d-40) then
+          if (option%rock_density(i) < 1.d-40) then
             call printErrMsg(option,'Thermal property ids must be numbered &
                              &consecutively from 1 to N')
           endif
         enddo
       
         if (option%myrank==0) then
-          write(IUNIT2,'(/," *THRM: ",i3)') ireg
+          write(IUNIT2,'(/," *THRM: ",i3)') count
           write(IUNIT2,'("  itm rock_density  cpr        ckdry", &
             &                 "     ckwet       tau       cdiff     cexp")')
           write(IUNIT2,'("        [kg/m^3]  [J/kg/K]   [J/m/K/s]", &
             &              "     [J/m/K/s]     [-]        [m^2/s]       [-]")')
-          do i = 1, ireg
+          do i = 1, count
             write(IUNIT2,'(i4,1p7e11.4)') i,option%rock_density(i), &
             option%cpr(i),option%ckdry(i),option%ckwet(i), &
             option%tau(i),option%cdiff(i),option%cexp(i)
@@ -2133,7 +2147,7 @@ subroutine readInput(simulation,filename)
               fiStringCompare(string,'END',3)) exit
        
           count = count + 1
-          saturation_function => createSaturationFunction(option)
+          saturation_function => SaturationFunctionCreate(option)
           
           call fiReadInt(string,saturation_function%id,ierr)
           call fiErrorMsg('id','PCKR', ierr)
@@ -2169,7 +2183,7 @@ subroutine readInput(simulation,filename)
           call fiReadDouble(string,saturation_function%power,ierr)
           call fiErrorMsg('pwrprm','PCKR', ierr)
           
-          call addSaturationFunctionToList(saturation_function, &
+          call SaturationFunctionAddToList(saturation_function, &
                                            solution%saturation_functions)
 
         enddo
@@ -2195,6 +2209,7 @@ subroutine readInput(simulation,filename)
         ! fill arrays with values from linked list
         saturation_function => solution%saturation_functions
         do 
+        
           if (.not.associated(saturation_function)) exit
           
           id = saturation_function%id
@@ -2219,6 +2234,9 @@ subroutine readInput(simulation,filename)
           option%pcwmax(id) = saturation_function%pcwmax
           option%pcbetac(id) = saturation_function%betac
           option%pwrprm(id) = saturation_function%power
+          
+          saturation_function => saturation_function%next
+          
         enddo
         
         ! check to ensure that all saturation functions were set based on id
@@ -2233,7 +2251,7 @@ subroutine readInput(simulation,filename)
             option%imode == VADOSE_MODE .or. &
             option%imode == FLASH_MODE .or. &
             option%imode == RICHARDS_MODE) then
-          call pckr_init(option%nphase,ireg,grid%nlmax, &
+          call pckr_init(option%nphase,count,grid%nlmax, &
                          option%icaptype,option%sir, option%pckrm, &
                          option%lambda,option%alpha,option%pcwmax, &
                          option%pcbetac,option%pwrprm)
@@ -2243,7 +2261,7 @@ subroutine readInput(simulation,filename)
         if (option%myrank==0) then
           write(IUNIT2,'(/," *PCKR: ",i3)') ireg
           write(IUNIT2,'("  icp swir    lambda         alpha")')
-          do j = 1, ireg
+          do j = 1, count
             i=option%icaptype(j)
             if (option%imode == MPH_MODE .or. &
                 option%imode == OWG_MODE .or. &
@@ -2284,7 +2302,7 @@ subroutine readInput(simulation,filename)
               fiStringCompare(string,'END',3)) exit
        
           count = count + 1
-          material => createMaterial()
+          material => MaterialCreate()
 
           call fiReadWord(string,material%name,.true.,ierr)
           call fiErrorMsg('name','PHIK', ierr)
@@ -2316,32 +2334,17 @@ subroutine readInput(simulation,filename)
           call fiReadDouble(string,material%permeability_pwr,ierr)
           call fiErrorMsg('permpwr','PHIK', ierr)
           
-          material%permeability(2,1:4) = material%permeability(1,1:4)
+          material%permeability(1:3,1:3) = material%permeability(1:3,1:3)
           
-          call addMaterialToList(material,solution%materials)
+          call MaterialAddToList(material,solution%materials)
           
         enddo          
-
-#if 0
-        if (option%myrank==0) then
-          write(IUNIT2,'(/," *PHIK: ireg = ",i4)') option%iregperm
-          write(IUNIT2,'("  i1  i2  j1  j2  k1  k2 icap ithrm  por      tor  &
-            &",   "     permx      permy      permz [m^2]   permpwr")')
-          do ireg = 1, option%iregperm
-!GEH - Structured Grid Dependence - Begin
-            write(IUNIT2,'(6i4,2i4,1p6e11.4)') &
-                  option%icap_reg(ireg),option%ithrm_reg(ireg), &
-                  option%por_reg(ireg),option%tor_reg(ireg), &
-                  (option%perm_reg(ireg,i),i=1,4)
-!GEH - Structured Grid Dependence - End
-          enddo
-        endif
-#endif
 
 !....................
       
       case ('INIT')
     
+#if 0
         call fiReadInt(string,option%iread_init,ierr) 
         call fiDefaultMsg('iread_init',ierr)
       
@@ -2488,7 +2491,7 @@ subroutine readInput(simulation,filename)
             close(IUNIT3)
           endif
         endif
-
+#endif
 !....................
 
       case ('TIME')
@@ -3280,7 +3283,7 @@ subroutine assignInitialConditions(solution)
 #if 0
     case(OWG_MODE)
       call pflow_owg_setupini(solution)
-    case(FADOSE_MODE)
+    case(VADOSE_MODE)
       call pflow_vadose_setupini(solution)
 #endif      
     case default
@@ -3363,7 +3366,7 @@ subroutine assignInitialConditions(solution)
     option%velocitybc0(2,:) = option%velocitybc0(1,:)
   endif
 
-
+#if 0
   select case(option%imode)
     case(MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE,OWG_MODE)
       deallocate(option%xx_ini)
@@ -3375,7 +3378,7 @@ subroutine assignInitialConditions(solution)
       deallocate(option%xmol_ini)
       deallocate(option%conc_ini)
   end select
-
+#endif
 end subroutine assignInitialConditions
 
 end module Init_module

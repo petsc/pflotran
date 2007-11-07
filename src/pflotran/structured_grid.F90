@@ -72,33 +72,33 @@ module Structured_Grid_module
     
   end type
 
-  public :: initStructuredGrid, &
-            destroyStructuredGrid, &
-            createStructuredDMs, &
-            computeStructInternalConnect, &
-            computeStructBoundaryConnect, &
-            createPetscVectorFromDA, &
-            mapStructuredGridIndices, &
-            computeStructuredGridSpacing, &
-            computeStructuredGridCoordinates, &
-            createStructuredGridJacobian, &
-            createStructuredGridColoring, &
-            DMStructGlobalToLocal, &
-            DMStructGlobalToNatural, &
-            readStructuredDXYZ, &
-            computeStructuredCellVolumes, &
-            computeStructBoundaryConnect2
+  public :: StructuredGridInit, &
+            StructuredGridDestroy, &
+            StructuredGridCreateDMs, &
+            StructGridComputeInternConnect, &
+!            StructGridComputeBoundConnectOld, &
+            StructuredGridCreateVecFromDA, &
+            StructuredGridMapIndices, &
+            StructuredGridComputeSpacing, &
+            StructuredGridComputeCoord, &
+            StructuredGridCreateJacobian, &
+            StructuredGridCreateColoring, &
+            StructureGridGlobalToLocal, &
+            StructureGridGlobalToNatural, &
+            StructuredGridReadDXYZ, &
+            StructuredGridComputelVolumes, &
+            StructGridComputeBoundConnect
 
 contains
 
 ! ************************************************************************** !
 !
-! initStructuredGrid: Initializes a structured grid object
+! StructuredGridInit: Initializes a structured grid object
 ! author: Glenn Hammond
 ! date: 10/22/07
 !
 ! ************************************************************************** !
-subroutine initStructuredGrid(structured_grid)
+subroutine StructuredGridInit(structured_grid)
 
   implicit none
   
@@ -193,16 +193,16 @@ subroutine initStructuredGrid(structured_grid)
   structured_grid%da_1_dof = 0
   structured_grid%da_1_dof = 0  
   
-end subroutine initStructuredGrid
+end subroutine StructuredGridInit
   
 ! ************************************************************************** !
 !
-! createStructuredDMs: Creates structured distributed, parallel meshes/grids
+! StructuredGridCreateDMs: Creates structured distributed, parallel meshes/grids
 ! author: Glenn Hammond
 ! date: 10/22/07
 !
 ! ************************************************************************** !
-subroutine createStructuredDMs(structured_grid,option)
+subroutine StructuredGridCreateDMs(structured_grid,option)
       
   use Option_module
       
@@ -309,16 +309,16 @@ subroutine createStructuredDMs(structured_grid,option)
   structured_grid%ngyz = structured_grid%ngy * structured_grid%ngz
   structured_grid%ngmax = structured_grid%ngx * structured_grid%ngy * structured_grid%ngz
 
-end subroutine createStructuredDMs
+end subroutine StructuredGridCreateDMs
 
 ! ************************************************************************** !
 !
-! createPetscVectorFromDA: Creates a global PETSc vector
+! StructuredGridCreateVecFromDA: Creates a global PETSc vector
 ! author: Glenn Hammond
 ! date: 10/24/07
 !
 ! ************************************************************************** !
-subroutine createPetscVectorFromDA(structured_grid,da_index,vector, &
+subroutine StructuredGridCreateVecFromDA(structured_grid,da_index,vector, &
                                    vector_type)
 
   implicit none
@@ -389,16 +389,16 @@ subroutine createPetscVectorFromDA(structured_grid,da_index,vector, &
       end select    
   end select
 
-end subroutine createPetscVectorFromDA
+end subroutine StructuredGridCreateVecFromDA
 
 ! ************************************************************************** !
 !
-! readStructuredDXYZ: Reads structured grid spacing from input file
+! StructuredGridReadDXYZ: Reads structured grid spacing from input file
 ! author: Glenn Hammond
 ! date: 10/23/07
 !
 ! ************************************************************************** !
-subroutine readStructuredDXYZ(structured_grid,option)
+subroutine StructuredGridReadDXYZ(structured_grid,option)
 
   use Option_module
   
@@ -413,9 +413,9 @@ subroutine readStructuredDXYZ(structured_grid,option)
   allocate(structured_grid%dy0(structured_grid%ny))
   allocate(structured_grid%dz0(structured_grid%nz))
         
-  call readDXYZ(structured_grid%dx0,structured_grid%nx)
-  call readDXYZ(structured_grid%dy0,structured_grid%ny)
-  call readDXYZ(structured_grid%dz0,structured_grid%nz)
+  call StructuredGridReadArray(structured_grid%dx0,structured_grid%nx)
+  call StructuredGridReadArray(structured_grid%dy0,structured_grid%ny)
+  call StructuredGridReadArray(structured_grid%dz0,structured_grid%nz)
     
   if (option%myrank==0) then
     write(IUNIT2,'(/," *DXYZ ")')
@@ -424,17 +424,17 @@ subroutine readStructuredDXYZ(structured_grid,option)
     write(IUNIT2,'("  dz  ",/,(1p10e12.4))') (structured_grid%dz0(i),i=1,structured_grid%nz)
   endif
 
-end subroutine readStructuredDXYZ
+end subroutine StructuredGridReadDXYZ
 
 ! ************************************************************************** !
 !
-! readStructuredDXYZ: Reads structured grid spacing along an axis from input 
-!                     file
+! StructuredGridReadArray: Reads structured grid spacing along an axis from  
+!                         input file
 ! author: Glenn Hammond
 ! date: 10/23/07
 !
 ! ************************************************************************** !
-subroutine readDXYZ(a,n)
+subroutine StructuredGridReadArray(a,n)
 
   use Fileio_module
   
@@ -485,16 +485,16 @@ subroutine readDXYZ(a,n)
     if (i2.ge.n) exit
   enddo
     
-end subroutine readDXYZ
+end subroutine StructuredGridReadArray
 
 ! ************************************************************************** !
 !
-! computeStructuredGridSpacing: Computes structured grid spacing
+! StructuredGridComputeSpacing: Computes structured grid spacing
 ! author: Glenn Hammond
 ! date: 10/26/07
 !
 ! ************************************************************************** !
-subroutine computeStructuredGridSpacing(structured_grid,nL2A)
+subroutine StructuredGridComputeSpacing(structured_grid,nL2A)
 
   implicit none
   
@@ -534,16 +534,16 @@ subroutine computeStructuredGridSpacing(structured_grid,nL2A)
   call DAGlobalToLocalEnd(structured_grid%da_1_dof, structured_grid%dz, INSERT_VALUES, &
                           structured_grid%dz_loc,ierr)
   
-end subroutine computeStructuredGridSpacing
+end subroutine StructuredGridComputeSpacing
 
 ! ************************************************************************** !
 !
-! computeStructuredGridCoordinates: Computes structured coordinates in x,y,z
+! StructuredGridComputeCoord: Computes structured coordinates in x,y,z
 ! author: Glenn Hammond
 ! date: 10/24/07
 !
 ! ************************************************************************** !
-subroutine computeStructuredGridCoordinates(structured_grid,option, &
+subroutine StructuredGridComputeCoord(structured_grid,option, &
                                             grid_x,grid_y,grid_z)
 
   use Option_module
@@ -603,24 +603,24 @@ subroutine computeStructuredGridCoordinates(structured_grid,option, &
       print *, 'ERROR: Number of coordinates (',n, ') ', &
              'does not match number of ghosted cells (', structured_grid%ngmax, ')'             
     
-end subroutine computeStructuredGridCoordinates
+end subroutine StructuredGridComputeCoord
 
 ! ************************************************************************** !
 !
-! computeStructInternalConnect: computes internal connectivity of a  
+! StructGridComputeInternConnect: computes internal connectivity of a  
 !                               structured grid
 ! author: Glenn Hammond
 ! date: 10/17/07
 !
 ! ************************************************************************** !
-function computeStructInternalConnect(structured_grid,option)
+function StructGridComputeInternConnect(structured_grid,option)
 
   use Connection_module
   use option_module
   
   implicit none
   
-  type(connection_type), pointer :: computeStructInternalConnect
+  type(connection_type), pointer :: StructGridComputeInternConnect
   type(option_type) :: option
   type(structured_grid_type) :: structured_grid
   
@@ -636,10 +636,10 @@ function computeStructInternalConnect(structured_grid,option)
   call VecGetArrayF90(structured_grid%dy_loc, dy_loc_p, ierr)
   call VecGetArrayF90(structured_grid%dz_loc, dz_loc_p, ierr)
   
-  call allocateConnectionLists()
+  call ConnectionAllocateLists()
   
   connections => &
-       createConnection((structured_grid%ngx-1)*structured_grid%nly* &
+       ConnectionCreate((structured_grid%ngx-1)*structured_grid%nly* &
                           structured_grid%nlz+ &
                         structured_grid%nlx*(structured_grid%ngy-1)* &
                           structured_grid%nlz+ &
@@ -727,26 +727,26 @@ function computeStructInternalConnect(structured_grid,option)
   call VecRestoreArrayF90(structured_grid%dy_loc, dy_loc_p, ierr)
   call VecRestoreArrayF90(structured_grid%dz_loc, dz_loc_p, ierr)
   
-  computeStructInternalConnect => connections
+  StructGridComputeInternConnect => connections
 
-end function computeStructInternalConnect
+end function StructGridComputeInternConnect
 
 ! ************************************************************************** !
 !
-! computeStructBoundaryConnect: computes boundary connectivity of a 
+! StructGridComputeBoundConnect: computes boundary connectivity of a 
 !                               structured grid
 ! author: Glenn Hammond
 ! date: 10/15/07
 !
 ! ************************************************************************** !
-function computeStructBoundaryConnect(structured_grid,option,ibconn,nL2G)
+function StructGridComputeBoundConnectOld(structured_grid,option,ibconn,nL2G)
 
   use Connection_module
   use Option_module
   
   implicit none
 
-  type(connection_type), pointer :: computeStructBoundaryConnect  
+  type(connection_type), pointer :: StructGridComputeBoundConnectOld  
   type(option_type) :: option
   type(structured_grid_type) :: structured_grid
   integer, pointer :: ibconn(:)
@@ -797,7 +797,7 @@ function computeStructBoundaryConnect(structured_grid,option,ibconn,nL2G)
   endif
 
   num_conn_hypothetically = iconn
-  connections => createConnection(iconn,option%nphase)
+  connections => ConnectionCreate(iconn,option%nphase)
 
   allocate(ibconn(iconn)) 
 
@@ -907,20 +907,20 @@ function computeStructBoundaryConnect(structured_grid,option,ibconn,nL2G)
   call VecRestoreArrayF90(structured_grid%dy_loc, dy_loc_p, ierr)
   call VecRestoreArrayF90(structured_grid%dz_loc, dz_loc_p, ierr)
   
-  computeStructBoundaryConnect => connections
+  StructGridComputeBoundConnectOld => connections
   
-end function computeStructBoundaryConnect
+end function StructGridComputeBoundConnectOld
 
 ! ************************************************************************** !
 !
-! computeStructBoundaryConnect2: computes boundary connectivity of a 
+! StructGridComputeBoundConnect2: computes boundary connectivity of a 
 !                               structured grid
 ! author: Glenn Hammond
 ! date: 11/01/07
 !
 ! ************************************************************************** !
-function computeStructBoundaryConnect2(structured_grid,option,ibconn,nL2G, &
-                                       boundary_condition_list)
+function StructGridComputeBoundConnect(structured_grid,option,ibconn,nL2G, &
+                                       boundary_conditions)
 
   use Connection_module
   use Option_module
@@ -929,12 +929,12 @@ function computeStructBoundaryConnect2(structured_grid,option,ibconn,nL2G, &
   
   implicit none
 
-  type(connection_type), pointer :: computeStructBoundaryConnect2  
+  type(connection_type), pointer :: StructGridComputeBoundConnect  
   type(option_type) :: option
   type(structured_grid_type) :: structured_grid
   integer, pointer :: ibconn(:)
   integer :: nL2G(:)
-  type(coupler_list_type) :: boundary_condition_list
+  type(coupler_type), pointer :: boundary_conditions
   
   integer :: num_conn_hypothetically
   integer :: iconn, iconn2
@@ -948,7 +948,7 @@ function computeStructBoundaryConnect2(structured_grid,option,ibconn,nL2G, &
   
   num_conn_hypothetically = 0
 
-  boundary_condition => boundary_condition_list%first
+  boundary_condition => boundary_conditions
   do
     if (.not.associated(boundary_condition)) exit  
     num_conn_hypothetically = num_conn_hypothetically + boundary_condition%region%num_cells
@@ -961,14 +961,14 @@ function computeStructBoundaryConnect2(structured_grid,option,ibconn,nL2G, &
 
   print *, 'Need a check to ensure that boundary conditions connect to exterior boundary'
   
-  connections => createConnection(num_conn_hypothetically,option%nphase)
+  connections => ConnectionCreate(num_conn_hypothetically,option%nphase)
 
   allocate(ibconn(num_conn_hypothetically)) 
   ibconn = 0
 
   iconn = 0
 
-  boundary_condition => boundary_condition_list%first
+  boundary_condition => boundary_conditions
   do
     if (.not.associated(boundary_condition)) exit  
     
@@ -1039,18 +1039,18 @@ function computeStructBoundaryConnect2(structured_grid,option,ibconn,nL2G, &
   call VecRestoreArrayF90(structured_grid%dy_loc, dy_loc_p, ierr)
   call VecRestoreArrayF90(structured_grid%dz_loc, dz_loc_p, ierr)
   
-  computeStructBoundaryConnect2 => connections
+  StructGridComputeBoundConnect => connections
   
-end function computeStructBoundaryConnect2
+end function StructGridComputeBoundConnect
 
 ! ************************************************************************** !
 !
-! computeStructuredCellVolumes: Computes the volumes of cells in structured grid
+! StructuredGridComputelVolumes: Computes the volumes of cells in structured grid
 ! author: Glenn Hammond
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine computeStructuredCellVolumes(structured_grid,option,nL2G)
+subroutine StructuredGridComputelVolumes(structured_grid,option,nL2G)
 
   use Option_module
   
@@ -1098,17 +1098,17 @@ subroutine computeStructuredCellVolumes(structured_grid,option,nL2G)
     option%myrank,structured_grid%ngmax,structured_grid%ngx,structured_grid%ngy,structured_grid%ngz, &
     structured_grid%ngxs,structured_grid%ngxe,structured_grid%ngys,structured_grid%ngye,structured_grid%ngzs,structured_grid%ngze
 
-end subroutine computeStructuredCellVolumes
+end subroutine StructuredGridComputelVolumes
 
 ! ************************************************************************** !
 !
-! mapStructuredGridIndices: maps global, local and natural indices of cells 
+! StructuredGridMapIndices: maps global, local and natural indices of cells 
 !                          to each other
 ! author: Glenn Hammond
 ! date: 10/24/07
 !
 ! ************************************************************************** !
-subroutine mapStructuredGridIndices(structured_grid,nG2L,nL2G,nL2A,nG2A,nG2N)
+subroutine StructuredGridMapIndices(structured_grid,nG2L,nL2G,nL2A,nG2A,nG2N)
 
   implicit none
   
@@ -1193,16 +1193,16 @@ subroutine mapStructuredGridIndices(structured_grid,nG2L,nL2G,nL2A,nG2A,nG2N)
    
   call DAGetGlobalIndicesF90(structured_grid%da_1_dof,structured_grid%ngmax,nG2N, ierr)
 
-end subroutine mapStructuredGridIndices
+end subroutine StructuredGridMapIndices
 
 ! ************************************************************************** !
 !
-! createStructuredGridJacobian: Creates Jacobian matrix associated with grid
+! StructuredGridCreateJacobian: Creates Jacobian matrix associated with grid
 ! author: Glenn Hammond
 ! date: 10/24/07
 !
 ! ************************************************************************** !
-subroutine createStructuredGridJacobian(structured_grid,option)
+subroutine StructuredGridCreateJacobian(structured_grid,option)
 
   use Option_module
   
@@ -1222,16 +1222,16 @@ subroutine createStructuredGridJacobian(structured_grid,option)
   call MatSetOption(option%J,MAT_KEEP_ZEROED_ROWS,ierr)
   call MatSetOption(option%J,MAT_COLUMN_ORIENTED,ierr)
   
-end subroutine createStructuredGridJacobian
+end subroutine StructuredGridCreateJacobian
 
 ! ************************************************************************** !
 !
-! createStructuredGridColoring: Creates ISColoring for grid
+! StructuredGridCreateColoring: Creates ISColoring for grid
 ! author: Glenn Hammond
 ! date: 10/24/07
 !
 ! ************************************************************************** !
-subroutine createStructuredGridColoring(structured_grid,option,coloring)
+subroutine StructuredGridCreateColoring(structured_grid,option,coloring)
 
   use Option_module
   
@@ -1247,16 +1247,16 @@ subroutine createStructuredGridColoring(structured_grid,option,coloring)
   
   call DAGetColoring(structured_grid%da_ndof,IS_COLORING_GLOBAL,coloring,ierr)
 
-end subroutine createStructuredGridColoring
+end subroutine StructuredGridCreateColoring
 
 ! ************************************************************************** !
 !
-! DMStructGlobalToLocal: Performs global to local communication with DA
+! StructureGridGlobalToLocal: Performs global to local communication with DA
 ! author: Glenn Hammond
 ! date: 10/24/07
 !
 ! ************************************************************************** !
-subroutine DMStructGlobalToLocal(structured_grid,global_vec,local_vec,da_index)
+subroutine StructureGridGlobalToLocal(structured_grid,global_vec,local_vec,da_index)
 
   implicit none
   
@@ -1268,23 +1268,23 @@ subroutine DMStructGlobalToLocal(structured_grid,global_vec,local_vec,da_index)
   DA :: da_ptr
   PetscErrorCode :: ierr
 
-  da_ptr = getDAPtrFromIndex(structured_grid,da_index)
+  da_ptr = StructGridGetDAPtrFromIndex(structured_grid,da_index)
 
   call DAGlobalToLocalBegin(da_ptr,global_vec,INSERT_VALUES, &
                             local_vec,ierr)
   call DAGlobalToLocalEnd(da_ptr,global_vec, INSERT_VALUES, &
                           local_vec, ierr)
                           
-end subroutine DMStructGlobalToLocal
+end subroutine StructureGridGlobalToLocal
 
 ! ************************************************************************** !
 !
-! DMStructGlobalToNatural: Performs global to natural communication with DA
+! StructureGridGlobalToNatural: Performs global to natural communication with DA
 ! author: Glenn Hammond
 ! date: 10/24/07
 !
 ! ************************************************************************** !
-subroutine DMStructGlobalToNatural(structured_grid,global_vec,natural_vec, &
+subroutine StructureGridGlobalToNatural(structured_grid,global_vec,natural_vec, &
                                    da_index)
 
   implicit none
@@ -1297,60 +1297,60 @@ subroutine DMStructGlobalToNatural(structured_grid,global_vec,natural_vec, &
   DA :: da_ptr
   PetscErrorCode :: ierr
 
-  da_ptr = getDAPtrFromIndex(structured_grid,da_index)
+  da_ptr = StructGridGetDAPtrFromIndex(structured_grid,da_index)
 
   call DAGlobalToNaturalBegin(da_ptr,global_vec,INSERT_VALUES, &
                             natural_vec,ierr)
   call DAGlobalToNaturalEnd(da_ptr,global_vec, INSERT_VALUES, &
                           natural_vec, ierr)
                           
-end subroutine DMStructGlobalToNatural
+end subroutine StructureGridGlobalToNatural
 
 ! ************************************************************************** !
 !
-! getDAPtrFromIndex: Returns the integer pointer for the DA referenced
+! StructGridGetDAPtrFromIndex: Returns the integer pointer for the DA referenced
 ! author: Glenn Hammond
 ! date: 10/24/07
 !
 ! ************************************************************************** !
-function getDAPtrFromIndex(structured_grid,da_index)
+function StructGridGetDAPtrFromIndex(structured_grid,da_index)
 
   implicit none
   
   type(structured_grid_type) :: structured_grid
   integer :: da_index
   
-  DA :: getDAPtrFromIndex
+  DA :: StructGridGetDAPtrFromIndex
   
   select case (da_index)
     case(ONEDOF)
-      getDAPtrFromIndex = structured_grid%da_1_dof
+      StructGridGetDAPtrFromIndex = structured_grid%da_1_dof
     case(NPHASEDOF)
-      getDAPtrFromIndex = structured_grid%da_nphase_dof
+      StructGridGetDAPtrFromIndex = structured_grid%da_nphase_dof
     case(THREENPDOF)
-      getDAPtrFromIndex = structured_grid%da_3np_dof
+      StructGridGetDAPtrFromIndex = structured_grid%da_3np_dof
     case(NDOF)
-      getDAPtrFromIndex = structured_grid%da_ndof
+      StructGridGetDAPtrFromIndex = structured_grid%da_ndof
     case(NPHANCOMPDOF)
-      getDAPtrFromIndex = structured_grid%da_nphancomp_dof
+      StructGridGetDAPtrFromIndex = structured_grid%da_nphancomp_dof
     case(NPHANSPECDOF)
-      getDAPtrFromIndex = structured_grid%da_nphanspec_dof
+      StructGridGetDAPtrFromIndex = structured_grid%da_nphanspec_dof
     case(NPHANSPECNCOMPDOF)
-      getDAPtrFromIndex = structured_grid%da_nphanspecncomp_dof
+      StructGridGetDAPtrFromIndex = structured_grid%da_nphanspecncomp_dof
     case(VARDOF)
-      getDAPtrFromIndex = structured_grid%da_var_dof
+      StructGridGetDAPtrFromIndex = structured_grid%da_var_dof
   end select  
   
-end function getDAPtrFromIndex
+end function StructGridGetDAPtrFromIndex
 
 ! ************************************************************************** !
 !
-! destroyStructuredGrid: Deallocates a structured grid
+! StructuredGridDestroy: Deallocates a structured grid
 ! author: Glenn Hammond
 ! date: 11/01/07
 !
 ! ************************************************************************** !
-subroutine destroyStructuredGrid(structured_grid)
+subroutine StructuredGridDestroy(structured_grid)
 
   implicit none
   
@@ -1395,6 +1395,6 @@ subroutine destroyStructuredGrid(structured_grid)
   deallocate(structured_grid)
   nullify(structured_grid)
 
-end subroutine destroyStructuredGrid
+end subroutine StructuredGridDestroy
                           
 end module Structured_Grid_module

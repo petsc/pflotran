@@ -31,57 +31,60 @@ private
 
   end type solution_type
 
-  public :: createSolution, destroySolution, processSolutionCouplers
+  public :: SolutionCreate, SolutionDestroy, &
+            SolutionProcessCouplers, &
+            SolutionUpdateBoundaryConditions, &
+            SolutionSetIBNDTYPE
   
 contains
   
 ! ************************************************************************** !
 !
-! createSolution: Allocates and initializes a new Solution object
+! SolutionCreate: Allocates and initializes a new Solution object
 ! author: Glenn Hammond
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-function createSolution()
+function SolutionCreate()
 
   implicit none
   
-  type(solution_type), pointer :: createSolution
+  type(solution_type), pointer :: SolutionCreate
   
   type(solution_type), pointer :: solution
   
   allocate(solution)
-  solution%option => createOption()
+  solution%option => OptionCreate()
   nullify(solution%grid)
   allocate(solution%regions)
-  call initRegionList(solution%regions)
+  call RegionInitList(solution%regions)
   allocate(solution%conditions)
-  call initConditionList(solution%conditions)
+  call ConditionInitList(solution%conditions)
   allocate(solution%boundary_conditions)
-  call initCouplerList(solution%boundary_conditions)
+  call CouplerInitList(solution%boundary_conditions)
   allocate(solution%initial_conditions)
-  call initCouplerList(solution%initial_conditions)
+  call CouplerInitList(solution%initial_conditions)
   allocate(solution%source_sinks)
-  call initCouplerList(solution%source_sinks)
+  call CouplerInitList(solution%source_sinks)
   allocate(solution%strata)
-  call initStrataList(solution%strata)
+  call StrataInitList(solution%strata)
   
   nullify(solution%materials)
   nullify(solution%thermal_properties)
   nullify(solution%saturation_functions)
   
-  createSolution => solution
+  SolutionCreate => solution
   
-end function createSolution  
+end function SolutionCreate  
 
 ! ************************************************************************** !
 !
-! processSolutionCouplers: Deallocates a solution
+! SolutionProcessCouplers: Deallocates a solution
 ! author: Glenn Hammond
 ! date: 11/01/07
 !
 ! ************************************************************************** !
-subroutine processSolutionCouplers(solution)
+subroutine SolutionProcessCouplers(solution)
 
   use Option_module
 
@@ -99,7 +102,7 @@ subroutine processSolutionCouplers(solution)
   do
     if (.not.associated(coupler)) exit
     ! pointer to region
-    coupler%region => getRegionPtrFromList(coupler%region_name, &
+    coupler%region => RegionGetPtrFromList(coupler%region_name, &
                                            solution%regions)
     if (.not.associated(coupler%region)) then
       string = 'Region ' // trim(coupler%region_name) // &
@@ -107,7 +110,7 @@ subroutine processSolutionCouplers(solution)
       call printErrMsg(solution%option,string)
     endif
     ! pointer to flow condition
-    coupler%flow_condition => getConditionPtrFromList(coupler%condition_name, &
+    coupler%flow_condition => ConditionGetPtrFromList(coupler%condition_name, &
                                                       solution%conditions)
     if (.not.associated(coupler%flow_condition)) then
       string = 'Condition ' // trim(coupler%condition_name) // &
@@ -123,7 +126,7 @@ subroutine processSolutionCouplers(solution)
   do
     if (.not.associated(coupler)) exit
     ! pointer to region
-    coupler%region => getRegionPtrFromList(coupler%region_name, &
+    coupler%region => RegionGetPtrFromList(coupler%region_name, &
                                            solution%regions)
     if (.not.associated(coupler%region)) then
       string = 'Region ' // trim(coupler%region_name) // &
@@ -131,7 +134,7 @@ subroutine processSolutionCouplers(solution)
       call printErrMsg(solution%option,string)
     endif
     ! pointer to flow condition
-    coupler%flow_condition => getConditionPtrFromList(coupler%condition_name, &
+    coupler%flow_condition => ConditionGetPtrFromList(coupler%condition_name, &
                                                       solution%conditions)
     if (.not.associated(coupler%flow_condition)) then
       string = 'Condition ' // trim(coupler%condition_name) // &
@@ -146,7 +149,7 @@ subroutine processSolutionCouplers(solution)
   do
     if (.not.associated(coupler)) exit
     ! pointer to region
-    coupler%region => getRegionPtrFromList(coupler%region_name, &
+    coupler%region => RegionGetPtrFromList(coupler%region_name, &
                                            solution%regions)
     if (.not.associated(coupler%region)) then
       string = 'Region ' // trim(coupler%region_name) // &
@@ -154,7 +157,7 @@ subroutine processSolutionCouplers(solution)
       call printErrMsg(solution%option,string)
     endif
     ! pointer to flow condition
-    coupler%flow_condition => getConditionPtrFromList(coupler%condition_name, &
+    coupler%flow_condition => ConditionGetPtrFromList(coupler%condition_name, &
                                                       solution%conditions)
     if (.not.associated(coupler%flow_condition)) then
       string = 'Condition ' // trim(coupler%condition_name) // &
@@ -171,7 +174,7 @@ subroutine processSolutionCouplers(solution)
   do
     if (.not.associated(strata)) exit
     ! pointer to region
-    strata%region => getRegionPtrFromList(strata%region_name, &
+    strata%region => RegionGetPtrFromList(strata%region_name, &
                                                 solution%regions)
     if (.not.associated(strata%region)) then
       string = 'Region ' // trim(strata%region_name) // &
@@ -180,7 +183,7 @@ subroutine processSolutionCouplers(solution)
     endif
     ! pointer to material
     strata%material => &
-                          getMaterialPtrFromList(strata%material_name, &
+                          MaterialGetPtrFromList(strata%material_name, &
                                                  solution%materials)
     if (.not.associated(strata%material)) then
       string = 'Material ' // trim(strata%material_name) // &
@@ -188,23 +191,156 @@ subroutine processSolutionCouplers(solution)
       call printErrMsg(solution%option,string)
     endif
     strata => strata%next
-  enddo  
-  
+  enddo 
     
-  call localizeRegions(solution%regions,solution%grid,solution%option)
-  call computeBoundaryConnectivity2(solution%grid,solution%option, &
-                                    solution%boundary_conditions)
-    
-end subroutine processSolutionCouplers
+end subroutine SolutionProcessCouplers
 
 ! ************************************************************************** !
 !
-! destroySolution: Deallocates a solution
+! SolutionUpdateBoundaryConditions: Updates boundary conditions within model
+! author: Glenn Hammond
+! date: 11/06/07
+!
+! ************************************************************************** !
+subroutine SolutionUpdateBoundaryConditions(solution)
+
+  implicit none
+  
+  type(solution_type) :: solution
+  
+  integer :: icell, idof, count, num_connections
+  
+  type(option_type), pointer :: option
+  type(grid_type), pointer :: grid
+  type(coupler_type), pointer :: boundary_condition
+    
+  option => solution%option
+  grid => solution%grid
+    
+  num_connections = grid%boundary_connection_list%first%num_connections
+  select case(option%imode)
+
+    case(MPH_MODE,FLASH_MODE,RICHARDS_MODE,OWG_MODE,VADOSE_MODE)
+  
+      allocate(option%xxbc(option%ndof,num_connections))
+      allocate(option%iphasebc(num_connections))
+      allocate(option%velocitybc(option%nphase,num_connections))
+      option%xxbc = 0.d0
+      option%iphasebc = 0
+      option%velocitybc = 0.d0
+        
+      count = 0
+      boundary_condition => solution%boundary_conditions%first
+      do
+        if (.not.associated(boundary_condition)) exit
+        do icell=1,boundary_condition%region%num_cells
+          count = count + 1
+          option%iphasebc(count) = boundary_condition%flow_condition%iphase
+          do idof=1,option%ndof
+            select case(boundary_condition%flow_condition%itype(idof))
+              case(DIRICHLET_BC)
+                option%xxbc(idof,count) = &
+                  boundary_condition%flow_condition%cur_value(idof)
+              case(NEUMANN_BC)
+                option%velocitybc(1:option%nphase,count) = &
+                  boundary_condition%flow_condition%cur_value(idof)
+            end select
+          enddo
+        enddo
+        boundary_condition => boundary_condition%next
+      enddo
+      
+    case default
+    
+      allocate(option%pressurebc(option%nphase,num_connections))
+      allocate(option%tempbc(num_connections))
+      allocate(option%sgbc(num_connections))
+      allocate(option%concbc(num_connections))
+      allocate(option%velocitybc(option%nphase,num_connections))
+      allocate(option%iphasebc(num_connections))
+      option%pressurebc = 0.d0
+      option%tempbc = 0.d0
+      option%concbc = 0.d0
+      option%sgbc = 0.d0
+      option%velocitybc = 0.d0
+      option%iphasebc = 0
+
+      count = 0
+      boundary_condition => solution%boundary_conditions%first
+      do
+        if (.not.associated(boundary_condition)) exit
+        do icell=1,boundary_condition%region%num_cells
+          count = count + 1
+          option%iphasebc(count) = boundary_condition%flow_condition%iphase
+          if (boundary_condition%flow_condition%itype(1) == DIRICHLET_BC) then
+            option%pressurebc(:,count) = boundary_condition%flow_condition%cur_value(1)
+          else
+            option%velocitybc(:,count) = boundary_condition%flow_condition%cur_value(1)
+          endif
+          option%tempbc(icell) = boundary_condition%flow_condition%cur_value(2)
+          option%concbc(icell) = boundary_condition%flow_condition%cur_value(3)
+          option%sgbc(icell) = 1.d0-boundary_condition%flow_condition%cur_value(4) ! read in as sl
+        enddo
+        boundary_condition => boundary_condition%next
+      enddo
+
+  end select 
+
+end subroutine SolutionUpdateBoundaryConditions
+
+! ************************************************************************** !
+!
+! SolutionSetIBNDTYPE: Sets values in ibndtyp array
+! ibndtyp needs to be done away with!!!!
+! author: Glenn Hammond
+! date: 11/06/07
+!
+! ************************************************************************** !
+subroutine SolutionSetIBNDTYPE(solution)
+
+  implicit none
+  
+  type(solution_type) :: solution
+  
+  integer :: count, num_conditions
+  
+  type(option_type), pointer :: option
+  type(grid_type), pointer :: grid
+  type(coupler_type), pointer :: boundary_condition
+    
+  option => solution%option
+  grid => solution%grid
+
+  num_conditions = 0
+  boundary_condition => solution%boundary_conditions%first
+  do
+    if (.not.associated(boundary_condition)) exit
+    num_conditions = num_conditions + 1
+    boundary_condition => boundary_condition%next
+  enddo
+    
+  allocate(option%ibndtyp(num_conditions))
+  option%ibndtyp = 0
+    
+  count = 0
+  boundary_condition => solution%boundary_conditions%first
+  do
+    if (.not.associated(boundary_condition)) exit
+    count = count + 1
+    option%ibndtyp(count) = boundary_condition%flow_condition%itype(1)  ! hardwired to dof=1 (pressure)
+    boundary_condition => boundary_condition%next
+  enddo
+
+end subroutine SolutionSetIBNDTYPE
+
+! ************************************************************************** !
+!
+! SolutionDestroy: Deallocates a solution
 ! author: Glenn Hammond
 ! date: 11/01/07
 !
 ! ************************************************************************** !
-subroutine destroySolution(solution)
+subroutine SolutionDestroy(solution)
 
   implicit none
   
@@ -212,15 +348,15 @@ subroutine destroySolution(solution)
   
   if (.not.associated(solution)) return
     
-  call destroyGrid(solution%grid)
-  call destroyOption(solution%option)
-  call destroyRegionList(solution%regions)
-  call destroyConditionList(solution%conditions)
-  call destroyCouplerList(solution%boundary_conditions)
-  call destroyCouplerList(solution%initial_conditions)
-  call destroyCouplerList(solution%source_sinks)
-  call destroyStrataList(solution%strata)
+  call GridDestroy(solution%grid)
+  call OptionDestroy(solution%option)
+  call RegionDestroyList(solution%regions)
+  call ConditionDestroyList(solution%conditions)
+  call CouplerCreateList(solution%boundary_conditions)
+  call CouplerCreateList(solution%initial_conditions)
+  call CouplerCreateList(solution%source_sinks)
+  call StrataDestroyList(solution%strata)
     
-end subroutine destroySolution
+end subroutine SolutionDestroy
   
 end module Solution_module

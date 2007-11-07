@@ -62,6 +62,8 @@
 
   PetscLogDouble :: timex(4), timex_wall(4)
 
+  integer :: myrank, commsize
+
   integer :: ierr, ihalcnt
   integer :: kplt, iplot, iflgcut, its, ntstep
   integer :: steps
@@ -84,19 +86,21 @@
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   
-  simulation => createSimulation()
-  simulation%stepper => createTimestepper()
+  call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
+  call MPI_Comm_rank(PETSC_COMM_WORLD,myrank, ierr)
+  call MPI_Comm_size(PETSC_COMM_WORLD,commsize,ierr)
+
+  simulation => SimulationCreate()
   solution => simulation%solution
   option => solution%option
   stepper => simulation%stepper
 
+  option%myrank = myrank
+  option%commsize = commsize
+
 ! Initialize Startup Time
  ! call PetscGetCPUTime(timex(1), ierr)
  ! call PetscGetTime(timex_wall(1), ierr)
-
-  call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
-  call MPI_Comm_rank(PETSC_COMM_WORLD,option%myrank, ierr)
-  call MPI_Comm_size(PETSC_COMM_WORLD,option%commsize,ierr)
 
 ! Register stages for profiling.
 ! We identify three stages here: setup, output, and cleanup.
@@ -175,13 +179,15 @@
 #endif  
            
   do steps = option%flowsteps+1, option%stepmax
-
+    if (steps >= 140) then
+      print *, steps
+    endif
 !    call pflowGrid_step(solution,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
-    call stepDT(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
+    call StepperStepDT(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
 
 !   update field variables
 !    call pflowGrid_update(solution)
-    call updateSolution(solution)
+    call StepperUpdateSolution(solution)
 
     dt_cur = option%dt 
    
@@ -203,7 +209,7 @@
   
   
 !    if (iflgcut == 0) call pflowgrid_update_dt(solution,its)
-    if (iflgcut == 0) call updateDT(option,its)
+    if (iflgcut == 0) call StepperUpdateDT(option,its)
 
 #if 0
     call PetscLogStagePush(stage(2), ierr)
@@ -296,7 +302,7 @@
         (timex_wall(2)-timex_wall(1))/3600.d0
   endif
 
-  call destroySimulation(simulation)
+  call SimulationDestroy(simulation)
 
   close(IUNIT2)
   if (option%ibrkcrv > 0) close(IUNIT4)

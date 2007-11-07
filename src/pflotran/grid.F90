@@ -28,7 +28,7 @@ module Grid_module
 
   type, public :: grid_type
   
-    logical :: is_structured
+    integer :: igrid  ! type of grid (e.g. structured, unstructured, etc.)
     
     integer :: nmax   ! Total number of nodes in global domain
     integer :: nlmax  ! Total number of non-ghosted nodes in local domain.
@@ -40,7 +40,7 @@ module Grid_module
     !                     matsetvaluesblocked ( not matsetvaluesblockedlocal)  
     !nL2A :   collective, local => natural index, used for initialization   
     !                              and source/sink setup  
-    integer, pointer :: nL2G(:), nG2L(:), nL2A(:),nG2N(:)
+    integer, pointer :: nL2G(:), nG2L(:), nL2A(:), nG2N(:)
     integer, pointer :: nG2A(:)
 #endif
     
@@ -60,56 +60,59 @@ module Grid_module
   end type grid_type
 
 
-  public :: createGrid, &
-            destroyGrid, &
-            computeInternalConnectivity, &
-            computeBoundaryConnectivity, &
-            createPetscVector, &
-            createJacobian, &
-            createColoring, &
-            DMGlobalToLocal, &
-            DMGlobalToNatural, &
-            mapGridIndices, &
-            createDMs, &
-            computeGridSpacing, &
-            computeGridCoordinates, &
-            computeGridCellVolumes, &
-            computeBoundaryConnectivity2, &
-            localizeRegions
+  public :: GridCreate, &
+            GridDestroy, &
+            GridComputeInternalConnect, &
+            GridComputeBoundaryConnect, &
+            GridCreateVector, &
+            GridCreateJacobian, &
+            GridCreateColoring, &
+            GridGlobalToLocal, &
+            GridlobalToNatural, &
+            GridMapIndices, &
+            GridCreateDMs, &
+            GridComputeSpacing, &
+            GridComputeCoordinates, &
+            GridComputeVolumes, &
+            GridLocalizeRegions
   
 contains
 
 ! ************************************************************************** !
 !
-! createGrid: Creates a structured or unstructured grid
+! GridCreate: Creates a structured or unstructured grid
 ! author: Glenn Hammond
 ! date: 10/23/07
 !
 ! ************************************************************************** !
-function createGrid(igeom_)
+function GridCreate(igeom_)
 
   implicit none
   
   integer :: igeom_
   
-  type(grid_type), pointer :: createGrid
+  type(grid_type), pointer :: GridCreate
   
-  allocate(createGrid)
-  call initGrid(createGrid)
-  createGrid%igeom = igeom_
+  type(grid_type), pointer :: grid
+  
+  allocate(grid)
+  call initGrid(grid)
+  grid%igeom = igeom_
   
   if (igeom_ > 0) then
-    createGrid%is_structured = .true.
-    allocate(createGrid%structured_grid)
-    call initStructuredGrid(createGrid%structured_grid)
-    createGrid%structured_grid%igeom = igeom_
+    grid%igrid = STRUCTURED
+    allocate(grid%structured_grid)
+    call StructuredGridInit(grid%structured_grid)
+    grid%structured_grid%igeom = igeom_
   else
-    createGrid%is_structured = .false.
-    allocate(createGrid%unstructured_grid)
-    call initUnstructuredGrid(createGrid%unstructured_grid)
+    grid%igrid = UNSTRUCTURED
+    allocate(grid%unstructured_grid)
+    call UnstructuredGridInit(grid%unstructured_grid)
   endif
+  
+  GridCreate => grid
 
-end function createGrid
+end function GridCreate
 
 ! ************************************************************************** !
 !
@@ -128,16 +131,32 @@ subroutine initGrid(grid)
   nullify(grid%structured_grid)
   nullify(grid%unstructured_grid)
 
+  nullify(grid%internal_connection_list)
+  nullify(grid%boundary_connection_list)
+
+  nullify(grid%nL2G)
+  nullify(grid%nG2L)
+  nullify(grid%nL2A)
+  nullify(grid%nG2N)
+  nullify(grid%nG2A)
+
+
+  nullify(grid%ibconn)
+  nullify(grid%x)
+  nullify(grid%y)
+  nullify(grid%z)
+  nullify(grid%delz)
+
 end subroutine initGrid
 
 ! ************************************************************************** !
 !
-! createDMs: creates distributed, parallel meshes/grids
+! GridCreateDMs: creates distributed, parallel meshes/grids
 ! author: Glenn Hammond
 ! date: 10/22/07
 !
 ! ************************************************************************** !
-subroutine createDMs(grid,option)
+subroutine GridCreateDMs(grid,option)
       
   use Option_module    
       
@@ -146,29 +165,30 @@ subroutine createDMs(grid,option)
   type(grid_type) :: grid
   type(option_type) :: option
   
-  if (grid%is_structured) then
-    call createStructuredDMs(grid%structured_grid,option)
-    grid%nlmax = grid%structured_grid%nlmax
-    grid%ngmax = grid%structured_grid%ngmax
-  else 
-    call createUnstructuredDMs(grid%unstructured_grid,option)
-  endif
+  select case(grid%igrid)
+    case(STRUCTURED)
+      call StructuredGridCreateDMs(grid%structured_grid,option)
+      grid%nlmax = grid%structured_grid%nlmax
+      grid%ngmax = grid%structured_grid%ngmax
+    case(UNSTRUCTURED)
+      call UnstructuredGridCreateDMs(grid%unstructured_grid,option)
+  end select
 
   ! allocate coordinate arrays  
   allocate(grid%x(grid%ngmax))
   allocate(grid%y(grid%ngmax))
   allocate(grid%z(grid%ngmax))
 
-end subroutine createDMs
+end subroutine GridCreateDMs
 
 ! ************************************************************************** !
 !
-! createPetscVector: Creates a global PETSc vector
+! GridCreateVector: Creates a global PETSc vector
 ! author: Glenn Hammond
 ! date: 10/24/07
 !
 ! ************************************************************************** !
-subroutine createPetscVector(grid,dm_index,vector,vector_type)
+subroutine GridCreateVector(grid,dm_index,vector,vector_type)
 
   implicit none
   
@@ -177,21 +197,22 @@ subroutine createPetscVector(grid,dm_index,vector,vector_type)
   Vec :: vector
   integer :: vector_type
   
-  if (grid%is_structured) then
-    call createPetscVectorFromDA(grid%structured_grid,dm_index,vector, &
-                                 vector_type)
-  else
-  endif
+  select case(grid%igrid)
+    case(STRUCTURED)
+      call StructuredGridCreateVecFromDA(grid%structured_grid,dm_index,vector, &
+                                   vector_type)
+    case(UNSTRUCTURED)
+  end select
   
-end subroutine createPetscVector
+end subroutine GridCreateVector
 ! ************************************************************************** !
 !
-! computeInternalConnectivity: computes internal connectivity of a grid
+! GridComputeInternalConnect: computes internal connectivity of a grid
 ! author: Glenn Hammond
 ! date: 10/17/07
 !
 ! ************************************************************************** !
-subroutine computeInternalConnectivity(grid,option)
+subroutine GridComputeInternalConnect(grid,option)
 
   use Connection_module
   use Option_module    
@@ -203,139 +224,111 @@ subroutine computeInternalConnectivity(grid,option)
   
   type(connection_type), pointer :: connection
   
-  if (grid%is_structured) then
-    connection => &
-      computeStructInternalConnect(grid%structured_grid,option)
-  else 
-    connection => &
-      computeUnstructInternalConnect(grid%unstructured_grid,option)
-  endif
+  select case(grid%igrid)
+    case(STRUCTURED)
+      connection => &
+        StructGridComputeInternConnect(grid%structured_grid,option)
+    case(UNSTRUCTURED) 
+      connection => &
+        UnstGridComputeInternConnect(grid%unstructured_grid,option)
+  end select
   
   allocate(grid%internal_connection_list)
-  call initConnectionList(grid%internal_connection_list)
-  call addConnectionToList(connection,grid%internal_connection_list)
+  call ConnectionInitList(grid%internal_connection_list)
+  call ConnectionAddToList(connection,grid%internal_connection_list)
   
-end subroutine computeInternalConnectivity
+end subroutine GridComputeInternalConnect
 
 ! ************************************************************************** !
 !
-! computeBoundaryConnectivity: computes boundary connectivity of a grid
+! GridComputeBoundaryConnect: computes boundary connectivity of a grid
 ! author: Glenn Hammond
 ! date: 10/15/07
 !
 ! ************************************************************************** !
-subroutine computeBoundaryConnectivity(grid,option)
+subroutine GridComputeBoundaryConnect(grid,option,boundary_conditions)
 
   use Connection_module
-  use Option_module    
+  use Option_module
+  use Coupler_module
 
   implicit none
   
   type(grid_type) :: grid
   type(option_type) :: option
+  type(coupler_type), pointer :: boundary_conditions
   
   type(connection_type), pointer :: connection
   
-  if (grid%is_structured) then
-    connection => &
-      computeStructBoundaryConnect(grid%structured_grid,option,grid%ibconn, &
-                                   grid%nL2G)
-  else 
-    connection => &
-      computeUnstructBoundaryConnect(grid%unstructured_grid,option)
-  endif
+  select case(grid%igrid)
+    case(STRUCTURED)
+      connection => &
+      StructGridComputeBoundConnect(grid%structured_grid,option, &
+                                    grid%ibconn,grid%nL2G, &
+                                    boundary_conditions)
+    case(UNSTRUCTURED)
+      connection => &
+        UnstGridComputeBoundConnect(grid%unstructured_grid,option)
+  end select
 
   allocate(grid%boundary_connection_list)
-  call initConnectionList(grid%boundary_connection_list)  
-  call addConnectionToList(connection,grid%boundary_connection_list)
+  call ConnectionInitList(grid%boundary_connection_list)  
+  call ConnectionAddToList(connection,grid%boundary_connection_list)
 
-end subroutine computeBoundaryConnectivity
-
-! ************************************************************************** !
-!
-! computeBoundaryConnectivity2: computes boundary connectivity of a grid
-! author: Glenn Hammond
-! date: 10/15/07
-!
-! ************************************************************************** !
-subroutine computeBoundaryConnectivity2(grid,option,boundary_condition_list)
-
-  use Connection_module
-  use Option_module  
-  use Coupler_module  
-
-  implicit none
-  
-  type(grid_type) :: grid
-  type(option_type) :: option
-  type(coupler_list_type) :: boundary_condition_list
-  
-  type(connection_type), pointer :: connection
-  
-  if (grid%is_structured) then
-    connection => &
-      computeStructBoundaryConnect2(grid%structured_grid,option,grid%ibconn, &
-                                   grid%nL2G,boundary_condition_list)
-  else 
-    connection => &
-      computeUnstructBoundaryConnect(grid%unstructured_grid,option)
-  endif
-
-  allocate(grid%boundary_connection_list)
-  call initConnectionList(grid%boundary_connection_list)  
-  call addConnectionToList(connection,grid%boundary_connection_list)
-
-end subroutine computeBoundaryConnectivity2
+end subroutine GridComputeBoundaryConnect
 
 ! ************************************************************************** !
 !
-! mapGridIndices: maps global, local and natural indices of cells 
+! GridMapIndices: maps global, local and natural indices of cells 
 !                 to each other
 ! author: Glenn Hammond
 ! date: 10/24/07
 !
 ! ************************************************************************** !
-subroutine mapGridIndices(grid)
+subroutine GridMapIndices(grid)
 
   implicit none
   
   type(grid_type) :: grid
   
-  if (grid%is_structured) then
-    call mapStructuredGridIndices(grid%structured_grid,grid%nG2L,grid%nL2G, &
-                                  grid%nL2A,grid%nG2A,grid%nG2N)
-  else
-  endif
-
-end subroutine mapGridIndices
+  select case(grid%igrid)
+    case(STRUCTURED)
+      call StructuredGridMapIndices(grid%structured_grid,grid%nG2L,grid%nL2G, &
+                                    grid%nL2A,grid%nG2A,grid%nG2N)
+    case(UNSTRUCTURED)
+  end select
+  
+end subroutine GridMapIndices
 
 ! ************************************************************************** !
 !
-! computeGridSpacing: Computes grid spacing (only for structured grid
+! GridComputeSpacing: Computes grid spacing (only for structured grid
 ! author: Glenn Hammond
 ! date: 10/26/07
 !
 ! ************************************************************************** !
-subroutine computeGridSpacing(grid)
+subroutine GridComputeSpacing(grid)
 
   implicit none
   
   type(grid_type) :: grid
   
-  if (grid%is_structured) then
-    call computeStructuredGridSpacing(grid%structured_grid,grid%nL2A)
-  endif
+  select case(grid%igrid)
+    case(STRUCTURED)
+      call StructuredGridComputeSpacing(grid%structured_grid,grid%nL2A)
+    case(UNSTRUCTURED)
+  end select
   
-end subroutine computeGridSpacing
+end subroutine GridComputeSpacing
 
 ! ************************************************************************** !
 !
-! computeGridCoordinates: Computes x,y,z coordinates of grid cells
+! GridComputeCoordinates: Computes x,y,z coordinates of grid cells
 ! author: Glenn Hammond
 ! date: 10/24/07
 !
 ! ************************************************************************** !
-subroutine computeGridCoordinates(grid,option)
+subroutine GridComputeCoordinates(grid,option)
 
   use Option_module
   
@@ -344,22 +337,23 @@ subroutine computeGridCoordinates(grid,option)
   type(grid_type) :: grid
   type(option_type) :: option
   
-  if (grid%is_structured) then
-    call computeStructuredGridCoordinates(grid%structured_grid,option, &
-                                          grid%x,grid%y,grid%z)
-  else
-  endif
+  select case(grid%igrid)
+    case(STRUCTURED)
+      call StructuredGridComputeCoord(grid%structured_grid,option, &
+                                            grid%x,grid%y,grid%z)
+    case(UNSTRUCTURED)
+  end select
 
-end subroutine computeGridCoordinates
+end subroutine GridComputeCoordinates
 
 ! ************************************************************************** !
 !
-! computeGridCellVolumes: Computes the volumes of cells in structured grid
+! GRidComputeVolumes: Computes the volumes of cells in structured grid
 ! author: Glenn Hammond
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine computeGridCellVolumes(grid,option)
+subroutine GRidComputeVolumes(grid,option)
 
   use Option_module
   
@@ -368,22 +362,23 @@ subroutine computeGridCellVolumes(grid,option)
   type(grid_type) :: grid
   type(option_type) :: option
   
-  if (grid%is_structured) then
-    call computeStructuredCellVolumes(grid%structured_grid,option, &
-                                      grid%nL2G)
-  else
-  endif
+  select case(grid%igrid)
+    case(STRUCTURED)
+      call StructuredGridComputelVolumes(grid%structured_grid,option, &
+                                        grid%nL2G)
+    case(UNSTRUCTURED)
+  end select
 
-end subroutine computeGridCellVolumes
+end subroutine GRidComputeVolumes
 
 ! ************************************************************************** !
 !
-! createJacobian: Creates Jacobian matrix associated with grid
+! GridCreateJacobian: Creates Jacobian matrix associated with grid
 ! author: Glenn Hammond
 ! date: 10/24/07
 !
 ! ************************************************************************** !
-subroutine createJacobian(grid,option)
+subroutine GridCreateJacobian(grid,option)
 
   use Option_module
   
@@ -392,21 +387,22 @@ subroutine createJacobian(grid,option)
   type(grid_type) :: grid
   type(option_type) :: option
   
-  if (grid%is_structured) then
-    call createStructuredGridJacobian(grid%structured_grid,option)
-  else
-  endif
+  select case(grid%igrid)
+    case(STRUCTURED)
+      call StructuredGridCreateJacobian(grid%structured_grid,option)
+    case(UNSTRUCTURED)
+  end select
 
-end subroutine createJacobian
+end subroutine GridCreateJacobian
 
 ! ************************************************************************** !
 !
-! createColoring: Creates ISColoring for grid
+! GridCreateColoring: Creates ISColoring for grid
 ! author: Glenn Hammond
 ! date: 10/24/07
 !
 ! ************************************************************************** !
-subroutine createColoring(grid,option,coloring)
+subroutine GridCreateColoring(grid,option,coloring)
 
   use Option_module
   
@@ -419,21 +415,22 @@ subroutine createColoring(grid,option,coloring)
   type(option_type) :: option
   ISColoring :: coloring
   
-  if (grid%is_structured) then
-    call createStructuredGridColoring(grid%structured_grid,option,coloring)
-  else
-  endif
+  select case(grid%igrid)
+    case(STRUCTURED)
+      call StructuredGridCreateColoring(grid%structured_grid,option,coloring)
+    case(UNSTRUCTURED)
+  end select
   
-end subroutine createColoring
+end subroutine GridCreateColoring
 
 ! ************************************************************************** !
 !
-! DMGlobalToLocal: Performs global to local communication with DM
+! GridGlobalToLocal: Performs global to local communication with DM
 ! author: Glenn Hammond
 ! date: 10/24/07
 !
 ! ************************************************************************** !
-subroutine DMGlobalToLocal(grid,global_vec,local_vec,dm_index)
+subroutine GridGlobalToLocal(grid,global_vec,local_vec,dm_index)
 
   implicit none
   
@@ -442,22 +439,23 @@ subroutine DMGlobalToLocal(grid,global_vec,local_vec,dm_index)
   Vec :: local_vec
   integer :: dm_index
   
-  if (grid%is_structured) then
-    call DMStructGlobalToLocal(grid%structured_grid,global_vec,local_vec, &
-                               dm_index)
-  else
-  endif
+  select case(grid%igrid)
+    case(STRUCTURED)
+      call StructureGridGlobalToLocal(grid%structured_grid,global_vec,local_vec, &
+                                 dm_index)
+    case(UNSTRUCTURED)
+  end select
   
-end subroutine DMGlobalToLocal
+end subroutine GridGlobalToLocal
   
 ! ************************************************************************** !
 !
-! DMGlobalToNatural: Performs global to natural communication with DM
+! GridlobalToNatural: Performs global to natural communication with DM
 ! author: Glenn Hammond
 ! date: 10/24/07
 !
 ! ************************************************************************** !
-subroutine DMGlobalToNatural(grid,global_vec,natural_vec,dm_index)
+subroutine GridlobalToNatural(grid,global_vec,natural_vec,dm_index)
 
   implicit none
   
@@ -466,22 +464,23 @@ subroutine DMGlobalToNatural(grid,global_vec,natural_vec,dm_index)
   Vec :: natural_vec
   integer :: dm_index
   
-  if (grid%is_structured) then
-    call DMStructGlobalToNatural(grid%structured_grid,global_vec,natural_vec, &
-                               dm_index)
-  else
-  endif
+  select case(grid%igrid)
+    case(STRUCTURED)
+      call StructureGridGlobalToNatural(grid%structured_grid,global_vec, &
+                                   natural_vec,dm_index)
+    case(UNSTRUCTURED)
+  end select
   
-end subroutine DMGlobalToNatural
+end subroutine GridlobalToNatural
 
 ! ************************************************************************** !
 !
-! localizeRegions: Resticts regions to cells local to processor
+! GridLocalizeRegions: Resticts regions to cells local to processor
 ! author: Glenn Hammond
 ! date: 10/29/07
 !
 ! ************************************************************************** !
-subroutine localizeRegions(region_list,grid,option)
+subroutine GridLocalizeRegions(region_list,grid,option)
 
   use Option_module
   use Region_module
@@ -537,7 +536,7 @@ subroutine localizeRegions(region_list,grid,option)
     else
       allocate(temp_int_array(region%num_cells))
       temp_int_array = 0
-      if (grid%is_structured) then
+      if (grid%igrid == STRUCTURED) then
         do count=1,region%num_cells
           i = mod(region%cell_ids(count),grid%structured_grid%nx) - &
                 grid%structured_grid%nxs
@@ -557,7 +556,7 @@ subroutine localizeRegions(region_list,grid,option)
         enddo
       else
         do count=1,region%num_cells
-          local_ghosted_id = GetLocalGhostedIdFromHash(grid%unstructured_grid, &
+          local_ghosted_id = UnstructGridGetGhostedIdFromHash(grid%unstructured_grid, &
                                                        region%cell_ids(count))
           if (local_ghosted_id > -1) then
             local_id = grid%nG2L(local_ghosted_id)
@@ -581,16 +580,16 @@ subroutine localizeRegions(region_list,grid,option)
     
   enddo
 
-end subroutine localizeRegions
+end subroutine GridLocalizeRegions
 
 ! ************************************************************************** !
 !
-! destroyGrid: Deallocates a grid
+! GridDestroy: Deallocates a grid
 ! author: Glenn Hammond
 ! date: 11/01/07
 !
 ! ************************************************************************** !
-subroutine destroyGrid(grid)
+subroutine GridDestroy(grid)
 
   implicit none
   
@@ -604,8 +603,10 @@ subroutine destroyGrid(grid)
   nullify(grid%nG2L)
   if (associated(grid%nL2A)) deallocate(grid%nL2A)
   nullify(grid%nL2A)
-  if (associated(grid%nG2N)) deallocate(grid%nG2N)
-  nullify(grid%nG2N)
+  ! Since nG2N is actually a pointer to a Petsc IS, cannot deallocate
+  ! unless we change it.
+!  if (associated(grid%nG2N)) deallocate(grid%nG2N)
+!  nullify(grid%nG2N)
   if (associated(grid%nG2A)) deallocate(grid%nG2A)
   nullify(grid%nG2A)
 
@@ -621,12 +622,12 @@ subroutine destroyGrid(grid)
   if (associated(grid%delz)) deallocate(grid%delz)
   nullify(grid%delz)
   
-  call destroyUnstructuredGrid(grid%unstructured_grid)    
-  call destroyStructuredGrid(grid%structured_grid)
+  call UnstructuredGridDestroy(grid%unstructured_grid)    
+  call StructuredGridDestroy(grid%structured_grid)
                                            
-  call destroyConnectionList(grid%internal_connection_list)
-  call destroyConnectionList(grid%boundary_connection_list)
+  call ConnectionDestroyList(grid%internal_connection_list)
+  call ConnectionDestroyList(grid%boundary_connection_list)
 
-end subroutine destroyGrid
+end subroutine GridDestroy
   
 end module Grid_module

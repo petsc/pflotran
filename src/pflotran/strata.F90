@@ -33,23 +33,23 @@ module Strata_module
   
   integer, save :: num_strata = 0
   
-  public :: createStrata, destroyStrata, initStrataList, &
-            addStrataToList, readStrata, destroyStrataList
+  public :: StrataCreate, StrataDestroy, StrataInitList, &
+            StrataAddToList, StrataRead, StrataDestroyList
   
 contains
 
 ! ************************************************************************** !
 !
-! createStrata: Creates a strata
+! StrataCreate: Creates a strata
 ! author: Glenn Hammond
 ! date: 10/23/07
 !
 ! ************************************************************************** !
-function createStrata()
+function StrataCreate()
 
   implicit none
 
-  type(strata_type), pointer :: createStrata
+  type(strata_type), pointer :: StrataCreate
   
   type(strata_type), pointer :: strata
   
@@ -65,18 +65,18 @@ function createStrata()
   num_strata = num_strata + 1
   strata%id = num_strata
   
-  createStrata => strata
+  StrataCreate => strata
 
-end function createStrata
+end function StrataCreate
 
 ! ************************************************************************** !
 !
-! initStrataList: Initializes a strata list
+! StrataInitList: Initializes a strata list
 ! author: Glenn Hammond
 ! date: 11/01/07
 !
 ! ************************************************************************** !
-subroutine initStrataList(list)
+subroutine StrataInitList(list)
 
   implicit none
 
@@ -87,16 +87,16 @@ subroutine initStrataList(list)
   nullify(list%array)
   list%num_strata = 0
 
-end subroutine initStrataList
+end subroutine StrataInitList
 
 ! ************************************************************************** !
 !
-! readStrata: Reads a strata from the input file
+! StrataRead: Reads a strata from the input file
 ! author: Glenn Hammond
 ! date: 11/01/07
 !
 ! ************************************************************************** !
-subroutine readStrata(strata,fid)
+subroutine StrataRead(strata,fid)
 
   use Fileio_module
   
@@ -130,16 +130,16 @@ subroutine readStrata(strata,fid)
   
   enddo  
 
-end subroutine readStrata
+end subroutine StrataRead
 
 ! ************************************************************************** !
 !
-! addStrataToList: Adds a new strata to a strata list
+! StrataAddToList: Adds a new strata to a strata list
 ! author: Glenn Hammond
 ! date: 11/01/07
 !
 ! ************************************************************************** !
-subroutine addStrataToList(new_strata,list)
+subroutine StrataAddToList(new_strata,list)
 
   implicit none
   
@@ -152,16 +152,16 @@ subroutine addStrataToList(new_strata,list)
   if (associated(list%last)) list%last%next => new_strata
   list%last => new_strata
   
-end subroutine addStrataToList
+end subroutine StrataAddToList
 
 ! ************************************************************************** !
 !
-! destroyStrataList: Deallocates a list of stratas
+! StrataDestroyList: Deallocates a list of stratas
 ! author: Glenn Hammond
 ! date: 11/01/07
 !
 ! ************************************************************************** !
-subroutine destroyStrataList(strata_list)
+subroutine StrataDestroyList(strata_list)
 
   implicit none
   
@@ -175,7 +175,7 @@ subroutine destroyStrataList(strata_list)
     if (.not.associated(strata)) exit
     prev_strata => strata
     strata => strata%next
-    call destroyStrata(prev_strata)
+    call StrataDestroy(prev_strata)
   enddo
   
   strata_list%num_strata = 0
@@ -187,16 +187,16 @@ subroutine destroyStrataList(strata_list)
   deallocate(strata_list)
   nullify(strata_list)
 
-end subroutine destroyStrataList
+end subroutine StrataDestroyList
 
 ! ************************************************************************** !
 !
-! destroyStrata: Destroys a strata
+! StrataDestroy: Destroys a strata
 ! author: Glenn Hammond
 ! date: 10/23/07
 !
 ! ************************************************************************** !
-subroutine destroyStrata(strata)
+subroutine StrataDestroy(strata)
 
   implicit none
   
@@ -204,12 +204,12 @@ subroutine destroyStrata(strata)
   
   if (.not.associated(strata)) return
   
-  call destroyRegion(strata%region)
+  call RegionDestroy(strata%region)
   nullify(strata%region)
   
   deallocate(strata)
   nullify(strata)
 
-end subroutine destroyStrata
+end subroutine StrataDestroy
 
 end module Strata_module
