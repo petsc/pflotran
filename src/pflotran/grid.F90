@@ -40,7 +40,7 @@ module Grid_module
     !                     matsetvaluesblocked ( not matsetvaluesblockedlocal)  
     !nL2A :   collective, local => natural index, used for initialization   
     !                              and source/sink setup  
-    integer, pointer :: nL2G(:), nG2L(:), nL2A(:),nG2N(:)
+    integer, pointer :: nL2G(:), nG2L(:), nL2A(:), nG2N(:)
     integer, pointer :: nG2A(:)
 #endif
     
@@ -73,8 +73,7 @@ module Grid_module
             GridCreateDMs, &
             GridComputeSpacing, &
             GridComputeCoordinates, &
-            GRidComputeVolumes, &
-            GridComputeBoundaryConnect2, &
+            GridComputeVolumes, &
             GridLocalizeRegions
   
 contains
@@ -131,6 +130,22 @@ subroutine initGrid(grid)
   grid%igeom = 0
   nullify(grid%structured_grid)
   nullify(grid%unstructured_grid)
+
+  nullify(grid%internal_connection_list)
+  nullify(grid%boundary_connection_list)
+
+  nullify(grid%nL2G)
+  nullify(grid%nG2L)
+  nullify(grid%nL2A)
+  nullify(grid%nG2N)
+  nullify(grid%nG2A)
+
+
+  nullify(grid%ibconn)
+  nullify(grid%x)
+  nullify(grid%y)
+  nullify(grid%z)
+  nullify(grid%delz)
 
 end subroutine initGrid
 
@@ -231,15 +246,17 @@ end subroutine GridComputeInternalConnect
 ! date: 10/15/07
 !
 ! ************************************************************************** !
-subroutine GridComputeBoundaryConnect(grid,option)
+subroutine GridComputeBoundaryConnect(grid,option,boundary_conditions)
 
   use Connection_module
-  use Option_module    
+  use Option_module
+  use Coupler_module
 
   implicit none
   
   type(grid_type) :: grid
   type(option_type) :: option
+  type(coupler_type), pointer :: boundary_conditions
   
   type(connection_type), pointer :: connection
   
@@ -247,7 +264,8 @@ subroutine GridComputeBoundaryConnect(grid,option)
     case(STRUCTURED)
       connection => &
       StructGridComputeBoundConnect(grid%structured_grid,option, &
-                                   grid%ibconn,grid%nL2G)
+                                    grid%ibconn,grid%nL2G, &
+                                    boundary_conditions)
     case(UNSTRUCTURED)
       connection => &
         UnstGridComputeBoundConnect(grid%unstructured_grid,option)
@@ -258,44 +276,6 @@ subroutine GridComputeBoundaryConnect(grid,option)
   call ConnectionAddToList(connection,grid%boundary_connection_list)
 
 end subroutine GridComputeBoundaryConnect
-
-! ************************************************************************** !
-!
-! GridComputeBoundaryConnect2: computes boundary connectivity of a grid
-! author: Glenn Hammond
-! date: 10/15/07
-!
-! ************************************************************************** !
-subroutine GridComputeBoundaryConnect2(grid,option,boundary_condition_list)
-
-  use Connection_module
-  use Option_module  
-  use Coupler_module  
-
-  implicit none
-  
-  type(grid_type) :: grid
-  type(option_type) :: option
-  type(coupler_list_type) :: boundary_condition_list
-  
-  type(connection_type), pointer :: connection
-  
-  select case(grid%igrid)
-    case(STRUCTURED)
-      connection => &
-        StructGridComputeBoundConnect2(grid%structured_grid,option, &
-                                      grid%ibconn, &
-                                      grid%nL2G,boundary_condition_list)
-    case(UNSTRUCTURED)
-      connection => &
-        UnstGridComputeBoundConnect(grid%unstructured_grid,option)
-  end select
-
-  allocate(grid%boundary_connection_list)
-  call ConnectionInitList(grid%boundary_connection_list)  
-  call ConnectionAddToList(connection,grid%boundary_connection_list)
-
-end subroutine GridComputeBoundaryConnect2
 
 ! ************************************************************************** !
 !
@@ -623,8 +603,10 @@ subroutine GridDestroy(grid)
   nullify(grid%nG2L)
   if (associated(grid%nL2A)) deallocate(grid%nL2A)
   nullify(grid%nL2A)
-  if (associated(grid%nG2N)) deallocate(grid%nG2N)
-  nullify(grid%nG2N)
+  ! Since nG2N is actually a pointer to a Petsc IS, cannot deallocate
+  ! unless we change it.
+!  if (associated(grid%nG2N)) deallocate(grid%nG2N)
+!  nullify(grid%nG2N)
   if (associated(grid%nG2A)) deallocate(grid%nG2A)
   nullify(grid%nG2A)
 

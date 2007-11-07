@@ -12,9 +12,9 @@ module Condition_module
  
   type, public :: condition_type
     integer :: id                                 ! id from which condition can be referenced
-    integer :: itype                              ! integer describing type of condition
+    integer, pointer :: itype(:)                  ! integer describing type of condition
     character(len=MAXWORDLENGTH) :: class         ! character string describing class of condition
-    character(len=MAXWORDLENGTH) :: ctype         ! character string describing type of condition
+    character(len=MAXWORDLENGTH), pointer :: ctype(:) ! character string describing type of condition
     character(len=MAXWORDLENGTH) :: name          ! name of condition (e.g. initial, recharge)
     character(len=MAXWORDLENGTH), pointer :: units(:)      ! units
       ! units(1) = time
@@ -77,9 +77,9 @@ function ConditionCreate(option)
   condition%id = 0
   condition%iphase = 0
   condition%num_values = 0
-  condition%itype = 0
+  nullify(condition%itype)
   condition%class = ""
-  condition%ctype = ""
+  nullify(condition%ctype)
   condition%name = ""
   condition%datum = 0.d0
   condition%gradient = 0.d0
@@ -125,9 +125,10 @@ subroutine ConditionRead(condition,option,fid)
   character(len=MAXWORDLENGTH) :: word
   real*8, pointer :: pressure(:), flux(:), temperature(:), &
                      concentration(:), times(:)
-  character(len=MAXWORDLENGTH), pointer :: units(:)
-  integer :: time_dof, length_dof, pres_dof, temp_dof, conc_dof
-  integer :: max_size, ierr
+  character(len=MAXWORDLENGTH), pointer :: units(:), ctype(:)
+  integer, pointer :: itype(:)
+  integer :: time_dof, length_dof, pres_dof, temp_dof, conc_dof, iphase
+  integer :: max_size, idof, ierr
 
   nullify(times)
   nullify(pressure)
@@ -138,6 +139,11 @@ subroutine ConditionRead(condition,option,fid)
   select case(option%imode)
     case(RICHARDS_MODE)
       allocate(units(option%ndof+2))
+      allocate(itype(option%ndof))
+      allocate(ctype(option%ndof))
+      itype = 0                
+      ctype = ""
+      iphase = 0
       pres_dof = 1
       temp_dof = 2
       conc_dof = 3
@@ -154,7 +160,10 @@ subroutine ConditionRead(condition,option,fid)
   do
   
     call fiReadFlotranString(IUNIT1,string,ierr)
-    if (ierr /= 0) exit
+    call fiReadStringErrorMsg('CONDITION',ierr)
+          
+    if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
+        fiStringCompare(string,'END',3)) exit  
 
     call fiReadWord(string,word,.true.,ierr)
     call fiErrorMsg('keyword','CONDITION', ierr)   
@@ -183,18 +192,40 @@ subroutine ConditionRead(condition,option,fid)
         call fiErrorMsg('CLASS','CONDITION', ierr)   
         call fiCharsToLower(word,len_trim(word))
         condition%class = word
-        if (fiStringCompare(word,'flow',4)) then
-          condition%ctype = 'dirichlet'
-        else
-          condition%ctype = 'dirichlet'
-        endif
-        call fiReadWord(string,word,.true.,ierr)
-        if (ierr /= 0) then
-          call fiDefaultMsg('condition type',ierr)  
-        else
+      case('TYPE')
+        do
+          call fiReadFlotranString(IUNIT1,string,ierr)
+          call fiReadStringErrorMsg('CONDITION',ierr)
+          
+          if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
+              fiStringCompare(string,'END',3)) exit          
+          
+          if (ierr /= 0) exit
+          call fiReadWord(string,word,.true.,ierr)
+          call fiErrorMsg('keyword','CONDITION,TYPE', ierr)   
+          select case(trim(word))
+            case('PRES','PRESS','PRESSURE')
+              idof = pres_dof
+            case('TEMP','TEMPERATURE')
+              idof = temp_dof
+            case('CONC','CONCENTRATION')
+              idof = conc_dof
+            case default
+              call printErrMsg(option,'dof not recognized in condition,type')
+          end select
+          call fiReadWord(string,word,.true.,ierr)
+          call fiErrorMsg('TYPE','CONDITION', ierr)   
           call fiCharsToLower(word,len_trim(word))
-          condition%ctype = word
-        endif
+          ctype(idof) = word
+          select case(word)
+            case('dirichlet')
+              itype(idof) = DIRICHLET_BC
+            case('neumann')
+              itype(idof) = NEUMANN_BC
+            case default
+              call printErrMsg(option,'bc type not recognized in condition,type')
+          end select
+        enddo
       case('TIME','TIMES')
         if (.not.associated(times)) then
           allocate(times(1))
@@ -202,7 +233,7 @@ subroutine ConditionRead(condition,option,fid)
         call fiReadDouble(string,times(1),ierr)
         call fiErrorMsg('TIME','CONDITION', ierr)   
       case('IPHASE')
-        call fiReadInt(string,condition%iphase,ierr)
+        call fiReadInt(string,iphase,ierr)
         call fiErrorMsg('IPHASE','CONDITION', ierr)   
       case('DATUM','DATM')
         call fiReadDouble(string,condition%datum(X_DIRECTION),ierr)
@@ -226,8 +257,6 @@ subroutine ConditionRead(condition,option,fid)
         call ConditionReadValues(option,word,string,times,flux,units(pres_dof))
       case('CONC','CONCENTRATION')
         call ConditionReadValues(option,word,string,times,concentration,units(conc_dof))
-      case('END')
-        exit
     end select 
   
   enddo  
@@ -236,12 +265,16 @@ subroutine ConditionRead(condition,option,fid)
   if (len_trim(condition%class) < 1) then
     call printErrMsg(option,'"class" not set in condition')
   endif
-  if (len_trim(condition%ctype) < 1) then
-    call printErrMsg(option,'"type" not set in condition')
-  endif
-  ! check whenther
-  if (condition%iphase == 0) then
-    call printWrnMsg(option,'"iphase" not set in condition')
+  do idof=1,option%ndof
+    if (len_trim(ctype(idof)) < 1) then
+      call printWrnMsg(option,'"type" not set in condition; set to dirichlet')
+      ctype(idof) = 'dirichlet'
+      itype(idof) = DIRICHLET_BC
+    endif
+  enddo
+  ! check whether
+  if (iphase == 0) then
+    call printWrnMsg(option,'"iphase" not set in condition; set to 1')
     condition%iphase = 1
   endif
   
@@ -252,11 +285,20 @@ subroutine ConditionRead(condition,option,fid)
   else
     max_size = 1
   endif
+
+  ! initialize time indices
+  condition%cur_time_index = 1
+  condition%max_time_index = max_size
+  
   allocate(condition%times(max_size),condition%values(option%ndof,max_size))
   allocate(condition%cur_value(option%ndof))
+  allocate(condition%ctype(option%ndof))
+  allocate(condition%itype(option%ndof))
   condition%times = -999.d0
   condition%values = -999.d0
   condition%cur_value = -999.d0
+  condition%ctype = ""
+  condition%itype = DIRICHLET_BC
   
   if (associated(times)) then
     condition%times(1:max_size) = times(1:max_size)
@@ -292,6 +334,9 @@ subroutine ConditionRead(condition,option,fid)
     stop  
   endif
   
+  condition%itype(1:option%ndof) = itype(1:option%ndof)
+  condition%ctype(1:option%ndof) = ctype(1:option%ndof)
+  
   if (associated(concentration)) then
     if (size(concentration) < max_size) then
       condition%values(conc_dof,1:max_size) = concentration(1)
@@ -309,6 +354,24 @@ subroutine ConditionRead(condition,option,fid)
   endif
   
   condition%cur_value(1:option%ndof) = condition%values(1:option%ndof,1)
+
+  if (associated(times)) deallocate(times)
+  nullify(times)
+  if (associated(pressure)) deallocate(pressure)
+  nullify(pressure)
+  if (associated(temperature)) deallocate(temperature)
+  nullify(temperature)
+  if (associated(flux)) deallocate(flux)
+  nullify(flux)
+  if (associated(concentration)) deallocate(concentration)
+  nullify(concentration)
+  
+  if (associated(units)) deallocate(units)
+  nullify(units)
+  if (associated(itype)) deallocate(itype)
+  nullify(itype)
+  if (associated(ctype)) deallocate(ctype)
+  nullify(ctype)
 
 end subroutine ConditionRead
 
@@ -787,6 +850,10 @@ subroutine ConditionDestroy(condition)
   nullify(condition%cur_value)
   if (associated(condition%units)) deallocate(condition%units)
   nullify(condition%units)
+  if (associated(condition%itype)) deallocate(condition%itype)
+  nullify(condition%itype)
+  if (associated(condition%ctype)) deallocate(condition%ctype)
+  nullify(condition%ctype)
   nullify(condition%next)  
   
   deallocate(condition)

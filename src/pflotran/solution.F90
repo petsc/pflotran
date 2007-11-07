@@ -31,7 +31,10 @@ private
 
   end type solution_type
 
-  public :: SolutionCreate, SolutionDestroy, SolutionProcessCouplers
+  public :: SolutionCreate, SolutionDestroy, &
+            SolutionProcessCouplers, &
+            SolutionUpdateBoundaryConditions, &
+            SolutionSetIBNDTYPE
   
 contains
   
@@ -188,14 +191,147 @@ subroutine SolutionProcessCouplers(solution)
       call printErrMsg(solution%option,string)
     endif
     strata => strata%next
-  enddo  
-  
-    
-  call GridLocalizeRegions(solution%regions,solution%grid,solution%option)
-  call GridComputeBoundaryConnect2(solution%grid,solution%option, &
-                                    solution%boundary_conditions)
+  enddo 
     
 end subroutine SolutionProcessCouplers
+
+! ************************************************************************** !
+!
+! SolutionUpdateBoundaryConditions: Updates boundary conditions within model
+! author: Glenn Hammond
+! date: 11/06/07
+!
+! ************************************************************************** !
+subroutine SolutionUpdateBoundaryConditions(solution)
+
+  implicit none
+  
+  type(solution_type) :: solution
+  
+  integer :: icell, idof, count, num_connections
+  
+  type(option_type), pointer :: option
+  type(grid_type), pointer :: grid
+  type(coupler_type), pointer :: boundary_condition
+    
+  option => solution%option
+  grid => solution%grid
+    
+  num_connections = grid%boundary_connection_list%first%num_connections
+  select case(option%imode)
+
+    case(MPH_MODE,FLASH_MODE,RICHARDS_MODE,OWG_MODE,VADOSE_MODE)
+  
+      allocate(option%xxbc(option%ndof,num_connections))
+      allocate(option%iphasebc(num_connections))
+      allocate(option%velocitybc(option%nphase,num_connections))
+      option%xxbc = 0.d0
+      option%iphasebc = 0
+      option%velocitybc = 0.d0
+        
+      count = 0
+      boundary_condition => solution%boundary_conditions%first
+      do
+        if (.not.associated(boundary_condition)) exit
+        do icell=1,boundary_condition%region%num_cells
+          count = count + 1
+          option%iphasebc(count) = boundary_condition%flow_condition%iphase
+          do idof=1,option%ndof
+            select case(boundary_condition%flow_condition%itype(idof))
+              case(DIRICHLET_BC)
+                option%xxbc(idof,count) = &
+                  boundary_condition%flow_condition%cur_value(idof)
+              case(NEUMANN_BC)
+                option%velocitybc(1:option%nphase,count) = &
+                  boundary_condition%flow_condition%cur_value(idof)
+            end select
+          enddo
+        enddo
+        boundary_condition => boundary_condition%next
+      enddo
+      
+    case default
+    
+      allocate(option%pressurebc(option%nphase,num_connections))
+      allocate(option%tempbc(num_connections))
+      allocate(option%sgbc(num_connections))
+      allocate(option%concbc(num_connections))
+      allocate(option%velocitybc(option%nphase,num_connections))
+      allocate(option%iphasebc(num_connections))
+      option%pressurebc = 0.d0
+      option%tempbc = 0.d0
+      option%concbc = 0.d0
+      option%sgbc = 0.d0
+      option%velocitybc = 0.d0
+      option%iphasebc = 0
+
+      count = 0
+      boundary_condition => solution%boundary_conditions%first
+      do
+        if (.not.associated(boundary_condition)) exit
+        do icell=1,boundary_condition%region%num_cells
+          count = count + 1
+          option%iphasebc(count) = boundary_condition%flow_condition%iphase
+          if (boundary_condition%flow_condition%itype(1) == DIRICHLET_BC) then
+            option%pressurebc(:,count) = boundary_condition%flow_condition%cur_value(1)
+          else
+            option%velocitybc(:,count) = boundary_condition%flow_condition%cur_value(1)
+          endif
+          option%tempbc(icell) = boundary_condition%flow_condition%cur_value(2)
+          option%concbc(icell) = boundary_condition%flow_condition%cur_value(3)
+          option%sgbc(icell) = 1.d0-boundary_condition%flow_condition%cur_value(4) ! read in as sl
+        enddo
+        boundary_condition => boundary_condition%next
+      enddo
+
+  end select 
+
+end subroutine SolutionUpdateBoundaryConditions
+
+! ************************************************************************** !
+!
+! SolutionSetIBNDTYPE: Sets values in ibndtyp array
+! ibndtyp needs to be done away with!!!!
+! author: Glenn Hammond
+! date: 11/06/07
+!
+! ************************************************************************** !
+subroutine SolutionSetIBNDTYPE(solution)
+
+  implicit none
+  
+  type(solution_type) :: solution
+  
+  integer :: count, num_conditions
+  
+  type(option_type), pointer :: option
+  type(grid_type), pointer :: grid
+  type(coupler_type), pointer :: boundary_condition
+    
+  option => solution%option
+  grid => solution%grid
+
+  num_conditions = 0
+  boundary_condition => solution%boundary_conditions%first
+  do
+    if (.not.associated(boundary_condition)) exit
+    num_conditions = num_conditions + 1
+    boundary_condition => boundary_condition%next
+  enddo
+    
+  allocate(option%ibndtyp(num_conditions))
+  option%ibndtyp = 0
+    
+  count = 0
+  boundary_condition => solution%boundary_conditions%first
+  do
+    if (.not.associated(boundary_condition)) exit
+    count = count + 1
+    option%ibndtyp(count) = boundary_condition%flow_condition%itype(1)  ! hardwired to dof=1 (pressure)
+    boundary_condition => boundary_condition%next
+  enddo
+
+end subroutine SolutionSetIBNDTYPE
 
 ! ************************************************************************** !
 !

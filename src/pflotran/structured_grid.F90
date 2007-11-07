@@ -76,7 +76,7 @@ module Structured_Grid_module
             StructuredGridDestroy, &
             StructuredGridCreateDMs, &
             StructGridComputeInternConnect, &
-            StructGridComputeBoundConnect, &
+!            StructGridComputeBoundConnectOld, &
             StructuredGridCreateVecFromDA, &
             StructuredGridMapIndices, &
             StructuredGridComputeSpacing, &
@@ -87,7 +87,7 @@ module Structured_Grid_module
             StructureGridGlobalToNatural, &
             StructuredGridReadDXYZ, &
             StructuredGridComputelVolumes, &
-            StructGridComputeBoundConnect2
+            StructGridComputeBoundConnect
 
 contains
 
@@ -739,14 +739,14 @@ end function StructGridComputeInternConnect
 ! date: 10/15/07
 !
 ! ************************************************************************** !
-function StructGridComputeBoundConnect(structured_grid,option,ibconn,nL2G)
+function StructGridComputeBoundConnectOld(structured_grid,option,ibconn,nL2G)
 
   use Connection_module
   use Option_module
   
   implicit none
 
-  type(connection_type), pointer :: StructGridComputeBoundConnect  
+  type(connection_type), pointer :: StructGridComputeBoundConnectOld  
   type(option_type) :: option
   type(structured_grid_type) :: structured_grid
   integer, pointer :: ibconn(:)
@@ -907,9 +907,9 @@ function StructGridComputeBoundConnect(structured_grid,option,ibconn,nL2G)
   call VecRestoreArrayF90(structured_grid%dy_loc, dy_loc_p, ierr)
   call VecRestoreArrayF90(structured_grid%dz_loc, dz_loc_p, ierr)
   
-  StructGridComputeBoundConnect => connections
+  StructGridComputeBoundConnectOld => connections
   
-end function StructGridComputeBoundConnect
+end function StructGridComputeBoundConnectOld
 
 ! ************************************************************************** !
 !
@@ -919,8 +919,8 @@ end function StructGridComputeBoundConnect
 ! date: 11/01/07
 !
 ! ************************************************************************** !
-function StructGridComputeBoundConnect2(structured_grid,option,ibconn,nL2G, &
-                                       boundary_condition_list)
+function StructGridComputeBoundConnect(structured_grid,option,ibconn,nL2G, &
+                                       boundary_conditions)
 
   use Connection_module
   use Option_module
@@ -929,12 +929,12 @@ function StructGridComputeBoundConnect2(structured_grid,option,ibconn,nL2G, &
   
   implicit none
 
-  type(connection_type), pointer :: StructGridComputeBoundConnect2  
+  type(connection_type), pointer :: StructGridComputeBoundConnect  
   type(option_type) :: option
   type(structured_grid_type) :: structured_grid
   integer, pointer :: ibconn(:)
   integer :: nL2G(:)
-  type(coupler_list_type) :: boundary_condition_list
+  type(coupler_type), pointer :: boundary_conditions
   
   integer :: num_conn_hypothetically
   integer :: iconn, iconn2
@@ -948,7 +948,7 @@ function StructGridComputeBoundConnect2(structured_grid,option,ibconn,nL2G, &
   
   num_conn_hypothetically = 0
 
-  boundary_condition => boundary_condition_list%first
+  boundary_condition => boundary_conditions
   do
     if (.not.associated(boundary_condition)) exit  
     num_conn_hypothetically = num_conn_hypothetically + boundary_condition%region%num_cells
@@ -968,7 +968,7 @@ function StructGridComputeBoundConnect2(structured_grid,option,ibconn,nL2G, &
 
   iconn = 0
 
-  boundary_condition => boundary_condition_list%first
+  boundary_condition => boundary_conditions
   do
     if (.not.associated(boundary_condition)) exit  
     
@@ -1039,9 +1039,9 @@ function StructGridComputeBoundConnect2(structured_grid,option,ibconn,nL2G, &
   call VecRestoreArrayF90(structured_grid%dy_loc, dy_loc_p, ierr)
   call VecRestoreArrayF90(structured_grid%dz_loc, dz_loc_p, ierr)
   
-  StructGridComputeBoundConnect2 => connections
+  StructGridComputeBoundConnect => connections
   
-end function StructGridComputeBoundConnect2
+end function StructGridComputeBoundConnect
 
 ! ************************************************************************** !
 !

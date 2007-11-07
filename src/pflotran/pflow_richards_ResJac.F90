@@ -439,7 +439,7 @@ subroutine RichardsRes_FLCont(nconn_no,area,var_node1,por1,tor1,sir1,dd1,perm1, 
 ! Flow term
     if ((sat1(np) > sir1(np)) .or. (sat2(np) > sir2(np))) then
 #ifndef OVERHAUL_V2    
-      upweight=dd1/(dd1+dd2)
+      upweight=dd2/(dd1+dd2)
 #endif      
       if (sat1(np) <eps) then 
         upweight=0.d0
@@ -849,7 +849,7 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
 ! real*8 :: cw,cw1,cw2, xxlw,xxla,xxgw,xxga
 ! real*8 :: upweight
 ! real*8 :: ukvr,uhh,uconc
-  real*8 :: tmp
+  real*8 :: tmp, upweight
 ! real*8 :: dddt,dddp,fg,dfgdp,dfgdt,dhdt,dhdp,dvdt,dvdp, visc
   real*8 :: rho
   real*8 :: Res(solution%option%ndof), vv_darcy(solution%option%nphase)
@@ -1263,15 +1263,16 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
     distance_gravity = cur_connection_object%dist(3,iconn)*distance
     dd1 = distance*fraction_upwind
     dd2 = distance-dd1 ! should avoid truncation error
-    
+    upweight = dd2/(dd1+dd2)
+        
     ! for now, just assume diagonal tensor
-    perm1 = perm_xx_loc_p(m1)*cur_connection_object%dist(1,iconn)+ &
-            perm_yy_loc_p(m1)*cur_connection_object%dist(2,iconn)+ &
-            perm_zz_loc_p(m1)*cur_connection_object%dist(3,iconn)
+    perm1 = perm_xx_loc_p(m1)*abs(cur_connection_object%dist(1,iconn))+ &
+            perm_yy_loc_p(m1)*abs(cur_connection_object%dist(2,iconn))+ &
+            perm_zz_loc_p(m1)*abs(cur_connection_object%dist(3,iconn))
 
-    perm2 = perm_xx_loc_p(m2)*cur_connection_object%dist(1,iconn)+ &
-            perm_yy_loc_p(m2)*cur_connection_object%dist(2,iconn)+ &
-            perm_zz_loc_p(m2)*cur_connection_object%dist(3,iconn)
+    perm2 = perm_xx_loc_p(m2)*abs(cur_connection_object%dist(1,iconn))+ &
+            perm_yy_loc_p(m2)*abs(cur_connection_object%dist(2,iconn))+ &
+            perm_zz_loc_p(m2)*abs(cur_connection_object%dist(3,iconn))
 #endif
 
     i1 = ithrm_loc_p(m1)
@@ -1300,7 +1301,7 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
                             size_var_node+size_var_use), &
                           porosity_loc_p(m2),tor_loc_p(m2), &
                           option%sir(1:option%nphase,iicap2),dd2,perm2,D2, &
-                          distance_gravity,fraction_upwind,option, &
+                          distance_gravity,upweight,option, &
                           vv_darcy,Res)
 #else
     call RichardsRes_FLCont(iconn,cur_connection_object%area(iconn), &
@@ -1424,11 +1425,11 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
 
 #else
     ! for now, just assume diagonal tensor
-    perm1 = perm_xx_loc_p(ng)*cur_connection_object%dist(1,iconn)+ &
-            perm_yy_loc_p(ng)*cur_connection_object%dist(2,iconn)+ &
-            perm_zz_loc_p(ng)*cur_connection_object%dist(3,iconn)
+    perm1 = perm_xx_loc_p(ng)*abs(cur_connection_object%dist(1,iconn))+ &
+            perm_yy_loc_p(ng)*abs(cur_connection_object%dist(2,iconn))+ &
+            perm_zz_loc_p(ng)*abs(cur_connection_object%dist(3,iconn))
     ! The below assumes a unit gravity vector of [0,0,1]
-    distance_gravity = cur_connection_object%dist(3,iconn) * &
+    distance_gravity = abs(cur_connection_object%dist(3,iconn)) * &
                        cur_connection_object%dist(0,iconn)
 #endif
 
@@ -1685,7 +1686,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
 ! real*8 :: xxlw,xxla,xxgw,xxga,cw,cw1,cw2,cwu, sat_ave
   real*8 :: ra(1:solution%option%ndof,1:2*solution%option%ndof)  
 ! real*8 :: uhh, uconc, ukvr
-  real*8 :: tmp
+  real*8 :: tmp, upweight
 ! real*8 :: upweight,m1weight,m2weight,mbweight,mnweight
   real*8 :: delxbc(1:solution%option%ndof)
   real*8 :: blkmat11(1:solution%option%ndof,1:solution%option%ndof), &
@@ -1961,11 +1962,11 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
 !GEH - Structured Grid Dependence - End
 #else
     ! for now, just assume diagonal tensor
-    perm1 = perm_xx_loc_p(ng)*cur_connection_object%dist(1,iconn)+ &
-            perm_yy_loc_p(ng)*cur_connection_object%dist(2,iconn)+ &
-            perm_zz_loc_p(ng)*cur_connection_object%dist(3,iconn)
+    perm1 = perm_xx_loc_p(ng)*abs(cur_connection_object%dist(1,iconn))+ &
+            perm_yy_loc_p(ng)*abs(cur_connection_object%dist(2,iconn))+ &
+            perm_zz_loc_p(ng)*abs(cur_connection_object%dist(3,iconn))
     ! The below assumes a unit gravity vector of [0,0,1]
-    distance_gravity = cur_connection_object%dist(3,iconn) * &
+    distance_gravity = abs(cur_connection_object%dist(3,iconn)) * &
                        cur_connection_object%dist(0,iconn)
 #endif
     delxbc=0.D0
@@ -2237,15 +2238,16 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
     distance_gravity = cur_connection_object%dist(3,iconn)*distance
     dd1 = distance*fraction_upwind
     dd2 = distance-dd1 ! should avoid truncation error
+    upweight = dd2/(dd1+dd2)
     
     ! for now, just assume diagonal tensor
-    perm1 = perm_xx_loc_p(m1)*cur_connection_object%dist(1,iconn)+ &
-            perm_yy_loc_p(m1)*cur_connection_object%dist(2,iconn)+ &
-            perm_zz_loc_p(m1)*cur_connection_object%dist(3,iconn)
+    perm1 = perm_xx_loc_p(m1)*abs(cur_connection_object%dist(1,iconn))+ &
+            perm_yy_loc_p(m1)*abs(cur_connection_object%dist(2,iconn))+ &
+            perm_zz_loc_p(m1)*abs(cur_connection_object%dist(3,iconn))
 
-    perm2 = perm_xx_loc_p(m2)*cur_connection_object%dist(1,iconn)+ &
-            perm_yy_loc_p(m2)*cur_connection_object%dist(2,iconn)+ &
-            perm_zz_loc_p(m2)*cur_connection_object%dist(3,iconn)
+    perm2 = perm_xx_loc_p(m2)*abs(cur_connection_object%dist(1,iconn))+ &
+            perm_yy_loc_p(m2)*abs(cur_connection_object%dist(2,iconn))+ &
+            perm_zz_loc_p(m2)*abs(cur_connection_object%dist(3,iconn))
 #endif
     
     iiphas1 = iphase_loc_p(m1)
@@ -2279,7 +2281,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
                               size_var_node+size_var_use),&
                             porosity_loc_p(m2),tor_loc_p(m2), &
                             option%sir(1:option%nphase,iicap2),dd2,perm2,D2, &
-                            distance_gravity,fraction_upwind, &
+                            distance_gravity,upweight, &
                             option,vv_darcy,Res)
 #else
       call RichardsRes_FLCont(nc,cur_connection_object%area(iconn), &
@@ -2321,7 +2323,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
                               size_var_use+size_var_use),&
                             porosity_loc_p(m2),tor_loc_p(m2), &
                             option%sir(1:option%nphase,iicap2),dd2,perm2,D2, &
-                            distance_gravity,fraction_upwind, &
+                            distance_gravity,upweight, &
                             option, &
                             vv_darcy,Res)
 #else

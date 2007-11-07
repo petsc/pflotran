@@ -179,7 +179,9 @@
 #endif  
            
   do steps = option%flowsteps+1, option%stepmax
-
+    if (steps >= 140) then
+      print *, steps
+    endif
 !    call pflowGrid_step(solution,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
     call StepperStepDT(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
 
