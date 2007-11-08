@@ -74,13 +74,17 @@ module Option_module
     ! pflowGrid_new() and pflowGrid_setup().
     PetscTruth :: run_coupled
 
-    real*8 :: t  ! The time elapsed in the simulation.
+    real*8 :: time  ! The time elapsed in the simulation.
     real*8 :: dt ! The size of the time step.
+#if 0
+! moved to timestepper
     real*8 :: dt_min  ! Maximum size of the time step.
     real*8 :: dt_max  ! Maximum size of the time step.
     real*8 :: tconv ! Input time conversion factor
     character*2 :: tunit ! Input time units
-    real*8, pointer :: tplot(:), tstep(:), dtstep(:)
+    real*8, pointer :: tstep(:), dtstep(:)
+#endif    
+    real*8, pointer :: tplot(:)
     real*8, pointer :: tfac(:)
       ! An array of multiplicative factors that specify how to increase time step.
     integer :: kplot      ! Printout steps.
@@ -89,12 +93,16 @@ module Option_module
     integer :: itecplot = 0 ! tecplot print format (1-interchange x and z)
     integer :: iblkfmt = 0 ! blocked format
     integer :: isync = 0  ! Synchronize pflow and ptran time steps (1)
+#if 0
+! moved to timestepper
     integer :: ndtcmx = 5 ! Steps needed after cutting to increase time step
     integer :: newtcum    ! Total number of Newton steps taken.
     integer :: icutcum    ! Total number of cuts in the timestep taken.
     integer :: newton_max ! Max number of Newton steps for one time step.
     integer :: icut_max   ! Max number of dt cuts for one time step.
-    integer :: iaccel,iphch
+    integer :: iaccel
+#endif    
+    integer :: iphch
     integer :: iread_init = 0 ! flag for reading initial conditions.
       ! Basically our target number of newton iterations per time step.
     real*8 :: dpmxe,dtmpmxe,dsmxe,dcmxe !maximum allowed changes in field vars.
@@ -329,6 +337,9 @@ module Option_module
   end type 
   
   type, public :: output_option_type
+
+    character(len=2) :: tunit
+    real*8 :: tconv
   
     logical :: print_hdf5
     logical :: print_hdf5_velocities
@@ -383,9 +394,12 @@ function OptionCreate()
 !-----------------------------------------------------------------------
       ! Initialize some counter variables.
 !-----------------------------------------------------------------------
+#if 0
+!moved to timestepper
   option%t = 0.d0
   option%newtcum = 0
   option%icutcum = 0
+#endif
 
 !-----------------------------------------------------------------------
       ! Initialize some parameters to sensible values.  These are parameters

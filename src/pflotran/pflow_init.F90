@@ -1707,7 +1707,7 @@ subroutine readInput(simulation,filename)
         call fiReadInt(string,option%iblkfmt,ierr)
         call fiDefaultMsg('iblkfmt',ierr)
 
-        call fiReadInt(string,option%ndtcmx,ierr)
+        call fiReadInt(string,stepper%ndtcmx,ierr)
         call fiDefaultMsg('ndtcmx',ierr)
 
         call fiReadInt(string,option%iran_por,ierr)
@@ -1735,7 +1735,7 @@ subroutine readInput(simulation,filename)
             & "  iread_perm = ",3x,i2,/, &
             & "  iread_geom = ",3x,i2 &
             & )') option%write_init,option%imod,option%itecplot, &
-            option%iblkfmt,option%ndtcmx,option%iran_por,option%ran_fac, &
+            option%iblkfmt,stepper%ndtcmx,option%iran_por,option%ran_fac, &
             option%iread_perm,option%iread_geom
 
 !....................
@@ -1747,13 +1747,13 @@ subroutine readInput(simulation,filename)
         call fiReadInt(string,stepper%stepmax,ierr)
         call fiDefaultMsg('stepmax',ierr)
   
-        call fiReadInt(string,option%iaccel,ierr)
+        call fiReadInt(string,stepper%iaccel,ierr)
         call fiDefaultMsg('iaccel',ierr)
 
-        call fiReadInt(string,option%newton_max,ierr)
+        call fiReadInt(string,stepper%newton_max,ierr)
         call fiDefaultMsg('newton_max',ierr)
 
-        call fiReadInt(string,option%icut_max,ierr)
+        call fiReadInt(string,stepper%icut_max,ierr)
         call fiDefaultMsg('icut_max',ierr)
 
         call fiReadDouble(string,option%dpmxe,ierr)
@@ -1780,7 +1780,7 @@ subroutine readInput(simulation,filename)
 ! For commented-out lines to work with the Sun f95 compiler, we have to 
 ! terminate the string in the line above; otherwise, the compiler tries to
 ! include the commented-out line as part of the continued string.
-          stepper%stepmax,option%iaccel,option%newton_max,option%icut_max, &
+          stepper%stepmax,stepper%iaccel,stepper%newton_max,stepper%icut_max, &
           option%dpmxe,option%dtmpmxe,option%dcmxe, option%dsmxe
 
 !....................
@@ -2504,26 +2504,26 @@ subroutine readInput(simulation,filename)
       
         call fiReadWord(string,word,.false.,ierr)
       
-        option%tunit = trim(word)
+        solution%output_option%tunit = trim(word)
 
-        if (option%tunit == 's') then
-          option%tconv = 1.d0
-        else if (option%tunit == 'm') then
-          option%tconv = 60.d0
-        else if (option%tunit == 'h') then
-          option%tconv = 60.d0 * 60.d0
-        else if (option%tunit == 'd') then
-          option%tconv = 60.d0 * 60.d0 * 24.d0
-        else if (option%tunit == 'mo') then
-          option%tconv = 60.d0 * 60.d0 * 24.d0 * 30.d0
-        else if (option%tunit == 'y') then
-          option%tconv = 60.d0 * 60.d0 * 24.d0 * 365.d0
+        if (solution%output_option%tunit == 's') then
+          solution%output_option%tconv = 1.d0
+        else if (solution%output_option%tunit == 'm') then
+          solution%output_option%tconv = 60.d0
+        else if (solution%output_option%tunit == 'h') then
+          solution%output_option%tconv = 60.d0 * 60.d0
+        else if (solution%output_option%tunit == 'd') then
+          solution%output_option%tconv = 60.d0 * 60.d0 * 24.d0
+        else if (solution%output_option%tunit == 'mo') then
+          solution%output_option%tconv = 60.d0 * 60.d0 * 24.d0 * 30.d0
+        else if (solution%output_option%tunit == 'y') then
+          solution%output_option%tconv = 60.d0 * 60.d0 * 24.d0 * 365.d0
         else
           if (option%myrank == 0) then
             write(*,'(" Time unit: ",a3,/, &
               &" Error: time units must be one of ",/, &
               &"   s -seconds",/,"   m -minutes",/,"   h -hours",/, &
-              &"   d -days", /, "  mo -months",/,"   y -years")') option%tunit
+              &"   d -days", /, "  mo -months",/,"   y -years")') solution%output_option%tunit
           endif
           stop
         endif
@@ -2559,7 +2559,7 @@ subroutine readInput(simulation,filename)
 !       call fiDefaultMsg('dt_max',ierr)
 
         if (option%myrank==0) then
-          write(IUNIT2,'(/," *TIME ",a3,1x,i4,/,(1p10e12.4))') option%tunit, &
+          write(IUNIT2,'(/," *TIME ",a3,1x,i4,/,(1p10e12.4))') solution%output_option%tunit, &
           option%kplot,(option%tplot(i),i=1,option%kplot)
 !         write(IUNIT2,'("  dt= ",1pe12.4,", dtmax= ",1pe12.4,/)') &
 !         option%dt,option%dt_max
@@ -2567,7 +2567,7 @@ subroutine readInput(simulation,filename)
       
         ! convert time units to seconds
         do i = 1, option%kplot
-          option%tplot(i) = option%tconv * option%tplot(i)
+          option%tplot(i) = solution%output_option%tconv * option%tplot(i)
         enddo
 !       option%dt = option%tconv * option%dt
 !       option%dt_max = option%tconv * option%dt_max
@@ -2581,42 +2581,42 @@ subroutine readInput(simulation,filename)
         call fiReadInt(string,stepper%nstpmax,ierr)
         call fiDefaultMsg('nstpmax',ierr)
   
-        allocate(option%tstep(stepper%nstpmax))
-        allocate(option%dtstep(stepper%nstpmax))
+        allocate(stepper%tstep(stepper%nstpmax))
+        allocate(stepper%dtstep(stepper%nstpmax))
   
         do i = 1, stepper%nstpmax
-          call fiReadDouble(string,option%tstep(i),ierr)
+          call fiReadDouble(string,stepper%tstep(i),ierr)
           call fiDefaultMsg('tstep',ierr)
         enddo
 
         call fiReadFlotranString(IUNIT1,string,ierr)
         call fiReadStringErrorMsg('DTST',ierr)
-        call fiReadDouble(string,option%dt_min,ierr)
+        call fiReadDouble(string,stepper%dt_min,ierr)
         call fiDefaultMsg('dt_min',ierr)
         do i = 1, stepper%nstpmax
-          call fiReadDouble(string,option%dtstep(i),ierr)
+          call fiReadDouble(string,stepper%dtstep(i),ierr)
           call fiDefaultMsg('dtstep',ierr)
         enddo
         
-        option%dt_max = option%dtstep(1)
+        stepper%dt_max = stepper%dtstep(1)
         
-        option%dt = option%dt_min
+        option%dt = stepper%dt_min
       
         if (option%myrank==0) then
           write(IUNIT2,'(/," *DTST ",i4,/," tstep= ",(1p10e12.4))')  &
-            stepper%nstpmax, (option%tstep(i),i=1,stepper%nstpmax)
+            stepper%nstpmax, (stepper%tstep(i),i=1,stepper%nstpmax)
           write(IUNIT2,'(" dtstep= ",1p10e12.4,/)') &
-            option%dt_min,(option%dtstep(i),i=1,stepper%nstpmax)
+            stepper%dt_min,(stepper%dtstep(i),i=1,stepper%nstpmax)
         endif
       
         ! convert time units to seconds
         do i = 1, stepper%nstpmax
-          option%tstep(i) = option%tconv * option%tstep(i)
-          option%dtstep(i) = option%tconv * option%dtstep(i)
+          stepper%tstep(i) = solution%output_option%tconv * stepper%tstep(i)
+          stepper%dtstep(i) = solution%output_option%tconv * stepper%dtstep(i)
         enddo
-        option%dt = option%tconv * option%dt
-        option%dt_min = option%tconv * option%dt_min
-        option%dt_max = option%tconv * option%dt_max
+        option%dt = solution%output_option%tconv * option%dt
+        stepper%dt_min = solution%output_option%tconv * stepper%dt_min
+        stepper%dt_max = solution%output_option%tconv * stepper%dt_max
 
 !....................
 

@@ -52,23 +52,22 @@ contains
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine Output(solution,time,step)
+subroutine Output(solution,step)
 
   use Solution_module
   
   implicit none
   
   type(solution_type) :: solution
-  real*8 :: time
   integer :: step
 
   
   if (solution%output_option%print_hdf5) then
-    call OutputHDF5(solution,time,step)
+    call OutputHDF5(solution,step)
   endif
  
   if (solution%output_option%print_tecplot) then
-    call OutputTecplot(solution,time,step)
+    call OutputTecplot(solution,step)
   endif
   
   solution%output_option%plot_number = solution%output_option%plot_number + 1
@@ -82,7 +81,7 @@ end subroutine Output
 ! date: 10/25/07
 !
 ! ************************************************************************** !  
-subroutine OutputTecplot(solution,time,step)
+subroutine OutputTecplot(solution,step)
 
   use Solution_module
   use Grid_module
@@ -94,7 +93,6 @@ subroutine OutputTecplot(solution,time,step)
 #include "definitions.h"
 
   type(solution_type) :: solution
-  real*8 :: time
   integer :: step
   
   integer :: i
@@ -126,7 +124,7 @@ subroutine OutputTecplot(solution,time,step)
     ! write header
     ! write title
     write(IUNIT3,'(''TITLE = "'',1es12.4," [",a1,'']"'')') &
-                 time, option%tunit
+                 option%time/solution%output_option%tconv,solution%output_option%tunit
     ! write variables
     select case(option%imode)
       case (TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
@@ -170,7 +168,7 @@ subroutine OutputTecplot(solution,time,step)
     ! write zone header
     write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
                  &'', K='',i4,'','')') &
-                 option%t/option%tconv,grid%structured_grid%nx,grid%structured_grid%ny,grid%structured_grid%nz 
+                 option%time/solution%output_option%tconv,grid%structured_grid%nx,grid%structured_grid%ny,grid%structured_grid%nz 
     string = trim(string) // ' DATAPACKING=BLOCK'
     write(IUNIT3,'(a)') trim(string)
 
@@ -286,21 +284,27 @@ subroutine OutputTecplot(solution,time,step)
   close(IUNIT3)
   
   if (solution%output_option%print_tecplot_velocities) then
-    call OutputVelocitiesTecplot(solution,time,step)
+    call OutputVelocitiesTecplot(solution,step)
   endif
   
   if (solution%output_option%print_tecplot_flux_velocities) then
     if (grid%structured_grid%nx > 1) then
-      call OutputFluxVelocitiesTecplot(solution,time,step,LIQUID_PHASE,X_DIRECTION)
-      call OutputFluxVelocitiesTecplot(solution,time,step,GAS_PHASE,X_DIRECTION)
+      call OutputFluxVelocitiesTecplot(solution,step,LIQUID_PHASE, &
+                                       X_DIRECTION)
+      call OutputFluxVelocitiesTecplot(solution,step,GAS_PHASE, &
+                                       X_DIRECTION)
     endif
     if (grid%structured_grid%ny > 1) then
-      call OutputFluxVelocitiesTecplot(solution,time,step,LIQUID_PHASE,Y_DIRECTION)
-      call OutputFluxVelocitiesTecplot(solution,time,step,GAS_PHASE,Y_DIRECTION)
+      call OutputFluxVelocitiesTecplot(solution,step,LIQUID_PHASE, &
+                                       Y_DIRECTION)
+      call OutputFluxVelocitiesTecplot(solution,step,GAS_PHASE, &
+                                       Y_DIRECTION)
     endif
     if (grid%structured_grid%nz > 1) then
-      call OutputFluxVelocitiesTecplot(solution,time,step,LIQUID_PHASE,Z_DIRECTION)
-      call OutputFluxVelocitiesTecplot(solution,time,step,GAS_PHASE,Z_DIRECTION)
+      call OutputFluxVelocitiesTecplot(solution,step,LIQUID_PHASE, &
+                                       Z_DIRECTION)
+      call OutputFluxVelocitiesTecplot(solution,step,GAS_PHASE, &
+                                       Z_DIRECTION)
     endif
   endif
       
@@ -313,7 +317,7 @@ end subroutine OutputTecplot
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine OutputVelocitiesTecplot(solution,time,step)
+subroutine OutputVelocitiesTecplot(solution,step)
  
   use Solution_module
   use Grid_module
@@ -324,7 +328,6 @@ subroutine OutputVelocitiesTecplot(solution,time,step)
 #include "definitions.h"
 
   type(solution_type) :: solution
-  real*8 :: time
   integer :: step
   
   type(grid_type), pointer :: grid
@@ -357,7 +360,7 @@ subroutine OutputVelocitiesTecplot(solution,time,step)
     ! write header
     ! write title
     write(IUNIT3,'(''TITLE = "'',1es12.4," [",a1,'']"'')') &
-                 time, option%tunit
+                 option%time/solution%output_option%tconv,solution%output_option%tunit
     ! write variables
     string = 'VARIABLES=' // &
              '"X-Coordinates",' // &
@@ -374,7 +377,8 @@ subroutine OutputVelocitiesTecplot(solution,time,step)
     ! write zone header
     write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
                  &'', K='',i4,'','')') &
-                 time,grid%structured_grid%nx,grid%structured_grid%ny,grid%structured_grid%nz 
+                 option%time/solution%output_option%tconv, &
+                 grid%structured_grid%nx,grid%structured_grid%ny,grid%structured_grid%nz 
     string = trim(string) // ' DATAPACKING=BLOCK'
     write(IUNIT3,'(a)') trim(string)
 
@@ -437,7 +441,8 @@ end subroutine OutputVelocitiesTecplot
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine OutputFluxVelocitiesTecplot(solution,time,step,iphase,direction)
+subroutine OutputFluxVelocitiesTecplot(solution,step,iphase, &
+                                       direction)
 !geh - specifically, the flow velocities at the interfaces between cells
  
   use Solution_module
@@ -449,7 +454,6 @@ subroutine OutputFluxVelocitiesTecplot(solution,time,step,iphase,direction)
 #include "definitions.h"
 
   type(solution_type) :: solution
-  real*8 :: time
   integer :: step
   integer :: iphase
   integer :: direction
@@ -514,7 +518,7 @@ subroutine OutputFluxVelocitiesTecplot(solution,time,step,iphase,direction)
     ! write header
     ! write title
     write(IUNIT3,'(''TITLE = "'',1es12.4," [",a1,'']"'')') &
-                 time, option%tunit
+                 option%time/solution%output_option%tconv,solution%output_option%tunit
     ! write variables
     string = 'VARIABLES=' // &
              '"X-Coordinates",' // &
@@ -543,15 +547,15 @@ subroutine OutputFluxVelocitiesTecplot(solution,time,step,iphase,direction)
       case(X_DIRECTION)
         write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
                      &'', K='',i4,'','')') &
-                     option%t/option%tconv,grid%structured_grid%nx-1,grid%structured_grid%ny,grid%structured_grid%nz 
+                     option%time/solution%output_option%tconv,grid%structured_grid%nx-1,grid%structured_grid%ny,grid%structured_grid%nz 
       case(Y_DIRECTION)
         write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
                      &'', K='',i4,'','')') &
-                     option%t/option%tconv,grid%structured_grid%nx,grid%structured_grid%ny-1,grid%structured_grid%nz 
+                     option%time/solution%output_option%tconv,grid%structured_grid%nx,grid%structured_grid%ny-1,grid%structured_grid%nz 
       case(Z_DIRECTION)
         write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
                      &'', K='',i4,'','')') &
-                     option%t/option%tconv,grid%structured_grid%nx,grid%structured_grid%ny,grid%structured_grid%nz-1
+                     option%time/solution%output_option%tconv,grid%structured_grid%nx,grid%structured_grid%ny,grid%structured_grid%nz-1
     end select 
   
   
@@ -695,7 +699,7 @@ subroutine OutputFluxVelocitiesTecplot(solution,time,step,iphase,direction)
   call VecRestoreArrayF90(option%vl,vec_ptr,ierr)
 !GEH - Structured Grid Dependence - End
   
-  array(1:local_size) = array(1:local_size)*option%tconv ! convert time units
+  array(1:local_size) = array(1:local_size)*solution%output_option%tconv ! convert time units
   
   adjusted_size = local_size
   call ConvertArrayToNatural(indices,array,adjusted_size,global_size)
@@ -906,7 +910,7 @@ end subroutine WriteTecplotDataSet
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine OutputHDF5(solution,time,step)
+subroutine OutputHDF5(solution,step)
 
   use Solution_module
   use Option_module
@@ -916,7 +920,6 @@ subroutine OutputHDF5(solution,time,step)
   implicit none
   
   type(solution_type) :: solution
-  real*8 :: time
   integer :: step
 
   if (solution%option%myrank == 0) then
@@ -934,7 +937,6 @@ subroutine OutputHDF5(solution,time,step)
   implicit none
 
   type(solution_type) :: solution
-  real*8 :: time
   integer :: step  
 
   integer(HID_T) :: file_id
@@ -1034,7 +1036,7 @@ subroutine OutputHDF5(solution,time,step)
 
   ! create a group for the data set
   write(string,'('' Time('',i4,''):'',es12.4,x,a1)') &
-        step,time,option%tunit
+        step,option%time/solution%output_option%tconv,solution%output_option%tunit
   call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
   
   ! write out data sets 
@@ -1304,7 +1306,7 @@ subroutine WriteHDF5FluxVelocities(name,solution,iphase,direction,file_id)
   call VecRestoreArrayF90(option%vl,vec_ptr,ierr)
   
   array(1:nx_local*ny_local*nz_local) = &  ! convert time units
-    array(1:nx_local*ny_local*nz_local) * option%tconv
+    array(1:nx_local*ny_local*nz_local) * solution%output_option%tconv
 
   call WriteHDF5DataSet(name,array,file_id,H5T_NATIVE_DOUBLE, &
                         nx_global,ny_global,nz_global, &
@@ -1886,7 +1888,7 @@ subroutine GetCellCenteredVelocities(solution,vec,iphase,direction)
   call VecGetArrayF90(vec,vec_ptr,ierr)
   do i=1,grid%nlmax
     if (num_additions(i) > 0) &
-      vec_ptr(i) = vec_ptr(i)/real(num_additions(i))*option%tconv
+      vec_ptr(i) = vec_ptr(i)/real(num_additions(i))*solution%output_option%tconv
   enddo
   call VecRestoreArrayF90(vec,vec_ptr,ierr)
 

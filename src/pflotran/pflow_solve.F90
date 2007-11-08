@@ -76,7 +76,7 @@
  end subroutine pflow_kspsolver_init
  
  
- subroutine pflow_solve(solution,newton,isucc,ierr)
+ subroutine pflow_solve(solution,newton,newton_max,isucc,ierr)
  
  use Solution_module
  use Option_module
@@ -100,6 +100,7 @@
  type(solution_type) :: solution
  KSPConvergedReason :: ksp_reason
  integer :: newton,isucc,ierr,ichange
+ integer :: newton_max
  integer :: its_line
 !integer icut
  MatStructure flag
@@ -194,7 +195,7 @@
     newton = newton + 1
     isucc= ksp_reason
 
-    if (newton > option%newton_max .or. ksp_reason < 0 ) then
+    if (newton > newton_max .or. ksp_reason < 0 ) then
       if (option%myrank==0) &
       print *,'pflowsolv: failed: ',its_line, newton,isucc,rnorm
       isucc=-1

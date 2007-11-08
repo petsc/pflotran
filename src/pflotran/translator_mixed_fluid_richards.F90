@@ -162,7 +162,9 @@ subroutine translator_Richards_massbal(solution)
 !   write(13,'(" Total CO2: t=",1pe13.6," liq:",1pe13.6,&
 ! &  " gas:",1pe13.6," tot:",1p2e13.6," [kmol]")')&
 ! & grid%t/grid%tconv,tot(2,1),tot(2,2),tot(2,0),tot(2,1)+tot(2,2)
-    write(13,'(1p9e12.4)') option%t/option%tconv,option%dt/option%tconv,tot(1:option%nspec,1) 
+    write(13,'(1p9e12.4)') option%time/solution%output_option%tconv,  &
+                           option%dt/solution%output_option%tconv, &
+                           tot(1:option%nspec,1) 
   endif    
   
 end subroutine translator_Richards_massbal
