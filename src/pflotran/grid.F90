@@ -504,19 +504,32 @@ subroutine GridLocalizeRegions(region_list,grid,option)
         region%i1 > 0 .and. region%i2 > 0 .and. &
         region%j1 > 0 .and. region%j2 > 0 .and. &
         region%k1 > 0 .and. region%k2 > 0) then
+
+      ! convert indexing from global (entire domain) to local processor
+      region%i1 = region%i1 - grid%structured_grid%nxs
+      region%i2 = region%i2 - grid%structured_grid%nxs
+      region%j1 = region%j1 - grid%structured_grid%nys
+      region%j2 = region%j2 - grid%structured_grid%nys
+      region%k1 = region%k1 - grid%structured_grid%nzs
+      region%k2 = region%k2 - grid%structured_grid%nzs
         
       ! clip region to within local processor domain
-      region%i1 = max(region%i1,grid%structured_grid%nxs+1)
-      region%i2 = min(region%i2,grid%structured_grid%nxe)
-      region%j1 = max(region%j1,grid%structured_grid%nys+1)
-      region%j2 = min(region%j2,grid%structured_grid%nye)
-      region%k1 = max(region%k1,grid%structured_grid%nzs+1)
-      region%k2 = min(region%k2,grid%structured_grid%nze)
-        
+      region%i1 = max(region%i1,1)
+
+      region%i2 = min(region%i2,grid%structured_grid%nlx)
+      region%j1 = max(region%j1,1)
+      region%j2 = min(region%j2,grid%structured_grid%nly)
+      region%k1 = max(region%k1,1)
+      region%k2 = min(region%k2,grid%structured_grid%nlz)
+       
       region%num_cells = (region%i2-region%i1+1)* &
                          (region%j2-region%j1+1)* &
                          (region%k2-region%k1+1)
-                         
+
+      ! if num_cells is negative, block is off processor
+      if (region%num_cells < 0) region%num_cells = 0
+     
+      ! don't worry, region%cell_ids is deallocated below if num_cells = 0
       allocate(region%cell_ids(region%num_cells))
       region%cell_ids = 0
         
@@ -531,9 +544,12 @@ subroutine GridLocalizeRegions(region_list,grid,option)
           enddo
         enddo
       enddo
+
       if (count /= region%num_cells) &
         call printErrMsg(option,"Mismatch in number of cells in block region")
+
     else
+
       allocate(temp_int_array(region%num_cells))
       temp_int_array = 0
       if (grid%igrid == STRUCTURED) then
@@ -556,8 +572,9 @@ subroutine GridLocalizeRegions(region_list,grid,option)
         enddo
       else
         do count=1,region%num_cells
-          local_ghosted_id = UnstructGridGetGhostIdFromHash(grid%unstructured_grid, &
-                                                       region%cell_ids(count))
+          local_ghosted_id = UnstructGridGetGhostIdFromHash( &
+                                                    grid%unstructured_grid, &
+                                                    region%cell_ids(count))
           if (local_ghosted_id > -1) then
             local_id = grid%nG2L(local_ghosted_id)
             if (local_id > -1) then
@@ -575,7 +592,8 @@ subroutine GridLocalizeRegions(region_list,grid,option)
       deallocate(temp_int_array)
     endif
     
-    if (region%num_cells == 0) deallocate(region%cell_ids)
+    if (region%num_cells == 0 .and. associated(region%cell_ids)) &
+      deallocate(region%cell_ids)
     region => region%next
     
   enddo
