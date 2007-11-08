@@ -60,6 +60,7 @@ pflow_obj = ${common_src}pflow_vector_ops.o \
 	${common_src}coupler.o \
 	${common_src}grid.o \
 	${common_src}solver.o \
+	${common_src}solution.o \
 	${common_src}Readfield.o \
 	${common_src}mixed_fluid_eos.o \
 	${common_src}translator_mixed_fluid_mph.o \
@@ -81,12 +82,11 @@ pflow_obj = ${common_src}pflow_vector_ops.o \
 	${common_src}pflow_richards_ResJac.o\
 	${common_src}pflow_solve.o \
 	${common_src}timestepper.o \
-	${common_src}solution.o \
 	${common_src}simulation.o \
 	${common_src}pflow_output2.o \
-	${common_src}pflow_init.o \
 	${common_src}pflow_checkpoint.o \
-	${common_src}pflow_convergence.o 
+	${common_src}pflow_convergence.o \
+	${common_src}pflow_init.o
 
 ptran_obj = ${common_src}ptran_psi.o \
 	${common_src}ptran_dbase.o \
@@ -169,7 +169,6 @@ timestepper.o : \
                 pflow_mphase_ResJac.o \
                 pflow_flash_ResJac.o \
                 pflow_solve.o \
-                pflow_init.o \
                 solution.o \
                 grid.o \
                 option.o \
