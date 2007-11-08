@@ -268,11 +268,15 @@ subroutine RegionReadFromInputFile(region,fid)
   logical :: continuation_flag
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
-  
+  character(len=1) :: backslash
+
   integer, pointer :: temp_int_array(:)
   integer :: max_size = 1000
   integer :: count, temp_int, ierr
 
+  backslash = achar(92)  ! 92 = "\" Some compilers choke on \" thinking it
+                          ! is a double quote as in c/c++
+  
   allocate(temp_int_array(max_size))
   temp_int_array = 0
   
@@ -283,7 +287,7 @@ subroutine RegionReadFromInputFile(region,fid)
     call fiReadFlotranString(IUNIT1,string,ierr)
     if (ierr /= 0) exit
     continuation_flag = .false.
-    if (index(string,"\") > 0) continuation_flag = .true.
+    if (index(string,backslash) > 0) continuation_flag = .true.
     ierr = 0
     do
       if (ierr /= 0) exit

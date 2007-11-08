@@ -32,7 +32,7 @@ module Timestepper_module
   end type stepper_type
   
   ! linked-list for waypoints in the simulation
-  type waypoint_type
+  type, public :: waypoint_type
     real*8 :: time
     logical :: print_output
     type(output_option_type), pointer :: output_option
@@ -40,7 +40,7 @@ module Timestepper_module
     logical :: update_srcs
     real*8 :: max_dt
     type(waypoint_type), pointer :: next
-  endtype waypoint_type
+  end type waypoint_type
   
   public :: TimestepperCreate, StepperUpdateDT, StepperStepDT, StepperUpdateSolution, &
             TimestepperDestroy, StepperRun

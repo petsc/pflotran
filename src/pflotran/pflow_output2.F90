@@ -747,6 +747,8 @@ end subroutine WriteTecplotDataSetFromVec
 subroutine WriteTecplotDataSet(fid,solution,array,datatype,size_flag)
 
   use Solution_module
+  use Grid_module
+  use Option_module
 
   implicit none
   
