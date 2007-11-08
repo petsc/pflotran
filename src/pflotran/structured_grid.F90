@@ -733,8 +733,8 @@ end function StructGridComputeInternConnect
 
 ! ************************************************************************** !
 !
-! StructGridComputeBoundConnect: computes boundary connectivity of a 
-!                               structured grid
+! StructGridComputeBoundConnectOld: computes boundary connectivity of a 
+!                                   structured grid
 ! author: Glenn Hammond
 ! date: 10/15/07
 !
@@ -951,7 +951,8 @@ function StructGridComputeBoundConnect(structured_grid,option,ibconn,nL2G, &
   boundary_condition => boundary_conditions
   do
     if (.not.associated(boundary_condition)) exit  
-    num_conn_hypothetically = num_conn_hypothetically + boundary_condition%region%num_cells
+    num_conn_hypothetically = num_conn_hypothetically + &
+                              boundary_condition%region%num_cells
     boundary_condition => boundary_condition%next
   enddo
   

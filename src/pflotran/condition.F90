@@ -782,7 +782,8 @@ function ConditionGetPtrFromList(condition_name,condition_list)
   
   do 
     if (.not.associated(condition)) exit
-    if (fiStringCompare(condition%name,condition_name, &
+    if (len_trim(condition_name) == len_trim(condition%name) .and. &
+        fiStringCompare(condition%name,condition_name, &
                         len_trim(condition_name))) then
       ConditionGetPtrFromList => condition
       return

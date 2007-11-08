@@ -530,7 +530,7 @@ subroutine PflowInit(simulation,filename)
 
 
   call readInput(simulation,filename)
-  
+
 
   if(option%imode == MPH_MODE .or. &
      option%imode == OWG_MODE .or. &
@@ -554,6 +554,7 @@ subroutine PflowInit(simulation,filename)
   call assignInitialConditions(solution)
   call SolutionUpdateBoundConditions(solution)
   call SolutionSetIBNDTYPE(solution)
+
 
   i = grid%internal_connection_list%first%num_connections
   allocate(option%vl_loc(i))
@@ -2163,11 +2164,11 @@ subroutine readInput(simulation,filename)
             case(MPH_MODE,OWG_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
               do np=1, option%nphase
                 call fiReadDouble(string,saturation_function%Sr(np),ierr)
-          call fiErrorMsg('Sr','PCKR', ierr)
+                call fiErrorMsg('Sr','PCKR', ierr)
               enddo 
             case default
               call fiReadDouble(string,saturation_function%Sr(1),ierr)
-          call fiErrorMsg('Sr','PCKR', ierr)
+              call fiErrorMsg('Sr','PCKR', ierr)
           end select
         
           call fiReadDouble(string,saturation_function%m,ierr)
