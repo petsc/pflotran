@@ -34,7 +34,7 @@ private
 
   public :: SolutionCreate, SolutionDestroy, &
             SolutionProcessCouplers, &
-            SolutionUpdateBoundaryConditions, &
+            SolutionUpdateBoundConditions, &
             SolutionSetIBNDTYPE
   
 contains
@@ -199,12 +199,12 @@ end subroutine SolutionProcessCouplers
 
 ! ************************************************************************** !
 !
-! SolutionUpdateBoundaryConditions: Updates boundary conditions within model
+! SolutionUpdateBoundConditions: Updates boundary conditions within model
 ! author: Glenn Hammond
 ! date: 11/06/07
 !
 ! ************************************************************************** !
-subroutine SolutionUpdateBoundaryConditions(solution)
+subroutine SolutionUpdateBoundConditions(solution)
 
   implicit none
   
@@ -288,7 +288,7 @@ subroutine SolutionUpdateBoundaryConditions(solution)
 
   end select 
 
-end subroutine SolutionUpdateBoundaryConditions
+end subroutine SolutionUpdateBoundConditions
 
 ! ************************************************************************** !
 !

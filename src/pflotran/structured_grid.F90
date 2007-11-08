@@ -76,7 +76,7 @@ module Structured_Grid_module
             StructuredGridDestroy, &
             StructuredGridCreateDMs, &
             StructGridComputeInternConnect, &
-!            StructGridComputeBoundConnectOld, &
+!            StructGridComputeBoundConnOld, &
             StructuredGridCreateVecFromDA, &
             StructuredGridMapIndices, &
             StructuredGridComputeSpacing, &
@@ -739,14 +739,14 @@ end function StructGridComputeInternConnect
 ! date: 10/15/07
 !
 ! ************************************************************************** !
-function StructGridComputeBoundConnectOld(structured_grid,option,ibconn,nL2G)
+function StructGridComputeBoundConnOld(structured_grid,option,ibconn,nL2G)
 
   use Connection_module
   use Option_module
   
   implicit none
 
-  type(connection_type), pointer :: StructGridComputeBoundConnectOld  
+  type(connection_type), pointer :: StructGridComputeBoundConnOld  
   type(option_type) :: option
   type(structured_grid_type) :: structured_grid
   integer, pointer :: ibconn(:)
@@ -907,9 +907,9 @@ function StructGridComputeBoundConnectOld(structured_grid,option,ibconn,nL2G)
   call VecRestoreArrayF90(structured_grid%dy_loc, dy_loc_p, ierr)
   call VecRestoreArrayF90(structured_grid%dz_loc, dz_loc_p, ierr)
   
-  StructGridComputeBoundConnectOld => connections
+  StructGridComputeBoundConnOld => connections
   
-end function StructGridComputeBoundConnectOld
+end function StructGridComputeBoundConnOld
 
 ! ************************************************************************** !
 !

@@ -556,7 +556,7 @@ subroutine GridLocalizeRegions(region_list,grid,option)
         enddo
       else
         do count=1,region%num_cells
-          local_ghosted_id = UnstructGridGetGhostedIdFromHash(grid%unstructured_grid, &
+          local_ghosted_id = UnstructGridGetGhostIdFromHash(grid%unstructured_grid, &
                                                        region%cell_ids(count))
           if (local_ghosted_id > -1) then
             local_id = grid%nG2L(local_ghosted_id)

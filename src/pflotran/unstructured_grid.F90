@@ -21,7 +21,7 @@ module Unstructured_Grid_module
             UnstructuredGridCreateDMs, &
             UnstGridComputeInternConnect, &
             UnstGridComputeBoundConnect, &
-            UnstructGridGetGhostedIdFromHash, &
+            UnstructGridGetGhostIdFromHash, &
             UnstructuredGridDestroy
 
 contains
@@ -177,7 +177,7 @@ end subroutine UnstGridCreateNatToGhostedHash
 ! date: 03/07/07
 !
 ! ************************************************************************** !
-integer function UnstructGridGetGhostedIdFromHash(unstructured_grid,natural_id)
+integer function UnstructGridGetGhostIdFromHash(unstructured_grid,natural_id)
 
   implicit none
   
@@ -186,16 +186,16 @@ integer function UnstructGridGetGhostedIdFromHash(unstructured_grid,natural_id)
   integer :: natural_id
   integer :: hash_id, id
 
-  UnstructGridGetGhostedIdFromHash = 0
+  UnstructGridGetGhostIdFromHash = 0
   hash_id = mod(natural_id,unstructured_grid%num_hash)+1 
   do id = 1, unstructured_grid%hash(1,0,hash_id)
     if (unstructured_grid%hash(1,id,hash_id) == natural_id) then
-      UnstructGridGetGhostedIdFromHash = unstructured_grid%hash(2,id,hash_id)
+      UnstructGridGetGhostIdFromHash = unstructured_grid%hash(2,id,hash_id)
       return
     endif
   enddo
 
-end function UnstructGridGetGhostedIdFromHash
+end function UnstructGridGetGhostIdFromHash
 
 ! ************************************************************************** !
 !

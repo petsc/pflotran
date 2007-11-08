@@ -550,9 +550,9 @@ subroutine PflowInit(simulation,filename)
 
   call GridComputeBoundaryConnect(grid,option, &
                                   solution%boundary_conditions%first)                                
-  call assignMaterialPropertiesToRegions(solution)
+  call assignMaterialPropToRegions(solution)
   call assignInitialConditions(solution)
-  call SolutionUpdateBoundaryConditions(solution)
+  call SolutionUpdateBoundConditions(solution)
   call SolutionSetIBNDTYPE(solution)
 
   i = grid%internal_connection_list%first%num_connections
@@ -3152,13 +3152,13 @@ end subroutine setMode
 
 ! ************************************************************************** !
 !
-! assignMaterialPropertiesToRegions: Assigns material properties to 
+! assignMaterialPropToRegions: Assigns material properties to 
 !                                    associated regions in the model
 ! author: Glenn Hammond
 ! date: 11/02/07
 !
 ! ************************************************************************** !
-subroutine assignMaterialPropertiesToRegions(solution)
+subroutine assignMaterialPropToRegions(solution)
 
   use Solution_module
   use Strata_module
@@ -3238,7 +3238,7 @@ subroutine assignMaterialPropertiesToRegions(solution)
   call VecCopy(option%perm_yy, option%perm0_yy, ierr) 
   call VecCopy(option%perm_zz, option%perm0_zz, ierr) 
   
-end subroutine assignMaterialPropertiesToRegions
+end subroutine assignMaterialPropToRegions
 
 ! ************************************************************************** !
 !
