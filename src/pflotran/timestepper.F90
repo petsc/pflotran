@@ -1,20 +1,49 @@
 module Timestepper_module
  
   use Solver_module
+  use Option_module
  
   implicit none
 
   private
  
   type, public :: stepper_type
-    type(solver_type), pointer :: solver
+  
+    integer :: flowsteps     ! The number of time-steps taken by the flow code.
+    integer :: stepmax       ! The maximum number of time-steps taken by the flow code.
+    integer :: nstpmax       ! The maximum number of time-step increments.
+    integer :: newton_max    ! Max number of Newton steps for one time step.
+    integer :: icut_max      ! Max number of dt cuts for one time step.
+    integer :: ndtcmx        ! Steps needed after cutting to increase time step
+    integer :: newtcum       ! Total number of Newton steps taken.
+    integer :: icutcum       ! Total number of cuts in the timestep taken.    
+    integer :: iaccel    
     
+    real*8 :: time
+    real*8 :: dt
+    real*8 :: dt_min
+    real*8 :: dt_max
+    
+    type(solver_type), pointer :: solver
+    type(waypoint_type), pointer :: waypoints
+    type(waypoint_type), pointer :: cur_waypoint
     real*8, pointer :: steady_eps(:)  ! tolerance for stead state convergence
     
   end type stepper_type
   
+  ! linked-list for waypoints in the simulation
+  type waypoint_type
+    real*8 :: time
+    logical :: print_output
+    type(output_option_type), pointer :: output_option
+    logical :: update_bcs
+    logical :: update_srcs
+    real*8 :: max_dt
+    type(waypoint_type), pointer :: next
+  endtype waypoint_type
+  
   public :: TimestepperCreate, StepperUpdateDT, StepperStepDT, StepperUpdateSolution, &
-            TimestepperDestroy
+            TimestepperDestroy, StepperRun
   
 contains
 
@@ -31,11 +60,183 @@ function TimestepperCreate()
   
   type(stepper_type), pointer :: TimestepperCreate
   
-  allocate(TimestepperCreate)
-  TimestepperCreate%solver => SolverCreate()
+  type(stepper_type), pointer :: stepper
+  
+  allocate(stepper)
+  stepper%flowsteps = 0
+  stepper%stepmax = 0
+  stepper%nstpmax = 0
+  
+  stepper%newton_max = 0
+  stepper%icut_max = 0
+  stepper%ndtcmx = 5
+  stepper%newtcum = 0
+  stepper%icutcum = 0    
+  stepper%iaccel = 1
+  
+  stepper%time = 0.d0
+  stepper%dt = 1.d0
+  stepper%dt_min = 1.d0
+  stepper%dt_max = 3.1536d6 ! One-tenth of a year.  
+  
+  nullify(stepper%solver)
+  nullify(stepper%waypoints)
+  
+  stepper%solver => SolverCreate()
+  
+  TimeStepperCreate => stepper
   
 end function TimestepperCreate 
 
+! ************************************************************************** !
+!
+! WaypointCreate: Creates a simulation waypoint
+! author: Glenn Hammond
+! date: 11/07/07
+!
+! ************************************************************************** !
+function WaypointCreate()
+
+  implicit none
+  
+  type(waypoint_type), pointer :: WaypointCreate
+  
+  type(waypoint_type), pointer :: waypoint
+  
+  allocate(waypoint)
+  waypoint%time = 0.d0
+  waypoint%print_output = .false.
+  waypoint%output_option => OutputOptionCreate()
+  waypoint%update_bcs = .false.
+  waypoint%update_srcs = .false.
+  waypoint%max_dt = 0.d0
+    
+  WaypointCreate => waypoint
+  
+end function WaypointCreate 
+
+! ************************************************************************** !
+!
+! StepperRun: Runs the time step loop
+! author: Glenn Hammond
+! date: 10/25/07
+!
+! ************************************************************************** !
+subroutine StepperRun(solution,stepper,stage)
+
+  use Solution_module
+  use Option_module
+  use Output_module
+  
+  implicit none
+  
+#include "definitions.h"
+#include "include/finclude/petsc.h"
+#include "include/finclude/petscdef.h"
+#include "include/finclude/petsclog.h"
+#include "include/finclude/petscsys.h"
+#include "include/finclude/petscviewer.h"
+
+  type(solution_type) :: solution
+  type(stepper_type) :: stepper
+  PetscInt :: stage(*)
+  
+  type(option_type), pointer :: option
+
+  real*8 dt_cur
+  real*8, pointer :: dxdt(:)
+  integer :: idx, ista=0  
+  
+  integer :: istep, ntstep, iflgcut, ihalcnt, iplot, its
+  real*8 :: dt
+  
+  PetscErrorCode :: ierr
+  
+  option => solution%option
+  
+  ntstep=1
+  iflgcut = 0
+
+  iplot = 0
+  ihalcnt = 0
+
+  allocate(dxdt(1:option%ndof))  
+
+  solution%option%isrc1 = 2
+
+  do istep = stepper%flowsteps+1, stepper%stepmax
+
+    call StepperStepDT(solution,stepper,ntstep,iplot,iflgcut,ihalcnt,its)
+    call StepperUpdateSolution(solution)
+
+    dt_cur = option%dt 
+       
+    if(option%imode == THC_MODE)then
+      dxdt(1)=option%dpmax/dt_cur
+      dxdt(2)=option%dtmpmax/dt_cur
+      dxdt(3)=option%dcmax/dt_cur
+    endif  
+
+    call PetscLogStagePush(stage(2), ierr)
+    if (iplot == 1) then
+      if(option%imode /= OWG_MODE) then
+        call Output(solution,stepper%time/option%tconv,istep)
+      else
+ !       call pflow_var_output(grid,kplt,iplot)
+      endif
+      iplot = 0
+    endif
+    call PetscLogStagePop(ierr)
+  
+    if (iflgcut == 0) call StepperUpdateDT(option,its)
+
+#if 0
+    call PetscLogStagePush(stage(2), ierr)
+    if(chkptflag == PETSC_TRUE .and. mod(steps, chkptfreq) == 0) then
+      call pflowGridCheckpoint(grid, ntstep, kplt, iplot, iflgcut, ihalcnt, &
+                               its, steps)
+    endif
+    call PetscLogStagePop(ierr)
+#endif
+    
+    ista=0
+    if(option%imode == THC_MODE)then
+      do idx = 1, option%ndof
+        if(dxdt(idx) < stepper%steady_eps(idx)) ista=ista+1
+      enddo 
+      
+      if(ista >= option%ndof)then
+        solution%output_option%plot_number=option%kplot; iplot=1     
+      endif
+    endif         
+    
+    if (solution%output_option%plot_number > option%kplot) exit
+
+  enddo
+
+#if 0
+  if(chkptflag == PETSC_TRUE .and. mod(steps, chkptfreq) /= 0) then
+    call pflowGridCheckpoint(grid, ntstep, kplt, iplot, iflgcut, ihalcnt, &
+                             its, steps)
+  endif
+#endif  
+
+  write(*,'(/," PFLOW steps = ",i6," newton = ",i6," cuts = ",i6)') &
+        istep-1,stepper%newtcum,stepper%icutcum
+
+  write(IUNIT2,'(/," PFLOW steps = ",i6," newton = ",i6," cuts = ",i6)') &
+        istep-1,stepper%newtcum,stepper%icutcum
+
+
+
+end subroutine StepperRun
+
+! ************************************************************************** !
+!
+! StepperUpdateDT: Updates time step
+! author: 
+! date: 
+!
 ! ************************************************************************** !
 subroutine StepperUpdateDT(option, its)
 
@@ -128,13 +329,16 @@ subroutine StepperUpdateDT(option, its)
   if (dtt>.25d0*option%t .and. option%t>1.d-2) dtt=.25d0*option%t
   option%dt = dtt
 
-  end subroutine StepperUpdateDT
+end subroutine StepperUpdateDT
 
-!======================================================================
-
-!#include "pflowgrid_step.F90"
-
-subroutine StepperStepDT(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
+! ************************************************************************** !
+!
+! StepperStepDT: Steps forward one step in time
+! author: 
+! date: 
+!
+! ************************************************************************** !
+subroutine StepperStepDT(solution,stepper,ntstep,iplot,iflgcut,ihalcnt,its)
   
   use translator_mph_module, only : translator_mph_step_maxchange
   use translator_owg_module, only : translator_owg_step_maxchange
@@ -163,7 +367,7 @@ subroutine StepperStepDT(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
 #include "include/finclude/petscsnes.h"
 
   type(solution_type) :: solution
-  type(solver_type) :: solver
+  type(stepper_type) :: stepper
 
   integer :: ierr, ihalcnt, ns !i,m,n,ix,jy,kz,j
   integer :: its,kplt,iplot,ntstep !,idpmax,idtmpmax,idcmax
@@ -174,12 +378,18 @@ subroutine StepperStepDT(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
   real*8 m_r2norm, s_r2norm, norm_inf, s_r2norm0, norm_inf0, r2norm
   real*8 :: tsrc
   real*8, pointer :: r_p(:)  
+  
+  integer :: kplot
 
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
+  type(solver_type), pointer :: solver
 
   option => solution%option
   grid => solution%grid
+  solver => stepper%solver
+
+  kplt = solution%output_option%plot_number
 
 #if 1  
 ! real*8, pointer :: xx_p(:), conc_p(:), press_p(:), temp_p(:)
@@ -201,7 +411,7 @@ subroutine StepperStepDT(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
   call GridGlobalToLocal(grid,option%iphas,option%iphas_loc,ONEDOF)
 
   option%t = option%t + option%dt
-  option%flowsteps = option%flowsteps + 1
+  stepper%flowsteps = stepper%flowsteps + 1
 
 !print *, 'pflow_step:1:',  ntstep, option%dt
  
@@ -217,7 +427,7 @@ subroutine StepperStepDT(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
       option%t = option%tplot(kplt)
       iplot = 1
     endif
-  else if (option%flowsteps == option%stepmax) then
+  else if (stepper%flowsteps == stepper%stepmax) then
     iplot = 1
   endif
 !print *, 'pflow_step:2:',  ntstep, option%dt, option%dt_max, option%tplot(kplt) - option%t
@@ -244,14 +454,14 @@ subroutine StepperStepDT(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
   endif
   
   !set maximum time step
-  if (ntstep > option%nstpmax) then
-    option%dt_max = option%dtstep(option%nstpmax)
+  if (ntstep > stepper%nstpmax) then
+    option%dt_max = option%dtstep(stepper%nstpmax)
   else if (option%t > option%tstep(ntstep)) then
     ntstep = ntstep + 1
-    if (ntstep <= option%nstpmax) then
+    if (ntstep <= stepper%nstpmax) then
       option%dt_max = option%dtstep(ntstep)
     else
-      option%dt_max = option%dtstep(option%nstpmax)
+      option%dt_max = option%dtstep(stepper%nstpmax)
     endif
   endif
   
@@ -413,7 +623,7 @@ subroutine StepperStepDT(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
  !       grid%c_nat,grid%vl_nat,grid%p_nat,option%t_nat,grid%s_nat,grid%phis_nat,grid%por_nat, &
  !       grid%ibrkface, grid%jh2o, grid%nphase, grid%nmax, &
  !       option%snes, &
- !       option%t, option%dt, option%tconv, option%flowsteps, option%rk, &
+ !       option%t, option%dt, option%tconv, stepper%flowsteps, option%rk, &
  !       grid%k1brk,grid%k2brk,grid%j1brk,grid%j2brk,grid%i1brk,grid%i2brk, &
  !       grid%nx,grid%ny,grid%nz,grid%nxy,grid%dx0,grid%dy0,grid%dz0,grid%x,grid%y,grid%z, &
  !       grid%da_nphase_dof,grid%da_1_dof,grid%da_3np_dof,grid%da_ndof,option%ndof, &
@@ -476,10 +686,10 @@ subroutine StepperStepDT(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
 
 ! print screen output
   if (option%myrank == 0) then
-    if (mod(option%flowsteps,option%imod) == 0 .or. option%flowsteps == 1) then
+    if (mod(stepper%flowsteps,option%imod) == 0 .or. stepper%flowsteps == 1) then
       write(*, '(/," FLOW ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1,"]", &
       & " snes_conv_reason: ",i4,/,"  newt= ",i2," [",i6,"]"," cut= ",i2," [",i4,"]")') &
-      option%flowsteps,option%t/option%tconv,option%dt/option%tconv,option%tunit, &
+      stepper%flowsteps,option%t/option%tconv,option%dt/option%tconv,option%tunit, &
       snes_reason,its,option%newtcum,icut,option%icutcum
 
       if (option%use_ksp /= PETSC_TRUE) then
@@ -490,7 +700,7 @@ subroutine StepperStepDT(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
        
       write(IUNIT2, '(" FLOW ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1, &
       & "]"," snes_conv_reason: ",i4,/,"  newt= ",i2," [",i6,"]"," cut= ",i2," [",i4, &
-      & "]")') option%flowsteps,option%t/option%tconv,option%dt/option%tconv, &
+      & "]")') stepper%flowsteps,option%t/option%tconv,option%dt/option%tconv, &
       option%tunit, snes_reason,its,option%newtcum,icut,option%icutcum
     endif
   endif
@@ -502,7 +712,7 @@ subroutine StepperStepDT(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
     call VecWAXPY(option%dp,-1.d0,option%ttemp,option%temp,ierr)
     call VecStrideNorm(option%dp,0,NORM_INFINITY,option%dpmax,ierr)
     if (option%myrank==0) then
-      if (mod(option%flowsteps,option%imod) == 0) then
+      if (mod(stepper%flowsteps,option%imod) == 0) then
         write(*,'("  --> max chng: dTmx= ",1pe12.4)') option%dpmax
         write(IUNIT2,'("  --> max chng: dTmx= ",1pe12.4)') option%dpmax
       endif
@@ -525,7 +735,7 @@ subroutine StepperStepDT(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
 !   if (option%myrank==0) print *,'  --> max chng: ',option%idxxmax,option%dxxmax, &
 !     ' @ node ',ix,jy,kz,j,option%ndof,grid%nx,grid%nxy
     if (option%myrank==0) then
-      if (mod(option%flowsteps,option%imod) == 0 .or. option%flowsteps == 1) then
+      if (mod(stepper%flowsteps,option%imod) == 0 .or. stepper%flowsteps == 1) then
         write(*,'("  --> max chng: dpmx= ",1pe12.4, &
           & " dtmpmx= ",1pe12.4)') option%dpmax,option%dtmpmax
         write(IUNIT2,'("  --> max chng: dpmx= ",1pe12.4, &
@@ -550,7 +760,7 @@ subroutine StepperStepDT(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
 !   if (option%myrank==0) print *,'  --> max chng: ',option%idxxmax,option%dxxmax, &
 !     ' @ node ',ix,jy,kz,j,option%ndof,grid%nx,grid%nxy
     if (option%myrank==0) then
-      if (mod(option%flowsteps,option%imod) == 0 .or. option%flowsteps == 1) then
+      if (mod(stepper%flowsteps,option%imod) == 0 .or. stepper%flowsteps == 1) then
         write(*,'("  --> max chng: dpmx= ",1pe12.4, &
           & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4)') &
           option%dpmax,option%dtmpmax,option%dcmax
@@ -568,7 +778,7 @@ subroutine StepperStepDT(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
     call VecStrideNorm(option%dxx,2,NORM_INFINITY,option%dcmax,ierr)
     call VecStrideNorm(option%dxx,3,NORM_INFINITY,option%dsmax,ierr)
     if (option%myrank==0) then
-      if (mod(option%flowsteps,option%imod) == 0 .or. option%flowsteps == 1) then
+      if (mod(stepper%flowsteps,option%imod) == 0 .or. stepper%flowsteps == 1) then
         write(*,'("  --> max chng: dpmx= ",1pe12.4, &
           & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4," dsmx= ",1pe12.4)') &
           option%dpmax,option%dtmpmax,option%dcmax,option%dsmax
@@ -583,7 +793,7 @@ subroutine StepperStepDT(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
      call translator_mph_step_maxchange(grid)
     ! note use mph will use variable switching, the x and s change is not meaningful 
     if (option%myrank==0) then
-      if (mod(option%flowsteps,option%imod) == 0 .or. option%flowsteps == 1) then
+      if (mod(stepper%flowsteps,option%imod) == 0 .or. stepper%flowsteps == 1) then
         write(*,'("  --> max chng: dpmx= ",1pe12.4, &
           & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4," dsmx= ",1pe12.4)') &
           option%dpmax,option%dtmpmax,option%dcmax,option%dsmax
@@ -599,7 +809,7 @@ subroutine StepperStepDT(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
   if (option%imode == RICHARDS_MODE) then
      call translator_ric_step_maxchange(option)
     if (option%myrank==0) then
-      if (mod(option%flowsteps,option%imod) == 0 .or. option%flowsteps == 1) then
+      if (mod(stepper%flowsteps,option%imod) == 0 .or. stepper%flowsteps == 1) then
         write(*,'("  --> max chng: dpmx= ",1pe12.4, &
           & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4)') &
           option%dpmax,option%dtmpmax, option%dcmax
@@ -615,7 +825,7 @@ subroutine StepperStepDT(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
      call translator_flash_step_maxchange(grid)
     ! note use mph will use variable switching, the x and s change is not meaningful 
     if (option%myrank==0) then
-      if (mod(option%flowsteps,option%imod) == 0 .or. option%flowsteps == 1) then
+      if (mod(stepper%flowsteps,option%imod) == 0 .or. stepper%flowsteps == 1) then
         write(*,'("  --> max chng: dpmx= ",1pe12.4, &
           & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4," dsmx= ",1pe12.4)') &
           option%dpmax,option%dtmpmax,option%dcmax,option%dsmax
@@ -631,7 +841,7 @@ subroutine StepperStepDT(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
      call translator_vad_step_maxchange(grid)
     ! note use mph will use variable switching, the x and s change is not meaningful 
     if (option%myrank==0) then
-      if (mod(option%flowsteps,option%imod) == 0 .or. option%flowsteps == 1) then
+      if (mod(stepper%flowsteps,option%imod) == 0 .or. stepper%flowsteps == 1) then
         write(*,'("  --> max chng: dpmx= ",1pe12.4, &
           & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4," dsmx= ",1pe12.4)') &
           option%dpmax,option%dtmpmax,option%dcmax,option%dsmax
@@ -647,7 +857,7 @@ subroutine StepperStepDT(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
    
       
     if (option%myrank==0) then
-      if (mod(option%flowsteps,option%imod) == 0 .or. option%flowsteps == 1) then
+      if (mod(stepper%flowsteps,option%imod) == 0 .or. stepper%flowsteps == 1) then
         write(*,'("  --> max chng: dpmx= ",1pe12.4, &
           & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4," dsmx= ",1pe12.4)') &
           option%dpmax,option%dtmpmax,option%dcmax,option%dsmax
@@ -665,7 +875,7 @@ subroutine StepperStepDT(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
 !   call VecMax(option%dp,idpmax,dpmax,ierr)
     call VecStrideNorm(option%dp,0,NORM_INFINITY,option%dpmax,ierr)
     if (option%myrank==0) then
-      if (mod(option%flowsteps,option%imod) == 0 .or. option%flowsteps == 1) then
+      if (mod(stepper%flowsteps,option%imod) == 0 .or. stepper%flowsteps == 1) then
         write(*,'("  --> max chng: dpmx= ",1pe12.4)') option%dpmax
         write(IUNIT2,'("  --> max chng: dpmx= ",1pe12.4)') option%dpmax
       endif
@@ -673,14 +883,20 @@ subroutine StepperStepDT(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
 #endif    
   endif
 
-  if (option%myrank == 0 .and. mod(option%flowsteps,option%imod) == 0) then
+  if (option%myrank == 0 .and. mod(stepper%flowsteps,option%imod) == 0) then
     print *, ""
   endif
 #endif
+
 end subroutine StepperStepDT
 
-!==========================================================================
-  
+! ************************************************************************** !
+!
+! StepperUpdateSolution: Updates the solution and solution-dependent variables
+! author: 
+! date: 
+!
+! ************************************************************************** !
 subroutine StepperUpdateSolution(solution)
   
   use pflow_vector_ops_module

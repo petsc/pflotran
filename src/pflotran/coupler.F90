@@ -209,7 +209,7 @@ subroutine CouplerCreateList(coupler_list)
   coupler_list%num_couplers = 0
   nullify(coupler_list%first)
   nullify(coupler_list%last)
-  deallocate(coupler_list%array)
+  if (associated(coupler_list%array)) deallocate(coupler_list%array)
   nullify(coupler_list%array)
   
   deallocate(coupler_list)
@@ -232,12 +232,13 @@ subroutine CouplerDestroy(coupler)
   
   if (.not.associated(coupler)) return
   
-  call ConditionDestroy(coupler%flow_condition)
-  nullify(coupler%flow_condition)
-  call ConditionDestroy(coupler%transport_condition)
-  nullify(coupler%transport_condition)
-  call RegionDestroy(coupler%region)
+  ! since the below are simply pointers to objects in list that have already
+  ! or will be deallocated from the list, nullify instead of destroying
+  
+  nullify(coupler%flow_condition)     ! since these are simply pointers to 
+  nullify(coupler%transport_condition)! conditoins in list, nullify
   nullify(coupler%region)
+
   call ConnectionDestroy(coupler%connection)
   nullify(coupler%connection)
   

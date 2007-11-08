@@ -47,6 +47,43 @@ contains
 
 ! ************************************************************************** !
 !
+! ConnectionCreate: Allocates and initializes a new connection
+! author: Glenn Hammond
+! date: 10/15/07
+!
+! ************************************************************************** !
+function ConnectionCreate(num_connections,num_dof)
+
+  implicit none
+  
+  integer :: num_connections
+  integer :: num_dof
+  
+  type(connection_type), pointer :: ConnectionCreate
+
+  type(connection_type), pointer :: connection
+
+  allocate(connection)
+  connection%id = 0
+  connection%num_connections = num_connections
+  allocate(connection%id_up(num_connections))
+  allocate(connection%id_dn(num_connections))
+  allocate(connection%dist(-1:3,num_connections))
+  allocate(connection%area(num_connections))
+  allocate(connection%velocity(num_dof,num_connections))
+  connection%id_up = 0
+  connection%id_dn = 0
+  connection%dist = 0.d0
+  connection%area = 0.d0
+  connection%velocity = 0.d0
+  nullify(connection%next)
+  
+  ConnectionCreate => connection
+
+end function ConnectionCreate
+
+! ************************************************************************** !
+!
 ! ConnectionGetInternalConnList: Returns pointer to internal_connection_list
 ! author: Glenn Hammond
 ! date: 10/15/07
@@ -149,38 +186,6 @@ end subroutine ConnectionInitList
 
 ! ************************************************************************** !
 !
-! ConnectionCreate: Allocates and initializes a new connection
-! author: Glenn Hammond
-! date: 10/15/07
-!
-! ************************************************************************** !
-function ConnectionCreate(num_connections,num_dof)
-
-  implicit none
-  
-  integer :: num_connections
-  integer :: num_dof
-  
-  type(connection_type), pointer :: ConnectionCreate
-  allocate(ConnectionCreate)
-  ConnectionCreate%id = 0
-  ConnectionCreate%num_connections = num_connections
-  allocate(ConnectionCreate%id_up(num_connections))
-  allocate(ConnectionCreate%id_dn(num_connections))
-  allocate(ConnectionCreate%dist(-1:3,num_connections))
-  allocate(ConnectionCreate%area(num_connections))
-  allocate(ConnectionCreate%velocity(num_dof,num_connections))
-  ConnectionCreate%id_up = 0
-  ConnectionCreate%id_dn = 0
-  ConnectionCreate%dist = 0.d0
-  ConnectionCreate%area = 0.d0
-  ConnectionCreate%velocity = 0.d0
-  nullify(ConnectionCreate%next)
-
-end function ConnectionCreate
-
-! ************************************************************************** !
-!
 ! ConnectionAddToList: Adds a new connection of the module global list of 
 !                      connections
 ! author: Glenn Hammond
@@ -280,7 +285,7 @@ subroutine ConnectionDestroyList(list)
   
   if (.not.associated(list)) return
   
-  deallocate(list%array)
+  if (associated(list%array)) deallocate(list%array)
   nullify(list%array)
   
   cur_connection => list%first

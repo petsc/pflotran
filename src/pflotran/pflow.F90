@@ -28,35 +28,20 @@
 ! Los Alamos, NM
 !=======================================================================
   program pflow
-  use Output_module
-  use span_wagner_module
   
   use Simulation_module
   use Solution_module
+  use Timestepper_module
   use Solver_module
   use Grid_module
   use Option_module
   use Init_module
-  use Timestepper_module
+  use Output_module  
   
   implicit none
 
 #include "include/finclude/petsc.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
-#include "include/finclude/petscda.h"
-#include "include/finclude/petscda.h90"
-#include "include/finclude/petscdef.h"
-#include "include/finclude/petscis.h"
-#include "include/finclude/petscis.h90"
 #include "include/finclude/petsclog.h"
-#include "include/finclude/petscmat.h"
-#include "include/finclude/petscmat.h90"
-#include "include/finclude/petscpc.h"
-#include "include/finclude/petscksp.h"
-#include "include/finclude/petscsnes.h"
-#include "include/finclude/petscsys.h"
-#include "include/finclude/petscviewer.h"
 
 #include "definitions.h"
 
@@ -64,10 +49,7 @@
 
   integer :: myrank, commsize
 
-  integer :: ierr, ihalcnt
-  integer :: kplt, iplot, iflgcut, its, ntstep
-  integer :: steps
-  integer :: idx, ista=0
+  integer :: ierr
   PetscInt :: stage(10)
   PetscTruth :: restartflag
   character(len=MAXSTRINGLENGTH) :: restartfile
@@ -76,8 +58,7 @@
   PetscTruth :: chkptflag
   PetscTruth :: option_found  ! For testing presence of a command-line option.
   character(len=MAXSTRINGLENGTH) :: pflowin
-  real*8 dt_cur
-  real*8, pointer :: dxdt(:)
+
   
   type(simulation_type), pointer :: simulation
   type(solver_type), pointer :: solver
@@ -98,10 +79,6 @@
   option%myrank = myrank
   option%commsize = commsize
 
-! Initialize Startup Time
- ! call PetscGetCPUTime(timex(1), ierr)
- ! call PetscGetTime(timex_wall(1), ierr)
-
 ! Register stages for profiling.
 ! We identify three stages here: setup, output, and cleanup.
 ! Note that we do NOT identify a separate stage for the calculations -- 
@@ -118,44 +95,22 @@
                              pflowin, option_found, ierr)
   if(option_found /= PETSC_TRUE) pflowin = "pflow.in"
   
-
-  if(option%imode == MPH_MODE .or. &
-     option%imode == OWG_MODE .or. &
-     option%imode == FLASH_MODE) &
-    call initialize_span_wagner(option%itable,option%myrank)
-
   call PetscGetCPUTime(timex(1), ierr)
   call PetscGetTime(timex_wall(1), ierr)
 
-  call initPFLOW(simulation,pflowin)
-  allocate(dxdt(1:option%ndof))
-
-  kplt = 0
-  iplot = 1
+  call PflowInit(simulation,pflowin)
 
 ! Done with PFLOW setup.
   call PetscLogStagePop(ierr)
 
 ! Now we do some initial output, so push this onto the log stack.
   call PetscLogStagePush(stage(2), ierr)
-! call VecView(grid%conc,PETSC_VIEWER_STDOUT_WORLD,ierr)
 
   if(option%imode /= OWG_MODE) then
-    call Output(solution,kplt,iplot)
+    call Output(solution,0.d0,0)
   else
  !   call pflow_var_output(grid,kplt,iplot)
   endif
-
-  if(option%myrank == 0) print *, ""
-  if(option%myrank == 0) print *, ""
-
-  ntstep=1
-  iflgcut = 0
-
-  kplt = 1
-  iplot = 0
-  ihalcnt = 0
-  option%isrc1 = 2
 
 
 #if 0                             
@@ -178,109 +133,25 @@
   endif
 #endif  
            
-  do steps = option%flowsteps+1, option%stepmax
-    if (steps >= 140) then
-      print *, steps
-    endif
-!    call pflowGrid_step(solution,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
-    call StepperStepDT(solution,solver,ntstep,kplt,iplot,iflgcut,ihalcnt,its)
-
-!   update field variables
-!    call pflowGrid_update(solution)
-    call StepperUpdateSolution(solution)
-
-    dt_cur = option%dt 
-   
-    
-    if(option%imode == THC_MODE)then
-      dxdt(1)=option%dpmax/dt_cur
-      dxdt(2)=option%dtmpmax/dt_cur
-      dxdt(3)=option%dcmax/dt_cur
-    endif  
-
-    call PetscLogStagePush(stage(2), ierr)
-    if(option%imode /= OWG_MODE) then
-      call Output(solution,kplt,iplot)
-     ! print *,'XX ::...........'; call VecView(grid%xx,PETSC_VIEWER_STDOUT_WORLD,ierr)
-    else
- !     call pflow_var_output(grid,kplt,iplot)
-    endif
-    call PetscLogStagePop(ierr)
+  call StepperRun(solution,stepper,stage)
   
-  
-!    if (iflgcut == 0) call pflowgrid_update_dt(solution,its)
-    if (iflgcut == 0) call StepperUpdateDT(option,its)
-
-#if 0
-    call PetscLogStagePush(stage(2), ierr)
-    if(chkptflag == PETSC_TRUE .and. mod(steps, chkptfreq) == 0) then
-      call pflowGridCheckpoint(grid, ntstep, kplt, iplot, iflgcut, ihalcnt, &
-                               its, steps)
-    endif
-    call PetscLogStagePop(ierr)
-#endif
-    
-    ista=0
-    if(option%imode == THC_MODE)then
-      do idx = 1, option%ndof
-        if(dxdt(idx) < stepper%steady_eps(idx)) ista=ista+1
-      enddo 
-      
-      if(ista >= option%ndof)then
-        kplt=option%kplot; iplot=1     
-      endif
-    endif   
-!   comment out for now-need in pflotran (no longer needed-pcl)
-!   call pflowgrid_setvel(grid, grid%vl, grid%vlbc, ibndtyp)
-
-
-
-!    call PetscLogStagePush(stage(2), ierr)
-!    if(option%use_owg/=PETSC_TRUE) then
-!      call pflow_output_new(grid,kplt,iplot)
-     ! print *,'XX ::...........'; call VecView(grid%xx,PETSC_VIEWER_STDOUT_WORLD,ierr)
-!    else
-!      call pflow_var_output(grid,kplt,iplot)
-!    endif
-!    call PetscLogStagePop(ierr)
-  
-  
-!    if (iflgcut == 0) call pflowgrid_update_dt(grid,its)
-      
-    
-    if (kplt .gt. option%kplot) exit
-  enddo
-
-#if 0
-  if(chkptflag == PETSC_TRUE .and. mod(steps, chkptfreq) /= 0) then
-    call pflowGridCheckpoint(grid, ntstep, kplt, iplot, iflgcut, ihalcnt, &
-                             its, steps)
-  endif
-#endif  
-
-#if 0
 ! Clean things up.
   call PetscLogStagePush(stage(3), ierr)
-  call pflowgrid_destroy(grid)
+  if (option%ibrkcrv > 0) close(IUNIT4)
+  call SimulationDestroy(simulation)
   call PetscLogStagePop(ierr)
-#endif
-  call PetscFinalize (ierr)
 
 ! Final Time
   call PetscGetCPUTime(timex(2), ierr)
   call PetscGetTime(timex_wall(2), ierr)
+  
   if (option%myrank == 0) then
+  
 !       write(*,'("steps: ",13x,i6,/, &
 !   &   "total newton iters: ",i6,/, &
 !   &   "total PETSc gmres:  ",i6,/, &
 !   &   "total cuts: ",11x,i3)') steps,newtcum,itpetscum,icutcum
         
-        write(*,'(/," PFLOW steps = ",i6," newton = ",i6," cuts = ",i6)') &
-        steps-1,option%newtcum,option%icutcum
-
-        write(IUNIT2,'(/," PFLOW steps = ",i6," newton = ",i6," cuts = ",i6)') &
-        steps-1,option%newtcum,option%icutcum
-
         write(*,'(/," CPU Time:", 1pe12.4, " [sec] ", &
     &   1pe12.4, " [min] ", 1pe12.4, " [hr]")') &
         timex(2)-timex(1), (timex(2)-timex(1))/60.d0, &
@@ -302,9 +173,8 @@
         (timex_wall(2)-timex_wall(1))/3600.d0
   endif
 
-  call SimulationDestroy(simulation)
-
   close(IUNIT2)
-  if (option%ibrkcrv > 0) close(IUNIT4)
+
+  call PetscFinalize (ierr)
 
   end program pflow

@@ -151,8 +151,8 @@ subroutine ConditionRead(condition,option,fid)
       length_dof = 5
     case default
       pres_dof = 1
-      temp_dof = 1
-      pres_dof = 1
+      temp_dof = 2
+      conc_dof = 3
   end select
   units = ""
 
@@ -807,6 +807,7 @@ subroutine ConditionDestroyList(condition_list)
   
   type(condition_type), pointer :: condition, prev_condition
   
+  if (.not.associated(condition_list)) return
   
   condition => condition_list%first
   do 
@@ -819,7 +820,7 @@ subroutine ConditionDestroyList(condition_list)
   condition_list%num_conditions = 0
   nullify(condition_list%first)
   nullify(condition_list%last)
-  deallocate(condition_list%array)
+  if (associated(condition_list%array)) deallocate(condition_list%array)
   nullify(condition_list%array)
   
   deallocate(condition_list)

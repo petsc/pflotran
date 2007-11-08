@@ -1606,8 +1606,8 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
   if (option%rk > 0.d0) then
     call VecRestoreArrayF90(option%phis,phis_p,ierr)
   endif
-#define DEBUG_GEH
-#define DEBUG_GEH_ALL
+!#define DEBUG_GEH
+!#define DEBUG_GEH_ALL
 #ifdef DEBUG_GEH 
  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'residual.out',viewer,ierr)
  call VecView(r,viewer,ierr)
@@ -1790,7 +1790,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
 #ifdef DEBUG_GEH_ALL  
  call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
  call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
- call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian.out',viewer,ierr)
+ call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian1.out',viewer,ierr)
  call MatView(A,viewer,ierr)
  call PetscViewerDestroy(viewer,ierr)
 #endif
@@ -2111,7 +2111,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
 #ifdef DEBUG_GEH_ALL  
  call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
  call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
- call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian.out',viewer,ierr)
+ call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian2.out',viewer,ierr)
  call MatView(A,viewer,ierr)
  call PetscViewerDestroy(viewer,ierr)
 #endif
@@ -2163,7 +2163,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
 #ifdef DEBUG_GEH_ALL    
  call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
  call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
- call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian.out',viewer,ierr)
+ call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian3.out',viewer,ierr)
  call MatView(A,viewer,ierr)
  call PetscViewerDestroy(viewer,ierr)
 #endif

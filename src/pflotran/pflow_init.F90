@@ -31,18 +31,18 @@ module Init_module
 #include "include/finclude/petsclog.h"
 
 
-  public :: initPFLOW
+  public :: PflowInit
 
 contains
 
 ! ************************************************************************** !
 !
-! initPFLOW: Initializes a pflow grid object
+! PflowInit: Initializes a pflow grid object
 ! author: Glenn Hammond
 ! date: 10/23/07
 !
 ! **************************************************************************
-subroutine initPFLOW(simulation,filename)
+subroutine PflowInit(simulation,filename)
 
   use Simulation_module
   use Option_module
@@ -53,6 +53,7 @@ subroutine initPFLOW(simulation,filename)
   use Solver_module
   use Timestepper_module
 
+  use span_wagner_module
 !  use MPHASE_module
   use Richards_module
   use pflow_convergence_module
@@ -530,6 +531,12 @@ subroutine initPFLOW(simulation,filename)
 
 
   call readInput(simulation,filename)
+  
+
+  if(option%imode == MPH_MODE .or. &
+     option%imode == OWG_MODE .or. &
+     option%imode == FLASH_MODE) &
+    call initialize_span_wagner(option%itable,option%myrank)  
   
   call GridComputeSpacing(grid)
   call GridComputeCoordinates(grid,option)
@@ -1170,7 +1177,7 @@ subroutine initPFLOW(simulation,filename)
 
   if (option%myrank == 0) write(*,'("  Finished setting up ")')
   
-end subroutine initPFLOW
+end subroutine PflowInit
 
 ! ************************************************************************** !
 !
@@ -1637,7 +1644,7 @@ subroutine readInput(simulation,filename)
 !....................
 
       case ('HDF5')
-        option%print_hdf5 = .true.
+        solution%output_option%print_hdf5 = .true.
         do
           call fiReadWord(string,word,.true.,ierr)
           if (ierr /= 0) exit
@@ -1646,21 +1653,21 @@ subroutine readInput(simulation,filename)
 
           select case(card)
             case('VELO')
-              option%print_hdf5_velocities = .true.
+              solution%output_option%print_hdf5_velocities = .true.
             case('FLUX')
-              option%print_hdf5_flux_velocities = .true.
+              solution%output_option%print_hdf5_flux_velocities = .true.
             case default
           end select
             
         enddo
 
         if (option%myrank == 0) &
-          write(IUNIT2,'(/," *HDF5",10x,i1,/)') option%print_hdf5
+          write(IUNIT2,'(/," *HDF5",10x,i1,/)') solution%output_option%print_hdf5
 
 !....................
 
       case ('TECP')
-        option%print_tecplot = .true.
+        solution%output_option%print_tecplot = .true.
         do
           call fiReadWord(string,word,.true.,ierr)
           if (ierr /= 0) exit
@@ -1669,16 +1676,16 @@ subroutine readInput(simulation,filename)
 
           select case(card)
             case('VELO')
-              option%print_tecplot_velocities = .true.
+              solution%output_option%print_tecplot_velocities = .true.
             case('FLUX')
-              option%print_tecplot_flux_velocities = .true.
+              solution%output_option%print_tecplot_flux_velocities = .true.
             case default
           end select
           
         enddo
 
         if (option%myrank == 0) &
-          write(IUNIT2,'(/," *TECP",10x,i1,/)') option%print_tecplot
+          write(IUNIT2,'(/," *TECP",10x,i1,/)') solution%output_option%print_tecplot
 
 !....................
 
@@ -1690,7 +1697,7 @@ subroutine readInput(simulation,filename)
         call fiReadInt(string,option%write_init,ierr)
         call fiDefaultMsg('write_init',ierr)
 
-        call fiReadInt(string,option%iprint,ierr)
+        call fiReadInt(string,id,ierr)
         call fiDefaultMsg('iprint',ierr)
 
         call fiReadInt(string,option%imod,ierr)
@@ -1721,7 +1728,6 @@ subroutine readInput(simulation,filename)
         if (option%myrank == 0) &
           write(IUNIT2,'(/," *OPTS",/, &
             & "  write_init = ",3x,i2,/ &
-            & "  iprint     = ",3x,i2,/, &
             & "  imod       = ",3x,i2,/, &
             & "  itecplot   = ",3x,i2,/, &
             & "  iblkfmt    = ",3x,i2,/, &
@@ -1730,7 +1736,7 @@ subroutine readInput(simulation,filename)
             & "  ran_fac    = ",3x,1pe12.4,/, &
             & "  iread_perm = ",3x,i2,/, &
             & "  iread_geom = ",3x,i2 &
-            & )') option%write_init,option%iprint,option%imod,option%itecplot, &
+            & )') option%write_init,option%imod,option%itecplot, &
             option%iblkfmt,option%ndtcmx,option%iran_por,option%ran_fac, &
             option%iread_perm,option%iread_geom
 
@@ -1740,7 +1746,7 @@ subroutine readInput(simulation,filename)
 
         call fiReadStringErrorMsg('TOLR',ierr)
 
-        call fiReadInt(string,option%stepmax,ierr)
+        call fiReadInt(string,stepper%stepmax,ierr)
         call fiDefaultMsg('stepmax',ierr)
   
         call fiReadInt(string,option%iaccel,ierr)
@@ -1776,7 +1782,7 @@ subroutine readInput(simulation,filename)
 ! For commented-out lines to work with the Sun f95 compiler, we have to 
 ! terminate the string in the line above; otherwise, the compiler tries to
 ! include the commented-out line as part of the continued string.
-          option%stepmax,option%iaccel,option%newton_max,option%icut_max, &
+          stepper%stepmax,option%iaccel,option%newton_max,option%icut_max, &
           option%dpmxe,option%dtmpmxe,option%dcmxe, option%dsmxe
 
 !....................
@@ -2574,13 +2580,13 @@ subroutine readInput(simulation,filename)
 
         call fiReadStringErrorMsg('DTST',ierr)
   
-        call fiReadInt(string,option%nstpmax,ierr)
+        call fiReadInt(string,stepper%nstpmax,ierr)
         call fiDefaultMsg('nstpmax',ierr)
   
-        allocate(option%tstep(option%nstpmax))
-        allocate(option%dtstep(option%nstpmax))
+        allocate(option%tstep(stepper%nstpmax))
+        allocate(option%dtstep(stepper%nstpmax))
   
-        do i = 1, option%nstpmax
+        do i = 1, stepper%nstpmax
           call fiReadDouble(string,option%tstep(i),ierr)
           call fiDefaultMsg('tstep',ierr)
         enddo
@@ -2589,7 +2595,7 @@ subroutine readInput(simulation,filename)
         call fiReadStringErrorMsg('DTST',ierr)
         call fiReadDouble(string,option%dt_min,ierr)
         call fiDefaultMsg('dt_min',ierr)
-        do i = 1, option%nstpmax
+        do i = 1, stepper%nstpmax
           call fiReadDouble(string,option%dtstep(i),ierr)
           call fiDefaultMsg('dtstep',ierr)
         enddo
@@ -2600,13 +2606,13 @@ subroutine readInput(simulation,filename)
       
         if (option%myrank==0) then
           write(IUNIT2,'(/," *DTST ",i4,/," tstep= ",(1p10e12.4))')  &
-            option%nstpmax, (option%tstep(i),i=1,option%nstpmax)
+            stepper%nstpmax, (option%tstep(i),i=1,stepper%nstpmax)
           write(IUNIT2,'(" dtstep= ",1p10e12.4,/)') &
-            option%dt_min,(option%dtstep(i),i=1,option%nstpmax)
+            option%dt_min,(option%dtstep(i),i=1,stepper%nstpmax)
         endif
       
         ! convert time units to seconds
-        do i = 1, option%nstpmax
+        do i = 1, stepper%nstpmax
           option%tstep(i) = option%tconv * option%tstep(i)
           option%dtstep(i) = option%tconv * option%dtstep(i)
         enddo

@@ -83,18 +83,8 @@ module Option_module
     real*8, pointer :: tplot(:), tstep(:), dtstep(:)
     real*8, pointer :: tfac(:)
       ! An array of multiplicative factors that specify how to increase time step.
-    integer :: flowsteps  ! The number of time-steps taken by the flow code.
-    integer :: stepmax    ! The maximum number of time-steps taken by the flow code.
-    integer :: nstpmax    ! The maximum number of time-step increments.
     integer :: kplot      ! Printout steps.
     integer :: write_init = 0 ! Flag to printout initial conditions.
-    integer :: iprint = 0 ! Print level (-1-none, 0-fields, >=1-vel, 2-perm/por, 3-pflow.bc)
-    logical :: print_hdf5 = .false. ! toggle for printing hdf5
-    logical :: print_hdf5_velocities = .false.
-    logical :: print_hdf5_flux_velocities = .false.
-    logical :: print_tecplot = .false. ! toggle for printing tecplot
-    logical :: print_tecplot_velocities = .false.
-    logical :: print_tecplot_flux_velocities = .false.
     integer :: imod = 1   ! screen printout modulus
     integer :: itecplot = 0 ! tecplot print format (1-interchange x and z)
     integer :: iblkfmt = 0 ! blocked format
@@ -336,13 +326,29 @@ module Option_module
     character*16, pointer :: var_plot_nm(:)
     integer, pointer :: var_plot_ind(:)  
    
-  end type option_type
+  end type 
+  
+  type, public :: output_option_type
+  
+    logical :: print_hdf5
+    logical :: print_hdf5_velocities
+    logical :: print_hdf5_flux_velocities
+
+    logical :: print_tecplot 
+    logical :: print_tecplot_velocities
+    logical :: print_tecplot_flux_velocities
+
+    integer :: plot_number
+    
+  end type output_option_type
   
   public :: OptionCreate, &
+            OutputOptionCreate, &
             OptionCheckCommandLine, &
             printErrMsg, &
             printWrnMsg, &
-            OptionDestroy
+            OptionDestroy, &
+            OutputOptionDestroy
 
 contains
 
@@ -378,7 +384,6 @@ function OptionCreate()
       ! Initialize some counter variables.
 !-----------------------------------------------------------------------
   option%t = 0.d0
-  option%flowsteps = 0
   option%newtcum = 0
   option%icutcum = 0
 
@@ -398,12 +403,6 @@ function OptionCreate()
   option%tfac(11) = 1.0d0; option%tfac(12) = 1.0d0
   option%tfac(13) = 1.0d0      
   option%use_matrix_free = 1
-  option%newton_max = 16
-  option%icut_max = 16
-  option%iaccel = 1
-  option%dt = 1.d0
-  option%dt_min = 1.d0
-  option%dt_max = 3.1536d6 ! One-tenth of a year.
 
   option%ihydrostatic = 0
   option%conc0 = 1.d-6
@@ -425,6 +424,34 @@ function OptionCreate()
   OptionCreate => option
   
 end function OptionCreate
+
+! ************************************************************************** !
+!
+! OutputOptionCreate: Creates output options object
+! author: Glenn Hammond
+! date: 11/07/07
+!
+! ************************************************************************** !
+function OutputOptionCreate()
+
+  implicit none
+  
+  type(output_option_type), pointer :: OutputOptionCreate
+
+  type(output_option_type), pointer :: output_option
+  
+  allocate(output_option)
+  output_option%print_hdf5 = .false.
+  output_option%print_hdf5_velocities = .false.
+  output_option%print_hdf5_flux_velocities = .false.
+  output_option%print_tecplot = .false.
+  output_option%print_tecplot_velocities = .false.
+  output_option%print_tecplot_flux_velocities = .false.
+  output_option%plot_number = 0
+
+  OutputOptionCreate => output_option
+  
+end function OutputOptionCreate
 
 ! ************************************************************************** !
 !
@@ -548,6 +575,24 @@ end subroutine printWrnMsg
 
 ! ************************************************************************** !
 !
+! OutputOptionDestroy: Deallocates an output option
+! author: Glenn Hammond
+! date: 11/07/07
+!
+! ************************************************************************** !
+subroutine OutputOptionDestroy(output_option)
+
+  implicit none
+  
+  type(output_option_type), pointer :: output_option
+  
+  deallocate(output_option)
+  nullify(output_option)
+  
+end subroutine OutputOptionDestroy
+
+! ************************************************************************** !
+!
 ! OptionDestroy: Deallocates an option
 ! author: Glenn Hammond
 ! date: 10/26/07
@@ -557,9 +602,12 @@ subroutine OptionDestroy(option)
 
   implicit none
   
-  type(option_type) :: option
+  type(option_type), pointer :: option
   
   ! all kinds of stuff needs to be added here.
+  
+  deallocate(option)
+  nullify(option)
   
 end subroutine OptionDestroy
 

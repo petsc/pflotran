@@ -1355,6 +1355,8 @@ subroutine StructuredGridDestroy(structured_grid)
   implicit none
   
   type(structured_grid_type), pointer :: structured_grid
+  
+  PetscErrorCode :: ierr
     
   if (.not.associated(structured_grid)) return
   
@@ -1368,29 +1370,29 @@ subroutine StructuredGridDestroy(structured_grid)
   if (associated(structured_grid%rd)) deallocate(structured_grid%rd)
   nullify(structured_grid%rd)
 
-  if (structured_grid%dx /= 0) call VecDestroy(structured_grid%dx)
-  if (structured_grid%dy /= 0) call VecDestroy(structured_grid%dy)
-  if (structured_grid%dz /= 0) call VecDestroy(structured_grid%dz)
-  if (structured_grid%dx_loc /= 0) call VecDestroy(structured_grid%dx_loc)
-  if (structured_grid%dy_loc /= 0) call VecDestroy(structured_grid%dy_loc)
-  if (structured_grid%dz_loc /= 0) call VecDestroy(structured_grid%dz_loc)
+  if (structured_grid%dx /= 0) call VecDestroy(structured_grid%dx,ierr)
+  if (structured_grid%dy /= 0) call VecDestroy(structured_grid%dy,ierr)
+  if (structured_grid%dz /= 0) call VecDestroy(structured_grid%dz,ierr)
+  if (structured_grid%dx_loc /= 0) call VecDestroy(structured_grid%dx_loc,ierr)
+  if (structured_grid%dy_loc /= 0) call VecDestroy(structured_grid%dy_loc,ierr)
+  if (structured_grid%dz_loc /= 0) call VecDestroy(structured_grid%dz_loc,ierr)
 
   if (structured_grid%da_1_dof /= 0) &
-    call DADestroy(structured_grid%da_1_dof)
+    call DADestroy(structured_grid%da_1_dof,ierr)
   if (structured_grid%da_nphase_dof /= 0) &
-    call DADestroy(structured_grid%da_nphase_dof)
+    call DADestroy(structured_grid%da_nphase_dof,ierr)
   if (structured_grid%da_3np_dof /= 0) &
-    call DADestroy(structured_grid%da_3np_dof)
+    call DADestroy(structured_grid%da_3np_dof,ierr)
   if (structured_grid%da_ndof /= 0) &
-    call DADestroy(structured_grid%da_ndof)
+    call DADestroy(structured_grid%da_ndof,ierr)
   if (structured_grid%da_nphancomp_dof /= 0) &
-    call DADestroy(structured_grid%da_nphancomp_dof)
+    call DADestroy(structured_grid%da_nphancomp_dof,ierr)
   if (structured_grid%da_nphanspec_dof /= 0) &
-    call DADestroy(structured_grid%da_nphanspec_dof)
+    call DADestroy(structured_grid%da_nphanspec_dof,ierr)
   if (structured_grid%da_nphanspecncomp_dof /= 0) &
-    call DADestroy(structured_grid%da_nphanspecncomp_dof)
+    call DADestroy(structured_grid%da_nphanspecncomp_dof,ierr)
   if (structured_grid%da_var_dof /= 0) &
-    call DADestroy(structured_grid%da_var_dof)
+    call DADestroy(structured_grid%da_var_dof,ierr)
 
   deallocate(structured_grid)
   nullify(structured_grid)

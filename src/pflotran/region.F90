@@ -63,22 +63,26 @@ function RegionCreateWithNothing()
   
   type(region_type), pointer :: RegionCreateWithNothing
   
-  allocate(RegionCreateWithNothing)
-  RegionCreateWithNothing%id = 0
-  RegionCreateWithNothing%name = ""
-  RegionCreateWithNothing%i1 = 0
-  RegionCreateWithNothing%i2 = 0
-  RegionCreateWithNothing%j1 = 0
-  RegionCreateWithNothing%j2 = 0
-  RegionCreateWithNothing%k1 = 0
-  RegionCreateWithNothing%k2 = 0
-  RegionCreateWithNothing%num_cells = 0
-  nullify(RegionCreateWithNothing%cell_ids)
-  nullify(RegionCreateWithNothing%next)
+  type(region_type), pointer :: region
+  
+  allocate(region)
+  region%id = 0
+  region%name = ""
+  region%i1 = 0
+  region%i2 = 0
+  region%j1 = 0
+  region%j2 = 0
+  region%k1 = 0
+  region%k2 = 0
+  region%num_cells = 0
+  nullify(region%cell_ids)
+  nullify(region%next)
   
   num_regions = num_regions + 1
   
-  RegionCreateWithNothing%id = num_regions
+  region%id = num_regions
+  
+  RegionCreateWithNothing => region
 
 end function RegionCreateWithNothing
 
@@ -96,16 +100,20 @@ function RegionCreateWithBlock(i1,i2,j1,j2,k1,k2)
   integer :: i1, i2, j1, j2, k1, k2
   
   type(region_type), pointer :: RegionCreateWithBlock
+
+  type(region_type), pointer :: region
   
-  RegionCreateWithBlock => RegionCreateWithNothing()
-  RegionCreateWithBlock%i1 = i1
-  RegionCreateWithBlock%i2 = i2
-  RegionCreateWithBlock%j1 = j2
-  RegionCreateWithBlock%j2 = j2
-  RegionCreateWithBlock%k1 = k1
-  RegionCreateWithBlock%k2 = k2
-  RegionCreateWithBlock%num_cells = (abs(i2-i1)+1)*(abs(j2-j1)+1)* &
+  region => RegionCreateWithNothing()
+  region%i1 = i1
+  region%i2 = i2
+  region%j1 = j2
+  region%j2 = j2
+  region%k1 = k1
+  region%k2 = k2
+  region%num_cells = (abs(i2-i1)+1)*(abs(j2-j1)+1)* &
                                     (abs(k2-k1)+1)
+                                    
+  RegionCreateWithBlock => region                                    
 
 end function RegionCreateWithBlock
 
@@ -124,10 +132,14 @@ function RegionCreateWithList(list)
   
   type(region_type), pointer :: RegionCreateWithList
   
-  RegionCreateWithList => RegionCreateWithNothing()
-  RegionCreateWithList%num_cells = size(list)
-  allocate(RegionCreateWithList%cell_ids(RegionCreateWithList%num_cells))
-  RegionCreateWithList%cell_ids = list
+  type(region_type), pointer :: region
+
+  region => RegionCreateWithNothing()
+  region%num_cells = size(list)
+  allocate(region%cell_ids(region%num_cells))
+  region%cell_ids = list
+  
+  RegionCreateWithList => region
 
 end function RegionCreateWithList
 
@@ -346,6 +358,7 @@ subroutine RegionDestroyList(region_list)
   
   type(region_type), pointer :: region, prev_region
   
+  if (.not.associated(region_list)) return
   
   region => region_list%first
   do 
@@ -358,7 +371,7 @@ subroutine RegionDestroyList(region_list)
   region_list%num_regions = 0
   nullify(region_list%first)
   nullify(region_list%last)
-  deallocate(region_list%array)
+  if (associated(region_list%array)) deallocate(region_list%array)
   nullify(region_list%array)
   
   deallocate(region_list)

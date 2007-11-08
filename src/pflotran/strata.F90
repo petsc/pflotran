@@ -181,7 +181,7 @@ subroutine StrataDestroyList(strata_list)
   strata_list%num_strata = 0
   nullify(strata_list%first)
   nullify(strata_list%last)
-  deallocate(strata_list%array)
+  if (associated(strata_list%array)) deallocate(strata_list%array)
   nullify(strata_list%array)
   
   deallocate(strata_list)
@@ -204,7 +204,8 @@ subroutine StrataDestroy(strata)
   
   if (.not.associated(strata)) return
   
-  call RegionDestroy(strata%region)
+  ! since strata%region is a pointer to a region in a list, nullify instead
+  ! of destroying since the list will be destroyed separately
   nullify(strata%region)
   
   deallocate(strata)

@@ -18,6 +18,7 @@ private
 
     type(grid_type), pointer :: grid
     type(option_type), pointer :: option
+    type(output_option_type), pointer :: output_option
     type(region_list_type), pointer :: regions
     type(condition_list_type), pointer :: conditions
     type(coupler_list_type), pointer :: boundary_conditions
@@ -55,6 +56,7 @@ function SolutionCreate()
   
   allocate(solution)
   solution%option => OptionCreate()
+  solution%output_option => OutputOptionCreate()
   nullify(solution%grid)
   allocate(solution%regions)
   call RegionInitList(solution%regions)

@@ -52,29 +52,26 @@ contains
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine Output(solution,kplot,iplot)
+subroutine Output(solution,time,step)
 
   use Solution_module
-  use Option_module
   
   implicit none
   
   type(solution_type) :: solution
-  integer :: kplot
-  integer :: iplot
+  real*8 :: time
+  integer :: step
+
   
-  if (iplot == 1 .and. solution%option%print_hdf5) then
-    call OutputHDF5(solution)
+  if (solution%output_option%print_hdf5) then
+    call OutputHDF5(solution,time,step)
   endif
  
-  if (iplot == 1 .and. solution%option%print_tecplot) then
-    call OutputTecplot(solution,kplot)
+  if (solution%output_option%print_tecplot) then
+    call OutputTecplot(solution,time,step)
   endif
   
-  if (iplot == 1) then
-    iplot = 0
-    kplot = kplot + 1
-  endif
+  solution%output_option%plot_number = solution%output_option%plot_number + 1
 
 end subroutine Output
 
@@ -85,7 +82,7 @@ end subroutine Output
 ! date: 10/25/07
 !
 ! ************************************************************************** !  
-subroutine OutputTecplot(solution,kplot)
+subroutine OutputTecplot(solution,time,step)
 
   use Solution_module
   use Grid_module
@@ -97,7 +94,8 @@ subroutine OutputTecplot(solution,kplot)
 #include "definitions.h"
 
   type(solution_type) :: solution
-  integer :: kplot
+  real*8 :: time
+  integer :: step
   
   integer :: i
   character(len=MAXNAMELENGTH) :: filename
@@ -111,14 +109,14 @@ subroutine OutputTecplot(solution,kplot)
   option => solution%option
   
   ! open file
-  if (kplot < 10) then
-    write(filename,'("pflow00",i1,".tec")') kplot  
-  else if (kplot < 100) then
-    write(filename,'("pflow0",i2,".tec")') kplot  
-  else if (kplot < 1000) then
-    write(filename,'("pflow",i3,".tec")') kplot  
-  else if (kplot < 10000) then
-    write(filename,'("pflow",i4,".tec")') kplot  
+  if (solution%output_option%plot_number < 10) then
+    write(filename,'("pflow00",i1,".tec")') solution%output_option%plot_number  
+  else if (solution%output_option%plot_number < 100) then
+    write(filename,'("pflow0",i2,".tec")') solution%output_option%plot_number  
+  else if (solution%output_option%plot_number < 1000) then
+    write(filename,'("pflow",i3,".tec")') solution%output_option%plot_number  
+  else if (solution%output_option%plot_number < 10000) then
+    write(filename,'("pflow",i4,".tec")') solution%output_option%plot_number  
   endif
   
   if (option%myrank == 0) then
@@ -128,7 +126,7 @@ subroutine OutputTecplot(solution,kplot)
     ! write header
     ! write title
     write(IUNIT3,'(''TITLE = "'',1es12.4," [",a1,'']"'')') &
-                 option%t/option%tconv, option%tunit
+                 time, option%tunit
     ! write variables
     select case(option%imode)
       case (TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
@@ -287,22 +285,22 @@ subroutine OutputTecplot(solution,kplot)
 
   close(IUNIT3)
   
-  if (option%print_tecplot_velocities) then
-    call OutputVelocitiesTecplot(solution,kplot)
+  if (solution%output_option%print_tecplot_velocities) then
+    call OutputVelocitiesTecplot(solution,time,step)
   endif
   
-  if (option%print_tecplot_flux_velocities) then
+  if (solution%output_option%print_tecplot_flux_velocities) then
     if (grid%structured_grid%nx > 1) then
-      call OutputFluxVelocitiesTecplot(solution,kplot,LIQUID_PHASE,X_DIRECTION)
-      call OutputFluxVelocitiesTecplot(solution,kplot,GAS_PHASE,X_DIRECTION)
+      call OutputFluxVelocitiesTecplot(solution,time,step,LIQUID_PHASE,X_DIRECTION)
+      call OutputFluxVelocitiesTecplot(solution,time,step,GAS_PHASE,X_DIRECTION)
     endif
     if (grid%structured_grid%ny > 1) then
-      call OutputFluxVelocitiesTecplot(solution,kplot,LIQUID_PHASE,Y_DIRECTION)
-      call OutputFluxVelocitiesTecplot(solution,kplot,GAS_PHASE,Y_DIRECTION)
+      call OutputFluxVelocitiesTecplot(solution,time,step,LIQUID_PHASE,Y_DIRECTION)
+      call OutputFluxVelocitiesTecplot(solution,time,step,GAS_PHASE,Y_DIRECTION)
     endif
     if (grid%structured_grid%nz > 1) then
-      call OutputFluxVelocitiesTecplot(solution,kplot,LIQUID_PHASE,Z_DIRECTION)
-      call OutputFluxVelocitiesTecplot(solution,kplot,GAS_PHASE,Z_DIRECTION)
+      call OutputFluxVelocitiesTecplot(solution,time,step,LIQUID_PHASE,Z_DIRECTION)
+      call OutputFluxVelocitiesTecplot(solution,time,step,GAS_PHASE,Z_DIRECTION)
     endif
   endif
       
@@ -315,7 +313,7 @@ end subroutine OutputTecplot
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine OutputVelocitiesTecplot(solution,kplot)
+subroutine OutputVelocitiesTecplot(solution,time,step)
  
   use Solution_module
   use Grid_module
@@ -326,7 +324,8 @@ subroutine OutputVelocitiesTecplot(solution,kplot)
 #include "definitions.h"
 
   type(solution_type) :: solution
-  integer :: kplot
+  real*8 :: time
+  integer :: step
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -341,14 +340,14 @@ subroutine OutputVelocitiesTecplot(solution,kplot)
   option => solution%option
   
   ! open file
-  if (kplot < 10) then
-    write(filename,'("pflow_vel00",i1,".tec")') kplot  
-  else if (kplot < 100) then
-    write(filename,'("pflow_vel0",i2,".tec")') kplot  
-  else if (kplot < 1000) then
-    write(filename,'("pflow_vel",i3,".tec")') kplot  
-  else if (kplot < 10000) then
-    write(filename,'("pflow_vel",i4,".tec")') kplot  
+  if (solution%output_option%plot_number < 10) then
+    write(filename,'("pflow_vel00",i1,".tec")') solution%output_option%plot_number  
+  else if (solution%output_option%plot_number < 100) then
+    write(filename,'("pflow_vel0",i2,".tec")') solution%output_option%plot_number  
+  else if (solution%output_option%plot_number < 1000) then
+    write(filename,'("pflow_vel",i3,".tec")') solution%output_option%plot_number  
+  else if (solution%output_option%plot_number < 10000) then
+    write(filename,'("pflow_vel",i4,".tec")') solution%output_option%plot_number  
   endif
   
   if (option%myrank == 0) then
@@ -358,7 +357,7 @@ subroutine OutputVelocitiesTecplot(solution,kplot)
     ! write header
     ! write title
     write(IUNIT3,'(''TITLE = "'',1es12.4," [",a1,'']"'')') &
-                 option%t/option%tconv, option%tunit
+                 time, option%tunit
     ! write variables
     string = 'VARIABLES=' // &
              '"X-Coordinates",' // &
@@ -375,7 +374,7 @@ subroutine OutputVelocitiesTecplot(solution,kplot)
     ! write zone header
     write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
                  &'', K='',i4,'','')') &
-                 option%t/option%tconv,grid%structured_grid%nx,grid%structured_grid%ny,grid%structured_grid%nz 
+                 time,grid%structured_grid%nx,grid%structured_grid%ny,grid%structured_grid%nz 
     string = trim(string) // ' DATAPACKING=BLOCK'
     write(IUNIT3,'(a)') trim(string)
 
@@ -438,7 +437,7 @@ end subroutine OutputVelocitiesTecplot
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine OutputFluxVelocitiesTecplot(solution,kplot,iphase,direction)
+subroutine OutputFluxVelocitiesTecplot(solution,time,step,iphase,direction)
 !geh - specifically, the flow velocities at the interfaces between cells
  
   use Solution_module
@@ -450,7 +449,8 @@ subroutine OutputFluxVelocitiesTecplot(solution,kplot,iphase,direction)
 #include "definitions.h"
 
   type(solution_type) :: solution
-  integer :: kplot
+  real*8 :: time
+  integer :: step
   integer :: iphase
   integer :: direction
   
@@ -495,14 +495,14 @@ subroutine OutputFluxVelocitiesTecplot(solution,kplot,iphase,direction)
       filename = trim(filename) // 'z'
   end select 
   
-  if (kplot < 10) then
-    write(string,'("00",i1,".tec")') kplot  
-  else if (kplot < 100) then
-    write(string,'("0",i2,".tec")') kplot  
-  else if (kplot < 1000) then
-    write(string,'(i3,".tec")') kplot  
-  else if (kplot < 10000) then
-    write(string,'(i4,".tec")') kplot  
+  if (solution%output_option%plot_number < 10) then
+    write(string,'("00",i1,".tec")') solution%output_option%plot_number  
+  else if (solution%output_option%plot_number < 100) then
+    write(string,'("0",i2,".tec")') solution%output_option%plot_number  
+  else if (solution%output_option%plot_number < 1000) then
+    write(string,'(i3,".tec")') solution%output_option%plot_number  
+  else if (solution%output_option%plot_number < 10000) then
+    write(string,'(i4,".tec")') solution%output_option%plot_number  
   endif
   
   filename = trim(filename) // trim(string)
@@ -514,7 +514,7 @@ subroutine OutputFluxVelocitiesTecplot(solution,kplot,iphase,direction)
     ! write header
     ! write title
     write(IUNIT3,'(''TITLE = "'',1es12.4," [",a1,'']"'')') &
-                 option%t/option%tconv, option%tunit
+                 time, option%tunit
     ! write variables
     string = 'VARIABLES=' // &
              '"X-Coordinates",' // &
@@ -904,7 +904,7 @@ end subroutine WriteTecplotDataSet
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine OutputHDF5(solution)
+subroutine OutputHDF5(solution,time,step)
 
   use Solution_module
   use Option_module
@@ -914,6 +914,8 @@ subroutine OutputHDF5(solution)
   implicit none
   
   type(solution_type) :: solution
+  real*8 :: time
+  integer :: step
 
   if (solution%option%myrank == 0) then
     print *
@@ -930,6 +932,8 @@ subroutine OutputHDF5(solution)
   implicit none
 
   type(solution_type) :: solution
+  real*8 :: time
+  integer :: step  
 
   integer(HID_T) :: file_id
   integer(HID_T) :: grp_id
@@ -1028,7 +1032,7 @@ subroutine OutputHDF5(solution)
 
   ! create a group for the data set
   write(string,'('' Time('',i4,''):'',es12.4,x,a1)') &
-        option%flowsteps,option%t/option%tconv,option%tunit
+        step,time,option%tunit
   call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
   
   ! write out data sets 
@@ -1116,7 +1120,7 @@ subroutine OutputHDF5(solution)
 
   end select
   
-  if (option%print_hdf5_velocities) then
+  if (solution%output_option%print_hdf5_velocities) then
 
     ! velocities
     call GetCellCenteredVelocities(solution,global,LIQUID_PHASE,X_DIRECTION)
@@ -1149,7 +1153,7 @@ subroutine OutputHDF5(solution)
                                  H5T_NATIVE_DOUBLE)
   endif
 
-  if (option%print_hdf5_flux_velocities) then
+  if (solution%output_option%print_hdf5_flux_velocities) then
   
     ! internal flux velocities
     if (grid%structured_grid%nx > 1) then
