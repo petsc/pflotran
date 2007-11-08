@@ -219,13 +219,13 @@ subroutine StepperRun(solution,stepper,stage)
   endif
 #endif  
 
-  write(*,'(/," PFLOW steps = ",i6," newton = ",i6," cuts = ",i6)') &
-        istep-1,stepper%newtcum,stepper%icutcum
+  if (option%myrank == 0) then
+    write(*,'(/," PFLOW steps = ",i6," newton = ",i6," cuts = ",i6)') &
+          istep-1,stepper%newtcum,stepper%icutcum
 
-  write(IUNIT2,'(/," PFLOW steps = ",i6," newton = ",i6," cuts = ",i6)') &
-        istep-1,stepper%newtcum,stepper%icutcum
-
-
+    write(IUNIT2,'(/," PFLOW steps = ",i6," newton = ",i6," cuts = ",i6)') &
+          istep-1,stepper%newtcum,stepper%icutcum
+  endif
 
 end subroutine StepperRun
 
