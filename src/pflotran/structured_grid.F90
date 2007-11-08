@@ -616,7 +616,7 @@ end subroutine StructuredGridComputeCoord
 function StructGridComputeInternConnect(structured_grid,option)
 
   use Connection_module
-  use option_module
+  use Option_module
   
   implicit none
   

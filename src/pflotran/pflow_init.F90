@@ -50,7 +50,6 @@ subroutine PflowInit(simulation,filename)
   use Solver_module
   use Solution_module
   use Material_module
-  use Solver_module
   use Timestepper_module
 
   use span_wagner_module
@@ -1443,7 +1442,6 @@ subroutine readInput(simulation,filename)
   use Region_module
   use Condition_module
   use Coupler_module
-  use Material_module
   use Strata_module
 
   use pckr_module 
