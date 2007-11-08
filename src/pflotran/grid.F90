@@ -522,29 +522,29 @@ subroutine GridLocalizeRegions(region_list,grid,option)
       region%k1 = max(region%k1,1)
       region%k2 = min(region%k2,grid%structured_grid%nlz)
        
-      region%num_cells = (region%i2-region%i1+1)* &
-                         (region%j2-region%j1+1)* &
-                         (region%k2-region%k1+1)
-
-      ! if num_cells is negative, block is off processor
-      if (region%num_cells < 0) region%num_cells = 0
-     
-      ! don't worry, region%cell_ids is deallocated below if num_cells = 0
-      allocate(region%cell_ids(region%num_cells))
-      region%cell_ids = 0
-        
       count = 0  
-      do k=region%k1,region%k2
-        do j=region%j1,region%j2
-          do i=region%i1,region%i2
-            count = count + 1
-            region%cell_ids(count) = &
-                   i + (j-1)*grid%structured_grid%nlx + &
-                   (k-1)*grid%structured_grid%nlxy
+      if (region%i1 <= region%i2 .and. &
+          region%j1 <= region%j2 .and. &
+          region%k1 <= region%k2) then
+        region%num_cells = (region%i2-region%i1+1)* &
+                           (region%j2-region%j1+1)* &
+                           (region%k2-region%k1+1)
+        allocate(region%cell_ids(region%num_cells))
+        region%cell_ids = 0
+        do k=region%k1,region%k2
+          do j=region%j1,region%j2
+            do i=region%i1,region%i2
+              count = count + 1
+              region%cell_ids(count) = &
+                     i + (j-1)*grid%structured_grid%nlx + &
+                     (k-1)*grid%structured_grid%nlxy
+            enddo
           enddo
         enddo
-      enddo
-
+      else
+        region%num_cells = 0
+      endif
+     
       if (count /= region%num_cells) &
         call printErrMsg(option,"Mismatch in number of cells in block region")
 
