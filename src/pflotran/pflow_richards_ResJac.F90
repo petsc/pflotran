@@ -342,26 +342,12 @@ subroutine RichardsRes_ARCont(node_no, var_node,por,vol,rock_dencpr, option, Res
 
 end subroutine  RichardsRes_ARCont
 
-
-#ifdef OVERHAUL
-#ifdef OVERHAUL_V2
 subroutine RichardsRes_FLCont(nconn_no,area,var_node1,por1,tor1,sir1,dd1,perm1, &
                             Dk1,var_node2,por2,tor2,sir2,dd2,perm2,Dk2, &
                             dist_gravity,upweight, &
                             option,vv_darcy,Res_FL)
   use Option_module                              
-#else
-subroutine RichardsRes_FLCont(nconn_no,area,var_node1,por1,tor1,sir1,dd1,perm1, &
-                            Dk1,var_node2,por2,tor2,sir2,dd2,perm2,Dk2,grid, &
-                            vv_darcy,connection_object,Res_FL)
-#endif
-  use Connection_module
-#else
-subroutine RichardsRes_FLCont(nconn_no,area,var_node1,por1,tor1,sir1,dd1,perm1, &
-                            Dk1,var_node2,por2,tor2,sir2,dd2,perm2,Dk2,option, &
-                            vv_darcy,Res_FL)
-#endif
-
+  
   implicit none
   
   integer nconn_no
@@ -387,12 +373,6 @@ subroutine RichardsRes_FLCont(nconn_no,area,var_node1,por1,tor1,sir1,dd1,perm1, 
   real*8  fluxm(option%nspec),fluxe, v_darcy,q
   real*8 uh,uxmol(1:option%nspec), ukvr,difff,diffdp, DK,Dq
   real*8 upweight,density_ave,cond, gravity, dphi
-
-#ifndef OVERHAUL_V2
-#ifdef OVERHAUL  
-  type(connection_type) :: connection_object
-#endif
-#endif
   
 !  m1=grid%nd1(nc); n1 = grid%nG2L(m1) ! = zero for ghost nodes 
 !  print *,'in FLcont'
@@ -438,9 +418,6 @@ subroutine RichardsRes_FLCont(nconn_no,area,var_node1,por1,tor1,sir1,dd1,perm1, 
 
 ! Flow term
     if ((sat1(np) > sir1(np)) .or. (sat2(np) > sir2(np))) then
-#ifndef OVERHAUL_V2    
-      upweight=dd2/(dd1+dd2)
-#endif      
       if (sat1(np) <eps) then 
         upweight=0.d0
       else if (sat2(np) <eps) then 
@@ -448,22 +425,9 @@ subroutine RichardsRes_FLCont(nconn_no,area,var_node1,por1,tor1,sir1,dd1,perm1, 
       endif
       density_ave = upweight*density1(np)+(1.D0-upweight)*density2(np)  
 
-#ifndef OVERHAUL    
-      gravity = (upweight*density1(np)*amw1(np) + &
-                (1.D0-upweight)*density2(np)*amw2(np)) &
-                * option%gravity * grid%delz(nconn_no) * grid%grav_ang(nconn_no)
-#else
-#ifdef OVERHAUL_V2
       gravity = (upweight*density1(np)*amw1(np) + &
                 (1.D0-upweight)*density2(np)*amw2(np)) &
                 * option%gravity * dist_gravity
-#else
-      gravity = (upweight*density1(np)*amw1(np) + &
-                (1.D0-upweight)*density2(np)*amw2(np)) &
-                * option%gravity * connection_object%dist(3,nconn_no) * &
-                connection_object%dist(0,nconn_no) 
-#endif                
-#endif
 
       dphi = pre_ref1 - pre_ref2  + gravity
 !    print *,'FLcont  dp',dphi
@@ -525,23 +489,11 @@ subroutine RichardsRes_FLCont(nconn_no,area,var_node1,por1,tor1,sir1,dd1,perm1, 
 
 end subroutine RichardsRes_FLCont
 
-#ifdef OVERHAUL
-#ifdef OVERHAUL_V2
 subroutine RichardsRes_FLBCCont(nbc_no,ibc,area,var_node1,var_node2,por2,tor2,sir2, &
                               dd1,perm2,Dk2,dist_gravity,option,vv_darcy, &
                               Res_FL)
   use Option_module
   use Grid_module
-#else
-subroutine RichardsRes_FLBCCont(nbc_no,area,var_node1,var_node2,por2,tor2,sir2, &
-                              dd1,perm2,Dk2,grid,vv_darcy,connection_object,Res_FL)
-#endif                              
-  use Connection_module
-
-#else
-subroutine RichardsRes_FLBCCont(nbc_no,area,var_node1,var_node2,por2,tor2,sir2, &
-                              dd1,perm2,Dk2,grid,vv_darcy,Res_FL)
-#endif
  ! Notice : index 1 stands for BC node
  
   implicit none
@@ -570,12 +522,6 @@ subroutine RichardsRes_FLBCCont(nbc_no,area,var_node1,var_node2,por2,tor2,sir2, 
   real*8 uh,uxmol(1:option%nspec), ukvr,diff,diffdp, DK,Dq
   real*8 upweight,density_ave,cond,gravity, dphi
 
-#ifndef OVERHAUL_V2
-#ifdef OVERHAUL
-    type(connection_type) :: connection_object
-#endif
-#endif
-  
   ibase=1;                 temp1=>var_node1(ibase)
                            temp2=>var_node2(ibase)
   ibase=ibase+1;           pre_ref1=>var_node1(ibase)
@@ -621,22 +567,9 @@ subroutine RichardsRes_FLBCCont(nbc_no,area,var_node1,var_node2,por2,tor2,sir2, 
         endif
         density_ave = upweight*density1(np)+(1.D0-upweight)*density2(np)  
 
-#ifndef OVERHAUL   
-        gravity = (upweight*density1(np)*amw1(np) + &
-                  (1.D0-upweight)*density2(np)*amw2(np)) &
-                  * option%gravity * grid%delzbc(nbc_no)
-#else
-#ifdef OVERHAUL_V2
         gravity = (upweight*density1(np)*amw1(np) + &
                   (1.D0-upweight)*density2(np)*amw2(np)) &
                   * option%gravity * dist_gravity
-#else
-        gravity = (upweight*density1(np)*amw1(np) + &
-                  (1.D0-upweight)*density2(np)*amw2(np)) &
-                  * option%gravity * connection_object%dist(3,nbc_no) * &
-                  connection_object%dist(0,nbc_no)
-#endif       
-#endif       
         dphi = pre_ref1- pre_ref2 + gravity
    
    
@@ -723,17 +656,7 @@ subroutine RichardsRes_FLBCCont(nbc_no,area,var_node1,var_node2,por2,tor2,sir2, 
       if ((sat2(np) > sir2(np))) then
     
         density_ave = density2(np)  
-#ifndef OVERHAUL    
-        gravity = density2(np)*amw2(np)* option%gravity * grid%delzbc(nbc_no)
-#else
-#ifdef OVERHAUL_V2
         gravity = density2(np)*amw2(np)* option%gravity * dist_gravity
-#else
-        gravity = density2(np)*amw2(np)* option%gravity * &
-                  connection_object%dist(3,nbc_no) * &
-                  connection_object%dist(0,nbc_no)
-#endif
-#endif        
         dphi = pre_ref1-pc1(np) - pre_ref2 + pc2(np) + gravity
     
         ukvr = kvr2(np)
@@ -783,12 +706,10 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
   use Gas_Eos_Module
   use translator_Richards_module
 
-#ifdef OVERHAUL  
   use Connection_module
   use Solution_module
   use Grid_module
   use Option_module
-#endif  
   
   implicit none
 
@@ -855,7 +776,6 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
   real*8 :: Res(solution%option%ndof), vv_darcy(solution%option%nphase)
  PetscViewer :: viewer
 
-#ifdef OVERHAUL 
   type(connection_list_type), pointer :: connection_list
   type(connection_type), pointer :: cur_connection_object
   integer :: iconn
@@ -864,7 +784,6 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
   
   grid => solution%grid
   option => solution%option
-#endif
  
   option%vvlbc=0.D0
   option%vvgbc=0.D0
@@ -1205,11 +1124,6 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
 ! Be careful here, we have velocity field for every phase
 !---------------------------------------------------------------------------
 
-#ifndef OVERHAUL
-  do nc = 1, grid%nconn  ! For each interior connection...
-    m1 = grid%nd1(nc) ! ghosted
-    m2 = grid%nd2(nc)
-#else
   connection_list => grid%internal_connection_list
   cur_connection_object => connection_list%first
   do 
@@ -1218,154 +1132,81 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
       m1 = cur_connection_object%id_up(iconn)
       m2 = cur_connection_object%id_dn(iconn)
       nc = iconn
-#endif
 
-    n1 = grid%nG2L(m1) ! = zero for ghost nodes
-    n2 = grid%nG2L(m2) ! Ghost to local mapping   
+      n1 = grid%nG2L(m1) ! = zero for ghost nodes
+      n2 = grid%nG2L(m2) ! Ghost to local mapping   
 
-    if (associated(option%imat)) then
-      if (option%imat(m1) <= 0 .or. option%imat(m2) <= 0) cycle
-    endif
+      if (associated(option%imat)) then
+        if (option%imat(m1) <= 0 .or. option%imat(m2) <= 0) cycle
+      endif
 
-    p1 = 1 + (n1-1)*option%ndof 
-    p2 = 1 + (n2-1)*option%ndof
+      p1 = 1 + (n1-1)*option%ndof 
+      p2 = 1 + (n2-1)*option%ndof
 
-#ifndef OVERHAUL    
-    dd1 = grid%dist1(nc)
-    dd2 = grid%dist2(nc)
-    
-    ip1 = grid%iperm1(nc)  ! determine the normal direction of interface 
-    ip2 = grid%iperm2(nc)
-
-!GEH - Structured Grid Dependence - Begin
-    select case(ip1)
-      case(1) 
-        perm1 = perm_xx_loc_p(m1)
-      case(2)
-        perm1 = perm_yy_loc_p(m1)
-      case(3)
-        perm1 = perm_zz_loc_p(m1)
-    end select
-    
-    select case(ip2)
-      case(1) 
-        perm2 = perm_xx_loc_p(m2)
-      case(2)
-        perm2 = perm_yy_loc_p(m2)
-      case(3)
-        perm2 = perm_zz_loc_p(m2)
-    end select
-!GEH - Structured Grid Dependence - End
-#else
-    fraction_upwind = cur_connection_object%dist(-1,iconn)
-    distance = cur_connection_object%dist(0,iconn)
-    ! The below assumes a unit gravity vector of [0,0,1]
-    distance_gravity = cur_connection_object%dist(3,iconn)*distance
-    dd1 = distance*fraction_upwind
-    dd2 = distance-dd1 ! should avoid truncation error
-    upweight = dd2/(dd1+dd2)
+      fraction_upwind = cur_connection_object%dist(-1,iconn)
+      distance = cur_connection_object%dist(0,iconn)
+      ! The below assumes a unit gravity vector of [0,0,1]
+      distance_gravity = cur_connection_object%dist(3,iconn)*distance
+      dd1 = distance*fraction_upwind
+      dd2 = distance-dd1 ! should avoid truncation error
+      upweight = dd2/(dd1+dd2)
         
-    ! for now, just assume diagonal tensor
-    perm1 = perm_xx_loc_p(m1)*abs(cur_connection_object%dist(1,iconn))+ &
-            perm_yy_loc_p(m1)*abs(cur_connection_object%dist(2,iconn))+ &
-            perm_zz_loc_p(m1)*abs(cur_connection_object%dist(3,iconn))
+      ! for now, just assume diagonal tensor
+      perm1 = perm_xx_loc_p(m1)*abs(cur_connection_object%dist(1,iconn))+ &
+              perm_yy_loc_p(m1)*abs(cur_connection_object%dist(2,iconn))+ &
+              perm_zz_loc_p(m1)*abs(cur_connection_object%dist(3,iconn))
 
-    perm2 = perm_xx_loc_p(m2)*abs(cur_connection_object%dist(1,iconn))+ &
-            perm_yy_loc_p(m2)*abs(cur_connection_object%dist(2,iconn))+ &
-            perm_zz_loc_p(m2)*abs(cur_connection_object%dist(3,iconn))
-#endif
+      perm2 = perm_xx_loc_p(m2)*abs(cur_connection_object%dist(1,iconn))+ &
+              perm_yy_loc_p(m2)*abs(cur_connection_object%dist(2,iconn))+ &
+              perm_zz_loc_p(m2)*abs(cur_connection_object%dist(3,iconn))
 
-    i1 = ithrm_loc_p(m1)
-    i2 = ithrm_loc_p(m2)
-    iicap1=int(icap_loc_p(m1))
-    iicap2=int(icap_loc_p(m2))
+      i1 = ithrm_loc_p(m1)
+      i2 = ithrm_loc_p(m2)
+      iicap1=int(icap_loc_p(m1))
+      iicap2=int(icap_loc_p(m2))
    
-    D1 = option%ckwet(i1)
-    D2 = option%ckwet(i2)
+      D1 = option%ckwet(i1)
+      D2 = option%ckwet(i2)
 
-#ifndef OVERHAUL
-    dd = dd1 + dd2
-    f1 = dd1/dd
-    f2 = dd2/dd
-#endif
-!   if(dabs(perm1-1D-15)>1D-20)print *, 'perm1 error', perm1, ip1, n1,n2
-!  if(dabs(perm2-1D-15)>1D-20)print *, 'perm2 error', perm2, ip2, n1,n2
-#ifdef OVERHAUL
-#ifdef OVERHAUL_V2
-    call RichardsRes_FLCont(iconn,cur_connection_object%area(iconn), &
-                          var_loc_p((m1-1)*size_var_node+1:(m1-1)* &
-                            size_var_node+size_var_use), &
-                          porosity_loc_p(m1),tor_loc_p(m1), &
-                          option%sir(1:option%nphase,iicap1),dd1,perm1,D1, &
-                          var_loc_p((m2-1)*size_var_node+1:(m2-1)* &
-                            size_var_node+size_var_use), &
-                          porosity_loc_p(m2),tor_loc_p(m2), &
-                          option%sir(1:option%nphase,iicap2),dd2,perm2,D2, &
-                          distance_gravity,upweight,option, &
-                          vv_darcy,Res)
-#else
-    call RichardsRes_FLCont(iconn,cur_connection_object%area(iconn), &
-                          var_loc_p((m1-1)*size_var_node+1:(m1-1)* &
-                            size_var_node+size_var_use), &
-                          porosity_loc_p(m1),tor_loc_p(m1), &
-                          option%sir(1:option%nphase,iicap1),dd1,perm1,D1, &
-                          var_loc_p((m2-1)*size_var_node+1:(m2-1)* &
-                            size_var_node+size_var_use), &
-                          porosity_loc_p(m2),tor_loc_p(m2), &
-                          option%sir(1:option%nphase,iicap2),dd2,perm2,D2,grid, &
-                          vv_darcy,cur_connection_object,Res)
-#endif
-#else
-    call RichardsRes_FLCont(nc ,option%area(nc), &
-                          var_loc_p((m1-1)*size_var_node+1:(m1-1)* &
-                            size_var_node+size_var_use), &
-                          porosity_loc_p(m1),tor_loc_p(m1), &
-                          option%sir(1:option%nphase,iicap1),dd1,perm1,D1, &
-                          var_loc_p((m2-1)*size_var_node+1:(m2-1)* &
-                            size_var_node+size_var_use), &
-                          porosity_loc_p(m2),tor_loc_p(m2), &
-                          option%sir(1:option%nphase,iicap2),dd2,perm2,D2,grid, &
-                          vv_darcy,Res)
-#endif
-#ifndef OVERHAUL
-    option%vvl_loc(nc) = vv_darcy(1)
-!    option%vvg_loc(nc) = vv_darcy(2)  
-#else
-    cur_connection_object%velocity(1,iconn) = vv_darcy(1)
-#endif    
-    if (n1 > 0) then               ! If the upstream node is not a ghost node...
-      do np =1, option%nphase 
-#ifndef OVERHAUL      
-        vl_p(np+(ip1-1)*option%nphase+3*option%nphase*(n1-1)) = vv_darcy(np) 
-#else
-        vl_p(np+(0)*option%nphase+3*option%nphase*(n1-1)) = &
-                                     vv_darcy(np)*cur_connection_object%dist(1,iconn) 
-        vl_p(np+(1)*option%nphase+3*option%nphase*(n1-1)) = &
-                                     vv_darcy(np)*cur_connection_object%dist(2,iconn) 
-        vl_p(np+(2)*option%nphase+3*option%nphase*(n1-1)) = &
-                                     vv_darcy(np)*cur_connection_object%dist(3,iconn) 
-#endif        
-        ! use for print out of velocity
-      enddo
-    endif
+      call RichardsRes_FLCont(iconn,cur_connection_object%area(iconn), &
+                              var_loc_p((m1-1)*size_var_node+1:(m1-1)* &
+                                size_var_node+size_var_use), &
+                              porosity_loc_p(m1),tor_loc_p(m1), &
+                              option%sir(1:option%nphase,iicap1),dd1,perm1,D1, &
+                              var_loc_p((m2-1)*size_var_node+1:(m2-1)* &
+                                size_var_node+size_var_use), &
+                              porosity_loc_p(m2),tor_loc_p(m2), &
+                              option%sir(1:option%nphase,iicap2),dd2,perm2,D2, &
+                              distance_gravity,upweight,option, &
+                              vv_darcy,Res)
+
+      cur_connection_object%velocity(1,iconn) = vv_darcy(1)
+
+      if (n1 > 0) then               ! If the upstream node is not a ghost node...
+        do np =1, option%nphase 
+          vl_p(np+(0)*option%nphase+3*option%nphase*(n1-1)) = &
+                                       vv_darcy(np)*cur_connection_object%dist(1,iconn) 
+          vl_p(np+(1)*option%nphase+3*option%nphase*(n1-1)) = &
+                                       vv_darcy(np)*cur_connection_object%dist(2,iconn) 
+          vl_p(np+(2)*option%nphase+3*option%nphase*(n1-1)) = &
+                                       vv_darcy(np)*cur_connection_object%dist(3,iconn) 
+          ! use for print out of velocity
+        enddo
+      endif
      
-    Resold_FL(nc,1:option%ndof) = Res(1:option%ndof) 
+      Resold_FL(nc,1:option%ndof) = Res(1:option%ndof) 
     
-    if (n1>0) then
-      r_p(p1:p1+option%ndof-1) = r_p(p1:p1+option%ndof-1) + Res(1:option%ndof)
-    endif
+      if (n1>0) then
+        r_p(p1:p1+option%ndof-1) = r_p(p1:p1+option%ndof-1) + Res(1:option%ndof)
+      endif
    
-    if (n2>0) then
-      r_p(p2:p2+option%ndof-1) = r_p(p2:p2+option%ndof-1) - Res(1:option%ndof)
-    endif
+      if (n2>0) then
+        r_p(p2:p2+option%ndof-1) = r_p(p2:p2+option%ndof-1) - Res(1:option%ndof)
+      endif
 
-#ifndef OVERHAUL
-  enddo
-#else
     enddo
     cur_connection_object => cur_connection_object%next
   enddo
-#endif
    ! print *,'finished NC' 
  
 !  print *, 'Residual  (after flux):'
@@ -1376,11 +1217,6 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
 
 !  print *,'2ph bc-sgbc', grid%myrank, option%sgbc    
  
-#ifndef OVERHAUL
-  do nc = 1, grid%nconnbc
-
-    m = grid%mblkbc(nc)  ! Note that here, m is NOT ghosted.
-#else
   connection_list => grid%boundary_connection_list
   cur_connection_object => connection_list%first
   do 
@@ -1388,77 +1224,59 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
     do iconn = 1, cur_connection_object%num_connections
       m= cur_connection_object%id_dn(iconn)
       nc = iconn
-#endif
-    ng = grid%nL2G(m)
 
-    if (associated(option%imat)) then
-      if (option%imat(ng) <= 0) cycle
-    endif
+      ng = grid%nL2G(m)
 
-    if (ng<=0) then
-      print *, "Wrong boundary node index... STOP!!!"
-      stop
-    endif
+      if (associated(option%imat)) then
+        if (option%imat(ng) <= 0) cycle
+      endif
 
-    p1 = 1 + (m-1) * option%ndof
+      if (ng<=0) then
+        print *, "Wrong boundary node index... STOP!!!"
+        stop
+      endif
 
-    ibc = grid%ibconn(nc)
+      p1 = 1 + (m-1) * option%ndof
+
+      ibc = grid%ibconn(nc)
     
-    i2 = ithrm_loc_p(ng)
-    D2 = option%ckwet(i2)
+      i2 = ithrm_loc_p(ng)
+      D2 = option%ckwet(i2)
 
-#ifndef OVERHAUL    
-!GEH - Structured Grid Dependence - Begin
-    ip1 = grid%ipermbc(nc)
-!GEH - Structured Grid Dependence - End
+      ! for now, just assume diagonal tensor
+      perm1 = perm_xx_loc_p(ng)*abs(cur_connection_object%dist(1,iconn))+ &
+              perm_yy_loc_p(ng)*abs(cur_connection_object%dist(2,iconn))+ &
+              perm_zz_loc_p(ng)*abs(cur_connection_object%dist(3,iconn))
+      ! The below assumes a unit gravity vector of [0,0,1]
+      distance_gravity = abs(cur_connection_object%dist(3,iconn)) * &
+                         cur_connection_object%dist(0,iconn)
 
-!GEH - Structured Grid Dependence - Begin
-    select case(ip1)
-      case(1)
-        perm1 = perm_xx_loc_p(ng)
-      case(2)
-        perm1 = perm_yy_loc_p(ng)
-      case(3)
-        perm1 = perm_zz_loc_p(ng)
-    end select
-!GEH - Structured Grid Dependence - End
-
-#else
-    ! for now, just assume diagonal tensor
-    perm1 = perm_xx_loc_p(ng)*abs(cur_connection_object%dist(1,iconn))+ &
-            perm_yy_loc_p(ng)*abs(cur_connection_object%dist(2,iconn))+ &
-            perm_zz_loc_p(ng)*abs(cur_connection_object%dist(3,iconn))
-    ! The below assumes a unit gravity vector of [0,0,1]
-    distance_gravity = abs(cur_connection_object%dist(3,iconn)) * &
-                       cur_connection_object%dist(0,iconn)
-#endif
-
-    select case(option%ibndtyp(ibc))
+      select case(option%ibndtyp(ibc))
           
-      case(2)
-      ! solve for pb from Darcy's law given qb /= 0
-!        option%xxbc(:,nc) = xx_loc_p((ng-1)*option%ndof+1: ng*option%ndof)
-!        option%iphasebc(nc) = int(iphase_loc_p(ng))
-        option%xxbc(:,nc)=xx_loc_p((ng-1)*option%ndof+1:ng*option%ndof)
-         option%iphasebc(nc) = int(iphase_loc_p(ng))
-        if(dabs(option%velocitybc(1,nc))>1D-20)then
-          if( option%velocitybc(1,nc)>0) then
-             option%xxbc(2:option%ndof,nc)= yybc(2:option%ndof,nc)
-          endif     
-        endif    
+        case(2)
+        ! solve for pb from Darcy's law given qb /= 0
+!          option%xxbc(:,nc) = xx_loc_p((ng-1)*option%ndof+1: ng*option%ndof)
+!          option%iphasebc(nc) = int(iphase_loc_p(ng))
+          option%xxbc(:,nc)=xx_loc_p((ng-1)*option%ndof+1:ng*option%ndof)
+           option%iphasebc(nc) = int(iphase_loc_p(ng))
+          if(dabs(option%velocitybc(1,nc))>1D-20)then
+            if( option%velocitybc(1,nc)>0) then
+               option%xxbc(2:option%ndof,nc)= yybc(2:option%ndof,nc)
+            endif     
+          endif    
 
 
-      case(3) 
-     !  option%xxbc((nc-1)*option%ndof+1)=grid%pressurebc(2,ibc)
-        option%xxbc(2:option%ndof,nc) = xx_loc_p((ng-1)*option%ndof+2: ng*option%ndof)
-        option%iphasebc(nc)=int(iphase_loc_p(ng))
+        case(3) 
+       !  option%xxbc((nc-1)*option%ndof+1)=grid%pressurebc(2,ibc)
+          option%xxbc(2:option%ndof,nc) = xx_loc_p((ng-1)*option%ndof+2: ng*option%ndof)
+          option%iphasebc(nc)=int(iphase_loc_p(ng))
     
-     case(4)
-        option%xxbc(1,nc) = xx_loc_p((ng-1)*option%ndof+1)
-         option%xxbc(3:option%ndof,nc) = xx_loc_p((ng-1)*option%ndof+3: ng*option%ndof)    
-        option%iphasebc(nc)=int(iphase_loc_p(ng))
+       case(4)
+          option%xxbc(1,nc) = xx_loc_p((ng-1)*option%ndof+1)
+           option%xxbc(3:option%ndof,nc) = xx_loc_p((ng-1)*option%ndof+3: ng*option%ndof)    
+          option%iphasebc(nc)=int(iphase_loc_p(ng))
         
-    end select
+      end select
 
 ! print *,'2ph bc',grid%myrank,nc,m,ng,ibc,option%ibndtyp(ibc),grid%pressurebc(:,ibc), &
 ! option%tempbc(ibc),option%sgbc(ibc),option%concbc(ibc),option%velocitybc(:,ibc)
@@ -1473,7 +1291,7 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
 !      endif
    
     
-    iicap=int(icap_loc_p(ng))  
+      iicap=int(icap_loc_p(ng))  
 !      print *,'pflow_2pha_bc: ',grid%myrank,' nc= ',nc,' m= ',m, &
 !      ' ng= ',ng,' ibc= ',ibc,ip1,iicap, &
 !      grid%nconnbc,option%ibndtyp(ibc),option%concbc(nc)
@@ -1482,7 +1300,7 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
 !   grid%pressurebc(2,ibc),option%tempbc(ibc),option%concbc(ibc),option%sgbc(ibc)
        
         !*****************
-    dif(1)= option%difaq
+      dif(1)= option%difaq
 !    dif(2)= option%cdiff(int(ithrm_loc_p(ng)))
     !*******************************************
 
@@ -1499,47 +1317,25 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
 !    print *, 'xxphi_co2_bc: ', option%xxphi_co2_bc(nc)
 !    print *
   
-    call pri_var_trans_Richards_ninc(option%xxbc(:,nc),option%iphasebc(nc),&
-                                option%scale,option%nphase,option%nspec, &
-                                iicap, dif,&
-                                option%varbc(1:size_var_use),option%itable,ierr, &
-                                option%pref)
+      call pri_var_trans_Richards_ninc(option%xxbc(:,nc),option%iphasebc(nc),&
+                                       option%scale,option%nphase,option%nspec, &
+                                       iicap, dif,&
+                                       option%varbc(1:size_var_use),option%itable,ierr, &
+                                       option%pref)
    
-#ifdef OVERHAUL
-#ifdef OVERHAUL_V2
-    call RichardsRes_FLBCCont(nc,grid%ibconn(nc), &
-                            cur_connection_object%area(iconn), &
-                            option%varbc(1:size_var_use), &
-                            var_loc_p((ng-1)*size_var_node+1:(ng-1)* &
-                            size_var_node+size_var_use),porosity_loc_p(ng), &
-                            tor_loc_p(ng),option%sir(1:option%nphase,iicap), &
-                            cur_connection_object%dist(0,iconn),perm1,D2, &
-                            distance_gravity,option, &
-                            vv_darcy,Res)
-#else
-    call RichardsRes_FLBCCont(nc,cur_connection_object%area(iconn), &
-                            option%varbc(1:size_var_use), &
-                            var_loc_p((ng-1)*size_var_node+1:(ng-1)* &
-                            size_var_node+size_var_use),porosity_loc_p(ng), &
-                            tor_loc_p(ng),option%sir(1:option%nphase,iicap), &
-                            cur_connection_object%dist(0,iconn),perm1,D2, grid, &
-                            vv_darcy,cur_connection_object,Res)
-#endif
-#else
-    call RichardsRes_FLBCCont(nc,option%areabc(nc),option%varbc(1:size_var_use), &
-                            var_loc_p((ng-1)*size_var_node+1:(ng-1)* &
-                            size_var_node+size_var_use),porosity_loc_p(ng), &
-                            tor_loc_p(ng),option%sir(1:option%nphase,iicap), &
-                            grid%distbc(nc),perm1,D2, grid, vv_darcy,Res)
-#endif     
-#ifndef OVERHAUL
-    option%vvlbc(nc) = vv_darcy(1)
- !   option%vvgbc(nc) = vv_darcy(2) 
-#else
-    cur_connection_object%velocity(1,iconn) = vv_darcy(1)
-#endif    
-    r_p(p1:p1-1+option%ndof)= r_p(p1:p1-1+option%ndof) - Res(1:option%ndof)
-    ResOld_AR(m,1:option%ndof) = ResOld_AR(m,1:option%ndof) - Res(1:option%ndof)
+      call RichardsRes_FLBCCont(nc,grid%ibconn(nc), &
+                                cur_connection_object%area(iconn), &
+                                option%varbc(1:size_var_use), &
+                                var_loc_p((ng-1)*size_var_node+1:(ng-1)* &
+                                  size_var_node+size_var_use),porosity_loc_p(ng), &
+                                tor_loc_p(ng),option%sir(1:option%nphase,iicap), &
+                                cur_connection_object%dist(0,iconn),perm1,D2, &
+                                distance_gravity,option, &
+                                vv_darcy,Res)
+      cur_connection_object%velocity(1,iconn) = vv_darcy(1)
+
+      r_p(p1:p1-1+option%ndof)= r_p(p1:p1-1+option%ndof) - Res(1:option%ndof)
+      ResOld_AR(m,1:option%ndof) = ResOld_AR(m,1:option%ndof) - Res(1:option%ndof)
    
    
        !print *, ' boundary index', nc,ng,ibc,option%ibndtyp(ibc)
@@ -1553,13 +1349,10 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
 !print *,grid%pressurebc(2,ibc),option%tempbc(ibc),option%concbc(ibc),option%sgbc(ibc)
 !print *,option%density_bc,option%avgmw_bc
 !print *,grid%hh_bc,grid%uu_bc,grid%df_bc,grid%hen_bc,grid%pc_bc,grid%kvr_bc
-#ifndef OVERHAUL
-  enddo
-#else
     enddo
     cur_connection_object => cur_connection_object%next
   enddo
-#endif
+
 !  print *,'finished BC'
 
 !  print *, 'Residual  (after bc flux):'
@@ -1631,12 +1424,10 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
   use gas_eos_module
   use translator_Richards_module
 
-#ifdef OVERHAUL  
   use Connection_module
   use Option_module
   use Grid_module
   use Solution_module
-#endif  
   
   implicit none
 
@@ -1697,7 +1488,6 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
   real*8 :: max_dev  
   integer  na1,na2
   
-#ifdef OVERHAUL 
   type(connection_list_type), pointer :: connection_list
   type(connection_type), pointer :: cur_connection_object
   integer :: iconn
@@ -1705,7 +1495,6 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
   real*8 :: distance_gravity 
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option 
-#endif  
   
  PetscViewer :: viewer
 !-----------------------------------------------------------------------
@@ -1914,11 +1703,6 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
 
   ! print *,' Mph Jaco Finished source terms'
 ! Contribution from BC
-#ifndef OVERHAUL
-  do nc = 1, grid%nconnbc
-
-    m = grid%mblkbc(nc)  ! Note that here, m is NOT ghosted.
-#else
   connection_list => grid%boundary_connection_list
   cur_connection_object => connection_list%first
   do 
@@ -1926,88 +1710,68 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
     do iconn = 1, cur_connection_object%num_connections
       m = cur_connection_object%id_dn(iconn)
       nc = iconn
-#endif
-    ng = grid%nL2G(m)
+      ng = grid%nL2G(m)
 
-    if (associated(option%imat)) then
-      if (option%imat(ng) <= 0) cycle
-    endif
+      if (associated(option%imat)) then
+        if (option%imat(ng) <= 0) cycle
+      endif
 
-    if (ng<=0) then
-      print *, "Wrong boundary node index... STOP!!!"
-      stop
-    endif
+      if (ng<=0) then
+        print *, "Wrong boundary node index... STOP!!!"
+        stop
+      endif
   
-    p1 = 1 + (m-1) * option%ndof
+      p1 = 1 + (m-1) * option%ndof
        
-    ibc = grid%ibconn(nc)
+      ibc = grid%ibconn(nc)
     
-    i2 = ithrm_loc_p(ng)
-    D2 = option%ckwet(i2)
+      i2 = ithrm_loc_p(ng)
+      D2 = option%ckwet(i2)
 
-#ifndef OVERHAUL 
-!GEH - Structured Grid Dependence - Begin
-    ip1 = grid%ipermbc(nc)
-!GEH - Structured Grid Dependence - End
+      ! for now, just assume diagonal tensor
+      perm1 = perm_xx_loc_p(ng)*abs(cur_connection_object%dist(1,iconn))+ &
+              perm_yy_loc_p(ng)*abs(cur_connection_object%dist(2,iconn))+ &
+              perm_zz_loc_p(ng)*abs(cur_connection_object%dist(3,iconn))
+      ! The below assumes a unit gravity vector of [0,0,1]
+      distance_gravity = abs(cur_connection_object%dist(3,iconn)) * &
+                         cur_connection_object%dist(0,iconn)
 
-!GEH - Structured Grid Dependence - Begin
-    select case(ip1)
-      case(1)
-        perm1 = perm_xx_loc_p(ng)
-      case(2)
-        perm1 = perm_yy_loc_p(ng)
-      case(3)
-        perm1 = perm_zz_loc_p(ng)
-    end select
-!GEH - Structured Grid Dependence - End
-#else
-    ! for now, just assume diagonal tensor
-    perm1 = perm_xx_loc_p(ng)*abs(cur_connection_object%dist(1,iconn))+ &
-            perm_yy_loc_p(ng)*abs(cur_connection_object%dist(2,iconn))+ &
-            perm_zz_loc_p(ng)*abs(cur_connection_object%dist(3,iconn))
-    ! The below assumes a unit gravity vector of [0,0,1]
-    distance_gravity = abs(cur_connection_object%dist(3,iconn)) * &
-                       cur_connection_object%dist(0,iconn)
-#endif
-    delxbc=0.D0
-    select case(option%ibndtyp(ibc))
-      case(1)
-        delxbc =0.D0
-      case(2)
-        ! solve for pb from Darcy's law given qb /= 0
-!        option%xxbc(:,nc) = xx_loc_p((ng-1)*option%ndof+1: ng*option%ndof)
-!        option%iphasebc(nc) = int(iphase_loc_p(ng))
-!        delxbc = option%delx(1:option%ndof,ng)
-        option%xxbc(:,nc) = xx_loc_p((ng-1)*option%ndof+1: ng*option%ndof)
-        option%iphasebc(nc) = int(iphase_loc_p(ng))
-        delxbc = option%delx(1:option%ndof,ng)
+      delxbc=0.D0
+      select case(option%ibndtyp(ibc))
+        case(1)
+          delxbc =0.D0
+        case(2)
+          ! solve for pb from Darcy's law given qb /= 0
+!          option%xxbc(:,nc) = xx_loc_p((ng-1)*option%ndof+1: ng*option%ndof)
+!          option%iphasebc(nc) = int(iphase_loc_p(ng))
+!          delxbc = option%delx(1:option%ndof,ng)
+          option%xxbc(:,nc) = xx_loc_p((ng-1)*option%ndof+1: ng*option%ndof)
+          option%iphasebc(nc) = int(iphase_loc_p(ng))
+          delxbc = option%delx(1:option%ndof,ng)
         
   
-       if(dabs(option%velocitybc(1,nc))>1D-20)then
-         if( option%velocitybc(1,nc)>0) then
+          if(dabs(option%velocitybc(1,nc))>1D-20)then
+            if( option%velocitybc(1,nc)>0) then
              option%xxbc(2:option%ndof,nc)= yybc(2:option%ndof,nc)
              delxbc(2:option%ndof)=0.D0
-          endif     
-        endif    
+            endif     
+          endif    
 
-      
-       
-        
-     case(3) 
+        case(3) 
         !    option%xxbc(1,nc)=grid%pressurebc(2,ibc)
-        option%xxbc(2:option%ndof,nc) = xx_loc_p((ng-1)*option%ndof+2:ng*option%ndof)
-        option%iphasebc(nc) = int(iphase_loc_p(ng))
-        delxbc(1) = 0.D0
-        delxbc(2:option%ndof) = option%delx(2:option%ndof,ng)
+          option%xxbc(2:option%ndof,nc) = xx_loc_p((ng-1)*option%ndof+2:ng*option%ndof)
+          option%iphasebc(nc) = int(iphase_loc_p(ng))
+          delxbc(1) = 0.D0
+          delxbc(2:option%ndof) = option%delx(2:option%ndof,ng)
         
         case(4)
-        option%xxbc(1,nc) = xx_loc_p((ng-1)*option%ndof+1)
-        option%xxbc(3:option%ndof,nc) = xx_loc_p((ng-1)*option%ndof+3: ng*option%ndof)    
-        delxbc(1)=option%delx(1,ng)
-        delxbc(3:option%ndof) = option%delx(3:option%ndof,ng) 
-        option%iphasebc(nc)=int(iphase_loc_p(ng))
+          option%xxbc(1,nc) = xx_loc_p((ng-1)*option%ndof+1)
+          option%xxbc(3:option%ndof,nc) = xx_loc_p((ng-1)*option%ndof+3: ng*option%ndof)    
+          delxbc(1)=option%delx(1,ng)
+          delxbc(3:option%ndof) = option%delx(3:option%ndof,ng) 
+          option%iphasebc(nc)=int(iphase_loc_p(ng))
     
-    end select
+      end select
 
 ! print *,'2ph bc',grid%myrank,nc,m,ng,ibc,option%ibndtyp(ibc),grid%pressurebc(:,ibc), &
 ! option%tempbc(ibc),option%sgbc(ibc),option%concbc(ibc),option%velocitybc(:,ibc)
@@ -2021,7 +1785,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
    !   grid%pressurebc(ibc)  !nphase elements
 !      endif
    
-    iicap = int(icap_loc_p(ng))     
+      iicap = int(icap_loc_p(ng))     
        
 !      print *,'pflow_2pha_bc: ',grid%myrank,' nc= ',nc,' m= ',m, &
 !      ' ng= ',ng,' ibc= ',ibc,ip1,iicap, &
@@ -2030,65 +1794,41 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
 !   print *,'pflow_2pha-bc: ',ibc,option%iideriv,option%ibndtyp(ibc),option%density_bc,&
 !   grid%pressurebc(2,ibc),option%tempbc(ibc),option%concbc(ibc),option%sgbc(ibc)
         !*****************
-    dif(1) = option%difaq
+      dif(1) = option%difaq
   !  dif(2) = option%cdiff(int(ithrm_loc_p(ng)))
     !*******************************************
 
   !  print *,' Mph Jaco BC terms: finish setup'
   ! here should pay attention to BC type !!!
-    call pri_var_trans_Richards_ninc(option%xxbc(:,nc),option%iphasebc(nc), &
-                                option%scale,option%nphase,option%nspec, &
-                                iicap,  dif, &
-                                option%varbc(1:size_var_use),option%itable,ierr, option%pref)
+      call pri_var_trans_Richards_ninc(option%xxbc(:,nc),option%iphasebc(nc), &
+                                  option%scale,option%nphase,option%nspec, &
+                                  iicap,  dif, &
+                                  option%varbc(1:size_var_use),option%itable,ierr, option%pref)
   
-    call pri_var_trans_Richards_winc(option%xxbc(:,nc),delxbc,option%iphasebc(nc), &
-                                option%scale,option%nphase,option%nspec, &
-                                iicap, dif(1:option%nphase),&
-                                option%varbc(size_var_use+1:(option%ndof+1)* &
-                                  size_var_use), &
-                                option%itable,ierr, option%pref)
-            
+      call pri_var_trans_Richards_winc(option%xxbc(:,nc),delxbc,option%iphasebc(nc), &
+                                  option%scale,option%nphase,option%nspec, &
+                                  iicap, dif(1:option%nphase),&
+                                  option%varbc(size_var_use+1:(option%ndof+1)* &
+                                    size_var_use), &
+                                  option%itable,ierr, option%pref)
+              
 !    print *,' Mph Jaco BC terms: finish increment'
-    do nvar=1,option%ndof
-#ifdef OVERHAUL
-#ifdef OVERHAUL_V2
-      call RichardsRes_FLBCCont(nc,grid%ibconn(nc), &
-                              cur_connection_object%area(iconn), &
-                              option%varbc(nvar*size_var_use+1:(nvar+1)* &
-                                size_var_use), &
-                              var_loc_p((ng-1)*size_var_node+nvar* &
-                                size_var_use+1:(ng-1)*size_var_node+nvar* &
-                                size_var_use+size_var_use), &
-                              porosity_loc_p(ng),tor_loc_p(ng), &
-                              option%sir(1:option%nphase,iicap), &
-                              cur_connection_object%dist(0,iconn),perm1,D2, &
-                              distance_gravity,option,vv_darcy, &
-                              Res)
-#else
-      call RichardsRes_FLBCCont(nc,cur_connection_object%area(iconn), &
-                              option%varbc(nvar*size_var_use+1:(nvar+1)* &
-                                size_var_use), &
-                              var_loc_p((ng-1)*size_var_node+nvar* &
-                                size_var_use+1:(ng-1)*size_var_node+nvar* &
-                                size_var_use+size_var_use), &
-                              porosity_loc_p(ng),tor_loc_p(ng), &
-                              option%sir(1:option%nphase,iicap), &
-                              cur_connection_object%dist(0,iconn),perm1,D2, &
-                              grid,vv_darcy,cur_connection_object,Res)
-#endif                              
-#else   
-      call RichardsRes_FLBCCont(nc,option%areabc(nc), &
-                              option%varbc(nvar*size_var_use+1:(nvar+1)* &
-                                size_var_use), &
-                              var_loc_p((ng-1)*size_var_node+nvar* &
-                                size_var_use+1:(ng-1)*size_var_node+nvar* &
-                                size_var_use+size_var_use), &
-                              porosity_loc_p(ng),tor_loc_p(ng), &
-                              option%sir(1:option%nphase,iicap), &
-                              grid%distbc(nc),perm1,D2,grid,vv_darcy,Res)
-#endif    
-      ResInc(m,1:option%ndof,nvar) = ResInc(m,1:option%ndof,nvar) - Res(1:option%ndof)
-    enddo
+      do nvar=1,option%ndof
+        call RichardsRes_FLBCCont(nc,grid%ibconn(nc), &
+                                cur_connection_object%area(iconn), &
+                                option%varbc(nvar*size_var_use+1:(nvar+1)* &
+                                  size_var_use), &
+                                var_loc_p((ng-1)*size_var_node+nvar* &
+                                  size_var_use+1:(ng-1)*size_var_node+nvar* &
+                                  size_var_use+size_var_use), &
+                                porosity_loc_p(ng),tor_loc_p(ng), &
+                                option%sir(1:option%nphase,iicap), &
+                                cur_connection_object%dist(0,iconn),perm1,D2, &
+                                distance_gravity,option,vv_darcy, &
+                                Res)
+
+        ResInc(m,1:option%ndof,nvar) = ResInc(m,1:option%ndof,nvar) - Res(1:option%ndof)
+      enddo
  !  print *,' Mph Jaco BC terms: finish comp'
     !   print *, ' boundary index', nc,ng,ibc,option%ibndtyp(ibc)
     !   print *, ' P  T   C   S  ', grid%pressurebc(1,ibc),option%tempbc(ibc), &
@@ -2100,13 +1840,10 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
 !print *,option%density_bc,option%avgmw_bc
 !print *,grid%hh_bc,grid%uu_bc,grid%df_bc,grid%hen_bc,grid%pc_bc,grid%kvr_bc
 
-#ifndef OVERHAUL
-  enddo
-#else
     enddo
     cur_connection_object => cur_connection_object%next
   enddo
-#endif
+
   ! print *,' Mph Jaco Finished BC terms'
 #ifdef DEBUG_GEH_ALL  
  call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
@@ -2174,12 +1911,6 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
  !print *,'phase cond: ',iphase_loc_p
   ResInc=0.D0
   
-#ifndef OVERHAUL  
-  do nc = 1, grid%nconn  ! For each interior connection...
-    ra = 0.D0
-    m1 = grid%nd1(nc) ! ghosted
-    m2 = grid%nd2(nc)
-#else
   connection_list => grid%internal_connection_list
   cur_connection_object => connection_list%first
   do 
@@ -2188,244 +1919,147 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
       m1 = cur_connection_object%id_up(iconn)
       m2 = cur_connection_object%id_dn(iconn)
       nc = iconn
-#endif
 
-    if (associated(option%imat)) then
-      if (option%imat(m1) <= 0 .or. option%imat(m2) <= 0) cycle
-    endif
+      if (associated(option%imat)) then
+        if (option%imat(m1) <= 0 .or. option%imat(m2) <= 0) cycle
+      endif
 
-    n1 = grid%nG2L(m1) ! = zero for ghost nodes
-    n2 = grid%nG2L(m2) ! Ghost to local mapping   
-    na1 = grid%nG2N(m1)
-    na2 = grid%nG2N(m2)
+      n1 = grid%nG2L(m1) ! = zero for ghost nodes
+      n2 = grid%nG2L(m2) ! Ghost to local mapping   
+      na1 = grid%nG2N(m1)
+      na2 = grid%nG2N(m2)
     !print *, grid%myrank,nc,m1,m2,n1,n2,na1,na2
-    p1 =  (m1-1)*option%ndof
-    p2 =  (m2-1)*option%ndof
+      p1 =  (m1-1)*option%ndof
+      p2 =  (m2-1)*option%ndof
    
-#ifndef OVERHAUL    
-    dd1 = grid%dist1(nc)
-    dd2 = grid%dist2(nc)
-
-!GEH - Structured Grid Dependence - Begin    
-    ip1 = grid%iperm1(nc)  ! determine the normal direction of interface 
-    ip2 = grid%iperm2(nc)
-!GEH - Structured Grid Dependence - End
-
-!GEH - Structured Grid Dependence - Begin
-    select case(ip1)
-      case(1) 
-        perm1 = perm_xx_loc_p(m1)
-      case(2)
-        perm1 = perm_yy_loc_p(m1)
-     case(3)
-       perm1 = perm_zz_loc_p(m1)
-    end select
+      fraction_upwind = cur_connection_object%dist(-1,iconn)
+      distance = cur_connection_object%dist(0,iconn)
+      ! The below assumes a unit gravity vector of [0,0,1]
+      distance_gravity = cur_connection_object%dist(3,iconn)*distance
+      dd1 = distance*fraction_upwind
+      dd2 = distance-dd1 ! should avoid truncation error
+      upweight = dd2/(dd1+dd2)
     
-    select case(ip2)
-      case(1) 
-        perm2 = perm_xx_loc_p(m2)
-      case(2)
-        perm2 = perm_yy_loc_p(m2)
-      case(3)
-        perm2 = perm_zz_loc_p(m2)
-    end select
-!GEH - Structured Grid Dependence - End
+      ! for now, just assume diagonal tensor
+      perm1 = perm_xx_loc_p(m1)*abs(cur_connection_object%dist(1,iconn))+ &
+              perm_yy_loc_p(m1)*abs(cur_connection_object%dist(2,iconn))+ &
+              perm_zz_loc_p(m1)*abs(cur_connection_object%dist(3,iconn))
 
-#else
-    fraction_upwind = cur_connection_object%dist(-1,iconn)
-    distance = cur_connection_object%dist(0,iconn)
-    ! The below assumes a unit gravity vector of [0,0,1]
-    distance_gravity = cur_connection_object%dist(3,iconn)*distance
-    dd1 = distance*fraction_upwind
-    dd2 = distance-dd1 ! should avoid truncation error
-    upweight = dd2/(dd1+dd2)
+      perm2 = perm_xx_loc_p(m2)*abs(cur_connection_object%dist(1,iconn))+ &
+              perm_yy_loc_p(m2)*abs(cur_connection_object%dist(2,iconn))+ &
+              perm_zz_loc_p(m2)*abs(cur_connection_object%dist(3,iconn))
     
-    ! for now, just assume diagonal tensor
-    perm1 = perm_xx_loc_p(m1)*abs(cur_connection_object%dist(1,iconn))+ &
-            perm_yy_loc_p(m1)*abs(cur_connection_object%dist(2,iconn))+ &
-            perm_zz_loc_p(m1)*abs(cur_connection_object%dist(3,iconn))
+      iiphas1 = iphase_loc_p(m1)
+      iiphas2 = iphase_loc_p(m2)
 
-    perm2 = perm_xx_loc_p(m2)*abs(cur_connection_object%dist(1,iconn))+ &
-            perm_yy_loc_p(m2)*abs(cur_connection_object%dist(2,iconn))+ &
-            perm_zz_loc_p(m2)*abs(cur_connection_object%dist(3,iconn))
-#endif
+      i1 = ithrm_loc_p(m1)
+      i2 = ithrm_loc_p(m2)
+      D1 = option%ckwet(i1)
+      D2 = option%ckwet(i2)
     
-    iiphas1 = iphase_loc_p(m1)
-    iiphas2 = iphase_loc_p(m2)
-
-    i1 = ithrm_loc_p(m1)
-    i2 = ithrm_loc_p(m2)
-    D1 = option%ckwet(i1)
-    D2 = option%ckwet(i2)
-
-#ifndef OVERHAUL
-    dd = dd1 + dd2
-    f1 = dd1/dd
-    f2 = dd2/dd
-#endif    
-    
-    iicap1 = int(icap_loc_p(m1))
-    iicap2 = int(icap_loc_p(m2))
+      iicap1 = int(icap_loc_p(m1))
+      iicap2 = int(icap_loc_p(m2))
  
   ! do neq = 1, option%ndof
-    do nvar = 1, option%ndof
-#ifdef OVERHAUL    
-#ifdef OVERHAUL_V2  
-      call RichardsRes_FLCont(nc,cur_connection_object%area(iconn), &
-                            var_loc_p((m1-1)*size_var_node+nvar* &
-                              size_var_use+1:(m1-1)*size_var_node+nvar* &
-                              size_var_use+size_var_use),&
-                            porosity_loc_p(m1),tor_loc_p(m1), &
-                            option%sir(1:option%nphase,iicap1),dd1,perm1,D1,&
-                            var_loc_p((m2-1)*size_var_node+1:(m2-1)* &
-                              size_var_node+size_var_use),&
-                            porosity_loc_p(m2),tor_loc_p(m2), &
-                            option%sir(1:option%nphase,iicap2),dd2,perm2,D2, &
-                            distance_gravity,upweight, &
-                            option,vv_darcy,Res)
-#else
-      call RichardsRes_FLCont(nc,cur_connection_object%area(iconn), &
-                            var_loc_p((m1-1)*size_var_node+nvar* &
-                              size_var_use+1:(m1-1)*size_var_node+nvar* &
-                              size_var_use+size_var_use),&
-                            porosity_loc_p(m1),tor_loc_p(m1), &
-                            option%sir(1:option%nphase,iicap1),dd1,perm1,D1,&
-                            var_loc_p((m2-1)*size_var_node+1:(m2-1)* &
-                              size_var_node+size_var_use),&
-                            porosity_loc_p(m2),tor_loc_p(m2), &
-                            option%sir(1:option%nphase,iicap2),dd2,perm2,D2, &
-                            grid,vv_darcy,cur_connection_object,Res)
-#endif
-#else
-      call RichardsRes_FLCont(nc ,option%area(nc), &
-                            var_loc_p((m1-1)*size_var_node+nvar* &
-                              size_var_use+1:(m1-1)*size_var_node+nvar* &
-                              size_var_use+size_var_use),&
-                            porosity_loc_p(m1),tor_loc_p(m1), &
-                            option%sir(1:option%nphase,iicap1),dd1,perm1,D1,&
-                            var_loc_p((m2-1)*size_var_node+1:(m2-1)* &
-                              size_var_node+size_var_use),&
-                            porosity_loc_p(m2),tor_loc_p(m2), &
-                            option%sir(1:option%nphase,iicap2),dd2,perm2,D2,grid, &
-                            vv_darcy,Res)
-#endif
-      ra(:,nvar)= (Res(:)-ResOld_FL(nc,:))/option%delx(nvar,m1)
+      do nvar = 1, option%ndof
+        call RichardsRes_FLCont(nc,cur_connection_object%area(iconn), &
+                              var_loc_p((m1-1)*size_var_node+nvar* &
+                                size_var_use+1:(m1-1)*size_var_node+nvar* &
+                                size_var_use+size_var_use),&
+                              porosity_loc_p(m1),tor_loc_p(m1), &
+                              option%sir(1:option%nphase,iicap1),dd1,perm1,D1,&
+                              var_loc_p((m2-1)*size_var_node+1:(m2-1)* &
+                                size_var_node+size_var_use),&
+                              porosity_loc_p(m2),tor_loc_p(m2), &
+                              option%sir(1:option%nphase,iicap2),dd2,perm2,D2, &
+                              distance_gravity,upweight, &
+                              option,vv_darcy,Res)
+                              
+        ra(:,nvar)= (Res(:)-ResOld_FL(nc,:))/option%delx(nvar,m1)
        
-#ifdef OVERHAUL 
-#ifdef OVERHAUL_V2   
-      call RichardsRes_FLCont(nc,cur_connection_object%area(iconn), &
-                            var_loc_p((m1-1)*size_var_node+1:(m1-1)* &
-                              size_var_node+size_var_use),&
-                            porosity_loc_p(m1),tor_loc_p(m1), &
-                            option%sir(1:option%nphase,iicap1),dd1,perm1,D1,&
-                            var_loc_p((m2-1)*size_var_node+nvar* &
-                              size_var_use+1:(m2-1)*size_var_node+nvar* &
-                              size_var_use+size_var_use),&
-                            porosity_loc_p(m2),tor_loc_p(m2), &
-                            option%sir(1:option%nphase,iicap2),dd2,perm2,D2, &
-                            distance_gravity,upweight, &
-                            option, &
-                            vv_darcy,Res)
-#else
-      call RichardsRes_FLCont(nc,cur_connection_object%area(iconn), &
-                            var_loc_p((m1-1)*size_var_node+1:(m1-1)* &
-                              size_var_node+size_var_use),&
-                            porosity_loc_p(m1),tor_loc_p(m1), &
-                            option%sir(1:option%nphase,iicap1),dd1,perm1,D1,&
-                            var_loc_p((m2-1)*size_var_node+nvar* &
-                              size_var_use+1:(m2-1)*size_var_node+nvar* &
-                              size_var_use+size_var_use),&
-                            porosity_loc_p(m2),tor_loc_p(m2), &
-                            option%sir(1:option%nphase,iicap2),dd2,perm2,D2,grid, &
-                            vv_darcy,cur_connection_object,Res)
-#endif
-#else
-      call RichardsRes_FLCont(nc,option%area(nc), &
-                            var_loc_p((m1-1)*size_var_node+1:(m1-1)* &
-                              size_var_node+size_var_use),&
-                            porosity_loc_p(m1),tor_loc_p(m1), &
-                            option%sir(1:option%nphase,iicap1),dd1,perm1,D1,&
-                            var_loc_p((m2-1)*size_var_node+nvar* &
-                              size_var_use+1:(m2-1)*size_var_node+nvar* &
-                              size_var_use+size_var_use),&
-                            porosity_loc_p(m2),tor_loc_p(m2), &
-                            option%sir(1:option%nphase,iicap2),dd2,perm2,D2,grid, &
-                            vv_darcy,Res)
-#endif
+        call RichardsRes_FLCont(nc,cur_connection_object%area(iconn), &
+                              var_loc_p((m1-1)*size_var_node+1:(m1-1)* &
+                                size_var_node+size_var_use),&
+                              porosity_loc_p(m1),tor_loc_p(m1), &
+                              option%sir(1:option%nphase,iicap1),dd1,perm1,D1,&
+                              var_loc_p((m2-1)*size_var_node+nvar* &
+                                size_var_use+1:(m2-1)*size_var_node+nvar* &
+                                size_var_use+size_var_use),&
+                              porosity_loc_p(m2),tor_loc_p(m2), &
+                              option%sir(1:option%nphase,iicap2),dd2,perm2,D2, &
+                              distance_gravity,upweight, &
+                              option, &
+                              vv_darcy,Res)
  
-      ra(:,nvar+option%ndof)= (Res(:)-ResOld_FL(nc,:))/option%delx(nvar,m2)
+        ra(:,nvar+option%ndof)= (Res(:)-ResOld_FL(nc,:))/option%delx(nvar,m2)
    
-    enddo
+      enddo
   
    !   print *,' Mph Jaco Finished NC terms'
   
   ! enddo
    
-    if (option%use_isoth==PETSC_TRUE) then
-      ra(3,1:2*option%ndof)=0.D0
-      ra(:,2)=0.D0
-      ra(:,2+option%ndof)=0.D0
-    endif   
+      if (option%use_isoth==PETSC_TRUE) then
+        ra(3,1:2*option%ndof)=0.D0
+        ra(:,2)=0.D0
+        ra(:,2+option%ndof)=0.D0
+      endif   
  
-    if (option%iblkfmt == 1) then
-      blkmat11 = 0.D0; blkmat12 = 0.D0; blkmat21 = 0.D0; blkmat22 = 0.D0;
-    endif
-    p1=(na1)*option%ndof;p2=(na2)*option%ndof
-    do ii=0,option%ndof-1
-      do jj=0,option%ndof-1
-        if (n1>0) then
-          if (option%iblkfmt == 0) then
-            call MatSetValue(A,p1+ii,p1+jj,ra(ii+1,jj+1),ADD_VALUES,ierr)
-          else
-            blkmat11(ii+1,jj+1) = blkmat11(ii+1,jj+1) + ra(ii+1,jj+1)
+      if (option%iblkfmt == 1) then
+        blkmat11 = 0.D0; blkmat12 = 0.D0; blkmat21 = 0.D0; blkmat22 = 0.D0;
+      endif
+      p1=(na1)*option%ndof;p2=(na2)*option%ndof
+      do ii=0,option%ndof-1
+        do jj=0,option%ndof-1
+          if (n1>0) then
+            if (option%iblkfmt == 0) then
+              call MatSetValue(A,p1+ii,p1+jj,ra(ii+1,jj+1),ADD_VALUES,ierr)
+            else
+              blkmat11(ii+1,jj+1) = blkmat11(ii+1,jj+1) + ra(ii+1,jj+1)
+            endif
           endif
-        endif
-        if (n2>0) then
-          if (option%iblkfmt == 0) then
-            call MatSetValue(A,p2+ii,p1+jj,-ra(ii+1,jj+1),ADD_VALUES,ierr)
-          else
-            blkmat21(ii+1,jj+1) = blkmat21(ii+1,jj+1) -ra(ii+1,jj+1)
+          if (n2>0) then
+            if (option%iblkfmt == 0) then
+              call MatSetValue(A,p2+ii,p1+jj,-ra(ii+1,jj+1),ADD_VALUES,ierr)
+            else
+              blkmat21(ii+1,jj+1) = blkmat21(ii+1,jj+1) -ra(ii+1,jj+1)
+            endif
           endif
-        endif
+        enddo
+
+        do jj=option%ndof,2*option%ndof-1
+          if (n1>0) then
+            if (option%iblkfmt == 0) then
+              call MatSetValue(A,p1+ii,p2+jj-option%ndof,ra(ii+1,jj+1), &
+                               ADD_VALUES,ierr)
+            else
+              blkmat12(ii+1,jj-option%ndof+1) = blkmat12(ii+1,jj-option%ndof+1) + &
+                                                               ra(ii+1,jj+1)
+            endif
+          endif
+          if (n2>0) then
+            if (option%iblkfmt == 0) then
+              call MatSetValue(A,p2+ii,p2+jj-option%ndof,-ra(ii+1,jj+1), &
+                               ADD_VALUES,ierr)
+            else
+              blkmat22(ii+1,jj-option%ndof+1) =  blkmat22(ii+1,jj-option%ndof+1) - &
+                                                                ra(ii+1,jj+1)
+            endif
+          endif
+        enddo
       enddo
-   
-      do jj=option%ndof,2*option%ndof-1
-        if (n1>0) then
-          if (option%iblkfmt == 0) then
-            call MatSetValue(A,p1+ii,p2+jj-option%ndof,ra(ii+1,jj+1), &
-                             ADD_VALUES,ierr)
-          else
-            blkmat12(ii+1,jj-option%ndof+1) = blkmat12(ii+1,jj-option%ndof+1) + &
-                                                             ra(ii+1,jj+1)
-          endif
-        endif
-        if (n2>0) then
-          if (option%iblkfmt == 0) then
-            call MatSetValue(A,p2+ii,p2+jj-option%ndof,-ra(ii+1,jj+1), &
-                             ADD_VALUES,ierr)
-          else
-            blkmat22(ii+1,jj-option%ndof+1) =  blkmat22(ii+1,jj-option%ndof+1) - &
-                                                              ra(ii+1,jj+1)
-          endif
-        endif
-      enddo
-    enddo
   
-    if (option%iblkfmt /= 0) then
-      if (n1>0) call MatSetValuesBlocked(A,1,na1,1,na1,blkmat11,ADD_VALUES,ierr)
-      if (n2>0) call MatSetValuesBlocked(A,1,na2,1,na2,blkmat22,ADD_VALUES,ierr)
-      if (n1>0) call MatSetValuesBlocked(A,1,na1,1,na2,blkmat12,ADD_VALUES,ierr)
-      if (n2>0) call MatSetValuesBlocked(A,1,na2,1,na1,blkmat21,ADD_VALUES,ierr)
-    endif
+      if (option%iblkfmt /= 0) then
+        if (n1>0) call MatSetValuesBlocked(A,1,na1,1,na1,blkmat11,ADD_VALUES,ierr)
+        if (n2>0) call MatSetValuesBlocked(A,1,na2,1,na2,blkmat22,ADD_VALUES,ierr)
+        if (n1>0) call MatSetValuesBlocked(A,1,na1,1,na2,blkmat12,ADD_VALUES,ierr)
+        if (n2>0) call MatSetValuesBlocked(A,1,na2,1,na1,blkmat21,ADD_VALUES,ierr)
+      endif
 !print *,'accum r',ra(1:5,1:8)   
  !print *,'devq:',nc,q,dphi,devq(3,:)
-#ifndef OVERHAUL
-  enddo
-#else
     enddo
     cur_connection_object => cur_connection_object%next
   enddo
-#endif
   ! print *,' Mph Jaco Finished Two node terms'
   
   call VecRestoreArrayF90(option%xx_loc, xx_loc_p, ierr)
@@ -2603,12 +2237,11 @@ subroutine pflow_update_Richards(solution)
   use pckr_module
   use Condition_module_old
    ! use water_eos_module
-#ifdef OVERHAUL  
+
   use Connection_module
   use Solution_module
   use Grid_module
   use Option_module
-#endif 
 
   implicit none
 
@@ -2624,7 +2257,7 @@ subroutine pflow_update_Richards(solution)
   real*8 :: dif(1:solution%option%nphase)
 ! real*8 :: dum1, dum2           
 
-#ifdef OVERHAUL 
+
   type(connection_list_type), pointer :: connection_list
   type(connection_type), pointer :: cur_connection_object
   integer :: iconn
@@ -2632,7 +2265,6 @@ subroutine pflow_update_Richards(solution)
   type(option_type), pointer :: option
   grid => solution%grid
   option => solution%option
-#endif
       
 !geh added for transient boundary conditions      
   if (associated(option%imat) .and. option%iread_geom < 0) then
@@ -2702,11 +2334,7 @@ subroutine pflow_update_Richards(solution)
 
   !geh added for transient boundary conditions  
   if (associated(option%imat) .and. option%iread_geom < 0) then
-#ifndef OVERHAUL
-    do nc = 1, grid%nconnbc
 
-      m = grid%mblkbc(nc)  ! Note that here, m is NOT ghosted.
-#else
     connection_list => grid%boundary_connection_list
     cur_connection_object => connection_list%first
     do 
@@ -2714,69 +2342,64 @@ subroutine pflow_update_Richards(solution)
       do iconn = 1, cur_connection_object%num_connections
         m = cur_connection_object%id_dn(iconn)
         nc = iconn
-#endif
 
-      ng = grid%nL2G(m)
+        ng = grid%nL2G(m)
 
-      if (associated(option%imat)) then
-        if (option%imat(ng) <= 0) cycle
-      endif
+        if (associated(option%imat)) then
+          if (option%imat(ng) <= 0) cycle
+        endif
        
-      if (m<0) then
-        print *, "Wrong boundary node index... STOP!!!"
-        stop
-      endif
+        if (m<0) then
+          print *, "Wrong boundary node index... STOP!!!"
+          stop
+        endif
 
-      ibc = grid%ibconn(nc)
+        ibc = grid%ibconn(nc)
 
        
     !print *,'initadj_bc',nc,ibc,option%ibndtyp(ibc),grid%nconnbc
 
-      if (option%ibndtyp(ibc)==1 .or.option%ibndtyp(ibc)==3) then
-        iicap=int(icap_p(m))
-        iithrm=int(ithrm_p(m)) 
-        dif(1)= option%difaq
+        if (option%ibndtyp(ibc)==1 .or.option%ibndtyp(ibc)==3) then
+          iicap=int(icap_p(m))
+          iithrm=int(ithrm_p(m)) 
+          dif(1)= option%difaq
       !  dif(2)= option%cdiff(iithrm)
       
-        if(option%iphasebc(nc) ==3)then
-          sw= option%xxbc(1,nc)
-          call pflow_pckr_richards_fw(iicap ,sw,pc,kr)    
-          !if(pc(1)>grid%pcwmax(iicap))then
-          !  print *,'INIT Warning: Pc>pcmax'
-          !  pc(1)=grid%pcwmax(iicap)
-          !endif 
-          option%xxbc(1,nc) =  option%pref - pc(1)
+          if(option%iphasebc(nc) ==3)then
+            sw= option%xxbc(1,nc)
+            call pflow_pckr_richards_fw(iicap ,sw,pc,kr)    
+            !if(pc(1)>grid%pcwmax(iicap))then
+            !  print *,'INIT Warning: Pc>pcmax'
+            !  pc(1)=grid%pcwmax(iicap)
+            !endif 
+            option%xxbc(1,nc) =  option%pref - pc(1)
+          endif
+      
+          call pri_var_trans_Richards_ninc(option%xxbc(:,nc),option%iphasebc(nc), &
+                                           option%scale,option%nphase,option%nspec, &
+                                           iicap,dif, &
+                                           option%varbc(1:size_var_use),option%itable,ierr, &
+                                           option%pref)
+        
+          if (translator_check_cond_Richards(option%iphasebc(nc), &
+                                             option%varbc(1:size_var_use), &
+                                             option%nphase,option%nspec) /=1) then
+            print *," Wrong bounday node init...  STOP!!!", option%xxbc(:,nc)
+      
+            print *,option%varbc
+            stop    
+          endif 
         endif
-      
-        call pri_var_trans_Richards_ninc(option%xxbc(:,nc),option%iphasebc(nc), &
-                                         option%scale,option%nphase,option%nspec, &
-                                         iicap,dif, &
-                                         option%varbc(1:size_var_use),option%itable,ierr, &
-                                         option%pref)
-      
-        if (translator_check_cond_Richards(option%iphasebc(nc), &
-                                           option%varbc(1:size_var_use), &
-                                           option%nphase,option%nspec) /=1) then
-          print *," Wrong bounday node init...  STOP!!!", option%xxbc(:,nc)
-      
-          print *,option%varbc
-          stop    
-        endif 
-      endif
 
-      if (option%ibndtyp(ibc)==2) then
-        yybc(2:option%ndof,nc)= option%xxbc(2:option%ndof,nc)
-        vel_bc(1,nc) = option%velocitybc(1,nc)
-!        print *,'initadj', nc, yybc(:,nc), vel_bc(:,nc)
-      endif 
+        if (option%ibndtyp(ibc)==2) then
+          yybc(2:option%ndof,nc)= option%xxbc(2:option%ndof,nc)
+          vel_bc(1,nc) = option%velocitybc(1,nc)
+!          print *,'initadj', nc, yybc(:,nc), vel_bc(:,nc)
+        endif 
       
-#ifndef OVERHAUL
-    enddo
-#else
       enddo
       cur_connection_object => cur_connection_object%next
     enddo
-#endif
   endif
  
   call VecRestoreArrayF90(option%xx, xx_p, ierr); CHKERRQ(ierr)
@@ -2812,12 +2435,11 @@ subroutine pflow_Richards_initadj(solution)
 
   use translator_Richards_module  
   use pckr_module, only: pflow_pckr_richards_fw
-#ifdef OVERHAUL  
+
   use Connection_module
   use Solution_module
   use Grid_module
   use Option_module
-#endif 
   
   implicit none
 
@@ -2838,7 +2460,6 @@ subroutine pflow_Richards_initadj(solution)
 ! real*8 :: dum1, dum2
   real*8 :: pc(1:solution%option%nphase), kr(1:solution%option%nphase), sw
 
-#ifdef OVERHAUL 
   type(connection_list_type), pointer :: connection_list
   type(connection_type), pointer :: cur_connection_object
   integer :: iconn
@@ -2846,7 +2467,6 @@ subroutine pflow_Richards_initadj(solution)
   type(option_type), pointer :: option
   grid => solution%grid
   option => solution%option  
-#endif
   
 ! real*8 :: temp1
 !  real*8, parameter :: Rg=8.31415D0
@@ -2912,11 +2532,6 @@ subroutine pflow_Richards_initadj(solution)
   yybc =option%xxbc
   vel_bc = option%velocitybc
 
-#ifndef OVERHAUL
-  do nc = 1, grid%nconnbc
-
-    m = grid%mblkbc(nc)  ! Note that here, m is NOT ghosted.
-#else
   connection_list => grid%boundary_connection_list
   cur_connection_object => connection_list%first
   do 
@@ -2924,70 +2539,65 @@ subroutine pflow_Richards_initadj(solution)
     do iconn = 1, cur_connection_object%num_connections
       m = cur_connection_object%id_dn(iconn)
       nc = iconn
-#endif
 
-    ng = grid%nL2G(m)
-
-    if (associated(option%imat)) then
-      if (option%imat(ng) <= 0) cycle
-    endif
-       
-    if (m<0) then
-      print *, "Wrong boundary node index... STOP!!!"
-      stop
-    endif
-
-    ibc = grid%ibconn(nc)
-       
-!geh      print *,'initadj_bc',nc,ibc,option%ibndtyp(ibc),grid%nconnbc
-
-    if (option%ibndtyp(ibc)==1 .or.option%ibndtyp(ibc)==3) then
-      iicap=int(icap_p(m))
-      iithrm=int(ithrm_p(m)) 
-      dif(1)= option%difaq
-    !  dif(2)= option%cdiff(iithrm)
-      
-     if(option%iphasebc(nc) ==3)then
-       sw= option%xxbc(1,nc)
-       call pflow_pckr_richards_fw(iicap,sw,pc,kr)    
-    !   if(pc(1)>grid%pcwmax(iicap))then
-    !     print *,'INIT Warning: Pc>pcmax'
-    !     pc(1)=grid%pcwmax(iicap)
-    !   endif 
-        option%xxbc(1,nc) =  option%pref - pc(1)
-     endif
-
-      
-      
-      call pri_var_trans_Richards_ninc(option%xxbc(:,nc),option%iphasebc(nc), &
-                                  option%scale,option%nphase,option%nspec, &
-                                  iicap, dif, &
-                                  option%varbc(1:size_var_use),option%itable,ierr, &
-                                  option%pref)
-      
-      if (translator_check_cond_Richards(option%iphasebc(nc), &
-                                          option%varbc(1:size_var_use), &
-                                          option%nphase,option%nspec) /=1) then
-        print *," Wrong bounday node init...  STOP!!!", option%xxbc(:,nc)
-      
-        print *,option%varbc
-        stop    
-      endif 
-    endif
-
-   if (option%ibndtyp(ibc)==2) then
+      ng = grid%nL2G(m)
   
-       yybc(2:option%ndof,nc)= option%xxbc(2:option%ndof,nc)
-       vel_bc(1,nc) = option%velocitybc(1,nc)
-!geh       print *,'initadj', nc, yybc(:,nc), vel_bc(:,nc)
-    endif 
-#ifndef OVERHAUL
-  enddo
-#else
+      if (associated(option%imat)) then
+        if (option%imat(ng) <= 0) cycle
+      endif
+       
+      if (m<0) then
+        print *, "Wrong boundary node index... STOP!!!"
+        stop
+      endif
+
+      ibc = grid%ibconn(nc)
+       
+  !geh      print *,'initadj_bc',nc,ibc,option%ibndtyp(ibc),grid%nconnbc
+
+      if (option%ibndtyp(ibc)==1 .or.option%ibndtyp(ibc)==3) then
+        iicap=int(icap_p(m))
+        iithrm=int(ithrm_p(m)) 
+        dif(1)= option%difaq
+      !  dif(2)= option%cdiff(iithrm)
+        
+        if(option%iphasebc(nc) ==3)then
+          sw= option%xxbc(1,nc)
+          call pflow_pckr_richards_fw(iicap,sw,pc,kr)    
+      !   if(pc(1)>grid%pcwmax(iicap))then
+      !     print *,'INIT Warning: Pc>pcmax'
+      !     pc(1)=grid%pcwmax(iicap)
+      !   endif 
+          option%xxbc(1,nc) =  option%pref - pc(1)
+        endif
+
+        
+        
+        call pri_var_trans_Richards_ninc(option%xxbc(:,nc),option%iphasebc(nc), &
+                                         option%scale,option%nphase,option%nspec, &
+                                         iicap, dif, &
+                                         option%varbc(1:size_var_use),option%itable,ierr, &
+                                         option%pref)
+        
+        if (translator_check_cond_Richards(option%iphasebc(nc), &
+                                            option%varbc(1:size_var_use), &
+                                            option%nphase,option%nspec) /=1) then
+          print *," Wrong bounday node init...  STOP!!!", option%xxbc(:,nc)
+        
+          print *,option%varbc
+          stop    
+        endif 
+      endif
+
+      if (option%ibndtyp(ibc)==2) then
+    
+        yybc(2:option%ndof,nc)= option%xxbc(2:option%ndof,nc)
+        vel_bc(1,nc) = option%velocitybc(1,nc)
+  !geh       print *,'initadj', nc, yybc(:,nc), vel_bc(:,nc)
+      endif 
     enddo
     cur_connection_object => cur_connection_object%next
   enddo
-#endif
 
   call VecRestoreArrayF90(option%icap, icap_p, ierr)
   call VecRestoreArrayF90(option%ithrm, ithrm_p, ierr)
@@ -3012,12 +2622,10 @@ subroutine createRichardsZeroArray(solution)
   type(solution_type) :: solution
   integer :: n, ng, ncount, idof
 
-#ifdef OVERHAUL
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   grid => solution%grid
   option => solution%option
-#endif
   
   n_zero_rows = 0
 

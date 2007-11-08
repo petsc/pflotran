@@ -985,13 +985,6 @@ subroutine StepperUpdateSolution(solution)
   end select    
 
   if (option%run_coupled == PETSC_TRUE) then
-#ifndef OVERHAUL
-!   call VecCopy(grid%vvl,grid%vl,ierr)
-    grid%vl_loc = grid%vvl_loc
-    grid%vlbc = grid%vvlbc
-    grid%vg_loc = grid%vvg_loc
-    grid%vgbc = grid%vvgbc
-#endif    
     option%xphi_co2 = option%xxphi_co2
     option%den_co2=option%dden_co2
   endif
