@@ -1066,16 +1066,16 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
 
 !geh - there has to be a better way than the below.
     do i = 2, option%ntimsrc
-      if (option%timesrc(i,nr) == option%t) then
+      if (option%timesrc(i,nr) == option%time) then
         tsrc1 = option%tempsrc(i,nr)
         qsrc1 = option%qsrc(i,nr)
         csrc1 = option%csrc(i,nr)
         hsrc1=  option%hsrc(i,nr)
         goto 10
-      else if (option%timesrc(i,nr) > option%t) then
+      else if (option%timesrc(i,nr) > option%time) then
         ff = option%timesrc(i,nr)-option%timesrc(i-1,nr)
-        f1 = (option%t - option%timesrc(i-1,nr))/ff
-        f2 = (option%timesrc(i,nr)-option%t)/ff
+        f1 = (option%time - option%timesrc(i-1,nr))/ff
+        f2 = (option%timesrc(i,nr)-option%time)/ff
         tsrc1 = f1*option%tempsrc(i,nr) + f2*option%tempsrc(i-1,nr)
         qsrc1 = f1*option%qsrc(i,nr) + f2*option%qsrc(i-1,nr)
         csrc1 = f1*option%csrc(i,nr) + f2*option%csrc(i-1,nr)
@@ -1815,15 +1815,15 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
     if (ii1 > ii2 .or. jj1 > jj2 .or. kk1 > kk2) cycle
       
     do i = 2, option%ntimsrc
-      if (option%timesrc(i,nr) == option%t) then
+      if (option%timesrc(i,nr) == option%time) then
         tsrc1 = option%tempsrc(i,nr)
         qsrc1 = option%qsrc(i,nr)
         csrc1 = option%csrc(i,nr)
         goto 10
-      else if (option%timesrc(i,nr) > option%t) then
+      else if (option%timesrc(i,nr) > option%time) then
         ff = option%timesrc(i,nr)-option%timesrc(i-1,nr)
-        f1 = (option%t - option%timesrc(i-1,nr))/ff
-        f2 = (option%timesrc(i,nr)-option%t)/ff
+        f1 = (option%time - option%timesrc(i-1,nr))/ff
+        f2 = (option%timesrc(i,nr)-option%time)/ff
         tsrc1 = f1*option%tempsrc(i,nr) + f2*option%tempsrc(i-1,nr)
         qsrc1 = f1*option%qsrc(i,nr) + f2*option%qsrc(i-1,nr)
         csrc1 = f1*option%csrc(i,nr) + f2*option%csrc(i-1,nr)

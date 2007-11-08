@@ -19,11 +19,11 @@ module Timestepper_module
     integer :: icutcum       ! Total number of cuts in the timestep taken.    
     integer :: iaccel    
     
-    real*8 :: time
-    real*8 :: dt
     real*8 :: dt_min
     real*8 :: dt_max
-    
+    real*8, pointer :: tstep(:)
+    real*8, pointer :: dtstep(:)    
+        
     type(solver_type), pointer :: solver
     type(waypoint_type), pointer :: waypoints
     type(waypoint_type), pointer :: cur_waypoint
@@ -74,11 +74,9 @@ function TimestepperCreate()
   stepper%icutcum = 0    
   stepper%iaccel = 1
   
-  stepper%time = 0.d0
-  stepper%dt = 1.d0
   stepper%dt_min = 1.d0
   stepper%dt_max = 3.1536d6 ! One-tenth of a year.  
-  
+      
   nullify(stepper%solver)
   nullify(stepper%waypoints)
   
@@ -163,9 +161,9 @@ subroutine StepperRun(solution,stepper,stage)
   allocate(dxdt(1:option%ndof))  
 
   solution%option%isrc1 = 2
-
+  
   do istep = stepper%flowsteps+1, stepper%stepmax
-
+  
     call StepperStepDT(solution,stepper,ntstep,iplot,iflgcut,ihalcnt,its)
     call StepperUpdateSolution(solution)
 
@@ -180,7 +178,7 @@ subroutine StepperRun(solution,stepper,stage)
     call PetscLogStagePush(stage(2), ierr)
     if (iplot == 1) then
       if(option%imode /= OWG_MODE) then
-        call Output(solution,stepper%time/option%tconv,istep)
+        call Output(solution,istep)
       else
  !       call pflow_var_output(grid,kplt,iplot)
       endif
@@ -188,7 +186,7 @@ subroutine StepperRun(solution,stepper,stage)
     endif
     call PetscLogStagePop(ierr)
   
-    if (iflgcut == 0) call StepperUpdateDT(option,its)
+    if (iflgcut == 0) call StepperUpdateDT(stepper,option,its)
 
 #if 0
     call PetscLogStagePush(stage(2), ierr)
@@ -238,7 +236,7 @@ end subroutine StepperRun
 ! date: 
 !
 ! ************************************************************************** !
-subroutine StepperUpdateDT(option, its)
+subroutine StepperUpdateDT(stepper,option,its)
 
   use Option_module
   
@@ -247,17 +245,18 @@ subroutine StepperUpdateDT(option, its)
 #include "include/finclude/petsc.h"
 #include "definitions.h"
 
+  type(stepper_type) :: stepper
   type(option_type) :: option
   integer, intent(in) :: its
   
   real*8 :: fac,dtt,up,utmp,uc,ut,uus
   
-  if (option%iaccel == 0) return
+  if (stepper%iaccel == 0) return
 
   select case(option%imode)
     case(THC_MODE)
       fac = 0.5d0
-      if (its >= option%iaccel) fac = 0.33d0
+      if (its >= stepper%iaccel) fac = 0.33d0
       up = option%dpmxe/(option%dpmax+0.1)
       utmp = option%dtmpmxe/(option%dtmpmax+1.d-5)
       uc = option%dcmxe/(option%dcmax+1.d-6)
@@ -265,7 +264,7 @@ subroutine StepperUpdateDT(option, its)
       dtt = fac * option%dt * (1.d0 + ut)
     case(TWOPH_MODE)
       fac = 0.5d0
-      if (its >= option%iaccel) then
+      if (its >= stepper%iaccel) then
         fac = 0.33d0
         ut = 0.d0
       else
@@ -278,7 +277,7 @@ subroutine StepperUpdateDT(option, its)
       dtt = fac * option%dt * (1.d0 + ut)
     case(MPH_MODE,FLASH_MODE,OWG_MODE,VADOSE_MODE)   
       fac = 0.5d0
-      if (its >= option%iaccel) then
+      if (its >= stepper%iaccel) then
         fac = 0.33d0
         ut = 0.d0
       else
@@ -291,7 +290,7 @@ subroutine StepperUpdateDT(option, its)
       dtt = fac * option%dt * (1.d0 + ut)
     case(RICHARDS_MODE)
       fac = 0.5d0
-      if (its >= option%iaccel) then
+      if (its >= stepper%iaccel) then
         fac = 0.33d0
         ut = 0.d0
       else
@@ -303,19 +302,19 @@ subroutine StepperUpdateDT(option, its)
       dtt = fac * option%dt * (1.d0 + ut)
     case(TH_MODE)
       fac = 0.5d0
-      if (its >= option%iaccel) fac = 0.33d0
+      if (its >= stepper%iaccel) fac = 0.33d0
       up = option%dpmxe/(option%dpmax+0.1)
       utmp = option%dtmpmxe/(option%dtmpmax+1.d-5)
       ut = min(up,utmp)
       dtt = fac * option%dt * (1.d0 + ut)
     case(COND_MODE)
       fac = 0.5d0
-      if (its >= option%iaccel) fac = 0.33d0
+      if (its >= stepper%iaccel) fac = 0.33d0
       ut = option%dtmpmxe/(option%dpmax+1.e-5)
       dtt = fac * option%dt * (1.d0 + ut)
       if (dtt > 2.d0 * option%dt) dtt = 2.d0 * option%dt 
     case default
-      if (its <= option%iaccel .and. its <= size(option%tfac)) then
+      if (its <= stepper%iaccel .and. its <= size(option%tfac)) then
         if (its == 0) then
           dtt = option%tfac(1) * option%dt
         else
@@ -325,8 +324,8 @@ subroutine StepperUpdateDT(option, its)
   end select
   
   if (dtt > 2.d0 * option%dt) dtt = 2.d0 * option%dt 
-  if (dtt > option%dt_max) dtt = option%dt_max
-  if (dtt>.25d0*option%t .and. option%t>1.d-2) dtt=.25d0*option%t
+  if (dtt > stepper%dt_max) dtt = stepper%dt_max
+  if (dtt>.25d0*option%time .and. option%time>1.d-2) dtt=.25d0*option%time
   option%dt = dtt
 
 end subroutine StepperUpdateDT
@@ -410,21 +409,21 @@ subroutine StepperStepDT(solution,stepper,ntstep,iplot,iflgcut,ihalcnt,its)
   call GridGlobalToLocal(grid,option%ithrm,option%ithrm_loc,ONEDOF)
   call GridGlobalToLocal(grid,option%iphas,option%iphas_loc,ONEDOF)
 
-  option%t = option%t + option%dt
+  option%time = option%time + option%dt
   stepper%flowsteps = stepper%flowsteps + 1
 
 !print *, 'pflow_step:1:',  ntstep, option%dt
  
 
 ! Adjust time step to plot time
-  if (option%t + 0.2*option%dt >= option%tplot(kplt)) then
-    option%t = option%t - option%dt
-    option%dt = option%tplot(kplt) - option%t
-    if (option%dt > option%dt_max) then
-      option%dt = option%dt_max
-      option%t = option%t + option%dt
+  if (option%time + 0.2*option%dt >= option%tplot(kplt)) then
+    option%time = option%time - option%dt
+    option%dt = option%tplot(kplt) - option%time
+    if (option%dt > stepper%dt_max) then
+      option%dt = stepper%dt_max
+      option%time = option%time + option%dt
     else
-      option%t = option%tplot(kplt)
+      option%time = option%tplot(kplt)
       iplot = 1
     endif
   else if (stepper%flowsteps == stepper%stepmax) then
@@ -435,11 +434,11 @@ subroutine StepperStepDT(solution,stepper,ntstep,iplot,iflgcut,ihalcnt,its)
   if (option%nblksrc > 0) then
     ns = 1
     tsrc = option%timesrc(option%isrc1,ns)
-    if (option%t >= tsrc ) then
-      if (option%t > tsrc +1D2) then
-        option%t = option%t - option%dt
-        option%dt = tsrc - option%t
-        option%t = tsrc
+    if (option%time >= tsrc ) then
+      if (option%time > tsrc +1D2) then
+        option%time = option%time - option%dt
+        option%dt = tsrc - option%time
+        option%time = tsrc
       endif
       option%isrc1 = option%isrc1 + 1
     endif
@@ -447,7 +446,7 @@ subroutine StepperStepDT(solution,stepper,ntstep,iplot,iflgcut,ihalcnt,its)
  ! print *, 'pflow_step:3:',  ntstep, option%dt
   if (iflgcut == 1) then
     ihalcnt = ihalcnt + 1
-    if (ihalcnt > option%ndtcmx) then
+    if (ihalcnt > stepper%ndtcmx) then
       iflgcut = 0
       ihalcnt = 0
     endif
@@ -455,13 +454,13 @@ subroutine StepperStepDT(solution,stepper,ntstep,iplot,iflgcut,ihalcnt,its)
   
   !set maximum time step
   if (ntstep > stepper%nstpmax) then
-    option%dt_max = option%dtstep(stepper%nstpmax)
-  else if (option%t > option%tstep(ntstep)) then
+    stepper%dt_max = stepper%dtstep(stepper%nstpmax)
+  else if (option%time > stepper%tstep(ntstep)) then
     ntstep = ntstep + 1
     if (ntstep <= stepper%nstpmax) then
-      option%dt_max = option%dtstep(ntstep)
+      stepper%dt_max = stepper%dtstep(ntstep)
     else
-      option%dt_max = option%dtstep(stepper%nstpmax)
+      stepper%dt_max = stepper%dtstep(stepper%nstpmax)
     endif
   endif
   
@@ -486,31 +485,31 @@ subroutine StepperStepDT(solution,stepper,ntstep,iplot,iflgcut,ihalcnt,its)
         call SNESSolve(option%snes, PETSC_NULL, option%xx, ierr)
       case(MPH_MODE)
         if (option%use_ksp == PETSC_TRUE) then
-          call pflow_solve(solution,its,snes_reason,ierr)
+          call pflow_solve(solution,its,stepper%newton_max,snes_reason,ierr)
         else 
           call SNESSolve(option%snes, PETSC_NULL, option%xx, ierr)
         endif
       case(RICHARDS_MODE)
         if (option%use_ksp == PETSC_TRUE) then
-          call pflow_solve(solution,its,snes_reason,ierr)
+          call pflow_solve(solution,its,stepper%newton_max,snes_reason,ierr)
         else 
           call SNESSolve(option%snes, PETSC_NULL, option%xx, ierr)
         endif
       case(FLASH_MODE)
         if (option%use_ksp == PETSC_TRUE) then
-          call pflow_solve(solution,its,snes_reason,ierr)
+          call pflow_solve(solution,its,stepper%newton_max,snes_reason,ierr)
         else 
           call SNESSolve(option%snes, PETSC_NULL, option%xx, ierr)
         endif
       case(VADOSE_MODE)
         if (option%use_ksp == PETSC_TRUE) then
-          call pflow_solve(solution,its,snes_reason,ierr)
+          call pflow_solve(solution,its,stepper%newton_max,snes_reason,ierr)
         else 
           call SNESSolve(option%snes, PETSC_NULL, option%xx, ierr)
         endif
       case(OWG_MODE)
         if (option%use_ksp == PETSC_TRUE) then
-          call pflow_solve(solution,its,snes_reason,ierr)
+          call pflow_solve(solution,its,stepper%newton_max,snes_reason,ierr)
         else 
           call SNESSolve(option%snes, PETSC_NULL, option%xx, ierr)
         endif
@@ -608,12 +607,13 @@ subroutine StepperStepDT(solution,stepper,ntstep,iplot,iflgcut,ihalcnt,its)
       icut = icut + 1
       iflgcut = 1
 
-      if (icut > option%icut_max .or. option%dt<1.d-20) then
+      if (icut > stepper%icut_max .or. option%dt<1.d-20) then
 !       call MPI_Comm_rank(PETSC_COMM_WORLD, myrank, ierr)
         if (option%myrank == 0) then
 !         t = pflowgrid_get_t(grid)
-          print *,"--> icut_max exceeded: icut/icutmax= ",icut,option%icut_max, &
-                  "t= ",option%t/option%tconv, " dt= ",option%dt/option%tconv
+          print *,"--> icut_max exceeded: icut/icutmax= ",icut,stepper%icut_max, &
+                  "t= ",option%time/solution%output_option%tconv, " dt= ", &
+                  option%dt/solution%output_option%tconv
           print *,"Stopping execution!"
         endif
         iplot = 1
@@ -638,14 +638,15 @@ subroutine StepperStepDT(solution,stepper,ntstep,iplot,iflgcut,ihalcnt,its)
         stop
       endif
 
-      option%t = option%t - option%dt
+      option%time = option%time - option%dt
       option%dt = 0.5d0 * option%dt
-      option%t = option%t + option%dt
+      option%time = option%time + option%dt
     
       if (option%myrank == 0) write(*,'('' -> Cut time step: snes='',i3, &
         &   '' icut= '',i2,''['',i3,'']'','' t= '',1pe12.4, '' dt= '', &
-        &   1pe12.4,i2)')  snes_reason,icut,option%icutcum, &
-            option%t/option%tconv,option%dt/option%tconv,iflgcut
+        &   1pe12.4,i2)')  snes_reason,icut,stepper%icutcum, &
+            option%time/solution%output_option%tconv, &
+            option%dt/solution%output_option%tconv,iflgcut
 
       if (option%ndof == 1) then
         ! VecCopy(x,y): y=x
@@ -681,16 +682,17 @@ subroutine StepperStepDT(solution,stepper,ntstep,iplot,iflgcut,ihalcnt,its)
     endif
   enddo
 
-  option%newtcum = option%newtcum + its
-  option%icutcum = option%icutcum + icut
+  stepper%newtcum = stepper%newtcum + its
+  stepper%icutcum = stepper%icutcum + icut
 
 ! print screen output
   if (option%myrank == 0) then
     if (mod(stepper%flowsteps,option%imod) == 0 .or. stepper%flowsteps == 1) then
       write(*, '(/," FLOW ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1,"]", &
       & " snes_conv_reason: ",i4,/,"  newt= ",i2," [",i6,"]"," cut= ",i2," [",i4,"]")') &
-      stepper%flowsteps,option%t/option%tconv,option%dt/option%tconv,option%tunit, &
-      snes_reason,its,option%newtcum,icut,option%icutcum
+      stepper%flowsteps,option%time/solution%output_option%tconv, &
+      option%dt/solution%output_option%tconv,solution%output_option%tunit, &
+      snes_reason,its,stepper%newtcum,icut,stepper%icutcum
 
       if (option%use_ksp /= PETSC_TRUE) then
         print *,' --> SNES Linear/Non-Linear Interations = ',it_linear,it_snes
@@ -700,8 +702,9 @@ subroutine StepperStepDT(solution,stepper,ntstep,iplot,iflgcut,ihalcnt,its)
        
       write(IUNIT2, '(" FLOW ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1, &
       & "]"," snes_conv_reason: ",i4,/,"  newt= ",i2," [",i6,"]"," cut= ",i2," [",i4, &
-      & "]")') stepper%flowsteps,option%t/option%tconv,option%dt/option%tconv, &
-      option%tunit, snes_reason,its,option%newtcum,icut,option%icutcum
+      & "]")') stepper%flowsteps,option%time/solution%output_option%tconv, &
+      option%dt/solution%output_option%tconv, &
+      solution%output_option%tunit, snes_reason,its,stepper%newtcum,icut,stepper%icutcum
     endif
   endif
   

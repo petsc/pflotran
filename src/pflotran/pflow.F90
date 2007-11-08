@@ -107,7 +107,7 @@
   call PetscLogStagePush(stage(2), ierr)
 
   if(option%imode /= OWG_MODE) then
-    call Output(solution,0.d0,0)
+    call Output(solution,0)
   else
  !   call pflow_var_output(grid,kplt,iplot)
   endif
