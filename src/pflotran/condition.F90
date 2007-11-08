@@ -448,7 +448,7 @@ subroutine ConditionReadValuesFromFile(filename,times,values)
   fid = 86
   open(unit=fid,file=filename,iostat=status)
   if (status /= 0) then
-    print *, 'file: ', trim(filename), ' not found'.  
+    print *, 'file: ', trim(filename), ' not found'
     stop
   endif
   
