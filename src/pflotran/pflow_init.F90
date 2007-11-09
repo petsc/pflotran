@@ -2799,7 +2799,7 @@ subroutine readInput(simulation,filename)
 !....................
 
       case ('SOUR')
-
+#if 0
         isrc = 0
         ir = 0
       
@@ -2900,7 +2900,7 @@ subroutine readInput(simulation,filename)
           enddo
         endif
 !GEH - Structured Grid Dependence - End
-
+#endif
 !....................
       
       case ('BRK')

@@ -753,6 +753,7 @@ function StructGridComputeBoundConnOld(structured_grid,option,ibconn,nL2G)
   integer, pointer :: ibconn(:)
   integer :: nL2G(:)
   
+#if 0
   integer :: num_conn_hypothetically
   integer :: i, j, k, iconn
   integer :: cell_id_local, cell_id_ghosted
@@ -907,8 +908,9 @@ function StructGridComputeBoundConnOld(structured_grid,option,ibconn,nL2G)
   call VecRestoreArrayF90(structured_grid%dx_loc, dx_loc_p, ierr)
   call VecRestoreArrayF90(structured_grid%dy_loc, dy_loc_p, ierr)
   call VecRestoreArrayF90(structured_grid%dz_loc, dz_loc_p, ierr)
-  
+
   StructGridComputeBoundConnOld => connections
+#endif  
   
 end function StructGridComputeBoundConnOld
 

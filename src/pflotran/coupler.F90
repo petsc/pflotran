@@ -142,7 +142,7 @@ subroutine CouplerRead(coupler,fid)
             coupler%itype = INITIAL_COUPLER_TYPE
           case('boundary')
             coupler%itype = BOUNDARY_COUPLER_TYPE
-          case('src_sink')
+          case('source_sink')
             coupler%itype = SRC_SINK_COUPLER_TYPE
           case default
             print *, 'ERROR: TYPE option (', trim(coupler%ctype), ') not recognized.'

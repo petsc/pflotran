@@ -776,9 +776,10 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
   real*8 :: Res(solution%option%ndof), vv_darcy(solution%option%nphase)
  PetscViewer :: viewer
 
-  type(coupler_type), pointer :: boundary_condition
+  type(coupler_type), pointer :: boundary_condition, source_sink
   type(connection_list_type), pointer :: connection_list
   type(connection_type), pointer :: cur_connection_object
+  logical :: enthalpy_flag
   integer :: iconn
   integer :: sum_connection
   real*8 :: distance, fraction_upwind
@@ -965,102 +966,54 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
 
 !************************************************************************
 ! add source/sink terms
-
-!GEH - Structured Grid Dependence - Begin
-  do nr = 1, option%nblksrc
-      
-    kk1 = option%k1src(nr) - grid%structured_grid%nzs
-    kk2 = option%k2src(nr) - grid%structured_grid%nzs
-    jj1 = option%j1src(nr) - grid%structured_grid%nys
-    jj2 = option%j2src(nr) - grid%structured_grid%nys
-    ii1 = option%i1src(nr) - grid%structured_grid%nxs
-    ii2 = option%i2src(nr) - grid%structured_grid%nxs
-        
-    kk1 = max(1,kk1)
-    kk2 = min(grid%structured_grid%nlz,kk2)
-    jj1 = max(1,jj1)
-    jj2 = min(grid%structured_grid%nly,jj2)
-    ii1 = max(1,ii1)
-    ii2 = min(grid%structured_grid%nlx,ii2)
-        
-    if (ii1 > ii2 .or. jj1 > jj2 .or. kk1 > kk2) cycle
-
-!geh - there has to be a better way than the below.
-    do i = 2, option%ntimsrc
-      if (option%timesrc(i,nr) == option%time) then
-        tsrc1 = option%tempsrc(i,nr)
-        qsrc1 = option%qsrc(i,nr)
-        csrc1 = option%csrc(i,nr)
-        hsrc1=  option%hsrc(i,nr)
-        goto 10
-      else if (option%timesrc(i,nr) > option%time) then
-        ff = option%timesrc(i,nr)-option%timesrc(i-1,nr)
-        f1 = (option%time - option%timesrc(i-1,nr))/ff
-        f2 = (option%timesrc(i,nr)-option%time)/ff
-        tsrc1 = f1*option%tempsrc(i,nr) + f2*option%tempsrc(i-1,nr)
-        qsrc1 = f1*option%qsrc(i,nr) + f2*option%qsrc(i-1,nr)
-        csrc1 = f1*option%csrc(i,nr) + f2*option%csrc(i-1,nr)
-        hsrc1 = f1*option%hsrc(i,nr) + f2*option%hsrc(i-1,nr)
-        goto 10
-      endif
-    enddo
- 10 continue
+  source_sink => solution%source_sinks%first 
+  do 
+    if (.not.associated(source_sink)) exit
     
-   !print *,'pflow2ph : ', grid%myrank,i,option%timesrc(i,nr), &
-   !option%timesrc(i-1,nr),option%t,f1,f2,ff,qsrc1,csrc1,tsrc1
- 
+    ! check whether enthalpy dof is included
+    if (size(source_sink%condition%cur_value) > RICHARDS_CONCENTRATION_DOF) then
+      enthalpy_flag = .true.
+    else
+      enthalpy_flag = .false.
+    endif
+
+    qsrc1 = source_sink%condition%cur_value(RICHARDS_PRESSURE_DOF)
+    tsrc1 = source_sink%condition%cur_value(RICHARDS_TEMPERATURE_DOF)
+    csrc1 = source_sink%condition%cur_value(RICHARDS_CONCENTRATION_DOF)
+    if (enthalpy_flag) hsrc1 = source_sink%condition%cur_value(RICHARDS_ENTHALPY_DOF)
+
     qsrc1 = qsrc1 / option%fmwh2o ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
     csrc1 = csrc1 / option%fmwco2
-  
-  ! Here assuming regular mixture injection. i.e. no extra H from mixing 
-  ! within injected fluid.
-   if(dabs(hsrc1)>1D-20)then 
-       do kk = kk1, kk2
-        do jj = jj1, jj2
-          do ii = ii1, ii2
-            n = ii+(jj-1)*grid%structured_grid%nlx+(kk-1)*grid%structured_grid%nlxy
-             r_p(n*option%ndof) = r_p(n*option%ndof) - hsrc1 * option%dt   
-           enddo
-          enddo
-       enddo
-  endif         
+      
+    cur_connection_object => source_sink%connection
+    
+    do iconn = 1, cur_connection_object%num_connections      
+      n= cur_connection_object%id_dn(iconn)
+      ng = grid%nL2G(n)
 
-    if (qsrc1 > 0.d0) then ! injection
-      do kk = kk1, kk2
-        do jj = jj1, jj2
-          do ii = ii1, ii2
-            n = ii+(jj-1)*grid%structured_grid%nlx+(kk-1)*grid%structured_grid%nlxy
-            ng = grid%nL2G(n)
+      if (enthalpy_flag) then
+        r_p(n*option%ndof) = r_p(n*option%ndof) - hsrc1 * option%dt   
+      endif         
 
-            call wateos_noderiv(tsrc1,var_loc_p((ng-1)*size_var_node+2), &
-                                dw_kg,dw_mol,enth_src_h2o,option%scale,ierr)
+      if (qsrc1 > 0.d0) then ! injection
+        call wateos_noderiv(tsrc1,var_loc_p((ng-1)*size_var_node+2), &
+                            dw_kg,dw_mol,enth_src_h2o,option%scale,ierr)
 
 !           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
 
 !           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
               
-            r_p((n-1)*option%ndof + option%jh2o) = r_p((n-1)*option%ndof + option%jh2o) &
+        r_p((n-1)*option%ndof + option%jh2o) = r_p((n-1)*option%ndof + option%jh2o) &
                                                - qsrc1 *option%dt
-            r_p(n*option%ndof) = r_p(n*option%ndof) - qsrc1*enth_src_h2o*option%dt
-            Resold_AR(n,option%jh2o)= Resold_AR(n,option%jh2o) - qsrc1*option%dt
-            Resold_AR(n,option%ndof)= Resold_AR(n,option%ndof) - qsrc1 * &
-                                                          enth_src_h2o * option%dt
-      
-      
-      !           print *,'pflow2ph_h2o: ',nr,n,ng,tsrc1,dw_mol,dw_mol*option%fmwh2o, &
-!           qsrc1
-          enddo
-        enddo
-      enddo
-    endif  
+        r_p(n*option%ndof) = r_p(n*option%ndof) - qsrc1*enth_src_h2o*option%dt
+        Resold_AR(n,option%jh2o)= Resold_AR(n,option%jh2o) - qsrc1*option%dt
+        Resold_AR(n,option%ndof)= Resold_AR(n,option%ndof) - qsrc1 * &
+                                                             enth_src_h2o * option%dt
+      endif  
     
-    if (csrc1 > 0.d0) then ! injection
-      do kk = kk1, kk2
-        do jj = jj1, jj2
-          do ii = ii1, ii2
-            n = ii+(jj-1)*grid%structured_grid%nlx+(kk-1)*grid%structured_grid%nlxy
-            ng = grid%nL2G(n)
-            jng= 2 + (ng-1)*option%nphase
+      if (csrc1 > 0.d0) then ! injection
+#if 0      
+        jng= 2 + (ng-1)*option%nphase
                     
 !           duan eos
 !           call duanco2(tsrc1,PPRESSURE_LOC(ng)/1D5,dco2,fugco2,co2_phi)
@@ -1068,10 +1021,10 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
 !           enth_src_co2)
 !           enth_src_co2=enth_src_co2 * 1.D-3     
  
-         !  span-wagner
-            call ideal_gaseos_noderiv(var_loc_p((ng-1)*size_var_node+2), &
-                 tsrc1,option%scale,rho,enth_src_co2, tmp)
-            enth_src_co2 =enth_src_co2 / option%fmwa
+     !  span-wagner
+        call ideal_gaseos_noderiv(var_loc_p((ng-1)*size_var_node+2), &
+                                  tsrc1,option%scale,rho,enth_src_co2, tmp)
+        enth_src_co2 =enth_src_co2 / option%fmwa
 
             r_p((n-1)*option%ndof + option%jco2) = r_p((n-1)*option%ndof + option%jco2) &
                                                - csrc1*option%dt
@@ -1082,10 +1035,8 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
        !r_p(s1) = r_p(s1) - csrc1
 
         !   print *,'pflow2ph_co2: ',grid%myrank,nr,n,ng,tsrc1,rho,option%fmwco2,csrc1
-          enddo
-        enddo
-      enddo
-    endif
+#endif
+      endif
   
   
   !  else if (qsrc1 < 0.d0) then ! withdrawal
@@ -1107,6 +1058,8 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
     !    enddo
    !   enddo
   !  endif
+    enddo
+    source_sink => source_sink%next
   enddo
 
 !GEH - Structured Grid Dependence - End
@@ -1472,7 +1425,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
 ! real*8 :: fluxl, fluxlh, fluxlv, fluxg, fluxgh, fluxgv, &
 !           flux, fluxh, fluxv, difff, diffg, diffl,
   real*8 :: ff,dif(1:solution%option%nphase)
-  real*8 :: tsrc1,qsrc1,csrc1
+  real*8 :: tsrc1,qsrc1,csrc1,hsrc1
   real*8 :: dd1, dd2, dd, f1, f2
 ! real*8 :: dfluxp, dfluxt, dfluxp1, dfluxt1, dfluxp2, dfluxt2
 ! real*8 :: por1, por2
@@ -1496,9 +1449,10 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
   real*8 :: max_dev  
   integer  na1,na2
   
-  type(coupler_type), pointer :: boundary_condition
+  type(coupler_type), pointer :: boundary_condition, source_sink
   type(connection_list_type), pointer :: connection_list
   type(connection_type), pointer :: cur_connection_object
+  logical :: enthalpy_flag
   integer :: iconn
   integer :: sum_connection  
   real*8 :: distance, fraction_upwind
@@ -1594,90 +1548,53 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
  call PetscViewerDestroy(viewer,ierr)
 #endif
 
-!GEH - Structured Grid Dependence - Begin
-  do nr = 1, option%nblksrc
-      
-    kk1 = option%k1src(nr) - grid%structured_grid%nzs
-    kk2 = option%k2src(nr) - grid%structured_grid%nzs
-    jj1 = option%j1src(nr) - grid%structured_grid%nys
-    jj2 = option%j2src(nr) - grid%structured_grid%nys
-    ii1 = option%i1src(nr) - grid%structured_grid%nxs
-    ii2 = option%i2src(nr) - grid%structured_grid%nxs
-        
-    kk1 = max(1,kk1)
-    kk2 = min(grid%structured_grid%nlz,kk2)
-    jj1 = max(1,jj1)
-    jj2 = min(grid%structured_grid%nly,jj2)
-    ii1 = max(1,ii1)
-    ii2 = min(grid%structured_grid%nlx,ii2)
-        
-    if (ii1 > ii2 .or. jj1 > jj2 .or. kk1 > kk2) cycle
-      
-    do i = 2, option%ntimsrc
-      if (option%timesrc(i,nr) == option%time) then
-        tsrc1 = option%tempsrc(i,nr)
-        qsrc1 = option%qsrc(i,nr)
-        csrc1 = option%csrc(i,nr)
-        goto 10
-      else if (option%timesrc(i,nr) > option%time) then
-        ff = option%timesrc(i,nr)-option%timesrc(i-1,nr)
-        f1 = (option%time - option%timesrc(i-1,nr))/ff
-        f2 = (option%timesrc(i,nr)-option%time)/ff
-        tsrc1 = f1*option%tempsrc(i,nr) + f2*option%tempsrc(i-1,nr)
-        qsrc1 = f1*option%qsrc(i,nr) + f2*option%qsrc(i-1,nr)
-        csrc1 = f1*option%csrc(i,nr) + f2*option%csrc(i-1,nr)
-        goto 10
-      endif
-    enddo
-10  continue
+  source_sink => solution%source_sinks%first
+  sum_connection = 0    
+  do 
+    if (.not.associated(source_sink)) exit
     
-   !print *,'pflow2ph : ', grid%myrank,i,option%timesrc(i,nr), &
-   !option%timesrc(i-1,nr),option%t,f1,f2,ff,qsrc1,csrc1,tsrc1
- 
+    ! check whether enthalpy dof is included
+    if (size(source_sink%condition%cur_value) > RICHARDS_CONCENTRATION_DOF) then
+      enthalpy_flag = .true.
+    else
+      enthalpy_flag = .false.
+    endif
+
+    qsrc1 = source_sink%condition%cur_value(RICHARDS_PRESSURE_DOF)
+    tsrc1 = source_sink%condition%cur_value(RICHARDS_TEMPERATURE_DOF)
+    csrc1 = source_sink%condition%cur_value(RICHARDS_CONCENTRATION_DOF)
+    if (enthalpy_flag) hsrc1 = source_sink%condition%cur_value(RICHARDS_ENTHALPY_DOF)
+
     qsrc1 = qsrc1 / option%fmwh2o ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
     csrc1 = csrc1 / option%fmwco2
-  
-  ! Here assuming regular mixture injection. i.e. no extra H from mixing 
-  ! within injected fluid.
+      
+    cur_connection_object => source_sink%connection
     
-    if (qsrc1 > 0.d0) then ! injection
-      do kk = kk1, kk2
-        do jj = jj1, jj2
-          do ii = ii1, ii2
-            n = ii+(jj-1)*grid%structured_grid%nlx+(kk-1)*grid%structured_grid%nlxy
-            ng = grid%nL2G(n)
-            
-            do nvar=1,option%ndof      
-              call wateos_noderiv(tsrc1,var_loc_p((ng-1)*size_var_node+nvar* &
-                                                         size_var_use+2), &
-                                  dw_kg,dw_mol,enth_src_h2o,option%scale,ierr)
+    do iconn = 1, cur_connection_object%num_connections      
+      n= cur_connection_object%id_dn(iconn)
+      ng = grid%nL2G(n)
+          
+      if (qsrc1 > 0.d0) then ! injection
+     
+        do nvar=1,option%ndof      
+          call wateos_noderiv(tsrc1,var_loc_p((ng-1)*size_var_node+nvar* &
+                                                     size_var_use+2), &
+                              dw_kg,dw_mol,enth_src_h2o,option%scale,ierr)
 
-!           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
+!       units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
 
-!           qqsrc = qsrc1/dw_mol ! [kmol/s / mol/dm^3 = kmol/m^3]
+!       qqsrc = qsrc1/dw_mol ! [kmol/s / mol/dm^3 = kmol/m^3]
               
-              ResInc(n,option%jh2o,nvar) = ResInc(n,option%jh2o,nvar) - qsrc1 * &
+          ResInc(n,option%jh2o,nvar) = ResInc(n,option%jh2o,nvar) - qsrc1 * &
                                                                     option%dt
-              ResInc(n,option%ndof,nvar) = ResInc(n,option%ndof,nvar) - qsrc1 * &
+          ResInc(n,option%ndof,nvar) = ResInc(n,option%ndof,nvar) - qsrc1 * &
                                                         enth_src_h2o * option%dt
-
-      
-      
-      !           print *,'pflow2ph_h2o: ',nr,n,ng,tsrc1,dw_mol,dw_mol*option%fmwh2o, &
-!           qsrc1
-            enddo
-          enddo
         enddo
-      enddo
-    endif  
+      endif  
     
-    if (csrc1 > 0.d0) then ! injection
-      do kk = kk1, kk2
-        do jj = jj1, jj2
-          do ii = ii1, ii2
-            n = ii+(jj-1)*grid%structured_grid%nlx+(kk-1)*grid%structured_grid%nlxy
-            ng = grid%nL2G(n)
-            jng= 2 + (ng-1)*option%nphase
+      if (csrc1 > 0.d0) then ! injection
+#if 0      
+        jng= 2 + (ng-1)*option%nphase
                     
 !           duan eos
 !           call duanco2(tsrc1,PPRESSURE_LOC(ng)/1D5,dco2,fugco2,co2_phi)
@@ -1686,15 +1603,15 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
 !           enth_src_co2=enth_src_co2 * 1.D-3     
  
          !  span-wagner
-            do nvar=1,option%ndof     
-              call ideal_gaseos_noderiv(var_loc_p((ng-1)*size_var_node+nvar* &
-                                                         size_var_use+2), &
-                                        tsrc1,option%scale,rho,enth_src_co2,tmp)
-              enth_src_co2 = enth_src_co2 / option%fmwa
+        do nvar=1,option%ndof     
+          call ideal_gaseos_noderiv(var_loc_p((ng-1)*size_var_node+nvar* &
+                                                     size_var_use+2), &
+                                    tsrc1,option%scale,rho,enth_src_co2,tmp)
+          enth_src_co2 = enth_src_co2 / option%fmwa
     
-              ResInc(n,option%jco2,nvar)=  ResInc(n,option%jco2,nvar) - csrc1 * &
+          ResInc(n,option%jco2,nvar)=  ResInc(n,option%jco2,nvar) - csrc1 * &
                                                                     option%dt
-              ResInc(n,option%ndof,nvar)=  ResInc(n,option%ndof,nvar) - csrc1 * &
+          ResInc(n,option%ndof,nvar)=  ResInc(n,option%ndof,nvar) - csrc1 * &
                                                            enth_src_co2*option%dt
 
           !  Res_AR(n,option%jco2)= Res_AR(n,option%jco2) - csrc1
@@ -1702,14 +1619,12 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
        !r_p(s1) = r_p(s1) - csrc1
 
 !           print *,'pflow2ph_co2: ',nr,n,ng,tsrc1,rho,option%fmwco2,csrc1
-            enddo
-          enddo
         enddo
-      enddo
-    endif
+#endif        
+      endif
+    enddo
+    source_sink => source_sink%next
   enddo  
-
-!GEH - Structured Grid Dependence - End
 
   ! print *,' Mph Jaco Finished source terms'
 ! Contribution from BC

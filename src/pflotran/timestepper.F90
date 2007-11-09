@@ -160,8 +160,6 @@ subroutine StepperRun(solution,stepper,stage)
 
   allocate(dxdt(1:option%ndof))  
 
-  solution%option%isrc1 = 2
-  
   do istep = stepper%flowsteps+1, stepper%stepmax
   
     call StepperStepDT(solution,stepper,ntstep,iplot,iflgcut,ihalcnt,its)
@@ -429,6 +427,10 @@ subroutine StepperStepDT(solution,stepper,ntstep,iplot,iflgcut,ihalcnt,its)
   else if (stepper%flowsteps == stepper%stepmax) then
     iplot = 1
   endif
+  
+#if 0 
+! NEED TO INCLUDE UPDATE OF SRC/SINK IN THE time step calculation
+
 !print *, 'pflow_step:2:',  ntstep, option%dt, option%dt_max, option%tplot(kplt) - option%t
 ! source/sink time step control
   if (option%nblksrc > 0) then
@@ -443,6 +445,8 @@ subroutine StepperStepDT(solution,stepper,ntstep,iplot,iflgcut,ihalcnt,its)
       option%isrc1 = option%isrc1 + 1
     endif
   endif
+#endif  
+  
  ! print *, 'pflow_step:3:',  ntstep, option%dt
   if (iflgcut == 1) then
     ihalcnt = ihalcnt + 1

@@ -21,6 +21,7 @@ module Condition_module
       ! units(2) = length
       ! units(3:ndof) = dofs in problem
     integer :: num_values                         ! number of entries in the arrays of values
+    integer :: num_dof                            ! number of degrees of freedom in condtion
     integer :: iphase
     real*8, pointer :: times(:)                   ! array of times between which linear interpolation of values occurs
     real*8, pointer :: values(:,:)                ! array of condition values, size(ndof,max_time_index)
@@ -77,6 +78,7 @@ function ConditionCreate(option)
   condition%id = 0
   condition%iphase = 0
   condition%num_values = 0
+  condition%num_dof = 0
   nullify(condition%itype)
   condition%class = ""
   nullify(condition%ctype)
@@ -124,38 +126,50 @@ subroutine ConditionRead(condition,option,fid)
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
   real*8, pointer :: pressure(:), flux(:), temperature(:), &
-                     concentration(:), times(:)
+                     concentration(:), times(:), enthalpy(:)
   character(len=MAXWORDLENGTH), pointer :: units(:), ctype(:)
   integer, pointer :: itype(:)
-  integer :: time_dof, length_dof, pres_dof, temp_dof, conc_dof, iphase
-  integer :: max_size, idof, ierr
+  integer :: time_index, length_index, pres_index, temp_index, conc_index, iphase
+  integer :: enthalpy_index
+  integer :: max_size, index, idof, ierr, max_index, max_dof, max_required_dof
 
   nullify(times)
   nullify(pressure)
   nullify(temperature)
   nullify(flux)
   nullify(concentration)
+  nullify(enthalpy)
   
+  ! need to set up indices for potential data contained in condition
   select case(option%imode)
     case(RICHARDS_MODE)
-      allocate(units(option%ndof+2))
-      allocate(itype(option%ndof))
-      allocate(ctype(option%ndof))
-      itype = 0                
-      ctype = ""
-      iphase = 0
-      pres_dof = 1
-      temp_dof = 2
-      conc_dof = 3
-      time_dof = 4
-      length_dof = 5
+      pres_index = 1
+      temp_index = 2
+      conc_index = 3
+    max_required_dof = 3
+      enthalpy_index = 4
+    max_dof = 4
+      time_index = 5
+      length_index = 6
+      max_index = 6
     case default
-      pres_dof = 1
-      temp_dof = 2
-      conc_dof = 3
+      pres_index = 1
+      temp_index = 2
+      conc_index = 3
+    max_required_dof = 3
+    max_dof = 3
+      max_dof = 4
+      max_index = 6  
   end select
+  allocate(units(max_index))
+  allocate(itype(max_dof))
+  allocate(ctype(max_dof))  
   units = ""
+  itype = 0                
+  ctype = ""
+  iphase = 0
 
+  ! read the condition
   ierr = 0
   do
   
@@ -170,29 +184,31 @@ subroutine ConditionRead(condition,option,fid)
       
     select case(trim(word))
     
-      case('UNITS')
+      case('UNITS') ! read default units for condition arguments
         do
           call fiReadWord(string,word,.true.,ierr)
           if (ierr /= 0) exit
           select case(trim(word))
             case('s','sec','min','hr','d','day','y','yr')
-              condition%units(time_dof) = trim(word)
+              condition%units(time_index) = trim(word)
             case('mm','cm','m','met','meter','dm','km')
-              condition%units(length_dof) = trim(word)
+              condition%units(length_index) = trim(word)
             case('Pa','KPa')
-              condition%units(pres_dof) = trim(word)
+              condition%units(pres_index) = trim(word)
             case('C','K')
-              condition%units(temp_dof) = trim(word)
+              condition%units(temp_index) = trim(word)
             case('M','mol/L')
-              condition%units(conc_dof) = trim(word)
+              condition%units(conc_index) = trim(word)
+            case('KJ/mol')
+              condition%units(enthalpy_index) = trim(word)
           end select
         enddo
-      case('CLASS')
+      case('CLASS') ! read condition class (flow vs. transport)
         call fiReadWord(string,word,.true.,ierr)
         call fiErrorMsg('CLASS','CONDITION', ierr)   
         call fiCharsToLower(word,len_trim(word))
         condition%class = word
-      case('TYPE')
+      case('TYPE') ! read condition type (dirichlet, neumann, etc) for each dof
         do
           call fiReadFlotranString(IUNIT1,string,ierr)
           call fiReadStringErrorMsg('CONDITION',ierr)
@@ -205,23 +221,27 @@ subroutine ConditionRead(condition,option,fid)
           call fiErrorMsg('keyword','CONDITION,TYPE', ierr)   
           select case(trim(word))
             case('PRES','PRESS','PRESSURE')
-              idof = pres_dof
+              index = pres_index
             case('TEMP','TEMPERATURE')
-              idof = temp_dof
+              index = temp_index
             case('CONC','CONCENTRATION')
-              idof = conc_dof
+              index = conc_index
+            case('H','ENTHALPY')
+              index = enthalpy_index
             case default
-              call printErrMsg(option,'dof not recognized in condition,type')
+              call printErrMsg(option,'index not recognized in condition,type')
           end select
           call fiReadWord(string,word,.true.,ierr)
           call fiErrorMsg('TYPE','CONDITION', ierr)   
           call fiCharsToLower(word,len_trim(word))
-          ctype(idof) = word
+          ctype(index) = word
           select case(word)
             case('dirichlet')
-              itype(idof) = DIRICHLET_BC
+              itype(index) = DIRICHLET_BC
             case('neumann')
-              itype(idof) = NEUMANN_BC
+              itype(index) = NEUMANN_BC
+            case('mass')
+              itype(index) = MASS_RATE
             case default
               call printErrMsg(option,'bc type not recognized in condition,type')
           end select
@@ -250,13 +270,15 @@ subroutine ConditionRead(condition,option,fid)
         call fiReadDouble(string,condition%gradient(Z_DIRECTION),ierr)
         call fiErrorMsg('Z Gradient','CONDITION', ierr)   
       case('TEMPERATURE','TEMP')
-        call ConditionReadValues(option,word,string,times,temperature,units(temp_dof))
+        call ConditionReadValues(option,word,string,times,temperature,units(temp_index))
+      case('ENTHALPY','H')
+        call ConditionReadValues(option,word,string,times,enthalpy,units(enthalpy_index))
       case('PRESSURE','PRES','PRESS')
-        call ConditionReadValues(option,word,string,times,pressure,units(pres_dof))
+        call ConditionReadValues(option,word,string,times,pressure,units(pres_index))
       case('FLUX','VELOCITY','VEL')
-        call ConditionReadValues(option,word,string,times,flux,units(pres_dof))
+        call ConditionReadValues(option,word,string,times,flux,units(pres_index))
       case('CONC','CONCENTRATION')
-        call ConditionReadValues(option,word,string,times,concentration,units(conc_dof))
+        call ConditionReadValues(option,word,string,times,concentration,units(conc_index))
     end select 
   
   enddo  
@@ -265,7 +287,7 @@ subroutine ConditionRead(condition,option,fid)
   if (len_trim(condition%class) < 1) then
     call printErrMsg(option,'"class" not set in condition')
   endif
-  do idof=1,option%ndof
+  do idof=1,max_required_dof
     if (len_trim(ctype(idof)) < 1) then
       call printWrnMsg(option,'"type" not set in condition; set to dirichlet')
       ctype(idof) = 'dirichlet'
@@ -278,8 +300,8 @@ subroutine ConditionRead(condition,option,fid)
     condition%iphase = 1
   endif
   
-  allocate(condition%units(2+option%ndof))
-  condition%units(1:2+option%ndof) = units(1:2+option%ndof)
+  allocate(condition%units(max_index))
+  condition%units(1:max_index) = units(1:max_index)
   if (associated(times)) then
     max_size = size(times)
   else
@@ -290,10 +312,19 @@ subroutine ConditionRead(condition,option,fid)
   condition%cur_time_index = 1
   condition%max_time_index = max_size
   
-  allocate(condition%times(max_size),condition%values(option%ndof,max_size))
-  allocate(condition%cur_value(option%ndof))
-  allocate(condition%ctype(option%ndof))
-  allocate(condition%itype(option%ndof))
+  select case(option%imode)
+    case(RICHARDS_MODE)
+      if (.not.associated(enthalpy)) then
+        max_index = max_index-1
+        max_dof = max_dof-1
+      endif
+  end select
+  condition%num_dof = max_dof
+  
+  allocate(condition%times(max_size),condition%values(max_dof,max_size))
+  allocate(condition%cur_value(max_dof))
+  allocate(condition%ctype(max_dof))
+  allocate(condition%itype(max_dof))
   condition%times = -999.d0
   condition%values = -999.d0
   condition%cur_value = -999.d0
@@ -308,52 +339,58 @@ subroutine ConditionRead(condition,option,fid)
   
   if (associated(pressure)) then
     if (size(pressure) < max_size) then
-      condition%values(pres_dof,1:max_size) = pressure(1)
+      condition%values(pres_index,1:max_size) = pressure(1)
     else
-      condition%values(pres_dof,1:max_size) = pressure(1:max_size)
+      condition%values(pres_index,1:max_size) = pressure(1:max_size)
     endif
   else if (associated(flux)) then
     if (size(flux) < max_size) then
-      condition%values(pres_dof,1:max_size) = flux(1)
+      condition%values(pres_index,1:max_size) = flux(1)
     else
-      condition%values(pres_dof,1:max_size) = flux(1:max_size)
+      condition%values(pres_index,1:max_size) = flux(1:max_size)
     endif
   else
-    print *, 'Error: Pressure conditon not set'
-    stop
+    call printErrMsg(option,'Pressure conditon not set')
   endif
   
   if (associated(temperature)) then
     if (size(temperature) < max_size) then
-      condition%values(temp_dof,1:max_size) = temperature(1)
+      condition%values(temp_index,1:max_size) = temperature(1)
     else
-      condition%values(temp_dof,1:max_size) = temperature(1:max_size)
+      condition%values(temp_index,1:max_size) = temperature(1:max_size)
     endif
   else
-    print *, 'Error: Temperature conditon not set'
-    stop  
+    call printErrMsg(option,'Temperature conditon not set')
   endif
   
-  condition%itype(1:option%ndof) = itype(1:option%ndof)
-  condition%ctype(1:option%ndof) = ctype(1:option%ndof)
+  condition%itype(1:max_dof) = itype(1:max_dof)
+  condition%ctype(1:max_dof) = ctype(1:max_dof)
   
   if (associated(concentration)) then
     if (size(concentration) < max_size) then
-      condition%values(conc_dof,1:max_size) = concentration(1)
+      condition%values(conc_index,1:max_size) = concentration(1)
     else
-      condition%values(conc_dof,1:max_size) = concentration(1:max_size)
+      condition%values(conc_index,1:max_size) = concentration(1:max_size)
     endif
   else
-    print *, 'Error: Concentration conditon not set'
-    stop  
+    call printErrMsg(option,'Concentration conditon not set') 
+  endif
+  
+  if (associated(enthalpy)) then
+    if (size(enthalpy) < max_size) then
+      condition%values(enthalpy_index,1:max_size) = enthalpy(1)
+    else
+      condition%values(enthalpy_index,1:max_size) = enthalpy(1:max_size)
+    endif
+  else
+    call printWrnMsg(option,'Enthalpy conditon not set')   
   endif
   
   if (minval(condition%values) < -998.d0) then
-    print *, 'Error: Something is wrong in conditions....'
-    stop  
+    call printErrMsg(option,'Something is wrong in conditions....')
   endif
   
-  condition%cur_value(1:option%ndof) = condition%values(1:option%ndof,1)
+  condition%cur_value(1:max_dof) = condition%values(1:max_dof,1)
 
   if (associated(times)) deallocate(times)
   nullify(times)
@@ -396,6 +433,7 @@ subroutine ConditionReadValues(option,keyword,string,times,values,units)
   character(len=MAXWORDLENGTH) :: units
   
   character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: error_string
   integer :: ierr
   
   ierr = 0
@@ -404,7 +442,8 @@ subroutine ConditionReadValues(option,keyword,string,times,values,units)
   call fiCharsToLower(word,len_trim(word))
   if (fiStringCompare(word,'file',4)) then
     call fiReadWord(string,word,.true.,ierr)
-    call fiErrorMsg('PRESSURE FILE','CONDITION', ierr)
+    error_string = keyword // ' FILE'
+    call fiErrorMsg(error_string,'CONDITION', ierr)
     call ConditionReadValuesFromFile(word,times,values)
   else
     allocate(values(1))

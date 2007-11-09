@@ -326,6 +326,137 @@ subroutine SolutionUpdateBoundConditions(solution)
   enddo
 
 end subroutine SolutionUpdateBoundConditions
+
+! ************************************************************************** !
+!
+! SolutionInitSrcSinks: Initializes source/sinks within model
+! author: Glenn Hammond
+! date: 11/09/07
+!
+! ************************************************************************** !
+subroutine SolutionInitSrcSinks(solution)
+
+  implicit none
+  
+  type(solution_type) :: solution
+  
+  integer :: num_connections
+  
+  type(option_type), pointer :: option
+  type(coupler_type), pointer :: source_sink
+    
+  option => solution%option
+    
+  ! sum the number of connections among all boundary conditions
+  num_connections = 0
+  source_sink => solution%source_sinks%first
+  do
+    if (.not.associated(source_sink)) exit
+    num_connections = num_connections + &
+                      source_sink%connection%num_connections
+    source_sink => source_sink%next
+  enddo
+  
+  ! allocate arrays that match the number of connections
+  select case(option%imode)
+
+    case(MPH_MODE,FLASH_MODE,RICHARDS_MODE,OWG_MODE,VADOSE_MODE)
+  
+      allocate(option%xxbc(option%ndof,num_connections))
+      allocate(option%iphasebc(num_connections))
+      allocate(option%velocitybc(option%nphase,num_connections))
+      option%xxbc = 0.d0
+      option%iphasebc = 0
+      option%velocitybc = 0.d0
+  
+    case default
+    
+      allocate(option%pressurebc(option%nphase,num_connections))
+      allocate(option%tempbc(num_connections))
+      allocate(option%sgbc(num_connections))
+      allocate(option%concbc(num_connections))
+      allocate(option%velocitybc(option%nphase,num_connections))
+      allocate(option%iphasebc(num_connections))
+      option%pressurebc = 0.d0
+      option%tempbc = 0.d0
+      option%concbc = 0.d0
+      option%sgbc = 0.d0
+      option%velocitybc = 0.d0
+      option%iphasebc = 0
+
+  end select 
+  
+  call SolutionUpdateSrcSinks(solution)
+
+end subroutine SolutionInitSrcSinks
+
+! ************************************************************************** !
+!
+! SolutionUpdateSrcSinks: Updates source/sinks within model
+! author: Glenn Hammond
+! date: 11/09/07
+!
+! ************************************************************************** !
+subroutine SolutionUpdateSrcSinks(solution)
+
+  implicit none
+  
+  type(solution_type) :: solution
+  
+  integer :: icell, idof, count
+  
+  type(option_type), pointer :: option
+  type(coupler_type), pointer :: source_sink
+    
+  option => solution%option
+ 
+  source_sink => solution%source_sinks%first
+ 
+  count = 0
+  do
+  
+    if (.not.associated(source_sink)) exit
+  
+    select case(option%imode)
+
+      case(MPH_MODE,FLASH_MODE,RICHARDS_MODE,OWG_MODE,VADOSE_MODE)
+  
+        do icell=1,source_sink%region%num_cells
+          count = count + 1
+          option%iphasebc(count) = source_sink%condition%iphase
+          do idof=1,option%ndof
+            select case(source_sink%condition%itype(idof))
+              case(DIRICHLET_BC)
+                option%xxbc(idof,count) = &
+                  source_sink%condition%cur_value(idof)
+              case(NEUMANN_BC)
+                option%velocitybc(1:option%nphase,count) = &
+                  source_sink%condition%cur_value(idof)
+            end select
+          enddo
+        enddo
+      
+      case default
+
+        do icell=1,source_sink%region%num_cells
+          count = count + 1
+          option%iphasebc(count) = source_sink%condition%iphase
+          if (source_sink%condition%itype(1) == DIRICHLET_BC) then
+            option%pressurebc(:,count) = source_sink%condition%cur_value(1)
+          else
+            option%velocitybc(:,count) = source_sink%condition%cur_value(1)
+          endif
+          option%tempbc(icell) = source_sink%condition%cur_value(2)
+          option%concbc(icell) = source_sink%condition%cur_value(3)
+          option%sgbc(icell) = 1.d0-source_sink%condition%cur_value(4) ! read in as sl
+        enddo
+
+    end select 
+    source_sink => source_sink%next
+  enddo
+
+end subroutine SolutionUpdateSrcSinks
+
 #if 0
 ! NO LONGER NEEDED
 ! ************************************************************************** !
