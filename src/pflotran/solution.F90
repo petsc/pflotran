@@ -34,8 +34,8 @@ private
 
   public :: SolutionCreate, SolutionDestroy, &
             SolutionProcessCouplers, &
-            SolutionUpdateBoundConditions, &
-            SolutionSetIBNDTYPE
+            SolutionInitBoundConditions, &
+            SolutionUpdateBoundConditions
   
 contains
   
@@ -112,9 +112,9 @@ subroutine SolutionProcessCouplers(solution)
       call printErrMsg(solution%option,string)
     endif
     ! pointer to flow condition
-    coupler%flow_condition => ConditionGetPtrFromList(coupler%condition_name, &
-                                                      solution%conditions)
-    if (.not.associated(coupler%flow_condition)) then
+    coupler%condition => ConditionGetPtrFromList(coupler%condition_name, &
+                                                 solution%conditions)
+    if (.not.associated(coupler%condition)) then
       string = 'Condition ' // trim(coupler%condition_name) // &
                ' not found in boundary condition list'
       call printErrMsg(solution%option,string)
@@ -136,9 +136,9 @@ subroutine SolutionProcessCouplers(solution)
       call printErrMsg(solution%option,string)
     endif
     ! pointer to flow condition
-    coupler%flow_condition => ConditionGetPtrFromList(coupler%condition_name, &
-                                                      solution%conditions)
-    if (.not.associated(coupler%flow_condition)) then
+    coupler%condition => ConditionGetPtrFromList(coupler%condition_name, &
+                                                 solution%conditions)
+    if (.not.associated(coupler%condition)) then
       string = 'Condition ' // trim(coupler%condition_name) // &
                ' not found in initial condition list'
       call printErrMsg(solution%option,string)
@@ -159,9 +159,9 @@ subroutine SolutionProcessCouplers(solution)
       call printErrMsg(solution%option,string)
     endif
     ! pointer to flow condition
-    coupler%flow_condition => ConditionGetPtrFromList(coupler%condition_name, &
-                                                      solution%conditions)
-    if (.not.associated(coupler%flow_condition)) then
+    coupler%condition => ConditionGetPtrFromList(coupler%condition_name, &
+                                                 solution%conditions)
+    if (.not.associated(coupler%condition)) then
       string = 'Condition ' // trim(coupler%condition_name) // &
                ' not found in source/sink list'
       call printErrMsg(solution%option,string)
@@ -199,27 +199,35 @@ end subroutine SolutionProcessCouplers
 
 ! ************************************************************************** !
 !
-! SolutionUpdateBoundConditions: Updates boundary conditions within model
+! SolutionInitBoundConditions: Initializes boundary conditions within model
 ! author: Glenn Hammond
 ! date: 11/06/07
 !
 ! ************************************************************************** !
-subroutine SolutionUpdateBoundConditions(solution)
+subroutine SolutionInitBoundConditions(solution)
 
   implicit none
   
   type(solution_type) :: solution
   
-  integer :: icell, idof, count, num_connections
+  integer :: num_connections
   
   type(option_type), pointer :: option
-  type(grid_type), pointer :: grid
   type(coupler_type), pointer :: boundary_condition
     
   option => solution%option
-  grid => solution%grid
     
-  num_connections = grid%boundary_connection_list%first%num_connections
+  ! sum the number of connections among all boundary conditions
+  num_connections = 0
+  boundary_condition => solution%boundary_conditions%first
+  do
+    if (.not.associated(boundary_condition)) exit
+    num_connections = num_connections + &
+                      boundary_condition%connection%num_connections
+    boundary_condition => boundary_condition%next
+  enddo
+  
+  ! allocate arrays that match the number of connections
   select case(option%imode)
 
     case(MPH_MODE,FLASH_MODE,RICHARDS_MODE,OWG_MODE,VADOSE_MODE)
@@ -230,28 +238,7 @@ subroutine SolutionUpdateBoundConditions(solution)
       option%xxbc = 0.d0
       option%iphasebc = 0
       option%velocitybc = 0.d0
-        
-      count = 0
-      boundary_condition => solution%boundary_conditions%first
-      do
-        if (.not.associated(boundary_condition)) exit
-        do icell=1,boundary_condition%region%num_cells
-          count = count + 1
-          option%iphasebc(count) = boundary_condition%flow_condition%iphase
-          do idof=1,option%ndof
-            select case(boundary_condition%flow_condition%itype(idof))
-              case(DIRICHLET_BC)
-                option%xxbc(idof,count) = &
-                  boundary_condition%flow_condition%cur_value(idof)
-              case(NEUMANN_BC)
-                option%velocitybc(1:option%nphase,count) = &
-                  boundary_condition%flow_condition%cur_value(idof)
-            end select
-          enddo
-        enddo
-        boundary_condition => boundary_condition%next
-      enddo
-      
+  
     case default
     
       allocate(option%pressurebc(option%nphase,num_connections))
@@ -267,29 +254,80 @@ subroutine SolutionUpdateBoundConditions(solution)
       option%velocitybc = 0.d0
       option%iphasebc = 0
 
-      count = 0
-      boundary_condition => solution%boundary_conditions%first
-      do
-        if (.not.associated(boundary_condition)) exit
+  end select 
+  
+  call SolutionUpdateBoundConditions(solution)
+
+end subroutine SolutionInitBoundConditions
+
+! ************************************************************************** !
+!
+! SolutionUpdateBoundConditions: Updates boundary conditions within model
+! author: Glenn Hammond
+! date: 11/06/07
+!
+! ************************************************************************** !
+subroutine SolutionUpdateBoundConditions(solution)
+
+  implicit none
+  
+  type(solution_type) :: solution
+  
+  integer :: icell, idof, count
+  
+  type(option_type), pointer :: option
+  type(coupler_type), pointer :: boundary_condition
+    
+  option => solution%option
+ 
+  boundary_condition => solution%boundary_conditions%first
+ 
+  count = 0
+  do
+  
+    if (.not.associated(boundary_condition)) exit
+  
+    select case(option%imode)
+
+      case(MPH_MODE,FLASH_MODE,RICHARDS_MODE,OWG_MODE,VADOSE_MODE)
+  
         do icell=1,boundary_condition%region%num_cells
           count = count + 1
-          option%iphasebc(count) = boundary_condition%flow_condition%iphase
-          if (boundary_condition%flow_condition%itype(1) == DIRICHLET_BC) then
-            option%pressurebc(:,count) = boundary_condition%flow_condition%cur_value(1)
-          else
-            option%velocitybc(:,count) = boundary_condition%flow_condition%cur_value(1)
-          endif
-          option%tempbc(icell) = boundary_condition%flow_condition%cur_value(2)
-          option%concbc(icell) = boundary_condition%flow_condition%cur_value(3)
-          option%sgbc(icell) = 1.d0-boundary_condition%flow_condition%cur_value(4) ! read in as sl
+          option%iphasebc(count) = boundary_condition%condition%iphase
+          do idof=1,option%ndof
+            select case(boundary_condition%condition%itype(idof))
+              case(DIRICHLET_BC)
+                option%xxbc(idof,count) = &
+                  boundary_condition%condition%cur_value(idof)
+              case(NEUMANN_BC)
+                option%velocitybc(1:option%nphase,count) = &
+                  boundary_condition%condition%cur_value(idof)
+            end select
+          enddo
         enddo
-        boundary_condition => boundary_condition%next
-      enddo
+      
+      case default
 
-  end select 
+        do icell=1,boundary_condition%region%num_cells
+          count = count + 1
+          option%iphasebc(count) = boundary_condition%condition%iphase
+          if (boundary_condition%condition%itype(1) == DIRICHLET_BC) then
+            option%pressurebc(:,count) = boundary_condition%condition%cur_value(1)
+          else
+            option%velocitybc(:,count) = boundary_condition%condition%cur_value(1)
+          endif
+          option%tempbc(icell) = boundary_condition%condition%cur_value(2)
+          option%concbc(icell) = boundary_condition%condition%cur_value(3)
+          option%sgbc(icell) = 1.d0-boundary_condition%condition%cur_value(4) ! read in as sl
+        enddo
+
+    end select 
+    boundary_condition => boundary_condition%next
+  enddo
 
 end subroutine SolutionUpdateBoundConditions
-
+#if 0
+! NO LONGER NEEDED
 ! ************************************************************************** !
 !
 ! SolutionSetIBNDTYPE: Sets values in ibndtyp array
@@ -329,12 +367,12 @@ subroutine SolutionSetIBNDTYPE(solution)
   do
     if (.not.associated(boundary_condition)) exit
     count = count + 1
-    option%ibndtyp(count) = boundary_condition%flow_condition%itype(1)  ! hardwired to dof=1 (pressure)
+    option%ibndtyp(count) = boundary_condition%condition%itype(1)  ! hardwired to dof=1 (pressure)
     boundary_condition => boundary_condition%next
   enddo
 
 end subroutine SolutionSetIBNDTYPE
-
+#endif
 ! ************************************************************************** !
 !
 ! SolutionDestroy: Deallocates a solution
@@ -354,9 +392,9 @@ subroutine SolutionDestroy(solution)
   call OptionDestroy(solution%option)
   call RegionDestroyList(solution%regions)
   call ConditionDestroyList(solution%conditions)
-  call CouplerCreateList(solution%boundary_conditions)
-  call CouplerCreateList(solution%initial_conditions)
-  call CouplerCreateList(solution%source_sinks)
+  call CouplerDestroyList(solution%boundary_conditions)
+  call CouplerDestroyList(solution%initial_conditions)
+  call CouplerDestroyList(solution%source_sinks)
   call StrataDestroyList(solution%strata)
     
 end subroutine SolutionDestroy

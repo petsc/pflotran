@@ -87,7 +87,8 @@ module Structured_Grid_module
             StructureGridGlobalToNatural, &
             StructuredGridReadDXYZ, &
             StructuredGridComputelVolumes, &
-            StructGridComputeBoundConnect
+            StructGridComputeBoundConnect, &
+            StructGridPopulateConnection
 
 contains
 
@@ -645,7 +646,7 @@ function StructGridComputeInternConnect(structured_grid,option)
                           structured_grid%nlz+ &
                         structured_grid%nlx*structured_grid%nly* &
                           (structured_grid%ngz-1), &
-                        option%nphase)
+                        option%nphase,INTERNAL_CONNECTION_TYPE)
 
   iconn = 0
   ! x-connections
@@ -714,7 +715,7 @@ function StructGridComputeInternConnect(structured_grid,option)
     enddo
   endif
   
-  if (structured_grid%igeom == 2) then
+  if (structured_grid%igeom == STRUCTURED_CYLINDRICAL) then
     allocate(structured_grid%rd(0:structured_grid%nx))
     structured_grid%rd = 0.D0
     structured_grid%rd(0) = structured_grid%Radius_0 
@@ -797,7 +798,7 @@ function StructGridComputeBoundConnOld(structured_grid,option,ibconn,nL2G)
   endif
 
   num_conn_hypothetically = iconn
-  connections => ConnectionCreate(iconn,option%nphase)
+  connections => ConnectionCreate(iconn,option%nphase,BOUNDARY_CONNECTION_TYPE)
 
   allocate(ibconn(iconn)) 
 
@@ -850,7 +851,7 @@ function StructGridComputeBoundConnOld(structured_grid,option,ibconn,nL2G)
 !                        grid%nblkbc,grid%igeom
         
               select case(structured_grid%igeom)
-                case(1) ! cartesian
+                case(STRUCTURED_CARTESIAN) ! cartesian
                   if (option%iface(ibc) == 1) then
                     connections%dist(:,iconn) = 0.d0
                     connections%dist(0,iconn) = 0.5d0*dx_loc_p(cell_id_ghosted)
@@ -888,8 +889,8 @@ function StructGridComputeBoundConnOld(structured_grid,option,ibconn,nL2G)
                     connections%area(iconn) = dx_loc_p(cell_id_ghosted)* &
                                               dz_loc_p(cell_id_ghosted)
                   endif
-                case(2) ! cylindrical
-                case(3) ! spherical
+                case(STRUCTURED_CYLINDRICAL) ! cylindrical
+                case(STRUCTURED_SPHERICAL) ! spherical
               end select
             enddo ! i
           enddo ! j
@@ -962,7 +963,8 @@ function StructGridComputeBoundConnect(structured_grid,option,ibconn,nL2G, &
 
   print *, 'Need a check to ensure that boundary conditions connect to exterior boundary'
   
-  connections => ConnectionCreate(num_conn_hypothetically,option%nphase)
+  connections => ConnectionCreate(num_conn_hypothetically,option%nphase, &
+                                  BOUNDARY_CONNECTION_TYPE)
 
   allocate(ibconn(num_conn_hypothetically)) 
   ibconn = 0
@@ -989,7 +991,7 @@ function StructGridComputeBoundConnect(structured_grid,option,ibconn,nL2G, &
       ! interior node connections.
       
       select case(structured_grid%igeom)
-        case(1) ! cartesian
+        case(STRUCTURED_CARTESIAN) ! cartesian
           select case(boundary_condition%iface)
             case(WEST,EAST)
               connections%dist(:,iconn) = 0.d0
@@ -1022,8 +1024,8 @@ function StructGridComputeBoundConnect(structured_grid,option,ibconn,nL2G, &
                 connections%dist(3,iconn) = -1.d0
               endif
           end select
-        case(2) ! cylindrical
-        case(3) ! spherical
+        case(STRUCTURED_CYLINDRICAL) ! cylindrical
+        case(STRUCTURED_SPHERICAL) ! spherical
       end select
       ibconn(iconn) = boundary_condition%id
     enddo
@@ -1043,6 +1045,86 @@ function StructGridComputeBoundConnect(structured_grid,option,ibconn,nL2G, &
   StructGridComputeBoundConnect => connections
   
 end function StructGridComputeBoundConnect
+
+! ************************************************************************** !
+!
+! StructGridPopulateConnection: Computes details of connection (area, dist, etc)
+! author: Glenn Hammond
+! date: 11/09/07
+!
+! ************************************************************************** !
+subroutine StructGridPopulateConnection(structured_grid,coupler,connection, &
+                                        iconn,cell_id_ghosted)
+
+  use Connection_module
+  use Option_module
+  use Coupler_module
+  use Region_module
+  
+  implicit none
+ 
+  type(structured_grid_type) :: structured_grid
+  type(coupler_type) :: coupler
+  type(connection_type) :: connection
+  integer :: iconn
+  integer :: cell_id_ghosted
+  
+  PetscErrorCode :: ierr
+  
+  PetscScalar, pointer :: dx_loc_p(:), dy_loc_p(:), dz_loc_p(:)
+  
+  call VecGetArrayF90(structured_grid%dx_loc, dx_loc_p, ierr)
+  call VecGetArrayF90(structured_grid%dy_loc, dy_loc_p, ierr)
+  call VecGetArrayF90(structured_grid%dz_loc, dz_loc_p, ierr)
+  
+  select case(connection%itype)
+    case(BOUNDARY_CONNECTION_TYPE)
+      select case(structured_grid%igeom)
+        case(STRUCTURED_CARTESIAN) ! cartesian
+          select case(coupler%iface)
+            case(WEST,EAST)
+              connection%dist(:,iconn) = 0.d0
+              connection%dist(0,iconn) = 0.5d0*dx_loc_p(cell_id_ghosted)
+              connection%area(iconn) = dy_loc_p(cell_id_ghosted)* &
+                                        dz_loc_p(cell_id_ghosted)
+              if (coupler%iface ==  WEST) then
+                connection%dist(1,iconn) = 1.d0
+              else
+                connection%dist(1,iconn) = -1.d0
+              endif
+            case(SOUTH,NORTH)
+              connection%dist(:,iconn) = 0.d0
+              connection%dist(0,iconn) = 0.5d0*dy_loc_p(cell_id_ghosted)
+              connection%area(iconn) = dx_loc_p(cell_id_ghosted)* &
+                                        dz_loc_p(cell_id_ghosted)
+              if (coupler%iface ==  SOUTH) then
+                connection%dist(2,iconn) = 1.d0
+              else
+                connection%dist(2,iconn) = -1.d0
+              endif
+            case(BOTTOM,TOP)
+              connection%dist(:,iconn) = 0.d0
+              connection%dist(0,iconn) = 0.5d0*dz_loc_p(cell_id_ghosted)
+              connection%area(iconn) = dx_loc_p(cell_id_ghosted)* &
+                                        dy_loc_p(cell_id_ghosted)
+              if (coupler%iface ==  BOTTOM) then
+                connection%dist(3,iconn) = 1.d0
+              else
+                connection%dist(3,iconn) = -1.d0
+              endif
+          end select
+        case(STRUCTURED_CYLINDRICAL) ! cylindrical
+        case(STRUCTURED_SPHERICAL) ! spherical
+      end select
+    case(INITIAL_CONNECTION_TYPE)
+    case(SRC_SINK_CONNECTION_TYPE)
+  end select
+  
+  call VecRestoreArrayF90(structured_grid%dx_loc, dx_loc_p, ierr)
+  call VecRestoreArrayF90(structured_grid%dy_loc, dy_loc_p, ierr)
+  call VecRestoreArrayF90(structured_grid%dz_loc, dz_loc_p, ierr)
+    
+end subroutine StructGridPopulateConnection
 
 ! ************************************************************************** !
 !
@@ -1073,15 +1155,15 @@ subroutine StructuredGridComputelVolumes(structured_grid,option,nL2G)
   call VecGetArrayF90(structured_grid%dz_loc,dz_loc_p,ierr)
   do n=1, structured_grid%nlmax
     ng = nL2G(n)
-    if (structured_grid%igeom == 1) then
+    if (structured_grid%igeom == STRUCTURED_CARTESIAN) then
       volume_p(n) = dx_loc_p(ng) * dy_loc_p(ng) * dz_loc_p(ng)
-    else if (structured_grid%igeom == 2) then
+    else if (structured_grid%igeom == STRUCTURED_CYLINDRICAL) then
       i = mod(mod((n),structured_grid%nlxy),structured_grid%nlx)!+(grid%ngxs-grid%nxs)
       if (i==0) i = structured_grid%nlx
       volume_p(n) = Pi * (structured_grid%rd(i+structured_grid%nxs) + structured_grid%rd(i-1+structured_grid%nxs))*&
       (structured_grid%rd(i+structured_grid%nxs) - structured_grid%rd(i-1+structured_grid%nxs)) * dz_loc_p(ng)
   !   print *, 'setup: Vol ', grid%myrank, n,ng,i, dz_loc_p(ng),grid%rd(i+grid%nxs),volume_p(n)
-    else if (structured_grid%igeom == 3) then
+    else if (structured_grid%igeom == STRUCTURED_SPHERICAL) then
     endif
   enddo
   call VecRestoreArrayF90(option%volume,volume_p, ierr)

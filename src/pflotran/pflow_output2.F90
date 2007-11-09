@@ -1777,6 +1777,7 @@ subroutine GetCellCenteredVelocities(solution,vec,iphase,direction)
   use Grid_module
   use Option_module
   use Connection_module
+  use Coupler_module
 
   implicit none
   
@@ -1796,6 +1797,7 @@ subroutine GetCellCenteredVelocities(solution,vec,iphase,direction)
   PetscScalar, pointer :: loc_vec_ptr(:)
   PetscInt, allocatable :: num_additions(:)
   
+  type(coupler_type), pointer :: boundary_condition
   type(connection_list_type), pointer :: connection_list
   type(connection_type), pointer :: cur_connection_object
   
@@ -1824,10 +1826,10 @@ subroutine GetCellCenteredVelocities(solution,vec,iphase,direction)
 
   call VecGetArrayF90(vec,vec_ptr,ierr)
 
-  connection_list => grid%boundary_connection_list
-  cur_connection_object => connection_list%first
-  do 
-    if (.not.associated(cur_connection_object)) exit
+  boundary_condition => solution%boundary_conditions%first
+  do
+    if (.not.associated(boundary_condition)) exit
+    cur_connection_object => boundary_condition%connection
     do iconn = 1, cur_connection_object%num_connections
       if (cur_connection_object%dist(direction,iconn) < 0.99d0) cycle
       local_id = cur_connection_object%id_dn(iconn)
@@ -1838,7 +1840,7 @@ subroutine GetCellCenteredVelocities(solution,vec,iphase,direction)
       endif
       num_additions(local_id) = num_additions(local_id) + 1
     enddo
-    cur_connection_object => cur_connection_object%next
+    boundary_condition => boundary_condition%next
   enddo
 
   call VecRestoreArrayF90(vec,vec_ptr,ierr)

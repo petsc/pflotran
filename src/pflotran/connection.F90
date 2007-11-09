@@ -8,6 +8,7 @@ module Connection_module
 
   type, public :: connection_type
     integer :: id
+    integer :: itype                  ! connection type (boundary, internal, source sink
     integer :: num_connections
     integer, pointer :: id_up(:)      ! list of ids of upwind cells
     integer, pointer :: id_dn(:)      ! list of ids of downwind cells
@@ -52,12 +53,13 @@ contains
 ! date: 10/15/07
 !
 ! ************************************************************************** !
-function ConnectionCreate(num_connections,num_dof)
+function ConnectionCreate(num_connections,num_dof,connection_itype)
 
   implicit none
   
   integer :: num_connections
   integer :: num_dof
+  integer :: connection_itype
   
   type(connection_type), pointer :: ConnectionCreate
 
@@ -65,17 +67,38 @@ function ConnectionCreate(num_connections,num_dof)
 
   allocate(connection)
   connection%id = 0
+  connection%itype = connection_itype
   connection%num_connections = num_connections
-  allocate(connection%id_up(num_connections))
-  allocate(connection%id_dn(num_connections))
-  allocate(connection%dist(-1:3,num_connections))
-  allocate(connection%area(num_connections))
-  allocate(connection%velocity(num_dof,num_connections))
-  connection%id_up = 0
-  connection%id_dn = 0
-  connection%dist = 0.d0
-  connection%area = 0.d0
-  connection%velocity = 0.d0
+  nullify(connection%id_up)
+  nullify(connection%id_dn)
+  nullify(connection%dist)
+  nullify(connection%area)
+  nullify(connection%velocity)
+  select case(connection_itype)
+    case(INTERNAL_CONNECTION_TYPE)
+      allocate(connection%id_up(num_connections))
+      allocate(connection%id_dn(num_connections))
+      allocate(connection%dist(-1:3,num_connections))
+      allocate(connection%area(num_connections))
+      allocate(connection%velocity(num_dof,num_connections))
+      connection%id_up = 0
+      connection%id_dn = 0
+      connection%dist = 0.d0
+      connection%area = 0.d0
+      connection%velocity = 0.d0
+    case(BOUNDARY_CONNECTION_TYPE)
+      allocate(connection%id_dn(num_connections))
+      allocate(connection%dist(-1:3,num_connections))
+      allocate(connection%area(num_connections))
+      allocate(connection%velocity(num_dof,num_connections))
+      connection%id_dn = 0
+      connection%dist = 0.d0
+      connection%area = 0.d0
+      connection%velocity = 0.d0
+    case(SRC_SINK_CONNECTION_TYPE)
+      allocate(connection%id_dn(num_connections))
+      connection%id_dn = 0
+  end select
   nullify(connection%next)
   
   ConnectionCreate => connection

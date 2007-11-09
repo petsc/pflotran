@@ -12,13 +12,14 @@ module Coupler_module
  
   type, public :: coupler_type
     integer :: id                                       ! id of coupler
+    integer :: itype                                    ! integer defining type
+    character(len=MAXWORDLENGTH) :: ctype               ! character string definign type
     character(len=MAXWORDLENGTH) :: condition_name      ! character string defining name of condition to be applied
     character(len=MAXWORDLENGTH) :: region_name         ! character string defining name of region to be applied
     integer :: icondition                               ! id of condition in condition array/list
     integer :: iregion                                  ! id of region in region array/list
     integer :: iface                                    ! for structured grids only
-    type(condition_type), pointer :: flow_condition     ! pointer to condition in condition array/list
-    type(condition_type), pointer :: transport_condition ! pointer to condition in condition array/list
+    type(condition_type), pointer :: condition          ! pointer to condition in condition array/list
     type(region_type), pointer :: region                ! pointer to region in region array/list
     type(connection_type), pointer :: connection        ! pointer to an array/list of connections
     type(coupler_type), pointer :: next                 ! pointer to next coupler
@@ -38,7 +39,7 @@ module Coupler_module
   integer, save :: num_couplers = 0
   
   public :: CouplerCreate, CouplerDestroy, CouplerInitList, CouplerAddToList, &
-            CouplerRead, CouplerCreateList
+            CouplerRead, CouplerDestroyList
   
 contains
 
@@ -59,13 +60,14 @@ function CouplerCreate()
   
   allocate(coupler)
   coupler%id = 0
+  coupler%itype = BOUNDARY_COUPLER_TYPE
+  coupler%ctype = "boundary"
   coupler%condition_name = ""
   coupler%region_name = ""
   coupler%icondition = 0
   coupler%iregion = 0
   coupler%iface = 0
-  nullify(coupler%flow_condition)
-  nullify(coupler%transport_condition)
+  nullify(coupler%condition)
   nullify(coupler%region)
   nullify(coupler%connection)
   nullify(coupler%next)
@@ -132,6 +134,20 @@ subroutine CouplerRead(coupler,fid)
         call fiReadWord(string,coupler%region_name,.true.,ierr)
       case('CONDITION')
         call fiReadWord(string,coupler%condition_name,.true.,ierr)
+      case('TYPE')
+        call fiReadWord(string,coupler%ctype,.true.,ierr)
+        call fiCharsToLower(coupler%ctype,len_trim(coupler%ctype))
+        select case(trim(coupler%ctype))
+          case('initial')
+            coupler%itype = INITIAL_COUPLER_TYPE
+          case('boundary')
+            coupler%itype = BOUNDARY_COUPLER_TYPE
+          case('src_sink')
+            coupler%itype = SRC_SINK_COUPLER_TYPE
+          case default
+            print *, 'ERROR: TYPE option (', trim(coupler%ctype), ') not recognized.'
+            stop
+        end select    
       case('FACE')
         call fiReadWord(string,word,.true.,ierr)
         call fiCharsToUpper(word,len_trim(word))
@@ -184,12 +200,12 @@ end subroutine CouplerAddToList
 
 ! ************************************************************************** !
 !
-! CouplerCreateList: Deallocates a list of couplers
+! CouplerDestroyList: Deallocates a list of couplers
 ! author: Glenn Hammond
 ! date: 11/01/07
 !
 ! ************************************************************************** !
-subroutine CouplerCreateList(coupler_list)
+subroutine CouplerDestroyList(coupler_list)
 
   implicit none
   
@@ -215,7 +231,7 @@ subroutine CouplerCreateList(coupler_list)
   deallocate(coupler_list)
   nullify(coupler_list)
 
-end subroutine CouplerCreateList
+end subroutine CouplerDestroyList
 
 ! ************************************************************************** !
 !
@@ -235,9 +251,8 @@ subroutine CouplerDestroy(coupler)
   ! since the below are simply pointers to objects in list that have already
   ! or will be deallocated from the list, nullify instead of destroying
   
-  nullify(coupler%flow_condition)     ! since these are simply pointers to 
-  nullify(coupler%transport_condition)! conditoins in list, nullify
-  nullify(coupler%region)
+  nullify(coupler%condition)     ! since these are simply pointers to 
+  nullify(coupler%region)        ! conditoins in list, nullify
 
   call ConnectionDestroy(coupler%connection)
   nullify(coupler%connection)

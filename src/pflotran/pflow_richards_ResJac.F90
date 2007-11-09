@@ -147,8 +147,8 @@ subroutine pflow_Richards_setupini(solution)
       iend = local_id*option%ndof
       ibegin = iend-option%ndof+1
       xx_p(ibegin:iend) = &
-        initial_condition%flow_condition%cur_value(1:option%ndof)
-      iphase_p(local_id)=initial_condition%flow_condition%iphase
+        initial_condition%condition%cur_value(1:option%ndof)
+      iphase_p(local_id)=initial_condition%condition%iphase
     enddo
   
     initial_condition => initial_condition%next
@@ -489,7 +489,7 @@ subroutine RichardsRes_FLCont(nconn_no,area,var_node1,por1,tor1,sir1,dd1,perm1, 
 
 end subroutine RichardsRes_FLCont
 
-subroutine RichardsRes_FLBCCont(nbc_no,ibc,area,var_node1,var_node2,por2,tor2,sir2, &
+subroutine RichardsRes_FLBCCont(nbc_no,ibndtype,area,var_node1,var_node2,por2,tor2,sir2, &
                               dd1,perm2,Dk2,dist_gravity,option,vv_darcy, &
                               Res_FL)
   use Option_module
@@ -498,7 +498,7 @@ subroutine RichardsRes_FLBCCont(nbc_no,ibc,area,var_node1,var_node2,por2,tor2,si
  
   implicit none
   
-  integer nbc_no, ibc
+  integer nbc_no, ibndtype
   type(option_type) :: option
   real*8 dd1, sir2(1:option%nphase)
   real*8, target:: var_node1(1:2+7*option%nphase+2*option%nphase*option%nspec)
@@ -552,7 +552,7 @@ subroutine RichardsRes_FLBCCont(nbc_no,ibc,area,var_node1,var_node2,por2,tor2,si
   fluxe = 0.D0
   vv_darcy = 0.D0 
    
-  select case (option%ibndtyp(ibc))
+  select case (ibndtype)
     case(1) 
       Dq = perm2 / dd1
       diffdp = por2*tor2/dd1*area
@@ -710,6 +710,7 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
   use Solution_module
   use Grid_module
   use Option_module
+  use Coupler_module  
   
   implicit none
 
@@ -728,7 +729,6 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
   !, t1, t2, c1, c2, s1, s2
   integer :: kk1,kk2,jj1,jj2,ii1,ii2, kk, jj, ii
 ! integer :: i1_hencoeff, i2_hencoeff
-  integer :: ibc  ! Index that specifies a boundary condition block
   
 ! real*8 :: term1, term2, term3
 
@@ -776,9 +776,11 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
   real*8 :: Res(solution%option%ndof), vv_darcy(solution%option%nphase)
  PetscViewer :: viewer
 
+  type(coupler_type), pointer :: boundary_condition
   type(connection_list_type), pointer :: connection_list
   type(connection_type), pointer :: cur_connection_object
   integer :: iconn
+  integer :: sum_connection
   real*8 :: distance, fraction_upwind
   real*8 :: distance_gravity
   
@@ -1126,12 +1128,15 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
 
   connection_list => grid%internal_connection_list
   cur_connection_object => connection_list%first
+  sum_connection = 0  
   do 
     if (.not.associated(cur_connection_object)) exit
     do iconn = 1, cur_connection_object%num_connections
+      sum_connection = sum_connection + 1
+      nc = sum_connection
+
       m1 = cur_connection_object%id_up(iconn)
       m2 = cur_connection_object%id_dn(iconn)
-      nc = iconn
 
       n1 = grid%nG2L(m1) ! = zero for ghost nodes
       n2 = grid%nG2L(m2) ! Ghost to local mapping   
@@ -1217,14 +1222,18 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
 
 !  print *,'2ph bc-sgbc', grid%myrank, option%sgbc    
  
-  connection_list => grid%boundary_connection_list
-  cur_connection_object => connection_list%first
+  boundary_condition => solution%boundary_conditions%first
+  sum_connection = 0    
   do 
-    if (.not.associated(cur_connection_object)) exit
+    if (.not.associated(boundary_condition)) exit
+    
+    cur_connection_object => boundary_condition%connection
+    
     do iconn = 1, cur_connection_object%num_connections
+      sum_connection = sum_connection + 1
+      nc = sum_connection
+    
       m= cur_connection_object%id_dn(iconn)
-      nc = iconn
-
       ng = grid%nL2G(m)
 
       if (associated(option%imat)) then
@@ -1238,7 +1247,6 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
 
       p1 = 1 + (m-1) * option%ndof
 
-      ibc = grid%ibconn(nc)
     
       i2 = ithrm_loc_p(ng)
       D2 = option%ckwet(i2)
@@ -1251,7 +1259,7 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
       distance_gravity = abs(cur_connection_object%dist(3,iconn)) * &
                          cur_connection_object%dist(0,iconn)
 
-      select case(option%ibndtyp(ibc))
+      select case(boundary_condition%condition%itype(1))
           
         case(2)
         ! solve for pb from Darcy's law given qb /= 0
@@ -1323,7 +1331,7 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
                                        option%varbc(1:size_var_use),option%itable,ierr, &
                                        option%pref)
    
-      call RichardsRes_FLBCCont(nc,grid%ibconn(nc), &
+      call RichardsRes_FLBCCont(nc,boundary_condition%condition%itype(1), &
                                 cur_connection_object%area(iconn), &
                                 option%varbc(1:size_var_use), &
                                 var_loc_p((ng-1)*size_var_node+1:(ng-1)* &
@@ -1350,7 +1358,7 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
 !print *,option%density_bc,option%avgmw_bc
 !print *,grid%hh_bc,grid%uu_bc,grid%df_bc,grid%hen_bc,grid%pc_bc,grid%kvr_bc
     enddo
-    cur_connection_object => cur_connection_object%next
+    boundary_condition => boundary_condition%next
   enddo
 
 !  print *,'finished BC'
@@ -1428,7 +1436,8 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
   use Option_module
   use Grid_module
   use Solution_module
-  
+  use Coupler_module
+    
   implicit none
 
   SNES, intent(in) :: snes
@@ -1445,7 +1454,6 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
   integer :: kk,ii1,jj1,kk1,ii2,jj2,kk2  
   integer :: m, m1, m2, n1, n2, ip1, ip2 
   integer :: p1,p2 !,t1,t2,c1,c2,s1,s2
-  integer :: ibc  ! Index that specifies a boundary condition block.
 ! real*8 :: v_darcy, q
 ! real*8 :: dum1, dum2
 
@@ -1488,9 +1496,11 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
   real*8 :: max_dev  
   integer  na1,na2
   
+  type(coupler_type), pointer :: boundary_condition
   type(connection_list_type), pointer :: connection_list
   type(connection_type), pointer :: cur_connection_object
   integer :: iconn
+  integer :: sum_connection  
   real*8 :: distance, fraction_upwind
   real*8 :: distance_gravity 
   type(grid_type), pointer :: grid
@@ -1703,13 +1713,18 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
 
   ! print *,' Mph Jaco Finished source terms'
 ! Contribution from BC
-  connection_list => grid%boundary_connection_list
-  cur_connection_object => connection_list%first
+  boundary_condition => solution%boundary_conditions%first
+  sum_connection = 0    
   do 
-    if (.not.associated(cur_connection_object)) exit
+    if (.not.associated(boundary_condition)) exit
+    
+    cur_connection_object => boundary_condition%connection
+
     do iconn = 1, cur_connection_object%num_connections
+      sum_connection = sum_connection + 1
+      nc = sum_connection
+    
       m = cur_connection_object%id_dn(iconn)
-      nc = iconn
       ng = grid%nL2G(m)
 
       if (associated(option%imat)) then
@@ -1723,7 +1738,6 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
   
       p1 = 1 + (m-1) * option%ndof
        
-      ibc = grid%ibconn(nc)
     
       i2 = ithrm_loc_p(ng)
       D2 = option%ckwet(i2)
@@ -1737,7 +1751,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
                          cur_connection_object%dist(0,iconn)
 
       delxbc=0.D0
-      select case(option%ibndtyp(ibc))
+      select case(boundary_condition%condition%itype(1))
         case(1)
           delxbc =0.D0
         case(2)
@@ -1814,7 +1828,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
               
 !    print *,' Mph Jaco BC terms: finish increment'
       do nvar=1,option%ndof
-        call RichardsRes_FLBCCont(nc,grid%ibconn(nc), &
+        call RichardsRes_FLBCCont(nc,boundary_condition%condition%itype(1), &
                                 cur_connection_object%area(iconn), &
                                 option%varbc(nvar*size_var_use+1:(nvar+1)* &
                                   size_var_use), &
@@ -1841,7 +1855,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
 !print *,grid%hh_bc,grid%uu_bc,grid%df_bc,grid%hen_bc,grid%pc_bc,grid%kvr_bc
 
     enddo
-    cur_connection_object => cur_connection_object%next
+    boundary_condition => boundary_condition%next
   enddo
 
   ! print *,' Mph Jaco Finished BC terms'
@@ -1913,12 +1927,15 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
   
   connection_list => grid%internal_connection_list
   cur_connection_object => connection_list%first
+  sum_connection = 0    
   do 
     if (.not.associated(cur_connection_object)) exit
     do iconn = 1, cur_connection_object%num_connections
+      sum_connection = sum_connection + 1
+      nc = sum_connection
+    
       m1 = cur_connection_object%id_up(iconn)
       m2 = cur_connection_object%id_dn(iconn)
-      nc = iconn
 
       if (associated(option%imat)) then
         if (option%imat(m1) <= 0 .or. option%imat(m2) <= 0) cycle
@@ -2258,9 +2275,10 @@ subroutine pflow_update_Richards(solution)
 ! real*8 :: dum1, dum2           
 
 
-  type(connection_list_type), pointer :: connection_list
+  type(coupler_type), pointer :: boundary_condition
   type(connection_type), pointer :: cur_connection_object
   integer :: iconn
+  integer :: sum_connection  
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   grid => solution%grid
@@ -2335,14 +2353,18 @@ subroutine pflow_update_Richards(solution)
   !geh added for transient boundary conditions  
   if (associated(option%imat) .and. option%iread_geom < 0) then
 
-    connection_list => grid%boundary_connection_list
-    cur_connection_object => connection_list%first
+    boundary_condition => solution%boundary_conditions%first
+    sum_connection = 0
     do 
-      if (.not.associated(cur_connection_object)) exit
-      do iconn = 1, cur_connection_object%num_connections
-        m = cur_connection_object%id_dn(iconn)
-        nc = iconn
+      if (.not.associated(boundary_condition)) exit
+    
+      cur_connection_object => boundary_condition%connection
 
+      do iconn = 1, cur_connection_object%num_connections
+        sum_connection = sum_connection + 1
+        nc = sum_connection
+
+        m = cur_connection_object%id_dn(iconn)
         ng = grid%nL2G(m)
 
         if (associated(option%imat)) then
@@ -2353,13 +2375,11 @@ subroutine pflow_update_Richards(solution)
           print *, "Wrong boundary node index... STOP!!!"
           stop
         endif
-
-        ibc = grid%ibconn(nc)
-
        
     !print *,'initadj_bc',nc,ibc,option%ibndtyp(ibc),grid%nconnbc
 
-        if (option%ibndtyp(ibc)==1 .or.option%ibndtyp(ibc)==3) then
+        if (boundary_condition%condition%itype(1)==1 .or. &
+            boundary_condition%condition%itype(1)==3) then
           iicap=int(icap_p(m))
           iithrm=int(ithrm_p(m)) 
           dif(1)= option%difaq
@@ -2391,14 +2411,14 @@ subroutine pflow_update_Richards(solution)
           endif 
         endif
 
-        if (option%ibndtyp(ibc)==2) then
+        if (boundary_condition%condition%itype(1)==2) then
           yybc(2:option%ndof,nc)= option%xxbc(2:option%ndof,nc)
           vel_bc(1,nc) = option%velocitybc(1,nc)
 !          print *,'initadj', nc, yybc(:,nc), vel_bc(:,nc)
         endif 
       
       enddo
-      cur_connection_object => cur_connection_object%next
+      boundary_condition => boundary_condition%next
     enddo
   endif
  
@@ -2447,8 +2467,9 @@ subroutine pflow_Richards_initadj(solution)
 
  
   integer :: ierr
+  integer :: num_connection
   integer :: n, nc, ng
-  integer :: ibc,jn
+  integer :: jn
   integer :: m
   integer :: ii1,ii2,iicap
   integer :: iiphase,iithrm
@@ -2460,9 +2481,10 @@ subroutine pflow_Richards_initadj(solution)
 ! real*8 :: dum1, dum2
   real*8 :: pc(1:solution%option%nphase), kr(1:solution%option%nphase), sw
 
-  type(connection_list_type), pointer :: connection_list
+  type(coupler_type), pointer :: boundary_condition
   type(connection_type), pointer :: cur_connection_object
   integer :: iconn
+  integer :: sum_connection
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   grid => solution%grid
@@ -2527,19 +2549,31 @@ subroutine pflow_Richards_initadj(solution)
     endif 
   enddo
 
-  allocate(yybc(option%ndof,grid%boundary_connection_list%first%num_connections))
-  allocate(vel_bc(option%nphase,grid%boundary_connection_list%first%num_connections))
+  boundary_condition => solution%boundary_conditions%first
+  num_connection = 0
+  do 
+    if (.not.associated(boundary_condition)) exit    
+    num_connection = num_connection + boundary_condition%connection%num_connections
+    boundary_condition => boundary_condition%next
+  enddo
+
+  allocate(yybc(option%ndof,num_connection))
+  allocate(vel_bc(option%nphase,num_connection))
   yybc =option%xxbc
   vel_bc = option%velocitybc
 
-  connection_list => grid%boundary_connection_list
-  cur_connection_object => connection_list%first
+  boundary_condition => solution%boundary_conditions%first
+  sum_connection = 0  
   do 
-    if (.not.associated(cur_connection_object)) exit
+    if (.not.associated(boundary_condition)) exit
+    
+    cur_connection_object => boundary_condition%connection
+    
     do iconn = 1, cur_connection_object%num_connections
+      sum_connection = sum_connection + 1
+      nc = sum_connection
+      
       m = cur_connection_object%id_dn(iconn)
-      nc = iconn
-
       ng = grid%nL2G(m)
   
       if (associated(option%imat)) then
@@ -2550,12 +2584,11 @@ subroutine pflow_Richards_initadj(solution)
         print *, "Wrong boundary node index... STOP!!!"
         stop
       endif
-
-      ibc = grid%ibconn(nc)
        
   !geh      print *,'initadj_bc',nc,ibc,option%ibndtyp(ibc),grid%nconnbc
 
-      if (option%ibndtyp(ibc)==1 .or.option%ibndtyp(ibc)==3) then
+      if (boundary_condition%condition%itype(1)==1 .or. &
+          boundary_condition%condition%itype(1)==3) then
         iicap=int(icap_p(m))
         iithrm=int(ithrm_p(m)) 
         dif(1)= option%difaq
@@ -2589,14 +2622,14 @@ subroutine pflow_Richards_initadj(solution)
         endif 
       endif
 
-      if (option%ibndtyp(ibc)==2) then
+      if (boundary_condition%condition%itype(1)==2) then
     
         yybc(2:option%ndof,nc)= option%xxbc(2:option%ndof,nc)
         vel_bc(1,nc) = option%velocitybc(1,nc)
   !geh       print *,'initadj', nc, yybc(:,nc), vel_bc(:,nc)
       endif 
     enddo
-    cur_connection_object => cur_connection_object%next
+    boundary_condition => boundary_condition%next
   enddo
 
   call VecRestoreArrayF90(option%icap, icap_p, ierr)

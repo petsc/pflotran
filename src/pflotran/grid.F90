@@ -44,7 +44,7 @@ module Grid_module
     integer, pointer :: nG2A(:)
 #endif
     
-    integer, pointer :: ibconn(:)
+!    integer, pointer :: ibconn(:)
     
 #if 1  
     real*8, pointer :: x(:), y(:), z(:), delz(:) 
@@ -74,7 +74,8 @@ module Grid_module
             GridComputeSpacing, &
             GridComputeCoordinates, &
             GridComputeVolumes, &
-            GridLocalizeRegions
+            GridLocalizeRegions, &
+            GridComputeCouplerConnections
   
 contains
 
@@ -103,7 +104,14 @@ function GridCreate(igeom_)
     grid%igrid = STRUCTURED
     allocate(grid%structured_grid)
     call StructuredGridInit(grid%structured_grid)
-    grid%structured_grid%igeom = igeom_
+    select case(igeom_)
+      case(1)
+        grid%structured_grid%igeom = STRUCTURED_CARTESIAN
+      case(2)
+        grid%structured_grid%igeom = STRUCTURED_CYLINDRICAL
+      case(3)
+        grid%structured_grid%igeom = STRUCTURED_SPHERICAL
+    end select
   else
     grid%igrid = UNSTRUCTURED
     allocate(grid%unstructured_grid)
@@ -141,7 +149,6 @@ subroutine initGrid(grid)
   nullify(grid%nG2A)
 
 
-  nullify(grid%ibconn)
   nullify(grid%x)
   nullify(grid%y)
   nullify(grid%z)
@@ -257,9 +264,9 @@ subroutine GridComputeBoundaryConnect(grid,option,boundary_conditions)
   type(grid_type) :: grid
   type(option_type) :: option
   type(coupler_type), pointer :: boundary_conditions
-  
-  type(connection_type), pointer :: connection
-  
+#if 0  
+  type(connection_type), pointer :: connection, connections
+
   select case(grid%igrid)
     case(STRUCTURED)
       connection => &
@@ -273,9 +280,84 @@ subroutine GridComputeBoundaryConnect(grid,option,boundary_conditions)
 
   allocate(grid%boundary_connection_list)
   call ConnectionInitList(grid%boundary_connection_list)  
-  call ConnectionAddToList(connection,grid%boundary_connection_list)
-
+  call ConnectionAddToList(connections,grid%boundary_connection_list)
+#endif
 end subroutine GridComputeBoundaryConnect
+
+! ************************************************************************** !
+!
+! GridComputeCouplerConnections: computes connectivity coupler to a grid
+! author: Glenn Hammond
+! date: 11/09/07
+!
+! ************************************************************************** !
+subroutine GridComputeCouplerConnections(grid,option,coupler_list)
+
+  use Connection_module
+  use Option_module
+  use Coupler_module
+  use Region_module
+  use Structured_Grid_module
+  
+  implicit none
+ 
+  type(grid_type) :: grid
+  type(option_type) :: option
+  type(coupler_type), pointer :: coupler_list
+  
+  integer :: iconn
+  integer :: cell_id_local, cell_id_ghosted
+  integer :: connection_itype
+  type(connection_type), pointer :: connection
+  type(region_type), pointer :: region
+  type(coupler_type), pointer :: coupler
+  PetscErrorCode :: ierr
+  
+  coupler => coupler_list
+  do
+    if (.not.associated(coupler)) exit  
+
+    select case(coupler%itype)
+      case(INITIAL_COUPLER_TYPE)
+        connection_itype = INITIAL_CONNECTION_TYPE
+      case(SRC_SINK_COUPLER_TYPE)
+        connection_itype = SRC_SINK_CONNECTION_TYPE
+      case(BOUNDARY_COUPLER_TYPE)
+        print *, 'Need a check to ensure that boundary conditions connect to exterior boundary'
+        connection_itype = BOUNDARY_CONNECTION_TYPE
+    end select
+    
+    region => coupler%region
+
+    connection => ConnectionCreate(region%num_cells,option%nphase, &
+                                   connection_itype)
+
+    do iconn = 1,region%num_cells
+      
+      cell_id_local = region%cell_ids(iconn)
+      
+      connection%id_dn(iconn) = cell_id_local
+
+      cell_id_ghosted = grid%nL2G(cell_id_local)
+      ! Use ghosted index to access dx, dy, dz because we have
+      ! already done a global-to-local scatter for computing the
+      ! interior node connections.
+      
+      select case(grid%igrid)
+        case(STRUCTURED)
+          call StructGridPopulateConnection(grid%structured_grid,coupler, &
+                                            connection,iconn,cell_id_ghosted)
+        case(UNSTRUCTURED)
+      end select
+    enddo
+
+    coupler%connection => connection
+    nullify(connection)
+
+    coupler => coupler%next
+  enddo
+   
+end subroutine GridComputeCouplerConnections
 
 ! ************************************************************************** !
 !
@@ -627,9 +709,6 @@ subroutine GridDestroy(grid)
 !  nullify(grid%nG2N)
   if (associated(grid%nG2A)) deallocate(grid%nG2A)
   nullify(grid%nG2A)
-
-  if (associated(grid%ibconn)) deallocate(grid%ibconn)
-  nullify(grid%ibconn)
 
   if (associated(grid%x)) deallocate(grid%x)
   nullify(grid%x)

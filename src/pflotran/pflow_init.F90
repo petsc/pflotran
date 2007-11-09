@@ -548,12 +548,13 @@ subroutine PflowInit(simulation,filename)
     
   call GridLocalizeRegions(solution%regions,solution%grid,solution%option)
 
-  call GridComputeBoundaryConnect(grid,option, &
-                                  solution%boundary_conditions%first)                                
+  call GridComputeCouplerConnections(grid,option,solution%boundary_conditions%first)
+!  call GridComputeBoundaryConnect(grid,option, &
+!                                  solution%boundary_conditions%first)                                
   call assignMaterialPropToRegions(solution)
   call assignInitialConditions(solution)
-  call SolutionUpdateBoundConditions(solution)
-  call SolutionSetIBNDTYPE(solution)
+  call SolutionInitBoundConditions(solution)
+!  call SolutionSetIBNDTYPE(solution)
 
 
   i = grid%internal_connection_list%first%num_connections
@@ -2622,7 +2623,7 @@ subroutine readInput(simulation,filename)
 !....................
 
       case ('BCON')
-
+#if 0
 !-----------------------------------------------------------------------
 !-----boundary conditions:  ibnd:  
 !                   1-left,    2-right
@@ -2794,7 +2795,7 @@ subroutine readInput(simulation,filename)
           enddo
         endif
 !GEH - Structured Grid Dependence - End
-
+#endif
 !....................
 
       case ('SOUR')
@@ -3309,18 +3310,18 @@ subroutine assignInitialConditions(solution)
           jn2 = jn1+1
               
           count = 1
-          pressure_p(jn1) = initial_condition%flow_condition%cur_value(1)
+          pressure_p(jn1) = initial_condition%condition%cur_value(1)
           count = count + 1
           
           if (option%nphase>1) then
-            pressure_p(jn2) = initial_condition%flow_condition%cur_value(count)
+            pressure_p(jn2) = initial_condition%condition%cur_value(count)
             count = count + 1
           endif
           
-          temp_p(local_id) = initial_condition%flow_condition%cur_value(count)
+          temp_p(local_id) = initial_condition%condition%cur_value(count)
           count = count + 1
           
-          sat_p(jn1) = initial_condition%flow_condition%cur_value(count)
+          sat_p(jn1) = initial_condition%condition%cur_value(count)
           count = count + 1          
           
           if (option%nphase>1) then
@@ -3329,12 +3330,12 @@ subroutine assignInitialConditions(solution)
           endif
           
           if (option%ndof == 3) then
-            conc_p(local_id) = initial_condition%flow_condition%cur_value(count)
+            conc_p(local_id) = initial_condition%condition%cur_value(count)
             count = count + 1
           endif
 
           if (option%ndof == 4) then
-            xmol_p(jn2) = initial_condition%flow_condition%cur_value(count)
+            xmol_p(jn2) = initial_condition%condition%cur_value(count)
             count = count + 1
           endif
                

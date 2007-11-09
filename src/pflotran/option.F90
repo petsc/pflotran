@@ -138,7 +138,7 @@ module Option_module
 !    integer*4, pointer :: ibconn(:)
       ! ibconn(nc) specifies the id of the of boundary condition block that
       ! applies at boundary interface nc.  
-    integer*4, pointer :: ibndtyp(:)
+!no longer needed    integer*4, pointer :: ibndtyp(:)
       ! ibndtyp(ibc) specifies the type of boundary condition that applies
       ! for boundary condition block ibc.
     integer*4, pointer :: iface(:)
