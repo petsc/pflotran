@@ -153,7 +153,7 @@ solution.o : grid.o option.o region.o condition.o coupler.o material.o strata.o
 strata.o : fileio.o region.o material.o
 pflow_vector_ops.o : water_eos.o
 pflow_output_new.o : pflow_output.o
-pflow_richards_ResJac.o : solution.o option.o grid.o \
+pflow_richards_ResJac.o : solution.o option.o grid.o coupler.o \
                           translator_mixed_fluid_richards.o
 timestepper.o : \
 	        mixed_fluid_eos.o \
