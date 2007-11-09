@@ -35,7 +35,7 @@ private
   public :: SolutionCreate, SolutionDestroy, &
             SolutionProcessCouplers, &
             SolutionInitBoundConditions, &
-            SolutionUpdateBoundConditions
+            SolutionUpdate
   
 contains
   
@@ -504,6 +504,27 @@ subroutine SolutionSetIBNDTYPE(solution)
 
 end subroutine SolutionSetIBNDTYPE
 #endif
+
+! ************************************************************************** !
+!
+! SolutionUpdate: Update parameters in solution (e.g. conditions, bcs, srcs)
+! author: Glenn Hammond
+! date: 11/09/07
+!
+! ************************************************************************** !
+subroutine SolutionUpdate(solution)
+
+  implicit none
+  
+  type(solution_type) :: solution
+  
+  ! must update conditions first
+  call ConditionUpdate(solution%conditions,solution%option,solution%option%time)
+  call SolutionUpdateBoundConditions(solution)
+  call SolutionUpdateSrcSinks(solution)
+
+end subroutine SolutionUpdate
+
 ! ************************************************************************** !
 !
 ! SolutionDestroy: Deallocates a solution

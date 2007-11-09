@@ -1005,6 +1005,9 @@ subroutine StepperUpdateSolution(solution)
     enddo
     call VecRestoreArrayF90(option%phis,phis_p,ierr)
   endif
+  
+  ! update solutoin variables
+  call SolutionUpdate(solution)
 
 end subroutine StepperUpdateSolution
 

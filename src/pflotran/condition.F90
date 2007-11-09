@@ -9,6 +9,9 @@ module Condition_module
 #define X_DIRECTION 1
 #define Y_DIRECTION 2
 #define Z_DIRECTION 3
+
+#define STEP 0
+#define LINEAR 1
  
   type, public :: condition_type
     integer :: id                                 ! id from which condition can be referenced
@@ -22,6 +25,8 @@ module Condition_module
       ! units(3:ndof) = dofs in problem
     integer :: num_values                         ! number of entries in the arrays of values
     integer :: num_dof                            ! number of degrees of freedom in condtion
+    logical :: cyclic                             ! cycles after last time
+    integer :: interpolation_method               ! method of interplating condition based on time
     integer :: iphase
     real*8, pointer :: times(:)                   ! array of times between which linear interpolation of values occurs
     real*8, pointer :: values(:,:)                ! array of condition values, size(ndof,max_time_index)
@@ -47,7 +52,7 @@ module Condition_module
   
   public :: ConditionCreate, ConditionDestroy, ConditionRead, &
             ConditionAddToList, ConditionInitList, ConditionDestroyList, &
-            ConditionGetPtrFromList
+            ConditionGetPtrFromList, ConditionUpdate
     
 contains
 
@@ -79,6 +84,8 @@ function ConditionCreate(option)
   condition%iphase = 0
   condition%num_values = 0
   condition%num_dof = 0
+  condition%cyclic = .false.
+  condition%interpolation_method = LINEAR
   nullify(condition%itype)
   condition%class = ""
   nullify(condition%ctype)
@@ -208,6 +215,18 @@ subroutine ConditionRead(condition,option,fid)
         call fiErrorMsg('CLASS','CONDITION', ierr)   
         call fiCharsToLower(word,len_trim(word))
         condition%class = word
+      case('CYCLIC') ! read condition class (flow vs. transport)
+        condition%cyclic = .true.
+      case('INTERPOLATION') ! read condition class (flow vs. transport)
+        call fiReadWord(string,word,.true.,ierr)
+        call fiErrorMsg('INTERPOLATION','CONDITION', ierr)   
+        call fiCharsToLower(word,len_trim(word))
+        select case(word)
+          case('step')
+            condition%interpolation_method = STEP
+          case('linear') 
+            condition%interpolation_method = LINEAR
+        end select
       case('TYPE') ! read condition type (dirichlet, neumann, etc) for each dof
         do
           call fiReadFlotranString(IUNIT1,string,ierr)
@@ -556,202 +575,84 @@ end subroutine ConditionReadValuesFromFile
 ! date: 11/02/07
 !
 ! ************************************************************************** !
-subroutine ConditionUpdate(condition,option)
+subroutine ConditionUpdate(condition_list,option,time)
 
   use Option_module
-  use Fileio_module
   
   implicit none
   
-  type(condition_type) :: condition
+  type(condition_list_type) :: condition_list
   type(option_type) :: option
+  real*8 :: time
   
-#if 0  
-  character(len=MAXSTRINGLENGTH) :: string
-  character(len=MAXWORDLENGTH) :: word
-  real*8, pointer :: pressure(:), flux(:), temperature(:), &
-                     concentration(:), times(:)
-  character(len=MAXWORDLENGTH), pointer :: units(:)
-  integer :: time_dof, length_dof, pres_dof, temp_dof, conc_dof
-  integer :: max_size, ierr
-
-  nullify(times)
-  nullify(pressure)
-  nullify(temperature)
-  nullify(flux)
-  nullify(concentration)
+  type(condition_type), pointer :: condition
+  integer :: cur_time_index, next_time_index, idof
+  real*8 :: time_fraction
   
-  select case(option%imode)
-    case(RICHARDS_MODE)
-      allocate(units(option%ndof+2))
-      pres_dof = 1
-      temp_dof = 2
-      conc_dof = 3
-      time_dof = 4
-      length_dof = 5
-  end select
-  units = ""
-
-  ierr = 0
+  condition => condition_list%first
   do
-  
-    call fiReadFlotranString(IUNIT1,string,ierr)
-    if (ierr /= 0) exit
-
-    call fiReadWord(string,word,.true.,ierr)
-    call fiErrorMsg('keyword','CONDITION', ierr)   
-      
-    select case(trim(word))
+    if (.not.associated(condition)) exit
     
-      case('UNITS')
-        do
-          call fiReadWord(string,word,.true.,ierr)
-          if (ierr /= 0) exit
-          select case(trim(word))
-            case('s','sec','min','hr','d','day','y','yr')
-              condition%units(time_dof) = trim(word)
-            case('mm','cm','m','met','meter','dm','km')
-              condition%units(length_dof) = trim(word)
-            case('Pa','KPa')
-              condition%units(pres_dof) = trim(word)
-            case('C','K')
-              condition%units(temp_dof) = trim(word)
-            case('M','mol/L')
-              condition%units(conc_dof) = trim(word)
-          end select
-        enddo
-      case('CLASS')
-        call fiReadWord(string,word,.true.,ierr)
-        call fiErrorMsg('CLASS','CONDITION', ierr)   
-        call fiCharsToLower(word,len_trim(word))
-        condition%class = word
-        if (fiStringCompare(word,'flow',4)) then
-          condition%ctype = 'dirichlet'
-        else
-          condition%ctype = 'dirichlet'
-        endif
-        call fiReadWord(string,word,.true.,ierr)
-        if (ierr /= 0) then
-          call fiDefaultMsg('condition type',ierr)  
-        else
-          call fiCharsToLower(word,len_trim(word))
-          condition%ctype = word
-        endif
-      case('TIME','TIMES')
-        if (.not.associated(times)) then
-          allocate(times(1))
-        endif
-        call fiReadDouble(string,times(1),ierr)
-        call fiErrorMsg('TIME','CONDITION', ierr)   
-      case('IPHASE')
-        call fiReadInteger(string,condition%iphase,ierr)
-        call fiErrorMsg('IPHASE','CONDITION', ierr)   
-      case('DATUM','DATM')
-        call fiReadDouble(string,condition%datum(X_DIRECTION),ierr)
-        call fiErrorMsg('X Datum','CONDITION', ierr)   
-        call fiReadDouble(string,condition%datum(Y_DIRECTION),ierr)
-        call fiErrorMsg('Y Datum','CONDITION', ierr)   
-        call fiReadDouble(string,condition%datum(Z_DIRECTION),ierr)
-        call fiErrorMsg('Z Datum','CONDITION', ierr)   
-      case('GRADIENT','GRAD')
-        call fiReadDouble(string,condition%gradient(X_DIRECTION),ierr)
-        call fiErrorMsg('X Gradient','CONDITION', ierr)   
-        call fiReadDouble(string,condition%gradient(Y_DIRECTION),ierr)
-        call fiErrorMsg('Y Gradient','CONDITION', ierr)   
-        call fiReadDouble(string,condition%gradient(Z_DIRECTION),ierr)
-        call fiErrorMsg('Z Gradient','CONDITION', ierr)   
-      case('TEMPERATURE','TEMP')
-        call ConditionReadValues(option,word,string,times,temperature,units(temp_dof))
-      case('PRESSURE','PRES','PRESS')
-        call ConditionReadValues(option,word,string,times,pressure,units(pres_dof))
-      case('FLUX','VELOCITY','VEL')
-        call ConditionReadValues(option,word,string,times,flux,units(pres_dof))
-      case('CONC','CONCENTRATION')
-        call ConditionReadValues(option,word,string,times,concentration,units(conc_dof))
-      case('END')
-        exit
-    end select 
-  
-  enddo  
-  
-  ! check to ensure that class and type have been set
-  if (len_trim(condition%class) < 1) then
-    call printErrMsg(option,'"class" not set in condition')
-  endif
-  if (len_trim(condition%ctype) < 1) then
-    call printErrMsg(option,'"type" not set in condition')
-  endif
-  ! check whenther
-  if (condition%iphase == 0) then
-    call printWrnMsg(option,'"iphase" not set in condition')
-    condition%iphase = 1
-  endif
-  
-  allocate(condition%units(2+option%ndof))
-  condition%units(1:2+option%ndof) = units(1:2+option%ndof)
-  if (associated(times)) then
-    max_size = size(times)
-  else
-    max_size = 1
-  endif
-  allocate(condition%times(max_size),condition%values(option%ndof,max_size))
-  allocate(condition%cur_value(option%ndof))
-  condition%times = -999.d0
-  condition%values = -999.d0
-  condition%cur_value = -999.d0
-  
-  if (associated(times)) then
-    condition%times(1:max_size) = times(1:max_size)
-  else
-    condition%times = 0.d0
-  endif
-  
-  if (associated(pressure)) then
-    if (size(pressure) < max_size) then
-      condition%values(pres_dof,1:max_size) = pressure(1)
-    else
-      condition%values(pres_dof,1:max_size) = pressure(1:max_size)
+    ! cycle times if at max_time_index and cyclic
+    if (condition%cur_time_index == condition%max_time_index .and. &
+        condition%cyclic .and. condition%max_time_index > 1) then
+        
+      do cur_time_index = 1, condition%max_time_index
+        condition%times(cur_time_index) = condition%times(cur_time_index) + &     
+                                 condition%times(condition%max_time_index)
+      enddo
+      condition%cur_time_index = 1
     endif
-  else if (associated(flux)) then
-    if (size(flux) < max_size) then
-      condition%values(pres_dof,1:max_size) = flux(1)
-    else
-      condition%values(pres_dof,1:max_size) = flux(1:max_size)
-    endif
-  else
-    print *, 'Error: Pressure conditon not set'
-    stop
-  endif
+   
+    cur_time_index = condition%cur_time_index
+    next_time_index = min(condition%cur_time_index+1, &
+                          condition%max_time_index)
+
+    ! ensure that condition has started
+    if (time >= condition%times(cur_time_index) .or. &
+        abs(time-condition%times(cur_time_index)) < 1.d-40) then
+
+      ! find appropriate time interval
+      do
+        if (time < condition%times(next_time_index) .or. &
+            cur_time_index == next_time_index) &
+          exit
+        cur_time_index = next_time_index
+        ! ensure that time index does not go beyond end of array
+        if (next_time_index < condition%max_time_index) &
+          next_time_index = next_time_index + 1
+      enddo
+
+      select case(condition%interpolation_method)
+        case(STEP) ! just use the current value
+          do idof=1,condition%num_dof
+            condition%cur_value =  &
+                               condition%values(idof,condition%cur_time_index) 
+          enddo 
+        case(LINEAR) ! interpolate the value between times
+          do idof=1,condition%num_dof
+            ! interpolate value based on time
+            condition%cur_time_index = cur_time_index
+            if (cur_time_index < condition%max_time_index) then
+              time_fraction = (time-condition%times(cur_time_index)) / &
+                                (condition%times(next_time_index) - &
+                                 condition%times(cur_time_index))
+              condition%cur_value(idof) = condition%values(idof,cur_time_index) + &
+                                    time_fraction * &
+                                    (condition%values(idof,next_time_index) - &
+                                     condition%values(idof,cur_time_index))
+            else
+              condition%cur_value(idof) =  &
+                                 condition%values(idof,condition%max_time_index) 
+            endif
+          enddo
+      end select 
+    endif 
+
+    condition => condition%next
+    
+  enddo
   
-  if (associated(temperature)) then
-    if (size(temperature) < max_size) then
-      condition%values(temp_dof,1:max_size) = temperature(1)
-    else
-      condition%values(temp_dof,1:max_size) = temperature(1:max_size)
-    endif
-  else
-    print *, 'Error: Temperature conditon not set'
-    stop  
-  endif
-  
-  if (associated(concentration)) then
-    if (size(concentration) < max_size) then
-      condition%values(conc_dof,1:max_size) = concentration(1)
-    else
-      condition%values(conc_dof,1:max_size) = concentration(1:max_size)
-    endif
-  else
-    print *, 'Error: Concentration conditon not set'
-    stop  
-  endif
-  
-  if (minval(condition%values) < -998.d0) then
-    print *, 'Error: Something is wrong in conditions....'
-    stop  
-  endif
-  
-  condition%cur_value(1:option%ndof) = condition%values(1:option%ndof,1)
-#endif
 end subroutine ConditionUpdate
 
 ! ************************************************************************** !
