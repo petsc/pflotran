@@ -2174,6 +2174,7 @@ subroutine pflow_update_Richards(solution)
   use Solution_module
   use Grid_module
   use Option_module
+  use Coupler_module
 
   implicit none
 
@@ -2375,6 +2376,7 @@ subroutine pflow_Richards_initadj(solution)
   use Solution_module
   use Grid_module
   use Option_module
+  use Coupler_module
   
   implicit none
 
