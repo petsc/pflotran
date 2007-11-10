@@ -48,6 +48,7 @@ pflow_obj = ${common_src}pflow_vector_ops.o \
 	${common_src}pflow_gridtype.o \
 	${common_src}pflow_pckr_mod.o \
 	${common_src}option.o \
+	${common_src}waypoint.o \
 	${common_src}region.o \
 	${common_src}material.o \
 	${common_src}strata.o \
@@ -137,7 +138,8 @@ ascii_to_hdf5: fileio.o hdf5_dataset.o ascii_to_hdf5.o
 # These ensure that the module files are built in the correct order.
 pflow.o : pflow_init.o timestepper.o
 pflow_init.o : option.o grid.o solution.o solver.o timestepper.o simulation.o \
-               fileio.o material.o region.o condition.o pflow_convergence.o
+               fileio.o material.o region.o condition.o pflow_convergence.o \
+	       waypoint.o
 unstructured_grid.o : option.o connection.o
 structured_grid.o : connection.o option.o fileio.o coupler.o region.o
 general_grid.o : condition_old.o
@@ -149,8 +151,10 @@ material.o : region.o option.o fileio.o
 coupler.o : condition.o connection.o region.o fileio.o
 condition.o : fileio.o utility.o option.o
 condition_old.o : pflow_pckr_mod.o
-solution.o : grid.o option.o region.o condition.o coupler.o material.o strata.o
+solution.o : grid.o option.o region.o condition.o coupler.o material.o \
+	     strata.o waypoint.o
 strata.o : fileio.o region.o material.o
+waypoint.o : option.o
 pflow_vector_ops.o : water_eos.o
 pflow_output_new.o : pflow_output.o
 pflow_richards_ResJac.o : solution.o option.o grid.o coupler.o \
@@ -174,7 +178,8 @@ timestepper.o : \
                 option.o \
                 solver.o \
                 pflow_output2.o \
-                hydrostat.o
+                hydrostat.o \
+		waypoint.o
 pflow_output.o : pflow_gridtype.o petscrelwrappers.o pflow_output2.o
 pflow_COND.o : pflow_gridtype.o 
 pflow_LIQUID.o : pflow_gridtype.o water_eos.o

@@ -1445,6 +1445,7 @@ subroutine readInput(simulation,filename)
   use Condition_module
   use Coupler_module
   use Strata_module
+  use Waypoint_module
 
   use pckr_module 
   
@@ -1472,6 +1473,8 @@ subroutine readInput(simulation,filename)
   type(condition_type), pointer :: condition
   type(coupler_type), pointer :: coupler
   type(strata_type), pointer :: strata
+  
+  type(waypoint_type), pointer :: waypoint
   
   type(material_type), pointer :: material
   type(thermal_property_type), pointer :: thermal_property
@@ -2545,11 +2548,17 @@ subroutine readInput(simulation,filename)
           do i = i1, i2
             call fiReadDouble(string,option%tplot(i),ierr)
             call fiDefaultMsg('tplot',ierr)
+            waypoint => WaypointCreate()
+            waypoint%time = option%tplot(i)
+            call WaypointInsertInList(waypoint,stepper%waypoints)
           enddo
           if (i2 == option%kplot) exit
           call fiReadFlotranString(IUNIT1,string,ierr)
           call fiReadStringErrorMsg('TIME',ierr)
         enddo
+        
+        ! make last waypoint final
+        waypoint%final = .true.
 
 !       call fiReadFlotranString(IUNIT1,string,ierr)
 !       call fiReadStringErrorMsg('TIME',ierr)
@@ -2595,9 +2604,24 @@ subroutine readInput(simulation,filename)
         call fiReadStringErrorMsg('DTST',ierr)
         call fiReadDouble(string,stepper%dt_min,ierr)
         call fiDefaultMsg('dt_min',ierr)
+        
+        waypoint => WaypointCreate()
+        waypoint%time = 0.d0
+        waypoint%print_output = .true.
+        call WaypointInsertInList(waypoint,stepper%waypoints)
+            
         do i = 1, stepper%nstpmax
           call fiReadDouble(string,stepper%dtstep(i),ierr)
           call fiDefaultMsg('dtstep',ierr)
+          ! need to copy first max_dt here to first waypoint
+          if (i == 1) then
+            waypoint%max_dt = stepper%dtstep(i)
+          endif
+          waypoint => WaypointCreate()
+          waypoint%time = stepper%tstep(i)
+          waypoint%max_dt = stepper%dtstep(i)
+          waypoint%print_output = .true.
+          call WaypointInsertInList(waypoint,stepper%waypoints)          
         enddo
         
         stepper%dt_max = stepper%dtstep(1)

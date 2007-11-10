@@ -352,7 +352,7 @@ module Option_module
     integer :: plot_number
     
   end type output_option_type
-  
+
   public :: OptionCreate, &
             OutputOptionCreate, &
             OptionCheckCommandLine, &
@@ -562,7 +562,7 @@ subroutine printErrMsg(option,string)
   character(len=*) :: string
   
   if (option%myrank == 0) then
-    print *, 'ERROR: ', string
+    print *, 'ERROR: ' // string
     print *, 'Stopping!'
   endif    
   stop
@@ -583,7 +583,7 @@ subroutine printWrnMsg(option,string)
   type(option_type) :: option
   character(len=*) :: string
   
-  if (option%myrank == 0) print *, 'WARNING: ', string
+  if (option%myrank == 0) print *, 'WARNING: ' // string
   
 end subroutine printWrnMsg
 

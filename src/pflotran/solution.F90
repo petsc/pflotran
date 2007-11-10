@@ -35,7 +35,7 @@ private
   public :: SolutionCreate, SolutionDestroy, &
             SolutionProcessCouplers, &
             SolutionInitBoundConditions, &
-            SolutionUpdate
+            SolutionUpdate, SolutionAddWaypointsToList
   
 contains
   
@@ -147,7 +147,7 @@ subroutine SolutionProcessCouplers(solution)
   enddo
 
   ! source/sinks
-  coupler => solution%boundary_conditions%first
+  coupler => solution%source_sinks%first
   do
     if (.not.associated(coupler)) exit
     ! pointer to region
@@ -524,6 +524,57 @@ subroutine SolutionUpdate(solution)
   call SolutionUpdateSrcSinks(solution)
 
 end subroutine SolutionUpdate
+
+! ************************************************************************** !
+!
+! SolutionAddWaypointsToList: Creates waypoints assoiciated with source/sinks
+!                             boundary conditions, etc. and add to list
+! author: Glenn Hammond
+! date: 11/01/07
+!
+! ************************************************************************** !
+subroutine SolutionAddWaypointsToList(solution,waypoint_list)
+
+  use Option_module
+  use Waypoint_module
+
+  implicit none
+  
+  type(waypoint_list_type) :: waypoint_list
+  type(solution_type) :: solution
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  type(coupler_type), pointer :: coupler
+  type(waypoint_type), pointer :: waypoint
+  integer :: itime
+
+  ! Ignore boundary conditions for now
+  ! boundary conditions
+#if 0  
+  coupler => solution%boundary_conditions%first
+  do
+    if (.not.associated(coupler)) exit
+    endif
+    coupler => coupler%next
+  enddo
+#endif  
+
+  ! source/sinks
+  coupler => solution%boundary_conditions%first
+  do
+    if (.not.associated(coupler)) exit
+    do itime=1,coupler%condition%num_values
+      if (coupler%condition%times(itime) > 1.d-40) then
+        waypoint => WaypointCreate()
+        waypoint%time = coupler%condition%times(itime)
+        waypoint%update_srcs = .true.
+        call WaypointInsertInList(waypoint,waypoint_list)
+      endif
+    enddo
+    coupler => coupler%next
+  enddo
+  
+end subroutine SolutionAddWaypointsToList
 
 ! ************************************************************************** !
 !

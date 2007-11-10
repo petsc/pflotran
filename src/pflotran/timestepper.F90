@@ -2,6 +2,7 @@ module Timestepper_module
  
   use Solver_module
   use Option_module
+  use Waypoint_module  
  
   implicit none
 
@@ -25,25 +26,15 @@ module Timestepper_module
     real*8, pointer :: dtstep(:)    
         
     type(solver_type), pointer :: solver
-    type(waypoint_type), pointer :: waypoints
+    type(waypoint_list_type), pointer :: waypoints
     type(waypoint_type), pointer :: cur_waypoint
     real*8, pointer :: steady_eps(:)  ! tolerance for stead state convergence
     
   end type stepper_type
   
-  ! linked-list for waypoints in the simulation
-  type, public :: waypoint_type
-    real*8 :: time
-    logical :: print_output
-    type(output_option_type), pointer :: output_option
-    logical :: update_bcs
-    logical :: update_srcs
-    real*8 :: max_dt
-    type(waypoint_type), pointer :: next
-  end type waypoint_type
-  
   public :: TimestepperCreate, StepperUpdateDT, StepperStepDT, StepperUpdateSolution, &
-            TimestepperDestroy, StepperRun
+            TimestepperDestroy, StepperRun, &
+            WaypointCreate, WaypointInsertInList
   
 contains
 
@@ -78,40 +69,14 @@ function TimestepperCreate()
   stepper%dt_max = 3.1536d6 ! One-tenth of a year.  
       
   nullify(stepper%solver)
-  nullify(stepper%waypoints)
+  nullify(stepper%cur_waypoint)
   
   stepper%solver => SolverCreate()
+  stepper%waypoints => WaypointListCreate()
   
   TimeStepperCreate => stepper
   
 end function TimestepperCreate 
-
-! ************************************************************************** !
-!
-! WaypointCreate: Creates a simulation waypoint
-! author: Glenn Hammond
-! date: 11/07/07
-!
-! ************************************************************************** !
-function WaypointCreate()
-
-  implicit none
-  
-  type(waypoint_type), pointer :: WaypointCreate
-  
-  type(waypoint_type), pointer :: waypoint
-  
-  allocate(waypoint)
-  waypoint%time = 0.d0
-  waypoint%print_output = .false.
-  waypoint%output_option => OutputOptionCreate()
-  waypoint%update_bcs = .false.
-  waypoint%update_srcs = .false.
-  waypoint%max_dt = 0.d0
-    
-  WaypointCreate => waypoint
-  
-end function WaypointCreate 
 
 ! ************************************************************************** !
 !
@@ -157,6 +122,11 @@ subroutine StepperRun(solution,stepper,stage)
 
   iplot = 0
   ihalcnt = 0
+
+  call SolutionAddWaypointsToList(solution,stepper%waypoints)
+  call WaypointListFillIn(stepper%waypoints)
+  call WaypointListRemoveExtraWaypnts(option,stepper%waypoints)
+  call WaypointConvertTimes(stepper%waypoints,solution%output_option%tconv)
 
   allocate(dxdt(1:option%ndof))  
 
