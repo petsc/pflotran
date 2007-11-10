@@ -249,7 +249,7 @@ subroutine WaypointListRemoveExtraWaypnts(option,waypoint_list)
     prev_waypoint => waypoint
     waypoint => waypoint%next
     write(string,'("Waypoint at time:", 1pe12.4, &
-          " is beyond the end of simulation")') &
+  &   " is beyond the end of simulation")') &
           prev_waypoint%time
     call printWrnMsg(option,trim(string))
     call WaypointDestroy(prev_waypoint)   
