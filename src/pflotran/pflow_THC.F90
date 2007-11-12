@@ -2,19 +2,22 @@
 
 !#include "pflowTHC.F90"
 
-#define PPRESSURE_LOC(j,n) xx_loc_p(j+(n-1)*grid%ndof)
-#define PPRESSURE(j,n)     xx_p(j+(n-1)*grid%ndof)
-#define PRESSURE(j,n)      yy_p(j+(n-1)*grid%ndof)
-#define TTEMP_LOC(n)       xx_loc_p(2+(n-1)*grid%ndof)
-#define TTEMP(n)           xx_p(2+(n-1)*grid%ndof)
-#define TEMP(n)            yy_p(2+(n-1)*grid%ndof)
-#define CCONC_LOC(n)       xx_loc_p(3+(n-1)*grid%ndof)
-#define CCONC(n)           xx_p(3+(n-1)*grid%ndof)
-#define CONC(n)            yy_p(3+(n-1)*grid%ndof)
+#define PPRESSURE_LOC(j,n) xx_loc_p(j+(n-1)*option%ndof)
+#define PPRESSURE(j,n)     xx_p(j+(n-1)*option%ndof)
+#define PRESSURE(j,n)      yy_p(j+(n-1)*option%ndof)
+#define TTEMP_LOC(n)       xx_loc_p(2+(n-1)*option%ndof)
+#define TTEMP(n)           xx_p(2+(n-1)*option%ndof)
+#define TEMP(n)            yy_p(2+(n-1)*option%ndof)
+#define CCONC_LOC(n)       xx_loc_p(3+(n-1)*option%ndof)
+#define CCONC(n)           xx_p(3+(n-1)*option%ndof)
+#define CONC(n)            yy_p(3+(n-1)*option%ndof)
 
 module THC_module
 
- use pflow_gridtype_module
+ use Connection_module
+ use Solution_module
+ use Grid_module
+ use Option_module
  
  private
 
@@ -32,8 +35,6 @@ module THC_module
 #include "include/finclude/petscis.h"
 #include "include/finclude/petsclog.h"
 
-!#include "pflow_gridtype.h"
-
   public THCResidual, THCJacobian
 
 contains
@@ -41,13 +42,15 @@ contains
   subroutine THCResidual(snes, xx, r, grid)
   
   use water_eos_module
-   use hydrostat_module, only: recondition_bc
+  use hydrostat_module, only: recondition_bc
   implicit none
 
   SNES, intent(in) :: snes
   Vec, intent(in) :: xx
   Vec, intent(out) :: r
-  type(pflowGrid), intent(inout) :: grid
+  type(solution_type) :: solution  ! What should 'intent' be for this?
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
 
 ! external VISW, PSAT, WATEOS
     ! Legacy functions for calculating density, internal energy, viscosity,
@@ -85,45 +88,55 @@ contains
   
   eps = 1.d-6
 
+  type(connection_list_type), pointer :: connection_list
+  type(connection_type), pointer :: cur_connection_object
+  integer :: iconn
+  ! Does THC just need 'distance'?  --RTM
+  real*8 :: distance, fraction_upwind
+  real*8 :: distance_gravity
+  
+  grid => solution%grid
+  option => solution%option
+  
 !  degrees of freedom:
-!  p - 1:grid%nphase
-!  T - grid%nphase + 1
-!  C - grid%nphase + 2
-!  grid%ndof = grid%nphase + 2 = 3
+!  p - 1:option%nphase
+!  T - option%nphase + 1
+!  C - option%nphase + 2
+!  option%ndof = option%nphase + 2 = 3
   !---------------------------------------------------------------------------
   ! Calculate the density and viscosity of water at step k+1 at each local
   ! node.
   !---------------------------------------------------------------------------
  !  call recondition_bc(grid)
   call VecGetArrayF90(xx, xx_p, ierr); CHKERRQ(ierr)
-  call VecGetArrayF90(grid%ddensity, ddensity_p, ierr)
-  call VecGetArrayF90(grid%hh, hh_p, ierr)
-  call VecGetArrayF90(grid%viscosity, viscosity_p, ierr)
+  call VecGetArrayF90(option%ddensity, ddensity_p, ierr)
+  call VecGetArrayF90(option%hh, hh_p, ierr)
+  call VecGetArrayF90(option%viscosity, viscosity_p, ierr)
 
-  if (grid%ideriv == 1) then
-    call VecGetArrayF90(grid%d_p, d_p_p, ierr)
-    call VecGetArrayF90(grid%d_t, d_t_p, ierr)
-    call VecGetArrayF90(grid%h_p, h_p_p, ierr)
-    call VecGetArrayF90(grid%h_t, h_t_p, ierr)
-    call VecGetArrayF90(grid%v_p, v_p_p, ierr)
-    call VecGetArrayF90(grid%v_t, v_t_p, ierr)
+  if (option%ideriv == 1) then
+    call VecGetArrayF90(option%d_p, d_p_p, ierr)
+    call VecGetArrayF90(option%d_t, d_t_p, ierr)
+    call VecGetArrayF90(option%h_p, h_p_p, ierr)
+    call VecGetArrayF90(option%h_t, h_t_p, ierr)
+    call VecGetArrayF90(option%v_p, v_p_p, ierr)
+    call VecGetArrayF90(option%v_t, v_t_p, ierr)
   endif
   
   !get phase properties
   
-  do j = 1, grid%nphase
-    if (j == grid%jh2o) then
+  do j = 1, option%nphase
+    if (j == option%jh2o) then
       !pure liquid water eos
       do n = 1, grid%nlmax
-        jn = j + (n-1)*grid%nphase
+        jn = j + (n-1)*option%nphase
       
 !       first arg temp, 2nd pressure, use molar units for density 
 !         and other properties
 
         call PSAT(TTEMP(n), sat_pressure, ierr)
-        if (grid%ideriv == 1) then
+        if (option%ideriv == 1) then
           call wateos(TTEMP(n),PPRESSURE(j,n),dw_kg,dw_mol,d_p_p(jn), &
-          d_t_p(jn),hh_p(jn),h_p_p(jn),h_t_p(jn),grid%scale,ierr)
+          d_t_p(jn),hh_p(jn),h_p_p(jn),h_t_p(jn),option%scale,ierr)
           call VISW(TTEMP(n),PPRESSURE(j,n),sat_pressure, &
           viscosity_p(jn),v_t_p(jn),v_p_p(jn),ierr)
           
@@ -135,7 +148,7 @@ contains
 !         dw_mol,dw_kg
         else
           call wateos_noderiv(TTEMP(n),PPRESSURE(j,n),dw_kg,dw_mol, &
-          hh_p(jn),grid%scale,ierr)
+          hh_p(jn),option%scale,ierr)
           call VISW_noderiv(TTEMP(n),PPRESSURE(j,n),sat_pressure, &
           viscosity_p(jn),ierr)
         endif
@@ -144,140 +157,97 @@ contains
 
 !   add additional fluid phases here ...
 
-!   else if (j == grid%jgas) then
+!   else if (j == option%jgas) then
       !pure gas water + air eos
 !     do n = 1, grid%nlmax
-!       jn = j + (n-1)*grid%nphase
+!       jn = j + (n-1)*option%nphase
 !       call steameos(TTEMP(n),PPRESSURE(j,n),pa,dg_kg,dg_mol,d_p_p(jn), &
-!       d_t_p(jn),hh_p(jn),h_p_p(jn),h_t_p(jn),grid%scale,ierr)
+!       d_t_p(jn),hh_p(jn),h_p_p(jn),h_t_p(jn),option%scale,ierr)
 !     enddo
       
 !   else if (j == grid%jco2) then
 
-!     do n = 1, grid%nphase
+!     do n = 1, option%nphase
 !       ...
 !     enddo
     endif
   enddo
   
   call VecRestoreArrayF90(xx, xx_p, ierr); CHKERRQ(ierr)
-  call VecRestoreArrayF90(grid%ddensity, ddensity_p, ierr)
-  call VecRestoreArrayF90(grid%hh, hh_p, ierr)
-  call VecRestoreArrayF90(grid%viscosity, viscosity_p, ierr)
+  call VecRestoreArrayF90(option%ddensity, ddensity_p, ierr)
+  call VecRestoreArrayF90(option%hh, hh_p, ierr)
+  call VecRestoreArrayF90(option%viscosity, viscosity_p, ierr)
 
-  if (grid%ideriv == 1) then  
-    call VecRestoreArrayF90(grid%d_p, d_p_p, ierr)
-    call VecRestoreArrayF90(grid%d_t, d_t_p, ierr)
-    call VecRestoreArrayF90(grid%h_p, h_p_p, ierr)
-    call VecRestoreArrayF90(grid%h_t, h_t_p, ierr)
-    call VecRestoreArrayF90(grid%v_p, v_p_p, ierr)
-    call VecRestoreArrayF90(grid%v_t, v_t_p, ierr)
+  if (option%ideriv == 1) then  
+    call VecRestoreArrayF90(option%d_p, d_p_p, ierr)
+    call VecRestoreArrayF90(option%d_t, d_t_p, ierr)
+    call VecRestoreArrayF90(option%h_p, h_p_p, ierr)
+    call VecRestoreArrayF90(option%h_t, h_t_p, ierr)
+    call VecRestoreArrayF90(option%v_p, v_p_p, ierr)
+    call VecRestoreArrayF90(option%v_t, v_t_p, ierr)
   endif
 
   !---------------------------------------------------------------------------
   ! Now that we have calculated the density and viscosity for all local 
   ! nodes, we can perform the global-to-local scatters.
   !---------------------------------------------------------------------------
-  call DAGlobalToLocalBegin(grid%da_ndof, xx, INSERT_VALUES, &
-                            grid%xx_loc, ierr)
-  call DAGlobalToLocalEnd(grid%da_ndof, xx, INSERT_VALUES, &
-                          grid%xx_loc, ierr)
+  call GridGlobalToLocal(grid, xx, option%xx_loc, NDOF)
 
-  call DAGlobalToLocalBegin(grid%da_nphase_dof, grid%ddensity, INSERT_VALUES, &
-                            grid%ddensity_loc, ierr)
-  call DAGlobalToLocalEnd(grid%da_nphase_dof, grid%ddensity, INSERT_VALUES, &
-                          grid%ddensity_loc, ierr)
+  call GridGlobalToLocal(grid, option%ddensity, option%ddensity_loc, &
+                         NPHASEDOF)
 
-  call DAGlobalToLocalBegin(grid%da_nphase_dof, grid%hh, INSERT_VALUES, &
-                            grid%hh_loc, ierr)
-  call DAGlobalToLocalEnd(grid%da_nphase_dof, grid%hh, INSERT_VALUES, &
-                          grid%hh_loc, ierr)
+  call GridGlobalToLocal(grid, option%hh, option%hh_loc, NPHASEDOF)
 
-  call DAGlobalToLocalBegin(grid%da_nphase_dof, grid%viscosity, INSERT_VALUES, &
-                            grid%viscosity_loc, ierr)
-  call DAGlobalToLocalEnd(grid%da_nphase_dof, grid%viscosity, INSERT_VALUES, &
-                          grid%viscosity_loc, ierr)
+  call GridGlobalToLocal(grid, option%viscosity, option%viscosity_loc, &
+                         NPHASEDOF)
 
-! call DAGlobalToLocalBegin(grid%da_3_dof, grid%perm, &
-!                           INSERT_VALUES, grid%perm_loc, ierr)
-! call DAGlobalToLocalEnd(grid%da_3_dof, grid%perm, &
-!                         INSERT_VALUES, grid%perm_loc, ierr)
+  call GridGlobalToLocal(grid, option%perm_xx, option%perm_xx_loc, ONEDOF)
+  call GridGlobalToLocal(grid, option%perm_yy, option%perm_yy_loc, ONEDOF)
+  call GridGlobalToLocal(grid, option%perm_zz, option%perm_zz_loc, ONEDOF)
 
-  call DAGlobalToLocalBegin(grid%da_1_dof, grid%perm_xx, &
-                            INSERT_VALUES, grid%perm_xx_loc, ierr)
-  call DAGlobalToLocalEnd(grid%da_1_dof, grid%perm_xx, &
-                          INSERT_VALUES, grid%perm_xx_loc, ierr)
-  call DAGlobalToLocalBegin(grid%da_1_dof, grid%perm_yy, &
-                            INSERT_VALUES, grid%perm_yy_loc, ierr)
-  call DAGlobalToLocalEnd(grid%da_1_dof, grid%perm_yy, &
-                          INSERT_VALUES, grid%perm_yy_loc, ierr)
-  call DAGlobalToLocalBegin(grid%da_1_dof, grid%perm_zz, &
-                            INSERT_VALUES, grid%perm_zz_loc, ierr)
-  call DAGlobalToLocalEnd(grid%da_1_dof, grid%perm_zz, &
-                          INSERT_VALUES, grid%perm_zz_loc, ierr)
-
-  call VecGetArrayF90(grid%xx_loc, xx_loc_p, ierr)
-  call VecGetArrayF90(grid%yy, yy_p, ierr)
-  call VecGetArrayF90(grid%porosity_loc, porosity_loc_p, ierr)
-  call VecGetArrayF90(grid%ddensity_loc, ddensity_loc_p, ierr)
-  call VecGetArrayF90(grid%density, density_p, ierr)
-  call VecGetArrayF90(grid%hh_loc, hh_loc_p, ierr)
-  call VecGetArrayF90(grid%h, h_p, ierr)
-  call VecGetArrayF90(grid%viscosity_loc, viscosity_loc_p, ierr)
+  call VecGetArrayF90(option%xx_loc, xx_loc_p, ierr)
+  call VecGetArrayF90(option%yy, yy_p, ierr)
+  call VecGetArrayF90(option%porosity_loc, porosity_loc_p, ierr)
+  call VecGetArrayF90(option%ddensity_loc, ddensity_loc_p, ierr)
+  call VecGetArrayF90(option%density, density_p, ierr)
+  call VecGetArrayF90(option%hh_loc, hh_loc_p, ierr)
+  call VecGetArrayF90(option%h, h_p, ierr)
+  call VecGetArrayF90(option%viscosity_loc, viscosity_loc_p, ierr)
   
-! call VecGetArrayF90(grid%perm_loc, perm_loc_p, ierr)
-  call VecGetArrayF90(grid%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecGetArrayF90(grid%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecGetArrayF90(grid%perm_zz_loc, perm_zz_loc_p, ierr)
+  call VecGetArrayF90(option%perm_xx_loc, perm_xx_loc_p, ierr)
+  call VecGetArrayF90(option%perm_yy_loc, perm_yy_loc_p, ierr)
+  call VecGetArrayF90(option%perm_zz_loc, perm_zz_loc_p, ierr)
 
-  call VecGetArrayF90(grid%volume, volume_p, ierr)
+  call VecGetArrayF90(option%volume, volume_p, ierr)
   call VecGetArrayF90(r, r_p, ierr)
 
-  call VecGetArrayF90(grid%ithrm_loc, ithrm_loc_p, ierr)
+  call VecGetArrayF90(option%ithrm_loc, ithrm_loc_p, ierr)
 
-  call VecGetArrayF90(grid%vl, vl_p, ierr)
+  call VecGetArrayF90(option%vl, vl_p, ierr)
 
-  if (grid%ideriv == 1) then
-    call DAGlobalToLocalBegin(grid%da_nphase_dof, grid%d_p, INSERT_VALUES, &
-                            grid%d_p_loc, ierr)
-    call DAGlobalToLocalEnd(grid%da_nphase_dof, grid%d_p, INSERT_VALUES, &
-                          grid%d_p_loc, ierr)
+  if (option%ideriv == 1) then
+    call GridGlobalToLocal(grid, option%d_p, option%d_p_loc, NPHASEDOF)
 
-    call DAGlobalToLocalBegin(grid%da_nphase_dof, grid%d_t, INSERT_VALUES, &
-                            grid%d_t_loc, ierr)
-    call DAGlobalToLocalEnd(grid%da_nphase_dof, grid%d_t, INSERT_VALUES, &
-                          grid%d_t_loc, ierr)
+    call GridGlobalToLocal(grid, option%d_t, option%d_t, NPHASEDOF)
 
-    call DAGlobalToLocalBegin(grid%da_nphase_dof, grid%h_p, INSERT_VALUES, &
-                            grid%h_p_loc, ierr)
-    call DAGlobalToLocalEnd(grid%da_nphase_dof, grid%h_p, INSERT_VALUES, &
-                          grid%h_p_loc, ierr)
+    call GridGlobalToLocal(grid, option%h_p, option%h_p_loc, NPHASEDOF)
 
-    call DAGlobalToLocalBegin(grid%da_nphase_dof, grid%h_t, INSERT_VALUES, &
-                            grid%h_t_loc, ierr)
-    call DAGlobalToLocalEnd(grid%da_nphase_dof, grid%h_t, INSERT_VALUES, &
-                          grid%h_t_loc, ierr)
+    call GridGlobalToLocalBegin(grid, option%h_t, option%h_t_loc, NPHASEDOF)
 
-    call DAGlobalToLocalBegin(grid%da_nphase_dof, grid%v_p, INSERT_VALUES, &
-                            grid%v_p_loc, ierr)
-    call DAGlobalToLocalEnd(grid%da_nphase_dof, grid%v_p, INSERT_VALUES, &
-                          grid%v_p_loc, ierr)
+    call GridGlobalToLocalBegin(grid, option%v_p, option%v_p_loc, NPHASEDOF)
 
-    call DAGlobalToLocalBegin(grid%da_nphase_dof, grid%v_t, INSERT_VALUES, &
-                            grid%v_t_loc, ierr)
-    call DAGlobalToLocalEnd(grid%da_nphase_dof, grid%v_t, INSERT_VALUES, &
-                          grid%v_t_loc, ierr)
+    call GridGlobalToLocalBegin(grid, option%v_t, option%v_t_loc, NPHASEDOF)
 
-    call VecGetArrayF90(grid%d_p_loc, d_p_loc_p, ierr)
-    call VecGetArrayF90(grid%d_t_loc, d_t_loc_p, ierr)
-    call VecGetArrayF90(grid%h_p_loc, h_p_loc_p, ierr)
-    call VecGetArrayF90(grid%h_t_loc, h_t_loc_p, ierr)
-    call VecGetArrayF90(grid%v_p_loc, v_p_loc_p, ierr)
-    call VecGetArrayF90(grid%v_t_loc, v_t_loc_p, ierr)
+    call VecGetArrayF90(option%d_p_loc, d_p_loc_p, ierr)
+    call VecGetArrayF90(option%d_t_loc, d_t_loc_p, ierr)
+    call VecGetArrayF90(option%h_p_loc, h_p_loc_p, ierr)
+    call VecGetArrayF90(option%h_t_loc, h_t_loc_p, ierr)
+    call VecGetArrayF90(option%v_p_loc, v_p_loc_p, ierr)
+    call VecGetArrayF90(option%v_t_loc, v_t_loc_p, ierr)
   endif
 
-  if (grid%rk > 0.d0) then
-    call VecGetArrayF90(grid%phis,phis_p,ierr)
+  if (option%rk > 0.d0) then
+    call VecGetArrayF90(option%phis,phis_p,ierr)
   endif
 
   !---------------------------------------------------------------------------
@@ -285,15 +255,15 @@ contains
   !---------------------------------------------------------------------------
   do n = 1, grid%nlmax  ! For each local node do...
     ng = grid%nL2G(n)
-    p1 = 1 + (n-1)*grid%ndof
+    p1 = 1 + (n-1)*option%ndof
     t1 = p1 + 1
     c1 = t1 + 1
-    voldt = volume_p(n) / grid%dt
+    voldt = volume_p(n) / option%dt
     pvoldt = porosity_loc_p(ng) * voldt
     accum = 0.d0
-    do j = 1, grid%nphase
-      jn = j + (n-1)*grid%nphase
-      jng = j + (ng-1)*grid%nphase
+    do j = 1, option%nphase
+      jn = j + (n-1)*option%nphase
+      jng = j + (ng-1)*option%nphase
         ! jn and jng give the index of the term in local non-ghosted and 
         ! local ghosted vectors, respectively, that corresponds to the jth
         ! phase at node n.
@@ -305,39 +275,39 @@ contains
     
 !   heat residual
     i = ithrm_loc_p(ng)
-    j = grid%jh2o
-    jn = j+(n-1)*grid%nphase
-    jng = j+(ng-1)*grid%nphase
+    j = option%jh2o
+    jn = j+(n-1)*option%nphase
+    jng = j+(ng-1)*option%nphase
     ! rho U = rho H - p
-    eeng = ddensity_loc_p(jng)*hh_loc_p(jng)-grid%scale*PPRESSURE_LOC(j,ng)
-    eng = density_p(jn) * h_p(jn) - grid%scale*PRESSURE(j,n)
+    eeng = ddensity_loc_p(jng)*hh_loc_p(jng)-option%scale*PPRESSURE_LOC(j,ng)
+    eng = density_p(jn) * h_p(jn) - option%scale*PRESSURE(j,n)
     r_p(t1) = pvoldt * (eeng - eng) &
-                + (1.d0-porosity_loc_p(ng)) * grid%dencpr(i) * &
+                + (1.d0-porosity_loc_p(ng)) * option%dencpr(i) * &
                 (TTEMP_LOC(ng) - TEMP(n)) * voldt
 
     !tracer
-    r_p(c1) = pvoldt * (CCONC_LOC(ng) - CONC(n)) * grid%ret
+    r_p(c1) = pvoldt * (CCONC_LOC(ng) - CONC(n)) * option%ret
     
     !kinetic rate term
-    if (grid%rk > 0.d0) then
-      grid%rate(n) = 0.d0
-      if (grid%ityprxn == 1) then
-        if (phis_p(n) > 0.d0 .or. CCONC_LOC(ng)/grid%ceq > 1.d0+eps) then
-          grid%rate(n) = -grid%rk * grid%area_var(n) * &
-          (1.d0 - CCONC_LOC(ng)/grid%ceq)
-          r_p(c1) = r_p(c1) + grid%rate(n) * volume_p(n)
-          r_p(t1) = r_p(t1) - grid%delHs * grid%rate(n) * &
+    if (option%rk > 0.d0) then
+      option%rate(n) = 0.d0
+      if (option%ityprxn == 1) then
+        if (phis_p(n) > 0.d0 .or. CCONC_LOC(ng)/option%ceq > 1.d0+eps) then
+          option%rate(n) = -option%rk * option%area_var(n) * &
+          (1.d0 - CCONC_LOC(ng)/option%ceq)
+          r_p(c1) = r_p(c1) + option%rate(n) * volume_p(n)
+          r_p(t1) = r_p(t1) - option%delHs * option%rate(n) * &
           volume_p(n)
-!         print *,'resTHC: ',n,ng,phis_p(n),grid%rate(n),grid%area_var(n), &
+!         print *,'resTHC: ',n,ng,phis_p(n),option%rate(n),option%area_var(n), &
 !         CCONC_LOC(ng),CONC(n)
         endif
-      else if (grid%ityprxn == 2) then
+      else if (option%ityprxn == 2) then
         if (phis_p(n) > 0.d0 .or. TTEMP_LOC(ng) < 0.d0+eps) then
-          grid%rate(n) = -grid%rk * grid%area_var(n) * TTEMP_LOC(ng)
-          r_p(p1) = r_p(p1) + grid%rate(n) * volume_p(n)
-          r_p(t1) = r_p(t1) - grid%delHs * grid%rate(n) * &
+          option%rate(n) = -option%rk * option%area_var(n) * TTEMP_LOC(ng)
+          r_p(p1) = r_p(p1) + option%rate(n) * volume_p(n)
+          r_p(t1) = r_p(t1) - option%delHs * option%rate(n) * &
           volume_p(n)
-!         print *,'resTHC: ',n,ng,phis_p(n),grid%rate(n),grid%area_var(n), &
+!         print *,'resTHC: ',n,ng,phis_p(n),option%rate(n),option%area_var(n), &
 !         CCONC_LOC(ng),CONC(n)
         endif
       endif
@@ -355,8 +325,8 @@ contains
     n1 = grid%nG2L(m1) ! = zero for ghost nodes
     n2 = grid%nG2L(m2)
     
-    p1 = 1 + (n1-1)*grid%ndof
-    p2 = 1 + (n2-1)*grid%ndof
+    p1 = 1 + (n1-1)*option%ndof
+    p2 = 1 + (n2-1)*option%ndof
     t1 = p1 + 1
     t2 = p2 + 1
     c1 = t1 + 1
@@ -394,9 +364,9 @@ contains
     fluxp = 0.d0
     fluxh = 0.d0
     fluxv = 0.d0
-    do j = 1, grid%nphase
-      jm1 = j + (m1-1) * grid%nphase
-      jm2 = j + (m2-1) * grid%nphase
+    do j = 1, option%nphase
+      jm1 = j + (m1-1) * option%nphase
+      jm2 = j + (m2-1) * option%nphase
       
       ! We need to calculate the "diffusion" constant D at the interface;
       ! it is defined at the cell centers.  We use the harmonic mean of the
@@ -440,7 +410,7 @@ contains
         mu = m2
       endif
 
-      jmu = j + (mu-1) * grid%nphase
+      jmu = j + (mu-1) * option%nphase
       fluxh = fluxh + q * density_ave * hh_loc_p(jmu)
       fluxv = fluxv + q * CCONC_LOC(mu)
     enddo
@@ -448,8 +418,8 @@ contains
     !heat & tracer residual
     i1 = ithrm_loc_p(m1)
     i2 = ithrm_loc_p(m2)
-    D1 = grid%ckwet(i1)
-    D2 = grid%ckwet(i2)
+    D1 = option%ckwet(i1)
+    D2 = option%ckwet(i2)
 
     Dk = (D1 * D2) / (dd2*D1 + dd1*D2)
 
@@ -459,9 +429,9 @@ contains
 
     por1 = porosity_loc_p(m1)
     por2 = porosity_loc_p(m2)
-    diff = (por1 * por2) / (dd2*por1 + dd1*por2) * grid%difaq
+    diff = (por1 * por2) / (dd2*por1 + dd1*por2) * option%difaq
     diflux = diff * grid%area(nc) * (CCONC_LOC(m2) - CCONC_LOC(m1))
-    fluxc = grid%fc * fluxv - diflux
+    fluxc = option%fc * fluxv - diflux
 
     ! interface on rhs
     if (n1 > 0) then  ! If upstream node is not a ghost node...
@@ -492,7 +462,7 @@ contains
     ! this must be zeroed since grid%vvlbc references it.  
     v_darcy = 0.d0
     
-    p1 = 1 + (m-1) * grid%ndof
+    p1 = 1 + (m-1) * option%ndof
     t1 = p1 + 1
     c1 = t1 + 1
 
@@ -508,82 +478,82 @@ contains
       perm1 = perm_zz_loc_p(ng)
     endif
     
-    if(grid%ibndtyp(ibc) == 2) then
+    if(option%ibndtyp(ibc) == 2) then
       ! solve for pb from Darcy's law given qb /= 0
-      grid%tempbc(nc) = TTEMP_LOC(ng)
-    else if(grid%ibndtyp(ibc) == 3) then
-      grid%tempbc(nc) = TTEMP_LOC(ng)
+      option%tempbc(nc) = TTEMP_LOC(ng)
+    else if(option%ibndtyp(ibc) == 3) then
+      option%tempbc(nc) = TTEMP_LOC(ng)
     endif
 
-    do j = 1, grid%nphase
-      if (j == grid%jh2o) then
+    do j = 1, option%nphase
+      if (j == option%jh2o) then
         !pure water eos
-        call PSAT(grid%tempbc(nc),sat_pressure,ierr)
-        if (grid%ideriv == 1) then
-          call wateos(grid%tempbc(nc),grid%pressurebc(j,nc),dw_kg, &
-          dw_mol,grid%d_p_bc(j),grid%d_t_bc(j),grid%hh_bc(j), &
-          grid%h_p_bc(j),grid%h_t_bc(j),grid%scale,ierr)
+        call PSAT(option%tempbc(nc),sat_pressure,ierr)
+        if (option%ideriv == 1) then
+          call wateos(option%tempbc(nc),option%pressurebc(j,nc),dw_kg, &
+          dw_mol,option%d_p_bc(j),option%d_t_bc(j),option%hh_bc(j), &
+          option%h_p_bc(j),option%h_t_bc(j),option%scale,ierr)
           
-          call VISW(grid%tempbc(nc),grid%pressurebc(j,nc), &
-          sat_pressure,grid%viscosity_bc(j), &
+          call VISW(option%tempbc(nc),option%pressurebc(j,nc), &
+          sat_pressure,option%viscosity_bc(j), &
           grid%v_t_bc(j),grid%v_p_bc(j),ierr)
 
-!         print *,'thc-bc: ',nc,j,m,ng,ibc,grid%nphase, &
-!         grid%tempbc(nc),grid%pressurebc(j,ibc),dw_mol, &
-!         dw_kg,grid%d_p_bc(j),grid%d_t_bc(j),grid%hh_bc(j), &
-!         grid%h_p_bc(j),grid%h_t_bc(j),sat_pressure, &
-!         grid%viscosity_bc(j),grid%v_t_bc(j),grid%v_p_bc(j)
+!         print *,'thc-bc: ',nc,j,m,ng,ibc,option%nphase, &
+!         option%tempbc(nc),option%pressurebc(j,ibc),dw_mol, &
+!         dw_kg,option%d_p_bc(j),option%d_t_bc(j),option%hh_bc(j), &
+!         option%h_p_bc(j),option%h_t_bc(j),sat_pressure, &
+!         option%viscosity_bc(j),grid%v_t_bc(j),grid%v_p_bc(j)
         else
-          call wateos_noderiv(grid%tempbc(nc),grid%pressurebc(j,nc), &
-          dw_kg,dw_mol,grid%hh_bc(j),grid%scale,ierr)
+          call wateos_noderiv(option%tempbc(nc),option%pressurebc(j,nc), &
+          dw_kg,dw_mol,option%hh_bc(j),option%scale,ierr)
           
-          call VISW_noderiv(grid%tempbc(nc),grid%pressurebc(j,nc), &
-          sat_pressure,grid%viscosity_bc(j),ierr)
+          call VISW_noderiv(option%tempbc(nc),option%pressurebc(j,nc), &
+          sat_pressure,option%viscosity_bc(j),ierr)
         endif
-        grid%density_bc(j) = dw_mol
+        option%density_bc(j) = dw_mol
 
 !     else if (j == grid%jco2) then
 
 !       add additional fluid phases here ...
 
-!       do n = 1, grid%nphase
+!       do n = 1, option%nphase
 !         ...
 !       enddo
       else ! for testing purposes only
-        jng = j + (ng-1) * grid%nphase
-        grid%viscosity_bc(j) = viscosity_loc_p(jng)
-        grid%hh_bc(j) = hh_loc_p(jng)
-        grid%density_bc(j) = ddensity_loc_p(jng)
+        jng = j + (ng-1) * option%nphase
+        option%viscosity_bc(j) = viscosity_loc_p(jng)
+        option%hh_bc(j) = hh_loc_p(jng)
+        option%density_bc(j) = ddensity_loc_p(jng)
       endif
     enddo
 
-    if(grid%ibndtyp(ibc) == 1) then  ! Dirichlet BC for p, T, C ...
+    if(option%ibndtyp(ibc) == 1) then  ! Dirichlet BC for p, T, C ...
     
       fluxp = 0.d0
       fluxh = 0.d0
       fluxc = 0.d0
-      do j = 1, grid%nphase
-        jm = j + (m-1) * grid%nphase
-        jng = j + (ng-1) * grid%nphase
+      do j = 1, option%nphase
+        jm = j + (m-1) * option%nphase
+        jng = j + (ng-1) * option%nphase
 
-        Dq = perm1 / grid%viscosity_bc(j) / grid%distbc(nc)
+        Dq = perm1 / option%viscosity_bc(j) / grid%distbc(nc)
         
         !note: darcy vel. is positive for flow INTO boundary node
-        v_darcy = -Dq * (PPRESSURE_LOC(j,ng) - grid%pressurebc(j,nc) &
-                  - gravity * grid%density_bc(j))
+        v_darcy = -Dq * (PPRESSURE_LOC(j,ng) - option%pressurebc(j,nc) &
+                  - gravity * option%density_bc(j))
         q = v_darcy * grid%areabc(nc)
       
-!       print *,'pflowTHC-1: ',nc,m,ng,ibc,v_darcy,grid%ibndtyp(ibc)
+!       print *,'pflowTHC-1: ',nc,m,ng,ibc,v_darcy,option%ibndtyp(ibc)
 
-        fluxbc = q * grid%density_bc(j)
+        fluxbc = q * option%density_bc(j)
         fluxp = fluxp - fluxbc
 
         !upstream weighting
         if (q > 0.d0) then
-          fluxh = fluxh + q * grid%density_bc(j) * grid%hh_bc(j)
-          fluxc = fluxc + q * grid%concbc(nc)       ! note: need to change 
+          fluxh = fluxh + q * option%density_bc(j) * option%hh_bc(j)
+          fluxc = fluxc + q * option%concbc(nc)       ! note: need to change 
         else                          ! definition of C for multiple phases
-          fluxh = fluxh + q * grid%density_bc(j) * hh_loc_p(jng)
+          fluxh = fluxh + q * option%density_bc(j) * hh_loc_p(jng)
           fluxc = fluxc + q * CCONC_LOC(ng) 
         endif
       enddo
@@ -592,26 +562,26 @@ contains
 
       !heat residual
       i1 = ithrm_loc_p(ng)
-      cond = grid%ckwet(i1) * grid%areabc(nc) / grid%distbc(nc)
-      r_p(t1) = r_p(t1) + cond * (TTEMP_LOC(ng) - grid%tempbc(nc)) - fluxh
+      cond = option%ckwet(i1) * grid%areabc(nc) / grid%distbc(nc)
+      r_p(t1) = r_p(t1) + cond * (TTEMP_LOC(ng) - option%tempbc(nc)) - fluxh
       
       !tracer
-      trans = porosity_loc_p(ng) * grid%difaq * grid%areabc(nc) / grid%distbc(nc)
-      r_p(c1) = r_p(c1) + trans * (CCONC_LOC(ng) - grid%concbc(nc)) &
-                - grid%fc * fluxc
+      trans = porosity_loc_p(ng) * option%difaq * grid%areabc(nc) / grid%distbc(nc)
+      r_p(c1) = r_p(c1) + trans * (CCONC_LOC(ng) - option%concbc(nc)) &
+                - option%fc * fluxc
                 
-!     print *,'THC: ',nc,ng,ibc,q,trans,grid%concbc(ibc),CCONC_LOC(ng)
+!     print *,'THC: ',nc,ng,ibc,q,trans,option%concbc(ibc),CCONC_LOC(ng)
 
-    else if(grid%ibndtyp(ibc) == 2) then ! Constant velocity q, grad T,C = 0
+    else if(option%ibndtyp(ibc) == 2) then ! Constant velocity q, grad T,C = 0
 
       fluxp = 0.d0
-      do j = 1, grid%nphase
-        jm = j + (m-1) * grid%nphase
-        jng = j + (ng-1) * grid%nphase
+      do j = 1, option%nphase
+        jm = j + (m-1) * option%nphase
+        jng = j + (ng-1) * option%nphase
         
-        v_darcy = grid%velocitybc(j,nc)
+        v_darcy = option%velocitybc(j,nc)
         
-        q = v_darcy * grid%density_bc(j) * grid%areabc(nc)
+        q = v_darcy * option%density_bc(j) * grid%areabc(nc)
         fluxp = fluxp - q
       enddo
 
@@ -619,35 +589,35 @@ contains
 
       !heat residual: specified temperature
 !     i1 = ithrm_loc_p(ng)
-!     cond = grid%ckwet(i1) * grid%areabc(nc) / grid%distbc(nc)
-!     r_p(t1) = r_p(t1) + cond * (TTEMP_LOC(ng) - grid%tempbc(ibc)) &
+!     cond = option%ckwet(i1) * grid%areabc(nc) / grid%distbc(nc)
+!     r_p(t1) = r_p(t1) + cond * (TTEMP_LOC(ng) - option%tempbc(ibc)) &
 !                           + fluxh
       
       !tracer: specified concentration
-!     trans = grid%difaq * grid%areabc(nc) / grid%distbc(nc)
+!     trans = option%difaq * grid%areabc(nc) / grid%distbc(nc)
       !check for upstreaming weighting and iface even or odd etc.
       !use zero gradient BC
       
-!     r_p(c1) = r_p(c1) + trans * (CCONC_LOC(ng) - grid%concbc(ibc)) &
+!     r_p(c1) = r_p(c1) + trans * (CCONC_LOC(ng) - option%concbc(ibc)) &
 !                               + fluxc
 
-    else if(grid%ibndtyp(ibc) == 3) then  ! fixed p, grad T, C = 0
+    else if(option%ibndtyp(ibc) == 3) then  ! fixed p, grad T, C = 0
     
       fluxp = 0.d0
       fluxh = 0.d0
       fluxc = 0.d0
-      do j = 1, grid%nphase
-        jm = j + (m-1) * grid%nphase
-        jng = j + (ng-1) * grid%nphase
+      do j = 1, option%nphase
+        jm = j + (m-1) * option%nphase
+        jng = j + (ng-1) * option%nphase
         
         Dq = perm1 / viscosity_loc_p(jng) / grid%distbc(nc)
         
         !v_darcy is positive for fluid flowing into block
-        v_darcy = -Dq * (PPRESSURE_LOC(j,ng) - grid%pressurebc(j,nc) &
+        v_darcy = -Dq * (PPRESSURE_LOC(j,ng) - option%pressurebc(j,nc) &
                   - gravity * ddensity_loc_p(jng))
         q = v_darcy * grid%areabc(nc)
       
-!       print *,'pflowTHC-3: ',nc,m,ng,ibc,v_darcy,grid%ibndtyp(ibc)
+!       print *,'pflowTHC-3: ',nc,m,ng,ibc,v_darcy,option%ibndtyp(ibc)
         
         fluxbc = q * ddensity_loc_p(jng)
         fluxp = fluxp - fluxbc
@@ -658,10 +628,10 @@ contains
 
         !upstream weighting
 !       if (q > 0.d0) then
-!         fluxh = fluxh + q * grid%density_bc(j) * grid%hh_bc(j)
-!         fluxc = fluxc + q * grid%concbc(ibc)       ! note: need to change 
+!         fluxh = fluxh + q * option%density_bc(j) * option%hh_bc(j)
+!         fluxc = fluxc + q * option%concbc(ibc)       ! note: need to change 
 !       else                          ! definition of C for multiple phases
-!         fluxh = fluxh + q * grid%density_bc(j) * hh_loc_p(jng)
+!         fluxh = fluxh + q * option%density_bc(j) * hh_loc_p(jng)
 !         fluxc = fluxc + q * CCONC_LOC(ng) 
 !       endif
       enddo
@@ -673,18 +643,18 @@ contains
       r_p(t1) = r_p(t1) - fluxh
 
       !solute (tracer)
-      r_p(c1) = r_p(c1) - grid%fc * fluxc
+      r_p(c1) = r_p(c1) - option%fc * fluxc
 
-    else if(grid%ibndtyp(ibc) == 4) then ! grad p = 0, fixed T, grad C = 0
+    else if(option%ibndtyp(ibc) == 4) then ! grad p = 0, fixed T, grad C = 0
 
      ! fluxp = 0.d0
-     ! do j = 1, grid%nphase
-     !   jm = j + (m-1) * grid%nphase
-     !   jng = j + (ng-1) * grid%nphase
+     ! do j = 1, option%nphase
+     !   jm = j + (m-1) * option%nphase
+     !   jng = j + (ng-1) * option%nphase
         
-     !   v_darcy = grid%velocitybc(j,nc)
+     !   v_darcy = option%velocitybc(j,nc)
      !   
-     !   q = v_darcy * grid%density_bc(j) * grid%areabc(nc)
+     !   q = v_darcy * option%density_bc(j) * grid%areabc(nc)
      !   fluxp = fluxp - q
      ! enddo
 
@@ -692,16 +662,16 @@ contains
       
       !heat residual: specified temperature
       i1 = ithrm_loc_p(ng)
-      cond = grid%ckwet(i1) * grid%areabc(nc) / grid%distbc(nc)
-      r_p(t1) = r_p(t1) + cond * (TTEMP_LOC(ng) - grid%tempbc(nc)) 
+      cond = option%ckwet(i1) * grid%areabc(nc) / grid%distbc(nc)
+      r_p(t1) = r_p(t1) + cond * (TTEMP_LOC(ng) - option%tempbc(nc)) 
                           ! + fluxh
 !     print *, 'thc:res:bc4: ',   
       !tracer: specified concentration
-!     trans = grid%difaq * grid%areabc(nc) / grid%distbc(nc)
+!     trans = option%difaq * grid%areabc(nc) / grid%distbc(nc)
       !check for upstreaming weighting and iface even or odd etc.
       !use zero gradient BC
       
-!     r_p(c1) = r_p(c1) + trans * (CCONC_LOC(ng) - grid%concbc(ibc)) &
+!     r_p(c1) = r_p(c1) + trans * (CCONC_LOC(ng) - option%concbc(ibc)) &
 !                               + fluxc
       
     endif
@@ -759,7 +729,7 @@ contains
         do jj = jj1, jj2
           do ii = ii1, ii2
             n = ii+(jj-1)*grid%nlx+(kk-1)*grid%nlxy
-             p1 = 1+(n-1)*grid%ndof
+             p1 = 1+(n-1)*option%ndof
               t1 = p1 + 1
              r_p(t1) = r_p(t1) - hsrc1    
            enddo
@@ -773,11 +743,11 @@ contains
           do ii = ii1, ii2
               n = ii+(jj-1)*grid%nlx+(kk-1)*grid%nlxy
               ng = grid%nL2G(n)
-              p1 = 1+(n-1)*grid%ndof
+              p1 = 1+(n-1)*option%ndof
               t1 = p1 + 1
               c1 = t1 + 1
-              call wateos_noderiv(tsrc1,PPRESSURE_LOC(grid%jh2o,ng), &
-              dw_kg,dw_mol,enth_src,grid%scale,ierr)
+              call wateos_noderiv(tsrc1,PPRESSURE_LOC(option%jh2o,ng), &
+              dw_kg,dw_mol,enth_src,option%scale,ierr)
               qqsrc = qsrc1/dw_mol
             
               r_p(p1) = r_p(p1) - qsrc1
@@ -797,7 +767,7 @@ contains
           do ii = ii1, ii2
               n = ii+(jj-1)*grid%nlx+(kk-1)*grid%nlxy
               ng = grid%nL2G(n)
-              p1 = 1+(n-1)*grid%ndof
+              p1 = 1+(n-1)*option%ndof
               t1 = p1 + 1
               c1 = t1 + 1
               qqsrc = qsrc1/ddensity_loc_p(ng)
@@ -812,38 +782,38 @@ contains
     endif
   enddo
   
-  call VecRestoreArrayF90(grid%xx_loc, xx_loc_p, ierr)
-  call VecRestoreArrayF90(grid%yy, yy_p, ierr)
-  call VecRestoreArrayF90(grid%porosity_loc, porosity_loc_p, ierr)
-  call VecRestoreArrayF90(grid%ddensity_loc, ddensity_loc_p, ierr)
-  call VecRestoreArrayF90(grid%density, density_p, ierr)
-  call VecRestoreArrayF90(grid%hh_loc, hh_loc_p, ierr)
-  call VecRestoreArrayF90(grid%h, h_p, ierr)
-  call VecRestoreArrayF90(grid%viscosity_loc, viscosity_loc_p, ierr)
+  call VecRestoreArrayF90(option%xx_loc, xx_loc_p, ierr)
+  call VecRestoreArrayF90(option%yy, yy_p, ierr)
+  call VecRestoreArrayF90(option%porosity_loc, porosity_loc_p, ierr)
+  call VecRestoreArrayF90(option%ddensity_loc, ddensity_loc_p, ierr)
+  call VecRestoreArrayF90(option%density, density_p, ierr)
+  call VecRestoreArrayF90(option%hh_loc, hh_loc_p, ierr)
+  call VecRestoreArrayF90(option%h, h_p, ierr)
+  call VecRestoreArrayF90(option%viscosity_loc, viscosity_loc_p, ierr)
   
 ! call VecRestoreArrayF90(grid%perm_loc, perm_loc_p, ierr)
-  call VecRestoreArrayF90(grid%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecRestoreArrayF90(grid%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecRestoreArrayF90(grid%perm_zz_loc, perm_zz_loc_p, ierr)
+  call VecRestoreArrayF90(option%perm_xx_loc, perm_xx_loc_p, ierr)
+  call VecRestoreArrayF90(option%perm_yy_loc, perm_yy_loc_p, ierr)
+  call VecRestoreArrayF90(option%perm_zz_loc, perm_zz_loc_p, ierr)
   
-  call VecRestoreArrayF90(grid%volume, volume_p, ierr)
+  call VecRestoreArrayF90(option%volume, volume_p, ierr)
   call VecRestoreArrayF90(r, r_p, ierr)
 
-  call VecRestoreArrayF90(grid%ithrm_loc, ithrm_loc_p, ierr)
+  call VecRestoreArrayF90(option%ithrm_loc, ithrm_loc_p, ierr)
 
-  call VecRestoreArrayF90(grid%vl, vl_p, ierr)
+  call VecRestoreArrayF90(option%vl, vl_p, ierr)
 
-  if (grid%ideriv == 1) then
-    call VecRestoreArrayF90(grid%d_p_loc, d_p_loc_p, ierr)
-    call VecRestoreArrayF90(grid%d_t_loc, d_t_loc_p, ierr)
-    call VecRestoreArrayF90(grid%h_p_loc, h_p_loc_p, ierr)
-    call VecRestoreArrayF90(grid%h_t_loc, h_t_loc_p, ierr)
-    call VecRestoreArrayF90(grid%v_p_loc, v_p_loc_p, ierr)
-    call VecRestoreArrayF90(grid%v_t_loc, v_t_loc_p, ierr)
+  if (option%ideriv == 1) then
+    call VecRestoreArrayF90(option%d_p_loc, d_p_loc_p, ierr)
+    call VecRestoreArrayF90(option%d_t_loc, d_t_loc_p, ierr)
+    call VecRestoreArrayF90(option%h_p_loc, h_p_loc_p, ierr)
+    call VecRestoreArrayF90(option%h_t_loc, h_t_loc_p, ierr)
+    call VecRestoreArrayF90(option%v_p_loc, v_p_loc_p, ierr)
+    call VecRestoreArrayF90(option%v_t_loc, v_t_loc_p, ierr)
   endif
   
-  if (grid%rk > 0.d0) then
-    call VecRestoreArrayF90(grid%phis,phis_p,ierr)
+  if (option%rk > 0.d0) then
+    call VecRestoreArrayF90(option%phis,phis_p,ierr)
   endif
 
 ! call VecView(r,PETSC_VIEWER_STDOUT_WORLD,ierr)
@@ -900,35 +870,32 @@ contains
   call MatZeroEntries(A,ierr)
 
 ! Is the following necessary-pcl??? We've already done this in residual call.
-  call DAGlobalToLocalBegin(grid%da_ndof, xx, INSERT_VALUES, &
-                            grid%xx_loc, ierr)
-  call DAGlobalToLocalEnd(grid%da_ndof, xx, INSERT_VALUES, &
-                          grid%xx_loc, ierr)
+! Not sure, but snes/examples/tutorials/ex18.c does it.  --RTM
+  call GridGlobalToLocal(grid, xx, option%xx_loc, NDOF)
                           
-  call VecGetArrayF90(grid%xx_loc, xx_loc_p, ierr)
-  call VecGetArrayF90(grid%porosity_loc, porosity_loc_p, ierr)
-  call VecGetArrayF90(grid%ddensity_loc, ddensity_loc_p, ierr)
-! call VecGetArrayF90(grid%density, density_p, ierr)
-  call VecGetArrayF90(grid%viscosity_loc, viscosity_loc_p, ierr)
+  call VecGetArrayF90(option%xx_loc, xx_loc_p, ierr)
+  call VecGetArrayF90(option%porosity_loc, porosity_loc_p, ierr)
+  call VecGetArrayF90(option%ddensity_loc, ddensity_loc_p, ierr)
+! call VecGetArrayF90(option%density, density_p, ierr)
+  call VecGetArrayF90(option%viscosity_loc, viscosity_loc_p, ierr)
   
-! call VecGetArrayF90(grid%perm_loc, perm_loc_p, ierr)
-  call VecGetArrayF90(grid%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecGetArrayF90(grid%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecGetArrayF90(grid%perm_zz_loc, perm_zz_loc_p, ierr)
+  call VecGetArrayF90(option%perm_xx_loc, perm_xx_loc_p, ierr)
+  call VecGetArrayF90(option%perm_yy_loc, perm_yy_loc_p, ierr)
+  call VecGetArrayF90(option%perm_zz_loc, perm_zz_loc_p, ierr)
   
-  call VecGetArrayF90(grid%volume, volume_p, ierr)
-  call VecGetArrayF90(grid%d_p_loc, d_p_loc_p, ierr)
-  call VecGetArrayF90(grid%d_t_loc, d_t_loc_p, ierr)
-  call VecGetArrayF90(grid%hh_loc, hh_loc_p, ierr)
-  call VecGetArrayF90(grid%h_p_loc, h_p_loc_p, ierr)
-  call VecGetArrayF90(grid%h_t_loc, h_t_loc_p, ierr)
-  call VecGetArrayF90(grid%v_p_loc, v_p_loc_p, ierr)
-  call VecGetArrayF90(grid%v_t_loc, v_t_loc_p, ierr)
+  call VecGetArrayF90(option%volume, volume_p, ierr)
+  call VecGetArrayF90(option%d_p_loc, d_p_loc_p, ierr)
+  call VecGetArrayF90(option%d_t_loc, d_t_loc_p, ierr)
+  call VecGetArrayF90(option%hh_loc, hh_loc_p, ierr)
+  call VecGetArrayF90(option%h_p_loc, h_p_loc_p, ierr)
+  call VecGetArrayF90(option%h_t_loc, h_t_loc_p, ierr)
+  call VecGetArrayF90(option%v_p_loc, v_p_loc_p, ierr)
+  call VecGetArrayF90(option%v_t_loc, v_t_loc_p, ierr)
   
-  call VecGetArrayF90(grid%ithrm_loc, ithrm_loc_p, ierr)
+  call VecGetArrayF90(option%ithrm_loc, ithrm_loc_p, ierr)
   
-  if (grid%rk > 0.d0) then
-    call VecGetArrayF90(grid%phis,phis_p,ierr)
+  if (option%rk > 0.d0) then
+    call VecGetArrayF90(option%phis,phis_p,ierr)
   endif
   
   !---------------------------------------------------------------------------
@@ -953,9 +920,9 @@ contains
   do n = 1, grid%nlmax  ! For each local node do...
     ng = grid%nL2G(n)
 
-    p1 = (ng-1)*grid%ndof ! = 1 + (ng-1)*grid%ndof-1
-    t1 = p1 + 1           ! = 2 + (ng-1)*grid%ndof-1
-    c1 = t1 + 1           ! = 3 + (ng-1)*grid%ndof-1
+    p1 = (ng-1)*option%ndof ! = 1 + (ng-1)*option%ndof-1
+    t1 = p1 + 1           ! = 2 + (ng-1)*option%ndof-1
+    c1 = t1 + 1           ! = 3 + (ng-1)*option%ndof-1
 
     voldt = volume_p(n) / grid%dt
     pvoldt = porosity_loc_p(ng) * voldt
@@ -965,9 +932,9 @@ contains
     elempt = 0.d0
     daccep = 0.d0
     daccet = 0.d0
-    do j = 1, grid%nphase
-      jn = j + (n-1)*grid%nphase
-      jng = j + (ng-1)*grid%nphase
+    do j = 1, option%nphase
+      jn = j + (n-1)*option%nphase
+      jng = j + (ng-1)*option%nphase
         ! jn and jng give the index of the term in local non-ghosted and 
         ! local ghosted vectors, respectively, that corresponds to the jth
         ! phase at node n.
@@ -980,25 +947,25 @@ contains
       
       !deriv of energy accumulation term wrt p: (T,p)
       daccep = daccep + d_p_loc_p(jng) * hh_loc_p(jng) &
-      + ddensity_loc_p(jng) * h_p_loc_p(jng) - grid%scale
+      + ddensity_loc_p(jng) * h_p_loc_p(jng) - option%scale
 
       !deriv of energy accumulation term wrt T: (T,T)
       daccet = daccet + d_t_loc_p(jng) * hh_loc_p(jng) &
       + ddensity_loc_p(jng) * h_t_loc_p(jng)
 
 !     print *,'TH: ',d_p_loc_p(jn),d_t_loc_p(jng),ddensity_loc_p(jng), &
-!     hh_loc_p(jng),h_p_loc_p(jng),h_t_loc_p(jng),grid%scale
+!     hh_loc_p(jng),h_p_loc_p(jng),h_t_loc_p(jng),option%scale
     enddo
     
     !(p,p)
-    if (grid%iblkfmt == 0) then
+    if (option%iblkfmt == 0) then
       call MatSetValuesLocal(A,1,p1,1,p1,elempp,ADD_VALUES,ierr)
     else
       blkmat1(1,1) = elempp
     endif
 
     !(p,T)
-    if (grid%iblkfmt == 0) then
+    if (option%iblkfmt == 0) then
       call MatSetValuesLocal(A,1,p1,1,t1,elempt,ADD_VALUES,ierr)
     else
       blkmat1(1,2) = elempt
@@ -1006,7 +973,7 @@ contains
 
     !energy eqn. - cross term: (T,p)
     elem1 = pvoldt * daccep
-    if (grid%iblkfmt == 0) then
+    if (option%iblkfmt == 0) then
       call MatSetValuesLocal(A,1,t1,1,p1,elem1,ADD_VALUES,ierr)
     else
       blkmat1(2,1) = elem1
@@ -1015,7 +982,7 @@ contains
     !energy eqn. - diagonal term: (T,T)
     i = ithrm_loc_p(ng)
     elem1 = pvoldt * daccet + (1.d0-porosity_loc_p(ng))*grid%dencpr(i)*voldt
-    if (grid%iblkfmt == 0) then
+    if (option%iblkfmt == 0) then
       call MatSetValuesLocal(A,1,t1,1,t1,elem1,ADD_VALUES,ierr)
     else
       blkmat1(2,2) = elem1
@@ -1023,47 +990,47 @@ contains
     
     !tracer: (C,C)
     elem1 = pvoldt * grid%ret
-    if (grid%iblkfmt == 0) then
+    if (option%iblkfmt == 0) then
       call MatSetValuesLocal(A,1,c1,1,c1,elem1,ADD_VALUES,ierr)
     else
       blkmat1(3,3) = elem1
     endif
 
     !kinetic rate term
-    if (grid%rk > 0.d0) then
-      if (grid%ityprxn == 1) then
-        if (phis_p(n) > 0.d0 .or. CCONC_LOC(ng)/grid%ceq > 1.d0+eps) then
+    if (option%rk > 0.d0) then
+      if (option%ityprxn == 1) then
+        if (phis_p(n) > 0.d0 .or. CCONC_LOC(ng)/option%ceq > 1.d0+eps) then
           !(C,C)
-          elem1 = grid%rk * grid%area_var(n) / grid%ceq * volume_p(n)
-          if (grid%iblkfmt == 0) then
+          elem1 = option%rk * option%area_var(n) / option%ceq * volume_p(n)
+          if (option%iblkfmt == 0) then
             call MatSetValuesLocal(A,1,c1,1,c1,elem1,ADD_VALUES,ierr)
           else
             blkmat1(3,3) = blkmat1(3,3) + elem1
           endif
 
           !(T,C)
-          elem1 = -grid%rk * grid%area_var(n)/grid%ceq * grid%delHs * &
+          elem1 = -option%rk * option%area_var(n)/option%ceq * option%delHs * &
           volume_p(n)
-          if (grid%iblkfmt == 0) then
+          if (option%iblkfmt == 0) then
             call MatSetValuesLocal(A,1,t1,1,c1,elem1,ADD_VALUES,ierr)
           else
             blkmat1(2,3) = elem1
           endif
         endif
-      else if (grid%ityprxn == 2) then
+      else if (option%ityprxn == 2) then
         if (phis_p(n) > 0.d0 .or. TTEMP_LOC(ng) < 0.d0+eps) then
           !(p,T)
-          elem1 = grid%rk * grid%area_var(n) * volume_p(n)
-          if (grid%iblkfmt == 0) then
+          elem1 = option%rk * option%area_var(n) * volume_p(n)
+          if (option%iblkfmt == 0) then
             call MatSetValuesLocal(A,1,p1,1,t1,elem1,ADD_VALUES,ierr)
           else
             blkmat1(1,2) = blkmat1(1,2) + elem1
           endif
 
           !(T,T)
-          elem1 = -grid%rk * grid%area_var(n) * grid%delHs * &
+          elem1 = -option%rk * option%area_var(n) * option%delHs * &
           volume_p(n)
-          if (grid%iblkfmt == 0) then
+          if (option%iblkfmt == 0) then
             call MatSetValuesLocal(A,1,t1,1,t1,elem1,ADD_VALUES,ierr)
           else
             blkmat1(2,2) = blkmat1(2,2) + elem1
@@ -1071,7 +1038,7 @@ contains
         endif
       endif
     endif
-    if (grid%iblkfmt == 1) then
+    if (option%iblkfmt == 1) then
       call MatSetValuesBlockedLocal(A,1,ng-1,1,ng-1,blkmat1, &
       ADD_VALUES,ierr)
     endif
@@ -1120,7 +1087,7 @@ contains
 
     por1 = porosity_loc_p(m1)
     por2 = porosity_loc_p(m2)
-    diff = (por1 * por2) / (dd2*por1 + dd1*por2) * grid%difaq
+    diff = (por1 * por2) / (dd2*por1 + dd1*por2) * option%difaq
     dtrans = diff * grid%area(nc)
       
     gravity = grid%fmwh2o * grid%gravity * grid%delz(nc)
@@ -1130,16 +1097,16 @@ contains
     dfluxt1 = 0.d0
     dfluxt2 = 0.d0
     
-    p1 = (m1-1) * grid%ndof
+    p1 = (m1-1) * option%ndof
     t1 = p1 + 1
     c1 = t1 + 1
-    p2 = (m2-1) * grid%ndof
+    p2 = (m2-1) * option%ndof
     t2 = p2 + 1
     c2 = t2 + 1
 
-    do j = 1, grid%nphase
-      jm1 = j + (m1-1) * grid%nphase
-      jm2 = j + (m2-1) * grid%nphase
+    do j = 1, option%nphase
+      jm1 = j + (m1-1) * option%nphase
+      jm2 = j + (m2-1) * option%nphase
       
       ! We need to calculate the "diffusion" constant D at the interface;
       ! it is defined at the cell centers.  We use the harmonic mean of the
@@ -1213,8 +1180,8 @@ contains
     !heat flux terms for thermal conduction
     i1 = ithrm_loc_p(m1)
     i2 = ithrm_loc_p(m2)
-    Dk1 = grid%ckwet(i1)
-    Dk2 = grid%ckwet(i2)
+    Dk1 = option%ckwet(i1)
+    Dk2 = option%ckwet(i2)
 
     Dk = (Dk1 * Dk2) / (dd2*Dk1 + dd1*Dk2)
 
@@ -1239,7 +1206,7 @@ contains
         elem1 = trans1
         elem2 = trans2
 !       print *,'THC-pp1',elem1,elem2
-        if (grid%iblkfmt == 0) then
+        if (option%iblkfmt == 0) then
           call MatSetValuesLocal(A,1,p1,1,p1,elem1,ADD_VALUES,ierr)
           call MatSetValuesLocal(A,1,p1,1,p2,elem2,ADD_VALUES,ierr)
         else
@@ -1251,7 +1218,7 @@ contains
         elem1 = qdt1
         elem2 = qdt2
 !       print *,'THC-pT1',elem1,elem2
-        if (grid%iblkfmt == 0) then
+        if (option%iblkfmt == 0) then
           call MatSetValuesLocal(A,1,p1,1,t1,elem1,ADD_VALUES,ierr)
           call MatSetValuesLocal(A,1,p1,1,t2,elem2,ADD_VALUES,ierr)
         else
@@ -1260,10 +1227,10 @@ contains
         endif
 
         ! tracer flux terms: (C,C)
-        elem1 = grid%fc * u1 + dtrans
-        elem2 = grid%fc * u2 - dtrans
+        elem1 = option%fc * u1 + dtrans
+        elem2 = option%fc * u2 - dtrans
 !       print *,'THC-CC1',elem1,elem2
-        if (grid%iblkfmt == 0) then
+        if (option%iblkfmt == 0) then
           call MatSetValuesLocal(A,1,c1,1,c1,elem1,ADD_VALUES,ierr)
           call MatSetValuesLocal(A,1,c1,1,c2,elem2,ADD_VALUES,ierr)
         else
@@ -1275,7 +1242,7 @@ contains
       elem1 = dfluxt1 + cond
       elem2 = dfluxt2 - cond
 !     print *,'THC-TT1',elem1,elem2
-      if (grid%iblkfmt == 0) then
+      if (option%iblkfmt == 0) then
         call MatSetValuesLocal(A,1,t1,1,t1,elem1,ADD_VALUES,ierr)
         call MatSetValuesLocal(A,1,t1,1,t2,elem2,ADD_VALUES,ierr)
       else
@@ -1287,7 +1254,7 @@ contains
       elem1 = dfluxp1
       elem2 = dfluxp2
 !     print *,'THC-Tp1',nc,elem1,elem2,qp1,qp2,tupstrm
-      if (grid%iblkfmt == 0) then
+      if (option%iblkfmt == 0) then
         call MatSetValuesLocal(A,1,t1,1,p1,elem1,ADD_VALUES,ierr)
         call MatSetValuesLocal(A,1,t1,1,p2,elem2,ADD_VALUES,ierr)
       else
@@ -1296,10 +1263,10 @@ contains
       endif
 
       ! tracer flux terms: (C,p)
-      elem1 = grid%fc * qp1 * cupstrm
-      elem2 = grid%fc * qp2 * cupstrm
+      elem1 = option%fc * qp1 * cupstrm
+      elem2 = option%fc * qp2 * cupstrm
 !     print *,'THC-Cp1',elem1,elem2
-      if (grid%iblkfmt == 0) then
+      if (option%iblkfmt == 0) then
         call MatSetValuesLocal(A,1,c1,1,p1,elem1,ADD_VALUES,ierr)
         call MatSetValuesLocal(A,1,c1,1,p2,elem2,ADD_VALUES,ierr)
       else
@@ -1308,17 +1275,17 @@ contains
       endif
 
       ! tracer flux terms: (C,T)
-      elem1 = grid%fc * qt1 * cupstrm
-      elem2 = grid%fc * qt2 * cupstrm
+      elem1 = option%fc * qt1 * cupstrm
+      elem2 = option%fc * qt2 * cupstrm
 !     print *,'THC-CT1',elem1,elem2,qt1,qt2,cupstrm
-      if (grid%iblkfmt == 0) then
+      if (option%iblkfmt == 0) then
         call MatSetValuesLocal(A,1,c1,1,t1,elem1,ADD_VALUES,ierr)
         call MatSetValuesLocal(A,1,c1,1,t2,elem2,ADD_VALUES,ierr)
       else
         blkmat1(3,2) = elem1
         blkmat2(3,2) = elem2
       endif
-      if (grid%iblkfmt == 1) then
+      if (option%iblkfmt == 1) then
         call MatSetValuesBlockedLocal(A,1,m1-1,1,m1-1,blkmat1, &
         ADD_VALUES,ierr)
         call MatSetValuesBlockedLocal(A,1,m1-1,1,m2-1,blkmat2, &
@@ -1331,7 +1298,7 @@ contains
         elem1 = -trans1
         elem2 = -trans2
 !       print *,'THC-pp2',elem1,elem2
-        if (grid%iblkfmt == 0) then
+        if (option%iblkfmt == 0) then
           call MatSetValuesLocal(A,1,p2,1,p1,elem1,ADD_VALUES,ierr)
           call MatSetValuesLocal(A,1,p2,1,p2,elem2,ADD_VALUES,ierr)
         else
@@ -1343,7 +1310,7 @@ contains
         elem1 = -qdt1
         elem2 = -qdt2
 !       print *,'THC-pT2',elem1,elem2
-        if (grid%iblkfmt == 0) then
+        if (option%iblkfmt == 0) then
           call MatSetValuesLocal(A,1,p2,1,t1,elem1,ADD_VALUES,ierr)
           call MatSetValuesLocal(A,1,p2,1,t2,elem2,ADD_VALUES,ierr)
         else
@@ -1352,10 +1319,10 @@ contains
         endif
 
       ! tracer flux terms: (C,C)
-        elem1 = -(grid%fc * u1 + dtrans)
-        elem2 = -(grid%fc * u2 - dtrans)
+        elem1 = -(option%fc * u1 + dtrans)
+        elem2 = -(option%fc * u2 - dtrans)
 !       print *,'THC-CC2',elem1,elem2
-        if (grid%iblkfmt == 0) then
+        if (option%iblkfmt == 0) then
           call MatSetValuesLocal(A,1,c2,1,c1,elem1,ADD_VALUES,ierr)
           call MatSetValuesLocal(A,1,c2,1,c2,elem2,ADD_VALUES,ierr)
         else
@@ -1367,7 +1334,7 @@ contains
       elem1 = -(dfluxt1 + cond)
       elem2 = -(dfluxt2 - cond)
 !     print *,'THC-TT2',elem1,elem2
-      if (grid%iblkfmt == 0) then
+      if (option%iblkfmt == 0) then
         call MatSetValuesLocal(A,1,t2,1,t1,elem1,ADD_VALUES,ierr)
         call MatSetValuesLocal(A,1,t2,1,t2,elem2,ADD_VALUES,ierr)
       else
@@ -1379,7 +1346,7 @@ contains
       elem1 = -dfluxp1
       elem2 = -dfluxp2
 !     print *,'TH-Tp2',nc,elem1,elem2,qp1,qp2,tupstrm,dfluxp1,dfluxp2
-      if (grid%iblkfmt == 0) then
+      if (option%iblkfmt == 0) then
         call MatSetValuesLocal(A,1,t2,1,p1,elem1,ADD_VALUES,ierr)
         call MatSetValuesLocal(A,1,t2,1,p2,elem2,ADD_VALUES,ierr)
       else
@@ -1388,10 +1355,10 @@ contains
       endif
 
       ! tracer flux terms: (C,p)
-      elem1 = -grid%fc * qp1 * cupstrm
-      elem2 = -grid%fc * qp2 * cupstrm
+      elem1 = -option%fc * qp1 * cupstrm
+      elem2 = -option%fc * qp2 * cupstrm
 !     print *,'THC-Cp2',elem1,elem2
-      if (grid%iblkfmt == 0) then
+      if (option%iblkfmt == 0) then
         call MatSetValuesLocal(A,1,c2,1,p1,elem1,ADD_VALUES,ierr)
         call MatSetValuesLocal(A,1,c2,1,p2,elem2,ADD_VALUES,ierr)
       else
@@ -1400,17 +1367,17 @@ contains
       endif
 
       ! tracer flux terms: (C,T)
-      elem1 = -grid%fc * qt1 * cupstrm
-      elem2 = -grid%fc * qt2 * cupstrm
+      elem1 = -option%fc * qt1 * cupstrm
+      elem2 = -option%fc * qt2 * cupstrm
 !     print *,'THC-CT2',elem1,elem2,qt1,qt2,cupstrm
-      if (grid%iblkfmt == 0) then
+      if (option%iblkfmt == 0) then
         call MatSetValuesLocal(A,1,c2,1,t1,elem1,ADD_VALUES,ierr)
         call MatSetValuesLocal(A,1,c2,1,t2,elem2,ADD_VALUES,ierr)
       else
         blkmat1(3,2) = elem1
         blkmat2(3,2) = elem2
       endif
-      if (grid%iblkfmt == 1) then
+      if (option%iblkfmt == 1) then
         call MatSetValuesBlockedLocal(A,1,m2-1,1,m2-1,blkmat2, &
         ADD_VALUES,ierr)
         call MatSetValuesBlockedLocal(A,1,m2-1,1,m1-1,blkmat1, &
@@ -1429,7 +1396,7 @@ contains
     m = grid%mblkbc(nc)  ! Note that here, m is NOT ghosted.
     ng = grid%nL2G(m)
     blkmat1 =0.D0
-    p1 = (ng-1)*grid%ndof
+    p1 = (ng-1)*option%ndof
     t1 = p1 + 1
     c1 = t1 + 1
 
@@ -1447,45 +1414,45 @@ contains
         
     gravity = grid%fmwh2o * grid%gravity * grid%delzbc(nc)
     
-    if(grid%ibndtyp(ibc) == 2) then
+    if(option%ibndtyp(ibc) == 2) then
       ! solve for pb from Darcy's law given qb /= 0
-      grid%tempbc(nc) = TTEMP_LOC(ng)
-    else if(grid%ibndtyp(ibc) == 3) then
-      grid%tempbc(nc) = TTEMP_LOC(ng)
+      option%tempbc(nc) = TTEMP_LOC(ng)
+    else if(option%ibndtyp(ibc) == 3) then
+      option%tempbc(nc) = TTEMP_LOC(ng)
     endif
 
-    do j = 1, grid%nphase
-      if (j == grid%jh2o) then
+    do j = 1, option%nphase
+      if (j == option%jh2o) then
         !pure water eos
-        call wateos(grid%tempbc(nc),grid%pressurebc(j,nc),dw_kg, &
-        dw_mol,grid%d_p_bc(j),grid%d_t_bc(j),grid%hh_bc(j), &
-        grid%h_p_bc(j),grid%h_t_bc(j),grid%scale,ierr)
-        grid%density_bc(j) = dw_mol
-        call PSAT(grid%tempbc(nc),sat_pressure,ierr)
-        call VISW_noderiv(grid%tempbc(nc),grid%pressurebc(j,nc), &
-        sat_pressure,grid%viscosity_bc(j),ierr)
+        call wateos(option%tempbc(nc),option%pressurebc(j,nc),dw_kg, &
+        dw_mol,option%d_p_bc(j),option%d_t_bc(j),option%hh_bc(j), &
+        option%h_p_bc(j),option%h_t_bc(j),option%scale,ierr)
+        option%density_bc(j) = dw_mol
+        call PSAT(option%tempbc(nc),sat_pressure,ierr)
+        call VISW_noderiv(option%tempbc(nc),option%pressurebc(j,nc), &
+        sat_pressure,option%viscosity_bc(j),ierr)
 
 !     else if (j == grid%jco2) then
 
 !       add additional fluid phases here ...
 
       else ! for testing purposes only
-        jng = j + (ng-1) * grid%nphase
-        grid%viscosity_bc(j) = viscosity_loc_p(jng)
-        grid%hh_bc(j) = hh_loc_p(jng)
-        grid%density_bc(j) = ddensity_loc_p(jng)
+        jng = j + (ng-1) * option%nphase
+        option%viscosity_bc(j) = viscosity_loc_p(jng)
+        option%hh_bc(j) = hh_loc_p(jng)
+        option%density_bc(j) = ddensity_loc_p(jng)
       endif
     enddo
 
-    if(grid%ibndtyp(ibc) == 1) then 
+    if(option%ibndtyp(ibc) == 1) then 
     
     ! Dirichlet BC: fixed p, T, C
     
       dfluxp = 0.d0
       dfluxt = 0.d0
-      do j=1, grid%nphase
-        jm = j + (m-1) * grid%nphase
-        jng = j + (ng-1) * grid%nphase
+      do j=1, option%nphase
+        jm = j + (m-1) * option%nphase
+        jng = j + (ng-1) * option%nphase
         
         ! For the value of the "diffusion" constant at the interface, I 
         ! just use its value as defined in the boundary cell.  I don't 
@@ -1493,39 +1460,39 @@ contains
         ! (E.g. temperature could be different at the boundary compared  
         ! to node center resulting in different density, viscosity etc. 
         ! - pcl)
-        Dq = perm1 / grid%viscosity_bc(j) / grid%distbc(nc) * &
+        Dq = perm1 / option%viscosity_bc(j) / grid%distbc(nc) * &
         grid%areabc(nc)
 
         !note: darcy vel. is positive for flow INTO boundary node
-        v_darcy = -Dq * (PPRESSURE_LOC(j,ng) - grid%pressurebc(j,nc) &
-                  - gravity * grid%density_bc(j))
+        v_darcy = -Dq * (PPRESSURE_LOC(j,ng) - option%pressurebc(j,nc) &
+                  - gravity * option%density_bc(j))
         q = v_darcy
         
         qp1 = -Dq
 !       qt1 = -q * v_t_loc_p(jng) / viscosity_loc_p(jng)
         qt1 = 0.d0
 
-        trans = qp1 * grid%density_bc(j) ! dR/dp = dq/dp rho
+        trans = qp1 * option%density_bc(j) ! dR/dp = dq/dp rho
 
         ! (p,p)
         elem1 = -trans
-        if (grid%iblkfmt == 0) then
+        if (option%iblkfmt == 0) then
           call MatSetValuesLocal(A,1,p1,1,p1,elem1,ADD_VALUES,ierr)
         else
           blkmat1(1,1) = elem1
         endif
 
         ! (p,T) = 0
-!       elem1 = -qt1 * grid%density_bc(j)
-!       if (grid%iblkfmt == 0) then
+!       elem1 = -qt1 * option%density_bc(j)
+!       if (option%iblkfmt == 0) then
 !         call MatSetValuesLocal(A,1,p1,1,t1,elem1,ADD_VALUES,ierr)
 !       else
 !         blkmat1(1,2) = elem1
 !       endif
 
         if (q > 0.d0) then
-          dfluxp = dfluxp + qp1 * grid%density_bc(j) * grid%hh_bc(j)
-          dfluxt = dfluxt + qt1 * grid%density_bc(j) * grid%hh_bc(j)
+          dfluxp = dfluxp + qp1 * option%density_bc(j) * option%hh_bc(j)
+          dfluxt = dfluxt + qt1 * option%density_bc(j) * option%hh_bc(j)
         else
           dfluxp = dfluxp + q * (ddensity_loc_p(jng) * h_p_loc_p(jng) &
           + d_p_loc_p(jng) * hh_loc_p(jng)) &
@@ -1537,11 +1504,11 @@ contains
 
         ! (C,p)
         if (q > 0.d0) then
-          elem1 = -grid%fc * qp1 * grid%concbc(nc)
+          elem1 = -option%fc * qp1 * option%concbc(nc)
         else
-          elem1 = -grid%fc * qp1 * CCONC_LOC(ng)
+          elem1 = -option%fc * qp1 * CCONC_LOC(ng)
         endif
-        if (grid%iblkfmt == 0) then
+        if (option%iblkfmt == 0) then
           call MatSetValuesLocal(A,1,c1,1,p1,elem1,ADD_VALUES,ierr)
         else
           blkmat1(3,1) = elem1
@@ -1549,29 +1516,29 @@ contains
 
         ! (C,T)
         if (q > 0.d0) then
-          elem1 = -grid%fc * qt1 * grid%concbc(nc)
+          elem1 = -option%fc * qt1 * option%concbc(nc)
         else
-          elem1 = -grid%fc * qt1 * CCONC_LOC(ng)
+          elem1 = -option%fc * qt1 * CCONC_LOC(ng)
         endif
-        if (grid%iblkfmt == 0) then
+        if (option%iblkfmt == 0) then
           call MatSetValuesLocal(A,1,c1,1,p1,elem1,ADD_VALUES,ierr)
         else
           blkmat1(3,1) = elem1
         endif
       
         ! (C,C)
-        trans = porosity_loc_p(ng) * grid%difaq * grid%areabc(nc) / &
+        trans = porosity_loc_p(ng) * option%difaq * grid%areabc(nc) / &
                 grid%distbc(nc)
         if (q < 0.d0) then
-          elem1 = -grid%fc * q + trans ! check sign of q
-          if (grid%iblkfmt == 0) then
+          elem1 = -option%fc * q + trans ! check sign of q
+          if (option%iblkfmt == 0) then
             call MatSetValuesLocal(A,1,c1,1,c1,elem1,ADD_VALUES,ierr)
           else
             blkmat1(3,3) = elem1
           endif
         else
           elem1 = trans
-          if (grid%iblkfmt == 0) then
+          if (option%iblkfmt == 0) then
             call MatSetValuesLocal(A,1,c1,1,c1,elem1,ADD_VALUES,ierr)
           else
             blkmat1(3,3) = elem1
@@ -1581,7 +1548,7 @@ contains
 
       ! (T,p)
       elem1 = -dfluxp
-      if (grid%iblkfmt == 0) then
+      if (option%iblkfmt == 0) then
         call MatSetValuesLocal(A,1,t1,1,p1,elem1,ADD_VALUES,ierr)
       else
         blkmat1(2,1) = elem1
@@ -1589,73 +1556,73 @@ contains
       
       ! (T,T)
       i1 = ithrm_loc_p(ng)
-      cond = grid%ckwet(i1) * grid%areabc(nc) / grid%distbc(nc)
+      cond = option%ckwet(i1) * grid%areabc(nc) / grid%distbc(nc)
       elem1 = -dfluxt + cond
-      if (grid%iblkfmt == 0) then
+      if (option%iblkfmt == 0) then
         call MatSetValuesLocal(A,1,t1,1,t1,elem1,ADD_VALUES,ierr)
       else
         blkmat1(2,2) = elem1
       endif
 
-      if (grid%iblkfmt == 1) then
+      if (option%iblkfmt == 1) then
         call MatSetValuesBlockedLocal(A,1,ng-1,1,ng-1, &
         blkmat1,ADD_VALUES,ierr)
       endif
   
-   else if(grid%ibndtyp(ibc) == 4) then 
+   else if(option%ibndtyp(ibc) == 4) then 
 
  !#if 0
       ! (T,T)
          i1 = ithrm_loc_p(ng)
-      cond = grid%ckwet(i1) * grid%areabc(nc) / grid%distbc(nc)
+      cond = option%ckwet(i1) * grid%areabc(nc) / grid%distbc(nc)
       elem1 =  cond
-      if (grid%iblkfmt == 0) then
+      if (option%iblkfmt == 0) then
         call MatSetValuesLocal(A,1,t1,1,t1,elem1,ADD_VALUES,ierr)
       else
         blkmat1(2,2) = elem1
       endif
 
-      if (grid%iblkfmt == 1) then
+      if (option%iblkfmt == 1) then
         call MatSetValuesBlockedLocal(A,1,ng-1,1,ng-1, &
         blkmat1,ADD_VALUES,ierr)
       endif
 !#endif
        
-    else if(grid%ibndtyp(ibc) == 2) then 
+    else if(option%ibndtyp(ibc) == 2) then 
 
     ! constant velocity q, grad T, C = 0
     
-    else if(grid%ibndtyp(ibc) == 4) then
+    else if(option%ibndtyp(ibc) == 4) then
         ! (T,T)
          i1 = ithrm_loc_p(ng)
-      cond = grid%ckwet(i1) * grid%areabc(nc) / grid%distbc(nc)
+      cond = option%ckwet(i1) * grid%areabc(nc) / grid%distbc(nc)
       elem1 =  cond
-      if (grid%iblkfmt == 0) then
+      if (option%iblkfmt == 0) then
         call MatSetValuesLocal(A,1,t1,1,t1,elem1,ADD_VALUES,ierr)
       else
         blkmat1(2,2) = elem1
       endif
 
-      if (grid%iblkfmt == 1) then
+      if (option%iblkfmt == 1) then
         call MatSetValuesBlockedLocal(A,1,ng-1,1,ng-1, &
         blkmat1,ADD_VALUES,ierr)
       endif
 
-    else if(grid%ibndtyp(ibc) == 3) then 
+    else if(option%ibndtyp(ibc) == 3) then 
     
     ! Dirichlet BC: fixed p, grad T, C = 0
     
       dfluxt = 0.d0
       dfluxp = 0.d0
-      do j=1, grid%nphase
-        jm = j + (m-1) * grid%nphase
-        jng = j + (ng-1) * grid%nphase
+      do j=1, option%nphase
+        jm = j + (m-1) * option%nphase
+        jng = j + (ng-1) * option%nphase
         
         Dq = perm1 / viscosity_loc_p(jng) / grid%distbc(nc) * &
         grid%areabc(nc)
         
         !note: darcy vel. is positive for flow INTO boundary node
-        v_darcy = -Dq * (PPRESSURE_LOC(j,ng) - grid%pressurebc(j,nc) &
+        v_darcy = -Dq * (PPRESSURE_LOC(j,ng) - option%pressurebc(j,nc) &
                   - gravity * ddensity_loc_p(jng))
         q = v_darcy
 
@@ -1673,7 +1640,7 @@ contains
 
         ! (p,p)
         elem1 = trans1
-        if (grid%iblkfmt == 0) then
+        if (option%iblkfmt == 0) then
           call MatSetValuesLocal(A,1,p1,1,p1,elem1,ADD_VALUES,ierr)
         else
           blkmat1(1,1) = elem1
@@ -1681,7 +1648,7 @@ contains
       
         ! (p,T)
         elem1 = qdt1
-        if (grid%iblkfmt == 0) then
+        if (option%iblkfmt == 0) then
           call MatSetValuesLocal(A,1,p1,1,t1,elem1,ADD_VALUES,ierr)
         else
           blkmat1(1,2) = elem1
@@ -1701,24 +1668,24 @@ contains
           + qt1 * ddensity_loc_p(jng) * hh_loc_p(jng)
 
         ! (C,p)
-        elem1 = -grid%fc * qp1 * CCONC_LOC(ng)
-        if (grid%iblkfmt == 0) then
+        elem1 = -option%fc * qp1 * CCONC_LOC(ng)
+        if (option%iblkfmt == 0) then
           call MatSetValuesLocal(A,1,c1,1,p1,elem1,ADD_VALUES,ierr)
         else
           blkmat1(3,1) = elem1
         endif
 
         ! (C,T)
-        elem1 = -grid%fc * qt1 * CCONC_LOC(ng)
-        if (grid%iblkfmt == 0) then
+        elem1 = -option%fc * qt1 * CCONC_LOC(ng)
+        if (option%iblkfmt == 0) then
           call MatSetValuesLocal(A,1,c1,1,t1,elem1,ADD_VALUES,ierr)
         else
           blkmat1(3,2) = elem1
         endif
       
         ! (C,C), grad C = 0
-        elem1 = -grid%fc * q
-        if (grid%iblkfmt == 0) then
+        elem1 = -option%fc * q
+        if (option%iblkfmt == 0) then
           call MatSetValuesLocal(A,1,c1,1,c1,elem1,ADD_VALUES,ierr)
         else
           blkmat1(3,3) = elem1
@@ -1727,7 +1694,7 @@ contains
 
       ! (T,p)
       elem1 = -dfluxp
-      if (grid%iblkfmt == 0) then
+      if (option%iblkfmt == 0) then
         call MatSetValuesLocal(A,1,t1,1,p1,elem1,ADD_VALUES,ierr)
       else
         blkmat1(2,1) = elem1
@@ -1735,43 +1702,42 @@ contains
       
       ! (T,T), grad T = 0
       elem1 = -dfluxt
-      if (grid%iblkfmt == 0) then
+      if (option%iblkfmt == 0) then
         call MatSetValuesLocal(A,1,t1,1,t1,elem1,ADD_VALUES,ierr)
       else
         blkmat1(2,2) = elem1
       endif
 
-      if (grid%iblkfmt == 1) then
+      if (option%iblkfmt == 1) then
         call MatSetValuesBlockedLocal(A,1,ng-1,1,ng-1, &
         blkmat1,ADD_VALUES,ierr)
       endif
     endif
   enddo
 
-  call VecRestoreArrayF90(grid%xx_loc, xx_loc_p, ierr)
-  call VecRestoreArrayF90(grid%porosity_loc, porosity_loc_p, ierr)
-  call VecRestoreArrayF90(grid%ddensity_loc, ddensity_loc_p, ierr)
-! call VecRestoreArrayF90(grid%density, density_p, ierr)
-  call VecRestoreArrayF90(grid%viscosity_loc, viscosity_loc_p, ierr)
+  call VecRestoreArrayF90(option%xx_loc, xx_loc_p, ierr)
+  call VecRestoreArrayF90(option%porosity_loc, porosity_loc_p, ierr)
+  call VecRestoreArrayF90(option%ddensity_loc, ddensity_loc_p, ierr)
+! call VecRestoreArrayF90(option%density, density_p, ierr)
+  call VecRestoreArrayF90(option%viscosity_loc, viscosity_loc_p, ierr)
   
-! call VecRestoreArrayF90(grid%perm_loc, perm_loc_p, ierr)
-  call VecRestoreArrayF90(grid%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecRestoreArrayF90(grid%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecRestoreArrayF90(grid%perm_zz_loc, perm_zz_loc_p, ierr)
+  call VecRestoreArrayF90(option%perm_xx_loc, perm_xx_loc_p, ierr)
+  call VecRestoreArrayF90(option%perm_yy_loc, perm_yy_loc_p, ierr)
+  call VecRestoreArrayF90(option%perm_zz_loc, perm_zz_loc_p, ierr)
   
-  call VecRestoreArrayF90(grid%volume, volume_p, ierr)
-  call VecRestoreArrayF90(grid%d_p_loc, d_p_loc_p, ierr)
-  call VecRestoreArrayF90(grid%d_t_loc, d_t_loc_p, ierr)
-  call VecRestoreArrayF90(grid%hh_loc, hh_loc_p, ierr)
-  call VecRestoreArrayF90(grid%h_p_loc, h_p_loc_p, ierr)
-  call VecRestoreArrayF90(grid%h_t_loc, h_t_loc_p, ierr)
-  call VecRestoreArrayF90(grid%v_p_loc, v_p_loc_p, ierr)
-  call VecRestoreArrayF90(grid%v_t_loc, v_t_loc_p, ierr)
+  call VecRestoreArrayF90(option%volume, volume_p, ierr)
+  call VecRestoreArrayF90(option%d_p_loc, d_p_loc_p, ierr)
+  call VecRestoreArrayF90(option%d_t_loc, d_t_loc_p, ierr)
+  call VecRestoreArrayF90(option%hh_loc, hh_loc_p, ierr)
+  call VecRestoreArrayF90(option%h_p_loc, h_p_loc_p, ierr)
+  call VecRestoreArrayF90(option%h_t_loc, h_t_loc_p, ierr)
+  call VecRestoreArrayF90(option%v_p_loc, v_p_loc_p, ierr)
+  call VecRestoreArrayF90(option%v_t_loc, v_t_loc_p, ierr)
 
-  call VecRestoreArrayF90(grid%ithrm_loc, ithrm_loc_p, ierr)
+  call VecRestoreArrayF90(option%ithrm_loc, ithrm_loc_p, ierr)
   
-  if (grid%rk > 0.d0) then
-    call VecRestoreArrayF90(grid%phis,phis_p,ierr)
+  if (option%rk > 0.d0) then
+    call VecRestoreArrayF90(option%phis,phis_p,ierr)
   endif
 
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
