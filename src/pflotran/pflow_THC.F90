@@ -12,6 +12,8 @@
 #define CCONC(n)           xx_p(3+(n-1)*option%ndof)
 #define CONC(n)            yy_p(3+(n-1)*option%ndof)
 
+#include "definitions.h"
+
 module THC_module
 
  use Connection_module
@@ -86,8 +88,6 @@ contains
   real*8 :: dw_kg, dw_mol
   real*8 :: tsrc1, qsrc1, qqsrc, csrc1, hsrc1,enth_src
   
-  eps = 1.d-6
-
   type(connection_list_type), pointer :: connection_list
   type(connection_type), pointer :: cur_connection_object
   integer :: iconn
@@ -95,6 +95,8 @@ contains
   real*8 :: distance, fraction_upwind
   real*8 :: distance_gravity
   
+  eps = 1.d-6
+
   grid => solution%grid
   option => solution%option
   
@@ -335,8 +337,8 @@ contains
     dd1 = grid%dist1(nc)
     dd2 = grid%dist2(nc)
     
-    ip1 = grid%iperm1(nc)
-    ip2 = grid%iperm2(nc)
+    ip1 = option%iperm1(nc)
+    ip2 = option%iperm2(nc)
 
 !   perm1 = perm_loc_p(ip1+3*(m1-1))
 !   perm2 = perm_loc_p(ip2+3*(m2-1))
@@ -383,13 +385,13 @@ contains
 
       density_ave = f2 * ddensity_loc_p(jm1) + f1 * ddensity_loc_p(jm2)
 
-      gravity = grid%fmwh2o * grid%gravity * grid%delz(nc)
+      gravity = option%fmwh2o * option%gravity * grid%delz(nc)
 
       v_darcy = -Dq * (PPRESSURE_LOC(j,m2) - PPRESSURE_LOC(j,m1) & 
                 - gravity * density_ave)
 
       ! store velocities defined at interfaces in PETSc Vec vl at upstream node
-      grid%vvl_loc(nc) = v_darcy     ! use for coupling to ptran
+      option%vvl_loc(nc) = v_darcy     ! use for coupling to ptran
       if (n1 > 0) then               ! If the upstream node is not a ghost node...
         vl_p(ip1+3*(n1-1)) = v_darcy ! use for print out of velocity
       endif
@@ -454,7 +456,7 @@ contains
 
   do nc = 1, grid%nconnbc
 
-    gravity = grid%fmwh2o * grid%gravity * grid%delzbc(nc)
+    gravity = option%fmwh2o * option%gravity * grid%delzbc(nc)
 
     m = grid%mblkbc(nc)  ! Note that here, m is NOT ghosted.
     ng = grid%nL2G(m)
@@ -722,7 +724,7 @@ contains
 !   grid%timesrc(i-1,nr),grid%t,f1,f2,ff,qsrc1,csrc1
 
    
-    qsrc1 = qsrc1 / grid%fmwh2o
+    qsrc1 = qsrc1 / option%fmwh2o
 
   if(dabs(hsrc1)>1D-20)then 
        do kk = kk1, kk2
@@ -754,7 +756,7 @@ contains
               r_p(t1) = r_p(t1) - qsrc1*enth_src
               r_p(c1) = r_p(c1) - qqsrc*csrc1
 
-!             print *,'pflowTHC: ',nr,n,ng,qsrc1,dw_mol*grid%fmwh2o, &
+!             print *,'pflowTHC: ',nr,n,ng,qsrc1,dw_mol*option%fmwh2o, &
 !             qqsrc,csrc1,r_p(c1)
           enddo
         enddo
@@ -831,7 +833,7 @@ contains
   SNES, intent(in) :: snes
   Vec, intent(in) :: xx
   Mat, intent(out) :: A, B
-  type(pflowGrid), intent(inout) :: grid
+  type(grid_type), intent(inout) :: grid
   integer, intent(out) :: flag
 
 ! external WATEOS, VISW, PSAT
@@ -1059,8 +1061,8 @@ contains
     dd1 = grid%dist1(nc)
     dd2 = grid%dist2(nc)
     
-    ip1 = grid%iperm1(nc)
-    ip2 = grid%iperm2(nc)
+    ip1 = option%iperm1(nc)
+    ip2 = option%iperm2(nc)
     
 !   perm1 = perm_loc_p(ip1+3*(m1-1))
 !   perm2 = perm_loc_p(ip2+3*(m2-1))
@@ -1090,7 +1092,7 @@ contains
     diff = (por1 * por2) / (dd2*por1 + dd1*por2) * option%difaq
     dtrans = diff * grid%area(nc)
       
-    gravity = grid%fmwh2o * grid%gravity * grid%delz(nc)
+    gravity = option%fmwh2o * option%gravity * grid%delz(nc)
     
     dfluxp1 = 0.d0
     dfluxp2 = 0.d0
@@ -1412,7 +1414,7 @@ contains
       perm1 = perm_zz_loc_p(ng)
     endif
         
-    gravity = grid%fmwh2o * grid%gravity * grid%delzbc(nc)
+    gravity = option%fmwh2o * option%gravity * grid%delzbc(nc)
     
     if(option%ibndtyp(ibc) == 2) then
       ! solve for pb from Darcy's law given qb /= 0
