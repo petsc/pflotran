@@ -47,7 +47,29 @@
 ! grid types
 #define STRUCTURED 1
 #define UNSTRUCTURED 2
+#define STRUCTURED_CARTESIAN 10
+#define STRUCTURED_CYLINDRICAL 11
+#define STRUCTURED_SPHERICAL 12
 
-! boundary condition types
+! condition types
 #define DIRICHLET_BC 1
 #define NEUMANN_BC 2
+#define MASS_RATE 3
+
+! coupler types
+#define INITIAL_COUPLER_TYPE 1
+#define BOUNDARY_COUPLER_TYPE 2
+#define SRC_SINK_COUPLER_TYPE 3
+
+! connection types
+#define INTERNAL_CONNECTION_TYPE 1
+#define BOUNDARY_CONNECTION_TYPE 2
+#define INITIAL_CONNECTION_TYPE 3
+#define SRC_SINK_CONNECTION_TYPE 4
+
+! dofs for each mode
+#define RICHARDS_PRESSURE_DOF 1
+#define RICHARDS_CONCENTRATION_DOF 3
+#define RICHARDS_TEMPERATURE_DOF 2
+#define RICHARDS_ENTHALPY_DOF 3
+

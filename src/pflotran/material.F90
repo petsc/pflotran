@@ -293,7 +293,8 @@ function MaterialGetPtrFromList(material_name,material_list)
   
   do 
     if (.not.associated(material)) exit
-    if (fiStringCompare(material%name,material_name, &
+    if (len_trim(material_name) == len_trim(material%name) .and. &
+        fiStringCompare(material%name,material_name, &
                         len_trim(material_name))) then
       MaterialGetPtrFromList => material
       return

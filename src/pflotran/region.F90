@@ -338,7 +338,8 @@ function RegionGetPtrFromList(region_name,region_list)
   
   do 
     if (.not.associated(region)) exit
-    if (fiStringCompare(region%name,region_name,len_trim(region_name))) then
+    if (len_trim(region_name) == len_trim(region%name) .and. &
+        fiStringCompare(region%name,region_name,len_trim(region_name))) then
       RegionGetPtrFromList => region
       return
     endif

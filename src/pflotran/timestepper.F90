@@ -2,6 +2,7 @@ module Timestepper_module
  
   use Solver_module
   use Option_module
+  use Waypoint_module  
  
   implicit none
 
@@ -25,25 +26,15 @@ module Timestepper_module
     real*8, pointer :: dtstep(:)    
         
     type(solver_type), pointer :: solver
-    type(waypoint_type), pointer :: waypoints
+    type(waypoint_list_type), pointer :: waypoints
     type(waypoint_type), pointer :: cur_waypoint
     real*8, pointer :: steady_eps(:)  ! tolerance for stead state convergence
     
   end type stepper_type
   
-  ! linked-list for waypoints in the simulation
-  type, public :: waypoint_type
-    real*8 :: time
-    logical :: print_output
-    type(output_option_type), pointer :: output_option
-    logical :: update_bcs
-    logical :: update_srcs
-    real*8 :: max_dt
-    type(waypoint_type), pointer :: next
-  end type waypoint_type
-  
   public :: TimestepperCreate, StepperUpdateDT, StepperStepDT, StepperUpdateSolution, &
-            TimestepperDestroy, StepperRun
+            TimestepperDestroy, StepperRun, &
+            WaypointCreate, WaypointInsertInList
   
 contains
 
@@ -78,40 +69,14 @@ function TimestepperCreate()
   stepper%dt_max = 3.1536d6 ! One-tenth of a year.  
       
   nullify(stepper%solver)
-  nullify(stepper%waypoints)
+  nullify(stepper%cur_waypoint)
   
   stepper%solver => SolverCreate()
+  stepper%waypoints => WaypointListCreate()
   
   TimeStepperCreate => stepper
   
 end function TimestepperCreate 
-
-! ************************************************************************** !
-!
-! WaypointCreate: Creates a simulation waypoint
-! author: Glenn Hammond
-! date: 11/07/07
-!
-! ************************************************************************** !
-function WaypointCreate()
-
-  implicit none
-  
-  type(waypoint_type), pointer :: WaypointCreate
-  
-  type(waypoint_type), pointer :: waypoint
-  
-  allocate(waypoint)
-  waypoint%time = 0.d0
-  waypoint%print_output = .false.
-  waypoint%output_option => OutputOptionCreate()
-  waypoint%update_bcs = .false.
-  waypoint%update_srcs = .false.
-  waypoint%max_dt = 0.d0
-    
-  WaypointCreate => waypoint
-  
-end function WaypointCreate 
 
 ! ************************************************************************** !
 !
@@ -158,10 +123,13 @@ subroutine StepperRun(solution,stepper,stage)
   iplot = 0
   ihalcnt = 0
 
+  call SolutionAddWaypointsToList(solution,stepper%waypoints)
+  call WaypointListFillIn(stepper%waypoints)
+  call WaypointListRemoveExtraWaypnts(option,stepper%waypoints)
+  call WaypointConvertTimes(stepper%waypoints,solution%output_option%tconv)
+
   allocate(dxdt(1:option%ndof))  
 
-  solution%option%isrc1 = 2
-  
   do istep = stepper%flowsteps+1, stepper%stepmax
   
     call StepperStepDT(solution,stepper,ntstep,iplot,iflgcut,ihalcnt,its)
@@ -219,13 +187,13 @@ subroutine StepperRun(solution,stepper,stage)
   endif
 #endif  
 
-  write(*,'(/," PFLOW steps = ",i6," newton = ",i6," cuts = ",i6)') &
-        istep-1,stepper%newtcum,stepper%icutcum
+  if (option%myrank == 0) then
+    write(*,'(/," PFLOW steps = ",i6," newton = ",i6," cuts = ",i6)') &
+          istep-1,stepper%newtcum,stepper%icutcum
 
-  write(IUNIT2,'(/," PFLOW steps = ",i6," newton = ",i6," cuts = ",i6)') &
-        istep-1,stepper%newtcum,stepper%icutcum
-
-
+    write(IUNIT2,'(/," PFLOW steps = ",i6," newton = ",i6," cuts = ",i6)') &
+          istep-1,stepper%newtcum,stepper%icutcum
+  endif
 
 end subroutine StepperRun
 
@@ -429,6 +397,10 @@ subroutine StepperStepDT(solution,stepper,ntstep,iplot,iflgcut,ihalcnt,its)
   else if (stepper%flowsteps == stepper%stepmax) then
     iplot = 1
   endif
+  
+#if 0 
+! NEED TO INCLUDE UPDATE OF SRC/SINK IN THE time step calculation
+
 !print *, 'pflow_step:2:',  ntstep, option%dt, option%dt_max, option%tplot(kplt) - option%t
 ! source/sink time step control
   if (option%nblksrc > 0) then
@@ -443,6 +415,8 @@ subroutine StepperStepDT(solution,stepper,ntstep,iplot,iflgcut,ihalcnt,its)
       option%isrc1 = option%isrc1 + 1
     endif
   endif
+#endif  
+  
  ! print *, 'pflow_step:3:',  ntstep, option%dt
   if (iflgcut == 1) then
     ihalcnt = ihalcnt + 1
@@ -985,13 +959,6 @@ subroutine StepperUpdateSolution(solution)
   end select    
 
   if (option%run_coupled == PETSC_TRUE) then
-#ifndef OVERHAUL
-!   call VecCopy(grid%vvl,grid%vl,ierr)
-    grid%vl_loc = grid%vvl_loc
-    grid%vlbc = grid%vvlbc
-    grid%vg_loc = grid%vvg_loc
-    grid%vgbc = grid%vvgbc
-#endif    
     option%xphi_co2 = option%xxphi_co2
     option%den_co2=option%dden_co2
   endif
@@ -1008,6 +975,9 @@ subroutine StepperUpdateSolution(solution)
     enddo
     call VecRestoreArrayF90(option%phis,phis_p,ierr)
   endif
+  
+  ! update solutoin variables
+  call SolutionUpdate(solution)
 
 end subroutine StepperUpdateSolution
 

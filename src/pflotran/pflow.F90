@@ -135,6 +135,9 @@
            
   call StepperRun(solution,stepper,stage)
   
+  ! grab myrank for use after destruction of simulation
+  myrank = option%myrank
+  
 ! Clean things up.
   call PetscLogStagePush(stage(3), ierr)
   if (option%ibrkcrv > 0) close(IUNIT4)
@@ -145,7 +148,7 @@
   call PetscGetCPUTime(timex(2), ierr)
   call PetscGetTime(timex_wall(2), ierr)
   
-  if (option%myrank == 0) then
+  if (myrank == 0) then
   
 !       write(*,'("steps: ",13x,i6,/, &
 !   &   "total newton iters: ",i6,/, &

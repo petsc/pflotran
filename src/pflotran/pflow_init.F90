@@ -530,7 +530,7 @@ subroutine PflowInit(simulation,filename)
 
 
   call readInput(simulation,filename)
-  
+
 
   if(option%imode == MPH_MODE .or. &
      option%imode == OWG_MODE .or. &
@@ -548,12 +548,14 @@ subroutine PflowInit(simulation,filename)
     
   call GridLocalizeRegions(solution%regions,solution%grid,solution%option)
 
-  call GridComputeBoundaryConnect(grid,option, &
-                                  solution%boundary_conditions%first)                                
+  call GridComputeCouplerConnections(grid,option,solution%boundary_conditions%first)
+!  call GridComputeBoundaryConnect(grid,option, &
+!                                  solution%boundary_conditions%first)                                
   call assignMaterialPropToRegions(solution)
   call assignInitialConditions(solution)
-  call SolutionUpdateBoundConditions(solution)
-  call SolutionSetIBNDTYPE(solution)
+  call SolutionInitBoundConditions(solution)
+!  call SolutionSetIBNDTYPE(solution)
+
 
   i = grid%internal_connection_list%first%num_connections
   allocate(option%vl_loc(i))
@@ -1443,6 +1445,7 @@ subroutine readInput(simulation,filename)
   use Condition_module
   use Coupler_module
   use Strata_module
+  use Waypoint_module
 
   use pckr_module 
   
@@ -1470,6 +1473,8 @@ subroutine readInput(simulation,filename)
   type(condition_type), pointer :: condition
   type(coupler_type), pointer :: coupler
   type(strata_type), pointer :: strata
+  
+  type(waypoint_type), pointer :: waypoint
   
   type(material_type), pointer :: material
   type(thermal_property_type), pointer :: thermal_property
@@ -2163,11 +2168,11 @@ subroutine readInput(simulation,filename)
             case(MPH_MODE,OWG_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
               do np=1, option%nphase
                 call fiReadDouble(string,saturation_function%Sr(np),ierr)
-          call fiErrorMsg('Sr','PCKR', ierr)
+                call fiErrorMsg('Sr','PCKR', ierr)
               enddo 
             case default
               call fiReadDouble(string,saturation_function%Sr(1),ierr)
-          call fiErrorMsg('Sr','PCKR', ierr)
+              call fiErrorMsg('Sr','PCKR', ierr)
           end select
         
           call fiReadDouble(string,saturation_function%m,ierr)
@@ -2543,11 +2548,17 @@ subroutine readInput(simulation,filename)
           do i = i1, i2
             call fiReadDouble(string,option%tplot(i),ierr)
             call fiDefaultMsg('tplot',ierr)
+            waypoint => WaypointCreate()
+            waypoint%time = option%tplot(i)
+            call WaypointInsertInList(waypoint,stepper%waypoints)
           enddo
           if (i2 == option%kplot) exit
           call fiReadFlotranString(IUNIT1,string,ierr)
           call fiReadStringErrorMsg('TIME',ierr)
         enddo
+        
+        ! make last waypoint final
+        waypoint%final = .true.
 
 !       call fiReadFlotranString(IUNIT1,string,ierr)
 !       call fiReadStringErrorMsg('TIME',ierr)
@@ -2593,9 +2604,24 @@ subroutine readInput(simulation,filename)
         call fiReadStringErrorMsg('DTST',ierr)
         call fiReadDouble(string,stepper%dt_min,ierr)
         call fiDefaultMsg('dt_min',ierr)
+        
+        waypoint => WaypointCreate()
+        waypoint%time = 0.d0
+        waypoint%print_output = .true.
+        call WaypointInsertInList(waypoint,stepper%waypoints)
+            
         do i = 1, stepper%nstpmax
           call fiReadDouble(string,stepper%dtstep(i),ierr)
           call fiDefaultMsg('dtstep',ierr)
+          ! need to copy first max_dt here to first waypoint
+          if (i == 1) then
+            waypoint%max_dt = stepper%dtstep(i)
+          endif
+          waypoint => WaypointCreate()
+          waypoint%time = stepper%tstep(i)
+          waypoint%max_dt = stepper%dtstep(i)
+          waypoint%print_output = .true.
+          call WaypointInsertInList(waypoint,stepper%waypoints)          
         enddo
         
         stepper%dt_max = stepper%dtstep(1)
@@ -2621,7 +2647,7 @@ subroutine readInput(simulation,filename)
 !....................
 
       case ('BCON')
-
+#if 0
 !-----------------------------------------------------------------------
 !-----boundary conditions:  ibnd:  
 !                   1-left,    2-right
@@ -2793,11 +2819,11 @@ subroutine readInput(simulation,filename)
           enddo
         endif
 !GEH - Structured Grid Dependence - End
-
+#endif
 !....................
 
       case ('SOUR')
-
+#if 0
         isrc = 0
         ir = 0
       
@@ -2898,7 +2924,7 @@ subroutine readInput(simulation,filename)
           enddo
         endif
 !GEH - Structured Grid Dependence - End
-
+#endif
 !....................
       
       case ('BRK')
@@ -3308,18 +3334,18 @@ subroutine assignInitialConditions(solution)
           jn2 = jn1+1
               
           count = 1
-          pressure_p(jn1) = initial_condition%flow_condition%cur_value(1)
+          pressure_p(jn1) = initial_condition%condition%cur_value(1)
           count = count + 1
           
           if (option%nphase>1) then
-            pressure_p(jn2) = initial_condition%flow_condition%cur_value(count)
+            pressure_p(jn2) = initial_condition%condition%cur_value(count)
             count = count + 1
           endif
           
-          temp_p(local_id) = initial_condition%flow_condition%cur_value(count)
+          temp_p(local_id) = initial_condition%condition%cur_value(count)
           count = count + 1
           
-          sat_p(jn1) = initial_condition%flow_condition%cur_value(count)
+          sat_p(jn1) = initial_condition%condition%cur_value(count)
           count = count + 1          
           
           if (option%nphase>1) then
@@ -3328,12 +3354,12 @@ subroutine assignInitialConditions(solution)
           endif
           
           if (option%ndof == 3) then
-            conc_p(local_id) = initial_condition%flow_condition%cur_value(count)
+            conc_p(local_id) = initial_condition%condition%cur_value(count)
             count = count + 1
           endif
 
           if (option%ndof == 4) then
-            xmol_p(jn2) = initial_condition%flow_condition%cur_value(count)
+            xmol_p(jn2) = initial_condition%condition%cur_value(count)
             count = count + 1
           endif
                

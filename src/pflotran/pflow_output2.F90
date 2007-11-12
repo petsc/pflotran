@@ -100,21 +100,23 @@ subroutine OutputTecplot(solution,step)
   character(len=MAXSTRINGLENGTH) :: string, string2
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
+  type(output_option_type), pointer :: output_option
   Vec :: global
   Vec :: natural
   
   grid => solution%grid
   option => solution%option
+  output_option => solution%output_option
   
   ! open file
-  if (solution%output_option%plot_number < 10) then
-    write(filename,'("pflow00",i1,".tec")') solution%output_option%plot_number  
-  else if (solution%output_option%plot_number < 100) then
-    write(filename,'("pflow0",i2,".tec")') solution%output_option%plot_number  
-  else if (solution%output_option%plot_number < 1000) then
-    write(filename,'("pflow",i3,".tec")') solution%output_option%plot_number  
-  else if (solution%output_option%plot_number < 10000) then
-    write(filename,'("pflow",i4,".tec")') solution%output_option%plot_number  
+  if (output_option%plot_number < 10) then
+    write(filename,'("pflow00",i1,".tec")') output_option%plot_number  
+  else if (output_option%plot_number < 100) then
+    write(filename,'("pflow0",i2,".tec")') output_option%plot_number  
+  else if (output_option%plot_number < 1000) then
+    write(filename,'("pflow",i3,".tec")') output_option%plot_number  
+  else if (output_option%plot_number < 10000) then
+    write(filename,'("pflow",i4,".tec")') output_option%plot_number  
   endif
   
   if (option%myrank == 0) then
@@ -124,7 +126,7 @@ subroutine OutputTecplot(solution,step)
     ! write header
     ! write title
     write(IUNIT3,'(''TITLE = "'',1es12.4," [",a1,'']"'')') &
-                 option%time/solution%output_option%tconv,solution%output_option%tunit
+                 option%time/output_option%tconv,output_option%tunit
     ! write variables
     select case(option%imode)
       case (TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
@@ -168,7 +170,7 @@ subroutine OutputTecplot(solution,step)
     ! write zone header
     write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
                  &'', K='',i4,'','')') &
-                 option%time/solution%output_option%tconv,grid%structured_grid%nx,grid%structured_grid%ny,grid%structured_grid%nz 
+                 option%time/output_option%tconv,grid%structured_grid%nx,grid%structured_grid%ny,grid%structured_grid%nz 
     string = trim(string) // ' DATAPACKING=BLOCK'
     write(IUNIT3,'(a)') trim(string)
 
@@ -283,11 +285,11 @@ subroutine OutputTecplot(solution,step)
 
   close(IUNIT3)
   
-  if (solution%output_option%print_tecplot_velocities) then
+  if (output_option%print_tecplot_velocities) then
     call OutputVelocitiesTecplot(solution,step)
   endif
   
-  if (solution%output_option%print_tecplot_flux_velocities) then
+  if (output_option%print_tecplot_flux_velocities) then
     if (grid%structured_grid%nx > 1) then
       call OutputFluxVelocitiesTecplot(solution,step,LIQUID_PHASE, &
                                        X_DIRECTION)
@@ -332,6 +334,7 @@ subroutine OutputVelocitiesTecplot(solution,step)
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
+  type(output_option_type), pointer :: output_option
   character(len=MAXNAMELENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: string
   Vec :: global
@@ -341,16 +344,17 @@ subroutine OutputVelocitiesTecplot(solution,step)
   
   grid => solution%grid
   option => solution%option
+  output_option => solution%output_option
   
   ! open file
-  if (solution%output_option%plot_number < 10) then
-    write(filename,'("pflow_vel00",i1,".tec")') solution%output_option%plot_number  
-  else if (solution%output_option%plot_number < 100) then
-    write(filename,'("pflow_vel0",i2,".tec")') solution%output_option%plot_number  
-  else if (solution%output_option%plot_number < 1000) then
-    write(filename,'("pflow_vel",i3,".tec")') solution%output_option%plot_number  
-  else if (solution%output_option%plot_number < 10000) then
-    write(filename,'("pflow_vel",i4,".tec")') solution%output_option%plot_number  
+  if (output_option%plot_number < 10) then
+    write(filename,'("pflow_vel00",i1,".tec")') output_option%plot_number  
+  else if (output_option%plot_number < 100) then
+    write(filename,'("pflow_vel0",i2,".tec")') output_option%plot_number  
+  else if (output_option%plot_number < 1000) then
+    write(filename,'("pflow_vel",i3,".tec")') output_option%plot_number  
+  else if (output_option%plot_number < 10000) then
+    write(filename,'("pflow_vel",i4,".tec")') output_option%plot_number  
   endif
   
   if (option%myrank == 0) then
@@ -360,7 +364,7 @@ subroutine OutputVelocitiesTecplot(solution,step)
     ! write header
     ! write title
     write(IUNIT3,'(''TITLE = "'',1es12.4," [",a1,'']"'')') &
-                 option%time/solution%output_option%tconv,solution%output_option%tunit
+                 option%time/output_option%tconv,output_option%tunit
     ! write variables
     string = 'VARIABLES=' // &
              '"X-Coordinates",' // &
@@ -377,7 +381,7 @@ subroutine OutputVelocitiesTecplot(solution,step)
     ! write zone header
     write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
                  &'', K='',i4,'','')') &
-                 option%time/solution%output_option%tconv, &
+                 option%time/output_option%tconv, &
                  grid%structured_grid%nx,grid%structured_grid%ny,grid%structured_grid%nz 
     string = trim(string) // ' DATAPACKING=BLOCK'
     write(IUNIT3,'(a)') trim(string)
@@ -460,6 +464,7 @@ subroutine OutputFluxVelocitiesTecplot(solution,step,iphase, &
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
+  type(output_option_type), pointer :: output_option
   
   character(len=MAXNAMELENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: string
@@ -479,6 +484,7 @@ subroutine OutputFluxVelocitiesTecplot(solution,step,iphase, &
   
   grid => solution%grid
   option => solution%option
+  output_option => output_option
   
   ! open file
   filename = 'pflow_'
@@ -499,14 +505,14 @@ subroutine OutputFluxVelocitiesTecplot(solution,step,iphase, &
       filename = trim(filename) // 'z'
   end select 
   
-  if (solution%output_option%plot_number < 10) then
-    write(string,'("00",i1,".tec")') solution%output_option%plot_number  
-  else if (solution%output_option%plot_number < 100) then
-    write(string,'("0",i2,".tec")') solution%output_option%plot_number  
-  else if (solution%output_option%plot_number < 1000) then
-    write(string,'(i3,".tec")') solution%output_option%plot_number  
-  else if (solution%output_option%plot_number < 10000) then
-    write(string,'(i4,".tec")') solution%output_option%plot_number  
+  if (output_option%plot_number < 10) then
+    write(string,'("00",i1,".tec")') output_option%plot_number  
+  else if (output_option%plot_number < 100) then
+    write(string,'("0",i2,".tec")') output_option%plot_number  
+  else if (output_option%plot_number < 1000) then
+    write(string,'(i3,".tec")') output_option%plot_number  
+  else if (output_option%plot_number < 10000) then
+    write(string,'(i4,".tec")') output_option%plot_number  
   endif
   
   filename = trim(filename) // trim(string)
@@ -518,7 +524,7 @@ subroutine OutputFluxVelocitiesTecplot(solution,step,iphase, &
     ! write header
     ! write title
     write(IUNIT3,'(''TITLE = "'',1es12.4," [",a1,'']"'')') &
-                 option%time/solution%output_option%tconv,solution%output_option%tunit
+                 option%time/output_option%tconv,output_option%tunit
     ! write variables
     string = 'VARIABLES=' // &
              '"X-Coordinates",' // &
@@ -547,15 +553,15 @@ subroutine OutputFluxVelocitiesTecplot(solution,step,iphase, &
       case(X_DIRECTION)
         write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
                      &'', K='',i4,'','')') &
-                     option%time/solution%output_option%tconv,grid%structured_grid%nx-1,grid%structured_grid%ny,grid%structured_grid%nz 
+                     option%time/output_option%tconv,grid%structured_grid%nx-1,grid%structured_grid%ny,grid%structured_grid%nz 
       case(Y_DIRECTION)
         write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
                      &'', K='',i4,'','')') &
-                     option%time/solution%output_option%tconv,grid%structured_grid%nx,grid%structured_grid%ny-1,grid%structured_grid%nz 
+                     option%time/output_option%tconv,grid%structured_grid%nx,grid%structured_grid%ny-1,grid%structured_grid%nz 
       case(Z_DIRECTION)
         write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
                      &'', K='',i4,'','')') &
-                     option%time/solution%output_option%tconv,grid%structured_grid%nx,grid%structured_grid%ny,grid%structured_grid%nz-1
+                     option%time/output_option%tconv,grid%structured_grid%nx,grid%structured_grid%ny,grid%structured_grid%nz-1
     end select 
   
   
@@ -699,7 +705,7 @@ subroutine OutputFluxVelocitiesTecplot(solution,step,iphase, &
   call VecRestoreArrayF90(option%vl,vec_ptr,ierr)
 !GEH - Structured Grid Dependence - End
   
-  array(1:local_size) = array(1:local_size)*solution%output_option%tconv ! convert time units
+  array(1:local_size) = array(1:local_size)*output_option%tconv ! convert time units
   
   adjusted_size = local_size
   call ConvertArrayToNatural(indices,array,adjusted_size,global_size)
@@ -949,6 +955,7 @@ subroutine OutputHDF5(solution,step)
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
+  type(output_option_type), pointer :: output_option
   
   Vec :: global
   Vec :: natural
@@ -962,6 +969,7 @@ subroutine OutputHDF5(solution,step)
   
   grid => solution%grid
   option => solution%option
+  output_option => solution%output_option
 
   ! initialize fortran interface
   call h5open_f(hdf5_err)
@@ -1036,7 +1044,7 @@ subroutine OutputHDF5(solution,step)
 
   ! create a group for the data set
   write(string,'('' Time('',i4,''):'',es12.4,x,a1)') &
-        step,option%time/solution%output_option%tconv,solution%output_option%tunit
+        step,option%time/output_option%tconv,output_option%tunit
   call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
   
   ! write out data sets 
@@ -1124,7 +1132,7 @@ subroutine OutputHDF5(solution,step)
 
   end select
   
-  if (solution%output_option%print_hdf5_velocities) then
+  if (output_option%print_hdf5_velocities) then
 
     ! velocities
     call GetCellCenteredVelocities(solution,global,LIQUID_PHASE,X_DIRECTION)
@@ -1157,7 +1165,7 @@ subroutine OutputHDF5(solution,step)
                                  H5T_NATIVE_DOUBLE)
   endif
 
-  if (solution%output_option%print_hdf5_flux_velocities) then
+  if (output_option%print_hdf5_flux_velocities) then
   
     ! internal flux velocities
     if (grid%structured_grid%nx > 1) then
@@ -1224,7 +1232,8 @@ subroutine WriteHDF5FluxVelocities(name,solution,iphase,direction,file_id)
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
-  
+  type(output_option_type), pointer :: output_option
+    
   real*8, allocatable :: array(:)
   PetscReal, pointer :: vec_ptr(:)
 
@@ -1235,6 +1244,7 @@ subroutine WriteHDF5FluxVelocities(name,solution,iphase,direction,file_id)
   
   grid => solution%grid
   option => solution%option
+  output_option => solution%output_option  
   
   ! in a few cases (i.e. for small test problems), some processors may
   ! have no velocities to print.  This results in zero-length arrays
@@ -1306,7 +1316,7 @@ subroutine WriteHDF5FluxVelocities(name,solution,iphase,direction,file_id)
   call VecRestoreArrayF90(option%vl,vec_ptr,ierr)
   
   array(1:nx_local*ny_local*nz_local) = &  ! convert time units
-    array(1:nx_local*ny_local*nz_local) * solution%output_option%tconv
+    array(1:nx_local*ny_local*nz_local) * output_option%tconv
 
   call WriteHDF5DataSet(name,array,file_id,H5T_NATIVE_DOUBLE, &
                         nx_global,ny_global,nz_global, &
@@ -1767,6 +1777,7 @@ subroutine GetCellCenteredVelocities(solution,vec,iphase,direction)
   use Grid_module
   use Option_module
   use Connection_module
+  use Coupler_module
 
   implicit none
   
@@ -1777,6 +1788,7 @@ subroutine GetCellCenteredVelocities(solution,vec,iphase,direction)
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
+  type(output_option_type), pointer :: output_option
   integer :: i, j, k, local_id, iconn
   Vec :: local_vec
   
@@ -1785,12 +1797,14 @@ subroutine GetCellCenteredVelocities(solution,vec,iphase,direction)
   PetscScalar, pointer :: loc_vec_ptr(:)
   PetscInt, allocatable :: num_additions(:)
   
+  type(coupler_type), pointer :: boundary_condition
   type(connection_list_type), pointer :: connection_list
   type(connection_type), pointer :: cur_connection_object
   
   grid => solution%grid
   option => solution%option
-  
+  output_option => solution%output_option
+    
   allocate(num_additions(grid%nlmax))
   num_additions(1:grid%nlmax) = 0
   
@@ -1812,10 +1826,10 @@ subroutine GetCellCenteredVelocities(solution,vec,iphase,direction)
 
   call VecGetArrayF90(vec,vec_ptr,ierr)
 
-  connection_list => grid%boundary_connection_list
-  cur_connection_object => connection_list%first
-  do 
-    if (.not.associated(cur_connection_object)) exit
+  boundary_condition => solution%boundary_conditions%first
+  do
+    if (.not.associated(boundary_condition)) exit
+    cur_connection_object => boundary_condition%connection
     do iconn = 1, cur_connection_object%num_connections
       if (cur_connection_object%dist(direction,iconn) < 0.99d0) cycle
       local_id = cur_connection_object%id_dn(iconn)
@@ -1826,7 +1840,7 @@ subroutine GetCellCenteredVelocities(solution,vec,iphase,direction)
       endif
       num_additions(local_id) = num_additions(local_id) + 1
     enddo
-    cur_connection_object => cur_connection_object%next
+    boundary_condition => boundary_condition%next
   enddo
 
   call VecRestoreArrayF90(vec,vec_ptr,ierr)
@@ -1888,7 +1902,7 @@ subroutine GetCellCenteredVelocities(solution,vec,iphase,direction)
   call VecGetArrayF90(vec,vec_ptr,ierr)
   do i=1,grid%nlmax
     if (num_additions(i) > 0) &
-      vec_ptr(i) = vec_ptr(i)/real(num_additions(i))*solution%output_option%tconv
+      vec_ptr(i) = vec_ptr(i)/real(num_additions(i))*output_option%tconv
   enddo
   call VecRestoreArrayF90(vec,vec_ptr,ierr)
 

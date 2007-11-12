@@ -138,16 +138,16 @@ module Option_module
 !    integer*4, pointer :: ibconn(:)
       ! ibconn(nc) specifies the id of the of boundary condition block that
       ! applies at boundary interface nc.  
-    integer*4, pointer :: ibndtyp(:)
+!no longer needed    integer*4, pointer :: ibndtyp(:)
       ! ibndtyp(ibc) specifies the type of boundary condition that applies
       ! for boundary condition block ibc.
-    integer*4, pointer :: iface(:)
+!    integer*4, pointer :: iface(:)
       ! iface(ibc) specifies the face (left, right, top, bottom, etc.) on
       ! which BC block ibc lies.
-    integer*4, pointer :: mblkbc(:)
+!    integer*4, pointer :: mblkbc(:)
       ! mblkbc(nc) gives the local, non-ghosted index of the cell that has
       ! boundary connection nc.
-    integer*4, pointer :: iregbc1(:), iregbc2(:)
+!    integer*4, pointer :: iregbc1(:), iregbc2(:)
       ! iregbc1(ibc) and iregbc2(ibc) give the id of the first region and 
       ! last region, respectively, that utilizes the boundary conditions in 
       ! boundary condition block ibc.
@@ -191,11 +191,11 @@ module Option_module
 #endif
 
 !   source term
-    integer :: nblksrc = 0, ntimsrc = 0, isrc1 = 2
+!    integer :: nblksrc = 0, ntimsrc = 0, isrc1 = 2
 !GEH - Structured Grid Dependence - Begin
-    integer*4, pointer :: i1src(:), i2src(:), j1src(:), j2src(:), k1src(:), k2src(:)
+!    integer*4, pointer :: i1src(:), i2src(:), j1src(:), j2src(:), k1src(:), k2src(:)
 !GEH - Structured Grid Dependence - End
-    real*8, pointer :: timesrc(:,:), tempsrc(:,:), qsrc(:,:), csrc(:,:), hsrc(:,:)
+!    real*8, pointer :: timesrc(:,:), tempsrc(:,:), qsrc(:,:), csrc(:,:), hsrc(:,:)
     
 !   solid reaction rate
     integer*4 :: ityprxn
@@ -352,7 +352,7 @@ module Option_module
     integer :: plot_number
     
   end type output_option_type
-  
+
   public :: OptionCreate, &
             OutputOptionCreate, &
             OptionCheckCommandLine, &
@@ -562,7 +562,7 @@ subroutine printErrMsg(option,string)
   character(len=*) :: string
   
   if (option%myrank == 0) then
-    print *, 'ERROR: ', string
+    print *, 'ERROR: ' // string
     print *, 'Stopping!'
   endif    
   stop
@@ -583,7 +583,7 @@ subroutine printWrnMsg(option,string)
   type(option_type) :: option
   character(len=*) :: string
   
-  if (option%myrank == 0) print *, 'WARNING: ', string
+  if (option%myrank == 0) print *, 'WARNING: ' // string
   
 end subroutine printWrnMsg
 
