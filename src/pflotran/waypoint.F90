@@ -13,7 +13,7 @@ module Waypoint_module
     type(output_option_type), pointer :: output_option
     logical :: update_bcs
     logical :: update_srcs
-    real*8 :: max_dt
+    real*8 :: dt_max
     logical :: final  ! any waypoint after this will be deleted
     type(waypoint_type), pointer :: next
   end type waypoint_type
@@ -58,7 +58,7 @@ function WaypointCreate()
   nullify(waypoint%output_option)
   waypoint%update_bcs = .false.
   waypoint%update_srcs = .false.
-  waypoint%max_dt = 0.d0
+  waypoint%dt_max = 0.d0
   nullify(waypoint%next)
     
   WaypointCreate => waypoint
@@ -109,7 +109,7 @@ subroutine WaypointInsertInList(new_waypoint,waypoint_list)
 !    type(output_option_type), pointer :: output_option
 !    logical :: update_bcs
 !    logical :: update_srcs
-!    real*8 :: max_dt
+!    real*8 :: dt_max
     
     ! place new waypoint in proper location within list
   waypoint => waypoint_list%first
@@ -162,26 +162,48 @@ end subroutine WaypointInsertInList
 
 ! ************************************************************************** !
 !
-! WaypointListFillIn: Fills in missing values (e.g. max_dt) in waypoint list
+! WaypointListFillIn: Fills in missing values (e.g. dt_max) in waypoint list
 ! author: Glenn Hammond
 ! date: 11/09/07
 !
 ! ************************************************************************** !
-subroutine WaypointListFillIn(waypoint_list)
-
+subroutine WaypointListFillIn(option,waypoint_list)
+  
   implicit none
   
+  type(option_type) :: option
   type(waypoint_list_type) :: waypoint_list
   
   type(waypoint_type), pointer :: waypoint, prev_waypoint
+  real*8 :: dt_max = -999.d0
   
+  ! find first value of dt_max > 0.d0 in list
   waypoint => waypoint_list%first
   do
     if (.not.associated(waypoint)) exit
     prev_waypoint => waypoint
     waypoint => waypoint%next
-    if (associated(waypoint) .and. waypoint%max_dt < 1.d-40) then
-      waypoint%max_dt = prev_waypoint%max_dt
+    if (associated(waypoint) .and. waypoint%dt_max > 1.d-40) then
+      dt_max = waypoint%dt_max
+      exit
+    endif
+  enddo
+
+  if (dt_max <= 1.d-40) then
+    call printErrMsg(option,'All values of dt_max in input file uninitialized')
+  endif
+  
+  ! assign that value to the first waypoint, if waypoint%dt_max not already > 1.d-40
+  waypoint => waypoint_list%first
+  if (waypoint%dt_max < 1.d-40) waypoint%dt_max = dt_max
+  
+  ! fill in the rest
+  do
+    if (.not.associated(waypoint)) exit
+    prev_waypoint => waypoint
+    waypoint => waypoint%next
+    if (associated(waypoint) .and. waypoint%dt_max < 1.d-40) then
+      waypoint%dt_max = prev_waypoint%dt_max
     endif
   enddo
   
@@ -207,7 +229,7 @@ subroutine WaypointConvertTimes(waypoint_list,time_conversion)
   do
     if (.not.associated(waypoint)) exit
     waypoint%time = waypoint%time * time_conversion
-    waypoint%max_dt = waypoint%max_dt * time_conversion
+    waypoint%dt_max = waypoint%dt_max * time_conversion
     waypoint => waypoint%next
   enddo
   
@@ -249,7 +271,7 @@ subroutine WaypointListRemoveExtraWaypnts(option,waypoint_list)
     prev_waypoint => waypoint
     waypoint => waypoint%next
     write(string,'("Waypoint at time:", 1pe12.4, &
-  &   " is beyond the end of simulation")') &
+          " is beyond the end of simulation")') &
           prev_waypoint%time
     call printWrnMsg(option,trim(string))
     call WaypointDestroy(prev_waypoint)   
@@ -277,7 +299,7 @@ subroutine WaypointMerge(old_waypoint,new_waypoint)
 !    type(output_option_type), pointer :: output_option
 !    logical :: update_bcs
 !    logical :: update_srcs
-!    real*8 :: max_dt
+!    real*8 :: dt_max
 
   if (old_waypoint%print_output .or. new_waypoint%print_output) then
     old_waypoint%print_output = .true.
@@ -297,8 +319,8 @@ subroutine WaypointMerge(old_waypoint,new_waypoint)
     old_waypoint%update_srcs = .false.
   endif
 
-  if (new_waypoint%max_dt > 0.d0) then
-    old_waypoint%max_dt = new_waypoint%max_dt
+  if (new_waypoint%dt_max > 0.d0) then
+    old_waypoint%dt_max = new_waypoint%dt_max
   endif
   
   ! deallocate new waypoint

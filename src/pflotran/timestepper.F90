@@ -22,8 +22,8 @@ module Timestepper_module
     
     real*8 :: dt_min
     real*8 :: dt_max
-    real*8, pointer :: tstep(:)
-    real*8, pointer :: dtstep(:)    
+!    real*8, pointer :: tstep(:)
+!    real*8, pointer :: dtstep(:)    
         
     type(solver_type), pointer :: solver
     type(waypoint_list_type), pointer :: waypoints
@@ -124,9 +124,10 @@ subroutine StepperRun(solution,stepper,stage)
   ihalcnt = 0
 
   call SolutionAddWaypointsToList(solution,stepper%waypoints)
-  call WaypointListFillIn(stepper%waypoints)
+  call WaypointListFillIn(option,stepper%waypoints)
   call WaypointListRemoveExtraWaypnts(option,stepper%waypoints)
   call WaypointConvertTimes(stepper%waypoints,solution%output_option%tconv)
+  stepper%cur_waypoint => stepper%waypoints%first
 
   allocate(dxdt(1:option%ndof))  
 
@@ -165,6 +166,7 @@ subroutine StepperRun(solution,stepper,stage)
     call PetscLogStagePop(ierr)
 #endif
     
+#if 0    
     ista=0
     if(option%imode == THC_MODE)then
       do idx = 1, option%ndof
@@ -175,8 +177,10 @@ subroutine StepperRun(solution,stepper,stage)
         solution%output_option%plot_number=option%kplot; iplot=1     
       endif
     endif         
+#endif
     
-    if (solution%output_option%plot_number > option%kplot) exit
+    ! if at end of waypoint list (i.e. cur_waypoint = null), we are done!
+    if (.not.associated(stepper%cur_waypoint)) exit
 
   enddo
 
@@ -345,8 +349,6 @@ subroutine StepperStepDT(solution,stepper,ntstep,iplot,iflgcut,ihalcnt,its)
   real*8 m_r2norm, s_r2norm, norm_inf, s_r2norm0, norm_inf0, r2norm
   real*8 :: tsrc
   real*8, pointer :: r_p(:)  
-  
-  integer :: kplot
 
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
@@ -383,20 +385,30 @@ subroutine StepperStepDT(solution,stepper,ntstep,iplot,iflgcut,ihalcnt,its)
 !print *, 'pflow_step:1:',  ntstep, option%dt
  
 
-! Adjust time step to plot time
-  if (option%time + 0.2*option%dt >= option%tplot(kplt)) then
+! If a waypoint calls for a plot or change in src/sinks, adjust time step to match waypoint
+  if (option%time + 0.2*option%dt >= stepper%cur_waypoint%time .and. &
+      (stepper%cur_waypoint%update_srcs .or. &
+       stepper%cur_waypoint%print_output)) then
     option%time = option%time - option%dt
-    option%dt = option%tplot(kplt) - option%time
+    option%dt = stepper%cur_waypoint%time - option%time
     if (option%dt > stepper%dt_max) then
       option%dt = stepper%dt_max
       option%time = option%time + option%dt
     else
-      option%time = option%tplot(kplt)
-      iplot = 1
+      option%time = stepper%cur_waypoint%time
+      if (stepper%cur_waypoint%print_output) iplot = 1
+      stepper%cur_waypoint => stepper%cur_waypoint%next
+      if (associated(stepper%cur_waypoint)) &
+        stepper%dt_max = stepper%cur_waypoint%dt_max
     endif
+  else if (option%time > stepper%cur_waypoint%time) then
+    stepper%cur_waypoint => stepper%cur_waypoint%next
+    if (associated(stepper%cur_waypoint)) &
+      stepper%dt_max = stepper%cur_waypoint%dt_max
   else if (stepper%flowsteps == stepper%stepmax) then
     iplot = 1
   endif
+  
   
 #if 0 
 ! NEED TO INCLUDE UPDATE OF SRC/SINK IN THE time step calculation
@@ -426,6 +438,7 @@ subroutine StepperStepDT(solution,stepper,ntstep,iplot,iflgcut,ihalcnt,its)
     endif
   endif
   
+#if 0
   !set maximum time step
   if (ntstep > stepper%nstpmax) then
     stepper%dt_max = stepper%dtstep(stepper%nstpmax)
@@ -437,7 +450,8 @@ subroutine StepperStepDT(solution,stepper,ntstep,iplot,iflgcut,ihalcnt,its)
       stepper%dt_max = stepper%dtstep(stepper%nstpmax)
     endif
   endif
-  
+#endif
+
   if (option%myrank == 0) then
     write(*,'(/,60("="))')
   endif
