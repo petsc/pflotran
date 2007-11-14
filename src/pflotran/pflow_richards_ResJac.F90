@@ -1094,6 +1094,7 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
       n1 = grid%nG2L(m1) ! = zero for ghost nodes
       n2 = grid%nG2L(m2) ! Ghost to local mapping   
 
+      ! Ignore inactive cells with inactive materials.
       if (associated(option%imat)) then
         if (option%imat(m1) <= 0 .or. option%imat(m2) <= 0) cycle
       endif
