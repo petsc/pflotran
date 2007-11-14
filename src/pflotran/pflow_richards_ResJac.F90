@@ -2073,9 +2073,9 @@ subroutine pflow_Richards_initaccum(solution)
   integer :: p1
 ! integer :: ii1,ii2
   integer :: iicap, iiphase
+  integer :: ghosted_id
 
-
-  PetscScalar, pointer :: accum_p(:),yy_p(:),volume_p(:),porosity_p(:),&
+  PetscScalar, pointer :: accum_p(:),yy_p(:),volume_p(:),porosity_loc_p(:),&
                           var_p(:), icap_p(:),iphase_p(:),ithrm_p(:)
   
  !  integer, pointer ::iphase_p(:)
@@ -2090,7 +2090,7 @@ subroutine pflow_Richards_initaccum(solution)
   option => solution%option
  
   call VecGetArrayF90(grid%volume, volume_p, ierr)
-  call VecGetArrayF90(option%porosity, porosity_p, ierr)
+  call VecGetArrayF90(option%porosity_loc, porosity_loc_p, ierr)
   call VecGetArrayF90(option%yy, yy_p, ierr); CHKERRQ(ierr)
   call VecGetArrayF90(option%accum, accum_p, ierr)
   call VecGetArrayF90(option%var, var_p,ierr)
@@ -2125,9 +2125,11 @@ subroutine pflow_Richards_initaccum(solution)
 !---------------------------------------------------------------------------
   do n = 1, grid%nlmax  ! For each local node do...
 
+    ghosted_id = grid%nL2G(n)
+    
     !geh - Ignore inactive cells with inactive materials
     if (associated(option%imat)) then
-      if (option%imat(grid%nL2G(n)) <= 0) cycle
+      if (option%imat(ghosted_id) <= 0) cycle
     endif
 
   !  ng = grid%nL2G(n)   ! corresponding ghost index
@@ -2137,8 +2139,9 @@ subroutine pflow_Richards_initaccum(solution)
     i = ithrm_p(n)
     
     call RichardsRes_ARCont(n,var_p(index_var_begin:index_var_end), &
-                          porosity_p(n),volume_p(n),option%dencpr(i),option,Res, &
-                          0,ierr)
+                            porosity_loc_p(n),volume_p(ghosted_id), &
+                            option%dencpr(i),option,Res, &
+                             0,ierr)
  
 
     accum_p(p1:p1+option%ndof-1)=Res(:) 
@@ -2152,7 +2155,7 @@ subroutine pflow_Richards_initaccum(solution)
   enddo
 
   call VecRestoreArrayF90(grid%volume, volume_p, ierr)
-  call VecRestoreArrayF90(option%porosity, porosity_p, ierr)
+  call VecRestoreArrayF90(option%porosity_loc, porosity_loc_p, ierr)
   call VecRestoreArrayF90(option%yy, yy_p, ierr); CHKERRQ(ierr)
   call VecRestoreArrayF90(option%accum, accum_p, ierr)
   call VecRestoreArrayF90(option%var, var_p,ierr)

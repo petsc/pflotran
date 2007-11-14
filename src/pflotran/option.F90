@@ -244,7 +244,7 @@ module Option_module
 
     ! One degree of freedom: Physical coordinates.
     Vec :: conc
-    Vec :: porosity, porosity0, porosity_loc, tor, tor_loc
+    Vec :: porosity0, porosity_loc, tor, tor_loc
 !GEH - Structured Grid Dependence - Begin
 !transferred to structured_grid.F90    Vec :: dx, dy, dz, dx_loc, dy_loc, dz_loc  ! Grid spacings
 !GEH - Structured Grid Dependence - End

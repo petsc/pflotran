@@ -76,12 +76,13 @@ subroutine translator_Richards_massbal(solution)
   integer :: n,n0,nc,np
 ! real*8 :: nsm,nsm0,sm 
   integer :: index,size_var_node
+  integer :: ghosted_id
   
 ! real*8 :: x,y,z,c0,c00,
   
 ! integer :: n2p,n2p0,nzm,nzm0,nxc,nxc0,nyc,nyc0,nzc,nzc0,
      
-  PetscScalar, pointer :: var_p(:),porosity_p(:),volume_p(:)
+  PetscScalar, pointer :: var_p(:),porosity_loc_p(:),volume_p(:)
                            
   PetscScalar, pointer :: iphase_p(:)
   
@@ -97,13 +98,14 @@ subroutine translator_Richards_massbal(solution)
 
   call VecGetArrayF90(option%var,var_p,ierr)
   call VecGetArrayF90(grid%volume, volume_p, ierr)
-  call VecGetArrayF90(option%porosity, porosity_p, ierr)
+  call VecGetArrayF90(option%porosity_loc, porosity_loc_p, ierr)
   call VecGetArrayF90(option%iphas, iphase_p, ierr)
  
   size_var_node=(option%ndof+1)*(2+7*option%nphase +2*option%nphase*option%nspec)
   tot=0.D0
   
   do n = 1,grid%nlmax
+    ghosted_id = grid%nL2G(n)
     n0=(n-1)* option%ndof
     index=(n-1)*size_var_node
     den=>var_p(index+3+option%nphase: index+2+2*option%nphase)
@@ -111,9 +113,7 @@ subroutine translator_Richards_massbal(solution)
     xmol=>var_p(index+2+7*option%nphase+1:index+2+7*option%nphase +&
                 option%nphase*option%nspec)    
 
-    pvol=volume_p(n)*porosity_p(n)
-  
-  
+    pvol=volume_p(n)*porosity_loc_p(ghosted_id)
      
     do nc =1,option%nspec
       do np=1,option%nphase
@@ -129,7 +129,7 @@ subroutine translator_Richards_massbal(solution)
  !  call PETSCBarrier(PETSC_NULL_OBJECT,ierr)
   call VecRestoreArrayF90(option%var,var_p,ierr)
   call VecRestoreArrayF90(grid%volume, volume_p, ierr)
-  call VecRestoreArrayF90(option%porosity, porosity_p, ierr)
+  call VecRestoreArrayF90(option%porosity_loc, porosity_loc_p, ierr)
   call VecRestoreArrayF90(option%iphas, iphase_p, ierr)
  
  !print *,'massbal: ', sat,den, xmol, tot

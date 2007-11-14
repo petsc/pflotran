@@ -122,23 +122,22 @@ subroutine PflowInit(simulation,filename)
  !-----------------------------------------------------------------------
 
   ! 1 degree of freedom
-  call GridCreateVector(grid,ONEDOF,option%porosity,GLOBAL)
-  call VecDuplicate(option%porosity, option%porosity0, ierr)
-  call VecDuplicate(option%porosity, option%tor, ierr)
-  call VecDuplicate(option%porosity, option%conc, ierr)
-  call VecDuplicate(option%porosity, grid%volume, ierr)
-  call VecDuplicate(option%porosity, option%ithrm, ierr)
-  call VecDuplicate(option%porosity, option%icap, ierr)
-  call VecDuplicate(option%porosity, option%iphas, ierr)
-  call VecDuplicate(option%porosity, option%iphas_old, ierr)
-  call VecDuplicate(option%porosity, option%temp, ierr)
-  call VecDuplicate(option%porosity, option%ttemp, ierr)
-  call VecDuplicate(option%porosity, option%phis, ierr)
+  call GridCreateVector(grid,ONEDOF,option%porosity0,GLOBAL)
+  call VecDuplicate(option%porosity0, option%tor, ierr)
+  call VecDuplicate(option%porosity0, option%conc, ierr)
+  call VecDuplicate(option%porosity0, grid%volume, ierr)
+  call VecDuplicate(option%porosity0, option%ithrm, ierr)
+  call VecDuplicate(option%porosity0, option%icap, ierr)
+  call VecDuplicate(option%porosity0, option%iphas, ierr)
+  call VecDuplicate(option%porosity0, option%iphas_old, ierr)
+  call VecDuplicate(option%porosity0, option%temp, ierr)
+  call VecDuplicate(option%porosity0, option%ttemp, ierr)
+  call VecDuplicate(option%porosity0, option%phis, ierr)
 
-  call VecDuplicate(option%porosity, option%perm0_xx, ierr)
-  call VecDuplicate(option%porosity, option%perm0_yy, ierr)
-  call VecDuplicate(option%porosity, option%perm0_zz, ierr)
-  call VecDuplicate(option%porosity, option%perm_pow, ierr)
+  call VecDuplicate(option%porosity0, option%perm0_xx, ierr)
+  call VecDuplicate(option%porosity0, option%perm0_yy, ierr)
+  call VecDuplicate(option%porosity0, option%perm0_zz, ierr)
+  call VecDuplicate(option%porosity0, option%perm_pow, ierr)
       
   call GridCreateVector(grid,ONEDOF,option%porosity_loc,LOCAL)
   call VecDuplicate(option%porosity_loc, option%tor_loc, ierr)
@@ -152,9 +151,9 @@ subroutine PflowInit(simulation,filename)
   call VecDuplicate(option%porosity_loc, option%perm_zz_loc, ierr)
 
   if (associated(grid%structured_grid)) then
-    call VecDuplicate(option%porosity, grid%structured_grid%dx, ierr)
-    call VecDuplicate(option%porosity, grid%structured_grid%dy, ierr)
-    call VecDuplicate(option%porosity, grid%structured_grid%dz, ierr)
+    call VecDuplicate(option%porosity0, grid%structured_grid%dx, ierr)
+    call VecDuplicate(option%porosity0, grid%structured_grid%dy, ierr)
+    call VecDuplicate(option%porosity0, grid%structured_grid%dz, ierr)
 
     call VecDuplicate(option%porosity_loc, grid%structured_grid%dx_loc, ierr)
     call VecDuplicate(option%porosity_loc, grid%structured_grid%dy_loc, ierr)
@@ -3050,7 +3049,8 @@ subroutine assignMaterialPropToRegions(solution)
   call VecRestoreArrayF90(option%perm_pow,perm_pow_p,ierr)
   call VecRestoreArrayF90(option%tor,tor_p,ierr)
 
-  call VecCopy(option%Porosity0, option%Porosity, ierr)
+  call GridGlobalToLocal(solution%grid,option%porosity0, &
+                         option%porosity_loc,ONEDOF)
   call GridGlobalToLocal(solution%grid,option%perm0_xx, &
                          option%perm_xx_loc,ONEDOF)  
   call GridGlobalToLocal(solution%grid,option%perm0_yy, &

@@ -380,7 +380,7 @@ subroutine StepperStepDT(solution,stepper,plot_flag,timestep_cut_flag, &
   ! vector, as that needs to be done within the residual calculation routine
   ! because that routine may get called several times during one Newton step
   ! if a method such as line search is being used.
-  call GridGlobalToLocal(grid,option%porosity,option%porosity_loc,ONEDOF)
+  call GridLocalToLocal(grid,option%porosity_loc,option%porosity_loc,ONEDOF)
   call GridGlobalToLocal(grid,option%tor,option%tor_loc,ONEDOF)
   call GridGlobalToLocal(grid,option%icap,option%icap_loc,ONEDOF)
   call GridGlobalToLocal(grid,option%ithrm,option%ithrm_loc,ONEDOF)
