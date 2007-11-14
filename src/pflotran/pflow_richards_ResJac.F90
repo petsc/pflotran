@@ -44,10 +44,6 @@ module Richards_module
   real*8, pointer, save :: yybc(:,:), vel_bc(:,:)
 ! Contributions to residual from accumlation/source/Reaction, flux(include diffusion)
   
-  
-  
-   
-
   public RichardsResidual, RichardsJacobian, pflow_Richards_initaccum, &
          pflow_update_Richards,pflow_Richards_initadj, pflow_Richards_timecut,&
          pflow_Richards_setupini, Richards_Update, Richards_Update_Reason
@@ -73,31 +69,23 @@ subroutine pflow_Richards_timecut(solution)
   type(grid_type), pointer :: grid
   
   PetscScalar, pointer :: xx_p(:),yy_p(:)
-  integer :: n0,re,ierr
+  integer :: dof_offset,re,ierr
   integer :: local_id
-  !integer re0, ierr, index, iiphaRichards
-  !real*8, pointer :: sat(:),xmol(:)
 
   grid => solution%grid
   option => solution%option
  
   call VecGetArrayF90(option%xx, xx_p, ierr)
   call VecGetArrayF90(option%yy, yy_p, ierr)
- ! call VecGetArrayF90(option%var, var_p, ierr); 
- ! call VecGetArrayF90(option%iphas, iphase_p, ierr); 
 
   do local_id=1, grid%nlmax
-    n0=(local_id-1)*option%ndof
+    dof_offset=(local_id-1)*option%ndof
     do re = 1, option%ndof
-   !xx_p(n0+re)= 0.5D0 * xx_p(n0+re) +.5D0 *yy_p(n0+re)
-      xx_p(n0+re)= yy_p(n0+re)
+      xx_p(dof_offset+re)= yy_p(dof_offset+re)
     enddo
   enddo 
   call VecRestoreArrayF90(option%xx, xx_p, ierr) 
   call VecRestoreArrayF90(option%yy, yy_p, ierr)
-  
-  !call VecCopy(option%xx,option%yy,ierr)
-  !call pflow_Richards_initaccum(grid)
  
 end subroutine pflow_Richards_timecut
   
@@ -177,9 +165,8 @@ subroutine Richards_Update_Reason(reason,solution)
   
   integer, intent(out):: reason
   PetscScalar, pointer :: xx_p(:),var_p(:),iphase_loc_p(:), yy_p(:) !,r_p(:)
-  integer :: n0,re
-  integer re0, ierr, iipha
-! integer :: index
+  integer :: dof_offset, temp_reason
+  integer ierr, iipha
   integer :: local_id, ghosted_id
   
   grid => solution%grid
@@ -191,7 +178,7 @@ subroutine Richards_Update_Reason(reason,solution)
 ! why this barrier
   call MPI_Barrier(PETSC_COMM_WORLD,ierr)
   
-  re = 1
+  reason = 1
  ! call SNESComputeFunction(option%snes,option%xx,grid%r,ierr)
  ! do n=1,option%ndof
  !  call VecStrideNorm(grid%r,n-1,NORM_INFINITY,rmax(n),ierr)
@@ -201,7 +188,7 @@ subroutine Richards_Update_Reason(reason,solution)
  !   re=0;print *, 'Rmax error: ',rmax
  ! endif
   
-  if (re>0) then
+  if (reason>0) then
     call VecGetArrayF90(option%xx,xx_p, ierr); CHKERRQ(ierr)
     call VecGetArrayF90(option%yy,yy_p, ierr)
     call VecGetArrayF90(option%var,var_p, ierr); 
@@ -214,50 +201,24 @@ subroutine Richards_Update_Reason(reason,solution)
         if (option%imat(ghosted_id) <= 0) cycle
       endif
 
-      n0=(local_id-1)* option%ndof
-      !index=(n-1)*size_var_node
-      !sat=>var_p(index+2+1:index+2+option%nphase)
-      !den=>var_p(index+2+option%nphase+1:index+2+2*option%nphase)
-    !xmol=>var_p(index+2+7*option%nphase+1:index+2+7*option%nphase + option%nphase*option%nspec)    
+      dof_offset=(local_id-1)* option%ndof 
       iipha=int(iphase_loc_p(ghosted_id))
-     !if(n==3583 .or. n==3587)
-   !print *, 'update reson', grid%nlmax, n, iipha, xx_p(n0+1:n0+3)
-   !if(xmol(4)>1.0) re=0; goto 1
-   !if(xmol(4)<.0) re=0; goto 1
-   !if(sat(2) < .0) re=0;goto 1
-   ! if(sat(2) > 1.) re=0;goto 1
+
       select case(iipha)
         case (1)
-          if (xx_p(n0 + 1) < option%pref) then
-            re = 0
+          if (xx_p(dof_offset + 1) < option%pref) then
+            reason = 0
             exit
           endif
         case (3)
-          if (xx_p(n0 + 1) > option%pref) then
-            re = 0
+          if (xx_p(dof_offset + 1) > option%pref) then
+            reason = 0
             exit
           endif
       end select  
     enddo
   
-!  do n = 1,grid%nlmax
-!     n0=(n-1)* option%ndof
-!      
-!   if(dabs(xx_p(n0+1)-yy_p(n0+1))>1D6) then
-!      re=0;exit
-!   endif
-   
-!   if(dabs(xx_p(n0+2)-yy_p(n0+2))>1D1) then
-!      re=0;exit
-!   endif
-  
-  
-!   enddo
-   ! print *, 'update reason: ',grid%myrank,grid%nlmax,n,re
-
-  !   call PETSCBarrier(PETSC_NULL_OBJECT,ierr)
-   !print *,' update reason ba MPI', ierr
-    if (re<=0) print *,'Sat or Con out of Region at: ',local_id,iipha,xx_p(n0+1:n0+2)
+    if (reason<=0) print *,'Sat or Con out of Region at: ',local_id,iipha,xx_p(dof_offset+1:dof_offset+2)
     call VecRestoreArrayF90(option%xx,xx_p, ierr); CHKERRQ(ierr)
     call VecRestoreArrayF90(option%yy,yy_p, ierr)
     call VecRestoreArrayF90(option%var,var_p, ierr) 
@@ -267,14 +228,11 @@ subroutine Richards_Update_Reason(reason,solution)
 
   
   if (option%commsize >1) then
-    call MPI_ALLREDUCE(re, re0,1, MPI_INTEGER,MPI_SUM, &
+    temp_reason = reason
+    call MPI_ALLREDUCE(temp_reason,reason,1, MPI_INTEGER,MPI_SUM, &
                        PETSC_COMM_WORLD,ierr)
-  !print *,' update reason re'
-    !call MPI_BCAST(re0,1, MPI_INTEGER, 0,PETSC_COMM_WORLD,ierr)
-  !print *,' update reason ca'
-    if (re0<option%commsize) re = 0
+    if (reason<option%commsize) reason = 0
   endif
-  reason = re
   
   if (reason<=0) print *,'Sat or Con out of Region'
   
@@ -377,8 +335,6 @@ subroutine RichardsRes_FLCont(nconn_no,area,var_node1,por1,tor1,sir1,dd1,perm1, 
   real*8 uh,uxmol(1:option%nspec), ukvr,difff,diffdp, DK,Dq
   real*8 upweight,density_ave,cond, gravity, dphi
   
-!  m1=grid%nd1(nc); n1 = grid%nG2L(m1) ! = zero for ghost nodes 
-!  print *,'in FLcont'
   ibase=1;                 temp1=>var_node1(ibase)
                            temp2=>var_node2(ibase)
                
@@ -405,10 +361,6 @@ subroutine RichardsRes_FLCont(nconn_no,area,var_node1,por1,tor1,sir1,dd1,perm1, 
   ibase=ibase+option%nphase*option%nspec;
                          diff1=>var_node1(ibase:ibase+option%nphase*option%nspec-1)
                          diff2=>var_node2(ibase:ibase+option%nphase*option%nspec-1)
-
-  !print *,' FLcont got pointers' ,var_node1,var_node2,sir1,sir2
-  !print *,' tmp=',temp1,temp2
-  !print *,'diff=',diff1,diff2
    
   Dq = (perm1 * perm2)/(dd1*perm2 + dd2*perm1)
   diffdp = (por1 *tor1 * por2*tor2) / (dd2*por1*tor1 + dd1*por2*tor2)*area
@@ -433,7 +385,7 @@ subroutine RichardsRes_FLCont(nconn_no,area,var_node1,por1,tor1,sir1,dd1,perm1, 
                 * option%gravity * dist_gravity
 
       dphi = pre_ref1 - pre_ref2  + gravity
-!    print *,'FLcont  dp',dphi
+
   ! note uxmol only contains one phase xmol
       if (dphi>=0.D0) then
         ukvr = kvr1(np)
@@ -445,10 +397,9 @@ subroutine RichardsRes_FLCont(nconn_no,area,var_node1,por1,tor1,sir1,dd1,perm1, 
         uxmol(1:option%nspec) = xmol2((np-1)*option%nspec+1:np*option%nspec)
       endif      
      
-   ! print *,'FLcont  uxmol',uxmol
+
       if (ukvr>floweps) then
         v_darcy= Dq * ukvr * dphi
-         !option%vvl_loc(nconn_no) = v_darcy
         vv_darcy(np) = v_darcy
      
         q = v_darcy * area
@@ -460,7 +411,7 @@ subroutine RichardsRes_FLCont(nconn_no,area,var_node1,por1,tor1,sir1,dd1,perm1, 
         fluxe = fluxe + q*density_ave*uh 
       endif
     endif 
- !  print *,' FLcont end flow',np
+
 ! Diffusion term   
 ! Note : average rule may not be correct  
     if ((sat1(np) > eps) .and. (sat2(np) > eps)) then
@@ -472,7 +423,7 @@ subroutine RichardsRes_FLCont(nconn_no,area,var_node1,por1,tor1,sir1,dd1,perm1, 
                    (diff1(ind) + diff2(ind))*(xmol1(ind)-xmol2(ind))
       enddo  
     endif 
-  !   print *,' FLcont',np,fluxm,fluxe
+
   enddo
    
 ! conduction term
@@ -480,12 +431,12 @@ subroutine RichardsRes_FLCont(nconn_no,area,var_node1,por1,tor1,sir1,dd1,perm1, 
   Dk = (Dk1 * Dk2) / (dd2*Dk1 + dd1*Dk2)
   cond = Dk*area*(temp1-temp2) 
   fluxe=fluxe + cond
-   !      print *,' FLcont heat cond', Dk, cond
+
   Res_FL(1:option%ndof-1) = fluxm(:) * option%dt
   Res_FL(option%ndof) = fluxe * option%dt
  ! note: Res_FL is the flux contribution, for node 1 R = R + Res_FL
  !                           2 R = R - Res_FL  
- !print *,'end FLcont'
+
  
   nullify(temp1, pre_ref1, sat1, density1, amw1, h1,u1, pc1,kvr1,xmol1,diff1)       
   nullify(temp2, pre_ref2, sat2, density2, amw2, h2,u2, pc2,kvr2,xmol2,diff2)       
@@ -497,7 +448,6 @@ subroutine RichardsRes_FLBCCont(nbc_no,ibndtype,area,var_node1,var_node2,por2,to
                               Res_FL)
   use Option_module
   use Grid_module
- ! Notice : index 1 stands for BC node
  
   implicit none
   
@@ -588,7 +538,6 @@ subroutine RichardsRes_FLBCCont(nbc_no,ibndtype,area,var_node1,var_node2,por2,to
      
         if (ukvr*Dq>floweps) then
           v_darcy = Dq * ukvr * dphi
-        !option%vvl_loc(nbc_no) = v_darcy
           vv_darcy(np) = v_darcy
      
           q = v_darcy * area
@@ -622,19 +571,14 @@ subroutine RichardsRes_FLBCCont(nbc_no,ibndtype,area,var_node1,var_node2,por2,to
 
   case(2)
     if ((dabs(option%velocitybc(1,nbc_no)))>floweps) then
-!geh      print *, 'FlowBC :', nbc_no,option%velocitybc(1,nbc_no), &
-!geh               option%velocitybc(2,nbc_no)
       
       do j=1,option%nphase
         v_darcy = option%velocitybc(j,nbc_no)
         vv_darcy(j) = option%velocitybc(j,nbc_no)
-!      option%vvbc(j+(nc-2)*option%nphase)= option%velocitybc(j,nc)
       ! note different from 2 phase version
 
         if (v_darcy >0.d0) then 
           q = v_darcy * density1(j) * area
-             !q = 0.d0
-             !flux = flux - q
           fluxe = fluxe + q  * h1(j) 
           do m=1, option%nspec
             fluxm(m) = fluxm(m) + q * xmol1(m + (j-1)*option%nspec)
@@ -668,7 +612,6 @@ subroutine RichardsRes_FLBCCont(nbc_no,ibndtype,area,var_node1,var_node2,por2,to
          
         if (ukvr*Dq>floweps) then
           v_darcy = Dq * ukvr * dphi
-    !     option%vvbc(,nbc_no) = v_darcy
           vv_darcy(np) = v_darcy
      
           q = v_darcy * area
@@ -724,17 +667,12 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
   Vec, intent(out) :: r
   type(solution_type) :: solution
 
-! integer :: j, jm1, jm2, jmu, mu
   integer :: ierr
-  integer :: nc, nr
-  integer :: i, i1, i2, jn, jng
+  integer :: nc
+  integer :: i, ithrm1, ithrm2, jn
   integer :: ip1, ip2, p1, p2
-  !, t1, t2, c1, c2, s1, s2
-  integer :: kk1,kk2,jj1,jj2,ii1,ii2, kk, jj, ii
-! integer :: i1_hencoeff, i2_hencoeff
+  integer :: ii1,ii2
   integer :: local_id, ghosted_id, local_id_up, local_id_dn, ghosted_id_up, ghosted_id_dn
-  
-! real*8 :: term1, term2, term3
 
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -743,7 +681,6 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
 
   PetscScalar, pointer :: r_p(:), porosity_loc_p(:), volume_p(:), &
                xx_loc_p(:), xx_p(:), yy_p(:),&
-!              ddensity_p(:), ddensity_loc_p(:),&
                phis_p(:), tor_loc_p(:),&
                perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:), &
                vl_p(:), var_p(:),var_loc_p(:) 
@@ -754,25 +691,13 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
   integer :: iicap,iiphase, index_var_begin, index_var_end,iicap1,iicap2,np
 
   real*8 :: dd1, dd2, &
-!           eng, cond, den, eengl,eengg, &
-!           fluxcl,fluxcg,fluxe, fluxh, flux, gravity, fluxl,&
-!           fluxlh,fluxlv, fluxg,fluxgh,fluxgv, fluxv, q,  &
-!           v_darcy,hflx, &
             pvoldt, voldt, accum, pvol
   real*8 :: dd, f1, f2, ff
-! real*8 :: por1, por2, density_ave
   real*8 :: perm1, perm2
-! real*8 :: Dphi,D0
-! real*8 :: Dq, Dk  ! "Diffusion" constant for a phase.
   real*8 :: D1, D2  ! "Diffusion" constants at upstream, downstream faces.
-! real*8 :: sat_pressure  ! Saturation pressure of water.
   real*8 :: dw_kg, dw_mol,dif(solution%option%nphase)
-  real*8 :: tsrc1, qsrc1, csrc1, enth_src_h2o, enth_src_co2 , hsrc1!, qqsrc
-! real*8 :: cw,cw1,cw2, xxlw,xxla,xxgw,xxga
-! real*8 :: upweight
-! real*8 :: ukvr,uhh,uconc
+  real*8 :: tsrc1, qsrc1, csrc1, enth_src_h2o, enth_src_co2 , hsrc1
   real*8 :: tmp, upweight
-! real*8 :: dddt,dddp,fg,dfgdp,dfgdt,dhdt,dhdp,dvdt,dvdp, visc
   real*8 :: rho
   real*8 :: Res(solution%option%ndof), vv_darcy(solution%option%nphase)
  PetscViewer :: viewer
@@ -827,14 +752,6 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
   call VecGetArrayF90(option%iphas_loc, iphase_loc_p, ierr)
   call VecGetArrayF90(option%var,var_p,ierr)
   
-  
- ! call VecGetArrayF90(option%ithrm,ithrm_p,ierr)
-!------------------------------------------------------ 
-
-
-
-
-
 !-----  phase properities ---- last time step---
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
@@ -848,9 +765,8 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
     ii2 = local_id*option%nphase
     iicap = icap_loc_p(ghosted_id)
     iiphase = iphase_loc_p(ghosted_id)
-    !*****************
+
     dif(1)= option%difaq
-    !dif(2)= option%cdiff(int(ithrm_p(n)))
   
   !*******************************************
     call pri_var_trans_richards_ninc(xx_p((local_id-1)*option%ndof+1: &
@@ -872,9 +788,7 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
                                     size_var_node), &
                                   option%itable,ierr, option%pref)
     endif
-  
-!  print *,'var_p',n,iiphase, var_p((n-1)*size_var_node+1:n*size_var_node)              
-!   if(n < 5) print *,'pflow_2ph: ',n,option%iideriv,option%xxphi_co2(n)
+
   enddo
 
   call VecRestoreArrayF90(xx, xx_p, ierr); CHKERRQ(ierr)
@@ -924,15 +838,8 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
 !--------------------------------------------------------------------------
 ! Calculate accumulation term for interior and exterior nodes.
 !--------------------------------------------------------------------------
-! print *,option%rtot
-  
-!  print *, 'Residual  (init):'
-!  print *, r_p
   
   r_p = - accum_p
-
-!  print *, 'Residual  (after accum_p):'
-!  print *, r_p
 
   do local_id = 1, grid%nlmax  ! For each local node do...
     ghosted_id = grid%nL2G(local_id)
@@ -959,9 +866,6 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
     r_p(p1:p1+option%ndof-1) = r_p(p1:p1+option%ndof-1) + Res(1:option%ndof)
     Resold_AR(local_id,1:option%ndof)= Res(1:option%ndof) 
   enddo
-
-!  print *, 'Residual  (after accum):'
-!  print *, r_p
 
 !************************************************************************
 ! add source/sink terms
@@ -1011,14 +915,9 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
       endif  
     
       if (csrc1 > 0.d0) then ! injection
-#if 0      
-        jng= 2 + (ng-1)*option%nphase
-                    
-!           duan eos
-!           call duanco2(tsrc1,PPRESSURE_LOC(ng)/1D5,dco2,fugco2,co2_phi)
-!           call ENTHALPY(tsrc1+273.15D0,1.D-3/dco2,1.D0/co2_phi, &
-!           enth_src_co2)
-!           enth_src_co2=enth_src_co2 * 1.D-3     
+#if 0   
+! this if for co2, which is not supported in richards   
+        jng= 2 + (ng-1)*option%nphase    
  
      !  span-wagner
         call ideal_gaseos_noderiv(var_loc_p((ng-1)*size_var_node+2), &
@@ -1040,28 +939,10 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
   
   !  else if (qsrc1 < 0.d0) then ! withdrawal
       
-    !  do kk = kk1, kk2
-     !   do jj = jj1, jj2
-       !   do ii = ii1, ii2
-          !    n = ii+(jj-1)*grid%nlx+(kk-1)*grid%nlxy
-           !   ng = grid%nL2G(n)
-           !   p1 = 1+(n-1)*option%ndof
-            !  t1 = p1 + 1
-           !   c1 = t1 + 1
-          !    qqsrc = qsrc1/ddensity_loc_p(ng)
-         !     enth_src = hh_loc_p(ng)
-        !      r_p(p1) = r_p(p1) - qsrc1
-       !       r_p(t1) = r_p(t1) - qsrc1*enth_src
-      !        r_p(c1) = r_p(c1) - qqsrc*CCONC_LOC(ng)
-     !     enddo
-    !    enddo
-   !   enddo
   !  endif
     enddo
     source_sink => source_sink%next
   enddo
-
-!GEH - Structured Grid Dependence - End
 
 !*********************************************************************
 
@@ -1110,13 +991,13 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
               perm_yy_loc_p(ghosted_id_dn)*abs(cur_connection_object%dist(2,iconn))+ &
               perm_zz_loc_p(ghosted_id_dn)*abs(cur_connection_object%dist(3,iconn))
 
-      i1 = ithrm_loc_p(ghosted_id_up)
-      i2 = ithrm_loc_p(ghosted_id_dn)
+      ithrm1 = ithrm_loc_p(ghosted_id_up)
+      ithrm2 = ithrm_loc_p(ghosted_id_dn)
       iicap1=int(icap_loc_p(ghosted_id_up))
       iicap2=int(icap_loc_p(ghosted_id_dn))
    
-      D1 = option%ckwet(i1)
-      D2 = option%ckwet(i2)
+      D1 = option%ckwet(ithrm1)
+      D2 = option%ckwet(ithrm2)
 
       call RichardsRes_FLCont(iconn,cur_connection_object%area(iconn), &
                               var_loc_p((ghosted_id_up-1)*size_var_node+1:(ghosted_id_up-1)* &
@@ -1156,16 +1037,7 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
 
     enddo
     cur_connection_object => cur_connection_object%next
-  enddo
-   ! print *,'finished NC' 
- 
-!  print *, 'Residual  (after flux):'
-!  print *, r_p
-
-!*************** Handle boundary conditions*************
-!   print *,'xxxxxxxxx ::...........'; call VecView(xx,PETSC_VIEWER_STDOUT_WORLD,ierr)
-
-!  print *,'2ph bc-sgbc', grid%myrank, option%sgbc    
+  enddo    
  
   boundary_condition => solution%boundary_conditions%first
   sum_connection = 0    
@@ -1193,8 +1065,8 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
       p1 = 1 + (local_id-1) * option%ndof
 
     
-      i2 = ithrm_loc_p(ghosted_id)
-      D2 = option%ckwet(i2)
+      ithrm2 = ithrm_loc_p(ghosted_id)
+      D2 = option%ckwet(ithrm2)
 
       ! for now, just assume diagonal tensor
       perm1 = perm_xx_loc_p(ghosted_id)*abs(cur_connection_object%dist(1,iconn))+ &
@@ -1208,8 +1080,6 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
           
         case(2)
         ! solve for pb from Darcy's law given qb /= 0
-!          option%xxbc(:,nc) = xx_loc_p((ng-1)*option%ndof+1: ng*option%ndof)
-!          option%iphasebc(nc) = int(iphase_loc_p(ng))
           option%xxbc(:,nc)=xx_loc_p((ghosted_id-1)*option%ndof+1:ghosted_id*option%ndof)
            option%iphasebc(nc) = int(iphase_loc_p(ghosted_id))
           if(dabs(option%velocitybc(1,nc))>1D-20)then
@@ -1229,46 +1099,11 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
            option%xxbc(3:option%ndof,nc) = xx_loc_p((ghosted_id-1)*option%ndof+3:ghosted_id*option%ndof)    
           option%iphasebc(nc)=int(iphase_loc_p(ghosted_id))
         
-      end select
-
-! print *,'2ph bc',grid%myrank,nc,m,ng,ibc,option%ibndtyp(ibc),grid%pressurebc(:,ibc), &
-! option%tempbc(ibc),option%sgbc(ibc),option%concbc(ibc),option%velocitybc(:,ibc)
-
-!   if(option%ibndtyp(ibc) == 1) then
-
-      !need specify injection phase ratio,conc and pressure
-   !   grid%ibndphaseRate(ibc) 
-   !   grid%ibndconc(ibc)    ! 
-   !   option%tempbc(ibc)      !1 elements 
-   !   grid%pressurebc(ibc)  !nphase elements
-!      endif
-   
+      end select 
     
       iicap=int(icap_loc_p(ghosted_id))  
-!      print *,'pflow_2pha_bc: ',grid%myrank,' nc= ',nc,' m= ',m, &
-!      ' ng= ',ng,' ibc= ',ibc,ip1,iicap, &
-!      grid%nconnbc,option%ibndtyp(ibc),option%concbc(nc)
-     
-!   print *,'pflow_2pha-bc: ',ibc,option%iideriv,option%ibndtyp(ibc),option%density_bc,&
-!   grid%pressurebc(2,ibc),option%tempbc(ibc),option%concbc(ibc),option%sgbc(ibc)
-       
-        !*****************
-      dif(1)= option%difaq
-!    dif(2)= option%cdiff(int(ithrm_loc_p(ng)))
-    !*******************************************
 
-!    print *, nc
-!    print *, 'xxbc: ', option%xxbc(:,nc)
-!    print *, 'iphasebc: ', option%iphasebc(nc)
-!    print *, 'icaptype: ', option%icaptype(iicap)
-!    print *, 'sir: ', option%sir(1:option%nphase,iicap)
-!    print *, 'lambda: ', grid%lambda(iicap)
-!    print *, 'alpha: ', option%alpha(iicap)
-!    print *, 'pckrm: ', grid%pckrm(iicap)
-!    print *, 'pwrprm: ', grid%pwrprm(iicap)
-!    print *, 'varbc: ', option%varbc(1:size_var_use)
-!    print *, 'xxphi_co2_bc: ', option%xxphi_co2_bc(nc)
-!    print *
+      dif(1)= option%difaq
   
       call pri_var_trans_Richards_ninc(option%xxbc(:,nc),option%iphasebc(nc),&
                                        option%scale,option%nphase,option%nspec, &
@@ -1289,28 +1124,11 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
 
       r_p(p1:p1-1+option%ndof)= r_p(p1:p1-1+option%ndof) - Res(1:option%ndof)
       ResOld_AR(local_id,1:option%ndof) = ResOld_AR(local_id,1:option%ndof) - Res(1:option%ndof)
-   
-   
-       !print *, ' boundary index', nc,ng,ibc,option%ibndtyp(ibc)
-       !print *,'        xxbc', option%iphasebc(nc), option%xxbc(:,nc),res
-     !print *, '       var', option%varbc
-  !   print *, ' P  T   C   S  ', grid%pressurebc(1,ibc),option%tempbc(ibc), &
-    !                               option%concbc(ibc),option%sgbc(ibc)
-    !   print *,' hh,den   ',grid%hh_bc(1:2),option%density_bc(1:2)
-
-!print *,' Gotten BC properties ', ibc,option%ibndtyp(ibc),iicap
-!print *,grid%pressurebc(2,ibc),option%tempbc(ibc),option%concbc(ibc),option%sgbc(ibc)
-!print *,option%density_bc,option%avgmw_bc
-!print *,grid%hh_bc,grid%uu_bc,grid%df_bc,grid%hen_bc,grid%pc_bc,grid%kvr_bc
+ 
     enddo
     boundary_condition => boundary_condition%next
   enddo
-
-!  print *,'finished BC'
-
-!  print *, 'Residual  (after bc flux):'
-!  print *, r_p
-
+  
   if (option%use_isoth==PETSC_TRUE) then
     do local_id = 1, grid%nlmax  ! For each local node do...
       ghosted_id = grid%nL2G(local_id)
@@ -1328,9 +1146,6 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
       r_p(zero_rows_local(i)) = 0.
     enddo
   endif
-
-!  print *, 'Residual  (final):'
-!  print *, r_p
 
   call VecRestoreArrayF90(r, r_p, ierr)
   call VecRestoreArrayF90(option%yy, yy_p, ierr)
@@ -1361,10 +1176,6 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
  call PetscViewerDestroy(viewer,ierr)
 #endif
 
-  !print *,'XX ::...........'; call VecView(xx,PETSC_VIEWER_STDOUT_WORLD,ierr)
- !print *,'Residual ::...........'; call VecView(r,PETSC_VIEWER_STDOUT_WORLD,ierr)
- 
- !print *,'finished RichardsResidual'
 end subroutine RichardsResidual
                 
 ! --------------------------------------------------------------------- 
@@ -1387,49 +1198,31 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
   Vec, intent(in) :: xx
   Mat, intent(out) :: A, B
   type(solution_type) :: solution
-   ! integer, intent(inout) :: flag
   MatStructure flag
 
-! integer :: j, jn, jm1, jm2, jmu, mu
   integer :: ierr
   integer :: nc,nvar,neq,nr
-  integer :: i1, i2, jng, i
-  integer :: kk,ii1,jj1,kk1,ii2,jj2,kk2  
+  integer :: ithrm1, ithrm2, i
   integer :: ip1, ip2 
-  integer :: p1,p2 !,t1,t2,c1,c2,s1,s2
-! real*8 :: v_darcy, q
-! real*8 :: dum1, dum2
+  integer :: p1,p2
 
   PetscScalar, pointer :: porosity_loc_p(:), volume_p(:), &
                           xx_loc_p(:), phis_p(:),  tor_loc_p(:),&
                           perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
   PetscScalar, pointer :: iphase_loc_p(:), icap_loc_p(:), ithrm_loc_p(:),var_loc_p(:)
-  integer :: iicap,ii,jj,iiphas,iiphas1,iiphas2,iicap1,iicap2
+  integer :: iicap,iiphas,iiphas1,iiphas2,iicap1,iicap2
+  integer :: ii, jj
   integer :: index_var_begin, index_var_end
-! integer ibc_hencoeff
-! real*8 :: dddt,dddp,fg,dfgdp
   real*8 :: dw_kg,dw_mol,enth_src_co2,enth_src_h2o,rho
-!           dfgdt,eng,dhdt,dhdp,visc,dvdt,dvdp
-! real*8 :: cond, gravity, acc, density_ave, den
   real*8 :: vv_darcy(solution%option%nphase),voldt,pvoldt
-! real*8 :: fluxl, fluxlh, fluxlv, fluxg, fluxgh, fluxgv, &
-!           flux, fluxh, fluxv, difff, diffg, diffl,
   real*8 :: ff,dif(1:solution%option%nphase)
   real*8 :: tsrc1,qsrc1,csrc1,hsrc1
   real*8 :: dd1, dd2, dd, f1, f2
-! real*8 :: dfluxp, dfluxt, dfluxp1, dfluxt1, dfluxp2, dfluxt2
-! real*8 :: por1, por2
   real*8 :: perm1, perm2
-! real*8 :: qu_rate, p_vapor,sat_pressure_t
-! real*8 :: cg1,cg2,cg,cg_p,cg_t,cg_s,cg_c
-! real*8 :: Dk, Dq,D0, Dphi, gdz  ! "Diffusion" constant for a phase.
   real*8 :: D1, D2  ! "Diffusion" constants upstream and downstream of a face.
-! real*8 :: sat_pressure  ! Saturation pressure of water.
-! real*8 :: xxlw,xxla,xxgw,xxga,cw,cw1,cw2,cwu, sat_ave
+
   real*8 :: ra(1:solution%option%ndof,1:2*solution%option%ndof)  
-! real*8 :: uhh, uconc, ukvr
   real*8 :: tmp, upweight
-! real*8 :: upweight,m1weight,m2weight,mbweight,mnweight
   real*8 :: delxbc(1:solution%option%ndof)
   real*8 :: blkmat11(1:solution%option%ndof,1:solution%option%ndof), &
             blkmat12(1:solution%option%ndof,1:solution%option%ndof),&
@@ -1474,21 +1267,9 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
  ! print *,'*********** In Jacobian ********************** '
   call MatZeroEntries(A,ierr)
 
-! Is the following necessary-pcl??? We've already done this in residual call.
- ! call DAGlobalToLocalBegin(grid%da_ndof, xx, INSERT_VALUES, &
- !                           option%xx_loc, ierr)
- ! call DAGlobalToLocalEnd(grid%da_ndof, xx, INSERT_VALUES, &
- !                         option%xx_loc, ierr)
- 
- !call DAGlobalToLocalBegin(grid%da_1_dof, option%iphas, &
- !                          INSERT_VALUES, option%iphas_loc, ierr)
- !call DAGlobalToLocalEnd(grid%da_1_dof, option%iphas, &
- !                         INSERT_VALUES, option%iphas_loc, ierr)
-
   call VecGetArrayF90(option%xx_loc, xx_loc_p, ierr)
   call VecGetArrayF90(option%porosity_loc, porosity_loc_p, ierr)
   call VecGetArrayF90(option%tor_loc, tor_loc_p, ierr)
-! call VecGetArrayF90(option%perm_loc, perm_loc_p, ierr)
   call VecGetArrayF90(option%perm_xx_loc, perm_xx_loc_p, ierr)
   call VecGetArrayF90(option%perm_yy_loc, perm_yy_loc_p, ierr)
   call VecGetArrayF90(option%perm_zz_loc, perm_zz_loc_p, ierr)
@@ -1498,9 +1279,6 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
   call VecGetArrayF90(option%icap_loc, icap_loc_p, ierr)
   call VecGetArrayF90(option%iphas_loc, iphase_loc_p, ierr)
   call VecGetArrayF90(option%var_loc, var_loc_p, ierr)
-
- !print *,' In mph Jacobian ::  got pointers '
-! ********************************************************************
 
 ! Accumulation terms
 
@@ -1529,7 +1307,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
       ResInc(local_id,:,nvar) = ResInc(local_id,:,nvar) + Res(:)
     enddo
   enddo
-! print *,' Mph Jaco Finished accum terms'
+
 ! Source / Sink term
 #ifdef DEBUG_GEH_ALL  
  call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
@@ -1586,13 +1364,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
       if (csrc1 > 0.d0) then ! injection
 #if 0      
         jng= 2 + (ghosted_id-1)*option%nphase
-                    
-!           duan eos
-!           call duanco2(tsrc1,PPRESSURE_LOC(ng)/1D5,dco2,fugco2,co2_phi)
-!           call ENTHALPY(tsrc1+273.15D0,1.D-3/dco2,1.D0/co2_phi, &
-!           enth_src_co2)
-!           enth_src_co2=enth_src_co2 * 1.D-3     
- 
+
          !  span-wagner
         do nvar=1,option%ndof     
           call ideal_gaseos_noderiv(var_loc_p((ghosted_id-1)*size_var_node+nvar* &
@@ -1604,12 +1376,6 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
                                                                     option%dt
           ResInc(n,option%ndof,nvar)=  ResInc(n,option%ndof,nvar) - csrc1 * &
                                                            enth_src_co2*option%dt
-
-          !  Res_AR(n,option%jco2)= Res_AR(n,option%jco2) - csrc1
-    !  Res_AR(n,option%ndof)= Res_AR(n,option%ndof) - csrc1 * enth_src_co2
-       !r_p(s1) = r_p(s1) - csrc1
-
-!           print *,'pflow2ph_co2: ',nr,n,ng,tsrc1,rho,option%fmwco2,csrc1
         enddo
 #endif        
       endif
@@ -1617,7 +1383,6 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
     source_sink => source_sink%next
   enddo  
 
-  ! print *,' Mph Jaco Finished source terms'
 ! Contribution from BC
   boundary_condition => solution%boundary_conditions%first
   sum_connection = 0    
@@ -1645,8 +1410,8 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
       p1 = 1 + (local_id-1) * option%ndof
        
     
-      i2 = ithrm_loc_p(ghosted_id)
-      D2 = option%ckwet(i2)
+      ithrm2 = ithrm_loc_p(ghosted_id)
+      D2 = option%ckwet(ithrm2)
 
       ! for now, just assume diagonal tensor
       perm1 = perm_xx_loc_p(ghosted_id)*abs(cur_connection_object%dist(1,iconn))+ &
@@ -1662,9 +1427,6 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
           delxbc =0.D0
         case(2)
           ! solve for pb from Darcy's law given qb /= 0
-!          option%xxbc(:,nc) = xx_loc_p((ng-1)*option%ndof+1: ng*option%ndof)
-!          option%iphasebc(nc) = int(iphase_loc_p(ng))
-!          delxbc = option%delx(1:option%ndof,ng)
           option%xxbc(:,nc) = xx_loc_p((ghosted_id-1)*option%ndof+1: ghosted_id*option%ndof)
           option%iphasebc(nc) = int(iphase_loc_p(ghosted_id))
           delxbc = option%delx(1:option%ndof,ghosted_id)
@@ -1678,7 +1440,6 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
           endif    
 
         case(3) 
-        !    option%xxbc(1,nc)=grid%pressurebc(2,ibc)
           option%xxbc(2:option%ndof,nc) = xx_loc_p((ghosted_id-1)*option%ndof+2:ghosted_id*option%ndof)
           option%iphasebc(nc) = int(iphase_loc_p(ghosted_id))
           delxbc(1) = 0.D0
@@ -1693,32 +1454,10 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
     
       end select
 
-! print *,'2ph bc',grid%myrank,nc,m,ng,ibc,option%ibndtyp(ibc),grid%pressurebc(:,ibc), &
-! option%tempbc(ibc),option%sgbc(ibc),option%concbc(ibc),option%velocitybc(:,ibc)
-
-!   if(option%ibndtyp(ibc) == 1) then
-
-      !need specify injection phase ratio,conc and pressure
-   !   grid%ibndphaseRate(ibc) 
-   !   grid%ibndconc(ibc)    ! 
-   !   option%tempbc(ibc)      !1 elements 
-   !   grid%pressurebc(ibc)  !nphase elements
-!      endif
-   
       iicap = int(icap_loc_p(ghosted_id))     
        
-!      print *,'pflow_2pha_bc: ',grid%myrank,' nc= ',nc,' m= ',m, &
-!      ' ng= ',ng,' ibc= ',ibc,ip1,iicap, &
-!      grid%nconnbc,option%ibndtyp(ibc),option%concbc(nc)
-     
-!   print *,'pflow_2pha-bc: ',ibc,option%iideriv,option%ibndtyp(ibc),option%density_bc,&
-!   grid%pressurebc(2,ibc),option%tempbc(ibc),option%concbc(ibc),option%sgbc(ibc)
-        !*****************
       dif(1) = option%difaq
-  !  dif(2) = option%cdiff(int(ithrm_loc_p(ng)))
-    !*******************************************
 
-  !  print *,' Mph Jaco BC terms: finish setup'
   ! here should pay attention to BC type !!!
       call pri_var_trans_Richards_ninc(option%xxbc(:,nc),option%iphasebc(nc), &
                                   option%scale,option%nphase,option%nspec, &
@@ -1732,7 +1471,6 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
                                     size_var_use), &
                                   option%itable,ierr, option%pref)
               
-!    print *,' Mph Jaco BC terms: finish increment'
       do nvar=1,option%ndof
         call RichardsRes_FLBCCont(nc,boundary_condition%condition%itype(1), &
                                 cur_connection_object%area(iconn), &
@@ -1749,22 +1487,11 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
 
         ResInc(local_id,1:option%ndof,nvar) = ResInc(local_id,1:option%ndof,nvar) - Res(1:option%ndof)
       enddo
- !  print *,' Mph Jaco BC terms: finish comp'
-    !   print *, ' boundary index', nc,ng,ibc,option%ibndtyp(ibc)
-    !   print *, ' P  T   C   S  ', grid%pressurebc(1,ibc),option%tempbc(ibc), &
-    !                               option%concbc(ibc),option%sgbc(ibc)
-    !   print *,' hh,den   ',grid%hh_bc(1:2),option%density_bc(1:2)
-
-!print *,' Gotten BC properties ', ibc,option%ibndtyp(ibc),iicap
-!print *,grid%pressurebc(2,ibc),option%tempbc(ibc),option%concbc(ibc),option%sgbc(ibc)
-!print *,option%density_bc,option%avgmw_bc
-!print *,grid%hh_bc,grid%uu_bc,grid%df_bc,grid%hen_bc,grid%pc_bc,grid%kvr_bc
 
     enddo
     boundary_condition => boundary_condition%next
   enddo
 
-  ! print *,' Mph Jaco Finished BC terms'
 #ifdef DEBUG_GEH_ALL  
  call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
  call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
@@ -1783,7 +1510,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
     ghosted_id = grid%nL2G(local_id)
     natural_id_up= grid%nG2N(ghosted_id)
    ! Remember, the matrix index starts from (0,0)
-    p1 = (ghosted_id-1)*option%ndof ! = 1 + (ng-1)*option%ndof-1
+    p1 = (ghosted_id-1)*option%ndof 
    
     max_dev = 0.D0
     do neq=1, option%ndof
@@ -1825,10 +1552,8 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
  call PetscViewerDestroy(viewer,ierr)
 #endif
   
-!   print *,' Mph Jaco Finished one node terms'
 ! -----------------------------contribution from transport----------------------
 
- !print *,'phase cond: ',iphase_loc_p
   ResInc=0.D0
   
   connection_list => grid%internal_connection_list
@@ -1876,15 +1601,14 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
       iiphas1 = iphase_loc_p(ghosted_id_up)
       iiphas2 = iphase_loc_p(ghosted_id_dn)
 
-      i1 = ithrm_loc_p(ghosted_id_up)
-      i2 = ithrm_loc_p(ghosted_id_dn)
-      D1 = option%ckwet(i1)
-      D2 = option%ckwet(i2)
+      ithrm1 = ithrm_loc_p(ghosted_id_up)
+      ithrm2 = ithrm_loc_p(ghosted_id_dn)
+      D1 = option%ckwet(ithrm1)
+      D2 = option%ckwet(ithrm2)
     
       iicap1 = int(icap_loc_p(ghosted_id_up))
       iicap2 = int(icap_loc_p(ghosted_id_dn))
  
-  ! do neq = 1, option%ndof
       do nvar = 1, option%ndof
         call RichardsRes_FLCont(nc,cur_connection_object%area(iconn), &
                               var_loc_p((ghosted_id_up-1)*size_var_node+nvar* &
@@ -1918,10 +1642,6 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
         ra(:,nvar+option%ndof)= (Res(:)-ResOld_FL(nc,:))/option%delx(nvar,ghosted_id_dn)
    
       enddo
-  
-   !   print *,' Mph Jaco Finished NC terms'
-  
-  ! enddo
    
       if (option%use_isoth==PETSC_TRUE) then
         ra(3,1:2*option%ndof)=0.D0
@@ -1979,12 +1699,10 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
         if (local_id_up>0) call MatSetValuesBlocked(A,1,natural_id_up,1,natural_id_dn,blkmat12,ADD_VALUES,ierr)
         if (local_id_dn>0) call MatSetValuesBlocked(A,1,natural_id_dn,1,natural_id_up,blkmat21,ADD_VALUES,ierr)
       endif
-!print *,'accum r',ra(1:5,1:8)   
- !print *,'devq:',nc,q,dphi,devq(3,:)
+
     enddo
     cur_connection_object => cur_connection_object%next
   enddo
-  ! print *,' Mph Jaco Finished Two node terms'
   
   call VecRestoreArrayF90(option%xx_loc, xx_loc_p, ierr)
   call VecRestoreArrayF90(option%porosity_loc, porosity_loc_p, ierr)
@@ -2031,11 +1749,6 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
   call MatZeroRowsLocal(A,n_zero_rows,zero_rows_local_ghosted,f1,ierr) 
 #endif
 
-  !B = A
-  !call MatCopy(A,B,ierr)
-  
- !call PetscViewerSetFormat(PETSC_VIEWER_STDOUT_WORLD, PETSC_VIEWER_ASCII_MATLAB, ierr)
-
 #ifdef DEBUG_GEH    
  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian.out',viewer,ierr)
  call MatView(A,viewer,ierr)
@@ -2062,16 +1775,12 @@ subroutine pflow_Richards_initaccum(solution)
   integer :: ierr
   integer :: i, index_var_begin,index_var_end
   integer :: p1
-! integer :: ii1,ii2
   integer :: iicap, iiphase
   integer :: local_id, ghosted_id
 
   PetscScalar, pointer :: accum_p(:),yy_p(:),volume_p(:),porosity_loc_p(:),&
                           var_p(:), icap_loc_p(:),iphase_loc_p(:),ithrm_loc_p(:)
   
- !  integer, pointer ::iphase_p(:)
-  
-! real*8 :: sat_pressure, pvol, satw  ! Saturation pressure of water.
   real*8 :: dif(1:solution%option%nphase),res(1:solution%option%ndof)
  
   type(grid_type), pointer :: grid
@@ -2100,7 +1809,6 @@ subroutine pflow_Richards_initaccum(solution)
     iicap=int(icap_loc_p(ghosted_id))
     iiphase = int(iphase_loc_p(ghosted_id))
     dif(1)= option%difaq
- !   dif(2)= option%cdiff(int(ithrm_p(n)))
 
     call pri_var_trans_Richards_ninc(yy_p((local_id-1)*option%ndof+1:local_id*option%ndof),iiphase,&
                                 option%scale,option%nphase,option%nspec, &
@@ -2123,7 +1831,6 @@ subroutine pflow_Richards_initaccum(solution)
       if (option%imat(ghosted_id) <= 0) cycle
     endif
 
-  !  ng = grid%nL2G(n)   ! corresponding ghost index
     p1 = 1 + (local_id-1)*option%ndof
     index_var_begin=(local_id-1)*size_var_node+1
     index_var_end = index_var_begin -1 + size_var_use
@@ -2136,13 +1843,7 @@ subroutine pflow_Richards_initaccum(solution)
  
 
     accum_p(p1:p1+option%ndof-1)=Res(:) 
-
-   !print *, 'init m accum ', n,  Res 
-
-! print *,n,accum_p(p1),accum_p(t1),accum_p(c1),accum_p(s1)
- !print *,  n, PRESSURE(n),TEMP(n), density_p(jn), density_p(jn+1), u_p(jn),u_p(jn+1),&
- !hen_p(2+(j-1)*option%nspec+(n-1)*option%nphase*option%nspec),kvr_p(jn),kvr_p(jn+1)
-
+    
   enddo
 
   call VecRestoreArrayF90(grid%volume, volume_p, ierr)
@@ -2162,7 +1863,6 @@ subroutine pflow_update_Richards(solution)
   use translator_Richards_module
   use pckr_module
   use Condition_module_old
-   ! use water_eos_module
 
   use Connection_module
   use Solution_module
@@ -2174,8 +1874,7 @@ subroutine pflow_update_Richards(solution)
 
   type(solution_type) :: solution 
     
-! integer :: ichange 
-  integer :: n0
+  integer :: dof_offset
 !geh added for transient boundary conditons
   integer :: nc, iithrm
   real*8 :: sw, pc(2), kr(2)
@@ -2183,7 +1882,6 @@ subroutine pflow_update_Richards(solution)
   PetscScalar, pointer :: xx_p(:),icap_loc_p(:),ithrm_loc_p(:), &
                           iphase_loc_p(:), var_p(:), yy_p(:), iphase_loc_old_p(:)
   real*8 :: dif(1:solution%option%nphase)
-! real*8 :: dum1, dum2   
   integer :: local_id, ghosted_id        
 
 
@@ -2203,10 +1901,6 @@ subroutine pflow_update_Richards(solution)
     vel_bc = option%velocitybc
   endif
 !geh end
-
-  ! if (option%rk > 0.d0) call Rock_Change(grid)
-  ! call  Translator_Richards_Switching(option%xx,grid,1,ichange)
-  !print *,'Richards_Update done'
  
    ! if(ichange ==1)then
   call VecGetArrayF90(option%xx, xx_p, ierr); CHKERRQ(ierr)
@@ -2227,38 +1921,20 @@ subroutine pflow_update_Richards(solution)
     iicap = icap_loc_p(ghosted_id)
     iiphase = int(iphase_loc_p(ghosted_id))
     iiphase_old = int(iphase_loc_old_p(ghosted_id))
-    n0 = (local_id-1)*option%ndof
+    dof_offset = (local_id-1)*option%ndof
     
      if(option%ndof>=3) then
-        if (xx_p(n0+3)<0.D0) xx_p(n0+3)=1.D-6
-     endif
-    !*****************
-  !  if (iiphase ==3)then
-  !    if(xx_p(n0+1) > yy_p(n0+1) .and. xx_p(n0+1)+ formeps > option%pref .and. iiphase_old==3)then
-  !     iphase_p(n) =1
-  !     iiphase =1
-  !     xx_p(n0+1) = option%pref + formeps
-  !    endif
-  !   elseif (iiphase ==1)then
-  !    if(xx_p(n0+1) < yy_p(n0+1) .and. xx_p(n0+1) - formeps < option%pref .and. iiphase_old==1)then
-  !     iphase_p(n) =3
-  !     iiphase =3
-  !     xx_p(n0+1) = option%pref - formeps
-  !    endif
-  !  endif   
-
+        if (xx_p(dof_offset+3)<0.D0) xx_p(dof_offset+3)=1.D-6
+     endif  
     
     dif(1) = option%difaq
- !   dif(2) = option%cdiff(int(ithrm_p(n)))
-    !*******************************************
+
     call pri_var_trans_Richards_ninc(xx_p((local_id-1)*option%ndof+1:local_id*option%ndof),iiphase, &
                                 option%scale,option%nphase,option%nspec, &
                                 iicap, dif,&
                                 var_p((local_id-1)*size_var_node+1:(local_id-1)* &
                                   size_var_node+size_var_use),&
                                 option%itable,ierr, option%pref)
-  ! print *,n, xx_p((n-1)*option%ndof+1:n*option%ndof), var_p((n-1)*size_var_node+1:(n-1)*
-  !size_var_node+4)
  
    enddo
 
@@ -2287,23 +1963,16 @@ subroutine pflow_update_Richards(solution)
           print *, "Wrong boundary node index... STOP!!!"
           stop
         endif
-       
-    !print *,'initadj_bc',nc,ibc,option%ibndtyp(ibc),grid%nconnbc
 
         if (boundary_condition%condition%itype(1)==1 .or. &
             boundary_condition%condition%itype(1)==3) then
           iicap=int(icap_loc_p(ghosted_id))
           iithrm=int(ithrm_loc_p(ghosted_id)) 
           dif(1)= option%difaq
-      !  dif(2)= option%cdiff(iithrm)
       
           if(option%iphasebc(nc) ==3)then
             sw= option%xxbc(1,nc)
             call pflow_pckr_richards_fw(iicap ,sw,pc,kr)    
-            !if(pc(1)>grid%pcwmax(iicap))then
-            !  print *,'INIT Warning: Pc>pcmax'
-            !  pc(1)=grid%pcwmax(iicap)
-            !endif 
             option%xxbc(1,nc) =  option%pref - pc(1)
           endif
       
@@ -2326,7 +1995,6 @@ subroutine pflow_update_Richards(solution)
         if (boundary_condition%condition%itype(1)==2) then
           yybc(2:option%ndof,nc)= option%xxbc(2:option%ndof,nc)
           vel_bc(1,nc) = option%velocitybc(1,nc)
-!          print *,'initadj', nc, yybc(:,nc), vel_bc(:,nc)
         endif 
       
       enddo
@@ -2349,9 +2017,7 @@ subroutine pflow_update_Richards(solution)
   call VecCopy(option%iphas_loc, option%iphas_old_loc, ierr)   
    
   call  pflow_Richards_initaccum(solution)
-    !print *,'pflow_Richards_initaccum done'
   call translator_Richards_get_output(grid%nlmax,option)
- ! print *,'translator_get_output done'
   ! the output variables should be put into grid%pressure, temp,xmol,sat...
   ! otherwise need to rewrite the pflow_output
 
@@ -2391,7 +2057,6 @@ subroutine pflow_Richards_initadj(solution)
   PetscScalar, pointer ::iphase_loc_p(:), ithrm_loc_p(:),icap_loc_p(:)
   
   real*8 :: dif(solution%option%nphase)
-! real*8 :: dum1, dum2
   real*8 :: pc(1:solution%option%nphase), kr(1:solution%option%nphase), sw
 
   type(coupler_type), pointer :: boundary_condition
@@ -2402,17 +2067,12 @@ subroutine pflow_Richards_initadj(solution)
   type(option_type), pointer :: option
   grid => solution%grid
   option => solution%option  
-  
-! real*8 :: temp1
-!  real*8, parameter :: Rg=8.31415D0
 
   call VecGetArrayF90(option%icap_loc, icap_loc_p, ierr)
   call VecGetArrayF90(option%ithrm_loc, ithrm_loc_p, ierr)
   call VecGetArrayF90(option%iphas_loc, iphase_loc_p, ierr)
   call VecGetArrayF90(option%xx, xx_p, ierr)
-  call VecGetArrayF90(option%var, var_p, ierr)
-! print *,'initadj gotten pointers' 
-
+  call VecGetArrayF90(option%var, var_p, ierr) 
 
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
@@ -2422,21 +2082,17 @@ subroutine pflow_Richards_initadj(solution)
     endif
 
     jn = 1 + (local_id-1)*option%nphase
-    ii1=1+(local_id-1)*option%nphase; ii2=local_id*option%nphase
+    ii1=1+(local_id-1)*option%nphase
+    ii2=local_id*option%nphase
     iicap=int(icap_loc_p(local_id))
         
     iiphase = iphase_loc_p(local_id)
-        !*****************
     dif(1)= option%difaq
- !   dif(2)= option%cdiff(int(ithrm_p(n)))
-    !*******************************************
+
    if(iiphase ==3)then
-    ! print *, 'rich iniadj: ',n, iiphase, xx_p((n-1)*option%ndof+1: n*option%ndof)
+
      sw= xx_p((local_id-1)*option%ndof+1)
      call pflow_pckr_richards_fw(iicap,sw,pc,kr)    
-  !   print *,'INIT ', sw, pc(1), iicap, grid%pcwmax(iicap), option%icaptype(iicap),option%sir(1,iicap), grid%lambda(iicap), &
-  !               option%alpha(iicap),grid%pckrm(iicap),grid%pcwmax(iicap),sw,pc,kr,&
-  !               grid%pcbetac(iicap),grid%pwrprm(iicap)
                  
      if(pc(1)>option%pcwmax(iicap))then
         print *,'INIT Warning: Pc>pcmax', sw, pc(1), iicap, option%pcwmax(iicap)
@@ -2497,23 +2153,16 @@ subroutine pflow_Richards_initadj(solution)
         print *, "Wrong boundary node index... STOP!!!"
         stop
       endif
-       
-  !geh      print *,'initadj_bc',nc,ibc,option%ibndtyp(ibc),grid%nconnbc
 
       if (boundary_condition%condition%itype(1)==1 .or. &
           boundary_condition%condition%itype(1)==3) then
         iicap=int(icap_loc_p(local_id))
         iithrm=int(ithrm_loc_p(local_id)) 
         dif(1)= option%difaq
-      !  dif(2)= option%cdiff(iithrm)
         
         if(option%iphasebc(nc) ==3)then
           sw= option%xxbc(1,nc)
           call pflow_pckr_richards_fw(iicap,sw,pc,kr)    
-      !   if(pc(1)>grid%pcwmax(iicap))then
-      !     print *,'INIT Warning: Pc>pcmax'
-      !     pc(1)=grid%pcwmax(iicap)
-      !   endif 
           option%xxbc(1,nc) =  option%pref - pc(1)
         endif
 
@@ -2539,7 +2188,6 @@ subroutine pflow_Richards_initadj(solution)
     
         yybc(2:option%ndof,nc)= option%xxbc(2:option%ndof,nc)
         vel_bc(1,nc) = option%velocitybc(1,nc)
-  !geh       print *,'initadj', nc, yybc(:,nc), vel_bc(:,nc)
       endif 
     enddo
     boundary_condition => boundary_condition%next
@@ -2550,9 +2198,6 @@ subroutine pflow_Richards_initadj(solution)
   call VecRestoreArrayF90(option%iphas_loc, iphase_loc_p, ierr)
   call VecRestoreArrayF90(option%xx, xx_p, ierr)
   call VecRestoreArrayF90(option%var, var_p, ierr)
-  !print *,kgjkdf
-  
-  !call VecCopy(option%iphas,option%iphas_old,ierr)
    
 end subroutine pflow_Richards_initadj
 
