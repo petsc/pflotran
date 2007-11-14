@@ -178,7 +178,7 @@ subroutine PflowInit(simulation,filename)
   call VecDuplicate(option%porosity, option%porosity0, ierr)
   call VecDuplicate(option%porosity, option%tor, ierr)
   call VecDuplicate(option%porosity, option%conc, ierr)
-  call VecDuplicate(option%porosity, option%volume, ierr)
+  call VecDuplicate(option%porosity, grid%volume, ierr)
   call VecDuplicate(option%porosity, option%ithrm, ierr)
   call VecDuplicate(option%porosity, option%icap, ierr)
   call VecDuplicate(option%porosity, option%iphas, ierr)
@@ -539,7 +539,7 @@ subroutine PflowInit(simulation,filename)
   
   call GridComputeSpacing(grid)
   call GridComputeCoordinates(grid,option)
-  call GRidComputeVolumes(grid,option)
+  call GridComputeVolumes(grid,option)
 
   ! set up internal connectivity, distance, etc.
   call GridComputeInternalConnect(grid,option)
@@ -1463,6 +1463,11 @@ subroutine readInput(simulation,filename)
   real*8, parameter:: fmwnacl = 58.44277D0, fmwh2o  = 18.01534d0
   integer :: i, i1, i2, idum, ireg, isrc, j
   integer :: ibc, ibrk, ir,np  
+
+  logical :: continuation_flag
+  character(len=1) :: backslash
+  real*8 :: temp_real
+  integer :: temp_int
   
   integer :: count, id
   
@@ -1491,7 +1496,10 @@ subroutine readInput(simulation,filename)
   option => solution%option
   stepper => simulation%stepper
   solver => stepper%solver
-    
+
+  backslash = achar(92)  ! 92 = "\" Some compilers choke on \" thinking it
+                          ! is a double quote as in c/c++
+                              
   rewind(IUNIT1)  
     
   do
@@ -2533,113 +2541,64 @@ subroutine readInput(simulation,filename)
           stop
         endif
 
-        call fiReadInt(string,option%kplot,ierr) 
-        call fiDefaultMsg('kplot',ierr)
-      
-        allocate(option%tplot(option%kplot))
-      
-        call fiReadFlotranString(IUNIT1,string,ierr)
-        call fiReadStringErrorMsg('TIME',ierr)
-        i2 = 0
+        continuation_flag = .true.
         do
-          i1 = i2 + 1
-          i2 = i2+10
-          if (i2 > option%kplot) i2 = option%kplot
-          do i = i1, i2
-            call fiReadDouble(string,option%tplot(i),ierr)
-            call fiDefaultMsg('tplot',ierr)
-            waypoint => WaypointCreate()
-            waypoint%time = option%tplot(i)
-            call WaypointInsertInList(waypoint,stepper%waypoints)
-          enddo
-          if (i2 == option%kplot) exit
+          if (.not.continuation_flag) exit
           call fiReadFlotranString(IUNIT1,string,ierr)
-          call fiReadStringErrorMsg('TIME',ierr)
+          if (ierr /= 0) exit
+          continuation_flag = .false.
+          if (index(string,backslash) > 0) continuation_flag = .true.
+          ierr = 0
+          do
+            if (ierr /= 0) exit
+            call fiReadDouble(string,temp_real,ierr)
+            if (ierr == 0) then
+              waypoint => WaypointCreate()
+              waypoint%time = temp_real
+              waypoint%print_output = .true.              
+              call WaypointInsertInList(waypoint,stepper%waypoints)
+            endif
+          enddo
         enddo
         
         ! make last waypoint final
         waypoint%final = .true.
-
-!       call fiReadFlotranString(IUNIT1,string,ierr)
-!       call fiReadStringErrorMsg('TIME',ierr)
-      
-!       call fiReadDouble(string,option%dt,ierr)
-!       call fiDefaultMsg('dt',ierr)
-
-!       call fiReadDouble(string,option%dt_max,ierr)
-!       call fiDefaultMsg('dt_max',ierr)
-
-        if (option%myrank==0) then
-          write(IUNIT2,'(/," *TIME ",a3,1x,i4,/,(1p10e12.4))') solution%output_option%tunit, &
-          option%kplot,(option%tplot(i),i=1,option%kplot)
-!         write(IUNIT2,'("  dt= ",1pe12.4,", dtmax= ",1pe12.4,/)') &
-!         option%dt,option%dt_max
-        endif
-      
-        ! convert time units to seconds
-        do i = 1, option%kplot
-          option%tplot(i) = solution%output_option%tconv * option%tplot(i)
-        enddo
-!       option%dt = option%tconv * option%dt
-!       option%dt_max = option%tconv * option%dt_max
 
 !....................
 
       case ('DTST')
 
         call fiReadStringErrorMsg('DTST',ierr)
-  
-        call fiReadInt(string,stepper%nstpmax,ierr)
-        call fiDefaultMsg('nstpmax',ierr)
-  
-        allocate(stepper%tstep(stepper%nstpmax))
-        allocate(stepper%dtstep(stepper%nstpmax))
-  
-        do i = 1, stepper%nstpmax
-          call fiReadDouble(string,stepper%tstep(i),ierr)
-          call fiDefaultMsg('tstep',ierr)
-        enddo
 
-        call fiReadFlotranString(IUNIT1,string,ierr)
-        call fiReadStringErrorMsg('DTST',ierr)
         call fiReadDouble(string,stepper%dt_min,ierr)
         call fiDefaultMsg('dt_min',ierr)
-        
-        waypoint => WaypointCreate()
-        waypoint%time = 0.d0
-        waypoint%print_output = .true.
-        call WaypointInsertInList(waypoint,stepper%waypoints)
             
-        do i = 1, stepper%nstpmax
-          call fiReadDouble(string,stepper%dtstep(i),ierr)
-          call fiDefaultMsg('dtstep',ierr)
-          ! need to copy first max_dt here to first waypoint
-          if (i == 1) then
-            waypoint%max_dt = stepper%dtstep(i)
-          endif
-          waypoint => WaypointCreate()
-          waypoint%time = stepper%tstep(i)
-          waypoint%max_dt = stepper%dtstep(i)
-          waypoint%print_output = .true.
-          call WaypointInsertInList(waypoint,stepper%waypoints)          
+        continuation_flag = .true.
+        temp_int = 0       
+        do
+          if (.not.continuation_flag) exit
+          call fiReadFlotranString(IUNIT1,string,ierr)
+          if (ierr /= 0) exit
+          continuation_flag = .false.
+          if (index(string,backslash) > 0) continuation_flag = .true.
+          ierr = 0
+          do
+            if (ierr /= 0) exit
+            call fiReadDouble(string,temp_real,ierr)
+            if (ierr == 0) then
+              waypoint => WaypointCreate()
+              waypoint%time = temp_real
+              call fiReadDouble(string,waypoint%dt_max,ierr)
+              call fiErrorMsg('dt_max','dtst',ierr)
+              if (temp_int == 0) stepper%dt_max = waypoint%dt_max
+              call WaypointInsertInList(waypoint,stepper%waypoints)
+              temp_int = temp_int + 1
+            endif
+          enddo
         enddo
-        
-        stepper%dt_max = stepper%dtstep(1)
         
         option%dt = stepper%dt_min
       
-        if (option%myrank==0) then
-          write(IUNIT2,'(/," *DTST ",i4,/," tstep= ",(1p10e12.4))')  &
-            stepper%nstpmax, (stepper%tstep(i),i=1,stepper%nstpmax)
-          write(IUNIT2,'(" dtstep= ",1p10e12.4,/)') &
-            stepper%dt_min,(stepper%dtstep(i),i=1,stepper%nstpmax)
-        endif
-      
-        ! convert time units to seconds
-        do i = 1, stepper%nstpmax
-          stepper%tstep(i) = solution%output_option%tconv * stepper%tstep(i)
-          stepper%dtstep(i) = solution%output_option%tconv * stepper%dtstep(i)
-        enddo
         option%dt = solution%output_option%tconv * option%dt
         stepper%dt_min = solution%output_option%tconv * stepper%dt_min
         stepper%dt_max = solution%output_option%tconv * stepper%dt_max

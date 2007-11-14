@@ -129,7 +129,6 @@
       call Read_init_field(grid, kplt)
       call initAccumulation(solution)
       print *, 'Restart from ASCII file: pflow_init.dat'
-    !  print *, 't, dt, kplt :: ',grid%t,grid%dt,kplt,grid%flowsteps,iplot,ntstep
   endif
 #endif  
            

@@ -86,7 +86,7 @@ module Structured_Grid_module
             StructureGridGlobalToLocal, &
             StructureGridGlobalToNatural, &
             StructuredGridReadDXYZ, &
-            StructuredGridComputelVolumes, &
+            StructuredGridComputeVolumes, &
             StructGridComputeBoundConnect, &
             StructGridPopulateConnection
 
@@ -1130,12 +1130,12 @@ end subroutine StructGridPopulateConnection
 
 ! ************************************************************************** !
 !
-! StructuredGridComputelVolumes: Computes the volumes of cells in structured grid
+! StructuredGridComputeVolumes: Computes the volumes of cells in structured grid
 ! author: Glenn Hammond
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine StructuredGridComputelVolumes(structured_grid,option,nL2G)
+subroutine StructuredGridComputeVolumes(structured_grid,option,nL2G,volume)
 
   use Option_module
   
@@ -1144,6 +1144,7 @@ subroutine StructuredGridComputelVolumes(structured_grid,option,nL2G)
   type(structured_grid_type) :: structured_grid
   type(option_type) :: option
   integer :: nL2G(:)
+  Vec :: volume
   
   real*8, parameter :: Pi=3.1415926d0
   
@@ -1151,7 +1152,7 @@ subroutine StructuredGridComputelVolumes(structured_grid,option,nL2G)
   PetscScalar, pointer :: volume_p(:), dx_loc_p(:), dy_loc_p(:), dz_loc_p(:)
   PetscErrorCode :: ierr
   
-  call VecGetArrayF90(option%volume,volume_p, ierr)
+  call VecGetArrayF90(volume,volume_p, ierr)
   call VecGetArrayF90(structured_grid%dx_loc,dx_loc_p,ierr)
   call VecGetArrayF90(structured_grid%dy_loc,dy_loc_p,ierr)
   call VecGetArrayF90(structured_grid%dz_loc,dz_loc_p,ierr)
@@ -1168,7 +1169,7 @@ subroutine StructuredGridComputelVolumes(structured_grid,option,nL2G)
     else if (structured_grid%igeom == STRUCTURED_SPHERICAL) then
     endif
   enddo
-  call VecRestoreArrayF90(option%volume,volume_p, ierr)
+  call VecRestoreArrayF90(volume,volume_p, ierr)
   call VecRestoreArrayF90(structured_grid%dx_loc,dx_loc_p,ierr)
   call VecRestoreArrayF90(structured_grid%dy_loc,dy_loc_p,ierr)
   call VecRestoreArrayF90(structured_grid%dz_loc,dz_loc_p,ierr)
@@ -1183,7 +1184,7 @@ subroutine StructuredGridComputelVolumes(structured_grid,option,nL2G)
     option%myrank,structured_grid%ngmax,structured_grid%ngx,structured_grid%ngy,structured_grid%ngz, &
     structured_grid%ngxs,structured_grid%ngxe,structured_grid%ngys,structured_grid%ngye,structured_grid%ngzs,structured_grid%ngze
 
-end subroutine StructuredGridComputelVolumes
+end subroutine StructuredGridComputeVolumes
 
 ! ************************************************************************** !
 !

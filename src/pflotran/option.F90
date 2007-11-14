@@ -84,10 +84,10 @@ module Option_module
     character*2 :: tunit ! Input time units
     real*8, pointer :: tstep(:), dtstep(:)
 #endif    
-    real*8, pointer :: tplot(:)
+!    real*8, pointer :: tplot(:)
     real*8, pointer :: tfac(:)
       ! An array of multiplicative factors that specify how to increase time step.
-    integer :: kplot      ! Printout steps.
+!    integer :: kplot      ! Printout steps.
     integer :: write_init = 0 ! Flag to printout initial conditions.
     integer :: imod = 1   ! screen printout modulus
     integer :: itecplot = 0 ! tecplot print format (1-interchange x and z)
@@ -248,7 +248,7 @@ module Option_module
 !GEH - Structured Grid Dependence - Begin
 !transferred to structured_grid.F90    Vec :: dx, dy, dz, dx_loc, dy_loc, dz_loc  ! Grid spacings
 !GEH - Structured Grid Dependence - End
-    Vec :: volume  ! Volume of a cell in the grid
+!    Vec :: volume  ! Volume of a cell in the grid
     Vec :: ithrm, ithrm_loc, icap, icap_loc, iphas, iphas_loc, iphas_old
     Vec :: ttemp, ttemp_loc, temp ! 1 dof
     Vec :: phis
