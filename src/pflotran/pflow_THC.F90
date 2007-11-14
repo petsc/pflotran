@@ -220,7 +220,7 @@ contains
   call VecGetArrayF90(option%perm_yy_loc, perm_yy_loc_p, ierr)
   call VecGetArrayF90(option%perm_zz_loc, perm_zz_loc_p, ierr)
 
-  call VecGetArrayF90(option%volume, volume_p, ierr)
+  call VecGetArrayF90(grid%volume, volume_p, ierr)
   call VecGetArrayF90(r, r_p, ierr)
 
   call VecGetArrayF90(option%ithrm_loc, ithrm_loc_p, ierr)
@@ -798,7 +798,7 @@ contains
   call VecRestoreArrayF90(option%perm_yy_loc, perm_yy_loc_p, ierr)
   call VecRestoreArrayF90(option%perm_zz_loc, perm_zz_loc_p, ierr)
   
-  call VecRestoreArrayF90(option%volume, volume_p, ierr)
+  call VecRestoreArrayF90(grid%volume, volume_p, ierr)
   call VecRestoreArrayF90(r, r_p, ierr)
 
   call VecRestoreArrayF90(option%ithrm_loc, ithrm_loc_p, ierr)
@@ -885,7 +885,7 @@ contains
   call VecGetArrayF90(option%perm_yy_loc, perm_yy_loc_p, ierr)
   call VecGetArrayF90(option%perm_zz_loc, perm_zz_loc_p, ierr)
   
-  call VecGetArrayF90(option%volume, volume_p, ierr)
+  call VecGetArrayF90(grid%volume, volume_p, ierr)
   call VecGetArrayF90(option%d_p_loc, d_p_loc_p, ierr)
   call VecGetArrayF90(option%d_t_loc, d_t_loc_p, ierr)
   call VecGetArrayF90(option%hh_loc, hh_loc_p, ierr)
@@ -1727,7 +1727,7 @@ contains
   call VecRestoreArrayF90(option%perm_yy_loc, perm_yy_loc_p, ierr)
   call VecRestoreArrayF90(option%perm_zz_loc, perm_zz_loc_p, ierr)
   
-  call VecRestoreArrayF90(option%volume, volume_p, ierr)
+  call VecRestoreArrayF90(grid%volume, volume_p, ierr)
   call VecRestoreArrayF90(option%d_p_loc, d_p_loc_p, ierr)
   call VecRestoreArrayF90(option%d_t_loc, d_t_loc_p, ierr)
   call VecRestoreArrayF90(option%hh_loc, hh_loc_p, ierr)
