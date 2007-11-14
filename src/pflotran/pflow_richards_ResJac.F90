@@ -1870,6 +1870,9 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
       distance_gravity = cur_connection_object%dist(3,iconn)*distance
       dd1 = distance*fraction_upwind
       dd2 = distance-dd1 ! should avoid truncation error
+      ! upweight could be calculated as 1.d0-fraction_upwind
+      ! however, this introduces ever so slight error causing pflow-overhaul not
+      ! to match pflow-orig.  This can be changed to 1.d0-fraction_upwind
       upweight = dd2/(dd1+dd2)
     
       ! for now, just assume diagonal tensor
@@ -2139,7 +2142,7 @@ subroutine pflow_Richards_initaccum(solution)
     i = ithrm_p(n)
     
     call RichardsRes_ARCont(n,var_p(index_var_begin:index_var_end), &
-                            porosity_loc_p(n),volume_p(ghosted_id), &
+                            porosity_loc_p(ghosted_id),volume_p(n), &
                             option%dencpr(i),option,Res, &
                              0,ierr)
  
