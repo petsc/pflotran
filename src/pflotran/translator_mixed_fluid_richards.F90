@@ -96,7 +96,7 @@ subroutine translator_Richards_massbal(solution)
   option => solution%option
 
   call VecGetArrayF90(option%var,var_p,ierr)
-  call VecGetArrayF90(option%volume, volume_p, ierr)
+  call VecGetArrayF90(grid%volume, volume_p, ierr)
   call VecGetArrayF90(option%porosity, porosity_p, ierr)
   call VecGetArrayF90(option%iphas, iphase_p, ierr)
  
@@ -128,7 +128,7 @@ subroutine translator_Richards_massbal(solution)
   enddo
  !  call PETSCBarrier(PETSC_NULL_OBJECT,ierr)
   call VecRestoreArrayF90(option%var,var_p,ierr)
-  call VecRestoreArrayF90(option%volume, volume_p, ierr)
+  call VecRestoreArrayF90(grid%volume, volume_p, ierr)
   call VecRestoreArrayF90(option%porosity, porosity_p, ierr)
   call VecRestoreArrayF90(option%iphas, iphase_p, ierr)
  

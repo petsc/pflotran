@@ -27,7 +27,7 @@ DXYZ
 13. 12. 11. 10.
 15. 20. 25.
 :    atol  rtol  stol   dtol  newton_max maxf idt
-SOLV 1.d-9 1.d-9 1.d-25 1.D10 25         100  -1  1.d-6
+SOLV 1.d-9 1.d-9 1.d-10 1.D10 25         100  -1 1.d-6
 :  d0[m^2/s] delhaq[kJ/mol]
 DIFF  1.D-9       12.6
 :
@@ -129,11 +129,13 @@ BCON
 noskip
 :
 :
-TIME y 3
+TIME y 
 0.1 1. 10.
 :
-DTST  3  10.   500.   1000. 
-1.d-6    0.1   0.5     0.5   
+DTST 1.d-6
+10. 0.1 \
+500. 0.5 \
+1000. 0.5
 :
 REGN all
 BLOCK 

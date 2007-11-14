@@ -178,7 +178,7 @@ subroutine PflowInit(simulation,filename)
   call VecDuplicate(option%porosity, option%porosity0, ierr)
   call VecDuplicate(option%porosity, option%tor, ierr)
   call VecDuplicate(option%porosity, option%conc, ierr)
-  call VecDuplicate(option%porosity, option%volume, ierr)
+  call VecDuplicate(option%porosity, grid%volume, ierr)
   call VecDuplicate(option%porosity, option%ithrm, ierr)
   call VecDuplicate(option%porosity, option%icap, ierr)
   call VecDuplicate(option%porosity, option%iphas, ierr)
@@ -539,7 +539,7 @@ subroutine PflowInit(simulation,filename)
   
   call GridComputeSpacing(grid)
   call GridComputeCoordinates(grid,option)
-  call GRidComputeVolumes(grid,option)
+  call GridComputeVolumes(grid,option)
 
   ! set up internal connectivity, distance, etc.
   call GridComputeInternalConnect(grid,option)
@@ -2573,32 +2573,28 @@ subroutine readInput(simulation,filename)
         call fiReadDouble(string,stepper%dt_min,ierr)
         call fiDefaultMsg('dt_min',ierr)
             
-        continuation_flag = .false.
-        ierr = 0
-        temp_int = 0
-        call fiReadFlotranString(IUNIT1,string,ierr)
-        call fiReadStringErrorMsg('DTST',ierr)        
+        continuation_flag = .true.
+        temp_int = 0       
         do
-          if (index(string,backslash) > 0) then
-            continuation_flag = .true.
-          else
-            continuation_flag = .false.
-          endif
-          waypoint => WaypointCreate()
-          waypoint%time = 0.d0
-          call fiReadDouble(string,waypoint%time,ierr)
-          call fiErrorMsg('time','dtst',ierr)
-          call fiReadDouble(string,waypoint%dt_max,ierr)
-          call fiErrorMsg('dt_max','dtst',ierr)
-          if (temp_int == 0) stepper%dt_max = waypoint%dt_max
-          call WaypointInsertInList(waypoint,stepper%waypoints)
-          temp_int = temp_int + 1
-          if (continuation_flag) then
-            call fiReadFlotranString(IUNIT1,string,ierr)
-            call fiReadStringErrorMsg('DTST',ierr)        
-          else
-            exit
-          endif
+          if (.not.continuation_flag) exit
+          call fiReadFlotranString(IUNIT1,string,ierr)
+          if (ierr /= 0) exit
+          continuation_flag = .false.
+          if (index(string,backslash) > 0) continuation_flag = .true.
+          ierr = 0
+          do
+            if (ierr /= 0) exit
+            call fiReadDouble(string,temp_real,ierr)
+            if (ierr == 0) then
+              waypoint => WaypointCreate()
+              waypoint%time = temp_real
+              call fiReadDouble(string,waypoint%dt_max,ierr)
+              call fiErrorMsg('dt_max','dtst',ierr)
+              if (temp_int == 0) stepper%dt_max = waypoint%dt_max
+              call WaypointInsertInList(waypoint,stepper%waypoints)
+              temp_int = temp_int + 1
+            endif
+          enddo
         enddo
         
         option%dt = stepper%dt_min

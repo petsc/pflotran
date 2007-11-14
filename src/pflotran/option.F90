@@ -248,7 +248,7 @@ module Option_module
 !GEH - Structured Grid Dependence - Begin
 !transferred to structured_grid.F90    Vec :: dx, dy, dz, dx_loc, dy_loc, dz_loc  ! Grid spacings
 !GEH - Structured Grid Dependence - End
-    Vec :: volume  ! Volume of a cell in the grid
+!    Vec :: volume  ! Volume of a cell in the grid
     Vec :: ithrm, ithrm_loc, icap, icap_loc, iphas, iphas_loc, iphas_old
     Vec :: ttemp, ttemp_loc, temp ! 1 dof
     Vec :: phis

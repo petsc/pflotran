@@ -48,7 +48,8 @@ module Grid_module
     
 #if 1  
     real*8, pointer :: x(:), y(:), z(:), delz(:) 
-#endif    
+#endif   
+    Vec :: volume 
     
     integer :: igeom
     type(structured_grid_type), pointer :: structured_grid
@@ -430,12 +431,12 @@ end subroutine GridComputeCoordinates
 
 ! ************************************************************************** !
 !
-! GRidComputeVolumes: Computes the volumes of cells in structured grid
+! GridComputeVolumes: Computes the volumes of cells in structured grid
 ! author: Glenn Hammond
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine GRidComputeVolumes(grid,option)
+subroutine GridComputeVolumes(grid,option)
 
   use Option_module
   
@@ -446,12 +447,12 @@ subroutine GRidComputeVolumes(grid,option)
   
   select case(grid%igrid)
     case(STRUCTURED)
-      call StructuredGridComputelVolumes(grid%structured_grid,option, &
-                                        grid%nL2G)
+      call StructuredGridComputeVolumes(grid%structured_grid,option, &
+                                        grid%nL2G,grid%volume)
     case(UNSTRUCTURED)
   end select
 
-end subroutine GRidComputeVolumes
+end subroutine GridComputeVolumes
 
 ! ************************************************************************** !
 !
