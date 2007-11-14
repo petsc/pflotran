@@ -73,18 +73,16 @@ subroutine translator_Richards_massbal(solution)
  
   integer :: ierr
   integer,save :: icall
-  integer :: n,n0,nc,np
+  integer :: n0,nc,np
 ! real*8 :: nsm,nsm0,sm 
   integer :: index,size_var_node
-  integer :: ghosted_id
+  integer :: local_id, ghosted_id
   
 ! real*8 :: x,y,z,c0,c00,
   
 ! integer :: n2p,n2p0,nzm,nzm0,nxc,nxc0,nyc,nyc0,nzc,nzc0,
      
   PetscScalar, pointer :: var_p(:),porosity_loc_p(:),volume_p(:)
-                           
-  PetscScalar, pointer :: iphase_p(:)
   
   real*8 :: pvol,sum
   real*8, pointer :: den(:),sat(:),xmol(:)
@@ -99,21 +97,20 @@ subroutine translator_Richards_massbal(solution)
   call VecGetArrayF90(option%var,var_p,ierr)
   call VecGetArrayF90(grid%volume, volume_p, ierr)
   call VecGetArrayF90(option%porosity_loc, porosity_loc_p, ierr)
-  call VecGetArrayF90(option%iphas, iphase_p, ierr)
  
   size_var_node=(option%ndof+1)*(2+7*option%nphase +2*option%nphase*option%nspec)
   tot=0.D0
   
-  do n = 1,grid%nlmax
-    ghosted_id = grid%nL2G(n)
-    n0=(n-1)* option%ndof
-    index=(n-1)*size_var_node
+  do local_id = 1,grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    n0=(local_id-1)* option%ndof
+    index=(local_id-1)*size_var_node
     den=>var_p(index+3+option%nphase: index+2+2*option%nphase)
     sat=>var_p(index+2+1:index+2+option%nphase)
     xmol=>var_p(index+2+7*option%nphase+1:index+2+7*option%nphase +&
                 option%nphase*option%nspec)    
 
-    pvol=volume_p(n)*porosity_loc_p(ghosted_id)
+    pvol=volume_p(local_id)*porosity_loc_p(ghosted_id)
      
     do nc =1,option%nspec
       do np=1,option%nphase
@@ -130,7 +127,6 @@ subroutine translator_Richards_massbal(solution)
   call VecRestoreArrayF90(option%var,var_p,ierr)
   call VecRestoreArrayF90(grid%volume, volume_p, ierr)
   call VecRestoreArrayF90(option%porosity_loc, porosity_loc_p, ierr)
-  call VecRestoreArrayF90(option%iphas, iphase_p, ierr)
  
  !print *,'massbal: ', sat,den, xmol, tot
   if (option%commsize >1) then
@@ -313,10 +309,11 @@ subroutine Translator_Richards_Switching(xx,solution,icri,ichange)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
 
-  PetscScalar, pointer :: xx_p(:), yy_p(:),iphase_p(:)
+  PetscScalar, pointer :: xx_p(:), yy_p(:),iphase_loc_p(:)
   integer :: n,n0,ipr
   integer :: ierr,iipha
 ! integer :: index,i
+  integer :: local_id, ghosted_id
   
   real*8 :: p2,p,tmp,t, sat_pressure
   real*8 :: dg,fg,hg,visg
@@ -331,19 +328,19 @@ subroutine Translator_Richards_Switching(xx,solution,icri,ichange)
 ! mphase code need assemble 
   call VecGetArrayF90(xx, xx_p, ierr); CHKERRQ(ierr)
   call VecGetArrayF90(option%yy, yy_p, ierr); CHKERRQ(ierr)
-  call VecGetArrayF90(option%iphas, iphase_p,ierr)
+  call VecGetArrayF90(option%iphas_loc, iphase_loc_p,ierr)
 
   ichange = 0
-  do n = 1,grid%nlmax
-
+  do local_id = 1,grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
     !geh - Ignore inactive cells with inactive materials
     if (associated(option%imat)) then
-      if (option%imat(grid%nL2G(n)) <= 0) cycle
+      if (option%imat(ghosted_id) <= 0) cycle
     endif
 
     ipr=0
-    n0=(n-1)* option%ndof
-    iipha=iphase_p(n)
+    n0=(local_id-1)* option%ndof
+    iipha=iphase_loc_p(ghosted_id)
     p = xx_p(n0+1); t= xx_p(n0+2)
     
      select case(iipha) 
@@ -410,7 +407,7 @@ subroutine Translator_Richards_Switching(xx,solution,icri,ichange)
         if (xmol(3) > sat_pressure/p .and. iipha==2 ) then
           write(*,'('' Gas -> 2ph '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3)
       !write(IUNIT2,'('' Gas -> 2ph '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3)
-          iphase_p(n) = 3
+          iphase_loc_p(ghosted_id) = 3
           xx_p(n0+3)=1D0-eps
           ichange = 1 ;ipr=1
 !       xx_p(n0+1)= yy_p(n0+1);xx_p(n0+2)= yy_p(n0+2)
@@ -423,7 +420,7 @@ subroutine Translator_Richards_Switching(xx,solution,icri,ichange)
                                                      xmol(3)+xmol(4),xmol(3), &
                                                      xmol(4)
       !write(IUNIT2,'('' Liq -> 2ph '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3)
-          iphase_p(n) = 3
+          iphase_loc_p(ghosted_id) = 3
      
      !tmp= (xmol(4)-1.D0)/(xmol(4)/xmol(2))*den(1)/den(2)
     !if(tmp>eps) tmp=eps
@@ -438,7 +435,7 @@ subroutine Translator_Richards_Switching(xx,solution,icri,ichange)
   !if(xx_p(n0+3)> 1.D0 .and. iipha==3 )then
           write(*,'('' 2ph -> Gas '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3)
        ! write(IUNIT2,'('' 2ph -> Gas '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3)
-          iphase_p(n) = 2
+          iphase_loc_p(ghosted_id) = 2
           xx_p(n0 + 3) = xmol(4)
 !    xx_p(n0+1)= yy_p(n0+1);xx_p(n0+2)= yy_p(n0+2)  
           ichange =1    ;ipr=1  
@@ -450,7 +447,7 @@ subroutine Translator_Richards_Switching(xx,solution,icri,ichange)
           write(*,'('' 2ph -> Liq '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3), &
                                                      satu(1),satu(2)
       ! write(IUNIT2,'('' 2ph -> Liq '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3)
-          iphase_p(n) = 1 ! 2ph -> Liq
+          iphase_loc_p(ghosted_id) = 1 ! 2ph -> Liq
           ichange = 1;ipr=1
           tmp = xmol(2) * 0.9995
           xx_p(n0 + 3)=tmp
@@ -466,7 +463,7 @@ subroutine Translator_Richards_Switching(xx,solution,icri,ichange)
         if ( xmol(3)> sat_pressure/p .and. iipha==2 ) then
           write(*,'('' Gas -> 2ph '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3)
       !write(IUNIT2,'('' Gas -> 2ph '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3)
-          iphase_p(n) = 3
+          iphase_loc_p(ghosted_id) = 3
           xx_p(n0+3)=1D0-eps
           ichange = 1 ;ipr=1
         !  xx_p(n0+2)= yy_p(n0+2)
@@ -478,7 +475,7 @@ subroutine Translator_Richards_Switching(xx,solution,icri,ichange)
                                                      xmol(3)+xmol(4),xmol(3), &
                                                      xmol(4)
       !write(IUNIT2,'('' Liq -> 2ph '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3)
-          iphase_p(n) = 3
+          iphase_loc_p(ghosted_id) = 3
      
      !tmp= (xmol(4)-1.D0)/(xmol(4)/xmol(2))*den(1)/den(2)
     !if(tmp>eps) tmp=eps
@@ -492,7 +489,7 @@ subroutine Translator_Richards_Switching(xx,solution,icri,ichange)
   !if(xx_p(n0+3)> 1.D0 .and. iipha==3 )then
           write(*,'('' 2ph -> Gas '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3)
        ! write(IUNIT2,'('' 2ph -> Gas '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3)
-          iphase_p(n) = 2
+          iphase_loc_p(ghosted_id) = 2
           xx_p(n0 + 3) = xmol(4)  
           ichange =1; ipr=1  
         endif
@@ -503,7 +500,7 @@ subroutine Translator_Richards_Switching(xx,solution,icri,ichange)
           write(*,'('' 2ph -> Liq '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3), &
                                                      satu(1),satu(2)
       !write(IUNIT2,'('' 2ph -> Liq '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3)
-          iphase_p(n) = 1 ! 2ph -> Liq
+          iphase_loc_p(ghosted_id) = 1 ! 2ph -> Liq
           ichange = 1;ipr=1
           tmp = xmol(4) * 0.9995
           xx_p(n0 + 3)=tmp
@@ -544,7 +541,7 @@ subroutine Translator_Richards_Switching(xx,solution,icri,ichange)
   end do
 
   !print *,iphase_p
-  call VecRestoreArrayF90(option%iphas, iphase_p,ierr)
+  call VecRestoreArrayF90(option%iphas_loc, iphase_loc_p,ierr)
   call VecRestoreArrayF90(xx, xx_p, ierr); CHKERRQ(ierr)
   call VecRestoreArrayF90(option%yy, yy_p, ierr); CHKERRQ(ierr)
 

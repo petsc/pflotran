@@ -382,9 +382,9 @@ subroutine StepperStepDT(solution,stepper,plot_flag,timestep_cut_flag, &
   ! if a method such as line search is being used.
   call GridLocalToLocal(grid,option%porosity_loc,option%porosity_loc,ONEDOF)
   call GridGlobalToLocal(grid,option%tor,option%tor_loc,ONEDOF)
-  call GridGlobalToLocal(grid,option%icap,option%icap_loc,ONEDOF)
-  call GridGlobalToLocal(grid,option%ithrm,option%ithrm_loc,ONEDOF)
-  call GridGlobalToLocal(grid,option%iphas,option%iphas_loc,ONEDOF)
+  call GridLocalToLocal(grid,option%icap_loc,option%icap_loc,ONEDOF)
+  call GridLocalToLocal(grid,option%ithrm_loc,option%ithrm_loc,ONEDOF)
+  call GridLocalToLocal(grid,option%iphas_loc,option%iphas_loc,ONEDOF)
 
   option%time = option%time + option%dt
   stepper%flowsteps = stepper%flowsteps + 1
@@ -639,7 +639,7 @@ subroutine StepperStepDT(solution,stepper,plot_flag,timestep_cut_flag, &
             call VecCopy(grid%density, grid%ddensity, ierr)
 #endif            
         end select
-        call VecCopy(option%iphas_old, option%iphas, ierr)
+        call VecCopy(option%iphas_old_loc, option%iphas_loc, ierr)
       endif
 
     else

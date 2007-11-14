@@ -1679,7 +1679,7 @@ subroutine GetVarFromArray(solution,vec,ivar,isubvar)
   integer :: ivar
   integer :: isubvar
 
-  integer :: i
+  integer :: local_id
   integer :: offset, saturation_offset
   integer :: size_var_use
   integer :: size_var_node
@@ -1715,8 +1715,8 @@ subroutine GetVarFromArray(solution,vec,ivar,isubvar)
       size_var_node = (option%ndof + 1) * size_var_use
         
       call VecGetArrayF90(option%var,var_ptr,ierr)
-      do i=1,grid%nlmax
-        vec_ptr(i) = var_ptr((i-1)*size_var_node+offset)
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = var_ptr((local_id-1)*size_var_node+offset)
       enddo
       call VecRestoreArrayF90(option%var,var_ptr,ierr)
 
@@ -1735,11 +1735,11 @@ subroutine GetVarFromArray(solution,vec,ivar,isubvar)
       size_var_node = (option%ndof + 1) * size_var_use
         
       call VecGetArrayF90(option%var,var_ptr,ierr)
-      do i=1,grid%nlmax
-        if (var_ptr((i-1)*size_var_node+saturation_offset) > 1.d-30) then
-          vec_ptr(i) = var_ptr((i-1)*size_var_node+offset)
+      do local_id=1,grid%nlmax
+        if (var_ptr((local_id-1)*size_var_node+saturation_offset) > 1.d-30) then
+          vec_ptr(local_id) = var_ptr((local_id-1)*size_var_node+offset)
         else
-          vec_ptr(i) = 0.d0
+          vec_ptr(local_id) = 0.d0
         endif
       enddo
       call VecRestoreArrayF90(option%var,var_ptr,ierr)
@@ -1753,9 +1753,11 @@ subroutine GetVarFromArray(solution,vec,ivar,isubvar)
      
     case(PHASE)
     
-      call VecGetArrayF90(option%iphas,var_ptr,ierr)
-      vec_ptr(1:grid%nlmax) = var_ptr(1:grid%nlmax)
-      call VecRestoreArrayF90(option%iphas,var_ptr,ierr)
+      call VecGetArrayF90(option%iphas_loc,var_ptr,ierr)
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = var_ptr(grid%nL2G(local_id))
+      enddo
+      call VecRestoreArrayF90(option%iphas_loc,var_ptr,ierr)
      
   end select
   

@@ -126,10 +126,6 @@ subroutine PflowInit(simulation,filename)
   call VecDuplicate(option%porosity0, option%tor, ierr)
   call VecDuplicate(option%porosity0, option%conc, ierr)
   call VecDuplicate(option%porosity0, grid%volume, ierr)
-  call VecDuplicate(option%porosity0, option%ithrm, ierr)
-  call VecDuplicate(option%porosity0, option%icap, ierr)
-  call VecDuplicate(option%porosity0, option%iphas, ierr)
-  call VecDuplicate(option%porosity0, option%iphas_old, ierr)
   call VecDuplicate(option%porosity0, option%temp, ierr)
   call VecDuplicate(option%porosity0, option%ttemp, ierr)
   call VecDuplicate(option%porosity0, option%phis, ierr)
@@ -144,6 +140,7 @@ subroutine PflowInit(simulation,filename)
   call VecDuplicate(option%porosity_loc, option%ithrm_loc, ierr)
   call VecDuplicate(option%porosity_loc, option%icap_loc, ierr)
   call VecDuplicate(option%porosity_loc, option%iphas_loc, ierr)
+  call VecDuplicate(option%porosity_loc, option%iphas_old_loc, ierr)
   call VecDuplicate(option%porosity_loc, option%ttemp_loc, ierr)
 
   call VecDuplicate(option%porosity_loc, option%perm_xx_loc, ierr)
@@ -956,7 +953,7 @@ subroutine PflowInit(simulation,filename)
 #endif
     case(RICHARDS_MODE)
       call pflow_richards_initadj(solution)
-      call VecCopy(option%iphas, option%iphas_old,ierr)
+      call VecCopy(option%iphas_loc, option%iphas_old_loc,ierr)
       call VecCopy(option%xx, option%yy, ierr)
 !geh      call VecView(option%xx,PETSC_VIEWER_STDOUT_WORLD,ierr)
       if (option%myrank == 0) print *, "richards finish variable packing"
@@ -2990,8 +2987,8 @@ subroutine assignMaterialPropToRegions(solution)
   
   type(solution_type) :: solution
   
-  PetscScalar, pointer :: icap_p(:)
-  PetscScalar, pointer :: ithrm_p(:)
+  PetscScalar, pointer :: icap_loc_p(:)
+  PetscScalar, pointer :: ithrm_loc_p(:)
   PetscScalar, pointer :: por_p(:)
   PetscScalar, pointer :: por0_p(:)
   PetscScalar, pointer :: perm_xx_p(:)
@@ -3000,19 +2997,21 @@ subroutine assignMaterialPropToRegions(solution)
   PetscScalar, pointer :: perm_pow_p(:)
   PetscScalar, pointer :: tor_p(:)
   
-  integer :: icell, local_id
+  integer :: icell, local_id, ghosted_id
   PetscErrorCode :: ierr
   
   type(option_type), pointer :: option
+  type(grid_type), pointer :: grid
   type(strata_type), pointer :: strata
   
   type(material_type), pointer :: material
   type(region_type), pointer :: region
   
   option => solution%option
+  grid => solution%grid
   
-  call VecGetArrayF90(option%icap,icap_p,ierr)
-  call VecGetArrayF90(option%ithrm,ithrm_p,ierr)
+  call VecGetArrayF90(option%icap_loc,icap_loc_p,ierr)
+  call VecGetArrayF90(option%ithrm_loc,ithrm_loc_p,ierr)
   call VecGetArrayF90(option%porosity0,por_p,ierr)
   call VecGetArrayF90(option%tor,tor_p,ierr)
   call VecGetArrayF90(option%perm0_xx,perm_xx_p,ierr)
@@ -3028,8 +3027,9 @@ subroutine assignMaterialPropToRegions(solution)
     material => strata%material
     do icell=1,region%num_cells
       local_id = region%cell_ids(icell)
-      icap_p(local_id) = material%icap
-      ithrm_p(local_id) = material%ithrm
+      ghosted_id = grid%nL2G(local_id)
+      icap_loc_p(local_id) = material%icap
+      ithrm_loc_p(local_id) = material%ithrm
       por_p(local_id) = material%porosity
       tor_p(local_id) = material%tortuosity
       perm_xx_p(local_id) = material%permeability(1,1)
@@ -3040,8 +3040,8 @@ subroutine assignMaterialPropToRegions(solution)
     strata => strata%next
   enddo
 
-  call VecRestoreArrayF90(option%icap,icap_p,ierr)
-  call VecRestoreArrayF90(option%ithrm,ithrm_p,ierr)
+  call VecRestoreArrayF90(option%icap_loc,icap_loc_p,ierr)
+  call VecRestoreArrayF90(option%ithrm_loc,ithrm_loc_p,ierr)
   call VecRestoreArrayF90(option%porosity0,por_p,ierr)
   call VecRestoreArrayF90(option%perm0_xx,perm_xx_p,ierr)
   call VecRestoreArrayF90(option%perm0_yy,perm_yy_p,ierr)

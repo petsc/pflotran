@@ -118,8 +118,8 @@ subroutine pflow_Richards_setupini(solution)
   type(grid_type), pointer :: grid
   type(coupler_type), pointer :: initial_condition
 
-  PetscScalar, pointer :: xx_p(:), iphase_p(:)
-  integer local_id, ibegin, iend, icell, ierr
+  PetscScalar, pointer :: xx_p(:), iphase_loc_p(:)
+  integer local_id, ghosted_id, ibegin, iend, icell, ierr
   
   grid => solution%grid
   option => solution%option
@@ -133,8 +133,8 @@ subroutine pflow_Richards_setupini(solution)
   allocate(option%delx(option%ndof,grid%ngmax))
   option%delx=0.D0
    
-  call VecGetArrayF90(option%xx, xx_p, ierr); CHKERRQ(ierr)
-  call VecGetArrayF90(option%iphas, iphase_p,ierr)
+  call VecGetArrayF90(option%xx,xx_p, ierr); CHKERRQ(ierr)
+  call VecGetArrayF90(option%iphas_loc,iphase_loc_p,ierr)
   
   initial_condition => solution%initial_conditions%first
   
@@ -144,19 +144,20 @@ subroutine pflow_Richards_setupini(solution)
     
     do icell=1,initial_condition%region%num_cells
       local_id = initial_condition%region%cell_ids(icell)
+      ghosted_id = grid%nL2G(local_id)
       iend = local_id*option%ndof
       ibegin = iend-option%ndof+1
       xx_p(ibegin:iend) = &
         initial_condition%condition%cur_value(1:option%ndof)
-      iphase_p(local_id)=initial_condition%condition%iphase
+      iphase_loc_p(ghosted_id)=initial_condition%condition%iphase
     enddo
   
     initial_condition => initial_condition%next
   
   enddo
   
-  call VecRestoreArrayF90(option%xx, xx_p, ierr)
-  call VecRestoreArrayF90(option%iphas, iphase_p,ierr)
+  call VecRestoreArrayF90(option%xx,xx_p, ierr)
+  call VecRestoreArrayF90(option%iphas_loc,iphase_loc_p,ierr)
 
 end  subroutine pflow_Richards_setupini
   
@@ -174,10 +175,11 @@ subroutine Richards_Update_Reason(reason,solution)
   type(option_type), pointer :: option
   
   integer, intent(out):: reason
-  PetscScalar, pointer :: xx_p(:),var_p(:),iphase_p(:), yy_p(:) !,r_p(:)
+  PetscScalar, pointer :: xx_p(:),var_p(:),iphase_loc_p(:), yy_p(:) !,r_p(:)
   integer :: n,n0,re
   integer re0, ierr, iipha
 ! integer :: index
+  integer :: local_id, ghosted_id
   
   grid => solution%grid
   option => solution%option
@@ -199,24 +201,24 @@ subroutine Richards_Update_Reason(reason,solution)
  ! endif
   
   if (re>0) then
-    call VecGetArrayF90(option%xx, xx_p, ierr); CHKERRQ(ierr)
-    call VecGetArrayF90(option%yy, yy_p, ierr)
-    call VecGetArrayF90(option%var, var_p, ierr); 
-    call VecGetArrayF90(option%iphas, iphase_p, ierr); 
+    call VecGetArrayF90(option%xx,xx_p, ierr); CHKERRQ(ierr)
+    call VecGetArrayF90(option%yy,yy_p, ierr)
+    call VecGetArrayF90(option%var,var_p, ierr); 
+    call VecGetArrayF90(option%iphas_loc,iphase_loc_p, ierr); 
   
-    do n = 1,grid%nlmax
-
+    do local_id = 1,grid%nlmax
+      ghosted_id = grid%nL2G(local_id)
       !geh - Ignore inactive cells with inactive materials
       if (associated(option%imat)) then
-        if (option%imat(grid%nL2G(n)) <= 0) cycle
+        if (option%imat(ghosted_id) <= 0) cycle
       endif
 
-      n0=(n-1)* option%ndof
+      n0=(local_id-1)* option%ndof
       !index=(n-1)*size_var_node
       !sat=>var_p(index+2+1:index+2+option%nphase)
       !den=>var_p(index+2+option%nphase+1:index+2+2*option%nphase)
     !xmol=>var_p(index+2+7*option%nphase+1:index+2+7*option%nphase + option%nphase*option%nspec)    
-      iipha=int(iphase_p(n))
+      iipha=int(iphase_loc_p(ghosted_id))
      !if(n==3583 .or. n==3587)
    !print *, 'update reson', grid%nlmax, n, iipha, xx_p(n0+1:n0+3)
    !if(xmol(4)>1.0) re=0; goto 1
@@ -255,10 +257,10 @@ subroutine Richards_Update_Reason(reason,solution)
   !   call PETSCBarrier(PETSC_NULL_OBJECT,ierr)
    !print *,' update reason ba MPI', ierr
     if (re<=0) print *,'Sat or Con out of Region at: ',n,iipha,xx_p(n0+1:n0+2)
-    call VecRestoreArrayF90(option%xx, xx_p, ierr); CHKERRQ(ierr)
-    call VecRestoreArrayF90(option%yy, yy_p, ierr)
-    call VecRestoreArrayF90(option%var, var_p, ierr) 
-    call VecRestoreArrayF90(option%iphas, iphase_p, ierr) 
+    call VecRestoreArrayF90(option%xx,xx_p, ierr); CHKERRQ(ierr)
+    call VecRestoreArrayF90(option%yy,yy_p, ierr)
+    call VecRestoreArrayF90(option%var,var_p, ierr) 
+    call VecRestoreArrayF90(option%iphas_loc,iphase_loc_p, ierr) 
   endif
  ! print *,' update reason', grid%myrank, re,n,grid%nlmax
 
@@ -723,12 +725,13 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
 
 ! integer :: j, jm1, jm2, jmu, mu
   integer :: ierr
-  integer :: n, ng, nc, nr
+  integer :: nc, nr
   integer :: i, i1, i2, jn, jng
-  integer :: m, m1, m2, n1, n2, ip1, ip2, p1, p2
+  integer :: ip1, ip2, p1, p2
   !, t1, t2, c1, c2, s1, s2
   integer :: kk1,kk2,jj1,jj2,ii1,ii2, kk, jj, ii
 ! integer :: i1_hencoeff, i2_hencoeff
+  integer :: local_id, ghosted_id, local_id_up, local_id_dn, ghosted_id_up, ghosted_id_dn
   
 ! real*8 :: term1, term2, term3
 
@@ -747,8 +750,7 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
                
 ! PetscScalar, pointer :: pc_p(:), pc_loc_p(:), kvr_p(:), kvr_loc_p(:)
 
-  PetscScalar, pointer :: iphase_loc_p(:),icap_p(:),iphase_p(:),&
-                          icap_loc_p(:), ithrm_loc_p(:),ithrm_p(:)
+  PetscScalar, pointer :: iphase_loc_p(:), icap_loc_p(:), ithrm_loc_p(:)
 
   integer :: iicap,iiphase, index_var_begin, index_var_end,iicap1,iicap2,np
 
@@ -795,26 +797,25 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
 
  
   call GridGlobalToLocal(grid,xx,option%xx_loc,NDOF)
-  call GridGlobalToLocal(grid,option%iphas,option%iphas_loc,ONEDOF)
+  call GridLocalToLocal(grid,option%iphas_loc,option%iphas_loc,ONEDOF)
 
   call VecGetArrayF90(option%xx_loc, xx_loc_p, ierr); CHKERRQ(ierr)
   call VecGetArrayF90(option%iphas_loc, iphase_loc_p, ierr); CHKERRQ(ierr)
 
 ! there is potential possiblity that the pertubation of p may change the direction of pflow.
 ! once that happens, code may crash, namely wrong derive. 
-  do ng = 1, grid%ngmax 
-    !ng=grid%nL2G(n)
-    iiphase=int(iphase_loc_p(ng))
+  do ghosted_id = 1, grid%ngmax 
+    iiphase=int(iphase_loc_p(ghosted_id))
   
-    if(xx_loc_p((ng-1)*option%ndof+1)>=option%pref)then
-      option%delx(1,ng)=xx_loc_p((ng-1)*option%ndof+1)*dfac
+    if(xx_loc_p((ghosted_id-1)*option%ndof+1)>=option%pref)then
+      option%delx(1,ghosted_id)=xx_loc_p((ghosted_id-1)*option%ndof+1)*dfac
     else
-      option%delx(1,ng)=-xx_loc_p((ng-1)*option%ndof+1)*dfac
+      option%delx(1,ghosted_id)=-xx_loc_p((ghosted_id-1)*option%ndof+1)*dfac
     endif  
       
-    option%delx(2,ng)=xx_loc_p((ng-1)*option%ndof+2)*dfac
+    option%delx(2,ghosted_id)=xx_loc_p((ghosted_id-1)*option%ndof+2)*dfac
     if (option%ndof > 2) &
-      option%delx(3:option%ndof,ng)=xx_loc_p((ng-1)*option%ndof+3:ng*option%ndof)*dfac
+      option%delx(3:option%ndof,ghosted_id)=xx_loc_p((ghosted_id-1)*option%ndof+3:ghosted_id*option%ndof)*dfac
   
    enddo
   
@@ -822,9 +823,9 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
   call VecRestoreArrayF90(option%iphas_loc, iphase_loc_p, ierr)
 
   call VecGetArrayF90(xx, xx_p, ierr); CHKERRQ(ierr)
-  call VecGetArrayF90(option%icap,icap_p,ierr)
-  call VecGetArrayF90(option%ithrm,ithrm_p,ierr)  
-  call VecGetArrayF90(option%iphas, iphase_p, ierr)
+  call VecGetArrayF90(option%icap_loc,icap_loc_p,ierr)
+  call VecGetArrayF90(option%ithrm_loc,ithrm_loc_p,ierr)  
+  call VecGetArrayF90(option%iphas_loc, iphase_loc_p, ierr)
   call VecGetArrayF90(option%var,var_p,ierr)
   
   
@@ -836,39 +837,39 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
 
 
 !-----  phase properities ---- last time step---
-  do n = 1, grid%nlmax
-
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
     !geh - Ignore inactive cells with inactive materials
     if (associated(option%imat)) then
-      if (option%imat(grid%nL2G(n)) <= 0) cycle
+      if (option%imat(ghosted_id) <= 0) cycle
     endif
 
-    jn = 1 + (n-1)*option%nphase
-    ng = grid%nL2G(n)
-    ii1 = jn  !1+(n-1)*option%nphase
-    ii2 = n*option%nphase
-    iicap = icap_p(n)
-    iiphase = iphase_p(n)
+    jn = 1 + (local_id-1)*option%nphase
+    ii1 = jn 
+    ii2 = local_id*option%nphase
+    iicap = icap_loc_p(ghosted_id)
+    iiphase = iphase_loc_p(ghosted_id)
     !*****************
     dif(1)= option%difaq
     !dif(2)= option%cdiff(int(ithrm_p(n)))
   
   !*******************************************
-    call pri_var_trans_richards_ninc(xx_p((n-1)*option%ndof+1:n*option%ndof),iiphase, &
+    call pri_var_trans_richards_ninc(xx_p((local_id-1)*option%ndof+1: &
+                                       local_id*option%ndof),iiphase, &
                                 option%scale,option%nphase,option%nspec, &
                                 iicap, dif, &
-                                var_p((n-1)*size_var_node+1:(n-1)* &
+                                var_p((local_id-1)*size_var_node+1:(local_id-1)* &
                                   size_var_node+size_var_use), &
                                 option%itable,ierr, option%pref)
 
-    iphase_p(n) =iiphase
+    iphase_loc_p(ghosted_id) = iiphase
 
     if (option%ideriv .eq. 1) then
-      call pri_var_trans_richards_winc(xx_p((n-1)*option%ndof+1:n*option%ndof), &
-                                  option%delx(1:option%ndof,ng),iiphase, &
+      call pri_var_trans_richards_winc(xx_p((local_id-1)*option%ndof+1:local_id*option%ndof), &
+                                  option%delx(1:option%ndof,ghosted_id),iiphase, &
                                   option%scale,option%nphase,option%nspec, &
                                   iicap ,dif, &
-                                  var_p((n-1)*size_var_node+size_var_use+1:n* &
+                                  var_p((local_id-1)*size_var_node+size_var_use+1:local_id* &
                                     size_var_node), &
                                   option%itable,ierr, option%pref)
     endif
@@ -878,9 +879,9 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
   enddo
 
   call VecRestoreArrayF90(xx, xx_p, ierr); CHKERRQ(ierr)
-  call VecRestoreArrayF90(option%iphas,iphase_p,ierr)
-  call VecRestoreArrayF90(option%icap,icap_p,ierr)
-  call VecRestoreArrayF90(option%ithrm,ithrm_p,ierr)
+  call VecRestoreArrayF90(option%iphas_loc,iphase_loc_p,ierr)
+  call VecRestoreArrayF90(option%icap_loc,icap_loc_p,ierr)
+  call VecRestoreArrayF90(option%ithrm_loc,ithrm_loc_p,ierr)
   call VecRestoreArrayF90(option%var,var_p,ierr)
   ! call VecRestoreArrayF90(option%iphase,iphase_p,ierr)
   
@@ -888,8 +889,8 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
   call GridLocalToLocal(grid,option%perm_xx_loc,option%perm_xx_loc,ONEDOF)
   call GridLocalToLocal(grid,option%perm_yy_loc,option%perm_yy_loc,ONEDOF)
   call GridLocalToLocal(grid,option%perm_zz_loc,option%perm_zz_loc,ONEDOF)
-  call GridGlobalToLocal(grid,option%ithrm,option%ithrm_loc,ONEDOF)
-  call GridGlobalToLocal(grid,option%icap,option%icap_loc,ONEDOF)
+  call GridLocalToLocal(grid,option%ithrm_loc,option%ithrm_loc,ONEDOF)
+  call GridLocalToLocal(grid,option%icap_loc,option%icap_loc,ONEDOF)
 
 ! End distribute data 
 ! now assign access pointer to local variables
@@ -935,30 +936,30 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
 !  print *, 'Residual  (after accum_p):'
 !  print *, r_p
 
-  do n = 1, grid%nlmax  ! For each local node do...
-
+  do local_id = 1, grid%nlmax  ! For each local node do...
+    ghosted_id = grid%nL2G(local_id)
     !geh - Ignore inactive cells with inactive materials
     if (associated(option%imat)) then
-      if (option%imat(grid%nL2G(n)) <= 0) cycle
+      if (option%imat(ghosted_id) <= 0) cycle
     endif
 
-    ng = grid%nL2G(n)   ! corresponding ghost index
-    p1 = 1 + (n-1)*option%ndof
-    index_var_begin=(ng-1)*size_var_node+1
-    index_var_end = index_var_begin -1 + size_var_use
+    p1 = 1 + (local_id-1)*option%ndof
+    index_var_begin=(ghosted_id-1)*size_var_node+1
+    index_var_end = index_var_begin-1 + size_var_use
     
-    pvol = volume_p(n)*porosity_loc_p(ng)
-    voldt = volume_p(n) / option%dt
-    pvoldt = porosity_loc_p(ng) * voldt
-    iiphase = iphase_loc_p(ng)
-    i = ithrm_loc_p(ng)
+    pvol = volume_p(local_id)*porosity_loc_p(ghosted_id)
+    voldt = volume_p(local_id) / option%dt
+    pvoldt = porosity_loc_p(ghosted_id) * voldt
+    iiphase = iphase_loc_p(ghosted_id)
+    i = ithrm_loc_p(ghosted_id)
 
     accum = 0.d0
-    call RichardsRes_ARCont(n, var_loc_p(index_var_begin: index_var_end),&
-    porosity_loc_p(ng),volume_p(n),option%dencpr(i), option, Res, 1,ierr)
+    call RichardsRes_ARCont(local_id,var_loc_p(index_var_begin:index_var_end),&
+                            porosity_loc_p(ghosted_id),volume_p(local_id), &
+                            option%dencpr(i),option,Res,1,ierr)
    
     r_p(p1:p1+option%ndof-1) = r_p(p1:p1+option%ndof-1) + Res(1:option%ndof)
-    Resold_AR(n,1:option%ndof)= Res(1:option%ndof) 
+    Resold_AR(local_id,1:option%ndof)= Res(1:option%ndof) 
   enddo
 
 !  print *, 'Residual  (after accum):'
@@ -988,26 +989,26 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
     cur_connection_object => source_sink%connection
     
     do iconn = 1, cur_connection_object%num_connections      
-      n= cur_connection_object%id_dn(iconn)
-      ng = grid%nL2G(n)
+      local_id = cur_connection_object%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
 
       if (enthalpy_flag) then
-        r_p(n*option%ndof) = r_p(n*option%ndof) - hsrc1 * option%dt   
+        r_p(local_id*option%ndof) = r_p(local_id*option%ndof) - hsrc1 * option%dt   
       endif         
 
       if (qsrc1 > 0.d0) then ! injection
-        call wateos_noderiv(tsrc1,var_loc_p((ng-1)*size_var_node+2), &
+        call wateos_noderiv(tsrc1,var_loc_p((ghosted_id-1)*size_var_node+2), &
                             dw_kg,dw_mol,enth_src_h2o,option%scale,ierr)
 
 !           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
 
 !           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
               
-        r_p((n-1)*option%ndof + option%jh2o) = r_p((n-1)*option%ndof + option%jh2o) &
+        r_p((local_id-1)*option%ndof + option%jh2o) = r_p((local_id-1)*option%ndof + option%jh2o) &
                                                - qsrc1 *option%dt
-        r_p(n*option%ndof) = r_p(n*option%ndof) - qsrc1*enth_src_h2o*option%dt
-        Resold_AR(n,option%jh2o)= Resold_AR(n,option%jh2o) - qsrc1*option%dt
-        Resold_AR(n,option%ndof)= Resold_AR(n,option%ndof) - qsrc1 * &
+        r_p(local_id*option%ndof) = r_p(local_id*option%ndof) - qsrc1*enth_src_h2o*option%dt
+        Resold_AR(local_id,option%jh2o)= Resold_AR(local_id,option%jh2o) - qsrc1*option%dt
+        Resold_AR(local_id,option%ndof)= Resold_AR(local_id,option%ndof) - qsrc1 * &
                                                              enth_src_h2o * option%dt
       endif  
     
@@ -1026,11 +1027,11 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
                                   tsrc1,option%scale,rho,enth_src_co2, tmp)
         enth_src_co2 =enth_src_co2 / option%fmwa
 
-            r_p((n-1)*option%ndof + option%jco2) = r_p((n-1)*option%ndof + option%jco2) &
+            r_p((local_id-1)*option%ndof + option%jco2) = r_p((local_id-1)*option%ndof + option%jco2) &
                                                - csrc1*option%dt
-            r_p(n*option%ndof) = r_p(n*option%ndof) - csrc1 * enth_src_co2 *option%dt
-            Resold_AR(n,option%jco2)= Resold_AR(n,option%jco2) - csrc1*option%dt
-            Resold_AR(n,option%ndof)= Resold_AR(n,option%ndof) - csrc1 * &
+            r_p(local_id*option%ndof) = r_p(local_id*option%ndof) - csrc1 * enth_src_co2 *option%dt
+            Resold_AR(local_id,option%jco2)= Resold_AR(local_id,option%jco2) - csrc1*option%dt
+            Resold_AR(local_id,option%ndof)= Resold_AR(local_id,option%ndof) - csrc1 * &
                                                         enth_src_co2 * option%dt
        !r_p(s1) = r_p(s1) - csrc1
 
@@ -1088,18 +1089,18 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
       sum_connection = sum_connection + 1
       nc = sum_connection
 
-      m1 = cur_connection_object%id_up(iconn)
-      m2 = cur_connection_object%id_dn(iconn)
+      ghosted_id_up = cur_connection_object%id_up(iconn)
+      ghosted_id_dn = cur_connection_object%id_dn(iconn)
 
-      n1 = grid%nG2L(m1) ! = zero for ghost nodes
-      n2 = grid%nG2L(m2) ! Ghost to local mapping   
+      local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
+      local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping   
 
       if (associated(option%imat)) then
-        if (option%imat(m1) <= 0 .or. option%imat(m2) <= 0) cycle
+        if (option%imat(ghosted_id_up) <= 0 .or. option%imat(ghosted_id_dn) <= 0) cycle
       endif
 
-      p1 = 1 + (n1-1)*option%ndof 
-      p2 = 1 + (n2-1)*option%ndof
+      p1 = 1 + (local_id_up-1)*option%ndof 
+      p2 = 1 + (local_id_dn-1)*option%ndof
 
       fraction_upwind = cur_connection_object%dist(-1,iconn)
       distance = cur_connection_object%dist(0,iconn)
@@ -1110,43 +1111,43 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
       upweight = dd2/(dd1+dd2)
         
       ! for now, just assume diagonal tensor
-      perm1 = perm_xx_loc_p(m1)*abs(cur_connection_object%dist(1,iconn))+ &
-              perm_yy_loc_p(m1)*abs(cur_connection_object%dist(2,iconn))+ &
-              perm_zz_loc_p(m1)*abs(cur_connection_object%dist(3,iconn))
+      perm1 = perm_xx_loc_p(ghosted_id_up)*abs(cur_connection_object%dist(1,iconn))+ &
+              perm_yy_loc_p(ghosted_id_up)*abs(cur_connection_object%dist(2,iconn))+ &
+              perm_zz_loc_p(ghosted_id_up)*abs(cur_connection_object%dist(3,iconn))
 
-      perm2 = perm_xx_loc_p(m2)*abs(cur_connection_object%dist(1,iconn))+ &
-              perm_yy_loc_p(m2)*abs(cur_connection_object%dist(2,iconn))+ &
-              perm_zz_loc_p(m2)*abs(cur_connection_object%dist(3,iconn))
+      perm2 = perm_xx_loc_p(ghosted_id_dn)*abs(cur_connection_object%dist(1,iconn))+ &
+              perm_yy_loc_p(ghosted_id_dn)*abs(cur_connection_object%dist(2,iconn))+ &
+              perm_zz_loc_p(ghosted_id_dn)*abs(cur_connection_object%dist(3,iconn))
 
-      i1 = ithrm_loc_p(m1)
-      i2 = ithrm_loc_p(m2)
-      iicap1=int(icap_loc_p(m1))
-      iicap2=int(icap_loc_p(m2))
+      i1 = ithrm_loc_p(ghosted_id_up)
+      i2 = ithrm_loc_p(ghosted_id_dn)
+      iicap1=int(icap_loc_p(ghosted_id_up))
+      iicap2=int(icap_loc_p(ghosted_id_dn))
    
       D1 = option%ckwet(i1)
       D2 = option%ckwet(i2)
 
       call RichardsRes_FLCont(iconn,cur_connection_object%area(iconn), &
-                              var_loc_p((m1-1)*size_var_node+1:(m1-1)* &
+                              var_loc_p((ghosted_id_up-1)*size_var_node+1:(ghosted_id_up-1)* &
                                 size_var_node+size_var_use), &
-                              porosity_loc_p(m1),tor_loc_p(m1), &
+                              porosity_loc_p(ghosted_id_up),tor_loc_p(ghosted_id_up), &
                               option%sir(1:option%nphase,iicap1),dd1,perm1,D1, &
-                              var_loc_p((m2-1)*size_var_node+1:(m2-1)* &
+                              var_loc_p((ghosted_id_dn-1)*size_var_node+1:(ghosted_id_dn-1)* &
                                 size_var_node+size_var_use), &
-                              porosity_loc_p(m2),tor_loc_p(m2), &
+                              porosity_loc_p(ghosted_id_dn),tor_loc_p(ghosted_id_dn), &
                               option%sir(1:option%nphase,iicap2),dd2,perm2,D2, &
                               distance_gravity,upweight,option, &
                               vv_darcy,Res)
 
       cur_connection_object%velocity(1,iconn) = vv_darcy(1)
 
-      if (n1 > 0) then               ! If the upstream node is not a ghost node...
+      if (local_id_up > 0) then               ! If the upstream node is not a ghost node...
         do np =1, option%nphase 
-          vl_p(np+(0)*option%nphase+3*option%nphase*(n1-1)) = &
+          vl_p(np+(0)*option%nphase+3*option%nphase*(local_id_up-1)) = &
                                        vv_darcy(np)*cur_connection_object%dist(1,iconn) 
-          vl_p(np+(1)*option%nphase+3*option%nphase*(n1-1)) = &
+          vl_p(np+(1)*option%nphase+3*option%nphase*(local_id_up-1)) = &
                                        vv_darcy(np)*cur_connection_object%dist(2,iconn) 
-          vl_p(np+(2)*option%nphase+3*option%nphase*(n1-1)) = &
+          vl_p(np+(2)*option%nphase+3*option%nphase*(local_id_up-1)) = &
                                        vv_darcy(np)*cur_connection_object%dist(3,iconn) 
           ! use for print out of velocity
         enddo
@@ -1154,11 +1155,11 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
      
       Resold_FL(nc,1:option%ndof) = Res(1:option%ndof) 
     
-      if (n1>0) then
+      if (local_id_up>0) then
         r_p(p1:p1+option%ndof-1) = r_p(p1:p1+option%ndof-1) + Res(1:option%ndof)
       endif
    
-      if (n2>0) then
+      if (local_id_dn>0) then
         r_p(p2:p2+option%ndof-1) = r_p(p2:p2+option%ndof-1) - Res(1:option%ndof)
       endif
 
@@ -1186,28 +1187,28 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
       sum_connection = sum_connection + 1
       nc = sum_connection
     
-      m= cur_connection_object%id_dn(iconn)
-      ng = grid%nL2G(m)
+      local_id = cur_connection_object%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
 
       if (associated(option%imat)) then
-        if (option%imat(ng) <= 0) cycle
+        if (option%imat(ghosted_id) <= 0) cycle
       endif
 
-      if (ng<=0) then
+      if (ghosted_id<=0) then
         print *, "Wrong boundary node index... STOP!!!"
         stop
       endif
 
-      p1 = 1 + (m-1) * option%ndof
+      p1 = 1 + (local_id-1) * option%ndof
 
     
-      i2 = ithrm_loc_p(ng)
+      i2 = ithrm_loc_p(ghosted_id)
       D2 = option%ckwet(i2)
 
       ! for now, just assume diagonal tensor
-      perm1 = perm_xx_loc_p(ng)*abs(cur_connection_object%dist(1,iconn))+ &
-              perm_yy_loc_p(ng)*abs(cur_connection_object%dist(2,iconn))+ &
-              perm_zz_loc_p(ng)*abs(cur_connection_object%dist(3,iconn))
+      perm1 = perm_xx_loc_p(ghosted_id)*abs(cur_connection_object%dist(1,iconn))+ &
+              perm_yy_loc_p(ghosted_id)*abs(cur_connection_object%dist(2,iconn))+ &
+              perm_zz_loc_p(ghosted_id)*abs(cur_connection_object%dist(3,iconn))
       ! The below assumes a unit gravity vector of [0,0,1]
       distance_gravity = abs(cur_connection_object%dist(3,iconn)) * &
                          cur_connection_object%dist(0,iconn)
@@ -1218,8 +1219,8 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
         ! solve for pb from Darcy's law given qb /= 0
 !          option%xxbc(:,nc) = xx_loc_p((ng-1)*option%ndof+1: ng*option%ndof)
 !          option%iphasebc(nc) = int(iphase_loc_p(ng))
-          option%xxbc(:,nc)=xx_loc_p((ng-1)*option%ndof+1:ng*option%ndof)
-           option%iphasebc(nc) = int(iphase_loc_p(ng))
+          option%xxbc(:,nc)=xx_loc_p((ghosted_id-1)*option%ndof+1:ghosted_id*option%ndof)
+           option%iphasebc(nc) = int(iphase_loc_p(ghosted_id))
           if(dabs(option%velocitybc(1,nc))>1D-20)then
             if( option%velocitybc(1,nc)>0) then
                option%xxbc(2:option%ndof,nc)= yybc(2:option%ndof,nc)
@@ -1229,13 +1230,13 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
 
         case(3) 
        !  option%xxbc((nc-1)*option%ndof+1)=grid%pressurebc(2,ibc)
-          option%xxbc(2:option%ndof,nc) = xx_loc_p((ng-1)*option%ndof+2: ng*option%ndof)
-          option%iphasebc(nc)=int(iphase_loc_p(ng))
+          option%xxbc(2:option%ndof,nc) = xx_loc_p((ghosted_id-1)*option%ndof+2:ghosted_id*option%ndof)
+          option%iphasebc(nc)=int(iphase_loc_p(ghosted_id))
     
        case(4)
-          option%xxbc(1,nc) = xx_loc_p((ng-1)*option%ndof+1)
-           option%xxbc(3:option%ndof,nc) = xx_loc_p((ng-1)*option%ndof+3: ng*option%ndof)    
-          option%iphasebc(nc)=int(iphase_loc_p(ng))
+          option%xxbc(1,nc) = xx_loc_p((ghosted_id-1)*option%ndof+1)
+           option%xxbc(3:option%ndof,nc) = xx_loc_p((ghosted_id-1)*option%ndof+3:ghosted_id*option%ndof)    
+          option%iphasebc(nc)=int(iphase_loc_p(ghosted_id))
         
       end select
 
@@ -1252,7 +1253,7 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
 !      endif
    
     
-      iicap=int(icap_loc_p(ng))  
+      iicap=int(icap_loc_p(ghosted_id))  
 !      print *,'pflow_2pha_bc: ',grid%myrank,' nc= ',nc,' m= ',m, &
 !      ' ng= ',ng,' ibc= ',ibc,ip1,iicap, &
 !      grid%nconnbc,option%ibndtyp(ibc),option%concbc(nc)
@@ -1287,16 +1288,16 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
       call RichardsRes_FLBCCont(nc,boundary_condition%condition%itype(1), &
                                 cur_connection_object%area(iconn), &
                                 option%varbc(1:size_var_use), &
-                                var_loc_p((ng-1)*size_var_node+1:(ng-1)* &
-                                  size_var_node+size_var_use),porosity_loc_p(ng), &
-                                tor_loc_p(ng),option%sir(1:option%nphase,iicap), &
+                                var_loc_p((ghosted_id-1)*size_var_node+1:(ghosted_id-1)* &
+                                  size_var_node+size_var_use),porosity_loc_p(ghosted_id), &
+                                tor_loc_p(ghosted_id),option%sir(1:option%nphase,iicap), &
                                 cur_connection_object%dist(0,iconn),perm1,D2, &
                                 distance_gravity,option, &
                                 vv_darcy,Res)
       cur_connection_object%velocity(1,iconn) = vv_darcy(1)
 
       r_p(p1:p1-1+option%ndof)= r_p(p1:p1-1+option%ndof) - Res(1:option%ndof)
-      ResOld_AR(m,1:option%ndof) = ResOld_AR(m,1:option%ndof) - Res(1:option%ndof)
+      ResOld_AR(local_id,1:option%ndof) = ResOld_AR(local_id,1:option%ndof) - Res(1:option%ndof)
    
    
        !print *, ' boundary index', nc,ng,ibc,option%ibndtyp(ibc)
@@ -1320,22 +1321,20 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
 !  print *, r_p
 
   if (option%use_isoth==PETSC_TRUE) then
-    do n = 1, grid%nlmax  ! For each local node do...
-
+    do local_id = 1, grid%nlmax  ! For each local node do...
+      ghosted_id = grid%nL2G(local_id)
       !geh - Ignore inactive cells with inactive materials
       if (associated(option%imat)) then
-        if (option%imat(grid%nL2G(n)) <= 0) cycle
+        if (option%imat(ghosted_id) <= 0) cycle
       endif
-
-      ng = grid%nL2G(n)   ! corresponding ghost index
-      p1 = 3 + (n-1)*option%ndof
-      r_p(p1)=xx_loc_p(2 + (ng-1)*option%ndof)-yy_p(p1-1)
+      p1 = 3 + (local_id-1)*option%ndof
+      r_p(p1)=xx_loc_p(2 + (ghosted_id-1)*option%ndof)-yy_p(p1-1)
     enddo
   endif
 
   if (n_zero_rows > 0) then
-    do n=1,n_zero_rows
-      r_p(zero_rows_local(n)) = 0.
+    do i=1,n_zero_rows
+      r_p(zero_rows_local(i)) = 0.
     enddo
   endif
 
@@ -2071,15 +2070,14 @@ subroutine pflow_Richards_initaccum(solution)
 
  
   integer :: ierr
-  integer :: n
   integer :: i, index_var_begin,index_var_end
   integer :: p1
 ! integer :: ii1,ii2
   integer :: iicap, iiphase
-  integer :: ghosted_id
+  integer :: local_id, ghosted_id
 
   PetscScalar, pointer :: accum_p(:),yy_p(:),volume_p(:),porosity_loc_p(:),&
-                          var_p(:), icap_p(:),iphase_p(:),ithrm_p(:)
+                          var_p(:), icap_loc_p(:),iphase_loc_p(:),ithrm_loc_p(:)
   
  !  integer, pointer ::iphase_p(:)
   
@@ -2097,27 +2095,27 @@ subroutine pflow_Richards_initaccum(solution)
   call VecGetArrayF90(option%yy, yy_p, ierr); CHKERRQ(ierr)
   call VecGetArrayF90(option%accum, accum_p, ierr)
   call VecGetArrayF90(option%var, var_p,ierr)
-  call VecGetArrayF90(option%iphas, iphase_p, ierr)
-  call VecGetArrayF90(option%ithrm, ithrm_p, ierr)
-  call VecGetArrayF90(option%icap, icap_p, ierr)
+  call VecGetArrayF90(option%iphas_loc, iphase_loc_p, ierr)
+  call VecGetArrayF90(option%ithrm_loc, ithrm_loc_p, ierr)
+  call VecGetArrayF90(option%icap_loc, icap_loc_p, ierr)
   !print *,'Richardsinitaccum  Gotten pointers'
  
-  do n = 1, grid%nlmax
-        
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)    
     !geh - Ignore inactive cells with inactive materials
     if (associated(option%imat)) then
-      if (option%imat(grid%nL2G(n)) <= 0) cycle
+      if (option%imat(ghosted_id) <= 0) cycle
     endif
 
-    iicap=int(icap_p(n))
-    iiphase = int(iphase_p(n))
+    iicap=int(icap_loc_p(ghosted_id))
+    iiphase = int(iphase_loc_p(ghosted_id))
     dif(1)= option%difaq
  !   dif(2)= option%cdiff(int(ithrm_p(n)))
 
-    call pri_var_trans_Richards_ninc(yy_p((n-1)*option%ndof+1:n*option%ndof),iiphase,&
+    call pri_var_trans_Richards_ninc(yy_p((local_id-1)*option%ndof+1:local_id*option%ndof),iiphase,&
                                 option%scale,option%nphase,option%nspec, &
                                 iicap , dif, &
-                                var_p((n-1)*size_var_node+1:(n-1)* &
+                                var_p((local_id-1)*size_var_node+1:(local_id-1)* &
                                 size_var_node+size_var_use),option%itable,ierr, &
                                 option%pref)
   enddo
@@ -2126,9 +2124,9 @@ subroutine pflow_Richards_initaccum(solution)
   call VecGetArrayF90(option%var, var_p,ierr)
 
 !---------------------------------------------------------------------------
-  do n = 1, grid%nlmax  ! For each local node do...
+  do local_id = 1, grid%nlmax  ! For each local node do...
 
-    ghosted_id = grid%nL2G(n)
+    ghosted_id = grid%nL2G(local_id)
     
     !geh - Ignore inactive cells with inactive materials
     if (associated(option%imat)) then
@@ -2136,13 +2134,13 @@ subroutine pflow_Richards_initaccum(solution)
     endif
 
   !  ng = grid%nL2G(n)   ! corresponding ghost index
-    p1 = 1 + (n-1)*option%ndof
-    index_var_begin=(n-1)*size_var_node+1
+    p1 = 1 + (local_id-1)*option%ndof
+    index_var_begin=(local_id-1)*size_var_node+1
     index_var_end = index_var_begin -1 + size_var_use
-    i = ithrm_p(n)
+    i = ithrm_loc_p(ghosted_id)
     
-    call RichardsRes_ARCont(n,var_p(index_var_begin:index_var_end), &
-                            porosity_loc_p(ghosted_id),volume_p(n), &
+    call RichardsRes_ARCont(local_id,var_p(index_var_begin:index_var_end), &
+                            porosity_loc_p(ghosted_id),volume_p(local_id), &
                             option%dencpr(i),option,Res, &
                              0,ierr)
  
@@ -2162,9 +2160,9 @@ subroutine pflow_Richards_initaccum(solution)
   call VecRestoreArrayF90(option%yy, yy_p, ierr); CHKERRQ(ierr)
   call VecRestoreArrayF90(option%accum, accum_p, ierr)
   call VecRestoreArrayF90(option%var, var_p,ierr)
-  call VecRestoreArrayF90(option%iphas, iphase_p, ierr)
-  call VecRestoreArrayF90(option%ithrm, ithrm_p, ierr)
-  call VecRestoreArrayF90(option%icap, icap_p, ierr)
+  call VecRestoreArrayF90(option%iphas_loc, iphase_loc_p, ierr)
+  call VecRestoreArrayF90(option%ithrm_loc, ithrm_loc_p, ierr)
+  call VecRestoreArrayF90(option%icap_loc, icap_loc_p, ierr)
 
 end subroutine pflow_Richards_initaccum
 
@@ -2187,14 +2185,16 @@ subroutine pflow_update_Richards(solution)
   type(solution_type) :: solution 
     
 ! integer :: ichange 
-  integer :: n,n0
+  integer :: n0
 !geh added for transient boundary conditons
   integer :: nc, ibc, iithrm, m, ng
   real*8 :: sw, pc(2), kr(2)
   integer :: ierr,iicap,iiphase, iiphase_old
-  PetscScalar, pointer :: xx_p(:),icap_p(:),ithrm_p(:),iphase_p(:), var_p(:), yy_p(:), iphase_old_p(:)
+  PetscScalar, pointer :: xx_p(:),icap_loc_p(:),ithrm_loc_p(:), &
+                          iphase_loc_p(:), var_p(:), yy_p(:), iphase_loc_old_p(:)
   real*8 :: dif(1:solution%option%nphase)
-! real*8 :: dum1, dum2           
+! real*8 :: dum1, dum2   
+  integer :: local_id, ghosted_id        
 
 
   type(coupler_type), pointer :: boundary_condition
@@ -2221,23 +2221,23 @@ subroutine pflow_update_Richards(solution)
    ! if(ichange ==1)then
   call VecGetArrayF90(option%xx, xx_p, ierr); CHKERRQ(ierr)
   call VecGetArrayF90(option%yy, yy_p, ierr); CHKERRQ(ierr)
-  call VecGetArrayF90(option%icap,icap_p,ierr)
-  call VecGetArrayF90(option%ithrm,ithrm_p,ierr)  
-  call VecGetArrayF90(option%iphas, iphase_p, ierr)
-  call VecGetArrayF90(option%iphas_old, iphase_old_p, ierr)
+  call VecGetArrayF90(option%icap_loc,icap_loc_p,ierr)
+  call VecGetArrayF90(option%ithrm_loc,ithrm_loc_p,ierr)  
+  call VecGetArrayF90(option%iphas_loc, iphase_loc_p, ierr)
+  call VecGetArrayF90(option%iphas_old_loc, iphase_loc_old_p, ierr)
   call VecGetArrayF90(option%var,var_p,ierr)
 
-  do n = 1, grid%nlmax
-
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
     !geh - Ignore inactive cells with inactive materials
     if (associated(option%imat)) then
-      if (option%imat(grid%nL2G(n)) <= 0) cycle
+      if (option%imat(ghosted_id) <= 0) cycle
     endif
 
-    iicap = icap_p(n)
-    iiphase = int(iphase_p(n))
-    iiphase_old = int(iphase_old_p(n))
-    n0 = (n-1)*option%ndof
+    iicap = icap_loc_p(ghosted_id)
+    iiphase = int(iphase_loc_p(ghosted_id))
+    iiphase_old = int(iphase_loc_old_p(ghosted_id))
+    n0 = (local_id-1)*option%ndof
     
      if(option%ndof>=3) then
         if (xx_p(n0+3)<0.D0) xx_p(n0+3)=1.D-6
@@ -2261,10 +2261,10 @@ subroutine pflow_update_Richards(solution)
     dif(1) = option%difaq
  !   dif(2) = option%cdiff(int(ithrm_p(n)))
     !*******************************************
-    call pri_var_trans_Richards_ninc(xx_p((n-1)*option%ndof+1:n*option%ndof),iiphase, &
+    call pri_var_trans_Richards_ninc(xx_p((local_id-1)*option%ndof+1:local_id*option%ndof),iiphase, &
                                 option%scale,option%nphase,option%nspec, &
                                 iicap, dif,&
-                                var_p((n-1)*size_var_node+1:(n-1)* &
+                                var_p((local_id-1)*size_var_node+1:(local_id-1)* &
                                   size_var_node+size_var_use),&
                                 option%itable,ierr, option%pref)
   ! print *,n, xx_p((n-1)*option%ndof+1:n*option%ndof), var_p((n-1)*size_var_node+1:(n-1)*
@@ -2286,11 +2286,11 @@ subroutine pflow_update_Richards(solution)
         sum_connection = sum_connection + 1
         nc = sum_connection
 
-        m = cur_connection_object%id_dn(iconn)
-        ng = grid%nL2G(m)
+        local_id = cur_connection_object%id_dn(iconn)
+        ghosted_id = grid%nL2G(local_id)
 
         if (associated(option%imat)) then
-          if (option%imat(ng) <= 0) cycle
+          if (option%imat(ghosted_id) <= 0) cycle
         endif
        
         if (m<0) then
@@ -2302,8 +2302,8 @@ subroutine pflow_update_Richards(solution)
 
         if (boundary_condition%condition%itype(1)==1 .or. &
             boundary_condition%condition%itype(1)==3) then
-          iicap=int(icap_p(m))
-          iithrm=int(ithrm_p(m)) 
+          iicap=int(icap_loc_p(ghosted_id))
+          iithrm=int(ithrm_loc_p(ghosted_id)) 
           dif(1)= option%difaq
       !  dif(2)= option%cdiff(iithrm)
       
@@ -2346,17 +2346,17 @@ subroutine pflow_update_Richards(solution)
  
   call VecRestoreArrayF90(option%xx, xx_p, ierr); CHKERRQ(ierr)
   call VecRestoreArrayF90(option%yy, yy_p, ierr);
-  call VecRestoreArrayF90(option%icap,icap_p,ierr)
-  call VecRestoreArrayF90(option%ithrm,ithrm_p,ierr)  
-  call VecRestoreArrayF90(option%iphas, iphase_p, ierr)
-  call VecRestoreArrayF90(option%iphas_old, iphase_old_p, ierr)
+  call VecRestoreArrayF90(option%icap_loc,icap_loc_p,ierr)
+  call VecRestoreArrayF90(option%ithrm_loc,ithrm_loc_p,ierr)  
+  call VecRestoreArrayF90(option%iphas_loc, iphase_loc_p, ierr)
+  call VecRestoreArrayF90(option%iphas_old_loc, iphase_loc_old_p, ierr)
   call VecRestoreArrayF90(option%var,var_p,ierr)
    
   call translator_Richards_massbal(solution)
  ! endif 
 
   call VecCopy(option%xx, option%yy, ierr)   
-  call VecCopy(option%iphas, option%iphas_old, ierr)   
+  call VecCopy(option%iphas_loc, option%iphas_old_loc, ierr)   
    
   call  pflow_Richards_initaccum(solution)
     !print *,'pflow_Richards_initaccum done'
@@ -2391,14 +2391,14 @@ subroutine pflow_Richards_initadj(solution)
  
   integer :: ierr
   integer :: num_connection
-  integer :: n, nc, ng
+  integer :: nc
   integer :: jn
-  integer :: m
   integer :: ii1,ii2,iicap
   integer :: iiphase,iithrm
+  integer :: local_id, ghosted_id
 
   PetscScalar, pointer :: xx_p(:),var_p(:)
-  PetscScalar, pointer ::iphase_p(:), ithrm_p(:),icap_p(:)
+  PetscScalar, pointer ::iphase_loc_p(:), ithrm_loc_p(:),icap_loc_p(:)
   
   real*8 :: dif(solution%option%nphase)
 ! real*8 :: dum1, dum2
@@ -2416,33 +2416,33 @@ subroutine pflow_Richards_initadj(solution)
 ! real*8 :: temp1
 !  real*8, parameter :: Rg=8.31415D0
 
-  call VecGetArrayF90(option%icap, icap_p, ierr)
-  call VecGetArrayF90(option%ithrm, ithrm_p, ierr)
-  call VecGetArrayF90(option%iphas, iphase_p, ierr)
+  call VecGetArrayF90(option%icap_loc, icap_loc_p, ierr)
+  call VecGetArrayF90(option%ithrm_loc, ithrm_loc_p, ierr)
+  call VecGetArrayF90(option%iphas_loc, iphase_loc_p, ierr)
   call VecGetArrayF90(option%xx, xx_p, ierr)
   call VecGetArrayF90(option%var, var_p, ierr)
 ! print *,'initadj gotten pointers' 
 
 
-  do n = 1, grid%nlmax
-   
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
     !geh - Ignore inactive cells with inactive materials
     if (associated(option%imat)) then
-      if (option%imat(grid%nL2G(n)) <= 0) cycle
+      if (option%imat(ghosted_id) <= 0) cycle
     endif
 
-    jn = 1 + (n-1)*option%nphase
-    ii1=1+(n-1)*option%nphase; ii2=n*option%nphase
-    iicap=int(icap_p(n))
+    jn = 1 + (local_id-1)*option%nphase
+    ii1=1+(local_id-1)*option%nphase; ii2=local_id*option%nphase
+    iicap=int(icap_loc_p(local_id))
         
-    iiphase = iphase_p(n)
+    iiphase = iphase_loc_p(local_id)
         !*****************
     dif(1)= option%difaq
  !   dif(2)= option%cdiff(int(ithrm_p(n)))
     !*******************************************
    if(iiphase ==3)then
     ! print *, 'rich iniadj: ',n, iiphase, xx_p((n-1)*option%ndof+1: n*option%ndof)
-     sw= xx_p((n-1)*option%ndof+1)
+     sw= xx_p((local_id-1)*option%ndof+1)
      call pflow_pckr_richards_fw(iicap,sw,pc,kr)    
   !   print *,'INIT ', sw, pc(1), iicap, grid%pcwmax(iicap), option%icaptype(iicap),option%sir(1,iicap), grid%lambda(iicap), &
   !               option%alpha(iicap),grid%pckrm(iicap),grid%pcwmax(iicap),sw,pc,kr,&
@@ -2452,19 +2452,19 @@ subroutine pflow_Richards_initadj(solution)
         print *,'INIT Warning: Pc>pcmax', sw, pc(1), iicap, option%pcwmax(iicap)
         pc(1)=option%pcwmax(iicap)
      endif 
-     xx_p((n-1)*option%ndof+1)= option%pref - pc(1)
-     print *,'Richards: Conv: ',n, sw, iicap, sw, pc(1),xx_p((n-1)*option%ndof+1: n*option%ndof)
+     xx_p((local_id-1)*option%ndof+1)= option%pref - pc(1)
+     print *,'Richards: Conv: ',local_id, sw, iicap, sw, pc(1),xx_p((local_id-1)*option%ndof+1:local_id*option%ndof)
     endif
     
-    call pri_var_trans_Richards_ninc(xx_p((n-1)*option%ndof+1:n*option%ndof),iiphase, &
+    call pri_var_trans_Richards_ninc(xx_p((local_id-1)*option%ndof+1:local_id*option%ndof),iiphase, &
                                 option%scale,option%nphase,option%nspec, &
                                 iicap,  dif, &
-                                var_p((n-1)*size_var_node+1:(n-1)* &
+                                var_p((local_id-1)*size_var_node+1:(local_id-1)* &
                                   size_var_node+size_var_use), &
                                 option%itable,ierr, option%pref)
    
     if (translator_check_cond_Richards(iiphase, &
-                                        var_p((n-1)*size_var_node+1:(n-1)* &
+                                        var_p((local_id-1)*size_var_node+1:(local_id-1)* &
                                         size_var_node+size_var_use), &
                                         option%nphase,option%nspec) /= 1 ) then
       print *," Wrong internal node init...  STOP!!!"
@@ -2496,14 +2496,14 @@ subroutine pflow_Richards_initadj(solution)
       sum_connection = sum_connection + 1
       nc = sum_connection
       
-      m = cur_connection_object%id_dn(iconn)
-      ng = grid%nL2G(m)
+      local_id = cur_connection_object%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
   
       if (associated(option%imat)) then
-        if (option%imat(ng) <= 0) cycle
+        if (option%imat(ghosted_id) <= 0) cycle
       endif
        
-      if (m<0) then
+      if (local_id<0) then
         print *, "Wrong boundary node index... STOP!!!"
         stop
       endif
@@ -2512,8 +2512,8 @@ subroutine pflow_Richards_initadj(solution)
 
       if (boundary_condition%condition%itype(1)==1 .or. &
           boundary_condition%condition%itype(1)==3) then
-        iicap=int(icap_p(m))
-        iithrm=int(ithrm_p(m)) 
+        iicap=int(icap_loc_p(local_id))
+        iithrm=int(ithrm_loc_p(local_id)) 
         dif(1)= option%difaq
       !  dif(2)= option%cdiff(iithrm)
         
@@ -2555,9 +2555,9 @@ subroutine pflow_Richards_initadj(solution)
     boundary_condition => boundary_condition%next
   enddo
 
-  call VecRestoreArrayF90(option%icap, icap_p, ierr)
-  call VecRestoreArrayF90(option%ithrm, ithrm_p, ierr)
-  call VecRestoreArrayF90(option%iphas, iphase_p, ierr)
+  call VecRestoreArrayF90(option%icap_loc, icap_loc_p, ierr)
+  call VecRestoreArrayF90(option%ithrm_loc, ithrm_loc_p, ierr)
+  call VecRestoreArrayF90(option%iphas_loc, iphase_loc_p, ierr)
   call VecRestoreArrayF90(option%xx, xx_p, ierr)
   call VecRestoreArrayF90(option%var, var_p, ierr)
   !print *,kgjkdf
@@ -2576,7 +2576,8 @@ subroutine createRichardsZeroArray(solution)
   implicit none
 
   type(solution_type) :: solution
-  integer :: n, ng, ncount, idof
+  integer :: ncount, idof
+  integer :: local_id, ghosted_id
 
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -2586,9 +2587,9 @@ subroutine createRichardsZeroArray(solution)
   n_zero_rows = 0
 
   if (associated(option%imat)) then
-    do n = 1, grid%nlmax
-      ng = grid%nL2G(n)
-      if (option%imat(ng) <= 0) then
+    do local_id = 1, grid%nlmax
+      ghosted_id = grid%nL2G(local_id)
+      if (option%imat(ghosted_id) <= 0) then
         n_zero_rows = n_zero_rows + option%ndof
       else
 #ifdef ISOTHERMAL
@@ -2609,29 +2610,29 @@ subroutine createRichardsZeroArray(solution)
   ncount = 0
 
   if (associated(option%imat)) then
-    do n = 1, grid%nlmax
-      ng = grid%nL2G(n)
-      if (option%imat(ng) <= 0) then
+    do local_id = 1, grid%nlmax
+      ghosted_id = grid%nL2G(local_id)
+      if (option%imat(ghosted_id) <= 0) then
         do idof = 1, option%ndof
           ncount = ncount + 1
-          zero_rows_local(ncount) = (n-1)*option%ndof+idof
-          zero_rows_local_ghosted(ncount) = (ng-1)*option%ndof+idof-1
+          zero_rows_local(ncount) = (local_id-1)*option%ndof+idof
+          zero_rows_local_ghosted(ncount) = (ghosted_id-1)*option%ndof+idof-1
         enddo
       else
 #ifdef ISOTHERMAL
         ncount = ncount + 1
-        zero_rows_local(ncount) = n*option%ndof
-        zero_rows_local_ghosted(ncount) = ng*option%ndof-1
+        zero_rows_local(ncount) = local_id*option%ndof
+        zero_rows_local_ghosted(ncount) = ghosted_id*option%ndof-1
 #endif
       endif
     enddo
   else
 #ifdef ISOTHERMAL
-    do n = 1, grid%nlmax
-      ng = grid%nL2G(n)
+    do local_id = 1, grid%nlmax
+      ghosted_id = grid%nL2G(local_id)
       ncount = ncount + 1
-      zero_rows_local(ncount) = n*option%ndof
-      zero_rows_local_ghosted(ncount) = ng*option%ndof-1
+      zero_rows_local(ncount) = local_id*option%ndof
+      zero_rows_local_ghosted(ncount) = ghosted_id*option%ndof-1
     enddo
 #endif
   endif
