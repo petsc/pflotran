@@ -73,7 +73,7 @@ subroutine translator_Richards_massbal(solution)
  
   integer :: ierr
   integer,save :: icall
-  integer :: n0,nc,np
+  integer :: nc,np
 ! real*8 :: nsm,nsm0,sm 
   integer :: index,size_var_node
   integer :: local_id, ghosted_id
@@ -82,7 +82,7 @@ subroutine translator_Richards_massbal(solution)
   
 ! integer :: n2p,n2p0,nzm,nzm0,nxc,nxc0,nyc,nyc0,nzc,nzc0,
      
-  PetscScalar, pointer :: var_p(:),porosity_loc_p(:),volume_p(:)
+  PetscScalar, pointer :: var_loc_p(:),porosity_loc_p(:),volume_p(:)
   
   real*8 :: pvol,sum
   real*8, pointer :: den(:),sat(:),xmol(:)
@@ -94,7 +94,7 @@ subroutine translator_Richards_massbal(solution)
   grid => solution%grid
   option => solution%option
 
-  call VecGetArrayF90(option%var,var_p,ierr)
+  call VecGetArrayF90(option%var_loc,var_loc_p,ierr)
   call VecGetArrayF90(grid%volume, volume_p, ierr)
   call VecGetArrayF90(option%porosity_loc, porosity_loc_p, ierr)
  
@@ -103,12 +103,12 @@ subroutine translator_Richards_massbal(solution)
   
   do local_id = 1,grid%nlmax
     ghosted_id = grid%nL2G(local_id)
-    n0=(local_id-1)* option%ndof
-    index=(local_id-1)*size_var_node
-    den=>var_p(index+3+option%nphase: index+2+2*option%nphase)
-    sat=>var_p(index+2+1:index+2+option%nphase)
-    xmol=>var_p(index+2+7*option%nphase+1:index+2+7*option%nphase +&
-                option%nphase*option%nspec)    
+!remove    dof_offset=(local_id-1)* option%ndof
+    index=(ghosted_id-1)*size_var_node
+    den=>var_loc_p(index+3+option%nphase:index+2+2*option%nphase)
+    sat=>var_loc_p(index+2+1:index+2+option%nphase)
+    xmol=>var_loc_p(index+2+7*option%nphase+1:index+2+7*option%nphase +&
+                    option%nphase*option%nspec)    
 
     pvol=volume_p(local_id)*porosity_loc_p(ghosted_id)
      
@@ -124,7 +124,7 @@ subroutine translator_Richards_massbal(solution)
 ! print *,nzc,c0
   enddo
  !  call PETSCBarrier(PETSC_NULL_OBJECT,ierr)
-  call VecRestoreArrayF90(option%var,var_p,ierr)
+  call VecRestoreArrayF90(option%var_loc,var_loc_p,ierr)
   call VecRestoreArrayF90(grid%volume, volume_p, ierr)
   call VecRestoreArrayF90(option%porosity_loc, porosity_loc_p, ierr)
  
@@ -209,49 +209,48 @@ integer function translator_check_cond_Richards(iphase, &
 end function translator_check_cond_Richards
 
 
-subroutine translator_Richards_get_output(nvals,option)
+subroutine translator_Richards_get_output(grid,option)
 
   use Option_module
+  use Grid_module, only : grid_type
 
+  implicit none
+  
   integer :: nvals
   type(option_type) :: option
+  type(grid_type) :: grid
   
   integer :: ierr
   
-  PetscScalar, pointer :: t_p(:),p_p(:),c_p(:),s_p(:),cc_p(:),var_P(:)
-  integer :: n, index_var_begin ,jn, size_var_node
-! PetscScalar, pointer :: p,t,satu(:),xmol(:)
+  PetscScalar, pointer :: t_p(:),p_p(:),c_p(:),s_p(:),cc_p(:),var_loc_p(:)
+  integer :: local_id, ghosted_id, index_var_begin ,jn, size_var_node
     
-  call VecGetArrayF90(option%var, var_p, ierr)
+  call VecGetArrayF90(option%var_loc,var_loc_p, ierr)
   call VecGetArrayF90(option%pressure, p_p, ierr)
   call VecGetArrayF90(option%temp, t_p, ierr)
   call VecGetArrayF90(option%xmol, c_p, ierr)
   call VecGetArrayF90(option%sat, s_p, ierr)
   call VecGetArrayF90(option%conc, cc_p, ierr)
-  !print *,' translator_mph_get_output gotten pointers'
   
   size_var_node=(option%ndof+1)*(2+7*option%nphase +2*option%nphase*option%nspec)
   
-  do n = 1, nvals
-
-    index_var_begin = (n-1) * size_var_node
-    jn = 1 + (n-1)*option%nphase 
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    index_var_begin = (ghosted_id-1) * size_var_node
+    jn = 1 + (ghosted_id-1)*option%nphase 
     
-    p_p(jn) = var_p(index_var_begin + 2)! - var_p(index_var_begin+5*option%nphase+3)
-   ! p_p(jn+1) = var_p(index_var_begin + 2) - var_p(index_var_begin+5*option%nphase+4)
+    p_p(jn) = var_loc_p(index_var_begin + 2)
    
-    t_p(n) = var_p(index_var_begin + 1)
+    t_p(local_id) = var_loc_p(index_var_begin + 1)
 
     c_p(jn) = 0.D0!var_p(index_var_begin+7*option%nphase+4)
-    if(option%nspec>1)  c_p(jn) = var_p(index_var_begin +2+ 7*option%nphase +2)
-   ! c_p(jn+1) = var_p(index_var_begin+7*option%nphase+6)
-    cc_p(n) = c_p(jn)
+    if(option%nspec>1)  c_p(jn) = var_loc_p(index_var_begin +2+ 7*option%nphase +2)
+    cc_p(local_id) = c_p(jn)
   
-    s_p(jn) = var_p(index_var_begin + 3) 
- !   s_p(jn+1)=1.D0 -  s_p(jn)
+    s_p(jn) = var_loc_p(index_var_begin + 3) 
 
   enddo
-  call VecRestoreArrayF90(option%var, var_p, ierr)
+  call VecRestoreArrayF90(option%var_loc, var_loc_p, ierr)
   call VecRestoreArrayF90(option%pressure, p_p, ierr)
   call VecRestoreArrayF90(option%temp, t_p, ierr)
   call VecRestoreArrayF90(option%xmol, c_p, ierr)

@@ -1679,7 +1679,7 @@ subroutine GetVarFromArray(solution,vec,ivar,isubvar)
   integer :: ivar
   integer :: isubvar
 
-  integer :: local_id
+  integer :: local_id, ghosted_id
   integer :: offset, saturation_offset
   integer :: size_var_use
   integer :: size_var_node
@@ -1714,11 +1714,12 @@ subroutine GetVarFromArray(solution,vec,ivar,isubvar)
       size_var_use = 2 + 7*option%nphase + 2* option%nphase*option%nspec
       size_var_node = (option%ndof + 1) * size_var_use
         
-      call VecGetArrayF90(option%var,var_ptr,ierr)
+      call VecGetArrayF90(option%var_loc,var_ptr,ierr)
       do local_id=1,grid%nlmax
-        vec_ptr(local_id) = var_ptr((local_id-1)*size_var_node+offset)
+        ghosted_id = grid%nL2G(local_id)
+        vec_ptr(local_id) = var_ptr((ghosted_id-1)*size_var_node+offset)
       enddo
-      call VecRestoreArrayF90(option%var,var_ptr,ierr)
+      call VecRestoreArrayF90(option%var_loc,var_ptr,ierr)
 
     case(LIQUID_ENERGY,GAS_ENERGY)
 
@@ -1734,15 +1735,16 @@ subroutine GetVarFromArray(solution,vec,ivar,isubvar)
       size_var_use = 2 + 7*option%nphase + 2* option%nphase*option%nspec
       size_var_node = (option%ndof + 1) * size_var_use
         
-      call VecGetArrayF90(option%var,var_ptr,ierr)
+      call VecGetArrayF90(option%var_loc,var_ptr,ierr)
       do local_id=1,grid%nlmax
-        if (var_ptr((local_id-1)*size_var_node+saturation_offset) > 1.d-30) then
-          vec_ptr(local_id) = var_ptr((local_id-1)*size_var_node+offset)
+        ghosted_id = grid%nL2G(local_id)      
+        if (var_ptr((ghosted_id-1)*size_var_node+saturation_offset) > 1.d-30) then
+          vec_ptr(local_id) = var_ptr((ghosted_id-1)*size_var_node+offset)
         else
           vec_ptr(local_id) = 0.d0
         endif
       enddo
-      call VecRestoreArrayF90(option%var,var_ptr,ierr)
+      call VecRestoreArrayF90(option%var_loc,var_ptr,ierr)
 
     case(VOLUME_FRACTION)
     

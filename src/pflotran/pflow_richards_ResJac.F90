@@ -164,7 +164,7 @@ subroutine Richards_Update_Reason(reason,solution)
   type(option_type), pointer :: option
   
   integer, intent(out):: reason
-  PetscScalar, pointer :: xx_p(:),var_p(:),iphase_loc_p(:), yy_p(:) !,r_p(:)
+  PetscScalar, pointer :: xx_p(:),iphase_loc_p(:), yy_p(:) !,r_p(:)
   integer :: dof_offset, temp_reason
   integer ierr, iipha
   integer :: local_id, ghosted_id
@@ -191,7 +191,6 @@ subroutine Richards_Update_Reason(reason,solution)
   if (reason>0) then
     call VecGetArrayF90(option%xx,xx_p, ierr); CHKERRQ(ierr)
     call VecGetArrayF90(option%yy,yy_p, ierr)
-    call VecGetArrayF90(option%var,var_p, ierr); 
     call VecGetArrayF90(option%iphas_loc,iphase_loc_p, ierr); 
   
     do local_id = 1,grid%nlmax
@@ -221,7 +220,6 @@ subroutine Richards_Update_Reason(reason,solution)
     if (reason<=0) print *,'Sat or Con out of Region at: ',local_id,iipha,xx_p(dof_offset+1:dof_offset+2)
     call VecRestoreArrayF90(option%xx,xx_p, ierr); CHKERRQ(ierr)
     call VecRestoreArrayF90(option%yy,yy_p, ierr)
-    call VecRestoreArrayF90(option%var,var_p, ierr) 
     call VecRestoreArrayF90(option%iphas_loc,iphase_loc_p, ierr) 
   endif
  ! print *,' update reason', grid%myrank, re,n,grid%nlmax
@@ -750,7 +748,7 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
   call VecGetArrayF90(option%icap_loc,icap_loc_p,ierr)
   call VecGetArrayF90(option%ithrm_loc,ithrm_loc_p,ierr)  
   call VecGetArrayF90(option%iphas_loc, iphase_loc_p, ierr)
-  call VecGetArrayF90(option%var,var_p,ierr)
+  call VecGetArrayF90(option%var_loc,var_loc_p,ierr)
   
 !-----  phase properities ---- last time step---
   do local_id = 1, grid%nlmax
@@ -773,7 +771,7 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
                                        local_id*option%ndof),iiphase, &
                                 option%scale,option%nphase,option%nspec, &
                                 iicap, dif, &
-                                var_p((local_id-1)*size_var_node+1:(local_id-1)* &
+                                var_loc_p((ghosted_id-1)*size_var_node+1:(ghosted_id-1)* &
                                   size_var_node+size_var_use), &
                                 option%itable,ierr, option%pref)
 
@@ -784,7 +782,7 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
                                   option%delx(1:option%ndof,ghosted_id),iiphase, &
                                   option%scale,option%nphase,option%nspec, &
                                   iicap ,dif, &
-                                  var_p((local_id-1)*size_var_node+size_var_use+1:local_id* &
+                                  var_loc_p((ghosted_id-1)*size_var_node+size_var_use+1:ghosted_id* &
                                     size_var_node), &
                                   option%itable,ierr, option%pref)
     endif
@@ -795,10 +793,9 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
   call VecRestoreArrayF90(option%iphas_loc,iphase_loc_p,ierr)
   call VecRestoreArrayF90(option%icap_loc,icap_loc_p,ierr)
   call VecRestoreArrayF90(option%ithrm_loc,ithrm_loc_p,ierr)
-  call VecRestoreArrayF90(option%var,var_p,ierr)
-  ! call VecRestoreArrayF90(option%iphase,iphase_p,ierr)
+  call VecRestoreArrayF90(option%var_loc,var_loc_p,ierr)
   
-  call GridGlobalToLocal(grid,option%var,option%var_loc,VARDOF)
+  call GridLocalToLocal(grid,option%var_loc,option%var_loc,VARDOF)
   call GridLocalToLocal(grid,option%perm_xx_loc,option%perm_xx_loc,ONEDOF)
   call GridLocalToLocal(grid,option%perm_yy_loc,option%perm_yy_loc,ONEDOF)
   call GridLocalToLocal(grid,option%perm_zz_loc,option%perm_zz_loc,ONEDOF)
@@ -920,7 +917,7 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
         jng= 2 + (ng-1)*option%nphase    
  
      !  span-wagner
-        call ideal_gaseos_noderiv(var_loc_p((ng-1)*size_var_node+2), &
+        call ideal_gaseos_noderiv(var_loc_p((ghosted_id-1)*size_var_node+2), &
                                   tsrc1,option%scale,rho,enth_src_co2, tmp)
         enth_src_co2 =enth_src_co2 / option%fmwa
 
@@ -1779,7 +1776,7 @@ subroutine pflow_Richards_initaccum(solution)
   integer :: local_id, ghosted_id
 
   PetscScalar, pointer :: accum_p(:),yy_p(:),volume_p(:),porosity_loc_p(:),&
-                          var_p(:), icap_loc_p(:),iphase_loc_p(:),ithrm_loc_p(:)
+                          var_loc_p(:), icap_loc_p(:),iphase_loc_p(:),ithrm_loc_p(:)
   
   real*8 :: dif(1:solution%option%nphase),res(1:solution%option%ndof)
  
@@ -1793,7 +1790,7 @@ subroutine pflow_Richards_initaccum(solution)
   call VecGetArrayF90(option%porosity_loc, porosity_loc_p, ierr)
   call VecGetArrayF90(option%yy, yy_p, ierr); CHKERRQ(ierr)
   call VecGetArrayF90(option%accum, accum_p, ierr)
-  call VecGetArrayF90(option%var, var_p,ierr)
+  call VecGetArrayF90(option%var_loc, var_loc_p,ierr)
   call VecGetArrayF90(option%iphas_loc, iphase_loc_p, ierr)
   call VecGetArrayF90(option%ithrm_loc, ithrm_loc_p, ierr)
   call VecGetArrayF90(option%icap_loc, icap_loc_p, ierr)
@@ -1813,13 +1810,10 @@ subroutine pflow_Richards_initaccum(solution)
     call pri_var_trans_Richards_ninc(yy_p((local_id-1)*option%ndof+1:local_id*option%ndof),iiphase,&
                                 option%scale,option%nphase,option%nspec, &
                                 iicap , dif, &
-                                var_p((local_id-1)*size_var_node+1:(local_id-1)* &
+                                var_loc_p((ghosted_id-1)*size_var_node+1:(ghosted_id-1)* &
                                 size_var_node+size_var_use),option%itable,ierr, &
                                 option%pref)
   enddo
-
-  call VecRestoreArrayF90(option%var, var_p,ierr)
-  call VecGetArrayF90(option%var, var_p,ierr)
 
 !---------------------------------------------------------------------------
   do local_id = 1, grid%nlmax  ! For each local node do...
@@ -1832,11 +1826,11 @@ subroutine pflow_Richards_initaccum(solution)
     endif
 
     p1 = 1 + (local_id-1)*option%ndof
-    index_var_begin=(local_id-1)*size_var_node+1
-    index_var_end = index_var_begin -1 + size_var_use
+    index_var_begin=(ghosted_id-1)*size_var_node+1
+    index_var_end = index_var_begin-1 + size_var_use
     i = ithrm_loc_p(ghosted_id)
     
-    call RichardsRes_ARCont(local_id,var_p(index_var_begin:index_var_end), &
+    call RichardsRes_ARCont(local_id,var_loc_p(index_var_begin:index_var_end), &
                             porosity_loc_p(ghosted_id),volume_p(local_id), &
                             option%dencpr(i),option,Res, &
                              0,ierr)
@@ -1850,7 +1844,7 @@ subroutine pflow_Richards_initaccum(solution)
   call VecRestoreArrayF90(option%porosity_loc, porosity_loc_p, ierr)
   call VecRestoreArrayF90(option%yy, yy_p, ierr); CHKERRQ(ierr)
   call VecRestoreArrayF90(option%accum, accum_p, ierr)
-  call VecRestoreArrayF90(option%var, var_p,ierr)
+  call VecRestoreArrayF90(option%var_loc, var_loc_p,ierr)
   call VecRestoreArrayF90(option%iphas_loc, iphase_loc_p, ierr)
   call VecRestoreArrayF90(option%ithrm_loc, ithrm_loc_p, ierr)
   call VecRestoreArrayF90(option%icap_loc, icap_loc_p, ierr)
@@ -1880,7 +1874,7 @@ subroutine pflow_update_Richards(solution)
   real*8 :: sw, pc(2), kr(2)
   integer :: ierr,iicap,iiphase, iiphase_old
   PetscScalar, pointer :: xx_p(:),icap_loc_p(:),ithrm_loc_p(:), &
-                          iphase_loc_p(:), var_p(:), yy_p(:), iphase_loc_old_p(:)
+                          iphase_loc_p(:), var_loc_p(:), yy_p(:), iphase_loc_old_p(:)
   real*8 :: dif(1:solution%option%nphase)
   integer :: local_id, ghosted_id        
 
@@ -1909,7 +1903,7 @@ subroutine pflow_update_Richards(solution)
   call VecGetArrayF90(option%ithrm_loc,ithrm_loc_p,ierr)  
   call VecGetArrayF90(option%iphas_loc, iphase_loc_p, ierr)
   call VecGetArrayF90(option%iphas_old_loc, iphase_loc_old_p, ierr)
-  call VecGetArrayF90(option%var,var_p,ierr)
+  call VecGetArrayF90(option%var_loc,var_loc_p,ierr)
 
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
@@ -1932,7 +1926,7 @@ subroutine pflow_update_Richards(solution)
     call pri_var_trans_Richards_ninc(xx_p((local_id-1)*option%ndof+1:local_id*option%ndof),iiphase, &
                                 option%scale,option%nphase,option%nspec, &
                                 iicap, dif,&
-                                var_p((local_id-1)*size_var_node+1:(local_id-1)* &
+                                var_loc_p((ghosted_id-1)*size_var_node+1:(ghosted_id-1)* &
                                   size_var_node+size_var_use),&
                                 option%itable,ierr, option%pref)
  
@@ -2008,7 +2002,7 @@ subroutine pflow_update_Richards(solution)
   call VecRestoreArrayF90(option%ithrm_loc,ithrm_loc_p,ierr)  
   call VecRestoreArrayF90(option%iphas_loc, iphase_loc_p, ierr)
   call VecRestoreArrayF90(option%iphas_old_loc, iphase_loc_old_p, ierr)
-  call VecRestoreArrayF90(option%var,var_p,ierr)
+  call VecRestoreArrayF90(option%var_loc,var_loc_p,ierr)
    
   call translator_Richards_massbal(solution)
  ! endif 
@@ -2017,7 +2011,7 @@ subroutine pflow_update_Richards(solution)
   call VecCopy(option%iphas_loc, option%iphas_old_loc, ierr)   
    
   call  pflow_Richards_initaccum(solution)
-  call translator_Richards_get_output(grid%nlmax,option)
+  call translator_Richards_get_output(grid,option)
   ! the output variables should be put into grid%pressure, temp,xmol,sat...
   ! otherwise need to rewrite the pflow_output
 
@@ -2053,7 +2047,7 @@ subroutine pflow_Richards_initadj(solution)
   integer :: iiphase,iithrm
   integer :: local_id, ghosted_id
 
-  PetscScalar, pointer :: xx_p(:),var_p(:)
+  PetscScalar, pointer :: xx_p(:),var_loc_p(:)
   PetscScalar, pointer ::iphase_loc_p(:), ithrm_loc_p(:),icap_loc_p(:)
   
   real*8 :: dif(solution%option%nphase)
@@ -2072,7 +2066,7 @@ subroutine pflow_Richards_initadj(solution)
   call VecGetArrayF90(option%ithrm_loc, ithrm_loc_p, ierr)
   call VecGetArrayF90(option%iphas_loc, iphase_loc_p, ierr)
   call VecGetArrayF90(option%xx, xx_p, ierr)
-  call VecGetArrayF90(option%var, var_p, ierr) 
+  call VecGetArrayF90(option%var_loc, var_loc_p, ierr) 
 
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
@@ -2105,12 +2099,12 @@ subroutine pflow_Richards_initadj(solution)
     call pri_var_trans_Richards_ninc(xx_p((local_id-1)*option%ndof+1:local_id*option%ndof),iiphase, &
                                 option%scale,option%nphase,option%nspec, &
                                 iicap,  dif, &
-                                var_p((local_id-1)*size_var_node+1:(local_id-1)* &
+                                var_loc_p((ghosted_id-1)*size_var_node+1:(ghosted_id-1)* &
                                   size_var_node+size_var_use), &
                                 option%itable,ierr, option%pref)
    
     if (translator_check_cond_Richards(iiphase, &
-                                        var_p((local_id-1)*size_var_node+1:(local_id-1)* &
+                                        var_loc_p((ghosted_id-1)*size_var_node+1:(ghosted_id-1)* &
                                         size_var_node+size_var_use), &
                                         option%nphase,option%nspec) /= 1 ) then
       print *," Wrong internal node init...  STOP!!!"
@@ -2197,7 +2191,7 @@ subroutine pflow_Richards_initadj(solution)
   call VecRestoreArrayF90(option%ithrm_loc, ithrm_loc_p, ierr)
   call VecRestoreArrayF90(option%iphas_loc, iphase_loc_p, ierr)
   call VecRestoreArrayF90(option%xx, xx_p, ierr)
-  call VecRestoreArrayF90(option%var, var_p, ierr)
+  call VecRestoreArrayF90(option%var_loc, var_loc_p, ierr)
    
 end subroutine pflow_Richards_initadj
 

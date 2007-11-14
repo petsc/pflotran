@@ -258,7 +258,7 @@ module Option_module
     Vec :: perm_xx_loc, perm_yy_loc, perm_zz_loc
     Vec :: perm0_xx, perm0_yy, perm0_zz, perm_pow
     ! Multiple degrees of freedom (equal to number of phases present):
-    Vec :: var,var_loc
+    Vec :: var_loc
     Vec :: ppressure, ppressure_loc, pressure, dp
     Vec :: ssat, ssat_loc, sat    ! saturation
     Vec :: xxmol, xxmol_loc, xmol ! mole fraction

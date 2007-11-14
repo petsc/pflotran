@@ -283,7 +283,6 @@ subroutine PflowInit(simulation,filename)
 
   select case(option%imode)
     case(MPH_MODE,RICHARDS_MODE,FLASH_MODE,OWG_MODE,VADOSE_MODE)
-      call GridCreateVector(grid,VARDOF, option%var,GLOBAL)
       call GridCreateVector(grid,VARDOF, option%var_loc,LOCAL)
   end select
 
