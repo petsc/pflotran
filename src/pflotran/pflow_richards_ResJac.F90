@@ -72,8 +72,9 @@ subroutine pflow_Richards_timecut(solution)
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
   
-  PetscScalar, pointer :: xx_p(:),yy_p(:)!,var_p(:),iphase_p(:)
-  integer :: n,n0,re,ierr
+  PetscScalar, pointer :: xx_p(:),yy_p(:)
+  integer :: n0,re,ierr
+  integer :: local_id
   !integer re0, ierr, index, iiphaRichards
   !real*8, pointer :: sat(:),xmol(:)
 
@@ -85,8 +86,8 @@ subroutine pflow_Richards_timecut(solution)
  ! call VecGetArrayF90(option%var, var_p, ierr); 
  ! call VecGetArrayF90(option%iphas, iphase_p, ierr); 
 
-  do n=1, grid%nlmax
-    n0=(n-1)*option%ndof
+  do local_id=1, grid%nlmax
+    n0=(local_id-1)*option%ndof
     do re = 1, option%ndof
    !xx_p(n0+re)= 0.5D0 * xx_p(n0+re) +.5D0 *yy_p(n0+re)
       xx_p(n0+re)= yy_p(n0+re)
@@ -176,7 +177,7 @@ subroutine Richards_Update_Reason(reason,solution)
   
   integer, intent(out):: reason
   PetscScalar, pointer :: xx_p(:),var_p(:),iphase_loc_p(:), yy_p(:) !,r_p(:)
-  integer :: n,n0,re
+  integer :: n0,re
   integer re0, ierr, iipha
 ! integer :: index
   integer :: local_id, ghosted_id
@@ -256,7 +257,7 @@ subroutine Richards_Update_Reason(reason,solution)
 
   !   call PETSCBarrier(PETSC_NULL_OBJECT,ierr)
    !print *,' update reason ba MPI', ierr
-    if (re<=0) print *,'Sat or Con out of Region at: ',n,iipha,xx_p(n0+1:n0+2)
+    if (re<=0) print *,'Sat or Con out of Region at: ',local_id,iipha,xx_p(n0+1:n0+2)
     call VecRestoreArrayF90(option%xx,xx_p, ierr); CHKERRQ(ierr)
     call VecRestoreArrayF90(option%yy,yy_p, ierr)
     call VecRestoreArrayF90(option%var,var_p, ierr) 
@@ -748,8 +749,6 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
                vl_p(:), var_p(:),var_loc_p(:) 
                           
                
-! PetscScalar, pointer :: pc_p(:), pc_loc_p(:), kvr_p(:), kvr_loc_p(:)
-
   PetscScalar, pointer :: iphase_loc_p(:), icap_loc_p(:), ithrm_loc_p(:)
 
   integer :: iicap,iiphase, index_var_begin, index_var_end,iicap1,iicap2,np
@@ -916,7 +915,6 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
   call VecGetArrayF90(option%iphas_loc, iphase_loc_p, ierr)
   !print *,' Finished scattering non deriv'
 
-
   if (option%rk > 0.d0) then
     call VecGetArrayF90(option%phis,phis_p,ierr)
   endif
@@ -1065,16 +1063,8 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
 
 !GEH - Structured Grid Dependence - End
 
-  !print *,'finished source/sink term'
-  
-!  print *, 'Residual  (after source/sink):'
-!  print *, r_p
-
 !*********************************************************************
 
-
- 
-! stop
 !---------------------------------------------------------------------------
 ! Flux terms for interior nodes
 ! Be careful here, we have velocity field for every phase
@@ -1096,7 +1086,8 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
       local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping   
 
       if (associated(option%imat)) then
-        if (option%imat(ghosted_id_up) <= 0 .or. option%imat(ghosted_id_dn) <= 0) cycle
+        if (option%imat(ghosted_id_up) <= 0 .or.  &
+            option%imat(ghosted_id_dn) <= 0) cycle
       endif
 
       p1 = 1 + (local_id_up-1)*option%ndof 
@@ -1401,10 +1392,10 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
 
 ! integer :: j, jn, jm1, jm2, jmu, mu
   integer :: ierr
-  integer :: n, ng, nc,nvar,neq,nr
+  integer :: nc,nvar,neq,nr
   integer :: i1, i2, jng, i
   integer :: kk,ii1,jj1,kk1,ii2,jj2,kk2  
-  integer :: m, m1, m2, n1, n2, ip1, ip2 
+  integer :: ip1, ip2 
   integer :: p1,p2 !,t1,t2,c1,c2,s1,s2
 ! real*8 :: v_darcy, q
 ! real*8 :: dum1, dum2
@@ -1446,7 +1437,10 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
             blkmat22(1:solution%option%ndof,1:solution%option%ndof)
   real*8 :: ResInc(1:solution%grid%nlmax, 1:solution%option%ndof, 1:solution%option%ndof),res(1:solution%option%ndof)  
   real*8 :: max_dev  
-  integer  na1,na2
+  integer :: local_id, ghosted_id
+  integer :: local_id_up, local_id_dn
+  integer :: ghosted_id_up, ghosted_id_dn
+  integer ::  natural_id_up,natural_id_dn
   
   type(coupler_type), pointer :: boundary_condition, source_sink
   type(connection_list_type), pointer :: connection_list
@@ -1511,30 +1505,28 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
 ! Accumulation terms
 
   ResInc=0.D0
-  do n = 1, grid%nlmax  ! For each local node do...
-
+  do local_id = 1, grid%nlmax  ! For each local node do...
+    ghosted_id = grid%nL2G(local_id)
     !geh - Ignore inactive cells with inactive materials
     if (associated(option%imat)) then
-      if (option%imat(grid%nL2G(n)) <= 0) cycle
+      if (option%imat(ghosted_id) <= 0) cycle
     endif
 
-    ng = grid%nL2G(n)   !get ghosted index
-    
-    voldt = volume_p(n) / option%dt
-    pvoldt = porosity_loc_p(ng) * voldt
+    voldt = volume_p(local_id) / option%dt
+    pvoldt = porosity_loc_p(ghosted_id) * voldt
 
-    iiphas=iphase_loc_p(ng)
+    iiphas=iphase_loc_p(ghosted_id)
  ! pressure equation    
     do nvar=1, option%ndof
    
-      index_var_begin=(ng-1)*size_var_node+nvar*size_var_use+1
+      index_var_begin=(ghosted_id-1)*size_var_node+nvar*size_var_use+1
       index_var_end = index_var_begin -1 + size_var_use
 
-      call RichardsRes_ARCont(n, var_loc_p(index_var_begin : index_var_end), &
-                            porosity_loc_p(ng),volume_p(n), &
-                            option%dencpr(int(ithrm_loc_p(ng))),option, Res,1,ierr)
+      call RichardsRes_ARCont(local_id,var_loc_p(index_var_begin:index_var_end), &
+                            porosity_loc_p(ghosted_id),volume_p(local_id), &
+                            option%dencpr(int(ithrm_loc_p(ghosted_id))),option, Res,1,ierr)
       
-      ResInc(n,:,nvar) = ResInc(n,:,nvar) + Res(:)
+      ResInc(local_id,:,nvar) = ResInc(local_id,:,nvar) + Res(:)
     enddo
   enddo
 ! print *,' Mph Jaco Finished accum terms'
@@ -1570,13 +1562,13 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
     cur_connection_object => source_sink%connection
     
     do iconn = 1, cur_connection_object%num_connections      
-      n= cur_connection_object%id_dn(iconn)
-      ng = grid%nL2G(n)
+      local_id= cur_connection_object%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
           
       if (qsrc1 > 0.d0) then ! injection
      
         do nvar=1,option%ndof      
-          call wateos_noderiv(tsrc1,var_loc_p((ng-1)*size_var_node+nvar* &
+          call wateos_noderiv(tsrc1,var_loc_p((ghosted_id-1)*size_var_node+nvar* &
                                                      size_var_use+2), &
                               dw_kg,dw_mol,enth_src_h2o,option%scale,ierr)
 
@@ -1584,16 +1576,16 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
 
 !       qqsrc = qsrc1/dw_mol ! [kmol/s / mol/dm^3 = kmol/m^3]
               
-          ResInc(n,option%jh2o,nvar) = ResInc(n,option%jh2o,nvar) - qsrc1 * &
+          ResInc(local_id,option%jh2o,nvar) = ResInc(local_id,option%jh2o,nvar) - qsrc1 * &
                                                                     option%dt
-          ResInc(n,option%ndof,nvar) = ResInc(n,option%ndof,nvar) - qsrc1 * &
+          ResInc(local_id,option%ndof,nvar) = ResInc(local_id,option%ndof,nvar) - qsrc1 * &
                                                         enth_src_h2o * option%dt
         enddo
       endif  
     
       if (csrc1 > 0.d0) then ! injection
 #if 0      
-        jng= 2 + (ng-1)*option%nphase
+        jng= 2 + (ghosted_id-1)*option%nphase
                     
 !           duan eos
 !           call duanco2(tsrc1,PPRESSURE_LOC(ng)/1D5,dco2,fugco2,co2_phi)
@@ -1603,7 +1595,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
  
          !  span-wagner
         do nvar=1,option%ndof     
-          call ideal_gaseos_noderiv(var_loc_p((ng-1)*size_var_node+nvar* &
+          call ideal_gaseos_noderiv(var_loc_p((ghosted_id-1)*size_var_node+nvar* &
                                                      size_var_use+2), &
                                     tsrc1,option%scale,rho,enth_src_co2,tmp)
           enth_src_co2 = enth_src_co2 / option%fmwa
@@ -1638,28 +1630,28 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
       sum_connection = sum_connection + 1
       nc = sum_connection
     
-      m = cur_connection_object%id_dn(iconn)
-      ng = grid%nL2G(m)
+      local_id = cur_connection_object%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
 
       if (associated(option%imat)) then
-        if (option%imat(ng) <= 0) cycle
+        if (option%imat(ghosted_id) <= 0) cycle
       endif
 
-      if (ng<=0) then
+      if (ghosted_id<=0) then
         print *, "Wrong boundary node index... STOP!!!"
         stop
       endif
   
-      p1 = 1 + (m-1) * option%ndof
+      p1 = 1 + (local_id-1) * option%ndof
        
     
-      i2 = ithrm_loc_p(ng)
+      i2 = ithrm_loc_p(ghosted_id)
       D2 = option%ckwet(i2)
 
       ! for now, just assume diagonal tensor
-      perm1 = perm_xx_loc_p(ng)*abs(cur_connection_object%dist(1,iconn))+ &
-              perm_yy_loc_p(ng)*abs(cur_connection_object%dist(2,iconn))+ &
-              perm_zz_loc_p(ng)*abs(cur_connection_object%dist(3,iconn))
+      perm1 = perm_xx_loc_p(ghosted_id)*abs(cur_connection_object%dist(1,iconn))+ &
+              perm_yy_loc_p(ghosted_id)*abs(cur_connection_object%dist(2,iconn))+ &
+              perm_zz_loc_p(ghosted_id)*abs(cur_connection_object%dist(3,iconn))
       ! The below assumes a unit gravity vector of [0,0,1]
       distance_gravity = abs(cur_connection_object%dist(3,iconn)) * &
                          cur_connection_object%dist(0,iconn)
@@ -1673,9 +1665,9 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
 !          option%xxbc(:,nc) = xx_loc_p((ng-1)*option%ndof+1: ng*option%ndof)
 !          option%iphasebc(nc) = int(iphase_loc_p(ng))
 !          delxbc = option%delx(1:option%ndof,ng)
-          option%xxbc(:,nc) = xx_loc_p((ng-1)*option%ndof+1: ng*option%ndof)
-          option%iphasebc(nc) = int(iphase_loc_p(ng))
-          delxbc = option%delx(1:option%ndof,ng)
+          option%xxbc(:,nc) = xx_loc_p((ghosted_id-1)*option%ndof+1: ghosted_id*option%ndof)
+          option%iphasebc(nc) = int(iphase_loc_p(ghosted_id))
+          delxbc = option%delx(1:option%ndof,ghosted_id)
         
   
           if(dabs(option%velocitybc(1,nc))>1D-20)then
@@ -1687,17 +1679,17 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
 
         case(3) 
         !    option%xxbc(1,nc)=grid%pressurebc(2,ibc)
-          option%xxbc(2:option%ndof,nc) = xx_loc_p((ng-1)*option%ndof+2:ng*option%ndof)
-          option%iphasebc(nc) = int(iphase_loc_p(ng))
+          option%xxbc(2:option%ndof,nc) = xx_loc_p((ghosted_id-1)*option%ndof+2:ghosted_id*option%ndof)
+          option%iphasebc(nc) = int(iphase_loc_p(ghosted_id))
           delxbc(1) = 0.D0
-          delxbc(2:option%ndof) = option%delx(2:option%ndof,ng)
+          delxbc(2:option%ndof) = option%delx(2:option%ndof,ghosted_id)
         
         case(4)
-          option%xxbc(1,nc) = xx_loc_p((ng-1)*option%ndof+1)
-          option%xxbc(3:option%ndof,nc) = xx_loc_p((ng-1)*option%ndof+3: ng*option%ndof)    
-          delxbc(1)=option%delx(1,ng)
-          delxbc(3:option%ndof) = option%delx(3:option%ndof,ng) 
-          option%iphasebc(nc)=int(iphase_loc_p(ng))
+          option%xxbc(1,nc) = xx_loc_p((ghosted_id-1)*option%ndof+1)
+          option%xxbc(3:option%ndof,nc) = xx_loc_p((ghosted_id-1)*option%ndof+3: ghosted_id*option%ndof)    
+          delxbc(1)=option%delx(1,ghosted_id)
+          delxbc(3:option%ndof) = option%delx(3:option%ndof,ghosted_id) 
+          option%iphasebc(nc)=int(iphase_loc_p(ghosted_id))
     
       end select
 
@@ -1713,7 +1705,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
    !   grid%pressurebc(ibc)  !nphase elements
 !      endif
    
-      iicap = int(icap_loc_p(ng))     
+      iicap = int(icap_loc_p(ghosted_id))     
        
 !      print *,'pflow_2pha_bc: ',grid%myrank,' nc= ',nc,' m= ',m, &
 !      ' ng= ',ng,' ibc= ',ibc,ip1,iicap, &
@@ -1746,16 +1738,16 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
                                 cur_connection_object%area(iconn), &
                                 option%varbc(nvar*size_var_use+1:(nvar+1)* &
                                   size_var_use), &
-                                var_loc_p((ng-1)*size_var_node+nvar* &
-                                  size_var_use+1:(ng-1)*size_var_node+nvar* &
+                                var_loc_p((ghosted_id-1)*size_var_node+nvar* &
+                                  size_var_use+1:(ghosted_id-1)*size_var_node+nvar* &
                                   size_var_use+size_var_use), &
-                                porosity_loc_p(ng),tor_loc_p(ng), &
+                                porosity_loc_p(ghosted_id),tor_loc_p(ghosted_id), &
                                 option%sir(1:option%nphase,iicap), &
                                 cur_connection_object%dist(0,iconn),perm1,D2, &
                                 distance_gravity,option,vv_darcy, &
                                 Res)
 
-        ResInc(m,1:option%ndof,nvar) = ResInc(m,1:option%ndof,nvar) - Res(1:option%ndof)
+        ResInc(local_id,1:option%ndof,nvar) = ResInc(local_id,1:option%ndof,nvar) - Res(1:option%ndof)
       enddo
  !  print *,' Mph Jaco BC terms: finish comp'
     !   print *, ' boundary index', nc,ng,ibc,option%ibndtyp(ibc)
@@ -1780,24 +1772,24 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
  call MatView(A,viewer,ierr)
  call PetscViewerDestroy(viewer,ierr)
 #endif
-  do n= 1, grid%nlmax
+  do local_id= 1, grid%nlmax
 
     !geh - Ignore inactive cells with inactive materials
     if (associated(option%imat)) then
-      if (option%imat(grid%nL2G(n)) <= 0) cycle
+      if (option%imat(grid%nL2G(local_id)) <= 0) cycle
     endif
 
     ra=0.D0
-    ng = grid%nL2G(n)
-    na1= grid%nG2N(ng)
+    ghosted_id = grid%nL2G(local_id)
+    natural_id_up= grid%nG2N(ghosted_id)
    ! Remember, the matrix index starts from (0,0)
-    p1 = (ng-1)*option%ndof ! = 1 + (ng-1)*option%ndof-1
+    p1 = (ghosted_id-1)*option%ndof ! = 1 + (ng-1)*option%ndof-1
    
     max_dev = 0.D0
     do neq=1, option%ndof
       do nvar=1, option%ndof
-        ra(neq,nvar) = ResInc(n,neq,nvar)/option%delx(nvar,ng) - &
-                       ResOld_AR(n,neq)/option%delx(nvar,ng)
+        ra(neq,nvar) = ResInc(local_id,neq,nvar)/option%delx(nvar,ghosted_id) - &
+                       ResOld_AR(local_id,neq)/option%delx(nvar,ghosted_id)
         if (max_dev < dabs(ra(neq,nvar))) max_dev = dabs(ra(neq,nvar))
    
       enddo      
@@ -1813,7 +1805,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
     endif
   
     if (option%iblkfmt == 0) then
-      p1=(na1)*option%ndof
+      p1=(natural_id_up)*option%ndof
       do ii=0,option%ndof-1
         do jj=0,option%ndof-1
           call MatSetValue(A,p1+ii,p1+jj,ra(ii+1,jj+1),ADD_VALUES,ierr)
@@ -1821,7 +1813,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
       enddo
     else
       blkmat11=ra(1:option%ndof,1:option%ndof)
-      call MatSetValuesBlocked(A,1,na1,1,na1,blkmat11,ADD_VALUES,ierr)
+      call MatSetValuesBlocked(A,1,natural_id_up,1,natural_id_up,blkmat11,ADD_VALUES,ierr)
     endif
          
   enddo
@@ -1848,20 +1840,18 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
       sum_connection = sum_connection + 1
       nc = sum_connection
     
-      m1 = cur_connection_object%id_up(iconn)
-      m2 = cur_connection_object%id_dn(iconn)
+      ghosted_id_up = cur_connection_object%id_up(iconn)
+      ghosted_id_dn = cur_connection_object%id_dn(iconn)
 
       if (associated(option%imat)) then
-        if (option%imat(m1) <= 0 .or. option%imat(m2) <= 0) cycle
+        if (option%imat(ghosted_id_up) <= 0 .or. option%imat(ghosted_id_dn) <= 0) cycle
       endif
 
-      n1 = grid%nG2L(m1) ! = zero for ghost nodes
-      n2 = grid%nG2L(m2) ! Ghost to local mapping   
-      na1 = grid%nG2N(m1)
-      na2 = grid%nG2N(m2)
-    !print *, grid%myrank,nc,m1,m2,n1,n2,na1,na2
-      p1 =  (m1-1)*option%ndof
-      p2 =  (m2-1)*option%ndof
+      local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
+      local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping   
+      natural_id_up = grid%nG2N(ghosted_id_up)
+      natural_id_dn = grid%nG2N(ghosted_id_dn)
+      p2 =  (ghosted_id_dn-1)*option%ndof
    
       fraction_upwind = cur_connection_object%dist(-1,iconn)
       distance = cur_connection_object%dist(0,iconn)
@@ -1875,57 +1865,57 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
       upweight = dd2/(dd1+dd2)
     
       ! for now, just assume diagonal tensor
-      perm1 = perm_xx_loc_p(m1)*abs(cur_connection_object%dist(1,iconn))+ &
-              perm_yy_loc_p(m1)*abs(cur_connection_object%dist(2,iconn))+ &
-              perm_zz_loc_p(m1)*abs(cur_connection_object%dist(3,iconn))
+      perm1 = perm_xx_loc_p(ghosted_id_up)*abs(cur_connection_object%dist(1,iconn))+ &
+              perm_yy_loc_p(ghosted_id_up)*abs(cur_connection_object%dist(2,iconn))+ &
+              perm_zz_loc_p(ghosted_id_up)*abs(cur_connection_object%dist(3,iconn))
 
-      perm2 = perm_xx_loc_p(m2)*abs(cur_connection_object%dist(1,iconn))+ &
-              perm_yy_loc_p(m2)*abs(cur_connection_object%dist(2,iconn))+ &
-              perm_zz_loc_p(m2)*abs(cur_connection_object%dist(3,iconn))
+      perm2 = perm_xx_loc_p(ghosted_id_dn)*abs(cur_connection_object%dist(1,iconn))+ &
+              perm_yy_loc_p(ghosted_id_dn)*abs(cur_connection_object%dist(2,iconn))+ &
+              perm_zz_loc_p(ghosted_id_dn)*abs(cur_connection_object%dist(3,iconn))
     
-      iiphas1 = iphase_loc_p(m1)
-      iiphas2 = iphase_loc_p(m2)
+      iiphas1 = iphase_loc_p(ghosted_id_up)
+      iiphas2 = iphase_loc_p(ghosted_id_dn)
 
-      i1 = ithrm_loc_p(m1)
-      i2 = ithrm_loc_p(m2)
+      i1 = ithrm_loc_p(ghosted_id_up)
+      i2 = ithrm_loc_p(ghosted_id_dn)
       D1 = option%ckwet(i1)
       D2 = option%ckwet(i2)
     
-      iicap1 = int(icap_loc_p(m1))
-      iicap2 = int(icap_loc_p(m2))
+      iicap1 = int(icap_loc_p(ghosted_id_up))
+      iicap2 = int(icap_loc_p(ghosted_id_dn))
  
   ! do neq = 1, option%ndof
       do nvar = 1, option%ndof
         call RichardsRes_FLCont(nc,cur_connection_object%area(iconn), &
-                              var_loc_p((m1-1)*size_var_node+nvar* &
-                                size_var_use+1:(m1-1)*size_var_node+nvar* &
+                              var_loc_p((ghosted_id_up-1)*size_var_node+nvar* &
+                                size_var_use+1:(ghosted_id_up-1)*size_var_node+nvar* &
                                 size_var_use+size_var_use),&
-                              porosity_loc_p(m1),tor_loc_p(m1), &
+                              porosity_loc_p(ghosted_id_up),tor_loc_p(ghosted_id_up), &
                               option%sir(1:option%nphase,iicap1),dd1,perm1,D1,&
-                              var_loc_p((m2-1)*size_var_node+1:(m2-1)* &
+                              var_loc_p((ghosted_id_dn-1)*size_var_node+1:(ghosted_id_dn-1)* &
                                 size_var_node+size_var_use),&
-                              porosity_loc_p(m2),tor_loc_p(m2), &
+                              porosity_loc_p(ghosted_id_dn),tor_loc_p(ghosted_id_dn), &
                               option%sir(1:option%nphase,iicap2),dd2,perm2,D2, &
                               distance_gravity,upweight, &
                               option,vv_darcy,Res)
                               
-        ra(:,nvar)= (Res(:)-ResOld_FL(nc,:))/option%delx(nvar,m1)
+        ra(:,nvar)= (Res(:)-ResOld_FL(nc,:))/option%delx(nvar,ghosted_id_up)
        
         call RichardsRes_FLCont(nc,cur_connection_object%area(iconn), &
-                              var_loc_p((m1-1)*size_var_node+1:(m1-1)* &
+                              var_loc_p((ghosted_id_up-1)*size_var_node+1:(ghosted_id_up-1)* &
                                 size_var_node+size_var_use),&
-                              porosity_loc_p(m1),tor_loc_p(m1), &
+                              porosity_loc_p(ghosted_id_up),tor_loc_p(ghosted_id_up), &
                               option%sir(1:option%nphase,iicap1),dd1,perm1,D1,&
-                              var_loc_p((m2-1)*size_var_node+nvar* &
-                                size_var_use+1:(m2-1)*size_var_node+nvar* &
+                              var_loc_p((ghosted_id_dn-1)*size_var_node+nvar* &
+                                size_var_use+1:(ghosted_id_dn-1)*size_var_node+nvar* &
                                 size_var_use+size_var_use),&
-                              porosity_loc_p(m2),tor_loc_p(m2), &
+                              porosity_loc_p(ghosted_id_dn),tor_loc_p(ghosted_id_dn), &
                               option%sir(1:option%nphase,iicap2),dd2,perm2,D2, &
                               distance_gravity,upweight, &
                               option, &
                               vv_darcy,Res)
  
-        ra(:,nvar+option%ndof)= (Res(:)-ResOld_FL(nc,:))/option%delx(nvar,m2)
+        ra(:,nvar+option%ndof)= (Res(:)-ResOld_FL(nc,:))/option%delx(nvar,ghosted_id_dn)
    
       enddo
   
@@ -1942,17 +1932,17 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
       if (option%iblkfmt == 1) then
         blkmat11 = 0.D0; blkmat12 = 0.D0; blkmat21 = 0.D0; blkmat22 = 0.D0;
       endif
-      p1=(na1)*option%ndof;p2=(na2)*option%ndof
+      p1=(natural_id_up)*option%ndof;p2=(natural_id_dn)*option%ndof
       do ii=0,option%ndof-1
         do jj=0,option%ndof-1
-          if (n1>0) then
+          if (local_id_up>0) then
             if (option%iblkfmt == 0) then
               call MatSetValue(A,p1+ii,p1+jj,ra(ii+1,jj+1),ADD_VALUES,ierr)
             else
               blkmat11(ii+1,jj+1) = blkmat11(ii+1,jj+1) + ra(ii+1,jj+1)
             endif
           endif
-          if (n2>0) then
+          if (local_id_dn>0) then
             if (option%iblkfmt == 0) then
               call MatSetValue(A,p2+ii,p1+jj,-ra(ii+1,jj+1),ADD_VALUES,ierr)
             else
@@ -1962,7 +1952,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
         enddo
 
         do jj=option%ndof,2*option%ndof-1
-          if (n1>0) then
+          if (local_id_up>0) then
             if (option%iblkfmt == 0) then
               call MatSetValue(A,p1+ii,p2+jj-option%ndof,ra(ii+1,jj+1), &
                                ADD_VALUES,ierr)
@@ -1971,7 +1961,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
                                                                ra(ii+1,jj+1)
             endif
           endif
-          if (n2>0) then
+          if (local_id_dn>0) then
             if (option%iblkfmt == 0) then
               call MatSetValue(A,p2+ii,p2+jj-option%ndof,-ra(ii+1,jj+1), &
                                ADD_VALUES,ierr)
@@ -1984,10 +1974,10 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
       enddo
   
       if (option%iblkfmt /= 0) then
-        if (n1>0) call MatSetValuesBlocked(A,1,na1,1,na1,blkmat11,ADD_VALUES,ierr)
-        if (n2>0) call MatSetValuesBlocked(A,1,na2,1,na2,blkmat22,ADD_VALUES,ierr)
-        if (n1>0) call MatSetValuesBlocked(A,1,na1,1,na2,blkmat12,ADD_VALUES,ierr)
-        if (n2>0) call MatSetValuesBlocked(A,1,na2,1,na1,blkmat21,ADD_VALUES,ierr)
+        if (local_id_up>0) call MatSetValuesBlocked(A,1,natural_id_up,1,natural_id_up,blkmat11,ADD_VALUES,ierr)
+        if (local_id_dn>0) call MatSetValuesBlocked(A,1,natural_id_dn,1,natural_id_dn,blkmat22,ADD_VALUES,ierr)
+        if (local_id_up>0) call MatSetValuesBlocked(A,1,natural_id_up,1,natural_id_dn,blkmat12,ADD_VALUES,ierr)
+        if (local_id_dn>0) call MatSetValuesBlocked(A,1,natural_id_dn,1,natural_id_up,blkmat21,ADD_VALUES,ierr)
       endif
 !print *,'accum r',ra(1:5,1:8)   
  !print *,'devq:',nc,q,dphi,devq(3,:)
@@ -2187,7 +2177,7 @@ subroutine pflow_update_Richards(solution)
 ! integer :: ichange 
   integer :: n0
 !geh added for transient boundary conditons
-  integer :: nc, ibc, iithrm, m, ng
+  integer :: nc, iithrm
   real*8 :: sw, pc(2), kr(2)
   integer :: ierr,iicap,iiphase, iiphase_old
   PetscScalar, pointer :: xx_p(:),icap_loc_p(:),ithrm_loc_p(:), &
@@ -2293,7 +2283,7 @@ subroutine pflow_update_Richards(solution)
           if (option%imat(ghosted_id) <= 0) cycle
         endif
        
-        if (m<0) then
+        if (local_id<0) then
           print *, "Wrong boundary node index... STOP!!!"
           stop
         endif

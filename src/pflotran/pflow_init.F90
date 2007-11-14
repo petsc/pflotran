@@ -3028,8 +3028,8 @@ subroutine assignMaterialPropToRegions(solution)
     do icell=1,region%num_cells
       local_id = region%cell_ids(icell)
       ghosted_id = grid%nL2G(local_id)
-      icap_loc_p(local_id) = material%icap
-      ithrm_loc_p(local_id) = material%ithrm
+      icap_loc_p(ghosted_id) = material%icap
+      ithrm_loc_p(ghosted_id) = material%ithrm
       por_p(local_id) = material%porosity
       tor_p(local_id) = material%tortuosity
       perm_xx_p(local_id) = material%permeability(1,1)
