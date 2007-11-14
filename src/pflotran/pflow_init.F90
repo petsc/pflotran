@@ -17,19 +17,11 @@ module Init_module
   ! It is VERY IMPORTANT to make sure that the above .h90 file gets included.
   ! Otherwise some very strange things will happen and PETSc will give no
   ! indication of what the problem is.
-#include "include/finclude/petscmat.h"
-#include "include/finclude/petscmat.h90"
-#include "include/finclude/petscda.h"
-#include "include/finclude/petscda.h90"
 #include "include/finclude/petscsnes.h"
 #include "include/finclude/petscviewer.h"
-#include "include/finclude/petscksp.h"
-#include "include/finclude/petscpc.h"
-#include "include/finclude/petscsys.h"
 #include "include/finclude/petscis.h"
 #include "include/finclude/petscis.h90"
 #include "include/finclude/petsclog.h"
-
 
   public :: PflowInit
 
@@ -75,31 +67,29 @@ subroutine PflowInit(simulation,filename)
   integer :: mcomp, mphas
   integer :: i
   PetscTruth :: iflag
-  
-  ! remove later
-  PetscTruth :: option_found
-  integer :: nc, ibc, ir, j, k, n
-  real*8 :: random_nr, frand, por
-  real*8, pointer :: temp_p(:), ran_p(:),&
-                     phis_p(:), icap_p(:),ithrm_p(:), por_p(:),por0_p(:),&
-                     tor_p(:),perm_xx_p(:),perm_yy_p(:),perm_zz_p(:),&
-                     perm_pow_p(:)
+
+  real*8, pointer :: phis_p(:)
                        
+  ! needed for SNESLineSearchGetParams()/SNESLineSearchSetParams()
   real*8 :: alpha, maxstep, steptol
   
   PetscErrorCode :: ierr
   
+  ! set pointers to objects
   solver => simulation%stepper%solver
   solution => simulation%solution
   option => solution%option
   
+  ! read MODE,GRID,PROC,COMP,PHAS cards
   call readSelectCardsFromInput(solution,filename,mcomp,mphas)
   grid => solution%grid
 
+  ! set the operational mode (e.g. RICHARDS_MODE, MPH_MODE, etc)
   call setMode(option,mcomp,mphas)
-  call OptionCheckCommandLine(option)
   
-               
+  ! process command line options
+  call OptionCheckCommandLine(option)
+                             
 ! hardwire to uncoupled for now
 !  if (icouple == 0) then
   option%run_coupled = PETSC_FALSE
@@ -123,52 +113,10 @@ subroutine PflowInit(simulation,filename)
       option%jgas =3 
   end select 
 
- ! initialize default values  
-  option%m_nacl =0.D0  ! default brine concentration
-  
-! need to develop an output object that stores all this and
-! additional information  
- ! default output variables
-  select case(option%imode)
-    case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE)
-      option%var_plot_num = 11
-      allocate(option%var_plot_nm(11))
-      option%var_plot_nm(1) = 'x'
-      option%var_plot_nm(2) = 'y'
-      option%var_plot_nm(3) = 'z'
-      option%var_plot_nm(4) = 'iphase'
-      option%var_plot_nm(5) = 'pl'
-      option%var_plot_nm(6) = 'pg'
-      option%var_plot_nm(7) = 'temp'
-      option%var_plot_nm(8) = 'Sg'
-      option%var_plot_nm(9) = 'Xg_Aq'
-      option%var_plot_nm(10) = 'Xg_G'
-      option%var_plot_nm(11) = 'Vf'
-      select case(option%imode)
-        case(MPH_MODE,VADOSE_MODE,FLASH_MODE)
-          allocate(option%var_plot_ind(5:10))  
-          option%var_plot_ind(5)= 2
-          option%var_plot_ind(6)= -5
-          option%var_plot_ind(7)= 1
-      end select   
-    case default 
-      option%var_plot_num = 8
-      allocate(option%var_plot_nm(8))
-      option%var_plot_nm(1) = 'x'
-      option%var_plot_nm(2) = 'y'
-      option%var_plot_nm(3) = 'z'
-      option%var_plot_nm(4) = 'p'
-      option%var_plot_nm(5) = 'T'
-      option%var_plot_nm(6) = 'Sl'
-      option%var_plot_nm(7) = 'Conc'
-      option%var_plot_nm(8) = 'Vf'
- end select 
-
-  
   call GridCreateDMs(grid,option)
   
-   !-----------------------------------------------------------------------
- ! Create the vectors with parallel layout corresponding to the DA's,
+ !-----------------------------------------------------------------------
+ ! Create the vectors with parallel layout corresponding to the DM's,
  ! and, for vectors that need to be ghosted, create the corresponding
  ! ghosted vectors.
  !-----------------------------------------------------------------------
@@ -187,9 +135,6 @@ subroutine PflowInit(simulation,filename)
   call VecDuplicate(option%porosity, option%ttemp, ierr)
   call VecDuplicate(option%porosity, option%phis, ierr)
 
-  call VecDuplicate(option%porosity, option%perm_xx, ierr)
-  call VecDuplicate(option%porosity, option%perm_yy, ierr)
-  call VecDuplicate(option%porosity, option%perm_zz, ierr)
   call VecDuplicate(option%porosity, option%perm0_xx, ierr)
   call VecDuplicate(option%porosity, option%perm0_yy, ierr)
   call VecDuplicate(option%porosity, option%perm0_zz, ierr)
@@ -759,7 +704,8 @@ subroutine PflowInit(simulation,filename)
     call ISColoringDestroy(iscoloring, ierr)
 
     select case(option%imode)
-#if 0    
+#if 0
+    ! need to be implemented
       case(COND_MODE)
         call MatFDColoringSetFunctionSNES(option%matfdcoloring, &
                                           CondResidual,option,ierr)
@@ -786,6 +732,7 @@ subroutine PflowInit(simulation,filename)
         call MatFDColoringSetFunctionSNES(option%matfdcoloring, &
                                           RichardsResidual,option, ierr)
 #if 0                                          
+    ! need to be implemented
       case(OWG_MODE)
         call MatFDColoringSetFunctionSNES(option%matfdcoloring, &
                                           OWGResidual,option, ierr)
@@ -807,6 +754,7 @@ subroutine PflowInit(simulation,filename)
 
   select case(option%imode)
 #if 0  
+    ! need to be implemented
     case(COND_MODE)
       call SNESSetFunction(option%snes,option%r,CondResidual,solution,ierr)
     case(TH_MODE)
@@ -824,7 +772,8 @@ subroutine PflowInit(simulation,filename)
 #endif      
     case(RICHARDS_MODE)
       call SNESSetFunction(option%snes,option%r,RichardsResidual,solution,ierr)
-#if 0      
+#if 0 
+    ! need to be implemented     
     case(OWG_MODE)
       call SNESSetFunction(option%snes,option%r,OWGResidual,solution,ierr)
     case default
@@ -835,24 +784,17 @@ subroutine PflowInit(simulation,filename)
   ! Set the tolerances for the Newton solver.
   call SNESSetTolerances(option%snes, solver%atol, solver%rtol, solver%stol, & 
                          solver%maxit, solver%maxf, ierr)
-
   call SNESSetFromOptions(option%snes, ierr)
   
-! shell for custom convergence test.  The default SNES convergence test 
-! is call within this function.
-  call SNESSetConvergenceTest(option%snes,PFLOWConvergenceTest, &
-                              simulation,ierr)
-                              
-  if (option%myrank == 0) write(*,'("  Finished setting up of SNES 1")')
-  
+  ! shell for custom convergence test.  The default SNES convergence test 
+  ! is call within this function.
+  call SNESSetConvergenceTest(option%snes,PFLOWConvergenceTest,simulation,ierr)
+                           
   call SNESLineSearchGetParams(option%snes, alpha, maxstep, steptol, ierr) 
-  if (option%myrank == 0) write(*,'("  Finished setting up of SNES 2")')
   call SNESLineSearchSetParams(option%snes, alpha, maxstep, solver%stol, ierr) 
-  if (option%myrank == 0) write(*,'("  Finished setting up of SNES 3")')
-
   call SNESGetKSP(option%snes, option%ksp, ierr)
   call KSPSetTolerances(option%ksp,solver%rtol,solver%atol,solver%dtol, &
-      10000,ierr)
+                        10000,ierr)
 
   if (option%myrank == 0) write(*,'("  Finished setting up of SNES ")')
  
@@ -907,90 +849,10 @@ subroutine PflowInit(simulation,filename)
 
   if(option%print_bcinfo == PETSC_TRUE) then
     if (option%myrank == 0) print *, 'Someone will have to rewrite print_bcinfo'
-#if 0
-    do nc=1,grid%nconnbc
-      print *, 'BC:', nc, grid%areabc(nc),grid%distbc(nc),  grid%mblkbc(nc) 
-    enddo
-#endif    
   endif
 
-  !-----------------------------------------------------------------------
-  ! Allocate boundary condition arrays
-  !-----------------------------------------------------------------------
-#if 0 
-  ! moved above
-  i = grid%boundary_connection_list%first%num_connections
-  allocate(option%velocitybc(option%nphase,i))
-
-  select case(option%imode)
-    case(MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE,OWG_MODE)
-! already allocated    allocate(grid%ibconn(i))
-      allocate(option%xxbc(option%ndof,i))
-      allocate(option%iphasebc(i))
-      allocate(option%xphi_co2_bc(i))
-      allocate(option%xxphi_co2_bc(i))
-
-      do nc = 1, i
-        ibc = grid%ibconn(nc)
-        option%xxbc(:,nc)=option%xxbc0(:,ibc)
-        option%iphasebc(nc)=option%iphasebc0(ibc)
-        option%velocitybc(:,nc) = option%velocitybc0(:,ibc)
-      enddo
-      if (option%run_coupled == PETSC_FALSE) then
-        deallocate(option%xxbc0)
-        deallocate(option%iphasebc0)
-      endif
-!    if (option%iread_init==2) call Boundary_adjustment(grid)
-    case default
-   !   allocate(option%velocitybc(option%nphase, option%nconnbc))
-      allocate(option%pressurebc(option%nphase,i))
-      allocate(option%tempbc(i))
-      allocate(option%sgbc(i))
-      allocate(option%concbc(i))
-      allocate(option%xphi_co2_bc(i))
-      allocate(option%xxphi_co2_bc(i))
-      
-      ! initialize
-      option%pressurebc = 0.d0
-      option%tempbc = 0.d0
-      option%concbc = 0.d0
-      option%sgbc = 0.d0
-      option%velocitybc = 0.d0
-      
-      do nc = 1, i
-        ibc = grid%ibconn(nc)
-        option%pressurebc(:,nc) = option%pressurebc0(:,ibc)
-        option%tempbc(nc)       = option%tempbc0(ibc)
-        option%concbc(nc)       = option%concbc0(ibc)
-        option%sgbc(nc)         = option%sgbc0(ibc)
-        option%velocitybc(:,nc) = option%velocitybc0(:,ibc)
-        
-      enddo
-     
-      deallocate(option%pressurebc0)
-      deallocate(option%tempbc0)
-      deallocate(option%concbc0)
-      deallocate(option%sgbc0)
-  end select
-  deallocate(option%velocitybc0)
-
-  if (option%ihydrostatic == 2) then
-    if (option%imode == MPH_MODE .or. &
-        option%imode == VADOSE_MODE .or. &
-        option%imode == FLASH_MODE .or. &
-        option%imode == RICHARDS_MODE) then
-      ! print *,'in nhydro'
-      print *, 'fix nhydrostatic'
-      stop
-#if 0      
-      call nhydrostatic(grid)
-      ! print *,'out nhydro'
-#endif      
-    endif
-  endif
-#endif
-
 #if 0
+  ! should we still support this
   if (grid%iread_perm == 1) then
     call Read_perm_field(grid)
   endif
@@ -999,12 +861,7 @@ subroutine PflowInit(simulation,filename)
   nullify(option%imat)
 
 #if 0
-  if (grid%iread_geom == 1) then
-   ! call ReadUnstructuredGrid(grid)
-    call Read_Geom_field(grid)
-!geh
-!geh
-  else if (grid%iread_geom == 10) then 
+  if (grid%iread_geom == 10) then 
     if (myrank == 0) print *, 'Reading structured grid from hdf5' 
     allocate(grid%imat(grid%ngmax))  ! allocate material id array
     call ReadStructuredGridHDF5(grid)
@@ -1019,8 +876,6 @@ subroutine PflowInit(simulation,filename)
     call ReadUnstructuredGrid(grid) 
 ! this call is to set up an array for zeroing inactive and isothermal cells
     call createRichardsZeroArray(grid)
-!    call pflow_Richards_initadj(grid)  ! not necessary, already init in condition
-!    call pflow_update_richards(grid)
     
     ! dump material ids to file in natural ordering
     call DACreateGlobalVector(grid%da_1_dof,temp_vec,ierr)
@@ -1029,29 +884,9 @@ subroutine PflowInit(simulation,filename)
       temp_p(i) = grid%imat(grid%nL2G(i))*1.d0      
     enddo
     call VecRestoreArrayF90(temp_vec,temp_p,ierr)
-
-
-
-
-!    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'materials.dat',viewer,ierr)
-!    call VecView(temp_vec,viewer,ierr)
-!    call PetscViewerDestroy(viewer,ierr)
     call VecDestroy(temp_vec,ierr)
   endif 
 #endif   
-
-#if 0
-!geh - added for parallel input
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-read_material", &
-                           option_found, ierr)
-  if (option_found == PETSC_TRUE .and. grid%iread_geom == 0) then
-    allocate(grid%imat(grid%ngmax))  ! allocate material id array
-    grid%imat = 0      
-    call ReadMaterials(grid) 
-    call createRichardsZeroArray(grid)
-  endif
-#endif
-
 
   if (option%ihydrostatic == 3) then
     if (option%imode == MPH_MODE .or. &
@@ -1061,7 +896,8 @@ subroutine PflowInit(simulation,filename)
         ! print *,'in nhydro'
       print *, 'fix nhydrostatic3'
       stop
-#if 0      
+#if 0
+      ! needs to be reimplemented       
       call nhydrostatic3(grid)
       ! print *,'out nhydro'
 #endif        
@@ -1074,7 +910,6 @@ subroutine PflowInit(simulation,filename)
 
   call VecAssemblyBegin(option%xmol,ierr)
   call VecAssemblyEnd(option%xmol,ierr)
-! call VecView(grid%conc,PETSC_VIEWER_STDOUT_WORLD,ierr)
 
   if (option%myrank == 0) write(*,'("  Finished setting up of INIT ")')
 
@@ -3150,6 +2985,7 @@ subroutine assignMaterialPropToRegions(solution)
   use Region_module
   use Material_module
   use Option_module
+  use Grid_module
 
   implicit none
   
@@ -3178,12 +3014,11 @@ subroutine assignMaterialPropToRegions(solution)
   
   call VecGetArrayF90(option%icap,icap_p,ierr)
   call VecGetArrayF90(option%ithrm,ithrm_p,ierr)
-  call VecGetArrayF90(option%porosity,por_p,ierr)
-  call VecGetArrayF90(option%porosity0,por0_p,ierr)
+  call VecGetArrayF90(option%porosity0,por_p,ierr)
   call VecGetArrayF90(option%tor,tor_p,ierr)
-  call VecGetArrayF90(option%perm_xx,perm_xx_p,ierr)
-  call VecGetArrayF90(option%perm_yy,perm_yy_p,ierr)
-  call VecGetArrayF90(option%perm_zz,perm_zz_p,ierr)
+  call VecGetArrayF90(option%perm0_xx,perm_xx_p,ierr)
+  call VecGetArrayF90(option%perm0_yy,perm_yy_p,ierr)
+  call VecGetArrayF90(option%perm0_zz,perm_zz_p,ierr)
   call VecGetArrayF90(option%perm_pow,perm_pow_p,ierr)
 
   strata => solution%strata%first
@@ -3197,7 +3032,6 @@ subroutine assignMaterialPropToRegions(solution)
       icap_p(local_id) = material%icap
       ithrm_p(local_id) = material%ithrm
       por_p(local_id) = material%porosity
-      por0_p(local_id) = material%porosity
       tor_p(local_id) = material%tortuosity
       perm_xx_p(local_id) = material%permeability(1,1)
       perm_yy_p(local_id) = material%permeability(2,2)
@@ -3209,19 +3043,20 @@ subroutine assignMaterialPropToRegions(solution)
 
   call VecRestoreArrayF90(option%icap,icap_p,ierr)
   call VecRestoreArrayF90(option%ithrm,ithrm_p,ierr)
-  call VecRestoreArrayF90(option%porosity,por_p,ierr)
-  call VecRestoreArrayF90(option%porosity0,por0_p,ierr)
-  call VecRestoreArrayF90(option%perm_xx,perm_xx_p,ierr)
-  call VecRestoreArrayF90(option%perm_yy,perm_yy_p,ierr)
-  call VecRestoreArrayF90(option%perm_zz,perm_zz_p,ierr)
+  call VecRestoreArrayF90(option%porosity0,por_p,ierr)
+  call VecRestoreArrayF90(option%perm0_xx,perm_xx_p,ierr)
+  call VecRestoreArrayF90(option%perm0_yy,perm_yy_p,ierr)
+  call VecRestoreArrayF90(option%perm0_zz,perm_zz_p,ierr)
   call VecRestoreArrayF90(option%perm_pow,perm_pow_p,ierr)
   call VecRestoreArrayF90(option%tor,tor_p,ierr)
 
-  if (option%run_coupled==0) &
-    call VecCopy(option%Porosity, option%Porosity0, ierr)
-  call VecCopy(option%perm_xx, option%perm0_xx, ierr) 
-  call VecCopy(option%perm_yy, option%perm0_yy, ierr) 
-  call VecCopy(option%perm_zz, option%perm0_zz, ierr) 
+  call VecCopy(option%Porosity0, option%Porosity, ierr)
+  call GridGlobalToLocal(solution%grid,option%perm0_xx, &
+                         option%perm_xx_loc,ONEDOF)  
+  call GridGlobalToLocal(solution%grid,option%perm0_yy, &
+                         option%perm_yy_loc,ONEDOF)  
+  call GridGlobalToLocal(solution%grid,option%perm0_zz, &
+                         option%perm_zz_loc,ONEDOF)   
   
 end subroutine assignMaterialPropToRegions
 

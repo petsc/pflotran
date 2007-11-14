@@ -255,7 +255,7 @@ module Option_module
 
     ! Three degrees of freedom:
 !   Vec :: perm, perm_loc
-    Vec :: perm_xx, perm_xx_loc, perm_yy, perm_yy_loc, perm_zz, perm_zz_loc
+    Vec :: perm_xx_loc, perm_yy_loc, perm_zz_loc
     Vec :: perm0_xx, perm0_yy, perm0_zz, perm_pow
     ! Multiple degrees of freedom (equal to number of phases present):
     Vec :: var,var_loc
@@ -329,11 +329,6 @@ module Option_module
     KSP   ::  ksp
     PC    ::  pc
    
-
-    integer var_plot_num
-    character*16, pointer :: var_plot_nm(:)
-    integer, pointer :: var_plot_ind(:)  
-   
   end type 
   
   type, public :: output_option_type
@@ -358,6 +353,7 @@ module Option_module
             OptionCheckCommandLine, &
             printErrMsg, &
             printWrnMsg, &
+            printMsg, &
             OptionDestroy, &
             OutputOptionDestroy
 
@@ -435,6 +431,9 @@ function OptionCreate()
   option%fmwco2 = 44.0098d0
   option%eqkair = 1.d10 ! Henry's constant for air: Xl = eqkair * pa
 
+  ! default brine concentrations
+  option%m_nacl = 0.d0
+  
   OptionCreate => option
   
 end function OptionCreate
@@ -586,6 +585,24 @@ subroutine printWrnMsg(option,string)
   if (option%myrank == 0) print *, 'WARNING: ' // string
   
 end subroutine printWrnMsg
+
+! ************************************************************************** !
+!
+! printMsg: Prints the message from p0
+! author: Glenn Hammond
+! date: 11/14/07
+!
+! ************************************************************************** !
+subroutine printMsg(option,string)
+
+  implicit none
+  
+  type(option_type) :: option
+  character(len=*) :: string
+  
+  if (option%myrank == 0) print *, string
+  
+end subroutine printMsg
 
 ! ************************************************************************** !
 !

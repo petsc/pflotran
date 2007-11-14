@@ -885,9 +885,9 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
   ! call VecRestoreArrayF90(option%iphase,iphase_p,ierr)
   
   call GridGlobalToLocal(grid,option%var,option%var_loc,VARDOF)
-  call GridGlobalToLocal(grid,option%perm_xx,option%perm_xx_loc,ONEDOF)
-  call GridGlobalToLocal(grid,option%perm_yy,option%perm_yy_loc,ONEDOF)
-  call GridGlobalToLocal(grid,option%perm_zz,option%perm_zz_loc,ONEDOF)
+  call GridLocalToLocal(grid,option%perm_xx_loc,option%perm_xx_loc,ONEDOF)
+  call GridLocalToLocal(grid,option%perm_yy_loc,option%perm_yy_loc,ONEDOF)
+  call GridLocalToLocal(grid,option%perm_zz_loc,option%perm_zz_loc,ONEDOF)
   call GridGlobalToLocal(grid,option%ithrm,option%ithrm_loc,ONEDOF)
   call GridGlobalToLocal(grid,option%icap,option%icap_loc,ONEDOF)
 

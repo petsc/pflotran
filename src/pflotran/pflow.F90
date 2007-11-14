@@ -113,7 +113,8 @@
   endif
 
 
-#if 0                             
+#if 0
+  ! still needs to be implemented                    
   if(option%restartflag == PETSC_TRUE) then
     call pflowGridRestart(grid, option%restartfile, ntstep, kplt, iplot, iflgcut, &
                           ihalcnt,its)
@@ -125,6 +126,7 @@
   call PetscLogStagePop(ierr)
 
 #if 0
+ ! still needs to be implemented                    
  if (grid%iread_init==2 .and. option%restartflag == PETSC_FALSE)then
       call Read_init_field(grid, kplt)
       call initAccumulation(solution)
@@ -133,9 +135,6 @@
 #endif  
            
   call StepperRun(solution,stepper,stage)
-  
-  ! grab myrank for use after destruction of simulation
-  myrank = option%myrank
   
 ! Clean things up.
   call PetscLogStagePush(stage(3), ierr)
