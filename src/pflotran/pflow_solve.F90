@@ -41,33 +41,33 @@
  
  option => solution%option
  
- call KSPCreate(PETSC_COMM_WORLD,option%ksp,ierr)
- call KSPGetPC(option%ksp, option%pc, ierr)
+ call KSPCreate(PETSC_COMM_WORLD,solver%ksp,ierr)
+ call KSPGetPC(solver%ksp, solver%pc, ierr)
 
 ! pc_type = PCILU
   if (option%iblkfmt == 0) then
-    option%pc_type = PCJACOBI
+    solver%pc_type = PCJACOBI
   else
-  !  option%pc_type = PCBJACOBI
-    option%pc_type = PCILU
+  !  solver%pc_type = PCBJACOBI
+    solver%pc_type = PCILU
   endif
-! option%pc_type = PCASM
-! option%pc_type = PCNONE
-  call PCSetType(option%pc,option%pc_type,ierr)
+! solver%pc_type = PCASM
+! solver%pc_type = PCNONE
+  call PCSetType(solver%pc,solver%pc_type,ierr)
 
 ! call PetscOptionsSetValue('-pc_ilu_damping','1.d-10',ierr)
 ! call PCILUSetDamping(pc,1.d-14,ierr)
 
 !-------krylov subspace method ----------------
-  call KSPSetFromOptions(option%ksp,ierr)
-  call KSPSetInitialGuessNonzero(option%ksp,PETSC_TRUE,ierr)
+  call KSPSetFromOptions(solver%ksp,ierr)
+  call KSPSetInitialGuessNonzero(solver%ksp,PETSC_TRUE,ierr)
 
 ! ksp_type = KSPGMRES
-!  option%ksp_type = KSPFGMRES
-  option%ksp_type = KSPFGMRES
-  call KSPSetType(option%ksp,option%ksp_type,ierr)
+!  solver%ksp_type = KSPFGMRES
+  solver%ksp_type = KSPFGMRES
+  call KSPSetType(solver%ksp,solver%ksp_type,ierr)
   
-  call KSPSetTolerances(option%ksp,solver%rtol,solver%atol,solver%dtol, &
+  call KSPSetTolerances(solver%ksp,solver%rtol,solver%atol,solver%dtol, &
       solver%maxit,ierr)
 
 
@@ -122,25 +122,25 @@
 #if 0
    if(option%use_mph==PETSc_TRUE)then
  !    call Translator_MPhase_Switching(field%xx,grid,1,ichange)
-     call MPHASEResidual(option%snes,field%xx,field%r,grid,ierr)
+     call MPHASEResidual(solver%snes,field%xx,field%r,grid,ierr)
    endif
    if(option%use_vadose==PETSc_TRUE)then
   !   call Translator_vadose_Switching(field%xx,grid,0,ichange)
-     call MPHASEResidual(option%snes,field%xx,field%r,grid,ierr)
+     call MPHASEResidual(solver%snes,field%xx,field%r,grid,ierr)
    endif
 #endif
      case(RICHARDS_MODE)
     !   call Translator_richards_Switching(field%xx,grid,0,ichange)
-       call RichardsResidual(option%snes,field%xx,field%r,solution,ierr)
+       call RichardsResidual(solver%snes,field%xx,field%r,solution,ierr)
 #if 0
    if(option%use_flash==PETSc_TRUE) then
    !  call Translator_vadose_Switching(field%xx,grid,0,ichange)
-     call FLashResidual(option%snes,field%xx,field%r,grid,ierr)
+     call FLashResidual(solver%snes,field%xx,field%r,grid,ierr)
    endif
 
    if(option%use_owg==PETSc_TRUE) then
      call Translator_OWG_Switching(field%xx,option%tref,grid,1,ichange,ierr)
-     call OWGResidual(option%snes,field%xx,field%r,grid,ierr)
+     call OWGResidual(solver%snes,field%xx,field%r,grid,ierr)
    endif
 !  print *,' psolve; Get Res'
 #endif
@@ -172,26 +172,26 @@
     select case(option%imode)
 #if 0
     if(option%use_mph==PETSC_TRUE)then
-      call MPHASEJacobian(option%snes,field%xx,option%J,option%J,flag,grid,ierr)
+      call MPHASEJacobian(solver%snes,field%xx,solver%J,solver%J,flag,grid,ierr)
     elseif(option%use_owg==PETSC_TRUE)then
-      call OWGJacobian(option%snes,field%xx,option%J,option%J,flag,grid,ierr)
+      call OWGJacobian(solver%snes,field%xx,solver%J,solver%J,flag,grid,ierr)
     elseif(option%use_vadose==PETSC_TRUE)then
-      call VadoseJacobian(option%snes,field%xx,option%J,option%J,flag,grid,ierr)
+      call VadoseJacobian(solver%snes,field%xx,solver%J,solver%J,flag,grid,ierr)
     elseif(option%use_flash==PETSC_TRUE)then
-      call FlashJacobian(option%snes,field%xx,option%J,option%J,flag,grid,ierr)
+      call FlashJacobian(solver%snes,field%xx,solver%J,solver%J,flag,grid,ierr)
     elseif(option%use_richards==PETSC_TRUE)then
 #endif    
       case (RICHARDS_MODE)
-        call RichardsJacobian(option%snes,field%xx,option%J,option%J, &
+        call RichardsJacobian(solver%snes,field%xx,solver%J,solver%J, &
                               flag,solution,ierr)
     end select
      
     call VecScale(field%r,-1D0,ierr)
-    call KSPSetOperators(option%ksp,option%J,option%J,SAME_NONZERO_PATTERN,ierr)
+    call KSPSetOperators(solver%ksp,solver%J,solver%J,SAME_NONZERO_PATTERN,ierr)
     
-    call KSPSolve(option%ksp, field%r,field%dxx,ierr)
-    call KSPGetConvergedReason(option%ksp,ksp_reason,ierr)
-    call KSPGetIterationNumber(option%ksp,its_line,ierr)
+    call KSPSolve(solver%ksp, field%r,field%dxx,ierr)
+    call KSPGetConvergedReason(solver%ksp,ksp_reason,ierr)
+    call KSPGetIterationNumber(solver%ksp,its_line,ierr)
 
 
     newton = newton + 1

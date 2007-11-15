@@ -43,6 +43,8 @@ module Field_module
                        kvr_bc(:),kvr_p_bc(:),kvr_t_bc(:),kvr_s_bc(:),kvr_c_bc(:)
     real*8, pointer :: xphi_co2(:),xxphi_co2(:),den_co2(:), dden_co2(:)
     
+!geh material id
+    integer, pointer :: imat(:)
 
     real*8, pointer :: pressurebc(:,:)
       ! For a Dirichlet BC, pressurebc(j,ibc) gives the partial pressure 
@@ -63,39 +65,6 @@ module Field_module
     real*8, pointer :: xxbc0(:,:)
     integer, pointer:: iphasebc0(:)  
 #endif
-
-!   solid reaction rate
-    integer*4 :: ityprxn
-    real*8 :: rk=0.d0, phis0, areas0, pwrsrf, vbars, ceq, delHs, delEs, wfmts
-    real*8 ::qu_kin, yh2o_in_co2=0.D0
-    
-!   breakthrough curves
-    integer :: ibrkcrv = 0
-    integer*4, pointer :: ibrktyp(:),ibrkface(:)
-    
-!   dual continuum
-    integer :: idcdm = 0, idcmblk = 0
-    real*8, pointer :: fracture_aperture(:), matrix_block(:)
-    
-    integer*4, pointer :: icap_reg(:),ithrm_reg(:)
-    real*8 :: scale
-    real*8, pointer :: rock_density(:),cpr(:),dencpr(:),ckdry(:),ckwet(:), &
-                       tau(:),cdiff(:),cexp(:)
-    real*8, pointer :: swir(:),lambda(:),alpha(:),pckrm(:),pcwmax(:),pcbetac(:), &
-                       pwrprm(:),sir(:,:)
-    integer, pointer:: icaptype(:)
-!geh material id
-    integer, pointer :: imat(:)
-    real*8 :: m_nacl
-    real*8 :: difaq, delhaq, gravity, fmwh2o= 18.0153D0, fmwa=28.96D0, &
-              fmwco2=44.0098D0, eqkair, ret=1.d0, fc=1.d0
-    
-    integer :: ihydrostatic = 0,ideriv = 1
-    real*8 :: dTdz,beta,tref,pref,conc0
-    real*8 :: hydro_ref_xyz(3)
-    
-!   table lookup
-    integer :: itable=0
 
     !-------------------------------------------------------------------
     ! Quantities defined at each grid point.
@@ -166,8 +135,6 @@ module Field_module
     Vec :: r             ! The residual.  (NOT the negative of the residual.)
 
     Vec :: vl, vvl, vg, vvg ! phase (liquid and gas) velocities stored at interfaces
-
-
  
     real*8, pointer :: vl_loc(:), vvl_loc(:), vg_loc(:), vvg_loc(:)
     real*8, pointer :: vvlbc(:), vvgbc(:)
@@ -201,23 +168,202 @@ function FieldCreate()
   type(field_type), pointer :: field
   
   allocate(field)
-
-  !physical constants and defult variables
-  field%difaq = 1.d-9 ! m^2/s read from input file
-  field%delhaq = 12.6d0 ! kJ/mol read from input file
-  field%gravity = 9.8068d0    ! m/s^2
-  field%tref   = 50.D0
-  field%fmwh2o = 18.01534d0 ! kg H2O/mol H2O
-  field%fmwco2 = 44.0098d0
-  field%eqkair = 1.d10 ! Henry's constant for air: Xl = eqkair * pa
-
-  ! default brine concentrations
-  field%m_nacl = 0.d0
   
   ! nullify PetscVecs
+  field%porosity0 = 0
+  field%porosity_loc = 0
+  field%tor_loc = 0
+  field%ithrm_loc = 0
+  field%icap_loc = 0
+  field%iphas_loc = 0
+  field%iphas_old_loc = 0
+  field%phis = 0
   field%conc = 0
-  field%xmol = 0
+  field%ttemp = 0
+  field%ttemp_loc = 0
+  field%temp = 0
+  field%perm_xx_loc = 0
+  field%perm_yy_loc = 0
+  field%perm_zz_loc = 0
+  field%perm0_xx = 0
+  field%perm0_yy = 0
+  field%perm0_zz = 0
+  field%perm_pow = 0
   
+  field%ppressure = 0
+  field%ppressure_loc = 0
+  field%pressure = 0
+  field%dp = 0
+  field%ssat = 0
+  field%ssat_loc = 0
+  field%sat = 0
+  field%xxmol = 0
+  field%xmol = 0
+  field%xxmol_loc = 0
+  field%xmol = 0
+  field%density = 0
+  field%ddensity = 0
+  field%ddensity_loc = 0
+  field%d_p = 0
+  field%d_p_loc = 0
+  field%d_t = 0
+  field%d_t_loc = 0
+  field%d_c = 0
+  field%d_c_loc = 0
+  field%d_s = 0
+  field%d_s_loc = 0
+  field%avgmw = 0
+  field%avgmw_loc = 0
+  field%avgmw_c = 0
+  field%avgmw_c_loc = 0
+  field%h = 0
+  field%hh = 0
+  field%hh_loc = 0
+  field%h_p = 0
+  field%h_p_loc = 0
+  field%h_t = 0
+  field%h_t_loc = 0
+  field%h_c = 0
+  field%h_c_loc = 0
+  field%h_s = 0
+  field%h_s_loc = 0
+  field%u = 0
+  field%uu = 0
+  field%uu_loc = 0
+  field%u_p = 0
+  field%u_p_loc = 0
+  field%u_t = 0
+  field%u_t_loc = 0
+  field%u_c = 0
+  field%u_c_loc = 0
+  field%u_s = 0
+  field%u_s_loc = 0
+  field%hen = 0
+  field%hen_loc = 0
+  field%hen_p = 0
+  field%hen_p_loc = 0
+  field%hen_t = 0
+  field%hen_t_loc = 0
+  field%hen_c = 0
+  field%hen_c_loc = 0
+  field%hen_s = 0
+  field%hen_s_loc = 0
+  field%df = 0
+  field%df_loc = 0
+  field%df_s = 0
+  field%df_s_loc = 0
+  field%viscosity = 0
+  field%viscosity_loc = 0
+  field%v_p = 0
+  field%v_p_loc = 0
+  field%v_t = 0
+  field%v_t_loc = 0
+  field%pcw = 0
+  field%pcw_loc = 0
+  field%pc_p = 0
+  field%pc_p_loc = 0
+  field%pc_t = 0
+  field%pc_t_loc = 0
+  field%pc_c = 0
+  field%pc_c_loc = 0
+  field%pc_s = 0
+  field%pc_s_loc = 0
+  field%kvr = 0
+  field%kvr_loc = 0
+  field%kvr_p = 0
+  field%kvr_p_loc = 0
+  field%kvr_t = 0
+  field%kvr_t_loc = 0
+  field%kvr_c = 0
+  field%kvr_c_loc = 0
+  field%kvr_s = 0
+  field%kvr_s_loc = 0
+  
+  field%vl = 0
+  field%vvl = 0
+  field%vg = 0
+  field%vvg = 0
+  
+  field%r = 0
+  field%xx = 0
+  field%xx_loc = 0
+  field%dxx = 0
+  field%yy = 0
+  field%accum = 0
+  
+  nullify(field%imat)
+  nullify(field%density_bc)
+  nullify(field%d_p_bc)
+  nullify(field%d_t_bc)
+  nullify(field%d_s_bc)
+  nullify(field%d_c_bc)
+  nullify(field%avgmw_bc)
+  nullify(field%avgmw_c_bc)
+  nullify(field%hh_bc)
+  nullify(field%h_p_bc)
+  nullify(field%h_t_bc)
+  nullify(field%h_s_bc)
+  nullify(field%h_c_bc)
+  nullify(field%viscosity_bc)
+  nullify(field%v_p_bc)
+  nullify(field%v_t_bc)
+  nullify(field%uu_bc)
+  nullify(field%u_p_bc)   
+  nullify(field%u_t_bc)   
+  nullify(field%u_s_bc)   
+  nullify(field%u_c_bc)   
+  nullify(field%df_bc)   
+  nullify(field%df_p_bc)   
+  nullify(field%df_t_bc)   
+  nullify(field%df_s_bc)   
+  nullify(field%df_c_bc)   
+  nullify(field%hen_bc)   
+  nullify(field%hen_p_bc)   
+  nullify(field%hen_t_bc)   
+  nullify(field%hen_s_bc)   
+  nullify(field%hen_c_bc)   
+  nullify(field%pc_bc)   
+  nullify(field%pc_p_bc)   
+  nullify(field%pc_t_bc)   
+  nullify(field%pc_s_bc)   
+  nullify(field%pc_c_bc)   
+  nullify(field%kvr_bc)   
+  nullify(field%kvr_p_bc)   
+  nullify(field%kvr_t_bc)   
+  nullify(field%kvr_s_bc)   
+  nullify(field%kvr_c_bc) 
+    
+  nullify(field%xphi_co2)   
+  nullify(field%xxphi_co2)   
+  nullify(field%den_co2)   
+  nullify(field%dden_co2)   
+  
+  nullify(field%pressurebc)   
+  nullify(field%velocitybc)   
+  nullify(field%tempbc)   
+  nullify(field%concbc)   
+  nullify(field%sgbc)   
+  nullify(field%xphi_co2_bc)   
+  nullify(field%xxphi_co2_bc)   
+  nullify(field%xxbc)   
+  nullify(field%varbc)   
+  nullify(field%iphasebc)   
+  nullify(field%pressurebc0)   
+  nullify(field%velocitybc0) 
+  
+   
+  nullify(field%vl_loc)
+  nullify(field%vvl_loc)
+  nullify(field%vg_loc)
+  nullify(field%vvg_loc)
+  nullify(field%vvlbc)
+  nullify(field%vvgbc)
+  
+  nullify(field%rtot)
+  nullify(field%rate)
+  nullify(field%area_var)
+  nullify(field%delx)
+    
   FieldCreate => field
   
 end function FieldCreate

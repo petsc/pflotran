@@ -313,7 +313,7 @@ subroutine PflowInit(simulation,filename)
 !-----------------------------------------------------------------------
 ! Set up PETSc nonlinear solver context.
 !-----------------------------------------------------------------------
-  call SNESCreate(PETSC_COMM_WORLD, option%snes, ierr)
+  call SNESCreate(PETSC_COMM_WORLD, solver%snes, ierr)
   CHKERRQ(ierr)
 !-----------------------------------------------------------------------
   ! Set up indexing of grid ids (local to global, global to local, etc
@@ -464,7 +464,7 @@ subroutine PflowInit(simulation,filename)
   
     option%ideriv = 1
   
-    call GridCreateJacobian(grid,option)
+    call GridCreateJacobian(grid,solver,option)
   
 !   if (myrank == 0) write(*,'(" analytical jacobian as ")'); &
 !                    print *, grid%iblkfmt
@@ -473,42 +473,42 @@ subroutine PflowInit(simulation,filename)
 #if 0    
       ! still needs to be implemented
       case(COND_MODE)
-        call SNESSetJacobian(option%snes, option%J, option%J, CondJacobian, &
+        call SNESSetJacobian(solver%snes, solver%J, solver%J, CondJacobian, &
                            grid, ierr); CHKERRQ(ierr)
       case(TH_MODE)
-        call SNESSetJacobian(option%snes, option%J, option%J, THJacobian, &
+        call SNESSetJacobian(solver%snes, solver%J, solver%J, THJacobian, &
                            grid, ierr); CHKERRQ(ierr)
       case(THC_MODE)
-        call SNESSetJacobian(option%snes, option%J, option%J, THCJacobian, &
+        call SNESSetJacobian(solver%snes, solver%J, solver%J, THCJacobian, &
                            grid, ierr); CHKERRQ(ierr)
       case(TWOPH_MODE)
-        call SNESSetJacobian(option%snes, option%J, option%J, TTPHASEJacobian, &
+        call SNESSetJacobian(solver%snes, solver%J, solver%J, TTPHASEJacobian, &
                            grid, ierr); CHKERRQ(ierr)
       case(MPH_MODE)
-        call SNESSetJacobian(option%snes, option%J, option%J, MPHASEJacobian, &
+        call SNESSetJacobian(solver%snes, solver%J, solver%J, MPHASEJacobian, &
                            grid, ierr); CHKERRQ(ierr)
         if (option%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(grid)
       case(FLASH_MODE)
-        call SNESSetJacobian(option%snes, option%J, option%J, FlashJacobian, &
+        call SNESSetJacobian(solver%snes, solver%J, solver%J, FlashJacobian, &
                            grid, ierr); CHKERRQ(ierr)
         if (option%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(grid)
       case(VADOSE_MODE)
-        call SNESSetJacobian(option%snes, option%J, option%J, VADOSEJacobian, &
+        call SNESSetJacobian(solver%snes, solver%J, solver%J, VADOSEJacobian, &
                            grid, ierr); CHKERRQ(ierr)
         if (option%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(grid)
 #endif
       case(RICHARDS_MODE)
-        call SNESSetJacobian(option%snes, option%J, option%J, RichardsJacobian, &
+        call SNESSetJacobian(solver%snes, solver%J, solver%J, RichardsJacobian, &
                              solution, ierr); CHKERRQ(ierr)
         if (option%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(solution,solver)
 #if 0      
       ! still needs to be implemented
       case(OWG_MODE)
-        call SNESSetJacobian(option%snes, option%J, option%J, OWGJacobian, &
+        call SNESSetJacobian(solver%snes, solver%J, solver%J, OWGJacobian, &
                            grid, ierr); CHKERRQ(ierr)
         if (option%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(grid)
       case default
-        call SNESSetJacobian(option%snes, option%J, option%J, LiquidJacobian, &
+        call SNESSetJacobian(solver%snes, solver%J, solver%J, LiquidJacobian, &
                            grid, ierr); CHKERRQ(ierr)
 #endif
     end select                         
@@ -521,12 +521,12 @@ subroutine PflowInit(simulation,filename)
 
     select case(option%imode)
       case(COND_MODE)
-        call MatCreateMFFD(option%snes,field%ttemp,option%J,ierr)
+        call MatCreateMFFD(solver%snes,field%ttemp,solver%J,ierr)
       case(TH_MODE,THC_MODE,TWOPH_MODE,MPH_MODE,FLASH_MODE,RICHARDS_MODE, &
            VADOSE_MODE,OWG_MODE)
-        call MatCreateMFFD(option%snes,field%xx,option%J,ierr)
+        call MatCreateMFFD(solver%snes,field%xx,solver%J,ierr)
       case default
-        call MatCreateMFFD(option%snes,field%ppressure,option%J,ierr)
+        call MatCreateMFFD(solver%snes,field%ppressure,solver%J,ierr)
     end select
     
     ! It seems that I ought to call SNESSetJacobian here now, but I don't know
@@ -535,19 +535,19 @@ subroutine PflowInit(simulation,filename)
     ! actually matter if -snes_mf has been specified.
     ! Pernice thinks that perhaps the I need to provide a function which 
     ! simply calls MatAssemblyBegin/End.
-    call SNESSetJacobian(option%snes, option%J, option%J, &
+    call SNESSetJacobian(solver%snes, solver%J, solver%J, &
                          SolverComputeMFJacobian, PETSC_NULL_OBJECT, ierr)
 
     ! Use "Walker-Pernice" differencing.
-    call MatMFFDSetType(option%J, MATMFFD_WP, ierr)
+    call MatMFFDSetType(solver%J, MATMFFD_WP, ierr)
 
     if (option%print_hhistory == PETSC_TRUE) then
       allocate(option%hhistory(HHISTORY_LENGTH))
-      call MatMFFDSetHHistory(option%J, option%hhistory, HHISTORY_LENGTH, ierr)
+      call MatMFFDSetHHistory(solver%J, option%hhistory, HHISTORY_LENGTH, ierr)
     endif
 
     if (option%monitor_h == PETSC_TRUE) then
-      call SNESMonitorSet(option%snes, SolverMonitorH, grid, &
+      call SNESMonitorSet(solver%snes, SolverMonitorH, grid, &
                           PETSC_NULL_OBJECT, ierr)
     endif
     
@@ -564,12 +564,12 @@ subroutine PflowInit(simulation,filename)
       
     temp_int = option%iblkfmt
     option%iblkfmt = 0   ! to turn off MATMPIBAIJ
-    call GridCreateJacobian(grid,option)
+    call GridCreateJacobian(grid,solver,option)
     option%iblkfmt = temp_int
 
     call GridCreateColoring(grid,option,iscoloring)
         
-    call MatFDColoringCreate(option%J, iscoloring, option%matfdcoloring, ierr)
+    call MatFDColoringCreate(solver%J, iscoloring,solver%matfdcoloring, ierr)
     
     call ISColoringDestroy(iscoloring, ierr)
 
@@ -577,46 +577,46 @@ subroutine PflowInit(simulation,filename)
 #if 0
     ! need to be implemented
       case(COND_MODE)
-        call MatFDColoringSetFunctionSNES(option%matfdcoloring, &
+        call MatFDColoringSetFunctionSNES(solver%matfdcoloring, &
                                           CondResidual,option,ierr)
       case(TH_MODE)
-        call MatFDColoringSetFunctionSNES(option%matfdcoloring, &
+        call MatFDColoringSetFunctionSNES(solver%matfdcoloring, &
                                           THResidual,option, ierr)
       case(THC_MODE)
-        call MatFDColoringSetFunctionSNES(option%matfdcoloring, &
+        call MatFDColoringSetFunctionSNES(solver%matfdcoloring, &
                                           THCResidual,option, ierr)
       case(TWOPH_MODE)
-        call MatFDColoringSetFunctionSNES(option%matfdcoloring, &
+        call MatFDColoringSetFunctionSNES(solver%matfdcoloring, &
                                           TTPHASEResidual,option, ierr)
       case(MPH_MODE)
-        call MatFDColoringSetFunctionSNES(option%matfdcoloring, &
+        call MatFDColoringSetFunctionSNES(solver%matfdcoloring, &
                                           MPHASEResidual,option, ierr)
       case(FLASH_MODE)
-        call MatFDColoringSetFunctionSNES(option%matfdcoloring, &
+        call MatFDColoringSetFunctionSNES(solver%matfdcoloring, &
                                           FlashResidual,option, ierr)
       case(VADOSE_MODE)
-        call MatFDColoringSetFunctionSNES(option%matfdcoloring, &
+        call MatFDColoringSetFunctionSNES(solver%matfdcoloring, &
                                           VADOSEResidual,option, ierr)
 #endif                                          
       case(RICHARDS_MODE)
-        call MatFDColoringSetFunctionSNES(option%matfdcoloring, &
+        call MatFDColoringSetFunctionSNES(solver%matfdcoloring, &
                                           RichardsResidual,option, ierr)
 #if 0                                          
     ! need to be implemented
       case(OWG_MODE)
-        call MatFDColoringSetFunctionSNES(option%matfdcoloring, &
+        call MatFDColoringSetFunctionSNES(solver%matfdcoloring, &
                                           OWGResidual,option, ierr)
       case default
-        call MatFDColoringSetFunctionSNES(option%matfdcoloring, &
+        call MatFDColoringSetFunctionSNES(solver%matfdcoloring, &
                                           LiquidResidual,option, ierr)
 #endif                                          
     end select
         
-    call MatFDColoringSetFromOptions(option%matfdcoloring, ierr)
+    call MatFDColoringSetFromOptions(solver%matfdcoloring, ierr)
     
-    call SNESSetJacobian(option%snes, option%J, option%J, &
+    call SNESSetJacobian(solver%snes, solver%J, solver%J, &
                          SNESDefaultComputeJacobianColor,  &
-                         option%matfdcoloring, ierr)
+                         solver%matfdcoloring, ierr)
   endif
 
   if (option%myrank == 0) write(*,'("++++++++++++++++++++++++++++++++&
@@ -626,44 +626,44 @@ subroutine PflowInit(simulation,filename)
 #if 0  
     ! need to be implemented
     case(COND_MODE)
-      call SNESSetFunction(option%snes,field%r,CondResidual,solution,ierr)
+      call SNESSetFunction(solver%snes,field%r,CondResidual,solution,ierr)
     case(TH_MODE)
-      call SNESSetFunction(option%snes,field%r,THResidual,solution,ierr)
+      call SNESSetFunction(solver%snes,field%r,THResidual,solution,ierr)
     case(THC_MODE)
-      call SNESSetFunction(option%snes,field%r,THCResidual,solution,ierr)
+      call SNESSetFunction(solver%snes,field%r,THCResidual,solution,ierr)
     case(TWOPH_MODE)
-      call SNESSetFunction(option%snes,field%r,TTPHASEResidual,solution,ierr)
+      call SNESSetFunction(solver%snes,field%r,TTPHASEResidual,solution,ierr)
     case(MPH_MODE)
-      call SNESSetFunction(option%snes,field%r,MPHASEResidual,solution,ierr)
+      call SNESSetFunction(solver%snes,field%r,MPHASEResidual,solution,ierr)
     case(FLASH_MODE)
-      call SNESSetFunction(option%snes,field%r,FlashResidual,solution,ierr)
+      call SNESSetFunction(solver%snes,field%r,FlashResidual,solution,ierr)
     case(VADOSE_MODE)
-      call SNESSetFunction(option%snes,field%r,VADOSEResidual,solution,ierr)
+      call SNESSetFunction(solver%snes,field%r,VADOSEResidual,solution,ierr)
 #endif      
     case(RICHARDS_MODE)
-      call SNESSetFunction(option%snes,field%r,RichardsResidual,solution,ierr)
+      call SNESSetFunction(solver%snes,field%r,RichardsResidual,solution,ierr)
 #if 0 
     ! need to be implemented     
     case(OWG_MODE)
-      call SNESSetFunction(option%snes,field%r,OWGResidual,solution,ierr)
+      call SNESSetFunction(solver%snes,field%r,OWGResidual,solution,ierr)
     case default
-      call SNESSetFunction(option%snes,field%r,LiquidResidual,solution,ierr)
+      call SNESSetFunction(solver%snes,field%r,LiquidResidual,solution,ierr)
 #endif      
   end select
 
   ! Set the tolerances for the Newton solver.
-  call SNESSetTolerances(option%snes, solver%atol, solver%rtol, solver%stol, & 
+  call SNESSetTolerances(solver%snes, solver%atol, solver%rtol, solver%stol, & 
                          solver%maxit, solver%maxf, ierr)
-  call SNESSetFromOptions(option%snes, ierr)
+  call SNESSetFromOptions(solver%snes, ierr)
   
   ! shell for custom convergence test.  The default SNES convergence test 
   ! is call within this function.
-  call SNESSetConvergenceTest(option%snes,PFLOWConvergenceTest,simulation,ierr)
+  call SNESSetConvergenceTest(solver%snes,PFLOWConvergenceTest,simulation,ierr)
                            
-  call SNESLineSearchGetParams(option%snes, alpha, maxstep, steptol, ierr) 
-  call SNESLineSearchSetParams(option%snes, alpha, maxstep, solver%stol, ierr) 
-  call SNESGetKSP(option%snes, option%ksp, ierr)
-  call KSPSetTolerances(option%ksp,solver%rtol,solver%atol,solver%dtol, &
+  call SNESLineSearchGetParams(solver%snes, alpha, maxstep, steptol, ierr) 
+  call SNESLineSearchSetParams(solver%snes, alpha, maxstep, solver%stol, ierr) 
+  call SNESGetKSP(solver%snes, solver%ksp, ierr)
+  call KSPSetTolerances(solver%ksp,solver%rtol,solver%atol,solver%dtol, &
                         10000,ierr)
 
   if (option%myrank == 0) write(*,'("  Finished setting up of SNES ")')
@@ -728,7 +728,7 @@ subroutine PflowInit(simulation,filename)
   endif
 #endif
 !geh
-  nullify(option%imat)
+  nullify(field%imat)
 
 #if 0
   if (grid%iread_geom == 10) then 
@@ -1547,7 +1547,7 @@ subroutine readInput(simulation,filename)
         call fiReadDouble(string,option%rk,ierr)
         call fiDefaultMsg('rk',ierr)
 
-        call fiReadDouble(string,field%phis0,ierr)
+        call fiReadDouble(string,option%phis0,ierr)
         call fiDefaultMsg('phis0',ierr)
 
         call fiReadDouble(string,option%areas0,ierr)
@@ -1583,7 +1583,7 @@ subroutine readInput(simulation,filename)
           & "  delHs  = ",3x,1pe12.4," [J/kg]",/, &
           & "  delEs  = ",3x,1pe12.4," [J/kg]",/, &
           & "  wfmts  = ",3x,1pe12.4," [g/mol]" &
-          & )') option%ityprxn,option%rk,field%phis0,option%areas0,option%pwrsrf, &
+          & )') option%ityprxn,option%rk,option%phis0,option%areas0,option%pwrsrf, &
           option%vbars,option%ceq,option%delHs,option%delEs,option%wfmts
 
  ! convert: mol/cm^2 -> mol/cm^3 -> mol/dm^3 (note area 1/cm)          
@@ -1919,7 +1919,7 @@ subroutine readInput(simulation,filename)
         allocate(option%lambda(count))
         allocate(option%alpha(count))
         allocate(option%pckrm(count))
-        allocate(field%pcwmax(count))
+        allocate(option%pcwmax(count))
         allocate(option%pcbetac(count))
         allocate(option%pwrprm(count))
 
@@ -1948,7 +1948,7 @@ subroutine readInput(simulation,filename)
           option%lambda(id) = saturation_function%lambda
           option%alpha(id) = saturation_function%alpha
           option%pckrm(id) = saturation_function%m
-          field%pcwmax(id) = saturation_function%pcwmax
+          option%pcwmax(id) = saturation_function%pcwmax
           option%pcbetac(id) = saturation_function%betac
           option%pwrprm(id) = saturation_function%power
           
@@ -1970,7 +1970,7 @@ subroutine readInput(simulation,filename)
             option%imode == RICHARDS_MODE) then
           call pckr_init(option%nphase,count,grid%nlmax, &
                          option%icaptype,option%sir, option%pckrm, &
-                         option%lambda,option%alpha,field%pcwmax, &
+                         option%lambda,option%alpha,option%pcwmax, &
                          option%pcbetac,option%pwrprm)
         endif 
 
@@ -1987,10 +1987,10 @@ subroutine readInput(simulation,filename)
                 option%imode == RICHARDS_MODE) then
               write(IUNIT2,'(i4,1p8e12.4)') i,(option%sir(np,i),np=1, &
                 option%nphase),option%lambda(i),option%alpha(i), &
-                field%pcwmax(i),option%pcbetac(i),option%pwrprm(i)
+                option%pcwmax(i),option%pcbetac(i),option%pwrprm(i)
             else
               write(IUNIT2,'(i4,1p7e12.4)') i,option%swir(i), &
-                option%lambda(i),option%alpha(i),field%pcwmax(i), &
+                option%lambda(i),option%alpha(i),option%pcwmax(i), &
                 option%pcbetac(i),option%pwrprm(i)
             endif
           enddo
@@ -2001,7 +2001,7 @@ subroutine readInput(simulation,filename)
             option%imode == FLASH_MODE .or. &
             option%imode == RICHARDS_MODE) then
           deallocate(option%icaptype, option%pckrm, option%lambda, &
-                     option%alpha,field%pcwmax, option%pcbetac, &
+                     option%alpha,option%pcwmax, option%pcbetac, &
                      option%pwrprm)
         endif 
  
@@ -3127,7 +3127,7 @@ subroutine initializeSolidReaction(solution)
     allocate(option%rate(grid%nlmax))
     call VecGetArrayF90(field%phis,phis_p,ierr)
     do icell = 1, grid%nlmax
-      phis_p(icell) = field%phis0
+      phis_p(icell) = option%phis0
       option%area_var(icell) = 1.d0
     enddo
     call VecRestoreArrayF90(field%phis,phis_p,ierr)

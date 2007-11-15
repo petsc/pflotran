@@ -188,7 +188,7 @@ subroutine Richards_Update_Reason(reason,solution)
   call MPI_Barrier(PETSC_COMM_WORLD,ierr)
   
   reason = 1
- ! call SNESComputeFunction(option%snes,field%xx,grid%r,ierr)
+ ! call SNESComputeFunction(solver%snes,field%xx,grid%r,ierr)
  ! do n=1,option%ndof
  !  call VecStrideNorm(grid%r,n-1,NORM_INFINITY,rmax(n),ierr)
  ! enddo
@@ -205,8 +205,8 @@ subroutine Richards_Update_Reason(reason,solution)
     do local_id = 1,grid%nlmax
       ghosted_id = grid%nL2G(local_id)
       !geh - Ignore inactive cells with inactive materials
-      if (associated(option%imat)) then
-        if (option%imat(ghosted_id) <= 0) cycle
+      if (associated(field%imat)) then
+        if (field%imat(ghosted_id) <= 0) cycle
       endif
 
       dof_offset=(local_id-1)* option%ndof 
@@ -757,8 +757,8 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     !geh - Ignore inactive cells with inactive materials
-    if (associated(option%imat)) then
-      if (option%imat(ghosted_id) <= 0) cycle
+    if (associated(field%imat)) then
+      if (field%imat(ghosted_id) <= 0) cycle
     endif
 
     jn = 1 + (local_id-1)*option%nphase
@@ -844,8 +844,8 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
   do local_id = 1, grid%nlmax  ! For each local node do...
     ghosted_id = grid%nL2G(local_id)
     !geh - Ignore inactive cells with inactive materials
-    if (associated(option%imat)) then
-      if (option%imat(ghosted_id) <= 0) cycle
+    if (associated(field%imat)) then
+      if (field%imat(ghosted_id) <= 0) cycle
     endif
 
     p1 = 1 + (local_id-1)*option%ndof
@@ -966,9 +966,9 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
       local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
       local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping   
 
-      if (associated(option%imat)) then
-        if (option%imat(ghosted_id_up) <= 0 .or.  &
-            option%imat(ghosted_id_dn) <= 0) cycle
+      if (associated(field%imat)) then
+        if (field%imat(ghosted_id_up) <= 0 .or.  &
+            field%imat(ghosted_id_dn) <= 0) cycle
       endif
 
       p1 = 1 + (local_id_up-1)*option%ndof 
@@ -1056,8 +1056,8 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
       local_id = cur_connection_object%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
 
-      if (associated(option%imat)) then
-        if (option%imat(ghosted_id) <= 0) cycle
+      if (associated(field%imat)) then
+        if (field%imat(ghosted_id) <= 0) cycle
       endif
 
       if (ghosted_id<=0) then
@@ -1135,8 +1135,8 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
     do local_id = 1, grid%nlmax  ! For each local node do...
       ghosted_id = grid%nL2G(local_id)
       !geh - Ignore inactive cells with inactive materials
-      if (associated(option%imat)) then
-        if (option%imat(ghosted_id) <= 0) cycle
+      if (associated(field%imat)) then
+        if (field%imat(ghosted_id) <= 0) cycle
       endif
       p1 = 3 + (local_id-1)*option%ndof
       r_p(p1)=xx_loc_p(2 + (ghosted_id-1)*option%ndof)-yy_p(p1-1)
@@ -1290,8 +1290,8 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
   do local_id = 1, grid%nlmax  ! For each local node do...
     ghosted_id = grid%nL2G(local_id)
     !geh - Ignore inactive cells with inactive materials
-    if (associated(option%imat)) then
-      if (option%imat(ghosted_id) <= 0) cycle
+    if (associated(field%imat)) then
+      if (field%imat(ghosted_id) <= 0) cycle
     endif
 
     voldt = volume_p(local_id) / option%dt
@@ -1402,8 +1402,8 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
       local_id = cur_connection_object%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
 
-      if (associated(option%imat)) then
-        if (option%imat(ghosted_id) <= 0) cycle
+      if (associated(field%imat)) then
+        if (field%imat(ghosted_id) <= 0) cycle
       endif
 
       if (ghosted_id<=0) then
@@ -1506,8 +1506,8 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
   do local_id= 1, grid%nlmax
 
     !geh - Ignore inactive cells with inactive materials
-    if (associated(option%imat)) then
-      if (option%imat(grid%nL2G(local_id)) <= 0) cycle
+    if (associated(field%imat)) then
+      if (field%imat(grid%nL2G(local_id)) <= 0) cycle
     endif
 
     ra=0.D0
@@ -1572,8 +1572,8 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
       ghosted_id_up = cur_connection_object%id_up(iconn)
       ghosted_id_dn = cur_connection_object%id_dn(iconn)
 
-      if (associated(option%imat)) then
-        if (option%imat(ghosted_id_up) <= 0 .or. option%imat(ghosted_id_dn) <= 0) cycle
+      if (associated(field%imat)) then
+        if (field%imat(ghosted_id_up) <= 0 .or. field%imat(ghosted_id_dn) <= 0) cycle
       endif
 
       local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
@@ -1809,8 +1809,8 @@ subroutine pflow_Richards_initaccum(solution)
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)    
     !geh - Ignore inactive cells with inactive materials
-    if (associated(option%imat)) then
-      if (option%imat(ghosted_id) <= 0) cycle
+    if (associated(field%imat)) then
+      if (field%imat(ghosted_id) <= 0) cycle
     endif
 
     iicap=int(icap_loc_p(ghosted_id))
@@ -1831,8 +1831,8 @@ subroutine pflow_Richards_initaccum(solution)
     ghosted_id = grid%nL2G(local_id)
     
     !geh - Ignore inactive cells with inactive materials
-    if (associated(option%imat)) then
-      if (option%imat(ghosted_id) <= 0) cycle
+    if (associated(field%imat)) then
+      if (field%imat(ghosted_id) <= 0) cycle
     endif
 
     p1 = 1 + (local_id-1)*option%ndof
@@ -1901,7 +1901,7 @@ subroutine pflow_update_Richards(solution)
   field => solution%field
       
 !geh added for transient boundary conditions      
-  if (associated(option%imat) .and. option%iread_geom < 0) then
+  if (associated(field%imat) .and. option%iread_geom < 0) then
 !commend out for now    call UpdateBoundaryConditions(option)
     yybc =field%xxbc
     vel_bc = field%velocitybc
@@ -1920,8 +1920,8 @@ subroutine pflow_update_Richards(solution)
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     !geh - Ignore inactive cells with inactive materials
-    if (associated(option%imat)) then
-      if (option%imat(ghosted_id) <= 0) cycle
+    if (associated(field%imat)) then
+      if (field%imat(ghosted_id) <= 0) cycle
     endif
 
     iicap = icap_loc_p(ghosted_id)
@@ -1945,7 +1945,7 @@ subroutine pflow_update_Richards(solution)
    enddo
 
   !geh added for transient boundary conditions  
-  if (associated(option%imat) .and. option%iread_geom < 0) then
+  if (associated(field%imat) .and. option%iread_geom < 0) then
 
     boundary_condition => solution%boundary_conditions%first
     sum_connection = 0
@@ -1961,8 +1961,8 @@ subroutine pflow_update_Richards(solution)
         local_id = cur_connection_object%id_dn(iconn)
         ghosted_id = grid%nL2G(local_id)
 
-        if (associated(option%imat)) then
-          if (option%imat(ghosted_id) <= 0) cycle
+        if (associated(field%imat)) then
+          if (field%imat(ghosted_id) <= 0) cycle
         endif
        
         if (local_id<0) then
@@ -2086,8 +2086,8 @@ subroutine pflow_Richards_initadj(solution)
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     !geh - Ignore inactive cells with inactive materials
-    if (associated(option%imat)) then
-      if (option%imat(ghosted_id) <= 0) cycle
+    if (associated(field%imat)) then
+      if (field%imat(ghosted_id) <= 0) cycle
     endif
 
     jn = 1 + (local_id-1)*option%nphase
@@ -2103,9 +2103,9 @@ subroutine pflow_Richards_initadj(solution)
      sw= xx_p((local_id-1)*option%ndof+1)
      call pflow_pckr_richards_fw(iicap,sw,pc,kr)    
                  
-     if(pc(1)>field%pcwmax(iicap))then
-        print *,'INIT Warning: Pc>pcmax', sw, pc(1), iicap, field%pcwmax(iicap)
-        pc(1)=field%pcwmax(iicap)
+     if(pc(1)>option%pcwmax(iicap))then
+        print *,'INIT Warning: Pc>pcmax', sw, pc(1), iicap, option%pcwmax(iicap)
+        pc(1)=option%pcwmax(iicap)
      endif 
      xx_p((local_id-1)*option%ndof+1)= option%pref - pc(1)
      print *,'Richards: Conv: ',local_id, sw, iicap, sw, pc(1),xx_p((local_id-1)*option%ndof+1:local_id*option%ndof)
@@ -2154,8 +2154,8 @@ subroutine pflow_Richards_initadj(solution)
       local_id = cur_connection_object%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
   
-      if (associated(option%imat)) then
-        if (option%imat(ghosted_id) <= 0) cycle
+      if (associated(field%imat)) then
+        if (field%imat(ghosted_id) <= 0) cycle
       endif
        
       if (local_id<0) then
@@ -2233,10 +2233,10 @@ subroutine createRichardsZeroArray(solution)
   
   n_zero_rows = 0
 
-  if (associated(option%imat)) then
+  if (associated(field%imat)) then
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
-      if (option%imat(ghosted_id) <= 0) then
+      if (field%imat(ghosted_id) <= 0) then
         n_zero_rows = n_zero_rows + option%ndof
       else
 #ifdef ISOTHERMAL
@@ -2256,10 +2256,10 @@ subroutine createRichardsZeroArray(solution)
   zero_rows_local_ghosted = 0
   ncount = 0
 
-  if (associated(option%imat)) then
+  if (associated(field%imat)) then
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
-      if (option%imat(ghosted_id) <= 0) then
+      if (field%imat(ghosted_id) <= 0) then
         do idof = 1, option%ndof
           ncount = ncount + 1
           zero_rows_local(ncount) = (local_id-1)*option%ndof+idof

@@ -32,6 +32,19 @@ module Solver_module
     integer :: maxit     ! maximum number of iterations
     integer :: maxf      ! maximum number of function evaluations
     integer :: idt_switch
+    
+        ! Jacobian matrix
+    Mat :: J
+    MatFDColoring :: matfdcoloring
+      ! Coloring used for computing the Jacobian via finite differences.
+
+    ! PETSc nonlinear solver context
+    SNES :: snes
+    KSPType :: ksp_type
+    PCType  :: pc_type
+    KSP   ::  ksp
+    PC    ::  pc
+        
   end type solver_type
   
   public :: SolverCreate, &
@@ -65,6 +78,14 @@ function SolverCreate()
   solver%maxit = PETSC_DEFAULT_INTEGER
   solver%maxf = PETSC_DEFAULT_INTEGER
   solver%idt_switch = 0
+  
+  solver%J = 0
+  solver%matfdcoloring = 0
+  solver%snes = 0
+  solver%ksp_type = ""
+  solver%pc_type = ""
+  solver%ksp = 0
+  solver%pc = 0
   
   SolverCreate => solver
   
@@ -101,7 +122,7 @@ end subroutine SolverComputeMFJacobian
 ! date: 
 !
 ! ************************************************************************** !
-subroutine SolverMonitorH(snes, its, norm, option)
+subroutine SolverMonitorH(snes, its, norm, solver, option)
   
   use Option_module
   
@@ -110,13 +131,14 @@ subroutine SolverMonitorH(snes, its, norm, option)
   SNES, intent(in) :: snes
   integer, intent(in) :: its
   PetscReal, intent(in) :: norm
+  type(solver_type) :: solver
   type(option_type) :: option
   
   integer :: ierr
   integer :: myrank
   PetscScalar :: h
   
-  call MatMFFDGetH(option%J, h, ierr)
+  call MatMFFDGetH(solver%J, h, ierr)
 
   if (option%myrank == 0) then
     write(*,*) "#At SNES iteration ", its, "h is ", h
@@ -136,8 +158,16 @@ subroutine SolverDestroy(solver)
   implicit none
   
   type(solver_type), pointer :: solver
+  
+  PetscErrorCode :: ierr
 
   if (.not.associated(solver)) return
+    
+  if (solver%J /= 0) call MatDestroy(solver%J,ierr)
+  if (solver%matfdcoloring /= 0) call MatFDColoringDestroy(solver%matfdcoloring,ierr)
+  if (solver%snes /= 0) call SNESDestroy(solver%snes,ierr)
+  solver%ksp = 0
+  solver%pc = 0
     
   deallocate(solver)
   nullify(solver)

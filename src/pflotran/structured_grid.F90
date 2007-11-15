@@ -1289,25 +1289,27 @@ end subroutine StructuredGridMapIndices
 ! date: 10/24/07
 !
 ! ************************************************************************** !
-subroutine StructuredGridCreateJacobian(structured_grid,option)
+subroutine StructuredGridCreateJacobian(structured_grid,solver,option)
 
   use Option_module
+  use Solver_module
   
   implicit none
   
   type(structured_grid_type) :: structured_grid
+  type(solver_type) :: solver
   type(option_type) :: option
   
   PetscErrorCode :: ierr
   
   if (option%iblkfmt == 0) then
-    call DAGetMatrix(structured_grid%da_ndof, MATAIJ, option%J, ierr)
+    call DAGetMatrix(structured_grid%da_ndof, MATAIJ, solver%J, ierr)
   else
-    call DAGetMatrix(structured_grid%da_ndof, MATBAIJ, option%J, ierr)
+    call DAGetMatrix(structured_grid%da_ndof, MATBAIJ, solver%J, ierr)
   endif
  ! call  MatSetBlocksize(grid%J,grid%ndof,ierr)
-  call MatSetOption(option%J,MAT_KEEP_ZEROED_ROWS,ierr)
-  call MatSetOption(option%J,MAT_COLUMN_ORIENTED,ierr)
+  call MatSetOption(solver%J,MAT_KEEP_ZEROED_ROWS,ierr)
+  call MatSetOption(solver%J,MAT_COLUMN_ORIENTED,ierr)
   
 end subroutine StructuredGridCreateJacobian
 

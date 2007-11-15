@@ -102,7 +102,7 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,simulation,ier
 
 #ifdef CHUAN
   ! always take one iteration
-  call SNESGetIterationNumber(option%snes,it,ierr)
+  call SNESGetIterationNumber(solver%snes,it,ierr)
   if (it == 0) then
     reason = 0
     return

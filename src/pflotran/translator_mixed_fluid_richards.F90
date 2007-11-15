@@ -355,8 +355,8 @@ subroutine Translator_Richards_Switching(xx,solution,icri,ichange)
   do local_id = 1,grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     !geh - Ignore inactive cells with inactive materials
-    if (associated(option%imat)) then
-      if (option%imat(ghosted_id) <= 0) cycle
+    if (associated(field%imat)) then
+      if (field%imat(ghosted_id) <= 0) cycle
     endif
 
     ipr=0

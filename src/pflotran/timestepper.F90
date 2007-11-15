@@ -439,59 +439,59 @@ subroutine StepperStepDT(solution,stepper,plot_flag,timestep_cut_flag, &
     option%iphch=0
     select case(option%imode)
       case(COND_MODE)
-        call SNESSolve(option%snes, PETSC_NULL, field%ttemp, ierr)
+        call SNESSolve(solver%snes, PETSC_NULL, field%ttemp, ierr)
       case(TH_MODE)
-        call SNESSolve(option%snes, PETSC_NULL, field%xx, ierr)
+        call SNESSolve(solver%snes, PETSC_NULL, field%xx, ierr)
       case(THC_MODE)
-        call SNESSolve(option%snes, PETSC_NULL, field%xx, ierr)
+        call SNESSolve(solver%snes, PETSC_NULL, field%xx, ierr)
       case(TWOPH_MODE)
      ! call  TTPhase_Update(field%xx,grid)
-        call SNESSolve(option%snes, PETSC_NULL, field%xx, ierr)
+        call SNESSolve(solver%snes, PETSC_NULL, field%xx, ierr)
       case(MPH_MODE)
         if (option%use_ksp == PETSC_TRUE) then
           call pflow_solve(solution,num_newton_iterations, &
                            stepper%newton_max,snes_reason,ierr)
         else 
-          call SNESSolve(option%snes, PETSC_NULL, field%xx, ierr)
+          call SNESSolve(solver%snes, PETSC_NULL, field%xx, ierr)
         endif
       case(RICHARDS_MODE)
         if (option%use_ksp == PETSC_TRUE) then
           call pflow_solve(solution,num_newton_iterations, &
                            stepper%newton_max,snes_reason,ierr)
         else 
-          call SNESSolve(option%snes, PETSC_NULL, field%xx, ierr)
+          call SNESSolve(solver%snes, PETSC_NULL, field%xx, ierr)
         endif
       case(FLASH_MODE)
         if (option%use_ksp == PETSC_TRUE) then
           call pflow_solve(solution,num_newton_iterations, &
                            stepper%newton_max,snes_reason,ierr)
         else 
-          call SNESSolve(option%snes, PETSC_NULL, field%xx, ierr)
+          call SNESSolve(solver%snes, PETSC_NULL, field%xx, ierr)
         endif
       case(VADOSE_MODE)
         if (option%use_ksp == PETSC_TRUE) then
           call pflow_solve(solution,num_newton_iterations, &
                            stepper%newton_max,snes_reason,ierr)
         else 
-          call SNESSolve(option%snes, PETSC_NULL, field%xx, ierr)
+          call SNESSolve(solver%snes, PETSC_NULL, field%xx, ierr)
         endif
       case(OWG_MODE)
         if (option%use_ksp == PETSC_TRUE) then
           call pflow_solve(solution,num_newton_iterations, &
                            stepper%newton_max,snes_reason,ierr)
         else 
-          call SNESSolve(option%snes,PETSC_NULL, field%xx, ierr)
+          call SNESSolve(solver%snes,PETSC_NULL, field%xx, ierr)
         endif
       case default
-        call SNESSolve(option%snes,PETSC_NULL, field%ppressure, ierr)
+        call SNESSolve(solver%snes,PETSC_NULL, field%ppressure, ierr)
     end select
 
   ! print *,'pflow_step, finish SNESSolve'
     call MPI_Barrier(PETSC_COMM_WORLD,ierr)
     if (option%use_ksp /= PETSC_TRUE) then
-      call SNESGetIterationNumber(option%snes,num_newton_iterations, ierr)
+      call SNESGetIterationNumber(solver%snes,num_newton_iterations, ierr)
       it_snes = num_newton_iterations
-!     call SNESGetFunctionNorm(option%snes,r2norm, ierr)
+!     call SNESGetFunctionNorm(solver%snes,r2norm, ierr)
       call VecNorm(field%r, NORM_2, r2norm, ierr) 
       call VecGetArrayF90(field%r, r_p, ierr)
       
@@ -516,11 +516,11 @@ subroutine StepperStepDT(solution,stepper,plot_flag,timestep_cut_flag, &
       s_r2norm = dsqrt(s_r2norm)
       m_r2norm = s_r2norm/grid%nmax   
 #if (PETSC_VERSION_RELEASE == 0 || PETSC_VERSION_SUBMINOR == 3)      
-      call SNESGetLinearSolveIterations(option%snes, it_linear, ierr)
+      call SNESGetLinearSolveIterations(solver%snes, it_linear, ierr)
 #endif      
 !     if (option%myrank == 0) print *,'SNES R2Norm = ',r2norm, &
 !   ' linear Interations = ',it_linear
-      call SNESGetConvergedReason(option%snes, snes_reason, ierr)
+      call SNESGetConvergedReason(solver%snes, snes_reason, ierr)
     endif
 !   parameter (SNES_CONVERGED_ITERATING         =  0)
 !   parameter (SNES_CONVERGED_FNORM_ABS         =  2)
@@ -591,7 +591,7 @@ subroutine StepperStepDT(solution,stepper,plot_flag,timestep_cut_flag, &
  !       grid%porosity, grid%sat, grid%vl, &
  !       grid%c_nat,grid%vl_nat,grid%p_nat,option%t_nat,grid%s_nat,grid%phis_nat,grid%por_nat, &
  !       grid%ibrkface, grid%jh2o, grid%nphase, grid%nmax, &
- !       option%snes, &
+ !       solver%snes, &
  !       option%t, option%dt, option%tconv, stepper%flowsteps, option%rk, &
  !       grid%k1brk,grid%k2brk,grid%j1brk,grid%j2brk,grid%i1brk,grid%i2brk, &
  !       grid%nx,grid%ny,grid%nz,grid%nxy,grid%dx0,grid%dy0,grid%dz0,grid%x,grid%y,grid%z, &
@@ -965,7 +965,7 @@ subroutine StepperUpdateSolution(solution)
     do n = 1, grid%nlmax
       phis_p(n) = phis_p(n) + option%dt * option%vbars * option%rate(n)
       if (phis_p(n) < 0.d0) phis_p(n) = 0.d0
-      option%area_var(n) = (phis_p(n)/field%phis0)**option%pwrsrf
+      option%area_var(n) = (phis_p(n)/option%phis0)**option%pwrsrf
       
 !     print *,'update: ',n,phis_p(n),option%rate(n),grid%area_var(n)
     enddo
