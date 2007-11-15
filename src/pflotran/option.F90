@@ -254,7 +254,6 @@ module Option_module
     Vec :: phis
 
     ! Three degrees of freedom:
-!   Vec :: perm, perm_loc
     Vec :: perm_xx_loc, perm_yy_loc, perm_zz_loc
     Vec :: perm0_xx, perm0_yy, perm0_zz, perm_pow
     ! Multiple degrees of freedom (equal to number of phases present):

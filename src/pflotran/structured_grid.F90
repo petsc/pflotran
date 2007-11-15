@@ -242,7 +242,7 @@ subroutine StructuredGridCreateDMs(structured_grid,option)
                   structured_grid%npx,structured_grid%npy,structured_grid%npz, &
                   ndof,stencil_width, &
                   PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
-                  structured_grid%da_3np_dof,ierr)
+                  structured_grid%da_3np_dof,ierr)                
 
   ndof = option%ndof
   call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &

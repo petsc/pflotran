@@ -711,13 +711,7 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
   
   grid => solution%grid
   option => solution%option
- 
-  option%vvlbc=0.D0
-  option%vvgbc=0.D0
-  option%vvl_loc=0.D0
-  option%vvg_loc=0.D0
 
- 
   call GridGlobalToLocal(grid,xx,option%xx_loc,NDOF)
   call GridLocalToLocal(grid,option%iphas_loc,option%iphas_loc,ONEDOF)
 
