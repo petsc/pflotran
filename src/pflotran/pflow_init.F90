@@ -341,9 +341,12 @@ subroutine PflowInit(simulation,filename)
   !set scale factor for heat equation, i.e. use units of MJ for energy
   option%scale = 1.d-6
 
-  ! unsure of the purpose of rtot
-  allocate(option%rtot(grid%nlmax,2))
-  option%rtot=0.D0
+  if (option%run_coupled == PETSC_TRUE) then
+    ! necessary for water balance due to generation/consumption of H20 
+    ! by chemical reactions during coupled pflow/ptran runs
+    allocate(option%rtot(grid%nlmax,2))
+    option%rtot=0.D0
+  endif
 
   ! read in the remainder of the input file
   call readInput(simulation,filename)
@@ -1644,7 +1647,10 @@ subroutine readInput(simulation,filename)
 !......................
 
       case ('HYDR')
-
+        print *, 'HDYR needs to be implemented'
+        stop
+#if 0
+! Needs implementation
         call fiReadStringErrorMsg('HYDR',ierr)
   
         call fiReadInt(string,option%ihydrostatic,ierr)
@@ -1677,7 +1683,7 @@ subroutine readInput(simulation,filename)
           &)') &
           option%ihydrostatic,option%dTdz,option%beta,option%tref,option%pref, &
           option%conc0
-
+#endif
 !....................
 
       case ('SOLV')
@@ -2050,6 +2056,7 @@ subroutine readInput(simulation,filename)
       case ('INIT')
     
 #if 0
+! INIT is deprecated by condition/region coupling
         call fiReadInt(string,option%iread_init,ierr) 
         call fiDefaultMsg('iread_init',ierr)
       
@@ -2295,6 +2302,7 @@ subroutine readInput(simulation,filename)
 
       case ('BCON')
 #if 0
+! BCON is deprecated by condition/region coupling
 !-----------------------------------------------------------------------
 !-----boundary conditions:  ibnd:  
 !                   1-left,    2-right
@@ -2471,6 +2479,7 @@ subroutine readInput(simulation,filename)
 
       case ('SOUR')
 #if 0
+! SOUR is deprecated by condition/region coupling
         isrc = 0
         ir = 0
       
@@ -2575,7 +2584,10 @@ subroutine readInput(simulation,filename)
 !....................
       
       case ('BRK')
-
+        print *, 'BRK (breakthrough) needs to be implemented'
+        stop
+#if 0
+! Needs implementation
         ibrk = 0
         do
           call fiReadFlotranString(IUNIT1,string,ierr)
@@ -2620,10 +2632,13 @@ subroutine readInput(simulation,filename)
         endif
 
         if (option%ndof == 1) option%ibrkcrv = 0
-
+#endif
 !....................
       case('SDST')
-         
+        print *, 'SDST needs to be implemented'
+        stop
+#if 0
+! Needs implementation         
         allocate(stepper%steady_eps(option%ndof))
         do j=1,option%ndof
           call fiReadDouble(string,stepper%steady_eps(j),ierr)
@@ -2634,7 +2649,7 @@ subroutine readInput(simulation,filename)
           &"  dtmpdt        = ",1pe12.4,/, &
           &"  dcdt        = ",1pe12.4)') &
           stepper%steady_eps
-
+#endif
 !....................
       case default
     
@@ -2684,6 +2699,7 @@ subroutine initAccumulation(solution)
   option => solution%option
   
 #if 0  
+  ! needs to be implemented
   if ( grid%use_owg == PETSC_TRUE) then
     call pflow_owg_initaccum(grid)
   else if (grid%use_mph == PETSC_TRUE) then
@@ -2693,6 +2709,7 @@ subroutine initAccumulation(solution)
   if (option%imode == RICHARDS_MODE) then
     call pflow_richards_initaccum(solution)
 #if 0    
+  ! needs to be implemented
   else if (grid%use_flash == PETSC_TRUE) then
     call pflow_flash_initaccum(grid)
   else if (grid%use_vadose == PETSC_TRUE) then
@@ -2755,6 +2772,7 @@ subroutine setMode(option,mcomp,mphas)
   if (fiStringCompare(option%mode,"richards",8)) then
     option%imode = RICHARDS_MODE
 #if 0  
+  ! needs to be implemented
   else if (fiStringCompare(option%mode,"MPH",3)) then
   else if (fiStringCompare(option%mode,"",#)) then
 #endif  
@@ -2953,6 +2971,7 @@ subroutine assignInitialConditions(solution)
     
   select case(option%imode)
 #if 0
+  ! needs to be implemented
     case(MPH_MODE)
       call pflow_mphase_setupini(solution)
     case(FLASH_MODE)
@@ -2961,6 +2980,7 @@ subroutine assignInitialConditions(solution)
     case(RICHARDS_MODE)
       call pflow_richards_setupini(solution)
 #if 0
+  ! needs to be implemented
     case(OWG_MODE)
       call pflow_owg_setupini(solution)
     case(VADOSE_MODE)
@@ -3027,6 +3047,7 @@ subroutine assignInitialConditions(solution)
   end select 
 
 #if 0 
+  ! needs to be implemented
   ! set hydrostatic properties for initial and boundary conditions with depth
   if (option%ihydrostatic == 1) then
     select case(option%imode)

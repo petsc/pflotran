@@ -170,33 +170,7 @@ module Option_module
 
     integer :: iran_por=0, iread_perm=0, iread_geom =1
     real*8 :: ran_fac=-1.d0
-#if 0
-!   phik
-    integer :: iregperm
-!GEH - Structured Grid Dependence - Begin
-    integer*4, pointer :: i1reg(:),i2reg(:),j1reg(:),j2reg(:),k1reg(:),k2reg(:)
-!GEH - Structured Grid Dependence - End
-    real*8, pointer :: por_reg(:),tor_reg(:),perm_reg(:,:)
-#endif
-#if 0
-!   initial conditions
-    integer :: iregini
-!GEH - Structured Grid Dependence - Begin
-    integer*4, pointer :: i1ini(:),i2ini(:),j1ini(:),j2ini(:),k1ini(:),k2ini(:)
-!GEH - Structured Grid Dependence - End
-    real*8, pointer :: pres_ini(:),temp_ini(:),conc_ini(:),sat_ini(:), &
-                       xmol_ini(:)
-    real*8, pointer :: xx_ini(:,:)
-    integer, pointer:: iphas_ini(:)
-#endif
 
-!   source term
-!    integer :: nblksrc = 0, ntimsrc = 0, isrc1 = 2
-!GEH - Structured Grid Dependence - Begin
-!    integer*4, pointer :: i1src(:), i2src(:), j1src(:), j2src(:), k1src(:), k2src(:)
-!GEH - Structured Grid Dependence - End
-!    real*8, pointer :: timesrc(:,:), tempsrc(:,:), qsrc(:,:), csrc(:,:), hsrc(:,:)
-    
 !   solid reaction rate
     integer*4 :: ityprxn
     real*8 :: rk=0.d0, phis0, areas0, pwrsrf, vbars, ceq, delHs, delEs, wfmts
@@ -204,16 +178,10 @@ module Option_module
     
 !   breakthrough curves
     integer :: ibrkcrv = 0
-!GEH - Structured Grid Dependence - Begin
-    integer*4, pointer :: i1brk(:),i2brk(:),j1brk(:),j2brk(:),k1brk(:),k2brk(:)
-!GEH - Structured Grid Dependence - End
     integer*4, pointer :: ibrktyp(:),ibrkface(:)
     
 !   dual continuum
     integer :: idcdm = 0, idcmblk = 0
-!GEH - Structured Grid Dependence - Begin
-    integer*4, pointer :: i1dcm(:),i2dcm(:),j1dcm(:),j2dcm(:),k1dcm(:),k2dcm(:)
-!GEH - Structured Grid Dependence - End
     real*8, pointer :: fracture_aperture(:), matrix_block(:)
     
     integer*4, pointer :: icap_reg(:),ithrm_reg(:)
@@ -243,15 +211,12 @@ module Option_module
     !-------------------------------------------------------------------
 
     ! One degree of freedom: Physical coordinates.
-    Vec :: conc
     Vec :: porosity0, porosity_loc, tor_loc
-!GEH - Structured Grid Dependence - Begin
-!transferred to structured_grid.F90    Vec :: dx, dy, dz, dx_loc, dy_loc, dz_loc  ! Grid spacings
-!GEH - Structured Grid Dependence - End
-!    Vec :: volume  ! Volume of a cell in the grid
     Vec :: ithrm_loc, icap_loc, iphas_loc, iphas_old_loc
-    Vec :: ttemp, ttemp_loc, temp ! 1 dof
     Vec :: phis
+
+    Vec :: conc
+    Vec :: ttemp, ttemp_loc, temp ! 1 dof
 
     ! Three degrees of freedom:
     Vec :: perm_xx_loc, perm_yy_loc, perm_zz_loc
@@ -310,6 +275,7 @@ module Option_module
     Vec :: vl, vvl, vg, vvg ! phase (liquid and gas) velocities stored at interfaces
 
 
+ 
     real*8, pointer :: vl_loc(:), vvl_loc(:), vg_loc(:), vvg_loc(:)
     real*8, pointer :: vvlbc(:), vvgbc(:)
     real*8, pointer :: rtot(:,:),rate(:),area_var(:), delx(:,:)
