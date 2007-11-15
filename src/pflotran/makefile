@@ -158,6 +158,8 @@ strata.o : fileio.o region.o material.o
 waypoint.o : option.o 
 pflow_vector_ops.o : water_eos.o
 pflow_output_new.o : pflow_output.o
+pflow_output2.o : grid.o structured_grid.o option.o solution.o field.o \
+                  coupler.o connection.o
 pflow_richards_ResJac.o : solution.o option.o field.o grid.o coupler.o \
                           translator_mixed_fluid_richards.o
 timestepper.o : \
