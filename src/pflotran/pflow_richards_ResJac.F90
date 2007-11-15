@@ -977,6 +977,9 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
       distance_gravity = cur_connection_object%dist(3,iconn)*distance
       dd1 = distance*fraction_upwind
       dd2 = distance-dd1 ! should avoid truncation error
+      ! upweight could be calculated as 1.d0-fraction_upwind
+      ! however, this introduces ever so slight error causing pflow-overhaul not
+      ! to match pflow-orig.  This can be changed to 1.d0-fraction_upwind
       upweight = dd2/(dd1+dd2)
         
       ! for now, just assume diagonal tensor
@@ -2010,7 +2013,9 @@ subroutine pflow_update_Richards(solution)
   call VecCopy(option%iphas_loc, option%iphas_old_loc, ierr)   
    
   call  pflow_Richards_initaccum(solution)
+! geh - comment
 !translator_Richards_get_output is currently not necessary
+!if uncommented, Vecs %pressure, %sat, %xmol must be created in pflow_init
 !  call translator_Richards_get_output(grid,option)
 
 end subroutine pflow_update_Richards

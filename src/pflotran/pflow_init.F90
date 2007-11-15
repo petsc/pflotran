@@ -123,17 +123,23 @@ subroutine PflowInit(simulation,filename)
 
   ! 1 degree of freedom
   call GridCreateVector(grid,ONEDOF,option%porosity0,GLOBAL)
-  call VecDuplicate(option%porosity0, option%tor, ierr)
-  call VecDuplicate(option%porosity0, option%conc, ierr)
   call VecDuplicate(option%porosity0, grid%volume, ierr)
-  call VecDuplicate(option%porosity0, option%temp, ierr)
-  call VecDuplicate(option%porosity0, option%ttemp, ierr)
   call VecDuplicate(option%porosity0, option%phis, ierr)
 
   call VecDuplicate(option%porosity0, option%perm0_xx, ierr)
   call VecDuplicate(option%porosity0, option%perm0_yy, ierr)
   call VecDuplicate(option%porosity0, option%perm0_zz, ierr)
   call VecDuplicate(option%porosity0, option%perm_pow, ierr)
+      
+      
+  select case(option%imode)
+    ! everything but RICHARDS_MODE for now
+    case(MPH_MODE,COND_MODE,TWOPH_MODE,VADOSE_MODE,LIQUID_MODE,OWG_MODE, &
+         FLASH_MODE,TH_MODE,THC_MODE)
+      call VecDuplicate(option%porosity0, option%conc, ierr)
+      call VecDuplicate(option%porosity0, option%temp, ierr)
+      call VecDuplicate(option%porosity0, option%ttemp, ierr)
+  end select    
       
   call GridCreateVector(grid,ONEDOF,option%porosity_loc,LOCAL)
   call VecDuplicate(option%porosity_loc, option%tor_loc, ierr)
@@ -161,15 +167,15 @@ subroutine PflowInit(simulation,filename)
 ! call DACreateGlobalVector(option%da_3_dof, option%perm, ierr)
 ! call DACreateLocalVector(option%da_3_dof, option%perm_loc, ierr)
 
-  ! nphase degrees of freedom
-
-  call GridCreateVector(grid,NPHASEDOF,option%pressure,GLOBAL)
-  call VecDuplicate(option%pressure, option%sat, ierr)
-  call VecDuplicate(option%pressure, option%xmol, ierr)
 
   select case(option%imode)
-  ! This case only validated for RICHARDS_MODE
-    case(TH_MODE,THC_MODE,LIQUID_MODE,TWOPH_MODE)
+    ! everything but RICHARDS_MODE for now
+    case(MPH_MODE,COND_MODE,TWOPH_MODE,VADOSE_MODE,LIQUID_MODE,OWG_MODE, &
+         FLASH_MODE,TH_MODE,THC_MODE)
+      ! nphase degrees of freedom
+      call GridCreateVector(grid,NPHASEDOF,option%pressure,GLOBAL)
+      call VecDuplicate(option%pressure, option%sat, ierr)
+      call VecDuplicate(option%pressure, option%xmol, ierr)
       call VecDuplicate(option%pressure, option%ppressure, ierr)
       call VecDuplicate(option%pressure, option%ssat, ierr)
       call VecDuplicate(option%pressure, option%dp, ierr)
@@ -190,8 +196,9 @@ subroutine PflowInit(simulation,filename)
   end select
 
   select case(option%imode)
-  ! This case only validated for RICHARDS_MODE
-    case(TH_MODE,THC_MODE,LIQUID_MODE,TWOPH_MODE)
+    ! everything but RICHARDS_MODE for now
+    case(MPH_MODE,COND_MODE,TWOPH_MODE,VADOSE_MODE,LIQUID_MODE,OWG_MODE, &
+         FLASH_MODE,TH_MODE,THC_MODE)
       call GridCreateVector(grid,NPHASEDOF, option%ppressure_loc, LOCAL)
       call VecDuplicate(option%ppressure_loc, option%ssat_loc, ierr)
       call VecDuplicate(option%ppressure_loc, option%xxmol_loc, ierr)
@@ -908,11 +915,14 @@ subroutine PflowInit(simulation,filename)
   endif
  
 ! Note: VecAssemblyBegin/End needed to run on the Mac - pcl (11/21/03)!
-  call VecAssemblyBegin(option%conc,ierr)
-  call VecAssemblyEnd(option%conc,ierr)
-
-  call VecAssemblyBegin(option%xmol,ierr)
-  call VecAssemblyEnd(option%xmol,ierr)
+  if (option%conc /= 0) then
+    call VecAssemblyBegin(option%conc,ierr)
+    call VecAssemblyEnd(option%conc,ierr)
+  endif
+  if (option%xmol /= 0) then
+    call VecAssemblyBegin(option%xmol,ierr)
+    call VecAssemblyEnd(option%xmol,ierr)
+  endif
 
   if (option%myrank == 0) write(*,'("  Finished setting up of INIT ")')
 
@@ -2996,13 +3006,12 @@ subroutine assignMaterialPropToRegions(solution)
   
   PetscScalar, pointer :: icap_loc_p(:)
   PetscScalar, pointer :: ithrm_loc_p(:)
-  PetscScalar, pointer :: por_p(:)
   PetscScalar, pointer :: por0_p(:)
   PetscScalar, pointer :: perm_xx_p(:)
   PetscScalar, pointer :: perm_yy_p(:)
   PetscScalar, pointer :: perm_zz_p(:)
   PetscScalar, pointer :: perm_pow_p(:)
-  PetscScalar, pointer :: tor_p(:)
+  PetscScalar, pointer :: tor_loc_p(:)
   
   integer :: icell, local_id, ghosted_id
   PetscErrorCode :: ierr
@@ -3019,8 +3028,8 @@ subroutine assignMaterialPropToRegions(solution)
   
   call VecGetArrayF90(option%icap_loc,icap_loc_p,ierr)
   call VecGetArrayF90(option%ithrm_loc,ithrm_loc_p,ierr)
-  call VecGetArrayF90(option%porosity0,por_p,ierr)
-  call VecGetArrayF90(option%tor,tor_p,ierr)
+  call VecGetArrayF90(option%porosity0,por0_p,ierr)
+  call VecGetArrayF90(option%tor_loc,tor_loc_p,ierr)
   call VecGetArrayF90(option%perm0_xx,perm_xx_p,ierr)
   call VecGetArrayF90(option%perm0_yy,perm_yy_p,ierr)
   call VecGetArrayF90(option%perm0_zz,perm_zz_p,ierr)
@@ -3037,8 +3046,8 @@ subroutine assignMaterialPropToRegions(solution)
       ghosted_id = grid%nL2G(local_id)
       icap_loc_p(ghosted_id) = material%icap
       ithrm_loc_p(ghosted_id) = material%ithrm
-      por_p(local_id) = material%porosity
-      tor_p(local_id) = material%tortuosity
+      por0_p(local_id) = material%porosity
+      tor_loc_p(ghosted_id) = material%tortuosity
       perm_xx_p(local_id) = material%permeability(1,1)
       perm_yy_p(local_id) = material%permeability(2,2)
       perm_zz_p(local_id) = material%permeability(3,3)
@@ -3049,12 +3058,12 @@ subroutine assignMaterialPropToRegions(solution)
 
   call VecRestoreArrayF90(option%icap_loc,icap_loc_p,ierr)
   call VecRestoreArrayF90(option%ithrm_loc,ithrm_loc_p,ierr)
-  call VecRestoreArrayF90(option%porosity0,por_p,ierr)
+  call VecRestoreArrayF90(option%porosity0,por0_p,ierr)
   call VecRestoreArrayF90(option%perm0_xx,perm_xx_p,ierr)
   call VecRestoreArrayF90(option%perm0_yy,perm_yy_p,ierr)
   call VecRestoreArrayF90(option%perm0_zz,perm_zz_p,ierr)
   call VecRestoreArrayF90(option%perm_pow,perm_pow_p,ierr)
-  call VecRestoreArrayF90(option%tor,tor_p,ierr)
+  call VecRestoreArrayF90(option%tor_loc,tor_loc_p,ierr)
 
   call GridGlobalToLocal(solution%grid,option%porosity0, &
                          option%porosity_loc,ONEDOF)
