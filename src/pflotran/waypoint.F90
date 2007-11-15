@@ -325,7 +325,8 @@ subroutine WaypointMerge(old_waypoint,new_waypoint)
   
   ! deallocate new waypoint
   deallocate(new_waypoint)
-  nullify(new_waypoint)
+  ! point new_waypoint to old
+  new_waypoint => old_waypoint
 
 end subroutine WaypointMerge
 
