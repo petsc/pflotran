@@ -1087,7 +1087,6 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
 
 
         case(3) 
-       !  option%xxbc((nc-1)*option%ndof+1)=grid%pressurebc(2,ibc)
           option%xxbc(2:option%ndof,nc) = xx_loc_p((ghosted_id-1)*option%ndof+2:ghosted_id*option%ndof)
           option%iphasebc(nc)=int(iphase_loc_p(ghosted_id))
     
@@ -2011,9 +2010,8 @@ subroutine pflow_update_Richards(solution)
   call VecCopy(option%iphas_loc, option%iphas_old_loc, ierr)   
    
   call  pflow_Richards_initaccum(solution)
-  call translator_Richards_get_output(grid,option)
-  ! the output variables should be put into grid%pressure, temp,xmol,sat...
-  ! otherwise need to rewrite the pflow_output
+!translator_Richards_get_output is currently not necessary
+!  call translator_Richards_get_output(grid,option)
 
 end subroutine pflow_update_Richards
 
