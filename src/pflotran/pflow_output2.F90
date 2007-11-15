@@ -183,15 +183,15 @@ subroutine OutputTecplot(solution,step)
 
   ! write out coorindates
   call GetCoordinates(grid,global,X_COORDINATE)
-  call GridlobalToNatural(grid,global,natural,ONEDOF)
+  call GridGlobalToNatural(grid,global,natural,ONEDOF)
   call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
 
   call GetCoordinates(grid,global,Y_COORDINATE)
-  call GridlobalToNatural(grid,global,natural,ONEDOF)
+  call GridGlobalToNatural(grid,global,natural,ONEDOF)
   call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
 
   call GetCoordinates(grid,global,Z_COORDINATE)
-  call GridlobalToNatural(grid,global,natural,ONEDOF)
+  call GridGlobalToNatural(grid,global,natural,ONEDOF)
   call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
 
   select case(option%imode)
@@ -199,82 +199,82 @@ subroutine OutputTecplot(solution,step)
 
       ! temperature
       call GetVarFromArray(solution,global,TEMPERATURE,0)
-      call GridlobalToNatural(grid,global,natural,ONEDOF)
+      call GridGlobalToNatural(grid,global,natural,ONEDOF)
       call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
 
       ! pressure
       call GetVarFromArray(solution,global,PRESSURE,0)
-      call GridlobalToNatural(grid,global,natural,ONEDOF)
+      call GridGlobalToNatural(grid,global,natural,ONEDOF)
       call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
 
       ! liquid saturation
       call GetVarFromArray(solution,global,LIQUID_SATURATION,0)
-      call GridlobalToNatural(grid,global,natural,ONEDOF)
+      call GridGlobalToNatural(grid,global,natural,ONEDOF)
       call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
 
       ! gas saturation
       call GetVarFromArray(solution,global,GAS_SATURATION,0)
-      call GridlobalToNatural(grid,global,natural,ONEDOF)
+      call GridGlobalToNatural(grid,global,natural,ONEDOF)
       call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
     
       ! liquid energy
       call GetVarFromArray(solution,global,LIQUID_ENERGY,0)
-      call GridlobalToNatural(grid,global,natural,ONEDOF)
+      call GridGlobalToNatural(grid,global,natural,ONEDOF)
       call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
     
       ! gas energy
       call GetVarFromArray(solution,global,GAS_ENERGY,0)
-      call GridlobalToNatural(grid,global,natural,ONEDOF)
+      call GridGlobalToNatural(grid,global,natural,ONEDOF)
       call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
     
       ! liquid mole fractions
       do i=1,option%nspec
         call GetVarFromArray(solution,global,LIQUID_MOLE_FRACTION,i-1)
-        call GridlobalToNatural(grid,global,natural,ONEDOF)
+        call GridGlobalToNatural(grid,global,natural,ONEDOF)
         call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
       enddo
     
       ! gas mole fractions
       do i=1,option%nspec
         call GetVarFromArray(solution,global,GAS_MOLE_FRACTION,i-1)
-        call GridlobalToNatural(grid,global,natural,ONEDOF)
+        call GridGlobalToNatural(grid,global,natural,ONEDOF)
         call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
       enddo
     
       ! Volume Fraction
       if (option%rk > 0.d0) then
         call GetVarFromArray(solution,global,VOLUME_FRACTION,0)
-        call GridlobalToNatural(grid,global,natural,ONEDOF)
+        call GridGlobalToNatural(grid,global,natural,ONEDOF)
         call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
       endif
     
       ! phase
       call GetVarFromArray(solution,global,PHASE,0)
-      call GridlobalToNatural(grid,global,natural,ONEDOF)
+      call GridGlobalToNatural(grid,global,natural,ONEDOF)
       call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_INTEGER)
   
     case default
   
       ! temperature
-      call GridlobalToNatural(grid,option%temp,natural,ONEDOF)
+      call GridGlobalToNatural(grid,option%temp,natural,ONEDOF)
       call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
 
       ! pressure
-      call GridlobalToNatural(grid,option%pressure,natural,ONEDOF)
+      call GridGlobalToNatural(grid,option%pressure,natural,ONEDOF)
       call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
 
       ! saturation
-      call GridlobalToNatural(grid,option%sat,natural,ONEDOF)
+      call GridGlobalToNatural(grid,option%sat,natural,ONEDOF)
       call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
 
       ! concentration
-      call GridlobalToNatural(grid,option%conc,natural,ONEDOF)
+      call GridGlobalToNatural(grid,option%conc,natural,ONEDOF)
       call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
 
       ! volume fraction
       if (option%rk > 0.d0) then
         call GetVarFromArray(solution,global,VOLUME_FRACTION,0)
-        call GridlobalToNatural(grid,global,natural,ONEDOF)
+        call GridGlobalToNatural(grid,global,natural,ONEDOF)
         call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
       endif
     
@@ -395,39 +395,39 @@ subroutine OutputVelocitiesTecplot(solution,step)
 
   ! write out coorindates
   call GetCoordinates(grid,global,X_COORDINATE)
-  call GridlobalToNatural(grid,global,natural,ONEDOF)
+  call GridGlobalToNatural(grid,global,natural,ONEDOF)
   call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
 
   call GetCoordinates(grid,global,Y_COORDINATE)
-  call GridlobalToNatural(grid,global,natural,ONEDOF)
+  call GridGlobalToNatural(grid,global,natural,ONEDOF)
   call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
 
   call GetCoordinates(grid,global,Z_COORDINATE)
-  call GridlobalToNatural(grid,global,natural,ONEDOF)
+  call GridGlobalToNatural(grid,global,natural,ONEDOF)
   call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
 
   call GetCellCenteredVelocities(solution,global,LIQUID_PHASE,X_DIRECTION)
-  call GridlobalToNatural(grid,global,natural,ONEDOF)
+  call GridGlobalToNatural(grid,global,natural,ONEDOF)
   call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
 
   call GetCellCenteredVelocities(solution,global,LIQUID_PHASE,Y_DIRECTION)
-  call GridlobalToNatural(grid,global,natural,ONEDOF)
+  call GridGlobalToNatural(grid,global,natural,ONEDOF)
   call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
 
   call GetCellCenteredVelocities(solution,global,LIQUID_PHASE,Z_DIRECTION)
-  call GridlobalToNatural(grid,global,natural,ONEDOF)
+  call GridGlobalToNatural(grid,global,natural,ONEDOF)
   call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
 
   call GetCellCenteredVelocities(solution,global,GAS_PHASE,X_DIRECTION)
-  call GridlobalToNatural(grid,global,natural,ONEDOF)
+  call GridGlobalToNatural(grid,global,natural,ONEDOF)
   call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
 
   call GetCellCenteredVelocities(solution,global,GAS_PHASE,Y_DIRECTION)
-  call GridlobalToNatural(grid,global,natural,ONEDOF)
+  call GridGlobalToNatural(grid,global,natural,ONEDOF)
   call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
 
   call GetCellCenteredVelocities(solution,global,GAS_PHASE,Z_DIRECTION)
-  call GridlobalToNatural(grid,global,natural,ONEDOF)
+  call GridGlobalToNatural(grid,global,natural,ONEDOF)
   call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
 
   call VecDestroy(natural,ierr)
@@ -1679,7 +1679,7 @@ subroutine GetVarFromArray(solution,vec,ivar,isubvar)
   integer :: ivar
   integer :: isubvar
 
-  integer :: i
+  integer :: local_id, ghosted_id
   integer :: offset, saturation_offset
   integer :: size_var_use
   integer :: size_var_node
@@ -1714,11 +1714,12 @@ subroutine GetVarFromArray(solution,vec,ivar,isubvar)
       size_var_use = 2 + 7*option%nphase + 2* option%nphase*option%nspec
       size_var_node = (option%ndof + 1) * size_var_use
         
-      call VecGetArrayF90(option%var,var_ptr,ierr)
-      do i=1,grid%nlmax
-        vec_ptr(i) = var_ptr((i-1)*size_var_node+offset)
+      call VecGetArrayF90(option%var_loc,var_ptr,ierr)
+      do local_id=1,grid%nlmax
+        ghosted_id = grid%nL2G(local_id)
+        vec_ptr(local_id) = var_ptr((ghosted_id-1)*size_var_node+offset)
       enddo
-      call VecRestoreArrayF90(option%var,var_ptr,ierr)
+      call VecRestoreArrayF90(option%var_loc,var_ptr,ierr)
 
     case(LIQUID_ENERGY,GAS_ENERGY)
 
@@ -1734,15 +1735,16 @@ subroutine GetVarFromArray(solution,vec,ivar,isubvar)
       size_var_use = 2 + 7*option%nphase + 2* option%nphase*option%nspec
       size_var_node = (option%ndof + 1) * size_var_use
         
-      call VecGetArrayF90(option%var,var_ptr,ierr)
-      do i=1,grid%nlmax
-        if (var_ptr((i-1)*size_var_node+saturation_offset) > 1.d-30) then
-          vec_ptr(i) = var_ptr((i-1)*size_var_node+offset)
+      call VecGetArrayF90(option%var_loc,var_ptr,ierr)
+      do local_id=1,grid%nlmax
+        ghosted_id = grid%nL2G(local_id)      
+        if (var_ptr((ghosted_id-1)*size_var_node+saturation_offset) > 1.d-30) then
+          vec_ptr(local_id) = var_ptr((ghosted_id-1)*size_var_node+offset)
         else
-          vec_ptr(i) = 0.d0
+          vec_ptr(local_id) = 0.d0
         endif
       enddo
-      call VecRestoreArrayF90(option%var,var_ptr,ierr)
+      call VecRestoreArrayF90(option%var_loc,var_ptr,ierr)
 
     case(VOLUME_FRACTION)
     
@@ -1753,9 +1755,11 @@ subroutine GetVarFromArray(solution,vec,ivar,isubvar)
      
     case(PHASE)
     
-      call VecGetArrayF90(option%iphas,var_ptr,ierr)
-      vec_ptr(1:grid%nlmax) = var_ptr(1:grid%nlmax)
-      call VecRestoreArrayF90(option%iphas,var_ptr,ierr)
+      call VecGetArrayF90(option%iphas_loc,var_ptr,ierr)
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = var_ptr(grid%nL2G(local_id))
+      enddo
+      call VecRestoreArrayF90(option%iphas_loc,var_ptr,ierr)
      
   end select
   

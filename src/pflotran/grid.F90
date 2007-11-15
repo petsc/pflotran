@@ -69,7 +69,8 @@ module Grid_module
             GridCreateJacobian, &
             GridCreateColoring, &
             GridGlobalToLocal, &
-            GridlobalToNatural, &
+            GridLocalToLocal, &
+            GridGlobalToNatural, &
             GridMapIndices, &
             GridCreateDMs, &
             GridComputeSpacing, &
@@ -536,12 +537,37 @@ end subroutine GridGlobalToLocal
   
 ! ************************************************************************** !
 !
-! GridlobalToNatural: Performs global to natural communication with DM
+! GridLocalToLocal: Performs local to local communication with DM
+! author: Glenn Hammond
+! date: 11/14/07
+!
+! ************************************************************************** !
+subroutine GridLocalToLocal(grid,local_vec1,local_vec2,dm_index)
+
+  implicit none
+  
+  type(grid_type) :: grid
+  Vec :: local_vec1
+  Vec :: local_vec2
+  integer :: dm_index
+  
+  select case(grid%igrid)
+    case(STRUCTURED)
+      call StructureGridLocalToLocal(grid%structured_grid,local_vec1, &
+                                     local_vec2,dm_index)
+    case(UNSTRUCTURED)
+  end select
+  
+end subroutine GridLocalToLocal
+  
+! ************************************************************************** !
+!
+! GridGlobalToNatural: Performs global to natural communication with DM
 ! author: Glenn Hammond
 ! date: 10/24/07
 !
 ! ************************************************************************** !
-subroutine GridlobalToNatural(grid,global_vec,natural_vec,dm_index)
+subroutine GridGlobalToNatural(grid,global_vec,natural_vec,dm_index)
 
   implicit none
   
@@ -557,7 +583,7 @@ subroutine GridlobalToNatural(grid,global_vec,natural_vec,dm_index)
     case(UNSTRUCTURED)
   end select
   
-end subroutine GridlobalToNatural
+end subroutine GridGlobalToNatural
 
 ! ************************************************************************** !
 !

@@ -85,6 +85,7 @@ module Structured_Grid_module
             StructuredGridCreateColoring, &
             StructureGridGlobalToLocal, &
             StructureGridGlobalToNatural, &
+            StructureGridLocalToLocal, &
             StructuredGridReadDXYZ, &
             StructuredGridComputeVolumes, &
             StructGridComputeBoundConnect, &
@@ -241,7 +242,7 @@ subroutine StructuredGridCreateDMs(structured_grid,option)
                   structured_grid%npx,structured_grid%npy,structured_grid%npz, &
                   ndof,stencil_width, &
                   PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
-                  structured_grid%da_3np_dof,ierr)
+                  structured_grid%da_3np_dof,ierr)                
 
   ndof = option%ndof
   call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &
@@ -1362,6 +1363,35 @@ subroutine StructureGridGlobalToLocal(structured_grid,global_vec,local_vec,da_in
                           local_vec, ierr)
                           
 end subroutine StructureGridGlobalToLocal
+
+! ************************************************************************** !
+!
+! StructureGridLocalToLocal: Performs local to local communication with DA
+! author: Glenn Hammond
+! date: 11/14/07
+!
+! ************************************************************************** !
+subroutine StructureGridLocalToLocal(structured_grid,local_vec1,local_vec2, &
+                                     da_index)
+
+  implicit none
+  
+  type(structured_grid_type) :: structured_grid
+  Vec :: local_vec1
+  Vec :: local_vec2
+  integer :: da_index
+  
+  DA :: da_ptr
+  PetscErrorCode :: ierr
+
+  da_ptr = StructGridGetDAPtrFromIndex(structured_grid,da_index)
+
+  call DALocalToLocalBegin(da_ptr,local_vec1,INSERT_VALUES, &
+                           local_vec2,ierr)
+  call DALocalToLocalEnd(da_ptr,local_vec1, INSERT_VALUES, &
+                         local_vec2, ierr)
+                          
+end subroutine StructureGridLocalToLocal
 
 ! ************************************************************************** !
 !
