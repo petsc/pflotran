@@ -61,12 +61,14 @@ subroutine pflow_Richards_timecut(solution)
   use Solution_module
   use Option_module
   use Grid_module
+  use Field_module
  
   implicit none
   
   type(solution_type) :: solution
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
+  type(field_type), pointer :: field
   
   PetscScalar, pointer :: xx_p(:),yy_p(:)
   integer :: dof_offset,re,ierr
@@ -74,9 +76,10 @@ subroutine pflow_Richards_timecut(solution)
 
   grid => solution%grid
   option => solution%option
+  field => solution%field
  
-  call VecGetArrayF90(option%xx, xx_p, ierr)
-  call VecGetArrayF90(option%yy, yy_p, ierr)
+  call VecGetArrayF90(field%xx, xx_p, ierr)
+  call VecGetArrayF90(field%yy, yy_p, ierr)
 
   do local_id=1, grid%nlmax
     dof_offset=(local_id-1)*option%ndof
@@ -84,8 +87,8 @@ subroutine pflow_Richards_timecut(solution)
       xx_p(dof_offset+re)= yy_p(dof_offset+re)
     enddo
   enddo 
-  call VecRestoreArrayF90(option%xx, xx_p, ierr) 
-  call VecRestoreArrayF90(option%yy, yy_p, ierr)
+  call VecRestoreArrayF90(field%xx, xx_p, ierr) 
+  call VecRestoreArrayF90(field%yy, yy_p, ierr)
  
 end subroutine pflow_Richards_timecut
   
@@ -95,6 +98,7 @@ subroutine pflow_Richards_setupini(solution)
   use Solution_module
   use Option_module
   use Grid_module
+  use Field_module
   use Region_module
   use Structured_Grid_module
   use Coupler_module
@@ -105,6 +109,7 @@ subroutine pflow_Richards_setupini(solution)
   type(solution_type) :: solution
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
+  type(field_type), pointer :: field
   type(coupler_type), pointer :: initial_condition
 
   PetscScalar, pointer :: xx_p(:), iphase_loc_p(:)
@@ -112,6 +117,7 @@ subroutine pflow_Richards_setupini(solution)
   
   grid => solution%grid
   option => solution%option
+  field => solution%field
   
   size_var_use = 2 + 7*option%nphase + 2* option%nphase*option%nspec
   size_var_node = (option%ndof + 1) * size_var_use
@@ -122,8 +128,8 @@ subroutine pflow_Richards_setupini(solution)
   allocate(option%delx(option%ndof,grid%ngmax))
   option%delx=0.D0
    
-  call VecGetArrayF90(option%xx,xx_p, ierr); CHKERRQ(ierr)
-  call VecGetArrayF90(option%iphas_loc,iphase_loc_p,ierr)
+  call VecGetArrayF90(field%xx,xx_p, ierr); CHKERRQ(ierr)
+  call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr)
   
   initial_condition => solution%initial_conditions%first
   
@@ -145,8 +151,8 @@ subroutine pflow_Richards_setupini(solution)
   
   enddo
   
-  call VecRestoreArrayF90(option%xx,xx_p, ierr)
-  call VecRestoreArrayF90(option%iphas_loc,iphase_loc_p,ierr)
+  call VecRestoreArrayF90(field%xx,xx_p, ierr)
+  call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p,ierr)
 
 end  subroutine pflow_Richards_setupini
   
@@ -156,12 +162,14 @@ subroutine Richards_Update_Reason(reason,solution)
   use Solution_module
   use Grid_module
   use Option_module
+  use Field_module
   
   implicit none
  
   type(solution_type) :: solution
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
+  type(field_type), pointer :: field
   
   integer, intent(out):: reason
   PetscScalar, pointer :: xx_p(:),iphase_loc_p(:), yy_p(:) !,r_p(:)
@@ -171,6 +179,7 @@ subroutine Richards_Update_Reason(reason,solution)
   
   grid => solution%grid
   option => solution%option
+  field => solution%field
   
 ! real*8, pointer :: sat(:),xmol(:)
 ! real*8 rmax(option%ndof)
@@ -179,7 +188,7 @@ subroutine Richards_Update_Reason(reason,solution)
   call MPI_Barrier(PETSC_COMM_WORLD,ierr)
   
   reason = 1
- ! call SNESComputeFunction(option%snes,option%xx,grid%r,ierr)
+ ! call SNESComputeFunction(option%snes,field%xx,grid%r,ierr)
  ! do n=1,option%ndof
  !  call VecStrideNorm(grid%r,n-1,NORM_INFINITY,rmax(n),ierr)
  ! enddo
@@ -189,9 +198,9 @@ subroutine Richards_Update_Reason(reason,solution)
  ! endif
   
   if (reason>0) then
-    call VecGetArrayF90(option%xx,xx_p, ierr); CHKERRQ(ierr)
-    call VecGetArrayF90(option%yy,yy_p, ierr)
-    call VecGetArrayF90(option%iphas_loc,iphase_loc_p, ierr); 
+    call VecGetArrayF90(field%xx,xx_p, ierr); CHKERRQ(ierr)
+    call VecGetArrayF90(field%yy,yy_p, ierr)
+    call VecGetArrayF90(field%iphas_loc,iphase_loc_p, ierr); 
   
     do local_id = 1,grid%nlmax
       ghosted_id = grid%nL2G(local_id)
@@ -218,9 +227,9 @@ subroutine Richards_Update_Reason(reason,solution)
     enddo
   
     if (reason<=0) print *,'Sat or Con out of Region at: ',local_id,iipha,xx_p(dof_offset+1:dof_offset+2)
-    call VecRestoreArrayF90(option%xx,xx_p, ierr); CHKERRQ(ierr)
-    call VecRestoreArrayF90(option%yy,yy_p, ierr)
-    call VecRestoreArrayF90(option%iphas_loc,iphase_loc_p, ierr) 
+    call VecRestoreArrayF90(field%xx,xx_p, ierr); CHKERRQ(ierr)
+    call VecRestoreArrayF90(field%yy,yy_p, ierr)
+    call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p, ierr) 
   endif
  ! print *,' update reason', grid%myrank, re,n,grid%nlmax
 
@@ -439,15 +448,16 @@ subroutine RichardsRes_FLCont(nconn_no,area,var_node1,por1,tor1,sir1,dd1,perm1, 
 end subroutine RichardsRes_FLCont
 
 subroutine RichardsRes_FLBCCont(nbc_no,ibndtype,area,var_node1,var_node2,por2,tor2,sir2, &
-                              dd1,perm2,Dk2,dist_gravity,option,vv_darcy, &
+                              dd1,perm2,Dk2,dist_gravity,option,field,vv_darcy, &
                               Res_FL)
   use Option_module
-  use Grid_module
+  use Field_module
  
   implicit none
   
   integer nbc_no, ibndtype
   type(option_type) :: option
+  type(field_type) :: field
   real*8 dd1, sir2(1:option%nphase)
   real*8, target:: var_node1(1:2+7*option%nphase+2*option%nphase*option%nspec)
   real*8, target:: var_node2(1:2+7*option%nphase+2*option%nphase*option%nspec)
@@ -565,11 +575,11 @@ subroutine RichardsRes_FLBCCont(nbc_no,ibndtype,area,var_node1,var_node2,por2,to
     Res_FL(option%ndof)=fluxe * option%dt
 
   case(2)
-    if ((dabs(option%velocitybc(1,nbc_no)))>floweps) then
+    if ((dabs(field%velocitybc(1,nbc_no)))>floweps) then
       
       do j=1,option%nphase
-        v_darcy = option%velocitybc(j,nbc_no)
-        vv_darcy(j) = option%velocitybc(j,nbc_no)
+        v_darcy = field%velocitybc(j,nbc_no)
+        vv_darcy(j) = field%velocitybc(j,nbc_no)
       ! note different from 2 phase version
 
         if (v_darcy >0.d0) then 
@@ -671,6 +681,7 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
 
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
+  type(field_type), pointer :: field  
 
   PetscScalar, pointer ::accum_p(:)
 
@@ -708,12 +719,13 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
   
   grid => solution%grid
   option => solution%option
+  field => solution%field
 
-  call GridGlobalToLocal(grid,xx,option%xx_loc,NDOF)
-  call GridLocalToLocal(grid,option%iphas_loc,option%iphas_loc,ONEDOF)
+  call GridGlobalToLocal(grid,xx,field%xx_loc,NDOF)
+  call GridLocalToLocal(grid,field%iphas_loc,field%iphas_loc,ONEDOF)
 
-  call VecGetArrayF90(option%xx_loc, xx_loc_p, ierr); CHKERRQ(ierr)
-  call VecGetArrayF90(option%iphas_loc, iphase_loc_p, ierr); CHKERRQ(ierr)
+  call VecGetArrayF90(field%xx_loc, xx_loc_p, ierr); CHKERRQ(ierr)
+  call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr); CHKERRQ(ierr)
 
 ! there is potential possiblity that the pertubation of p may change the direction of pflow.
 ! once that happens, code may crash, namely wrong derive. 
@@ -732,14 +744,14 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
   
    enddo
   
-  call VecRestoreArrayF90(option%xx_loc, xx_loc_p, ierr); CHKERRQ(ierr)
-  call VecRestoreArrayF90(option%iphas_loc, iphase_loc_p, ierr)
+  call VecRestoreArrayF90(field%xx_loc, xx_loc_p, ierr); CHKERRQ(ierr)
+  call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr)
 
   call VecGetArrayF90(xx, xx_p, ierr); CHKERRQ(ierr)
-  call VecGetArrayF90(option%icap_loc,icap_loc_p,ierr)
-  call VecGetArrayF90(option%ithrm_loc,ithrm_loc_p,ierr)  
-  call VecGetArrayF90(option%iphas_loc, iphase_loc_p, ierr)
-  call VecGetArrayF90(option%var_loc,var_loc_p,ierr)
+  call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr)
+  call VecGetArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)  
+  call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr)
+  call VecGetArrayF90(field%var_loc,var_loc_p,ierr)
   
 !-----  phase properities ---- last time step---
   do local_id = 1, grid%nlmax
@@ -781,44 +793,44 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
   enddo
 
   call VecRestoreArrayF90(xx, xx_p, ierr); CHKERRQ(ierr)
-  call VecRestoreArrayF90(option%iphas_loc,iphase_loc_p,ierr)
-  call VecRestoreArrayF90(option%icap_loc,icap_loc_p,ierr)
-  call VecRestoreArrayF90(option%ithrm_loc,ithrm_loc_p,ierr)
-  call VecRestoreArrayF90(option%var_loc,var_loc_p,ierr)
+  call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p,ierr)
+  call VecRestoreArrayF90(field%icap_loc,icap_loc_p,ierr)
+  call VecRestoreArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
+  call VecRestoreArrayF90(field%var_loc,var_loc_p,ierr)
   
-  call GridLocalToLocal(grid,option%var_loc,option%var_loc,VARDOF)
-  call GridLocalToLocal(grid,option%perm_xx_loc,option%perm_xx_loc,ONEDOF)
-  call GridLocalToLocal(grid,option%perm_yy_loc,option%perm_yy_loc,ONEDOF)
-  call GridLocalToLocal(grid,option%perm_zz_loc,option%perm_zz_loc,ONEDOF)
-  call GridLocalToLocal(grid,option%ithrm_loc,option%ithrm_loc,ONEDOF)
-  call GridLocalToLocal(grid,option%icap_loc,option%icap_loc,ONEDOF)
+  call GridLocalToLocal(grid,field%var_loc,field%var_loc,VARDOF)
+  call GridLocalToLocal(grid,field%perm_xx_loc,field%perm_xx_loc,ONEDOF)
+  call GridLocalToLocal(grid,field%perm_yy_loc,field%perm_yy_loc,ONEDOF)
+  call GridLocalToLocal(grid,field%perm_zz_loc,field%perm_zz_loc,ONEDOF)
+  call GridLocalToLocal(grid,field%ithrm_loc,field%ithrm_loc,ONEDOF)
+  call GridLocalToLocal(grid,field%icap_loc,field%icap_loc,ONEDOF)
 
 ! End distribute data 
 ! now assign access pointer to local variables
-  call VecGetArrayF90(option%xx_loc, xx_loc_p, ierr)
+  call VecGetArrayF90(field%xx_loc, xx_loc_p, ierr)
   call VecGetArrayF90(r, r_p, ierr)
-  call VecGetArrayF90(option%accum, accum_p, ierr)
-! call VecGetArrayF90(option%yy, yy_p, ierr)
+  call VecGetArrayF90(field%accum, accum_p, ierr)
+! call VecGetArrayF90(field%yy, yy_p, ierr)
  
 
   ! notice:: here we assume porosity is constant
  
-  call VecGetArrayF90(option%var_loc,var_loc_p,ierr)
-  call VecGetArrayF90(option%yy,yy_p,ierr)
-  call VecGetArrayF90(option%porosity_loc, porosity_loc_p, ierr)
-  call VecGetArrayF90(option%tor_loc, tor_loc_p, ierr)
-  call VecGetArrayF90(option%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecGetArrayF90(option%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecGetArrayF90(option%perm_zz_loc, perm_zz_loc_p, ierr)
+  call VecGetArrayF90(field%var_loc,var_loc_p,ierr)
+  call VecGetArrayF90(field%yy,yy_p,ierr)
+  call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
+  call VecGetArrayF90(field%tor_loc, tor_loc_p, ierr)
+  call VecGetArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
+  call VecGetArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
+  call VecGetArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
   call VecGetArrayF90(grid%volume, volume_p, ierr)
-  call VecGetArrayF90(option%ithrm_loc, ithrm_loc_p, ierr)
-  call VecGetArrayF90(option%icap_loc, icap_loc_p, ierr)
-  call VecGetArrayF90(option%vl, vl_p, ierr)
-  call VecGetArrayF90(option%iphas_loc, iphase_loc_p, ierr)
+  call VecGetArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
+  call VecGetArrayF90(field%icap_loc, icap_loc_p, ierr)
+  call VecGetArrayF90(field%vl, vl_p, ierr)
+  call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr)
   !print *,' Finished scattering non deriv'
 
   if (option%rk > 0.d0) then
-    call VecGetArrayF90(option%phis,phis_p,ierr)
+    call VecGetArrayF90(field%phis,phis_p,ierr)
   endif
 
   Resold_AR=0.D0; ResOld_FL=0.D0
@@ -1071,23 +1083,23 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
           
         case(2)
         ! solve for pb from Darcy's law given qb /= 0
-          option%xxbc(:,nc)=xx_loc_p((ghosted_id-1)*option%ndof+1:ghosted_id*option%ndof)
-           option%iphasebc(nc) = int(iphase_loc_p(ghosted_id))
-          if(dabs(option%velocitybc(1,nc))>1D-20)then
-            if( option%velocitybc(1,nc)>0) then
-               option%xxbc(2:option%ndof,nc)= yybc(2:option%ndof,nc)
+          field%xxbc(:,nc)=xx_loc_p((ghosted_id-1)*option%ndof+1:ghosted_id*option%ndof)
+           field%iphasebc(nc) = int(iphase_loc_p(ghosted_id))
+          if(dabs(field%velocitybc(1,nc))>1D-20)then
+            if( field%velocitybc(1,nc)>0) then
+               field%xxbc(2:option%ndof,nc)= yybc(2:option%ndof,nc)
             endif     
           endif    
 
 
         case(3) 
-          option%xxbc(2:option%ndof,nc) = xx_loc_p((ghosted_id-1)*option%ndof+2:ghosted_id*option%ndof)
-          option%iphasebc(nc)=int(iphase_loc_p(ghosted_id))
+          field%xxbc(2:option%ndof,nc) = xx_loc_p((ghosted_id-1)*option%ndof+2:ghosted_id*option%ndof)
+          field%iphasebc(nc)=int(iphase_loc_p(ghosted_id))
     
        case(4)
-          option%xxbc(1,nc) = xx_loc_p((ghosted_id-1)*option%ndof+1)
-           option%xxbc(3:option%ndof,nc) = xx_loc_p((ghosted_id-1)*option%ndof+3:ghosted_id*option%ndof)    
-          option%iphasebc(nc)=int(iphase_loc_p(ghosted_id))
+          field%xxbc(1,nc) = xx_loc_p((ghosted_id-1)*option%ndof+1)
+           field%xxbc(3:option%ndof,nc) = xx_loc_p((ghosted_id-1)*option%ndof+3:ghosted_id*option%ndof)    
+          field%iphasebc(nc)=int(iphase_loc_p(ghosted_id))
         
       end select 
     
@@ -1095,20 +1107,20 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
 
       dif(1)= option%difaq
   
-      call pri_var_trans_Richards_ninc(option%xxbc(:,nc),option%iphasebc(nc),&
+      call pri_var_trans_Richards_ninc(field%xxbc(:,nc),field%iphasebc(nc),&
                                        option%scale,option%nphase,option%nspec, &
                                        iicap, dif,&
-                                       option%varbc(1:size_var_use),option%itable,ierr, &
+                                       field%varbc(1:size_var_use),option%itable,ierr, &
                                        option%pref)
    
       call RichardsRes_FLBCCont(nc,boundary_condition%condition%itype(1), &
                                 cur_connection_object%area(iconn), &
-                                option%varbc(1:size_var_use), &
+                                field%varbc(1:size_var_use), &
                                 var_loc_p((ghosted_id-1)*size_var_node+1:(ghosted_id-1)* &
                                   size_var_node+size_var_use),porosity_loc_p(ghosted_id), &
                                 tor_loc_p(ghosted_id),option%sir(1:option%nphase,iicap), &
                                 cur_connection_object%dist(0,iconn),perm1,D2, &
-                                distance_gravity,option, &
+                                distance_gravity,option,field, &
                                 vv_darcy,Res)
       cur_connection_object%velocity(1,iconn) = vv_darcy(1)
 
@@ -1138,22 +1150,22 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
   endif
 
   call VecRestoreArrayF90(r, r_p, ierr)
-  call VecRestoreArrayF90(option%yy, yy_p, ierr)
-  call VecRestoreArrayF90(option%xx_loc, xx_loc_p, ierr)
-  call VecRestoreArrayF90(option%accum, accum_p, ierr)
-  call VecRestoreArrayF90(option%var_loc,var_loc_p,ierr)
-  call VecRestoreArrayF90(option%porosity_loc, porosity_loc_p, ierr)
-  call VecRestoreArrayF90(option%tor_loc, tor_loc_p, ierr)
-  call VecRestoreArrayF90(option%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecRestoreArrayF90(option%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecRestoreArrayF90(option%perm_zz_loc, perm_zz_loc_p, ierr)
+  call VecRestoreArrayF90(field%yy, yy_p, ierr)
+  call VecRestoreArrayF90(field%xx_loc, xx_loc_p, ierr)
+  call VecRestoreArrayF90(field%accum, accum_p, ierr)
+  call VecRestoreArrayF90(field%var_loc,var_loc_p,ierr)
+  call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
+  call VecRestoreArrayF90(field%tor_loc, tor_loc_p, ierr)
+  call VecRestoreArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
+  call VecRestoreArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
+  call VecRestoreArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
   call VecRestoreArrayF90(grid%volume, volume_p, ierr)
-  call VecRestoreArrayF90(option%ithrm_loc, ithrm_loc_p, ierr)
-  call VecRestoreArrayF90(option%icap_loc, icap_loc_p, ierr)
-  call VecRestoreArrayF90(option%vl, vl_p, ierr)
-  call VecRestoreArrayF90(option%iphas_loc, iphase_loc_p, ierr)
+  call VecRestoreArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
+  call VecRestoreArrayF90(field%icap_loc, icap_loc_p, ierr)
+  call VecRestoreArrayF90(field%vl, vl_p, ierr)
+  call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr)
   if (option%rk > 0.d0) then
-    call VecRestoreArrayF90(option%phis,phis_p,ierr)
+    call VecRestoreArrayF90(field%phis,phis_p,ierr)
   endif
 !#define DEBUG_GEH
 !#define DEBUG_GEH_ALL
@@ -1235,6 +1247,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
   real*8 :: distance_gravity 
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option 
+  type(field_type), pointer :: field  
   
  PetscViewer :: viewer
 !-----------------------------------------------------------------------
@@ -1248,6 +1261,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
 
   grid => solution%grid
   option => solution%option
+  field => solution%field
 
 ! dropped derivatives:
 !   1.D0 gas phase viscocity to all p,t,c,s
@@ -1257,18 +1271,18 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
  ! print *,'*********** In Jacobian ********************** '
   call MatZeroEntries(A,ierr)
 
-  call VecGetArrayF90(option%xx_loc, xx_loc_p, ierr)
-  call VecGetArrayF90(option%porosity_loc, porosity_loc_p, ierr)
-  call VecGetArrayF90(option%tor_loc, tor_loc_p, ierr)
-  call VecGetArrayF90(option%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecGetArrayF90(option%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecGetArrayF90(option%perm_zz_loc, perm_zz_loc_p, ierr)
+  call VecGetArrayF90(field%xx_loc, xx_loc_p, ierr)
+  call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
+  call VecGetArrayF90(field%tor_loc, tor_loc_p, ierr)
+  call VecGetArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
+  call VecGetArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
+  call VecGetArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
   call VecGetArrayF90(grid%volume, volume_p, ierr)
 
-  call VecGetArrayF90(option%ithrm_loc, ithrm_loc_p, ierr)
-  call VecGetArrayF90(option%icap_loc, icap_loc_p, ierr)
-  call VecGetArrayF90(option%iphas_loc, iphase_loc_p, ierr)
-  call VecGetArrayF90(option%var_loc, var_loc_p, ierr)
+  call VecGetArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
+  call VecGetArrayF90(field%icap_loc, icap_loc_p, ierr)
+  call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr)
+  call VecGetArrayF90(field%var_loc, var_loc_p, ierr)
 
 ! Accumulation terms
 
@@ -1417,30 +1431,30 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
           delxbc =0.D0
         case(2)
           ! solve for pb from Darcy's law given qb /= 0
-          option%xxbc(:,nc) = xx_loc_p((ghosted_id-1)*option%ndof+1: ghosted_id*option%ndof)
-          option%iphasebc(nc) = int(iphase_loc_p(ghosted_id))
+          field%xxbc(:,nc) = xx_loc_p((ghosted_id-1)*option%ndof+1: ghosted_id*option%ndof)
+          field%iphasebc(nc) = int(iphase_loc_p(ghosted_id))
           delxbc = option%delx(1:option%ndof,ghosted_id)
         
   
-          if(dabs(option%velocitybc(1,nc))>1D-20)then
-            if( option%velocitybc(1,nc)>0) then
-             option%xxbc(2:option%ndof,nc)= yybc(2:option%ndof,nc)
+          if(dabs(field%velocitybc(1,nc))>1D-20)then
+            if( field%velocitybc(1,nc)>0) then
+             field%xxbc(2:option%ndof,nc)= yybc(2:option%ndof,nc)
              delxbc(2:option%ndof)=0.D0
             endif     
           endif    
 
         case(3) 
-          option%xxbc(2:option%ndof,nc) = xx_loc_p((ghosted_id-1)*option%ndof+2:ghosted_id*option%ndof)
-          option%iphasebc(nc) = int(iphase_loc_p(ghosted_id))
+          field%xxbc(2:option%ndof,nc) = xx_loc_p((ghosted_id-1)*option%ndof+2:ghosted_id*option%ndof)
+          field%iphasebc(nc) = int(iphase_loc_p(ghosted_id))
           delxbc(1) = 0.D0
           delxbc(2:option%ndof) = option%delx(2:option%ndof,ghosted_id)
         
         case(4)
-          option%xxbc(1,nc) = xx_loc_p((ghosted_id-1)*option%ndof+1)
-          option%xxbc(3:option%ndof,nc) = xx_loc_p((ghosted_id-1)*option%ndof+3: ghosted_id*option%ndof)    
+          field%xxbc(1,nc) = xx_loc_p((ghosted_id-1)*option%ndof+1)
+          field%xxbc(3:option%ndof,nc) = xx_loc_p((ghosted_id-1)*option%ndof+3: ghosted_id*option%ndof)    
           delxbc(1)=option%delx(1,ghosted_id)
           delxbc(3:option%ndof) = option%delx(3:option%ndof,ghosted_id) 
-          option%iphasebc(nc)=int(iphase_loc_p(ghosted_id))
+          field%iphasebc(nc)=int(iphase_loc_p(ghosted_id))
     
       end select
 
@@ -1449,22 +1463,22 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
       dif(1) = option%difaq
 
   ! here should pay attention to BC type !!!
-      call pri_var_trans_Richards_ninc(option%xxbc(:,nc),option%iphasebc(nc), &
+      call pri_var_trans_Richards_ninc(field%xxbc(:,nc),field%iphasebc(nc), &
                                   option%scale,option%nphase,option%nspec, &
                                   iicap,  dif, &
-                                  option%varbc(1:size_var_use),option%itable,ierr, option%pref)
+                                  field%varbc(1:size_var_use),option%itable,ierr, option%pref)
   
-      call pri_var_trans_Richards_winc(option%xxbc(:,nc),delxbc,option%iphasebc(nc), &
+      call pri_var_trans_Richards_winc(field%xxbc(:,nc),delxbc,field%iphasebc(nc), &
                                   option%scale,option%nphase,option%nspec, &
                                   iicap, dif(1:option%nphase),&
-                                  option%varbc(size_var_use+1:(option%ndof+1)* &
+                                  field%varbc(size_var_use+1:(option%ndof+1)* &
                                     size_var_use), &
                                   option%itable,ierr, option%pref)
               
       do nvar=1,option%ndof
         call RichardsRes_FLBCCont(nc,boundary_condition%condition%itype(1), &
                                 cur_connection_object%area(iconn), &
-                                option%varbc(nvar*size_var_use+1:(nvar+1)* &
+                                field%varbc(nvar*size_var_use+1:(nvar+1)* &
                                   size_var_use), &
                                 var_loc_p((ghosted_id-1)*size_var_node+nvar* &
                                   size_var_use+1:(ghosted_id-1)*size_var_node+nvar* &
@@ -1472,7 +1486,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
                                 porosity_loc_p(ghosted_id),tor_loc_p(ghosted_id), &
                                 option%sir(1:option%nphase,iicap), &
                                 cur_connection_object%dist(0,iconn),perm1,D2, &
-                                distance_gravity,option,vv_darcy, &
+                                distance_gravity,option,field,vv_darcy, &
                                 Res)
 
         ResInc(local_id,1:option%ndof,nvar) = ResInc(local_id,1:option%ndof,nvar) - Res(1:option%ndof)
@@ -1694,22 +1708,22 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
     cur_connection_object => cur_connection_object%next
   enddo
   
-  call VecRestoreArrayF90(option%xx_loc, xx_loc_p, ierr)
-  call VecRestoreArrayF90(option%porosity_loc, porosity_loc_p, ierr)
-  call VecRestoreArrayF90(option%tor_loc, tor_loc_p, ierr)
-  call VecRestoreArrayF90(option%var_loc, var_loc_p, ierr)
-  call VecRestoreArrayF90(option%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecRestoreArrayF90(option%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecRestoreArrayF90(option%perm_zz_loc, perm_zz_loc_p, ierr)
+  call VecRestoreArrayF90(field%xx_loc, xx_loc_p, ierr)
+  call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
+  call VecRestoreArrayF90(field%tor_loc, tor_loc_p, ierr)
+  call VecRestoreArrayF90(field%var_loc, var_loc_p, ierr)
+  call VecRestoreArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
+  call VecRestoreArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
+  call VecRestoreArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
   call VecRestoreArrayF90(grid%volume, volume_p, ierr)
 
    
-  call VecRestoreArrayF90(option%ithrm_loc, ithrm_loc_p, ierr)
-  call VecRestoreArrayF90(option%icap_loc, icap_loc_p, ierr)
-  call VecRestoreArrayF90(option%iphas_loc, iphase_loc_p, ierr)
+  call VecRestoreArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
+  call VecRestoreArrayF90(field%icap_loc, icap_loc_p, ierr)
+  call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr)
 
   if (option%rk > 0.d0) then
-    call VecRestoreArrayF90(option%phis,phis_p,ierr)
+    call VecRestoreArrayF90(field%phis,phis_p,ierr)
   endif
 
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
@@ -1754,7 +1768,8 @@ subroutine pflow_Richards_initaccum(solution)
  
   use translator_Richards_module
   use Solution_module
-  use Grid_module  
+  use Grid_module
+  use Field_module
   use Option_module
  
   implicit none
@@ -1775,18 +1790,20 @@ subroutine pflow_Richards_initaccum(solution)
  
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
+  type(field_type), pointer :: field
   
   grid => solution%grid
   option => solution%option
+  field => solution%field
  
   call VecGetArrayF90(grid%volume, volume_p, ierr)
-  call VecGetArrayF90(option%porosity_loc, porosity_loc_p, ierr)
-  call VecGetArrayF90(option%yy, yy_p, ierr); CHKERRQ(ierr)
-  call VecGetArrayF90(option%accum, accum_p, ierr)
-  call VecGetArrayF90(option%var_loc, var_loc_p,ierr)
-  call VecGetArrayF90(option%iphas_loc, iphase_loc_p, ierr)
-  call VecGetArrayF90(option%ithrm_loc, ithrm_loc_p, ierr)
-  call VecGetArrayF90(option%icap_loc, icap_loc_p, ierr)
+  call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
+  call VecGetArrayF90(field%yy, yy_p, ierr); CHKERRQ(ierr)
+  call VecGetArrayF90(field%accum, accum_p, ierr)
+  call VecGetArrayF90(field%var_loc, var_loc_p,ierr)
+  call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr)
+  call VecGetArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
+  call VecGetArrayF90(field%icap_loc, icap_loc_p, ierr)
   !print *,'Richardsinitaccum  Gotten pointers'
  
   do local_id = 1, grid%nlmax
@@ -1834,13 +1851,13 @@ subroutine pflow_Richards_initaccum(solution)
   enddo
 
   call VecRestoreArrayF90(grid%volume, volume_p, ierr)
-  call VecRestoreArrayF90(option%porosity_loc, porosity_loc_p, ierr)
-  call VecRestoreArrayF90(option%yy, yy_p, ierr); CHKERRQ(ierr)
-  call VecRestoreArrayF90(option%accum, accum_p, ierr)
-  call VecRestoreArrayF90(option%var_loc, var_loc_p,ierr)
-  call VecRestoreArrayF90(option%iphas_loc, iphase_loc_p, ierr)
-  call VecRestoreArrayF90(option%ithrm_loc, ithrm_loc_p, ierr)
-  call VecRestoreArrayF90(option%icap_loc, icap_loc_p, ierr)
+  call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
+  call VecRestoreArrayF90(field%yy, yy_p, ierr); CHKERRQ(ierr)
+  call VecRestoreArrayF90(field%accum, accum_p, ierr)
+  call VecRestoreArrayF90(field%var_loc, var_loc_p,ierr)
+  call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr)
+  call VecRestoreArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
+  call VecRestoreArrayF90(field%icap_loc, icap_loc_p, ierr)
 
 end subroutine pflow_Richards_initaccum
 
@@ -1878,25 +1895,27 @@ subroutine pflow_update_Richards(solution)
   integer :: sum_connection  
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
+  type(field_type), pointer :: field  
   grid => solution%grid
   option => solution%option
+  field => solution%field
       
 !geh added for transient boundary conditions      
   if (associated(option%imat) .and. option%iread_geom < 0) then
 !commend out for now    call UpdateBoundaryConditions(option)
-    yybc =option%xxbc
-    vel_bc = option%velocitybc
+    yybc =field%xxbc
+    vel_bc = field%velocitybc
   endif
 !geh end
  
    ! if(ichange ==1)then
-  call VecGetArrayF90(option%xx, xx_p, ierr); CHKERRQ(ierr)
-  call VecGetArrayF90(option%yy, yy_p, ierr); CHKERRQ(ierr)
-  call VecGetArrayF90(option%icap_loc,icap_loc_p,ierr)
-  call VecGetArrayF90(option%ithrm_loc,ithrm_loc_p,ierr)  
-  call VecGetArrayF90(option%iphas_loc, iphase_loc_p, ierr)
-  call VecGetArrayF90(option%iphas_old_loc, iphase_loc_old_p, ierr)
-  call VecGetArrayF90(option%var_loc,var_loc_p,ierr)
+  call VecGetArrayF90(field%xx, xx_p, ierr); CHKERRQ(ierr)
+  call VecGetArrayF90(field%yy, yy_p, ierr); CHKERRQ(ierr)
+  call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr)
+  call VecGetArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)  
+  call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr)
+  call VecGetArrayF90(field%iphas_old_loc, iphase_loc_old_p, ierr)
+  call VecGetArrayF90(field%var_loc,var_loc_p,ierr)
 
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
@@ -1957,31 +1976,31 @@ subroutine pflow_update_Richards(solution)
           iithrm=int(ithrm_loc_p(ghosted_id)) 
           dif(1)= option%difaq
       
-          if(option%iphasebc(nc) ==3)then
-            sw= option%xxbc(1,nc)
+          if(field%iphasebc(nc) ==3)then
+            sw= field%xxbc(1,nc)
             call pflow_pckr_richards_fw(iicap ,sw,pc,kr)    
-            option%xxbc(1,nc) =  option%pref - pc(1)
+            field%xxbc(1,nc) =  option%pref - pc(1)
           endif
       
-          call pri_var_trans_Richards_ninc(option%xxbc(:,nc),option%iphasebc(nc), &
+          call pri_var_trans_Richards_ninc(field%xxbc(:,nc),field%iphasebc(nc), &
                                            option%scale,option%nphase,option%nspec, &
                                            iicap,dif, &
-                                           option%varbc(1:size_var_use),option%itable,ierr, &
+                                           field%varbc(1:size_var_use),option%itable,ierr, &
                                            option%pref)
         
-          if (translator_check_cond_Richards(option%iphasebc(nc), &
-                                             option%varbc(1:size_var_use), &
+          if (translator_check_cond_Richards(field%iphasebc(nc), &
+                                             field%varbc(1:size_var_use), &
                                              option%nphase,option%nspec) /=1) then
-            print *," Wrong bounday node init...  STOP!!!", option%xxbc(:,nc)
+            print *," Wrong bounday node init...  STOP!!!", field%xxbc(:,nc)
       
-            print *,option%varbc
+            print *,field%varbc
             stop    
           endif 
         endif
 
         if (boundary_condition%condition%itype(1)==2) then
-          yybc(2:option%ndof,nc)= option%xxbc(2:option%ndof,nc)
-          vel_bc(1,nc) = option%velocitybc(1,nc)
+          yybc(2:option%ndof,nc)= field%xxbc(2:option%ndof,nc)
+          vel_bc(1,nc) = field%velocitybc(1,nc)
         endif 
       
       enddo
@@ -1989,19 +2008,19 @@ subroutine pflow_update_Richards(solution)
     enddo
   endif
  
-  call VecRestoreArrayF90(option%xx, xx_p, ierr); CHKERRQ(ierr)
-  call VecRestoreArrayF90(option%yy, yy_p, ierr);
-  call VecRestoreArrayF90(option%icap_loc,icap_loc_p,ierr)
-  call VecRestoreArrayF90(option%ithrm_loc,ithrm_loc_p,ierr)  
-  call VecRestoreArrayF90(option%iphas_loc, iphase_loc_p, ierr)
-  call VecRestoreArrayF90(option%iphas_old_loc, iphase_loc_old_p, ierr)
-  call VecRestoreArrayF90(option%var_loc,var_loc_p,ierr)
+  call VecRestoreArrayF90(field%xx, xx_p, ierr); CHKERRQ(ierr)
+  call VecRestoreArrayF90(field%yy, yy_p, ierr);
+  call VecRestoreArrayF90(field%icap_loc,icap_loc_p,ierr)
+  call VecRestoreArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)  
+  call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr)
+  call VecRestoreArrayF90(field%iphas_old_loc, iphase_loc_old_p, ierr)
+  call VecRestoreArrayF90(field%var_loc,var_loc_p,ierr)
    
   call translator_Richards_massbal(solution)
  ! endif 
 
-  call VecCopy(option%xx, option%yy, ierr)   
-  call VecCopy(option%iphas_loc, option%iphas_old_loc, ierr)   
+  call VecCopy(field%xx, field%yy, ierr)   
+  call VecCopy(field%iphas_loc, field%iphas_old_loc, ierr)   
    
   call  pflow_Richards_initaccum(solution)
 ! geh - comment
@@ -2053,14 +2072,16 @@ subroutine pflow_Richards_initadj(solution)
   integer :: sum_connection
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
+  type(field_type), pointer :: field  
   grid => solution%grid
-  option => solution%option  
+  option => solution%option 
+  field => solution%field 
 
-  call VecGetArrayF90(option%icap_loc, icap_loc_p, ierr)
-  call VecGetArrayF90(option%ithrm_loc, ithrm_loc_p, ierr)
-  call VecGetArrayF90(option%iphas_loc, iphase_loc_p, ierr)
-  call VecGetArrayF90(option%xx, xx_p, ierr)
-  call VecGetArrayF90(option%var_loc, var_loc_p, ierr) 
+  call VecGetArrayF90(field%icap_loc, icap_loc_p, ierr)
+  call VecGetArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
+  call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr)
+  call VecGetArrayF90(field%xx, xx_p, ierr)
+  call VecGetArrayF90(field%var_loc, var_loc_p, ierr) 
 
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
@@ -2082,9 +2103,9 @@ subroutine pflow_Richards_initadj(solution)
      sw= xx_p((local_id-1)*option%ndof+1)
      call pflow_pckr_richards_fw(iicap,sw,pc,kr)    
                  
-     if(pc(1)>option%pcwmax(iicap))then
-        print *,'INIT Warning: Pc>pcmax', sw, pc(1), iicap, option%pcwmax(iicap)
-        pc(1)=option%pcwmax(iicap)
+     if(pc(1)>field%pcwmax(iicap))then
+        print *,'INIT Warning: Pc>pcmax', sw, pc(1), iicap, field%pcwmax(iicap)
+        pc(1)=field%pcwmax(iicap)
      endif 
      xx_p((local_id-1)*option%ndof+1)= option%pref - pc(1)
      print *,'Richards: Conv: ',local_id, sw, iicap, sw, pc(1),xx_p((local_id-1)*option%ndof+1:local_id*option%ndof)
@@ -2116,8 +2137,8 @@ subroutine pflow_Richards_initadj(solution)
 
   allocate(yybc(option%ndof,num_connection))
   allocate(vel_bc(option%nphase,num_connection))
-  yybc =option%xxbc
-  vel_bc = option%velocitybc
+  yybc =field%xxbc
+  vel_bc = field%velocitybc
 
   boundary_condition => solution%boundary_conditions%first
   sum_connection = 0  
@@ -2148,44 +2169,44 @@ subroutine pflow_Richards_initadj(solution)
         iithrm=int(ithrm_loc_p(local_id)) 
         dif(1)= option%difaq
         
-        if(option%iphasebc(nc) ==3)then
-          sw= option%xxbc(1,nc)
+        if(field%iphasebc(nc) ==3)then
+          sw= field%xxbc(1,nc)
           call pflow_pckr_richards_fw(iicap,sw,pc,kr)    
-          option%xxbc(1,nc) =  option%pref - pc(1)
+          field%xxbc(1,nc) =  option%pref - pc(1)
         endif
 
         
         
-        call pri_var_trans_Richards_ninc(option%xxbc(:,nc),option%iphasebc(nc), &
+        call pri_var_trans_Richards_ninc(field%xxbc(:,nc),field%iphasebc(nc), &
                                          option%scale,option%nphase,option%nspec, &
                                          iicap, dif, &
-                                         option%varbc(1:size_var_use),option%itable,ierr, &
+                                         field%varbc(1:size_var_use),option%itable,ierr, &
                                          option%pref)
         
-        if (translator_check_cond_Richards(option%iphasebc(nc), &
-                                            option%varbc(1:size_var_use), &
+        if (translator_check_cond_Richards(field%iphasebc(nc), &
+                                            field%varbc(1:size_var_use), &
                                             option%nphase,option%nspec) /=1) then
-          print *," Wrong bounday node init...  STOP!!!", option%xxbc(:,nc)
+          print *," Wrong bounday node init...  STOP!!!", field%xxbc(:,nc)
         
-          print *,option%varbc
+          print *,field%varbc
           stop    
         endif 
       endif
 
       if (boundary_condition%condition%itype(1)==2) then
     
-        yybc(2:option%ndof,nc)= option%xxbc(2:option%ndof,nc)
-        vel_bc(1,nc) = option%velocitybc(1,nc)
+        yybc(2:option%ndof,nc)= field%xxbc(2:option%ndof,nc)
+        vel_bc(1,nc) = field%velocitybc(1,nc)
       endif 
     enddo
     boundary_condition => boundary_condition%next
   enddo
 
-  call VecRestoreArrayF90(option%icap_loc, icap_loc_p, ierr)
-  call VecRestoreArrayF90(option%ithrm_loc, ithrm_loc_p, ierr)
-  call VecRestoreArrayF90(option%iphas_loc, iphase_loc_p, ierr)
-  call VecRestoreArrayF90(option%xx, xx_p, ierr)
-  call VecRestoreArrayF90(option%var_loc, var_loc_p, ierr)
+  call VecRestoreArrayF90(field%icap_loc, icap_loc_p, ierr)
+  call VecRestoreArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
+  call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr)
+  call VecRestoreArrayF90(field%xx, xx_p, ierr)
+  call VecRestoreArrayF90(field%var_loc, var_loc_p, ierr)
    
 end subroutine pflow_Richards_initadj
 
@@ -2204,8 +2225,11 @@ subroutine createRichardsZeroArray(solution)
 
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
+  type(field_type), pointer :: field
+    
   grid => solution%grid
   option => solution%option
+  field => solution%field
   
   n_zero_rows = 0
 

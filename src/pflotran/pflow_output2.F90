@@ -87,6 +87,7 @@ subroutine OutputTecplot(solution,step)
   use Grid_module
   use Structured_Grid_module
   use Option_module
+  use Field_module
  
   implicit none
 
@@ -100,12 +101,14 @@ subroutine OutputTecplot(solution,step)
   character(len=MAXSTRINGLENGTH) :: string, string2
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
+  type(field_type), pointer :: field
   type(output_option_type), pointer :: output_option
   Vec :: global
   Vec :: natural
   
   grid => solution%grid
   option => solution%option
+  field => solution%field
   output_option => solution%output_option
   
   ! open file
@@ -256,19 +259,19 @@ subroutine OutputTecplot(solution,step)
     case default
   
       ! temperature
-      call GridGlobalToNatural(grid,option%temp,natural,ONEDOF)
+      call GridGlobalToNatural(grid,field%temp,natural,ONEDOF)
       call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
 
       ! pressure
-      call GridGlobalToNatural(grid,option%pressure,natural,ONEDOF)
+      call GridGlobalToNatural(grid,field%pressure,natural,ONEDOF)
       call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
 
       ! saturation
-      call GridGlobalToNatural(grid,option%sat,natural,ONEDOF)
+      call GridGlobalToNatural(grid,field%sat,natural,ONEDOF)
       call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
 
       ! concentration
-      call GridGlobalToNatural(grid,option%conc,natural,ONEDOF)
+      call GridGlobalToNatural(grid,field%conc,natural,ONEDOF)
       call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
 
       ! volume fraction
@@ -452,6 +455,7 @@ subroutine OutputFluxVelocitiesTecplot(solution,step,iphase, &
   use Solution_module
   use Grid_module
   use Option_module
+  use Field_module
   
   implicit none
 
@@ -464,6 +468,7 @@ subroutine OutputFluxVelocitiesTecplot(solution,step,iphase, &
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
+  type(field_type), pointer :: field
   type(output_option_type), pointer :: output_option
   
   character(len=MAXNAMELENGTH) :: filename
@@ -484,6 +489,7 @@ subroutine OutputFluxVelocitiesTecplot(solution,step,iphase, &
   
   grid => solution%grid
   option => solution%option
+  field => solution%field
   output_option => output_option
   
   ! open file
@@ -689,7 +695,7 @@ subroutine OutputFluxVelocitiesTecplot(solution,step,iphase, &
   nullify(array)
   
   ! write out data set
-  call VecGetArrayF90(option%vl,vec_ptr,ierr)
+  call VecGetArrayF90(field%vl,vec_ptr,ierr)
   count = 0
   allocate(array(local_size))
   do k=1,nz_local
@@ -702,7 +708,7 @@ subroutine OutputFluxVelocitiesTecplot(solution,step,iphase, &
       enddo
     enddo
   enddo
-  call VecRestoreArrayF90(option%vl,vec_ptr,ierr)
+  call VecRestoreArrayF90(field%vl,vec_ptr,ierr)
 !GEH - Structured Grid Dependence - End
   
   array(1:local_size) = array(1:local_size)*output_option%tconv ! convert time units
@@ -921,6 +927,7 @@ subroutine OutputHDF5(solution,step)
   use Solution_module
   use Option_module
   use Grid_module
+  use Field_module
   
 #ifndef USE_HDF5
   implicit none
@@ -955,6 +962,7 @@ subroutine OutputHDF5(solution,step)
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
+  type(field_type), pointer :: field
   type(output_option_type), pointer :: output_option
   
   Vec :: global
@@ -969,6 +977,7 @@ subroutine OutputHDF5(solution,step)
   
   grid => solution%grid
   option => solution%option
+  field => solution%field
   output_option => solution%output_option
 
   ! initialize fortran interface
@@ -1113,21 +1122,21 @@ subroutine OutputHDF5(solution,step)
     case default
       ! temperature
       string = "Temperature"
-      call WriteHDF5DataSetFromVec(string,solution,option%temp,grp_id, &
+      call WriteHDF5DataSetFromVec(string,solution,field%temp,grp_id, &
                                    H5T_NATIVE_DOUBLE)
 
       ! pressure
       string = "Pressure"
-      call WriteHDF5DataSetFromVec(string,solution,option%pressure,grp_id, &
+      call WriteHDF5DataSetFromVec(string,solution,field%pressure,grp_id, &
                                    H5T_NATIVE_DOUBLE)
 
       ! saturation
       string = "Saturation"
-      call WriteHDF5DataSetFromVec(string,solution,option%sat,grp_id,H5T_NATIVE_DOUBLE)
+      call WriteHDF5DataSetFromVec(string,solution,field%sat,grp_id,H5T_NATIVE_DOUBLE)
 
       ! concentration
       string = "Concentration"
-      call WriteHDF5DataSetFromVec(string,solution,option%conc,grp_id, &
+      call WriteHDF5DataSetFromVec(string,solution,field%conc,grp_id, &
                                    H5T_NATIVE_DOUBLE)
 
   end select
@@ -1214,6 +1223,7 @@ subroutine WriteHDF5FluxVelocities(name,solution,iphase,direction,file_id)
   use Solution_module
   use Grid_module
   use Option_module
+  use Field_module
   use hdf5
 
   implicit none
@@ -1232,6 +1242,7 @@ subroutine WriteHDF5FluxVelocities(name,solution,iphase,direction,file_id)
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
+  type(field_type), pointer :: field
   type(output_option_type), pointer :: output_option
     
   real*8, allocatable :: array(:)
@@ -1244,6 +1255,7 @@ subroutine WriteHDF5FluxVelocities(name,solution,iphase,direction,file_id)
   
   grid => solution%grid
   option => solution%option
+  field => solution%field
   output_option => solution%output_option  
   
   ! in a few cases (i.e. for small test problems), some processors may
@@ -1301,7 +1313,7 @@ subroutine WriteHDF5FluxVelocities(name,solution,iphase,direction,file_id)
   end select  
   allocate(array(nx_local*ny_local*nz_local))
 
-  call VecGetArrayF90(option%vl,vec_ptr,ierr)
+  call VecGetArrayF90(field%vl,vec_ptr,ierr)
   count = 0
   do k=1,nz_local
     do j=1,ny_local
@@ -1313,7 +1325,7 @@ subroutine WriteHDF5FluxVelocities(name,solution,iphase,direction,file_id)
       enddo
     enddo
   enddo
-  call VecRestoreArrayF90(option%vl,vec_ptr,ierr)
+  call VecRestoreArrayF90(field%vl,vec_ptr,ierr)
   
   array(1:nx_local*ny_local*nz_local) = &  ! convert time units
     array(1:nx_local*ny_local*nz_local) * output_option%tconv
@@ -1671,6 +1683,7 @@ subroutine GetVarFromArray(solution,vec,ivar,isubvar)
   use Solution_module
   use Grid_module
   use Option_module
+  use Field_module
 
   implicit none
   
@@ -1685,11 +1698,13 @@ subroutine GetVarFromArray(solution,vec,ivar,isubvar)
   integer :: size_var_node
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
+  type(field_type), pointer :: field
   PetscScalar, pointer :: var_ptr(:)
   PetscScalar, pointer :: vec_ptr(:)
 
   option => solution%option
   grid => solution%grid
+  field => solution%field
 
   call VecGetArrayF90(vec,vec_ptr,ierr)
       
@@ -1714,12 +1729,12 @@ subroutine GetVarFromArray(solution,vec,ivar,isubvar)
       size_var_use = 2 + 7*option%nphase + 2* option%nphase*option%nspec
       size_var_node = (option%ndof + 1) * size_var_use
         
-      call VecGetArrayF90(option%var_loc,var_ptr,ierr)
+      call VecGetArrayF90(field%var_loc,var_ptr,ierr)
       do local_id=1,grid%nlmax
         ghosted_id = grid%nL2G(local_id)
         vec_ptr(local_id) = var_ptr((ghosted_id-1)*size_var_node+offset)
       enddo
-      call VecRestoreArrayF90(option%var_loc,var_ptr,ierr)
+      call VecRestoreArrayF90(field%var_loc,var_ptr,ierr)
 
     case(LIQUID_ENERGY,GAS_ENERGY)
 
@@ -1735,7 +1750,7 @@ subroutine GetVarFromArray(solution,vec,ivar,isubvar)
       size_var_use = 2 + 7*option%nphase + 2* option%nphase*option%nspec
       size_var_node = (option%ndof + 1) * size_var_use
         
-      call VecGetArrayF90(option%var_loc,var_ptr,ierr)
+      call VecGetArrayF90(field%var_loc,var_ptr,ierr)
       do local_id=1,grid%nlmax
         ghosted_id = grid%nL2G(local_id)      
         if (var_ptr((ghosted_id-1)*size_var_node+saturation_offset) > 1.d-30) then
@@ -1744,22 +1759,22 @@ subroutine GetVarFromArray(solution,vec,ivar,isubvar)
           vec_ptr(local_id) = 0.d0
         endif
       enddo
-      call VecRestoreArrayF90(option%var_loc,var_ptr,ierr)
+      call VecRestoreArrayF90(field%var_loc,var_ptr,ierr)
 
     case(VOLUME_FRACTION)
     
       ! need to set minimum to 0.
-      call VecGetArrayF90(option%phis,var_ptr,ierr)
+      call VecGetArrayF90(field%phis,var_ptr,ierr)
       vec_ptr(1:grid%nlmax) = var_ptr(1:grid%nlmax)
-      call VecRestoreArrayF90(option%phis,var_ptr,ierr)
+      call VecRestoreArrayF90(field%phis,var_ptr,ierr)
      
     case(PHASE)
     
-      call VecGetArrayF90(option%iphas_loc,var_ptr,ierr)
+      call VecGetArrayF90(field%iphas_loc,var_ptr,ierr)
       do local_id=1,grid%nlmax
         vec_ptr(local_id) = var_ptr(grid%nL2G(local_id))
       enddo
-      call VecRestoreArrayF90(option%iphas_loc,var_ptr,ierr)
+      call VecRestoreArrayF90(field%iphas_loc,var_ptr,ierr)
      
   end select
   
@@ -1782,6 +1797,7 @@ subroutine GetCellCenteredVelocities(solution,vec,iphase,direction)
   use Option_module
   use Connection_module
   use Coupler_module
+  use Field_module
 
   implicit none
   
@@ -1792,6 +1808,7 @@ subroutine GetCellCenteredVelocities(solution,vec,iphase,direction)
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
+  type(field_type), pointer :: field
   type(output_option_type), pointer :: output_option
   integer :: i, j, k, local_id, iconn
   Vec :: local_vec
@@ -1807,6 +1824,7 @@ subroutine GetCellCenteredVelocities(solution,vec,iphase,direction)
   
   grid => solution%grid
   option => solution%option
+  field => solution%field
   output_option => solution%output_option
     
   allocate(num_additions(grid%nlmax))
@@ -1814,13 +1832,13 @@ subroutine GetCellCenteredVelocities(solution,vec,iphase,direction)
   
   call VecSet(vec,0.d0,ierr)
   call VecGetArrayF90(vec,vec_ptr,ierr)
-  call VecGetArrayF90(option%vl,vl_ptr,ierr)
+  call VecGetArrayF90(field%vl,vl_ptr,ierr)
   do i=1,grid%nlmax
   ! definitely set up for a structured grid
   ! I believe that vl_ptr contains the downwind vel for all local nodes
     vec_ptr(i) = vl_ptr(iphase+(direction-1)*option%nphase+3*option%nphase*(i-1))
   enddo
-  call VecRestoreArrayF90(option%vl,vl_ptr,ierr)
+  call VecRestoreArrayF90(field%vl,vl_ptr,ierr)
   call VecRestoreArrayF90(vec,vec_ptr,ierr)
     
   call GridCreateVector(grid,ONEDOF,local_vec,LOCAL)  
@@ -1838,9 +1856,9 @@ subroutine GetCellCenteredVelocities(solution,vec,iphase,direction)
       if (cur_connection_object%dist(direction,iconn) < 0.99d0) cycle
       local_id = cur_connection_object%id_dn(iconn)
       if (iphase == LIQUID_PHASE) then
-        vec_ptr(local_id) = vec_ptr(local_id) + option%vvlbc(iconn)
+        vec_ptr(local_id) = vec_ptr(local_id) + field%vvlbc(iconn)
       else
-        vec_ptr(local_id) = vec_ptr(local_id) + option%vvgbc(iconn)
+        vec_ptr(local_id) = vec_ptr(local_id) + field%vvgbc(iconn)
       endif
       num_additions(local_id) = num_additions(local_id) + 1
     enddo

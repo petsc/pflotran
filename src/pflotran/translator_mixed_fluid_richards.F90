@@ -63,6 +63,7 @@ subroutine translator_Richards_massbal(solution)
   use Solution_module
   use Grid_module
   use Option_module
+  use Field_module
   
   implicit none
 
@@ -70,6 +71,7 @@ subroutine translator_Richards_massbal(solution)
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
+  type(field_type), pointer :: field
  
   integer :: ierr
   integer,save :: icall
@@ -93,10 +95,11 @@ subroutine translator_Richards_massbal(solution)
 
   grid => solution%grid
   option => solution%option
+  field => solution%field
 
-  call VecGetArrayF90(option%var_loc,var_loc_p,ierr)
+  call VecGetArrayF90(field%var_loc,var_loc_p,ierr)
   call VecGetArrayF90(grid%volume, volume_p, ierr)
-  call VecGetArrayF90(option%porosity_loc, porosity_loc_p, ierr)
+  call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
  
   size_var_node=(option%ndof+1)*(2+7*option%nphase +2*option%nphase*option%nspec)
   tot=0.D0
@@ -124,9 +127,9 @@ subroutine translator_Richards_massbal(solution)
 ! print *,nzc,c0
   enddo
  !  call PETSCBarrier(PETSC_NULL_OBJECT,ierr)
-  call VecRestoreArrayF90(option%var_loc,var_loc_p,ierr)
+  call VecRestoreArrayF90(field%var_loc,var_loc_p,ierr)
   call VecRestoreArrayF90(grid%volume, volume_p, ierr)
-  call VecRestoreArrayF90(option%porosity_loc, porosity_loc_p, ierr)
+  call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
  
  !print *,'massbal: ', sat,den, xmol, tot
   if (option%commsize >1) then
@@ -209,28 +212,37 @@ integer function translator_check_cond_Richards(iphase, &
 end function translator_check_cond_Richards
 
 
-subroutine translator_Richards_get_output(grid,option)
+subroutine translator_Richards_get_output(solution)
 
+  use Solution_module
   use Option_module
   use Grid_module, only : grid_type
+  use Field_module
 
   implicit none
   
+  type(solution_type), pointer :: solution
+  
   integer :: nvals
-  type(option_type) :: option
-  type(grid_type) :: grid
+  type(option_type), pointer :: option
+  type(grid_type), pointer :: grid
+  type(field_type), pointer :: field
   
   integer :: ierr
   
   PetscScalar, pointer :: t_p(:),p_p(:),c_p(:),s_p(:),cc_p(:),var_loc_p(:)
   integer :: local_id, ghosted_id, index_var_begin ,jn, size_var_node
     
-  call VecGetArrayF90(option%var_loc,var_loc_p, ierr)
-  call VecGetArrayF90(option%pressure, p_p, ierr)
-  call VecGetArrayF90(option%temp, t_p, ierr)
-  call VecGetArrayF90(option%xmol, c_p, ierr)
-  call VecGetArrayF90(option%sat, s_p, ierr)
-  call VecGetArrayF90(option%conc, cc_p, ierr)
+  option => solution%option
+  grid => solution%grid
+  field => solution%field
+    
+  call VecGetArrayF90(field%var_loc,var_loc_p, ierr)
+  call VecGetArrayF90(field%pressure, p_p, ierr)
+  call VecGetArrayF90(field%temp, t_p, ierr)
+  call VecGetArrayF90(field%xmol, c_p, ierr)
+  call VecGetArrayF90(field%sat, s_p, ierr)
+  call VecGetArrayF90(field%conc, cc_p, ierr)
   
   size_var_node=(option%ndof+1)*(2+7*option%nphase +2*option%nphase*option%nspec)
   
@@ -250,41 +262,48 @@ subroutine translator_Richards_get_output(grid,option)
     s_p(jn) = var_loc_p(index_var_begin + 3) 
 
   enddo
-  call VecRestoreArrayF90(option%var_loc, var_loc_p, ierr)
-  call VecRestoreArrayF90(option%pressure, p_p, ierr)
-  call VecRestoreArrayF90(option%temp, t_p, ierr)
-  call VecRestoreArrayF90(option%xmol, c_p, ierr)
-  call VecRestoreArrayF90(option%sat, s_p, ierr)
-  call VecRestoreArrayF90(option%conc, cc_p, ierr)
+  call VecRestoreArrayF90(field%var_loc, var_loc_p, ierr)
+  call VecRestoreArrayF90(field%pressure, p_p, ierr)
+  call VecRestoreArrayF90(field%temp, t_p, ierr)
+  call VecRestoreArrayF90(field%xmol, c_p, ierr)
+  call VecRestoreArrayF90(field%sat, s_p, ierr)
+  call VecRestoreArrayF90(field%conc, cc_p, ierr)
  
 ! work only for 2 phases
 end subroutine translator_Richards_get_output
 
 
-subroutine translator_Ric_step_maxchange(option)
+subroutine translator_Ric_step_maxchange(solution)
 
+  use Solution_module
   use Option_module
+  use Field_module
   
   implicit none
   
-  type(option_type) :: option
+  type(solution_type) :: solution
   
-
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field  
+  
 ! PetscScalar, pointer :: xx_p(:),yy_p(:),iphase_p(:),var_p(:),iphase_old_p(:)
 ! real*8 :: dsm,dcm
 ! real*8 :: comp1,comp,cmp  
 ! real*8 :: dsm0,dcm0  
 ! integer :: n, j, n0
   integer :: ierr
+  
+  option => solution%option
+  field => solution%field
 
   option%dcmax=0.D0
   option%dsmax=0.D0
 
-  call VecWAXPY(option%dxx,-1.d0,option%xx,option%yy,ierr)
-  call VecStrideNorm(option%dxx,0,NORM_INFINITY,option%dpmax,ierr)
-  call VecStrideNorm(option%dxx,1,NORM_INFINITY,option%dtmpmax,ierr)
+  call VecWAXPY(field%dxx,-1.d0,field%xx,field%yy,ierr)
+  call VecStrideNorm(field%dxx,0,NORM_INFINITY,option%dpmax,ierr)
+  call VecStrideNorm(field%dxx,1,NORM_INFINITY,option%dtmpmax,ierr)
   if (option%ndof > 2) &
-    call VecStrideNorm(option%dxx,2,NORM_INFINITY,option%dcmax,ierr)
+    call VecStrideNorm(field%dxx,2,NORM_INFINITY,option%dcmax,ierr)
 
 !  if (grid%myrank == 0) &
 !    print *, 'ric max change',grid%dpmax,grid%dtmpmax,grid%dsmax,grid%dcmax
@@ -296,6 +315,7 @@ subroutine Translator_Richards_Switching(xx,solution,icri,ichange)
   use Solution_module
   use Grid_module
   use Option_module
+  use Field_module
   use water_eos_module
   use gas_eos_module  
     
@@ -307,7 +327,8 @@ subroutine Translator_Richards_Switching(xx,solution,icri,ichange)
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
-
+  type(field_type), pointer :: field
+  
   PetscScalar, pointer :: xx_p(:), yy_p(:),iphase_loc_p(:)
   integer :: n,n0,ipr
   integer :: ierr,iipha
@@ -323,11 +344,12 @@ subroutine Translator_Richards_Switching(xx,solution,icri,ichange)
 
   grid => solution%grid
   option => solution%option
+  field => solution%field
 
 ! mphase code need assemble 
   call VecGetArrayF90(xx, xx_p, ierr); CHKERRQ(ierr)
-  call VecGetArrayF90(option%yy, yy_p, ierr); CHKERRQ(ierr)
-  call VecGetArrayF90(option%iphas_loc, iphase_loc_p,ierr)
+  call VecGetArrayF90(field%yy, yy_p, ierr); CHKERRQ(ierr)
+  call VecGetArrayF90(field%iphas_loc, iphase_loc_p,ierr)
 
   ichange = 0
   do local_id = 1,grid%nlmax
@@ -540,9 +562,9 @@ subroutine Translator_Richards_Switching(xx,solution,icri,ichange)
   end do
 
   !print *,iphase_p
-  call VecRestoreArrayF90(option%iphas_loc, iphase_loc_p,ierr)
+  call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p,ierr)
   call VecRestoreArrayF90(xx, xx_p, ierr); CHKERRQ(ierr)
-  call VecRestoreArrayF90(option%yy, yy_p, ierr); CHKERRQ(ierr)
+  call VecRestoreArrayF90(field%yy, yy_p, ierr); CHKERRQ(ierr)
 
 end subroutine Translator_Richards_Switching
   

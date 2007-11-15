@@ -80,6 +80,7 @@
  
  use Solution_module
  use Option_module
+ use Field_module
  use Solver_module
  
  use translator_mph_module
@@ -107,10 +108,11 @@
  real*8 :: rnorm, epstol
 
  type(option_type), pointer :: option
+ type(field_type), pointer :: field
  type(solver_type), pointer :: solver 
 
  option => solution%option
- !grid => solution%grid
+ field => solution%field
   
  newton=0
  
@@ -119,26 +121,26 @@
    select case(option%imode)
 #if 0
    if(option%use_mph==PETSc_TRUE)then
- !    call Translator_MPhase_Switching(option%xx,grid,1,ichange)
-     call MPHASEResidual(option%snes,option%xx,option%r,grid,ierr)
+ !    call Translator_MPhase_Switching(field%xx,grid,1,ichange)
+     call MPHASEResidual(option%snes,field%xx,field%r,grid,ierr)
    endif
    if(option%use_vadose==PETSc_TRUE)then
-  !   call Translator_vadose_Switching(option%xx,grid,0,ichange)
-     call MPHASEResidual(option%snes,option%xx,option%r,grid,ierr)
+  !   call Translator_vadose_Switching(field%xx,grid,0,ichange)
+     call MPHASEResidual(option%snes,field%xx,field%r,grid,ierr)
    endif
 #endif
      case(RICHARDS_MODE)
-    !   call Translator_richards_Switching(option%xx,grid,0,ichange)
-       call RichardsResidual(option%snes,option%xx,option%r,solution,ierr)
+    !   call Translator_richards_Switching(field%xx,grid,0,ichange)
+       call RichardsResidual(option%snes,field%xx,field%r,solution,ierr)
 #if 0
    if(option%use_flash==PETSc_TRUE) then
-   !  call Translator_vadose_Switching(option%xx,grid,0,ichange)
-     call FLashResidual(option%snes,option%xx,option%r,grid,ierr)
+   !  call Translator_vadose_Switching(field%xx,grid,0,ichange)
+     call FLashResidual(option%snes,field%xx,field%r,grid,ierr)
    endif
 
    if(option%use_owg==PETSc_TRUE) then
-     call Translator_OWG_Switching(option%xx,option%tref,grid,1,ichange,ierr)
-     call OWGResidual(option%snes,option%xx,option%r,grid,ierr)
+     call Translator_OWG_Switching(field%xx,option%tref,grid,1,ichange,ierr)
+     call OWGResidual(option%snes,field%xx,field%r,grid,ierr)
    endif
 !  print *,' psolve; Get Res'
 #endif
@@ -153,7 +155,7 @@
   
        
            
-   call VecNorm(option%r,NORM_INFINITY,rnorm,ierr)
+   call VecNorm(field%r,NORM_INFINITY,rnorm,ierr)
    
    ! note now option%stol acts as convergence tolerance parameter 
    
@@ -170,24 +172,24 @@
     select case(option%imode)
 #if 0
     if(option%use_mph==PETSC_TRUE)then
-      call MPHASEJacobian(option%snes,option%xx,option%J,option%J,flag,grid,ierr)
+      call MPHASEJacobian(option%snes,field%xx,option%J,option%J,flag,grid,ierr)
     elseif(option%use_owg==PETSC_TRUE)then
-      call OWGJacobian(option%snes,option%xx,option%J,option%J,flag,grid,ierr)
+      call OWGJacobian(option%snes,field%xx,option%J,option%J,flag,grid,ierr)
     elseif(option%use_vadose==PETSC_TRUE)then
-      call VadoseJacobian(option%snes,option%xx,option%J,option%J,flag,grid,ierr)
+      call VadoseJacobian(option%snes,field%xx,option%J,option%J,flag,grid,ierr)
     elseif(option%use_flash==PETSC_TRUE)then
-      call FlashJacobian(option%snes,option%xx,option%J,option%J,flag,grid,ierr)
+      call FlashJacobian(option%snes,field%xx,option%J,option%J,flag,grid,ierr)
     elseif(option%use_richards==PETSC_TRUE)then
 #endif    
       case (RICHARDS_MODE)
-        call RichardsJacobian(option%snes,option%xx,option%J,option%J, &
+        call RichardsJacobian(option%snes,field%xx,option%J,option%J, &
                               flag,solution,ierr)
     end select
      
-    call VecScale(option%r,-1D0,ierr)
+    call VecScale(field%r,-1D0,ierr)
     call KSPSetOperators(option%ksp,option%J,option%J,SAME_NONZERO_PATTERN,ierr)
     
-    call KSPSolve(option%ksp, option%r,option%dxx,ierr)
+    call KSPSolve(option%ksp, field%r,field%dxx,ierr)
     call KSPGetConvergedReason(option%ksp,ksp_reason,ierr)
     call KSPGetIterationNumber(option%ksp,its_line,ierr)
 
@@ -205,8 +207,8 @@
        
 
   !---update solution after successful Newton-Raphson iteration
-      call VecAXPY(option%xx,1.d0,option%dxx,ierr)
-  !    call MPhase_Update(option%xx,grid,1,ichange)
+      call VecAXPY(field%xx,1.d0,field%dxx,ierr)
+  !    call MPhase_Update(field%xx,grid,1,ichange)
   enddo
 ! print *,'Finished ksp', newton
   end subroutine pflow_solve

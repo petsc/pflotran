@@ -62,13 +62,7 @@ module Option_module
     PetscTruth :: use_isoth
     PetscTruth :: use_debug
     PetscTruth :: print_bcinfo
-    
-#if 0
-      ! If true, print the value of h at the end of each SNES iteration.
-    PetscTruth :: use_liquid, use_cond, use_th, use_thc, use_2ph, &
-    use_mph, use_ksp, use_owg, use_vadose, use_flash
-    PetscTruth :: use_isoth, use_debug, use_richards 
-#endif     
+      
     ! If run_coupled == PETSC_TRUE, then some parts of ptran_init 
     ! will not be executed, since they are made redundant by 
     ! pflowGrid_new() and pflowGrid_setup().
@@ -76,14 +70,7 @@ module Option_module
 
     real*8 :: time  ! The time elapsed in the simulation.
     real*8 :: dt ! The size of the time step.
-#if 0
-! moved to timestepper
-    real*8 :: dt_min  ! Maximum size of the time step.
-    real*8 :: dt_max  ! Maximum size of the time step.
-    real*8 :: tconv ! Input time conversion factor
-    character*2 :: tunit ! Input time units
-    real*8, pointer :: tstep(:), dtstep(:)
-#endif    
+  
 !    real*8, pointer :: tplot(:)
     real*8, pointer :: tfac(:)
       ! An array of multiplicative factors that specify how to increase time step.
@@ -93,15 +80,7 @@ module Option_module
     integer :: itecplot = 0 ! tecplot print format (1-interchange x and z)
     integer :: iblkfmt = 0 ! blocked format
     integer :: isync = 0  ! Synchronize pflow and ptran time steps (1)
-#if 0
-! moved to timestepper
-    integer :: ndtcmx = 5 ! Steps needed after cutting to increase time step
-    integer :: newtcum    ! Total number of Newton steps taken.
-    integer :: icutcum    ! Total number of cuts in the timestep taken.
-    integer :: newton_max ! Max number of Newton steps for one time step.
-    integer :: icut_max   ! Max number of dt cuts for one time step.
-    integer :: iaccel
-#endif    
+  
     integer :: iphch
     integer :: iread_init = 0 ! flag for reading initial conditions.
       ! Basically our target number of newton iterations per time step.
@@ -113,6 +92,7 @@ module Option_module
 
     integer*4, pointer :: iperm1(:), iperm2(:), ipermbc(:)
 
+#if 0
     real*8, pointer :: density_bc(:),d_p_bc(:),d_t_bc(:), d_s_bc(:),d_c_bc(:),&
                        avgmw_bc(:),avgmw_c_bc(:),&
                        hh_bc(:),h_p_bc(:),h_t_bc(:),h_s_bc(:), h_c_bc(:), &
@@ -123,34 +103,9 @@ module Option_module
                        pc_bc(:),pc_p_bc(:),pc_t_bc(:),pc_s_bc(:),pc_c_bc(:), &
                        kvr_bc(:),kvr_p_bc(:),kvr_t_bc(:),kvr_s_bc(:),kvr_c_bc(:)
     real*8, pointer :: xphi_co2(:),xxphi_co2(:),den_co2(:), dden_co2(:)
-    
-    ! Boundary conditions (BC's)
-    integer*4 :: nblkbc
-      ! The number of "blocks" of boundary conditions that are defined.
-      ! Such a block is a specification of a set of boundary conditions.
-      ! This set of boundary conditions can apply to any number of regions,
-      ! so nblkbc does NOT equal the number of boundary condition regions.
-!    integer*4 :: nconnbc  ! The number of interfaces along boundaries.
-!GEH - Structured Grid Dependence - Begin
-    integer*4, pointer :: i1bc(:), i2bc(:), j1bc(:), j2bc(:), k1bc(:), k2bc(:)
-!GEH - Structured Grid Dependence - End
-!geh - now in grid
-!    integer*4, pointer :: ibconn(:)
-      ! ibconn(nc) specifies the id of the of boundary condition block that
-      ! applies at boundary interface nc.  
-!no longer needed    integer*4, pointer :: ibndtyp(:)
-      ! ibndtyp(ibc) specifies the type of boundary condition that applies
-      ! for boundary condition block ibc.
-!    integer*4, pointer :: iface(:)
-      ! iface(ibc) specifies the face (left, right, top, bottom, etc.) on
-      ! which BC block ibc lies.
-!    integer*4, pointer :: mblkbc(:)
-      ! mblkbc(nc) gives the local, non-ghosted index of the cell that has
-      ! boundary connection nc.
-!    integer*4, pointer :: iregbc1(:), iregbc2(:)
-      ! iregbc1(ibc) and iregbc2(ibc) give the id of the first region and 
-      ! last region, respectively, that utilizes the boundary conditions in 
-      ! boundary condition block ibc.
+#endif    
+
+#if 0
     real*8, pointer :: pressurebc(:,:)
       ! For a Dirichlet BC, pressurebc(j,ibc) gives the partial pressure 
       ! for phase j along the BC block ibc.
@@ -160,13 +115,7 @@ module Option_module
     real*8, pointer :: tempbc(:),concbc(:),sgbc(:),xphi_co2_bc(:),xxphi_co2_bc(:)
     real*8, pointer :: xxbc(:,:), varbc(:)
     integer, pointer:: iphasebc(:)
-
-    !block BC values read from input
-    real*8, pointer :: pressurebc0(:,:)
-    real*8, pointer :: velocitybc0(:,:)
-    real*8, pointer :: tempbc0(:),concbc0(:),sgbc0(:)
-    real*8, pointer :: xxbc0(:,:)
-    integer, pointer:: iphasebc0(:)  
+#endif
 
     integer :: iran_por=0, iread_perm=0, iread_geom =1
     real*8 :: ran_fac=-1.d0
@@ -209,7 +158,7 @@ module Option_module
     ! NOTE: I adopt the convention that _loc indicates the local portion
     ! of any global vector.
     !-------------------------------------------------------------------
-
+#if 0
     ! One degree of freedom: Physical coordinates.
     Vec :: porosity0, porosity_loc, tor_loc
     Vec :: ithrm_loc, icap_loc, iphas_loc, iphas_old_loc
@@ -273,7 +222,7 @@ module Option_module
     Vec :: r             ! The residual.  (NOT the negative of the residual.)
 
     Vec :: vl, vvl, vg, vvg ! phase (liquid and gas) velocities stored at interfaces
-
+#endif
 
  
     real*8, pointer :: vl_loc(:), vvl_loc(:), vg_loc(:), vvg_loc(:)
@@ -281,7 +230,9 @@ module Option_module
     real*8, pointer :: rtot(:,:),rate(:),area_var(:), delx(:,:)
 
     ! Solution vectors
+#if 0    
     Vec :: xx, xx_loc, dxx, yy, accum
+#endif    
         ! Jacobian matrix
     Mat :: J
     MatFDColoring :: matfdcoloring
@@ -398,10 +349,6 @@ function OptionCreate()
 
   ! default brine concentrations
   option%m_nacl = 0.d0
-  
-  ! nullify PetscVecs
-  option%conc = 0
-  option%xmol = 0
   
   OptionCreate => option
   

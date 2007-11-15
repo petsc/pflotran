@@ -7,6 +7,7 @@ module Solution_module
   use Coupler_module
   use Material_module
   use Strata_module
+  use Field_module
 
   implicit none
 
@@ -18,6 +19,7 @@ private
 
     type(grid_type), pointer :: grid
     type(option_type), pointer :: option
+    type(field_type), pointer :: field
     type(output_option_type), pointer :: output_option
     type(region_list_type), pointer :: regions
     type(condition_list_type), pointer :: conditions
@@ -56,6 +58,7 @@ function SolutionCreate()
   
   allocate(solution)
   solution%option => OptionCreate()
+  solution%field => FieldCreate()
   solution%output_option => OutputOptionCreate()
   nullify(solution%grid)
   allocate(solution%regions)
@@ -213,9 +216,11 @@ subroutine SolutionInitBoundConditions(solution)
   integer :: num_connections
   
   type(option_type), pointer :: option
+  type(field_type), pointer :: field
   type(coupler_type), pointer :: boundary_condition
     
   option => solution%option
+  field => solution%field
     
   ! sum the number of connections among all boundary conditions
   num_connections = 0
@@ -232,27 +237,27 @@ subroutine SolutionInitBoundConditions(solution)
 
     case(MPH_MODE,FLASH_MODE,RICHARDS_MODE,OWG_MODE,VADOSE_MODE)
   
-      allocate(option%xxbc(option%ndof,num_connections))
-      allocate(option%iphasebc(num_connections))
-      allocate(option%velocitybc(option%nphase,num_connections))
-      option%xxbc = 0.d0
-      option%iphasebc = 0
-      option%velocitybc = 0.d0
+      allocate(field%xxbc(option%ndof,num_connections))
+      allocate(field%iphasebc(num_connections))
+      allocate(field%velocitybc(option%nphase,num_connections))
+      field%xxbc = 0.d0
+      field%iphasebc = 0
+      field%velocitybc = 0.d0
   
     case default
     
-      allocate(option%pressurebc(option%nphase,num_connections))
-      allocate(option%tempbc(num_connections))
-      allocate(option%sgbc(num_connections))
-      allocate(option%concbc(num_connections))
-      allocate(option%velocitybc(option%nphase,num_connections))
-      allocate(option%iphasebc(num_connections))
-      option%pressurebc = 0.d0
-      option%tempbc = 0.d0
-      option%concbc = 0.d0
-      option%sgbc = 0.d0
-      option%velocitybc = 0.d0
-      option%iphasebc = 0
+      allocate(field%pressurebc(option%nphase,num_connections))
+      allocate(field%tempbc(num_connections))
+      allocate(field%sgbc(num_connections))
+      allocate(field%concbc(num_connections))
+      allocate(field%velocitybc(option%nphase,num_connections))
+      allocate(field%iphasebc(num_connections))
+      field%pressurebc = 0.d0
+      field%tempbc = 0.d0
+      field%concbc = 0.d0
+      field%sgbc = 0.d0
+      field%velocitybc = 0.d0
+      field%iphasebc = 0
 
   end select 
   
@@ -276,9 +281,11 @@ subroutine SolutionUpdateBoundConditions(solution)
   integer :: icell, idof, count
   
   type(option_type), pointer :: option
+  type(field_type), pointer :: field
   type(coupler_type), pointer :: boundary_condition
     
   option => solution%option
+  field => solution%field
  
   boundary_condition => solution%boundary_conditions%first
  
@@ -293,14 +300,14 @@ subroutine SolutionUpdateBoundConditions(solution)
   
         do icell=1,boundary_condition%region%num_cells
           count = count + 1
-          option%iphasebc(count) = boundary_condition%condition%iphase
+          field%iphasebc(count) = boundary_condition%condition%iphase
           do idof=1,option%ndof
             select case(boundary_condition%condition%itype(idof))
               case(DIRICHLET_BC)
-                option%xxbc(idof,count) = &
+                field%xxbc(idof,count) = &
                   boundary_condition%condition%cur_value(idof)
               case(NEUMANN_BC)
-                option%velocitybc(1:option%nphase,count) = &
+                field%velocitybc(1:option%nphase,count) = &
                   boundary_condition%condition%cur_value(idof)
             end select
           enddo
@@ -310,15 +317,15 @@ subroutine SolutionUpdateBoundConditions(solution)
 
         do icell=1,boundary_condition%region%num_cells
           count = count + 1
-          option%iphasebc(count) = boundary_condition%condition%iphase
+          field%iphasebc(count) = boundary_condition%condition%iphase
           if (boundary_condition%condition%itype(1) == DIRICHLET_BC) then
-            option%pressurebc(:,count) = boundary_condition%condition%cur_value(1)
+            field%pressurebc(:,count) = boundary_condition%condition%cur_value(1)
           else
-            option%velocitybc(:,count) = boundary_condition%condition%cur_value(1)
+            field%velocitybc(:,count) = boundary_condition%condition%cur_value(1)
           endif
-          option%tempbc(icell) = boundary_condition%condition%cur_value(2)
-          option%concbc(icell) = boundary_condition%condition%cur_value(3)
-          option%sgbc(icell) = 1.d0-boundary_condition%condition%cur_value(4) ! read in as sl
+          field%tempbc(icell) = boundary_condition%condition%cur_value(2)
+          field%concbc(icell) = boundary_condition%condition%cur_value(3)
+          field%sgbc(icell) = 1.d0-boundary_condition%condition%cur_value(4) ! read in as sl
         enddo
 
     end select 
@@ -343,9 +350,11 @@ subroutine SolutionInitSrcSinks(solution)
   integer :: num_connections
   
   type(option_type), pointer :: option
+  type(field_type), pointer :: field
   type(coupler_type), pointer :: source_sink
     
   option => solution%option
+  field => solution%field
     
   ! sum the number of connections among all boundary conditions
   num_connections = 0
@@ -362,27 +371,27 @@ subroutine SolutionInitSrcSinks(solution)
 
     case(MPH_MODE,FLASH_MODE,RICHARDS_MODE,OWG_MODE,VADOSE_MODE)
   
-      allocate(option%xxbc(option%ndof,num_connections))
-      allocate(option%iphasebc(num_connections))
-      allocate(option%velocitybc(option%nphase,num_connections))
-      option%xxbc = 0.d0
-      option%iphasebc = 0
-      option%velocitybc = 0.d0
+      allocate(field%xxbc(option%ndof,num_connections))
+      allocate(field%iphasebc(num_connections))
+      allocate(field%velocitybc(option%nphase,num_connections))
+      field%xxbc = 0.d0
+      field%iphasebc = 0
+      field%velocitybc = 0.d0
   
     case default
     
-      allocate(option%pressurebc(option%nphase,num_connections))
-      allocate(option%tempbc(num_connections))
-      allocate(option%sgbc(num_connections))
-      allocate(option%concbc(num_connections))
-      allocate(option%velocitybc(option%nphase,num_connections))
-      allocate(option%iphasebc(num_connections))
-      option%pressurebc = 0.d0
-      option%tempbc = 0.d0
-      option%concbc = 0.d0
-      option%sgbc = 0.d0
-      option%velocitybc = 0.d0
-      option%iphasebc = 0
+      allocate(field%pressurebc(option%nphase,num_connections))
+      allocate(field%tempbc(num_connections))
+      allocate(field%sgbc(num_connections))
+      allocate(field%concbc(num_connections))
+      allocate(field%velocitybc(option%nphase,num_connections))
+      allocate(field%iphasebc(num_connections))
+      field%pressurebc = 0.d0
+      field%tempbc = 0.d0
+      field%concbc = 0.d0
+      field%sgbc = 0.d0
+      field%velocitybc = 0.d0
+      field%iphasebc = 0
 
   end select 
   
@@ -406,9 +415,11 @@ subroutine SolutionUpdateSrcSinks(solution)
   integer :: icell, idof, count
   
   type(option_type), pointer :: option
+  type(field_type), pointer :: field  
   type(coupler_type), pointer :: source_sink
     
   option => solution%option
+  field => solution%field
  
   source_sink => solution%source_sinks%first
  
@@ -423,14 +434,14 @@ subroutine SolutionUpdateSrcSinks(solution)
   
         do icell=1,source_sink%region%num_cells
           count = count + 1
-          option%iphasebc(count) = source_sink%condition%iphase
+          field%iphasebc(count) = source_sink%condition%iphase
           do idof=1,option%ndof
             select case(source_sink%condition%itype(idof))
               case(DIRICHLET_BC)
-                option%xxbc(idof,count) = &
+                field%xxbc(idof,count) = &
                   source_sink%condition%cur_value(idof)
               case(NEUMANN_BC)
-                option%velocitybc(1:option%nphase,count) = &
+                field%velocitybc(1:option%nphase,count) = &
                   source_sink%condition%cur_value(idof)
             end select
           enddo
@@ -440,15 +451,15 @@ subroutine SolutionUpdateSrcSinks(solution)
 
         do icell=1,source_sink%region%num_cells
           count = count + 1
-          option%iphasebc(count) = source_sink%condition%iphase
+          field%iphasebc(count) = source_sink%condition%iphase
           if (source_sink%condition%itype(1) == DIRICHLET_BC) then
-            option%pressurebc(:,count) = source_sink%condition%cur_value(1)
+            field%pressurebc(:,count) = source_sink%condition%cur_value(1)
           else
-            option%velocitybc(:,count) = source_sink%condition%cur_value(1)
+            field%velocitybc(:,count) = source_sink%condition%cur_value(1)
           endif
-          option%tempbc(icell) = source_sink%condition%cur_value(2)
-          option%concbc(icell) = source_sink%condition%cur_value(3)
-          option%sgbc(icell) = 1.d0-source_sink%condition%cur_value(4) ! read in as sl
+          field%tempbc(icell) = source_sink%condition%cur_value(2)
+          field%concbc(icell) = source_sink%condition%cur_value(3)
+          field%sgbc(icell) = 1.d0-source_sink%condition%cur_value(4) ! read in as sl
         enddo
 
     end select 
@@ -456,54 +467,6 @@ subroutine SolutionUpdateSrcSinks(solution)
   enddo
 
 end subroutine SolutionUpdateSrcSinks
-
-#if 0
-! NO LONGER NEEDED
-! ************************************************************************** !
-!
-! SolutionSetIBNDTYPE: Sets values in ibndtyp array
-! ibndtyp needs to be done away with!!!!
-! author: Glenn Hammond
-! date: 11/06/07
-!
-! ************************************************************************** !
-subroutine SolutionSetIBNDTYPE(solution)
-
-  implicit none
-  
-  type(solution_type) :: solution
-  
-  integer :: count, num_conditions
-  
-  type(option_type), pointer :: option
-  type(grid_type), pointer :: grid
-  type(coupler_type), pointer :: boundary_condition
-    
-  option => solution%option
-  grid => solution%grid
-
-  num_conditions = 0
-  boundary_condition => solution%boundary_conditions%first
-  do
-    if (.not.associated(boundary_condition)) exit
-    num_conditions = num_conditions + 1
-    boundary_condition => boundary_condition%next
-  enddo
-    
-  allocate(option%ibndtyp(num_conditions))
-  option%ibndtyp = 0
-    
-  count = 0
-  boundary_condition => solution%boundary_conditions%first
-  do
-    if (.not.associated(boundary_condition)) exit
-    count = count + 1
-    option%ibndtyp(count) = boundary_condition%condition%itype(1)  ! hardwired to dof=1 (pressure)
-    boundary_condition => boundary_condition%next
-  enddo
-
-end subroutine SolutionSetIBNDTYPE
-#endif
 
 ! ************************************************************************** !
 !
@@ -592,6 +555,7 @@ subroutine SolutionDestroy(solution)
   if (.not.associated(solution)) return
     
   call GridDestroy(solution%grid)
+  call FieldDestroy(solution%field)
   call OptionDestroy(solution%option)
   call RegionDestroyList(solution%regions)
   call ConditionDestroyList(solution%conditions)

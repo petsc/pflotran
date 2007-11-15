@@ -337,6 +337,7 @@ subroutine StepperStepDT(solution,stepper,plot_flag,timestep_cut_flag, &
   use Grid_module
   use Option_module
   use Solver_module
+  use Field_module
   
   implicit none
 
@@ -362,10 +363,12 @@ subroutine StepperStepDT(solution,stepper,plot_flag,timestep_cut_flag, &
 
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
+  type(field_type), pointer :: field  
   type(solver_type), pointer :: solver
 
   option => solution%option
   grid => solution%grid
+  field => solution%field
   solver => stepper%solver
 
 ! real*8, pointer :: xx_p(:), conc_p(:), press_p(:), temp_p(:)
@@ -380,11 +383,11 @@ subroutine StepperStepDT(solution,stepper,plot_flag,timestep_cut_flag, &
   ! vector, as that needs to be done within the residual calculation routine
   ! because that routine may get called several times during one Newton step
   ! if a method such as line search is being used.
-  call GridLocalToLocal(grid,option%porosity_loc,option%porosity_loc,ONEDOF)
-  call GridLocalToLocal(grid,option%tor_loc,option%tor_loc,ONEDOF)
-  call GridLocalToLocal(grid,option%icap_loc,option%icap_loc,ONEDOF)
-  call GridLocalToLocal(grid,option%ithrm_loc,option%ithrm_loc,ONEDOF)
-  call GridLocalToLocal(grid,option%iphas_loc,option%iphas_loc,ONEDOF)
+  call GridLocalToLocal(grid,field%porosity_loc,field%porosity_loc,ONEDOF)
+  call GridLocalToLocal(grid,field%tor_loc,field%tor_loc,ONEDOF)
+  call GridLocalToLocal(grid,field%icap_loc,field%icap_loc,ONEDOF)
+  call GridLocalToLocal(grid,field%ithrm_loc,field%ithrm_loc,ONEDOF)
+  call GridLocalToLocal(grid,field%iphas_loc,field%iphas_loc,ONEDOF)
 
   option%time = option%time + option%dt
   stepper%flowsteps = stepper%flowsteps + 1
@@ -436,51 +439,51 @@ subroutine StepperStepDT(solution,stepper,plot_flag,timestep_cut_flag, &
     option%iphch=0
     select case(option%imode)
       case(COND_MODE)
-        call SNESSolve(option%snes, PETSC_NULL, option%ttemp, ierr)
+        call SNESSolve(option%snes, PETSC_NULL, field%ttemp, ierr)
       case(TH_MODE)
-        call SNESSolve(option%snes, PETSC_NULL, option%xx, ierr)
+        call SNESSolve(option%snes, PETSC_NULL, field%xx, ierr)
       case(THC_MODE)
-        call SNESSolve(option%snes, PETSC_NULL, option%xx, ierr)
+        call SNESSolve(option%snes, PETSC_NULL, field%xx, ierr)
       case(TWOPH_MODE)
-     ! call  TTPhase_Update(option%xx,grid)
-        call SNESSolve(option%snes, PETSC_NULL, option%xx, ierr)
+     ! call  TTPhase_Update(field%xx,grid)
+        call SNESSolve(option%snes, PETSC_NULL, field%xx, ierr)
       case(MPH_MODE)
         if (option%use_ksp == PETSC_TRUE) then
           call pflow_solve(solution,num_newton_iterations, &
                            stepper%newton_max,snes_reason,ierr)
         else 
-          call SNESSolve(option%snes, PETSC_NULL, option%xx, ierr)
+          call SNESSolve(option%snes, PETSC_NULL, field%xx, ierr)
         endif
       case(RICHARDS_MODE)
         if (option%use_ksp == PETSC_TRUE) then
           call pflow_solve(solution,num_newton_iterations, &
                            stepper%newton_max,snes_reason,ierr)
         else 
-          call SNESSolve(option%snes, PETSC_NULL, option%xx, ierr)
+          call SNESSolve(option%snes, PETSC_NULL, field%xx, ierr)
         endif
       case(FLASH_MODE)
         if (option%use_ksp == PETSC_TRUE) then
           call pflow_solve(solution,num_newton_iterations, &
                            stepper%newton_max,snes_reason,ierr)
         else 
-          call SNESSolve(option%snes, PETSC_NULL, option%xx, ierr)
+          call SNESSolve(option%snes, PETSC_NULL, field%xx, ierr)
         endif
       case(VADOSE_MODE)
         if (option%use_ksp == PETSC_TRUE) then
           call pflow_solve(solution,num_newton_iterations, &
                            stepper%newton_max,snes_reason,ierr)
         else 
-          call SNESSolve(option%snes, PETSC_NULL, option%xx, ierr)
+          call SNESSolve(option%snes, PETSC_NULL, field%xx, ierr)
         endif
       case(OWG_MODE)
         if (option%use_ksp == PETSC_TRUE) then
           call pflow_solve(solution,num_newton_iterations, &
                            stepper%newton_max,snes_reason,ierr)
         else 
-          call SNESSolve(option%snes,PETSC_NULL, option%xx, ierr)
+          call SNESSolve(option%snes,PETSC_NULL, field%xx, ierr)
         endif
       case default
-        call SNESSolve(option%snes,PETSC_NULL, option%ppressure, ierr)
+        call SNESSolve(option%snes,PETSC_NULL, field%ppressure, ierr)
     end select
 
   ! print *,'pflow_step, finish SNESSolve'
@@ -489,8 +492,8 @@ subroutine StepperStepDT(solution,stepper,plot_flag,timestep_cut_flag, &
       call SNESGetIterationNumber(option%snes,num_newton_iterations, ierr)
       it_snes = num_newton_iterations
 !     call SNESGetFunctionNorm(option%snes,r2norm, ierr)
-      call VecNorm(option%r, NORM_2, r2norm, ierr) 
-      call VecGetArrayF90(option%r, r_p, ierr)
+      call VecNorm(field%r, NORM_2, r2norm, ierr) 
+      call VecGetArrayF90(field%r, r_p, ierr)
       
       s_r2norm = 0.D0 ; norm_inf = -1.D0 ; nmax_inf =-1
       do n=1, grid%nlmax
@@ -500,7 +503,7 @@ subroutine StepperStepDT(solution,stepper,plot_flag,timestep_cut_flag, &
             nmax_inf = grid%nL2A(n)
          endif     
       enddo 
-     call VecRestoreArrayF90(option%r, r_p, ierr)
+     call VecRestoreArrayF90(field%r, r_p, ierr)
      
       if(option%commsize >1)then 
       call MPI_REDUCE(s_r2norm, s_r2norm0,1, MPI_DOUBLE_PRECISION ,MPI_SUM,0, PETSC_COMM_WORLD,ierr)
@@ -583,7 +586,7 @@ subroutine StepperStepDT(solution,stepper,plot_flag,timestep_cut_flag, &
           print *,"Stopping execution!"
         endif
         plot_flag = .true.
- !       call pflow_output(grid%ppressure,option%ttemp,grid%conc,grid%phis,grid%porosity, &
+ !       call pflow_output(grid%ppressure,field%ttemp,grid%conc,grid%phis,grid%porosity, &
  !       grid%perm_xx, grid%perm_yy, grid%perm_zz, &
  !       grid%porosity, grid%sat, grid%vl, &
  !       grid%c_nat,grid%vl_nat,grid%p_nat,option%t_nat,grid%s_nat,grid%phis_nat,grid%por_nat, &
@@ -616,8 +619,8 @@ subroutine StepperStepDT(solution,stepper,plot_flag,timestep_cut_flag, &
 
       if (option%ndof == 1) then
         ! VecCopy(x,y): y=x
-        call VecCopy(option%pressure, option%ppressure, ierr)
-        call VecCopy(option%temp, option%ttemp, ierr)
+        call VecCopy(field%pressure, field%ppressure, ierr)
+        call VecCopy(field%temp, field%ttemp, ierr)
       else
         select case(option%imode)
 #if 0        
@@ -635,11 +638,11 @@ subroutine StepperStepDT(solution,stepper,plot_flag,timestep_cut_flag, &
             call pflow_vadose_timecut(grid)
           case default
             call VecCopy(grid%h, grid%hh, ierr)
-            call VecCopy(grid%yy, option%xx, ierr)
+            call VecCopy(grid%yy, field%xx, ierr)
             call VecCopy(grid%density, grid%ddensity, ierr)
 #endif            
         end select
-        call VecCopy(option%iphas_old_loc, option%iphas_loc, ierr)
+        call VecCopy(field%iphas_old_loc, field%iphas_loc, ierr)
       endif
 
     else
@@ -678,8 +681,8 @@ subroutine StepperStepDT(solution,stepper,plot_flag,timestep_cut_flag, &
 #if 0
   if (option%ndof == 1 .and. option%use_cond == PETSC_TRUE) then
   
-    call VecWAXPY(option%dp,-1.d0,option%ttemp,option%temp,ierr)
-    call VecStrideNorm(option%dp,0,NORM_INFINITY,option%dpmax,ierr)
+    call VecWAXPY(field%dp,-1.d0,field%ttemp,field%temp,ierr)
+    call VecStrideNorm(field%dp,0,NORM_INFINITY,option%dpmax,ierr)
     if (option%myrank==0) then
       if (mod(stepper%flowsteps,option%imod) == 0) then
         write(*,'("  --> max chng: dTmx= ",1pe12.4)') option%dpmax
@@ -689,19 +692,19 @@ subroutine StepperStepDT(solution,stepper,plot_flag,timestep_cut_flag, &
     
   else if (option%ndof == 2 .and. option%use_th == PETSC_TRUE) then
   
-    call VecWAXPY(option%dxx,-1.d0,option%xx,option%yy,ierr)
-!   call VecAbs(option%dxx,ierr)
-!   call VecMax(option%dxx,option%idxxmax,option%dxxmax,ierr)
-!   call VecStrideMax(option%dxx,1,PETSC_NULL,option%dxxmax,ierr)
-    call VecStrideNorm(option%dxx,0,NORM_INFINITY,option%dpmax,ierr)
-    call VecStrideNorm(option%dxx,1,NORM_INFINITY,option%dtmpmax,ierr)
-!   call VecStrideNorm(option%dxx,2,NORM_INFINITY,option%dcmax,ierr)
+    call VecWAXPY(field%dxx,-1.d0,field%xx,field%yy,ierr)
+!   call VecAbs(field%dxx,ierr)
+!   call VecMax(field%dxx,option%idxxmax,field%dxxmax,ierr)
+!   call VecStrideMax(field%dxx,1,PETSC_NULL,field%dxxmax,ierr)
+    call VecStrideNorm(field%dxx,0,NORM_INFINITY,option%dpmax,ierr)
+    call VecStrideNorm(field%dxx,1,NORM_INFINITY,option%dtmpmax,ierr)
+!   call VecStrideNorm(field%dxx,2,NORM_INFINITY,option%dcmax,ierr)
 !   n = option%idxxmax/option%ndof+1
 !   kz = n/grid%nxy+1
 !   jy = n/grid%nx+1 - (kz-1)*grid%ny
 !   ix = n - (jy-1)*grid%nx - (kz-1)*grid%nxy
 !   j = option%idxxmax - (n-1)*option%ndof
-!   if (option%myrank==0) print *,'  --> max chng: ',option%idxxmax,option%dxxmax, &
+!   if (option%myrank==0) print *,'  --> max chng: ',option%idxxmax,field%dxxmax, &
 !     ' @ node ',ix,jy,kz,j,option%ndof,grid%nx,grid%nxy
     if (option%myrank==0) then
       if (mod(stepper%flowsteps,option%imod) == 0 .or. stepper%flowsteps == 1) then
@@ -714,19 +717,19 @@ subroutine StepperStepDT(solution,stepper,plot_flag,timestep_cut_flag, &
     
   else if (option%ndof == 3 .and. option%use_thc == PETSC_TRUE) then
   
-    call VecWAXPY(option%dxx,-1.d0,option%xx,option%yy,ierr)
-!   call VecAbs(option%dxx,ierr)
-!   call VecMax(option%dxx,option%idxxmax,option%dxxmax,ierr)
-!   call VecStrideMax(option%dxx,1,PETSC_NULL,option%dxxmax,ierr)
-    call VecStrideNorm(option%dxx,0,NORM_INFINITY,option%dpmax,ierr)
-    call VecStrideNorm(option%dxx,1,NORM_INFINITY,option%dtmpmax,ierr)
-    call VecStrideNorm(option%dxx,2,NORM_INFINITY,option%dcmax,ierr)
+    call VecWAXPY(field%dxx,-1.d0,field%xx,field%yy,ierr)
+!   call VecAbs(field%dxx,ierr)
+!   call VecMax(field%dxx,option%idxxmax,field%dxxmax,ierr)
+!   call VecStrideMax(field%dxx,1,PETSC_NULL,field%dxxmax,ierr)
+    call VecStrideNorm(field%dxx,0,NORM_INFINITY,option%dpmax,ierr)
+    call VecStrideNorm(field%dxx,1,NORM_INFINITY,option%dtmpmax,ierr)
+    call VecStrideNorm(field%dxx,2,NORM_INFINITY,option%dcmax,ierr)
 !   n = option%idxxmax/option%ndof+1
 !   kz = n/grid%nxy+1
 !   jy = n/grid%nx+1 - (kz-1)*grid%ny
 !   ix = n - (jy-1)*grid%nx - (kz-1)*grid%nxy
 !   j = option%idxxmax - (n-1)*option%ndof
-!   if (option%myrank==0) print *,'  --> max chng: ',option%idxxmax,option%dxxmax, &
+!   if (option%myrank==0) print *,'  --> max chng: ',option%idxxmax,field%dxxmax, &
 !     ' @ node ',ix,jy,kz,j,option%ndof,grid%nx,grid%nxy
     if (option%myrank==0) then
       if (mod(stepper%flowsteps,option%imod) == 0 .or. stepper%flowsteps == 1) then
@@ -741,11 +744,11 @@ subroutine StepperStepDT(solution,stepper,plot_flag,timestep_cut_flag, &
     
   else if (option%ndof == 4 .and. option%use_2ph == PETSC_TRUE) then
   
-    call VecWAXPY(option%dxx,-1.d0,option%xx,option%yy,ierr)
-    call VecStrideNorm(option%dxx,0,NORM_INFINITY,option%dpmax,ierr)
-    call VecStrideNorm(option%dxx,1,NORM_INFINITY,option%dtmpmax,ierr)
-    call VecStrideNorm(option%dxx,2,NORM_INFINITY,option%dcmax,ierr)
-    call VecStrideNorm(option%dxx,3,NORM_INFINITY,option%dsmax,ierr)
+    call VecWAXPY(field%dxx,-1.d0,field%xx,field%yy,ierr)
+    call VecStrideNorm(field%dxx,0,NORM_INFINITY,option%dpmax,ierr)
+    call VecStrideNorm(field%dxx,1,NORM_INFINITY,option%dtmpmax,ierr)
+    call VecStrideNorm(field%dxx,2,NORM_INFINITY,option%dcmax,ierr)
+    call VecStrideNorm(field%dxx,3,NORM_INFINITY,option%dsmax,ierr)
     if (option%myrank==0) then
       if (mod(stepper%flowsteps,option%imod) == 0 .or. stepper%flowsteps == 1) then
         write(*,'("  --> max chng: dpmx= ",1pe12.4, &
@@ -776,7 +779,7 @@ subroutine StepperStepDT(solution,stepper,plot_flag,timestep_cut_flag, &
   else if (option%use_richards == PETSC_TRUE) then
 #endif
   if (option%imode == RICHARDS_MODE) then
-     call translator_ric_step_maxchange(option)
+     call translator_ric_step_maxchange(solution)
     if (option%myrank==0) then
       if (mod(stepper%flowsteps,option%imod) == 0 .or. stepper%flowsteps == 1) then
         write(*,'("  --> max chng: dpmx= ",1pe12.4, &
@@ -839,10 +842,10 @@ subroutine StepperStepDT(solution,stepper,plot_flag,timestep_cut_flag, &
     
   else ! use_liquid
   
-    call VecWAXPY(option%dp,-1.d0,option%ppressure,option%pressure,ierr)
-!   call VecAbs(option%dp,ierr)
-!   call VecMax(option%dp,idpmax,dpmax,ierr)
-    call VecStrideNorm(option%dp,0,NORM_INFINITY,option%dpmax,ierr)
+    call VecWAXPY(field%dp,-1.d0,field%ppressure,field%pressure,ierr)
+!   call VecAbs(field%dp,ierr)
+!   call VecMax(field%dp,idpmax,dpmax,ierr)
+    call VecStrideNorm(field%dp,0,NORM_INFINITY,option%dpmax,ierr)
     if (option%myrank==0) then
       if (mod(stepper%flowsteps,option%imod) == 0 .or. stepper%flowsteps == 1) then
         write(*,'("  --> max chng: dpmx= ",1pe12.4)') option%dpmax
@@ -888,6 +891,7 @@ subroutine StepperUpdateSolution(solution)
 
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
+  type(field_type), pointer :: field
   
   integer :: ierr
   integer*4 m, n
@@ -895,12 +899,13 @@ subroutine StepperUpdateSolution(solution)
   
   option => solution%option
   grid => solution%grid
+  field => solution%field
   
 ! update solution vector and physical properties (VecCopy(x,y): y=x)
   if (option%ndof == 1) then
-    call VecCopy(option%ppressure, option%pressure, ierr)
-    call VecCopy(option%ttemp, option%temp, ierr)
-    call VecCopy(option%ddensity, option%density, ierr)
+    call VecCopy(field%ppressure, field%pressure, ierr)
+    call VecCopy(field%ttemp, field%temp, ierr)
+    call VecCopy(field%ddensity, field%density, ierr)
   else
     if (option%ndof <= 3 .and. &
         option%imode /= MPH_MODE .and. &
@@ -908,9 +913,9 @@ subroutine StepperUpdateSolution(solution)
         option%imode /= VADOSE_MODE .and. &
         option%imode /= FLASH_MODE .and. &
         option%imode /= RICHARDS_MODE) then
-      call VecCopy(option%xx, option%yy, ierr)
-      call VecCopy(option%hh, option%h, ierr)
-      call VecCopy(option%ddensity, option%density, ierr)
+      call VecCopy(field%xx, field%yy, ierr)
+      call VecCopy(field%hh, field%h, ierr)
+      call VecCopy(field%ddensity, field%density, ierr)
      ! if (option%use_thc == PETSC_TRUE) call recondition_bc(grid)
     endif    
   endif
@@ -933,38 +938,38 @@ subroutine StepperUpdateSolution(solution)
       call pflow_update_2phase(grid)  
     case default
       if (option%ndof > 1) then
-        call VecGetArrayF90(option%xx, xx_p, ierr)
+        call VecGetArrayF90(field%xx, xx_p, ierr)
         call VecGetArrayF90(grid%pressure, press_p, ierr)
-        call VecGetArrayF90(option%temp, temp_p, ierr)
+        call VecGetArrayF90(field%temp, temp_p, ierr)
         if (option%ndof == 3) call VecGetArrayF90(grid%conc, conc_p, ierr)
         do m = 1, grid%nlmax
           press_p(m) = xx_p(1+(m-1)*option%ndof)
           temp_p(m) = xx_p(2+(m-1)*option%ndof)
           if (option%ndof == 3) conc_p(m) = xx_p(3+(m-1)*option%ndof)
         enddo
-        call VecRestoreArrayF90(option%xx, xx_p, ierr)
+        call VecRestoreArrayF90(field%xx, xx_p, ierr)
         call VecRestoreArrayF90(grid%pressure, press_p, ierr)
-        call VecRestoreArrayF90(option%temp, temp_p, ierr)
+        call VecRestoreArrayF90(field%temp, temp_p, ierr)
         if (option%ndof == 3) call VecRestoreArrayF90(grid%conc, conc_p, ierr)
 #endif        
   end select    
 
   if (option%run_coupled == PETSC_TRUE) then
-    option%xphi_co2 = option%xxphi_co2
-    option%den_co2=option%dden_co2
+    field%xphi_co2 = field%xxphi_co2
+    field%den_co2 = field%dden_co2
   endif
   
   !integrate solid volume fraction using explicit finite difference
   if (option%rk > 0.d0) then
-    call VecGetArrayF90(option%phis,phis_p,ierr)
+    call VecGetArrayF90(field%phis,phis_p,ierr)
     do n = 1, grid%nlmax
       phis_p(n) = phis_p(n) + option%dt * option%vbars * option%rate(n)
       if (phis_p(n) < 0.d0) phis_p(n) = 0.d0
-      option%area_var(n) = (phis_p(n)/option%phis0)**option%pwrsrf
+      option%area_var(n) = (phis_p(n)/field%phis0)**option%pwrsrf
       
 !     print *,'update: ',n,phis_p(n),option%rate(n),grid%area_var(n)
     enddo
-    call VecRestoreArrayF90(option%phis,phis_p,ierr)
+    call VecRestoreArrayF90(field%phis,phis_p,ierr)
   endif
   
   ! update solutoin variables
