@@ -235,7 +235,7 @@ subroutine SolutionInitBoundConditions(solution)
   ! allocate arrays that match the number of connections
   select case(option%imode)
 
-    case(MPH_MODE,FLASH_MODE,RICHARDS_MODE,OWG_MODE,VADOSE_MODE)
+    case(FLASH_MODE,RICHARDS_MODE,OWG_MODE,VADOSE_MODE)
   
       allocate(field%xxbc(option%ndof,num_connections))
       allocate(field%iphasebc(num_connections))
@@ -243,7 +243,16 @@ subroutine SolutionInitBoundConditions(solution)
       field%xxbc = 0.d0
       field%iphasebc = 0
       field%velocitybc = 0.d0
-  
+
+    case(MPH_MODE)
+      allocate(field%xxbc(option%ndof,num_connections))
+      allocate(field%iphasebc(num_connections))
+      allocate(field%velocitybc(option%nphase,num_connections))
+      allocate(field%xxphi_co2_bc(num_connections))
+      field%xxbc = 0.d0
+      field%iphasebc = 0
+      field%velocitybc = 0.d0  
+      field%xxphi_co2_bc = 0.d0
     case default
     
       allocate(field%pressurebc(option%nphase,num_connections))
@@ -365,7 +374,9 @@ subroutine SolutionInitSrcSinks(solution)
                       source_sink%connection%num_connections
     source_sink => source_sink%next
   enddo
-  
+
+#if 0  
+! these arrays are for boundary conditions, not src/sinks
   ! allocate arrays that match the number of connections
   select case(option%imode)
 
@@ -394,7 +405,7 @@ subroutine SolutionInitSrcSinks(solution)
       field%iphasebc = 0
 
   end select 
-  
+#endif  
   call SolutionUpdateSrcSinks(solution)
 
 end subroutine SolutionInitSrcSinks

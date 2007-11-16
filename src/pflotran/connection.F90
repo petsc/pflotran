@@ -40,7 +40,7 @@ module Connection_module
 
   public :: ConnectionCreate, ConnectionAddToList, &
             ConnectionAllocateLists, &
-            ConnectionGetInternalConnList, ConnectionGetBoundaryConnList, &
+   !         ConnectionGetInternalConnList, ConnectionGetBoundaryConnList, &
             ConnectionGetNumInternalConnect, ConnectionGetNumBoundaryConnect, &
             ConnectionInitList, ConnectionDestroyList, ConnectionDestroy
   

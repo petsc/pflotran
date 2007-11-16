@@ -100,7 +100,7 @@ function ConditionCreate(option)
   
   allocate(condition%units(option%ndof+2))
   select case(option%imode)
-    case(RICHARDS_MODE)
+    case(RICHARDS_MODE,MPH_MODE)
       condition%units(1) = 'yr'
       condition%units(2) = 'm'
       condition%units(3) = 'Pa'
@@ -149,7 +149,7 @@ subroutine ConditionRead(condition,option,fid)
   
   ! need to set up indices for potential data contained in condition
   select case(option%imode)
-    case(RICHARDS_MODE)
+    case(RICHARDS_MODE,MPH_MODE)
       pres_index = 1
       temp_index = 2
       conc_index = 3
@@ -332,7 +332,7 @@ subroutine ConditionRead(condition,option,fid)
   condition%max_time_index = max_size
   
   select case(option%imode)
-    case(RICHARDS_MODE)
+    case(RICHARDS_MODE,MPH_MODE)
       if (.not.associated(enthalpy)) then
         max_index = max_index-1
         max_dof = max_dof-1

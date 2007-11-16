@@ -739,7 +739,7 @@ end function StructGridComputeInternConnect
 !                                   structured grid
 ! author: Glenn Hammond
 ! date: 10/15/07
-!
+! DEPRECATED!!!!!!!!!!!!!!!!!!!!!!
 ! ************************************************************************** !
 function StructGridComputeBoundConnOld(structured_grid,option,ibconn,nL2G)
 
@@ -854,40 +854,40 @@ function StructGridComputeBoundConnOld(structured_grid,option,ibconn,nL2G)
         
               select case(structured_grid%igeom)
                 case(STRUCTURED_CARTESIAN) ! cartesian
-                  if (option%iface(ibc) == 1) then
+                  if (option%iface(ibc) == 1) then  ! west
                     connections%dist(:,iconn) = 0.d0
                     connections%dist(0,iconn) = 0.5d0*dx_loc_p(cell_id_ghosted)
                     connections%dist(1,iconn) = 1.d0
                     connections%area(iconn) = dy_loc_p(cell_id_ghosted)* &
                                               dz_loc_p(cell_id_ghosted)
-                  else if (option%iface(ibc) == 2) then
+                  else if (option%iface(ibc) == 2) then ! east
                     connections%dist(:,iconn) = 0.d0
                     connections%dist(0,iconn) = 0.5d0*dx_loc_p(cell_id_ghosted)
-                    connections%dist(1,iconn) = 1.d0
+                    connections%dist(1,iconn) = -1.d0
                     connections%area(iconn) = dy_loc_p(cell_id_ghosted)* &
                                               dz_loc_p(cell_id_ghosted)
-                  else if (option%iface(ibc) == 3) then
+                  else if (option%iface(ibc) == 3) then ! top
                     connections%dist(:,iconn) = 0.d0
                     connections%dist(0,iconn) = 0.5d0*dz_loc_p(cell_id_ghosted)
-                    connections%dist(3,iconn) = 1.d0
+                    connections%dist(3,iconn) = 1.d0  
                     connections%area(iconn) = dx_loc_p(cell_id_ghosted)* &
                                               dy_loc_p(cell_id_ghosted)
-                  else if (option%iface(ibc) == 4) then
+                  else if (option%iface(ibc) == 4) then ! bottom
                     connections%dist(:,iconn) = 0.d0
                     connections%dist(0,iconn) = 0.5d0*dz_loc_p(cell_id_ghosted)
-                    connections%dist(3,iconn) = 1.d0
+                    connections%dist(3,iconn) = 1.d0 
                     connections%area(iconn) = dx_loc_p(cell_id_ghosted)* &
                                               dy_loc_p(cell_id_ghosted)
-                  else if (option%iface(ibc) == 5) then
+                  else if (option%iface(ibc) == 5) then ! front
                     connections%dist(:,iconn) = 0.d0
                     connections%dist(0,iconn) = 0.5d0*dy_loc_p(cell_id_ghosted)
                     connections%dist(2,iconn) = 1.d0
                     connections%area(iconn) = dx_loc_p(cell_id_ghosted)* &
                                               dz_loc_p(cell_id_ghosted)
-                  else if (option%iface(ibc) == 6) then
+                  else if (option%iface(ibc) == 6) then ! back
                     connections%dist(:,iconn) = 0.d0
                     connections%dist(0,iconn) = 0.5d0*dy_loc_p(cell_id_ghosted)
-                    connections%dist(2,iconn) = 1.d0
+                    connections%dist(2,iconn) = -1.d0
                     connections%area(iconn) = dx_loc_p(cell_id_ghosted)* &
                                               dz_loc_p(cell_id_ghosted)
                   endif
@@ -917,11 +917,11 @@ end function StructGridComputeBoundConnOld
 
 ! ************************************************************************** !
 !
-! StructGridComputeBoundConnect2: computes boundary connectivity of a 
+! StructGridComputeBoundConnect: computes boundary connectivity of a 
 !                               structured grid
 ! author: Glenn Hammond
 ! date: 11/01/07
-!
+! DEPRECATED!!!!!!!!!!!!!!!!!!!!!!
 ! ************************************************************************** !
 function StructGridComputeBoundConnect(structured_grid,option,ibconn,nL2G, &
                                        boundary_conditions)
@@ -1021,7 +1021,7 @@ function StructGridComputeBoundConnect(structured_grid,option,ibconn,nL2G, &
               connections%dist(0,iconn) = 0.5d0*dz_loc_p(cell_id_ghosted)
               connections%area(iconn) = dx_loc_p(cell_id_ghosted)* &
                                         dy_loc_p(cell_id_ghosted)
-              if (boundary_condition%iface ==  BOTTOM) then
+              if (boundary_condition%iface ==  TOP) then ! this will become BOTTOM when z-axis is inverted.
                 connections%dist(3,iconn) = 1.d0
               else
                 connections%dist(3,iconn) = -1.d0
@@ -1110,7 +1110,7 @@ subroutine StructGridPopulateConnection(structured_grid,coupler,connection, &
               connection%dist(0,iconn) = 0.5d0*dz_loc_p(cell_id_ghosted)
               connection%area(iconn) = dx_loc_p(cell_id_ghosted)* &
                                         dy_loc_p(cell_id_ghosted)
-              if (coupler%iface ==  BOTTOM) then
+              if (coupler%iface ==  TOP) then ! this will become BOTTOM when z-axis is inverted.
                 connection%dist(3,iconn) = 1.d0
               else
                 connection%dist(3,iconn) = -1.d0

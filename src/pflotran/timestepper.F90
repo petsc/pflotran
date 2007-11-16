@@ -551,8 +551,10 @@ subroutine StepperStepDT(solution,stepper,plot_flag,timestep_cut_flag, &
 #if 0      
         case(TWOPH_MODE)
           call TTPhase_Update_Reason(update_reason,solution)
+#endif          
         case(MPH_MODE)
           call MPhase_Update_Reason(update_reason,solution)
+#if 0          
         case(FLASH_MODE)
           call flash_Update_Reason(update_reason,solution)
         case(VADOSE_MODE)
@@ -626,13 +628,15 @@ subroutine StepperStepDT(solution,stepper,plot_flag,timestep_cut_flag, &
 #if 0        
           case(OWG_MODE)
             call pflow_owg_timecut(grid)
-          case(MPH_MODE)
-            call pflow_mphase_timecut(grid)
+#endif            
+#if 0            
           case(FLASH_MODE)
             call pflow_flash_timecut(grid)
 #endif            
           case(RICHARDS_MODE)
             call pflow_richards_timecut(solution)
+          case(MPH_MODE)
+            call pflow_mphase_timecut(solution)
 #if 0            
           case(VADOSE_MODE)
             call pflow_vadose_timecut(grid)
@@ -760,23 +764,6 @@ subroutine StepperStepDT(solution,stepper,plot_flag,timestep_cut_flag, &
           option%dpmax,option%dtmpmax,option%dcmax,option%dsmax
       endif
     endif
-
-  else if (option%use_mph == PETSC_TRUE) then
-     call translator_mph_step_maxchange(grid)
-    ! note use mph will use variable switching, the x and s change is not meaningful 
-    if (option%myrank==0) then
-      if (mod(stepper%flowsteps,option%imod) == 0 .or. stepper%flowsteps == 1) then
-        write(*,'("  --> max chng: dpmx= ",1pe12.4, &
-          & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4," dsmx= ",1pe12.4)') &
-          option%dpmax,option%dtmpmax,option%dcmax,option%dsmax
-        
-        write(IUNIT2,'("  --> max chng: dpmx= ",1pe12.4, &
-          & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4," dsmx= ",1pe12.4)') &
-          option%dpmax,option%dtmpmax,option%dcmax,option%dsmax
-      endif
-    endif
-
-  else if (option%use_richards == PETSC_TRUE) then
 #endif
   if (option%imode == RICHARDS_MODE) then
      call translator_ric_step_maxchange(solution)
@@ -789,6 +776,20 @@ subroutine StepperStepDT(solution,stepper,plot_flag,timestep_cut_flag, &
         write(IUNIT2,'("  --> max chng: dpmx= ",1pe12.4, &
           & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4)') &
           option%dpmax,option%dtmpmax,option%dcmax
+      endif
+    endif
+  else if (option%imode == MPH_MODE) then
+     call translator_mph_step_maxchange(solution)
+    ! note use mph will use variable switching, the x and s change is not meaningful 
+    if (option%myrank==0) then
+      if (mod(stepper%flowsteps,option%imod) == 0 .or. stepper%flowsteps == 1) then
+        write(*,'("  --> max chng: dpmx= ",1pe12.4, &
+          & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4," dsmx= ",1pe12.4)') &
+          option%dpmax,option%dtmpmax,option%dcmax,option%dsmax
+        
+        write(IUNIT2,'("  --> max chng: dpmx= ",1pe12.4, &
+          & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4," dsmx= ",1pe12.4)') &
+          option%dpmax,option%dtmpmax,option%dcmax,option%dsmax
       endif
     endif
 #if 0
@@ -872,7 +873,7 @@ subroutine StepperUpdateSolution(solution)
   
   use pflow_vector_ops_module
   use TTPHASE_module
-  use MPHASE_module
+  use MPHASE_module, only: pflow_update_mphase
   use Flash_module
   use OWG_module
   use Vadose_module
@@ -924,9 +925,9 @@ subroutine StepperUpdateSolution(solution)
 #if 0  
     case(OWG_MODE)
       call pflow_update_owg(grid)
-    case(MPH_MODE)
-      call pflow_update_mphase(grid)
 #endif      
+    case(MPH_MODE)
+      call pflow_update_mphase(solution)
     case(RICHARDS_MODE)
       call pflow_update_richards(solution)
 #if 0      

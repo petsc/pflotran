@@ -184,6 +184,7 @@ function OptionCreate()
   
   option%mode = ""
   option%imode = NULL_MODE
+  option%idt_switch = 0
    
   option%run_coupled = PETSC_FALSE
   

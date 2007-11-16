@@ -31,7 +31,6 @@ module Solver_module
     real*8 :: inf_tol    ! infinity tolerance
     integer :: maxit     ! maximum number of iterations
     integer :: maxf      ! maximum number of function evaluations
-    integer :: idt_switch
     
         ! Jacobian matrix
     Mat :: J
@@ -77,7 +76,6 @@ function SolverCreate()
   solver%stol = PETSC_DEFAULT_DOUBLE_PRECISION
   solver%maxit = PETSC_DEFAULT_INTEGER
   solver%maxf = PETSC_DEFAULT_INTEGER
-  solver%idt_switch = 0
   
   solver%J = 0
   solver%matfdcoloring = 0

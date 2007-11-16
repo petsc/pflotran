@@ -1307,7 +1307,7 @@ subroutine ReadStructuredGridHDF5(grid)
                              filename, option_found, ierr)
  
   ! grab connection object
-  connection_list => ConnectionGetInternalConnList()
+  !connection_list => grid%internal_connection_list
   cur_connection_object => connection_list%first
   
   ! create hash table for fast lookup

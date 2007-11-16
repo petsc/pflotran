@@ -46,7 +46,7 @@ subroutine PflowInit(simulation,filename)
   use Field_module
 
   use span_wagner_module
-!  use MPHASE_module
+  use MPHASE_module
   use Richards_module
   use pflow_convergence_module
   use pflow_solv_module 
@@ -484,10 +484,6 @@ subroutine PflowInit(simulation,filename)
       case(TWOPH_MODE)
         call SNESSetJacobian(solver%snes, solver%J, solver%J, TTPHASEJacobian, &
                            grid, ierr); CHKERRQ(ierr)
-      case(MPH_MODE)
-        call SNESSetJacobian(solver%snes, solver%J, solver%J, MPHASEJacobian, &
-                           grid, ierr); CHKERRQ(ierr)
-        if (option%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(grid)
       case(FLASH_MODE)
         call SNESSetJacobian(solver%snes, solver%J, solver%J, FlashJacobian, &
                            grid, ierr); CHKERRQ(ierr)
@@ -499,6 +495,10 @@ subroutine PflowInit(simulation,filename)
 #endif
       case(RICHARDS_MODE)
         call SNESSetJacobian(solver%snes, solver%J, solver%J, RichardsJacobian, &
+                             solution, ierr); CHKERRQ(ierr)
+        if (option%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(solution,solver)
+      case(MPH_MODE)
+        call SNESSetJacobian(solver%snes, solver%J, solver%J, MPHASEJacobian, &
                              solution, ierr); CHKERRQ(ierr)
         if (option%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(solution,solver)
 #if 0      
@@ -588,9 +588,6 @@ subroutine PflowInit(simulation,filename)
       case(TWOPH_MODE)
         call MatFDColoringSetFunctionSNES(solver%matfdcoloring, &
                                           TTPHASEResidual,option, ierr)
-      case(MPH_MODE)
-        call MatFDColoringSetFunctionSNES(solver%matfdcoloring, &
-                                          MPHASEResidual,option, ierr)
       case(FLASH_MODE)
         call MatFDColoringSetFunctionSNES(solver%matfdcoloring, &
                                           FlashResidual,option, ierr)
@@ -601,6 +598,9 @@ subroutine PflowInit(simulation,filename)
       case(RICHARDS_MODE)
         call MatFDColoringSetFunctionSNES(solver%matfdcoloring, &
                                           RichardsResidual,option, ierr)
+      case(MPH_MODE)
+        call MatFDColoringSetFunctionSNES(solver%matfdcoloring, &
+                                          MPHASEResidual,option, ierr)
 #if 0                                          
     ! need to be implemented
       case(OWG_MODE)
@@ -633,8 +633,6 @@ subroutine PflowInit(simulation,filename)
       call SNESSetFunction(solver%snes,field%r,THCResidual,solution,ierr)
     case(TWOPH_MODE)
       call SNESSetFunction(solver%snes,field%r,TTPHASEResidual,solution,ierr)
-    case(MPH_MODE)
-      call SNESSetFunction(solver%snes,field%r,MPHASEResidual,solution,ierr)
     case(FLASH_MODE)
       call SNESSetFunction(solver%snes,field%r,FlashResidual,solution,ierr)
     case(VADOSE_MODE)
@@ -642,6 +640,8 @@ subroutine PflowInit(simulation,filename)
 #endif      
     case(RICHARDS_MODE)
       call SNESSetFunction(solver%snes,field%r,RichardsResidual,solution,ierr)
+    case(MPH_MODE)
+      call SNESSetFunction(solver%snes,field%r,MPHASEResidual,solution,ierr)
 #if 0 
     ! need to be implemented     
     case(OWG_MODE)
@@ -822,12 +822,6 @@ subroutine PflowInit(simulation,filename)
       print *, "2 ph finish variable packing"      
       call VecCopy(grid%yy, grid%xx, ierr)
       call pflow_update_2phase(grid)
-    case(MPH_MODE)
-      call pflow_mphase_initadj(grid)
-      call VecCopy(grid%iphas, grid%iphas_old,ierr)
-      call VecCopy(grid%xx, grid%yy, ierr)
-!     print *, "m ph finish variable packing"
-      call pflow_update_mphase(grid)
 #endif
     case(RICHARDS_MODE)
       call pflow_richards_initadj(solution)
@@ -836,6 +830,12 @@ subroutine PflowInit(simulation,filename)
 !geh      call VecView(field%xx,PETSC_VIEWER_STDOUT_WORLD,ierr)
       if (option%myrank == 0) print *, "richards finish variable packing"
       call pflow_update_richards(solution)
+    case(MPH_MODE)
+      call pflow_mphase_initadj(solution)
+      call VecCopy(field%iphas_loc, field%iphas_old_loc,ierr)
+      call VecCopy(field%xx, field%yy, ierr)
+!     print *, "m ph finish variable packing"
+      call pflow_update_mphase(solution)
 #if 0
     ! still need implementation
     case(FLASH_MODE)
@@ -897,7 +897,7 @@ subroutine readSelectCardsFromInput(solution,filename,mcomp,mphas)
   integer :: ierr
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
-  character(len=MAXNAMELENGTH) :: name
+  character(len=MAXWORDLENGTH) :: name
   character(len=MAXCARDLENGTH) :: card
   
   type(grid_type), pointer :: grid
@@ -1720,7 +1720,7 @@ subroutine readInput(simulation,filename)
         call fiReadInt(string,solver%maxf,ierr)
         call fiDefaultMsg('maxf',ierr)
        
-        call fiReadInt(string,solver%idt_switch,ierr)
+        call fiReadInt(string,option%idt_switch,ierr)
         call fiDefaultMsg('idt',ierr)
         
         solver%inf_tol = solver%atol
@@ -1737,7 +1737,7 @@ subroutine readInput(simulation,filename)
           &"  idt         = ",8x,i5 &
           &    )') &
            solver%atol,solver%rtol,solver%stol,solver%dtol,solver%maxit, &
-           solver%maxf,solver%idt_switch
+           solver%maxf,option%idt_switch
 
 ! The line below is a commented-out portion of the format string above.
 ! We have to put it here because of the stupid Sun compiler.
@@ -2959,6 +2959,7 @@ subroutine assignInitialConditions(solution)
   use Coupler_module
   use Condition_module
   
+  use MPHASE_module, only : pflow_mphase_setupini
   use Richards_module, only : pflow_Richards_setupini
 
   implicit none
@@ -2982,15 +2983,15 @@ subroutine assignInitialConditions(solution)
   field => solution%field
     
   select case(option%imode)
-#if 0
   ! needs to be implemented
-    case(MPH_MODE)
-      call pflow_mphase_setupini(solution)
+#if 0
     case(FLASH_MODE)
       call pflow_flash_setupini(solution)
 #endif  
     case(RICHARDS_MODE)
       call pflow_richards_setupini(solution)
+    case(MPH_MODE)
+      call pflow_mphase_setupini(solution)
 #if 0
   ! needs to be implemented
     case(OWG_MODE)

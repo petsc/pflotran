@@ -125,7 +125,7 @@ subroutine pflow_mphase_setupini(solution)
   type(coupler_type), pointer :: initial_condition
   
   PetscScalar, pointer :: xx_p(:), iphase_loc_p(:)
-  integer :: iln,na,nx,ny,nz,ir,ierr
+  integer local_id, ghosted_id, ibegin, iend, icell, ierr  
   
   grid => solution%grid
   option => solution%option
@@ -143,31 +143,25 @@ subroutine pflow_mphase_setupini(solution)
   call VecGetArrayF90(field%xx, xx_p, ierr); CHKERRQ(ierr)
   call VecGetArrayF90(field%iphas_loc, iphase_loc_p,ierr)
   
-#if 0    
-  do iln=1, grid%nlmax
-    na = grid%nL2A(iln)
+  initial_condition => solution%initial_conditions%first
+  
+  do
+  
+    if (.not.associated(initial_condition)) exit
     
-!   nz = int(na/option%nxy) + 1
-!   ny = int(mod(na,option%nxy)/option%nx) + 1
-!   nx = mod(mod(na,option%nxy),option%nx) + 1
-    
-    !compute i,j,k indices from na: note-na starts at 0
-    nz = na/option%nxy + 1
-    ny = (na - (nz-1)*option%nxy)/option%nx + 1
-    nx = na + 1 - (ny-1)*option%nx - (nz-1)*option%nxy
-    
-!   print *,'pflow_mphase_resjac: ',na,nx,ny,nz
-    do ir = 1,option%iregini
-      if ((nz>=option%k1ini(ir)) .and. (nz<=option%k2ini(ir)) .and.&
-          (ny>=option%j1ini(ir)) .and. (ny<=option%j2ini(ir)) .and.&
-          (nx>= option%i1ini(ir)) .and. (nx<=option%i2ini(ir)))then
-        iphase_loc_p(iln) = field%iphas_ini(ir)
-        xx_p(1+(iln-1)*option%ndof: iln*option%ndof) = field%xx_ini(:,ir)
-       !exit
-      endif
-    enddo 
+    do icell=1,initial_condition%region%num_cells
+      local_id = initial_condition%region%cell_ids(icell)
+      ghosted_id = grid%nL2G(local_id)
+      iend = local_id*option%ndof
+      ibegin = iend-option%ndof+1
+      xx_p(ibegin:iend) = &
+        initial_condition%condition%cur_value(1:option%ndof)
+      iphase_loc_p(ghosted_id)=initial_condition%condition%iphase
+    enddo
+  
+    initial_condition => initial_condition%next
+  
   enddo
-#endif    
               
   call VecRestoreArrayF90(field%xx, xx_p, ierr)
   call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p,ierr)
@@ -376,7 +370,7 @@ subroutine MPHASERes_ARCont(node_no, var_node,por,vol,rock_dencpr, option, &
   eng = eng * pvol + (1.D0 - por)* vol * rock_dencpr * temp 
   
 ! Reaction terms here
-  if(iireac>0)then
+  if (option%run_coupled == PETSC_TRUE .and. iireac>0) then
 !   H2O
     mol(1)= mol(1) - option%dt * option%rtot(node_no,1)
 !   CO2
@@ -870,6 +864,7 @@ subroutine MPHASEResidual(snes,xx,r,solution,ierr)
   real*8 :: Res(solution%option%ndof), vv_darcy(solution%option%nphase)
  
 ! real*8 :: cond, den,
+  PetscViewer :: viewer
 
   ! Connection variables
   
@@ -970,21 +965,21 @@ subroutine MPHASEResidual(snes,xx,r,solution,ierr)
 
     select case (iiphase)
       case (1)
-        if(xx_loc_p((ghosted_id-1)*option%ndof+3) < 5D-5)then
+        if(xx_loc_p((ghosted_id-1)*option%ndof+3) < .8)then
           option%delx(3,ghosted_id) =  dfac*xx_loc_p((ghosted_id-1)*option%ndof+3)
         else
           option%delx(3,ghosted_id) = -dfac*xx_loc_p((ghosted_id-1)*option%ndof+3) 
         endif
-        if(option%delx(3,ghosted_id) < 1D-8 .and. option%delx(3,ghosted_id)>=0.D0)option%delx(3,ghosted_id) =1D-8
-        if(option%delx(3,ghosted_id) >-1D-8 .and. option%delx(3,ghosted_id)<0.D0)option%delx(3,ghosted_id) =-1D-8
+        if(option%delx(3,ghosted_id) < 1D-9 .and. option%delx(3,ghosted_id)>=0.D0)option%delx(3,ghosted_id) =1D-9
+        if(option%delx(3,ghosted_id) >-1D-9 .and. option%delx(3,ghosted_id)<0.D0)option%delx(3,ghosted_id) =-1D-9
       case(2)  
-        if(xx_loc_p((ghosted_id-1)*option%ndof+3) <0.9995)then
+        if(xx_loc_p((ghosted_id-1)*option%ndof+3) <0.8)then
           option%delx(3,ghosted_id) =  dfac*xx_loc_p((ghosted_id-1)*option%ndof+3) 
         else
           option%delx(3,ghosted_id) = -dfac*xx_loc_p((ghosted_id-1)*option%ndof+3) 
         endif 
-        if(option%delx(3,ghosted_id) < 1D-8 .and. option%delx(3,ghosted_id)>=0.D0)option%delx(3,ghosted_id) =1D-8
-        if(option%delx(3,ghosted_id) >-1D-8 .and. option%delx(3,ghosted_id)<0.D0)option%delx(3,ghosted_id) =-1D-8
+        if(option%delx(3,ghosted_id) < 1D-9 .and. option%delx(3,ghosted_id)>=0.D0)option%delx(3,ghosted_id) =1D-9
+        if(option%delx(3,ghosted_id) >-1D-9 .and. option%delx(3,ghosted_id)<0.D0)option%delx(3,ghosted_id) =-1D-9
       case(3)
         if(xx_loc_p((ghosted_id-1)*option%ndof+3) <=0.9)then
           option%delx(3,ghosted_id) = dfac*xx_loc_p((ghosted_id-1)*option%ndof+3) 
@@ -992,14 +987,14 @@ subroutine MPHASEResidual(snes,xx,r,solution,ierr)
           option%delx(3,ghosted_id) = -dfac*xx_loc_p((ghosted_id-1)*option%ndof+3) 
         endif 
         
-        if(option%delx(3,ghosted_id) < 1D-12 .and. option%delx(3,ghosted_id)>=0.D0)option%delx(3,ghosted_id) = 1D-12
-        if(option%delx(3,ghosted_id) >-1D-12 .and. option%delx(3,ghosted_id)<0.D0)option%delx(3,ghosted_id) =-1D-12
+        if(option%delx(3,ghosted_id) < 1D-9 .and. option%delx(3,ghosted_id)>=0.D0)option%delx(3,ghosted_id) = 1D-9
+        if(option%delx(3,ghosted_id) >-1D-9 .and. option%delx(3,ghosted_id)<0.D0)option%delx(3,ghosted_id) =-1D-9
         
         if((option%delx(3,ghosted_id)+xx_loc_p((ghosted_id-1)*option%ndof+3))>1.D0)then
-          option%delx(3,ghosted_id) = (1.D0-xx_loc_p((ghosted_id-1)*option%ndof+3))*1D-6
+          option%delx(3,ghosted_id) = (1.D0-xx_loc_p((ghosted_id-1)*option%ndof+3))/1D5
         endif
         if((option%delx(3,ghosted_id)+xx_loc_p((ghosted_id-1)*option%ndof+3))<0.D0)then
-          option%delx(3,ghosted_id) = xx_loc_p((ghosted_id-1)*option%ndof+3)*1D-6
+          option%delx(3,ghosted_id) = xx_loc_p((ghosted_id-1)*option%ndof+3)/1D5
         endif
     end select
 !#endif
@@ -1059,8 +1054,8 @@ subroutine MPHASEResidual(snes,xx,r,solution,ierr)
     endif
        
     if (iiphase == 3) then
-      option%delx(3,ghosted_id) = -1.e-8
-      if (xx_loc_p((ghosted_id-1)*option%ndof+3) <= 0.01) option%delx(3,ghosted_id) = 1.e-8
+      option%delx(3,ghosted_id) = -1.d-8
+      if (xx_loc_p((ghosted_id-1)*option%ndof+3) <= 0.01) option%delx(3,ghosted_id) = 1.d-8
     endif
 #endif
   enddo
@@ -1357,7 +1352,7 @@ subroutine MPHASEResidual(snes,xx,r,solution,ierr)
 ! option%iupstream = 0; option%iupstreambc = 0
 
   ! loop over internal connections
-  connection_list => ConnectionGetInternalConnList()
+  connection_list => grid%internal_connection_list
   cur_connection_object => connection_list%first
   do 
     if (.not.associated(cur_connection_object)) exit
@@ -1488,7 +1483,7 @@ subroutine MPHASEResidual(snes,xx,r,solution,ierr)
               perm_yy_loc_p(ghosted_id)*abs(cur_connection_object%dist(2,iconn))+ &
               perm_zz_loc_p(ghosted_id)*abs(cur_connection_object%dist(3,iconn))
       ! The below assumes a unit gravity vector of [0,0,1]
-      distance_gravity = abs(cur_connection_object%dist(3,iconn)) * &
+      distance_gravity = cur_connection_object%dist(3,iconn) * &
                          cur_connection_object%dist(0,iconn)
 
       select case(boundary_condition%condition%itype(1))
@@ -1643,6 +1638,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,solution,ierr)
   integer :: ip1, ip2 
   integer :: p1,p2 
   real*8 :: dum1, dum2
+  PetscViewer :: viewer
 
   PetscScalar, pointer :: porosity_loc_p(:), volume_p(:), &
                xx_loc_p(:), phis_p(:), tor_loc_p(:),&
@@ -1761,7 +1757,6 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,solution,ierr)
     enddo
   enddo
 
-! Source / Sink term
 #ifdef DEBUG_GEH_ALL  
  call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
  call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
@@ -1769,6 +1764,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,solution,ierr)
  call MatView(A,viewer,ierr)
  call PetscViewerDestroy(viewer,ierr)
 #endif
+! Source / Sink term
 #if 0
   do nr = 1, option%nblksrc
       
@@ -1918,7 +1914,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,solution,ierr)
               perm_yy_loc_p(ghosted_id)*abs(cur_connection_object%dist(2,iconn))+ &
               perm_zz_loc_p(ghosted_id)*abs(cur_connection_object%dist(3,iconn))
       ! The below assumes a unit gravity vector of [0,0,1]
-      distance_gravity = abs(cur_connection_object%dist(3,iconn)) * &
+      distance_gravity = cur_connection_object%dist(3,iconn) * &
                          cur_connection_object%dist(0,iconn)
        
       delxbc=0.D0
@@ -2004,16 +2000,8 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,solution,ierr)
       enddo
 
     enddo
-    cur_connection_object => cur_connection_object%next
+    boundary_condition => boundary_condition%next
   enddo
-
-#ifdef DEBUG_GEH_ALL  
- call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
- call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
- call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian2.out',viewer,ierr)
- call MatView(A,viewer,ierr)
- call PetscViewerDestroy(viewer,ierr)
-#endif
 
   do local_id= 1, grid%nlmax
     ra=0.D0
@@ -2077,6 +2065,14 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,solution,ierr)
   enddo
 !   print *,' Mph Jaco Finished one node terms'
 ! -----------------------------contribution from transport----------------------
+#ifdef DEBUG_GEH_ALL  
+ call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
+ call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
+ call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian2.out',viewer,ierr)
+ call MatView(A,viewer,ierr)
+ call PetscViewerDestroy(viewer,ierr)
+#endif
+
 
  !print *,'phase cond: ',iphase_loc_p
   ResInc=0.D0
@@ -2150,7 +2146,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,solution,ierr)
                               distance_gravity,upweight, &
                               option, vv_darcy,Res)
 
-        ra(:,nvar)= Res(:)/option%delx(nvar,ghosted_id_up)-ResOld_FL(iconn,:)/option%delx(nvar,ghosted_id_up)
+        ra(:,nvar)= Res(:)/option%delx(nvar,ghosted_id_up)-ResOld_FL(sum_connection,:)/option%delx(nvar,ghosted_id_up)
 
 !     if(vv_darcy(1)>0.D0 .and. option%iupstream(sum_connection,1) == -1) i_upstream_revert =1 
 !     if(vv_darcy(1)<0.D0 .and. option%iupstream(sum_connection,1) == 1)  i_upstream_revert =1
@@ -2172,7 +2168,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,solution,ierr)
                               distance_gravity,upweight, &
                               option, vv_darcy,Res)
  
-        ra(:,nvar+option%ndof)= Res(:)/option%delx(nvar,ghosted_id_dn)-ResOld_FL(iconn,:)/option%delx(nvar,ghosted_id_dn)
+        ra(:,nvar+option%ndof)= Res(:)/option%delx(nvar,ghosted_id_dn)-ResOld_FL(sum_connection,:)/option%delx(nvar,ghosted_id_dn)
 
      
 !     if(vv_darcy(1)>0.D0 .and. option%iupstream(sum_connection,1) == -1) i_upstream_revert =3 
@@ -2293,12 +2289,12 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,solution,ierr)
   do i=1, n_zero_rows
     n = mod(zero_rows_local(i),option%ndof)
     p1 = zero_rows_local_ghosted(i)
-    if (n == 1) then
-      p2 = p1
-    elseif (n == 0) then
-      p2 = p1-option%ndof+2
-    else
+    if (n == 0) then
+      p2 = p1-1
+    if (n == option%ndof-1) then
       p2 = p1+1
+    else
+      p2 = p1
     endif
     call MatSetValuesLocal(A,1,p1,1,p2,1.d0,INSERT_VALUES,ierr)
   enddo
@@ -2644,8 +2640,7 @@ subroutine pflow_mphase_initadj(solution)
     !*****************
     dif(1)= option%difaq
     dif(2)= option%cdiff(int(ithrm_loc_p(ghosted_id)))
-    !*******************************************
-    xx_p((local_id-1)*option%ndof+1)=xx_p((local_id-1)*option%ndof+1)!*1D-6 
+    !******************************************* 
     call pri_var_trans_mph_ninc(xx_p((local_id-1)*option%ndof+1:local_id*option%ndof),iiphase,&
       option%scale,option%nphase,option%nspec, iicap,  dif,&
       var_loc_p((ghosted_id-1)*size_var_node+1: (ghosted_id-1)*size_var_node+size_var_use), &

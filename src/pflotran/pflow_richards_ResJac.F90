@@ -1077,7 +1077,7 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
               perm_yy_loc_p(ghosted_id)*abs(cur_connection_object%dist(2,iconn))+ &
               perm_zz_loc_p(ghosted_id)*abs(cur_connection_object%dist(3,iconn))
       ! The below assumes a unit gravity vector of [0,0,1]
-      distance_gravity = abs(cur_connection_object%dist(3,iconn)) * &
+      distance_gravity = cur_connection_object%dist(3,iconn) * &
                          cur_connection_object%dist(0,iconn)
 
       select case(boundary_condition%condition%itype(1))
@@ -1422,7 +1422,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
               perm_yy_loc_p(ghosted_id)*abs(cur_connection_object%dist(2,iconn))+ &
               perm_zz_loc_p(ghosted_id)*abs(cur_connection_object%dist(3,iconn))
       ! The below assumes a unit gravity vector of [0,0,1]
-      distance_gravity = abs(cur_connection_object%dist(3,iconn)) * &
+      distance_gravity = cur_connection_object%dist(3,iconn) * &
                          cur_connection_object%dist(0,iconn)
 
       delxbc=0.D0
@@ -1735,12 +1735,12 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
   do i=1, n_zero_rows
     n = mod(zero_rows_local(i),option%ndof)
     p1 = zero_rows_local_ghosted(i)
-    if (n == 1) then
-      p2 = p1
-    elseif (n == 0) then
-      p2 = p1-option%ndof+2
-    else
+    if (n == 0) then
+      p2 = p1-1
+    if (n == option%ndof-1) then
       p2 = p1+1
+    else
+      p2 = p1
     endif
     call MatSetValuesLocal(A,1,p1,1,p2,1.d0,INSERT_VALUES,ierr)
   enddo
