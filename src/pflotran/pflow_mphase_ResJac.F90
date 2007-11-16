@@ -6,8 +6,10 @@
 !  should be updated in pflowgrid_mod.F90 :: pflowgrid_step          
 
                
-  module MPHASE_module
+module MPHASE_module
 
+  implicit none
+  
   private
 
 #include "include/finclude/petsc.h"
@@ -44,16 +46,17 @@
 
   public MPHASEResidual, MPHASEJacobian, pflow_mphase_initaccum, &
          pflow_update_mphase,pflow_mphase_initadj, pflow_mphase_timecut,&
-         pflow_mphase_setupini, MPhase_Update, MPhase_Update_Reason
+         pflow_mphase_setupini, MPhase_Update_Reason
 
   public :: createmphaseZeroArray
+  
   integer, save :: n_zero_rows = 0
   integer, pointer, save :: zero_rows_local(:)  ! 1-based indexing
   integer, pointer, save :: zero_rows_local_ghosted(:) ! 0-based indexing
   
 contains
 
- subroutine pflow_mphase_timecut(solution)
+subroutine pflow_mphase_timecut(solution)
 
   use Solution_module
   use Option_module
@@ -68,7 +71,9 @@ contains
   type(field_type), pointer :: field
  
   PetscScalar, pointer :: xx_p(:),yy_p(:)!,var_loc_p(:),iphase_loc_p(:)
-  integer :: n,n0,re,ierr
+  integer :: re,ierr
+  integer :: dof_offset
+  integer :: local_id
   !integer re0, ierr, index, iipha
   !real*8, pointer :: sat(:),xmol(:)
 
@@ -81,13 +86,13 @@ contains
  !call VecGetArrayF90(field%var_loc, var_loc_p, ierr); 
  !call VecGetArrayF90(field%iphas, iphase_loc_p, ierr); 
 
-  do n=1, grid%nlmax
-    n0=(n-1)*option%ndof
+  do local_id=1, grid%nlmax
+    dof_offset=(local_id-1)*option%ndof
     do re = 1, option%ndof
 !     if (option%snes_reason == -5) then 
 !       xx_p(n0+re)= yy_p(n0+re)       !.5D0 * xx_p(n0+re) +.5D0 *yy_p(n0+re)
 !     else
-        xx_p(n0+re)= yy_p(n0+re)
+        xx_p(dof_offset+re)= yy_p(dof_offset+re)
 !     endif
     enddo
   enddo 
@@ -97,10 +102,10 @@ contains
   !call VecCopy(field%xx,field%yy,ierr)
   !call pflow_mphase_initaccum(grid)
  
- end subroutine pflow_mphase_timecut
-  
+end subroutine pflow_mphase_timecut
 
- subroutine pflow_mphase_setupini(solution)
+
+subroutine pflow_mphase_setupini(solution)
  
   use Solution_module
   use Option_module
@@ -167,10 +172,10 @@ contains
   call VecRestoreArrayF90(field%xx, xx_p, ierr)
   call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p,ierr)
 
- end subroutine pflow_mphase_setupini
+end subroutine pflow_mphase_setupini
   
 
- subroutine MPhase_Update_Reason(reason,solution)
+subroutine MPhase_Update_Reason(reason,solution)
 
   use Solution_module
   use Grid_module
@@ -186,19 +191,18 @@ contains
    
   integer, intent(out):: reason
   PetscScalar, pointer :: xx_p(:),var_loc_p(:),iphase_loc_p(:), yy_p(:) !,r_p(:)
-  integer :: n,n0,re
-  integer re0, ierr, iipha
-! integer :: index
+  integer dof_offset, temp_reason
+  integer :: ierr, iipha
+  integer :: local_id, ghosted_id  
 
 ! real*8, pointer :: sat(:),xmol(:)
 ! real*8 rmax(option%ndof)
 
-  
   grid => solution%grid
   option => solution%option
   field => solution%field
   
-  re=1
+  reason=1
  ! call SNESComputeFunction(option%snes,field%xx,option%r,ierr)
  ! do n=1,option%ndof
  !  call VecStrideNorm(option%r,n-1,NORM_INFINITY,rmax(n),ierr)
@@ -208,19 +212,24 @@ contains
  !   re=0;print *, 'Rmax error: ',rmax
  ! endif
   
-  if(re>0)then
+  if(reason>0)then
   call VecGetArrayF90(field%xx, xx_p, ierr); CHKERRQ(ierr)
   call VecGetArrayF90(field%yy, yy_p, ierr)
   call VecGetArrayF90(field%var_loc, var_loc_p, ierr); 
   call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr); 
   
-  do n = 1,grid%nlmax
-     n0=(n-1)* option%ndof
+  do local_id = 1,grid%nlmax
+      ghosted_id = grid%nL2G(local_id)
+      !geh - Ignore inactive cells with inactive materials
+      if (associated(field%imat)) then
+        if (field%imat(ghosted_id) <= 0) cycle
+      endif  
+     dof_offset=(local_id-1)* option%ndof
       !index=(n-1)*size_var_node
       !sat=>var_loc_p(index+2+1:index+2+option%nphase)
       !den=>var_loc_p(index+2+option%nphase+1:index+2+2*option%nphase)
     !xmol=>var_loc_p(index+2+7*option%nphase+1:index+2+7*option%nphase + option%nphase*option%nspec)    
-      iipha=int(iphase_loc_p(n))
+      iipha=int(iphase_loc_p(local_id))
      !if(n==3583 .or. n==3587)
    !print *, 'update reson', grid%nlmax, n, iipha, xx_p(n0+1:n0+3)
    !if(xmol(4)>1.0) re=0; goto 1
@@ -228,51 +237,51 @@ contains
    !if(sat(2) < .0) re=0;goto 1
    ! if(sat(2) > 1.) re=0;goto 1
 
-   if(dabs(xx_p(n0 + 1)- yy_p(n0 + 1))> (10.0D0 * option%dpmxe))then
-     re=0; print *,'huge change in p', xx_p(n0 + 1), yy_p(n0 + 1)
+   if(dabs(xx_p(dof_offset + 1)- yy_p(dof_offset + 1))> (10.0D0 * option%dpmxe))then
+     reason=0; print *,'huge change in p', xx_p(dof_offset + 1), yy_p(dof_offset + 1)
      exit
     endif
 
 
-   if(dabs(xx_p(n0 + 2)- yy_p(n0 + 2))> (10.0D0 * option%dtmpmxe))then
-     re=0; print *,'huge change in T', xx_p(n0 + 2), yy_p(n0 + 2)
+   if(dabs(xx_p(dof_offset + 2)- yy_p(dof_offset + 2))> (10.0D0 * option%dtmpmxe))then
+     reason=0; print *,'huge change in T', xx_p(dof_offset + 2), yy_p(dof_offset + 2)
      exit
     endif
  
    select case(iipha)
    case (1)
-     if(xx_p(n0 + 3) > 1.0D0)then
-      re=0; exit
+     if(xx_p(dof_offset + 3) > 1.0D0)then
+      reason=0; exit
 !    goto 111
         endif
-     if(xx_p(n0 + 3) < 0D0)then
-      re=0; exit
+     if(xx_p(dof_offset + 3) < 0D0)then
+      reason=0; exit
 !    goto 111
        endif
-     !if(xx_p(n0 + 3) > 1.0D0) xx_p(n0 + 3)=1.D0
-     !if(xx_p(n0 + 3) < .0D0) xx_p(n0 + 3)=0.D0
+     !if(xx_p(dof_offset + 3) > 1.0D0) xx_p(dof_offset + 3)=1.D0
+     !if(xx_p(dof_offset + 3) < .0D0) xx_p(dof_offset + 3)=0.D0
     case (2)
-     if(xx_p(n0 + 3) > 1.0D0)then
-      re=0; exit
+     if(xx_p(dof_offset + 3) > 1.0D0)then
+      reason=0; exit
 !    goto 111
         endif
-     if(xx_p(n0 + 3) < 0D-0)then
-      re=0; exit
+     if(xx_p(dof_offset + 3) < 0D-0)then
+      reason=0; exit
 !    goto 111
      endif
     case (3)
-     if(xx_p(n0 + 3) > 1.D0)then
-      re=0; exit
+     if(xx_p(dof_offset + 3) > 1.D0)then
+      reason=0; exit
 !     goto 111
         endif
-     if(xx_p(n0 + 3) < 0.)then
-      re=0; exit
+     if(xx_p(dof_offset + 3) < 0.)then
+      reason=0; exit
 !     goto 111
      endif
-     !if(xx_p(n0 + 3) > 1.0D0) xx_p(n0 + 3)=1.D0
-     !if(xx_p(n0 + 3) < .0D0) xx_p(n0 + 3)=0.D0
+     !if(xx_p(dof_offset + 3) > 1.0D0) xx_p(dof_offset + 3)=1.D0
+     !if(xx_p(dof_offset + 3) < .0D0) xx_p(dof_offset + 3)=0.D0
     end select  
-    end do
+  end do
   
 !  do n = 1,grid%nlmax
 !     n0=(n-1)* option%ndof
@@ -291,33 +300,33 @@ contains
 
   !   call PETSCBarrier(PETSC_NULL_OBJECT,ierr)
    !print *,' update reason ba MPI', ierr
-   if(re<=0) print *,'Sat or Con out of Region at: ',n,iipha,xx_p(n0+1:n0+3)
-     call VecRestoreArrayF90(field%xx, xx_p, ierr); CHKERRQ(ierr)
-     call VecRestoreArrayF90(field%yy, yy_p, ierr)
-   call VecRestoreArrayF90(field%var_loc, var_loc_p, ierr) 
+  if(reason<=0) print *,'Sat or Con out of Region at: ',local_id,iipha,xx_p(dof_offset+1:dof_offset+3)
+    call VecRestoreArrayF90(field%xx, xx_p, ierr); CHKERRQ(ierr)
+    call VecRestoreArrayF90(field%yy, yy_p, ierr)
+    call VecRestoreArrayF90(field%var_loc, var_loc_p, ierr) 
     call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr) 
-   endif
+  endif
  ! print *,' update reason', option%myrank, re,n,grid%nlmax
   call MPI_Barrier(PETSC_COMM_WORLD,ierr)
   
   if(option%commsize >1)then
-    call MPI_ALLREDUCE(re, re0,1, MPI_INTEGER,MPI_SUM, &
+    temp_reason = reason
+    call MPI_ALLREDUCE(temp_reason,reason,1, MPI_INTEGER,MPI_SUM, &
     PETSC_COMM_WORLD,ierr)
   !print *,' update reason re'
     !call MPI_BCAST(re0,1, MPI_INTEGER, 0,PETSC_COMM_WORLD,ierr)
   !print *,' update reason ca'
-    if(re0<option%commsize) re=0
+    if(reason<option%commsize) reason=0
   endif
-  reason=re
   
-  if(reason<=0 .and.option%myrank ==0) print *,'Sat or Con out of Region', re0
+  if(reason<=0 .and.option%myrank ==0) print *,'Sat or Con out of Region', reason
   
-  end subroutine MPhase_Update_Reason
+end subroutine MPhase_Update_Reason
 
 
 
 
-  subroutine MPHASERes_ARCont(node_no, var_node,por,vol,rock_dencpr, option, &
+subroutine MPHASERes_ARCont(node_no, var_node,por,vol,rock_dencpr, option, &
                               Res_AR,ireac,ierr)
   
   use Option_module
@@ -376,11 +385,13 @@ contains
   endif
   Res_AR(1:option%ndof-1)=mol(:)
   Res_AR(option%ndof)=eng
+
   nullify(temp, pre_ref, sat, density, amw, h,u, pc,kvr,xmol,diff)
-  end subroutine  MPHASERes_ARCont
+  
+end subroutine  MPHASERes_ARCont
 
 
- subroutine MPHASERes_FLCont(nconn_no,area, &
+subroutine MPHASERes_FLCont(nconn_no,area, &
                              var_node1,por1,tor1,sir1,dd1,perm1,Dk1,&
                              var_node2,por2,tor2,sir2,dd2,perm2,Dk2,dist_gravity,upweight,&
                              option, vv_darcy,Res_FL)
@@ -535,9 +546,10 @@ contains
   nullify(temp1, pre_ref1, sat1, density1, amw1, h1,u1, pc1,kvr1,xmol1,diff1)
   nullify(temp2, pre_ref2, sat2, density2, amw2, h2,u2, pc2,kvr2,xmol2,diff2)
 
- end subroutine MPHASERes_FLCont
+end subroutine MPHASERes_FLCont
 
- subroutine MPHASERes_FLBCCont(nbc_no,ibndtype,area, &
+
+subroutine MPHASERes_FLBCCont(nbc_no,ibndtype,area, &
             var_node1,var_node2,por2,tor2,sir2,dd1,perm2,Dk2,dist_gravity,&
             option,field,vv_darcy,Res_FL)
 
@@ -791,10 +803,10 @@ contains
   nullify(temp1, pre_ref1, sat1, density1, amw1, h1,u1, pc1,kvr1,xmol1,diff1)
   nullify(temp2, pre_ref2, sat2, density2, amw2, h2,u2, pc2,kvr2,xmol2,diff2)
   
- end  subroutine MPHASERes_FLBCCont 
+end  subroutine MPHASERes_FLBCCont 
 
 
-  subroutine MPHASEResidual(snes,xx,r,solution,ierr)
+subroutine MPHASEResidual(snes,xx,r,solution,ierr)
 
   use water_eos_module
   use co2eos_module
@@ -806,6 +818,7 @@ contains
   use Grid_module
   use Option_module
   use Coupler_module 
+  use Field_module
 
   implicit none
   
@@ -817,10 +830,10 @@ contains
   type(solution_type) :: solution
 
   integer :: ierr, ierr0
-  integer :: nc, nr
+  integer :: nr
   integer :: i, jn
   integer :: ip2, p1, p2
-  integer :: ii1, ii2, ithrm1, ithrm2
+  integer :: ithrm1, ithrm2
   integer :: local_id, ghosted_id, local_id_up, local_id_dn, ghosted_id_up, ghosted_id_dn
   
   PetscScalar, pointer :: accum_p(:)
@@ -889,6 +902,12 @@ contains
   
   ierr = 0
   do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    !geh - Ignore inactive cells with inactive materials
+    if (associated(field%imat)) then
+      if (field%imat(ghosted_id) <= 0) cycle
+    endif 
+      
 !   insure zero liquid sat not passed to ptran (no effect on pflow)
     if(xx_p((local_id-1)*option%ndof+3) < 0.D0)xx_p((local_id-1)*option%ndof+3) = zerocut
     if(xx_p((local_id-1)*option%ndof+3) > 1.D0)xx_p((local_id-1)*option%ndof+3) = 1.D0 - zerocut
@@ -922,7 +941,7 @@ contains
 ! allow phase change for first 3 newton iterations except zeroth iteration
   if(option%iphch>0 .and. option%iphch<=3)then
 !  if(option%iphch<=3)then
-    call Translator_MPhase_Switching(xx,grid,0,ierr)   
+    call Translator_MPhase_Switching(xx,solution,0,ierr)   
   endif  
   option%iphch=option%iphch+1
    
@@ -937,6 +956,12 @@ contains
 ! there is potential possiblity that the pertubation of p may change the direction of pflow.
 ! once that happens, code may crash, namely wrong derive. 
   do ghosted_id = 1, grid%ngmax 
+
+    !geh - Ignore inactive cells with inactive materials
+    if (associated(field%imat)) then
+      if (field%imat(ghosted_id) <= 0) cycle
+    endif 
+      
     iiphase=int(iphase_loc_p(ghosted_id))
 
 !#if 0
@@ -1059,10 +1084,13 @@ contains
 
 !-----  phase properities ---- last time step---
   do local_id = 1, grid%nlmax
-    jn = 1 + (local_id-1)*option%nphase
     ghosted_id = grid%nL2G(local_id)
-    ii1 = jn  !1+(n-1)*option%nphase
-    ii2 = local_id*option%nphase
+    !geh - Ignore inactive cells with inactive materials
+    if (associated(field%imat)) then
+      if (field%imat(ghosted_id) <= 0) cycle
+    endif  
+    
+    jn = 1 + (local_id-1)*option%nphase
     iicap = int(icap_loc_p(ghosted_id))
     iiphase = iphase_loc_p(ghosted_id)
     !*****************
@@ -1144,7 +1172,13 @@ contains
   r_p = - accum_p
 
   do local_id = 1, grid%nlmax  ! For each local node do...
-    ghosted_id = grid%nL2G(local_id)   ! corresponding ghost index
+
+    ghosted_id = grid%nL2G(local_id)
+    !geh - Ignore inactive cells with inactive materials
+    if (associated(field%imat)) then
+      if (field%imat(ghosted_id) <= 0) cycle
+    endif 
+    
     p1 = 1 + (local_id-1)*option%ndof
     index_var_begin=(ghosted_id-1)*size_var_node+1
     index_var_end = index_var_begin -1 + size_var_use
@@ -1431,7 +1465,6 @@ contains
     
     do iconn = 1, cur_connection_object%num_connections
       sum_connection = sum_connection + 1
-      nc = sum_connection
     
       local_id = cur_connection_object%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
@@ -1462,16 +1495,16 @@ contains
           
         case(2)
         ! solve for pb from Darcy's law given qb /= 0
-          field%xxbc(:,nc) = xx_loc_p((ghosted_id-1)*option%ndof+1: ghosted_id*option%ndof)
-          field%iphasebc(nc) = int(iphase_loc_p(ghosted_id))
+          field%xxbc(:,sum_connection) = xx_loc_p((ghosted_id-1)*option%ndof+1: ghosted_id*option%ndof)
+          field%iphasebc(sum_connection) = int(iphase_loc_p(ghosted_id))
         case(3) 
-       !  field%xxbc((nc-1)*option%ndof+1)=option%pressurebc(2,ibc)
-          field%xxbc(2:option%ndof,nc) = xx_loc_p((ghosted_id-1)*option%ndof+2: ghosted_id*option%ndof)
-          field%iphasebc(nc)=int(iphase_loc_p(ghosted_id))
+       !  field%xxbc((sum_connection-1)*option%ndof+1)=option%pressurebc(2,ibc)
+          field%xxbc(2:option%ndof,sum_connection) = xx_loc_p((ghosted_id-1)*option%ndof+2: ghosted_id*option%ndof)
+          field%iphasebc(sum_connection)=int(iphase_loc_p(ghosted_id))
         case(4)
-           field%xxbc(1,nc) = xx_loc_p((ghosted_id-1)*option%ndof+1)
-           field%xxbc(3:option%ndof,nc) = xx_loc_p((ghosted_id-1)*option%ndof+3: ghosted_id*option%ndof)    
-           field%iphasebc(nc)=int(iphase_loc_p(ghosted_id))
+           field%xxbc(1,sum_connection) = xx_loc_p((ghosted_id-1)*option%ndof+1)
+           field%xxbc(3:option%ndof,sum_connection) = xx_loc_p((ghosted_id-1)*option%ndof+3: ghosted_id*option%ndof)    
+           field%iphasebc(sum_connection)=int(iphase_loc_p(ghosted_id))
 
       end select
     
@@ -1483,12 +1516,12 @@ contains
     !*******************************************
 
   
-      call pri_var_trans_mph_ninc(field%xxbc(:,nc),field%iphasebc(nc), &
+      call pri_var_trans_mph_ninc(field%xxbc(:,sum_connection),field%iphasebc(sum_connection), &
                                   option%scale,option%nphase,option%nspec,iicap, &
                                   dif,field%varbc(1:size_var_use),option%itable, &
-                                  option%m_nacl,ierr,field%xxphi_co2_bc(nc),cw)
+                                  option%m_nacl,ierr,field%xxphi_co2_bc(sum_connection),cw)
      
-      call MPHASERes_FLBCCont(nc,boundary_condition%condition%itype(1), &
+      call MPHASERes_FLBCCont(sum_connection,boundary_condition%condition%itype(1), &
                               cur_connection_object%area(iconn), &
                               field%varbc(1:size_var_use), &
                               var_loc_p((ghosted_id-1)*size_var_node+1: &
@@ -1524,6 +1557,8 @@ contains
 
   ! for inactive regions
   if (option%use_isoth==PETSC_TRUE) then
+    print *, 'option%use_isoth needs to be verified in pflow_mphase_ResJac.F90'
+    stop
     do local_id = 1, grid%nlmax  ! For each local node do...
       ghosted_id = grid%nL2G(local_id)
       !geh - Ignore inactive cells with inactive materials
@@ -1572,15 +1607,15 @@ contains
  call PetscViewerDestroy(viewer,ierr)
 #endif
 
-  end subroutine MPHASEResidual
+end subroutine MPHASEResidual
                 
 ! --------------------------------------------------------------------- 
 
-  subroutine MPHASEJacobian(snes,xx,A,B,flag,solution,ierr)
+subroutine MPHASEJacobian(snes,xx,A,B,flag,solution,ierr)
        
   use water_eos_module
   use co2eos_module
-  use translator_mph_module
+  use translator_mph_module, only : pri_var_trans_mph_ninc, pri_var_trans_mph_winc
   use span_wagner_module
 
   use Connection_module
@@ -1602,7 +1637,7 @@ contains
 
 !   integer :: j, jn, jm1, jm2,jmu,mu, 
   integer :: ierr, i_upstream_revert
-  integer :: nc,nvar,neq,nr
+  integer :: nvar,neq,nr
   integer :: i1, i2, jng, i
   integer :: ithrm1, ithrm2
   integer :: ip1, ip2 
@@ -1702,7 +1737,11 @@ contains
 
   ResInc=0.D0
   do local_id = 1, grid%nlmax  ! For each local node do...
-    ghosted_id = grid%nL2G(local_id)   !get ghosted index
+    ghosted_id = grid%nL2G(local_id)
+    !geh - Ignore inactive cells with inactive materials
+    if (associated(field%imat)) then
+      if (field%imat(ghosted_id) <= 0) cycle
+    endif 
     
     voldt = volume_p(local_id) / option%dt
     pvoldt = porosity_loc_p(ghosted_id) * voldt
@@ -1856,7 +1895,6 @@ contains
 
     do iconn = 1, cur_connection_object%num_connections
       sum_connection = sum_connection + 1
-      nc = sum_connection
     
       local_id = cur_connection_object%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
@@ -1889,21 +1927,21 @@ contains
           delxbc=0.D0
         case(2)
           ! solve for pb from Darcy's law given qb /= 0
-         field%xxbc(:,nc)=xx_loc_p((ghosted_id-1)*option%ndof+1: ghosted_id*option%ndof)
-          field%iphasebc(nc)=int(iphase_loc_p(ghosted_id))
+         field%xxbc(:,sum_connection)=xx_loc_p((ghosted_id-1)*option%ndof+1: ghosted_id*option%ndof)
+          field%iphasebc(sum_connection) = int(iphase_loc_p(ghosted_id))
              delxbc=option%delx(1:option%ndof,ghosted_id)
         case(3) 
           ! field%xxbc(1,iconn)=option%pressurebc(2,ibc)
-          field%xxbc(2:option%ndof,nc)= xx_loc_p((ghosted_id-1)*option%ndof+2: ghosted_id*option%ndof)
-          field%iphasebc(nc)=int(iphase_loc_p(ghosted_id))
+          field%xxbc(2:option%ndof,sum_connection)= xx_loc_p((ghosted_id-1)*option%ndof+2: ghosted_id*option%ndof)
+          field%iphasebc(sum_connection)=int(iphase_loc_p(ghosted_id))
           delxbc(1)=0.D0
           delxbc(2:option%ndof)=option%delx(2:option%ndof,ghosted_id)
         case(4)
-          field%xxbc(1,nc) = xx_loc_p((ghosted_id-1)*option%ndof+1)
-          field%xxbc(3:option%ndof,nc) = xx_loc_p((ghosted_id-1)*option%ndof+3: ghosted_id*option%ndof)    
+          field%xxbc(1,sum_connection) = xx_loc_p((ghosted_id-1)*option%ndof+1)
+          field%xxbc(3:option%ndof,sum_connection) = xx_loc_p((ghosted_id-1)*option%ndof+3: ghosted_id*option%ndof)    
           delxbc(1)=option%delx(1,ghosted_id)
           delxbc(3:option%ndof) = option%delx(3:option%ndof,ghosted_id) 
-          field%iphasebc(nc)=int(iphase_loc_p(ghosted_id))
+          field%iphasebc(sum_connection)=int(iphase_loc_p(ghosted_id))
 
       end select
 
@@ -1933,13 +1971,13 @@ contains
     !*******************************************
 
   ! here should pay attention to BC type !!!
-      call pri_var_trans_mph_ninc(field%xxbc(:,nc),field%iphasebc(nc),&
+      call pri_var_trans_mph_ninc(field%xxbc(:,sum_connection),field%iphasebc(sum_connection),&
                               option%scale,option%nphase,option%nspec,iicap,dif,&
                               field%varbc(1:size_var_use),option%itable, &
                               option%m_nacl,ierr, dum1, dum2)
   
-      call pri_var_trans_mph_winc(field%xxbc(:,nc),delxbc,&
-                              field%iphasebc(nc),option%scale,option%nphase, &
+      call pri_var_trans_mph_winc(field%xxbc(:,sum_connection),delxbc,&
+                              field%iphasebc(sum_connection),option%scale,option%nphase, &
                               option%nspec,iicap,dif(1:option%nphase), &
                               field%varbc(size_var_use+1: &
                                          (option%ndof+1)*size_var_use), &
@@ -1948,7 +1986,7 @@ contains
 !    print *,' Mph Jaco BC terms: finish increment'
       do nvar=1,option%ndof
    
-        call MPHASERes_FLBCCont(nc,boundary_condition%condition%itype(1), &
+        call MPHASERes_FLBCCont(sum_connection,boundary_condition%condition%itype(1), &
                                 cur_connection_object%area(iconn), &
                                 field%varbc(nvar*size_var_use+1: &
                                            (nvar+1)*size_var_use), &
@@ -1979,7 +2017,13 @@ contains
 
   do local_id= 1, grid%nlmax
     ra=0.D0
+    
     ghosted_id = grid%nL2G(local_id)
+    !geh - Ignore inactive cells with inactive materials
+    if (associated(field%imat)) then
+      if (field%imat(ghosted_id) <= 0) cycle
+    endif 
+    
     natural_id_up= grid%nG2N(ghosted_id)
    ! Remember, the matrix index starts from (0,0)
     p1 = (ghosted_id-1)*option%ndof ! = 1 + (ng-1)*option%ndof-1
@@ -2044,7 +2088,6 @@ contains
     if (.not.associated(cur_connection_object)) exit
     do iconn = 1, cur_connection_object%num_connections
       sum_connection = sum_connection + 1
-      nc = sum_connection
     
       ghosted_id_up = cur_connection_object%id_up(iconn)
       ghosted_id_dn = cur_connection_object%id_dn(iconn)
@@ -2093,7 +2136,7 @@ contains
   ! do neq = 1, option%ndof
       do nvar = 1, option%ndof
     
-        call MPHASERes_FLCont(nc,cur_connection_object%area(iconn), &
+        call MPHASERes_FLCont(sum_connection,cur_connection_object%area(iconn), &
                               var_loc_p((ghosted_id_up-1)*size_var_node+ &
                                           nvar*size_var_use+1: &
                                         (ghosted_id_up-1)*size_var_node+ &
@@ -2109,13 +2152,13 @@ contains
 
         ra(:,nvar)= Res(:)/option%delx(nvar,ghosted_id_up)-ResOld_FL(iconn,:)/option%delx(nvar,ghosted_id_up)
 
-!     if(vv_darcy(1)>0.D0 .and. option%iupstream(nc,1) == -1) i_upstream_revert =1 
-!     if(vv_darcy(1)<0.D0 .and. option%iupstream(nc,1) == 1)  i_upstream_revert =1
-!     if(vv_darcy(2)>0.D0 .and. option%iupstream(nc,2) == -1) i_upstream_revert =2
-!     if(vv_darcy(2)<0.D0 .and. option%iupstream(nc,2) == 1 ) i_upstream_revert =2
+!     if(vv_darcy(1)>0.D0 .and. option%iupstream(sum_connection,1) == -1) i_upstream_revert =1 
+!     if(vv_darcy(1)<0.D0 .and. option%iupstream(sum_connection,1) == 1)  i_upstream_revert =1
+!     if(vv_darcy(2)>0.D0 .and. option%iupstream(sum_connection,2) == -1) i_upstream_revert =2
+!     if(vv_darcy(2)<0.D0 .and. option%iupstream(sum_connection,2) == 1 ) i_upstream_revert =2
   
        
-        call MPHASERes_FLCont(nc,cur_connection_object%area(iconn), &
+        call MPHASERes_FLCont(sum_connection,cur_connection_object%area(iconn), &
                               var_loc_p((ghosted_id_up-1)*size_var_node+1: &
                                         (ghosted_id_up-1)*size_var_node+size_var_use), &
                               porosity_loc_p(ghosted_id_up),tor_loc_p(ghosted_id_up), &
@@ -2132,10 +2175,10 @@ contains
         ra(:,nvar+option%ndof)= Res(:)/option%delx(nvar,ghosted_id_dn)-ResOld_FL(iconn,:)/option%delx(nvar,ghosted_id_dn)
 
      
-!     if(vv_darcy(1)>0.D0 .and. option%iupstream(nc,1) == -1) i_upstream_revert =3 
-!     if(vv_darcy(1)<0.D0 .and. option%iupstream(nc,1) == 1)  i_upstream_revert =3
-!     if(vv_darcy(2)>0.D0 .and. option%iupstream(nc,2) == -1) i_upstream_revert =4
-!     if(vv_darcy(2)<0.D0 .and. option%iupstream(nc,2) == 1 ) i_upstream_revert =4
+!     if(vv_darcy(1)>0.D0 .and. option%iupstream(sum_connection,1) == -1) i_upstream_revert =3 
+!     if(vv_darcy(1)<0.D0 .and. option%iupstream(sum_connection,1) == 1)  i_upstream_revert =3
+!     if(vv_darcy(2)>0.D0 .and. option%iupstream(sum_connection,2) == -1) i_upstream_revert =4
+!     if(vv_darcy(2)<0.D0 .and. option%iupstream(sum_connection,2) == 1 ) i_upstream_revert =4
    
       enddo
   
@@ -2268,19 +2311,19 @@ contains
 #endif
 
 #ifdef DEBUG_GEH    
- call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian.out',viewer,ierr)
- call MatView(A,viewer,ierr)
- call PetscViewerDestroy(viewer,ierr)
+  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian.out',viewer,ierr)
+  call MatView(A,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
 #endif
 
- end subroutine MPHASEJacobian
-
+end subroutine MPHASEJacobian
 
 
 
 subroutine pflow_mphase_initaccum(solution)
  
-  use translator_mph_module 
+  use translator_mph_module, only : pri_var_trans_mph_ninc
+  
   use Solution_module
   use Grid_module
   use Field_module
@@ -2325,6 +2368,10 @@ subroutine pflow_mphase_initaccum(solution)
  
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
+    !geh - Ignore inactive cells with inactive materials
+    if (associated(field%imat)) then
+      if (field%imat(ghosted_id) <= 0) cycle
+    endif 
     iicap=int(icap_loc_p(ghosted_id))
     iiphase = int(iphase_loc_p(ghosted_id))
     dif(1)= option%difaq
@@ -2342,7 +2389,11 @@ subroutine pflow_mphase_initaccum(solution)
 
 !---------------------------------------------------------------------------
   do local_id = 1, grid%nlmax  ! For each local node do...
-    ghosted_id = grid%nL2G(local_id)   ! corresponding ghost index
+    ghosted_id = grid%nL2G(local_id)
+    !geh - Ignore inactive cells with inactive materials
+    if (associated(field%imat)) then
+      if (field%imat(ghosted_id) <= 0) cycle
+    endif 
     p1 = 1 + (local_id-1)*option%ndof
     index_var_begin=(ghosted_id-1)*size_var_node+1
     index_var_end = index_var_begin -1 + size_var_use
@@ -2377,7 +2428,8 @@ end subroutine pflow_mphase_initaccum
 
 subroutine pflow_update_mphase(solution)
   
-  use translator_mph_module  
+  use translator_mph_module, only : pri_var_trans_mph_ninc, translator_mph_get_output, translator_mphase_massbal
+  
   use Connection_module
   use Solution_module
   use Grid_module
@@ -2389,7 +2441,7 @@ subroutine pflow_update_mphase(solution)
   type(solution_type) :: solution 
     
   integer :: dof_offset
-    integer :: nc, iithrm
+    integer :: iithrm
     integer :: ierr,iicap,iiphase
     PetscScalar, pointer :: xx_p(:),icap_loc_p(:),ithrm_loc_p(:),iphase_loc_p(:), var_loc_p(:)
     real*8 :: dif(1:solution%option%nphase), dum1, dum2           
@@ -2452,7 +2504,6 @@ subroutine pflow_update_mphase(solution)
 
       do iconn = 1, cur_connection_object%num_connections
         sum_connection = sum_connection + 1
-        nc = sum_connection
 
         local_id = cur_connection_object%id_dn(iconn)
         ghosted_id = grid%nL2G(local_id)
@@ -2473,21 +2524,21 @@ subroutine pflow_update_mphase(solution)
           dif(1)= option%difaq
       
           if(field%iphasebc(nc) ==3)then
-            sw= field%xxbc(1,nc)
+            sw= field%xxbc(1,sum_connection)
             call pflow_pckr_richards_fw(iicap ,sw,pc,kr)    
-            field%xxbc(1,nc) =  option%pref - pc(1)
+            field%xxbc(1,sum_connection) =  option%pref - pc(1)
           endif
       
-          call pri_var_trans_Richards_ninc(field%xxbc(:,nc),field%iphasebc(nc), &
+          call pri_var_trans_Richards_ninc(field%xxbc(:,sum_connection),field%iphasebc(sum_connection), &
                                            option%scale,option%nphase,option%nspec, &
                                            iicap,dif, &
                                            field%varbc(1:size_var_use),option%itable,ierr, &
                                            option%pref)
         
-          if (translator_check_cond_Richards(field%iphasebc(nc), &
+          if (translator_check_cond_Richards(field%iphasebc(sum_connection), &
                                              field%varbc(1:size_var_use), &
                                              option%nphase,option%nspec) /=1) then
-            print *," Wrong bounday node init...  STOP!!!", field%xxbc(:,nc)
+            print *," Wrong bounday node init...  STOP!!!", field%xxbc(:,sum_connection)
       
             print *,field%varbc
             stop    
@@ -2511,15 +2562,15 @@ subroutine pflow_update_mphase(solution)
     call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr)
     call VecRestoreArrayF90(field%var_loc,var_loc_p,ierr)
      
-    if(option%nphase>1) call translator_mphase_massbal(grid)
+    if(option%nphase>1) call translator_mphase_massbal(solution)
    ! endif 
 
     call VecCopy(field%xx, field%yy, ierr)   
     call VecCopy(field%iphas_loc, field%iphas_old_loc, ierr)   
      
-    call  pflow_mphase_initaccum(grid)
+    call  pflow_mphase_initaccum(solution)
       !print *,'pflow_mphase_initaccum done'
-    call translator_mph_get_output(grid)
+    call translator_mph_get_output(solution)
  !  print *,'translator_get_output done'
   ! the output variables should be put into option%pressure, temp,xmol,sat...
   ! otherwise need to rewrite the pflow_output
@@ -2527,30 +2578,26 @@ subroutine pflow_update_mphase(solution)
 end subroutine pflow_update_mphase
 
 
-
-
-
-  subroutine pflow_mphase_initadj(solution)
+subroutine pflow_mphase_initadj(solution)
  
 ! running this subroutine will override the xmol data for initial condition in pflow.in 
 
-  use translator_mph_module  
+  ! geh - will not compile without the 'only:' statement
+  use translator_mph_module, only : pri_var_trans_mph_ninc, translator_check_phase_cond
 
   use Connection_module
   use Solution_module
   use Grid_module
   use Option_module
   use Coupler_module
-
   implicit none
-  
+ 
   type(solution_type) :: solution 
 
   integer :: ierr
   integer :: num_connection  
-  integer :: nc
   integer :: jn
-  integer :: ii1,ii2,iicap
+  integer :: iicap
   integer :: iiphase,iithrm
   integer :: local_id, ghosted_id 
 
@@ -2591,7 +2638,6 @@ end subroutine pflow_update_mphase
     endif
      
     jn = 1 + (local_id-1)*option%nphase
-    ii1=1+(local_id-1)*option%nphase; ii2=local_id*option%nphase
     iicap=int(icap_loc_p(ghosted_id))
         
     iiphase = iphase_loc_p(ghosted_id)
@@ -2638,7 +2684,6 @@ end subroutine pflow_update_mphase
     
     do iconn = 1, cur_connection_object%num_connections
       sum_connection = sum_connection + 1
-      nc = sum_connection
       
       local_id = cur_connection_object%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
@@ -2660,12 +2705,12 @@ end subroutine pflow_update_mphase
         dif(1)= option%difaq
         dif(2)= option%cdiff(iithrm)
 
-        call pri_var_trans_mph_ninc(field%xxbc(:,nc),field%iphasebc(nc),&
+        call pri_var_trans_mph_ninc(field%xxbc(:,sum_connection),field%iphasebc(sum_connection),&
                                     option%scale,option%nphase,option%nspec,iicap, &
                                     dif,field%varbc(1:size_var_use), &
                                     option%itable,option%m_nacl,ierr, dum1, dum2)
       
-        if (translator_check_phase_cond(field%iphasebc(nc), &
+        if (translator_check_phase_cond(field%iphasebc(sum_connection), &
                                         field%varbc(1:size_var_use), &
                                         option%nphase,option%nspec) &
             /=1) then
@@ -2696,8 +2741,10 @@ end subroutine pflow_update_mphase
   !print *,kgjkdf
   
   !call VecCopy(field%iphas,field%iphas_old,ierr)
-   
- end subroutine pflow_mphase_initadj
+
+end subroutine pflow_mphase_initadj
+
+
 
 subroutine createmphaseZeroArray(solution)
 

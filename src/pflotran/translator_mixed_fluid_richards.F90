@@ -1,5 +1,6 @@
 module translator_Richards_module
  
+  implicit none
   
   private 
 #include "include/finclude/petsc.h"
@@ -221,7 +222,7 @@ subroutine translator_Richards_get_output(solution)
 
   implicit none
   
-  type(solution_type), pointer :: solution
+  type(solution_type) :: solution
   
   integer :: nvals
   type(option_type), pointer :: option
@@ -249,7 +250,7 @@ subroutine translator_Richards_get_output(solution)
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     index_var_begin = (ghosted_id-1) * size_var_node
-    jn = 1 + (ghosted_id-1)*option%nphase 
+    jn = 1 + (local_id-1)*option%nphase 
     
     p_p(jn) = var_loc_p(index_var_begin + 2)
    

@@ -8,6 +8,8 @@
                
 module Richards_module
 
+  implicit none
+  
   private 
 #include "include/finclude/petsc.h"
 !#include "include/petscf90.h"
@@ -46,7 +48,7 @@ module Richards_module
   
   public RichardsResidual, RichardsJacobian, pflow_Richards_initaccum, &
          pflow_update_Richards,pflow_Richards_initadj, pflow_Richards_timecut,&
-         pflow_Richards_setupini, Richards_Update, Richards_Update_Reason
+         pflow_Richards_setupini, Richards_Update_Reason
 
   public :: createRichardsZeroArray
   integer, save :: n_zero_rows = 0
@@ -662,6 +664,7 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
   use Grid_module
   use Option_module
   use Coupler_module  
+  use Field_module
   
   implicit none
 
@@ -676,7 +679,6 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
   integer :: nc
   integer :: i, ithrm1, ithrm2, jn
   integer :: ip1, ip2, p1, p2
-  integer :: ii1,ii2
   integer :: local_id, ghosted_id, local_id_up, local_id_dn, ghosted_id_up, ghosted_id_dn
 
   PetscScalar, pointer ::accum_p(:)
@@ -763,8 +765,6 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
     endif
 
     jn = 1 + (local_id-1)*option%nphase
-    ii1 = jn 
-    ii2 = local_id*option%nphase
     iicap = icap_loc_p(ghosted_id)
     iiphase = iphase_loc_p(ghosted_id)
 
@@ -1204,7 +1204,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
   MatStructure flag
 
   integer :: ierr
-  integer :: nc,nvar,neq,nr
+  integer :: nvar,neq,nr
   integer :: ithrm1, ithrm2, i
   integer :: ip1, ip2 
   integer :: p1,p2
@@ -1398,7 +1398,6 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
 
     do iconn = 1, cur_connection_object%num_connections
       sum_connection = sum_connection + 1
-      nc = sum_connection
     
       local_id = cur_connection_object%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
@@ -1432,30 +1431,30 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
           delxbc =0.D0
         case(2)
           ! solve for pb from Darcy's law given qb /= 0
-          field%xxbc(:,nc) = xx_loc_p((ghosted_id-1)*option%ndof+1: ghosted_id*option%ndof)
-          field%iphasebc(nc) = int(iphase_loc_p(ghosted_id))
+          field%xxbc(:,sum_connection) = xx_loc_p((ghosted_id-1)*option%ndof+1: ghosted_id*option%ndof)
+          field%iphasebc(sum_connection) = int(iphase_loc_p(ghosted_id))
           delxbc = option%delx(1:option%ndof,ghosted_id)
         
   
-          if(dabs(field%velocitybc(1,nc))>1D-20)then
-            if( field%velocitybc(1,nc)>0) then
-             field%xxbc(2:option%ndof,nc)= yybc(2:option%ndof,nc)
+          if(dabs(field%velocitybc(1,sum_connection))>1D-20)then
+            if( field%velocitybc(1,sum_connection)>0) then
+             field%xxbc(2:option%ndof,sum_connection) = yybc(2:option%ndof,sum_connection)
              delxbc(2:option%ndof)=0.D0
             endif     
           endif    
 
         case(3) 
-          field%xxbc(2:option%ndof,nc) = xx_loc_p((ghosted_id-1)*option%ndof+2:ghosted_id*option%ndof)
-          field%iphasebc(nc) = int(iphase_loc_p(ghosted_id))
+          field%xxbc(2:option%ndof,sum_connection) = xx_loc_p((ghosted_id-1)*option%ndof+2:ghosted_id*option%ndof)
+          field%iphasebc(sum_connection) = int(iphase_loc_p(ghosted_id))
           delxbc(1) = 0.D0
           delxbc(2:option%ndof) = option%delx(2:option%ndof,ghosted_id)
         
         case(4)
-          field%xxbc(1,nc) = xx_loc_p((ghosted_id-1)*option%ndof+1)
-          field%xxbc(3:option%ndof,nc) = xx_loc_p((ghosted_id-1)*option%ndof+3: ghosted_id*option%ndof)    
+          field%xxbc(1,sum_connection) = xx_loc_p((ghosted_id-1)*option%ndof+1)
+          field%xxbc(3:option%ndof,sum_connection) = xx_loc_p((ghosted_id-1)*option%ndof+3: ghosted_id*option%ndof)    
           delxbc(1)=option%delx(1,ghosted_id)
           delxbc(3:option%ndof) = option%delx(3:option%ndof,ghosted_id) 
-          field%iphasebc(nc)=int(iphase_loc_p(ghosted_id))
+          field%iphasebc(sum_connection)=int(iphase_loc_p(ghosted_id))
     
       end select
 
@@ -1464,12 +1463,12 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
       dif(1) = option%difaq
 
   ! here should pay attention to BC type !!!
-      call pri_var_trans_Richards_ninc(field%xxbc(:,nc),field%iphasebc(nc), &
+      call pri_var_trans_Richards_ninc(field%xxbc(:,sum_connection),field%iphasebc(sum_connection), &
                                   option%scale,option%nphase,option%nspec, &
                                   iicap,  dif, &
                                   field%varbc(1:size_var_use),option%itable,ierr, option%pref)
   
-      call pri_var_trans_Richards_winc(field%xxbc(:,nc),delxbc,field%iphasebc(nc), &
+      call pri_var_trans_Richards_winc(field%xxbc(:,sum_connection),delxbc,field%iphasebc(sum_connection), &
                                   option%scale,option%nphase,option%nspec, &
                                   iicap, dif(1:option%nphase),&
                                   field%varbc(size_var_use+1:(option%ndof+1)* &
@@ -1477,7 +1476,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
                                   option%itable,ierr, option%pref)
               
       do nvar=1,option%ndof
-        call RichardsRes_FLBCCont(nc,boundary_condition%condition%itype(1), &
+        call RichardsRes_FLBCCont(sum_connection,boundary_condition%condition%itype(1), &
                                 cur_connection_object%area(iconn), &
                                 field%varbc(nvar*size_var_use+1:(nvar+1)* &
                                   size_var_use), &
@@ -1568,7 +1567,6 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
     if (.not.associated(cur_connection_object)) exit
     do iconn = 1, cur_connection_object%num_connections
       sum_connection = sum_connection + 1
-      nc = sum_connection
     
       ghosted_id_up = cur_connection_object%id_up(iconn)
       ghosted_id_dn = cur_connection_object%id_dn(iconn)
@@ -1615,7 +1613,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
       iicap2 = int(icap_loc_p(ghosted_id_dn))
  
       do nvar = 1, option%ndof
-        call RichardsRes_FLCont(nc,cur_connection_object%area(iconn), &
+        call RichardsRes_FLCont(sum_connection,cur_connection_object%area(iconn), &
                               var_loc_p((ghosted_id_up-1)*size_var_node+nvar* &
                                 size_var_use+1:(ghosted_id_up-1)*size_var_node+nvar* &
                                 size_var_use+size_var_use),&
@@ -1628,9 +1626,9 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
                               distance_gravity,upweight, &
                               option,vv_darcy,Res)
                               
-        ra(:,nvar)= (Res(:)-ResOld_FL(nc,:))/option%delx(nvar,ghosted_id_up)
+        ra(:,nvar)= (Res(:)-ResOld_FL(sum_connection,:))/option%delx(nvar,ghosted_id_up)
        
-        call RichardsRes_FLCont(nc,cur_connection_object%area(iconn), &
+        call RichardsRes_FLCont(sum_connection,cur_connection_object%area(iconn), &
                               var_loc_p((ghosted_id_up-1)*size_var_node+1:(ghosted_id_up-1)* &
                                 size_var_node+size_var_use),&
                               porosity_loc_p(ghosted_id_up),tor_loc_p(ghosted_id_up), &
@@ -1644,7 +1642,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
                               option, &
                               vv_darcy,Res)
  
-        ra(:,nvar+option%ndof)= (Res(:)-ResOld_FL(nc,:))/option%delx(nvar,ghosted_id_dn)
+        ra(:,nvar+option%ndof)= (Res(:)-ResOld_FL(sum_connection,:))/option%delx(nvar,ghosted_id_dn)
    
       enddo
    
@@ -1881,7 +1879,7 @@ subroutine pflow_update_Richards(solution)
     
   integer :: dof_offset
 !geh added for transient boundary conditons
-  integer :: nc, iithrm
+  integer :: iithrm
   real*8 :: sw, pc(2), kr(2)
   integer :: ierr,iicap,iiphase, iiphase_old
   PetscScalar, pointer :: xx_p(:),icap_loc_p(:),ithrm_loc_p(:), &
@@ -1957,7 +1955,6 @@ subroutine pflow_update_Richards(solution)
 
       do iconn = 1, cur_connection_object%num_connections
         sum_connection = sum_connection + 1
-        nc = sum_connection
 
         local_id = cur_connection_object%id_dn(iconn)
         ghosted_id = grid%nL2G(local_id)
@@ -1977,22 +1974,22 @@ subroutine pflow_update_Richards(solution)
           iithrm=int(ithrm_loc_p(ghosted_id)) 
           dif(1)= option%difaq
       
-          if(field%iphasebc(nc) ==3)then
-            sw= field%xxbc(1,nc)
+          if(field%iphasebc(sum_connection) ==3)then
+            sw= field%xxbc(1,sum_connection)
             call pflow_pckr_richards_fw(iicap ,sw,pc,kr)    
-            field%xxbc(1,nc) =  option%pref - pc(1)
+            field%xxbc(1,sum_connection) =  option%pref - pc(1)
           endif
       
-          call pri_var_trans_Richards_ninc(field%xxbc(:,nc),field%iphasebc(nc), &
+          call pri_var_trans_Richards_ninc(field%xxbc(:,sum_connection),field%iphasebc(sum_connection), &
                                            option%scale,option%nphase,option%nspec, &
                                            iicap,dif, &
                                            field%varbc(1:size_var_use),option%itable,ierr, &
                                            option%pref)
         
-          if (translator_check_cond_Richards(field%iphasebc(nc), &
+          if (translator_check_cond_Richards(field%iphasebc(sum_connection), &
                                              field%varbc(1:size_var_use), &
                                              option%nphase,option%nspec) /=1) then
-            print *," Wrong bounday node init...  STOP!!!", field%xxbc(:,nc)
+            print *," Wrong bounday node init...  STOP!!!", field%xxbc(:,sum_connection)
       
             print *,field%varbc
             stop    
@@ -2000,8 +1997,8 @@ subroutine pflow_update_Richards(solution)
         endif
 
         if (boundary_condition%condition%itype(1)==2) then
-          yybc(2:option%ndof,nc)= field%xxbc(2:option%ndof,nc)
-          vel_bc(1,nc) = field%velocitybc(1,nc)
+          yybc(2:option%ndof,sum_connection)= field%xxbc(2:option%ndof,sum_connection)
+          vel_bc(1,sum_connection) = field%velocitybc(1,sum_connection)
         endif 
       
       enddo
@@ -2057,7 +2054,7 @@ subroutine pflow_Richards_initadj(solution)
   integer :: num_connection
   integer :: nc
   integer :: jn
-  integer :: ii1,ii2,iicap
+  integer :: iicap
   integer :: iiphase,iithrm
   integer :: local_id, ghosted_id
 
@@ -2092,8 +2089,6 @@ subroutine pflow_Richards_initadj(solution)
     endif
 
     jn = 1 + (local_id-1)*option%nphase
-    ii1=1+(local_id-1)*option%nphase
-    ii2=local_id*option%nphase
     iicap=int(icap_loc_p(ghosted_id))
         
     iiphase = iphase_loc_p(ghosted_id)

@@ -2025,7 +2025,10 @@ private
    
   call  pflow_flash_initaccum(grid)
     !print *,'pflow_mphase_initaccum done'
+#if 0    
+! argumetn list does not match that of mph due to overhaul.
   call translator_mph_get_output(grid)
+#endif
  ! print *,'translator_get_output done'
   ! the output variables should be put into grid%pressure, temp,xmol,sat...
   ! otherwise need to rewrite the pflow_output
