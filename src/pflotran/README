@@ -1,0 +1,8 @@
+Items that need to be implemented
+
+1.  Hydrostatic boundary conditions
+2.  Boundary velocities for including in cell centered velocity calcs
+3.  Break through curves
+4.  Checkpoints
+5.  Create waypoints for each time in srcs/sink
+6.  For boundary connections, sign of dist(3) will change with z axis is inverted
