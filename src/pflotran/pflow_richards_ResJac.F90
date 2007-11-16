@@ -679,10 +679,6 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
   integer :: ii1,ii2
   integer :: local_id, ghosted_id, local_id_up, local_id_dn, ghosted_id_up, ghosted_id_dn
 
-  type(grid_type), pointer :: grid
-  type(option_type), pointer :: option
-  type(field_type), pointer :: field  
-
   PetscScalar, pointer ::accum_p(:)
 
   PetscScalar, pointer :: r_p(:), porosity_loc_p(:), volume_p(:), &
@@ -708,6 +704,11 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
   real*8 :: Res(solution%option%ndof), vv_darcy(solution%option%nphase)
  PetscViewer :: viewer
 
+
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  
   type(coupler_type), pointer :: boundary_condition, source_sink
   type(connection_list_type), pointer :: connection_list
   type(connection_type), pointer :: cur_connection_object
@@ -2093,9 +2094,9 @@ subroutine pflow_Richards_initadj(solution)
     jn = 1 + (local_id-1)*option%nphase
     ii1=1+(local_id-1)*option%nphase
     ii2=local_id*option%nphase
-    iicap=int(icap_loc_p(local_id))
+    iicap=int(icap_loc_p(ghosted_id))
         
-    iiphase = iphase_loc_p(local_id)
+    iiphase = iphase_loc_p(ghosted_id)
     dif(1)= option%difaq
 
    if(iiphase ==3)then
@@ -2165,8 +2166,8 @@ subroutine pflow_Richards_initadj(solution)
 
       if (boundary_condition%condition%itype(1)==1 .or. &
           boundary_condition%condition%itype(1)==3) then
-        iicap=int(icap_loc_p(local_id))
-        iithrm=int(ithrm_loc_p(local_id)) 
+        iicap=int(icap_loc_p(ghosted_id))
+        iithrm=int(ithrm_loc_p(ghosted_id)) 
         dif(1)= option%difaq
         
         if(field%iphasebc(nc) ==3)then

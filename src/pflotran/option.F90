@@ -58,6 +58,8 @@ module Option_module
     PetscScalar, pointer :: hhistory(:)
     PetscTruth :: monitor_h
     
+    integer :: idt_switch
+    
     PetscTruth :: use_ksp
     PetscTruth :: use_isoth
     PetscTruth :: use_debug
