@@ -58,16 +58,16 @@ module Richards_module
 contains
 
 
-subroutine pflow_Richards_timecut(solution)
+subroutine pflow_Richards_timecut(realization)
  
-  use Solution_module
+  use Realization_module
   use Option_module
   use Grid_module
   use Field_module
  
   implicit none
   
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
@@ -76,9 +76,9 @@ subroutine pflow_Richards_timecut(solution)
   integer :: dof_offset,re,ierr
   integer :: local_id
 
-  grid => solution%grid
-  option => solution%option
-  field => solution%field
+  grid => realization%grid
+  option => realization%option
+  field => realization%field
  
   call VecGetArrayF90(field%xx, xx_p, ierr)
   call VecGetArrayF90(field%yy, yy_p, ierr)
@@ -95,9 +95,9 @@ subroutine pflow_Richards_timecut(solution)
 end subroutine pflow_Richards_timecut
   
 
-subroutine pflow_Richards_setupini(solution)
+subroutine pflow_Richards_setupini(realization)
 
-  use Solution_module
+  use Realization_module
   use Option_module
   use Grid_module
   use Field_module
@@ -108,7 +108,7 @@ subroutine pflow_Richards_setupini(solution)
  
   implicit none
   
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
@@ -117,9 +117,9 @@ subroutine pflow_Richards_setupini(solution)
   PetscScalar, pointer :: xx_p(:), iphase_loc_p(:)
   integer local_id, ghosted_id, ibegin, iend, icell, ierr
   
-  grid => solution%grid
-  option => solution%option
-  field => solution%field
+  grid => realization%grid
+  option => realization%option
+  field => realization%field
   
   size_var_use = 2 + 7*option%nphase + 2* option%nphase*option%nspec
   size_var_node = (option%ndof + 1) * size_var_use
@@ -133,7 +133,7 @@ subroutine pflow_Richards_setupini(solution)
   call VecGetArrayF90(field%xx,xx_p, ierr); CHKERRQ(ierr)
   call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr)
   
-  initial_condition => solution%initial_conditions%first
+  initial_condition => realization%initial_conditions%first
   
   do
   
@@ -159,16 +159,16 @@ subroutine pflow_Richards_setupini(solution)
 end  subroutine pflow_Richards_setupini
   
 
-subroutine Richards_Update_Reason(reason,solution)
+subroutine Richards_Update_Reason(reason,realization)
 
-  use Solution_module
+  use Realization_module
   use Grid_module
   use Option_module
   use Field_module
   
   implicit none
  
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
@@ -179,9 +179,9 @@ subroutine Richards_Update_Reason(reason,solution)
   integer ierr, iipha
   integer :: local_id, ghosted_id
   
-  grid => solution%grid
-  option => solution%option
-  field => solution%field
+  grid => realization%grid
+  option => realization%option
+  field => realization%field
   
 ! real*8, pointer :: sat(:),xmol(:)
 ! real*8 rmax(option%ndof)
@@ -653,14 +653,14 @@ subroutine RichardsRes_FLBCCont(nbc_no,ibndtype,area,var_node1,var_node2,por2,to
 end  subroutine RichardsRes_FLBCCont 
 
 
-subroutine RichardsResidual(snes,xx,r,solution,ierr)
+subroutine RichardsResidual(snes,xx,r,realization,ierr)
 
   use water_eos_module
   use Gas_Eos_Module
   use translator_Richards_module
 
   use Connection_module
-  use Solution_module
+  use Realization_module
   use Grid_module
   use Option_module
   use Coupler_module  
@@ -673,7 +673,7 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
-  type(solution_type) :: solution
+  type(realization_type) :: realization
 
   integer :: ierr
   integer :: nc
@@ -699,11 +699,11 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
   real*8 :: dd, f1, f2, ff
   real*8 :: perm1, perm2
   real*8 :: D1, D2  ! "Diffusion" constants at upstream, downstream faces.
-  real*8 :: dw_kg, dw_mol,dif(solution%option%nphase)
+  real*8 :: dw_kg, dw_mol,dif(realization%option%nphase)
   real*8 :: tsrc1, qsrc1, csrc1, enth_src_h2o, enth_src_co2 , hsrc1
   real*8 :: tmp, upweight
   real*8 :: rho
-  real*8 :: Res(solution%option%ndof), vv_darcy(solution%option%nphase)
+  real*8 :: Res(realization%option%ndof), vv_darcy(realization%option%nphase)
  PetscViewer :: viewer
 
 
@@ -720,9 +720,9 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
   real*8 :: distance, fraction_upwind
   real*8 :: distance_gravity
   
-  grid => solution%grid
-  option => solution%option
-  field => solution%field
+  grid => realization%grid
+  option => realization%option
+  field => realization%field
 
   call GridGlobalToLocal(grid,xx,field%xx_loc,NDOF)
   call GridLocalToLocal(grid,field%iphas_loc,field%iphas_loc,ONEDOF)
@@ -870,7 +870,7 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
 
 !************************************************************************
 ! add source/sink terms
-  source_sink => solution%source_sinks%first 
+  source_sink => realization%source_sinks%first 
   do 
     if (.not.associated(source_sink)) exit
     
@@ -1043,7 +1043,7 @@ subroutine RichardsResidual(snes,xx,r,solution,ierr)
     cur_connection_object => cur_connection_object%next
   enddo    
  
-  boundary_condition => solution%boundary_conditions%first
+  boundary_condition => realization%boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -1183,7 +1183,7 @@ end subroutine RichardsResidual
                 
 ! --------------------------------------------------------------------- 
 
-subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
+subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
        
   use water_eos_module
   use gas_eos_module
@@ -1192,7 +1192,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
   use Connection_module
   use Option_module
   use Grid_module
-  use Solution_module
+  use Realization_module
   use Coupler_module
     
   implicit none
@@ -1200,7 +1200,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
   SNES, intent(in) :: snes
   Vec, intent(in) :: xx
   Mat, intent(out) :: A, B
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   MatStructure flag
 
   integer :: ierr
@@ -1217,21 +1217,21 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
   integer :: ii, jj
   integer :: index_var_begin, index_var_end
   real*8 :: dw_kg,dw_mol,enth_src_co2,enth_src_h2o,rho
-  real*8 :: vv_darcy(solution%option%nphase),voldt,pvoldt
-  real*8 :: ff,dif(1:solution%option%nphase)
+  real*8 :: vv_darcy(realization%option%nphase),voldt,pvoldt
+  real*8 :: ff,dif(1:realization%option%nphase)
   real*8 :: tsrc1,qsrc1,csrc1,hsrc1
   real*8 :: dd1, dd2, dd, f1, f2
   real*8 :: perm1, perm2
   real*8 :: D1, D2  ! "Diffusion" constants upstream and downstream of a face.
 
-  real*8 :: ra(1:solution%option%ndof,1:2*solution%option%ndof)  
+  real*8 :: ra(1:realization%option%ndof,1:2*realization%option%ndof)  
   real*8 :: tmp, upweight
-  real*8 :: delxbc(1:solution%option%ndof)
-  real*8 :: blkmat11(1:solution%option%ndof,1:solution%option%ndof), &
-            blkmat12(1:solution%option%ndof,1:solution%option%ndof),&
-            blkmat21(1:solution%option%ndof,1:solution%option%ndof),&
-            blkmat22(1:solution%option%ndof,1:solution%option%ndof)
-  real*8 :: ResInc(1:solution%grid%nlmax, 1:solution%option%ndof, 1:solution%option%ndof),res(1:solution%option%ndof)  
+  real*8 :: delxbc(1:realization%option%ndof)
+  real*8 :: blkmat11(1:realization%option%ndof,1:realization%option%ndof), &
+            blkmat12(1:realization%option%ndof,1:realization%option%ndof),&
+            blkmat21(1:realization%option%ndof,1:realization%option%ndof),&
+            blkmat22(1:realization%option%ndof,1:realization%option%ndof)
+  real*8 :: ResInc(1:realization%grid%nlmax, 1:realization%option%ndof, 1:realization%option%ndof),res(1:realization%option%ndof)  
   real*8 :: max_dev  
   integer :: local_id, ghosted_id
   integer :: local_id_up, local_id_dn
@@ -1260,9 +1260,9 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
 ! 4  s         
 !-----------------------------------------------------------------------
 
-  grid => solution%grid
-  option => solution%option
-  field => solution%field
+  grid => realization%grid
+  option => realization%option
+  field => realization%field
 
 ! dropped derivatives:
 !   1.D0 gas phase viscocity to all p,t,c,s
@@ -1322,7 +1322,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
  call PetscViewerDestroy(viewer,ierr)
 #endif
 
-  source_sink => solution%source_sinks%first
+  source_sink => realization%source_sinks%first
   sum_connection = 0    
   do 
     if (.not.associated(source_sink)) exit
@@ -1389,7 +1389,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,solution,ierr)
   enddo  
 
 ! Contribution from BC
-  boundary_condition => solution%boundary_conditions%first
+  boundary_condition => realization%boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -1763,17 +1763,17 @@ end subroutine RichardsJacobian
 
 
 
-subroutine pflow_Richards_initaccum(solution)
+subroutine pflow_Richards_initaccum(realization)
  
   use translator_Richards_module
-  use Solution_module
+  use Realization_module
   use Grid_module
   use Field_module
   use Option_module
  
   implicit none
   
-  type(solution_type) :: solution 
+  type(realization_type) :: realization 
 
  
   integer :: ierr
@@ -1785,15 +1785,15 @@ subroutine pflow_Richards_initaccum(solution)
   PetscScalar, pointer :: accum_p(:),yy_p(:),volume_p(:),porosity_loc_p(:),&
                           var_loc_p(:), icap_loc_p(:),iphase_loc_p(:),ithrm_loc_p(:)
   
-  real*8 :: dif(1:solution%option%nphase),res(1:solution%option%ndof)
+  real*8 :: dif(1:realization%option%nphase),res(1:realization%option%ndof)
  
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   
-  grid => solution%grid
-  option => solution%option
-  field => solution%field
+  grid => realization%grid
+  option => realization%option
+  field => realization%field
  
   call VecGetArrayF90(grid%volume, volume_p, ierr)
   call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
@@ -1861,21 +1861,21 @@ subroutine pflow_Richards_initaccum(solution)
 end subroutine pflow_Richards_initaccum
 
 
-subroutine pflow_update_Richards(solution)
+subroutine pflow_update_Richards(realization)
 
   use translator_Richards_module
   use pckr_module
   use Condition_module_old
 
   use Connection_module
-  use Solution_module
+  use Realization_module
   use Grid_module
   use Option_module
   use Coupler_module
 
   implicit none
 
-  type(solution_type) :: solution 
+  type(realization_type) :: realization 
     
   integer :: dof_offset
 !geh added for transient boundary conditons
@@ -1884,7 +1884,7 @@ subroutine pflow_update_Richards(solution)
   integer :: ierr,iicap,iiphase, iiphase_old
   PetscScalar, pointer :: xx_p(:),icap_loc_p(:),ithrm_loc_p(:), &
                           iphase_loc_p(:), var_loc_p(:), yy_p(:), iphase_loc_old_p(:)
-  real*8 :: dif(1:solution%option%nphase)
+  real*8 :: dif(1:realization%option%nphase)
   integer :: local_id, ghosted_id        
 
 
@@ -1895,9 +1895,9 @@ subroutine pflow_update_Richards(solution)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field  
-  grid => solution%grid
-  option => solution%option
-  field => solution%field
+  grid => realization%grid
+  option => realization%option
+  field => realization%field
       
 !geh added for transient boundary conditions      
   if (associated(field%imat) .and. option%iread_geom < 0) then
@@ -1946,7 +1946,7 @@ subroutine pflow_update_Richards(solution)
   !geh added for transient boundary conditions  
   if (associated(field%imat) .and. option%iread_geom < 0) then
 
-    boundary_condition => solution%boundary_conditions%first
+    boundary_condition => realization%boundary_conditions%first
     sum_connection = 0
     do 
       if (.not.associated(boundary_condition)) exit
@@ -2014,13 +2014,13 @@ subroutine pflow_update_Richards(solution)
   call VecRestoreArrayF90(field%iphas_old_loc, iphase_loc_old_p, ierr)
   call VecRestoreArrayF90(field%var_loc,var_loc_p,ierr)
    
-  call translator_Richards_massbal(solution)
+  call translator_Richards_massbal(realization)
  ! endif 
 
   call VecCopy(field%xx, field%yy, ierr)   
   call VecCopy(field%iphas_loc, field%iphas_old_loc, ierr)   
    
-  call  pflow_Richards_initaccum(solution)
+  call  pflow_Richards_initaccum(realization)
 ! geh - comment
 !translator_Richards_get_output is currently not necessary
 !if uncommented, Vecs %pressure, %sat, %xmol must be created in pflow_init
@@ -2032,7 +2032,7 @@ end subroutine pflow_update_Richards
 
 
 
-subroutine pflow_Richards_initadj(solution)
+subroutine pflow_Richards_initadj(realization)
  
 ! running this subroutine will override the xmol data for initial condition in pflow.in 
 
@@ -2040,14 +2040,14 @@ subroutine pflow_Richards_initadj(solution)
   use pckr_module, only: pflow_pckr_richards_fw
 
   use Connection_module
-  use Solution_module
+  use Realization_module
   use Grid_module
   use Option_module
   use Coupler_module
   
   implicit none
 
-  type(solution_type) :: solution 
+  type(realization_type) :: realization 
 
  
   integer :: ierr
@@ -2061,8 +2061,8 @@ subroutine pflow_Richards_initadj(solution)
   PetscScalar, pointer :: xx_p(:),var_loc_p(:)
   PetscScalar, pointer ::iphase_loc_p(:), ithrm_loc_p(:),icap_loc_p(:)
   
-  real*8 :: dif(solution%option%nphase)
-  real*8 :: pc(1:solution%option%nphase), kr(1:solution%option%nphase), sw
+  real*8 :: dif(realization%option%nphase)
+  real*8 :: pc(1:realization%option%nphase), kr(1:realization%option%nphase), sw
 
   type(coupler_type), pointer :: boundary_condition
   type(connection_type), pointer :: cur_connection_object
@@ -2071,9 +2071,9 @@ subroutine pflow_Richards_initadj(solution)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field  
-  grid => solution%grid
-  option => solution%option 
-  field => solution%field 
+  grid => realization%grid
+  option => realization%option 
+  field => realization%field 
 
   call VecGetArrayF90(field%icap_loc, icap_loc_p, ierr)
   call VecGetArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
@@ -2123,7 +2123,7 @@ subroutine pflow_Richards_initadj(solution)
     endif 
   enddo
 
-  boundary_condition => solution%boundary_conditions%first
+  boundary_condition => realization%boundary_conditions%first
   num_connection = 0
   do 
     if (.not.associated(boundary_condition)) exit    
@@ -2136,7 +2136,7 @@ subroutine pflow_Richards_initadj(solution)
   yybc =field%xxbc
   vel_bc = field%velocitybc
 
-  boundary_condition => solution%boundary_conditions%first
+  boundary_condition => realization%boundary_conditions%first
   sum_connection = 0  
   do 
     if (.not.associated(boundary_condition)) exit
@@ -2207,15 +2207,15 @@ subroutine pflow_Richards_initadj(solution)
 end subroutine pflow_Richards_initadj
 
 
-subroutine createRichardsZeroArray(solution)
+subroutine createRichardsZeroArray(realization)
 
-  use Solution_module
+  use Realization_module
   use Grid_module
   use Option_module
   
   implicit none
 
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   integer :: ncount, idof
   integer :: local_id, ghosted_id
 
@@ -2223,9 +2223,9 @@ subroutine createRichardsZeroArray(solution)
   type(option_type), pointer :: option
   type(field_type), pointer :: field
     
-  grid => solution%grid
-  option => solution%option
-  field => solution%field
+  grid => realization%grid
+  option => realization%option
+  field => realization%field
   
   n_zero_rows = 0
 

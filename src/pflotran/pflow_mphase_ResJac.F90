@@ -56,16 +56,16 @@ module MPHASE_module
   
 contains
 
-subroutine pflow_mphase_timecut(solution)
+subroutine pflow_mphase_timecut(realization)
 
-  use Solution_module
+  use Realization_module
   use Option_module
   use Grid_module
   use Field_module 
  
   implicit none
 
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
@@ -77,9 +77,9 @@ subroutine pflow_mphase_timecut(solution)
   !integer re0, ierr, index, iipha
   !real*8, pointer :: sat(:),xmol(:)
 
-  grid => solution%grid
-  option => solution%option
-  field => solution%field  
+  grid => realization%grid
+  option => realization%option
+  field => realization%field  
 
   call VecGetArrayF90(field%xx, xx_p, ierr)
   call VecGetArrayF90(field%yy, yy_p, ierr)
@@ -105,9 +105,9 @@ subroutine pflow_mphase_timecut(solution)
 end subroutine pflow_mphase_timecut
 
 
-subroutine pflow_mphase_setupini(solution)
+subroutine pflow_mphase_setupini(realization)
  
-  use Solution_module
+  use Realization_module
   use Option_module
   use Grid_module
   use Field_module
@@ -118,7 +118,7 @@ subroutine pflow_mphase_setupini(solution)
   
   implicit none
   
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
@@ -127,9 +127,9 @@ subroutine pflow_mphase_setupini(solution)
   PetscScalar, pointer :: xx_p(:), iphase_loc_p(:)
   integer local_id, ghosted_id, ibegin, iend, icell, ierr  
   
-  grid => solution%grid
-  option => solution%option
-  field => solution%field
+  grid => realization%grid
+  option => realization%option
+  field => realization%field
     
   size_var_use = 2 + 7*option%nphase + 2* option%nphase*option%nspec
   size_var_node = (option%ndof + 1) * size_var_use
@@ -143,7 +143,7 @@ subroutine pflow_mphase_setupini(solution)
   call VecGetArrayF90(field%xx, xx_p, ierr); CHKERRQ(ierr)
   call VecGetArrayF90(field%iphas_loc, iphase_loc_p,ierr)
   
-  initial_condition => solution%initial_conditions%first
+  initial_condition => realization%initial_conditions%first
   
   do
   
@@ -169,16 +169,16 @@ subroutine pflow_mphase_setupini(solution)
 end subroutine pflow_mphase_setupini
   
 
-subroutine MPhase_Update_Reason(reason,solution)
+subroutine MPhase_Update_Reason(reason,realization)
 
-  use Solution_module
+  use Realization_module
   use Grid_module
   use Option_module
   use Field_module
     
   implicit none
 
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
@@ -192,9 +192,9 @@ subroutine MPhase_Update_Reason(reason,solution)
 ! real*8, pointer :: sat(:),xmol(:)
 ! real*8 rmax(option%ndof)
 
-  grid => solution%grid
-  option => solution%option
-  field => solution%field
+  grid => realization%grid
+  option => realization%option
+  field => realization%field
   
   reason=1
  ! call SNESComputeFunction(option%snes,field%xx,option%r,ierr)
@@ -800,7 +800,7 @@ subroutine MPHASERes_FLBCCont(nbc_no,ibndtype,area, &
 end  subroutine MPHASERes_FLBCCont 
 
 
-subroutine MPHASEResidual(snes,xx,r,solution,ierr)
+subroutine MPHASEResidual(snes,xx,r,realization,ierr)
 
   use water_eos_module
   use co2eos_module
@@ -808,7 +808,7 @@ subroutine MPHASEResidual(snes,xx,r,solution,ierr)
   use span_wagner_module
 
   use Connection_module
-  use Solution_module
+  use Realization_module
   use Grid_module
   use Option_module
   use Coupler_module 
@@ -821,7 +821,7 @@ subroutine MPHASEResidual(snes,xx,r,solution,ierr)
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
-  type(solution_type) :: solution
+  type(realization_type) :: realization
 
   integer :: ierr, ierr0
   integer :: nr
@@ -854,14 +854,14 @@ subroutine MPHASEResidual(snes,xx,r,solution,ierr)
 ! real*8 :: Dq, Dk  ! "Diffusion" constant for a phase.
   real*8 :: D1, D2  ! "Diffusion" constants at upstream, downstream faces.
 ! real*8 :: sat_pressure  ! Saturation pressure of water.
-  real*8 :: dw_kg, dw_mol,dif(solution%option%nphase)
+  real*8 :: dw_kg, dw_mol,dif(realization%option%nphase)
   real*8 :: tsrc1, qsrc1, csrc1, enth_src_h2o, enth_src_co2 , hsrc1!, qqsrc
 ! real*8 :: cw1,cw2, xxlw,xxla,xxgw,xxga
   real*8 :: cw
 ! real*8 :: upweight
 ! real*8 :: ukvr,uhh,uconc
   real*8 :: dddt,dddp,fg,dfgdp,dfgdt,dhdt,dhdp,dvdt,dvdp, rho, visc
-  real*8 :: Res(solution%option%ndof), vv_darcy(solution%option%nphase)
+  real*8 :: Res(realization%option%ndof), vv_darcy(realization%option%nphase)
  
 ! real*8 :: cond, den,
   PetscViewer :: viewer
@@ -881,9 +881,9 @@ subroutine MPHASEResidual(snes,xx,r,solution,ierr)
   real*8 :: distance, fraction_upwind
   real*8 :: distance_gravity, upweight
 
-  grid => solution%grid
-  option => solution%option
-  field => solution%field
+  grid => realization%grid
+  option => realization%option
+  field => realization%field
  
 #if 0 
  ! only vvl_loc is used, and it is commented out   
@@ -936,7 +936,7 @@ subroutine MPHASEResidual(snes,xx,r,solution,ierr)
 ! allow phase change for first 3 newton iterations except zeroth iteration
   if(option%iphch>0 .and. option%iphch<=3)then
 !  if(option%iphch<=3)then
-    call Translator_MPhase_Switching(xx,solution,0,ierr)   
+    call Translator_MPhase_Switching(xx,realization,0,ierr)   
   endif  
   option%iphch=option%iphch+1
    
@@ -1451,7 +1451,7 @@ subroutine MPHASEResidual(snes,xx,r,solution,ierr)
 !  print *,'2ph bc-sgbc', option%myrank, option%sgbc    
 
  
-  boundary_condition => solution%boundary_conditions%first
+  boundary_condition => realization%boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -1606,7 +1606,7 @@ end subroutine MPHASEResidual
                 
 ! --------------------------------------------------------------------- 
 
-subroutine MPHASEJacobian(snes,xx,A,B,flag,solution,ierr)
+subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
        
   use water_eos_module
   use co2eos_module
@@ -1616,7 +1616,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,solution,ierr)
   use Connection_module
   use Option_module
   use Grid_module
-  use Solution_module
+  use Realization_module
   use Coupler_module
   
   implicit none
@@ -1626,7 +1626,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,solution,ierr)
   SNES, intent(in) :: snes
   Vec, intent(in) :: xx
   Mat, intent(inout) :: A, B
-  type(solution_type) :: solution
+  type(realization_type) :: realization
  ! integer, intent(inout) :: flag
   MatStructure flag
 
@@ -1651,10 +1651,10 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,solution,ierr)
   real*8 :: dw_kg,dw_mol,enth_src_co2,enth_src_h2o,rho,dddt,dddp,fg,dfgdp,&
             dfgdt,eng,dhdt,dhdp,visc,dvdt,dvdp
 ! real*8 :: cond, gravity, acc, density_ave, 
-  real*8 :: vv_darcy(solution%option%nphase), voldt, pvoldt
+  real*8 :: vv_darcy(realization%option%nphase), voldt, pvoldt
 ! real*8 :: fluxl, fluxlh, fluxlv, fluxg, fluxgh, fluxgv, &
 !           flux, fluxh, fluxv, difff, diffg, diffl,
-  real*8 :: ff,dif(1:solution%option%nphase)
+  real*8 :: ff,dif(1:realization%option%nphase)
   real*8 :: tsrc1,qsrc1,csrc1
   real*8 :: dd1, dd2, dd, f1, f2
 ! real*8 :: dfluxp, dfluxt, dfluxp1, dfluxt1, dfluxp2, dfluxt2
@@ -1666,15 +1666,15 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,solution,ierr)
   real*8 :: D1, D2  ! "Diffusion" constants upstream and downstream of a face.
 ! real*8 :: sat_pressure  ! Saturation pressure of water.
 ! real*8 :: xxlw,xxla,xxgw,xxga,cw,cw1,cw2,cwu, sat_ave
-  real*8 :: ra(1:solution%option%ndof,1:2*solution%option%ndof)  
+  real*8 :: ra(1:realization%option%ndof,1:2*realization%option%ndof)  
 ! real*8 :: uhh, uconc, ukvr
 ! real*8 :: upweight,m1weight,m2weight,mbweight,mnweight
-  real*8 :: delxbc(1:solution%option%ndof)
-  real*8 :: blkmat11(1:solution%option%ndof,1:solution%option%ndof), &
-            blkmat12(1:solution%option%ndof,1:solution%option%ndof),&
-            blkmat21(1:solution%option%ndof,1:solution%option%ndof),&
-            blkmat22(1:solution%option%ndof,1:solution%option%ndof)
-  real*8 :: ResInc(1:solution%grid%nlmax, 1:solution%option%ndof, 1:solution%option%ndof),res(1:solution%option%ndof)  
+  real*8 :: delxbc(1:realization%option%ndof)
+  real*8 :: blkmat11(1:realization%option%ndof,1:realization%option%ndof), &
+            blkmat12(1:realization%option%ndof,1:realization%option%ndof),&
+            blkmat21(1:realization%option%ndof,1:realization%option%ndof),&
+            blkmat22(1:realization%option%ndof,1:realization%option%ndof)
+  real*8 :: ResInc(1:realization%grid%nlmax, 1:realization%option%ndof, 1:realization%option%ndof),res(1:realization%option%ndof)  
   real*8 :: max_dev  
 
   integer :: local_id, ghosted_id
@@ -1703,9 +1703,9 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,solution,ierr)
 ! 4  s         
 !-----------------------------------------------------------------------
 
-  grid => solution%grid
-  option => solution%option
-  field => solution%field
+  grid => realization%grid
+  option => realization%option
+  field => realization%field
   
   flag = SAME_NONZERO_PATTERN
 
@@ -1882,7 +1882,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,solution,ierr)
   ! print *,' Mph Jaco Finished source terms'
   
 ! Contribution from BC
-  boundary_condition => solution%boundary_conditions%first
+  boundary_condition => realization%boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -2316,18 +2316,18 @@ end subroutine MPHASEJacobian
 
 
 
-subroutine pflow_mphase_initaccum(solution)
+subroutine pflow_mphase_initaccum(realization)
  
   use translator_mph_module, only : pri_var_trans_mph_ninc
   
-  use Solution_module
+  use Realization_module
   use Grid_module
   use Field_module
   use Option_module
   
   implicit none
 
-  type(solution_type) :: solution 
+  type(realization_type) :: realization 
   
   integer :: ierr
   integer :: i, index_var_begin,index_var_end
@@ -2342,15 +2342,15 @@ subroutine pflow_mphase_initaccum(solution)
   
 ! real*8 :: sat_pressure
   real*8 :: pvol, satw  ! Saturation pressure of water.
-  real*8 :: dif(1:solution%option%nphase),res(1:solution%option%ndof)
+  real*8 :: dif(1:realization%option%nphase),res(1:realization%option%ndof)
  
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   
-  grid => solution%grid
-  option => solution%option
-  field => solution%field
+  grid => realization%grid
+  option => realization%option
+  field => realization%field
   
   call VecGetArrayF90(grid%volume, volume_p, ierr)
   call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
@@ -2422,25 +2422,25 @@ subroutine pflow_mphase_initaccum(solution)
 end subroutine pflow_mphase_initaccum
 
 
-subroutine pflow_update_mphase(solution)
+subroutine pflow_update_mphase(realization)
   
   use translator_mph_module, only : pri_var_trans_mph_ninc, translator_mph_get_output, translator_mphase_massbal
   
   use Connection_module
-  use Solution_module
+  use Realization_module
   use Grid_module
   use Option_module
   use Coupler_module  
 
   implicit none
 
-  type(solution_type) :: solution 
+  type(realization_type) :: realization 
     
   integer :: dof_offset
     integer :: iithrm
     integer :: ierr,iicap,iiphase
     PetscScalar, pointer :: xx_p(:),icap_loc_p(:),ithrm_loc_p(:),iphase_loc_p(:), var_loc_p(:)
-    real*8 :: dif(1:solution%option%nphase), dum1, dum2           
+    real*8 :: dif(1:realization%option%nphase), dum1, dum2           
   integer :: local_id, ghosted_id     
 
   type(coupler_type), pointer :: boundary_condition
@@ -2450,9 +2450,9 @@ subroutine pflow_update_mphase(solution)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field  
-  grid => solution%grid
-  option => solution%option
-  field => solution%field
+  grid => realization%grid
+  option => realization%option
+  field => realization%field
         
   ! if (option%rk > 0.d0) call Rock_Change(grid)
   ! call Translator_MPhase_Switching(field%xx,grid,1,ierr)
@@ -2491,7 +2491,7 @@ subroutine pflow_update_mphase(solution)
   !geh added for transient boundary conditions  
   if (associated(field%imat) .and. option%iread_geom < 0) then
 
-    boundary_condition => solution%boundary_conditions%first
+    boundary_condition => realization%boundary_conditions%first
     sum_connection = 0
     do 
       if (.not.associated(boundary_condition)) exit
@@ -2558,15 +2558,15 @@ subroutine pflow_update_mphase(solution)
     call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr)
     call VecRestoreArrayF90(field%var_loc,var_loc_p,ierr)
      
-    if(option%nphase>1) call translator_mphase_massbal(solution)
+    if(option%nphase>1) call translator_mphase_massbal(realization)
    ! endif 
 
     call VecCopy(field%xx, field%yy, ierr)   
     call VecCopy(field%iphas_loc, field%iphas_old_loc, ierr)   
      
-    call  pflow_mphase_initaccum(solution)
+    call  pflow_mphase_initaccum(realization)
       !print *,'pflow_mphase_initaccum done'
-    call translator_mph_get_output(solution)
+    call translator_mph_get_output(realization)
  !  print *,'translator_get_output done'
   ! the output variables should be put into option%pressure, temp,xmol,sat...
   ! otherwise need to rewrite the pflow_output
@@ -2574,7 +2574,7 @@ subroutine pflow_update_mphase(solution)
 end subroutine pflow_update_mphase
 
 
-subroutine pflow_mphase_initadj(solution)
+subroutine pflow_mphase_initadj(realization)
  
 ! running this subroutine will override the xmol data for initial condition in pflow.in 
 
@@ -2582,13 +2582,13 @@ subroutine pflow_mphase_initadj(solution)
   use translator_mph_module, only : pri_var_trans_mph_ninc, translator_check_phase_cond
 
   use Connection_module
-  use Solution_module
+  use Realization_module
   use Grid_module
   use Option_module
   use Coupler_module
   implicit none
  
-  type(solution_type) :: solution 
+  type(realization_type) :: realization 
 
   integer :: ierr
   integer :: num_connection  
@@ -2600,7 +2600,7 @@ subroutine pflow_mphase_initadj(solution)
   PetscScalar, pointer :: xx_p(:),var_loc_p(:)
   PetscScalar, pointer ::iphase_loc_p(:), ithrm_loc_p(:),icap_loc_p(:)
   
-  real*8  dif(solution%option%nphase), dum1, dum2
+  real*8  dif(realization%option%nphase), dum1, dum2
   
 ! real*8 :: temp1
 ! real*8, parameter :: Rg=8.31415D0
@@ -2613,9 +2613,9 @@ subroutine pflow_mphase_initadj(solution)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field  
-  grid => solution%grid
-  option => solution%option 
-  field => solution%field 
+  grid => realization%grid
+  option => realization%option 
+  field => realization%field 
 
 
   call VecGetArrayF90(field%icap_loc, icap_loc_p, ierr)
@@ -2656,7 +2656,7 @@ subroutine pflow_mphase_initadj(solution)
   enddo
 
 
-  boundary_condition => solution%boundary_conditions%first
+  boundary_condition => realization%boundary_conditions%first
   num_connection = 0
   do 
     if (.not.associated(boundary_condition)) exit    
@@ -2670,7 +2670,7 @@ subroutine pflow_mphase_initadj(solution)
 !  yybc =field%xxbc
 !  vel_bc = field%velocitybc
 
-  boundary_condition => solution%boundary_conditions%first
+  boundary_condition => realization%boundary_conditions%first
   sum_connection = 0  
   do 
     if (.not.associated(boundary_condition)) exit
@@ -2741,15 +2741,15 @@ end subroutine pflow_mphase_initadj
 
 
 
-subroutine createmphaseZeroArray(solution)
+subroutine createmphaseZeroArray(realization)
 
-  use Solution_module
+  use Realization_module
   use Grid_module
   use Option_module
   
   implicit none
 
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   integer :: ncount, idof
   integer :: local_id, ghosted_id
 
@@ -2757,9 +2757,9 @@ subroutine createmphaseZeroArray(solution)
   type(option_type), pointer :: option
   type(field_type), pointer :: field
     
-  grid => solution%grid
-  option => solution%option
-  field => solution%field
+  grid => realization%grid
+  option => realization%option
+  field => realization%field
   
   n_zero_rows = 0
 

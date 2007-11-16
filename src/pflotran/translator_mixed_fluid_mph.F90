@@ -56,16 +56,16 @@ contains
 !        apply mixing rules
 
 
-subroutine translator_mphase_massbal(solution)
+subroutine translator_mphase_massbal(realization)
  
-  use Solution_module
+  use Realization_module
   use Grid_module
   use Option_module
   use Field_module
   
   implicit none
   
-  type(solution_type) :: solution
+  type(realization_type) :: realization
  
   integer, save :: icall
   integer :: ierr
@@ -85,16 +85,16 @@ subroutine translator_mphase_massbal(solution)
   real*8, pointer ::  den(:),sat(:),xmol(:)
   real*8   sat_avg, sat_max, sat_min, sat_var
   real*8   sat_avg0, sat_max0, sat_min0, sat_var0
-  real*8 :: tot(0:solution%option%nspec,0:solution%option%nphase), tot0(0:solution%option%nspec,0:solution%option%nphase)  
+  real*8 :: tot(0:realization%option%nspec,0:realization%option%nphase), tot0(0:realization%option%nspec,0:realization%option%nphase)  
   data icall/0/
     
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   
-  grid => solution%grid
-  option => solution%option
-  field => solution%field  
+  grid => realization%grid
+  option => realization%option
+  field => realization%field  
 
   call VecGetArrayF90(field%var_loc,var_loc_p,ierr)
   call VecGetArrayF90(grid%volume, volume_p, ierr)
@@ -193,8 +193,8 @@ subroutine translator_mphase_massbal(solution)
   
     write(*,'(" Total CO2: t= ",1pe12.4," dt= ",1pe12.4," liq:",1pe13.6,&
    &" gas:",1pe13.6, " tot:", 1p2e13.6, " [kmol]",1p3e13.6)') &
-    option%time/solution%output_option%tconv,option%dt/solution%output_option%tconv,tot(2,1),tot(2,2),tot(2,1)+tot(2,2) !,nzc,nzm,nsm
-! & option%t/solution%output_option%tconv,tot(2,1),tot(2,2),tot(2,0),tot(2,1)+tot(2,2) !,nzc,nzm,nsm
+    option%time/realization%output_option%tconv,option%dt/realization%output_option%tconv,tot(2,1),tot(2,2),tot(2,1)+tot(2,2) !,nzc,nzm,nsm
+! & option%t/realization%output_option%tconv,tot(2,1),tot(2,2),tot(2,0),tot(2,1)+tot(2,2) !,nzc,nzm,nsm
     if (icall==0) then
       open(unit=13,file='massbal.dat',status='unknown')
       write(13,'(''# time   dt   totl   totg   tot n2p'')')
@@ -202,8 +202,8 @@ subroutine translator_mphase_massbal(solution)
     endif
 !   write(13,'(" Total CO2: t=",1pe13.6," liq:",1pe13.6,&
 ! &  " gas:",1pe13.6," tot:",1p2e13.6," [kmol]")')&
-! & option%t/solution%output_option%tconv,tot(2,1),tot(2,2),tot(2,0),tot(2,1)+tot(2,2)
-    write(13,'(1p19e12.4)') option%time/solution%output_option%tconv,option%dt/solution%output_option%tconv,&
+! & option%t/realization%output_option%tconv,tot(2,1),tot(2,2),tot(2,0),tot(2,1)+tot(2,2)
+    write(13,'(1p19e12.4)') option%time/realization%output_option%tconv,option%dt/realization%output_option%tconv,&
     tot(2,1),tot(2,2),tot(2,1)+tot(2,2),real(n2p), nzm, nxm,&
     sat_avg, sat_min, sat_max, sat_var 
   endif    
@@ -264,16 +264,16 @@ end function translator_check_phase_cond
 
 
 
-subroutine translator_mph_get_output(solution)
+subroutine translator_mph_get_output(realization)
  
-  use Solution_module
+  use Realization_module
   use Option_module
   use Grid_module, only : grid_type
   use Field_module 
   
   implicit none
   
-  type(solution_type) :: solution
+  type(realization_type) :: realization
 
   PetscErrorCode :: ierr
       
@@ -286,9 +286,9 @@ subroutine translator_mph_get_output(solution)
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
   
-  option => solution%option
-  grid => solution%grid
-  field => solution%field
+  option => realization%option
+  grid => realization%grid
+  field => realization%field
       
   call VecGetArrayF90(field%var_loc, var_loc_p, ierr)
   call VecGetArrayF90(field%pressure, p_p, ierr)
@@ -329,16 +329,16 @@ subroutine translator_mph_get_output(solution)
 end subroutine translator_mph_get_output
 
 
-subroutine translator_mph_step_maxchange(solution)
+subroutine translator_mph_step_maxchange(realization)
 
-  use Solution_module
+  use Realization_module
   use Option_module
   use Field_module
   use Grid_module
   
   implicit none
   
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   
   type(option_type), pointer :: option
   type(field_type), pointer :: field  
@@ -352,9 +352,9 @@ subroutine translator_mph_step_maxchange(solution)
 ! integer j
   PetscErrorCode :: ierr
   
-  option => solution%option
-  field => solution%field
-  grid => solution%grid
+  option => realization%option
+  field => realization%field
+  grid => realization%grid
   
    call VecWAXPY(field%dxx,-1.d0,field%xx,field%yy,ierr)
     call VecStrideNorm(field%dxx,0,NORM_INFINITY,option%dpmax,ierr)
@@ -409,9 +409,9 @@ subroutine translator_mph_step_maxchange(solution)
 end subroutine translator_mph_step_maxchange
 
 
-subroutine Translator_MPhase_Switching(xx,solution,icri,ichange)
+subroutine Translator_MPhase_Switching(xx,realization,icri,ichange)
   
-  use Solution_module
+  use Realization_module
   use Option_module
   use Field_module
   use Grid_module
@@ -423,7 +423,7 @@ subroutine Translator_MPhase_Switching(xx,solution,icri,ichange)
 
   implicit none
   
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   
   Vec, intent(in) :: xx
   integer icri,ichange 
@@ -435,7 +435,7 @@ subroutine Translator_MPhase_Switching(xx,solution,icri,ichange)
   real*8 :: p2,p,tmp,t
   real*8 :: dg,dddt,dddp,fg,dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp
   real*8 :: ug,xphi,henry,sat_pressure
-  real*8 :: xmol(solution%option%nphase*solution%option%nspec),satu(solution%option%nphase)
+  real*8 :: xmol(realization%option%nphase*realization%option%nspec),satu(realization%option%nphase)
 ! real*8 :: xla,co2_poyn
   integer :: local_id, ghosted_id, dof_offset
   
@@ -443,9 +443,9 @@ subroutine Translator_MPhase_Switching(xx,solution,icri,ichange)
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   
-  grid => solution%grid
-  option => solution%option
-  field => solution%field
+  grid => realization%grid
+  option => realization%option
+  field => realization%field
   
 ! mphase code need assemble 
   call VecGetArrayF90(xx, xx_p, ierr); CHKERRQ(ierr)

@@ -1,6 +1,6 @@
 module Simulation_module
 
-  use Solution_module
+  use Realization_module
   use Timestepper_module
   use Solver_module
 
@@ -10,7 +10,7 @@ module Simulation_module
 
   type, public :: simulation_type
 
-    type(solution_type), pointer :: solution
+    type(realization_type), pointer :: realization
     type(stepper_type), pointer :: stepper
 
   end type simulation_type
@@ -21,7 +21,7 @@ contains
 
 ! ************************************************************************** !
 !
-! SolutionCreate: Allocates and initializes a new Solution object
+! SimulationCreate: Allocates and initializes a new simulation object
 ! author: Glenn Hammond
 ! date: 10/25/07
 !
@@ -35,7 +35,7 @@ function SimulationCreate()
   type(simulation_type), pointer :: simulation
   
   allocate(simulation)
-  simulation%solution => SolutionCreate()
+  simulation%realization => RealizationCreate()
   simulation%stepper => TimestepperCreate()
   
   SimulationCreate => simulation
@@ -57,7 +57,7 @@ subroutine SimulationDestroy(simulation)
   
   if (.not.associated(simulation)) return
     
-  call SolutionDestroy(simulation%solution)
+  call RealizationDestroy(simulation%realization)
   call TimestepperDestroy(simulation%stepper)
   
 end subroutine SimulationDestroy

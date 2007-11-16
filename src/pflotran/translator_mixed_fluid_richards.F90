@@ -59,16 +59,16 @@ contains
 !        apply mixing rules
 
 
-subroutine translator_Richards_massbal(solution)
+subroutine translator_Richards_massbal(realization)
  
-  use Solution_module
+  use Realization_module
   use Grid_module
   use Option_module
   use Field_module
   
   implicit none
 
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -90,13 +90,13 @@ subroutine translator_Richards_massbal(solution)
   real*8 :: pvol,sum
   real*8, pointer :: den(:),sat(:),xmol(:)
  
-  real*8 :: tot(0:solution%option%nspec,0:solution%option%nphase), tot0(0:solution%option%nspec,0:solution%option%nphase)
+  real*8 :: tot(0:realization%option%nspec,0:realization%option%nphase), tot0(0:realization%option%nspec,0:realization%option%nphase)
   
   data icall/0/
 
-  grid => solution%grid
-  option => solution%option
-  field => solution%field
+  grid => realization%grid
+  option => realization%option
+  field => realization%field
 
   call VecGetArrayF90(field%var_loc,var_loc_p,ierr)
   call VecGetArrayF90(grid%volume, volume_p, ierr)
@@ -162,8 +162,8 @@ subroutine translator_Richards_massbal(solution)
 !   write(13,'(" Total CO2: t=",1pe13.6," liq:",1pe13.6,&
 ! &  " gas:",1pe13.6," tot:",1p2e13.6," [kmol]")')&
 ! & grid%t/grid%tconv,tot(2,1),tot(2,2),tot(2,0),tot(2,1)+tot(2,2)
-    write(13,'(1p9e12.4)') option%time/solution%output_option%tconv,  &
-                           option%dt/solution%output_option%tconv, &
+    write(13,'(1p9e12.4)') option%time/realization%output_option%tconv,  &
+                           option%dt/realization%output_option%tconv, &
                            tot(1:option%nspec,1) 
   endif    
   
@@ -213,16 +213,16 @@ integer function translator_check_cond_Richards(iphase, &
 end function translator_check_cond_Richards
 
 
-subroutine translator_Richards_get_output(solution)
+subroutine translator_Richards_get_output(realization)
 
-  use Solution_module
+  use Realization_module
   use Option_module
   use Grid_module, only : grid_type
   use Field_module
 
   implicit none
   
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   
   integer :: nvals
   type(option_type), pointer :: option
@@ -234,9 +234,9 @@ subroutine translator_Richards_get_output(solution)
   PetscScalar, pointer :: t_p(:),p_p(:),c_p(:),s_p(:),cc_p(:),var_loc_p(:)
   integer :: local_id, ghosted_id, index_var_begin ,jn, size_var_node
     
-  option => solution%option
-  grid => solution%grid
-  field => solution%field
+  option => realization%option
+  grid => realization%grid
+  field => realization%field
     
   call VecGetArrayF90(field%var_loc,var_loc_p, ierr)
   call VecGetArrayF90(field%pressure, p_p, ierr)
@@ -274,15 +274,15 @@ subroutine translator_Richards_get_output(solution)
 end subroutine translator_Richards_get_output
 
 
-subroutine translator_Ric_step_maxchange(solution)
+subroutine translator_Ric_step_maxchange(realization)
 
-  use Solution_module
+  use Realization_module
   use Option_module
   use Field_module
   
   implicit none
   
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   
   type(option_type), pointer :: option
   type(field_type), pointer :: field  
@@ -294,8 +294,8 @@ subroutine translator_Ric_step_maxchange(solution)
 ! integer :: n, j, n0
   integer :: ierr
   
-  option => solution%option
-  field => solution%field
+  option => realization%option
+  field => realization%field
 
   option%dcmax=0.D0
   option%dsmax=0.D0
@@ -311,9 +311,9 @@ subroutine translator_Ric_step_maxchange(solution)
 end subroutine translator_Ric_step_maxchange
 
 
-subroutine Translator_Richards_Switching(xx,solution,icri,ichange)
+subroutine Translator_Richards_Switching(xx,realization,icri,ichange)
 
-  use Solution_module
+  use Realization_module
   use Grid_module
   use Option_module
   use Field_module
@@ -322,7 +322,7 @@ subroutine Translator_Richards_Switching(xx,solution,icri,ichange)
     
   implicit none
   
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   Vec, intent(in) :: xx
   integer :: icri,ichange 
   
@@ -339,13 +339,13 @@ subroutine Translator_Richards_Switching(xx,solution,icri,ichange)
   real*8 :: p2,p,tmp,t, sat_pressure
   real*8 :: dg,fg,hg,visg
   real*8 :: ug,xphi,henry
-  real*8 :: xmol(solution%option%nphase*solution%option%nspec),satu(solution%option%nphase)
+  real*8 :: xmol(realization%option%nphase*realization%option%nspec),satu(realization%option%nphase)
   
 ! real*8 :: xla,dddt,dddp,dfgdp,dfgdt,eng,dhdt,dhdp,dvdt,dvdp,co2_poyn
 
-  grid => solution%grid
-  option => solution%option
-  field => solution%field
+  grid => realization%grid
+  option => realization%option
+  field => realization%field
 
 ! mphase code need assemble 
   call VecGetArrayF90(xx, xx_p, ierr); CHKERRQ(ierr)

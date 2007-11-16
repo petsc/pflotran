@@ -40,7 +40,7 @@ subroutine PflowInit(simulation,filename)
   use Option_module
   use Grid_module
   use Solver_module
-  use Solution_module
+  use Realization_module
   use Material_module
   use Timestepper_module
   use Field_module
@@ -59,7 +59,7 @@ subroutine PflowInit(simulation,filename)
   character(len=MAXWORDLENGTH) :: filename
 
   type(solver_type), pointer :: solver
-  type(solution_type), pointer :: solution
+  type(realization_type), pointer :: realization
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
@@ -79,13 +79,13 @@ subroutine PflowInit(simulation,filename)
   
   ! set pointers to objects
   solver => simulation%stepper%solver
-  solution => simulation%solution
-  option => solution%option
-  field => solution%field
+  realization => simulation%realization
+  option => realization%option
+  field => realization%field
   
   ! read MODE,GRID,PROC,COMP,PHAS cards
-  call readSelectCardsFromInput(solution,filename,mcomp,mphas)
-  grid => solution%grid
+  call readSelectCardsFromInput(realization,filename,mcomp,mphas)
+  grid => realization%grid
 
   ! set the operational mode (e.g. RICHARDS_MODE, MPH_MODE, etc)
   call setMode(option,mcomp,mphas)
@@ -365,18 +365,18 @@ subroutine PflowInit(simulation,filename)
 
   ! set up internal connectivity, distance, etc.
   call GridComputeInternalConnect(grid,option)
-  call SolutionProcessCouplers(solution)
+  call RealizationProcessCouplers(realization)
   
   ! clip regions and set up boundary connectivity, distance  
-  call GridLocalizeRegions(solution%regions,solution%grid,solution%option)
+  call GridLocalizeRegions(realization%regions,realization%grid,realization%option)
 
-  call GridComputeCouplerConnections(grid,option,solution%boundary_conditions%first)
+  call GridComputeCouplerConnections(grid,option,realization%boundary_conditions%first)
 !  call GridComputeBoundaryConnect(grid,option, &
-!                                  solution%boundary_conditions%first)                                
-  call assignMaterialPropToRegions(solution)
-  call assignInitialConditions(solution)
-  call SolutionInitBoundConditions(solution)
-!  call SolutionSetIBNDTYPE(solution)
+!                                  realization%boundary_conditions%first)                                
+  call assignMaterialPropToRegions(realization)
+  call assignInitialConditions(realization)
+  call RealizationInitBoundConditions(realization)
+!  call SolutionSetIBNDTYPE(realization)
 
   select case(option%imode)
     ! everything but RICHARDS_MODE for now
@@ -495,12 +495,12 @@ subroutine PflowInit(simulation,filename)
 #endif
       case(RICHARDS_MODE)
         call SNESSetJacobian(solver%snes, solver%J, solver%J, RichardsJacobian, &
-                             solution, ierr); CHKERRQ(ierr)
-        if (option%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(solution,solver)
+                             realization, ierr); CHKERRQ(ierr)
+        if (option%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(realization,solver)
       case(MPH_MODE)
         call SNESSetJacobian(solver%snes, solver%J, solver%J, MPHASEJacobian, &
-                             solution, ierr); CHKERRQ(ierr)
-        if (option%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(solution,solver)
+                             realization, ierr); CHKERRQ(ierr)
+        if (option%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(realization,solver)
 #if 0      
       ! still needs to be implemented
       case(OWG_MODE)
@@ -626,28 +626,28 @@ subroutine PflowInit(simulation,filename)
 #if 0  
     ! need to be implemented
     case(COND_MODE)
-      call SNESSetFunction(solver%snes,field%r,CondResidual,solution,ierr)
+      call SNESSetFunction(solver%snes,field%r,CondResidual,realization,ierr)
     case(TH_MODE)
-      call SNESSetFunction(solver%snes,field%r,THResidual,solution,ierr)
+      call SNESSetFunction(solver%snes,field%r,THResidual,realization,ierr)
     case(THC_MODE)
-      call SNESSetFunction(solver%snes,field%r,THCResidual,solution,ierr)
+      call SNESSetFunction(solver%snes,field%r,THCResidual,realization,ierr)
     case(TWOPH_MODE)
-      call SNESSetFunction(solver%snes,field%r,TTPHASEResidual,solution,ierr)
+      call SNESSetFunction(solver%snes,field%r,TTPHASEResidual,realization,ierr)
     case(FLASH_MODE)
-      call SNESSetFunction(solver%snes,field%r,FlashResidual,solution,ierr)
+      call SNESSetFunction(solver%snes,field%r,FlashResidual,realization,ierr)
     case(VADOSE_MODE)
-      call SNESSetFunction(solver%snes,field%r,VADOSEResidual,solution,ierr)
+      call SNESSetFunction(solver%snes,field%r,VADOSEResidual,realization,ierr)
 #endif      
     case(RICHARDS_MODE)
-      call SNESSetFunction(solver%snes,field%r,RichardsResidual,solution,ierr)
+      call SNESSetFunction(solver%snes,field%r,RichardsResidual,realization,ierr)
     case(MPH_MODE)
-      call SNESSetFunction(solver%snes,field%r,MPHASEResidual,solution,ierr)
+      call SNESSetFunction(solver%snes,field%r,MPHASEResidual,realization,ierr)
 #if 0 
     ! need to be implemented     
     case(OWG_MODE)
-      call SNESSetFunction(solver%snes,field%r,OWGResidual,solution,ierr)
+      call SNESSetFunction(solver%snes,field%r,OWGResidual,realization,ierr)
     case default
-      call SNESSetFunction(solver%snes,field%r,LiquidResidual,solution,ierr)
+      call SNESSetFunction(solver%snes,field%r,LiquidResidual,realization,ierr)
 #endif      
   end select
 
@@ -824,18 +824,18 @@ subroutine PflowInit(simulation,filename)
       call pflow_update_2phase(grid)
 #endif
     case(RICHARDS_MODE)
-      call pflow_richards_initadj(solution)
+      call pflow_richards_initadj(realization)
       call VecCopy(field%iphas_loc, field%iphas_old_loc,ierr)
       call VecCopy(field%xx, field%yy, ierr)
 !geh      call VecView(field%xx,PETSC_VIEWER_STDOUT_WORLD,ierr)
       if (option%myrank == 0) print *, "richards finish variable packing"
-      call pflow_update_richards(solution)
+      call pflow_update_richards(realization)
     case(MPH_MODE)
-      call pflow_mphase_initadj(solution)
+      call pflow_mphase_initadj(realization)
       call VecCopy(field%iphas_loc, field%iphas_old_loc,ierr)
       call VecCopy(field%xx, field%yy, ierr)
 !     print *, "m ph finish variable packing"
-      call pflow_update_mphase(solution)
+      call pflow_update_mphase(realization)
 #if 0
     ! still need implementation
     case(FLASH_MODE)
@@ -868,7 +868,7 @@ subroutine PflowInit(simulation,filename)
   if (option%myrank == 0) &
     write(*,'("  Finished setting up of INIT2 ")')
    
-  call initializeSolidReaction(solution)
+  call initializeSolidReaction(realization)
 
   if (option%myrank == 0) write(*,'("  Finished setting up ")')
   
@@ -881,16 +881,16 @@ end subroutine PflowInit
 ! date: 10/23/07
 !
 ! **************************************************************************
-subroutine readSelectCardsFromInput(solution,filename,mcomp,mphas)
+subroutine readSelectCardsFromInput(realization,filename,mcomp,mphas)
 
   use Option_module
   use Grid_module
   use Fileio_module
-  use Solution_module
+  use Realization_module
   
   implicit none
 
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   character(len=MAXWORDLENGTH) :: filename
   integer :: mcomp, mphas
 
@@ -905,7 +905,7 @@ subroutine readSelectCardsFromInput(solution,filename,mcomp,mphas)
   
   integer :: igeom
   
-  option => solution%option
+  option => realization%option
   
   open(IUNIT1, file=filename, action="read", status="old") 
   open(IUNIT2, file='pflow.out', action="write", status="unknown")
@@ -942,8 +942,8 @@ subroutine readSelectCardsFromInput(solution,filename,mcomp,mphas)
   call fiReadInt(string,igeom,ierr)
   call fiDefaultMsg('igeom',ierr)
   
-  solution%grid => GridCreate(igeom) 
-  grid => solution%grid
+  realization%grid => GridCreate(igeom) 
+  grid => realization%grid
 
   if (grid%igrid == STRUCTURED) then ! structured
     call fiReadInt(string,grid%structured_grid%nx,ierr)
@@ -1134,7 +1134,7 @@ subroutine readInput(simulation,filename)
   use Solver_module
   use Material_module
   use Fileio_module
-  use Solution_module
+  use Realization_module
   use Timestepper_module
   use Region_module
   use Condition_module
@@ -1180,17 +1180,17 @@ subroutine readInput(simulation,filename)
   type(thermal_property_type), pointer :: thermal_property
   type(saturation_function_type), pointer :: saturation_function
 
-  type(solution_type), pointer :: solution
+  type(realization_type), pointer :: realization
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(solver_type), pointer :: solver
   type(stepper_type), pointer :: stepper
   
-  solution => simulation%solution
-  grid => solution%grid
-  option => solution%option
-  field => solution%field
+  realization => simulation%realization
+  grid => realization%grid
+  option => realization%option
+  field => realization%field
   stepper => simulation%stepper
   solver => stepper%solver
 
@@ -1264,7 +1264,7 @@ subroutine readInput(simulation,filename)
         else
           call printErrMsg(option,"REGION type not recognized")
         endif
-        call RegionAddToList(region,solution%regions)      
+        call RegionAddToList(region,realization%regions)      
 
 !....................
       case ('CONDITION','COND')
@@ -1272,37 +1272,37 @@ subroutine readInput(simulation,filename)
         call fiReadWord(string,condition%name,.true.,ierr)
         call fiErrorMsg('cond','name',ierr) 
         call ConditionRead(condition,option,IUNIT1)
-        call ConditionAddToList(condition,solution%conditions)
+        call ConditionAddToList(condition,realization%conditions)
       
 !....................
       case ('BOUNDARY_CONDITION')
         coupler => CouplerCreate()
         call CouplerRead(coupler,IUNIT1)
-        call CouplerAddToList(coupler,solution%boundary_conditions)
+        call CouplerAddToList(coupler,realization%boundary_conditions)
       
 !....................
       case ('INITIAL_CONDITION')
         coupler => CouplerCreate()
         call CouplerRead(coupler,IUNIT1)
-        call CouplerAddToList(coupler,solution%initial_conditions)
+        call CouplerAddToList(coupler,realization%initial_conditions)
       
 !....................
       case ('STRATIGRAPHY')
         strata => StrataCreate()
         call StrataRead(strata,IUNIT1)
-        call StrataAddToList(strata,solution%strata)
+        call StrataAddToList(strata,realization%strata)
       
 !....................
       case ('SOURCE_SINK')
         coupler => CouplerCreate()
         call CouplerRead(coupler,IUNIT1)
-        call CouplerAddToList(coupler,solution%source_sinks)
+        call CouplerAddToList(coupler,realization%source_sinks)
       
 !.....................
       case ('STRATA')
         strata => StrataCreate()
         call StrataRead(strata,IUNIT1)
-        call StrataAddToList(strata,solution%strata)
+        call StrataAddToList(strata,realization%strata)
       
 !.....................
       case ('COMP') 
@@ -1352,7 +1352,7 @@ subroutine readInput(simulation,filename)
 !....................
 
       case ('HDF5')
-        solution%output_option%print_hdf5 = .true.
+        realization%output_option%print_hdf5 = .true.
         do
           call fiReadWord(string,word,.true.,ierr)
           if (ierr /= 0) exit
@@ -1361,21 +1361,21 @@ subroutine readInput(simulation,filename)
 
           select case(card)
             case('VELO')
-              solution%output_option%print_hdf5_velocities = .true.
+              realization%output_option%print_hdf5_velocities = .true.
             case('FLUX')
-              solution%output_option%print_hdf5_flux_velocities = .true.
+              realization%output_option%print_hdf5_flux_velocities = .true.
             case default
           end select
             
         enddo
 
         if (option%myrank == 0) &
-          write(IUNIT2,'(/," *HDF5",10x,i1,/)') solution%output_option%print_hdf5
+          write(IUNIT2,'(/," *HDF5",10x,i1,/)') realization%output_option%print_hdf5
 
 !....................
 
       case ('TECP')
-        solution%output_option%print_tecplot = .true.
+        realization%output_option%print_tecplot = .true.
         do
           call fiReadWord(string,word,.true.,ierr)
           if (ierr /= 0) exit
@@ -1384,16 +1384,16 @@ subroutine readInput(simulation,filename)
 
           select case(card)
             case('VELO')
-              solution%output_option%print_tecplot_velocities = .true.
+              realization%output_option%print_tecplot_velocities = .true.
             case('FLUX')
-              solution%output_option%print_tecplot_flux_velocities = .true.
+              realization%output_option%print_tecplot_flux_velocities = .true.
             case default
           end select
           
         enddo
 
         if (option%myrank == 0) &
-          write(IUNIT2,'(/," *TECP",10x,i1,/)') solution%output_option%print_tecplot
+          write(IUNIT2,'(/," *TECP",10x,i1,/)') realization%output_option%print_tecplot
 
 !....................
 
@@ -1791,7 +1791,7 @@ subroutine readInput(simulation,filename)
                                             thermal_property%therm_cond_wet
           
           call ThermalAddPropertyToList(thermal_property, &
-                                        solution%thermal_properties)
+                                        realization%thermal_properties)
         enddo
         
         ! allocate dynamic arrays holding saturation function information
@@ -1805,7 +1805,7 @@ subroutine readInput(simulation,filename)
         allocate(option%cexp(count))
         
         ! fill arrays with values from linked list
-        thermal_property => solution%thermal_properties
+        thermal_property => realization%thermal_properties
         do
         
           if (.not.associated(thermal_property)) exit
@@ -1901,7 +1901,7 @@ subroutine readInput(simulation,filename)
           call fiErrorMsg('pwrprm','PCKR', ierr)
           
           call SaturationFunctionAddToList(saturation_function, &
-                                           solution%saturation_functions)
+                                           realization%saturation_functions)
 
         enddo
         
@@ -1924,7 +1924,7 @@ subroutine readInput(simulation,filename)
         allocate(option%pwrprm(count))
 
         ! fill arrays with values from linked list
-        saturation_function => solution%saturation_functions
+        saturation_function => realization%saturation_functions
         do 
         
           if (.not.associated(saturation_function)) exit
@@ -2053,7 +2053,7 @@ subroutine readInput(simulation,filename)
           
           material%permeability(1:3,1:3) = material%permeability(1:3,1:3)
           
-          call MaterialAddToList(material,solution%materials)
+          call MaterialAddToList(material,realization%materials)
           
         enddo          
 
@@ -2218,26 +2218,26 @@ subroutine readInput(simulation,filename)
       
         call fiReadWord(string,word,.false.,ierr)
       
-        solution%output_option%tunit = trim(word)
+        realization%output_option%tunit = trim(word)
 
-        if (solution%output_option%tunit == 's') then
-          solution%output_option%tconv = 1.d0
-        else if (solution%output_option%tunit == 'm') then
-          solution%output_option%tconv = 60.d0
-        else if (solution%output_option%tunit == 'h') then
-          solution%output_option%tconv = 60.d0 * 60.d0
-        else if (solution%output_option%tunit == 'd') then
-          solution%output_option%tconv = 60.d0 * 60.d0 * 24.d0
-        else if (solution%output_option%tunit == 'mo') then
-          solution%output_option%tconv = 60.d0 * 60.d0 * 24.d0 * 30.d0
-        else if (solution%output_option%tunit == 'y') then
-          solution%output_option%tconv = 60.d0 * 60.d0 * 24.d0 * 365.d0
+        if (realization%output_option%tunit == 's') then
+          realization%output_option%tconv = 1.d0
+        else if (realization%output_option%tunit == 'm') then
+          realization%output_option%tconv = 60.d0
+        else if (realization%output_option%tunit == 'h') then
+          realization%output_option%tconv = 60.d0 * 60.d0
+        else if (realization%output_option%tunit == 'd') then
+          realization%output_option%tconv = 60.d0 * 60.d0 * 24.d0
+        else if (realization%output_option%tunit == 'mo') then
+          realization%output_option%tconv = 60.d0 * 60.d0 * 24.d0 * 30.d0
+        else if (realization%output_option%tunit == 'y') then
+          realization%output_option%tconv = 60.d0 * 60.d0 * 24.d0 * 365.d0
         else
           if (option%myrank == 0) then
             write(*,'(" Time unit: ",a3,/, &
               &" Error: time units must be one of ",/, &
               &"   s -seconds",/,"   m -minutes",/,"   h -hours",/, &
-              &"   d -days", /, "  mo -months",/,"   y -years")') solution%output_option%tunit
+              &"   d -days", /, "  mo -months",/,"   y -years")') realization%output_option%tunit
           endif
           stop
         endif
@@ -2300,9 +2300,9 @@ subroutine readInput(simulation,filename)
         
         option%dt = stepper%dt_min
       
-        option%dt = solution%output_option%tconv * option%dt
-        stepper%dt_min = solution%output_option%tconv * stepper%dt_min
-        stepper%dt_max = solution%output_option%tconv * stepper%dt_max
+        option%dt = realization%output_option%tconv * option%dt
+        stepper%dt_min = realization%output_option%tconv * stepper%dt_min
+        stepper%dt_max = realization%output_option%tconv * stepper%dt_max
 
 !....................
 
@@ -2681,7 +2681,7 @@ end subroutine readInput
 ! date:
 !
 ! ************************************************************************** !
-subroutine initAccumulation(solution)
+subroutine initAccumulation(realization)
 !  use water_eos_module
 !  use TTPHASE_module
 !  use Flash_module
@@ -2690,19 +2690,19 @@ subroutine initAccumulation(solution)
 !  use Vadose_module
  use Richards_module , only: pflow_richards_initaccum  ! for some reason intel compiler fails without "only" clause
 
-  use Solution_module
+  use Realization_module
   use Option_module
 
   implicit none
 
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   
   type(option_type), pointer :: option
   real*8, pointer :: den_p(:), pressure_p(:), temp_p(:), h_p(:)
   real*8 :: dw_kg,dl,hl
   integer :: m, ierr
   
-  option => solution%option
+  option => realization%option
   
 #if 0  
   ! needs to be implemented
@@ -2713,7 +2713,7 @@ subroutine initAccumulation(solution)
   else if (grid%use_richards == PETSC_TRUE) then
 #endif    
   if (option%imode == RICHARDS_MODE) then
-    call pflow_richards_initaccum(solution)
+    call pflow_richards_initaccum(realization)
 #if 0    
   ! needs to be implemented
   else if (grid%use_flash == PETSC_TRUE) then
@@ -2855,9 +2855,9 @@ end subroutine setMode
 ! date: 11/02/07
 !
 ! ************************************************************************** !
-subroutine assignMaterialPropToRegions(solution)
+subroutine assignMaterialPropToRegions(realization)
 
-  use Solution_module
+  use Realization_module
   use Strata_module
   use Region_module
   use Material_module
@@ -2867,7 +2867,7 @@ subroutine assignMaterialPropToRegions(solution)
 
   implicit none
   
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   
   PetscScalar, pointer :: icap_loc_p(:)
   PetscScalar, pointer :: ithrm_loc_p(:)
@@ -2889,9 +2889,9 @@ subroutine assignMaterialPropToRegions(solution)
   type(material_type), pointer :: material
   type(region_type), pointer :: region
   
-  option => solution%option
-  grid => solution%grid
-  field => solution%field
+  option => realization%option
+  grid => realization%grid
+  field => realization%field
   
   call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr)
   call VecGetArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
@@ -2902,7 +2902,7 @@ subroutine assignMaterialPropToRegions(solution)
   call VecGetArrayF90(field%perm0_zz,perm_zz_p,ierr)
   call VecGetArrayF90(field%perm_pow,perm_pow_p,ierr)
 
-  strata => solution%strata%first
+  strata => realization%strata%first
   do
     if (.not.associated(strata)) exit
     
@@ -2932,13 +2932,13 @@ subroutine assignMaterialPropToRegions(solution)
   call VecRestoreArrayF90(field%perm_pow,perm_pow_p,ierr)
   call VecRestoreArrayF90(field%tor_loc,tor_loc_p,ierr)
 
-  call GridGlobalToLocal(solution%grid,field%porosity0, &
+  call GridGlobalToLocal(realization%grid,field%porosity0, &
                          field%porosity_loc,ONEDOF)
-  call GridGlobalToLocal(solution%grid,field%perm0_xx, &
+  call GridGlobalToLocal(realization%grid,field%perm0_xx, &
                          field%perm_xx_loc,ONEDOF)  
-  call GridGlobalToLocal(solution%grid,field%perm0_yy, &
+  call GridGlobalToLocal(realization%grid,field%perm0_yy, &
                          field%perm_yy_loc,ONEDOF)  
-  call GridGlobalToLocal(solution%grid,field%perm0_zz, &
+  call GridGlobalToLocal(realization%grid,field%perm0_zz, &
                          field%perm_zz_loc,ONEDOF)   
   
 end subroutine assignMaterialPropToRegions
@@ -2950,9 +2950,9 @@ end subroutine assignMaterialPropToRegions
 ! date: 11/02/07
 !
 ! ************************************************************************** !
-subroutine assignInitialConditions(solution)
+subroutine assignInitialConditions(realization)
 
-  use Solution_module
+  use Realization_module
   use Region_module
   use Option_module
   use Field_module
@@ -2964,7 +2964,7 @@ subroutine assignInitialConditions(solution)
 
   implicit none
   
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   
   PetscScalar, pointer :: pressure_p(:)
   PetscScalar, pointer :: temp_p(:)
@@ -2979,25 +2979,25 @@ subroutine assignInitialConditions(solution)
   type(field_type), pointer :: field  
   type(coupler_type), pointer :: initial_condition
     
-  option => solution%option
-  field => solution%field
+  option => realization%option
+  field => realization%field
     
   select case(option%imode)
   ! needs to be implemented
 #if 0
     case(FLASH_MODE)
-      call pflow_flash_setupini(solution)
+      call pflow_flash_setupini(realization)
 #endif  
     case(RICHARDS_MODE)
-      call pflow_richards_setupini(solution)
+      call pflow_richards_setupini(realization)
     case(MPH_MODE)
-      call pflow_mphase_setupini(solution)
+      call pflow_mphase_setupini(realization)
 #if 0
   ! needs to be implemented
     case(OWG_MODE)
-      call pflow_owg_setupini(solution)
+      call pflow_owg_setupini(realization)
     case(VADOSE_MODE)
-      call pflow_vadose_setupini(solution)
+      call pflow_vadose_setupini(realization)
 #endif      
     case default
       call VecGetArrayF90(field%pressure,pressure_p,ierr)
@@ -3006,7 +3006,7 @@ subroutine assignInitialConditions(solution)
       if (option%ndof == 3) call VecGetArrayF90(field%conc,conc_p,ierr)
       if (option%ndof == 4) call VecGetArrayF90(field%xmol,xmol_p,ierr)
     
-      initial_condition => solution%initial_conditions%first
+      initial_condition => realization%initial_conditions%first
       do
       
         if (.not.associated(initial_condition)) exit
@@ -3065,11 +3065,11 @@ subroutine assignInitialConditions(solution)
   if (option%ihydrostatic == 1) then
     select case(option%imode)
       case(MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
-        call mhydrostatic(solution)
+        call mhydrostatic(realization)
       case(OWG_MODE)
-        call owghydrostatic(solution)
+        call owghydrostatic(realization)
       case default
-        call hydrostatic(solution)
+        call hydrostatic(realization)
     endif
   endif
 #endif  
@@ -3103,14 +3103,14 @@ end subroutine assignInitialConditions
 ! date: 11/15/07
 !
 ! ************************************************************************** !
-subroutine initializeSolidReaction(solution)
+subroutine initializeSolidReaction(realization)
 
-  use Solution_module
+  use Realization_module
   use Grid_module
   use Option_module
   use Field_module
 
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -3119,9 +3119,9 @@ subroutine initializeSolidReaction(solution)
   PetscScalar, pointer :: phis_p(:)
   PetscErrorCode :: ierr
   
-  grid => solution%grid
-  option => solution%option
-  field => solution%field
+  grid => realization%grid
+  option => realization%option
+  field => realization%field
   
   if (option%rk > 0.d0) then
     allocate(option%area_var(grid%nlmax))

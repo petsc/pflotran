@@ -85,9 +85,9 @@ end function TimestepperCreate
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine StepperRun(solution,stepper,stage)
+subroutine StepperRun(realization,stepper,stage)
 
-  use Solution_module
+  use Realization_module
   use Option_module
   use Output_module
   
@@ -100,7 +100,7 @@ subroutine StepperRun(solution,stepper,stage)
 #include "include/finclude/petscsys.h"
 #include "include/finclude/petscviewer.h"
 
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   type(stepper_type) :: stepper
   PetscInt :: stage(*)
   
@@ -116,25 +116,25 @@ subroutine StepperRun(solution,stepper,stage)
   
   PetscErrorCode :: ierr
   
-  option => solution%option
+  option => realization%option
 
   plot_flag = .false.
   num_timestep_cuts = 0
   timestep_cut_flag = .false.
 
-  call SolutionAddWaypointsToList(solution,stepper%waypoints)
+  call RealizationAddWaypointsToList(realization,stepper%waypoints)
   call WaypointListFillIn(option,stepper%waypoints)
   call WaypointListRemoveExtraWaypnts(option,stepper%waypoints)
-  call WaypointConvertTimes(stepper%waypoints,solution%output_option%tconv)
+  call WaypointConvertTimes(stepper%waypoints,realization%output_option%tconv)
   stepper%cur_waypoint => stepper%waypoints%first
 
   allocate(dxdt(1:option%ndof))  
 
   do istep = stepper%flowsteps+1, stepper%stepmax
   
-    call StepperStepDT(solution,stepper,plot_flag,timestep_cut_flag, &
+    call StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
                        num_timestep_cuts,num_newton_iterations)
-    call StepperUpdateSolution(solution)
+    call StepperUpdateSolution(realization)
 
 #if 0
     ! needs to be modularized
@@ -150,7 +150,7 @@ subroutine StepperRun(solution,stepper,stage)
     call PetscLogStagePush(stage(2), ierr)
     if (plot_flag) then
       if(option%imode /= OWG_MODE) then
-        call Output(solution,istep)
+        call Output(realization,istep)
       else
  !       call pflow_var_output(grid,kplt,iplot)
       endif
@@ -180,7 +180,7 @@ subroutine StepperRun(solution,stepper,stage)
       enddo 
       
       if(ista >= option%ndof)then
-        solution%output_option%plot_number=option%kplot; iplot=1     
+        realization%output_option%plot_number=option%kplot; iplot=1     
       endif
     endif         
 #endif
@@ -317,7 +317,7 @@ end subroutine StepperUpdateDT
 ! date: 
 !
 ! ************************************************************************** !
-subroutine StepperStepDT(solution,stepper,plot_flag,timestep_cut_flag, &
+subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
                          num_timestep_cuts,num_newton_iterations)
   
   use translator_mph_module, only : translator_mph_step_maxchange
@@ -333,7 +333,7 @@ subroutine StepperStepDT(solution,stepper,plot_flag,timestep_cut_flag, &
   use Richards_module
   use pflow_solv_module
   
-  use Solution_module
+  use Realization_module
   use Grid_module
   use Option_module
   use Solver_module
@@ -347,7 +347,7 @@ subroutine StepperStepDT(solution,stepper,plot_flag,timestep_cut_flag, &
 #include "include/finclude/petscvec.h90"
 #include "include/finclude/petscsnes.h"
 
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   type(stepper_type) :: stepper
 
   logical :: plot_flag, timestep_cut_flag
@@ -366,9 +366,9 @@ subroutine StepperStepDT(solution,stepper,plot_flag,timestep_cut_flag, &
   type(field_type), pointer :: field  
   type(solver_type), pointer :: solver
 
-  option => solution%option
-  grid => solution%grid
-  field => solution%field
+  option => realization%option
+  grid => realization%grid
+  field => realization%field
   solver => stepper%solver
 
 ! real*8, pointer :: xx_p(:), conc_p(:), press_p(:), temp_p(:)
@@ -449,35 +449,35 @@ subroutine StepperStepDT(solution,stepper,plot_flag,timestep_cut_flag, &
         call SNESSolve(solver%snes, PETSC_NULL, field%xx, ierr)
       case(MPH_MODE)
         if (option%use_ksp == PETSC_TRUE) then
-          call pflow_solve(solution,num_newton_iterations, &
+          call pflow_solve(realization,num_newton_iterations, &
                            stepper%newton_max,snes_reason,ierr)
         else 
           call SNESSolve(solver%snes, PETSC_NULL, field%xx, ierr)
         endif
       case(RICHARDS_MODE)
         if (option%use_ksp == PETSC_TRUE) then
-          call pflow_solve(solution,num_newton_iterations, &
+          call pflow_solve(realization,num_newton_iterations, &
                            stepper%newton_max,snes_reason,ierr)
         else 
           call SNESSolve(solver%snes, PETSC_NULL, field%xx, ierr)
         endif
       case(FLASH_MODE)
         if (option%use_ksp == PETSC_TRUE) then
-          call pflow_solve(solution,num_newton_iterations, &
+          call pflow_solve(realization,num_newton_iterations, &
                            stepper%newton_max,snes_reason,ierr)
         else 
           call SNESSolve(solver%snes, PETSC_NULL, field%xx, ierr)
         endif
       case(VADOSE_MODE)
         if (option%use_ksp == PETSC_TRUE) then
-          call pflow_solve(solution,num_newton_iterations, &
+          call pflow_solve(realization,num_newton_iterations, &
                            stepper%newton_max,snes_reason,ierr)
         else 
           call SNESSolve(solver%snes, PETSC_NULL, field%xx, ierr)
         endif
       case(OWG_MODE)
         if (option%use_ksp == PETSC_TRUE) then
-          call pflow_solve(solution,num_newton_iterations, &
+          call pflow_solve(realization,num_newton_iterations, &
                            stepper%newton_max,snes_reason,ierr)
         else 
           call SNESSolve(solver%snes,PETSC_NULL, field%xx, ierr)
@@ -550,22 +550,22 @@ subroutine StepperStepDT(solution,stepper,plot_flag,timestep_cut_flag, &
       select case(option%imode)
 #if 0      
         case(TWOPH_MODE)
-          call TTPhase_Update_Reason(update_reason,solution)
+          call TTPhase_Update_Reason(update_reason,realization)
 #endif          
         case(MPH_MODE)
-          call MPhase_Update_Reason(update_reason,solution)
+          call MPhase_Update_Reason(update_reason,realization)
 #if 0          
         case(FLASH_MODE)
-          call flash_Update_Reason(update_reason,solution)
+          call flash_Update_Reason(update_reason,realization)
         case(VADOSE_MODE)
-          call Vadose_Update_Reason(update_reason,solution)
+          call Vadose_Update_Reason(update_reason,realization)
 #endif          
         case(RICHARDS_MODE)
           update_reason=1
-         !call Richards_Update_Reason(update_reason,solution)
+         !call Richards_Update_Reason(update_reason,realization)
 #if 0         
         case(OWG_MODE)
-          call OWG_Update_Reason(update_reason,solution)
+          call OWG_Update_Reason(update_reason,realization)
 #endif          
       end select   
       if (option%myrank==0) print *,'update_reason: ',update_reason
@@ -583,8 +583,8 @@ subroutine StepperStepDT(solution,stepper,plot_flag,timestep_cut_flag, &
         if (option%myrank == 0) then
 !         t = pflowgrid_get_t(grid)
           print *,"--> icut_max exceeded: icut/icutmax= ",icut,stepper%icut_max, &
-                  "t= ",option%time/solution%output_option%tconv, " dt= ", &
-                  option%dt/solution%output_option%tconv
+                  "t= ",option%time/realization%output_option%tconv, " dt= ", &
+                  option%dt/realization%output_option%tconv
           print *,"Stopping execution!"
         endif
         plot_flag = .true.
@@ -616,8 +616,8 @@ subroutine StepperStepDT(solution,stepper,plot_flag,timestep_cut_flag, &
       if (option%myrank == 0) write(*,'('' -> Cut time step: snes='',i3, &
         &   '' icut= '',i2,''['',i3,'']'','' t= '',1pe12.4, '' dt= '', &
         &   1pe12.4,i2)')  snes_reason,icut,stepper%icutcum, &
-            option%time/solution%output_option%tconv, &
-            option%dt/solution%output_option%tconv,timestep_cut_flag
+            option%time/realization%output_option%tconv, &
+            option%dt/realization%output_option%tconv,timestep_cut_flag
 
       if (option%ndof == 1) then
         ! VecCopy(x,y): y=x
@@ -634,9 +634,9 @@ subroutine StepperStepDT(solution,stepper,plot_flag,timestep_cut_flag, &
             call pflow_flash_timecut(grid)
 #endif            
           case(RICHARDS_MODE)
-            call pflow_richards_timecut(solution)
+            call pflow_richards_timecut(realization)
           case(MPH_MODE)
-            call pflow_mphase_timecut(solution)
+            call pflow_mphase_timecut(realization)
 #if 0            
           case(VADOSE_MODE)
             call pflow_vadose_timecut(grid)
@@ -663,8 +663,8 @@ subroutine StepperStepDT(solution,stepper,plot_flag,timestep_cut_flag, &
     if (mod(stepper%flowsteps,option%imod) == 0 .or. stepper%flowsteps == 1) then
       write(*, '(/," FLOW ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1,"]", &
       & " snes_conv_reason: ",i4,/,"  newt= ",i2," [",i6,"]"," cut= ",i2," [",i4,"]")') &
-      stepper%flowsteps,option%time/solution%output_option%tconv, &
-      option%dt/solution%output_option%tconv,solution%output_option%tunit, &
+      stepper%flowsteps,option%time/realization%output_option%tconv, &
+      option%dt/realization%output_option%tconv,realization%output_option%tunit, &
       snes_reason,num_newton_iterations,stepper%newtcum,icut,stepper%icutcum
 
       if (option%use_ksp /= PETSC_TRUE) then
@@ -675,9 +675,9 @@ subroutine StepperStepDT(solution,stepper,plot_flag,timestep_cut_flag, &
        
       write(IUNIT2, '(" FLOW ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1, &
       & "]"," snes_conv_reason: ",i4,/,"  newt= ",i2," [",i6,"]"," cut= ",i2," [",i4, &
-      & "]")') stepper%flowsteps,option%time/solution%output_option%tconv, &
-      option%dt/solution%output_option%tconv, &
-      solution%output_option%tunit, snes_reason,num_newton_iterations,stepper%newtcum,icut,stepper%icutcum
+      & "]")') stepper%flowsteps,option%time/realization%output_option%tconv, &
+      option%dt/realization%output_option%tconv, &
+      realization%output_option%tunit, snes_reason,num_newton_iterations,stepper%newtcum,icut,stepper%icutcum
     endif
   endif
   
@@ -766,7 +766,7 @@ subroutine StepperStepDT(solution,stepper,plot_flag,timestep_cut_flag, &
     endif
 #endif
   if (option%imode == RICHARDS_MODE) then
-     call translator_ric_step_maxchange(solution)
+     call translator_ric_step_maxchange(realization)
     if (option%myrank==0) then
       if (mod(stepper%flowsteps,option%imod) == 0 .or. stepper%flowsteps == 1) then
         write(*,'("  --> max chng: dpmx= ",1pe12.4, &
@@ -779,7 +779,7 @@ subroutine StepperStepDT(solution,stepper,plot_flag,timestep_cut_flag, &
       endif
     endif
   else if (option%imode == MPH_MODE) then
-     call translator_mph_step_maxchange(solution)
+     call translator_mph_step_maxchange(realization)
     ! note use mph will use variable switching, the x and s change is not meaningful 
     if (option%myrank==0) then
       if (mod(stepper%flowsteps,option%imod) == 0 .or. stepper%flowsteps == 1) then
@@ -864,12 +864,12 @@ end subroutine StepperStepDT
 
 ! ************************************************************************** !
 !
-! StepperUpdateSolution: Updates the solution and solution-dependent variables
+! StepperUpdateSolution: Updates the realization and realization-dependent variables
 ! author: 
 ! date: 
 !
 ! ************************************************************************** !
-subroutine StepperUpdateSolution(solution)
+subroutine StepperUpdateSolution(realization)
   
   use pflow_vector_ops_module
   use TTPHASE_module
@@ -880,7 +880,7 @@ subroutine StepperUpdateSolution(solution)
   use Richards_module, only: pflow_update_richards
   use hydrostat_module, only: recondition_bc
 
-  use Solution_module
+  use Realization_module
   use Option_module
   use Grid_module
 
@@ -888,7 +888,7 @@ subroutine StepperUpdateSolution(solution)
 
 #include "include/finclude/petsc.h"  
 
-  type(solution_type) :: solution
+  type(realization_type) :: realization
 
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
@@ -898,11 +898,11 @@ subroutine StepperUpdateSolution(solution)
   integer*4 m, n
   real*8, pointer :: xx_p(:), conc_p(:), press_p(:), temp_p(:), phis_p(:)
   
-  option => solution%option
-  grid => solution%grid
-  field => solution%field
+  option => realization%option
+  grid => realization%grid
+  field => realization%field
   
-! update solution vector and physical properties (VecCopy(x,y): y=x)
+! update realization vector and physical properties (VecCopy(x,y): y=x)
   if (option%ndof == 1) then
     call VecCopy(field%ppressure, field%pressure, ierr)
     call VecCopy(field%ttemp, field%temp, ierr)
@@ -927,9 +927,9 @@ subroutine StepperUpdateSolution(solution)
       call pflow_update_owg(grid)
 #endif      
     case(MPH_MODE)
-      call pflow_update_mphase(solution)
+      call pflow_update_mphase(realization)
     case(RICHARDS_MODE)
-      call pflow_update_richards(solution)
+      call pflow_update_richards(realization)
 #if 0      
     case(FLASH_MODE)
       call pflow_update_flash(grid)
@@ -974,7 +974,7 @@ subroutine StepperUpdateSolution(solution)
   endif
   
   ! update solutoin variables
-  call SolutionUpdate(solution)
+  call RealizationUpdate(realization)
 
 end subroutine StepperUpdateSolution
 

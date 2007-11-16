@@ -25,21 +25,21 @@
 
  contains
 
- subroutine pflow_kspsolver_init(solution,solver)
+ subroutine pflow_kspsolver_init(realization,solver)
 
- use Solution_module
+ use Realization_module
  use Option_module
  use Solver_module
 
  implicit none
 
- type(solution_type) :: solution
+ type(realization_type) :: realization
  type(solver_type) :: solver
  integer ierr
  
  type(option_type), pointer :: option
  
- option => solution%option
+ option => realization%option
  
  call KSPCreate(PETSC_COMM_WORLD,solver%ksp,ierr)
  call KSPGetPC(solver%ksp, solver%pc, ierr)
@@ -76,9 +76,9 @@
  end subroutine pflow_kspsolver_init
  
  
- subroutine pflow_solve(solution,newton,newton_max,isucc,ierr)
+ subroutine pflow_solve(realization,newton,newton_max,isucc,ierr)
  
- use Solution_module
+ use Realization_module
  use Option_module
  use Field_module
  use Solver_module
@@ -98,7 +98,7 @@
 #include "include/finclude/petscerror.h"
 #include "definitions.h"
 
- type(solution_type) :: solution
+ type(realization_type) :: realization
  KSPConvergedReason :: ksp_reason
  integer :: newton,isucc,ierr,ichange
  integer :: newton_max
@@ -111,8 +111,8 @@
  type(field_type), pointer :: field
  type(solver_type), pointer :: solver 
 
- option => solution%option
- field => solution%field
+ option => realization%option
+ field => realization%field
   
  newton=0
  
@@ -131,7 +131,7 @@
 #endif
      case(RICHARDS_MODE)
     !   call Translator_richards_Switching(field%xx,grid,0,ichange)
-       call RichardsResidual(solver%snes,field%xx,field%r,solution,ierr)
+       call RichardsResidual(solver%snes,field%xx,field%r,realization,ierr)
 #if 0
    if(option%use_flash==PETSc_TRUE) then
    !  call Translator_vadose_Switching(field%xx,grid,0,ichange)
@@ -183,7 +183,7 @@
 #endif    
       case (RICHARDS_MODE)
         call RichardsJacobian(solver%snes,field%xx,solver%J,solver%J, &
-                              flag,solution,ierr)
+                              flag,realization,ierr)
     end select
      
     call VecScale(field%r,-1D0,ierr)

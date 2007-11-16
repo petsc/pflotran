@@ -17,7 +17,7 @@ contains
 subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,simulation,ierr)
 
   use Simulation_module
-  use Solution_module
+  use Realization_module
   use Timestepper_module
   use Solver_module
   use Option_module
@@ -98,7 +98,7 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,simulation,ier
 !              SNES_CONVERGED_ITERATING         =  0} SNESConvergedReason;
 
   solver => simulation%stepper%solver
-  option => simulation%solution%option
+  option => simulation%realization%option
 
 #ifdef CHUAN
   ! always take one iteration

@@ -30,7 +30,7 @@
   program pflow
   
   use Simulation_module
-  use Solution_module
+  use Realization_module
   use Timestepper_module
   use Solver_module
   use Grid_module
@@ -63,7 +63,7 @@
   type(simulation_type), pointer :: simulation
   type(solver_type), pointer :: solver
   type(stepper_type), pointer :: stepper
-  type(solution_type), pointer :: solution
+  type(realization_type), pointer :: realization
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   
@@ -72,8 +72,8 @@
   call MPI_Comm_size(PETSC_COMM_WORLD,commsize,ierr)
 
   simulation => SimulationCreate()
-  solution => simulation%solution
-  option => solution%option
+  realization => simulation%realization
+  option => realization%option
   stepper => simulation%stepper
 
   option%myrank = myrank
@@ -107,7 +107,7 @@
   call PetscLogStagePush(stage(2), ierr)
 
   if(option%imode /= OWG_MODE) then
-    call Output(solution,0)
+    call Output(realization,0)
   else
  !   call pflow_var_output(grid,kplt,iplot)
   endif
@@ -118,7 +118,7 @@
   if(option%restartflag == PETSC_TRUE) then
     call pflowGridRestart(grid, option%restartfile, ntstep, kplt, iplot, iflgcut, &
                           ihalcnt,its)
-    call InitAccumulation(solution)
+    call InitAccumulation(realization)
     option%dt_max = grid%dtstep(ntstep)
   endif
 #endif  
@@ -129,12 +129,12 @@
  ! still needs to be implemented                    
  if (grid%iread_init==2 .and. option%restartflag == PETSC_FALSE)then
       call Read_init_field(grid, kplt)
-      call initAccumulation(solution)
+      call initAccumulation(realization)
       print *, 'Restart from ASCII file: pflow_init.dat'
   endif
 #endif  
            
-  call StepperRun(solution,stepper,stage)
+  call StepperRun(realization,stepper,stage)
   
 ! Clean things up.
   call PetscLogStagePush(stage(3), ierr)
