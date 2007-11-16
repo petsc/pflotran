@@ -162,6 +162,8 @@ pflow_output2.o : grid.o structured_grid.o option.o solution.o field.o \
                   coupler.o connection.o
 pflow_richards_ResJac.o : solution.o option.o field.o grid.o coupler.o \
                           translator_mixed_fluid_richards.o
+pflow_mphase_ResJac.o : solution.o option.o field.o grid.o coupler.o \
+                          translator_mixed_fluid_mph.o
 timestepper.o : \
 	        mixed_fluid_eos.o \
                 translator_mixed_fluid_mph.o \
@@ -195,4 +197,4 @@ pflow_init.o : simulation.o option.o grid.o solver.o solution.o material.o \
 	       timestepper.o co2_span_wagner.o pflow_richards_ResJac.o \
 	       pflow_convergence.o pflow_vector_ops.o utility.o fileio.o \
 	       structured_grid.o region.o condition.o coupler.o strata.o \
-	       pflow_pckr_mod.o field.o
+	       pflow_pckr_mod.o field.o pflow_mphase_ResJac.o
