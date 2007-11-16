@@ -1,3 +1,6 @@
+: Description: 3D toy problem for mphase
+:
+MODE MPH
 :    igeom nx  ny   nz nphase  nspec  npricomp    ndof  idcdm     itable
 GRID   1   5   4  3   2       2       2          3     0        2
 :
@@ -23,7 +26,7 @@ ROCK
 OPTS   0       3      1     1      1          10      0       0.        0     0
 :OPTS   0       3      1     1      1          10      0       0.        0     10
 :HDF5 VELO FLUX
-:TECP VELO FLUX
+TECP !VELO !FLUX
 :
 :      steps    iaccel newtmx icutmx    dpmx   dtmpmx   dcmx      dsmx
 TOLR   50000        5     16      16      1.e5     2.    .25e-1     0.2
@@ -42,30 +45,33 @@ DIFF  1.D-9       12.6
 : ReacKincoeff
 PHAR 1.D-12
 :
-PCKR
-:ist  swir  sgir   lambda  alpha pcwmax   betac      pwr
-  1  1 0.1    0.D0    0.75    1.e-3    1.e8    0.e0    1.D0 
-  2  1 0.1    0.D0    0.75    1.e-3    1.e8    0.e0    1.D0
-  3  1 0.1    0.D0    0.75    1.e-3    1.e6    0.e0    1.D0
-  4  1 0.1    0.D0    0.762   7.5e-4    1.e1    2.e0   7.D0
-/
-THRM
-:ithm rho     cpr   ckdry  cksat  tau    cdiff      cexp
-  1  2.65e3 1000.e0   0.5    0.5    0.5    2.13e-5    1.8
-/
+SATURATION_FUNCTIONS
+:id itype swir sgir lambda alpha  pcwmax betac pwr
+ 1  1     0.1  0.D0 0.75   1.e-3  1.e8   0.e0  1.D0 
+ 2  1     0.1  0.D0 0.75   1.e-3  1.e8   0.e0  1.D0
+ 3  1     0.1  0.D0 0.75   1.e-3  1.e6   0.e0  1.D0
+ 4  1     0.1  0.D0 0.762  7.5e-4 1.e1   2.e0  7.D0
+END
+THERMAL_PROPERTIES
+:ithm rho    cpr     ckdry cksat tau cdiff   cexp
+  1   2.65e3 1000.e0 0.5   0.5   0.5 2.13e-5 1.8
+END
 :
-PHIK
-:i1  i2  j1  j2   k1  k2  icap ithm  por   tau  permx  permy  permz   permpwr
-  1  5   1   4  1   3   1    1   0.3   0.5   1.e-12 1.e-12 1.e-12   1.e0
-/
+MATERIALS
+:name id icap ithm por  tau permx  permy  permz  permpwr
+soil1 1  1    1    0.3  0.5 1.d-12 2.d-12 3.d-12 1.d0
+END
 :
+skip
 INIT 0
 :i1  i2  j1  j2   k1  k2   ipha    pf       tf     conc
   1  5   1  4   1   3    1     1.000e7  50.0   1.0e-6
 /
+noskip
 :
 BRIN 5.0D0 MOLAL 
 :
+skip
 BCON
 :ibndtyp iface
    3       1
@@ -110,9 +116,10 @@ BCON
    1           0.D0  0.D0        50.e0        1.e-6
 /
 /
+noskip
 :
 :    ihy   alpha [C/m]  beta [m/m]  tref [C]   pref [Pa]  conc
-HYDR  1   0.03144e0      0.0       50.e0       1e7     1.e-6
+:HYDR  1   0.03144e0      0.0       50.e0       1e7     1.e-6
 :
 SKIP
 SOUR
@@ -136,9 +143,166 @@ BRK
 /
 NOSKIP
 :
-TIME y 3
+TIME y
 0.1 1. 10.
 :
-DTST  3  10.   500.   1000. 
-1.e-6    0.1   0.5     0.5   
+DTST 1.d-6
+10.  0.1 \
+500. 0.5 \
+1000. 0.5
 :
+REGN all
+BLOCK 
+1 5 1 4 1 3
+
+REGN west
+BLOCK 
+1 1 1 4 1 3
+REGN west_top
+BLOCK 
+:1 1 1 4 3 3
+1 1 1 4 1 1
+REGN west_middle
+BLOCK 
+1 1 1 4 2 2 
+REGN west_bottom
+BLOCK 
+:1 1 1 4 1 1 
+1 1 1 4 3 3 
+
+REGN east
+BLOCK 
+5 5 1 4 1 3
+REGN east_top
+BLOCK 
+:5 5 1 4 3 3
+5 5 1 4 1 1
+REGN east_middle
+BLOCK 
+5 5 1 4 2 2 
+REGN east_bottom
+BLOCK 
+:5 5 1 4 1 1 
+5 5 1 4 3 3 
+
+REGN south_top
+BLOCK 
+:1 5 1 1 3 3
+1 5 1 1 1 1
+REGN south_middle
+BLOCK 
+1 5 1 1 2 2 
+REGN south_bottom
+BLOCK 
+:1 5 1 1 1 1 
+1 5 1 1 3 3 
+
+REGN south
+BLOCK 
+1 5 1 1 1 3
+
+REGN north_top
+BLOCK 
+:1 5 4 4 3 3
+1 5 4 4 1 1
+REGN north_middle
+BLOCK 
+1 5 4 4 2 2 
+REGN north_bottom
+BLOCK 
+:1 5 4 4 1 1 
+1 5 4 4 3 3 
+
+REGN north
+BLOCK 
+1 5 4 4 1 3
+
+REGN top
+BLOCK 
+:1 5 1 4 3 3
+1 5 1 4 1 1
+REGN middle
+BLOCK 
+1 5 1 4 2 2 
+REGN bottom
+BLOCK 
+:1 5 1 4 1 1 
+1 5 1 4 3 3 
+
+CONDITION zero_flux
+UNITS Pa,C,M,yr
+CLASS flow
+TYPE
+PRESSURE neumann
+TEMPERATURE dirichlet
+CONCENTRATION dirichlet
+END
+FLUX 0.d0
+TEMPERATURE 50.d0 C
+CONCENTRATION 1.d-6 M
+END
+CONDITION top
+UNITS Pa,C,M,yr
+CLASS flow
+TYPE
+PRESSURE dirichlet
+TEMPERATURE dirichlet
+CONCENTRATION dirichlet
+END
+PRESSURE 1.1d7
+TEMPERATURE 50.d0 C
+CONCENTRATION 1.d-6 M
+END
+CONDITION bottom
+UNITS Pa,C,M,yr
+CLASS flow
+TYPE
+PRESSURE dirichlet
+TEMPERATURE dirichlet
+CONCENTRATION dirichlet
+END
+PRESSURE 1.d7
+TEMPERATURE 50.d0 C
+CONCENTRATION 1.d-6 M
+END
+
+INITIAL_CONDITION
+CONDITION bottom
+REGION all
+END
+
+BOUNDARY_CONDITION
+FACE west
+CONDITION zero_flux
+REGION west
+END
+BOUNDARY_CONDITION
+FACE east
+CONDITION zero_flux
+REGION east
+END
+BOUNDARY_CONDITION
+FACE top
+CONDITION top
+REGION top
+END
+BOUNDARY_CONDITION
+FACE bottom
+CONDITION bottom
+REGION bottom
+END
+BOUNDARY_CONDITION
+FACE south
+CONDITION zero_flux
+REGION south
+END
+BOUNDARY_CONDITION
+FACE north
+CONDITION zero_flux
+REGION north
+END
+
+STRATA
+MATERIAL soil1
+REGION all
+END
