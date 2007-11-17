@@ -370,13 +370,12 @@ subroutine PflowInit(simulation,filename)
   ! clip regions and set up boundary connectivity, distance  
   call GridLocalizeRegions(realization%regions,realization%grid,realization%option)
 
+  ! connectivity between boundary conditions, srcs/sinks, etc and grid
   call GridComputeCouplerConnections(grid,option,realization%boundary_conditions%first)
-!  call GridComputeBoundaryConnect(grid,option, &
-!                                  realization%boundary_conditions%first)                                
+                                
   call assignMaterialPropToRegions(realization)
   call assignInitialConditions(realization)
   call RealizationInitBoundConditions(realization)
-!  call SolutionSetIBNDTYPE(realization)
 
   select case(option%imode)
     ! everything but RICHARDS_MODE for now

@@ -5,4 +5,8 @@ Items that need to be implemented
 3.  Break through curves
 4.  Checkpoints
 5.  Create waypoints for each time in srcs/sink
-6.  For boundary connections, sign of dist(3) will change with z axis is inverted
+6.  For boundary connections, sign of dist(3) will change with z axis is 
+      inverted
+7.  Need a data structure other than velocitybc and xxbc for storing 
+      boundary condition and source/sink parameters
+8.  Src/sink initialization and updates

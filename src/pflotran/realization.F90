@@ -374,7 +374,10 @@ subroutine RealizationInitSrcSinks(realization)
                       source_sink%connection%num_connections
     source_sink => source_sink%next
   enddo
-
+  if (num_connections > 0) then
+    print *, 'Src/Sink init and update not yet supported.  Bug Glenn'
+    stop
+  endif
 #if 0  
 ! these arrays are for boundary conditions, not src/sinks
   ! allocate arrays that match the number of connections
