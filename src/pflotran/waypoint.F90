@@ -15,6 +15,7 @@ module Waypoint_module
     logical :: update_srcs
     real*8 :: dt_max
     logical :: final  ! any waypoint after this will be deleted
+    type(waypoint_type), pointer :: prev
     type(waypoint_type), pointer :: next
   end type waypoint_type
   
@@ -60,6 +61,7 @@ function WaypointCreate()
   waypoint%update_srcs = .false.
   waypoint%dt_max = 0.d0
   nullify(waypoint%next)
+  nullify(waypoint%prev)
     
   WaypointCreate => waypoint
   
@@ -124,6 +126,7 @@ subroutine WaypointInsertInList(new_waypoint,waypoint_list)
       if (new_waypoint%time < waypoint%time) then 
         waypoint_list%first => new_waypoint
         new_waypoint%next => waypoint
+        new_waypoint%next%prev => new_waypoint
       else
         ! find its location in the list
         do
@@ -136,7 +139,9 @@ subroutine WaypointInsertInList(new_waypoint,waypoint_list)
               if (new_waypoint%time > waypoint%time .and. & ! within list
                   new_waypoint%time < waypoint%next%time) then 
                 new_waypoint%next => waypoint%next
+                new_waypoint%next%prev => new_waypoint
                 waypoint%next => new_waypoint
+                new_waypoint%prev => waypoint
                 waypoint_list%num_waypoints = waypoint_list%num_waypoints+1
                 return
               else
@@ -145,6 +150,7 @@ subroutine WaypointInsertInList(new_waypoint,waypoint_list)
               endif
             else ! at end of list
               waypoint%next => new_waypoint
+              new_waypoint%prev => waypoint
               waypoint_list%last => new_waypoint
               exit
             endif
@@ -380,6 +386,8 @@ subroutine WaypointDestroy(waypoint)
   
   if (.not.associated(waypoint)) return
 
+  nullify(waypoint%prev)
+  nullify(waypoint%next)
   deallocate(waypoint)
   nullify(waypoint)
   

@@ -1,4 +1,4 @@
-module Solution_module
+module Realization_module
 
   use Grid_module
   use Option_module
@@ -7,6 +7,7 @@ module Solution_module
   use Coupler_module
   use Material_module
   use Strata_module
+  use Field_module
 
   implicit none
 
@@ -14,10 +15,11 @@ private
 
 #include "definitions.h"
 
-  type, public :: solution_type
+  type, public :: realization_type
 
     type(grid_type), pointer :: grid
     type(option_type), pointer :: option
+    type(field_type), pointer :: field
     type(output_option_type), pointer :: output_option
     type(region_list_type), pointer :: regions
     type(condition_list_type), pointer :: conditions
@@ -30,69 +32,70 @@ private
     type(thermal_property_type), pointer :: thermal_properties
     type(saturation_function_type), pointer :: saturation_functions
 
-  end type solution_type
+  end type realization_type
 
-  public :: SolutionCreate, SolutionDestroy, &
-            SolutionProcessCouplers, &
-            SolutionInitBoundConditions, &
-            SolutionUpdate, SolutionAddWaypointsToList
+  public :: RealizationCreate, RealizationDestroy, &
+            RealizationProcessCouplers, &
+            RealizationInitBoundConditions, &
+            RealizationUpdate, RealizationAddWaypointsToList
   
 contains
   
 ! ************************************************************************** !
 !
-! SolutionCreate: Allocates and initializes a new Solution object
+! RealizationCreate: Allocates and initializes a new Realization object
 ! author: Glenn Hammond
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-function SolutionCreate()
+function RealizationCreate()
 
   implicit none
   
-  type(solution_type), pointer :: SolutionCreate
+  type(realization_type), pointer :: RealizationCreate
   
-  type(solution_type), pointer :: solution
+  type(realization_type), pointer :: realization
   
-  allocate(solution)
-  solution%option => OptionCreate()
-  solution%output_option => OutputOptionCreate()
-  nullify(solution%grid)
-  allocate(solution%regions)
-  call RegionInitList(solution%regions)
-  allocate(solution%conditions)
-  call ConditionInitList(solution%conditions)
-  allocate(solution%boundary_conditions)
-  call CouplerInitList(solution%boundary_conditions)
-  allocate(solution%initial_conditions)
-  call CouplerInitList(solution%initial_conditions)
-  allocate(solution%source_sinks)
-  call CouplerInitList(solution%source_sinks)
-  allocate(solution%strata)
-  call StrataInitList(solution%strata)
+  allocate(realization)
+  realization%option => OptionCreate()
+  realization%field => FieldCreate()
+  realization%output_option => OutputOptionCreate()
+  nullify(realization%grid)
+  allocate(realization%regions)
+  call RegionInitList(realization%regions)
+  allocate(realization%conditions)
+  call ConditionInitList(realization%conditions)
+  allocate(realization%boundary_conditions)
+  call CouplerInitList(realization%boundary_conditions)
+  allocate(realization%initial_conditions)
+  call CouplerInitList(realization%initial_conditions)
+  allocate(realization%source_sinks)
+  call CouplerInitList(realization%source_sinks)
+  allocate(realization%strata)
+  call StrataInitList(realization%strata)
   
-  nullify(solution%materials)
-  nullify(solution%thermal_properties)
-  nullify(solution%saturation_functions)
+  nullify(realization%materials)
+  nullify(realization%thermal_properties)
+  nullify(realization%saturation_functions)
   
-  SolutionCreate => solution
+  RealizationCreate => realization
   
-end function SolutionCreate  
+end function RealizationCreate  
 
 ! ************************************************************************** !
 !
-! SolutionProcessCouplers: Deallocates a solution
+! RealizationProcessCouplers: Deallocates a realization
 ! author: Glenn Hammond
 ! date: 11/01/07
 !
 ! ************************************************************************** !
-subroutine SolutionProcessCouplers(solution)
+subroutine RealizationProcessCouplers(realization)
 
   use Option_module
 
   implicit none
   
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   
   character(len=MAXSTRINGLENGTH) :: string
   type(coupler_type), pointer :: coupler
@@ -100,71 +103,71 @@ subroutine SolutionProcessCouplers(solution)
 
 
   ! boundary conditions
-  coupler => solution%boundary_conditions%first
+  coupler => realization%boundary_conditions%first
   do
     if (.not.associated(coupler)) exit
     ! pointer to region
     coupler%region => RegionGetPtrFromList(coupler%region_name, &
-                                           solution%regions)
+                                           realization%regions)
     if (.not.associated(coupler%region)) then
       string = 'Region ' // trim(coupler%region_name) // &
                ' not found in boundary condition list'
-      call printErrMsg(solution%option,string)
+      call printErrMsg(realization%option,string)
     endif
     ! pointer to flow condition
     coupler%condition => ConditionGetPtrFromList(coupler%condition_name, &
-                                                 solution%conditions)
+                                                 realization%conditions)
     if (.not.associated(coupler%condition)) then
       string = 'Condition ' // trim(coupler%condition_name) // &
                ' not found in boundary condition list'
-      call printErrMsg(solution%option,string)
+      call printErrMsg(realization%option,string)
     endif
     coupler => coupler%next
   enddo
 
 
   ! initial conditions
-  coupler => solution%initial_conditions%first
+  coupler => realization%initial_conditions%first
   do
     if (.not.associated(coupler)) exit
     ! pointer to region
     coupler%region => RegionGetPtrFromList(coupler%region_name, &
-                                           solution%regions)
+                                           realization%regions)
     if (.not.associated(coupler%region)) then
       string = 'Region ' // trim(coupler%region_name) // &
                ' not found in initial condition list'
-      call printErrMsg(solution%option,string)
+      call printErrMsg(realization%option,string)
     endif
     ! pointer to flow condition
     coupler%condition => ConditionGetPtrFromList(coupler%condition_name, &
-                                                 solution%conditions)
+                                                 realization%conditions)
     if (.not.associated(coupler%condition)) then
       string = 'Condition ' // trim(coupler%condition_name) // &
                ' not found in initial condition list'
-      call printErrMsg(solution%option,string)
+      call printErrMsg(realization%option,string)
     endif
     coupler => coupler%next
   enddo
 
   ! source/sinks
-  coupler => solution%source_sinks%first
+  coupler => realization%source_sinks%first
   do
     if (.not.associated(coupler)) exit
     ! pointer to region
     coupler%region => RegionGetPtrFromList(coupler%region_name, &
-                                           solution%regions)
+                                           realization%regions)
     if (.not.associated(coupler%region)) then
       string = 'Region ' // trim(coupler%region_name) // &
                ' not found in source/sink list'
-      call printErrMsg(solution%option,string)
+      call printErrMsg(realization%option,string)
     endif
     ! pointer to flow condition
     coupler%condition => ConditionGetPtrFromList(coupler%condition_name, &
-                                                 solution%conditions)
+                                                 realization%conditions)
     if (.not.associated(coupler%condition)) then
       string = 'Condition ' // trim(coupler%condition_name) // &
                ' not found in source/sink list'
-      call printErrMsg(solution%option,string)
+      call printErrMsg(realization%option,string)
     endif
     coupler => coupler%next
   enddo
@@ -172,54 +175,58 @@ subroutine SolutionProcessCouplers(solution)
     
   ! strata
   ! connect pointers from strata to regions
-  strata => solution%strata%first
+  strata => realization%strata%first
   do
     if (.not.associated(strata)) exit
     ! pointer to region
     strata%region => RegionGetPtrFromList(strata%region_name, &
-                                                solution%regions)
+                                                realization%regions)
     if (.not.associated(strata%region)) then
       string = 'Region ' // trim(strata%region_name) // &
                ' not found in strata list'
-      call printErrMsg(solution%option,string)
+      call printErrMsg(realization%option,string)
     endif
     ! pointer to material
     strata%material => &
                           MaterialGetPtrFromList(strata%material_name, &
-                                                 solution%materials)
+                                                 realization%materials)
     if (.not.associated(strata%material)) then
       string = 'Material ' // trim(strata%material_name) // &
                ' not found in unit list'
-      call printErrMsg(solution%option,string)
+      call printErrMsg(realization%option,string)
     endif
     strata => strata%next
   enddo 
     
-end subroutine SolutionProcessCouplers
+end subroutine RealizationProcessCouplers
 
 ! ************************************************************************** !
 !
-! SolutionInitBoundConditions: Initializes boundary conditions within model
+! RealizationInitBoundConditions: Initializes boundary conditions within model
 ! author: Glenn Hammond
 ! date: 11/06/07
 !
 ! ************************************************************************** !
-subroutine SolutionInitBoundConditions(solution)
+subroutine RealizationInitBoundConditions(realization)
 
+  use Connection_module
+  
   implicit none
   
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   
   integer :: num_connections
   
   type(option_type), pointer :: option
+  type(field_type), pointer :: field
   type(coupler_type), pointer :: boundary_condition
     
-  option => solution%option
+  option => realization%option
+  field => realization%field
     
   ! sum the number of connections among all boundary conditions
   num_connections = 0
-  boundary_condition => solution%boundary_conditions%first
+  boundary_condition => realization%boundary_conditions%first
   do
     if (.not.associated(boundary_condition)) exit
     num_connections = num_connections + &
@@ -230,57 +237,68 @@ subroutine SolutionInitBoundConditions(solution)
   ! allocate arrays that match the number of connections
   select case(option%imode)
 
-    case(MPH_MODE,FLASH_MODE,RICHARDS_MODE,OWG_MODE,VADOSE_MODE)
+    case(FLASH_MODE,RICHARDS_MODE,OWG_MODE,VADOSE_MODE)
   
-      allocate(option%xxbc(option%ndof,num_connections))
-      allocate(option%iphasebc(num_connections))
-      allocate(option%velocitybc(option%nphase,num_connections))
-      option%xxbc = 0.d0
-      option%iphasebc = 0
-      option%velocitybc = 0.d0
-  
+      allocate(field%xxbc(option%ndof,num_connections))
+      allocate(field%iphasebc(num_connections))
+      allocate(field%velocitybc(option%nphase,num_connections))
+      field%xxbc = 0.d0
+      field%iphasebc = 0
+      field%velocitybc = 0.d0
+
+    case(MPH_MODE)
+      allocate(field%xxbc(option%ndof,num_connections))
+      allocate(field%iphasebc(num_connections))
+      allocate(field%velocitybc(option%nphase,num_connections))
+      allocate(field%xxphi_co2_bc(num_connections))
+      field%xxbc = 0.d0
+      field%iphasebc = 0
+      field%velocitybc = 0.d0  
+      field%xxphi_co2_bc = 0.d0
     case default
     
-      allocate(option%pressurebc(option%nphase,num_connections))
-      allocate(option%tempbc(num_connections))
-      allocate(option%sgbc(num_connections))
-      allocate(option%concbc(num_connections))
-      allocate(option%velocitybc(option%nphase,num_connections))
-      allocate(option%iphasebc(num_connections))
-      option%pressurebc = 0.d0
-      option%tempbc = 0.d0
-      option%concbc = 0.d0
-      option%sgbc = 0.d0
-      option%velocitybc = 0.d0
-      option%iphasebc = 0
+      allocate(field%pressurebc(option%nphase,num_connections))
+      allocate(field%tempbc(num_connections))
+      allocate(field%sgbc(num_connections))
+      allocate(field%concbc(num_connections))
+      allocate(field%velocitybc(option%nphase,num_connections))
+      allocate(field%iphasebc(num_connections))
+      field%pressurebc = 0.d0
+      field%tempbc = 0.d0
+      field%concbc = 0.d0
+      field%sgbc = 0.d0
+      field%velocitybc = 0.d0
+      field%iphasebc = 0
 
   end select 
   
-  call SolutionUpdateBoundConditions(solution)
+  call RealizationUpdateBoundConditions(realization)
 
-end subroutine SolutionInitBoundConditions
+end subroutine RealizationInitBoundConditions
 
 ! ************************************************************************** !
 !
-! SolutionUpdateBoundConditions: Updates boundary conditions within model
+! RealizationUpdateBoundConditions: Updates boundary conditions within model
 ! author: Glenn Hammond
 ! date: 11/06/07
 !
 ! ************************************************************************** !
-subroutine SolutionUpdateBoundConditions(solution)
+subroutine RealizationUpdateBoundConditions(realization)
 
   implicit none
   
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   
   integer :: icell, idof, count
   
   type(option_type), pointer :: option
+  type(field_type), pointer :: field
   type(coupler_type), pointer :: boundary_condition
     
-  option => solution%option
+  option => realization%option
+  field => realization%field
  
-  boundary_condition => solution%boundary_conditions%first
+  boundary_condition => realization%boundary_conditions%first
  
   count = 0
   do
@@ -293,14 +311,14 @@ subroutine SolutionUpdateBoundConditions(solution)
   
         do icell=1,boundary_condition%region%num_cells
           count = count + 1
-          option%iphasebc(count) = boundary_condition%condition%iphase
+          field%iphasebc(count) = boundary_condition%condition%iphase
           do idof=1,option%ndof
             select case(boundary_condition%condition%itype(idof))
               case(DIRICHLET_BC)
-                option%xxbc(idof,count) = &
+                field%xxbc(idof,count) = &
                   boundary_condition%condition%cur_value(idof)
               case(NEUMANN_BC)
-                option%velocitybc(1:option%nphase,count) = &
+                field%velocitybc(1:option%nphase,count) = &
                   boundary_condition%condition%cur_value(idof)
             end select
           enddo
@@ -310,107 +328,116 @@ subroutine SolutionUpdateBoundConditions(solution)
 
         do icell=1,boundary_condition%region%num_cells
           count = count + 1
-          option%iphasebc(count) = boundary_condition%condition%iphase
+          field%iphasebc(count) = boundary_condition%condition%iphase
           if (boundary_condition%condition%itype(1) == DIRICHLET_BC) then
-            option%pressurebc(:,count) = boundary_condition%condition%cur_value(1)
+            field%pressurebc(:,count) = boundary_condition%condition%cur_value(1)
           else
-            option%velocitybc(:,count) = boundary_condition%condition%cur_value(1)
+            field%velocitybc(:,count) = boundary_condition%condition%cur_value(1)
           endif
-          option%tempbc(icell) = boundary_condition%condition%cur_value(2)
-          option%concbc(icell) = boundary_condition%condition%cur_value(3)
-          option%sgbc(icell) = 1.d0-boundary_condition%condition%cur_value(4) ! read in as sl
+          field%tempbc(icell) = boundary_condition%condition%cur_value(2)
+          field%concbc(icell) = boundary_condition%condition%cur_value(3)
+          field%sgbc(icell) = 1.d0-boundary_condition%condition%cur_value(4) ! read in as sl
         enddo
 
     end select 
     boundary_condition => boundary_condition%next
   enddo
 
-end subroutine SolutionUpdateBoundConditions
+end subroutine RealizationUpdateBoundConditions
 
 ! ************************************************************************** !
 !
-! SolutionInitSrcSinks: Initializes source/sinks within model
+! RealizationInitSrcSinks: Initializes source/sinks within model
 ! author: Glenn Hammond
 ! date: 11/09/07
 !
 ! ************************************************************************** !
-subroutine SolutionInitSrcSinks(solution)
+subroutine RealizationInitSrcSinks(realization)
 
   implicit none
   
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   
   integer :: num_connections
   
   type(option_type), pointer :: option
+  type(field_type), pointer :: field
   type(coupler_type), pointer :: source_sink
     
-  option => solution%option
+  option => realization%option
+  field => realization%field
     
   ! sum the number of connections among all boundary conditions
   num_connections = 0
-  source_sink => solution%source_sinks%first
+  source_sink => realization%source_sinks%first
   do
     if (.not.associated(source_sink)) exit
     num_connections = num_connections + &
                       source_sink%connection%num_connections
     source_sink => source_sink%next
   enddo
-  
+  if (num_connections > 0) then
+    print *, 'Src/Sink init and update not yet supported.  Bug Glenn'
+    stop
+  endif
+#if 0  
+! these arrays are for boundary conditions, not src/sinks
   ! allocate arrays that match the number of connections
   select case(option%imode)
 
     case(MPH_MODE,FLASH_MODE,RICHARDS_MODE,OWG_MODE,VADOSE_MODE)
   
-      allocate(option%xxbc(option%ndof,num_connections))
-      allocate(option%iphasebc(num_connections))
-      allocate(option%velocitybc(option%nphase,num_connections))
-      option%xxbc = 0.d0
-      option%iphasebc = 0
-      option%velocitybc = 0.d0
+      allocate(field%xxbc(option%ndof,num_connections))
+      allocate(field%iphasebc(num_connections))
+      allocate(field%velocitybc(option%nphase,num_connections))
+      field%xxbc = 0.d0
+      field%iphasebc = 0
+      field%velocitybc = 0.d0
   
     case default
     
-      allocate(option%pressurebc(option%nphase,num_connections))
-      allocate(option%tempbc(num_connections))
-      allocate(option%sgbc(num_connections))
-      allocate(option%concbc(num_connections))
-      allocate(option%velocitybc(option%nphase,num_connections))
-      allocate(option%iphasebc(num_connections))
-      option%pressurebc = 0.d0
-      option%tempbc = 0.d0
-      option%concbc = 0.d0
-      option%sgbc = 0.d0
-      option%velocitybc = 0.d0
-      option%iphasebc = 0
+      allocate(field%pressurebc(option%nphase,num_connections))
+      allocate(field%tempbc(num_connections))
+      allocate(field%sgbc(num_connections))
+      allocate(field%concbc(num_connections))
+      allocate(field%velocitybc(option%nphase,num_connections))
+      allocate(field%iphasebc(num_connections))
+      field%pressurebc = 0.d0
+      field%tempbc = 0.d0
+      field%concbc = 0.d0
+      field%sgbc = 0.d0
+      field%velocitybc = 0.d0
+      field%iphasebc = 0
 
   end select 
-  
-  call SolutionUpdateSrcSinks(solution)
+#endif  
+  call RealizationUpdateSrcSinks(realization)
 
-end subroutine SolutionInitSrcSinks
+end subroutine RealizationInitSrcSinks
 
 ! ************************************************************************** !
 !
-! SolutionUpdateSrcSinks: Updates source/sinks within model
+! RealizationUpdateSrcSinks: Updates source/sinks within model
 ! author: Glenn Hammond
 ! date: 11/09/07
 !
 ! ************************************************************************** !
-subroutine SolutionUpdateSrcSinks(solution)
+subroutine RealizationUpdateSrcSinks(realization)
 
   implicit none
   
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   
   integer :: icell, idof, count
   
   type(option_type), pointer :: option
+  type(field_type), pointer :: field  
   type(coupler_type), pointer :: source_sink
     
-  option => solution%option
+  option => realization%option
+  field => realization%field
  
-  source_sink => solution%source_sinks%first
+  source_sink => realization%source_sinks%first
  
   count = 0
   do
@@ -423,14 +450,14 @@ subroutine SolutionUpdateSrcSinks(solution)
   
         do icell=1,source_sink%region%num_cells
           count = count + 1
-          option%iphasebc(count) = source_sink%condition%iphase
+          field%iphasebc(count) = source_sink%condition%iphase
           do idof=1,option%ndof
             select case(source_sink%condition%itype(idof))
               case(DIRICHLET_BC)
-                option%xxbc(idof,count) = &
+                field%xxbc(idof,count) = &
                   source_sink%condition%cur_value(idof)
               case(NEUMANN_BC)
-                option%velocitybc(1:option%nphase,count) = &
+                field%velocitybc(1:option%nphase,count) = &
                   source_sink%condition%cur_value(idof)
             end select
           enddo
@@ -440,100 +467,52 @@ subroutine SolutionUpdateSrcSinks(solution)
 
         do icell=1,source_sink%region%num_cells
           count = count + 1
-          option%iphasebc(count) = source_sink%condition%iphase
+          field%iphasebc(count) = source_sink%condition%iphase
           if (source_sink%condition%itype(1) == DIRICHLET_BC) then
-            option%pressurebc(:,count) = source_sink%condition%cur_value(1)
+            field%pressurebc(:,count) = source_sink%condition%cur_value(1)
           else
-            option%velocitybc(:,count) = source_sink%condition%cur_value(1)
+            field%velocitybc(:,count) = source_sink%condition%cur_value(1)
           endif
-          option%tempbc(icell) = source_sink%condition%cur_value(2)
-          option%concbc(icell) = source_sink%condition%cur_value(3)
-          option%sgbc(icell) = 1.d0-source_sink%condition%cur_value(4) ! read in as sl
+          field%tempbc(icell) = source_sink%condition%cur_value(2)
+          field%concbc(icell) = source_sink%condition%cur_value(3)
+          field%sgbc(icell) = 1.d0-source_sink%condition%cur_value(4) ! read in as sl
         enddo
 
     end select 
     source_sink => source_sink%next
   enddo
 
-end subroutine SolutionUpdateSrcSinks
-
-#if 0
-! NO LONGER NEEDED
-! ************************************************************************** !
-!
-! SolutionSetIBNDTYPE: Sets values in ibndtyp array
-! ibndtyp needs to be done away with!!!!
-! author: Glenn Hammond
-! date: 11/06/07
-!
-! ************************************************************************** !
-subroutine SolutionSetIBNDTYPE(solution)
-
-  implicit none
-  
-  type(solution_type) :: solution
-  
-  integer :: count, num_conditions
-  
-  type(option_type), pointer :: option
-  type(grid_type), pointer :: grid
-  type(coupler_type), pointer :: boundary_condition
-    
-  option => solution%option
-  grid => solution%grid
-
-  num_conditions = 0
-  boundary_condition => solution%boundary_conditions%first
-  do
-    if (.not.associated(boundary_condition)) exit
-    num_conditions = num_conditions + 1
-    boundary_condition => boundary_condition%next
-  enddo
-    
-  allocate(option%ibndtyp(num_conditions))
-  option%ibndtyp = 0
-    
-  count = 0
-  boundary_condition => solution%boundary_conditions%first
-  do
-    if (.not.associated(boundary_condition)) exit
-    count = count + 1
-    option%ibndtyp(count) = boundary_condition%condition%itype(1)  ! hardwired to dof=1 (pressure)
-    boundary_condition => boundary_condition%next
-  enddo
-
-end subroutine SolutionSetIBNDTYPE
-#endif
+end subroutine RealizationUpdateSrcSinks
 
 ! ************************************************************************** !
 !
-! SolutionUpdate: Update parameters in solution (e.g. conditions, bcs, srcs)
+! RealizationUpdate: Update parameters in realization (e.g. conditions, bcs, srcs)
 ! author: Glenn Hammond
 ! date: 11/09/07
 !
 ! ************************************************************************** !
-subroutine SolutionUpdate(solution)
+subroutine RealizationUpdate(realization)
 
   implicit none
   
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   
   ! must update conditions first
-  call ConditionUpdate(solution%conditions,solution%option,solution%option%time)
-  call SolutionUpdateBoundConditions(solution)
-  call SolutionUpdateSrcSinks(solution)
+  call ConditionUpdate(realization%conditions,realization%option,realization%option%time)
+  call RealizationUpdateBoundConditions(realization)
+  call RealizationUpdateSrcSinks(realization)
 
-end subroutine SolutionUpdate
+end subroutine RealizationUpdate
 
 ! ************************************************************************** !
 !
-! SolutionAddWaypointsToList: Creates waypoints assoiciated with source/sinks
+! RealizationAddWaypointsToList: Creates waypoints assoiciated with source/sinks
 !                             boundary conditions, etc. and add to list
 ! author: Glenn Hammond
 ! date: 11/01/07
 !
 ! ************************************************************************** !
-subroutine SolutionAddWaypointsToList(solution,waypoint_list)
+subroutine RealizationAddWaypointsToList(realization,waypoint_list)
 
   use Option_module
   use Waypoint_module
@@ -541,7 +520,7 @@ subroutine SolutionAddWaypointsToList(solution,waypoint_list)
   implicit none
   
   type(waypoint_list_type) :: waypoint_list
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   
   character(len=MAXSTRINGLENGTH) :: string
   type(coupler_type), pointer :: coupler
@@ -551,7 +530,7 @@ subroutine SolutionAddWaypointsToList(solution,waypoint_list)
   ! Ignore boundary conditions for now
   ! boundary conditions
 #if 0  
-  coupler => solution%boundary_conditions%first
+  coupler => realization%boundary_conditions%first
   do
     if (.not.associated(coupler)) exit
     endif
@@ -560,7 +539,7 @@ subroutine SolutionAddWaypointsToList(solution,waypoint_list)
 #endif  
 
   ! source/sinks
-  coupler => solution%boundary_conditions%first
+  coupler => realization%boundary_conditions%first
   do
     if (.not.associated(coupler)) exit
     do itime=1,coupler%condition%num_values
@@ -574,32 +553,33 @@ subroutine SolutionAddWaypointsToList(solution,waypoint_list)
     coupler => coupler%next
   enddo
   
-end subroutine SolutionAddWaypointsToList
+end subroutine RealizationAddWaypointsToList
 
 ! ************************************************************************** !
 !
-! SolutionDestroy: Deallocates a solution
+! RealizationDestroy: Deallocates a realization
 ! author: Glenn Hammond
 ! date: 11/01/07
 !
 ! ************************************************************************** !
-subroutine SolutionDestroy(solution)
+subroutine RealizationDestroy(realization)
 
   implicit none
   
-  type(solution_type), pointer :: solution
+  type(realization_type), pointer :: realization
   
-  if (.not.associated(solution)) return
+  if (.not.associated(realization)) return
     
-  call GridDestroy(solution%grid)
-  call OptionDestroy(solution%option)
-  call RegionDestroyList(solution%regions)
-  call ConditionDestroyList(solution%conditions)
-  call CouplerDestroyList(solution%boundary_conditions)
-  call CouplerDestroyList(solution%initial_conditions)
-  call CouplerDestroyList(solution%source_sinks)
-  call StrataDestroyList(solution%strata)
+  call GridDestroy(realization%grid)
+  call FieldDestroy(realization%field)
+  call OptionDestroy(realization%option)
+  call RegionDestroyList(realization%regions)
+  call ConditionDestroyList(realization%conditions)
+  call CouplerDestroyList(realization%boundary_conditions)
+  call CouplerDestroyList(realization%initial_conditions)
+  call CouplerDestroyList(realization%source_sinks)
+  call StrataDestroyList(realization%strata)
     
-end subroutine SolutionDestroy
+end subroutine RealizationDestroy
   
-end module Solution_module
+end module Realization_module

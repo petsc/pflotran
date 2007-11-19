@@ -39,7 +39,7 @@ module Coupler_module
   integer, save :: num_couplers = 0
   
   public :: CouplerCreate, CouplerDestroy, CouplerInitList, CouplerAddToList, &
-            CouplerRead, CouplerDestroyList
+            CouplerRead, CouplerDestroyList, CouplerGetNumConnectionsInList
   
 contains
 
@@ -200,6 +200,34 @@ end subroutine CouplerAddToList
 
 ! ************************************************************************** !
 !
+! CouplerGetNumConnectionsInList: Returns the number of connections associated
+!                                 with all couplers in the list
+! author: Glenn Hammond
+! date: 11/19/07
+!
+! ************************************************************************** !
+function CouplerGetNumConnectionsInList(list)
+
+  implicit none
+  
+  type(coupler_list_type) :: list
+  
+  integer :: CouplerGetNumConnectionsInList
+  type(coupler_type), pointer :: coupler
+  
+  coupler => list%first
+  
+  do
+    if (.not.associated(coupler)) exit
+    CouplerGetNumConnectionsInList = CouplerGetNumConnectionsInList + &
+                                     coupler%connection%num_connections
+    coupler => coupler%next
+  enddo
+
+end function CouplerGetNumConnectionsInList
+
+! ************************************************************************** !
+!
 ! CouplerDestroyList: Deallocates a list of couplers
 ! author: Glenn Hammond
 ! date: 11/01/07
@@ -232,7 +260,7 @@ subroutine CouplerDestroyList(coupler_list)
   nullify(coupler_list)
 
 end subroutine CouplerDestroyList
-
+  
 ! ************************************************************************** !
 !
 ! CouplerDestroy: Destroys a coupler

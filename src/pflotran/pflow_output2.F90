@@ -52,25 +52,25 @@ contains
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine Output(solution,step)
+subroutine Output(realization,step)
 
-  use Solution_module
+  use Realization_module
   
   implicit none
   
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   integer :: step
 
   
-  if (solution%output_option%print_hdf5) then
-    call OutputHDF5(solution,step)
+  if (realization%output_option%print_hdf5) then
+    call OutputHDF5(realization,step)
   endif
  
-  if (solution%output_option%print_tecplot) then
-    call OutputTecplot(solution,step)
+  if (realization%output_option%print_tecplot) then
+    call OutputTecplot(realization,step)
   endif
   
-  solution%output_option%plot_number = solution%output_option%plot_number + 1
+  realization%output_option%plot_number = realization%output_option%plot_number + 1
 
 end subroutine Output
 
@@ -81,18 +81,19 @@ end subroutine Output
 ! date: 10/25/07
 !
 ! ************************************************************************** !  
-subroutine OutputTecplot(solution,step)
+subroutine OutputTecplot(realization,step)
 
-  use Solution_module
+  use Realization_module
   use Grid_module
   use Structured_Grid_module
   use Option_module
+  use Field_module
  
   implicit none
 
 #include "definitions.h"
 
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   integer :: step
   
   integer :: i
@@ -100,13 +101,15 @@ subroutine OutputTecplot(solution,step)
   character(len=MAXSTRINGLENGTH) :: string, string2
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
+  type(field_type), pointer :: field
   type(output_option_type), pointer :: output_option
   Vec :: global
   Vec :: natural
   
-  grid => solution%grid
-  option => solution%option
-  output_option => solution%output_option
+  grid => realization%grid
+  option => realization%option
+  field => realization%field
+  output_option => realization%output_option
   
   ! open file
   if (output_option%plot_number < 10) then
@@ -184,98 +187,98 @@ subroutine OutputTecplot(solution,step)
   ! write out coorindates
   call GetCoordinates(grid,global,X_COORDINATE)
   call GridGlobalToNatural(grid,global,natural,ONEDOF)
-  call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
+  call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
 
   call GetCoordinates(grid,global,Y_COORDINATE)
   call GridGlobalToNatural(grid,global,natural,ONEDOF)
-  call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
+  call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
 
   call GetCoordinates(grid,global,Z_COORDINATE)
   call GridGlobalToNatural(grid,global,natural,ONEDOF)
-  call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
+  call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
 
   select case(option%imode)
     case (TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
 
       ! temperature
-      call GetVarFromArray(solution,global,TEMPERATURE,0)
+      call GetVarFromArray(realization,global,TEMPERATURE,0)
       call GridGlobalToNatural(grid,global,natural,ONEDOF)
-      call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
+      call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
 
       ! pressure
-      call GetVarFromArray(solution,global,PRESSURE,0)
+      call GetVarFromArray(realization,global,PRESSURE,0)
       call GridGlobalToNatural(grid,global,natural,ONEDOF)
-      call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
+      call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
 
       ! liquid saturation
-      call GetVarFromArray(solution,global,LIQUID_SATURATION,0)
+      call GetVarFromArray(realization,global,LIQUID_SATURATION,0)
       call GridGlobalToNatural(grid,global,natural,ONEDOF)
-      call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
+      call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
 
       ! gas saturation
-      call GetVarFromArray(solution,global,GAS_SATURATION,0)
+      call GetVarFromArray(realization,global,GAS_SATURATION,0)
       call GridGlobalToNatural(grid,global,natural,ONEDOF)
-      call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
+      call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
     
       ! liquid energy
-      call GetVarFromArray(solution,global,LIQUID_ENERGY,0)
+      call GetVarFromArray(realization,global,LIQUID_ENERGY,0)
       call GridGlobalToNatural(grid,global,natural,ONEDOF)
-      call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
+      call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
     
       ! gas energy
-      call GetVarFromArray(solution,global,GAS_ENERGY,0)
+      call GetVarFromArray(realization,global,GAS_ENERGY,0)
       call GridGlobalToNatural(grid,global,natural,ONEDOF)
-      call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
+      call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
     
       ! liquid mole fractions
       do i=1,option%nspec
-        call GetVarFromArray(solution,global,LIQUID_MOLE_FRACTION,i-1)
+        call GetVarFromArray(realization,global,LIQUID_MOLE_FRACTION,i-1)
         call GridGlobalToNatural(grid,global,natural,ONEDOF)
-        call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
+        call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
       enddo
     
       ! gas mole fractions
       do i=1,option%nspec
-        call GetVarFromArray(solution,global,GAS_MOLE_FRACTION,i-1)
+        call GetVarFromArray(realization,global,GAS_MOLE_FRACTION,i-1)
         call GridGlobalToNatural(grid,global,natural,ONEDOF)
-        call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
+        call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
       enddo
     
       ! Volume Fraction
       if (option%rk > 0.d0) then
-        call GetVarFromArray(solution,global,VOLUME_FRACTION,0)
+        call GetVarFromArray(realization,global,VOLUME_FRACTION,0)
         call GridGlobalToNatural(grid,global,natural,ONEDOF)
-        call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
+        call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
       endif
     
       ! phase
-      call GetVarFromArray(solution,global,PHASE,0)
+      call GetVarFromArray(realization,global,PHASE,0)
       call GridGlobalToNatural(grid,global,natural,ONEDOF)
-      call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_INTEGER)
+      call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_INTEGER)
   
     case default
   
       ! temperature
-      call GridGlobalToNatural(grid,option%temp,natural,ONEDOF)
-      call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
+      call GridGlobalToNatural(grid,field%temp,natural,ONEDOF)
+      call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
 
       ! pressure
-      call GridGlobalToNatural(grid,option%pressure,natural,ONEDOF)
-      call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
+      call GridGlobalToNatural(grid,field%pressure,natural,ONEDOF)
+      call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
 
       ! saturation
-      call GridGlobalToNatural(grid,option%sat,natural,ONEDOF)
-      call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
+      call GridGlobalToNatural(grid,field%sat,natural,ONEDOF)
+      call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
 
       ! concentration
-      call GridGlobalToNatural(grid,option%conc,natural,ONEDOF)
-      call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
+      call GridGlobalToNatural(grid,field%conc,natural,ONEDOF)
+      call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
 
       ! volume fraction
       if (option%rk > 0.d0) then
-        call GetVarFromArray(solution,global,VOLUME_FRACTION,0)
+        call GetVarFromArray(realization,global,VOLUME_FRACTION,0)
         call GridGlobalToNatural(grid,global,natural,ONEDOF)
-        call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
+        call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
       endif
     
   end select
@@ -286,26 +289,26 @@ subroutine OutputTecplot(solution,step)
   close(IUNIT3)
   
   if (output_option%print_tecplot_velocities) then
-    call OutputVelocitiesTecplot(solution,step)
+    call OutputVelocitiesTecplot(realization,step)
   endif
   
   if (output_option%print_tecplot_flux_velocities) then
     if (grid%structured_grid%nx > 1) then
-      call OutputFluxVelocitiesTecplot(solution,step,LIQUID_PHASE, &
+      call OutputFluxVelocitiesTecplot(realization,step,LIQUID_PHASE, &
                                        X_DIRECTION)
-      call OutputFluxVelocitiesTecplot(solution,step,GAS_PHASE, &
+      call OutputFluxVelocitiesTecplot(realization,step,GAS_PHASE, &
                                        X_DIRECTION)
     endif
     if (grid%structured_grid%ny > 1) then
-      call OutputFluxVelocitiesTecplot(solution,step,LIQUID_PHASE, &
+      call OutputFluxVelocitiesTecplot(realization,step,LIQUID_PHASE, &
                                        Y_DIRECTION)
-      call OutputFluxVelocitiesTecplot(solution,step,GAS_PHASE, &
+      call OutputFluxVelocitiesTecplot(realization,step,GAS_PHASE, &
                                        Y_DIRECTION)
     endif
     if (grid%structured_grid%nz > 1) then
-      call OutputFluxVelocitiesTecplot(solution,step,LIQUID_PHASE, &
+      call OutputFluxVelocitiesTecplot(realization,step,LIQUID_PHASE, &
                                        Z_DIRECTION)
-      call OutputFluxVelocitiesTecplot(solution,step,GAS_PHASE, &
+      call OutputFluxVelocitiesTecplot(realization,step,GAS_PHASE, &
                                        Z_DIRECTION)
     endif
   endif
@@ -319,9 +322,9 @@ end subroutine OutputTecplot
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine OutputVelocitiesTecplot(solution,step)
+subroutine OutputVelocitiesTecplot(realization,step)
  
-  use Solution_module
+  use Realization_module
   use Grid_module
   use Option_module
   
@@ -329,7 +332,7 @@ subroutine OutputVelocitiesTecplot(solution,step)
 
 #include "definitions.h"
 
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   integer :: step
   
   type(grid_type), pointer :: grid
@@ -342,9 +345,9 @@ subroutine OutputVelocitiesTecplot(solution,step)
 
   real*8, pointer :: vec_ptr(:)
   
-  grid => solution%grid
-  option => solution%option
-  output_option => solution%output_option
+  grid => realization%grid
+  option => realization%option
+  output_option => realization%output_option
   
   ! open file
   if (output_option%plot_number < 10) then
@@ -396,39 +399,39 @@ subroutine OutputVelocitiesTecplot(solution,step)
   ! write out coorindates
   call GetCoordinates(grid,global,X_COORDINATE)
   call GridGlobalToNatural(grid,global,natural,ONEDOF)
-  call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
+  call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
 
   call GetCoordinates(grid,global,Y_COORDINATE)
   call GridGlobalToNatural(grid,global,natural,ONEDOF)
-  call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
+  call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
 
   call GetCoordinates(grid,global,Z_COORDINATE)
   call GridGlobalToNatural(grid,global,natural,ONEDOF)
-  call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
+  call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
 
-  call GetCellCenteredVelocities(solution,global,LIQUID_PHASE,X_DIRECTION)
+  call GetCellCenteredVelocities(realization,global,LIQUID_PHASE,X_DIRECTION)
   call GridGlobalToNatural(grid,global,natural,ONEDOF)
-  call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
+  call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
 
-  call GetCellCenteredVelocities(solution,global,LIQUID_PHASE,Y_DIRECTION)
+  call GetCellCenteredVelocities(realization,global,LIQUID_PHASE,Y_DIRECTION)
   call GridGlobalToNatural(grid,global,natural,ONEDOF)
-  call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
+  call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
 
-  call GetCellCenteredVelocities(solution,global,LIQUID_PHASE,Z_DIRECTION)
+  call GetCellCenteredVelocities(realization,global,LIQUID_PHASE,Z_DIRECTION)
   call GridGlobalToNatural(grid,global,natural,ONEDOF)
-  call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
+  call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
 
-  call GetCellCenteredVelocities(solution,global,GAS_PHASE,X_DIRECTION)
+  call GetCellCenteredVelocities(realization,global,GAS_PHASE,X_DIRECTION)
   call GridGlobalToNatural(grid,global,natural,ONEDOF)
-  call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
+  call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
 
-  call GetCellCenteredVelocities(solution,global,GAS_PHASE,Y_DIRECTION)
+  call GetCellCenteredVelocities(realization,global,GAS_PHASE,Y_DIRECTION)
   call GridGlobalToNatural(grid,global,natural,ONEDOF)
-  call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
+  call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
 
-  call GetCellCenteredVelocities(solution,global,GAS_PHASE,Z_DIRECTION)
+  call GetCellCenteredVelocities(realization,global,GAS_PHASE,Z_DIRECTION)
   call GridGlobalToNatural(grid,global,natural,ONEDOF)
-  call WriteTecplotDataSetFromVec(IUNIT3,solution,natural,TECPLOT_REAL)
+  call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
 
   call VecDestroy(natural,ierr)
   call VecDestroy(global,ierr)
@@ -445,25 +448,27 @@ end subroutine OutputVelocitiesTecplot
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine OutputFluxVelocitiesTecplot(solution,step,iphase, &
+subroutine OutputFluxVelocitiesTecplot(realization,step,iphase, &
                                        direction)
 !geh - specifically, the flow velocities at the interfaces between cells
  
-  use Solution_module
+  use Realization_module
   use Grid_module
   use Option_module
+  use Field_module
   
   implicit none
 
 #include "definitions.h"
 
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   integer :: step
   integer :: iphase
   integer :: direction
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
+  type(field_type), pointer :: field
   type(output_option_type), pointer :: output_option
   
   character(len=MAXNAMELENGTH) :: filename
@@ -482,8 +487,9 @@ subroutine OutputFluxVelocitiesTecplot(solution,step,iphase, &
   
   nullify(array)
   
-  grid => solution%grid
-  option => solution%option
+  grid => realization%grid
+  option => realization%option
+  field => realization%field
   output_option => output_option
   
   ! open file
@@ -639,7 +645,7 @@ subroutine OutputFluxVelocitiesTecplot(solution,step,iphase, &
   ! thus, you cannot pass in local_size, since it is needed later
   adjusted_size = local_size
   call ConvertArrayToNatural(indices,array,adjusted_size,global_size)
-  call WriteTecplotDataSet(IUNIT3,solution,array,TECPLOT_REAL,adjusted_size)
+  call WriteTecplotDataSet(IUNIT3,realization,array,TECPLOT_REAL,adjusted_size)
   ! since the array has potentially been resized, must reallocate
   deallocate(array)
   nullify(array)
@@ -662,7 +668,7 @@ subroutine OutputFluxVelocitiesTecplot(solution,step,iphase, &
   call VecRestoreArrayF90(grid%structured_grid%dy,vec_ptr,ierr)
   adjusted_size = local_size
   call ConvertArrayToNatural(indices,array,adjusted_size,global_size)
-  call WriteTecplotDataSet(IUNIT3,solution,array,TECPLOT_REAL,adjusted_size)
+  call WriteTecplotDataSet(IUNIT3,realization,array,TECPLOT_REAL,adjusted_size)
   deallocate(array)
   nullify(array)
 
@@ -684,12 +690,12 @@ subroutine OutputFluxVelocitiesTecplot(solution,step,iphase, &
   call VecRestoreArrayF90(grid%structured_grid%dz,vec_ptr,ierr)
   adjusted_size = local_size
   call ConvertArrayToNatural(indices,array,adjusted_size,global_size)
-  call WriteTecplotDataSet(IUNIT3,solution,array,TECPLOT_REAL,adjusted_size)
+  call WriteTecplotDataSet(IUNIT3,realization,array,TECPLOT_REAL,adjusted_size)
   deallocate(array)
   nullify(array)
   
   ! write out data set
-  call VecGetArrayF90(option%vl,vec_ptr,ierr)
+  call VecGetArrayF90(field%vl,vec_ptr,ierr)
   count = 0
   allocate(array(local_size))
   do k=1,nz_local
@@ -702,14 +708,14 @@ subroutine OutputFluxVelocitiesTecplot(solution,step,iphase, &
       enddo
     enddo
   enddo
-  call VecRestoreArrayF90(option%vl,vec_ptr,ierr)
+  call VecRestoreArrayF90(field%vl,vec_ptr,ierr)
 !GEH - Structured Grid Dependence - End
   
   array(1:local_size) = array(1:local_size)*output_option%tconv ! convert time units
   
   adjusted_size = local_size
   call ConvertArrayToNatural(indices,array,adjusted_size,global_size)
-  call WriteTecplotDataSet(IUNIT3,solution,array,TECPLOT_REAL,adjusted_size)
+  call WriteTecplotDataSet(IUNIT3,realization,array,TECPLOT_REAL,adjusted_size)
   deallocate(array)
   nullify(array)
   
@@ -727,21 +733,21 @@ end subroutine OutputFluxVelocitiesTecplot
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine WriteTecplotDataSetFromVec(fid,solution,vec,datatype)
+subroutine WriteTecplotDataSetFromVec(fid,realization,vec,datatype)
 
-  use Solution_module
+  use Realization_module
   
   implicit none
 
   integer :: fid
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   Vec :: vec
   integer :: datatype
   
   PetscScalar, pointer :: vec_ptr(:)
   
   call VecGetArrayF90(vec,vec_ptr,ierr)
-  call WriteTecplotDataSet(fid,solution,vec_ptr,datatype,0) ! 0 implies grid%nlmax
+  call WriteTecplotDataSet(fid,realization,vec_ptr,datatype,0) ! 0 implies grid%nlmax
   call VecRestoreArrayF90(vec,vec_ptr,ierr)
   
 end subroutine WriteTecplotDataSetFromVec
@@ -754,16 +760,16 @@ end subroutine WriteTecplotDataSetFromVec
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine WriteTecplotDataSet(fid,solution,array,datatype,size_flag)
+subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
 
-  use Solution_module
+  use Realization_module
   use Grid_module
   use Option_module
 
   implicit none
   
   integer :: fid
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   PetscReal :: array(:)
   integer, save :: max_local_size_saved = -1
   integer :: datatype
@@ -778,8 +784,8 @@ subroutine WriteTecplotDataSet(fid,solution,array,datatype,size_flag)
   PetscInt, allocatable :: integer_data(:), integer_data_recv(:)
   PetscReal, allocatable :: real_data(:), real_data_recv(:)
   
-  grid => solution%grid
-  option => solution%option
+  grid => realization%grid
+  option => realization%option
   
   if (size_flag /= 0) then
     call MPI_Allreduce(size_flag,max_local_size,1,MPI_INTEGER,MPI_MAX, &
@@ -916,19 +922,20 @@ end subroutine WriteTecplotDataSet
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine OutputHDF5(solution,step)
+subroutine OutputHDF5(realization,step)
 
-  use Solution_module
+  use Realization_module
   use Option_module
   use Grid_module
+  use Field_module
   
 #ifndef USE_HDF5
   implicit none
   
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   integer :: step
 
-  if (solution%option%myrank == 0) then
+  if (realization%option%myrank == 0) then
     print *
     print *, 'PFLOTRAN must be compiled with -DUSE_HDF5 to ', &
              'write to an HDF5 format.'
@@ -942,19 +949,20 @@ subroutine OutputHDF5(solution,step)
   
   implicit none
 
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   integer :: step  
 
   integer(HID_T) :: file_id
   integer(HID_T) :: grp_id
   integer(HID_T) :: file_space_id
-  integer(HID_T) :: solution_set_id
+  integer(HID_T) :: realization_set_id
   integer(HID_T) :: prop_id
   integer(HSIZE_T) :: rank
   integer(HSIZE_T) :: dims(3)
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
+  type(field_type), pointer :: field
   type(output_option_type), pointer :: output_option
   
   Vec :: global
@@ -967,9 +975,10 @@ subroutine OutputHDF5(solution,step)
   real*8, pointer :: array(:)
   integer :: i
   
-  grid => solution%grid
-  option => solution%option
-  output_option => solution%output_option
+  grid => realization%grid
+  option => realization%option
+  field => realization%field
+  output_option => realization%output_option
 
   ! initialize fortran interface
   call h5open_f(hdf5_err)
@@ -1055,79 +1064,79 @@ subroutine OutputHDF5(solution,step)
     case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
  
       ! temperature
-      call GetVarFromArray(solution,global,TEMPERATURE,0)
+      call GetVarFromArray(realization,global,TEMPERATURE,0)
       string = "Temperature"
-      call WriteHDF5DataSetFromVec(string,solution,global,grp_id,H5T_NATIVE_DOUBLE)
+      call WriteHDF5DataSetFromVec(string,realization,global,grp_id,H5T_NATIVE_DOUBLE)
 
       ! pressure
-      call GetVarFromArray(solution,global,PRESSURE,0)
+      call GetVarFromArray(realization,global,PRESSURE,0)
       string = "Pressure"
-      call WriteHDF5DataSetFromVec(string,solution,global,grp_id,H5T_NATIVE_DOUBLE)
+      call WriteHDF5DataSetFromVec(string,realization,global,grp_id,H5T_NATIVE_DOUBLE)
 
       ! liquid saturation
-      call GetVarFromArray(solution,global,LIQUID_SATURATION,0)
+      call GetVarFromArray(realization,global,LIQUID_SATURATION,0)
       string = "Liquid Saturation"
-      call WriteHDF5DataSetFromVec(string,solution,global,grp_id,H5T_NATIVE_DOUBLE)  
+      call WriteHDF5DataSetFromVec(string,realization,global,grp_id,H5T_NATIVE_DOUBLE)  
 
       ! gas saturation
-      call GetVarFromArray(solution,global,GAS_SATURATION,0)
+      call GetVarFromArray(realization,global,GAS_SATURATION,0)
       string = "Gas Saturation"
-      call WriteHDF5DataSetFromVec(string,solution,global,grp_id,H5T_NATIVE_DOUBLE) 
+      call WriteHDF5DataSetFromVec(string,realization,global,grp_id,H5T_NATIVE_DOUBLE) 
     
       ! liquid energy
-      call GetVarFromArray(solution,global,LIQUID_ENERGY,0)
+      call GetVarFromArray(realization,global,LIQUID_ENERGY,0)
       string = "Liquid Energy"
-      call WriteHDF5DataSetFromVec(string,solution,global,grp_id,H5T_NATIVE_DOUBLE) 
+      call WriteHDF5DataSetFromVec(string,realization,global,grp_id,H5T_NATIVE_DOUBLE) 
     
       ! gas energy
-      call GetVarFromArray(solution,global,GAS_ENERGY,0)
+      call GetVarFromArray(realization,global,GAS_ENERGY,0)
       string = "Gas Energy"
-      call WriteHDF5DataSetFromVec(string,solution,global,grp_id,H5T_NATIVE_DOUBLE) 
+      call WriteHDF5DataSetFromVec(string,realization,global,grp_id,H5T_NATIVE_DOUBLE) 
     
       ! liquid mole fractions
       do i=1,option%nspec
-        call GetVarFromArray(solution,global,LIQUID_MOLE_FRACTION,i-1)
+        call GetVarFromArray(realization,global,LIQUID_MOLE_FRACTION,i-1)
         write(string,'(''Liquid Mole Fraction('',i4,'')'')') i
-        call WriteHDF5DataSetFromVec(string,solution,global,grp_id,H5T_NATIVE_DOUBLE)
+        call WriteHDF5DataSetFromVec(string,realization,global,grp_id,H5T_NATIVE_DOUBLE)
       enddo
     
       ! gas mole fractions
       do i=1,option%nspec
-        call GetVarFromArray(solution,global,GAS_MOLE_FRACTION,i-1)
+        call GetVarFromArray(realization,global,GAS_MOLE_FRACTION,i-1)
         write(string,'(''Gas Mole Fraction('',i4,'')'')') i
-        call WriteHDF5DataSetFromVec(string,solution,global,grp_id,H5T_NATIVE_DOUBLE)
+        call WriteHDF5DataSetFromVec(string,realization,global,grp_id,H5T_NATIVE_DOUBLE)
       enddo
     
       ! Volume Fraction
       if (option%rk > 0.d0) then
-        call GetVarFromArray(solution,global,VOLUME_FRACTION,0)
+        call GetVarFromArray(realization,global,VOLUME_FRACTION,0)
         string = "Volume Fraction"
-        call WriteHDF5DataSetFromVec(string,solution,global,grp_id,H5T_NATIVE_DOUBLE)
+        call WriteHDF5DataSetFromVec(string,realization,global,grp_id,H5T_NATIVE_DOUBLE)
       endif
     
       ! phase
-      call GetVarFromArray(solution,global,PHASE,0)
+      call GetVarFromArray(realization,global,PHASE,0)
       string = "Phase"
-      call WriteHDF5DataSetFromVec(string,solution,global,grp_id,H5T_NATIVE_INTEGER) 
+      call WriteHDF5DataSetFromVec(string,realization,global,grp_id,H5T_NATIVE_INTEGER) 
   
     case default
       ! temperature
       string = "Temperature"
-      call WriteHDF5DataSetFromVec(string,solution,option%temp,grp_id, &
+      call WriteHDF5DataSetFromVec(string,realization,field%temp,grp_id, &
                                    H5T_NATIVE_DOUBLE)
 
       ! pressure
       string = "Pressure"
-      call WriteHDF5DataSetFromVec(string,solution,option%pressure,grp_id, &
+      call WriteHDF5DataSetFromVec(string,realization,field%pressure,grp_id, &
                                    H5T_NATIVE_DOUBLE)
 
       ! saturation
       string = "Saturation"
-      call WriteHDF5DataSetFromVec(string,solution,option%sat,grp_id,H5T_NATIVE_DOUBLE)
+      call WriteHDF5DataSetFromVec(string,realization,field%sat,grp_id,H5T_NATIVE_DOUBLE)
 
       ! concentration
       string = "Concentration"
-      call WriteHDF5DataSetFromVec(string,solution,option%conc,grp_id, &
+      call WriteHDF5DataSetFromVec(string,realization,field%conc,grp_id, &
                                    H5T_NATIVE_DOUBLE)
 
   end select
@@ -1135,33 +1144,33 @@ subroutine OutputHDF5(solution,step)
   if (output_option%print_hdf5_velocities) then
 
     ! velocities
-    call GetCellCenteredVelocities(solution,global,LIQUID_PHASE,X_DIRECTION)
+    call GetCellCenteredVelocities(realization,global,LIQUID_PHASE,X_DIRECTION)
     string = "Liquid X-Velocity"
-    call WriteHDF5DataSetFromVec(string,solution,global,grp_id, &
+    call WriteHDF5DataSetFromVec(string,realization,global,grp_id, &
                                  H5T_NATIVE_DOUBLE)
-    call GetCellCenteredVelocities(solution,global,LIQUID_PHASE,Y_DIRECTION)
+    call GetCellCenteredVelocities(realization,global,LIQUID_PHASE,Y_DIRECTION)
     string = "Liquid Y-Velocity"
-    call WriteHDF5DataSetFromVec(string,solution,global,grp_id, &
+    call WriteHDF5DataSetFromVec(string,realization,global,grp_id, &
                                  H5T_NATIVE_DOUBLE)
   
-    call GetCellCenteredVelocities(solution,global,LIQUID_PHASE,Z_DIRECTION)
+    call GetCellCenteredVelocities(realization,global,LIQUID_PHASE,Z_DIRECTION)
     string = "Liquid Z-Velocity"
-    call WriteHDF5DataSetFromVec(string,solution,global,grp_id, &
+    call WriteHDF5DataSetFromVec(string,realization,global,grp_id, &
                                  H5T_NATIVE_DOUBLE)
 
-    call GetCellCenteredVelocities(solution,global,GAS_PHASE,X_DIRECTION)
+    call GetCellCenteredVelocities(realization,global,GAS_PHASE,X_DIRECTION)
     string = "Gas X-Velocity"
-    call WriteHDF5DataSetFromVec(string,solution,global,grp_id, &
+    call WriteHDF5DataSetFromVec(string,realization,global,grp_id, &
                                H5T_NATIVE_DOUBLE)
   
-    call GetCellCenteredVelocities(solution,global,GAS_PHASE,Y_DIRECTION)
+    call GetCellCenteredVelocities(realization,global,GAS_PHASE,Y_DIRECTION)
     string = "Gas Y-Velocity"
-    call WriteHDF5DataSetFromVec(string,solution,global,grp_id, &
+    call WriteHDF5DataSetFromVec(string,realization,global,grp_id, &
                                  H5T_NATIVE_DOUBLE)
   
-    call GetCellCenteredVelocities(solution,global,GAS_PHASE,Z_DIRECTION)
+    call GetCellCenteredVelocities(realization,global,GAS_PHASE,Z_DIRECTION)
     string = "Gas Z-Velocity"
-    call WriteHDF5DataSetFromVec(string,solution,global,grp_id, &
+    call WriteHDF5DataSetFromVec(string,realization,global,grp_id, &
                                  H5T_NATIVE_DOUBLE)
   endif
 
@@ -1170,23 +1179,23 @@ subroutine OutputHDF5(solution,step)
     ! internal flux velocities
     if (grid%structured_grid%nx > 1) then
       string = "Liquid X-Flux Velocities"
-      call WriteHDF5FluxVelocities(string,solution,LIQUID_PHASE,X_DIRECTION,grp_id)
+      call WriteHDF5FluxVelocities(string,realization,LIQUID_PHASE,X_DIRECTION,grp_id)
       string = "Gas X-Flux Velocities"
-      call WriteHDF5FluxVelocities(string,solution,GAS_PHASE,X_DIRECTION,grp_id)
+      call WriteHDF5FluxVelocities(string,realization,GAS_PHASE,X_DIRECTION,grp_id)
     endif
     
     if (grid%structured_grid%ny > 1) then
       string = "Liquid Y-Flux Velocities"
-      call WriteHDF5FluxVelocities(string,solution,LIQUID_PHASE,Y_DIRECTION,grp_id)
+      call WriteHDF5FluxVelocities(string,realization,LIQUID_PHASE,Y_DIRECTION,grp_id)
       string = "Gas Y-Flux Velocities"
-      call WriteHDF5FluxVelocities(string,solution,GAS_PHASE,Y_DIRECTION,grp_id)
+      call WriteHDF5FluxVelocities(string,realization,GAS_PHASE,Y_DIRECTION,grp_id)
     endif
     
     if (grid%structured_grid%nz > 1) then
       string = "Liquid Z-Flux Velocities"
-      call WriteHDF5FluxVelocities(string,solution,LIQUID_PHASE,Z_DIRECTION,grp_id)
+      call WriteHDF5FluxVelocities(string,realization,LIQUID_PHASE,Z_DIRECTION,grp_id)
       string = "Gas Z-Flux Velocities"
-      call WriteHDF5FluxVelocities(string,solution,GAS_PHASE,Z_DIRECTION,grp_id)
+      call WriteHDF5FluxVelocities(string,realization,GAS_PHASE,Z_DIRECTION,grp_id)
     endif
     
   endif 
@@ -1209,17 +1218,18 @@ end subroutine OutputHDF5
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine WriteHDF5FluxVelocities(name,solution,iphase,direction,file_id)
+subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
 
-  use Solution_module
+  use Realization_module
   use Grid_module
   use Option_module
+  use Field_module
   use hdf5
 
   implicit none
   
   character(len=32) :: name
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   integer :: iphase
   integer :: direction
   integer(HID_T) :: file_id
@@ -1232,6 +1242,7 @@ subroutine WriteHDF5FluxVelocities(name,solution,iphase,direction,file_id)
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
+  type(field_type), pointer :: field
   type(output_option_type), pointer :: output_option
     
   real*8, allocatable :: array(:)
@@ -1242,9 +1253,10 @@ subroutine WriteHDF5FluxVelocities(name,solution,iphase,direction,file_id)
   logical, save :: trick_flux_vel_y = .false.
   logical, save :: trick_flux_vel_z = .false.
   
-  grid => solution%grid
-  option => solution%option
-  output_option => solution%output_option  
+  grid => realization%grid
+  option => realization%option
+  field => realization%field
+  output_option => realization%output_option  
   
   ! in a few cases (i.e. for small test problems), some processors may
   ! have no velocities to print.  This results in zero-length arrays
@@ -1301,7 +1313,7 @@ subroutine WriteHDF5FluxVelocities(name,solution,iphase,direction,file_id)
   end select  
   allocate(array(nx_local*ny_local*nz_local))
 
-  call VecGetArrayF90(option%vl,vec_ptr,ierr)
+  call VecGetArrayF90(field%vl,vec_ptr,ierr)
   count = 0
   do k=1,nz_local
     do j=1,ny_local
@@ -1313,7 +1325,7 @@ subroutine WriteHDF5FluxVelocities(name,solution,iphase,direction,file_id)
       enddo
     enddo
   enddo
-  call VecRestoreArrayF90(option%vl,vec_ptr,ierr)
+  call VecRestoreArrayF90(field%vl,vec_ptr,ierr)
   
   array(1:nx_local*ny_local*nz_local) = &  ! convert time units
     array(1:nx_local*ny_local*nz_local) * output_option%tconv
@@ -1388,17 +1400,17 @@ end subroutine WriteHDF5Coordinates
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine WriteHDF5DataSetFromVec(name,solution,vec,file_id,data_type)
+subroutine WriteHDF5DataSetFromVec(name,realization,vec,file_id,data_type)
 
   use hdf5
-  use Solution_module
+  use Realization_module
   use Grid_module
   use Option_module
   
   implicit none
 
   character(len=32) :: name
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   Vec :: vec
   integer(HID_T) :: file_id
   integer(HID_T) :: data_type
@@ -1407,8 +1419,8 @@ subroutine WriteHDF5DataSetFromVec(name,solution,vec,file_id,data_type)
   type(option_type), pointer :: option
   PetscScalar, pointer :: vec_ptr(:)
   
-  grid => solution%grid
-  option => solution%option
+  grid => realization%grid
+  option => realization%option
   
   call VecGetArrayF90(vec,vec_ptr,ierr)
 !GEH - Structured Grid Dependence - Begin
@@ -1666,15 +1678,16 @@ end subroutine ConvertArrayToNatural
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine GetVarFromArray(solution,vec,ivar,isubvar)
+subroutine GetVarFromArray(realization,vec,ivar,isubvar)
 
-  use Solution_module
+  use Realization_module
   use Grid_module
   use Option_module
+  use Field_module
 
   implicit none
   
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   Vec :: vec
   integer :: ivar
   integer :: isubvar
@@ -1685,11 +1698,13 @@ subroutine GetVarFromArray(solution,vec,ivar,isubvar)
   integer :: size_var_node
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
+  type(field_type), pointer :: field
   PetscScalar, pointer :: var_ptr(:)
   PetscScalar, pointer :: vec_ptr(:)
 
-  option => solution%option
-  grid => solution%grid
+  option => realization%option
+  grid => realization%grid
+  field => realization%field
 
   call VecGetArrayF90(vec,vec_ptr,ierr)
       
@@ -1714,12 +1729,12 @@ subroutine GetVarFromArray(solution,vec,ivar,isubvar)
       size_var_use = 2 + 7*option%nphase + 2* option%nphase*option%nspec
       size_var_node = (option%ndof + 1) * size_var_use
         
-      call VecGetArrayF90(option%var_loc,var_ptr,ierr)
+      call VecGetArrayF90(field%var_loc,var_ptr,ierr)
       do local_id=1,grid%nlmax
         ghosted_id = grid%nL2G(local_id)
         vec_ptr(local_id) = var_ptr((ghosted_id-1)*size_var_node+offset)
       enddo
-      call VecRestoreArrayF90(option%var_loc,var_ptr,ierr)
+      call VecRestoreArrayF90(field%var_loc,var_ptr,ierr)
 
     case(LIQUID_ENERGY,GAS_ENERGY)
 
@@ -1735,7 +1750,7 @@ subroutine GetVarFromArray(solution,vec,ivar,isubvar)
       size_var_use = 2 + 7*option%nphase + 2* option%nphase*option%nspec
       size_var_node = (option%ndof + 1) * size_var_use
         
-      call VecGetArrayF90(option%var_loc,var_ptr,ierr)
+      call VecGetArrayF90(field%var_loc,var_ptr,ierr)
       do local_id=1,grid%nlmax
         ghosted_id = grid%nL2G(local_id)      
         if (var_ptr((ghosted_id-1)*size_var_node+saturation_offset) > 1.d-30) then
@@ -1744,22 +1759,22 @@ subroutine GetVarFromArray(solution,vec,ivar,isubvar)
           vec_ptr(local_id) = 0.d0
         endif
       enddo
-      call VecRestoreArrayF90(option%var_loc,var_ptr,ierr)
+      call VecRestoreArrayF90(field%var_loc,var_ptr,ierr)
 
     case(VOLUME_FRACTION)
     
       ! need to set minimum to 0.
-      call VecGetArrayF90(option%phis,var_ptr,ierr)
+      call VecGetArrayF90(field%phis,var_ptr,ierr)
       vec_ptr(1:grid%nlmax) = var_ptr(1:grid%nlmax)
-      call VecRestoreArrayF90(option%phis,var_ptr,ierr)
+      call VecRestoreArrayF90(field%phis,var_ptr,ierr)
      
     case(PHASE)
     
-      call VecGetArrayF90(option%iphas_loc,var_ptr,ierr)
+      call VecGetArrayF90(field%iphas_loc,var_ptr,ierr)
       do local_id=1,grid%nlmax
         vec_ptr(local_id) = var_ptr(grid%nL2G(local_id))
       enddo
-      call VecRestoreArrayF90(option%iphas_loc,var_ptr,ierr)
+      call VecRestoreArrayF90(field%iphas_loc,var_ptr,ierr)
      
   end select
   
@@ -1775,23 +1790,25 @@ end subroutine GetVarFromArray
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine GetCellCenteredVelocities(solution,vec,iphase,direction)
+subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
 
-  use Solution_module
+  use Realization_module
   use Grid_module
   use Option_module
   use Connection_module
   use Coupler_module
+  use Field_module
 
   implicit none
   
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   Vec :: vec
   integer :: direction
   integer :: iphase
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
+  type(field_type), pointer :: field
   type(output_option_type), pointer :: output_option
   integer :: i, j, k, local_id, iconn
   Vec :: local_vec
@@ -1803,24 +1820,25 @@ subroutine GetCellCenteredVelocities(solution,vec,iphase,direction)
   
   type(coupler_type), pointer :: boundary_condition
   type(connection_list_type), pointer :: connection_list
-  type(connection_type), pointer :: cur_connection_object
+  type(connection_type), pointer :: cur_connection_set
   
-  grid => solution%grid
-  option => solution%option
-  output_option => solution%output_option
+  grid => realization%grid
+  option => realization%option
+  field => realization%field
+  output_option => realization%output_option
     
   allocate(num_additions(grid%nlmax))
   num_additions(1:grid%nlmax) = 0
   
   call VecSet(vec,0.d0,ierr)
   call VecGetArrayF90(vec,vec_ptr,ierr)
-  call VecGetArrayF90(option%vl,vl_ptr,ierr)
+  call VecGetArrayF90(field%vl,vl_ptr,ierr)
   do i=1,grid%nlmax
   ! definitely set up for a structured grid
   ! I believe that vl_ptr contains the downwind vel for all local nodes
     vec_ptr(i) = vl_ptr(iphase+(direction-1)*option%nphase+3*option%nphase*(i-1))
   enddo
-  call VecRestoreArrayF90(option%vl,vl_ptr,ierr)
+  call VecRestoreArrayF90(field%vl,vl_ptr,ierr)
   call VecRestoreArrayF90(vec,vec_ptr,ierr)
     
   call GridCreateVector(grid,ONEDOF,local_vec,LOCAL)  
@@ -1830,17 +1848,17 @@ subroutine GetCellCenteredVelocities(solution,vec,iphase,direction)
 
   call VecGetArrayF90(vec,vec_ptr,ierr)
 
-  boundary_condition => solution%boundary_conditions%first
+  boundary_condition => realization%boundary_conditions%first
   do
     if (.not.associated(boundary_condition)) exit
-    cur_connection_object => boundary_condition%connection
-    do iconn = 1, cur_connection_object%num_connections
-      if (cur_connection_object%dist(direction,iconn) < 0.99d0) cycle
-      local_id = cur_connection_object%id_dn(iconn)
+    cur_connection_set => boundary_condition%connection
+    do iconn = 1, cur_connection_set%num_connections
+      if (cur_connection_set%dist(direction,iconn) < 0.99d0) cycle
+      local_id = cur_connection_set%id_dn(iconn)
       if (iphase == LIQUID_PHASE) then
-        vec_ptr(local_id) = vec_ptr(local_id) + option%vvlbc(iconn)
+        vec_ptr(local_id) = vec_ptr(local_id) + field%vvlbc(iconn)
       else
-        vec_ptr(local_id) = vec_ptr(local_id) + option%vvgbc(iconn)
+        vec_ptr(local_id) = vec_ptr(local_id) + field%vvgbc(iconn)
       endif
       num_additions(local_id) = num_additions(local_id) + 1
     enddo

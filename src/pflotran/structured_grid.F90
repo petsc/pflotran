@@ -76,7 +76,6 @@ module Structured_Grid_module
             StructuredGridDestroy, &
             StructuredGridCreateDMs, &
             StructGridComputeInternConnect, &
-!            StructGridComputeBoundConnOld, &
             StructuredGridCreateVecFromDA, &
             StructuredGridMapIndices, &
             StructuredGridComputeSpacing, &
@@ -88,7 +87,6 @@ module Structured_Grid_module
             StructureGridLocalToLocal, &
             StructuredGridReadDXYZ, &
             StructuredGridComputeVolumes, &
-            StructGridComputeBoundConnect, &
             StructGridPopulateConnection
 
 contains
@@ -735,322 +733,6 @@ end function StructGridComputeInternConnect
 
 ! ************************************************************************** !
 !
-! StructGridComputeBoundConnectOld: computes boundary connectivity of a 
-!                                   structured grid
-! author: Glenn Hammond
-! date: 10/15/07
-!
-! ************************************************************************** !
-function StructGridComputeBoundConnOld(structured_grid,option,ibconn,nL2G)
-
-  use Connection_module
-  use Option_module
-  
-  implicit none
-
-  type(connection_type), pointer :: StructGridComputeBoundConnOld  
-  type(option_type) :: option
-  type(structured_grid_type) :: structured_grid
-  integer, pointer :: ibconn(:)
-  integer :: nL2G(:)
-  
-#if 0
-  integer :: num_conn_hypothetically
-  integer :: i, j, k, iconn
-  integer :: cell_id_local, cell_id_ghosted
-  integer :: ii1, ii2, jj1, jj2, kk1, kk2
-  integer :: ibc, ir
-  type(connection_type), pointer :: connections
-  PetscErrorCode :: ierr
-  
-  PetscScalar, pointer :: dx_loc_p(:), dy_loc_p(:), dz_loc_p(:)
-  
-  call VecGetArrayF90(structured_grid%dx_loc, dx_loc_p, ierr)
-  call VecGetArrayF90(structured_grid%dy_loc, dy_loc_p, ierr)
-  call VecGetArrayF90(structured_grid%dz_loc, dz_loc_p, ierr)
-  
-  iconn = 0
-  if (structured_grid%nx > 1 .and. structured_grid%ny == 1 .and. &
-      structured_grid%nz == 1) then
-    if (structured_grid%nxs == structured_grid%ngxs) iconn = iconn + 1
-    if (structured_grid%nxe == structured_grid%ngxe) iconn = iconn + 1
-  else if (structured_grid%nx == 1 .and. structured_grid%ny == 1 .and. &
-           structured_grid%nz > 1) then
-    if (structured_grid%nzs == structured_grid%ngzs) iconn = iconn + 1
-    if (structured_grid%nze == structured_grid%ngze) iconn = iconn + 1
-  else
-    if (structured_grid%nx > 1) then
-      if (structured_grid%nxs == structured_grid%ngxs) &
-        iconn = iconn + structured_grid%nlyz
-      if (structured_grid%nxe == structured_grid%ngxe) &
-        iconn = iconn + structured_grid%nlyz
-    endif
-    if (structured_grid%ny > 1) then
-      if (structured_grid%nys == structured_grid%ngys) &
-        iconn = iconn + structured_grid%nlxz
-      if (structured_grid%nye == structured_grid%ngye) &
-        iconn = iconn + structured_grid%nlxz
-    endif
-    if (structured_grid%nz > 1) then
-      if (structured_grid%nzs == structured_grid%ngzs) &
-        iconn = iconn + structured_grid%nlxy
-      if (structured_grid%nze == structured_grid%ngze) &
-        iconn = iconn + structured_grid%nlxy
-    endif
-  endif
-
-  num_conn_hypothetically = iconn
-  connections => ConnectionCreate(iconn,option%nphase,BOUNDARY_CONNECTION_TYPE)
-
-  allocate(ibconn(iconn)) 
-
-  iconn = 0
-  if (structured_grid%nxs == structured_grid%ngxs .or. &
-      structured_grid%nxe == structured_grid%ngxe .or. &
-      structured_grid%nys == structured_grid%ngys .or. &
-      structured_grid%nye == structured_grid%ngye .or. &
-      structured_grid%nzs == structured_grid%ngzs .or. &
-      structured_grid%nze == structured_grid%ngze) then
-
-    ! calculate boundary conditions locally on only those processors which 
-    ! contain a boundary!
-
-    do ibc = 1, option%nblkbc
-      do ir = option%iregbc1(ibc), option%iregbc2(ibc)
-        kk1 = option%k1bc(ir) - structured_grid%nzs
-        kk2 = option%k2bc(ir) - structured_grid%nzs
-        jj1 = option%j1bc(ir) - structured_grid%nys
-        jj2 = option%j2bc(ir) - structured_grid%nys
-        ii1 = option%i1bc(ir) - structured_grid%nxs
-        ii2 = option%i2bc(ir) - structured_grid%nxs
-
-        kk1 = max(1,kk1)
-        kk2 = min(structured_grid%nlz,kk2)
-        jj1 = max(1,jj1)
-        jj2 = min(structured_grid%nly,jj2)
-        ii1 = max(1,ii1)
-        ii2 = min(structured_grid%nlx,ii2)
-
-        if (ii1 > ii2 .or. jj1 > jj2 .or. kk1 > kk2) cycle 
-
-        do k = kk1,kk2
-          do j = jj1,jj2
-            do i = ii1,ii2
-              iconn = iconn + 1
-              cell_id_local = i+(j-1)*structured_grid%nlx+(k-1)*structured_grid%nlxy
-
-              connections%id_dn(iconn) = cell_id_local  ! m is a local index
-              
-              ! old way
-              !grid%ibconn(nc) = ibc
-              ibconn(iconn) = ir
-              cell_id_ghosted = nL2G(cell_id_local)
-            ! Use ghosted index to access dx, dy, dz because we have
-            ! already done a global-to-local scatter for computing the
-            ! interior node connections.
-      
-!               print *,'pflowgrid_mod: ',nc,ibc,ir,m,ng,ii1,ii2,kk1,kk2, &
-!                        grid%nblkbc,grid%igeom
-        
-              select case(structured_grid%igeom)
-                case(STRUCTURED_CARTESIAN) ! cartesian
-                  if (option%iface(ibc) == 1) then
-                    connections%dist(:,iconn) = 0.d0
-                    connections%dist(0,iconn) = 0.5d0*dx_loc_p(cell_id_ghosted)
-                    connections%dist(1,iconn) = 1.d0
-                    connections%area(iconn) = dy_loc_p(cell_id_ghosted)* &
-                                              dz_loc_p(cell_id_ghosted)
-                  else if (option%iface(ibc) == 2) then
-                    connections%dist(:,iconn) = 0.d0
-                    connections%dist(0,iconn) = 0.5d0*dx_loc_p(cell_id_ghosted)
-                    connections%dist(1,iconn) = 1.d0
-                    connections%area(iconn) = dy_loc_p(cell_id_ghosted)* &
-                                              dz_loc_p(cell_id_ghosted)
-                  else if (option%iface(ibc) == 3) then
-                    connections%dist(:,iconn) = 0.d0
-                    connections%dist(0,iconn) = 0.5d0*dz_loc_p(cell_id_ghosted)
-                    connections%dist(3,iconn) = 1.d0
-                    connections%area(iconn) = dx_loc_p(cell_id_ghosted)* &
-                                              dy_loc_p(cell_id_ghosted)
-                  else if (option%iface(ibc) == 4) then
-                    connections%dist(:,iconn) = 0.d0
-                    connections%dist(0,iconn) = 0.5d0*dz_loc_p(cell_id_ghosted)
-                    connections%dist(3,iconn) = 1.d0
-                    connections%area(iconn) = dx_loc_p(cell_id_ghosted)* &
-                                              dy_loc_p(cell_id_ghosted)
-                  else if (option%iface(ibc) == 5) then
-                    connections%dist(:,iconn) = 0.d0
-                    connections%dist(0,iconn) = 0.5d0*dy_loc_p(cell_id_ghosted)
-                    connections%dist(2,iconn) = 1.d0
-                    connections%area(iconn) = dx_loc_p(cell_id_ghosted)* &
-                                              dz_loc_p(cell_id_ghosted)
-                  else if (option%iface(ibc) == 6) then
-                    connections%dist(:,iconn) = 0.d0
-                    connections%dist(0,iconn) = 0.5d0*dy_loc_p(cell_id_ghosted)
-                    connections%dist(2,iconn) = 1.d0
-                    connections%area(iconn) = dx_loc_p(cell_id_ghosted)* &
-                                              dz_loc_p(cell_id_ghosted)
-                  endif
-                case(STRUCTURED_CYLINDRICAL) ! cylindrical
-                case(STRUCTURED_SPHERICAL) ! spherical
-              end select
-            enddo ! i
-          enddo ! j
-        enddo ! k
-      enddo ! ir
-    enddo ! ibc
-  endif
-  
-  if (num_conn_hypothetically /= iconn) then
-    print *, 'ERROR: Number of actual connections does not match hypothetical value'
-    stop
-  endif
-
-  call VecRestoreArrayF90(structured_grid%dx_loc, dx_loc_p, ierr)
-  call VecRestoreArrayF90(structured_grid%dy_loc, dy_loc_p, ierr)
-  call VecRestoreArrayF90(structured_grid%dz_loc, dz_loc_p, ierr)
-
-  StructGridComputeBoundConnOld => connections
-#endif  
-  
-end function StructGridComputeBoundConnOld
-
-! ************************************************************************** !
-!
-! StructGridComputeBoundConnect2: computes boundary connectivity of a 
-!                               structured grid
-! author: Glenn Hammond
-! date: 11/01/07
-!
-! ************************************************************************** !
-function StructGridComputeBoundConnect(structured_grid,option,ibconn,nL2G, &
-                                       boundary_conditions)
-
-  use Connection_module
-  use Option_module
-  use Coupler_module
-  use Region_module
-  
-  implicit none
-
-  type(connection_type), pointer :: StructGridComputeBoundConnect  
-  type(option_type) :: option
-  type(structured_grid_type) :: structured_grid
-  integer, pointer :: ibconn(:)
-  integer :: nL2G(:)
-  type(coupler_type), pointer :: boundary_conditions
-  
-  integer :: num_conn_hypothetically
-  integer :: iconn, iconn2
-  integer :: cell_id_local, cell_id_ghosted
-  type(connection_type), pointer :: connections
-  type(region_type), pointer :: region
-  type(coupler_type), pointer :: boundary_condition
-  PetscErrorCode :: ierr
-  
-  PetscScalar, pointer :: dx_loc_p(:), dy_loc_p(:), dz_loc_p(:)
-  
-  num_conn_hypothetically = 0
-
-  boundary_condition => boundary_conditions
-  do
-    if (.not.associated(boundary_condition)) exit  
-    num_conn_hypothetically = num_conn_hypothetically + &
-                              boundary_condition%region%num_cells
-    boundary_condition => boundary_condition%next
-  enddo
-  
-  call VecGetArrayF90(structured_grid%dx_loc, dx_loc_p, ierr)
-  call VecGetArrayF90(structured_grid%dy_loc, dy_loc_p, ierr)
-  call VecGetArrayF90(structured_grid%dz_loc, dz_loc_p, ierr)
-
-  print *, 'Need a check to ensure that boundary conditions connect to exterior boundary'
-  
-  connections => ConnectionCreate(num_conn_hypothetically,option%nphase, &
-                                  BOUNDARY_CONNECTION_TYPE)
-
-  allocate(ibconn(num_conn_hypothetically)) 
-  ibconn = 0
-
-  iconn = 0
-
-  boundary_condition => boundary_conditions
-  do
-    if (.not.associated(boundary_condition)) exit  
-    
-    region => boundary_condition%region
-
-    do iconn2 = 1,region%num_cells
-      iconn = iconn + 1
-      
-      cell_id_local = region%cell_ids(iconn2)
-      
-      connections%id_dn(iconn) = cell_id_local
-      ibconn(iconn) = boundary_condition%icondition
-
-      cell_id_ghosted = nL2G(cell_id_local)
-      ! Use ghosted index to access dx, dy, dz because we have
-      ! already done a global-to-local scatter for computing the
-      ! interior node connections.
-      
-      select case(structured_grid%igeom)
-        case(STRUCTURED_CARTESIAN) ! cartesian
-          select case(boundary_condition%iface)
-            case(WEST,EAST)
-              connections%dist(:,iconn) = 0.d0
-              connections%dist(0,iconn) = 0.5d0*dx_loc_p(cell_id_ghosted)
-              connections%area(iconn) = dy_loc_p(cell_id_ghosted)* &
-                                        dz_loc_p(cell_id_ghosted)
-              if (boundary_condition%iface ==  WEST) then
-                connections%dist(1,iconn) = 1.d0
-              else
-                connections%dist(1,iconn) = -1.d0
-              endif
-            case(SOUTH,NORTH)
-              connections%dist(:,iconn) = 0.d0
-              connections%dist(0,iconn) = 0.5d0*dy_loc_p(cell_id_ghosted)
-              connections%area(iconn) = dx_loc_p(cell_id_ghosted)* &
-                                        dz_loc_p(cell_id_ghosted)
-              if (boundary_condition%iface ==  SOUTH) then
-                connections%dist(2,iconn) = 1.d0
-              else
-                connections%dist(2,iconn) = -1.d0
-              endif
-            case(BOTTOM,TOP)
-              connections%dist(:,iconn) = 0.d0
-              connections%dist(0,iconn) = 0.5d0*dz_loc_p(cell_id_ghosted)
-              connections%area(iconn) = dx_loc_p(cell_id_ghosted)* &
-                                        dy_loc_p(cell_id_ghosted)
-              if (boundary_condition%iface ==  BOTTOM) then
-                connections%dist(3,iconn) = 1.d0
-              else
-                connections%dist(3,iconn) = -1.d0
-              endif
-          end select
-        case(STRUCTURED_CYLINDRICAL) ! cylindrical
-        case(STRUCTURED_SPHERICAL) ! spherical
-      end select
-      ibconn(iconn) = boundary_condition%id
-    enddo
-
-    boundary_condition => boundary_condition%next
-  enddo
-   
-  if (num_conn_hypothetically /= iconn) then
-    print *, 'ERROR: Number of actual connections does not match hypothetical value'
-    stop
-  endif
-
-  call VecRestoreArrayF90(structured_grid%dx_loc, dx_loc_p, ierr)
-  call VecRestoreArrayF90(structured_grid%dy_loc, dy_loc_p, ierr)
-  call VecRestoreArrayF90(structured_grid%dz_loc, dz_loc_p, ierr)
-  
-  StructGridComputeBoundConnect => connections
-  
-end function StructGridComputeBoundConnect
-
-! ************************************************************************** !
-!
 ! StructGridPopulateConnection: Computes details of connection (area, dist, etc)
 ! author: Glenn Hammond
 ! date: 11/09/07
@@ -1110,7 +792,7 @@ subroutine StructGridPopulateConnection(structured_grid,coupler,connection, &
               connection%dist(0,iconn) = 0.5d0*dz_loc_p(cell_id_ghosted)
               connection%area(iconn) = dx_loc_p(cell_id_ghosted)* &
                                         dy_loc_p(cell_id_ghosted)
-              if (coupler%iface ==  BOTTOM) then
+              if (coupler%iface ==  TOP) then ! this will become BOTTOM when z-axis is inverted.
                 connection%dist(3,iconn) = 1.d0
               else
                 connection%dist(3,iconn) = -1.d0
@@ -1289,25 +971,27 @@ end subroutine StructuredGridMapIndices
 ! date: 10/24/07
 !
 ! ************************************************************************** !
-subroutine StructuredGridCreateJacobian(structured_grid,option)
+subroutine StructuredGridCreateJacobian(structured_grid,solver,option)
 
   use Option_module
+  use Solver_module
   
   implicit none
   
   type(structured_grid_type) :: structured_grid
+  type(solver_type) :: solver
   type(option_type) :: option
   
   PetscErrorCode :: ierr
   
   if (option%iblkfmt == 0) then
-    call DAGetMatrix(structured_grid%da_ndof, MATAIJ, option%J, ierr)
+    call DAGetMatrix(structured_grid%da_ndof, MATAIJ, solver%J, ierr)
   else
-    call DAGetMatrix(structured_grid%da_ndof, MATBAIJ, option%J, ierr)
+    call DAGetMatrix(structured_grid%da_ndof, MATBAIJ, solver%J, ierr)
   endif
  ! call  MatSetBlocksize(grid%J,grid%ndof,ierr)
-  call MatSetOption(option%J,MAT_KEEP_ZEROED_ROWS,ierr)
-  call MatSetOption(option%J,MAT_COLUMN_ORIENTED,ierr)
+  call MatSetOption(solver%J,MAT_KEEP_ZEROED_ROWS,ierr)
+  call MatSetOption(solver%J,MAT_COLUMN_ORIENTED,ierr)
   
 end subroutine StructuredGridCreateJacobian
 

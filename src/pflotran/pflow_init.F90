@@ -40,12 +40,15 @@ subroutine PflowInit(simulation,filename)
   use Option_module
   use Grid_module
   use Solver_module
-  use Solution_module
+  use Realization_module
   use Material_module
   use Timestepper_module
+  use Field_module
+  use Connection_module
+  use Coupler_module
 
   use span_wagner_module
-!  use MPHASE_module
+  use MPHASE_module
   use Richards_module
   use pflow_convergence_module
   use pflow_solv_module 
@@ -58,9 +61,10 @@ subroutine PflowInit(simulation,filename)
   character(len=MAXWORDLENGTH) :: filename
 
   type(solver_type), pointer :: solver
-  type(solution_type), pointer :: solution
+  type(realization_type), pointer :: realization
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
+  type(field_type), pointer :: field
   
   ISColoring :: iscoloring
 
@@ -77,12 +81,13 @@ subroutine PflowInit(simulation,filename)
   
   ! set pointers to objects
   solver => simulation%stepper%solver
-  solution => simulation%solution
-  option => solution%option
+  realization => simulation%realization
+  option => realization%option
+  field => realization%field
   
   ! read MODE,GRID,PROC,COMP,PHAS cards
-  call readSelectCardsFromInput(solution,filename,mcomp,mphas)
-  grid => solution%grid
+  call readSelectCardsFromInput(realization,filename,mcomp,mphas)
+  grid => realization%grid
 
   ! set the operational mode (e.g. RICHARDS_MODE, MPH_MODE, etc)
   call setMode(option,mcomp,mphas)
@@ -122,49 +127,49 @@ subroutine PflowInit(simulation,filename)
  !-----------------------------------------------------------------------
 
   ! 1 degree of freedom
-  call GridCreateVector(grid,ONEDOF,option%porosity0,GLOBAL)
-  call VecDuplicate(option%porosity0, grid%volume, ierr)
-  call VecDuplicate(option%porosity0, option%phis, ierr)
-  call VecDuplicate(option%porosity0, option%perm0_xx, ierr)
-  call VecDuplicate(option%porosity0, option%perm0_yy, ierr)
-  call VecDuplicate(option%porosity0, option%perm0_zz, ierr)
-  call VecDuplicate(option%porosity0, option%perm_pow, ierr)
+  call GridCreateVector(grid,ONEDOF,field%porosity0,GLOBAL)
+  call VecDuplicate(field%porosity0, grid%volume, ierr)
+  call VecDuplicate(field%porosity0, field%phis, ierr)
+  call VecDuplicate(field%porosity0, field%perm0_xx, ierr)
+  call VecDuplicate(field%porosity0, field%perm0_yy, ierr)
+  call VecDuplicate(field%porosity0, field%perm0_zz, ierr)
+  call VecDuplicate(field%porosity0, field%perm_pow, ierr)
       
   select case(option%imode)
     ! everything but RICHARDS_MODE for now
     case(MPH_MODE,COND_MODE,TWOPH_MODE,VADOSE_MODE,LIQUID_MODE,OWG_MODE, &
          FLASH_MODE,TH_MODE,THC_MODE)
-      call VecDuplicate(option%porosity0, option%conc, ierr)
-      call VecDuplicate(option%porosity0, option%temp, ierr)
-      call VecDuplicate(option%porosity0, option%ttemp, ierr)
+      call VecDuplicate(field%porosity0, field%conc, ierr)
+      call VecDuplicate(field%porosity0, field%temp, ierr)
+      call VecDuplicate(field%porosity0, field%ttemp, ierr)
   end select    
       
-  call GridCreateVector(grid,ONEDOF,option%porosity_loc,LOCAL)
-  call VecDuplicate(option%porosity_loc, option%tor_loc, ierr)
-  call VecDuplicate(option%porosity_loc, option%ithrm_loc, ierr)
-  call VecDuplicate(option%porosity_loc, option%icap_loc, ierr)
-  call VecDuplicate(option%porosity_loc, option%iphas_loc, ierr)
-  call VecDuplicate(option%porosity_loc, option%iphas_old_loc, ierr)
+  call GridCreateVector(grid,ONEDOF,field%porosity_loc,LOCAL)
+  call VecDuplicate(field%porosity_loc, field%tor_loc, ierr)
+  call VecDuplicate(field%porosity_loc, field%ithrm_loc, ierr)
+  call VecDuplicate(field%porosity_loc, field%icap_loc, ierr)
+  call VecDuplicate(field%porosity_loc, field%iphas_loc, ierr)
+  call VecDuplicate(field%porosity_loc, field%iphas_old_loc, ierr)
   
   select case(option%imode)
     ! everything but RICHARDS_MODE for now
     case(MPH_MODE,COND_MODE,TWOPH_MODE,VADOSE_MODE,LIQUID_MODE,OWG_MODE, &
          FLASH_MODE,TH_MODE,THC_MODE)  
-      call VecDuplicate(option%porosity_loc, option%ttemp_loc, ierr)
+      call VecDuplicate(field%porosity_loc, field%ttemp_loc, ierr)
   end select
 
-  call VecDuplicate(option%porosity_loc, option%perm_xx_loc, ierr)
-  call VecDuplicate(option%porosity_loc, option%perm_yy_loc, ierr)
-  call VecDuplicate(option%porosity_loc, option%perm_zz_loc, ierr)
+  call VecDuplicate(field%porosity_loc, field%perm_xx_loc, ierr)
+  call VecDuplicate(field%porosity_loc, field%perm_yy_loc, ierr)
+  call VecDuplicate(field%porosity_loc, field%perm_zz_loc, ierr)
 
   if (associated(grid%structured_grid)) then
-    call VecDuplicate(option%porosity0, grid%structured_grid%dx, ierr)
-    call VecDuplicate(option%porosity0, grid%structured_grid%dy, ierr)
-    call VecDuplicate(option%porosity0, grid%structured_grid%dz, ierr)
+    call VecDuplicate(field%porosity0, grid%structured_grid%dx, ierr)
+    call VecDuplicate(field%porosity0, grid%structured_grid%dy, ierr)
+    call VecDuplicate(field%porosity0, grid%structured_grid%dz, ierr)
 
-    call VecDuplicate(option%porosity_loc, grid%structured_grid%dx_loc, ierr)
-    call VecDuplicate(option%porosity_loc, grid%structured_grid%dy_loc, ierr)
-    call VecDuplicate(option%porosity_loc, grid%structured_grid%dz_loc, ierr)
+    call VecDuplicate(field%porosity_loc, grid%structured_grid%dx_loc, ierr)
+    call VecDuplicate(field%porosity_loc, grid%structured_grid%dy_loc, ierr)
+    call VecDuplicate(field%porosity_loc, grid%structured_grid%dz_loc, ierr)
   endif
 
   select case(option%imode)
@@ -172,145 +177,145 @@ subroutine PflowInit(simulation,filename)
     case(MPH_MODE,COND_MODE,TWOPH_MODE,VADOSE_MODE,LIQUID_MODE,OWG_MODE, &
          FLASH_MODE,TH_MODE,THC_MODE)
       ! nphase degrees of freedom
-      call GridCreateVector(grid,NPHASEDOF,option%pressure,GLOBAL)
-      call VecDuplicate(option%pressure, option%sat, ierr)
-      call VecDuplicate(option%pressure, option%xmol, ierr)
-      call VecDuplicate(option%pressure, option%ppressure, ierr)
-      call VecDuplicate(option%pressure, option%ssat, ierr)
-      call VecDuplicate(option%pressure, option%dp, ierr)
-      call VecDuplicate(option%pressure, option%density, ierr)
-      call VecDuplicate(option%pressure, option%ddensity, ierr)
-      call VecDuplicate(option%pressure, option%avgmw, ierr)
-      call VecDuplicate(option%pressure, option%d_p, ierr)
-      call VecDuplicate(option%pressure, option%d_t, ierr)
-      call VecDuplicate(option%pressure, option%h, ierr)
-      call VecDuplicate(option%pressure, option%hh, ierr)
-      call VecDuplicate(option%pressure, option%h_p, ierr)
-      call VecDuplicate(option%pressure, option%h_t, ierr)
-      call VecDuplicate(option%pressure, option%viscosity, ierr)
-      call VecDuplicate(option%pressure, option%v_p, ierr)
-      call VecDuplicate(option%pressure, option%v_t, ierr)
+      call GridCreateVector(grid,NPHASEDOF,field%pressure,GLOBAL)
+      call VecDuplicate(field%pressure, field%sat, ierr)
+      call VecDuplicate(field%pressure, field%xmol, ierr)
+      call VecDuplicate(field%pressure, field%ppressure, ierr)
+      call VecDuplicate(field%pressure, field%ssat, ierr)
+      call VecDuplicate(field%pressure, field%dp, ierr)
+      call VecDuplicate(field%pressure, field%density, ierr)
+      call VecDuplicate(field%pressure, field%ddensity, ierr)
+      call VecDuplicate(field%pressure, field%avgmw, ierr)
+      call VecDuplicate(field%pressure, field%d_p, ierr)
+      call VecDuplicate(field%pressure, field%d_t, ierr)
+      call VecDuplicate(field%pressure, field%h, ierr)
+      call VecDuplicate(field%pressure, field%hh, ierr)
+      call VecDuplicate(field%pressure, field%h_p, ierr)
+      call VecDuplicate(field%pressure, field%h_t, ierr)
+      call VecDuplicate(field%pressure, field%viscosity, ierr)
+      call VecDuplicate(field%pressure, field%v_p, ierr)
+      call VecDuplicate(field%pressure, field%v_t, ierr)
      ! xmol may not be nphase DOF, need change later 
-      call VecDuplicate(option%pressure, option%xxmol, ierr)
+      call VecDuplicate(field%pressure, field%xxmol, ierr)
   end select
 
   select case(option%imode)
     ! everything but RICHARDS_MODE for now
     case(MPH_MODE,COND_MODE,TWOPH_MODE,VADOSE_MODE,LIQUID_MODE,OWG_MODE, &
          FLASH_MODE,TH_MODE,THC_MODE)
-      call GridCreateVector(grid,NPHASEDOF, option%ppressure_loc, LOCAL)
-      call VecDuplicate(option%ppressure_loc, option%ssat_loc, ierr)
-      call VecDuplicate(option%ppressure_loc, option%xxmol_loc, ierr)
-      call VecDuplicate(option%ppressure_loc, option%ddensity_loc, ierr)
-      call VecDuplicate(option%ppressure_loc, option%avgmw_loc, ierr)
-      call VecDuplicate(option%ppressure_loc, option%d_p_loc, ierr)
-      call VecDuplicate(option%ppressure_loc, option%d_t_loc, ierr)
-      call VecDuplicate(option%ppressure_loc, option%hh_loc, ierr)
-      call VecDuplicate(option%ppressure_loc, option%h_p_loc, ierr)
-      call VecDuplicate(option%ppressure_loc, option%h_t_loc, ierr)
-      call VecDuplicate(option%ppressure_loc, option%viscosity_loc, ierr)
-      call VecDuplicate(option%ppressure_loc, option%v_p_loc, ierr)
-      call VecDuplicate(option%ppressure_loc, option%v_t_loc, ierr)
+      call GridCreateVector(grid,NPHASEDOF, field%ppressure_loc, LOCAL)
+      call VecDuplicate(field%ppressure_loc, field%ssat_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%xxmol_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%ddensity_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%avgmw_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%d_p_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%d_t_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%hh_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%h_p_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%h_t_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%viscosity_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%v_p_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%v_t_loc, ierr)
   end select
   
   ! 3 * nphase degrees of freedom (velocity vector)
-  call GridCreateVector(grid,THREENPDOF, option%vl, GLOBAL)
+  call GridCreateVector(grid,THREENPDOF, field%vl, GLOBAL)
       
   if (option%run_coupled == PETSC_TRUE) &
-    call VecDuplicate(option%vl, option%vvl, ierr)
+    call VecDuplicate(field%vl, field%vvl, ierr)
 
 
   if (option%imode == TWOPH_MODE) then
     print *,'2ph add var'
-    call VecDuplicate(option%sat, option%d_s, ierr)
-    call VecDuplicate(option%sat, option%h_s, ierr)
-    call VecDuplicate(option%sat, option%u, ierr)
-    call VecDuplicate(option%sat, option%uu, ierr)
-    call VecDuplicate(option%sat, option%u_s, ierr)
-    call VecDuplicate(option%sat, option%u_p, ierr)
-    call VecDuplicate(option%sat, option%u_t, ierr)
+    call VecDuplicate(field%sat, field%d_s, ierr)
+    call VecDuplicate(field%sat, field%h_s, ierr)
+    call VecDuplicate(field%sat, field%u, ierr)
+    call VecDuplicate(field%sat, field%uu, ierr)
+    call VecDuplicate(field%sat, field%u_s, ierr)
+    call VecDuplicate(field%sat, field%u_p, ierr)
+    call VecDuplicate(field%sat, field%u_t, ierr)
 
-    call VecDuplicate(option%ssat_loc, option%d_s_loc, ierr)
-    call VecDuplicate(option%ssat_loc, option%h_s_loc, ierr)
-    call VecDuplicate(option%ssat_loc, option%u_s_loc, ierr)
+    call VecDuplicate(field%ssat_loc, field%d_s_loc, ierr)
+    call VecDuplicate(field%ssat_loc, field%h_s_loc, ierr)
+    call VecDuplicate(field%ssat_loc, field%u_s_loc, ierr)
 
-    call VecDuplicate(option%sat, option%pcw, ierr)
-    call VecDuplicate(option%sat, option%pc_p, ierr)
-    call VecDuplicate(option%sat, option%pc_t, ierr)
-    call VecDuplicate(option%sat, option%pc_s, ierr)
-    call VecDuplicate(option%ssat_loc, option%pcw_loc, ierr)
-    call VecDuplicate(option%ssat_loc, option%pc_p_loc, ierr)
-    call VecDuplicate(option%ssat_loc, option%pc_t_loc, ierr)
-    call VecDuplicate(option%ssat_loc, option%pc_s_loc, ierr)
+    call VecDuplicate(field%sat, field%pcw, ierr)
+    call VecDuplicate(field%sat, field%pc_p, ierr)
+    call VecDuplicate(field%sat, field%pc_t, ierr)
+    call VecDuplicate(field%sat, field%pc_s, ierr)
+    call VecDuplicate(field%ssat_loc, field%pcw_loc, ierr)
+    call VecDuplicate(field%ssat_loc, field%pc_p_loc, ierr)
+    call VecDuplicate(field%ssat_loc, field%pc_t_loc, ierr)
+    call VecDuplicate(field%ssat_loc, field%pc_s_loc, ierr)
 
 
-    call VecDuplicate(option%sat, option%kvr, ierr)
-    call VecDuplicate(option%sat, option%kvr_p, ierr)
-    call VecDuplicate(option%sat, option%kvr_t, ierr)
-    call VecDuplicate(option%sat, option%kvr_s, ierr)
-    call VecDuplicate(option%ssat_loc, option%kvr_loc, ierr)
-    call VecDuplicate(option%ssat_loc, option%kvr_p_loc, ierr)
-    call VecDuplicate(option%ssat_loc, option%kvr_t_loc, ierr)
-    call VecDuplicate(option%ssat_loc, option%kvr_s_loc, ierr)
+    call VecDuplicate(field%sat, field%kvr, ierr)
+    call VecDuplicate(field%sat, field%kvr_p, ierr)
+    call VecDuplicate(field%sat, field%kvr_t, ierr)
+    call VecDuplicate(field%sat, field%kvr_s, ierr)
+    call VecDuplicate(field%ssat_loc, field%kvr_loc, ierr)
+    call VecDuplicate(field%ssat_loc, field%kvr_p_loc, ierr)
+    call VecDuplicate(field%ssat_loc, field%kvr_t_loc, ierr)
+    call VecDuplicate(field%ssat_loc, field%kvr_s_loc, ierr)
 
-    call GridCreateVector(grid,NPHANCOMPDOF, option%h_c,GLOBAL)
-    call VecDuplicate(option%h_c, option%u_c, ierr)
-    call VecDuplicate(option%h_c, option%avgmw_c, ierr)
-    call VecDuplicate(option%h_c, option%d_c, ierr)
-    call VecDuplicate(option%h_c, option%pc_c, ierr)
-    call VecDuplicate(option%h_c, option%kvr_c, ierr)
+    call GridCreateVector(grid,NPHANCOMPDOF, field%h_c,GLOBAL)
+    call VecDuplicate(field%h_c, field%u_c, ierr)
+    call VecDuplicate(field%h_c, field%avgmw_c, ierr)
+    call VecDuplicate(field%h_c, field%d_c, ierr)
+    call VecDuplicate(field%h_c, field%pc_c, ierr)
+    call VecDuplicate(field%h_c, field%kvr_c, ierr)
         
-    call GridCreateVector(grid,NPHANCOMPDOF, option%h_c_loc,LOCAL)
-    call VecDuplicate(option%h_c_loc, option%avgmw_c_loc, ierr)
-    call VecDuplicate(option%h_c_loc, option%d_c_loc, ierr)
-    call VecDuplicate(option%h_c_loc, option%pc_c_loc, ierr)
-    call VecDuplicate(option%h_c_loc, option%kvr_c_loc, ierr)
+    call GridCreateVector(grid,NPHANCOMPDOF, field%h_c_loc,LOCAL)
+    call VecDuplicate(field%h_c_loc, field%avgmw_c_loc, ierr)
+    call VecDuplicate(field%h_c_loc, field%d_c_loc, ierr)
+    call VecDuplicate(field%h_c_loc, field%pc_c_loc, ierr)
+    call VecDuplicate(field%h_c_loc, field%kvr_c_loc, ierr)
 
 
-    call GridCreateVector(grid,NPHANSPECDOF, option%hen,GLOBAL)
-    call GridCreateVector(grid,NPHANSPECDOF, option%hen_loc,LOCAL)
-    call VecDuplicate(option%hen, option%hen_p, ierr)
-    call VecDuplicate(option%hen_loc, option%hen_p_loc, ierr)
-    call VecDuplicate(option%hen, option%hen_t, ierr)
-    call VecDuplicate(option%hen_loc, option%hen_t_loc, ierr)
-    call VecDuplicate(option%hen, option%hen_s, ierr)
-    call VecDuplicate(option%hen_loc, option%hen_s_loc, ierr)
-    call VecDuplicate(option%hen, option%df, ierr)
-    call VecDuplicate(option%hen_loc, option%df_loc, ierr)
-    call VecDuplicate(option%df, option%df_p, ierr)
-    call VecDuplicate(option%df_loc, option%df_p_loc, ierr)
-    call VecDuplicate(option%df, option%df_t, ierr)
-    call VecDuplicate(option%df_loc, option%df_t_loc, ierr)
-    call VecDuplicate(option%df, option%df_s, ierr)
-    call VecDuplicate(option%df_loc, option%df_s_loc, ierr)
+    call GridCreateVector(grid,NPHANSPECDOF, field%hen,GLOBAL)
+    call GridCreateVector(grid,NPHANSPECDOF, field%hen_loc,LOCAL)
+    call VecDuplicate(field%hen, field%hen_p, ierr)
+    call VecDuplicate(field%hen_loc, field%hen_p_loc, ierr)
+    call VecDuplicate(field%hen, field%hen_t, ierr)
+    call VecDuplicate(field%hen_loc, field%hen_t_loc, ierr)
+    call VecDuplicate(field%hen, field%hen_s, ierr)
+    call VecDuplicate(field%hen_loc, field%hen_s_loc, ierr)
+    call VecDuplicate(field%hen, field%df, ierr)
+    call VecDuplicate(field%hen_loc, field%df_loc, ierr)
+    call VecDuplicate(field%df, field%df_p, ierr)
+    call VecDuplicate(field%df_loc, field%df_p_loc, ierr)
+    call VecDuplicate(field%df, field%df_t, ierr)
+    call VecDuplicate(field%df_loc, field%df_t_loc, ierr)
+    call VecDuplicate(field%df, field%df_s, ierr)
+    call VecDuplicate(field%df_loc, field%df_s_loc, ierr)
   
-    call GridCreateVector(grid,NPHANSPECNCOMPDOF,option%hen_c, GLOBAL)
-    call GridCreateVector(grid,NPHANSPECNCOMPDOF,option%hen_c_loc,LOCAL)
+    call GridCreateVector(grid,NPHANSPECNCOMPDOF,field%hen_c, GLOBAL)
+    call GridCreateVector(grid,NPHANSPECNCOMPDOF,field%hen_c_loc,LOCAL)
       
-    call VecDuplicate(option%hen_c, option%df_c, ierr)
-    call VecDuplicate(option%hen_c_loc, option%df_c_loc, ierr)
+    call VecDuplicate(field%hen_c, field%df_c, ierr)
+    call VecDuplicate(field%hen_c_loc, field%df_c_loc, ierr)
   end if  
 
   select case(option%imode)
     case(MPH_MODE,RICHARDS_MODE,FLASH_MODE,OWG_MODE,VADOSE_MODE)
-      call GridCreateVector(grid,VARDOF, option%var_loc,LOCAL)
+      call GridCreateVector(grid,VARDOF, field%var_loc,LOCAL)
   end select
 
       ! ndof degrees of freedom
-  call GridCreateVector(grid,NDOF, option%xx, GLOBAL)
-  call VecDuplicate(option%xx, option%yy, ierr)
-  call VecDuplicate(option%xx, option%dxx, ierr)
-  call VecDuplicate(option%xx, option%r, ierr)
-  call VecDuplicate(option%xx, option%accum, ierr)
+  call GridCreateVector(grid,NDOF, field%xx, GLOBAL)
+  call VecDuplicate(field%xx, field%yy, ierr)
+  call VecDuplicate(field%xx, field%dxx, ierr)
+  call VecDuplicate(field%xx, field%r, ierr)
+  call VecDuplicate(field%xx, field%accum, ierr)
      
-  call VecSetBlocksize(option%dxx, option%ndof, ierr)
+  call VecSetBlocksize(field%dxx, option%ndof, ierr)
 
-  call GridCreateVector(grid,NDOF, option%xx_loc, LOCAL)
+  call GridCreateVector(grid,NDOF, field%xx_loc, LOCAL)
   
 !-----------------------------------------------------------------------
 ! Set up PETSc nonlinear solver context.
 !-----------------------------------------------------------------------
-  call SNESCreate(PETSC_COMM_WORLD, option%snes, ierr)
+  call SNESCreate(PETSC_COMM_WORLD, solver%snes, ierr)
   CHKERRQ(ierr)
 !-----------------------------------------------------------------------
   ! Set up indexing of grid ids (local to global, global to local, etc
@@ -328,14 +333,14 @@ subroutine PflowInit(simulation,filename)
     ! everything but RICHARDS_MODE for now
     case(MPH_MODE,COND_MODE,TWOPH_MODE,VADOSE_MODE,LIQUID_MODE,OWG_MODE, &
          FLASH_MODE,TH_MODE,THC_MODE)
-      allocate(option%xphi_co2(grid%nlmax))
-      allocate(option%xxphi_co2(grid%nlmax))
-      allocate(option%den_co2(grid%nlmax))
-      allocate(option%dden_co2(grid%nlmax))
-      option%xphi_co2 = 1.d0
-      option%xxphi_co2 = 1.d0
-      option%den_co2 = 1.d0
-      option%dden_co2 = 1.d0
+      allocate(field%xphi_co2(grid%nlmax))
+      allocate(field%xxphi_co2(grid%nlmax))
+      allocate(field%den_co2(grid%nlmax))
+      allocate(field%dden_co2(grid%nlmax))
+      field%xphi_co2 = 1.d0
+      field%xxphi_co2 = 1.d0
+      field%den_co2 = 1.d0
+      field%dden_co2 = 1.d0
   end select
   
   !set scale factor for heat equation, i.e. use units of MJ for energy
@@ -362,32 +367,36 @@ subroutine PflowInit(simulation,filename)
 
   ! set up internal connectivity, distance, etc.
   call GridComputeInternalConnect(grid,option)
-  ! clip regions and set up boundary connectivity, distance
-  call SolutionProcessCouplers(solution)
-    
-  call GridLocalizeRegions(solution%regions,solution%grid,solution%option)
+  call RealizationProcessCouplers(realization)
+  
+  ! clip regions and set up boundary connectivity, distance  
+  call GridLocalizeRegions(realization%regions,realization%grid,realization%option)
 
-  call GridComputeCouplerConnections(grid,option,solution%boundary_conditions%first)
-!  call GridComputeBoundaryConnect(grid,option, &
-!                                  solution%boundary_conditions%first)                                
-  call assignMaterialPropToRegions(solution)
-  call assignInitialConditions(solution)
-  call SolutionInitBoundConditions(solution)
-!  call SolutionSetIBNDTYPE(solution)
+  ! connectivity between boundary conditions, srcs/sinks, etc and grid
+  call GridComputeCouplerConnections(grid,option,realization%boundary_conditions%first)
+                                
+  call assignMaterialPropToRegions(realization)
+  call assignInitialConditions(realization)
+  call RealizationInitBoundConditions(realization)
+
+  allocate(realization%field%internal_velocities(option%nphase, &
+             ConnectionGetNumberInList(realization%grid%internal_connection_list)))
+  allocate(realization%field%boundary_velocities(option%nphase, &
+             CouplerGetNumConnectionsInList(realization%boundary_conditions)))           
 
   select case(option%imode)
     ! everything but RICHARDS_MODE for now
     case(MPH_MODE,COND_MODE,TWOPH_MODE,VADOSE_MODE,LIQUID_MODE,OWG_MODE, &
          FLASH_MODE,TH_MODE,THC_MODE)
-      temp_int = grid%internal_connection_list%first%num_connections
-      allocate(option%vl_loc(temp_int))
-      allocate(option%vvl_loc(temp_int))
-      allocate(option%vg_loc(temp_int))
-      allocate(option%vvg_loc(temp_int))
-      option%vl_loc = 0.D0
-      option%vvl_loc = 0.D0
-      option%vg_loc = 0.D0
-      option%vvg_loc = 0.D0
+      temp_int = ConnectionGetNumberInList(grid%internal_connection_list)
+      allocate(field%vl_loc(temp_int))
+      allocate(field%vvl_loc(temp_int))
+      allocate(field%vg_loc(temp_int))
+      allocate(field%vvg_loc(temp_int))
+      field%vl_loc = 0.D0
+      field%vvl_loc = 0.D0
+      field%vg_loc = 0.D0
+      field%vvg_loc = 0.D0
   end select
     
 ! check number of dofs and phases
@@ -461,7 +470,7 @@ subroutine PflowInit(simulation,filename)
   
     option%ideriv = 1
   
-    call GridCreateJacobian(grid,option)
+    call GridCreateJacobian(grid,solver,option)
   
 !   if (myrank == 0) write(*,'(" analytical jacobian as ")'); &
 !                    print *, grid%iblkfmt
@@ -470,42 +479,42 @@ subroutine PflowInit(simulation,filename)
 #if 0    
       ! still needs to be implemented
       case(COND_MODE)
-        call SNESSetJacobian(option%snes, option%J, option%J, CondJacobian, &
+        call SNESSetJacobian(solver%snes, solver%J, solver%J, CondJacobian, &
                            grid, ierr); CHKERRQ(ierr)
       case(TH_MODE)
-        call SNESSetJacobian(option%snes, option%J, option%J, THJacobian, &
+        call SNESSetJacobian(solver%snes, solver%J, solver%J, THJacobian, &
                            grid, ierr); CHKERRQ(ierr)
       case(THC_MODE)
-        call SNESSetJacobian(option%snes, option%J, option%J, THCJacobian, &
+        call SNESSetJacobian(solver%snes, solver%J, solver%J, THCJacobian, &
                            grid, ierr); CHKERRQ(ierr)
       case(TWOPH_MODE)
-        call SNESSetJacobian(option%snes, option%J, option%J, TTPHASEJacobian, &
+        call SNESSetJacobian(solver%snes, solver%J, solver%J, TTPHASEJacobian, &
                            grid, ierr); CHKERRQ(ierr)
-      case(MPH_MODE)
-        call SNESSetJacobian(option%snes, option%J, option%J, MPHASEJacobian, &
-                           grid, ierr); CHKERRQ(ierr)
-        if (option%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(grid)
       case(FLASH_MODE)
-        call SNESSetJacobian(option%snes, option%J, option%J, FlashJacobian, &
+        call SNESSetJacobian(solver%snes, solver%J, solver%J, FlashJacobian, &
                            grid, ierr); CHKERRQ(ierr)
         if (option%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(grid)
       case(VADOSE_MODE)
-        call SNESSetJacobian(option%snes, option%J, option%J, VADOSEJacobian, &
+        call SNESSetJacobian(solver%snes, solver%J, solver%J, VADOSEJacobian, &
                            grid, ierr); CHKERRQ(ierr)
         if (option%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(grid)
 #endif
       case(RICHARDS_MODE)
-        call SNESSetJacobian(option%snes, option%J, option%J, RichardsJacobian, &
-                             solution, ierr); CHKERRQ(ierr)
-        if (option%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(solution,solver)
+        call SNESSetJacobian(solver%snes, solver%J, solver%J, RichardsJacobian, &
+                             realization, ierr); CHKERRQ(ierr)
+        if (option%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(realization,solver)
+      case(MPH_MODE)
+        call SNESSetJacobian(solver%snes, solver%J, solver%J, MPHASEJacobian, &
+                             realization, ierr); CHKERRQ(ierr)
+        if (option%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(realization,solver)
 #if 0      
       ! still needs to be implemented
       case(OWG_MODE)
-        call SNESSetJacobian(option%snes, option%J, option%J, OWGJacobian, &
+        call SNESSetJacobian(solver%snes, solver%J, solver%J, OWGJacobian, &
                            grid, ierr); CHKERRQ(ierr)
         if (option%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(grid)
       case default
-        call SNESSetJacobian(option%snes, option%J, option%J, LiquidJacobian, &
+        call SNESSetJacobian(solver%snes, solver%J, solver%J, LiquidJacobian, &
                            grid, ierr); CHKERRQ(ierr)
 #endif
     end select                         
@@ -518,12 +527,12 @@ subroutine PflowInit(simulation,filename)
 
     select case(option%imode)
       case(COND_MODE)
-        call MatCreateMFFD(option%snes,option%ttemp,option%J,ierr)
+        call MatCreateMFFD(solver%snes,field%ttemp,solver%J,ierr)
       case(TH_MODE,THC_MODE,TWOPH_MODE,MPH_MODE,FLASH_MODE,RICHARDS_MODE, &
            VADOSE_MODE,OWG_MODE)
-        call MatCreateMFFD(option%snes,option%xx,option%J,ierr)
+        call MatCreateMFFD(solver%snes,field%xx,solver%J,ierr)
       case default
-        call MatCreateMFFD(option%snes,option%ppressure,option%J,ierr)
+        call MatCreateMFFD(solver%snes,field%ppressure,solver%J,ierr)
     end select
     
     ! It seems that I ought to call SNESSetJacobian here now, but I don't know
@@ -532,19 +541,19 @@ subroutine PflowInit(simulation,filename)
     ! actually matter if -snes_mf has been specified.
     ! Pernice thinks that perhaps the I need to provide a function which 
     ! simply calls MatAssemblyBegin/End.
-    call SNESSetJacobian(option%snes, option%J, option%J, &
+    call SNESSetJacobian(solver%snes, solver%J, solver%J, &
                          SolverComputeMFJacobian, PETSC_NULL_OBJECT, ierr)
 
     ! Use "Walker-Pernice" differencing.
-    call MatMFFDSetType(option%J, MATMFFD_WP, ierr)
+    call MatMFFDSetType(solver%J, MATMFFD_WP, ierr)
 
     if (option%print_hhistory == PETSC_TRUE) then
       allocate(option%hhistory(HHISTORY_LENGTH))
-      call MatMFFDSetHHistory(option%J, option%hhistory, HHISTORY_LENGTH, ierr)
+      call MatMFFDSetHHistory(solver%J, option%hhistory, HHISTORY_LENGTH, ierr)
     endif
 
     if (option%monitor_h == PETSC_TRUE) then
-      call SNESMonitorSet(option%snes, SolverMonitorH, grid, &
+      call SNESMonitorSet(solver%snes, SolverMonitorH, grid, &
                           PETSC_NULL_OBJECT, ierr)
     endif
     
@@ -561,12 +570,12 @@ subroutine PflowInit(simulation,filename)
       
     temp_int = option%iblkfmt
     option%iblkfmt = 0   ! to turn off MATMPIBAIJ
-    call GridCreateJacobian(grid,option)
+    call GridCreateJacobian(grid,solver,option)
     option%iblkfmt = temp_int
 
     call GridCreateColoring(grid,option,iscoloring)
         
-    call MatFDColoringCreate(option%J, iscoloring, option%matfdcoloring, ierr)
+    call MatFDColoringCreate(solver%J, iscoloring,solver%matfdcoloring, ierr)
     
     call ISColoringDestroy(iscoloring, ierr)
 
@@ -574,46 +583,46 @@ subroutine PflowInit(simulation,filename)
 #if 0
     ! need to be implemented
       case(COND_MODE)
-        call MatFDColoringSetFunctionSNES(option%matfdcoloring, &
+        call MatFDColoringSetFunctionSNES(solver%matfdcoloring, &
                                           CondResidual,option,ierr)
       case(TH_MODE)
-        call MatFDColoringSetFunctionSNES(option%matfdcoloring, &
+        call MatFDColoringSetFunctionSNES(solver%matfdcoloring, &
                                           THResidual,option, ierr)
       case(THC_MODE)
-        call MatFDColoringSetFunctionSNES(option%matfdcoloring, &
+        call MatFDColoringSetFunctionSNES(solver%matfdcoloring, &
                                           THCResidual,option, ierr)
       case(TWOPH_MODE)
-        call MatFDColoringSetFunctionSNES(option%matfdcoloring, &
+        call MatFDColoringSetFunctionSNES(solver%matfdcoloring, &
                                           TTPHASEResidual,option, ierr)
-      case(MPH_MODE)
-        call MatFDColoringSetFunctionSNES(option%matfdcoloring, &
-                                          MPHASEResidual,option, ierr)
       case(FLASH_MODE)
-        call MatFDColoringSetFunctionSNES(option%matfdcoloring, &
+        call MatFDColoringSetFunctionSNES(solver%matfdcoloring, &
                                           FlashResidual,option, ierr)
       case(VADOSE_MODE)
-        call MatFDColoringSetFunctionSNES(option%matfdcoloring, &
+        call MatFDColoringSetFunctionSNES(solver%matfdcoloring, &
                                           VADOSEResidual,option, ierr)
 #endif                                          
       case(RICHARDS_MODE)
-        call MatFDColoringSetFunctionSNES(option%matfdcoloring, &
+        call MatFDColoringSetFunctionSNES(solver%matfdcoloring, &
                                           RichardsResidual,option, ierr)
+      case(MPH_MODE)
+        call MatFDColoringSetFunctionSNES(solver%matfdcoloring, &
+                                          MPHASEResidual,option, ierr)
 #if 0                                          
     ! need to be implemented
       case(OWG_MODE)
-        call MatFDColoringSetFunctionSNES(option%matfdcoloring, &
+        call MatFDColoringSetFunctionSNES(solver%matfdcoloring, &
                                           OWGResidual,option, ierr)
       case default
-        call MatFDColoringSetFunctionSNES(option%matfdcoloring, &
+        call MatFDColoringSetFunctionSNES(solver%matfdcoloring, &
                                           LiquidResidual,option, ierr)
 #endif                                          
     end select
         
-    call MatFDColoringSetFromOptions(option%matfdcoloring, ierr)
+    call MatFDColoringSetFromOptions(solver%matfdcoloring, ierr)
     
-    call SNESSetJacobian(option%snes, option%J, option%J, &
+    call SNESSetJacobian(solver%snes, solver%J, solver%J, &
                          SNESDefaultComputeJacobianColor,  &
-                         option%matfdcoloring, ierr)
+                         solver%matfdcoloring, ierr)
   endif
 
   if (option%myrank == 0) write(*,'("++++++++++++++++++++++++++++++++&
@@ -623,44 +632,44 @@ subroutine PflowInit(simulation,filename)
 #if 0  
     ! need to be implemented
     case(COND_MODE)
-      call SNESSetFunction(option%snes,option%r,CondResidual,solution,ierr)
+      call SNESSetFunction(solver%snes,field%r,CondResidual,realization,ierr)
     case(TH_MODE)
-      call SNESSetFunction(option%snes,option%r,THResidual,solution,ierr)
+      call SNESSetFunction(solver%snes,field%r,THResidual,realization,ierr)
     case(THC_MODE)
-      call SNESSetFunction(option%snes,option%r,THCResidual,solution,ierr)
+      call SNESSetFunction(solver%snes,field%r,THCResidual,realization,ierr)
     case(TWOPH_MODE)
-      call SNESSetFunction(option%snes,option%r,TTPHASEResidual,solution,ierr)
-    case(MPH_MODE)
-      call SNESSetFunction(option%snes,option%r,MPHASEResidual,solution,ierr)
+      call SNESSetFunction(solver%snes,field%r,TTPHASEResidual,realization,ierr)
     case(FLASH_MODE)
-      call SNESSetFunction(option%snes,option%r,FlashResidual,solution,ierr)
+      call SNESSetFunction(solver%snes,field%r,FlashResidual,realization,ierr)
     case(VADOSE_MODE)
-      call SNESSetFunction(option%snes,option%r,VADOSEResidual,solution,ierr)
+      call SNESSetFunction(solver%snes,field%r,VADOSEResidual,realization,ierr)
 #endif      
     case(RICHARDS_MODE)
-      call SNESSetFunction(option%snes,option%r,RichardsResidual,solution,ierr)
+      call SNESSetFunction(solver%snes,field%r,RichardsResidual,realization,ierr)
+    case(MPH_MODE)
+      call SNESSetFunction(solver%snes,field%r,MPHASEResidual,realization,ierr)
 #if 0 
     ! need to be implemented     
     case(OWG_MODE)
-      call SNESSetFunction(option%snes,option%r,OWGResidual,solution,ierr)
+      call SNESSetFunction(solver%snes,field%r,OWGResidual,realization,ierr)
     case default
-      call SNESSetFunction(option%snes,option%r,LiquidResidual,solution,ierr)
+      call SNESSetFunction(solver%snes,field%r,LiquidResidual,realization,ierr)
 #endif      
   end select
 
   ! Set the tolerances for the Newton solver.
-  call SNESSetTolerances(option%snes, solver%atol, solver%rtol, solver%stol, & 
+  call SNESSetTolerances(solver%snes, solver%atol, solver%rtol, solver%stol, & 
                          solver%maxit, solver%maxf, ierr)
-  call SNESSetFromOptions(option%snes, ierr)
+  call SNESSetFromOptions(solver%snes, ierr)
   
   ! shell for custom convergence test.  The default SNES convergence test 
   ! is call within this function.
-  call SNESSetConvergenceTest(option%snes,PFLOWConvergenceTest,simulation,ierr)
+  call SNESSetConvergenceTest(solver%snes,PFLOWConvergenceTest,simulation,ierr)
                            
-  call SNESLineSearchGetParams(option%snes, alpha, maxstep, steptol, ierr) 
-  call SNESLineSearchSetParams(option%snes, alpha, maxstep, solver%stol, ierr) 
-  call SNESGetKSP(option%snes, option%ksp, ierr)
-  call KSPSetTolerances(option%ksp,solver%rtol,solver%atol,solver%dtol, &
+  call SNESLineSearchGetParams(solver%snes, alpha, maxstep, steptol, ierr) 
+  call SNESLineSearchSetParams(solver%snes, alpha, maxstep, solver%stol, ierr) 
+  call SNESGetKSP(solver%snes, solver%ksp, ierr)
+  call KSPSetTolerances(solver%ksp,solver%rtol,solver%atol,solver%dtol, &
                         10000,ierr)
 
   if (option%myrank == 0) write(*,'("  Finished setting up of SNES ")')
@@ -668,49 +677,49 @@ subroutine PflowInit(simulation,filename)
 
   select case(option%imode)
     case(MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE,OWG_MODE)
-      allocate(option%varbc(1:(option%ndof+1)*(2+7*option%nphase + 2 *  &
+      allocate(field%varbc(1:(option%ndof+1)*(2+7*option%nphase + 2 *  &
                                        option%nphase*option%nspec)))
     case default  
-      allocate(option%density_bc(option%nphase))
-      allocate(option%d_p_bc(option%nphase))
-      allocate(option%d_t_bc(option%nphase))
-      allocate(option%d_c_bc(option%nphase))
-      allocate(option%d_s_bc(option%nphase))
-      allocate(option%avgmw_bc(option%nphase))
-      allocate(option%avgmw_c_bc(option%nphase*option%npricomp))
-      allocate(option%hh_bc(option%nphase))
-      allocate(option%h_p_bc(option%nphase))
-      allocate(option%h_t_bc(option%nphase))
-      allocate(option%h_c_bc(option%nphase*option%npricomp))
-      allocate(option%h_s_bc(option%nphase))
-      allocate(option%uu_bc(option%nphase))
-      allocate(option%u_p_bc(option%nphase))
-      allocate(option%u_t_bc(option%nphase))
-      allocate(option%u_c_bc(option%nphase*option%npricomp))
-      allocate(option%u_s_bc(option%nphase))
-      allocate(option%df_bc(option%nphase*option%nspec))
-      allocate(option%df_p_bc(option%nphase*option%nspec))
-      allocate(option%df_t_bc(option%nphase*option%nspec))
-      allocate(option%df_c_bc(option%nphase*option%nspec*option%npricomp))
-      allocate(option%df_s_bc(option%nphase*option%nspec))
-      allocate(option%hen_bc(option%nphase*option%nspec))
-      allocate(option%hen_p_bc(option%nphase*option%nspec))
-      allocate(option%hen_t_bc(option%nphase*option%nspec))
-      allocate(option%hen_c_bc(option%nphase*option%nspec*option%npricomp))
-      allocate(option%hen_s_bc(option%nphase*option%nspec))
-      allocate(option%viscosity_bc(option%nphase))
-      allocate(option%v_p_bc(option%nphase))
-      allocate(option%v_t_bc(option%nphase))
-      allocate(option%pc_bc(option%nphase))
-      allocate(option%pc_p_bc(option%nphase))
-      allocate(option%pc_t_bc(option%nphase))
-      allocate(option%pc_c_bc(option%nphase*option%npricomp))
-      allocate(option%pc_s_bc(option%nphase))
-      allocate(option%kvr_bc(option%nphase))
-      allocate(option%kvr_p_bc(option%nphase))
-      allocate(option%kvr_t_bc(option%nphase))
-      allocate(option%kvr_c_bc(option%nphase*option%npricomp))
-      allocate(option%kvr_s_bc(option%nphase))
+      allocate(field%density_bc(option%nphase))
+      allocate(field%d_p_bc(option%nphase))
+      allocate(field%d_t_bc(option%nphase))
+      allocate(field%d_c_bc(option%nphase))
+      allocate(field%d_s_bc(option%nphase))
+      allocate(field%avgmw_bc(option%nphase))
+      allocate(field%avgmw_c_bc(option%nphase*option%npricomp))
+      allocate(field%hh_bc(option%nphase))
+      allocate(field%h_p_bc(option%nphase))
+      allocate(field%h_t_bc(option%nphase))
+      allocate(field%h_c_bc(option%nphase*option%npricomp))
+      allocate(field%h_s_bc(option%nphase))
+      allocate(field%uu_bc(option%nphase))
+      allocate(field%u_p_bc(option%nphase))
+      allocate(field%u_t_bc(option%nphase))
+      allocate(field%u_c_bc(option%nphase*option%npricomp))
+      allocate(field%u_s_bc(option%nphase))
+      allocate(field%df_bc(option%nphase*option%nspec))
+      allocate(field%df_p_bc(option%nphase*option%nspec))
+      allocate(field%df_t_bc(option%nphase*option%nspec))
+      allocate(field%df_c_bc(option%nphase*option%nspec*option%npricomp))
+      allocate(field%df_s_bc(option%nphase*option%nspec))
+      allocate(field%hen_bc(option%nphase*option%nspec))
+      allocate(field%hen_p_bc(option%nphase*option%nspec))
+      allocate(field%hen_t_bc(option%nphase*option%nspec))
+      allocate(field%hen_c_bc(option%nphase*option%nspec*option%npricomp))
+      allocate(field%hen_s_bc(option%nphase*option%nspec))
+      allocate(field%viscosity_bc(option%nphase))
+      allocate(field%v_p_bc(option%nphase))
+      allocate(field%v_t_bc(option%nphase))
+      allocate(field%pc_bc(option%nphase))
+      allocate(field%pc_p_bc(option%nphase))
+      allocate(field%pc_t_bc(option%nphase))
+      allocate(field%pc_c_bc(option%nphase*option%npricomp))
+      allocate(field%pc_s_bc(option%nphase))
+      allocate(field%kvr_bc(option%nphase))
+      allocate(field%kvr_p_bc(option%nphase))
+      allocate(field%kvr_t_bc(option%nphase))
+      allocate(field%kvr_c_bc(option%nphase*option%npricomp))
+      allocate(field%kvr_s_bc(option%nphase))
   end select
    
 
@@ -725,7 +734,7 @@ subroutine PflowInit(simulation,filename)
   endif
 #endif
 !geh
-  nullify(option%imat)
+  nullify(field%imat)
 
 #if 0
   if (grid%iread_geom == 10) then 
@@ -772,13 +781,13 @@ subroutine PflowInit(simulation,filename)
   endif
  
 ! Note: VecAssemblyBegin/End needed to run on the Mac - pcl (11/21/03)!
-  if (option%conc /= 0) then
-    call VecAssemblyBegin(option%conc,ierr)
-    call VecAssemblyEnd(option%conc,ierr)
+  if (field%conc /= 0) then
+    call VecAssemblyBegin(field%conc,ierr)
+    call VecAssemblyEnd(field%conc,ierr)
   endif
-  if (option%xmol /= 0) then
-    call VecAssemblyBegin(option%xmol,ierr)
-    call VecAssemblyEnd(option%xmol,ierr)
+  if (field%xmol /= 0) then
+    call VecAssemblyBegin(field%xmol,ierr)
+    call VecAssemblyEnd(field%xmol,ierr)
   endif
 
   if (option%myrank == 0) write(*,'("  Finished setting up of INIT ")')
@@ -792,16 +801,16 @@ subroutine PflowInit(simulation,filename)
 
     select case(option%ndof)
       case(1)
-        call VecCopy(option%pressure, option%ppressure, ierr)
-        call VecCopy(option%temp, option%ttemp, ierr)
+        call VecCopy(field%pressure, field%ppressure, ierr)
+        call VecCopy(field%temp, field%ttemp, ierr)
       case(2)
-        call pflow_pack_xx2(option%yy, option%pressure, option%nphase, option%temp, 1, &
+        call pflow_pack_xx2(field%yy, field%pressure, option%nphase, field%temp, 1, &
                             ierr)
-        call VecCopy(option%yy, option%xx, ierr)     
+        call VecCopy(field%yy, field%xx, ierr)     
       case(3)
-        call pflow_pack_xx3(option%yy, option%pressure, option%nphase, option%temp, 1, &
-                            option%conc, 1, ierr)
-        call VecCopy(option%yy, option%xx, ierr)      
+        call pflow_pack_xx3(field%yy, field%pressure, option%nphase, field%temp, 1, &
+                            field%conc, 1, ierr)
+        call VecCopy(field%yy, field%xx, ierr)      
     end select
   endif
       
@@ -819,20 +828,20 @@ subroutine PflowInit(simulation,filename)
       print *, "2 ph finish variable packing"      
       call VecCopy(grid%yy, grid%xx, ierr)
       call pflow_update_2phase(grid)
-    case(MPH_MODE)
-      call pflow_mphase_initadj(grid)
-      call VecCopy(grid%iphas, grid%iphas_old,ierr)
-      call VecCopy(grid%xx, grid%yy, ierr)
-!     print *, "m ph finish variable packing"
-      call pflow_update_mphase(grid)
 #endif
     case(RICHARDS_MODE)
-      call pflow_richards_initadj(solution)
-      call VecCopy(option%iphas_loc, option%iphas_old_loc,ierr)
-      call VecCopy(option%xx, option%yy, ierr)
-!geh      call VecView(option%xx,PETSC_VIEWER_STDOUT_WORLD,ierr)
+      call pflow_richards_initadj(realization)
+      call VecCopy(field%iphas_loc, field%iphas_old_loc,ierr)
+      call VecCopy(field%xx, field%yy, ierr)
+!geh      call VecView(field%xx,PETSC_VIEWER_STDOUT_WORLD,ierr)
       if (option%myrank == 0) print *, "richards finish variable packing"
-      call pflow_update_richards(solution)
+      call pflow_update_richards(realization)
+    case(MPH_MODE)
+      call pflow_mphase_initadj(realization)
+      call VecCopy(field%iphas_loc, field%iphas_old_loc,ierr)
+      call VecCopy(field%xx, field%yy, ierr)
+!     print *, "m ph finish variable packing"
+      call pflow_update_mphase(realization)
 #if 0
     ! still need implementation
     case(FLASH_MODE)
@@ -859,13 +868,13 @@ subroutine PflowInit(simulation,filename)
   end select  
   
 ! zero initial velocity
-  call VecSet(option%vl,0.d0,ierr)
-  if (option%run_coupled == PETSC_TRUE) call VecSet(option%vvl,0.d0,ierr)
+  call VecSet(field%vl,0.d0,ierr)
+  if (option%run_coupled == PETSC_TRUE) call VecSet(field%vvl,0.d0,ierr)
  
   if (option%myrank == 0) &
     write(*,'("  Finished setting up of INIT2 ")')
    
-  call initializeSolidReaction(solution)
+  call initializeSolidReaction(realization)
 
   if (option%myrank == 0) write(*,'("  Finished setting up ")')
   
@@ -878,23 +887,23 @@ end subroutine PflowInit
 ! date: 10/23/07
 !
 ! **************************************************************************
-subroutine readSelectCardsFromInput(solution,filename,mcomp,mphas)
+subroutine readSelectCardsFromInput(realization,filename,mcomp,mphas)
 
   use Option_module
   use Grid_module
   use Fileio_module
-  use Solution_module
+  use Realization_module
   
   implicit none
 
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   character(len=MAXWORDLENGTH) :: filename
   integer :: mcomp, mphas
 
   integer :: ierr
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
-  character(len=MAXNAMELENGTH) :: name
+  character(len=MAXWORDLENGTH) :: name
   character(len=MAXCARDLENGTH) :: card
   
   type(grid_type), pointer :: grid
@@ -902,7 +911,7 @@ subroutine readSelectCardsFromInput(solution,filename,mcomp,mphas)
   
   integer :: igeom
   
-  option => solution%option
+  option => realization%option
   
   open(IUNIT1, file=filename, action="read", status="old") 
   open(IUNIT2, file='pflow.out', action="write", status="unknown")
@@ -939,8 +948,8 @@ subroutine readSelectCardsFromInput(solution,filename,mcomp,mphas)
   call fiReadInt(string,igeom,ierr)
   call fiDefaultMsg('igeom',ierr)
   
-  solution%grid => GridCreate(igeom) 
-  grid => solution%grid
+  realization%grid => GridCreate(igeom) 
+  grid => realization%grid
 
   if (grid%igrid == STRUCTURED) then ! structured
     call fiReadInt(string,grid%structured_grid%nx,ierr)
@@ -1125,12 +1134,13 @@ subroutine readInput(simulation,filename)
 
   use Simulation_module
   use Option_module
+  use Field_module
   use Grid_module
   use Structured_Grid_module
   use Solver_module
   use Material_module
   use Fileio_module
-  use Solution_module
+  use Realization_module
   use Timestepper_module
   use Region_module
   use Condition_module
@@ -1176,15 +1186,17 @@ subroutine readInput(simulation,filename)
   type(thermal_property_type), pointer :: thermal_property
   type(saturation_function_type), pointer :: saturation_function
 
-  type(solution_type), pointer :: solution
+  type(realization_type), pointer :: realization
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
+  type(field_type), pointer :: field
   type(solver_type), pointer :: solver
   type(stepper_type), pointer :: stepper
   
-  solution => simulation%solution
-  grid => solution%grid
-  option => solution%option
+  realization => simulation%realization
+  grid => realization%grid
+  option => realization%option
+  field => realization%field
   stepper => simulation%stepper
   solver => stepper%solver
 
@@ -1258,7 +1270,7 @@ subroutine readInput(simulation,filename)
         else
           call printErrMsg(option,"REGION type not recognized")
         endif
-        call RegionAddToList(region,solution%regions)      
+        call RegionAddToList(region,realization%regions)      
 
 !....................
       case ('CONDITION','COND')
@@ -1266,37 +1278,37 @@ subroutine readInput(simulation,filename)
         call fiReadWord(string,condition%name,.true.,ierr)
         call fiErrorMsg('cond','name',ierr) 
         call ConditionRead(condition,option,IUNIT1)
-        call ConditionAddToList(condition,solution%conditions)
+        call ConditionAddToList(condition,realization%conditions)
       
 !....................
       case ('BOUNDARY_CONDITION')
         coupler => CouplerCreate()
         call CouplerRead(coupler,IUNIT1)
-        call CouplerAddToList(coupler,solution%boundary_conditions)
+        call CouplerAddToList(coupler,realization%boundary_conditions)
       
 !....................
       case ('INITIAL_CONDITION')
         coupler => CouplerCreate()
         call CouplerRead(coupler,IUNIT1)
-        call CouplerAddToList(coupler,solution%initial_conditions)
+        call CouplerAddToList(coupler,realization%initial_conditions)
       
 !....................
       case ('STRATIGRAPHY')
         strata => StrataCreate()
         call StrataRead(strata,IUNIT1)
-        call StrataAddToList(strata,solution%strata)
+        call StrataAddToList(strata,realization%strata)
       
 !....................
       case ('SOURCE_SINK')
         coupler => CouplerCreate()
         call CouplerRead(coupler,IUNIT1)
-        call CouplerAddToList(coupler,solution%source_sinks)
+        call CouplerAddToList(coupler,realization%source_sinks)
       
 !.....................
       case ('STRATA')
         strata => StrataCreate()
         call StrataRead(strata,IUNIT1)
-        call StrataAddToList(strata,solution%strata)
+        call StrataAddToList(strata,realization%strata)
       
 !.....................
       case ('COMP') 
@@ -1346,7 +1358,7 @@ subroutine readInput(simulation,filename)
 !....................
 
       case ('HDF5')
-        solution%output_option%print_hdf5 = .true.
+        realization%output_option%print_hdf5 = .true.
         do
           call fiReadWord(string,word,.true.,ierr)
           if (ierr /= 0) exit
@@ -1355,21 +1367,21 @@ subroutine readInput(simulation,filename)
 
           select case(card)
             case('VELO')
-              solution%output_option%print_hdf5_velocities = .true.
+              realization%output_option%print_hdf5_velocities = .true.
             case('FLUX')
-              solution%output_option%print_hdf5_flux_velocities = .true.
+              realization%output_option%print_hdf5_flux_velocities = .true.
             case default
           end select
             
         enddo
 
         if (option%myrank == 0) &
-          write(IUNIT2,'(/," *HDF5",10x,i1,/)') solution%output_option%print_hdf5
+          write(IUNIT2,'(/," *HDF5",10x,i1,/)') realization%output_option%print_hdf5
 
 !....................
 
       case ('TECP')
-        solution%output_option%print_tecplot = .true.
+        realization%output_option%print_tecplot = .true.
         do
           call fiReadWord(string,word,.true.,ierr)
           if (ierr /= 0) exit
@@ -1378,16 +1390,16 @@ subroutine readInput(simulation,filename)
 
           select case(card)
             case('VELO')
-              solution%output_option%print_tecplot_velocities = .true.
+              realization%output_option%print_tecplot_velocities = .true.
             case('FLUX')
-              solution%output_option%print_tecplot_flux_velocities = .true.
+              realization%output_option%print_tecplot_flux_velocities = .true.
             case default
           end select
           
         enddo
 
         if (option%myrank == 0) &
-          write(IUNIT2,'(/," *TECP",10x,i1,/)') solution%output_option%print_tecplot
+          write(IUNIT2,'(/," *TECP",10x,i1,/)') realization%output_option%print_tecplot
 
 !....................
 
@@ -1714,7 +1726,7 @@ subroutine readInput(simulation,filename)
         call fiReadInt(string,solver%maxf,ierr)
         call fiDefaultMsg('maxf',ierr)
        
-        call fiReadInt(string,solver%idt_switch,ierr)
+        call fiReadInt(string,option%idt_switch,ierr)
         call fiDefaultMsg('idt',ierr)
         
         solver%inf_tol = solver%atol
@@ -1731,7 +1743,7 @@ subroutine readInput(simulation,filename)
           &"  idt         = ",8x,i5 &
           &    )') &
            solver%atol,solver%rtol,solver%stol,solver%dtol,solver%maxit, &
-           solver%maxf,solver%idt_switch
+           solver%maxf,option%idt_switch
 
 ! The line below is a commented-out portion of the format string above.
 ! We have to put it here because of the stupid Sun compiler.
@@ -1785,7 +1797,7 @@ subroutine readInput(simulation,filename)
                                             thermal_property%therm_cond_wet
           
           call ThermalAddPropertyToList(thermal_property, &
-                                        solution%thermal_properties)
+                                        realization%thermal_properties)
         enddo
         
         ! allocate dynamic arrays holding saturation function information
@@ -1799,7 +1811,7 @@ subroutine readInput(simulation,filename)
         allocate(option%cexp(count))
         
         ! fill arrays with values from linked list
-        thermal_property => solution%thermal_properties
+        thermal_property => realization%thermal_properties
         do
         
           if (.not.associated(thermal_property)) exit
@@ -1895,7 +1907,7 @@ subroutine readInput(simulation,filename)
           call fiErrorMsg('pwrprm','PCKR', ierr)
           
           call SaturationFunctionAddToList(saturation_function, &
-                                           solution%saturation_functions)
+                                           realization%saturation_functions)
 
         enddo
         
@@ -1918,7 +1930,7 @@ subroutine readInput(simulation,filename)
         allocate(option%pwrprm(count))
 
         ! fill arrays with values from linked list
-        saturation_function => solution%saturation_functions
+        saturation_function => realization%saturation_functions
         do 
         
           if (.not.associated(saturation_function)) exit
@@ -2047,7 +2059,7 @@ subroutine readInput(simulation,filename)
           
           material%permeability(1:3,1:3) = material%permeability(1:3,1:3)
           
-          call MaterialAddToList(material,solution%materials)
+          call MaterialAddToList(material,realization%materials)
           
         enddo          
 
@@ -2095,21 +2107,21 @@ subroutine readInput(simulation,filename)
                 call fiDefaultMsg('iphase',ierr)
        
                 do j=1,option%ndof
-                  call fiReadDouble(string,option%xx_ini(j,ireg),ierr)
+                  call fiReadDouble(string,field%xx_ini(j,ireg),ierr)
                   call fiDefaultMsg('xxini',ierr)
                 enddo
               case default
                 call fiReadDouble(string,option%pres_ini(ireg),ierr)
                 call fiDefaultMsg('pres',ierr)
   
-                call fiReadDouble(string,option%temp_ini(ireg),ierr)
+                call fiReadDouble(string,field%temp_ini(ireg),ierr)
                 call fiDefaultMsg('temp',ierr)
   
-                call fiReadDouble(string,option%sat_ini(ireg),ierr)
+                call fiReadDouble(string,field%sat_ini(ireg),ierr)
                 call fiDefaultMsg('sat',ierr)
-!                option%sat_ini(ireg)=1.D0 - option%sat_ini(ireg)
+!                field%sat_ini(ireg)=1.D0 - field%sat_ini(ireg)
   
-                call fiReadDouble(string,option%conc_ini(ireg),ierr)
+                call fiReadDouble(string,field%conc_ini(ireg),ierr)
                 call fiDefaultMsg('conc',ierr)
             end select
           enddo
@@ -2128,15 +2140,15 @@ subroutine readInput(simulation,filename)
                     option%i1ini(ireg),option%i2ini(ireg), &
                     option%j1ini(ireg),option%j2ini(ireg), &
                     option%k1ini(ireg),option%k2ini(ireg), &
-                    option%iphas_ini(ireg),(option%xx_ini(np,ireg),np =1, &
+                    option%iphas_ini(ireg),(field%xx_ini(np,ireg),np =1, &
                                             option%ndof)
                 case default
                   write(IUNIT2,'(6i4,1p10e12.4)') &
                     option%i1ini(ireg),option%i2ini(ireg), &
                     option%j1ini(ireg),option%j2ini(ireg), &
                     option%k1ini(ireg),option%k2ini(ireg), &
-                    option%pres_ini(ireg),option%temp_ini(ireg), &
-                    option%sat_ini(ireg),option%conc_ini(ireg)
+                    option%pres_ini(ireg),field%temp_ini(ireg), &
+                    field%sat_ini(ireg),field%conc_ini(ireg)
               end select
 !GEH - Structured Grid Dependence - End
             enddo
@@ -2180,7 +2192,7 @@ subroutine readInput(simulation,filename)
                   call fiDefaultMsg('iphase_ini',ierr)
             
                   do j=1,option%ndof
-                    call fiReadDouble(string,option%xx_ini(j,ireg),ierr)
+                    call fiReadDouble(string,field%xx_ini(j,ireg),ierr)
                     call fiDefaultMsg('xx_ini',ierr)
                   enddo
                 case default
@@ -2188,13 +2200,13 @@ subroutine readInput(simulation,filename)
                   call fiReadDouble(string,option%pres_ini(ireg),ierr)
                   call fiDefaultMsg('pres',ierr)
   
-                  call fiReadDouble(string,option%temp_ini(ireg),ierr)
+                  call fiReadDouble(string,field%temp_ini(ireg),ierr)
                   call fiDefaultMsg('temp',ierr)
   
-                  call fiReadDouble(string,option%sat_ini(ireg),ierr)
+                  call fiReadDouble(string,field%sat_ini(ireg),ierr)
                   call fiDefaultMsg('sat',ierr)
 
-                  call fiReadDouble(string,option%conc_ini(ireg),ierr)
+                  call fiReadDouble(string,field%conc_ini(ireg),ierr)
                   call fiDefaultMsg('conc',ierr)
               end select
        
@@ -2212,26 +2224,26 @@ subroutine readInput(simulation,filename)
       
         call fiReadWord(string,word,.false.,ierr)
       
-        solution%output_option%tunit = trim(word)
+        realization%output_option%tunit = trim(word)
 
-        if (solution%output_option%tunit == 's') then
-          solution%output_option%tconv = 1.d0
-        else if (solution%output_option%tunit == 'm') then
-          solution%output_option%tconv = 60.d0
-        else if (solution%output_option%tunit == 'h') then
-          solution%output_option%tconv = 60.d0 * 60.d0
-        else if (solution%output_option%tunit == 'd') then
-          solution%output_option%tconv = 60.d0 * 60.d0 * 24.d0
-        else if (solution%output_option%tunit == 'mo') then
-          solution%output_option%tconv = 60.d0 * 60.d0 * 24.d0 * 30.d0
-        else if (solution%output_option%tunit == 'y') then
-          solution%output_option%tconv = 60.d0 * 60.d0 * 24.d0 * 365.d0
+        if (realization%output_option%tunit == 's') then
+          realization%output_option%tconv = 1.d0
+        else if (realization%output_option%tunit == 'm') then
+          realization%output_option%tconv = 60.d0
+        else if (realization%output_option%tunit == 'h') then
+          realization%output_option%tconv = 60.d0 * 60.d0
+        else if (realization%output_option%tunit == 'd') then
+          realization%output_option%tconv = 60.d0 * 60.d0 * 24.d0
+        else if (realization%output_option%tunit == 'mo') then
+          realization%output_option%tconv = 60.d0 * 60.d0 * 24.d0 * 30.d0
+        else if (realization%output_option%tunit == 'y') then
+          realization%output_option%tconv = 60.d0 * 60.d0 * 24.d0 * 365.d0
         else
           if (option%myrank == 0) then
             write(*,'(" Time unit: ",a3,/, &
               &" Error: time units must be one of ",/, &
               &"   s -seconds",/,"   m -minutes",/,"   h -hours",/, &
-              &"   d -days", /, "  mo -months",/,"   y -years")') solution%output_option%tunit
+              &"   d -days", /, "  mo -months",/,"   y -years")') realization%output_option%tunit
           endif
           stop
         endif
@@ -2294,9 +2306,9 @@ subroutine readInput(simulation,filename)
         
         option%dt = stepper%dt_min
       
-        option%dt = solution%output_option%tconv * option%dt
-        stepper%dt_min = solution%output_option%tconv * stepper%dt_min
-        stepper%dt_max = solution%output_option%tconv * stepper%dt_max
+        option%dt = realization%output_option%tconv * option%dt
+        stepper%dt_min = realization%output_option%tconv * stepper%dt_min
+        stepper%dt_max = realization%output_option%tconv * stepper%dt_max
 
 !....................
 
@@ -2360,23 +2372,23 @@ subroutine readInput(simulation,filename)
             select case(option%imode)
               case(MPH_MODE,OWG_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE) 
      
-                call fiReadInt(string,option%iphasebc0(ir),ierr)
+                call fiReadInt(string,field%iphasebc0(ir),ierr)
                 call fiDefaultMsg('iphase',ierr)
        
                 if (option%ibndtyp(ir) == 1 .or. &
                     option%ibndtyp(ir) == 3 .or. &
                     option%ibndtyp(ir) == 4) then 
                   do j=1,option%ndof
-                    call fiReadDouble(string,option%xxbc0(j,ir),ierr)
+                    call fiReadDouble(string,field%xxbc0(j,ir),ierr)
                     call fiDefaultMsg('xxbc',ierr)
                   enddo
                 elseif (option%ibndtyp(ir) == 2) then
                   do j=1, option%nphase       
-                    call fiReadDouble(string, option%velocitybc0(j,ir), ierr)
+                    call fiReadDouble(string, field%velocitybc0(j,ir), ierr)
                     call fiDefaultMsg("Error reading velocity BCs:", ierr)
                   enddo
                   do j=2,option%ndof
-                    call fiReadDouble(string,option%xxbc0(j,ir),ierr)
+                    call fiReadDouble(string,field%xxbc0(j,ir),ierr)
                     call fiDefaultMsg('xxbc',ierr)
                   enddo
                 endif
@@ -2385,30 +2397,30 @@ subroutine readInput(simulation,filename)
                 j=1
                 if (option%nphase>1) j=2
                 if (option%ibndtyp(ibc) == 1) then 
-                  call fiReadDouble(string, option%pressurebc0(j,ibc), ierr)
+                  call fiReadDouble(string, field%pressurebc0(j,ibc), ierr)
                   call fiDefaultMsg("Error reading pressure BCs:", ierr)
                 else if (option%ibndtyp(ibc) == 2) then
-                  call fiReadDouble(string, option%velocitybc0(j,ibc), ierr)
+                  call fiReadDouble(string, field%velocitybc0(j,ibc), ierr)
                   call fiDefaultMsg("Error reading velocity BCs:", ierr)
                 else if (option%ibndtyp(ibc) == 4) then
-                  call fiReadDouble(string, option%velocitybc0(j,ibc), ierr)
+                  call fiReadDouble(string, field%velocitybc0(j,ibc), ierr)
                   call fiDefaultMsg("Error reading velocity BCs:", ierr)  
                 else
-                  call fiReadDouble(string, option%pressurebc0(j,ibc), ierr)
+                  call fiReadDouble(string, field%pressurebc0(j,ibc), ierr)
                   call fiDefaultMsg("Error reading pressure BCs:", ierr)
                 endif
 
-                if (option%nphase>1) option%pressurebc0(1,ibc) = &
-                    option%pressurebc0(2,ibc)
+                if (option%nphase>1) field%pressurebc0(1,ibc) = &
+                    field%pressurebc0(2,ibc)
                 ! For simple input
-                call fiReadDouble(string,option%tempbc0(ibc),ierr)
+                call fiReadDouble(string,field%tempbc0(ibc),ierr)
                 call fiDefaultMsg('tempbc',ierr)
 
-                call fiReadDouble(string,option%sgbc0(ibc),ierr)
+                call fiReadDouble(string,field%sgbc0(ibc),ierr)
                 call fiDefaultMsg('sgbc',ierr)
-                option%sgbc0(ibc) = 1.D0 - option%sgbc0(ibc) ! read in sl
+                field%sgbc0(ibc) = 1.D0 - field%sgbc0(ibc) ! read in sl
 
-                call fiReadDouble(string,option%concbc0(ibc),ierr)
+                call fiReadDouble(string,field%concbc0(ibc),ierr)
                 call fiDefaultMsg('concbc',ierr)
       
             end select
@@ -2442,14 +2454,14 @@ subroutine readInput(simulation,filename)
                       option%i1bc(ireg),option%i2bc(ireg), &
                       option%j1bc(ireg),option%j2bc(ireg), &
                       option%k1bc(ireg),option%k2bc(ireg), &
-                      option%iphasebc0(ireg),(option%xxbc0(j,ireg),j=1,option%ndof)
+                      field%iphasebc0(ireg),(field%xxbc0(j,ireg),j=1,option%ndof)
                   else if (option%ibndtyp(ibc) == 2 .or. option%ibndtyp(ibc) == 4) then
                     write(IUNIT2,'(6i4,1p10e12.4)') &
                       option%i1bc(ireg),option%i2bc(ireg), &
                       option%j1bc(ireg),option%j2bc(ireg), &
                       option%k1bc(ireg),option%k2bc(ireg), &
-                      (option%velocitybc0(j,ireg),j=1,option%nphase),&
-                      (option%xxbc0(j,ireg),j=2,option%ndof)
+                      (field%velocitybc0(j,ireg),j=1,option%nphase),&
+                      (field%xxbc0(j,ireg),j=2,option%ndof)
                   endif
                 case default
                   if (option%ibndtyp(ibc) == 1 .or. option%ibndtyp(ibc) == 3) then
@@ -2457,17 +2469,17 @@ subroutine readInput(simulation,filename)
                       option%i1bc(ireg),option%i2bc(ireg), &
                       option%j1bc(ireg),option%j2bc(ireg), &
                       option%k1bc(ireg),option%k2bc(ireg), &
-                      (option%pressurebc0(j,ireg),j=1,option%nphase), &
-                      option%tempbc0(ireg), &
-                      option%concbc0(ireg)
+                      (field%pressurebc0(j,ireg),j=1,option%nphase), &
+                      field%tempbc0(ireg), &
+                      field%concbc0(ireg)
                   else if (option%ibndtyp(ibc) == 2 .or. option%ibndtyp(ibc) == 4) then
                     write(IUNIT2,'(6i4,1p10e12.4)') &
                       option%i1bc(ireg),option%i2bc(ireg), &
                       option%j1bc(ireg),option%j2bc(ireg), &
                       option%k1bc(ireg),option%k2bc(ireg), &
-                      (option%velocitybc0(j,ireg),j=1,option%nphase), &
-                      option%tempbc0(ireg), &
-                      option%concbc0(ireg)
+                      (field%velocitybc0(j,ireg),j=1,option%nphase), &
+                      field%tempbc0(ireg), &
+                      field%concbc0(ireg)
                   endif
               end select
             enddo
@@ -2528,7 +2540,7 @@ subroutine readInput(simulation,filename)
             call fiReadDouble(string,option%timesrc(i,isrc),ierr)
             call fiDefaultMsg('timesrc',ierr)
 
-            call fiReadDouble(string,option%tempsrc(i,isrc),ierr)
+            call fiReadDouble(string,field%tempsrc(i,isrc),ierr)
             call fiDefaultMsg('tempsrc',ierr)
       
             call fiReadDouble(string,option%qsrc(i,isrc),ierr)
@@ -2573,7 +2585,7 @@ subroutine readInput(simulation,filename)
               &QCO2 [kg/s]")')
             do ir = 1, option%ntimsrc
               write(IUNIT2,'(1p10e12.4)') &
-                option%timesrc(ir,isrc),option%tempsrc(ir,isrc), &
+                option%timesrc(ir,isrc),field%tempsrc(ir,isrc), &
                 option%qsrc(ir,isrc), &
                 option%csrc(ir,isrc)
             enddo
@@ -2675,7 +2687,7 @@ end subroutine readInput
 ! date:
 !
 ! ************************************************************************** !
-subroutine initAccumulation(solution)
+subroutine initAccumulation(realization)
 !  use water_eos_module
 !  use TTPHASE_module
 !  use Flash_module
@@ -2684,19 +2696,19 @@ subroutine initAccumulation(solution)
 !  use Vadose_module
  use Richards_module , only: pflow_richards_initaccum  ! for some reason intel compiler fails without "only" clause
 
-  use Solution_module
+  use Realization_module
   use Option_module
 
   implicit none
 
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   
   type(option_type), pointer :: option
   real*8, pointer :: den_p(:), pressure_p(:), temp_p(:), h_p(:)
   real*8 :: dw_kg,dl,hl
   integer :: m, ierr
   
-  option => solution%option
+  option => realization%option
   
 #if 0  
   ! needs to be implemented
@@ -2707,7 +2719,7 @@ subroutine initAccumulation(solution)
   else if (grid%use_richards == PETSC_TRUE) then
 #endif    
   if (option%imode == RICHARDS_MODE) then
-    call pflow_richards_initaccum(solution)
+    call pflow_richards_initaccum(realization)
 #if 0    
   ! needs to be implemented
   else if (grid%use_flash == PETSC_TRUE) then
@@ -2849,18 +2861,19 @@ end subroutine setMode
 ! date: 11/02/07
 !
 ! ************************************************************************** !
-subroutine assignMaterialPropToRegions(solution)
+subroutine assignMaterialPropToRegions(realization)
 
-  use Solution_module
+  use Realization_module
   use Strata_module
   use Region_module
   use Material_module
   use Option_module
   use Grid_module
+  use Field_module
 
   implicit none
   
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   
   PetscScalar, pointer :: icap_loc_p(:)
   PetscScalar, pointer :: ithrm_loc_p(:)
@@ -2876,24 +2889,26 @@ subroutine assignMaterialPropToRegions(solution)
   
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
+  type(field_type), pointer :: field
   type(strata_type), pointer :: strata
   
   type(material_type), pointer :: material
   type(region_type), pointer :: region
   
-  option => solution%option
-  grid => solution%grid
+  option => realization%option
+  grid => realization%grid
+  field => realization%field
   
-  call VecGetArrayF90(option%icap_loc,icap_loc_p,ierr)
-  call VecGetArrayF90(option%ithrm_loc,ithrm_loc_p,ierr)
-  call VecGetArrayF90(option%porosity0,por0_p,ierr)
-  call VecGetArrayF90(option%tor_loc,tor_loc_p,ierr)
-  call VecGetArrayF90(option%perm0_xx,perm_xx_p,ierr)
-  call VecGetArrayF90(option%perm0_yy,perm_yy_p,ierr)
-  call VecGetArrayF90(option%perm0_zz,perm_zz_p,ierr)
-  call VecGetArrayF90(option%perm_pow,perm_pow_p,ierr)
+  call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr)
+  call VecGetArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
+  call VecGetArrayF90(field%porosity0,por0_p,ierr)
+  call VecGetArrayF90(field%tor_loc,tor_loc_p,ierr)
+  call VecGetArrayF90(field%perm0_xx,perm_xx_p,ierr)
+  call VecGetArrayF90(field%perm0_yy,perm_yy_p,ierr)
+  call VecGetArrayF90(field%perm0_zz,perm_zz_p,ierr)
+  call VecGetArrayF90(field%perm_pow,perm_pow_p,ierr)
 
-  strata => solution%strata%first
+  strata => realization%strata%first
   do
     if (.not.associated(strata)) exit
     
@@ -2914,23 +2929,23 @@ subroutine assignMaterialPropToRegions(solution)
     strata => strata%next
   enddo
 
-  call VecRestoreArrayF90(option%icap_loc,icap_loc_p,ierr)
-  call VecRestoreArrayF90(option%ithrm_loc,ithrm_loc_p,ierr)
-  call VecRestoreArrayF90(option%porosity0,por0_p,ierr)
-  call VecRestoreArrayF90(option%perm0_xx,perm_xx_p,ierr)
-  call VecRestoreArrayF90(option%perm0_yy,perm_yy_p,ierr)
-  call VecRestoreArrayF90(option%perm0_zz,perm_zz_p,ierr)
-  call VecRestoreArrayF90(option%perm_pow,perm_pow_p,ierr)
-  call VecRestoreArrayF90(option%tor_loc,tor_loc_p,ierr)
+  call VecRestoreArrayF90(field%icap_loc,icap_loc_p,ierr)
+  call VecRestoreArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
+  call VecRestoreArrayF90(field%porosity0,por0_p,ierr)
+  call VecRestoreArrayF90(field%perm0_xx,perm_xx_p,ierr)
+  call VecRestoreArrayF90(field%perm0_yy,perm_yy_p,ierr)
+  call VecRestoreArrayF90(field%perm0_zz,perm_zz_p,ierr)
+  call VecRestoreArrayF90(field%perm_pow,perm_pow_p,ierr)
+  call VecRestoreArrayF90(field%tor_loc,tor_loc_p,ierr)
 
-  call GridGlobalToLocal(solution%grid,option%porosity0, &
-                         option%porosity_loc,ONEDOF)
-  call GridGlobalToLocal(solution%grid,option%perm0_xx, &
-                         option%perm_xx_loc,ONEDOF)  
-  call GridGlobalToLocal(solution%grid,option%perm0_yy, &
-                         option%perm_yy_loc,ONEDOF)  
-  call GridGlobalToLocal(solution%grid,option%perm0_zz, &
-                         option%perm_zz_loc,ONEDOF)   
+  call GridGlobalToLocal(realization%grid,field%porosity0, &
+                         field%porosity_loc,ONEDOF)
+  call GridGlobalToLocal(realization%grid,field%perm0_xx, &
+                         field%perm_xx_loc,ONEDOF)  
+  call GridGlobalToLocal(realization%grid,field%perm0_yy, &
+                         field%perm_yy_loc,ONEDOF)  
+  call GridGlobalToLocal(realization%grid,field%perm0_zz, &
+                         field%perm_zz_loc,ONEDOF)   
   
 end subroutine assignMaterialPropToRegions
 
@@ -2941,19 +2956,21 @@ end subroutine assignMaterialPropToRegions
 ! date: 11/02/07
 !
 ! ************************************************************************** !
-subroutine assignInitialConditions(solution)
+subroutine assignInitialConditions(realization)
 
-  use Solution_module
+  use Realization_module
   use Region_module
   use Option_module
+  use Field_module
   use Coupler_module
   use Condition_module
   
+  use MPHASE_module, only : pflow_mphase_setupini
   use Richards_module, only : pflow_Richards_setupini
 
   implicit none
   
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   
   PetscScalar, pointer :: pressure_p(:)
   PetscScalar, pointer :: temp_p(:)
@@ -2965,35 +2982,37 @@ subroutine assignInitialConditions(solution)
   PetscErrorCode :: ierr
   
   type(option_type), pointer :: option
+  type(field_type), pointer :: field  
   type(coupler_type), pointer :: initial_condition
     
-  option => solution%option
+  option => realization%option
+  field => realization%field
     
   select case(option%imode)
-#if 0
   ! needs to be implemented
-    case(MPH_MODE)
-      call pflow_mphase_setupini(solution)
+#if 0
     case(FLASH_MODE)
-      call pflow_flash_setupini(solution)
+      call pflow_flash_setupini(realization)
 #endif  
     case(RICHARDS_MODE)
-      call pflow_richards_setupini(solution)
+      call pflow_richards_setupini(realization)
+    case(MPH_MODE)
+      call pflow_mphase_setupini(realization)
 #if 0
   ! needs to be implemented
     case(OWG_MODE)
-      call pflow_owg_setupini(solution)
+      call pflow_owg_setupini(realization)
     case(VADOSE_MODE)
-      call pflow_vadose_setupini(solution)
+      call pflow_vadose_setupini(realization)
 #endif      
     case default
-      call VecGetArrayF90(option%pressure,pressure_p,ierr)
-      call VecGetArrayF90(option%temp,temp_p,ierr)
-      call VecGetArrayF90(option%sat,sat_p,ierr)
-      if (option%ndof == 3) call VecGetArrayF90(option%conc,conc_p,ierr)
-      if (option%ndof == 4) call VecGetArrayF90(option%xmol,xmol_p,ierr)
+      call VecGetArrayF90(field%pressure,pressure_p,ierr)
+      call VecGetArrayF90(field%temp,temp_p,ierr)
+      call VecGetArrayF90(field%sat,sat_p,ierr)
+      if (option%ndof == 3) call VecGetArrayF90(field%conc,conc_p,ierr)
+      if (option%ndof == 4) call VecGetArrayF90(field%xmol,xmol_p,ierr)
     
-      initial_condition => solution%initial_conditions%first
+      initial_condition => realization%initial_conditions%first
       do
       
         if (.not.associated(initial_condition)) exit
@@ -3039,11 +3058,11 @@ subroutine assignInitialConditions(solution)
   
       enddo   
        
-      call VecRestoreArrayF90(option%pressure,pressure_p,ierr)
-      call VecRestoreArrayF90(option%temp,temp_p,ierr)
-      call VecRestoreArrayF90(option%sat,sat_p,ierr)
-      if (option%ndof == 3) call VecRestoreArrayF90(option%conc,conc_p,ierr)
-      if (option%ndof == 4) call VecRestoreArrayF90(option%xmol,xmol_p,ierr)
+      call VecRestoreArrayF90(field%pressure,pressure_p,ierr)
+      call VecRestoreArrayF90(field%temp,temp_p,ierr)
+      call VecRestoreArrayF90(field%sat,sat_p,ierr)
+      if (option%ndof == 3) call VecRestoreArrayF90(field%conc,conc_p,ierr)
+      if (option%ndof == 4) call VecRestoreArrayF90(field%xmol,xmol_p,ierr)
   end select 
 
 #if 0 
@@ -3052,32 +3071,32 @@ subroutine assignInitialConditions(solution)
   if (option%ihydrostatic == 1) then
     select case(option%imode)
       case(MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
-        call mhydrostatic(solution)
+        call mhydrostatic(realization)
       case(OWG_MODE)
-        call owghydrostatic(solution)
+        call owghydrostatic(realization)
       case default
-        call hydrostatic(solution)
+        call hydrostatic(realization)
     endif
   endif
 #endif  
   !if (grid%iread_init==2) call Read_init_field(grid)
   
   if (option%imode == TWOPH_MODE) then
-    option%pressurebc0(2,:) = option%pressurebc0(1,:)
-    option%velocitybc0(2,:) = option%velocitybc0(1,:)
+    field%pressurebc0(2,:) = field%pressurebc0(1,:)
+    field%velocitybc0(2,:) = field%velocitybc0(1,:)
   endif
 
 #if 0
   select case(option%imode)
     case(MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE,OWG_MODE)
-      deallocate(option%xx_ini)
+      deallocate(field%xx_ini)
       deallocate(option%iphas_ini)
     case default
       deallocate(option%pres_ini)
-      deallocate(option%temp_ini)
-      deallocate(option%sat_ini)
-      deallocate(option%xmol_ini)
-      deallocate(option%conc_ini)
+      deallocate(field%temp_ini)
+      deallocate(field%sat_ini)
+      deallocate(field%xmol_ini)
+      deallocate(field%conc_ini)
   end select
 #endif
 end subroutine assignInitialConditions
@@ -3090,32 +3109,35 @@ end subroutine assignInitialConditions
 ! date: 11/15/07
 !
 ! ************************************************************************** !
-subroutine initializeSolidReaction(solution)
+subroutine initializeSolidReaction(realization)
 
-  use Solution_module
+  use Realization_module
   use Grid_module
   use Option_module
+  use Field_module
 
-  type(solution_type) :: solution
+  type(realization_type) :: realization
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
+  type(field_type), pointer :: field
   integer :: icell
   PetscScalar, pointer :: phis_p(:)
   PetscErrorCode :: ierr
   
-  grid => solution%grid
-  option => solution%option
+  grid => realization%grid
+  option => realization%option
+  field => realization%field
   
   if (option%rk > 0.d0) then
     allocate(option%area_var(grid%nlmax))
     allocate(option%rate(grid%nlmax))
-    call VecGetArrayF90(option%phis,phis_p,ierr)
+    call VecGetArrayF90(field%phis,phis_p,ierr)
     do icell = 1, grid%nlmax
       phis_p(icell) = option%phis0
       option%area_var(icell) = 1.d0
     enddo
-    call VecRestoreArrayF90(option%phis,phis_p,ierr)
+    call VecRestoreArrayF90(field%phis,phis_p,ierr)
   endif
   
 end subroutine initializeSolidReaction

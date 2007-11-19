@@ -1294,7 +1294,7 @@ subroutine ReadStructuredGridHDF5(grid)
   PetscScalar, pointer :: vec_ptr(:)
 
   type(connection_list_type), pointer :: connection_list
-  type(connection_type), pointer :: cur_connection_object
+  type(connection_type), pointer :: cur_connection_set
       
   PetscTruth :: option_found
 
@@ -1307,8 +1307,8 @@ subroutine ReadStructuredGridHDF5(grid)
                              filename, option_found, ierr)
  
   ! grab connection object
-  connection_list => ConnectionGetInternalConnList()
-  cur_connection_object => connection_list%first
+  !connection_list => grid%internal_connection_list
+  cur_connection_set => connection_list%first
   
   ! create hash table for fast lookup
 #ifdef HASH
@@ -1490,7 +1490,7 @@ subroutine ReadStructuredGridHDF5(grid)
   if (grid%myrank == 0) print *, 'Opening group: ', trim(string)
   call h5gopen_f(file_id,string,grp_id,hdf5_err)
 
-  allocate(indices(cur_connection_object%num_connections))
+  allocate(indices(cur_connection_set%num_connections))
 
   if (grid%myrank == 0) print *, 'Setting up connection indices'
   call PetscGetTime(time3, ierr)
@@ -1500,66 +1500,66 @@ subroutine ReadStructuredGridHDF5(grid)
   if (grid%myrank == 0) print *, time4, &
        ' seconds to set up connection indices for hdf5 file'
 
-  allocate(integer_array(cur_connection_object%num_connections))
+  allocate(integer_array(cur_connection_set%num_connections))
   string = "Id Upwind"
   if (grid%myrank == 0) print *, 'Reading dataset: ', trim(string)
-  call ReadIntegerArray(grid,grp_id,cur_connection_object%num_connections, &
+  call ReadIntegerArray(grid,grp_id,cur_connection_set%num_connections, &
                         indices,string,integer_array)
-  do i=1,cur_connection_object%num_connections
+  do i=1,cur_connection_set%num_connections
     local_ghosted_id = GetLocalGhostedIdFromHash(integer_array(i))
-    cur_connection_object%id_up(i) = local_ghosted_id
+    cur_connection_set%id_up(i) = local_ghosted_id
   enddo
 
   string = "Id Downwind"
   if (grid%myrank == 0) print *, 'Reading dataset: ', trim(string)
-  call ReadIntegerArray(grid,grp_id,cur_connection_object%num_connections, &
+  call ReadIntegerArray(grid,grp_id,cur_connection_set%num_connections, &
                         indices,string,integer_array)
-  do i=1,cur_connection_object%num_connections
+  do i=1,cur_connection_set%num_connections
     local_ghosted_id = GetLocalGhostedIdFromHash(integer_array(i))
-    cur_connection_object%id_dn(i) = local_ghosted_id
+    cur_connection_set%id_dn(i) = local_ghosted_id
   enddo
   deallocate(integer_array)
   
-  allocate(real_array(cur_connection_object%num_connections))
+  allocate(real_array(cur_connection_set%num_connections))
   string = "Distance Upwind"
   if (grid%myrank == 0) print *, 'Reading dataset: ', trim(string)
-  call ReadRealArray(grid,grp_id,cur_connection_object%num_connections, &
+  call ReadRealArray(grid,grp_id,cur_connection_set%num_connections, &
                      indices,string,real_array)
                      
-  cur_connection_object%dist(-1,1:cur_connection_object%num_connections) = &
-    real_array(1:cur_connection_object%num_connections)                      
-  cur_connection_object%dist(0,1:cur_connection_object%num_connections) = &
-    real_array(1:cur_connection_object%num_connections)                      
+  cur_connection_set%dist(-1,1:cur_connection_set%num_connections) = &
+    real_array(1:cur_connection_set%num_connections)                      
+  cur_connection_set%dist(0,1:cur_connection_set%num_connections) = &
+    real_array(1:cur_connection_set%num_connections)                      
 
   string = "Distance Downwind"
   if (grid%myrank == 0) print *, 'Reading dataset: ', trim(string)
-  call ReadRealArray(grid,grp_id,cur_connection_object%num_connections, &
+  call ReadRealArray(grid,grp_id,cur_connection_set%num_connections, &
                      indices,string,real_array) 
 
-  cur_connection_object%dist(0,1:cur_connection_object%num_connections) = &
-    cur_connection_object%dist(0,1:cur_connection_object%num_connections) + &
-    real_array(1:cur_connection_object%num_connections)                      
+  cur_connection_set%dist(0,1:cur_connection_set%num_connections) = &
+    cur_connection_set%dist(0,1:cur_connection_set%num_connections) + &
+    real_array(1:cur_connection_set%num_connections)                      
   ! compute upwind fraction
-  cur_connection_object%dist(-1,1:cur_connection_object%num_connections) = &
-    cur_connection_object%dist(-1,1:cur_connection_object%num_connections) / &
-    cur_connection_object%dist(0,1:cur_connection_object%num_connections)
+  cur_connection_set%dist(-1,1:cur_connection_set%num_connections) = &
+    cur_connection_set%dist(-1,1:cur_connection_set%num_connections) / &
+    cur_connection_set%dist(0,1:cur_connection_set%num_connections)
 
   string = "Area"
   if (grid%myrank == 0) print *, 'Reading dataset: ', trim(string)
-  call ReadRealArray(grid,grp_id,cur_connection_object%num_connections, &
+  call ReadRealArray(grid,grp_id,cur_connection_set%num_connections, &
                      indices,string,real_array) 
 
-  cur_connection_object%area(1:cur_connection_object%num_connections) = &
-    real_array(1:cur_connection_object%num_connections)                      
+  cur_connection_set%area(1:cur_connection_set%num_connections) = &
+    real_array(1:cur_connection_set%num_connections)                      
 
   string = "CosB"
   if (grid%myrank == 0) print *, 'Reading dataset: ', trim(string)
-  call ReadRealArray(grid,grp_id,cur_connection_object%num_connections, &
+  call ReadRealArray(grid,grp_id,cur_connection_set%num_connections, &
                      indices,string,real_array) 
   
   ! for now, store cosB in z component of distance array
-  cur_connection_object%dist(3,1:cur_connection_object%num_connections) = &
-    real_array(1:cur_connection_object%num_connections)                      
+  cur_connection_set%dist(3,1:cur_connection_set%num_connections) = &
+    real_array(1:cur_connection_set%num_connections)                      
   
   deallocate(real_array)
   deallocate(indices)
@@ -1572,11 +1572,11 @@ subroutine ReadStructuredGridHDF5(grid)
   call h5close_f(hdf5_err)
   
   ! surely a kludge here!
-  do iconn = 1, cur_connection_object%num_connections
-    if (cur_connection_object%dist(3,iconn) > 0.99d0) then
-      cur_connection_object%dist(3,iconn) = &
-        grid%z(cur_connection_object%id_dn(iconn))- &
-        grid%z(cur_connection_object%id_up(iconn))
+  do iconn = 1, cur_connection_set%num_connections
+    if (cur_connection_set%dist(3,iconn) > 0.99d0) then
+      cur_connection_set%dist(3,iconn) = &
+        grid%z(cur_connection_set%id_dn(iconn))- &
+        grid%z(cur_connection_set%id_up(iconn))
     endif
   enddo
   
@@ -1726,6 +1726,7 @@ subroutine SetupConnectionIndices(grid,file_id,indices)
 
   use hdf5
   use Connection_module
+  use Grid_module
   
   implicit none
   
@@ -1753,7 +1754,7 @@ subroutine SetupConnectionIndices(grid,file_id,indices)
   
   integer :: read_block_size = READ_BUFFER_SIZE
 
-  num_internal_connections = ConnectionGetNumBoundaryConnect()
+!  num_internal_connections = ConnectionGetNumberInList(grid%internal_connection_list)
   
   string = "Id Upwind"
   call h5dopen_f(file_id,string,data_set_id_up,hdf5_err)

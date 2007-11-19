@@ -1,7 +1,9 @@
- module translator_mph_module
+module translator_mph_module
  
-  
- private 
+  implicit none  
+
+  private 
+
 #include "include/finclude/petsc.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
@@ -36,58 +38,70 @@
 ! within each phase component index : 1. H2O; 2. CO2; 3. Air
 
     
- public  pri_var_trans_mph_ninc,pri_var_trans_mph_winc ,translator_mph_step_maxchange, &
-         translator_mph_get_output,translator_check_phase_cond,translator_mphase_massbal, &
-         Translator_MPhase_Switching
+  public  pri_var_trans_mph_ninc,pri_var_trans_mph_winc ,translator_mph_step_maxchange, &
+          translator_mph_get_output,translator_check_phase_cond,translator_mphase_massbal, &
+          Translator_MPhase_Switching
      
      
- real*8, private, parameter :: fmwh2o = 18.0153D0, fmwa = 28.96D0, &
-                              fmwco2 = 44.0098D0, fmwnacl = 58.44277D0
- real*8, private, parameter :: eps=5D-7 , formeps=1D-4
- real*8, private, parameter ::yh2o_in_co2=1D-2   
- real*8, private, parameter :: rgasj   = 8.3143    ![J/K/mol]
+  real*8, private, parameter :: fmwh2o = 18.0153D0, fmwa = 28.96D0, &
+                               fmwco2 = 44.0098D0, fmwnacl = 58.44277D0
+  real*8, private, parameter :: eps=5D-7 , formeps=1D-4
+  real*8, private, parameter ::yh2o_in_co2=1D-2   
+  real*8, private, parameter :: rgasj   = 8.3143    ![J/K/mol]
 
- contains
+contains
 
 ! subroutines to calculate the properties of mixture  
 ! will:: call other EOS mod to obtain pure fluid properties
 !        apply mixing rules
 
 
- subroutine translator_mphase_massbal(grid)
+subroutine translator_mphase_massbal(realization)
  
-  use pflow_gridtype_module
+  use Realization_module
+  use Grid_module
+  use Option_module
+  use Field_module
   
   implicit none
   
-  type(pflowGrid) :: grid 
-  
+  type(realization_type) :: realization
  
   integer, save :: icall
   integer :: ierr
-  integer :: n,n0,nc,np,n2p,n2p0
+  integer :: nc,np,n2p,n2p0
   real*8 x,y,z,nzm,nzm0, nxc,nxc0,c0, c00,nyc,nyc0,nzc,nzc0,nsm,nsm0,sm 
   real*8 nxm,nxm0
   integer :: index, size_var_node
+  integer :: dof_offset
+  integer :: local_id, ghosted_id
      
-  PetscScalar, pointer ::  var_p(:),&
-                           porosity_p(:), volume_p(:)
+  PetscScalar, pointer ::  var_loc_p(:),&
+                           porosity_loc_p(:), volume_p(:)
                            
-  PetscScalar, pointer ::iphase_p(:)
+  PetscScalar, pointer ::iphase_loc_p(:)
   
   real*8 ::  pvol,sum
   real*8, pointer ::  den(:),sat(:),xmol(:)
   real*8   sat_avg, sat_max, sat_min, sat_var
   real*8   sat_avg0, sat_max0, sat_min0, sat_var0
-  real*8 :: tot(0:grid%nspec,0:grid%nphase), tot0(0:grid%nspec,0:grid%nphase)  
+  real*8 :: tot(0:realization%option%nspec,0:realization%option%nphase), tot0(0:realization%option%nspec,0:realization%option%nphase)  
   data icall/0/
+    
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  
+  grid => realization%grid
+  option => realization%option
+  field => realization%field  
 
-  call VecGetArrayF90(grid%var,var_p,ierr)
+  call VecGetArrayF90(field%var_loc,var_loc_p,ierr)
   call VecGetArrayF90(grid%volume, volume_p, ierr)
-  call VecGetArrayF90(grid%porosity, porosity_p, ierr)
-  call VecGetArrayF90(grid%iphas, iphase_p, ierr)
+  call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
+  call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr)
  
-  size_var_node=(grid%ndof+1)*(2+7*grid%nphase +2*grid%nphase*grid%nspec)
+  size_var_node=(option%ndof+1)*(2+7*option%nphase +2*option%nphase*option%nspec)
   tot=0.D0
   n2p=0
   nxc=0.; nyc=0.; nzc=0.D0; nzm=0 !grid%z(grid%nmax); 
@@ -95,23 +109,21 @@
   sat_avg =0.D0; sat_max =0.D0; sat_min =1.D0 ; sat_var =0.D0
  ! pvol_tot =0.D0
 
-  do n = 1,grid%nlmax
-    n0=(n-1)* grid%ndof
-    index=(n-1)*size_var_node
-    den=>var_p(index+3+grid%nphase: index+2+2*grid%nphase)
-    sat=>var_p(index+2+1:index+2+grid%nphase)
-    xmol=>var_p(index+2+7*grid%nphase+1:index+2+7*grid%nphase +&
-         grid%nphase*grid%nspec)    
+  do local_id = 1,grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    dof_offset=(local_id-1)* option%ndof
+    index=(ghosted_id-1)*size_var_node
+    den=>var_loc_p(index+3+option%nphase: index+2+2*option%nphase)
+    sat=>var_loc_p(index+2+1:index+2+option%nphase)
+    xmol=>var_loc_p(index+2+7*option%nphase+1:index+2+7*option%nphase +&
+                    option%nphase*option%nspec)    
    
-    pvol=volume_p(n)*porosity_p(n)         
-    if(dabs(iphase_p(n)- 3.D0)<.25D0)then
+    pvol=volume_p(local_id)*porosity_loc_p(ghosted_id)         
+    if(dabs(iphase_loc_p(ghosted_id)- 3.D0)<.25D0)then
       n2p=n2p+1
-!geh      x=grid%x(grid%nL2A(n)+1)
-!geh      y=grid%y(grid%nL2A(n)+1)
-!geh      z=grid%z(grid%nL2A(n)+1)
-      x=grid%x(grid%nL2G(n))
-      y=grid%y(grid%nL2G(n))
-      z=grid%z(grid%nL2G(n))
+      x=grid%x(ghosted_id)
+      y=grid%y(ghosted_id)
+      z=grid%z(ghosted_id)
       
       if(z>nzm) nzm=z
       if(x>nxm) nxm=x
@@ -127,9 +139,9 @@
 
      endif
 
-    do nc =1,grid%nspec
-      do np=1,grid%nphase
-        sum= sat(np)* xmol((np-1)*grid%nspec +nc)*den(np)
+    do nc =1,option%nspec
+      do np=1,option%nphase
+        sum= sat(np)* xmol((np-1)*option%nspec +nc)*den(np)
         tot(nc,np)= pvol*sum + tot(nc,np)
        !tot(0,np)=tot(0,np)+tot(nc,np)
        !tot(nc,0)=tot(nc,0)+tot(nc,np)
@@ -139,13 +151,13 @@
 !   print *,nzc,c0
   enddo
  !  call PETSCBarrier(PETSC_NULL_OBJECT,ierr)
-  call VecRestoreArrayF90(grid%var,var_p,ierr)
+  call VecRestoreArrayF90(field%var_loc,var_loc_p,ierr)
   call VecRestoreArrayF90(grid%volume, volume_p, ierr)
-  call VecRestoreArrayF90(grid%porosity, porosity_p, ierr)
-  call VecRestoreArrayF90(grid%iphas, iphase_p, ierr)
+  call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
+  call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr)
  
  
-  if(grid%commsize >1)then
+  if(option%commsize >1)then
     call MPI_REDUCE(n2p, n2p0,1, MPI_INTEGER,MPI_SUM,0, PETSC_COMM_WORLD,ierr)
     call MPI_REDUCE(nzm, nzm0,1, MPI_DOUBLE_PRECISION,MPI_MAX,0, PETSC_COMM_WORLD,ierr)
     call MPI_REDUCE(nxm, nxm0,1, MPI_DOUBLE_PRECISION,MPI_MAX,0, PETSC_COMM_WORLD,ierr)
@@ -156,23 +168,23 @@
     call MPI_REDUCE(sat_max, sat_max0,1, MPI_DOUBLE_PRECISION,MPI_MAX,0, PETSC_COMM_WORLD,ierr)
    
       
-    do nc = 0,grid%nspec
-      do np = 0,grid%nphase
+    do nc = 0,option%nspec
+      do np = 0,option%nphase
         call MPI_REDUCE(tot(nc,np), tot0(nc,np),1,&
             MPI_DOUBLE_PRECISION,MPI_SUM,0, PETSC_COMM_WORLD,ierr)
    
-!       call MPI_BCAST(tot0,(grid%nphase+1)*(grid%nspec+1),&
+!       call MPI_BCAST(tot0,(option%nphase+1)*(option%nspec+1),&
 !            MPI_DOUBLE_PRECISION, 0,PETSC_COMM_WORLD,ierr)
       enddo
     enddo
-    if(grid%myrank==0) then
+    if(option%myrank==0) then
       tot = tot0; n2p=n2p0;nxc=nxc0;nyc=nyc0;nzc=nzc0;nzm=nzm0;nsm=nsm0;c0=c00
       nxm =nxm0; sat_avg=sat_avg0; sat_var =sat_var0; sat_min=sat_min0; sat_max=sat_max0
     endif   
   endif 
   
   
-  if(grid%myrank==0)then
+  if(option%myrank==0)then
     if(c0<1D-6) c0=1.D0
     nxc=nxc/c0; nyc=nyc/c0;nzc=nzc/c0
     if(n2p>0)sat_avg = sat_avg/n2p
@@ -181,8 +193,8 @@
   
     write(*,'(" Total CO2: t= ",1pe12.4," dt= ",1pe12.4," liq:",1pe13.6,&
    &" gas:",1pe13.6, " tot:", 1p2e13.6, " [kmol]",1p3e13.6)') &
-    grid%t/grid%tconv,grid%dt/grid%tconv,tot(2,1),tot(2,2),tot(2,1)+tot(2,2) !,nzc,nzm,nsm
-! & grid%t/grid%tconv,tot(2,1),tot(2,2),tot(2,0),tot(2,1)+tot(2,2) !,nzc,nzm,nsm
+    option%time/realization%output_option%tconv,option%dt/realization%output_option%tconv,tot(2,1),tot(2,2),tot(2,1)+tot(2,2) !,nzc,nzm,nsm
+! & option%t/realization%output_option%tconv,tot(2,1),tot(2,2),tot(2,0),tot(2,1)+tot(2,2) !,nzc,nzm,nsm
     if (icall==0) then
       open(unit=13,file='massbal.dat',status='unknown')
       write(13,'(''# time   dt   totl   totg   tot n2p'')')
@@ -190,165 +202,198 @@
     endif
 !   write(13,'(" Total CO2: t=",1pe13.6," liq:",1pe13.6,&
 ! &  " gas:",1pe13.6," tot:",1p2e13.6," [kmol]")')&
-! & grid%t/grid%tconv,tot(2,1),tot(2,2),tot(2,0),tot(2,1)+tot(2,2)
-    write(13,'(1p19e12.4)') grid%t/grid%tconv,grid%dt/grid%tconv,&
+! & option%t/realization%output_option%tconv,tot(2,1),tot(2,2),tot(2,0),tot(2,1)+tot(2,2)
+    write(13,'(1p19e12.4)') option%time/realization%output_option%tconv,option%dt/realization%output_option%tconv,&
     tot(2,1),tot(2,2),tot(2,1)+tot(2,2),real(n2p), nzm, nxm,&
     sat_avg, sat_min, sat_max, sat_var 
   endif    
   
-  
-  
-  
- end subroutine translator_mphase_massbal
+end subroutine translator_mphase_massbal
 
-
-
- integer function translator_check_phase_cond(iphase, var_node,num_phase,num_spec)
-   implicit none
-   integer iphase, num_phase, num_spec
-   real*8, target:: var_node(:)
+integer function translator_check_phase_cond(iphase, var_node,num_phase,num_spec)
+ 
+  implicit none
+   
+  integer iphase, num_phase, num_spec
+  real*8, target:: var_node(:)
     
-   integer ibase,succ,np,nc
-   real*8, pointer :: t,p,satu(:),den(:), avgmw(:),h(:),u(:),pc(:),&
+  integer ibase,succ,np,nc
+  real*8, pointer :: t,p,satu(:),den(:), avgmw(:),h(:),u(:),pc(:),&
                       kvr(:),xmol(:),diff(:)
       
-   real*8 sum     
+  real*8 sum     
     
-   ibase=1;               t=>var_node(ibase)
-   ibase=ibase+1;         p=>var_node(ibase)
-   ibase=ibase+1;         satu=>var_node(ibase:ibase+num_phase-1)
-   ibase=ibase+num_phase; den=>var_node(ibase:ibase+num_phase-1)
-   ibase=ibase+num_phase; avgmw=>var_node(ibase:ibase+num_phase-1)
-   ibase=ibase+num_phase; h=>var_node(ibase:ibase+num_phase-1)
-   ibase=ibase+num_phase; u=>var_node(ibase:ibase+num_phase-1)
-   ibase=ibase+num_phase; pc=>var_node(ibase:ibase+num_phase-1)
-   ibase=ibase+num_phase; kvr=>var_node(ibase:ibase+num_phase-1)
-   ibase=ibase+num_phase; xmol=>var_node(ibase:ibase+num_phase*num_spec-1)
-   ibase=ibase+num_phase*num_spec; diff=>var_node(ibase:ibase+num_phase*num_spec-1)
-   
-   succ=1
-   if(iphase ==3)then
-     do np =1, num_phase
-       if(satu(np)>1D0-eps .or.satu(np)<eps)then
-         succ=-1  
-         print *, 'phase=',iphase,satu(1:2)
-       endif
-     enddo
-   endif
+  ibase=1;               t=>var_node(ibase)
+  ibase=ibase+1;         p=>var_node(ibase)
+  ibase=ibase+1;         satu=>var_node(ibase:ibase+num_phase-1)
+  ibase=ibase+num_phase; den=>var_node(ibase:ibase+num_phase-1)
+  ibase=ibase+num_phase; avgmw=>var_node(ibase:ibase+num_phase-1)
+  ibase=ibase+num_phase; h=>var_node(ibase:ibase+num_phase-1)
+  ibase=ibase+num_phase; u=>var_node(ibase:ibase+num_phase-1)
+  ibase=ibase+num_phase; pc=>var_node(ibase:ibase+num_phase-1)
+  ibase=ibase+num_phase; kvr=>var_node(ibase:ibase+num_phase-1)
+  ibase=ibase+num_phase; xmol=>var_node(ibase:ibase+num_phase*num_spec-1)
+  ibase=ibase+num_phase*num_spec; diff=>var_node(ibase:ibase+num_phase*num_spec-1)
   
-   if(iphase ==1 .or. iphase==2)then
-     do np =1, num_phase
-       sum=0D0
-       do nc = 1, num_spec
-         sum =sum + xmol((np-1)*num_spec+nc)
-       enddo 
-       if(sum > 1.D0+eps)then
-         succ=-1 
-         print *,'phase=',iphase,sum,xmol(1:4)
-       endif 
-     enddo
-   endif
-   nullify(t, p, satu, den, avgmw, h,u, pc,kvr,xmol,diff)     
-   translator_check_phase_cond = succ
- end function translator_check_phase_cond
+  succ=1
+  if(iphase ==3)then
+    do np =1, num_phase
+      if(satu(np)>1D0-eps .or.satu(np)<eps)then
+        succ=-1  
+        print *, 'phase=',iphase,satu(1:2)
+      endif
+    enddo
+  endif
+ 
+  if(iphase ==1 .or. iphase==2)then
+    do np =1, num_phase
+      sum=0D0
+      do nc = 1, num_spec
+        sum =sum + xmol((np-1)*num_spec+nc)
+      enddo 
+      if(sum > 1.D0+eps)then
+        succ=-1 
+        print *,'phase=',iphase,sum,xmol(1:4)
+      endif 
+    enddo
+  endif
+  nullify(t, p, satu, den, avgmw, h,u, pc,kvr,xmol,diff)     
+  translator_check_phase_cond = succ
+
+end function translator_check_phase_cond
 
 
 
- subroutine translator_mph_get_output(grid)
-  use pflow_gridtype_module
-  type(pflowGrid), intent(inout) :: grid
+subroutine translator_mph_get_output(realization)
+ 
+  use Realization_module
+  use Option_module
+  use Grid_module, only : grid_type
+  use Field_module 
   
-  PetscScalar, pointer :: t_p(:),p_p(:),c_p(:),s_p(:),cc_p(:),var_P(:)
-  integer n, index_var_begin ,jn, size_var_node
+  implicit none
+  
+  type(realization_type) :: realization
+
+  PetscErrorCode :: ierr
+      
+  PetscScalar, pointer :: t_p(:),p_p(:),c_p(:),s_p(:),cc_p(:),var_loc_p(:)
+  integer index_var_begin ,jn, size_var_node
 ! PetscScalar, pointer :: p,t,satu(:),xmol(:)
+  integer :: local_id, ghosted_id
+
+  type(option_type), pointer :: option
+  type(grid_type), pointer :: grid
+  type(field_type), pointer :: field
   
-  call VecGetArrayF90(grid%var, var_p, ierr)
-  call VecGetArrayF90(grid%pressure, p_p, ierr)
-  call VecGetArrayF90(grid%temp, t_p, ierr)
-  call VecGetArrayF90(grid%xmol, c_p, ierr)
-  call VecGetArrayF90(grid%sat, s_p, ierr)
-  call VecGetArrayF90(grid%conc, cc_p, ierr)
+  option => realization%option
+  grid => realization%grid
+  field => realization%field
+      
+  call VecGetArrayF90(field%var_loc, var_loc_p, ierr)
+  call VecGetArrayF90(field%pressure, p_p, ierr)
+  call VecGetArrayF90(field%temp, t_p, ierr)
+  call VecGetArrayF90(field%xmol, c_p, ierr)
+  call VecGetArrayF90(field%sat, s_p, ierr)
+  call VecGetArrayF90(field%conc, cc_p, ierr)
   !print *,' translator_mph_get_output gotten pointers'
   
-  size_var_node=(grid%ndof+1)*(2+7*grid%nphase +2*grid%nphase*grid%nspec)
+  size_var_node=(option%ndof+1)*(2+7*option%nphase +2*option%nphase*option%nspec)
   
-  do n = 1, grid%nlmax
-    index_var_begin= (n-1) * size_var_node
-    jn = 1 + (n-1)*grid%nphase 
+  do local_id = 1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    index_var_begin= (ghosted_id-1) * size_var_node
+    jn = 1 + (local_id-1)*option%nphase 
     
-  p_p(jn) = var_p(index_var_begin + 2) - var_p(index_var_begin+5*grid%nphase+3)
-  p_p(jn+1) = var_p(index_var_begin + 2) - var_p(index_var_begin+5*grid%nphase+4)
+  p_p(jn) = var_loc_p(index_var_begin + 2) - var_loc_p(index_var_begin+5*option%nphase+3)
+  p_p(jn+1) = var_loc_p(index_var_begin + 2) - var_loc_p(index_var_begin+5*option%nphase+4)
    
-    t_p(n)=var_p(index_var_begin + 1)
+    t_p(local_id)=var_loc_p(index_var_begin + 1)
 
-    c_p(jn)=var_p(index_var_begin+7*grid%nphase+4)
-  c_p(jn+1)= var_p(index_var_begin+7*grid%nphase+6)
-    cc_p(n)=c_p(jn+1)
+    c_p(jn)=var_loc_p(index_var_begin+7*option%nphase+4)
+  c_p(jn+1)= var_loc_p(index_var_begin+7*option%nphase+6)
+    cc_p(local_id)=c_p(jn+1)
   
-  s_p(jn)=var_p(index_var_begin + 3) 
-    s_p(jn+1)=var_p(index_var_begin + 4) 
+  s_p(jn)=var_loc_p(index_var_begin + 3) 
+    s_p(jn+1)=var_loc_p(index_var_begin + 4) 
  enddo
  
-  call VecRestoreArrayF90(grid%var, var_p, ierr)
-  call VecRestoreArrayF90(grid%pressure, p_p, ierr)
-  call VecRestoreArrayF90(grid%temp, t_p, ierr)
-  call VecRestoreArrayF90(grid%xmol, c_p, ierr)
-  call VecRestoreArrayF90(grid%sat, s_p, ierr)
-  call VecRestoreArrayF90(grid%conc, cc_p, ierr)
+  call VecRestoreArrayF90(field%var_loc, var_loc_p, ierr)
+  call VecRestoreArrayF90(field%pressure, p_p, ierr)
+  call VecRestoreArrayF90(field%temp, t_p, ierr)
+  call VecRestoreArrayF90(field%xmol, c_p, ierr)
+  call VecRestoreArrayF90(field%sat, s_p, ierr)
+  call VecRestoreArrayF90(field%conc, cc_p, ierr)
  
 ! work only for 2 phases
- end subroutine translator_mph_get_output
+end subroutine translator_mph_get_output
 
 
- subroutine translator_mph_step_maxchange(grid)
-   use pflow_gridtype_module
-   type(pflowGrid), intent(inout) :: grid
+subroutine translator_mph_step_maxchange(realization)
+
+  use Realization_module
+  use Option_module
+  use Field_module
+  use Grid_module
   
-
-  PetscScalar, pointer :: xx_p(:), yy_p(:), iphase_p(:),var_p(:),iphase_old_p(:)
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field  
+  type(grid_type), pointer :: grid
+  
+  PetscScalar, pointer :: xx_p(:), yy_p(:), iphase_loc_p(:),var_loc_p(:),iphase_old_loc_p(:)
   real*8 :: comp1,comp,cmp  
 ! real*8 :: dsm,dcm  
   real*8 :: dsm0,dcm0  
-  integer n
+  integer local_id, ghosted_id, dof_offset
 ! integer j
+  PetscErrorCode :: ierr
+  
+  option => realization%option
+  field => realization%field
+  grid => realization%grid
+  
+   call VecWAXPY(field%dxx,-1.d0,field%xx,field%yy,ierr)
+    call VecStrideNorm(field%dxx,0,NORM_INFINITY,option%dpmax,ierr)
+    call VecStrideNorm(field%dxx,1,NORM_INFINITY,option%dtmpmax,ierr)
 
-   call VecWAXPY(grid%dxx,-1.d0,grid%xx,grid%yy,ierr)
-    call VecStrideNorm(grid%dxx,0,NORM_INFINITY,grid%dpmax,ierr)
-    call VecStrideNorm(grid%dxx,1,NORM_INFINITY,grid%dtmpmax,ierr)
-
-  call VecGetArrayF90(grid%xx, xx_p, ierr); CHKERRQ(ierr)
-  call VecGetArrayF90(grid%yy, yy_p, ierr); CHKERRQ(ierr)
-  call VecGetArrayF90(grid%iphas, iphase_p,ierr)
-  call VecGetArrayF90(grid%iphas_old, iphase_old_p,ierr)
-  call VecGetArrayF90(grid%var, var_p, ierr)
+  call VecGetArrayF90(field%xx, xx_p, ierr); CHKERRQ(ierr)
+  call VecGetArrayF90(field%yy, yy_p, ierr); CHKERRQ(ierr)
+  call VecGetArrayF90(field%iphas_loc, iphase_loc_p,ierr)
+  call VecGetArrayF90(field%iphas_old_loc, iphase_old_loc_p,ierr)
+  call VecGetArrayF90(field%var_loc, var_loc_p, ierr)
   
   comp=0.D0;comp1=0.D0
-  do  n=1, grid%nlmax
-    n0=(n-1)*grid%ndof 
-    if(int(iphase_p(n)) == int(iphase_old_p(n)))then
-     cmp=dabs(xx_p(n0+3)-yy_p(n0+3))
-     if(int(iphase_p(n))==1 .or.int(iphase_p(n))==2)then
+  do local_id=1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    dof_offset=(local_id-1)*option%ndof 
+    if(int(iphase_loc_p(ghosted_id)) == int(iphase_old_loc_p(ghosted_id)))then
+     cmp=dabs(xx_p(dof_offset+3)-yy_p(dof_offset+3))
+     if(int(iphase_loc_p(ghosted_id))==1 .or.int(iphase_loc_p(ghosted_id))==2)then
        if(comp<cmp) comp=cmp
      
     endif   
-       if(int(iphase_p(n))==3)then
+       if(int(iphase_loc_p(ghosted_id))==3)then
        if(comp1<cmp) comp1=cmp
       
     endif   
     else
-!  print *,'phase changed', n, iphase_p(n), iphase_old_p(n)
+!  print *,'phase changed', n, iphase_loc_p(n), iphase_old_p(n)
 
    endif
   enddo
   !call PETSCBarrier(PETSC_NULL_OBJECT,ierr)
-  call VecRestoreArrayF90(grid%xx, xx_p, ierr); CHKERRQ(ierr)
-  call VecRestoreArrayF90(grid%yy, yy_p, ierr); CHKERRQ(ierr)
-  call VecRestoreArrayF90(grid%iphas, iphase_p,ierr)
-  call VecRestoreArrayF90(grid%iphas_old, iphase_old_p,ierr)
-  call VecRestoreArrayF90(grid%var, var_p, ierr)
+  call VecRestoreArrayF90(field%xx, xx_p, ierr); CHKERRQ(ierr)
+  call VecRestoreArrayF90(field%yy, yy_p, ierr); CHKERRQ(ierr)
+  call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p,ierr)
+  call VecRestoreArrayF90(field%iphas_old_loc, iphase_old_loc_p,ierr)
+  call VecRestoreArrayF90(field%var_loc, var_loc_p, ierr)
  
   
- if(grid%commsize >1)then
+  if(option%commsize >1)then
     call MPI_ALLREDUCE(comp1, dsm0,1, MPI_DOUBLE_PRECISION,MPI_MAX, PETSC_COMM_WORLD,ierr)
     !call MPI_BCAST(dsm0,1, MPI_DOUBLE_PRECISION, 0,PETSC_COMM_WORLD,ierr)
     call MPI_ALLREDUCE(comp, dcm0,1, MPI_DOUBLE_PRECISION,MPI_MAX, PETSC_COMM_WORLD,ierr)
@@ -356,62 +401,77 @@
     comp1 = dsm0
     comp = dcm0
   endif 
-  
-  
-  
-        
-   grid%dsmax=comp1
-   grid%dcmax=comp
-!   print *, 'max change',grid%dpmax,grid%dtmpmax,grid%dsmax,grid%dcmax
- end  subroutine translator_mph_step_maxchange
+
+   option%dsmax=comp1
+   option%dcmax=comp
+!   print *, 'max change',grid%dpmax,option%dtmpmax,grid%dsmax,grid%dcmax
+
+end subroutine translator_mph_step_maxchange
 
 
-  subroutine Translator_MPhase_Switching(xx,grid,icri,ichange)
-  use pflow_gridtype_module
-    use water_eos_module
-    use gas_eos_module  
-    use co2eos_module
-    use span_wagner_module
+subroutine Translator_MPhase_Switching(xx,realization,icri,ichange)
+  
+  use Realization_module
+  use Option_module
+  use Field_module
+  use Grid_module
+  
+  use water_eos_module
+  use gas_eos_module  
+  use co2eos_module
+  use span_wagner_module
 
   implicit none
   
-  type(pflowGrid), intent(inout) :: grid
+  type(realization_type) :: realization
+  
   Vec, intent(in) :: xx
   integer icri,ichange 
 
-  PetscScalar, pointer :: xx_p(:), yy_p(:),iphase_p(:)
-  integer :: n,n0,ipr
+  PetscScalar, pointer :: xx_p(:), yy_p(:),iphase_loc_p(:)
+  integer :: ipr
   integer :: ierr,iipha 
 ! integer :: index,i
   real*8 :: p2,p,tmp,t
   real*8 :: dg,dddt,dddp,fg,dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp
   real*8 :: ug,xphi,henry,sat_pressure
-  real*8 :: xmol(grid%nphase*grid%nspec),satu(grid%nphase)
+  real*8 :: xmol(realization%option%nphase*realization%option%nspec),satu(realization%option%nphase)
 ! real*8 :: xla,co2_poyn
-
+  integer :: local_id, ghosted_id, dof_offset
+  
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  
+  grid => realization%grid
+  option => realization%option
+  field => realization%field
+  
 ! mphase code need assemble 
   call VecGetArrayF90(xx, xx_p, ierr); CHKERRQ(ierr)
-  call VecGetArrayF90(grid%yy, yy_p, ierr); CHKERRQ(ierr)
-  call VecGetArrayF90(grid%iphas, iphase_p,ierr)
+  call VecGetArrayF90(field%yy, yy_p, ierr); CHKERRQ(ierr)
+  call VecGetArrayF90(field%iphas_loc, iphase_loc_p,ierr)
  
    
   ichange = 0   
-  do n = 1,grid%nlmax
+  do local_id = 1,grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
     ipr=0
-    n0=(n-1)* grid%ndof
-    iipha=iphase_p(n)
-    p = xx_p(n0+1); t= xx_p(n0+2)
+    dof_offset=(local_id-1)* option%ndof
+    iipha=iphase_loc_p(ghosted_id)
+    p = xx_p(dof_offset+1)
+    t= xx_p(dof_offset+2)
     select case(iipha) 
     case(1) 
-      xmol(2)= xx_p(n0+3)
+      xmol(2)= xx_p(dof_offset+3)
       xmol(1)=1.D0 - xmol(2)
       satu(1)=1.D0; satu(2)=0.D0
     case(2)  
-      xmol(4)= xx_p(n0+3)
+      xmol(4)= xx_p(dof_offset+3)
       xmol(3)=1.D0 - xmol(4)
       satu(1)=eps; satu(2)=1.D0
     case(3) 
-        satu(2)= xx_p(n0+3) 
+        satu(2)= xx_p(dof_offset+3) 
       satu(1)= 1.D0- satu(2)
       xmol(3)= yh2o_in_co2; xmol(4)=1.D0-xmol(3)
     end select
@@ -423,12 +483,12 @@
       !call ideal_gaseos_noderiv(pa,t,energyscale,dg,hg,ug)
      
       call co2_span_wagner(p2*1.D-6,t+273.15D0,dg,dddt,dddp,fg,&
-      dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,grid%itable)
+      dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
       dg = dg / fmwco2
       fg = fg * 1.D6 
       hg = hg * fmwco2
     else      
-      call ideal_gaseos_noderiv(p2,t,grid%scale,dg,hg,ug)
+      call ideal_gaseos_noderiv(p2,t,option%scale,dg,hg,ug)
       call visco2(t,dg*fmwco2,visg)
       fg = p2
     endif
@@ -439,11 +499,11 @@
 !   call Henry_CO2_noderiv(xla,tmp,t,p*xmol(4),xphi,henry,co2_poyn)
 !  call Henry_CO2_noderiv(xla,tmp,t,p*xmol(4),xphi,henry,co2_poyn)
        
-       call PSAT(t, sat_pressure, ierr)
-       sat_pressure =sat_pressure /1D5
-       call Henry_duan_sun(t, p2 *1D-5, henry,xphi,grid%m_nacl,grid%m_nacl,sat_pressure)
+    call PSAT(t, sat_pressure, ierr)
+    sat_pressure =sat_pressure /1D5
+    call Henry_duan_sun(t, p2 *1D-5, henry,xphi,option%m_nacl,option%m_nacl,sat_pressure)
     
-     henry= 1D0 / (fmwh2o*1D-3) / (henry*1D-5) /xphi 
+    henry= 1D0 / (fmwh2o*1D-3) / (henry*1D-5) /xphi 
     !note: henry = H/phi
     
 !    print *,'translator_mixed: ',iipha,xla,tmp,t,p,xmol(4),p*xmol(4), &
@@ -456,211 +516,199 @@
  ! sat_pressure =sat_pressure * 1D5
       
  !print *, 'out 2 phase solver'
- select case(iipha)     
-   case(1)
-    xmol(4)=xmol(2)*henry/p   
+    select case(iipha)     
+      case(1)
+        xmol(4)=xmol(2)*henry/p   
    
  ! if(iphase /= 1)then
-    xmol(3)=1.D0-xmol(4)
-  if(xmol(3)<0.D0)xmol(3)=0.D0
+        xmol(3)=1.D0-xmol(4)
+        if(xmol(3)<0.D0)xmol(3)=0.D0
   !if(xmol(3)<0.D0) xmol(3)=0.D0
-   case(2)   
+      case(2)   
   
-     xmol(2)= p*xmol(4)/henry
+        xmol(2)= p*xmol(4)/henry
     !xmol(2)= 1.D0/(1.D0 + 1.D0 /(henry * xmol(4) * p* 1D-5 *xphi * grid%fmwh2o ))
         
-     xmol(1)=1.D0-xmol(2)
-   if(xmol(1)<0.D0) xmol(1)=0.D0
-    case(3)
-    tmp = sat_pressure*1D5 / p 
-    xmol(2)=(1.D0-tmp)/(Henry/p -tmp)
-    xmol(1)= 1.D0- xmol(2)
-    xmol(3)=xmol(1) * tmp
-    xmol(4)= 1.D0-xmol(3)            
+        xmol(1)=1.D0-xmol(2)
+        if(xmol(1)<0.D0) xmol(1)=0.D0
+      case(3)
+        tmp = sat_pressure*1D5 / p 
+        xmol(2)=(1.D0-tmp)/(Henry/p -tmp)
+        xmol(1)= 1.D0- xmol(2)
+        xmol(3)=xmol(1) * tmp
+        xmol(4)= 1.D0-xmol(3)            
     end select
+   
 
-    
-
- select case(icri)
-  case(0)
-    tmp = sat_pressure* 1D5 /p 
-    if (xmol(3) >tmp*1.05 .and. iipha==2 )then
-      write(*,'('' Gas -> 2ph '',2i8,1p10e12.4)') grid%iphch,n,xx_p(n0+1:n0+3)
+    select case(icri)
+      case(0)
+        tmp = sat_pressure* 1D5 /p 
+        if (xmol(3) >tmp*1.05 .and. iipha==2 )then
+          write(*,'('' Gas -> 2ph '',2i8,1p10e12.4)') option%iphch,local_id,xx_p(dof_offset+1:dof_offset+3)
       !write(IUNIT2,'('' Gas -> 2ph '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3)
-      iphase_p(n) = 3
-      xx_p(n0+3)=1D0-formeps
-    ichange = 1 ;ipr=1
+          iphase_loc_p(ghosted_id) = 3
+          xx_p(dof_offset+3)=1D0-formeps
+          ichange = 1 ;ipr=1
 !       xx_p(n0+1)= yy_p(n0+1);xx_p(n0+2)= yy_p(n0+2)
-    end if
+        endif
        ! gas ->  2ph 
  
     
-    tmp = (1.D0-tmp)/(henry/p -tmp) *henry/p
+        tmp = (1.D0-tmp)/(henry/p -tmp) *henry/p
     ! print *,n, tmp, henry,sat_pressure,p
     !if (xx_p(n0+3) > 1.025D0  .and. iipha==1) then
-     if (xmol(4) > 1.05D0 *tmp  .and. iipha==1) then
-       write(*,'('' Liq -> 2ph '',2i8,1p10e12.4)') grid%iphch,n,xx_p(n0+1:n0+3),xmol(4), tmp
+        if (xmol(4) > 1.05D0 *tmp  .and. iipha==1) then
+          write(*,'('' Liq -> 2ph '',2i8,1p10e12.4)') option%iphch,local_id,xx_p(dof_offset+1:dof_offset+3),xmol(4), tmp
       !write(IUNIT2,'('' Liq -> 2ph '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3)
-      iphase_p(n) = 3
+          iphase_loc_p(ghosted_id) = 3
      
      !tmp= (xmol(4)-1.D0)/(xmol(4)/xmol(2))*den(1)/den(2)
     !if(tmp>eps) tmp=eps
      ! xx_p(n0+3)=max(tmp,formeps)
-     xx_p(n0+3)=formeps
+          xx_p(dof_offset+3)=formeps
 !     xx_p(n0+1)= yy_p(n0+1);xx_p(n0+2)= yy_p(n0+2)
     !if(dabs(xmol(4)-1.D0) < eps) xx_p(n0+1)=xx_p(n0+1)* (1.D0-eps)
-    ichange = 1;ipr=1
-    end if
+          ichange = 1;ipr=1
+        endif
       
-    if(satu(2)>1.0D0.and. iipha==3 )then
+        if(satu(2)>1.0D0.and. iipha==3 )then
   !if(xx_p(n0+3)> 1.D0 .and. iipha==3 )then
-        write(*,'('' 2ph -> Gas '',2i8,1p10e12.4)') grid%iphch,n,xx_p(n0+1:n0+3)
+          write(*,'('' 2ph -> Gas '',2i8,1p10e12.4)') option%iphch,local_id,xx_p(dof_offset+1:dof_offset+3)
        ! write(IUNIT2,'('' 2ph -> Gas '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3)
-      iphase_p(n) = 2
-    xx_p(n0 + 3) = xmol(4) + (1.D0 - xmol(4)) * formeps
+          iphase_loc_p(ghosted_id) = 2
+          xx_p(dof_offset + 3) = xmol(4) + (1.D0 - xmol(4)) * formeps
 !    xx_p(n0+1)= yy_p(n0+1);xx_p(n0+2)= yy_p(n0+2)  
-        ichange =1    ;ipr=1  
-        end if
+          ichange =1    ;ipr=1  
+        endif
     
 
    ! if(sat(2)<= -formeps .and. iipha==3 )then
-     if(satu(2)<= 0.0D0 .and. iipha==3 )then
-    write(*,'('' 2ph -> Liq '',2i8,1p10e12.4)') grid%iphch,n,xx_p(n0+1:n0+3),satu(1),satu(2)
+        if(satu(2)<= 0.0D0 .and. iipha==3 )then
+          write(*,'('' 2ph -> Liq '',2i8,1p10e12.4)') option%iphch,local_id,xx_p(dof_offset+1:dof_offset+3),satu(1),satu(2)
       ! write(IUNIT2,'('' 2ph -> Liq '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3)
-      iphase_p(n) = 1 ! 2ph -> Liq
-      ichange = 1;ipr=1
-      tmp = xmol(2) * 0.99
-      xx_p(n0 + 3)=tmp
+          iphase_loc_p(ghosted_id) = 1 ! 2ph -> Liq
+          ichange = 1;ipr=1
+          tmp = xmol(2) * 0.99
+          xx_p(dof_offset + 3)=tmp
 !    xx_p(n0+1)= yy_p(n0+1);xx_p(n0+2)= yy_p(n0+2)
     !xx_p(n0+2) =  xx_p(n0+2)*(1.D0-eps)
-    endif
+        endif
      
     
 !  if(ichange ==1) then
 !    call 
-  case(1)
-       tmp = sat_pressure*1D5/p    
-      if (xmol(3) >tmp .and. iipha==2 )then
-      write(*,'('' Gas -> 2ph '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3)
+      case(1)
+        tmp = sat_pressure*1D5/p    
+        if (xmol(3) >tmp .and. iipha==2 )then
+          write(*,'('' Gas -> 2ph '',i8,1p10e12.4)') local_id,xx_p(dof_offset+1:dof_offset+3)
       !write(IUNIT2,'('' Gas -> 2ph '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3)
-      iphase_p(n) = 3
-      xx_p(n0+3) = 1D0 - eps
-    ichange = 1 ;ipr=1
+          iphase_loc_p(ghosted_id) = 3
+          xx_p(dof_offset+3) = 1D0 - eps
+          ichange = 1 ;ipr=1
         !  xx_p(n0+2)= yy_p(n0+2)
-    end if
+        endif
        ! gas ->  2ph 
-      tmp = (1.D0-tmp)/(henry/p -tmp)*henry/p
-    if (xmol(4) > 1.025*tmp  .and. iipha==1) then
-      write(*,'('' Liq -> 2ph '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3),xmol(4), tmp
+        tmp = (1.D0-tmp)/(henry/p -tmp)*henry/p
+        if (xmol(4) > 1.025*tmp  .and. iipha==1) then
+          write(*,'('' Liq -> 2ph '',i8,1p10e12.4)') local_id,xx_p(dof_offset+1:dof_offset+3),xmol(4), tmp
       !write(IUNIT2,'('' Liq -> 2ph '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3)
-      iphase_p(n) = 3
+          iphase_loc_p(ghosted_id) = 3
      
      !tmp= (xmol(4)-1.D0)/(xmol(4)/xmol(2))*den(1)/den(2)
     !if(tmp>eps) tmp=eps
      ! xx_p(n0+3)=max(tmp,formeps)
-     xx_p(n0+3) = eps
+          xx_p(dof_offset+3) = eps
     !if(dabs(xmol(4)-1.D0) < eps) xx_p(n0+1)=xx_p(n0+1)* (1.D0-eps)
-    ichange = 1;ipr=1
-    end if
+          ichange = 1;ipr=1
+        endif
       
-    if(satu(2)>1.0D0.and. iipha==3 )then
+        if(satu(2)>1.0D0.and. iipha==3 )then
   !if(xx_p(n0+3)> 1.D0 .and. iipha==3 )then
-        write(*,'('' 2ph -> Gas '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3)
+          write(*,'('' 2ph -> Gas '',i8,1p10e12.4)') local_id,xx_p(dof_offset+1:dof_offset+3)
        ! write(IUNIT2,'('' 2ph -> Gas '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3)
-      iphase_p(n) = 2
-    xx_p(n0 + 3) = xmol(4)  
-        ichange =1    ;ipr=1  
-        end if
+          iphase_loc_p(ghosted_id) = 2
+          xx_p(dof_offset + 3) = xmol(4)  
+          ichange =1    ;ipr=1  
+        endif
     
 
    ! if(sat(2)<= -formeps .and. iipha==3 )then
-     if(satu(2)<= 0.0D0 .and. iipha==3 )then
-   write(*,'('' 2ph -> Liq '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3),satu(1),satu(2)
+        if(satu(2)<= 0.0D0 .and. iipha==3 )then
+          write(*,'('' 2ph -> Liq '',i8,1p10e12.4)') local_id,xx_p(dof_offset+1:dof_offset+3),satu(1),satu(2)
       !write(IUNIT2,'('' 2ph -> Liq '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3)
-      iphase_p(n) = 1 ! 2ph -> Liq
-      ichange = 1;ipr=1
-    tmp = xmol(4) * 0.9999995
-      xx_p(n0 + 3)=tmp
+          iphase_loc_p(ghosted_id) = 1 ! 2ph -> Liq
+          ichange = 1;ipr=1
+          tmp = xmol(4) * 0.9999995
+          xx_p(dof_offset + 3)=tmp
     !xx_p(n0+2) =  xx_p(n0+2)*(1.D0-eps)
-    endif
+        endif
     
- end select
+    end select
 
 
- if(ipr ==1)then
+    if(ipr ==1)then
 !        iicap=int(icap_p(n))
-!    iipha = int(iphase_p(n))
+!    iipha = int(iphase_loc_p(n))
 !    dif(1)= grid%difaq
 !        dif(2)= grid%cdiff(int(ithrm_p(n)))
 !        i=ithrm_p(n) 
    
-!  call pri_var_trans_ninc(xx_p((n-1)*grid%ndof+1:n*grid%ndof),iipha,&
- !       grid%scale,grid%nphase,grid%nspec,&
- !       iicap, grid%sir(1:grid%nphase,iicap),grid%lambda(iicap),&
+!  call pri_var_trans_ninc(xx_p((n-1)*option%ndof+1:n*option%ndof),iipha,&
+ !       option%scale,option%nphase,option%nspec,&
+ !       iicap, grid%sir(1:option%nphase,iicap),grid%lambda(iicap),&
  !       grid%alpha(iicap),grid%pckrm(iicap),grid%pcwmax(iicap),&
  !       grid%pcbetac(iicap),grid%pwrprm(iicap),dif,&
-!    var_p((n-1)*size_var_node+1:(n-1)*size_var_node+size_var_use),&
+!    var_loc_p((n-1)*size_var_node+1:(n-1)*size_var_node+size_var_use),&
 !    grid%itable,ierr)
 
    
  !    index_var_begin=(n-1)*size_var_node+1
   !   index_var_end = index_var_begin -1 + size_var_use
      
-   !  p1 = 1 + (n-1)*grid%ndof    
-   !  call MPHASERes_ARCont(n, var_p(index_var_begin: index_var_end),&
-!    porosity_p(n),volume_p(n),grid%dencpr(i), grid, Res, 0,ierr)
+   !  p1 = 1 + (n-1)*option%ndof    
+   !  call MPHASERes_ARCont(n, var_loc_p(index_var_begin: index_var_end),&
+!    porosity_loc_p(n),volume_p(n),grid%dencpr(i), grid, Res, 0,ierr)
 
- !  print *,res,accum_p(p1:p1-1+grid%ndof)
-   !accum_p(p1:p1-1+grid%ndof) =res
-   ipr=0
-   endif
+ !  print *,res,accum_p(p1:p1-1+option%ndof)
+   !accum_p(p1:p1-1+option%ndof) =res
+      ipr=0
+    endif
 
-
-
-    
   end do
 
- 
-
-
-  !print *,iphase_p
-  call VecRestoreArrayF90(grid%iphas, iphase_p,ierr)
+  !print *,iphase_loc_p
+  call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p,ierr)
   call VecRestoreArrayF90(xx, xx_p, ierr); CHKERRQ(ierr)
-  call VecRestoreArrayF90(grid%yy, yy_p, ierr); CHKERRQ(ierr)
- 
+  call VecRestoreArrayF90(field%yy, yy_p, ierr); CHKERRQ(ierr)
 
-
-  end subroutine Translator_MPhase_Switching
+end subroutine Translator_MPhase_Switching
   
 
-
-  subroutine pri_var_trans_mph_ninc_3_3(x,iphase,energyscale,num_phase,num_spec,&
+subroutine pri_var_trans_mph_ninc_3_3(x,iphase,energyscale,num_phase,num_spec,&
                     ipckrtype,pckr_sir,pckr_lambda,pckr_alpha,&
                     pckr_m,pckr_pcmax,pckr_betac,pckr_pwr,dif,&
-          var_node,itable,ierr)
+                    var_node,itable,ierr)
 ! xgw: water molar fraction in gas phase
 ! P/Pa, t/(Degree Centigreed), Pc/Pa, Hen(xla=Hen*xga, dimensionless)
  
-    use water_eos_module
-    use gas_eos_module  
-    use pckr_module
-    use co2eos_module
-    use span_wagner_module
+  use water_eos_module
+  use gas_eos_module  
+  use pckr_module
+  use co2eos_module
+  use span_wagner_module
 
-
-    implicit none
-    integer :: num_phase,num_spec
-    integer :: size_var_use
-    real*8 x(1:num_spec+1),energyscale
-    real*8,target:: var_node(:)
-    integer :: iphase,itable,ierr
-    integer :: ipckrtype !, ithrmtype
+  implicit none
+  
+  integer :: num_phase,num_spec
+  integer :: size_var_use
+  real*8 x(1:num_spec+1),energyscale
+  real*8,target:: var_node(:)
+  integer :: iphase,itable,ierr
+  integer :: ipckrtype !, ithrmtype
 !   integer :: num_pricomp
-    
-    real*8  :: pckr_sir(:),pckr_lambda,pckr_alpha,pckr_m,pckr_pcmax,pckr_betac,pckr_pwr
-    real*8  :: dif(:)
   
-  
+  real*8  :: pckr_sir(:),pckr_lambda,pckr_alpha,pckr_m,pckr_pcmax,pckr_betac,pckr_pwr
+  real*8  :: dif(:)
      
   real*8, pointer :: t,p
   real*8, pointer:: den(:),h(:),u(:),avgmw(:),pc(:),kvr(:)
@@ -681,30 +729,28 @@
   ibase=ibase+num_phase; xmol=>var_node(ibase:ibase+num_phase*num_spec-1)
   ibase=ibase+num_phase*num_spec; diff=>var_node(ibase:ibase+num_phase*num_spec-1)
 
-
-
   select case(iphase)
   
-  case(1) ! only water phase
-   p = x(1)
-   t = x(2)
-   xmol(2)= x(4)
-   xmol(2)= x(3)
-   
-  case(2) ! only Gas Phase
-  
+    case(1) ! only water phase
+     p = x(1)
+     t = x(2)
+     xmol(2)= x(4)
+     xmol(2)= x(3)
+     
+    case(2) ! only Gas Phase
     
-  case(4) ! only Supercritical CO2 
-  case(3) ! water + gas 
-  case(5) ! water + CO2
-  case(6) ! gas + supercritical CO2 
-  case(7) ! 3 phase
-      end select
-   nullify(t, p, satu, den, avgmw, h,u, pc,kvr,xmol,diff)
- end subroutine pri_var_trans_mph_ninc_3_3
+      
+    case(4) ! only Supercritical CO2 
+    case(3) ! water + gas 
+    case(5) ! water + CO2
+    case(6) ! gas + supercritical CO2 
+    case(7) ! 3 phase
+  end select
   
-
-
+   nullify(t, p, satu, den, avgmw, h,u, pc,kvr,xmol,diff)
+   
+end subroutine pri_var_trans_mph_ninc_3_3
+  
 
 ! **2 phase condition**************************************************
 ! phase                             Primary Variables      index
@@ -713,30 +759,29 @@
 !   eg                              p, T, S(g)                    3
 !**********************************************************************
 
-
- subroutine pri_var_trans_mph_ninc_2_2(x,iphase,energyscale,num_phase,num_spec,&
+subroutine pri_var_trans_mph_ninc_2_2(x,iphase,energyscale,num_phase,num_spec,&
                     ipckrreg, dif, var_node,itable,m_nacl,ierr,xphi,dco2)
 ! xgw: water molar fraction in gas phase
 ! P/Pa, t/(Degree Centigreed), Pc/Pa, Hen(xla=Hen*xga, dimensionless)
  
-    use water_eos_module
-    use gas_eos_module  
-    use pckr_module
-    use co2eos_module
-    use span_wagner_module
+  use water_eos_module
+  use gas_eos_module  
+  use pckr_module
+  use co2eos_module
+  use span_wagner_module
 
 
-    implicit none
-    integer :: num_phase,num_spec, itable, ierr
-    integer :: size_var_use 
-    real*8 x(1:num_spec+1),energyscale
-    real*8, target:: var_node(:)
-    integer ::iphase
-    integer :: ipckrreg !, ithrmtype
-    real*8 :: dif(:)
-
-   
- !   integer size_var_node = (grid%ndof+1)*size_var_use
+  implicit none
+  
+  integer :: num_phase,num_spec, itable, ierr
+  integer :: size_var_use 
+  real*8 x(1:num_spec+1),energyscale
+  real*8, target:: var_node(:)
+  integer ::iphase
+  integer :: ipckrreg !, ithrmtype
+  real*8 :: dif(:)
+ 
+ !   integer size_var_node = (option%ndof+1)*size_var_use
 
   real*8, pointer :: t ,p
   real*8, pointer :: den(:),h(:),u(:),avgmw(:),pc(:),kvr(:)
@@ -771,24 +816,22 @@
   ibase=ibase+num_phase*num_spec;
   diff=>var_node(ibase:ibase+num_phase*num_spec-1)
 
-
   select case(iphase)
-  
 
-  case(1) ! only water phase
-   p = x(1)
-   t = x(2)
-   xmol(2)= x(3)
+    case(1) ! only water phase
+      p = x(1)
+      t = x(2)
+      xmol(2)= x(3)
   ! if(xmol(2)<0.D0) xmol(2)=0.D0
   ! if(xmol(2)>1.D0) xmol(2)=1.D0
-  if(xmol(2)<0.D0) print *,'tran:',iphase, x(1:3)
-  if(xmol(2)>1.D0) print *,'tran:',iphase, x(1:3)
-   xmol(1)=1.D0 - xmol(2)
+      if(xmol(2)<0.D0) print *,'tran:',iphase, x(1:3)
+      if(xmol(2)>1.D0) print *,'tran:',iphase, x(1:3)
+      xmol(1)=1.D0 - xmol(2)
   ! if(xmol(3)<0.D0)xmol(3)=0.D0
-   pc(1)=0.D0
-   pc(2)=0.D0
-     satu(1)=1.D0
-   satu(2)= 0.D0
+      pc(1)=0.D0
+      pc(2)=0.D0
+      satu(1)=1.D0
+      satu(2)= 0.D0
      !p2=p
    ! if( p2>5d4)then
    !  call co2_span_wagner(p2*1.D-6,t+273.15D0,dg,dddt,dddp,fg,&
@@ -808,22 +851,20 @@
    ! xmol(3)=1.D0-xmol(4)
      ! if(xmol(1)<0.D0) xmol(1)=0.D0
   
-  case(2) ! only supercritical CO2 Phase
+    case(2) ! only supercritical CO2 Phase
      
-     p = x(1)
-       t = x(2)
-       xmol(4)= x(3)
-     if(xmol(4)<0.D0)print *,'tran:',iphase, x(1:3)
-       if(xmol(4)>1.D0) print *,'tran:',iphase, x(1:3)
+      p = x(1)
+      t = x(2)
+      xmol(4)= x(3)
+      if(xmol(4)<0.D0)print *,'tran:',iphase, x(1:3)
+      if(xmol(4)>1.D0) print *,'tran:',iphase, x(1:3)
      
-       xmol(3)=1.D0 - xmol(4)
+      xmol(3)=1.D0 - xmol(4)
   !   if(xmol(3)<0.D0)xmol(3)=0.D0
    !    pc(1)=0.D0
-     pc(2)=0.D0
-         satu(1)=eps
-         satu(2)=1.D0
-    
-      
+      pc(2)=0.D0
+      satu(1)=eps
+      satu(2)=1.D0
   
     case(3) ! water + gas 
       p = x(1)
@@ -837,15 +878,14 @@
       temp = 1D-2
       xmol(1)=1.D0; xmol(2)=0.D0; xmol(3)=temp; xmol(4)=1.D0-xmol(3)
 
-  
   end select  
         
     
-    call PSAT(t, sat_pressure, ierr)
+  call PSAT(t, sat_pressure, ierr)
 
  !   initial guess
    
-    err=1.D0
+  err=1.D0
 
 !  print *, 'in 2 phase solver'
  
@@ -855,32 +895,32 @@
   
   !do while(err>1E-8)
   
-   p2=p!*xmol(4)
+  p2=p!*xmol(4)
  !   p2=p*xmol(4)
 
-    if(p2>=5d4)then
+  if(p2>=5d4)then
       !call ideal_gaseos_noderiv(pa,t,energyscale,dg,hg,ug)
      
-      call co2_span_wagner(p2*1.D-6,t+273.15D0,dg,dddt,dddp,fg,&
-      dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,itable)
-      dg= dg / fmwco2
-      fg= fg * 1.D6 
-      hg= hg * fmwco2
-    else      
-      call ideal_gaseos_noderiv(p2,t,energyscale,dg,hg,ug)
-      call visco2(t,dg*fmwco2,visg)
-      fg=p2
-    endif
+    call co2_span_wagner(p2*1.D-6,t+273.15D0,dg,dddt,dddp,fg,&
+    dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,itable)
+    dg= dg / fmwco2
+    fg= fg * 1.D6 
+    hg= hg * fmwco2
+  else      
+    call ideal_gaseos_noderiv(p2,t,energyscale,dg,hg,ug)
+    call visco2(t,dg*fmwco2,visg)
+    fg=p2
+  endif
 
-    xphi = fg/p2
+  xphi = fg/p2
 !   xphi  = 1.d0 ! test-pcl
     
 !    call Henry_CO2_noderiv(xla,tmp,t,p*xmol(4),xphi,henry,co2_poyn)
   !  call Henry_duan_sun(p2*1D-5, t,  henry) ! henry = mol/kg/bars
    
-     call Henry_duan_sun(t, p2 *1D-5, henry,xphi,m_nacl, m_nacl,sat_pressure*1D-5)
+  call Henry_duan_sun(t, p2 *1D-5, henry,xphi,m_nacl, m_nacl,sat_pressure*1D-5)
       
-     henry= 1D0 / (fmwh2o *1D-3) / (henry*1D-5 )/xphi 
+  henry= 1D0 / (fmwh2o *1D-3) / (henry*1D-5 )/xphi 
      
      !print *, "translator :; henry ", henry, xphi, p*.99/henry        
      !note: henry = H/phi
@@ -894,43 +934,42 @@
  !print *, 'out 2 phase solver'
 
   select case(iphase)     
-   case(1)
-    xmol(4)=xmol(2)*henry/p   
+    case(1)
+      xmol(4)=xmol(2)*henry/p   
    
  ! if(iphase /= 1)then
-    xmol(3)=1.D0-xmol(4)
-  if(xmol(3)<0.D0)xmol(3)=0.D0
+      xmol(3)=1.D0-xmol(4)
+      if(xmol(3)<0.D0)xmol(3)=0.D0
   !if(xmol(3)<0.D0) xmol(3)=0.D0
-   case(2)   
+    case(2)   
   
-    xmol(2)= p*xmol(4)/henry
+      xmol(2)= p*xmol(4)/henry
     !xmol(2)= 1.D0/(1.D0 + 1.D0 /(henry * xmol(4) * p* 1D-5 *xphi * grid%fmwh2o ))
         
-    xmol(1)=1.D0-xmol(2)
+      xmol(1)=1.D0-xmol(2)
   !if(xmol(1)<0.D0) xmol(1)=0.D0
   !endif
-     case(3)
-     temp= sat_pressure /p
-     xmol(2)=(1.D0-temp)/(Henry/p - temp)
-    xmol(1)= 1.D0- xmol(2)
-    xmol(3)=xmol(1) * temp
-    xmol(4)= 1.D0-xmol(3)            
-    end select
+    case(3)
+      temp= sat_pressure /p
+      xmol(2)=(1.D0-temp)/(Henry/p - temp)
+      xmol(1)= 1.D0- xmol(2)
+      xmol(3)=xmol(1) * temp
+      xmol(4)= 1.D0-xmol(3)            
+  end select
 
 
   if(p2<5d4) call visco2(t,dg*fmwco2,visg)
 !***************  Liquid phase properties **************************
-  avgmw(1)= xmol(1)* fmwh2o + xmol(2) * fmwco2 
+    avgmw(1)= xmol(1)* fmwh2o + xmol(2) * fmwco2 
     avgmw(2)= xmol(3)* fmwh2o + xmol(4) * fmwco2 
-  
-
+ 
    ! pure water
     pw = p   
     if(num_phase>=2)then
       call pflow_pckr_noderiv(num_phase,ipckrreg,satu,pc,kr)
       pw=p !-pc(1)
      ! print *, num_phase,ipckrreg,satu,pc,kr
-     end if
+    endif
 
     
   !  call wateos_noderiv(t,pw,dw_kg,dw_mol,hw,energyscale,ierr)
@@ -958,13 +997,13 @@
   !den(1) = 1.D0/(xmol(2)/dg + xmol(1)/dw_mol) !*c+(1-c)* 
 
 ! Garcia mixing
-   x_nacl = m_nacl/(m_nacl + 1D3/fmwh2o)
+    x_nacl = m_nacl/(m_nacl + 1D3/fmwh2o)
    
    ! xmol(1) = xh2o + xnacl
-   avgmw(1)= (xmol(1) - x_nacl) * fmwh2o + x_nacl * fmwnacl + xmol(2) * fmwco2
-   vphi=1D-6*(37.51D0 + t*(-9.585D-2 + t*(8.74D-4 - t*5.044D-7)))
-   den(1)=dw_kg/(1D0-(fmwco2*1D-3-dw_kg*vphi)*xmol(2)/(avgmw(1)*1D-3))
-   den(1)=den(1)/avgmw(1)
+    avgmw(1)= (xmol(1) - x_nacl) * fmwh2o + x_nacl * fmwnacl + xmol(2) * fmwco2
+    vphi=1D-6*(37.51D0 + t*(-9.585D-2 + t*(8.74D-4 - t*5.044D-7)))
+    den(1)=dw_kg/(1D0-(fmwco2*1D-3-dw_kg*vphi)*xmol(2)/(avgmw(1)*1D-3))
+    den(1)=den(1)/avgmw(1)
   
       
  ! Hebach, J. Chem.Eng.Data 2004 (49),p950 
@@ -972,11 +1011,11 @@
  !      + (t+273.15)*(0.883148 - 0.00228*(t+273.15))  
  !  den(1)=dw_kg + (den(1)-dw_kg)*xmol(2)/p*henry
  !  den(1)=den(1)/avgmw(1)
- call wateos_noderiv(t,pw,dw_kg,dw_mol,hw,energyscale,ierr)
+    call wateos_noderiv(t,pw,dw_kg,dw_mol,hw,energyscale,ierr)
 
     !h(1) = hw * xmol(1) + hg*xmol(2) 
-   h(1) = hw
-     u(1) = h(1) - pw /dw_mol* energyscale
+    h(1) = hw
+    u(1) = h(1) - pw /dw_mol* energyscale
     diff(1:num_spec) = dif(1)
     kvr(1) = kr(1)/visl
     !xlw = 1.D0
@@ -993,9 +1032,9 @@
   !     hstea=hstea!/xgw
 !       tmp=dsteamol
    ! else
-        dsteamol=dg /xmol(4)*xmol(3)
-        hstea=hg 
-    !end if
+    dsteamol=dg /xmol(4)*xmol(3)
+    hstea=hg 
+    !endif
 
 
 !if((p*xgw)>sat_pressure)then 
@@ -1014,7 +1053,7 @@
 
 
   ! den(2)= dg*xmol(4) + dw_mol*xmol(3)
-   den(2)= 1.D0/(xmol(4)/dg + xmol(3)/dw_mol)
+    den(2)= 1.D0/(xmol(4)/dg + xmol(3)/dw_mol)
 
 !   call visgas_noderiv(t,pa,p,den(2),visg)
 !call visgas_noderiv(t,pa,p,den(2),visg)
@@ -1030,7 +1069,7 @@
  !   h(2)= ( hg*xga  + hstea*xgw ) 
  !   h(2)= ( hg *xga + hstea ) 
 !    u(2)=  h(2)-p/den(2) * energyscale
-       u(2)=  h(2)-p/dg * energyscale
+    u(2)=  h(2)-p/dg * energyscale
     pc(2)=0
    !  print *,'gas phase nonder h::',t,p,h(2),u(2),hg,hstea
     diff(num_spec+1:num_spec*2)= kr(2)* dif(2) * 1.01325D5/p*((t+273.15)/273.15)**1.8D0 ! dirty part
@@ -1048,16 +1087,17 @@
 
   
    nullify(t, p, satu, den, avgmw, h,u, pc,kvr,xmol,diff)
- end subroutine pri_var_trans_mph_ninc_2_2
+   
+end subroutine pri_var_trans_mph_ninc_2_2
 
 
- 
- subroutine pri_var_trans_mph_ninc(x,iphase,energyscale,num_phase,num_spec,&
+subroutine pri_var_trans_mph_ninc(x,iphase,energyscale,num_phase,num_spec,&
                     ipckrreg,dif, var_node,itable,m_nacl,ierr,phi_co2, den_co2)
 ! xgw: water molar fraction in gas phase
 ! P/Pa, t/(Degree Centigreed), Pc/Pa, Hen(xla=Hen*xga, dimensionless)
  
   implicit none
+  
   integer :: num_phase,num_spec
 ! integer :: num_pricomp
   integer :: size_var_use
@@ -1069,52 +1109,54 @@
        
   real*8, optional :: phi_co2, den_co2  
   real*8 :: xphi_co2=1.D0, denco2=1.D0
-  
-  
 
   size_var_use = 2 + 7*num_phase + 2* num_phase*num_spec
   if((num_phase == 2).and.( num_spec ==2)) then
     call pri_var_trans_mph_ninc_2_2( x,iphase,energyscale,num_phase,num_spec,&
                     ipckrreg,dif, var_node,itable,m_nacl,ierr,xphi_co2, denco2)
-     if(present(phi_co2)) phi_co2=xphi_co2        
-      if(present(den_co2))den_co2=denco2
-   else 
-     print *, 'Wrong phase-specise combination. Stop.'
-     stop
-   endif
+    if(present(phi_co2)) phi_co2=xphi_co2        
+    if(present(den_co2))den_co2=denco2
+  else 
+    print *, 'Wrong phase-specise combination. Stop.'
+    stop
+  endif
   ! print *, 'ninc: ',x, var_node
    
-  end subroutine pri_var_trans_mph_ninc   
+end subroutine pri_var_trans_mph_ninc   
   
   
- subroutine pri_var_trans_mph_winc(x,delx,iphase,energyscale,num_phase,num_spec,&
+subroutine pri_var_trans_mph_winc(x,delx,iphase,energyscale,num_phase,num_spec,&
                     ipckrreg,dif, var_node,itable,m_nacl,ierr)
+
+  implicit none                    
+
   integer :: num_phase,num_spec
   integer :: size_var_use,size_var_node
     
 
-    real*8 x(1:num_spec+1),delx(1:num_spec+1),energyscale
-    real*8 var_node(:),m_nacl
+  real*8 x(1:num_spec+1),delx(1:num_spec+1),energyscale
+  real*8 var_node(:),m_nacl
   real*8 :: dif(:)
   integer ::iphase,itable,ierr
   integer :: ipckrreg !, ithrmtype
+  integer :: ispec
    
    
-    real*8 xx(1:num_spec+1)
+  real*8 xx(1:num_spec+1)
 
 
-    size_var_use = 2 + 7*num_phase + 2* num_phase*num_spec
-    size_var_node = (num_spec+2)*size_var_use
+  size_var_use = 2 + 7*num_phase + 2* num_phase*num_spec
+  size_var_node = (num_spec+2)*size_var_use
   
-   do n=1, num_spec+1
-         xx=x;  xx(n)=x(n)+ delx(n)
-  ! note: var_node here starts from 1 to grid%ndof*size_var_use
-       call pri_var_trans_mph_ninc(xx,iphase,energyscale,num_phase,num_spec,&
-                    ipckrreg, dif,&
-          var_node((n-1)*size_var_use+1:n*size_var_use),itable,m_nacl,ierr)
-    enddo
+  do ispec=1,num_spec+1
+         xx=x;  xx(ispec)=x(ispec)+ delx(ispec)
+  ! note: var_node here starts from 1 to option%ndof*size_var_use
+    call pri_var_trans_mph_ninc(xx,iphase,energyscale,num_phase,num_spec,&
+                                ipckrreg, dif,&
+                                var_node((ispec-1)*size_var_use+1:ispec*size_var_use),itable,m_nacl,ierr)
+  enddo
 
 
- end subroutine pri_var_trans_mph_winc
+end subroutine pri_var_trans_mph_winc
  
 end module   translator_mph_module

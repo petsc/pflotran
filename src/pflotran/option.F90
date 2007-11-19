@@ -58,17 +58,13 @@ module Option_module
     PetscScalar, pointer :: hhistory(:)
     PetscTruth :: monitor_h
     
+    integer :: idt_switch
+    
     PetscTruth :: use_ksp
     PetscTruth :: use_isoth
     PetscTruth :: use_debug
     PetscTruth :: print_bcinfo
-    
-#if 0
-      ! If true, print the value of h at the end of each SNES iteration.
-    PetscTruth :: use_liquid, use_cond, use_th, use_thc, use_2ph, &
-    use_mph, use_ksp, use_owg, use_vadose, use_flash
-    PetscTruth :: use_isoth, use_debug, use_richards 
-#endif     
+      
     ! If run_coupled == PETSC_TRUE, then some parts of ptran_init 
     ! will not be executed, since they are made redundant by 
     ! pflowGrid_new() and pflowGrid_setup().
@@ -76,14 +72,7 @@ module Option_module
 
     real*8 :: time  ! The time elapsed in the simulation.
     real*8 :: dt ! The size of the time step.
-#if 0
-! moved to timestepper
-    real*8 :: dt_min  ! Maximum size of the time step.
-    real*8 :: dt_max  ! Maximum size of the time step.
-    real*8 :: tconv ! Input time conversion factor
-    character*2 :: tunit ! Input time units
-    real*8, pointer :: tstep(:), dtstep(:)
-#endif    
+  
 !    real*8, pointer :: tplot(:)
     real*8, pointer :: tfac(:)
       ! An array of multiplicative factors that specify how to increase time step.
@@ -93,15 +82,7 @@ module Option_module
     integer :: itecplot = 0 ! tecplot print format (1-interchange x and z)
     integer :: iblkfmt = 0 ! blocked format
     integer :: isync = 0  ! Synchronize pflow and ptran time steps (1)
-#if 0
-! moved to timestepper
-    integer :: ndtcmx = 5 ! Steps needed after cutting to increase time step
-    integer :: newtcum    ! Total number of Newton steps taken.
-    integer :: icutcum    ! Total number of cuts in the timestep taken.
-    integer :: newton_max ! Max number of Newton steps for one time step.
-    integer :: icut_max   ! Max number of dt cuts for one time step.
-    integer :: iaccel
-#endif    
+  
     integer :: iphch
     integer :: iread_init = 0 ! flag for reading initial conditions.
       ! Basically our target number of newton iterations per time step.
@@ -110,63 +91,6 @@ module Option_module
     
     integer*4 :: nldof  ! nlmax times the number of phases.
     integer*4 :: ngdof  ! ngmax times the number of phases.
-
-    integer*4, pointer :: iperm1(:), iperm2(:), ipermbc(:)
-
-    real*8, pointer :: density_bc(:),d_p_bc(:),d_t_bc(:), d_s_bc(:),d_c_bc(:),&
-                       avgmw_bc(:),avgmw_c_bc(:),&
-                       hh_bc(:),h_p_bc(:),h_t_bc(:),h_s_bc(:), h_c_bc(:), &
-                       viscosity_bc(:),v_p_bc(:),v_t_bc(:),&
-                       uu_bc(:),u_p_bc(:),u_t_bc(:),u_s_bc(:), u_c_bc(:),&    
-                       df_bc(:),df_p_bc(:),df_t_bc(:),df_s_bc(:), df_c_bc(:), &
-                       hen_bc(:),hen_p_bc(:),hen_t_bc(:),hen_s_bc(:),hen_c_bc(:), &
-                       pc_bc(:),pc_p_bc(:),pc_t_bc(:),pc_s_bc(:),pc_c_bc(:), &
-                       kvr_bc(:),kvr_p_bc(:),kvr_t_bc(:),kvr_s_bc(:),kvr_c_bc(:)
-    real*8, pointer :: xphi_co2(:),xxphi_co2(:),den_co2(:), dden_co2(:)
-    
-    ! Boundary conditions (BC's)
-    integer*4 :: nblkbc
-      ! The number of "blocks" of boundary conditions that are defined.
-      ! Such a block is a specification of a set of boundary conditions.
-      ! This set of boundary conditions can apply to any number of regions,
-      ! so nblkbc does NOT equal the number of boundary condition regions.
-!    integer*4 :: nconnbc  ! The number of interfaces along boundaries.
-!GEH - Structured Grid Dependence - Begin
-    integer*4, pointer :: i1bc(:), i2bc(:), j1bc(:), j2bc(:), k1bc(:), k2bc(:)
-!GEH - Structured Grid Dependence - End
-!geh - now in grid
-!    integer*4, pointer :: ibconn(:)
-      ! ibconn(nc) specifies the id of the of boundary condition block that
-      ! applies at boundary interface nc.  
-!no longer needed    integer*4, pointer :: ibndtyp(:)
-      ! ibndtyp(ibc) specifies the type of boundary condition that applies
-      ! for boundary condition block ibc.
-!    integer*4, pointer :: iface(:)
-      ! iface(ibc) specifies the face (left, right, top, bottom, etc.) on
-      ! which BC block ibc lies.
-!    integer*4, pointer :: mblkbc(:)
-      ! mblkbc(nc) gives the local, non-ghosted index of the cell that has
-      ! boundary connection nc.
-!    integer*4, pointer :: iregbc1(:), iregbc2(:)
-      ! iregbc1(ibc) and iregbc2(ibc) give the id of the first region and 
-      ! last region, respectively, that utilizes the boundary conditions in 
-      ! boundary condition block ibc.
-    real*8, pointer :: pressurebc(:,:)
-      ! For a Dirichlet BC, pressurebc(j,ibc) gives the partial pressure 
-      ! for phase j along the BC block ibc.
-    real*8, pointer :: velocitybc(:,:)
-      ! For a Neumann BC, velocitybc(j,ibc) gives the velocity q for phase
-      ! j along BC block ibc.
-    real*8, pointer :: tempbc(:),concbc(:),sgbc(:),xphi_co2_bc(:),xxphi_co2_bc(:)
-    real*8, pointer :: xxbc(:,:), varbc(:)
-    integer, pointer:: iphasebc(:)
-
-    !block BC values read from input
-    real*8, pointer :: pressurebc0(:,:)
-    real*8, pointer :: velocitybc0(:,:)
-    real*8, pointer :: tempbc0(:),concbc0(:),sgbc0(:)
-    real*8, pointer :: xxbc0(:,:)
-    integer, pointer:: iphasebc0(:)  
 
     integer :: iran_por=0, iread_perm=0, iread_geom =1
     real*8 :: ran_fac=-1.d0
@@ -191,8 +115,7 @@ module Option_module
     real*8, pointer :: swir(:),lambda(:),alpha(:),pckrm(:),pcwmax(:),pcbetac(:), &
                        pwrprm(:),sir(:,:)
     integer, pointer:: icaptype(:)
-!geh material id
-    integer, pointer :: imat(:)
+
     real*8 :: m_nacl
     real*8 :: difaq, delhaq, gravity, fmwh2o= 18.0153D0, fmwa=28.96D0, &
               fmwco2=44.0098D0, eqkair, ret=1.d0, fc=1.d0
@@ -204,95 +127,7 @@ module Option_module
 !   table lookup
     integer :: itable=0
 
-    !-------------------------------------------------------------------
-    ! Quantities defined at each grid point.
-    ! NOTE: I adopt the convention that _loc indicates the local portion
-    ! of any global vector.
-    !-------------------------------------------------------------------
-
-    ! One degree of freedom: Physical coordinates.
-    Vec :: porosity0, porosity_loc, tor_loc
-    Vec :: ithrm_loc, icap_loc, iphas_loc, iphas_old_loc
-    Vec :: phis
-
-    Vec :: conc
-    Vec :: ttemp, ttemp_loc, temp ! 1 dof
-
-    ! Three degrees of freedom:
-    Vec :: perm_xx_loc, perm_yy_loc, perm_zz_loc
-    Vec :: perm0_xx, perm0_yy, perm0_zz, perm_pow
-    ! Multiple degrees of freedom (equal to number of phases present):
-    Vec :: var_loc
-    Vec :: ppressure, ppressure_loc, pressure, dp
-    Vec :: ssat, ssat_loc, sat    ! saturation
-    Vec :: xxmol, xxmol_loc, xmol ! mole fraction
-    Vec :: density       ! Density at time k
-    Vec :: ddensity, ddensity_loc  ! Density at time k+1
-    Vec :: d_p, d_p_loc  ! dD/dp at time k+1
-    Vec :: d_t, d_t_loc  ! dD/dT at time k+1
-    Vec :: d_c, d_c_loc  ! dD/dT at time k+1
-    Vec :: d_s, d_s_loc  ! dD/dT at time k+1
-    Vec :: avgmw,avgmw_loc  ! Density at time k+1molecular weight at time k+1
-    Vec :: avgmw_c,avgmw_c_loc
-    Vec :: h             ! H     at time k
-    Vec :: hh, hh_loc    ! H     at time k+1
-    Vec :: h_p, h_p_loc  ! dH/dp at time k+1
-    Vec :: h_t, h_t_loc  ! dH/dT at time k+1
-    Vec :: h_c, h_c_loc  ! dD/dT at time k+1
-    Vec :: h_s, h_s_loc  ! dD/dT at time k+1
-    Vec :: u            ! H     at time k
-    Vec :: uu, uu_loc    ! H     at time k+1
-    Vec :: u_p, u_p_loc  ! dH/dp at time k+1
-    Vec :: u_t, u_t_loc  ! dH/dT at time k+1
-    Vec :: u_c, u_c_loc  ! dD/dT at time k+1
-    Vec :: u_s, u_s_loc  ! dD/dT at time k+1
-    Vec :: hen, hen_loc    ! H     at time k+1
-    Vec :: hen_p, hen_p_loc  ! dH/dp at time k+1
-    Vec :: hen_t, hen_t_loc  ! dH/dT at time k+1
-    Vec :: hen_c, hen_c_loc  ! dD/dT at time k+1
-    Vec :: hen_s, hen_s_loc  ! dD/dT at time k+1
-    Vec :: df, df_loc    ! H     at time k+1
-    Vec :: df_p, df_p_loc  ! dH/dp at time k+1
-    Vec :: df_t, df_t_loc  ! dH/dT at time k+1
-    Vec :: df_c, df_c_loc  ! dD/dT at time k+1
-    Vec :: df_s, df_s_loc  ! dD/dT at time k+1
-    Vec :: viscosity, viscosity_loc  !kept for early routine
-   
-    Vec :: v_p, v_p_loc  ! dv/dp at time k+1
-    Vec :: v_t, v_t_loc  ! dv/dT at time k+1
-    Vec :: pcw, pcw_loc    ! H     at time k+1
-    Vec :: pc_p, pc_p_loc  ! dH/dp at time k+1
-    Vec :: pc_t, pc_t_loc  ! dH/dT at time k+1
-    Vec :: pc_c, pc_c_loc  ! dD/dT at time k+1
-    Vec :: pc_s, pc_s_loc  ! dD/dT at time k+1
-    Vec :: kvr, kvr_loc    ! H     at time k+1
-    Vec :: kvr_p, kvr_p_loc  ! d/dp at time k+1
-    Vec :: kvr_t, kvr_t_loc  ! dm/dT at time k+1
-    Vec :: kvr_c, kvr_c_loc  ! d/d at time k+1
-    Vec :: kvr_s, kvr_s_loc  ! dD/dT at time k+1
-    Vec :: r             ! The residual.  (NOT the negative of the residual.)
-
-    Vec :: vl, vvl, vg, vvg ! phase (liquid and gas) velocities stored at interfaces
-
-
- 
-    real*8, pointer :: vl_loc(:), vvl_loc(:), vg_loc(:), vvg_loc(:)
-    real*8, pointer :: vvlbc(:), vvgbc(:)
     real*8, pointer :: rtot(:,:),rate(:),area_var(:), delx(:,:)
-
-    ! Solution vectors
-    Vec :: xx, xx_loc, dxx, yy, accum
-        ! Jacobian matrix
-    Mat :: J
-    MatFDColoring :: matfdcoloring
-      ! Coloring used for computing the Jacobian via finite differences.
-
-    ! PETSc nonlinear solver context
-    SNES :: snes
-    KSPType :: ksp_type
-    PCType  :: pc_type
-    KSP   ::  ksp
-    PC    ::  pc
    
   end type 
   
@@ -349,6 +184,7 @@ function OptionCreate()
   
   option%mode = ""
   option%imode = NULL_MODE
+  option%idt_switch = 0
    
   option%run_coupled = PETSC_FALSE
   
@@ -398,10 +234,6 @@ function OptionCreate()
 
   ! default brine concentrations
   option%m_nacl = 0.d0
-  
-  ! nullify PetscVecs
-  option%conc = 0
-  option%xmol = 0
   
   OptionCreate => option
   

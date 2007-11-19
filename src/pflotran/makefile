@@ -48,11 +48,13 @@ pflow_obj = ${common_src}pflow_vector_ops.o \
 	${common_src}pflow_gridtype.o \
 	${common_src}pflow_pckr_mod.o \
 	${common_src}option.o \
+	${common_src}field.o \
 	${common_src}waypoint.o \
 	${common_src}region.o \
 	${common_src}material.o \
 	${common_src}strata.o \
 	${common_src}connection.o \
+	${common_src}solver.o \
 	${common_src}general_grid.o \
 	${common_src}unstructured_grid.o \
 	${common_src}structured_grid.o \
@@ -60,8 +62,7 @@ pflow_obj = ${common_src}pflow_vector_ops.o \
 	${common_src}condition_old.o \
 	${common_src}coupler.o \
 	${common_src}grid.o \
-	${common_src}solver.o \
-	${common_src}solution.o \
+	${common_src}realization.o \
 	${common_src}Readfield.o \
 	${common_src}mixed_fluid_eos.o \
 	${common_src}translator_mixed_fluid_mph.o \
@@ -137,28 +138,32 @@ ascii_to_hdf5: fileio.o hdf5_dataset.o ascii_to_hdf5.o
 # Dependencies stemming from "use" statements.
 # These ensure that the module files are built in the correct order.
 pflow.o : pflow_init.o timestepper.o
-pflow_init.o : option.o grid.o solution.o solver.o timestepper.o simulation.o \
+pflow_init.o : option.o grid.o realization.o solver.o timestepper.o simulation.o \
                fileio.o material.o region.o condition.o pflow_convergence.o \
-	       waypoint.o
-unstructured_grid.o : option.o connection.o
-structured_grid.o : connection.o option.o fileio.o coupler.o region.o
+	       waypoint.o field.o
+unstructured_grid.o : option.o connection.o solver.o
+structured_grid.o : connection.o option.o fileio.o coupler.o region.o solver.o
 general_grid.o : condition_old.o
 grid.o : structured_grid.o unstructured_grid.o option.o region.o connection.o \
-	 coupler.o
-solver.o : option.o
+	 coupler.o solver.o
+solver.o : option.o field.o
 region.o : fileio.o utility.o
-material.o : region.o option.o fileio.o
+material.o : region.o option.o fileio.o field.o
 coupler.o : condition.o connection.o region.o fileio.o
-condition.o : fileio.o utility.o option.o
+condition.o : fileio.o utility.o option.o field.o
 condition_old.o : pflow_pckr_mod.o
-solution.o : grid.o option.o region.o condition.o coupler.o material.o \
-	     strata.o waypoint.o
+realization.o : grid.o option.o region.o condition.o coupler.o material.o \
+	     strata.o waypoint.o field.o
 strata.o : fileio.o region.o material.o
-waypoint.o : option.o
+waypoint.o : option.o 
 pflow_vector_ops.o : water_eos.o
 pflow_output_new.o : pflow_output.o
-pflow_richards_ResJac.o : solution.o option.o grid.o coupler.o \
+pflow_output2.o : grid.o structured_grid.o option.o realization.o field.o \
+                  coupler.o connection.o
+pflow_richards_ResJac.o : realization.o option.o field.o grid.o coupler.o \
                           translator_mixed_fluid_richards.o
+pflow_mphase_ResJac.o : realization.o option.o field.o grid.o coupler.o \
+                          translator_mixed_fluid_mph.o
 timestepper.o : \
 	        mixed_fluid_eos.o \
                 translator_mixed_fluid_mph.o \
@@ -173,9 +178,10 @@ timestepper.o : \
                 pflow_mphase_ResJac.o \
                 pflow_flash_ResJac.o \
                 pflow_solve.o \
-                solution.o \
+                realization.o \
                 grid.o \
                 option.o \
+                field.o \
                 solver.o \
                 pflow_output2.o \
                 hydrostat.o \
@@ -185,10 +191,10 @@ pflow_COND.o : pflow_gridtype.o
 pflow_LIQUID.o : pflow_gridtype.o water_eos.o
 pflow_TH.o : pflow_gridtype.o water_eos.o
 pflow_THC.o : pflow_gridtype.o water_eos.o
-pflow.o : simulation.o solution.o timestepper.o solver.o grid.o option.o \
-	  pflow_init.o pflow_output2.o
-pflow_init.o : simulation.o option.o grid.o solver.o solution.o material.o \
+pflow.o : simulation.o realization.o timestepper.o solver.o grid.o option.o \
+	  pflow_init.o pflow_output2.o field.o
+pflow_init.o : simulation.o option.o grid.o solver.o realization.o material.o \
 	       timestepper.o co2_span_wagner.o pflow_richards_ResJac.o \
 	       pflow_convergence.o pflow_vector_ops.o utility.o fileio.o \
 	       structured_grid.o region.o condition.o coupler.o strata.o \
-	       pflow_pckr_mod.o
+	       pflow_pckr_mod.o field.o pflow_mphase_ResJac.o

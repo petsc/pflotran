@@ -33,7 +33,7 @@ module Grid_module
     integer :: nmax   ! Total number of nodes in global domain
     integer :: nlmax  ! Total number of non-ghosted nodes in local domain.
     integer :: ngmax  ! Number of ghosted & non-ghosted nodes in local domain.
-#if 1    
+   
     !nL2G :  not collective, local processor: local  =>  ghosted local  
     !nG2L :  not collective, local processor:  ghosted local => local  
     !nG2N :  collective,  ghosted local => global index , used for   
@@ -42,21 +42,16 @@ module Grid_module
     !                              and source/sink setup  
     integer, pointer :: nL2G(:), nG2L(:), nL2A(:), nG2N(:)
     integer, pointer :: nG2A(:)
-#endif
     
-!    integer, pointer :: ibconn(:)
-    
-#if 1  
     real*8, pointer :: x(:), y(:), z(:), delz(:) 
-#endif   
+
     Vec :: volume 
     
     integer :: igeom
     type(structured_grid_type), pointer :: structured_grid
     type(unstructured_grid_type), pointer :: unstructured_grid
     
-    type(connection_list_type), pointer :: internal_connection_list, &
-                                           boundary_connection_list
+    type(connection_list_type), pointer :: internal_connection_list
 
   end type grid_type
 
@@ -64,7 +59,6 @@ module Grid_module
   public :: GridCreate, &
             GridDestroy, &
             GridComputeInternalConnect, &
-            GridComputeBoundaryConnect, &
             GridCreateVector, &
             GridCreateJacobian, &
             GridCreateColoring, &
@@ -142,7 +136,6 @@ subroutine initGrid(grid)
   nullify(grid%unstructured_grid)
 
   nullify(grid%internal_connection_list)
-  nullify(grid%boundary_connection_list)
 
   nullify(grid%nL2G)
   nullify(grid%nG2L)
@@ -247,44 +240,6 @@ subroutine GridComputeInternalConnect(grid,option)
   call ConnectionAddToList(connection,grid%internal_connection_list)
   
 end subroutine GridComputeInternalConnect
-
-! ************************************************************************** !
-!
-! GridComputeBoundaryConnect: computes boundary connectivity of a grid
-! author: Glenn Hammond
-! date: 10/15/07
-!
-! ************************************************************************** !
-subroutine GridComputeBoundaryConnect(grid,option,boundary_conditions)
-
-  use Connection_module
-  use Option_module
-  use Coupler_module
-
-  implicit none
-  
-  type(grid_type) :: grid
-  type(option_type) :: option
-  type(coupler_type), pointer :: boundary_conditions
-#if 0  
-  type(connection_type), pointer :: connection, connections
-
-  select case(grid%igrid)
-    case(STRUCTURED)
-      connection => &
-      StructGridComputeBoundConnect(grid%structured_grid,option, &
-                                    grid%ibconn,grid%nL2G, &
-                                    boundary_conditions)
-    case(UNSTRUCTURED)
-      connection => &
-        UnstGridComputeBoundConnect(grid%unstructured_grid,option)
-  end select
-
-  allocate(grid%boundary_connection_list)
-  call ConnectionInitList(grid%boundary_connection_list)  
-  call ConnectionAddToList(connections,grid%boundary_connection_list)
-#endif
-end subroutine GridComputeBoundaryConnect
 
 ! ************************************************************************** !
 !
@@ -462,18 +417,20 @@ end subroutine GridComputeVolumes
 ! date: 10/24/07
 !
 ! ************************************************************************** !
-subroutine GridCreateJacobian(grid,option)
+subroutine GridCreateJacobian(grid,solver,option)
 
   use Option_module
+  use Solver_module
   
   implicit none
   
   type(grid_type) :: grid
+  type(solver_type) :: solver
   type(option_type) :: option
   
   select case(grid%igrid)
     case(STRUCTURED)
-      call StructuredGridCreateJacobian(grid%structured_grid,option)
+      call StructuredGridCreateJacobian(grid%structured_grid,solver,option)
     case(UNSTRUCTURED)
   end select
 
@@ -753,7 +710,6 @@ subroutine GridDestroy(grid)
   call StructuredGridDestroy(grid%structured_grid)
                                            
   call ConnectionDestroyList(grid%internal_connection_list)
-  call ConnectionDestroyList(grid%boundary_connection_list)
 
 end subroutine GridDestroy
   
