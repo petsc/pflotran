@@ -359,6 +359,7 @@ contains
 
     perm2 = perm_xx_loc_p(m2)*abs(cur_connection_object%dist(1,iconn))+ &
             perm_yy_loc_p(m2)*abs(cur_connection_object%dist(2,iconn))+ &
+            perm_zz_loc_p(m2)*abs(cur_connection_object%dist(3,iconn))
     
     dd = dd1 + dd2
     f1 = dd1/dd
@@ -704,107 +705,107 @@ contains
   do
     if(.not. associated(source_sink)) exit
 
-    do nr = 1, grid%nblksrc
+#if 0      
+    kk1 = grid%k1src(nr) - grid%nzs
+    kk2 = grid%k2src(nr) - grid%nzs
+    jj1 = grid%j1src(nr) - grid%nys
+    jj2 = grid%j2src(nr) - grid%nys
+    ii1 = grid%i1src(nr) - grid%nxs
+    ii2 = grid%i2src(nr) - grid%nxs
         
-      kk1 = grid%k1src(nr) - grid%nzs
-      kk2 = grid%k2src(nr) - grid%nzs
-      jj1 = grid%j1src(nr) - grid%nys
-      jj2 = grid%j2src(nr) - grid%nys
-      ii1 = grid%i1src(nr) - grid%nxs
-      ii2 = grid%i2src(nr) - grid%nxs
-          
-      kk1 = max(1,kk1)
-      kk2 = min(grid%nlz,kk2)
-      jj1 = max(1,jj1)
-      jj2 = min(grid%nly,jj2)
-      ii1 = max(1,ii1)
-      ii2 = min(grid%nlx,ii2)
-          
-      if (ii1 > ii2 .or. jj1 > jj2 .or. kk1 > kk2) cycle
+    kk1 = max(1,kk1)
+    kk2 = min(grid%nlz,kk2)
+    jj1 = max(1,jj1)
+    jj2 = min(grid%nly,jj2)
+    ii1 = max(1,ii1)
+    ii2 = min(grid%nlx,ii2)
         
-      do i = 2, grid%ntimsrc
-        if (grid%timesrc(i,nr) == grid%t) then
-          tsrc1 = grid%tempsrc(i,nr)
-          qsrc1 = grid%qsrc(i,nr)
-          csrc1 = grid%csrc(i,nr)
-          hsrc1 = grid%hsrc(i,nr)
-          goto 10
-        else if (grid%timesrc(i,nr) > grid%t) then
-          ff = grid%timesrc(i,nr)-grid%timesrc(i-1,nr)
-          f1 = (grid%t - grid%timesrc(i-1,nr))/ff
-          f2 = (grid%timesrc(i,nr)-grid%t)/ff
-          tsrc1 = f1*grid%tempsrc(i,nr) + f2*grid%tempsrc(i-1,nr)
-          qsrc1 = f1*grid%qsrc(i,nr) + f2*grid%qsrc(i-1,nr)
-          csrc1 = f1*grid%csrc(i,nr) + f2*grid%csrc(i-1,nr)
-          hsrc1 = f1*grid%hsrc(i,nr) + f2*grid%hsrc(i-1,nr)
-          goto 10
-        endif
-      enddo
-   10 continue
+    if (ii1 > ii2 .or. jj1 > jj2 .or. kk1 > kk2) cycle
       
-  !   print *,'pflowTHC: ', grid%myrank,i,grid%timesrc(i,nr), &
-  !   grid%timesrc(i-1,nr),grid%t,f1,f2,ff,qsrc1,csrc1
-
-     
-      qsrc1 = qsrc1 / option%fmwh2o
-
-    if(dabs(hsrc1)>1D-20)then 
-         do kk = kk1, kk2
-          do jj = jj1, jj2
-            do ii = ii1, ii2
-              n = ii+(jj-1)*grid%nlx+(kk-1)*grid%nlxy
-               p1 = 1+(n-1)*option%ndof
-                t1 = p1 + 1
-               r_p(t1) = r_p(t1) - hsrc1    
-             enddo
-            enddo
-         enddo
-    endif         
-
-      if (qsrc1 > 0.d0) then ! injection
-        do kk = kk1, kk2
-          do jj = jj1, jj2
-            do ii = ii1, ii2
-                n = ii+(jj-1)*grid%nlx+(kk-1)*grid%nlxy
-                ng = grid%nL2G(n)
-                p1 = 1+(n-1)*option%ndof
-                t1 = p1 + 1
-                c1 = t1 + 1
-                call wateos_noderiv(tsrc1,PPRESSURE_LOC(option%jh2o,ng), &
-                dw_kg,dw_mol,enth_src,option%scale,ierr)
-                qqsrc = qsrc1/dw_mol
-              
-                r_p(p1) = r_p(p1) - qsrc1
-                r_p(t1) = r_p(t1) - qsrc1*enth_src
-                r_p(c1) = r_p(c1) - qqsrc*csrc1
-
-  !             print *,'pflowTHC: ',nr,n,ng,qsrc1,dw_mol*option%fmwh2o, &
-  !             qqsrc,csrc1,r_p(c1)
-            enddo
-          enddo
-        enddo
-          
-      else if (qsrc1 < 0.d0) then ! withdrawal
-        
-        do kk = kk1, kk2
-          do jj = jj1, jj2
-            do ii = ii1, ii2
-                n = ii+(jj-1)*grid%nlx+(kk-1)*grid%nlxy
-                ng = grid%nL2G(n)
-                p1 = 1+(n-1)*option%ndof
-                t1 = p1 + 1
-                c1 = t1 + 1
-                qqsrc = qsrc1/ddensity_loc_p(ng)
-                enth_src = hh_loc_p(ng)
-                  
-                r_p(p1) = r_p(p1) - qsrc1
-                r_p(t1) = r_p(t1) - qsrc1*enth_src
-                r_p(c1) = r_p(c1) - qqsrc*CCONC_LOC(ng)
-            enddo
-          enddo
-        enddo
+    do i = 2, grid%ntimsrc
+      if (grid%timesrc(i,nr) == grid%t) then
+        tsrc1 = grid%tempsrc(i,nr)
+        qsrc1 = grid%qsrc(i,nr)
+        csrc1 = grid%csrc(i,nr)
+        hsrc1 = grid%hsrc(i,nr)
+        goto 10
+      else if (grid%timesrc(i,nr) > grid%t) then
+        ff = grid%timesrc(i,nr)-grid%timesrc(i-1,nr)
+        f1 = (grid%t - grid%timesrc(i-1,nr))/ff
+        f2 = (grid%timesrc(i,nr)-grid%t)/ff
+        tsrc1 = f1*grid%tempsrc(i,nr) + f2*grid%tempsrc(i-1,nr)
+        qsrc1 = f1*grid%qsrc(i,nr) + f2*grid%qsrc(i-1,nr)
+        csrc1 = f1*grid%csrc(i,nr) + f2*grid%csrc(i-1,nr)
+        hsrc1 = f1*grid%hsrc(i,nr) + f2*grid%hsrc(i-1,nr)
+        goto 10
       endif
     enddo
+ 10 continue
+    
+!   print *,'pflowTHC: ', grid%myrank,i,grid%timesrc(i,nr), &
+!   grid%timesrc(i-1,nr),grid%t,f1,f2,ff,qsrc1,csrc1
+
+#endif
+    qsrc1 = source_sink%condition%cur_value(RICHARDS_PRESSURE_DOF)
+    qsrc1 = qsrc1 / option%fmwh2o
+
+  if(dabs(hsrc1)>1D-20)then 
+       do kk = kk1, kk2
+        do jj = jj1, jj2
+          do ii = ii1, ii2
+            n = ii+(jj-1)*grid%nlx+(kk-1)*grid%nlxy
+             p1 = 1+(n-1)*option%ndof
+              t1 = p1 + 1
+             r_p(t1) = r_p(t1) - hsrc1    
+           enddo
+          enddo
+       enddo
+  endif         
+
+    if (qsrc1 > 0.d0) then ! injection
+      do kk = kk1, kk2
+        do jj = jj1, jj2
+          do ii = ii1, ii2
+              n = ii+(jj-1)*grid%nlx+(kk-1)*grid%nlxy
+              ng = grid%nL2G(n)
+              p1 = 1+(n-1)*option%ndof
+              t1 = p1 + 1
+              c1 = t1 + 1
+              call wateos_noderiv(tsrc1,PPRESSURE_LOC(option%jh2o,ng), &
+              dw_kg,dw_mol,enth_src,option%scale,ierr)
+              qqsrc = qsrc1/dw_mol
+            
+              r_p(p1) = r_p(p1) - qsrc1
+              r_p(t1) = r_p(t1) - qsrc1*enth_src
+              r_p(c1) = r_p(c1) - qqsrc*csrc1
+
+!             print *,'pflowTHC: ',nr,n,ng,qsrc1,dw_mol*option%fmwh2o, &
+!             qqsrc,csrc1,r_p(c1)
+          enddo
+        enddo
+      enddo
+        
+    else if (qsrc1 < 0.d0) then ! withdrawal
+      
+      do kk = kk1, kk2
+        do jj = jj1, jj2
+          do ii = ii1, ii2
+              n = ii+(jj-1)*grid%nlx+(kk-1)*grid%nlxy
+              ng = grid%nL2G(n)
+              p1 = 1+(n-1)*option%ndof
+              t1 = p1 + 1
+              c1 = t1 + 1
+              qqsrc = qsrc1/ddensity_loc_p(ng)
+              enth_src = hh_loc_p(ng)
+                
+              r_p(p1) = r_p(p1) - qsrc1
+              r_p(t1) = r_p(t1) - qsrc1*enth_src
+              r_p(c1) = r_p(c1) - qqsrc*CCONC_LOC(ng)
+          enddo
+        enddo
+      enddo
+    endif
+  enddo
  
     source_sink => source_sink%next
 
