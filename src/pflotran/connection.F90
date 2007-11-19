@@ -17,7 +17,7 @@ module Connection_module
                                       !   0 = magnitude of distance 
                                       !   1-3 = components of unit vector
     real*8, pointer :: area(:)        ! list of areas of faces normal to distance vectors
-    real*8, pointer :: velocity(:,:)  ! velocity scalars for each phase
+!    real*8, pointer :: velocity(:,:)  ! velocity scalars for each phase
     type(connection_type), pointer :: next
   end type connection_type
 
@@ -40,8 +40,7 @@ module Connection_module
 
   public :: ConnectionCreate, ConnectionAddToList, &
             ConnectionAllocateLists, &
-   !         ConnectionGetInternalConnList, ConnectionGetBoundaryConnList, &
-            ConnectionGetNumInternalConnect, ConnectionGetNumBoundaryConnect, &
+            ConnectionGetNumberInList, &
             ConnectionInitList, ConnectionDestroyList, ConnectionDestroy
   
 contains
@@ -73,28 +72,28 @@ function ConnectionCreate(num_connections,num_dof,connection_itype)
   nullify(connection%id_dn)
   nullify(connection%dist)
   nullify(connection%area)
-  nullify(connection%velocity)
+!  nullify(connection%velocity)
   select case(connection_itype)
     case(INTERNAL_CONNECTION_TYPE)
       allocate(connection%id_up(num_connections))
       allocate(connection%id_dn(num_connections))
       allocate(connection%dist(-1:3,num_connections))
       allocate(connection%area(num_connections))
-      allocate(connection%velocity(num_dof,num_connections))
+!      allocate(connection%velocity(num_dof,num_connections))
       connection%id_up = 0
       connection%id_dn = 0
       connection%dist = 0.d0
       connection%area = 0.d0
-      connection%velocity = 0.d0
+!      connection%velocity = 0.d0
     case(BOUNDARY_CONNECTION_TYPE)
       allocate(connection%id_dn(num_connections))
       allocate(connection%dist(-1:3,num_connections))
       allocate(connection%area(num_connections))
-      allocate(connection%velocity(num_dof,num_connections))
+!      allocate(connection%velocity(num_dof,num_connections))
       connection%id_dn = 0
       connection%dist = 0.d0
       connection%area = 0.d0
-      connection%velocity = 0.d0
+!      connection%velocity = 0.d0
     case(SRC_SINK_CONNECTION_TYPE)
       allocate(connection%id_dn(num_connections))
       connection%id_dn = 0
@@ -107,67 +106,30 @@ end function ConnectionCreate
 
 ! ************************************************************************** !
 !
-! ConnectionGetInternalConnList: Returns pointer to internal_connection_list
+! ConnectionGetNumberInList: Returns the number of connections in a list
 ! author: Glenn Hammond
-! date: 10/15/07
+! date: 11/19/07
 !
 ! ************************************************************************** !
-function ConnectionGetInternalConnList()
+function ConnectionGetNumberInList(list)
 
   implicit none
   
-  type(connection_list_type), pointer :: ConnectionGetInternalConnList
-  ConnectionGetInternalConnList => internal_connection_list
+  type(connection_list_type) :: list
 
-end function ConnectionGetInternalConnList
-
-! ************************************************************************** !
-!
-! ConnectionGetBoundaryConnList: Returns pointer to boundary_connection_list
-! author: Glenn Hammond
-! date: 10/15/07
-!
-! ************************************************************************** !
-function ConnectionGetBoundaryConnList()
-
-  implicit none
+  integer :: ConnectionGetNumberInList
+  type(connection_type), pointer :: cur_connection_set
   
-  type(connection_list_type), pointer :: ConnectionGetBoundaryConnList
-  ConnectionGetBoundaryConnList => boundary_connection_list
+  ConnectionGetNumberInList = 0
+  cur_connection_set => list%first
+  do
+    if (.not.associated(cur_connection_set)) exit
+    ConnectionGetNumberInList = ConnectionGetNumberInList + &
+                                cur_connection_set%num_connections
+    cur_connection_set => cur_connection_set%next
+  enddo
 
-end function ConnectionGetBoundaryConnList
-
-! ************************************************************************** !
-!
-! ConnectionGetNumBoundaryConnect: Returns pointer to boundary_connection_list
-! author: Glenn Hammond
-! date: 10/15/07
-!
-! ************************************************************************** !
-function ConnectionGetNumBoundaryConnect()
-
-  implicit none
-  
-  integer :: ConnectionGetNumBoundaryConnect
-  ConnectionGetNumBoundaryConnect = boundary_connection_list%first%num_connections
-
-end function ConnectionGetNumBoundaryConnect
-
-! ************************************************************************** !
-!
-! ConnectionGetNumInternalConnect: Returns pointer to internal_connection_list
-! author: Glenn Hammond
-! date: 10/15/07
-!
-! ************************************************************************** !
-function ConnectionGetNumInternalConnect()
-
-  implicit none
-  
-  integer :: ConnectionGetNumInternalConnect
-  ConnectionGetNumInternalConnect = internal_connection_list%first%num_connections
-
-end function ConnectionGetNumInternalConnect
+end function ConnectionGetNumberInList
 
 ! ************************************************************************** !
 !
@@ -282,8 +244,8 @@ subroutine ConnectionDestroy(connection)
   nullify(connection%dist)
   if (associated(connection%area)) deallocate(connection%area)
   nullify(connection%area)
-  if (associated(connection%velocity)) deallocate(connection%velocity)
-  nullify(connection%velocity)
+!  if (associated(connection%velocity)) deallocate(connection%velocity)
+!  nullify(connection%velocity)
   nullify(connection%next)
   
   deallocate(connection)

@@ -44,6 +44,8 @@ subroutine PflowInit(simulation,filename)
   use Material_module
   use Timestepper_module
   use Field_module
+  use Connection_module
+  use Coupler_module
 
   use span_wagner_module
   use MPHASE_module
@@ -377,11 +379,16 @@ subroutine PflowInit(simulation,filename)
   call assignInitialConditions(realization)
   call RealizationInitBoundConditions(realization)
 
+  allocate(realization%field%internal_velocities(option%nphase, &
+             ConnectionGetNumberInList(realization%grid%internal_connection_list)))
+  allocate(realization%field%boundary_velocities(option%nphase, &
+             CouplerGetNumConnectionsInList(realization%boundary_conditions)))           
+
   select case(option%imode)
     ! everything but RICHARDS_MODE for now
     case(MPH_MODE,COND_MODE,TWOPH_MODE,VADOSE_MODE,LIQUID_MODE,OWG_MODE, &
          FLASH_MODE,TH_MODE,THC_MODE)
-      temp_int = grid%internal_connection_list%first%num_connections
+      temp_int = ConnectionGetNumberInList(grid%internal_connection_list)
       allocate(field%vl_loc(temp_int))
       allocate(field%vvl_loc(temp_int))
       allocate(field%vg_loc(temp_int))

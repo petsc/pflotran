@@ -45,6 +45,9 @@ module Field_module
     
 !geh material id
     integer, pointer :: imat(:)
+    
+    real*8, pointer :: internal_velocities(:,:)
+    real*8, pointer :: boundary_velocities(:,:)
 
     real*8, pointer :: pressurebc(:,:)
       ! For a Dirichlet BC, pressurebc(j,ibc) gives the partial pressure 
@@ -363,6 +366,9 @@ function FieldCreate()
   nullify(field%rate)
   nullify(field%area_var)
   nullify(field%delx)
+  
+  nullify(field%internal_velocities)
+  nullify(field%boundary_velocities)
     
   FieldCreate => field
   

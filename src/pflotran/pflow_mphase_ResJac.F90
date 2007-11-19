@@ -115,6 +115,7 @@ subroutine pflow_mphase_setupini(realization)
   use Structured_Grid_module
   use Coupler_module
   use Condition_module
+  use Connection_module
   
   implicit none
   
@@ -135,7 +136,7 @@ subroutine pflow_mphase_setupini(realization)
   size_var_node = (option%ndof + 1) * size_var_use
   
   allocate(Resold_AR(grid%nlmax,option%ndof))
-  allocate(Resold_FL(grid%internal_connection_list%first%num_connections, &
+  allocate(Resold_FL(ConnectionGetNumberInList(grid%internal_connection_list), &
                      option%ndof))
   allocate(option%delx(option%ndof,grid%ngmax))
   option%delx=0.D0
@@ -874,7 +875,7 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
   
   type(coupler_type), pointer :: boundary_condition, source_sink
   type(connection_list_type), pointer :: connection_list
-  type(connection_type), pointer :: cur_connection_object
+  type(connection_type), pointer :: cur_connection_set
   logical :: enthalpy_flag
   integer :: iconn
   integer :: sum_connection
@@ -1353,12 +1354,12 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
 
   ! loop over internal connections
   connection_list => grid%internal_connection_list
-  cur_connection_object => connection_list%first
+  cur_connection_set => connection_list%first
   do 
-    if (.not.associated(cur_connection_object)) exit
-    do iconn = 1, cur_connection_object%num_connections
-      ghosted_id_up = cur_connection_object%id_up(iconn)
-      ghosted_id_dn = cur_connection_object%id_dn(iconn)
+    if (.not.associated(cur_connection_set)) exit
+    do iconn = 1, cur_connection_set%num_connections
+      ghosted_id_up = cur_connection_set%id_up(iconn)
+      ghosted_id_dn = cur_connection_set%id_dn(iconn)
 
       local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
       local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping   
@@ -1371,10 +1372,10 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
       p1 = 1 + (local_id_up-1)*option%ndof 
       p2 = 1 + (local_id_dn-1)*option%ndof
 
-      fraction_upwind = cur_connection_object%dist(-1,iconn)
-      distance = cur_connection_object%dist(0,iconn)
+      fraction_upwind = cur_connection_set%dist(-1,iconn)
+      distance = cur_connection_set%dist(0,iconn)
       ! The below assumes a unit gravity vector of [0,0,1]
-      distance_gravity = cur_connection_object%dist(3,iconn)*distance
+      distance_gravity = cur_connection_set%dist(3,iconn)*distance
       dd1 = distance*fraction_upwind
       dd2 = distance-dd1 ! should avoid truncation error
       ! upweight could be calculated as 1.d0-fraction_upwind
@@ -1383,13 +1384,13 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
       upweight = dd2/(dd1+dd2)
         
       ! for now, just assume diagonal tensor
-      perm1 = perm_xx_loc_p(ghosted_id_up)*abs(cur_connection_object%dist(1,iconn))+ &
-              perm_yy_loc_p(ghosted_id_up)*abs(cur_connection_object%dist(2,iconn))+ &
-              perm_zz_loc_p(ghosted_id_up)*abs(cur_connection_object%dist(3,iconn))
+      perm1 = perm_xx_loc_p(ghosted_id_up)*abs(cur_connection_set%dist(1,iconn))+ &
+              perm_yy_loc_p(ghosted_id_up)*abs(cur_connection_set%dist(2,iconn))+ &
+              perm_zz_loc_p(ghosted_id_up)*abs(cur_connection_set%dist(3,iconn))
 
-      perm2 = perm_xx_loc_p(ghosted_id_dn)*abs(cur_connection_object%dist(1,iconn))+ &
-              perm_yy_loc_p(ghosted_id_dn)*abs(cur_connection_object%dist(2,iconn))+ &
-              perm_zz_loc_p(ghosted_id_dn)*abs(cur_connection_object%dist(3,iconn))
+      perm2 = perm_xx_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(1,iconn))+ &
+              perm_yy_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(2,iconn))+ &
+              perm_zz_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(3,iconn))
 
       ithrm1 = ithrm_loc_p(ghosted_id_up)
       ithrm2 = ithrm_loc_p(ghosted_id_dn)
@@ -1399,7 +1400,7 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
       D1 = option%ckwet(ithrm1)
       D2 = option%ckwet(ithrm2)
 
-      call MPHASERes_FLCont(iconn,cur_connection_object%area(iconn), &
+      call MPHASERes_FLCont(iconn,cur_connection_set%area(iconn), &
                             var_loc_p((ghosted_id_up-1)*size_var_node+1: &
                                       (ghosted_id_up-1)*size_var_node+size_var_use),&
                             porosity_loc_p(ghosted_id_up),tor_loc_p(ghosted_id_up), &
@@ -1409,8 +1410,8 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
                             porosity_loc_p(ghosted_id_dn),tor_loc_p(ghosted_id_dn), &
                             option%sir(1:option%nphase,iicap2),dd2,perm2,D2,&
                             distance_gravity,upweight,option,vv_darcy,Res)
-      cur_connection_object%velocity(1,iconn) = vv_darcy(1) ! liquid
-      cur_connection_object%velocity(2,iconn) = vv_darcy(2) ! gas
+      field%internal_velocities(1,iconn) = vv_darcy(1) ! liquid
+      field%internal_velocities(2,iconn) = vv_darcy(2) ! gas
     
 !   do np = 1, option%nphase
 !     if(vv_darcy(np)>=0.D0) option%iupstream(nc,np) = 1
@@ -1420,11 +1421,11 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
       if (local_id_up > 0) then               ! If the upstream node is not a ghost node...
         do np =1, option%nphase 
           vl_p(np+(0)*option%nphase+3*option%nphase*(local_id_up-1)) = &
-                              vv_darcy(np)*cur_connection_object%dist(1,iconn) 
+                              vv_darcy(np)*cur_connection_set%dist(1,iconn) 
           vl_p(np+(1)*option%nphase+3*option%nphase*(local_id_up-1)) = &
-                              vv_darcy(np)*cur_connection_object%dist(2,iconn) 
+                              vv_darcy(np)*cur_connection_set%dist(2,iconn) 
           vl_p(np+(2)*option%nphase+3*option%nphase*(local_id_up-1)) = &
-                              vv_darcy(np)*cur_connection_object%dist(3,iconn) 
+                              vv_darcy(np)*cur_connection_set%dist(3,iconn) 
         enddo
       endif
      
@@ -1440,7 +1441,7 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
 
     enddo
   
-    cur_connection_object => cur_connection_object%next
+    cur_connection_set => cur_connection_set%next
 
   end do
 
@@ -1456,12 +1457,12 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
   do 
     if (.not.associated(boundary_condition)) exit
     
-    cur_connection_object => boundary_condition%connection
+    cur_connection_set => boundary_condition%connection
     
-    do iconn = 1, cur_connection_object%num_connections
+    do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
     
-      local_id = cur_connection_object%id_dn(iconn)
+      local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
 
       if (associated(field%imat)) then
@@ -1479,12 +1480,12 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
       D2 = option%ckwet(ithrm2)
 
       ! for now, just assume diagonal tensor
-      perm1 = perm_xx_loc_p(ghosted_id)*abs(cur_connection_object%dist(1,iconn))+ &
-              perm_yy_loc_p(ghosted_id)*abs(cur_connection_object%dist(2,iconn))+ &
-              perm_zz_loc_p(ghosted_id)*abs(cur_connection_object%dist(3,iconn))
+      perm1 = perm_xx_loc_p(ghosted_id)*abs(cur_connection_set%dist(1,iconn))+ &
+              perm_yy_loc_p(ghosted_id)*abs(cur_connection_set%dist(2,iconn))+ &
+              perm_zz_loc_p(ghosted_id)*abs(cur_connection_set%dist(3,iconn))
       ! The below assumes a unit gravity vector of [0,0,1]
-      distance_gravity = cur_connection_object%dist(3,iconn) * &
-                         cur_connection_object%dist(0,iconn)
+      distance_gravity = cur_connection_set%dist(3,iconn) * &
+                         cur_connection_set%dist(0,iconn)
 
       select case(boundary_condition%condition%itype(1))
           
@@ -1517,17 +1518,17 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
                                   option%m_nacl,ierr,field%xxphi_co2_bc(sum_connection),cw)
      
       call MPHASERes_FLBCCont(sum_connection,boundary_condition%condition%itype(1), &
-                              cur_connection_object%area(iconn), &
+                              cur_connection_set%area(iconn), &
                               field%varbc(1:size_var_use), &
                               var_loc_p((ghosted_id-1)*size_var_node+1: &
                                         (ghosted_id-1)*size_var_node+size_var_use), &
                               porosity_loc_p(ghosted_id),tor_loc_p(ghosted_id), &
                               option%sir(1:option%nphase,iicap), &
-                              cur_connection_object%dist(0,iconn),perm1,D2, &
+                              cur_connection_set%dist(0,iconn),perm1,D2, &
                               distance_gravity,option,field,vv_darcy,Res)
                               
-      cur_connection_object%velocity(1,iconn) = vv_darcy(1)  ! liquid
-      cur_connection_object%velocity(2,iconn) = vv_darcy(2)  ! gas
+      field%boundary_velocities(1,iconn) = vv_darcy(1)  ! liquid
+      field%boundary_velocities(2,iconn) = vv_darcy(2)  ! gas
 
       r_p(p1:p1-1+option%ndof)= r_p(p1:p1-1+option%ndof) - Res(1:option%ndof)
       ResOld_AR(local_id,1:option%ndof) = ResOld_AR(local_id,1:option%ndof) - Res(1:option%ndof)
@@ -1684,7 +1685,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
   
   type(coupler_type), pointer :: boundary_condition, source_sink
   type(connection_list_type), pointer :: connection_list
-  type(connection_type), pointer :: cur_connection_object
+  type(connection_type), pointer :: cur_connection_set
   logical :: enthalpy_flag
   integer :: iconn
   integer :: sum_connection  
@@ -1887,12 +1888,12 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
   do 
     if (.not.associated(boundary_condition)) exit
     
-    cur_connection_object => boundary_condition%connection
+    cur_connection_set => boundary_condition%connection
 
-    do iconn = 1, cur_connection_object%num_connections
+    do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
     
-      local_id = cur_connection_object%id_dn(iconn)
+      local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
 
       if (associated(field%imat)) then
@@ -1910,12 +1911,12 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
       D2 = option%ckwet(ithrm2)
 
       ! for now, just assume diagonal tensor
-      perm1 = perm_xx_loc_p(ghosted_id)*abs(cur_connection_object%dist(1,iconn))+ &
-              perm_yy_loc_p(ghosted_id)*abs(cur_connection_object%dist(2,iconn))+ &
-              perm_zz_loc_p(ghosted_id)*abs(cur_connection_object%dist(3,iconn))
+      perm1 = perm_xx_loc_p(ghosted_id)*abs(cur_connection_set%dist(1,iconn))+ &
+              perm_yy_loc_p(ghosted_id)*abs(cur_connection_set%dist(2,iconn))+ &
+              perm_zz_loc_p(ghosted_id)*abs(cur_connection_set%dist(3,iconn))
       ! The below assumes a unit gravity vector of [0,0,1]
-      distance_gravity = cur_connection_object%dist(3,iconn) * &
-                         cur_connection_object%dist(0,iconn)
+      distance_gravity = cur_connection_set%dist(3,iconn) * &
+                         cur_connection_set%dist(0,iconn)
        
       delxbc=0.D0
       select case(boundary_condition%condition%itype(1))
@@ -1983,7 +1984,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
       do nvar=1,option%ndof
    
         call MPHASERes_FLBCCont(sum_connection,boundary_condition%condition%itype(1), &
-                                cur_connection_object%area(iconn), &
+                                cur_connection_set%area(iconn), &
                                 field%varbc(nvar*size_var_use+1: &
                                            (nvar+1)*size_var_use), &
                                 var_loc_p((ghosted_id-1)*size_var_node+ &
@@ -1992,7 +1993,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
                                              nvar*size_var_use+size_var_use), &
                                 porosity_loc_p(ghosted_id),tor_loc_p(ghosted_id), &
                                 option%sir(1:option%nphase,iicap), &
-                                cur_connection_object%dist(0,iconn),&
+                                cur_connection_set%dist(0,iconn),&
                                 perm1,D2,distance_gravity,option,field,vv_darcy,Res)
 
     
@@ -2078,15 +2079,15 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
   ResInc=0.D0
  
   connection_list => grid%internal_connection_list
-  cur_connection_object => connection_list%first
+  cur_connection_set => connection_list%first
   sum_connection = 0    
   do 
-    if (.not.associated(cur_connection_object)) exit
-    do iconn = 1, cur_connection_object%num_connections
+    if (.not.associated(cur_connection_set)) exit
+    do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
     
-      ghosted_id_up = cur_connection_object%id_up(iconn)
-      ghosted_id_dn = cur_connection_object%id_dn(iconn)
+      ghosted_id_up = cur_connection_set%id_up(iconn)
+      ghosted_id_dn = cur_connection_set%id_dn(iconn)
 
       if (associated(field%imat)) then
         if (field%imat(ghosted_id_up) <= 0 .or. field%imat(ghosted_id_dn) <= 0) cycle
@@ -2098,10 +2099,10 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
       natural_id_dn = grid%nG2N(ghosted_id_dn)
       p2 =  (ghosted_id_dn-1)*option%ndof
    
-      fraction_upwind = cur_connection_object%dist(-1,iconn)
-      distance = cur_connection_object%dist(0,iconn)
+      fraction_upwind = cur_connection_set%dist(-1,iconn)
+      distance = cur_connection_set%dist(0,iconn)
       ! The below assumes a unit gravity vector of [0,0,1]
-      distance_gravity = cur_connection_object%dist(3,iconn)*distance
+      distance_gravity = cur_connection_set%dist(3,iconn)*distance
       dd1 = distance*fraction_upwind
       dd2 = distance-dd1 ! should avoid truncation error
       ! upweight could be calculated as 1.d0-fraction_upwind
@@ -2110,13 +2111,13 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
       upweight = dd2/(dd1+dd2)
     
       ! for now, just assume diagonal tensor
-      perm1 = perm_xx_loc_p(ghosted_id_up)*abs(cur_connection_object%dist(1,iconn))+ &
-              perm_yy_loc_p(ghosted_id_up)*abs(cur_connection_object%dist(2,iconn))+ &
-              perm_zz_loc_p(ghosted_id_up)*abs(cur_connection_object%dist(3,iconn))
+      perm1 = perm_xx_loc_p(ghosted_id_up)*abs(cur_connection_set%dist(1,iconn))+ &
+              perm_yy_loc_p(ghosted_id_up)*abs(cur_connection_set%dist(2,iconn))+ &
+              perm_zz_loc_p(ghosted_id_up)*abs(cur_connection_set%dist(3,iconn))
 
-      perm2 = perm_xx_loc_p(ghosted_id_dn)*abs(cur_connection_object%dist(1,iconn))+ &
-              perm_yy_loc_p(ghosted_id_dn)*abs(cur_connection_object%dist(2,iconn))+ &
-              perm_zz_loc_p(ghosted_id_dn)*abs(cur_connection_object%dist(3,iconn))
+      perm2 = perm_xx_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(1,iconn))+ &
+              perm_yy_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(2,iconn))+ &
+              perm_zz_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(3,iconn))
     
       iiphas1 = iphase_loc_p(ghosted_id_up)
       iiphas2 = iphase_loc_p(ghosted_id_dn)
@@ -2132,7 +2133,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
   ! do neq = 1, option%ndof
       do nvar = 1, option%ndof
     
-        call MPHASERes_FLCont(sum_connection,cur_connection_object%area(iconn), &
+        call MPHASERes_FLCont(sum_connection,cur_connection_set%area(iconn), &
                               var_loc_p((ghosted_id_up-1)*size_var_node+ &
                                           nvar*size_var_use+1: &
                                         (ghosted_id_up-1)*size_var_node+ &
@@ -2154,7 +2155,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
 !     if(vv_darcy(2)<0.D0 .and. option%iupstream(sum_connection,2) == 1 ) i_upstream_revert =2
   
        
-        call MPHASERes_FLCont(sum_connection,cur_connection_object%area(iconn), &
+        call MPHASERes_FLCont(sum_connection,cur_connection_set%area(iconn), &
                               var_loc_p((ghosted_id_up-1)*size_var_node+1: &
                                         (ghosted_id_up-1)*size_var_node+size_var_use), &
                               porosity_loc_p(ghosted_id_up),tor_loc_p(ghosted_id_up), &
@@ -2257,7 +2258,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
 !print *,'accum r',ra(1:5,1:8)   
  !print *,'devq:',nc,q,dphi,devq(3,:)
     enddo
-    cur_connection_object => cur_connection_object%next
+    cur_connection_set => cur_connection_set%next
   enddo
  
 
@@ -2444,7 +2445,7 @@ subroutine pflow_update_mphase(realization)
   integer :: local_id, ghosted_id     
 
   type(coupler_type), pointer :: boundary_condition
-  type(connection_type), pointer :: cur_connection_object
+  type(connection_type), pointer :: cur_connection_set
   integer :: iconn
   integer :: sum_connection  
   type(grid_type), pointer :: grid
@@ -2496,12 +2497,12 @@ subroutine pflow_update_mphase(realization)
     do 
       if (.not.associated(boundary_condition)) exit
     
-      cur_connection_object => boundary_condition%connection
+      cur_connection_set => boundary_condition%connection
 
-      do iconn = 1, cur_connection_object%num_connections
+      do iconn = 1, cur_connection_set%num_connections
         sum_connection = sum_connection + 1
 
-        local_id = cur_connection_object%id_dn(iconn)
+        local_id = cur_connection_set%id_dn(iconn)
         ghosted_id = grid%nL2G(local_id)
 
         if (associated(field%imat)) then
@@ -2607,7 +2608,7 @@ subroutine pflow_mphase_initadj(realization)
 
 
   type(coupler_type), pointer :: boundary_condition
-  type(connection_type), pointer :: cur_connection_object
+  type(connection_type), pointer :: cur_connection_set
   integer :: iconn
   integer :: sum_connection
   type(grid_type), pointer :: grid
@@ -2656,15 +2657,15 @@ subroutine pflow_mphase_initadj(realization)
   enddo
 
 
-  boundary_condition => realization%boundary_conditions%first
-  num_connection = 0
-  do 
-    if (.not.associated(boundary_condition)) exit    
-    num_connection = num_connection + boundary_condition%connection%num_connections
-    boundary_condition => boundary_condition%next
-  enddo
-
 ! implemented in richards, but not here????
+!  boundary_condition => realization%boundary_conditions%first
+!  num_connection = 0
+!  do 
+!    if (.not.associated(boundary_condition)) exit    
+!    num_connection = num_connection + boundary_condition%connection%num_connections
+!    boundary_condition => boundary_condition%next
+!  enddo
+
 !  allocate(yybc(option%ndof,num_connection))
 !  allocate(vel_bc(option%nphase,num_connection))
 !  yybc =field%xxbc
@@ -2675,12 +2676,12 @@ subroutine pflow_mphase_initadj(realization)
   do 
     if (.not.associated(boundary_condition)) exit
     
-    cur_connection_object => boundary_condition%connection
+    cur_connection_set => boundary_condition%connection
     
-    do iconn = 1, cur_connection_object%num_connections
+    do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
       
-      local_id = cur_connection_object%id_dn(iconn)
+      local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
   
       if (associated(field%imat)) then

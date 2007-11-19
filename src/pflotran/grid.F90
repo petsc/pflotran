@@ -51,8 +51,7 @@ module Grid_module
     type(structured_grid_type), pointer :: structured_grid
     type(unstructured_grid_type), pointer :: unstructured_grid
     
-    type(connection_list_type), pointer :: internal_connection_list, &
-                                           boundary_connection_list
+    type(connection_list_type), pointer :: internal_connection_list
 
   end type grid_type
 
@@ -137,7 +136,6 @@ subroutine initGrid(grid)
   nullify(grid%unstructured_grid)
 
   nullify(grid%internal_connection_list)
-  nullify(grid%boundary_connection_list)
 
   nullify(grid%nL2G)
   nullify(grid%nG2L)
@@ -709,7 +707,6 @@ subroutine GridDestroy(grid)
   call StructuredGridDestroy(grid%structured_grid)
                                            
   call ConnectionDestroyList(grid%internal_connection_list)
-  call ConnectionDestroyList(grid%boundary_connection_list)
 
 end subroutine GridDestroy
   

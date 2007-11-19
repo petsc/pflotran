@@ -1820,7 +1820,7 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
   
   type(coupler_type), pointer :: boundary_condition
   type(connection_list_type), pointer :: connection_list
-  type(connection_type), pointer :: cur_connection_object
+  type(connection_type), pointer :: cur_connection_set
   
   grid => realization%grid
   option => realization%option
@@ -1851,10 +1851,10 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
   boundary_condition => realization%boundary_conditions%first
   do
     if (.not.associated(boundary_condition)) exit
-    cur_connection_object => boundary_condition%connection
-    do iconn = 1, cur_connection_object%num_connections
-      if (cur_connection_object%dist(direction,iconn) < 0.99d0) cycle
-      local_id = cur_connection_object%id_dn(iconn)
+    cur_connection_set => boundary_condition%connection
+    do iconn = 1, cur_connection_set%num_connections
+      if (cur_connection_set%dist(direction,iconn) < 0.99d0) cycle
+      local_id = cur_connection_set%id_dn(iconn)
       if (iphase == LIQUID_PHASE) then
         vec_ptr(local_id) = vec_ptr(local_id) + field%vvlbc(iconn)
       else

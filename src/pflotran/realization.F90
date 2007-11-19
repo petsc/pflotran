@@ -209,6 +209,8 @@ end subroutine RealizationProcessCouplers
 ! ************************************************************************** !
 subroutine RealizationInitBoundConditions(realization)
 
+  use Connection_module
+  
   implicit none
   
   type(realization_type) :: realization
