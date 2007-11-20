@@ -627,7 +627,7 @@ subroutine ConditionUpdate(condition_list,option,time)
       select case(condition%interpolation_method)
         case(STEP) ! just use the current value
           do idof=1,condition%num_dof
-            condition%cur_value =  &
+            condition%cur_value(idof) =  &
                                condition%values(idof,condition%cur_time_index) 
           enddo 
         case(LINEAR) ! interpolate the value between times

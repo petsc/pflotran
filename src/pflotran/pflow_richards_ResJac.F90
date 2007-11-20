@@ -1311,7 +1311,7 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
   if (option%rk > 0.d0) then
     call VecRestoreArrayF90(field%phis,phis_p,ierr)
   endif
-#define DEBUG_GEH
+!#define DEBUG_GEH
 !#define DEBUG_GEH_ALL
 #ifdef DEBUG_GEH 
  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'residual.out',viewer,ierr)

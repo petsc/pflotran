@@ -374,6 +374,7 @@ subroutine PflowInit(simulation,filename)
 
   ! connectivity between boundary conditions, srcs/sinks, etc and grid
   call GridComputeCouplerConnections(grid,option,realization%boundary_conditions%first)
+  call GridComputeCouplerConnections(grid,option,realization%source_sinks%first)
                                 
   call assignMaterialPropToRegions(realization)
   call assignInitialConditions(realization)
