@@ -544,7 +544,7 @@ subroutine MPHASERes_FLCont(nconn_no,area, &
 end subroutine MPHASERes_FLCont
 
 
-subroutine MPHASERes_FLBCCont(nbc_no,ibndtype,area, &
+subroutine MPHASERes_FLBCCont(ibndtype,area,aux_vars, &
             var_node1,var_node2,por2,tor2,sir2,dd1,perm2,Dk2,dist_gravity,&
             option,field,vv_darcy,Res_FL)
 
@@ -553,9 +553,12 @@ subroutine MPHASERes_FLBCCont(nbc_no,ibndtype,area, &
   
   implicit none
   
-  integer nbc_no, ibndtype
+#include "definitions.h"
+  
+  integer ibndtype(:)
   type(option_type) :: option
   type(field_type) :: field
+  real*8 :: aux_vars(:)
   real*8 :: dd1, sir2(1:option%nphase)
   real*8, target :: var_node1(1:2+7*option%nphase+2*option%nphase*option%nspec)
   real*8, target :: var_node2(1:2+7*option%nphase+2*option%nphase*option%nspec)
@@ -573,11 +576,12 @@ subroutine MPHASERes_FLBCCont(nbc_no,ibndtype,area, &
   real*8, pointer :: sat2(:), density2(:), amw2(:), h2(:), u2(:), pc2(:), kvr2(:)         ! nphase dof
   real*8, pointer :: xmol2(:), diff2(:)    
   
-  integer :: ibase, m,np, ind, ibc,j
-  real*8 :: fluxm(option%nspec),fluxe, v_darcy,q
-  real*8 :: uh,uxmol(1:option%nspec), ukvr,diff,diffdp, DK,Dq
-  real*8 :: upweight,density_ave,cond,gravity, dphi
+  integer ibase,offset,iphase,idof,ispec,index
+  real*8 :: fluxm(option%nspec),fluxe,q(option%nphase)
+  real*8 :: uh(option%nphase),uxmol(option%nspec), ukvr,diff,diffdp, DK,Dq
+  real*8 :: upweight,density_ave(option%nphase),cond,gravity, dphi
 
+  real*8 :: v_darcy
   
   ibase=1;                 temp1=>var_node1(ibase)
                            temp2=>var_node2(ibase)
@@ -607,50 +611,175 @@ subroutine MPHASERes_FLBCCont(nbc_no,ibndtype,area, &
   fluxm=0.D0
   fluxe=0.D0
   vv_darcy=0.D0 
-   
-  select case (ibndtype)
+
+#if 0   
+  select case(ibndtype(MPH_PRESSURE_DOF))
+    ! figure out the direction of flow
+    case(DIRICHLET_BC,HYDROSTATIC_BC)
+      Dq = perm2 / dd1
+      diffdp = por2*tor2/dd1*area
+        ! Flow term
+      do iphase=1,option%nphase
+        if ((sat1(iphase) > sir2(iphase)) .or. (sat2(iphase) > sir2(iphase))) then
+          upweight=1.D0
+          if (sat1(iphase) <eps) then 
+            upweight=0.d0
+          else if (sat2(iphase) <eps) then 
+            upweight=1.d0
+          endif
+          density_ave = upweight*density1(iphase)+(1.D0-upweight)*density2(iphase)  
+
+          gravity = (upweight*density1(iphase)*amw1(iphase) + &
+                    (1.D0-upweight)*density2(iphase)*amw2(iphase)) &
+                    * option%gravity * dist_gravity
+          dphi = pre_ref1- pre_ref2 + gravity
+          
+          if (dphi>=0.D0) then
+            ukvr = kvr1(iphase)
+          else
+            ukvr = kvr2(iphase)
+          endif      
+     
+          if (ukvr*Dq>floweps) then
+            vv_darcy(iphase) = Dq * ukvr * dphi
+          endif
+        endif
+      enddo
+    case(NEUMANN_BC)
+      do iphase=1,option%nphase
+        if (dabs(aux_vars((iphase-1)*option%ndof+MPH_PRESSURE_DOF))>floweps) then
+          vv_darcy(iphase) = aux_vars((iphase-1)*option%ndof+MPH_PRESSURE_DOF)
+          if (vv_darcy(iphase) > 0.d0) then
+            density_ave(iphase) = density1(iphase)
+          else
+            density_ave(iphase) = density2(iphase)
+          endif
+        endif
+      enddo
+  end select
+       
+  ! finish off MPH_PRESSURE_DOF    
+  do iphase=1,option%nphase   
+    offset = (iphase-1)*option%nspec
+    if (dabs(vv_darcy(iphase)) > 0.d0) then
+      if (vv_darcy(iphase) > 0.d0) then 
+        uh(iphase) = h1(iphase)
+        uxmol(:)=xmol1(offset+1:offset+option%nspec)
+      else
+        uh(iphase) = h2(iphase)
+        uxmol(:)=xmol2(offset+1:offset+option%nspec)
+      endif
+      q(iphase) = vv_darcy(iphase)*density_ave(iphase)*area
+      fluxm(MPH_PRESSURE_DOF) = fluxm(MPH_PRESSURE_DOF)+q(iphase)*uxmol(MPH_PRESSURE_DOF)
+    else
+      q(iphase) = 0.d0
+    endif
+    if (ibndtype(MPH_PRESSURE_DOF) /= NEUMANN_BC) then
+      if ((sat1(iphase) > eps) .and. (sat2(iphase) > eps)) then
+        diff = diffdp * 0.25D0*(sat1(iphase)+sat2(iphase))*(density1(iphase)+density2(iphase))
+        ! only MPH_PRESSURE_DOF, not concentrations
+        fluxm(offset+MPH_PRESSURE_DOF) = fluxm(offset+MPH_PRESSURE_DOF) + &
+          diff * diff2(offset+MPH_PRESSURE_DOF)* &
+          (xmol1(offset+MPH_PRESSURE_DOF)-xmol2(offset+MPH_PRESSURE_DOF))
+      endif
+    endif
+  enddo
   
-    case(1)
+  select case(ibndtype(MPH_TEMPERATURE_DOF))
+    case(DIRICHLET_BC,HYDROSTATIC_BC)
+      do iphase=1,option%nphase
+        fluxe = fluxe + q(iphase)*uh(iphase)
+      enddo
+      Dk =  Dk2 / dd1
+      cond = Dk*area*(temp1-temp2) 
+      fluxe=fluxe + cond
+    case(NEUMANN_BC)
+      call printErrMsg(option,"Temperature Neumann BC not yet supported for Richards")
+! should be something of the sort:    
+      do iphase=1,option%nphase
+!        fluxe = fluxe + aux_vars((iphase-1)*option%ndof+MPH_TEMPERATURE_DOF)*area
+      enddo
+  end select
+
+  select case(ibndtype(MPH_CONCENTRATION_DOF))
+    case(DIRICHLET_BC,HYDROSTATIC_BC)
+      do iphase=1,option%nphase
+        ! skip 1st spec = MPH_PRESSURE_DOF
+        do ispec=MPH_PRESSURE_DOF+1,option%nspec 
+          fluxm(ispec) = fluxm(ispec) + q(iphase)*uxmol(ispec)
+        enddo
+! Diffusion term   
+! Note : average rule may not be correct  
+        if ((sat1(iphase) > eps) .and. (sat2(iphase) > eps)) then
+          offset = (iphase-1)*option%nspec
+          diff = diffdp * 0.25D0*(sat1(iphase)+sat2(iphase))*(density1(iphase)+density2(iphase))
+          ! skip 1st spec = MPH_PRESSURE_DOF
+          do ispec = MPH_PRESSURE_DOF+1,option%nspec
+            index = offset+ispec
+            fluxm(ispec) = fluxm(ispec) + diff * diff2(index)*( xmol1(index)-xmol2(index))
+          enddo    
+        endif
+      enddo
+    case(NEUMANN_BC)
+      call printErrMsg(option,"Solute Neumann BC not yet supported for Richards")
+      do iphase=1,option%nphase
+        offset = (iphase-1)*option%ndof
+        ! skip 1st spec = MPH_PRESSURE_DOF
+        do ispec=MPH_PRESSURE_DOF+1,option%nspec 
+          idof = ispec+1 ! need to skip temperature, thus +1
+          fluxm(ispec) = fluxm(ispec) + aux_vars(offset+idof)*area 
+        enddo
+      enddo
+  end select
+
+  Res_FL(1:option%nspec)=fluxm(:)* option%dt
+  Res_FL(option%ndof)=fluxe * option%dt
+
+#endif
+ 
+  select case (ibndtype(MPH_PRESSURE_DOF))
+  
+    case(DIRICHLET_BC,HYDROSTATIC_BC)
     
       Dq= perm2 / dd1
       diffdp = por2*tor2/dd1*area
     ! Flow term
-      do np =1,option%nphase
-        if ((sat1(np) > sir2(np)) .or. (sat2(np) > sir2(np)))then
+      do iphase =1,option%nphase
+        if ((sat1(iphase) > sir2(iphase)) .or. (sat2(iphase) > sir2(iphase)))then
     
           upweight=1.D0
-          if(sat1(np) <eps) then 
+          if(sat1(iphase) <eps) then 
             upweight=0.d0
-          else if(sat2(np) <eps) then 
+          else if(sat2(iphase) <eps) then 
             upweight=1.d0
           endif
-          density_ave = upweight*density1(np)+(1.D0-upweight)*density2(np)  
+          density_ave(iphase) = upweight*density1(iphase)+(1.D0-upweight)*density2(iphase)  
       
-          gravity = (upweight*density1(np)*amw1(np) + &
-          (1.D0-upweight)*density2(np)*amw2(np)) &
+          gravity = (upweight*density1(iphase)*amw1(iphase) + &
+          (1.D0-upweight)*density2(iphase)*amw2(iphase)) &
           * option%gravity * dist_gravity
           
-          dphi = pre_ref1-pc1(np) - pre_ref2 + pc2(np) + gravity
+          dphi = pre_ref1-pc1(iphase) - pre_ref2 + pc2(iphase) + gravity
     
 !         if(option%iupstream(0,1) ==0)then
             if(dphi>=0.D0)then
-              ukvr=kvr1(np)
-              uh=h1(np)
-              uxmol(1:option%nspec)=xmol1((np-1)*option%nspec+1 : np*option%nspec)
+              ukvr=kvr1(iphase)
+              uh=h1(iphase)
+              uxmol(1:option%nspec)=xmol1((iphase-1)*option%nspec+1 : iphase*option%nspec)
            else
-              ukvr=kvr2(np)
-              uh=h2(np)
-              uxmol(1:option%nspec)=xmol2((np-1)*option%nspec+1 : np*option%nspec)
+              ukvr=kvr2(iphase)
+              uh=h2(iphase)
+              uxmol(1:option%nspec)=xmol2((iphase-1)*option%nspec+1 : iphase*option%nspec)
             endif      
 !         else
-!          if(option%iupstreambc(nbc_no, np) >=0 )then
-!             ukvr=kvr1(np)
-!             uh=h1(np)
-!             uxmol(1:option%nspec)=xmol1((np-1)*option%nspec+1 : np*option%nspec)
+!          if(option%iupstreambc(nbc_no, iphase) >=0 )then
+!             ukvr=kvr1(iphase)
+!             uh=h1(iphase)
+!             uxmol(1:option%nspec)=xmol1((iphase-1)*option%nspec+1 : iphase*option%nspec)
 !           else
-!             ukvr=kvr2(np)
-!             uh=h2(np)
-!             uxmol(1:option%nspec)=xmol2((np-1)*option%nspec+1 : np*option%nspec)
+!             ukvr=kvr2(iphase)
+!             uh=h2(iphase)
+!             uxmol(1:option%nspec)=xmol2((iphase-1)*option%nspec+1 : iphase*option%nspec)
 !           endif      
 !         endif  
 
@@ -658,25 +787,25 @@ subroutine MPHASERes_FLBCCont(nbc_no,ibndtype,area, &
           if(ukvr>floweps)then
             v_darcy= Dq * ukvr * dphi
             !option%vvl_loc(nbc_no) = v_darcy
-            vv_darcy(np)=v_darcy
+            vv_darcy(iphase)=v_darcy
      
-            q=v_darcy * area
+            q(iphase)=v_darcy * area
           
-            do m=1, option%nspec 
-              fluxm(m)=fluxm(m) + q*density_ave*uxmol(m)
+            do idof=1, option%nspec 
+              fluxm(idof)=fluxm(idof) + q(iphase)*density_ave(iphase)*uxmol(idof)
             enddo
-            fluxe = fluxe + q*density_ave*uh 
+            fluxe = fluxe + q(iphase)*density_ave(iphase)*uh(iphase)
           endif
         endif
         
 !       Diffusion term   
 !       Note : average rule may not be correct  
-        if ((sat1(np) > eps) .and. (sat2(np) > eps))then
-          diff =diffdp * 0.25D0*(sat1(np)+sat2(np))*(density1(np)+density2(np))
-          do m = 1, option%nspec
-            ind=m+(np-1)*option%nspec
-            fluxm(m) = fluxm(m) + diff * diff2(ind)&
-            *( xmol1(ind)-xmol2(ind))
+        if ((sat1(iphase) > eps) .and. (sat2(iphase) > eps))then
+          diff =diffdp * 0.25D0*(sat1(iphase)+sat2(iphase))*(density1(iphase)+density2(iphase))
+          do idof = 1, option%nspec
+            offset=idof+(iphase-1)*option%nspec
+            fluxm(idof) = fluxm(idof) + diff * diff2(offset)&
+            *( xmol1(offset)-xmol2(offset))
           enddo  
         endif
       enddo
@@ -690,31 +819,31 @@ subroutine MPHASERes_FLBCCont(nbc_no,ibndtype,area, &
       Res_FL(1:option%nspec)=fluxm(:)* option%dt
       Res_FL(option%ndof)=fluxe * option%dt
 
-    case(2)
+    case(NEUMANN_BC)
     
-      if((dabs(field%velocitybc(1,nbc_no))+ &
-      dabs(field%velocitybc(2,nbc_no)))>floweps)then
+      if((dabs(aux_vars(MPH_PRESSURE_DOF))+ &
+      dabs(aux_vars(option%nphase+MPH_PRESSURE_DOF)))>floweps)then
 !       print *, 'FlowBC :',nbc_no,field%velocitybc(1,nbc_no),field%velocitybc(2,nbc_no)
-        do j=1,option%nphase
+        do iphase=1,option%nphase
  !        fluxm=0.D0; fluxe=0.D0
-          v_darcy = field%velocitybc(j,nbc_no)
-          vv_darcy(j) = field%velocitybc(j,nbc_no)
+          v_darcy = aux_vars((iphase-1)*option%nphase+MPH_PRESSURE_DOF)
+          vv_darcy(iphase) = aux_vars((iphase-1)*option%nphase+MPH_PRESSURE_DOF)
 !         option%vvbc(j+(nc-2)*option%nphase)= field%velocitybc(j,nc)
       !   note different from 2 phase version
 
           if(v_darcy >0.d0)then 
-            q = v_darcy * density1(j) * area
+            q(iphase) = v_darcy * density1(iphase) * area
             !q = 0.d0
             !flux = flux - q
-            fluxe = fluxe - q  * h1(j) 
-            do m=1, option%nspec
-              fluxm(m)=fluxm(m) + q * xmol1(m + (j-1)*option%nspec)
+            fluxe = fluxe - q(iphase)  * h1(iphase) 
+            do idof=1, option%nspec
+              fluxm(idof)=fluxm(idof) + q(iphase) * xmol1(idof + (iphase-1)*option%nspec)
             enddo 
           else 
-            q =  v_darcy * density2(j) * area   
-            fluxe = fluxe - q  * h2(j) 
-            do m=1, option%nspec
-              fluxm(m)=fluxm(m) + q * xmol2(m + (j-1)*option%nspec)
+            q(iphase) =  v_darcy * density2(iphase) * area   
+            fluxe = fluxe - q(iphase)  * h2(iphase) 
+            do idof=1, option%nspec
+              fluxm(idof)=fluxm(idof) + q(iphase) * xmol2(idof + (iphase-1)*option%nspec)
             enddo 
           endif 
         enddo
@@ -728,41 +857,41 @@ subroutine MPHASERes_FLBCCont(nbc_no,ibndtype,area, &
       diffdp = por2*tor2/dd1*area
       
     ! Flow term
-      do np =1,option%nphase
-        if ((sat1(np) > sir2(np)) .or. (sat2(np) > sir2(np)))then
+      do iphase =1,option%nphase
+        if ((sat1(iphase) > sir2(iphase)) .or. (sat2(iphase) > sir2(iphase)))then
           upweight=1.D0
-          if(sat1(np) <eps) then 
+          if(sat1(iphase) <eps) then 
             upweight=0.d0
-          else if(sat2(np) <eps) then 
+          else if(sat2(iphase) <eps) then 
             upweight=1.d0
           endif
-          density_ave = upweight*density1(np)+(1.D0-upweight)*density2(np)  
+          density_ave(iphase) = upweight*density1(iphase)+(1.D0-upweight)*density2(iphase)  
     
-          gravity = (upweight*density1(np)*amw1(np) + &
-          (1.D0-upweight)*density2(np)*amw2(np)) &
+          gravity = (upweight*density1(iphase)*amw1(iphase) + &
+          (1.D0-upweight)*density2(iphase)*amw2(iphase)) &
               * option%gravity * dist_gravity
         
-          dphi = pre_ref1-pc1(np) - pre_ref2 + pc2(np) + gravity
+          dphi = pre_ref1-pc1(iphase) - pre_ref2 + pc2(iphase) + gravity
     
 !         if(option%iupstream(0,1) ==0)then
              if(dphi>=0.D0)then
-               ukvr=kvr1(np)
-               uh=h1(np)
-               uxmol(1:option%nspec)=xmol1((np-1)*option%nspec+1 : np*option%nspec)
+               ukvr=kvr1(iphase)
+               uh(iphase)=h1(iphase)
+               uxmol(1:option%nspec)=xmol1((iphase-1)*option%nspec+1 : iphase*option%nspec)
             else
-               ukvr=kvr2(np)
-               uh=h2(np)
-               uxmol(1:option%nspec)=xmol2((np-1)*option%nspec+1 : np*option%nspec)
+               ukvr=kvr2(iphase)
+               uh(iphase)=h2(iphase)
+               uxmol(1:option%nspec)=xmol2((iphase-1)*option%nspec+1 : iphase*option%nspec)
              endif      
 !          else
-!           if(option%iupstreambc(nbc_no, np) >=0 )then
-!              ukvr=kvr1(np)
-!              uh=h1(np)
-!              uxmol(1:option%nspec)=xmol1((np-1)*option%nspec+1 : np*option%nspec)
+!           if(option%iupstreambc(nbc_no, iphase) >=0 )then
+!              ukvr=kvr1(iphase)
+!              uh=h1(iphase)
+!              uxmol(1:option%nspec)=xmol1((iphase-1)*option%nspec+1 : iphase*option%nspec)
 !            else
-!              ukvr=kvr2(np)
-!              uh=h2(np)
-!              uxmol(1:option%nspec)=xmol2((np-1)*option%nspec+1 : np*option%nspec)
+!              ukvr=kvr2(iphase)
+!              uh=h2(iphase)
+!              uxmol(1:option%nspec)=xmol2((iphase-1)*option%nspec+1 : iphase*option%nspec)
 !            endif      
 !          endif  
  
@@ -770,14 +899,14 @@ subroutine MPHASERes_FLBCCont(nbc_no,ibndtype,area, &
           if(ukvr>floweps)then
             v_darcy= Dq * ukvr * dphi
                !option%vvl_loc(nbc_no) = v_darcy
-            vv_darcy(np)=v_darcy
+            vv_darcy(iphase)=v_darcy
            
-            q=v_darcy * area
+            q(iphase)=v_darcy * area
                 
-            do m=1, option%nspec 
-              fluxm(m)=fluxm(m) + q*density_ave*uxmol(m)
+            do idof=1, option%nspec 
+              fluxm(idof)=fluxm(idof) + q(iphase)*density_ave(iphase)*uxmol(idof)
             enddo
-            fluxe = fluxe + q*density_ave*uh 
+            fluxe = fluxe + q(iphase)*density_ave(iphase)*uh(iphase) 
           endif
         endif 
       enddo
@@ -795,6 +924,7 @@ subroutine MPHASERes_FLBCCont(nbc_no,ibndtype,area, &
       Res_FL(option%ndof)=fluxe * option%dt
 
   end select
+  
   nullify(temp1, pre_ref1, sat1, density1, amw1, h1,u1, pc1,kvr1,xmol1,diff1)
   nullify(temp2, pre_ref2, sat2, density2, amw2, h2,u2, pc2,kvr2,xmol2,diff2)
   
@@ -838,7 +968,9 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
                phis_p(:), tor_loc_p(:),&
                perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:), &
                vl_p(:), var_loc_p(:) 
-                          
+
+  real*8 :: xxbc(realization%option%ndof),varbc(1:size_var_use)
+  integer :: iphasebc, idof                    
 
   PetscScalar, pointer :: iphase_loc_p(:),icap_loc_p(:), ithrm_loc_p(:)
 
@@ -1195,157 +1327,86 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
 
 !************************************************************************
 ! add source/sink terms
-#if 0 
-  do nr = 1, option%nblksrc
-      
-    kk1 = option%k1src(nr) - option%nzs
-    kk2 = option%k2src(nr) - option%nzs
-    jj1 = option%j1src(nr) - option%nys
-    jj2 = option%j2src(nr) - option%nys
-    ii1 = option%i1src(nr) - option%nxs
-    ii2 = option%i2src(nr) - option%nxs
-        
-    kk1 = max(1,kk1)
-    kk2 = min(option%nlz,kk2)
-    jj1 = max(1,jj1)
-    jj2 = min(option%nly,jj2)
-    ii1 = max(1,ii1)
-    ii2 = min(option%nlx,ii2)
-        
-    if (ii1 > ii2 .or. jj1 > jj2 .or. kk1 > kk2) cycle
-      
-    do i = 2, option%ntimsrc
-      if (option%timesrc(i,nr) == option%t) then
-        tsrc1 = option%tempsrc(i,nr)
-        qsrc1 = option%qsrc(i,nr)
-        csrc1 = option%csrc(i,nr)
-        hsrc1 = option%hsrc(i,nr)
-        goto 10
-      else if (option%timesrc(i,nr) > option%t) then
-        ff = option%timesrc(i,nr)-option%timesrc(i-1,nr)
-        f1 = (option%t - option%timesrc(i-1,nr))/ff
-        f2 = (option%timesrc(i,nr)-option%t)/ff
-        tsrc1 = f1*option%tempsrc(i,nr) + f2*option%tempsrc(i-1,nr)
-        qsrc1 = f1*option%qsrc(i,nr) + f2*option%qsrc(i-1,nr)
-        csrc1 = f1*option%csrc(i,nr) + f2*option%csrc(i-1,nr)
-        hsrc1 = f1*option%hsrc(i,nr) + f2*option%hsrc(i-1,nr)
-        goto 10
-      endif
-    enddo
- 10 continue
+  source_sink => realization%source_sinks%first 
+  do 
+    if (.not.associated(source_sink)) exit
     
-   !print *,'pflow2ph : ', option%myrank,i,option%timesrc(i,nr), &
-   !option%timesrc(i-1,nr),option%t,f1,f2,ff,qsrc1,csrc1,tsrc1
- 
+    ! check whether enthalpy dof is included
+    if (size(source_sink%condition%cur_value) > MPH_CONCENTRATION_DOF) then
+      enthalpy_flag = .true.
+    else
+      enthalpy_flag = .false.
+    endif
+
+    qsrc1 = source_sink%condition%cur_value(MPH_PRESSURE_DOF)
+    tsrc1 = source_sink%condition%cur_value(MPH_TEMPERATURE_DOF)
+    csrc1 = source_sink%condition%cur_value(MPH_CONCENTRATION_DOF)
+    if (enthalpy_flag) hsrc1 = source_sink%condition%cur_value(MPH_ENTHALPY_DOF)
+
     qsrc1 = qsrc1 / option%fmwh2o ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
     csrc1 = csrc1 / option%fmwco2
-  
-  ! Here assuming regular mixture injection. i.e. no extra H from mixing 
-  ! within injected fluid.
-  
-  if(dabs(hsrc1)>1D-20)then 
-    do kk = kk1, kk2
-      do jj = jj1, jj2
-        do ii = ii1, ii2
-          n = ii+(jj-1)*option%nlx+(kk-1)*option%nlxy
-          r_p(n*option%ndof) = r_p(n*option%ndof) - hsrc1 * option%dt   
-        enddo
-      enddo
-    enddo
-  endif         
-     
-    if (qsrc1 > 0.d0) then ! injection
-      do kk = kk1, kk2
-        do jj = jj1, jj2
-          do ii = ii1, ii2
-            n = ii+(jj-1)*option%nlx+(kk-1)*option%nlxy
-            ng = grid%nL2G(n)
+      
+    cur_connection_set => source_sink%connection
+    
+    do iconn = 1, cur_connection_set%num_connections      
+      local_id = cur_connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
 
-            call wateos_noderiv(tsrc1,var_loc_p((ghosted_id-1)*size_var_node+2),&
-      dw_kg,dw_mol,enth_src_h2o,option%scale,ierr)
+      if (enthalpy_flag) then
+        r_p(local_id*option%ndof) = r_p(local_id*option%ndof) - hsrc1 * option%dt   
+      endif         
+
+      if (qsrc1 > 0.d0) then ! injection
+        call wateos_noderiv(tsrc1,var_loc_p((ghosted_id-1)*size_var_node+2), &
+                            dw_kg,dw_mol,enth_src_h2o,option%scale,ierr)
 
 !           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
 
 !           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
-            
-            r_p((n-1)*option%ndof + option%jh2o) = r_p((n-1)*option%ndof +option%jh2o) - qsrc1 *option%dt
-            r_p(n*option%ndof) = r_p(n*option%ndof) - qsrc1*enth_src_h2o*option%dt
-            Resold_AR(n,option%jh2o)= Resold_AR(n,option%jh2o) - qsrc1*option%dt
-      Resold_AR(n,option%ndof)= Resold_AR(n,option%ndof) - qsrc1 * enth_src_h2o*option%dt
-      
-      
-      !           print *,'pflow2ph_h2o: ',nr,n,ng,tsrc1,dw_mol,dw_mol*option%fmwh2o, &
-!           qsrc1
-          enddo
-        enddo
-      enddo
-    endif  
+              
+        r_p((local_id-1)*option%ndof + option%jh2o) = r_p((local_id-1)*option%ndof + option%jh2o) &
+                                               - qsrc1 *option%dt
+        r_p(local_id*option%ndof) = r_p(local_id*option%ndof) - qsrc1*enth_src_h2o*option%dt
+        Resold_AR(local_id,option%jh2o)= Resold_AR(local_id,option%jh2o) - qsrc1*option%dt
+        Resold_AR(local_id,option%ndof)= Resold_AR(local_id,option%ndof) - qsrc1 * &
+                                                             enth_src_h2o * option%dt
+      endif  
     
-    if (csrc1 > 0.d0) then ! injection
-      do kk = kk1, kk2
-        do jj = jj1, jj2
-          do ii = ii1, ii2
-            n = ii+(jj-1)*option%nlx+(kk-1)*option%nlxy
-            ng = grid%nL2G(n)
-            jng= 2 + (ng-1)*option%nphase
-                    
-!           duan eos
-!           call duanco2(tsrc1,PPRESSURE_LOC(ng)/1D5,dco2,fugco2,co2_phi)
-!           call ENTHALPY(tsrc1+273.15D0,1.D-3/dco2,1.D0/co2_phi, &
-!           enth_src_co2)
-!           enth_src_co2=enth_src_co2 * 1.D-3     
+      if (csrc1 > 0.d0) then ! injection
+
+!        duan eos
+!        call duanco2(tsrc1,PPRESSURE_LOC(ng)/1D5,dco2,fugco2,co2_phi)
+!        call ENTHALPY(tsrc1+273.15D0,1.D-3/dco2,1.D0/co2_phi, &
+!        enth_src_co2)
+!        enth_src_co2=enth_src_co2 * 1.D-3     
  
-         !  span-wagner
-            rho = var_loc_p((ghosted_id-1)*size_var_node+4+option%nphase)*option%fmwco2 
-            call co2_span_wagner(var_loc_p((ghosted_id-1)*size_var_node+2)*1.D-6,&
-                  tsrc1+273.15D0,rho,dddt,dddp,fg,dfgdp,dfgdt, &
-                        eng,enth_src_co2,dhdt,dhdp,visc,dvdt,dvdp,option%itable)
+        ! span-wagner
+        rho = var_loc_p((ghosted_id-1)*size_var_node+4+option%nphase)*option%fmwco2 
+        call co2_span_wagner(var_loc_p((ghosted_id-1)*size_var_node+2)*1.D-6,&
+                             tsrc1+273.15D0,rho,dddt,dddp,fg,dfgdp,dfgdt, &
+                             eng,enth_src_co2,dhdt,dhdp,visc,dvdt,dvdp,option%itable)
 
-         !  units: rho [kg/m^3]; csrc1 [kmol/s]
+        ! units: rho [kg/m^3]; csrc1 [kmol/s]
 
-            enth_src_co2 = enth_src_co2 * option%fmwco2
+        enth_src_co2 = enth_src_co2 * option%fmwco2
            
-            r_p((n-1)*option%ndof + option%jco2) = r_p((n-1)*option%ndof + option%jco2) - csrc1*option%dt
-            r_p(n*option%ndof) = r_p(n*option%ndof) - csrc1 * enth_src_co2 *option%dt
-            Resold_AR(n,option%jco2)= Resold_AR(n,option%jco2) - csrc1*option%dt
-      Resold_AR(n,option%ndof)= Resold_AR(n,option%ndof) - csrc1 * enth_src_co2*option%dt
-       !r_p(s1) = r_p(s1) - csrc1
+        r_p((local_id-1)*option%ndof + option%jco2) = r_p((local_id-1)*option%ndof + option%jco2) - csrc1*option%dt
+        r_p(local_id*option%ndof) = r_p(local_id*option%ndof) - csrc1 * enth_src_co2 *option%dt
+        Resold_AR(local_id,option%jco2)= Resold_AR(local_id,option%jco2) - csrc1*option%dt
+        Resold_AR(local_id,option%ndof)= Resold_AR(local_id,option%ndof) - csrc1 * enth_src_co2*option%dt
 
-        !   print *,'pflow2ph_co2: ',option%myrank,nr,n,ng,tsrc1,rho,option%fmwco2,csrc1
-          enddo
-        enddo
-      enddo
-    endif
+      endif
   
   
   !  else if (qsrc1 < 0.d0) then ! withdrawal
       
-    !  do kk = kk1, kk2
-     !   do jj = jj1, jj2
-       !   do ii = ii1, ii2
-          !    n = ii+(jj-1)*option%nlx+(kk-1)*option%nlxy
-           !   ng = grid%nL2G(n)
-           !   p1 = 1+(n-1)*option%ndof
-            !  t1 = p1 + 1
-           !   c1 = t1 + 1
-          !    qqsrc = qsrc1/ddensity_loc_p(ng)
-         !     enth_src = hh_loc_p(ng)
-        !      r_p(p1) = r_p(p1) - qsrc1
-       !       r_p(t1) = r_p(t1) - qsrc1*enth_src
-      !        r_p(c1) = r_p(c1) - qqsrc*CCONC_LOC(ng)
-     !     enddo
-    !    enddo
-   !   enddo
   !  endif
+    enddo
+    source_sink => source_sink%next
   enddo
- ! print *,'finished source/sink term'
-#endif  
 
 !*********************************************************************
 
-
- 
-! stop
 !---------------------------------------------------------------------------
 ! Flux terms for interior nodes
 ! Be careful here, we have velocity field for every phase
@@ -1487,23 +1548,22 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
       distance_gravity = cur_connection_set%dist(3,iconn) * &
                          cur_connection_set%dist(0,iconn)
 
-      select case(boundary_condition%condition%itype(1))
-          
-        case(2)
-        ! solve for pb from Darcy's law given qb /= 0
-          field%xxbc(:,sum_connection) = xx_loc_p((ghosted_id-1)*option%ndof+1: ghosted_id*option%ndof)
-          field%iphasebc(sum_connection) = int(iphase_loc_p(ghosted_id))
-        case(3) 
-       !  field%xxbc((sum_connection-1)*option%ndof+1)=option%pressurebc(2,ibc)
-          field%xxbc(2:option%ndof,sum_connection) = xx_loc_p((ghosted_id-1)*option%ndof+2: ghosted_id*option%ndof)
-          field%iphasebc(sum_connection)=int(iphase_loc_p(ghosted_id))
-        case(4)
-           field%xxbc(1,sum_connection) = xx_loc_p((ghosted_id-1)*option%ndof+1)
-           field%xxbc(3:option%ndof,sum_connection) = xx_loc_p((ghosted_id-1)*option%ndof+3: ghosted_id*option%ndof)    
-           field%iphasebc(sum_connection)=int(iphase_loc_p(ghosted_id))
-
+      do idof=1,option%ndof
+        select case(boundary_condition%condition%itype(idof))
+          case(DIRICHLET_BC,HYDROSTATIC_BC)
+            xxbc(idof) = boundary_condition%aux_real_var(idof,iconn)
+          case(NEUMANN_BC)
+            xxbc(idof) = xx_loc_p((ghosted_id-1)*option%ndof+idof)
+        end select
+      enddo
+      
+      select case(boundary_condition%condition%itype(RICHARDS_PRESSURE_DOF))
+        case(DIRICHLET_BC,HYDROSTATIC_BC)
+          iphasebc = boundary_condition%aux_int_var(1,iconn)
+        case(NEUMANN_BC)
+          iphasebc=int(iphase_loc_p(ghosted_id))                
       end select
-    
+
       iicap=int(icap_loc_p(ghosted_id))  
        
     !*****************
@@ -1512,14 +1572,15 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
     !*******************************************
 
   
-      call pri_var_trans_mph_ninc(field%xxbc(:,sum_connection),field%iphasebc(sum_connection), &
+      call pri_var_trans_mph_ninc(xxbc,iphasebc, &
                                   option%scale,option%nphase,option%nspec,iicap, &
-                                  dif,field%varbc(1:size_var_use),option%itable, &
+                                  dif,varbc,option%itable, &
                                   option%m_nacl,ierr,field%xxphi_co2_bc(sum_connection),cw)
      
-      call MPHASERes_FLBCCont(sum_connection,boundary_condition%condition%itype(1), &
+      call MPHASERes_FLBCCont(boundary_condition%condition%itype, &
                               cur_connection_set%area(iconn), &
-                              field%varbc(1:size_var_use), &
+                              boundary_condition%aux_real_var(:,iconn), &
+                              varbc(1:size_var_use), &
                               var_loc_p((ghosted_id-1)*size_var_node+1: &
                                         (ghosted_id-1)*size_var_node+size_var_use), &
                               porosity_loc_p(ghosted_id),tor_loc_p(ghosted_id), &
@@ -1656,7 +1717,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
 ! real*8 :: fluxl, fluxlh, fluxlv, fluxg, fluxgh, fluxgv, &
 !           flux, fluxh, fluxv, difff, diffg, diffl,
   real*8 :: ff,dif(1:realization%option%nphase)
-  real*8 :: tsrc1,qsrc1,csrc1
+  real*8 :: tsrc1,qsrc1,csrc1,hsrc1
   real*8 :: dd1, dd2, dd, f1, f2
 ! real*8 :: dfluxp, dfluxt, dfluxp1, dfluxt1, dfluxp2, dfluxt2
 ! real*8 :: por1, por2, den
@@ -1677,7 +1738,9 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
             blkmat22(1:realization%option%ndof,1:realization%option%ndof)
   real*8 :: ResInc(1:realization%grid%nlmax, 1:realization%option%ndof, 1:realization%option%ndof),res(1:realization%option%ndof)  
   real*8 :: max_dev  
-
+  real*8 :: xxbc(realization%option%ndof), varbc(1:size_var_node)
+  integer :: iphasebc, idof
+  
   integer :: local_id, ghosted_id
   integer :: local_id_up, local_id_dn
   integer :: ghosted_id_up, ghosted_id_dn
@@ -1766,6 +1829,83 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
  call PetscViewerDestroy(viewer,ierr)
 #endif
 ! Source / Sink term
+! add source/sink terms
+  source_sink => realization%source_sinks%first 
+  do 
+    if (.not.associated(source_sink)) exit
+
+! not needed when computing derivative since enthalpy is independent of solution vars    
+    ! check whether enthalpy dof is included
+!    if (size(source_sink%condition%cur_value) > MPH_CONCENTRATION_DOF) then
+!      enthalpy_flag = .true.
+!    else
+!      enthalpy_flag = .false.
+!    endif
+
+    qsrc1 = source_sink%condition%cur_value(MPH_PRESSURE_DOF)
+    tsrc1 = source_sink%condition%cur_value(MPH_TEMPERATURE_DOF)
+    csrc1 = source_sink%condition%cur_value(MPH_CONCENTRATION_DOF)
+!    if (enthalpy_flag) hsrc1 = source_sink%condition%cur_value(MPH_ENTHALPY_DOF)
+
+    qsrc1 = qsrc1 / option%fmwh2o ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
+    csrc1 = csrc1 / option%fmwco2
+      
+    cur_connection_set => source_sink%connection
+    
+    do iconn = 1, cur_connection_set%num_connections      
+      local_id = cur_connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
+
+      if (qsrc1 > 0.d0) then ! injection
+      
+        do nvar=1,option%ndof      
+          call wateos_noderiv(tsrc1,var_loc_p((ghosted_id-1)*size_var_node+nvar*size_var_use+2),&
+                              dw_kg,dw_mol,enth_src_h2o,option%scale,ierr)
+
+!         units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
+
+!         qqsrc = qsrc1/dw_mol ! [kmol/s / mol/dm^3 = kmol/m^3]
+              
+          ResInc(local_id,option%jh2o,nvar)=  ResInc(local_id,option%jh2o,nvar) - qsrc1*option%dt
+          ResInc(local_id,option%ndof,nvar)=  ResInc(local_id,option%ndof,nvar) - qsrc1*enth_src_h2o*option%dt
+        enddo
+
+      endif  
+    
+      if (csrc1 > 0.d0) then ! injection
+
+!       duan eos
+!       call duanco2(tsrc1,PPRESSURE_LOC(ng)/1D5,dco2,fugco2,co2_phi)
+!       call ENTHALPY(tsrc1+273.15D0,1.D-3/dco2,1.D0/co2_phi, &
+!       enth_src_co2)
+!       enth_src_co2=enth_src_co2 * 1.D-3     
+ 
+        ! span-wagner
+        do nvar=1,option%ndof     
+          rho = var_loc_p((ghosted_id-1)*size_var_node+nvar*size_var_use+4+option%nphase)*option%fmwco2 
+          call co2_span_wagner(var_loc_p((ghosted_id-1)*size_var_node+nvar*size_var_use+2)*1.D-6,&
+                               tsrc1+273.15D0,rho,dddt,dddp,fg,dfgdp,dfgdt, &
+                               eng,enth_src_co2,dhdt,dhdp,visc,dvdt,dvdp,option%itable)
+
+          ! units: rho [kg/m^3]; csrc1 [kmol/s]
+
+          enth_src_co2 = enth_src_co2 * option%fmwco2
+
+          ResInc(local_id,option%jco2,nvar)=  ResInc(local_id,option%jco2,nvar) - csrc1*option%dt
+          ResInc(local_id,option%ndof,nvar)=  ResInc(local_id,option%ndof,nvar) - csrc1*enth_src_co2*option%dt
+
+        enddo
+
+      endif
+  
+  
+  !  else if (qsrc1 < 0.d0) then ! withdrawal
+      
+  !  endif
+    enddo
+    source_sink => source_sink%next
+  enddo
+
 #if 0
   do nr = 1, option%nblksrc
       
@@ -1919,27 +2059,23 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
                          cur_connection_set%dist(0,iconn)
        
       delxbc=0.D0
-      select case(boundary_condition%condition%itype(1))
-        case(1)
-          delxbc=0.D0
-        case(2)
-          ! solve for pb from Darcy's law given qb /= 0
-         field%xxbc(:,sum_connection)=xx_loc_p((ghosted_id-1)*option%ndof+1: ghosted_id*option%ndof)
-          field%iphasebc(sum_connection) = int(iphase_loc_p(ghosted_id))
-             delxbc=option%delx(1:option%ndof,ghosted_id)
-        case(3) 
-          ! field%xxbc(1,iconn)=option%pressurebc(2,ibc)
-          field%xxbc(2:option%ndof,sum_connection)= xx_loc_p((ghosted_id-1)*option%ndof+2: ghosted_id*option%ndof)
-          field%iphasebc(sum_connection)=int(iphase_loc_p(ghosted_id))
-          delxbc(1)=0.D0
-          delxbc(2:option%ndof)=option%delx(2:option%ndof,ghosted_id)
-        case(4)
-          field%xxbc(1,sum_connection) = xx_loc_p((ghosted_id-1)*option%ndof+1)
-          field%xxbc(3:option%ndof,sum_connection) = xx_loc_p((ghosted_id-1)*option%ndof+3: ghosted_id*option%ndof)    
-          delxbc(1)=option%delx(1,ghosted_id)
-          delxbc(3:option%ndof) = option%delx(3:option%ndof,ghosted_id) 
-          field%iphasebc(sum_connection)=int(iphase_loc_p(ghosted_id))
 
+      do idof=1,option%ndof
+        select case(boundary_condition%condition%itype(idof))
+          case(DIRICHLET_BC,HYDROSTATIC_BC)
+            xxbc(idof) = boundary_condition%aux_real_var(idof,iconn)
+            delxbc(idof) = 0.d0
+          case(NEUMANN_BC)
+            xxbc(idof) = xx_loc_p((ghosted_id-1)*option%ndof+idof)
+            delxbc(idof) = option%delx(idof,ghosted_id) 
+        end select
+      enddo
+      
+      select case(boundary_condition%condition%itype(RICHARDS_PRESSURE_DOF))
+        case(DIRICHLET_BC,HYDROSTATIC_BC)
+          iphasebc = boundary_condition%aux_int_var(1,iconn)
+        case(NEUMANN_BC)
+          iphasebc=int(iphase_loc_p(ghosted_id))                
       end select
 
 ! print *,'2ph bc',option%myrank,nc,m,ng,ibc,option%ibndtyp(ibc),option%pressurebc(:,ibc), &
@@ -1968,24 +2104,24 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
     !*******************************************
 
   ! here should pay attention to BC type !!!
-      call pri_var_trans_mph_ninc(field%xxbc(:,sum_connection),field%iphasebc(sum_connection),&
+      call pri_var_trans_mph_ninc(xxbc,iphasebc,&
                               option%scale,option%nphase,option%nspec,iicap,dif,&
-                              field%varbc(1:size_var_use),option%itable, &
+                              varbc(1:size_var_use),option%itable, &
                               option%m_nacl,ierr, dum1, dum2)
   
-      call pri_var_trans_mph_winc(field%xxbc(:,sum_connection),delxbc,&
-                              field%iphasebc(sum_connection),option%scale,option%nphase, &
+      call pri_var_trans_mph_winc(xxbc,delxbc,&
+                              iphasebc,option%scale,option%nphase, &
                               option%nspec,iicap,dif(1:option%nphase), &
-                              field%varbc(size_var_use+1: &
-                                         (option%ndof+1)*size_var_use), &
+                              varbc(size_var_use+1:(option%ndof+1)*size_var_use), &
                               option%itable,option%m_nacl,ierr)
             
 !    print *,' Mph Jaco BC terms: finish increment'
       do nvar=1,option%ndof
    
-        call MPHASERes_FLBCCont(sum_connection,boundary_condition%condition%itype(1), &
+        call MPHASERes_FLBCCont(boundary_condition%condition%itype, &
                                 cur_connection_set%area(iconn), &
-                                field%varbc(nvar*size_var_use+1: &
+                                boundary_condition%aux_real_var(:,iconn), &
+                                varbc(nvar*size_var_use+1: &
                                            (nvar+1)*size_var_use), &
                                 var_loc_p((ghosted_id-1)*size_var_node+ &
                                              nvar*size_var_use+1: &
@@ -2605,7 +2741,8 @@ subroutine pflow_mphase_initadj(realization)
   
 ! real*8 :: temp1
 ! real*8, parameter :: Rg=8.31415D0
-
+  real*8 :: xxbc(realization%option%ndof),varbc(1:size_var_use)
+  integer :: iphasebc, idof 
 
   type(coupler_type), pointer :: boundary_condition
   type(connection_type), pointer :: cur_connection_set
@@ -2701,18 +2838,18 @@ subroutine pflow_mphase_initadj(realization)
         dif(1)= option%difaq
         dif(2)= option%cdiff(iithrm)
 
-        call pri_var_trans_mph_ninc(field%xxbc(:,sum_connection),field%iphasebc(sum_connection),&
+        call pri_var_trans_mph_ninc(xxbc,iphasebc,&
                                     option%scale,option%nphase,option%nspec,iicap, &
-                                    dif,field%varbc(1:size_var_use), &
+                                    dif,varbc, &
                                     option%itable,option%m_nacl,ierr, dum1, dum2)
       
-        if (translator_check_phase_cond(field%iphasebc(sum_connection), &
-                                        field%varbc(1:size_var_use), &
+        if (translator_check_phase_cond(iphasebc, &
+                                        varbc, &
                                         option%nphase,option%nspec) &
             /=1) then
-          print *," Wrong bounday node init...  STOP!!!", field%xxbc(:,iconn)
+          print *," Wrong bounday node init...  STOP!!!", xxbc
       
-          print *,field%varbc
+          print *, varbc
           stop    
         endif 
       endif

@@ -56,10 +56,11 @@ module Field_module
     real*8, pointer :: velocitybc(:,:)
       ! For a Neumann BC, velocitybc(j,ibc) gives the velocity q for phase
       ! j along BC block ibc.
-    real*8, pointer :: tempbc(:),concbc(:),sgbc(:),xphi_co2_bc(:),xxphi_co2_bc(:)
+    real*8, pointer :: tempbc(:),concbc(:),sgbc(:)
 !    real*8, pointer :: xxbc(:,:), varbc(:)
 !    integer, pointer:: iphasebc(:)
 #endif
+    real*8, pointer :: xphi_co2_bc(:), xxphi_co2_bc(:)
 
     !block BC values read from input
     real*8, pointer :: pressurebc0(:,:)
@@ -342,8 +343,8 @@ function FieldCreate()
 !  nullify(field%tempbc)   
 !  nullify(field%concbc)   
 !  nullify(field%sgbc)   
-!  nullify(field%xphi_co2_bc)   
-!  nullify(field%xxphi_co2_bc)   
+  nullify(field%xphi_co2_bc)   
+  nullify(field%xxphi_co2_bc)   
 !  nullify(field%xxbc)   
 !  nullify(field%varbc)   
 !  nullify(field%iphasebc)   

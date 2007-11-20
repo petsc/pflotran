@@ -677,8 +677,8 @@ subroutine PflowInit(simulation,filename)
 
   select case(option%imode)
     case(MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE,OWG_MODE)
-      allocate(field%varbc(1:(option%ndof+1)*(2+7*option%nphase + 2 *  &
-                                       option%nphase*option%nspec)))
+!      allocate(field%varbc(1:(option%ndof+1)*(2+7*option%nphase + 2 *  &
+!                                       option%nphase*option%nspec)))
     case default  
       allocate(field%density_bc(option%nphase))
       allocate(field%d_p_bc(option%nphase))

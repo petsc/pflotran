@@ -10,3 +10,4 @@ Items that need to be implemented
 7.  Need a data structure other than velocitybc and xxbc for storing 
       boundary condition and source/sink parameters
 8.  Src/sink initialization and updates
+9.  Support saturation as apposed to pressure for bcs and initial conditions
