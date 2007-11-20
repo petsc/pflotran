@@ -2561,7 +2561,7 @@ end subroutine pflow_mphase_initaccum
 
 subroutine pflow_update_mphase(realization)
   
-  use translator_mph_module, only : pri_var_trans_mph_ninc, translator_mph_get_output, translator_mphase_massbal
+  use translator_mph_module, only : pri_var_trans_mph_ninc, translator_mph_get_output, translator_mphase_massbal, translator_check_phase_cond
   
   use Connection_module
   use Realization_module
@@ -2574,12 +2574,14 @@ subroutine pflow_update_mphase(realization)
   type(realization_type) :: realization 
     
   integer :: dof_offset
-    integer :: iithrm
-    integer :: ierr,iicap,iiphase
-    PetscScalar, pointer :: xx_p(:),icap_loc_p(:),ithrm_loc_p(:),iphase_loc_p(:), var_loc_p(:)
-    real*8 :: dif(1:realization%option%nphase), dum1, dum2           
+  integer :: iithrm
+  integer :: ierr,iicap,iiphase
+  PetscScalar, pointer :: xx_p(:),icap_loc_p(:),ithrm_loc_p(:),iphase_loc_p(:), var_loc_p(:)
+  real*8 :: dif(1:realization%option%nphase), dum1, dum2           
   integer :: local_id, ghosted_id     
-
+  real*8 :: xxbc(realization%option%ndof), varbc(size_var_use)
+  integer :: iphasebc, idof
+  
   type(coupler_type), pointer :: boundary_condition
   type(connection_type), pointer :: cur_connection_set
   integer :: iconn
@@ -2619,12 +2621,12 @@ subroutine pflow_update_mphase(realization)
       dif(2)= option%cdiff(int(ithrm_loc_p(ghosted_id)))
     ! *******************************************
       call pri_var_trans_mph_ninc(xx_p((local_id-1)*option%ndof+1:local_id*option%ndof),iiphase,&
-      option%scale,option%nphase,option%nspec, iicap, dif,&
-      var_loc_p((ghosted_id-1)*size_var_node+1:(ghosted_id-1)*size_var_node+size_var_use),&
-      option%itable,option%m_nacl,ierr, dum1, dum2)
+                                  option%scale,option%nphase,option%nspec, iicap, dif,&
+                                  var_loc_p((ghosted_id-1)*size_var_node+1:(ghosted_id-1)*size_var_node+size_var_use),&
+                                  option%itable,option%m_nacl,ierr, dum1, dum2)
 
     enddo
-#if 0
+
   !geh added for transient boundary conditions  
   if (associated(field%imat) .and. option%iread_geom < 0) then
 
@@ -2650,44 +2652,53 @@ subroutine pflow_update_mphase(realization)
           stop
         endif
 
-        if (boundary_condition%condition%itype(1)==1 .or. &
-            boundary_condition%condition%itype(1)==3) then
-          iicap=int(icap_loc_p(ghosted_id))
-          iithrm=int(ithrm_loc_p(ghosted_id)) 
+        if (boundary_condition%condition%itype(MPH_PRESSURE_DOF) == DIRICHLET_BC) then
+          do idof=1,option%ndof
+            select case(boundary_condition%condition%itype(idof))
+              case(DIRICHLET_BC,HYDROSTATIC_BC)
+                xxbc(idof) = boundary_condition%aux_real_var(idof,iconn)
+              case(NEUMANN_BC)
+                xxbc(idof) = xx_p((local_id-1)*option%ndof+idof)
+            end select
+          enddo
+      
+          select case(boundary_condition%condition%itype(MPH_PRESSURE_DOF))
+            case(DIRICHLET_BC,HYDROSTATIC_BC)
+              iphasebc = boundary_condition%aux_int_var(1,iconn)
+            case(NEUMANN_BC)
+              iphasebc=int(iphase_loc_p(ghosted_id))                
+          end select
+
+          iicap = icap_loc_p(ghosted_id)
+          dof_offset=(local_id-1)*option%ndof
+          if(xx_p(dof_offset+3)<0.D0) xx_p(dof_offset+3)=zerocut
+
+          ! *****************
           dif(1)= option%difaq
+          dif(2)= option%cdiff(int(ithrm_loc_p(ghosted_id)))
+          ! *****************
+          call pri_var_trans_mph_ninc(xxbc,iphasebc,option%scale,option%nphase,option%nspec, &
+                                      iicap,dif,&
+                                      varbc,option%itable,option%m_nacl,ierr,dum1, dum2)
+
+          if (translator_check_phase_cond(iphasebc,varbc,option%nphase,option%nspec) /=1) then
+            print *," Wrong bounday node init...  STOP!!!", xxbc
       
-          if(field%iphasebc(nc) ==3)then
-            sw= field%xxbc(1,sum_connection)
-            call pflow_pckr_richards_fw(iicap ,sw,pc,kr)    
-            field%xxbc(1,sum_connection) =  option%pref - pc(1)
-          endif
-      
-          call pri_var_trans_Richards_ninc(field%xxbc(:,sum_connection),field%iphasebc(sum_connection), &
-                                           option%scale,option%nphase,option%nspec, &
-                                           iicap,dif, &
-                                           field%varbc(1:size_var_use),option%itable,ierr, &
-                                           option%pref)
-        
-          if (translator_check_cond_Richards(field%iphasebc(sum_connection), &
-                                             field%varbc(1:size_var_use), &
-                                             option%nphase,option%nspec) /=1) then
-            print *," Wrong bounday node init...  STOP!!!", field%xxbc(:,sum_connection)
-      
-            print *,field%varbc
+            print *, varbc
             stop    
           endif 
         endif
-
+#if 0
         if (boundary_condition%condition%itype(1)==2) then
           yybc(2:option%ndof,nc)= field%xxbc(2:option%ndof,nc)
           vel_bc(1,nc) = field%velocitybc(1,nc)
         endif 
-      
+#endif      
       enddo
       boundary_condition => boundary_condition%next
     enddo
   endif
-#endif
+
    
     call VecRestoreArrayF90(field%xx, xx_p, ierr); CHKERRQ(ierr)
     call VecRestoreArrayF90(field%icap_loc,icap_loc_p,ierr)
