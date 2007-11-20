@@ -218,59 +218,37 @@ subroutine RealizationInitBoundConditions(realization)
   integer :: num_connections
   
   type(option_type), pointer :: option
-  type(field_type), pointer :: field
   type(coupler_type), pointer :: boundary_condition
     
   option => realization%option
-  field => realization%field
     
-  ! sum the number of connections among all boundary conditions
-  num_connections = 0
   boundary_condition => realization%boundary_conditions%first
   do
     if (.not.associated(boundary_condition)) exit
-    num_connections = num_connections + &
-                      boundary_condition%connection%num_connections
+    num_connections = boundary_condition%connection%num_connections
+
+    ! allocate arrays that match the number of connections
+    select case(option%imode)
+
+      case(FLASH_MODE,RICHARDS_MODE,OWG_MODE,VADOSE_MODE)
+       
+        allocate(boundary_condition%aux_real_var(option%ndof*option%nphase,num_connections))
+        allocate(boundary_condition%aux_int_var(1,num_connections))
+        boundary_condition%aux_real_var = 0.d0
+        boundary_condition%aux_int_var = 0
+
+      case(MPH_MODE)
+
+        allocate(boundary_condition%aux_real_var(option%ndof*option%nphase,num_connections))
+        allocate(boundary_condition%aux_int_var(1,num_connections))
+        boundary_condition%aux_real_var = 0.d0
+        boundary_condition%aux_int_var = 0
+            
+      case default
+    end select 
+  
     boundary_condition => boundary_condition%next
   enddo
-  
-  ! allocate arrays that match the number of connections
-  select case(option%imode)
-
-    case(FLASH_MODE,RICHARDS_MODE,OWG_MODE,VADOSE_MODE)
-  
-      allocate(field%xxbc(option%ndof,num_connections))
-      allocate(field%iphasebc(num_connections))
-      allocate(field%velocitybc(option%nphase,num_connections))
-      field%xxbc = 0.d0
-      field%iphasebc = 0
-      field%velocitybc = 0.d0
-
-    case(MPH_MODE)
-      allocate(field%xxbc(option%ndof,num_connections))
-      allocate(field%iphasebc(num_connections))
-      allocate(field%velocitybc(option%nphase,num_connections))
-      allocate(field%xxphi_co2_bc(num_connections))
-      field%xxbc = 0.d0
-      field%iphasebc = 0
-      field%velocitybc = 0.d0  
-      field%xxphi_co2_bc = 0.d0
-    case default
-    
-      allocate(field%pressurebc(option%nphase,num_connections))
-      allocate(field%tempbc(num_connections))
-      allocate(field%sgbc(num_connections))
-      allocate(field%concbc(num_connections))
-      allocate(field%velocitybc(option%nphase,num_connections))
-      allocate(field%iphasebc(num_connections))
-      field%pressurebc = 0.d0
-      field%tempbc = 0.d0
-      field%concbc = 0.d0
-      field%sgbc = 0.d0
-      field%velocitybc = 0.d0
-      field%iphasebc = 0
-
-  end select 
   
   call RealizationUpdateBoundConditions(realization)
 
@@ -289,57 +267,16 @@ subroutine RealizationUpdateBoundConditions(realization)
   
   type(realization_type) :: realization
   
-  integer :: icell, idof, count
-  
   type(option_type), pointer :: option
-  type(field_type), pointer :: field
   type(coupler_type), pointer :: boundary_condition
     
   option => realization%option
-  field => realization%field
  
   boundary_condition => realization%boundary_conditions%first
- 
-  count = 0
+  
   do
-  
     if (.not.associated(boundary_condition)) exit
-  
-    select case(option%imode)
-
-      case(MPH_MODE,FLASH_MODE,RICHARDS_MODE,OWG_MODE,VADOSE_MODE)
-  
-        do icell=1,boundary_condition%region%num_cells
-          count = count + 1
-          field%iphasebc(count) = boundary_condition%condition%iphase
-          do idof=1,option%ndof
-            select case(boundary_condition%condition%itype(idof))
-              case(DIRICHLET_BC)
-                field%xxbc(idof,count) = &
-                  boundary_condition%condition%cur_value(idof)
-              case(NEUMANN_BC)
-                field%velocitybc(1:option%nphase,count) = &
-                  boundary_condition%condition%cur_value(idof)
-            end select
-          enddo
-        enddo
-      
-      case default
-
-        do icell=1,boundary_condition%region%num_cells
-          count = count + 1
-          field%iphasebc(count) = boundary_condition%condition%iphase
-          if (boundary_condition%condition%itype(1) == DIRICHLET_BC) then
-            field%pressurebc(:,count) = boundary_condition%condition%cur_value(1)
-          else
-            field%velocitybc(:,count) = boundary_condition%condition%cur_value(1)
-          endif
-          field%tempbc(icell) = boundary_condition%condition%cur_value(2)
-          field%concbc(icell) = boundary_condition%condition%cur_value(3)
-          field%sgbc(icell) = 1.d0-boundary_condition%condition%cur_value(4) ! read in as sl
-        enddo
-
-    end select 
+    call CouplerUpdateAuxVars(boundary_condition,option)
     boundary_condition => boundary_condition%next
   enddo
 
@@ -361,57 +298,43 @@ subroutine RealizationInitSrcSinks(realization)
   integer :: num_connections
   
   type(option_type), pointer :: option
-  type(field_type), pointer :: field
   type(coupler_type), pointer :: source_sink
-    
+
+#if 0    
+! since src/sinks reference the condition directly, updating auxciliary variales
+! is not currently necessary    
   option => realization%option
-  field => realization%field
     
-  ! sum the number of connections among all boundary conditions
-  num_connections = 0
-  source_sink => realization%source_sinks%first
+  source_sink => realization%boundary_conditions%first
   do
     if (.not.associated(source_sink)) exit
-    num_connections = num_connections + &
-                      source_sink%connection%num_connections
+    num_connections = source_sink%connection%num_connections
+
+    ! allocate arrays that match the number of connections
+    select case(option%imode)
+
+      case(FLASH_MODE,RICHARDS_MODE,OWG_MODE,VADOSE_MODE)
+       
+        allocate(source_sink%aux_real_var(option%ndof*option%nphase,num_connections)
+        allocate(source_sink%aux_int_var(1,num_connections)
+        field%aux_real_var = 0.d0
+        field%aux_int_var = 0
+
+      case(MPH_MODE)
+
+        allocate(source_sink%aux_real_var(option%ndof*option%nphase,num_connections)
+        allocate(source_sink%aux_int_var(1,num_connections)
+        field%aux_real_var = 0.d0
+        field%aux_int_var = 0
+            
+      case default
+    end select 
+  
     source_sink => source_sink%next
   enddo
-  if (num_connections > 0) then
-    print *, 'Src/Sink init and update not yet supported.  Bug Glenn'
-    stop
-  endif
-#if 0  
-! these arrays are for boundary conditions, not src/sinks
-  ! allocate arrays that match the number of connections
-  select case(option%imode)
 
-    case(MPH_MODE,FLASH_MODE,RICHARDS_MODE,OWG_MODE,VADOSE_MODE)
-  
-      allocate(field%xxbc(option%ndof,num_connections))
-      allocate(field%iphasebc(num_connections))
-      allocate(field%velocitybc(option%nphase,num_connections))
-      field%xxbc = 0.d0
-      field%iphasebc = 0
-      field%velocitybc = 0.d0
-  
-    case default
-    
-      allocate(field%pressurebc(option%nphase,num_connections))
-      allocate(field%tempbc(num_connections))
-      allocate(field%sgbc(num_connections))
-      allocate(field%concbc(num_connections))
-      allocate(field%velocitybc(option%nphase,num_connections))
-      allocate(field%iphasebc(num_connections))
-      field%pressurebc = 0.d0
-      field%tempbc = 0.d0
-      field%concbc = 0.d0
-      field%sgbc = 0.d0
-      field%velocitybc = 0.d0
-      field%iphasebc = 0
-
-  end select 
-#endif  
   call RealizationUpdateSrcSinks(realization)
+#endif
 
 end subroutine RealizationInitSrcSinks
 
@@ -428,59 +351,23 @@ subroutine RealizationUpdateSrcSinks(realization)
   
   type(realization_type) :: realization
   
-  integer :: icell, idof, count
-  
   type(option_type), pointer :: option
-  type(field_type), pointer :: field  
   type(coupler_type), pointer :: source_sink
-    
+   
+#if 0    
+! since src/sinks reference the condition directly, updating auxciliary variales
+! is not currently necessary
   option => realization%option
-  field => realization%field
  
   source_sink => realization%source_sinks%first
  
-  count = 0
   do
-  
     if (.not.associated(source_sink)) exit
-  
-    select case(option%imode)
-
-      case(MPH_MODE,FLASH_MODE,RICHARDS_MODE,OWG_MODE,VADOSE_MODE)
-  
-        do icell=1,source_sink%region%num_cells
-          count = count + 1
-          field%iphasebc(count) = source_sink%condition%iphase
-          do idof=1,option%ndof
-            select case(source_sink%condition%itype(idof))
-              case(DIRICHLET_BC)
-                field%xxbc(idof,count) = &
-                  source_sink%condition%cur_value(idof)
-              case(NEUMANN_BC)
-                field%velocitybc(1:option%nphase,count) = &
-                  source_sink%condition%cur_value(idof)
-            end select
-          enddo
-        enddo
-      
-      case default
-
-        do icell=1,source_sink%region%num_cells
-          count = count + 1
-          field%iphasebc(count) = source_sink%condition%iphase
-          if (source_sink%condition%itype(1) == DIRICHLET_BC) then
-            field%pressurebc(:,count) = source_sink%condition%cur_value(1)
-          else
-            field%velocitybc(:,count) = source_sink%condition%cur_value(1)
-          endif
-          field%tempbc(icell) = source_sink%condition%cur_value(2)
-          field%concbc(icell) = source_sink%condition%cur_value(3)
-          field%sgbc(icell) = 1.d0-source_sink%condition%cur_value(4) ! read in as sl
-        enddo
-
-    end select 
+    call CouplerUpdateAuxVars(source_sink,option)
+    source_sink => source_sink%next
     source_sink => source_sink%next
   enddo
+#endif
 
 end subroutine RealizationUpdateSrcSinks
 
@@ -500,7 +387,7 @@ subroutine RealizationUpdate(realization)
   ! must update conditions first
   call ConditionUpdate(realization%conditions,realization%option,realization%option%time)
   call RealizationUpdateBoundConditions(realization)
-  call RealizationUpdateSrcSinks(realization)
+!  call RealizationUpdateSrcSinks(realization)
 
 end subroutine RealizationUpdate
 

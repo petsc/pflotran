@@ -450,22 +450,25 @@ subroutine RichardsRes_FLCont(nconn_no,area,var_node1,por1,tor1,sir1,dd1,perm1, 
 
 end subroutine RichardsRes_FLCont
 
-subroutine RichardsRes_FLBCCont(nbc_no,ibndtype,area,var_node1,var_node2,por2,tor2,sir2, &
-                              dd1,perm2,Dk2,dist_gravity,option,field,vv_darcy, &
+subroutine RichardsRes_FLBCCont(ibndtype,area,aux_vars,var_node1,var_node2,por2,tor2,sir2, &
+                              dd1,perm2,Dk2,dist_gravity,option,field,v_darcy, &
                               Res_FL)
   use Option_module
   use Field_module
  
   implicit none
   
-  integer nbc_no, ibndtype
+#include "definitions.h"
+  
+  integer :: ibndtype(:)
   type(option_type) :: option
   type(field_type) :: field
   real*8 dd1, sir2(1:option%nphase)
   real*8, target:: var_node1(1:2+7*option%nphase+2*option%nphase*option%nspec)
   real*8, target:: var_node2(1:2+7*option%nphase+2*option%nphase*option%nspec)
+  real*8 :: aux_vars(:) ! from aux_real_var array
   real*8 por2,perm2,Dk2,tor2
-  real*8 vv_darcy(option%nphase), area
+  real*8 v_darcy(option%nphase), area
   real*8 Res_FL(1:option%ndof) 
   
   real*8 :: dist_gravity  ! distance along gravity vector
@@ -478,10 +481,10 @@ subroutine RichardsRes_FLBCCont(nbc_no,ibndtype,area,var_node1,var_node2,por2,to
   real*8, pointer :: sat2(:), density2(:), amw2(:), h2(:), u2(:), pc2(:), kvr2(:)         ! nphase dof
   real*8, pointer :: xmol2(:), diff2(:)    
   
-  integer ibase, m,np, ind, j
-  real*8  fluxm(option%nspec),fluxe, v_darcy,q
-  real*8 uh,uxmol(1:option%nspec), ukvr,diff,diffdp, DK,Dq
-  real*8 upweight,density_ave,cond,gravity, dphi
+  integer ibase,offset,iphase,idof,ispec,index
+  real*8 :: fluxm(option%nspec),fluxe,q(option%nphase),density_ave(option%nphase)
+  real*8 :: uh(option%nphase),uxmol(1:option%nspec),ukvr,diff,diffdp,DK,Dq
+  real*8 :: upweight,cond,gravity,dphi
 
   ibase=1;                 temp1=>var_node1(ibase)
                            temp2=>var_node2(ibase)
@@ -511,142 +514,127 @@ subroutine RichardsRes_FLBCCont(nbc_no,ibndtype,area,var_node1,var_node2,por2,to
 
   fluxm = 0.D0
   fluxe = 0.D0
-  vv_darcy = 0.D0 
+  v_darcy = 0.D0 
    
-  select case (ibndtype)
-    case(1) 
+  select case(ibndtype(RICHARDS_PRESSURE_DOF))
+    ! figure out the direction of flow
+    case(DIRICHLET_BC,HYDROSTATIC_BC)
       Dq = perm2 / dd1
       diffdp = por2*tor2/dd1*area
         ! Flow term
-      do np=1,option%nphase
-        if ((sat1(np) > sir2(np)) .or. (sat2(np) > sir2(np))) then
+      do iphase=1,option%nphase
+        if ((sat1(iphase) > sir2(iphase)) .or. (sat2(iphase) > sir2(iphase))) then
           upweight=1.D0
-        if (sat1(np) <eps) then 
-          upweight=0.d0
-        else if (sat2(np) <eps) then 
-          upweight=1.d0
-        endif
-        density_ave = upweight*density1(np)+(1.D0-upweight)*density2(np)  
+          if (sat1(iphase) <eps) then 
+            upweight=0.d0
+          else if (sat2(iphase) <eps) then 
+            upweight=1.d0
+          endif
+          density_ave = upweight*density1(iphase)+(1.D0-upweight)*density2(iphase)  
 
-        gravity = (upweight*density1(np)*amw1(np) + &
-                  (1.D0-upweight)*density2(np)*amw2(np)) &
-                  * option%gravity * dist_gravity
-        dphi = pre_ref1- pre_ref2 + gravity
-   
-   
-        if (dphi>=0.D0) then
-          ukvr = kvr1(np)
-          uh = h1(np)
-          uxmol(:)=xmol1((np-1)*option%nspec+1 : np*option%nspec)
-        else
-          ukvr = kvr2(np)
-          uh = h2(np)
-          uxmol(:)=xmol2((np-1)*option%nspec+1 : np*option%nspec)
-        endif      
-     
-        if (ukvr*Dq>floweps) then
-          v_darcy = Dq * ukvr * dphi
-          vv_darcy(np) = v_darcy
-     
-          q = v_darcy * area
+          gravity = (upweight*density1(iphase)*amw1(iphase) + &
+                    (1.D0-upweight)*density2(iphase)*amw2(iphase)) &
+                    * option%gravity * dist_gravity
+          dphi = pre_ref1- pre_ref2 + gravity
           
-          do m=1, option%nspec 
-            fluxm(m) = fluxm(m) + q*density_ave*uxmol(m)
-          enddo
-          
-          fluxe = fluxe + q*density_ave*uh 
+          if (dphi>=0.D0) then
+            ukvr = kvr1(iphase)
+          else
+            ukvr = kvr2(iphase)
+          endif      
+     
+          if (ukvr*Dq>floweps) then
+            v_darcy(iphase) = Dq * ukvr * dphi
+          endif
         endif
-      endif 
+      enddo
+    case(NEUMANN_BC)
+      do iphase=1,option%nphase
+        if (dabs(aux_vars((iphase-1)*option%ndof+RICHARDS_PRESSURE_DOF))>floweps) then
+          v_darcy(iphase) = aux_vars((iphase-1)*option%ndof+RICHARDS_PRESSURE_DOF)
+          if (v_darcy(iphase) > 0.d0) then
+            density_ave(iphase) = density1(iphase)
+          else
+            density_ave(iphase) = density2(iphase)
+          endif
+        endif
+      enddo
+  end select
+       
+  ! finish off RICHARDS_PRESSURE_DOF    
+  do iphase=1,option%nphase   
+    offset = (iphase-1)*option%nspec
+    if (dabs(v_darcy(iphase)) > 0.d0) then
+      if (v_darcy(iphase) > 0.d0) then 
+        uh(iphase) = h1(iphase)
+        uxmol(:)=xmol1(offset+1:offset+option%nspec)
+      else
+        uh(iphase) = h2(iphase)
+        uxmol(:)=xmol2(offset+1:offset+option%nspec)
+      endif
+      q(iphase) = v_darcy(iphase)*density_ave(iphase)*area
+      fluxm(RICHARDS_PRESSURE_DOF) = fluxm(RICHARDS_PRESSURE_DOF)+q(iphase)*uxmol(RICHARDS_PRESSURE_DOF)
+    else
+      q(iphase) = 0.d0
+    endif
+    if (ibndtype(RICHARDS_PRESSURE_DOF) /= NEUMANN_BC) then
+      if ((sat1(iphase) > eps) .and. (sat2(iphase) > eps)) then
+        diff = diffdp * 0.25D0*(sat1(iphase)+sat2(iphase))*(density1(iphase)+density2(iphase))
+        ! only RICHARDS_PRESSURE_DOF, not concentrations
+        fluxm(offset+RICHARDS_PRESSURE_DOF) = fluxm(offset+RICHARDS_PRESSURE_DOF) + &
+          diff * diff2(offset+RICHARDS_PRESSURE_DOF)* &
+          (xmol1(offset+RICHARDS_PRESSURE_DOF)-xmol2(offset+RICHARDS_PRESSURE_DOF))
+      endif
+    endif
+  enddo
+  
+  select case(ibndtype(RICHARDS_TEMPERATURE_DOF))
+    case(DIRICHLET_BC,HYDROSTATIC_BC)
+      do iphase=1,option%nphase
+        fluxe = fluxe + q(iphase)*uh(iphase)
+      enddo
+      Dk =  Dk2 / dd1
+      cond = Dk*area*(temp1-temp2) 
+      fluxe=fluxe + cond
+    case(NEUMANN_BC)
+! should be something of the sort:    
+      do iphase=1,option%nphase
+!        fluxe = fluxe + aux_vars((iphase-1)*option%ndof+RICHARDS_TEMPERATURE_DOF)*area
+      enddo
+  end select
+
+  select case(ibndtype(RICHARDS_CONCENTRATION_DOF))
+    case(DIRICHLET_BC,HYDROSTATIC_BC)
+      do iphase=1,option%nphase
+        ! skip 1st spec = RICHARDS_PRESSURE_DOF
+        do ispec=RICHARDS_PRESSURE_DOF+1,option%nspec 
+          fluxm(ispec) = fluxm(ispec) + q(iphase)*uxmol(ispec)
+        enddo
 ! Diffusion term   
 ! Note : average rule may not be correct  
-      if ((sat1(np) > eps) .and. (sat2(np) > eps)) then
-     
-        diff = diffdp * 0.25D0*(sat1(np)+sat2(np))*(density1(np)+density2(np))
-        do m = 1, option%nspec
-          ind=m+(np-1)*option%nspec
-          fluxm(m) = fluxm(m) + diff * diff2(ind)*( xmol1(ind)-xmol2(ind))
-        enddo  
-      endif
-    enddo
-! conduction term
-        
-    Dk =  Dk2 / dd1
-    cond = Dk*area*(temp1-temp2) 
-    fluxe=fluxe + cond
- 
-    Res_FL(1:option%nspec)=fluxm(:)* option%dt
-    Res_FL(option%ndof)=fluxe * option%dt
-
-  case(2)
-    if ((dabs(field%velocitybc(1,nbc_no)))>floweps) then
-      
-      do j=1,option%nphase
-        v_darcy = field%velocitybc(j,nbc_no)
-        vv_darcy(j) = field%velocitybc(j,nbc_no)
-      ! note different from 2 phase version
-
-        if (v_darcy >0.d0) then 
-          q = v_darcy * density1(j) * area
-          fluxe = fluxe + q  * h1(j) 
-          do m=1, option%nspec
-            fluxm(m) = fluxm(m) + q * xmol1(m + (j-1)*option%nspec)
-          enddo 
-        else 
-          q = v_darcy * density2(j) * area   
-          fluxe = fluxe + q  * h2(j) 
-          do m=1, option%nspec
-            fluxm(m) = fluxm(m) + q * xmol2(m + (j-1)*option%nspec)
-          enddo 
-        endif 
-   
-      enddo
-    endif
-    Res_FL(1:option%nspec) = fluxm(:)*option%dt
-    Res_FL(option%ndof) = fluxe * option%dt
-
-  case(3)
-    Dq = perm2/dd1 
-
-    do np =1,option%nphase
-      if ((sat2(np) > sir2(np))) then
-    
-        density_ave = density2(np)  
-        gravity = density2(np)*amw2(np)* option%gravity * dist_gravity
-        dphi = pre_ref1-pc1(np) - pre_ref2 + pc2(np) + gravity
-    
-        ukvr = kvr2(np)
-        uh = h2(np)
-        uxmol(:) = xmol2((np-1)*option%nspec+1 : np*option%nspec)
-         
-        if (ukvr*Dq>floweps) then
-          v_darcy = Dq * ukvr * dphi
-          vv_darcy(np) = v_darcy
-     
-          q = v_darcy * area
-          
-          do m=1, option%nspec 
-            fluxm(m) = fluxm(m) + q*density_ave*uxmol(m)
-          enddo
-
-          fluxe = fluxe + q*density_ave*uh 
+        if ((sat1(iphase) > eps) .and. (sat2(iphase) > eps)) then
+          offset = (iphase-1)*option%nspec
+          diff = diffdp * 0.25D0*(sat1(iphase)+sat2(iphase))*(density1(iphase)+density2(iphase))
+          ! skip 1st spec = RICHARDS_PRESSURE_DOF
+          do ispec = RICHARDS_PRESSURE_DOF+1,option%nspec
+            index = offset+ispec
+            fluxm(ispec) = fluxm(ispec) + diff * diff2(index)*( xmol1(index)-xmol2(index))
+          enddo    
         endif
-      endif 
- 
-    enddo
-
-    Res_FL(1:option%nspec)=fluxm(:)* option%dt
-    Res_FL(option%ndof)=fluxe * option%dt
-
-  case(4)
-          
-    Dk =  Dk2 / dd1
-    cond = Dk*area*(temp1-temp2) 
-    fluxe=fluxe + cond
-   
-    Res_FL(1:option%nspec)= 0.D0
-    Res_FL(option%ndof)=fluxe * option%dt
- 
+      enddo
+    case(NEUMANN_BC)
+      do iphase=1,option%nphase
+        offset = (iphase-1)*option%ndof
+        ! skip 1st spec = RICHARDS_PRESSURE_DOF
+        do ispec=RICHARDS_PRESSURE_DOF+1,option%nspec 
+          idof = ispec+1 ! need to skip temperature, thus +1
+          fluxm(ispec) = fluxm(ispec) + aux_vars(offset+idof)*area 
+        enddo
+      enddo
   end select
+
+  Res_FL(1:option%nspec)=fluxm(:)* option%dt
+  Res_FL(option%ndof)=fluxe * option%dt
 
   nullify(temp1, pre_ref1, sat1, density1, amw1, h1,u1, pc1,kvr1,xmol1,diff1)       
   nullify(temp2, pre_ref2, sat2, density2, amw2, h2,u2, pc2,kvr2,xmol2,diff2)       
@@ -704,6 +692,8 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
   real*8 :: tsrc1, qsrc1, csrc1, enth_src_h2o, enth_src_co2 , hsrc1
   real*8 :: tmp, upweight
   real*8 :: rho
+  real*8 :: xxbc(realization%option%ndof), varbc(1:size_var_use)
+  integer :: iphasebc
   real*8 :: Res(realization%option%ndof), vv_darcy(realization%option%nphase)
  PetscViewer :: viewer
 
@@ -716,7 +706,7 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
   type(connection_list_type), pointer :: connection_list
   type(connection_type), pointer :: cur_connection_set
   logical :: enthalpy_flag
-  integer :: iconn
+  integer :: iconn, idof
   integer :: sum_connection
   real*8 :: distance, fraction_upwind
   real*8 :: distance_gravity
@@ -1081,43 +1071,36 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
       distance_gravity = cur_connection_set%dist(3,iconn) * &
                          cur_connection_set%dist(0,iconn)
 
-      select case(boundary_condition%condition%itype(1))
-          
-        case(2)
-        ! solve for pb from Darcy's law given qb /= 0
-          field%xxbc(:,nc)=xx_loc_p((ghosted_id-1)*option%ndof+1:ghosted_id*option%ndof)
-           field%iphasebc(nc) = int(iphase_loc_p(ghosted_id))
-          if(dabs(field%velocitybc(1,nc))>1D-20)then
-            if( field%velocitybc(1,nc)>0) then
-               field%xxbc(2:option%ndof,nc)= yybc(2:option%ndof,nc)
-            endif     
-          endif    
-
-
-        case(3) 
-          field%xxbc(2:option%ndof,nc) = xx_loc_p((ghosted_id-1)*option%ndof+2:ghosted_id*option%ndof)
-          field%iphasebc(nc)=int(iphase_loc_p(ghosted_id))
-    
-       case(4)
-          field%xxbc(1,nc) = xx_loc_p((ghosted_id-1)*option%ndof+1)
-           field%xxbc(3:option%ndof,nc) = xx_loc_p((ghosted_id-1)*option%ndof+3:ghosted_id*option%ndof)    
-          field%iphasebc(nc)=int(iphase_loc_p(ghosted_id))
-        
-      end select 
-    
+      do idof=1,option%ndof
+        select case(boundary_condition%condition%itype(idof))
+          case(DIRICHLET_BC,HYDROSTATIC_BC)
+            xxbc(idof) = boundary_condition%aux_real_var(idof,iconn)
+          case(NEUMANN_BC)
+            xxbc(idof) = xx_loc_p((ghosted_id-1)*option%ndof+idof)
+        end select
+      enddo
+      
+      select case(boundary_condition%condition%itype(RICHARDS_PRESSURE_DOF))
+        case(DIRICHLET_BC,HYDROSTATIC_BC)
+          iphasebc = boundary_condition%aux_int_var(1,iconn)
+        case(NEUMANN_BC)
+          iphasebc=int(iphase_loc_p(ghosted_id))                
+      end select
+            
       iicap=int(icap_loc_p(ghosted_id))  
 
       dif(1)= option%difaq
   
-      call pri_var_trans_Richards_ninc(field%xxbc(:,nc),field%iphasebc(nc),&
+      call pri_var_trans_Richards_ninc(xxbc(:),iphasebc,&
                                        option%scale,option%nphase,option%nspec, &
                                        iicap, dif,&
-                                       field%varbc(1:size_var_use),option%itable,ierr, &
+                                       varbc(1:size_var_use),option%itable,ierr, &
                                        option%pref)
    
-      call RichardsRes_FLBCCont(nc,boundary_condition%condition%itype(1), &
+      call RichardsRes_FLBCCont(boundary_condition%condition%itype, &
                                 cur_connection_set%area(iconn), &
-                                field%varbc(1:size_var_use), &
+                                boundary_condition%aux_real_var(:,iconn), &
+                                varbc(1:size_var_use), &
                                 var_loc_p((ghosted_id-1)*size_var_node+1:(ghosted_id-1)* &
                                   size_var_node+size_var_use),porosity_loc_p(ghosted_id), &
                                 tor_loc_p(ghosted_id),option%sir(1:option%nphase,iicap), &
@@ -1234,6 +1217,8 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
             blkmat22(1:realization%option%ndof,1:realization%option%ndof)
   real*8 :: ResInc(1:realization%grid%nlmax, 1:realization%option%ndof, 1:realization%option%ndof),res(1:realization%option%ndof)  
   real*8 :: max_dev  
+  real*8 :: xxbc(realization%option%ndof), varbc(1:size_var_node)
+  integer :: iphasebc
   integer :: local_id, ghosted_id
   integer :: local_id_up, local_id_dn
   integer :: ghosted_id_up, ghosted_id_dn
@@ -1243,7 +1228,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
   type(connection_list_type), pointer :: connection_list
   type(connection_type), pointer :: cur_connection_set
   logical :: enthalpy_flag
-  integer :: iconn
+  integer :: iconn, idof
   integer :: sum_connection  
   real*8 :: distance, fraction_upwind
   real*8 :: distance_gravity 
@@ -1427,59 +1412,47 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
                          cur_connection_set%dist(0,iconn)
 
       delxbc=0.D0
-      select case(boundary_condition%condition%itype(1))
-        case(1)
-          delxbc =0.D0
-        case(2)
-          ! solve for pb from Darcy's law given qb /= 0
-          field%xxbc(:,sum_connection) = xx_loc_p((ghosted_id-1)*option%ndof+1: ghosted_id*option%ndof)
-          field%iphasebc(sum_connection) = int(iphase_loc_p(ghosted_id))
-          delxbc = option%delx(1:option%ndof,ghosted_id)
-        
-  
-          if(dabs(field%velocitybc(1,sum_connection))>1D-20)then
-            if( field%velocitybc(1,sum_connection)>0) then
-             field%xxbc(2:option%ndof,sum_connection) = yybc(2:option%ndof,sum_connection)
-             delxbc(2:option%ndof)=0.D0
-            endif     
-          endif    
 
-        case(3) 
-          field%xxbc(2:option%ndof,sum_connection) = xx_loc_p((ghosted_id-1)*option%ndof+2:ghosted_id*option%ndof)
-          field%iphasebc(sum_connection) = int(iphase_loc_p(ghosted_id))
-          delxbc(1) = 0.D0
-          delxbc(2:option%ndof) = option%delx(2:option%ndof,ghosted_id)
-        
-        case(4)
-          field%xxbc(1,sum_connection) = xx_loc_p((ghosted_id-1)*option%ndof+1)
-          field%xxbc(3:option%ndof,sum_connection) = xx_loc_p((ghosted_id-1)*option%ndof+3: ghosted_id*option%ndof)    
-          delxbc(1)=option%delx(1,ghosted_id)
-          delxbc(3:option%ndof) = option%delx(3:option%ndof,ghosted_id) 
-          field%iphasebc(sum_connection)=int(iphase_loc_p(ghosted_id))
-    
+      do idof=1,option%ndof
+        select case(boundary_condition%condition%itype(idof))
+          case(DIRICHLET_BC,HYDROSTATIC_BC)
+            xxbc(idof) = boundary_condition%aux_real_var(idof,iconn)
+            delxbc(idof) = 0.d0
+          case(NEUMANN_BC)
+            xxbc(idof) = xx_loc_p((ghosted_id-1)*option%ndof+idof)
+            delxbc(idof) = option%delx(idof,ghosted_id) 
+        end select
+      enddo
+      
+      select case(boundary_condition%condition%itype(RICHARDS_PRESSURE_DOF))
+        case(DIRICHLET_BC,HYDROSTATIC_BC)
+          iphasebc = boundary_condition%aux_int_var(1,iconn)
+        case(NEUMANN_BC)
+          iphasebc=int(iphase_loc_p(ghosted_id))                
       end select
-
+            
       iicap = int(icap_loc_p(ghosted_id))     
        
       dif(1) = option%difaq
 
   ! here should pay attention to BC type !!!
-      call pri_var_trans_Richards_ninc(field%xxbc(:,sum_connection),field%iphasebc(sum_connection), &
+      call pri_var_trans_Richards_ninc(xxbc,iphasebc, &
                                   option%scale,option%nphase,option%nspec, &
                                   iicap,  dif, &
-                                  field%varbc(1:size_var_use),option%itable,ierr, option%pref)
+                                  varbc(1:size_var_use),option%itable,ierr, option%pref)
   
-      call pri_var_trans_Richards_winc(field%xxbc(:,sum_connection),delxbc,field%iphasebc(sum_connection), &
+      call pri_var_trans_Richards_winc(xxbc,delxbc,iphasebc, &
                                   option%scale,option%nphase,option%nspec, &
                                   iicap, dif(1:option%nphase),&
-                                  field%varbc(size_var_use+1:(option%ndof+1)* &
+                                  varbc(size_var_use+1:(option%ndof+1)* &
                                     size_var_use), &
                                   option%itable,ierr, option%pref)
               
       do nvar=1,option%ndof
-        call RichardsRes_FLBCCont(sum_connection,boundary_condition%condition%itype(1), &
+        call RichardsRes_FLBCCont(boundary_condition%condition%itype, &
                                 cur_connection_set%area(iconn), &
-                                field%varbc(nvar*size_var_use+1:(nvar+1)* &
+                                boundary_condition%aux_real_var(:,iconn), &
+                                varbc(nvar*size_var_use+1:(nvar+1)* &
                                   size_var_use), &
                                 var_loc_p((ghosted_id-1)*size_var_node+nvar* &
                                   size_var_use+1:(ghosted_id-1)*size_var_node+nvar* &
@@ -1903,8 +1876,8 @@ subroutine pflow_update_Richards(realization)
 !geh added for transient boundary conditions      
   if (associated(field%imat) .and. option%iread_geom < 0) then
 !commend out for now    call UpdateBoundaryConditions(option)
-    yybc =field%xxbc
-    vel_bc = field%velocitybc
+!    yybc =field%xxbc
+!    vel_bc = field%velocitybc
   endif
 !geh end
  
@@ -1968,6 +1941,43 @@ subroutine pflow_update_Richards(realization)
           print *, "Wrong boundary node index... STOP!!!"
           stop
         endif
+
+
+
+
+
+! need to finish this up.
+      do idof=1,option%ndof
+        select case(boundary_condition%condition%itype(idof))
+          case(DIRICHLET_BC,HYDROSTATIC_BC)
+            xxbc(idof) = boundary_condition%aux_real_var(idof,iconn)
+          case(NEUMANN_BC)
+            xxbc(idof) = xx_loc_p((ghosted_id-1)*option%ndof+idof)
+        end select
+      enddo
+      
+      select case(boundary_condition%condition%itype(RICHARDS_PRESSURE_DOF))
+        case(DIRICHLET_BC,HYDROSTATIC_BC)
+          iphasebc = boundary_condition%aux_int_var(1,iconn)
+        case(NEUMANN_BC)
+          iphasebc=int(iphase_loc_p(ghosted_id))                
+      end select
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         if (boundary_condition%condition%itype(1)==1 .or. &
             boundary_condition%condition%itype(1)==3) then

@@ -19,6 +19,8 @@ module Coupler_module
     integer :: icondition                               ! id of condition in condition array/list
     integer :: iregion                                  ! id of region in region array/list
     integer :: iface                                    ! for structured grids only
+    integer, pointer :: aux_int_var(:,:)                ! auxilliary array for integer value
+    real*8, pointer :: aux_real_var(:,:)                ! auxilliary array for real values
     type(condition_type), pointer :: condition          ! pointer to condition in condition array/list
     type(region_type), pointer :: region                ! pointer to region in region array/list
     type(connection_type), pointer :: connection        ! pointer to an array/list of connections
@@ -39,7 +41,8 @@ module Coupler_module
   integer, save :: num_couplers = 0
   
   public :: CouplerCreate, CouplerDestroy, CouplerInitList, CouplerAddToList, &
-            CouplerRead, CouplerDestroyList, CouplerGetNumConnectionsInList
+            CouplerRead, CouplerDestroyList, CouplerGetNumConnectionsInList, &
+            CouplerUpdateAuxVars
   
 contains
 
@@ -67,6 +70,8 @@ function CouplerCreate()
   coupler%icondition = 0
   coupler%iregion = 0
   coupler%iface = 0
+  nullify(coupler%aux_int_var)
+  nullify(coupler%aux_real_var)
   nullify(coupler%condition)
   nullify(coupler%region)
   nullify(coupler%connection)
@@ -178,6 +183,44 @@ end subroutine CouplerRead
 
 ! ************************************************************************** !
 !
+! CouplerUpdateAuxVars: Updates auxilliary variables associated with a coupler
+! author: Glenn Hammond
+! date: 11/19/07
+!
+! ************************************************************************** !
+subroutine CouplerUpdateAuxVars(coupler,option)
+
+  use Option_module
+
+  implicit none
+  
+  type(coupler_type) :: coupler
+  type(option_type) :: option
+  
+  integer :: idof, num_connections
+  
+  num_connections = coupler%connection%num_connections
+  select case(option%imode)
+    case(RICHARDS_MODE)
+      coupler%aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
+        coupler%condition%iphase
+  end select
+  
+  do idof = 1, option%ndof
+  
+    select case(coupler%condition%itype(idof))
+      case(DIRICHLET_BC,NEUMANN_BC,MASS_RATE)
+        coupler%aux_real_var(idof,1:num_connections) = &
+          coupler%condition%cur_value(idof)
+      case(HYDROSTATIC_BC)
+      ! call hydrostatic subroutines
+    end select 
+  enddo
+
+end subroutine CouplerUpdateAuxVars
+
+! ************************************************************************** !
+!
 ! CouplerAddToList: Adds a new coupler to a coupler list
 ! author: Glenn Hammond
 ! date: 11/01/07
@@ -281,6 +324,9 @@ subroutine CouplerDestroy(coupler)
   
   nullify(coupler%condition)     ! since these are simply pointers to 
   nullify(coupler%region)        ! conditoins in list, nullify
+
+  if (associated(coupler%aux_int_var)) deallocate(coupler%aux_int_var)
+  if (associated(coupler%aux_real_var)) deallocate(coupler%aux_real_var)
 
   call ConnectionDestroy(coupler%connection)
   nullify(coupler%connection)

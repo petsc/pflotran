@@ -54,11 +54,13 @@
 #define DIRICHLET_BC 1
 #define NEUMANN_BC 2
 #define MASS_RATE 3
+#define HYDROSTATIC_BC 4
 
 ! coupler types
 #define INITIAL_COUPLER_TYPE 1
 #define BOUNDARY_COUPLER_TYPE 2
 #define SRC_SINK_COUPLER_TYPE 3
+#define COUPLER_IPHASE_INDEX 1
 
 ! connection types
 #define INTERNAL_CONNECTION_TYPE 1
