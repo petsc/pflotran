@@ -387,6 +387,7 @@ subroutine RealizationUpdate(realization)
   ! must update conditions first
   call ConditionUpdate(realization%conditions,realization%option,realization%option%time)
   call RealizationUpdateBoundConditions(realization)
+! currently don't use aux_vars, just condition for src/sinks
 !  call RealizationUpdateSrcSinks(realization)
 
 end subroutine RealizationUpdate

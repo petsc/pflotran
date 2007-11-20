@@ -85,7 +85,8 @@ function ConditionCreate(option)
   condition%num_values = 0
   condition%num_dof = 0
   condition%cyclic = .false.
-  condition%interpolation_method = LINEAR
+!  condition%interpolation_method = LINEAR
+  condition%interpolation_method = STEP ! default to step for src/sinks
   nullify(condition%itype)
   condition%class = ""
   nullify(condition%ctype)
