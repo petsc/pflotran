@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXFileReference section */
+		230637130CF2246C00CC3145 /* field.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = field.F90; sourceTree = "<group>"; };
+		2306371A0CF228D200CC3145 /* realization.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = realization.F90; sourceTree = "<group>"; };
+		2306371B0CF228E900CC3145 /* README */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = text; path = README; sourceTree = "<group>"; };
 		2311D0100CA34C8D003AF8E9 /* ascii_to_hdf5.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = ascii_to_hdf5.F90; sourceTree = "<group>"; };
 		2311D0110CA34CA7003AF8E9 /* hdf5_dataset.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = hdf5_dataset.F90; sourceTree = "<group>"; };
 		231918480B9DD7EA00844666 /* pflow_vadose_ResJac.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = pflow_vadose_ResJac.F90; sourceTree = "<group>"; };
@@ -120,6 +123,8 @@
 				2358178D0BBC662B008D3E23 /* condition.F90 */,
 				23C3E0960CDF92E1009ADBAF /* connection.F90 */,
 				23C3E0970CDF92E1009ADBAF /* coupler.F90 */,
+				2306371B0CF228E900CC3145 /* README */,
+				2306371A0CF228D200CC3145 /* realization.F90 */,
 				33021A9608A12EFD00D082B8 /* definitions.h */,
 				33021A9708A12EFD00D082B8 /* fileio.F90 */,
 				33021A9808A12EFD00D082B8 /* gaseos_mod.F90 */,
@@ -193,6 +198,7 @@
 				23C3E0A10CDF92E1009ADBAF /* strata.F90 */,
 				23C3E0A20CDF92E1009ADBAF /* structured_grid.F90 */,
 				23C3E0A30CDF92E1009ADBAF /* timestepper.F90 */,
+				230637130CF2246C00CC3145 /* field.F90 */,
 				2358178F0BBC662B008D3E23 /* translator_mixed_fluid_flash.F90 */,
 				33E20B6909ED787000578A26 /* translator_mixed_fluid_mph.F90 */,
 				33021ACE08A1306800D082B8 /* translator_mixed_fluid_OWG.F90 */,
