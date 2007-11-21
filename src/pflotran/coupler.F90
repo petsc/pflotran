@@ -43,7 +43,13 @@ module Coupler_module
   public :: CouplerCreate, CouplerDestroy, CouplerInitList, CouplerAddToList, &
             CouplerRead, CouplerDestroyList, CouplerGetNumConnectionsInList, &
             CouplerUpdateAuxVars
+
   
+  interface CouplerCreate
+    module procedure CouplerCreate1
+    module procedure CouplerCreate2
+  end interface
+    
 contains
 
 ! ************************************************************************** !
@@ -53,11 +59,11 @@ contains
 ! date: 10/23/07
 !
 ! ************************************************************************** !
-function CouplerCreate()
+function CouplerCreate1()
 
   implicit none
 
-  type(coupler_type), pointer :: CouplerCreate
+  type(coupler_type), pointer :: CouplerCreate1
   
   type(coupler_type), pointer :: coupler
   
@@ -80,9 +86,41 @@ function CouplerCreate()
   num_couplers = num_couplers + 1
   coupler%id = num_couplers
   
-  CouplerCreate => coupler
+  CouplerCreate1 => coupler
 
-end function CouplerCreate
+end function CouplerCreate1
+
+! ************************************************************************** !
+!
+! CouplerCreate2: Creates a coupler
+! author: Glenn Hammond
+! date: 10/23/07
+!
+! ************************************************************************** !
+function CouplerCreate2(itype)
+
+  implicit none
+
+  integer :: itype
+  
+  type(coupler_type), pointer :: CouplerCreate2
+  
+  type(coupler_type), pointer :: coupler
+  
+  coupler => CouplerCreate1()
+  coupler%itype = itype
+  select case(itype)
+    case(INITIAL_COUPLER_TYPE)
+      coupler%ctype = 'initial'
+    case(BOUNDARY_COUPLER_TYPE)
+      coupler%ctype = 'boundary'
+    case(SRC_SINK_COUPLER_TYPE)
+      coupler%ctype = 'source_sink'
+  end select
+
+  CouplerCreate2 => coupler
+
+end function CouplerCreate2
 
 ! ************************************************************************** !
 !
@@ -201,7 +239,7 @@ subroutine CouplerUpdateAuxVars(coupler,option)
   
   num_connections = coupler%connection%num_connections
   select case(option%imode)
-    case(RICHARDS_MODE)
+    case(RICHARDS_MODE,MPH_MODE)
       coupler%aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
         coupler%condition%iphase
   end select
@@ -258,6 +296,7 @@ function CouplerGetNumConnectionsInList(list)
   integer :: CouplerGetNumConnectionsInList
   type(coupler_type), pointer :: coupler
   
+  CouplerGetNumConnectionsInList = 0
   coupler => list%first
   
   do

@@ -382,8 +382,11 @@ subroutine PflowInit(simulation,filename)
 
   allocate(realization%field%internal_velocities(option%nphase, &
              ConnectionGetNumberInList(realization%grid%internal_connection_list)))
-  allocate(realization%field%boundary_velocities(option%nphase, &
-             CouplerGetNumConnectionsInList(realization%boundary_conditions)))           
+  temp_int = CouplerGetNumConnectionsInList(realization%boundary_conditions)
+  allocate(realization%field%boundary_velocities(option%nphase,temp_int))           
+
+  allocate(field%xphi_co2_bc(temp_int))
+  allocate(field%xxphi_co2_bc(temp_int))
 
   select case(option%imode)
     ! everything but RICHARDS_MODE for now
@@ -1283,13 +1286,13 @@ subroutine readInput(simulation,filename)
       
 !....................
       case ('BOUNDARY_CONDITION')
-        coupler => CouplerCreate()
+        coupler => CouplerCreate(BOUNDARY_COUPLER_TYPE)
         call CouplerRead(coupler,IUNIT1)
         call CouplerAddToList(coupler,realization%boundary_conditions)
       
 !....................
       case ('INITIAL_CONDITION')
-        coupler => CouplerCreate()
+        coupler => CouplerCreate(INITIAL_COUPLER_TYPE)
         call CouplerRead(coupler,IUNIT1)
         call CouplerAddToList(coupler,realization%initial_conditions)
       
@@ -1301,7 +1304,7 @@ subroutine readInput(simulation,filename)
       
 !....................
       case ('SOURCE_SINK')
-        coupler => CouplerCreate()
+        coupler => CouplerCreate(SRC_SINK_COUPLER_TYPE)
         call CouplerRead(coupler,IUNIT1)
         call CouplerAddToList(coupler,realization%source_sinks)
       

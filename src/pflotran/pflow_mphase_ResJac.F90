@@ -822,12 +822,12 @@ subroutine MPHASERes_FLBCCont(ibndtype,area,aux_vars, &
     case(NEUMANN_BC)
     
       if((dabs(aux_vars(MPH_PRESSURE_DOF))+ &
-      dabs(aux_vars(option%nphase+MPH_PRESSURE_DOF)))>floweps)then
+      dabs(aux_vars(option%ndof+MPH_PRESSURE_DOF)))>floweps)then
 !       print *, 'FlowBC :',nbc_no,field%velocitybc(1,nbc_no),field%velocitybc(2,nbc_no)
         do iphase=1,option%nphase
  !        fluxm=0.D0; fluxe=0.D0
-          v_darcy = aux_vars((iphase-1)*option%nphase+MPH_PRESSURE_DOF)
-          vv_darcy(iphase) = aux_vars((iphase-1)*option%nphase+MPH_PRESSURE_DOF)
+          v_darcy = aux_vars((iphase-1)*option%ndof+MPH_PRESSURE_DOF)
+          vv_darcy(iphase) = aux_vars((iphase-1)*option%ndof+MPH_PRESSURE_DOF)
 !         option%vvbc(j+(nc-2)*option%nphase)= field%velocitybc(j,nc)
       !   note different from 2 phase version
 
