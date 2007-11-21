@@ -137,87 +137,91 @@ DTST 1.d-6
 500. 0.5 \
 1000. 0.5
 :
-REGN all
+REGION all
 BLOCK 
 1 5 1 4 1 3
 
-REGN west_top
+REGION west_top
 BLOCK 
 :1 1 1 4 3 3
 1 1 1 4 1 1
-REGN west_middle
+REGION west_middle
 BLOCK 
 1 1 1 4 2 2 
-REGN west_bottom
+REGION west_bottom
 BLOCK 
 :1 1 1 4 1 1 
 1 1 1 4 3 3 
 
-REGN east_top
+REGION east_top
 BLOCK 
 :5 5 1 4 3 3
 5 5 1 4 1 1
-REGN east_middle
+REGION east_middle
 BLOCK 
 5 5 1 4 2 2 
-REGN east_bottom
+REGION east_bottom
 BLOCK 
 :5 5 1 4 1 1 
 5 5 1 4 3 3 
 
-REGN south_top
+REGION south_top
 BLOCK 
 :1 5 1 1 3 3
 1 5 1 1 1 1
-REGN south_middle
+REGION south_middle
 BLOCK 
 1 5 1 1 2 2 
-REGN south_bottom
+REGION south_bottom
 BLOCK 
 :1 5 1 1 1 1 
 1 5 1 1 3 3 
 
-REGN south
+REGION south
 BLOCK 
 1 5 1 1 1 3
 
-REGN north_top
+REGION north_top
 BLOCK 
 :1 5 4 4 3 3
 1 5 4 4 1 1
-REGN north_middle
+REGION north_middle
 BLOCK 
 1 5 4 4 2 2 
-REGN north_bottom
+REGION north_bottom
 BLOCK 
 :1 5 4 4 1 1 
 1 5 4 4 3 3 
 
-REGN north
+REGION north
 BLOCK 
 1 5 4 4 1 3
 
-REGN top
+REGION top
 BLOCK 
 :1 5 1 4 3 3
 1 5 1 4 1 1
-REGN middle
+REGION middle
 BLOCK 
 1 5 1 4 2 2 
-REGN bottom
+REGION bottom
 BLOCK 
 :1 5 1 4 1 1 
 1 5 1 4 3 3 
 
 skip
-REGN top_cells
+REGION top_cells
 LIST FILE
 region.txt
-REGN side_cells
+REGION side_cells
 LIST
 22 24 \
 27
 noskip
+
+REGION well
+BLOCK
+1 1 1 1 1 1
 
 CONDITION west_top
 UNITS Pa,C,M,yr
@@ -329,6 +333,13 @@ GRADIENT 0. 0. -9793.5192d0 Pa/meter
 END
 noskip
 
+CONDITION well
+CLASS flow
+PRESSURE 1.d-10
+TEMPERATURE 25.d0
+CONCENTRATION 0.d0
+END
+
 : initial condition
 INITIAL_CONDITION
 CONDITION initial_top
@@ -409,6 +420,13 @@ BOUNDARY_CONDITION
 FACE south
 CONDITION neumann
 REGION south
+END
+
+: src/sink
+SOURCE_SINK
+:TYPE source_sink
+CONDITION well
+REGION well
 END
 
 STRATA

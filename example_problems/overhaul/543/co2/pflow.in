@@ -302,6 +302,25 @@ CONDITION zero_flux
 REGION north
 END
 
+REGION well
+BLOCK
+1 1 1 1 1 1 
+
+CONDITION well
+CLASS flow
+INTERPOLATION linear
+PRESSURE file q.dat
+TEMPERATURE file t.dat
+CONCENTRATION file c.dat
+END
+
+:skip
+SOURCE_SINK well
+CONDITION well
+REGION well
+END
+:noskip
+
 STRATA
 MATERIAL soil1
 REGION all
