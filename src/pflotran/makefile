@@ -55,13 +55,13 @@ pflow_obj = ${common_src}pflow_vector_ops.o \
 	${common_src}strata.o \
 	${common_src}connection.o \
 	${common_src}solver.o \
-	${common_src}general_grid.o \
 	${common_src}unstructured_grid.o \
 	${common_src}structured_grid.o \
 	${common_src}condition.o \
 	${common_src}condition_old.o \
 	${common_src}coupler.o \
 	${common_src}grid.o \
+	${common_src}general_grid.o \
 	${common_src}realization.o \
 	${common_src}Readfield.o \
 	${common_src}mixed_fluid_eos.o \
@@ -143,7 +143,7 @@ pflow_init.o : option.o grid.o realization.o solver.o timestepper.o simulation.o
 	       waypoint.o field.o
 unstructured_grid.o : option.o connection.o solver.o
 structured_grid.o : connection.o option.o fileio.o coupler.o region.o solver.o
-general_grid.o : condition_old.o
+general_grid.o : condition_old.o grid.o
 grid.o : structured_grid.o unstructured_grid.o option.o region.o connection.o \
 	 coupler.o solver.o
 solver.o : option.o field.o
