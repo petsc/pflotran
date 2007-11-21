@@ -76,8 +76,7 @@ subroutine translator_mphase_massbal(realization)
   integer :: dof_offset
   integer :: local_id, ghosted_id
      
-  PetscScalar, pointer ::  var_loc_p(:),&
-                           porosity_loc_p(:), volume_p(:)
+  PetscScalar, pointer ::  var_loc_p(:), porosity_loc_p(:), volume_p(:)
                            
   PetscScalar, pointer ::iphase_loc_p(:)
   

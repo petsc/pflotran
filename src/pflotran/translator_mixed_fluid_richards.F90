@@ -103,7 +103,7 @@ subroutine translator_Richards_massbal(realization)
   call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
  
   size_var_node=(option%ndof+1)*(2+7*option%nphase +2*option%nphase*option%nspec)
-  tot=0.D0
+  tot = 0.d0
   
   do local_id = 1,grid%nlmax
     ghosted_id = grid%nL2G(local_id)

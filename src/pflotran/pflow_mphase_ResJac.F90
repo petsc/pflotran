@@ -2562,7 +2562,10 @@ end subroutine pflow_mphase_initaccum
 
 subroutine pflow_update_mphase(realization)
   
-  use translator_mph_module, only : pri_var_trans_mph_ninc, translator_mph_get_output, translator_mphase_massbal, translator_check_phase_cond
+  use translator_mph_module, only : pri_var_trans_mph_ninc, &
+                                    translator_mph_get_output, &
+                                    translator_mphase_massbal, &
+                                    translator_check_phase_cond
   
   use Connection_module
   use Realization_module
@@ -2729,7 +2732,8 @@ subroutine pflow_mphase_initadj(realization)
 ! running this subroutine will override the xmol data for initial condition in pflow.in 
 
   ! geh - will not compile without the 'only:' statement
-  use translator_mph_module, only : pri_var_trans_mph_ninc, translator_check_phase_cond
+  use translator_mph_module, only : pri_var_trans_mph_ninc, &
+                                    translator_check_phase_cond
 
   use Connection_module
   use Realization_module
