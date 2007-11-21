@@ -1680,6 +1680,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
   use Grid_module
   use Realization_module
   use Coupler_module
+  use Field_module
   
   implicit none
 
@@ -2567,7 +2568,8 @@ subroutine pflow_update_mphase(realization)
   use Realization_module
   use Grid_module
   use Option_module
-  use Coupler_module  
+  use Coupler_module 
+  use Field_module 
 
   implicit none
 
@@ -2734,6 +2736,8 @@ subroutine pflow_mphase_initadj(realization)
   use Grid_module
   use Option_module
   use Coupler_module
+  use Field_module
+  
   implicit none
  
   type(realization_type) :: realization 
@@ -2895,6 +2899,7 @@ subroutine createmphaseZeroArray(realization)
   use Realization_module
   use Grid_module
   use Option_module
+  use Field_module
   
   implicit none
 
