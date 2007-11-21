@@ -97,7 +97,7 @@ subroutine translator_mphase_massbal(realization)
 
   call VecGetArrayF90(field%var_loc,var_loc_p,ierr)
   call VecGetArrayF90(grid%volume, volume_p, ierr)
-  call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
+  call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)  
   call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr)
  
   size_var_node=(option%ndof+1)*(2+7*option%nphase +2*option%nphase*option%nspec)
