@@ -250,18 +250,18 @@ subroutine RealizationInitBoundConditions(realization)
     boundary_condition => boundary_condition%next
   enddo
   
-  call RealizationUpdateBoundConditions(realization)
+  call RealizationUpdateBoundCond(realization)
 
 end subroutine RealizationInitBoundConditions
 
 ! ************************************************************************** !
 !
-! RealizationUpdateBoundConditions: Updates boundary conditions within model
+! RealizationUpdateBoundCond: Updates boundary conditions within model
 ! author: Glenn Hammond
 ! date: 11/06/07
 !
 ! ************************************************************************** !
-subroutine RealizationUpdateBoundConditions(realization)
+subroutine RealizationUpdateBoundCond(realization)
 
   implicit none
   
@@ -280,7 +280,7 @@ subroutine RealizationUpdateBoundConditions(realization)
     boundary_condition => boundary_condition%next
   enddo
 
-end subroutine RealizationUpdateBoundConditions
+end subroutine RealizationUpdateBoundCond
 
 ! ************************************************************************** !
 !
@@ -386,7 +386,7 @@ subroutine RealizationUpdate(realization)
   
   ! must update conditions first
   call ConditionUpdate(realization%conditions,realization%option,realization%option%time)
-  call RealizationUpdateBoundConditions(realization)
+  call RealizationUpdateBoundCond(realization)
 ! currently don't use aux_vars, just condition for src/sinks
 !  call RealizationUpdateSrcSinks(realization)
 
