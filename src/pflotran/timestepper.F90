@@ -883,6 +883,7 @@ subroutine StepperUpdateSolution(realization)
   use Realization_module
   use Option_module
   use Grid_module
+  use Field_module
 
   implicit none
 
