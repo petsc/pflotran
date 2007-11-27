@@ -372,13 +372,15 @@ subroutine PflowInit(simulation,filename)
   ! clip regions and set up boundary connectivity, distance  
   call GridLocalizeRegions(realization%regions,realization%grid,realization%option)
 
-  ! connectivity between boundary conditions, srcs/sinks, etc and grid
+  ! connectivity between initial conditions, boundary conditions, srcs/sinks, etc and grid
+  call GridComputeCouplerConnections(grid,option,realization%initial_conditions%first)
   call GridComputeCouplerConnections(grid,option,realization%boundary_conditions%first)
   call GridComputeCouplerConnections(grid,option,realization%source_sinks%first)
                                 
   call assignMaterialPropToRegions(realization)
+  call RealizationInitCouplerAuxVars(realization,realization%initial_conditions)
+  call RealizationInitCouplerAuxVars(realization,realization%boundary_conditions)
   call assignInitialConditions(realization)
-  call RealizationInitBoundConditions(realization)
 
   allocate(realization%field%internal_velocities(option%nphase, &
              ConnectionGetNumberInList(realization%grid%internal_connection_list)))
@@ -2685,9 +2687,11 @@ subroutine assignInitialConditions(realization)
   use Field_module
   use Coupler_module
   use Condition_module
+  use Grid_module
   
   use MPHASE_module, only : pflow_mphase_setupini
   use Richards_module, only : pflow_Richards_setupini
+  use hydrostat_module
 
   implicit none
   
@@ -2699,7 +2703,9 @@ subroutine assignInitialConditions(realization)
   PetscScalar, pointer :: conc_p(:)
   PetscScalar, pointer :: xmol_p(:)
   
-  integer :: icell, local_id, count, jn1, jn2
+  integer :: icell, iconn, count, jn1, jn2
+  integer :: local_id, ghosted_id, iend, ibegin
+  PetscScalar, pointer :: xx_p(:), iphase_loc_p(:)
   PetscErrorCode :: ierr
   
   type(option_type), pointer :: option
@@ -2786,7 +2792,47 @@ subroutine assignInitialConditions(realization)
       if (option%ndof == 4) call VecRestoreArrayF90(field%xmol,xmol_p,ierr)
   end select 
 
-#if 0 
+  ! assign initial conditions values to domain
+  call VecGetArrayF90(field%xx,xx_p, ierr); CHKERRQ(ierr)
+  call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr)
+  
+  xx_p = -999.d0
+  
+  initial_condition => realization%initial_conditions%first
+  do
+  
+    if (.not.associated(initial_condition)) exit
+
+    if (.not.associated(initial_condition%connection)) then
+      do icell=1,initial_condition%region%num_cells
+        local_id = initial_condition%region%cell_ids(icell)
+        ghosted_id = realization%grid%nL2G(local_id)
+        iend = local_id*option%ndof
+        ibegin = iend-option%ndof+1
+        xx_p(ibegin:iend) = &
+          initial_condition%condition%cur_value(1:option%ndof)
+        iphase_loc_p(ghosted_id)=initial_condition%condition%iphase
+      enddo
+    else
+      do iconn=1,initial_condition%connection%num_connections
+        local_id = initial_condition%connection%id_dn(iconn)
+        ghosted_id = realization%grid%nL2G(local_id)
+        iend = local_id*option%ndof
+        ibegin = iend-option%ndof+1
+        xx_p(ibegin:iend) = &
+          initial_condition%aux_real_var(1:option%ndof,iconn)
+        iphase_loc_p(ghosted_id)=initial_condition%aux_real_var(1,iconn)
+      enddo
+    endif
+    initial_condition => initial_condition%next
+  enddo
+  
+  call VecRestoreArrayF90(field%xx,xx_p, ierr)
+  call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p,ierr)
+
+
+
+#if 1 
   ! needs to be implemented
   ! set hydrostatic properties for initial and boundary conditions with depth
   if (option%ihydrostatic == 1) then
@@ -2794,10 +2840,10 @@ subroutine assignInitialConditions(realization)
       case(MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
         call mhydrostatic(realization)
       case(OWG_MODE)
-        call owghydrostatic(realization)
+!        call owghydrostatic(realization)
       case default
-        call hydrostatic(realization)
-    endif
+!        call hydrostatic(realization)
+    end select
   endif
 #endif  
   !if (grid%iread_init==2) call Read_init_field(grid)

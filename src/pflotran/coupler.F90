@@ -41,8 +41,7 @@ module Coupler_module
   integer, save :: num_couplers = 0
   
   public :: CouplerCreate, CouplerDestroy, CouplerInitList, CouplerAddToList, &
-            CouplerRead, CouplerDestroyList, CouplerGetNumConnectionsInList, &
-            CouplerUpdateAuxVars
+            CouplerRead, CouplerDestroyList, CouplerGetNumConnectionsInList
 
   
   interface CouplerCreate
@@ -218,44 +217,6 @@ subroutine CouplerRead(coupler,fid)
   enddo  
 
 end subroutine CouplerRead
-
-! ************************************************************************** !
-!
-! CouplerUpdateAuxVars: Updates auxilliary variables associated with a coupler
-! author: Glenn Hammond
-! date: 11/19/07
-!
-! ************************************************************************** !
-subroutine CouplerUpdateAuxVars(coupler,option)
-
-  use Option_module
-
-  implicit none
-  
-  type(coupler_type) :: coupler
-  type(option_type) :: option
-  
-  integer :: idof, num_connections
-  
-  num_connections = coupler%connection%num_connections
-  select case(option%imode)
-    case(RICHARDS_MODE,MPH_MODE)
-      coupler%aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
-        coupler%condition%iphase
-  end select
-  
-  do idof = 1, option%ndof
-  
-    select case(coupler%condition%itype(idof))
-      case(DIRICHLET_BC,NEUMANN_BC,MASS_RATE)
-        coupler%aux_real_var(idof,1:num_connections) = &
-          coupler%condition%cur_value(idof)
-      case(HYDROSTATIC_BC)
-      ! call hydrostatic subroutines
-    end select 
-  enddo
-
-end subroutine CouplerUpdateAuxVars
 
 ! ************************************************************************** !
 !

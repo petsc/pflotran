@@ -276,6 +276,11 @@ subroutine GridComputeCouplerConnections(grid,option,coupler_list)
 
     select case(coupler%itype)
       case(INITIAL_COUPLER_TYPE)
+        if (coupler%condition%itype(1) /= HYDROSTATIC_BC) then
+          nullify(coupler%connection)
+          coupler => coupler%next
+          cycle
+        endif
         connection_itype = INITIAL_CONNECTION_TYPE
       case(SRC_SINK_COUPLER_TYPE)
         connection_itype = SRC_SINK_CONNECTION_TYPE

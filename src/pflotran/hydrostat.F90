@@ -777,26 +777,45 @@ subroutine recondition_bc(grid)
 
 end subroutine recondition_bc
   
-  
  ! the coordinate in provided by pflow_compute_xyz, make sure this subroutine is called after that 
-subroutine mhydrostatic(grid)
+subroutine mhydrostatic(realization)
 
   use water_eos_module
 
+  use Realization_module
+  use Option_module
+  use Grid_module
+  use Field_module
+  use Coupler_module
+  use Condition_module
+  use Connection_module
+
   implicit none
 
-  type(pflowGrid), intent(inout) :: grid
+  type(realization_type) :: realization
   PetscScalar, pointer :: xx_p(:) 
   
-  integer ibc,ibc0,ierr,itrho,ireg,n,nl,ng
+  integer ibc,ibc0,ierr,itrho,ireg,iz !,nl,ng
 ! integer :: i,j,jm,k,m,
   real*8 :: betap,depth,horiz,dx1,dx2,rho0,&
             rho,rho1,zz,dzz,tmp,pres,p,dp
 
-  real*8 :: ibndtyp(grid%nblkbc) !,cbc(grid%nblkbc),sbc(grid%nblkbc)
-  real*8 :: xxbc_rec(grid%ndof,grid%nblkbc),iphasebc_rec(grid%nblkbc)
+!  real*8 :: ibndtyp(grid%nblkbc) !,cbc(grid%nblkbc),sbc(grid%nblkbc)
+!  real*8 :: xxbc_rec(grid%ndof,grid%nblkbc),iphasebc_rec(grid%nblkbc)
   real*8 :: xm_nacl, dw_kg
-
+  integer :: natural_id,nz, local_id, ghosted_id, iconn
+  
+  type(option_type), pointer :: option
+  type(grid_type), pointer :: grid
+  type(field_type), pointer :: field
+  
+  type(coupler_type), pointer :: boundary_condition
+  type(connection_type), pointer :: cur_connection_set
+  
+  option => realization%option
+  grid => realization%grid
+  field => realization%field
+  
 ! real*8 :: dz1,dz2,dum,dwp,dw_mol,
   !Vec :: temp1_nat_vec, temp2_nat_vec, temp3_nat_vec, temp4_nat_vec
 
@@ -819,27 +838,27 @@ subroutine mhydrostatic(grid)
 !  vz = -k/mu (dp/dz - rho g z) = 0
 !  vx = -k/mu dp/dx, h = p/(rho g)
    
-    xm_nacl = grid%m_nacl * fmwnacl
-    xm_nacl = xm_nacl /(1.D3 + xm_nacl)
+  xm_nacl = option%m_nacl * fmwnacl
+  xm_nacl = xm_nacl /(1.D3 + xm_nacl)
    ! call nacl_den(t, p*1D-6, xm_nacl, dw_kg) 
    !  dw_kg = dw_kg * 1D3
   
 
-  if (grid%iread_init /= 1) then
-    call VecGetArrayF90(grid%xx, xx_p, ierr)
+  if (option%iread_init /= 1) then
+    call VecGetArrayF90(field%xx, xx_p, ierr)
 ! set initial pressure and temperature fields
-    pres=grid%pref     
-    do nl=1, grid%nlmax
+    pres=option%pref     
+    do local_id=1, grid%nlmax
 !geh      na=grid%nL2A(nl)+1 ! the natural ordering start from 0
 !geh      depth = grid%z(na)
 !geh      horiz = grid%x(na)
-      ng=grid%nL2G(nl)
-      depth = dabs(grid%z(ng))
-      horiz = grid%x(ng)
+      ghosted_id=grid%nL2G(local_id)
+      depth = dabs(grid%z(ghosted_id))
+      horiz = grid%x(ghosted_id)
       dx1 = dx2
       !print *,'mhydro', nl,na,depth,horiz
-      tmp = grid%dTdz * depth + grid%tref
-      betap = rho * grid%gravity * grid%beta
+      tmp = option%dTdz * depth + option%tref
+      betap = rho * option%gravity * option%beta
     
      ! call wateos(tmp, pres, rho, dw_mol, dwp, &
      !             dum, dum, dum, dum, grid%scale, ierr)
@@ -847,12 +866,12 @@ subroutine mhydrostatic(grid)
       call nacl_den(tmp, pres*1D-6, xm_nacl, dw_kg) 
       rho = dw_kg * 1D3
       
-        pres = rho * grid%gravity * depth + grid%pref - betap * horiz
+        pres = rho * option%gravity * depth + option%pref - betap * horiz
 
       itrho= 0
       do 
-        betap = rho * grid%gravity * grid%beta
-        pres = rho * grid%gravity * depth + grid%pref - betap * horiz
+        betap = rho * option%gravity * option%beta
+        pres = rho * option%gravity * depth + option%pref - betap * horiz
         !call wateos(tmp, pres, rho1, dw_mol, dwp, &
         !            dum, dum, dum, dum, grid%scale, ierr)
         call nacl_den(tmp, pres*1D-6, xm_nacl, dw_kg) 
@@ -867,30 +886,30 @@ subroutine mhydrostatic(grid)
         endif
       enddo
 
-      xx_p(1+ (nl-1)*grid%ndof)=pres 
-      xx_p(2+ (nl-1)*grid%ndof)=tmp
+      xx_p(1+ (local_id-1)*option%ndof)=pres 
+      xx_p(2+ (local_id-1)*option%ndof)=tmp
         
     enddo
-    call VecRestoreArrayF90(grid%xx, xx_p, ierr)
+    call VecRestoreArrayF90(field%xx, xx_p, ierr)
   endif
   
   ! boundary conditions
 
-  p = grid%pref
+  p = option%pref
 !  call wateos(grid%tref, p, rho, dw_mol, dwp, &
 !              dum, dum, dum, dum, grid%scale, ierr)
-    call nacl_den(grid%tref, p*1D-6, xm_nacl, dw_kg) 
-    rho = dw_kg * 1D3
+  call nacl_den(option%tref, p*1D-6, xm_nacl, dw_kg) 
+  rho = dw_kg * 1D3
  
 !geh  depth = grid%z(grid%nmax) + 0.5d0*grid%dz0(grid%nz)
 !geh  horiz = grid%x(grid%nmax) + 0.5d0*grid%dx0(grid%nx)
 
-  depth = grid%z_max
-  horiz = grid%x_max
+  depth = grid%structured_grid%z_max
+  horiz = grid%structured_grid%x_max
   
-  dp = rho * grid%gravity * grid%beta * horiz
+  dp = rho * option%gravity * option%beta * horiz
   
-  if (grid%myrank == 0) then
+  if (option%myrank == 0) then
     write(*,'(" --> hydrostatic: length= ",1pe11.4,"[m], depth= ",1pe11.4, &
  &          "[m], dp= ",1pe11.4,"[Pa]")') horiz,depth,dp
     write(IUNIT2,'(" --> hydrostatic: length= ",1pe11.4,"[m], depth= ", &
@@ -901,411 +920,75 @@ subroutine mhydrostatic(grid)
   !note-bcon must be in the order: 3D-left, right, top, bottom, front, back
   !                                1D-top, bottom
 
-
-  if (grid%nblkbc > 6) then
-    print *,'error in bcon/hydrostatic: ',grid%nblkbc,ibndtyp
-    print *,'nblkbc must be 6 or less in bcon keyword'
-    stop
-  endif
-
-  xxbc_rec=grid%xxbc0
-  iphasebc_rec=grid%iphasebc0
-  
-  do ibc = 1, grid%nblkbc
-    if ((grid%iface(ibc) .ne. ibc) .and. (grid%nx > 1)) then
-      print *,'error in hydrostatic: bcon out of order ',grid%iface(ibc),ibc
-      stop
-    endif
-    ibndtyp(ibc) = grid%ibndtyp(ibc)
-!    grid%xxbc0(:,ibc)
-!    cbc(ibc) = grid%concbc0(ibc)
-!    sbc(ibc) = grid%sgbc0(ibc)
-  enddo
-  
- 
-! left and right faces
-
-  ibc = 0
-  ibc0 = 0
-  
-  if (grid%nx > 1) then
-  
-    ! left face
-  
-    ibc0 = ibc0 + 1
-    p = grid%pref + dp
-!    call wateos(grid%tref, p, rho0, dw_mol, dwp, &
-!    dum, dum, dum, dum, grid%scale, ierr)
-     call nacl_den(grid%tref, p*1D-6, xm_nacl, dw_kg) 
-     rho0 = dw_kg * 1D3
-
+  boundary_condition => realization%boundary_conditions%first
+  do 
+    if (.not.associated(boundary_condition)) exit
     
-    do n = 1, grid%nz
-      ibc = ibc + 1
+    cur_connection_set => boundary_condition%connection
     
-!     if (ibc .gt. MAXBCREGIONS) then
-!       print *,'pflowgrid_setup: too many boundary condition regions-stop!'
-!       stop
-!     endif
-    
-      grid%iregbc1(ibc) = n
-      grid%iregbc2(ibc) = n
-!     grid%ibndtyp(ibc) = 2 
-      if (ibc0 <= grid%nblkbc) grid%ibndtyp(ibc) = ibndtyp(ibc0)
-      grid%iface(ibc) = 1  
-      grid%k1bc(ibc) = n
-      grid%k2bc(ibc) = n
-      grid%j1bc(ibc) = 1
-      grid%j2bc(ibc) = grid%ny
-      grid%i1bc(ibc) = 1
-      grid%i2bc(ibc) = 1
-    
-      if (n.eq.1) then
-        dzz = 0.5d0*grid%dz0(1)
-        zz = dzz
-      else
-        dzz = 0.5d0*(grid%dz0(n)+grid%dz0(n-1))
-        zz = zz + dzz
-      endif
-      tmp = grid%tref + grid%dTdz*zz
-    
-  !   call wateos(tmp, p, rho, dw_mol, dwp, &
-  !    dum, dum, dum, dum, grid%scale, ierr)
-      call nacl_den(tmp, p*1D-6, xm_nacl, dw_kg) 
-      rho = dw_kg * 1D3
- 
-                  
-        itrho= 0
-          
-              !betap = rho * grid%gravity * grid%beta
-              if(n==1)then
-                pres = p + rho0 * grid%gravity * dzz !+  betap * horiz
-         !        call wateos(tmp, pres, rho, dw_mol, dwp, &
-         !               dum, dum, dum, dum, grid%scale, ierr)
-                  call nacl_den(tmp, pres*1D-6, xm_nacl, dw_kg) 
-                  rho = dw_kg * 1D3
-                  
+    do iconn = 1, cur_connection_set%num_connections    
+      local_id = cur_connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
+      natural_id = grid%nL2A(local_id)+1 
 
-               else
-               do
-                pres = p + (rho0*grid%dz0(n-1) + rho* grid%dz0(n))/(grid%dz0(n)+grid%dz0(n-1))&
-                     * grid%gravity * dzz 
-              !  call wateos(tmp, pres, rho1, dw_mol, dwp, &
-              !  dum, dum, dum, dum, grid%scale, ierr)
-                 call nacl_den(tmp, pres*1D-6, xm_nacl, dw_kg) 
-                 rho1 = dw_kg * 1D3
-                if (abs(rho-rho1) < 1.d-10) exit
-                rho = rho1
-                itrho = itrho + 1
-                if (itrho > 100) then
-                  print *,' no convergence in hydrostat-stop',itrho,rho1,rho
-                  stop
-                endif
-              enddo
-          endif
-     p = pres
-     rho0=rho
-!      p = grid%pref + rho*grid%gravity*zz + dp
-!     p = p0 + rho*grid%gravity*zz + dp
-
-!     print *,'left: ',n,zz,tmp,p,rho,dp
-
-!      grid%pressurebc0(1,ibc) = p
-!      grid%tempbc0(ibc) = tmp
-!      grid%concbc0(ibc) = cbc(ibc0)
-!      grid%sgbc0(ibc) = sbc(ibc0)
-      grid%velocitybc0(:,ibc) = 0.d0
-      grid%xxbc0(1,ibc) = p
-      grid%xxbc0(2,ibc) = tmp
-      grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
-      grid%iphasebc0(ibc)=iphasebc_rec(ibc0)     
-!     print *,'BC: ',grid%myrank,n,ibc,zz,grid%z(grid%nmax),grid%x(grid%nmax), &
-!     grid%tempbc(ibc),grid%tempbc(ibc+grid%nz), &
-!     grid%pressurebc(1,ibc),grid%pressurebc(1,ibc+grid%nz)
-    enddo
-
-    ! right face
-  
-    ibc0 = ibc0 + 1
-
-    p = grid%pref
-!    call wateos(grid%tref, p, rho0, dw_mol, dwp, &
-!    dum, dum, dum, dum, grid%scale, ierr)
-      call nacl_den(grid%tref, p*1D-6, xm_nacl, dw_kg) 
+      p = option%pref + dp
+!      call wateos(grid%tref, p, rho0, dw_mol, dwp, &
+!      dum, dum, dum, dum, grid%scale, ierr)
+      call nacl_den(option%tref, p*1D-6, xm_nacl, dw_kg) 
       rho0 = dw_kg * 1D3
 
-    
-    do n = 1, grid%nz
-      ibc = ibc + 1
+      do iz = 1, (local_id-1)/grid%structured_grid%nlxy+1
+
+        if (iz.eq.1) then
+          dzz = 0.5d0*grid%structured_grid%dz0(1)
+          zz = dzz
+        else
+          dzz = 0.5d0*(grid%structured_grid%dz0(iz)+grid%structured_grid%dz0(iz-1))
+          zz = zz + dzz
+        endif
+        tmp = option%tref + option%dTdz*zz
       
-      grid%iregbc1(ibc) = grid%nz+n
-      grid%iregbc2(ibc) = grid%nz+n
-!     grid%ibndtyp(ibc) = 2 
-      grid%ibndtyp(ibc) = ibndtyp(ibc0)
-      grid%iface(ibc) = 2
-      grid%k1bc(ibc) = n
-      grid%k2bc(ibc) = n
-      grid%j1bc(ibc) = 1
-      grid%j2bc(ibc) = grid%ny
-      grid%i1bc(ibc) = grid%nx
-      grid%i2bc(ibc) = grid%nx
-    
-      if (n.eq.1) then
-        dzz = 0.5d0*grid%dz0(1)
-        zz = dzz
-      else
-        dzz = 0.5d0*(grid%dz0(n)+grid%dz0(n-1))
-        zz = zz + dzz
-      endif
-      tmp = grid%tref + grid%dTdz*zz
-
-     ! call wateos(tmp, p, rho, dw_mol, dwp, &
-     !             dum, dum, dum, dum, grid%scale, ierr)
-       call nacl_den(tmp, p*1D-6, xm_nacl, dw_kg) 
-       rho = dw_kg * 1D3
+    !   call wateos(tmp, p, rho, dw_mol, dwp, &
+    !    dum, dum, dum, dum, grid%scale, ierr)
+        call nacl_den(tmp, p*1D-6, xm_nacl, dw_kg) 
+        rho = dw_kg * 1D3
+   
+                    
+        itrho= 0
             
-        itrho= 0
-          
-              if(n==1)then
-                pres = p + rho0 * grid%gravity * dzz !+  betap * horiz
-               ! call wateos(tmp, pres, rho, dw_mol, dwp, &
-               !   dum, dum, dum, dum, grid%scale, ierr)
-                call nacl_den(tmp, pres*1D-6, xm_nacl, dw_kg) 
-                rho = dw_kg * 1D3
-
-               else
-                do
-                  pres = p + (rho0*grid%dz0(n-1) + rho* grid%dz0(n))/(grid%dz0(n)+grid%dz0(n-1))&
-                     * grid%gravity * dzz 
-                  !call wateos(tmp, pres, rho1, dw_mol, dwp, &
-                  !  dum, dum, dum, dum, grid%scale, ierr)
-                   call nacl_den(tmp, pres*1D-6, xm_nacl, dw_kg) 
-                   rho1 = dw_kg * 1D3
-
-              
-              if (abs(rho-rho1) < 1.d-10) exit
-              rho = rho1
-              itrho = itrho + 1
-              if (itrho > 100) then
-                print *,' no convergence in hydrostat-stop',itrho,rho1,rho
-                stop
-              endif
-            enddo
-         endif
-     p = pres
-     rho0=rho
-
-!      p = grid%pref + rho*grid%gravity*zz !- dp
-!     p = p0 + rho*grid%gravity*zz
-
-!     print *,'right: ',n,zz,tmp,p,p0,rho,dp,grid%nx,grid%ny,grid%nz
-
-!     grid%pressurebc0(1,ibc) = p
-!     grid%tempbc0(ibc) = tmp
-!     grid%concbc0(ibc) = cbc(ibc0) !grid%conc0
-!     grid%sgbc0(ibc) = sbc(ibc0)
-      grid%velocitybc0(:,ibc) = 0.d0
-      grid%xxbc0(1,ibc) = p
-      grid%xxbc0(2,ibc) = tmp
-      grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
-      grid%iphasebc0(ibc)=iphasebc_rec(ibc0)
-!     print *,'BC: ',grid%myrank,n,ibc,zz,grid%z(grid%nmax),grid%x(grid%nmax), &
-!     grid%tempbc(ibc),grid%tempbc(ibc+grid%nz), &
-!     grid%pressurebc(1,ibc),grid%pressurebc(1,ibc+grid%nz)
+        !betap = rho * grid%gravity * grid%beta
+        if (iz == 1) then
+          pres = p + rho0 * option%gravity * dzz !+  betap * hori
+         ! call wateos(tmp, pres, rho, dw_mol, dwp, &
+         !             dum, dum, dum, dum, grid%scale, ierr)
+          call nacl_den(tmp, pres*1D-6, xm_nacl, dw_kg) 
+          rho = dw_kg * 1D3
+        else
+          do
+            pres = p + (rho0*grid%structured_grid%dz0(iz-1) + rho*grid%structured_grid%dz0(iz))/(grid%structured_grid%dz0(iz)+grid%structured_grid%dz0(iz-1))&
+                                                             * option%gravity * dzz 
+           ! call wateos(tmp, pres, rho1, dw_mol, dwp, &
+           ! dum, dum, dum, dum, grid%scale, ierr)
+            call nacl_den(tmp, pres*1D-6, xm_nacl, dw_kg) 
+            rho1 = dw_kg * 1D3
+            if (abs(rho-rho1) < 1.d-10) exit
+            rho = rho1
+            itrho = itrho + 1
+            if (itrho > 100) then
+              print *,' no convergence in hydrostat-stop',itrho,rho1,rho
+              stop
+            endif
+          enddo
+        endif
+        p = pres
+        rho0=rho
+      enddo
+      boundary_condition%aux_real_var(1,iconn) = p
+      boundary_condition%aux_real_var(2,iconn) = tmp
     enddo
-  
-  endif
-  
-! top
-  
-  ibc0 = ibc0 + 1
-
-  ibc = ibc + 1
-  grid%iregbc1(ibc) = ibc
-  grid%iregbc2(ibc) = ibc
-! grid%ibndtyp(ibc) = 1 
-  grid%ibndtyp(ibc) = ibndtyp(ibc0)
-  grid%iface(ibc) = 3
-  grid%k1bc(ibc) = 1
-  grid%k2bc(ibc) = 1
-  grid%j1bc(ibc) = 1
-  grid%j2bc(ibc) = grid%ny
-  grid%i1bc(ibc) = 1
-  grid%i2bc(ibc) = grid%nx
-
-!  grid%pressurebc0(1,ibc) = grid%pref
-!  grid%tempbc0(ibc) = grid%tref
-!  grid%concbc0(ibc) = cbc(ibc0) !grid%conc0 0.85d0 !grid%conc0 !grid%concbc(3) !
-!  grid%sgbc0(ibc) = sbc(ibc0)
-  grid%xxbc0(1,ibc) = grid%pref
-  grid%xxbc0(2,ibc) = grid%tref
-  grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
-  grid%iphasebc0(ibc)=iphasebc_rec(ibc0)
-  grid%velocitybc0(:,ibc) = 0.d0
-! print *,'BC: top',grid%myrank,ibc,grid%xxbc0(:,ibc)
-! bottom
-
-  p=grid%pref
-  do n = 1, grid%nz
-    if (n.eq.1) then
-      dzz = 0.5d0*grid%dz0(1)
-      zz = dzz
-      else
-        dzz = 0.5d0*(grid%dz0(n)+grid%dz0(n-1))
-        zz = zz + dzz
-      endif
-      tmp = grid%tref + grid%dTdz*zz
-    
-  !   call wateos(tmp, p, rho, dw_mol, dwp, &
-  !    dum, dum, dum, dum, grid%scale, ierr)
-      call nacl_den(tmp, p*1D-6, xm_nacl, dw_kg) 
-      rho = dw_kg * 1D3
-                  
-        itrho= 0
-          
-              !betap = rho * grid%gravity * grid%beta
-              if(n==1)then
-                pres = p + rho0 * grid%gravity * dzz !+  betap * horiz
-         !        call wateos(tmp, pres, rho, dw_mol, dwp, &
-         !               dum, dum, dum, dum, grid%scale, ierr)
-                  call nacl_den(tmp, pres*1D-6, xm_nacl, dw_kg) 
-                  rho = dw_kg * 1D3
-                  
-
-               else
-               do
-                pres = p + (rho0*grid%dz0(n-1) + rho* grid%dz0(n))/(grid%dz0(n)+grid%dz0(n-1))&
-                     * grid%gravity * dzz 
-              !  call wateos(tmp, pres, rho1, dw_mol, dwp, &
-              !  dum, dum, dum, dum, grid%scale, ierr)
-                 call nacl_den(tmp, pres*1D-6, xm_nacl, dw_kg) 
-                 rho1 = dw_kg * 1D3
-                if (abs(rho-rho1) < 1.d-10) exit
-                rho = rho1
-                itrho = itrho + 1
-                if (itrho > 100) then
-                  print *,' no convergence in hydrostat-stop',itrho,rho1,rho
-                  stop
-                endif
-              enddo
-          endif
-     p = pres
-     rho0=rho
-    enddo
-
-    itrho =0; dzz= 0.5d0 * grid%dz0(grid%nz)
-    do
-       pres = p + rho * grid%gravity * dzz 
-            !  call wateos(tmp, pres, rho1, dw_mol, dwp, &
-              !  dum, dum, dum, dum, grid%scale, ierr)
-       call nacl_den(tmp, pres*1D-6, xm_nacl, dw_kg) 
-       rho1 = dw_kg * 1D3
-       if (abs(rho-rho1) < 1.d-10) exit
-         rho = rho1
-         itrho = itrho + 1
-         if (itrho > 100) then
-            print *,' no convergence in hydrostat-stop',itrho,rho1,rho
-            stop
-         endif
-    enddo
-
-
-  
-  ibc0 = ibc0 + 1
-
-  ibc = ibc + 1
-  grid%iregbc1(ibc) = ibc
-  grid%iregbc2(ibc) = ibc
-! grid%ibndtyp(ibc) = 2 
-  grid%ibndtyp(ibc) = ibndtyp(ibc0)
-  grid%iface(ibc) = 4
-  grid%k1bc(ibc) = grid%nz
-  grid%k2bc(ibc) = grid%nz
-  grid%j1bc(ibc) = 1
-  grid%j2bc(ibc) = grid%ny
-  grid%i1bc(ibc) = 1
-  grid%i2bc(ibc) = grid%nx
-
-! grid%pressurebc(1,ibc) = grid%pref
-! grid%pressurebc0(1,ibc) = p !grid%pref + rho * grid%gravity * depth
-! grid%tempbc0(ibc) = grid%tref + grid%dTdz * depth
-! grid%concbc0(ibc) = cbc(ibc0) !grid%conc0
-! grid%sgbc0(ibc) = sbc(ibc0)
-  grid%xxbc0(1,ibc) = p
-  grid%xxbc0(2,ibc) = grid%tref + grid%dTdz * depth
-  grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
-  grid%iphasebc0(ibc)=iphasebc_rec(ibc0)
-  grid%velocitybc0(:,ibc) = 0.d0
-! print *,'BC: bot',grid%myrank,ibc,grid%xxbc0(:,ibc)
-  if (grid%ny > 1) then
-!     front
-  
-    ibc0 = ibc0 + 1
-
-    ibc = ibc + 1
-    grid%iregbc1(ibc) = ibc
-    grid%iregbc2(ibc) = ibc
-!   grid%ibndtyp(ibc) = 2 
-    grid%ibndtyp(ibc) = ibndtyp(ibc0)
-    grid%iface(ibc) = 5
-    grid%k1bc(ibc) = 1
-    grid%k2bc(ibc) = grid%nz
-    grid%j1bc(ibc) = 1
-    grid%j2bc(ibc) = 1
-    grid%i1bc(ibc) = 1
-    grid%i2bc(ibc) = grid%nx
-
-!    grid%pressurebc0(1,ibc) = grid%pref
-!    grid%tempbc0(ibc) = grid%tref
-!    grid%concbc0(ibc) = cbc(ibc0) !grid%conc0
-!    grid%sgbc0(ibc) = sbc(ibc0)
-    grid%xxbc0(1,ibc) = grid%pref
-    grid%xxbc0(2,ibc) = grid%tref
-    grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
-    grid%iphasebc0(ibc)=iphasebc_rec(ibc0) 
-    grid%velocitybc0(:,ibc) = 0.d0
-  
-!     back
-  
-    ibc0 = ibc0 + 1
-
-    ibc = ibc + 1
-    grid%iregbc1(ibc) = ibc
-    grid%iregbc2(ibc) = ibc
-!   grid%ibndtyp(ibc) = 2 
-    grid%ibndtyp(ibc) = ibndtyp(ibc0)
-    grid%iface(ibc) = 6
-    grid%k1bc(ibc) = 1
-    grid%k2bc(ibc) = grid%nz
-    grid%j1bc(ibc) = grid%ny
-    grid%j2bc(ibc) = grid%ny
-    grid%i1bc(ibc) = 1
-    grid%i2bc(ibc) = grid%nx
-    tmp = grid%tref !+ grid%dTdz * depth
-    p = grid%pref !+ rho * grid%gravity * depth
-  !  call wateos(tmp, grid%pref, rho, dw_mol, dwp, &
-  !              dum, dum, dum, dum, grid%scale, ierr)
-      call nacl_den(tmp, grid%pref*1D-6, xm_nacl, dw_kg) 
-      rho = dw_kg * 1D3
-
-!   grid%pressurebc0(1,ibc) = p
-!   grid%tempbc0(ibc) = tmp
-!   grid%concbc0(ibc) = cbc(ibc0) !grid%conc0
-!   grid%sgbc0(ibc) = sbc(ibc0)
-    grid%xxbc0(1,ibc) = p
-    grid%xxbc0(2,ibc) = tmp
-    grid%xxbc0(3,ibc) =xxbc_rec(3,ibc0)
-    grid%iphasebc0(ibc)=iphasebc_rec(ibc0)
-    grid%velocitybc0(:,ibc) = 0.d0
-  endif
-  
-  grid%nblkbc = ibc
-    
-! do ibc = 1, grid%nblkbc
-!   grid%pressurebc(2,ibc) = grid%pressurebc(1,ibc)
-!   grid%velocitybc(2,ibc) = grid%velocitybc(1,ibc)
-! enddo
-
+    boundary_condition => boundary_condition%next
+  enddo
+#if 0
   if (grid%myrank == 0 ) then !.and. grid%iprint >= 3) then
     print *,'--> write out file pflow.bc'
     open(IUNIT3, file="pflow.bc", action="write", status="unknown")
@@ -1338,7 +1021,7 @@ subroutine mhydrostatic(grid)
     enddo
     close(IUNIT3)
   endif
-
+#endif
 end subroutine mhydrostatic
 
 

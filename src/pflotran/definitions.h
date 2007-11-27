@@ -17,6 +17,10 @@
 ! HHISTORY_LENGTH is the length of the array used to store the differencing
 ! values h.
 
+#define X_DIRECTION 1
+#define Y_DIRECTION 2
+#define Z_DIRECTION 3
+
 #define ONEDOF 1
 #define NPHASEDOF 2
 #define THREENPDOF 3

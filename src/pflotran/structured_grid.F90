@@ -22,9 +22,9 @@ module Structured_Grid_module
 #include "include/finclude/petscda.h"
 #include "include/finclude/petscda.h90"
 
-#define X_DIRECTION 1
-#define Y_DIRECTION 2
-#define Z_DIRECTION 3
+!#define X_DIRECTION 1 ! now in definitions.h
+!#define Y_DIRECTION 2
+!#define Z_DIRECTION 3
 
 #define WEST 1
 #define EAST 2

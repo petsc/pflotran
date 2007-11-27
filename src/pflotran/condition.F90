@@ -6,9 +6,9 @@ module Condition_module
   
 #include "definitions.h"
 
-#define X_DIRECTION 1
-#define Y_DIRECTION 2
-#define Z_DIRECTION 3
+!#define X_DIRECTION 1 ! now in definitions.h
+!#define Y_DIRECTION 2
+!#define Z_DIRECTION 3
 
 #define STEP 0
 #define LINEAR 1
@@ -32,7 +32,7 @@ module Condition_module
     real*8, pointer :: values(:,:)                ! array of condition values, size(ndof,max_time_index)
     real*8, pointer :: cur_value(:)               ! current value of condition a time t, size(ndof)
     real*8 :: datum(3)                            ! location of reference value(s) in domain
-    real*8 :: gradient(3)                         ! rate at which reference value(s) change(s) over 3D space
+    real*8, pointer :: gradient(:,:)              ! rate at which reference value(s) change(s) over 3D space
     integer :: cur_time_index, max_time_index     ! current and maximum time index in arrays
     type(condition_type), pointer :: next         ! pointer to next condition_type for linked-lists
   end type condition_type
@@ -92,7 +92,6 @@ function ConditionCreate(option)
   nullify(condition%ctype)
   condition%name = ""
   condition%datum = 0.d0
-  condition%gradient = 0.d0
   condition%cur_time_index = 0
   condition%max_time_index = 0
   
@@ -107,8 +106,11 @@ function ConditionCreate(option)
       condition%units(3) = 'Pa'
       condition%units(4) = 'C'
       condition%units(5) = 'M'
+      allocate(condition%gradient(3,option%ndof))
   end select
   
+  condition%gradient = 0.d0
+
   ConditionCreate => condition
 
 end function ConditionCreate
@@ -262,6 +264,8 @@ subroutine ConditionRead(condition,option,fid)
               itype(index) = NEUMANN_BC
             case('mass')
               itype(index) = MASS_RATE
+            case('hydrostatic','hydro','hydrostat','static')
+              itype(index) = HYDROSTATIC_BC
             case default
               call printErrMsg(option,'bc type not recognized in condition,type')
           end select
@@ -283,12 +287,35 @@ subroutine ConditionRead(condition,option,fid)
         call fiReadDouble(string,condition%datum(Z_DIRECTION),ierr)
         call fiErrorMsg('Z Datum','CONDITION', ierr)   
       case('GRADIENT','GRAD')
-        call fiReadDouble(string,condition%gradient(X_DIRECTION),ierr)
-        call fiErrorMsg('X Gradient','CONDITION', ierr)   
-        call fiReadDouble(string,condition%gradient(Y_DIRECTION),ierr)
-        call fiErrorMsg('Y Gradient','CONDITION', ierr)   
-        call fiReadDouble(string,condition%gradient(Z_DIRECTION),ierr)
-        call fiErrorMsg('Z Gradient','CONDITION', ierr)   
+        do
+          call fiReadFlotranString(IUNIT1,string,ierr)
+          call fiReadStringErrorMsg('CONDITION',ierr)
+          
+          if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
+              fiStringCompare(string,'END',3)) exit          
+          
+          if (ierr /= 0) exit
+          call fiReadWord(string,word,.true.,ierr)
+          call fiErrorMsg('keyword','CONDITION,TYPE', ierr)   
+          select case(trim(word))
+            case('PRES','PRESS','PRESSURE')
+              index = pres_index
+            case('TEMP','TEMPERATURE')
+              index = temp_index
+            case('CONC','CONCENTRATION')
+              index = conc_index
+            case('H','ENTHALPY')
+              index = enthalpy_index
+            case default
+              call printErrMsg(option,'index not recognized in condition,gradient')
+          end select
+          call fiReadDouble(string,condition%gradient(index,X_DIRECTION),ierr)
+          call fiErrorMsg('X Gradient','CONDITION', ierr)   
+          call fiReadDouble(string,condition%gradient(index,Y_DIRECTION),ierr)
+          call fiErrorMsg('Y Gradient','CONDITION', ierr)   
+          call fiReadDouble(string,condition%gradient(index,Z_DIRECTION),ierr)
+          call fiErrorMsg('Z Gradient','CONDITION', ierr)   
+        enddo
       case('TEMPERATURE','TEMP')
         call ConditionReadValues(option,word,string,times,temperature,units(temp_index))
       case('ENTHALPY','H')
@@ -797,6 +824,8 @@ subroutine ConditionDestroy(condition)
   nullify(condition%itype)
   if (associated(condition%ctype)) deallocate(condition%ctype)
   nullify(condition%ctype)
+  if (associated(condition%gradient)) deallocate(condition%gradient)
+  nullify(condition%gradient)
   nullify(condition%next)  
   
   deallocate(condition)

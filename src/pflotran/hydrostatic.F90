@@ -68,6 +68,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
 
     call nacl_den(temperature,pressure*1D-6,xm_nacl,dw_kg) 
     rho = dw_kg * 1.d3
+    rho1 = rho
     pressure = rho * option%gravity * dist_z + pressure0
 
     num_iteration = 0
@@ -76,7 +77,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
       rho = dw_kg * 1.d3
       if (abs(rho-rho1) < 1.d-10) exit
       pressure = rho * option%gravity * dist_z + pressure0
-      rho = rho1
+      rho1 = rho
       num_iteration = num_iteration + 1
       if (num_iteration > 100) then
         print *,'HydrostaticInitCondition failed to converge',num_iteration,rho1,rho

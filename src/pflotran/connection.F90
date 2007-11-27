@@ -94,7 +94,7 @@ function ConnectionCreate(num_connections,num_dof,connection_itype)
       connection%dist = 0.d0
       connection%area = 0.d0
 !      connection%velocity = 0.d0
-    case(SRC_SINK_CONNECTION_TYPE)
+    case(SRC_SINK_CONNECTION_TYPE,INITIAL_CONNECTION_TYPE)
       allocate(connection%id_dn(num_connections))
       connection%id_dn = 0
   end select

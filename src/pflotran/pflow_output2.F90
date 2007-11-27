@@ -14,9 +14,9 @@ module Output_module
 #define X_COORDINATE 1
 #define Y_COORDINATE 2
 #define Z_COORDINATE 3
-#define X_DIRECTION 1
-#define Y_DIRECTION 2
-#define Z_DIRECTION 3
+!#define X_DIRECTION 1 ! now in definitions.h
+!#define Y_DIRECTION 2
+!#define Z_DIRECTION 3
 #define TEMPERATURE 4
 #define PRESSURE 5
 #define LIQUID_SATURATION 6

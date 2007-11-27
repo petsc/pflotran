@@ -131,32 +131,6 @@ subroutine pflow_Richards_setupini(realization)
   allocate(option%delx(option%ndof,grid%ngmax))
   option%delx=0.D0
    
-  call VecGetArrayF90(field%xx,xx_p, ierr); CHKERRQ(ierr)
-  call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr)
-  
-  initial_condition => realization%initial_conditions%first
-  
-  do
-  
-    if (.not.associated(initial_condition)) exit
-    
-    do icell=1,initial_condition%region%num_cells
-      local_id = initial_condition%region%cell_ids(icell)
-      ghosted_id = grid%nL2G(local_id)
-      iend = local_id*option%ndof
-      ibegin = iend-option%ndof+1
-      xx_p(ibegin:iend) = &
-        initial_condition%condition%cur_value(1:option%ndof)
-      iphase_loc_p(ghosted_id)=initial_condition%condition%iphase
-    enddo
-  
-    initial_condition => initial_condition%next
-  
-  enddo
-  
-  call VecRestoreArrayF90(field%xx,xx_p, ierr)
-  call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p,ierr)
-
 end  subroutine pflow_Richards_setupini
   
 

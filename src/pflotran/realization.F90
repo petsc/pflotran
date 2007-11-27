@@ -36,7 +36,7 @@ private
 
   public :: RealizationCreate, RealizationDestroy, &
             RealizationProcessCouplers, &
-            RealizationInitBoundConditions, &
+            RealizationInitCouplerAuxVars, &
             RealizationUpdate, RealizationAddWaypointsToList
   
 contains
@@ -202,174 +202,108 @@ end subroutine RealizationProcessCouplers
 
 ! ************************************************************************** !
 !
-! RealizationInitBoundConditions: Initializes boundary conditions within model
+! RealizationInitCouplerAuxVars: Initializes coupler auxillary variables 
+!                                within list
 ! author: Glenn Hammond
-! date: 11/06/07
+! date: 11/26/07
 !
 ! ************************************************************************** !
-subroutine RealizationInitBoundConditions(realization)
+subroutine RealizationInitCouplerAuxVars(realization,coupler_list)
 
   use Connection_module
   
   implicit none
   
   type(realization_type) :: realization
+  type(coupler_list_type) :: coupler_list
   
   integer :: num_connections
   
   type(option_type), pointer :: option
-  type(coupler_type), pointer :: boundary_condition
+  type(coupler_type), pointer :: coupler
     
   option => realization%option
     
-  boundary_condition => realization%boundary_conditions%first
+  coupler => coupler_list%first
   do
-    if (.not.associated(boundary_condition)) exit
-    num_connections = boundary_condition%connection%num_connections
+    if (.not.associated(coupler)) exit
+    
+    if (associated(coupler%connection)) then
+      num_connections = coupler%connection%num_connections
 
-    ! allocate arrays that match the number of connections
-    select case(option%imode)
+      ! allocate arrays that match the number of connections
+      select case(option%imode)
 
-      case(FLASH_MODE,RICHARDS_MODE,OWG_MODE,VADOSE_MODE)
+        case(FLASH_MODE,RICHARDS_MODE,OWG_MODE,VADOSE_MODE)
        
-        allocate(boundary_condition%aux_real_var(option%ndof*option%nphase,num_connections))
-        allocate(boundary_condition%aux_int_var(1,num_connections))
-        boundary_condition%aux_real_var = 0.d0
-        boundary_condition%aux_int_var = 0
+          allocate(coupler%aux_real_var(option%ndof*option%nphase,num_connections))
+          allocate(coupler%aux_int_var(1,num_connections))
+          coupler%aux_real_var = 0.d0
+          coupler%aux_int_var = 0
 
-      case(MPH_MODE)
+        case(MPH_MODE)
 
-        allocate(boundary_condition%aux_real_var(option%ndof*option%nphase,num_connections))
-        allocate(boundary_condition%aux_int_var(1,num_connections))
-        boundary_condition%aux_real_var = 0.d0
-        boundary_condition%aux_int_var = 0
+          allocate(coupler%aux_real_var(option%ndof*option%nphase,num_connections))
+          allocate(coupler%aux_int_var(1,num_connections))
+          coupler%aux_real_var = 0.d0
+          coupler%aux_int_var = 0
             
-      case default
-    end select 
-  
-    boundary_condition => boundary_condition%next
+        case default
+      end select 
+    endif
+    coupler => coupler%next
   enddo
   
-  call RealizationUpdateBoundCond(realization)
+  call RealizationUpdateCouplerAuxVars(realization,coupler_list)
 
-end subroutine RealizationInitBoundConditions
+end subroutine RealizationInitCouplerAuxVars
 
 ! ************************************************************************** !
 !
-! RealizationUpdateBoundCond: Updates boundary conditions within model
+! RealizationUpdateCouplerAuxVars: Updates auxilliary variables associated 
+!                                  with couplers in list
 ! author: Glenn Hammond
-! date: 11/06/07
+! date: 11/26/07
 !
 ! ************************************************************************** !
-subroutine RealizationUpdateBoundCond(realization)
+subroutine RealizationUpdateCouplerAuxVars(realization,coupler_list)
+
+  use Hydrostatic_module
 
   implicit none
   
   type(realization_type) :: realization
+  type(coupler_list_type) :: coupler_list
   
-  type(option_type), pointer :: option
-  type(coupler_type), pointer :: boundary_condition
-    
-  option => realization%option
+  type(coupler_type), pointer :: coupler
+  
+  integer :: idof, num_connections
  
-  boundary_condition => realization%boundary_conditions%first
+  coupler => coupler_list%first
   
   do
-    if (.not.associated(boundary_condition)) exit
-    call CouplerUpdateAuxVars(boundary_condition,option)
-    boundary_condition => boundary_condition%next
+    if (.not.associated(coupler)) exit
+
+    select case(realization%option%imode)
+      case(RICHARDS_MODE,MPH_MODE)
+        select case(coupler%condition%itype(RICHARDS_PRESSURE_DOF))
+          case(DIRICHLET_BC,NEUMANN_BC,MASS_RATE)
+            num_connections = coupler%connection%num_connections
+            do idof = 1,realization%option%ndof
+              coupler%aux_real_var(idof,1:num_connections) = &
+                coupler%condition%cur_value(idof)
+            enddo
+            coupler%aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
+              coupler%condition%iphase
+          case(HYDROSTATIC_BC)
+            call HydrostaticUpdateCoupler(coupler,realization%option,realization%grid)
+        end select
+    end select
+
+    coupler => coupler%next
   enddo
 
-end subroutine RealizationUpdateBoundCond
-
-! ************************************************************************** !
-!
-! RealizationInitSrcSinks: Initializes source/sinks within model
-! author: Glenn Hammond
-! date: 11/09/07
-!
-! ************************************************************************** !
-subroutine RealizationInitSrcSinks(realization)
-
-  implicit none
-  
-  type(realization_type) :: realization
-  
-  integer :: num_connections
-  
-  type(option_type), pointer :: option
-  type(coupler_type), pointer :: source_sink
-
-#if 0    
-! since src/sinks reference the condition directly, updating auxciliary variales
-! is not currently necessary    
-  option => realization%option
-    
-  source_sink => realization%boundary_conditions%first
-  do
-    if (.not.associated(source_sink)) exit
-    num_connections = source_sink%connection%num_connections
-
-    ! allocate arrays that match the number of connections
-    select case(option%imode)
-
-      case(FLASH_MODE,RICHARDS_MODE,OWG_MODE,VADOSE_MODE)
-       
-        allocate(source_sink%aux_real_var(option%ndof*option%nphase,num_connections)
-        allocate(source_sink%aux_int_var(1,num_connections)
-        field%aux_real_var = 0.d0
-        field%aux_int_var = 0
-
-      case(MPH_MODE)
-
-        allocate(source_sink%aux_real_var(option%ndof*option%nphase,num_connections)
-        allocate(source_sink%aux_int_var(1,num_connections)
-        field%aux_real_var = 0.d0
-        field%aux_int_var = 0
-            
-      case default
-    end select 
-  
-    source_sink => source_sink%next
-  enddo
-
-  call RealizationUpdateSrcSinks(realization)
-#endif
-
-end subroutine RealizationInitSrcSinks
-
-! ************************************************************************** !
-!
-! RealizationUpdateSrcSinks: Updates source/sinks within model
-! author: Glenn Hammond
-! date: 11/09/07
-!
-! ************************************************************************** !
-subroutine RealizationUpdateSrcSinks(realization)
-
-  implicit none
-  
-  type(realization_type) :: realization
-  
-  type(option_type), pointer :: option
-  type(coupler_type), pointer :: source_sink
-   
-#if 0    
-! since src/sinks reference the condition directly, updating auxciliary variales
-! is not currently necessary
-  option => realization%option
- 
-  source_sink => realization%source_sinks%first
- 
-  do
-    if (.not.associated(source_sink)) exit
-    call CouplerUpdateAuxVars(source_sink,option)
-    source_sink => source_sink%next
-    source_sink => source_sink%next
-  enddo
-#endif
-
-end subroutine RealizationUpdateSrcSinks
+end subroutine RealizationUpdateCouplerAuxVars
 
 ! ************************************************************************** !
 !
@@ -386,7 +320,7 @@ subroutine RealizationUpdate(realization)
   
   ! must update conditions first
   call ConditionUpdate(realization%conditions,realization%option,realization%option%time)
-  call RealizationUpdateBoundCond(realization)
+  call RealizationUpdateCouplerAuxVars(realization,realization%boundary_conditions)
 ! currently don't use aux_vars, just condition for src/sinks
 !  call RealizationUpdateSrcSinks(realization)
 
