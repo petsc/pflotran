@@ -120,19 +120,20 @@
  
    select case(option%imode)
 #if 0
-   if(option%use_mph==PETSc_TRUE)then
- !    call Translator_MPhase_Switching(field%xx,grid,1,ichange)
-     call MPHASEResidual(solver%snes,field%xx,field%r,grid,ierr)
-   endif
+! needs to be implemented
    if(option%use_vadose==PETSc_TRUE)then
   !   call Translator_vadose_Switching(field%xx,grid,0,ichange)
-     call MPHASEResidual(solver%snes,field%xx,field%r,grid,ierr)
+     call VadoseResidual(solver%snes,field%xx,field%r,grid,ierr)
    endif
 #endif
+     case(MPH_MODE)
+   !    call Translator_MPhase_Switching(field%xx,grid,1,ichange)
+       call MPHASEResidual(solver%snes,field%xx,field%r,realization,ierr)
      case(RICHARDS_MODE)
     !   call Translator_richards_Switching(field%xx,grid,0,ichange)
        call RichardsResidual(solver%snes,field%xx,field%r,realization,ierr)
 #if 0
+! needs to be implemented
    if(option%use_flash==PETSc_TRUE) then
    !  call Translator_vadose_Switching(field%xx,grid,0,ichange)
      call FLashResidual(solver%snes,field%xx,field%r,grid,ierr)
@@ -171,9 +172,8 @@
     
     select case(option%imode)
 #if 0
-    if(option%use_mph==PETSC_TRUE)then
-      call MPHASEJacobian(solver%snes,field%xx,solver%J,solver%J,flag,grid,ierr)
-    elseif(option%use_owg==PETSC_TRUE)then
+! needs to be implemented
+    if(option%use_owg==PETSC_TRUE)then
       call OWGJacobian(solver%snes,field%xx,solver%J,solver%J,flag,grid,ierr)
     elseif(option%use_vadose==PETSC_TRUE)then
       call VadoseJacobian(solver%snes,field%xx,solver%J,solver%J,flag,grid,ierr)
@@ -181,6 +181,9 @@
       call FlashJacobian(solver%snes,field%xx,solver%J,solver%J,flag,grid,ierr)
     elseif(option%use_richards==PETSC_TRUE)then
 #endif    
+      case (MPH_MODE)
+        call MPHASEJacobian(solver%snes,field%xx,solver%J,solver%J,flag, &
+                            realization,ierr)
       case (RICHARDS_MODE)
         call RichardsJacobian(solver%snes,field%xx,solver%J,solver%J, &
                               flag,realization,ierr)

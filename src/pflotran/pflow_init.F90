@@ -743,6 +743,7 @@ subroutine PflowInit(simulation,filename)
   nullify(field%imat)
 
 #if 0
+  ! should we still support this
   if (grid%iread_geom == 10) then 
     if (myrank == 0) print *, 'Reading structured grid from hdf5' 
     allocate(grid%imat(grid%ngmax))  ! allocate material id array

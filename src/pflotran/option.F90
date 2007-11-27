@@ -189,16 +189,6 @@ function OptionCreate()
   option%run_coupled = PETSC_FALSE
   
 !-----------------------------------------------------------------------
-      ! Initialize some counter variables.
-!-----------------------------------------------------------------------
-#if 0
-!moved to timestepper
-  option%t = 0.d0
-  option%newtcum = 0
-  option%icutcum = 0
-#endif
-
-!-----------------------------------------------------------------------
       ! Initialize some parameters to sensible values.  These are parameters
       ! which should be set via the command line or the input file, but it
       ! seems good practice to set them to sensible values when a pflowGrid

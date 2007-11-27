@@ -548,22 +548,22 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
     if (snes_reason >= 0) then
     
       select case(option%imode)
-#if 0      
+#if 0    
+! needs to be implemented  
         case(TWOPH_MODE)
           call TTPhase_Update_Reason(update_reason,realization)
-#endif          
-        case(MPH_MODE)
-          call MPhase_Update_Reason(update_reason,realization)
-#if 0          
         case(FLASH_MODE)
           call flash_Update_Reason(update_reason,realization)
         case(VADOSE_MODE)
           call Vadose_Update_Reason(update_reason,realization)
 #endif          
+        case(MPH_MODE)
+          call MPhase_Update_Reason(update_reason,realization)
         case(RICHARDS_MODE)
           update_reason=1
          !call Richards_Update_Reason(update_reason,realization)
 #if 0         
+! needs to be implemented  
         case(OWG_MODE)
           call OWG_Update_Reason(update_reason,realization)
 #endif          
@@ -626,10 +626,9 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
       else
         select case(option%imode)
 #if 0        
+! needs to be implemented
           case(OWG_MODE)
             call pflow_owg_timecut(grid)
-#endif            
-#if 0            
           case(FLASH_MODE)
             call pflow_flash_timecut(grid)
 #endif            
@@ -638,6 +637,7 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
           case(MPH_MODE)
             call pflow_mphase_timecut(realization)
 #if 0            
+! needs to be implemented
           case(VADOSE_MODE)
             call pflow_vadose_timecut(grid)
           case default
@@ -683,6 +683,7 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
   
   ! calculate maxium changes in fields over a time step
 #if 0
+! is this still necessary
   if (option%ndof == 1 .and. option%use_cond == PETSC_TRUE) then
   
     call VecWAXPY(field%dp,-1.d0,field%ttemp,field%temp,ierr)
@@ -793,7 +794,7 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
       endif
     endif
 #if 0
-
+! needs to be implemented
   else if (option%use_flash == PETSC_TRUE) then
      call translator_flash_step_maxchange(grid)
     ! note use mph will use variable switching, the x and s change is not meaningful 
@@ -924,6 +925,7 @@ subroutine StepperUpdateSolution(realization)
  
   select case(option%imode)
 #if 0  
+! needs to be implemented
     case(OWG_MODE)
       call pflow_update_owg(grid)
 #endif      
@@ -932,6 +934,7 @@ subroutine StepperUpdateSolution(realization)
     case(RICHARDS_MODE)
       call pflow_update_richards(realization)
 #if 0      
+! needs to be implemented
     case(FLASH_MODE)
       call pflow_update_flash(grid)
     case(VADOSE_MODE)

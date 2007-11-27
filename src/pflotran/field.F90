@@ -49,17 +49,6 @@ module Field_module
     real*8, pointer :: internal_velocities(:,:)
     real*8, pointer :: boundary_velocities(:,:)
 
-#if 0
-    real*8, pointer :: pressurebc(:,:)
-      ! For a Dirichlet BC, pressurebc(j,ibc) gives the partial pressure 
-      ! for phase j along the BC block ibc.
-    real*8, pointer :: velocitybc(:,:)
-      ! For a Neumann BC, velocitybc(j,ibc) gives the velocity q for phase
-      ! j along BC block ibc.
-    real*8, pointer :: tempbc(:),concbc(:),sgbc(:)
-!    real*8, pointer :: xxbc(:,:), varbc(:)
-!    integer, pointer:: iphasebc(:)
-#endif
     real*8, pointer :: xphi_co2_bc(:), xxphi_co2_bc(:)
 
     !block BC values read from input

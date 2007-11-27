@@ -349,9 +349,9 @@ subroutine RealizationAddWaypointsToList(realization,waypoint_list)
   type(waypoint_type), pointer :: waypoint
   integer :: itime
 
+#if 0  
   ! Ignore boundary conditions for now
   ! boundary conditions
-#if 0  
   coupler => realization%boundary_conditions%first
   do
     if (.not.associated(coupler)) exit
