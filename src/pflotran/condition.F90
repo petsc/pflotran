@@ -266,6 +266,8 @@ subroutine ConditionRead(condition,option,fid)
               itype(index) = MASS_RATE
             case('hydrostatic','hydro','hydrostat','static')
               itype(index) = HYDROSTATIC_BC
+            case('zero_gradient')
+              itype(index) = ZERO_GRADIENT_BC
             case default
               call printErrMsg(option,'bc type not recognized in condition,type')
           end select

@@ -488,141 +488,13 @@ subroutine RichardsRes_FLBCCont(ibndtype,area,aux_vars,var_node1,var_node2,por2,
                          diff2=>var_node2(ibase:ibase+option%nphase*option%nspec-1)
 
 
-#if 0
   fluxm = 0.D0
   fluxe = 0.D0
   vv_darcy = 0.D0 
    
   select case(ibndtype(RICHARDS_PRESSURE_DOF))
     ! figure out the direction of flow
-    case(DIRICHLET_BC,HYDROSTATIC_BC)
-      Dq = perm2 / dd1
-      diffdp = por2*tor2/dd1*area
-        ! Flow term
-      do iphase=1,option%nphase
-        if ((sat1(iphase) > sir2(iphase)) .or. (sat2(iphase) > sir2(iphase))) then
-          upweight=1.D0
-          if (sat1(iphase) <eps) then 
-            upweight=0.d0
-          else if (sat2(iphase) <eps) then 
-            upweight=1.d0
-          endif
-          density_ave = upweight*density1(iphase)+(1.D0-upweight)*density2(iphase)  
-
-          gravity = (upweight*density1(iphase)*amw1(iphase) + &
-                    (1.D0-upweight)*density2(iphase)*amw2(iphase)) &
-                    * option%gravity * dist_gravity
-          dphi = pre_ref1- pre_ref2 + gravity
-          
-          if (dphi>=0.D0) then
-            ukvr = kvr1(iphase)
-          else
-            ukvr = kvr2(iphase)
-          endif      
-     
-          if (ukvr*Dq>floweps) then
-            vv_darcy(iphase) = Dq * ukvr * dphi
-          endif
-        endif
-      enddo
-    case(NEUMANN_BC)
-      do iphase=1,option%nphase
-        if (dabs(aux_vars((iphase-1)*option%ndof+RICHARDS_PRESSURE_DOF))>floweps) then
-          vv_darcy(iphase) = aux_vars((iphase-1)*option%ndof+RICHARDS_PRESSURE_DOF)
-          if (vv_darcy(iphase) > 0.d0) then
-            density_ave(iphase) = density1(iphase)
-          else
-            density_ave(iphase) = density2(iphase)
-          endif
-        endif
-      enddo
-  end select
-       
-  ! finish off RICHARDS_PRESSURE_DOF    
-  do iphase=1,option%nphase   
-    offset = (iphase-1)*option%nspec
-    if (dabs(vv_darcy(iphase)) > 0.d0) then
-      if (vv_darcy(iphase) > 0.d0) then 
-        uh(iphase) = h1(iphase)
-        uxmol(:)=xmol1(offset+1:offset+option%nspec)
-      else
-        uh(iphase) = h2(iphase)
-        uxmol(:)=xmol2(offset+1:offset+option%nspec)
-      endif
-      q(iphase) = vv_darcy(iphase)*density_ave(iphase)*area
-      fluxm(RICHARDS_PRESSURE_DOF) = fluxm(RICHARDS_PRESSURE_DOF)+q(iphase)*uxmol(RICHARDS_PRESSURE_DOF)
-    else
-      q(iphase) = 0.d0
-    endif
-    if (ibndtype(RICHARDS_PRESSURE_DOF) /= NEUMANN_BC) then
-      if ((sat1(iphase) > eps) .and. (sat2(iphase) > eps)) then
-        diff = diffdp * 0.25D0*(sat1(iphase)+sat2(iphase))*(density1(iphase)+density2(iphase))
-        ! only RICHARDS_PRESSURE_DOF, not concentrations
-        fluxm(offset+RICHARDS_PRESSURE_DOF) = fluxm(offset+RICHARDS_PRESSURE_DOF) + &
-          diff * diff2(offset+RICHARDS_PRESSURE_DOF)* &
-          (xmol1(offset+RICHARDS_PRESSURE_DOF)-xmol2(offset+RICHARDS_PRESSURE_DOF))
-      endif
-    endif
-  enddo
-  
-  select case(ibndtype(RICHARDS_TEMPERATURE_DOF))
-    case(DIRICHLET_BC,HYDROSTATIC_BC)
-      do iphase=1,option%nphase
-        fluxe = fluxe + q(iphase)*uh(iphase)
-      enddo
-      Dk =  Dk2 / dd1
-      cond = Dk*area*(temp1-temp2) 
-      fluxe=fluxe + cond
-    case(NEUMANN_BC)
-      call printErrMsg(option,"Temperature Neumann BC not yet supported for Richards")
-! should be something of the sort:    
-      do iphase=1,option%nphase
-!        fluxe = fluxe + aux_vars((iphase-1)*option%ndof+RICHARDS_TEMPERATURE_DOF)*area
-      enddo
-  end select
-
-  select case(ibndtype(RICHARDS_CONCENTRATION_DOF))
-    case(DIRICHLET_BC,HYDROSTATIC_BC)
-      do iphase=1,option%nphase
-        ! skip 1st spec = RICHARDS_PRESSURE_DOF
-        do ispec=RICHARDS_PRESSURE_DOF+1,option%nspec 
-          fluxm(ispec) = fluxm(ispec) + q(iphase)*uxmol(ispec)
-        enddo
-! Diffusion term   
-! Note : average rule may not be correct  
-        if ((sat1(iphase) > eps) .and. (sat2(iphase) > eps)) then
-          offset = (iphase-1)*option%nspec
-          diff = diffdp * 0.25D0*(sat1(iphase)+sat2(iphase))*(density1(iphase)+density2(iphase))
-          ! skip 1st spec = RICHARDS_PRESSURE_DOF
-          do ispec = RICHARDS_PRESSURE_DOF+1,option%nspec
-            index = offset+ispec
-            fluxm(ispec) = fluxm(ispec) + diff * diff2(index)*( xmol1(index)-xmol2(index))
-          enddo    
-        endif
-      enddo
-    case(NEUMANN_BC)
-      call printErrMsg(option,"Solute Neumann BC not yet supported for Richards")
-      do iphase=1,option%nphase
-        offset = (iphase-1)*option%ndof
-        ! skip 1st spec = RICHARDS_PRESSURE_DOF
-        do ispec=RICHARDS_PRESSURE_DOF+1,option%nspec 
-          idof = ispec+1 ! need to skip temperature, thus +1
-          fluxm(ispec) = fluxm(ispec) + aux_vars(offset+idof)*area 
-        enddo
-      enddo
-  end select
-
-  Res_FL(1:option%nspec)=fluxm(:)* option%dt
-  Res_FL(option%ndof)=fluxe * option%dt
-#endif
-
-  fluxm = 0.D0
-  fluxe = 0.D0
-  vv_darcy = 0.D0 
-   
-  select case(ibndtype(RICHARDS_PRESSURE_DOF))
-    ! figure out the direction of flow
-    case(DIRICHLET_BC,HYDROSTATIC_BC)
+    case(DIRICHLET_BC)
       Dq = perm2 / dd1
       diffdp = por2*tor2/dd1*area
         ! Flow term
@@ -719,7 +591,7 @@ subroutine RichardsRes_FLBCCont(ibndtype,area,aux_vars,var_node1,var_node2,por2,
     Res_FL(1:option%nspec) = fluxm(:)*option%dt
     Res_FL(option%ndof) = fluxe * option%dt
 
-  case(3)
+  case(HYDROSTATIC_BC)
     Dq = perm2/dd1 
 
     do iphase =1,option%nphase
@@ -1208,7 +1080,7 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
         select case(boundary_condition%condition%itype(idof))
           case(DIRICHLET_BC,HYDROSTATIC_BC)
             xxbc(idof) = boundary_condition%aux_real_var(idof,iconn)
-          case(NEUMANN_BC)
+          case(NEUMANN_BC,ZERO_GRADIENT_BC)
             xxbc(idof) = xx_loc_p((ghosted_id-1)*option%ndof+idof)
         end select
       enddo
@@ -1216,7 +1088,7 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
       select case(boundary_condition%condition%itype(RICHARDS_PRESSURE_DOF))
         case(DIRICHLET_BC,HYDROSTATIC_BC)
           iphasebc = boundary_condition%aux_int_var(1,iconn)
-        case(NEUMANN_BC)
+        case(NEUMANN_BC,ZERO_GRADIENT_BC)
           iphasebc=int(iphase_loc_p(ghosted_id))                
       end select
             
@@ -1553,7 +1425,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
           case(DIRICHLET_BC,HYDROSTATIC_BC)
             xxbc(idof) = boundary_condition%aux_real_var(idof,iconn)
             delxbc(idof) = 0.d0
-          case(NEUMANN_BC)
+          case(NEUMANN_BC,ZERO_GRADIENT_BC)
             xxbc(idof) = xx_loc_p((ghosted_id-1)*option%ndof+idof)
             delxbc(idof) = option%delx(idof,ghosted_id) 
         end select
@@ -1562,7 +1434,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
       select case(boundary_condition%condition%itype(RICHARDS_PRESSURE_DOF))
         case(DIRICHLET_BC,HYDROSTATIC_BC)
           iphasebc = boundary_condition%aux_int_var(1,iconn)
-        case(NEUMANN_BC)
+        case(NEUMANN_BC,ZERO_GRADIENT_BC)
           iphasebc=int(iphase_loc_p(ghosted_id))                
       end select
             
@@ -2084,7 +1956,7 @@ subroutine pflow_update_Richards(realization)
             select case(boundary_condition%condition%itype(idof))
               case(DIRICHLET_BC,HYDROSTATIC_BC)
                 xxbc(idof) = boundary_condition%aux_real_var(idof,iconn)
-              case(NEUMANN_BC)
+              case(NEUMANN_BC,ZERO_GRADIENT_BC)
                 xxbc(idof) = xx_p((local_id-1)*option%ndof+idof)
             end select
           enddo
@@ -2092,7 +1964,7 @@ subroutine pflow_update_Richards(realization)
           select case(boundary_condition%condition%itype(RICHARDS_PRESSURE_DOF))
             case(DIRICHLET_BC,HYDROSTATIC_BC)
               iphasebc = boundary_condition%aux_int_var(1,iconn)
-            case(NEUMANN_BC)
+            case(NEUMANN_BC,ZERO_GRADIENT_BC)
               iphasebc=int(iphase_loc_p(ghosted_id))                
           end select
 
@@ -2288,7 +2160,7 @@ subroutine pflow_Richards_initadj(realization)
           select case(boundary_condition%condition%itype(idof))
             case(DIRICHLET_BC,HYDROSTATIC_BC)
               xxbc(idof) = boundary_condition%aux_real_var(idof,iconn)
-            case(NEUMANN_BC)
+            case(NEUMANN_BC,ZERO_GRADIENT_BC)
               xxbc(idof) = xx_p((local_id-1)*option%ndof+idof)
           end select
         enddo
@@ -2296,7 +2168,7 @@ subroutine pflow_Richards_initadj(realization)
         select case(boundary_condition%condition%itype(RICHARDS_PRESSURE_DOF))
           case(DIRICHLET_BC,HYDROSTATIC_BC)
             iphasebc = boundary_condition%aux_int_var(1,iconn)
-          case(NEUMANN_BC)
+          case(NEUMANN_BC,ZERO_GRADIENT_BC)
             iphasebc=int(iphase_loc_p(ghosted_id))                
         end select
 

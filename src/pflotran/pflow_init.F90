@@ -2821,7 +2821,7 @@ subroutine assignInitialConditions(realization)
         ibegin = iend-option%ndof+1
         xx_p(ibegin:iend) = &
           initial_condition%aux_real_var(1:option%ndof,iconn)
-        iphase_loc_p(ghosted_id)=initial_condition%aux_real_var(1,iconn)
+        iphase_loc_p(ghosted_id)=initial_condition%aux_int_var(1,iconn)
       enddo
     endif
     initial_condition => initial_condition%next

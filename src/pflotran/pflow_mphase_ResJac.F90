@@ -1552,7 +1552,7 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
         select case(boundary_condition%condition%itype(idof))
           case(DIRICHLET_BC,HYDROSTATIC_BC)
             xxbc(idof) = boundary_condition%aux_real_var(idof,iconn)
-          case(NEUMANN_BC)
+          case(NEUMANN_BC,ZERO_GRADIENT_BC)
             xxbc(idof) = xx_loc_p((ghosted_id-1)*option%ndof+idof)
         end select
       enddo
@@ -1560,7 +1560,7 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
       select case(boundary_condition%condition%itype(RICHARDS_PRESSURE_DOF))
         case(DIRICHLET_BC,HYDROSTATIC_BC)
           iphasebc = boundary_condition%aux_int_var(1,iconn)
-        case(NEUMANN_BC)
+        case(NEUMANN_BC,ZERO_GRADIENT_BC)
           iphasebc=int(iphase_loc_p(ghosted_id))                
       end select
 
@@ -2066,7 +2066,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
           case(DIRICHLET_BC,HYDROSTATIC_BC)
             xxbc(idof) = boundary_condition%aux_real_var(idof,iconn)
             delxbc(idof) = 0.d0
-          case(NEUMANN_BC)
+          case(NEUMANN_BC,ZERO_GRADIENT_BC)
             xxbc(idof) = xx_loc_p((ghosted_id-1)*option%ndof+idof)
             delxbc(idof) = option%delx(idof,ghosted_id) 
         end select
@@ -2075,7 +2075,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
       select case(boundary_condition%condition%itype(RICHARDS_PRESSURE_DOF))
         case(DIRICHLET_BC,HYDROSTATIC_BC)
           iphasebc = boundary_condition%aux_int_var(1,iconn)
-        case(NEUMANN_BC)
+        case(NEUMANN_BC,ZERO_GRADIENT_BC)
           iphasebc=int(iphase_loc_p(ghosted_id))                
       end select
 
@@ -2662,7 +2662,7 @@ subroutine pflow_update_mphase(realization)
             select case(boundary_condition%condition%itype(idof))
               case(DIRICHLET_BC,HYDROSTATIC_BC)
                 xxbc(idof) = boundary_condition%aux_real_var(idof,iconn)
-              case(NEUMANN_BC)
+              case(NEUMANN_BC,ZERO_GRADIENT_BC)
                 xxbc(idof) = xx_p((local_id-1)*option%ndof+idof)
             end select
           enddo
@@ -2670,7 +2670,7 @@ subroutine pflow_update_mphase(realization)
           select case(boundary_condition%condition%itype(MPH_PRESSURE_DOF))
             case(DIRICHLET_BC,HYDROSTATIC_BC)
               iphasebc = boundary_condition%aux_int_var(1,iconn)
-            case(NEUMANN_BC)
+            case(NEUMANN_BC,ZERO_GRADIENT_BC)
               iphasebc=int(iphase_loc_p(ghosted_id))                
           end select
 

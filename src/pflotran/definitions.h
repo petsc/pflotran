@@ -58,7 +58,8 @@
 #define DIRICHLET_BC 1
 #define NEUMANN_BC 2
 #define MASS_RATE 3
-#define HYDROSTATIC_BC 5
+#define ZERO_GRADIENT_BC 5
+#define HYDROSTATIC_BC 6
 
 ! coupler types
 #define INITIAL_COUPLER_TYPE 1

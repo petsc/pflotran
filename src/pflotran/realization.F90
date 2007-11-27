@@ -287,7 +287,7 @@ subroutine RealizationUpdateCouplerAuxVars(realization,coupler_list)
     select case(realization%option%imode)
       case(RICHARDS_MODE,MPH_MODE)
         select case(coupler%condition%itype(RICHARDS_PRESSURE_DOF))
-          case(DIRICHLET_BC,NEUMANN_BC,MASS_RATE)
+          case(DIRICHLET_BC,NEUMANN_BC,MASS_RATE,ZERO_GRADIENT_BC)
             num_connections = coupler%connection%num_connections
             do idof = 1,realization%option%ndof
               coupler%aux_real_var(idof,1:num_connections) = &

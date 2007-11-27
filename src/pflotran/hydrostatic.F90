@@ -24,6 +24,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   use Condition_module
   use Connection_module
   use Region_module
+  use Structured_Grid_module
 
   implicit none
 
@@ -32,10 +33,12 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   type(grid_type) :: grid
   
   integer :: local_id, ghosted_id, iconn
-  integer :: num_iteration
-  real*8 :: dist_x, dist_y, dist_z
-  real*8 :: rho, rho1, pressure0, pressure, temperature
+  integer :: num_iteration, iz
+  real*8 :: dist_x, dist_y, dist_z, delta_z
+  real*8 :: rho, rho1, rho0, pressure0, pressure, temperature
   real*8 :: xm_nacl, dw_kg
+  
+  real*8 :: structured_pressure(grid%structured_grid%nz)
   
   real*8, parameter :: patm = 101325.d0
   
@@ -48,54 +51,131 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   xm_nacl = option%m_nacl * fmwnacl
   xm_nacl = xm_nacl /(1.d3 + xm_nacl)
 
-  do iconn=1,coupler%connection%num_connections
-    local_id = coupler%connection%id_dn(iconn)
-    ghosted_id = grid%nL2G(local_id)
+  if (coupler%itype == INITIAL_COUPLER_TYPE) then
 
-    dist_x = grid%x(ghosted_id)-condition%datum(1)
-    dist_y = grid%y(ghosted_id)-condition%datum(2)
-    dist_z = dabs(grid%z(ghosted_id)-condition%datum(3))
-    
-    pressure0 = condition%cur_value(1) + &
-                condition%gradient(1,X_DIRECTION)*dist_x + & ! gradient in Pa/m
-                condition%gradient(1,Y_DIRECTION)*dist_y + &
-                condition%gradient(1,Z_DIRECTION)*dist_z 
+    do iconn=1,coupler%connection%num_connections
+      local_id = coupler%connection%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
 
-    temperature = condition%cur_value(2) + &
-                  condition%gradient(2,X_DIRECTION)*dist_x + & ! gradient in K/m
-                  condition%gradient(2,Y_DIRECTION)*dist_y + &
-                  condition%gradient(2,Z_DIRECTION)*dist_z 
+      dist_x = grid%x(ghosted_id)-condition%datum(1)
+      dist_y = grid%y(ghosted_id)-condition%datum(2)
+      dist_z = dabs(grid%z(ghosted_id)-condition%datum(3))
+      
+      pressure0 = condition%cur_value(1) + &
+                  condition%gradient(1,X_DIRECTION)*dist_x + & ! gradient in Pa/m
+                  condition%gradient(1,Y_DIRECTION)*dist_y + &
+                  condition%gradient(1,Z_DIRECTION)*dist_z 
 
-    call nacl_den(temperature,pressure*1D-6,xm_nacl,dw_kg) 
-    rho = dw_kg * 1.d3
-    rho1 = rho
-    pressure = rho * option%gravity * dist_z + pressure0
+      temperature = condition%cur_value(2) + &
+                    condition%gradient(2,X_DIRECTION)*dist_x + & ! gradient in K/m
+                    condition%gradient(2,Y_DIRECTION)*dist_y + &
+                    condition%gradient(2,Z_DIRECTION)*dist_z 
 
-    num_iteration = 0
-    do 
-      call nacl_den(temperature,pressure*1D-6,xm_nacl,dw_kg) 
+      pressure = pressure0
+      call nacl_den(temperature,pressure*1.d-6,xm_nacl,dw_kg) 
       rho = dw_kg * 1.d3
-      if (abs(rho-rho1) < 1.d-10) exit
-      pressure = rho * option%gravity * dist_z + pressure0
       rho1 = rho
-      num_iteration = num_iteration + 1
-      if (num_iteration > 100) then
-        print *,'HydrostaticInitCondition failed to converge',num_iteration,rho1,rho
+
+      num_iteration = 0
+      do 
+        pressure = rho * option%gravity * dist_z + pressure0
+        call nacl_den(temperature,pressure*1.d-6,xm_nacl,dw_kg) 
+        rho1 = dw_kg * 1.d3
+        if (abs(rho-rho1) < 1.d-10) exit
+        rho = rho1
+        num_iteration = num_iteration + 1
+        if (num_iteration > 100) then
+          print *,'HydrostaticInitCondition failed to converge',num_iteration,rho1,rho
+          stop
+        endif
+      enddo
+
+      coupler%aux_real_var(1,iconn) = pressure
+      coupler%aux_real_var(2,iconn) = temperature
+      coupler%aux_real_var(3,iconn) = condition%cur_value(3)
+
+      if (pressure > patm) then
+        coupler%aux_int_var(1,iconn) = condition%iphase
+      else
+        coupler%aux_int_var(1,iconn) = 3
+      endif
+
+    enddo
+    
+  else
+  
+    pressure0 = condition%cur_value(1)
+    temperature = condition%cur_value(2)
+    pressure = pressure0
+    
+    call nacl_den(temperature,pressure*1.d-6,xm_nacl,dw_kg) 
+    rho = dw_kg * 1.d3
+    
+    do iz=1,grid%structured_grid%nz
+      if (iz == 1) then
+        delta_z = 0.5d0*grid%structured_grid%dz0(iz)
+!        dist_z = delta_z
+      else
+        delta_z = 0.5d0*(grid%structured_grid%dz0(iz)+grid%structured_grid%dz0(iz-1))
+!        dist_z = dist_z + delta_z
+      endif
+
+      call nacl_den(temperature,pressure*1.d-6,xm_nacl,dw_kg) 
+      rho = dw_kg * 1.d3
+      rho0 = rho
+
+      num_iteration = 0
+      do 
+        if (iz == 1) then
+          pressure = rho * option%gravity * delta_z + pressure0
+          call nacl_den(temperature,pressure*1.d-6,xm_nacl,dw_kg) 
+          rho = dw_kg * 1.d3
+          exit
+        else
+          pressure = 0.5d0*(rho*grid%structured_grid%dz0(iz)+ &
+                            rho0*grid%structured_grid%dz0(iz-1))* &
+                     option%gravity + pressure0
+        endif
+        call nacl_den(temperature,pressure*1.d-6,xm_nacl,dw_kg) 
+        rho1 = dw_kg * 1.d3
+        if (abs(rho-rho1) < 1.d-10) exit
+        rho = rho1
+        num_iteration = num_iteration + 1
+        if (num_iteration > 100) then
+          print *,'HydrostaticInitCondition failed to converge',num_iteration,rho1,rho
+          stop
+        endif
+      enddo
+      structured_pressure(iz) = pressure
+      pressure0 = pressure
+      rho0 = rho  
+    enddo
+    
+    do iconn=1,coupler%connection%num_connections
+      local_id = coupler%connection%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
+      dist_z = 0.d0
+      do iz=1,grid%structured_grid%nz
+        if (grid%z(ghosted_id) > dist_z .and. grid%z(ghosted_id) < dist_z + grid%structured_grid%dz0(iz)) exit
+        dist_z = dist_z + grid%structured_grid%dz0(iz)
+      enddo
+      if (iz > grid%structured_grid%nz) then
+        print *, 'Error setting up hydrostatic bc.  iz > nz'
         stop
       endif
+      coupler%aux_real_var(1,iconn) = structured_pressure(iz)
+      coupler%aux_real_var(2,iconn) = temperature
+      coupler%aux_real_var(3,iconn) = condition%cur_value(3)
+
+      if (structured_pressure(iz) > patm) then
+        coupler%aux_int_var(1,iconn) = condition%iphase
+      else
+        coupler%aux_int_var(1,iconn) = 3
+      endif
+      
     enddo
-
-    coupler%aux_real_var(1,iconn) = pressure
-    coupler%aux_real_var(2,iconn) = temperature
-    coupler%aux_real_var(3,iconn) = condition%cur_value(3)
-
-    if (pressure > patm) then
-      coupler%aux_real_var(1,iconn) = condition%iphase
-    else
-      coupler%aux_real_var(1,iconn) = 3
-    endif
-
-  enddo
+  
+  endif
     
 end subroutine HydrostaticUpdateCoupler
 
