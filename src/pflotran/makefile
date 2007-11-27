@@ -62,6 +62,7 @@ pflow_obj = ${common_src}pflow_vector_ops.o \
 	${common_src}coupler.o \
 	${common_src}grid.o \
 	${common_src}general_grid.o \
+	${common_src}hydrostatic.o \
 	${common_src}realization.o \
 	${common_src}Readfield.o \
 	${common_src}mixed_fluid_eos.o \
@@ -153,8 +154,10 @@ coupler.o : condition.o connection.o region.o fileio.o
 condition.o : fileio.o utility.o option.o field.o
 condition_old.o : pflow_pckr_mod.o
 realization.o : grid.o option.o region.o condition.o coupler.o material.o \
-	     strata.o waypoint.o field.o
+	     strata.o waypoint.o field.o hydrostatic.o
 strata.o : fileio.o region.o material.o
+hydrostatic.o : option.o grid.o coupler.o condition.o connection.o region.o \
+                structured_grid.o
 waypoint.o : option.o 
 pflow_vector_ops.o : water_eos.o
 pflow_output_new.o : pflow_output.o

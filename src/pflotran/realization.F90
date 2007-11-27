@@ -284,21 +284,23 @@ subroutine RealizationUpdateCouplerAuxVars(realization,coupler_list)
   do
     if (.not.associated(coupler)) exit
 
-    select case(realization%option%imode)
-      case(RICHARDS_MODE,MPH_MODE)
-        select case(coupler%condition%itype(RICHARDS_PRESSURE_DOF))
-          case(DIRICHLET_BC,NEUMANN_BC,MASS_RATE,ZERO_GRADIENT_BC)
-            num_connections = coupler%connection%num_connections
-            do idof = 1,realization%option%ndof
-              coupler%aux_real_var(idof,1:num_connections) = &
-                coupler%condition%cur_value(idof)
-            enddo
-            coupler%aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
-              coupler%condition%iphase
-          case(HYDROSTATIC_BC)
-            call HydrostaticUpdateCoupler(coupler,realization%option,realization%grid)
-        end select
-    end select
+    if (associated(coupler%aux_real_var)) then
+      select case(realization%option%imode)
+        case(RICHARDS_MODE,MPH_MODE)
+          select case(coupler%condition%itype(RICHARDS_PRESSURE_DOF))
+            case(DIRICHLET_BC,NEUMANN_BC,MASS_RATE,ZERO_GRADIENT_BC)
+              num_connections = coupler%connection%num_connections
+              do idof = 1,realization%option%ndof
+                coupler%aux_real_var(idof,1:num_connections) = &
+                  coupler%condition%cur_value(idof)
+              enddo
+              coupler%aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
+                coupler%condition%iphase
+            case(HYDROSTATIC_BC)
+              call HydrostaticUpdateCoupler(coupler,realization%option,realization%grid)
+          end select
+      end select
+    endif
 
     coupler => coupler%next
   enddo
