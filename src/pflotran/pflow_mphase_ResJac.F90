@@ -614,7 +614,7 @@ subroutine MPHASERes_FLBCCont(ibndtype,area,aux_vars, &
 
   select case (ibndtype(MPH_PRESSURE_DOF))
   
-    case(DIRICHLET_BC,HYDROSTATIC_BC)
+    case(DIRICHLET_BC)
     
       Dq= perm2 / dd1
       diffdp = por2*tor2/dd1*area
@@ -726,7 +726,7 @@ subroutine MPHASERes_FLBCCont(ibndtype,area,aux_vars, &
       Res_FL(1:option%nspec)=fluxm(:)* option%dt
       Res_FL(option%ndof)=fluxe * option%dt
 
-    case(3)
+    case(HYDROSTATIC_BC)
    
       Dq= perm2 / dd1
       diffdp = por2*tor2/dd1*area

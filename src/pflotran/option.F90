@@ -121,7 +121,7 @@ module Option_module
               fmwco2=44.0098D0, eqkair, ret=1.d0, fc=1.d0
     
     integer :: ihydrostatic = 0,ideriv = 1
-    real*8 :: dTdz,beta,tref,pref,conc0
+    real*8 :: dTdz,beta,tref,pref,conc0  ! these need to go
     real*8 :: hydro_ref_xyz(3)
     
 !   table lookup
