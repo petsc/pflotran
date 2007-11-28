@@ -1200,7 +1200,7 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
         Resold_AR(local_id,option%jco2)= Resold_AR(local_id,option%jco2) - csrc1*option%dt
         Resold_AR(local_id,option%ndof)= Resold_AR(local_id,option%ndof) - csrc1 * enth_src_co2*option%dt
 
-      endif
+     endif
   
   
   !  else if (qsrc1 < 0.d0) then ! withdrawal
@@ -1353,6 +1353,32 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
       distance_gravity = cur_connection_set%dist(3,iconn) * &
                          cur_connection_set%dist(0,iconn)
 
+! in order to match the legacy code
+#define MATCH_LEGACY
+#ifdef MATCH_LEGACY
+      select case(boundary_condition%condition%itype(MPH_PRESSURE_DOF))
+        case(DIRICHLET_BC)
+          xxbc(1:option%ndof) = boundary_condition%aux_real_var(1:option%ndof,iconn)
+          iphasebc = boundary_condition%aux_int_var(MPH_PRESSURE_DOF,iconn)
+        case(NEUMANN_BC)
+          xxbc(1:option%ndof) = xx_loc_p((ghosted_id-1)*option%ndof+1:ghosted_id*option%ndof)
+          iphasebc=int(iphase_loc_p(ghosted_id)) 
+          if (boundary_condition%aux_real_var(MPH_PRESSURE_DOF,iconn) > 1.d-20) then
+            xxbc(2:option%ndof) = boundary_condition%aux_real_var(2:option%ndof,iconn)
+          endif
+        case(HYDROSTATIC_BC)                              
+          xxbc(1) = boundary_condition%aux_real_var(MPH_PRESSURE_DOF,iconn)
+          xxbc(2:option%ndof) = xx_loc_p((ghosted_id-1)*option%ndof+2:ghosted_id*option%ndof)
+          iphasebc=int(iphase_loc_p(ghosted_id))
+        case(ZERO_GRADIENT_BC)
+          xxbc(1:option%ndof) = xx_loc_p((ghosted_id-1)*option%ndof+1:ghosted_id*option%ndof)
+          iphasebc=int(iphase_loc_p(ghosted_id))
+        case(4)
+          xxbc(MPH_PRESSURE_DOF) = xx_loc_p((ghosted_id-1)*option%ndof+MPH_PRESSURE_DOF)
+          xxbc(3:option%ndof) = xx_loc_p((ghosted_id-1)*option%ndof+3:ghosted_id*option%ndof)
+          iphasebc=int(iphase_loc_p(ghosted_id))
+      end select
+#else
       do idof=1,option%ndof
         select case(boundary_condition%condition%itype(idof))
           case(DIRICHLET_BC,HYDROSTATIC_BC)
@@ -1362,12 +1388,13 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
         end select
       enddo
       
-      select case(boundary_condition%condition%itype(RICHARDS_PRESSURE_DOF))
+      select case(boundary_condition%condition%itype(MPH_PRESSURE_DOF))
         case(DIRICHLET_BC,HYDROSTATIC_BC)
           iphasebc = boundary_condition%aux_int_var(1,iconn)
         case(NEUMANN_BC,ZERO_GRADIENT_BC)
-          iphasebc=int(iphase_loc_p(ghosted_id))                
+          iphasebc=int(iphase_loc_p(ghosted_id))                               
       end select
+#endif      
 
       iicap=int(icap_loc_p(ghosted_id))  
        
@@ -1753,6 +1780,39 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
        
       delxbc=0.D0
 
+! in order to match the legacy code
+#ifdef MATCH_LEGACY
+      select case(boundary_condition%condition%itype(MPH_PRESSURE_DOF))
+        case(DIRICHLET_BC)
+          xxbc(1:option%ndof) = boundary_condition%aux_real_var(1:option%ndof,iconn)
+          delxbc(1:option%ndof) = 0.d0
+          iphasebc = boundary_condition%aux_int_var(1,iconn)
+        case(NEUMANN_BC)
+          xxbc(1:option%ndof) = xx_loc_p((ghosted_id-1)*option%ndof+1:ghosted_id*option%ndof)
+          delxbc(1:option%ndof) = option%delx(1:option%ndof,ghosted_id) 
+          iphasebc=int(iphase_loc_p(ghosted_id))                               
+          if (boundary_condition%aux_real_var(MPH_PRESSURE_DOF,iconn) > 1.d-20) then
+            xxbc(2:option%ndof) = boundary_condition%aux_real_var(2:option%ndof,iconn)
+            delxbc(2:option%ndof) = 0.d0
+          endif
+        case(HYDROSTATIC_BC)
+          xxbc(1) = boundary_condition%aux_real_var(MPH_PRESSURE_DOF,iconn)
+          xxbc(2:option%ndof) = xx_loc_p((ghosted_id-1)*option%ndof+2:ghosted_id*option%ndof)
+          delxbc(1) = 0.d0
+          delxbc(2:option%ndof) = option%delx(2:option%ndof,ghosted_id) 
+          iphasebc=int(iphase_loc_p(ghosted_id))
+        case(ZERO_GRADIENT_BC)
+          xxbc(1:option%ndof) = xx_loc_p((ghosted_id-1)*option%ndof+1:ghosted_id*option%ndof)
+          delxbc(1:option%ndof) = option%delx(1:option%ndof,ghosted_id) 
+          iphasebc=int(iphase_loc_p(ghosted_id))
+        case(4)
+          xxbc(1) = xx_loc_p((ghosted_id-1)*option%ndof+MPH_PRESSURE_DOF)
+          xxbc(3:option%ndof) = xx_loc_p((ghosted_id-1)*option%ndof+3:ghosted_id*option%ndof)
+          delxbc(1) = option%delx(1,ghosted_id) 
+          delxbc(3:option%ndof) = option%delx(3:option%ndof,ghosted_id) 
+          iphasebc=int(iphase_loc_p(ghosted_id))
+      end select
+#else
       do idof=1,option%ndof
         select case(boundary_condition%condition%itype(idof))
           case(DIRICHLET_BC,HYDROSTATIC_BC)
@@ -1764,12 +1824,13 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
         end select
       enddo
       
-      select case(boundary_condition%condition%itype(RICHARDS_PRESSURE_DOF))
+      select case(boundary_condition%condition%itype(MPH_PRESSURE_DOF))
         case(DIRICHLET_BC,HYDROSTATIC_BC)
           iphasebc = boundary_condition%aux_int_var(1,iconn)
         case(NEUMANN_BC,ZERO_GRADIENT_BC)
-          iphasebc=int(iphase_loc_p(ghosted_id))                
+          iphasebc=int(iphase_loc_p(ghosted_id))                               
       end select
+#endif      
 
 ! print *,'2ph bc',option%myrank,nc,m,ng,ibc,option%ibndtyp(ibc),option%pressurebc(:,ibc), &
 ! option%tempbc(ibc),option%sgbc(ibc),option%concbc(ibc),field%velocitybc(:,ibc)
