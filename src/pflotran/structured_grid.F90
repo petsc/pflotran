@@ -65,6 +65,8 @@ module Structured_Grid_module
     
     real*8 :: radius_0
     
+    logical :: invert_z_axis
+    
     Vec :: dx, dy, dz, dx_loc, dy_loc, dz_loc  ! Grid spacings
 
     DA :: da_1_dof, da_nphase_dof, da_3np_dof, da_ndof, da_nphancomp_dof, &
@@ -172,6 +174,8 @@ subroutine StructuredGridInit(structured_grid)
   
   structured_grid%igeom = 0
   structured_grid%radius_0 = 0.d0
+  
+  structured_grid%invert_z_axis = .false.
   
   ! nullify Vec pointers
   structured_grid%dx = 0
@@ -685,7 +689,7 @@ function StructGridComputeInternConnect(structured_grid,option)
           dist_dn = 0.5d0*dy_loc_p(id_dn)
           connections%dist(-1,iconn) = dist_up/(dist_up+dist_dn)
           connections%dist(0,iconn) = dist_up+dist_dn
-          connections%dist(2,iconn) = 1.d0  ! x component of unit vector
+          connections%dist(2,iconn) = 1.d0  ! y component of unit vector
           connections%area(iconn) = dx_loc_p(id_up)*dz_loc_p(id_up)
         enddo
       enddo
@@ -707,7 +711,7 @@ function StructGridComputeInternConnect(structured_grid,option)
           dist_dn = 0.5d0*dz_loc_p(id_dn)
           connections%dist(-1,iconn) = dist_up/(dist_up+dist_dn)
           connections%dist(0,iconn) = dist_up+dist_dn
-          connections%dist(3,iconn) = 1.d0  ! x component of unit vector
+          connections%dist(3,iconn) = 1.d0  ! z component of unit vector
           connections%area(iconn) = dx_loc_p(id_up)*dy_loc_p(id_up)
         enddo
       enddo
@@ -792,10 +796,18 @@ subroutine StructGridPopulateConnection(structured_grid,coupler,connection, &
               connection%dist(0,iconn) = 0.5d0*dz_loc_p(cell_id_ghosted)
               connection%area(iconn) = dx_loc_p(cell_id_ghosted)* &
                                         dy_loc_p(cell_id_ghosted)
-              if (coupler%iface ==  TOP) then ! this will become BOTTOM when z-axis is inverted.
-                connection%dist(3,iconn) = 1.d0
+              if (structured_grid%invert_z_axis) then
+                if (coupler%iface ==  TOP) then 
+                  connection%dist(3,iconn) = 1.d0
+                else
+                  connection%dist(3,iconn) = -1.d0
+                endif
               else
-                connection%dist(3,iconn) = -1.d0
+                if (coupler%iface ==  TOP) then 
+                  connection%dist(3,iconn) = -1.d0
+                else
+                  connection%dist(3,iconn) = 1.d0
+                endif
               endif
           end select
         case(STRUCTURED_CYLINDRICAL) ! cylindrical

@@ -211,13 +211,13 @@ subroutine nhydrostatic(realization)
           ghosted_id=grid%nL2G(local_id)
           depth = grid%z(ghosted_id)
           horiz = grid%x(ghosted_id)
-          dp = rho_ref * option%gravity * option%beta * &
+          dp = rho_ref * option%gravity(3) * option%beta * &
                ((grid%structured_grid%x_max - &
                  0.5d0*grid%structured_grid%dx0(grid%structured_grid%nx)) - &
                grid%x(ghosted_id))
           pref =  option%pref + dp 
           call Get_Hydrosta_Pres(grid%structured_grid%nz,grid%structured_grid%dz0, &
-                                 pref,option%tref,option%dtdz,option%gravity, &
+                                 pref,option%tref,option%dtdz,option%gravity(3), &
                                  option%m_nacl) 
           xx_p(1+ (local_id-1)*option%ndof)=hys_pres(nz) 
           xx_p(2+ (local_id-1)*option%ndof)=hys_temp(nz)
@@ -236,7 +236,7 @@ subroutine nhydrostatic(realization)
   depth = depth + 0.5d0*grid%structured_grid%dz0(grid%structured_grid%nz)
   horiz = horiz + 0.5d0*grid%structured_grid%dx0(grid%structured_grid%nx)
   
-  dp = rho_ref * option%gravity * option%beta * horiz
+  dp = rho_ref * option%gravity(3) * option%beta * horiz
   
   if (option%myrank == 0) then
     write(*,'(" --> hydrostatic: length= ",1pe11.4,"[m], depth= ",1pe11.4, &
@@ -271,19 +271,19 @@ subroutine nhydrostatic(realization)
             ghosted_id = grid%nL2G(local_id)
             nz = floor(((real(natural_id)-.5D0))/grid%structured_grid%nxy) + 1
             if (boundary_condition%condition%itype(1) == 1) then
-              dp = rho_ref * option%gravity * option%beta * &
+              dp = rho_ref * option%gravity(3) * option%beta * &
                    (grid%structured_grid%x_max-0.5d0*grid%x(grid%structured_grid%nx))
             elseif (boundary_condition%condition%itype(1) == 2) then
               dp=0.D0
             else   
-              dp = rho_ref * option%gravity * option%beta * &
+              dp = rho_ref * option%gravity(3) * option%beta * &
                    ((grid%structured_grid%x_max - &
                      0.5d0*grid%structured_grid%dx0(grid%structured_grid%nx)) - &
                    grid%x(ghosted_id))
             endif
             pref = option%pref + dp 
             call Get_Hydrosta_Pres(grid%structured_grid%nz,grid%structured_grid%dz0, &
-                                   pref,option%tref,option%dtdz,option%gravity, &
+                                   pref,option%tref,option%dtdz,option%gravity(3), &
                                    option%m_nacl)  
             boundary_condition%aux_real_var(1,iconn) = hys_pres(nz)
             boundary_condition%aux_real_var(2:option%ndof,iconn) = &
@@ -296,20 +296,20 @@ subroutine nhydrostatic(realization)
             ghosted_id = grid%nL2G(local_id)
             nz= floor(((real(natural_id)-.5))/grid%structured_grid%nxy) + 1
             if (boundary_condition%iface == 1)then 
-              dp = rho_ref * option%gravity * option%beta * &
+              dp = rho_ref * option%gravity(3) * option%beta * &
                    (grid%structured_grid%x_max - &
                     0.5d0*grid%structured_grid%dx0(grid%structured_grid%nx))
             elseif(boundary_condition%iface == 2)then
               dp=0.D0
             else   
-              dp = rho_ref * option%gravity * option%beta * &
+              dp = rho_ref * option%gravity(3) * option%beta * &
                    ((grid%structured_grid%x_max - &
                      0.5d0*grid%structured_grid%dx0(grid%structured_grid%nx)) - &
                    grid%x(ghosted_id))
             endif
             pref =  option%pref + dp
             call Get_Hydrosta_Pres(grid%structured_grid%nz,grid%structured_grid%dz0, &
-                                   pref,option%tref,option%dtdz,option%gravity, &
+                                   pref,option%tref,option%dtdz,option%gravity(3), &
                                    option%m_nacl)  
             boundary_condition%aux_real_var(1,iconn) = hys_pres(nz)
             boundary_condition%aux_real_var(2,iconn) = hys_temp(nz)
@@ -320,13 +320,13 @@ subroutine nhydrostatic(realization)
             case(3)
               nz = grid%structured_grid%nz
               ghosted_id = grid%nL2G(local_id)
-              dp = rho_ref * option%gravity * option%beta * &
+              dp = rho_ref * option%gravity(3) * option%beta * &
                    ((grid%structured_grid%x_max - &
                      0.5d0*grid%structured_grid%dx0(grid%structured_grid%nx)) - &
                    grid%x(ghosted_id))
               pref =  option%pref + dp 
               call Get_Hydrosta_Pres(grid%structured_grid%nz,grid%structured_grid%dz0, &
-                                     pref,option%tref,option%dtdz,option%gravity, &
+                                     pref,option%tref,option%dtdz,option%gravity(3), &
                                      option%m_nacl)  
               boundary_condition%aux_real_var(1,iconn) = hys_pres(nz+1)
               boundary_condition%aux_real_var(2:option%ndof,iconn) = &
@@ -337,13 +337,13 @@ subroutine nhydrostatic(realization)
             case(1) 
               nz = grid%structured_grid%nz
               ghosted_id = grid%nL2G(local_id)
-              dp = rho_ref * option%gravity * option%beta * &
+              dp = rho_ref * option%gravity(3) * option%beta * &
                    ((grid%structured_grid%x_max - &
                      0.5d0*grid%structured_grid%dx0(grid%structured_grid%nx)) - &
                    grid%x(natural_id))
               pref =  option%pref + dp 
               call Get_Hydrosta_Pres(grid%structured_grid%nz,grid%structured_grid%dz0, &
-                                     pref,option%tref,option%dtdz,option%gravity, &
+                                     pref,option%tref,option%dtdz,option%gravity(3), &
                                      option%m_nacl)  
               boundary_condition%aux_real_var(1,iconn) = hys_pres(nz+1)
               boundary_condition%aux_real_var(2,iconn) = hys_temp(nz+1)
@@ -354,7 +354,7 @@ subroutine nhydrostatic(realization)
             case(3,1)
               natural_id=grid%nL2A(local_id)+1
               ghosted_id = grid%nL2G(local_id)
-              dp = rho_ref * option%gravity * option%beta * &
+              dp = rho_ref * option%gravity(3) * option%beta * &
                    ((grid%structured_grid%x_max - &
                      0.5d0*grid%structured_grid%dx0(grid%structured_grid%nx)) - &
                    grid%x(ghosted_id))

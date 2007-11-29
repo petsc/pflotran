@@ -858,7 +858,7 @@ subroutine mhydrostatic(realization)
       dx1 = dx2
       !print *,'mhydro', nl,na,depth,horiz
       tmp = option%dTdz * depth + option%tref
-      betap = rho * option%gravity * option%beta
+      betap = rho * option%gravity(3) * option%beta
     
      ! call wateos(tmp, pres, rho, dw_mol, dwp, &
      !             dum, dum, dum, dum, grid%scale, ierr)
@@ -866,12 +866,12 @@ subroutine mhydrostatic(realization)
       call nacl_den(tmp, pres*1D-6, xm_nacl, dw_kg) 
       rho = dw_kg * 1D3
       
-        pres = rho * option%gravity * depth + option%pref - betap * horiz
+        pres = rho * option%gravity(3) * depth + option%pref - betap * horiz
 
       itrho= 0
       do 
-        betap = rho * option%gravity * option%beta
-        pres = rho * option%gravity * depth + option%pref - betap * horiz
+        betap = rho * option%gravity(3) * option%beta
+        pres = rho * option%gravity(3) * depth + option%pref - betap * horiz
         !call wateos(tmp, pres, rho1, dw_mol, dwp, &
         !            dum, dum, dum, dum, grid%scale, ierr)
         call nacl_den(tmp, pres*1D-6, xm_nacl, dw_kg) 
@@ -907,7 +907,7 @@ subroutine mhydrostatic(realization)
   depth = grid%structured_grid%z_max
   horiz = grid%structured_grid%x_max
   
-  dp = rho * option%gravity * option%beta * horiz
+  dp = rho * option%gravity(3) * option%beta * horiz
   
   if (option%myrank == 0) then
     write(*,'(" --> hydrostatic: length= ",1pe11.4,"[m], depth= ",1pe11.4, &
@@ -958,7 +958,7 @@ subroutine mhydrostatic(realization)
             
         !betap = rho * grid%gravity * grid%beta
         if (iz == 1) then
-          pres = p + rho0 * option%gravity * dzz !+  betap * hori
+          pres = p + rho0 * option%gravity(3) * dzz !+  betap * hori
          ! call wateos(tmp, pres, rho, dw_mol, dwp, &
          !             dum, dum, dum, dum, grid%scale, ierr)
           call nacl_den(tmp, pres*1D-6, xm_nacl, dw_kg) 
@@ -966,7 +966,7 @@ subroutine mhydrostatic(realization)
         else
           do
             pres = p + (rho0*grid%structured_grid%dz0(iz-1) + rho*grid%structured_grid%dz0(iz))/(grid%structured_grid%dz0(iz)+grid%structured_grid%dz0(iz-1))&
-                                                             * option%gravity * dzz 
+                                                             * option%gravity(3) * dzz 
            ! call wateos(tmp, pres, rho1, dw_mol, dwp, &
            ! dum, dum, dum, dum, grid%scale, ierr)
             call nacl_den(tmp, pres*1D-6, xm_nacl, dw_kg) 

@@ -1350,17 +1350,28 @@ subroutine readInput(simulation,filename)
 
 !....................
 
-      case ('GRAV')
+      case ('GRAV','GRAVITY')
 
         call fiReadStringErrorMsg('GRAV',ierr)
 
-        call fiReadDouble(string,option%gravity,ierr)
-        call fiDefaultMsg('gravity',ierr)
+        call fiReadDouble(string,temp_real,ierr)
+        if (ierr /= 0) then
+          call fiDefaultMsg('gravity',ierr)
+        else
+          call fiReadDouble(string,option%gravity(2),ierr)
+          if (ierr /= 0) then
+            option%gravity(:) = 0.d0
+            option%gravity(3) = temp_real
+          else
+            option%gravity(1) = temp_real
+            call fiReadDouble(string,option%gravity(3),ierr)
+          endif
+        endif
 
         if (option%myrank == 0) &
           write(IUNIT2,'(/," *GRAV",/, &
-            & "  gravity    = "," [m/s^2]",3x,1pe12.4 &
-            & )') option%gravity
+            & "  gravity    = "," [m/s^2]",3x,3pe12.4 &
+            & )') option%gravity(1:3)
 
 !....................
 
@@ -1385,6 +1396,13 @@ subroutine readInput(simulation,filename)
         if (option%myrank == 0) &
           write(IUNIT2,'(/," *HDF5",10x,i1,/)') realization%output_option%print_hdf5
 
+!.....................
+      case ('INVERT_Z','INVERTZ')
+        if (associated(grid%structured_grid)) then
+          grid%structured_grid%invert_z_axis = .true.
+          option%gravity(3) = -1.d0*option%gravity(3)
+        endif
+      
 !....................
 
       case ('TECP')

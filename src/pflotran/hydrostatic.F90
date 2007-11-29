@@ -10,10 +10,17 @@ module Hydrostatic_module
 
   real*8, parameter ::  fmwnacl = 58.44277D0,  fmwh2o = 18.0153D0
 
-  public :: HydrostaticUpdateCoupler
+  public :: HydrostaticUpdateCoupler, HydrostaticUpdateCouplerBetter
  
 contains
 
+! ************************************************************************** !
+!
+! HydrostaticUpdateCoupler: Computes the hydrostatic initial/boundary condition
+! author: Glenn Hammond
+! date: 11/26/07
+!
+! ************************************************************************** !
 subroutine HydrostaticUpdateCoupler(coupler,option,grid)
 
   use water_eos_module
@@ -59,7 +66,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
 
       dist_x = grid%x(ghosted_id)-condition%datum(1)
       dist_y = grid%y(ghosted_id)-condition%datum(2)
-      dist_z = dabs(grid%z(ghosted_id)-condition%datum(3))
+      dist_z = grid%z(ghosted_id)-condition%datum(3)
       
       pressure0 = condition%cur_value(1) + &
                   condition%gradient(1,X_DIRECTION)*dist_x + & ! gradient in Pa/m
@@ -78,7 +85,8 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
 
       num_iteration = 0
       do 
-        pressure = rho * option%gravity * dist_z + pressure0
+        ! for the standard +x,+y,+z grid, positive dist_z results in a pressure reduction
+        pressure = pressure0 + rho * option%gravity(3) * dist_z
         call nacl_den(temperature,pressure*1.d-6,xm_nacl,dw_kg) 
         rho1 = dw_kg * 1.d3
         if (abs(rho-rho1) < 1.d-10) exit
@@ -127,14 +135,15 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
       num_iteration = 0
       do 
         if (iz == 1) then
-          pressure = rho * option%gravity * delta_z + pressure0
+          ! for the standard +x,+y,+z grid, positive dist_z results in a pressure reduction
+          pressure = pressure0 + rho * option%gravity(3) * delta_z
           call nacl_den(temperature,pressure*1.d-6,xm_nacl,dw_kg) 
           rho = dw_kg * 1.d3
           exit
         else
-          pressure = 0.5d0*(rho*grid%structured_grid%dz0(iz)+ &
-                            rho0*grid%structured_grid%dz0(iz-1))* &
-                     option%gravity + pressure0
+          pressure = pressure0 + 0.5d0*(rho*grid%structured_grid%dz0(iz)+ &
+                                        rho0*grid%structured_grid%dz0(iz-1))* &
+                                        option%gravity(3)
         endif
         call nacl_den(temperature,pressure*1.d-6,xm_nacl,dw_kg) 
         rho1 = dw_kg * 1.d3
@@ -156,7 +165,8 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
       ghosted_id = grid%nL2G(local_id)
       dist_z = 0.d0
       do iz=1,grid%structured_grid%nz
-        if (grid%z(ghosted_id) > dist_z .and. grid%z(ghosted_id) < dist_z + grid%structured_grid%dz0(iz)) exit
+        if (grid%z(ghosted_id) > dist_z .and. &
+            grid%z(ghosted_id) < dist_z + grid%structured_grid%dz0(iz)) exit
         dist_z = dist_z + grid%structured_grid%dz0(iz)
       enddo
       if (iz > grid%structured_grid%nz) then
@@ -178,6 +188,42 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   endif
     
 end subroutine HydrostaticUpdateCoupler
+
+! ************************************************************************** !
+!
+! HydrostaticUpdateCouplerBetter: Computes the hydrostatic initial/boundary 
+!                                 condition (more accurately than before0
+! author: Glenn Hammond
+! date: 11/28/07
+!
+! ************************************************************************** !
+subroutine HydrostaticUpdateCouplerBetter(coupler,option,grid)
+
+  use water_eos_module
+
+  use Option_module
+  use Grid_module
+  use Coupler_module
+  use Condition_module
+  use Connection_module
+  use Region_module
+  use Structured_Grid_module
+
+  implicit none
+
+  type(coupler_type) :: coupler
+  type(option_type) :: option
+  type(grid_type) :: grid
+  
+  integer :: local_id, ghosted_id, iconn
+  integer :: num_iteration, iz
+  real*8 :: dist_x, dist_y, dist_z, delta_z
+  real*8 :: rho, rho1, rho0, pressure0, pressure, temperature
+  real*8 :: xm_nacl, dw_kg
+  real*8 :: sign = -1.d0
+  
+
+end subroutine HydrostaticUpdateCouplerBetter
 
 end module Hydrostatic_module
 
