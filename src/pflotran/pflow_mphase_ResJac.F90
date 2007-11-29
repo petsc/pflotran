@@ -473,7 +473,7 @@ subroutine MPHASERes_FLCont(nconn_no,area, &
       
       gravity = (upweight*density1(np)*amw1(np) + &
       (1.D0-upweight)*density2(np)*amw2(np)) &
-      * option%gravity * dist_gravity
+      * dist_gravity
           
       dphi = pre_ref1-pc1(np) - pre_ref2 + pc2(np) + gravity
 !     print *,'FLcont  dp',dphi
@@ -632,7 +632,7 @@ subroutine MPHASERes_FLBCCont(ibndtype,area,aux_vars, &
       
           gravity = (upweight*density1(iphase)*amw1(iphase) + &
           (1.D0-upweight)*density2(iphase)*amw2(iphase)) &
-          * option%gravity * dist_gravity
+          * dist_gravity
           
           dphi = pre_ref1-pc1(iphase) - pre_ref2 + pc2(iphase) + gravity
     
@@ -744,7 +744,7 @@ subroutine MPHASERes_FLBCCont(ibndtype,area,aux_vars, &
     
           gravity = (upweight*density1(iphase)*amw1(iphase) + &
           (1.D0-upweight)*density2(iphase)*amw2(iphase)) &
-              * option%gravity * dist_gravity
+              * dist_gravity
         
           dphi = pre_ref1-pc1(iphase) - pre_ref2 + pc2(iphase) + gravity
     
@@ -1240,8 +1240,12 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
 
       fraction_upwind = cur_connection_set%dist(-1,iconn)
       distance = cur_connection_set%dist(0,iconn)
-      ! The below assumes a unit gravity vector of [0,0,1]
-      distance_gravity = cur_connection_set%dist(3,iconn)*distance
+      ! distance = scalar - magnitude of distance
+      ! gravity = vector(3)
+      ! dist(1:3,iconn) = vector(3) - unit vector
+      distance_gravity = distance * &
+                         OptionDotProduct(option%gravity, &
+                                          cur_connection_set%dist(1:3,iconn))
       dd1 = distance*fraction_upwind
       dd2 = distance-dd1 ! should avoid truncation error
       ! upweight could be calculated as 1.d0-fraction_upwind
@@ -1287,11 +1291,11 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
       if (local_id_up > 0) then               ! If the upstream node is not a ghost node...
         do np =1, option%nphase 
           vl_p(np+(0)*option%nphase+3*option%nphase*(local_id_up-1)) = &
-                              vv_darcy(np)*cur_connection_set%dist(1,iconn) 
+                              vv_darcy(np)*abs(cur_connection_set%dist(1,iconn))
           vl_p(np+(1)*option%nphase+3*option%nphase*(local_id_up-1)) = &
-                              vv_darcy(np)*cur_connection_set%dist(2,iconn) 
+                              vv_darcy(np)*abs(cur_connection_set%dist(2,iconn))
           vl_p(np+(2)*option%nphase+3*option%nphase*(local_id_up-1)) = &
-                              vv_darcy(np)*cur_connection_set%dist(3,iconn) 
+                              vv_darcy(np)*abs(cur_connection_set%dist(3,iconn))
         enddo
       endif
      
@@ -1349,9 +1353,12 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
       perm1 = perm_xx_loc_p(ghosted_id)*abs(cur_connection_set%dist(1,iconn))+ &
               perm_yy_loc_p(ghosted_id)*abs(cur_connection_set%dist(2,iconn))+ &
               perm_zz_loc_p(ghosted_id)*abs(cur_connection_set%dist(3,iconn))
-      ! The below assumes a unit gravity vector of [0,0,1]
-      distance_gravity = cur_connection_set%dist(3,iconn) * &
-                         cur_connection_set%dist(0,iconn)
+      ! dist(0,iconn) = scalar - magnitude of distance
+      ! gravity = vector(3)
+      ! dist(1:3,iconn) = vector(3) - unit vector
+      distance_gravity = cur_connection_set%dist(0,iconn) * &
+                         OptionDotProduct(option%gravity, &
+                                          cur_connection_set%dist(1:3,iconn))
 
 ! in order to match the legacy code
 #define MATCH_LEGACY
@@ -1774,9 +1781,12 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
       perm1 = perm_xx_loc_p(ghosted_id)*abs(cur_connection_set%dist(1,iconn))+ &
               perm_yy_loc_p(ghosted_id)*abs(cur_connection_set%dist(2,iconn))+ &
               perm_zz_loc_p(ghosted_id)*abs(cur_connection_set%dist(3,iconn))
-      ! The below assumes a unit gravity vector of [0,0,1]
-      distance_gravity = cur_connection_set%dist(3,iconn) * &
-                         cur_connection_set%dist(0,iconn)
+      ! dist(0,iconn) = scalar - magnitude of distance
+      ! gravity = vector(3)
+      ! dist(1:3,iconn) = vector(3) - unit vector
+      distance_gravity = cur_connection_set%dist(0,iconn) * &
+                         OptionDotProduct(option%gravity, &
+                                          cur_connection_set%dist(1:3,iconn))
        
       delxbc=0.D0
 
@@ -1991,8 +2001,12 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
    
       fraction_upwind = cur_connection_set%dist(-1,iconn)
       distance = cur_connection_set%dist(0,iconn)
-      ! The below assumes a unit gravity vector of [0,0,1]
-      distance_gravity = cur_connection_set%dist(3,iconn)*distance
+      ! distance = scalar - magnitude of distance
+      ! gravity = vector(3)
+      ! dist(1:3,iconn) = vector(3) - unit vector
+      distance_gravity = distance * &
+                         OptionDotProduct(option%gravity, &
+                                          cur_connection_set%dist(1:3,iconn))
       dd1 = distance*fraction_upwind
       dd2 = distance-dd1 ! should avoid truncation error
       ! upweight could be calculated as 1.d0-fraction_upwind
