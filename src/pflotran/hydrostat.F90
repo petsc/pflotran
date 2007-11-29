@@ -904,8 +904,8 @@ subroutine mhydrostatic(realization)
 !geh  depth = grid%z(grid%nmax) + 0.5d0*grid%dz0(grid%nz)
 !geh  horiz = grid%x(grid%nmax) + 0.5d0*grid%dx0(grid%nx)
 
-  depth = grid%structured_grid%z_max
-  horiz = grid%structured_grid%x_max
+  depth = grid%z_max
+  horiz = grid%x_max
   
   dp = rho * option%gravity(3) * option%beta * horiz
   

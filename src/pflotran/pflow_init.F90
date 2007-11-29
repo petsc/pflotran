@@ -91,7 +91,6 @@ subroutine PflowInit(simulation,filename)
 
   ! set the operational mode (e.g. RICHARDS_MODE, MPH_MODE, etc)
   call setMode(option,mcomp,mphas)
-  
   ! process command line options
   call OptionCheckCommandLine(option)
                              
@@ -1538,6 +1537,15 @@ subroutine readInput(simulation,filename)
 
 !....................
 
+      case('ORIG','ORIGIN')
+        call fiReadDouble(string,grid%origin(X_DIRECTION),ierr)
+        call fiErrorMsg('X direction','Origin',ierr)
+        call fiReadDouble(string,grid%origin(Y_DIRECTION),ierr)
+        call fiErrorMsg('Y direction','Origin',ierr)
+        call fiReadDouble(string,grid%origin(Z_DIRECTION),ierr)
+        call fiErrorMsg('Z direction','Origin',ierr)
+        
+!....................
 
       case('RAD0')
     

@@ -1083,7 +1083,7 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
                          OptionDotProduct(option%gravity, &
                                           cur_connection_set%dist(1:3,iconn))
 
-#define MATCH_LEGACY
+!#define MATCH_LEGACY
 #ifdef MATCH_LEGACY
       select case(boundary_condition%condition%itype(RICHARDS_PRESSURE_DOF))
         case(DIRICHLET_BC)

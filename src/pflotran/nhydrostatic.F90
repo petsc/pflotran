@@ -212,7 +212,7 @@ subroutine nhydrostatic(realization)
           depth = grid%z(ghosted_id)
           horiz = grid%x(ghosted_id)
           dp = rho_ref * option%gravity(3) * option%beta * &
-               ((grid%structured_grid%x_max - &
+               ((grid%x_max - &
                  0.5d0*grid%structured_grid%dx0(grid%structured_grid%nx)) - &
                grid%x(ghosted_id))
           pref =  option%pref + dp 
@@ -272,12 +272,12 @@ subroutine nhydrostatic(realization)
             nz = floor(((real(natural_id)-.5D0))/grid%structured_grid%nxy) + 1
             if (boundary_condition%condition%itype(1) == 1) then
               dp = rho_ref * option%gravity(3) * option%beta * &
-                   (grid%structured_grid%x_max-0.5d0*grid%x(grid%structured_grid%nx))
+                   (grid%x_max-0.5d0*grid%x(grid%structured_grid%nx))
             elseif (boundary_condition%condition%itype(1) == 2) then
               dp=0.D0
             else   
               dp = rho_ref * option%gravity(3) * option%beta * &
-                   ((grid%structured_grid%x_max - &
+                   ((grid%x_max - &
                      0.5d0*grid%structured_grid%dx0(grid%structured_grid%nx)) - &
                    grid%x(ghosted_id))
             endif
@@ -297,13 +297,13 @@ subroutine nhydrostatic(realization)
             nz= floor(((real(natural_id)-.5))/grid%structured_grid%nxy) + 1
             if (boundary_condition%iface == 1)then 
               dp = rho_ref * option%gravity(3) * option%beta * &
-                   (grid%structured_grid%x_max - &
+                   (grid%x_max - &
                     0.5d0*grid%structured_grid%dx0(grid%structured_grid%nx))
             elseif(boundary_condition%iface == 2)then
               dp=0.D0
             else   
               dp = rho_ref * option%gravity(3) * option%beta * &
-                   ((grid%structured_grid%x_max - &
+                   ((grid%x_max - &
                      0.5d0*grid%structured_grid%dx0(grid%structured_grid%nx)) - &
                    grid%x(ghosted_id))
             endif
@@ -321,7 +321,7 @@ subroutine nhydrostatic(realization)
               nz = grid%structured_grid%nz
               ghosted_id = grid%nL2G(local_id)
               dp = rho_ref * option%gravity(3) * option%beta * &
-                   ((grid%structured_grid%x_max - &
+                   ((grid%x_max - &
                      0.5d0*grid%structured_grid%dx0(grid%structured_grid%nx)) - &
                    grid%x(ghosted_id))
               pref =  option%pref + dp 
@@ -338,7 +338,7 @@ subroutine nhydrostatic(realization)
               nz = grid%structured_grid%nz
               ghosted_id = grid%nL2G(local_id)
               dp = rho_ref * option%gravity(3) * option%beta * &
-                   ((grid%structured_grid%x_max - &
+                   ((grid%x_max - &
                      0.5d0*grid%structured_grid%dx0(grid%structured_grid%nx)) - &
                    grid%x(natural_id))
               pref =  option%pref + dp 
@@ -355,7 +355,7 @@ subroutine nhydrostatic(realization)
               natural_id=grid%nL2A(local_id)+1
               ghosted_id = grid%nL2G(local_id)
               dp = rho_ref * option%gravity(3) * option%beta * &
-                   ((grid%structured_grid%x_max - &
+                   ((grid%x_max - &
                      0.5d0*grid%structured_grid%dx0(grid%structured_grid%nx)) - &
                    grid%x(ghosted_id))
               pref =  option%pref + dp 

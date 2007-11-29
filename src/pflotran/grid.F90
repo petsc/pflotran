@@ -43,7 +43,10 @@ module Grid_module
     integer, pointer :: nL2G(:), nG2L(:), nL2A(:), nG2N(:)
     integer, pointer :: nG2A(:)
     
-    real*8, pointer :: x(:), y(:), z(:), delz(:) 
+    real*8, pointer :: x(:), y(:), z(:)
+    
+    real*8 :: x_min, x_max, y_min, y_max, z_min, z_max
+    real*8 :: origin(3)
 
     Vec :: volume 
     
@@ -143,11 +146,18 @@ subroutine initGrid(grid)
   nullify(grid%nG2N)
   nullify(grid%nG2A)
 
-
   nullify(grid%x)
   nullify(grid%y)
   nullify(grid%z)
-  nullify(grid%delz)
+
+  grid%x_min = 1.d20
+  grid%x_max = -1.d20
+  grid%y_min = 1.d20
+  grid%y_max = -1.d20
+  grid%z_min = 1.d20
+  grid%z_max = -1.d20
+  
+  grid%origin = 0.d0
 
 end subroutine initGrid
 
@@ -384,7 +394,9 @@ subroutine GridComputeCoordinates(grid,option)
   select case(grid%igrid)
     case(STRUCTURED)
       call StructuredGridComputeCoord(grid%structured_grid,option, &
-                                            grid%x,grid%y,grid%z)
+                                      grid%origin,grid%x,grid%y,grid%z, &
+                                      grid%x_min,grid%x_max,grid%y_min, &
+                                      grid%y_max,grid%z_min,grid%z_max)
     case(UNSTRUCTURED)
   end select
 
@@ -705,9 +717,7 @@ subroutine GridDestroy(grid)
   nullify(grid%y)
   if (associated(grid%z)) deallocate(grid%z)
   nullify(grid%z)
-  if (associated(grid%delz)) deallocate(grid%delz)
-  nullify(grid%delz)
-  
+
   call UnstructuredGridDestroy(grid%unstructured_grid)    
   call StructuredGridDestroy(grid%structured_grid)
                                            
