@@ -330,7 +330,6 @@
 ! compute derivatives numerically: 1-p,2-T,3-d,4-dddt,5-dddp,6-fg,7-dfgdp,8-dfgdt,
 !                 9-energy,10-enthalpy,11-dhdt,12-dhdp,13-visc,14-dvdt,15-dvdp
 !#if 0
-        if (j>0) then
           
           !dddt
           co2_prop_spwag(i,j,4) = (rhodt-co2_prop_spwag(i,j,3))/dtemp
@@ -343,8 +342,7 @@
           
           !dvdt
           co2_prop_spwag(i,j,14) = (vdt-co2_prop_spwag(i,j,13))/dtemp
-        endif
-        if (i>0) then
+
           !dddp
           co2_prop_spwag(i,j,5) = (rhodp-co2_prop_spwag(i,j,3))/dpres
           
@@ -356,7 +354,6 @@
           
           !dvdp
           co2_prop_spwag(i,j,15) = (vdp-co2_prop_spwag(i,j,13))/dpres
-        endif
 !#endif
 #if 0
         if (j>0) then
