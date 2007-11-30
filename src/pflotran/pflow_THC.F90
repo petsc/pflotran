@@ -17,9 +17,11 @@
 module THC_module
 
  use Connection_module
- use Solution_module
+ use Realization_module
  use Grid_module
  use Option_module
+ use Coupler_module
+ use Field_module
  
  private
 
