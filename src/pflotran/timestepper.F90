@@ -401,8 +401,9 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
        stepper%cur_waypoint%print_output)) then
     option%time = option%time - option%dt
     option%dt = stepper%cur_waypoint%time - option%time
-    if (option%dt > stepper%dt_max) then
-      option%dt = stepper%dt_max
+    if (option%dt > stepper%dt_max .and. &
+        dabs(option%dt-stepper%dt_max) > 1.d0) then ! 1 sec tolerance to avoid cancellation
+      option%dt = stepper%dt_max                    ! error from waypoint%time - option%time
       option%time = option%time + option%dt
     else
       option%time = stepper%cur_waypoint%time

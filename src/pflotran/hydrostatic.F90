@@ -245,6 +245,9 @@ subroutine HydrostaticUpdateCouplerBetter(coupler,option,grid)
     allocate(pressure_array(num_pressures))
     allocate(density_array(num_pressures))
     allocate(z(num_pressures))
+    pressure_array = 0.d0
+    density_array = 0.d0
+    z = 0.d0
     ! place this pressure in the array
     idatum = int(condition%datum(Z_DIRECTION)/delta_z - &
                  min(grid%z_min,condition%datum(Z_DIRECTION)) / &
@@ -252,12 +255,12 @@ subroutine HydrostaticUpdateCouplerBetter(coupler,option,grid)
                   min(grid%z_min,condition%datum(Z_DIRECTION))) * &
                   dble(num_pressures))+1
     pressure0 = condition%cur_value(1)
+    temperature = condition%cur_value(2)
     pressure_array(idatum) = pressure0
     call nacl_den(temperature,pressure0*1.d-6,xm_nacl,dw_kg) 
     rho = dw_kg * 1.d3
     density_array(idatum) = rho
     z(idatum) = condition%datum(Z_DIRECTION)
-    temperature = condition%cur_value(2)
     ! compute pressures above datum, if any
     dist_z = 0.d0
     rho0 = rho
@@ -278,6 +281,8 @@ subroutine HydrostaticUpdateCouplerBetter(coupler,option,grid)
         num_iteration = num_iteration + 1
         if (num_iteration > 100) then
           print *,'Hydrostatic iteration failed to converge',num_iteration,rho1,rho
+          print *, condition%name, idatum
+          print *, pressure_array
           stop
         endif
       enddo
@@ -310,6 +315,8 @@ subroutine HydrostaticUpdateCouplerBetter(coupler,option,grid)
         num_iteration = num_iteration + 1
         if (num_iteration > 100) then
           print *,'Hydrostatic iteration failed to converge',num_iteration,rho1,rho
+          print *, condition%name, idatum
+          print *, pressure_array
           stop
         endif
       enddo

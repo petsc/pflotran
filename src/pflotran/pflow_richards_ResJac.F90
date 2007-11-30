@@ -43,7 +43,7 @@ module Richards_module
   integer,save :: size_var_use 
   integer,save :: size_var_node
   real*8, allocatable,save :: Resold_AR(:,:), Resold_FL(:,:)
-  real*8, pointer, save :: yybc(:,:)
+!  real*8, pointer, save :: yybc(:,:)
 ! Contributions to residual from accumlation/source/Reaction, flux(include diffusion)
   
   public RichardsResidual, RichardsJacobian, pflow_Richards_initaccum, &
@@ -2000,7 +2000,8 @@ subroutine pflow_update_Richards(realization)
                                 option%itable,ierr, option%pref)
  
    enddo
-
+! don't believe that this is necessary anymore
+#if 0
   !geh added for transient boundary conditions  
   if (associated(field%imat) .and. option%iread_geom < 0) then
 
@@ -2076,6 +2077,7 @@ subroutine pflow_update_Richards(realization)
       boundary_condition => boundary_condition%next
     enddo
   endif
+#endif
  
   call VecRestoreArrayF90(field%xx, xx_p, ierr); CHKERRQ(ierr)
   call VecRestoreArrayF90(field%yy, yy_p, ierr);
@@ -2196,6 +2198,8 @@ subroutine pflow_Richards_initadj(realization)
     endif 
   enddo
 
+! don't believe that this is necessary anymore
+#if 0
   boundary_condition => realization%boundary_conditions%first
   num_connection = 0
   do 
@@ -2279,6 +2283,7 @@ subroutine pflow_Richards_initadj(realization)
     enddo
     boundary_condition => boundary_condition%next
   enddo
+#endif
 
   call VecRestoreArrayF90(field%icap_loc, icap_loc_p, ierr)
   call VecRestoreArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)

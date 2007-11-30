@@ -652,7 +652,9 @@ subroutine ConditionUpdate(condition_list,option,time)
         if (next_time_index < condition%max_time_index) &
           next_time_index = next_time_index + 1
       enddo
-
+      
+      condition%cur_time_index = cur_time_index
+      
       select case(condition%interpolation_method)
         case(STEP) ! just use the current value
           do idof=1,condition%num_dof
