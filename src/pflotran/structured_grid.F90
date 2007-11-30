@@ -22,9 +22,9 @@ module Structured_Grid_module
 #include "include/finclude/petscda.h"
 #include "include/finclude/petscda.h90"
 
-#define X_DIRECTION 1
-#define Y_DIRECTION 2
-#define Z_DIRECTION 3
+!#define X_DIRECTION 1 ! now in definitions.h
+!#define Y_DIRECTION 2
+!#define Z_DIRECTION 3
 
 #define WEST 1
 #define EAST 2
@@ -56,14 +56,14 @@ module Structured_Grid_module
 
     integer :: nlmax  ! Total number of non-ghosted nodes in local domain.
     integer :: ngmax  ! Number of ghosted & non-ghosted nodes in local domain.
-    
-    real*8 :: x_max, x_min, y_max, y_min, z_max, z_min
 
     real*8, pointer :: dx0(:), dy0(:), dz0(:), rd(:)
     
     integer :: igeom
     
     real*8 :: radius_0
+    
+    logical :: invert_z_axis
     
     Vec :: dx, dy, dz, dx_loc, dy_loc, dz_loc  ! Grid spacings
 
@@ -157,13 +157,6 @@ subroutine StructuredGridInit(structured_grid)
   structured_grid%jend = 0
   structured_grid%kend = 0
   
-  structured_grid%x_max = 0.d0
-  structured_grid%y_max = 0.d0
-  structured_grid%z_max = 0.d0
-  structured_grid%x_min = 0.d0
-  structured_grid%y_min = 0.d0
-  structured_grid%z_min = 0.d0
-  
   nullify(structured_grid%dx0)
   nullify(structured_grid%dy0)
   nullify(structured_grid%dz0)
@@ -172,6 +165,8 @@ subroutine StructuredGridInit(structured_grid)
   
   structured_grid%igeom = 0
   structured_grid%radius_0 = 0.d0
+  
+  structured_grid%invert_z_axis = .false.
   
   ! nullify Vec pointers
   structured_grid%dx = 0
@@ -544,7 +539,8 @@ end subroutine StructuredGridComputeSpacing
 !
 ! ************************************************************************** !
 subroutine StructuredGridComputeCoord(structured_grid,option, &
-                                            grid_x,grid_y,grid_z)
+                                      origin,grid_x,grid_y,grid_z, &
+                                      x_min,x_max,y_min,y_max,z_min,z_max)
 
   use Option_module
   
@@ -552,8 +548,9 @@ subroutine StructuredGridComputeCoord(structured_grid,option, &
   
   type(structured_grid_type) :: structured_grid
   type(option_type) :: option
+  real*8 :: origin(3)
   real*8 :: grid_x(:), grid_y(:), grid_z(:)
-  real*8 :: x_min, y_min, z_min
+  real*8 :: x_min, x_max, y_min, y_max, z_min, z_max
 
 ! integer :: ierr
   integer*4 :: i, j, k, n
@@ -561,20 +558,20 @@ subroutine StructuredGridComputeCoord(structured_grid,option, &
   integer :: prevnode
 
 ! set min and max bounds of domain in coordinate directions
-  structured_grid%x_min = 0.d0
-  structured_grid%y_min = 0.d0
-  structured_grid%z_min = 0.d0
-  structured_grid%x_max = 0.d0
-  structured_grid%y_max = 0.d0
-  structured_grid%z_max = 0.d0
+  x_min = origin(X_DIRECTION)
+  y_min = origin(Y_DIRECTION)
+  z_min = origin(Z_DIRECTION)
+  x_max = x_min
+  y_max = y_min
+  z_max = z_min
   do i=1,structured_grid%nx
-    structured_grid%x_max = structured_grid%x_max + structured_grid%dx0(i)
+    x_max = x_max + structured_grid%dx0(i)
   enddo
   do j=1,structured_grid%ny
-    structured_grid%y_max = structured_grid%y_max + structured_grid%dy0(j)
+    y_max = y_max + structured_grid%dy0(j)
   enddo
   do k=1,structured_grid%nz
-    structured_grid%z_max = structured_grid%z_max + structured_grid%dz0(k)
+    z_max = z_max + structured_grid%dz0(k)
   enddo
 
 ! set min and max bounds of domain in coordinate directions
@@ -685,7 +682,7 @@ function StructGridComputeInternConnect(structured_grid,option)
           dist_dn = 0.5d0*dy_loc_p(id_dn)
           connections%dist(-1,iconn) = dist_up/(dist_up+dist_dn)
           connections%dist(0,iconn) = dist_up+dist_dn
-          connections%dist(2,iconn) = 1.d0  ! x component of unit vector
+          connections%dist(2,iconn) = 1.d0  ! y component of unit vector
           connections%area(iconn) = dx_loc_p(id_up)*dz_loc_p(id_up)
         enddo
       enddo
@@ -707,7 +704,7 @@ function StructGridComputeInternConnect(structured_grid,option)
           dist_dn = 0.5d0*dz_loc_p(id_dn)
           connections%dist(-1,iconn) = dist_up/(dist_up+dist_dn)
           connections%dist(0,iconn) = dist_up+dist_dn
-          connections%dist(3,iconn) = 1.d0  ! x component of unit vector
+          connections%dist(3,iconn) = 1.d0  ! z component of unit vector
           connections%area(iconn) = dx_loc_p(id_up)*dy_loc_p(id_up)
         enddo
       enddo
@@ -792,10 +789,18 @@ subroutine StructGridPopulateConnection(structured_grid,coupler,connection, &
               connection%dist(0,iconn) = 0.5d0*dz_loc_p(cell_id_ghosted)
               connection%area(iconn) = dx_loc_p(cell_id_ghosted)* &
                                         dy_loc_p(cell_id_ghosted)
-              if (coupler%iface ==  TOP) then ! this will become BOTTOM when z-axis is inverted.
-                connection%dist(3,iconn) = 1.d0
+              if (structured_grid%invert_z_axis) then
+                if (coupler%iface ==  TOP) then 
+                  connection%dist(3,iconn) = 1.d0
+                else
+                  connection%dist(3,iconn) = -1.d0
+                endif
               else
-                connection%dist(3,iconn) = -1.d0
+                if (coupler%iface ==  TOP) then 
+                  connection%dist(3,iconn) = -1.d0
+                else
+                  connection%dist(3,iconn) = 1.d0
+                endif
               endif
           end select
         case(STRUCTURED_CYLINDRICAL) ! cylindrical

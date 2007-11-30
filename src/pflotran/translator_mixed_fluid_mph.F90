@@ -70,22 +70,22 @@ subroutine translator_mphase_massbal(realization)
   integer, save :: icall
   integer :: ierr
   integer :: nc,np,n2p,n2p0
-  real*8 x,y,z,nzm,nzm0, nxc,nxc0,c0, c00,nyc,nyc0,nzc,nzc0,nsm,nsm0,sm 
-  real*8 nxm,nxm0
+  real*8 :: x,y,z,nzm,nzm0, nxc,nxc0,c0, c00,nyc,nyc0,nzc,nzc0,nsm,nsm0,sm 
+  real*8 :: nxm,nxm0
   integer :: index, size_var_node
   integer :: dof_offset
   integer :: local_id, ghosted_id
      
-  PetscScalar, pointer ::  var_loc_p(:),&
-                           porosity_loc_p(:), volume_p(:)
+  PetscScalar, pointer :: var_loc_p(:), porosity_loc_p(:), volume_p(:)
                            
-  PetscScalar, pointer ::iphase_loc_p(:)
+  PetscScalar, pointer :: iphase_loc_p(:)
   
   real*8 ::  pvol,sum
   real*8, pointer ::  den(:),sat(:),xmol(:)
-  real*8   sat_avg, sat_max, sat_min, sat_var
-  real*8   sat_avg0, sat_max0, sat_min0, sat_var0
-  real*8 :: tot(0:realization%option%nspec,0:realization%option%nphase), tot0(0:realization%option%nspec,0:realization%option%nphase)  
+  real*8 :: sat_avg, sat_max, sat_min, sat_var
+  real*8 :: sat_avg0, sat_max0, sat_min0, sat_var0
+  real*8 :: tot(0:realization%option%nspec,0:realization%option%nphase), &
+            tot0(0:realization%option%nspec,0:realization%option%nphase)  
   data icall/0/
     
   type(grid_type), pointer :: grid
@@ -98,15 +98,15 @@ subroutine translator_mphase_massbal(realization)
 
   call VecGetArrayF90(field%var_loc,var_loc_p,ierr)
   call VecGetArrayF90(grid%volume, volume_p, ierr)
-  call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
+  call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)  
   call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr)
  
-  size_var_node=(option%ndof+1)*(2+7*option%nphase +2*option%nphase*option%nspec)
+  size_var_node=(option%ndof+1)*(2+7*option%nphase+2*option%nphase*option%nspec)
   tot=0.D0
   n2p=0
   nxc=0.; nyc=0.; nzc=0.D0; nzm=0 !grid%z(grid%nmax); 
-  sm=0.; nsm=nzm; c0=0.D0 ; nxm =0
-  sat_avg =0.D0; sat_max =0.D0; sat_min =1.D0 ; sat_var =0.D0
+  sm=0.; nsm=nzm; c0=0.D0; nxm =0
+  sat_avg =0.D0; sat_max =0.D0; sat_min =1.D0; sat_var =0.D0
  ! pvol_tot =0.D0
 
   do local_id = 1,grid%nlmax

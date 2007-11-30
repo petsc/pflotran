@@ -91,7 +91,6 @@ subroutine PflowInit(simulation,filename)
 
   ! set the operational mode (e.g. RICHARDS_MODE, MPH_MODE, etc)
   call setMode(option,mcomp,mphas)
-  
   ! process command line options
   call OptionCheckCommandLine(option)
                              
@@ -372,17 +371,23 @@ subroutine PflowInit(simulation,filename)
   ! clip regions and set up boundary connectivity, distance  
   call GridLocalizeRegions(realization%regions,realization%grid,realization%option)
 
-  ! connectivity between boundary conditions, srcs/sinks, etc and grid
+  ! connectivity between initial conditions, boundary conditions, srcs/sinks, etc and grid
+  call GridComputeCouplerConnections(grid,option,realization%initial_conditions%first)
   call GridComputeCouplerConnections(grid,option,realization%boundary_conditions%first)
+  call GridComputeCouplerConnections(grid,option,realization%source_sinks%first)
                                 
   call assignMaterialPropToRegions(realization)
+  call RealizationInitCouplerAuxVars(realization,realization%initial_conditions)
+  call RealizationInitCouplerAuxVars(realization,realization%boundary_conditions)
   call assignInitialConditions(realization)
-  call RealizationInitBoundConditions(realization)
 
   allocate(realization%field%internal_velocities(option%nphase, &
              ConnectionGetNumberInList(realization%grid%internal_connection_list)))
-  allocate(realization%field%boundary_velocities(option%nphase, &
-             CouplerGetNumConnectionsInList(realization%boundary_conditions)))           
+  temp_int = CouplerGetNumConnectionsInList(realization%boundary_conditions)
+  allocate(realization%field%boundary_velocities(option%nphase,temp_int))           
+
+  allocate(field%xphi_co2_bc(temp_int))
+  allocate(field%xxphi_co2_bc(temp_int))
 
   select case(option%imode)
     ! everything but RICHARDS_MODE for now
@@ -677,8 +682,8 @@ subroutine PflowInit(simulation,filename)
 
   select case(option%imode)
     case(MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE,OWG_MODE)
-      allocate(field%varbc(1:(option%ndof+1)*(2+7*option%nphase + 2 *  &
-                                       option%nphase*option%nspec)))
+!      allocate(field%varbc(1:(option%ndof+1)*(2+7*option%nphase + 2 *  &
+!                                       option%nphase*option%nspec)))
     case default  
       allocate(field%density_bc(option%nphase))
       allocate(field%d_p_bc(option%nphase))
@@ -737,6 +742,7 @@ subroutine PflowInit(simulation,filename)
   nullify(field%imat)
 
 #if 0
+  ! should we still support this
   if (grid%iread_geom == 10) then 
     if (myrank == 0) print *, 'Reading structured grid from hdf5' 
     allocate(grid%imat(grid%ngmax))  ! allocate material id array
@@ -1282,13 +1288,13 @@ subroutine readInput(simulation,filename)
       
 !....................
       case ('BOUNDARY_CONDITION')
-        coupler => CouplerCreate()
+        coupler => CouplerCreate(BOUNDARY_COUPLER_TYPE)
         call CouplerRead(coupler,IUNIT1)
         call CouplerAddToList(coupler,realization%boundary_conditions)
       
 !....................
       case ('INITIAL_CONDITION')
-        coupler => CouplerCreate()
+        coupler => CouplerCreate(INITIAL_COUPLER_TYPE)
         call CouplerRead(coupler,IUNIT1)
         call CouplerAddToList(coupler,realization%initial_conditions)
       
@@ -1300,7 +1306,7 @@ subroutine readInput(simulation,filename)
       
 !....................
       case ('SOURCE_SINK')
-        coupler => CouplerCreate()
+        coupler => CouplerCreate(SRC_SINK_COUPLER_TYPE)
         call CouplerRead(coupler,IUNIT1)
         call CouplerAddToList(coupler,realization%source_sinks)
       
@@ -1343,17 +1349,28 @@ subroutine readInput(simulation,filename)
 
 !....................
 
-      case ('GRAV')
+      case ('GRAV','GRAVITY')
 
         call fiReadStringErrorMsg('GRAV',ierr)
 
-        call fiReadDouble(string,option%gravity,ierr)
-        call fiDefaultMsg('gravity',ierr)
+        call fiReadDouble(string,temp_real,ierr)
+        if (ierr /= 0) then
+          call fiDefaultMsg('gravity',ierr)
+        else
+          call fiReadDouble(string,option%gravity(2),ierr)
+          if (ierr /= 0) then
+            option%gravity(:) = 0.d0
+            option%gravity(3) = temp_real
+          else
+            option%gravity(1) = temp_real
+            call fiReadDouble(string,option%gravity(3),ierr)
+          endif
+        endif
 
         if (option%myrank == 0) &
           write(IUNIT2,'(/," *GRAV",/, &
-            & "  gravity    = "," [m/s^2]",3x,1pe12.4 &
-            & )') option%gravity
+            & "  gravity    = "," [m/s^2]",3x,3pe12.4 &
+            & )') option%gravity(1:3)
 
 !....................
 
@@ -1378,6 +1395,13 @@ subroutine readInput(simulation,filename)
         if (option%myrank == 0) &
           write(IUNIT2,'(/," *HDF5",10x,i1,/)') realization%output_option%print_hdf5
 
+!.....................
+      case ('INVERT_Z','INVERTZ')
+        if (associated(grid%structured_grid)) then
+          grid%structured_grid%invert_z_axis = .true.
+          option%gravity(3) = -1.d0*option%gravity(3)
+        endif
+      
 !....................
 
       case ('TECP')
@@ -1513,6 +1537,15 @@ subroutine readInput(simulation,filename)
 
 !....................
 
+      case('ORIG','ORIGIN')
+        call fiReadDouble(string,grid%origin(X_DIRECTION),ierr)
+        call fiErrorMsg('X direction','Origin',ierr)
+        call fiReadDouble(string,grid%origin(Y_DIRECTION),ierr)
+        call fiErrorMsg('Y direction','Origin',ierr)
+        call fiReadDouble(string,grid%origin(Z_DIRECTION),ierr)
+        call fiErrorMsg('Z direction','Origin',ierr)
+        
+!....................
 
       case('RAD0')
     
@@ -2311,290 +2344,7 @@ subroutine readInput(simulation,filename)
         stepper%dt_max = realization%output_option%tconv * stepper%dt_max
 
 !....................
-
-      case ('BCON')
-#if 0
-! BCON is deprecated by condition/region coupling
-!-----------------------------------------------------------------------
-!-----boundary conditions:  ibnd:  
-!                   1-left,    2-right
-!          3-top,    4-bottom
-!          5-front,  6-back
-!
-!  ibndtyp:  1-Dirichlet         (p, T, C)
-!  ibndtyp:  2-Neumann/Dirichlet (q, grad T=0, grad C=0)
-!  ibndtyp:  3-Dirichlet/Neumann (p, grad T=0, grad C=0)
-!-----------------------------------------------------------------------
-        ibc = 0
-        ir = 0
-        option%iregbc1(1) = 1
-        do ! loop over blocks
-        
-          call fiReadFlotranString(IUNIT1,string,ierr)
-          call fiReadStringErrorMsg('BCON',ierr)
-        
-          if (string(1:1) == '.' .or. string(1:1) == '/') exit
-
-          ibc = ibc + 1  ! RTM: Number of boundary conditions
-        
-          call fiReadInt(string,option%ibndtyp(ibc),ierr)
-          call fiDefaultMsg('ibndtyp',ierr)
-
-          call fiReadInt(string,option%iface(ibc),ierr)
-          call fiDefaultMsg('iface',ierr)
-
-          do ! loop over regions
-            call fiReadFlotranString(IUNIT1,string,ierr)
-            call fiReadStringErrorMsg('BCON',ierr)
-        
-            if (string(1:1) == '.' .or. string(1:1) == '/') exit
-            ir = ir + 1
-
-!GEH - Structured Grid Dependence - Begin
-            call fiReadInt(string,option%i1bc(ir),ierr)
-            call fiDefaultMsg('i1',ierr)
-            call fiReadInt(string,option%i2bc(ir),ierr)
-            call fiDefaultMsg('i2',ierr)
-            call fiReadInt(string,option%j1bc(ir),ierr)
-            call fiDefaultMsg('j1',ierr)
-            call fiReadInt(string,option%j2bc(ir),ierr)
-            call fiDefaultMsg('j2',ierr)
-            call fiReadInt(string,option%k1bc(ir),ierr)
-            call fiDefaultMsg('k1',ierr)
-            call fiReadInt(string,option%k2bc(ir),ierr)
-            call fiDefaultMsg('k2',ierr)    
-!GEH - Structured Grid Dependence - End
-
-            ! Now read the velocities or pressures, depending on the BC type
-            call fiReadFlotranString(IUNIT1,string,ierr)
-            call fiReadStringErrorMsg('BCON',ierr)
    
-            select case(option%imode)
-              case(MPH_MODE,OWG_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE) 
-     
-                call fiReadInt(string,field%iphasebc0(ir),ierr)
-                call fiDefaultMsg('iphase',ierr)
-       
-                if (option%ibndtyp(ir) == 1 .or. &
-                    option%ibndtyp(ir) == 3 .or. &
-                    option%ibndtyp(ir) == 4) then 
-                  do j=1,option%ndof
-                    call fiReadDouble(string,field%xxbc0(j,ir),ierr)
-                    call fiDefaultMsg('xxbc',ierr)
-                  enddo
-                elseif (option%ibndtyp(ir) == 2) then
-                  do j=1, option%nphase       
-                    call fiReadDouble(string, field%velocitybc0(j,ir), ierr)
-                    call fiDefaultMsg("Error reading velocity BCs:", ierr)
-                  enddo
-                  do j=2,option%ndof
-                    call fiReadDouble(string,field%xxbc0(j,ir),ierr)
-                    call fiDefaultMsg('xxbc',ierr)
-                  enddo
-                endif
-
-              case default
-                j=1
-                if (option%nphase>1) j=2
-                if (option%ibndtyp(ibc) == 1) then 
-                  call fiReadDouble(string, field%pressurebc0(j,ibc), ierr)
-                  call fiDefaultMsg("Error reading pressure BCs:", ierr)
-                else if (option%ibndtyp(ibc) == 2) then
-                  call fiReadDouble(string, field%velocitybc0(j,ibc), ierr)
-                  call fiDefaultMsg("Error reading velocity BCs:", ierr)
-                else if (option%ibndtyp(ibc) == 4) then
-                  call fiReadDouble(string, field%velocitybc0(j,ibc), ierr)
-                  call fiDefaultMsg("Error reading velocity BCs:", ierr)  
-                else
-                  call fiReadDouble(string, field%pressurebc0(j,ibc), ierr)
-                  call fiDefaultMsg("Error reading pressure BCs:", ierr)
-                endif
-
-                if (option%nphase>1) field%pressurebc0(1,ibc) = &
-                    field%pressurebc0(2,ibc)
-                ! For simple input
-                call fiReadDouble(string,field%tempbc0(ibc),ierr)
-                call fiDefaultMsg('tempbc',ierr)
-
-                call fiReadDouble(string,field%sgbc0(ibc),ierr)
-                call fiDefaultMsg('sgbc',ierr)
-                field%sgbc0(ibc) = 1.D0 - field%sgbc0(ibc) ! read in sl
-
-                call fiReadDouble(string,field%concbc0(ibc),ierr)
-                call fiDefaultMsg('concbc',ierr)
-      
-            end select
-          enddo ! End loop over regions.
-        
-          option%iregbc2(ibc) = ir
-          if (ibc+1 > MAXBCBLOCKS) then
-            write(*,*) 'Too many boundary condition blocks specified--stop: ', &
-              ibc+1, MAXBCBLOCKS
-            stop
-          else
-            option%iregbc1(ibc+1) = option%iregbc2(ibc)+1
-          endif
-        enddo ! End loop over blocks.
-      
-        option%nblkbc = ibc
-
-!GEH - Structured Grid Dependence - Begin
-        if (option%myrank == 0) then
-          write(IUNIT2,'(/," *BCON: nblkbc = ",i4)') option%nblkbc
-          do ibc = 1, option%nblkbc
-            write(IUNIT2,'("  ibndtyp = ",i3," iface = ",i2)') &
-              option%ibndtyp(ibc), option%iface(ibc)
-            write(IUNIT2,'("  i1  i2  j1  j2  k1  k2       p [Pa]     t [C]  &
-              &  c",     " [mol/L]")')
-            do ireg = option%iregbc1(ibc), option%iregbc2(ibc)
-              select case(option%imode)
-                case(MPH_MODE,OWG_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
-                  if (option%ibndtyp(ibc) == 1 .or. option%ibndtyp(ibc) == 3) then
-                    write(IUNIT2,'(7i4,1p10e12.4)') &
-                      option%i1bc(ireg),option%i2bc(ireg), &
-                      option%j1bc(ireg),option%j2bc(ireg), &
-                      option%k1bc(ireg),option%k2bc(ireg), &
-                      field%iphasebc0(ireg),(field%xxbc0(j,ireg),j=1,option%ndof)
-                  else if (option%ibndtyp(ibc) == 2 .or. option%ibndtyp(ibc) == 4) then
-                    write(IUNIT2,'(6i4,1p10e12.4)') &
-                      option%i1bc(ireg),option%i2bc(ireg), &
-                      option%j1bc(ireg),option%j2bc(ireg), &
-                      option%k1bc(ireg),option%k2bc(ireg), &
-                      (field%velocitybc0(j,ireg),j=1,option%nphase),&
-                      (field%xxbc0(j,ireg),j=2,option%ndof)
-                  endif
-                case default
-                  if (option%ibndtyp(ibc) == 1 .or. option%ibndtyp(ibc) == 3) then
-                    write(IUNIT2,'(6i4,1p10e12.4)') &
-                      option%i1bc(ireg),option%i2bc(ireg), &
-                      option%j1bc(ireg),option%j2bc(ireg), &
-                      option%k1bc(ireg),option%k2bc(ireg), &
-                      (field%pressurebc0(j,ireg),j=1,option%nphase), &
-                      field%tempbc0(ireg), &
-                      field%concbc0(ireg)
-                  else if (option%ibndtyp(ibc) == 2 .or. option%ibndtyp(ibc) == 4) then
-                    write(IUNIT2,'(6i4,1p10e12.4)') &
-                      option%i1bc(ireg),option%i2bc(ireg), &
-                      option%j1bc(ireg),option%j2bc(ireg), &
-                      option%k1bc(ireg),option%k2bc(ireg), &
-                      (field%velocitybc0(j,ireg),j=1,option%nphase), &
-                      field%tempbc0(ireg), &
-                      field%concbc0(ireg)
-                  endif
-              end select
-            enddo
-          enddo
-        endif
-!GEH - Structured Grid Dependence - End
-#endif
-!....................
-
-      case ('SOUR')
-#if 0
-! SOUR is deprecated by condition/region coupling
-        isrc = 0
-        ir = 0
-      
-        do ! loop over sources
-      
-          call fiReadFlotranString(IUNIT1,string,ierr)
-          call fiReadStringErrorMsg('SOUR',ierr)
-      
-          if (string(1:1) == '.' .or. string(1:1) == '/') exit
-
-          isrc = isrc + 1  ! Number of sources
-
-          ir = ir + 1
-
-!GEH - Structured Grid Dependence - Begin
-          call fiReadInt(string,option%i1src(ir),ierr)
-          call fiDefaultMsg('i1',ierr)
-          call fiReadInt(string,option%i2src(ir),ierr)
-          call fiDefaultMsg('i2',ierr)
-          call fiReadInt(string,option%j1src(ir),ierr)
-          call fiDefaultMsg('j1',ierr)
-          call fiReadInt(string,option%j2src(ir),ierr)
-          call fiDefaultMsg('j2',ierr)
-          call fiReadInt(string,option%k1src(ir),ierr)
-          call fiDefaultMsg('k1',ierr)
-          call fiReadInt(string,option%k2src(ir),ierr)
-          call fiDefaultMsg('k2',ierr)    
-!GEH - Structured Grid Dependence - End
-
-!         print *,'pflowgrid_mod: Source', isrc, ir   
-          ! Read time, temperature, q-source
-          i = 0
-          do ! loop over time intervals
-        
-            call fiReadFlotranString(IUNIT1,string,ierr)
-            call fiReadStringErrorMsg('SOUR',ierr)
-            if (string(1:1) == '.' .or. string(1:1) == '/') exit
-        
-            i = i + 1
-        
-            if (i+1 > 10) then
-              write(*,*) 'Too many times specified in SOURce--stop: ', i+1, 10
-              stop
-            endif
-        
-            call fiReadDouble(string,option%timesrc(i,isrc),ierr)
-            call fiDefaultMsg('timesrc',ierr)
-
-            call fiReadDouble(string,field%tempsrc(i,isrc),ierr)
-            call fiDefaultMsg('tempsrc',ierr)
-      
-            call fiReadDouble(string,option%qsrc(i,isrc),ierr)
-            call fiDefaultMsg('qsrc',ierr)
-      
-            call fiReadDouble(string,option%csrc(i,isrc),ierr)
-            call fiDefaultMsg('csrc',ierr)
-         
-            call fiReadDouble(string,option%hsrc(i,isrc),ierr)
-            call fiDefaultMsg('hsrc',ierr)
-
-
-          enddo ! End loop over time.
-
-          option%ntimsrc = i
-
-          if (option%ntimsrc > MAXSRCTIMES) then
-            write(*,*) 'Too many source times specified--stop: ', &
-              option%ntimsrc, MAXSRCTIMES
-            stop
-          endif
-
-          if (isrc+1 > MAXSRC) then
-            write(*,*) 'Too many source blocks specified--stop: ', &
-            isrc+1, MAXSRC
-            stop
-          endif
-        enddo ! End loop over sources.
-
-        option%nblksrc = isrc
-
-!GEH - Structured Grid Dependence - Begin
-        if (option%myrank == 0) then
-          write(IUNIT2,'(/," *SOURce: nblksrc = ",i4)') option%nblksrc
-          do isrc = 1, option%nblksrc
-            write(IUNIT2,'("  i1  i2  j1  j2  k1  k2")')
-            write(IUNIT2,'(6i4)') &
-              option%i1src(isrc),option%i2src(isrc), &
-              option%j1src(isrc),option%j2src(isrc), &
-              option%k1src(isrc),option%k2src(isrc)
-            write(IUNIT2,'("    t [s]        T [C]    QH2O [kg/s]    &
-              &QCO2 [kg/s]")')
-            do ir = 1, option%ntimsrc
-              write(IUNIT2,'(1p10e12.4)') &
-                option%timesrc(ir,isrc),field%tempsrc(ir,isrc), &
-                option%qsrc(ir,isrc), &
-                option%csrc(ir,isrc)
-            enddo
-          enddo
-        endif
-!GEH - Structured Grid Dependence - End
-#endif
-!....................
-      
       case ('BRK')
         print *, 'BRK (breakthrough) needs to be implemented'
         stop
@@ -2964,9 +2714,11 @@ subroutine assignInitialConditions(realization)
   use Field_module
   use Coupler_module
   use Condition_module
+  use Grid_module
   
   use MPHASE_module, only : pflow_mphase_setupini
   use Richards_module, only : pflow_Richards_setupini
+  use hydrostat_module
 
   implicit none
   
@@ -2978,7 +2730,9 @@ subroutine assignInitialConditions(realization)
   PetscScalar, pointer :: conc_p(:)
   PetscScalar, pointer :: xmol_p(:)
   
-  integer :: icell, local_id, count, jn1, jn2
+  integer :: icell, iconn, count, jn1, jn2
+  integer :: local_id, ghosted_id, iend, ibegin
+  PetscScalar, pointer :: xx_p(:), iphase_loc_p(:)
   PetscErrorCode :: ierr
   
   type(option_type), pointer :: option
@@ -3065,7 +2819,47 @@ subroutine assignInitialConditions(realization)
       if (option%ndof == 4) call VecRestoreArrayF90(field%xmol,xmol_p,ierr)
   end select 
 
-#if 0 
+  ! assign initial conditions values to domain
+  call VecGetArrayF90(field%xx,xx_p, ierr); CHKERRQ(ierr)
+  call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr)
+  
+  xx_p = -999.d0
+  
+  initial_condition => realization%initial_conditions%first
+  do
+  
+    if (.not.associated(initial_condition)) exit
+
+    if (.not.associated(initial_condition%connection)) then
+      do icell=1,initial_condition%region%num_cells
+        local_id = initial_condition%region%cell_ids(icell)
+        ghosted_id = realization%grid%nL2G(local_id)
+        iend = local_id*option%ndof
+        ibegin = iend-option%ndof+1
+        xx_p(ibegin:iend) = &
+          initial_condition%condition%cur_value(1:option%ndof)
+        iphase_loc_p(ghosted_id)=initial_condition%condition%iphase
+      enddo
+    else
+      do iconn=1,initial_condition%connection%num_connections
+        local_id = initial_condition%connection%id_dn(iconn)
+        ghosted_id = realization%grid%nL2G(local_id)
+        iend = local_id*option%ndof
+        ibegin = iend-option%ndof+1
+        xx_p(ibegin:iend) = &
+          initial_condition%aux_real_var(1:option%ndof,iconn)
+        iphase_loc_p(ghosted_id)=initial_condition%aux_int_var(1,iconn)
+      enddo
+    endif
+    initial_condition => initial_condition%next
+  enddo
+  
+  call VecRestoreArrayF90(field%xx,xx_p, ierr)
+  call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p,ierr)
+
+
+
+#if 1 
   ! needs to be implemented
   ! set hydrostatic properties for initial and boundary conditions with depth
   if (option%ihydrostatic == 1) then
@@ -3073,10 +2867,10 @@ subroutine assignInitialConditions(realization)
       case(MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
         call mhydrostatic(realization)
       case(OWG_MODE)
-        call owghydrostatic(realization)
+!        call owghydrostatic(realization)
       case default
-        call hydrostatic(realization)
-    endif
+!        call hydrostatic(realization)
+    end select
   endif
 #endif  
   !if (grid%iread_init==2) call Read_init_field(grid)

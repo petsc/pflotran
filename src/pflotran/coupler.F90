@@ -19,6 +19,8 @@ module Coupler_module
     integer :: icondition                               ! id of condition in condition array/list
     integer :: iregion                                  ! id of region in region array/list
     integer :: iface                                    ! for structured grids only
+    integer, pointer :: aux_int_var(:,:)                ! auxilliary array for integer value
+    real*8, pointer :: aux_real_var(:,:)                ! auxilliary array for real values
     type(condition_type), pointer :: condition          ! pointer to condition in condition array/list
     type(region_type), pointer :: region                ! pointer to region in region array/list
     type(connection_type), pointer :: connection        ! pointer to an array/list of connections
@@ -40,7 +42,13 @@ module Coupler_module
   
   public :: CouplerCreate, CouplerDestroy, CouplerInitList, CouplerAddToList, &
             CouplerRead, CouplerDestroyList, CouplerGetNumConnectionsInList
+
   
+  interface CouplerCreate
+    module procedure CouplerCreate1
+    module procedure CouplerCreate2
+  end interface
+    
 contains
 
 ! ************************************************************************** !
@@ -50,11 +58,11 @@ contains
 ! date: 10/23/07
 !
 ! ************************************************************************** !
-function CouplerCreate()
+function CouplerCreate1()
 
   implicit none
 
-  type(coupler_type), pointer :: CouplerCreate
+  type(coupler_type), pointer :: CouplerCreate1
   
   type(coupler_type), pointer :: coupler
   
@@ -67,6 +75,8 @@ function CouplerCreate()
   coupler%icondition = 0
   coupler%iregion = 0
   coupler%iface = 0
+  nullify(coupler%aux_int_var)
+  nullify(coupler%aux_real_var)
   nullify(coupler%condition)
   nullify(coupler%region)
   nullify(coupler%connection)
@@ -75,9 +85,41 @@ function CouplerCreate()
   num_couplers = num_couplers + 1
   coupler%id = num_couplers
   
-  CouplerCreate => coupler
+  CouplerCreate1 => coupler
 
-end function CouplerCreate
+end function CouplerCreate1
+
+! ************************************************************************** !
+!
+! CouplerCreate2: Creates a coupler
+! author: Glenn Hammond
+! date: 10/23/07
+!
+! ************************************************************************** !
+function CouplerCreate2(itype)
+
+  implicit none
+
+  integer :: itype
+  
+  type(coupler_type), pointer :: CouplerCreate2
+  
+  type(coupler_type), pointer :: coupler
+  
+  coupler => CouplerCreate1()
+  coupler%itype = itype
+  select case(itype)
+    case(INITIAL_COUPLER_TYPE)
+      coupler%ctype = 'initial'
+    case(BOUNDARY_COUPLER_TYPE)
+      coupler%ctype = 'boundary'
+    case(SRC_SINK_COUPLER_TYPE)
+      coupler%ctype = 'source_sink'
+  end select
+
+  CouplerCreate2 => coupler
+
+end function CouplerCreate2
 
 ! ************************************************************************** !
 !
@@ -215,6 +257,7 @@ function CouplerGetNumConnectionsInList(list)
   integer :: CouplerGetNumConnectionsInList
   type(coupler_type), pointer :: coupler
   
+  CouplerGetNumConnectionsInList = 0
   coupler => list%first
   
   do
@@ -281,6 +324,9 @@ subroutine CouplerDestroy(coupler)
   
   nullify(coupler%condition)     ! since these are simply pointers to 
   nullify(coupler%region)        ! conditoins in list, nullify
+
+  if (associated(coupler%aux_int_var)) deallocate(coupler%aux_int_var)
+  if (associated(coupler%aux_real_var)) deallocate(coupler%aux_real_var)
 
   call ConnectionDestroy(coupler%connection)
   nullify(coupler%connection)

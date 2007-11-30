@@ -17,6 +17,10 @@
 ! HHISTORY_LENGTH is the length of the array used to store the differencing
 ! values h.
 
+#define X_DIRECTION 1
+#define Y_DIRECTION 2
+#define Z_DIRECTION 3
+
 ! Macros that are used as 'dm_index' values.  --RTM
 #define ONEDOF 1
 #define NPHASEDOF 2
@@ -55,11 +59,14 @@
 #define DIRICHLET_BC 1
 #define NEUMANN_BC 2
 #define MASS_RATE 3
+#define ZERO_GRADIENT_BC 5
+#define HYDROSTATIC_BC 6
 
 ! coupler types
 #define INITIAL_COUPLER_TYPE 1
 #define BOUNDARY_COUPLER_TYPE 2
 #define SRC_SINK_COUPLER_TYPE 3
+#define COUPLER_IPHASE_INDEX 1
 
 ! connection types
 #define INTERNAL_CONNECTION_TYPE 1
@@ -73,3 +80,7 @@
 #define RICHARDS_TEMPERATURE_DOF 2
 #define RICHARDS_ENTHALPY_DOF 3
 
+#define MPH_PRESSURE_DOF 1
+#define MPH_CONCENTRATION_DOF 3
+#define MPH_TEMPERATURE_DOF 2
+#define MPH_ENTHALPY_DOF 3

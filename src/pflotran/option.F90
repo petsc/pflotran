@@ -117,11 +117,11 @@ module Option_module
     integer, pointer:: icaptype(:)
 
     real*8 :: m_nacl
-    real*8 :: difaq, delhaq, gravity, fmwh2o= 18.0153D0, fmwa=28.96D0, &
+    real*8 :: difaq, delhaq, gravity(3), fmwh2o= 18.0153D0, fmwa=28.96D0, &
               fmwco2=44.0098D0, eqkair, ret=1.d0, fc=1.d0
     
     integer :: ihydrostatic = 0,ideriv = 1
-    real*8 :: dTdz,beta,tref,pref,conc0
+    real*8 :: dTdz,beta,tref,pref,conc0  ! these need to go
     real*8 :: hydro_ref_xyz(3)
     
 !   table lookup
@@ -148,12 +148,19 @@ module Option_module
     
   end type output_option_type
 
+  interface OptionDotProduct
+    module procedure OptionDotProduct1
+    module procedure OptionDotProduct2
+    module procedure OptionDotProduct3
+  end interface
+  
   public :: OptionCreate, &
             OutputOptionCreate, &
             OptionCheckCommandLine, &
             printErrMsg, &
             printWrnMsg, &
             printMsg, &
+            OptionDotProduct, &
             OptionDestroy, &
             OutputOptionDestroy
 
@@ -189,16 +196,6 @@ function OptionCreate()
   option%run_coupled = PETSC_FALSE
   
 !-----------------------------------------------------------------------
-      ! Initialize some counter variables.
-!-----------------------------------------------------------------------
-#if 0
-!moved to timestepper
-  option%t = 0.d0
-  option%newtcum = 0
-  option%icutcum = 0
-#endif
-
-!-----------------------------------------------------------------------
       ! Initialize some parameters to sensible values.  These are parameters
       ! which should be set via the command line or the input file, but it
       ! seems good practice to set them to sensible values when a pflowGrid
@@ -226,7 +223,8 @@ function OptionCreate()
   !physical constants and defult variables
   option%difaq = 1.d-9 ! m^2/s read from input file
   option%delhaq = 12.6d0 ! kJ/mol read from input file
-  option%gravity = 9.8068d0    ! m/s^2
+  option%gravity(:) = 0.d0
+  option%gravity(3) = -9.8068d0    ! m/s^2
   option%tref   = 50.D0
   option%fmwh2o = 18.01534d0 ! kg H2O/mol H2O
   option%fmwco2 = 44.0098d0
@@ -404,6 +402,64 @@ subroutine printMsg(option,string)
   if (option%myrank == 0) print *, string
   
 end subroutine printMsg
+
+! ************************************************************************** !
+!
+! OptionDotProduct1: Computes the dot product between two 3d vectors
+! author: Glenn Hammond
+! date: 11/28/07
+!
+! ************************************************************************** !
+function OptionDotProduct1(v1,v2)
+
+  implicit none
+  
+  real*8 :: v1(3), v2(3)
+  
+  real*8 :: OptionDotProduct1
+  
+  OptionDotProduct1 = v1(1)*v2(1)+v1(2)*v2(2)+v1(3)*v2(3)
+
+end function OptionDotProduct1
+
+! ************************************************************************** !
+!
+! OptionDotProduct2: Computes the dot product between two 3d vectors
+! author: Glenn Hammond
+! date: 11/28/07
+!
+! ************************************************************************** !
+function OptionDotProduct2(v1,v2x,v2y,v2z)
+
+  implicit none
+  
+  real*8 :: v1(3), v2x, v2y, v2z
+  
+  real*8 :: OptionDotProduct2
+  
+  OptionDotProduct2 = v1(1)*v2x+v1(2)*v2y+v1(3)*v2z
+
+end function OptionDotProduct2
+
+! ************************************************************************** !
+!
+! OptionDotProduct3: Computes the dot product between components of two 3d 
+!                    vectors
+! author: Glenn Hammond
+! date: 11/28/07
+!
+! ************************************************************************** !
+function OptionDotProduct3(v1x,v1y,v1z,v2x,v2y,v2z)
+
+  implicit none
+  
+  real*8 :: v1x, v1y, v1z, v2x, v2y, v2z
+  
+  real*8 :: OptionDotProduct3
+  
+  OptionDotProduct3 = v1x*v2x+v1y*v2y+v1z*v2z
+
+end function OptionDotProduct3
 
 ! ************************************************************************** !
 !

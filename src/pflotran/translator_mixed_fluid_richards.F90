@@ -90,7 +90,8 @@ subroutine translator_Richards_massbal(realization)
   real*8 :: pvol,sum
   real*8, pointer :: den(:),sat(:),xmol(:)
  
-  real*8 :: tot(0:realization%option%nspec,0:realization%option%nphase), tot0(0:realization%option%nspec,0:realization%option%nphase)
+  real*8 :: tot(0:realization%option%nspec,0:realization%option%nphase), &
+            tot0(0:realization%option%nspec,0:realization%option%nphase)
   
   data icall/0/
 
@@ -102,8 +103,8 @@ subroutine translator_Richards_massbal(realization)
   call VecGetArrayF90(grid%volume, volume_p, ierr)
   call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
  
-  size_var_node=(option%ndof+1)*(2+7*option%nphase +2*option%nphase*option%nspec)
-  tot=0.D0
+  size_var_node=(option%ndof+1)*(2+7*option%nphase+2*option%nphase*option%nspec)    
+  tot = 0.d0   
   
   do local_id = 1,grid%nlmax
     ghosted_id = grid%nL2G(local_id)

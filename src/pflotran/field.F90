@@ -49,25 +49,11 @@ module Field_module
     real*8, pointer :: internal_velocities(:,:)
     real*8, pointer :: boundary_velocities(:,:)
 
-    real*8, pointer :: pressurebc(:,:)
-      ! For a Dirichlet BC, pressurebc(j,ibc) gives the partial pressure 
-      ! for phase j along the BC block ibc.
-    real*8, pointer :: velocitybc(:,:)
-      ! For a Neumann BC, velocitybc(j,ibc) gives the velocity q for phase
-      ! j along BC block ibc.
-    real*8, pointer :: tempbc(:),concbc(:),sgbc(:),xphi_co2_bc(:),xxphi_co2_bc(:)
-    real*8, pointer :: xxbc(:,:), varbc(:)
-    integer, pointer:: iphasebc(:)
+    real*8, pointer :: xphi_co2_bc(:), xxphi_co2_bc(:)
 
     !block BC values read from input
     real*8, pointer :: pressurebc0(:,:)
     real*8, pointer :: velocitybc0(:,:)
-#if 0
-! don't believe that these are need anymore
-    real*8, pointer :: tempbc0(:),concbc0(:),sgbc0(:)
-    real*8, pointer :: xxbc0(:,:)
-    integer, pointer:: iphasebc0(:)  
-#endif
 
     !-------------------------------------------------------------------
     ! Quantities defined at each grid point.
@@ -340,17 +326,17 @@ function FieldCreate()
   nullify(field%xxphi_co2)   
   nullify(field%den_co2)   
   nullify(field%dden_co2)   
-  
-  nullify(field%pressurebc)   
-  nullify(field%velocitybc)   
-  nullify(field%tempbc)   
-  nullify(field%concbc)   
-  nullify(field%sgbc)   
+    
+!  nullify(field%pressurebc)   
+!  nullify(field%velocitybc)   
+!  nullify(field%tempbc)   
+!  nullify(field%concbc)   
+!  nullify(field%sgbc)   
   nullify(field%xphi_co2_bc)   
   nullify(field%xxphi_co2_bc)   
-  nullify(field%xxbc)   
-  nullify(field%varbc)   
-  nullify(field%iphasebc)   
+!  nullify(field%xxbc)   
+!  nullify(field%varbc)   
+!  nullify(field%iphasebc)   
   nullify(field%pressurebc0)   
   nullify(field%velocitybc0) 
   
