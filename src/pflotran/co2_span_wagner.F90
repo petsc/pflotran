@@ -588,7 +588,7 @@
       call guess(rho1,rho2)
 !     print *,'spanwag-guess: ',p,t,rho1,rho2,iitable
 
-      rho = rtsafe(co2den,rho1,rho2,1.d-8)
+      rho = rtsafe(co2den,rho1,rho2,1.d-10)
 
       del = rho/denc
       tau = tc/t
