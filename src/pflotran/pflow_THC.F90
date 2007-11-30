@@ -748,69 +748,57 @@ contains
 !   grid%timesrc(i-1,nr),grid%t,f1,f2,ff,qsrc1,csrc1
 
 #endif
-    qsrc1 = source_sink%condition%cur_value(RICHARDS_PRESSURE_DOF)
-    qsrc1 = qsrc1 / option%fmwh2o
 
-  if(dabs(hsrc1)>1D-20)then 
-       do kk = kk1, kk2
-        do jj = jj1, jj2
-          do ii = ii1, ii2
-            n = ii+(jj-1)*grid%nlx+(kk-1)*grid%nlxy
-             p1 = 1+(n-1)*option%ndof
-              t1 = p1 + 1
-             r_p(t1) = r_p(t1) - hsrc1    
-           enddo
-          enddo
-       enddo
-  endif         
-
-    if (qsrc1 > 0.d0) then ! injection
-      do kk = kk1, kk2
-        do jj = jj1, jj2
-          do ii = ii1, ii2
-              n = ii+(jj-1)*grid%nlx+(kk-1)*grid%nlxy
-              ng = grid%nL2G(n)
-              p1 = 1+(n-1)*option%ndof
-              t1 = p1 + 1
-              c1 = t1 + 1
-              call wateos_noderiv(tsrc1,PPRESSURE_LOC(option%jh2o,ng), &
-              dw_kg,dw_mol,enth_src,option%scale,ierr)
-              qqsrc = qsrc1/dw_mol
-            
-              r_p(p1) = r_p(p1) - qsrc1
-              r_p(t1) = r_p(t1) - qsrc1*enth_src
-              r_p(c1) = r_p(c1) - qqsrc*csrc1
-
-!             print *,'pflowTHC: ',nr,n,ng,qsrc1,dw_mol*option%fmwh2o, &
-!             qqsrc,csrc1,r_p(c1)
-          enddo
-        enddo
-      enddo
-        
-    else if (qsrc1 < 0.d0) then ! withdrawal
-      
-      do kk = kk1, kk2
-        do jj = jj1, jj2
-          do ii = ii1, ii2
-              n = ii+(jj-1)*grid%nlx+(kk-1)*grid%nlxy
-              ng = grid%nL2G(n)
-              p1 = 1+(n-1)*option%ndof
-              t1 = p1 + 1
-              c1 = t1 + 1
-              qqsrc = qsrc1/ddensity_loc_p(ng)
-              enth_src = hh_loc_p(ng)
-                
-              r_p(p1) = r_p(p1) - qsrc1
-              r_p(t1) = r_p(t1) - qsrc1*enth_src
-              r_p(c1) = r_p(c1) - qqsrc*CCONC_LOC(ng)
-          enddo
-        enddo
-      enddo
+    ! check whether enthalpy dof is included
+    if (size(source_sink%condition%cur_value) > THC_CONCENTRATION_DOF) then
+      enthalpy_flag = .true.
+    else
+      enthalpy_flag = .false.
     endif
-  enddo
- 
-    source_sink => source_sink%next
 
+    qsrc1 = source_sink%condition%cur_value(THC_PRESSURE_DOF)
+    tsrc1 = source_sink%condition%cur_value(THC_TEMPERATURE_DOF)
+    csrc1 = source_sink%condition%cur_value(THC_CONCENTRATION_DOF)
+    if (enthalpy_flag) hsrc1 = source_sink%condition%cur_value(THC_ENTHALPY_DOF)
+
+    qsrc1 = qsrc1 / option%fmwh2o  ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
+    csrc1 = csrc1 / option%fmwco2
+
+    do iconn = 1, cur_connection_set%num_connections
+      local_id = cur_connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
+
+      p1 = (local_id-1)*option%ndof + 1
+      t1 = p1 + 1
+      c1 = t1 + 1
+
+      if (enthalpy_flag) then
+        r_p(t1) = r_p(t1) - hsrc1
+      endif
+
+      if (qsrc1 > 0.d0) then ! injection
+        call wateos_noderiv(tsrc1,PPRESSURE_LOC(option%jh2o,ghosted_id), &
+                            dw_kg,dw_mol,enth_src,option%scale,ierr)
+
+        qqsrc = qsrc1/dw_mol  ! Do we still need to divide this? 
+                              ! Or has this changed in the overhaul? --RTM
+            
+        r_p(p1) = r_p(p1) - qsrc1
+        r_p(t1) = r_p(t1) - qsrc1*enth_src
+        r_p(c1) = r_p(c1) - qqsrc*csrc1
+      
+      else if (qsrc1 < 0.d0) then ! withdrawal
+        qqsrc = qsrc1/ddensity_loc_p(ng)
+        enth_src = hh_loc_p(ng)
+                
+        r_p(p1) = r_p(p1) - qsrc1
+        r_p(t1) = r_p(t1) - qsrc1*enth_src
+        r_p(c1) = r_p(c1) - qqsrc*CCONC_LOC(ng)
+      end if
+
+    enddo ! End loop over connections in cur_connection_set
+
+    source_sink => source_sink%next
   enddo ! End loop over source-sinks linked list.
 
   call VecRestoreArrayF90(option%xx_loc, xx_loc_p, ierr)
