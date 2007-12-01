@@ -67,4 +67,32 @@
   end do
   print *,'rtsafe: exceeded maximum iterations'
   END FUNCTION rtsafe
+  
+  subroutine bracket(func,x1,x2)
+  
+  implicit none
+  
+  integer :: i,ifind
+  real*8 :: fac,f1,f2,x1,x2,df
+  
+  external func
+  
+  fac = 1.2d0
+  call func(x1,f1,df)
+  call func(x2,f2,df)
+  ifind = 1
+  do i = 1, 200
+    if(f1*f2 < 0.d0) return
+    if (abs(f1) < abs(f2)) then
+      x1 = x1+fac*(x1-x2)
+      call func(x1,f1,df)
+     else
+       x2 = x2+fac*(x2-x1)
+       call func(x2,f2,df)
+     endif
+  enddo
+  ifind = 0
+  print *,'root bracket failed',x1,x2,f1,f2
+  return
+  end subroutine bracket
   end module co2_sw_rtsafe_module

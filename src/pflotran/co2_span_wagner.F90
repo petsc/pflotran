@@ -588,6 +588,8 @@
       call guess(rho1,rho2)
 !     print *,'spanwag-guess: ',p,t,rho1,rho2,iitable
 
+      call bracket(co2den,rho1,rho2)
+
       rho = rtsafe(co2den,rho1,rho2,1.d-10)
 
       del = rho/denc
@@ -713,18 +715,20 @@
  
         if (t.le.ts) then ! sub-critical liquid region
           if (p.lt.6.d0) then
-          lguess = rhol+2.d0*(ts-t)
+            lguess = rhol+2.d0*(ts-t)
           else if (p.lt.7.d0) then
-          lguess = rhol+4.d0*(ts-t)
+            lguess = rhol+5.d0*(ts-t)
+          else if (p.lt.8.d0) then
+            lguess = rhol+9.d0*(ts-t)
           else
-          lguess = rhol+6.d0*(ts-t)
+            lguess = rhol+10.d0*(ts-t)
           endif
+!         iflag = 1
           uguess = 2000.d0
         else             ! vapor region
-!         uguess = 1.d-2
           uguess = 1.d-5
-!         lguess = rhov
           lguess = 1.2*rhov
+!         iflag = 2
         endif
       else if (t.le.tc .and. p.gt.pc) then
         if (p.le.8.d0) then
@@ -732,46 +736,44 @@
           if (t.lt.275.d0) then
             lguess = 950.d0
           else if (t.le.290.d0) then
-!           lguess = 750.d0
             lguess = 800.d0
           else
-!           lguess = 650.d0
             lguess = 700.d0
           endif
+!         iflag = 3
         else if (p.le.9.5d0) then
           uguess = 2000.d0
           if (t.lt.275.d0) then
             lguess = 950.d0
           else if (t.le.290.d0) then
-!           lguess = 750.d0
             lguess = 800.d0
           else
-            lguess = 650.d0
+            lguess = 750.d0
           endif
+!         iflag = 4
         else if (p.le.100.d0) then
           uguess = 2000.d0
           if (t.lt.275.d0) then
             lguess = 950.d0
           else if (t.le.290.d0) then
             lguess = 800.d0
-!           lguess = 750.d0
           else
-!           lguess = 650.d0
             lguess = 700.d0
           endif
+!         iflag = 5
         else
           uguess = 2000.d0
-!         lguess = 850.d0
           lguess = 900.d0
+!         iflag = 6
         endif
       else if (t.gt.tc .and. p.le.pc) then
         uguess = 2000.d0
-!       lguess = 1.d-2
         lguess = 1.d-5
+!       iflag = 7
       else if (p.gt.pc) then ! supercritical
         uguess = 2000.d0
-!       lguess = 50.d0
         lguess = 25.d0
+!       iflag = 8
       endif
 
   end subroutine guess
