@@ -1,0 +1,183 @@
+: Description: TOUGH problem for mphase
+:
+MODE MPH
+:    igeom nx  ny   nz nphase  nspec  npricomp    ndof  idcdm  itable
+GRID    1  107  1   51   2       2       1         3     0       2
+:
+INVERT_Z
+:
+COMP
+H2O
+CO2
+Eng
+/
+PHAS
+H2O
+CO2
+ROCK
+/
+:    npx npy npz
+:PROC  1   1   1
+:
+:RAD0 0.d0
+:
+:write_init iprint imod itecplot iblkfmt ndtcmx iran_por ran_fac iread_perm iread_geom
+OPTS   0     -1     1     1      1         3          0   0.D0       0         0
+:
+:HDF5 VELO FLUX
+TECP !VELO !FLUX
+:
+:      steps    iaccel newtmx icutmx    dpmx   dtmpmx   dcmx    dsmx
+TOLR   30000       6     16      16     5.e4     5.     1.5e-1   1.5e-1
+:
+DXYZ
+3.
+1.
+1.
+:    atol     rtol     stol   dtol   newton_max   maxf     idt   inf_norm
+SOLV 1.d-12   1.d-12   1.d-25   1D15      25        100   -1    1.e-9
+:  d0[m^2/s] delhaq[kJ/mol]
+:
+DIFF  1.D-16       12.6
+: ReacKincoeff
+:PHAR 1.D-12
+:
+SATURATION_FUNCTIONS
+:1-vanG, 2-BrooksCorey, 3-linear, 4-SC-W
+: ist itype swir sgir  lambda   alpha   pcwmax   betac   pwr
+  1     1  0.1   1e-4   0.75    1.e-3    1.e8    0.e0    1.D0
+  2     2  0.1   1e-4   0.75    1.e-3    1.e8    0.e0    1.D0
+  3     4  0.1   0.D-5  0.762   7.5e-4   1.e6    2.e0    7.D0
+  4     4  0.1   0.D-5  0.762   7.5e-4   1.e6    2.e0    7.D0
+/
+THERMAL_PROPERTIES
+:ithm rho     cpr   ckdry  cksat  tau    cdiff      cexp
+  1  2.65e3 1000.e0   0.5    0.5    0.5    2.13e-5    1.8
+/
+:
+MATERIALS
+:name id icap ithm  por  tor  permx     permy     permz   permpwr
+ rock  1   3   1   0.15   1.0  1.e-15    1.e-15    1.e-17     1.e0
+/
+:
+BRIN 5.d0 molal
+:
+TIME y 8
+ 1. 5. 10.  50. 100. 500. 1000.  5000.
+DTST 1.e-3
+5000.  50.0
+:
+REGN init0
+BLOCK 
+:i1  i2  j1  j2  k1  k2
+  1 107   1   1   1  51
+
+REGN west
+BLOCK
+:i1  i2  j1  j2  k1  k2
+  1   1   1  1   1   51
+
+REGN east
+BLOCK 
+:i1  i2  j1  j2  k1  k2
+107  107   1  1   1   51
+
+REGN top
+BLOCK 
+:i1  i2  j1  j2  k1  k2
+  1 107   1   1   1   1
+
+REGN bottom
+BLOCK 
+:i1  i2  j1  j2  k1  k2
+  1 107  1   1    51  51
+
+CONDITION initial
+UNITS Pa,C,M,yr
+CLASS flow
+TYPE
+PRESSURE hydrostatic
+TEMPERATURE zero_gradient
+CONCENTRATION zero_gradient
+END
+PRESSURE 2.d7
+TEMPERATURE 50.d0 C
+CONCENTRATION 1.d-6 M
+END
+
+CONDITION zero_flux
+UNITS Pa,C,M,yr
+CLASS flow
+TYPE
+PRESSURE neumann
+TEMPERATURE zero_gradient
+CONCENTRATION zero_gradient
+END
+FLUX 0.d0
+TEMPERATURE 50.d0 C
+CONCENTRATION 1.d-6 M
+END
+
+CONDITION hydro
+UNITS Pa,C,M,yr
+CLASS flow
+TYPE
+PRESSURE hydrostatic
+TEMPERATURE zero_gradient
+CONCENTRATION zero_gradient
+END
+PRESSURE 2.d7
+TEMPERATURE 50.d0 C
+CONCENTRATION 1.d-6 M
+END
+
+INITIAL_CONDITION
+CONDITION initial
+REGION init0
+END
+
+BOUNDARY_CONDITION
+FACE west
+CONDITION hydro
+REGION west
+END
+BOUNDARY_CONDITION
+FACE east
+CONDITION hydro
+REGION east
+END
+
+BOUNDARY_CONDITION
+FACE top
+CONDITION zero_flux
+REGION top
+END
+BOUNDARY_CONDITION
+FACE bottom
+CONDITION zero_flux
+REGION bottom
+END
+
+REGION well
+BLOCK
+:is1 is2 js1 js2 ks1 ks2
+  54  54   1   1  34  34
+
+CONDITION well
+CLASS flow
+INTERPOLATION linear
+PRESSURE file q.dat
+TEMPERATURE file t.dat
+CONCENTRATION file c.dat
+END
+
+SOURCE_SINK well
+CONDITION well
+REGION well
+END
+
+STRATA
+MATERIAL rock
+REGION init0
+END
+
