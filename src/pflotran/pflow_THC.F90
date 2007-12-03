@@ -52,8 +52,9 @@ contains
   SNES, intent(in) :: snes
   Vec, intent(in) :: xx
   Vec, intent(out) :: r
-  type(solution_type) :: solution  ! What should 'intent' be for this?
+  type(realization_type) :: realization  ! What should 'intent' be for this?
   type(grid_type), pointer :: grid
+  type(field_type), pointer :: field
   type(option_type), pointer :: option
 
 ! external VISW, PSAT, WATEOS
@@ -99,8 +100,9 @@ contains
   
   eps = 1.d-6
 
-  grid => solution%grid
-  option => solution%option
+  grid => realization%grid
+  option => realization%option
+  field => realization%field
   
 !  degrees of freedom:
 !  p - 1:option%nphase
@@ -113,17 +115,17 @@ contains
   !---------------------------------------------------------------------------
  !  call recondition_bc(grid)
   call VecGetArrayF90(xx, xx_p, ierr); CHKERRQ(ierr)
-  call VecGetArrayF90(option%ddensity, ddensity_p, ierr)
-  call VecGetArrayF90(option%hh, hh_p, ierr)
-  call VecGetArrayF90(option%viscosity, viscosity_p, ierr)
+  call VecGetArrayF90(field%ddensity, ddensity_p, ierr)
+  call VecGetArrayF90(field%hh, hh_p, ierr)
+  call VecGetArrayF90(field%viscosity, viscosity_p, ierr)
 
   if (option%ideriv == 1) then
-    call VecGetArrayF90(option%d_p, d_p_p, ierr)
-    call VecGetArrayF90(option%d_t, d_t_p, ierr)
-    call VecGetArrayF90(option%h_p, h_p_p, ierr)
-    call VecGetArrayF90(option%h_t, h_t_p, ierr)
-    call VecGetArrayF90(option%v_p, v_p_p, ierr)
-    call VecGetArrayF90(option%v_t, v_t_p, ierr)
+    call VecGetArrayF90(field%d_p, d_p_p, ierr)
+    call VecGetArrayF90(field%d_t, d_t_p, ierr)
+    call VecGetArrayF90(field%h_p, h_p_p, ierr)
+    call VecGetArrayF90(field%h_t, h_t_p, ierr)
+    call VecGetArrayF90(field%v_p, v_p_p, ierr)
+    call VecGetArrayF90(field%v_t, v_t_p, ierr)
   endif
   
   !get phase properties
@@ -178,80 +180,80 @@ contains
   enddo
   
   call VecRestoreArrayF90(xx, xx_p, ierr); CHKERRQ(ierr)
-  call VecRestoreArrayF90(option%ddensity, ddensity_p, ierr)
-  call VecRestoreArrayF90(option%hh, hh_p, ierr)
-  call VecRestoreArrayF90(option%viscosity, viscosity_p, ierr)
+  call VecRestoreArrayF90(field%ddensity, ddensity_p, ierr)
+  call VecRestoreArrayF90(field%hh, hh_p, ierr)
+  call VecRestoreArrayF90(field%viscosity, viscosity_p, ierr)
 
   if (option%ideriv == 1) then  
-    call VecRestoreArrayF90(option%d_p, d_p_p, ierr)
-    call VecRestoreArrayF90(option%d_t, d_t_p, ierr)
-    call VecRestoreArrayF90(option%h_p, h_p_p, ierr)
-    call VecRestoreArrayF90(option%h_t, h_t_p, ierr)
-    call VecRestoreArrayF90(option%v_p, v_p_p, ierr)
-    call VecRestoreArrayF90(option%v_t, v_t_p, ierr)
+    call VecRestoreArrayF90(field%d_p, d_p_p, ierr)
+    call VecRestoreArrayF90(field%d_t, d_t_p, ierr)
+    call VecRestoreArrayF90(field%h_p, h_p_p, ierr)
+    call VecRestoreArrayF90(field%h_t, h_t_p, ierr)
+    call VecRestoreArrayF90(field%v_p, v_p_p, ierr)
+    call VecRestoreArrayF90(field%v_t, v_t_p, ierr)
   endif
 
   !---------------------------------------------------------------------------
   ! Now that we have calculated the density and viscosity for all local 
   ! nodes, we can perform the global-to-local scatters.
   !---------------------------------------------------------------------------
-  call GridGlobalToLocal(grid, xx, option%xx_loc, NDOF)
+  call GridGlobalToLocal(grid, xx, field%xx_loc, NDOF)
 
-  call GridGlobalToLocal(grid, option%ddensity, option%ddensity_loc, &
+  call GridGlobalToLocal(grid, field%ddensity, field%ddensity_loc, &
                          NPHASEDOF)
 
-  call GridGlobalToLocal(grid, option%hh, option%hh_loc, NPHASEDOF)
+  call GridGlobalToLocal(grid, field%hh, field%hh_loc, NPHASEDOF)
 
-  call GridGlobalToLocal(grid, option%viscosity, option%viscosity_loc, &
+  call GridGlobalToLocal(grid, field%viscosity, field%viscosity_loc, &
                          NPHASEDOF)
 
-  call GridGlobalToLocal(grid, option%perm_xx, option%perm_xx_loc, ONEDOF)
-  call GridGlobalToLocal(grid, option%perm_yy, option%perm_yy_loc, ONEDOF)
-  call GridGlobalToLocal(grid, option%perm_zz, option%perm_zz_loc, ONEDOF)
+  call GridGlobalToLocal(grid, field%perm_xx, field%perm_xx_loc, ONEDOF)
+  call GridGlobalToLocal(grid, field%perm_yy, field%perm_yy_loc, ONEDOF)
+  call GridGlobalToLocal(grid, field%perm_zz, field%perm_zz_loc, ONEDOF)
 
-  call VecGetArrayF90(option%xx_loc, xx_loc_p, ierr)
-  call VecGetArrayF90(option%yy, yy_p, ierr)
-  call VecGetArrayF90(option%porosity_loc, porosity_loc_p, ierr)
-  call VecGetArrayF90(option%ddensity_loc, ddensity_loc_p, ierr)
-  call VecGetArrayF90(option%density, density_p, ierr)
-  call VecGetArrayF90(option%hh_loc, hh_loc_p, ierr)
-  call VecGetArrayF90(option%h, h_p, ierr)
-  call VecGetArrayF90(option%viscosity_loc, viscosity_loc_p, ierr)
+  call VecGetArrayF90(field%xx_loc, xx_loc_p, ierr)
+  call VecGetArrayF90(field%yy, yy_p, ierr)
+  call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
+  call VecGetArrayF90(field%ddensity_loc, ddensity_loc_p, ierr)
+  call VecGetArrayF90(field%density, density_p, ierr)
+  call VecGetArrayF90(field%hh_loc, hh_loc_p, ierr)
+  call VecGetArrayF90(field%h, h_p, ierr)
+  call VecGetArrayF90(field%viscosity_loc, viscosity_loc_p, ierr)
   
-  call VecGetArrayF90(option%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecGetArrayF90(option%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecGetArrayF90(option%perm_zz_loc, perm_zz_loc_p, ierr)
+  call VecGetArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
+  call VecGetArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
+  call VecGetArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
 
   call VecGetArrayF90(grid%volume, volume_p, ierr)
   call VecGetArrayF90(r, r_p, ierr)
 
-  call VecGetArrayF90(option%ithrm_loc, ithrm_loc_p, ierr)
+  call VecGetArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
 
-  call VecGetArrayF90(option%vl, vl_p, ierr)
+  call VecGetArrayF90(field%vl, vl_p, ierr)
 
   if (option%ideriv == 1) then
-    call GridGlobalToLocal(grid, option%d_p, option%d_p_loc, NPHASEDOF)
+    call GridGlobalToLocal(grid, field%d_p, field%d_p_loc, NPHASEDOF)
 
-    call GridGlobalToLocal(grid, option%d_t, option%d_t, NPHASEDOF)
+    call GridGlobalToLocal(grid, field%d_t, field%d_t, NPHASEDOF)
 
-    call GridGlobalToLocal(grid, option%h_p, option%h_p_loc, NPHASEDOF)
+    call GridGlobalToLocal(grid, field%h_p, field%h_p_loc, NPHASEDOF)
 
-    call GridGlobalToLocalBegin(grid, option%h_t, option%h_t_loc, NPHASEDOF)
+    call GridGlobalToLocalBegin(grid, field%h_t, field%h_t_loc, NPHASEDOF)
 
-    call GridGlobalToLocalBegin(grid, option%v_p, option%v_p_loc, NPHASEDOF)
+    call GridGlobalToLocalBegin(grid, field%v_p, field%v_p_loc, NPHASEDOF)
 
-    call GridGlobalToLocalBegin(grid, option%v_t, option%v_t_loc, NPHASEDOF)
+    call GridGlobalToLocalBegin(grid, field%v_t, field%v_t_loc, NPHASEDOF)
 
-    call VecGetArrayF90(option%d_p_loc, d_p_loc_p, ierr)
-    call VecGetArrayF90(option%d_t_loc, d_t_loc_p, ierr)
-    call VecGetArrayF90(option%h_p_loc, h_p_loc_p, ierr)
-    call VecGetArrayF90(option%h_t_loc, h_t_loc_p, ierr)
-    call VecGetArrayF90(option%v_p_loc, v_p_loc_p, ierr)
-    call VecGetArrayF90(option%v_t_loc, v_t_loc_p, ierr)
+    call VecGetArrayF90(field%d_p_loc, d_p_loc_p, ierr)
+    call VecGetArrayF90(field%d_t_loc, d_t_loc_p, ierr)
+    call VecGetArrayF90(field%h_p_loc, h_p_loc_p, ierr)
+    call VecGetArrayF90(field%h_t_loc, h_t_loc_p, ierr)
+    call VecGetArrayF90(field%v_p_loc, v_p_loc_p, ierr)
+    call VecGetArrayF90(field%v_t_loc, v_t_loc_p, ierr)
   endif
 
   if (option%rk > 0.d0) then
-    call VecGetArrayF90(option%phis,phis_p,ierr)
+    call VecGetArrayF90(field%phis,phis_p,ierr)
   endif
 
   !---------------------------------------------------------------------------
@@ -459,7 +461,7 @@ contains
 ! Flux terms for boundary nodes.
 !---------------------------------------------------------------------------
 
-  boundary_condition => solution%boundary_conditions%first
+  boundary_condition => realization%boundary_conditions%first
   sum_connection = 0
 
   do
@@ -507,26 +509,26 @@ contains
           call PSAT(option%tempbc(nc),sat_pressure,ierr)
           if (option%ideriv == 1) then
             call wateos(option%tempbc(nc),option%pressurebc(j,nc),dw_kg, &
-            dw_mol,option%d_p_bc(j),option%d_t_bc(j),option%hh_bc(j), &
-            option%h_p_bc(j),option%h_t_bc(j),option%scale,ierr)
+            dw_mol,field%d_p_bc(j),field%d_t_bc(j),field%hh_bc(j), &
+            field%h_p_bc(j),field%h_t_bc(j),option%scale,ierr)
             
             call VISW(option%tempbc(nc),option%pressurebc(j,nc), &
-            sat_pressure,option%viscosity_bc(j), &
+            sat_pressure,field%viscosity_bc(j), &
             grid%v_t_bc(j),grid%v_p_bc(j),ierr)
 
   !         print *,'thc-bc: ',nc,j,m,ng,ibc,option%nphase, &
   !         option%tempbc(nc),option%pressurebc(j,ibc),dw_mol, &
-  !         dw_kg,option%d_p_bc(j),option%d_t_bc(j),option%hh_bc(j), &
-  !         option%h_p_bc(j),option%h_t_bc(j),sat_pressure, &
-  !         option%viscosity_bc(j),grid%v_t_bc(j),grid%v_p_bc(j)
+  !         dw_kg,field%d_p_bc(j),field%d_t_bc(j),field%hh_bc(j), &
+  !         field%h_p_bc(j),field%h_t_bc(j),sat_pressure, &
+  !         field%viscosity_bc(j),grid%v_t_bc(j),grid%v_p_bc(j)
           else
             call wateos_noderiv(option%tempbc(nc),option%pressurebc(j,nc), &
-            dw_kg,dw_mol,option%hh_bc(j),option%scale,ierr)
+            dw_kg,dw_mol,field%hh_bc(j),option%scale,ierr)
             
             call VISW_noderiv(option%tempbc(nc),option%pressurebc(j,nc), &
-            sat_pressure,option%viscosity_bc(j),ierr)
+            sat_pressure,field%viscosity_bc(j),ierr)
           endif
-          option%density_bc(j) = dw_mol
+          field%density_bc(j) = dw_mol
 
   !     else if (j == grid%jco2) then
 
@@ -537,9 +539,9 @@ contains
   !       enddo
         else ! for testing purposes only
           jng = j + (ng-1) * option%nphase
-          option%viscosity_bc(j) = viscosity_loc_p(jng)
-          option%hh_bc(j) = hh_loc_p(jng)
-          option%density_bc(j) = ddensity_loc_p(jng)
+          field%viscosity_bc(j) = viscosity_loc_p(jng)
+          field%hh_bc(j) = hh_loc_p(jng)
+          field%density_bc(j) = ddensity_loc_p(jng)
         endif
       enddo
 
@@ -552,24 +554,24 @@ contains
           jm = j + (m-1) * option%nphase
           jng = j + (ng-1) * option%nphase
 
-          Dq = perm1 / option%viscosity_bc(j) / grid%distbc(nc)
+          Dq = perm1 / field%viscosity_bc(j) / grid%distbc(nc)
           
           !note: darcy vel. is positive for flow INTO boundary node
           v_darcy = -Dq * (PPRESSURE_LOC(j,ng) - option%pressurebc(j,nc) &
-                    - gravity * option%density_bc(j))
+                    - gravity * field%density_bc(j))
           q = v_darcy * grid%areabc(nc)
         
   !       print *,'pflowTHC-1: ',nc,m,ng,ibc,v_darcy,ibndtyp
 
-          fluxbc = q * option%density_bc(j)
+          fluxbc = q * field%density_bc(j)
           fluxp = fluxp - fluxbc
 
           !upstream weighting
           if (q > 0.d0) then
-            fluxh = fluxh + q * option%density_bc(j) * option%hh_bc(j)
+            fluxh = fluxh + q * field%density_bc(j) * field%hh_bc(j)
             fluxc = fluxc + q * option%concbc(nc)       ! note: need to change 
           else                          ! definition of C for multiple phases
-            fluxh = fluxh + q * option%density_bc(j) * hh_loc_p(jng)
+            fluxh = fluxh + q * field%density_bc(j) * hh_loc_p(jng)
             fluxc = fluxc + q * CCONC_LOC(ng) 
           endif
         enddo
@@ -597,7 +599,7 @@ contains
           
           v_darcy = option%velocitybc(j,nc)
           
-          q = v_darcy * option%density_bc(j) * grid%areabc(nc)
+          q = v_darcy * field%density_bc(j) * grid%areabc(nc)
           fluxp = fluxp - q
         enddo
 
@@ -644,10 +646,10 @@ contains
 
           !upstream weighting
   !       if (q > 0.d0) then
-  !         fluxh = fluxh + q * option%density_bc(j) * option%hh_bc(j)
+  !         fluxh = fluxh + q * field%density_bc(j) * field%hh_bc(j)
   !         fluxc = fluxc + q * option%concbc(ibc)       ! note: need to change 
   !       else                          ! definition of C for multiple phases
-  !         fluxh = fluxh + q * option%density_bc(j) * hh_loc_p(jng)
+  !         fluxh = fluxh + q * field%density_bc(j) * hh_loc_p(jng)
   !         fluxc = fluxc + q * CCONC_LOC(ng) 
   !       endif
         enddo
@@ -670,7 +672,7 @@ contains
           
        !   v_darcy = option%velocitybc(j,nc)
        !   
-       !   q = v_darcy * option%density_bc(j) * grid%areabc(nc)
+       !   q = v_darcy * field%density_bc(j) * grid%areabc(nc)
        !   fluxp = fluxp - q
        ! enddo
 
@@ -703,7 +705,7 @@ contains
 ! add source/sink terms
 !---------------------------------------------------------------------------
 
-  source_sink => solution%source_sinks%first
+  source_sink => realization%source_sinks%first
   do
     if(.not. associated(source_sink)) exit
 
@@ -801,38 +803,38 @@ contains
     source_sink => source_sink%next
   enddo ! End loop over source-sinks linked list.
 
-  call VecRestoreArrayF90(option%xx_loc, xx_loc_p, ierr)
-  call VecRestoreArrayF90(option%yy, yy_p, ierr)
-  call VecRestoreArrayF90(option%porosity_loc, porosity_loc_p, ierr)
-  call VecRestoreArrayF90(option%ddensity_loc, ddensity_loc_p, ierr)
-  call VecRestoreArrayF90(option%density, density_p, ierr)
-  call VecRestoreArrayF90(option%hh_loc, hh_loc_p, ierr)
-  call VecRestoreArrayF90(option%h, h_p, ierr)
-  call VecRestoreArrayF90(option%viscosity_loc, viscosity_loc_p, ierr)
+  call VecRestoreArrayF90(field%xx_loc, xx_loc_p, ierr)
+  call VecRestoreArrayF90(field%yy, yy_p, ierr)
+  call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
+  call VecRestoreArrayF90(field%ddensity_loc, ddensity_loc_p, ierr)
+  call VecRestoreArrayF90(field%density, density_p, ierr)
+  call VecRestoreArrayF90(field%hh_loc, hh_loc_p, ierr)
+  call VecRestoreArrayF90(field%h, h_p, ierr)
+  call VecRestoreArrayF90(field%viscosity_loc, viscosity_loc_p, ierr)
   
 ! call VecRestoreArrayF90(grid%perm_loc, perm_loc_p, ierr)
-  call VecRestoreArrayF90(option%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecRestoreArrayF90(option%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecRestoreArrayF90(option%perm_zz_loc, perm_zz_loc_p, ierr)
+  call VecRestoreArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
+  call VecRestoreArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
+  call VecRestoreArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
   
   call VecRestoreArrayF90(grid%volume, volume_p, ierr)
   call VecRestoreArrayF90(r, r_p, ierr)
 
-  call VecRestoreArrayF90(option%ithrm_loc, ithrm_loc_p, ierr)
+  call VecRestoreArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
 
-  call VecRestoreArrayF90(option%vl, vl_p, ierr)
+  call VecRestoreArrayF90(field%vl, vl_p, ierr)
 
   if (option%ideriv == 1) then
-    call VecRestoreArrayF90(option%d_p_loc, d_p_loc_p, ierr)
-    call VecRestoreArrayF90(option%d_t_loc, d_t_loc_p, ierr)
-    call VecRestoreArrayF90(option%h_p_loc, h_p_loc_p, ierr)
-    call VecRestoreArrayF90(option%h_t_loc, h_t_loc_p, ierr)
-    call VecRestoreArrayF90(option%v_p_loc, v_p_loc_p, ierr)
-    call VecRestoreArrayF90(option%v_t_loc, v_t_loc_p, ierr)
+    call VecRestoreArrayF90(field%d_p_loc, d_p_loc_p, ierr)
+    call VecRestoreArrayF90(field%d_t_loc, d_t_loc_p, ierr)
+    call VecRestoreArrayF90(field%h_p_loc, h_p_loc_p, ierr)
+    call VecRestoreArrayF90(field%h_t_loc, h_t_loc_p, ierr)
+    call VecRestoreArrayF90(field%v_p_loc, v_p_loc_p, ierr)
+    call VecRestoreArrayF90(field%v_t_loc, v_t_loc_p, ierr)
   endif
   
   if (option%rk > 0.d0) then
-    call VecRestoreArrayF90(option%phis,phis_p,ierr)
+    call VecRestoreArrayF90(field%phis,phis_p,ierr)
   endif
 
 ! call VecView(r,PETSC_VIEWER_STDOUT_WORLD,ierr)
@@ -890,31 +892,31 @@ contains
 
 ! Is the following necessary-pcl??? We've already done this in residual call.
 ! Not sure, but snes/examples/tutorials/ex18.c does it.  --RTM
-  call GridGlobalToLocal(grid, xx, option%xx_loc, NDOF)
+  call GridGlobalToLocal(grid, xx, field%xx_loc, NDOF)
                           
-  call VecGetArrayF90(option%xx_loc, xx_loc_p, ierr)
-  call VecGetArrayF90(option%porosity_loc, porosity_loc_p, ierr)
-  call VecGetArrayF90(option%ddensity_loc, ddensity_loc_p, ierr)
-! call VecGetArrayF90(option%density, density_p, ierr)
-  call VecGetArrayF90(option%viscosity_loc, viscosity_loc_p, ierr)
+  call VecGetArrayF90(field%xx_loc, xx_loc_p, ierr)
+  call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
+  call VecGetArrayF90(field%ddensity_loc, ddensity_loc_p, ierr)
+! call VecGetArrayF90(field%density, density_p, ierr)
+  call VecGetArrayF90(field%viscosity_loc, viscosity_loc_p, ierr)
   
-  call VecGetArrayF90(option%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecGetArrayF90(option%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecGetArrayF90(option%perm_zz_loc, perm_zz_loc_p, ierr)
+  call VecGetArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
+  call VecGetArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
+  call VecGetArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
   
   call VecGetArrayF90(grid%volume, volume_p, ierr)
-  call VecGetArrayF90(option%d_p_loc, d_p_loc_p, ierr)
-  call VecGetArrayF90(option%d_t_loc, d_t_loc_p, ierr)
-  call VecGetArrayF90(option%hh_loc, hh_loc_p, ierr)
-  call VecGetArrayF90(option%h_p_loc, h_p_loc_p, ierr)
-  call VecGetArrayF90(option%h_t_loc, h_t_loc_p, ierr)
-  call VecGetArrayF90(option%v_p_loc, v_p_loc_p, ierr)
-  call VecGetArrayF90(option%v_t_loc, v_t_loc_p, ierr)
+  call VecGetArrayF90(field%d_p_loc, d_p_loc_p, ierr)
+  call VecGetArrayF90(field%d_t_loc, d_t_loc_p, ierr)
+  call VecGetArrayF90(field%hh_loc, hh_loc_p, ierr)
+  call VecGetArrayF90(field%h_p_loc, h_p_loc_p, ierr)
+  call VecGetArrayF90(field%h_t_loc, h_t_loc_p, ierr)
+  call VecGetArrayF90(field%v_p_loc, v_p_loc_p, ierr)
+  call VecGetArrayF90(field%v_t_loc, v_t_loc_p, ierr)
   
-  call VecGetArrayF90(option%ithrm_loc, ithrm_loc_p, ierr)
+  call VecGetArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
   
   if (option%rk > 0.d0) then
-    call VecGetArrayF90(option%phis,phis_p,ierr)
+    call VecGetArrayF90(field%phis,phis_p,ierr)
   endif
   
   !---------------------------------------------------------------------------
@@ -1444,12 +1446,12 @@ contains
       if (j == option%jh2o) then
         !pure water eos
         call wateos(option%tempbc(nc),option%pressurebc(j,nc),dw_kg, &
-        dw_mol,option%d_p_bc(j),option%d_t_bc(j),option%hh_bc(j), &
-        option%h_p_bc(j),option%h_t_bc(j),option%scale,ierr)
-        option%density_bc(j) = dw_mol
+        dw_mol,field%d_p_bc(j),field%d_t_bc(j),field%hh_bc(j), &
+        field%h_p_bc(j),field%h_t_bc(j),option%scale,ierr)
+        field%density_bc(j) = dw_mol
         call PSAT(option%tempbc(nc),sat_pressure,ierr)
         call VISW_noderiv(option%tempbc(nc),option%pressurebc(j,nc), &
-        sat_pressure,option%viscosity_bc(j),ierr)
+        sat_pressure,field%viscosity_bc(j),ierr)
 
 !     else if (j == grid%jco2) then
 
@@ -1457,9 +1459,9 @@ contains
 
       else ! for testing purposes only
         jng = j + (ng-1) * option%nphase
-        option%viscosity_bc(j) = viscosity_loc_p(jng)
-        option%hh_bc(j) = hh_loc_p(jng)
-        option%density_bc(j) = ddensity_loc_p(jng)
+        field%viscosity_bc(j) = viscosity_loc_p(jng)
+        field%hh_bc(j) = hh_loc_p(jng)
+        field%density_bc(j) = ddensity_loc_p(jng)
       endif
     enddo
 
@@ -1479,19 +1481,19 @@ contains
         ! (E.g. temperature could be different at the boundary compared  
         ! to node center resulting in different density, viscosity etc. 
         ! - pcl)
-        Dq = perm1 / option%viscosity_bc(j) / grid%distbc(nc) * &
+        Dq = perm1 / field%viscosity_bc(j) / grid%distbc(nc) * &
         grid%areabc(nc)
 
         !note: darcy vel. is positive for flow INTO boundary node
         v_darcy = -Dq * (PPRESSURE_LOC(j,ng) - option%pressurebc(j,nc) &
-                  - gravity * option%density_bc(j))
+                  - gravity * field%density_bc(j))
         q = v_darcy
         
         qp1 = -Dq
 !       qt1 = -q * v_t_loc_p(jng) / viscosity_loc_p(jng)
         qt1 = 0.d0
 
-        trans = qp1 * option%density_bc(j) ! dR/dp = dq/dp rho
+        trans = qp1 * field%density_bc(j) ! dR/dp = dq/dp rho
 
         ! (p,p)
         elem1 = -trans
@@ -1502,7 +1504,7 @@ contains
         endif
 
         ! (p,T) = 0
-!       elem1 = -qt1 * option%density_bc(j)
+!       elem1 = -qt1 * field%density_bc(j)
 !       if (option%iblkfmt == 0) then
 !         call MatSetValuesLocal(A,1,p1,1,t1,elem1,ADD_VALUES,ierr)
 !       else
@@ -1510,8 +1512,8 @@ contains
 !       endif
 
         if (q > 0.d0) then
-          dfluxp = dfluxp + qp1 * option%density_bc(j) * option%hh_bc(j)
-          dfluxt = dfluxt + qt1 * option%density_bc(j) * option%hh_bc(j)
+          dfluxp = dfluxp + qp1 * field%density_bc(j) * field%hh_bc(j)
+          dfluxt = dfluxt + qt1 * field%density_bc(j) * field%hh_bc(j)
         else
           dfluxp = dfluxp + q * (ddensity_loc_p(jng) * h_p_loc_p(jng) &
           + d_p_loc_p(jng) * hh_loc_p(jng)) &
@@ -1734,29 +1736,29 @@ contains
     endif
   enddo
 
-  call VecRestoreArrayF90(option%xx_loc, xx_loc_p, ierr)
-  call VecRestoreArrayF90(option%porosity_loc, porosity_loc_p, ierr)
-  call VecRestoreArrayF90(option%ddensity_loc, ddensity_loc_p, ierr)
-! call VecRestoreArrayF90(option%density, density_p, ierr)
-  call VecRestoreArrayF90(option%viscosity_loc, viscosity_loc_p, ierr)
+  call VecRestoreArrayF90(field%xx_loc, xx_loc_p, ierr)
+  call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
+  call VecRestoreArrayF90(field%ddensity_loc, ddensity_loc_p, ierr)
+! call VecRestoreArrayF90(field%density, density_p, ierr)
+  call VecRestoreArrayF90(field%viscosity_loc, viscosity_loc_p, ierr)
   
-  call VecRestoreArrayF90(option%perm_xx_loc, perm_xx_loc_p, ierr)
-  call VecRestoreArrayF90(option%perm_yy_loc, perm_yy_loc_p, ierr)
-  call VecRestoreArrayF90(option%perm_zz_loc, perm_zz_loc_p, ierr)
+  call VecRestoreArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
+  call VecRestoreArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
+  call VecRestoreArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
   
   call VecRestoreArrayF90(grid%volume, volume_p, ierr)
-  call VecRestoreArrayF90(option%d_p_loc, d_p_loc_p, ierr)
-  call VecRestoreArrayF90(option%d_t_loc, d_t_loc_p, ierr)
-  call VecRestoreArrayF90(option%hh_loc, hh_loc_p, ierr)
-  call VecRestoreArrayF90(option%h_p_loc, h_p_loc_p, ierr)
-  call VecRestoreArrayF90(option%h_t_loc, h_t_loc_p, ierr)
-  call VecRestoreArrayF90(option%v_p_loc, v_p_loc_p, ierr)
-  call VecRestoreArrayF90(option%v_t_loc, v_t_loc_p, ierr)
+  call VecRestoreArrayF90(field%d_p_loc, d_p_loc_p, ierr)
+  call VecRestoreArrayF90(field%d_t_loc, d_t_loc_p, ierr)
+  call VecRestoreArrayF90(field%hh_loc, hh_loc_p, ierr)
+  call VecRestoreArrayF90(field%h_p_loc, h_p_loc_p, ierr)
+  call VecRestoreArrayF90(field%h_t_loc, h_t_loc_p, ierr)
+  call VecRestoreArrayF90(field%v_p_loc, v_p_loc_p, ierr)
+  call VecRestoreArrayF90(field%v_t_loc, v_t_loc_p, ierr)
 
-  call VecRestoreArrayF90(option%ithrm_loc, ithrm_loc_p, ierr)
+  call VecRestoreArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
   
   if (option%rk > 0.d0) then
-    call VecRestoreArrayF90(option%phis,phis_p,ierr)
+    call VecRestoreArrayF90(field%phis,phis_p,ierr)
   endif
 
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
