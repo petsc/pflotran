@@ -487,6 +487,9 @@ end subroutine GridCreateColoring
 ! author: Glenn Hammond
 ! date: 10/24/07
 !
+! Note that 'dm_index' should correspond to one of the macros defined 
+! in 'definitions.h' such as ONEDOF, NPHASEDOF, etc.  --RTM
+!
 ! ************************************************************************** !
 subroutine GridGlobalToLocal(grid,global_vec,local_vec,dm_index)
 
