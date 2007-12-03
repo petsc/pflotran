@@ -208,6 +208,7 @@ subroutine WaypointListFillIn(option,waypoint_list)
     if (.not.associated(waypoint)) exit
     prev_waypoint => waypoint
     waypoint => waypoint%next
+    if (.not.associated(waypoint%next)) exit !clu added on 12/03/2007
     if (associated(waypoint) .and. waypoint%dt_max < 1.d-40) then
       waypoint%dt_max = prev_waypoint%dt_max
     endif
