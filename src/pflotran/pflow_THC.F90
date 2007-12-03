@@ -97,7 +97,8 @@ contains
   ! Does THC just need 'distance'?  --RTM
   real*8 :: distance, fraction_upwind
   real*8 :: distance_gravity
-  
+
+#ifdef COMPILE_BROKEN
   eps = 1.d-6
 
   grid => realization%grid
@@ -839,6 +840,7 @@ contains
 
 ! call VecView(r,PETSC_VIEWER_STDOUT_WORLD,ierr)
 
+#endif  ! End of broken code.
   end subroutine THCResidual
 
 !======================================================================
@@ -884,6 +886,7 @@ contains
   
   real*8 :: blkmat1(3,3),blkmat2(3,3)
   
+#ifdef COMPILE_BROKEN
   eps = 1.d-6
 
   flag = SAME_NONZERO_PATTERN
@@ -1768,6 +1771,7 @@ contains
 
 ! call MatView(A,PETSC_VIEWER_STDOUT_WORLD,ierr)
   
+#endif  ! End of broken code. 
   end subroutine THCJacobian
   
 end module THC_module
