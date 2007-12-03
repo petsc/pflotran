@@ -21,6 +21,7 @@
 #define Y_DIRECTION 2
 #define Z_DIRECTION 3
 
+! Macros that are used as 'dm_index' values.  --RTM
 #define ONEDOF 1
 #define NPHASEDOF 2
 #define THREENPDOF 3

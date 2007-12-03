@@ -12,10 +12,17 @@
       implicit none
       save
       
-!     table lookup parameters
+!     table lookup parameters t[k], p[MPa]
+      real*8,  public :: t0_tab = 35.d0+273.15D0, p0_tab = 0.01d0
+
       integer, public :: ntab_t = 100, ntab_p = 500
-      real*8, public :: dt_tab = 2.5d0, dp_tab = 0.5d0, &
-                t0_tab = 35.d0+273.15D0, p0_tab = 0.01d0
+      real*8,  public :: dt_tab = 2.5d0, dp_tab = 0.5d0
+
+!     integer, public :: ntab_t = 100, ntab_p = 1000
+!     real*8,  public :: dt_tab = 2.5d0, dp_tab = 0.25d0
+
+!     integer, public :: ntab_t = 250, ntab_p = 2500
+!     real*8,  public :: dt_tab = 1.d0, dp_tab = 0.1d0
 
       real*8, private :: n(42),ti(40),gamma(5),phic(8),c(40),d(40),a(8)
       real*8, private :: alpha(5),beta(8),delta(4),epsilon(5)
@@ -38,6 +45,8 @@
       integer, optional :: itable
       
       real*8 :: pl,tl,tmp,tmp2,dtmp,dtemp,dpres,dddt,dddp
+      
+      real*8 :: rhodp,rhodt,fgdp,fgdt,engdp,engdt,entdp,entdt,vdp,vdt
        
       integer :: iitable,i,j,myrank
       
@@ -46,6 +55,8 @@
       
       tab = char(9)
       q = '","'
+
+      allocate(co2_prop_spwag(0:ntab_p,0:ntab_t,1:15))
       
       iitable=0
       if(present(itable)) iitable=itable
@@ -273,8 +284,6 @@
       capd(1) = 275.d0
       capd(2) = 275.d0
       capd(3) = 275.d0
-
-  allocate(co2_prop_spwag(0:500,0:100,1:15))
   
   if (myrank==0) print *,'Preparing Table...',iitable
   if(iitable == 1) then
@@ -285,7 +294,6 @@
          !  9 eng,  10 ent,  11 dhdt,  12 dhdp,
          ! 13 visc, 14 dvdt, 15 dvdp
           
-  ! allocate(co2_prop_spwag(0:1000,0:100,1:15))
     tmp2=0.D0    
     do i = 0, ntab_p
       tmp=tmp2
@@ -303,40 +311,83 @@
         co2_prop_spwag(i,j,11),co2_prop_spwag(i,j,12),co2_prop_spwag(i,j,13),&
         co2_prop_spwag(i,j,14),co2_prop_spwag(i,j,15))
 
+!       p = p + dp
+        dpres = 1.e-3
+        call co2_span_wagner(pl+dpres,tl,rhodp,co2_prop_spwag(i,j,4),&
+        co2_prop_spwag(i,j,5),fgdp,co2_prop_spwag(i,j,7),&
+        co2_prop_spwag(i,j,8),engdp,entdp,&
+        co2_prop_spwag(i,j,11),co2_prop_spwag(i,j,12),vdp,&
+        co2_prop_spwag(i,j,14),co2_prop_spwag(i,j,15))
+
+!       t = t + dt
+        dtemp = 1.e-4
+        call co2_span_wagner(pl,tl+dtemp,rhodt,co2_prop_spwag(i,j,4),&
+        co2_prop_spwag(i,j,5),fgdt,co2_prop_spwag(i,j,7),&
+        co2_prop_spwag(i,j,8),engdt,entdt,&
+        co2_prop_spwag(i,j,11),co2_prop_spwag(i,j,12),vdt,&
+        co2_prop_spwag(i,j,14),co2_prop_spwag(i,j,15))
+
 ! compute derivatives numerically: 1-p,2-T,3-d,4-dddt,5-dddp,6-fg,7-dfgdp,8-dfgdt,
-!                 9-energy,10-enthalpy,11-dhdt,12-dhdp,13-visc,14-dvdt,15-dvdp        
+!                 9-energy,10-enthalpy,11-dhdt,12-dhdp,13-visc,14-dvdt,15-dvdp
+!#if 0
+          
+          !dddt
+          co2_prop_spwag(i,j,4) = (rhodt-co2_prop_spwag(i,j,3))/dtemp
+          
+          !dfgdt
+          co2_prop_spwag(i,j,8) = (fgdt-co2_prop_spwag(i,j,6))/dtemp
+          
+          !dhdt
+          co2_prop_spwag(i,j,11) = (entdt-co2_prop_spwag(i,j,10))/dtemp
+          
+          !dvdt
+          co2_prop_spwag(i,j,14) = (vdt-co2_prop_spwag(i,j,13))/dtemp
+
+          !dddp
+          co2_prop_spwag(i,j,5) = (rhodp-co2_prop_spwag(i,j,3))/dpres
+          
+          !dfgdp
+          co2_prop_spwag(i,j,7) = (fgdp-co2_prop_spwag(i,j,6))/dpres
+          
+          !dhdp
+          co2_prop_spwag(i,j,12) = (entdp-co2_prop_spwag(i,j,10))/dpres
+          
+          !dvdp
+          co2_prop_spwag(i,j,15) = (vdp-co2_prop_spwag(i,j,13))/dpres
+!#endif
+#if 0
         if (j>0) then
           dtemp = tl-co2_prop_spwag(i,j-1,2)
+          
           !dddt
-          dddt = (co2_prop_spwag(i,j,3)-co2_prop_spwag(i,j-1,3))/dtemp
-          co2_prop_spwag(i,j,4) = dddt
+          co2_prop_spwag(i,j,4) = (co2_prop_spwag(i,j,3)-co2_prop_spwag(i,j-1,3))/dtemp
+          
           !dfgdt
-          dtmp = (co2_prop_spwag(i,j,6)-co2_prop_spwag(i,j-1,6))/dtemp
-          co2_prop_spwag(i,j,8) = dtmp
+          co2_prop_spwag(i,j,8) = (co2_prop_spwag(i,j,6)-co2_prop_spwag(i,j-1,6))/dtemp
+          
           !dhdt
-          dtmp = (co2_prop_spwag(i,j,10)-co2_prop_spwag(i,j-1,10))/dtemp
-          co2_prop_spwag(i,j,11) = dtmp
+          co2_prop_spwag(i,j,11) = (co2_prop_spwag(i,j,10)-co2_prop_spwag(i,j-1,10))/dtemp
+          
           !dvdt
-          dtmp = (co2_prop_spwag(i,j,13)-co2_prop_spwag(i,j-1,13))/dtemp
-          co2_prop_spwag(i,j,14) = dtmp
+          co2_prop_spwag(i,j,14) = (co2_prop_spwag(i,j,13)-co2_prop_spwag(i,j-1,13))/dtemp
         endif
         if (i>0) then
           dpres = pl-co2_prop_spwag(i-1,j,1)
           !dddp
-          dddp = (co2_prop_spwag(i,j,3)-co2_prop_spwag(i-1,j,3))/dpres
-          co2_prop_spwag(i,j,5) = dddp
+          co2_prop_spwag(i,j,5) = (co2_prop_spwag(i,j,3)-co2_prop_spwag(i-1,j,3))/dpres
+          
           !dfgdp
-          dtmp = (co2_prop_spwag(i,j,6)-co2_prop_spwag(i-1,j,6))/dpres
-          co2_prop_spwag(i,j,7) = dtmp
+          co2_prop_spwag(i,j,7) = (co2_prop_spwag(i,j,6)-co2_prop_spwag(i-1,j,6))/dpres
+          
           !dhdp
-          dtmp = (co2_prop_spwag(i,j,10)-co2_prop_spwag(i-1,j,10))/dpres
-          co2_prop_spwag(i,j,12) = dtmp
+          co2_prop_spwag(i,j,12) = (co2_prop_spwag(i,j,10)-co2_prop_spwag(i-1,j,10))/dpres
+          
           !dvdp
-          dtmp = (co2_prop_spwag(i,j,13)-co2_prop_spwag(i-1,j,13))/dpres
-          co2_prop_spwag(i,j,15) = dtmp
+          co2_prop_spwag(i,j,15) = (co2_prop_spwag(i,j,13)-co2_prop_spwag(i-1,j,13))/dpres
         endif
-        tmp = co2_prop_spwag(i,j, 3)
-        if(j==0) tmp2 = co2_prop_spwag(i,j, 3)
+#endif
+        tmp = co2_prop_spwag(i,j,3)
+        if(j==0) tmp2 = co2_prop_spwag(i,j,3)
       ! print *, co2_prop_spwag(i,j,:)
       enddo
     enddo
@@ -351,7 +402,7 @@
       write(122,'(''VARIABLES= "'',a6,100(a3,a6))') &
           'p',q,'T',q,'d',q,'dddT',q,'dddp',q,'fg',q,'dfgdp',q,'dfgdT',q, &
           'u',q,'h',q,'dhdT',q,'dhdp',q,'vis',q,'dvdT',q,'dvdp','"'
-      write(122,'(''ZONE T= "'',''",'','' I='',i4,'' , J='',i4)') 101,501
+      write(122,'(''ZONE T= "'',''",'','' I='',i4,'' , J='',i4)') ntab_t+1,ntab_p+1
       do i = 0, ntab_p
         tmp=tmp2
         pl = p0_tab + dp_tab * real(i)
@@ -404,19 +455,19 @@
       p=pl;t=tl;iitable=0
       if(present(itable)) iitable=itable
 
-!     units are 
-!     P : MPa
-!     T : K
+!     units: 
+!     P      : MPa
+!     T      : K
 !     h(ent) : MJ/Kg
 !     e(eng) : MJ/Kg
-!     dhdt : MJ/kg/C
-!     dhdp : MJ/Kg/MPa
-!     rho : kg/m3
-!     dddt : kg/m3/C
-!     dddp : kg/m3/MPa
-!     visc : Pa.s
-!     dvdt: Pa.s/C
-!     dvdp : Pa.s/Mpa
+!     dhdt   : MJ/kg/C
+!     dhdp   : MJ/Kg/MPa
+!     rho    : kg/m3
+!     dddt   : kg/m3/C
+!     dddp   : kg/m3/MPa
+!     visc   : Pa.s
+!     dvdt   : Pa.s/C
+!     dvdp   : Pa.s/Mpa
 
 !     print *,'span_wag: ',p,t,tc,pc,rg,iitable
 
@@ -460,15 +511,15 @@
   endif
 
     i=1
-    tmp = factor(1)* co2_prop_spwag(i1,j1,i) + factor(2)* co2_prop_spwag(i2,j1,i) &
-         + factor(3)* co2_prop_spwag(i1,j2,i) + factor(4)* co2_prop_spwag(i2,j2,i)
+    tmp = factor(1)*co2_prop_spwag(i1,j1,i) + factor(2)*co2_prop_spwag(i2,j1,i) &
+         + factor(3)*co2_prop_spwag(i1,j2,i) + factor(4)*co2_prop_spwag(i2,j2,i)
     if (dabs(tmp-p)>1D-10 ) then
       print *,' Error in intropolate::P',tmp,p,iindex,factor;isucc=0
     endif
    !print *, 'Table: P ',iindex,jindex, factor,i  
     i=i+1
-    tmp = factor(1)* co2_prop_spwag(i1,j1,i) + factor(2)* co2_prop_spwag(i2,j1,i) &
-         + factor(3)* co2_prop_spwag(i1,j2,i) + factor(4)* co2_prop_spwag(i2,j2,i)
+    tmp = factor(1)*co2_prop_spwag(i1,j1,i) + factor(2)*co2_prop_spwag(i2,j1,i) &
+         + factor(3)*co2_prop_spwag(i1,j2,i) + factor(4)*co2_prop_spwag(i2,j2,i)
     if (dabs(tmp-t)>1D-10 ) then
       print *,' Error in intropolate:;T', tmp,t,jindex,factor; isucc=0
     endif
@@ -478,19 +529,19 @@
 
   if(isucc==1)then       
     i=i+1
-    rho = factor(1)* co2_prop_spwag(i1,j1,i) + factor(2)* co2_prop_spwag(i2,j1,i) &
-         + factor(3)* co2_prop_spwag(i1,j2,i) + factor(4)* co2_prop_spwag(i2,j2,i)
+    rho = factor(1)*co2_prop_spwag(i1,j1,i) + factor(2)*co2_prop_spwag(i2,j1,i) &
+         + factor(3)*co2_prop_spwag(i1,j2,i) + factor(4)*co2_prop_spwag(i2,j2,i)
     i=i+1 
-    dddt = factor(1)* co2_prop_spwag(i1,j1,i) + factor(2)* co2_prop_spwag(i2,j1,i) &
-         + factor(3)* co2_prop_spwag(i1,j2,i) + factor(4)* co2_prop_spwag(i2,j2,i)
+    dddt = factor(1)*co2_prop_spwag(i1,j1,i) + factor(2)*co2_prop_spwag(i2,j1,i) &
+         + factor(3)*co2_prop_spwag(i1,j2,i) + factor(4)*co2_prop_spwag(i2,j2,i)
 
     i=i+1
-    dddp= factor(1)* co2_prop_spwag(i1,j1,i) + factor(2)* co2_prop_spwag(i2,j1,i) &
-         + factor(3)* co2_prop_spwag(i1,j2,i) + factor(4)* co2_prop_spwag(i2,j2,i)
+    dddp= factor(1)*co2_prop_spwag(i1,j1,i) + factor(2)*co2_prop_spwag(i2,j1,i) &
+         + factor(3)*co2_prop_spwag(i1,j2,i) + factor(4)*co2_prop_spwag(i2,j2,i)
 
     i=i+1
-    fg= factor(1)* co2_prop_spwag(i1,j1,i) + factor(2)* co2_prop_spwag(i2,j1,i) &
-         + factor(3)* co2_prop_spwag(i1,j2,i) + factor(4)* co2_prop_spwag(i2,j2,i)
+    fg= factor(1)* co2_prop_spwag(i1,j1,i) + factor(2)*co2_prop_spwag(i2,j1,i) &
+         + factor(3)* co2_prop_spwag(i1,j2,i) + factor(4)*co2_prop_spwag(i2,j2,i)
 
     i=i+1
     dfgdp= factor(1)* co2_prop_spwag(i1,j1,i) + factor(2)* co2_prop_spwag(i2,j1,i) &
@@ -537,7 +588,9 @@
       call guess(rho1,rho2)
 !     print *,'spanwag-guess: ',p,t,rho1,rho2,iitable
 
-      rho = rtsafe(co2den,rho1,rho2,1.d-8)
+      call bracket(co2den,rho1,rho2)
+
+      rho = rtsafe(co2den,rho1,rho2,1.d-10)
 
       del = rho/denc
       tau = tc/t
@@ -660,57 +713,67 @@
 
 !           print *,'guess: ',p,t,ts,tc,denc,tr,rhov,rhol
  
-           if (t.le.ts) then ! sub-critical liquid region
-             if (p.lt.6.d0) then
-               lguess = rhol+2.d0*(ts-t)
-             else if (p.lt.7.d0) then
-               lguess = rhol+4.d0*(ts-t)
-             else
-               lguess = rhol+6.d0*(ts-t)
-             endif
-             uguess = 2000.d0
-           else             ! vapor region
-              uguess = 1.d-2
-              lguess = rhov
-           endif
+        if (t.le.ts) then ! sub-critical liquid region
+          if (p.lt.6.d0) then
+            lguess = rhol+2.d0*(ts-t)
+          else if (p.lt.7.d0) then
+            lguess = rhol+5.d0*(ts-t)
+          else if (p.lt.8.d0) then
+            lguess = rhol+9.d0*(ts-t)
+          else
+            lguess = rhol+10.d0*(ts-t)
+          endif
+!         iflag = 1
+          uguess = 2000.d0
+        else             ! vapor region
+          uguess = 1.d-5
+          lguess = 1.2*rhov
+!         iflag = 2
+        endif
       else if (t.le.tc .and. p.gt.pc) then
         if (p.le.8.d0) then
           uguess = 2000.d0
           if (t.lt.275.d0) then
             lguess = 950.d0
           else if (t.le.290.d0) then
-            lguess = 750.d0
+            lguess = 800.d0
           else
-            lguess = 650.d0
+            lguess = 700.d0
           endif
+!         iflag = 3
         else if (p.le.9.5d0) then
           uguess = 2000.d0
           if (t.lt.275.d0) then
             lguess = 950.d0
           else if (t.le.290.d0) then
-            lguess = 750.d0
+            lguess = 800.d0
           else
-            lguess = 650.d0
+            lguess = 750.d0
           endif
+!         iflag = 4
         else if (p.le.100.d0) then
           uguess = 2000.d0
           if (t.lt.275.d0) then
             lguess = 950.d0
           else if (t.le.290.d0) then
-            lguess = 750.d0
+            lguess = 800.d0
           else
-            lguess = 650.d0
+            lguess = 700.d0
           endif
+!         iflag = 5
         else
           uguess = 2000.d0
-          lguess = 850.d0
+          lguess = 900.d0
+!         iflag = 6
         endif
       else if (t.gt.tc .and. p.le.pc) then
-         uguess = 2000.d0
-         lguess = 1.d-2
+        uguess = 2000.d0
+        lguess = 1.d-5
+!       iflag = 7
       else if (p.gt.pc) then ! supercritical
-         uguess = 2000.d0
-         lguess = 50.d0
+        uguess = 2000.d0
+        lguess = 25.d0
+!       iflag = 8
       endif
 
   end subroutine guess
@@ -1139,14 +1202,14 @@
 
       theta1=theta(i,del2,tau2)
 !     dcapdelddel=(del2-1.d0)*((capa(i)*theta1*(2.d0/beta(i+5)) &
-      dcapdelddel=((capa(i)*theta1*(2.d0/beta(i+5)) &
+      dcapdelddel=((capa(i)*theta1*(2.d0/beta(i+5)) & ! remove factor del2-1
       *((del2-1.d0)**2 &
-      )**((1/(2.d0*beta(i+5)))-1.d0))+(2.d0*capb(i)*aco2(i)* &
+      )**((1.d0/(2.d0*beta(i+5)))-1.d0))+(2.d0*capb(i)*aco2(i)* &
       (((del2-1.d0)**2)**(aco2(i)-1.d0))))
 
       end function dcapdelddel
 
-      function d2capdelddel2(i,del2,tau2)
+      function d2capdelddel2(i,del2,tau2) ! d^2 Delta/d delta^2
       implicit none
       real*8 :: d2capdelddel2
       real*8 :: tmp1,del2,tau2,theta1

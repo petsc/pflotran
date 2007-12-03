@@ -19,6 +19,7 @@
 		2358178E0BBC662B008D3E23 /* pflow_flash_ResJac.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = pflow_flash_ResJac.F90; sourceTree = "<group>"; };
 		2358178F0BBC662B008D3E23 /* translator_mixed_fluid_flash.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = translator_mixed_fluid_flash.F90; sourceTree = "<group>"; };
 		235817900BBC662B008D3E23 /* unstructured_grid.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = unstructured_grid.F90; sourceTree = "<group>"; };
+		23736B3C0CFF5B82002999ED /* hydrostatic.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = hydrostatic.F90; sourceTree = "<group>"; };
 		23A9520B0CE56A0800468ECC /* waypoint.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = waypoint.F90; sourceTree = "<group>"; };
 		23C3E0960CDF92E1009ADBAF /* connection.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = connection.F90; sourceTree = "<group>"; };
 		23C3E0970CDF92E1009ADBAF /* coupler.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = coupler.F90; sourceTree = "<group>"; };
@@ -140,6 +141,7 @@
 				33021A9C08A12EFD00D082B8 /* mixed_fluid_eos_sp_ana.F90 */,
 				33ED60270CC5238800C50BCE /* new_derived_types */,
 				331442150C10DA4A00B891B3 /* nhydrostatic.F90 */,
+				23736B3C0CFF5B82002999ED /* hydrostatic.F90 */,
 				33D9A02109D9A0A9008962D9 /* oil_eos.F90 */,
 				33D9A02809D9EB2C008962D9 /* oil_pckr.F90 */,
 				23C3E09B0CDF92E1009ADBAF /* option.F90 */,
