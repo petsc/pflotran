@@ -30,7 +30,6 @@
 		23C3E09C0CDF92E1009ADBAF /* pflow_init.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = pflow_init.F90; sourceTree = "<group>"; };
 		23C3E09D0CDF92E1009ADBAF /* region.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = region.F90; sourceTree = "<group>"; };
 		23C3E09E0CDF92E1009ADBAF /* simulation.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = simulation.F90; sourceTree = "<group>"; };
-		23C3E09F0CDF92E1009ADBAF /* solution.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = solution.F90; sourceTree = "<group>"; };
 		23C3E0A00CDF92E1009ADBAF /* solver.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = solver.F90; sourceTree = "<group>"; };
 		23C3E0A10CDF92E1009ADBAF /* strata.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = strata.F90; sourceTree = "<group>"; };
 		23C3E0A20CDF92E1009ADBAF /* structured_grid.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = structured_grid.F90; sourceTree = "<group>"; };
@@ -195,7 +194,6 @@
 				2319184A0B9DD80900844666 /* remove_ArrayF90.py */,
 				33021AC008A12EFD00D082B8 /* rock_react.F90 */,
 				23C3E09E0CDF92E1009ADBAF /* simulation.F90 */,
-				23C3E09F0CDF92E1009ADBAF /* solution.F90 */,
 				23C3E0A00CDF92E1009ADBAF /* solver.F90 */,
 				23C3E0A10CDF92E1009ADBAF /* strata.F90 */,
 				23C3E0A20CDF92E1009ADBAF /* structured_grid.F90 */,
