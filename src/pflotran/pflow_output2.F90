@@ -134,21 +134,21 @@ subroutine OutputTecplot(realization,step)
     select case(option%imode)
       case (TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
         string = 'VARIABLES=' // &
-                 '"X-Coordinates",' // &
-                 '"Y-Coordinates",' // &
-                 '"Z-Coordinates",' // &
-                 '"Temperature",' // &
-                 '"Pressure",' // &
-                 '"Liquid Saturation",' // &
-                 '"Gas Saturation",' // &
-                 '"Liquid Energy",' // &
-                 '"Gas Energy",'
+                 '"X [m]",' // &
+                 '"Y [m]",' // &
+                 '"Z [m]",' // &
+                 '"T [C]",' // &
+                 '"P [Pa]",' // &
+                 '"sl",' // &
+                 '"sg",' // &
+                 '"Ul",' // &
+                 '"Ug",'
         do i=1,option%nspec
-          write(string2,'(''"Liquid Mole Fraction('',i2,'')",'')') i
+          write(string2,'(''"Xl('',i2,'')",'')') i
           string = trim(string) // trim(string2)
         enddo
         do i=1,option%nspec
-          write(string2,'(''"Gas Mole Fraction('',i2,'')",'')') i
+          write(string2,'(''"Xg('',i2,'')",'')') i
           string = trim(string) // trim(string2)
         enddo
         if (option%rk > 0.d0) then
@@ -157,13 +157,13 @@ subroutine OutputTecplot(realization,step)
         string = trim(string) // '"Phase"'
       case default
         string = 'VARIABLES=' // &
-                 '"X-Coordinates",' // &
-                 '"Y-Coordinates",' // &
-                 '"Z-Coordinates",' // &
-                 '"Temperature",' // &
-                 '"Pressure",' // &
-                 '"Saturation",' // &
-                 '"Concentration"'
+                 '"X [m]",' // &
+                 '"Y [m]",' // &
+                 '"Z [m]",' // &
+                 '"T [C]",' // &
+                 '"P [Pa]",' // &
+                 '"sl",' // &
+                 '"C [mol/L]"'
         if (option%rk > 0.d0) then
           string = trim(string) // ',"Volume Fraction"'
         endif
@@ -370,15 +370,15 @@ subroutine OutputVelocitiesTecplot(realization,step)
                  option%time/output_option%tconv,output_option%tunit
     ! write variables
     string = 'VARIABLES=' // &
-             '"X-Coordinates",' // &
-             '"Y-Coordinates",' // &
-             '"Z-Coordinates",' // &
-             '"Liquid X-Velocity",' // &
-             '"Liquid Y-Velocity",' // &
-             '"Liquid Z-Velocity",' // &
-             '"Gas X-Velocity",' // &
-             '"Gas Y-Velocity",' // &
-             '"Gas Z-Velocity"'
+             '"X [m]",' // &
+             '"Y [m]",' // &
+             '"Z [m]",' // &
+             '"vlx [m/y]",' // &
+             '"vly [m/y]",' // &
+             '"vlz [m/y]",' // &
+             '"vgx [m/y]",' // &
+             '"vgy [m/y]",' // &
+             '"vgz [m/y]"'
     write(IUNIT3,'(a)') trim(string)
   
     ! write zone header
@@ -533,9 +533,9 @@ subroutine OutputFluxVelocitiesTecplot(realization,step,iphase, &
                  option%time/output_option%tconv,output_option%tunit
     ! write variables
     string = 'VARIABLES=' // &
-             '"X-Coordinates",' // &
-             '"Y-Coordinates",' // &
-             '"Z-Coordinates",'
+             '"X [m]",' // &
+             '"Y [m]",' // &
+             '"Z [m]",'
     select case(iphase)
       case(LIQUID_PHASE)
         string = trim(string) // '"Liquid'
@@ -545,11 +545,11 @@ subroutine OutputFluxVelocitiesTecplot(realization,step,iphase, &
   
     select case(direction)
       case(X_DIRECTION)
-        string = trim(string) // ' X-Velocity"'
+        string = trim(string) // ' vlx [m/y]"'
       case(Y_DIRECTION)
-        string = trim(string) // ' Y-Velocity"'
+        string = trim(string) // ' vly [m/y]"'
       case(Z_DIRECTION)
-        string = trim(string) // ' Z-Velocity"'
+        string = trim(string) // ' vlz [m/y]"'
     end select 
     
     write(IUNIT3,'(a)') trim(string)
@@ -1010,7 +1010,7 @@ subroutine OutputHDF5(realization,step)
 
 !GEH - Structured Grid Dependence - Begin
     ! write out coordinates in x, y, and z directions
-    string = "X-Coordinates"
+    string = "X [m]"
     allocate(array(grid%structured_grid%nx))
     do i=1,grid%structured_grid%nx
       if (i == 1) then
@@ -1022,7 +1022,7 @@ subroutine OutputHDF5(realization,step)
     call WriteHDF5Coordinates(string,option,grid%structured_grid%nx,array,grp_id)
     deallocate(array)
   
-    string = "Y-Coordinates"
+    string = "Y [m]"
     allocate(array(grid%structured_grid%ny))
     do i=1,grid%structured_grid%ny
       if (i == 1) then
@@ -1034,7 +1034,7 @@ subroutine OutputHDF5(realization,step)
     call WriteHDF5Coordinates(string,option,grid%structured_grid%ny,array,grp_id)
     deallocate(array)
   
-    string = "Z-Coordinates"
+    string = "Z [m]"
     allocate(array(grid%structured_grid%nz))
     do i=1,grid%structured_grid%nz
       if (i == 1) then
