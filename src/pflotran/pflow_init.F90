@@ -1671,7 +1671,7 @@ subroutine readInput(simulation,filename)
 
 !......................
 
-      case('BRIN')
+      case('BRIN','BRINE')
         call fiReadStringErrorMsg('BRIN',ierr)
         call fiReadDouble(string,option%m_nacl,ierr)
         call fiDefaultMsg('NaCl Concentration',ierr) 

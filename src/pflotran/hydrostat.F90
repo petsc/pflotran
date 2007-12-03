@@ -785,6 +785,7 @@ subroutine mhydrostatic(realization)
   use Realization_module
   use Option_module
   use Grid_module
+  use Structured_Grid_module
   use Field_module
   use Coupler_module
   use Condition_module
@@ -965,8 +966,10 @@ subroutine mhydrostatic(realization)
           rho = dw_kg * 1D3
         else
           do
-            pres = p + (rho0*grid%structured_grid%dz0(iz-1) + rho*grid%structured_grid%dz0(iz))/(grid%structured_grid%dz0(iz)+grid%structured_grid%dz0(iz-1))&
-                                                             * option%gravity(3) * dzz 
+            pres = p + (rho0*grid%structured_grid%dz0(iz-1) +  &
+                        rho*grid%structured_grid%dz0(iz))/ &
+                        (grid%structured_grid%dz0(iz)+grid%structured_grid%dz0(iz-1)) * &
+                                                             option%gravity(3) * dzz 
            ! call wateos(tmp, pres, rho1, dw_mol, dwp, &
            ! dum, dum, dum, dum, grid%scale, ierr)
             call nacl_den(tmp, pres*1D-6, xm_nacl, dw_kg) 

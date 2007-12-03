@@ -63,9 +63,7 @@ MATERIALS
 soil1 1  1    1    0.3  0.5 1.d-12 2.d-12 3.d-12 1.d0
 END
 :
-:
 BRIN 5.0D0 MOLAL 
-:
 :
 TIME y
 0.1 1. 10.

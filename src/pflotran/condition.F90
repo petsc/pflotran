@@ -534,7 +534,7 @@ subroutine ConditionReadValuesFromFile(filename,times,values)
   integer :: count, i, status, ierr
   
   fid = 86
-  open(unit=fid,file=filename,iostat=status)
+  open(unit=fid,file=filename,status="old",iostat=status)
   if (status /= 0) then
     print *, 'file: ', trim(filename), ' not found'
     stop
