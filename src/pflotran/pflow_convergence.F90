@@ -54,10 +54,10 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,simulation,ier
   PetscReal, allocatable :: inorm_update_stride(:)
   PetscReal, allocatable :: inorm_residual_stride(:)
   
-  PetscReal :: norm1solution
-  PetscReal :: norm1update
-  PetscReal :: norm1residual
-  PetscReal, allocatable :: norm1_data_stride(:)
+  PetscReal :: norm1_solution
+  PetscReal :: norm1_update
+  PetscReal :: norm1_residual
+  PetscReal, allocatable :: norm1_solution_stride(:)
   PetscReal, allocatable :: norm1_update_stride(:)
   PetscReal, allocatable :: norm1_residual_stride(:)
   
@@ -148,7 +148,7 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,simulation,ier
   
   allocate(fnorm_solution_stride(option%ndof))
   allocate(fnorm_update_stride(option%ndof))
-  allocate(fnormresidual_stride(option%ndof))
+  allocate(fnorm_residual_stride(option%ndof))
   allocate(inorm_solution_stride(option%ndof))
   allocate(inorm_update_stride(option%ndof))
   allocate(inorm_residual_stride(option%ndof))
@@ -254,7 +254,7 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,simulation,ier
       do i=1,option%ndof
         print *, '  dof: ', i
         if (print_sol_norm_info) &
-          print *, '    solution_vec max: ', imax_solution(i), max_data_val(i)
+          print *, '    solution_vec max: ', imax_solution(i), max_solution_val(i)
         if (print_upd_norm_info) &
           print *, '    update_vec max:   ', imax_update(i), max_update_val(i)
         if (print_res_norm_info) &
