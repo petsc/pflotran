@@ -374,9 +374,9 @@ subroutine ConditionRead(condition,option,fid)
   allocate(condition%cur_value(max_dof))
   allocate(condition%ctype(max_dof))
   allocate(condition%itype(max_dof))
-  condition%times = -999.d0
-  condition%values = -999.d0
-  condition%cur_value = -999.d0
+  condition%times = -1.d20
+  condition%values = -1.d20
+  condition%cur_value = -1.d20
   condition%ctype = ""
   condition%itype = DIRICHLET_BC
   
@@ -435,7 +435,7 @@ subroutine ConditionRead(condition,option,fid)
     call printWrnMsg(option,'Enthalpy conditon not set')   
   endif
   
-  if (minval(condition%values) < -998.d0) then
+  if (minval(condition%values) < -1.d19) then
     call printErrMsg(option,'Something is wrong in conditions....')
   endif
   
