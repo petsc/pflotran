@@ -25,9 +25,10 @@ module Condition_module
       ! units(3:ndof) = dofs in problem
     integer :: num_values                         ! number of entries in the arrays of values
     integer :: num_dof                            ! number of degrees of freedom in condtion
-    logical :: cyclic                             ! cycles after last time
+    logical :: is_cyclic                          ! cycles after last time
     integer :: interpolation_method               ! method of interplating condition based on time
     integer :: iphase
+    logical :: is_transient                       ! tells whether condition will change over time
     real*8, pointer :: times(:)                   ! array of times between which linear interpolation of values occurs
     real*8, pointer :: values(:,:)                ! array of condition values, size(ndof,max_time_index)
     real*8, pointer :: cur_value(:)               ! current value of condition a time t, size(ndof)
@@ -84,7 +85,8 @@ function ConditionCreate(option)
   condition%iphase = 0
   condition%num_values = 0
   condition%num_dof = 0
-  condition%cyclic = .false.
+  condition%is_cyclic = .false.
+  condition%is_transient = .false.
 !  condition%interpolation_method = LINEAR
   condition%interpolation_method = STEP ! default to step for src/sinks
   nullify(condition%itype)
@@ -219,7 +221,7 @@ subroutine ConditionRead(condition,option,fid)
         call fiCharsToLower(word,len_trim(word))
         condition%class = word
       case('CYCLIC') ! read condition class (flow vs. transport)
-        condition%cyclic = .true.
+        condition%is_cyclic = .true.
       case('INTERPOLATION') ! read condition class (flow vs. transport)
         call fiReadWord(string,word,.true.,ierr)
         call fiErrorMsg('INTERPOLATION','CONDITION', ierr)   
@@ -356,6 +358,12 @@ subroutine ConditionRead(condition,option,fid)
   else
     max_size = 1
   endif
+  
+  ! determine whether transient
+  if (max_size > 1) condition%is_transient = .true.
+  if (associated(times)) then
+    if (times(1) > 1.d-40) condition%is_transient = .true.
+  endif
 
   ! initialize time indices
   condition%cur_time_index = 1
@@ -440,7 +448,7 @@ subroutine ConditionRead(condition,option,fid)
   endif
   
   condition%cur_value(1:max_dof) = condition%values(1:max_dof,1)
-
+  
   if (associated(times)) deallocate(times)
   nullify(times)
   if (associated(pressure)) deallocate(pressure)
@@ -623,9 +631,11 @@ subroutine ConditionUpdate(condition_list,option,time)
   do
     if (.not.associated(condition)) exit
     
+    if (time > 1.d-40 .and. .not.condition%is_transient) exit
+    
     ! cycle times if at max_time_index and cyclic
     if (condition%cur_time_index == condition%max_time_index .and. &
-        condition%cyclic .and. condition%max_time_index > 1) then
+        condition%is_cyclic .and. condition%max_time_index > 1) then
         
       do cur_time_index = 1, condition%max_time_index
         condition%times(cur_time_index) = condition%times(cur_time_index) + &     
