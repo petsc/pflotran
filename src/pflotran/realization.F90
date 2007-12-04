@@ -298,7 +298,8 @@ subroutine RealizationUpdateCouplerAuxVars(realization,coupler_list)
                 coupler%condition%iphase
             case(HYDROSTATIC_BC)
 !              call HydrostaticUpdateCoupler(coupler,realization%option,realization%grid)
-              call HydrostaticUpdateCouplerBetter(coupler,realization%option,realization%grid)
+!              call HydrostaticUpdateCouplerBetter(coupler,realization%option,realization%grid)
+              call HydrostaticUpdateCouplerBest(coupler,realization%option,realization%grid)
           end select
       end select
     endif
