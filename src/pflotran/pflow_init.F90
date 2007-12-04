@@ -2823,7 +2823,7 @@ subroutine assignInitialConditions(realization)
   call VecGetArrayF90(field%xx,xx_p, ierr); CHKERRQ(ierr)
   call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr)
   
-  xx_p = -999.d0
+  xx_p = -1.d20
   
   initial_condition => realization%initial_conditions%first
   do
