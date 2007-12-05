@@ -64,6 +64,11 @@ module Option_module
     PetscTruth :: use_isoth
     PetscTruth :: use_debug
     PetscTruth :: print_bcinfo
+    
+    PetscTruth :: print_convergence
+    PetscTruth :: print_detailed_convergence
+    PetscTruth :: check_infinity_norm
+    PetscTruth :: force_at_least_1_iteration  
       
     ! If run_coupled == PETSC_TRUE, then some parts of ptran_init 
     ! will not be executed, since they are made redundant by 
@@ -188,6 +193,11 @@ function OptionCreate()
   option%use_ksp = PETSC_FALSE
   option%use_isoth = PETSC_FALSE
   option%print_bcinfo = PETSC_FALSE
+  
+  option%print_convergence = PETSC_TRUE
+  option%print_detailed_convergence = PETSC_FALSE
+  option%check_infinity_norm = PETSC_TRUE
+  option%force_at_least_1_iteration = PETSC_TRUE
   
   option%mode = ""
   option%imode = NULL_MODE

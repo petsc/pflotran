@@ -1691,44 +1691,18 @@ subroutine readInput(simulation,filename)
          if (option%myrank == 0) print *, option%m_nacl
 !......................
 
-      case ('HYDR')
-        print *, 'HDYR needs to be implemented'
-        stop
-#if 0
-! Needs implementation
-        call fiReadStringErrorMsg('HYDR',ierr)
-  
-        call fiReadInt(string,option%ihydrostatic,ierr)
-        call fiDefaultMsg('ihydrostatic',ierr)
-       
-        call fiReadDouble(string,option%dTdz,ierr)
-        call fiDefaultMsg('dTdz',ierr)
+      case ('NO_PRINT_CONVERGENCE')
+        option%print_convergence = PETSC_FALSE
 
-        call fiReadDouble(string,option%beta,ierr)
-        call fiDefaultMsg('beta',ierr)
+      case ('NO_INF_NORM','NO_INFINITY_NORM')
+        option%check_infinity_norm = PETSC_FALSE
 
-        call fiReadDouble(string,option%tref,ierr)
-        call fiDefaultMsg('tref',ierr)
+      case ('NO_FORCE_ITERATION')
+        option%force_at_least_1_iteration = PETSC_FALSE
 
-        call fiReadDouble(string,option%pref,ierr)
-        call fiDefaultMsg('pref',ierr)
+      case ('PRINT_DETAILED_CONVERGENCE')
+        option%print_detailed_convergence = PETSC_TRUE
 
-        call fiReadDouble(string,option%conc0,ierr)
-        call fiDefaultMsg('conc0',ierr)
-
-        if (option%ihydrostatic < 1) option%ihydrostatic =1
-      
-        if (option%myrank==0) write(IUNIT2,'(/," *HYDR ",/, &
-          &"  ihydro      = ",i3,/, &
-          &"  dT/dz       = ",1pe12.4,/, &
-          &"  beta        = ",1pe12.4,/, &
-          &"  tref        = ",1pe12.4,/, &
-          &"  pref        = ",1pe12.4,/, &
-          &"  conc        = ",1pe12.4 &
-          &)') &
-          option%ihydrostatic,option%dTdz,option%beta,option%tref,option%pref, &
-          option%conc0
-#endif
 !....................
 
       case ('SOLV')
