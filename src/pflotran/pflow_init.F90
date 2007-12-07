@@ -825,13 +825,10 @@ subroutine PflowInit(simulation,filename)
 #if 0
     ! still need implementation
     case(TWOPH_MODE)
-      print *, "2 ph begin var arrange"
       call pflow_2phase_initadj(grid)
-      print *, "2 ph finish variable initadj"
       call VecCopy(grid%iphas, grid%iphas_old,ierr)
       call pflow_pack_xx4(grid%yy, grid%pressure, grid%nphase, grid%temp, 1, &
            grid%xmol,grid%nphase , grid%sat,grid%nphase , ierr)
-      print *, "2 ph finish variable packing"      
       call VecCopy(grid%yy, grid%xx, ierr)
       call pflow_update_2phase(grid)
 #endif
@@ -839,14 +836,11 @@ subroutine PflowInit(simulation,filename)
       call pflow_richards_initadj(realization)
       call VecCopy(field%iphas_loc, field%iphas_old_loc,ierr)
       call VecCopy(field%xx, field%yy, ierr)
-!geh      call VecView(field%xx,PETSC_VIEWER_STDOUT_WORLD,ierr)
-      if (option%myrank == 0) print *, "richards finish variable packing"
       call pflow_update_richards(realization)
     case(MPH_MODE)
       call pflow_mphase_initadj(realization)
       call VecCopy(field%iphas_loc, field%iphas_old_loc,ierr)
       call VecCopy(field%xx, field%yy, ierr)
-!     print *, "m ph finish variable packing"
       call pflow_update_mphase(realization)
 #if 0
     ! still need implementation
@@ -854,21 +848,16 @@ subroutine PflowInit(simulation,filename)
       call pflow_flash_initadj(grid)
       call VecCopy(grid%iphas, grid%iphas_old,ierr)
       call VecCopy(grid%xx, grid%yy, ierr)
-      print *, "flash finish variable packing"
-      !call VecView(grid%xx,PETSC_VIEWER_STDOUT_WORLD,ierr)
       call pflow_update_flash(grid)
     case(OWG_MODE)
       call pflow_owg_initadj(grid)
-      print*, 'finished owg initadj'
       call VecCopy(grid%iphas, grid%iphas_old,ierr)
       call VecCopy(grid%xx, grid%yy, ierr)
-      print *, "OWG finish variable packing"
       call pflow_update_owg(grid)
     case(VADOSE_MODE)
       call pflow_vadose_initadj(grid)
       call VecCopy(grid%iphas, grid%iphas_old,ierr)
       call VecCopy(grid%xx, grid%yy, ierr)
-      print *, "vadose finish variable packing"
       call pflow_update_vadose(grid)
 #endif
   end select  
