@@ -62,11 +62,10 @@ contains
     ! and saturation pressure of water.
 
   integer :: ierr
-  integer :: n, ng, nc, nr
+  integer :: n, ng, iconn, nr
   integer :: i, i1, i2, j, jn, jng, jm, jm1, jm2, jmu
   integer :: m, m1, m2, mu, n1, n2, ip1, ip2, p1, p2, t1, t2, c1, c2
   integer :: kk1,kk2,jj1,jj2,ii1,ii2, kk, jj, ii
-  integer :: ibc  ! Index that specifies a boundary condition block.
   PetscScalar, pointer :: r_p(:), porosity_loc_p(:), volume_p(:), &
                xx_loc_p(:), xx_p(:), yy_p(:), &
                density_p(:), ddensity_p(:), ddensity_loc_p(:), phis_p(:), &
@@ -90,10 +89,11 @@ contains
   real*8 :: sat_pressure  ! Saturation pressure of water.
   real*8 :: dw_kg, dw_mol
   real*8 :: tsrc1, qsrc1, qqsrc, csrc1, hsrc1,enth_src
+  real*8 :: tempbc, pressurebc
   
+  type(coupler_type), pointer :: boundary_condition, source_sink
   type(connection_list_type), pointer :: connection_list
   type(connection_type), pointer :: cur_connection_set
-  integer :: iconn
   ! Does THC just need 'distance'?  --RTM
   real*8 :: distance, fraction_upwind
   real*8 :: distance_gravity
@@ -208,9 +208,9 @@ contains
   call GridGlobalToLocal(grid, field%viscosity, field%viscosity_loc, &
                          NPHASEDOF)
 
-  call GridGlobalToLocal(grid, field%perm_xx, field%perm_xx_loc, ONEDOF)
-  call GridGlobalToLocal(grid, field%perm_yy, field%perm_yy_loc, ONEDOF)
-  call GridGlobalToLocal(grid, field%perm_zz, field%perm_zz_loc, ONEDOF)
+  call GridLocalToLocal(grid, field%perm_xx_loc, field%perm_xx_loc, ONEDOF)
+  call GridLocalToLocal(grid, field%perm_yy_loc, field%perm_yy_loc, ONEDOF)
+  call GridLocalToLocal(grid, field%perm_zz_loc, field%perm_zz_loc, ONEDOF)
 
   call VecGetArrayF90(field%xx_loc, xx_loc_p, ierr)
   call VecGetArrayF90(field%yy, yy_p, ierr)
@@ -335,9 +335,9 @@ contains
   ! for the primary continuum.  Therefore I am NOT looping over the 
   ! elements of grid%internal_connection_list for now.  --RTM
 
-  do nc = 1, cur_connection_set%num_connections !For each interior connection...
-    m1 = cur_connection_set%id_up(nc)  ! m1, m2 are ghosted indices,
-    m2 = cur_connection_set%id_dn(nc)  ! indicating upstream/downstream nodes
+  do iconn = 1, cur_connection_set%num_connections !For each interior connection...
+    m1 = cur_connection_set%id_up(iconn)  ! m1, m2 are ghosted indices,
+    m2 = cur_connection_set%id_dn(iconn)  ! indicating upstream/downstream nodes
 
     n1 = grid%nG2L(m1) ! = zero for ghost nodes
     n2 = grid%nG2L(m2) ! Ghost to local mapping
@@ -349,22 +349,26 @@ contains
     c1 = t1 + 1
     c2 = t2 + 1
     
-    fraction_upwind = cur_connection_set%dist(-1,nc)
-    distance = cur_connection_object%dist(0,iconn)
-    ! Below, assume a unit gravity vector of [0,0,1]
-    distance_gravity = cur_connection_object%dist(3,iconn)*distance
+    fraction_upwind = cur_connection_set%dist(-1,iconn)
+    distance = cur_connection_set%dist(0,iconn)
+    area = cur_connection_set%area(iconn)
+    ! The gravity vector can point in any direction, so we must compute the 
+    ! dot product of gravity with the direction vector between grid cells to 
+    ! get the 'distance_gravity' quantity.
+    distance_gravity = distance * OptionDotProduct(option%gravity, &
+                       cur_connection_set%dist(1:3,iconn))
     dd1 = distance*fraction_upwind
     dd2 = distance-dd1 ! should avoid truncation error
     upweight = dd2/(dd1+dd2)
 
     ! for now, just assume diagonal tensor
-    perm1 = perm_xx_loc_p(m1)*abs(cur_connection_object%dist(1,iconn))+ &
-            perm_yy_loc_p(m1)*abs(cur_connection_object%dist(2,iconn))+ &
-            perm_zz_loc_p(m1)*abs(cur_connection_object%dist(3,iconn))
+    perm1 = perm_xx_loc_p(m1)*abs(cur_connection_set%dist(1,iconn))+ &
+            perm_yy_loc_p(m1)*abs(cur_connection_set%dist(2,iconn))+ &
+            perm_zz_loc_p(m1)*abs(cur_connection_set%dist(3,iconn))
 
-    perm2 = perm_xx_loc_p(m2)*abs(cur_connection_object%dist(1,iconn))+ &
-            perm_yy_loc_p(m2)*abs(cur_connection_object%dist(2,iconn))+ &
-            perm_zz_loc_p(m2)*abs(cur_connection_object%dist(3,iconn))
+    perm2 = perm_xx_loc_p(m2)*abs(cur_connection_set%dist(1,iconn))+ &
+            perm_yy_loc_p(m2)*abs(cur_connection_set%dist(2,iconn))+ &
+            perm_zz_loc_p(m2)*abs(cur_connection_set%dist(3,iconn))
     
     dd = dd1 + dd2
     f1 = dd1/dd
@@ -393,21 +397,21 @@ contains
 
       density_ave = f2 * ddensity_loc_p(jm1) + f1 * ddensity_loc_p(jm2)
 
-      gravity = option%fmwh2o * option%gravity * grid%delz(nc)
+      gravity = option%fmwh2o * distance_gravity 
 
       v_darcy = -Dq * (PPRESSURE_LOC(j,m2) - PPRESSURE_LOC(j,m1) & 
                 - gravity * density_ave)
 
       ! store velocities defined at interfaces in PETSc Vec vl at upstream node
-      option%vvl_loc(nc) = v_darcy     ! use for coupling to ptran
+      field%vvl_loc(iconn) = v_darcy     ! use for coupling to ptran
       if (n1 > 0) then               ! If the upstream node is not a ghost node...
         vl_p(ip1+3*(n1-1)) = v_darcy ! use for print out of velocity
       endif
       
 !     if (grid%t/grid%tconv >= 0.1-1.e-6) &
-!     print *,'pflowTHC: ',nc,n1,n2,v_darcy*365.*24.*60.*60.
+!     print *,'pflowTHC: ',iconn,n1,n2,v_darcy*365.*24.*60.*60.
 
-      q = v_darcy * grid%area(nc)
+      q = v_darcy * area
 
       flux = density_ave * q
 
@@ -433,14 +437,14 @@ contains
 
     Dk = (D1 * D2) / (dd2*D1 + dd1*D2)
 
-    cond = Dk * grid%area(nc)
+    cond = Dk * area
     hflx = cond * (TTEMP_LOC(m2) - TTEMP_LOC(m1))
     fluxe = fluxh - hflx
 
     por1 = porosity_loc_p(m1)
     por2 = porosity_loc_p(m2)
     diff = (por1 * por2) / (dd2*por1 + dd1*por2) * option%difaq
-    diflux = diff * grid%area(nc) * (CCONC_LOC(m2) - CCONC_LOC(m1))
+    diflux = diff * area * (CCONC_LOC(m2) - CCONC_LOC(m1))
     fluxc = option%fc * fluxv - diflux
 
     ! interface on rhs
@@ -456,7 +460,7 @@ contains
       r_p(t2) = r_p(t2) - fluxe
       r_p(c2) = r_p(c2) - fluxc
     endif
-  enddo
+  enddo  ! End loop over interior connections.
 
 !---------------------------------------------------------------------------
 ! Flux terms for boundary nodes.
@@ -470,11 +474,14 @@ contains
 
     cur_connection_set => boundary_condition%connection
 
-    do nc = 1, cur_connection_set%num_connections
+    do iconn = 1, cur_connection_set%num_connections
+      
+      area = cur_connection_set%area(iconn)
+      distance = cur_connection_set%dist(0,iconn)
+      distance_gravity = distance * OptionDotProduct(option%gravity, &
+                         cur_connection_set%dist(1:3,iconn))
+      gravity = option%fmwh2o * distance_gravity
 
-      gravity = option%fmwh2o * option%gravity * grid%delzbc(nc)
-
-      m = grid%mblkbc(nc)  ! Note that here, m is NOT ghosted.
       m = cur_connection_set%id_dn(iconn) ! Note that here, m is NOT ghosted.
       ng = grid%nL2G(m)
 
@@ -485,48 +492,49 @@ contains
       t1 = p1 + 1
       c1 = t1 + 1
 
-      ibc = grid%ibconn(nc)
-
       ! for now, just assume diagonal tensor
       perm1 = perm_xx_loc_p(ng)*abs(cur_connection_set%dist(1,iconn))+ &
               perm_yy_loc_p(ng)*abs(cur_connection_set%dist(2,iconn))+ &
               perm_zz_loc_p(ng)*abs(cur_connection_set%dist(3,iconn))
       ! The below assumes a unit gravity vector of [0,0,1]
-      distance_gravity = abs(cur_connection_object%dist(3,iconn)) * &
-                         cur_connection_object%dist(0,iconn)
+      distance_gravity = abs(cur_connection_set%dist(3,iconn)) * &
+                         cur_connection_set%dist(0,iconn)
       
       ibndtyp = boundary_condition%condition%itype(1)
 
       if(ibndtyp == 2) then
         ! solve for pb from Darcy's law given qb /= 0
-        option%tempbc(nc) = TTEMP_LOC(ng)
+        boundary_condition%aux_real_var(THC_TEMPERATURE_DOF, iconn) = TTEMP_LOC(ng)
       else if(ibndtyp == 3) then
-        option%tempbc(nc) = TTEMP_LOC(ng)
+        boundary_condition%aux_real_var(THC_TEMPERATURE_DOF, iconn) = TTEMP_LOC(ng)
       endif
+
+      tempbc = boundary_condition%aux_real_var(THC_TEMPERATURE_DOF, iconn)
+      pressurebc = boundary_condition%aux_real_var(THC_PRESSURE_DOF, iconn)
 
       do j = 1, option%nphase
         if (j == option%jh2o) then
           !pure water eos
-          call PSAT(option%tempbc(nc),sat_pressure,ierr)
+          call PSAT(tempbc,sat_pressure,ierr)
           if (option%ideriv == 1) then
-            call wateos(option%tempbc(nc),option%pressurebc(j,nc),dw_kg, &
+            call wateos(tempbc,option%pressurebc(j,iconn),dw_kg, &
             dw_mol,field%d_p_bc(j),field%d_t_bc(j),field%hh_bc(j), &
             field%h_p_bc(j),field%h_t_bc(j),option%scale,ierr)
             
-            call VISW(option%tempbc(nc),option%pressurebc(j,nc), &
+            call VISW(tempbc,option%pressurebc(j,iconn), &
             sat_pressure,field%viscosity_bc(j), &
             grid%v_t_bc(j),grid%v_p_bc(j),ierr)
 
-  !         print *,'thc-bc: ',nc,j,m,ng,ibc,option%nphase, &
-  !         option%tempbc(nc),option%pressurebc(j,ibc),dw_mol, &
+  !         print *,'thc-bc: ',iconn,j,m,ng,ibc,option%nphase, &
+  !         option%tempbc(iconn),option%pressurebc(j,ibc),dw_mol, &
   !         dw_kg,field%d_p_bc(j),field%d_t_bc(j),field%hh_bc(j), &
   !         field%h_p_bc(j),field%h_t_bc(j),sat_pressure, &
   !         field%viscosity_bc(j),grid%v_t_bc(j),grid%v_p_bc(j)
           else
-            call wateos_noderiv(option%tempbc(nc),option%pressurebc(j,nc), &
+            call wateos_noderiv(tempbc,option%pressurebc(j,iconn), &
             dw_kg,dw_mol,field%hh_bc(j),option%scale,ierr)
             
-            call VISW_noderiv(option%tempbc(nc),option%pressurebc(j,nc), &
+            call VISW_noderiv(tempbc,option%pressurebc(j,iconn), &
             sat_pressure,field%viscosity_bc(j),ierr)
           endif
           field%density_bc(j) = dw_mol
@@ -555,14 +563,14 @@ contains
           jm = j + (m-1) * option%nphase
           jng = j + (ng-1) * option%nphase
 
-          Dq = perm1 / field%viscosity_bc(j) / grid%distbc(nc)
+          Dq = perm1 / field%viscosity_bc(j) / grid%distbc(iconn)
           
           !note: darcy vel. is positive for flow INTO boundary node
-          v_darcy = -Dq * (PPRESSURE_LOC(j,ng) - option%pressurebc(j,nc) &
+          v_darcy = -Dq * (PPRESSURE_LOC(j,ng) - option%pressurebc(j,iconn) &
                     - gravity * field%density_bc(j))
-          q = v_darcy * grid%areabc(nc)
+          q = v_darcy * grid%areabc(iconn)
         
-  !       print *,'pflowTHC-1: ',nc,m,ng,ibc,v_darcy,ibndtyp
+  !       print *,'pflowTHC-1: ',iconn,m,ng,ibc,v_darcy,ibndtyp
 
           fluxbc = q * field%density_bc(j)
           fluxp = fluxp - fluxbc
@@ -570,7 +578,7 @@ contains
           !upstream weighting
           if (q > 0.d0) then
             fluxh = fluxh + q * field%density_bc(j) * field%hh_bc(j)
-            fluxc = fluxc + q * option%concbc(nc)       ! note: need to change 
+            fluxc = fluxc + q * option%concbc(iconn)       ! note: need to change 
           else                          ! definition of C for multiple phases
             fluxh = fluxh + q * field%density_bc(j) * hh_loc_p(jng)
             fluxc = fluxc + q * CCONC_LOC(ng) 
@@ -581,15 +589,15 @@ contains
 
         !heat residual
         i1 = ithrm_loc_p(ng)
-        cond = option%ckwet(i1) * grid%areabc(nc) / grid%distbc(nc)
-        r_p(t1) = r_p(t1) + cond * (TTEMP_LOC(ng) - option%tempbc(nc)) - fluxh
+        cond = option%ckwet(i1) * grid%areabc(iconn) / grid%distbc(iconn)
+        r_p(t1) = r_p(t1) + cond * (TTEMP_LOC(ng) - tempbc) - fluxh
         
         !tracer
-        trans = porosity_loc_p(ng) * option%difaq * grid%areabc(nc) / grid%distbc(nc)
-        r_p(c1) = r_p(c1) + trans * (CCONC_LOC(ng) - option%concbc(nc)) &
+        trans = porosity_loc_p(ng) * option%difaq * grid%areabc(iconn) / grid%distbc(iconn)
+        r_p(c1) = r_p(c1) + trans * (CCONC_LOC(ng) - option%concbc(iconn)) &
                   - option%fc * fluxc
                   
-  !     print *,'THC: ',nc,ng,ibc,q,trans,option%concbc(ibc),CCONC_LOC(ng)
+  !     print *,'THC: ',iconn,ng,ibc,q,trans,option%concbc(ibc),CCONC_LOC(ng)
 
       else if(ibndtyp == 2) then ! Constant velocity q, grad T,C = 0
 
@@ -598,9 +606,9 @@ contains
           jm = j + (m-1) * option%nphase
           jng = j + (ng-1) * option%nphase
           
-          v_darcy = option%velocitybc(j,nc)
+          v_darcy = option%velocitybc(j,iconn)
           
-          q = v_darcy * field%density_bc(j) * grid%areabc(nc)
+          q = v_darcy * field%density_bc(j) * grid%areabc(iconn)
           fluxp = fluxp - q
         enddo
 
@@ -608,12 +616,12 @@ contains
 
         !heat residual: specified temperature
   !     i1 = ithrm_loc_p(ng)
-  !     cond = option%ckwet(i1) * grid%areabc(nc) / grid%distbc(nc)
+  !     cond = option%ckwet(i1) * grid%areabc(iconn) / grid%distbc(iconn)
   !     r_p(t1) = r_p(t1) + cond * (TTEMP_LOC(ng) - option%tempbc(ibc)) &
   !                           + fluxh
         
         !tracer: specified concentration
-  !     trans = option%difaq * grid%areabc(nc) / grid%distbc(nc)
+  !     trans = option%difaq * grid%areabc(iconn) / grid%distbc(iconn)
         !check for upstreaming weighting and iface even or odd etc.
         !use zero gradient BC
         
@@ -629,14 +637,14 @@ contains
           jm = j + (m-1) * option%nphase
           jng = j + (ng-1) * option%nphase
           
-          Dq = perm1 / viscosity_loc_p(jng) / grid%distbc(nc)
+          Dq = perm1 / viscosity_loc_p(jng) / grid%distbc(iconn)
           
           !v_darcy is positive for fluid flowing into block
-          v_darcy = -Dq * (PPRESSURE_LOC(j,ng) - option%pressurebc(j,nc) &
+          v_darcy = -Dq * (PPRESSURE_LOC(j,ng) - option%pressurebc(j,iconn) &
                     - gravity * ddensity_loc_p(jng))
-          q = v_darcy * grid%areabc(nc)
+          q = v_darcy * grid%areabc(iconn)
         
-  !       print *,'pflowTHC-3: ',nc,m,ng,ibc,v_darcy,option%ibndtyp
+  !       print *,'pflowTHC-3: ',iconn,m,ng,ibc,v_darcy,option%ibndtyp
           
           fluxbc = q * ddensity_loc_p(jng)
           fluxp = fluxp - fluxbc
@@ -671,9 +679,9 @@ contains
        !   jm = j + (m-1) * option%nphase
        !   jng = j + (ng-1) * option%nphase
           
-       !   v_darcy = option%velocitybc(j,nc)
+       !   v_darcy = option%velocitybc(j,iconn)
        !   
-       !   q = v_darcy * field%density_bc(j) * grid%areabc(nc)
+       !   q = v_darcy * field%density_bc(j) * grid%areabc(iconn)
        !   fluxp = fluxp - q
        ! enddo
 
@@ -681,12 +689,12 @@ contains
         
         !heat residual: specified temperature
         i1 = ithrm_loc_p(ng)
-        cond = option%ckwet(i1) * grid%areabc(nc) / grid%distbc(nc)
-        r_p(t1) = r_p(t1) + cond * (TTEMP_LOC(ng) - option%tempbc(nc)) 
+        cond = option%ckwet(i1) * grid%areabc(iconn) / grid%distbc(iconn)
+        r_p(t1) = r_p(t1) + cond * (TTEMP_LOC(ng) - tempbc) 
                             ! + fluxh
   !     print *, 'thc:res:bc4: ',   
         !tracer: specified concentration
-  !     trans = option%difaq * grid%areabc(nc) / grid%distbc(nc)
+  !     trans = option%difaq * grid%areabc(iconn) / grid%distbc(iconn)
         !check for upstreaming weighting and iface even or odd etc.
         !use zero gradient BC
         
@@ -695,7 +703,7 @@ contains
         
       endif
 
-      grid%vvlbc(nc) = v_darcy
+      grid%vvlbc(iconn) = v_darcy
     enddo
 
     boundary_condition => boundary_condition%next
@@ -862,7 +870,7 @@ contains
     ! and saturation pressure of water.
 
   integer :: ierr
-  integer :: n, ng, nc
+  integer :: n, ng, iconn
   integer :: i, i1, i2, j, jn, jng, jm, jm1, jm2
   integer :: m, m1, m2, mu, n1, n2, ip1, ip2
   integer :: p1,p2,t1,t2,c1,c2
@@ -1071,20 +1079,20 @@ contains
   !---------------------------------------------------------------------------
   ! Flux terms for interior nodes
   !---------------------------------------------------------------------------
-  do nc = 1, grid%nconn  ! For each interior connection...
-    m1 = grid%nd1(nc)
-    m2 = grid%nd2(nc)
+  do iconn = 1, grid%nconn  ! For each interior connection...
+    m1 = grid%nd1(iconn)
+    m2 = grid%nd2(iconn)
     blkmat1 =0.D0
     blkmat2 =0.D0
     
     n1 = grid%nG2L(m1)
     n2 = grid%nG2L(m2)
 
-    dd1 = grid%dist1(nc)
-    dd2 = grid%dist2(nc)
+    dd1 = grid%dist1(iconn)
+    dd2 = grid%dist2(iconn)
     
-    ip1 = option%iperm1(nc)
-    ip2 = option%iperm2(nc)
+    ip1 = option%iperm1(iconn)
+    ip2 = option%iperm2(iconn)
     
 !   perm1 = perm_loc_p(ip1+3*(m1-1))
 !   perm2 = perm_loc_p(ip2+3*(m2-1))
@@ -1112,9 +1120,9 @@ contains
     por1 = porosity_loc_p(m1)
     por2 = porosity_loc_p(m2)
     diff = (por1 * por2) / (dd2*por1 + dd1*por2) * option%difaq
-    dtrans = diff * grid%area(nc)
+    dtrans = diff * grid%area(iconn)
       
-    gravity = option%fmwh2o * option%gravity * grid%delz(nc)
+    gravity = option%fmwh2o * option%gravity * grid%delz(iconn)
     
     dfluxp1 = 0.d0
     dfluxp2 = 0.d0
@@ -1150,15 +1158,15 @@ contains
       v_darcy = -Dq * (PPRESSURE_LOC(j,m2) - PPRESSURE_LOC(j,m1) & 
                 - gravity * density_ave)
 
-      q = v_darcy * grid%area(nc)
+      q = v_darcy * grid%area(iconn)
       
-      qp1 =  Dq * grid%area(nc) * (1.d0 + gravity * f2 * d_p_loc_p(jm1))
-      qp2 = -Dq * grid%area(nc) * (1.d0 - gravity * f1 * d_p_loc_p(jm2))
+      qp1 =  Dq * grid%area(iconn) * (1.d0 + gravity * f2 * d_p_loc_p(jm1))
+      qp2 = -Dq * grid%area(iconn) * (1.d0 - gravity * f1 * d_p_loc_p(jm2))
 
       qt1 = -q * dd1 * perm2 / den * v_t_loc_p(jm1) &
-            + Dq * gravity * f2 * d_t_loc_p(jm1) * grid%area(nc)
+            + Dq * gravity * f2 * d_t_loc_p(jm1) * grid%area(iconn)
       qt2 = -q * dd2 * perm1 / den * v_t_loc_p(jm2) &
-            + Dq * gravity * f1 * d_t_loc_p(jm2) * grid%area(nc)
+            + Dq * gravity * f1 * d_t_loc_p(jm2) * grid%area(iconn)
 
       trans1 = density_ave * qp1 + q * f2 * d_p_loc_p(jm1)
       trans2 = density_ave * qp2 + q * f1 * d_p_loc_p(jm2)
@@ -1209,7 +1217,7 @@ contains
 
     Dk = (Dk1 * Dk2) / (dd2*Dk1 + dd1*Dk2)
 
-    cond = Dk * grid%area(nc)
+    cond = Dk * grid%area(iconn)
     
     if (q > 0.d0) then
       cupstrm = CCONC_LOC(m1)
@@ -1277,7 +1285,7 @@ contains
       ! heat flux terms: (T,p)
       elem1 = dfluxp1
       elem2 = dfluxp2
-!     print *,'THC-Tp1',nc,elem1,elem2,qp1,qp2,tupstrm
+!     print *,'THC-Tp1',iconn,elem1,elem2,qp1,qp2,tupstrm
       if (option%iblkfmt == 0) then
         call MatSetValuesLocal(A,1,t1,1,p1,elem1,ADD_VALUES,ierr)
         call MatSetValuesLocal(A,1,t1,1,p2,elem2,ADD_VALUES,ierr)
@@ -1369,7 +1377,7 @@ contains
       ! heat flux terms: (T,p)
       elem1 = -dfluxp1
       elem2 = -dfluxp2
-!     print *,'TH-Tp2',nc,elem1,elem2,qp1,qp2,tupstrm,dfluxp1,dfluxp2
+!     print *,'TH-Tp2',iconn,elem1,elem2,qp1,qp2,tupstrm,dfluxp1,dfluxp2
       if (option%iblkfmt == 0) then
         call MatSetValuesLocal(A,1,t2,1,p1,elem1,ADD_VALUES,ierr)
         call MatSetValuesLocal(A,1,t2,1,p2,elem2,ADD_VALUES,ierr)
@@ -1415,17 +1423,17 @@ contains
 ! Flux terms for boundary nodes.
 !------------------------------------------------------------------------
 
-  do nc = 1, grid%nconnbc
+  do iconn = 1, grid%nconnbc
 
-    m = grid%mblkbc(nc)  ! Note that here, m is NOT ghosted.
+    m = grid%mblkbc(iconn)  ! Note that here, m is NOT ghosted.
     ng = grid%nL2G(m)
     blkmat1 =0.D0
     p1 = (ng-1)*option%ndof
     t1 = p1 + 1
     c1 = t1 + 1
 
-    ibc = grid%ibconn(nc)
-    ip1 = grid%ipermbc(nc)
+    ibc = grid%ibconn(iconn)
+    ip1 = grid%ipermbc(iconn)
 
 !   perm1 = perm_loc_p(ip1+3*(ng-1))
     if (ip1 == 1) then
@@ -1436,24 +1444,24 @@ contains
       perm1 = perm_zz_loc_p(ng)
     endif
         
-    gravity = option%fmwh2o * option%gravity * grid%delzbc(nc)
+    gravity = option%fmwh2o * option%gravity * grid%delzbc(iconn)
     
     if(option%ibndtyp(ibc) == 2) then
       ! solve for pb from Darcy's law given qb /= 0
-      option%tempbc(nc) = TTEMP_LOC(ng)
+      option%tempbc(iconn) = TTEMP_LOC(ng)
     else if(option%ibndtyp(ibc) == 3) then
-      option%tempbc(nc) = TTEMP_LOC(ng)
+      option%tempbc(iconn) = TTEMP_LOC(ng)
     endif
 
     do j = 1, option%nphase
       if (j == option%jh2o) then
         !pure water eos
-        call wateos(option%tempbc(nc),option%pressurebc(j,nc),dw_kg, &
+        call wateos(option%tempbc(iconn),option%pressurebc(j,iconn),dw_kg, &
         dw_mol,field%d_p_bc(j),field%d_t_bc(j),field%hh_bc(j), &
         field%h_p_bc(j),field%h_t_bc(j),option%scale,ierr)
         field%density_bc(j) = dw_mol
-        call PSAT(option%tempbc(nc),sat_pressure,ierr)
-        call VISW_noderiv(option%tempbc(nc),option%pressurebc(j,nc), &
+        call PSAT(option%tempbc(iconn),sat_pressure,ierr)
+        call VISW_noderiv(option%tempbc(iconn),option%pressurebc(j,iconn), &
         sat_pressure,field%viscosity_bc(j),ierr)
 
 !     else if (j == grid%jco2) then
@@ -1484,11 +1492,11 @@ contains
         ! (E.g. temperature could be different at the boundary compared  
         ! to node center resulting in different density, viscosity etc. 
         ! - pcl)
-        Dq = perm1 / field%viscosity_bc(j) / grid%distbc(nc) * &
-        grid%areabc(nc)
+        Dq = perm1 / field%viscosity_bc(j) / grid%distbc(iconn) * &
+        grid%areabc(iconn)
 
         !note: darcy vel. is positive for flow INTO boundary node
-        v_darcy = -Dq * (PPRESSURE_LOC(j,ng) - option%pressurebc(j,nc) &
+        v_darcy = -Dq * (PPRESSURE_LOC(j,ng) - option%pressurebc(j,iconn) &
                   - gravity * field%density_bc(j))
         q = v_darcy
         
@@ -1528,7 +1536,7 @@ contains
 
         ! (C,p)
         if (q > 0.d0) then
-          elem1 = -option%fc * qp1 * option%concbc(nc)
+          elem1 = -option%fc * qp1 * option%concbc(iconn)
         else
           elem1 = -option%fc * qp1 * CCONC_LOC(ng)
         endif
@@ -1540,7 +1548,7 @@ contains
 
         ! (C,T)
         if (q > 0.d0) then
-          elem1 = -option%fc * qt1 * option%concbc(nc)
+          elem1 = -option%fc * qt1 * option%concbc(iconn)
         else
           elem1 = -option%fc * qt1 * CCONC_LOC(ng)
         endif
@@ -1551,8 +1559,8 @@ contains
         endif
       
         ! (C,C)
-        trans = porosity_loc_p(ng) * option%difaq * grid%areabc(nc) / &
-                grid%distbc(nc)
+        trans = porosity_loc_p(ng) * option%difaq * grid%areabc(iconn) / &
+                grid%distbc(iconn)
         if (q < 0.d0) then
           elem1 = -option%fc * q + trans ! check sign of q
           if (option%iblkfmt == 0) then
@@ -1580,7 +1588,7 @@ contains
       
       ! (T,T)
       i1 = ithrm_loc_p(ng)
-      cond = option%ckwet(i1) * grid%areabc(nc) / grid%distbc(nc)
+      cond = option%ckwet(i1) * grid%areabc(iconn) / grid%distbc(iconn)
       elem1 = -dfluxt + cond
       if (option%iblkfmt == 0) then
         call MatSetValuesLocal(A,1,t1,1,t1,elem1,ADD_VALUES,ierr)
@@ -1598,7 +1606,7 @@ contains
  !#if 0
       ! (T,T)
          i1 = ithrm_loc_p(ng)
-      cond = option%ckwet(i1) * grid%areabc(nc) / grid%distbc(nc)
+      cond = option%ckwet(i1) * grid%areabc(iconn) / grid%distbc(iconn)
       elem1 =  cond
       if (option%iblkfmt == 0) then
         call MatSetValuesLocal(A,1,t1,1,t1,elem1,ADD_VALUES,ierr)
@@ -1619,7 +1627,7 @@ contains
     else if(option%ibndtyp(ibc) == 4) then
         ! (T,T)
          i1 = ithrm_loc_p(ng)
-      cond = option%ckwet(i1) * grid%areabc(nc) / grid%distbc(nc)
+      cond = option%ckwet(i1) * grid%areabc(iconn) / grid%distbc(iconn)
       elem1 =  cond
       if (option%iblkfmt == 0) then
         call MatSetValuesLocal(A,1,t1,1,t1,elem1,ADD_VALUES,ierr)
@@ -1642,11 +1650,11 @@ contains
         jm = j + (m-1) * option%nphase
         jng = j + (ng-1) * option%nphase
         
-        Dq = perm1 / viscosity_loc_p(jng) / grid%distbc(nc) * &
-        grid%areabc(nc)
+        Dq = perm1 / viscosity_loc_p(jng) / grid%distbc(iconn) * &
+        grid%areabc(iconn)
         
         !note: darcy vel. is positive for flow INTO boundary node
-        v_darcy = -Dq * (PPRESSURE_LOC(j,ng) - option%pressurebc(j,nc) &
+        v_darcy = -Dq * (PPRESSURE_LOC(j,ng) - option%pressurebc(j,iconn) &
                   - gravity * ddensity_loc_p(jng))
         q = v_darcy
 
