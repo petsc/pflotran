@@ -112,7 +112,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
     enddo
     
   else
-  
+
     pressure0 = condition%cur_value(1)
     temperature = condition%cur_value(2)
     pressure = pressure0
@@ -185,7 +185,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
       endif
       
     enddo
-  
+
   endif
     
 end subroutine HydrostaticUpdateCoupler

@@ -218,6 +218,7 @@ subroutine RealizationInitCouplerAuxVars(realization,coupler_list)
   type(coupler_list_type) :: coupler_list
   
   integer :: num_connections
+  logical :: force_update_flag
   
   type(option_type), pointer :: option
   type(coupler_type), pointer :: coupler
@@ -254,7 +255,9 @@ subroutine RealizationInitCouplerAuxVars(realization,coupler_list)
     coupler => coupler%next
   enddo
   
-  call RealizationUpdateCouplerAuxVars(realization,coupler_list)
+  force_update_flag = .true.
+  call RealizationUpdateCouplerAuxVars(realization,coupler_list, &
+                                       force_update_flag)
 
 end subroutine RealizationInitCouplerAuxVars
 
@@ -266,7 +269,8 @@ end subroutine RealizationInitCouplerAuxVars
 ! date: 11/26/07
 !
 ! ************************************************************************** !
-subroutine RealizationUpdateCouplerAuxVars(realization,coupler_list)
+subroutine RealizationUpdateCouplerAuxVars(realization,coupler_list, &
+                                           force_update_flag)
 
   use Hydrostatic_module
 
@@ -274,6 +278,7 @@ subroutine RealizationUpdateCouplerAuxVars(realization,coupler_list)
   
   type(realization_type) :: realization
   type(coupler_list_type) :: coupler_list
+  logical :: force_update_flag
   
   type(coupler_type), pointer :: coupler
   
@@ -283,8 +288,11 @@ subroutine RealizationUpdateCouplerAuxVars(realization,coupler_list)
   
   do
     if (.not.associated(coupler)) exit
-
-    if (associated(coupler%aux_real_var)) then
+    
+    if ((coupler%condition%is_transient .or. &
+         force_update_flag) .and. &
+        associated(coupler%aux_real_var)) then
+        
       select case(realization%option%imode)
         case(RICHARDS_MODE,MPH_MODE)
           select case(coupler%condition%itype(RICHARDS_PRESSURE_DOF))
@@ -321,9 +329,12 @@ subroutine RealizationUpdate(realization)
   
   type(realization_type) :: realization
   
+  logical :: force_update_flag = .false.
+  
   ! must update conditions first
   call ConditionUpdate(realization%conditions,realization%option,realization%option%time)
-  call RealizationUpdateCouplerAuxVars(realization,realization%boundary_conditions)
+  call RealizationUpdateCouplerAuxVars(realization,realization%boundary_conditions, &
+                                       force_update_flag)
 ! currently don't use aux_vars, just condition for src/sinks
 !  call RealizationUpdateSrcSinks(realization)
 

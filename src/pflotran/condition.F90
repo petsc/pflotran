@@ -25,9 +25,10 @@ module Condition_module
       ! units(3:ndof) = dofs in problem
     integer :: num_values                         ! number of entries in the arrays of values
     integer :: num_dof                            ! number of degrees of freedom in condtion
-    logical :: cyclic                             ! cycles after last time
+    logical :: is_cyclic                          ! cycles after last time
     integer :: interpolation_method               ! method of interplating condition based on time
     integer :: iphase
+    logical :: is_transient                       ! tells whether condition will change over time
     real*8, pointer :: times(:)                   ! array of times between which linear interpolation of values occurs
     real*8, pointer :: values(:,:)                ! array of condition values, size(ndof,max_time_index)
     real*8, pointer :: cur_value(:)               ! current value of condition a time t, size(ndof)
@@ -84,7 +85,8 @@ function ConditionCreate(option)
   condition%iphase = 0
   condition%num_values = 0
   condition%num_dof = 0
-  condition%cyclic = .false.
+  condition%is_cyclic = .false.
+  condition%is_transient = .false.
 !  condition%interpolation_method = LINEAR
   condition%interpolation_method = STEP ! default to step for src/sinks
   nullify(condition%itype)
@@ -219,7 +221,7 @@ subroutine ConditionRead(condition,option,fid)
         call fiCharsToLower(word,len_trim(word))
         condition%class = word
       case('CYCLIC') ! read condition class (flow vs. transport)
-        condition%cyclic = .true.
+        condition%is_cyclic = .true.
       case('INTERPOLATION') ! read condition class (flow vs. transport)
         call fiReadWord(string,word,.true.,ierr)
         call fiErrorMsg('INTERPOLATION','CONDITION', ierr)   
@@ -356,6 +358,12 @@ subroutine ConditionRead(condition,option,fid)
   else
     max_size = 1
   endif
+  
+  ! determine whether transient
+  if (max_size > 1) condition%is_transient = .true.
+  if (associated(times)) then
+    if (times(1) > 1.d-40) condition%is_transient = .true.
+  endif
 
   ! initialize time indices
   condition%cur_time_index = 1
@@ -374,9 +382,9 @@ subroutine ConditionRead(condition,option,fid)
   allocate(condition%cur_value(max_dof))
   allocate(condition%ctype(max_dof))
   allocate(condition%itype(max_dof))
-  condition%times = -999.d0
-  condition%values = -999.d0
-  condition%cur_value = -999.d0
+  condition%times = -1.d20
+  condition%values = -1.d20
+  condition%cur_value = -1.d20
   condition%ctype = ""
   condition%itype = DIRICHLET_BC
   
@@ -435,12 +443,12 @@ subroutine ConditionRead(condition,option,fid)
     call printWrnMsg(option,'Enthalpy conditon not set')   
   endif
   
-  if (minval(condition%values) < -998.d0) then
+  if (minval(condition%values) < -1.d19) then
     call printErrMsg(option,'Something is wrong in conditions....')
   endif
   
   condition%cur_value(1:max_dof) = condition%values(1:max_dof,1)
-
+  
   if (associated(times)) deallocate(times)
   nullify(times)
   if (associated(pressure)) deallocate(pressure)
@@ -623,64 +631,68 @@ subroutine ConditionUpdate(condition_list,option,time)
   do
     if (.not.associated(condition)) exit
     
-    ! cycle times if at max_time_index and cyclic
-    if (condition%cur_time_index == condition%max_time_index .and. &
-        condition%cyclic .and. condition%max_time_index > 1) then
+        ! potentially for initial condition
+    if (time < 1.d-40 .or. condition%is_transient) then
+    
+      ! cycle times if at max_time_index and cyclic
+      if (condition%cur_time_index == condition%max_time_index .and. &
+          condition%is_cyclic .and. condition%max_time_index > 1) then
+          
+        do cur_time_index = 1, condition%max_time_index
+          condition%times(cur_time_index) = condition%times(cur_time_index) + &     
+                                   condition%times(condition%max_time_index)
+        enddo
+        condition%cur_time_index = 1
+      endif
+     
+      cur_time_index = condition%cur_time_index
+      next_time_index = min(condition%cur_time_index+1, &
+                            condition%max_time_index)
+
+      ! ensure that condition has started
+      if (time >= condition%times(cur_time_index) .or. &
+          abs(time-condition%times(cur_time_index)) < 1.d-40) then
+
+        ! find appropriate time interval
+        do
+          if (time < condition%times(next_time_index) .or. &
+              cur_time_index == next_time_index) &
+            exit
+          cur_time_index = next_time_index
+          ! ensure that time index does not go beyond end of array
+          if (next_time_index < condition%max_time_index) &
+            next_time_index = next_time_index + 1
+        enddo
         
-      do cur_time_index = 1, condition%max_time_index
-        condition%times(cur_time_index) = condition%times(cur_time_index) + &     
-                                 condition%times(condition%max_time_index)
-      enddo
-      condition%cur_time_index = 1
-    endif
-   
-    cur_time_index = condition%cur_time_index
-    next_time_index = min(condition%cur_time_index+1, &
-                          condition%max_time_index)
-
-    ! ensure that condition has started
-    if (time >= condition%times(cur_time_index) .or. &
-        abs(time-condition%times(cur_time_index)) < 1.d-40) then
-
-      ! find appropriate time interval
-      do
-        if (time < condition%times(next_time_index) .or. &
-            cur_time_index == next_time_index) &
-          exit
-        cur_time_index = next_time_index
-        ! ensure that time index does not go beyond end of array
-        if (next_time_index < condition%max_time_index) &
-          next_time_index = next_time_index + 1
-      enddo
-      
-      condition%cur_time_index = cur_time_index
-      
-      select case(condition%interpolation_method)
-        case(STEP) ! just use the current value
-          do idof=1,condition%num_dof
-            condition%cur_value(idof) =  &
-                               condition%values(idof,condition%cur_time_index) 
-          enddo 
-        case(LINEAR) ! interpolate the value between times
-          do idof=1,condition%num_dof
-            ! interpolate value based on time
-            condition%cur_time_index = cur_time_index
-            if (cur_time_index < condition%max_time_index) then
-              time_fraction = (time-condition%times(cur_time_index)) / &
-                                (condition%times(next_time_index) - &
-                                 condition%times(cur_time_index))
-              condition%cur_value(idof) = condition%values(idof,cur_time_index) + &
-                                    time_fraction * &
-                                    (condition%values(idof,next_time_index) - &
-                                     condition%values(idof,cur_time_index))
-            else
+        condition%cur_time_index = cur_time_index
+        
+        select case(condition%interpolation_method)
+          case(STEP) ! just use the current value
+            do idof=1,condition%num_dof
               condition%cur_value(idof) =  &
-                                 condition%values(idof,condition%max_time_index) 
-            endif
-          enddo
-      end select 
-    endif 
-
+                                 condition%values(idof,condition%cur_time_index) 
+            enddo 
+          case(LINEAR) ! interpolate the value between times
+            do idof=1,condition%num_dof
+              ! interpolate value based on time
+              condition%cur_time_index = cur_time_index
+              if (cur_time_index < condition%max_time_index) then
+                time_fraction = (time-condition%times(cur_time_index)) / &
+                                  (condition%times(next_time_index) - &
+                                   condition%times(cur_time_index))
+                condition%cur_value(idof) = condition%values(idof,cur_time_index) + &
+                                      time_fraction * &
+                                      (condition%values(idof,next_time_index) - &
+                                       condition%values(idof,cur_time_index))
+              else
+                condition%cur_value(idof) =  &
+                                   condition%values(idof,condition%max_time_index) 
+              endif
+            enddo
+        end select 
+      endif 
+    endif
+    
     condition => condition%next
     
   enddo
