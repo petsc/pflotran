@@ -196,9 +196,13 @@
       endif
 
       if (myrank==0) &
-      print *,'ptransolv: cut time step: ',nstep,icut,'/',icut_max, &
-      t*uyrsec,dt*uyrsec,' ksp: ',ksp_reason,' nwtn: ',newton,iflgcut, &
-      ' r2norm= ',r2norm
+      write(*,'(''ptransolv-cut time step: '',i6,'' t= '',1pe12.4,'' dt= '',1pe12.4, &
+      &'' icut= '',i2,''/'',i2,'' ksp: '',i3,'' newt= '',i3,''/'',i3, &
+      &'' iflgcut= '',i2,'' r2norm= '',1pe12.4)') &
+      nstep,t*uyrsec,dt*uyrsec,icut,icut_max,ksp_reason,newton,newton_max,iflgcut,r2norm
+!      print *,'ptransolv: cut time step: ',nstep,icut,'/',icut_max, &
+!     t*uyrsec,dt*uyrsec,' ksp: ',ksp_reason,' nwtn: ',newton,iflgcut, &
+!     ' r2norm= ',r2norm
       
       t = t - dt
       dt = 0.5d0*dt
