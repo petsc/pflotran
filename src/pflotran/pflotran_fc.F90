@@ -271,7 +271,7 @@ endif
         if (j == 0) j = 1
 
         write(*,'(/," TRANS     time       dt         target [",a1,"]     cuts", &
-  &     "      nwt iter     R2norm Species")') tunit
+  &     "      nwt iter     inf_norm Species")') tunit
         write(*,'(i2,"/",i4,1x,1p3e11.4,1x,i3," [",i6,"]", &
   &     i4," [",i6,"]",1pe12.4,1x,a8)') &
         kstep,nstep,t/tconv,dt/tconv,tflow2/tconv, &
