@@ -153,6 +153,7 @@
   nstep   = 0
   newtcum = 0
   icutcum = 0
+  ipetscum = 0
   iflgcut = 0
   isrc1 = 2
   t = 0.d0
