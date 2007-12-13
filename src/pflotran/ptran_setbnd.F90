@@ -93,7 +93,7 @@ module ptran_setbnd_module
         cecloc,xexloc,csorplc,ccsorplc,csorpflc,sitdnloc,alogpf, &
         gamloc,gamxloc,dgamdi,rho,tempbc(ibc),iter)
 
-        print *,"Setbnd:pgas : ", pgasloc
+!       print *,"Setbnd:pgas : ", pgasloc
 !-------write to screen
         if (myrank ==0) &
         write (*,1010) ibndtyp(ibc),tempbc(ibc),iter
