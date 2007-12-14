@@ -153,6 +153,7 @@
   nstep   = 0
   newtcum = 0
   icutcum = 0
+  itpetscum = 0
   iflgcut = 0
   isrc1 = 2
   t = 0.d0
@@ -212,7 +213,7 @@
       j = imax-(n-1)*ncomp
 
       write(*,'(" step   time       dt         dtmax [",a1,"]      cuts", &
-  &   "    nwt  iter   R2norm Species")') tunit
+  &   "    nwt  iter   inf_norm Species")') tunit
       write(*,'(i4,1x,1p3e11.4,1x,i3," [",i6,"]", &
   &   i4," [",i6,"]",1pe12.4,1x,a8)') &
       kstep,t/tconv,dt/tconv,dtmax/tconv, &

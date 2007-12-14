@@ -31,6 +31,7 @@ private
     type(material_type), pointer :: materials
     type(thermal_property_type), pointer :: thermal_properties
     type(saturation_function_type), pointer :: saturation_functions
+    type(saturation_function_ptr_type), pointer :: saturation_function_array(:)
 
   end type realization_type
 
@@ -77,6 +78,7 @@ function RealizationCreate()
   nullify(realization%materials)
   nullify(realization%thermal_properties)
   nullify(realization%saturation_functions)
+  nullify(realization%saturation_function_array)
   
   RealizationCreate => realization
   
@@ -305,8 +307,8 @@ subroutine RealizationUpdateCouplerAuxVars(realization,coupler_list, &
               coupler%aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
                 coupler%condition%iphase
             case(HYDROSTATIC_BC)
-!              call HydrostaticUpdateCoupler(coupler,realization%option,realization%grid)
-              call HydrostaticUpdateCouplerBetter(coupler,realization%option,realization%grid)
+              call HydrostaticUpdateCoupler(coupler,realization%option,realization%grid)
+!              call HydrostaticUpdateCouplerBetter(coupler,realization%option,realization%grid)
           end select
       end select
     endif

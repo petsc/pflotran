@@ -49,7 +49,11 @@ subroutine PflowInit(simulation,filename)
 
   use span_wagner_module
   use MPHASE_module
+#ifndef RICHARDS_ANALYTICAL  
   use Richards_module
+#else
+  use Richards_Analytical_module
+#endif  
   use pflow_convergence_module
   use pflow_solv_module 
   use pflow_vector_ops_module
@@ -505,8 +509,13 @@ subroutine PflowInit(simulation,filename)
         if (option%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(grid)
 #endif
       case(RICHARDS_MODE)
+#ifdef RICHARDS_ANALYTICAL
+        call SNESSetJacobian(solver%snes, solver%J, solver%J, RichardsAnalyticalJacobian, &
+                             realization, ierr); CHKERRQ(ierr)
+#else      
         call SNESSetJacobian(solver%snes, solver%J, solver%J, RichardsJacobian, &
                              realization, ierr); CHKERRQ(ierr)
+#endif                             
         if (option%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(realization,solver)
       case(MPH_MODE)
         call SNESSetJacobian(solver%snes, solver%J, solver%J, MPHASEJacobian, &
@@ -607,8 +616,13 @@ subroutine PflowInit(simulation,filename)
                                           VADOSEResidual,option, ierr)
 #endif                                          
       case(RICHARDS_MODE)
+#ifdef RICHARDS_ANALYTICAL
+        call MatFDColoringSetFunctionSNES(solver%matfdcoloring, &
+                                          RichardsAnalyticalResidual,option, ierr)
+#else      
         call MatFDColoringSetFunctionSNES(solver%matfdcoloring, &
                                           RichardsResidual,option, ierr)
+#endif
       case(MPH_MODE)
         call MatFDColoringSetFunctionSNES(solver%matfdcoloring, &
                                           MPHASEResidual,option, ierr)
@@ -650,7 +664,11 @@ subroutine PflowInit(simulation,filename)
       call SNESSetFunction(solver%snes,field%r,VADOSEResidual,realization,ierr)
 #endif      
     case(RICHARDS_MODE)
+#ifdef RICHARDS_ANALYTICAL    
+      call SNESSetFunction(solver%snes,field%r,RichardsAnalyticalResidual,realization,ierr)
+#else
       call SNESSetFunction(solver%snes,field%r,RichardsResidual,realization,ierr)
+#endif
     case(MPH_MODE)
       call SNESSetFunction(solver%snes,field%r,MPHASEResidual,realization,ierr)
 #if 0 
@@ -825,28 +843,30 @@ subroutine PflowInit(simulation,filename)
 #if 0
     ! still need implementation
     case(TWOPH_MODE)
-      print *, "2 ph begin var arrange"
       call pflow_2phase_initadj(grid)
-      print *, "2 ph finish variable initadj"
       call VecCopy(grid%iphas, grid%iphas_old,ierr)
       call pflow_pack_xx4(grid%yy, grid%pressure, grid%nphase, grid%temp, 1, &
            grid%xmol,grid%nphase , grid%sat,grid%nphase , ierr)
-      print *, "2 ph finish variable packing"      
       call VecCopy(grid%yy, grid%xx, ierr)
       call pflow_update_2phase(grid)
 #endif
     case(RICHARDS_MODE)
+#ifdef RICHARDS_ANALYTICAL
+      call RichardsSetup(realization)
+#else    
       call pflow_richards_initadj(realization)
+#endif
       call VecCopy(field%iphas_loc, field%iphas_old_loc,ierr)
       call VecCopy(field%xx, field%yy, ierr)
-!geh      call VecView(field%xx,PETSC_VIEWER_STDOUT_WORLD,ierr)
-      if (option%myrank == 0) print *, "richards finish variable packing"
+#ifdef RICHARDS_ANALYTICAL
+      call RichardsUpdateFixedAccumulation(realization)
+#else    
       call pflow_update_richards(realization)
+#endif
     case(MPH_MODE)
       call pflow_mphase_initadj(realization)
       call VecCopy(field%iphas_loc, field%iphas_old_loc,ierr)
       call VecCopy(field%xx, field%yy, ierr)
-!     print *, "m ph finish variable packing"
       call pflow_update_mphase(realization)
 #if 0
     ! still need implementation
@@ -854,21 +874,16 @@ subroutine PflowInit(simulation,filename)
       call pflow_flash_initadj(grid)
       call VecCopy(grid%iphas, grid%iphas_old,ierr)
       call VecCopy(grid%xx, grid%yy, ierr)
-      print *, "flash finish variable packing"
-      !call VecView(grid%xx,PETSC_VIEWER_STDOUT_WORLD,ierr)
       call pflow_update_flash(grid)
     case(OWG_MODE)
       call pflow_owg_initadj(grid)
-      print*, 'finished owg initadj'
       call VecCopy(grid%iphas, grid%iphas_old,ierr)
       call VecCopy(grid%xx, grid%yy, ierr)
-      print *, "OWG finish variable packing"
       call pflow_update_owg(grid)
     case(VADOSE_MODE)
       call pflow_vadose_initadj(grid)
       call VecCopy(grid%iphas, grid%iphas_old,ierr)
       call VecCopy(grid%xx, grid%yy, ierr)
-      print *, "vadose finish variable packing"
       call pflow_update_vadose(grid)
 #endif
   end select  
@@ -2018,7 +2033,9 @@ subroutine readInput(simulation,filename)
                      option%pwrprm)
         endif 
  
-
+        call SaturatFuncConvertListToArray(realization%saturation_functions, &
+                                           realization%saturation_function_array)
+        
 !....................
       
       case ('PHIK','MATERIAL','MATERIALS')
@@ -2418,7 +2435,9 @@ subroutine initAccumulation(realization)
 !  use MPHASE_module
 !  use OWG_module
 !  use Vadose_module
- use Richards_module , only: pflow_richards_initaccum  ! for some reason intel compiler fails without "only" clause
+#ifndef RICHARDS_ANALYTCIAL
+  use Richards_module , only: pflow_richards_initaccum  ! for some reason intel compiler fails without "only" clause
+#endif
 
   use Realization_module
   use Option_module
@@ -2443,7 +2462,9 @@ subroutine initAccumulation(realization)
   else if (grid%use_richards == PETSC_TRUE) then
 #endif    
   if (option%imode == RICHARDS_MODE) then
+#ifndef RICHARDS_ANALYTICAL
     call pflow_richards_initaccum(realization)
+#endif
 #if 0    
   ! needs to be implemented
   else if (grid%use_flash == PETSC_TRUE) then
@@ -2691,7 +2712,9 @@ subroutine assignInitialConditions(realization)
   use Grid_module
   
   use MPHASE_module, only : pflow_mphase_setupini
+#ifndef RICHARDS_ANALYTICAL  
   use Richards_module, only : pflow_Richards_setupini
+#endif
   use hydrostat_module
 
   implicit none
@@ -2723,7 +2746,9 @@ subroutine assignInitialConditions(realization)
       call pflow_flash_setupini(realization)
 #endif  
     case(RICHARDS_MODE)
+#ifndef RICHARDS_ANALYTICAL    
       call pflow_richards_setupini(realization)
+#endif
     case(MPH_MODE)
       call pflow_mphase_setupini(realization)
 #if 0

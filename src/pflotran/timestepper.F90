@@ -330,7 +330,11 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
   use Flash_module
   use OWG_module
   use vadose_module
+#ifndef RICHARDS_ANALYTICAL  
   use Richards_module
+#else
+  use Richards_Analytical_module
+#endif
   use pflow_solv_module
   
   use Realization_module
@@ -634,7 +638,11 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
             call pflow_flash_timecut(grid)
 #endif            
           case(RICHARDS_MODE)
+#ifndef RICHARDS_ANALYTICAL          
             call pflow_richards_timecut(realization)
+#else            
+            call RichardsTimeCut(realization)
+#endif
           case(MPH_MODE)
             call pflow_mphase_timecut(realization)
 #if 0            
@@ -879,7 +887,11 @@ subroutine StepperUpdateSolution(realization)
   use Flash_module
   use OWG_module
   use Vadose_module
+#ifndef RICHARDS_ANALYTICAL  
   use Richards_module, only: pflow_update_richards
+#else
+  use Richards_Analytical_module, only : RichardsUpdateFixedAccumulation
+#endif
   use hydrostat_module, only: recondition_bc
 
   use Realization_module
@@ -933,7 +945,11 @@ subroutine StepperUpdateSolution(realization)
     case(MPH_MODE)
       call pflow_update_mphase(realization)
     case(RICHARDS_MODE)
+#ifdef RICHARDS_ANALYTICAL    
+      call RichardsUpdateFixedAccumulation(realization)
+#else
       call pflow_update_richards(realization)
+#endif
 #if 0      
 ! needs to be implemented
     case(FLASH_MODE)
