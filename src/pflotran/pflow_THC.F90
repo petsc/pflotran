@@ -66,6 +66,7 @@ contains
   integer :: i, i1, i2, j, jn, jng, jm, jm1, jm2, jmu
   integer :: m, m1, m2, mu, n1, n2, ip1, ip2, p1, p2, t1, t2, c1, c2
   integer :: kk1,kk2,jj1,jj2,ii1,ii2, kk, jj, ii
+  integer :: local_id, ghosted_id
   PetscScalar, pointer :: r_p(:), porosity_loc_p(:), volume_p(:), &
                xx_loc_p(:), xx_p(:), yy_p(:), &
                density_p(:), ddensity_p(:), ddensity_loc_p(:), phis_p(:), &
@@ -89,16 +90,18 @@ contains
   real*8 :: sat_pressure  ! Saturation pressure of water.
   real*8 :: dw_kg, dw_mol
   real*8 :: tsrc1, qsrc1, qqsrc, csrc1, hsrc1,enth_src
-  real*8 :: tempbc, pressurebc
+  real*8 :: tempbc, concbc
+  real*8, pointer :: pressurebc(:)
   
+  logical*4 :: enthalpy_flag
   type(coupler_type), pointer :: boundary_condition, source_sink
   type(connection_list_type), pointer :: connection_list
   type(connection_type), pointer :: cur_connection_set
-  ! Does THC just need 'distance'?  --RTM
-  real*8 :: distance, fraction_upwind
+  integer :: ibndtyp
+  real*8 :: upweight
+  real*8 :: distance, area, fraction_upwind
   real*8 :: distance_gravity
 
-#ifdef COMPILE_BROKEN
   eps = 1.d-6
 
   grid => realization%grid
@@ -239,11 +242,11 @@ contains
 
     call GridGlobalToLocal(grid, field%h_p, field%h_p_loc, NPHASEDOF)
 
-    call GridGlobalToLocalBegin(grid, field%h_t, field%h_t_loc, NPHASEDOF)
+    call GridGlobalToLocal(grid, field%h_t, field%h_t_loc, NPHASEDOF)
 
-    call GridGlobalToLocalBegin(grid, field%v_p, field%v_p_loc, NPHASEDOF)
+    call GridGlobalToLocal(grid, field%v_p, field%v_p_loc, NPHASEDOF)
 
-    call GridGlobalToLocalBegin(grid, field%v_t, field%v_t_loc, NPHASEDOF)
+    call GridGlobalToLocal(grid, field%v_t, field%v_t_loc, NPHASEDOF)
 
     call VecGetArrayF90(field%d_p_loc, d_p_loc_p, ierr)
     call VecGetArrayF90(field%d_t_loc, d_t_loc_p, ierr)
@@ -467,7 +470,6 @@ contains
 !---------------------------------------------------------------------------
 
   boundary_condition => realization%boundary_conditions%first
-  sum_connection = 0
 
   do
     if (.not. associated(boundary_condition)) exit
@@ -485,7 +487,7 @@ contains
       m = cur_connection_set%id_dn(iconn) ! Note that here, m is NOT ghosted.
       ng = grid%nL2G(m)
 
-      ! this must be zeroed since option%vvlbc references it.  
+      ! this must be zeroed since field%vvlbc references it.  
       v_darcy = 0.d0
       
       p1 = 1 + (m-1) * option%ndof
@@ -510,31 +512,32 @@ contains
       endif
 
       tempbc = boundary_condition%aux_real_var(THC_TEMPERATURE_DOF, iconn)
-      pressurebc = boundary_condition%aux_real_var(THC_PRESSURE_DOF, iconn)
+      pressurebc => boundary_condition%aux_real_var(THC_PRESSURE_DOF:option%nphase, iconn)
+      concbc = boundary_condition%aux_real_var(THC_CONCENTRATION_DOF, iconn)
 
       do j = 1, option%nphase
         if (j == option%jh2o) then
           !pure water eos
           call PSAT(tempbc,sat_pressure,ierr)
           if (option%ideriv == 1) then
-            call wateos(tempbc,option%pressurebc(j,iconn),dw_kg, &
+            call wateos(tempbc,pressurebc(j),dw_kg, &
             dw_mol,field%d_p_bc(j),field%d_t_bc(j),field%hh_bc(j), &
             field%h_p_bc(j),field%h_t_bc(j),option%scale,ierr)
             
-            call VISW(tempbc,option%pressurebc(j,iconn), &
+            call VISW(tempbc,pressurebc(j), &
             sat_pressure,field%viscosity_bc(j), &
-            grid%v_t_bc(j),grid%v_p_bc(j),ierr)
+            field%v_t_bc(j),field%v_p_bc(j),ierr)
 
   !         print *,'thc-bc: ',iconn,j,m,ng,ibc,option%nphase, &
-  !         option%tempbc(iconn),option%pressurebc(j,ibc),dw_mol, &
+  !         option%tempbc(iconn),option%pressurebc(j),dw_mol, &
   !         dw_kg,field%d_p_bc(j),field%d_t_bc(j),field%hh_bc(j), &
   !         field%h_p_bc(j),field%h_t_bc(j),sat_pressure, &
-  !         field%viscosity_bc(j),grid%v_t_bc(j),grid%v_p_bc(j)
+  !         field%viscosity_bc(j),field%v_t_bc(j),field%v_p_bc(j)
           else
-            call wateos_noderiv(tempbc,option%pressurebc(j,iconn), &
+            call wateos_noderiv(tempbc,pressurebc(j), &
             dw_kg,dw_mol,field%hh_bc(j),option%scale,ierr)
             
-            call VISW_noderiv(tempbc,option%pressurebc(j,iconn), &
+            call VISW_noderiv(tempbc,pressurebc(j), &
             sat_pressure,field%viscosity_bc(j),ierr)
           endif
           field%density_bc(j) = dw_mol
@@ -563,12 +566,12 @@ contains
           jm = j + (m-1) * option%nphase
           jng = j + (ng-1) * option%nphase
 
-          Dq = perm1 / field%viscosity_bc(j) / grid%distbc(iconn)
+          Dq = perm1 / field%viscosity_bc(j) / distance 
           
           !note: darcy vel. is positive for flow INTO boundary node
-          v_darcy = -Dq * (PPRESSURE_LOC(j,ng) - option%pressurebc(j,iconn) &
+          v_darcy = -Dq * (PPRESSURE_LOC(j,ng) - pressurebc(j) &
                     - gravity * field%density_bc(j))
-          q = v_darcy * grid%areabc(iconn)
+          q = v_darcy * area
         
   !       print *,'pflowTHC-1: ',iconn,m,ng,ibc,v_darcy,ibndtyp
 
@@ -578,7 +581,7 @@ contains
           !upstream weighting
           if (q > 0.d0) then
             fluxh = fluxh + q * field%density_bc(j) * field%hh_bc(j)
-            fluxc = fluxc + q * option%concbc(iconn)       ! note: need to change 
+            fluxc = fluxc + q * concbc  ! note: need to change 
           else                          ! definition of C for multiple phases
             fluxh = fluxh + q * field%density_bc(j) * hh_loc_p(jng)
             fluxc = fluxc + q * CCONC_LOC(ng) 
@@ -589,15 +592,15 @@ contains
 
         !heat residual
         i1 = ithrm_loc_p(ng)
-        cond = option%ckwet(i1) * grid%areabc(iconn) / grid%distbc(iconn)
+        cond = option%ckwet(i1) * area / distance
         r_p(t1) = r_p(t1) + cond * (TTEMP_LOC(ng) - tempbc) - fluxh
         
         !tracer
-        trans = porosity_loc_p(ng) * option%difaq * grid%areabc(iconn) / grid%distbc(iconn)
-        r_p(c1) = r_p(c1) + trans * (CCONC_LOC(ng) - option%concbc(iconn)) &
+        trans = porosity_loc_p(ng) * option%difaq * area / distance
+        r_p(c1) = r_p(c1) + trans * (CCONC_LOC(ng) - concbc) &
                   - option%fc * fluxc
                   
-  !     print *,'THC: ',iconn,ng,ibc,q,trans,option%concbc(ibc),CCONC_LOC(ng)
+  !     print *,'THC: ',iconn,ng,ibc,q,trans,concbc,CCONC_LOC(ng)
 
       else if(ibndtyp == 2) then ! Constant velocity q, grad T,C = 0
 
@@ -606,9 +609,9 @@ contains
           jm = j + (m-1) * option%nphase
           jng = j + (ng-1) * option%nphase
           
-          v_darcy = option%velocitybc(j,iconn)
+          v_darcy = pressurebc(j)
           
-          q = v_darcy * field%density_bc(j) * grid%areabc(iconn)
+          q = v_darcy * field%density_bc(j) * area
           fluxp = fluxp - q
         enddo
 
@@ -616,16 +619,16 @@ contains
 
         !heat residual: specified temperature
   !     i1 = ithrm_loc_p(ng)
-  !     cond = option%ckwet(i1) * grid%areabc(iconn) / grid%distbc(iconn)
+  !     cond = option%ckwet(i1) * area / distance
   !     r_p(t1) = r_p(t1) + cond * (TTEMP_LOC(ng) - option%tempbc(ibc)) &
   !                           + fluxh
         
         !tracer: specified concentration
-  !     trans = option%difaq * grid%areabc(iconn) / grid%distbc(iconn)
+  !     trans = option%difaq * area / distance
         !check for upstreaming weighting and iface even or odd etc.
         !use zero gradient BC
         
-  !     r_p(c1) = r_p(c1) + trans * (CCONC_LOC(ng) - option%concbc(ibc)) &
+  !     r_p(c1) = r_p(c1) + trans * (CCONC_LOC(ng) - concbc) &
   !                               + fluxc
 
       else if(ibndtyp == 3) then  ! fixed p, grad T, C = 0
@@ -637,12 +640,12 @@ contains
           jm = j + (m-1) * option%nphase
           jng = j + (ng-1) * option%nphase
           
-          Dq = perm1 / viscosity_loc_p(jng) / grid%distbc(iconn)
+          Dq = perm1 / viscosity_loc_p(jng) / distance
           
           !v_darcy is positive for fluid flowing into block
-          v_darcy = -Dq * (PPRESSURE_LOC(j,ng) - option%pressurebc(j,iconn) &
+          v_darcy = -Dq * (PPRESSURE_LOC(j,ng) - pressurebc(j) &
                     - gravity * ddensity_loc_p(jng))
-          q = v_darcy * grid%areabc(iconn)
+          q = v_darcy * area
         
   !       print *,'pflowTHC-3: ',iconn,m,ng,ibc,v_darcy,option%ibndtyp
           
@@ -656,7 +659,7 @@ contains
           !upstream weighting
   !       if (q > 0.d0) then
   !         fluxh = fluxh + q * field%density_bc(j) * field%hh_bc(j)
-  !         fluxc = fluxc + q * option%concbc(ibc)       ! note: need to change 
+  !         fluxc = fluxc + q * concbc       ! note: need to change 
   !       else                          ! definition of C for multiple phases
   !         fluxh = fluxh + q * field%density_bc(j) * hh_loc_p(jng)
   !         fluxc = fluxc + q * CCONC_LOC(ng) 
@@ -681,7 +684,7 @@ contains
           
        !   v_darcy = option%velocitybc(j,iconn)
        !   
-       !   q = v_darcy * field%density_bc(j) * grid%areabc(iconn)
+       !   q = v_darcy * field%density_bc(j) * area
        !   fluxp = fluxp - q
        ! enddo
 
@@ -689,21 +692,21 @@ contains
         
         !heat residual: specified temperature
         i1 = ithrm_loc_p(ng)
-        cond = option%ckwet(i1) * grid%areabc(iconn) / grid%distbc(iconn)
+        cond = option%ckwet(i1) * area / distance
         r_p(t1) = r_p(t1) + cond * (TTEMP_LOC(ng) - tempbc) 
                             ! + fluxh
   !     print *, 'thc:res:bc4: ',   
         !tracer: specified concentration
-  !     trans = option%difaq * grid%areabc(iconn) / grid%distbc(iconn)
+  !     trans = option%difaq * area / distance
         !check for upstreaming weighting and iface even or odd etc.
         !use zero gradient BC
         
-  !     r_p(c1) = r_p(c1) + trans * (CCONC_LOC(ng) - option%concbc(ibc)) &
+  !     r_p(c1) = r_p(c1) + trans * (CCONC_LOC(ng) - concbc) &
   !                               + fluxc
         
       endif
 
-      grid%vvlbc(iconn) = v_darcy
+      field%vvlbc(iconn) = v_darcy
     enddo
 
     boundary_condition => boundary_condition%next
@@ -848,7 +851,6 @@ contains
 
 ! call VecView(r,PETSC_VIEWER_STDOUT_WORLD,ierr)
 
-#endif  ! End of broken code.
   end subroutine THCResidual
 
 !======================================================================
