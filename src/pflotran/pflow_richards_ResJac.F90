@@ -688,7 +688,7 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
   integer :: iicap,iiphase, index_var_begin, index_var_end,iicap1,iicap2,np
 
   real*8 :: dd1, dd2, &
-            pvoldt, voldt, accum, pvol
+            accum
   real*8 :: dd, f1, f2, ff
   real*8 :: perm1, perm2
   real*8 :: D1, D2  ! "Diffusion" constants at upstream, downstream faces.
@@ -848,9 +848,6 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
     index_var_begin=(ghosted_id-1)*size_var_node+1
     index_var_end = index_var_begin-1 + size_var_use
     
-    pvol = volume_p(local_id)*porosity_loc_p(ghosted_id)
-    voldt = volume_p(local_id) / option%dt
-    pvoldt = porosity_loc_p(ghosted_id) * voldt
     iiphase = iphase_loc_p(ghosted_id)
     i = ithrm_loc_p(ghosted_id)
 
