@@ -443,7 +443,7 @@ contains
     if (myrank==0) then
     
       filename = flowvx
-      open(unit=fid,file=filename,action='read',iostat=ierr)
+      open(unit=fid,file=filename,action='read',status='old',iostat=ierr)
       if (ierr /= 0) then
         print *, 'File: ', adjustl(filename), ' not found ', myrank
         stop
@@ -494,7 +494,7 @@ contains
   if (ny > 1) then
     if (myrank==0 ) then
       filename = flowvy
-      open(unit=fid,file=filename,action='read',iostat=ierr)
+      open(unit=fid,file=filename,action='read',status='old',iostat=ierr)
       if (ierr /= 0) then
         print *, 'File: ', adjustl(filename), ' not found ', myrank
         stop
@@ -545,7 +545,7 @@ contains
   if (nz > 1) then
     if (myrank == 0) then
       filename = flowvz
-      open(unit=fid,file=filename,action='read',iostat=ierr)
+      open(unit=fid,file=filename,action='read',status='old',iostat=ierr)
       if (ierr /= 0) then
         print *, 'File: ', adjustl(filename), ' not found ', myrank
       endif

@@ -922,20 +922,20 @@ private
      write(IUNIT3,'(1p30e12.4)') x(na+1),y(na+1),z(na+1), &
               (vavel(ip),ip=1,3*grid%nphase)
 
-      if(grid%nx>1) then
+      if(grid%nx>1 .and. i < grid%nx) then
 !geh         write(1001,'(1p10e12.4)') grid%x(na+1),grid%y(na+1),grid%z(na+1), &
          write(1001,'(1p10e12.4)') x(na+1),y(na+1),z(na+1), &
               velo(1:grid%nphase) * grid%tconv
        endif 
 
 
-      if(grid%ny>1) then
+      if(grid%ny>1 .and. j < grid%ny) then
 !geh         write(1002,'(1p10e12.4)') grid%x(na+1),grid%y(na+1),grid%z(na+1), &
          write(1002,'(1p10e12.4)') x(na+1),y(na+1),z(na+1), &
               velo(grid%nphase + 1: 2*grid%nphase)  *grid%tconv
        endif 
        
-      if(grid%nz>1) then
+      if(grid%nz>1 .and. k < grid%nz) then
 !geh         write(1003,'(1p10e12.4)') grid%x(na+1),grid%y(na+1),grid%z(na+1), &
          write(1003,'(1p10e12.4)') x(na+1),y(na+1),z(na+1), &
               velo(2*grid%nphase+1: 3*grid%nphase) * grid%tconv
