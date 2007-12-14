@@ -42,7 +42,7 @@ module Richards_Analytical_module
 
   public RichardsAnalyticalResidual,RichardsAnalyticalJacobian, &
          RichardsUpdateFixedAccumulation,RichardsTimeCut,&
-         RichardsSetup
+         RichardsSetup, RichardsNumericalJacobianTest
 
   public :: createRichardsZeroArray
   integer, save :: n_zero_rows = 0
@@ -235,7 +235,8 @@ subroutine copyAuxVar(aux_var,aux_var2,option)
 
 end subroutine copyAuxVar
   
-subroutine RichardsAccumulationDerivative(aux_var,por,vol,rock_dencpr,option,sat_func)
+subroutine RichardsAccumulationDerivative(aux_var,por,vol,rock_dencpr,option, &
+                                          sat_func,J)
 
   use Option_module
   use Material_module
@@ -245,8 +246,8 @@ subroutine RichardsAccumulationDerivative(aux_var,por,vol,rock_dencpr,option,sat
   type(richards_type) :: aux_var
   type(option_type) :: option
   real*8 vol,por,rock_dencpr
-  real*8 :: J(option%ndof,option%ndof)
   type(saturation_function_type) :: sat_func
+  real*8 :: J(option%ndof,option%ndof)
      
   integer :: ispec !, iireac=1
   real*8 :: porXvol, mol(option%nspec), eng
@@ -358,7 +359,7 @@ end subroutine RichardsAccumulation
 subroutine RichardsFluxDerivative(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
                         aux_var_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
                         area,dist_gravity,upweight, &
-                        option,sat_func_up,sat_func_dn)
+                        option,sat_func_up,sat_func_dn,Jup,Jdn)
   use Option_module 
   use Material_module                             
   
@@ -375,13 +376,13 @@ subroutine RichardsFluxDerivative(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,
   real*8 :: v_darcy,area
   real*8 :: dist_gravity  ! distance along gravity vector
   type(saturation_function_type) :: sat_func_up, sat_func_dn
+  real*8 :: Jup(option%ndof,option%ndof), Jdn(option%ndof,option%ndof)
      
   integer :: ispec
   real*8 :: fluxm(option%nspec),fluxe,q
   real*8 :: uh,uxmol(1:option%nspec),ukvr,difff,diffdp, DK,Dq
   real*8 :: upweight,density_ave,cond,gravity,dphi
   
-  real*8 :: Jup(option%ndof,option%ndof), Jdn(option%ndof,option%ndof)
   real*8 :: ddifff_dp_up, ddifff_dp_dn, ddifff_dt_up, ddifff_dt_dn
   real*8 :: dden_ave_dp_up, dden_ave_dp_dn, dden_ave_dt_up, dden_ave_dt_dn
   real*8 :: dgravity_dden_up, dgravity_dden_dn
@@ -732,7 +733,7 @@ end subroutine RichardsFlux
 subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
                                     por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
                                     area,dist_gravity,option, &
-                                    sat_func_dn)
+                                    sat_func_dn,Jdn)
   use Option_module
   use Material_module
  
@@ -748,6 +749,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   real*8 :: por_dn,perm_dn,Dk_dn,tor_dn
   real*8 :: area
   type(saturation_function_type) :: sat_func_dn  
+  real*8 :: Jdn(option%ndof,option%ndof)
   
   real*8 :: dist_gravity  ! distance along gravity vector
           
@@ -757,7 +759,6 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   real*8 :: uh,uxmol(1:option%nspec),ukvr,diff,diffdp,DK,Dq
   real*8 :: upweight,cond,gravity,dphi
 
-  real*8 :: Jdn(option%ndof,option%ndof)
   real*8 :: ddiff_dp_dn, ddiff_dt_dn
   real*8 :: dden_ave_dp_dn, dden_ave_dt_dn
   real*8 :: dgravity_dden_dn
@@ -1230,7 +1231,91 @@ subroutine RichardsUpdateFixedAccumulation(realization)
 
   call VecRestoreArrayF90(field%accum, accum_p, ierr)
 
+  call RichardsNumericalJacobianTest(field%xx,realization)
+
 end subroutine RichardsUpdateFixedAccumulation
+
+! ************************************************************************** !
+!
+! RichardsNumericalJacobianTest: Computes the a test numerical jacobian
+! author: Glenn Hammond
+! date: 12/13/07
+!
+! ************************************************************************** !
+subroutine RichardsNumericalJacobianTest(xx,realization)
+
+  use Realization_module
+  use Option_module
+
+  implicit none
+
+  Vec :: xx
+  type(realization_type) :: realization
+
+  Vec :: xx_pert
+  Vec :: res
+  Vec :: res_pert
+  Mat :: A
+  PetscViewer :: viewer
+  PetscErrorCode :: ierr
+  
+  real*8 :: pert_tol = 1.d-6
+  real*8 :: derivative, perturbation
+  
+  PetscScalar, pointer :: vec_p(:), vec2_p(:)
+
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  
+  integer :: idof, idof2
+
+  grid => realization%grid
+  option => realization%option
+  field => realization%field
+  
+  call VecDuplicate(xx,xx_pert,ierr)
+  call VecDuplicate(xx,res,ierr)
+  call VecDuplicate(xx,res_pert,ierr)
+  
+  call MatCreate(PETSC_COMM_WORLD,A,ierr)
+  call MatSetSizes(A,PETSC_DECIDE,PETSC_DECIDE,grid%nlmax*option%ndof,grid%nlmax*option%ndof,ierr)
+  call MatSetType(A,MATAIJ,ierr)
+  call MatSetFromOptions(A,ierr)
+    
+  call RichardsAnalyticalResidual(0,xx,res,realization,ierr)
+  call VecGetArrayF90(res,vec2_p,ierr)
+  do idof = 1, grid%nlmax*option%ndof
+    call VecCopy(xx,xx_pert,ierr)
+    call VecGetArrayF90(xx_pert,vec_p,ierr)
+    perturbation = vec_p(idof)*pert_tol
+    vec_p(idof) = vec_p(idof)+perturbation
+    call VecRestoreArrayF90(xx_pert,vec_p,ierr)
+    call RichardsAnalyticalResidual(0,xx_pert,res_pert,realization,ierr)
+    call VecGetArrayF90(res_pert,vec_p,ierr)
+    do idof2 = 1, grid%nlmax*option%ndof
+      derivative = (vec_p(idof2)-vec2_p(idof2))/perturbation
+      if (dabs(derivative) > 1.d-20) then
+        call MatSetValue(A,idof2-1,idof-1,derivative,INSERT_VALUES,ierr)
+      endif
+    enddo
+    call VecRestoreArrayF90(res_pert,vec_p,ierr)
+  enddo
+  call VecRestoreArrayF90(res,vec2_p,ierr)
+
+  call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
+  call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
+  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'numerical_jacobian.out',viewer,ierr)
+  call MatView(A,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+
+  call MatDestroy(A,ierr)
+  
+  call VecDestroy(xx_pert,ierr)
+  call VecDestroy(res,ierr)
+  call VecDestroy(res_pert,ierr)
+  
+end subroutine RichardsNumericalJacobianTest
 
 ! ************************************************************************** !
 !
@@ -1615,7 +1700,7 @@ subroutine RichardsAnalyticalResidual(snes,xx,r,realization,ierr)
   if (option%rk > 0.d0) then
     call VecRestoreArrayF90(field%phis,phis_p,ierr)
   endif
-#define DEBUG_GEH
+!#define DEBUG_GEH
 !#define DEBUG_GEH_ALL
 #ifdef DEBUG_GEH 
  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'residual.out',viewer,ierr)
@@ -1688,6 +1773,9 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
   integer :: ghosted_id_up, ghosted_id_dn
   integer ::  natural_id_up,natural_id_dn
   
+  real*8 :: Jup(realization%option%ndof,realization%option%ndof), &
+            Jdn(realization%option%ndof,realization%option%ndof)
+  
   integer :: istart, iend
   
   type(coupler_type), pointer :: boundary_condition, source_sink
@@ -1752,13 +1840,15 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
                               volume_p(local_id), &
                               option%dencpr(int(ithrm_loc_p(ghosted_id))), &
                               option, &
-                              realization%saturation_function_array(icap)%ptr) 
+                              realization%saturation_function_array(icap)%ptr,&
+                              Jup) 
+    call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)
   enddo
 
 #ifdef DEBUG_GEH_ALL  
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian1.out',viewer,ierr)
+  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian_accum.out',viewer,ierr)
   call MatView(A,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
@@ -1801,6 +1891,9 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
         ! base on r_p() = r_p() - qsrc1*enth_src_h2o*option%dt
         dresT_dp = -qsrc1*hw_dp*option%dt
         dresT_dt = -qsrc1*hw_dt*option%dt
+        istart = ghosted_id*option%ndof
+        call MatSetValuesLocal(A,1,istart-1,1,istart-option%ndof,dresT_dp,ADD_VALUES,ierr)
+        call MatSetValuesLocal(A,1,istart-1,1,istart-1,dresT_dt,ADD_VALUES,ierr)
       endif  
     
       if (csrc1 > 0.d0) then ! injection
@@ -1815,7 +1908,7 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
 #ifdef DEBUG_GEH_ALL  
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian2.out',viewer,ierr)
+  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian_srcsink.out',viewer,ierr)
   call MatView(A,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
@@ -1885,10 +1978,26 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
                         cur_connection_set%area(iconn),distance_gravity, &
                         upweight,option,&
                         realization%saturation_function_array(icap_up)%ptr,&
-                        realization%saturation_function_array(icap_dn)%ptr)
+                        realization%saturation_function_array(icap_dn)%ptr,&
+                        Jup,Jdn)
+      Jdn = -1.d0*Jdn
+      call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1,Jup,ADD_VALUES,ierr)
+      call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_dn-1,Jdn,ADD_VALUES,ierr)
+      Jup = -1.d0*Jup
+      Jdn = -1.d0*Jdn
+      call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_dn-1,Jdn,ADD_VALUES,ierr)
+      call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_up-1,Jdn,ADD_VALUES,ierr)
     enddo
     cur_connection_set => cur_connection_set%next
   enddo
+
+#ifdef DEBUG_GEH_ALL  
+  call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
+  call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
+  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian_flux.out',viewer,ierr)
+  call MatView(A,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif
 
   ! Boundary Flux Terms -----------------------------------
   boundary_condition => realization%boundary_conditions%first
@@ -1955,14 +2064,21 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
                                 cur_connection_set%dist(0,iconn),perm_dn,D_dn, &
                                 cur_connection_set%area(iconn), &
                                 distance_gravity,option, &
-                                realization%saturation_function_array(icap_dn)%ptr)
-      iend = local_id*option%ndof
-      istart = iend-option%ndof+1
-!      r_p(istart:iend)= r_p(istart:iend) - Res(1:option%ndof)
+                                realization%saturation_function_array(icap_dn)%ptr,&
+                                Jdn)
+      call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jdn,ADD_VALUES,ierr)
  
     enddo
     boundary_condition => boundary_condition%next
   enddo
+
+#ifdef DEBUG_GEH_ALL  
+  call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
+  call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
+  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian_bcflux.out',viewer,ierr)
+  call MatView(A,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+#endif
   
   call VecRestoreArrayF90(field%xx_loc, xx_loc_p, ierr)
   call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
