@@ -1189,7 +1189,7 @@ contains
     if (myrank==0) then
     q = ','
 
-  fid = 68
+    fid = 68
     if (kplt < 10) then
       write(fname,'(a4,i1,a4)') 'psi', kplt, '.dat'
     else
@@ -1200,22 +1200,23 @@ contains
 
     open(unit=fid,file=fname,action="write")
     write(fid,10) t/tconv,tunit
+    
     if (nx > 1 .and. ny == 1 .and. nz == 1) then
-       write(fid,21) (q,nam(j),j=1,ncomp)
-       write(fid,31) nx
+      write(fid,21) (q,nam(j),j=1,ncomp)
+      write(fid,31) nx
       do ix=1,nx
         if (ix == 1) then
           xi = 0.5d0*dx0(ix)
         else
           xi = xi+0.5d0*(dx0(ix)+dx0(ix-1))
         endif
-        n = ix
-         write(fid,40) xi,(snpsi(j+(n-1)*ncomp),j=1,ncomp),&
-     (snpsig(j+(n-1)*ncomp),j=1,ncomp)
-         enddo    
-     else if (nx == 1 .and. ny == 1 .and. nz > 1) then
-        write(fid,21) (q,nam(j),j=1,ncomp)
-         write(fid,31) nz
+        n = ix        
+        write(fid,40) xi,(snpsi(j+(n-1)*ncomp),j=1,ncomp) !,&
+!       (snpsig(j+(n-1)*ncomp),j=1,ncomp)
+      enddo    
+    else if (nx == 1 .and. ny == 1 .and. nz > 1) then
+      write(fid,21) (q,nam(j),j=1,ncomp)
+      write(fid,31) nz
       do kz=1,nz
         if (kz == 1) then
           zk = 0.5d0*dz0(kz)
@@ -1223,11 +1224,11 @@ contains
           zk = zk+0.5d0*(dz0(kz)+dz0(kz-1))
         endif
         n = kz
-         write(fid,40) zk,(snpsi(j+(n-1)*ncomp),j=1,ncomp)
+        write(fid,40) zk,(snpsi(j+(n-1)*ncomp),j=1,ncomp)
       enddo    
     else if (nx > 1 .and. ny > 1 .and. nz == 1) then
-       write(fid,22) (q,nam(j),j=1,ncomp)
-       write(fid,32) nx,ny
+      write(fid,22) (q,nam(j),j=1,ncomp)
+      write(fid,32) nx,ny
       do jy=1,ny
         if (jy == 1) then
           yj = 0.5d0*dy0(jy)
@@ -1245,8 +1246,8 @@ contains
         enddo
       enddo
     else if (nx > 1 .and. ny == 1 .and. nz > 1) then
-       write(fid,23) (q,nam(j),j=1,ncomp)
-       write(fid,32) nx,nz
+      write(fid,23) (q,nam(j),j=1,ncomp)
+      write(fid,32) nx,nz
       do kz=1,nz
         if (kz == 1) then
           zk = 0.5d0*dz0(kz)
@@ -1259,14 +1260,14 @@ contains
           else
             xi = xi+0.5d0*(dx0(ix)+dx0(ix-1))
           endif
-            n = ix+(kz-1)*nx
-            write(fid,40) xi,zk,(snpsi(j+(n-1)*ncomp),j=1,ncomp)
-         enddo
+          n = ix+(kz-1)*nx
+          write(fid,40) xi,zk,(snpsi(j+(n-1)*ncomp),j=1,ncomp)
+        enddo
       enddo
     else if (nx > 1 .and. ny > 1 .and. nz > 1) then
-         write(fid,24) (q,nam(j),j=1,ncomp)
-         write(fid,33) nx,ny,nz
-       do kz = 1,nz
+      write(fid,24) (q,nam(j),j=1,ncomp)
+      write(fid,33) nx,ny,nz
+      do kz = 1,nz
         if (kz == 1) then
           zk = 0.5d0*dz0(kz)
         else
@@ -1285,18 +1286,18 @@ contains
               xi = xi+0.5d0*(dx0(ix)+dx0(ix-1))
             endif
             n = ix+(jy-1)*nx+(kz-1)*nxy
-              write(fid,40) xi,yj,zk,(snpsi(j+(n-1)*ncomp),j=1,ncomp),&
-        (snpsig(j+(n-1)*ncomp),j=1,ncomp)
-            enddo
+            write(fid,40) xi,yj,zk,(snpsi(j+(n-1)*ncomp),j=1,ncomp),&
+            (snpsig(j+(n-1)*ncomp),j=1,ncomp)
+          enddo
         enddo
       enddo
     endif
     close(fid)
   endif
- if (myrank == 0) then
-   if (iphase >= 1) deallocate(snpsi)
-   if (iphase == 2) deallocate(snpsig)
- endif
+  if (myrank == 0) then
+    if (iphase >= 1) deallocate(snpsi)
+    if (iphase == 2) deallocate(snpsig)
+  endif
  
 
 ! +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

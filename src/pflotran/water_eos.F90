@@ -4,9 +4,21 @@ module water_eos_module
 
   real*8, private, parameter::  fmwh2o = 18.01534d0
 
+  interface VISW
+    module procedure VISW1
+    module procedure VISW2
+  end interface
+
+  interface PSAT
+    module procedure PSAT_orig
+    module procedure PSATgeh
+  end interface
+
+  public :: VISW, PSAT
+
 contains
 
-  subroutine VISW (T,P,PS,VW,vwt,vwp,ierr)
+  subroutine VISW1 (T,P,PS,VW,vwt,vwp,ierr)
 
     implicit none
     
@@ -29,8 +41,33 @@ contains
     vwp = 1.d-7*phi*1.d-11*241.4d0*pwr
     ierr = 0
  
-  end subroutine VISW
+  end subroutine VISW1
 
+  subroutine VISW2 (T,P,PS,pswt,VW,vwt,vwp,ierr)
+
+    implicit none
+    
+    real*8, intent(in) :: T, P, PS, pswt
+    real*8, intent(out) :: VW,vwt,vwp
+    integer, intent(out) :: ierr
+  
+    real*8 :: EX, PHI, AM, pwr, aln10
+  
+    EX  = 247.8d0/(T+133.15d0)
+    PHI = 1.0467d0*(T-31.85d0)
+    AM  = 1.d0+PHI*(P-PS)*1.d-11
+    pwr = 10.d0**EX
+    VW  = 1.d-7*AM*241.4d0*pwr
+    
+    aln10 = log(10.d0)
+    ! neglects deriv of psat(T)
+    vwt = 1.d-7*1.0467d0*(P-PS)*1.d-11*241.4d0*pwr + &
+          1.d-7*PHI*(-1.d0*pswt)*1.d-11*241.4d0*pwr - & 
+          aln10*247.8d0/(t+133.15d0)**2*vw
+    vwp = 1.d-7*phi*1.d-11*241.4d0*pwr
+    ierr = 0
+ 
+  end subroutine VISW2
 
   subroutine VISW_noderiv(T,P,PS,VW,ierr)
 
@@ -204,7 +241,7 @@ contains
  
   end subroutine PSAT1_NEW
 
-  subroutine PSAT (T, P, ierr)
+  subroutine PSAT_orig (T, P, ierr)
 
     real*8, intent(in) :: T
     real*8, intent(out) :: P  ! Saturation pressure
@@ -233,7 +270,50 @@ contains
     P = PC*2.212d7
     ierr = 0
 
-  end subroutine PSAT  
+  end subroutine PSAT_orig  
+ 
+  subroutine PSATgeh (T, psat, dpsat_dt, ierr)
+
+    real*8, intent(in) :: T
+    real*8, intent(out) :: psat, dpsat_dt  ! Saturation pressure
+    integer, intent(out) :: ierr
+  
+    real*8, save, dimension(9) :: A(9)
+    real*8 :: TC, SC, PC, E1, E2
+    real*8 :: one_m_tc, one_m_tc_sq, E1_bottom
+    real*8 :: dTC_dT, dSC_dTC, dE1_dTC, dE2_dTC, dPC_dSC, dPC_dTC
+    
+!   SAVE A
+    DATA A/ &
+      -7.691234564d0,-2.608023696d1,-1.681706546d2,6.423285504d1, &
+      -1.189646225d2,4.167117320d0,2.097506760E1,1.d9,6.d0/
+   
+    if (T .LT. 1.d0 .OR. T .GT. 500.d0) then
+      ierr = 1
+      return
+    end if
+    TC = (T+273.15d0)/647.3d0
+    dTC_dT = 1.d0/647.3d0
+    one_m_tc = 1.d0-TC
+    one_m_tc_sq = one_m_tc*one_m_tc
+    SC = A(1)*one_m_tc+A(2)*one_m_tc_sq+A(3)*one_m_tc**3.d0+ &
+         A(4)*one_m_tc**4.d0+A(5)*one_m_tc**5.d0
+    dSC_dTC = -A(1)-2.d0*A(2)*one_m_tc-3.d0*A(3)*one_m_tc_sq- &
+              4.d0*A(4)*one_m_tc**3.-5.d0*A(5)*one_m_tc**4.
+    E1 = TC*(1.d0+A(6)*one_m_tc+A(7)*one_m_tc_sq)
+    dE1_dTC = (1.d0+A(6)*one_m_tc+A(7)*one_m_tc_sq)+TC*(-A(6)-2.d0*A(7)*one_m_tc)
+    E2_bottom = A(8)*one_m_tc_sq+A(9)
+    E2 = one_m_tc/E2_bottom
+    dE2_dTC = -1.d0/E2_bottom+one_m_tc/(E2_bottom*E2_bottom)*2.d0*one_m_tc
+    PC = EXP(SC/E1-E2)
+    dPC_dTC = (-SC/(E1*E1)*dE1_dTC-dE2_dTC)*PC
+    dPC_dSC = 1.d0/E1*PC
+   
+    psat = PC*2.212d7
+    dpsat_dt = (dPC_dSC*dSC_dTC+dPC_dTC)*dTC_dT*2.212d7
+    ierr = 0
+
+  end subroutine PSATgeh  
  
 
   subroutine PSAT1(T, Ps, tsp, ierr)

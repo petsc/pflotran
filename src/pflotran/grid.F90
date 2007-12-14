@@ -68,6 +68,12 @@ module Grid_module
             GridGlobalToLocal, &
             GridLocalToLocal, &
             GridGlobalToNatural, &
+            GridGlobalToLocalBegin, &
+            GridLocalToLocalBegin, &
+            GridGlobalToNaturalBegin, &
+            GridGlobalToLocalEnd, &
+            GridLocalToLocalEnd, &
+            GridGlobalToNaturalEnd, &
             GridMapIndices, &
             GridCreateDMs, &
             GridComputeSpacing, &
@@ -558,6 +564,162 @@ subroutine GridGlobalToNatural(grid,global_vec,natural_vec,dm_index)
   end select
   
 end subroutine GridGlobalToNatural
+
+! ************************************************************************** !
+!
+! GridGlobalToLocalBegin: Begins global to local communication with DM
+! author: Glenn Hammond
+! date: 10/24/07
+!
+! Note that 'dm_index' should correspond to one of the macros defined 
+! in 'definitions.h' such as ONEDOF, NPHASEDOF, etc.  --RTM
+!
+! ************************************************************************** !
+subroutine GridGlobalToLocalBegin(grid,global_vec,local_vec,dm_index)
+
+  implicit none
+  
+  type(grid_type) :: grid
+  Vec :: global_vec
+  Vec :: local_vec
+  integer :: dm_index
+  
+  select case(grid%igrid)
+    case(STRUCTURED)
+      call StructureGridGlobalToLocalBegin(grid%structured_grid,global_vec, &
+                                           local_vec,dm_index)
+    case(UNSTRUCTURED)
+  end select
+  
+end subroutine GridGlobalToLocalBegin
+  
+! ************************************************************************** !
+!
+! GridGlobalToLocalEnd: Ends global to local communication with DM
+! author: Glenn Hammond
+! date: 10/24/07
+!
+! Note that 'dm_index' should correspond to one of the macros defined 
+! in 'definitions.h' such as ONEDOF, NPHASEDOF, etc.  --RTM
+!
+! ************************************************************************** !
+subroutine GridGlobalToLocalEnd(grid,global_vec,local_vec,dm_index)
+
+  implicit none
+  
+  type(grid_type) :: grid
+  Vec :: global_vec
+  Vec :: local_vec
+  integer :: dm_index
+  
+  select case(grid%igrid)
+    case(STRUCTURED)
+      call StructureGridGlobalToLocalEnd(grid%structured_grid,global_vec, &
+                                           local_vec,dm_index)
+    case(UNSTRUCTURED)
+  end select
+  
+end subroutine GridGlobalToLocalEnd
+  
+! ************************************************************************** !
+!
+! GridLocalToLocalBegin: Begins local to local communication with DM
+! author: Glenn Hammond
+! date: 11/14/07
+!
+! ************************************************************************** !
+subroutine GridLocalToLocalBegin(grid,local_vec1,local_vec2,dm_index)
+
+  implicit none
+  
+  type(grid_type) :: grid
+  Vec :: local_vec1
+  Vec :: local_vec2
+  integer :: dm_index
+  
+  select case(grid%igrid)
+    case(STRUCTURED)
+      call StructureGridLocalToLocalBegin(grid%structured_grid,local_vec1, &
+                                          local_vec2,dm_index)
+    case(UNSTRUCTURED)
+  end select
+  
+end subroutine GridLocalToLocalBegin
+  
+! ************************************************************************** !
+!
+! GridLocalToLocalEnd: Ends local to local communication with DM
+! author: Glenn Hammond
+! date: 11/14/07
+!
+! ************************************************************************** !
+subroutine GridLocalToLocalEnd(grid,local_vec1,local_vec2,dm_index)
+
+  implicit none
+  
+  type(grid_type) :: grid
+  Vec :: local_vec1
+  Vec :: local_vec2
+  integer :: dm_index
+  
+  select case(grid%igrid)
+    case(STRUCTURED)
+      call StructureGridLocalToLocalEnd(grid%structured_grid,local_vec1, &
+                                        local_vec2,dm_index)
+    case(UNSTRUCTURED)
+  end select
+  
+end subroutine GridLocalToLocalEnd
+  
+! ************************************************************************** !
+!
+! GridGlobalToNaturalBegin: Begins global to natural communication with DM
+! author: Glenn Hammond
+! date: 10/24/07
+!
+! ************************************************************************** !
+subroutine GridGlobalToNaturalBegin(grid,global_vec,natural_vec,dm_index)
+
+  implicit none
+  
+  type(grid_type) :: grid
+  Vec :: global_vec
+  Vec :: natural_vec
+  integer :: dm_index
+  
+  select case(grid%igrid)
+    case(STRUCTURED)
+      call StructureGridGlobalToNaturBegin(grid%structured_grid,global_vec, &
+                                   natural_vec,dm_index)
+    case(UNSTRUCTURED)
+  end select
+  
+end subroutine GridGlobalToNaturalBegin
+
+! ************************************************************************** !
+!
+! GridGlobalToNaturalEnd: Ends global to natural communication with DM
+! author: Glenn Hammond
+! date: 10/24/07
+!
+! ************************************************************************** !
+subroutine GridGlobalToNaturalEnd(grid,global_vec,natural_vec,dm_index)
+
+  implicit none
+  
+  type(grid_type) :: grid
+  Vec :: global_vec
+  Vec :: natural_vec
+  integer :: dm_index
+  
+  select case(grid%igrid)
+    case(STRUCTURED)
+      call StructureGridGlobalToNaturEnd(grid%structured_grid,global_vec, &
+                                         natural_vec,dm_index)
+    case(UNSTRUCTURED)
+  end select
+  
+end subroutine GridGlobalToNaturalEnd
 
 ! ************************************************************************** !
 !

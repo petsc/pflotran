@@ -72,12 +72,18 @@ module Material_module
     type(saturation_function_type), pointer :: next
   end type saturation_function_type
   
+  type, public :: saturation_function_ptr_type
+    type(saturation_function_type), pointer :: ptr
+  end type saturation_function_ptr_type
+  
   public :: MaterialCreate, ThermalPropertyCreate, SaturationFunctionCreate, &
             MaterialDestroy, ThermalPropertyDestroy, &
             SaturationFunctionDestroy, &
             MaterialAddToList, ThermalAddPropertyToList, &
             SaturationFunctionAddToList, &
-            MaterialGetPtrFromList
+            MaterialGetPtrFromList, &
+            SaturationFunctionCompute, &
+            SaturatFuncConvertListToArray
   
 contains
 
@@ -267,6 +273,105 @@ recursive subroutine SaturationFunctionAddToList(saturation_function,list)
   endif
   
 end subroutine SaturationFunctionAddToList
+
+! ************************************************************************** !
+!
+! SaturatFuncConvertListToArray: Creates an array of pointers to the 
+!                                saturation functions in the list
+! author: Glenn Hammond
+! date: 12/11/07
+!
+! ************************************************************************** !
+subroutine SaturatFuncConvertListToArray(list,array)
+
+  implicit none
+  
+  type(saturation_function_type), pointer :: list
+  type(saturation_function_ptr_type), pointer :: array(:)
+    
+  type(saturation_function_type), pointer :: cur_saturation_function
+  integer :: count
+
+  count = 0
+  cur_saturation_function => list
+  do 
+    if (.not.associated(cur_saturation_function)) exit
+    count = count + 1
+    cur_saturation_function => cur_saturation_function%next
+  enddo
+  
+  allocate(array(count))
+  
+  count = 0
+  cur_saturation_function => list
+  do 
+    if (.not.associated(cur_saturation_function)) exit
+    count = count + 1
+    array(count)%ptr => cur_saturation_function
+    cur_saturation_function => cur_saturation_function%next
+  enddo
+
+end subroutine SaturatFuncConvertListToArray
+
+! ************************************************************************** !
+!
+! SaturationFunctionCompute: Computes the saturation and relative permeability
+!                            (and associated derivatives) as a function of 
+!                            capillary pressure
+! author: Glenn Hammond
+! date: 12/11/07
+!
+! ************************************************************************** !
+subroutine SaturationFunctionCompute(pressure,saturation,relative_perm, &
+                                     dsat_dpres,dkr_dpres,saturation_function, &
+                                     option)
+
+  use Option_module
+  
+  implicit none
+
+#define VAN_GENUCHTEN 1
+  
+  real*8 :: pressure, saturation, relative_perm, dsat_dpres, dkr_dpres
+  type(saturation_function_type) :: saturation_function
+  type(option_type) :: option
+
+  real*8 :: alpha, m, n, Sr
+  real*8 :: pc, Se, one_over_m, Se_one_over_m, dsat_dpc, dkr_dpc
+  
+  dsat_dpres = 0.d0
+  dkr_dpres = 0.d0
+  
+  select case(saturation_function%itype)
+    case(VAN_GENUCHTEN)
+      if (pressure >= option%pref) then
+        saturation = 1.d0
+        relative_perm = 1.d0
+      else
+        alpha = saturation_function%alpha
+        m = saturation_function%m
+        n = 1.d0/(1.d0-m)
+        Sr = saturation_function%Sr(option%nphase)
+        pc = option%pref-pressure
+        saturation = Sr + (1.d0-Sr)/(1.d0+(pc*alpha)**n)**m
+        dsat_dpc = -m*n*alpha*(1.d0-Sr)*(pc*alpha)**(n-1.d0)/ &
+                   (1+(pc*alpha)**n)**(m+1)
+        Se = (saturation-Sr)/(1.d0-Sr)
+        one_over_m = 1/m
+        Se_one_over_m = Se**one_over_m
+        relative_perm = sqrt(Se)*(1.d0-(1.d0-Se_one_over_m)**m)**2.d0
+        dkr_dpc = (0.5d0*relative_perm/Se+ &
+                   2.d0*(1.d0-(1.d0-Se_one_over_m)**m)* &
+                   (1-Se_one_over_m)**(m-1.d0)* &
+                   Se**(one_over_m-0.5d0))/ &
+                  (1.d0-Sr)* &
+                  dsat_dpc 
+        dsat_dpres = -dsat_dpc 
+        dkr_dpres = -dkr_dpc
+      endif
+  end select
+    
+end subroutine SaturationFunctionCompute
 
 ! ************************************************************************** !
 !
