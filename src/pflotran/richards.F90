@@ -1432,6 +1432,8 @@ subroutine RichardsAnalyticalResidual(snes,xx,r,realization,ierr)
     call VecGetArrayF90(field%phis,phis_p,ierr)
   endif
 
+  r_p = 0.d0
+#if 0
   ! Accumulation terms ------------------------------------
   r_p = - accum_p
 
@@ -1449,8 +1451,8 @@ subroutine RichardsAnalyticalResidual(snes,xx,r,realization,ierr)
                               option,Res) 
     r_p(istart:iend) = r_p(istart:iend) + Res(1:option%ndof)
   enddo
-
-
+#endif
+#if 0
   ! Source/sink terms -------------------------------------
   source_sink => realization%source_sinks%first 
   do 
@@ -1499,7 +1501,8 @@ subroutine RichardsAnalyticalResidual(snes,xx,r,realization,ierr)
     enddo
     source_sink => source_sink%next
   enddo
-
+#endif
+#if 1
   ! Interior Flux Terms -----------------------------------
   connection_list => grid%internal_connection_list
   cur_connection_set => connection_list%first
@@ -1587,7 +1590,8 @@ subroutine RichardsAnalyticalResidual(snes,xx,r,realization,ierr)
     enddo
     cur_connection_set => cur_connection_set%next
   enddo    
- 
+#endif
+#if 0
   ! Boundary Flux Terms -----------------------------------
   boundary_condition => realization%boundary_conditions%first
   sum_connection = 0    
@@ -1663,7 +1667,7 @@ subroutine RichardsAnalyticalResidual(snes,xx,r,realization,ierr)
     enddo
     boundary_condition => boundary_condition%next
   enddo
-  
+#endif  
   if (option%use_isoth==PETSC_TRUE) then
     do local_id = 1, grid%nlmax  ! For each local node do...
       ghosted_id = grid%nL2G(local_id)
@@ -1824,7 +1828,7 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
   call VecGetArrayF90(field%icap_loc, icap_loc_p, ierr)
   call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr)
   call VecGetArrayF90(field%var_loc, var_loc_p, ierr)
-
+#if 0
   ! Accumulation terms ------------------------------------
   do local_id = 1, grid%nlmax  ! For each local node do...
     ghosted_id = grid%nL2G(local_id)
@@ -1844,7 +1848,7 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
                               Jup) 
     call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)
   enddo
-
+#endif
 #ifdef DEBUG_GEH_ALL  
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
@@ -1852,7 +1856,7 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
   call MatView(A,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
-
+#if 0
   ! Source/sink terms -------------------------------------
   source_sink => realization%source_sinks%first 
   do 
@@ -1890,10 +1894,10 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
 !           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
         ! base on r_p() = r_p() - qsrc1*enth_src_h2o*option%dt
         dresT_dp = -qsrc1*hw_dp*option%dt
-        dresT_dt = -qsrc1*hw_dt*option%dt
+        ! dresT_dt = -qsrc1*hw_dt*option%dt ! since tsrc1 is prescribed, there is no derivative
         istart = ghosted_id*option%ndof
         call MatSetValuesLocal(A,1,istart-1,1,istart-option%ndof,dresT_dp,ADD_VALUES,ierr)
-        call MatSetValuesLocal(A,1,istart-1,1,istart-1,dresT_dt,ADD_VALUES,ierr)
+        ! call MatSetValuesLocal(A,1,istart-1,1,istart-1,dresT_dt,ADD_VALUES,ierr)
       endif  
     
       if (csrc1 > 0.d0) then ! injection
@@ -1904,7 +1908,7 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
     enddo
     source_sink => source_sink%next
   enddo
-
+#endif
 #ifdef DEBUG_GEH_ALL  
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
@@ -1912,7 +1916,7 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
   call MatView(A,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
-
+#if 1
   ! Interior Flux Terms -----------------------------------  
   connection_list => grid%internal_connection_list
   cur_connection_set => connection_list%first
@@ -1990,7 +1994,7 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
     enddo
     cur_connection_set => cur_connection_set%next
   enddo
-
+#endif
 #ifdef DEBUG_GEH_ALL  
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
@@ -1998,7 +2002,7 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
   call MatView(A,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
-
+#if 0
   ! Boundary Flux Terms -----------------------------------
   boundary_condition => realization%boundary_conditions%first
   sum_connection = 0    
@@ -2071,7 +2075,7 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
     enddo
     boundary_condition => boundary_condition%next
   enddo
-
+#endif
 #ifdef DEBUG_GEH_ALL  
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
@@ -2124,6 +2128,7 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
   call MatZeroRowsLocal(A,n_zero_rows,zero_rows_local_ghosted,f_up,ierr) 
 #endif
 
+#define DEBUG_GEH
 #ifdef DEBUG_GEH    
  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian.out',viewer,ierr)
  call MatView(A,viewer,ierr)
