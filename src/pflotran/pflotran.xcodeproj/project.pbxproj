@@ -15,6 +15,7 @@
 		231918480B9DD7EA00844666 /* pflow_vadose_ResJac.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = pflow_vadose_ResJac.F90; sourceTree = "<group>"; };
 		231918490B9DD7FA00844666 /* translator_mixed_fluid_vad.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = translator_mixed_fluid_vad.F90; sourceTree = "<group>"; };
 		2319184A0B9DD80900844666 /* remove_ArrayF90.py */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = text.script.python; path = remove_ArrayF90.py; sourceTree = "<group>"; };
+		2338BBB40D12F30C0022F2F4 /* richards.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = richards.F90; sourceTree = "<group>"; };
 		2358178D0BBC662B008D3E23 /* condition.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = condition.F90; sourceTree = "<group>"; };
 		2358178E0BBC662B008D3E23 /* pflow_flash_ResJac.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = pflow_flash_ResJac.F90; sourceTree = "<group>"; };
 		2358178F0BBC662B008D3E23 /* translator_mixed_fluid_flash.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = translator_mixed_fluid_flash.F90; sourceTree = "<group>"; };
@@ -123,15 +124,15 @@
 				2358178D0BBC662B008D3E23 /* condition.F90 */,
 				23C3E0960CDF92E1009ADBAF /* connection.F90 */,
 				23C3E0970CDF92E1009ADBAF /* coupler.F90 */,
-				2306371B0CF228E900CC3145 /* README */,
-				2306371A0CF228D200CC3145 /* realization.F90 */,
 				33021A9608A12EFD00D082B8 /* definitions.h */,
+				230637130CF2246C00CC3145 /* field.F90 */,
 				33021A9708A12EFD00D082B8 /* fileio.F90 */,
 				33021A9808A12EFD00D082B8 /* gaseos_mod.F90 */,
 				23C3E0980CDF92E1009ADBAF /* general_grid.F90 */,
 				23C3E0990CDF92E1009ADBAF /* grid.F90 */,
 				2311D0110CA34CA7003AF8E9 /* hdf5_dataset.F90 */,
 				33021A9908A12EFD00D082B8 /* hydrostat.F90 */,
+				23736B3C0CFF5B82002999ED /* hydrostatic.F90 */,
 				33021A9A08A12EFD00D082B8 /* makefile */,
 				23CFC3FD0B8A4881009EAE62 /* makefile_noarrayf90 */,
 				23C3E09A0CDF92E1009ADBAF /* material.F90 */,
@@ -140,7 +141,6 @@
 				33021A9C08A12EFD00D082B8 /* mixed_fluid_eos_sp_ana.F90 */,
 				33ED60270CC5238800C50BCE /* new_derived_types */,
 				331442150C10DA4A00B891B3 /* nhydrostatic.F90 */,
-				23736B3C0CFF5B82002999ED /* hydrostatic.F90 */,
 				33D9A02109D9A0A9008962D9 /* oil_eos.F90 */,
 				33D9A02809D9EB2C008962D9 /* oil_pckr.F90 */,
 				23C3E09B0CDF92E1009ADBAF /* option.F90 */,
@@ -190,15 +190,17 @@
 				33021ABD08A12EFD00D082B8 /* ptran_speciation.F90 */,
 				33021ABE08A12EFD00D082B8 /* ptran_update.F90 */,
 				33C0932A09BF95D300A773C8 /* Readfield.F90 */,
+				2306371B0CF228E900CC3145 /* README */,
+				2306371A0CF228D200CC3145 /* realization.F90 */,
 				23C3E09D0CDF92E1009ADBAF /* region.F90 */,
 				2319184A0B9DD80900844666 /* remove_ArrayF90.py */,
+				2338BBB40D12F30C0022F2F4 /* richards.F90 */,
 				33021AC008A12EFD00D082B8 /* rock_react.F90 */,
 				23C3E09E0CDF92E1009ADBAF /* simulation.F90 */,
 				23C3E0A00CDF92E1009ADBAF /* solver.F90 */,
 				23C3E0A10CDF92E1009ADBAF /* strata.F90 */,
 				23C3E0A20CDF92E1009ADBAF /* structured_grid.F90 */,
 				23C3E0A30CDF92E1009ADBAF /* timestepper.F90 */,
-				230637130CF2246C00CC3145 /* field.F90 */,
 				2358178F0BBC662B008D3E23 /* translator_mixed_fluid_flash.F90 */,
 				33E20B6909ED787000578A26 /* translator_mixed_fluid_mph.F90 */,
 				33021ACE08A1306800D082B8 /* translator_mixed_fluid_OWG.F90 */,
