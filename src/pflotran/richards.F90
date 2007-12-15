@@ -771,12 +771,18 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
 !#define DEBUG_BCFLUX_DERIVATIVES
 #ifdef DEBUG_BCFLUX_DERIVATIVES  
   integer :: iphase, ideriv
-  type(richards_type) :: aux_var_pert_dn
-  real*8 :: x_dn(3), x_pert_dn(3), pert(3), res(3), res_pert_dn(3), J_pert_dn(3,3)
+  type(richards_type) :: aux_var_pert_dn, aux_var_pert_up
+  real*8 :: perturbation
+  real*8 :: x_dn(3), x_up(3), x_pert_dn(3), x_pert_up(3), pert(3), res(3), res_pert_dn(3), J_pert_dn(3,3)
   allocate(aux_var_pert_dn%xmol(option%nspec),aux_var_pert_dn%diff(option%nspec))
+  allocate(aux_var_pert_up%xmol(option%nspec),aux_var_pert_up%diff(option%nspec))
   pert(1) = 1.e-2 !1.745849723195111d-003
   pert(2) = 2.500000000000000d-007
   pert(3) = 1.000000000000000d-014
+  perturbation = 1.d-5
+  pert(1) = perturbation*aux_var_dn%pres 
+  pert(2) = perturbation*aux_var_dn%temp 
+  pert(3) = perturbation*aux_var_dn%xmol(2) 
 #endif
   
   fluxm = 0.d0
@@ -803,11 +809,11 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   duxmol_dxmol_dn = 0.d0
         
   ! Flow   
+  diffdp = por_dn*tor_dn/dd_up*area
   select case(ibndtype(RICHARDS_PRESSURE_DOF))
     ! figure out the direction of flow
-    case(DIRICHLET_BC,HYDROSTATIC_BC,ZERO_GRADIENT_BC)
+    case(DIRICHLET_BC,HYDROSTATIC_BC)
       Dq = perm_dn / dd_up
-      diffdp = por_dn*tor_dn/dd_up*area
       ! Flow term
       if (aux_var_up%sat > sir_dn .or. aux_var_dn%sat > sir_dn) then
         upweight=1.D0
@@ -820,6 +826,10 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
         density_ave = upweight*aux_var_up%den+(1.D0-upweight)*aux_var_dn%den
         dden_ave_dp_dn = (1.D0-upweight)*aux_var_dn%dden_dp
         dden_ave_dt_dn = (1.D0-upweight)*aux_var_dn%dden_dt
+
+        if (ibndtype(RICHARDS_TEMPERATURE_DOF) == ZERO_GRADIENT_BC) then
+          dden_ave_dt_dn = dden_ave_dt_dn + upweight*aux_var_up%dden_dt
+        endif
         
         gravity = (upweight*aux_var_up%den*aux_var_up%avgmw + &
                   (1.D0-upweight)*aux_var_dn%den*aux_var_dn%avgmw) &
@@ -830,8 +840,16 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
         dphi_dp_dn = -1.d0 + dgravity_dden_dn*aux_var_dn%dden_dp
         dphi_dt_dn = dgravity_dden_dn*aux_var_dn%dden_dt
         
+        if (ibndtype(RICHARDS_TEMPERATURE_DOF) == ZERO_GRADIENT_BC) then
+                                   !( dgravity_dden_up                   ) (dden_dt_up)
+          dphi_dt_dn = dphi_dt_dn + upweight*aux_var_up%avgmw*dist_gravity*aux_var_up%dden_dt
+        endif
+        
         if (dphi>=0.D0) then
           ukvr = aux_var_up%kvr
+          if (ibndtype(RICHARDS_TEMPERATURE_DOF) == ZERO_GRADIENT_BC) then
+            dukvr_dt_dn = aux_var_up%dkvr_dt
+          endif
         else
           ukvr = aux_var_dn%kvr
           dukvr_dp_dn = aux_var_dn%dkvr_dp
@@ -851,6 +869,9 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
         v_darcy = aux_vars(RICHARDS_PRESSURE_DOF)
         if (v_darcy > 0.d0) then 
           density_ave = aux_var_up%den
+          if (ibndtype(RICHARDS_TEMPERATURE_DOF) == ZERO_GRADIENT_BC) then
+            dden_ave_dt_dn = aux_var_up%dden_dt
+          endif
         else 
           density_ave = aux_var_dn%den
           dden_ave_dp_dn = aux_var_dn%dden_dp
@@ -864,6 +885,15 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   if (v_darcy >= 0.D0) then
     uh = aux_var_up%h
     uxmol(:)=aux_var_up%xmol(1:option%nspec)
+    if (ibndtype(RICHARDS_PRESSURE_DOF) == ZERO_GRADIENT_BC) then
+      duh_dp_dn = aux_var_up%dh_dp
+    endif
+    if (ibndtype(RICHARDS_TEMPERATURE_DOF) == ZERO_GRADIENT_BC) then
+      duh_dt_dn = aux_var_up%dh_dt
+    endif
+    if (ibndtype(RICHARDS_CONCENTRATION_DOF) == ZERO_GRADIENT_BC) then
+      duxmol_dxmol_dn = 1.d0
+    endif
   else
     uh = aux_var_dn%h
     duh_dp_dn = aux_var_dn%dh_dp
@@ -890,22 +920,27 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   ! Diffusion term   
   select case(ibndtype(RICHARDS_CONCENTRATION_DOF))
     case(DIRICHLET_BC,HYDROSTATIC_BC) 
-      if (aux_var_up%sat > eps .and. aux_var_dn%sat > eps) then
-        diff = diffdp * 0.25D0*(aux_var_up%sat+aux_var_dn%sat)*(aux_var_up%den+aux_var_dn%den)
-        ddiff_dp_dn = diffdp * 0.25D0*(aux_var_dn%dsat_dp*(aux_var_up%den+aux_var_dn%den)+ &
-                                      (aux_var_up%sat+aux_var_dn%sat)*aux_var_dn%dden_dp)
-        ddiff_dt_dn = diffdp * 0.25D0*(aux_var_up%sat+aux_var_dn%sat)*aux_var_dn%dden_dt
+!      if (aux_var_up%sat > eps .and. aux_var_dn%sat > eps) then
+!        diff = diffdp * 0.25D0*(aux_var_up%sat+aux_var_dn%sat)*(aux_var_up%den+aux_var_dn%den)
+!        ddiff_dp_dn = diffdp * 0.25D0*(aux_var_dn%dsat_dp*(aux_var_up%den+aux_var_dn%den)+ &
+!                                      (aux_var_up%sat+aux_var_dn%sat)*aux_var_dn%dden_dp)
+!        ddiff_dt_dn = diffdp * 0.25D0*(aux_var_up%sat+aux_var_dn%sat)*aux_var_dn%dden_dt
+      if (aux_var_dn%sat > eps) then
+        diff = diffdp * aux_var_dn%sat*aux_var_dn%den
+        ddiff_dp_dn = diffdp * (aux_var_dn%dsat_dp*aux_var_dn%den+ &
+                                aux_var_dn%sat*aux_var_dn%dden_dp)
+        ddiff_dt_dn = diffdp * aux_var_dn%sat*aux_var_dn%dden_dt
                                     
-        Jdn(1,1) = Jdn(1,1)+ddiff_dp_dn*0.5d0*(aux_var_up%diff(1) + aux_var_dn%diff(1))*&
-                                              (aux_var_up%xmol(1) - aux_var_dn%xmol(1))
-        Jdn(1,2) = Jdn(1,2)+ddiff_dt_dn*0.5d0*(aux_var_up%diff(1) + aux_var_dn%diff(1))*&
-                                              (aux_var_up%xmol(1) - aux_var_dn%xmol(1))
+        Jdn(1,1) = Jdn(1,1)+ddiff_dp_dn*aux_var_dn%diff(1)*&
+                                        (aux_var_up%xmol(1) - aux_var_dn%xmol(1))
+        Jdn(1,2) = Jdn(1,2)+ddiff_dt_dn*aux_var_dn%diff(1)*&
+                                        (aux_var_up%xmol(1) - aux_var_dn%xmol(1))
         do ispec=2, option%nspec
-          Jdn(ispec,1) = Jdn(ispec,1)+ddiff_dp_dn*0.5d0*(aux_var_up%diff(ispec) + aux_var_dn%diff(ispec))*&
+          Jdn(ispec,1) = Jdn(ispec,1)+ddiff_dp_dn*aux_var_dn%diff(ispec)*&
                                                 (aux_var_up%xmol(ispec) - aux_var_dn%xmol(ispec))
-          Jdn(ispec,2) = Jdn(ispec,2)+ddiff_dt_dn*0.5d0*(aux_var_up%diff(ispec) + aux_var_dn%diff(ispec))*&
+          Jdn(ispec,2) = Jdn(ispec,2)+ddiff_dt_dn*aux_var_dn%diff(ispec)*&
                                                 (aux_var_up%xmol(ispec) - aux_var_dn%xmol(ispec))
-          Jdn(ispec,ispec+1) = Jdn(ispec,ispec+1)+diff*0.5d0*(aux_var_up%diff(ispec) + aux_var_dn%diff(ispec))*-1.d0
+          Jdn(ispec,ispec+1) = Jdn(ispec,ispec+1)+diff*aux_var_dn%diff(ispec)*-1.d0
         enddo  
       endif
   end select
@@ -921,18 +956,37 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   Jdn = Jdn * option%dt
 
 #ifdef DEBUG_BCFLUX_DERIVATIVES  
+   call copyAuxVar(aux_var_up,aux_var_pert_up,option)
    call copyAuxVar(aux_var_dn,aux_var_pert_dn,option)
+   x_up(1) = aux_var_up%pres
+   x_up(2) = aux_var_up%temp
+   x_up(3) = aux_var_up%xmol(2)
    x_dn(1) = aux_var_dn%pres
    x_dn(2) = aux_var_dn%temp
    x_dn(3) = aux_var_dn%xmol(2)
+   do ideriv = 1,3
+     if (ibndtype(ideriv) == ZERO_GRADIENT_BC) then
+       x_up(ideriv) = x_dn(ideriv)
+     endif
+   enddo
    call RichardsBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
                        por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
                        area,dist_gravity,option,v_darcy,res)
+   if (ibndtype(RICHARDS_PRESSURE_DOF) == ZERO_GRADIENT_BC .or. &
+       ibndtype(RICHARDS_TEMPERATURE_DOF) == ZERO_GRADIENT_BC .or. &
+       ibndtype(RICHARDS_CONCENTRATION_DOF) == ZERO_GRADIENT_BC) then
+     x_pert_up = x_up
+   endif
    do ideriv = 1,3
      x_pert_dn = x_dn
      x_pert_dn(ideriv) = x_pert_dn(ideriv) + pert(ideriv)
+     x_pert_up = x_up
+     if (ibndtype(ideriv) == ZERO_GRADIENT_BC) then
+       x_pert_up(ideriv) = x_pert_dn(ideriv)
+     endif   
      call computeAuxVar(x_pert_dn,aux_var_pert_dn,iphase,sat_func_dn,option)
-     call RichardsBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_pert_dn, &
+     call computeAuxVar(x_pert_up,aux_var_pert_up,iphase,sat_func_dn,option)
+     call RichardsBCFlux(ibndtype,aux_vars,aux_var_pert_up,aux_var_pert_dn, &
                          por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
                          area,dist_gravity,option,v_darcy,res_pert_dn)
      J_pert_dn(:,ideriv) = (res_pert_dn(:)-res(:))/pert(ideriv)
@@ -975,11 +1029,11 @@ subroutine RichardsBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   q = 0.d0
 
   ! Flow   
+  diffdp = por_dn*tor_dn/dd_up*area
   select case(ibndtype(RICHARDS_PRESSURE_DOF))
     ! figure out the direction of flow
-    case(DIRICHLET_BC,HYDROSTATIC_BC,ZERO_GRADIENT_BC)
+    case(DIRICHLET_BC,HYDROSTATIC_BC)
       Dq = perm_dn / dd_up
-      diffdp = por_dn*tor_dn/dd_up*area
       ! Flow term
       if (aux_var_up%sat > sir_dn .or. aux_var_dn%sat > sir_dn) then
         upweight=1.D0
@@ -1037,8 +1091,10 @@ subroutine RichardsBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   ! Diffusion term   
   select case(ibndtype(RICHARDS_CONCENTRATION_DOF))
     case(DIRICHLET_BC,HYDROSTATIC_BC) 
-      if (aux_var_up%sat > eps .and. aux_var_dn%sat > eps) then
-        diff = diffdp * 0.25D0*(aux_var_up%sat+aux_var_dn%sat)*(aux_var_up%den+aux_var_dn%den)
+!      if (aux_var_up%sat > eps .and. aux_var_dn%sat > eps) then
+!        diff = diffdp * 0.25D0*(aux_var_up%sat+aux_var_dn%sat)*(aux_var_up%den+aux_var_dn%den)
+      if (aux_var_dn%sat > eps) then
+        diff = diffdp * aux_var_dn%sat*aux_var_dn%den
         do ispec = 1, option%nspec
           fluxm(ispec) = fluxm(ispec) + diff * aux_var_dn%diff(ispec)* &
                            (aux_var_up%xmol(ispec)-aux_var_dn%xmol(ispec))
@@ -1231,7 +1287,7 @@ subroutine RichardsUpdateFixedAccumulation(realization)
 
   call VecRestoreArrayF90(field%accum, accum_p, ierr)
 
-  call RichardsNumericalJacobianTest(field%xx,realization)
+!  call RichardsNumericalJacobianTest(field%xx,realization)
 
 end subroutine RichardsUpdateFixedAccumulation
 
@@ -1433,7 +1489,7 @@ subroutine RichardsAnalyticalResidual(snes,xx,r,realization,ierr)
   endif
 
   r_p = 0.d0
-#if 0
+#if 1
   ! Accumulation terms ------------------------------------
   r_p = - accum_p
 
@@ -1452,7 +1508,7 @@ subroutine RichardsAnalyticalResidual(snes,xx,r,realization,ierr)
     r_p(istart:iend) = r_p(istart:iend) + Res(1:option%ndof)
   enddo
 #endif
-#if 0
+#if 1
   ! Source/sink terms -------------------------------------
   source_sink => realization%source_sinks%first 
   do 
@@ -1591,7 +1647,7 @@ subroutine RichardsAnalyticalResidual(snes,xx,r,realization,ierr)
     cur_connection_set => cur_connection_set%next
   enddo    
 #endif
-#if 0
+#if 1
   ! Boundary Flux Terms -----------------------------------
   boundary_condition => realization%boundary_conditions%first
   sum_connection = 0    
@@ -1813,6 +1869,8 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
 !   2. Average molecular weights to p,t,s
   flag = SAME_NONZERO_PATTERN
 
+!  call RichardsNumericalJacobianTest(xx,realization)
+
  ! print *,'*********** In Jacobian ********************** '
   call MatZeroEntries(A,ierr)
 
@@ -1828,7 +1886,7 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
   call VecGetArrayF90(field%icap_loc, icap_loc_p, ierr)
   call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr)
   call VecGetArrayF90(field%var_loc, var_loc_p, ierr)
-#if 0
+#if 1
   ! Accumulation terms ------------------------------------
   do local_id = 1, grid%nlmax  ! For each local node do...
     ghosted_id = grid%nL2G(local_id)
@@ -1856,7 +1914,7 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
   call MatView(A,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
-#if 0
+#if 1
   ! Source/sink terms -------------------------------------
   source_sink => realization%source_sinks%first 
   do 
@@ -1984,13 +2042,12 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
                         realization%saturation_function_array(icap_up)%ptr,&
                         realization%saturation_function_array(icap_dn)%ptr,&
                         Jup,Jdn)
-      Jdn = -1.d0*Jdn
       call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1,Jup,ADD_VALUES,ierr)
       call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_dn-1,Jdn,ADD_VALUES,ierr)
       Jup = -1.d0*Jup
       Jdn = -1.d0*Jdn
       call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_dn-1,Jdn,ADD_VALUES,ierr)
-      call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_up-1,Jdn,ADD_VALUES,ierr)
+      call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_up-1,Jup,ADD_VALUES,ierr)
     enddo
     cur_connection_set => cur_connection_set%next
   enddo
@@ -2002,7 +2059,7 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
   call MatView(A,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 #endif
-#if 0
+#if 1
   ! Boundary Flux Terms -----------------------------------
   boundary_condition => realization%boundary_conditions%first
   sum_connection = 0    
@@ -2070,6 +2127,7 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
                                 distance_gravity,option, &
                                 realization%saturation_function_array(icap_dn)%ptr,&
                                 Jdn)
+      Jdn = -1.d0*Jdn
       call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jdn,ADD_VALUES,ierr)
  
     enddo
@@ -2128,7 +2186,7 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
   call MatZeroRowsLocal(A,n_zero_rows,zero_rows_local_ghosted,f_up,ierr) 
 #endif
 
-#define DEBUG_GEH
+!#define DEBUG_GEH
 #ifdef DEBUG_GEH    
  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian.out',viewer,ierr)
  call MatView(A,viewer,ierr)
@@ -2311,7 +2369,9 @@ subroutine computeAuxVar(x,aux_var,iphase,saturation_function,option)
 !  aux_var%dkr_dp = dkr_dp
   aux_var%dsat_dp = ds_dp
   aux_var%dden_dt = dw_dt
+
   aux_var%dden_dp = dw_dp
+  
   aux_var%dkvr_dt = -kr/(visl*visl)*(dvis_dt+dvis_dpsat*dpsat_dt)
   aux_var%dkvr_dp = dkr_dp/visl - kr/(visl*visl)*dvis_dp
   if (iphase < 3) then !kludge since pw is constant in the unsat zone
