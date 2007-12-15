@@ -375,10 +375,13 @@ subroutine OutputVelocitiesTecplot(realization,step)
              '"Z [m]",' // &
              '"vlx [m/y]",' // &
              '"vly [m/y]",' // &
-             '"vlz [m/y]",' // &
-             '"vgx [m/y]",' // &
-             '"vgy [m/y]",' // &
-             '"vgz [m/y]"'
+             '"vlz [m/y]",'
+    if (option%nphase > 1) then
+      string = trim(string) // &
+               '"vgx [m/y]",' // &
+               '"vgy [m/y]",' // &
+               '"vgz [m/y]"'
+    endif
     write(IUNIT3,'(a)') trim(string)
   
     ! write zone header
@@ -421,18 +424,20 @@ subroutine OutputVelocitiesTecplot(realization,step)
   call GridGlobalToNatural(grid,global,natural,ONEDOF)
   call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
 
-  call GetCellCenteredVelocities(realization,global,GAS_PHASE,X_DIRECTION)
-  call GridGlobalToNatural(grid,global,natural,ONEDOF)
-  call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
+  if (option%nphase > 1) then
+    call GetCellCenteredVelocities(realization,global,GAS_PHASE,X_DIRECTION)
+    call GridGlobalToNatural(grid,global,natural,ONEDOF)
+    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
 
-  call GetCellCenteredVelocities(realization,global,GAS_PHASE,Y_DIRECTION)
-  call GridGlobalToNatural(grid,global,natural,ONEDOF)
-  call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
+    call GetCellCenteredVelocities(realization,global,GAS_PHASE,Y_DIRECTION)
+    call GridGlobalToNatural(grid,global,natural,ONEDOF)
+    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
 
-  call GetCellCenteredVelocities(realization,global,GAS_PHASE,Z_DIRECTION)
-  call GridGlobalToNatural(grid,global,natural,ONEDOF)
-  call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
-
+    call GetCellCenteredVelocities(realization,global,GAS_PHASE,Z_DIRECTION)
+    call GridGlobalToNatural(grid,global,natural,ONEDOF)
+    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
+  endif
+  
   call VecDestroy(natural,ierr)
   call VecDestroy(global,ierr)
 
@@ -490,7 +495,7 @@ subroutine OutputFluxVelocitiesTecplot(realization,step,iphase, &
   grid => realization%grid
   option => realization%option
   field => realization%field
-  output_option => output_option
+  output_option => realization%output_option
   
   ! open file
   filename = 'pflow_'
@@ -1158,20 +1163,22 @@ subroutine OutputHDF5(realization,step)
     call WriteHDF5DataSetFromVec(string,realization,global,grp_id, &
                                  H5T_NATIVE_DOUBLE)
 
-    call GetCellCenteredVelocities(realization,global,GAS_PHASE,X_DIRECTION)
-    string = "Gas X-Velocity"
-    call WriteHDF5DataSetFromVec(string,realization,global,grp_id, &
-                               H5T_NATIVE_DOUBLE)
+    if (option%nphase > 1) then
+      call GetCellCenteredVelocities(realization,global,GAS_PHASE,X_DIRECTION)
+      string = "Gas X-Velocity"
+      call WriteHDF5DataSetFromVec(string,realization,global,grp_id, &
+                                   H5T_NATIVE_DOUBLE)
   
-    call GetCellCenteredVelocities(realization,global,GAS_PHASE,Y_DIRECTION)
-    string = "Gas Y-Velocity"
-    call WriteHDF5DataSetFromVec(string,realization,global,grp_id, &
-                                 H5T_NATIVE_DOUBLE)
+      call GetCellCenteredVelocities(realization,global,GAS_PHASE,Y_DIRECTION)
+      string = "Gas Y-Velocity"
+      call WriteHDF5DataSetFromVec(string,realization,global,grp_id, &
+                                   H5T_NATIVE_DOUBLE)
   
-    call GetCellCenteredVelocities(realization,global,GAS_PHASE,Z_DIRECTION)
-    string = "Gas Z-Velocity"
-    call WriteHDF5DataSetFromVec(string,realization,global,grp_id, &
-                                 H5T_NATIVE_DOUBLE)
+      call GetCellCenteredVelocities(realization,global,GAS_PHASE,Z_DIRECTION)
+      string = "Gas Z-Velocity"
+      call WriteHDF5DataSetFromVec(string,realization,global,grp_id, &
+                                   H5T_NATIVE_DOUBLE)
+    endif
   endif
 
   if (output_option%print_hdf5_flux_velocities) then
@@ -1180,22 +1187,28 @@ subroutine OutputHDF5(realization,step)
     if (grid%structured_grid%nx > 1) then
       string = "Liquid X-Flux Velocities"
       call WriteHDF5FluxVelocities(string,realization,LIQUID_PHASE,X_DIRECTION,grp_id)
-      string = "Gas X-Flux Velocities"
-      call WriteHDF5FluxVelocities(string,realization,GAS_PHASE,X_DIRECTION,grp_id)
+      if (option%nphase > 1) then
+        string = "Gas X-Flux Velocities"
+        call WriteHDF5FluxVelocities(string,realization,GAS_PHASE,X_DIRECTION,grp_id)
+      endif
     endif
     
     if (grid%structured_grid%ny > 1) then
       string = "Liquid Y-Flux Velocities"
       call WriteHDF5FluxVelocities(string,realization,LIQUID_PHASE,Y_DIRECTION,grp_id)
-      string = "Gas Y-Flux Velocities"
-      call WriteHDF5FluxVelocities(string,realization,GAS_PHASE,Y_DIRECTION,grp_id)
+      if (option%nphase > 1) then
+        string = "Gas Y-Flux Velocities"
+        call WriteHDF5FluxVelocities(string,realization,GAS_PHASE,Y_DIRECTION,grp_id)
+      endif
     endif
     
     if (grid%structured_grid%nz > 1) then
       string = "Liquid Z-Flux Velocities"
       call WriteHDF5FluxVelocities(string,realization,LIQUID_PHASE,Z_DIRECTION,grp_id)
-      string = "Gas Z-Flux Velocities"
-      call WriteHDF5FluxVelocities(string,realization,GAS_PHASE,Z_DIRECTION,grp_id)
+      if (option%nphase > 1) then
+        string = "Gas Z-Flux Velocities"
+        call WriteHDF5FluxVelocities(string,realization,GAS_PHASE,Z_DIRECTION,grp_id)
+      endif
     endif
     
   endif 
@@ -1856,9 +1869,9 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
       if (cur_connection_set%dist(direction,iconn) < 0.99d0) cycle
       local_id = cur_connection_set%id_dn(iconn)
       if (iphase == LIQUID_PHASE) then
-        vec_ptr(local_id) = vec_ptr(local_id) + field%vvlbc(iconn)
+        vec_ptr(local_id) = vec_ptr(local_id) + field%boundary_velocities(1,iconn)
       else
-        vec_ptr(local_id) = vec_ptr(local_id) + field%vvgbc(iconn)
+        vec_ptr(local_id) = vec_ptr(local_id) + field%boundary_velocities(2,iconn)
       endif
       num_additions(local_id) = num_additions(local_id) + 1
     enddo

@@ -11,6 +11,9 @@ module Richards_Analytical_module
   implicit none
   
   private 
+
+#include "definitions.h"
+  
 #include "include/finclude/petsc.h"
 !#include "include/petscf90.h"
 #include "include/finclude/petscvec.h"
@@ -235,6 +238,266 @@ subroutine copyAuxVar(aux_var,aux_var2,option)
 
 end subroutine copyAuxVar
   
+! ************************************************************************** !
+!
+! RichardsUpdateAuxVars: Updates the auxilliary variables associated with 
+!                        the Richards problem
+! author: Glenn Hammond
+! date: 12/10/07
+!
+! ************************************************************************** !
+subroutine RichardsUpdateAuxVars(realization)
+
+  use Realization_module
+  use Option_module
+  use Field_module
+  use Grid_module
+  use Coupler_module
+  use Connection_module
+  use Material_module
+  
+  implicit none
+
+  type(realization_type) :: realization
+  
+  type(option_type), pointer :: option
+  type(grid_type), pointer :: grid
+  type(field_type), pointer :: field
+  type(coupler_type), pointer :: boundary_condition
+  type(connection_type), pointer :: cur_connection_set
+
+  integer :: ghosted_id, local_id, istart, iend, sum_connection, idof, iconn
+  integer :: iphasebc
+  PetscScalar, pointer :: xx_loc_p(:), icap_loc_p(:), iphase_loc_p(:)
+  real*8 :: xxbc(realization%option%ndof)
+  PetscErrorCode :: ierr
+  
+  option => realization%option
+  grid => realization%grid
+  field => realization%field
+  
+  call VecGetArrayF90(field%xx_loc,xx_loc_p, ierr)
+  call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr)
+  call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr)
+
+  do ghosted_id = 1, grid%ngmax
+    !geh - Ignore inactive cells with inactive materials
+    if (associated(field%imat)) then
+      if (field%imat(ghosted_id) <= 0) cycle
+    endif
+    iend = ghosted_id*option%ndof
+    istart = iend-option%ndof+1
+    call computeAuxVar(xx_loc_p(istart:iend),aux_vars(ghosted_id), &
+                       int(iphase_loc_p(ghosted_id)), &
+                       realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
+                       option)
+                       
+  enddo
+
+  boundary_condition => realization%boundary_conditions%first
+  sum_connection = 0    
+  do 
+    if (.not.associated(boundary_condition)) exit
+    cur_connection_set => boundary_condition%connection
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+      local_id = cur_connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
+      if (associated(field%imat)) then
+        if (field%imat(ghosted_id) <= 0) cycle
+      endif
+
+      do idof=1,option%ndof
+        select case(boundary_condition%condition%itype(idof))
+          case(DIRICHLET_BC,HYDROSTATIC_BC)
+            xxbc(idof) = boundary_condition%aux_real_var(idof,iconn)
+          case(NEUMANN_BC,ZERO_GRADIENT_BC)
+            xxbc(idof) = xx_loc_p((ghosted_id-1)*option%ndof+idof)
+        end select
+      enddo
+      
+      select case(boundary_condition%condition%itype(RICHARDS_PRESSURE_DOF))
+        case(DIRICHLET_BC,HYDROSTATIC_BC)
+          iphasebc = boundary_condition%aux_int_var(1,iconn)
+        case(NEUMANN_BC,ZERO_GRADIENT_BC)
+          iphasebc=int(iphase_loc_p(ghosted_id))                               
+      end select
+
+      call computeAuxVar(xxbc,aux_vars_bc(sum_connection), &
+                         iphasebc, &
+                         realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
+                         option)
+    enddo
+    boundary_condition => boundary_condition%next
+  enddo
+
+
+  call VecRestoreArrayF90(field%xx_loc,xx_loc_p, ierr)
+  call VecRestoreArrayF90(field%icap_loc,icap_loc_p,ierr)
+  call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p,ierr)
+
+end subroutine RichardsUpdateAuxVars
+
+! ************************************************************************** !
+!
+! RichardsUpdateFixedAccumulation: Updates the fixed portion of the 
+!                                  accumulation term
+! author: Glenn Hammond
+! date: 12/10/07
+!
+! ************************************************************************** !
+subroutine RichardsUpdateFixedAccumulation(realization)
+
+  use Realization_module
+  use Option_module
+  use Field_module
+  use Grid_module
+
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  type(option_type), pointer :: option
+  type(grid_type), pointer :: grid
+  type(field_type), pointer :: field
+
+  integer :: ghosted_id, local_id, istart, iend
+  PetscScalar, pointer :: xx_p(:), icap_loc_p(:), iphase_loc_p(:)
+  PetscScalar, pointer :: porosity_loc_p(:), tor_loc_p(:), volume_p(:), &
+                          ithrm_loc_p(:), accum_p(:)
+                          
+  PetscErrorCode :: ierr
+  
+  option => realization%option
+  grid => realization%grid
+  field => realization%field
+  
+  call VecCopy(field%xx, field%yy, ierr)   
+  
+  call VecGetArrayF90(field%xx,xx_p, ierr)
+  call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr)
+  call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr)
+  call VecGetArrayF90(field%porosity_loc,porosity_loc_p,ierr)
+  call VecGetArrayF90(field%tor_loc,tor_loc_p,ierr)
+  call VecGetArrayF90(grid%volume,volume_p,ierr)
+  call VecGetArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
+
+  call VecGetArrayF90(field%accum, accum_p, ierr)
+
+  do local_id = 1, grid%ngmax
+    ghosted_id = grid%nL2G(local_id)
+    !geh - Ignore inactive cells with inactive materials
+    if (associated(field%imat)) then
+      if (field%imat(ghosted_id) <= 0) cycle
+    endif
+    iend = local_id*option%ndof
+    istart = iend-option%ndof+1
+    call computeAuxVar(xx_p(istart:iend),aux_vars(ghosted_id), &
+                       int(iphase_loc_p(ghosted_id)), &
+                       realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
+                       option)
+    call RichardsAccumulation(aux_vars(ghosted_id),porosity_loc_p(ghosted_id), &
+                              volume_p(local_id), &
+                              option%dencpr(ithrm_loc_p(ghosted_id)), &
+                              option,accum_p(istart:iend)) 
+  enddo
+
+  call VecRestoreArrayF90(field%xx,xx_p, ierr)
+  call VecRestoreArrayF90(field%icap_loc,icap_loc_p,ierr)
+  call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p,ierr)
+  call VecRestoreArrayF90(field%porosity_loc,porosity_loc_p,ierr)
+  call VecRestoreArrayF90(field%tor_loc,tor_loc_p,ierr)
+  call VecRestoreArrayF90(grid%volume,volume_p,ierr)
+  call VecRestoreArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
+
+  call VecRestoreArrayF90(field%accum, accum_p, ierr)
+
+!  call RichardsNumericalJacobianTest(field%xx,realization)
+
+end subroutine RichardsUpdateFixedAccumulation
+
+! ************************************************************************** !
+!
+! RichardsNumericalJacobianTest: Computes the a test numerical jacobian
+! author: Glenn Hammond
+! date: 12/13/07
+!
+! ************************************************************************** !
+subroutine RichardsNumericalJacobianTest(xx,realization)
+
+  use Realization_module
+  use Option_module
+
+  implicit none
+
+  Vec :: xx
+  type(realization_type) :: realization
+
+  Vec :: xx_pert
+  Vec :: res
+  Vec :: res_pert
+  Mat :: A
+  PetscViewer :: viewer
+  PetscErrorCode :: ierr
+  
+  real*8 :: pert_tol = 1.d-6
+  real*8 :: derivative, perturbation
+  
+  PetscScalar, pointer :: vec_p(:), vec2_p(:)
+
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  
+  integer :: idof, idof2
+
+  grid => realization%grid
+  option => realization%option
+  field => realization%field
+  
+  call VecDuplicate(xx,xx_pert,ierr)
+  call VecDuplicate(xx,res,ierr)
+  call VecDuplicate(xx,res_pert,ierr)
+  
+  call MatCreate(PETSC_COMM_WORLD,A,ierr)
+  call MatSetSizes(A,PETSC_DECIDE,PETSC_DECIDE,grid%nlmax*option%ndof,grid%nlmax*option%ndof,ierr)
+  call MatSetType(A,MATAIJ,ierr)
+  call MatSetFromOptions(A,ierr)
+    
+  call RichardsAnalyticalResidual(0,xx,res,realization,ierr)
+  call VecGetArrayF90(res,vec2_p,ierr)
+  do idof = 1, grid%nlmax*option%ndof
+    call VecCopy(xx,xx_pert,ierr)
+    call VecGetArrayF90(xx_pert,vec_p,ierr)
+    perturbation = vec_p(idof)*pert_tol
+    vec_p(idof) = vec_p(idof)+perturbation
+    call VecRestoreArrayF90(xx_pert,vec_p,ierr)
+    call RichardsAnalyticalResidual(0,xx_pert,res_pert,realization,ierr)
+    call VecGetArrayF90(res_pert,vec_p,ierr)
+    do idof2 = 1, grid%nlmax*option%ndof
+      derivative = (vec_p(idof2)-vec2_p(idof2))/perturbation
+      if (dabs(derivative) > 1.d-30) then
+        call MatSetValue(A,idof2-1,idof-1,derivative,INSERT_VALUES,ierr)
+      endif
+    enddo
+    call VecRestoreArrayF90(res_pert,vec_p,ierr)
+  enddo
+  call VecRestoreArrayF90(res,vec2_p,ierr)
+
+  call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
+  call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
+  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'numerical_jacobian.out',viewer,ierr)
+  call MatView(A,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+
+  call MatDestroy(A,ierr)
+  
+  call VecDestroy(xx_pert,ierr)
+  call VecDestroy(res,ierr)
+  call VecDestroy(res_pert,ierr)
+  
+end subroutine RichardsNumericalJacobianTest
+
 subroutine RichardsAccumulationDerivative(aux_var,por,vol,rock_dencpr,option, &
                                           sat_func,J)
 
@@ -739,8 +1002,6 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
  
   implicit none
   
-#include "definitions.h"
-  
   integer :: ibndtype(:)
   type(richards_type) :: aux_var_up, aux_var_dn
   type(option_type) :: option
@@ -1004,8 +1265,6 @@ subroutine RichardsBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
  
   implicit none
   
-#include "definitions.h"
-  
   integer :: ibndtype(:)
   type(richards_type) :: aux_var_up, aux_var_dn
   type(option_type) :: option
@@ -1117,264 +1376,6 @@ end subroutine RichardsBCFlux
 
 ! ************************************************************************** !
 !
-! RichardsUpdateAuxVars: Updates the auxilliary variables associated with 
-!                        the Richards problem
-! author: Glenn Hammond
-! date: 12/10/07
-!
-! ************************************************************************** !
-subroutine RichardsUpdateAuxVars(realization)
-
-  use Realization_module
-  use Option_module
-  use Field_module
-  use Grid_module
-  use Coupler_module
-  use Connection_module
-  use Material_module
-  
-  implicit none
-  
-  type(realization_type) :: realization
-  
-  type(option_type), pointer :: option
-  type(grid_type), pointer :: grid
-  type(field_type), pointer :: field
-  type(coupler_type), pointer :: boundary_condition
-  type(connection_type), pointer :: cur_connection_set
-
-  integer :: ghosted_id, local_id, istart, iend, sum_connection, idof, iconn
-  integer :: iphasebc
-  PetscScalar, pointer :: xx_loc_p(:), icap_loc_p(:), iphase_loc_p(:)
-  real*8 :: xxbc(realization%option%ndof)
-  PetscErrorCode :: ierr
-  
-  option => realization%option
-  grid => realization%grid
-  field => realization%field
-  
-  call VecGetArrayF90(field%xx_loc,xx_loc_p, ierr)
-  call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr)
-  call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr)
-
-  do ghosted_id = 1, grid%ngmax
-    !geh - Ignore inactive cells with inactive materials
-    if (associated(field%imat)) then
-      if (field%imat(ghosted_id) <= 0) cycle
-    endif
-    iend = ghosted_id*option%ndof
-    istart = iend-option%ndof+1
-    call computeAuxVar(xx_loc_p(istart:iend),aux_vars(ghosted_id), &
-                       int(iphase_loc_p(ghosted_id)), &
-                       realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
-                       option)
-                       
-  enddo
-
-  boundary_condition => realization%boundary_conditions%first
-  sum_connection = 0    
-  do 
-    if (.not.associated(boundary_condition)) exit
-    cur_connection_set => boundary_condition%connection
-    do iconn = 1, cur_connection_set%num_connections
-      sum_connection = sum_connection + 1
-      local_id = cur_connection_set%id_dn(iconn)
-      ghosted_id = grid%nL2G(local_id)
-      if (associated(field%imat)) then
-        if (field%imat(ghosted_id) <= 0) cycle
-      endif
-
-      do idof=1,option%ndof
-        select case(boundary_condition%condition%itype(idof))
-          case(DIRICHLET_BC,HYDROSTATIC_BC)
-            xxbc(idof) = boundary_condition%aux_real_var(idof,iconn)
-          case(NEUMANN_BC,ZERO_GRADIENT_BC)
-            xxbc(idof) = xx_loc_p((ghosted_id-1)*option%ndof+idof)
-        end select
-      enddo
-      
-      select case(boundary_condition%condition%itype(RICHARDS_PRESSURE_DOF))
-        case(DIRICHLET_BC,HYDROSTATIC_BC)
-          iphasebc = boundary_condition%aux_int_var(1,iconn)
-        case(NEUMANN_BC,ZERO_GRADIENT_BC)
-          iphasebc=int(iphase_loc_p(ghosted_id))                               
-      end select
-
-      call computeAuxVar(xxbc,aux_vars_bc(sum_connection), &
-                         iphasebc, &
-                         realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
-                         option)
-    enddo
-    boundary_condition => boundary_condition%next
-  enddo
-
-
-  call VecRestoreArrayF90(field%xx_loc,xx_loc_p, ierr)
-  call VecRestoreArrayF90(field%icap_loc,icap_loc_p,ierr)
-  call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p,ierr)
-
-end subroutine RichardsUpdateAuxVars
-
-! ************************************************************************** !
-!
-! RichardsUpdateFixedAccumulation: Updates the fixed portion of the 
-!                                  accumulation term
-! author: Glenn Hammond
-! date: 12/10/07
-!
-! ************************************************************************** !
-subroutine RichardsUpdateFixedAccumulation(realization)
-
-  use Realization_module
-  use Option_module
-  use Field_module
-  use Grid_module
-
-  implicit none
-  
-  type(realization_type) :: realization
-  
-  type(option_type), pointer :: option
-  type(grid_type), pointer :: grid
-  type(field_type), pointer :: field
-
-  integer :: ghosted_id, local_id, istart, iend
-  PetscScalar, pointer :: xx_p(:), icap_loc_p(:), iphase_loc_p(:)
-  PetscScalar, pointer :: porosity_loc_p(:), tor_loc_p(:), volume_p(:), &
-                          ithrm_loc_p(:), accum_p(:)
-                          
-  PetscErrorCode :: ierr
-  
-  option => realization%option
-  grid => realization%grid
-  field => realization%field
-  
-  call VecGetArrayF90(field%xx,xx_p, ierr)
-  call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr)
-  call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr)
-  call VecGetArrayF90(field%porosity_loc,porosity_loc_p,ierr)
-  call VecGetArrayF90(field%tor_loc,tor_loc_p,ierr)
-  call VecGetArrayF90(grid%volume,volume_p,ierr)
-  call VecGetArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
-
-  call VecGetArrayF90(field%accum, accum_p, ierr)
-
-  do local_id = 1, grid%ngmax
-    ghosted_id = grid%nL2G(local_id)
-    !geh - Ignore inactive cells with inactive materials
-    if (associated(field%imat)) then
-      if (field%imat(ghosted_id) <= 0) cycle
-    endif
-    iend = local_id*option%ndof
-    istart = iend-option%ndof+1
-    call computeAuxVar(xx_p(istart:iend),aux_vars(ghosted_id), &
-                       int(iphase_loc_p(ghosted_id)), &
-                       realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
-                       option)
-    call RichardsAccumulation(aux_vars(ghosted_id),porosity_loc_p(ghosted_id), &
-                              volume_p(local_id), &
-                              option%dencpr(ithrm_loc_p(ghosted_id)), &
-                              option,accum_p(istart:iend)) 
-  enddo
-
-  call VecRestoreArrayF90(field%xx,xx_p, ierr)
-  call VecRestoreArrayF90(field%icap_loc,icap_loc_p,ierr)
-  call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p,ierr)
-  call VecRestoreArrayF90(field%porosity_loc,porosity_loc_p,ierr)
-  call VecRestoreArrayF90(field%tor_loc,tor_loc_p,ierr)
-  call VecRestoreArrayF90(grid%volume,volume_p,ierr)
-  call VecRestoreArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
-
-  call VecRestoreArrayF90(field%accum, accum_p, ierr)
-
-!  call RichardsNumericalJacobianTest(field%xx,realization)
-
-end subroutine RichardsUpdateFixedAccumulation
-
-! ************************************************************************** !
-!
-! RichardsNumericalJacobianTest: Computes the a test numerical jacobian
-! author: Glenn Hammond
-! date: 12/13/07
-!
-! ************************************************************************** !
-subroutine RichardsNumericalJacobianTest(xx,realization)
-
-  use Realization_module
-  use Option_module
-
-  implicit none
-
-  Vec :: xx
-  type(realization_type) :: realization
-
-  Vec :: xx_pert
-  Vec :: res
-  Vec :: res_pert
-  Mat :: A
-  PetscViewer :: viewer
-  PetscErrorCode :: ierr
-  
-  real*8 :: pert_tol = 1.d-6
-  real*8 :: derivative, perturbation
-  
-  PetscScalar, pointer :: vec_p(:), vec2_p(:)
-
-  type(grid_type), pointer :: grid
-  type(option_type), pointer :: option
-  type(field_type), pointer :: field
-  
-  integer :: idof, idof2
-
-  grid => realization%grid
-  option => realization%option
-  field => realization%field
-  
-  call VecDuplicate(xx,xx_pert,ierr)
-  call VecDuplicate(xx,res,ierr)
-  call VecDuplicate(xx,res_pert,ierr)
-  
-  call MatCreate(PETSC_COMM_WORLD,A,ierr)
-  call MatSetSizes(A,PETSC_DECIDE,PETSC_DECIDE,grid%nlmax*option%ndof,grid%nlmax*option%ndof,ierr)
-  call MatSetType(A,MATAIJ,ierr)
-  call MatSetFromOptions(A,ierr)
-    
-  call RichardsAnalyticalResidual(0,xx,res,realization,ierr)
-  call VecGetArrayF90(res,vec2_p,ierr)
-  do idof = 1, grid%nlmax*option%ndof
-    call VecCopy(xx,xx_pert,ierr)
-    call VecGetArrayF90(xx_pert,vec_p,ierr)
-    perturbation = vec_p(idof)*pert_tol
-    vec_p(idof) = vec_p(idof)+perturbation
-    call VecRestoreArrayF90(xx_pert,vec_p,ierr)
-    call RichardsAnalyticalResidual(0,xx_pert,res_pert,realization,ierr)
-    call VecGetArrayF90(res_pert,vec_p,ierr)
-    do idof2 = 1, grid%nlmax*option%ndof
-      derivative = (vec_p(idof2)-vec2_p(idof2))/perturbation
-      if (dabs(derivative) > 1.d-20) then
-        call MatSetValue(A,idof2-1,idof-1,derivative,INSERT_VALUES,ierr)
-      endif
-    enddo
-    call VecRestoreArrayF90(res_pert,vec_p,ierr)
-  enddo
-  call VecRestoreArrayF90(res,vec2_p,ierr)
-
-  call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
-  call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'numerical_jacobian.out',viewer,ierr)
-  call MatView(A,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
-
-  call MatDestroy(A,ierr)
-  
-  call VecDestroy(xx_pert,ierr)
-  call VecDestroy(res,ierr)
-  call VecDestroy(res_pert,ierr)
-  
-end subroutine RichardsNumericalJacobianTest
-
-! ************************************************************************** !
-!
 ! RichardsAnalyticalResidual: Computes the residual equation and analytical
 !                             derivatives for the Jacobian, if applicable
 ! author: Glenn Hammond
@@ -1396,8 +1397,6 @@ subroutine RichardsAnalyticalResidual(snes,xx,r,realization,ierr)
   
   implicit none
 
-#include "definitions.h"
- 
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
   Vec, intent(out) :: r
