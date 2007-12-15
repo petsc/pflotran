@@ -45,7 +45,8 @@ module Richards_Analytical_module
 
   public RichardsAnalyticalResidual,RichardsAnalyticalJacobian, &
          RichardsUpdateFixedAccumulation,RichardsTimeCut,&
-         RichardsSetup, RichardsNumericalJacobianTest
+         RichardsSetup, RichardsNumericalJacobianTest, &
+         RichardsGetVarFromArray
 
   public :: createRichardsZeroArray
   integer, save :: n_zero_rows = 0
@@ -2275,7 +2276,98 @@ subroutine createRichardsZeroArray(realization)
 
 end subroutine createRichardsZeroArray
 
+! ************************************************************************** !
+!
+! RichardsGetVarFromArray: Extracts variables indexed by ivar and isubvar
+!                          from Richards type
+! author: Glenn Hammond
+! date: 10/25/07
+!
+! ************************************************************************** !
+subroutine RichardsGetVarFromArray(realization,vec,ivar,isubvar)
 
+  use Realization_module
+  use Grid_module
+  use Option_module
+  use Field_module
+
+#define TEMPERATURE 4
+#define PRESSURE 5
+#define LIQUID_SATURATION 6
+#define GAS_SATURATION 7
+#define LIQUID_ENERGY 8
+#define GAS_ENERGY 9
+#define LIQUID_MOLE_FRACTION 10
+#define GAS_MOLE_FRACTION 11
+#define VOLUME_FRACTION 12
+#define PHASE 13  
+
+  implicit none
+  
+  type(realization_type) :: realization
+  Vec :: vec
+  integer :: ivar
+  integer :: isubvar
+
+  integer :: local_id, ghosted_id
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  PetscScalar, pointer :: vec_ptr(:), vec2_ptr(:)
+  PetscErrorCode :: ierr
+
+  option => realization%option
+  grid => realization%grid
+  field => realization%field
+
+  call RichardsUpdateAuxVars(realization)
+
+  call VecGetArrayF90(vec,vec_ptr,ierr)
+
+  select case(ivar)
+    case(TEMPERATURE,PRESSURE,LIQUID_SATURATION,GAS_SATURATION, &
+         LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION,LIQUID_ENERGY,GAS_ENERGY)
+      do local_id=1,grid%nlmax
+        ghosted_id = grid%nL2G(local_id)    
+        select case(ivar)
+          case(TEMPERATURE)
+            vec_ptr(local_id) = aux_vars(ghosted_id)%temp
+          case(PRESSURE)
+            vec_ptr(local_id) = aux_vars(ghosted_id)%pres
+          case(LIQUID_SATURATION)
+            vec_ptr(local_id) = aux_vars(ghosted_id)%sat
+          case(GAS_SATURATION,GAS_MOLE_FRACTION,GAS_ENERGY)
+            vec_ptr(local_id) = 0.d0
+          case(LIQUID_MOLE_FRACTION)
+            vec_ptr(local_id) = aux_vars(ghosted_id)%xmol(isubvar+1)
+          case(LIQUID_ENERGY)
+            vec_ptr(local_id) = aux_vars(ghosted_id)%u
+        end select
+      enddo
+    case(VOLUME_FRACTION)
+      ! need to set minimum to 0.
+      call VecGetArrayF90(field%phis,vec2_ptr,ierr)
+      vec_ptr(1:grid%nlmax) = vec2_ptr(1:grid%nlmax)
+      call VecRestoreArrayF90(field%phis,vec2_ptr,ierr)
+    case(PHASE)
+      call VecGetArrayF90(field%iphas_loc,vec2_ptr,ierr)
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = vec2_ptr(grid%nL2G(local_id))
+      enddo
+      call VecRestoreArrayF90(field%iphas_loc,vec2_ptr,ierr)
+  end select
+  
+  call VecRestoreArrayF90(vec,vec_ptr,ierr)
+
+end subroutine RichardsGetVarFromArray
+
+! ************************************************************************** !
+!
+! computeAuxVar: Computes secondary variables for each grid cell
+! author: Glenn Hammond
+! date: 12/15/07
+!
+! ************************************************************************** !
 subroutine computeAuxVar(x,aux_var,iphase,saturation_function,option)
 
   use Option_module

@@ -1698,6 +1698,10 @@ subroutine GetVarFromArray(realization,vec,ivar,isubvar)
   use Option_module
   use Field_module
 
+#ifdef RICHARDS_ANALYTICAL
+  use Richards_Analytical_module
+#endif
+
   implicit none
   
   type(realization_type) :: realization
@@ -1718,6 +1722,13 @@ subroutine GetVarFromArray(realization,vec,ivar,isubvar)
   option => realization%option
   grid => realization%grid
   field => realization%field
+
+#ifdef RICHARDS_ANALYTICAL
+  if (option%imode == RICHARDS_MODE) then
+    call RichardsGetVarFromArray(realization,vec,ivar,isubvar)
+    return
+  endif
+#endif  
 
   call VecGetArrayF90(vec,vec_ptr,ierr)
       

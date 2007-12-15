@@ -421,7 +421,7 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
     if (associated(stepper%cur_waypoint)) &
       stepper%dt_max = stepper%cur_waypoint%dt_max
   else if (stepper%flowsteps == stepper%stepmax) then
-    plot_flag = 1
+    plot_flag = .true.
     nullify(stepper%cur_waypoint)
   endif
   

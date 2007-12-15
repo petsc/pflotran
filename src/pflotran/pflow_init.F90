@@ -2734,10 +2734,12 @@ subroutine assignInitialConditions(realization)
   
   type(option_type), pointer :: option
   type(field_type), pointer :: field  
+  type(grid_type), pointer :: grid
   type(coupler_type), pointer :: initial_condition
     
   option => realization%option
   field => realization%field
+  grid => realization%grid
     
   select case(option%imode)
   ! needs to be implemented
@@ -2855,6 +2857,8 @@ subroutine assignInitialConditions(realization)
   
   call VecRestoreArrayF90(field%xx,xx_p, ierr)
   call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p,ierr)
+  call GridGlobalToLocal(grid,field%xx,field%xx_loc,NDOF)  
+  call GridLocalToLocal(grid,field%iphas_loc,field%iphas_loc,NDOF)  
 
 
 
