@@ -268,7 +268,7 @@ subroutine RichardsUpdateAuxVars(realization)
   type(connection_type), pointer :: cur_connection_set
 
   integer :: ghosted_id, local_id, istart, iend, sum_connection, idof, iconn
-  integer :: iphasebc
+  integer :: iphasebc, iphase
   PetscScalar, pointer :: xx_loc_p(:), icap_loc_p(:), iphase_loc_p(:)
   real*8 :: xxbc(realization%option%ndof)
   PetscErrorCode :: ierr
@@ -288,11 +288,12 @@ subroutine RichardsUpdateAuxVars(realization)
     endif
     iend = ghosted_id*option%ndof
     istart = iend-option%ndof+1
+    iphase = int(iphase_loc_p(ghosted_id))
     call computeAuxVar(xx_loc_p(istart:iend),aux_vars(ghosted_id), &
-                       int(iphase_loc_p(ghosted_id)), &
+                       iphase, &
                        realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                        option)
-                       
+    iphase_loc_p(ghosted_id) = iphase
   enddo
 
   boundary_condition => realization%boundary_conditions%first
@@ -362,7 +363,7 @@ subroutine RichardsUpdateFixedAccumulation(realization)
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
 
-  integer :: ghosted_id, local_id, istart, iend
+  integer :: ghosted_id, local_id, istart, iend, iphase
   PetscScalar, pointer :: xx_p(:), icap_loc_p(:), iphase_loc_p(:)
   PetscScalar, pointer :: porosity_loc_p(:), tor_loc_p(:), volume_p(:), &
                           ithrm_loc_p(:), accum_p(:)
@@ -393,10 +394,12 @@ subroutine RichardsUpdateFixedAccumulation(realization)
     endif
     iend = local_id*option%ndof
     istart = iend-option%ndof+1
+    iphase = int(iphase_loc_p(ghosted_id))
     call computeAuxVar(xx_p(istart:iend),aux_vars(ghosted_id), &
-                       int(iphase_loc_p(ghosted_id)), &
+                       iphase, &
                        realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                        option)
+    iphase_loc_p(ghosted_id) = iphase
     call RichardsAccumulation(aux_vars(ghosted_id),porosity_loc_p(ghosted_id), &
                               volume_p(local_id), &
                               option%dencpr(ithrm_loc_p(ghosted_id)), &
