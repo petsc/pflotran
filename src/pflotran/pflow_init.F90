@@ -90,7 +90,7 @@ subroutine PflowInit(simulation,filename)
   field => realization%field
   
   ! read MODE,GRID,PROC,COMP,PHAS cards
-  call readSelectCardsFromInput(realization,filename,mcomp,mphas)
+  call readRequiredCardsFromInput(realization,filename,mcomp,mphas)
   grid => realization%grid
 
   ! set the operational mode (e.g. RICHARDS_MODE, MPH_MODE, etc)
@@ -903,12 +903,12 @@ end subroutine PflowInit
 
 ! ************************************************************************** !
 !
-! readSelectCardsFromInput: Reads pflow input file
+! readRequiredCardsFromInput: Reads pflow input file
 ! author: Glenn Hammond
 ! date: 10/23/07
 !
 ! **************************************************************************
-subroutine readSelectCardsFromInput(realization,filename,mcomp,mphas)
+subroutine readRequiredCardsFromInput(realization,filename,mcomp,mphas)
 
   use Option_module
   use Grid_module
@@ -1142,7 +1142,7 @@ subroutine readSelectCardsFromInput(realization,filename,mcomp,mphas)
     enddo
   endif
     
-end subroutine readSelectCardsFromInput
+end subroutine readRequiredCardsFromInput
 
 ! ************************************************************************** !
 !
