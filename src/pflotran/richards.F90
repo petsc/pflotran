@@ -385,7 +385,7 @@ subroutine RichardsUpdateFixedAccumulation(realization)
 
   call VecGetArrayF90(field%accum, accum_p, ierr)
 
-  do local_id = 1, grid%ngmax
+  do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     !geh - Ignore inactive cells with inactive materials
     if (associated(field%imat)) then
