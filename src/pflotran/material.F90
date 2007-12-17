@@ -343,6 +343,8 @@ subroutine SaturationFunctionCompute(pressure,saturation,relative_perm, &
   dkr_dpres = 0.d0
   
   select case(saturation_function%itype)
+    case(0)
+      call printErrMsg(option,"Unknown saturation function")
     case(VAN_GENUCHTEN)
       if (pressure >= option%pref) then
         saturation = 1.d0
