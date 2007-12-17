@@ -2858,7 +2858,7 @@ subroutine assignInitialConditions(realization)
   call VecRestoreArrayF90(field%xx,xx_p, ierr)
   call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p,ierr)
   call GridGlobalToLocal(grid,field%xx,field%xx_loc,NDOF)  
-  call GridLocalToLocal(grid,field%iphas_loc,field%iphas_loc,NDOF)  
+  call GridLocalToLocal(grid,field%iphas_loc,field%iphas_loc,ONEDOF)  
 
 
 
