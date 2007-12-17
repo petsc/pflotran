@@ -2691,6 +2691,13 @@ subroutine assignMaterialPropToRegions(realization)
                          field%perm_yy_loc,ONEDOF)  
   call GridGlobalToLocal(realization%grid,field%perm0_zz, &
                          field%perm_zz_loc,ONEDOF)   
+
+  call GridLocalToLocal(realization%grid,field%icap_loc, &
+                        field%icap_loc,ONEDOF)   
+  call GridLocalToLocal(realization%grid,field%ithrm_loc, &
+                        field%ithrm_loc,ONEDOF)   
+  call GridLocalToLocal(realization%grid,field%tor_loc, &
+                        field%tor_loc,ONEDOF)   
   
 end subroutine assignMaterialPropToRegions
 
