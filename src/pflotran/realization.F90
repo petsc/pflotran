@@ -29,6 +29,7 @@ private
     type(strata_list_type), pointer :: strata
     
     type(material_type), pointer :: materials
+    type(material_ptr_type), pointer :: material_array(:)
     type(thermal_property_type), pointer :: thermal_properties
     type(saturation_function_type), pointer :: saturation_functions
     type(saturation_function_ptr_type), pointer :: saturation_function_array(:)
@@ -188,14 +189,18 @@ subroutine RealizationProcessCouplers(realization)
                ' not found in strata list'
       call printErrMsg(realization%option,string)
     endif
-    ! pointer to material
-    strata%material => &
-                          MaterialGetPtrFromList(strata%material_name, &
-                                                 realization%materials)
-    if (.not.associated(strata%material)) then
-      string = 'Material ' // trim(strata%material_name) // &
-               ' not found in unit list'
-      call printErrMsg(realization%option,string)
+    if (strata%active) then
+      ! pointer to material
+      strata%material => &
+                            MaterialGetPtrFromList(strata%material_name, &
+                                                   realization%materials)
+      if (.not.associated(strata%material)) then
+        string = 'Material ' // trim(strata%material_name) // &
+                 ' not found in unit list'
+        call printErrMsg(realization%option,string)
+      endif
+    else
+      nullify(strata%material)
     endif
     strata => strata%next
   enddo 
@@ -417,6 +422,16 @@ subroutine RealizationDestroy(realization)
   call CouplerDestroyList(realization%initial_conditions)
   call CouplerDestroyList(realization%source_sinks)
   call StrataDestroyList(realization%strata)
+  
+  if (associated(realization%material_array)) &
+    deallocate(realization%material_array)
+  nullify(realization%material_array)
+  call MaterialDestroy(realization%materials)
+  
+  if (associated(realization%saturation_function_array)) &
+    deallocate(realization%saturation_function_array)
+  nullify(realization%saturation_function_array)
+  call SaturationFunctionDestroy(realization%saturation_functions)
     
 end subroutine RealizationDestroy
   

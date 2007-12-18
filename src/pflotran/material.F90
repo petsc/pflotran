@@ -42,6 +42,10 @@ module Material_module
     type(material_type), pointer :: next
   end type material_type
   
+  type, public :: material_ptr_type
+    type(material_type), pointer :: ptr
+  end type material_ptr_type
+  
   type, public :: thermal_property_type
     integer :: id
     real*8 :: rock_density
@@ -83,7 +87,8 @@ module Material_module
             SaturationFunctionAddToList, &
             MaterialGetPtrFromList, &
             SaturationFunctionCompute, &
-            SaturatFuncConvertListToArray
+            SaturatFuncConvertListToArray, &
+            MaterialConvertListToArray
   
 contains
 
@@ -213,6 +218,42 @@ recursive subroutine MaterialAddToList(material,list)
   endif
   
 end subroutine MaterialAddToList
+
+! ************************************************************************** !
+!
+! MaterialConvertListToArray: Creates an array of pointers to the 
+!                                materials in the list
+! author: Glenn Hammond
+! date: 12/18/07
+!
+! ************************************************************************** !
+subroutine MaterialConvertListToArray(list,array)
+
+  implicit none
+  
+  type(material_type), pointer :: list
+  type(material_ptr_type), pointer :: array(:)
+    
+  type(material_type), pointer :: cur_material
+  integer :: max_id = 0
+
+  cur_material => list
+  do 
+    if (.not.associated(cur_material)) exit
+    max_id = max(max_id,cur_material%id)
+    cur_material => cur_material%next
+  enddo
+  
+  allocate(array(max_id))
+  
+  cur_material => list
+  do 
+    if (.not.associated(cur_material)) exit
+    array(cur_material%id)%ptr => cur_material
+    cur_material => cur_material%next
+  enddo
+
+end subroutine MaterialConvertListToArray
 
 ! ************************************************************************** !
 !
