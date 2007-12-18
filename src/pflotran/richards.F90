@@ -282,6 +282,7 @@ subroutine RichardsUpdateAuxVars(realization)
   call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr)
 
   do ghosted_id = 1, grid%ngmax
+    if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
     !geh - Ignore inactive cells with inactive materials
     if (associated(field%imat)) then
       if (field%imat(ghosted_id) <= 0) cycle

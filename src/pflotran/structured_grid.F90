@@ -895,7 +895,7 @@ subroutine StructuredGridMapIndices(structured_grid,nG2L,nL2G,nL2A,nG2A,nG2N)
   type(structured_grid_type) :: structured_grid
   integer, pointer :: nG2L(:), nL2G(:), nL2A(:), nG2A(:), nG2N(:)
 
-  integer :: i, j, k, n, ng, na
+  integer :: i, j, k, n, ng, na, count1
   PetscErrorCode :: ierr
   
   allocate(nL2G(structured_grid%nlmax))
@@ -943,6 +943,38 @@ subroutine StructuredGridMapIndices(structured_grid,nG2L,nL2G,nL2A,nG2A,nG2N)
     endif
   enddo
   ! Local(non ghosted)->Natural(natural order starts from 0)
+
+  !geh - set corner ghosted nodes to -1
+  do k=1,structured_grid%ngz
+    do j=1,structured_grid%ngy
+      do i=1,structured_grid%ngx
+        count1 = 0
+        if (i == 1 .and. &
+            abs(structured_grid%nxs-structured_grid%ngxs) > 0) &
+          count1 = count1 + 1
+        if (i == structured_grid%ngx .and. &
+            abs(structured_grid%ngxe-structured_grid%nxe) > 0) &
+          count1 = count1 + 1
+        if (j == 1 .and. &
+            abs(structured_grid%nys-structured_grid%ngys) > 0) &
+          count1 = count1 + 1
+        if (j == structured_grid%ngy .and. &
+            abs(structured_grid%ngye-structured_grid%nye) > 0) &
+          count1 = count1 + 1
+        if (k == 1 .and. &
+            abs(structured_grid%nzs-structured_grid%ngzs) > 0) &
+          count1 = count1 + 1
+        if (k == structured_grid%ngz .and. &
+            abs(structured_grid%ngze-structured_grid%nze) > 0) &
+          count1 = count1 + 1
+        if (count1 > 1) then
+          ng = i+(j-1)*structured_grid%ngx+(k-1)*structured_grid%ngxy
+          nG2L(ng) = -1
+        endif
+      enddo
+    enddo
+  enddo
+
   n=0
   do k=1,structured_grid%nlz
     do j=1,structured_grid%nly
