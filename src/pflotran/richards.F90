@@ -2045,12 +2045,20 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
                         realization%saturation_function_array(icap_up)%ptr,&
                         realization%saturation_function_array(icap_dn)%ptr,&
                         Jup,Jdn)
-      call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1,Jup,ADD_VALUES,ierr)
-      call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_dn-1,Jdn,ADD_VALUES,ierr)
-      Jup = -1.d0*Jup
-      Jdn = -1.d0*Jdn
-      call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_dn-1,Jdn,ADD_VALUES,ierr)
-      call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_up-1,Jup,ADD_VALUES,ierr)
+      if (local_id_up > 0) then
+        call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
+                                      Jup,ADD_VALUES,ierr)
+        call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_dn-1, &
+                                      Jdn,ADD_VALUES,ierr)
+      endif
+      if (local_id_dn > 0) then
+        Jup = -1.d0*Jup
+        Jdn = -1.d0*Jdn
+        call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_dn-1, &
+                                      Jdn,ADD_VALUES,ierr)
+        call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_up-1, &
+                                      Jup,ADD_VALUES,ierr)
+      endif
     enddo
     cur_connection_set => cur_connection_set%next
   enddo
