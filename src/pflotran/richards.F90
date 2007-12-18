@@ -454,7 +454,7 @@ subroutine RichardsNumericalJacobianTest(xx,realization)
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   
-  integer :: idof, idof2
+  integer :: idof, idof2, icell
 
   grid => realization%grid
   option => realization%option
@@ -471,21 +471,26 @@ subroutine RichardsNumericalJacobianTest(xx,realization)
     
   call RichardsAnalyticalResidual(0,xx,res,realization,ierr)
   call VecGetArrayF90(res,vec2_p,ierr)
-  do idof = 1, grid%nlmax*option%ndof
-    call VecCopy(xx,xx_pert,ierr)
-    call VecGetArrayF90(xx_pert,vec_p,ierr)
-    perturbation = vec_p(idof)*pert_tol
-    vec_p(idof) = vec_p(idof)+perturbation
-    call VecRestoreArrayF90(xx_pert,vec_p,ierr)
-    call RichardsAnalyticalResidual(0,xx_pert,res_pert,realization,ierr)
-    call VecGetArrayF90(res_pert,vec_p,ierr)
-    do idof2 = 1, grid%nlmax*option%ndof
-      derivative = (vec_p(idof2)-vec2_p(idof2))/perturbation
-      if (dabs(derivative) > 1.d-30) then
-        call MatSetValue(A,idof2-1,idof-1,derivative,INSERT_VALUES,ierr)
-      endif
+  do icell = 1,grid%nlmax
+    if (associated(field%imat)) then
+      if (field%imat(grid%nL2G(icell)) <= 0) cycle
+    endif
+    do idof = (icell-1)*option%ndof+1,icell*option%ndof 
+      call veccopy(xx,xx_pert,ierr)
+      call vecgetarrayf90(xx_pert,vec_p,ierr)
+      perturbation = vec_p(idof)*pert_tol
+      vec_p(idof) = vec_p(idof)+perturbation
+      call vecrestorearrayf90(xx_pert,vec_p,ierr)
+      call richardsanalyticalresidual(0,xx_pert,res_pert,realization,ierr)
+      call vecgetarrayf90(res_pert,vec_p,ierr)
+      do idof2 = 1, grid%nlmax*option%ndof
+        derivative = (vec_p(idof2)-vec2_p(idof2))/perturbation
+        if (dabs(derivative) > 1.d-30) then
+          call matsetvalue(a,idof2-1,idof-1,derivative,insert_values,ierr)
+        endif
+      enddo
+      call VecRestoreArrayF90(res_pert,vec_p,ierr)
     enddo
-    call VecRestoreArrayF90(res_pert,vec_p,ierr)
   enddo
   call VecRestoreArrayF90(res,vec2_p,ierr)
 
@@ -1538,7 +1543,10 @@ subroutine RichardsAnalyticalResidual(snes,xx,r,realization,ierr)
     do iconn = 1, cur_connection_set%num_connections      
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
-
+      if (associated(field%imat)) then
+        if (field%imat(ghosted_id) <= 0) cycle
+      endif
+      
       if (enthalpy_flag) then
         r_p(local_id*option%ndof) = r_p(local_id*option%ndof) - hsrc1 * option%dt   
       endif         
@@ -1945,6 +1953,10 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
 
+      if (associated(field%imat)) then
+        if (field%imat(ghosted_id) <= 0) cycle
+      endif
+      
 !      if (enthalpy_flag) then
 !        r_p(local_id*option%ndof) = r_p(local_id*option%ndof) - hsrc1 * option%dt   
 !      endif         
@@ -1992,7 +2004,8 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
       ghosted_id_dn = cur_connection_set%id_dn(iconn)
 
       if (associated(field%imat)) then
-        if (field%imat(ghosted_id_up) <= 0 .or. field%imat(ghosted_id_dn) <= 0) cycle
+        if (field%imat(ghosted_id_up) <= 0 .or. &
+            field%imat(ghosted_id_dn) <= 0) cycle
       endif
 
       local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes

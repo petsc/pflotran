@@ -46,7 +46,8 @@ subroutine PflowInit(simulation,filename)
   use Field_module
   use Connection_module
   use Coupler_module
-
+  use General_Grid_module
+  
   use span_wagner_module
   use MPHASE_module
 #ifndef RICHARDS_ANALYTICAL  
@@ -759,34 +760,12 @@ subroutine PflowInit(simulation,filename)
 !geh
   nullify(field%imat)
 
-#if 0
   ! should we still support this
-  if (grid%iread_geom == 10) then 
-    if (myrank == 0) print *, 'Reading structured grid from hdf5' 
-    allocate(grid%imat(grid%ngmax))  ! allocate material id array
-    call ReadStructuredGridHDF5(grid)
-    
-  else if (grid%iread_geom == -1) then 
-    if (myrank == 0) print *, 'Reading unstructured grid' 
-    allocate(grid%pressurebc(grid%nphase,grid%nconnbc)) 
-
-    allocate(grid%imat(grid%ngmax))  ! allocate material id array
-    grid%imat = 0      
-
-    call ReadUnstructuredGrid(grid) 
-! this call is to set up an array for zeroing inactive and isothermal cells
-    call createRichardsZeroArray(grid)
-    
-    ! dump material ids to file in natural ordering
-    call DACreateGlobalVector(grid%da_1_dof,temp_vec,ierr)
-    call VecGetArrayF90(temp_vec,temp_p,ierr)
-    do i=1, grid%nlmax
-      temp_p(i) = grid%imat(grid%nL2G(i))*1.d0      
-    enddo
-    call VecRestoreArrayF90(temp_vec,temp_p,ierr)
-    call VecDestroy(temp_vec,ierr)
-  endif 
-#endif   
+  if (option%iread_geom == 10) then 
+    if (option%myrank == 0) print *, 'Reading structured grid from hdf5' 
+    allocate(field%imat(grid%ngmax))  ! allocate material id array
+    call ReadStructuredGridHDF5(realization)
+  endif
 
   if (option%ihydrostatic == 3) then
     if (option%imode == MPH_MODE .or. &

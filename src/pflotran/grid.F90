@@ -80,7 +80,11 @@ module Grid_module
             GridComputeCoordinates, &
             GridComputeVolumes, &
             GridLocalizeRegions, &
-            GridComputeCouplerConnections
+            GridComputeCouplerConnections, &
+            GridCopyIntegerArrayToPetscVec, &
+            GridCopyRealArrayToPetscVec, &
+            GridCopyPetscVecToIntegerArray, &
+            GridCopyPetscVecToRealArray
   
 contains
 
@@ -847,6 +851,109 @@ subroutine GridLocalizeRegions(region_list,grid,option)
   enddo
 
 end subroutine GridLocalizeRegions
+
+! ************************************************************************** !
+!
+! GridCopyIntegerArrayToPetscVec: Copies values from an integer array into a 
+!                                 PETSc Vec
+! author: Glenn Hammond
+! date: 12/18/07
+!
+! ************************************************************************** !
+subroutine GridCopyIntegerArrayToPetscVec(array,vector,num_values)
+
+  implicit none
+  
+  integer :: array(:)
+  Vec :: vector
+  integer :: num_values
+  
+  PetscScalar, pointer :: vec_ptr(:)
+  PetscErrorCode :: ierr
+  
+  call VecGetArrayF90(vector,vec_ptr,ierr)
+  vec_ptr(1:num_values) = array(1:num_values)
+  call VecRestoreArrayF90(vector,vec_ptr,ierr)
+  
+end subroutine GridCopyIntegerArrayToPetscVec
+
+! ************************************************************************** !
+!
+! GridCopyRealArrayToPetscVec: Copies values from an integer array into a 
+!                              PETSc Vec
+! author: Glenn Hammond
+! date: 12/18/07
+!
+! ************************************************************************** !
+subroutine GridCopyRealArrayToPetscVec(array,vector,num_values)
+
+  implicit none
+  
+  real*8 :: array(:)
+  Vec :: vector
+  integer :: num_values
+  
+  PetscScalar, pointer :: vec_ptr(:)
+  PetscErrorCode :: ierr
+  
+  call VecGetArrayF90(vector,vec_ptr,ierr)
+  vec_ptr(1:num_values) = array(1:num_values)
+  call VecRestoreArrayF90(vector,vec_ptr,ierr)
+  
+end subroutine GridCopyRealArrayToPetscVec
+
+! ************************************************************************** !
+!
+! GridCopyPetscVecToIntegerArray: Copies values from a PETSc Vec to an  
+!                                 integer array
+! author: Glenn Hammond
+! date: 12/18/07
+!
+! ************************************************************************** !
+subroutine GridCopyPetscVecToIntegerArray(array,vector,num_values)
+
+  implicit none
+  
+  integer :: array(:)
+  Vec :: vector
+  integer :: num_values
+  
+  integer :: i
+  PetscScalar, pointer :: vec_ptr(:)
+  PetscErrorCode :: ierr
+  
+  call VecGetArrayF90(vector,vec_ptr,ierr)
+  do i=1,num_values
+    array(i) = int(vec_ptr(i)+1.d-4)
+  enddo
+  call VecRestoreArrayF90(vector,vec_ptr,ierr)
+  
+end subroutine GridCopyPetscVecToIntegerArray
+
+! ************************************************************************** !
+!
+! GridCopyPetscVecToRealArray: Copies values from a PETSc Vec to an integer 
+!                              array
+! author: Glenn Hammond
+! date: 12/18/07
+!
+! ************************************************************************** !
+subroutine GridCopyPetscVecToRealArray(array,vector,num_values)
+
+  implicit none
+  
+  real*8 :: array(:)
+  Vec :: vector
+  integer :: num_values
+  
+  PetscScalar, pointer :: vec_ptr(:)
+  PetscErrorCode :: ierr
+  
+  call VecGetArrayF90(vector,vec_ptr,ierr)
+  array(1:num_values) = vec_ptr(1:num_values)
+  call VecRestoreArrayF90(vector,vec_ptr,ierr)
+  
+end subroutine GridCopyPetscVecToRealArray
 
 ! ************************************************************************** !
 !

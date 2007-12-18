@@ -1,7 +1,5 @@
 module General_Grid_module
 
- use pflow_gridtype_module
-
  implicit none
 
 #define READ_BUFFER_SIZE 1000000
@@ -28,1228 +26,19 @@ module General_Grid_module
   
   integer :: hdf5_err
   PetscErrorCode :: ierr
-   
-  public ReadUnstructuredGrid, ReadMaterials, ReadMaterials2, ReadStructuredGridHDF5
+  public :: ReadStructuredGridHDF5
   
 contains
   
-! ************************************************************************** !
-!
-! ReadUnstructuredGrid: Reads in an unstructured grid (from a format similar
-!                       to TOUGH and sets up intercelluar and boundary
-!                       connectivity
-! author: Glenn Hammond
-! date: 03/07/07
-!
-! ************************************************************************** !
-subroutine ReadUnstructuredGrid(grid)
-
-  use Fileio_module
-  use Condition_module_old
-
-  implicit none
-
-  type(pflowGrid) :: grid
-  character(len=MAXSTRINGLENGTH) :: string 
- 
-  PetscScalar, pointer :: perm_xx_p(:),perm_yy_p(:),perm_zz_p(:),por_p(:), &
-                          tor_p(:), volume_p(:), icap_p(:)
-  PetscTruth :: option_found
-  integer fid, iostatus, ierr
-  integer :: connection_id, material_id, natural_id, local_id, local_ghosted_id
-  integer :: natural_id_upwind, natural_id_downwind
-  integer :: local_id_upwind, local_id_downwind
-  integer :: local_ghosted_id_upwind, local_ghosted_id_downwind
-! integer :: number_of_times
-  integer :: count1, count2, irecv, i
-  real*8 :: xcoord, ycoord, zcoord, xperm, yperm, zperm
-  real*8 :: area, distance, distance_upwind, distance_downwind, cosB
-  real*8 :: volume, porosity, tortuosity
-  real*8 :: dx, dy, dz, delz
-  character(len=MAXCARDLENGTH) :: card
-! character(len=MAXWORDLENGTH) :: bctype
-  character(len=MAXWORDLENGTH) :: time_unit
-  character(len=MAXSTRINGLENGTH) :: filename
-  integer :: direction, icond, icondition
-  real*8 :: time, value, time_multiplier
-  PetscLogDouble :: time0, time1
-  type(condition_type), pointer :: new_condition
-
-  call VecGetArrayF90(grid%volume, volume_p, ierr); CHKERRQ(ierr)
-  call VecGetArrayF90(grid%perm_xx, perm_xx_p, ierr); CHKERRQ(ierr)
-  call VecGetArrayF90(grid%perm_yy, perm_yy_p, ierr); CHKERRQ(ierr)
-  call VecGetArrayF90(grid%perm_zz, perm_zz_p, ierr); CHKERRQ(ierr)
-  call VecGetArrayF90(grid%tor,tor_p,ierr);  CHKERRQ(ierr)
-  call VecGetArrayF90(grid%porosity,por_p,ierr);  CHKERRQ(ierr)
-
-  call PetscGetTime(time0, ierr)
-
-  filename = "hanford.in"
-  call PetscOptionsGetString(PETSC_NULL_CHARACTER, "-unstructured_filename", &
-    filename, option_found, ierr)
-
-  fid = 86
-  open(fid, file=filename, action="read", status="old", iostat=iostatus)
-  if (iostatus /= 0) then
-    print *, 'Error opening file: ', trim(filename), ' on Processor ', &
-             grid%myrank
-    call PetscFinalize()
-    stop
-  endif
-
-  ! create hash table for fast lookup
-#ifdef HASH
-  call UnstGridCreateNatToGhostedHash(grid)
-!  call UnstructGridPrintHashTable
-#endif
-
-! GRID information
-  card = "GRID"
-  call fiFindStringInFile(fid,card,ierr)
-
-  ! report error if card does not exist
-  if (ierr /= 0) then
-    if (grid%myrank == 0) print *, 'ERROR: Card (',card, ') not found in file'
-    call PetscFinalize()
-    stop
-  endif
-  
-  count1 = 0
-  do
-    call fiReadFlotranString(fid,string,ierr)
-    call fiReadStringErrorMsg(card,ierr)
-
-    if (string(1:1) == '.' .or. string(1:1) == '/') exit
-
-    call fiReadInt(string,natural_id,ierr) 
-    call fiErrorMsg('natural_id',card,ierr)
-
-    call fiReadInt(string,material_id,ierr) 
-    call fiErrorMsg('material_id',card,ierr)
-
-    call fiReadDouble(string,xcoord,ierr)
-    call fiErrorMsg('xcoord',card,ierr)
-   
-    call fiReadDouble(string,ycoord,ierr)
-    call fiErrorMsg('ycoord',card,ierr)
-
-    call fiReadDouble(string,zcoord,ierr)
-    call fiErrorMsg('zcoord',card,ierr)
-   
-    call fiReadDouble(string,volume,ierr)
-    call fiErrorMsg('volume',card,ierr)
-   
-    call fiReadDouble(string,xperm,ierr)
-    call fiErrorMsg('xperm',card,ierr)
-
-    call fiReadDouble(string,yperm,ierr)
-    call fiErrorMsg('yperm',card,ierr)
-   
-    call fiReadDouble(string,zperm,ierr)
-    call fiErrorMsg('zperm',card,ierr)
-
-    call fiReadDouble(string,porosity,ierr)
-    call fiErrorMsg('porosity',card,ierr)
-
-    call fiReadDouble(string,tortuosity,ierr)
-    call fiErrorMsg('tortuosity',card,ierr)
-
-#ifdef HASH
-    local_ghosted_id = GetLocalGhostedIdFromHash(natural_id)
-#else
-    local_ghosted_id = GetLocalGhostedIdFromNaturalId(natural_id,grid)
-#endif
-    if (local_ghosted_id > 0) then
-
-      grid%x(local_ghosted_id)=xcoord
-      grid%y(local_ghosted_id)=ycoord
-!      grid%z(local_ghosted_id)=zcoord
-
-      local_id = grid%nG2L(local_ghosted_id)
-      if (local_id > 0 .and. abs(material_id) > 0) then
-        perm_xx_p(local_id) = xperm
-        perm_yy_p(local_id) = yperm
-        perm_zz_p(local_id) = zperm
-        volume_p(local_id) = volume
-        por_p(local_id) = porosity
-        tor_p(local_id) = tortuosity
-      endif
-      grid%imat(local_ghosted_id) = material_id
-    endif
-
-#if DEBUG
-    print *, 'Read geom 1:',natural_id,xcoord,ycoord,zcoord,volume, &
-                            xperm,yperm,zperm,porosity,tortuosity
-#endif
-    count1 = count1 + 1
-  enddo
-
-  call VecRestoreArrayF90(grid%volume, volume_p, ierr); CHKERRQ(ierr)     
-  call VecRestoreArrayF90(grid%perm_xx, perm_xx_p, ierr); CHKERRQ(ierr)
-  call VecRestoreArrayF90(grid%perm_yy, perm_yy_p, ierr); CHKERRQ(ierr)
-  call VecRestoreArrayF90(grid%perm_zz, perm_zz_p, ierr); CHKERRQ(ierr)
-  call VecRestoreArrayF90(grid%tor,tor_p,ierr); CHKERRQ(ierr)
-  call VecRestoreArrayF90(grid%porosity,por_p,ierr); CHKERRQ(ierr)
-
-  if (grid%myrank == 0) print *, count1, ' cells read'
-  
-! CONNection information
-
-! Count the number of local connections
-  grid%nconn = GetNumberOfLocalConnections(fid,grid) ! function at bottom of file
-! Allocate Arrays
-  allocate(grid%nd1(grid%nconn))
-  allocate(grid%nd2(grid%nconn))
-  allocate(grid%dist1(grid%nconn))
-  allocate(grid%dist2(grid%nconn))
-  allocate(grid%area(grid%nconn))
-  allocate(grid%delz(grid%nconn))
-  allocate(grid%grav_ang(grid%nconn))
-
-  allocate(grid%iperm1(grid%nconn))
-  allocate(grid%iperm2(grid%nconn))
-
-  allocate(grid%vl_loc(grid%nconn))
-  allocate(grid%vvl_loc(grid%nconn))
-  allocate(grid%vg_loc(grid%nconn))
-  allocate(grid%vvg_loc(grid%nconn))
-
-  grid%nconn = 0
-
-  card = "CONN"
-  call fiFindStringInFile(fid,card,ierr)
-
-  ! report error if card does not exist
-  if (ierr /= 0) then
-    if (grid%myrank == 0) print *, 'ERROR: Card (',card, ') not found in file'
-    call PetscFinalize()
-    stop
-  endif
-  
-  count1 = 0
-  count2 = 0
-  do
-    call fiReadFlotranString(fid,string,ierr)
-    call fiReadStringErrorMsg(card,ierr)
-
-    if (string(1:1) == '.' .or. string(1:1) == '/') exit
-
-! stomp2pflotran header
-! :id idup iddn distup distdn area cosB
-    call fiReadInt(string,connection_id,ierr) 
-    call fiErrorMsg('connection_id',card,ierr)
-
-    call fiReadInt(string,natural_id_upwind,ierr) 
-    call fiErrorMsg('natural_id_upwind',card,ierr)
-
-    call fiReadInt(string,natural_id_downwind,ierr) 
-    call fiErrorMsg('natural_id_downwind',card,ierr)
-
-    local_id_upwind = 0
-    local_id_downwind = 0
-#ifdef HASH
-    local_ghosted_id_upwind = GetLocalGhostedIdFromHash(natural_id_upwind)
-    local_ghosted_id_downwind = GetLocalGhostedIdFromHash(natural_id_downwind)
-#else
-    local_ghosted_id_upwind = &
-               GetLocalGhostedIdFromNaturalId(natural_id_upwind,grid)
-    local_ghosted_id_downwind = &
-               GetLocalGhostedIdFromNaturalId(natural_id_downwind,grid)
-#endif
-    if (local_ghosted_id_upwind > 0 .and. &
-        local_ghosted_id_downwind > 0) then ! both cells are local ghosted
-      local_id_upwind = grid%nG2L(local_ghosted_id_upwind)
-      local_id_downwind = grid%nG2L(local_ghosted_id_downwind)
-      ! at least 1 cell must be local (non-ghosted) since we don't want to
-      ! create a connection between two ghosted cells
-      if (local_id_upwind > 0 .or. local_id_downwind > 0) then
-        count2 = count2 + 1
-
-        ! Continue reading string if local
-        call fiReadDouble(string,distance_upwind,ierr) 
-        call fiErrorMsg('distance_upwind',card,ierr)
-
-        call fiReadDouble(string,distance_downwind,ierr) 
-        call fiErrorMsg('distance_downwind',card,ierr)
-
-        call fiReadDouble(string,area,ierr) 
-        call fiErrorMsg('area',card,ierr)
-
-        call fiReadDouble(string,cosB,ierr) 
-        call fiErrorMsg('cosB',card,ierr)
-
-        grid%nconn = grid%nconn + 1
-        grid%nd1(grid%nconn) = local_ghosted_id_upwind
-        grid%nd2(grid%nconn) = local_ghosted_id_downwind
-        grid% dist1(grid%nconn) = distance_upwind
-        grid% dist2(grid%nconn) = distance_downwind
-        if (area>0.D0) grid%area(grid%nconn)= area
-        ! negate to account for left-hand rule in pflotran
-#ifdef INVERT
-        grid%delz(grid%nconn) = -1.d0*abs(grid%z(local_ghosted_id_downwind)-  &
-                                    grid%z(local_ghosted_id_upwind))
-#else
-        grid%delz(grid%nconn) = +1.d0*abs(grid%z(local_ghosted_id_downwind)-  &
-                                    grid%z(local_ghosted_id_upwind))
-#endif
-        grid%grav_ang(grid%nconn) = cosB
-
-        ! setup direction of permeability
-        dx = abs(grid%x(local_ghosted_id_upwind)-grid%x(local_ghosted_id_downwind))
-        dy = abs(grid%y(local_ghosted_id_upwind)-grid%y(local_ghosted_id_downwind))
-        dz = abs(grid%z(local_ghosted_id_upwind)-grid%z(local_ghosted_id_downwind))
-        if (dx > dy .and. dx > dz) then
-          grid%iperm1(grid%nconn) = 1
-          grid%iperm2(grid%nconn) = 1
-        else if (dy > dx .and. dy > dz) then
-          grid%iperm1(grid%nconn) = 2
-          grid%iperm2(grid%nconn) = 2
-        else if (dz > dx .and. dz > dy) then
-          grid%iperm1(grid%nconn) = 3
-          grid%iperm2(grid%nconn) = 3
-        endif
-      endif
-    endif
-    count1 = count1 + 1
-!print *, grid%myrank, local_ghosted_id_upwind, local_id_upwind, local_ghosted_id_downwind, local_id_downwind
-  enddo
-  call mpi_reduce(count2,irecv,1,MPI_INTEGER,MPI_SUM,0, &
-                     PETSC_COMM_WORLD,ierr)
-  if (grid%myrank == 0) print *, irecv, ' of ', count1, ' connections found'
-
-
-! BCONection information
-
-!geh Right now we ignore allocation since the arrays are already allocated
-!geh larger than necessary.  This will need to be updated in the future.
-! Count the number of boundary connections
-  grid%nconnbc = GetNumberOfBoundaryConnections(fid,grid) ! function at bottom of file
-! Allocate Arrays
-  allocate(grid%mblkbc(grid%nconnbc)) ! id of local cell
-  allocate(grid%ibconn(grid%nconnbc)) ! id of condition (boundary)
-  allocate(grid%distbc(grid%nconnbc))
-  allocate(grid%areabc(grid%nconnbc))
-  allocate(grid%ipermbc(grid%nconnbc))
-  allocate(grid%delzbc(grid%nconnbc))
-
-  allocate(grid%vlbc(grid%nconnbc))
-  allocate(grid%vvlbc(grid%nconnbc))
-  allocate(grid%vgbc(grid%nconnbc))
-  allocate(grid%vvgbc(grid%nconnbc))
-
-  allocate(grid%velocitybc(grid%nphase, grid%nconnbc))
-  allocate(grid%iphasebc(grid%nconnbc))
-  allocate(grid%xxbc(grid%ndof,grid%nconnbc))
-  allocate(grid%xphi_co2_bc(grid%nconnbc))
-  allocate(grid%xxphi_co2_bc(grid%nconnbc))
-
-  grid%nconnbc = 0
-
-  card = "BCON"
-  call fiFindStringInFile(fid,card,ierr)
-
-  ! report error if card does not exist
-  if (ierr /= 0) then
-    if (grid%myrank == 0) print *, 'ERROR: Card (',card, ') not found in file'
-    call PetscFinalize()
-    stop
-  endif
-  
-  count1 = 0
-  count2 = 0
-  do
-    call fiReadFlotranString(fid,string,ierr)
-    call fiReadStringErrorMsg(card,ierr)
-
-    if (string(1:1) == '.' .or. string(1:1) == '/') exit
-
-! stomp2pflotran header
-!:id cellid dist area delz icond
-
-    call fiReadInt(string,connection_id,ierr) 
-    call fiErrorMsg('connection_id',card,ierr)
-
-    call fiReadInt(string,natural_id,ierr) 
-    call fiErrorMsg('natural_id',card,ierr)
-
-#ifdef HASH
-    local_ghosted_id = GetLocalGhostedIdFromHash(natural_id)
-#else
-    local_ghosted_id = GetLocalGhostedIdFromNaturalId(natural_id,grid)
-#endif
-    if (local_ghosted_id > 0) then 
-      local_id = grid%nG2L(local_ghosted_id)
-      if (local_id > 0) then
-        grid%nconnbc = grid%nconnbc + 1
-        count2 = count2 + 1
-
-        call fiReadInt(string,direction,ierr) 
-        call fiErrorMsg('direction',card,ierr)
-
-        call fiReadDouble(string,distance,ierr) 
-        call fiErrorMsg('distance',card,ierr)
-
-        call fiReadDouble(string,area,ierr) 
-        call fiErrorMsg('area',card,ierr)
-
-        call fiReadDouble(string,delz,ierr) 
-        call fiErrorMsg('delz',card,ierr)
-
-        call fiReadInt(string,icond,ierr)
-        call fiErrorMsg('icond',card,ierr)
- 
-        grid%mblkbc(grid%nconnbc) = local_id
-        grid%distbc(grid%nconnbc) = distance
-        grid%areabc(grid%nconnbc) = area
-        ! negate to account for left-hand rule in pflotran
-#ifdef INVERT
-        grid%delzbc(grid%nconnbc) = +1.d0*delz
-#else
-        grid%delzbc(grid%nconnbc) = +1.d0*delz
-#endif
-        grid%ibconn(grid%nconnbc) = icond
-
-        ! setup direction of permeability
-        grid%ipermbc(grid%nconnbc) = abs(direction) ! 1,2,3 -> x,y,z
-
-        ! hardwired for now
-        grid%iphasebc(grid%nconnbc) = 1
-
-      endif
-    endif
-    count1 = count1 + 1
-  enddo
-
-  call mpi_reduce(count2,irecv,1,MPI_INTEGER,MPI_SUM,0, &
-                     PETSC_COMM_WORLD,ierr)
-  if (grid%myrank == 0) print *, irecv, ' of ', count1, ' connections found'
-
-! CONDition information
-
-  card = "COND"
-  call fiFindStringInFile(fid,card,ierr)
-
-  ! report error if card does not exist
-  if (ierr /= 0) then
-    if (grid%myrank == 0) print *, 'ERROR: Card (',card, ') not found in file'
-    call PetscFinalize()
-    stop
-  endif
-
-  count1 = 0
-  do
-    call fiReadFlotranString(fid,string,ierr)
-    call fiReadStringErrorMsg(card,ierr)
-
-    if (string(1:1) == '.' .or. string(1:1) == '/') exit
-
-! stomp2pflotran header
-!:id "type" num_values (datum)
-
-    allocate(new_condition)
-    nullify(new_condition%next)
-    new_condition%itype = 0
-    new_condition%xdatum = 0.d0
-    new_condition%ydatum = 0.d0
-    new_condition%zdatum = 0.d0
-    new_condition%xgrad = 0.d0
-    new_condition%ygrad = 0.d0
-    new_condition%zgrad = 0.d0
-
-    call fiReadInt(string,new_condition%id,ierr) 
-    call fiErrorMsg('id',card,ierr)
-
-    call fiReadQuotedNChars(string,new_condition%ctype,MAXWORDLENGTH, &
-                            .true.,ierr) 
-    call fiErrorMsg('condition_type',card,ierr)
-    call fiWordToLower(new_condition%ctype)
-
-    call fiReadInt(string,new_condition%max_time_index,ierr) 
-    call fiErrorMsg('max_time_index',card,ierr)
-
-    call fiReadWord(string,time_unit,.true.,ierr) 
-    call fiErrorMsg('time unit',card,ierr)
-
-    if (fiStringCompare("hydraulic gradient",new_condition%ctype,18) .or. &
-        fiStringCompare("seepage",new_condition%ctype,7)) then
-
-      call fiReadFlotranString(fid,string,ierr)
-      call fiReadStringErrorMsg(card,ierr)
-
-      call fiReadDouble(string,new_condition%xdatum,ierr) 
-      call fiErrorMsg('x datum',card,ierr)
-
-      call fiReadDouble(string,new_condition%ydatum,ierr) 
-      call fiErrorMsg('y datum',card,ierr)
-
-      call fiReadDouble(string,new_condition%zdatum,ierr) 
-      call fiErrorMsg('z datum',card,ierr)
-
-      call fiReadFlotranString(fid,string,ierr)
-      call fiReadStringErrorMsg(card,ierr)
-
-      call fiReadDouble(string,new_condition%xgrad,ierr) 
-      call fiErrorMsg('x gradient',card,ierr)
-
-      call fiReadDouble(string,new_condition%ygrad,ierr) 
-      call fiErrorMsg('y gradient',card,ierr)
-
-      call fiReadDouble(string,new_condition%zgrad,ierr) 
-      call fiErrorMsg('z gradient',card,ierr)
-    endif
-
-    allocate(new_condition%times(new_condition%max_time_index))
-    allocate(new_condition%values(new_condition%max_time_index))
-    new_condition%times = 0.d0
-    new_condition%values = 0.d0
-
-    call fiWordToLower(time_unit)
-    if (fiStringCompare("y",time_unit,1)) then
-      time_multiplier = 365.d0*24.d0*3600.d0
-    else if (fiStringCompare("d",time_unit,1)) then
-      time_multiplier = 24.d0*3600.d0
-    else if (fiStringCompare("h",time_unit,1)) then
-      time_multiplier = 3600.d0
-    else if (fiStringCompare("m",time_unit,1)) then
-      time_multiplier = 60.d0
-    else if (fiStringCompare("s",time_unit,1)) then
-      time_multiplier = 1.d0
-    else
-      if (grid%myrank == 0) then
-        print *, 'Time unit: ', trim(time_unit), ' not recognized'
-      endif
-      call PetscFinalize()
-      stop
-    endif
-
-    if (grid%myrank == 0) print *, new_condition%ctype
-    if (grid%myrank == 0) print *, new_condition%max_time_index
-
-    count2 = 0
-    do i=1,new_condition%max_time_index
-
-      call fiReadFlotranString(fid,string,ierr)
-      call fiReadStringErrorMsg(card,ierr)
-
-      call fiReadDouble(string,time,ierr)
-      call fiErrorMsg('time',card,ierr)
-
-      call fiReadDouble(string,value,ierr)
-      call fiErrorMsg('value',card,ierr)
-      ! times are all in seconds   yr -> seconds
-      new_condition%times(i) = time*time_multiplier
-      new_condition%values(i) = value
-
-      count2 = count2 + 1
-
-    enddo
-
-    if (grid%myrank == 0) print *, count2, ' times read'
-
-    call AddCondition(new_condition)
-    nullify(new_condition)
-
-    count1 = count1 + 1
-
-  enddo
-
-  if (grid%myrank == 0) print *, count1, ' conditions read'
-
-! Initial Condition information
-
-  card = "ICON"
-  call fiFindStringInFile(fid,card,ierr)
-
-  ! report warning if card does not exist
-  if (ierr /= 0 .and. grid%myrank == 0) &
-    print *, 'WARNING: Card (',card, ') not found in file'
-
-  icondition = -1
-  if (ierr == 0) then
-    do
-      call fiReadFlotranString(fid,string,ierr)
-      call fiReadStringErrorMsg(card,ierr)
-
-      if (string(1:1) == '.' .or. string(1:1) == '/') exit
-
-      call fiReadInt(string,icondition,ierr) 
-      call fiErrorMsg('icondition',card,ierr)
-    enddo
-  endif
-
-! set capillary function ids based on material id
-  call VecGetArrayF90(grid%icap,icap_p,ierr)
-  do local_id=1,grid%nlmax
-    if (abs(grid%imat(grid%nL2G(local_id))) > 0) then
-      icap_p(local_id) = abs(grid%imat(grid%nL2G(local_id)))
-    else
-      icap_p(local_id) = 1
-    endif
-  enddo
-  call VecRestoreArrayF90(grid%icap,icap_p,ierr)
-
-  call UpdateGlobalToLocal(grid)
-  call InitializeBoundaryConditions(grid)
-  if (icondition > 0) call ComputeInitialCondition(grid,icondition)
-
-#ifdef HASH
-  deallocate(hash)
-#endif
-  close(fid)
-  call PetscGetTime(time1, ierr)
-  time1 = time1 - time0
-  if (grid%myrank == 0) print *, time1, ' seconds to read unstructured grid data'
- 
-end subroutine ReadUnstructuredGrid
- 
-! ************************************************************************** !
-!
-! ReadMaterials: Reads just the materials from the unstructured input file
-! author: Glenn Hammond
-! date: 06/20/07
-!
-! ************************************************************************** !
-subroutine ReadMaterials(grid)
-
-  use Fileio_module
-  use Condition_module_old
-
-  implicit none
-
-  type(pflowGrid) :: grid
-  character(len=MAXSTRINGLENGTH) :: string 
- 
-  PetscScalar, pointer :: perm_xx_p(:),perm_yy_p(:),perm_zz_p(:),por_p(:), &
-                          tor_p(:), volume_p(:), icap_p(:) !, temp_ptr(:)
-  PetscTruth :: option_found
-  integer fid, iostatus, ierr
-  integer :: material_id, natural_id, local_id, local_ghosted_id
-! integer :: connection_id
-! integer :: natural_id_upwind, natural_id_downwind
-! integer :: local_id_upwind, local_id_downwind
-! integer :: local_ghosted_id_upwind, local_ghosted_id_downwind
-! integer :: number_of_times
-  integer :: count1, count2, i
-! integer :: irecv
-  real*8 :: xcoord, ycoord, zcoord, xperm, yperm, zperm
-! real*8 :: area, distance, distance_upwind, distance_downwind, cosB
-  real*8 :: volume, porosity, tortuosity
-! real*8 :: dx, dy, dz, delz
-  character(len=MAXCARDLENGTH) :: card
-! character(len=MAXWORDLENGTH) :: bctype
-  character(len=MAXWORDLENGTH) :: time_unit
-  character(len=MAXSTRINGLENGTH) :: filename
-! integer :: direction, icond
-  integer :: icondition
-  real*8 :: time, value, time_multiplier
-  PetscLogDouble :: time0, time1
-  type(condition_type), pointer :: new_condition
-
-  call VecGetArrayF90(grid%volume, volume_p, ierr); CHKERRQ(ierr)
-  call VecGetArrayF90(grid%perm_xx, perm_xx_p, ierr); CHKERRQ(ierr)
-  call VecGetArrayF90(grid%perm_yy, perm_yy_p, ierr); CHKERRQ(ierr)
-  call VecGetArrayF90(grid%perm_zz, perm_zz_p, ierr); CHKERRQ(ierr)
-  call VecGetArrayF90(grid%tor,tor_p,ierr);  CHKERRQ(ierr)
-  call VecGetArrayF90(grid%porosity,por_p,ierr);  CHKERRQ(ierr)
-
-  string = " "
-  filename = "hanford.in"
-  call PetscOptionsGetString(PETSC_NULL_CHARACTER, "-unstructured_filename", &
-    filename, option_found, ierr)
-
-  call PetscGetTime(time0, ierr)
-
-  fid = 86
-  open(fid, file=filename, action="read", status="old", iostat=iostatus)
-  if (iostatus /= 0) then
-    print *, 'Error opening file: ', trim(filename), ' on Processor ', &
-             grid%myrank
-    call PetscFinalize()
-    stop
-  endif
-
-  ! create hash table for fast lookup
-#ifdef HASH
-  call UnstGridCreateNatToGhostedHash(grid)
-!  call UnstructGridPrintHashTable
-#endif
-
-! GRID information
-  card = "GRID"
-  call fiFindStringInFile(fid,card,ierr)
-
-  ! report error if card does not exist
-  if (ierr /= 0) then
-    if (grid%myrank == 0) print *, 'ERROR: Card (',card, ') not found in file'
-    call PetscFinalize()
-    stop
-  endif
-
-  count1 = 0
-  do
-
-    call fiReadFlotranString(fid,string,ierr)
-    call fiReadStringErrorMsg(card,ierr)
-
-    if (string(1:1) == '.' .or. string(1:1) == '/') exit
-
-    call fiReadInt(string,natural_id,ierr) 
-    call fiErrorMsg('natural_id',card,ierr)
-
-    call fiReadInt(string,material_id,ierr) 
-    call fiErrorMsg('material_id',card,ierr)
-    call fiReadDouble(string,xcoord,ierr)
-    call fiErrorMsg('xcoord',card,ierr)
-   
-    call fiReadDouble(string,ycoord,ierr)
-    call fiErrorMsg('ycoord',card,ierr)
-
-    call fiReadDouble(string,zcoord,ierr)
-    call fiErrorMsg('zcoord',card,ierr)
-   
-    call fiReadDouble(string,volume,ierr)
-    call fiErrorMsg('volume',card,ierr)
-   
-    call fiReadDouble(string,xperm,ierr)
-    call fiErrorMsg('xperm',card,ierr)
-
-    call fiReadDouble(string,yperm,ierr)
-    call fiErrorMsg('yperm',card,ierr)
-   
-    call fiReadDouble(string,zperm,ierr)
-    call fiErrorMsg('zperm',card,ierr)
-
-    call fiReadDouble(string,porosity,ierr)
-    call fiErrorMsg('porosity',card,ierr)
-
-    call fiReadDouble(string,tortuosity,ierr)
-    call fiErrorMsg('tortuosity',card,ierr)
-
-#ifdef HASH
-    local_ghosted_id = GetLocalGhostedIdFromHash(natural_id)
-#else
-    local_ghosted_id = GetLocalGhostedIdFromNaturalId(natural_id,grid)
-#endif
-    if (local_ghosted_id > 0) then
-
-      grid%x(local_ghosted_id)=xcoord
-      grid%y(local_ghosted_id)=ycoord
-      grid%z(local_ghosted_id)=zcoord
-
-      local_id = grid%nG2L(local_ghosted_id)
-      if (local_id > 0 .and. abs(material_id) > 0) then
-!      if (local_id > 0) then
-        perm_xx_p(local_id) = xperm
-        perm_yy_p(local_id) = yperm
-        perm_zz_p(local_id) = zperm
-        volume_p(local_id) = volume
-        por_p(local_id) = porosity
-        tor_p(local_id) = tortuosity
-      endif
-      grid%imat(local_ghosted_id) = material_id
-    endif
-
-#if DEBUG
-    print *, 'Read geom 1:',natural_id,xcoord,ycoord,zcoord,volume, &
-                            xperm,yperm,zperm,porosity,tortuosity
-#endif
-    count1 = count1 + 1
-  enddo
-
-  call VecRestoreArrayF90(grid%volume, volume_p, ierr); CHKERRQ(ierr)
-  call VecRestoreArrayF90(grid%perm_xx, perm_xx_p, ierr); CHKERRQ(ierr)
-  call VecRestoreArrayF90(grid%perm_yy, perm_yy_p, ierr); CHKERRQ(ierr)
-  call VecRestoreArrayF90(grid%perm_zz, perm_zz_p, ierr); CHKERRQ(ierr)
-  call VecRestoreArrayF90(grid%tor,tor_p,ierr);  CHKERRQ(ierr)
-  call VecRestoreArrayF90(grid%porosity,por_p,ierr);  CHKERRQ(ierr)
-
-
-  if (grid%myrank == 0) print *, count1, ' cells read'
-  
-! CONDition information
-
-  card = "COND"
-  call fiFindStringInFile(fid,card,ierr)
-
-  ! report error if card does not exist
-  if (ierr /= 0) then
-    if (grid%myrank == 0) print *, 'ERROR: Card (',card, ') not found in file'
-    call PetscFinalize()
-    stop
-  endif
-
-  count1 = 0
-  do
-    call fiReadFlotranString(fid,string,ierr)
-    call fiReadStringErrorMsg(card,ierr)
-
-    if (string(1:1) == '.' .or. string(1:1) == '/') exit
-
-! stomp2pflotran header
-!:id "type" num_values (datum)
-
-    allocate(new_condition)
-    nullify(new_condition%next)
-    new_condition%itype = 0
-    new_condition%xdatum = 0.d0
-    new_condition%ydatum = 0.d0
-    new_condition%zdatum = 0.d0
-    new_condition%xgrad = 0.d0
-    new_condition%ygrad = 0.d0
-    new_condition%zgrad = 0.d0
-
-    call fiReadInt(string,new_condition%id,ierr) 
-    call fiErrorMsg('id',card,ierr)
-
-    call fiReadQuotedNChars(string,new_condition%ctype,MAXWORDLENGTH, &
-                            .true.,ierr) 
-    call fiErrorMsg('condition_type',card,ierr)
-    call fiWordToLower(new_condition%ctype)
-
-    call fiReadInt(string,new_condition%max_time_index,ierr) 
-    call fiErrorMsg('max_time_index',card,ierr)
-
-    call fiReadWord(string,time_unit,.true.,ierr) 
-    call fiErrorMsg('time unit',card,ierr)
-
-    if (fiStringCompare("hydraulic gradient",new_condition%ctype,18) .or. &
-        fiStringCompare("seepage",new_condition%ctype,7)) then
-
-      call fiReadFlotranString(fid,string,ierr)
-      call fiReadStringErrorMsg(card,ierr)
-
-      call fiReadDouble(string,new_condition%xdatum,ierr) 
-      call fiErrorMsg('x datum',card,ierr)
-
-      call fiReadDouble(string,new_condition%ydatum,ierr) 
-      call fiErrorMsg('y datum',card,ierr)
-
-      call fiReadDouble(string,new_condition%zdatum,ierr) 
-      call fiErrorMsg('z datum',card,ierr)
-
-      call fiReadFlotranString(fid,string,ierr)
-      call fiReadStringErrorMsg(card,ierr)
-
-      call fiReadDouble(string,new_condition%xgrad,ierr) 
-      call fiErrorMsg('x gradient',card,ierr)
-
-      call fiReadDouble(string,new_condition%ygrad,ierr) 
-      call fiErrorMsg('y gradient',card,ierr)
-
-      call fiReadDouble(string,new_condition%zgrad,ierr) 
-      call fiErrorMsg('z gradient',card,ierr)
-    endif
-
-    allocate(new_condition%times(new_condition%max_time_index))
-    allocate(new_condition%values(new_condition%max_time_index))
-    new_condition%times = 0.d0
-    new_condition%values = 0.d0
-
-    call fiWordToLower(time_unit)
-    if (fiStringCompare("y",time_unit,1)) then
-      time_multiplier = 365.d0*24.d0*3600.d0
-    else if (fiStringCompare("d",time_unit,1)) then
-      time_multiplier = 24.d0*3600.d0
-    else if (fiStringCompare("h",time_unit,1)) then
-      time_multiplier = 3600.d0
-    else if (fiStringCompare("m",time_unit,1)) then
-      time_multiplier = 60.d0
-    else if (fiStringCompare("s",time_unit,1)) then
-      time_multiplier = 1.d0
-    else
-      if (grid%myrank == 0) then
-        print *, 'Time unit: ', trim(time_unit), ' not recognized'
-      endif
-      call PetscFinalize()
-      stop
-    endif
-
-    if (grid%myrank == 0) print *, new_condition%ctype
-    if (grid%myrank == 0) print *, new_condition%max_time_index
-
-    count2 = 0
-    do i=1,new_condition%max_time_index
-
-      call fiReadFlotranString(fid,string,ierr)
-      call fiReadStringErrorMsg(card,ierr)
-
-      call fiReadDouble(string,time,ierr)
-      call fiErrorMsg('time',card,ierr)
-
-      call fiReadDouble(string,value,ierr)
-      call fiErrorMsg('value',card,ierr)
-      ! times are all in seconds   yr -> seconds
-      new_condition%times(i) = time*time_multiplier
-      new_condition%values(i) = value
-
-      count2 = count2 + 1
-
-    enddo
-
-    if (grid%myrank == 0) print *, count2, ' times read'
-
-    call AddCondition(new_condition)
-    nullify(new_condition)
-
-    count1 = count1 + 1
-
-  enddo
-
-  if (grid%myrank == 0) print *, count1, ' conditions read'
-
-! Initial Condition information
-
-  card = "ICON"
-  call fiFindStringInFile(fid,card,ierr)
-
-  ! report warning if card does not exist
-  if (ierr /= 0 .and. grid%myrank == 0) &
-    print *, 'WARNING: Card (',card, ') not found in file'
-
-  icondition = -1
-  if (ierr == 0) then
-    do
-      call fiReadFlotranString(fid,string,ierr)
-      call fiReadStringErrorMsg(card,ierr)
-
-      if (string(1:1) == '.' .or. string(1:1) == '/') exit
-
-      call fiReadInt(string,icondition,ierr) 
-      call fiErrorMsg('icondition',card,ierr)
-    enddo
-  endif
-
-! set capillary function ids based on material id
-  call VecGetArrayF90(grid%icap,icap_p,ierr)
-  do local_id=1,grid%nlmax
-    if (abs(grid%imat(grid%nL2G(local_id))) > 0) then
-      icap_p(local_id) = abs(grid%imat(grid%nL2G(local_id)))
-    else
-      icap_p(local_id) = 1
-    endif
-  enddo
-  call VecRestoreArrayF90(grid%icap,icap_p,ierr)
-
-  call UpdateGlobalToLocal(grid)
-  call InitializeBoundaryConditions(grid)
-  if (icondition > 0) call ComputeInitialCondition(grid,icondition)
-
-#ifdef HASH
-  deallocate(hash)
-#endif
-  close(fid)
-  call PetscGetTime(time1, ierr)
-  time1 = time1 - time0
-  if (grid%myrank == 0) print *, time1, ' seconds to read materials data'
- 
-end subroutine ReadMaterials
-
-! ************************************************************************** !
-!
-! ReadMaterials2: Reads just the materials from the unstructured input file
-! author: Glenn Hammond
-! date: 06/20/07
-!
-! ************************************************************************** !
-subroutine ReadMaterials2(grid)
-
-  use Fileio_module
-  use Condition_module_old
-
-  implicit none
-
-  type(pflowGrid) :: grid
-  character(len=MAXSTRINGLENGTH) :: string 
- 
-  PetscScalar, pointer :: icap_p(:)
-
-  PetscTruth :: option_found
-  integer fid, iostatus, ierr
-  integer :: material_id, natural_id, local_id, local_ghosted_id
-! integer :: number_of_times
-  integer :: count1, count2, i
-! integer :: irecv
-  real*8 :: xcoord, ycoord, zcoord
-  character(len=MAXCARDLENGTH) :: card
-  character(len=MAXWORDLENGTH) :: time_unit
-  character(len=MAXSTRINGLENGTH) :: filename
-! integer :: direction, icond
-  integer :: icondition
-  real*8 :: time, value, time_multiplier
-  PetscLogDouble :: time0, time1
-  type(condition_type), pointer :: new_condition
-
-  string = " "
-  filename = "hanford.in"
-  call PetscOptionsGetString(PETSC_NULL_CHARACTER, "-unstructured_filename", &
-    filename, option_found, ierr)
-
-  call PetscGetTime(time0, ierr)
-
-  fid = 86
-  open(fid, file=filename, action="read", status="old", iostat=iostatus)
-  if (iostatus /= 0) then
-    print *, 'Error opening file: ', trim(filename), ' on Processor ', &
-             grid%myrank
-    call PetscFinalize()
-    stop
-  endif
-
-  ! create hash table for fast lookup
-#ifdef HASH
-  call UnstGridCreateNatToGhostedHash(grid)
-!  call UnstructGridPrintHashTable
-#endif
-
-! GRID information
-  card = "GRID"
-  call fiFindStringInFile(fid,card,ierr)
-
-  ! report error if card does not exist
-  if (ierr /= 0) then
-    if (grid%myrank == 0) print *, 'ERROR: Card (',card, ') not found in file'
-    call PetscFinalize()
-    stop
-  endif
-
-  count1 = 0
-  do
-
-    call fiReadFlotranString(fid,string,ierr)
-    call fiReadStringErrorMsg(card,ierr)
-
-    if (string(1:1) == '.' .or. string(1:1) == '/') exit
-
-    call fiReadInt(string,natural_id,ierr) 
-    call fiErrorMsg('natural_id',card,ierr)
-
-    call fiReadInt(string,material_id,ierr) 
-    call fiErrorMsg('material_id',card,ierr)
-
-    call fiReadDouble(string,xcoord,ierr)
-    call fiErrorMsg('xcoord',card,ierr)
-   
-    call fiReadDouble(string,ycoord,ierr)
-    call fiErrorMsg('ycoord',card,ierr)
-
-    call fiReadDouble(string,zcoord,ierr)
-    call fiErrorMsg('zcoord',card,ierr)
-   
-    grid%x(natural_id)=xcoord
-    grid%y(natural_id)=ycoord
-    grid%z(natural_id)=zcoord
-
-#ifdef HASH
-    local_ghosted_id = GetLocalGhostedIdFromHash(natural_id)
-#else
-    local_ghosted_id = GetLocalGhostedIdFromNaturalId(natural_id,grid)
-#endif
-
-    grid%x(local_ghosted_id)=xcoord
-    grid%y(local_ghosted_id)=ycoord
-    grid%z(local_ghosted_id)=zcoord
-
-    if (local_ghosted_id > 0) then
-      local_id = grid%nG2L(local_ghosted_id)
-      grid%imat(local_ghosted_id) = material_id
-    endif
-
-#if DEBUG
-    print *, 'Read geom 1:',natural_id,xcoord,ycoord,zcoord,volume, &
-                            xperm,yperm,zperm,porosity,tortuosity
-#endif
-    count1 = count1 + 1
-  enddo
-
-  if (grid%myrank == 0) print *, count1, ' cells read'
-  
-! CONDition information
-
-  card = "COND"
-  call fiFindStringInFile(fid,card,ierr)
-
-  ! report error if card does not exist
-  if (ierr /= 0) then
-    if (grid%myrank == 0) print *, 'ERROR: Card (',card, ') not found in file'
-    call PetscFinalize()
-    stop
-  endif
-
-  count1 = 0
-  do
-    call fiReadFlotranString(fid,string,ierr)
-    call fiReadStringErrorMsg(card,ierr)
-
-    if (string(1:1) == '.' .or. string(1:1) == '/') exit
-
-! stomp2pflotran header
-!:id "type" num_values (datum)
-
-    allocate(new_condition)
-    nullify(new_condition%next)
-    new_condition%itype = 0
-    new_condition%xdatum = 0.d0
-    new_condition%ydatum = 0.d0
-    new_condition%zdatum = 0.d0
-    new_condition%xgrad = 0.d0
-    new_condition%ygrad = 0.d0
-    new_condition%zgrad = 0.d0
-
-    call fiReadInt(string,new_condition%id,ierr) 
-    call fiErrorMsg('id',card,ierr)
-
-    call fiReadQuotedNChars(string,new_condition%ctype,MAXWORDLENGTH, &
-                            .true.,ierr) 
-    call fiErrorMsg('condition_type',card,ierr)
-    call fiWordToLower(new_condition%ctype)
-
-    call fiReadInt(string,new_condition%max_time_index,ierr) 
-    call fiErrorMsg('max_time_index',card,ierr)
-
-    call fiReadWord(string,time_unit,.true.,ierr) 
-    call fiErrorMsg('time unit',card,ierr)
-
-    if (fiStringCompare("hydraulic gradient",new_condition%ctype,18) .or. &
-        fiStringCompare("seepage",new_condition%ctype,7)) then
-
-      call fiReadFlotranString(fid,string,ierr)
-      call fiReadStringErrorMsg(card,ierr)
-
-      call fiReadDouble(string,new_condition%xdatum,ierr) 
-      call fiErrorMsg('x datum',card,ierr)
-
-      call fiReadDouble(string,new_condition%ydatum,ierr) 
-      call fiErrorMsg('y datum',card,ierr)
-
-      call fiReadDouble(string,new_condition%zdatum,ierr) 
-      call fiErrorMsg('z datum',card,ierr)
-
-      call fiReadFlotranString(fid,string,ierr)
-      call fiReadStringErrorMsg(card,ierr)
-
-      call fiReadDouble(string,new_condition%xgrad,ierr) 
-      call fiErrorMsg('x gradient',card,ierr)
-
-      call fiReadDouble(string,new_condition%ygrad,ierr) 
-      call fiErrorMsg('y gradient',card,ierr)
-
-      call fiReadDouble(string,new_condition%zgrad,ierr) 
-      call fiErrorMsg('z gradient',card,ierr)
-    endif
-
-    allocate(new_condition%times(new_condition%max_time_index))
-    allocate(new_condition%values(new_condition%max_time_index))
-    new_condition%times = 0.d0
-    new_condition%values = 0.d0
-
-    call fiWordToLower(time_unit)
-    if (fiStringCompare("y",time_unit,1)) then
-      time_multiplier = 365.d0*24.d0*3600.d0
-    else if (fiStringCompare("d",time_unit,1)) then
-      time_multiplier = 24.d0*3600.d0
-    else if (fiStringCompare("h",time_unit,1)) then
-      time_multiplier = 3600.d0
-    else if (fiStringCompare("m",time_unit,1)) then
-      time_multiplier = 60.d0
-    else if (fiStringCompare("s",time_unit,1)) then
-      time_multiplier = 1.d0
-    else
-      if (grid%myrank == 0) then
-        print *, 'Time unit: ', trim(time_unit), ' not recognized'
-      endif
-      call PetscFinalize()
-      stop
-    endif
-
-    if (grid%myrank == 0) print *, new_condition%ctype
-    if (grid%myrank == 0) print *, new_condition%max_time_index
-
-    count2 = 0
-    do i=1,new_condition%max_time_index
-
-      call fiReadFlotranString(fid,string,ierr)
-      call fiReadStringErrorMsg(card,ierr)
-
-      call fiReadDouble(string,time,ierr)
-      call fiErrorMsg('time',card,ierr)
-
-      call fiReadDouble(string,value,ierr)
-      call fiErrorMsg('value',card,ierr)
-      ! times are all in seconds   yr -> seconds
-      new_condition%times(i) = time*time_multiplier
-      new_condition%values(i) = value
-
-      count2 = count2 + 1
-
-    enddo
-
-    if (grid%myrank == 0) print *, count2, ' times read'
-
-    call AddCondition(new_condition)
-    nullify(new_condition)
-
-    count1 = count1 + 1
-
-  enddo
-
-  if (grid%myrank == 0) print *, count1, ' conditions read'
-
-! Initial Condition information
-
-  card = "ICON"
-  call fiFindStringInFile(fid,card,ierr)
-
-  ! report warning if card does not exist
-  if (ierr /= 0 .and. grid%myrank == 0) &
-    print *, 'WARNING: Card (',card, ') not found in file'
-
-  icondition = -1
-  if (ierr == 0) then
-    do
-      call fiReadFlotranString(fid,string,ierr)
-      call fiReadStringErrorMsg(card,ierr)
-
-      if (string(1:1) == '.' .or. string(1:1) == '/') exit
-
-      call fiReadInt(string,icondition,ierr) 
-      call fiErrorMsg('icondition',card,ierr)
-    enddo
-  endif
-
-! set capillary function ids based on material id
-  call VecGetArrayF90(grid%icap,icap_p,ierr)
-  do local_id=1,grid%nlmax
-    if (abs(grid%imat(grid%nL2G(local_id))) > 0) then
-      icap_p(local_id) = abs(grid%imat(grid%nL2G(local_id)))
-    else
-      icap_p(local_id) = 1
-    endif
-  enddo
-  call VecRestoreArrayF90(grid%icap,icap_p,ierr)
-
-  call InitializeBoundaryConditions(grid)
-#if 1
-  if (icondition > 0) call ComputeInitialCondition(grid,icondition)
-#endif
-
-#ifdef HASH
-  deallocate(hash)
-#endif
-  close(fid)
-  call PetscGetTime(time1, ierr)
-  time1 = time1 - time0
-  if (grid%myrank == 0) print *, time1, ' seconds to read materials data'
- 
-end subroutine ReadMaterials2
-
 #ifndef USE_HDF5
-subroutine ReadStructuredGridHDF5(grid)
+subroutine ReadStructuredGridHDF5(realization)
 
-  implicit none
+  use Realization_module
+  use Option_module
   
-  type(pflowGrid) :: grid
+  implicit none
 
-  if (grid%myrank == 0) then
+  if (realization%option%myrank == 0) then
     print *
     print *, 'PFLOTRAN must be compiled with -DUSE_HDF5 to ', &
              'read HDF5 formatted structured grids.'
@@ -1267,15 +56,23 @@ end subroutine ReadStructuredGridHDF5
 ! date: 09/21/07
 !
 ! ************************************************************************** !
-subroutine ReadStructuredGridHDF5(grid)
+subroutine ReadStructuredGridHDF5(realization)
 
   use hdf5
   
+  use Realization_module
+  use Option_module
+  use Grid_module
+  use Field_module
   use Connection_module
   
   implicit none
 
-  type(pflowGrid) :: grid
+  type(realization_type) :: realization
+
+  type(option_type), pointer :: option
+  type(grid_type), pointer :: grid
+  type(field_type), pointer :: field
 
   character(len=MAXSTRINGLENGTH) :: string 
   character(len=MAXSTRINGLENGTH) :: filename
@@ -1300,6 +97,10 @@ subroutine ReadStructuredGridHDF5(grid)
 
   PetscLogDouble :: time0, time1, time3, time4
 
+  field => realization%field
+  option => realization%option
+  grid => realization%grid
+
   call PetscGetTime(time0, ierr)
 
   filename = "543.h5"
@@ -1307,19 +108,19 @@ subroutine ReadStructuredGridHDF5(grid)
                              filename, option_found, ierr)
  
   ! grab connection object
-  !connection_list => grid%internal_connection_list
+  connection_list => grid%internal_connection_list
   cur_connection_set => connection_list%first
   
   ! create hash table for fast lookup
 #ifdef HASH
-  call UnstGridCreateNatToGhostedHash(grid)
+  call UnstGridCreateNatToGhostedHash(grid,option)
 !  call UnstructGridPrintHashTable
 #endif
 
   ! initialize fortran hdf5 interface
   call h5open_f(hdf5_err)
 
-  if (grid%myrank == 0) print *, 'Opening hdf5 file: ', trim(filename)
+  if (option%myrank == 0) print *, 'Opening hdf5 file: ', trim(filename)
   call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
 #ifndef SERIAL_HDF5
   call h5pset_fapl_mpio_f(prop_id,PETSC_COMM_WORLD,MPI_INFO_NULL,hdf5_err)
@@ -1329,181 +130,120 @@ subroutine ReadStructuredGridHDF5(grid)
 
   ! open the grid cells group
   string = 'Grid Cells'
-  if (grid%myrank == 0) print *, 'Opening group: ', trim(string)
+  if (option%myrank == 0) print *, 'Opening group: ', trim(string)
   call h5gopen_f(file_id,string,grp_id,hdf5_err)
   
   allocate(indices(grid%nlmax))
   
-  if (grid%myrank == 0) print *, 'Setting up grid cell indices'
+  if (option%myrank == 0) print *, 'Setting up grid cell indices'
   call PetscGetTime(time3, ierr)
-  call SetupCellIndices(grid,grp_id,indices)
+  call SetupCellIndices(grid,option,grp_id,indices)
   call PetscGetTime(time4, ierr)
   time4 = time4 - time3
-  if (grid%myrank == 0) print *, time4, &
+  if (option%myrank == 0) print *, time4, &
        ' seconds to set up grid cell indices for hdf5 file'
 
-  call DACreateGlobalVector(grid%da_1_dof,global,ierr)
-  call DACreateLocalVector(grid%da_1_dof,local,ierr)
+  call GridCreateVector(grid,ONEDOF,global,GLOBAL)
+  call GridCreateVector(grid,ONEDOF,local,LOCAL)
   
   allocate(integer_array(grid%nlmax))
   string = "Material Id"
-  if (grid%myrank == 0) print *, 'Reading dataset: ', trim(string)
-  call ReadIntegerArray(grid,grp_id,grid%nlmax,indices,string,integer_array)
-  call VecGetArrayF90(global,vec_ptr,ierr)
-  do i=1,grid%nlmax
-    vec_ptr(i) = integer_array(i)
-  enddo
+  if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
+  call ReadIntegerArray(grid,option,grp_id,grid%nlmax,indices,string,integer_array)
+  call GridCopyIntegerArrayToPetscVec(integer_array,global,grid%nlmax)
   deallocate(integer_array)
-  call VecRestoreArrayF90(global,vec_ptr,ierr)
-  call DAGlobalToLocalBegin(grid%da_1_dof,global,INSERT_VALUES,local,ierr)  
-  call DAGlobalToLocalEnd(grid%da_1_dof,global,INSERT_VALUES,local,ierr)  
-  call VecGetArrayF90(local,vec_ptr,ierr)
-  do i=1,grid%ngmax
-    grid%imat(i) = int(vec_ptr(i)+0.0001d0)
-  enddo
-  call VecRestoreArrayF90(local,vec_ptr,ierr)
-  
+  call GridGlobalToLocal(grid,global,local,ONEDOF)
+  call GridCopyPetscVecToIntegerArray(field%imat,local,grid%ngmax)
   
   allocate(real_array(grid%nlmax))
   string = "X-Coordinate"
-  if (grid%myrank == 0) print *, 'Reading dataset: ', trim(string)
-  call ReadRealArray(grid,grp_id,grid%nlmax,indices,string,real_array)
-  call VecGetArrayF90(global,vec_ptr,ierr)
-  do i=1,grid%nlmax
-    vec_ptr(i) = real_array(i)
-  enddo
-  call VecRestoreArrayF90(global,vec_ptr,ierr)
-  call DAGlobalToLocalBegin(grid%da_1_dof,global,INSERT_VALUES,local,ierr)  
-  call DAGlobalToLocalEnd(grid%da_1_dof,global,INSERT_VALUES,local,ierr)  
-  call VecGetArrayF90(local,vec_ptr,ierr)
-  do i=1,grid%ngmax
-    grid%x(i) = vec_ptr(i)
-  enddo
-  call VecRestoreArrayF90(local,vec_ptr,ierr)
+  if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
+  call ReadRealArray(grid,option,grp_id,grid%nlmax,indices,string,real_array)
+  call GridCopyRealArrayToPetscVec(real_array,global,grid%nlmax)
+  call GridGlobalToLocal(grid,global,local,ONEDOF)  
+  call GridCopyPetscVecToRealArray(grid%x,local,grid%ngmax)
 
   string = "Y-Coordinate"
-  if (grid%myrank == 0) print *, 'Reading dataset: ', trim(string)
-  call ReadRealArray(grid,grp_id,grid%nlmax,indices,string,real_array)
-  call VecGetArrayF90(global,vec_ptr,ierr)
-  do i=1,grid%nlmax
-    vec_ptr(i) = real_array(i)
-  enddo
-  call VecRestoreArrayF90(global,vec_ptr,ierr)
-  call DAGlobalToLocalBegin(grid%da_1_dof,global,INSERT_VALUES,local,ierr)  
-  call DAGlobalToLocalEnd(grid%da_1_dof,global,INSERT_VALUES,local,ierr)  
-  call VecGetArrayF90(local,vec_ptr,ierr)
-  do i=1,grid%ngmax
-    grid%y(i) = vec_ptr(i)
-  enddo
-  call VecRestoreArrayF90(local,vec_ptr,ierr)
+  if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
+  call ReadRealArray(grid,option,grp_id,grid%nlmax,indices,string,real_array)
+  call GridCopyRealArrayToPetscVec(real_array,global,grid%nlmax)
+  call GridGlobalToLocal(grid,global,local,ONEDOF)  
+  call GridCopyPetscVecToRealArray(grid%y,local,grid%ngmax)
 
   string = "Z-Coordinate"
-  if (grid%myrank == 0) print *, 'Reading dataset: ', trim(string)
-  call ReadRealArray(grid,grp_id,grid%nlmax,indices,string,real_array)
-  call VecGetArrayF90(global,vec_ptr,ierr)
-  do i=1,grid%nlmax
-    vec_ptr(i) = real_array(i)
-  enddo
-  call VecRestoreArrayF90(global,vec_ptr,ierr)
-  call DAGlobalToLocalBegin(grid%da_1_dof,global,INSERT_VALUES,local,ierr)  
-  call DAGlobalToLocalEnd(grid%da_1_dof,global,INSERT_VALUES,local,ierr)  
-  call VecGetArrayF90(local,vec_ptr,ierr)
-  do i=1,grid%ngmax
-    grid%z(i) = vec_ptr(i)
-  enddo
-  call VecRestoreArrayF90(local,vec_ptr,ierr)
+  if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
+  call ReadRealArray(grid,option,grp_id,grid%nlmax,indices,string,real_array)
+  call GridCopyRealArrayToPetscVec(real_array,global,grid%nlmax)
+  call GridGlobalToLocal(grid,global,local,ONEDOF)  
+  call GridCopyPetscVecToRealArray(grid%z,local,grid%ngmax)
+
   deallocate(real_array)
   
-  call VecDestroy(global,ierr)
-  call VecDestroy(local,ierr)
-  
-  
   string = "Volume"
-  if (grid%myrank == 0) print *, 'Reading dataset: ', trim(string)
+  if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
   call VecGetArrayF90(grid%volume,vec_ptr,ierr); CHKERRQ(ierr)
-  call ReadRealArray(grid,grp_id,grid%nlmax,indices,string,vec_ptr)
+  call ReadRealArray(grid,option,grp_id,grid%nlmax,indices,string,vec_ptr)
   call VecRestoreArrayF90(grid%volume,vec_ptr,ierr); CHKERRQ(ierr)
   
   string = "X-Permeability"
-  if (grid%myrank == 0) print *, 'Reading dataset: ', trim(string)
-  call VecGetArrayF90(grid%perm_xx,vec_ptr,ierr); CHKERRQ(ierr)
-  call ReadRealArray(grid,grp_id,grid%nlmax,indices,string,vec_ptr)
-  call VecRestoreArrayF90(grid%perm_xx,vec_ptr,ierr); CHKERRQ(ierr)
+  if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
+  call VecGetArrayF90(field%perm0_xx,vec_ptr,ierr); CHKERRQ(ierr)
+  call ReadRealArray(grid,option,grp_id,grid%nlmax,indices,string,vec_ptr)
+  call VecRestoreArrayF90(field%perm0_xx,vec_ptr,ierr); CHKERRQ(ierr)
   
   string = "Y-Permeability"
-  if (grid%myrank == 0) print *, 'Reading dataset: ', trim(string)
-  call VecGetArrayF90(grid%perm_yy,vec_ptr,ierr); CHKERRQ(ierr)
-  call ReadRealArray(grid,grp_id,grid%nlmax,indices,string,vec_ptr)
-  call VecRestoreArrayF90(grid%perm_yy,vec_ptr,ierr); CHKERRQ(ierr)
+  if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
+  call VecGetArrayF90(field%perm0_yy,vec_ptr,ierr); CHKERRQ(ierr)
+  call ReadRealArray(grid,option,grp_id,grid%nlmax,indices,string,vec_ptr)
+  call VecRestoreArrayF90(field%perm0_yy,vec_ptr,ierr); CHKERRQ(ierr)
 
   string = "Z-Permeability"
-  if (grid%myrank == 0) print *, 'Reading dataset: ', trim(string)
-  call VecGetArrayF90(grid%perm_zz,vec_ptr,ierr); CHKERRQ(ierr)
-  call ReadRealArray(grid,grp_id,grid%nlmax,indices,string,vec_ptr)
-  call VecRestoreArrayF90(grid%perm_zz,vec_ptr,ierr); CHKERRQ(ierr)
+  if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
+  call VecGetArrayF90(field%perm0_zz,vec_ptr,ierr); CHKERRQ(ierr)
+  call ReadRealArray(grid,option,grp_id,grid%nlmax,indices,string,vec_ptr)
+  call VecRestoreArrayF90(field%perm0_zz,vec_ptr,ierr); CHKERRQ(ierr)
 
   string = "Porosity"
-  if (grid%myrank == 0) print *, 'Reading dataset: ', trim(string)
-  call VecGetArrayF90(grid%porosity,vec_ptr,ierr); CHKERRQ(ierr)
-  call ReadRealArray(grid,grp_id,grid%nlmax,indices,string,vec_ptr)
-  call VecRestoreArrayF90(grid%porosity,vec_ptr,ierr); CHKERRQ(ierr)
+  if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
+  call VecGetArrayF90(field%porosity0,vec_ptr,ierr); CHKERRQ(ierr)
+  call ReadRealArray(grid,option,grp_id,grid%nlmax,indices,string,vec_ptr)
+  call VecRestoreArrayF90(field%porosity0,vec_ptr,ierr); CHKERRQ(ierr)
 
   string = "Tortuosity"
-  if (grid%myrank == 0) print *, 'Reading dataset: ', trim(string)
-  call VecGetArrayF90(grid%tor,vec_ptr,ierr); CHKERRQ(ierr)
-  call ReadRealArray(grid,grp_id,grid%nlmax,indices,string,vec_ptr)
-  call VecRestoreArrayF90(grid%tor,vec_ptr,ierr); CHKERRQ(ierr)
+  if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
+  call VecGetArrayF90(global,vec_ptr,ierr); CHKERRQ(ierr)
+  call ReadRealArray(grid,option,grp_id,grid%nlmax,indices,string,vec_ptr)
+  call VecRestoreArrayF90(global,vec_ptr,ierr); CHKERRQ(ierr)
+  call GridGlobalToLocal(grid,global,field%tor_loc,ONEDOF)
+
+  call VecDestroy(global,ierr)
+  call VecDestroy(local,ierr)
 
   ! update local vectors
-  
-  ! perm_xx
-  call DAGlobalToLocalBegin(grid%da_1_dof, grid%perm_xx, INSERT_VALUES, &
-                            grid%perm_xx_loc, ierr)
-  call DAGlobalToLocalEnd(grid%da_1_dof, grid%perm_xx, INSERT_VALUES, &
-                          grid%perm_xx_loc, ierr)
-  ! perm_yy
-  call DAGlobalToLocalBegin(grid%da_1_dof, grid%perm_yy, INSERT_VALUES, &
-                            grid%perm_yy_loc, ierr)
-  call DAGlobalToLocalEnd(grid%da_1_dof, grid%perm_yy, INSERT_VALUES, &
-                          grid%perm_yy_loc, ierr)
-  ! perm_zz
-  call DAGlobalToLocalBegin(grid%da_1_dof, grid%perm_zz, INSERT_VALUES, &
-                            grid%perm_zz_loc, ierr)
-  call DAGlobalToLocalEnd(grid%da_1_dof, grid%perm_zz, INSERT_VALUES, &
-                        grid%perm_zz_loc, ierr)
-  ! porosity
-  call DAGlobalToLocalBegin(grid%da_1_dof, grid%porosity, INSERT_VALUES, &
-                            grid%porosity_loc, ierr)
-  call DAGlobalToLocalEnd(grid%da_1_dof, grid%porosity, INSERT_VALUES, &
-                          grid%porosity_loc, ierr)
-  ! tortuosity
-  call DAGlobalToLocalBegin(grid%da_1_dof, grid%tor, INSERT_VALUES, &
-                            grid%tor_loc, ierr)
-  call DAGlobalToLocalEnd(grid%da_1_dof, grid%tor, INSERT_VALUES, &
-                          grid%tor_loc, ierr)
+  call UpdateGlobalToLocal(grid,field)
 
   deallocate(indices)
-  if (grid%myrank == 0) print *, 'Closing group: Grid Cells'
+  if (option%myrank == 0) print *, 'Closing group: Grid Cells'
   call h5gclose_f(grp_id,hdf5_err)
   
   string = 'Connections'
-  if (grid%myrank == 0) print *, 'Opening group: ', trim(string)
+  if (option%myrank == 0) print *, 'Opening group: ', trim(string)
   call h5gopen_f(file_id,string,grp_id,hdf5_err)
 
   allocate(indices(cur_connection_set%num_connections))
 
-  if (grid%myrank == 0) print *, 'Setting up connection indices'
+  if (option%myrank == 0) print *, 'Setting up connection indices'
   call PetscGetTime(time3, ierr)
-  call SetupConnectionIndices(grid,grp_id,indices)
+  call SetupConnectionIndices(grid,option,grp_id,indices)
   call PetscGetTime(time4, ierr)
   time4 = time4 - time3
-  if (grid%myrank == 0) print *, time4, &
+  if (option%myrank == 0) print *, time4, &
        ' seconds to set up connection indices for hdf5 file'
 
   allocate(integer_array(cur_connection_set%num_connections))
   string = "Id Upwind"
-  if (grid%myrank == 0) print *, 'Reading dataset: ', trim(string)
-  call ReadIntegerArray(grid,grp_id,cur_connection_set%num_connections, &
+  if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
+  call ReadIntegerArray(grid,option,grp_id,cur_connection_set%num_connections, &
                         indices,string,integer_array)
   do i=1,cur_connection_set%num_connections
     local_ghosted_id = GetLocalGhostedIdFromHash(integer_array(i))
@@ -1511,8 +251,8 @@ subroutine ReadStructuredGridHDF5(grid)
   enddo
 
   string = "Id Downwind"
-  if (grid%myrank == 0) print *, 'Reading dataset: ', trim(string)
-  call ReadIntegerArray(grid,grp_id,cur_connection_set%num_connections, &
+  if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
+  call ReadIntegerArray(grid,option,grp_id,cur_connection_set%num_connections, &
                         indices,string,integer_array)
   do i=1,cur_connection_set%num_connections
     local_ghosted_id = GetLocalGhostedIdFromHash(integer_array(i))
@@ -1522,8 +262,8 @@ subroutine ReadStructuredGridHDF5(grid)
   
   allocate(real_array(cur_connection_set%num_connections))
   string = "Distance Upwind"
-  if (grid%myrank == 0) print *, 'Reading dataset: ', trim(string)
-  call ReadRealArray(grid,grp_id,cur_connection_set%num_connections, &
+  if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
+  call ReadRealArray(grid,option,grp_id,cur_connection_set%num_connections, &
                      indices,string,real_array)
                      
   cur_connection_set%dist(-1,1:cur_connection_set%num_connections) = &
@@ -1532,8 +272,8 @@ subroutine ReadStructuredGridHDF5(grid)
     real_array(1:cur_connection_set%num_connections)                      
 
   string = "Distance Downwind"
-  if (grid%myrank == 0) print *, 'Reading dataset: ', trim(string)
-  call ReadRealArray(grid,grp_id,cur_connection_set%num_connections, &
+  if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
+  call ReadRealArray(grid,option,grp_id,cur_connection_set%num_connections, &
                      indices,string,real_array) 
 
   cur_connection_set%dist(0,1:cur_connection_set%num_connections) = &
@@ -1545,16 +285,16 @@ subroutine ReadStructuredGridHDF5(grid)
     cur_connection_set%dist(0,1:cur_connection_set%num_connections)
 
   string = "Area"
-  if (grid%myrank == 0) print *, 'Reading dataset: ', trim(string)
-  call ReadRealArray(grid,grp_id,cur_connection_set%num_connections, &
+  if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
+  call ReadRealArray(grid,option,grp_id,cur_connection_set%num_connections, &
                      indices,string,real_array) 
 
   cur_connection_set%area(1:cur_connection_set%num_connections) = &
     real_array(1:cur_connection_set%num_connections)                      
 
   string = "CosB"
-  if (grid%myrank == 0) print *, 'Reading dataset: ', trim(string)
-  call ReadRealArray(grid,grp_id,cur_connection_set%num_connections, &
+  if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
+  call ReadRealArray(grid,option,grp_id,cur_connection_set%num_connections, &
                      indices,string,real_array) 
   
   ! for now, store cosB in z component of distance array
@@ -1564,9 +304,9 @@ subroutine ReadStructuredGridHDF5(grid)
   deallocate(real_array)
   deallocate(indices)
 
-  if (grid%myrank == 0) print *, 'Closing group: Connections'
+  if (option%myrank == 0) print *, 'Closing group: Connections'
   call h5gclose_f(grp_id,hdf5_err)
-  if (grid%myrank == 0) print *, 'Closing hdf5 file: ', filename
+  if (option%myrank == 0) print *, 'Closing hdf5 file: ', filename
   call h5fclose_f(file_id,hdf5_err)
    
   call h5close_f(hdf5_err)
@@ -1587,8 +327,9 @@ subroutine ReadStructuredGridHDF5(grid)
 
   call PetscGetTime(time1, ierr)
   time1 = time1 - time0
-  if (grid%myrank == 0) print *, time1, &
+  if (option%myrank == 0) print *, time1, &
        ' seconds to read unstructured grid data from hdf5 file'
+     
 end subroutine ReadStructuredGridHDF5
 
 ! ************************************************************************** !
@@ -1599,13 +340,17 @@ end subroutine ReadStructuredGridHDF5
 ! date: 09/21/07
 !
 ! ************************************************************************** !
-subroutine SetupCellIndices(grid,file_id,indices)
+subroutine SetupCellIndices(grid,option,file_id,indices)
 
   use hdf5
   
+  use Option_module
+  use Grid_module
+  
   implicit none
   
-  type(pflowGrid) :: grid
+  type(grid_type) :: grid
+  type(option_type) :: option
   
   integer(HID_T) :: file_id
   integer :: indices(:)
@@ -1634,7 +379,7 @@ subroutine SetupCellIndices(grid,file_id,indices)
   ! should be a rank=1 data space
   call h5sget_simple_extent_npoints_f(file_space_id,num_cells_in_file,hdf5_err)
   if (num_cells_in_file /= grid%nmax) then
-    if (grid%myrank == 0) then
+    if (option%myrank == 0) then
       print *, 'ERROR: ', trim(string), ' data space dimension (', &
                num_cells_in_file, ') does not match the dimensions of the ', &
                'domain (', grid%nmax, ').'
@@ -1674,13 +419,13 @@ subroutine SetupCellIndices(grid,file_id,indices)
     call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset,length, &
                                hdf5_err,stride,stride) 
 #ifdef HDF5_BROADCAST
-    if (grid%myrank == 0) then                           
+    if (option%myrank == 0) then                           
 #endif
       call h5dread_f(data_set_id,H5T_NATIVE_INTEGER,cell_ids,dims,hdf5_err, &
                      memory_space_id,file_space_id,prop_id)                     
 #ifdef HDF5_BROADCAST
     endif
-    if (grid%commsize > 1) &
+    if (option%commsize > 1) &
       call mpi_bcast(cell_ids,dims(1),MPI_INTEGER,0,PETSC_COMM_WORLD,ierr)
 #endif     
     do i=1,dims(1)
@@ -1705,7 +450,7 @@ subroutine SetupCellIndices(grid,file_id,indices)
   call h5dclose_f(data_set_id,hdf5_err)
 
   if (index_count /= grid%nlmax) then
-    if (grid%myrank == 0) &
+    if (option%myrank == 0) &
       print *, 'ERROR: Number of indices read (', index_count, ') does not ', &
                'match the number of local grid cells (', grid%nlmax, ').'
       call PetscFinalize(ierr)
@@ -1722,15 +467,17 @@ end subroutine SetupCellIndices
 ! date: 09/21/07
 !
 ! ************************************************************************** !
-subroutine SetupConnectionIndices(grid,file_id,indices)
+subroutine SetupConnectionIndices(grid,option,file_id,indices)
 
   use hdf5
   use Connection_module
   use Grid_module
+  use Option_module
   
   implicit none
   
-  type(pflowGrid) :: grid
+  type(grid_type) :: grid
+  type(option_type) :: option
   
   integer(HID_T) :: file_id
   integer :: indices(:)
@@ -1754,7 +501,7 @@ subroutine SetupConnectionIndices(grid,file_id,indices)
   
   integer :: read_block_size = READ_BUFFER_SIZE
 
-!  num_internal_connections = ConnectionGetNumberInList(grid%internal_connection_list)
+  num_internal_connections = ConnectionGetNumberInList(grid%internal_connection_list)
   
   string = "Id Upwind"
   call h5dopen_f(file_id,string,data_set_id_up,hdf5_err)
@@ -1765,9 +512,9 @@ subroutine SetupConnectionIndices(grid,file_id,indices)
   ! should be a rank=1 data space
   call h5sget_simple_extent_npoints_f(file_space_id_up, &
                                       num_connections_in_file,hdf5_err)
-#if 0
+#if 1
   if (num_connections_in_file /= num_internal_connections) then
-    if (grid%myrank == 0) then
+    if (option%myrank == 0) then
       print *, 'ERROR: ', trim(string), ' data space dimension (', &
                num_connections_in_file, ') does not match the dimensions ', &
                'of the domain (', num_internal_connections, ').'
@@ -1808,26 +555,26 @@ subroutine SetupConnectionIndices(grid,file_id,indices)
     call h5sselect_hyperslab_f(file_space_id_up, H5S_SELECT_SET_F,offset, &
                                length,hdf5_err,stride,stride) 
 #ifdef HDF5_BROADCAST
-    if (grid%myrank == 0) then                           
+    if (option%myrank == 0) then                           
 #endif
       call h5dread_f(data_set_id_up,H5T_NATIVE_INTEGER,upwind_ids,dims, &
                      hdf5_err,memory_space_id,file_space_id_up,prop_id)                     
 #ifdef HDF5_BROADCAST
     endif
-    if (grid%commsize > 1) &
+    if (option%commsize > 1) &
       call mpi_bcast(upwind_ids,dims(1),MPI_INTEGER,0, &
                      PETSC_COMM_WORLD,ierr)
 #endif    
     call h5sselect_hyperslab_f(file_space_id_down, H5S_SELECT_SET_F,offset, &
                                length,hdf5_err,stride,stride) 
 #ifdef HDF5_BROADCAST
-    if (grid%myrank == 0) then                           
+    if (option%myrank == 0) then                           
 #endif
       call h5dread_f(data_set_id_down,H5T_NATIVE_INTEGER,downwind_ids,dims, &
                      hdf5_err,memory_space_id,file_space_id_down,prop_id)                     
 #ifdef HDF5_BROADCAST
     endif
-    if (grid%commsize > 1) &
+    if (option%commsize > 1) &
       call mpi_bcast(downwind_ids,dims(1),MPI_INTEGER,0, &
                      PETSC_COMM_WORLD,ierr)
 #endif    
@@ -1858,9 +605,9 @@ subroutine SetupConnectionIndices(grid,file_id,indices)
   call h5dclose_f(data_set_id_down,hdf5_err)
 
   if (index_count /= num_internal_connections) then
-    if (grid%myrank == 0) &
+    if (option%myrank == 0) &
       print *, 'ERROR: Number of indices read (', index_count, ') does not ', &
-               'match the number of local grid connections (', grid%nlmax, ').'
+               'match the number of local grid connections (', num_internal_connections, ').'
       call PetscFinalize(ierr)
       stop
   endif
@@ -1874,13 +621,18 @@ end subroutine SetupConnectionIndices
 ! date: 09/21/07
 !
 ! ************************************************************************** !
-subroutine ReadRealArray(grid,file_id,num_indices,indices,string,real_array)
+subroutine ReadRealArray(grid,option,file_id,num_indices,indices,string, &
+                         real_array)
 
   use hdf5
   
+  use Grid_module
+  use Option_module
+  
   implicit none
   
-  type(pflowGrid) :: grid
+  type(grid_type) :: grid
+  type(option_type) :: option
   
   integer(HID_T) :: file_id
   integer :: num_indices
@@ -1910,7 +662,7 @@ subroutine ReadRealArray(grid,file_id,num_indices,indices,string,real_array)
   call h5sget_simple_extent_npoints_f(file_space_id,num_reals_in_file,hdf5_err)
 #if 0
   if (num_reals_in_file /= grid%nmax) then
-    if (grid%myrank == 0) then
+    if (option%myrank == 0) then
       print *, 'ERROR: ', trim(string), ' data space dimension (', &
                num_reals_in_file, ') does not match the dimensions of the ', &
                'domain (', grid%nmax, ').'
@@ -1954,13 +706,13 @@ subroutine ReadRealArray(grid,file_id,num_indices,indices,string,real_array)
         call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset, &
                                    length,hdf5_err,stride,stride) 
 #ifdef HDF5_BROADCAST
-        if (grid%myrank == 0) then                           
+        if (option%myrank == 0) then                           
 #endif
           call h5dread_f(data_set_id,H5T_NATIVE_DOUBLE,real_buffer,dims, &
                          hdf5_err,memory_space_id,file_space_id,prop_id)
 #ifdef HDF5_BROADCAST
         endif
-        if (grid%commsize > 1) &
+        if (option%commsize > 1) &
           call mpi_bcast(real_buffer,dims(1),MPI_DOUBLE_PRECISION,0, &
                          PETSC_COMM_WORLD,ierr)
 #endif
@@ -1986,11 +738,11 @@ subroutine ReadRealArray(grid,file_id,num_indices,indices,string,real_array)
     length(1) = dims(1)
     call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset, &
                                length,hdf5_err,stride,stride) 
-    if (grid%myrank == 0) then                           
+    if (option%myrank == 0) then                           
       call h5dread_f(data_set_id,H5T_NATIVE_DOUBLE,real_buffer,dims, &
                      hdf5_err,memory_space_id,file_space_id,prop_id)
     endif
-    if (grid%commsize > 1) &
+    if (option%commsize > 1) &
       call mpi_bcast(real_buffer,dims(1),MPI_DOUBLE_PRECISION,0, &
                      PETSC_COMM_WORLD,ierr)
     real_count = real_count + length(1)                  
@@ -2013,14 +765,18 @@ end subroutine ReadRealArray
 ! date: 09/21/07
 !
 ! ************************************************************************** !
-subroutine ReadIntegerArray(grid,file_id,num_indices,indices,string, &
+subroutine ReadIntegerArray(grid,option,file_id,num_indices,indices,string, &
                             integer_array)
 
   use hdf5
   
+  use Grid_module
+  use Option_module
+  
   implicit none
   
-  type(pflowGrid) :: grid
+  type(grid_type) :: grid
+  type(option_type) :: option
   
   integer(HID_T) :: file_id
   integer :: num_indices
@@ -2051,7 +807,7 @@ subroutine ReadIntegerArray(grid,file_id,num_indices,indices,string, &
                                       hdf5_err)
 #if 0
   if (num_integers_in_file /= grid%nmax) then
-    if (grid%myrank == 0) then
+    if (option%myrank == 0) then
       print *, 'ERROR: ', trim(string), ' data space dimension (', &
                num_integers_in_file, ') does not match the dimensions of ', &
                'the domain (', grid%nmax, ').'
@@ -2097,13 +853,13 @@ subroutine ReadIntegerArray(grid,file_id,num_indices,indices,string, &
         call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset, &
                                    length,hdf5_err,stride,stride) 
 #ifdef HDF5_BROADCAST
-        if (grid%myrank == 0) then                           
+        if (option%myrank == 0) then                           
 #endif
           call h5dread_f(data_set_id,H5T_NATIVE_INTEGER,integer_buffer,dims, &
                          hdf5_err,memory_space_id,file_space_id,prop_id)   
 #ifdef HDF5_BROADCAST
         endif
-        if (grid%commsize > 1) &
+        if (option%commsize > 1) &
           call mpi_bcast(integer_buffer,dims(1),MPI_INTEGER,0, &
                          PETSC_COMM_WORLD,ierr)
 #endif
@@ -2129,11 +885,11 @@ subroutine ReadIntegerArray(grid,file_id,num_indices,indices,string, &
     length(1) = dims(1)
     call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset, &
                                length,hdf5_err,stride,stride) 
-    if (grid%myrank == 0) then                           
+    if (option%myrank == 0) then                           
       call h5dread_f(data_set_id,H5T_NATIVE_INTEGER,integer_buffer,dims, &
                      hdf5_err,memory_space_id,file_space_id,prop_id)   
     endif
-    if (grid%commsize > 1) &
+    if (option%commsize > 1) &
       call mpi_bcast(integer_buffer,dims(1),MPI_INTEGER,0, &
                      PETSC_COMM_WORLD,ierr)
     integer_count = integer_count + length(1)                  
@@ -2157,41 +913,33 @@ end subroutine ReadIntegerArray
 ! date: 06/20/07
 !
 ! ************************************************************************** !
-subroutine UpdateGlobalToLocal(grid)
+subroutine UpdateGlobalToLocal(grid,field)
 
+  use Grid_module
+  use Field_module
+  
+  implicit none
+  
   integer :: ierr
-  type(pflowGrid) :: grid
+  type(grid_type) :: grid
+  type(field_type) :: field
 
   ! icap
-  call DAGlobalToLocalBegin(grid%da_1_dof, grid%icap, INSERT_VALUES, &
-                            grid%icap_loc, ierr)
-  call DAGlobalToLocalEnd(grid%da_1_dof, grid%icap, INSERT_VALUES, &
-                          grid%icap_loc, ierr)
-  ! perm_xx
-  call DAGlobalToLocalBegin(grid%da_1_dof, grid%perm_xx, INSERT_VALUES, &
-                            grid%perm_xx_loc, ierr)
-  call DAGlobalToLocalEnd(grid%da_1_dof, grid%perm_xx, INSERT_VALUES, &
-                          grid%perm_xx_loc, ierr)
-  ! perm_yy
-  call DAGlobalToLocalBegin(grid%da_1_dof, grid%perm_yy, INSERT_VALUES, &
-                            grid%perm_yy_loc, ierr)
-  call DAGlobalToLocalEnd(grid%da_1_dof, grid%perm_yy, INSERT_VALUES, &
-                          grid%perm_yy_loc, ierr)
-  ! perm_zz
-  call DAGlobalToLocalBegin(grid%da_1_dof, grid%perm_zz, INSERT_VALUES, &
-                            grid%perm_zz_loc, ierr)
-  call DAGlobalToLocalEnd(grid%da_1_dof, grid%perm_zz, INSERT_VALUES, &
-                          grid%perm_zz_loc, ierr)
+  call GridLocalToLocal(grid,field%icap_loc,field%icap_loc,ONEDOF)
+
+  ! ithrm
+  call GridLocalToLocal(grid,field%ithrm_loc,field%ithrm_loc,ONEDOF)
+
+  ! perm_xx, perm_yy, perm_zz
+  call GridGlobalToLocal(grid,field%perm0_xx,field%perm_xx_loc,ONEDOF)
+  call GridGlobalToLocal(grid,field%perm0_yy,field%perm_yy_loc,ONEDOF)
+  call GridGlobalToLocal(grid,field%perm0_zz,field%perm_zz_loc,ONEDOF)
+
   ! tor
-  call DAGlobalToLocalBegin(grid%da_1_dof, grid%tor, INSERT_VALUES, &
-                            grid%tor_loc, ierr)
-  call DAGlobalToLocalEnd(grid%da_1_dof, grid%tor, INSERT_VALUES, &
-                          grid%tor_loc, ierr)
+  call GridLocalToLocal(grid,field%tor_loc,field%tor_loc,ONEDOF)
+
   ! por
-  call DAGlobalToLocalBegin(grid%da_1_dof, grid%porosity, INSERT_VALUES, &
-                            grid%porosity_loc, ierr)
-  call DAGlobalToLocalEnd(grid%da_1_dof, grid%porosity, INSERT_VALUES, &
-                          grid%porosity_loc, ierr)
+  call GridGlobalToLocal(grid,field%porosity0,field%porosity_loc,ONEDOF)
 
 end subroutine UpdateGlobalToLocal
 
@@ -2203,13 +951,16 @@ end subroutine UpdateGlobalToLocal
 ! date: 03/07/07
 !
 ! ************************************************************************** !
-integer function GetNumberOfLocalConnections(fid,grid)
+integer function GetNumberOfLocalConnections(fid,grid,option)
 
   use Fileio_module
+  use Grid_module
+  use Option_module
 
   implicit none
 
-  type(pflowGrid) :: grid
+  type(grid_type) :: grid
+  type(option_type) :: option
 
   integer :: fid, ierr, num_local_connections
   integer :: connection_id
@@ -2225,7 +976,7 @@ integer function GetNumberOfLocalConnections(fid,grid)
 
   ! report error if card does not exist
   if (ierr /= 0) then 
-    if (grid%myrank == 0) print *, 'Card (',card, ') not found in file'
+    if (option%myrank == 0) print *, 'Card (',card, ') not found in file'
     call PetscFinalize()
     stop
   endif
@@ -2280,13 +1031,16 @@ end function GetNumberOfLocalConnections
 ! date: 03/07/07
 !
 ! ************************************************************************** !
-integer function GetNumberOfBoundaryConnections(fid,grid)
+integer function GetNumberOfBoundaryConnections(fid,grid,option)
 
   use Fileio_module
+  use Grid_module
+  use Option_module
 
   implicit none
 
-  type(pflowGrid) :: grid
+  type(grid_type) :: grid
+  type(option_type) :: option
 
   integer :: fid, ierr, num_boundary_connections
   integer :: connection_id
@@ -2300,7 +1054,7 @@ integer function GetNumberOfBoundaryConnections(fid,grid)
 
   ! report error if card does not exist
   if (ierr /= 0) then
-    if (grid%myrank == 0) print *, 'Card (',card, ') not found in file'
+    if (option%myrank == 0) print *, 'Card (',card, ') not found in file'
     call PetscFinalize()
     stop
   endif
@@ -2345,9 +1099,11 @@ end function GetNumberOfBoundaryConnections
 ! ************************************************************************** !
 integer function GetLocalIdFromNaturalId(natural_id,grid)
 
+  use Grid_module
+  
   implicit none
 
-  type(pflowGrid) :: grid
+  type(grid_type) :: grid
 
   integer :: natural_id, local_id
   
@@ -2372,9 +1128,11 @@ end function GetLocalIdFromNaturalId
 ! ************************************************************************** !
 integer function GetLocalGhostedIdFromNaturalId(natural_id,grid)
 
+  use Grid_module
+
   implicit none
 
-  type(pflowGrid) :: grid
+  type(grid_type) :: grid
 
   integer :: natural_id, local_ghosted_id
   
@@ -2396,11 +1154,15 @@ end function GetLocalGhostedIdFromNaturalId
 ! date: 03/07/07
 !
 ! ************************************************************************** !
-subroutine UnstGridCreateNatToGhostedHash(grid)
+subroutine UnstGridCreateNatToGhostedHash(grid,option)
 
+  use Grid_module
+  use Option_module
+  
   implicit none
 
-  type(pflowGrid) :: grid
+  type(grid_type) :: grid
+  type(option_type) :: option
 
   integer :: local_ghosted_id, natural_id 
   integer :: num_in_hash, num_ids_per_hash, hash_id, id
@@ -2442,7 +1204,7 @@ subroutine UnstGridCreateNatToGhostedHash(grid)
     hash(2,num_in_hash,hash_id) = local_ghosted_id
   enddo
 
-  if (grid%myrank == 0) print *, 'num_ids_per_hash:', num_ids_per_hash
+  if (option%myrank == 0) print *, 'num_ids_per_hash:', num_ids_per_hash
 
 end subroutine UnstGridCreateNatToGhostedHash
 
