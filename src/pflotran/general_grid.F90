@@ -312,13 +312,13 @@ subroutine ReadStructuredGridHDF5(realization)
   call h5close_f(hdf5_err)
   
   ! surely a kludge here!
-  do iconn = 1, cur_connection_set%num_connections
-    if (cur_connection_set%dist(3,iconn) > 0.99d0) then
-      cur_connection_set%dist(3,iconn) = &
-        grid%z(cur_connection_set%id_dn(iconn))- &
-        grid%z(cur_connection_set%id_up(iconn))
-    endif
-  enddo
+!  do iconn = 1, cur_connection_set%num_connections
+!    if (cur_connection_set%dist(3,iconn) > 0.99d0) then
+!      cur_connection_set%dist(3,iconn) = &
+!        grid%z(cur_connection_set%id_dn(iconn))- &
+!        grid%z(cur_connection_set%id_up(iconn))
+!    endif
+!  enddo
   
   ! set up delz array
 !  do i=1,num_internal_connections
