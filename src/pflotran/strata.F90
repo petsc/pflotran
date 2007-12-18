@@ -11,6 +11,7 @@ module Strata_module
  
   type, public :: strata_type
     integer :: id                                       ! id of strata
+    logical :: active
     character(len=MAXWORDLENGTH) :: material_name       ! character string defining name of material to be applied
     character(len=MAXWORDLENGTH) :: region_name         ! character string defining name of region to be applied
     integer :: imaterial                                ! id of material in material array/list
@@ -55,6 +56,7 @@ function StrataCreate()
   
   allocate(strata)
   strata%id = 0
+  strata%active = .true.
   strata%material_name = ""
   strata%region_name = ""
   strata%iregion = 0
@@ -124,6 +126,8 @@ subroutine StrataRead(strata,fid)
         call fiReadWord(string,strata%region_name,.true.,ierr)
       case('MATERIAL')
         call fiReadWord(string,strata%material_name,.true.,ierr)
+      case('INACTIVE')
+        strata%active = .false.
       case('END')
         exit
     end select 
