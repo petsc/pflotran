@@ -84,7 +84,13 @@ module Richards_Analytical_module
 
 contains
 
-
+! ************************************************************************** !
+!
+! RichardsTimeCut: Resets arrays for time step cut
+! author: Glenn Hammond
+! date: 12/13/07
+!
+! ************************************************************************** !
 subroutine RichardsTimeCut(realization)
  
   use Realization_module
@@ -121,7 +127,13 @@ subroutine RichardsTimeCut(realization)
  
 end subroutine RichardsTimeCut
   
-
+! ************************************************************************** !
+!
+! RichardsSetup: Creates arrays for auxilliary variables
+! author: Glenn Hammond
+! date: 12/13/07
+!
+! ************************************************************************** !
 subroutine RichardsSetup(realization)
 
   use Realization_module
@@ -166,7 +178,14 @@ subroutine RichardsSetup(realization)
   enddo
   
 end subroutine RichardsSetup
-  
+
+! ************************************************************************** !
+!
+! initAuxVar: Zeros the auxilliary variable for a grid cell
+! author: Glenn Hammond
+! date: 12/13/07
+!
+! ************************************************************************** !  
 subroutine initAuxVar(aux_var,option)
 
   use Option_module
@@ -202,7 +221,14 @@ subroutine initAuxVar(aux_var,option)
   allocate(aux_var%diff(option%nspec))
 
 end subroutine initAuxVar
-  
+
+! ************************************************************************** !
+!
+! copyAuxVar: Copies an auxilliary variable
+! author: Glenn Hammond
+! date: 12/13/07
+!
+! ************************************************************************** !  
 subroutine copyAuxVar(aux_var,aux_var2,option)
 
   use Option_module
@@ -508,6 +534,14 @@ subroutine RichardsNumericalJacobianTest(xx,realization)
   
 end subroutine RichardsNumericalJacobianTest
 
+! ************************************************************************** !
+!
+! RichardsAccumulationDerivative: Computes derivatives of the accumulation 
+!                                 term for the Jacobian
+! author: Glenn Hammond
+! date: 12/13/07
+!
+! ************************************************************************** !
 subroutine RichardsAccumulationDerivative(aux_var,por,vol,rock_dencpr,option, &
                                           sat_func,J)
 
@@ -588,7 +622,15 @@ subroutine RichardsAccumulationDerivative(aux_var,por,vol,rock_dencpr,option, &
 #endif
    
 end subroutine RichardsAccumulationDerivative
-  
+
+! ************************************************************************** !
+!
+! RichardsAccumulation: Computes the non-fixed portion of the accumulation
+!                       term for the residual
+! author: Glenn Hammond
+! date: 12/13/07
+!
+! ************************************************************************** !  
 subroutine RichardsAccumulation(aux_var,por,vol,rock_dencpr,option,Res)
 
   use Option_module
@@ -629,6 +671,14 @@ subroutine RichardsAccumulation(aux_var,por,vol,rock_dencpr,option,Res)
 
 end subroutine RichardsAccumulation
 
+! ************************************************************************** !
+!
+! RichardsFluxDerivative: Computes the derivatives of the internal flux terms
+!                         for the Jacobian
+! author: Glenn Hammond
+! date: 12/13/07
+!
+! ************************************************************************** ! 
 subroutine RichardsFluxDerivative(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
                         aux_var_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
                         area,dist_gravity,upweight, &
@@ -906,6 +956,13 @@ subroutine RichardsFluxDerivative(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,
 
 end subroutine RichardsFluxDerivative
 
+! ************************************************************************** !
+!
+! RichardsFlux: Computes the internal flux terms for the residual
+! author: Glenn Hammond
+! date: 12/13/07
+!
+! ************************************************************************** ! 
 subroutine RichardsFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
                         aux_var_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
                         area,dist_gravity,upweight, &
@@ -1003,6 +1060,14 @@ subroutine RichardsFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
 
 end subroutine RichardsFlux
 
+! ************************************************************************** !
+!
+! RichardsBCFluxDerivative: Computes the derivatives of the boundary flux 
+!                           terms for the Jacobian
+! author: Glenn Hammond
+! date: 12/13/07
+!
+! ************************************************************************** !
 subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
                                     por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
                                     area,dist_gravity,option, &
@@ -1268,6 +1333,13 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   
 end subroutine RichardsBCFluxDerivative
 
+! ************************************************************************** !
+!
+! RichardsBCFlux: Computes the  boundary flux terms for the residual
+! author: Glenn Hammond
+! date: 12/13/07
+!
+! ************************************************************************** !
 subroutine RichardsBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
                           por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
                           area,dist_gravity,option,v_darcy,Res)
@@ -1386,8 +1458,7 @@ end subroutine RichardsBCFlux
 
 ! ************************************************************************** !
 !
-! RichardsAnalyticalResidual: Computes the residual equation and analytical
-!                             derivatives for the Jacobian, if applicable
+! RichardsAnalyticalResidual: Computes the residual equation 
 ! author: Glenn Hammond
 ! date: 12/10/07
 !
@@ -1750,7 +1821,7 @@ subroutine RichardsAnalyticalResidual(snes,xx,r,realization,ierr)
 
   if (n_zero_rows > 0) then
     do i=1,n_zero_rows
-      r_p(zero_rows_local(i)) = 0.
+      r_p(zero_rows_local(i)) = 0.d0
     enddo
   endif
 
@@ -1785,8 +1856,13 @@ subroutine RichardsAnalyticalResidual(snes,xx,r,realization,ierr)
 
 end subroutine RichardsAnalyticalResidual
                 
-! --------------------------------------------------------------------- 
-
+! ************************************************************************** !
+!
+! RichardsAnalyticalJacobian: Computes the Jacobian
+! author: Glenn Hammond
+! date: 12/13/07
+!
+! ************************************************************************** !
 subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
        
   use water_eos_module
@@ -2220,6 +2296,13 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
 
 end subroutine RichardsAnalyticalJacobian
 
+! ************************************************************************** !
+!
+! createRichardsZeroArray: Computes the zeroed rows for inactive grid cells
+! author: Glenn Hammond
+! date: 12/13/07
+!
+! ************************************************************************** !
 subroutine createRichardsZeroArray(realization)
 
   use Realization_module
