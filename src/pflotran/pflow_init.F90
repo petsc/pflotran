@@ -386,6 +386,21 @@ subroutine PflowInit(simulation,filename)
   call RealizationInitCouplerAuxVars(realization,realization%boundary_conditions)
   call assignInitialConditions(realization)
 
+  ! should we still support this
+  if (option%iread_geom == 10) then 
+    if (option%myrank == 0) print *, 'Reading structured grid from hdf5' 
+    if (.not.associated(field%imat)) &
+      allocate(field%imat(grid%ngmax))  ! allocate material id array
+    call ReadStructuredGridHDF5(realization)
+  endif
+  
+  if (associated(field%imat)) then
+    select case(option%imode)
+      case(RICHARDS_MODE)
+        call createRichardsZeroArray(realization)
+    end select
+  endif
+
   allocate(realization%field%internal_velocities(option%nphase, &
              ConnectionGetNumberInList(realization%grid%internal_connection_list)))
   temp_int = CouplerGetNumConnectionsInList(realization%boundary_conditions)
@@ -759,13 +774,6 @@ subroutine PflowInit(simulation,filename)
 #endif
 !geh
   nullify(field%imat)
-
-  ! should we still support this
-  if (option%iread_geom == 10) then 
-    if (option%myrank == 0) print *, 'Reading structured grid from hdf5' 
-    allocate(field%imat(grid%ngmax))  ! allocate material id array
-    call ReadStructuredGridHDF5(realization)
-  endif
 
   if (option%ihydrostatic == 3) then
     if (option%imode == MPH_MODE .or. &
@@ -1306,6 +1314,12 @@ subroutine readInput(simulation,filename)
       
 !.....................
       case ('STRATA')
+        strata => StrataCreate()
+        call StrataRead(strata,IUNIT1)
+        call StrataAddToList(strata,realization%strata)
+      
+!.....................
+      case ('INACTIVE')
         strata => StrataCreate()
         call StrataRead(strata,IUNIT1)
         call StrataAddToList(strata,realization%strata)
@@ -2066,6 +2080,9 @@ subroutine readInput(simulation,filename)
           
         enddo          
 
+        call MaterialConvertListToArray(realization%materials, &
+                                        realization%material_array)
+                                        
 !....................
       
       case ('INIT')
@@ -2622,6 +2639,20 @@ subroutine assignMaterialPropToRegions(realization)
   option => realization%option
   grid => realization%grid
   field => realization%field
+
+  ! loop over all strata to determine if any are inactive
+  strata => realization%strata%first
+  do
+    if (.not.associated(strata)) exit
+    if (.not.strata%active) then
+      if (.not.associated(field%imat)) then
+        allocate(field%imat(grid%ngmax))
+        field%imat = -999
+      endif
+      exit
+    endif
+    strata => strata%next
+  enddo
   
   call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr)
   call VecGetArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
@@ -2641,14 +2672,24 @@ subroutine assignMaterialPropToRegions(realization)
     do icell=1,region%num_cells
       local_id = region%cell_ids(icell)
       ghosted_id = grid%nL2G(local_id)
-      icap_loc_p(ghosted_id) = material%icap
-      ithrm_loc_p(ghosted_id) = material%ithrm
-      por0_p(local_id) = material%porosity
-      tor_loc_p(ghosted_id) = material%tortuosity
-      perm_xx_p(local_id) = material%permeability(1,1)
-      perm_yy_p(local_id) = material%permeability(2,2)
-      perm_zz_p(local_id) = material%permeability(3,3)
-      perm_pow_p(local_id) = material%permeability_pwr
+      if (associated(field%imat)) then
+        if (strata%active) then
+          if (field%imat(ghosted_id) < 0) & ! prevent overwrite of cell already set to inactive
+            field%imat(ghosted_id) = material%id
+        else
+          field%imat(ghosted_id) = 0
+        endif
+      endif
+      if (associated(material)) then
+        icap_loc_p(ghosted_id) = material%icap
+        ithrm_loc_p(ghosted_id) = material%ithrm
+        por0_p(local_id) = material%porosity
+        tor_loc_p(ghosted_id) = material%tortuosity
+        perm_xx_p(local_id) = material%permeability(1,1)
+        perm_yy_p(local_id) = material%permeability(2,2)
+        perm_zz_p(local_id) = material%permeability(3,3)
+        perm_pow_p(local_id) = material%permeability_pwr
+      endif
     enddo
     strata => strata%next
   enddo
@@ -2823,6 +2864,13 @@ subroutine assignInitialConditions(realization)
         ghosted_id = realization%grid%nL2G(local_id)
         iend = local_id*option%ndof
         ibegin = iend-option%ndof+1
+        if (associated(field%imat)) then
+          if (field%imat(ghosted_id) <= 0) then
+            xx_p(ibegin:iend) = 0.d0
+            iphase_loc_p(ghosted_id) = 0
+            cycle
+          endif
+        endif
         xx_p(ibegin:iend) = &
           initial_condition%condition%cur_value(1:option%ndof)
         iphase_loc_p(ghosted_id)=initial_condition%condition%iphase
@@ -2833,6 +2881,13 @@ subroutine assignInitialConditions(realization)
         ghosted_id = realization%grid%nL2G(local_id)
         iend = local_id*option%ndof
         ibegin = iend-option%ndof+1
+        if (associated(field%imat)) then
+          if (field%imat(ghosted_id) <= 0) then
+            xx_p(ibegin:iend) = 0.d0
+            iphase_loc_p(ghosted_id) = 0
+            cycle
+          endif
+        endif
         xx_p(ibegin:iend) = &
           initial_condition%aux_real_var(1:option%ndof,iconn)
         iphase_loc_p(ghosted_id)=initial_condition%aux_int_var(1,iconn)
