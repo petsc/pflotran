@@ -103,7 +103,7 @@ subroutine ReadStructuredGridHDF5(realization)
 
   call PetscGetTime(time0, ierr)
 
-  filename = "543.h5"
+  filename = option%generalized_grid
   call PetscOptionsGetString(PETSC_NULL_CHARACTER, '-hdf5_grid', &
                              filename, option_found, ierr)
  

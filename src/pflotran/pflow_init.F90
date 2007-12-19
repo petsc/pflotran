@@ -387,7 +387,7 @@ subroutine PflowInit(simulation,filename)
   call assignInitialConditions(realization)
 
   ! should we still support this
-  if (option%iread_geom == 10) then 
+  if (option%use_generalized_grid) then 
     if (option%myrank == 0) print *, 'Reading structured grid from hdf5' 
     if (.not.associated(field%imat)) &
       allocate(field%imat(grid%ngmax))  ! allocate material id array
@@ -1231,6 +1231,11 @@ subroutine readInput(simulation,filename)
 
 !....................
       case ('GRID')
+
+!....................
+      case ('GENERALIZED_GRID')
+        option%use_generalized_grid = .true.
+        call fiReadWord(string,option%generalized_grid,.true.,ierr)
 
 !....................
       case ('PROC')

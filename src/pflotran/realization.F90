@@ -33,7 +33,7 @@ private
     type(thermal_property_type), pointer :: thermal_properties
     type(saturation_function_type), pointer :: saturation_functions
     type(saturation_function_ptr_type), pointer :: saturation_function_array(:)
-
+    
   end type realization_type
 
   public :: RealizationCreate, RealizationDestroy, &

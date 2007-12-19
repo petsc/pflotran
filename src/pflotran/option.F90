@@ -69,6 +69,9 @@ module Option_module
     PetscTruth :: print_detailed_convergence
     PetscTruth :: check_infinity_norm
     PetscTruth :: force_at_least_1_iteration  
+    
+    character(len=MAXWORDLENGTH) :: generalized_grid
+    logical :: use_generalized_grid
       
     ! If run_coupled == PETSC_TRUE, then some parts of ptran_init 
     ! will not be executed, since they are made redundant by 
@@ -242,6 +245,9 @@ function OptionCreate()
 
   ! default brine concentrations
   option%m_nacl = 0.d0
+  
+  option%generalized_grid = ""
+  option%use_generalized_grid = .false.
   
   OptionCreate => option
   
