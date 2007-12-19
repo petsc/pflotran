@@ -190,14 +190,30 @@ subroutine RealizationProcessCouplers(realization)
       call printErrMsg(realization%option,string)
     endif
     if (strata%active) then
-      ! pointer to material
-      strata%material => &
-                            MaterialGetPtrFromList(strata%material_name, &
-                                                   realization%materials)
-      if (.not.associated(strata%material)) then
-        string = 'Material ' // trim(strata%material_name) // &
-                 ' not found in unit list'
-        call printErrMsg(realization%option,string)
+      if (len_trim(strata%material_name) > 1) then
+        ! pointer to material
+        strata%material => &
+                              MaterialGetPtrFromList(strata%material_name, &
+                                                     realization%materials)
+        if (.not.associated(strata%material)) then
+          string = 'Material ' // trim(strata%material_name) // &
+                   ' not found in unit list'
+          call printErrMsg(realization%option,string)
+        endif
+      else
+        if (associated(strata%imat)) then
+          if (size(strata%imat) /= strata%region%num_cells) then
+            string = 'Number of material ids in strata%imat() array does ' // &
+                     'match the size of region ' // strata%region_name
+          call printErrMsg(realization%option,string)
+          endif
+        else
+          string = 'Material for strata associated with region ' // &
+                   trim(strata%region_name) // &
+                   ' was not defined correctly.  Must enter a material ' // &
+                   'name or list of ids in a file'
+          call printErrMsg(realization%option,string)
+        endif
       endif
     else
       nullify(strata%material)

@@ -369,11 +369,21 @@ end function FieldCreate
 ! ************************************************************************** !
 subroutine FieldDestroy(field)
 
+  
+
   implicit none
   
   type(field_type), pointer :: field
   
+  integer :: myrank, ierr
+  
+  call MPI_Comm_Rank(PETSC_COMM_WORLD,myrank,ierr)
+  if (myrank == 0) then
+    print *, 'Need to implement FieldDestroy'
+  endif
+  
   ! all kinds of stuff needs to be added here.
+  
   
   deallocate(field)
   nullify(field)

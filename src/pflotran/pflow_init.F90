@@ -369,12 +369,12 @@ subroutine PflowInit(simulation,filename)
   call GridComputeCoordinates(grid,option)
   call GridComputeVolumes(grid,option)
 
+  ! clip regions and set up boundary connectivity, distance  
+  call GridLocalizeRegions(realization%regions,realization%grid,realization%option)
+
   ! set up internal connectivity, distance, etc.
   call GridComputeInternalConnect(grid,option)
   call RealizationProcessCouplers(realization)
-  
-  ! clip regions and set up boundary connectivity, distance  
-  call GridLocalizeRegions(realization%regions,realization%grid,realization%option)
 
   ! connectivity between initial conditions, boundary conditions, srcs/sinks, etc and grid
   call GridComputeCouplerConnections(grid,option,realization%initial_conditions%first)
@@ -1306,7 +1306,7 @@ subroutine readInput(simulation,filename)
         call CouplerAddToList(coupler,realization%initial_conditions)
       
 !....................
-      case ('STRATIGRAPHY')
+      case ('STRATIGRAPHY','STRATA')
         strata => StrataCreate()
         call StrataRead(strata,IUNIT1)
         call StrataAddToList(strata,realization%strata)
@@ -1316,18 +1316,6 @@ subroutine readInput(simulation,filename)
         coupler => CouplerCreate(SRC_SINK_COUPLER_TYPE)
         call CouplerRead(coupler,IUNIT1)
         call CouplerAddToList(coupler,realization%source_sinks)
-      
-!.....................
-      case ('STRATA')
-        strata => StrataCreate()
-        call StrataRead(strata,IUNIT1)
-        call StrataAddToList(strata,realization%strata)
-      
-!.....................
-      case ('INACTIVE')
-        strata => StrataCreate()
-        call StrataRead(strata,IUNIT1)
-        call StrataAddToList(strata,realization%strata)
       
 !.....................
       case ('COMP') 
@@ -2630,7 +2618,7 @@ subroutine assignMaterialPropToRegions(realization)
   PetscScalar, pointer :: perm_pow_p(:)
   PetscScalar, pointer :: tor_loc_p(:)
   
-  integer :: icell, local_id, ghosted_id
+  integer :: icell, local_id, ghosted_id, material_id
   PetscErrorCode :: ierr
   
   type(option_type), pointer :: option
@@ -2649,12 +2637,28 @@ subroutine assignMaterialPropToRegions(realization)
   strata => realization%strata%first
   do
     if (.not.associated(strata)) exit
-    if (.not.strata%active) then
+    if (.not.strata%active .or. associated(strata%imat)) then
       if (.not.associated(field%imat)) then
         allocate(field%imat(grid%ngmax))
         field%imat = -999
       endif
       exit
+    endif
+    strata => strata%next
+  enddo
+  
+  ! loop over all strata to determine if any materials are
+  ! defined by id
+  strata => realization%strata%first
+  do
+    if (.not.associated(strata)) exit
+    if (associated(strata%imat)) then
+      region => strata%region
+      do icell=1,region%num_cells
+        local_id = region%cell_ids(icell)
+        ghosted_id = grid%nL2G(local_id)
+        field%imat(ghosted_id) = strata%imat(icell)
+      enddo
     endif
     strata => strata%next
   enddo
@@ -2679,7 +2683,15 @@ subroutine assignMaterialPropToRegions(realization)
       ghosted_id = grid%nL2G(local_id)
       if (associated(field%imat)) then
         if (strata%active) then
-          if (field%imat(ghosted_id) < 0) & ! prevent overwrite of cell already set to inactive
+          ! if field%imat is allocated and the id > 0, the material id 
+          ! supercedes the material pointer for the strata
+          material_id = field%imat(ghosted_id)
+          if (material_id > 0 .and. &
+              material_id <= size(realization%material_array)) then
+            material => realization%material_array(material_id)%ptr
+          endif
+          ! otherwide set the imat value to the stratas material
+          if (material_id < -998) & ! prevent overwrite of cell already set to inactive
             field%imat(ghosted_id) = material%id
         else
           field%imat(ghosted_id) = 0

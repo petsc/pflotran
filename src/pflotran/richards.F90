@@ -2283,8 +2283,10 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
 #else
-  f_up = 1.d0
-  call MatZeroRowsLocal(A,n_zero_rows,zero_rows_local_ghosted,f_up,ierr) 
+  if (n_zero_rows > 0) then
+    f_up = 1.d0
+    call MatZeroRowsLocal(A,n_zero_rows,zero_rows_local_ghosted,f_up,ierr) 
+  endif
 #endif
 
 !#define DEBUG_GEH
@@ -2409,6 +2411,7 @@ subroutine RichardsGetVarFromArray(realization,vec,ivar,isubvar)
 #define GAS_MOLE_FRACTION 11
 #define VOLUME_FRACTION 12
 #define PHASE 13  
+#define MATERIAL_ID 14
 
   implicit none
   
@@ -2461,6 +2464,12 @@ subroutine RichardsGetVarFromArray(realization,vec,ivar,isubvar)
       call VecGetArrayF90(field%iphas_loc,vec2_ptr,ierr)
       do local_id=1,grid%nlmax
         vec_ptr(local_id) = vec2_ptr(grid%nL2G(local_id))
+      enddo
+      call VecRestoreArrayF90(field%iphas_loc,vec2_ptr,ierr)
+    case(MATERIAL_ID)
+      call VecGetArrayF90(field%iphas_loc,vec2_ptr,ierr)
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = field%imat(grid%nL2G(local_id))
       enddo
       call VecRestoreArrayF90(field%iphas_loc,vec2_ptr,ierr)
   end select

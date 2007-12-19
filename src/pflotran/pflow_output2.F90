@@ -27,6 +27,7 @@ module Output_module
 #define GAS_MOLE_FRACTION 11
 #define VOLUME_FRACTION 12
 #define PHASE 13
+#define MATERIAL_ID 14
 
 #define TECPLOT_INTEGER 0
 #define TECPLOT_REAL 1
@@ -103,6 +104,7 @@ subroutine OutputTecplot(realization,step)
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(output_option_type), pointer :: output_option
+  PetscScalar, pointer :: vec_ptr(:)
   Vec :: global
   Vec :: natural
   
@@ -152,9 +154,12 @@ subroutine OutputTecplot(realization,step)
           string = trim(string) // trim(string2)
         enddo
         if (option%rk > 0.d0) then
-          string = trim(string) // '"Volume Fraction",'
+          string = trim(string) // '"Volume Fraction"'
         endif
-        string = trim(string) // '"Phase"'
+        string = trim(string) // ',"Phase"'
+        if (associated(field%imat)) then
+          string = trim(string) // ',"Material_ID"'
+        endif
       case default
         string = 'VARIABLES=' // &
                  '"X [m]",' // &
@@ -255,6 +260,13 @@ subroutine OutputTecplot(realization,step)
       call GetVarFromArray(realization,global,PHASE,0)
       call GridGlobalToNatural(grid,global,natural,ONEDOF)
       call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_INTEGER)
+      
+      ! material id
+      if (associated(field%imat) > 0.d0) then
+        call GetVarFromArray(realization,global,MATERIAL_ID,0)
+        call GridGlobalToNatural(grid,global,natural,ONEDOF)
+        call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_INTEGER)
+      endif
   
     case default
   
