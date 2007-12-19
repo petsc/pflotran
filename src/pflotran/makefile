@@ -24,7 +24,7 @@ endif
 
 MYFLAGS = -I${objdir} -DUSE_COMPRESSIBILITY $(CUSTOM_CONVERGENCE_FLAGS) \
           $(DEBUG_CONVERGENCE_FLAGS) $(HDF5_FLAGS) -DOVERHAUL -DOVERHAUL_V2 \
-          $(COMPILE_BROKEN_FLAGS)
+          $(COMPILE_BROKEN_FLAGS) -DRICHARDS_ANALYTICAL
 LIBS = $(HDF5_LIBS)
 
 CFLAGS		 = 
@@ -66,7 +66,6 @@ pflow_obj = ${common_src}pflow_vector_ops.o \
 	${common_src}condition_old.o \
 	${common_src}coupler.o \
 	${common_src}grid.o \
-	${common_src}general_grid.o \
 	${common_src}hydrostatic.o \
 	${common_src}realization.o \
 	${common_src}Readfield.o \
@@ -88,6 +87,8 @@ pflow_obj = ${common_src}pflow_vector_ops.o \
 	${common_src}pflow_mphase_ResJac.o\
 	${common_src}pflow_flash_ResJac.o\
 	${common_src}pflow_richards_ResJac.o\
+	${common_src}richards.o\
+	${common_src}general_grid.o \
 	${common_src}pflow_solve.o \
 	${common_src}timestepper.o \
 	${common_src}simulation.o \
@@ -146,10 +147,10 @@ ascii_to_hdf5: fileio.o hdf5_dataset.o ascii_to_hdf5.o
 pflow.o : pflow_init.o timestepper.o
 pflow_init.o : option.o grid.o realization.o solver.o timestepper.o simulation.o \
                fileio.o material.o region.o condition.o pflow_convergence.o \
-	       waypoint.o field.o
+	       waypoint.o field.o general_grid.o
 unstructured_grid.o : option.o connection.o solver.o
 structured_grid.o : connection.o option.o fileio.o coupler.o region.o solver.o
-general_grid.o : condition_old.o grid.o
+general_grid.o : condition_old.o grid.o realization.o
 grid.o : structured_grid.o unstructured_grid.o option.o region.o connection.o \
 	 coupler.o solver.o
 solver.o : option.o field.o
@@ -180,6 +181,7 @@ timestepper.o : \
                 translator_mixed_fluid_flash.o \
                 translator_mixed_fluid_richards.o \
                 pflow_richards_ResJac.o \
+                richards.o \
                 pflow_vadose_ResJac.o \
                 pflow_2pha_ResJac.o \
                 pflow_owg_ResJac.o \
