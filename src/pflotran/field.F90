@@ -355,7 +355,7 @@ function FieldCreate()
   
   nullify(field%internal_velocities)
   nullify(field%boundary_velocities)
-    
+  
   FieldCreate => field
   
 end function FieldCreate

@@ -773,8 +773,6 @@ subroutine PflowInit(simulation,filename)
   endif
 #endif
 !geh
-  nullify(field%imat)
-
   if (option%ihydrostatic == 3) then
     if (option%imode == MPH_MODE .or. &
         option%imode == VADOSE_MODE .or. &

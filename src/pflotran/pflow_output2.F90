@@ -134,7 +134,7 @@ subroutine OutputTecplot(realization,step)
                  option%time/output_option%tconv,output_option%tunit
     ! write variables
     select case(option%imode)
-      case (TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
+      case (TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE)
         string = 'VARIABLES=' // &
                  '"X [m]",' // &
                  '"Y [m]",' // &
@@ -155,6 +155,26 @@ subroutine OutputTecplot(realization,step)
         enddo
         if (option%rk > 0.d0) then
           string = trim(string) // '"Volume Fraction"'
+        endif
+        string = trim(string) // ',"Phase"'
+        if (associated(field%imat)) then
+          string = trim(string) // ',"Material_ID"'
+        endif
+      case(RICHARDS_MODE)
+        string = 'VARIABLES=' // &
+                 '"X [m]",' // &
+                 '"Y [m]",' // &
+                 '"Z [m]",' // &
+                 '"T [C]",' // &
+                 '"P [Pa]",' // &
+                 '"sl",' // &
+                 '"Ul"' 
+        do i=1,option%nspec
+          write(string2,'('',"Xl('',i2,'')"'')') i
+          string = trim(string) // trim(string2)
+        enddo
+        if (option%rk > 0.d0) then
+          string = trim(string) // ',"Volume Fraction"'
         endif
         string = trim(string) // ',"Phase"'
         if (associated(field%imat)) then
@@ -220,35 +240,44 @@ subroutine OutputTecplot(realization,step)
       call GridGlobalToNatural(grid,global,natural,ONEDOF)
       call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
 
-      ! gas saturation
-      call GetVarFromArray(realization,global,GAS_SATURATION,0)
-      call GridGlobalToNatural(grid,global,natural,ONEDOF)
-      call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
+      select case(option%imode)
+        case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE)
+          ! gas saturation
+          call GetVarFromArray(realization,global,GAS_SATURATION,0)
+          call GridGlobalToNatural(grid,global,natural,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
+      end select
     
       ! liquid energy
       call GetVarFromArray(realization,global,LIQUID_ENERGY,0)
       call GridGlobalToNatural(grid,global,natural,ONEDOF)
       call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
     
-      ! gas energy
-      call GetVarFromArray(realization,global,GAS_ENERGY,0)
-      call GridGlobalToNatural(grid,global,natural,ONEDOF)
-      call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
-    
+      select case(option%imode)
+        case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE)
+          ! gas energy
+          call GetVarFromArray(realization,global,GAS_ENERGY,0)
+          call GridGlobalToNatural(grid,global,natural,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
+      end select
+      
       ! liquid mole fractions
       do i=1,option%nspec
         call GetVarFromArray(realization,global,LIQUID_MOLE_FRACTION,i-1)
         call GridGlobalToNatural(grid,global,natural,ONEDOF)
         call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
       enddo
-    
-      ! gas mole fractions
-      do i=1,option%nspec
-        call GetVarFromArray(realization,global,GAS_MOLE_FRACTION,i-1)
-        call GridGlobalToNatural(grid,global,natural,ONEDOF)
-        call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
-      enddo
-    
+  
+     select case(option%imode)
+        case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE)
+          ! gas mole fractions
+          do i=1,option%nspec
+            call GetVarFromArray(realization,global,GAS_MOLE_FRACTION,i-1)
+            call GridGlobalToNatural(grid,global,natural,ONEDOF)
+            call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
+          enddo
+      end select 
+      
       ! Volume Fraction
       if (option%rk > 0.d0) then
         call GetVarFromArray(realization,global,VOLUME_FRACTION,0)
@@ -262,7 +291,7 @@ subroutine OutputTecplot(realization,step)
       call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_INTEGER)
       
       ! material id
-      if (associated(field%imat) > 0.d0) then
+      if (associated(field%imat)) then
         call GetVarFromArray(realization,global,MATERIAL_ID,0)
         call GridGlobalToNatural(grid,global,natural,ONEDOF)
         call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_INTEGER)
@@ -308,20 +337,29 @@ subroutine OutputTecplot(realization,step)
     if (grid%structured_grid%nx > 1) then
       call OutputFluxVelocitiesTecplot(realization,step,LIQUID_PHASE, &
                                        X_DIRECTION)
-      call OutputFluxVelocitiesTecplot(realization,step,GAS_PHASE, &
-                                       X_DIRECTION)
+      select case(option%imode)
+        case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE)
+          call OutputFluxVelocitiesTecplot(realization,step,GAS_PHASE, &
+                                           X_DIRECTION)
+      end select
     endif
     if (grid%structured_grid%ny > 1) then
       call OutputFluxVelocitiesTecplot(realization,step,LIQUID_PHASE, &
                                        Y_DIRECTION)
-      call OutputFluxVelocitiesTecplot(realization,step,GAS_PHASE, &
-                                       Y_DIRECTION)
+      select case(option%imode)
+        case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE)
+          call OutputFluxVelocitiesTecplot(realization,step,GAS_PHASE, &
+                                           Y_DIRECTION)
+      end select
     endif
     if (grid%structured_grid%nz > 1) then
       call OutputFluxVelocitiesTecplot(realization,step,LIQUID_PHASE, &
                                        Z_DIRECTION)
-      call OutputFluxVelocitiesTecplot(realization,step,GAS_PHASE, &
-                                       Z_DIRECTION)
+      select case(option%imode)
+        case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE)
+          call OutputFluxVelocitiesTecplot(realization,step,GAS_PHASE, &
+                                           Z_DIRECTION)
+      end select
     endif
   endif
       
