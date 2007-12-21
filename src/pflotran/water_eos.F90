@@ -1,5 +1,7 @@
 module water_eos_module
 
+  implicit none
+  
   public
 
   real*8, private, parameter::  fmwh2o = 18.01534d0
@@ -165,6 +167,8 @@ contains
 
   subroutine PSAT_new (TC, P, ierr)
 
+    implicit none
+    
     real*8, intent(in) :: TC
     real*8, intent(out) :: P  ! Saturation pressure
     integer, intent(out) :: ierr
@@ -199,6 +203,8 @@ contains
 
  subroutine PSAT1_new (TC, P, tsp, ierr)
 
+    implicit none
+    
     real*8, intent(in) :: TC
     real*8, intent(out) :: P,tsp  ! Saturation pressure
     integer, intent(out) :: ierr
@@ -243,6 +249,8 @@ contains
 
   subroutine PSAT_orig (T, P, ierr)
 
+    implicit none
+
     real*8, intent(in) :: T
     real*8, intent(out) :: P  ! Saturation pressure
     integer, intent(out) :: ierr
@@ -274,13 +282,15 @@ contains
  
   subroutine PSATgeh (T, psat, dpsat_dt, ierr)
 
+    implicit none
+
     real*8, intent(in) :: T
     real*8, intent(out) :: psat, dpsat_dt  ! Saturation pressure
     integer, intent(out) :: ierr
   
     real*8, save, dimension(9) :: A(9)
     real*8 :: TC, SC, PC, E1, E2
-    real*8 :: one_m_tc, one_m_tc_sq, E1_bottom
+    real*8 :: one_m_tc, one_m_tc_sq, E2_bottom
     real*8 :: dTC_dT, dSC_dTC, dE1_dTC, dE2_dTC, dPC_dSC, dPC_dTC
     
 !   SAVE A
