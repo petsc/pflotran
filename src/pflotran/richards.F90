@@ -443,7 +443,9 @@ subroutine RichardsUpdateFixedAccumulation(realization)
 
   call VecRestoreArrayF90(field%accum, accum_p, ierr)
 
+#if 0
 !  call RichardsNumericalJacobianTest(field%xx,realization)
+#endif
 
 end subroutine RichardsUpdateFixedAccumulation
 
@@ -1959,7 +1961,9 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
 !   2. Average molecular weights to p,t,s
   flag = SAME_NONZERO_PATTERN
 
+#if 0
 !  call RichardsNumericalJacobianTest(xx,realization)
+#endif
 
  ! print *,'*********** In Jacobian ********************** '
   call MatZeroEntries(A,ierr)
