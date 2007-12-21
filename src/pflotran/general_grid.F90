@@ -38,6 +38,8 @@ subroutine ReadStructuredGridHDF5(realization)
   
   implicit none
 
+  type(realization_type) :: realization
+
   if (realization%option%myrank == 0) then
     print *
     print *, 'PFLOTRAN must be compiled with -DUSE_HDF5 to ', &

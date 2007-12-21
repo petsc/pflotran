@@ -458,6 +458,8 @@ subroutine RichardsNumericalJacobianTest(xx,realization)
 
   use Realization_module
   use Option_module
+  use Grid_module
+  use Field_module
 
   implicit none
 
@@ -903,7 +905,7 @@ subroutine RichardsFluxDerivative(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,
                                              (aux_var_up%xmol(ispec) - aux_var_dn%xmol(ispec))
       Jdn(ispec,2) = Jdn(ispec,2)+ddifff_dt_dn*0.5d0*(aux_var_up%diff(ispec) + aux_var_dn%diff(ispec))*&
                                              (aux_var_up%xmol(ispec) - aux_var_dn%xmol(ispec))
-      Jdn(ispec,ispec+1) = Jdn(ispec,ispec+1)+difff*0.5d0*(aux_var_up%diff(ispec) + aux_var_dn%diff(ispec))*-1.d0
+      Jdn(ispec,ispec+1) = Jdn(ispec,ispec+1)+difff*0.5d0*(aux_var_up%diff(ispec) + aux_var_dn%diff(ispec))*(-1.d0)
     enddo  
   endif 
 
@@ -912,7 +914,7 @@ subroutine RichardsFluxDerivative(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,
   Dk = (Dk_up * Dk_dn) / (dd_dn*Dk_up + dd_up*Dk_dn)
 !  cond = Dk*area*(aux_var_up%temp-aux_var_dn%temp) 
   Jup(option%ndof,2) = Jup(option%ndof,2)+Dk*area
-  Jdn(option%ndof,2) = Jdn(option%ndof,2)+Dk*area*-1.d0
+  Jdn(option%ndof,2) = Jdn(option%ndof,2)+Dk*area*(-1.d0)
   Jup = Jup*option%dt
   Jdn = Jdn*option%dt
  ! note: Res is the flux contribution, for node up J = J + Jup
