@@ -1278,7 +1278,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
                                                 (aux_var_up%xmol(ispec) - aux_var_dn%xmol(ispec))
           Jdn(ispec,2) = Jdn(ispec,2)+ddiff_dt_dn*aux_var_dn%diff(ispec)*&
                                                 (aux_var_up%xmol(ispec) - aux_var_dn%xmol(ispec))
-          Jdn(ispec,ispec+1) = Jdn(ispec,ispec+1)+diff*aux_var_dn%diff(ispec)*-1.d0
+          Jdn(ispec,ispec+1) = Jdn(ispec,ispec+1)+diff*aux_var_dn%diff(ispec)*(-1.d0)
         enddo  
       endif
   end select
@@ -1288,7 +1288,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
     case(DIRICHLET_BC,HYDROSTATIC_BC)
       Dk =  Dk_dn / dd_up
       !cond = Dk*area*(aux_var_up%temp-aux_var_dn%temp) 
-      Jdn(option%ndof,2) = Jdn(option%ndof,2)+Dk*area*-1.d0
+      Jdn(option%ndof,2) = Jdn(option%ndof,2)+Dk*area*(-1.d0)
   end select
 
   Jdn = Jdn * option%dt
