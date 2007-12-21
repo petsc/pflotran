@@ -429,7 +429,7 @@ subroutine RichardsUpdateFixedAccumulation(realization)
     iphase_loc_p(ghosted_id) = iphase
     call RichardsAccumulation(aux_vars(ghosted_id),porosity_loc_p(ghosted_id), &
                               volume_p(local_id), &
-                              option%dencpr(ithrm_loc_p(ghosted_id)), &
+                              option%dencpr(int(ithrm_loc_p(ghosted_id))), &
                               option,accum_p(istart:iend)) 
   enddo
 
@@ -1690,8 +1690,8 @@ subroutine RichardsAnalyticalResidual(snes,xx,r,realization,ierr)
                 perm_yy_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(2,iconn))+ &
                 perm_zz_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(3,iconn))
 
-      ithrm_up = ithrm_loc_p(ghosted_id_up)
-      ithrm_dn = ithrm_loc_p(ghosted_id_dn)
+      ithrm_up = int(ithrm_loc_p(ghosted_id_up))
+      ithrm_dn = int(ithrm_loc_p(ghosted_id_dn))
       icap_up = int(icap_loc_p(ghosted_id_up))
       icap_dn = int(icap_loc_p(ghosted_id_dn))
    
@@ -1758,7 +1758,7 @@ subroutine RichardsAnalyticalResidual(snes,xx,r,realization,ierr)
         stop
       endif
 
-      ithrm_dn = ithrm_loc_p(ghosted_id)
+      ithrm_dn = int(ithrm_loc_p(ghosted_id))
       D_dn = option%ckwet(ithrm_dn)
 
       ! for now, just assume diagonal tensor
@@ -2122,8 +2122,8 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
       iphas_up = iphase_loc_p(ghosted_id_up)
       iphas_dn = iphase_loc_p(ghosted_id_dn)
 
-      ithrm_up = ithrm_loc_p(ghosted_id_up)
-      ithrm_dn = ithrm_loc_p(ghosted_id_dn)
+      ithrm_up = int(ithrm_loc_p(ghosted_id_up))
+      ithrm_dn = int(ithrm_loc_p(ghosted_id_dn))
       D_up = option%ckwet(ithrm_up)
       D_dn = option%ckwet(ithrm_dn)
     
@@ -2190,7 +2190,7 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
         stop
       endif
 
-      ithrm_dn = ithrm_loc_p(ghosted_id)
+      ithrm_dn = int(ithrm_loc_p(ghosted_id))
       D_dn = option%ckwet(ithrm_dn)
 
       ! for now, just assume diagonal tensor
