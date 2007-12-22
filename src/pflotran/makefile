@@ -54,6 +54,7 @@ pflow_obj = ${common_src}pflow_vector_ops.o \
 	${common_src}pflow_pckr_mod.o \
 	${common_src}option.o \
 	${common_src}field.o \
+	${common_src}debug.o \
 	${common_src}waypoint.o \
 	${common_src}region.o \
 	${common_src}material.o \
@@ -147,7 +148,7 @@ ascii_to_hdf5: fileio.o hdf5_dataset.o ascii_to_hdf5.o
 pflow.o : pflow_init.o timestepper.o
 pflow_init.o : option.o grid.o realization.o solver.o timestepper.o simulation.o \
                fileio.o material.o region.o condition.o pflow_convergence.o \
-	       waypoint.o field.o general_grid.o
+	       waypoint.o field.o general_grid.o debug.o
 unstructured_grid.o : option.o connection.o solver.o
 structured_grid.o : connection.o option.o fileio.o coupler.o region.o solver.o
 general_grid.o : condition_old.o grid.o realization.o
@@ -160,7 +161,7 @@ coupler.o : condition.o connection.o region.o fileio.o
 condition.o : fileio.o utility.o option.o field.o
 condition_old.o : pflow_pckr_mod.o
 realization.o : grid.o option.o region.o condition.o coupler.o material.o \
-	     strata.o waypoint.o field.o hydrostatic.o
+	     strata.o waypoint.o field.o hydrostatic.o debug.o
 strata.o : fileio.o region.o material.o
 hydrostatic.o : option.o grid.o coupler.o condition.o connection.o region.o \
                 structured_grid.o
