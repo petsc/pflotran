@@ -50,6 +50,9 @@ module Grid_module
 
     Vec :: volume 
     
+    integer, pointer :: hash(:,:,:)
+    integer :: num_hash_bins
+    
     integer :: igeom
     type(structured_grid_type), pointer :: structured_grid
     type(unstructured_grid_type), pointer :: unstructured_grid
@@ -84,7 +87,10 @@ module Grid_module
             GridCopyIntegerArrayToPetscVec, &
             GridCopyRealArrayToPetscVec, &
             GridCopyPetscVecToIntegerArray, &
-            GridCopyPetscVecToRealArray
+            GridCopyPetscVecToRealArray, &
+            GridCreateNaturalToGhostedHash, &
+            GridDestroyHashTable, &
+            GridGetLocalGhostedIdFromHash
   
 contains
 
@@ -168,6 +174,9 @@ subroutine initGrid(grid)
   grid%z_max = -1.d20
   
   grid%origin = 0.d0
+  
+  nullify(grid%hash)
+  grid%num_hash_bins = 100
 
 end subroutine initGrid
 
@@ -823,6 +832,7 @@ subroutine GridLocalizeRegions(region_list,grid,option)
           endif
         enddo
       else
+        call GridCreateNaturalToGhostedHash(grid,option)
         do count=1,region%num_cells
           local_ghosted_id = UnstructGridGetGhostIdFromHash( &
                                                     grid%unstructured_grid, &
@@ -835,6 +845,7 @@ subroutine GridLocalizeRegions(region_list,grid,option)
             endif
           endif
         enddo
+        call GridDestroyHashTable(grid)
       endif
       if (local_count /= region%num_cells) then
         deallocate(region%cell_ids)
@@ -957,6 +968,203 @@ end subroutine GridCopyPetscVecToRealArray
 
 ! ************************************************************************** !
 !
+! GridCreateNaturalToGhostedHash: Creates a hash table for looking up the  
+!                                 local ghosted id of a natural id, if it 
+!                                 exists
+! author: Glenn Hammond
+! date: 03/07/07
+!
+! ************************************************************************** !
+subroutine GridCreateNaturalToGhostedHash(grid,option)
+
+  use Option_module
+  
+  implicit none
+  
+#include "definitions.h"
+
+  type(grid_type) :: grid
+  type(option_type) :: option
+
+  character(len=MAXSTRINGLENGTH) :: string
+  integer :: local_ghosted_id, natural_id
+  integer :: num_in_hash, num_ids_per_hash, hash_id, id
+  integer, pointer :: hash(:,:,:), temp_hash(:,:,:)
+
+  ! initial guess of 10% of ids per hash
+  num_ids_per_hash = max(grid%nlmax/(grid%num_hash_bins/10),grid%nlmax)
+
+  allocate(hash(2,0:num_ids_per_hash,grid%num_hash_bins))
+  hash(:,:,:) = 0
+
+  ! recall that natural ids are zero-based
+  do local_ghosted_id = 1, grid%ngmax
+    natural_id = grid%nG2A(local_ghosted_id)+1
+    hash_id = mod(natural_id,grid%num_hash_bins)+1 
+    num_in_hash = hash(1,0,hash_id)
+    num_in_hash = num_in_hash+1
+    ! if a hash runs out of space reallocate
+    if (num_in_hash > num_ids_per_hash) then 
+      allocate(temp_hash(2,0:num_ids_per_hash,0:grid%num_hash_bins))
+      ! copy old hash
+      temp_hash(1:2,0:num_ids_per_hash,grid%num_hash_bins) = &
+                             hash(1:2,0:num_ids_per_hash,grid%num_hash_bins)
+      deallocate(hash)
+      ! recompute hash 20% larger
+      num_ids_per_hash = int(dble(num_ids_per_hash)*1.2)
+      allocate(hash(1:2,0:num_ids_per_hash,grid%num_hash_bins))
+      ! copy old to new
+      do hash_id = 1, grid%num_hash_bins
+        do id = 1, temp_hash(1,0,hash_id)
+          hash(1:2,id,hash_id) = temp_hash(1:2,id,hash_id)
+        enddo
+        hash(1,0,hash_id) = temp_hash(1,0,hash_id)
+      enddo
+      deallocate(temp_hash)
+    endif
+    hash(1,0,hash_id) = num_in_hash
+    hash(1,num_in_hash,hash_id) = natural_id
+    hash(2,num_in_hash,hash_id) = local_ghosted_id
+  enddo
+
+  grid%hash => hash
+  
+  if (option%myrank == 0) print *, 'num_ids_per_hash:', num_ids_per_hash
+
+end subroutine GridCreateNaturalToGhostedHash
+
+! ************************************************************************** !
+!
+! GetLocalIdFromNaturalId: Returns the local id corresponding to a natural
+!                          id or 0, if the natural id is off-processor
+! WARNING: Extremely inefficient for large jobs
+! author: Glenn Hammond
+! date: 03/07/07
+!
+! ************************************************************************** !
+integer function GridGetLocalIdFromNaturalId(grid,natural_id)
+
+  implicit none
+
+  type(grid_type) :: grid
+
+  integer :: natural_id, local_id
+  
+  do local_id = 1, grid%nlmax
+    if (natural_id == grid%nL2A(local_id)+1) then
+      GridGetLocalIdFromNaturalId = local_id
+      return
+    endif
+  enddo
+  GridGetLocalIdFromNaturalId = 0
+
+end function GridGetLocalIdFromNaturalId
+
+! ************************************************************************** !
+!
+! GridGetLocalGhostedIdFromNatId: Returns the local ghosted id corresponding 
+!                                 to a natural id or 0, if the natural id 
+!                                 is off-processor
+! WARNING: Extremely inefficient for large jobs
+! author: Glenn Hammond
+! date: 03/07/07
+!
+! ************************************************************************** !
+integer function GridGetLocalGhostedIdFromNatId(grid,natural_id)
+
+  implicit none
+
+  type(grid_type) :: grid
+  integer :: natural_id
+  
+  integer :: local_ghosted_id
+  
+  do local_ghosted_id = 1, grid%ngmax
+    if (natural_id == grid%nG2A(local_ghosted_id)+1) then
+      GridGetLocalGhostedIdFromNatId = local_ghosted_id
+      return 
+    endif
+  enddo
+  GridGetLocalGhostedIdFromNatId = 0
+
+end function GridGetLocalGhostedIdFromNatId
+
+! ************************************************************************** !
+!
+! GridGetLocalGhostedIdFromHash: Returns the local ghosted id of a natural 
+!                                id, if it exists.  Otherwise 0 is returned
+! author: Glenn Hammond
+! date: 03/07/07
+!
+! ************************************************************************** !
+integer function GridGetLocalGhostedIdFromHash(grid,natural_id)
+
+  implicit none
+
+  type(grid_type) :: grid
+  integer :: natural_id
+  
+  integer :: hash_id, id
+
+  GridGetLocalGhostedIdFromHash = 0
+  hash_id = mod(natural_id,grid%num_hash_bins)+1 
+  do id = 1, grid%hash(1,0,hash_id)
+    if (grid%hash(1,id,hash_id) == natural_id) then
+      GridGetLocalGhostedIdFromHash = grid%hash(2,id,hash_id)
+      return
+    endif
+  enddo
+
+end function GridGetLocalGhostedIdFromHash
+
+! ************************************************************************** !
+!
+! GridDestroyHashTable: Deallocates the hash table
+! author: Glenn Hammond
+! date: 03/07/07
+!
+! ************************************************************************** !
+subroutine GridDestroyHashTable(grid)
+
+  implicit none
+
+  type(grid_type), pointer :: grid
+  
+  if (associated(grid%hash)) deallocate(grid%hash)
+  nullify(grid%hash)
+  grid%num_hash_bins = 100
+
+end subroutine GridDestroyHashTable
+
+! ************************************************************************** !
+!
+! UnstructGridPrintHashTable: Prints the hashtable for viewing
+! author: Glenn Hammond
+! date: 03/09/07
+!
+! ************************************************************************** !
+subroutine GridPrintHashTable(grid)
+
+  implicit none
+
+  type(grid_type) :: grid
+  
+  integer :: ihash, id, fid
+
+  fid = 87 
+  open(fid,file='hashtable.dat',action='write')
+  do ihash=1,grid%num_hash_bins
+    write(fid,'(a4,i3,a,i5,a2,x,200(i6,x))') 'Hash',ihash,'(', &
+                         grid%hash(1,0,ihash), &
+                         '):', &
+                         (grid%hash(1,id,ihash),id=1,grid%hash(1,0,ihash))
+  enddo
+  close(fid)
+
+end subroutine GridPrintHashTable
+
+! ************************************************************************** !
+!
 ! GridDestroy: Deallocates a grid
 ! author: Glenn Hammond
 ! date: 11/01/07
@@ -989,6 +1197,8 @@ subroutine GridDestroy(grid)
   nullify(grid%y)
   if (associated(grid%z)) deallocate(grid%z)
   nullify(grid%z)
+  
+  if (associated(grid%hash)) call GridDestroyHashTable(grid)
 
   call UnstructuredGridDestroy(grid%unstructured_grid)    
   call StructuredGridDestroy(grid%structured_grid)

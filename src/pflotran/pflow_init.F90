@@ -1153,6 +1153,7 @@ subroutine readInput(simulation,filename)
   use Coupler_module
   use Strata_module
   use Waypoint_module
+  use Debug_module
 
   use pckr_module 
   
@@ -1229,7 +1230,11 @@ subroutine readInput(simulation,filename)
 
 !....................
       case ('GRID')
-
+      
+!....................
+      case ('DEBUG','PFLOW_DEBUG')
+        call DebugRead(realization%debug,IUNIT1)
+        
 !....................
       case ('GENERALIZED_GRID')
         option%use_generalized_grid = .true.
@@ -2602,11 +2607,15 @@ subroutine assignMaterialPropToRegions(realization)
   use Option_module
   use Grid_module
   use Field_module
+  use Fileio_module
 
   implicit none
   
+#include "definitions.h"
+  
   type(realization_type) :: realization
   
+  character(len=MAXSTRINGLENGTH) :: string
   PetscScalar, pointer :: icap_loc_p(:)
   PetscScalar, pointer :: ithrm_loc_p(:)
   PetscScalar, pointer :: por0_p(:)
@@ -2616,7 +2625,9 @@ subroutine assignMaterialPropToRegions(realization)
   PetscScalar, pointer :: perm_pow_p(:)
   PetscScalar, pointer :: tor_loc_p(:)
   
-  integer :: icell, local_id, ghosted_id, material_id
+  integer :: icell, local_id, ghosted_id, natural_id, material_id
+  integer :: istart, iend
+  integer :: fid = 86, status
   PetscErrorCode :: ierr
   
   type(option_type), pointer :: option
@@ -2631,11 +2642,12 @@ subroutine assignMaterialPropToRegions(realization)
   grid => realization%grid
   field => realization%field
 
-  ! loop over all strata to determine if any are inactive
+  ! loop over all strata to determine if any are inactive or
+  ! have associated cell by cell material ids
   strata => realization%strata%first
   do
     if (.not.associated(strata)) exit
-    if (.not.strata%active .or. associated(strata%imat)) then
+    if (.not.strata%active .or. .not.associated(strata%region)) then
       if (.not.associated(field%imat)) then
         allocate(field%imat(grid%ngmax))
         field%imat = -999
@@ -2645,22 +2657,33 @@ subroutine assignMaterialPropToRegions(realization)
     strata => strata%next
   enddo
   
-  ! loop over all strata to determine if any materials are
-  ! defined by id
+  ! Read in cell by cell material ids if they exist
   strata => realization%strata%first
-  do
-    if (.not.associated(strata)) exit
-    if (associated(strata%imat)) then
-      region => strata%region
-      do icell=1,region%num_cells
-        local_id = region%cell_ids(icell)
-        ghosted_id = grid%nL2G(local_id)
-        field%imat(ghosted_id) = strata%imat(icell)
+  if (associated(strata)) then
+    if (.not.associated(strata%region) .and. strata%active) then
+      call GridCreateNaturalToGhostedHash(grid,option)
+      status = 0
+      open(unit=fid,file=strata%material_name,status="old",iostat=status)
+      if (status /= 0) then
+        string = "File: " // strata%material_name // " not found."
+        call printErrMsg(option,string)
+      endif
+      do
+        call fiReadFlotranString(fid,string,ierr)
+        if (ierr /= 0) exit
+        call fiReadInt(string,natural_id,ierr)
+        call fiErrorMsg('natural id','STRATA', ierr)
+        ghosted_id = GridGetLocalGhostedIdFromHash(grid,natural_id)
+        if (ghosted_id > 0) then
+          call fiReadInt(string,material_id,ierr)
+          call fiErrorMsg('material id','STRATA', ierr)
+          field%imat(ghosted_id) = material_id
+        endif
       enddo
+      call GridDestroyHashTable(grid)
     endif
-    strata => strata%next
-  enddo
-  
+  endif
+    
   call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr)
   call VecGetArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
   call VecGetArrayF90(field%porosity0,por0_p,ierr)
@@ -2673,14 +2696,25 @@ subroutine assignMaterialPropToRegions(realization)
   strata => realization%strata%first
   do
     if (.not.associated(strata)) exit
-    
-    region => strata%region
-    material => strata%material
-    do icell=1,region%num_cells
-      local_id = region%cell_ids(icell)
-      ghosted_id = grid%nL2G(local_id)
-      if (associated(field%imat)) then
-        if (strata%active) then
+   
+    if (strata%active) then
+      region => strata%region
+      material => strata%material
+      if (associated(region)) then
+        istart = 1
+        iend = region%num_cells
+      else
+        istart = 1
+        iend = grid%nlmax
+      endif
+      do icell=istart, iend
+        if (associated(region)) then
+          local_id = region%cell_ids(icell)
+        else
+          local_id = icell
+        endif
+        ghosted_id = grid%nL2G(local_id)
+        if (associated(field%imat)) then
           ! if field%imat is allocated and the id > 0, the material id 
           ! supercedes the material pointer for the strata
           material_id = field%imat(ghosted_id)
@@ -2694,18 +2728,18 @@ subroutine assignMaterialPropToRegions(realization)
         else
           field%imat(ghosted_id) = 0
         endif
-      endif
-      if (associated(material)) then
-        icap_loc_p(ghosted_id) = material%icap
-        ithrm_loc_p(ghosted_id) = material%ithrm
-        por0_p(local_id) = material%porosity
-        tor_loc_p(ghosted_id) = material%tortuosity
-        perm_xx_p(local_id) = material%permeability(1,1)
-        perm_yy_p(local_id) = material%permeability(2,2)
-        perm_zz_p(local_id) = material%permeability(3,3)
-        perm_pow_p(local_id) = material%permeability_pwr
-      endif
-    enddo
+        if (associated(material)) then
+          icap_loc_p(ghosted_id) = material%icap
+          ithrm_loc_p(ghosted_id) = material%ithrm
+          por0_p(local_id) = material%porosity
+          tor_loc_p(ghosted_id) = material%tortuosity
+          perm_xx_p(local_id) = material%permeability(1,1)
+          perm_yy_p(local_id) = material%permeability(2,2)
+          perm_zz_p(local_id) = material%permeability(3,3)
+          perm_pow_p(local_id) = material%permeability_pwr
+        endif
+      enddo
+    endif
     strata => strata%next
   enddo
 

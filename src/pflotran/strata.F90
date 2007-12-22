@@ -16,7 +16,6 @@ module Strata_module
     character(len=MAXWORDLENGTH) :: region_name         ! character string defining name of region to be applied
     integer :: imaterial                                ! id of material in material array/list
     integer :: iregion                                  ! id of region in region array/list
-    integer, pointer :: imat(:)                         ! a list of cell material ids for region
     type(material_type), pointer :: material            ! pointer to material in material array/list
     type(region_type), pointer :: region                ! pointer to region in region array/list
     type(strata_type), pointer :: next            ! pointer to next strata
@@ -64,7 +63,6 @@ function StrataCreate()
 
   nullify(strata%region)
   nullify(strata%material)
-  nullify(strata%imat)
   nullify(strata%next)
   
   num_strata = num_strata + 1
@@ -119,59 +117,24 @@ subroutine StrataRead(strata,fid)
   do
   
     call fiReadFlotranString(IUNIT1,string,ierr)
-    if (ierr /= 0) exit
+    
+    if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
+        fiStringCompare(string,'END',3)) exit  
 
     call fiReadWord(string,keyword,.true.,ierr)
-    call fiErrorMsg('keyword','UNIT', ierr)   
+    call fiErrorMsg('keyword','STRATA', ierr)   
       
     select case(trim(keyword))
     
       case('REGION')
         call fiReadWord(string,strata%region_name,.true.,ierr)
-        call fiErrorMsg('name','STRATA', ierr)
+        call fiErrorMsg('region name','STRATA', ierr)
       case('MATERIAL')
         call fiReadWord(string,word,.true.,ierr)
-        call fiErrorMsg('file or name','STRATA', ierr)
-        word2 = word
-        call fiCharsToLower(word2,len_trim(word2))
-        if (fiStringCompare(word,'file',4)) then
-          call fiReadWord(string,word,.true.,ierr)
-          error_string = keyword // ' FILE'
-          call fiErrorMsg(error_string,'STRATA', ierr)
-          open(unit=material_file_id,file=word)
-          count1= 0
-          call fiReadFlotranString(material_file_id,string,ierr)
-          do
-            call fiReadWord(string,word,.true.,ierr)
-            if (ierr == 0) then
-              count1 = count1 + 1
-            else
-              call fiReadFlotranString(material_file_id,string,ierr)
-              if (ierr /= 0) exit
-            endif
-          enddo
-          rewind(material_file_id)
-          allocate(strata%imat(count1))
-          count1 = 0
-          call fiReadFlotranString(material_file_id,string,ierr)
-          do
-            call fiReadDouble(string,value,ierr)
-            if (ierr == 0) then
-              count1 = count1 + 1
-              strata%imat(count1) = value
-            else
-              call fiReadFlotranString(material_file_id,string,ierr)
-              if (ierr /= 0) exit
-            endif
-          enddo
-          close(material_file_id)
-        else
-          strata%material_name = word
-        endif
+        call fiErrorMsg('material name','STRATA', ierr)
+        strata%material_name = word
       case('INACTIVE')
         strata%active = .false.
-      case('END')
-        exit
     end select 
   
   enddo  
@@ -253,8 +216,6 @@ subroutine StrataDestroy(strata)
   ! since strata%region is a pointer to a region in a list, nullify instead
   ! of destroying since the list will be destroyed separately
   nullify(strata%region)
-  if (associated(strata%imat)) deallocate(strata%imat)
-  nullify(strata%imat)
   
   deallocate(strata)
   nullify(strata)

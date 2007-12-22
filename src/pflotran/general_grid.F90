@@ -20,9 +20,6 @@ module General_Grid_module
 #include "include/finclude/petsclog.h"
 
 #include "definitions.h"
-
-  integer, pointer :: hash(:,:,:)
-  integer :: num_hash = 100
   
   integer :: hdf5_err
   PetscErrorCode :: ierr
@@ -115,8 +112,8 @@ subroutine ReadStructuredGridHDF5(realization)
   
   ! create hash table for fast lookup
 #ifdef HASH
-  call UnstGridCreateNatToGhostedHash(grid,option)
-!  call UnstructGridPrintHashTable
+  call GridCreateNaturalToGhostedHash(grid,option)
+!  call GridPrintHashTable
 #endif
 
   ! initialize fortran hdf5 interface
@@ -248,7 +245,7 @@ subroutine ReadStructuredGridHDF5(realization)
   call ReadIntegerArray(grid,option,grp_id,cur_connection_set%num_connections, &
                         indices,string,integer_array)
   do i=1,cur_connection_set%num_connections
-    local_ghosted_id = GetLocalGhostedIdFromHash(integer_array(i))
+    local_ghosted_id = GridGetLocalGhostedIdFromHash(grid,integer_array(i))
     cur_connection_set%id_up(i) = local_ghosted_id
   enddo
 
@@ -257,7 +254,7 @@ subroutine ReadStructuredGridHDF5(realization)
   call ReadIntegerArray(grid,option,grp_id,cur_connection_set%num_connections, &
                         indices,string,integer_array)
   do i=1,cur_connection_set%num_connections
-    local_ghosted_id = GetLocalGhostedIdFromHash(integer_array(i))
+    local_ghosted_id = GridGetLocalGhostedIdFromHash(grid,integer_array(i))
     cur_connection_set%id_dn(i) = local_ghosted_id
   enddo
   deallocate(integer_array)
@@ -326,6 +323,8 @@ subroutine ReadStructuredGridHDF5(realization)
 !  do i=1,num_internal_connections
 !    grid%delz(i) = grid%z(grid%nd2(i))-grid%z(grid%nd1(i))
 !  enddo
+
+  call GridDestroyHashTable(grid)
 
   call PetscGetTime(time1, ierr)
   time1 = time1 - time0
@@ -433,7 +432,7 @@ subroutine SetupCellIndices(grid,option,file_id,indices)
     do i=1,dims(1)
       cell_count = cell_count + 1
       natural_id = cell_ids(i)
-      local_ghosted_id = GetLocalGhostedIdFromHash(natural_id)
+      local_ghosted_id = GridGetLocalGhostedIdFromHash(grid,natural_id)
       if (local_ghosted_id > 0) then
         local_id = grid%nG2L(local_ghosted_id)
         if (local_id > 0) then
@@ -584,8 +583,8 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
       connection_count = connection_count + 1
       natural_id_up = upwind_ids(i)
       natural_id_down = downwind_ids(i)
-      local_ghosted_id_up = GetLocalGhostedIdFromHash(natural_id_up)
-      local_ghosted_id_down = GetLocalGhostedIdFromHash(natural_id_down)
+      local_ghosted_id_up = GridGetLocalGhostedIdFromHash(grid,natural_id_up)
+      local_ghosted_id_down = GridGetLocalGhostedIdFromHash(grid,natural_id_down)
       if (local_ghosted_id_up > 0 .and. local_ghosted_id_down > 0) then
         local_id_up = grid%nG2L(local_ghosted_id_up)
         local_id_down = grid%nG2L(local_ghosted_id_down)
@@ -945,320 +944,5 @@ subroutine UpdateGlobalToLocal(grid,field)
 
 end subroutine UpdateGlobalToLocal
 
-! ************************************************************************** !
-!
-! GetNumberOfLocalConnection: Returns the number of connections involving
-!                             local (ghosted) cells on the local proc
-! author: Glenn Hammond
-! date: 03/07/07
-!
-! ************************************************************************** !
-integer function GetNumberOfLocalConnections(fid,grid,option)
-
-  use Fileio_module
-  use Grid_module
-  use Option_module
-
-  implicit none
-
-  type(grid_type) :: grid
-  type(option_type) :: option
-
-  integer :: fid, ierr, num_local_connections
-  integer :: connection_id
-  integer :: natural_id_upwind, natural_id_downwind
-  integer :: local_ghosted_id_upwind, local_ghosted_id_downwind
-  integer :: local_id_upwind, local_id_downwind
-  character(len=MAXCARDLENGTH) :: card
-  character(len=MAXSTRINGLENGTH) :: string
-
-! CONNection information
-  card = "CONN"
-  call fiFindStringInFile(fid,card,ierr)
-
-  ! report error if card does not exist
-  if (ierr /= 0) then 
-    if (option%myrank == 0) print *, 'Card (',card, ') not found in file'
-    call PetscFinalize()
-    stop
-  endif
-
-  num_local_connections = 0
-  do
-    call fiReadFlotranString(fid,string,ierr)
-    call fiReadStringErrorMsg(card,ierr)
-
-    if (string(1:1) == '.' .or. string(1:1) == '/') exit
-
-    call fiReadInt(string,connection_id,ierr) 
-    call fiErrorMsg('connection_id',card,ierr)
-
-    call fiReadInt(string,natural_id_upwind,ierr) 
-    call fiErrorMsg('natural_id_upwind',card,ierr)
-
-    call fiReadInt(string,natural_id_downwind,ierr) 
-    call fiErrorMsg('natural_id_downwind',card,ierr)
-
-#ifdef HASH
-    local_ghosted_id_upwind = GetLocalGhostedIdFromHash(natural_id_upwind)
-    local_ghosted_id_downwind = GetLocalGhostedIdFromHash(natural_id_downwind)
-#else
-    local_ghosted_id_upwind = &
-               GetLocalGhostedIdFromNaturalId(natural_id_upwind,grid)
-    local_ghosted_id_downwind = &
-               GetLocalGhostedIdFromNaturalId(natural_id_downwind,grid)
-#endif
-    if (local_ghosted_id_upwind > 0 .and. &
-        local_ghosted_id_downwind > 0) then ! both cells are local ghosted
-      local_id_upwind = grid%nG2L(local_ghosted_id_upwind)
-      local_id_downwind = grid%nG2L(local_ghosted_id_downwind)
-      ! at least 1 cell must be local (non-ghosted) since we don't want to
-      ! create a connection between two ghosted cells
-      if (local_id_upwind > 0 .or. local_id_downwind > 0) then
-        num_local_connections = num_local_connections + 1
-      endif
-    endif
-
-  enddo
-
-  GetNumberOfLocalConnections =  num_local_connections
-
-end function GetNumberOfLocalConnections
-
-! ************************************************************************** !
-!
-! GetNumberOfBoundaryConnections: Returns the number of connections involving
-!                                 boundary cells on the local proc
-! author: Glenn Hammond
-! date: 03/07/07
-!
-! ************************************************************************** !
-integer function GetNumberOfBoundaryConnections(fid,grid,option)
-
-  use Fileio_module
-  use Grid_module
-  use Option_module
-
-  implicit none
-
-  type(grid_type) :: grid
-  type(option_type) :: option
-
-  integer :: fid, ierr, num_boundary_connections
-  integer :: connection_id
-  integer :: natural_id, local_id, local_ghosted_id
-  character(len=MAXCARDLENGTH) :: card
-  character(len=MAXSTRINGLENGTH) :: string
-
-! BCONnection information
-  card = "BCON"
-  call fiFindStringInFile(fid,card,ierr)
-
-  ! report error if card does not exist
-  if (ierr /= 0) then
-    if (option%myrank == 0) print *, 'Card (',card, ') not found in file'
-    call PetscFinalize()
-    stop
-  endif
-
-  num_boundary_connections = 0
-  do
-    call fiReadFlotranString(fid,string,ierr)
-    call fiReadStringErrorMsg(card,ierr)
-
-    if (string(1:1) == '.' .or. string(1:1) == '/') exit
-
-    call fiReadInt(string,connection_id,ierr) 
-    call fiErrorMsg('connection_id',card,ierr)
-
-    call fiReadInt(string,natural_id,ierr) 
-    call fiErrorMsg('natural_id',card,ierr)
-
-#ifdef HASH
-    local_ghosted_id = GetLocalGhostedIdFromHash(natural_id)
-#else
-    local_ghosted_id = GetLocalGhostedIdFromNaturalId(natural_id,grid)
-#endif
-    if (local_ghosted_id > 0) then 
-      local_id = grid%nG2L(local_ghosted_id)
-      if (local_id > 0) then
-        num_boundary_connections = num_boundary_connections + 1
-      endif
-    endif
-  enddo
-
-  GetNumberOfBoundaryConnections = num_boundary_connections
-
-end function GetNumberOfBoundaryConnections
-
-! ************************************************************************** !
-!
-! GetLocalIdFromNaturalId: Returns the local id corresponding to a natural
-!                          id or 0, if the natural id is off-processor
-! author: Glenn Hammond
-! date: 03/07/07
-!
-! ************************************************************************** !
-integer function GetLocalIdFromNaturalId(natural_id,grid)
-
-  use Grid_module
-  
-  implicit none
-
-  type(grid_type) :: grid
-
-  integer :: natural_id, local_id
-  
-  do local_id = 1, grid%nlmax
-    if (natural_id == grid%nL2A(local_id)+1) then
-      GetLocalIdFromNaturalId = local_id
-      return
-    endif
-  enddo
-  GetLocalIdFromNaturalId = 0
-
-end function GetLocalIdFromNaturalId
-
-! ************************************************************************** !
-!
-! GetLocalGhostedIdFromNaturalId: Returns the local ghosted id corresponding 
-!                                 to a natural id or 0, if the natural id 
-!                                 is off-processor
-! author: Glenn Hammond
-! date: 03/07/07
-!
-! ************************************************************************** !
-integer function GetLocalGhostedIdFromNaturalId(natural_id,grid)
-
-  use Grid_module
-
-  implicit none
-
-  type(grid_type) :: grid
-
-  integer :: natural_id, local_ghosted_id
-  
-  do local_ghosted_id = 1, grid%ngmax
-    if (natural_id == grid%nG2A(local_ghosted_id)+1) then
-      GetLocalGhostedIdFromNaturalId = local_ghosted_id
-      return 
-    endif
-  enddo
-  GetLocalGhostedIdFromNaturalId = 0
-
-end function GetLocalGhostedIdFromNaturalId
-
-! ************************************************************************** !
-!
-! CreateNaturalToLocalHash: Creates a hash table for looking up the local 
-!                           ghosted id of a natural id, if it exists
-! author: Glenn Hammond
-! date: 03/07/07
-!
-! ************************************************************************** !
-subroutine UnstGridCreateNatToGhostedHash(grid,option)
-
-  use Grid_module
-  use Option_module
-  
-  implicit none
-
-  type(grid_type) :: grid
-  type(option_type) :: option
-
-  integer :: local_ghosted_id, natural_id 
-  integer :: num_in_hash, num_ids_per_hash, hash_id, id
-  integer, pointer :: temp_hash(:,:,:)
-
-  ! initial guess of 10% of ids per hash
-  num_ids_per_hash = max(grid%nlmax/(num_hash/10),grid%nlmax)
-
-  allocate(hash(2,0:num_ids_per_hash,num_hash))
-  hash(:,:,:) = 0
-
-  ! recall that natural ids are zero-based
-  do local_ghosted_id = 1, grid%ngmax
-    natural_id = grid%nG2A(local_ghosted_id)+1
-    hash_id = mod(natural_id,num_hash)+1 
-    num_in_hash = hash(1,0,hash_id)
-    num_in_hash = num_in_hash+1
-    ! if a hash runs out of space reallocate
-    if (num_in_hash > num_ids_per_hash) then 
-      allocate(temp_hash(2,0:num_ids_per_hash,0:num_hash))
-      ! copy old hash
-      temp_hash(1:2,0:num_ids_per_hash,num_hash) = &
-                             hash(1:2,0:num_ids_per_hash,num_hash)
-      deallocate(hash)
-      ! recompute hash 20% larger
-      num_ids_per_hash = int(dble(num_ids_per_hash)*1.2)
-      allocate(hash(1:2,0:num_ids_per_hash,num_hash))
-      ! copy old to new
-      do hash_id = 1, num_hash
-        do id = 1, temp_hash(1,0,hash_id)
-          hash(1:2,id,hash_id) = temp_hash(1:2,id,hash_id)
-        enddo
-        hash(1,0,hash_id) = temp_hash(1,0,hash_id)
-      enddo
-      deallocate(temp_hash)
-    endif
-    hash(1,0,hash_id) = num_in_hash
-    hash(1,num_in_hash,hash_id) = natural_id
-    hash(2,num_in_hash,hash_id) = local_ghosted_id
-  enddo
-
-  if (option%myrank == 0) print *, 'num_ids_per_hash:', num_ids_per_hash
-
-end subroutine UnstGridCreateNatToGhostedHash
-
-! ************************************************************************** !
-!
-! GetLocalIdFromHash: Returns the local ghosted id of a natural id, if it 
-!                     exists.  Otherwise 0 is returned
-! author: Glenn Hammond
-! date: 03/07/07
-!
-! ************************************************************************** !
-integer function GetLocalGhostedIdFromHash(natural_id)
-
-  implicit none
-
-  integer :: natural_id
-  integer :: hash_id, id
-
-  GetLocalGhostedIdFromHash = 0
-  hash_id = mod(natural_id,num_hash)+1 
-  do id = 1, hash(1,0,hash_id)
-    if (hash(1,id,hash_id) == natural_id) then
-      GetLocalGhostedIdFromHash = hash(2,id,hash_id)
-      return
-    endif
-  enddo
-
-end function GetLocalGhostedIdFromHash
-
-! ************************************************************************** !
-!
-! UnstructGridPrintHashTable: Prints the hashtable for viewing
-! author: Glenn Hammond
-! date: 03/09/07
-!
-! ************************************************************************** !
-subroutine UnstructGridPrintHashTable()
-
-  implicit none
-
-  integer :: ihash, id, fid
-
-  fid = 87 
-  open(fid,file='hashtable.dat',action='write')
-  do ihash=1,num_hash
-    write(fid,'(a4,i3,a,i5,a2,x,200(i6,x))') 'Hash',ihash,'(', &
-                         hash(1,0,ihash), &
-                         '):', &
-                         (hash(1,id,ihash),id=1,hash(1,0,ihash))
-  enddo
-  close(fid)
-
-end subroutine UnstructGridPrintHashTable
 
 end module General_Grid_module

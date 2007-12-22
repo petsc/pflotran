@@ -8,6 +8,7 @@ module Realization_module
   use Material_module
   use Strata_module
   use Field_module
+  use Debug_module
 
   implicit none
 
@@ -20,6 +21,7 @@ private
     type(grid_type), pointer :: grid
     type(option_type), pointer :: option
     type(field_type), pointer :: field
+    type(pflow_debug_type), pointer :: debug
     type(output_option_type), pointer :: output_option
     type(region_list_type), pointer :: regions
     type(condition_list_type), pointer :: conditions
@@ -61,6 +63,7 @@ function RealizationCreate()
   allocate(realization)
   realization%option => OptionCreate()
   realization%field => FieldCreate()
+  realization%debug => DebugCreatePflow()
   realization%output_option => OutputOptionCreate()
   nullify(realization%grid)
   allocate(realization%regions)
@@ -182,40 +185,26 @@ subroutine RealizationProcessCouplers(realization)
   do
     if (.not.associated(strata)) exit
     ! pointer to region
-    strata%region => RegionGetPtrFromList(strata%region_name, &
-                                                realization%regions)
-    if (.not.associated(strata%region)) then
-      string = 'Region ' // trim(strata%region_name) // &
-               ' not found in strata list'
-      call printErrMsg(realization%option,string)
-    endif
-    if (strata%active) then
-      if (len_trim(strata%material_name) > 1) then
+    if (len_trim(strata%region_name) > 1) then
+      strata%region => RegionGetPtrFromList(strata%region_name, &
+                                                  realization%regions)
+      if (.not.associated(strata%region)) then
+        string = 'Region ' // trim(strata%region_name) // &
+                 ' not found in strata list'
+        call printErrMsg(realization%option,string)
+      endif
+      if (strata%active) then
         ! pointer to material
-        strata%material => &
-                              MaterialGetPtrFromList(strata%material_name, &
-                                                     realization%materials)
+        strata%material => MaterialGetPtrFromList(strata%material_name, &
+                                                  realization%materials)
         if (.not.associated(strata%material)) then
           string = 'Material ' // trim(strata%material_name) // &
                    ' not found in unit list'
           call printErrMsg(realization%option,string)
         endif
-      else
-        if (associated(strata%imat)) then
-          if (size(strata%imat) /= strata%region%num_cells) then
-            string = 'Number of material ids in strata%imat() array does ' // &
-                     'match the size of region ' // strata%region_name
-          call printErrMsg(realization%option,string)
-          endif
-        else
-          string = 'Material for strata associated with region ' // &
-                   trim(strata%region_name) // &
-                   ' was not defined correctly.  Must enter a material ' // &
-                   'name or list of ids in a file'
-          call printErrMsg(realization%option,string)
-        endif
       endif
     else
+      nullify(strata%region)
       nullify(strata%material)
     endif
     strata => strata%next
@@ -438,6 +427,9 @@ subroutine RealizationDestroy(realization)
   call CouplerDestroyList(realization%initial_conditions)
   call CouplerDestroyList(realization%source_sinks)
   call StrataDestroyList(realization%strata)
+  
+  if (associated(realization%debug)) deallocate(realization%debug)
+  nullify(realization%debug)
   
   if (associated(realization%material_array)) &
     deallocate(realization%material_array)
