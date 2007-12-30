@@ -802,7 +802,7 @@ contains
   implicit none
   
   integer :: i,ii,j,iireg,jj,jaq,k,kk,kcount,kcountp,l,lp,m,mm,ml, &
-             ns,ntemp,ncsq,ncsqdp,ncsqdpg,nr
+             ns,ntemp,ncsq,ncsqdp,ncsqdpg,nr,ncomp_sav
   
   real*8 :: den,atm,btm,bdtm,frc,dadebye,dbdebye,dbext,bextend0,fjl
 
@@ -994,6 +994,10 @@ contains
 !-----homogeneous reactions
 
 !-----store product of stoichiometric coefficients
+
+      ncomp_sav = ncomp
+      ncomp = nmass
+
       jj = 0
       do l = 1, ncomp
         do j = l, ncomp
@@ -1196,6 +1200,8 @@ contains
         enddo
         ncmpr(i) = k
       enddo
+        
+      ncomp = ncomp_sav
 
 !-----water stoichiometric coefficients
       if (myrank == 0) then
