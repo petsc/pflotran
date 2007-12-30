@@ -79,7 +79,9 @@
 !   time step
 !...........................................................
     integer :: kplot
-    real*8  :: tplot(100), dt = 1.d0, dtmax
+    real*8  :: tplot(100), dt = 1.d0, dtmin, dtmax
+    integer :: nstpmax
+    real*8, allocatable :: tstep(:),dtstep(:)
 
 !...........................................................
 !   initial parameters
@@ -151,7 +153,7 @@
 !...........................................................
 ! time stepping
 !...........................................................
-  integer :: iaccel = 1, imax
+  integer :: iaccel = 1, imax, ndtcmx=1
   real*8 :: tfac(13)
   real*8 :: dcmax0, dcdt, aaa
   data tfac/2.0d0, 2.0d0, 2.0d0, 2.0d0, 2.0d0, &
@@ -296,7 +298,7 @@
 ! secondary species
 !...........................................................
   character(len=namlen) :: namcx(ncxmx0)
-  integer               :: ncmplx
+  integer               :: ncmplx=0
   real*8                :: zx(ncxmx)
   real*8                :: ax0(ncxmx)
   real*8                :: wtx(ncxmx)

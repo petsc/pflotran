@@ -38,7 +38,7 @@ contains
   
 ! keywords: GRID, PROC, OPTS, TOLR, SYST, DXYZ, FLOW, DIFF, DBAS, COMP,
 !           BCON, SOUR, SOLV, BRK, TIME, FELD, AQCX, GAS, MNRL, MNIR,
-!           IONX, SORP, COUP
+!           IONX, SORP, COUP, DTST
 
   use ptran_global_module
   use fileio_module
@@ -195,15 +195,19 @@ contains
       call fiReadInt(string,iprint,ierr)
       call fiDefaultMsg('iprint',ierr)
       
+      call fiReadInt(string,ndtcmx,ierr)
+      call fiDefaultMsg('ndtcmx',ierr)
+      
       if (myrank==0) write(iunit2,'(/," *TOLR ",/, &
      &"  kmax       = ",i6,/, &
      &"  newton_max = ",3x,i3,/, &
      &"  icut_max   = ",3x,i3,/, &
      &"  tolexp     = ",3x,1pe12.4,/, &
      &"  iwarn      = ",3x,i3,/, &
-     &"  iprint     = ",3x,i3 &
+     &"  iprint     = ",3x,i3,/, &
+     &"  ndtcmx     = ",3x,i3 &
      &   )') &
-      kmax,newton_max,icut_max,tolexp,iwarn,iprint
+      kmax,newton_max,icut_max,tolexp,iwarn,iprint,ndtcmx
 
 !....................
 
@@ -830,14 +834,11 @@ contains
       
       call fiReadInt(string,kplot,ierr) 
       call fiDefaultMsg('kplot',ierr)
-
-!     do i = 1, kplot
-!       call fiReadDouble(string,tplot(i),ierr)
-!       call fiDefaultMsg('tplot',ierr)
-!     enddo
       
       call fiReadFlotranString(IUNIT1,string,ierr)
-      call fiReadStringErrorMsg('TIME',ierr)
+      
+      call fiReadStringErrorMsg('TIME1',ierr)
+      
       i2 = 0
       do
         i1 = i2 + 1
@@ -849,31 +850,64 @@ contains
         enddo
         if (i2 == kplot) exit
         call fiReadFlotranString(IUNIT1,string,ierr)
-        call fiReadStringErrorMsg('TIME',ierr)
+        call fiReadStringErrorMsg('TIME2',ierr)
       enddo
-
-      call fiReadFlotranString(iunit1,string,ierr)
-      call fiReadStringErrorMsg('TIME',ierr)
-      
-      call fiReadDouble(string,dt,ierr)
-      call fiDefaultMsg('dt',ierr)
-
-      call fiReadDouble(string,dtmax,ierr)
-      call fiDefaultMsg('dtmax',ierr)
 
       if (myrank==0) then
         write(iunit2,'(/," *TIME ",a3,1x,1pe12.4,i4,1p10e12.4)') &
         tunit,tconv,kplot,(tplot(i),i=1,kplot)
-        write(iunit2,'("  dt= ",1pe12.4,", dtmax= ",1pe12.4,/)') &
-        dt,dtmax
       endif
       
       ! convert time units to seconds
       do i = 1, kplot
         tplot(i) = tconv * tplot(i)
       enddo
-      dt = tconv * dt
-      dtmax = tconv * dtmax
+
+!....................
+
+      case ('DTST')
+
+        call fiReadStringErrorMsg('DTST',ierr)
+  
+        call fiReadInt(string,nstpmax,ierr)
+        call fiDefaultMsg('nstpmax',ierr)
+  
+        allocate(tstep(nstpmax))
+        allocate(dtstep(nstpmax))
+  
+        do i = 1, nstpmax
+          call fiReadDouble(string,tstep(i),ierr)
+          call fiDefaultMsg('tstep',ierr)
+        enddo
+
+        call fiReadFlotranString(IUNIT1,string,ierr)
+        call fiReadStringErrorMsg('DTST',ierr)
+        call fiReadDouble(string,dtmin,ierr)
+        call fiDefaultMsg('dtmin',ierr)
+        do i = 1, nstpmax
+          call fiReadDouble(string,dtstep(i),ierr)
+          call fiDefaultMsg('dtstep',ierr)
+        enddo
+        
+        dtmax = dtstep(1)
+        
+        dt = dtmin
+      
+        if (myrank==0) then
+          write(IUNIT2,'(/," *DTST ",i4,/," tstep= ",(1p10e12.4))')  &
+            nstpmax, (tstep(i),i=1,nstpmax)
+          write(IUNIT2,'(" dtstep= ",1p10e12.4,/)') &
+            dtmin,(dtstep(i),i=1,nstpmax)
+        endif
+      
+        ! convert time units to seconds
+        do i = 1, nstpmax
+          tstep(i) = tconv * tstep(i)
+          dtstep(i) = tconv * dtstep(i)
+        enddo
+        dt = tconv * dt
+        dtmin = tconv * dtmin
+        dtmax = tconv * dtmax
       
 !....................
       

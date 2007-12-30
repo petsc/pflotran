@@ -98,6 +98,7 @@
 #endif
 
   integer :: ierr,i,its,ix,j,jy,kplt=0,kstep,kz,n
+  integer :: ihalcnt, iflghalcut, ntstep, chkptfreq
   
   real*8 :: tsrc
 
@@ -155,6 +156,10 @@
   icutcum = 0
   itpetscum = 0
   iflgcut = 0
+  
+  iflghalcut = 0
+  ihalcnt = 0
+
   isrc1 = 2
   t = 0.d0
   do kstep = 1, kmax
@@ -198,6 +203,18 @@
 
     newtcum = newtcum + newton
     icutcum = icutcum + icut
+    
+    if (icut > 0) then
+      iflghalcut = 1
+    endif
+    
+    if (iflghalcut > 0) then
+      ihalcnt = ihalcnt + 1
+      if (ihalcnt > ndtcmx) then
+        iflghalcut = 0
+        ihalcnt = 0
+      endif
+    endif
 
 !---update field variables
     call ptran_update (da,da_1dof,da_kin)
