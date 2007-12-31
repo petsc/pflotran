@@ -1479,6 +1479,7 @@ subroutine RichardsAnalyticalResidual(snes,xx,r,realization,ierr)
   use Option_module
   use Coupler_module  
   use Field_module
+  use Debug_module
   
   implicit none
 
@@ -1847,16 +1848,17 @@ subroutine RichardsAnalyticalResidual(snes,xx,r,realization,ierr)
   if (option%rk > 0.d0) then
     call VecRestoreArrayF90(field%phis,phis_p,ierr)
   endif
-!#define DEBUG_GEH
-!#define DEBUG_GEH_ALL
-#ifdef DEBUG_GEH 
- call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'residual.out',viewer,ierr)
- call VecView(r,viewer,ierr)
- call PetscViewerDestroy(viewer,ierr)
- call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'xx.out',viewer,ierr)
- call VecView(xx,viewer,ierr)
- call PetscViewerDestroy(viewer,ierr)
-#endif
+
+  if (realization%debug%vecview_residual) then
+    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'residual.out',viewer,ierr)
+    call VecView(r,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+  endif
+  if (realization%debug%vecview_solution) then
+    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'xx.out',viewer,ierr)
+    call VecView(xx,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+  endif
 
 end subroutine RichardsAnalyticalResidual
                 
@@ -1879,6 +1881,7 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
   use Realization_module
   use Coupler_module
   use Field_module
+  use Debug_module
     
   implicit none
 
@@ -2001,13 +2004,13 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
     call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)
   enddo
 #endif
-#ifdef DEBUG_GEH_ALL  
-  call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
-  call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian_accum.out',viewer,ierr)
-  call MatView(A,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
-#endif
+  if (realization%debug%matview_Jacobian) then
+    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
+    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
+    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian_accum.out',viewer,ierr)
+    call MatView(A,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+  endif
 #if 1
   ! Source/sink terms -------------------------------------
   source_sink => realization%source_sinks%first 
@@ -2065,13 +2068,13 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
     source_sink => source_sink%next
   enddo
 #endif
-#ifdef DEBUG_GEH_ALL  
-  call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
-  call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian_srcsink.out',viewer,ierr)
-  call MatView(A,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
-#endif
+  if (realization%debug%matview_Jacobian) then
+    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
+    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
+    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian_srcsink.out',viewer,ierr)
+    call MatView(A,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+  endif
 #if 1
   ! Interior Flux Terms -----------------------------------  
   connection_list => grid%internal_connection_list
@@ -2159,13 +2162,13 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
     cur_connection_set => cur_connection_set%next
   enddo
 #endif
-#ifdef DEBUG_GEH_ALL  
-  call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
-  call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian_flux.out',viewer,ierr)
-  call MatView(A,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
-#endif
+  if (realization%debug%matview_Jacobian) then
+    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
+    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
+    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian_flux.out',viewer,ierr)
+    call MatView(A,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+  endif
 #if 1
   ! Boundary Flux Terms -----------------------------------
   boundary_condition => realization%boundary_conditions%first
@@ -2241,13 +2244,13 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
     boundary_condition => boundary_condition%next
   enddo
 #endif
-#ifdef DEBUG_GEH_ALL  
-  call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
-  call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian_bcflux.out',viewer,ierr)
-  call MatView(A,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
-#endif
+  if (realization%debug%matview_Jacobian) then
+    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
+    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
+    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian_bcflux.out',viewer,ierr)
+    call MatView(A,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+  endif
   
   call VecRestoreArrayF90(field%xx_loc, xx_loc_p, ierr)
   call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
@@ -2295,12 +2298,11 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
   endif
 #endif
 
-!#define DEBUG_GEH
-#ifdef DEBUG_GEH    
- call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian.out',viewer,ierr)
- call MatView(A,viewer,ierr)
- call PetscViewerDestroy(viewer,ierr)
-#endif
+  if (realization%debug%matview_Jacobian) then
+    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian.out',viewer,ierr)
+    call MatView(A,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+  endif
 
 end subroutine RichardsAnalyticalJacobian
 
