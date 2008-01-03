@@ -107,7 +107,6 @@
 
 ! Now we do some initial output, so push this onto the log stack.
   call PetscLogStagePush(stage(2), ierr)
-
   if (option%restart_flag == PETSC_FALSE) then
     if(option%imode /= OWG_MODE) then
       call Output(realization)
@@ -115,7 +114,6 @@
    !   call pflow_var_output(grid,kplt,iplot)
     endif
   endif
-                          
   call PetscLogStagePop(ierr)
 
 #if 0

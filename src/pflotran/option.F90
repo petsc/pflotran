@@ -156,6 +156,7 @@ module Option_module
     logical :: print_tecplot_flux_velocities
 
     integer :: plot_number
+    character(len=MAXWORDLENGTH) :: plot_name
     
   end type output_option_type
 
@@ -284,6 +285,7 @@ function OutputOptionCreate()
   output_option%print_tecplot_velocities = .false.
   output_option%print_tecplot_flux_velocities = .false.
   output_option%plot_number = 0
+  output_option%plot_name = ""
 
   OutputOptionCreate => output_option
   

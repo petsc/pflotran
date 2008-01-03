@@ -110,14 +110,18 @@ subroutine OutputTecplot(realization)
   output_option => realization%output_option
   
   ! open file
-  if (output_option%plot_number < 10) then
-    write(filename,'("pflow00",i1,".tec")') output_option%plot_number  
-  else if (output_option%plot_number < 100) then
-    write(filename,'("pflow0",i2,".tec")') output_option%plot_number  
-  else if (output_option%plot_number < 1000) then
-    write(filename,'("pflow",i3,".tec")') output_option%plot_number  
-  else if (output_option%plot_number < 10000) then
-    write(filename,'("pflow",i4,".tec")') output_option%plot_number  
+  if (len_trim(output_option%plot_name) > 2) then
+    filename = trim(output_option%plot_name) // '.tec'
+  else
+    if (output_option%plot_number < 10) then
+      write(filename,'("pflow00",i1,".tec")') output_option%plot_number  
+    else if (output_option%plot_number < 100) then
+      write(filename,'("pflow0",i2,".tec")') output_option%plot_number  
+    else if (output_option%plot_number < 1000) then
+      write(filename,'("pflow",i3,".tec")') output_option%plot_number  
+    else if (output_option%plot_number < 10000) then
+      write(filename,'("pflow",i4,".tec")') output_option%plot_number  
+    endif
   endif
   
   if (option%myrank == 0) then
@@ -1102,6 +1106,9 @@ subroutine OutputHDF5(realization)
   ! create a group for the data set
   write(string,'(''Time:'',es12.4,x,a1)') &
         option%time/output_option%tconv,output_option%tunit
+  if (len_trim(output_option%plot_name) > 2) then
+    string = trim(string) // ' ' // output_option%plot_name
+  endif
   call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
   
   ! write out data sets 

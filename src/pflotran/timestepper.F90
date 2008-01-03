@@ -171,17 +171,14 @@ subroutine StepperRun(realization,stepper,stage)
     if (.not.timestep_cut_flag) &
       call StepperUpdateDT(stepper,option,num_newton_iterations)
 
-#if 1
-    ! still needs implementation
-    call PetscLogStagePush(stage(2), ierr)
     if(option%checkpoint_flag == PETSC_TRUE .and. &
        mod(istep,option%checkpoint_frequency) == 0) then
-    call pflowGridCheckpoint(realization,stepper%flowsteps,stepper%newtcum, &
-                             stepper%icutcum,timestep_cut_flag, &
-                             num_timestep_cuts,num_newton_iterations,istep)
+      call PetscLogStagePush(stage(2), ierr)
+      call pflowGridCheckpoint(realization,stepper%flowsteps,stepper%newtcum, &
+                               stepper%icutcum,timestep_cut_flag, &
+                               num_timestep_cuts,num_newton_iterations,istep)
+      call PetscLogStagePop(ierr)
     endif
-    call PetscLogStagePop(ierr)
-#endif
     
 #if 0    
     ! needs to be modularized
@@ -202,14 +199,11 @@ subroutine StepperRun(realization,stepper,stage)
 
   enddo
 
-#if 1
-  ! still needs implementation
   if(option%checkpoint_flag == PETSC_TRUE) then
     call pflowGridCheckpoint(realization,stepper%flowsteps,stepper%newtcum, &
                              stepper%icutcum,timestep_cut_flag, &
                              num_timestep_cuts,num_newton_iterations,istep)
   endif
-#endif  
 
   if (option%myrank == 0) then
     write(*,'(/," PFLOW steps = ",i6," newton = ",i6," cuts = ",i6)') &
@@ -614,7 +608,9 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
                   option%dt/realization%output_option%tconv
           print *,"Stopping execution!"
         endif
+        realization%output_option%plot_name = 'cut_to_failure'
         call Output(realization)
+        realization%output_option%plot_name = ''
  !       call pflowgrid_destroy(grid)
         call PetscFinalize(ierr)
         stop
