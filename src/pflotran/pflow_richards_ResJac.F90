@@ -1786,11 +1786,11 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
   f1 = 0.d0
   call MatZeroRowsLocal(A,n_zero_rows,zero_rows_local_ghosted,f1,ierr) 
   do i=1, n_zero_rows
-    n = mod(zero_rows_local(i),option%ndof)
+    ii = mod(zero_rows_local(i),option%ndof)
     p1 = zero_rows_local_ghosted(i)
-    if (n == 0) then
+    if (ii == 0) then
       p2 = p1-1
-    if (n == option%ndof-1) then
+    elseif (ii == option%ndof-1) then
       p2 = p1+1
     else
       p2 = p1

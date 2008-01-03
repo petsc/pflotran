@@ -1911,7 +1911,7 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
   real*8 :: perm_up, perm_dn
   real*8 :: dw_dp,dw_dt,hw_dp,hw_dt,dresT_dp,dresT_dt
   real*8 :: D_up, D_dn  ! "Diffusion" constants upstream and downstream of a face.
-
+  real*8 :: zero
   real*8 :: ra(1:realization%option%ndof,1:2*realization%option%ndof)  
   real*8 :: tmp, upweight
   real*8 :: delxbc(1:realization%option%ndof)
@@ -2274,19 +2274,19 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
 
 ! zero out isothermal and inactive cells
 #ifdef ISOTHERMAL
-  f1 = 0.d0
-  call MatZeroRowsLocal(A,n_zero_rows,zero_rows_local_ghosted,f1,ierr) 
+  zero = 0.d0
+  call MatZeroRowsLocal(A,n_zero_rows,zero_rows_local_ghosted,zero,ierr) 
   do i=1, n_zero_rows
-    n = mod(zero_rows_local(i),option%ndof)
-    p1 = zero_rows_local_ghosted(i)
-    if (n == 0) then
-      p2 = p1-1
-    if (n == option%ndof-1) then
-      p2 = p1+1
+    ii = mod(zero_rows_local(i),option%ndof)
+    ip1 = zero_rows_local_ghosted(i)
+    if (ii == 0) then
+      ip2 = ip1-1
+    elseif (ii == option%ndof-1) then
+      ip2 = ip1+1
     else
-      p2 = p1
+      ip2 = ip1
     endif
-    call MatSetValuesLocal(A,1,p1,1,p2,1.d0,INSERT_VALUES,ierr)
+    call MatSetValuesLocal(A,1,ip1,1,ip2,1.d0,INSERT_VALUES,ierr)
   enddo
 
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
