@@ -28,7 +28,7 @@ endif
 
 MYFLAGS = -I${objdir} $(CUSTOM_CONVERGENCE_FLAGS) \
           $(DEBUG_CONVERGENCE_FLAGS) $(HDF5_FLAGS) -DOVERHAUL -DOVERHAUL_V2 \
-          $(COMPILE_BROKEN_FLAGS) -DRICHARDS_ANALYTICAL
+          $(COMPILE_BROKEN_FLAGS) -DRICHARDS_ANALYTICAL #-DISOTHERMAL
 LIBS = $(HDF5_LIBS)
 
 CFLAGS		 = 
@@ -73,6 +73,7 @@ pflow_obj = ${common_src}pflow_vector_ops.o \
 	${common_src}grid.o \
 	${common_src}hydrostatic.o \
 	${common_src}realization.o \
+	${common_src}hdf5.o \
 	${common_src}Readfield.o \
 	${common_src}mixed_fluid_eos.o \
 	${common_src}translator_mixed_fluid_mph.o \
@@ -95,10 +96,10 @@ pflow_obj = ${common_src}pflow_vector_ops.o \
 	${common_src}richards.o\
 	${common_src}general_grid.o \
 	${common_src}pflow_solve.o \
+	${common_src}pflow_checkpoint.o \
 	${common_src}timestepper.o \
 	${common_src}simulation.o \
 	${common_src}pflow_output2.o \
-	${common_src}pflow_checkpoint.o \
 	${common_src}pflow_convergence.o \
 	${common_src}pflow_init.o
 
@@ -149,13 +150,14 @@ ascii_to_hdf5: fileio.o hdf5_dataset.o ascii_to_hdf5.o
 
 # Dependencies stemming from "use" statements.
 # These ensure that the module files are built in the correct order.
-pflow.o : pflow_init.o timestepper.o
+pflow.o : pflow_init.o timestepper.o simulation.o
+simulation.o : timestepper.o realization.o
 pflow_init.o : option.o grid.o realization.o solver.o timestepper.o simulation.o \
                fileio.o material.o region.o condition.o pflow_convergence.o \
 	       waypoint.o field.o general_grid.o debug.o
 unstructured_grid.o : option.o connection.o solver.o
 structured_grid.o : connection.o option.o fileio.o coupler.o region.o solver.o
-general_grid.o : condition_old.o grid.o realization.o
+general_grid.o : condition_old.o grid.o realization.o hdf5.o
 grid.o : structured_grid.o unstructured_grid.o option.o region.o connection.o \
 	 coupler.o solver.o
 solver.o : option.o field.o
@@ -173,7 +175,7 @@ waypoint.o : option.o
 pflow_vector_ops.o : water_eos.o
 pflow_output_new.o : pflow_output.o
 pflow_output2.o : grid.o structured_grid.o option.o realization.o field.o \
-                  coupler.o connection.o
+                  coupler.o connection.o hdf5.o
 pflow_richards_ResJac.o : realization.o option.o field.o grid.o coupler.o \
                           translator_mixed_fluid_richards.o
 pflow_mphase_ResJac.o : realization.o option.o field.o grid.o coupler.o \
@@ -199,8 +201,10 @@ timestepper.o : \
                 field.o \
                 solver.o \
                 pflow_output2.o \
+                pflow_checkpoint.o \
                 hydrostat.o \
 		waypoint.o
+hdf5.o : realization.o option.o grid.o
 pflow_output.o : pflow_gridtype.o petscrelwrappers.o pflow_output2.o
 pflow_COND.o : pflow_gridtype.o 
 pflow_LIQUID.o : pflow_gridtype.o water_eos.o

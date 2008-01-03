@@ -7,6 +7,7 @@ module pflow_convergence_module
 #include "include/finclude/petsc.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
+#include "include/finclude/petscksp.h"
 #include "include/finclude/petscsnes.h"
 #include "include/finclude/petsclog.h"
 
@@ -59,6 +60,8 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,simulation,ier
   PetscReal, allocatable :: norm1_solution_stride(:)
   PetscReal, allocatable :: norm1_update_stride(:)
   PetscReal, allocatable :: norm1_residual_stride(:)
+
+  KSP :: ksp
   
   integer, allocatable :: imax_solution(:)
   integer, allocatable :: imax_update(:)
@@ -74,7 +77,7 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,simulation,ier
   PetscReal, allocatable :: min_update_val(:)
   PetscReal, allocatable :: min_residual_val(:)
   
-  character(len=128) :: string
+  character(len=128) :: string, string2, string3
   logical :: print_sol_norm_info = .false.
   logical :: print_upd_norm_info = .false.
   logical :: print_res_norm_info = .false.
@@ -106,7 +109,7 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,simulation,ier
 
   ! always take one iteration
   if (option%force_at_least_1_iteration == PETSC_TRUE) then
-    call SNESGetIterationNumber(solver%snes,it,ierr)
+!    call SNESGetIterationNumber(snes_,it,ierr)
     if (it == 0) then
       reason = 0
       return
@@ -254,7 +257,10 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,simulation,ier
 
       print *
       print *, 'reason: ', reason, ' - ', trim(string)
-      print *, 'its :', it
+      print *, 'SNES iteration :', it
+      call SNESGetKSP(snes_,ksp,ierr)
+      call KSPGetIterationNumber(ksp,i,ierr)
+      print *, 'KSP iterations :', i
       if (print_1_norm_info) then
         if (print_sol_norm_info) print *, 'norm_1_solution:   ', norm1_solution
         if (print_upd_norm_info) print *, 'norm_1_update:     ', norm1_update

@@ -11,6 +11,8 @@ module HDF5_module
   PetscErrorCode :: ierr
   integer :: hdf5_err
 
+  logical, public :: trick_hdf5 = .false.
+
 #ifdef USE_HDF5
   
   public :: HDF5MapLocalToNaturalIndices, &

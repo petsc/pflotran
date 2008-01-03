@@ -363,10 +363,14 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
 #include "include/finclude/petsc.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
+#include "include/finclude/petscmat.h"
+#include "include/finclude/petscviewer.h"
 #include "include/finclude/petscsnes.h"
 
   type(realization_type) :: realization
   type(stepper_type) :: stepper
+
+  character(len=MAXSTRINGLENGTH) :: string, string2, string3
 
   logical :: plot_flag, timestep_cut_flag
   integer :: num_timestep_cuts,num_newton_iterations
@@ -378,6 +382,10 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
   real*8 m_r2norm, s_r2norm, norm_inf, s_r2norm0, norm_inf0, r2norm
   real*8 :: tsrc
   real*8, pointer :: r_p(:)  
+
+  integer, save :: linear_solver_divergence_count = 0
+
+  PetscViewer :: viewer
 
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
@@ -621,6 +629,29 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
         &   1pe12.4,i2)')  snes_reason,icut,stepper%icutcum, &
             option%time/realization%output_option%tconv, &
             option%dt/realization%output_option%tconv,timestep_cut_flag
+
+      if (snes_reason == SNES_DIVERGED_LINEAR_SOLVE) then
+        write(string3,*) linear_solver_divergence_count
+        string2 = "Writing debug vecs and Jacobian: " // trim(adjustl(string3))
+        call printMsg(option,string2)
+        linear_solver_divergence_count = linear_solver_divergence_count + 1
+        string2 = "residual" // trim(adjustl(string3)) // ".out"
+        call PetscViewerASCIIOpen(PETSC_COMM_WORLD,string2,viewer,ierr)
+        call VecView(field%r,viewer,ierr)
+        call PetscViewerDestroy(viewer,ierr)
+        string2 = "solution" // trim(adjustl(string3)) // ".out"
+        call PetscViewerASCIIOpen(PETSC_COMM_WORLD,string2,viewer,ierr)
+        call VecView(field%xx,viewer,ierr)
+        call PetscViewerDestroy(viewer,ierr)
+        string2 = "update" // trim(adjustl(string3)) // ".out"
+        call PetscViewerASCIIOpen(PETSC_COMM_WORLD,string2,viewer,ierr)
+        call VecView(field%dxx,viewer,ierr)
+        call PetscViewerDestroy(viewer,ierr)
+        string2 = "jacobian" // trim(adjustl(string3)) // ".out"
+        call PetscViewerASCIIOpen(PETSC_COMM_WORLD,string2,viewer,ierr)
+        call MatView(solver%J,viewer,ierr)
+        call PetscViewerDestroy(viewer,ierr)
+      endif
 
       if (option%ndof == 1) then
         ! VecCopy(x,y): y=x

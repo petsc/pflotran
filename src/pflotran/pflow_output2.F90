@@ -39,7 +39,6 @@ module Output_module
 #define GAS_PHASE 2
 
   integer :: hdf5_err
-  logical :: trick_hdf5 = .false.
   PetscErrorCode :: ierr
   
   public :: Output, OutputTecplot, OutputHDF5
