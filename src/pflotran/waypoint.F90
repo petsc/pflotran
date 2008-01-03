@@ -32,7 +32,8 @@ module Waypoint_module
             WaypointInsertInList, &
             WaypointListFillIn, &
             WaypointListRemoveExtraWaypnts, &
-            WaypointConvertTimes
+            WaypointConvertTimes, &
+            WaypointSkipToTime
 
 contains
 
@@ -369,6 +370,38 @@ subroutine WaypointListDestroy(waypoint_list)
   nullify(waypoint_list)
   
 end subroutine WaypointListDestroy
+
+! ************************************************************************** !
+!
+! WaypointSkipToTime: Returns a pointer to the first waypoint after time
+! author: Glenn Hammond
+! date: 1/03/08
+!
+! ************************************************************************** !
+function WaypointSkipToTime(list,time)
+
+  implicit none
+
+  type(waypoint_list_type), pointer :: list
+  real*8 :: time
+
+  type(waypoint_type), pointer :: WaypointSkipToTime
+  type(waypoint_type), pointer :: waypoint
+  
+  waypoint => list%first
+  do 
+    if (.not.associated(waypoint)) exit
+    if (waypoint%time >= time) exit
+    waypoint => waypoint%next
+  enddo
+
+  if (associated(waypoint)) then
+    WaypointSkipToTime => waypoint
+  else
+    nullify(WaypointSkipToTime)
+  endif
+
+end function WaypointSkipToTime
 
 ! ************************************************************************** !
 !

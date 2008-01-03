@@ -83,6 +83,7 @@ module Structured_Grid_module
             StructuredGridCreateJacobian, &
             StructuredGridCreateColoring, &
             StructureGridGlobalToLocal, &
+            StructureGridLocalToGlobal, &
             StructureGridGlobalToNatural, &
             StructureGridLocalToLocalBegin, &
             StructureGridGlobalToLocalBegin, &
@@ -1090,6 +1091,33 @@ subroutine StructureGridGlobalToLocal(structured_grid,global_vec,local_vec,da_in
                           local_vec, ierr)
                           
 end subroutine StructureGridGlobalToLocal
+
+! ************************************************************************** !
+!
+! StructureGridLocalToGlobal: Performs local to global communication with DA
+! author: Glenn Hamm8ond
+! date: 1/2/07
+!
+! ************************************************************************** !
+subroutine StructureGridLocalToGlobal(structured_grid,local_vec,global_vec, &
+                                      da_index)
+
+  implicit none
+  
+  type(structured_grid_type) :: structured_grid
+  Vec :: local_vec
+  Vec :: global_vec
+  integer :: da_index
+  
+  DA :: da_ptr
+  PetscErrorCode :: ierr
+
+  da_ptr = StructGridGetDAPtrFromIndex(structured_grid,da_index)
+
+  call DALocalToGlobal(da_ptr,local_vec,INSERT_VALUES, &
+                       global_vec,ierr)
+                          
+end subroutine StructureGridLocalToGlobal
 
 ! ************************************************************************** !
 !

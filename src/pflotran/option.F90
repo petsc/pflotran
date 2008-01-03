@@ -38,9 +38,6 @@ module Option_module
     ! defines the mode (e.g. mph, richards, vadose, etc.
     character(len=MAXNAMELENGTH) :: mode
     integer :: imode
-    
-    PetscTruth :: restartflag
-    character(len=MAXNAMELENGTH) :: restartfile
   
     integer :: nphase, nvar, ndof  ! Number of phases we are dealing with.
     integer :: jh2o, jgas, jco2 ! specific phase indices
@@ -136,6 +133,12 @@ module Option_module
     integer :: itable=0
 
     real*8, pointer :: rtot(:,:),rate(:),area_var(:), delx(:,:)
+    
+    PetscTruth :: restart_flag
+    character(len=MAXWORDLENGTH) :: restart_file
+    PetscTruth :: checkpoint_flag
+    integer :: checkpoint_frequency
+    
    
   end type 
   
@@ -248,7 +251,12 @@ function OptionCreate()
   
   option%generalized_grid = ""
   option%use_generalized_grid = .false.
-  
+
+  option%restart_flag = PETSC_FALSE
+  option%restart_file = ""
+  option%checkpoint_flag = PETSC_FALSE
+  option%checkpoint_frequency = int(1d20)
+    
   OptionCreate => option
   
 end function OptionCreate
@@ -305,9 +313,6 @@ subroutine OptionCheckCommandLine(option)
                            option%print_hhistory, ierr)
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-monitor_h", &
                            option%monitor_h, ierr) 
-  call PetscOptionsGetString(PETSC_NULL_CHARACTER, '-restart', &
-                             option%restartfile, &
-                             option%restartflag, ierr)     
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_debug", &
                            option%use_debug, ierr)
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_ksp", &
@@ -316,6 +321,12 @@ subroutine OptionCheckCommandLine(option)
                            option%use_isoth, ierr)
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-print_bcinfo", &
                            option%print_bcinfo, ierr)
+                           
+  call PetscOptionsGetString(PETSC_NULL_CHARACTER, '-restart', option%restart_file, &
+                             option%restart_flag, ierr)
+  call PetscOptionsGetInt(PETSC_NULL_CHARACTER, '-chkptfreq', &
+                          option%checkpoint_frequency, &
+                          option%checkpoint_flag, ierr)                           
                              
   ! check on possible modes                                                     
   option_found = PETSC_FALSE

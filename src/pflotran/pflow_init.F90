@@ -1695,6 +1695,20 @@ subroutine readInput(simulation,filename)
          if (option%myrank == 0) print *, option%m_nacl
 !......................
 
+      case ('RESTART')
+        option%restart_flag = PETSC_TRUE
+        call fiReadWord(string,option%restart_file,.true.,ierr)
+        call fiErrorMsg('RESTART','Restart file name',ierr) 
+
+!......................
+
+      case ('CHECKPOINT')
+        option%checkpoint_flag = PETSC_TRUE
+        call fiReadInt(string,option%checkpoint_frequency,ierr)
+        call fiErrorMsg('CHECKPOINT','Checkpoint frequency',ierr) 
+
+!......................
+
       case ('NO_PRINT_CONVERGENCE')
         option%print_convergence = PETSC_FALSE
 
@@ -2725,8 +2739,6 @@ subroutine assignMaterialPropToRegions(realization)
           ! otherwide set the imat value to the stratas material
           if (material_id < -998) & ! prevent overwrite of cell already set to inactive
             field%imat(ghosted_id) = material%id
-        else
-          field%imat(ghosted_id) = 0
         endif
         if (associated(material)) then
           icap_loc_p(ghosted_id) = material%icap

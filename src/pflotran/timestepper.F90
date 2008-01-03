@@ -90,6 +90,7 @@ subroutine StepperRun(realization,stepper,stage)
   use Realization_module
   use Option_module
   use Output_module
+  use pflow_checkpoint
   
   implicit none
   
@@ -128,6 +129,15 @@ subroutine StepperRun(realization,stepper,stage)
   call WaypointConvertTimes(stepper%waypoints,realization%output_option%tconv)
   stepper%cur_waypoint => stepper%waypoints%first
 
+  if(option%restart_flag == PETSC_TRUE) then
+    call pflowGridRestart(realization,stepper%flowsteps,stepper%newtcum, &
+                          stepper%icutcum, &
+                          timestep_cut_flag,num_timestep_cuts, &
+                          num_newton_iterations)
+    stepper%cur_waypoint => WaypointSkipToTime(stepper%waypoints,option%time)
+    call StepperUpdateSolution(realization)
+  endif
+
   allocate(dxdt(1:option%ndof))  
 
   do istep = stepper%flowsteps+1, stepper%stepmax
@@ -150,7 +160,7 @@ subroutine StepperRun(realization,stepper,stage)
     call PetscLogStagePush(stage(2), ierr)
     if (plot_flag) then
       if(option%imode /= OWG_MODE) then
-        call Output(realization,istep)
+        call Output(realization)
       else
  !       call pflow_var_output(grid,kplt,iplot)
       endif
@@ -161,12 +171,14 @@ subroutine StepperRun(realization,stepper,stage)
     if (.not.timestep_cut_flag) &
       call StepperUpdateDT(stepper,option,num_newton_iterations)
 
-#if 0
+#if 1
     ! still needs implementation
     call PetscLogStagePush(stage(2), ierr)
-    if(chkptflag == PETSC_TRUE .and. mod(steps, chkptfreq) == 0) then
-      call pflowGridCheckpoint(grid, ntstep, kplt, iplot, iflgcut, ihalcnt, &
-                               num_newton_iterations, steps)
+    if(option%checkpoint_flag == PETSC_TRUE .and. &
+       mod(istep,option%checkpoint_frequency) == 0) then
+    call pflowGridCheckpoint(realization,stepper%flowsteps,stepper%newtcum, &
+                             stepper%icutcum,timestep_cut_flag, &
+                             num_timestep_cuts,num_newton_iterations,istep)
     endif
     call PetscLogStagePop(ierr)
 #endif
@@ -190,11 +202,12 @@ subroutine StepperRun(realization,stepper,stage)
 
   enddo
 
-#if 0
+#if 1
   ! still needs implementation
-  if(chkptflag == PETSC_TRUE .and. mod(steps, chkptfreq) /= 0) then
-    call pflowGridCheckpoint(grid, ntstep, kplt, iplot, iflgcut, ihalcnt, &
-                             num_newton_iterations, steps)
+  if(option%checkpoint_flag == PETSC_TRUE) then
+    call pflowGridCheckpoint(realization,stepper%flowsteps,stepper%newtcum, &
+                             stepper%icutcum,timestep_cut_flag, &
+                             num_timestep_cuts,num_newton_iterations,istep)
   endif
 #endif  
 
@@ -336,6 +349,7 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
   use Richards_Analytical_module
 #endif
   use pflow_solv_module
+  use Output_module
   
   use Realization_module
   use Grid_module
@@ -592,23 +606,7 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
                   option%dt/realization%output_option%tconv
           print *,"Stopping execution!"
         endif
-        plot_flag = .true.
- !       call pflow_output(grid%ppressure,field%ttemp,grid%conc,grid%phis,grid%porosity, &
- !       grid%perm_xx, grid%perm_yy, grid%perm_zz, &
- !       grid%porosity, grid%sat, grid%vl, &
- !       grid%c_nat,grid%vl_nat,grid%p_nat,option%t_nat,grid%s_nat,grid%phis_nat,grid%por_nat, &
- !       grid%ibrkface, grid%jh2o, grid%nphase, grid%nmax, &
- !       solver%snes, &
- !       option%t, option%dt, option%tconv, stepper%flowsteps, option%rk, &
- !       grid%k1brk,grid%k2brk,grid%j1brk,grid%j2brk,grid%i1brk,grid%i2brk, &
- !       grid%nx,grid%ny,grid%nz,grid%nxy,grid%dx0,grid%dy0,grid%dz0,grid%x,grid%y,grid%z, &
- !       grid%da_nphase_dof,grid%da_1_dof,grid%da_3np_dof,grid%da_ndof,option%ndof, &
- !       kplt,iplot,grid%iprint,grid%ibrkcrv, &
- !       grid%itecplot,grid%write_init,option%myrank)
-    
-  !      call pflow_output(grid,kplt,iplot)
-        ! The above line won't work when scope is restricted properly!
-        ! Replace this with a different function call!
+        call Output(realization)
  !       call pflowgrid_destroy(grid)
         call PetscFinalize(ierr)
         stop

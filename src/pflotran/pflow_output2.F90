@@ -53,22 +53,20 @@ contains
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine Output(realization,step)
+subroutine Output(realization)
 
   use Realization_module
   
   implicit none
   
   type(realization_type) :: realization
-  integer :: step
-
   
   if (realization%output_option%print_hdf5) then
-    call OutputHDF5(realization,step)
+    call OutputHDF5(realization)
   endif
  
   if (realization%output_option%print_tecplot) then
-    call OutputTecplot(realization,step)
+    call OutputTecplot(realization)
   endif
   
   realization%output_option%plot_number = realization%output_option%plot_number + 1
@@ -82,7 +80,7 @@ end subroutine Output
 ! date: 10/25/07
 !
 ! ************************************************************************** !  
-subroutine OutputTecplot(realization,step)
+subroutine OutputTecplot(realization)
 
   use Realization_module
   use Grid_module
@@ -95,7 +93,6 @@ subroutine OutputTecplot(realization,step)
 #include "definitions.h"
 
   type(realization_type) :: realization
-  integer :: step
   
   integer :: i
   character(len=MAXNAMELENGTH) :: filename
@@ -330,34 +327,34 @@ subroutine OutputTecplot(realization,step)
   close(IUNIT3)
   
   if (output_option%print_tecplot_velocities) then
-    call OutputVelocitiesTecplot(realization,step)
+    call OutputVelocitiesTecplot(realization)
   endif
   
   if (output_option%print_tecplot_flux_velocities) then
     if (grid%structured_grid%nx > 1) then
-      call OutputFluxVelocitiesTecplot(realization,step,LIQUID_PHASE, &
+      call OutputFluxVelocitiesTecplot(realization,LIQUID_PHASE, &
                                        X_DIRECTION)
       select case(option%imode)
         case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE)
-          call OutputFluxVelocitiesTecplot(realization,step,GAS_PHASE, &
+          call OutputFluxVelocitiesTecplot(realization,GAS_PHASE, &
                                            X_DIRECTION)
       end select
     endif
     if (grid%structured_grid%ny > 1) then
-      call OutputFluxVelocitiesTecplot(realization,step,LIQUID_PHASE, &
+      call OutputFluxVelocitiesTecplot(realization,LIQUID_PHASE, &
                                        Y_DIRECTION)
       select case(option%imode)
         case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE)
-          call OutputFluxVelocitiesTecplot(realization,step,GAS_PHASE, &
+          call OutputFluxVelocitiesTecplot(realization,GAS_PHASE, &
                                            Y_DIRECTION)
       end select
     endif
     if (grid%structured_grid%nz > 1) then
-      call OutputFluxVelocitiesTecplot(realization,step,LIQUID_PHASE, &
+      call OutputFluxVelocitiesTecplot(realization,LIQUID_PHASE, &
                                        Z_DIRECTION)
       select case(option%imode)
         case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE)
-          call OutputFluxVelocitiesTecplot(realization,step,GAS_PHASE, &
+          call OutputFluxVelocitiesTecplot(realization,GAS_PHASE, &
                                            Z_DIRECTION)
       end select
     endif
@@ -372,7 +369,7 @@ end subroutine OutputTecplot
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine OutputVelocitiesTecplot(realization,step)
+subroutine OutputVelocitiesTecplot(realization)
  
   use Realization_module
   use Grid_module
@@ -383,7 +380,6 @@ subroutine OutputVelocitiesTecplot(realization,step)
 #include "definitions.h"
 
   type(realization_type) :: realization
-  integer :: step
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -503,7 +499,7 @@ end subroutine OutputVelocitiesTecplot
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine OutputFluxVelocitiesTecplot(realization,step,iphase, &
+subroutine OutputFluxVelocitiesTecplot(realization,iphase, &
                                        direction)
 !geh - specifically, the flow velocities at the interfaces between cells
  
@@ -517,7 +513,6 @@ subroutine OutputFluxVelocitiesTecplot(realization,step,iphase, &
 #include "definitions.h"
 
   type(realization_type) :: realization
-  integer :: step
   integer :: iphase
   integer :: direction
   
@@ -977,7 +972,7 @@ end subroutine WriteTecplotDataSet
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine OutputHDF5(realization,step)
+subroutine OutputHDF5(realization)
 
   use Realization_module
   use Option_module
@@ -988,7 +983,6 @@ subroutine OutputHDF5(realization,step)
   implicit none
   
   type(realization_type) :: realization
-  integer :: step
 
   if (realization%option%myrank == 0) then
     print *
@@ -1001,11 +995,11 @@ subroutine OutputHDF5(realization,step)
 #else
 
   use hdf5
+  use HDF5_module
   
   implicit none
 
   type(realization_type) :: realization
-  integer :: step  
 
   integer(HID_T) :: file_id
   integer(HID_T) :: grp_id
@@ -1107,8 +1101,8 @@ subroutine OutputHDF5(realization,step)
   endif
 
   ! create a group for the data set
-  write(string,'('' Time('',i4,''):'',es12.4,x,a1)') &
-        step,option%time/output_option%tconv,output_option%tunit
+  write(string,'(''Time:'',es12.4,x,a1)') &
+        option%time/output_option%tconv,output_option%tunit
   call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
   
   ! write out data sets 
@@ -1121,77 +1115,77 @@ subroutine OutputHDF5(realization,step)
       ! temperature
       call GetVarFromArray(realization,global,TEMPERATURE,0)
       string = "Temperature"
-      call WriteHDF5DataSetFromVec(string,realization,global,grp_id,H5T_NATIVE_DOUBLE)
+      call HDF5WriteStructDataSetFromVec(string,realization,global,grp_id,H5T_NATIVE_DOUBLE)
 
       ! pressure
       call GetVarFromArray(realization,global,PRESSURE,0)
       string = "Pressure"
-      call WriteHDF5DataSetFromVec(string,realization,global,grp_id,H5T_NATIVE_DOUBLE)
+      call HDF5WriteStructDataSetFromVec(string,realization,global,grp_id,H5T_NATIVE_DOUBLE)
 
       ! liquid saturation
       call GetVarFromArray(realization,global,LIQUID_SATURATION,0)
       string = "Liquid Saturation"
-      call WriteHDF5DataSetFromVec(string,realization,global,grp_id,H5T_NATIVE_DOUBLE)  
+      call HDF5WriteStructDataSetFromVec(string,realization,global,grp_id,H5T_NATIVE_DOUBLE)  
 
       ! gas saturation
       call GetVarFromArray(realization,global,GAS_SATURATION,0)
       string = "Gas Saturation"
-      call WriteHDF5DataSetFromVec(string,realization,global,grp_id,H5T_NATIVE_DOUBLE) 
+      call HDF5WriteStructDataSetFromVec(string,realization,global,grp_id,H5T_NATIVE_DOUBLE) 
     
       ! liquid energy
       call GetVarFromArray(realization,global,LIQUID_ENERGY,0)
       string = "Liquid Energy"
-      call WriteHDF5DataSetFromVec(string,realization,global,grp_id,H5T_NATIVE_DOUBLE) 
+      call HDF5WriteStructDataSetFromVec(string,realization,global,grp_id,H5T_NATIVE_DOUBLE) 
     
       ! gas energy
       call GetVarFromArray(realization,global,GAS_ENERGY,0)
       string = "Gas Energy"
-      call WriteHDF5DataSetFromVec(string,realization,global,grp_id,H5T_NATIVE_DOUBLE) 
+      call HDF5WriteStructDataSetFromVec(string,realization,global,grp_id,H5T_NATIVE_DOUBLE) 
     
       ! liquid mole fractions
       do i=1,option%nspec
         call GetVarFromArray(realization,global,LIQUID_MOLE_FRACTION,i-1)
         write(string,'(''Liquid Mole Fraction('',i4,'')'')') i
-        call WriteHDF5DataSetFromVec(string,realization,global,grp_id,H5T_NATIVE_DOUBLE)
+        call HDF5WriteStructDataSetFromVec(string,realization,global,grp_id,H5T_NATIVE_DOUBLE)
       enddo
     
       ! gas mole fractions
       do i=1,option%nspec
         call GetVarFromArray(realization,global,GAS_MOLE_FRACTION,i-1)
         write(string,'(''Gas Mole Fraction('',i4,'')'')') i
-        call WriteHDF5DataSetFromVec(string,realization,global,grp_id,H5T_NATIVE_DOUBLE)
+        call HDF5WriteStructDataSetFromVec(string,realization,global,grp_id,H5T_NATIVE_DOUBLE)
       enddo
     
       ! Volume Fraction
       if (option%rk > 0.d0) then
         call GetVarFromArray(realization,global,VOLUME_FRACTION,0)
         string = "Volume Fraction"
-        call WriteHDF5DataSetFromVec(string,realization,global,grp_id,H5T_NATIVE_DOUBLE)
+        call HDF5WriteStructDataSetFromVec(string,realization,global,grp_id,H5T_NATIVE_DOUBLE)
       endif
     
       ! phase
       call GetVarFromArray(realization,global,PHASE,0)
       string = "Phase"
-      call WriteHDF5DataSetFromVec(string,realization,global,grp_id,H5T_NATIVE_INTEGER) 
+      call HDF5WriteStructDataSetFromVec(string,realization,global,grp_id,H5T_NATIVE_INTEGER) 
   
     case default
       ! temperature
       string = "Temperature"
-      call WriteHDF5DataSetFromVec(string,realization,field%temp,grp_id, &
+      call HDF5WriteStructDataSetFromVec(string,realization,field%temp,grp_id, &
                                    H5T_NATIVE_DOUBLE)
 
       ! pressure
       string = "Pressure"
-      call WriteHDF5DataSetFromVec(string,realization,field%pressure,grp_id, &
+      call HDF5WriteStructDataSetFromVec(string,realization,field%pressure,grp_id, &
                                    H5T_NATIVE_DOUBLE)
 
       ! saturation
       string = "Saturation"
-      call WriteHDF5DataSetFromVec(string,realization,field%sat,grp_id,H5T_NATIVE_DOUBLE)
+      call HDF5WriteStructDataSetFromVec(string,realization,field%sat,grp_id,H5T_NATIVE_DOUBLE)
 
       ! concentration
       string = "Concentration"
-      call WriteHDF5DataSetFromVec(string,realization,field%conc,grp_id, &
+      call HDF5WriteStructDataSetFromVec(string,realization,field%conc,grp_id, &
                                    H5T_NATIVE_DOUBLE)
 
   end select
@@ -1201,32 +1195,32 @@ subroutine OutputHDF5(realization,step)
     ! velocities
     call GetCellCenteredVelocities(realization,global,LIQUID_PHASE,X_DIRECTION)
     string = "Liquid X-Velocity"
-    call WriteHDF5DataSetFromVec(string,realization,global,grp_id, &
+    call HDF5WriteStructDataSetFromVec(string,realization,global,grp_id, &
                                  H5T_NATIVE_DOUBLE)
     call GetCellCenteredVelocities(realization,global,LIQUID_PHASE,Y_DIRECTION)
     string = "Liquid Y-Velocity"
-    call WriteHDF5DataSetFromVec(string,realization,global,grp_id, &
+    call HDF5WriteStructDataSetFromVec(string,realization,global,grp_id, &
                                  H5T_NATIVE_DOUBLE)
   
     call GetCellCenteredVelocities(realization,global,LIQUID_PHASE,Z_DIRECTION)
     string = "Liquid Z-Velocity"
-    call WriteHDF5DataSetFromVec(string,realization,global,grp_id, &
+    call HDF5WriteStructDataSetFromVec(string,realization,global,grp_id, &
                                  H5T_NATIVE_DOUBLE)
 
     if (option%nphase > 1) then
       call GetCellCenteredVelocities(realization,global,GAS_PHASE,X_DIRECTION)
       string = "Gas X-Velocity"
-      call WriteHDF5DataSetFromVec(string,realization,global,grp_id, &
+      call HDF5WriteStructDataSetFromVec(string,realization,global,grp_id, &
                                    H5T_NATIVE_DOUBLE)
   
       call GetCellCenteredVelocities(realization,global,GAS_PHASE,Y_DIRECTION)
       string = "Gas Y-Velocity"
-      call WriteHDF5DataSetFromVec(string,realization,global,grp_id, &
+      call HDF5WriteStructDataSetFromVec(string,realization,global,grp_id, &
                                    H5T_NATIVE_DOUBLE)
   
       call GetCellCenteredVelocities(realization,global,GAS_PHASE,Z_DIRECTION)
       string = "Gas Z-Velocity"
-      call WriteHDF5DataSetFromVec(string,realization,global,grp_id, &
+      call HDF5WriteStructDataSetFromVec(string,realization,global,grp_id, &
                                    H5T_NATIVE_DOUBLE)
     endif
   endif
@@ -1288,6 +1282,7 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
   use Option_module
   use Field_module
   use hdf5
+  use HDF5_module
 
   implicit none
   
@@ -1393,7 +1388,7 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
   array(1:nx_local*ny_local*nz_local) = &  ! convert time units
     array(1:nx_local*ny_local*nz_local) * output_option%tconv
 
-  call WriteHDF5DataSet(name,array,file_id,H5T_NATIVE_DOUBLE, &
+  call HDF5WriteStructuredDataSet(name,array,file_id,H5T_NATIVE_DOUBLE, &
                         nx_global,ny_global,nz_global, &
                         nx_local,ny_local,nz_local, &
                         grid%structured_grid%nxs,grid%structured_grid%nys,grid%structured_grid%nzs)
@@ -1455,200 +1450,8 @@ subroutine WriteHDF5Coordinates(name,option,length,array,file_id)
   call h5sclose_f(file_space_id,hdf5_err)
 
 end subroutine WriteHDF5Coordinates
-
-! ************************************************************************** !
-!
-! WriteHDF5DataSetFromVec: Writes data from a PetscVec to HDF5 file
-! author: Glenn Hammond
-! date: 10/25/07
-!
-! ************************************************************************** !
-subroutine WriteHDF5DataSetFromVec(name,realization,vec,file_id,data_type)
-
-  use hdf5
-  use Realization_module
-  use Grid_module
-  use Option_module
-  
-  implicit none
-
-  character(len=32) :: name
-  type(realization_type) :: realization
-  Vec :: vec
-  integer(HID_T) :: file_id
-  integer(HID_T) :: data_type
-  
-  type(grid_type), pointer :: grid
-  type(option_type), pointer :: option
-  PetscScalar, pointer :: vec_ptr(:)
-  
-  grid => realization%grid
-  option => realization%option
-  
-  call VecGetArrayF90(vec,vec_ptr,ierr)
-!GEH - Structured Grid Dependence - Begin
-  call WriteHDF5DataSet(name,vec_ptr,file_id,data_type, &
-                        grid%structured_grid%nx,grid%structured_grid%ny,grid%structured_grid%nz, &
-                        grid%structured_grid%nlx,grid%structured_grid%nly,grid%structured_grid%nlz, &
-                        grid%structured_grid%nxs,grid%structured_grid%nys,grid%structured_grid%nzs)
-!GEH - Structured Grid Dependence - End
-  call VecRestoreArrayF90(vec,vec_ptr,ierr)
-  
-end subroutine WriteHDF5DataSetFromVec
-
-! ************************************************************************** !
-!
-! WriteHDF5DataSet: Writes data from an array into HDF5 file
-! author: Glenn Hammond
-! date: 10/25/07
-!
-! ************************************************************************** !
-subroutine WriteHDF5DataSet(name,array,file_id,data_type, &
-                            nx_global,ny_global,nz_global, &
-                            nx_local,ny_local,nz_local, &
-                            istart_local,jstart_local,kstart_local)
-
-  use hdf5
-  
-  implicit none
-  
-  character(len=32) :: name
-  real*8 :: array(:)
-  integer(HID_T) :: file_id
-  integer(HID_T) :: data_type
-  integer :: nx_local, ny_local, nz_local
-  integer :: nx_global, ny_global, nz_global
-  integer :: istart_local, jstart_local, kstart_local
-  
-  integer(HID_T) :: file_space_id
-  integer(HID_T) :: memory_space_id
-  integer(HID_T) :: data_set_id
-  integer(HID_T) :: prop_id
-  integer(HSIZE_T) :: dims(3)
-  integer :: rank
-  
-  integer, pointer :: int_array(:)
-  real*8, pointer :: double_array(:)
-  integer :: i, j, k, count, id
-  integer(HSIZE_T) :: start(3), length(3), stride(3)
-  integer :: ny_local_X_nz_local
-  integer :: num_to_write
-
-  ny_local_X_nz_local = ny_local*nz_local
-  num_to_write = nx_local*ny_local_X_nz_local
-  
-  ! memory space which is a 1D vector  
-  rank = 1
-  dims = 0
-  dims(1) = num_to_write
-  if (num_to_write == 0) dims(1) = 1
-  call h5screate_simple_f(rank,dims,memory_space_id,hdf5_err,dims)
-
-  ! file space which is a 3D block
-  rank = 3
-#define INVERT
-#ifndef INVERT
-    dims(1) = nx_global
-    dims(2) = ny_global
-    dims(3) = nz_global
-#else
-! have to trick hdf5 for now with inverted ordering
-    dims(3) = nx_global
-    dims(2) = ny_global
-    dims(1) = nz_global
 #endif
-  call h5screate_simple_f(rank,dims,file_space_id,hdf5_err,dims)
 
-
-  call h5pcreate_f(H5P_DATASET_CREATE_F,prop_id,hdf5_err)
-  call h5dcreate_f(file_id,name,data_type,file_space_id, &
-                   data_set_id,hdf5_err,prop_id)
-  call h5pclose_f(prop_id,hdf5_err)
-  
-  ! create the hyperslab
-#ifndef INVERT
-  start(1) = istart_local
-  start(2) = jstart_local
-  start(3) = kstart_local
-  length(1) =  nx_local
-  length(2) =  ny_local
-  length(3) =  nz_local
-#else
-  start(3) = istart_local
-  start(2) = jstart_local
-  start(1) = kstart_local
-  length(3) =  nx_local
-  length(2) =  ny_local
-  length(1) =  nz_local
-#endif
-  if (num_to_write == 0) length(1) = 1
-  stride = 1
-  call h5sselect_hyperslab_f(file_space_id,H5S_SELECT_SET_F,start,length, &
-                             hdf5_err,stride,stride)
-
-    ! write the data
-  call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
-#ifndef SERIAL_HDF5
-  if (trick_hdf5) then
-    call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F, &
-                            hdf5_err) 
-  else
-    call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_COLLECTIVE_F, &
-                            hdf5_err)
-  endif
-#endif
-  if (num_to_write > 0) then
-    if (data_type == H5T_NATIVE_INTEGER) then
-      allocate(int_array(nx_local*ny_local*nz_local))
-#ifdef INVERT
-      count = 0
-      do k=1,nz_local
-        do j=1,ny_local
-          do i=1,nx_local
-            id = k+(j-1)*nz_local+(i-1)*ny_local_X_nz_local
-            count = count+1
-            int_array(id) = int(array(count))
-          enddo
-        enddo
-      enddo
-#else
-      do i=1,grid%nlmax
-        int_array(i) = int(array(i))
-      enddo
-#endif
-      call h5dwrite_f(data_set_id,data_type,int_array,dims, &
-                      hdf5_err,memory_space_id,file_space_id,prop_id)
-      deallocate(int_array)
-    else
-#ifdef INVERT
-      allocate(double_array(nx_local*ny_local*nz_local))
-      count = 0
-      do k=1,nz_local
-        do j=1,ny_local
-          do i=1,nx_local
-            id = k+(j-1)*nz_local+(i-1)*ny_local_X_nz_local
-            count = count+1
-            double_array(id) = array(count)
-          enddo
-        enddo
-      enddo
-      call h5dwrite_f(data_set_id,data_type,double_array,dims, &
-                      hdf5_err,memory_space_id,file_space_id,prop_id)  
-      deallocate(double_array)
-#else
-      call h5dwrite_f(data_set_id,data_type,array,dims, &
-                      hdf5_err,memory_space_id,file_space_id,prop_id)  
-#endif
-    endif
-    call h5pclose_f(prop_id,hdf5_err)
-  endif
-  call h5dclose_f(data_set_id,hdf5_err)
-  call h5sclose_f(file_space_id,hdf5_err)
-  call h5sclose_f(memory_space_id,hdf5_err)
-
-end subroutine WriteHDF5DataSet
-!GEH - Structured Grid Dependence - End
-#endif
 ! ************************************************************************** !
 !
 ! GetCoordinates: Extracts coordinates of cells into a PetscVec

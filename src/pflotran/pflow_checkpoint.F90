@@ -6,16 +6,16 @@
 ! go into this header and how it should be organized.
 module pflow_chkptheader
   type, public :: pflowChkPtHeader
-    ! Paramters passed into pflowGrid_step().
-    integer :: ntstep, kplt, iplot, iflgcut, ihalcnt, its
-
-    ! Necessary components of the pflowGrid (excluding PETSc Vecs).
-    real*8 :: t
+    real*8 :: time
     real*8 :: dt
-    integer :: flowsteps 
-    integer :: kplot
+    integer :: flowsteps
     integer :: newtcum
-    integer :: isrc
+    integer :: icutcum
+
+    integer :: timestep_cut_flag
+    integer :: num_timestep_cuts
+    integer :: num_newton_iterations
+    integer :: plot_number
   end type pflowChkPtHeader
 end module pflow_chkptheader
 
@@ -54,40 +54,61 @@ contains
 
 #if (PETSC_VERSION_RELEASE == 1 && PETSC_VERSION_SUBMINOR < 3)
 
-subroutine pflowGridCheckpoint(grid, ntstep, kplt, iplot, iflgcut, ihalcnt, &
-                               its, id)
-  use pflow_gridtype_module
+subroutine pflowGridCheckpoint(realization,flowsteps,newtcum,icutcum, &
+                               timestep_cut_flag,num_timestep_cuts, &
+                               num_newton_iterations,id)
+  use Realization_module
+  use Option_module
 
-  type(pflowGrid), intent(inout) :: grid
-  integer, intent(in) :: ntstep, kplt, iplot, iflgcut, ihalcnt, its
-  integer, intent(in) :: id
+  type(realization_type) :: realization
+  logical :: timestep_cut_flag
+  integer :: num_timestep_cuts, num_newton_iterations
+  integer :: id, flowsteps, newtcum, icutcum
 
-  if(grid%myrank == 0) then
+  if(realization%option%myrank == 0) then
     print *, "Warning: pflowGridCheckpoint() not supported with PETSc 2.3.2."
   endif
 end subroutine pflowGridCheckpoint
 
 #else
 
-subroutine pflowGridCheckpoint(grid, ntstep, kplt, iplot, iflgcut, ihalcnt, &
-                               its, id)
+subroutine pflowGridCheckpoint(realization,flowsteps,newtcum,icutcum, &
+                               timestep_cut_flag,num_timestep_cuts, &
+                               num_newton_iterations,id)
 
-  use pflow_gridtype_module
+  use Realization_module
+  use Option_module
+  use Field_module
+  use Grid_module
   use TTPHASE_module
 
   implicit none
 
 #include "definitions.h"
 
-  type(pflowGrid), intent(inout) :: grid
-  integer, intent(in) :: ntstep, kplt, iplot, iflgcut, ihalcnt, its
-  integer, intent(in) :: id
+  type(realization_type) :: realization
+  logical :: timestep_cut_flag
+  integer :: num_timestep_cuts, num_newton_iterations
+  integer :: id, flowsteps, newtcum, icutcum
 
   character(len=MAXSTRINGLENGTH) :: fname
   PetscViewer viewer
   PetscBag bag
   type(pflowChkPtHeader), pointer :: header
   integer ierr
+  
+  Vec :: global, global_var
+  integer :: int_flag
+  
+  type(field_type), pointer :: field
+  type(option_type), pointer :: option
+  type(grid_type), pointer :: grid
+  type(output_option_type), pointer :: output_option
+  
+  field => realization%field
+  option => realization%option
+  grid => realization%grid
+  output_option => realization%output_option
 
   ! Open the checkpoint file.
   if (id < 10) then
@@ -114,36 +135,33 @@ subroutine pflowGridCheckpoint(grid, ntstep, kplt, iplot, iflgcut, ihalcnt, &
   ! We manually specify the number of bytes required for the 
   ! checkpoint header, since sizeof() is not supported by some Fortran 
   ! compilers.  To be on the safe side, we assume an integer is 8 bytes.
-  call PetscBagCreate(PETSC_COMM_WORLD, 88, bag, ierr)
+  call PetscBagCreate(PETSC_COMM_WORLD, 72, bag, ierr)
   call PetscBagGetData(bag, header, ierr); CHKERRQ(ierr)
 
   ! Register variables that are passed into pflowGrid_step().
-  call PetscBagRegisterInt(bag, header%ntstep, ntstep, "ntstep", &
-                           "ntstep", ierr)
-  call PetscBagRegisterInt(bag, header%kplt, kplt, "kplt", &
-                           "kplt", ierr)
-  call PetscBagRegisterInt(bag, header%iplot, iplot, "iplot", &
-                           "iplot", ierr)
-  call PetscBagRegisterInt(bag, header%iflgcut, iflgcut, "iflgcut", &
-                           "iflgcut", ierr)
-  call PetscBagRegisterInt(bag, header%ihalcnt, ihalcnt, "ihalcnt", &
-                           "ihalcnt", ierr)
-  call PetscBagRegisterInt(bag, header%its, its, "its", &
-                           "its", ierr)
-  call PetscBagRegisterInt(bag, header%isrc, grid%isrc1, "isrc1", &
-                           "isrc1", ierr)
+  call PetscBagRegisterInt(bag, header%num_newton_iterations, num_newton_iterations, &
+                           "num_newton_iterations", &
+                           "Number of Newton iterations in last SNES solve", ierr)
+  call PetscBagRegisterInt(bag, header%plot_number, output_option%plot_number, &
+                           "plot_number","plot_number", ierr)
+  int_flag = 0
+  if (timestep_cut_flag) int_flag = 1
+  call PetscBagRegisterInt(bag, header%timestep_cut_flag, int_flag, &
+                           "timestep_cut_flag","timestep_cut_flag", ierr)
+  call PetscBagRegisterInt(bag, header%num_timestep_cuts, num_timestep_cuts, &
+                           "num_timestep_cuts","num_timestep_cuts", ierr)
   
   ! Register relevant components of the pflowGrid.
-  call PetscBagRegisterReal(bag, header%t, grid%t, "t", &
+  call PetscBagRegisterReal(bag, header%time, option%time, "time", &
                             "Simulation time (years)", ierr)
-  call PetscBagRegisterReal(bag, header%dt, grid%dt, "dt", &
+  call PetscBagRegisterReal(bag, header%dt, option%dt, "dt", &
                             "Current size of timestep (years)", ierr)
-  call PetscBagRegisterInt(bag, header%flowsteps, grid%flowsteps, "flowsteps", &
+  call PetscBagRegisterInt(bag, header%flowsteps, flowsteps, "flowsteps", &
                             "Total number of flow steps taken", ierr)
-  call PetscBagRegisterInt(bag, header%kplot, grid%kplot, "kplot", &
-                            "Printout steps", ierr)
-  call PetscBagRegisterInt(bag, header%newtcum, grid%newtcum, "newtcum", &
+  call PetscBagRegisterInt(bag, header%newtcum, newtcum, "newtcum", &
                             "Total number of Newton steps taken", ierr)
+  call PetscBagRegisterInt(bag, header%icutcum, icutcum, "icutcum", &
+                            "Total number of time step cuts", ierr)
 
   ! Actually write the components of the PetscBag and then free it.
   call PetscBagView(bag, viewer, ierr)
@@ -155,38 +173,54 @@ subroutine pflowGridCheckpoint(grid, ntstep, kplt, iplot, iflgcut, ihalcnt, &
 
   ! grid%xx is the vector into which all of the primary variables are 
   ! packed for the SNESSolve().
-  call VecView(grid%xx, viewer, ierr)
+  call VecView(field%xx, viewer, ierr)
 
+  call GridCreateVector(grid,ONEDOF,global,GLOBAL)
   ! If we are running with multiple phases, we need to dump the vector 
   ! that indicates what phases are present, as well as the 'var' vector 
   ! that holds variables derived from the primary ones via the translator.
-  if(grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE .or. &
-     grid%use_flash == PETSC_TRUE .or. grid%use_2ph == PETSC_TRUE .or. &
-     grid%use_richards == PETSC_TRUE ) then
-    call VecView(grid%iphas, viewer, ierr)
-    call VecView(grid%var, viewer, ierr)
-  else
-    call VecView(grid%hh, viewer, ierr)
-    call VecView(grid%ddensity, viewer, ierr)
-  endif  
+  select case(option%imode)
+    case(MPH_MODE,VADOSE_MODE,FLASH_MODE,TWOPH_MODE,RICHARDS_MODE)
+      call GridLocalToGlobal(grid,field%iphas_loc,global,ONEDOF)
+      call VecView(global, viewer, ierr)
+#ifdef RICHARDS_ANALYTICAL
+      if (option%imode /= RICHARDS_MODE) then
+#endif
+        call GridCreateVector(grid,VARDOF,global_var,GLOBAL)
+        call GridLocalToGlobal(grid,field%var_loc,global_var,VARDOF)
+        call VecView(global_var, viewer, ierr)
+        call VecDestroy(global_var,ierr)
+#ifdef RICHARDS_ANALYTICAL
+      endif
+#endif
+    case default
+      call VecView(field%hh, viewer, ierr)
+      call VecView(field%ddensity, viewer, ierr)
+  end select 
 
   ! solid volume fraction
-  if (grid%rk > 0.d0) then
-    call VecView(grid%phis, viewer, ierr)
+  if (option%rk > 0.d0) then
+    call VecView(field%phis, viewer, ierr)
   endif
 
   ! Porosity and permeability.
   ! (We only write diagonal terms of the permeability tensor for now, 
   ! since we have yet to add the full-tensor formulation.)
-  call VecView(grid%porosity, viewer, ierr)
-  call VecView(grid%perm_xx, viewer, ierr)
-  call VecView(grid%perm_yy, viewer, ierr)
-  call VecView(grid%perm_zz, viewer, ierr)
+  call GridLocalToGlobal(grid,field%porosity_loc,global,ONEDOF)
+  call VecView(global,viewer,ierr)
+  call GridLocalToGlobal(grid,field%perm_xx_loc,global,ONEDOF)
+  call VecView(global,viewer,ierr)
+  call GridLocalToGlobal(grid,field%perm_yy_loc,global,ONEDOF)
+  call VecView(global,viewer,ierr)
+  call GridLocalToGlobal(grid,field%perm_zz_loc,global,ONEDOF)
+  call VecView(global,viewer,ierr)
+
+  call VecDestroy(global,ierr)
 
   ! We are finished, so clean up.
   call PetscViewerDestroy(viewer, ierr)
 
-  if(grid%myrank == 0) write(*, '(" --> Dump checkpoint file: ", a16)') trim(fname)
+  if(option%myrank == 0) write(*, '(" --> Dump checkpoint file: ", a16)') trim(fname)
 
 end subroutine pflowGridCheckpoint
 
@@ -194,86 +228,125 @@ end subroutine pflowGridCheckpoint
 
 #if (PETSC_VERSION_RELEASE == 1 && PETSC_VERSION_SUBMINOR < 3)
 
-subroutine pflowGridRestart(grid, fname, ntstep, kplt, iplot, iflgcut, &
-                            ihalcnt, its)
-  use pflow_gridtype_module
+subroutine pflowGridRestart(realization,flowsteps,newtcum,icutcum, &
+                            timestep_cut_flag,num_timestep_cuts, &
+                            num_newton_iterations)
+  use Realization_module
+  use Option_module
 
 #include "definitions.h"
 
-  type(pflowGrid), intent(inout) :: grid
   character(len=MAXSTRINGLENGTH) :: fname
-  integer, intent(out) :: ntstep, kplt, iplot, iflgcut, ihalcnt, its
+  type(realization_type) :: realization
+  type(stepper_type) :: stepper
+  logical :: timestep_cut_flag
+  integer :: num_timestep_cuts, num_newton_iterations
+  integer :: flowsteps, newtcum, icutcum
 
-  if(grid%myrank == 0) then
+  if(realization%option%myrank == 0) then
     print *, "Warning: pflowGridRestart() not supported with PETSc 2.3.2."
   endif
 end subroutine pflowGridRestart
 
 #else
 
-subroutine pflowGridRestart(grid, fname, ntstep, kplt, iplot, iflgcut, &
-                            ihalcnt, its)
-  use pflow_gridtype_module
+subroutine pflowGridRestart(realization,flowsteps,newtcum,icutcum, &
+                            timestep_cut_flag,num_timestep_cuts, &
+                            num_newton_iterations)
+  use Realization_module
+  use Option_module
+  use Field_module
+  use Grid_module
   use TTPHASE_module
 
   implicit none
 
 #include "definitions.h"
 
-  type(pflowGrid), intent(inout) :: grid
-  character(len=MAXSTRINGLENGTH) :: fname
-  integer, intent(out) :: ntstep, kplt, iplot, iflgcut, ihalcnt, its
+  type(realization_type) :: realization
+  logical :: timestep_cut_flag
+  integer :: num_timestep_cuts, num_newton_iterations
+  integer :: flowsteps, newtcum, icutcum
 
   PetscViewer viewer
   PetscBag bag
   type(pflowChkPtHeader), pointer :: header
   integer ierr
 
-  if (grid%myrank == 0) print *,'--> Open checkpoint file: ', trim(fname)
-  call PetscViewerBinaryOpen(PETSC_COMM_WORLD, fname, FILE_MODE_READ, &
+  Vec :: global, global_var
+  integer :: int_flag
+  
+  type(field_type), pointer :: field
+  type(option_type), pointer :: option
+  type(grid_type), pointer :: grid
+  type(output_option_type), pointer :: output_option
+  
+  field => realization%field
+  option => realization%option
+  grid => realization%grid
+  output_option => realization%output_option
+  
+  if (option%myrank == 0) print *,'--> Open checkpoint file: ', trim(option%restart_file)
+  call PetscViewerBinaryOpen(PETSC_COMM_WORLD, option%restart_file, FILE_MODE_READ, &
                              viewer, ierr)
  
   ! Get the header data.
   call PetscBagLoad(viewer, bag, ierr)
   call PetscBagGetData(bag, header, ierr)
-  ntstep = header%ntstep
-  kplt = header%kplt
-  iplot = header%iplot
-  iflgcut = header%iflgcut
-  ihalcnt = header%ihalcnt
-  its = header%its
-  grid%isrc1 = header%isrc
-  grid%t = header%t
-  grid%dt = header%dt
-  grid%flowsteps = header%flowsteps
-  !grid%kplot = header%kplot !removed by L.C.  
-  grid%newtcum = header%newtcum
+  num_newton_iterations = header%num_newton_iterations
+  output_option%plot_number = header%plot_number
+  timestep_cut_flag = header%timestep_cut_flag
+  num_timestep_cuts = header%num_timestep_cuts
+  option%time = header%time
+  option%dt = header%dt
+  flowsteps = header%flowsteps
+  newtcum = header%newtcum
+  icutcum = header%icutcum
   call PetscBagDestroy(bag, ierr)
   
   ! Load the PETSc vectors.
-  call VecLoadIntoVector(viewer, grid%xx, ierr)
-  call VecCopy(grid%xx, grid%yy, ierr)
+  call GridCreateVector(grid,ONEDOF,global,GLOBAL)
+
+  call VecLoadIntoVector(viewer, field%xx, ierr)
+  call VecCopy(field%xx, field%yy, ierr)
   
-  if(grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE .or. &
-    grid%use_flash == PETSC_TRUE .or. grid%use_2ph == PETSC_TRUE .or. &
-    grid%use_richards == PETSC_TRUE ) then
-    call VecLoadIntoVector(viewer, grid%iphas, ierr)
-    call VecCopy(grid%iphas, grid%iphas_old, ierr)
-    call VecLoadIntoVector(viewer, grid%var, ierr)
-  else
-    call VecLoadIntoVector(viewer, grid%hh, ierr)
-    call VecCopy(grid%hh, grid%h, ierr)
-    call VecLoadIntoVector(viewer, grid%ddensity, ierr)
-    call VecCopy(grid%ddensity, grid%density, ierr)
+  select case(option%imode)
+    case(MPH_MODE,VADOSE_MODE,FLASH_MODE,TWOPH_MODE,RICHARDS_MODE)
+      call VecLoadIntoVector(viewer, global, ierr)      
+      call GridGlobalToLocal(grid,global,field%iphas_loc,ONEDOF)
+      call VecCopy(field%iphas_loc, field%iphas_old_loc, ierr)
+      call GridLocalToLocal(grid,field%iphas_loc,field%iphas_old_loc,ONEDOF)
+#ifdef RICHARDS_ANALYTICAL
+      if (option%imode /= RICHARDS_MODE) then
+#endif      
+        call GridCreateVector(grid,VARDOF,global_var,GLOBAL)
+        call VecLoadIntoVector(viewer, global_var, ierr)
+        call GridGlobalToLocal(grid,global_var,field%var_loc,VARDOF)
+        call VecDestroy(global_var,ierr)
+#ifdef RICHARDS_ANALYTICAL
+      endif
+#endif
+    case default
+      call VecLoadIntoVector(viewer, field%hh, ierr)
+      call VecCopy(field%hh, field%h, ierr)
+      call VecLoadIntoVector(viewer, field%ddensity, ierr)
+      call VecCopy(field%ddensity, field%density, ierr)
+  end select
+  
+  if (option%rk > 0.d0) then
+    call VecLoadIntoVector(viewer, field%phis, ierr)
   endif
   
-  if (grid%rk > 0.d0) then
-    call VecLoadIntoVector(viewer, grid%phis, ierr)
-  endif
-  call VecLoadIntoVector(viewer, grid%porosity, ierr)
-  call VecLoadIntoVector(viewer, grid%perm_xx, ierr)
-  call VecLoadIntoVector(viewer, grid%perm_yy, ierr)
-  call VecLoadIntoVector(viewer, grid%perm_zz, ierr)
+  call VecLoadIntoVector(viewer, global, ierr)
+  call GridGlobalToLocal(grid,global,field%porosity_loc,ONEDOF)
+  call VecLoadIntoVector(viewer, global, ierr)
+  call GridGlobalToLocal(grid,global,field%perm_xx_loc,ONEDOF)
+  call VecLoadIntoVector(viewer, global, ierr)
+  call GridGlobalToLocal(grid,global,field%perm_yy_loc,ONEDOF)
+  call VecLoadIntoVector(viewer, global, ierr)
+  call GridGlobalToLocal(grid,global,field%perm_zz_loc,ONEDOF)
+  
+  call VecDestroy(global,ierr)
 
   ! We are finished, so clean up.
   call PetscViewerDestroy(viewer, ierr)

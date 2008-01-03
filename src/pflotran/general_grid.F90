@@ -2,9 +2,6 @@ module General_Grid_module
 
  implicit none
 
-#define READ_BUFFER_SIZE 1000000
-!#define HDF5_BROADCAST
-
 #define HASH
 #define INVERT
 
@@ -64,6 +61,7 @@ subroutine ReadStructuredGridHDF5(realization)
   use Grid_module
   use Field_module
   use Connection_module
+  use HDF5_module
   
   implicit none
 
@@ -136,7 +134,7 @@ subroutine ReadStructuredGridHDF5(realization)
   
   if (option%myrank == 0) print *, 'Setting up grid cell indices'
   call PetscGetTime(time3, ierr)
-  call SetupCellIndices(grid,option,grp_id,indices)
+  call HDF5MapLocalToNaturalIndices(grid,option,grp_id,indices)
   call PetscGetTime(time4, ierr)
   time4 = time4 - time3
   if (option%myrank == 0) print *, time4, &
@@ -148,7 +146,7 @@ subroutine ReadStructuredGridHDF5(realization)
   allocate(integer_array(grid%nlmax))
   string = "Material Id"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
-  call ReadIntegerArray(grid,option,grp_id,grid%nlmax,indices,string,integer_array)
+  call HDF5ReadIntegerArray(grid,option,grp_id,grid%nlmax,indices,string,integer_array)
   call GridCopyIntegerArrayToPetscVec(integer_array,global,grid%nlmax)
   deallocate(integer_array)
   call GridGlobalToLocal(grid,global,local,ONEDOF)
@@ -157,21 +155,21 @@ subroutine ReadStructuredGridHDF5(realization)
   allocate(real_array(grid%nlmax))
   string = "X-Coordinate"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
-  call ReadRealArray(grid,option,grp_id,grid%nlmax,indices,string,real_array)
+  call HDF5ReadRealArray(grid,option,grp_id,grid%nlmax,indices,string,real_array)
   call GridCopyRealArrayToPetscVec(real_array,global,grid%nlmax)
   call GridGlobalToLocal(grid,global,local,ONEDOF)  
   call GridCopyPetscVecToRealArray(grid%x,local,grid%ngmax)
 
   string = "Y-Coordinate"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
-  call ReadRealArray(grid,option,grp_id,grid%nlmax,indices,string,real_array)
+  call HDF5ReadRealArray(grid,option,grp_id,grid%nlmax,indices,string,real_array)
   call GridCopyRealArrayToPetscVec(real_array,global,grid%nlmax)
   call GridGlobalToLocal(grid,global,local,ONEDOF)  
   call GridCopyPetscVecToRealArray(grid%y,local,grid%ngmax)
 
   string = "Z-Coordinate"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
-  call ReadRealArray(grid,option,grp_id,grid%nlmax,indices,string,real_array)
+  call HDF5ReadRealArray(grid,option,grp_id,grid%nlmax,indices,string,real_array)
   call GridCopyRealArrayToPetscVec(real_array,global,grid%nlmax)
   call GridGlobalToLocal(grid,global,local,ONEDOF)  
   call GridCopyPetscVecToRealArray(grid%z,local,grid%ngmax)
@@ -181,37 +179,37 @@ subroutine ReadStructuredGridHDF5(realization)
   string = "Volume"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
   call VecGetArrayF90(grid%volume,vec_ptr,ierr); CHKERRQ(ierr)
-  call ReadRealArray(grid,option,grp_id,grid%nlmax,indices,string,vec_ptr)
+  call HDF5ReadRealArray(grid,option,grp_id,grid%nlmax,indices,string,vec_ptr)
   call VecRestoreArrayF90(grid%volume,vec_ptr,ierr); CHKERRQ(ierr)
   
   string = "X-Permeability"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
   call VecGetArrayF90(field%perm0_xx,vec_ptr,ierr); CHKERRQ(ierr)
-  call ReadRealArray(grid,option,grp_id,grid%nlmax,indices,string,vec_ptr)
+  call HDF5ReadRealArray(grid,option,grp_id,grid%nlmax,indices,string,vec_ptr)
   call VecRestoreArrayF90(field%perm0_xx,vec_ptr,ierr); CHKERRQ(ierr)
   
   string = "Y-Permeability"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
   call VecGetArrayF90(field%perm0_yy,vec_ptr,ierr); CHKERRQ(ierr)
-  call ReadRealArray(grid,option,grp_id,grid%nlmax,indices,string,vec_ptr)
+  call HDF5ReadRealArray(grid,option,grp_id,grid%nlmax,indices,string,vec_ptr)
   call VecRestoreArrayF90(field%perm0_yy,vec_ptr,ierr); CHKERRQ(ierr)
 
   string = "Z-Permeability"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
   call VecGetArrayF90(field%perm0_zz,vec_ptr,ierr); CHKERRQ(ierr)
-  call ReadRealArray(grid,option,grp_id,grid%nlmax,indices,string,vec_ptr)
+  call HDF5ReadRealArray(grid,option,grp_id,grid%nlmax,indices,string,vec_ptr)
   call VecRestoreArrayF90(field%perm0_zz,vec_ptr,ierr); CHKERRQ(ierr)
 
   string = "Porosity"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
   call VecGetArrayF90(field%porosity0,vec_ptr,ierr); CHKERRQ(ierr)
-  call ReadRealArray(grid,option,grp_id,grid%nlmax,indices,string,vec_ptr)
+  call HDF5ReadRealArray(grid,option,grp_id,grid%nlmax,indices,string,vec_ptr)
   call VecRestoreArrayF90(field%porosity0,vec_ptr,ierr); CHKERRQ(ierr)
 
   string = "Tortuosity"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
   call VecGetArrayF90(global,vec_ptr,ierr); CHKERRQ(ierr)
-  call ReadRealArray(grid,option,grp_id,grid%nlmax,indices,string,vec_ptr)
+  call HDF5ReadRealArray(grid,option,grp_id,grid%nlmax,indices,string,vec_ptr)
   call VecRestoreArrayF90(global,vec_ptr,ierr); CHKERRQ(ierr)
   call GridGlobalToLocal(grid,global,field%tor_loc,ONEDOF)
 
@@ -242,7 +240,7 @@ subroutine ReadStructuredGridHDF5(realization)
   allocate(integer_array(cur_connection_set%num_connections))
   string = "Id Upwind"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
-  call ReadIntegerArray(grid,option,grp_id,cur_connection_set%num_connections, &
+  call HDF5ReadIntegerArray(grid,option,grp_id,cur_connection_set%num_connections, &
                         indices,string,integer_array)
   do i=1,cur_connection_set%num_connections
     local_ghosted_id = GridGetLocalGhostedIdFromHash(grid,integer_array(i))
@@ -251,7 +249,7 @@ subroutine ReadStructuredGridHDF5(realization)
 
   string = "Id Downwind"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
-  call ReadIntegerArray(grid,option,grp_id,cur_connection_set%num_connections, &
+  call HDF5ReadIntegerArray(grid,option,grp_id,cur_connection_set%num_connections, &
                         indices,string,integer_array)
   do i=1,cur_connection_set%num_connections
     local_ghosted_id = GridGetLocalGhostedIdFromHash(grid,integer_array(i))
@@ -262,7 +260,7 @@ subroutine ReadStructuredGridHDF5(realization)
   allocate(real_array(cur_connection_set%num_connections))
   string = "Distance Upwind"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
-  call ReadRealArray(grid,option,grp_id,cur_connection_set%num_connections, &
+  call HDF5ReadRealArray(grid,option,grp_id,cur_connection_set%num_connections, &
                      indices,string,real_array)
                      
   cur_connection_set%dist(-1,1:cur_connection_set%num_connections) = &
@@ -272,7 +270,7 @@ subroutine ReadStructuredGridHDF5(realization)
 
   string = "Distance Downwind"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
-  call ReadRealArray(grid,option,grp_id,cur_connection_set%num_connections, &
+  call HDF5ReadRealArray(grid,option,grp_id,cur_connection_set%num_connections, &
                      indices,string,real_array) 
 
   cur_connection_set%dist(0,1:cur_connection_set%num_connections) = &
@@ -285,7 +283,7 @@ subroutine ReadStructuredGridHDF5(realization)
 
   string = "Area"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
-  call ReadRealArray(grid,option,grp_id,cur_connection_set%num_connections, &
+  call HDF5ReadRealArray(grid,option,grp_id,cur_connection_set%num_connections, &
                      indices,string,real_array) 
 
   cur_connection_set%area(1:cur_connection_set%num_connections) = &
@@ -293,7 +291,7 @@ subroutine ReadStructuredGridHDF5(realization)
 
   string = "CosB"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
-  call ReadRealArray(grid,option,grp_id,cur_connection_set%num_connections, &
+  call HDF5ReadRealArray(grid,option,grp_id,cur_connection_set%num_connections, &
                      indices,string,real_array) 
   
   ! for now, store cosB in z component of distance array
@@ -335,133 +333,6 @@ end subroutine ReadStructuredGridHDF5
 
 ! ************************************************************************** !
 !
-! SetupCellIndices: Set up indices array that map local cells to entries in
-!                   HDF5 grid cell vectors
-! author: Glenn Hammond
-! date: 09/21/07
-!
-! ************************************************************************** !
-subroutine SetupCellIndices(grid,option,file_id,indices)
-
-  use hdf5
-  
-  use Option_module
-  use Grid_module
-  
-  implicit none
-  
-  type(grid_type) :: grid
-  type(option_type) :: option
-  
-  integer(HID_T) :: file_id
-  integer :: indices(:)
-  
-  character(len=MAXSTRINGLENGTH) :: string 
-  integer(HID_T) :: file_space_id
-  integer(HID_T) :: memory_space_id
-  integer(HID_T) :: data_set_id
-  integer(HID_T) :: prop_id
-  integer(HSIZE_T) :: dims(3)
-  integer(HSIZE_T) :: offset(3), length(3), stride(3)
-  integer :: rank
-  integer :: local_ghosted_id, local_id, natural_id
-  integer :: index_count
-  integer :: cell_count
-  integer(HSIZE_T) :: num_cells_in_file
-  integer ::temp_int, i
-  
-  integer, allocatable :: cell_ids(:)
-  
-  integer :: read_block_size = READ_BUFFER_SIZE
-
-  string = "Cell Id"
-  call h5dopen_f(file_id,string,data_set_id,hdf5_err)
-  call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
-  ! should be a rank=1 data space
-  call h5sget_simple_extent_npoints_f(file_space_id,num_cells_in_file,hdf5_err)
-  if (num_cells_in_file /= grid%nmax) then
-    if (option%myrank == 0) then
-      print *, 'ERROR: ', trim(string), ' data space dimension (', &
-               num_cells_in_file, ') does not match the dimensions of the ', &
-               'domain (', grid%nmax, ').'
-      call PetscFinalize(ierr)
-      stop
-    endif
-  endif
-  
-  allocate(cell_ids(read_block_size))
-  
-  rank = 1
-  offset = 0
-  length = 0
-  stride = 1
-  
-  call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
-#ifndef SERIAL_HDF5
-  call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F,hdf5_err)
-#endif
-  
-  dims = 0
-  cell_count = 0
-  index_count = 0
-  memory_space_id = -1
-  do
-    if (cell_count >= num_cells_in_file) exit
-    temp_int = num_cells_in_file-cell_count
-    temp_int = min(temp_int,read_block_size)
-    if (dims(1) /= temp_int) then
-      if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
-      dims(1) = temp_int
-      call h5screate_simple_f(rank,dims,memory_space_id,hdf5_err,dims)
-    endif
-    ! offset is zero-based
-    offset(1) = cell_count
-    length(1) = dims(1)
-    call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset,length, &
-                               hdf5_err,stride,stride) 
-#ifdef HDF5_BROADCAST
-    if (option%myrank == 0) then                           
-#endif
-      call h5dread_f(data_set_id,H5T_NATIVE_INTEGER,cell_ids,dims,hdf5_err, &
-                     memory_space_id,file_space_id,prop_id)                     
-#ifdef HDF5_BROADCAST
-    endif
-    if (option%commsize > 1) &
-      call mpi_bcast(cell_ids,dims(1),MPI_INTEGER,0,PETSC_COMM_WORLD,ierr)
-#endif     
-    do i=1,dims(1)
-      cell_count = cell_count + 1
-      natural_id = cell_ids(i)
-      local_ghosted_id = GridGetLocalGhostedIdFromHash(grid,natural_id)
-      if (local_ghosted_id > 0) then
-        local_id = grid%nG2L(local_ghosted_id)
-        if (local_id > 0) then
-          index_count = index_count + 1
-          indices(index_count) = cell_count
-        endif
-      endif
-    enddo
-  enddo
-  
-  deallocate(cell_ids)
-  
-  call h5pclose_f(prop_id,hdf5_err)
-  call h5sclose_f(memory_space_id,hdf5_err)
-  call h5sclose_f(file_space_id,hdf5_err)
-  call h5dclose_f(data_set_id,hdf5_err)
-
-  if (index_count /= grid%nlmax) then
-    if (option%myrank == 0) &
-      print *, 'ERROR: Number of indices read (', index_count, ') does not ', &
-               'match the number of local grid cells (', grid%nlmax, ').'
-      call PetscFinalize(ierr)
-      stop
-  endif
-
-end subroutine SetupCellIndices
-
-! ************************************************************************** !
-!
 ! SetupConnectionIndices: Set up indices array that map local connection to  
 !                         entries in HDF5 grid connection vectors
 ! author: Glenn Hammond
@@ -500,7 +371,7 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
   
   integer, allocatable :: upwind_ids(:), downwind_ids(:)
   
-  integer :: read_block_size = READ_BUFFER_SIZE
+  integer :: read_block_size = HDF5_READ_BUFFER_SIZE
 
   num_internal_connections = ConnectionGetNumberInList(grid%internal_connection_list)
   
@@ -614,299 +485,8 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
   endif
 
 end subroutine SetupConnectionIndices
-
-! ************************************************************************** !
-!
-! ReadRealArray: Read in local real values from hdf5 global file
-! author: Glenn Hammond
-! date: 09/21/07
-!
-! ************************************************************************** !
-subroutine ReadRealArray(grid,option,file_id,num_indices,indices,string, &
-                         real_array)
-
-  use hdf5
-  
-  use Grid_module
-  use Option_module
-  
-  implicit none
-  
-  type(grid_type) :: grid
-  type(option_type) :: option
-  
-  integer(HID_T) :: file_id
-  integer :: num_indices
-  integer :: indices(:)
-  character(len=MAXSTRINGLENGTH) :: string 
-  real*8 :: real_array(:)
-  
-  integer(HID_T) :: file_space_id
-  integer(HID_T) :: memory_space_id
-  integer(HID_T) :: data_set_id
-  integer(HID_T) :: prop_id
-  integer(HSIZE_T) :: dims(3)
-  integer(HSIZE_T) :: offset(3), length(3), stride(3)
-  integer :: rank
-  integer :: index_count
-  integer :: real_count, prev_real_count
-  integer(HSIZE_T) :: num_reals_in_file
-  integer :: temp_int, i, index
-  
-  real*8, allocatable :: real_buffer(:)
-  
-  integer :: read_block_size = READ_BUFFER_SIZE
-
-  call h5dopen_f(file_id,string,data_set_id,hdf5_err)
-  call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
-  ! should be a rank=1 data space
-  call h5sget_simple_extent_npoints_f(file_space_id,num_reals_in_file,hdf5_err)
-#if 0
-  if (num_reals_in_file /= grid%nmax) then
-    if (option%myrank == 0) then
-      print *, 'ERROR: ', trim(string), ' data space dimension (', &
-               num_reals_in_file, ') does not match the dimensions of the ', &
-               'domain (', grid%nmax, ').'
-      call PetscFinalize(ierr)
-      stop
-    endif
-  endif
-#endif
-  allocate(real_buffer(read_block_size))
-  
-  rank = 1
-  offset = 0
-  length = 0
-  stride = 1
-  
-  call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
-#ifndef SERIAL_HDF5
-  call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F,hdf5_err)
-#endif
-  
-  dims = 0
-  real_count = 0
-  prev_real_count = 0
-  index_count = 0
-  memory_space_id = -1
-  do i=1,num_indices
-    index = indices(i)
-    if (index > real_count) then
-      do 
-        if (index <= real_count) exit
-        temp_int = num_reals_in_file-real_count
-        temp_int = min(temp_int,read_block_size)
-        if (dims(1) /= temp_int) then
-          if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
-          dims(1) = temp_int
-          call h5screate_simple_f(rank,dims,memory_space_id,hdf5_err,dims)
-        endif
-        ! offset is zero-based
-        offset(1) = real_count
-        length(1) = dims(1)
-        call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset, &
-                                   length,hdf5_err,stride,stride) 
-#ifdef HDF5_BROADCAST
-        if (option%myrank == 0) then                           
-#endif
-          call h5dread_f(data_set_id,H5T_NATIVE_DOUBLE,real_buffer,dims, &
-                         hdf5_err,memory_space_id,file_space_id,prop_id)
-#ifdef HDF5_BROADCAST
-        endif
-        if (option%commsize > 1) &
-          call mpi_bcast(real_buffer,dims(1),MPI_DOUBLE_PRECISION,0, &
-                         PETSC_COMM_WORLD,ierr)
-#endif
-        prev_real_count = real_count
-        real_count = real_count + length(1)                  
-      enddo
-    endif
-    real_array(i) = real_buffer(index-prev_real_count)
-  enddo
-
-#ifdef HDF5_BROADCAST
-  do 
-    if (real_count >= num_reals_in_file) exit
-    temp_int = num_reals_in_file-real_count
-    temp_int = min(temp_int,read_block_size)
-    if (dims(1) /= temp_int) then
-      if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
-      dims(1) = temp_int
-      call h5screate_simple_f(rank,dims,memory_space_id,hdf5_err,dims)
-    endif
-    ! offset is zero-based
-    offset(1) = real_count
-    length(1) = dims(1)
-    call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset, &
-                               length,hdf5_err,stride,stride) 
-    if (option%myrank == 0) then                           
-      call h5dread_f(data_set_id,H5T_NATIVE_DOUBLE,real_buffer,dims, &
-                     hdf5_err,memory_space_id,file_space_id,prop_id)
-    endif
-    if (option%commsize > 1) &
-      call mpi_bcast(real_buffer,dims(1),MPI_DOUBLE_PRECISION,0, &
-                     PETSC_COMM_WORLD,ierr)
-    real_count = real_count + length(1)                  
-  enddo
 #endif
 
-  deallocate(real_buffer)
-  
-  call h5pclose_f(prop_id,hdf5_err)
-  call h5sclose_f(memory_space_id,hdf5_err)
-  call h5sclose_f(file_space_id,hdf5_err)
-  call h5dclose_f(data_set_id,hdf5_err)
-
-end subroutine ReadRealArray
-
-! ************************************************************************** !
-!
-! ReadIntegerArray: Read in local integer values from hdf5 global file
-! author: Glenn Hammond
-! date: 09/21/07
-!
-! ************************************************************************** !
-subroutine ReadIntegerArray(grid,option,file_id,num_indices,indices,string, &
-                            integer_array)
-
-  use hdf5
-  
-  use Grid_module
-  use Option_module
-  
-  implicit none
-  
-  type(grid_type) :: grid
-  type(option_type) :: option
-  
-  integer(HID_T) :: file_id
-  integer :: num_indices
-  integer :: indices(:)
-  character(len=MAXSTRINGLENGTH) :: string 
-  integer :: integer_array(:)
-  
-  integer(HID_T) :: file_space_id
-  integer(HID_T) :: memory_space_id
-  integer(HID_T) :: data_set_id
-  integer(HID_T) :: prop_id
-  integer(HSIZE_T) :: dims(3)
-  integer(HSIZE_T) :: offset(3), length(3), stride(3)
-  integer :: rank
-  integer :: index_count
-  integer :: integer_count, prev_integer_count
-  integer(HSIZE_T) :: num_integers_in_file
-  integer :: temp_int, i, index
-  
-  integer, allocatable :: integer_buffer(:)
-  
-  integer :: read_block_size = READ_BUFFER_SIZE
-
-  call h5dopen_f(file_id,string,data_set_id,hdf5_err)
-  call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
-  ! should be a rank=1 data space
-  call h5sget_simple_extent_npoints_f(file_space_id,num_integers_in_file, &
-                                      hdf5_err)
-#if 0
-  if (num_integers_in_file /= grid%nmax) then
-    if (option%myrank == 0) then
-      print *, 'ERROR: ', trim(string), ' data space dimension (', &
-               num_integers_in_file, ') does not match the dimensions of ', &
-               'the domain (', grid%nmax, ').'
-      call PetscFinalize(ierr)
-      stop
-    endif
-  endif
-#endif
-  
-  allocate(integer_buffer(read_block_size))
-  
-  rank = 1
-  offset = 0
-  length = 0
-  stride = 1
-  
-  call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
-#ifndef SERIAL_HDF5
-  call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F,hdf5_err)
-#endif
-  
-  dims = 0
-  integer_count = 0
-  prev_integer_count = 0
-  index_count = 0
-  memory_space_id = -1
-
-  do i=1,num_indices
-    index = indices(i)
-    if (index > integer_count) then
-      do
-        if (index <= integer_count) exit
-        temp_int = num_integers_in_file-integer_count
-        temp_int = min(temp_int,read_block_size)
-        if (dims(1) /= temp_int) then
-          if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
-          dims(1) = temp_int
-          call h5screate_simple_f(rank,dims,memory_space_id,hdf5_err,dims)
-        endif
-        ! offset is zero-based
-        offset(1) = integer_count
-        length(1) = dims(1)
-        call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset, &
-                                   length,hdf5_err,stride,stride) 
-#ifdef HDF5_BROADCAST
-        if (option%myrank == 0) then                           
-#endif
-          call h5dread_f(data_set_id,H5T_NATIVE_INTEGER,integer_buffer,dims, &
-                         hdf5_err,memory_space_id,file_space_id,prop_id)   
-#ifdef HDF5_BROADCAST
-        endif
-        if (option%commsize > 1) &
-          call mpi_bcast(integer_buffer,dims(1),MPI_INTEGER,0, &
-                         PETSC_COMM_WORLD,ierr)
-#endif
-        prev_integer_count = integer_count
-        integer_count = integer_count + length(1)                  
-      enddo
-    endif
-    integer_array(i) = integer_buffer(index-prev_integer_count)
-  enddo
-
-#ifdef HDF5_BROADCAST
-  do
-    if (integer_count >= num_integers_in_file) exit
-    temp_int = num_integers_in_file-integer_count
-    temp_int = min(temp_int,read_block_size)
-    if (dims(1) /= temp_int) then
-      if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
-      dims(1) = temp_int
-      call h5screate_simple_f(rank,dims,memory_space_id,hdf5_err,dims)
-    endif
-    ! offset is zero-based
-    offset(1) = integer_count
-    length(1) = dims(1)
-    call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset, &
-                               length,hdf5_err,stride,stride) 
-    if (option%myrank == 0) then                           
-      call h5dread_f(data_set_id,H5T_NATIVE_INTEGER,integer_buffer,dims, &
-                     hdf5_err,memory_space_id,file_space_id,prop_id)   
-    endif
-    if (option%commsize > 1) &
-      call mpi_bcast(integer_buffer,dims(1),MPI_INTEGER,0, &
-                     PETSC_COMM_WORLD,ierr)
-    integer_count = integer_count + length(1)                  
-  enddo
-#endif
-
-  deallocate(integer_buffer)
-  
-  call h5pclose_f(prop_id,hdf5_err)
-  call h5sclose_f(memory_space_id,hdf5_err)
-  call h5sclose_f(file_space_id,hdf5_err)
-  call h5dclose_f(data_set_id,hdf5_err)
-
-end subroutine ReadIntegerArray
-
-#endif
 ! ************************************************************************** !
 !
 ! UpdateGlobalToLocal: Updated global vec values to local

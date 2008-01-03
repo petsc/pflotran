@@ -98,6 +98,8 @@
   call PetscGetCPUTime(timex(1), ierr)
   call PetscGetTime(timex_wall(1), ierr)
 
+  call OptionCheckCommandLine(option)
+
   call PflowInit(simulation,pflowin)
 
 ! Done with PFLOW setup.
@@ -106,22 +108,13 @@
 ! Now we do some initial output, so push this onto the log stack.
   call PetscLogStagePush(stage(2), ierr)
 
-  if(option%imode /= OWG_MODE) then
-    call Output(realization,0)
-  else
- !   call pflow_var_output(grid,kplt,iplot)
+  if (option%restart_flag == PETSC_FALSE) then
+    if(option%imode /= OWG_MODE) then
+      call Output(realization)
+    else
+   !   call pflow_var_output(grid,kplt,iplot)
+    endif
   endif
-
-
-#if 0
-  ! still needs to be implemented                    
-  if(option%restartflag == PETSC_TRUE) then
-    call pflowGridRestart(grid, option%restartfile, ntstep, kplt, iplot, iflgcut, &
-                          ihalcnt,its)
-    call InitAccumulation(realization)
-    option%dt_max = grid%dtstep(ntstep)
-  endif
-#endif  
                           
   call PetscLogStagePop(ierr)
 

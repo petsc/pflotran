@@ -69,6 +69,7 @@ module Grid_module
             GridCreateJacobian, &
             GridCreateColoring, &
             GridGlobalToLocal, &
+            GridLocalToGlobal, &
             GridLocalToLocal, &
             GridGlobalToNatural, &
             GridGlobalToLocalBegin, &
@@ -527,6 +528,34 @@ subroutine GridGlobalToLocal(grid,global_vec,local_vec,dm_index)
   end select
   
 end subroutine GridGlobalToLocal
+  
+! ************************************************************************** !
+!
+! GridLocalToGlobal: Performs local to global communication with DM
+! author: Glenn Hammond
+! date: 1/02/08
+!
+! Note that 'dm_index' should correspond to one of the macros defined 
+! in 'definitions.h' such as ONEDOF, NPHASEDOF, etc.  --RTM
+!
+! ************************************************************************** !
+subroutine GridLocalToGlobal(grid,local_vec,global_vec,dm_index)
+
+  implicit none
+  
+  type(grid_type) :: grid
+  Vec :: local_vec
+  Vec :: global_vec
+  integer :: dm_index
+  
+  select case(grid%igrid)
+    case(STRUCTURED)
+      call StructureGridLocalToGlobal(grid%structured_grid,local_vec, &
+                                      global_vec,dm_index)
+    case(UNSTRUCTURED)
+  end select
+  
+end subroutine GridLocalToGlobal
   
 ! ************************************************************************** !
 !
