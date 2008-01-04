@@ -626,10 +626,11 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
             option%time/realization%output_option%tconv, &
             option%dt/realization%output_option%tconv,timestep_cut_flag
 
+#if 0
       if (snes_reason == SNES_DIVERGED_LINEAR_SOLVE) then
         write(string3,*) linear_solver_divergence_count
         string2 = "Writing debug vecs and Jacobian: " // trim(adjustl(string3))
-        call printMsg(option,string2)
+        call printMsg(option,trim(string2))
         linear_solver_divergence_count = linear_solver_divergence_count + 1
         string2 = "residual" // trim(adjustl(string3)) // ".out"
         call PetscViewerASCIIOpen(PETSC_COMM_WORLD,string2,viewer,ierr)
@@ -648,6 +649,7 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
         call MatView(solver%J,viewer,ierr)
         call PetscViewerDestroy(viewer,ierr)
       endif
+#endif
 
       if (option%ndof == 1) then
         ! VecCopy(x,y): y=x
