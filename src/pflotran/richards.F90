@@ -314,6 +314,7 @@ subroutine RichardsUpdateAuxVars(realization)
     iend = ghosted_id*option%ndof
     istart = iend-option%ndof+1
     iphase = int(iphase_loc_p(ghosted_id))
+   
     call computeAuxVar(xx_loc_p(istart:iend),aux_vars(ghosted_id), &
                        iphase, &
                        realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
@@ -1894,7 +1895,7 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
   real*8 :: perm_up, perm_dn
   real*8 :: dw_dp,dw_dt,hw_dp,hw_dt,dresT_dp,dresT_dt
   real*8 :: D_up, D_dn  ! "Diffusion" constants upstream and downstream of a face.
-  real*8 :: zero
+  real*8 :: zero, norm
   real*8 :: ra(1:realization%option%ndof,1:2*realization%option%ndof)  
   real*8 :: tmp, upweight
   real*8 :: delxbc(1:realization%option%ndof)
@@ -1928,7 +1929,8 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
   type(option_type), pointer :: option 
   type(field_type), pointer :: field  
   
- PetscViewer :: viewer
+  PetscViewer :: viewer
+  Vec :: debug_vec
 !-----------------------------------------------------------------------
 ! R stand for residual
 !  ra       1              2              3              4          5              6            7      8
@@ -1987,7 +1989,7 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
     call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)
   enddo
 #endif
-  if (realization%debug%matview_Jacobian) then
+  if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
     call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian_accum.out',viewer,ierr)
@@ -2051,7 +2053,7 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
     source_sink => source_sink%next
   enddo
 #endif
-  if (realization%debug%matview_Jacobian) then
+  if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
     call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian_srcsink.out',viewer,ierr)
@@ -2145,7 +2147,7 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
     cur_connection_set => cur_connection_set%next
   enddo
 #endif
-  if (realization%debug%matview_Jacobian) then
+  if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
     call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian_flux.out',viewer,ierr)
@@ -2227,7 +2229,7 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
     boundary_condition => boundary_condition%next
   enddo
 #endif
-  if (realization%debug%matview_Jacobian) then
+  if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
     call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian_bcflux.out',viewer,ierr)
@@ -2285,6 +2287,19 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
     call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian.out',viewer,ierr)
     call MatView(A,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
+  endif
+  if (realization%debug%norm_Jacobian) then
+    call MatNorm(A,NORM_1,norm,ierr)
+    if (option%myrank == 0) print *, '1 norm:', norm
+    call MatNorm(A,NORM_FROBENIUS,norm,ierr)
+    if (option%myrank == 0) print *, '2 norm:', norm
+    call MatNorm(A,NORM_INFINITY,norm,ierr)
+    if (option%myrank == 0) print *, 'inf norm:', norm
+!    call GridCreateVector(grid,ONEDOF,debug_vec,GLOBAL)
+!    call MatGetRowMaxAbs(A,debug_vec,PETSC_NULL_INTEGER,ierr)
+!    call VecMax(debug_vec,i,norm,ierr)
+!    call VecDestroy(debug_vec,ierr)
+!    if (option%myrank == 0) print *, 'max:', i, norm
   endif
 
 end subroutine RichardsAnalyticalJacobian
@@ -2524,7 +2539,8 @@ subroutine computeAuxVar(x,aux_var,iphase,saturation_function,option)
   pw = option%pref
   ds_dp = 0.d0
   dkr_dp = 0.d0
-  if (aux_var%pc > 0.d0) then
+!  if (aux_var%pc > 0.d0) then
+  if (aux_var%pc > 1.d0) then
     iphase = 3
     call SaturationFunctionCompute(aux_var%pres,aux_var%sat,kr, &
                                    ds_dp,dkr_dp, &

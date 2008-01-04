@@ -8,6 +8,8 @@ module Debug_module
     logical :: vecview_residual
     logical :: vecview_solution
     logical :: matview_Jacobian
+    logical :: matview_Jacobian_detailed
+    logical :: norm_Jacobian
 
     logical :: print_numerical_derivatives
   end type pflow_debug_type
@@ -45,6 +47,8 @@ function DebugCreatePflow()
   debug%vecview_residual = .false.
   debug%vecview_solution = .false.
   debug%matview_Jacobian = .false.
+  debug%matview_Jacobian_detailed = .false.
+  debug%norm_Jacobian = .false.
   
   debug%print_numerical_derivatives = .false.
   
@@ -111,9 +115,13 @@ subroutine DebugReadPflow(debug,fid)
       case('PRINT_SOLUTION','VECVIEW_SOLUTION','VIEW_SOLUTION')
         debug%vecview_solution = .true.
       case('PRINT_RESIDUAL','VECVIEW_RESIDUAL','VIEW_RESIDUAL')
-        debug%vecview_solution = .true.
+        debug%vecview_residual = .true.
       case('PRINT_JACOBIAN','MATVIEW_JACOBIAN','VIEW_JACOBIAN')
-        debug%vecview_solution = .true.
+        debug%matview_Jacobian = .true.
+      case('PRINT_JACOBIAN_NORM','NORM_JACOBIAN')
+        debug%norm_Jacobian = .true.
+      case('PRINT_JACOBIAN_DETAILED','MATVIEW_JACOBIAN_DETAILED','VIEW_JACOBIAN_DETAILED')
+        debug%matview_Jacobian_detailed = .true.
       case('PRINT_NUMERICAL_DERIVATIVES','VIEW_NUMERICAL_DERIVATIVES')
         debug%print_numerical_derivatives = .true.
 
