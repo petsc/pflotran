@@ -139,7 +139,8 @@ module Option_module
     PetscTruth :: checkpoint_flag
     integer :: checkpoint_frequency
     
-   
+    logical :: numerical_derivatives
+    
   end type 
   
   type, public :: output_option_type
@@ -257,6 +258,8 @@ function OptionCreate()
   option%restart_file = ""
   option%checkpoint_flag = PETSC_FALSE
   option%checkpoint_frequency = int(1d20)
+  
+  option%numerical_derivatives = .false.
     
   OptionCreate => option
   

@@ -1709,6 +1709,11 @@ subroutine readInput(simulation,filename)
 
 !......................
 
+      case ('NUMERICAL_JACOBIAN')
+        option%numerical_derivatives = .true.
+
+!......................
+
       case ('NO_PRINT_CONVERGENCE')
         option%print_convergence = PETSC_FALSE
 

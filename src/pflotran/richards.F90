@@ -37,11 +37,9 @@ module Richards_Analytical_module
 
 
 ! Cutoff parameters
-  real*8, parameter :: formeps   = 100.D0
   real*8, parameter :: eps       = 1.D-8
   real*8, parameter :: floweps   = 1.D-24
-  real*8, parameter :: satcuteps = 1.D-8
-  real*8, parameter :: dfac = 1.D-8
+  real*8, parameter :: perturbation_tolerance = 1.d-5
 
   public RichardsAnalyticalResidual,RichardsAnalyticalJacobian, &
          RichardsUpdateFixedAccumulation,RichardsTimeCut,&
@@ -475,7 +473,6 @@ subroutine RichardsNumericalJacobianTest(xx,realization)
   PetscViewer :: viewer
   PetscErrorCode :: ierr
   
-  real*8 :: pert_tol = 1.d-6
   real*8 :: derivative, perturbation
   
   PetscScalar, pointer :: vec_p(:), vec2_p(:)
@@ -508,7 +505,7 @@ subroutine RichardsNumericalJacobianTest(xx,realization)
     do idof = (icell-1)*option%ndof+1,icell*option%ndof 
       call veccopy(xx,xx_pert,ierr)
       call vecgetarrayf90(xx_pert,vec_p,ierr)
-      perturbation = vec_p(idof)*pert_tol
+      perturbation = vec_p(idof)*perturbation_tolerance
       vec_p(idof) = vec_p(idof)+perturbation
       call vecrestorearrayf90(xx_pert,vec_p,ierr)
       call richardsanalyticalresidual(0,xx_pert,res_pert,realization,ierr)
@@ -563,17 +560,10 @@ subroutine RichardsAccumulationDerivative(aux_var,por,vol,rock_dencpr,option, &
   integer :: ispec !, iireac=1
   real*8 :: porXvol, mol(option%nspec), eng
 
-!#define DEBUG_ACCUM_DERIVATIVES
-#ifdef DEBUG_ACCUM_DERIVATIVES  
   integer :: iphase, ideriv
   type(richards_type) :: aux_var_pert
-  real*8 :: x(3), x_pert(3), pert(3), res(3), res_pert(3), J_pert(3,3)
-  pert(1) = 1.e-2 !1.745849723195111d-003
-  pert(2) = 2.500000000000000d-007
-  pert(3) = 1.000000000000000d-014
-  allocate(aux_var_pert%xmol(option%nspec),aux_var_pert%diff(option%nspec))
-#endif
-  
+  real*8 :: x(3), x_pert(3), pert, res(3), res_pert(3), J_pert(3,3)
+
   porXvol = por*vol
       
   J(1,1) = (aux_var%sat*aux_var%dden_dp+aux_var%dsat_dp*aux_var%den)*porXvol*aux_var%xmol(1)
@@ -592,38 +582,41 @@ subroutine RichardsAccumulationDerivative(aux_var,por,vol,rock_dencpr,option, &
            porXvol + (1.d0 - por)* vol * rock_dencpr 
   J(3,3) = 0.d0 
 
-#ifdef DEBUG_ACCUM_DERIVATIVES  
-   call copyAuxVar(aux_var,aux_var_pert,option)
-   x(1) = aux_var%pres
-   x(2) = aux_var%temp
-   x(3) = aux_var%xmol(2)
-   call RichardsAccumulation(aux_var,por,vol,rock_dencpr,option,res)
-   do ideriv = 1,3
-     x_pert = x
-     x_pert(ideriv) = x_pert(ideriv) + pert(ideriv)
-     call computeAuxVar(x_pert,aux_var_pert,iphase,sat_func,option)
-     
-     select case(ideriv)
-       case(1)
+  if (option%numerical_derivatives) then
+    allocate(aux_var_pert%xmol(option%nspec),aux_var_pert%diff(option%nspec))
+    call copyAuxVar(aux_var,aux_var_pert,option)
+    x(1) = aux_var%pres
+    x(2) = aux_var%temp
+    x(3) = aux_var%xmol(2)
+    call RichardsAccumulation(aux_var,por,vol,rock_dencpr,option,res)
+    do ideriv = 1,3
+      pert = x(ideriv)*perturbation_tolerance
+      x_pert = x
+      x_pert(ideriv) = x_pert(ideriv) + pert
+      call computeAuxVar(x_pert,aux_var_pert,iphase,sat_func,option)
+#if 0      
+      select case(ideriv)
+        case(1)
 !         print *, 'dvis_dp:', aux_var%dvis_dp, (aux_var_pert%vis-aux_var%vis)/pert(ideriv)
 !         print *, 'dkr_dp:', aux_var%dkr_dp, (aux_var_pert%kr-aux_var%kr)/pert(ideriv)
-         print *, 'dsat_dp:', aux_var%dsat_dp, (aux_var_pert%sat-aux_var%sat)/pert(ideriv)
-         print *, 'dden_dp:', aux_var%dden_dp, (aux_var_pert%den-aux_var%den)/pert(ideriv)
-         print *, 'dkvr_dp:', aux_var%dkvr_dp, (aux_var_pert%kvr-aux_var%kvr)/pert(ideriv)
-         print *, 'dh_dp:', aux_var%dh_dp, (aux_var_pert%h-aux_var%h)/pert(ideriv)
-         print *, 'du_dp:', aux_var%du_dp, (aux_var_pert%u-aux_var%u)/pert(ideriv)
-       case(2)
-         print *, 'dden_dt:', aux_var%dden_dt, (aux_var_pert%den-aux_var%den)/pert(ideriv)
-         print *, 'dkvr_dt:', aux_var%dkvr_dt, (aux_var_pert%kvr-aux_var%kvr)/pert(ideriv)
-         print *, 'dh_dt:', aux_var%dh_dt, (aux_var_pert%h-aux_var%h)/pert(ideriv)
-         print *, 'du_dt:', aux_var%du_dt, (aux_var_pert%u-aux_var%u)/pert(ideriv)
-     end select     
-     
-     call RichardsAccumulation(aux_var_pert,por,vol,rock_dencpr,option,res_pert)
-     J_pert(:,ideriv) = (res_pert(:)-res(:))/pert(ideriv)
-   enddo
-   deallocate(aux_var_pert%xmol,aux_var_pert%diff)
-#endif
+          print *, 'dsat_dp:', aux_var%dsat_dp, (aux_var_pert%sat-aux_var%sat)/pert
+          print *, 'dden_dp:', aux_var%dden_dp, (aux_var_pert%den-aux_var%den)/pert
+          print *, 'dkvr_dp:', aux_var%dkvr_dp, (aux_var_pert%kvr-aux_var%kvr)/pert
+          print *, 'dh_dp:', aux_var%dh_dp, (aux_var_pert%h-aux_var%h)/pert
+          print *, 'du_dp:', aux_var%du_dp, (aux_var_pert%u-aux_var%u)/pert
+        case(2)
+          print *, 'dden_dt:', aux_var%dden_dt, (aux_var_pert%den-aux_var%den)/pert
+          print *, 'dkvr_dt:', aux_var%dkvr_dt, (aux_var_pert%kvr-aux_var%kvr)/pert
+          print *, 'dh_dt:', aux_var%dh_dt, (aux_var_pert%h-aux_var%h)/pert
+          print *, 'du_dt:', aux_var%du_dt, (aux_var_pert%u-aux_var%u)/pert
+      end select     
+#endif     
+      call RichardsAccumulation(aux_var_pert,por,vol,rock_dencpr,option,res_pert)
+      J_pert(:,ideriv) = (res_pert(:)-res(:))/pert
+    enddo
+    deallocate(aux_var_pert%xmol,aux_var_pert%diff)
+    J = J_pert
+  endif
    
 end subroutine RichardsAccumulationDerivative
 
@@ -719,17 +712,10 @@ subroutine RichardsFluxDerivative(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,
   real*8 :: dq_dp_up, dq_dp_dn, dq_dt_up, dq_dt_dn
   real*8 :: duxmol_dxmol_up, duxmol_dxmol_dn
 
-!#define DEBUG_FLUX_DERIVATIVES
-#ifdef DEBUG_FLUX_DERIVATIVES  
   integer :: iphase, ideriv
   type(richards_type) :: aux_var_pert_up, aux_var_pert_dn
-  real*8 :: x_up(3), x_dn(3), x_pert_up(3), x_pert_dn(3), pert(3), res(3), res_pert_up(3), res_pert_dn(3), J_pert_up(3,3), J_pert_dn(3,3)
-  allocate(aux_var_pert_up%xmol(option%nspec),aux_var_pert_up%diff(option%nspec))
-  allocate(aux_var_pert_dn%xmol(option%nspec),aux_var_pert_dn%diff(option%nspec))
-  pert(1) = 1.e-2 !1.745849723195111d-003
-  pert(2) = 2.500000000000000d-007
-  pert(3) = 1.000000000000000d-014
-#endif
+  real*8 :: x_up(3), x_dn(3), x_pert_up(3), x_pert_dn(3), pert_up, pert_dn, &
+            res(3), res_pert_up(3), res_pert_dn(3), J_pert_up(3,3), J_pert_dn(3,3)
   
   Dq = (perm_up * perm_dn)/(dd_up*perm_dn + dd_dn*perm_up)
   diffdp = (por_up *tor_up * por_dn*tor_dn) / (dd_dn*por_up*tor_up + dd_up*por_dn*tor_dn)*area
@@ -922,41 +908,46 @@ subroutine RichardsFluxDerivative(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,
  ! note: Res is the flux contribution, for node up J = J + Jup
  !                                              dn J = J - Jdn  
 
-#ifdef DEBUG_FLUX_DERIVATIVES  
-   call copyAuxVar(aux_var_up,aux_var_pert_up,option)
-   call copyAuxVar(aux_var_dn,aux_var_pert_dn,option)
-   x_up(1) = aux_var_up%pres
-   x_up(2) = aux_var_up%temp
-   x_up(3) = aux_var_up%xmol(2)
-   x_dn(1) = aux_var_dn%pres
-   x_dn(2) = aux_var_dn%temp
-   x_dn(3) = aux_var_dn%xmol(2)
-   call RichardsFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
-                     aux_var_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
-                     area,dist_gravity,upweight, &
-                     option,v_darcy,res)
-   do ideriv = 1,3
-     x_pert_up = x_up
-     x_pert_up(ideriv) = x_pert_up(ideriv) + pert(ideriv)
-     x_pert_dn = x_dn
-     x_pert_dn(ideriv) = x_pert_dn(ideriv) + pert(ideriv)
-     call computeAuxVar(x_pert_up,aux_var_pert_up,iphase,sat_func_up,option)
-     call computeAuxVar(x_pert_dn,aux_var_pert_dn,iphase,sat_func_dn,option)
-     call RichardsFlux(aux_var_pert_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
-                       aux_var_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
-                       area,dist_gravity,upweight, &
-                       option,v_darcy,res_pert_up)
-     call RichardsFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
-                       aux_var_pert_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
-                       area,dist_gravity,upweight, &
-                       option,v_darcy,res_pert_dn)
-     J_pert_up(:,ideriv) = (res_pert_up(:)-res(:))/pert(ideriv)
-     J_pert_dn(:,ideriv) = (res_pert_dn(:)-res(:))/pert(ideriv)
-   enddo
-  deallocate(aux_var_pert_up%xmol,aux_var_pert_up%diff)
-  deallocate(aux_var_pert_dn%xmol,aux_var_pert_dn%diff)
-
-#endif
+  if (option%numerical_derivatives) then
+    allocate(aux_var_pert_up%xmol(option%nspec),aux_var_pert_up%diff(option%nspec))
+    allocate(aux_var_pert_dn%xmol(option%nspec),aux_var_pert_dn%diff(option%nspec))
+    call copyAuxVar(aux_var_up,aux_var_pert_up,option)
+    call copyAuxVar(aux_var_dn,aux_var_pert_dn,option)
+    x_up(1) = aux_var_up%pres
+    x_up(2) = aux_var_up%temp
+    x_up(3) = aux_var_up%xmol(2)
+    x_dn(1) = aux_var_dn%pres
+    x_dn(2) = aux_var_dn%temp
+    x_dn(3) = aux_var_dn%xmol(2)
+    call RichardsFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
+                      aux_var_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
+                      area,dist_gravity,upweight, &
+                      option,v_darcy,res)
+    do ideriv = 1,3
+      pert_up = x_up(ideriv)*perturbation_tolerance
+      pert_dn = x_dn(ideriv)*perturbation_tolerance
+      x_pert_up = x_up
+      x_pert_dn = x_dn
+      x_pert_up(ideriv) = x_pert_up(ideriv) + pert_up
+      x_pert_dn(ideriv) = x_pert_dn(ideriv) + pert_dn
+      call computeAuxVar(x_pert_up,aux_var_pert_up,iphase,sat_func_up,option)
+      call computeAuxVar(x_pert_dn,aux_var_pert_dn,iphase,sat_func_dn,option)
+      call RichardsFlux(aux_var_pert_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
+                        aux_var_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
+                        area,dist_gravity,upweight, &
+                        option,v_darcy,res_pert_up)
+      call RichardsFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
+                        aux_var_pert_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
+                        area,dist_gravity,upweight, &
+                        option,v_darcy,res_pert_dn)
+      J_pert_up(:,ideriv) = (res_pert_up(:)-res(:))/pert_up
+      J_pert_dn(:,ideriv) = (res_pert_dn(:)-res(:))/pert_dn
+    enddo
+    deallocate(aux_var_pert_up%xmol,aux_var_pert_up%diff)
+    deallocate(aux_var_pert_dn%xmol,aux_var_pert_dn%diff)
+    Jup = J_pert_up
+    Jdn = J_pert_dn
+  endif
 
 end subroutine RichardsFluxDerivative
 
@@ -1108,22 +1099,11 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   real*8 :: dq_dp_dn, dq_dt_dn
   real*8 :: duxmol_dxmol_dn
 
-!#define DEBUG_BCFLUX_DERIVATIVES
-#ifdef DEBUG_BCFLUX_DERIVATIVES  
   integer :: iphase, ideriv
   type(richards_type) :: aux_var_pert_dn, aux_var_pert_up
   real*8 :: perturbation
-  real*8 :: x_dn(3), x_up(3), x_pert_dn(3), x_pert_up(3), pert(3), res(3), res_pert_dn(3), J_pert_dn(3,3)
-  allocate(aux_var_pert_dn%xmol(option%nspec),aux_var_pert_dn%diff(option%nspec))
-  allocate(aux_var_pert_up%xmol(option%nspec),aux_var_pert_up%diff(option%nspec))
-  pert(1) = 1.e-2 !1.745849723195111d-003
-  pert(2) = 2.500000000000000d-007
-  pert(3) = 1.000000000000000d-014
-  perturbation = 1.d-5
-  pert(1) = perturbation*aux_var_dn%pres 
-  pert(2) = perturbation*aux_var_dn%temp 
-  pert(3) = perturbation*aux_var_dn%xmol(2) 
-#endif
+  real*8 :: x_dn(3), x_up(3), x_pert_dn(3), x_pert_up(3), pert_dn, res(3), &
+            res_pert_dn(3), J_pert_dn(3,3)
   
   fluxm = 0.d0
   fluxe = 0.d0
@@ -1295,46 +1275,49 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
 
   Jdn = Jdn * option%dt
 
-#ifdef DEBUG_BCFLUX_DERIVATIVES  
-   call copyAuxVar(aux_var_up,aux_var_pert_up,option)
-   call copyAuxVar(aux_var_dn,aux_var_pert_dn,option)
-   x_up(1) = aux_var_up%pres
-   x_up(2) = aux_var_up%temp
-   x_up(3) = aux_var_up%xmol(2)
-   x_dn(1) = aux_var_dn%pres
-   x_dn(2) = aux_var_dn%temp
-   x_dn(3) = aux_var_dn%xmol(2)
-   do ideriv = 1,3
-     if (ibndtype(ideriv) == ZERO_GRADIENT_BC) then
-       x_up(ideriv) = x_dn(ideriv)
-     endif
-   enddo
-   call RichardsBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
-                       por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
-                       area,dist_gravity,option,v_darcy,res)
-   if (ibndtype(RICHARDS_PRESSURE_DOF) == ZERO_GRADIENT_BC .or. &
-       ibndtype(RICHARDS_TEMPERATURE_DOF) == ZERO_GRADIENT_BC .or. &
-       ibndtype(RICHARDS_CONCENTRATION_DOF) == ZERO_GRADIENT_BC) then
-     x_pert_up = x_up
-   endif
-   do ideriv = 1,3
-     x_pert_dn = x_dn
-     x_pert_dn(ideriv) = x_pert_dn(ideriv) + pert(ideriv)
-     x_pert_up = x_up
-     if (ibndtype(ideriv) == ZERO_GRADIENT_BC) then
-       x_pert_up(ideriv) = x_pert_dn(ideriv)
-     endif   
-     call computeAuxVar(x_pert_dn,aux_var_pert_dn,iphase,sat_func_dn,option)
-     call computeAuxVar(x_pert_up,aux_var_pert_up,iphase,sat_func_dn,option)
-     call RichardsBCFlux(ibndtype,aux_vars,aux_var_pert_up,aux_var_pert_dn, &
-                         por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
-                         area,dist_gravity,option,v_darcy,res_pert_dn)
-     J_pert_dn(:,ideriv) = (res_pert_dn(:)-res(:))/pert(ideriv)
-   enddo
-  deallocate(aux_var_pert_dn%xmol,aux_var_pert_dn%diff)
+  if (option%numerical_derivatives) then
+    allocate(aux_var_pert_dn%xmol(option%nspec),aux_var_pert_dn%diff(option%nspec))
+    allocate(aux_var_pert_up%xmol(option%nspec),aux_var_pert_up%diff(option%nspec))
+    call copyAuxVar(aux_var_up,aux_var_pert_up,option)
+    call copyAuxVar(aux_var_dn,aux_var_pert_dn,option)
+    x_up(1) = aux_var_up%pres
+    x_up(2) = aux_var_up%temp
+    x_up(3) = aux_var_up%xmol(2)
+    x_dn(1) = aux_var_dn%pres
+    x_dn(2) = aux_var_dn%temp
+    x_dn(3) = aux_var_dn%xmol(2)
+    do ideriv = 1,3
+      if (ibndtype(ideriv) == ZERO_GRADIENT_BC) then
+        x_up(ideriv) = x_dn(ideriv)
+      endif
+    enddo
+    call RichardsBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
+                        por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
+                        area,dist_gravity,option,v_darcy,res)
+    if (ibndtype(RICHARDS_PRESSURE_DOF) == ZERO_GRADIENT_BC .or. &
+        ibndtype(RICHARDS_TEMPERATURE_DOF) == ZERO_GRADIENT_BC .or. &
+        ibndtype(RICHARDS_CONCENTRATION_DOF) == ZERO_GRADIENT_BC) then
+      x_pert_up = x_up
+    endif
+    do ideriv = 1,3
+      pert_dn = x_dn(ideriv)*perturbation_tolerance    
+      x_pert_dn = x_dn
+      x_pert_dn(ideriv) = x_pert_dn(ideriv) + pert_dn
+      x_pert_up = x_up
+      if (ibndtype(ideriv) == ZERO_GRADIENT_BC) then
+        x_pert_up(ideriv) = x_pert_dn(ideriv)
+      endif   
+      call computeAuxVar(x_pert_dn,aux_var_pert_dn,iphase,sat_func_dn,option)
+      call computeAuxVar(x_pert_up,aux_var_pert_up,iphase,sat_func_dn,option)
+      call RichardsBCFlux(ibndtype,aux_vars,aux_var_pert_up,aux_var_pert_dn, &
+                          por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
+                          area,dist_gravity,option,v_darcy,res_pert_dn)
+      J_pert_dn(:,ideriv) = (res_pert_dn(:)-res(:))/pert_dn
+    enddo
+    deallocate(aux_var_pert_dn%xmol,aux_var_pert_dn%diff)
+    Jdn = J_pert_dn
+  endif
 
-#endif
-  
 end subroutine RichardsBCFluxDerivative
 
 ! ************************************************************************** !
