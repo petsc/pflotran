@@ -742,7 +742,7 @@ end function StructGridComputeInternConnect
 ! date: 11/09/07
 !
 ! ************************************************************************** !
-subroutine StructGridPopulateConnection(structured_grid,coupler,connection, &
+subroutine StructGridPopulateConnection(structured_grid,connection,iface, &
                                         iconn,cell_id_ghosted)
 
   use Connection_module
@@ -753,8 +753,8 @@ subroutine StructGridPopulateConnection(structured_grid,coupler,connection, &
   implicit none
  
   type(structured_grid_type) :: structured_grid
-  type(coupler_type) :: coupler
   type(connection_type) :: connection
+  integer :: iface
   integer :: iconn
   integer :: cell_id_ghosted
   
@@ -770,13 +770,13 @@ subroutine StructGridPopulateConnection(structured_grid,coupler,connection, &
     case(BOUNDARY_CONNECTION_TYPE)
       select case(structured_grid%igeom)
         case(STRUCTURED_CARTESIAN) ! cartesian
-          select case(coupler%iface)
+          select case(iface)
             case(WEST,EAST)
               connection%dist(:,iconn) = 0.d0
               connection%dist(0,iconn) = 0.5d0*dx_loc_p(cell_id_ghosted)
               connection%area(iconn) = dy_loc_p(cell_id_ghosted)* &
                                         dz_loc_p(cell_id_ghosted)
-              if (coupler%iface ==  WEST) then
+              if (iface ==  WEST) then
                 connection%dist(1,iconn) = 1.d0
               else
                 connection%dist(1,iconn) = -1.d0
@@ -786,7 +786,7 @@ subroutine StructGridPopulateConnection(structured_grid,coupler,connection, &
               connection%dist(0,iconn) = 0.5d0*dy_loc_p(cell_id_ghosted)
               connection%area(iconn) = dx_loc_p(cell_id_ghosted)* &
                                         dz_loc_p(cell_id_ghosted)
-              if (coupler%iface ==  SOUTH) then
+              if (iface ==  SOUTH) then
                 connection%dist(2,iconn) = 1.d0
               else
                 connection%dist(2,iconn) = -1.d0
@@ -797,13 +797,13 @@ subroutine StructGridPopulateConnection(structured_grid,coupler,connection, &
               connection%area(iconn) = dx_loc_p(cell_id_ghosted)* &
                                         dy_loc_p(cell_id_ghosted)
               if (structured_grid%invert_z_axis) then
-                if (coupler%iface ==  TOP) then 
+                if (iface ==  TOP) then 
                   connection%dist(3,iconn) = 1.d0
                 else
                   connection%dist(3,iconn) = -1.d0
                 endif
               else
-                if (coupler%iface ==  TOP) then 
+                if (iface ==  TOP) then 
                   connection%dist(3,iconn) = -1.d0
                 else
                   connection%dist(3,iconn) = 1.d0

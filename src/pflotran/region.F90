@@ -14,10 +14,12 @@ module Region_module
   type, public :: region_type
     integer :: id
     character(len=MAXWORDLENGTH) :: name
+    character(len=MAXWORDLENGTH) :: filename
     type(block_type), pointer :: block_list
     integer :: i1,i2,j1,j2,k1,k2
     integer :: num_cells
     integer, pointer :: cell_ids(:)
+    integer, pointer :: faces(:)
     type(region_type), pointer :: next
   end type region_type
   
@@ -41,8 +43,8 @@ module Region_module
   end interface RegionCreate
   
   interface RegionReadFromFile
-    module procedure RegionReadFromInputFile
-    module procedure RegionReadFromExternalFile
+    module procedure RegionReadFromFileId
+    module procedure RegionReadFromFilename
   end interface RegionReadFromFile
   
   public :: RegionCreate, RegionDestroy, RegionAddToList, RegionReadFromFile, &
@@ -68,6 +70,7 @@ function RegionCreateWithNothing()
   allocate(region)
   region%id = 0
   region%name = ""
+  region%filename = ""
   region%i1 = 0
   region%i2 = 0
   region%j1 = 0
@@ -76,6 +79,7 @@ function RegionCreateWithNothing()
   region%k2 = 0
   region%num_cells = 0
   nullify(region%cell_ids)
+  nullify(region%faces)
   nullify(region%next)
   
   num_regions = num_regions + 1
@@ -187,12 +191,12 @@ end subroutine RegionAddToList
 
 ! ************************************************************************** !
 !
-! RegionReadFromExternalFile: Reads a list of cells from an external file
+! RegionReadFromFilename: Reads a list of cells from a file named filename
 ! author: Glenn Hammond
 ! date: 10/29/07
 !
 ! ************************************************************************** !
-subroutine RegionReadFromExternalFile(region,filename)
+subroutine RegionReadFromFilename(region,filename)
 
   use Fileio_module
   use Utility_module
@@ -212,50 +216,19 @@ subroutine RegionReadFromExternalFile(region,filename)
   
   fid = 86
   open(unit=fid,file=filename)
-  
-  allocate(temp_int_array(max_size))
-  temp_int_array = 0
-  
-  count = 0
-  do
-    call fiReadFlotranString(fid,string,ierr)
-    if (ierr /= 0) exit
-    do
-      if (ierr /= 0) exit
-      ierr = 0
-      call fiReadInt(string,temp_int,ierr)
-      if (ierr == 0) then
-        count = count + 1
-        temp_int_array(count) = temp_int
-      endif
-      if (count+1 > max_size) then ! resize temporary array
-        call reallocateIntArray(temp_int_array,max_size) 
-      endif
-    enddo
-  enddo
-  if (count > 0) then
-    region%num_cells = count
-    allocate(region%cell_ids(count))
-    region%cell_ids(1:count) = temp_int_array(1:count)
-  else 
-    region%num_cells = 0
-    nullify(region%cell_ids)
-  endif
-  
-  deallocate(temp_int_array)
-          
+  call RegionReadFromFileId(region,fid)          
   close(fid)          
 
-end subroutine RegionReadFromExternalFile
+end subroutine RegionReadFromFilename
 
 ! ************************************************************************** !
 !
-! RegionReadFromInputFile: Reads a list of cells from the pflotran input file
+! RegionReadFromFileId: Reads a list of cells from an open file
 ! author: Glenn Hammond
 ! date: 10/29/07
 !
 ! ************************************************************************** !
-subroutine RegionReadFromInputFile(region,fid)
+subroutine RegionReadFromFileId(region,fid)
 
   use Fileio_module
   use Utility_module
@@ -312,7 +285,7 @@ subroutine RegionReadFromInputFile(region,fid)
 
   deallocate(temp_int_array) 
 
-end subroutine RegionReadFromInputFile
+end subroutine RegionReadFromFileId
 
 ! ************************************************************************** !
 !
@@ -401,6 +374,8 @@ subroutine RegionDestroy(region)
   
   if (associated(region%cell_ids)) deallocate(region%cell_ids)
   nullify(region%cell_ids)
+  if (associated(region%faces)) deallocate(region%faces)
+  nullify(region%faces)
   nullify(region%next)
   
   deallocate(region)

@@ -2,7 +2,6 @@ module General_Grid_module
 
  implicit none
 
-#define HASH
 #define INVERT
 
  private 
@@ -79,7 +78,7 @@ subroutine ReadStructuredGridHDF5(realization)
   integer(HID_T) :: prop_id
 
   integer :: i, local_ghosted_id, iconn
-  integer, allocatable :: indices(:)
+  integer, pointer :: indices(:)
   integer, allocatable :: integer_array(:)
   real*8, allocatable :: real_array(:)
   
@@ -134,7 +133,9 @@ subroutine ReadStructuredGridHDF5(realization)
   
   if (option%myrank == 0) print *, 'Setting up grid cell indices'
   call PetscGetTime(time3, ierr)
-  call HDF5MapLocalToNaturalIndices(grid,option,grp_id,indices)
+  string = 'Cell Id'
+  call HDF5MapLocalToNaturalIndices(grid,option,grp_id,string,grid%nmax, &
+                                    indices,grid%nlmax)
   call PetscGetTime(time4, ierr)
   time4 = time4 - time3
   if (option%myrank == 0) print *, time4, &
@@ -146,7 +147,8 @@ subroutine ReadStructuredGridHDF5(realization)
   allocate(integer_array(grid%nlmax))
   string = "Material Id"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
-  call HDF5ReadIntegerArray(grid,option,grp_id,grid%nlmax,indices,string,integer_array)
+  call HDF5ReadIntegerArray(option,grp_id,string,grid%nmax,indices, &
+                            grid%nlmax,integer_array)
   call GridCopyIntegerArrayToPetscVec(integer_array,global,grid%nlmax)
   deallocate(integer_array)
   call GridGlobalToLocal(grid,global,local,ONEDOF)
@@ -155,21 +157,24 @@ subroutine ReadStructuredGridHDF5(realization)
   allocate(real_array(grid%nlmax))
   string = "X-Coordinate"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
-  call HDF5ReadRealArray(grid,option,grp_id,grid%nlmax,indices,string,real_array)
+  call HDF5ReadRealArray(option,grp_id,string,grid%nlmax,indices,grid%nlmax, &
+                         real_array)
   call GridCopyRealArrayToPetscVec(real_array,global,grid%nlmax)
   call GridGlobalToLocal(grid,global,local,ONEDOF)  
   call GridCopyPetscVecToRealArray(grid%x,local,grid%ngmax)
 
   string = "Y-Coordinate"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
-  call HDF5ReadRealArray(grid,option,grp_id,grid%nlmax,indices,string,real_array)
+  call HDF5ReadRealArray(option,grp_id,string,grid%nlmax,indices,grid%nlmax, &
+                         real_array)
   call GridCopyRealArrayToPetscVec(real_array,global,grid%nlmax)
   call GridGlobalToLocal(grid,global,local,ONEDOF)  
   call GridCopyPetscVecToRealArray(grid%y,local,grid%ngmax)
 
   string = "Z-Coordinate"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
-  call HDF5ReadRealArray(grid,option,grp_id,grid%nlmax,indices,string,real_array)
+  call HDF5ReadRealArray(option,grp_id,string,grid%nlmax,indices,grid%nlmax, &
+                         real_array)
   call GridCopyRealArrayToPetscVec(real_array,global,grid%nlmax)
   call GridGlobalToLocal(grid,global,local,ONEDOF)  
   call GridCopyPetscVecToRealArray(grid%z,local,grid%ngmax)
@@ -179,37 +184,43 @@ subroutine ReadStructuredGridHDF5(realization)
   string = "Volume"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
   call VecGetArrayF90(grid%volume,vec_ptr,ierr); CHKERRQ(ierr)
-  call HDF5ReadRealArray(grid,option,grp_id,grid%nlmax,indices,string,vec_ptr)
+  call HDF5ReadRealArray(option,grp_id,string,grid%nlmax,indices,grid%nlmax, &
+                         vec_ptr)
   call VecRestoreArrayF90(grid%volume,vec_ptr,ierr); CHKERRQ(ierr)
   
   string = "X-Permeability"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
   call VecGetArrayF90(field%perm0_xx,vec_ptr,ierr); CHKERRQ(ierr)
-  call HDF5ReadRealArray(grid,option,grp_id,grid%nlmax,indices,string,vec_ptr)
+  call HDF5ReadRealArray(option,grp_id,string,grid%nlmax,indices,grid%nlmax, &
+                         vec_ptr)
   call VecRestoreArrayF90(field%perm0_xx,vec_ptr,ierr); CHKERRQ(ierr)
   
   string = "Y-Permeability"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
   call VecGetArrayF90(field%perm0_yy,vec_ptr,ierr); CHKERRQ(ierr)
-  call HDF5ReadRealArray(grid,option,grp_id,grid%nlmax,indices,string,vec_ptr)
+  call HDF5ReadRealArray(option,grp_id,string,grid%nlmax,indices,grid%nlmax, &
+                         vec_ptr)
   call VecRestoreArrayF90(field%perm0_yy,vec_ptr,ierr); CHKERRQ(ierr)
 
   string = "Z-Permeability"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
   call VecGetArrayF90(field%perm0_zz,vec_ptr,ierr); CHKERRQ(ierr)
-  call HDF5ReadRealArray(grid,option,grp_id,grid%nlmax,indices,string,vec_ptr)
+  call HDF5ReadRealArray(option,grp_id,string,grid%nlmax,indices,grid%nlmax, &
+                         vec_ptr)
   call VecRestoreArrayF90(field%perm0_zz,vec_ptr,ierr); CHKERRQ(ierr)
 
   string = "Porosity"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
   call VecGetArrayF90(field%porosity0,vec_ptr,ierr); CHKERRQ(ierr)
-  call HDF5ReadRealArray(grid,option,grp_id,grid%nlmax,indices,string,vec_ptr)
+  call HDF5ReadRealArray(option,grp_id,string,grid%nlmax,indices,grid%nlmax, &
+                         vec_ptr)
   call VecRestoreArrayF90(field%porosity0,vec_ptr,ierr); CHKERRQ(ierr)
 
   string = "Tortuosity"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
   call VecGetArrayF90(global,vec_ptr,ierr); CHKERRQ(ierr)
-  call HDF5ReadRealArray(grid,option,grp_id,grid%nlmax,indices,string,vec_ptr)
+  call HDF5ReadRealArray(option,grp_id,string,grid%nlmax,indices,grid%nlmax, &
+                         vec_ptr)
   call VecRestoreArrayF90(global,vec_ptr,ierr); CHKERRQ(ierr)
   call GridGlobalToLocal(grid,global,field%tor_loc,ONEDOF)
 
@@ -240,8 +251,10 @@ subroutine ReadStructuredGridHDF5(realization)
   allocate(integer_array(cur_connection_set%num_connections))
   string = "Id Upwind"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
-  call HDF5ReadIntegerArray(grid,option,grp_id,cur_connection_set%num_connections, &
-                        indices,string,integer_array)
+  call HDF5ReadIntegerArray(option,grp_id,string, &
+                            cur_connection_set%num_connections, &
+                            indices,cur_connection_set%num_connections, &
+                            integer_array)
   do i=1,cur_connection_set%num_connections
     local_ghosted_id = GridGetLocalGhostedIdFromHash(grid,integer_array(i))
     cur_connection_set%id_up(i) = local_ghosted_id
@@ -249,8 +262,10 @@ subroutine ReadStructuredGridHDF5(realization)
 
   string = "Id Downwind"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
-  call HDF5ReadIntegerArray(grid,option,grp_id,cur_connection_set%num_connections, &
-                        indices,string,integer_array)
+  call HDF5ReadIntegerArray(option,grp_id,string, &
+                            cur_connection_set%num_connections, &
+                            indices,cur_connection_set%num_connections, &
+                            integer_array)
   do i=1,cur_connection_set%num_connections
     local_ghosted_id = GridGetLocalGhostedIdFromHash(grid,integer_array(i))
     cur_connection_set%id_dn(i) = local_ghosted_id
@@ -260,8 +275,8 @@ subroutine ReadStructuredGridHDF5(realization)
   allocate(real_array(cur_connection_set%num_connections))
   string = "Distance Upwind"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
-  call HDF5ReadRealArray(grid,option,grp_id,cur_connection_set%num_connections, &
-                     indices,string,real_array)
+  call HDF5ReadRealArray(option,grp_id,string,grid%nlmax,indices,grid%nlmax, &
+                         real_array)
                      
   cur_connection_set%dist(-1,1:cur_connection_set%num_connections) = &
     real_array(1:cur_connection_set%num_connections)                      
@@ -270,8 +285,8 @@ subroutine ReadStructuredGridHDF5(realization)
 
   string = "Distance Downwind"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
-  call HDF5ReadRealArray(grid,option,grp_id,cur_connection_set%num_connections, &
-                     indices,string,real_array) 
+  call HDF5ReadRealArray(option,grp_id,string,grid%nlmax,indices,grid%nlmax, &
+                         real_array) 
 
   cur_connection_set%dist(0,1:cur_connection_set%num_connections) = &
     cur_connection_set%dist(0,1:cur_connection_set%num_connections) + &
@@ -283,16 +298,16 @@ subroutine ReadStructuredGridHDF5(realization)
 
   string = "Area"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
-  call HDF5ReadRealArray(grid,option,grp_id,cur_connection_set%num_connections, &
-                     indices,string,real_array) 
+  call HDF5ReadRealArray(option,grp_id,string,grid%nlmax,indices,grid%nlmax, &
+                         real_array) 
 
   cur_connection_set%area(1:cur_connection_set%num_connections) = &
     real_array(1:cur_connection_set%num_connections)                      
 
   string = "CosB"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
-  call HDF5ReadRealArray(grid,option,grp_id,cur_connection_set%num_connections, &
-                     indices,string,real_array) 
+  call HDF5ReadRealArray(option,grp_id,string,grid%nlmax,indices,grid%nlmax, &
+                         real_array) 
   
   ! for now, store cosB in z component of distance array
   cur_connection_set%dist(3,1:cur_connection_set%num_connections) = &

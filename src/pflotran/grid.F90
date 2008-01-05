@@ -295,6 +295,7 @@ subroutine GridComputeCouplerConnections(grid,option,coupler_list)
   integer :: iconn
   integer :: cell_id_local, cell_id_ghosted
   integer :: connection_itype
+  integer :: iface
   type(connection_type), pointer :: connection
   type(region_type), pointer :: region
   type(coupler_type), pointer :: coupler
@@ -324,9 +325,11 @@ subroutine GridComputeCouplerConnections(grid,option,coupler_list)
     connection => ConnectionCreate(region%num_cells,option%nphase, &
                                    connection_itype)
 
+    iface = coupler%iface
     do iconn = 1,region%num_cells
       
       cell_id_local = region%cell_ids(iconn)
+      if (associated(region%faces)) iface = region%faces(iconn)
       
       connection%id_dn(iconn) = cell_id_local
 
@@ -337,8 +340,8 @@ subroutine GridComputeCouplerConnections(grid,option,coupler_list)
       
       select case(grid%igrid)
         case(STRUCTURED)
-          call StructGridPopulateConnection(grid%structured_grid,coupler, &
-                                            connection,iconn,cell_id_ghosted)
+          call StructGridPopulateConnection(grid%structured_grid,connection, &
+                                            coupler%iface,iconn,cell_id_ghosted)
         case(UNSTRUCTURED)
       end select
     enddo
@@ -839,7 +842,7 @@ subroutine GridLocalizeRegions(region_list,grid,option)
         call printErrMsg(option,"Mismatch in number of cells in block region")
 
     else
-
+#if 0
       allocate(temp_int_array(region%num_cells))
       temp_int_array = 0
       if (grid%igrid == STRUCTURED) then
@@ -882,6 +885,7 @@ subroutine GridLocalizeRegions(region_list,grid,option)
         region%cell_ids(1:local_count) = temp_int_array(1:local_count)
       endif
       deallocate(temp_int_array)
+#endif        
     endif
     
     if (region%num_cells == 0 .and. associated(region%cell_ids)) &
@@ -1019,6 +1023,8 @@ subroutine GridCreateNaturalToGhostedHash(grid,option)
   integer :: local_ghosted_id, natural_id
   integer :: num_in_hash, num_ids_per_hash, hash_id, id
   integer, pointer :: hash(:,:,:), temp_hash(:,:,:)
+
+  if (associated(grid%hash)) return
 
   ! initial guess of 10% of ids per hash
   num_ids_per_hash = max(grid%nlmax/(grid%num_hash_bins/10),grid%nlmax)

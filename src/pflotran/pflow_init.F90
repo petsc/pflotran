@@ -369,6 +369,8 @@ subroutine PflowInit(simulation,filename)
   call GridComputeCoordinates(grid,option)
   call GridComputeVolumes(grid,option)
 
+  ! read any regions provided in external files
+  call readRegionFiles(realization)
   ! clip regions and set up boundary connectivity, distance  
   call GridLocalizeRegions(realization%regions,realization%grid,realization%option)
 
@@ -1274,12 +1276,13 @@ subroutine readInput(simulation,filename)
         else if (fiStringCompare(word,"LIST",4)) then
           word = ""
           call fiReadWord(string,word,.true.,ierr)
-          if (fiStringCompare(word,"FILE",4)) then
-            call fiReadFlotranString(IUNIT1,string,ierr)
+          if (fiStringCompare(word,"file",4)) then
+!            call fiReadFlotranString(IUNIT1,string,ierr)
             call fiReadStringErrorMsg('REGN',ierr)
             call fiReadWord(string,word,.true.,ierr)
             call fiErrorMsg('filename','REGN', ierr)
-            call RegionReadFromFile(region,word)
+            region%filename = word
+            ! this file will be read later in readRegionFiles()          
           else
             call RegionReadFromFile(region,IUNIT1)
           endif            
@@ -2680,26 +2683,7 @@ subroutine assignMaterialPropToRegions(realization)
   strata => realization%strata%first
   if (associated(strata)) then
     if (.not.associated(strata%region) .and. strata%active) then
-      call GridCreateNaturalToGhostedHash(grid,option)
-      status = 0
-      open(unit=fid,file=strata%material_name,status="old",iostat=status)
-      if (status /= 0) then
-        string = "File: " // strata%material_name // " not found."
-        call printErrMsg(option,string)
-      endif
-      do
-        call fiReadFlotranString(fid,string,ierr)
-        if (ierr /= 0) exit
-        call fiReadInt(string,natural_id,ierr)
-        call fiErrorMsg('natural id','STRATA', ierr)
-        ghosted_id = GridGetLocalGhostedIdFromHash(grid,natural_id)
-        if (ghosted_id > 0) then
-          call fiReadInt(string,material_id,ierr)
-          call fiErrorMsg('material id','STRATA', ierr)
-          field%imat(ghosted_id) = material_id
-        endif
-      enddo
-      call GridDestroyHashTable(grid)
+      call readMaterialsFromFile(realization,strata%material_name)
     endif
   endif
     
@@ -3045,5 +3029,100 @@ subroutine initializeSolidReaction(realization)
   endif
   
 end subroutine initializeSolidReaction
+
+! ************************************************************************** !
+!
+! readRegionFiles: Reads in grid cell ids stored in files
+! author: Glenn Hammond
+! date: 1/03/08
+!
+! ************************************************************************** !
+subroutine readRegionFiles(realization)
+
+  use Realization_module
+  use Region_module
+  use HDF5_module
+
+  implicit none
+
+  type(realization_type) :: realization
+  
+  type(region_type), pointer :: region
+  
+  region => realization%regions%first
+  do 
+    if (.not.associated(region)) exit
+    if (len_trim(region%filename) > 1) then
+      if (index(region%filename,'.h5') > 0) then
+        call HDF5ReadRegionFromFile(realization,region,region%filename)
+      else
+        call RegionReadFromFile(region,region%filename)
+      endif
+    endif
+    region => region%next
+  enddo
+
+end subroutine readRegionFiles
+
+! ************************************************************************** !
+!
+! readMaterialsFromFile: Reads in grid cell materials
+! author: Glenn Hammond
+! date: 1/03/08
+!
+! ************************************************************************** !
+subroutine readMaterialsFromFile(realization,filename)
+
+  use Realization_module
+  use Field_module
+  use Grid_module
+  use Option_module
+  use Fileio_module
+
+  use HDF5_module
+  
+  implicit none
+  
+  type(realization_type) realization
+  character(len=MAXWORDLENGTH) :: filename
+  
+  type(field_type), pointer :: field
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  character(len=MAXSTRINGLENGTH) :: string
+  integer :: ghosted_id, natural_id, material_id
+  integer :: fid = 86
+  integer :: status, ierr
+
+  field => realization%field
+  grid => realization%grid
+  option => realization%option
+
+  if (index(filename,'.h5') > 0) then
+    call HDF5ReadMaterialsFromFile(realization,filename)
+  else
+    call GridCreateNaturalToGhostedHash(grid,option)
+    status = 0
+    open(unit=fid,file=filename,status="old",iostat=status)
+    if (status /= 0) then
+      string = "File: " // filename // " not found."
+      call printErrMsg(option,string)
+    endif
+    do
+      call fiReadFlotranString(fid,string,ierr)
+      if (ierr /= 0) exit
+      call fiReadInt(string,natural_id,ierr)
+      call fiErrorMsg('natural id','STRATA', ierr)
+      ghosted_id = GridGetLocalGhostedIdFromHash(grid,natural_id)
+      if (ghosted_id > 0) then
+        call fiReadInt(string,material_id,ierr)
+        call fiErrorMsg('material id','STRATA', ierr)
+        field%imat(ghosted_id) = material_id
+      endif
+    enddo
+    call GridDestroyHashTable(grid)
+  endif
+  
+end subroutine readMaterialsFromFile
 
 end module Init_module

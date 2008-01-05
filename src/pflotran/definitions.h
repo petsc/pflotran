@@ -93,3 +93,5 @@
 ! HDF5 stuff
 #define HDF5_READ_BUFFER_SIZE 1000000
 !#define HDF5_BROADCAST
+
+#define HASH

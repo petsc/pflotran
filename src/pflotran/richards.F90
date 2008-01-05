@@ -2539,8 +2539,8 @@ subroutine computeAuxVar(x,aux_var,iphase,saturation_function,option)
   pw = option%pref
   ds_dp = 0.d0
   dkr_dp = 0.d0
-!  if (aux_var%pc > 0.d0) then
-  if (aux_var%pc > 1.d0) then
+  if (aux_var%pc > 0.d0) then
+!  if (aux_var%pc > 1.d0) then
     iphase = 3
     call SaturationFunctionCompute(aux_var%pres,aux_var%sat,kr, &
                                    ds_dp,dkr_dp, &
