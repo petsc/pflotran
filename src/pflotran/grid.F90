@@ -341,7 +341,7 @@ subroutine GridComputeCouplerConnections(grid,option,coupler_list)
       select case(grid%igrid)
         case(STRUCTURED)
           call StructGridPopulateConnection(grid%structured_grid,connection, &
-                                            coupler%iface,iconn,cell_id_ghosted)
+                                            iface,iconn,cell_id_ghosted)
         case(UNSTRUCTURED)
       end select
     enddo
