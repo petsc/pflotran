@@ -434,6 +434,9 @@ subroutine OutputVelocitiesTecplot(realization)
                '"vgy [m/y]",' // &
                '"vgz [m/y]"'
     endif
+        if (associated(field%imat)) then
+          string = trim(string) // ',"Material_ID"'
+        endif
     write(IUNIT3,'(a)') trim(string)
   
     ! write zone header
