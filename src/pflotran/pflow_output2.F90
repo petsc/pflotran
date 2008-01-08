@@ -427,10 +427,10 @@ subroutine OutputVelocitiesTecplot(realization)
              '"Z [m]",' // &
              '"vlx [m/y]",' // &
              '"vly [m/y]",' // &
-             '"vlz [m/y]",'
+             '"vlz [m/y]"'
     if (option%nphase > 1) then
       string = trim(string) // &
-               '"vgx [m/y]",' // &
+               ',"vgx [m/y]",' // &
                '"vgy [m/y]",' // &
                '"vgz [m/y]"'
     endif
