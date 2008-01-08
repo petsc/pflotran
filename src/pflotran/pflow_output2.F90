@@ -377,6 +377,7 @@ subroutine OutputVelocitiesTecplot(realization)
   use Realization_module
   use Grid_module
   use Option_module
+  use Field_module
   
   implicit none
 
@@ -386,6 +387,7 @@ subroutine OutputVelocitiesTecplot(realization)
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
+  type(field_type), pointer :: field
   type(output_option_type), pointer :: output_option
   character(len=MAXNAMELENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: string
@@ -395,6 +397,7 @@ subroutine OutputVelocitiesTecplot(realization)
   real*8, pointer :: vec_ptr(:)
   
   grid => realization%grid
+  field => realization%field
   option => realization%option
   output_option => realization%output_option
   
@@ -486,6 +489,14 @@ subroutine OutputVelocitiesTecplot(realization)
     call GridGlobalToNatural(grid,global,natural,ONEDOF)
     call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
   endif
+
+  ! material id
+  if (associated(field%imat)) then
+    call GetVarFromArray(realization,global,MATERIAL_ID,0)
+    call GridGlobalToNatural(grid,global,natural,ONEDOF)
+    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_INTEGER)
+  endif
+  
   
   call VecDestroy(natural,ierr)
   call VecDestroy(global,ierr)
