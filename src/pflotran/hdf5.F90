@@ -912,6 +912,15 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
 
   allocate(integer_array(num_indices))
   integer_array = 0
+  string = "Cell Ids"
+  if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
+  call HDF5ReadIntegerArray(option,grp_id2,string, &
+                            0,indices,num_indices, &
+                            integer_array)
+  region%cell_ids => integer_array
+                            
+  allocate(integer_array(num_indices))
+  integer_array = 0
   string = "Face Ids"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
   call HDF5ReadIntegerArray(option,grp_id2,string, &
@@ -919,9 +928,8 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
                             integer_array)
                             
   region%faces => integer_array
-  region%cell_ids => indices
   region%num_cells = num_indices
-!  deallocate(indices)
+  deallocate(indices)
   nullify(indices)
 
   if (option%myrank == 0) print *, 'Closing group: ' // trim(region%name)
