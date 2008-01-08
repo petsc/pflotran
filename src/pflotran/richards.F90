@@ -2473,11 +2473,9 @@ subroutine RichardsGetVarFromArray(realization,vec,ivar,isubvar)
       enddo
       call VecRestoreArrayF90(field%iphas_loc,vec2_ptr,ierr)
     case(MATERIAL_ID)
-      call VecGetArrayF90(field%iphas_loc,vec2_ptr,ierr)
       do local_id=1,grid%nlmax
         vec_ptr(local_id) = field%imat(grid%nL2G(local_id))
       enddo
-      call VecRestoreArrayF90(field%iphas_loc,vec2_ptr,ierr)
   end select
   
   call VecRestoreArrayF90(vec,vec_ptr,ierr)

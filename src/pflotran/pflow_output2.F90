@@ -41,7 +41,7 @@ module Output_module
   integer :: hdf5_err
   PetscErrorCode :: ierr
   
-  public :: Output, OutputTecplot, OutputHDF5
+  public :: Output, OutputTecplot, OutputHDF5, OutputVectorTecplot
   
 contains
 
@@ -794,6 +794,104 @@ end subroutine OutputFluxVelocitiesTecplot
 
 ! ************************************************************************** !
 !
+! OutputVectorTecplot: Print a vector to a Tecplot file in BLOCK format
+! author: Glenn Hammond
+! date: 10/25/07
+!
+! ************************************************************************** !
+subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
+ 
+  use Realization_module
+  use Option_module
+  use Field_module
+  use Grid_module
+  
+  implicit none
+
+#include "definitions.h"
+
+  character(len=MAXNAMELENGTH) :: filename
+  character(len=MAXNAMELENGTH) :: dataset_name
+  type(realization_type) :: realization
+  Vec :: vector
+
+  character(len=MAXSTRINGLENGTH) :: string
+  type(option_type), pointer :: option
+  type(grid_type), pointer :: grid
+  type(field_type), pointer :: field
+  Vec :: natural
+  Vec :: global
+  integer, parameter :: fid=86
+
+  option => realization%option
+  grid => realization%grid
+  field => realization%field
+  
+  ! open file
+  if (option%myrank == 0) then
+    print *, '--> write tecplot output file: ', filename
+    open(unit=fid,file=filename,action="write")
+  
+    ! write header
+    ! write title
+    write(fid,'(''TITLE = "PFLOTRAN Vector"'')')
+    ! write variables
+    string = 'VARIABLES=' // &
+             '"X [m]",' // &
+             '"Y [m]",' // &
+             '"Z [m]",'
+    string = trim(string) // '"' // trim(dataset_name) // '"'
+    if (associated(field%imat)) then
+      string = trim(string) // ',"Material_ID"'
+    endif
+    write(fid,'(a)') trim(string)
+  
+    ! write zone header
+    write(string,'(''ZONE T= "'',a,''",'','' I='',i4,'', J='',i4, &
+                 &'', K='',i4,'','')') trim(dataset_name), &
+                 grid%structured_grid%nx,grid%structured_grid%ny, &
+                 grid%structured_grid%nz 
+    string = trim(string) // ' DATAPACKING=BLOCK'
+    write(fid,'(a)') trim(string)
+
+  endif
+  
+  ! write blocks
+  ! write out data sets  
+  call GridCreateVector(grid,ONEDOF,global,GLOBAL)  
+  call GridCreateVector(grid,ONEDOF,natural,NATURAL)    
+
+  ! write out coorindates
+  call GetCoordinates(grid,global,X_COORDINATE)
+  call GridGlobalToNatural(grid,global,natural,ONEDOF)
+  call WriteTecplotDataSetFromVec(fid,realization,natural,TECPLOT_REAL)
+
+  call GetCoordinates(grid,global,Y_COORDINATE)
+  call GridGlobalToNatural(grid,global,natural,ONEDOF)
+  call WriteTecplotDataSetFromVec(fid,realization,natural,TECPLOT_REAL)
+
+  call GetCoordinates(grid,global,Z_COORDINATE)
+  call GridGlobalToNatural(grid,global,natural,ONEDOF)
+  call WriteTecplotDataSetFromVec(fid,realization,natural,TECPLOT_REAL)
+
+  call GridGlobalToNatural(grid,vector,natural,ONEDOF)
+  call WriteTecplotDataSetFromVec(fid,realization,natural,TECPLOT_REAL)
+
+  if (associated(field%imat)) then
+    call GetVarFromArray(realization,global,MATERIAL_ID,0)
+    call GridGlobalToNatural(grid,global,natural,ONEDOF)
+    call WriteTecplotDataSetFromVec(fid,realization,natural,TECPLOT_INTEGER)
+  endif
+  
+  call VecDestroy(natural,ierr)
+  call VecDestroy(global,ierr)
+
+  close(fid)
+  
+end subroutine OutputVectorTecplot
+
+! ************************************************************************** !
+!
 ! WriteTecplotDataSetFromVec: Writes data from a Petsc Vec within a block
 !                             of a Tecplot file
 ! author: Glenn Hammond
@@ -896,7 +994,7 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
         istart = iend+1
         if (iend+10 > local_size) exit
         iend = istart+9
-        write(IUNIT3,'(10(i3,x))') integer_data(istart:iend)
+        write(fid,'(10(i3,x))') integer_data(istart:iend)
       enddo
       ! shift remaining data to front of array
       integer_data(1:local_size-iend) = integer_data(iend+1:local_size)
@@ -907,7 +1005,7 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
         istart = iend+1
         if (iend+10 > local_size) exit
         iend = istart+9
-        write(IUNIT3,'(10(es11.4,x))') real_data(istart:iend)
+        write(fid,'(10(es11.4,x))') real_data(istart:iend)
       enddo
       ! shift remaining data to front of array
       real_data(1:local_size-iend) = real_data(iend+1:local_size)
@@ -929,7 +1027,7 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
           istart = iend+1
           if (iend+10 > num_in_array) exit
           iend = istart+9
-          write(IUNIT3,'(10(i3,x))') integer_data(istart:iend)
+          write(fid,'(10(i3,x))') integer_data(istart:iend)
         enddo
         if (iend > 0) then
           integer_data(1:num_in_array-iend) = integer_data(iend+1:num_in_array)
@@ -948,7 +1046,7 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
           istart = iend+1
           if (iend+10 > num_in_array) exit
           iend = istart+9
-          write(IUNIT3,'(10(es11.4,x))') real_data(istart:iend)
+          write(fid,'(10(es11.4,x))') real_data(istart:iend)
         enddo
         if (iend > 0) then
           real_data(1:num_in_array-iend) = real_data(iend+1:num_in_array)
@@ -959,10 +1057,10 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
     ! Print the remaining values, if they exist
     if (datatype == 0) then
       if (num_in_array > 0) &
-        write(IUNIT3,'(10(i3,x))') integer_data(1:num_in_array)
+        write(fid,'(10(i3,x))') integer_data(1:num_in_array)
     else
       if (num_in_array > 0) &
-        write(IUNIT3,'(10(es11.4,x))') real_data(1:num_in_array)
+        write(fid,'(10(es11.4,x))') real_data(1:num_in_array)
     endif
   else
     if (datatype == TECPLOT_INTEGER) then

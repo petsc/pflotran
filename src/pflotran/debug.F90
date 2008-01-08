@@ -12,6 +12,8 @@ module Debug_module
     logical :: norm_Jacobian
 
     logical :: print_numerical_derivatives
+
+    logical :: print_couplers
   end type pflow_debug_type
   
   type, public :: ptran_debug_type
@@ -52,6 +54,8 @@ function DebugCreatePflow()
   
   debug%print_numerical_derivatives = .false.
   
+  debug%print_couplers = .false.
+
   DebugCreatePflow => debug
 
 end function DebugCreatePflow
@@ -120,6 +124,8 @@ subroutine DebugReadPflow(debug,fid)
         debug%matview_Jacobian = .true.
       case('PRINT_JACOBIAN_NORM','NORM_JACOBIAN')
         debug%norm_Jacobian = .true.
+      case('PRINT_COUPLERS','PRINT_COUPLER')
+        debug%print_couplers = .true.
       case('PRINT_JACOBIAN_DETAILED','MATVIEW_JACOBIAN_DETAILED','VIEW_JACOBIAN_DETAILED')
         debug%matview_Jacobian_detailed = .true.
       case('PRINT_NUMERICAL_DERIVATIVES','VIEW_NUMERICAL_DERIVATIVES')

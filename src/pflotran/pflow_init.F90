@@ -47,6 +47,7 @@ subroutine PflowInit(simulation,filename)
   use Connection_module
   use Coupler_module
   use General_Grid_module
+  use Debug_module
   
   use span_wagner_module
   use MPHASE_module
@@ -70,6 +71,7 @@ subroutine PflowInit(simulation,filename)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
+  type(pflow_debug_type), pointer :: debug
   
   ISColoring :: iscoloring
 
@@ -89,6 +91,7 @@ subroutine PflowInit(simulation,filename)
   realization => simulation%realization
   option => realization%option
   field => realization%field
+  debug => realization%debug
   
   ! read MODE,GRID,PROC,COMP,PHAS cards
   call readRequiredCardsFromInput(realization,filename,mcomp,mphas)
@@ -885,6 +888,12 @@ subroutine PflowInit(simulation,filename)
   call initializeSolidReaction(realization)
 
   if (option%myrank == 0) write(*,'("  Finished setting up ")')
+
+  if (debug%print_couplers) then
+    call verifyCouplers(realization,realization%initial_conditions)
+    call verifyCouplers(realization,realization%boundary_conditions)
+    call verifyCouplers(realization,realization%source_sinks)
+  endif
   
 end subroutine PflowInit
 
@@ -2988,6 +2997,64 @@ subroutine assignInitialConditions(realization)
   end select
 #endif
 end subroutine assignInitialConditions
+
+! ************************************************************************** !
+!
+! verifyCouplers: Verifies the connectivity of a coupler
+! author: Glenn Hammond
+! date: 1/8/08
+!
+! ************************************************************************** !
+subroutine verifyCouplers(realization,coupler_list)
+
+  use Realization_module
+  use Option_module 
+  use Coupler_module
+  use Grid_module
+  use Output_module
+
+  implicit none
+
+  type(realization_type) :: realization
+  type(coupler_list_type) :: coupler_list
+
+  type(option_type), pointer :: option
+  type(grid_type), pointer :: grid
+  type(coupler_type), pointer :: coupler
+  character(len=MAXWORDLENGTH) :: filename
+  character(len=MAXWORDLENGTH) :: dataset_name
+  integer :: iconn, local_id
+  Vec :: global
+  PetscScalar, pointer :: vec_ptr(:)
+  PetscErrorCode :: ierr
+
+  grid => realization%grid
+
+  call GridCreateVector(grid,ONEDOF,global,GLOBAL)
+
+  coupler => coupler_list%first
+
+  do
+    if (.not.associated(coupler)) exit
+
+    call VecZeroEntries(global,ierr)
+    call VecGetArrayF90(global,vec_ptr,ierr) 
+    do iconn = 1, coupler%connection%num_connections
+      local_id = coupler%connection%id_dn(iconn)
+      vec_ptr(local_id) = coupler%id
+    enddo
+    call VecRestoreArrayF90(global,vec_ptr,ierr) 
+    dataset_name = trim(coupler%condition%name) // '_' // &
+                   trim(coupler%region%name)
+    filename = trim(dataset_name) // '.tec'
+    call OutputVectorTecplot(filename,dataset_name,realization,global)
+
+    coupler => coupler%next
+  enddo
+
+  call VecDestroy(global,ierr)
+
+end subroutine verifyCouplers
 
 ! ************************************************************************** !
 !
