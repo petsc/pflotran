@@ -22,9 +22,17 @@ module HDF5_module
             HDF5WriteStructuredDataSet, &
             HDF5ReadRegionFromFile, &
             HDF5ReadMaterialsFromFile
+
+#else
+
+  public :: HDF5ReadRegionFromFile, &
+            HDF5ReadMaterialsFromFile
+
+#endif
   
 contains
 
+#ifdef USE_HDF5
 ! ************************************************************************** !
 !
 ! HDF5MapLocalToNaturalIndices: Set up indices array that maps local cells to 
@@ -842,6 +850,10 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   
   implicit none
 
+#include "include/finclude/petsc.h"
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
+
   type(realization_type) :: realization
   type(region_type) :: region
   character(len=MAXWORDLENGTH) :: filename
@@ -869,7 +881,9 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
     print *
   endif
   stop
-#endif  
+
+#else
+
 
   option => realization%option
   grid => realization%grid
@@ -946,6 +960,7 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   call h5close_f(hdf5_err)
 
   call GridDestroyHashTable(grid)
+#endif  
 
 end subroutine HDF5ReadRegionFromFile
 
@@ -968,6 +983,10 @@ subroutine HDF5ReadMaterialsFromFile(realization,filename)
   use Field_module
   
   implicit none
+
+#include "include/finclude/petsc.h"
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
 
   type(realization_type) :: realization
   character(len=MAXWORDLENGTH) :: filename
@@ -999,7 +1018,8 @@ subroutine HDF5ReadMaterialsFromFile(realization,filename)
     print *
   endif
   stop
-#endif  
+
+#else
 
   nullify(indices)
 
@@ -1061,6 +1081,7 @@ subroutine HDF5ReadMaterialsFromFile(realization,filename)
   call h5close_f(hdf5_err)
   
   call GridDestroyHashTable(grid)
+#endif  
 
 end subroutine HDF5ReadMaterialsFromFile
 
