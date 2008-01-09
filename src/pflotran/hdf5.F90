@@ -857,7 +857,7 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   integer(HID_T) :: prop_id
 #endif
 
-  integer :: num_indices
+  integer :: num_indices, i, local_id
   integer, pointer :: indices(:)
   integer, pointer :: integer_array(:)
   
@@ -917,6 +917,10 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   call HDF5ReadIntegerArray(option,grp_id2,string, &
                             0,indices,num_indices, &
                             integer_array)
+  ! convert cell ids from natural to local
+  do i=1,num_indices
+    integer_array(i) = grid%nG2L(GridGetLocalGhostedIdFromHash(grid,integer_array(i))) 
+  enddo
   region%cell_ids => integer_array
                             
   allocate(integer_array(num_indices))
