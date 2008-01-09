@@ -497,7 +497,7 @@ subroutine RichardsNumericalJacobianTest(xx,realization)
   call MatSetType(A,MATAIJ,ierr)
   call MatSetFromOptions(A,ierr)
     
-  call RichardsAnalyticalResidual(0,xx,res,realization,ierr)
+  call RichardsAnalyticalResidual(PETSC_NULL_OBJECT,xx,res,realization,ierr)
   call VecGetArrayF90(res,vec2_p,ierr)
   do icell = 1,grid%nlmax
     if (associated(field%imat)) then
@@ -509,7 +509,7 @@ subroutine RichardsNumericalJacobianTest(xx,realization)
       perturbation = vec_p(idof)*perturbation_tolerance
       vec_p(idof) = vec_p(idof)+perturbation
       call vecrestorearrayf90(xx_pert,vec_p,ierr)
-      call richardsanalyticalresidual(0,xx_pert,res_pert,realization,ierr)
+      call richardsanalyticalresidual(PETSC_NULL_OBJECT,xx_pert,res_pert,realization,ierr)
       call vecgetarrayf90(res_pert,vec_p,ierr)
       do idof2 = 1, grid%nlmax*option%ndof
         derivative = (vec_p(idof2)-vec2_p(idof2))/perturbation
