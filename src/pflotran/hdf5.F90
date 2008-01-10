@@ -320,7 +320,7 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
   deallocate(real_buffer)
   
   call h5pclose_f(prop_id,hdf5_err)
-  call h5sclose_f(memory_space_id,hdf5_err)
+  if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
   call h5sclose_f(file_space_id,hdf5_err)
   call h5dclose_f(data_set_id,hdf5_err)
 
@@ -466,7 +466,7 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
   deallocate(integer_buffer)
   
   call h5pclose_f(prop_id,hdf5_err)
-  call h5sclose_f(memory_space_id,hdf5_err)
+  if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
   call h5sclose_f(file_space_id,hdf5_err)
   call h5dclose_f(data_set_id,hdf5_err)
 
