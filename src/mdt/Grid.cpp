@@ -65,6 +65,15 @@ int *Grid::getCellIdsNatural() {
 
 }
 
+int *Grid::getCellIdsNatural1Based() {
+
+  int *natural_ids = getCellIdsNatural();
+  for (int icell=0; icell<num_cells_local; icell++)
+    natural_ids[icell]++;
+  return natural_ids;
+
+}
+
 int *Grid::getCellMaterialIds() {
 
   int *material_ids = new int[num_cells_local];

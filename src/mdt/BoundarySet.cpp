@@ -57,6 +57,27 @@ int *BoundarySet::getCellIdsLocal() {
   return cell_ids;
 }
 
+int *BoundarySet::getCellIdsLocal1Based() {
+  int *cell_ids = getCellIdsLocal();
+  for (int i=0; i<num_connections_local; i++)
+    cell_ids[i] ++;
+  return cell_ids;
+}
+
+int *BoundarySet::getFaceIdsLocal() {
+  int count = 0;
+  int *face_ids = new int[num_connections_local];
+  Connection *cur_connection = list;
+  while (cur_connection) {
+    face_ids[count++] = cur_connection->face;
+    cur_connection = cur_connection->next;
+  }
+  if (count != num_connections_local) {
+    printf("Error: Number of boundary connections incorrect\n");
+  }
+  return face_ids;
+}
+
 int *BoundarySet::getFaceVertexIds(int ivert) {
   int count = 0;
   int *vertex_ids = new int[num_connections_local];

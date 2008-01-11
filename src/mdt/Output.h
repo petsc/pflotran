@@ -23,6 +23,7 @@ public:
   void printBoundarySets();
   void writeIntVectorInNaturalOrder(FILE *fp, Vec v, int one_per_line);
   void printHDFMesh();
+  void printHDFMaterialsAndRegions();
   void printHDFSieveMesh();
 
 private:

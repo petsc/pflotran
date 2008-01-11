@@ -16,7 +16,7 @@ Hanford300::Hanford300(Grid **grid_) {
   double my = 1.;
   double mz = 1.;
 
-#if 1
+#if 0
   int nx = 135;
   int ny = 250;
   int nz = 60;
@@ -28,6 +28,20 @@ Hanford300::Hanford300(Grid **grid_) {
   my = mx;
   mz = .5;
 #endif
+#elif 0
+  int nx = 34;
+  int ny = 64;
+  int nz = 30;
+  mx = 4.;
+  my = mx;
+  mz = 2.;
+#elif 1
+  int nx = 68;
+  int ny = 125;
+  int nz = 30;
+  mx = 2.;
+  my = mx;
+  mz = 2.;
 #else
   int nx = 17;
   int ny = 32;
@@ -158,28 +172,28 @@ void Hanford300::computeWestBoundary(Grid *grid, int complete) {
       if (grid->cells[i].flag & WEST_DIR_WEST_FACE) {
         int vertex_list[5] = {4,0,0,0,0};
         grid->cells[i].getHexFaceVertices(WEST,vertex_list);
-        west->addConnection(new Connection(local_id,vertex_list));
+        west->addConnection(new Connection(local_id,vertex_list,WEST));
       }
       if (complete) {
         if (grid->cells[i].flag & WEST_DIR_SOUTH_FACE) {
           int vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(SOUTH,vertex_list);
-          west->addConnection(new Connection(local_id,vertex_list));
+          west->addConnection(new Connection(local_id,vertex_list,SOUTH));
         }
         if (grid->cells[i].flag & WEST_DIR_NORTH_FACE) {
           int vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(NORTH,vertex_list);
-          west->addConnection(new Connection(local_id,vertex_list));
+          west->addConnection(new Connection(local_id,vertex_list,NORTH));
         }
         if (grid->cells[i].flag & WEST_DIR_BOTTOM_FACE) {
           int vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(BOTTOM,vertex_list);
-          west->addConnection(new Connection(local_id,vertex_list));
+          west->addConnection(new Connection(local_id,vertex_list,BOTTOM));
         }
         if (grid->cells[i].flag & WEST_DIR_TOP_FACE) {
           int vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(TOP,vertex_list);
-          west->addConnection(new Connection(local_id,vertex_list));
+          west->addConnection(new Connection(local_id,vertex_list,TOP));
         }
       }
     }
@@ -200,28 +214,28 @@ void Hanford300::computeEastBoundary(Grid *grid, int complete) {
       if (grid->cells[i].flag & EAST_DIR_EAST_FACE) {
         int vertex_list[5] = {4,0,0,0,0};
         grid->cells[i].getHexFaceVertices(EAST,vertex_list);
-        east->addConnection(new Connection(local_id,vertex_list));
+        east->addConnection(new Connection(local_id,vertex_list,EAST));
       }
       if (complete) {
         if (grid->cells[i].flag & EAST_DIR_SOUTH_FACE) {
           int vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(SOUTH,vertex_list);
-          east->addConnection(new Connection(local_id,vertex_list));
+          east->addConnection(new Connection(local_id,vertex_list,SOUTH));
         }
         if (grid->cells[i].flag & EAST_DIR_NORTH_FACE) {
           int vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(NORTH,vertex_list);
-          east->addConnection(new Connection(local_id,vertex_list));
+          east->addConnection(new Connection(local_id,vertex_list,NORTH));
         }
         if (grid->cells[i].flag & EAST_DIR_BOTTOM_FACE) {
           int vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(BOTTOM,vertex_list);
-          east->addConnection(new Connection(local_id,vertex_list));
+          east->addConnection(new Connection(local_id,vertex_list,BOTTOM));
         }
         if (grid->cells[i].flag & EAST_DIR_TOP_FACE) {
           int vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(TOP,vertex_list);
-          east->addConnection(new Connection(local_id,vertex_list));
+          east->addConnection(new Connection(local_id,vertex_list,TOP));
         }
       }
     }
@@ -242,28 +256,28 @@ void Hanford300::computeSouthBoundary(Grid *grid, int complete) {
       if (grid->cells[i].flag & SOUTH_DIR_SOUTH_FACE) {
         int vertex_list[5] = {4,0,0,0,0};
         grid->cells[i].getHexFaceVertices(SOUTH,vertex_list);
-        south->addConnection(new Connection(local_id,vertex_list));
+        south->addConnection(new Connection(local_id,vertex_list,SOUTH));
       }
       if (complete) {
         if (grid->cells[i].flag & SOUTH_DIR_WEST_FACE) {
           int vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(WEST,vertex_list);
-          south->addConnection(new Connection(local_id,vertex_list));
+          south->addConnection(new Connection(local_id,vertex_list,WEST));
         }
         if (grid->cells[i].flag & SOUTH_DIR_EAST_FACE) {
           int vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(EAST,vertex_list);
-          south->addConnection(new Connection(local_id,vertex_list));
+          south->addConnection(new Connection(local_id,vertex_list,EAST));
         }
         if (grid->cells[i].flag & SOUTH_DIR_BOTTOM_FACE) {
           int vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(BOTTOM,vertex_list);
-          south->addConnection(new Connection(local_id,vertex_list));
+          south->addConnection(new Connection(local_id,vertex_list,BOTTOM));
         }
         if (grid->cells[i].flag & SOUTH_DIR_TOP_FACE) {
           int vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(TOP,vertex_list);
-          south->addConnection(new Connection(local_id,vertex_list));
+          south->addConnection(new Connection(local_id,vertex_list,TOP));
         }
       }
     }
@@ -283,28 +297,28 @@ void Hanford300::computeNorthBoundary(Grid *grid, int complete) {
       if (grid->cells[i].flag & NORTH_DIR_NORTH_FACE) {
         int vertex_list[5] = {4,0,0,0,0};
         grid->cells[i].getHexFaceVertices(NORTH,vertex_list);
-        north->addConnection(new Connection(local_id,vertex_list));
+        north->addConnection(new Connection(local_id,vertex_list,NORTH));
       }
       if (complete) {
         if (grid->cells[i].flag & NORTH_DIR_WEST_FACE) {
           int vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(WEST,vertex_list);
-          north->addConnection(new Connection(local_id,vertex_list));
+          north->addConnection(new Connection(local_id,vertex_list,WEST));
         }
         if (grid->cells[i].flag & NORTH_DIR_EAST_FACE) {
           int vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(EAST,vertex_list);
-          north->addConnection(new Connection(local_id,vertex_list));
+          north->addConnection(new Connection(local_id,vertex_list,EAST));
         }
         if (grid->cells[i].flag & NORTH_DIR_BOTTOM_FACE) {
           int vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(TOP,vertex_list);
-          north->addConnection(new Connection(local_id,vertex_list));
+          north->addConnection(new Connection(local_id,vertex_list,BOTTOM));
         }
         if (grid->cells[i].flag & NORTH_DIR_TOP_FACE) {
           int vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(TOP,vertex_list);
-          north->addConnection(new Connection(local_id,vertex_list));
+          north->addConnection(new Connection(local_id,vertex_list,TOP));
         }
       }
     }
@@ -325,28 +339,28 @@ void Hanford300::computeBottomBoundary(Grid *grid, int complete) {
       if (grid->cells[i].flag & BOTTOM_DIR_BOTTOM_FACE) {
         int vertex_list[5] = {4,0,0,0,0};
         grid->cells[i].getHexFaceVertices(BOTTOM,vertex_list);
-        bottom->addConnection(new Connection(local_id,vertex_list));
+        bottom->addConnection(new Connection(local_id,vertex_list,BOTTOM));
       }
       if (complete) {
         if (grid->cells[i].flag & BOTTOM_DIR_WEST_FACE) {
           int vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(WEST,vertex_list);
-          bottom->addConnection(new Connection(local_id,vertex_list));
+          bottom->addConnection(new Connection(local_id,vertex_list,WEST));
         }
         if (grid->cells[i].flag & BOTTOM_DIR_EAST_FACE) {
           int vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(EAST,vertex_list);
-          bottom->addConnection(new Connection(local_id,vertex_list));
+          bottom->addConnection(new Connection(local_id,vertex_list,EAST));
         }
         if (grid->cells[i].flag & BOTTOM_DIR_SOUTH_FACE) {
           int vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(SOUTH,vertex_list);
-          bottom->addConnection(new Connection(local_id,vertex_list));
+          bottom->addConnection(new Connection(local_id,vertex_list,SOUTH));
         }
         if (grid->cells[i].flag & BOTTOM_DIR_NORTH_FACE) {
           int vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(NORTH,vertex_list);
-          bottom->addConnection(new Connection(local_id,vertex_list));
+          bottom->addConnection(new Connection(local_id,vertex_list,NORTH));
         }
       }
     }
@@ -367,7 +381,7 @@ void Hanford300::computeTopBoundary(Grid *grid, int complete) {
       if (grid->cells[i].flag & TOP_DIR_TOP_FACE) {
         int vertex_list[5] = {4,0,0,0,0};
         grid->cells[i].getHexFaceVertices(TOP,vertex_list);
-        top->addConnection(new Connection(local_id,vertex_list));
+        top->addConnection(new Connection(local_id,vertex_list,TOP));
       }
 #if 0
       if (grid->cells[i].flag & TOP_DIR_WEST_FACE) {

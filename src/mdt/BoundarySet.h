@@ -21,6 +21,8 @@ public:
   int getNumberOfConnectionsGlobal();
   void setCondition(Condition *condition_);
   int *getCellIdsLocal();
+  int *getCellIdsLocal1Based();
+  int *getFaceIdsLocal();
   int *getFaceVertexIds(int ivert);
   void printInfo();
 
