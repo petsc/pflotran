@@ -15,8 +15,10 @@ ifdef debug_convergence
   DEBUG_CONVERGENCE_FLAGS = -DGLENN
 endif
 ifdef hdf5
-  HDF5_FLAGS = -I$(HDF5_INCLUDE) -I$(HDF5_LIB) -DUSE_HDF5
-  HDF5_LIBS = -L$(HDF5_LIB) -lhdf5_fortran -lhdf5 -lz  
+#  HDF5_FLAGS = -I$(HDF5_INCLUDE) -I$(HDF5_LIB) -DUSE_HDF5
+#  HDF5_LIBS = -L$(HDF5_LIB) -lhdf5_fortran -lhdf5 -lz  
+  HDF5_FLAGS = $(HDF5_FLIB) -DUSE_HDF5
+  HDF5_LIBS = $(HDF5_FLIB) -lhdf5_fortran -lhdf5 -lz
 endif
 ifdef compile_broken
   COMPILE_BROKEN_FLAGS = -DCOMPILE_BROKEN
