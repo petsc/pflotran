@@ -53,37 +53,37 @@ contains
     case ('GRID')
 
       if (myrank == 0) print *, card
-      call fiReadStringErrorMsg('GRID',ierr)
+      call fiReadStringErrorMsg(myrank,'GRID',ierr)
       
       call fiReadInt(string,igeom,ierr)
-      call fiDefaultMsg('igeom',ierr)
+      call fiDefaultMsg(myrank,'igeom',ierr)
       
       call fiReadInt(string,nx,ierr)
-      call fiDefaultMsg('nx',ierr)
+      call fiDefaultMsg(myrank,'nx',ierr)
       
       call fiReadInt(string,ny,ierr)
-      call fiDefaultMsg('ny',ierr)
+      call fiDefaultMsg(myrank,'ny',ierr)
       
       call fiReadInt(string,nz,ierr)
-      call fiDefaultMsg('nz',ierr)
+      call fiDefaultMsg(myrank,'nz',ierr)
       
       call fiReadInt(string,nphase,ierr)
-      call fiDefaultMsg('nphase',ierr)
+      call fiDefaultMsg(myrank,'nphase',ierr)
 
       call fiReadInt(string,nspec,ierr)
-      call fiDefaultMsg('nspec',ierr)
+      call fiDefaultMsg(myrank,'nspec',ierr)
 
       call fiReadInt(string,npricomp,ierr)
-      call fiDefaultMsg('npricomp',ierr)
+      call fiDefaultMsg(myrank,'npricomp',ierr)
 
       call fiReadInt(string,ndof,ierr)
-      call fiDefaultMsg('ndof',ierr)
+      call fiDefaultMsg(myrank,'ndof',ierr)
       
       call fiReadInt(string,idcdm,ierr)
-      call fiDefaultMsg('idcdm',ierr)
+      call fiDefaultMsg(myrank,'idcdm',ierr)
 
       call fiReadInt(string,itable,ierr)
-      call fiDefaultMsg('itable',ierr)
+      call fiDefaultMsg(myrank,'itable',ierr)
 
       gridread_flag = 1
       ierr = 0
@@ -104,14 +104,14 @@ contains
     
       if (myrank == 0) print *, card
 
-      call fiReadStringErrorMsg('PROC',ierr)
+      call fiReadStringErrorMsg(myrank,'PROC',ierr)
 
       call fiReadInt(string,npx,ierr)
-      call fiDefaultMsg('npx',ierr)
+      call fiDefaultMsg(myrank,'npx',ierr)
       call fiReadInt(string,npy,ierr)
-      call fiDefaultMsg('npy',ierr)
+      call fiDefaultMsg(myrank,'npy',ierr)
       call fiReadInt(string,npz,ierr)
-      call fiDefaultMsg('npz',ierr)
+      call fiDefaultMsg(myrank,'npz',ierr)
  
       if (myrank == 0) &
       write(IUNIT2,'(/," *PROC",/, &
@@ -133,12 +133,12 @@ contains
       mcomp =0
       do
         call fiReadFlotranString(IUNIT1,string,ierr)
-        call fiReadStringErrorMsg('COMP',ierr)
+        call fiReadStringErrorMsg(myrank,'COMP',ierr)
       
         if (string(1:1) == '.' .or. string(1:1) == '/') exit
 
         call fiReadWord(string,name,.true.,ierr)
-        call fiErrorMsg('namcx','GAS',ierr)
+        call fiErrorMsg(myrank,'namcx','GAS',ierr)
         
          call fiWordToUpper(name) 
         select case(name(1:len_trim(name)))
@@ -168,12 +168,12 @@ contains
       mphas =0
       do
         call fiReadFlotranString(IUNIT1,string,ierr)
-        call fiReadStringErrorMsg('phase',ierr)
+        call fiReadStringErrorMsg(myrank,'phase',ierr)
       
         if (string(1:1) == '.' .or. string(1:1) == '/') exit
 
         call fiReadWord(string,name,.true.,ierr)
-        call fiErrorMsg('namcx','phase',ierr)
+        call fiErrorMsg(myrank,'namcx','phase',ierr)
         
          call fiWordToUpper(name) 
          
