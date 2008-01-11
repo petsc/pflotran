@@ -48,6 +48,7 @@ module Richards_Analytical_module
 
   public :: createRichardsZeroArray
   integer, save :: n_zero_rows = 0
+  logical, save :: inactive_cells_exist = .false.
   integer, pointer, save :: zero_rows_local(:)  ! 1-based indexing
   integer, pointer, save :: zero_rows_local_ghosted(:) ! 0-based indexing
 
@@ -1808,7 +1809,7 @@ subroutine RichardsAnalyticalResidual(snes,xx,r,realization,ierr)
     enddo
   endif
 
-  if (n_zero_rows > 0) then
+  if (inactive_cells_exist) then
     do i=1,n_zero_rows
       r_p(zero_rows_local(i)) = 0.d0
     enddo
@@ -2277,7 +2278,7 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
 #else
-  if (n_zero_rows > 0) then
+  if (inactive_cells_exist) then
     f_up = 1.d0
     call MatZeroRowsLocal(A,n_zero_rows,zero_rows_local_ghosted,f_up,ierr) 
   endif
@@ -2327,6 +2328,7 @@ subroutine createRichardsZeroArray(realization)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
+  integer :: flag = 0, ierr
     
   grid => realization%grid
   option => realization%option
@@ -2384,6 +2386,10 @@ subroutine createRichardsZeroArray(realization)
     enddo
 #endif
   endif
+
+  call MPI_Allreduce(n_zero_rows,flag,1,MPI_INTEGER,MPI_MAX, &
+                     PETSC_COMM_WORLD,ierr)
+  if (flag > 0) inactive_cells_exist = .true.
 
   if (ncount /= n_zero_rows) then
     print *, 'Error:  Mismatch in non-zero row count!', ncount, n_zero_rows
