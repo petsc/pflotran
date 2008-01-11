@@ -34,15 +34,17 @@ contains
 ! date: 11/06/00
 !
 ! ************************************************************************** !
-subroutine fiDefaultMsg(string, ierr)
+subroutine fiDefaultMsg(myrank, string, ierr)
 
   implicit none
 
   character(len=*) :: string
+  integer :: myrank
   integer :: i, ierr
 
   if (ierr /= 0) then
-    print *, '"', (string(i:i),i=1,len_trim(string)), '" set to default value.'
+    if (myrank == 0) &
+      print *, '"', (string(i:i),i=1,len_trim(string)), '" set to default value.'
     ierr = 0
   endif
 
@@ -55,16 +57,17 @@ end subroutine fiDefaultMsg
 ! date: 11/06/00
 !
 ! ************************************************************************** !
-subroutine fiErrorMsg(string1, string2, ierr)
+subroutine fiErrorMsg(myrank, string1, string2, ierr)
 
   implicit none
 
   character(len=*) :: string1, string2
-  integer :: i, ierr
+  integer :: i, myrank, ierr
 
   if (ierr /= 0) then
-    print *, 'Error reading "', (string1(i:i),i=1,len_trim(string1)), &
-             '" under keyword: ',(string2(i:i),i=1,len_trim(string2)), '.'
+    if (myrank == 0) &
+      print *, 'Error reading "', (string1(i:i),i=1,len_trim(string1)), &
+               '" under keyword: ',(string2(i:i),i=1,len_trim(string2)), '.'
     stop
   endif
 
@@ -77,16 +80,17 @@ end subroutine fiErrorMsg
 ! date: 11/06/00
 !
 ! ************************************************************************** !
-subroutine fiReadStringErrorMsg(string, ierr)
+subroutine fiReadStringErrorMsg(myrank, string, ierr)
 
   implicit none
 
   character(len=*) :: string
-  integer :: i, ierr
+  integer :: i, myrank, ierr
 
   if (ierr /= 0) then
-    print *, 'Error reading in string in (', &
-             (string(i:i),i=1,len_trim(string)), ').'
+    if (myrank == 0) &
+      print *, 'Error reading in string in (', &
+               (string(i:i),i=1,len_trim(string)), ').'
     stop
   endif
 
@@ -99,16 +103,17 @@ end subroutine fiReadStringErrorMsg
 ! date: 11/06/00
 !
 ! ************************************************************************** !
-subroutine fiFindStringErrorMsg(string, ierr)
+subroutine fiFindStringErrorMsg(myrank, string, ierr)
 
   implicit none
 
   character(len=*) :: string
-  integer :: i, ierr
+  integer :: i, myrank, ierr
 
   if (ierr /= 0) then
-    print *, 'Error: Card (', (string(i:i),i=1,len_trim(string)), ') not ', &
-             'found in file.'
+    if (myrank == 0) &
+      print *, 'Error: Card (', (string(i:i),i=1,len_trim(string)), ') not ', &
+               'found in file.'
     stop
   endif
 
@@ -189,11 +194,11 @@ subroutine fiReadMultDouble(fid, string, doubles, n, variable_name, keyword, &
         i = len_trim(variable_name)
         short_string(1:i) = variable_name(1:i)
         short_string(i+1:) = ' (too few values)'
-        call fiErrorMsg(short_string,keyword,ierr)
+        call fiErrorMsg(0,short_string,keyword,ierr)
       endif
       ierr = 0
       call fiReadFlotranString(fid,string,ierr)
-      call fiReadStringErrorMsg(subroutine_name,ierr)
+      call fiReadStringErrorMsg(0,subroutine_name,ierr)
       newline = .true.
     else
       newline = .false.
@@ -711,7 +716,7 @@ subroutine fiReadDBaseName(fid, string, name, return_blank_error, ierr)
   
   if(len_trim(string) == 0) then
     call fiReadDBaseString(fid,string,ierr)
-    call fiReadStringErrorMsg('trdatbse',ierr)
+    call fiReadStringErrorMsg(0,'trdatbse',ierr)
   endif
 
   ierr = 0
@@ -838,7 +843,7 @@ subroutine fiReadDBaseInt(fid, string, int, ierr)
 
   if(len_trim(string) == 0) then
     call fiReadDBaseString(fid,string,ierr)
-    call fiReadStringErrorMsg('trdatbse',ierr)
+    call fiReadStringErrorMsg(0,'trdatbse',ierr)
   endif
 
   call fiReadDBaseWord(fid,string,word,.false.,ierr)
@@ -866,7 +871,7 @@ subroutine fiReadDBaseDouble(fid, string, double, ierr)
 
   if(len_trim(string) == 0) then
     call fiReadDBaseString(fid,string,ierr)
-    call fiReadStringErrorMsg('trdatbse',ierr)
+    call fiReadStringErrorMsg(0,'trdatbse',ierr)
   endif
 
   call fiReadDBaseWord(fid,string,word,.false.,ierr)

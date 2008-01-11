@@ -99,14 +99,16 @@ end subroutine StrataInitList
 ! date: 11/01/07
 !
 ! ************************************************************************** !
-subroutine StrataRead(strata,fid)
+subroutine StrataRead(strata,fid,option)
 
   use Fileio_module
+  use Option_module
   
   implicit none
   
   type(strata_type) :: strata
   integer :: fid
+  type(option_type) :: option
   
   character(len=MAXSTRINGLENGTH) :: string, error_string
   character(len=MAXWORDLENGTH) :: keyword, word, word2
@@ -122,16 +124,16 @@ subroutine StrataRead(strata,fid)
         fiStringCompare(string,'END',3)) exit  
 
     call fiReadWord(string,keyword,.true.,ierr)
-    call fiErrorMsg('keyword','STRATA', ierr)   
+    call fiErrorMsg(option%myrank,'keyword','STRATA', ierr)   
       
     select case(trim(keyword))
     
       case('REGION')
         call fiReadWord(string,strata%region_name,.true.,ierr)
-        call fiErrorMsg('region name','STRATA', ierr)
+        call fiErrorMsg(option%myrank,'region name','STRATA', ierr)
       case('MATERIAL')
         call fiReadWord(string,word,.true.,ierr)
-        call fiErrorMsg('material name','STRATA', ierr)
+        call fiErrorMsg(option%myrank,'material name','STRATA', ierr)
         strata%material_name = word
       case('INACTIVE')
         strata%active = .false.

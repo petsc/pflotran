@@ -942,41 +942,41 @@ subroutine readRequiredCardsFromInput(realization,filename,mcomp,mphas)
   ! MODE information
   string = "MODE"
   call fiFindStringInFile(IUNIT1,string,ierr)
-  call fiFindStringErrorMsg(string,ierr)
+  call fiFindStringErrorMsg(option%myrank,string,ierr)
 
   ! strip card from front of string
   call fiReadWord(string,word,.false.,ierr)
  
   ! read in keyword 
   call fiReadWord(string,option%mode,.true.,ierr)
-  call fiErrorMsg('mode','mode',ierr)
+  call fiErrorMsg(option%myrank,'mode','mode',ierr)
 
 !.........................................................................
 
   ! GRID information
   string = "GRID"
   call fiFindStringInFile(IUNIT1,string,ierr)
-  call fiFindStringErrorMsg(string,ierr)
+  call fiFindStringErrorMsg(option%myrank,string,ierr)
 
   ! strip card from front of string
   call fiReadWord(string,word,.false.,ierr)
  
   ! key off igeom for structured vs unstructured 
   call fiReadInt(string,igeom,ierr)
-  call fiDefaultMsg('igeom',ierr)
+  call fiDefaultMsg(option%myrank,'igeom',ierr)
   
   realization%grid => GridCreate(igeom) 
   grid => realization%grid
 
   if (grid%igrid == STRUCTURED) then ! structured
     call fiReadInt(string,grid%structured_grid%nx,ierr)
-    call fiDefaultMsg('nx',ierr)
+    call fiDefaultMsg(option%myrank,'nx',ierr)
     
     call fiReadInt(string,grid%structured_grid%ny,ierr)
-    call fiDefaultMsg('ny',ierr)
+    call fiDefaultMsg(option%myrank,'ny',ierr)
     
     call fiReadInt(string,grid%structured_grid%nz,ierr)
-    call fiDefaultMsg('nz',ierr)
+    call fiDefaultMsg(option%myrank,'nz',ierr)
     
     grid%structured_grid%nxy = grid%structured_grid%nx*grid%structured_grid%ny
     grid%structured_grid%nmax = grid%structured_grid%nxy * &
@@ -986,22 +986,22 @@ subroutine readRequiredCardsFromInput(realization,filename,mcomp,mphas)
   endif
       
   call fiReadInt(string,option%nphase,ierr)
-  call fiDefaultMsg('nphase',ierr)
+  call fiDefaultMsg(option%myrank,'nphase',ierr)
 
   call fiReadInt(string,option%nspec,ierr)
-  call fiDefaultMsg('nspec',ierr)
+  call fiDefaultMsg(option%myrank,'nspec',ierr)
 
   call fiReadInt(string,option%npricomp,ierr)
-  call fiDefaultMsg('npricomp',ierr)
+  call fiDefaultMsg(option%myrank,'npricomp',ierr)
 
   call fiReadInt(string,option%ndof,ierr)
-  call fiDefaultMsg('ndof',ierr)
+  call fiDefaultMsg(option%myrank,'ndof',ierr)
       
   call fiReadInt(string,option%idcdm,ierr)
-  call fiDefaultMsg('idcdm',ierr)
+  call fiDefaultMsg(option%myrank,'idcdm',ierr)
 
   call fiReadInt(string,option%itable,ierr)
-  call fiDefaultMsg('itable',ierr)
+  call fiDefaultMsg(option%myrank,'itable',ierr)
 
   if (option%myrank==0) then
     if (grid%igrid == STRUCTURED) then
@@ -1034,11 +1034,11 @@ subroutine readRequiredCardsFromInput(realization,filename,mcomp,mphas)
       ! strip card from front of string
       call fiReadWord(string,word,.false.,ierr)
       call fiReadInt(string,grid%structured_grid%npx,ierr)
-      call fiDefaultMsg('npx',ierr)
+      call fiDefaultMsg(option%myrank,'npx',ierr)
       call fiReadInt(string,grid%structured_grid%npy,ierr)
-      call fiDefaultMsg('npy',ierr)
+      call fiDefaultMsg(option%myrank,'npy',ierr)
       call fiReadInt(string,grid%structured_grid%npz,ierr)
-      call fiDefaultMsg('npz',ierr)
+      call fiDefaultMsg(option%myrank,'npz',ierr)
  
       if (option%myrank == 0) &
         write(IUNIT2,'(/," *PROC",/, &
@@ -1070,12 +1070,12 @@ subroutine readRequiredCardsFromInput(realization,filename,mcomp,mphas)
     mcomp = 0
     do
       call fiReadFlotranString(IUNIT1,string,ierr)
-      call fiReadStringErrorMsg('COMP',ierr)
+      call fiReadStringErrorMsg(option%myrank,'COMP',ierr)
       
       if (string(1:1) == '.' .or. string(1:1) == '/') exit
 
       call fiReadWord(string,name,.true.,ierr)
-      call fiErrorMsg('namcx','GAS',ierr)
+      call fiErrorMsg(option%myrank,'namcx','GAS',ierr)
         
       call fiWordToUpper(name) 
       select case(name(1:len_trim(name)))
@@ -1109,12 +1109,12 @@ subroutine readRequiredCardsFromInput(realization,filename,mcomp,mphas)
     mphas = 0
     do
       call fiReadFlotranString(IUNIT1,string,ierr)
-      call fiReadStringErrorMsg('phase',ierr)
+      call fiReadStringErrorMsg(option%myrank,'phase',ierr)
     
       if (string(1:1) == '.' .or. string(1:1) == '/') exit
 
       call fiReadWord(string,name,.true.,ierr)
-      call fiErrorMsg('namcx','phase',ierr)
+      call fiErrorMsg(option%myrank,'namcx','phase',ierr)
         
       call fiWordToUpper(name) 
          
@@ -1244,7 +1244,7 @@ subroutine readInput(simulation,filename)
       
 !....................
       case ('DEBUG','PFLOW_DEBUG')
-        call DebugRead(realization%debug,IUNIT1)
+        call DebugRead(realization%debug,IUNIT1,option%myrank)
         
 !....................
       case ('GENERALIZED_GRID')
@@ -1258,38 +1258,38 @@ subroutine readInput(simulation,filename)
       case ('REGION','REGN')
         region => RegionCreate()
         call fiReadWord(string,region%name,.true.,ierr)
-        call fiErrorMsg('regn','name',ierr) 
+        call fiErrorMsg(option%myrank,'regn','name',ierr) 
         call fiReadFlotranString(IUNIT1,string,ierr)
-        call fiReadStringErrorMsg('REGN',ierr)
+        call fiReadStringErrorMsg(option%myrank,'REGN',ierr)
         call fiReadWord(string,word,.true.,ierr)
-        call fiErrorMsg('type','REGN', ierr)
+        call fiErrorMsg(option%myrank,'type','REGN', ierr)
         if (fiStringCompare(word,"BLOCK",5)) then ! block region
           if (grid%igrid /= STRUCTURED) then
             call printErrMsg(option,"BLOCK region not supported for &
                              &unstructured grid")
           endif
           call fiReadFlotranString(IUNIT1,string,ierr)
-          call fiReadStringErrorMsg('REGN',ierr)
+          call fiReadStringErrorMsg(option%myrank,'REGN',ierr)
           call fiReadInt(string,region%i1,ierr) 
-          call fiErrorMsg('i1','REGN', ierr)
+          call fiErrorMsg(option%myrank,'i1','REGN', ierr)
           call fiReadInt(string,region%i2,ierr)
-          call fiErrorMsg('i2','REGN', ierr)
+          call fiErrorMsg(option%myrank,'i2','REGN', ierr)
           call fiReadInt(string,region%j1,ierr)
-          call fiErrorMsg('j1','REGN', ierr)
+          call fiErrorMsg(option%myrank,'j1','REGN', ierr)
           call fiReadInt(string,region%j2,ierr)
-          call fiErrorMsg('j2','REGN', ierr)
+          call fiErrorMsg(option%myrank,'j2','REGN', ierr)
           call fiReadInt(string,region%k1,ierr)
-          call fiErrorMsg('k1','REGN', ierr)
+          call fiErrorMsg(option%myrank,'k1','REGN', ierr)
           call fiReadInt(string,region%k2,ierr)
-          call fiErrorMsg('k2','REGN', ierr)
+          call fiErrorMsg(option%myrank,'k2','REGN', ierr)
         else if (fiStringCompare(word,"LIST",4)) then
           word = ""
           call fiReadWord(string,word,.true.,ierr)
           if (fiStringCompare(word,"file",4)) then
 !            call fiReadFlotranString(IUNIT1,string,ierr)
-            call fiReadStringErrorMsg('REGN',ierr)
+            call fiReadStringErrorMsg(option%myrank,'REGN',ierr)
             call fiReadWord(string,word,.true.,ierr)
-            call fiErrorMsg('filename','REGN', ierr)
+            call fiErrorMsg(option%myrank,'filename','REGN', ierr)
             region%filename = word
             ! this file will be read later in readRegionFiles()          
           else
@@ -1304,39 +1304,39 @@ subroutine readInput(simulation,filename)
       case ('CONDITION','COND')
         condition => ConditionCreate(option)
         call fiReadWord(string,condition%name,.true.,ierr)
-        call fiErrorMsg('cond','name',ierr) 
+        call fiErrorMsg(option%myrank,'cond','name',ierr) 
         call ConditionRead(condition,option,IUNIT1)
         call ConditionAddToList(condition,realization%conditions)
       
 !....................
       case ('BOUNDARY_CONDITION')
         coupler => CouplerCreate(BOUNDARY_COUPLER_TYPE)
-        call CouplerRead(coupler,IUNIT1)
+        call CouplerRead(coupler,IUNIT1,option)
         call CouplerAddToList(coupler,realization%boundary_conditions)
       
 !....................
       case ('INITIAL_CONDITION')
         coupler => CouplerCreate(INITIAL_COUPLER_TYPE)
-        call CouplerRead(coupler,IUNIT1)
+        call CouplerRead(coupler,IUNIT1,option)
         call CouplerAddToList(coupler,realization%initial_conditions)
       
 !....................
       case ('STRATIGRAPHY','STRATA')
         strata => StrataCreate()
-        call StrataRead(strata,IUNIT1)
+        call StrataRead(strata,IUNIT1,option)
         call StrataAddToList(strata,realization%strata)
       
 !....................
       case ('SOURCE_SINK')
         coupler => CouplerCreate(SRC_SINK_COUPLER_TYPE)
-        call CouplerRead(coupler,IUNIT1)
+        call CouplerRead(coupler,IUNIT1,option)
         call CouplerAddToList(coupler,realization%source_sinks)
       
 !.....................
       case ('COMP') 
         do
           call fiReadFlotranString(IUNIT1,string,ierr)
-          call fiReadStringErrorMsg('COMP',ierr)
+          call fiReadStringErrorMsg(option%myrank,'COMP',ierr)
       
           if (string(1:1) == '.' .or. string(1:1) == '/') exit
         enddo
@@ -1344,7 +1344,7 @@ subroutine readInput(simulation,filename)
       case ('PHAS')
         do
           call fiReadFlotranString(IUNIT1,string,ierr)
-          call fiReadStringErrorMsg('PHASE',ierr)
+          call fiReadStringErrorMsg(option%myrank,'PHASE',ierr)
       
           if (string(1:1) == '.' .or. string(1:1) == '/') exit
         enddo 
@@ -1353,10 +1353,10 @@ subroutine readInput(simulation,filename)
 
       case ('COUP')
 
-        call fiReadStringErrorMsg('COUP',ierr)
+        call fiReadStringErrorMsg(option%myrank,'COUP',ierr)
 
         call fiReadInt(string,option%isync,ierr)
-        call fiDefaultMsg('isync',ierr)
+        call fiDefaultMsg(option%myrank,'isync',ierr)
 
         if (option%myrank == 0) &
           write(IUNIT2,'(/," *COUP",/, &
@@ -1367,11 +1367,11 @@ subroutine readInput(simulation,filename)
 
       case ('GRAV','GRAVITY')
 
-        call fiReadStringErrorMsg('GRAV',ierr)
+        call fiReadStringErrorMsg(option%myrank,'GRAV',ierr)
 
         call fiReadDouble(string,temp_real,ierr)
         if (ierr /= 0) then
-          call fiDefaultMsg('gravity',ierr)
+          call fiDefaultMsg(option%myrank,'gravity',ierr)
         else
           call fiReadDouble(string,option%gravity(2),ierr)
           if (ierr /= 0) then
@@ -1446,37 +1446,37 @@ subroutine readInput(simulation,filename)
 
       case ('OPTS')
 
-        call fiReadStringErrorMsg('OPTS',ierr)
+        call fiReadStringErrorMsg(option%myrank,'OPTS',ierr)
 
         call fiReadInt(string,option%write_init,ierr)
-        call fiDefaultMsg('write_init',ierr)
+        call fiDefaultMsg(option%myrank,'write_init',ierr)
 
         call fiReadInt(string,id,ierr)
-        call fiDefaultMsg('iprint',ierr)
+        call fiDefaultMsg(option%myrank,'iprint',ierr)
 
         call fiReadInt(string,option%imod,ierr)
-        call fiDefaultMsg('mod',ierr)
+        call fiDefaultMsg(option%myrank,'mod',ierr)
 
         call fiReadInt(string,option%itecplot,ierr)
-        call fiDefaultMsg('itecplot',ierr)
+        call fiDefaultMsg(option%myrank,'itecplot',ierr)
 
         call fiReadInt(string,option%iblkfmt,ierr)
-        call fiDefaultMsg('iblkfmt',ierr)
+        call fiDefaultMsg(option%myrank,'iblkfmt',ierr)
 
         call fiReadInt(string,stepper%ndtcmx,ierr)
-        call fiDefaultMsg('ndtcmx',ierr)
+        call fiDefaultMsg(option%myrank,'ndtcmx',ierr)
 
         call fiReadInt(string,option%iran_por,ierr)
-        call fiDefaultMsg('iran_por',ierr)
+        call fiDefaultMsg(option%myrank,'iran_por',ierr)
   
         call fiReadDouble(string,option%ran_fac,ierr)
-        call fiDefaultMsg('ran_fac',ierr)
+        call fiDefaultMsg(option%myrank,'ran_fac',ierr)
     
         call fiReadInt(string,option%iread_perm,ierr)
-        call fiDefaultMsg('iread_perm',ierr)
+        call fiDefaultMsg(option%myrank,'iread_perm',ierr)
     
         call fiReadInt(string,option%iread_geom,ierr)
-        call fiDefaultMsg('iread_geom',ierr)
+        call fiDefaultMsg(option%myrank,'iread_geom',ierr)
 
 
         if (option%myrank == 0) &
@@ -1498,31 +1498,31 @@ subroutine readInput(simulation,filename)
 
       case ('TOLR')
 
-        call fiReadStringErrorMsg('TOLR',ierr)
+        call fiReadStringErrorMsg(option%myrank,'TOLR',ierr)
 
         call fiReadInt(string,stepper%stepmax,ierr)
-        call fiDefaultMsg('stepmax',ierr)
+        call fiDefaultMsg(option%myrank,'stepmax',ierr)
   
         call fiReadInt(string,stepper%iaccel,ierr)
-        call fiDefaultMsg('iaccel',ierr)
+        call fiDefaultMsg(option%myrank,'iaccel',ierr)
 
         call fiReadInt(string,stepper%newton_max,ierr)
-        call fiDefaultMsg('newton_max',ierr)
+        call fiDefaultMsg(option%myrank,'newton_max',ierr)
 
         call fiReadInt(string,stepper%icut_max,ierr)
-        call fiDefaultMsg('icut_max',ierr)
+        call fiDefaultMsg(option%myrank,'icut_max',ierr)
 
         call fiReadDouble(string,option%dpmxe,ierr)
-        call fiDefaultMsg('dpmxe',ierr)
+        call fiDefaultMsg(option%myrank,'dpmxe',ierr)
 
         call fiReadDouble(string,option%dtmpmxe,ierr)
-        call fiDefaultMsg('dtmpmxe',ierr)
+        call fiDefaultMsg(option%myrank,'dtmpmxe',ierr)
   
         call fiReadDouble(string,option%dcmxe,ierr)
-        call fiDefaultMsg('dcmxe',ierr)
+        call fiDefaultMsg(option%myrank,'dcmxe',ierr)
 
         call fiReadDouble(string,option%dsmxe,ierr)
-        call fiDefaultMsg('dsmxe',ierr)
+        call fiDefaultMsg(option%myrank,'dsmxe',ierr)
 
         if (option%myrank==0) write(IUNIT2,'(/," *TOLR ",/, &
           &"  flowsteps  = ",i6,/,      &
@@ -1555,11 +1555,11 @@ subroutine readInput(simulation,filename)
 
       case('ORIG','ORIGIN')
         call fiReadDouble(string,grid%origin(X_DIRECTION),ierr)
-        call fiErrorMsg('X direction','Origin',ierr)
+        call fiErrorMsg(option%myrank,'X direction','Origin',ierr)
         call fiReadDouble(string,grid%origin(Y_DIRECTION),ierr)
-        call fiErrorMsg('Y direction','Origin',ierr)
+        call fiErrorMsg(option%myrank,'Y direction','Origin',ierr)
         call fiReadDouble(string,grid%origin(Z_DIRECTION),ierr)
-        call fiErrorMsg('Z direction','Origin',ierr)
+        call fiErrorMsg(option%myrank,'Z direction','Origin',ierr)
         
 !....................
 
@@ -1567,7 +1567,7 @@ subroutine readInput(simulation,filename)
     
         if (grid%igrid == STRUCTURED) then  ! look for processor decomposition
           call fiReadDouble(string,grid%structured_grid%Radius_0,ierr)
-          call fiDefaultMsg('R_0',ierr)
+          call fiDefaultMsg(option%myrank,'R_0',ierr)
         else
           if (option%myrank == 0) &
             print *, 'ERROR: Keyword "RAD0" not supported for unstructured grid'
@@ -1577,13 +1577,13 @@ subroutine readInput(simulation,filename)
 
       case ('DIFF')
 
-        call fiReadStringErrorMsg('DIFF',ierr)
+        call fiReadStringErrorMsg(option%myrank,'DIFF',ierr)
 
         call fiReadDouble(string,option%difaq,ierr)
-        call fiDefaultMsg('difaq',ierr)
+        call fiDefaultMsg(option%myrank,'difaq',ierr)
 
         call fiReadDouble(string,option%delhaq,ierr)
-        call fiDefaultMsg('delhaq',ierr)
+        call fiDefaultMsg(option%myrank,'delhaq',ierr)
 
         if (option%myrank==0) write(IUNIT2,'(/," *DIFF ",/, &
           &"  difaq       = ",1pe12.4,"[m^2/s]",/, &
@@ -1594,37 +1594,37 @@ subroutine readInput(simulation,filename)
 
       case ('RCTR')
 
-        call fiReadStringErrorMsg('RCTR',ierr)
+        call fiReadStringErrorMsg(option%myrank,'RCTR',ierr)
 
         call fiReadInt(string,option%ityprxn,ierr)
-        call fiDefaultMsg('ityprxn',ierr)
+        call fiDefaultMsg(option%myrank,'ityprxn',ierr)
 
         call fiReadDouble(string,option%rk,ierr)
-        call fiDefaultMsg('rk',ierr)
+        call fiDefaultMsg(option%myrank,'rk',ierr)
 
         call fiReadDouble(string,option%phis0,ierr)
-        call fiDefaultMsg('phis0',ierr)
+        call fiDefaultMsg(option%myrank,'phis0',ierr)
 
         call fiReadDouble(string,option%areas0,ierr)
-        call fiDefaultMsg('areas0',ierr)
+        call fiDefaultMsg(option%myrank,'areas0',ierr)
 
         call fiReadDouble(string,option%pwrsrf,ierr)
-        call fiDefaultMsg('pwrsrf',ierr)
+        call fiDefaultMsg(option%myrank,'pwrsrf',ierr)
 
         call fiReadDouble(string,option%vbars,ierr)
-        call fiDefaultMsg('vbars',ierr)
+        call fiDefaultMsg(option%myrank,'vbars',ierr)
 
         call fiReadDouble(string,option%ceq,ierr)
-        call fiDefaultMsg('ceq',ierr)
+        call fiDefaultMsg(option%myrank,'ceq',ierr)
 
         call fiReadDouble(string,option%delHs,ierr)
-        call fiDefaultMsg('delHs',ierr)
+        call fiDefaultMsg(option%myrank,'delHs',ierr)
 
         call fiReadDouble(string,option%delEs,ierr)
-        call fiDefaultMsg('delEs',ierr)
+        call fiDefaultMsg(option%myrank,'delEs',ierr)
 
         call fiReadDouble(string,option%wfmts,ierr)
-        call fiDefaultMsg('wfmts',ierr)
+        call fiDefaultMsg(option%myrank,'wfmts',ierr)
 
         if (option%myrank == 0) &
         write(IUNIT2,'(/," *RCTR",/, &
@@ -1652,13 +1652,13 @@ subroutine readInput(simulation,filename)
 
       case ('RADN')
 
-        call fiReadStringErrorMsg('RADN',ierr)
+        call fiReadStringErrorMsg(option%myrank,'RADN',ierr)
 
         call fiReadDouble(string,option%ret,ierr)
-        call fiDefaultMsg('ret',ierr)
+        call fiDefaultMsg(option%myrank,'ret',ierr)
 
         call fiReadDouble(string,option%fc,ierr)
-        call fiDefaultMsg('fc',ierr)
+        call fiDefaultMsg(option%myrank,'fc',ierr)
 
         if (option%myrank==0) write(IUNIT2,'(/," *RADN ",/, &
           &"  ret     = ",1pe12.4,/, &
@@ -1670,10 +1670,10 @@ subroutine readInput(simulation,filename)
 
       case ('PHAR')
 
-        call fiReadStringErrorMsg('PHAR',ierr)
+        call fiReadStringErrorMsg(option%myrank,'PHAR',ierr)
 
         call fiReadDouble(string,option%qu_kin,ierr)
-        call fiDefaultMsg('TransReaction',ierr)
+        call fiDefaultMsg(option%myrank,'TransReaction',ierr)
         if (option%myrank==0) write(IUNIT2,'(/," *PHAR ",1pe12.4)')option%qu_kin
         option%yh2o_in_co2 = 0.d0
         if (option%qu_kin > 0.d0) option%yh2o_in_co2 = 1.d-2 ! check this number!
@@ -1681,16 +1681,16 @@ subroutine readInput(simulation,filename)
 !......................
 
       case('RICH')
-        call fiReadStringErrorMsg('RICH',ierr)
+        call fiReadStringErrorMsg(option%myrank,'RICH',ierr)
         call fiReadDouble(string,option%pref,ierr)
-        call fiDefaultMsg('Ref. Pressure',ierr) 
+        call fiDefaultMsg(option%myrank,'Ref. Pressure',ierr) 
 
 !......................
 
       case('BRIN','BRINE')
-        call fiReadStringErrorMsg('BRIN',ierr)
+        call fiReadStringErrorMsg(option%myrank,'BRIN',ierr)
         call fiReadDouble(string,option%m_nacl,ierr)
-        call fiDefaultMsg('NaCl Concentration',ierr) 
+        call fiDefaultMsg(option%myrank,'NaCl Concentration',ierr) 
 
         call fiReadWord(string,word,.false.,ierr)
         call fiWordToUpper(word)
@@ -1710,14 +1710,14 @@ subroutine readInput(simulation,filename)
       case ('RESTART')
         option%restart_flag = PETSC_TRUE
         call fiReadWord(string,option%restart_file,.true.,ierr)
-        call fiErrorMsg('RESTART','Restart file name',ierr) 
+        call fiErrorMsg(option%myrank,'RESTART','Restart file name',ierr) 
 
 !......................
 
       case ('CHECKPOINT')
         option%checkpoint_flag = PETSC_TRUE
         call fiReadInt(string,option%checkpoint_frequency,ierr)
-        call fiErrorMsg('CHECKPOINT','Checkpoint frequency',ierr) 
+        call fiErrorMsg(option%myrank,'CHECKPOINT','Checkpoint frequency',ierr) 
 
 !......................
 
@@ -1742,38 +1742,38 @@ subroutine readInput(simulation,filename)
 
       case ('SOLV')
     
-        call fiReadStringErrorMsg('SOLV',ierr)
+        call fiReadStringErrorMsg(option%myrank,'SOLV',ierr)
 
 !       call fiReadDouble(string,eps,ierr)
-!       call fiDefaultMsg('eps',ierr)
+!       call fiDefaultMsg(option%myrank,'eps',ierr)
 
         call fiReadDouble(string,solver%atol,ierr)
-        call fiDefaultMsg('atol_petsc',ierr)
+        call fiDefaultMsg(option%myrank,'atol_petsc',ierr)
 
         call fiReadDouble(string,solver%rtol,ierr)
-        call fiDefaultMsg('rtol_petsc',ierr)
+        call fiDefaultMsg(option%myrank,'rtol_petsc',ierr)
 
         call fiReadDouble(string,solver%stol,ierr)
-        call fiDefaultMsg('stol_petsc',ierr)
+        call fiDefaultMsg(option%myrank,'stol_petsc',ierr)
       
         solver%dtol=1.D5
 !       if (option%use_ksp == 1) then
         call fiReadDouble(string,solver%dtol,ierr)
-        call fiDefaultMsg('dtol_petsc',ierr)
+        call fiDefaultMsg(option%myrank,'dtol_petsc',ierr)
 !       endif
    
         call fiReadInt(string,solver%maxit,ierr)
-        call fiDefaultMsg('maxit',ierr)
+        call fiDefaultMsg(option%myrank,'maxit',ierr)
       
         call fiReadInt(string,solver%maxf,ierr)
-        call fiDefaultMsg('maxf',ierr)
+        call fiDefaultMsg(option%myrank,'maxf',ierr)
        
         call fiReadInt(string,option%idt_switch,ierr)
-        call fiDefaultMsg('idt',ierr)
+        call fiDefaultMsg(option%myrank,'idt',ierr)
         
         solver%inf_tol = solver%atol
         call fiReadDouble(string,solver%inf_tol,ierr)
-        call fiDefaultMsg('inf_tol_pflow',ierr)
+        call fiDefaultMsg(option%myrank,'inf_tol_pflow',ierr)
  
         if (option%myrank==0) write(IUNIT2,'(/," *SOLV ",/, &
           &"  atol_petsc   = ",1pe12.4,/, &
@@ -1798,7 +1798,7 @@ subroutine readInput(simulation,filename)
         count = 0
         do
           call fiReadFlotranString(IUNIT1,string,ierr)
-          call fiReadStringErrorMsg('THRM',ierr)
+          call fiReadStringErrorMsg(option%myrank,'THRM',ierr)
 
           if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
               fiStringCompare(string,'END',3)) exit
@@ -1807,28 +1807,28 @@ subroutine readInput(simulation,filename)
           thermal_property => ThermalPropertyCreate()
       
           call fiReadInt(string,thermal_property%id,ierr)
-          call fiErrorMsg('id','THRM', ierr)
+          call fiErrorMsg(option%myrank,'id','THRM', ierr)
 
           call fiReadDouble(string,thermal_property%rock_density,ierr)
-          call fiErrorMsg('rock density','THRM', ierr)
+          call fiErrorMsg(option%myrank,'rock density','THRM', ierr)
 
           call fiReadDouble(string,thermal_property%spec_heat,ierr)
-          call fiErrorMsg('cpr','THRM', ierr)
+          call fiErrorMsg(option%myrank,'cpr','THRM', ierr)
         
           call fiReadDouble(string,thermal_property%therm_cond_dry,ierr)
-          call fiErrorMsg('ckdry','THRM', ierr)
+          call fiErrorMsg(option%myrank,'ckdry','THRM', ierr)
         
           call fiReadDouble(string,thermal_property%therm_cond_wet,ierr)
-          call fiErrorMsg('ckwet','THRM', ierr)
+          call fiErrorMsg(option%myrank,'ckwet','THRM', ierr)
         
           call fiReadDouble(string,thermal_property%tort_bin_diff,ierr)
-          call fiErrorMsg('tau','THRM', ierr)
+          call fiErrorMsg(option%myrank,'tau','THRM', ierr)
 
           call fiReadDouble(string,thermal_property%vap_air_diff_coef,ierr)
-          call fiErrorMsg('cdiff','THRM', ierr)
+          call fiErrorMsg(option%myrank,'cdiff','THRM', ierr)
 
           call fiReadDouble(string,thermal_property%exp_binary_diff,ierr)
-          call fiErrorMsg('cexp','THRM', ierr)
+          call fiErrorMsg(option%myrank,'cexp','THRM', ierr)
 
         !scale thermal properties
           thermal_property%spec_heat = option%scale * &
@@ -1906,7 +1906,7 @@ subroutine readInput(simulation,filename)
         count = 0
         do
           call fiReadFlotranString(IUNIT1,string,ierr)
-          call fiReadStringErrorMsg('PCKR',ierr)
+          call fiReadStringErrorMsg(option%myrank,'PCKR',ierr)
 
           if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
               fiStringCompare(string,'END',3)) exit
@@ -1915,38 +1915,38 @@ subroutine readInput(simulation,filename)
           saturation_function => SaturationFunctionCreate(option)
           
           call fiReadInt(string,saturation_function%id,ierr)
-          call fiErrorMsg('id','PCKR', ierr)
+          call fiErrorMsg(option%myrank,'id','PCKR', ierr)
           
           call fiReadInt(string,saturation_function%itype,ierr)
-          call fiErrorMsg('icaptype','PCKR', ierr)
+          call fiErrorMsg(option%myrank,'icaptype','PCKR', ierr)
       
           select case(option%imode)
             case(MPH_MODE,OWG_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
               do np=1, option%nphase
                 call fiReadDouble(string,saturation_function%Sr(np),ierr)
-                call fiErrorMsg('Sr','PCKR', ierr)
+                call fiErrorMsg(option%myrank,'Sr','PCKR', ierr)
               enddo 
             case default
               call fiReadDouble(string,saturation_function%Sr(1),ierr)
-              call fiErrorMsg('Sr','PCKR', ierr)
+              call fiErrorMsg(option%myrank,'Sr','PCKR', ierr)
           end select
         
           call fiReadDouble(string,saturation_function%m,ierr)
-          call fiErrorMsg('pckrm','PCKR', ierr)
+          call fiErrorMsg(option%myrank,'pckrm','PCKR', ierr)
           saturation_function%lambda = saturation_function%m / &
                                       (1.d0-saturation_function%m)
 
           call fiReadDouble(string,saturation_function%alpha,ierr)
-          call fiErrorMsg('alpha','PCKR', ierr)
+          call fiErrorMsg(option%myrank,'alpha','PCKR', ierr)
 
           call fiReadDouble(string,saturation_function%pcwmax,ierr)
-          call fiErrorMsg('pcwmax','PCKR', ierr)
+          call fiErrorMsg(option%myrank,'pcwmax','PCKR', ierr)
       
           call fiReadDouble(string,saturation_function%betac,ierr)
-          call fiErrorMsg('pbetac','PCKR', ierr)
+          call fiErrorMsg(option%myrank,'pbetac','PCKR', ierr)
       
           call fiReadDouble(string,saturation_function%power,ierr)
-          call fiErrorMsg('pwrprm','PCKR', ierr)
+          call fiErrorMsg(option%myrank,'pwrprm','PCKR', ierr)
           
           call SaturationFunctionAddToList(saturation_function, &
                                            realization%saturation_functions)
@@ -2063,7 +2063,7 @@ subroutine readInput(simulation,filename)
         count = 0
         do
           call fiReadFlotranString(IUNIT1,string,ierr)
-          call fiReadStringErrorMsg('PHIK',ierr)
+          call fiReadStringErrorMsg(option%myrank,'PHIK',ierr)
 
           if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
               fiStringCompare(string,'END',3)) exit
@@ -2072,34 +2072,34 @@ subroutine readInput(simulation,filename)
           material => MaterialCreate()
 
           call fiReadWord(string,material%name,.true.,ierr)
-          call fiErrorMsg('name','PHIK', ierr)
+          call fiErrorMsg(option%myrank,'name','PHIK', ierr)
                 
           call fiReadInt(string,material%id,ierr)
-          call fiErrorMsg('id','PHIK', ierr)
+          call fiErrorMsg(option%myrank,'id','PHIK', ierr)
                 
           call fiReadInt(string,material%icap,ierr)
-          call fiErrorMsg('icap','PHIK', ierr)
+          call fiErrorMsg(option%myrank,'icap','PHIK', ierr)
   
           call fiReadInt(string,material%ithrm,ierr)
-          call fiErrorMsg('ithrm','PHIK', ierr)
+          call fiErrorMsg(option%myrank,'ithrm','PHIK', ierr)
   
           call fiReadDouble(string,material%porosity,ierr)
-          call fiErrorMsg('por','PHIK', ierr)
+          call fiErrorMsg(option%myrank,'por','PHIK', ierr)
           
           call fiReadDouble(string,material%tortuosity,ierr)
-          call fiErrorMsg('tor','PHIK', ierr)
+          call fiErrorMsg(option%myrank,'tor','PHIK', ierr)
   
           call fiReadDouble(string,material%permeability(1,1),ierr)
-          call fiErrorMsg('permx','PHIK', ierr)
+          call fiErrorMsg(option%myrank,'permx','PHIK', ierr)
   
           call fiReadDouble(string,material%permeability(2,2),ierr)
-          call fiErrorMsg('permy','PHIK', ierr)
+          call fiErrorMsg(option%myrank,'permy','PHIK', ierr)
   
           call fiReadDouble(string,material%permeability(3,3),ierr)
-          call fiErrorMsg('permz','PHIK', ierr)
+          call fiErrorMsg(option%myrank,'permz','PHIK', ierr)
   
           call fiReadDouble(string,material%permeability_pwr,ierr)
-          call fiErrorMsg('permpwr','PHIK', ierr)
+          call fiErrorMsg(option%myrank,'permpwr','PHIK', ierr)
           
           material%permeability(1:3,1:3) = material%permeability(1:3,1:3)
           
@@ -2117,7 +2117,7 @@ subroutine readInput(simulation,filename)
 #if 0
 ! INIT is deprecated by condition/region coupling
         call fiReadInt(string,option%iread_init,ierr) 
-        call fiDefaultMsg('iread_init',ierr)
+        call fiDefaultMsg(option%myrank,'iread_init',ierr)
       
         if (option%myrank==0) then
           write(IUNIT2,'(/," *INIT: iread = ",i2)') option%iread_init
@@ -2128,48 +2128,48 @@ subroutine readInput(simulation,filename)
           ireg = 0
           do
             call fiReadFlotranString(IUNIT1,string,ierr)
-            call fiReadStringErrorMsg('INIT',ierr)
+            call fiReadStringErrorMsg(option%myrank,'INIT',ierr)
 
             if (string(1:1) == '.' .or. string(1:1) == '/') exit
             ireg = ireg + 1
             
 !GEH - Structured Grid Dependence - Begin
             call fiReadInt(string,option%i1ini(ireg),ierr) 
-            call fiDefaultMsg('i1',ierr)
+            call fiDefaultMsg(option%myrank,'i1',ierr)
             call fiReadInt(string,option%i2ini(ireg),ierr)
-            call fiDefaultMsg('i2',ierr)
+            call fiDefaultMsg(option%myrank,'i2',ierr)
             call fiReadInt(string,option%j1ini(ireg),ierr)
-            call fiDefaultMsg('j1',ierr)
+            call fiDefaultMsg(option%myrank,'j1',ierr)
             call fiReadInt(string,option%j2ini(ireg),ierr)
-            call fiDefaultMsg('j2',ierr)
+            call fiDefaultMsg(option%myrank,'j2',ierr)
             call fiReadInt(string,option%k1ini(ireg),ierr)
-            call fiDefaultMsg('k1',ierr)
+            call fiDefaultMsg(option%myrank,'k1',ierr)
             call fiReadInt(string,option%k2ini(ireg),ierr)
-            call fiDefaultMsg('k2',ierr)
+            call fiDefaultMsg(option%myrank,'k2',ierr)
 !GEH - Structured Grid Dependence - End
 
             select case(option%imode)
               case(MPH_MODE,OWG_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)                
                 call fiReadInt(string,option%iphas_ini(ireg),ierr)
-                call fiDefaultMsg('iphase',ierr)
+                call fiDefaultMsg(option%myrank,'iphase',ierr)
        
                 do j=1,option%ndof
                   call fiReadDouble(string,field%xx_ini(j,ireg),ierr)
-                  call fiDefaultMsg('xxini',ierr)
+                  call fiDefaultMsg(option%myrank,'xxini',ierr)
                 enddo
               case default
                 call fiReadDouble(string,option%pres_ini(ireg),ierr)
-                call fiDefaultMsg('pres',ierr)
+                call fiDefaultMsg(option%myrank,'pres',ierr)
   
                 call fiReadDouble(string,field%temp_ini(ireg),ierr)
-                call fiDefaultMsg('temp',ierr)
+                call fiDefaultMsg(option%myrank,'temp',ierr)
   
                 call fiReadDouble(string,field%sat_ini(ireg),ierr)
-                call fiDefaultMsg('sat',ierr)
+                call fiDefaultMsg(option%myrank,'sat',ierr)
 !                field%sat_ini(ireg)=1.D0 - field%sat_ini(ireg)
   
                 call fiReadDouble(string,field%conc_ini(ireg),ierr)
-                call fiDefaultMsg('conc',ierr)
+                call fiDefaultMsg(option%myrank,'conc',ierr)
             end select
           enddo
       
@@ -2220,41 +2220,41 @@ subroutine readInput(simulation,filename)
 
 !GEH - Structured Grid Dependence - Begin
               call fiReadInt(string,option%i1ini(ireg),ierr) 
-              call fiDefaultMsg('i1',ierr)
+              call fiDefaultMsg(option%myrank,'i1',ierr)
               call fiReadInt(string,option%i2ini(ireg),ierr)
-              call fiDefaultMsg('i2',ierr)
+              call fiDefaultMsg(option%myrank,'i2',ierr)
               call fiReadInt(string,option%j1ini(ireg),ierr)
-              call fiDefaultMsg('j1',ierr)
+              call fiDefaultMsg(option%myrank,'j1',ierr)
               call fiReadInt(string,option%j2ini(ireg),ierr)
-              call fiDefaultMsg('j2',ierr)
+              call fiDefaultMsg(option%myrank,'j2',ierr)
               call fiReadInt(string,option%k1ini(ireg),ierr)
-              call fiDefaultMsg('k1',ierr)
+              call fiDefaultMsg(option%myrank,'k1',ierr)
               call fiReadInt(string,option%k2ini(ireg),ierr)
-              call fiDefaultMsg('k2',ierr)
+              call fiDefaultMsg(option%myrank,'k2',ierr)
 !GEH - Structured Grid Dependence - End
 
               select case(option%imode)
                 case(MPH_MODE,OWG_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
                   call fiReadInt(string,option%iphas_ini(ireg),ierr)
-                  call fiDefaultMsg('iphase_ini',ierr)
+                  call fiDefaultMsg(option%myrank,'iphase_ini',ierr)
             
                   do j=1,option%ndof
                     call fiReadDouble(string,field%xx_ini(j,ireg),ierr)
-                    call fiDefaultMsg('xx_ini',ierr)
+                    call fiDefaultMsg(option%myrank,'xx_ini',ierr)
                   enddo
                 case default
   
                   call fiReadDouble(string,option%pres_ini(ireg),ierr)
-                  call fiDefaultMsg('pres',ierr)
+                  call fiDefaultMsg(option%myrank,'pres',ierr)
   
                   call fiReadDouble(string,field%temp_ini(ireg),ierr)
-                  call fiDefaultMsg('temp',ierr)
+                  call fiDefaultMsg(option%myrank,'temp',ierr)
   
                   call fiReadDouble(string,field%sat_ini(ireg),ierr)
-                  call fiDefaultMsg('sat',ierr)
+                  call fiDefaultMsg(option%myrank,'sat',ierr)
 
                   call fiReadDouble(string,field%conc_ini(ireg),ierr)
-                  call fiDefaultMsg('conc',ierr)
+                  call fiDefaultMsg(option%myrank,'conc',ierr)
               end select
        
             enddo
@@ -2267,7 +2267,7 @@ subroutine readInput(simulation,filename)
 
       case ('TIME')
 
-        call fiReadStringErrorMsg('TIME',ierr)
+        call fiReadStringErrorMsg(option%myrank,'TIME',ierr)
       
         call fiReadWord(string,word,.false.,ierr)
       
@@ -2322,10 +2322,10 @@ subroutine readInput(simulation,filename)
 
       case ('DTST')
 
-        call fiReadStringErrorMsg('DTST',ierr)
+        call fiReadStringErrorMsg(option%myrank,'DTST',ierr)
 
         call fiReadDouble(string,stepper%dt_min,ierr)
-        call fiDefaultMsg('dt_min',ierr)
+        call fiDefaultMsg(option%myrank,'dt_min',ierr)
             
         continuation_flag = .true.
         temp_int = 0       
@@ -2343,7 +2343,7 @@ subroutine readInput(simulation,filename)
               waypoint => WaypointCreate()
               waypoint%time = temp_real
               call fiReadDouble(string,waypoint%dt_max,ierr)
-              call fiErrorMsg('dt_max','dtst',ierr)
+              call fiErrorMsg(option%myrank,'dt_max','dtst',ierr)
               if (temp_int == 0) stepper%dt_max = waypoint%dt_max
               call WaypointInsertInList(waypoint,stepper%waypoints)
               temp_int = temp_int + 1
@@ -2367,31 +2367,31 @@ subroutine readInput(simulation,filename)
         ibrk = 0
         do
           call fiReadFlotranString(IUNIT1,string,ierr)
-          call fiReadStringErrorMsg('BRK',ierr)
+          call fiReadStringErrorMsg(option%myrank,'BRK',ierr)
       
           if (string(1:1) == '.' .or. string(1:1) == '/') exit
           ibrk = ibrk + 1
 
 !GEH - Structured Grid Dependence - Begin
           call fiReadInt(string,option%i1brk(ibrk),ierr) 
-          call fiDefaultMsg('i1',ierr)
+          call fiDefaultMsg(option%myrank,'i1',ierr)
           call fiReadInt(string,option%i2brk(ibrk),ierr)
-          call fiDefaultMsg('i2',ierr)
+          call fiDefaultMsg(option%myrank,'i2',ierr)
           call fiReadInt(string,option%j1brk(ibrk),ierr)
-          call fiDefaultMsg('j1',ierr)
+          call fiDefaultMsg(option%myrank,'j1',ierr)
           call fiReadInt(string,option%j2brk(ibrk),ierr)
-          call fiDefaultMsg('j2',ierr)
+          call fiDefaultMsg(option%myrank,'j2',ierr)
           call fiReadInt(string,option%k1brk(ibrk),ierr)
-          call fiDefaultMsg('k1',ierr)
+          call fiDefaultMsg(option%myrank,'k1',ierr)
           call fiReadInt(string,option%k2brk(ibrk),ierr)
-          call fiDefaultMsg('k2',ierr)
+          call fiDefaultMsg(option%myrank,'k2',ierr)
 !GEH - Structured Grid Dependence - End
 
           call fiReadInt(string,option%ibrktyp(ibrk),ierr)
-          call fiDefaultMsg('ibrktyp',ierr)
+          call fiDefaultMsg(option%myrank,'ibrktyp',ierr)
 
           call fiReadInt(string,option%ibrkface(ibrk),ierr)
-          call fiDefaultMsg('ibrkface',ierr)
+          call fiDefaultMsg(option%myrank,'ibrkface',ierr)
         enddo
         option%ibrkcrv = ibrk
             
@@ -2418,7 +2418,7 @@ subroutine readInput(simulation,filename)
         allocate(stepper%steady_eps(option%ndof))
         do j=1,option%ndof
           call fiReadDouble(string,stepper%steady_eps(j),ierr)
-          call fiDefaultMsg('steady tol',ierr)
+          call fiDefaultMsg(option%myrank,'steady tol',ierr)
         enddo
         if (option%myrank==0) write(IUNIT2,'(/," *SDST ",/, &
           &"  dpdt        = ",1pe12.4,/, &
@@ -3179,11 +3179,11 @@ subroutine readMaterialsFromFile(realization,filename)
       call fiReadFlotranString(fid,string,ierr)
       if (ierr /= 0) exit
       call fiReadInt(string,natural_id,ierr)
-      call fiErrorMsg('natural id','STRATA', ierr)
+      call fiErrorMsg(option%myrank,'natural id','STRATA', ierr)
       ghosted_id = GridGetLocalGhostedIdFromHash(grid,natural_id)
       if (ghosted_id > 0) then
         call fiReadInt(string,material_id,ierr)
-        call fiErrorMsg('material id','STRATA', ierr)
+        call fiErrorMsg(option%myrank,'material id','STRATA', ierr)
         field%imat(ghosted_id) = material_id
       endif
     enddo

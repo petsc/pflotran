@@ -186,13 +186,13 @@ subroutine ConditionRead(condition,option,fid)
   do
   
     call fiReadFlotranString(IUNIT1,string,ierr)
-    call fiReadStringErrorMsg('CONDITION',ierr)
+    call fiReadStringErrorMsg(option%myrank,'CONDITION',ierr)
           
     if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
         fiStringCompare(string,'END',3)) exit  
 
     call fiReadWord(string,word,.true.,ierr)
-    call fiErrorMsg('keyword','CONDITION', ierr)   
+    call fiErrorMsg(option%myrank,'keyword','CONDITION', ierr)   
       
     select case(trim(word))
     
@@ -217,14 +217,14 @@ subroutine ConditionRead(condition,option,fid)
         enddo
       case('CLASS') ! read condition class (flow vs. transport)
         call fiReadWord(string,word,.true.,ierr)
-        call fiErrorMsg('CLASS','CONDITION', ierr)   
+        call fiErrorMsg(option%myrank,'CLASS','CONDITION', ierr)   
         call fiCharsToLower(word,len_trim(word))
         condition%class = word
       case('CYCLIC') ! read condition class (flow vs. transport)
         condition%is_cyclic = .true.
       case('INTERPOLATION') ! read condition class (flow vs. transport)
         call fiReadWord(string,word,.true.,ierr)
-        call fiErrorMsg('INTERPOLATION','CONDITION', ierr)   
+        call fiErrorMsg(option%myrank,'INTERPOLATION','CONDITION', ierr)   
         call fiCharsToLower(word,len_trim(word))
         select case(word)
           case('step')
@@ -235,14 +235,14 @@ subroutine ConditionRead(condition,option,fid)
       case('TYPE') ! read condition type (dirichlet, neumann, etc) for each dof
         do
           call fiReadFlotranString(IUNIT1,string,ierr)
-          call fiReadStringErrorMsg('CONDITION',ierr)
+          call fiReadStringErrorMsg(option%myrank,'CONDITION',ierr)
           
           if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
               fiStringCompare(string,'END',3)) exit          
           
           if (ierr /= 0) exit
           call fiReadWord(string,word,.true.,ierr)
-          call fiErrorMsg('keyword','CONDITION,TYPE', ierr)   
+          call fiErrorMsg(option%myrank,'keyword','CONDITION,TYPE', ierr)   
           select case(trim(word))
             case('PRES','PRESS','PRESSURE')
               index = pres_index
@@ -256,7 +256,7 @@ subroutine ConditionRead(condition,option,fid)
               call printErrMsg(option,'index not recognized in condition,type')
           end select
           call fiReadWord(string,word,.true.,ierr)
-          call fiErrorMsg('TYPE','CONDITION', ierr)   
+          call fiErrorMsg(option%myrank,'TYPE','CONDITION', ierr)   
           call fiCharsToLower(word,len_trim(word))
           ctype(index) = word
           select case(word)
@@ -279,28 +279,28 @@ subroutine ConditionRead(condition,option,fid)
           allocate(times(1))
         endif
         call fiReadDouble(string,times(1),ierr)
-        call fiErrorMsg('TIME','CONDITION', ierr)   
+        call fiErrorMsg(option%myrank,'TIME','CONDITION', ierr)   
       case('IPHASE')
         call fiReadInt(string,iphase,ierr)
-        call fiErrorMsg('IPHASE','CONDITION', ierr)   
+        call fiErrorMsg(option%myrank,'IPHASE','CONDITION', ierr)   
       case('DATUM','DATM')
         call fiReadDouble(string,condition%datum(X_DIRECTION),ierr)
-        call fiErrorMsg('X Datum','CONDITION', ierr)   
+        call fiErrorMsg(option%myrank,'X Datum','CONDITION', ierr)   
         call fiReadDouble(string,condition%datum(Y_DIRECTION),ierr)
-        call fiErrorMsg('Y Datum','CONDITION', ierr)   
+        call fiErrorMsg(option%myrank,'Y Datum','CONDITION', ierr)   
         call fiReadDouble(string,condition%datum(Z_DIRECTION),ierr)
-        call fiErrorMsg('Z Datum','CONDITION', ierr)   
+        call fiErrorMsg(option%myrank,'Z Datum','CONDITION', ierr)   
       case('GRADIENT','GRAD')
         do
           call fiReadFlotranString(IUNIT1,string,ierr)
-          call fiReadStringErrorMsg('CONDITION',ierr)
+          call fiReadStringErrorMsg(option%myrank,'CONDITION',ierr)
           
           if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
               fiStringCompare(string,'END',3)) exit          
           
           if (ierr /= 0) exit
           call fiReadWord(string,word,.true.,ierr)
-          call fiErrorMsg('keyword','CONDITION,TYPE', ierr)   
+          call fiErrorMsg(option%myrank,'keyword','CONDITION,TYPE', ierr)   
           select case(trim(word))
             case('PRES','PRESS','PRESSURE')
               index = pres_index
@@ -314,11 +314,11 @@ subroutine ConditionRead(condition,option,fid)
               call printErrMsg(option,'index not recognized in condition,gradient')
           end select
           call fiReadDouble(string,condition%gradient(index,X_DIRECTION),ierr)
-          call fiErrorMsg('X Gradient','CONDITION', ierr)   
+          call fiErrorMsg(option%myrank,'X Gradient','CONDITION', ierr)   
           call fiReadDouble(string,condition%gradient(index,Y_DIRECTION),ierr)
-          call fiErrorMsg('Y Gradient','CONDITION', ierr)   
+          call fiErrorMsg(option%myrank,'Y Gradient','CONDITION', ierr)   
           call fiReadDouble(string,condition%gradient(index,Z_DIRECTION),ierr)
-          call fiErrorMsg('Z Gradient','CONDITION', ierr)   
+          call fiErrorMsg(option%myrank,'Z Gradient','CONDITION', ierr)   
         enddo
       case('TEMPERATURE','TEMP')
         call ConditionReadValues(option,word,string,times,temperature,units(temp_index))
@@ -495,22 +495,22 @@ subroutine ConditionReadValues(option,keyword,string,times,values,units)
   
   ierr = 0
   call fiReadWord(string,word,.true.,ierr)
-  call fiErrorMsg('file or value','CONDITION', ierr)
+  call fiErrorMsg(option%myrank,'file or value','CONDITION', ierr)
   call fiCharsToLower(word,len_trim(word))
   if (fiStringCompare(word,'file',4)) then
     call fiReadWord(string,word,.true.,ierr)
     error_string = keyword // ' FILE'
-    call fiErrorMsg(error_string,'CONDITION', ierr)
-    call ConditionReadValuesFromFile(word,times,values)
+    call fiErrorMsg(option%myrank,error_string,'CONDITION', ierr)
+    call ConditionReadValuesFromFile(word,times,values,option)
   else
     allocate(values(1))
     call fiReadDouble(word,values(1),ierr)
-    call fiErrorMsg('value','CONDITION', ierr) 
+    call fiErrorMsg(option%myrank,'value','CONDITION', ierr) 
   endif
   call fiReadWord(string,word,.true.,ierr)
   if (ierr /= 0) then
     word = trim(keyword) // ' UNITS'
-    call fiDefaultMsg(word, ierr)
+    call fiDefaultMsg(option%myrank,word, ierr)
   else
     units = trim(word)
   endif
@@ -524,13 +524,15 @@ end subroutine ConditionReadValues
 ! date: 10/31/07
 !
 ! ************************************************************************** !
-subroutine ConditionReadValuesFromFile(filename,times,values)
+subroutine ConditionReadValuesFromFile(filename,times,values,option)
 
   use Fileio_module
   use Utility_module
+  use Option_module
 
   implicit none
   
+  type(option_type) :: option
   character(len=MAXWORDLENGTH) :: filename
   real*8, pointer :: times(:), values(:)
   
@@ -560,9 +562,9 @@ subroutine ConditionReadValuesFromFile(filename,times,values)
     if (ierr /= 0) exit
     count = count + 1
     call fiReadDouble(string,temp_times(count),ierr)
-    call fiErrorMsg('time','CONDITION FILE', ierr)   
+    call fiErrorMsg(option%myrank,'time','CONDITION FILE', ierr)   
     call fiReadDouble(string,temp_values(count),ierr)
-    call fiErrorMsg('value','CONDITION FILE', ierr) 
+    call fiErrorMsg(option%myrank,'value','CONDITION FILE', ierr) 
     if (count+1 > max_size) then
       i = max_size
       call reallocateRealArray(temp_times,max_size) 

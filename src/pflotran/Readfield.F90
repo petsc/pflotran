@@ -67,24 +67,24 @@ subroutine Read_perm_field(grid)
     if (ierr /= 0) exit
 
     call fiReadInt(string,ir,ierr) 
-    call fiDefaultMsg('na',ierr)
+    call fiDefaultMsg(grid%myrank,'na',ierr)
     ir=ir-1
 
 
     call fiReadDouble(string,px,ierr)
-    call fiDefaultMsg('perm_x',ierr)
+    call fiDefaultMsg(grid%myrank,'perm_x',ierr)
 
     call fiReadDouble(string,py,ierr)
-    call fiDefaultMsg('perm_y',ierr)
+    call fiDefaultMsg(grid%myrank,'perm_y',ierr)
    
     call fiReadDouble(string,pz,ierr)
-    call fiDefaultMsg('perm_z',ierr)
+    call fiDefaultMsg(grid%myrank,'perm_z',ierr)
 
     call fiReadDouble(string,por,ierr)
-    call fiDefaultMsg('por',ierr)
+    call fiDefaultMsg(grid%myrank,'por',ierr)
 
     call fiReadDouble(string,tor,ierr)
-    call fiDefaultMsg('tor',ierr)
+    call fiDefaultMsg(grid%myrank,'tor',ierr)
 
 
 
@@ -284,40 +284,40 @@ subroutine Read_Geom_field(grid)
       case('GRID')  
         do 
           call fiReadFlotranString(IUNIT1,string,ierr)
-          call fiReadStringErrorMsg('GRID',ierr)
+          call fiReadStringErrorMsg(grid%myrank,'GRID',ierr)
 
           if (string(1:1) == '.' .or. string(1:1) == '/') exit
 
           call fiReadInt(string,ir,ierr) 
-          call fiDefaultMsg('na',ierr)
+          call fiDefaultMsg(grid%myrank,'na',ierr)
           ir=ir-1
      
           call fiReadDouble(string,xc,ierr)
-          call fiDefaultMsg('x',ierr)
+          call fiDefaultMsg(grid%myrank,'x',ierr)
    
           call fiReadDouble(string,yc,ierr)
-          call fiDefaultMsg('y',ierr)
+          call fiDefaultMsg(grid%myrank,'y',ierr)
 
           call fiReadDouble(string,zc,ierr)
-          call fiDefaultMsg('z',ierr)
+          call fiDefaultMsg(grid%myrank,'z',ierr)
    
           call fiReadDouble(string,vc,ierr)
-          call fiDefaultMsg('vol',ierr)
+          call fiDefaultMsg(grid%myrank,'vol',ierr)
    
           call fiReadDouble(string,px,ierr)
-          call fiDefaultMsg('perm_x',ierr)
+          call fiDefaultMsg(grid%myrank,'perm_x',ierr)
 
           call fiReadDouble(string,py,ierr)
-          call fiDefaultMsg('perm_y',ierr)
+          call fiDefaultMsg(grid%myrank,'perm_y',ierr)
    
           call fiReadDouble(string,pz,ierr)
-          call fiDefaultMsg('perm_z',ierr)
+          call fiDefaultMsg(grid%myrank,'perm_z',ierr)
 
           call fiReadDouble(string,por,ierr)
-          call fiDefaultMsg('por',ierr)
+          call fiDefaultMsg(grid%myrank,'por',ierr)
 
           call fiReadDouble(string,tor,ierr)
-          call fiDefaultMsg('tor',ierr)
+          call fiDefaultMsg(grid%myrank,'tor',ierr)
 
 !geh          grid%x(ir+1)=xc
 !geh          grid%y(ir+1)=yc
@@ -361,32 +361,32 @@ subroutine Read_Geom_field(grid)
         do 
      
           call fiReadFlotranString(IUNIT1,string,ierr)
-          call fiReadStringErrorMsg('CONN',ierr)
+          call fiReadStringErrorMsg(grid%myrank,'CONN',ierr)
 
           if (string(1:1) == '.' .or. string(1:1) == '/') exit
    
           call fiReadInt(string,ncna,ierr) 
-          call fiDefaultMsg('na1',ierr)
+          call fiDefaultMsg(grid%myrank,'na1',ierr)
 
           call fiReadInt(string,na1,ierr) 
-          call fiDefaultMsg('na1',ierr)
+          call fiDefaultMsg(grid%myrank,'na1',ierr)
           na1=na1-1
      
           call fiReadInt(string,na2,ierr) 
-          call fiDefaultMsg('na2',ierr)
+          call fiDefaultMsg(grid%myrank,'na2',ierr)
           na2=na2-1
 
           call fiReadDouble(string,dist1,ierr)
-          call fiDefaultMsg('dist 1',ierr)
+          call fiDefaultMsg(grid%myrank,'dist 1',ierr)
 
           call fiReadDouble(string,dist2,ierr)
-          call fiDefaultMsg('dist 2',ierr)
+          call fiDefaultMsg(grid%myrank,'dist 2',ierr)
      
           call fiReadDouble(string,area,ierr)
-          call fiDefaultMsg('Area',ierr)
+          call fiDefaultMsg(grid%myrank,'Area',ierr)
    
           call fiReadDouble(string,grav_ang,ierr)
-          call fiDefaultMsg('cos(B)',ierr)
+          call fiDefaultMsg(grid%myrank,'cos(B)',ierr)
     
            ng1 = GetLocalGhostedIdFromNaturalId(na1,grid)
            ng2 = GetLocalGhostedIdFromNaturalId(na2,grid)

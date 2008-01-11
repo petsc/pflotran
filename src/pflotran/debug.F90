@@ -88,7 +88,7 @@ end function DebugCreatePtran
 ! date: 12/21/07
 !
 ! ************************************************************************** !
-subroutine DebugReadPflow(debug,fid)
+subroutine DebugReadPflow(debug,fid,myrank)
 
   use Fileio_module
   
@@ -98,6 +98,7 @@ subroutine DebugReadPflow(debug,fid)
     
   type(pflow_debug_type) :: debug
   integer :: fid
+  integer :: myrank
   
   character(len=MAXSTRINGLENGTH) :: string, error_string
   character(len=MAXWORDLENGTH) :: keyword, word, word2
@@ -112,7 +113,7 @@ subroutine DebugReadPflow(debug,fid)
         fiStringCompare(string,'END',3)) exit  
 
     call fiReadWord(string,keyword,.true.,ierr)
-    call fiErrorMsg('keyword','DEBUG', ierr)   
+    call fiErrorMsg(myrank,'keyword','DEBUG', ierr)   
       
     select case(trim(keyword))
     

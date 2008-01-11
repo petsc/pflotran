@@ -148,12 +148,14 @@ end subroutine CouplerInitList
 ! date: 11/01/07
 !
 ! ************************************************************************** !
-subroutine CouplerRead(coupler,fid)
+subroutine CouplerRead(coupler,fid,option)
 
   use Fileio_module
+  use Option_module
   
   implicit none
   
+  type(option_type) :: option
   type(coupler_type) :: coupler
   integer :: fid
   
@@ -168,7 +170,7 @@ subroutine CouplerRead(coupler,fid)
     if (ierr /= 0) exit
 
     call fiReadWord(string,word,.true.,ierr)
-    call fiErrorMsg('keyword','COUPLER', ierr)   
+    call fiErrorMsg(option%myrank,'keyword','COUPLER', ierr)   
       
     select case(trim(word))
     

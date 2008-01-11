@@ -38,12 +38,12 @@ subroutine oil_pckr_init(myrank)
     select case(card)
       case('KROw')
       call fiReadInt(string,kr_so_n,ierr) 
-      call fiDefaultMsg('rows of list for krow',ierr)
+      call fiDefaultMsg(myrank,'rows of list for krow',ierr)
       allocate(kr_so(1:kr_so_n,3))
       i=0
       do
         call fiReadFlotranString(IUNIT1,string,ierr)
-        call fiReadStringErrorMsg('KROW',ierr)
+        call fiReadStringErrorMsg(myrank,'KROW',ierr)
 
         if (string(1:1) == '.' .or. string(1:1) == '/') exit
         i = i + 1
@@ -54,18 +54,18 @@ subroutine oil_pckr_init(myrank)
 
         do j=1,3
           call fiReadDouble(string,kr_so(i,j),ierr)
-          call fiDefaultMsg('krso',ierr)
+          call fiDefaultMsg(myrank,'krso',ierr)
         enddo
       enddo   
 
     case('KROG')
       call fiReadInt(string,kr_sg_n,ierr) 
-      call fiDefaultMsg('rows of list for krog',ierr)
+      call fiDefaultMsg(myrank,'rows of list for krog',ierr)
       allocate(kr_sg(1:kr_sg_n,3))
       i=0
       do
         call fiReadFlotranString(IUNIT1,string,ierr)
-        call fiReadStringErrorMsg('KROG',ierr)
+        call fiReadStringErrorMsg(myrank,'KROG',ierr)
 
         if (string(1:1) == '.' .or. string(1:1) == '/') exit
         i = i + 1
@@ -76,7 +76,7 @@ subroutine oil_pckr_init(myrank)
 
       do j=1,3
         call fiReadDouble(string,kr_sg(i,j),ierr)
-        call fiDefaultMsg('krsg',ierr)
+        call fiDefaultMsg(myrank,'krsg',ierr)
       enddo
     enddo
     case default

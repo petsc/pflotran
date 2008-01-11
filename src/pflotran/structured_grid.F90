@@ -415,9 +415,9 @@ subroutine StructuredGridReadDXYZ(structured_grid,option)
   allocate(structured_grid%dy0(structured_grid%ny))
   allocate(structured_grid%dz0(structured_grid%nz))
         
-  call StructuredGridReadArray(structured_grid%dx0,structured_grid%nx)
-  call StructuredGridReadArray(structured_grid%dy0,structured_grid%ny)
-  call StructuredGridReadArray(structured_grid%dz0,structured_grid%nz)
+  call StructuredGridReadArray(structured_grid%dx0,structured_grid%nx,option)
+  call StructuredGridReadArray(structured_grid%dy0,structured_grid%ny,option)
+  call StructuredGridReadArray(structured_grid%dz0,structured_grid%nz,option)
     
   if (option%myrank==0) then
     write(IUNIT2,'(/," *DXYZ ")')
@@ -436,12 +436,14 @@ end subroutine StructuredGridReadDXYZ
 ! date: 10/23/07
 !
 ! ************************************************************************** !
-subroutine StructuredGridReadArray(a,n)
+subroutine StructuredGridReadArray(a,n,option)
 
   use Fileio_module
+  use Option_module
   
   implicit none
   
+  type(option_type) :: option
   integer*4, intent(in) :: n
   integer*4 :: i, i1, i2, m
   integer ::  ierr, nvalue=10
@@ -453,7 +455,7 @@ subroutine StructuredGridReadArray(a,n)
 !  call fiReadStringErrorMsg('DXYZ',ierr)
 
 !  call fiReadDouble(string,grid%radius_0,ierr)
-!  call fiDefaultMsg('radius_0',ierr)
+!  call fiDefaultMsg(option%myrank,'radius_0',ierr)
 
   i2 = 0
   do
@@ -461,7 +463,7 @@ subroutine StructuredGridReadArray(a,n)
     i2 = i2+nvalue
     if (i2.gt.n) i2 = n
     call fiReadFlotranString(IUNIT1,string,ierr)
-    call fiReadStringErrorMsg('DXYZ',ierr)
+    call fiReadStringErrorMsg(option%myrank,'DXYZ',ierr)
     do i = i1, i2
       call fiReadDouble(string, a(i), ierr)
 !geh  ierr, which comes from iostat, will not necessarily be 0 and 1, 
