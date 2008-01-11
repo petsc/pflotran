@@ -59,13 +59,24 @@ subroutine Output(realization)
   implicit none
   
   type(realization_type) :: realization
+
+  PetscErrorCode :: ierr
+  PetscLogDouble :: start, end
   
   if (realization%output_option%print_hdf5) then
+    call PetscGetTime(start,ierr) 
     call OutputHDF5(realization)
+    call PetscGetTime(end,ierr) 
+    if (realization%option%myrank == 0) &
+      print *, '      Seconds to write to HDF5 file: ', (end-start)
   endif
  
   if (realization%output_option%print_tecplot) then
+    call PetscGetTime(start,ierr) 
     call OutputTecplot(realization)
+    call PetscGetTime(end,ierr) 
+    if (realization%option%myrank == 0) &
+      print *, '      Seconds to write to Tecplot file(s): ', (end-start)
   endif
   
   realization%output_option%plot_number = realization%output_option%plot_number + 1
