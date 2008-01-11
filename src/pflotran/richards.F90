@@ -217,7 +217,9 @@ subroutine initAuxVar(aux_var,option)
   aux_var%du_dp = 0.d0
   aux_var%du_dt = 0.d0    
   allocate(aux_var%xmol(option%nspec))
+  aux_var%xmol = 0.d0
   allocate(aux_var%diff(option%nspec))
+  aux_var%diff = 0.d0
 
 end subroutine initAuxVar
 
