@@ -91,6 +91,7 @@ public:
   int *getCellMaterialIds();
   int *getCellIds();
   int *getCellIdsNatural();
+  int *getCellIdsNatural1Based();
   int *getCellVertexIds(int ivert);
 
   void zeroGridCellFlags();

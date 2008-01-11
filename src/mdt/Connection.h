@@ -11,14 +11,16 @@ public:
 
 //  Connection(int icell, int iface);
   Connection(int icell, int *vertices);
+  Connection(int icell, int *vertices, int iface);
   virtual ~Connection();
 
   int getFaceVertex(int ivert);
+  int getFace();
 
   void printInfo();
 // these are local ids
   int cell;
-//  int face;
+  int face;
   int vertices[5];
   Connection *next;
 

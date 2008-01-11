@@ -1,12 +1,12 @@
 #ifndef GLOBALS_H_
 #define GLOBALS_H_
 
+#define WEST 1 
 #define EAST 2 
-#define WEST 4 
-#define NORTH 3 
-#define SOUTH 1 
-#define TOP 6 
+#define SOUTH 3 
+#define NORTH 4 
 #define BOTTOM 5 
+#define TOP 6 
 
 extern int myrank;
 extern int commsize;

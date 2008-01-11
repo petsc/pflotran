@@ -17,9 +17,23 @@ Connection::Connection(int icell, int *vertices_) {
 
 }
 
+Connection::Connection(int icell, int *vertices_, int iface) {
+
+  cell = icell;
+  face = iface;
+  for (int i=0; i<=vertices_[0]; i++)
+    vertices[i] = vertices_[i];
+  next = NULL;
+
+}
+
 int Connection::getFaceVertex(int ivert) {
   if (ivert <= vertices[0]) return vertices[ivert+1];
   else return -1;
+}
+
+int Connection::getFace() {
+  return face;
 }
 
 void Connection::printInfo() {

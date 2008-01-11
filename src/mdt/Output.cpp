@@ -151,6 +151,125 @@ void Output::printBoundarySets() {
   VecDestroy(v);
 }
 
+void Output::printHDFMaterialsAndRegions() {
+
+#ifdef USE_HDF5
+  PetscPrintf(PETSC_COMM_WORLD,"Printing HDF Materials and Regions.\n");
+
+  HDF *file = new HDF("input.h5",1);
+  int compress = 0;
+
+// materials
+  PetscPrintf(PETSC_COMM_WORLD,"Materials\n");
+  file->createGroup("Materials");
+
+  file->createFileSpace(1,grid->getNumberOfCellsGlobal(),NULL,NULL);
+  PetscPrintf(PETSC_COMM_WORLD,"Cell Ids\n");
+  file->createDataSet("Cell Ids",H5T_NATIVE_INT,compress);
+
+  int *cell_ids = grid->getCellIdsNatural1Based();
+  grid->convertLocalCellDataGtoN(cell_ids);
+
+  file->setHyperSlab(grid->getNumberOfCellsLocal());
+  file->createMemorySpace(1,grid->getNumberOfCellsLocal(),NULL,NULL);
+  file->writeInt(cell_ids);
+
+  delete [] cell_ids;
+  cell_ids = NULL;
+
+  file->closeDataSet();
+
+  // use same data space
+  PetscPrintf(PETSC_COMM_WORLD,"Material Ids\n");
+  file->createDataSet("Material Ids",H5T_NATIVE_INT,compress);
+
+  int *material_ids = grid->getCellMaterialIds();
+  grid->convertLocalCellDataGtoN(material_ids);
+
+  file->setHyperSlab(grid->getNumberOfCellsLocal());
+  file->createMemorySpace(1,grid->getNumberOfCellsLocal(),NULL,NULL);
+  file->writeInt(material_ids);
+  delete [] material_ids;
+  material_ids = NULL;
+
+  file->closeDataSet();
+  file->closeDataSpaces();
+  file->closeGroup();
+
+// boundary connections
+  PetscPrintf(PETSC_COMM_WORLD,"Regions\n");
+  file->createGroup("Regions");
+
+  BoundarySet *cur_set = grid->boundary_sets;
+  while (cur_set) {
+    PetscPrintf(PETSC_COMM_WORLD," %s\n",cur_set->name);
+    file->createGroup(cur_set->name);
+
+// cell ids
+    int num_connections_global = cur_set->getNumberOfConnectionsGlobal();
+    int num_connections_local = cur_set->getNumberOfConnectionsLocal();
+// hdf5 cannot handle a zero-length memory space and hyperslab.  Therefore,
+// trick it by setting then length to 1 and writing independently (non-
+// collective) for those procs with num_connections_local > 0).
+    int trick_hdf5_local = num_connections_local > 0 ? 
+                                             num_connections_local : 1;
+    int trick_hdf5_global = num_connections_global > 0 ? 
+                                             num_connections_global : 1;
+
+    file->createDataSpace(1,trick_hdf5_global,0,0);
+    PetscPrintf(PETSC_COMM_WORLD,"  Cell Ids\n");
+    file->createDataSet("Cell Ids",H5T_NATIVE_INT,compress);
+
+    if (num_connections_global > 0) {
+
+      int *cell_ids = cur_set->getCellIdsLocal1Based();
+    // convert cell_ids in local numbering to natural, no need to reorder for now
+      for (int i=0; i<num_connections_local; i++) {
+        cell_ids[i] = grid->cell_mapping_ghosted_to_natural[
+                            grid->cell_mapping_local_to_ghosted[cell_ids[i]]];
+      }
+
+      file->setHyperSlab(num_connections_local);
+      file->createMemorySpace(1,num_connections_local,NULL,NULL);
+      if (num_connections_local > 0) {
+        file->writeInt(cell_ids,INDEPENDENT);
+      }
+      delete [] cell_ids;
+      cell_ids = NULL;
+    }
+    file->closeDataSet();
+    file->closeDataSpaces();
+
+    file->createDataSpace(1,trick_hdf5_global,0,0);
+    PetscPrintf(PETSC_COMM_WORLD,"  Face Ids\n");
+    file->createDataSet("Face Ids",H5T_NATIVE_INT,compress);
+
+    if (num_connections_global > 0) {
+
+      int *face_ids = cur_set->getFaceIdsLocal();
+
+      file->setHyperSlab(num_connections_local);
+      file->createMemorySpace(1,num_connections_local,NULL,NULL);
+      if (num_connections_local > 0) {
+        file->writeInt(face_ids,INDEPENDENT);
+      }
+      delete [] face_ids;
+      face_ids = NULL;
+    }
+    file->closeDataSet();
+    file->closeDataSpaces();
+
+    file->closeGroup();
+    cur_set = cur_set->next;
+  }
+  file->closeGroup();
+
+  delete file;
+  PetscPrintf(PETSC_COMM_WORLD,"Done with HDF5 Materials and Regions\n");
+#endif
+
+}
+
 void Output::printHDFMesh() {
 
 #ifdef USE_HDF5
