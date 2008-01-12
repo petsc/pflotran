@@ -1023,12 +1023,13 @@ subroutine GridCreateNaturalToGhostedHash(grid,option)
   character(len=MAXSTRINGLENGTH) :: string
   integer :: local_ghosted_id, natural_id
   integer :: num_in_hash, num_ids_per_hash, hash_id, id
+  integer :: max_num_ids_per_hash = 0
   integer, pointer :: hash(:,:,:), temp_hash(:,:,:)
 
   if (associated(grid%hash)) return
 
   ! initial guess of 10% of ids per hash
-  num_ids_per_hash = max(grid%nlmax/(grid%num_hash_bins/10),grid%nlmax)
+  num_ids_per_hash = grid%nlmax/(grid%num_hash_bins/10)
 
   allocate(hash(2,0:num_ids_per_hash,grid%num_hash_bins))
   hash(:,:,:) = 0
@@ -1039,6 +1040,7 @@ subroutine GridCreateNaturalToGhostedHash(grid,option)
     hash_id = mod(natural_id,grid%num_hash_bins)+1 
     num_in_hash = hash(1,0,hash_id)
     num_in_hash = num_in_hash+1
+    if (num_in_hash > max_num_ids_per_hash) max_num_ids_per_hash = num_in_hash
     ! if a hash runs out of space reallocate
     if (num_in_hash > num_ids_per_hash) then 
       allocate(temp_hash(2,0:num_ids_per_hash,0:grid%num_hash_bins))
@@ -1065,7 +1067,9 @@ subroutine GridCreateNaturalToGhostedHash(grid,option)
 
   grid%hash => hash
   
-  if (option%myrank == 0) print *, 'num_ids_per_hash:', num_ids_per_hash
+!  call GridPrintHashTable(grid)
+  
+  if (option%myrank == 0) print *, 'max_num_ids_per_hash:', max_num_ids_per_hash
 
 end subroutine GridCreateNaturalToGhostedHash
 
