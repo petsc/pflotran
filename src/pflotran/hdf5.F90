@@ -1003,6 +1003,8 @@ subroutine HDF5ReadMaterialsFromFile(realization,filename)
   integer(HID_T) :: prop_id
 #endif
 
+  PetscLogDouble :: tstart, tend
+  
   integer, pointer :: indices(:)
   integer, allocatable :: integer_array(:)
   
@@ -1029,7 +1031,10 @@ subroutine HDF5ReadMaterialsFromFile(realization,filename)
 
   ! create hash table for fast lookup
 #ifdef HASH
+  call PetscGetTime(tstart,ierr)
   call GridCreateNaturalToGhostedHash(grid,option)
+  call PetscGetTime(tend,ierr)
+  if (option%myrank == 0) print *, '  Time to create hash:', tend-tstart
 #endif
 
   ! initialize fortran hdf5 interface
@@ -1054,20 +1059,26 @@ subroutine HDF5ReadMaterialsFromFile(realization,filename)
   call h5gopen_f(file_id,string,grp_id,hdf5_err)
   
   ! Read Cell Ids
+  call PetscGetTime(tstart,ierr)
   string = "Cell Ids"
   call HDF5MapLocalToNaturalIndices(grid,option,grp_id,string,grid%nmax, &
                                     indices,grid%nlmax)
+  call PetscGetTime(tend,ierr)
+  if (option%myrank == 0) print *, '  Time to map local to natural indices:', tend-tstart
 
   ! Read Material ids
   allocate(integer_array(grid%nlmax))
   string = "Material Ids"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
+  call PetscGetTime(tstart,ierr)
   call HDF5ReadIntegerArray(option,grp_id,string,grid%nlmax,indices, &
                             grid%nlmax,integer_array)
   call GridCopyIntegerArrayToPetscVec(integer_array,global,grid%nlmax)
   deallocate(integer_array)
   call GridGlobalToLocal(grid,global,local,ONEDOF)
   call GridCopyPetscVecToIntegerArray(field%imat,local,grid%ngmax)
+  call PetscGetTime(tend,ierr)
+  if (option%myrank == 0) print *, '  Time to read material ids:', tend-tstart
 
   deallocate(indices)
   nullify(indices)

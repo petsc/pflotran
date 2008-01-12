@@ -177,7 +177,7 @@ subroutine initGrid(grid)
   grid%origin = 0.d0
   
   nullify(grid%hash)
-  grid%num_hash_bins = 100
+  grid%num_hash_bins = 1000
 
 end subroutine initGrid
 
