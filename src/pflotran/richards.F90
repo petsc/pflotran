@@ -1486,7 +1486,7 @@ subroutine RichardsAnalyticalResidual(snes,xx,r,realization,ierr)
                xx_loc_p(:), xx_p(:), yy_p(:),&
                phis_p(:), tor_loc_p(:),&
                perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:), &
-               vl_p(:), var_p(:),var_loc_p(:) 
+               vl_p(:) 
                           
                
   PetscScalar, pointer :: iphase_loc_p(:), icap_loc_p(:), ithrm_loc_p(:)
@@ -1821,7 +1821,6 @@ subroutine RichardsAnalyticalResidual(snes,xx,r,realization,ierr)
   call VecRestoreArrayF90(field%yy, yy_p, ierr)
   call VecRestoreArrayF90(field%xx_loc, xx_loc_p, ierr)
   call VecRestoreArrayF90(field%accum, accum_p, ierr)
-  call VecRestoreArrayF90(field%var_loc,var_loc_p,ierr)
   call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
   call VecRestoreArrayF90(field%tor_loc, tor_loc_p, ierr)
   call VecRestoreArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
@@ -1886,7 +1885,7 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
   PetscScalar, pointer :: porosity_loc_p(:), volume_p(:), &
                           xx_loc_p(:), phis_p(:),  tor_loc_p(:),&
                           perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
-  PetscScalar, pointer :: iphase_loc_p(:), icap_loc_p(:), ithrm_loc_p(:),var_loc_p(:)
+  PetscScalar, pointer :: iphase_loc_p(:), icap_loc_p(:), ithrm_loc_p(:)
   integer :: icap,iphas,iphas_up,iphas_dn,icap_up,icap_dn
   integer :: ii, jj
   integer :: index_var_begin, index_var_end
@@ -1970,7 +1969,7 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
   call VecGetArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
   call VecGetArrayF90(field%icap_loc, icap_loc_p, ierr)
   call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr)
-  call VecGetArrayF90(field%var_loc, var_loc_p, ierr)
+
 #if 1
   ! Accumulation terms ------------------------------------
   do local_id = 1, grid%nlmax  ! For each local node do...
@@ -2243,7 +2242,6 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
   call VecRestoreArrayF90(field%xx_loc, xx_loc_p, ierr)
   call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
   call VecRestoreArrayF90(field%tor_loc, tor_loc_p, ierr)
-  call VecRestoreArrayF90(field%var_loc, var_loc_p, ierr)
   call VecRestoreArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
   call VecRestoreArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
   call VecRestoreArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)

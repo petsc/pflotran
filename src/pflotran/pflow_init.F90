@@ -304,7 +304,7 @@ subroutine PflowInit(simulation,filename)
   end if  
 
   select case(option%imode)
-    case(MPH_MODE,RICHARDS_MODE,FLASH_MODE,OWG_MODE,VADOSE_MODE)
+    case(MPH_MODE,FLASH_MODE,OWG_MODE,VADOSE_MODE)
       call GridCreateVector(grid,VARDOF, field%var_loc,LOCAL)
   end select
 

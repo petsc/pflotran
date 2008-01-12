@@ -275,7 +275,7 @@ subroutine StructuredGridCreateDMs(structured_grid,option)
                       ndof,stencil_width, &
                       PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
                       structured_grid%da_nphanspecncomp_dof,ierr)
-    case(MPH_MODE,RICHARDS_MODE,VADOSE_MODE,FLASH_MODE,OWG_MODE)
+    case(MPH_MODE,VADOSE_MODE,FLASH_MODE,OWG_MODE)
       ndof = (option%ndof+1)*(2+7*option%nphase + 2*option%nspec*option%nphase)
       call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &
                       structured_grid%nx,structured_grid%ny,structured_grid%nz, &
