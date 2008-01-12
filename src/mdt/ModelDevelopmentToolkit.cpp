@@ -15,6 +15,7 @@ int commsize = 0;
 int main(int argc, char **args) {
   
   PetscErrorCode ierr;
+  PetscLogDouble start, end;
   
   // initialize petsc
   ierr = PetscInitialize(&argc,&args,PETSC_NULL,PETSC_NULL);CHKERRQ(ierr);
@@ -31,12 +32,34 @@ int main(int argc, char **args) {
 //  testcase = new TestCase(&grid);
 
   Output *out = new Output(grid);
+
+#if 0
+  PetscGetTime(&start);
   out->printGMSGrid();
+  PetscGetTime(&end);
+  if (myrank == 0) printf("  %f seconds to print to GMS\n",end-start); 
+#endif
+
 //  out->printBoundarySets();
 
+#if 0
+  PetscGetTime(&start);
   out->printHDFMesh();
+  PetscGetTime(&end);
+  if (myrank == 0) printf("  %f seconds to print to HDF5 Mesh\n",end-start); 
+#endif
+
+  PetscGetTime(&start);
   out->printHDFMaterialsAndRegions();
+  PetscGetTime(&end);
+  if (myrank == 0) printf("  %f seconds to print HDF5 Materials and Regions\n",end-start); 
+
+#if 0
+  PetscGetTime(&start);
   out->printHDFSieveMesh();
+  PetscGetTime(&end);
+  if (myrank == 0) printf("  %f seconds to print to HDF5 Sieve Mesh\n",end-start); 
+#endif
 
   delete out;
   delete hanford300;

@@ -16,34 +16,47 @@ Hanford300::Hanford300(Grid **grid_) {
   double my = 1.;
   double mz = 1.;
 
-#if 0
+#if 1
+  int nx = 1350;
+  int ny = 2500;
+  int nz = 120;
+  mx = 0.1;
+  my = mx;
+  mz = 0.5;
+#elif 0
   int nx = 1350;
   int ny = 2500;
   int nz = 60;
   mx = 0.1;
   my = mx;
-#elif 1
+#elif 0
   int nx = 675;
   int ny = 1250;
   int nz = 60;
   mx = 0.2;
   my = mx;
 #elif 0
+  int nx = 270;
+  int ny = 500;
+  int nz = 60;
+  mx = 0.5;
+  my = mx;
+#elif 0
   int nx = 135;
   int ny = 250;
   int nz = 60;
-#elif 0
-  int nx = 34;
-  int ny = 64;
-  int nz = 30;
-  mx = 4.;
-  my = mx;
-  mz = 2.;
 #elif 0
   int nx = 68;
   int ny = 125;
   int nz = 30;
   mx = 2.;
+  my = mx;
+  mz = 2.;
+#elif 0
+  int nx = 34;
+  int ny = 64;
+  int nz = 30;
+  mx = 4.;
   my = mx;
   mz = 2.;
 #else
@@ -95,21 +108,21 @@ Hanford300::Hanford300(Grid **grid_) {
   AsciiGrid::nasciigrids = 7;
   string *grid_filenames = new string[AsciiGrid::nasciigrids];
 #if 0
-  grid_filenames[0].append("basalt_PNNL_grid_20m.asc");
-  grid_filenames[1].append("u9PNNL_grid_20m.asc");
-  grid_filenames[2].append("u8PNNL_grid_20m.asc");
-  grid_filenames[3].append("u7PNNL_grid_20m.asc");
-  grid_filenames[4].append("u6PNNL_grid_20m.asc");
-  grid_filenames[5].append("u5PNNL_grid_20m.asc");
-  grid_filenames[6].append("u1PNNL_grid_20m.asc");
+  grid_filenames[0].append("../basalt_PNNL_grid_20m.asc");
+  grid_filenames[1].append("../u9PNNL_grid_20m.asc");
+  grid_filenames[2].append("../u8PNNL_grid_20m.asc");
+  grid_filenames[3].append("../u7PNNL_grid_20m.asc");
+  grid_filenames[4].append("../u6PNNL_grid_20m.asc");
+  grid_filenames[5].append("../u5PNNL_grid_20m.asc");
+  grid_filenames[6].append("../u1PNNL_grid_20m.asc");
 #else
-  grid_filenames[0].append("basalt_PNNL_grid.asc");
-  grid_filenames[1].append("u9PNNL_grid.asc");
-  grid_filenames[2].append("u8PNNL_grid.asc");
-  grid_filenames[3].append("u7PNNL_grid.asc");
-  grid_filenames[4].append("u6PNNL_grid.asc");
-  grid_filenames[5].append("u5PNNL_grid.asc");
-  grid_filenames[6].append("u1PNNL_grid.asc");
+  grid_filenames[0].append("../basalt_PNNL_grid.asc");
+  grid_filenames[1].append("../u9PNNL_grid.asc");
+  grid_filenames[2].append("../u8PNNL_grid.asc");
+  grid_filenames[3].append("../u7PNNL_grid.asc");
+  grid_filenames[4].append("../u6PNNL_grid.asc");
+  grid_filenames[5].append("../u5PNNL_grid.asc");
+  grid_filenames[6].append("../u1PNNL_grid.asc");
 #endif
 
   ascii_grids = new AsciiGrid*[AsciiGrid::nasciigrids];
