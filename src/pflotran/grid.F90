@@ -72,12 +72,15 @@ module Grid_module
             GridLocalToGlobal, &
             GridLocalToLocal, &
             GridGlobalToNatural, &
+            GridNaturalToGlobal, &
             GridGlobalToLocalBegin, &
-            GridLocalToLocalBegin, &
-            GridGlobalToNaturalBegin, &
             GridGlobalToLocalEnd, &
+            GridLocalToLocalBegin, &
             GridLocalToLocalEnd, &
+            GridGlobalToNaturalBegin, &
             GridGlobalToNaturalEnd, &
+            GridNaturalToGlobalBegin, &
+            GridNaturalToGlobalEnd, &
             GridMapIndices, &
             GridCreateDMs, &
             GridComputeSpacing, &
@@ -613,6 +616,31 @@ end subroutine GridGlobalToNatural
 
 ! ************************************************************************** !
 !
+! GridNaturalToGlobal: Performs natural to global communication with DM
+! author: Glenn Hammond
+! date: 01/12/08
+!
+! ************************************************************************** !
+subroutine GridNaturalToGlobal(grid,natural_vec,global_vec,dm_index)
+
+  implicit none
+  
+  type(grid_type) :: grid
+  Vec :: natural_vec
+  Vec :: global_vec
+  integer :: dm_index
+  
+  select case(grid%igrid)
+    case(STRUCTURED)
+      call StructureGridNaturalToGlobal(grid%structured_grid,natural_vec, &
+                                        global_vec,dm_index)
+    case(UNSTRUCTURED)
+  end select
+  
+end subroutine GridNaturalToGlobal
+
+! ************************************************************************** !
+!
 ! GridGlobalToLocalBegin: Begins global to local communication with DM
 ! author: Glenn Hammond
 ! date: 10/24/07
@@ -766,6 +794,56 @@ subroutine GridGlobalToNaturalEnd(grid,global_vec,natural_vec,dm_index)
   end select
   
 end subroutine GridGlobalToNaturalEnd
+
+! ************************************************************************** !
+!
+! GridNaturalToGlobalBegin: Begins natural to global communication with DM
+! author: Glenn Hammond
+! date: 01/12/08
+!
+! ************************************************************************** !
+subroutine GridNaturalToGlobalBegin(grid,natural_vec,global_vec,dm_index)
+
+  implicit none
+  
+  type(grid_type) :: grid
+  Vec :: natural_vec
+  Vec :: global_vec
+  integer :: dm_index
+  
+  select case(grid%igrid)
+    case(STRUCTURED)
+      call StructureGridNaturToGlobalBegin(grid%structured_grid,natural_vec, &
+                                           global_vec,dm_index)
+    case(UNSTRUCTURED)
+  end select
+  
+end subroutine GridNaturalToGlobalBegin
+
+! ************************************************************************** !
+!
+! GridNaturalToGlobalEnd: Ends natural to global communication with DM
+! author: Glenn Hammond
+! date: 01/12/08
+!
+! ************************************************************************** !
+subroutine GridNaturalToGlobalEnd(grid,natural_vec,global_vec,dm_index)
+
+  implicit none
+  
+  type(grid_type) :: grid
+  Vec :: natural_vec
+  Vec :: global_vec
+  integer :: dm_index
+  
+  select case(grid%igrid)
+    case(STRUCTURED)
+      call StructureGridNaturToGlobalEnd(grid%structured_grid,natural_vec, &
+                                         global_vec,dm_index)
+    case(UNSTRUCTURED)
+  end select
+  
+end subroutine GridNaturalToGlobalEnd
 
 ! ************************************************************************** !
 !
@@ -1025,7 +1103,6 @@ subroutine GridCreateNaturalToGhostedHash(grid,option)
   integer :: num_in_hash, num_ids_per_hash, hash_id, id
   integer :: max_num_ids_per_hash = 0
   integer, pointer :: hash(:,:,:), temp_hash(:,:,:)
-  integer :: ierr
 
   if (associated(grid%hash)) return
 
@@ -1070,9 +1147,7 @@ subroutine GridCreateNaturalToGhostedHash(grid,option)
   
 !  call GridPrintHashTable(grid)
   
-  call MPI_Allreduce(max_num_ids_per_hash,num_ids_per_hash,1,MPI_INTEGER,MPI_MAX, &
-                     PETSC_COMM_WORLD,ierr)
-  if (option%myrank == 0) print *, 'max_num_ids_per_hash:', num_ids_per_hash
+  if (option%myrank == 0) print *, 'max_num_ids_per_hash:', max_num_ids_per_hash
 
 end subroutine GridCreateNaturalToGhostedHash
 
