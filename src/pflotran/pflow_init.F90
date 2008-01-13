@@ -614,12 +614,24 @@ subroutine PflowInit(simulation,filename)
   
 !   if (myrank == 0) write(*,'(" analytical jacobian as ")'); &
 !                    print *, grid%iblkfmt
+
+    ! grab handles for ksp and pc
     call SNESGetKSP(solver%snes,solver%ksp,ierr)
     call KSPGetPC(solver%ksp,solver%pc,ierr)
+
+    ! if ksp_type or pc_type specified in input file, set them here
     if (len_trim(solver%ksp_type) > 1) &
       call KSPSetType(solver%ksp,solver%ksp_type,ierr)
     if (len_trim(solver%pc_type) > 1) &
       call PCSetType(solver%pc,solver%pc_type,ierr)
+
+    ! allow override from command line
+    call KSPSetFromOptions(solver%ksp,ierr)
+    call PCSetFromOptions(solver%pc,ierr)
+
+    ! get the ksp_type and pc_type incase of command line override.
+    call KSPGetType(solver%ksp,solver%ksp_type,ierr)
+    call PCGetType(solver%pc,solver%pc_type,ierr)
 
     select case(option%imode)
 #if 0    
