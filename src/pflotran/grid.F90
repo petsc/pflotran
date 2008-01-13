@@ -1025,6 +1025,7 @@ subroutine GridCreateNaturalToGhostedHash(grid,option)
   integer :: num_in_hash, num_ids_per_hash, hash_id, id
   integer :: max_num_ids_per_hash = 0
   integer, pointer :: hash(:,:,:), temp_hash(:,:,:)
+  integer :: ierr
 
   if (associated(grid%hash)) return
 
@@ -1069,7 +1070,9 @@ subroutine GridCreateNaturalToGhostedHash(grid,option)
   
 !  call GridPrintHashTable(grid)
   
-  if (option%myrank == 0) print *, 'max_num_ids_per_hash:', max_num_ids_per_hash
+  call MPI_Allreduce(max_num_ids_per_hash,num_ids_per_hash,1,MPI_INTEGER,MPI_MAX, &
+                     PETSC_COMM_WORLD,ierr)
+  if (option%myrank == 0) print *, 'max_num_ids_per_hash:', num_ids_per_hash
 
 end subroutine GridCreateNaturalToGhostedHash
 
