@@ -85,12 +85,15 @@ module Structured_Grid_module
             StructureGridGlobalToLocal, &
             StructureGridLocalToGlobal, &
             StructureGridGlobalToNatural, &
+            StructureGridNaturalToGlobal, &
             StructureGridLocalToLocalBegin, &
-            StructureGridGlobalToLocalBegin, &
-            StructureGridGlobalToNaturBegin, &
             StructureGridLocalToLocalEnd, &
+            StructureGridGlobalToLocalBegin, &
             StructureGridGlobalToLocalEnd, &
+            StructureGridGlobalToNaturBegin, &
             StructureGridGlobalToNaturEnd, &
+            StructureGridNaturToGlobalBegin, &
+            StructureGridNaturToGlobalEnd, &
             StructureGridLocalToLocal, &
             StructuredGridReadDXYZ, &
             StructuredGridComputeVolumes, &
@@ -1174,10 +1177,39 @@ subroutine StructureGridGlobalToNatural(structured_grid,global_vec,natural_vec, 
 
   call DAGlobalToNaturalBegin(da_ptr,global_vec,INSERT_VALUES, &
                             natural_vec,ierr)
-  call DAGlobalToNaturalEnd(da_ptr,global_vec, INSERT_VALUES, &
+  call DAGlobalToNaturalEnd(da_ptr,global_vec,INSERT_VALUES, &
                           natural_vec, ierr)
                           
 end subroutine StructureGridGlobalToNatural
+
+! ************************************************************************** !
+!
+! StructureGridNaturalToGlobal: Performs natural to global communication with DA
+! author: Glenn Hammond
+! date: 01/12/08
+!
+! ************************************************************************** !
+subroutine StructureGridNaturalToGlobal(structured_grid,natural_vec, &
+                                        global_vec,da_index)
+
+  implicit none
+  
+  type(structured_grid_type) :: structured_grid
+  Vec :: natural_vec
+  Vec :: global_vec
+  integer :: da_index
+  
+  DA :: da_ptr
+  PetscErrorCode :: ierr
+
+  da_ptr = StructGridGetDAPtrFromIndex(structured_grid,da_index)
+
+  call DANaturalToGlobalBegin(da_ptr,natural_vec,INSERT_VALUES, &
+                              global_vec,ierr)
+  call DANaturalToGlobalEnd(da_ptr,natural_vec,INSERT_VALUES, &
+                            global_vec,ierr)
+                          
+end subroutine StructureGridNaturalToGlobal
 
 ! ************************************************************************** !
 !
@@ -1282,10 +1314,37 @@ subroutine StructureGridGlobalToLocalEnd(structured_grid,global_vec,local_vec, &
 
   da_ptr = StructGridGetDAPtrFromIndex(structured_grid,da_index)
 
-  call DAGlobalToLocalEnd(da_ptr,global_vec, INSERT_VALUES, &
+  call DAGlobalToLocalEnd(da_ptr,global_vec,INSERT_VALUES, &
                           local_vec, ierr)
                           
 end subroutine StructureGridGlobalToLocalEnd
+
+! ************************************************************************** !
+!
+! StructureGridNaturToGlobalBegin: Begins global to natural communication with DA
+! author: Glenn Hammond
+! date: 10/24/07
+!
+! ************************************************************************** !
+subroutine StructureGridNaturToGlobalBegin(structured_grid,natural_vec, &
+                                           global_vec,da_index)
+
+  implicit none
+  
+  type(structured_grid_type) :: structured_grid
+  Vec :: natural_vec
+  Vec :: global_vec
+  integer :: da_index
+  
+  DA :: da_ptr
+  PetscErrorCode :: ierr
+
+  da_ptr = StructGridGetDAPtrFromIndex(structured_grid,da_index)
+
+  call DANaturalToGlobalBegin(da_ptr,natural_vec,INSERT_VALUES, &
+                              global_vec,ierr)
+                          
+end subroutine StructureGridNaturToGlobalBegin
 
 ! ************************************************************************** !
 !
@@ -1309,7 +1368,7 @@ subroutine StructureGridLocalToLocalEnd(structured_grid,local_vec1,local_vec2, &
 
   da_ptr = StructGridGetDAPtrFromIndex(structured_grid,da_index)
 
-  call DALocalToLocalEnd(da_ptr,local_vec1, INSERT_VALUES, &
+  call DALocalToLocalEnd(da_ptr,local_vec1,INSERT_VALUES, &
                          local_vec2, ierr)
                           
 end subroutine StructureGridLocalToLocalEnd
@@ -1336,10 +1395,37 @@ subroutine StructureGridGlobalToNaturEnd(structured_grid,global_vec, &
 
   da_ptr = StructGridGetDAPtrFromIndex(structured_grid,da_index)
 
-  call DAGlobalToNaturalEnd(da_ptr,global_vec, INSERT_VALUES, &
+  call DAGlobalToNaturalEnd(da_ptr,global_vec,INSERT_VALUES, &
                           natural_vec, ierr)
                           
 end subroutine StructureGridGlobalToNaturEnd
+
+! ************************************************************************** !
+!
+! StructureGridNaturToGlobalEnd: Ends global to natural communication with DA
+! author: Glenn Hammond
+! date: 10/24/07
+!
+! ************************************************************************** !
+subroutine StructureGridNaturToGlobalEnd(structured_grid,natural_vec, &
+                                         global_vec,da_index)
+
+  implicit none
+  
+  type(structured_grid_type) :: structured_grid
+  Vec :: natural_vec
+  Vec :: global_vec
+  integer :: da_index
+  
+  DA :: da_ptr
+  PetscErrorCode :: ierr
+
+  da_ptr = StructGridGetDAPtrFromIndex(structured_grid,da_index)
+
+  call DANaturalToGlobalEnd(da_ptr,natural_vec,INSERT_VALUES, &
+                            global_vec,ierr)
+                          
+end subroutine StructureGridNaturToGlobalEnd
 
 ! ************************************************************************** !
 !

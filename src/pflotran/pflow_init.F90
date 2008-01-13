@@ -496,103 +496,7 @@ subroutine PflowInit(simulation,filename)
   ! determine how we want to do the Jacobian (matrix vs. matrix-free, for
   ! example).
   !-----------------------------------------------------------------------
-  if (option%use_analytical == PETSC_TRUE) then
-  
-    option%ideriv = 1
-  
-    call GridCreateJacobian(grid,solver,option)
-  
-!   if (myrank == 0) write(*,'(" analytical jacobian as ")'); &
-!                    print *, grid%iblkfmt
-
-    select case(option%imode)
-#if 0    
-      ! still needs to be implemented
-      case(COND_MODE)
-        call SNESSetJacobian(solver%snes, solver%J, solver%J, CondJacobian, &
-                           grid, ierr); CHKERRQ(ierr)
-      case(TH_MODE)
-        call SNESSetJacobian(solver%snes, solver%J, solver%J, THJacobian, &
-                           grid, ierr); CHKERRQ(ierr)
-      case(THC_MODE)
-        call SNESSetJacobian(solver%snes, solver%J, solver%J, THCJacobian, &
-                           grid, ierr); CHKERRQ(ierr)
-      case(TWOPH_MODE)
-        call SNESSetJacobian(solver%snes, solver%J, solver%J, TTPHASEJacobian, &
-                           grid, ierr); CHKERRQ(ierr)
-      case(FLASH_MODE)
-        call SNESSetJacobian(solver%snes, solver%J, solver%J, FlashJacobian, &
-                           grid, ierr); CHKERRQ(ierr)
-        if (option%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(grid)
-      case(VADOSE_MODE)
-        call SNESSetJacobian(solver%snes, solver%J, solver%J, VADOSEJacobian, &
-                           grid, ierr); CHKERRQ(ierr)
-        if (option%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(grid)
-#endif
-      case(RICHARDS_MODE)
-#ifdef RICHARDS_ANALYTICAL
-        call SNESSetJacobian(solver%snes, solver%J, solver%J, RichardsAnalyticalJacobian, &
-                             realization, ierr); CHKERRQ(ierr)
-#else      
-        call SNESSetJacobian(solver%snes, solver%J, solver%J, RichardsJacobian, &
-                             realization, ierr); CHKERRQ(ierr)
-#endif                             
-        if (option%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(realization,solver)
-      case(MPH_MODE)
-        call SNESSetJacobian(solver%snes, solver%J, solver%J, MPHASEJacobian, &
-                             realization, ierr); CHKERRQ(ierr)
-        if (option%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(realization,solver)
-#if 0      
-      ! still needs to be implemented
-      case(OWG_MODE)
-        call SNESSetJacobian(solver%snes, solver%J, solver%J, OWGJacobian, &
-                           grid, ierr); CHKERRQ(ierr)
-        if (option%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(grid)
-      case default
-        call SNESSetJacobian(solver%snes, solver%J, solver%J, LiquidJacobian, &
-                           grid, ierr); CHKERRQ(ierr)
-#endif
-    end select                         
-
-  else if (option%use_matrix_free == PETSC_TRUE) then
-  
-    option%ideriv = 0
-  
-    if (option%myrank == 0) write(*,'(" Using matrix-free Newton-Krylov")')
-
-    select case(option%imode)
-      case(COND_MODE)
-        call MatCreateMFFD(solver%snes,field%ttemp,solver%J,ierr)
-      case(TH_MODE,THC_MODE,TWOPH_MODE,MPH_MODE,FLASH_MODE,RICHARDS_MODE, &
-           VADOSE_MODE,OWG_MODE)
-        call MatCreateMFFD(solver%snes,field%xx,solver%J,ierr)
-      case default
-        call MatCreateMFFD(solver%snes,field%ppressure,solver%J,ierr)
-    end select
-    
-    ! It seems that I ought to call SNESSetJacobian here now, but I don't know
-    ! what function I am supposed to pass to it to get it to use one of the 
-    ! finite-difference routines for computing the Jacobian.  It might not
-    ! actually matter if -snes_mf has been specified.
-    ! Pernice thinks that perhaps the I need to provide a function which 
-    ! simply calls MatAssemblyBegin/End.
-    call SNESSetJacobian(solver%snes, solver%J, solver%J, &
-                         SolverComputeMFJacobian, PETSC_NULL_OBJECT, ierr)
-
-    ! Use "Walker-Pernice" differencing.
-    call MatMFFDSetType(solver%J, MATMFFD_WP, ierr)
-
-    if (option%print_hhistory == PETSC_TRUE) then
-      allocate(option%hhistory(HHISTORY_LENGTH))
-      call MatMFFDSetHHistory(solver%J, option%hhistory, HHISTORY_LENGTH, ierr)
-    endif
-
-    if (option%monitor_h == PETSC_TRUE) then
-      call SNESMonitorSet(solver%snes, SolverMonitorH, grid, &
-                          PETSC_NULL_OBJECT, ierr)
-    endif
-    
-  else
+  if (option%use_numerical == PETSC_TRUE) then
   
     option%ideriv = 0
   
@@ -663,6 +567,121 @@ subroutine PflowInit(simulation,filename)
     call SNESSetJacobian(solver%snes, solver%J, solver%J, &
                          SNESDefaultComputeJacobianColor,  &
                          solver%matfdcoloring, ierr)
+  
+  else if (option%use_matrix_free == PETSC_TRUE) then
+  
+    option%ideriv = 0
+  
+    if (option%myrank == 0) write(*,'(" Using matrix-free Newton-Krylov")')
+
+    select case(option%imode)
+      case(COND_MODE)
+        call MatCreateMFFD(solver%snes,field%ttemp,solver%J,ierr)
+      case(TH_MODE,THC_MODE,TWOPH_MODE,MPH_MODE,FLASH_MODE,RICHARDS_MODE, &
+           VADOSE_MODE,OWG_MODE)
+        call MatCreateMFFD(solver%snes,field%xx,solver%J,ierr)
+      case default
+        call MatCreateMFFD(solver%snes,field%ppressure,solver%J,ierr)
+    end select
+    
+    ! It seems that I ought to call SNESSetJacobian here now, but I don't know
+    ! what function I am supposed to pass to it to get it to use one of the 
+    ! finite-difference routines for computing the Jacobian.  It might not
+    ! actually matter if -snes_mf has been specified.
+    ! Pernice thinks that perhaps the I need to provide a function which 
+    ! simply calls MatAssemblyBegin/End.
+    call SNESSetJacobian(solver%snes, solver%J, solver%J, &
+                         SolverComputeMFJacobian, PETSC_NULL_OBJECT, ierr)
+
+    ! Use "Walker-Pernice" differencing.
+    call MatMFFDSetType(solver%J, MATMFFD_WP, ierr)
+
+    if (option%print_hhistory == PETSC_TRUE) then
+      allocate(option%hhistory(HHISTORY_LENGTH))
+      call MatMFFDSetHHistory(solver%J, option%hhistory, HHISTORY_LENGTH, ierr)
+    endif
+
+    if (option%monitor_h == PETSC_TRUE) then
+      call SNESMonitorSet(solver%snes, SolverMonitorH, grid, &
+                          PETSC_NULL_OBJECT, ierr)
+    endif
+    
+  else
+
+    option%ideriv = 1
+  
+    call GridCreateJacobian(grid,solver,option)
+  
+!   if (myrank == 0) write(*,'(" analytical jacobian as ")'); &
+!                    print *, grid%iblkfmt
+
+    ! grab handles for ksp and pc
+    call SNESGetKSP(solver%snes,solver%ksp,ierr)
+    call KSPGetPC(solver%ksp,solver%pc,ierr)
+
+    ! if ksp_type or pc_type specified in input file, set them here
+    if (len_trim(solver%ksp_type) > 1) &
+      call KSPSetType(solver%ksp,solver%ksp_type,ierr)
+    if (len_trim(solver%pc_type) > 1) &
+      call PCSetType(solver%pc,solver%pc_type,ierr)
+
+    ! allow override from command line
+    call KSPSetFromOptions(solver%ksp,ierr)
+    call PCSetFromOptions(solver%pc,ierr)
+
+    ! get the ksp_type and pc_type incase of command line override.
+    call KSPGetType(solver%ksp,solver%ksp_type,ierr)
+    call PCGetType(solver%pc,solver%pc_type,ierr)
+
+    select case(option%imode)
+#if 0    
+      ! still needs to be implemented
+      case(COND_MODE)
+        call SNESSetJacobian(solver%snes, solver%J, solver%J, CondJacobian, &
+                           grid, ierr); CHKERRQ(ierr)
+      case(TH_MODE)
+        call SNESSetJacobian(solver%snes, solver%J, solver%J, THJacobian, &
+                           grid, ierr); CHKERRQ(ierr)
+      case(THC_MODE)
+        call SNESSetJacobian(solver%snes, solver%J, solver%J, THCJacobian, &
+                           grid, ierr); CHKERRQ(ierr)
+      case(TWOPH_MODE)
+        call SNESSetJacobian(solver%snes, solver%J, solver%J, TTPHASEJacobian, &
+                           grid, ierr); CHKERRQ(ierr)
+      case(FLASH_MODE)
+        call SNESSetJacobian(solver%snes, solver%J, solver%J, FlashJacobian, &
+                           grid, ierr); CHKERRQ(ierr)
+        if (option%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(grid)
+      case(VADOSE_MODE)
+        call SNESSetJacobian(solver%snes, solver%J, solver%J, VADOSEJacobian, &
+                           grid, ierr); CHKERRQ(ierr)
+        if (option%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(grid)
+#endif
+      case(RICHARDS_MODE)
+#ifdef RICHARDS_ANALYTICAL
+        call SNESSetJacobian(solver%snes, solver%J, solver%J, RichardsAnalyticalJacobian, &
+                             realization, ierr); CHKERRQ(ierr)
+#else      
+        call SNESSetJacobian(solver%snes, solver%J, solver%J, RichardsJacobian, &
+                             realization, ierr); CHKERRQ(ierr)
+#endif                             
+        if (option%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(realization,solver)
+      case(MPH_MODE)
+        call SNESSetJacobian(solver%snes, solver%J, solver%J, MPHASEJacobian, &
+                             realization, ierr); CHKERRQ(ierr)
+        if (option%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(realization,solver)
+#if 0      
+      ! still needs to be implemented
+      case(OWG_MODE)
+        call SNESSetJacobian(solver%snes, solver%J, solver%J, OWGJacobian, &
+                           grid, ierr); CHKERRQ(ierr)
+        if (option%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(grid)
+      case default
+        call SNESSetJacobian(solver%snes, solver%J, solver%J, LiquidJacobian, &
+                           grid, ierr); CHKERRQ(ierr)
+#endif
+    end select                         
+
   endif
 
   if (option%myrank == 0) write(*,'("++++++++++++++++++++++++++++++++&
@@ -1737,6 +1756,11 @@ subroutine readInput(simulation,filename)
 
       case ('PRINT_DETAILED_CONVERGENCE')
         option%print_detailed_convergence = PETSC_TRUE
+
+!....................
+
+      case ('SOLVER')
+        call SolverRead(solver,IUNIT1,option%myrank)
 
 !....................
 
