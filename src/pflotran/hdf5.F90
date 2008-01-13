@@ -1291,12 +1291,14 @@ subroutine HDF5ReadMaterialsFromFile(realization,filename)
   ! Read Cell Ids
   call PetscGetTime(tstart,ierr)
   string = "Cell Ids"
+  if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
   call HDF5ReadIndices(grid,option,grp_id,string,grid%nmax,indices)
   call PetscGetTime(tend,ierr)
   if (option%myrank == 0) print *, '  Time to set up indices:', tend-tstart
 
   call PetscGetTime(tstart,ierr)
   string = "Material Ids"
+  if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
   call HDF5ReadArray(grid,option,grp_id,string,grid%nmax, &
                          indices,global,H5T_NATIVE_INTEGER)
 #else  
@@ -1304,6 +1306,7 @@ subroutine HDF5ReadMaterialsFromFile(realization,filename)
   ! Read Cell Ids
   call PetscGetTime(tstart,ierr)
   string = "Cell Ids"
+  if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
   call HDF5MapLocalToNaturalIndices(grid,option,grp_id,string,grid%nmax, &
                                     indices,grid%nlmax)
   call PetscGetTime(tend,ierr)
