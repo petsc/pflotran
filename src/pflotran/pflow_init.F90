@@ -614,6 +614,12 @@ subroutine PflowInit(simulation,filename)
   
 !   if (myrank == 0) write(*,'(" analytical jacobian as ")'); &
 !                    print *, grid%iblkfmt
+    call SNESGetKSP(solver%snes,solver%ksp,ierr)
+    call KSPGetPC(solver%ksp,solver%pc,ierr)
+    if (len_trim(solver%ksp_type) > 1) &
+      call KSPSetType(solver%ksp,solver%ksp_type,ierr)
+    if (len_trim(solver%pc_type) > 1) &
+      call PCSetType(solver%pc,solver%pc_type,ierr)
 
     select case(option%imode)
 #if 0    
@@ -1738,6 +1744,11 @@ subroutine readInput(simulation,filename)
 
       case ('PRINT_DETAILED_CONVERGENCE')
         option%print_detailed_convergence = PETSC_TRUE
+
+!....................
+
+      case ('SOLVER')
+        call SolverRead(solver,IUNIT1,option%myrank)
 
 !....................
 
