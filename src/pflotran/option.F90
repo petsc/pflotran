@@ -44,9 +44,9 @@ module Option_module
     integer :: nspec, npricomp
 
     ! Program options
-    PetscTruth :: use_analytical  ! If true, use analytical Jacobian.
+    PetscTruth :: use_numerical  ! If true, use numerical Jacobian.
     PetscTruth :: use_matrix_free  ! If true, do not form the Jacobian.
-      ! Note that if 'use_analytical' and 'use_matrix_free' are both false,
+      ! Note that if 'use_numerical' is true and 'use_matrix_free' is false,
       ! the Jacobian will be computed numerically and stored.
     PetscTruth :: print_hhistory
       ! If true, and if use_matrix_free is true, then store the differencing
@@ -201,6 +201,9 @@ function OptionCreate()
   option%use_ksp = PETSC_FALSE
   option%use_isoth = PETSC_FALSE
   option%print_bcinfo = PETSC_FALSE
+
+  option%use_numerical = PETSC_FALSE
+  option%use_matrix_free = PETSC_FALSE
   
   option%print_convergence = PETSC_TRUE
   option%print_detailed_convergence = PETSC_FALSE
@@ -312,8 +315,8 @@ subroutine OptionCheckCommandLine(option)
   
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-snes_mf", & 
                            option%use_matrix_free, ierr)
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_analytical", &
-                           option%use_analytical, ierr)
+  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_numerical", &
+                           option%use_numerical, ierr)
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-print_hhistory", &
                            option%print_hhistory, ierr)
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-monitor_h", &
