@@ -828,6 +828,235 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type, &
 end subroutine HDF5WriteStructuredDataSet
 !GEH - Structured Grid Dependence - End
 
+! ************************************************************************** !
+!
+! HDF5ReadIndices: Reads cell indices from an hdf5 dataset
+! author: Glenn Hammond
+! date: 01/12/08
+!
+! ************************************************************************** !
+subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
+                           indices)
+
+  use hdf5
+  
+  use Option_module
+  use Grid_module
+  
+  implicit none
+  
+  type(grid_type) :: grid
+  type(option_type) :: option
+  character(len=MAXWORDLENGTH) :: dataset_name
+  integer :: dataset_size
+  integer(HID_T) :: file_id
+  integer, pointer :: indices(:)
+  integer :: num_indices
+  
+  integer(HID_T) :: file_space_id
+  integer(HID_T) :: memory_space_id
+  integer(HID_T) :: data_set_id
+  integer(HID_T) :: prop_id
+  integer(HSIZE_T) :: dims(3)
+  integer(HSIZE_T) :: offset(3), length(3), stride(3)
+  integer :: rank
+  integer(HSIZE_T) :: num_data_in_file
+  
+  integer :: istart, iend
+
+  istart = 0  ! this will be zero-based
+  iend = 0
+  
+  ! first determine upper and lower bound on PETSc global array
+  call mpi_exscan(grid%nlmax,istart,1,MPI_INTEGER,MPI_SUM,PETSC_COMM_WORLD,ierr)
+  call mpi_scan(grid%nlmax,iend,1,MPI_INTEGER,MPI_SUM,PETSC_COMM_WORLD,ierr)
+  if (iend /= istart + grid%nlmax) then
+    call printErrMsg(option,'ERROR: iend /= istart+grid%nlmax')
+  endif
+  
+  call h5dopen_f(file_id,dataset_name,data_set_id,hdf5_err)
+  call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
+  ! should be a rank=1 data space
+  call h5sget_simple_extent_npoints_f(file_space_id,num_data_in_file,hdf5_err)
+  if (dataset_size > 0 .and. num_data_in_file /= dataset_size) then
+    if (option%myrank == 0) then
+      print *, 'ERROR: ', trim(dataset_name), ' data space dimension (', &
+               num_data_in_file, ') does not match the dimensions of the ', &
+               'domain (', dataset_size, ').'
+      call PetscFinalize(ierr)
+      stop
+    endif
+  else
+    dataset_size = num_data_in_file
+  endif  
+  
+  if (istart < num_data_in_file) then
+  
+    allocate(indices(-1:iend-istart))
+    indices(-1) = istart
+    indices(0) = iend
+  
+    rank = 1
+    offset = 0
+    length = 0
+    stride = 1
+  
+    call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
+#ifndef SERIAL_HDF5
+    call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F,hdf5_err)
+#endif
+  
+    dims = 0
+    dims(1) = iend-istart
+    memory_space_id = -1
+    call h5screate_simple_f(rank,dims,memory_space_id,hdf5_err,dims)
+
+    ! offset is zero-based
+    offset(1) = istart
+    length(1) = iend-istart
+    call h5sselect_hyperslab_f(file_space_id,H5S_SELECT_SET_F,offset, &
+                               length,hdf5_err,stride,stride) 
+    call h5dread_f(data_set_id,H5T_NATIVE_INTEGER,indices(1:iend-istart), &
+                   dims,hdf5_err,memory_space_id,file_space_id,prop_id)                     
+                     
+  endif
+  
+  call h5pclose_f(prop_id,hdf5_err)
+  call h5sclose_f(memory_space_id,hdf5_err)
+  call h5sclose_f(file_space_id,hdf5_err)
+  call h5dclose_f(data_set_id,hdf5_err)
+
+end subroutine HDF5ReadIndices
+
+! ************************************************************************** !
+!
+! HDF5ReadArray: Read an hdf5 array into a Petsc Vec
+! author: Glenn Hammond
+! date: 01/12/08
+!
+! ************************************************************************** !
+subroutine HDF5ReadArray(grid,option,file_id,dataset_name,dataset_size, &
+                         indices,global_vec,data_type)
+                         
+  use hdf5
+  
+  use Option_module
+  use Grid_Module
+  
+  implicit none
+
+#include "include/finclude/petsc.h"
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
+  
+  type(grid_type) :: grid
+  type(option_type) :: option
+  character(len=MAXWORDLENGTH) :: dataset_name
+  integer :: dataset_size
+  integer(HID_T) :: file_id
+  integer, pointer :: indices(:)
+  integer :: num_indices
+  Vec :: global_vec
+  integer(HID_T) :: data_type
+  
+  integer(HID_T) :: file_space_id
+  integer(HID_T) :: memory_space_id
+  integer(HID_T) :: data_set_id
+  integer(HID_T) :: prop_id
+  integer(HSIZE_T) :: dims(3)
+  integer(HSIZE_T) :: offset(3), length(3), stride(3)
+  integer :: rank
+  integer(HSIZE_T) :: num_data_in_file
+  Vec :: natural_vec
+  integer :: i, istart, iend
+  real*8, allocatable :: real_buffer(:)
+  integer, allocatable :: integer_buffer(:)
+  integer, allocatable :: indices0(:)
+  
+  istart = 0
+  iend = 0
+  
+  call h5dopen_f(file_id,dataset_name,data_set_id,hdf5_err)
+  call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
+  ! should be a rank=1 data space
+  call h5sget_simple_extent_npoints_f(file_space_id,num_data_in_file,hdf5_err)
+
+  if (dataset_size > 0 .and. num_data_in_file /= dataset_size) then
+    if (option%myrank == 0) then
+      print *, 'ERROR: ', trim(dataset_name), ' data space dimension (', &
+               num_data_in_file, ') does not match the dimensions of the ', &
+               'domain (', grid%nmax, ').'
+      call PetscFinalize(ierr)
+      stop
+    endif
+  endif
+
+  rank = 1
+  offset = 0
+  length = 0
+  stride = 1
+  
+  call h5pcreate_f(H5P_DATASET_XFER_F,prop_id,hdf5_err)
+#ifndef SERIAL_HDF5
+  call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F,hdf5_err)
+#endif
+
+  call GridCreateVector(grid,ONEDOF,natural_vec,NATURAL)
+  call VecZeroEntries(natural_vec,ierr)
+
+  ! must initialize here to avoid error below when closing memory space
+  memory_space_id = -1
+
+  if (associated(indices)) then
+
+    istart = indices(-1)
+    iend = indices(0)
+
+    dims = 0
+    dims(1) = iend-istart
+    call h5screate_simple_f(rank,dims,memory_space_id,hdf5_err,dims)
+
+    ! offset is zero-based
+    offset(1) = istart
+    length(1) = iend-istart
+    call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset, &
+                               length,hdf5_err,stride,stride) 
+    allocate(real_buffer(iend-istart))
+    if (data_type == H5T_NATIVE_DOUBLE) then
+      call h5dread_f(data_set_id,H5T_NATIVE_DOUBLE,real_buffer,dims, &
+                     hdf5_err,memory_space_id,file_space_id,prop_id)
+      
+    else if (data_type == H5T_NATIVE_INTEGER) then
+      allocate(integer_buffer(iend-istart))
+      call h5dread_f(data_set_id,H5T_NATIVE_INTEGER,integer_buffer,dims, &
+                     hdf5_err,memory_space_id,file_space_id,prop_id)
+      do i=1,iend-istart
+        real_buffer(i) = real(integer_buffer(i))
+      enddo
+      deallocate(integer_buffer)
+    endif
+    ! must convert indices to zero based for VecSetValues
+    allocate(indices0(iend-istart))
+    indices0 = indices(1:iend-istart)-1
+    call VecSetValues(natural_vec,iend-istart,indices0, &
+                      real_buffer,INSERT_VALUES,ierr) 
+    deallocate(indices0)
+    deallocate(real_buffer)
+
+  endif
+
+  call h5pclose_f(prop_id,hdf5_err)
+  if (memory_space_id > -1) call h5sclose_f(memory_space_id,hdf5_err)
+  call h5sclose_f(file_space_id,hdf5_err)
+  call h5dclose_f(data_set_id,hdf5_err)
+
+  call VecAssemblyBegin(natural_vec,ierr)
+  call VecAssemblyEnd(natural_vec,ierr)
+  call GridNaturalToGlobal(grid,natural_vec,global_vec,ONEDOF)
+  call VecDestroy(natural_vec,ierr)
+  
+end subroutine HDF5ReadArray
+
 #endif ! USE_HDF5
 
 ! ************************************************************************** !
@@ -1048,7 +1277,6 @@ subroutine HDF5ReadMaterialsFromFile(realization,filename)
   call h5fopen_f(filename,H5F_ACC_RDONLY_F,file_id,hdf5_err,prop_id)
   call h5pclose_f(prop_id,hdf5_err)
 
-  allocate(indices(grid%nlmax))
   call GridCreateVector(grid,ONEDOF,global,GLOBAL)
   call GridCreateVector(grid,ONEDOF,local,LOCAL)
 
@@ -1057,7 +1285,22 @@ subroutine HDF5ReadMaterialsFromFile(realization,filename)
   string = 'Materials'
   if (option%myrank == 0) print *, 'Opening group: ', trim(string)
   call h5gopen_f(file_id,string,grp_id,hdf5_err)
-  
+
+! new approach
+#if 1
+  ! Read Cell Ids
+  call PetscGetTime(tstart,ierr)
+  string = "Cell Ids"
+  call HDF5ReadIndices(grid,option,grp_id,string,grid%nmax,indices)
+  call PetscGetTime(tend,ierr)
+  if (option%myrank == 0) print *, '  Time to set up indices:', tend-tstart
+
+  call PetscGetTime(tstart,ierr)
+  string = "Material Ids"
+  call HDF5ReadArray(grid,option,grp_id,string,grid%nmax, &
+                         indices,global,H5T_NATIVE_INTEGER)
+#else  
+  allocate(indices(grid%nlmax))
   ! Read Cell Ids
   call PetscGetTime(tstart,ierr)
   string = "Cell Ids"
@@ -1075,12 +1318,14 @@ subroutine HDF5ReadMaterialsFromFile(realization,filename)
                             grid%nlmax,integer_array)
   call GridCopyIntegerArrayToPetscVec(integer_array,global,grid%nlmax)
   deallocate(integer_array)
+#endif
+  
   call GridGlobalToLocal(grid,global,local,ONEDOF)
   call GridCopyPetscVecToIntegerArray(field%imat,local,grid%ngmax)
   call PetscGetTime(tend,ierr)
   if (option%myrank == 0) print *, '  Time to read material ids:', tend-tstart
 
-  deallocate(indices)
+  if (associated(indices)) deallocate(indices)
   nullify(indices)
 
   if (option%myrank == 0) print *, 'Closing group: Materials'
