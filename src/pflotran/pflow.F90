@@ -97,6 +97,7 @@
   
   call PetscGetCPUTime(timex(1), ierr)
   call PetscGetTime(timex_wall(1), ierr)
+  option%start_time = timex_wall(1)
 
   call OptionCheckCommandLine(option)
 

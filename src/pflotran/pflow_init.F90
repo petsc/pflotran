@@ -2478,6 +2478,16 @@ subroutine readInput(simulation,filename)
           &"  dcdt        = ",1pe12.4)') &
           stepper%steady_eps
 #endif
+
+!.....................
+      case ('WALLCLOCK_STOP')
+        option%wallclock_stop_flag = PETSC_TRUE
+        call fiReadDouble(string,option%wallclock_stop_time,ierr)
+        call fiErrorMsg(option%myrank,'stop time','WALLCLOCK_STOP', ierr) 
+        ! convert from hrs to seconds and add to start_time
+        option%wallclock_stop_time = option%start_time + &
+                                     option%wallclock_stop_time*3600.d0
+      
 !....................
       case default
     

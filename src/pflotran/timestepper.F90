@@ -111,10 +111,11 @@ subroutine StepperRun(realization,stepper,stage)
   real*8, pointer :: dxdt(:)
   integer :: idx, ista=0  
   
-  logical :: plot_flag, timestep_cut_flag
-  integer :: istep, num_timestep_cuts
+  logical :: plot_flag, timestep_cut_flag, stop_flag
+  integer :: istep, num_timestep_cuts, start_step
   integer :: num_newton_iterations
   
+  PetscLogDouble :: stepper_start_time, current_time, average_step_time
   PetscErrorCode :: ierr
   
   option => realization%option
@@ -122,6 +123,7 @@ subroutine StepperRun(realization,stepper,stage)
   plot_flag = .false.
   num_timestep_cuts = 0
   timestep_cut_flag = .false.
+  stop_flag = .false.
 
   call RealizationAddWaypointsToList(realization,stepper%waypoints)
   call WaypointListFillIn(option,stepper%waypoints)
@@ -140,7 +142,9 @@ subroutine StepperRun(realization,stepper,stage)
 
   allocate(dxdt(1:option%ndof))  
 
-  do istep = stepper%flowsteps+1, stepper%stepmax
+  call PetscGetTime(stepper_start_time, ierr)
+  start_step = stepper%flowsteps+1
+  do istep = start_step, stepper%stepmax
   
     call StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
                        num_timestep_cuts,num_newton_iterations)
@@ -171,8 +175,23 @@ subroutine StepperRun(realization,stepper,stage)
     if (.not.timestep_cut_flag) &
       call StepperUpdateDT(stepper,option,num_newton_iterations)
 
-    if(option%checkpoint_flag == PETSC_TRUE .and. &
-       mod(istep,option%checkpoint_frequency) == 0) then
+    ! if a simulation wallclock duration time is set, check to see that the
+    ! next time step will not exceed that value.  If it does, print the
+    ! checkpoint and exit.
+    if (option%wallclock_stop_flag == PETSC_TRUE) then
+      call PetscGetTime(current_time, ierr)
+      average_step_time = (current_time-stepper_start_time)/ &
+                          real(istep-start_step+1) &
+                          *2.d0  ! just to be safe, double it
+      if (average_step_time + current_time > option%wallclock_stop_time) then
+        call printMsg(option,"Wallclock stop time exceeded.  Exiting!!!")
+        call printMsg(option,"")
+        stop_flag = .true.
+      endif
+    endif
+
+    if (option%checkpoint_flag == PETSC_TRUE .and. &
+        mod(istep,option%checkpoint_frequency) == 0) then
       call PetscLogStagePush(stage(2), ierr)
       call pflowGridCheckpoint(realization,stepper%flowsteps,stepper%newtcum, &
                                stepper%icutcum,timestep_cut_flag, &
@@ -195,11 +214,11 @@ subroutine StepperRun(realization,stepper,stage)
 #endif
     
     ! if at end of waypoint list (i.e. cur_waypoint = null), we are done!
-    if (.not.associated(stepper%cur_waypoint)) exit
+    if (.not.associated(stepper%cur_waypoint) .or. stop_flag) exit
 
   enddo
 
-  if(option%checkpoint_flag == PETSC_TRUE) then
+  if (option%checkpoint_flag == PETSC_TRUE) then
     call pflowGridCheckpoint(realization,stepper%flowsteps,stepper%newtcum, &
                              stepper%icutcum,timestep_cut_flag, &
                              num_timestep_cuts,num_newton_iterations,istep)

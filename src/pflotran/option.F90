@@ -139,6 +139,10 @@ module Option_module
     PetscTruth :: checkpoint_flag
     integer :: checkpoint_frequency
     
+    PetscLogDouble :: start_time
+    PetscTruth :: wallclock_stop_flag
+    PetscLogDouble :: wallclock_stop_time
+    
     logical :: numerical_derivatives
     
   end type 
@@ -261,6 +265,10 @@ function OptionCreate()
   option%restart_file = ""
   option%checkpoint_flag = PETSC_FALSE
   option%checkpoint_frequency = int(1d20)
+  
+  option%start_time = 0.d0
+  option%wallclock_stop_flag = PETSC_FALSE
+  option%wallclock_stop_time = 0.d0
   
   option%numerical_derivatives = .false.
     
