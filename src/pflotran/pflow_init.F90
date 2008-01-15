@@ -1203,8 +1203,11 @@ subroutine readInput(simulation,filename)
   integer :: ibc, ibrk, ir,np  
 
   logical :: continuation_flag
+  logical :: periodic_output_flag = .false.
+  real*8 :: periodic_rate = 0.d0
+  
   character(len=1) :: backslash
-  real*8 :: temp_real
+  real*8 :: temp_real, temp_real2
   integer :: temp_int
   
   integer :: count, id
@@ -2319,6 +2322,16 @@ subroutine readInput(simulation,filename)
           stop
         endif
 
+
+        call fiReadWord(string,word,.false.,ierr)
+        if (ierr == 0) then
+          call fiWordToUpper(word)
+          if (fiStringCompare(word,'EVERY',5)) then
+            periodic_output_flag = .true.
+            call fiReadDouble(string,periodic_rate,ierr)
+          endif
+        endif
+
         continuation_flag = .true.
         do
           if (.not.continuation_flag) exit
@@ -2341,6 +2354,21 @@ subroutine readInput(simulation,filename)
         
         ! make last waypoint final
         waypoint%final = .true.
+        
+        if (periodic_output_flag) then
+          temp_real2 = waypoint%time   ! final simulation time
+          temp_real = periodic_rate
+          do
+            if (temp_real > temp_real2) exit
+            
+            waypoint => WaypointCreate()
+            waypoint%time = temp_real
+            waypoint%print_output = .true.              
+            call WaypointInsertInList(waypoint,stepper%waypoints)
+            
+            temp_real = temp_real + periodic_rate
+          enddo
+        endif
 
 !....................
 
