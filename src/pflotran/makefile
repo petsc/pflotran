@@ -15,11 +15,14 @@ ifdef debug_convergence
   DEBUG_CONVERGENCE_FLAGS = -DGLENN
 endif
 ifdef hdf5
-  HDF5_FLAGS = -I$(HDF5_INCLUDE) -I$(HDF5_LIB) -DUSE_HDF5
-  HDF5_LIBS = -L$(HDF5_LIB) -lhdf5_fortran -lhdf5 -lz  
+  ifndef jaguar
+    HDF5_FLAGS = -I$(HDF5_INCLUDE) -I$(HDF5_LIB) -DUSE_HDF5
+    HDF5_LIBS = -L$(HDF5_LIB) -lhdf5_fortran -lhdf5 -lz  
+  else
 # the below is for jaguar
-#  HDF5_FLAGS = $(HDF5_FLIB) -DUSE_HDF5
-#  HDF5_LIBS = $(HDF5_FLIB) -lhdf5_fortran -lhdf5 -lz
+    HDF5_FLAGS = $(HDF5_FLIB) -DUSE_HDF5
+    HDF5_LIBS = $(HDF5_FLIB) -lhdf5_fortran -lhdf5 -lz
+  endif
 endif
 ifdef compile_broken
   COMPILE_BROKEN_FLAGS = -DCOMPILE_BROKEN
@@ -40,7 +43,11 @@ CPPFLAGS         = ${MYFLAGS}
 FPPFLAGS         = ${MYFLAGS}
 CLEANFILES       = pflow ptran pflotran pflotran_fc
 
-include ${PETSC_DIR}/bmake/common/base
+ifdef dev
+ include ${PETSC_DIR}/conf/base
+else
+ include ${PETSC_DIR}/bmake/common/base
+endif
 
 util_obj  = ${common_src}fileio.o \
 	${common_src}water_eos.o \
