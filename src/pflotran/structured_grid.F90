@@ -1040,7 +1040,9 @@ subroutine StructuredGridCreateJacobian(structured_grid,solver,option)
   endif
  ! call  MatSetBlocksize(grid%J,grid%ndof,ierr)
   call MatSetOption(solver%J,MAT_KEEP_ZEROED_ROWS,ierr)
+#if (PETSC_VERSION_RELEASE == 1)
   call MatSetOption(solver%J,MAT_COLUMN_ORIENTED,ierr)
+#endif
   
 end subroutine StructuredGridCreateJacobian
 
