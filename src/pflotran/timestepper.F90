@@ -221,7 +221,7 @@ subroutine StepperRun(realization,stepper,stage)
   if (option%checkpoint_flag == PETSC_TRUE) then
     call pflowGridCheckpoint(realization,stepper%flowsteps,stepper%newtcum, &
                              stepper%icutcum,timestep_cut_flag, &
-                             num_timestep_cuts,num_newton_iterations,istep)
+                             num_timestep_cuts,num_newton_iterations,-1)
   endif
 
   if (option%myrank == 0) then

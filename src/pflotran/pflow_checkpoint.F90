@@ -111,7 +111,9 @@ subroutine pflowGridCheckpoint(realization,flowsteps,newtcum,icutcum, &
   output_option => realization%output_option
 
   ! Open the checkpoint file.
-  if (id < 10) then
+  if (id < 0) then
+    fname = 'restart.chk_restart'
+  else if (id < 10) then
     write(fname, '(a9,i1)') 'pflow.chk', id
   else if (id < 100) then
     write(fname, '(a9,i2)') 'pflow.chk', id
