@@ -1042,6 +1042,8 @@ subroutine StructuredGridCreateJacobian(structured_grid,solver,option)
   call MatSetOption(solver%J,MAT_KEEP_ZEROED_ROWS,ierr)
 #if (PETSC_VERSION_RELEASE == 1)
   call MatSetOption(solver%J,MAT_COLUMN_ORIENTED,ierr)
+#else
+  call MatSetOption(solver%J,MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
 #endif
   
 end subroutine StructuredGridCreateJacobian
