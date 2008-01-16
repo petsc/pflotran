@@ -44,7 +44,7 @@ module Richards_Analytical_module
   public RichardsAnalyticalResidual,RichardsAnalyticalJacobian, &
          RichardsUpdateFixedAccumulation,RichardsTimeCut,&
          RichardsSetup, RichardsNumericalJacobianTest, &
-         RichardsGetVarFromArray
+         RichardsGetVarFromArray, RichardsMaxChange
 
   public :: createRichardsZeroArray
   integer, save :: n_zero_rows = 0
@@ -1458,7 +1458,6 @@ subroutine RichardsAnalyticalResidual(snes,xx,r,realization,ierr)
 
   use water_eos_module
   use Gas_Eos_Module
-  use translator_Richards_module
 
   use Connection_module
   use Realization_module
@@ -1859,7 +1858,6 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
        
   use water_eos_module
   use gas_eos_module
-  use translator_Richards_module
 
   use Connection_module
   use Option_module
@@ -2397,6 +2395,41 @@ subroutine createRichardsZeroArray(realization)
   endif
 
 end subroutine createRichardsZeroArray
+
+! ************************************************************************** !
+!
+! RichardsMaxChange: Computes the maximum change in the solution vector
+! author: Glenn Hammond
+! date: 01/15/08
+!
+! ************************************************************************** !
+subroutine RichardsMaxChange(realization)
+
+  use Realization_module
+  use Option_module
+  use Field_module
+  
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field  
+  
+  integer :: ierr
+  
+  option => realization%option
+  field => realization%field
+
+  option%dcmax=0.D0
+  
+  call VecWAXPY(field%dxx,-1.d0,field%xx,field%yy,ierr)
+  call VecStrideNorm(field%dxx,0,NORM_INFINITY,option%dpmax,ierr)
+  call VecStrideNorm(field%dxx,1,NORM_INFINITY,option%dtmpmax,ierr)
+  if (option%ndof > 2) &
+    call VecStrideNorm(field%dxx,2,NORM_INFINITY,option%dcmax,ierr)
+    
+end subroutine RichardsMaxChange
 
 ! ************************************************************************** !
 !

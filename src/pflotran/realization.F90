@@ -247,7 +247,7 @@ subroutine RealizationInitCouplerAuxVars(realization,coupler_list)
       ! allocate arrays that match the number of connections
       select case(option%imode)
 
-        case(FLASH_MODE,RICHARDS_MODE,OWG_MODE,VADOSE_MODE)
+        case(FLASH_MODE,RICHARDS_MODE,OWG_MODE,VADOSE_MODE,RICHARDS_LITE_MODE)
        
           allocate(coupler%aux_real_var(option%ndof*option%nphase,num_connections))
           allocate(coupler%aux_int_var(1,num_connections))
@@ -306,7 +306,7 @@ subroutine RealizationUpdateCouplerAuxVars(realization,coupler_list, &
         associated(coupler%aux_real_var)) then
         
       select case(realization%option%imode)
-        case(RICHARDS_MODE,MPH_MODE)
+        case(RICHARDS_MODE,MPH_MODE,RICHARDS_LITE_MODE)
           select case(coupler%condition%itype(RICHARDS_PRESSURE_DOF))
             case(DIRICHLET_BC,NEUMANN_BC,MASS_RATE,ZERO_GRADIENT_BC)
               num_connections = coupler%connection%num_connections

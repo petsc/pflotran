@@ -349,6 +349,9 @@ subroutine OptionCheckCommandLine(option)
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_richards", &
                            option_found, ierr)
   if (option_found == PETSC_TRUE) option%mode = "richards"                           
+  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_richards_lite", &
+                           option_found, ierr)
+  if (option_found == PETSC_TRUE) option%mode = "richards_lite"                           
   option_found = PETSC_FALSE
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_liquid", &
                            option_found, ierr)

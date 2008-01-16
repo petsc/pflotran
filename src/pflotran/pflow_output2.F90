@@ -171,19 +171,29 @@ subroutine OutputTecplot(realization)
         if (associated(field%imat)) then
           string = trim(string) // ',"Material_ID"'
         endif
-      case(RICHARDS_MODE)
-        string = 'VARIABLES=' // &
-                 '"X [m]",' // &
-                 '"Y [m]",' // &
-                 '"Z [m]",' // &
-                 '"T [C]",' // &
-                 '"P [Pa]",' // &
-                 '"sl",' // &
-                 '"Ul"' 
-        do i=1,option%nspec
-          write(string2,'('',"Xl('',i2,'')"'')') i
-          string = trim(string) // trim(string2)
-        enddo
+      case(RICHARDS_MODE,RICHARDS_LITE_MODE)
+        if (option%imode == RICHARDS_MODE) then
+          string = 'VARIABLES=' // &
+                   '"X [m]",' // &
+                   '"Y [m]",' // &
+                   '"Z [m]",' // &
+                   '"T [C]",' // &
+                   '"P [Pa]",' // &
+                   '"sl",' // &
+                   '"Ul"' 
+        else
+          string = 'VARIABLES=' // &
+                   '"X [m]",' // &
+                   '"Y [m]",' // &
+                   '"Z [m]",' // &
+                   '"P [Pa]",'
+        endif
+        if (option%imode == RICHARDS_MODE) then
+          do i=1,option%nspec
+            write(string2,'('',"Xl('',i2,'')"'')') i
+            string = trim(string) // trim(string2)
+          enddo
+        endif
         if (option%rk > 0.d0) then
           string = trim(string) // ',"Volume Fraction"'
         endif
@@ -234,12 +244,16 @@ subroutine OutputTecplot(realization)
   call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
 
   select case(option%imode)
-    case (TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
+    case (TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE, &
+          RICHARDS_LITE_MODE)
 
-      ! temperature
-      call GetVarFromArray(realization,global,TEMPERATURE,0)
-      call GridGlobalToNatural(grid,global,natural,ONEDOF)
-      call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
+      select case(option%imode)
+        case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
+          ! temperature
+          call GetVarFromArray(realization,global,TEMPERATURE,0)
+          call GridGlobalToNatural(grid,global,natural,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
+      end select
 
       ! pressure
       call GetVarFromArray(realization,global,PRESSURE,0)
@@ -259,10 +273,13 @@ subroutine OutputTecplot(realization)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
       end select
     
-      ! liquid energy
-      call GetVarFromArray(realization,global,LIQUID_ENERGY,0)
-      call GridGlobalToNatural(grid,global,natural,ONEDOF)
-      call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
+      select case(option%imode)
+        case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
+          ! liquid energy
+          call GetVarFromArray(realization,global,LIQUID_ENERGY,0)
+          call GridGlobalToNatural(grid,global,natural,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
+      end select
     
       select case(option%imode)
         case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE)
@@ -271,13 +288,16 @@ subroutine OutputTecplot(realization)
           call GridGlobalToNatural(grid,global,natural,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
       end select
-      
-      ! liquid mole fractions
-      do i=1,option%nspec
-        call GetVarFromArray(realization,global,LIQUID_MOLE_FRACTION,i-1)
-        call GridGlobalToNatural(grid,global,natural,ONEDOF)
-        call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
-      enddo
+
+      select case(option%imode)
+        case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
+          ! liquid mole fractions
+          do i=1,option%nspec
+            call GetVarFromArray(realization,global,LIQUID_MOLE_FRACTION,i-1)
+            call GridGlobalToNatural(grid,global,natural,ONEDOF)
+            call WriteTecplotDataSetFromVec(IUNIT3,realization,natural,TECPLOT_REAL)
+          enddo
+      end select
   
      select case(option%imode)
         case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE)
@@ -1239,12 +1259,16 @@ subroutine OutputHDF5(realization)
 
   select case(option%imode)
   
-    case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
- 
+    case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE, &
+         RICHARDS_LITE_MODE)
+
       ! temperature
-      call GetVarFromArray(realization,global,TEMPERATURE,0)
-      string = "Temperature"
-      call HDF5WriteStructDataSetFromVec(string,realization,global,grp_id,H5T_NATIVE_DOUBLE)
+      select case(option%imode)
+        case (TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
+          call GetVarFromArray(realization,global,TEMPERATURE,0)
+          string = "Temperature"
+          call HDF5WriteStructDataSetFromVec(string,realization,global,grp_id,H5T_NATIVE_DOUBLE)
+      end select
 
       ! pressure
       call GetVarFromArray(realization,global,PRESSURE,0)
@@ -1257,33 +1281,48 @@ subroutine OutputHDF5(realization)
       call HDF5WriteStructDataSetFromVec(string,realization,global,grp_id,H5T_NATIVE_DOUBLE)  
 
       ! gas saturation
-      call GetVarFromArray(realization,global,GAS_SATURATION,0)
-      string = "Gas Saturation"
-      call HDF5WriteStructDataSetFromVec(string,realization,global,grp_id,H5T_NATIVE_DOUBLE) 
-    
+      select case(option%imode)
+        case (TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE)
+          call GetVarFromArray(realization,global,GAS_SATURATION,0)
+          string = "Gas Saturation"
+          call HDF5WriteStructDataSetFromVec(string,realization,global,grp_id,H5T_NATIVE_DOUBLE)
+      end select
+      
       ! liquid energy
-      call GetVarFromArray(realization,global,LIQUID_ENERGY,0)
-      string = "Liquid Energy"
-      call HDF5WriteStructDataSetFromVec(string,realization,global,grp_id,H5T_NATIVE_DOUBLE) 
-    
+      select case(option%imode)
+        case (TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
+          call GetVarFromArray(realization,global,LIQUID_ENERGY,0)
+          string = "Liquid Energy"
+          call HDF5WriteStructDataSetFromVec(string,realization,global,grp_id,H5T_NATIVE_DOUBLE) 
+      end select
+      
       ! gas energy
-      call GetVarFromArray(realization,global,GAS_ENERGY,0)
-      string = "Gas Energy"
-      call HDF5WriteStructDataSetFromVec(string,realization,global,grp_id,H5T_NATIVE_DOUBLE) 
+      select case(option%imode)
+        case (TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE)    
+          call GetVarFromArray(realization,global,GAS_ENERGY,0)
+          string = "Gas Energy"
+          call HDF5WriteStructDataSetFromVec(string,realization,global,grp_id,H5T_NATIVE_DOUBLE) 
+      end select
     
       ! liquid mole fractions
-      do i=1,option%nspec
-        call GetVarFromArray(realization,global,LIQUID_MOLE_FRACTION,i-1)
-        write(string,'(''Liquid Mole Fraction('',i4,'')'')') i
-        call HDF5WriteStructDataSetFromVec(string,realization,global,grp_id,H5T_NATIVE_DOUBLE)
-      enddo
-    
+      select case(option%imode)
+        case (TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
+          do i=1,option%nspec
+            call GetVarFromArray(realization,global,LIQUID_MOLE_FRACTION,i-1)
+            write(string,'(''Liquid Mole Fraction('',i4,'')'')') i
+            call HDF5WriteStructDataSetFromVec(string,realization,global,grp_id,H5T_NATIVE_DOUBLE)
+          enddo
+      end select
+      
       ! gas mole fractions
-      do i=1,option%nspec
-        call GetVarFromArray(realization,global,GAS_MOLE_FRACTION,i-1)
-        write(string,'(''Gas Mole Fraction('',i4,'')'')') i
-        call HDF5WriteStructDataSetFromVec(string,realization,global,grp_id,H5T_NATIVE_DOUBLE)
-      enddo
+      select case(option%imode)
+        case (TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE)      
+          do i=1,option%nspec
+            call GetVarFromArray(realization,global,GAS_MOLE_FRACTION,i-1)
+            write(string,'(''Gas Mole Fraction('',i4,'')'')') i
+            call HDF5WriteStructDataSetFromVec(string,realization,global,grp_id,H5T_NATIVE_DOUBLE)
+          enddo
+      end select
     
       ! Volume Fraction
       if (option%rk > 0.d0) then
@@ -1683,6 +1722,7 @@ subroutine GetVarFromArray(realization,vec,ivar,isubvar)
 #ifdef RICHARDS_ANALYTICAL
   use Richards_Analytical_module
 #endif
+  use Richards_Lite_module
 
   implicit none
   
@@ -1705,13 +1745,17 @@ subroutine GetVarFromArray(realization,vec,ivar,isubvar)
   grid => realization%grid
   field => realization%field
 
+  select case(option%imode)
 #ifdef RICHARDS_ANALYTICAL
-  if (option%imode == RICHARDS_MODE) then
-    call RichardsGetVarFromArray(realization,vec,ivar,isubvar)
-    return
-  endif
+    case(RICHARDS_MODE)
+      call RichardsGetVarFromArray(realization,vec,ivar,isubvar)
+      return
 #endif  
-
+    case(RICHARDS_LITE_MODE)
+      call RichardsLiteGetVarFromArray(realization,vec,ivar,isubvar)
+      return
+  end select
+  
   call VecGetArrayF90(vec,vec_ptr,ierr)
       
   select case(ivar)

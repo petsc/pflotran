@@ -112,7 +112,7 @@ subroutine pflowGridCheckpoint(realization,flowsteps,newtcum,icutcum, &
 
   ! Open the checkpoint file.
   if (id < 0) then
-    fname = 'restart.chk_restart'
+    fname = 'pflow.restart'
   else if (id < 10) then
     write(fname, '(a9,i1)') 'pflow.chk', id
   else if (id < 100) then
@@ -182,11 +182,13 @@ subroutine pflowGridCheckpoint(realization,flowsteps,newtcum,icutcum, &
   ! that indicates what phases are present, as well as the 'var' vector 
   ! that holds variables derived from the primary ones via the translator.
   select case(option%imode)
-    case(MPH_MODE,VADOSE_MODE,FLASH_MODE,TWOPH_MODE,RICHARDS_MODE)
+    case(MPH_MODE,VADOSE_MODE,FLASH_MODE,TWOPH_MODE,RICHARDS_MODE, &
+         RICHARDS_LITE_MODE)
       call GridLocalToGlobal(grid,field%iphas_loc,global,ONEDOF)
       call VecView(global, viewer, ierr)
 #ifdef RICHARDS_ANALYTICAL
-      if (option%imode /= RICHARDS_MODE) then
+      if (option%imode /= RICHARDS_MODE .and. &
+          option%imode /= RICHARDS_LITE_MODE) then
 #endif
         call GridCreateVector(grid,VARDOF,global_var,GLOBAL)
         call GridLocalToGlobal(grid,field%var_loc,global_var,VARDOF)
@@ -313,13 +315,15 @@ subroutine pflowGridRestart(realization,flowsteps,newtcum,icutcum, &
   call VecCopy(field%xx, field%yy, ierr)
   
   select case(option%imode)
-    case(MPH_MODE,VADOSE_MODE,FLASH_MODE,TWOPH_MODE,RICHARDS_MODE)
+    case(MPH_MODE,VADOSE_MODE,FLASH_MODE,TWOPH_MODE,RICHARDS_MODE, &
+         RICHARDS_LITE_MODE)
       call VecLoadIntoVector(viewer, global, ierr)      
       call GridGlobalToLocal(grid,global,field%iphas_loc,ONEDOF)
       call VecCopy(field%iphas_loc, field%iphas_old_loc, ierr)
       call GridLocalToLocal(grid,field%iphas_loc,field%iphas_old_loc,ONEDOF)
 #ifdef RICHARDS_ANALYTICAL
-      if (option%imode /= RICHARDS_MODE) then
+      if (option%imode /= RICHARDS_MODE .and. &
+          option%imode /= RICHARDS_LITE_MODE) then
 #endif      
         call GridCreateVector(grid,VARDOF,global_var,GLOBAL)
         call VecLoadIntoVector(viewer, global_var, ierr)

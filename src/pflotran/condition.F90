@@ -80,6 +80,7 @@ function ConditionCreate(option)
   nullify(condition%times)
   nullify(condition%values)
   nullify(condition%cur_value)
+  nullify(condition%gradient)
   nullify(condition%next)
   condition%id = 0
   condition%iphase = 0
@@ -109,8 +110,13 @@ function ConditionCreate(option)
       condition%units(4) = 'C'
       condition%units(5) = 'M'
       allocate(condition%gradient(3,option%ndof))
+    case(RICHARDS_LITE_MODE)
+      condition%units(1) = 'yr'
+      condition%units(2) = 'm'
+      condition%units(3) = 'Pa'
   end select
   
+  allocate(condition%gradient(option%ndof,3))
   condition%gradient = 0.d0
 
   ConditionCreate => condition
@@ -153,6 +159,14 @@ subroutine ConditionRead(condition,option,fid)
   nullify(enthalpy)
   
   ! need to set up indices for potential data contained in condition
+  pres_index = -999
+  temp_index = -999
+  conc_index = -999
+  max_required_dof = -999
+  max_dof = -999
+  time_index = -999
+  length_index = -999
+  max_index = -999
   select case(option%imode)
     case(RICHARDS_MODE,MPH_MODE)
       pres_index = 1
@@ -164,6 +178,13 @@ subroutine ConditionRead(condition,option,fid)
       time_index = 5
       length_index = 6
       max_index = 6
+    case(RICHARDS_LITE_MODE)
+      pres_index = 1
+    max_required_dof = 1
+    max_dof = 1
+      time_index = 2
+      length_index = 3
+      max_index = 3
     case default
       pres_index = 1
       temp_index = 2
@@ -208,10 +229,13 @@ subroutine ConditionRead(condition,option,fid)
             case('Pa','KPa')
               condition%units(pres_index) = trim(word)
             case('C','K')
+              if (temp_index < 0) cycle
               condition%units(temp_index) = trim(word)
             case('M','mol/L')
+              if (conc_index < 0) cycle
               condition%units(conc_index) = trim(word)
             case('KJ/mol')
+              if (enthalpy_index < 0) cycle
               condition%units(enthalpy_index) = trim(word)
           end select
         enddo
@@ -247,10 +271,13 @@ subroutine ConditionRead(condition,option,fid)
             case('PRES','PRESS','PRESSURE')
               index = pres_index
             case('TEMP','TEMPERATURE')
+              if (temp_index < 0) cycle
               index = temp_index
             case('CONC','CONCENTRATION')
+              if (conc_index < 0) cycle
               index = conc_index
             case('H','ENTHALPY')
+              if (enthalpy_index < 0) cycle
               index = enthalpy_index
             case default
               call printErrMsg(option,'index not recognized in condition,type')
@@ -305,10 +332,13 @@ subroutine ConditionRead(condition,option,fid)
             case('PRES','PRESS','PRESSURE')
               index = pres_index
             case('TEMP','TEMPERATURE')
+              if (temp_index < 0) cycle
               index = temp_index
             case('CONC','CONCENTRATION')
+              if (conc_index < 0) cycle
               index = conc_index
             case('H','ENTHALPY')
+              if (enthalpy_index < 0) cycle
               index = enthalpy_index
             case default
               call printErrMsg(option,'index not recognized in condition,gradient')
@@ -321,14 +351,17 @@ subroutine ConditionRead(condition,option,fid)
           call fiErrorMsg(option%myrank,'Z Gradient','CONDITION', ierr)   
         enddo
       case('TEMPERATURE','TEMP')
+        if (temp_index < 0) cycle
         call ConditionReadValues(option,word,string,times,temperature,units(temp_index))
       case('ENTHALPY','H')
+        if (enthalpy_index < 0) cycle
         call ConditionReadValues(option,word,string,times,enthalpy,units(enthalpy_index))
       case('PRESSURE','PRES','PRESS')
         call ConditionReadValues(option,word,string,times,pressure,units(pres_index))
       case('FLUX','VELOCITY','VEL')
         call ConditionReadValues(option,word,string,times,flux,units(pres_index))
       case('CONC','CONCENTRATION')
+        if (conc_index < 0) cycle
         call ConditionReadValues(option,word,string,times,concentration,units(conc_index))
     end select 
   
@@ -416,8 +449,8 @@ subroutine ConditionRead(condition,option,fid)
     else
       condition%values(temp_index,1:max_size) = temperature(1:max_size)
     endif
-  else
-    call printErrMsg(option,'Temperature conditon not set')
+  else if (option%imode /= RICHARDS_LITE_MODE) then
+    call printErrMsg(option,'Temperature condition not set')
   endif
   
   condition%itype(1:max_dof) = itype(1:max_dof)
@@ -429,7 +462,7 @@ subroutine ConditionRead(condition,option,fid)
     else
       condition%values(conc_index,1:max_size) = concentration(1:max_size)
     endif
-  else
+  else if (option%imode /= RICHARDS_LITE_MODE) then
     call printErrMsg(option,'Concentration conditon not set') 
   endif
   
@@ -439,7 +472,7 @@ subroutine ConditionRead(condition,option,fid)
     else
       condition%values(enthalpy_index,1:max_size) = enthalpy(1:max_size)
     endif
-  else
+  else if (option%imode /= RICHARDS_LITE_MODE) then
     call printWrnMsg(option,'Enthalpy conditon not set')   
   endif
   

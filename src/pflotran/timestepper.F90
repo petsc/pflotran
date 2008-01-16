@@ -305,6 +305,16 @@ subroutine StepperUpdateDT(stepper,option,num_newton_iterations)
         ut = min(up,utmp,uus)
       endif
       dtt = fac * option%dt * (1.d0 + ut)
+    case(RICHARDS_LITE_MODE)
+      fac = 0.5d0
+      if (num_newton_iterations >= stepper%iaccel) then
+        fac = 0.33d0
+        ut = 0.d0
+      else
+        up = option%dpmxe/(option%dpmax+0.1)
+        ut = up
+      endif
+      dtt = fac * option%dt * (1.d0 + ut)
     case(TH_MODE)
       fac = 0.5d0
       if (num_newton_iterations >= stepper%iaccel) fac = 0.33d0
@@ -356,6 +366,7 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
   use Flash_module
   use OWG_module
   use vadose_module
+  use Richards_Lite_module
 #ifndef RICHARDS_ANALYTICAL  
   use Richards_module
 #else
@@ -501,6 +512,12 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
         else 
           call SNESSolve(solver%snes, PETSC_NULL, field%xx, ierr)
         endif
+      case(RICHARDS_LITE_MODE)
+        if (option%use_ksp == PETSC_TRUE) then
+          call printErrMsg(option,"pflow_solve not supported for RICHARDS_LITE")
+        else 
+          call SNESSolve(solver%snes, PETSC_NULL, field%xx, ierr)
+        endif
       case(FLASH_MODE)
         if (option%use_ksp == PETSC_TRUE) then
           call pflow_solve(realization,num_newton_iterations, &
@@ -601,6 +618,8 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
           call MPhase_Update_Reason(update_reason,realization)
         case(RICHARDS_MODE)
           update_reason=1
+        case(RICHARDS_LITE_MODE)
+          update_reason=1
          !call Richards_Update_Reason(update_reason,realization)
 #if 0         
 ! needs to be implemented  
@@ -689,6 +708,8 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
 #else            
             call RichardsTimeCut(realization)
 #endif
+          case(RICHARDS_LITE_MODE)
+            call RichardsLiteTimeCut(realization)
           case(MPH_MODE)
             call pflow_mphase_timecut(realization)
 #if 0            
@@ -822,7 +843,7 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
     endif
 #endif
   if (option%imode == RICHARDS_MODE) then
-     call translator_ric_step_maxchange(realization)
+     call RichardsMaxChange(realization)
     if (option%myrank==0) then
       if (mod(stepper%flowsteps,option%imod) == 0 .or. stepper%flowsteps == 1) then
         write(*,'("  --> max chng: dpmx= ",1pe12.4, &
@@ -832,6 +853,15 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
         write(IUNIT2,'("  --> max chng: dpmx= ",1pe12.4, &
           & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4)') &
           option%dpmax,option%dtmpmax,option%dcmax
+      endif
+    endif
+  else if (option%imode == RICHARDS_LITE_MODE) then
+    call RichardsLiteMaxChange(realization)
+    if (option%myrank==0) then
+      if (mod(stepper%flowsteps,option%imod) == 0 .or. stepper%flowsteps == 1) then
+        write(*,'("  --> max chng: dpmx= ",1pe12.4)') option%dpmax
+        
+        write(IUNIT2,'("  --> max chng: dpmx= ",1pe12.4)') option%dpmax
       endif
     endif
   else if (option%imode == MPH_MODE) then
@@ -933,6 +963,7 @@ subroutine StepperUpdateSolution(realization)
   use Flash_module
   use OWG_module
   use Vadose_module
+  use Richards_Lite_module, only : RichardsLiteUpdateFixedAccum
 #ifndef RICHARDS_ANALYTICAL  
   use Richards_module, only: pflow_update_richards
 #else
@@ -964,7 +995,7 @@ subroutine StepperUpdateSolution(realization)
   field => realization%field
   
 ! update realization vector and physical properties (VecCopy(x,y): y=x)
-  if (option%ndof == 1) then
+  if (option%ndof == 1 .and. option%imode /= RICHARDS_LITE_MODE) then
     call VecCopy(field%ppressure, field%pressure, ierr)
     call VecCopy(field%ttemp, field%temp, ierr)
     call VecCopy(field%ddensity, field%density, ierr)
@@ -974,7 +1005,8 @@ subroutine StepperUpdateSolution(realization)
         option%imode /= OWG_MODE .and. &
         option%imode /= VADOSE_MODE .and. &
         option%imode /= FLASH_MODE .and. &
-        option%imode /= RICHARDS_MODE) then
+        option%imode /= RICHARDS_MODE .and. &
+        option%imode /= RICHARDS_LITE_MODE) then
       call VecCopy(field%xx, field%yy, ierr)
       call VecCopy(field%hh, field%h, ierr)
       call VecCopy(field%ddensity, field%density, ierr)
@@ -996,6 +1028,8 @@ subroutine StepperUpdateSolution(realization)
 #else
       call pflow_update_richards(realization)
 #endif
+    case(RICHARDS_LITE_MODE)
+      call RichardsLiteUpdateFixedAccum(realization)
 #if 0      
 ! needs to be implemented
     case(FLASH_MODE)

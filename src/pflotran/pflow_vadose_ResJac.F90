@@ -2208,7 +2208,7 @@ end subroutine pflow_Vadose_initaccum
 subroutine pflow_update_Vadose(grid)
 
   use translator_vad_module
-  use Condition_module_old
+!  use Condition_module_old
    ! use water_eos_module
   implicit none
 
@@ -2222,7 +2222,7 @@ subroutine pflow_update_Vadose(grid)
 
       
   if (associated(grid%imat)) then
-    call UpdateBoundaryConditions(grid)
+  !  call UpdateBoundaryConditions(grid)
     call pflow_Vadose_bcadj(grid)
   endif
 

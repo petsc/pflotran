@@ -235,6 +235,7 @@ subroutine HydrostaticUpdateCouplerBetter(coupler,option,grid)
   nullify(pressure_array)
   
   delta_z = 1.d0
+  temperature = 25.d0
 
   if (dabs(condition%gradient(1,Z_DIRECTION)) < 1.d-40) then
     ! compute the vertical gradient based on a 1 meter vertical spacing and
@@ -255,7 +256,8 @@ subroutine HydrostaticUpdateCouplerBetter(coupler,option,grid)
                   min(grid%z_min,condition%datum(Z_DIRECTION))) * &
                   dble(num_pressures))+1
     pressure0 = condition%cur_value(1)
-    temperature = condition%cur_value(2)
+    if (option%imode /= RICHARDS_LITE_MODE) &
+      temperature = condition%cur_value(2)
     pressure_array(idatum) = pressure0
     call nacl_den(temperature,pressure0*1.d-6,xm_nacl,dw_kg) 
     rho = dw_kg * 1.d3
@@ -266,7 +268,8 @@ subroutine HydrostaticUpdateCouplerBetter(coupler,option,grid)
     rho0 = rho
     do ipressure=idatum+1,num_pressures
       dist_z = dist_z + delta_z
-      temperature = temperature + condition%gradient(2,Z_DIRECTION)*delta_z
+      if (option%imode /= RICHARDS_LITE_MODE) &
+        temperature = temperature + condition%gradient(2,Z_DIRECTION)*delta_z
       call nacl_den(temperature,pressure0*1.d-6,xm_nacl,dw_kg) 
       rho = dw_kg * 1.d3
 
@@ -295,12 +298,13 @@ subroutine HydrostaticUpdateCouplerBetter(coupler,option,grid)
 
     ! compute pressures above datum, if any
     pressure0 = pressure_array(idatum)
-    temperature = condition%cur_value(2)
+    if (option%imode /= RICHARDS_LITE_MODE) temperature = condition%cur_value(2)
     dist_z = 0.d0
     rho0 = density_array(idatum)
     do ipressure=idatum-1,1,-1
       dist_z = dist_z + delta_z
-      temperature = temperature - condition%gradient(2,Z_DIRECTION)*delta_z
+      if (option%imode /= RICHARDS_LITE_MODE) &
+        temperature = temperature - condition%gradient(2,Z_DIRECTION)*delta_z
       call nacl_den(temperature,pressure0*1.d-6,xm_nacl,dw_kg) 
       rho = dw_kg * 1.d3
 
@@ -349,14 +353,17 @@ subroutine HydrostaticUpdateCouplerBetter(coupler,option,grid)
                  condition%gradient(1,Y_DIRECTION)*dist_y + &
                  condition%gradient(1,Z_DIRECTION)*dist_z 
     endif
-    temperature = condition%cur_value(2) + &
-                  condition%gradient(2,X_DIRECTION)*dist_x + & ! gradient in K/m
-                  condition%gradient(2,Y_DIRECTION)*dist_y + &
-                  condition%gradient(2,Z_DIRECTION)*dist_z 
 
     coupler%aux_real_var(1,iconn) = pressure
-    coupler%aux_real_var(2,iconn) = temperature
-    coupler%aux_real_var(3,iconn) = condition%cur_value(3)
+
+    if (option%imode /= RICHARDS_LITE_MODE) then
+      temperature = condition%cur_value(2) + &
+                    condition%gradient(2,X_DIRECTION)*dist_x + & ! gradient in K/m
+                    condition%gradient(2,Y_DIRECTION)*dist_y + &
+                    condition%gradient(2,Z_DIRECTION)*dist_z 
+      coupler%aux_real_var(2,iconn) = temperature
+      coupler%aux_real_var(3,iconn) = condition%cur_value(3)
+    endif
 
     coupler%aux_int_var(1,iconn) = 1
 !    if (structured_pressure(iz) > patm) then

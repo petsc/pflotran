@@ -1918,7 +1918,6 @@ subroutine pflow_update_Richards(realization)
 
   use translator_Richards_module
   use pckr_module
-  use Condition_module_old
 
   use Connection_module
   use Realization_module
