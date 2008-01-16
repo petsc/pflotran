@@ -78,7 +78,6 @@ pflow_obj = ${common_src}pflow_vector_ops.o \
 	${common_src}unstructured_grid.o \
 	${common_src}structured_grid.o \
 	${common_src}condition.o \
-	${common_src}condition_old.o \
 	${common_src}coupler.o \
 	${common_src}grid.o \
 	${common_src}hydrostatic.o \
@@ -104,6 +103,7 @@ pflow_obj = ${common_src}pflow_vector_ops.o \
 	${common_src}pflow_flash_ResJac.o\
 	${common_src}pflow_richards_ResJac.o\
 	${common_src}richards.o\
+	${common_src}richards_lite.o\
 	${common_src}general_grid.o \
 	${common_src}pflow_solve.o \
 	${common_src}pflow_checkpoint.o \
@@ -167,7 +167,7 @@ pflow_init.o : option.o grid.o realization.o solver.o timestepper.o simulation.o
 	       waypoint.o field.o general_grid.o debug.o
 unstructured_grid.o : option.o connection.o solver.o
 structured_grid.o : connection.o option.o fileio.o coupler.o region.o solver.o
-general_grid.o : condition_old.o grid.o realization.o hdf5.o
+general_grid.o : grid.o realization.o hdf5.o
 grid.o : structured_grid.o unstructured_grid.o option.o region.o connection.o \
 	 coupler.o solver.o
 solver.o : option.o field.o
@@ -175,7 +175,6 @@ region.o : fileio.o utility.o
 material.o : region.o option.o fileio.o field.o
 coupler.o : condition.o connection.o region.o fileio.o
 condition.o : fileio.o utility.o option.o field.o
-condition_old.o : pflow_pckr_mod.o
 realization.o : grid.o option.o region.o condition.o coupler.o material.o \
 	     strata.o waypoint.o field.o hydrostatic.o debug.o
 strata.o : fileio.o region.o material.o
@@ -199,6 +198,7 @@ timestepper.o : \
                 translator_mixed_fluid_richards.o \
                 pflow_richards_ResJac.o \
                 richards.o \
+                richards_lite.o \
                 pflow_vadose_ResJac.o \
                 pflow_2pha_ResJac.o \
                 pflow_owg_ResJac.o \
@@ -226,4 +226,4 @@ pflow_init.o : simulation.o option.o grid.o solver.o realization.o material.o \
 	       timestepper.o co2_span_wagner.o pflow_richards_ResJac.o \
 	       pflow_convergence.o pflow_vector_ops.o utility.o fileio.o \
 	       structured_grid.o region.o condition.o coupler.o strata.o \
-	       pflow_pckr_mod.o field.o pflow_mphase_ResJac.o
+	       pflow_pckr_mod.o field.o pflow_mphase_ResJac.o richards_lite.o
