@@ -144,6 +144,7 @@ module Option_module
     PetscLogDouble :: wallclock_stop_time
     
     logical :: numerical_derivatives
+    logical :: inexact_newton
     
   end type 
   
@@ -271,6 +272,7 @@ function OptionCreate()
   option%wallclock_stop_time = 0.d0
   
   option%numerical_derivatives = .false.
+  option%inexact_newton = .false.
     
   OptionCreate => option
   

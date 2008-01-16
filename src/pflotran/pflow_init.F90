@@ -642,6 +642,9 @@ subroutine PflowInit(simulation,filename)
     ! allow override from command line
     call KSPSetFromOptions(solver%ksp,ierr)
     call PCSetFromOptions(solver%pc,ierr)
+    
+    ! set inexact newton, currently applies default settings
+    if (option%inexact_newton) call SNESKSPSetUseEW(solver%snes,PETSC_TRUE,ierr)
 
     ! get the ksp_type and pc_type incase of command line override.
     call KSPGetType(solver%ksp,solver%ksp_type,ierr)
@@ -1770,6 +1773,9 @@ subroutine readInput(simulation,filename)
 
       case ('NUMERICAL_JACOBIAN')
         option%numerical_derivatives = .true.
+
+      case ('INEXACT_NEWTON')
+        option%inexact_newton = .true.
 
 !......................
 
