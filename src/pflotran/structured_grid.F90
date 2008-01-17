@@ -1039,10 +1039,11 @@ subroutine StructuredGridCreateJacobian(structured_grid,solver,option)
     call DAGetMatrix(structured_grid%da_ndof, MATBAIJ, solver%J, ierr)
   endif
  ! call  MatSetBlocksize(grid%J,grid%ndof,ierr)
-  call MatSetOption(solver%J,MAT_KEEP_ZEROED_ROWS,ierr)
 #if (PETSC_VERSION_RELEASE == 1)
+  call MatSetOption(solver%J,MAT_KEEP_ZEROED_ROWS,ierr)
   call MatSetOption(solver%J,MAT_COLUMN_ORIENTED,ierr)
 #else
+  call MatSetOption(solver%J,MAT_KEEP_ZEROED_ROWS,PETSC_FALSE,ierr)
   call MatSetOption(solver%J,MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
 #endif
   
