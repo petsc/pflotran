@@ -156,7 +156,12 @@ void Output::printHDFMaterialsAndRegions() {
 #ifdef USE_HDF5
   PetscPrintf(PETSC_COMM_WORLD,"Printing HDF Materials and Regions.\n");
 
-  HDF *file = new HDF("input.h5",1);
+  char filename[1024];
+  PetscTruth option_found;
+  strcpy(filename,"input.h5");
+  PetscOptionsGetString(PETSC_NULL,"-mdtout",filename,1024,&option_found);
+
+  HDF *file = new HDF("filename",1);
   int compress = 0;
 
 // materials

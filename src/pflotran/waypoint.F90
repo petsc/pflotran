@@ -391,7 +391,7 @@ function WaypointSkipToTime(list,time)
   waypoint => list%first
   do 
     if (.not.associated(waypoint)) exit
-    if (waypoint%time >= time) exit
+    if (waypoint%time > time) exit
     waypoint => waypoint%next
   enddo
 
