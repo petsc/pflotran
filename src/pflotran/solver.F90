@@ -126,7 +126,7 @@ subroutine SolverReadPflow(solver,fid,myrank)
         fiStringCompare(string,'END',3)) exit  
 
     call fiReadWord(string,keyword,.true.,ierr)
-    call fiErrorMsg(myrank,'keyword','DEBUG', ierr)
+    call fiErrorMsg(myrank,'keyword','SOLVER', ierr)
     call fiWordToUpper(keyword)   
       
     select case(trim(keyword))
