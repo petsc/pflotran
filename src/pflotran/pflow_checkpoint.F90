@@ -48,6 +48,7 @@ module pflow_checkpoint
       PetscErrorCode ierr
     End Subroutine
   End Interface PetscBagGetData
+
 #endif
 
 contains
@@ -90,6 +91,13 @@ subroutine pflowGridCheckpoint(realization,flowsteps,newtcum,icutcum, &
   logical :: timestep_cut_flag
   integer :: num_timestep_cuts, num_newton_iterations
   integer :: id, flowsteps, newtcum, icutcum
+#ifdef PetscSizeT
+  PetscSizeT :: bagsize
+#else
+  ! PETSC_SIZEOF_SIZE_T isn't defined, so we just have to assume that it 
+  ! is 8 bytes.  This is dangerous, but what can we do?
+  integer*8 :: bagsize
+#endif
 
   character(len=MAXSTRINGLENGTH) :: fname
   PetscViewer viewer
@@ -137,7 +145,8 @@ subroutine pflowGridCheckpoint(realization,flowsteps,newtcum,icutcum, &
   ! We manually specify the number of bytes required for the 
   ! checkpoint header, since sizeof() is not supported by some Fortran 
   ! compilers.  To be on the safe side, we assume an integer is 8 bytes.
-  call PetscBagCreate(PETSC_COMM_WORLD, 72, bag, ierr)
+  bagsize = 72
+  call PetscBagCreate(PETSC_COMM_WORLD, bagsize, bag, ierr)
   call PetscBagGetData(bag, header, ierr); CHKERRQ(ierr)
 
   ! Register variables that are passed into pflowGrid_step().
