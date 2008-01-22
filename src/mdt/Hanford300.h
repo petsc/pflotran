@@ -3,6 +3,8 @@
 
 #include <string.h>
 
+#include "include/petsc.h"
+
 #include "AsciiGrid.h"
 #include "BoundarySet.h"
 #include "Connection.h"

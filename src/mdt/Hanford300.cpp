@@ -16,6 +16,7 @@ Hanford300::Hanford300(Grid **grid_) {
   double my = 1.;
   double mz = 1.;
 
+#if 0
 #if 1
   int nx = 1350;
   int ny = 2500;
@@ -67,15 +68,42 @@ Hanford300::Hanford300(Grid **grid_) {
   my = mx;
   mz = 4.;
 #endif
+#endif
 //  int nx = 1; //debug1
 //  int ny = 1; //debug1
 //  int nz = 15; //debug1
-  int n = nx*ny*nz;
+
+  int nx, ny, nz;
+
+  char filename[1024];
+  PetscTruth option_found;
+  strcpy(filename,"mdt.in");
+  PetscOptionsGetString(PETSC_NULL,"-mdtin",filename,1024,&option_found);
+
+  FileIO *file = new FileIO(filename);
+  file->getLine();
+  file->readInt(&nx);
+  file->readInt(&ny);
+  file->readInt(&nz);
+  delete file;
 
   double dx = 10.*mx;
   double dy = 10.*my;
   double dz = 1.*mz;// */
 
+  double len_x = 1350.;
+  double len_y = 2500.;
+  double len_z = 60.;
+
+  dx = len_x/(double)nx;
+  dy = len_y/(double)ny;
+  dz = len_z/(double)nz;
+
+  int n = nx*ny*nz;
+
+  PetscPrintf(PETSC_COMM_WORLD,"nx = %d, dx = %f, lenx = %f\n",nx,dx,nx*dx);
+  PetscPrintf(PETSC_COMM_WORLD,"ny = %d, dy = %f, leny = %f\n",ny,dy,ny*dy);
+  PetscPrintf(PETSC_COMM_WORLD,"nz = %d, dz = %f, lenz = %f\n",nz,dz,nz*dz);
   *grid_ = new Grid(nx,ny,nz);
   Grid *grid = *grid_;
   grid->setGridSpacing(dx,dy,dz);
