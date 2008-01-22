@@ -650,6 +650,9 @@ subroutine PflowInit(simulation,filename)
     call KSPGetType(solver%ksp,solver%ksp_type,ierr)
     call PCGetType(solver%pc,solver%pc_type,ierr)
 
+    call printMsg(option,'Solver: '//trim(solver%ksp_type))
+    call printMsg(option,'Preconditioner: '//trim(solver%pc_type))
+
     select case(option%imode)
 #if 0    
       ! still needs to be implemented
