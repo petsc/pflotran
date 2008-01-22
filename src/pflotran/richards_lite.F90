@@ -1543,7 +1543,7 @@ subroutine RichardsLiteJacobian(snes,xx,A,B,flag,realization,ierr)
                               option, &
                               realization%saturation_function_array(icap)%ptr,&
                               Jup) 
-    call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)
+    call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)
   enddo
 #endif
   if (realization%debug%matview_Jacobian_detailed) then
@@ -1686,17 +1686,17 @@ subroutine RichardsLiteJacobian(snes,xx,A,B,flag,realization,ierr)
                         realization%saturation_function_array(icap_dn)%ptr,&
                         Jup,Jdn)
       if (local_id_up > 0) then
-        call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
+        call MatSetValuesLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
                                       Jup,ADD_VALUES,ierr)
-        call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_dn-1, &
+        call MatSetValuesLocal(A,1,ghosted_id_up-1,1,ghosted_id_dn-1, &
                                       Jdn,ADD_VALUES,ierr)
       endif
       if (local_id_dn > 0) then
         Jup = -1.d0*Jup
         Jdn = -1.d0*Jdn
-        call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_dn-1, &
+        call MatSetValuesLocal(A,1,ghosted_id_dn-1,1,ghosted_id_dn-1, &
                                       Jdn,ADD_VALUES,ierr)
-        call MatSetValuesBlockedLocal(A,1,ghosted_id_dn-1,1,ghosted_id_up-1, &
+        call MatSetValuesLocal(A,1,ghosted_id_dn-1,1,ghosted_id_up-1, &
                                       Jup,ADD_VALUES,ierr)
       endif
     enddo
@@ -1779,7 +1779,7 @@ subroutine RichardsLiteJacobian(snes,xx,A,B,flag,realization,ierr)
                                 realization%saturation_function_array(icap_dn)%ptr,&
                                 Jdn)
       Jdn = -1.d0*Jdn
-      call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jdn,ADD_VALUES,ierr)
+      call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jdn,ADD_VALUES,ierr)
  
     enddo
     boundary_condition => boundary_condition%next
@@ -1813,30 +1813,10 @@ subroutine RichardsLiteJacobian(snes,xx,A,B,flag,realization,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
 
 ! zero out isothermal and inactive cells
-#ifdef ISOTHERMAL
-  zero = 0.d0
-  call MatZeroRowsLocal(A,n_zero_rows,zero_rows_local_ghosted,zero,ierr) 
-  do i=1, n_zero_rows
-    ii = mod(zero_rows_local(i),option%ndof)
-    ip1 = zero_rows_local_ghosted(i)
-    if (ii == 0) then
-      ip2 = ip1-1
-    elseif (ii == option%ndof-1) then
-      ip2 = ip1+1
-    else
-      ip2 = ip1
-    endif
-    call MatSetValuesLocal(A,1,ip1,1,ip2,1.d0,INSERT_VALUES,ierr)
-  enddo
-
-  call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
-  call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-#else
   if (inactive_cells_exist) then
     f_up = 1.d0
     call MatZeroRowsLocal(A,n_zero_rows,zero_rows_local_ghosted,f_up,ierr) 
   endif
-#endif
 
   if (realization%debug%matview_Jacobian) then
     call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian.out',viewer,ierr)
