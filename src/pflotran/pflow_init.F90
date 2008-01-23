@@ -364,6 +364,15 @@ subroutine PflowInit(simulation,filename)
   ! read in the remainder of the input file
   call readInput(simulation,filename)
 
+  if (option%iblkfmt == 0) then
+    select case(option%imode)
+      case(MPH_MODE,RICHARDS_MODE)
+        call printErrMsg(option,&
+                         'AIJ matrix not supported for current mode: '// &
+                         option%mode)
+    end select
+  endif
+
   select case(option%imode)
     case(MPH_MODE,OWG_MODE,FLASH_MODE)
       call initialize_span_wagner(option%itable,option%myrank)  
