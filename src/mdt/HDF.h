@@ -5,6 +5,12 @@
 
 #include "hdf5.h"
 
+#ifdef PETSC_USE_64BIT_INDICES
+#define HDF_NATIVE_INT H5T_NATIVE_LLONG 
+#else
+#define HDF_NATIVE_INT H5T_NATIVE_INT
+#endif
+
 class HDF {
 
 public:

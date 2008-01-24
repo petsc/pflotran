@@ -84,13 +84,12 @@ void Output::writeIntVectorInNaturalOrder(FILE *fp, Vec v, PetscInt one_per_line
   PetscReal *v_ptr = NULL;
   grid->getVectorNatural(&natural);
   grid->globalToNatural(v,natural);
-  PetscMPIInt max_cells;
-  PetscMPIInt mpi_num_cells_local = (PetscMPIInt) grid->num_cells_local;
-  MPI_Allreduce(&mpi_num_cells_local,&max_cells,1,MPI_INT,MPI_MAX,PETSC_COMM_WORLD);
-  PetscMPIInt *values = new PetscMPIInt[max_cells];
+  PetscInt max_cells;
+  MPI_Allreduce(&grid->num_cells_local,&max_cells,1,MPIU_INT,MPI_MAX,PETSC_COMM_WORLD);
+  PetscInt *values = new PetscInt[max_cells];
   VecGetArray(natural,&v_ptr);
   for (PetscInt i=0; i<grid->num_cells_local; i++) 
-    values[i] = PetscMPIInt(v_ptr[i]);
+    values[i] = PetscInt(v_ptr[i]);
   VecRestoreArray(natural,&v_ptr);
   VecDestroy(natural);
   if (myrank == 0) {
@@ -107,8 +106,8 @@ void Output::writeIntVectorInNaturalOrder(FILE *fp, Vec v, PetscInt one_per_line
     for (PetscInt iproc=1; iproc<commsize; iproc++) {
       MPI_Status status;
       MPI_Probe(iproc,MPI_ANY_TAG,PETSC_COMM_WORLD,&status);
-      PetscMPIInt nrecv = status.MPI_TAG;
-      MPI_Recv(values,nrecv,MPI_INTEGER,iproc,MPI_ANY_TAG,PETSC_COMM_WORLD,&status);
+      PetscInt nrecv = status.MPI_TAG;
+      MPI_Recv(values,nrecv,MPIU_INT,iproc,MPI_ANY_TAG,PETSC_COMM_WORLD,&status);
       for (PetscInt i=0; i<nrecv; i++) {
         if (one_per_line) {
           PetscFPrintf(PETSC_COMM_WORLD,fp,"%d\n",values[i]);
@@ -122,8 +121,7 @@ void Output::writeIntVectorInNaturalOrder(FILE *fp, Vec v, PetscInt one_per_line
     if (!one_per_line && count%10 != 0) PetscFPrintf(PETSC_COMM_WORLD,fp,"\n");
   }
   else {
-    mpi_num_cells_local = (PetscMPIInt) grid->num_cells_local;
-    MPI_Send(values,mpi_num_cells_local,MPI_INTEGER,0,grid->num_cells_local,
+    MPI_Send(values,grid->num_cells_local,MPIU_INT,0,grid->num_cells_local,
              PETSC_COMM_WORLD);
   }
   delete [] values;
@@ -172,7 +170,7 @@ void Output::printHDFMaterialsAndRegions() {
 
   file->createFileSpace(1,grid->getNumberOfCellsGlobal(),NULL,NULL);
   PetscPrintf(PETSC_COMM_WORLD,"Cell Ids\n");
-  file->createDataSet("Cell Ids",H5T_NATIVE_INT,compress);
+  file->createDataSet("Cell Ids",HDF_NATIVE_INT,compress);
 
   PetscInt *cell_ids = grid->getCellIdsNatural1Based();
   grid->convertLocalCellDataGtoN(cell_ids);
@@ -188,7 +186,7 @@ void Output::printHDFMaterialsAndRegions() {
 
   // use same data space
   PetscPrintf(PETSC_COMM_WORLD,"Material Ids\n");
-  file->createDataSet("Material Ids",H5T_NATIVE_INT,compress);
+  file->createDataSet("Material Ids",HDF_NATIVE_INT,compress);
 
   PetscInt *material_ids = grid->getCellMaterialIds();
   grid->convertLocalCellDataGtoN(material_ids);
@@ -225,7 +223,7 @@ void Output::printHDFMaterialsAndRegions() {
 
     file->createDataSpace(1,trick_hdf5_global,0,0);
     PetscPrintf(PETSC_COMM_WORLD,"  Cell Ids\n");
-    file->createDataSet("Cell Ids",H5T_NATIVE_INT,compress);
+    file->createDataSet("Cell Ids",HDF_NATIVE_INT,compress);
 
     if (num_connections_global > 0) {
 
@@ -249,7 +247,7 @@ void Output::printHDFMaterialsAndRegions() {
 
     file->createDataSpace(1,trick_hdf5_global,0,0);
     PetscPrintf(PETSC_COMM_WORLD,"  Face Ids\n");
-    file->createDataSet("Face Ids",H5T_NATIVE_INT,compress);
+    file->createDataSet("Face Ids",HDF_NATIVE_INT,compress);
 
     if (num_connections_global > 0) {
 
@@ -294,7 +292,7 @@ void Output::printHDFMesh() {
 
   file->createFileSpace(1,grid->getNumberOfCellsGlobal(),NULL,NULL);
   PetscPrintf(PETSC_COMM_WORLD,"CellIds\n");
-  file->createDataSet("CellIds",H5T_NATIVE_INT,compress);
+  file->createDataSet("CellIds",HDF_NATIVE_INT,compress);
 
   PetscInt *cell_ids = grid->getCellIdsNatural();
   grid->convertLocalCellDataGtoN(cell_ids);
@@ -311,7 +309,7 @@ void Output::printHDFMesh() {
 // natural ids
   file->createFileSpace(1,grid->getNumberOfCellsGlobal(),NULL,NULL);
   PetscPrintf(PETSC_COMM_WORLD,"NaturalIds\n");
-  file->createDataSet("NaturalIds",H5T_NATIVE_INT,compress);
+  file->createDataSet("NaturalIds",HDF_NATIVE_INT,compress);
 
   PetscInt *natural_ids = grid->getCellIdsNatural();
   grid->convertLocalCellDataGtoN(natural_ids);
@@ -328,7 +326,7 @@ void Output::printHDFMesh() {
 // materials
   // use same data space
   PetscPrintf(PETSC_COMM_WORLD,"Materials\n");
-  file->createDataSet("Materials",H5T_NATIVE_INT,compress);
+  file->createDataSet("Materials",HDF_NATIVE_INT,compress);
 
   PetscInt *material_ids = grid->getCellMaterialIds();
   grid->convertLocalCellDataGtoN(material_ids);
@@ -346,12 +344,12 @@ void Output::printHDFMesh() {
   PetscInt num_cells_global = grid->getNumberOfCellsGlobal();
   file->createFileSpace(2,num_cells_global,8,NULL);
   PetscPrintf(PETSC_COMM_WORLD,"CellVertices\n");
-  file->createDataSet("CellVertices",H5T_NATIVE_INT,compress);
+  file->createDataSet("CellVertices",HDF_NATIVE_INT,compress);
   file->createMemorySpace(1,grid->getNumberOfCellsGlobal(),NULL,NULL);
 
-  PetscMPIInt offset = 0;
-  PetscMPIInt num_cells_local = (PetscMPIInt) grid->getNumberOfCellsLocal();
-  MPI_Exscan(&num_cells_local,&offset,1,MPI_INT,MPI_SUM,PETSC_COMM_WORLD);
+  PetscInt offset = 0;
+  PetscInt num_cells_local = grid->getNumberOfCellsLocal();
+  MPI_Exscan(&num_cells_local,&offset,1,MPIU_INT,MPI_SUM,PETSC_COMM_WORLD);
   if (offset > num_cells_global)
     printf("Proc[%d]: ERROR - offset(%d) > num_cells_global(%d)\n",
            myrank, offset, num_cells_global);
@@ -392,7 +390,7 @@ void Output::printHDFMesh() {
 // natural ids
 
   PetscPrintf(PETSC_COMM_WORLD,"NaturalIds\n");
-  file->createDataSet("NaturalIds",H5T_NATIVE_INT,compress); 
+  file->createDataSet("NaturalIds",HDF_NATIVE_INT,compress); 
 
   PetscInt num_print_vertices_local = grid->getVertexIdsNaturalLocal(&natural_ids);
 
@@ -483,7 +481,7 @@ void Output::printHDFMesh() {
 
     file->createDataSpace(1,trick_hdf5_global,0,0);
     PetscPrintf(PETSC_COMM_WORLD,"  CellIds\n");
-    file->createDataSet("CellIds",H5T_NATIVE_INT,compress);
+    file->createDataSet("CellIds",HDF_NATIVE_INT,compress);
 
     if (num_connections_global > 0) {
 
@@ -509,11 +507,10 @@ void Output::printHDFMesh() {
 
     file->createFileSpace(2,trick_hdf5_global,4,NULL);
     PetscPrintf(PETSC_COMM_WORLD,"  FaceVertexIds\n");
-    file->createDataSet("FaceVertexIds",H5T_NATIVE_INT,compress);
+    file->createDataSet("FaceVertexIds",HDF_NATIVE_INT,compress);
     if (num_connections_global > 0) {
-      PetscMPIInt offset = 0;
-      PetscMPIInt mpi_num_connections_local = (PetscMPIInt)num_connections_local;
-      MPI_Exscan(&num_connections_local,&offset,1,MPI_INT,MPI_SUM,
+      PetscInt offset = 0;
+      MPI_Exscan(&num_connections_local,&offset,1,MPIU_INT,MPI_SUM,
                  PETSC_COMM_WORLD);
       if (offset > num_connections_global)
         printf("Proc[%d]: ERROR - offset(%d) > num_connections_global(%d)\n",
@@ -612,13 +609,12 @@ void Output::printHDFSieveMesh() {
   // cell vertices
   file->createFileSpace(2,num_cells_global,8,NULL);
   PetscPrintf(PETSC_COMM_WORLD,"Connectivity\n");
-  file->createDataSet("Connectivity",H5T_NATIVE_INT,compress);
+  file->createDataSet("Connectivity",HDF_NATIVE_INT,compress);
   file->createMemorySpace(1,grid->getNumberOfCellsGlobal(),NULL,NULL);
 
-  PetscMPIInt offset = 0;
-  PetscMPIInt mpi_num_cells_local = (PetscMPIInt)grid->getNumberOfCellsLocal();
-  MPI_Exscan(&mpi_num_cells_local,&offset,1,MPI_INT,MPI_SUM,PETSC_COMM_WORLD);
-  PetscInt num_cells_local = (PetscInt)mpi_num_cells_local;
+  PetscInt offset = 0;
+  PetscInt num_cells_local = grid->getNumberOfCellsLocal();
+  MPI_Exscan(&grid->num_cells_local,&offset,1,MPIU_INT,MPI_SUM,PETSC_COMM_WORLD);
   if (offset > num_cells_global)
     printf("Proc[%d]: ERROR - offset(%d) > num_cells_global(%d)\n",
            myrank, offset, num_cells_global);
