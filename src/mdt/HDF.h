@@ -15,35 +15,35 @@ class HDF {
 
 public:
 
-  HDF(char *filename, int overwrite);
+  HDF(char *filename, PetscInt overwrite);
   virtual ~HDF();
 
   void createGroup(char *group_name);
-  void createFileSpace(int rank, int dim0, int dim1, int idim2);
-  void createMemorySpace(int rank, int dim0, int dim1, int idim2);
-  void createDataSpace(int rank, int dim0, int dim1, int idim2);
-  void createDataSpace(hid_t *space_id, int rank, int dim0, int dim1, 
-                       int idim2);
-  static void createDataSpace(hid_t *space_id, int rank, int dim0, int dim1, 
-                              int idim2, int max_dim0, int max_dim1, 
-                              int max_dim2);
-  void setHyperSlab(int n);
-  void setHyperSlab(int n, int stride0);
-  void setHyperSlab(int *start, int *stride, int *count, int *block);
-  void createDataSet(char *data_set_name, hid_t type, int compress);
+  void createFileSpace(PetscInt rank, PetscInt dim0, PetscInt dim1, PetscInt idim2);
+  void createMemorySpace(PetscInt rank, PetscInt dim0, PetscInt dim1, PetscInt idim2);
+  void createDataSpace(PetscInt rank, PetscInt dim0, PetscInt dim1, PetscInt idim2);
+  void createDataSpace(hid_t *space_id, PetscInt rank, PetscInt dim0, PetscInt dim1, 
+                       PetscInt idim2);
+  static void createDataSpace(hid_t *space_id, PetscInt rank, PetscInt dim0, PetscInt dim1, 
+                              PetscInt idim2, PetscInt max_dim0, PetscInt max_dim1, 
+                              PetscInt max_dim2);
+  void setHyperSlab(PetscInt n);
+  void setHyperSlab(PetscInt n, PetscInt stride0);
+  void setHyperSlab(PetscInt *start, PetscInt *stride, PetscInt *count, PetscInt *block);
+  void createDataSet(char *data_set_name, hid_t type, PetscInt compress);
   void closeGroup();
   void closeDataSpaces();
   void printDataSpaceInfo(); 
   static void closeDataSpace(hid_t *space_id);
   void closeDataSet();
-  void writeInt(int *values);
-  void writeInt(int *values, int collective);
+  void writeInt(PetscInt *values);
+  void writeInt(PetscInt *values, PetscInt collective);
   void writeDouble(double *values);
-  void writeDouble(double *values, int collective);
+  void writeDouble(double *values, PetscInt collective);
   void writeString(char *title, char *string);
-  void writeString(char *title, char *string, int collective);
+  void writeString(char *title, char *string, PetscInt collective);
   void writeAttribute(char *title, char *string);
-  void writeAttribute(char *title, int value);
+  void writeAttribute(char *title, PetscInt value);
   void writeAttribute(char *title, double value);
 
 private:
@@ -55,7 +55,7 @@ private:
   hid_t data_set_id; 
   herr_t status;
 
-  int ngrp;
+  PetscInt ngrp;
 
   hsize_t hyperslab_start[3];
   hsize_t hyperslab_stride[3];

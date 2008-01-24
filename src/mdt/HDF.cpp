@@ -3,19 +3,19 @@
 #include "HDF.h"
 
 
-static int neg_one = -1;
+static PetscInt neg_one = -1;
 
-HDF::HDF(char *filename, int overwrite) {
+HDF::HDF(char *filename, PetscInt overwrite) {
 
   file_id = -1;
-  for (int i=0; i<20; i++)
+  for (PetscInt i=0; i<20; i++)
     grp_id[i] = -1;
   file_space_id = -1;
   memory_space_id = -1;
   data_set_id = -1;
   ngrp = 0;
 
-  for (int i=0; i<3; i++) {
+  for (PetscInt i=0; i<3; i++) {
     hyperslab_start[i] = 0;
     hyperslab_stride[i] = 0;
     hyperslab_count[i] = 0;
@@ -81,29 +81,29 @@ void HDF::closeGroup() {
   }
 }
 
-void HDF::createFileSpace(int rank, int dim0, int dim1, int dim2) {
+void HDF::createFileSpace(PetscInt rank, PetscInt dim0, PetscInt dim1, PetscInt dim2) {
   HDF::createDataSpace(&file_space_id,rank,dim0,dim1,dim2,dim0,dim1,dim2);
 }
 
-void HDF::createMemorySpace(int rank, int dim0, int dim1, int dim2) {
-  int product = dim0;
+void HDF::createMemorySpace(PetscInt rank, PetscInt dim0, PetscInt dim1, PetscInt dim2) {
+  PetscInt product = dim0;
   if (rank > 1) product *= dim1;
   if (rank > 2) product *= dim2;
   if (!product) dim0 = 1;
   HDF::createDataSpace(&memory_space_id,rank,dim0,dim1,dim2,dim0,dim1,dim2);
 }
 
-void HDF::createDataSpace(int rank, int dim0, int dim1, int dim2) {
+void HDF::createDataSpace(PetscInt rank, PetscInt dim0, PetscInt dim1, PetscInt dim2) {
   HDF::createDataSpace(&file_space_id,rank,dim0,dim1,dim2,dim0,dim1,dim2);
 }
 
-void HDF::createDataSpace(hid_t *space_id, int rank, int dim0, int dim1, 
-                           int dim2) {
+void HDF::createDataSpace(hid_t *space_id, PetscInt rank, PetscInt dim0, PetscInt dim1, 
+                           PetscInt dim2) {
   HDF::createDataSpace(space_id,rank,dim0,dim1,dim2,dim0,dim1,dim2);
 }
 
-void HDF::createDataSpace(hid_t *space_id, int rank, int dim0, int dim1,
-                           int dim2, int max_dim0, int max_dim1, int max_dim2) {
+void HDF::createDataSpace(hid_t *space_id, PetscInt rank, PetscInt dim0, PetscInt dim1,
+                          PetscInt dim2, PetscInt max_dim0, PetscInt max_dim1, PetscInt max_dim2) {
 
   if (*space_id > -1) H5Sclose(*space_id);
   hsize_t *dims = new hsize_t[rank];
@@ -124,9 +124,9 @@ void HDF::createDataSpace(hid_t *space_id, int rank, int dim0, int dim1,
   delete [] dims;
   delete [] max_dims;
 
-//printf("DataSpace %d rank: %d  dim[0]: %d",*space_id,rank,(int)dims[0]);
-//if (rank > 1) printf(" %d",(int)dims[1]);
-//if (rank > 2) printf(" %d",(int)dims[2]);
+//printf("DataSpace %d rank: %d  dim[0]: %d",*space_id,rank,(PetscInt)dims[0]);
+//if (rank > 1) printf(" %d",(PetscInt)dims[1]);
+//if (rank > 2) printf(" %d",(PetscInt)dims[2]);
 //printf("\n");
 }
 
@@ -141,23 +141,23 @@ void HDF::closeDataSpace(hid_t *space_id) {
   *space_id = -1;
 }
 
-void HDF::setHyperSlab(int n) {
+void HDF::setHyperSlab(PetscInt n) {
   setHyperSlab(n,1);
 }
 
-void HDF::setHyperSlab(int n, int stride0) {
+void HDF::setHyperSlab(PetscInt n, PetscInt stride0) {
   PetscInt offset = 0;
   MPI_Exscan(&n,&offset,1,MPIU_INT,MPI_SUM,PETSC_COMM_WORLD);
-  int start[3] = {0,0,0};
-  int stride[3] = {1,1,1};
-  int count[3] = {1,1,1};
+  PetscInt start[3] = {0,0,0};
+  PetscInt stride[3] = {1,1,1};
+  PetscInt count[3] = {1,1,1};
   start[0] = offset;
   stride[0] = stride0;
   count[0] = n > 0 ? n : 1;
   setHyperSlab(start,stride,count,NULL);
 }
 
-void HDF::setHyperSlab(int *start, int *stride, int *count, int *block) {
+void HDF::setHyperSlab(PetscInt *start, PetscInt *stride, PetscInt *count, PetscInt *block) {
 
   if (start) {
     hyperslab_start[0] = (hsize_t)start[0];
@@ -165,25 +165,25 @@ void HDF::setHyperSlab(int *start, int *stride, int *count, int *block) {
     hyperslab_start[2] = (hsize_t)start[2];
   }
   else {
-    for (int i=0; i<3; i++)
-      hyperslab_start[i] = (hsize_t)0;
+    for (PetscInt i=0; i<3; i++)
+      hyperslab_start[i] = 0;
   }
   if (stride) {
-    hyperslab_stride[0] = stride[0];
-    hyperslab_stride[1] = stride[1];
-    hyperslab_stride[2] = stride[2];
+    hyperslab_stride[0] = (hsize_t)stride[0];
+    hyperslab_stride[1] = (hsize_t)stride[1];
+    hyperslab_stride[2] = (hsize_t)stride[2];
   }
   else {
-    for (int i=0; i<3; i++)
+    for (PetscInt i=0; i<3; i++)
       hyperslab_stride[i] = 1;
   }
   if (count) {
-    hyperslab_count[0] = count[0];
-    hyperslab_count[1] = count[1];
-    hyperslab_count[2] = count[2];
+    hyperslab_count[0] = (hsize_t)count[0];
+    hyperslab_count[1] = (hsize_t)count[1];
+    hyperslab_count[2] = (hsize_t)count[2];
   }
   else {
-    for (int i=0; i<3; i++)
+    for (PetscInt i=0; i<3; i++)
       hyperslab_count[i] = 1;
   }
   if (block) {
@@ -192,7 +192,7 @@ void HDF::setHyperSlab(int *start, int *stride, int *count, int *block) {
     hyperslab_block[2] = 1;
   }
   else {
-    for (int i=0; i<3; i++)
+    for (PetscInt i=0; i<3; i++)
       hyperslab_block[i] = 1;
   }
 
@@ -207,26 +207,27 @@ void HDF::setHyperSlab(int *start, int *stride, int *count, int *block) {
 
 }
 
-void HDF::createDataSet(char *data_set_name, hid_t type, int compress) {
+void HDF::createDataSet(char *data_set_name, hid_t type, PetscInt compress) {
   // Create data set
   hid_t prop_id = H5Pcreate(H5P_DATASET_CREATE);
 
   // here is where you set chunking, shuffle, compression, deflate, fill_value, etc.
   // chunking
   hsize_t dims[3];
+  // ndim needs to be an int since it is declared as int in the function call below
   int ndim = H5Sget_simple_extent_dims(file_space_id,dims,NULL);
-//  int size = 65536;
-  int size = 32768;
-//  int size = 16384;
-//  int size = 8192;
-//  int size = 4092;
-  int min_size = 2048;
+//  hsize_t size = 65536;
+  hsize_t size = 32768;
+//  ihsize_tnt size = 16384;
+//  hsize_t size = 8192;
+//  hsize_t size = 4092;
+  hsize_t min_size = 2048;
   while (size > dims[0])
     size /= 2;
   if (compress && size > min_size) {
     hsize_t *dim = new hsize_t[ndim]; 
-    dim[0] = size/ndim;
-    if (ndim > 1) dim[1] = ndim;
+    dim[0] = size/((hsize_t)ndim);
+    if (ndim > 1) dim[1] = (hsize_t)ndim;
     if (ndim > 2) dim[2] = 1;
     status = H5Pset_chunk(prop_id,ndim,dim);
     delete [] dim;
@@ -238,7 +239,11 @@ void HDF::createDataSet(char *data_set_name, hid_t type, int compress) {
   }
 
   if (type == HDF_NATIVE_INT) {
+#ifdef PETSC_USE_64BIT_INDICES
+    long long i = -999;
+#else
     int i = -999;
+#endif
     H5Pset_fill_value(prop_id,type,&i);
   }
   else {
@@ -260,11 +265,11 @@ void HDF::closeDataSet() {
   data_set_id = -1;
 }
 
-void HDF::writeInt(int *values) {
+void HDF::writeInt(PetscInt *values) {
   writeInt(values,1);
 }
 
-void HDF::writeInt(int *values, int collective) {
+void HDF::writeInt(PetscInt *values, PetscInt collective) {
 
   hid_t prop_id = H5Pcreate(H5P_DATASET_XFER);
 #ifndef SERIAL
@@ -282,13 +287,13 @@ void HDF::writeInt(int *values, int collective) {
     PetscMPIInt myrank;
     MPI_Comm_rank(PETSC_COMM_WORLD,&myrank);
     hsize_t dims[3];
-    int rank = H5Sget_simple_extent_dims(memory_space_id,dims,NULL);
+    PetscInt rank = H5Sget_simple_extent_dims(memory_space_id,dims,NULL);
     ierr = PetscSequentialPhaseBegin(PETSC_COMM_WORLD,1);
     printf("proc: %d - writeInt - ",myrank);
-    int count = 1;
-    for (int i=0; i< rank; i++)
-      count *= (int)dims[i];
-    for (int i=0; i<count; i++)
+    PetscInt count = 1;
+    for (PetscInt i=0; i< rank; i++)
+      count *= (PetscInt)dims[i];
+    for (PetscInt i=0; i<count; i++)
       printf(" %d",values[i]);
     printf("\n");
     printDataSpaceInfo(); 
@@ -310,7 +315,7 @@ void HDF::writeDouble(double *values) {
   writeDouble(values,1);
 }
 
-void HDF::writeDouble(double *values, int collective) {
+void HDF::writeDouble(double *values, PetscInt collective) {
 
   hid_t prop_id = H5Pcreate(H5P_DATASET_XFER);
 #ifndef SERIAL
@@ -326,15 +331,15 @@ void HDF::writeDouble(double *values, int collective) {
     PetscMPIInt myrank;
     MPI_Comm_rank(PETSC_COMM_WORLD,&myrank);
     hsize_t dims[3];
-    int rank = H5Sget_simple_extent_dims(memory_space_id,dims,NULL);
+    PetscInt rank = H5Sget_simple_extent_dims(memory_space_id,dims,NULL);
     if (collective) {
       ierr = PetscSequentialPhaseBegin(PETSC_COMM_WORLD,1);
     }
     printf("proc: %d - writeInt - ",myrank);
-    int count = 1;
-    for (int i=0; i< rank; i++)
+    PetscInt count = 1;
+    for (PetscInt i=0; i< rank; i++)
       count *= dims[i];
-    for (int i=0; i<count; i++)
+    for (PetscInt i=0; i<count; i++)
       printf(" %f",values[i]);
     printf("\n");
     if (collective) {
@@ -357,7 +362,7 @@ void HDF::printDataSpaceInfo() {
   char string[512];
   char string2[512];
   char string3[512];
-  int rank = H5Sget_simple_extent_dims(file_space_id,dims,NULL);
+  PetscInt rank = H5Sget_simple_extent_dims(file_space_id,dims,NULL);
   sprintf(string,"filespace (%d)  - proc: %d  rank: %d  dim0: %d",
           (int)file_space_id,myrank,rank,(int)dims[0]);
   if (rank > 1) {
@@ -386,7 +391,7 @@ void HDF::writeString(char *title, char *string) {
   writeString(title,string,1);
 }
 
-void HDF::writeString(char *title, char *string, int collective) {
+void HDF::writeString(char *title, char *string, PetscInt collective) {
   hid_t string_type = H5Tcopy(H5T_C_S1);
   H5Tset_strpad(string_type,H5T_STR_NULLTERM);
   H5Tset_size(string_type,strlen(string)+1);
@@ -420,13 +425,13 @@ void HDF::writeAttribute(char *title, char *string) {
   H5Sclose(space_id);
 }
 
-void HDF::writeAttribute(char *title, int value) {
+void HDF::writeAttribute(char *title, PetscInt value) {
 
   hsize_t dims = 1;
   hid_t space_id = H5Screate_simple(1,&dims,&dims);
     
   hid_t attribute_id = H5Acreate(grp_id[ngrp-1],title,HDF_NATIVE_INT,space_id,
-                                 HDF_NATIVE_INT);
+                                 H5P_DEFAULT);
   H5Awrite(attribute_id,HDF_NATIVE_INT,&value);
   H5Aclose(attribute_id);
   H5Sclose(space_id);
