@@ -15,8 +15,11 @@ FPPFLAGS         =
 CLEANFILES       = mdt
 
 
-
-include ${PETSC_DIR}/bmake/common/base
+ifdef dev
+ include ${PETSC_DIR}/conf/base
+else
+ include ${PETSC_DIR}/bmake/common/base
+endif
 
 mdt_obj = ${common_src}AsciiGrid.o \
 	${common_src}BoundaryConnection.o \
