@@ -506,10 +506,10 @@ void Hanford300::flagGridCells(Grid *grid) {
 
   grid->zeroGridCellFlags();
 
-  PetscMPIInt *matrix = NULL;
+  PetscInt *matrix = NULL;
 
   // west
-  matrix = new PetscMPIInt[ny*nz];
+  matrix = new PetscInt[ny*nz];
   for (PetscInt i=0; i<ny*nz; i++)
     matrix[i] = -1;
 
@@ -535,7 +535,7 @@ void Hanford300::flagGridCells(Grid *grid) {
                   grid->cells[ghosted_id].getZ() <= west_stage) {
                 grid->cells[ghosted_id].flag |= WEST_DIR_WEST_FACE;
                 flag[0] = 1;
-                matrix[jglobal+kglobal*ny] = (PetscMPIInt)(i+gxs);
+                matrix[jglobal+kglobal*ny] = i+gxs;
                 break;
               }
             }
@@ -546,7 +546,7 @@ void Hanford300::flagGridCells(Grid *grid) {
     }
   }
   PetscMPIInt nyXnz = ny*nz;
-  MPI_Allreduce(MPI_IN_PLACE,matrix,nyXnz,MPI_INTEGER,MPI_MAX,
+  MPI_Allreduce(MPI_IN_PLACE,matrix,nyXnz,MPIU_INT,MPI_MAX,
                 PETSC_COMM_WORLD);
 
   for (PetscInt k=0; k<gnz; k++) {
@@ -597,7 +597,7 @@ void Hanford300::flagGridCells(Grid *grid) {
   matrix = NULL;
 
   // east
-  matrix = new PetscMPIInt[ny*nz];
+  matrix = new PetscInt[ny*nz];
   for (PetscInt i=0; i<ny*nz; i++)
     matrix[i] = -1;
 
@@ -621,7 +621,7 @@ void Hanford300::flagGridCells(Grid *grid) {
                   grid->cells[ghosted_id].getZ() <= east_stage) {
                 grid->cells[ghosted_id].flag |= EAST_DIR_EAST_FACE;
                 flag[0] = 1;
-                matrix[jglobal+kglobal*ny] = (PetscMPIInt)(i+gxs);
+                matrix[jglobal+kglobal*ny] = i+gxs;
                 break;
               }
             }
@@ -632,7 +632,7 @@ void Hanford300::flagGridCells(Grid *grid) {
     }
   }
   nyXnz = ny*nz;
-  MPI_Allreduce(MPI_IN_PLACE,matrix,nyXnz,MPI_INTEGER,MPI_MAX,
+  MPI_Allreduce(MPI_IN_PLACE,matrix,nyXnz,MPIU_INT,MPI_MAX,
                 PETSC_COMM_WORLD);
 
   for (PetscInt k=0; k<gnz; k++) {
@@ -683,7 +683,7 @@ void Hanford300::flagGridCells(Grid *grid) {
   matrix = NULL;
 
   // south
-  matrix = new PetscMPIInt[nx*nz];
+  matrix = new PetscInt[nx*nz];
   for (PetscInt i=0; i<nx*nz; i++)
     matrix[i] = -1;
 
@@ -707,7 +707,7 @@ void Hanford300::flagGridCells(Grid *grid) {
                   grid->cells[ghosted_id].getZ() <= south_stage) {
                 grid->cells[ghosted_id].flag |= SOUTH_DIR_SOUTH_FACE;
                 flag[0] = 1;
-                matrix[iglobal+kglobal*nx] = (PetscMPIInt)(j+gys);
+                matrix[iglobal+kglobal*nx] = j+gys;
                 break;
               }
             }
@@ -718,7 +718,7 @@ void Hanford300::flagGridCells(Grid *grid) {
     }
   }
   PetscMPIInt nxXnz = nx*nz;
-  MPI_Allreduce(MPI_IN_PLACE,matrix,nxXnz,MPI_INTEGER,MPI_MAX,
+  MPI_Allreduce(MPI_IN_PLACE,matrix,nxXnz,MPIU_INT,MPI_MAX,
                 PETSC_COMM_WORLD);
 
   for (PetscInt k=0; k<gnz; k++) {
@@ -769,7 +769,7 @@ void Hanford300::flagGridCells(Grid *grid) {
   matrix = NULL;
       
   // north
-  matrix = new PetscMPIInt[nx*nz];
+  matrix = new PetscInt[nx*nz];
   for (PetscInt i=0; i<nx*nz; i++)
     matrix[i] = -1;
 
@@ -793,7 +793,7 @@ void Hanford300::flagGridCells(Grid *grid) {
                   grid->cells[ghosted_id].getZ() <= north_stage) {
                 grid->cells[ghosted_id].flag |= NORTH_DIR_NORTH_FACE;
                 flag[0] = 1;
-                matrix[iglobal+kglobal*nx] = (PetscMPIInt)(j+gys);
+                matrix[iglobal+kglobal*nx] = j+gys;
                 break;
               }
             }
@@ -804,7 +804,7 @@ void Hanford300::flagGridCells(Grid *grid) {
     }
   }
   nxXnz = nx*nz;
-  MPI_Allreduce(MPI_IN_PLACE,matrix,nxXnz,MPI_INTEGER,MPI_MAX,
+  MPI_Allreduce(MPI_IN_PLACE,matrix,nxXnz,MPIU_INT,MPI_MAX,
                 PETSC_COMM_WORLD);
 
   for (PetscInt k=0; k<gnz; k++) {
@@ -855,7 +855,7 @@ void Hanford300::flagGridCells(Grid *grid) {
   matrix = NULL;
 
   // bottom
-  matrix = new PetscMPIInt[nx*ny];
+  matrix = new PetscInt[nx*ny];
   for (PetscInt i=0; i<nx*ny; i++)
     matrix[i] = -1;
 
@@ -879,7 +879,7 @@ void Hanford300::flagGridCells(Grid *grid) {
                   grid->cells[ghosted_id].getZ() <= bottom_stage) {
                 grid->cells[ghosted_id].flag |= BOTTOM_DIR_BOTTOM_FACE;
                 flag[0] = 1;
-                matrix[iglobal+jglobal*nx] = (PetscMPIInt)(k+gzs);
+                matrix[iglobal+jglobal*nx] = k+gzs;
                 break;
               }
             }
@@ -890,7 +890,7 @@ void Hanford300::flagGridCells(Grid *grid) {
     }
   }
   PetscMPIInt nxXny = nx*ny;
-  MPI_Allreduce(MPI_IN_PLACE,matrix,nxXny,MPI_INTEGER,MPI_MAX,
+  MPI_Allreduce(MPI_IN_PLACE,matrix,nxXny,MPIU_INT,MPI_MAX,
                 PETSC_COMM_WORLD);
  
   for (PetscInt j=0; j<gny; j++) {
@@ -941,7 +941,7 @@ void Hanford300::flagGridCells(Grid *grid) {
   matrix = NULL;
 
   // top
-  matrix = new PetscMPIInt[nx*ny];
+  matrix = new PetscInt[nx*ny];
   for (PetscInt i=0; i<nx*ny; i++)
     matrix[i] = -1;
 
@@ -965,7 +965,7 @@ void Hanford300::flagGridCells(Grid *grid) {
                   grid->cells[ghosted_id].getZ() <= top_stage) {
                 grid->cells[ghosted_id].flag |= TOP_DIR_TOP_FACE;
                 flag[0] = 1;
-                matrix[iglobal+jglobal*nx] = (PetscMPIInt)(k+gzs);
+                matrix[iglobal+jglobal*nx] = k+gzs;
                 break;
               }
             }
@@ -977,7 +977,7 @@ void Hanford300::flagGridCells(Grid *grid) {
   }
 #if 0
   nxXny = nx*ny;
-  MPI_Allreduce(MPI_IN_PLACE,matrix,nxXny,MPI_INTEGER,MPI_MAX,
+  MPI_Allreduce(MPI_IN_PLACE,matrix,nxXny,MPIU_INT,MPI_MAX,
                 PETSC_COMM_WORLD);
  
   for (PetscInt j=0; j<gny; j++) {

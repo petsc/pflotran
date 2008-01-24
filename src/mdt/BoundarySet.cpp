@@ -37,10 +37,10 @@ PetscInt BoundarySet::getNumberOfConnectionsLocal() {
 }
 
 PetscInt BoundarySet::getNumberOfConnectionsGlobal() { 
-  PetscMPIInt num_connections_global = 0;
-  MPI_Allreduce(&num_connections_local,&num_connections_global,1,MPI_INTEGER,
+  PetscInt num_connections_global = 0;
+  MPI_Allreduce(&num_connections_local,&num_connections_global,1,MPIU_INT,
                 MPI_SUM,PETSC_COMM_WORLD);
-  return (PetscInt) num_connections_global;
+  return num_connections_global;
 }
 
 PetscInt *BoundarySet::getCellIdsLocal() {

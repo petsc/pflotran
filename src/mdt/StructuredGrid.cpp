@@ -848,20 +848,14 @@ PetscInt StructuredGrid::getNeighboringProcessor(PetscInt direction) {
 }
 
 void StructuredGrid::sendFlag(PetscInt *flag, PetscInt direction) {
-  PetscMPIInt mpi_flag[3];
-  for (PetscInt i=0; i<3; i++)
-    mpi_flag[i] = (PetscMPIInt)flag[i];
-  MPI_Send(&mpi_flag,3,MPI_INTEGER,getNeighboringProcessor(direction),0,
+  MPI_Send(&flag,3,MPIU_INT,getNeighboringProcessor(direction),0,
            PETSC_COMM_WORLD);
 }
 
 void StructuredGrid::receiveFlag(PetscInt *flag, PetscInt direction) {
   MPI_Status status;
-  PetscMPIInt mpi_flag[3];
-  MPI_Recv(mpi_flag,3,MPI_INTEGER,getNeighboringProcessor(direction),0,
+  MPI_Recv(flag,3,MPIU_INT,getNeighboringProcessor(direction),0,
            PETSC_COMM_WORLD,&status);
-  for (PetscInt i=0; i<3; i++)
-    flag[i] = mpi_flag[3];
 }
 
 void StructuredGrid::printAO() {

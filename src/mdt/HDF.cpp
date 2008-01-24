@@ -146,9 +146,8 @@ void HDF::setHyperSlab(int n) {
 }
 
 void HDF::setHyperSlab(int n, int stride0) {
-  PetscMPIInt offset = 0;
-  PetscMPIInt mpi_n = (PetscMPIInt)n;
-  MPI_Exscan(&mpi_n,&offset,1,MPI_INT,MPI_SUM,PETSC_COMM_WORLD);
+  PetscInt offset = 0;
+  MPI_Exscan(&n,&offset,1,MPIU_INT,MPI_SUM,PETSC_COMM_WORLD);
   int start[3] = {0,0,0};
   int stride[3] = {1,1,1};
   int count[3] = {1,1,1};
