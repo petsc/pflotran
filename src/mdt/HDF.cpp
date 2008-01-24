@@ -2,6 +2,7 @@
 
 #include "HDF.h"
 
+
 static int neg_one = -1;
 
 HDF::HDF(char *filename, int overwrite) {
@@ -237,7 +238,7 @@ void HDF::createDataSet(char *data_set_name, hid_t type, int compress) {
     status = H5Pset_deflate(prop_id,9); // 0 - 9
   }
 
-  if (type == H5T_NATIVE_INT) {
+  if (type == HDF_NATIVE_INT) {
     int i = -999;
     H5Pset_fill_value(prop_id,type,&i);
   }
@@ -297,11 +298,11 @@ void HDF::writeInt(int *values, int collective) {
     }
 //*/
 
-    H5Dwrite(data_set_id,H5T_NATIVE_INT,memory_space_id,file_space_id,
+    H5Dwrite(data_set_id,HDF_NATIVE_INT,memory_space_id,file_space_id,
              prop_id,values);
   }
   else
-    H5Dwrite(data_set_id,H5T_NATIVE_INT,H5S_ALL,H5S_ALL,prop_id,values);
+    H5Dwrite(data_set_id,HDF_NATIVE_INT,H5S_ALL,H5S_ALL,prop_id,values);
   H5Pclose(prop_id);
 
 }
@@ -425,9 +426,9 @@ void HDF::writeAttribute(char *title, int value) {
   hsize_t dims = 1;
   hid_t space_id = H5Screate_simple(1,&dims,&dims);
     
-  hid_t attribute_id = H5Acreate(grp_id[ngrp-1],title,H5T_NATIVE_INT,space_id,
-                                 H5P_DEFAULT);
-  H5Awrite(attribute_id,H5T_NATIVE_INT,&value);
+  hid_t attribute_id = H5Acreate(grp_id[ngrp-1],title,HDF_NATIVE_INT,space_id,
+                                 HDF_NATIVE_INT);
+  H5Awrite(attribute_id,HDF_NATIVE_INT,&value);
   H5Aclose(attribute_id);
   H5Sclose(space_id);
 }
