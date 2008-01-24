@@ -19,12 +19,12 @@ public:
   Hanford300(Grid **grid);
   virtual ~Hanford300();
 
-  void computeTopBoundary(Grid *grid, int complete);
-  void computeBottomBoundary(Grid *grid, int complete);
-  void computeNorthBoundary(Grid *grid, int complete);
-  void computeSouthBoundary(Grid *grid, int complete);
-  void computeEastBoundary(Grid *grid, int complete);
-  void computeWestBoundary(Grid *grid, int complete);
+  void computeTopBoundary(Grid *grid, PetscInt complete);
+  void computeBottomBoundary(Grid *grid, PetscInt complete);
+  void computeNorthBoundary(Grid *grid, PetscInt complete);
+  void computeSouthBoundary(Grid *grid, PetscInt complete);
+  void computeEastBoundary(Grid *grid, PetscInt complete);
+  void computeWestBoundary(Grid *grid, PetscInt complete);
   void flagGridCells(Grid *grid);
 
 private:
@@ -32,9 +32,9 @@ private:
   Polygon *river_polygon;
   AsciiGrid **ascii_grids;
 
-  void setMaterialIdBasedOnNaturalId(int natural_id, int material_id,
+  void setMaterialIdBasedOnNaturalId(PetscInt natural_id, PetscInt material_id,
                                      Grid *grid);
-  void setActiveBasedOnNaturalId(int natural_id, int active,
+  void setActiveBasedOnNaturalId(PetscInt natural_id, PetscInt active,
                                  Grid *grid);
 
 };

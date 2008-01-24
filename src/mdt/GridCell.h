@@ -9,64 +9,64 @@
  
 class GridCell { 
 public: 
-  int num_cells; 
+  PetscInt num_cells; 
  
   GridCell(); 
-  GridCell(double xcoord, double ycoord, double zcoord, double volume_,
-                   double porosity_, int material_id, double xperm,
-                   double yperm, double zperm); 
+  GridCell(PetscReal xcoord, PetscReal ycoord, PetscReal zcoord, 
+           PetscReal volume_, PetscReal porosity_, PetscInt material_id, 
+           PetscReal xperm, PetscReal yperm, PetscReal zperm); 
   virtual ~GridCell(); 
-  void setIdLocal(int i); 
-  void setIdGhosted(int i); 
-  void setIdNatural(int i); 
-  void setCentroid(double x, double y, double z); 
-  void setX(double x); 
-  void setY(double y); 
-  void setZ(double z); 
-  void setVolume(double d); 
-  void setPermX(double d); 
-  void setPermY(double d); 
-  void setPermZ(double d); 
-  void setPorosity(double d); 
-  void setMaterialId(int i); 
-  void setActive(int i); 
+  void setIdLocal(PetscInt i); 
+  void setIdGhosted(PetscInt i); 
+  void setIdNatural(PetscInt i); 
+  void setCentroid(PetscReal x, PetscReal y, PetscReal z); 
+  void setX(PetscReal x); 
+  void setY(PetscReal y); 
+  void setZ(PetscReal z); 
+  void setVolume(PetscReal d); 
+  void setPermX(PetscReal d); 
+  void setPermY(PetscReal d); 
+  void setPermZ(PetscReal d); 
+  void setPorosity(PetscReal d); 
+  void setMaterialId(PetscInt i); 
+  void setActive(PetscInt i); 
   void setActive(); 
   void setInactive(); 
   void negateMaterialId();
    
-  int getIdLocal(); 
-  int getIdGhosted(); 
-  int getIdNatural(); 
-  double *getCentroidPtr(); 
-  double getX(); 
-  double getY(); 
-  double getZ(); 
-  double getVolume(); 
-  double getPermX(); 
-  double getPermY(); 
-  double getPermZ(); 
-  double *getPermPtr(); 
-  int getMaterialId(); 
-  int getActive(); 
-  void getHexFaceVertices(int face, int *vertex_list); 
+  PetscInt getIdLocal(); 
+  PetscInt getIdGhosted(); 
+  PetscInt getIdNatural(); 
+  PetscReal *getCentroidPtr(); 
+  PetscReal getX(); 
+  PetscReal getY(); 
+  PetscReal getZ(); 
+  PetscReal getVolume(); 
+  PetscReal getPermX(); 
+  PetscReal getPermY(); 
+  PetscReal getPermZ(); 
+  PetscReal *getPermPtr(); 
+  PetscInt getMaterialId(); 
+  PetscInt getActive(); 
+  void getHexFaceVertices(PetscInt face, PetscInt *vertex_list); 
  
   void printInfo(); 
    
-  int vertices[9]; 
+  PetscInt vertices[9]; 
   unsigned long int flag;
  
 private: 
-  int id_local, id_ghosted, id_natural; 
+  PetscInt id_local, id_ghosted, id_natural; 
   // materials of inactive cells outside the boundary are set to -material_id
-  int material_id; 
-  int active; 
+  PetscInt material_id; 
+  PetscInt active; 
 
-  double volume; 
-  double centroid[3]; 
+  PetscReal volume; 
+  PetscReal centroid[3]; 
  
 // matrix variables 
-  double permeability[3]; 
-  double porosity; 
+  PetscReal permeability[3]; 
+  PetscReal porosity; 
  
 }; 
  

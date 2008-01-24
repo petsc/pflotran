@@ -9,19 +9,19 @@ class Connection {
   
 public:
 
-//  Connection(int icell, int iface);
-  Connection(int icell, int *vertices);
-  Connection(int icell, int *vertices, int iface);
+//  Connection(PetscInt icell, PetscInt iface);
+  Connection(PetscInt icell, PetscInt *vertices);
+  Connection(PetscInt icell, PetscInt *vertices, PetscInt iface);
   virtual ~Connection();
 
-  int getFaceVertex(int ivert);
-  int getFace();
+  PetscInt getFaceVertex(PetscInt ivert);
+  PetscInt getFace();
 
   void printInfo();
 // these are local ids
-  int cell;
-  int face;
-  int vertices[5];
+  PetscInt cell;
+  PetscInt face;
+  PetscInt vertices[5];
   Connection *next;
 
 };

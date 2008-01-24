@@ -13,14 +13,14 @@ public:
   BoundaryConnection();
   virtual ~BoundaryConnection();
 
-  void setId(int i);
-  void setConditionId(int i);
-  int getConditionType();
-  void setDistance(double *d);
-  void setCenter(double *d);
-  void setNormal(double *d);
-  void setArea(double d);
-  void setScalar(double d);
+  void setId(PetscInt i);
+  void setConditionId(PetscInt i);
+  PetscInt getConditionType();
+  void setDistance(PetscReal *d);
+  void setCenter(PetscReal *d);
+  void setNormal(PetscReal *d);
+  void setArea(PetscReal d);
+  void setScalar(PetscReal d);
   void setType(char *str);
   void setNext(BoundaryConnection *bc);
     
@@ -29,31 +29,31 @@ public:
   static void convertListToArray();
   static void printBCs();
 
-  int getId();
-  int getConditionId();
-  double *getDistancePtr();
-  double *getCenterPtr();
-  double *getNormalPtr();
+  PetscInt getId();
+  PetscInt getConditionId();
+  PetscReal *getDistancePtr();
+  PetscReal *getCenterPtr();
+  PetscReal *getNormalPtr();
   char *getTypePtr();
-  double getArea();
-  double getScalar();
+  PetscReal getArea();
+  PetscReal getScalar();
   BoundaryConnection *getNext();
   
   static BoundaryConnection *list;
   static BoundaryConnection *end_of_list;
-  static int num_bcs;
+  static PetscInt num_bcs;
   static BoundaryConnection **_array;
   
 private:
 
   // all boundary ids are local nonghosted numbering 
-  int idlocal;
-  int condition_id;
-  double area;
-  double center[3],dist[3];
-  double normal[3];
+  PetscInt idlocal;
+  PetscInt condition_id;
+  PetscReal area;
+  PetscReal center[3],dist[3];
+  PetscReal normal[3];
   char *type;
-  double scalar;
+  PetscReal scalar;
   BoundaryConnection *next;
 
 };

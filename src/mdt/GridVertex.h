@@ -5,33 +5,33 @@
 
 class GridVertex {
 public:
-  int num_vertices;
+  PetscInt num_vertices;
 
   GridVertex();
-  GridVertex(double xcoord, double ycoord, double zcoord);
+  GridVertex(PetscReal xcoord, PetscReal ycoord, PetscReal zcoord);
   virtual ~GridVertex();
 
-  void setIdLocal(int i);
-  void setIdGhosted(int i);
-  void setIdNatural(int i);
-  void setX(double x);
-  void setY(double y);
-  void setZ(double z);
+  void setIdLocal(PetscInt i);
+  void setIdGhosted(PetscInt i);
+  void setIdNatural(PetscInt i);
+  void setX(PetscReal x);
+  void setY(PetscReal y);
+  void setZ(PetscReal z);
   
-  int getIdLocal();
-  int getIdGhosted();
-  int getIdNatural();
-  double getX();
-  double getY();
-  double getZ();
+  PetscInt getIdLocal();
+  PetscInt getIdGhosted();
+  PetscInt getIdNatural();
+  PetscReal getX();
+  PetscReal getY();
+  PetscReal getZ();
 
   void printInfo();
 
-  int cells[9];
+  PetscInt cells[9];
 
 private:
-  int id_local, id_ghosted, id_natural;
-  double x, y, z;
+  PetscInt id_local, id_ghosted, id_natural;
+  PetscReal x, y, z;
   
 };
 

@@ -12,13 +12,13 @@ public:
   virtual ~Polygon();
 
   void createRiverEdgePolygon();
-  int pointInPolygon(double x_, double y_);
+  PetscInt pointInPolygon(PetscReal x_, PetscReal y_);
   
 private:
 
-  int num_points;
-  double *x;
-  double *y;
+  PetscInt num_points;
+  PetscReal *x;
+  PetscReal *y;
 
 };
 

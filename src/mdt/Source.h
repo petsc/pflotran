@@ -11,29 +11,29 @@ public:
   Source();
   virtual ~Source();
 
-  void setId(int i);
-  void setScalar(double d);
+  void setId(PetscInt i);
+  void setScalar(PetscReal d);
   void setType(char *str);
   void setNext(Source *src);
   
   void printInfo();
   static void printSrcs();
 
-  int getId();
+  PetscInt getId();
   char *getTypePtr();
-  double getScalar();
+  PetscReal getScalar();
   Source *getNext();
 
   static Source *list;
   static Source *end_of_list;
-  static int num_srcs;
+  static PetscInt num_srcs;
   
 private:
 
   // all boundary ids are local nonghosted numbering 
-  int idlocal;
+  PetscInt idlocal;
   char *type;
-  double scalar;
+  PetscReal scalar;
   Source *next;
 
 };

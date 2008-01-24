@@ -18,59 +18,59 @@ public:
 
   void nullify();
   void addToList();
-  void setId(int i);
-  void setType(int i);
+  void setId(PetscInt i);
+  void setType(PetscInt i);
   void setType(char *str);
-  void setDatum(double *d);
-  void setGradient(double *d);
-  void setScalar(double d);
+  void setDatum(PetscReal *d);
+  void setGradient(PetscReal *d);
+  void setScalar(PetscReal d);
   void setTimeUnit(char *c);
   void setNext(Condition *cond);
 
-  double computeHydrostaticPressure(double *coord);
+  PetscReal computeHydrostaticPressure(PetscReal *coord);
 
   static void convertListToArray();
-  static void updateConditions(double time);
+  static void updateConditions(PetscReal time);
   static void initializeConditions();
 
   void printInfo();
 
-  int getId();
-  int getType();
+  PetscInt getId();
+  PetscInt getType();
   char *getTypePtr();
-  double *getDatumPtr();
-  double *getGradientPtr();
-  double getScalar();
+  PetscReal *getDatumPtr();
+  PetscReal *getGradientPtr();
+  PetscReal getScalar();
   char *getTimeUnitPtr();
   Condition *getNext();
   char *getName();
   void printConditions();
 
-  double *scalars;
-  double *times;
-  int max_time_index;
-  double cur_value;
+  PetscReal *scalars;
+  PetscReal *times;
+  PetscInt max_time_index;
+  PetscReal cur_value;
 
   static Condition *list;
   static Condition *end_of_list;
-  static int num_conditions;
+  static PetscInt num_conditions;
   static Condition **_array;
-  static int initial_condition_id;
+  static PetscInt initial_condition_id;
   Condition *next;  
 
 private:
 
   // all boundary ids are local nonghosted numbering 
-  int id;
-  int itype;
+  PetscInt id;
+  PetscInt itype;
   char *ctype;
   char name[32];
-  double datum[3];
-  double gradient[3];
+  PetscReal datum[3];
+  PetscReal gradient[3];
   char time_unit[MAXWORDLENGTH];
 
 
-  int cur_time_index;
+  PetscInt cur_time_index;
 
 };
 

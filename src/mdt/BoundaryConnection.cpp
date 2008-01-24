@@ -4,7 +4,7 @@ BoundaryConnection::BoundaryConnection() {
   area = 0.;
   idlocal = -1;
   condition_id = -1;
-  for (int i=0; i<3; i++) {
+  for (PetscInt i=0; i<3; i++) {
     dist[i] = 0.;
     center[i] = 0.;
     normal[i] = 0.;
@@ -19,7 +19,7 @@ BoundaryConnection::BoundaryConnection() {
 
 void BoundaryConnection::convertListToArray() {
 
-  int count = 0;
+  PetscInt count = 0;
   BoundaryConnection::_array = new BoundaryConnection *[num_bcs];
 
   BoundaryConnection *cur_bc = list;
@@ -29,51 +29,51 @@ void BoundaryConnection::convertListToArray() {
   }
 }
 
-void BoundaryConnection::setId(int i) { idlocal = i; }
-void BoundaryConnection::setConditionId(int i) { condition_id = i; }
-void BoundaryConnection::setArea(double d) { area = d; }
-void BoundaryConnection::setScalar(double d) { scalar = d; }
+void BoundaryConnection::setId(PetscInt i) { idlocal = i; }
+void BoundaryConnection::setConditionId(PetscInt i) { condition_id = i; }
+void BoundaryConnection::setArea(PetscReal d) { area = d; }
+void BoundaryConnection::setScalar(PetscReal d) { scalar = d; }
 void BoundaryConnection::setType(char *str) { 
   type = new char[32]; 
   strcpy(type,str);
 }
-void BoundaryConnection::setDistance(double *d) { 
+void BoundaryConnection::setDistance(PetscReal *d) { 
   dist[0] = d[0];
   dist[1] = d[1];
   dist[2] = d[2];
 }
-void BoundaryConnection::setCenter(double *d) { 
+void BoundaryConnection::setCenter(PetscReal *d) { 
   center[0] = d[0];
   center[1] = d[1];
   center[2] = d[2];
 }
-void BoundaryConnection::setNormal(double *d) { 
+void BoundaryConnection::setNormal(PetscReal *d) { 
   normal[0] = d[0];
   normal[1] = d[1];
   normal[2] = d[2];
 }
 
-int BoundaryConnection::getId() { return idlocal; }
-int BoundaryConnection::getConditionId() { return condition_id; }
-int BoundaryConnection::getConditionType() { 
+PetscInt BoundaryConnection::getId() { return idlocal; }
+PetscInt BoundaryConnection::getConditionId() { return condition_id; }
+PetscInt BoundaryConnection::getConditionType() { 
   return Condition::_array[condition_id]->getType();
 }
-double BoundaryConnection::getArea() { return area; }
-double BoundaryConnection::getScalar() { return scalar; }
+PetscReal BoundaryConnection::getArea() { return area; }
+PetscReal BoundaryConnection::getScalar() { return scalar; }
 char *BoundaryConnection::getTypePtr() { return &type[0]; }
-double *BoundaryConnection::getDistancePtr() { return &dist[0]; }
-double *BoundaryConnection::getCenterPtr() { return &center[0]; }
-double *BoundaryConnection::getNormalPtr() { return &normal[0]; }
+PetscReal *BoundaryConnection::getDistancePtr() { return &dist[0]; }
+PetscReal *BoundaryConnection::getCenterPtr() { return &center[0]; }
+PetscReal *BoundaryConnection::getNormalPtr() { return &normal[0]; }
 BoundaryConnection *BoundaryConnection::getNext() { return next; };
 
 void BoundaryConnection::printInfo() {
 /*
-    int idlocal;
-  double area;
-  double center[3],dist[3];
-  double normal[3];
+    PetscInt idlocal;
+  PetscReal area;
+  PetscReal center[3],dist[3];
+  PetscReal normal[3];
   char *type;
-  double scalar;
+  PetscReal scalar;
   BoundaryConnection *next;
 */  
   printf("\n  id: %5d\n",idlocal);

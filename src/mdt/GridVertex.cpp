@@ -11,29 +11,29 @@ GridVertex::GridVertex() {
   z = 0.;
 
   cells[0] = 0;
-  for (int i=1; i<9; i++)
+  for (PetscInt i=1; i<9; i++)
     cells[i] = -999;
 
 }
 
-void GridVertex::setIdLocal(int i) { id_local = i; }
-void GridVertex::setIdGhosted(int i) { id_ghosted = i; }
-void GridVertex::setIdNatural(int i) { id_natural = i; }
-void GridVertex::setX(double x_) { x = x_; }
-void GridVertex::setY(double y_) { y = y_; }
-void GridVertex::setZ(double z_) { z = z_; }
+void GridVertex::setIdLocal(PetscInt i) { id_local = i; }
+void GridVertex::setIdGhosted(PetscInt i) { id_ghosted = i; }
+void GridVertex::setIdNatural(PetscInt i) { id_natural = i; }
+void GridVertex::setX(PetscReal x_) { x = x_; }
+void GridVertex::setY(PetscReal y_) { y = y_; }
+void GridVertex::setZ(PetscReal z_) { z = z_; }
 
-int GridVertex::getIdLocal() { return id_local; }
-int GridVertex::getIdGhosted() { return id_ghosted; }
-int GridVertex::getIdNatural() { return id_natural; }
-double GridVertex::getX() { return x; }
-double GridVertex::getY() { return y; }
-double GridVertex::getZ() { return z; }
+PetscInt GridVertex::getIdLocal() { return id_local; }
+PetscInt GridVertex::getIdGhosted() { return id_ghosted; }
+PetscInt GridVertex::getIdNatural() { return id_natural; }
+PetscReal GridVertex::getX() { return x; }
+PetscReal GridVertex::getY() { return y; }
+PetscReal GridVertex::getZ() { return z; }
 
 void GridVertex::printInfo() {
   printf("lid: %d gid: %d nid: %d - cells[%1d]:",id_local,id_ghosted,
          id_natural,cells[0]);
-  for (int i=1; i<=cells[0]; i++)
+  for (PetscInt i=1; i<=cells[0]; i++)
     printf(" %d",cells[i]);
   printf("\n");
   printf("x: %f  y: %f  z: %f\n",x,y,z);

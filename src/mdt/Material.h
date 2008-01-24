@@ -16,45 +16,45 @@ public:
   virtual ~Material();
   void nullify();
   void setName(char *name_);
-  void setId(int id_);
-  void setHydraulicConductivity_H(double hc_h);
-  void setHydraulicConductivity_V(double hc_v);
-  void setPermeability_H(double perm_h);
-  void setPermeability_V(double perm_v);
-  void setPorosity(double por);
-  void setDensity(double den);
-  void setAirEntryHead(double air_entry_head_);
-  void setAirEntryPressure(double air_entry_pres_);
-  void setLambda(double l);
-  void setResidualSaturation(double Sr);
+  void setId(PetscInt id_);
+  void setHydraulicConductivity_H(PetscReal hc_h);
+  void setHydraulicConductivity_V(PetscReal hc_v);
+  void setPermeability_H(PetscReal perm_h);
+  void setPermeability_V(PetscReal perm_v);
+  void setPorosity(PetscReal por);
+  void setDensity(PetscReal den);
+  void setAirEntryHead(PetscReal air_entry_head_);
+  void setAirEntryPressure(PetscReal air_entry_pres_);
+  void setLambda(PetscReal l);
+  void setResidualSaturation(PetscReal Sr);
 
   void getName(char *name_);
-  int getId();
-  double getHydraulicConductivity_H();
-  double getHydraulicConductivity_V();
-  double getPermeability_H();
-  double getPermeability_V();
-  double getPorosity();
-  double getDensity();
-  double getAirEntryHead();
-  double getAirEntryPressure();
-  double getLambda();
-  double getResidualSaturation();
+  PetscInt getId();
+  PetscReal getHydraulicConductivity_H();
+  PetscReal getHydraulicConductivity_V();
+  PetscReal getPermeability_H();
+  PetscReal getPermeability_V();
+  PetscReal getPorosity();
+  PetscReal getDensity();
+  PetscReal getAirEntryHead();
+  PetscReal getAirEntryPressure();
+  PetscReal getLambda();
+  PetscReal getResidualSaturation();
 
 private:
 
   char name[32];
-  int id;
-  double hc_horz;    // m/d
-  double hc_vert;    // m/d
-  double perm_horz;  // m^2
-  double perm_vert;  // m^2
-  double porosity;
-  double density;    // kg/m^3
-  double air_entry_head; // m
-  double air_entry_pressure; // Pa
-  double lambda;
-  double residual_saturation;
+  PetscInt id;
+  PetscReal hc_horz;    // m/d
+  PetscReal hc_vert;    // m/d
+  PetscReal perm_horz;  // m^2
+  PetscReal perm_vert;  // m^2
+  PetscReal porosity;
+  PetscReal density;    // kg/m^3
+  PetscReal air_entry_head; // m
+  PetscReal air_entry_pressure; // Pa
+  PetscReal lambda;
+  PetscReal residual_saturation;
 
 };
 

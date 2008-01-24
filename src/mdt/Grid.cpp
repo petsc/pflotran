@@ -4,21 +4,21 @@
 // these static members of the BoundaryConnection class must be initialized HERE!
 BoundaryConnection *BoundaryConnection::list = NULL;
 BoundaryConnection *BoundaryConnection::end_of_list = NULL;
-int BoundaryConnection::num_bcs = 0;
+PetscInt BoundaryConnection::num_bcs = 0;
 BoundaryConnection **BoundaryConnection::_array = NULL;
 
 Condition *Condition::list = NULL;
 Condition *Condition::end_of_list = NULL;
-int Condition::num_conditions = 0;
+PetscInt Condition::num_conditions = 0;
 Condition **Condition::_array = NULL;
-int Condition::initial_condition_id = -1; 
+PetscInt Condition::initial_condition_id = -1; 
 
 // these static members of the Source.h class must be initialized HERE!
 Source *Source::list = NULL;
 Source *Source::end_of_list = NULL;
-int Source::num_srcs = 0;
+PetscInt Source::num_srcs = 0;
 
-Grid::Grid(int nx, int ny, int nz) {
+Grid::Grid(PetscInt nx, PetscInt ny, PetscInt nz) {
   nullifyArrays();
   createStructured(nx,ny,nz);
 }
@@ -28,22 +28,22 @@ Grid::Grid() {
 }
 
 void Grid::zeroGridCellFlags() {
-  for (int i=0; i<num_cells_ghosted; i++)
+  for (PetscInt i=0; i<num_cells_ghosted; i++)
     cells[i].flag = ZERO_FLAG;
 }
 
-void Grid::createStructured(int nx, int ny, int nz) {
+void Grid::createStructured(PetscInt nx, PetscInt ny, PetscInt nz) {
   structuredGrid = new StructuredGrid(nx,ny,nz);
   structuredGrid->createDA();
 }
 
-int *Grid::getCellIds() {
+PetscInt *Grid::getCellIds() {
 
-  int *ids = new int[num_cells_local];
-  for (int icell=0; icell<num_cells_local; icell++)
+  PetscInt *ids = new PetscInt[num_cells_local];
+  for (PetscInt icell=0; icell<num_cells_local; icell++)
     ids[icell] = -999;
-  for (int icell=0; icell<num_cells_ghosted; icell++) {
-    int cell_local_id = cells[icell].getIdLocal();
+  for (PetscInt icell=0; icell<num_cells_ghosted; icell++) {
+    PetscInt cell_local_id = cells[icell].getIdLocal();
     if (cell_local_id > -1)
       ids[cell_local_id] = cell_local_id;
   }
@@ -51,13 +51,13 @@ int *Grid::getCellIds() {
 
 }
 
-int *Grid::getCellIdsNatural() {
+PetscInt *Grid::getCellIdsNatural() {
 
-  int *natural_ids = new int[num_cells_local];
-  for (int icell=0; icell<num_cells_local; icell++)
+  PetscInt *natural_ids = new PetscInt[num_cells_local];
+  for (PetscInt icell=0; icell<num_cells_local; icell++)
     natural_ids[icell] = -999;
-  for (int icell=0; icell<num_cells_ghosted; icell++) {
-    int cell_local_id = cells[icell].getIdLocal();
+  for (PetscInt icell=0; icell<num_cells_ghosted; icell++) {
+    PetscInt cell_local_id = cells[icell].getIdLocal();
     if (cell_local_id > -1)
       natural_ids[cell_local_id] = cells[icell].getIdNatural();
   }
@@ -65,22 +65,22 @@ int *Grid::getCellIdsNatural() {
 
 }
 
-int *Grid::getCellIdsNatural1Based() {
+PetscInt *Grid::getCellIdsNatural1Based() {
 
-  int *natural_ids = getCellIdsNatural();
-  for (int icell=0; icell<num_cells_local; icell++)
+  PetscInt *natural_ids = getCellIdsNatural();
+  for (PetscInt icell=0; icell<num_cells_local; icell++)
     natural_ids[icell]++;
   return natural_ids;
 
 }
 
-int *Grid::getCellMaterialIds() {
+PetscInt *Grid::getCellMaterialIds() {
 
-  int *material_ids = new int[num_cells_local];
-  for (int icell=0; icell<num_cells_local; icell++)
+  PetscInt *material_ids = new PetscInt[num_cells_local];
+  for (PetscInt icell=0; icell<num_cells_local; icell++)
     material_ids[icell] = -999;
-  for (int icell=0; icell<num_cells_ghosted; icell++) {
-    int cell_local_id = cells[icell].getIdLocal();
+  for (PetscInt icell=0; icell<num_cells_ghosted; icell++) {
+    PetscInt cell_local_id = cells[icell].getIdLocal();
     if (cell_local_id > -1)
       material_ids[cell_local_id] = cells[icell].getMaterialId();
   }
@@ -88,17 +88,17 @@ int *Grid::getCellMaterialIds() {
 
 }
 
-int *Grid::getCellVertexIds(int ivert) {
+PetscInt *Grid::getCellVertexIds(PetscInt ivert) {
 
   // the grid vertices array is of size num_vertices_ghosted
   // the cell vertices array is of size 9, where value 0 is the # of vertices in the cell
   // ivert is the index of the vertex in the cell N vertices
 
-  int *vertex_ids = new int[num_cells_local];
-  for (int icell=0; icell<num_cells_local; icell++)
+  PetscInt *vertex_ids = new PetscInt[num_cells_local];
+  for (PetscInt icell=0; icell<num_cells_local; icell++)
     vertex_ids[icell] = -999;
-  for (int icell=0; icell<num_cells_ghosted; icell++) {
-    int cell_local_id = cells[icell].getIdLocal();
+  for (PetscInt icell=0; icell<num_cells_ghosted; icell++) {
+    PetscInt cell_local_id = cells[icell].getIdLocal();
     if (cell_local_id > -1) {
       if (ivert <= cells[icell].vertices[0]) {
         vertex_ids[cell_local_id] = 
@@ -110,7 +110,7 @@ int *Grid::getCellVertexIds(int ivert) {
 
 }
 
-int Grid::getVertexIdsNaturalLocal(int **natural_ids) {
+PetscInt Grid::getVertexIdsNaturalLocal(PetscInt **natural_ids) {
 
 /* need to decide whether we want to print hte vertices truly in natural ordering.  I guess
   natural ordering will always start at zero, thus we can create a vector of size num_vertices_global
@@ -118,24 +118,24 @@ int Grid::getVertexIdsNaturalLocal(int **natural_ids) {
   sequentially from proc 0 to proc size-1. */
 
   Vec vec;
-  PetscScalar *vec_ptr = NULL;
+  PetscReal *vec_ptr = NULL;
   VecCreate(PETSC_COMM_WORLD,&vec);
   VecSetSizes(vec,PETSC_DECIDE,getNumberOfVerticesGlobal());
   VecSetType(vec,VECMPI);
 
-  *natural_ids = new int[num_vertices_local];
-  for (int ivert=0; ivert<num_vertices_local; ivert++)
+  *natural_ids = new PetscInt[num_vertices_local];
+  for (PetscInt ivert=0; ivert<num_vertices_local; ivert++)
     (*natural_ids)[ivert] = -999;
-  for (int ivert=0; ivert<num_vertices_ghosted; ivert++) {
-    int vert_local_id = vertices[ivert].getIdLocal();
+  for (PetscInt ivert=0; ivert<num_vertices_ghosted; ivert++) {
+    PetscInt vert_local_id = vertices[ivert].getIdLocal();
     if (vert_local_id > -1) {
       (*natural_ids)[vert_local_id] = vertices[ivert].getIdNatural();
     }
   }
 
-  PetscScalar *double_ids = new double[num_vertices_local];
-  for (int ivert=0; ivert<num_vertices_local; ivert++)
-    double_ids[ivert] = (double)(*natural_ids)[ivert];
+  PetscReal *double_ids = new PetscReal[num_vertices_local];
+  for (PetscInt ivert=0; ivert<num_vertices_local; ivert++)
+    double_ids[ivert] = (PetscReal)(*natural_ids)[ivert];
   VecSetValues(vec,num_vertices_local,*natural_ids,double_ids,INSERT_VALUES);
   VecAssemblyBegin(vec);
   VecAssemblyEnd(vec);
@@ -144,11 +144,11 @@ int Grid::getVertexIdsNaturalLocal(int **natural_ids) {
   delete [] *natural_ids;
   *natural_ids = NULL;
 
-  int new_local_size = VecGetLocalSize(vec);
-  *natural_ids = new int[new_local_size];
+  PetscInt new_local_size = VecGetLocalSize(vec);
+  *natural_ids = new PetscInt[new_local_size];
   VecGetArray(vec,&vec_ptr);
-  for (int ivert=0; ivert<new_local_size; ivert++)
-    (*natural_ids)[ivert] = (int)(vec_ptr[ivert]+0.0001);
+  for (PetscInt ivert=0; ivert<new_local_size; ivert++)
+    (*natural_ids)[ivert] = (PetscInt)(vec_ptr[ivert]+0.0001);
   VecRestoreArray(vec,&vec_ptr);
   VecDestroy(vec);
 
@@ -156,22 +156,22 @@ int Grid::getVertexIdsNaturalLocal(int **natural_ids) {
 
 }
 
-int Grid::getVertexCoordinatesNaturalLocal(double **coordinates, int direction) {
+PetscInt Grid::getVertexCoordinatesNaturalLocal(PetscReal **coordinates, PetscInt direction) {
 
   Vec vec;
-  PetscScalar *vec_ptr = NULL;
+  PetscReal *vec_ptr = NULL;
   VecCreate(PETSC_COMM_WORLD,&vec);
   VecSetSizes(vec,PETSC_DECIDE,getNumberOfVerticesGlobal());
   VecSetType(vec,VECMPI);
 
-  int *natural_ids = new int[num_vertices_local];
-  *coordinates = new double[num_vertices_local];
-  for (int ivert=0; ivert<num_vertices_local; ivert++) {
+  PetscInt *natural_ids = new PetscInt[num_vertices_local];
+  *coordinates = new PetscReal[num_vertices_local];
+  for (PetscInt ivert=0; ivert<num_vertices_local; ivert++) {
     (*coordinates)[ivert] = -999.;
     natural_ids[ivert] = -999;
   }
-  for (int ivert=0; ivert<num_vertices_ghosted; ivert++) {
-    int vert_local_id = vertices[ivert].getIdLocal();
+  for (PetscInt ivert=0; ivert<num_vertices_ghosted; ivert++) {
+    PetscInt vert_local_id = vertices[ivert].getIdLocal();
     if (vert_local_id > -1) {
       natural_ids[vert_local_id] = vertices[ivert].getIdNatural();
       if (direction == 0) // x-direction
@@ -191,10 +191,10 @@ int Grid::getVertexCoordinatesNaturalLocal(double **coordinates, int direction) 
   delete [] *coordinates;
   *coordinates = NULL;
 
-  int new_local_size = VecGetLocalSize(vec);
-  *coordinates = new double[new_local_size];
+  PetscInt new_local_size = VecGetLocalSize(vec);
+  *coordinates = new PetscReal[new_local_size];
   VecGetArray(vec,&vec_ptr);
-  for (int ivert=0; ivert<new_local_size; ivert++)
+  for (PetscInt ivert=0; ivert<new_local_size; ivert++)
     (*coordinates)[ivert] = vec_ptr[ivert];
   VecRestoreArray(vec,&vec_ptr);
   VecDestroy(vec);
@@ -203,18 +203,18 @@ int Grid::getVertexCoordinatesNaturalLocal(double **coordinates, int direction) 
 }
 
 
-void Grid::convertLocalCellDataGtoN(int *data) {
+void Grid::convertLocalCellDataGtoN(PetscInt *data) {
 
-  double *d_data = new double[num_cells_local];
-  for (int i=0; i<num_cells_local; i++)
-    d_data[i] = (double)data[i];
+  PetscReal *d_data = new PetscReal[num_cells_local];
+  for (PetscInt i=0; i<num_cells_local; i++)
+    d_data[i] = (PetscReal)data[i];
   convertLocalCellDataGtoN(d_data);
-  for (int i=0; i<num_cells_local; i++)
-    data[i] = (int)(d_data[i]+0.0001); // avoid roundoff & truncation
+  for (PetscInt i=0; i<num_cells_local; i++)
+    data[i] = (PetscInt)(d_data[i]+0.0001); // avoid roundoff & truncation
 
 }
 
-void Grid::convertLocalCellDataGtoN(double *data) {
+void Grid::convertLocalCellDataGtoN(PetscReal *data) {
 
   if (structuredGrid) structuredGrid->convertLocalCellDataGtoN(data);
 
@@ -230,11 +230,11 @@ void Grid::nullifyArrays() {
   boundary_sets = NULL;
 }
 
-void Grid::setGridSpacing(double *dx, double *dy, double *dz) {
+void Grid::setGridSpacing(PetscReal *dx, PetscReal *dy, PetscReal *dz) {
   structuredGrid->setGridSpacing(dx,dy,dz);
 }
 
-void Grid::setGridSpacing(double dx, double dy, double dz) {
+void Grid::setGridSpacing(PetscReal dx, PetscReal dy, PetscReal dz) {
   structuredGrid->setGridSpacing(dx,dy,dz);
 }
 
@@ -242,18 +242,18 @@ void Grid::setLocalGridSpacing() {
   structuredGrid->setLocalGridSpacing();
 }
 
-void Grid::setOrigin(double x, double y, double z) {
+void Grid::setOrigin(PetscReal x, PetscReal y, PetscReal z) {
   structuredGrid->setOrigin(x,y,z);
 }
 
-void Grid::setRotation(double r) {
+void Grid::setRotation(PetscReal r) {
   structuredGrid->setRotation(r);
 }
 
 
 void Grid::setUpCells() {
   cells = new GridCell[num_cells_ghosted];
-  for (int i=0; i<num_cells_ghosted; i++) {
+  for (PetscInt i=0; i<num_cells_ghosted; i++) {
     cells[i].setIdGhosted(i);
     cells[i].setIdLocal(cell_mapping_ghosted_to_local[i]);
     cells[i].setIdNatural(cell_mapping_ghosted_to_natural[i]);
@@ -265,7 +265,7 @@ void Grid::setUpCells() {
 void Grid::setUpVertices() {
   vertices = new GridVertex[num_vertices_ghosted];
 //  ierr = PetscSequentialPhaseBegin(PETSC_COMM_WORLD,1);
-  for (int i=0; i<num_vertices_ghosted; i++) {
+  for (PetscInt i=0; i<num_vertices_ghosted; i++) {
     vertices[i].setIdGhosted(i);
     vertices[i].setIdLocal(vertex_mapping_ghosted_to_local[i]);
     vertices[i].setIdNatural(vertex_mapping_ghosted_to_natural[i]);
@@ -306,9 +306,9 @@ void Grid::computeVertexMapping() {
                                        &vertex_mapping_ghosted_to_natural);
 }
 #if 0
-void Grid::addBoundaryConnection(int is, int ie, int js, int je, int ks, 
-                                int ke, char *face, char *type, 
-                                double scalar) {
+void Grid::addBoundaryConnection(PetscInt is, PetscInt ie, PetscInt js, 
+                                 PetscInt je, PetscInt ks, PetscInt ke, 
+                                 char *face, char *type, PetscReal scalar) {
 
   // set a pointer to the last bc in the list, it exists                                  
   BoundaryConnection *lastbc = BoundaryConnection::end_of_list ?
@@ -357,8 +357,8 @@ BoundarySet *Grid::getBoundarySet(char *name) {
   return cur_set;
 }
 
-void Grid::addSource(int is, int ie, int js, int je, int ks, 
-                     int ke, char *type, double scalar) {
+void Grid::addSource(PetscInt is, PetscInt ie, PetscInt js, PetscInt je, 
+                     PetscInt ks, PetscInt ke, char *type, PetscReal scalar) {
 
   // set a pointer to the last bc in the list, it exists                                  
   Source *lastbc = Source::end_of_list ? Source::end_of_list : NULL;
@@ -412,7 +412,7 @@ void Grid::printConnectivity() {
   ierr = PetscSequentialPhaseBegin(PETSC_COMM_WORLD,1);
   if (myrank == 0) printf("\nConnectivity:\n");
   printf("Processor[%d]\n",myrank);
-  for (int i=0; i<num_connections; i++)
+  for (PetscInt i=0; i<num_connections; i++)
     connections[i].printInfo(); 
   ierr = PetscSequentialPhaseEnd(PETSC_COMM_WORLD,1);
 }
@@ -424,11 +424,11 @@ void Grid::printCells() {
   if (myrank == 0) printf("\nCells:\n");
   printf("Processor[%d]\n",myrank);
 
-//  for (int i=0; i<num_cells_ghosted; i++)
+//  for (PetscInt i=0; i<num_cells_ghosted; i++)
 //    printf("%d ",cell_mapping_ghosted_to_natural[i]);
 //  printf("\n");
 
-  for (int i=0; i<num_cells_ghosted; i++)
+  for (PetscInt i=0; i<num_cells_ghosted; i++)
     cells[i].printInfo();
   ierr = PetscSequentialPhaseEnd(PETSC_COMM_WORLD,1);
 }
@@ -440,116 +440,116 @@ void Grid::printVertices() {
   if (myrank == 0) printf("\nVertice:\n");
   printf("Processor[%d]\n",myrank);
 
-//  for (int i=0; i<num_vertices_ghosted; i++)
+//  for (PetscInt i=0; i<num_vertices_ghosted; i++)
 //    printf("%d ",vertex_mapping_ghosted_to_natural[i]);
 //  printf("\n");
 
-  for (int i=0; i<num_vertices_ghosted; i++)
+  for (PetscInt i=0; i<num_vertices_ghosted; i++)
     vertices[i].printInfo();
   ierr = PetscSequentialPhaseEnd(PETSC_COMM_WORLD,1);
 }
 
-int Grid::getNumberOfCellsGlobal() {
+PetscInt Grid::getNumberOfCellsGlobal() {
   if (structuredGrid) return structuredGrid->getN();
   else return -1;
 }
 
-int Grid::getNumberOfCellsGhosted() {
+PetscInt Grid::getNumberOfCellsGhosted() {
   return num_cells_ghosted;
 }
 
-int Grid::getNumberOfCellsLocal() {
+PetscInt Grid::getNumberOfCellsLocal() {
   return num_cells_local;
 }
 
-int Grid::getNumberOfVerticesGlobal() {
+PetscInt Grid::getNumberOfVerticesGlobal() {
   if (structuredGrid) return (structuredGrid->getNx()+1)*
                              (structuredGrid->getNy()+1)*
                              (structuredGrid->getNz()+1);
   else return -1;
 }
 
-int Grid::getNumberOfVerticesGhosted() {
+PetscInt Grid::getNumberOfVerticesGhosted() {
   return num_vertices_ghosted;
 }
 
 
-int Grid::getNumberOfVerticesLocal() {
+PetscInt Grid::getNumberOfVerticesLocal() {
   return num_vertices_local;
 }
 
-int Grid::getNx() {
+PetscInt Grid::getNx() {
   if (structuredGrid) return structuredGrid->getNx();
   else return -999;
 }
 
-int Grid::getNy() {
+PetscInt Grid::getNy() {
   if (structuredGrid) return structuredGrid->getNy();
   else return -999;
 }
 
-int Grid::getNz() {
+PetscInt Grid::getNz() {
   if (structuredGrid) return structuredGrid->getNz();
   else return -999;
 }
 
-int Grid::getN() {
+PetscInt Grid::getN() {
   if (structuredGrid) return structuredGrid->getN();
   else return -999;
 }
 
 
-void Grid::getCorners(int *xs, int *ys, int *zs,
-                      int *nx, int *ny, int *nz) {
+void Grid::getCorners(PetscInt *xs, PetscInt *ys, PetscInt *zs,
+                      PetscInt *nx, PetscInt *ny, PetscInt *nz) {
   if (structuredGrid) structuredGrid->getCorners(xs,ys,zs,nx,ny,nz);
   else { *xs=-999; *ys=-999; *zs=-999; *nx=-999; *ny=-999; *nz=-999; }
 }
 
-void Grid::getGhostCorners(int *xs, int *ys, int *zs, 
-                           int *nx, int *ny, int *nz) {
+void Grid::getGhostCorners(PetscInt *xs, PetscInt *ys, PetscInt *zs, 
+                           PetscInt *nx, PetscInt *ny, PetscInt *nz) {
   if (structuredGrid) structuredGrid->getGhostCorners(xs,ys,zs,nx,ny,nz);
   else { *xs=-999; *ys=-999; *zs=-999; *nx=-999; *ny=-999; *nz=-999; }
 }
 
-double Grid::getDx(int i) {
+PetscReal Grid::getDx(PetscInt i) {
   if (structuredGrid) return structuredGrid->getDx(i);
   else return -999.;
 }
 
-double Grid::getDy(int j) {
+PetscReal Grid::getDy(PetscInt j) {
   if (structuredGrid) return structuredGrid->getDy(j);
   else return -999.;
 }
 
-double Grid::getDz(int k) {
+PetscReal Grid::getDz(PetscInt k) {
   if (structuredGrid) return structuredGrid->getDz(k);
   else return -999.;
 }
 
-double *Grid::getOriginPtr() {
+PetscReal *Grid::getOriginPtr() {
   if (structuredGrid) return structuredGrid->getOriginPtr();
   else return NULL;
 }
 
-double Grid::getRotationDegrees() {
+PetscReal Grid::getRotationDegrees() {
   if (structuredGrid) return structuredGrid->getRotationDegrees();
   else return 0.;
 }
 
 Vec Grid::getGridCellMaterialIDs() {
   Vec v;
-  PetscScalar *ptr = NULL;
+  PetscReal *ptr = NULL;
   structuredGrid->getVectorGlobal(&v);
   VecGetArray(v,&ptr);
-  for (int i=0; i<num_cells_local; i++)
+  for (PetscInt i=0; i<num_cells_local; i++)
     ptr[i] = -999;
-  for (int icell=0; icell<num_cells_ghosted; icell++) {
-    int local_id = cells[icell].getIdLocal();
+  for (PetscInt icell=0; icell<num_cells_ghosted; icell++) {
+    PetscInt local_id = cells[icell].getIdLocal();
     if (local_id > -1) ptr[local_id] = cells[icell].getMaterialId();
   }
-  for (int i=0; i<num_cells_local; i++) {
+  for (PetscInt i=0; i<num_cells_local; i++) {
     if (ptr[i] < -998) 
-      printf("ERROR: Grid material ids (%d,%d) not set correctly on processor %d\n",i,(int)ptr[i],myrank);
+      printf("ERROR: Grid material ids (%d,%d) not set correctly on processor %d\n",i,(PetscInt)ptr[i],myrank);
   }
   VecRestoreArray(v,&ptr);
   return v;
@@ -557,28 +557,28 @@ Vec Grid::getGridCellMaterialIDs() {
 
 Vec Grid::getGridCellActivities() {
   Vec v;
-  PetscScalar *ptr = NULL;
+  PetscReal *ptr = NULL;
   structuredGrid->getVectorGlobal(&v);
   VecGetArray(v,&ptr);
-  for (int i=0; i<num_cells_local; i++)
+  for (PetscInt i=0; i<num_cells_local; i++)
     ptr[i] = -999;
-  for (int icell=0; icell<num_cells_ghosted; icell++) {
-    int local_id = cells[icell].getIdLocal();
+  for (PetscInt icell=0; icell<num_cells_ghosted; icell++) {
+    PetscInt local_id = cells[icell].getIdLocal();
     if (local_id > -1) ptr[local_id] = cells[icell].getActive();
   }
-  for (int i=0; i<num_cells_local; i++) {
+  for (PetscInt i=0; i<num_cells_local; i++) {
     if (ptr[i] < -998) 
-      printf("ERROR: Grid activity (%d,%d) not set correctly on processor %d\n",i,(int)ptr[i],myrank);
+      printf("ERROR: Grid activity (%d,%d) not set correctly on processor %d\n",i,(PetscInt)ptr[i],myrank);
   }
   VecRestoreArray(v,&ptr);
   return v;
 }
 
-void Grid::receiveFlag(int *flag, int direction) {
+void Grid::receiveFlag(PetscInt *flag, PetscInt direction) {
   structuredGrid->receiveFlag(flag,direction);
 }
 
-void Grid::sendFlag(int *flag, int direction) {
+void Grid::sendFlag(PetscInt *flag, PetscInt direction) {
   structuredGrid->sendFlag(flag,direction);
 }
 

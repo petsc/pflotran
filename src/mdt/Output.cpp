@@ -16,28 +16,28 @@ void Output::printGMSGrid() {
   PetscFPrintf(PETSC_COMM_WORLD,fp,"TYPE 1\n");
   PetscFPrintf(PETSC_COMM_WORLD,fp,"IJK +y +x +z\n");
   PetscFPrintf(PETSC_COMM_WORLD,fp,"NUMBERING 0\n");
-  double *ptr = grid->getOriginPtr();
+  PetscReal *ptr = grid->getOriginPtr();
   PetscFPrintf(PETSC_COMM_WORLD,fp,"ORIGIN %.8e %.8e %.8e\n",ptr[0],ptr[1],ptr[2]);
   ptr = NULL;
   PetscFPrintf(PETSC_COMM_WORLD,fp,"ROTZ %f\n",grid->getRotationDegrees());
   PetscFPrintf(PETSC_COMM_WORLD,fp,"DIM %d %d %d\n",grid->getNx()+1,
                grid->getNy()+1,grid->getNz()+1);
 
-  double sum = 0.;
+  PetscReal sum = 0.;
   PetscFPrintf(PETSC_COMM_WORLD,fp,"%.8e\n",sum);
-  for (int i=0; i<grid->getNx(); i++) {
+  for (PetscInt i=0; i<grid->getNx(); i++) {
     sum += grid->getDx(i);
     PetscFPrintf(PETSC_COMM_WORLD,fp,"%.8e\n",sum);
   }
   sum = 0.;
   PetscFPrintf(PETSC_COMM_WORLD,fp,"%.8e\n",sum);
-  for (int j=0; j<grid->getNy(); j++) {
+  for (PetscInt j=0; j<grid->getNy(); j++) {
     sum += grid->getDy(j);
     PetscFPrintf(PETSC_COMM_WORLD,fp,"%.8e\n",sum);
   }
   sum = 0.;
   PetscFPrintf(PETSC_COMM_WORLD,fp,"%.8e\n",sum);
-  for (int k=0; k<grid->getNz(); k++) {
+  for (PetscInt k=0; k<grid->getNz(); k++) {
     sum += grid->getDz(k);
     PetscFPrintf(PETSC_COMM_WORLD,fp,"%.8e\n",sum);
   }
@@ -65,7 +65,7 @@ void Output::printGMSDataSet(char *filename, Vec v) {
   PetscFPrintf(PETSC_COMM_WORLD,fp,"ND %d\n",grid->getN());
   PetscFPrintf(PETSC_COMM_WORLD,fp,"NC %d\n",grid->getN());
   char word[32];
-  int i;
+  PetscInt i;
   for (i=0; i<32; i++) {
     if (filename[i] == 46) break; // 46 = "."
     word[i] = filename[i];
@@ -79,22 +79,23 @@ void Output::printGMSDataSet(char *filename, Vec v) {
   PetscFClose(PETSC_COMM_WORLD,fp);
 }
 
-void Output::writeIntVectorInNaturalOrder(FILE *fp, Vec v, int one_per_line) {
+void Output::writeIntVectorInNaturalOrder(FILE *fp, Vec v, PetscInt one_per_line) {
   Vec natural;
-  PetscScalar *v_ptr = NULL;
+  PetscReal *v_ptr = NULL;
   grid->getVectorNatural(&natural);
   grid->globalToNatural(v,natural);
-  int max_cells;
-  MPI_Allreduce(&grid->num_cells_local,&max_cells,1,MPI_INT,MPI_MAX,PETSC_COMM_WORLD);
-  int *values = new int[max_cells];
+  PetscMPIInt max_cells;
+  PetscMPIInt mpi_num_cells_local = (PetscMPIInt) grid->num_cells_local;
+  MPI_Allreduce(&mpi_num_cells_local,&max_cells,1,MPI_INT,MPI_MAX,PETSC_COMM_WORLD);
+  PetscMPIInt *values = new PetscMPIInt[max_cells];
   VecGetArray(natural,&v_ptr);
-  for (int i=0; i<grid->num_cells_local; i++) 
-    values[i] = int(v_ptr[i]);
+  for (PetscInt i=0; i<grid->num_cells_local; i++) 
+    values[i] = PetscMPIInt(v_ptr[i]);
   VecRestoreArray(natural,&v_ptr);
   VecDestroy(natural);
   if (myrank == 0) {
-    int count = 0;
-    for (int i=0; i<grid->num_cells_local; i++) {
+    PetscInt count = 0;
+    for (PetscInt i=0; i<grid->num_cells_local; i++) {
       if (one_per_line) {
         PetscFPrintf(PETSC_COMM_WORLD,fp,"%d\n",values[i]);
       }
@@ -103,12 +104,12 @@ void Output::writeIntVectorInNaturalOrder(FILE *fp, Vec v, int one_per_line) {
         if (++count%20 == 0) PetscFPrintf(PETSC_COMM_WORLD,fp,"\n");
       }
     }
-    for (int iproc=1; iproc<commsize; iproc++) {
+    for (PetscInt iproc=1; iproc<commsize; iproc++) {
       MPI_Status status;
       MPI_Probe(iproc,MPI_ANY_TAG,PETSC_COMM_WORLD,&status);
-      int nrecv = status.MPI_TAG;
+      PetscMPIInt nrecv = status.MPI_TAG;
       MPI_Recv(values,nrecv,MPI_INTEGER,iproc,MPI_ANY_TAG,PETSC_COMM_WORLD,&status);
-      for (int i=0; i<nrecv; i++) {
+      for (PetscInt i=0; i<nrecv; i++) {
         if (one_per_line) {
           PetscFPrintf(PETSC_COMM_WORLD,fp,"%d\n",values[i]);
         }
@@ -121,7 +122,8 @@ void Output::writeIntVectorInNaturalOrder(FILE *fp, Vec v, int one_per_line) {
     if (!one_per_line && count%10 != 0) PetscFPrintf(PETSC_COMM_WORLD,fp,"\n");
   }
   else {
-    MPI_Send(values,grid->num_cells_local,MPI_INTEGER,0,grid->num_cells_local,
+    mpi_num_cells_local = (PetscMPIInt) grid->num_cells_local;
+    MPI_Send(values,mpi_num_cells_local,MPI_INTEGER,0,grid->num_cells_local,
              PETSC_COMM_WORLD);
   }
   delete [] values;
@@ -129,12 +131,12 @@ void Output::writeIntVectorInNaturalOrder(FILE *fp, Vec v, int one_per_line) {
 
 void Output::printBoundarySets() {
   Vec v;
-  PetscScalar *v_ptr = NULL;
+  PetscReal *v_ptr = NULL;
   grid->getVectorGlobal(&v);
   BoundarySet *cur_set = grid->boundary_sets;  
   while (cur_set) {
     VecGetArray(v,&v_ptr);
-    for (int i=0; i<grid->num_cells_local; i++)
+    for (PetscInt i=0; i<grid->num_cells_local; i++)
       v_ptr[i] = 0.;
     Connection *cur_connection = cur_set->list;
     while (cur_connection) {
@@ -162,7 +164,7 @@ void Output::printHDFMaterialsAndRegions() {
   PetscOptionsGetString(PETSC_NULL,"-mdtout",filename,1024,&option_found);
 
   HDF *file = new HDF("filename",1);
-  int compress = 0;
+  PetscInt compress = 0;
 
 // materials
   PetscPrintf(PETSC_COMM_WORLD,"Materials\n");
@@ -172,7 +174,7 @@ void Output::printHDFMaterialsAndRegions() {
   PetscPrintf(PETSC_COMM_WORLD,"Cell Ids\n");
   file->createDataSet("Cell Ids",H5T_NATIVE_INT,compress);
 
-  int *cell_ids = grid->getCellIdsNatural1Based();
+  PetscInt *cell_ids = grid->getCellIdsNatural1Based();
   grid->convertLocalCellDataGtoN(cell_ids);
 
   file->setHyperSlab(grid->getNumberOfCellsLocal());
@@ -188,7 +190,7 @@ void Output::printHDFMaterialsAndRegions() {
   PetscPrintf(PETSC_COMM_WORLD,"Material Ids\n");
   file->createDataSet("Material Ids",H5T_NATIVE_INT,compress);
 
-  int *material_ids = grid->getCellMaterialIds();
+  PetscInt *material_ids = grid->getCellMaterialIds();
   grid->convertLocalCellDataGtoN(material_ids);
 
   file->setHyperSlab(grid->getNumberOfCellsLocal());
@@ -211,14 +213,14 @@ void Output::printHDFMaterialsAndRegions() {
     file->createGroup(cur_set->name);
 
 // cell ids
-    int num_connections_global = cur_set->getNumberOfConnectionsGlobal();
-    int num_connections_local = cur_set->getNumberOfConnectionsLocal();
+    PetscInt num_connections_global = cur_set->getNumberOfConnectionsGlobal();
+    PetscInt num_connections_local = cur_set->getNumberOfConnectionsLocal();
 // hdf5 cannot handle a zero-length memory space and hyperslab.  Therefore,
 // trick it by setting then length to 1 and writing independently (non-
 // collective) for those procs with num_connections_local > 0).
-    int trick_hdf5_local = num_connections_local > 0 ? 
+    PetscInt trick_hdf5_local = num_connections_local > 0 ? 
                                              num_connections_local : 1;
-    int trick_hdf5_global = num_connections_global > 0 ? 
+    PetscInt trick_hdf5_global = num_connections_global > 0 ? 
                                              num_connections_global : 1;
 
     file->createDataSpace(1,trick_hdf5_global,0,0);
@@ -227,9 +229,9 @@ void Output::printHDFMaterialsAndRegions() {
 
     if (num_connections_global > 0) {
 
-      int *cell_ids = cur_set->getCellIdsLocal1Based();
+      PetscInt *cell_ids = cur_set->getCellIdsLocal1Based();
     // convert cell_ids in local numbering to natural, no need to reorder for now
-      for (int i=0; i<num_connections_local; i++) {
+      for (PetscInt i=0; i<num_connections_local; i++) {
         cell_ids[i] = grid->cell_mapping_ghosted_to_natural[
                             grid->cell_mapping_local_to_ghosted[cell_ids[i]]];
       }
@@ -251,7 +253,7 @@ void Output::printHDFMaterialsAndRegions() {
 
     if (num_connections_global > 0) {
 
-      int *face_ids = cur_set->getFaceIdsLocal();
+      PetscInt *face_ids = cur_set->getFaceIdsLocal();
 
       file->setHyperSlab(num_connections_local);
       file->createMemorySpace(1,num_connections_local,NULL,NULL);
@@ -281,7 +283,7 @@ void Output::printHDFMesh() {
   PetscPrintf(PETSC_COMM_WORLD,"Printing HDF grid.\n");
 
   HDF *file = new HDF("grid.h5",1);
-  int compress = 0;
+  PetscInt compress = 0;
 
 // write cells
   PetscPrintf(PETSC_COMM_WORLD,"Cells\n");
@@ -294,7 +296,7 @@ void Output::printHDFMesh() {
   PetscPrintf(PETSC_COMM_WORLD,"CellIds\n");
   file->createDataSet("CellIds",H5T_NATIVE_INT,compress);
 
-  int *cell_ids = grid->getCellIdsNatural();
+  PetscInt *cell_ids = grid->getCellIdsNatural();
   grid->convertLocalCellDataGtoN(cell_ids);
 
   file->setHyperSlab(grid->getNumberOfCellsLocal());
@@ -311,7 +313,7 @@ void Output::printHDFMesh() {
   PetscPrintf(PETSC_COMM_WORLD,"NaturalIds\n");
   file->createDataSet("NaturalIds",H5T_NATIVE_INT,compress);
 
-  int *natural_ids = grid->getCellIdsNatural();
+  PetscInt *natural_ids = grid->getCellIdsNatural();
   grid->convertLocalCellDataGtoN(natural_ids);
 
   file->setHyperSlab(grid->getNumberOfCellsLocal());
@@ -328,7 +330,7 @@ void Output::printHDFMesh() {
   PetscPrintf(PETSC_COMM_WORLD,"Materials\n");
   file->createDataSet("Materials",H5T_NATIVE_INT,compress);
 
-  int *material_ids = grid->getCellMaterialIds();
+  PetscInt *material_ids = grid->getCellMaterialIds();
   grid->convertLocalCellDataGtoN(material_ids);
 
   file->setHyperSlab(grid->getNumberOfCellsLocal());
@@ -341,14 +343,14 @@ void Output::printHDFMesh() {
   file->closeDataSpaces();
 
   // cell vertices
-  int num_cells_global = grid->getNumberOfCellsGlobal();
+  PetscInt num_cells_global = grid->getNumberOfCellsGlobal();
   file->createFileSpace(2,num_cells_global,8,NULL);
   PetscPrintf(PETSC_COMM_WORLD,"CellVertices\n");
   file->createDataSet("CellVertices",H5T_NATIVE_INT,compress);
   file->createMemorySpace(1,grid->getNumberOfCellsGlobal(),NULL,NULL);
 
-  int offset = 0;
-  int num_cells_local = grid->getNumberOfCellsLocal();
+  PetscMPIInt offset = 0;
+  PetscMPIInt num_cells_local = (PetscMPIInt) grid->getNumberOfCellsLocal();
   MPI_Exscan(&num_cells_local,&offset,1,MPI_INT,MPI_SUM,PETSC_COMM_WORLD);
   if (offset > num_cells_global)
     printf("Proc[%d]: ERROR - offset(%d) > num_cells_global(%d)\n",
@@ -359,15 +361,15 @@ void Output::printHDFMesh() {
     offset--;
   }
 
-  for (int ivert=0; ivert<8; ivert++) {
+  for (PetscInt ivert=0; ivert<8; ivert++) {
 
-    int *vertex_ids = grid->getCellVertexIds(ivert+1);
+    PetscInt *vertex_ids = grid->getCellVertexIds(ivert+1);
     grid->convertLocalCellDataGtoN(vertex_ids);
 
-    int start[3] = {offset,ivert,0};
-    int stride[3] = {1,8,1};
-    int count[3] = {num_cells_local,1,1};
-    int block[3] = {1,1,1};
+    PetscInt start[3] = {offset,ivert,0};
+    PetscInt stride[3] = {1,8,1};
+    PetscInt count[3] = {num_cells_local,1,1};
+    PetscInt block[3] = {1,1,1};
     file->setHyperSlab(start,stride,count,NULL);
     file->createMemorySpace(1,count[0]*count[1]*count[2],NULL,NULL);
     file->writeInt(vertex_ids);
@@ -392,7 +394,7 @@ void Output::printHDFMesh() {
   PetscPrintf(PETSC_COMM_WORLD,"NaturalIds\n");
   file->createDataSet("NaturalIds",H5T_NATIVE_INT,compress); 
 
-  int num_print_vertices_local = grid->getVertexIdsNaturalLocal(&natural_ids);
+  PetscInt num_print_vertices_local = grid->getVertexIdsNaturalLocal(&natural_ids);
 
   file->setHyperSlab(num_print_vertices_local);
   file->createMemorySpace(1,num_print_vertices_local,NULL,NULL);
@@ -407,7 +409,7 @@ void Output::printHDFMesh() {
   PetscPrintf(PETSC_COMM_WORLD,"X-Coordinates\n");
   file->createDataSet("X-Coordinates",H5T_NATIVE_DOUBLE,compress);
 
-  double *coordinates = NULL;
+  PetscReal *coordinates = NULL;
   num_print_vertices_local = 
                 grid->getVertexCoordinatesNaturalLocal(&coordinates,0); // 0 = X
 
@@ -469,14 +471,14 @@ void Output::printHDFMesh() {
     }
 
 // cell ids
-    int num_connections_global = cur_set->getNumberOfConnectionsGlobal();
-    int num_connections_local = cur_set->getNumberOfConnectionsLocal();
+    PetscInt num_connections_global = cur_set->getNumberOfConnectionsGlobal();
+    PetscInt num_connections_local = cur_set->getNumberOfConnectionsLocal();
 // hdf5 cannot handle a zero-length memory space and hyperslab.  Therefore,
 // trick it by setting then length to 1 and writing independently (non-
 // collective) for those procs with num_connections_local > 0).
-    int trick_hdf5_local = num_connections_local > 0 ? 
+    PetscInt trick_hdf5_local = num_connections_local > 0 ? 
                                              num_connections_local : 1;
-    int trick_hdf5_global = num_connections_global > 0 ? 
+    PetscInt trick_hdf5_global = num_connections_global > 0 ? 
                                              num_connections_global : 1;
 
     file->createDataSpace(1,trick_hdf5_global,0,0);
@@ -487,7 +489,7 @@ void Output::printHDFMesh() {
 
       cell_ids = cur_set->getCellIdsLocal();
     // convert cell_ids in local numbering to natural, no need to reorder for now
-      for (int i=0; i<num_connections_local; i++) {
+      for (PetscInt i=0; i<num_connections_local; i++) {
         cell_ids[i] = grid->cell_mapping_ghosted_to_natural[
                             grid->cell_mapping_local_to_ghosted[cell_ids[i]]];
       }
@@ -509,7 +511,8 @@ void Output::printHDFMesh() {
     PetscPrintf(PETSC_COMM_WORLD,"  FaceVertexIds\n");
     file->createDataSet("FaceVertexIds",H5T_NATIVE_INT,compress);
     if (num_connections_global > 0) {
-      offset = 0;
+      PetscMPIInt offset = 0;
+      PetscMPIInt mpi_num_connections_local = (PetscMPIInt)num_connections_local;
       MPI_Exscan(&num_connections_local,&offset,1,MPI_INT,MPI_SUM,
                  PETSC_COMM_WORLD);
       if (offset > num_connections_global)
@@ -520,13 +523,13 @@ void Output::printHDFMesh() {
                myrank, offset, num_connections_global);
         offset--;
       }
-      for (int ivert=0; ivert<4; ivert++) {
+      for (PetscInt ivert=0; ivert<4; ivert++) {
 
-        int *vertex_ids = cur_set->getFaceVertexIds(ivert);
-        int start[3] = {offset,ivert,0};
-        int stride[3] = {1,4,1};
-        int count[3] = {trick_hdf5_local,1,1};
-        int block[3] = {1,1,1};
+        PetscInt *vertex_ids = cur_set->getFaceVertexIds(ivert);
+        PetscInt start[3] = {offset,ivert,0};
+        PetscInt stride[3] = {1,4,1};
+        PetscInt count[3] = {trick_hdf5_local,1,1};
+        PetscInt block[3] = {1,1,1};
         file->setHyperSlab(start,stride,count,NULL);
         file->createMemorySpace(1,count[0]*count[1]*count[2],NULL,NULL);
         if (num_connections_local > 0) {
@@ -592,7 +595,7 @@ void Output::printHDFSieveMesh() {
   PetscPrintf(PETSC_COMM_WORLD,"Printing HDF Sieve grid.\n");
 
   HDF *file = new HDF("sieve.h5",1);
-  int compress = 0;
+  PetscInt compress = 0;
 
 // write cells
   PetscPrintf(PETSC_COMM_WORLD,"Group: Connectivity\n");
@@ -601,7 +604,7 @@ void Output::printHDFSieveMesh() {
   // just to be sure everything is closed.
   file->closeDataSpaces();
 
-  int num_cells_global = grid->getNumberOfCellsGlobal();
+  PetscInt num_cells_global = grid->getNumberOfCellsGlobal();
 
   file->writeAttribute("Number of Elements", num_cells_global);
   file->writeAttribute("Element Type", "hex");
@@ -612,9 +615,10 @@ void Output::printHDFSieveMesh() {
   file->createDataSet("Connectivity",H5T_NATIVE_INT,compress);
   file->createMemorySpace(1,grid->getNumberOfCellsGlobal(),NULL,NULL);
 
-  int offset = 0;
-  int num_cells_local = grid->getNumberOfCellsLocal();
-  MPI_Exscan(&num_cells_local,&offset,1,MPI_INT,MPI_SUM,PETSC_COMM_WORLD);
+  PetscMPIInt offset = 0;
+  PetscMPIInt mpi_num_cells_local = (PetscMPIInt)grid->getNumberOfCellsLocal();
+  MPI_Exscan(&mpi_num_cells_local,&offset,1,MPI_INT,MPI_SUM,PETSC_COMM_WORLD);
+  PetscInt num_cells_local = (PetscInt)mpi_num_cells_local;
   if (offset > num_cells_global)
     printf("Proc[%d]: ERROR - offset(%d) > num_cells_global(%d)\n",
            myrank, offset, num_cells_global);
@@ -624,15 +628,15 @@ void Output::printHDFSieveMesh() {
     offset--;
   }
 
-  for (int ivert=0; ivert<8; ivert++) {
+  for (PetscInt ivert=0; ivert<8; ivert++) {
 
-    int *vertex_ids = grid->getCellVertexIds(ivert+1);
+    PetscInt *vertex_ids = grid->getCellVertexIds(ivert+1);
     grid->convertLocalCellDataGtoN(vertex_ids);
 
-    int start[3] = {offset,ivert,0};
-    int stride[3] = {1,8,1};
-    int count[3] = {num_cells_local,1,1};
-    int block[3] = {1,1,1};
+    PetscInt start[3] = {offset,ivert,0};
+    PetscInt stride[3] = {1,8,1};
+    PetscInt count[3] = {num_cells_local,1,1};
+    PetscInt block[3] = {1,1,1};
     file->setHyperSlab(start,stride,count,NULL);
     file->createMemorySpace(1,count[0]*count[1]*count[2],NULL,NULL);
     file->writeInt(vertex_ids);
@@ -650,7 +654,7 @@ void Output::printHDFSieveMesh() {
   PetscPrintf(PETSC_COMM_WORLD,"Group: Coordinates\n");
   file->createGroup("Coordinates");
 
-  int num_vertices_global = grid->getNumberOfVerticesGlobal();
+  PetscInt num_vertices_global = grid->getNumberOfVerticesGlobal();
   file->writeAttribute("Number of Vertices", num_vertices_global);
 
   file->createDataSpace(1,num_vertices_global,0,0);
@@ -659,8 +663,8 @@ void Output::printHDFSieveMesh() {
   PetscPrintf(PETSC_COMM_WORLD,"X-Coordinates\n");
   file->createDataSet("X-Coordinates",H5T_NATIVE_DOUBLE,compress);
 
-  double *coordinates = NULL;
-  int num_print_vertices_local = 
+  PetscReal *coordinates = NULL;
+  PetscInt num_print_vertices_local = 
                 grid->getVertexCoordinatesNaturalLocal(&coordinates,0); // 0 = X
 
   file->setHyperSlab(num_print_vertices_local);

@@ -21,7 +21,7 @@ public:
   void printGMSGrid();
   void printGMSDataSet(char *filename, Vec v);
   void printBoundarySets();
-  void writeIntVectorInNaturalOrder(FILE *fp, Vec v, int one_per_line);
+  void writeIntVectorInNaturalOrder(FILE *fp, Vec v, PetscInt one_per_line);
   void printHDFMesh();
   void printHDFMaterialsAndRegions();
   void printHDFSieveMesh();

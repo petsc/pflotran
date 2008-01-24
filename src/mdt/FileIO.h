@@ -19,20 +19,20 @@ public:
   virtual ~FileIO();
 
 
-  int getLine();
-  int getInputLine();
-  int readDouble(double *d);
-  double readDoubleFast();
-  int readInt(int *i);
-  int readWord(char *word);
-  int readQuotedWords(char *words);
-  static int removeQuotes(char *str);
-  int comparesTo(char *str);
-  int startsWith(char *str);
-  int findStringInFile(char *card);
-  static void checkDefaultMessage(char *word, int *ierr);
-  static void checkErrorMessage(char *word1, char *word2, int ierr);
-  static void checkLineErrorMessage(char *word, int ierr);
+  PetscInt getLine();
+  PetscInt getInputLine();
+  PetscInt readDouble(PetscReal *d);
+  PetscReal readDoubleFast();
+  PetscInt readInt(PetscInt *i);
+  PetscInt readWord(char *word);
+  PetscInt readQuotedWords(char *words);
+  static PetscInt removeQuotes(char *str);
+  PetscInt comparesTo(char *str);
+  PetscInt startsWith(char *str);
+  PetscInt findStringInFile(char *card);
+  static void checkDefaultMessage(char *word, PetscErrorCode *ierr);
+  static void checkErrorMessage(char *word1, char *word2, PetscErrorCode ierr);
+  static void checkLineErrorMessage(char *word, PetscErrorCode ierr);
   static void toLower(char *word);
   static void toUpper(char *word);
 

@@ -1,6 +1,6 @@
 #include "AsciiGrid.h"
 
-int AsciiGrid::nasciigrids = 0;
+PetscInt AsciiGrid::nasciigrids = 0;
 
 AsciiGrid::AsciiGrid() {
 }
@@ -11,9 +11,9 @@ AsciiGrid::AsciiGrid(char *filename) {
   readAsciiGridFile(filename);
 }
 
-AsciiGrid::AsciiGrid(char *name_, int ncols_, int nrows_, double xllcorner_, 
-                     double yllcorner_, double cellsize_, double nodata_, 
-                     double default_elev_, int material_id_) {
+AsciiGrid::AsciiGrid(char *name_, PetscInt ncols_, PetscInt nrows_, PetscReal xllcorner_, 
+                     PetscReal yllcorner_, PetscReal cellsize_, PetscReal nodata_, 
+                     PetscReal default_elev_, PetscInt material_id_) {
   strcpy(name,name_);
   ncols = ncols_;
   nrows = nrows_;
@@ -22,8 +22,8 @@ AsciiGrid::AsciiGrid(char *name_, int ncols_, int nrows_, double xllcorner_,
   yllcorner = yllcorner_;
   cellsize = cellsize_;
   nodata = nodata_;
-  values = new double[ndata];
-  for (int i=0; i<ndata; i++) 
+  values = new PetscReal[ndata];
+  for (PetscInt i=0; i<ndata; i++) 
     values[i] = default_elev_;
   material_id = material_id_;
 }
@@ -42,13 +42,13 @@ void AsciiGrid::nullify() {
 }
 
 void AsciiGrid::setName(char *name_) { strcpy(name,name_); }
-void AsciiGrid::setMaterialId(int id) { material_id = id; }
+void AsciiGrid::setMaterialId(PetscInt id) { material_id = id; }
 void AsciiGrid::readAsciiGridFile(char *filename) {
 
   char word[32];
 
   FileIO *file = new FileIO(filename);
-  for (int iline=0; iline < 6; iline++) {
+  for (PetscInt iline=0; iline < 6; iline++) {
     file->getLine();
     file->readWord(word);
   //  cout << word << "\n";
@@ -67,14 +67,14 @@ void AsciiGrid::readAsciiGridFile(char *filename) {
   }
 
   ndata = ncols*nrows;
-  values = new double[ndata];
-  for (int i=0; i<ndata; i++)
+  values = new PetscReal[ndata];
+  for (PetscInt i=0; i<ndata; i++)
     values[i] = nodata;
 // file is set up to start reading at upper left hand corner.
-  for (int irow=nrows-1; irow>-1; irow--) {
+  for (PetscInt irow=nrows-1; irow>-1; irow--) {
     file->getLine();
-    for (int icol=0; icol<ncols; icol++) {
-      int id = icol+irow*ncols;
+    for (PetscInt icol=0; icol<ncols; icol++) {
+      PetscInt id = icol+irow*ncols;
       if (id > ndata) {
         PetscPrintf(PETSC_COMM_WORLD,"ERROR: Number of ASCII Grid data read higher than number in file.\n");
         PetscFinalize();
@@ -86,28 +86,28 @@ void AsciiGrid::readAsciiGridFile(char *filename) {
 }
 
 void AsciiGrid::getName(char *name_) { strcpy(name_,name); }
-int AsciiGrid::getMaterialId() { return material_id; }
+PetscInt AsciiGrid::getMaterialId() { return material_id; }
 
 void AsciiGrid::computeCoordinates() {
-  double sum = xllcorner-0.5*cellsize;
-  xcoord = new double[ncols];
-  for (int icol=0; icol<ncols; icol++) {
+  PetscReal sum = xllcorner-0.5*cellsize;
+  xcoord = new PetscReal[ncols];
+  for (PetscInt icol=0; icol<ncols; icol++) {
     sum += cellsize;
     xcoord[icol] = sum;
   }
   
   sum = yllcorner-0.5*cellsize;
-  xcoord = new double[nrows];
-  for (int irow=0; irow<nrows; irow++) {
+  xcoord = new PetscReal[nrows];
+  for (PetscInt irow=0; irow<nrows; irow++) {
     sum += cellsize;
     ycoord[irow] = sum;
   }
 }
 
-double AsciiGrid::computeElevationFromCoordinate(double x, double y) {
-  double half_cellsize = 0.5*cellsize;
-  int icol = (int)((x-xllcorner+half_cellsize)/cellsize)-1;
-  int irow = (int)((y-yllcorner+half_cellsize)/cellsize)-1;
+PetscReal AsciiGrid::computeElevationFromCoordinate(PetscReal x, PetscReal y) {
+  PetscReal half_cellsize = 0.5*cellsize;
+  PetscInt icol = (PetscInt)((x-xllcorner+half_cellsize)/cellsize)-1;
+  PetscInt irow = (PetscInt)((y-yllcorner+half_cellsize)/cellsize)-1;
   if (irow < 0 || icol < 0 || irow >= nrows-1 || icol >= ncols+1) {
     PetscPrintf(PETSC_COMM_WORLD,
                 "ERROR:  row or column index outsite ASCII Grid bounds %d %d\n",
@@ -115,16 +115,16 @@ double AsciiGrid::computeElevationFromCoordinate(double x, double y) {
     return -999.;
   }
   else {
-    double z1 = values[icol+irow*ncols];
-    double z2 = values[icol+1+irow*ncols];
-    double z3 = values[icol+(irow+1)*ncols];
-    double z4 = values[icol+1+(irow+1)*ncols];
+    PetscReal z1 = values[icol+irow*ncols];
+    PetscReal z2 = values[icol+1+irow*ncols];
+    PetscReal z3 = values[icol+(irow+1)*ncols];
+    PetscReal z4 = values[icol+1+(irow+1)*ncols];
 
-    double x1 = icol*cellsize+half_cellsize+xllcorner;
-    double x2 = x1+cellsize;
+    PetscReal x1 = icol*cellsize+half_cellsize+xllcorner;
+    PetscReal x2 = x1+cellsize;
 
-    double y1 = irow*cellsize+half_cellsize+yllcorner;
-    double y2 = y1+cellsize;
+    PetscReal y1 = irow*cellsize+half_cellsize+yllcorner;
+    PetscReal y2 = y1+cellsize;
 
     if (x < x1 || x > x2) {
       PetscPrintf(PETSC_COMM_WORLD,

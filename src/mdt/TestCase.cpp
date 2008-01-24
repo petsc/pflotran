@@ -9,34 +9,34 @@
 
 TestCase::TestCase(Grid **grid_) {
 
-  double mx = 1.;
-  double my = 1.;
-  double mz = 1.;
+  PetscReal mx = 1.;
+  PetscReal my = 1.;
+  PetscReal mz = 1.;
 
 //#define GRID_3X3X3
 #ifdef GRID_3X3X3
 
-  int nx = 3;
-  int ny = 3;
-  int nz = 3;
+  PetscInt nx = 3;
+  PetscInt ny = 3;
+  PetscInt nz = 3;
 
-  double dx = 1.;
-  double dy = 1.;
-  double dz = 1.;
+  PetscReal dx = 1.;
+  PetscReal dy = 1.;
+  PetscReal dz = 1.;
 
 #else
 
-  int nx = 5;
-  int ny = 4;
-  int nz = 3;
+  PetscInt nx = 5;
+  PetscInt ny = 4;
+  PetscInt nz = 3;
 
-  double dx[5] = {10.,11.,12.,13.,14.};
-  double dy[4] = {13.,12.,11.,10.};
-  double dz[3] = {15.,20.,25.};
+  PetscReal dx[5] = {10.,11.,12.,13.,14.};
+  PetscReal dy[4] = {13.,12.,11.,10.};
+  PetscReal dz[3] = {15.,20.,25.};
 
 #endif
 
-  int n = nx*ny*nz;
+  PetscInt n = nx*ny*nz;
 
   *grid_ = new Grid(nx,ny,nz);
   Grid *grid = *grid_;
@@ -53,11 +53,11 @@ TestCase::TestCase(Grid **grid_) {
   grid->mapVerticesToCells();
 
 #ifdef GRID_3X3X3
-  for (int ia=0; ia<grid->getN(); ia++)
+  for (PetscInt ia=0; ia<grid->getN(); ia++)
     setMaterialIdBasedOnNaturalId(ia,1,grid);
-  for (int ia=5; ia<grid->getN(); ia++)
+  for (PetscInt ia=5; ia<grid->getN(); ia++)
     setMaterialIdBasedOnNaturalId(ia,2,grid);
-  for (int ia=11; ia<grid->getN(); ia++)
+  for (PetscInt ia=11; ia<grid->getN(); ia++)
     setMaterialIdBasedOnNaturalId(ia,3,grid);
 
   setMaterialIdBasedOnNaturalId(9,1,grid);
@@ -70,11 +70,11 @@ TestCase::TestCase(Grid **grid_) {
   setActiveBasedOnNaturalId(17,0,grid);
   setActiveBasedOnNaturalId(24,0,grid);
 #else
-  for (int ia=0; ia<grid->getN(); ia++)
+  for (PetscInt ia=0; ia<grid->getN(); ia++)
     setMaterialIdBasedOnNaturalId(ia,1,grid);
-  for (int ia=9; ia<grid->getN(); ia++)
+  for (PetscInt ia=9; ia<grid->getN(); ia++)
     setMaterialIdBasedOnNaturalId(ia,2,grid);
-  for (int ia=23; ia<grid->getN(); ia++)
+  for (PetscInt ia=23; ia<grid->getN(); ia++)
     setMaterialIdBasedOnNaturalId(ia,3,grid);
 
   setMaterialIdBasedOnNaturalId(11,1,grid);
@@ -147,36 +147,36 @@ TestCase::TestCase(Grid **grid_) {
 }
 
 
-void TestCase::computeWestBoundary(Grid *grid, int complete) {
+void TestCase::computeWestBoundary(Grid *grid, PetscInt complete) {
 
   BoundarySet *west = new BoundarySet("West");
 
-  for (int i=0; i<grid->getNumberOfCellsGhosted(); i++) {
-    int local_id = grid->cells[i].getIdLocal();
+  for (PetscInt i=0; i<grid->getNumberOfCellsGhosted(); i++) {
+    PetscInt local_id = grid->cells[i].getIdLocal();
     if (local_id > -1) {
       if (grid->cells[i].flag & WEST_DIR_WEST_FACE) {
-        int vertex_list[5] = {4,0,0,0,0};
+        PetscInt vertex_list[5] = {4,0,0,0,0};
         grid->cells[i].getHexFaceVertices(WEST,vertex_list);
         west->addConnection(new Connection(local_id,vertex_list));
       }
       if (complete) {
         if (grid->cells[i].flag & WEST_DIR_SOUTH_FACE) {
-          int vertex_list[5] = {4,0,0,0,0};
+          PetscInt vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(SOUTH,vertex_list);
           west->addConnection(new Connection(local_id,vertex_list));
         }
         if (grid->cells[i].flag & WEST_DIR_NORTH_FACE) {
-          int vertex_list[5] = {4,0,0,0,0};
+          PetscInt vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(NORTH,vertex_list);
           west->addConnection(new Connection(local_id,vertex_list));
         }
         if (grid->cells[i].flag & WEST_DIR_BOTTOM_FACE) {
-          int vertex_list[5] = {4,0,0,0,0};
+          PetscInt vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(BOTTOM,vertex_list);
           west->addConnection(new Connection(local_id,vertex_list));
         }
         if (grid->cells[i].flag & WEST_DIR_TOP_FACE) {
-          int vertex_list[5] = {4,0,0,0,0};
+          PetscInt vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(TOP,vertex_list);
           west->addConnection(new Connection(local_id,vertex_list));
         }
@@ -189,36 +189,36 @@ void TestCase::computeWestBoundary(Grid *grid, int complete) {
 
 }
 
-void TestCase::computeEastBoundary(Grid *grid, int complete) {
+void TestCase::computeEastBoundary(Grid *grid, PetscInt complete) {
 
   BoundarySet *east = new BoundarySet("East");
 
-  for (int i=0; i<grid->getNumberOfCellsGhosted(); i++) {
-    int local_id = grid->cells[i].getIdLocal();
+  for (PetscInt i=0; i<grid->getNumberOfCellsGhosted(); i++) {
+    PetscInt local_id = grid->cells[i].getIdLocal();
     if (local_id > -1) {
       if (grid->cells[i].flag & EAST_DIR_EAST_FACE) {
-        int vertex_list[5] = {4,0,0,0,0};
+        PetscInt vertex_list[5] = {4,0,0,0,0};
         grid->cells[i].getHexFaceVertices(EAST,vertex_list);
         east->addConnection(new Connection(local_id,vertex_list));
       }
       if (complete) {
         if (grid->cells[i].flag & EAST_DIR_SOUTH_FACE) {
-          int vertex_list[5] = {4,0,0,0,0};
+          PetscInt vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(SOUTH,vertex_list);
           east->addConnection(new Connection(local_id,vertex_list));
         }
         if (grid->cells[i].flag & EAST_DIR_NORTH_FACE) {
-          int vertex_list[5] = {4,0,0,0,0};
+          PetscInt vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(NORTH,vertex_list);
           east->addConnection(new Connection(local_id,vertex_list));
         }
         if (grid->cells[i].flag & EAST_DIR_BOTTOM_FACE) {
-          int vertex_list[5] = {4,0,0,0,0};
+          PetscInt vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(BOTTOM,vertex_list);
           east->addConnection(new Connection(local_id,vertex_list));
         }
         if (grid->cells[i].flag & EAST_DIR_TOP_FACE) {
-          int vertex_list[5] = {4,0,0,0,0};
+          PetscInt vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(TOP,vertex_list);
           east->addConnection(new Connection(local_id,vertex_list));
         }
@@ -231,36 +231,36 @@ void TestCase::computeEastBoundary(Grid *grid, int complete) {
 
 }
 
-void TestCase::computeSouthBoundary(Grid *grid, int complete) {
+void TestCase::computeSouthBoundary(Grid *grid, PetscInt complete) {
 
   BoundarySet *south = new BoundarySet("South");
 
-  for (int i=0; i<grid->getNumberOfCellsGhosted(); i++) {
-    int local_id = grid->cells[i].getIdLocal();
+  for (PetscInt i=0; i<grid->getNumberOfCellsGhosted(); i++) {
+    PetscInt local_id = grid->cells[i].getIdLocal();
     if (local_id > -1) {
       if (grid->cells[i].flag & SOUTH_DIR_SOUTH_FACE) {
-        int vertex_list[5] = {4,0,0,0,0};
+        PetscInt vertex_list[5] = {4,0,0,0,0};
         grid->cells[i].getHexFaceVertices(SOUTH,vertex_list);
         south->addConnection(new Connection(local_id,vertex_list));
       }
       if (complete) {
         if (grid->cells[i].flag & SOUTH_DIR_WEST_FACE) {
-          int vertex_list[5] = {4,0,0,0,0};
+          PetscInt vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(WEST,vertex_list);
           south->addConnection(new Connection(local_id,vertex_list));
         }
         if (grid->cells[i].flag & SOUTH_DIR_EAST_FACE) {
-          int vertex_list[5] = {4,0,0,0,0};
+          PetscInt vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(EAST,vertex_list);
           south->addConnection(new Connection(local_id,vertex_list));
         }
         if (grid->cells[i].flag & SOUTH_DIR_BOTTOM_FACE) {
-          int vertex_list[5] = {4,0,0,0,0};
+          PetscInt vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(BOTTOM,vertex_list);
           south->addConnection(new Connection(local_id,vertex_list));
         }
         if (grid->cells[i].flag & SOUTH_DIR_TOP_FACE) {
-          int vertex_list[5] = {4,0,0,0,0};
+          PetscInt vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(TOP,vertex_list);
           south->addConnection(new Connection(local_id,vertex_list));
         }
@@ -272,36 +272,36 @@ void TestCase::computeSouthBoundary(Grid *grid, int complete) {
   south = NULL;
 }
 
-void TestCase::computeNorthBoundary(Grid *grid, int complete) {
+void TestCase::computeNorthBoundary(Grid *grid, PetscInt complete) {
 
   BoundarySet *north = new BoundarySet("North");
 
-  for (int i=0; i<grid->getNumberOfCellsGhosted(); i++) {
-    int local_id = grid->cells[i].getIdLocal();
+  for (PetscInt i=0; i<grid->getNumberOfCellsGhosted(); i++) {
+    PetscInt local_id = grid->cells[i].getIdLocal();
     if (local_id > -1) {
       if (grid->cells[i].flag & NORTH_DIR_NORTH_FACE) {
-        int vertex_list[5] = {4,0,0,0,0};
+        PetscInt vertex_list[5] = {4,0,0,0,0};
         grid->cells[i].getHexFaceVertices(NORTH,vertex_list);
         north->addConnection(new Connection(local_id,vertex_list));
       }
       if (complete) {
         if (grid->cells[i].flag & NORTH_DIR_WEST_FACE) {
-          int vertex_list[5] = {4,0,0,0,0};
+          PetscInt vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(WEST,vertex_list);
           north->addConnection(new Connection(local_id,vertex_list));
         }
         if (grid->cells[i].flag & NORTH_DIR_EAST_FACE) {
-          int vertex_list[5] = {4,0,0,0,0};
+          PetscInt vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(EAST,vertex_list);
           north->addConnection(new Connection(local_id,vertex_list));
         }
         if (grid->cells[i].flag & NORTH_DIR_BOTTOM_FACE) {
-          int vertex_list[5] = {4,0,0,0,0};
+          PetscInt vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(TOP,vertex_list);
           north->addConnection(new Connection(local_id,vertex_list));
         }
         if (grid->cells[i].flag & NORTH_DIR_TOP_FACE) {
-          int vertex_list[5] = {4,0,0,0,0};
+          PetscInt vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(TOP,vertex_list);
           north->addConnection(new Connection(local_id,vertex_list));
         }
@@ -314,36 +314,36 @@ void TestCase::computeNorthBoundary(Grid *grid, int complete) {
 
 }
 
-void TestCase::computeBottomBoundary(Grid *grid, int complete) {
+void TestCase::computeBottomBoundary(Grid *grid, PetscInt complete) {
 
   BoundarySet *bottom = new BoundarySet("Bottom");
 
-  for (int i=0; i<grid->getNumberOfCellsGhosted(); i++) {
-    int local_id = grid->cells[i].getIdLocal();
+  for (PetscInt i=0; i<grid->getNumberOfCellsGhosted(); i++) {
+    PetscInt local_id = grid->cells[i].getIdLocal();
     if (local_id > -1) {
       if (grid->cells[i].flag & BOTTOM_DIR_BOTTOM_FACE) {
-        int vertex_list[5] = {4,0,0,0,0};
+        PetscInt vertex_list[5] = {4,0,0,0,0};
         grid->cells[i].getHexFaceVertices(BOTTOM,vertex_list);
         bottom->addConnection(new Connection(local_id,vertex_list));
       }
       if (complete) {
         if (grid->cells[i].flag & BOTTOM_DIR_WEST_FACE) {
-          int vertex_list[5] = {4,0,0,0,0};
+          PetscInt vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(WEST,vertex_list);
           bottom->addConnection(new Connection(local_id,vertex_list));
         }
         if (grid->cells[i].flag & BOTTOM_DIR_EAST_FACE) {
-          int vertex_list[5] = {4,0,0,0,0};
+          PetscInt vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(EAST,vertex_list);
           bottom->addConnection(new Connection(local_id,vertex_list));
         }
         if (grid->cells[i].flag & BOTTOM_DIR_SOUTH_FACE) {
-          int vertex_list[5] = {4,0,0,0,0};
+          PetscInt vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(SOUTH,vertex_list);
           bottom->addConnection(new Connection(local_id,vertex_list));
         }
         if (grid->cells[i].flag & BOTTOM_DIR_NORTH_FACE) {
-          int vertex_list[5] = {4,0,0,0,0};
+          PetscInt vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(NORTH,vertex_list);
           bottom->addConnection(new Connection(local_id,vertex_list));
         }
@@ -356,36 +356,36 @@ void TestCase::computeBottomBoundary(Grid *grid, int complete) {
 
 }
 
-void TestCase::computeTopBoundary(Grid *grid, int complete) {
+void TestCase::computeTopBoundary(Grid *grid, PetscInt complete) {
 
   BoundarySet *top = new BoundarySet("Top");
 
-  for (int i=0; i<grid->getNumberOfCellsGhosted(); i++) {
-    int local_id = grid->cells[i].getIdLocal();
+  for (PetscInt i=0; i<grid->getNumberOfCellsGhosted(); i++) {
+    PetscInt local_id = grid->cells[i].getIdLocal();
     if (local_id > -1) {
       if (grid->cells[i].flag & TOP_DIR_TOP_FACE) {
-        int vertex_list[5] = {4,0,0,0,0};
+        PetscInt vertex_list[5] = {4,0,0,0,0};
         grid->cells[i].getHexFaceVertices(TOP,vertex_list);
         top->addConnection(new Connection(local_id,vertex_list));
       }
 #if 0
       if (grid->cells[i].flag & TOP_DIR_WEST_FACE) {
-        int vertex_list[5] = {4,0,0,0,0};
+        PetscInt vertex_list[5] = {4,0,0,0,0};
         grid->cells[i].getHexFaceVertices(WEST,vertex_list);
         top->addConnection(new Connection(local_id,vertex_list));
       }
       if (grid->cells[i].flag & TOP_DIR_EAST_FACE) {
-        int vertex_list[5] = {4,0,0,0,0};
+        PetscInt vertex_list[5] = {4,0,0,0,0};
         grid->cells[i].getHexFaceVertices(EAST,vertex_list);
         top->addConnection(new Connection(local_id,vertex_list));
       }
       if (grid->cells[i].flag & TOP_DIR_SOUTH_FACE) {
-        int vertex_list[5] = {4,0,0,0,0};
+        PetscInt vertex_list[5] = {4,0,0,0,0};
         grid->cells[i].getHexFaceVertices(SOUTH,vertex_list);
         top->addConnection(new Connection(local_id,vertex_list));
       }
       if (grid->cells[i].flag & TOP_DIR_NORTH_FACE) {
-        int vertex_list[5] = {4,0,0,0,0};
+        PetscInt vertex_list[5] = {4,0,0,0,0};
         grid->cells[i].getHexFaceVertices(NORTH,vertex_list);
         top->addConnection(new Connection(local_id,vertex_list));
       }
@@ -400,19 +400,19 @@ void TestCase::computeTopBoundary(Grid *grid, int complete) {
 
 void TestCase::flagGridCells(Grid *grid) {
 
-  double top_stage = 1.e20;
-  double bottom_stage = 1.e20;
-  double north_stage = 115.;
-  double south_stage = 115.;
-  double west_stage = 115.;
-  double east_stage = 106.;
+  PetscReal top_stage = 1.e20;
+  PetscReal bottom_stage = 1.e20;
+  PetscReal north_stage = 115.;
+  PetscReal south_stage = 115.;
+  PetscReal west_stage = 115.;
+  PetscReal east_stage = 106.;
 
-  int nx = grid->getNx();
-  int ny = grid->getNy();
-  int nz = grid->getNz();
+  PetscInt nx = grid->getNx();
+  PetscInt ny = grid->getNy();
+  PetscInt nz = grid->getNz();
 
-  int lnx,lny,lnz,lxs,lys,lzs,lxe,lye,lze;
-  int gnx,gny,gnz,gxs,gys,gzs,gxe,gye,gze;
+  PetscInt lnx,lny,lnz,lxs,lys,lzs,lxe,lye,lze;
+  PetscInt gnx,gny,gnz,gxs,gys,gzs,gxe,gye,gze;
 
   grid->getCorners(&lxs,&lys,&lzs,&lnx,&lny,&lnz);
   grid->getGhostCorners(&gxs,&gys,&gzs,&gnx,&gny,&gnz);
@@ -424,33 +424,33 @@ void TestCase::flagGridCells(Grid *grid) {
   gye = gys+gny;
   gze = gzs+gnz;
 
-  int gnxXny = gnx*gny;
+  PetscInt gnxXny = gnx*gny;
 
-  int istart = lxs-gxs;
-  int jstart = lys-gys;
-  int kstart = lzs-gzs;
-  int iend = istart+lnx;
-  int jend = jstart+lny;
-  int kend = kstart+lnz;
+  PetscInt istart = lxs-gxs;
+  PetscInt jstart = lys-gys;
+  PetscInt kstart = lzs-gzs;
+  PetscInt iend = istart+lnx;
+  PetscInt jend = jstart+lny;
+  PetscInt kend = kstart+lnz;
 
 
   grid->zeroGridCellFlags();
 
-  int *matrix = NULL;
+  PetscMPIInt *matrix = NULL;
 
   // west
-  matrix = new int[ny*nz];
-  for (int i=0; i<ny*nz; i++)
+  matrix = new PetscMPIInt[ny*nz];
+  for (PetscInt i=0; i<ny*nz; i++)
     matrix[i] = -1;
 
-  for (int kglobal=0; kglobal<nz; kglobal++) {
+  for (PetscInt kglobal=0; kglobal<nz; kglobal++) {
     if (lzs <= kglobal && kglobal < lze) {
-      for (int jglobal=0; jglobal<ny; jglobal++) {
+      for (PetscInt jglobal=0; jglobal<ny; jglobal++) {
         if (lys <= jglobal && jglobal < lye) {
-          int j = jglobal-gys;
-          int k = kglobal-gzs;
+          PetscInt j = jglobal-gys;
+          PetscInt k = kglobal-gzs;
 
-          int flag[3];
+          PetscInt flag[3];
           flag[0] = 0;
           flag[1] = 0;
           flag[2] = 0;
@@ -458,14 +458,14 @@ void TestCase::flagGridCells(Grid *grid) {
           if (flag[0] == 0) {
 
           // loop over local cells
-            for (int i=0; i<gnx; i++) {
-              int ghosted_id = i+j*gnx+k*gnxXny;
+            for (PetscInt i=0; i<gnx; i++) {
+              PetscInt ghosted_id = i+j*gnx+k*gnxXny;
               if (grid->cells[ghosted_id].getIdLocal() > -1 &&
                   grid->cells[ghosted_id].getActive() && 
                   grid->cells[ghosted_id].getZ() <= west_stage) {
                 grid->cells[ghosted_id].flag |= WEST_DIR_WEST_FACE;
                 flag[0] = 1;
-                matrix[jglobal+kglobal*ny] = i+gxs;
+                matrix[jglobal+kglobal*ny] = (PetscMPIInt)(i+gxs);
                 break;
               }
             }
@@ -475,47 +475,48 @@ void TestCase::flagGridCells(Grid *grid) {
       }
     }
   }
-  MPI_Allreduce(MPI_IN_PLACE,matrix,ny*nz,MPI_INTEGER,MPI_MAX,
+  PetscMPIInt nyXnz = ny*nz;
+  MPI_Allreduce(MPI_IN_PLACE,matrix,nyXnz,MPI_INTEGER,MPI_MAX,
                 PETSC_COMM_WORLD);
 
-  for (int k=0; k<gnz; k++) {
-    int kglobal = k+gzs;
-    for (int j=0; j<gny; j++) {
-      int jglobal = j+gys;
+  for (PetscInt k=0; k<gnz; k++) {
+    PetscInt kglobal = k+gzs;
+    for (PetscInt j=0; j<gny; j++) {
+      PetscInt jglobal = j+gys;
       // y-direction
       if (j < gny-1) {
-        int iup = matrix[jglobal+kglobal*ny];
-        int idown = matrix[jglobal+1+kglobal*ny];
+        PetscInt iup = (PetscInt)matrix[jglobal+kglobal*ny];
+        PetscInt idown = (PetscInt)matrix[jglobal+1+kglobal*ny];
         if (iup>-1 && idown>-1 && iup != idown) {
           if (iup > idown) {                        
             iup = MIN(iup-gxs,gnx-1);
             idown = MAX(idown-gxs,0);
-            for (int i=idown; i<iup; i++)
+            for (PetscInt i=idown; i<iup; i++)
               grid->cells[i+(j+1)*gnx+k*gnxXny].flag |= WEST_DIR_SOUTH_FACE;     
           }                                         
           else {                                    
             idown = MIN(idown-gxs,gnx-1);
             iup = MAX(iup-gxs,0);
-            for (int i=iup; i<idown; i++)
+            for (PetscInt i=iup; i<idown; i++)
               grid->cells[i+j*gnx+k*gnxXny].flag |= WEST_DIR_NORTH_FACE;     
           }
         }
       }
       // z-direction
       if (k < gnz-1) {
-        int iup = matrix[jglobal+kglobal*ny];
-        int idown = matrix[jglobal+(kglobal+1)*ny];
+        PetscInt iup = (PetscInt)matrix[jglobal+kglobal*ny];
+        PetscInt idown = (PetscInt)matrix[jglobal+(kglobal+1)*ny];
         if (iup>-1 && idown>-1 && iup != idown) {
           if (iup > idown) {                        
             iup = MIN(iup-gxs,gnx-1);
             idown = MAX(idown-gxs,0);
-            for (int i=idown; i<iup; i++)
+            for (PetscInt i=idown; i<iup; i++)
               grid->cells[i+j*gnx+(k+1)*gnxXny].flag |= WEST_DIR_BOTTOM_FACE;     
           }                                         
           else {                                    
             idown = MIN(idown-gxs,gnx-1);
             iup = MAX(iup-gxs,0);
-            for (int i=iup; i<idown; i++)
+            for (PetscInt i=iup; i<idown; i++)
               grid->cells[i+j*gnx+k*gnxXny].flag |= WEST_DIR_TOP_FACE;     
           }                                         
         }
@@ -526,31 +527,31 @@ void TestCase::flagGridCells(Grid *grid) {
   matrix = NULL;
 
   // east
-  matrix = new int[ny*nz];
-  for (int i=0; i<ny*nz; i++)
+  matrix = new PetscMPIInt[ny*nz];
+  for (PetscInt i=0; i<ny*nz; i++)
     matrix[i] = -1;
 
-  for (int kglobal=0; kglobal<nz; kglobal++) {
+  for (PetscInt kglobal=0; kglobal<nz; kglobal++) {
     if (lzs <= kglobal && kglobal < lze) {
-      for (int jglobal=0; jglobal<ny; jglobal++) {
+      for (PetscInt jglobal=0; jglobal<ny; jglobal++) {
         if (lys <= jglobal && jglobal < lye) {
-          int j = jglobal-gys;
-          int k = kglobal-gzs;
+          PetscInt j = jglobal-gys;
+          PetscInt k = kglobal-gzs;
 
-          int flag[3] = {0,0,0};
+          PetscInt flag[3] = {0,0,0};
 
           if (lxe < nx) grid->receiveFlag(flag,EAST);
           if (flag[0] == 0) {
 
           // loop over local cells
-            for (int i=gnx-1; i>=0; i--) {
-              int ghosted_id = i+j*gnx+k*gnxXny;
+            for (PetscInt i=gnx-1; i>=0; i--) {
+              PetscInt ghosted_id = i+j*gnx+k*gnxXny;
               if (grid->cells[ghosted_id].getIdLocal() > -1 &&
                   grid->cells[ghosted_id].getActive() && 
                   grid->cells[ghosted_id].getZ() <= east_stage) {
                 grid->cells[ghosted_id].flag |= EAST_DIR_EAST_FACE;
                 flag[0] = 1;
-                matrix[jglobal+kglobal*ny] = i+gxs;
+                matrix[jglobal+kglobal*ny] = (PetscMPIInt)(i+gxs);
                 break;
               }
             }
@@ -560,47 +561,48 @@ void TestCase::flagGridCells(Grid *grid) {
       }
     }
   }
-  MPI_Allreduce(MPI_IN_PLACE,matrix,ny*nz,MPI_INTEGER,MPI_MAX,
+  nyXnz = ny*nz;
+  MPI_Allreduce(MPI_IN_PLACE,matrix,nyXnz,MPI_INTEGER,MPI_MAX,
                 PETSC_COMM_WORLD);
 
-  for (int k=0; k<gnz; k++) {
-    int kglobal = k+gzs;
-    for (int j=0; j<gny; j++) {
-      int jglobal = j+gys;
+  for (PetscInt k=0; k<gnz; k++) {
+    PetscInt kglobal = k+gzs;
+    for (PetscInt j=0; j<gny; j++) {
+      PetscInt jglobal = j+gys;
       // y-direction
       if (j < gny-1) {
-        int iup = matrix[jglobal+kglobal*ny];
-        int idown = matrix[jglobal+1+kglobal*ny];
+        PetscInt iup = (PetscInt)matrix[jglobal+kglobal*ny];
+        PetscInt idown = (PetscInt)matrix[jglobal+1+kglobal*ny];
         if (iup>-1 && idown>-1 && iup != idown) {
           if (iup > idown) {                        
             iup = MIN(iup-gxs,gnx-1);
             idown = MAX(idown-gxs,0);
-            for (int i=iup; i>idown; i--)
+            for (PetscInt i=iup; i>idown; i--)
               grid->cells[i+j*gnx+k*gnxXny].flag |= EAST_DIR_NORTH_FACE;     
           }                                         
           else {                                    
             idown = MIN(idown-gxs,gnx-1);
             iup = MAX(iup-gxs,0);
-            for (int i=idown; i>iup; i--)
+            for (PetscInt i=idown; i>iup; i--)
               grid->cells[i+(j+1)*gnx+k*gnxXny].flag |= EAST_DIR_SOUTH_FACE;     
           }
         }
       }
       // z-direction
       if (k < gnz-1) {
-        int iup = matrix[jglobal+kglobal*ny];
-        int idown = matrix[jglobal+(kglobal+1)*ny];
+        PetscInt iup = (PetscInt)matrix[jglobal+kglobal*ny];
+        PetscInt idown = (PetscInt)matrix[jglobal+(kglobal+1)*ny];
         if (iup>-1 && idown>-1 && iup != idown) {
           if (iup > idown) {                        
             iup = MIN(iup-gxs,gnx-1);
             idown = MAX(idown-gxs,0);
-            for (int i=iup; i>idown; i--)
+            for (PetscInt i=iup; i>idown; i--)
               grid->cells[i+j*gnx+k*gnxXny].flag |= EAST_DIR_TOP_FACE;     
           }                                         
           else {                                    
             idown = MIN(idown-gxs,gnx-1);
             iup = MAX(iup-gxs,0);
-            for (int i=idown; i>iup; i--)
+            for (PetscInt i=idown; i>iup; i--)
               grid->cells[i+j*gnx+(k+1)*gnxXny].flag |= EAST_DIR_BOTTOM_FACE;     
           }                                         
         }
@@ -611,31 +613,31 @@ void TestCase::flagGridCells(Grid *grid) {
   matrix = NULL;
 
   // south
-  matrix = new int[nx*nz];
-  for (int i=0; i<nx*nz; i++)
+  matrix = new PetscMPIInt[nx*nz];
+  for (PetscInt i=0; i<nx*nz; i++)
     matrix[i] = -1;
 
-  for (int kglobal=0; kglobal<nz; kglobal++) {
+  for (PetscInt kglobal=0; kglobal<nz; kglobal++) {
     if (lzs <= kglobal && kglobal < lze) {
-      for (int iglobal=0; iglobal<nx; iglobal++) {
+      for (PetscInt iglobal=0; iglobal<nx; iglobal++) {
         if (lxs <= iglobal && iglobal < lxe) {
-          int k = kglobal-gzs;
-          int i = iglobal-gxs;
+          PetscInt k = kglobal-gzs;
+          PetscInt i = iglobal-gxs;
 
-          int flag[3] = {0,0,0};
+          PetscInt flag[3] = {0,0,0};
 
           if (lys > 0) grid->receiveFlag(flag,SOUTH);
           if (flag[0] == 0) {
 
           // loop over local cells
-            for (int j=0; j<gny; j++) {
-              int ghosted_id = i+j*gnx+k*gnxXny;
+            for (PetscInt j=0; j<gny; j++) {
+              PetscInt ghosted_id = i+j*gnx+k*gnxXny;
               if (grid->cells[ghosted_id].getIdLocal() > -1 &&
                   grid->cells[ghosted_id].getActive() && 
                   grid->cells[ghosted_id].getZ() <= south_stage) {
                 grid->cells[ghosted_id].flag |= SOUTH_DIR_SOUTH_FACE;
                 flag[0] = 1;
-                matrix[iglobal+kglobal*nx] = j+gys;
+                matrix[iglobal+kglobal*nx] = (PetscMPIInt)(j+gys);
                 break;
               }
             }
@@ -645,47 +647,48 @@ void TestCase::flagGridCells(Grid *grid) {
       }
     }
   }
-  MPI_Allreduce(MPI_IN_PLACE,matrix,nx*nz,MPI_INTEGER,MPI_MAX,
+  PetscMPIInt nxXnz = nx*nz;
+  MPI_Allreduce(MPI_IN_PLACE,matrix,nxXnz,MPI_INTEGER,MPI_MAX,
                 PETSC_COMM_WORLD);
 
-  for (int k=0; k<gnz; k++) {
-    int kglobal = k+gzs;
-    for (int i=0; i<gnx; i++) {
-      int iglobal = i+gxs;
+  for (PetscInt k=0; k<gnz; k++) {
+    PetscInt kglobal = k+gzs;
+    for (PetscInt i=0; i<gnx; i++) {
+      PetscInt iglobal = i+gxs;
       // x-direction
       if (i < gnx-1) {
-        int jup = matrix[iglobal+kglobal*nx];
-        int jdown = matrix[iglobal+1+kglobal*nx];
+        PetscInt jup = (PetscInt)matrix[iglobal+kglobal*nx];
+        PetscInt jdown = (PetscInt)matrix[iglobal+1+kglobal*nx];
         if (jup>-1 && jdown>-1 && jup != jdown) {
           if (jup > jdown) {                        
             jup = MIN(jup-gys,gny-1);
             jdown = MAX(jdown-gys,0);
-            for (int j=jdown; j<jup; j++)
+            for (PetscInt j=jdown; j<jup; j++)
               grid->cells[i+1+j*gnx+k*gnxXny].flag |= SOUTH_DIR_WEST_FACE;     
           }                                         
           else {                                    
             jdown = MIN(jdown-gys,gny-1);
             jup = MAX(jup-gys,0);
-            for (int j=jup; j<jdown; j++)
+            for (PetscInt j=jup; j<jdown; j++)
               grid->cells[i+j*gnx+k*gnxXny].flag |= SOUTH_DIR_EAST_FACE;     
           }                                         
         }
       }
       // z-direction
       if (k < gnz-1) {
-        int jup = matrix[iglobal+kglobal*nx];
-        int jdown = matrix[iglobal+(kglobal+1)*nx];
+        PetscInt jup = (PetscInt)matrix[iglobal+kglobal*nx];
+        PetscInt jdown = (PetscInt)matrix[iglobal+(kglobal+1)*nx];
         if (jup>-1 && jdown>-1 && jup != jdown) {
           if (jup > jdown) {                        
             jup = MIN(jup-gys,gny-1);
             jdown = MAX(jdown-gys,0);
-            for (int j=jdown; j<jup; j++)
+            for (PetscInt j=jdown; j<jup; j++)
               grid->cells[i+j*gnx+(k+1)*gnxXny].flag |= SOUTH_DIR_BOTTOM_FACE;     
           }                                         
           else {                                    
             jdown = MIN(jdown-gys,gny-1);
             jup = MAX(jup-gys,0);
-            for (int j=jup; j<jdown; j++)
+            for (PetscInt j=jup; j<jdown; j++)
               grid->cells[i+j*gnx+k*gnxXny].flag |= SOUTH_DIR_TOP_FACE;     
           }                                         
         }
@@ -696,31 +699,31 @@ void TestCase::flagGridCells(Grid *grid) {
   matrix = NULL;
       
   // north
-  matrix = new int[nx*nz];
-  for (int i=0; i<nx*nz; i++)
+  matrix = new PetscMPIInt[nx*nz];
+  for (PetscInt i=0; i<nx*nz; i++)
     matrix[i] = -1;
 
-  for (int kglobal=0; kglobal<nz; kglobal++) {
+  for (PetscInt kglobal=0; kglobal<nz; kglobal++) {
     if (lzs <= kglobal && kglobal < lze) {
-      for (int iglobal=0; iglobal<nx; iglobal++) {
+      for (PetscInt iglobal=0; iglobal<nx; iglobal++) {
         if (lxs <= iglobal && iglobal < lxe) {
-          int k = kglobal-gzs;
-          int i = iglobal-gxs;
+          PetscInt k = kglobal-gzs;
+          PetscInt i = iglobal-gxs;
 
-          int flag[3] = {0,0,0};
+          PetscInt flag[3] = {0,0,0};
 
           if (lye < ny) grid->receiveFlag(flag,NORTH);
           if (flag[0] == 0) {
 
           // loop over local cells
-            for (int j=gny-1; j>=0; j--) {
-              int ghosted_id = i+j*gnx+k*gnxXny;
+            for (PetscInt j=gny-1; j>=0; j--) {
+              PetscInt ghosted_id = i+j*gnx+k*gnxXny;
               if (grid->cells[ghosted_id].getIdLocal() > -1 &&
                   grid->cells[ghosted_id].getActive() && 
                   grid->cells[ghosted_id].getZ() <= north_stage) {
                 grid->cells[ghosted_id].flag |= NORTH_DIR_NORTH_FACE;
                 flag[0] = 1;
-                matrix[iglobal+kglobal*nx] = j+gys;
+                matrix[iglobal+kglobal*nx] = (PetscMPIInt)(j+gys);
                 break;
               }
             }
@@ -730,47 +733,48 @@ void TestCase::flagGridCells(Grid *grid) {
       }
     }
   }
+  nxXnz = nx*nz;
   MPI_Allreduce(MPI_IN_PLACE,matrix,nx*nz,MPI_INTEGER,MPI_MAX,
                 PETSC_COMM_WORLD);
 
-  for (int k=0; k<gnz; k++) {
-    int kglobal = k+gzs;
-    for (int i=0; i<gnx; i++) {
-      int iglobal = i+gxs;
+  for (PetscInt k=0; k<gnz; k++) {
+    PetscInt kglobal = k+gzs;
+    for (PetscInt i=0; i<gnx; i++) {
+      PetscInt iglobal = i+gxs;
       // x-direction
       if (i < gnx-1) {
-        int jup = matrix[iglobal+kglobal*nx];
-        int jdown = matrix[iglobal+1+kglobal*nx];
+        PetscInt jup = (PetscInt)matrix[iglobal+kglobal*nx];
+        PetscInt jdown = (PetscInt)matrix[iglobal+1+kglobal*nx];
         if (jup>-1 && jdown>-1 && jup != jdown) {
           if (jup > jdown) {                        
             jup = MIN(jup-gys,gny-1);
             jdown = MAX(jdown-gys,0);
-            for (int j=jup; j>jdown; j--)
+            for (PetscInt j=jup; j>jdown; j--)
               grid->cells[i+j*gnx+k*gnxXny].flag |= NORTH_DIR_EAST_FACE;     
           }                                         
           else {                                    
             jdown = MIN(jdown-gys,gny-1);
             jup = MAX(jup-gys,0);
-            for (int j=jdown; j>jup; j--)
+            for (PetscInt j=jdown; j>jup; j--)
               grid->cells[i+1+j*gnx+k*gnxXny].flag |= NORTH_DIR_WEST_FACE;     
           }                                         
         }
       }
       // z-direction
       if (k < gnz-1) {
-        int jup = matrix[iglobal+kglobal*nx];
-        int jdown = matrix[iglobal+(kglobal+1)*nx];
+        PetscInt jup = (PetscInt)matrix[iglobal+kglobal*nx];
+        PetscInt jdown = (PetscInt)matrix[iglobal+(kglobal+1)*nx];
         if (jup>-1 && jdown>-1 && jup != jdown) {
           if (jup > jdown) {                        
             jup = MIN(jup-gys,gny-1);
             jdown = MAX(jdown-gys,0);
-            for (int j=jup; j>jdown; j--)
+            for (PetscInt j=jup; j>jdown; j--)
               grid->cells[i+j*gnx+k*gnxXny].flag |= NORTH_DIR_TOP_FACE;     
           }                                         
           else {                                    
             jdown = MIN(jdown-gys,gny-1);
             jup = MAX(jup-gys,0);
-            for (int j=jdown-1; j>=jup; j--)
+            for (PetscInt j=jdown-1; j>=jup; j--)
               grid->cells[i+j*gnx+(k+1)*gnxXny].flag |= NORTH_DIR_BOTTOM_FACE;
           }                                         
         }
@@ -781,31 +785,31 @@ void TestCase::flagGridCells(Grid *grid) {
   matrix = NULL;
 
   // bottom
-  matrix = new int[nx*ny];
-  for (int i=0; i<nx*ny; i++)
+  matrix = new PetscMPIInt[nx*ny];
+  for (PetscInt i=0; i<nx*ny; i++)
     matrix[i] = -1;
 
-  for (int jglobal=0; jglobal<ny; jglobal++) {
+  for (PetscInt jglobal=0; jglobal<ny; jglobal++) {
     if (lys <= jglobal && jglobal < lye) {
-      for (int iglobal=0; iglobal<nx; iglobal++) {
+      for (PetscInt iglobal=0; iglobal<nx; iglobal++) {
         if (lxs <= iglobal && iglobal < lxe) {
-          int j = jglobal-gys;
-          int i = iglobal-gxs;
+          PetscInt j = jglobal-gys;
+          PetscInt i = iglobal-gxs;
 
-          int flag[3] = {0,0,0};
+          PetscInt flag[3] = {0,0,0};
 
           if (lzs > 0) grid->receiveFlag(flag,BOTTOM);
           if (flag[0] == 0) {
 
           // loop over local cells
-            for (int k=0; k<gnz; k++) {
-              int ghosted_id = i+j*gnx+k*gnxXny;
+            for (PetscInt k=0; k<gnz; k++) {
+              PetscInt ghosted_id = i+j*gnx+k*gnxXny;
               if (grid->cells[ghosted_id].getIdLocal() > -1 &&
                   grid->cells[ghosted_id].getActive() && 
                   grid->cells[ghosted_id].getZ() <= bottom_stage) {
                 grid->cells[ghosted_id].flag |= BOTTOM_DIR_BOTTOM_FACE;
                 flag[0] = 1;
-                matrix[iglobal+jglobal*nx] = k+gzs;
+                matrix[iglobal+jglobal*nx] = (PetscMPIInt)(k+gzs);
                 break;
               }
             }
@@ -815,47 +819,48 @@ void TestCase::flagGridCells(Grid *grid) {
       }
     }
   }
+  PetscMPIInt nxXny = nx*ny;
   MPI_Allreduce(MPI_IN_PLACE,matrix,nx*ny,MPI_INTEGER,MPI_MAX,
                 PETSC_COMM_WORLD);
  
-  for (int j=0; j<gny; j++) {
-    int jglobal = j+gys;
-    for (int i=0; i<gnx; i++) {
-      int iglobal = i+gxs;
+  for (PetscInt j=0; j<gny; j++) {
+    PetscInt jglobal = j+gys;
+    for (PetscInt i=0; i<gnx; i++) {
+      PetscInt iglobal = i+gxs;
       // x-direction
       if (i < gnx-1) {
-        int kup = matrix[iglobal+jglobal*nx];
-        int kdown = matrix[iglobal+1+jglobal*nx];
+        PetscInt kup = (PetscInt)matrix[iglobal+jglobal*nx];
+        PetscInt kdown = (PetscInt)matrix[iglobal+1+jglobal*nx];
         if (kup>-1 && kdown>-1 && kup != kdown) {
           if (kup > kdown) {                        
             kup = MIN(kup-gzs,gnz-1);
             kdown = MAX(kdown-gzs,0);
-            for (int k=kdown; k<kup; k++)
+            for (PetscInt k=kdown; k<kup; k++)
               grid->cells[i+1+j*gnx+k*gnxXny].flag |= BOTTOM_DIR_WEST_FACE;     
           }                                         
           else {                                    
             kdown = MIN(kdown-gzs,gnz-1);
             kup = MAX(kup-gzs,0);
-            for (int k=kup; k<kdown; k++)
+            for (PetscInt k=kup; k<kdown; k++)
               grid->cells[i+j*gnx+k*gnxXny].flag |= BOTTOM_DIR_EAST_FACE;     
           }                                         
         }
       }
       // y-direction
       if (j < gny-1) {
-        int kup = matrix[iglobal+jglobal*nx];
-        int kdown = matrix[iglobal+(jglobal+1)*nx];
+        PetscInt kup = (PetscInt)matrix[iglobal+jglobal*nx];
+        PetscInt kdown = (PetscInt)matrix[iglobal+(jglobal+1)*nx];
         if (kup>-1 && kdown>-1 && kup != kdown) {
           if (kup > kdown) {                        
             kup = MIN(kup-gzs,gnz-1);
             kdown = MAX(kdown-gzs,0);
-            for (int k=kdown; k<kup; k++)
+            for (PetscInt k=kdown; k<kup; k++)
               grid->cells[i+j*gnx+(k+1)*gnxXny].flag |= BOTTOM_DIR_SOUTH_FACE;     
           }                                         
           else {                                    
             kdown = MIN(kdown-gzs,gnz-1);
             kup = MAX(kup-gzs,0);
-            for (int k=kup; k<kdown; k++)
+            for (PetscInt k=kup; k<kdown; k++)
               grid->cells[i+j*gnx+k*gnxXny].flag |= BOTTOM_DIR_NORTH_FACE;     
           }                                         
         }
@@ -866,31 +871,31 @@ void TestCase::flagGridCells(Grid *grid) {
   matrix = NULL;
 
   // top
-  matrix = new int[nx*ny];
-  for (int i=0; i<nx*ny; i++)
+  matrix = new PetscMPIInt[nx*ny];
+  for (PetscInt i=0; i<nx*ny; i++)
     matrix[i] = -1;
 
-  for (int jglobal=0; jglobal<ny; jglobal++) {
+  for (PetscInt jglobal=0; jglobal<ny; jglobal++) {
     if (lys <= jglobal && jglobal < lye) {
-      for (int iglobal=0; iglobal<nx; iglobal++) {
+      for (PetscInt iglobal=0; iglobal<nx; iglobal++) {
         if (lxs <= iglobal && iglobal < lxe) {
-          int j = jglobal-gys;
-          int i = iglobal-gxs;
+          PetscInt j = jglobal-gys;
+          PetscInt i = iglobal-gxs;
 
-          int flag[3] = {0,0,0};
+          PetscInt flag[3] = {0,0,0};
 
           if (lze < nz) grid->receiveFlag(flag,TOP);
           if (flag[0] == 0) {
 
           // loop over local cells
-            for (int k=gnz-1; k>=0; k--) {
-              int ghosted_id = i+j*gnx+k*gnxXny;
+            for (PetscInt k=gnz-1; k>=0; k--) {
+              PetscInt ghosted_id = i+j*gnx+k*gnxXny;
               if (grid->cells[ghosted_id].getIdLocal() > -1 &&
                   grid->cells[ghosted_id].getActive() && 
                   grid->cells[ghosted_id].getZ() <= top_stage) {
                 grid->cells[ghosted_id].flag |= TOP_DIR_TOP_FACE;
                 flag[0] = 1;
-                matrix[iglobal+jglobal*nx] = k+gzs;
+                matrix[iglobal+jglobal*nx] = (PetscMPIInt)(k+gzs);
                 break;
               }
             }
@@ -901,47 +906,48 @@ void TestCase::flagGridCells(Grid *grid) {
     }
   }
 #if 0
+  nxXny = nx*ny;
   MPI_Allreduce(MPI_IN_PLACE,matrix,nx*ny,MPI_INTEGER,MPI_MAX,
                 PETSC_COMM_WORLD);
  
-  for (int j=0; j<gny; j++) {
-    int jglobal = j+gys;
-    for (int i=0; i<gnx; i++) {
-      int iglobal = i+gxs;
+  for (PetscInt j=0; j<gny; j++) {
+    PetscInt jglobal = j+gys;
+    for (PetscInt i=0; i<gnx; i++) {
+      PetscInt iglobal = i+gxs;
       // x-direction
       if (i < gnx-1) {
-        int kup = matrix[iglobal+jglobal*nx];
-        int kdown = matrix[iglobal+1+jglobal*nx];
+        PetscInt kup = (PetscInt)matrix[iglobal+jglobal*nx];
+        PetscInt kdown = (PetscInt)matrix[iglobal+1+jglobal*nx];
         if (kup>-1 && kdown>-1 && kup != kdown) {
           if (kup > kdown) {                        
             kup = MIN(kup-gzs,gnz-1);
             kdown = MAX(kdown-gzs,0);
-            for (int k=kup; k>kdown; k--)
+            for (PetscInt k=kup; k>kdown; k--)
               grid->cells[i+j*gnx+k*gnxXny].flag |= TOP_DIR_EAST_FACE;     
           }                                         
           else {                                    
             kdown = MIN(kdown-gzs,gnz-1);
             kup = MAX(kup-gzs,0);
-            for (int k=kdown; k>kup; k--)
+            for (PetscInt k=kdown; k>kup; k--)
               grid->cells[i+1+j*gnx+k*gnxXny].flag |= TOP_DIR_WEST_FACE;     
           }                                         
         }
       }
       // y-direction
       if (j < gny-1) {
-        int kup = matrix[iglobal+jglobal*nx];
-        int kdown = matrix[iglobal+(jglobal+1)*nx];
+        PetscInt kup = (PetscInt)matrix[iglobal+jglobal*nx];
+        PetscInt kdown = (PetscInt)matrix[iglobal+(jglobal+1)*nx];
         if (kup>-1 && kdown>-1 && kup != kdown) {
           if (kup > kdown) {                        
             kup = MIN(kup-gzs,gnz-1);
             kdown = MAX(kdown-gzs,0);
-            for (int k=kdown; k<kup; k++)
+            for (PetscInt k=kdown; k<kup; k++)
               grid->cells[i+j*gnx+k*gnxXny].flag |= TOP_DIR_NORTH_FACE;     
           }                                         
           else {                                    
             kdown = MIN(kdown-gzs,gnz-1);
             kup = MAX(kup-gzs,0);
-            for (int k=kup; k<kdown; k++)
+            for (PetscInt k=kup; k<kdown; k++)
               grid->cells[i+(j+1)*gnx+k*gnxXny].flag |= TOP_DIR_SOUTH_FACE;     
           }                                         
         }
@@ -954,18 +960,18 @@ void TestCase::flagGridCells(Grid *grid) {
 
 }
 
-void TestCase::setMaterialIdBasedOnNaturalId(int natural_id, int material_id,
+void TestCase::setMaterialIdBasedOnNaturalId(PetscInt natural_id, PetscInt material_id,
                                              Grid *grid) {
-  for (int i=0; i<grid->getNumberOfCellsGhosted(); i++) 
+  for (PetscInt i=0; i<grid->getNumberOfCellsGhosted(); i++) 
     if (grid->cells[i].getIdNatural() == natural_id)//  {
       grid->cells[i].setMaterialId(material_id);
 //printf("%d %d %d %d\n",myrank,i,grid->cells[i].getIdNatural(),grid->cells[i].getMaterialId());
 //}
 }
 
-void TestCase::setActiveBasedOnNaturalId(int natural_id, int active,
+void TestCase::setActiveBasedOnNaturalId(PetscInt natural_id, PetscInt active,
                                          Grid *grid) {
-  for (int i=0; i<grid->getNumberOfCellsGhosted(); i++) 
+  for (PetscInt i=0; i<grid->getNumberOfCellsGhosted(); i++) 
     if (grid->cells[i].getIdNatural() == natural_id) 
       grid->cells[i].setActive(active);
 }

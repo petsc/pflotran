@@ -9,10 +9,10 @@ Polygon::Polygon() {
 void Polygon::createRiverEdgePolygon() {
 
   num_points = 8;
-  x = new double[num_points];
-  y = new double[num_points];
+  x = new PetscReal[num_points];
+  y = new PetscReal[num_points];
 
-  int n = 0;
+  PetscInt n = 0;
   x[n] = 594811.; y[n++] = 114864.;
   x[n] = 594636.; y[n++] = 115636.;
   x[n] = 594578.; y[n++] = 115817.;
@@ -25,11 +25,11 @@ void Polygon::createRiverEdgePolygon() {
 
 }
 
-int Polygon::pointInPolygon(double x_, double y_) {
+PetscInt Polygon::pointInPolygon(PetscReal x_, PetscReal y_) {
 
-  int inside = 0;
-  int j = 0;
-  for (int i=0; i<num_points; i++) {
+  PetscInt inside = 0;
+  PetscInt j = 0;
+  for (PetscInt i=0; i<num_points; i++) {
     if (++j == num_points) j = 0;
     if ((y[i] < y_ && y[j] >= y_) || (y[j] < y_ && y[i] >= y_)) {
       if (x[i] + (y_-y[i])/(y[j]-y[i])*(x[j]-x[i]) < x_)

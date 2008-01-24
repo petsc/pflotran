@@ -21,32 +21,34 @@ class StructuredGrid {
 public:
 
   StructuredGrid();
-  StructuredGrid(int nx, int ny, int nz);
+  StructuredGrid(PetscInt nx, PetscInt ny, PetscInt nz);
   virtual ~StructuredGrid();
   
   void createDA();
-  void createDA(int ndof);
-  void setGridSpacing(double *dx_, double *dy_, double *dz_);
-  void setGridSpacing(double dx_, double dy_, double dz_);
+  void createDA(PetscInt ndof);
+  void setGridSpacing(PetscReal *dx_, PetscReal *dy_, PetscReal *dz_);
+  void setGridSpacing(PetscReal dx_, PetscReal dy_, PetscReal dz_);
   void setLocalGridSpacing();
-  void setOrigin(double origx, double origy, double origz);
-  void setRotation(double r);
-//  void computeConnectivity(int *num_connections, GridConnection **connections);
+  void setOrigin(PetscReal origx, PetscReal origy, PetscReal origz);
+  void setRotation(PetscReal r);
+//  void computeConnectivity(PetscInt *num_connections, GridConnection **connections);
   void computeCoordinates();
-  void computeCellMapping(int *num_cells_local, int *num_cells_ghosted,
-                          int **cell_mapping_local_to_ghosted,
-                          int **cell_mapping_ghosted_to_local,
-                          int **cell_mapping_ghosted_to_natural);
-  void computeVertexMapping(int *num_vertices_local, int *num_vertices_ghosted,
-                          int **vertex_mapping_local_to_ghosted,
-                          int **vertex_mapping_ghosted_to_local,
-                          int **vertex_mapping_ghosted_to_natural);
+  void computeCellMapping(PetscInt *num_cells_local, PetscInt *num_cells_ghosted,
+                          PetscInt **cell_mapping_local_to_ghosted,
+                          PetscInt **cell_mapping_ghosted_to_local,
+                          PetscInt **cell_mapping_ghosted_to_natural);
+  void computeVertexMapping(PetscInt *num_vertices_local, PetscInt *num_vertices_ghosted,
+                          PetscInt **vertex_mapping_local_to_ghosted,
+                          PetscInt **vertex_mapping_ghosted_to_local,
+                          PetscInt **vertex_mapping_ghosted_to_natural);
   void mapVerticesToCells(GridCell *cells, GridVertex *vertices);
-//  void mapBoundaryConnection(int is, int ie, int js, int je, int ks, int ke, 
+//  void mapBoundaryConnection(PetscInt is, PetscInt ie, PetscInt js, 
+//                             PetscInt je, PetscInt ks, PetscInt ke, 
 //                            char *face);
-  void mapSource(int is, int ie, int js, int je, int ks, int ke);
-  void setUpCells(int num_cells, GridCell *cells);
-  void setUpVertices(int num_vertices, GridVertex *vertices);
+  void mapSource(PetscInt is, PetscInt ie, PetscInt js, PetscInt je, 
+                 PetscInt ks, PetscInt ke);
+  void setUpCells(PetscInt num_cells, GridCell *cells);
+  void setUpVertices(PetscInt num_vertices, GridVertex *vertices);
   void printDACorners();
   void printAO();
   
@@ -55,52 +57,54 @@ public:
   void getVectorGlobal(Vec *v);
   void getVectorNatural(Vec *v);
   void globalToNatural(Vec global, Vec natural);
-  int getNx();
-  int getNy();
-  int getNz();
-  int getN();
+  PetscInt getNx();
+  PetscInt getNy();
+  PetscInt getNz();
+  PetscInt getN();
 
-  int getNeighboringProcessor(int direction);
-  void sendFlag(int *flag, int direction);
-  void receiveFlag(int *flag, int direction);
+  PetscInt getNeighboringProcessor(PetscInt direction);
+  void sendFlag(PetscInt *flag, PetscInt direction);
+  void receiveFlag(PetscInt *flag, PetscInt direction);
 
-  void getCorners(int *xs, int *ys, int *zs, int *nx, int *ny, int *nz);
-  void getGhostCorners(int *xs, int *ys, int *zs, int *nx, int *ny, int *nz);
+  void getCorners(PetscInt *xs, PetscInt *ys, PetscInt *zs, 
+                  PetscInt *nx, PetscInt *ny, PetscInt *nz);
+  void getGhostCorners(PetscInt *xs, PetscInt *ys, PetscInt *zs, 
+                       PetscInt *nx, PetscInt *ny, PetscInt *nz);
   
-  int getGnx();
-  int getGny();
-  int getGnz();
-  int getGxs();
-  int getGys();
-  int getGzs();
-  int getGxe();
-  int getGye();
-  int getGze();
+  PetscInt getGnx();
+  PetscInt getGny();
+  PetscInt getGnz();
+  PetscInt getGxs();
+  PetscInt getGys();
+  PetscInt getGzs();
+  PetscInt getGxe();
+  PetscInt getGye();
+  PetscInt getGze();
  
-  double getDx(int i);
-  double getDy(int j);
-  double getDz(int k);
-  double *getOriginPtr();
-  double getRotationDegrees();
+  PetscReal getDx(PetscInt i);
+  PetscReal getDy(PetscInt j);
+  PetscReal getDz(PetscInt k);
+  PetscReal *getOriginPtr();
+  PetscReal getRotationDegrees();
   void computeGridSpacingFromCellCentroids(GridCell *cells);
   
-  void convertLocalCellDataGtoN(double *data);
-  int *getLocalCellVertexNaturalIDs(GridCell *cells, GridVertex *vertices);
+  void convertLocalCellDataGtoN(PetscReal *data);
+  PetscInt *getLocalCellVertexNaturalIDs(GridCell *cells, GridVertex *vertices);
 
 private:
 
-  int nx, ny, nz, fdof, tdof;
-  double *dx, *dy, *dz;
-  double *ldx, *ldy, *ldz;
-  double *gdx, *gdy, *gdz;
-  double local_origin[3];
-  double global_origin[3];
-  double rotationZdegrees, rotationZradians;
+  PetscInt nx, ny, nz, fdof, tdof;
+  PetscReal *dx, *dy, *dz;
+  PetscReal *ldx, *ldy, *ldz;
+  PetscReal *gdx, *gdy, *gdz;
+  PetscReal local_origin[3];
+  PetscReal global_origin[3];
+  PetscReal rotationZdegrees, rotationZradians;
   DA da;
-  int gnx, gny, gnz, lnx, lny, lnz;
-  int gxs, gys, gzs, lxs, lys, lzs;
-  int gxe, gye, gze, lxe, lye, lze;
-  int lnxXny, gnxXny;
+  PetscInt gnx, gny, gnz, lnx, lny, lnz;
+  PetscInt gxs, gys, gzs, lxs, lys, lzs;
+  PetscInt gxe, gye, gze, lxe, lye, lze;
+  PetscInt lnxXny, gnxXny;
 };
 
 #endif /*STRUCTUREDGRID_H_*/

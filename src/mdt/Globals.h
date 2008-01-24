@@ -8,24 +8,24 @@
 #define BOTTOM 5 
 #define TOP 6 
 
-extern int myrank;
-extern int commsize;
+extern PetscMPIInt myrank;
+extern PetscMPIInt commsize;
 
-const double density0 = 998.32;
-const double viscosity0 = 8.9e-4;
-//const double gravity = 9.8068;
-const double gravity = 9.81;
-const double Ss = 1.e-6;  // specific storage (m^-1)
-//const double gravity = 0.;
-const double patm = 101325.;
-const double p_threshhold = 0.03*gravity*density0;
-const double permeability0 = 1.e-12;
-const double porosity0 = 0.33;
-const double betap = -4./(density0*gravity);
+const PetscReal density0 = 998.32;
+const PetscReal viscosity0 = 8.9e-4;
+//const PetscReal gravity = 9.8068;
+const PetscReal gravity = 9.81;
+const PetscReal Ss = 1.e-6;  // specific storage (m^-1)
+//const PetscReal gravity = 0.;
+const PetscReal patm = 101325.;
+const PetscReal p_threshhold = 0.03*gravity*density0;
+const PetscReal permeability0 = 1.e-12;
+const PetscReal porosity0 = 0.33;
+const PetscReal betap = -4./(density0*gravity);
 
-const double perm_to_hc = density0*gravity/viscosity0;
-const double hc_to_perm = 1./perm_to_hc;
-const double day_to_sec = 24.*3600.;
+const PetscReal perm_to_hc = density0*gravity/viscosity0;
+const PetscReal hc_to_perm = 1./perm_to_hc;
+const PetscReal day_to_sec = 24.*3600.;
 
 #define ZERO_FLAG             ((unsigned long int) 0)        
 #define WEST_DIR_WEST_FACE      ((unsigned long int) (1 << 0)) 

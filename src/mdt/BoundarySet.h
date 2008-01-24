@@ -17,13 +17,13 @@ public:
 
   void addConnection(Connection *new_connection);
   void convertListToArray();
-  int getNumberOfConnectionsLocal();
-  int getNumberOfConnectionsGlobal();
+  PetscInt getNumberOfConnectionsLocal();
+  PetscInt getNumberOfConnectionsGlobal();
   void setCondition(Condition *condition_);
-  int *getCellIdsLocal();
-  int *getCellIdsLocal1Based();
-  int *getFaceIdsLocal();
-  int *getFaceVertexIds(int ivert);
+  PetscInt *getCellIdsLocal();
+  PetscInt *getCellIdsLocal1Based();
+  PetscInt *getFaceIdsLocal();
+  PetscInt *getFaceVertexIds(PetscInt ivert);
   void printInfo();
 
   Connection *list;
@@ -36,7 +36,7 @@ private:
   Connection *end_of_list;
   Connection **_array;
   Connection *connections;
-  int num_connections_local;
+  PetscInt num_connections_local;
 
 };
 

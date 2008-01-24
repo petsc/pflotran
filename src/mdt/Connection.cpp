@@ -1,6 +1,6 @@
 #include "Connection.h"
 
-//Connection::Connection(int icell, int iface) {
+//Connection::Connection(PetscInt icell, PetscInt iface) {
 //
 //  cell = icell;
 //  face = iface;
@@ -8,38 +8,38 @@
 //
 //}
 
-Connection::Connection(int icell, int *vertices_) {
+Connection::Connection(PetscInt icell, PetscInt *vertices_) {
 
   cell = icell;
-  for (int i=0; i<=vertices_[0]; i++)
+  for (PetscInt i=0; i<=vertices_[0]; i++)
     vertices[i] = vertices_[i];
   next = NULL;
 
 }
 
-Connection::Connection(int icell, int *vertices_, int iface) {
+Connection::Connection(PetscInt icell, PetscInt *vertices_, PetscInt iface) {
 
   cell = icell;
   face = iface;
-  for (int i=0; i<=vertices_[0]; i++)
+  for (PetscInt i=0; i<=vertices_[0]; i++)
     vertices[i] = vertices_[i];
   next = NULL;
 
 }
 
-int Connection::getFaceVertex(int ivert) {
+PetscInt Connection::getFaceVertex(PetscInt ivert) {
   if (ivert <= vertices[0]) return vertices[ivert+1];
   else return -1;
 }
 
-int Connection::getFace() {
+PetscInt Connection::getFace() {
   return face;
 }
 
 void Connection::printInfo() {
 //  PetscPrintf(PETSC_COMM_WORLD,"cell: %d   face %d%",cell,face);
   printf("cell: %d   vertices",cell);
-  for (int i=0; i<vertices[0]; i++)
+  for (PetscInt i=0; i<vertices[0]; i++)
     printf(" %d",vertices[i+1]);
   printf("\n");
 }

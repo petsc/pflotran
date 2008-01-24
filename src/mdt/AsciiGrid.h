@@ -12,19 +12,19 @@ class AsciiGrid {
 public:
   AsciiGrid();
   AsciiGrid(char *filename);
-  AsciiGrid(char *name_, int ncols_, int nrows_, double xllcorner_, 
-            double yllcorner_, double cellsize_, double nodata_, 
-            double default_elev_, int material_id_);
+  AsciiGrid(char *name_, PetscInt ncols_, PetscInt nrows_, PetscReal xllcorner_, 
+            PetscReal yllcorner_, PetscReal cellsize_, PetscReal nodata_, 
+            PetscReal default_elev_, PetscInt material_id_);
   virtual ~AsciiGrid();
 
   void nullify();
   void setName(char *name_);
-  void setMaterialId(int id);
+  void setMaterialId(PetscInt id);
   void getName(char *name_);
-  int getMaterialId();
+  PetscInt getMaterialId();
   void readAsciiGridFile(char *filename);
   void computeCoordinates();
-  double computeElevationFromCoordinate(double x, double y);
+  PetscReal computeElevationFromCoordinate(PetscReal x, PetscReal y);
   void printInfo();
 
   static int nasciigrids;
@@ -32,17 +32,17 @@ public:
 //private:
 
   char name[32];
-  int ncols;
-  int nrows;
-  int ndata;
-  double xllcorner;
-  double yllcorner;
-  double nodata;
-  double cellsize;
-  double *values;
-  double *xcoord;
-  double *ycoord;
-  int material_id;
+  PetscInt ncols;
+  PetscInt nrows;
+  PetscInt ndata;
+  PetscReal xllcorner;
+  PetscReal yllcorner;
+  PetscReal nodata;
+  PetscReal cellsize;
+  PetscReal *values;
+  PetscReal *xcoord;
+  PetscReal *ycoord;
+  PetscInt material_id;
 
 };
 

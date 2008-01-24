@@ -10,15 +10,15 @@ Source::Source() {
   next = NULL;
 }
 
-void Source::setId(int i) { idlocal = i; }
-void Source::setScalar(double d) { scalar = d; }
+void Source::setId(PetscInt i) { idlocal = i; }
+void Source::setScalar(PetscReal d) { scalar = d; }
 void Source::setType(char *str) { 
   type = new char[32]; 
   strcpy(type,str);
 }
 
-int Source::getId() { return idlocal; }
-double Source::getScalar() { return scalar; }
+PetscInt Source::getId() { return idlocal; }
+PetscReal Source::getScalar() { return scalar; }
 char *Source::getTypePtr() { return &type[0]; }
 Source *Source::getNext() { return next; };
  

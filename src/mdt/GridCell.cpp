@@ -10,53 +10,53 @@ GridCell::GridCell() {
   volume = -999.;
   porosity = -999.;
 
-  for (int i=0; i<3; i++) {
+  for (PetscInt i=0; i<3; i++) {
     centroid[i] = -999.;
     permeability[i] = -999.;
   }
   vertices[0] = 0;
-  for (int i=1; i<9; i++)
+  for (PetscInt i=1; i<9; i++)
     vertices[i] = -999;
 
 }
 
-void GridCell::setIdLocal(int i) { id_local = i; }
-void GridCell::setIdGhosted(int i) { id_ghosted = i; }
-void GridCell::setIdNatural(int i) { id_natural = i; }
-void GridCell::setCentroid(double x, double y, double z) {
+void GridCell::setIdLocal(PetscInt i) { id_local = i; }
+void GridCell::setIdGhosted(PetscInt i) { id_ghosted = i; }
+void GridCell::setIdNatural(PetscInt i) { id_natural = i; }
+void GridCell::setCentroid(PetscReal x, PetscReal y, PetscReal z) {
   centroid[0] = x;
   centroid[1] = y;
   centroid[2] = z;
 }
-void GridCell::setX(double x) { centroid[0] = x; }
-void GridCell::setY(double y) { centroid[1] = y; }
-void GridCell::setZ(double z) { centroid[2] = z; }
-void GridCell::setVolume(double d) { volume = d; }
-void GridCell::setPermX(double d) { permeability[0] = d; }
-void GridCell::setPermY(double d) { permeability[1] = d; }
-void GridCell::setPermZ(double d) { permeability[2] = d; }
-void GridCell::setPorosity(double d) { porosity = d; }
-void GridCell::setMaterialId(int i) { material_id = i; }
-void GridCell::setActive(int i) { active = i; }
+void GridCell::setX(PetscReal x) { centroid[0] = x; }
+void GridCell::setY(PetscReal y) { centroid[1] = y; }
+void GridCell::setZ(PetscReal z) { centroid[2] = z; }
+void GridCell::setVolume(PetscReal d) { volume = d; }
+void GridCell::setPermX(PetscReal d) { permeability[0] = d; }
+void GridCell::setPermY(PetscReal d) { permeability[1] = d; }
+void GridCell::setPermZ(PetscReal d) { permeability[2] = d; }
+void GridCell::setPorosity(PetscReal d) { porosity = d; }
+void GridCell::setMaterialId(PetscInt i) { material_id = i; }
+void GridCell::setActive(PetscInt i) { active = i; }
 void GridCell::setActive() { active = 1; }
 void GridCell::setInactive() { active = 0; }
 void GridCell::negateMaterialId() { material_id = -abs(material_id); }
 
-int GridCell::getIdLocal() { return id_local; }
-int GridCell::getIdGhosted() { return id_ghosted; }
-int GridCell::getIdNatural() { return id_natural; }
-double *GridCell::getCentroidPtr() { return &centroid[0]; }
-double GridCell::getX() { return centroid[0]; }
-double GridCell::getY() { return centroid[1]; }
-double GridCell::getZ() { return centroid[2]; }
-double GridCell::getVolume() { return volume; }
-double GridCell::getPermX() { return permeability[0]; }
-double GridCell::getPermY() { return permeability[1]; }
-double GridCell::getPermZ() { return permeability[2]; }
-int GridCell::getMaterialId() { return material_id; }
-int GridCell::getActive() { return active; }
+PetscInt GridCell::getIdLocal() { return id_local; }
+PetscInt GridCell::getIdGhosted() { return id_ghosted; }
+PetscInt GridCell::getIdNatural() { return id_natural; }
+PetscReal *GridCell::getCentroidPtr() { return &centroid[0]; }
+PetscReal GridCell::getX() { return centroid[0]; }
+PetscReal GridCell::getY() { return centroid[1]; }
+PetscReal GridCell::getZ() { return centroid[2]; }
+PetscReal GridCell::getVolume() { return volume; }
+PetscReal GridCell::getPermX() { return permeability[0]; }
+PetscReal GridCell::getPermY() { return permeability[1]; }
+PetscReal GridCell::getPermZ() { return permeability[2]; }
+PetscInt GridCell::getMaterialId() { return material_id; }
+PetscInt GridCell::getActive() { return active; }
 
-void GridCell::getHexFaceVertices(int face, int *vertex_list) {
+void GridCell::getHexFaceVertices(PetscInt face, PetscInt *vertex_list) {
   vertex_list[0] = 4;
   if (face == WEST) {
     vertex_list[1] = vertices[1];
@@ -99,7 +99,7 @@ void GridCell::getHexFaceVertices(int face, int *vertex_list) {
 void GridCell::printInfo() {
   printf("lid: %d gid: %d nid: %d - vertices[%1d]:",id_local,id_ghosted,
          id_natural,vertices[0]);
-  for (int i=1; i<=vertices[0]; i++)
+  for (PetscInt i=1; i<=vertices[0]; i++)
     printf(" %d",vertices[i]);
   printf("\n");
   printf("x: %f  y: %f  z: %f\n",centroid[0],centroid[1],centroid[2]);

@@ -1,8 +1,8 @@
 #include "include/petsc.h"
 #include "include/petscda.h"
 
-int myrank = 0;
-int commsize = 0;
+PetscMPIInt myrank = 0;
+PetscMPIInt commsize = 0;
 
 #include "Globals.h"
 #include "Grid.h"

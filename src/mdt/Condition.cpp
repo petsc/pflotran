@@ -14,20 +14,20 @@ Condition::Condition(char *filename) {
   file->getLine();
   file->readInt(&max_time_index);
   file->getLine();
-  for (int i=0; i<3; i++)
+  for (PetscInt i=0; i<3; i++)
     file->readDouble(&datum[i]);
   file->getLine();
-  for (int i=0; i<3; i++)
+  for (PetscInt i=0; i<3; i++)
     file->readDouble(&gradient[i]);
-  times = new double[max_time_index];
-  scalars = new double[max_time_index];
-  for (int i=0; i<max_time_index; i++) {
+  times = new PetscReal[max_time_index];
+  scalars = new PetscReal[max_time_index];
+  for (PetscInt i=0; i<max_time_index; i++) {
     file->getLine();
     file->readDouble(&(times[i]));
     file->readDouble(&(scalars[i]));
   }
   delete file;
-  int len = strcspn(filename,".");
+  PetscInt len = strcspn(filename,".");
   strncpy(name,filename,len);
   name[len] = '\0';
   addToList();
@@ -40,15 +40,15 @@ Condition::Condition(Condition *old_condition) {
   ctype = new char[MAXWORDLENGTH];
   strcpy(old_condition->ctype,ctype);
   cur_value = old_condition->cur_value;
-  for (int i=0; i<3; i++) {
+  for (PetscInt i=0; i<3; i++) {
     datum[i] = old_condition->datum[i];
     gradient[i] = old_condition->gradient[i];
   }
   id = old_condition->id;
   max_time_index = old_condition->max_time_index;
-  times = new double[max_time_index];
-  scalars = new double[max_time_index];
-  for (int i=0; i<max_time_index; i++) {
+  times = new PetscReal[max_time_index];
+  scalars = new PetscReal[max_time_index];
+  for (PetscInt i=0; i<max_time_index; i++) {
     times[i] = old_condition->times[i];
     scalars[i] = old_condition->scalars[i];
   }
@@ -60,7 +60,7 @@ void Condition::nullify() {
   ctype = new char[MAXWORDLENGTH];
   cur_time_index = 0;
   cur_value = -999.;
-  for (int i=0; i<3; i++) {
+  for (PetscInt i=0; i<3; i++) {
     datum[i] = 0.;
     gradient[i] = 0.;
   }
@@ -80,8 +80,8 @@ void Condition::addToList() {
   num_conditions++;
 }
 
-void Condition::setId(int i) { id = i; }
-void Condition::setType(int i) { itype = i; }
+void Condition::setId(PetscInt i) { id = i; }
+void Condition::setType(PetscInt i) { itype = i; }
 void Condition::setType(char *str) { 
   if (!ctype) ctype = new char[32]; 
   strcpy(ctype,str);
@@ -89,29 +89,29 @@ void Condition::setType(char *str) {
 void Condition::setTimeUnit(char *str) { 
   strcpy(time_unit,str);
 }
-void Condition::setDatum(double *d) { 
+void Condition::setDatum(PetscReal *d) { 
   datum[0] = d[0];
   datum[1] = d[1];
   datum[2] = d[2];
 }
-void Condition::setGradient(double *d) { 
+void Condition::setGradient(PetscReal *d) { 
   gradient[0] = d[0];
   gradient[1] = d[1];
   gradient[2] = d[2];
 }
 
-int Condition::getId() { return id; }
-int Condition::getType() { return itype; }
+PetscInt Condition::getId() { return id; }
+PetscInt Condition::getType() { return itype; }
 char *Condition::getTypePtr() { return &ctype[0]; }
 char *Condition::getTimeUnitPtr() { return &time_unit[0]; }
-double *Condition::getDatumPtr() { return &datum[0]; }
-double *Condition::getGradientPtr() { return &gradient[0]; }
+PetscReal *Condition::getDatumPtr() { return &datum[0]; }
+PetscReal *Condition::getGradientPtr() { return &gradient[0]; }
 char *Condition::getName() { return &name[0]; }
 Condition *Condition::getNext() { return next; };
  
 void Condition::convertListToArray() {
 
-  int count = 0;
+  PetscInt count = 0;
   _array = new Condition *[num_conditions];
 
   Condition *cur_condition = list;
@@ -121,12 +121,12 @@ void Condition::convertListToArray() {
   }
 }
 
-void Condition::updateConditions(double time) {
+void Condition::updateConditions(PetscReal time) {
 
-  for (int icond=0; icond<num_conditions; icond++) {
+  for (PetscInt icond=0; icond<num_conditions; icond++) {
     
-    int cur_time_index = _array[icond]->cur_time_index;
-    int next_time_index = min(cur_time_index+1,
+    PetscInt cur_time_index = _array[icond]->cur_time_index;
+    PetscInt next_time_index = min(cur_time_index+1,
                               _array[icond]->max_time_index);
 
     // ensure that condition has started
@@ -143,7 +143,7 @@ void Condition::updateConditions(double time) {
 
       // interpolate value based on time
       if (cur_time_index < _array[icond]->max_time_index) {
-        double time_fraction = 
+        PetscReal time_fraction = 
           (time-_array[icond]->times[cur_time_index])/
           (_array[icond]->times[next_time_index]-
            _array[icond]->times[cur_time_index]);
@@ -161,7 +161,7 @@ void Condition::updateConditions(double time) {
 
 void Condition::initializeConditions() {
 
-  for (int icond=0; icond<num_conditions; icond++) {
+  for (PetscInt icond=0; icond<num_conditions; icond++) {
 
     if (!strcmp("dirichlet",_array[icond]->ctype))
       _array[icond]->itype = 1;
@@ -179,21 +179,21 @@ void Condition::initializeConditions() {
   }
 }
 
-double Condition::computeHydrostaticPressure(double *coord) {
-  double dx = coord[0]-datum[0];
-  double dy = coord[1]-datum[1];
-  double dz = coord[2]-datum[2];
+PetscReal Condition::computeHydrostaticPressure(PetscReal *coord) {
+  PetscReal dx = coord[0]-datum[0];
+  PetscReal dy = coord[1]-datum[1];
+  PetscReal dz = coord[2]-datum[2];
   return cur_value + dx*gradient[0] + dy*gradient[1] + dz*gradient[2];
 }
 
 void Condition::printInfo() {
 /*
-    int idlocal;
-  double area;
-  double center[3],dist[3];
-  double normal[3];
+    PetscInt idlocal;
+  PetscReal area;
+  PetscReal center[3],dist[3];
+  PetscReal normal[3];
   char *type;
-  double scalar;
+  PetscReal scalar;
   Condition *next;
 */  
   printf("\n  id: %5d\n",id);

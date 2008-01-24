@@ -9,9 +9,9 @@ FileIO::FileIO(char *filename) {
 
 }
 
-int FileIO::getLine() {
+PetscInt FileIO::getLine() {
 
-  int ierr = 0;
+  PetscInt ierr = 0;
   delete buffer;
 
   while(1) {
@@ -26,20 +26,20 @@ int FileIO::getLine() {
 
 }
 
-int FileIO::getInputLine() {
+PetscInt FileIO::getInputLine() {
 
   return getLine();
 
 }
 
-int FileIO::readDouble(double *d) {
+PetscInt FileIO::readDouble(PetscReal *d) {
 
   *buffer >> *d;
   return buffer->fail() ? 0 : 1;
   
 }
 
-int FileIO::readInt(int *i) {
+PetscInt FileIO::readInt(PetscInt *i) {
 
   *buffer >> *i;
 
@@ -47,7 +47,7 @@ int FileIO::readInt(int *i) {
   
 }
 
-int FileIO::readWord(char *word) {
+PetscInt FileIO::readWord(char *word) {
 
   /* Remove any preceding spaces(32), tabs(9), or commas(44) etc */
   char c;
@@ -73,7 +73,7 @@ int FileIO::readWord(char *word) {
 
 }
 
-int FileIO::readQuotedWords(char *words) {
+PetscInt FileIO::readQuotedWords(char *words) {
 
   /* Remove any preceding spaces(32), tabs(9), or commas(44) etc */
   char c;
@@ -106,7 +106,7 @@ int FileIO::readQuotedWords(char *words) {
 
 }
 
-int FileIO::removeQuotes(char *str) {
+PetscInt FileIO::removeQuotes(char *str) {
 
   /* Remove all quotes */
   string str2;
@@ -121,9 +121,9 @@ int FileIO::removeQuotes(char *str) {
 
 }
 
-int FileIO::findStringInFile(char *card) {
+PetscInt FileIO::findStringInFile(char *card) {
 
-  int ierr = 0;
+  PetscInt ierr = 0;
 
   file.seekg(0,ios::beg);
   size_t len = strlen(card);
@@ -139,23 +139,23 @@ int FileIO::findStringInFile(char *card) {
   return found==string::npos ? 0 : 1;
 }
 
-int FileIO::comparesTo(char *str) {
+PetscInt FileIO::comparesTo(char *str) {
   string str2 = buffer->str();
   return str2.compare(str);
 }
 
-int FileIO::startsWith(char *str) {
+PetscInt FileIO::startsWith(char *str) {
   return comparesTo(str);
 }
 
-void FileIO::checkDefaultMessage(char *word, int *ierr) {
+void FileIO::checkDefaultMessage(char *word, PetscErrorCode *ierr) {
 
   if (ierr) cout << "\"" << word << "\" set to default value" << endl;
   *ierr = 0;
 
 }
 
-void FileIO::checkErrorMessage(char *word1, char *word2, int ierr) {
+void FileIO::checkErrorMessage(char *word1, char *word2, PetscErrorCode ierr) {
 
   if (ierr) {
     cout << "Error reading \"" << word1 << "\" under keyword \"" << word2 << 
@@ -165,7 +165,7 @@ void FileIO::checkErrorMessage(char *word1, char *word2, int ierr) {
 
 }
 
-void FileIO::checkLineErrorMessage(char *word, int ierr) {
+void FileIO::checkLineErrorMessage(char *word, PetscErrorCode ierr) {
 
   if (ierr) {
     cout << "Error reading in string in \"" << word << "\"." << endl;
@@ -176,8 +176,8 @@ void FileIO::checkLineErrorMessage(char *word, int ierr) {
 
 void FileIO::toUpper(char *str) {
 
-  int len = (int)strlen(str);
-  for (int i=0; i < len; i++) {
+  PetscInt len = (PetscInt)strlen(str);
+  for (PetscInt i=0; i < len; i++) {
     str[i] = toupper(str[i]);
   }
 
@@ -185,8 +185,8 @@ void FileIO::toUpper(char *str) {
 
 void FileIO::toLower(char *str) {
 
-  int len = (int)strlen(str);
-  for (int i=0; i < len; i++) {
+  PetscInt len = (PetscInt)strlen(str);
+  for (PetscInt i=0; i < len; i++) {
     str[i] = tolower(str[i]);
   }
 

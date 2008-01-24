@@ -22,7 +22,7 @@ void BoundarySet::addConnection(Connection *new_connection) {
 }
 
 void BoundarySet::convertListToArray() {
-  int count = 0;
+  PetscInt count = 0;
   Connection **_array = new Connection *[num_connections_local];
 
   Connection *cur_connection = list;
@@ -32,20 +32,20 @@ void BoundarySet::convertListToArray() {
   }
 }
 
-int BoundarySet::getNumberOfConnectionsLocal() { 
+PetscInt BoundarySet::getNumberOfConnectionsLocal() { 
   return num_connections_local; 
 }
 
-int BoundarySet::getNumberOfConnectionsGlobal() { 
-  int num_connections_global = 0;
+PetscInt BoundarySet::getNumberOfConnectionsGlobal() { 
+  PetscMPIInt num_connections_global = 0;
   MPI_Allreduce(&num_connections_local,&num_connections_global,1,MPI_INTEGER,
                 MPI_SUM,PETSC_COMM_WORLD);
-  return num_connections_global;
+  return (PetscInt) num_connections_global;
 }
 
-int *BoundarySet::getCellIdsLocal() {
-  int count = 0;
-  int *cell_ids = new int[num_connections_local];
+PetscInt *BoundarySet::getCellIdsLocal() {
+  PetscInt count = 0;
+  PetscInt *cell_ids = new PetscInt[num_connections_local];
   Connection *cur_connection = list;
   while (cur_connection) {
     cell_ids[count++] = cur_connection->cell;
@@ -58,15 +58,15 @@ int *BoundarySet::getCellIdsLocal() {
 }
 
 int *BoundarySet::getCellIdsLocal1Based() {
-  int *cell_ids = getCellIdsLocal();
-  for (int i=0; i<num_connections_local; i++)
+  PetscInt *cell_ids = getCellIdsLocal();
+  for (PetscInt i=0; i<num_connections_local; i++)
     cell_ids[i] ++;
   return cell_ids;
 }
 
-int *BoundarySet::getFaceIdsLocal() {
-  int count = 0;
-  int *face_ids = new int[num_connections_local];
+PetscInt *BoundarySet::getFaceIdsLocal() {
+  PetscInt count = 0;
+  PetscInt *face_ids = new PetscInt[num_connections_local];
   Connection *cur_connection = list;
   while (cur_connection) {
     face_ids[count++] = cur_connection->face;
@@ -78,9 +78,9 @@ int *BoundarySet::getFaceIdsLocal() {
   return face_ids;
 }
 
-int *BoundarySet::getFaceVertexIds(int ivert) {
-  int count = 0;
-  int *vertex_ids = new int[num_connections_local];
+PetscInt *BoundarySet::getFaceVertexIds(PetscInt ivert) {
+  PetscInt count = 0;
+  PetscInt *vertex_ids = new PetscInt[num_connections_local];
   Connection *cur_connection = list;
   while (cur_connection) {
     vertex_ids[count++] = cur_connection->getFaceVertex(ivert);

@@ -145,8 +145,9 @@ void HDF::setHyperSlab(int n) {
 }
 
 void HDF::setHyperSlab(int n, int stride0) {
-  int offset = 0;
-  MPI_Exscan(&n,&offset,1,MPI_INT,MPI_SUM,PETSC_COMM_WORLD);
+  PetscMPIInt offset = 0;
+  PetscMPIInt mpi_n = (PetscMPIInt)n;
+  MPI_Exscan(&mpi_n,&offset,1,MPI_INT,MPI_SUM,PETSC_COMM_WORLD);
   int start[3] = {0,0,0};
   int stride[3] = {1,1,1};
   int count[3] = {1,1,1};
@@ -199,7 +200,7 @@ void HDF::setHyperSlab(int *start, int *stride, int *count, int *block) {
                                hyperslab_start,
                                hyperslab_stride,hyperslab_count,NULL);
 
-//  int myrank;
+//  PetscMPIInt myrank;
 //  MPI_Comm_rank(PETSC_COMM_WORLD,&myrank);
 //  printf("%d %d %d\n",myrank,(int)hyperslab_start[0],(int)hyperslab_count[0]);
 //  printf("%d H5Sselect_hyperslab %d\n", myrank,status);
@@ -278,7 +279,7 @@ void HDF::writeInt(int *values, int collective) {
     if (collective) {
       PetscErrorCode ierr;
     }
-    int myrank;
+    PetscMPIInt myrank;
     MPI_Comm_rank(PETSC_COMM_WORLD,&myrank);
     hsize_t dims[3];
     int rank = H5Sget_simple_extent_dims(memory_space_id,dims,NULL);
@@ -322,7 +323,7 @@ void HDF::writeDouble(double *values, int collective) {
 /*
     printDataSpaceInfo(); 
     PetscErrorCode ierr;
-    int myrank;
+    PetscMPIInt myrank;
     MPI_Comm_rank(PETSC_COMM_WORLD,&myrank);
     hsize_t dims[3];
     int rank = H5Sget_simple_extent_dims(memory_space_id,dims,NULL);
@@ -350,7 +351,7 @@ void HDF::writeDouble(double *values, int collective) {
 }
 
 void HDF::printDataSpaceInfo() {
-  int myrank;
+  PetscMPIInt myrank;
   MPI_Comm_rank(PETSC_COMM_WORLD,&myrank);
   hsize_t dims[3];
   char string[512];
