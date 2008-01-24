@@ -3,24 +3,26 @@ module Waypoint_module
   use Option_module
   
   implicit none
-
+  
   private
+
+#include "include/finclude/petsc.h"
 
   ! linked-list for waypoints in the simulation
   type, public :: waypoint_type
-    real*8 :: time
+    PetscReal :: time
     logical :: print_output
     type(output_option_type), pointer :: output_option
     logical :: update_bcs
     logical :: update_srcs
-    real*8 :: dt_max
+    PetscReal :: dt_max
     logical :: final  ! any waypoint after this will be deleted
     type(waypoint_type), pointer :: prev
     type(waypoint_type), pointer :: next
   end type waypoint_type
   
   type, public :: waypoint_list_type
-    integer :: num_waypoints
+    PetscInt :: num_waypoints
     type(waypoint_type), pointer :: first
     type(waypoint_type), pointer :: last
     type(waypoint_type), pointer :: array(:)    
@@ -107,12 +109,12 @@ subroutine WaypointInsertInList(new_waypoint,waypoint_list)
 
   type(waypoint_type), pointer :: waypoint
 
-!    real*8 :: time
+!    PetscReal :: time
 !    logical :: print_output
 !    type(output_option_type), pointer :: output_option
 !    logical :: update_bcs
 !    logical :: update_srcs
-!    real*8 :: dt_max
+!    PetscReal :: dt_max
     
     ! place new waypoint in proper location within list
   waypoint => waypoint_list%first
@@ -182,7 +184,7 @@ subroutine WaypointListFillIn(option,waypoint_list)
   type(waypoint_list_type) :: waypoint_list
   
   type(waypoint_type), pointer :: waypoint, prev_waypoint
-  real*8 :: dt_max = -999.d0
+  PetscReal :: dt_max = -999.d0
   
   ! find first value of dt_max > 0.d0 in list
   waypoint => waypoint_list%first
@@ -227,7 +229,7 @@ subroutine WaypointConvertTimes(waypoint_list,time_conversion)
   implicit none
   
   type(waypoint_list_type) :: waypoint_list
-  real*8 :: time_conversion
+  PetscReal :: time_conversion
   
   type(waypoint_type), pointer :: waypoint
   
@@ -300,12 +302,12 @@ subroutine WaypointMerge(old_waypoint,new_waypoint)
 
   new_waypoint%time = 0.d0
 
-!    real*8 :: time
+!    PetscReal :: time
 !    logical :: print_output
 !    type(output_option_type), pointer :: output_option
 !    logical :: update_bcs
 !    logical :: update_srcs
-!    real*8 :: dt_max
+!    PetscReal :: dt_max
 
   if (old_waypoint%print_output .or. new_waypoint%print_output) then
     old_waypoint%print_output = .true.
@@ -383,7 +385,7 @@ function WaypointSkipToTime(list,time)
   implicit none
 
   type(waypoint_list_type), pointer :: list
-  real*8 :: time
+  PetscReal :: time
 
   type(waypoint_type), pointer :: WaypointSkipToTime
   type(waypoint_type), pointer :: waypoint

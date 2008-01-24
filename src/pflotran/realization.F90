@@ -15,6 +15,7 @@ module Realization_module
 private
 
 #include "definitions.h"
+#include "include/finclude/petsc.h"
 
   type, public :: realization_type
 
@@ -229,7 +230,7 @@ subroutine RealizationInitCouplerAuxVars(realization,coupler_list)
   type(realization_type) :: realization
   type(coupler_list_type) :: coupler_list
   
-  integer :: num_connections
+  PetscInt :: num_connections
   logical :: force_update_flag
   
   type(option_type), pointer :: option
@@ -294,7 +295,7 @@ subroutine RealizationUpdateCouplerAuxVars(realization,coupler_list, &
   
   type(coupler_type), pointer :: coupler
   
-  integer :: idof, num_connections
+  PetscInt :: idof, num_connections
  
   coupler => coupler_list%first
   
@@ -373,7 +374,7 @@ subroutine RealizationAddWaypointsToList(realization,waypoint_list)
   character(len=MAXSTRINGLENGTH) :: string
   type(coupler_type), pointer :: coupler
   type(waypoint_type), pointer :: waypoint
-  integer :: itime
+  PetscInt :: itime
 
 #if 0  
   ! Ignore boundary conditions for now

@@ -43,10 +43,10 @@ private
 #include "include/finclude/petscis.h90"
 #include "include/finclude/petsclog.h"
 
-  real*8, parameter :: formeps   = 5.D-6
-  real*8, parameter :: eps       = 1.D-5
-  real*8, parameter :: floweps   = 1.D-24
-  real*8, parameter :: satcuteps = 1.D-5
+  PetscReal, parameter :: formeps   = 5.D-6
+  PetscReal, parameter :: eps       = 1.D-5
+  PetscReal, parameter :: floweps   = 1.D-24
+  PetscReal, parameter :: satcuteps = 1.D-5
 
   public TTPHASEResidual, TTPHASEJacobian, pflow_2phase_initaccum, &
   pflow_update_2phase,pflow_2phase_initadj,TTPHASESolutionBC, &
@@ -61,9 +61,9 @@ private
     Vec, intent(in) :: xx
 
     type(pflowGrid), intent(inout) :: grid
-    integer ierr
-    PetscScalar, pointer :: xx_p(:)
-    integer*4 n
+    PetscInt :: ierr
+    PetscReal, pointer :: xx_p(:)
+    PetscInt n
 
     call VecGetArrayF90(xx, xx_p, ierr)
  
@@ -88,11 +88,11 @@ private
   type(pflowGrid), intent(inout) :: grid
   Vec, intent(in) :: xx
 
-  PetscScalar, pointer :: xx_p(:), yy_p(:), iphase_p(:)
-  integer*4 :: n,n0
-  integer :: ierr,iipha
+  PetscReal, pointer :: xx_p(:), yy_p(:), iphase_p(:)
+  PetscInt :: n,n0
+  PetscInt :: ierr,iipha
 
-  real*8 :: pco2,p,tmp,xw
+  PetscReal :: pco2,p,tmp,xw
   
 #include "definitions.h"
 
@@ -184,11 +184,11 @@ private
   
   implicit none
  
-  integer, intent(out):: reason
+  PetscInt, intent(out):: reason
   type(pflowGrid), intent(inout) :: grid
-  PetscScalar, pointer :: xx_p(:)
-  integer*4 :: n,n0,re
-  integer re0, ierr
+  PetscReal, pointer :: xx_p(:)
+  PetscInt :: n,n0,re
+  PetscInt :: re0, ierr
 
   call VecGetArrayF90(grid%xx, xx_p, ierr); CHKERRQ(ierr)
 
@@ -234,21 +234,21 @@ private
     type(pflowGrid), intent(inout) :: grid
 
  
-  integer :: ierr
-  integer*4 :: n, ng, nc, nr
-  integer*4 :: i, i1, i2, j, jn, jng, jm1, jm2, jmu
-  integer*4 :: m, m1, m2, mu, n1, n2, ip1, ip2, p1, p2, t1, t2, c1, c2,&
+  PetscInt :: ierr
+  PetscInt :: n, ng, nc, nr
+  PetscInt :: i, i1, i2, j, jn, jng, jm1, jm2, jmu
+  PetscInt :: m, m1, m2, mu, n1, n2, ip1, ip2, p1, p2, t1, t2, c1, c2,&
              s1, s2
-  integer*4 :: kk1,kk2,jj1,jj2,ii1,ii2, kk, jj, ii
-  integer*4 :: i1_hencoeff, i2_hencoeff
-  integer*4 :: ibc  ! Index that specifies a boundary condition block
+  PetscInt :: kk1,kk2,jj1,jj2,ii1,ii2, kk, jj, ii
+  PetscInt :: i1_hencoeff, i2_hencoeff
+  PetscInt :: ibc  ! Index that specifies a boundary condition block
   
-! real*8 :: term1, term2, term3
+! PetscReal :: term1, term2, term3
 
 
-  PetscScalar, pointer ::accum_p(:)
+  PetscReal, pointer ::accum_p(:)
 
-  PetscScalar, pointer :: r_p(:), porosity_loc_p(:), volume_p(:), &
+  PetscReal, pointer :: r_p(:), porosity_loc_p(:), volume_p(:), &
                xx_loc_p(:), xx_p(:), &
                ddensity_p(:), ddensity_loc_p(:),&
                phis_p(:),  &
@@ -277,7 +277,7 @@ private
                df_c_p(:), df_c_loc_p(:),&
                df_s_p(:), df_s_loc_p(:)
                
-  PetscScalar, pointer :: pc_p(:), pc_loc_p(:),&
+  PetscReal, pointer :: pc_p(:), pc_loc_p(:),&
                           pc_p_p(:), pc_p_loc_p(:),&
                           pc_t_p(:), pc_t_loc_p(:),&
                           pc_c_p(:), pc_c_loc_p(:),&
@@ -288,28 +288,28 @@ private
                           kvr_c_p(:), kvr_c_loc_p(:),&
                           kvr_s_p(:), kvr_s_loc_p(:)
 
-  PetscScalar, pointer :: iphase_loc_p(:),icap_p(:),&
+  PetscReal, pointer :: iphase_loc_p(:),icap_p(:),&
                           icap_loc_p(:), ithrm_loc_p(:)
 
-  integer :: iicap,iiphase
+  PetscInt :: iicap,iiphase
 
-  real*8 :: dd1, dd2, eng, cond, den, &
+  PetscReal :: dd1, dd2, eng, cond, den, &
             eengl,eengg, &
             fluxcl,fluxcg,fluxe, fluxh, flux, gravity, fluxl,&
             fluxlh,fluxlv, fluxg,fluxgh,fluxgv, fluxv, q,  &
             v_darcy,hflx,pvoldt, voldt, accum, pvol
-  real*8 :: p_vapor,qu_rate,SSATW
-  real*8 :: dd, f1, f2, ff, por1, por2, perm1, perm2
-  real*8 :: Dphi,D0
-  real*8 :: Dq, Dk  ! "Diffusion" constant for a phase.
-  real*8 :: D1, D2  ! "Diffusion" constants at upstream, downstream faces.
-  real*8 :: sat_pressure  ! Saturation pressure of water.
-  real*8 :: dw_kg, dw_mol,density_ave,difff,diffl,diffg,difluxl,difluxg
-  real*8 :: tsrc1, qsrc1, csrc1, enth_src_h2o, enth_src_co2 !, qqsrc
-  real*8 :: cw,cw1,cw2, xxlw,xxla,xxgw,xxga
-  real*8 :: upweight
-  real*8 :: ukvr,uhh,uconc
-  real*8 :: dddt,dddp,fg,dfgdp,dfgdt,dhdt,dhdp,dvdt,dvdp, rho, visc
+  PetscReal :: p_vapor,qu_rate,SSATW
+  PetscReal :: dd, f1, f2, ff, por1, por2, perm1, perm2
+  PetscReal :: Dphi,D0
+  PetscReal :: Dq, Dk  ! "Diffusion" constant for a phase.
+  PetscReal :: D1, D2  ! "Diffusion" constants at upstream, downstream faces.
+  PetscReal :: sat_pressure  ! Saturation pressure of water.
+  PetscReal :: dw_kg, dw_mol,density_ave,difff,diffl,diffg,difluxl,difluxg
+  PetscReal :: tsrc1, qsrc1, csrc1, enth_src_h2o, enth_src_co2 !, qqsrc
+  PetscReal :: cw,cw1,cw2, xxlw,xxla,xxgw,xxga
+  PetscReal :: upweight
+  PetscReal :: ukvr,uhh,uconc
+  PetscReal :: dddt,dddp,fg,dfgdp,dfgdt,dhdt,dhdp,dvdt,dvdp, rho, visc
  
   grid%vvlbc=0.D0
   grid%vvgbc=0.D0
@@ -1866,44 +1866,44 @@ if((SSATG_LOC(m1)>eps).or.(SSATG_LOC(m2)>eps))then
     Vec, intent(in) :: xx
     Mat, intent(inout) :: A, B
     type(pflowGrid), intent(inout) :: grid
-   ! integer, intent(inout) :: flag
+   ! PetscInt, intent(inout) :: flag
     MatStructure flag
 
-    integer :: ierr
-    integer*4 :: n, ng, nc
-    integer*4 :: i1, i2, j, jn, jng, jm1, jm2,jmu
-    integer*4 :: m, m1, m2, mu, n1, n2, ip1, ip2 
-    integer*4 :: i1_hencoeff, i2_hencoeff,i1_hencoeff_dc,i2_hencoeff_dc, &
+    PetscInt :: ierr
+    PetscInt :: n, ng, nc
+    PetscInt :: i1, i2, j, jn, jng, jm1, jm2,jmu
+    PetscInt :: m, m1, m2, mu, n1, n2, ip1, ip2 
+    PetscInt :: i1_hencoeff, i2_hencoeff,i1_hencoeff_dc,i2_hencoeff_dc, &
                  iu_hencoeff, iu_hencoeff_dc
-    integer*4 :: p1,p2,t1,t2,c1,c2,s1,s2
-    integer*4 :: ibc  ! Index that specifies a boundary condition block.
-    real*8 ::  v_darcy, q
+    PetscInt :: p1,p2,t1,t2,c1,c2,s1,s2
+    PetscInt :: ibc  ! Index that specifies a boundary condition block.
+    PetscReal ::  v_darcy, q
 
-    PetscScalar, pointer :: porosity_loc_p(:), volume_p(:), &
+    PetscReal, pointer :: porosity_loc_p(:), volume_p(:), &
                xx_loc_p(:), &
                ddensity_loc_p(:),&
                phis_p(:),  &
                perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
                
-!   PetscScalar, pointer :: d_p_p(:), d_p_loc_p(:), &
+!   PetscReal, pointer :: d_p_p(:), d_p_loc_p(:), &
 !              d_t_p(:), d_t_loc_p(:), &
 !              d_c_p(:), d_c_loc_p(:), &
 !              d_s_p(:), d_s_loc_p(:)
                
-    PetscScalar, pointer :: d_p_loc_p(:), &
+    PetscReal, pointer :: d_p_loc_p(:), &
                d_t_loc_p(:), &
                d_c_loc_p(:), &
                d_s_loc_p(:)
                
                
-!   PetscScalar, pointer :: avgmw_p(:),avgmw_loc_p(:),avgmw_c_p(:),avgmw_c_loc_p(:),&
+!   PetscReal, pointer :: avgmw_p(:),avgmw_loc_p(:),avgmw_c_p(:),avgmw_c_loc_p(:),&
 !              h_p(:),  hh_p(:), hh_loc_p(:), &
 !              h_p_p(:), h_p_loc_p(:), &
 !              h_t_p(:), h_t_loc_p(:), &
 !              h_c_p(:), h_c_loc_p(:), &
 !              h_s_p(:), h_s_loc_p(:)
                
-    PetscScalar, pointer :: avgmw_loc_p(:),avgmw_c_loc_p(:),&
+    PetscReal, pointer :: avgmw_loc_p(:),avgmw_c_loc_p(:),&
                hh_loc_p(:), &
                h_p_loc_p(:), &
                h_t_loc_p(:), &
@@ -1911,36 +1911,36 @@ if((SSATG_LOC(m1)>eps).or.(SSATG_LOC(m2)>eps))then
                h_s_loc_p(:)
                
                
-    PetscScalar, pointer :: uu_p(:),  &
+    PetscReal, pointer :: uu_p(:),  &
                u_p_p(:),u_t_p(:),u_c_p(:),u_s_p(:)
                
                
-!   PetscScalar, pointer :: hen_p(:),  hen_loc_p(:), &  
+!   PetscReal, pointer :: hen_p(:),  hen_loc_p(:), &  
 !              hen_p_p(:), hen_p_loc_p(:), &
 !              hen_t_p(:), hen_t_loc_p(:), &
 !              hen_c_p(:), hen_c_loc_p(:), &
 !              hen_s_p(:), hen_s_loc_p(:)
                
-    PetscScalar, pointer :: hen_loc_p(:), &  
+    PetscReal, pointer :: hen_loc_p(:), &  
                hen_p_loc_p(:), &
                hen_t_loc_p(:), &
                hen_c_loc_p(:), &
                hen_s_loc_p(:)
                
                
-!   PetscScalar, pointer :: df_p(:), df_loc_p(:), &
+!   PetscReal, pointer :: df_p(:), df_loc_p(:), &
 !              df_p_p(:), df_p_loc_p(:),&
 !              df_t_p(:), df_t_loc_p(:),&
 !              df_c_p(:), df_c_loc_p(:),&
 !              df_s_p(:), df_s_loc_p(:)
                
-    PetscScalar, pointer :: df_loc_p(:), &
+    PetscReal, pointer :: df_loc_p(:), &
                df_p_loc_p(:),&
                df_t_loc_p(:),&
                df_c_loc_p(:),&
                df_s_loc_p(:)
                
-! PetscScalar, pointer :: pc_p(:), pc_loc_p(:),&
+! PetscReal, pointer :: pc_p(:), pc_loc_p(:),&
 !                         pc_p_p(:), pc_p_loc_p(:),&
 !                         pc_t_p(:), pc_t_loc_p(:),&
 !                         pc_c_p(:), pc_c_loc_p(:),&
@@ -1951,7 +1951,7 @@ if((SSATG_LOC(m1)>eps).or.(SSATG_LOC(m2)>eps))then
 !                         kvr_c_p(:), kvr_c_loc_p(:),&
 !                         kvr_s_p(:), kvr_s_loc_p(:)
                
-  PetscScalar, pointer :: pc_loc_p(:),&
+  PetscReal, pointer :: pc_loc_p(:),&
                           pc_p_loc_p(:),&
                           pc_t_loc_p(:),&
                           pc_c_loc_p(:),&
@@ -1963,27 +1963,27 @@ if((SSATG_LOC(m1)>eps).or.(SSATG_LOC(m2)>eps))then
                           kvr_s_loc_p(:)
 
 
-  PetscScalar, pointer :: iphase_loc_p(:), icap_loc_p(:), ithrm_loc_p(:)
-  integer :: iicap,ii,jj,iiphas,iiphas1,iiphas2
-  integer*4 ibc_hencoeff
-  real*8 :: cond, gravity, SSATW, acc, &
+  PetscReal, pointer :: iphase_loc_p(:), icap_loc_p(:), ithrm_loc_p(:)
+  PetscInt :: iicap,ii,jj,iiphas,iiphas1,iiphas2
+  PetscInt ibc_hencoeff
+  PetscReal :: cond, gravity, SSATW, acc, &
             density_ave, voldt, pvoldt
-  real*8 :: fluxl, fluxlh, fluxlv, fluxg, fluxgh, fluxgv, &
+  PetscReal :: fluxl, fluxlh, fluxlv, fluxg, fluxgh, fluxgv, &
             flux, fluxh, fluxv, difff, diffg, diffl
-  real*8 :: dd1, dd2, dd, f1, f2, den
-! real*8 :: dfluxp, dfluxt, dfluxp1, dfluxt1, dfluxp2, dfluxt2
-  real*8 :: por1, por2, perm1, perm2
-  real*8 :: qu_rate, p_vapor,sat_pressure_t
-! real*8 :: cg1,cg2,cg,cg_p,cg_t,cg_s,cg_c
-  real*8 :: Dk, Dq,D0, Dphi, gdz  ! "Diffusion" constant for a phase.
-  real*8 :: D1, D2  ! "Diffusion" constants upstream and downstream of a face.
-  real*8 :: sat_pressure  ! Saturation pressure of water.
-  real*8 :: xxlw,xxla,xxgw,xxga,cw,cw1,cw2,cwu, sat_ave
-  real*8 :: ra(1:5,1:8),tempvar(1:8), devq(4,2)  
-  real*8 :: uhh, uconc, ukvr
-  real*8 :: upweight,m1weight,m2weight,mbweight,mnweight
-  real*8 :: cw1_p,cw1_t,cw1_c,cw1_s,cw2_p,cw2_t,cw2_c,cw2_s,cw_p,cw_t,cw_c,cw_s
-  real*8 :: blkmat11(1:4,1:4),  blkmat12(1:4,1:4), blkmat21(1:4,1:4), blkmat22(1:4,1:4)
+  PetscReal :: dd1, dd2, dd, f1, f2, den
+! PetscReal :: dfluxp, dfluxt, dfluxp1, dfluxt1, dfluxp2, dfluxt2
+  PetscReal :: por1, por2, perm1, perm2
+  PetscReal :: qu_rate, p_vapor,sat_pressure_t
+! PetscReal :: cg1,cg2,cg,cg_p,cg_t,cg_s,cg_c
+  PetscReal :: Dk, Dq,D0, Dphi, gdz  ! "Diffusion" constant for a phase.
+  PetscReal :: D1, D2  ! "Diffusion" constants upstream and downstream of a face.
+  PetscReal :: sat_pressure  ! Saturation pressure of water.
+  PetscReal :: xxlw,xxla,xxgw,xxga,cw,cw1,cw2,cwu, sat_ave
+  PetscReal :: ra(1:5,1:8),tempvar(1:8), devq(4,2)  
+  PetscReal :: uhh, uconc, ukvr
+  PetscReal :: upweight,m1weight,m2weight,mbweight,mnweight
+  PetscReal :: cw1_p,cw1_t,cw1_c,cw1_s,cw2_p,cw2_t,cw2_c,cw2_s,cw_p,cw_t,cw_c,cw_s
+  PetscReal :: blkmat11(1:4,1:4),  blkmat12(1:4,1:4), blkmat21(1:4,1:4), blkmat22(1:4,1:4)
 
 !-----------------------------------------------------------------------
 ! R stand for residual
@@ -3820,25 +3820,25 @@ end subroutine TTPHASEJacobian
     type(pflowGrid) :: grid 
 
  
-  integer :: ierr
-  integer*4 :: n
-  integer*4 :: i, j, jn
-  integer*4 :: p1, t1, c1, s1
-  integer*4 :: ii1,ii2, iicap
+  PetscInt :: ierr
+  PetscInt :: n
+  PetscInt :: i, j, jn
+  PetscInt :: p1, t1, c1, s1
+  PetscInt :: ii1,ii2, iicap
 
-  PetscScalar, pointer ::accum_p(:),yy_p(:)
+  PetscReal, pointer ::accum_p(:),yy_p(:)
   
-  PetscScalar, pointer ::  porosity_p(:), volume_p(:), &
+  PetscReal, pointer ::  porosity_p(:), volume_p(:), &
                            density_p(:), avgmw_p(:), u_p(:), &
                            h_p(:), df_p(:), hen_p(:),&
                            pc_p(:), kvr_p(:),&
                            ithrm_p(:),icap_p(:),iphase_p(:) 
 
-!  integer, pointer ::iphase_p(:)
+!  PetscInt, pointer ::iphase_p(:)
   
-  real*8 :: sat_pressure, pvol, satw  ! Saturation pressure of water.
+  PetscReal :: sat_pressure, pvol, satw  ! Saturation pressure of water.
  
-  real*8 :: xxlw,xxla,xxga,xxgw,eengl,eengg,acc
+  PetscReal :: xxlw,xxla,xxga,xxgw,eengl,eengg,acc
 
   call VecGetArrayF90(grid%volume, volume_p, ierr)
   call VecGetArrayF90(grid%porosity, porosity_p, ierr)
@@ -4000,13 +4000,13 @@ end subroutine pflow_2phase_initaccum
     type(pflowGrid) :: grid 
 
   
-    PetscScalar, pointer :: t_p(:),p_p(:),c_p(:),s_p(:),cc_p(:)
-    PetscScalar, pointer :: yy_p(:),pc_p(:),hen_p(:)
+    PetscReal, pointer :: t_p(:),p_p(:),c_p(:),s_p(:),cc_p(:)
+    PetscReal, pointer :: yy_p(:),pc_p(:),hen_p(:)
                         
-    integer*4 :: n, ii1, ii2, jn
-    integer :: ierr
+    PetscInt :: n, ii1, ii2, jn
+    PetscInt :: ierr
  
-    real*8 :: xxlw,xxla,xxga,xxgw
+    PetscReal :: xxlw,xxla,xxga,xxgw
 
     if(grid%nphase>1) call pflow_2phase_massbal(grid)
   ! if (grid%rk > 0.d0) call Rock_Change(grid)
@@ -4134,28 +4134,28 @@ end subroutine pflow_2phase_initaccum
   type(pflowGrid) :: grid 
 
  
-  integer :: ierr
-  integer*4 :: n, nc
-  integer*4 :: ibc,jn
-  integer*4 :: m
-  integer*4 :: ii1,ii2,iicap
-  integer*4 :: i1_hencoeff
+  PetscInt :: ierr
+  PetscInt :: n, nc
+  PetscInt :: ibc,jn
+  PetscInt :: m
+  PetscInt :: ii1,ii2,iicap
+  PetscInt :: i1_hencoeff
  
 
-  PetscScalar, pointer ::  p_p(:), t_p(:), x_p(:), s_p(:),iphase_p(:)
-  PetscScalar, pointer ::  porosity_p(:), volume_p(:), &
+  PetscReal, pointer ::  p_p(:), t_p(:), x_p(:), s_p(:),iphase_p(:)
+  PetscReal, pointer ::  porosity_p(:), volume_p(:), &
                            density_p(:), avgmw_p(:), u_p(:), &
                            h_p(:), df_p(:), hen_p(:),&
                            pc_p(:), kvr_p(:),&
                            ithrm_p(:),icap_p(:) 
 
-!  integer, pointer ::iphase_p(:)
+!  PetscInt, pointer ::iphase_p(:)
   
-  real*8 :: sat_pressure  ! Saturation pressure of water.
-  real*8 :: xlw,xla,xga,xgw
+  PetscReal :: sat_pressure  ! Saturation pressure of water.
+  PetscReal :: xlw,xla,xga,xgw
   
-! real*8 :: temp1
-  real*8, parameter :: Rg=8.31415D0
+! PetscReal :: temp1
+  PetscReal, parameter :: Rg=8.31415D0
 
   call VecGetArrayF90(grid%pressure, p_p, ierr)
   call VecGetArrayF90(grid%temp, t_p, ierr)
@@ -4375,27 +4375,27 @@ end subroutine pflow_2phase_initadj
   type(pflowGrid) :: grid 
   
  
-  integer :: ierr
-  integer,save :: icall
-  integer*4 :: n
-  integer*4 :: j, jn
-  integer*4 :: ii1,ii2,iicap
+  PetscInt :: ierr
+  PetscInt,save :: icall
+  PetscInt :: n
+  PetscInt :: j, jn
+  PetscInt :: ii1,ii2,iicap
  
 #include "definitions.h"
 
-  PetscScalar, pointer :: yy_p(:)
+  PetscReal, pointer :: yy_p(:)
   
-  PetscScalar, pointer ::  porosity_p(:), volume_p(:), &
+  PetscReal, pointer ::  porosity_p(:), volume_p(:), &
                            density_p(:), avgmw_p(:), u_p(:), &
                            h_p(:), df_p(:), hen_p(:),&
                            pc_p(:), kvr_p(:),&
                            ithrm_p(:),icap_p(:),iphase_p(:) 
 
-!  integer, pointer ::iphase_p(:)
+!  PetscInt, pointer ::iphase_p(:)
   
-  real*8 :: sat_pressure, pvol, satw  ! Saturation pressure of water.
+  PetscReal :: sat_pressure, pvol, satw  ! Saturation pressure of water.
  
-  real*8 :: totl,totg,totl0,totg0, accl,accg, xxlw,xxgw,xxla,xxga
+  PetscReal :: totl,totg,totl0,totg0, accl,accg, xxlw,xxgw,xxla,xxga
   
   data icall/0/
 

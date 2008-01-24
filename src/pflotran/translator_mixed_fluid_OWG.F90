@@ -39,12 +39,12 @@
  translator_owg_check_phase_cond,translator_owg_step_maxchange,&
  translator_owg_massbal,translator_owg_switching
   
- real*8, private, parameter:: fmwh2o = 18.0153D0, fmwa = 28.96D0, &
+ PetscReal, private, parameter:: fmwh2o = 18.0153D0, fmwa = 28.96D0, &
                               fmwco2 = 44.0098D0, fmwoil= 142.D0
- real*8, private, parameter:: eps=5D-7, formeps = 5D-5
- real*8, private, parameter::yh2o_in_co2=1D-2   
- real*8, private :: tref
- real*8, private :: hkcoef(6)
+ PetscReal, private, parameter:: eps=5D-7, formeps = 5D-5
+ PetscReal, private, parameter::yh2o_in_co2=1D-2   
+ PetscReal, private :: tref
+ PetscReal, private :: hkcoef(6)
 
  contains
 
@@ -59,20 +59,20 @@
   type(pflowGrid) :: grid 
   
  
-  integer :: ierr
-  integer,save :: icall
-  integer :: n,n0,nc,np
-  integer :: index, size_var_node
+  PetscInt :: ierr
+  PetscInt,save :: icall
+  PetscInt :: n,n0,nc,np
+  PetscInt :: index, size_var_node
      
-  PetscScalar, pointer ::  var_p(:),&
+  PetscReal, pointer ::  var_p(:),&
                            porosity_p(:), volume_p(:)
                            
-!  integer, pointer ::iphase_p(:)
+!  PetscInt, pointer ::iphase_p(:)
   
-  real*8 ::  pvol,sum
-  real*8, pointer ::  den(:),sat(:),xmol(:)
+  PetscReal ::  pvol,sum
+  PetscReal, pointer ::  den(:),sat(:),xmol(:)
  
-   real*8 :: tot(0:grid%nspec,0:grid%nphase), tot0(0:grid%nspec,0:grid%nphase)  
+   PetscReal :: tot(0:grid%nspec,0:grid%nphase), tot0(0:grid%nspec,0:grid%nphase)  
   data icall/0/
 
   call VecGetArrayF90(grid%var,var_p,ierr)
@@ -150,16 +150,16 @@
 
 
 
- integer function translator_owg_check_phase_cond(iphase, var_node,num_phase,num_spec)
+ PetscInt function translator_owg_check_phase_cond(iphase, var_node,num_phase,num_spec)
    implicit none
-   integer iphase, num_phase, num_spec
-   real*8, target:: var_node(:)
+   PetscInt :: iphase, num_phase, num_spec
+   PetscReal, target:: var_node(:)
     
-   integer ibase,succ,np,nc
-   real*8, pointer :: t,p,satu(:),den(:), avgmw(:),h(:),u(:),pc(:),&
+   PetscInt :: ibase,succ,np,nc
+   PetscReal, pointer :: t,p,satu(:),den(:), avgmw(:),h(:),u(:),pc(:),&
                       kvr(:),xmol(:),diff(:)
       
-  real*8 sum     
+  PetscReal sum     
     
   ibase=1;               t=>var_node(ibase)
   ibase=ibase+1;         p=>var_node(ibase)
@@ -206,11 +206,11 @@
    type(pflowGrid), intent(inout) :: grid
   
 
-  PetscScalar, pointer :: xx_p(:), yy_p(:), iphase_p(:),var_p(:),iphase_old_p(:)
-! real*8 :: dsm,dcm
-  real*8 :: comp1,comp,cmp  
-  real*8 :: dsm0,dcm0  
-  integer n, j, iipha
+  PetscReal, pointer :: xx_p(:), yy_p(:), iphase_p(:),var_p(:),iphase_old_p(:)
+! PetscReal :: dsm,dcm
+  PetscReal :: comp1,comp,cmp  
+  PetscReal :: dsm0,dcm0  
+  PetscInt :: n, j, iipha
 
   call VecWAXPY(grid%dxx,-1.d0,grid%xx,grid%yy,ierr)
   call VecStrideNorm(grid%dxx,0,NORM_INFINITY,grid%dpmax,ierr)
@@ -295,20 +295,20 @@
   
   type(pflowGrid), intent(inout) :: grid
   Vec, intent(in) :: xx
-  integer icri,ichange,ierr 
-! integer itable,index,i
+  PetscInt :: icri,ichange,ierr 
+! PetscInt :: itable,index,i
 
-  PetscScalar, pointer :: xx_p(:), yy_p(:),iphase_p(:)
-  integer :: n,n0,ipr
-  integer :: iipha 
-  real*8 :: p2,p,tmp,t,xla
-  real*8 :: dg,dddt,dddp,fg,dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp
-  real*8 :: ug,xphi,co2_poyn
-  real*8 :: xmol(grid%nphase*grid%nspec),satu(grid%nphase) 
-  real*8 :: x(1:grid%ndof)
-  real*8 :: m11,m12,m21,m22,mb1,mb2,mm
-  real*8 :: Henry_co2_water
-! real*8 :: henry,Henry_co2_oil
+  PetscReal, pointer :: xx_p(:), yy_p(:),iphase_p(:)
+  PetscInt :: n,n0,ipr
+  PetscInt :: iipha 
+  PetscReal :: p2,p,tmp,t,xla
+  PetscReal :: dg,dddt,dddp,fg,dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp
+  PetscReal :: ug,xphi,co2_poyn
+  PetscReal :: xmol(grid%nphase*grid%nspec),satu(grid%nphase) 
+  PetscReal :: x(1:grid%ndof)
+  PetscReal :: m11,m12,m21,m22,mb1,mb2,mm
+  PetscReal :: Henry_co2_water
+! PetscReal :: henry,Henry_co2_oil
   
  !print *, ' Translator_OWG_Switching begin'
 ! mphase code need assemble 
@@ -876,40 +876,40 @@
   
     implicit none
     
-!   integer :: num_pricomp
-    integer :: num_phase,num_spec
-    integer :: size_var_use
-    real*8 :: energyscale,tref
-    real*8,target :: var_node(:)
-    integer :: iphase,itable,ierr
-    integer :: ipckrtype !, ithrmtype
+!   PetscInt :: num_pricomp
+    PetscInt :: num_phase,num_spec
+    PetscInt :: size_var_use
+    PetscReal :: energyscale,tref
+    PetscReal,target :: var_node(:)
+    PetscInt :: iphase,itable,ierr
+    PetscInt :: ipckrtype !, ithrmtype
     
-    real*8 :: pckr_sir(1:num_phase),pckr_lambda,pckr_alpha,pckr_m, &
+    PetscReal :: pckr_sir(1:num_phase),pckr_lambda,pckr_alpha,pckr_m, &
               pckr_pcmax,pckr_betac,pckr_pwr
-    real*8 :: dif(1:num_phase)
-    real*8 :: x(1:num_spec)
-    real*8 :: m11,m12, m21, m22, mb1, mb2,mm
+    PetscReal :: dif(1:num_phase)
+    PetscReal :: x(1:num_spec)
+    PetscReal :: m11,m12, m21, m22, mb1, mb2,mm
 
   
      
-  real*8, pointer :: p,t
-  real*8, pointer :: den(:),h(:),u(:),avgmw(:),pc(:),kvr(:)
-  real*8, pointer :: diff(:),xmol(:),satu(:)
-  integer ibase 
-! real*8 err,p1,co2_phi,henry,stea,dsteamol,dstea_p,dstea_t, &
+  PetscReal, pointer :: p,t
+  PetscReal, pointer :: den(:),h(:),u(:),avgmw(:),pc(:),kvr(:)
+  PetscReal, pointer :: diff(:),xmol(:),satu(:)
+  PetscInt :: ibase 
+! PetscReal err,p1,co2_phi,henry,stea,dsteamol,dstea_p,dstea_t, &
 ! hstea,hstea_p,hstea_t,pckr_swir,Henry_co2_oil,
   
-  real*8 p2,tmp
-  real*8 pw,dw_kg,dw_mol,hw,sat_pressure,vis_w,xphi
-  real*8 dg,dddt,dddp,fg,dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp
-  real*8 ug
-  real*8 co2_poyn
-! real*8 dstea
-  real*8 den_oil,h_oil,visc_oil
-  real*8 kr(num_phase)
+  PetscReal p2,tmp
+  PetscReal pw,dw_kg,dw_mol,hw,sat_pressure,vis_w,xphi
+  PetscReal dg,dddt,dddp,fg,dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp
+  PetscReal ug
+  PetscReal co2_poyn
+! PetscReal dstea
+  PetscReal den_oil,h_oil,visc_oil
+  PetscReal kr(num_phase)
   
-  real*8 xla,vphi
-  real*8 :: Henry_co2_water, x1, x2
+  PetscReal xla,vphi
+  PetscReal :: Henry_co2_water, x1, x2
 
   
   
@@ -1199,21 +1199,21 @@
 ! P/Pa, t/(Degree Centigreed), Pc/Pa, Hen(xla=Hen*xga, dimensionless)
  
   implicit none
-  integer :: num_phase,num_spec
-  integer :: size_var_use
-  real*8 x(:),energyscale
-  real*8 var_node(1:2 + 7*num_phase + 2* num_phase*num_spec)
-  real*8 :: dif(:)
-  integer ::iphase, itable,ierr
-  integer :: ipckrtype !, ithrmtype
-! integer :: num_pricomp
+  PetscInt :: num_phase,num_spec
+  PetscInt :: size_var_use
+  PetscReal x(:),energyscale
+  PetscReal var_node(1:2 + 7*num_phase + 2* num_phase*num_spec)
+  PetscReal :: dif(:)
+  PetscInt ::iphase, itable,ierr
+  PetscInt :: ipckrtype !, ithrmtype
+! PetscInt :: num_pricomp
     
-  real*8 :: pckr_sir(:),pckr_lambda,pckr_alpha,pckr_m,pckr_pcmax, &
+  PetscReal :: pckr_sir(:),pckr_lambda,pckr_alpha,pckr_m,pckr_pcmax, &
             pckr_betac,pckr_pwr 
-  real*8 :: phi_co2
+  PetscReal :: phi_co2
   
-  real*8 :: xphi_co2=1.D0
-  real*8 :: tref
+  PetscReal :: xphi_co2=1.D0
+  PetscReal :: tref
   
 
   size_var_use = 2 + 7*num_phase + 2* num_phase*num_spec
@@ -1236,21 +1236,21 @@
                     num_dof, ipckrtype,pckr_sir,pckr_lambda,pckr_alpha,&
                     pckr_m,pckr_pcmax,pckr_betac,pckr_pwr,dif,&
           var_node,itable,ierr, tref)
-  integer :: num_phase,num_spec, num_dof
-  integer :: size_var_use,size_var_node
+  PetscInt :: num_phase,num_spec, num_dof
+  PetscInt :: size_var_use,size_var_node
     
 
-    real*8 x(:),delx(:),energyscale
-    real*8 var_node(:)
-  real*8 :: dif(:)
-  integer ::iphase,itable,ierr
-  integer :: ipckrtype !, ithrmtype
-    real*8  tref
+    PetscReal x(:),delx(:),energyscale
+    PetscReal var_node(:)
+  PetscReal :: dif(:)
+  PetscInt ::iphase,itable,ierr
+  PetscInt :: ipckrtype !, ithrmtype
+    PetscReal  tref
    
     
 
-    real*8 xx(1:num_spec), tmp
-    real*8 pckr_sir(1: num_phase),pckr_lambda,pckr_alpha,pckr_m,&
+    PetscReal xx(1:num_spec), tmp
+    PetscReal pckr_sir(1: num_phase),pckr_lambda,pckr_alpha,pckr_m,&
            pckr_pcmax,pckr_betac,pckr_pwr
 
     size_var_use = 2 + 7*num_phase + 2* num_phase*num_spec

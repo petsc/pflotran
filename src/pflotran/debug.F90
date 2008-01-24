@@ -4,6 +4,8 @@ module Debug_module
   
   private
   
+#include "include/finclude/petsc.h"
+
   type, public :: pflow_debug_type
     logical :: vecview_residual
     logical :: vecview_solution
@@ -97,12 +99,12 @@ subroutine DebugReadPflow(debug,fid,myrank)
 #include "definitions.h"
     
   type(pflow_debug_type) :: debug
-  integer :: fid
-  integer :: myrank
+  PetscInt :: fid
+  PetscMPIInt :: myrank
   
   character(len=MAXSTRINGLENGTH) :: string, error_string
   character(len=MAXWORDLENGTH) :: keyword, word, word2
-  integer :: ierr
+  PetscInt :: ierr
 
   ierr = 0
   do

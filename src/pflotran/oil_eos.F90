@@ -1,9 +1,11 @@
 module oil_eos_module
 
   private 
+
+#include "include/finclude/petsc.h"
   
-  real*8, parameter :: Rg=8.3145D3
-  real*8, parameter :: den0= 863.983, p0= 17236893.25, vis0=3.0D-3, fmwoil= 142.D0
+  PetscReal, parameter :: Rg=8.3145D3
+  PetscReal, parameter :: den0= 863.983, p0= 17236893.25, vis0=3.0D-3, fmwoil= 142.D0
   
   public Vis_oil, oil_eos
   
@@ -15,34 +17,34 @@ module oil_eos_module
   subroutine Vis_oil(p,t,viso, ierr)
    implicit none
    
-   real*8, intent(in) :: p,t
-   real*8, intent(out):: viso
-   integer ierr
+   PetscReal, intent(in) :: p,t
+   PetscReal, intent(out):: viso
+   PetscInt :: ierr
    
   viso= vis0 
   end subroutine Vis_oil
  
 
   subroutine PSAT_oil(t,psat,ierr)
-  real*8 t,psat
-  integer ierr
+  PetscReal t,psat
+  PetscInt :: ierr
   end subroutine PSAT_oil
 
 
   SUBROUTINE oil_eos(t,p, x_mid, x_heavy, denoil, h, scale, ierr)
     implicit none
 
-    real*8, intent(in) :: t   ! Temperature in centigrade
-    real*8, intent(in) :: p   ! Pressure in Pascals
-    real*8, intent(in) :: x_mid, x_heavy, scale
-    real*8, intent(out) :: denoil
-    real*8, intent(out) :: h
-    integer, intent(out) :: ierr
+    PetscReal, intent(in) :: t   ! Temperature in centigrade
+    PetscReal, intent(in) :: p   ! Pressure in Pascals
+    PetscReal, intent(in) :: x_mid, x_heavy, scale
+    PetscReal, intent(out) :: denoil
+    PetscReal, intent(out) :: h
+    PetscInt, intent(out) :: ierr
     
-!   real*8  Pc,Tc,w
-!   real*8  a,b,alaph
-!   real*8  Tk
-    real*8  x_light
+!   PetscReal  Pc,Tc,w
+!   PetscReal  a,b,alaph
+!   PetscReal  Tk
+    PetscReal  x_light
 
     ierr = 0
     x_light=1.D0- x_mid- x_heavy

@@ -38,7 +38,7 @@ module Output_module
 #define LIQUID_PHASE 1
 #define GAS_PHASE 2
 
-  integer :: hdf5_err
+  PetscInt :: hdf5_err
   PetscErrorCode :: ierr
   
   public :: Output, OutputTecplot, OutputHDF5, OutputVectorTecplot
@@ -104,14 +104,14 @@ subroutine OutputTecplot(realization)
 
   type(realization_type) :: realization
   
-  integer :: i
+  PetscInt :: i
   character(len=MAXNAMELENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: string, string2
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(output_option_type), pointer :: output_option
-  PetscScalar, pointer :: vec_ptr(:)
+  PetscReal, pointer :: vec_ptr(:)
   Vec :: global
   Vec :: natural
   
@@ -425,7 +425,7 @@ subroutine OutputVelocitiesTecplot(realization)
   Vec :: global
   Vec :: natural
 
-  real*8, pointer :: vec_ptr(:)
+  PetscReal, pointer :: vec_ptr(:)
   
   grid => realization%grid
   field => realization%field
@@ -561,8 +561,8 @@ subroutine OutputFluxVelocitiesTecplot(realization,iphase, &
 #include "definitions.h"
 
   type(realization_type) :: realization
-  integer :: iphase
-  integer :: direction
+  PetscInt :: iphase
+  PetscInt :: direction
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -572,13 +572,13 @@ subroutine OutputFluxVelocitiesTecplot(realization,iphase, &
   character(len=MAXNAMELENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: string
   
-  integer :: local_size, global_size
-  integer :: nx_local, ny_local, nz_local
-  integer :: nx_global, ny_global, nz_global
-  integer :: i, j, k
-  integer :: local_id
-  integer :: adjusted_size
-  integer :: count
+  PetscInt :: local_size, global_size
+  PetscInt :: nx_local, ny_local, nz_local
+  PetscInt :: nx_global, ny_global, nz_global
+  PetscInt :: i, j, k
+  PetscInt :: local_id
+  PetscInt :: adjusted_size
+  PetscInt :: count
   PetscReal, pointer :: vec_ptr(:)
   PetscReal, pointer :: array(:)
   PetscInt, allocatable :: indices(:)
@@ -852,7 +852,7 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
   type(field_type), pointer :: field
   Vec :: natural
   Vec :: global
-  integer, parameter :: fid=86
+  PetscInt, parameter :: fid=86
 
   option => realization%option
   grid => realization%grid
@@ -935,12 +935,12 @@ subroutine WriteTecplotDataSetFromVec(fid,realization,vec,datatype)
   
   implicit none
 
-  integer :: fid
+  PetscInt :: fid
   type(realization_type) :: realization
   Vec :: vec
-  integer :: datatype
+  PetscInt :: datatype
   
-  PetscScalar, pointer :: vec_ptr(:)
+  PetscReal, pointer :: vec_ptr(:)
   
   call VecGetArrayF90(vec,vec_ptr,ierr)
   call WriteTecplotDataSet(fid,realization,vec_ptr,datatype,0) ! 0 implies grid%nlmax
@@ -964,19 +964,19 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
 
   implicit none
   
-  integer :: fid
+  PetscInt :: fid
   type(realization_type) :: realization
   PetscReal :: array(:)
-  integer, save :: max_local_size_saved = -1
-  integer :: datatype
-  integer :: size_flag ! if size_flag /= 0, use size_flag as the local size
+  PetscInt, save :: max_local_size_saved = -1
+  PetscInt :: datatype
+  PetscInt :: size_flag ! if size_flag /= 0, use size_flag as the local size
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
-  integer :: i, iproc, recv_size
-  integer :: max_local_size, local_size
-  integer :: istart, iend, num_in_array
-  integer :: status(MPI_STATUS_SIZE)
+  PetscInt :: i, iproc, recv_size
+  PetscInt :: max_local_size, local_size
+  PetscInt :: istart, iend, num_in_array
+  PetscInt :: status(MPI_STATUS_SIZE)
   PetscInt, allocatable :: integer_data(:), integer_data_recv(:)
   PetscReal, allocatable :: real_data(:), real_data_recv(:)
   
@@ -1140,6 +1140,13 @@ subroutine OutputHDF5(realization)
 
 #else
 
+! 64-bit stuff
+#ifdef PETSC_USE_64BIT_INDICES
+#define HDF_NATIVE_INTEGER H5T_STD_I64LE  ! little endian 
+#else
+#define HDF_NATIVE_INTEGER H5T_NATIVE_INTEGER
+#endif
+
   use hdf5
   use HDF5_module
   
@@ -1162,13 +1169,13 @@ subroutine OutputHDF5(realization)
   
   Vec :: global
   Vec :: natural
-  PetscScalar, pointer :: v_ptr
+  PetscReal, pointer :: v_ptr
   
   character(len=MAXNAMELENGTH) :: filename = "pflow.h5"
   character(len=MAXSTRINGLENGTH) :: string
   logical, save :: first = .true.
-  real*8, pointer :: array(:)
-  integer :: i
+  PetscReal, pointer :: array(:)
+  PetscInt :: i
   
   grid => realization%grid
   option => realization%option
@@ -1334,7 +1341,7 @@ subroutine OutputHDF5(realization)
       ! phase
       call GetVarFromArray(realization,global,PHASE,0)
       string = "Phase"
-      call HDF5WriteStructDataSetFromVec(string,realization,global,grp_id,H5T_NATIVE_INTEGER) 
+      call HDF5WriteStructDataSetFromVec(string,realization,global,grp_id,HDF_NATIVE_INTEGER) 
   
     case default
       ! temperature
@@ -1456,22 +1463,22 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
   
   character(len=32) :: name
   type(realization_type) :: realization
-  integer :: iphase
-  integer :: direction
+  PetscInt :: iphase
+  PetscInt :: direction
   integer(HID_T) :: file_id
 
-  integer :: i, j, k
-  integer :: count
-  integer :: local_id
-  integer :: nx_local, ny_local, nz_local
-  integer :: nx_global, ny_global, nz_global
+  PetscInt :: i, j, k
+  PetscInt :: count
+  PetscInt :: local_id
+  PetscInt :: nx_local, ny_local, nz_local
+  PetscInt :: nx_global, ny_global, nz_global
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(output_option_type), pointer :: output_option
     
-  real*8, allocatable :: array(:)
+  PetscReal, allocatable :: array(:)
   PetscReal, pointer :: vec_ptr(:)
 
   logical, save :: first = .true.
@@ -1584,15 +1591,15 @@ subroutine WriteHDF5Coordinates(name,option,length,array,file_id)
   
   character(len=32) :: name
   type(option_type) :: option
-  integer :: length
-  real*8 :: array(:)
+  PetscInt :: length
+  PetscReal :: array(:)
   integer(HID_T) :: file_id
   
   integer(HID_T) :: file_space_id
   integer(HID_T) :: data_set_id
   integer(HID_T) :: prop_id
   integer(HSIZE_T) :: dims(3)
-  integer :: rank
+  PetscInt :: rank
   
   ! write out grid structure
   rank = 1
@@ -1635,10 +1642,10 @@ subroutine GetCoordinates(grid,vec,direction)
   
   type(grid_type) :: grid
   Vec :: vec
-  integer :: direction
+  PetscInt :: direction
   
-  integer :: i
-  PetscScalar, pointer :: vec_ptr(:)
+  PetscInt :: i
+  PetscReal, pointer :: vec_ptr(:)
   
   call VecGetArrayF90(vec,vec_ptr,ierr)
   
@@ -1672,13 +1679,13 @@ subroutine ConvertArrayToNatural(indices,array, &
 
   implicit none
   
-  integer :: local_size, global_size
-  integer :: indices(:)
-  real*8, pointer :: array(:)
+  PetscInt :: local_size, global_size
+  PetscInt :: indices(:)
+  PetscReal, pointer :: array(:)
   
   Vec :: natural
-  integer, allocatable :: indices_zero_based(:)
-  real*8, pointer :: vec_ptr(:)
+  PetscInt, allocatable :: indices_zero_based(:)
+  PetscReal, pointer :: vec_ptr(:)
   
   call VecCreate(PETSC_COMM_WORLD,natural,ierr)
   call VecSetSizes(natural,PETSC_DECIDE,global_size,ierr)
@@ -1728,18 +1735,18 @@ subroutine GetVarFromArray(realization,vec,ivar,isubvar)
   
   type(realization_type) :: realization
   Vec :: vec
-  integer :: ivar
-  integer :: isubvar
+  PetscInt :: ivar
+  PetscInt :: isubvar
 
-  integer :: local_id, ghosted_id
-  integer :: offset, saturation_offset
-  integer :: size_var_use
-  integer :: size_var_node
+  PetscInt :: local_id, ghosted_id
+  PetscInt :: offset, saturation_offset
+  PetscInt :: size_var_use
+  PetscInt :: size_var_node
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
-  PetscScalar, pointer :: var_ptr(:)
-  PetscScalar, pointer :: vec_ptr(:)
+  PetscReal, pointer :: var_ptr(:)
+  PetscReal, pointer :: vec_ptr(:)
 
   option => realization%option
   grid => realization%grid
@@ -1853,19 +1860,19 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
   
   type(realization_type) :: realization
   Vec :: vec
-  integer :: direction
-  integer :: iphase
+  PetscInt :: direction
+  PetscInt :: iphase
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(output_option_type), pointer :: output_option
-  integer :: i, j, k, local_id, iconn
+  PetscInt :: i, j, k, local_id, iconn
   Vec :: local_vec
   
-  PetscScalar, pointer :: vec_ptr(:)
-  PetscScalar, pointer :: vl_ptr(:)
-  PetscScalar, pointer :: loc_vec_ptr(:)
+  PetscReal, pointer :: vec_ptr(:)
+  PetscReal, pointer :: vl_ptr(:)
+  PetscReal, pointer :: loc_vec_ptr(:)
   PetscInt, allocatable :: num_additions(:)
   
   type(coupler_type), pointer :: boundary_condition

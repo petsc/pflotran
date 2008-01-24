@@ -1,10 +1,12 @@
 module water_eos_module
 
   implicit none
-  
-  public
 
-  real*8, private, parameter::  fmwh2o = 18.01534d0
+  private
+  
+#include "include/finclude/petsc.h"
+
+  PetscReal, private, parameter::  fmwh2o = 18.01534d0
 
   interface VISW
     module procedure VISW1
@@ -16,7 +18,8 @@ module water_eos_module
     module procedure PSATgeh
   end interface
 
-  public :: VISW, PSAT
+  public :: VISW, PSAT, VISW_noderiv, VISW_FLO, PSAT_new, PSAT1_new, PSAT1, &
+            wateos, wateos_noderiv, density, nacl_den, nacl_vis, cowat, steameos
 
 contains
 
@@ -24,11 +27,11 @@ contains
 
     implicit none
     
-    real*8, intent(in) :: T, P, PS
-    real*8, intent(out) :: VW,vwt,vwp
-    integer, intent(out) :: ierr
+    PetscReal, intent(in) :: T, P, PS
+    PetscReal, intent(out) :: VW,vwt,vwp
+    PetscInt, intent(out) :: ierr
   
-    real*8 :: EX, PHI, AM, pwr, aln10
+    PetscReal :: EX, PHI, AM, pwr, aln10
   
     EX  = 247.8d0/(T+133.15d0)
     PHI = 1.0467d0*(T-31.85d0)
@@ -49,11 +52,11 @@ contains
 
     implicit none
     
-    real*8, intent(in) :: T, P, PS, pswt
-    real*8, intent(out) :: VW,vwt,vwp
-    integer, intent(out) :: ierr
+    PetscReal, intent(in) :: T, P, PS, pswt
+    PetscReal, intent(out) :: VW,vwt,vwp
+    PetscInt, intent(out) :: ierr
   
-    real*8 :: EX, PHI, AM, pwr, aln10
+    PetscReal :: EX, PHI, AM, pwr, aln10
   
     EX  = 247.8d0/(T+133.15d0)
     PHI = 1.0467d0*(T-31.85d0)
@@ -75,11 +78,11 @@ contains
 
     implicit none
     
-    real*8, intent(in) :: T, P, PS
-    real*8, intent(out) :: VW
-    integer, intent(out) :: ierr
+    PetscReal, intent(in) :: T, P, PS
+    PetscReal, intent(out) :: VW
+    PetscInt, intent(out) :: ierr
   
-    real*8 :: EX, PHI, AM, pwr
+    PetscReal :: EX, PHI, AM, pwr
   
     EX  = 247.8d0/(T+133.15d0)
     PHI = 1.0467d0*(T-31.85d0)
@@ -125,12 +128,12 @@ contains
 !c    visp = phase viscosity (pa-s), av and bv are correlation coefs.
      
 !c-----------------------------------------------------------------
-       real*8, intent(in) :: t,dw
-       real*8, intent(out) :: vw
+       PetscReal, intent(in) :: t,dw
+       PetscReal, intent(out) :: vw
 
-       integer :: i
-       real*8 :: tstar,rhostr,cnv,utr,u3,viso,udw,u4,sum1
-       real*8, save :: av(0:3),bv(0:5,0:4)
+       PetscInt :: i
+       PetscReal :: tstar,rhostr,cnv,utr,u3,viso,udw,u4,sum1
+       PetscReal, save :: av(0:3),bv(0:5,0:4)
 
       data av/0.0181583d0, 0.0177624d0, 0.0105287d0, -0.0036744d0/
  
@@ -169,12 +172,12 @@ contains
 
     implicit none
     
-    real*8, intent(in) :: TC
-    real*8, intent(out) :: P  ! Saturation pressure
-    integer, intent(out) :: ierr
+    PetscReal, intent(in) :: TC
+    PetscReal, intent(out) :: P  ! Saturation pressure
+    PetscInt, intent(out) :: ierr
   
-    real*8, save :: A(6),pc
-    real*8 :: SC, Paln, tao
+    PetscReal, save :: A(6),pc
+    PetscReal :: SC, Paln, tao
     
     
 !   SAVE A
@@ -205,12 +208,12 @@ contains
 
     implicit none
     
-    real*8, intent(in) :: TC
-    real*8, intent(out) :: P,tsp  ! Saturation pressure
-    integer, intent(out) :: ierr
+    PetscReal, intent(in) :: TC
+    PetscReal, intent(out) :: P,tsp  ! Saturation pressure
+    PetscInt, intent(out) :: ierr
   
-    real*8, save :: A(6),pc
-    real*8 :: SC, Paln, tao
+    PetscReal, save :: A(6),pc
+    PetscReal :: SC, Paln, tao
     
     
 !   SAVE A
@@ -251,13 +254,13 @@ contains
 
     implicit none
 
-    real*8, intent(in) :: T
-    real*8, intent(out) :: P  ! Saturation pressure
-    integer, intent(out) :: ierr
+    PetscReal, intent(in) :: T
+    PetscReal, intent(out) :: P  ! Saturation pressure
+    PetscInt, intent(out) :: ierr
   
-    real*8, save, dimension(9) :: A(9)
-    real*8 :: TC, SC, PC
-    integer :: J
+    PetscReal, save, dimension(9) :: A(9)
+    PetscReal :: TC, SC, PC
+    PetscInt :: J
     
 !   SAVE A
     DATA A/ &
@@ -284,14 +287,14 @@ contains
 
     implicit none
 
-    real*8, intent(in) :: T
-    real*8, intent(out) :: psat, dpsat_dt  ! Saturation pressure
-    integer, intent(out) :: ierr
+    PetscReal, intent(in) :: T
+    PetscReal, intent(out) :: psat, dpsat_dt  ! Saturation pressure
+    PetscInt, intent(out) :: ierr
   
-    real*8, save, dimension(9) :: A(9)
-    real*8 :: TC, SC, PC, E1, E2
-    real*8 :: one_m_tc, one_m_tc_sq, E2_bottom
-    real*8 :: dTC_dT, dSC_dTC, dE1_dTC, dE2_dTC, dPC_dSC, dPC_dTC
+    PetscReal, save, dimension(9) :: A(9)
+    PetscReal :: TC, SC, PC, E1, E2
+    PetscReal :: one_m_tc, one_m_tc_sq, E2_bottom
+    PetscReal :: dTC_dT, dSC_dTC, dE1_dTC, dE2_dTC, dPC_dSC, dPC_dTC
     
 !   SAVE A
     DATA A/ &
@@ -330,13 +333,13 @@ contains
 
     implicit none
   
-    real*8, intent(in) :: T
-    real*8, intent(out) :: Ps, tsp  ! Saturation pressure
-    integer, intent(out) :: ierr
+    PetscReal, intent(in) :: T
+    PetscReal, intent(out) :: Ps, tsp  ! Saturation pressure
+    PetscInt, intent(out) :: ierr
   
-    real*8, save, dimension(9) :: kn(9)
-    real*8 :: u1,one,two,three,four,five,f,fp,tc1,utc1,pc1
-    real*8 :: t1,t2,t1num,t1nump,t1den,t1denp,term1,term1p,term2,term2p,theta
+    PetscReal, save, dimension(9) :: kn(9)
+    PetscReal :: u1,one,two,three,four,five,f,fp,tc1,utc1,pc1
+    PetscReal :: t1,t2,t1num,t1nump,t1den,t1denp,term1,term1p,term2,term2p,theta
     
 !   save kn
   
@@ -388,28 +391,28 @@ contains
 
     implicit none
   
-    real*8, intent(in) :: t   ! Temperature in centigrade
-    real*8, intent(in) :: p   ! Pressure in Pascals
-    real*8, intent(out) :: dw,dwmol,dwp,dwt
-    real*8, intent(out) :: hw,hwp,hwt
-    integer, intent(out) :: ierr
+    PetscReal, intent(in) :: t   ! Temperature in centigrade
+    PetscReal, intent(in) :: p   ! Pressure in Pascals
+    PetscReal, intent(out) :: dw,dwmol,dwp,dwt
+    PetscReal, intent(out) :: hw,hwp,hwt
+    PetscInt, intent(out) :: ierr
   
-    integer :: i
+    PetscInt :: i
     
-    real*8, save :: aa(0:22)
-    real*8, save :: a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12
+    PetscReal, save :: aa(0:22)
+    PetscReal, save :: a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12
   
-    real*8 :: beta,beta2x,beta4,theta,utheta,theta2x,theta18,theta20
-    real*8 :: xx,yy,zz
-    real*8 :: u0,u1,u2,u3,u4,u5,u6,u7,u8,u9
-    real*8 :: v0,v1,v2,v3,v4,v20,v40
-    real*8 :: term1,term2,term2t,term3,term3t,term3p,term4,term4t,term4p, &
+    PetscReal :: beta,beta2x,beta4,theta,utheta,theta2x,theta18,theta20
+    PetscReal :: xx,yy,zz
+    PetscReal :: u0,u1,u2,u3,u4,u5,u6,u7,u8,u9
+    PetscReal :: v0,v1,v2,v3,v4,v20,v40
+    PetscReal :: term1,term2,term2t,term3,term3t,term3p,term4,term4t,term4p, &
               term5,term5t,term5p,term6,term6t,term6p,term7,term7t,term7p
-    real*8 :: dv2t,dv2p,dv3t
-    real*8 :: vr,ypt,yptt,zpt,zpp,vrpt,vrpp,cnv
-    real*8 :: tc1,pc1,vc1,utc1,upc1,vc1mol,vc1molh
-    real*8 :: zero,one,two,three,four,five,six,seven,eight,fnine,ten
-    real*8 :: scale
+    PetscReal :: dv2t,dv2p,dv3t
+    PetscReal :: vr,ypt,yptt,zpt,zpp,vrpt,vrpp,cnv
+    PetscReal :: tc1,pc1,vc1,utc1,upc1,vc1mol,vc1molh
+    PetscReal :: zero,one,two,three,four,five,six,seven,eight,fnine,ten
+    PetscReal :: scale
   
 !   save aa,a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12
     
@@ -590,29 +593,29 @@ contains
     
 !   save
   
-    real*8, intent(in) :: t   ! Temperature in centigrade.
-    real*8, intent(in) :: p   ! Pressure in Pascals.
-    real*8, intent(out) :: dw,dwmol,hw
-    integer, intent(out) :: ierr
+    PetscReal, intent(in) :: t   ! Temperature in centigrade.
+    PetscReal, intent(in) :: p   ! Pressure in Pascals.
+    PetscReal, intent(out) :: dw,dwmol,hw
+    PetscInt, intent(out) :: ierr
   
-    integer :: i
+    PetscInt :: i
     
-    real*8, save :: aa(0:22)
-    real*8, save :: a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12
+    PetscReal, save :: aa(0:22)
+    PetscReal, save :: a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12
   
-    real*8 :: beta,beta2x,beta4,theta,utheta,theta2x,theta18,theta20
-    real*8 :: xx,yy,zz
-    real*8 :: u0,u1,u2,u3,u4,u5,u6,u7,u8
-!   real*8 :: u9
-    real*8 :: v0,v1,v2,v3,v4,v20,v40
-    real*8 :: term1,term2,term3,term4,term4p,term5,term6,term7
-!   real*8 :: term2t,term3t,term3p,term4t,term5t,term5p,term6t,term6p,term7t,term7p
-!   real*8 :: dv2t,dv2p,dv3t
-    real*8 :: vr,ypt
-!   real*8 :: yptt,zpt,zpp,vrpt,vrpp,cnv
-    real*8 :: tc1,pc1,vc1,utc1,upc1,vc1mol,vc1molh
-    real*8 :: zero,one,two,three,four,five,six,seven,eight,fnine,ten
-    real*8 :: scale
+    PetscReal :: beta,beta2x,beta4,theta,utheta,theta2x,theta18,theta20
+    PetscReal :: xx,yy,zz
+    PetscReal :: u0,u1,u2,u3,u4,u5,u6,u7,u8
+!   PetscReal :: u9
+    PetscReal :: v0,v1,v2,v3,v4,v20,v40
+    PetscReal :: term1,term2,term3,term4,term4p,term5,term6,term7
+!   PetscReal :: term2t,term3t,term3p,term4t,term5t,term5p,term6t,term6p,term7t,term7p
+!   PetscReal :: dv2t,dv2p,dv3t
+    PetscReal :: vr,ypt
+!   PetscReal :: yptt,zpt,zpp,vrpt,vrpp,cnv
+    PetscReal :: tc1,pc1,vc1,utc1,upc1,vc1mol,vc1molh
+    PetscReal :: zero,one,two,three,four,five,six,seven,eight,fnine,ten
+    PetscReal :: scale
   
 !   save aa,a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12
 
@@ -793,30 +796,30 @@ contains
  ! t/C  p/Pa dgmol/(mol/m^3)  h/MJ/mol
     implicit none
   
-    real*8, intent(in) :: t   ! Temperature in centigrade.
-    real*8, intent(in) :: p,pa   ! Pressure in Pascals.
-    real*8, intent(out) :: dg,dgmol,dgp,dgt
-    real*8, intent(out) :: hg,hgp,hgt
-    integer, intent(out) :: ierr
+    PetscReal, intent(in) :: t   ! Temperature in centigrade.
+    PetscReal, intent(in) :: p,pa   ! Pressure in Pascals.
+    PetscReal, intent(out) :: dg,dgmol,dgp,dgt
+    PetscReal, intent(out) :: hg,hgp,hgt
+    PetscInt, intent(out) :: ierr
   
-    integer, save :: n(8),ll(8),x(8,2),z(8,3),xi1,xl0,xl1,xl2
-    real*8, save :: b(8,2),bb(0:9,0:6)
-    real*8 :: sumbx(8),sumbxt(8)
+    PetscInt, save :: n(8),ll(8),x(8,2),z(8,3),xi1,xl0,xl1,xl2
+    PetscReal, save :: b(8,2),bb(0:9,0:6)
+    PetscReal :: sumbx(8),sumbxt(8)
   
-    integer :: i,j
-    real*8, save :: delp,delt
-    real*8 :: beta,betap,betal,betalp,betalp1,betal1,ubeta,theta, &
+    PetscInt :: i,j
+    PetscReal, save :: delp,delt
+    PetscReal :: beta,betap,betal,betalp,betalp1,betal1,ubeta,theta, &
               thetap,utheta
-    real*8 :: xx,xxp
-    real*8 :: f1,f2,fim1,fim2,sum,sumt,sum1,sum1t,sum1p, &
+    PetscReal :: xx,xxp
+    PetscReal :: f1,f2,fim1,fim2,sum,sumt,sum1,sum1t,sum1p, &
               sum2,sum2t
-    real*8 :: u1,u1t,u1p,u2,u2p,u2t,u3,u3p,u3t,v1,v1t
-    real*8 :: term,term1,term1t,term1p,term2,term2t,term2p, &
+    PetscReal :: u1,u1t,u1p,u2,u2p,u2t,u3,u3p,u3t,v1,v1t
+    PetscReal :: term,term1,term1t,term1p,term2,term2t,term2p, &
               term3,term3t,term3p,term4,term4t,term4p,term5,term5t,term5p
-    real*8 :: hr,hrp,hrt,hrpt,hrpp
-    real*8 :: vr,vrpt,vrpp
-    real*8 :: tc1,pc1,vc1,utc1,upc1,vc1mol,vc1molh,scale
-    real*8 :: zero,one,two,three,four,five,six,seven,eight,fnine,ten
+    PetscReal :: hr,hrp,hrt,hrpt,hrpp
+    PetscReal :: vr,vrpt,vrpp
+    PetscReal :: tc1,pc1,vc1,utc1,upc1,vc1mol,vc1molh,scale
+    PetscReal :: zero,one,two,three,four,five,six,seven,eight,fnine,ten
  
     data delt,delp/1.d-6,1.d-6/
     
@@ -1090,15 +1093,15 @@ contains
 
     implicit none
   
-    real*8, intent(in) :: TC     ! Temperature in centigrade.
-    real*8, intent(in) :: PP     ! Pressure in Pascals.
-    real*8, intent(out) :: D, U  ! Density [kg/m^3], Energy [J/kg] ? check ?? -pcl
-    integer, intent(out) :: ierr
+    PetscReal, intent(in) :: TC     ! Temperature in centigrade.
+    PetscReal, intent(in) :: PP     ! Pressure in Pascals.
+    PetscReal, intent(out) :: D, U  ! Density [kg/m^3], Energy [J/kg] ? check ?? -pcl
+    PetscInt, intent(out) :: ierr
   
-    integer :: i
-    real*8, save :: A(23), SA(12) 
-    real*8 :: TKR, PNMR, Y, Z, YD, ZP, PAR1, PAR2, PAR3, PAR4, PAR5, VMKR, V
-    real*8 :: SNUM, PRT1, PRT2, PRT3, PRT4, PRT5, ENTR, H
+    PetscInt :: i
+    PetscReal, save :: A(23), SA(12) 
+    PetscReal :: TKR, PNMR, Y, Z, YD, ZP, PAR1, PAR2, PAR3, PAR4, PAR5, VMKR, V
+    PetscReal :: SNUM, PRT1, PRT2, PRT3, PRT4, PRT5, ENTR, H
 !   SAVE A,SA
     DATA A/ &
       6.824687741d3,-5.422063673d2,-2.096666205d4,3.941286787d4, &
@@ -1167,9 +1170,9 @@ contains
     ! table equations as given by the international formulation
     ! committee (1967).
 
-    real*8 :: tc, p, d, par1, par2, par3, par4, par5, pnmr, tkr, &
+    PetscReal :: tc, p, d, par1, par2, par3, par4, par5, pnmr, tkr, &
               v, vmkr, y, z, zp, zero = 0.d0
-    real*8 :: a(23),sa(12)
+    PetscReal :: a(23),sa(12)
 
     data a/ &
       6.824687741d3,  -5.422063673d2, -2.096666205d4,  3.941286787d4,&
@@ -1220,7 +1223,7 @@ subroutine nacl_den (t,p,xnacl,dnacl)
 
 implicit none
 
-real*8 :: rw0,dnacl,t,p,xnacl
+PetscReal :: rw0,dnacl,t,p,xnacl
 
 !units: t [C], p [MPa], xnacl [mass fraction NaCl], dnacl [g/cm^3]
 
@@ -1243,10 +1246,10 @@ implicit none
 
 !units: t [C], p [MPa], xnacl [mass fraction NaCl], visnacl [Pa s]
 
-real*8, save :: a1,a2,a3,b1,b2,b3,c1,c2,c3,c4,wnacl
-real*8 :: ak,bk,ck
-real*8 :: beta,betap,betas,betaw
-real*8 :: t,tt,p,mnacl,xnacl,visnacl,fac,mu0,ms
+PetscReal, save :: a1,a2,a3,b1,b2,b3,c1,c2,c3,c4,wnacl
+PetscReal :: ak,bk,ck
+PetscReal :: beta,betap,betas,betaw
+PetscReal :: t,tt,p,mnacl,xnacl,visnacl,fac,mu0,ms
 
 data a1,a2,a3 / 3.324d-2, 3.624d-3, -1.879d-4 /
 data b1,b2,b3 / -3.96d-2, 1.02d-2, -7.02d-4 /

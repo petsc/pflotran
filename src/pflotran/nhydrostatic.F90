@@ -16,9 +16,9 @@ private
 
 #include "definitions.h"
 
-real*8, parameter ::  fmwnacl = 58.44277D0,  fmwh2o = 18.0153D0
+PetscReal, parameter ::  fmwnacl = 58.44277D0,  fmwh2o = 18.0153D0
 
-real*8, pointer :: hys_pres(:), hys_temp(:)
+PetscReal, pointer :: hys_pres(:), hys_temp(:)
 
 #define WEST 1
 #define EAST 2
@@ -38,14 +38,14 @@ subroutine Get_Hydrosta_Pres(nz, dz, pref0, tref, dtdz, gravity, m_nacl)
 
   implicit none
   
-  integer nz
-  real*8 pref0, tref, dz(1:nz+1), dtdz, gravity, m_nacl
-  real*8,save :: pref 
+  PetscInt :: nz
+  PetscReal pref0, tref, dz(1:nz+1), dtdz, gravity, m_nacl
+  PetscReal,save :: pref 
   data pref/-10.D0/ 
      
-  integer n, itrho
-  real*8 depth, pres0, tmp, rho0, rho1, rho, pres, dw_kg
-  real*8 dzz,zz, xm_nacl, p 
+  PetscInt :: n, itrho
+  PetscReal depth, pres0, tmp, rho0, rho1, rho, pres, dw_kg
+  PetscReal dzz,zz, xm_nacl, p 
 ! first go with z
       
   if(dabs(pref-pref0)<1D-10) return   
@@ -135,20 +135,20 @@ subroutine nhydrostatic(realization)
   implicit none
 
   type(realization_type) :: realization
-  PetscScalar, pointer :: xx_p(:) 
+  PetscReal, pointer :: xx_p(:) 
   
-! integer :: itrho
-  integer  ierr,i,j,k
-  real*8 :: depth,horiz,dw_kg,p,dp
+! PetscInt :: itrho
+  PetscInt ::  ierr,i,j,k
+  PetscReal :: depth,horiz,dw_kg,p,dp
 !           dum,dwp,rho,rho1,dw_mol,zz,dzz,tmp,pres,
             
 
-! real*8 :: ibndtyp(grid%nblkbc),cbc(grid%nblkbc),sbc(grid%nblkbc)
-! real*8 :: xxbc_rec(option%ndof,grid%nblkbc),iphasebc_rec(grid%nblkbc)
-  real*8 :: rho_ref, xm_nacl, pref
+! PetscReal :: ibndtyp(grid%nblkbc),cbc(grid%nblkbc),sbc(grid%nblkbc)
+! PetscReal :: xxbc_rec(option%ndof,grid%nblkbc),iphasebc_rec(grid%nblkbc)
+  PetscReal :: rho_ref, xm_nacl, pref
 
-! real*8 :: betap,dz1,dz2,dx1,dx2, 
-  integer :: natural_id,nz, local_id, ghosted_id, iconn
+! PetscReal :: betap,dz1,dz2,dx1,dx2, 
+  PetscInt :: natural_id,nz, local_id, ghosted_id, iconn
   
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
@@ -389,19 +389,19 @@ subroutine nhydrostatic3(grid)
 ! mostly copied from condition.F90 :ComputeHydrostaticPressure   
   type(pflowGrid) :: grid
 #if 0  
-  real*8 :: ref_coordinate(3), cell_coordinate(3)
-  real*8 :: reference_pressure, pressure_gradient_X, pressure_gradient_Y,  &
+  PetscReal :: ref_coordinate(3), cell_coordinate(3)
+  PetscReal :: reference_pressure, pressure_gradient_X, pressure_gradient_Y,  &
             pressure_gradient_Z
-  real*8 :: reference_temperature, temperature_gradient_X, &
+  PetscReal :: reference_temperature, temperature_gradient_X, &
             temperature_gradient_Y, temperature_gradient_Z
 
-  integer :: i, num_increments, ierr
-  real*8 :: dx, dy, dz, z, dum, rho, dw_mol, dwp
-  real*8 :: temperature_at_xy, temperature_at_xyz
-  real*8 :: pressure_at_xy, pressure_at_xyz
-  real*8 :: increment, final_increment
-  PetscScalar, pointer :: xx_p(:) 
-  integer n, ng, nc, m, ibc
+  PetscInt :: i, num_increments, ierr
+  PetscReal :: dx, dy, dz, z, dum, rho, dw_mol, dwp
+  PetscReal :: temperature_at_xy, temperature_at_xyz
+  PetscReal :: pressure_at_xy, pressure_at_xyz
+  PetscReal :: increment, final_increment
+  PetscReal, pointer :: xx_p(:) 
+  PetscInt :: n, ng, nc, m, ibc
    
   ref_coordinate = grid%hydro_ref_xyz
   reference_pressure = grid% pref

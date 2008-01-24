@@ -48,24 +48,24 @@ contains
     ! Legacy functions for calculating density, internal energy, viscosity,
     ! and saturation pressure of water.
 
-  integer :: ierr
-  integer :: n, ng, nc
-  integer :: j, jn, jng, jm, jm1, jm2
-  integer :: m, m1, m2, n1, n2, ip1, ip2
-  integer :: ibc  ! Index that specifies a boundary condition block.
-  PetscScalar, pointer :: r_p(:), porosity_loc_p(:), volume_p(:), &
+  PetscInt :: ierr
+  PetscInt :: n, ng, nc
+  PetscInt :: j, jn, jng, jm, jm1, jm2
+  PetscInt :: m, m1, m2, n1, n2, ip1, ip2
+  PetscInt :: ibc  ! Index that specifies a boundary condition block.
+  PetscReal, pointer :: r_p(:), porosity_loc_p(:), volume_p(:), &
                       ppressure_p(:), ppressure_loc_p(:), pressure_p(:), &
                       density_p(:), ddensity_p(:), ddensity_loc_p(:), &
                       viscosity_p(:), viscosity_loc_p(:), &
                       vl_p(:), &
                       perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:), &
                       ttemp_p(:), d_p_p(:), d_p_loc_p(:)
-  real*8 :: dd1, dd2, flux, fluxbc, gravity, density_ave, v_darcy, voldt, q
-  real*8 :: dd, f1, f2, perm1, perm2
-  real*8 :: D  ! "Diffusion" constant for a phase.
-  real*8 :: D1, D2  ! "Diffusion" constants upstream and downstream of a face.
-  real*8 :: sat_pressure  ! Saturation pressure of water.
-  real*8 :: dw_kg,dw_mol,d_t_dum,hw_dum,h_p_dum,h_t_dum
+  PetscReal :: dd1, dd2, flux, fluxbc, gravity, density_ave, v_darcy, voldt, q
+  PetscReal :: dd, f1, f2, perm1, perm2
+  PetscReal :: D  ! "Diffusion" constant for a phase.
+  PetscReal :: D1, D2  ! "Diffusion" constants upstream and downstream of a face.
+  PetscReal :: sat_pressure  ! Saturation pressure of water.
+  PetscReal :: dw_kg,dw_mol,d_t_dum,hw_dum,h_p_dum,h_t_dum
 
   !---------------------------------------------------------------------------
   ! Calculate the density and viscosity of water at step k+1 at each local
@@ -383,29 +383,29 @@ contains
   Vec, intent(in) :: ppressure
   Mat, intent(out) :: A, B
   type(pflowGrid), intent(in) :: grid
-  integer, intent(in) :: flag
+  PetscInt, intent(in) :: flag
 
 ! external COWAT, VISW, PSAT
     ! Legacy functions for calculating density, internal energy, viscosity,
     ! and saturation pressure of water.
 
-  integer :: ierr
-  integer :: n, ng, nc
-  integer :: j, jn, jng, jm, jm1, jm2
-  integer :: m, m1, m2, n1, n2, ip1, ip2
-  integer :: ibc  ! Index that specifies a boundary condition block.
-  real*8 :: elem1, elem2
-  PetscScalar, pointer :: porosity_loc_p(:), volume_p(:), &
+  PetscInt :: ierr
+  PetscInt :: n, ng, nc
+  PetscInt :: j, jn, jng, jm, jm1, jm2
+  PetscInt :: m, m1, m2, n1, n2, ip1, ip2
+  PetscInt :: ibc  ! Index that specifies a boundary condition block.
+  PetscReal :: elem1, elem2
+  PetscReal, pointer :: porosity_loc_p(:), volume_p(:), &
                       ppressure_loc_p(:), pressure_p(:), &
                       ddensity_p(:), ddensity_loc_p(:), density_p(:), &
                       viscosity_loc_p(:), &
                       perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:), &
                       d_p_loc_p(:)
-  real*8 :: dd1, dd2, trans, density_ave, voldt
-  real*8 :: dd, f1, f2, perm1, perm2
-  real*8 :: D  ! "Diffusion" constant for a phase.
-  real*8 :: D1, D2  ! "Diffusion" constants upstream and downstream of a face.
-! real*8 :: sat_pressure  ! Saturation pressure of water.
+  PetscReal :: dd1, dd2, trans, density_ave, voldt
+  PetscReal :: dd, f1, f2, perm1, perm2
+  PetscReal :: D  ! "Diffusion" constant for a phase.
+  PetscReal :: D1, D2  ! "Diffusion" constants upstream and downstream of a face.
+! PetscReal :: sat_pressure  ! Saturation pressure of water.
 
   call MatZeroEntries(A,ierr)
 

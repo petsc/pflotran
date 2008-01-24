@@ -42,17 +42,17 @@ contains
     ! Also, I'm not sure if this needs to be intent(inout) instead of
     ! intent(in).
 
-  integer :: ierr
-  integer :: n, ng, nc
-  integer :: i, i1, i2
-  integer :: m, m1, m2, n1, n2
-  integer :: ibc  ! Index that specifies a boundary condition block.
-  PetscScalar, pointer :: r_p(:), porosity_loc_p(:), volume_p(:), &
+  PetscInt :: ierr
+  PetscInt :: n, ng, nc
+  PetscInt :: i, i1, i2
+  PetscInt :: m, m1, m2, n1, n2
+  PetscInt :: ibc  ! Index that specifies a boundary condition block.
+  PetscReal, pointer :: r_p(:), porosity_loc_p(:), volume_p(:), &
                           ttemp_loc_p(:), temp_p(:), &
                           ithrm_loc_p(:)
-  real*8 :: dd1, dd2, flux, trans, voldt
-  real*8 :: D  ! "Diffusion" constant for a phase.
-  real*8 :: D1, D2  ! "Diffusion" constants upstream and downstream of a face.
+  PetscReal :: dd1, dd2, flux, trans, voldt
+  PetscReal :: D  ! "Diffusion" constant for a phase.
+  PetscReal :: D1, D2  ! "Diffusion" constants upstream and downstream of a face.
 
   !---------------------------------------------------------------------------
   ! Now that we have calculated the density and viscosity for all local 
@@ -163,19 +163,19 @@ contains
   Vec, intent(in) :: ttemp
   Mat, intent(out) :: A, B
   type(pflowGrid), intent(in) :: grid
-  integer, intent(in) :: flag
+  PetscInt, intent(in) :: flag
 
-  integer :: ierr
-  integer :: n, ng, nc
-  integer :: i, i1, i2
-  integer :: m, m1, m2, n1, n2
-  integer :: ibc  ! Index that specifies a boundary condition block.
-  real*8 :: elem1, elem2
-  PetscScalar, pointer :: porosity_loc_p(:), volume_p(:), &
+  PetscInt :: ierr
+  PetscInt :: n, ng, nc
+  PetscInt :: i, i1, i2
+  PetscInt :: m, m1, m2, n1, n2
+  PetscInt :: ibc  ! Index that specifies a boundary condition block.
+  PetscReal :: elem1, elem2
+  PetscReal, pointer :: porosity_loc_p(:), volume_p(:), &
                           ithrm_loc_p(:)
-  real*8 :: dd1, dd2, trans
-  real*8 :: D  ! "Diffusion" constant for a phase.
-  real*8 :: D1, D2  ! "Diffusion" constants upstream and downstream of a face.
+  PetscReal :: dd1, dd2, trans
+  PetscReal :: D  ! "Diffusion" constant for a phase.
+  PetscReal :: D1, D2  ! "Diffusion" constants upstream and downstream of a face.
 
   call MatZeroEntries(A,ierr)
 

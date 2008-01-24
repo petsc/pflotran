@@ -9,18 +9,19 @@ module Coupler_module
   private
  
 #include "definitions.h"
+#include "include/finclude/petsc.h"
  
   type, public :: coupler_type
-    integer :: id                                       ! id of coupler
-    integer :: itype                                    ! integer defining type
+    PetscInt :: id                                       ! id of coupler
+    PetscInt :: itype                                    ! integer defining type
     character(len=MAXWORDLENGTH) :: ctype               ! character string definign type
     character(len=MAXWORDLENGTH) :: condition_name      ! character string defining name of condition to be applied
     character(len=MAXWORDLENGTH) :: region_name         ! character string defining name of region to be applied
-    integer :: icondition                               ! id of condition in condition array/list
-    integer :: iregion                                  ! id of region in region array/list
-    integer :: iface                                    ! for structured grids only
-    integer, pointer :: aux_int_var(:,:)                ! auxilliary array for integer value
-    real*8, pointer :: aux_real_var(:,:)                ! auxilliary array for real values
+    PetscInt :: icondition                               ! id of condition in condition array/list
+    PetscInt :: iregion                                  ! id of region in region array/list
+    PetscInt :: iface                                    ! for structured grids only
+    PetscInt, pointer :: aux_int_var(:,:)                ! auxilliary array for integer value
+    PetscReal, pointer :: aux_real_var(:,:)                ! auxilliary array for real values
     type(condition_type), pointer :: condition          ! pointer to condition in condition array/list
     type(region_type), pointer :: region                ! pointer to region in region array/list
     type(connection_type), pointer :: connection        ! pointer to an array/list of connections
@@ -32,13 +33,13 @@ module Coupler_module
   end type coupler_ptr_type
     
   type, public :: coupler_list_type
-    integer :: num_couplers
+    PetscInt :: num_couplers
     type(coupler_type), pointer :: first
     type(coupler_type), pointer :: last
     type(coupler_ptr_type), pointer :: array(:)    
   end type coupler_list_type
   
-  integer, save :: num_couplers = 0
+  PetscInt, save :: num_couplers = 0
   
   public :: CouplerCreate, CouplerDestroy, CouplerInitList, CouplerAddToList, &
             CouplerRead, CouplerDestroyList, CouplerGetNumConnectionsInList
@@ -100,7 +101,7 @@ function CouplerCreate2(itype)
 
   implicit none
 
-  integer :: itype
+  PetscInt :: itype
   
   type(coupler_type), pointer :: CouplerCreate2
   
@@ -157,11 +158,11 @@ subroutine CouplerRead(coupler,fid,option)
   
   type(option_type) :: option
   type(coupler_type) :: coupler
-  integer :: fid
+  PetscInt :: fid
   
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
-  integer :: ierr
+  PetscInt :: ierr
 
   ierr = 0
   do
@@ -256,7 +257,7 @@ function CouplerGetNumConnectionsInList(list)
   
   type(coupler_list_type) :: list
   
-  integer :: CouplerGetNumConnectionsInList
+  PetscInt :: CouplerGetNumConnectionsInList
   type(coupler_type), pointer :: coupler
   
   CouplerGetNumConnectionsInList = 0

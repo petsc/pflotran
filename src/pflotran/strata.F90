@@ -8,14 +8,16 @@ module Strata_module
   private
  
 #include "definitions.h"
+#include "include/finclude/petsc.h"
+
  
   type, public :: strata_type
-    integer :: id                                       ! id of strata
+    PetscInt :: id                                       ! id of strata
     logical :: active
     character(len=MAXWORDLENGTH) :: material_name       ! character string defining name of material to be applied
     character(len=MAXWORDLENGTH) :: region_name         ! character string defining name of region to be applied
-    integer :: imaterial                                ! id of material in material array/list
-    integer :: iregion                                  ! id of region in region array/list
+    PetscInt :: imaterial                                ! id of material in material array/list
+    PetscInt :: iregion                                  ! id of region in region array/list
     type(material_type), pointer :: material            ! pointer to material in material array/list
     type(region_type), pointer :: region                ! pointer to region in region array/list
     type(strata_type), pointer :: next            ! pointer to next strata
@@ -26,13 +28,13 @@ module Strata_module
   end type strata_ptr_type
     
   type, public :: strata_list_type
-    integer :: num_strata
+    PetscInt :: num_strata
     type(strata_type), pointer :: first
     type(strata_type), pointer :: last
     type(strata_ptr_type), pointer :: array(:)    
   end type strata_list_type
   
-  integer, save :: num_strata = 0
+  PetscInt, save :: num_strata = 0
   
   public :: StrataCreate, StrataDestroy, StrataInitList, &
             StrataAddToList, StrataRead, StrataDestroyList
@@ -107,13 +109,13 @@ subroutine StrataRead(strata,fid,option)
   implicit none
   
   type(strata_type) :: strata
-  integer :: fid
+  PetscInt :: fid
   type(option_type) :: option
   
   character(len=MAXSTRINGLENGTH) :: string, error_string
   character(len=MAXWORDLENGTH) :: keyword, word, word2
-  real*8 :: value
-  integer :: ierr, count1, material_file_id = 86
+  PetscReal :: value
+  PetscInt :: ierr, count1, material_file_id = 86
 
   ierr = 0
   do

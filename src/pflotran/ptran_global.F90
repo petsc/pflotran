@@ -53,65 +53,66 @@
 !======================================================================
 !   input parameters: default values
 !======================================================================
-    integer :: igeom, nx, ny, nz
-    integer :: kmax = 2, newton_max = 32, icut_max = 8, iwarn = 0
-    integer :: loglin = 1
-    integer :: idebug = 0, ibg1 = 0, ibg2 = 0
-    integer :: ireg = 0, iregfld = 0
-    integer :: iprint = 0, iact = 0, irestart = 0
-    integer :: modetr = 2, molal = 1, isothrm = 0, iphas = 1
-    real*8  :: w = 0.5d0, wlam = 1.d0, tol = 1.d-12, tolexp
-    real*8, pointer :: dx0(:), dy0(:), dz0(:), rd(:)
+    PetscInt :: igeom, nx, ny, nz
+    PetscInt :: kmax = 2, newton_max = 32, icut_max = 8, iwarn = 0
+    PetscInt :: loglin = 1
+    PetscInt :: idebug = 0, ibg1 = 0, ibg2 = 0
+    PetscInt :: ireg = 0, iregfld = 0
+    PetscInt :: iprint = 0, iact = 0, irestart = 0
+    PetscInt :: modetr = 2, molal = 1, isothrm = 0, iphas = 1
+    PetscReal  :: w = 0.5d0, wlam = 1.d0, tol = 1.d-12, tolexp
+    PetscReal, pointer :: dx0(:), dy0(:), dz0(:), rd(:)
 
 !======================================================================
 
-    integer :: myrank,commsize,npx,npy,npz
-    integer :: ibc,iblkfmt=1,isurf
-    integer :: ibug, icut, icutcum, itpetscum, nstep, &
+    PetscMPIInt :: myrank,commsize
+    PetscInt :: npx,npy,npz
+    PetscInt :: ibc,iblkfmt=1,isurf
+    PetscInt :: ibug, icut, icutcum, itpetscum, nstep, &
                newton, newtcum, &
                itpetsc(100)
 
-    integer :: i1,i2,j1,j2,k1,k2,initreg
+    PetscInt :: i1,i2,j1,j2,k1,k2,initreg
 
-    real*8  :: t,cb,r2norm,wm1,wlam1,rho0=1.d0
+    PetscReal  :: t,cb,r2norm,wm1,wlam1,rho0=1.d0
     
 !...........................................................
 !   time step
 !...........................................................
-    integer :: kplot
-    real*8  :: tplot(100), dt = 1.d0, dtmin, dtmax
-    integer :: nstpmax
-    real*8, allocatable :: tstep(:),dtstep(:)
+    PetscInt :: kplot
+    PetscReal  :: tplot(100), dt = 1.d0, dtmin, dtmax
+    PetscInt :: nstpmax
+    PetscReal, allocatable :: tstep(:),dtstep(:)
 
 !...........................................................
 !   initial parameters
 !...........................................................    
-    real*8 :: temp0 = 25.d0, tempini = 25.d0, tk, pref0 = 1.d5
-    integer :: icomprs = 0
+    PetscReal :: temp0 = 25.d0, tempini = 25.d0, tk, pref0 = 1.d5
+    PetscInt :: icomprs = 0
 
 !...........................................................
 !   coupled flow and transport
 !...........................................................
-    integer :: mode = 2, iphase
-    real*8, parameter :: slcutoff=1.d-4
-    integer :: ipor = 0
-    real*8 :: tolpor = 0.d0
+    PetscInt :: mode = 2, iphase
+    PetscReal, parameter :: slcutoff=1.d-4
+    PetscInt :: ipor = 0
+    PetscReal :: tolpor = 0.d0
 
 !...........................................................
 !   transport
 !...........................................................
-    real*8 :: vlx0,vly0,vlz0,vgx0,vgy0,vgz0,por0,sat0,tor0
-    real*8 :: difaq,delhaq,difgas,dgexp
+    PetscReal :: vlx0,vly0,vlz0,vgx0,vgy0,vgz0,por0,sat0,tor0
+    PetscReal :: difaq,delhaq,difgas,dgexp
 
 !...........................................................
 !   dual continuum
 !...........................................................
-    integer :: idcdm = 0, ndloc1 = 1, ndloc2 = 0
+    PetscInt :: idcdm = 0, ndloc1 = 1, ndloc2 = 0
 
 !...........................................................
 !   constants
 !...........................................................
-    real*8  :: zero=0.d0, quarter=0.25d0, half=0.5d0, &
+    PetscReal  :: zero=0.d0, quarter=0.25d0, half=0.5d0, &
                one=1.d0, two=2.d0, three=3.d0, four=4.d0, &
                five=5.d0, six=6.d0, seven=7.d0, &
                eight=8.d0, fnine=9.d0, ten=10.d0, &
@@ -121,57 +122,57 @@
 !...........................................................
 ! physical constants
 !...........................................................
-     real*8 :: pi      = 3.141592653589793d0
-     real*8 :: aln10   = 2.30258509299d0
-     real*8 :: aloge   = 0.434294482d0, faraday = 96485.d0
-     real*8 :: aln2    = 0.6931471806d0
-     real*8 :: navogadro = 6.022136736d+23
-     real*8 :: rgas    = 1.98726d0 ![cal/K/mol]
-     real*8 :: rgasj   = 8.3143    ![J/K/mol]
-     real*8 :: rgaskj  = 8.3143d-3 ![kJ/K/mol]
-     real*8 :: rgasjj  = 8.3143d-2 ![10 * rgaskj]
-     real*8 :: tkelvin = 273.15d0
-     real*8 :: tk0     = 298.15d0
-     real*8 :: wh2o    = 0.0180153d0
-     real*8 :: fmwh2o  = 18.01534d0, fmwco2 = 44.0098d0
+     PetscReal :: pi      = 3.141592653589793d0
+     PetscReal :: aln10   = 2.30258509299d0
+     PetscReal :: aloge   = 0.434294482d0, faraday = 96485.d0
+     PetscReal :: aln2    = 0.6931471806d0
+     PetscReal :: navogadro = 6.022136736d+23
+     PetscReal :: rgas    = 1.98726d0 ![cal/K/mol]
+     PetscReal :: rgasj   = 8.3143    ![J/K/mol]
+     PetscReal :: rgaskj  = 8.3143d-3 ![kJ/K/mol]
+     PetscReal :: rgasjj  = 8.3143d-2 ![10 * rgaskj]
+     PetscReal :: tkelvin = 273.15d0
+     PetscReal :: tk0     = 298.15d0
+     PetscReal :: wh2o    = 0.0180153d0
+     PetscReal :: fmwh2o  = 18.01534d0, fmwco2 = 44.0098d0
 !...........................................................
 !   unit conversion
 !...........................................................    
-    real*8 :: yrsec = 31536000.d0, uyrsec = 3.1709792d-8
+    PetscReal :: yrsec = 31536000.d0, uyrsec = 3.1709792d-8
 
 !...........................................................
 !   connections, grid geometry
 !...........................................................
-    integer :: nconn,nconnx,nconny
-    integer :: nconnbc,nconnbc_w,nconnbc_e,nconnbc_n,nconnbc_s, &
+    PetscInt :: nconn,nconnx,nconny
+    PetscInt :: nconnbc,nconnbc_w,nconnbc_e,nconnbc_n,nconnbc_s, &
                nconnbc_t,nconnbc_b
-    integer :: nlx,nly,nlz,nxs,nys,nzs,nlxy,nlxz,nlyz,nldof,nlmax
-    integer :: ngx,ngy,ngz,ngxs,ngys,ngzs,ngxy,ngxz,ngyz,ngdof,ngmax
-    integer :: nxe,nye,nze,ngxe,ngye,ngze
-    integer :: istart,iend,jstart,jend,kstart,kend
-    integer :: nxy,nmax
+    PetscInt :: nlx,nly,nlz,nxs,nys,nzs,nlxy,nlxz,nlyz,nldof,nlmax
+    PetscInt :: ngx,ngy,ngz,ngxs,ngys,ngzs,ngxy,ngxz,ngyz,ngdof,ngmax
+    PetscInt :: nxe,nye,nze,ngxe,ngye,ngze
+    PetscInt :: istart,iend,jstart,jend,kstart,kend
+    PetscInt :: nxy,nmax
 !...........................................................
 ! time stepping
 !...........................................................
-  integer :: iaccel = 1, imax, ndtcmx=1
-  real*8 :: tfac(13)
-  real*8 :: dcmax0, dcdt, aaa
+  PetscInt :: iaccel = 1, imax, ndtcmx=1
+  PetscReal :: tfac(13)
+  PetscReal :: dcmax0, dcdt, aaa
   data tfac/2.0d0, 2.0d0, 2.0d0, 2.0d0, 2.0d0, &
             1.8d0, 1.6d0, 1.4d0, 1.2d0, 1.0d0, &
             1.0d0, 1.0d0, 1.0d0/
 
-  real*8 :: tconv      ! time conversion factor: s -> x
+  PetscReal :: tconv      ! time conversion factor: s -> x
   character*2 :: tunit ! input time units
 !...........................................................
 ! solver
 !...........................................................
-  real*8 ::  eps = 1.d-10, rtol_petsc, atol_petsc, dtol_petsc
-  integer :: maxits_petsc
+  PetscReal ::  eps = 1.d-10, rtol_petsc, atol_petsc, dtol_petsc
+  PetscInt :: maxits_petsc
 
 !...........................................................
 ! dimension parameters
 !...........................................................
-  integer, parameter :: &
+  PetscInt, parameter :: &
     ncmx    = 16,   & ! primary species
     ncxmx   = 60,   & ! secondary species
     ngmx    = 6,    & ! gaseous species
@@ -193,29 +194,29 @@
 !...........................................................
 ! i/o parameters
 !...........................................................
-  integer            :: iunit1 = 2, iunit2 = 3, ptran_iunit4 = 10, iunit5 = 11
-  integer, parameter :: dbaselen = 256, strlen = 256, wordlen = 32, &
+  PetscInt :: iunit1 = 2, iunit2 = 3, ptran_iunit4 = 10, iunit5 = 11
+  PetscInt, parameter :: dbaselen = 256, strlen = 256, wordlen = 32, &
                         namlen = 20, cardlen = 4
-  integer            :: nruns = 0, iread_vel = 0, iread_sat = 0, &
+  PetscInt ::  nruns = 0, iread_vel = 0, iread_sat = 0, &
                         iflgco2 = 0, iflux = 0
-  real*8             :: profile(ncmx+1,100)
+  PetscReal             :: profile(ncmx+1,100)
   character(len=namlen) :: flowvx,flowvy,flowvz,fsat
 
 !...........................................................
 ! flags
 !...........................................................
-  integer            :: iflgcut = 0
+  PetscInt ::           iflgcut = 0
 
 !...........................................................
 ! thermodynamic database
 !...........................................................
-  integer, parameter    :: ntmpmx = 8, ncxmx0 = 300, nmmx0 = 300, &
+  PetscInt, parameter    :: ntmpmx = 8, ncxmx0 = 300, nmmx0 = 300, &
                            ngmx0 = 10
-  integer               :: icase
+  PetscInt ::               icase
   character(len=strlen) :: dbpath
-  real*8                :: temptab(10),alogkeh(10), &
+  PetscReal                :: temptab(10),alogkeh(10), &
                            coefeh(5),coef(ndimmx,5)
-  real*8 :: alnkeh
+  PetscReal :: alnkeh
 
 !-----Note: the following values are taken directly from the EQ3/6 database.
 !     The values at temperatures 500 and 550 are taken to be equal to
@@ -231,8 +232,8 @@
 !...........................................................
 ! debye-huckel parameters
 !...........................................................
-  real*8 :: atab(10),btab(10),bdotab(10)
-  real*8 :: adebye,bdebye,bextend(ncmx),bextendx(ncxmx),sionic0
+  PetscReal :: atab(10),btab(10),bdotab(10)
+  PetscReal :: adebye,bdebye,bextend(ncmx),bextendx(ncxmx),sionic0
        
 !-----debye huckel a
       data atab / &
@@ -258,72 +259,72 @@
 !...........................................................
   character(len=namlen) :: nam(ncmx)
   character(len=namlen) :: maspec = ' '
-  integer               :: ncomp = 1, ncpri = 1, nmass, nmat
-  integer               :: iloop
-  integer               :: jph,joh,jo2,jo2aq,jpe,jco2,jhco3, &
+  PetscInt ::             ncomp = 1, ncpri = 1, nmass, nmat
+  PetscInt ::                iloop
+  PetscInt ::              jph,joh,jo2,jo2aq,jpe,jco2,jhco3, &
                            jfe3,jfe2,jh2o,jo2g,jco2g,jh2g, &
                            iph,ife3,ife2,ihco3
-  integer               :: imaster,jstep
-  real*8                :: z(ncmx)
-  real*8                :: a0(ncmx)
-  real*8                :: wt(ncmx)
-  real*8                :: atol(ncmx)
-  real*8                :: guess(ncmx,nrgmx)
+  PetscInt ::              imaster,jstep
+  PetscReal                :: z(ncmx)
+  PetscReal                :: a0(ncmx)
+  PetscReal                :: wt(ncmx)
+  PetscReal                :: atol(ncmx)
+  PetscReal                :: guess(ncmx,nrgmx)
 !...........................................................
 ! initial conditions
 !...........................................................
   character(len=namlen) :: ncon(ncmx,nrgmx)
-  integer               :: itype(ncmx,nrgmx)
-  real*8                :: ctot(ncmx,nrgmx)
+  PetscInt ::               itype(ncmx,nrgmx)
+  PetscReal                :: ctot(ncmx,nrgmx)
 
 !...........................................................
 ! boundary conditions
 !...........................................................
-  integer               :: nblkbc=0,ibndtyp(nrgbcmx)
-  integer               :: iface(nrgbcmx),invface(6),ibcreg(4)=0
-  integer               :: i1bc(nrgbcmx),i2bc(nrgbcmx), &
+  PetscInt ::                nblkbc=0,ibndtyp(nrgbcmx)
+  PetscInt ::                iface(nrgbcmx),invface(6),ibcreg(4)=0
+  PetscInt ::                i1bc(nrgbcmx),i2bc(nrgbcmx), &
                            j1bc(nrgbcmx),j2bc(nrgbcmx), &
                            k1bc(nrgbcmx),k2bc(nrgbcmx)
-  integer               :: iregbc1(nrgbcmx),iregbc2(nrgbcmx)
-  real*8                :: tempbc(nrgbcmx)
-  real*8                :: psibnd(ncmx,nrgbcmx),ccbnd(ncmx,nrgbcmx)
-  real*8                :: psigbnd(ncmx,nrgbcmx),pgasbnd(ngmx,nrgbcmx)
-  real*8                :: cxbnd(ncxmx,nrgbcmx)
-  real*8                :: xexbnd(nexmx,nrgbcmx)
-  real*8                :: psisrc(ncmx,nrgbcmx)
-  real*8                :: psorpbnd(ncmx,nrgbcmx)
-  real*8                :: dwbc(nrgbcmx)
+  PetscInt ::               iregbc1(nrgbcmx),iregbc2(nrgbcmx)
+  PetscReal                :: tempbc(nrgbcmx)
+  PetscReal                :: psibnd(ncmx,nrgbcmx),ccbnd(ncmx,nrgbcmx)
+  PetscReal                :: psigbnd(ncmx,nrgbcmx),pgasbnd(ngmx,nrgbcmx)
+  PetscReal                :: cxbnd(ncxmx,nrgbcmx)
+  PetscReal                :: xexbnd(nexmx,nrgbcmx)
+  PetscReal                :: psisrc(ncmx,nrgbcmx)
+  PetscReal                :: psorpbnd(ncmx,nrgbcmx)
+  PetscReal                :: dwbc(nrgbcmx)
   
 !...........................................................
 ! secondary species
 !...........................................................
   character(len=namlen) :: namcx(ncxmx0)
-  integer               :: ncmplx=0
-  real*8                :: zx(ncxmx)
-  real*8                :: ax0(ncxmx)
-  real*8                :: wtx(ncxmx)
-  real*8                :: eqhom(ncxmx)
-  real*8                :: shom(ncmx,ncxmx0)
+  PetscInt ::               ncmplx=0
+  PetscReal                :: zx(ncxmx)
+  PetscReal                :: ax0(ncxmx)
+  PetscReal                :: wtx(ncxmx)
+  PetscReal                :: eqhom(ncxmx)
+  PetscReal                :: shom(ncmx,ncxmx0)
 
 !...........................................................
 ! gas species
 !...........................................................
   character(len=namlen) :: namg(ngmx)
-  integer               :: ngas = 0
-  real*8                :: eqgas(ngmx)
-  real*8                :: sgas(ncmx,ngmx0)
-  real*8                :: wtgas(ngmx)
+  PetscInt ::               ngas = 0
+  PetscReal                :: eqgas(ngmx)
+  PetscReal                :: sgas(ncmx,ngmx0)
+  PetscReal                :: wtgas(ngmx)
   
 !...........................................................
 ! total minerals
 !...........................................................
   character(len=namlen) :: namrl(nmmx)
-  integer               :: mnrl = 0
-  real*8                :: smnrl(ncmx,nmmx0)
-  real*8                :: vbar(nmmx)
-  real*8                :: alnk(nmmx)
-  real*8                :: ze(nmmx),ze0(nmmx)
-  real*8                :: wtmin(nmmx)
+  PetscInt ::                mnrl = 0
+  PetscReal                :: smnrl(ncmx,nmmx0)
+  PetscReal                :: vbar(nmmx)
+  PetscReal                :: alnk(nmmx)
+  PetscReal                :: ze(nmmx),ze0(nmmx)
+  PetscReal                :: wtmin(nmmx)
   
 !...........................................................
 ! kinetic minerals
@@ -331,25 +332,25 @@
   character(len=namlen) :: namk(nkmx)
   character(len=namlen) :: namprik(ncmx,nkmx)
   character(len=namlen) :: namseck(ncxmx,nkmx)
-  integer               :: nkin = 0
-  integer               :: iregkin(nkmx)
-  integer               :: ndxkin(nkmx)
-  integer               :: npar(nkmx)
-  integer               :: npar1(nkmx)
-  integer               :: npar2(nkmx)
-  integer               :: nkinpri(nkmx)
-  integer               :: nkinsec(nkmx)
-  real*8                :: qkmax = 5.d0, pwrsrf = 0.6666666666666667d0
-  real*8                :: skinpri(ncmx,nkmx)
-  real*8                :: skinsec(ncxmx,nkmx)
-  real*8                :: tolpos(nkmx)
-  real*8                :: delh(nkmx)
-  real*8 :: rkfa00(nkmx),rkfb00(nkmx),rkf00(nkmx),surf00(nkmx)
+  PetscInt               :: nkin = 0
+  PetscInt               :: iregkin(nkmx)
+  PetscInt               :: ndxkin(nkmx)
+  PetscInt               :: npar(nkmx)
+  PetscInt               :: npar1(nkmx)
+  PetscInt               :: npar2(nkmx)
+  PetscInt               :: nkinpri(nkmx)
+  PetscInt               :: nkinsec(nkmx)
+  PetscReal                :: qkmax = 5.d0, pwrsrf = 0.6666666666666667d0
+  PetscReal                :: skinpri(ncmx,nkmx)
+  PetscReal                :: skinsec(ncxmx,nkmx)
+  PetscReal                :: tolpos(nkmx)
+  PetscReal                :: delh(nkmx)
+  PetscReal :: rkfa00(nkmx),rkfb00(nkmx),rkf00(nkmx),surf00(nkmx)
   
-  integer :: itypkini(100), itypkin(nkmx), &
+  PetscInt :: itypkini(100), itypkin(nkmx), &
              jpri(ncmx,nkmx),isec(ncmx,nkmx)
 
-  real*8 ::          rkfa0(nkmx),   rkfb0(nkmx),     rkf0(nkmx), &
+  PetscReal ::          rkfa0(nkmx),   rkfb0(nkmx),     rkf0(nkmx), &
                      rkfa(nkmx),    rkfb(nkmx),      rkf(nkmx),  &
                      beta(nkmx),    betb(nkmx),      sigma(nkmx),&
                      eqkin(nkmx),   skin(ncmx,nkmx), fkin(nkmx), &
@@ -361,14 +362,14 @@
 !...........................................................
   character(len=namlen) :: namcxk(nxkmx)
   character(len=namlen) :: namrxnaq(nxkmx)
-  integer               :: ncxkin = 0, nparcxk1(nxkmx), nparcxk2(nxkmx)
-  integer               :: itypkiniaq(100)
-  real*8                :: eqcxk(nxkmx)
-  real*8                :: axk0(nxkmx)
-  real*8                :: zxk(nxkmx)
-  real*8                :: wtxk(nxkmx)
-  real*8                :: zeaq(nxkmx)
-  real*8                :: skpri(ncmx,nxkmx)
+  PetscInt               :: ncxkin = 0, nparcxk1(nxkmx), nparcxk2(nxkmx)
+  PetscInt               :: itypkiniaq(100)
+  PetscReal                :: eqcxk(nxkmx)
+  PetscReal                :: axk0(nxkmx)
+  PetscReal                :: zxk(nxkmx)
+  PetscReal                :: wtxk(nxkmx)
+  PetscReal                :: zeaq(nxkmx)
+  PetscReal                :: skpri(ncmx,nxkmx)
   
 !...........................................................
 ! surface complexation
@@ -376,103 +377,103 @@
   character(len=namlen) :: namscx(nsitmx)
   character(len=namlen) :: namsite(nsitmx),namsrf(nsitmx)
   character(len=namlen) :: namcoll(nsitmx)
-  integer               :: nsrfmin = 0, nsrfmx = 0, nsrfsit = 0, &
+  PetscInt               :: nsrfmin = 0, nsrfmx = 0, nsrfsit = 0, &
                            ncolsrf = 0
-  integer               :: nsite1(nkmx),nsite2(nkmx)
-  integer               :: nsorp1(nsitmx),nsorp2(nsitmx)
-  integer               :: msorp(nkmx)
-  real*8                :: zsite(nsitmx)
-  real*8                :: zsrf(nscxmx)
-  real*8                :: eqsorp(nscxmx),eqsorp0(nscxmx)
-  real*8                :: ssorp(ncmx,nscxmx)
-  real*8                :: wtsrf(nscxmx),csorpini(nscxmx), &
+  PetscInt               :: nsite1(nkmx),nsite2(nkmx)
+  PetscInt               :: nsorp1(nsitmx),nsorp2(nsitmx)
+  PetscInt               :: msorp(nkmx)
+  PetscReal                :: zsite(nsitmx)
+  PetscReal                :: zsrf(nscxmx)
+  PetscReal                :: eqsorp(nscxmx),eqsorp0(nscxmx)
+  PetscReal                :: ssorp(ncmx,nscxmx)
+  PetscReal                :: wtsrf(nscxmx),csorpini(nscxmx), &
                            dcsorp(ncmx,nscxmx)
-  real*8                :: siteden0(nrgmx,nsitmx),sited0mf(2,nsitmx)
-  real*8                :: coverage(nkmx),areamass(nkmx)
-  real*8                :: rkfsrf(nscxmx),rkbsrf(nscxmx)
+  PetscReal                :: siteden0(nrgmx,nsitmx),sited0mf(2,nsitmx)
+  PetscReal                :: coverage(nkmx),areamass(nkmx)
+  PetscReal                :: rkfsrf(nscxmx),rkbsrf(nscxmx)
   
 !...........................................................
 ! ion exchange
 !...........................................................
   character(len=namlen) :: namex(nexmx),namcat(nexmx)
-  integer               :: nexmax = 0, nexsolid = 0, ncollex = 0, &
+  PetscInt               :: nexmax = 0, nexsolid = 0, ncollex = 0, &
                            nexsite = 0, ionex = 0
-  integer               :: nsitex1(nkmx),nsitex2(nkmx), &
+  PetscInt               :: nsitex1(nkmx),nsitex2(nkmx), &
                            nex1(nsitxmx),nex2(nsitxmx)
-  integer               :: mex(nkmx),jex(nexmx)
-  real*8                :: cec0(nrgmx,nsitxmx),cec0mf(2,nsitxmx)
-  real*8                :: eqiex(nexmx),alogex(nexmx)
-  real*8                :: xexini(nexmx)
+  PetscInt               :: mex(nkmx),jex(nexmx)
+  PetscReal                :: cec0(nrgmx,nsitxmx),cec0mf(2,nsitxmx)
+  PetscReal                :: eqiex(nexmx),alogex(nexmx)
+  PetscReal                :: xexini(nexmx)
 
 !...........................................................
 ! monod kinetics
 !...........................................................
-  integer :: nmonod=0
+  PetscInt :: nmonod=0
   
 !...........................................................
 ! decay
 !...........................................................
-  integer :: ndecay = 0
-  real*8 :: xlamhalf(ncmx)
+  PetscInt :: ndecay = 0
+  PetscReal :: xlamhalf(ncmx)
   
 !...........................................................
 ! colloids
 !...........................................................
-  integer :: ncoll = 0
+  PetscInt :: ncoll = 0
 
 !...........................................................
 ! compression
 !...........................................................
-      real*8  :: fshom(ncmx,ncxmx),ffshom(ncmx,ncmx,ncxmx), &
+      PetscReal  :: fshom(ncmx,ncxmx),ffshom(ncmx,ncmx,ncxmx), &
                  cshom(ncmx,ncxmx),sshom(ncxmx,ncmx*(ncmx+1)/2)
             
-      integer :: ki(ncmx,ncxmx),kki(ncmx,ncmx,ncxmx), &
+      PetscInt :: ki(ncmx,ncxmx),kki(ncmx,ncmx,ncxmx), &
                  jcmpr(ncmx,ncxmx),ncmpr(ncxmx), &
                  jpsi(ncmx*ncmx),jpsig(ncmx*ncmx), &
                  lc(ncmx),llc(ncmx,ncmx)
                  
-      real*8  :: fsgas(ncmx,ncxmx),ffsgas(ncmx,ncmx,ncxmx), &
+      PetscReal  :: fsgas(ncmx,ncxmx),ffsgas(ncmx,ncmx,ncxmx), &
                  csgas(ncmx,ncxmx),ssgas(ncxmx,ncmx*(ncmx+1)/2)
      
-      integer :: lg(ncmx),llg(ncmx,ncmx),kg(ncmx,ngmx), &
+      PetscInt :: lg(ncmx),llg(ncmx,ncmx),kg(ncmx,ngmx), &
                  kkg(ncmx,ncmx,ncxmx),njg(ngmx),jg(ncmx,ngmx)
 
-      real*8  :: fskin(nkmx,ncmx),ffskin(nkmx,ncmx*(ncmx+1)/2)
+      PetscReal  :: fskin(nkmx,ncmx),ffskin(nkmx,ncmx*(ncmx+1)/2)
       
-      integer :: kkmin(nkmx),kminj(nkmx,ncmx*(ncmx+1)/2), &
+      PetscInt :: kkmin(nkmx),kminj(nkmx,ncmx*(ncmx+1)/2), &
                  kminl(ncmx,ncmx*(ncmx+1)/2),kmind(nkmx),kinj(nkmx,ncmx)
                  
 !...........................................................
 ! region porosity, pressure, temperature
 !...........................................................
-  integer :: i1reg(nrgmx),i2reg(nrgmx), &
+  PetscInt :: i1reg(nrgmx),i2reg(nrgmx), &
              j1reg(nrgmx),j2reg(nrgmx), &
              k1reg(nrgmx),k2reg(nrgmx)
-  real*8  :: por_reg(nrgmx),tor_reg(nrgmx),pref_reg(nrgmx),temp_reg(nrgmx)
+  PetscReal  :: por_reg(nrgmx),tor_reg(nrgmx),pref_reg(nrgmx),temp_reg(nrgmx)
   
 !...........................................................
 ! source/sink
 !...........................................................
   character(len=namlen) :: nconsrc(ncmx,nrgmx)
-  integer :: nblksrc,nsrc,isrc1
-  integer :: is1(nrgmx),is2(nrgmx), &
+  PetscInt :: nblksrc,nsrc,isrc1
+  PetscInt :: is1(nrgmx),is2(nrgmx), &
              js1(nrgmx),js2(nrgmx), &
              ks1(nrgmx),ks2(nrgmx)
              
-  integer :: itypsrc(ncmx,nrgmx)
+  PetscInt :: itypsrc(ncmx,nrgmx)
              
-  real*8  :: timesrc(nstbmx,nsrcmx),tempsrc(nstbmx,nsrcmx), &
+  PetscReal  :: timesrc(nstbmx,nsrcmx),tempsrc(nstbmx,nsrcmx), &
              qsrc(nstbmx,nsrcmx),csrc(nstbmx,nsrcmx),ctotsrc(ncmx,nsrcmx)
   
 !...........................................................
 ! solid solutions
 !...........................................................
-  integer :: isolidss=0
+  PetscInt :: isolidss=0
   
 !...........................................................
 ! breakthrough curves
 !...........................................................
-  integer :: ibrkcrv, &
+  PetscInt :: ibrkcrv, &
              i1brk(nbrkmx),i2brk(nbrkmx), &
              j1brk(nbrkmx),j2brk(nbrkmx), &
              k1brk(nbrkmx),k2brk(nbrkmx),ibrktyp(nbrkmx), &

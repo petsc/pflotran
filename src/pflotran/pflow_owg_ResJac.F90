@@ -31,15 +31,15 @@ private
 
 
 ! Cutoff parameters
-  real*8, parameter :: formeps   = 5.D-5
-  real*8, parameter :: eps       = 1.D-5
-  real*8, parameter :: floweps   = 1.D-20
-  real*8, parameter :: satcuteps = 1.D-5
-  real*8, parameter :: dfac = 1.D-8
+  PetscReal, parameter :: formeps   = 5.D-5
+  PetscReal, parameter :: eps       = 1.D-5
+  PetscReal, parameter :: floweps   = 1.D-20
+  PetscReal, parameter :: satcuteps = 1.D-5
+  PetscReal, parameter :: dfac = 1.D-8
 
-  integer,save :: size_var_use 
-  integer,save :: size_var_node
-  real*8, allocatable,save :: Resold_AR(:,:), Resold_FL(:,:)
+  PetscInt,save :: size_var_use 
+  PetscInt,save :: size_var_node
+  PetscReal, allocatable,save :: Resold_AR(:,:), Resold_FL(:,:)
 ! Contributions to residual from accumlation/source/Reaction, flux(include diffusion)
   
   
@@ -61,10 +61,10 @@ private
   type(pflowGrid), intent(inout) :: grid
   
  
-  PetscScalar, pointer :: xx_p(:),yy_p(:)!,var_p(:),iphase_p(:)
-  integer :: n,n0,re,ierr
-  !integer re0, ierr, index, iipha
-  !real*8, pointer :: sat(:),xmol(:)
+  PetscReal, pointer :: xx_p(:),yy_p(:)!,var_p(:),iphase_p(:)
+  PetscInt :: n,n0,re,ierr
+  !PetscInt :: re0, ierr, index, iipha
+  !PetscReal, pointer :: sat(:),xmol(:)
 
   call VecGetArrayF90(grid%xx, xx_p, ierr)
   call VecGetArrayF90(grid%yy, yy_p, ierr)
@@ -91,8 +91,8 @@ private
   implicit none
   type(pflowGrid), intent(inout) :: grid
   
-  PetscScalar, pointer :: xx_p(:), iphase_p(:)
-  integer iln,na,nx,ny,nz,ir,ierr
+  PetscReal, pointer :: xx_p(:), iphase_p(:)
+  PetscInt :: iln,na,nx,ny,nz,ir,ierr
   
    size_var_use = 2 + 7*grid%nphase + 2* grid%nphase*grid%nspec
     size_var_node = (grid%ndof + 1) * size_var_use
@@ -141,14 +141,14 @@ private
   
   implicit none
  
-  integer, intent(out):: reason
+  PetscInt, intent(out):: reason
   type(pflowGrid), intent(inout) :: grid
-  PetscScalar, pointer :: xx_p(:),var_p(:),iphase_p(:), yy_p(:) !,r_p(:)
-  integer :: n,n0,re
-  integer re0, ierr, iipha
-! integer :: index
-! real*8, pointer :: sat(:),xmol(:)
-! real*8 rmax(grid%ndof)
+  PetscReal, pointer :: xx_p(:),var_p(:),iphase_p(:), yy_p(:) !,r_p(:)
+  PetscInt :: n,n0,re
+  PetscInt :: re0, ierr, iipha
+! PetscInt :: index
+! PetscReal, pointer :: sat(:),xmol(:)
+! PetscReal rmax(grid%ndof)
 
   call MPI_Barrier(PETSC_COMM_WORLD,ierr)
   
@@ -263,19 +263,19 @@ private
 
   subroutine OWGRes_ARCont(node_no, var_node,por,vol,rock_dencpr, grid, Res_AR,ireac,ierr)
   implicit none
-  integer node_no
-  integer, optional:: ireac,ierr
+  PetscInt :: node_no
+  PetscInt, optional:: ireac,ierr
   type(pflowGrid), intent(in) :: grid
-  real*8, target:: var_node(1:size_var_use)
-  real*8 Res_AR(1:grid%ndof) 
-  real*8 vol,por,rock_dencpr
+  PetscReal, target:: var_node(1:size_var_use)
+  PetscReal Res_AR(1:grid%ndof) 
+  PetscReal vol,por,rock_dencpr
      
-  real*8, pointer :: temp, pre_ref   ! 1 dof
-  real*8, pointer :: sat(:), density(:), amw(:), h(:), u(:), pc(:), kvr(:)         ! nphase dof
-  real*8, pointer :: xmol(:), diff(:)            ! nphase*nspec
+  PetscReal, pointer :: temp, pre_ref   ! 1 dof
+  PetscReal, pointer :: sat(:), density(:), amw(:), h(:), u(:), pc(:), kvr(:)         ! nphase dof
+  PetscReal, pointer :: xmol(:), diff(:)            ! nphase*nspec
   
-  integer :: ibase, m,np, iireac=1
-  real*8 pvol,mol(grid%nspec),eng
+  PetscInt :: ibase, m,np, iireac=1
+  PetscReal pvol,mol(grid%nspec),eng
   
   if(present(ireac)) iireac=ireac
   pvol=vol*por
@@ -325,29 +325,29 @@ private
     var_node2,por2,tor2,sir2,dd2,perm2,Dk2,&
     grid, vv_darcy,Res_FL)
   implicit none
-  integer nconn_no
+  PetscInt :: nconn_no
   type(pflowGrid), intent(inout) :: grid
-  real*8 sir1(1:grid%nphase),sir2(1:grid%nphase)
-  real*8, target:: var_node1(1:2+7*grid%nphase+2*grid%nphase*grid%nspec)
-  real*8, target:: var_node2(1:2+7*grid%nphase+2*grid%nphase*grid%nspec)
-  real*8 por1,por2,tor1,tor2,perm1,perm2,Dk1,Dk2,dd1,dd2
-  real*8 vv_darcy(grid%nphase),area
-  real*8 Res_FL(1:grid%ndof) 
+  PetscReal sir1(1:grid%nphase),sir2(1:grid%nphase)
+  PetscReal, target:: var_node1(1:2+7*grid%nphase+2*grid%nphase*grid%nspec)
+  PetscReal, target:: var_node2(1:2+7*grid%nphase+2*grid%nphase*grid%nspec)
+  PetscReal por1,por2,tor1,tor2,perm1,perm2,Dk1,Dk2,dd1,dd2
+  PetscReal vv_darcy(grid%nphase),area
+  PetscReal Res_FL(1:grid%ndof) 
      
-  real*8, pointer :: temp1, pre_ref1   ! 1 dof
-  real*8, pointer :: sat1(:), density1(:), amw1(:), h1(:), u1(:), pc1(:), kvr1(:)         ! nphase dof
-  real*8, pointer :: xmol1(:), diff1(:)            ! 
+  PetscReal, pointer :: temp1, pre_ref1   ! 1 dof
+  PetscReal, pointer :: sat1(:), density1(:), amw1(:), h1(:), u1(:), pc1(:), kvr1(:)         ! nphase dof
+  PetscReal, pointer :: xmol1(:), diff1(:)            ! 
   
-  real*8, pointer :: temp2, pre_ref2   ! 1 dof
-  real*8, pointer :: sat2(:), density2(:), amw2(:), h2(:), u2(:), pc2(:), kvr2(:)         ! nphase dof
-  real*8, pointer :: xmol2(:), diff2(:)    
+  PetscReal, pointer :: temp2, pre_ref2   ! 1 dof
+  PetscReal, pointer :: sat2(:), density2(:), amw2(:), h2(:), u2(:), pc2(:), kvr2(:)         ! nphase dof
+  PetscReal, pointer :: xmol2(:), diff2(:)    
   
-  integer ibase, m,np, ind
-  real*8  fluxm(grid%nspec),fluxe,v_darcy,q
-  real*8 uxmol(1:grid%nspec),ukvr,difff,diffdp,Dq
-  real*8 upweight,density_ave,gravity, dphi
+  PetscInt :: ibase, m,np, ind
+  PetscReal  fluxm(grid%nspec),fluxe,v_darcy,q
+  PetscReal uxmol(1:grid%nspec),ukvr,difff,diffdp,Dq
+  PetscReal upweight,density_ave,gravity, dphi
   
-! real*8 :: uh, DK,cond, 
+! PetscReal :: uh, DK,cond, 
   
 !  m1=grid%nd1(nc); n1 = grid%nG2L(m1) ! = zero for ghost nodes 
 !  print *,'in FLcont'
@@ -469,29 +469,29 @@ private
  ! Notice : index 1 stands for BC node
    implicit none
   
-   integer nbc_no
+   PetscInt :: nbc_no
   type(pflowGrid), intent(inout) :: grid
-  real*8 dd1, sir2(1:grid%nphase)
-  real*8, target:: var_node1(1:2+7*grid%nphase+2*grid%nphase*grid%nspec)
-  real*8, target:: var_node2(1:2+7*grid%nphase+2*grid%nphase*grid%nspec)
-  real*8 por2,perm2,Dk2,tor2
-  real*8 vv_darcy(grid%nphase), area
-  real*8 Res_FL(1:grid%ndof) 
+  PetscReal dd1, sir2(1:grid%nphase)
+  PetscReal, target:: var_node1(1:2+7*grid%nphase+2*grid%nphase*grid%nspec)
+  PetscReal, target:: var_node2(1:2+7*grid%nphase+2*grid%nphase*grid%nspec)
+  PetscReal por2,perm2,Dk2,tor2
+  PetscReal vv_darcy(grid%nphase), area
+  PetscReal Res_FL(1:grid%ndof) 
      
-  real*8, pointer :: temp1, pre_ref1   ! 1 dof
-  real*8, pointer :: sat1(:), density1(:), amw1(:), h1(:), u1(:), pc1(:), kvr1(:)         ! nphase dof
-  real*8, pointer :: xmol1(:), diff1(:)            ! 
+  PetscReal, pointer :: temp1, pre_ref1   ! 1 dof
+  PetscReal, pointer :: sat1(:), density1(:), amw1(:), h1(:), u1(:), pc1(:), kvr1(:)         ! nphase dof
+  PetscReal, pointer :: xmol1(:), diff1(:)            ! 
   
-  real*8, pointer :: temp2, pre_ref2   ! 1 dof
-  real*8, pointer :: sat2(:), density2(:), amw2(:), h2(:), u2(:), pc2(:), kvr2(:)         ! nphase dof
-  real*8, pointer :: xmol2(:), diff2(:)    
+  PetscReal, pointer :: temp2, pre_ref2   ! 1 dof
+  PetscReal, pointer :: sat2(:), density2(:), amw2(:), h2(:), u2(:), pc2(:), kvr2(:)         ! nphase dof
+  PetscReal, pointer :: xmol2(:), diff2(:)    
   
-  integer ibase, m,np, ind, ibc,j
-  real*8 fluxm(grid%nspec),fluxe,v_darcy,q
-  real*8 uh,uxmol(1:grid%nspec),ukvr,diff,diffdp,Dq
-  real*8 upweight,density_ave,gravity, dphi
+  PetscInt :: ibase, m,np, ind, ibc,j
+  PetscReal fluxm(grid%nspec),fluxe,v_darcy,q
+  PetscReal uh,uxmol(1:grid%nspec),ukvr,diff,diffdp,Dq
+  PetscReal upweight,density_ave,gravity, dphi
 
-! real*8 :: DK,cond,
+! PetscReal :: DK,cond,
   
   ibase=1;                 temp1=>var_node1(ibase)
                            temp2=>var_node2(ibase)
@@ -674,22 +674,22 @@ private
     Vec, intent(out) :: r
     type(pflowGrid), intent(inout) :: grid
 
-! integer :: j, jm1, jm2, jmu, mu 
-  integer :: ierr
-  integer*4 :: n, ng, nc, nr
-  integer*4 :: i, i1, i2, jn, jng
-  integer*4 :: m, m1, m2, n1, n2, ip1, ip2, p1, p2
+! PetscInt :: j, jm1, jm2, jmu, mu 
+  PetscInt :: ierr
+  PetscInt :: n, ng, nc, nr
+  PetscInt :: i, i1, i2, jn, jng
+  PetscInt :: m, m1, m2, n1, n2, ip1, ip2, p1, p2
   !, t1, t2, c1, c2, s1, s2
-  integer*4 :: kk1,kk2,jj1,jj2,ii1,ii2, kk, jj, ii
-! integer*4 :: i1_hencoeff, i2_hencoeff
-  integer*4 :: ibc  ! Index that specifies a boundary condition block
+  PetscInt :: kk1,kk2,jj1,jj2,ii1,ii2, kk, jj, ii
+! PetscInt :: i1_hencoeff, i2_hencoeff
+  PetscInt :: ibc  ! Index that specifies a boundary condition block
   
-! real*8 :: term1, term2, term3
+! PetscReal :: term1, term2, term3
 
 
-  PetscScalar, pointer ::accum_p(:)
+  PetscReal, pointer ::accum_p(:)
 
-  PetscScalar, pointer :: r_p(:), porosity_loc_p(:), volume_p(:), &
+  PetscReal, pointer :: r_p(:), porosity_loc_p(:), volume_p(:), &
                xx_loc_p(:), xx_p(:), yy_p(:),&
 !              ddensity_p(:), ddensity_loc_p(:),&
                phis_p(:), tor_loc_p(:),&
@@ -697,33 +697,33 @@ private
                vl_p(:), var_p(:),var_loc_p(:) 
                           
                
-! PetscScalar, pointer :: pc_p(:), pc_loc_p(:),kvr_p(:), kvr_loc_p(:)
+! PetscReal, pointer :: pc_p(:), pc_loc_p(:),kvr_p(:), kvr_loc_p(:)
 
-  PetscScalar, pointer :: iphase_loc_p(:),icap_p(:),iphase_p(:),&
+  PetscReal, pointer :: iphase_loc_p(:),icap_p(:),iphase_p(:),&
                           icap_loc_p(:), ithrm_loc_p(:),ithrm_p(:)
 
-  integer :: iicap,iiphase, index_var_begin, index_var_end,iicap1,iicap2,np
-  integer :: ichange
-  real*8 :: dd1, dd2, eng, &
+  PetscInt :: iicap,iiphase, index_var_begin, index_var_end,iicap1,iicap2,np
+  PetscInt :: ichange
+  PetscReal :: dd1, dd2, eng, &
 !           eengl,eengg, &
 !           fluxcl,fluxcg,fluxe, fluxh, flux, gravity, fluxl,&
 !           fluxlh,fluxlv, fluxg,fluxgh,fluxgv, fluxv, q,  &
 !           v_darcy,hflx,
             pvoldt, voldt, accum, pvol
-  real*8 :: dd, f1, f2, ff, perm1, perm2
-! real*8 :: Dphi,D0
-! real*8 :: Dq, Dk  ! "Diffusion" constant for a phase.
-  real*8 :: D1, D2  ! "Diffusion" constants at upstream, downstream faces.
-! real*8 :: sat_pressure  ! Saturation pressure of water.
-  real*8 :: dw_kg, dw_mol,dif(grid%nphase)
-  real*8 :: tsrc1, qsrc1, csrc1, enth_src_h2o, enth_src_co2 !, qqsrc
-! real*8 :: cw,cw1,cw2, xxlw,xxla,xxgw,xxga
-! real*8 :: upweight
-! real*8 :: ukvr,uhh,uconc, tmp
-  real*8 :: dddt,dddp,fg,dfgdp,dfgdt,dhdt,dhdp,dvdt,dvdp, rho, visc
-  real*8 :: Res(grid%ndof), vv_darcy(grid%nphase)
+  PetscReal :: dd, f1, f2, ff, perm1, perm2
+! PetscReal :: Dphi,D0
+! PetscReal :: Dq, Dk  ! "Diffusion" constant for a phase.
+  PetscReal :: D1, D2  ! "Diffusion" constants at upstream, downstream faces.
+! PetscReal :: sat_pressure  ! Saturation pressure of water.
+  PetscReal :: dw_kg, dw_mol,dif(grid%nphase)
+  PetscReal :: tsrc1, qsrc1, csrc1, enth_src_h2o, enth_src_co2 !, qqsrc
+! PetscReal :: cw,cw1,cw2, xxlw,xxla,xxgw,xxga
+! PetscReal :: upweight
+! PetscReal :: ukvr,uhh,uconc, tmp
+  PetscReal :: dddt,dddp,fg,dfgdp,dfgdt,dhdt,dhdp,dvdt,dvdp, rho, visc
+  PetscReal :: Res(grid%ndof), vv_darcy(grid%nphase)
  
-! real*8 :: cond, den, por1, por2, density_ave,
+! PetscReal :: cond, den, por1, por2, density_ave,
   
   grid%vvlbc=0.D0
   grid%vvgbc=0.D0
@@ -1324,58 +1324,58 @@ private
     Vec, intent(in) :: xx
     Mat, intent(inout) :: A, B
     type(pflowGrid), intent(inout) :: grid
-   ! integer, intent(inout) :: flag
+   ! PetscInt, intent(inout) :: flag
     MatStructure flag
 
-!   integer :: j, jn, jm1, jm2,jmu, mu
-    integer :: ierr
-    integer*4 :: n, ng, nc,nvar,neq,nr
-    integer*4 :: i1, i2, i, jng
-    integer   :: kk,ii1,jj1,kk1,ii2,jj2,kk2  
-    integer*4 :: m, m1, m2, n1, n2, ip1, ip2 
-    integer*4 :: p1,p2 !,t1,t2,c1,c2,s1,s2
-    integer*4 :: ibc  ! Index that specifies a boundary condition block.
-!   real*8 ::  v_darcy, q
+!   PetscInt :: j, jn, jm1, jm2,jmu, mu
+    PetscInt :: ierr
+    PetscInt :: n, ng, nc,nvar,neq,nr
+    PetscInt :: i1, i2, i, jng
+    PetscInt :: kk,ii1,jj1,kk1,ii2,jj2,kk2  
+    PetscInt :: m, m1, m2, n1, n2, ip1, ip2 
+    PetscInt :: p1,p2 !,t1,t2,c1,c2,s1,s2
+    PetscInt :: ibc  ! Index that specifies a boundary condition block.
+!   PetscReal ::  v_darcy, q
 
-    PetscScalar, pointer :: porosity_loc_p(:), volume_p(:), &
+    PetscReal, pointer :: porosity_loc_p(:), volume_p(:), &
                xx_loc_p(:), phis_p(:),  tor_loc_p(:),&
                perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
 
-  PetscScalar, pointer :: iphase_loc_p(:), icap_loc_p(:), ithrm_loc_p(:),var_loc_p(:)
-  integer :: iicap,ii,jj,iiphas,iiphas1,iiphas2,iicap1,iicap2
-  integer :: index_var_begin, index_var_end
-! integer*4 ibc_hencoeff
-  real*8 :: dw_kg,dw_mol,enth_src_co2,enth_src_h2o,rho,dddt,dddp,fg,dfgdp,&
+  PetscReal, pointer :: iphase_loc_p(:), icap_loc_p(:), ithrm_loc_p(:),var_loc_p(:)
+  PetscInt :: iicap,ii,jj,iiphas,iiphas1,iiphas2,iicap1,iicap2
+  PetscInt :: index_var_begin, index_var_end
+! PetscInt :: ibc_hencoeff
+  PetscReal :: dw_kg,dw_mol,enth_src_co2,enth_src_h2o,rho,dddt,dddp,fg,dfgdp,&
             dfgdt,eng,dhdt,dhdp,visc,dvdt,dvdp
-  real*8 :: vv_darcy(grid%nphase),voldt,pvoldt
-! real*8 :: cond, gravity, acc, density_ave, 
-! real*8 :: fluxl, fluxlh, fluxlv, fluxg, fluxgh, fluxgv, &
+  PetscReal :: vv_darcy(grid%nphase),voldt,pvoldt
+! PetscReal :: cond, gravity, acc, density_ave, 
+! PetscReal :: fluxl, fluxlh, fluxlv, fluxg, fluxgh, fluxgv, &
 !           flux, fluxh, fluxv, difff, diffg, diffl,
-  real*8 :: ff,dif(1:grid%nphase)
-  real*8 :: tsrc1,qsrc1,csrc1
-  real*8 :: dd1, dd2, dd, f1, f2
-! real*8 :: , den
-! real*8 :: dfluxp, dfluxt, dfluxp1, dfluxt1, dfluxp2, dfluxt2
-! real*8 :: por1, por2, 
-  real*8 :: perm1, perm2
-! real*8 :: qu_rate, p_vapor,sat_pressure_t
-! real*8 :: cg1,cg2,cg,cg_p,cg_t,cg_s,cg_c
-! real*8 :: Dk, Dq,D0, Dphi, gdz  ! "Diffusion" constant for a phase.
-  real*8 :: D1, D2  ! "Diffusion" constants upstream and downstream of a face.
-! real*8 :: sat_pressure  ! Saturation pressure of water.
-! real*8 :: xxlw,xxla,xxgw,xxga,cw,cw1,cw2,cwu, sat_ave
-  real*8 :: ra(1:grid%ndof,1:2*grid%ndof)  
-! real*8 :: uhh, uconc, ukvr, 
-  real*8 :: tmp
-! real*8 :: upweight,m1weight,m2weight,mbweight,mnweight
-  real*8 :: delxbc(1:grid%ndof)
-  real*8 :: blkmat11(1:grid%ndof,1:grid%ndof), &
+  PetscReal :: ff,dif(1:grid%nphase)
+  PetscReal :: tsrc1,qsrc1,csrc1
+  PetscReal :: dd1, dd2, dd, f1, f2
+! PetscReal :: , den
+! PetscReal :: dfluxp, dfluxt, dfluxp1, dfluxt1, dfluxp2, dfluxt2
+! PetscReal :: por1, por2, 
+  PetscReal :: perm1, perm2
+! PetscReal :: qu_rate, p_vapor,sat_pressure_t
+! PetscReal :: cg1,cg2,cg,cg_p,cg_t,cg_s,cg_c
+! PetscReal :: Dk, Dq,D0, Dphi, gdz  ! "Diffusion" constant for a phase.
+  PetscReal :: D1, D2  ! "Diffusion" constants upstream and downstream of a face.
+! PetscReal :: sat_pressure  ! Saturation pressure of water.
+! PetscReal :: xxlw,xxla,xxgw,xxga,cw,cw1,cw2,cwu, sat_ave
+  PetscReal :: ra(1:grid%ndof,1:2*grid%ndof)  
+! PetscReal :: uhh, uconc, ukvr, 
+  PetscReal :: tmp
+! PetscReal :: upweight,m1weight,m2weight,mbweight,mnweight
+  PetscReal :: delxbc(1:grid%ndof)
+  PetscReal :: blkmat11(1:grid%ndof,1:grid%ndof), &
             blkmat12(1:grid%ndof,1:grid%ndof),&
       blkmat21(1:grid%ndof,1:grid%ndof),&
       blkmat22(1:grid%ndof,1:grid%ndof)
-  real*8 :: ResInc(1:grid%nlmax, 1:grid%ndof, 1:grid%ndof),res(1:grid%ndof)  
-  real*8 :: max_dev  
-  integer  na1,na2
+  PetscReal :: ResInc(1:grid%nlmax, 1:grid%ndof, 1:grid%ndof),res(1:grid%ndof)  
+  PetscReal :: max_dev  
+  PetscInt ::  na1,na2
 !-----------------------------------------------------------------------
 ! R stand for residual
 !  ra       1              2              3              4          5              6            7      8
@@ -1896,21 +1896,21 @@ private
     type(pflowGrid) :: grid 
 
  
-  integer :: ierr
-  integer*4 :: n
-  integer*4 :: i, index_var_begin,index_var_end
-  integer*4 :: p1
-! integer*4 :: ii1,ii2, 
-  integer*4 :: iicap, iiphase
+  PetscInt :: ierr
+  PetscInt :: n
+  PetscInt :: i, index_var_begin,index_var_end
+  PetscInt :: p1
+! PetscInt :: ii1,ii2, 
+  PetscInt :: iicap, iiphase
 
-  PetscScalar, pointer :: accum_p(:),yy_p(:),volume_p(:),porosity_p(:),&
+  PetscReal, pointer :: accum_p(:),yy_p(:),volume_p(:),porosity_p(:),&
                           var_p(:), icap_p(:),iphase_p(:),ithrm_p(:)
   
- !  integer, pointer ::iphase_p(:)
+ !  PetscInt, pointer ::iphase_p(:)
   
-! real*8 :: sat_pressure, pvol, satw,   ! Saturation pressure of water.
-  real*8 :: tmp
-  real*8 :: dif(1:grid%nphase),res(1:grid%ndof)
+! PetscReal :: sat_pressure, pvol, satw,   ! Saturation pressure of water.
+  PetscReal :: tmp
+  PetscReal :: dif(1:grid%nphase),res(1:grid%ndof)
  
   call VecGetArrayF90(grid%volume, volume_p, ierr)
   call VecGetArrayF90(grid%porosity, porosity_p, ierr)
@@ -1982,11 +1982,11 @@ private
     implicit none
     type(pflowGrid) :: grid 
     
-!   integer*4 :: ichange
-    integer*4 :: n,n0
-    integer :: ierr,iicap,iiphase
-    PetscScalar, pointer :: xx_p(:),icap_p(:),ithrm_p(:),iphase_p(:), var_p(:)
-    real*8 dif(1:grid%nphase), tmp           
+!   PetscInt :: ichange
+    PetscInt :: n,n0
+    PetscInt :: ierr,iicap,iiphase
+    PetscReal, pointer :: xx_p(:),icap_p(:),ithrm_p(:),iphase_p(:), var_p(:)
+    PetscReal dif(1:grid%nphase), tmp           
 
       
   ! if (grid%rk > 0.d0) call Rock_Change(grid)
@@ -2061,23 +2061,23 @@ private
   type(pflowGrid) :: grid 
 
  
-  integer :: ierr
-  integer :: n, nc
-  integer :: ibc,jn
-  integer :: m
-  integer :: ii1,ii2,iicap
-  integer :: iiphase,iithrm
+  PetscInt :: ierr
+  PetscInt :: n, nc
+  PetscInt :: ibc,jn
+  PetscInt :: m
+  PetscInt :: ii1,ii2,iicap
+  PetscInt :: iiphase,iithrm
  
 
-  PetscScalar, pointer :: xx_p(:),var_p(:)
+  PetscReal, pointer :: xx_p(:),var_p(:)
                            
 
-  PetscScalar, pointer ::iphase_p(:), ithrm_p(:),icap_p(:)
+  PetscReal, pointer ::iphase_p(:), ithrm_p(:),icap_p(:)
   
-  real*8  dif(grid%nphase), tmp
+  PetscReal  dif(grid%nphase), tmp
   
-! real*8 :: temp1
-!  real*8, parameter :: Rg=8.31415D0
+! PetscReal :: temp1
+!  PetscReal, parameter :: Rg=8.31415D0
 
 
 

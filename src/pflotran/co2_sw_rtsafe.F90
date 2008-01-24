@@ -1,25 +1,29 @@
   module co2_sw_rtsafe_module
 
+  implicit none
+
+#include "include/finclude/petsc.h"
+
   contains
 
   FUNCTION rtsafe(funcd,x1,x2,xacc)
 
   IMPLICIT NONE
-  REAL*8, INTENT(IN) :: x1,x2,xacc
-  REAL*8 :: rtsafe
+  PetscReal, INTENT(IN) :: x1,x2,xacc
+  PetscReal :: rtsafe
 
 ! INTERFACE
 !   SUBROUTINE funcd(x,fval,fderiv)
 !   IMPLICIT NONE
-!   REAL*8, INTENT(IN) :: x
-!   REAL*8, INTENT(OUT) :: fval,fderiv
+!   PetscReal, INTENT(IN) :: x
+!   PetscReal, INTENT(OUT) :: fval,fderiv
 !   END SUBROUTINE funcd
 ! END INTERFACE
 
   external funcd
   INTEGER, PARAMETER :: MAXIT=100
   INTEGER :: j
-  REAL*8 :: df,dx,dxold,f,fh,fl,temp,xh,xl
+  PetscReal :: df,dx,dxold,f,fh,fl,temp,xh,xl
 
   call funcd(x1,fl,df)
   call funcd(x2,fh,df)
@@ -72,8 +76,8 @@
   
   implicit none
   
-  integer :: i,ifind
-  real*8 :: fac,f1,f2,x1,x2,df
+  PetscInt :: i,ifind
+  PetscReal :: fac,f1,f2,x1,x2,df
   
   external func
   

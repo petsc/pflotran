@@ -1,5 +1,7 @@
 module Utility_module
 
+#include "include/finclude/petsc.h"
+
   contains
 
 function rnd()
@@ -22,9 +24,9 @@ function ran1(idum)
 !-----returns a random number in the range (0,1). Set idum to neg.
 !     value to initialize
 
-  real*8 :: ran1
-  real*8 :: r(97),rm1,rm2
-  integer*4 :: idum,iff,ix1,ix2,ix3,j,m1,ia1,ic1,m2,ia2,ic2,m3,ia3,ic3
+  PetscReal :: ran1
+  PetscReal :: r(97),rm1,rm2
+  PetscInt :: idum,iff,ix1,ix2,ix3,j,m1,ia1,ic1,m2,ia2,ic2,m3,ia3,ic3
 
   parameter (M1  = 259200)
   parameter (IA1 = 7141)
@@ -119,10 +121,10 @@ end function ran2
       
 subroutine Natural2LocalIndex(ir, nl, llist, llength)
   implicit none
-  integer nl, ir,na, l_search, itt, llength
-  integer llist(*)
+  PetscInt :: nl, ir,na, l_search, itt, llength
+  PetscInt :: llist(*)
   
-  integer  nori0, nori1, nori
+  PetscInt ::  nori0, nori1, nori
   
   
   nl=-1
@@ -179,10 +181,10 @@ subroutine reallocateIntArray(array,size)
 
   implicit none
 
-  integer, pointer :: array(:)
-  integer :: size
+  PetscInt, pointer :: array(:)
+  PetscInt :: size
   
-  integer, allocatable :: array2(:)
+  PetscInt, allocatable :: array2(:)
   
   allocate(array2(size))
   array2(1:size) = array(1:size)
@@ -206,10 +208,10 @@ subroutine reallocateRealArray(array,size)
 
   implicit none
 
-  real*8, pointer :: array(:)
-  integer :: size
+  PetscReal, pointer :: array(:)
+  PetscInt :: size
   
-  real*8, allocatable :: array2(:)
+  PetscReal, allocatable :: array2(:)
   
   allocate(array2(size))
   array2(1:size) = array(1:size)

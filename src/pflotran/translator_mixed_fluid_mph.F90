@@ -43,11 +43,11 @@ module translator_mph_module
           Translator_MPhase_Switching
      
      
-  real*8, private, parameter :: fmwh2o = 18.0153D0, fmwa = 28.96D0, &
+  PetscReal, private, parameter :: fmwh2o = 18.0153D0, fmwa = 28.96D0, &
                                fmwco2 = 44.0098D0, fmwnacl = 58.44277D0
-  real*8, private, parameter :: eps=5D-7 , formeps=1D-4
-  real*8, private, parameter ::yh2o_in_co2=1D-2   
-  real*8, private, parameter :: rgasj   = 8.3143    ![J/K/mol]
+  PetscReal, private, parameter :: eps=5D-7 , formeps=1D-4
+  PetscReal, private, parameter ::yh2o_in_co2=1D-2   
+  PetscReal, private, parameter :: rgasj   = 8.3143    ![J/K/mol]
 
 contains
 
@@ -67,24 +67,24 @@ subroutine translator_mphase_massbal(realization)
   
   type(realization_type) :: realization
  
-  integer, save :: icall
-  integer :: ierr
-  integer :: nc,np,n2p,n2p0
-  real*8 :: x,y,z,nzm,nzm0, nxc,nxc0,c0, c00,nyc,nyc0,nzc,nzc0,nsm,nsm0,sm 
-  real*8 :: nxm,nxm0
-  integer :: index, size_var_node
-  integer :: dof_offset
-  integer :: local_id, ghosted_id
+  PetscInt, save :: icall
+  PetscInt :: ierr
+  PetscInt :: nc,np,n2p,n2p0
+  PetscReal :: x,y,z,nzm,nzm0, nxc,nxc0,c0, c00,nyc,nyc0,nzc,nzc0,nsm,nsm0,sm 
+  PetscReal :: nxm,nxm0
+  PetscInt :: index, size_var_node
+  PetscInt :: dof_offset
+  PetscInt :: local_id, ghosted_id
      
-  PetscScalar, pointer :: var_loc_p(:), porosity_loc_p(:), volume_p(:)
+  PetscReal, pointer :: var_loc_p(:), porosity_loc_p(:), volume_p(:)
                            
-  PetscScalar, pointer :: iphase_loc_p(:)
+  PetscReal, pointer :: iphase_loc_p(:)
   
-  real*8 ::  pvol,sum
-  real*8, pointer ::  den(:),sat(:),xmol(:)
-  real*8 :: sat_avg, sat_max, sat_min, sat_var
-  real*8 :: sat_avg0, sat_max0, sat_min0, sat_var0
-  real*8 :: tot(0:realization%option%nspec,0:realization%option%nphase), &
+  PetscReal ::  pvol,sum
+  PetscReal, pointer ::  den(:),sat(:),xmol(:)
+  PetscReal :: sat_avg, sat_max, sat_min, sat_var
+  PetscReal :: sat_avg0, sat_max0, sat_min0, sat_var0
+  PetscReal :: tot(0:realization%option%nspec,0:realization%option%nphase), &
             tot0(0:realization%option%nspec,0:realization%option%nphase)  
   data icall/0/
     
@@ -210,18 +210,18 @@ subroutine translator_mphase_massbal(realization)
   
 end subroutine translator_mphase_massbal
 
-integer function translator_check_phase_cond(iphase, var_node,num_phase,num_spec)
+PetscInt function translator_check_phase_cond(iphase, var_node,num_phase,num_spec)
  
   implicit none
    
-  integer iphase, num_phase, num_spec
-  real*8, target:: var_node(:)
+  PetscInt :: iphase, num_phase, num_spec
+  PetscReal, target:: var_node(:)
     
-  integer ibase,succ,np,nc
-  real*8, pointer :: t,p,satu(:),den(:), avgmw(:),h(:),u(:),pc(:),&
+  PetscInt :: ibase,succ,np,nc
+  PetscReal, pointer :: t,p,satu(:),den(:), avgmw(:),h(:),u(:),pc(:),&
                       kvr(:),xmol(:),diff(:)
       
-  real*8 sum     
+  PetscReal sum     
     
   ibase=1;               t=>var_node(ibase)
   ibase=ibase+1;         p=>var_node(ibase)
@@ -277,10 +277,10 @@ subroutine translator_mph_get_output(realization)
 
   PetscErrorCode :: ierr
       
-  PetscScalar, pointer :: t_p(:),p_p(:),c_p(:),s_p(:),cc_p(:),var_loc_p(:)
-  integer index_var_begin ,jn, size_var_node
-! PetscScalar, pointer :: p,t,satu(:),xmol(:)
-  integer :: local_id, ghosted_id
+  PetscReal, pointer :: t_p(:),p_p(:),c_p(:),s_p(:),cc_p(:),var_loc_p(:)
+  PetscInt :: index_var_begin ,jn, size_var_node
+! PetscReal, pointer :: p,t,satu(:),xmol(:)
+  PetscInt :: local_id, ghosted_id
 
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
@@ -344,12 +344,12 @@ subroutine translator_mph_step_maxchange(realization)
   type(field_type), pointer :: field  
   type(grid_type), pointer :: grid
   
-  PetscScalar, pointer :: xx_p(:), yy_p(:), iphase_loc_p(:),var_loc_p(:),iphase_old_loc_p(:)
-  real*8 :: comp1,comp,cmp  
-! real*8 :: dsm,dcm  
-  real*8 :: dsm0,dcm0  
-  integer local_id, ghosted_id, dof_offset
-! integer j
+  PetscReal, pointer :: xx_p(:), yy_p(:), iphase_loc_p(:),var_loc_p(:),iphase_old_loc_p(:)
+  PetscReal :: comp1,comp,cmp  
+! PetscReal :: dsm,dcm  
+  PetscReal :: dsm0,dcm0  
+  PetscInt :: local_id, ghosted_id, dof_offset
+! PetscInt :: j
   PetscErrorCode :: ierr
   
   option => realization%option
@@ -426,18 +426,18 @@ subroutine Translator_MPhase_Switching(xx,realization,icri,ichange)
   type(realization_type) :: realization
   
   Vec, intent(in) :: xx
-  integer icri,ichange 
+  PetscInt :: icri,ichange 
 
-  PetscScalar, pointer :: xx_p(:), yy_p(:),iphase_loc_p(:)
-  integer :: ipr
-  integer :: ierr,iipha 
-! integer :: index,i
-  real*8 :: p2,p,tmp,t
-  real*8 :: dg,dddt,dddp,fg,dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp
-  real*8 :: ug,xphi,henry,sat_pressure
-  real*8 :: xmol(realization%option%nphase*realization%option%nspec),satu(realization%option%nphase)
-! real*8 :: xla,co2_poyn
-  integer :: local_id, ghosted_id, dof_offset
+  PetscReal, pointer :: xx_p(:), yy_p(:),iphase_loc_p(:)
+  PetscInt :: ipr
+  PetscInt :: ierr,iipha 
+! PetscInt :: index,i
+  PetscReal :: p2,p,tmp,t
+  PetscReal :: dg,dddt,dddp,fg,dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp
+  PetscReal :: ug,xphi,henry,sat_pressure
+  PetscReal :: xmol(realization%option%nphase*realization%option%nspec),satu(realization%option%nphase)
+! PetscReal :: xla,co2_poyn
+  PetscInt :: local_id, ghosted_id, dof_offset
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -699,22 +699,22 @@ subroutine pri_var_trans_mph_ninc_3_3(x,iphase,energyscale,num_phase,num_spec,&
 
   implicit none
   
-  integer :: num_phase,num_spec
-  integer :: size_var_use
-  real*8 x(1:num_spec+1),energyscale
-  real*8,target:: var_node(:)
-  integer :: iphase,itable,ierr
-  integer :: ipckrtype !, ithrmtype
-!   integer :: num_pricomp
+  PetscInt :: num_phase,num_spec
+  PetscInt :: size_var_use
+  PetscReal x(1:num_spec+1),energyscale
+  PetscReal,target:: var_node(:)
+  PetscInt :: iphase,itable,ierr
+  PetscInt :: ipckrtype !, ithrmtype
+!   PetscInt :: num_pricomp
   
-  real*8  :: pckr_sir(:),pckr_lambda,pckr_alpha,pckr_m,pckr_pcmax,pckr_betac,pckr_pwr
-  real*8  :: dif(:)
+  PetscReal  :: pckr_sir(:),pckr_lambda,pckr_alpha,pckr_m,pckr_pcmax,pckr_betac,pckr_pwr
+  PetscReal  :: dif(:)
      
-  real*8, pointer :: t,p
-  real*8, pointer:: den(:),h(:),u(:),avgmw(:),pc(:),kvr(:)
-  real*8, pointer :: diff(:),xmol(:),satu(:)
-  integer ibase 
-! real*8 err
+  PetscReal, pointer :: t,p
+  PetscReal, pointer:: den(:),h(:),u(:),avgmw(:),pc(:),kvr(:)
+  PetscReal, pointer :: diff(:),xmol(:),satu(:)
+  PetscInt :: ibase 
+! PetscReal err
 
   size_var_use = 2 + 7*num_phase + 2* num_phase*num_spec 
   ibase=1;               t=>var_node(ibase)
@@ -773,32 +773,32 @@ subroutine pri_var_trans_mph_ninc_2_2(x,iphase,energyscale,num_phase,num_spec,&
 
   implicit none
   
-  integer :: num_phase,num_spec, itable, ierr
-  integer :: size_var_use 
-  real*8 x(1:num_spec+1),energyscale
-  real*8, target:: var_node(:)
-  integer ::iphase
-  integer :: ipckrreg !, ithrmtype
-  real*8 :: dif(:)
+  PetscInt :: num_phase,num_spec, itable, ierr
+  PetscInt :: size_var_use 
+  PetscReal x(1:num_spec+1),energyscale
+  PetscReal, target:: var_node(:)
+  PetscInt ::iphase
+  PetscInt :: ipckrreg !, ithrmtype
+  PetscReal :: dif(:)
  
- !   integer size_var_node = (option%ndof+1)*size_var_use
+ !   PetscInt :: size_var_node = (option%ndof+1)*size_var_use
 
-  real*8, pointer :: t ,p
-  real*8, pointer :: den(:),h(:),u(:),avgmw(:),pc(:),kvr(:)
-  real*8, pointer :: xmol(:),satu(:),diff(:)
-  integer ibase 
+  PetscReal, pointer :: t ,p
+  PetscReal, pointer :: den(:),h(:),u(:),avgmw(:),pc(:),kvr(:)
+  PetscReal, pointer :: xmol(:),satu(:),diff(:)
+  PetscInt :: ibase 
   
-! real*8 p1,tmp,co2_phi,co2_poyn,stea,dstea_p,dstea_t,hstea_p,hstea_t,dstea
-! real*8 pckr_swir,xla
-  real*8 p2
-  real*8 pw,dw_kg,dw_mol,hw,sat_pressure,visl,xphi,dco2
-  real*8 dg,dddt,dddp,fg,dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp
-  real*8 ug
-  real*8 henry,m_nacl
-  real*8 dsteamol,hstea
-  real*8 kr(num_phase)
-  real*8 err,vphi,xm_nacl,x_nacl
-  real*8 temp
+! PetscReal p1,tmp,co2_phi,co2_poyn,stea,dstea_p,dstea_t,hstea_p,hstea_t,dstea
+! PetscReal pckr_swir,xla
+  PetscReal p2
+  PetscReal pw,dw_kg,dw_mol,hw,sat_pressure,visl,xphi,dco2
+  PetscReal dg,dddt,dddp,fg,dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp
+  PetscReal ug
+  PetscReal henry,m_nacl
+  PetscReal dsteamol,hstea
+  PetscReal kr(num_phase)
+  PetscReal err,vphi,xm_nacl,x_nacl
+  PetscReal temp
   
   size_var_use = 2 + 7*num_phase + 2* num_phase*num_spec
   !pckr_swir=pckr_sir(1)
@@ -1098,17 +1098,17 @@ subroutine pri_var_trans_mph_ninc(x,iphase,energyscale,num_phase,num_spec,&
  
   implicit none
   
-  integer :: num_phase,num_spec
-! integer :: num_pricomp
-  integer :: size_var_use
-  real*8 x(1:num_spec+1),energyscale
-  real*8 var_node(1:2 + 7*num_phase + 2* num_phase*num_spec)
-  real*8 :: dif(:), m_nacl
-  integer ::iphase, itable,ierr
-  integer :: ipckrreg !, ithrmtype
+  PetscInt :: num_phase,num_spec
+! PetscInt :: num_pricomp
+  PetscInt :: size_var_use
+  PetscReal x(1:num_spec+1),energyscale
+  PetscReal var_node(1:2 + 7*num_phase + 2* num_phase*num_spec)
+  PetscReal :: dif(:), m_nacl
+  PetscInt ::iphase, itable,ierr
+  PetscInt :: ipckrreg !, ithrmtype
        
-  real*8, optional :: phi_co2, den_co2  
-  real*8 :: xphi_co2=1.D0, denco2=1.D0
+  PetscReal, optional :: phi_co2, den_co2  
+  PetscReal :: xphi_co2=1.D0, denco2=1.D0
 
   size_var_use = 2 + 7*num_phase + 2* num_phase*num_spec
   if((num_phase == 2).and.( num_spec ==2)) then
@@ -1130,19 +1130,19 @@ subroutine pri_var_trans_mph_winc(x,delx,iphase,energyscale,num_phase,num_spec,&
 
   implicit none                    
 
-  integer :: num_phase,num_spec
-  integer :: size_var_use,size_var_node
+  PetscInt :: num_phase,num_spec
+  PetscInt :: size_var_use,size_var_node
     
 
-  real*8 x(1:num_spec+1),delx(1:num_spec+1),energyscale
-  real*8 var_node(:),m_nacl
-  real*8 :: dif(:)
-  integer ::iphase,itable,ierr
-  integer :: ipckrreg !, ithrmtype
-  integer :: ispec
+  PetscReal x(1:num_spec+1),delx(1:num_spec+1),energyscale
+  PetscReal var_node(:),m_nacl
+  PetscReal :: dif(:)
+  PetscInt ::iphase,itable,ierr
+  PetscInt :: ipckrreg !, ithrmtype
+  PetscInt :: ispec
    
    
-  real*8 xx(1:num_spec+1)
+  PetscReal xx(1:num_spec+1)
 
 
   size_var_use = 2 + 7*num_phase + 2* num_phase*num_spec

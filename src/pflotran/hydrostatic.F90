@@ -8,7 +8,7 @@ module Hydrostatic_module
 
 #include "definitions.h"
 
-  real*8, parameter ::  fmwnacl = 58.44277D0,  fmwh2o = 18.0153D0
+  PetscReal, parameter ::  fmwnacl = 58.44277D0,  fmwh2o = 18.0153D0
 
   public :: HydrostaticUpdateCoupler, HydrostaticUpdateCouplerBetter, &
             HydrostaticTest
@@ -40,15 +40,15 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   type(option_type) :: option
   type(grid_type) :: grid
   
-  integer :: local_id, ghosted_id, iconn
-  integer :: num_iteration, iz
-  real*8 :: dist_x, dist_y, dist_z, delta_z
-  real*8 :: rho, rho1, rho0, pressure0, pressure, temperature
-  real*8 :: xm_nacl, dw_kg
+  PetscInt :: local_id, ghosted_id, iconn
+  PetscInt :: num_iteration, iz
+  PetscReal :: dist_x, dist_y, dist_z, delta_z
+  PetscReal :: rho, rho1, rho0, pressure0, pressure, temperature
+  PetscReal :: xm_nacl, dw_kg
   
-  real*8 :: structured_pressure(grid%structured_grid%nz)
+  PetscReal :: structured_pressure(grid%structured_grid%nz)
   
-  real*8, parameter :: patm = 101325.d0
+  PetscReal, parameter :: patm = 101325.d0
   
   type(condition_type), pointer :: condition
   
@@ -216,12 +216,12 @@ subroutine HydrostaticUpdateCouplerBetter(coupler,option,grid)
   type(option_type) :: option
   type(grid_type) :: grid
   
-  integer :: local_id, ghosted_id, iconn
-  integer :: num_iteration, ipressure, idatum, num_pressures
-  real*8 :: dist_x, dist_y, dist_z, delta_z
-  real*8 :: rho, rho1, rho0, pressure0, pressure, temperature
-  real*8 :: xm_nacl, dw_kg
-  real*8, pointer :: pressure_array(:), density_array(:), z(:)
+  PetscInt :: local_id, ghosted_id, iconn
+  PetscInt :: num_iteration, ipressure, idatum, num_pressures
+  PetscReal :: dist_x, dist_y, dist_z, delta_z
+  PetscReal :: rho, rho1, rho0, pressure0, pressure, temperature
+  PetscReal :: xm_nacl, dw_kg
+  PetscReal, pointer :: pressure_array(:), density_array(:), z(:)
   
   type(condition_type), pointer :: condition
   
@@ -393,13 +393,13 @@ subroutine HydrostaticTest()
   
   implicit none
   
-  integer :: iz, i, i_increment, num_increment
-  integer :: max_num_pressures, i_up, i_dn, num_iteration
-  real*8 :: rho, rho1, rho0, pressure0, pressure, temperature
-  real*8 :: increment(4)
-  real*8 :: xm_nacl, dw_kg, dist_z, dist
+  PetscInt :: iz, i, i_increment, num_increment
+  PetscInt :: max_num_pressures, i_up, i_dn, num_iteration
+  PetscReal :: rho, rho1, rho0, pressure0, pressure, temperature
+  PetscReal :: increment(4)
+  PetscReal :: xm_nacl, dw_kg, dist_z, dist
 
-  real*8, pointer :: density_array(:,:), pressure_array(:,:)
+  PetscReal, pointer :: density_array(:,:), pressure_array(:,:)
   
   increment(1) = 1.d-1
   increment(2) = 1.d-0

@@ -5,21 +5,22 @@ module Region_module
   private
 
 #include "definitions.h"
+#include "include/finclude/petsc.h"
  
   type, public :: block_type
-    integer :: i1,i2,j1,j2,k1,k2    
+    PetscInt :: i1,i2,j1,j2,k1,k2    
     type(block_type), pointer :: next
   end type block_type
  
   type, public :: region_type
-    integer :: id
+    PetscInt :: id
     character(len=MAXWORDLENGTH) :: name
     character(len=MAXWORDLENGTH) :: filename
     type(block_type), pointer :: block_list
-    integer :: i1,i2,j1,j2,k1,k2
-    integer :: num_cells
-    integer, pointer :: cell_ids(:)
-    integer, pointer :: faces(:)
+    PetscInt :: i1,i2,j1,j2,k1,k2
+    PetscInt :: num_cells
+    PetscInt, pointer :: cell_ids(:)
+    PetscInt, pointer :: faces(:)
     type(region_type), pointer :: next
   end type region_type
   
@@ -28,13 +29,13 @@ module Region_module
   end type region_ptr_type
   
   type, public :: region_list_type
-    integer :: num_regions
+    PetscInt :: num_regions
     type(region_type), pointer :: first
     type(region_type), pointer :: last
     type(region_type), pointer :: array(:)
   end type region_list_type
   
-  integer, save :: num_regions = 0
+  PetscInt, save :: num_regions = 0
   
   interface RegionCreate
     module procedure RegionCreateWithBlock
@@ -101,7 +102,7 @@ function RegionCreateWithBlock(i1,i2,j1,j2,k1,k2)
 
   implicit none
   
-  integer :: i1, i2, j1, j2, k1, k2
+  PetscInt :: i1, i2, j1, j2, k1, k2
   
   type(region_type), pointer :: RegionCreateWithBlock
 
@@ -132,7 +133,7 @@ function RegionCreateWithList(list)
 
   implicit none
   
-  integer :: list(:)
+  PetscInt :: list(:)
   
   type(region_type), pointer :: RegionCreateWithList
   
@@ -209,10 +210,10 @@ subroutine RegionReadFromFilename(region,filename)
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
   
-  integer :: fid
-  integer, pointer :: temp_int_array(:)
-  integer :: max_size = 1000
-  integer :: count, temp_int, ierr
+  PetscInt :: fid
+  PetscInt, pointer :: temp_int_array(:)
+  PetscInt :: max_size = 1000
+  PetscInt :: count, temp_int, ierr
   
   fid = 86
   open(unit=fid,file=filename)
@@ -236,16 +237,16 @@ subroutine RegionReadFromFileId(region,fid)
   implicit none
   
   type(region_type), pointer :: region
-  integer :: fid
+  PetscInt :: fid
   
   logical :: continuation_flag
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
   character(len=1) :: backslash
 
-  integer, pointer :: temp_int_array(:)
-  integer :: max_size = 1000
-  integer :: count, temp_int, ierr
+  PetscInt, pointer :: temp_int_array(:)
+  PetscInt :: max_size = 1000
+  PetscInt :: count, temp_int, ierr
 
   backslash = achar(92)  ! 92 = "\" Some compilers choke on \" thinking it
                           ! is a double quote as in c/c++

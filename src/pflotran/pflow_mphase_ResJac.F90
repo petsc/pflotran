@@ -31,17 +31,17 @@ module MPHASE_module
 #include "include/finclude/petscerror.h" 
 
 ! Cutoff parameters
-!  real*8, parameter :: formeps   = 5.D-5
-  real*8, parameter :: eps       = 1.D-5
-  real*8, parameter :: floweps   = 1.D-24
-!  real*8, parameter :: satcuteps = 1.D-5
-  real*8, parameter :: zerocut =0.D0!1D-8
-  real*8, parameter :: dfac = 1.D-8
-!  real*8, parameter :: dfac = 1.D-2
+!  PetscReal, parameter :: formeps   = 5.D-5
+  PetscReal, parameter :: eps       = 1.D-5
+  PetscReal, parameter :: floweps   = 1.D-24
+!  PetscReal, parameter :: satcuteps = 1.D-5
+  PetscReal, parameter :: zerocut =0.D0!1D-8
+  PetscReal, parameter :: dfac = 1.D-8
+!  PetscReal, parameter :: dfac = 1.D-2
 
-  integer,save :: size_var_use 
-  integer,save :: size_var_node
-  real*8, allocatable,save :: Resold_AR(:,:), Resold_FL(:,:)
+  PetscInt,save :: size_var_use 
+  PetscInt,save :: size_var_node
+  PetscReal, allocatable,save :: Resold_AR(:,:), Resold_FL(:,:)
 ! Contributions to residual from accumlation/source/Reaction, flux(include diffusion)
 
   public MPHASEResidual, MPHASEJacobian, pflow_mphase_initaccum, &
@@ -50,9 +50,9 @@ module MPHASE_module
 
   public :: createmphaseZeroArray
   
-  integer, save :: n_zero_rows = 0
-  integer, pointer, save :: zero_rows_local(:)  ! 1-based indexing
-  integer, pointer, save :: zero_rows_local_ghosted(:) ! 0-based indexing
+  PetscInt, save :: n_zero_rows = 0
+  PetscInt, pointer, save :: zero_rows_local(:)  ! 1-based indexing
+  PetscInt, pointer, save :: zero_rows_local_ghosted(:) ! 0-based indexing
   
 contains
 
@@ -70,12 +70,12 @@ subroutine pflow_mphase_timecut(realization)
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
  
-  PetscScalar, pointer :: xx_p(:),yy_p(:)!,var_loc_p(:),iphase_loc_p(:)
-  integer :: re,ierr
-  integer :: dof_offset
-  integer :: local_id
+  PetscReal, pointer :: xx_p(:),yy_p(:)!,var_loc_p(:),iphase_loc_p(:)
+  PetscInt :: re,ierr
+  PetscInt :: dof_offset
+  PetscInt :: local_id
   !integer re0, ierr, index, iipha
-  !real*8, pointer :: sat(:),xmol(:)
+  !PetscReal, pointer :: sat(:),xmol(:)
 
   grid => realization%grid
   option => realization%option
@@ -125,7 +125,7 @@ subroutine pflow_mphase_setupini(realization)
   type(field_type), pointer :: field
   type(coupler_type), pointer :: initial_condition
   
-  PetscScalar, pointer :: xx_p(:), iphase_loc_p(:)
+  PetscReal, pointer :: xx_p(:), iphase_loc_p(:)
   integer local_id, ghosted_id, ibegin, iend, icell, ierr  
   
   grid => realization%grid
@@ -184,14 +184,14 @@ subroutine MPhase_Update_Reason(reason,realization)
   type(option_type), pointer :: option
   type(field_type), pointer :: field
    
-  integer, intent(out):: reason
-  PetscScalar, pointer :: xx_p(:),var_loc_p(:),iphase_loc_p(:), yy_p(:) !,r_p(:)
+  PetscInt, intent(out):: reason
+  PetscReal, pointer :: xx_p(:),var_loc_p(:),iphase_loc_p(:), yy_p(:) !,r_p(:)
   integer dof_offset, temp_reason
-  integer :: ierr, iipha
-  integer :: local_id, ghosted_id  
+  PetscInt :: ierr, iipha
+  PetscInt :: local_id, ghosted_id  
 
-! real*8, pointer :: sat(:),xmol(:)
-! real*8 rmax(option%ndof)
+! PetscReal, pointer :: sat(:),xmol(:)
+! PetscReal rmax(option%ndof)
 
   grid => realization%grid
   option => realization%option
@@ -329,18 +329,18 @@ subroutine MPHASERes_ARCont(node_no, var_node,por,vol,rock_dencpr, option, &
   implicit none
   
   type(option_type) :: option
-  integer :: node_no
-  integer, optional:: ireac,ierr
-  real*8, target :: var_node(1:size_var_use)
-  real*8 :: Res_AR(1:option%ndof) 
-  real*8 :: vol,por,rock_dencpr
+  PetscInt :: node_no
+  PetscInt, optional:: ireac,ierr
+  PetscReal, target :: var_node(1:size_var_use)
+  PetscReal :: Res_AR(1:option%ndof) 
+  PetscReal :: vol,por,rock_dencpr
      
-  real*8, pointer :: temp, pre_ref   ! 1 dof
-  real*8, pointer :: sat(:), density(:), amw(:), h(:), u(:), pc(:), kvr(:) ! nphase dof
-  real*8, pointer :: xmol(:), diff(:)            ! nphase*nspec
+  PetscReal, pointer :: temp, pre_ref   ! 1 dof
+  PetscReal, pointer :: sat(:), density(:), amw(:), h(:), u(:), pc(:), kvr(:) ! nphase dof
+  PetscReal, pointer :: xmol(:), diff(:)            ! nphase*nspec
   
-  integer :: ibase, m,np, iireac=1
-  real*8 :: pvol,mol(option%nspec),eng
+  PetscInt :: ibase, m,np, iireac=1
+  PetscReal :: pvol,mol(option%nspec),eng
   
   if(present(ireac)) iireac=ireac
   pvol=vol*por
@@ -397,27 +397,27 @@ subroutine MPHASERes_FLCont(nconn_no,area, &
   
   integer nconn_no
   type(option_type) :: option
-  real*8 :: sir1(1:option%nphase),sir2(1:option%nphase)
-  real*8, target :: var_node1(1:2+7*option%nphase+2*option%nphase*option%nspec)
-  real*8, target :: var_node2(1:2+7*option%nphase+2*option%nphase*option%nspec)
-  real*8 :: por1,por2,tor1,tor2,perm1,perm2,Dk1,Dk2,dd1,dd2
-  real*8 :: vv_darcy(option%nphase),area
-  real*8 :: Res_FL(1:option%ndof) 
+  PetscReal :: sir1(1:option%nphase),sir2(1:option%nphase)
+  PetscReal, target :: var_node1(1:2+7*option%nphase+2*option%nphase*option%nspec)
+  PetscReal, target :: var_node2(1:2+7*option%nphase+2*option%nphase*option%nspec)
+  PetscReal :: por1,por2,tor1,tor2,perm1,perm2,Dk1,Dk2,dd1,dd2
+  PetscReal :: vv_darcy(option%nphase),area
+  PetscReal :: Res_FL(1:option%ndof) 
   
-  real*8 :: dist_gravity ! distance along gravity vector
+  PetscReal :: dist_gravity ! distance along gravity vector
      
-  real*8, pointer :: temp1, pre_ref1   ! 1 dof
-  real*8, pointer :: sat1(:), density1(:), amw1(:), h1(:), u1(:), pc1(:), kvr1(:)         ! nphase dof
-  real*8, pointer :: xmol1(:), diff1(:)            ! 
+  PetscReal, pointer :: temp1, pre_ref1   ! 1 dof
+  PetscReal, pointer :: sat1(:), density1(:), amw1(:), h1(:), u1(:), pc1(:), kvr1(:)         ! nphase dof
+  PetscReal, pointer :: xmol1(:), diff1(:)            ! 
   
-  real*8, pointer :: temp2, pre_ref2   ! 1 dof
-  real*8, pointer :: sat2(:), density2(:), amw2(:), h2(:), u2(:), pc2(:), kvr2(:)         ! nphase dof
-  real*8, pointer :: xmol2(:), diff2(:)    
+  PetscReal, pointer :: temp2, pre_ref2   ! 1 dof
+  PetscReal, pointer :: sat2(:), density2(:), amw2(:), h2(:), u2(:), pc2(:), kvr2(:)         ! nphase dof
+  PetscReal, pointer :: xmol2(:), diff2(:)    
   
-  integer :: ibase, m,np, ind
-  real*8 :: fluxm(option%nspec),fluxe, v_darcy,q
-  real*8 :: uh,uxmol(1:option%nspec), ukvr,difff,diffdp, DK,Dq
-  real*8 :: upweight,density_ave,cond, gravity, dphi
+  PetscInt :: ibase, m,np, ind
+  PetscReal :: fluxm(option%nspec),fluxe, v_darcy,q
+  PetscReal :: uh,uxmol(1:option%nspec), ukvr,difff,diffdp, DK,Dq
+  PetscReal :: upweight,density_ave,cond, gravity, dphi
   
 !  m1=option%nd1(nc); n1 = grid%nG2L(m1) ! = zero for ghost nodes 
 !  print *,'in FLcont'
@@ -558,30 +558,30 @@ subroutine MPHASERes_FLBCCont(ibndtype,area,aux_vars, &
   integer ibndtype(:)
   type(option_type) :: option
   type(field_type) :: field
-  real*8 :: aux_vars(:)
-  real*8 :: dd1, sir2(1:option%nphase)
-  real*8, target :: var_node1(1:2+7*option%nphase+2*option%nphase*option%nspec)
-  real*8, target :: var_node2(1:2+7*option%nphase+2*option%nphase*option%nspec)
-  real*8 :: por2,perm2,Dk2,tor2
-  real*8 :: vv_darcy(option%nphase), area
-  real*8 :: Res_FL(1:option%ndof) 
+  PetscReal :: aux_vars(:)
+  PetscReal :: dd1, sir2(1:option%nphase)
+  PetscReal, target :: var_node1(1:2+7*option%nphase+2*option%nphase*option%nspec)
+  PetscReal, target :: var_node2(1:2+7*option%nphase+2*option%nphase*option%nspec)
+  PetscReal :: por2,perm2,Dk2,tor2
+  PetscReal :: vv_darcy(option%nphase), area
+  PetscReal :: Res_FL(1:option%ndof) 
   
-  real*8 :: dist_gravity   ! distance along gravity vector
+  PetscReal :: dist_gravity   ! distance along gravity vector
      
-  real*8, pointer :: temp1, pre_ref1   ! 1 dof
-  real*8, pointer :: sat1(:), density1(:), amw1(:), h1(:), u1(:), pc1(:), kvr1(:)         ! nphase dof
-  real*8, pointer :: xmol1(:), diff1(:)            ! 
+  PetscReal, pointer :: temp1, pre_ref1   ! 1 dof
+  PetscReal, pointer :: sat1(:), density1(:), amw1(:), h1(:), u1(:), pc1(:), kvr1(:)         ! nphase dof
+  PetscReal, pointer :: xmol1(:), diff1(:)            ! 
   
-  real*8, pointer :: temp2, pre_ref2   ! 1 dof
-  real*8, pointer :: sat2(:), density2(:), amw2(:), h2(:), u2(:), pc2(:), kvr2(:)         ! nphase dof
-  real*8, pointer :: xmol2(:), diff2(:)    
+  PetscReal, pointer :: temp2, pre_ref2   ! 1 dof
+  PetscReal, pointer :: sat2(:), density2(:), amw2(:), h2(:), u2(:), pc2(:), kvr2(:)         ! nphase dof
+  PetscReal, pointer :: xmol2(:), diff2(:)    
   
   integer ibase,offset,iphase,idof,ispec,index
-  real*8 :: fluxm(option%nspec),fluxe,q(option%nphase)
-  real*8 :: uh(option%nphase),uxmol(option%nspec), ukvr,diff,diffdp, DK,Dq
-  real*8 :: upweight,density_ave(option%nphase),cond,gravity, dphi
+  PetscReal :: fluxm(option%nspec),fluxe,q(option%nphase)
+  PetscReal :: uh(option%nphase),uxmol(option%nspec), ukvr,diff,diffdp, DK,Dq
+  PetscReal :: upweight,density_ave(option%nphase),cond,gravity, dphi
 
-  real*8 :: v_darcy
+  PetscReal :: v_darcy
   
   ibase=1;                 temp1=>var_node1(ibase)
                            temp2=>var_node2(ibase)
@@ -829,49 +829,49 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
   Vec, intent(out) :: r
   type(realization_type) :: realization
 
-  integer :: ierr, ierr0
-  integer :: nr
-  integer :: i, jn
-  integer :: ip2, p1, p2
-  integer :: ithrm1, ithrm2
-  integer :: local_id, ghosted_id, local_id_up, local_id_dn, ghosted_id_up, ghosted_id_dn
+  PetscInt :: ierr, ierr0
+  PetscInt :: nr
+  PetscInt :: i, jn
+  PetscInt :: ip2, p1, p2
+  PetscInt :: ithrm1, ithrm2
+  PetscInt :: local_id, ghosted_id, local_id_up, local_id_dn, ghosted_id_up, ghosted_id_dn
   
-  PetscScalar, pointer :: accum_p(:)
+  PetscReal, pointer :: accum_p(:)
 
-  PetscScalar, pointer :: r_p(:), porosity_loc_p(:), volume_p(:), &
+  PetscReal, pointer :: r_p(:), porosity_loc_p(:), volume_p(:), &
                xx_loc_p(:), xx_p(:), yy_p(:),&
                phis_p(:), tor_loc_p(:),&
                perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:), &
                vl_p(:), var_loc_p(:) 
 
-  real*8 :: xxbc(realization%option%ndof),varbc(1:size_var_use)
-  integer :: iphasebc, idof                    
+  PetscReal :: xxbc(realization%option%ndof),varbc(1:size_var_use)
+  PetscInt :: iphasebc, idof                    
 
-  PetscScalar, pointer :: iphase_loc_p(:),icap_loc_p(:), ithrm_loc_p(:)
+  PetscReal, pointer :: iphase_loc_p(:),icap_loc_p(:), ithrm_loc_p(:)
 
-  integer :: iicap,iiphase, index_var_begin, index_var_end,iicap1,iicap2,np
+  PetscInt :: iicap,iiphase, index_var_begin, index_var_end,iicap1,iicap2,np
 
-  real*8 :: dd1, dd2, eng, &
+  PetscReal :: dd1, dd2, eng, &
 !           eengl,eengg, &
 !           fluxcl,fluxcg,fluxe, fluxh, flux, gravity, fluxl,&
 !           fluxlh,fluxlv, fluxg,fluxgh,fluxgv, fluxv, q,  &
 !           v_darcy,hflx,
             pvoldt, voldt, accum, pvol
-  real*8 :: dd, f1, f2, ff, perm1, perm2
-! real*8 :: Dphi,D0, por1, por2,density_ave
-! real*8 :: Dq, Dk  ! "Diffusion" constant for a phase.
-  real*8 :: D1, D2  ! "Diffusion" constants at upstream, downstream faces.
-! real*8 :: sat_pressure  ! Saturation pressure of water.
-  real*8 :: dw_kg, dw_mol,dif(realization%option%nphase)
-  real*8 :: tsrc1, qsrc1, csrc1, enth_src_h2o, enth_src_co2 , hsrc1!, qqsrc
-! real*8 :: cw1,cw2, xxlw,xxla,xxgw,xxga
-  real*8 :: cw
-! real*8 :: upweight
-! real*8 :: ukvr,uhh,uconc
-  real*8 :: dddt,dddp,fg,dfgdp,dfgdt,dhdt,dhdp,dvdt,dvdp, rho, visc
-  real*8 :: Res(realization%option%ndof), vv_darcy(realization%option%nphase)
+  PetscReal :: dd, f1, f2, ff, perm1, perm2
+! PetscReal :: Dphi,D0, por1, por2,density_ave
+! PetscReal :: Dq, Dk  ! "Diffusion" constant for a phase.
+  PetscReal :: D1, D2  ! "Diffusion" constants at upstream, downstream faces.
+! PetscReal :: sat_pressure  ! Saturation pressure of water.
+  PetscReal :: dw_kg, dw_mol,dif(realization%option%nphase)
+  PetscReal :: tsrc1, qsrc1, csrc1, enth_src_h2o, enth_src_co2 , hsrc1!, qqsrc
+! PetscReal :: cw1,cw2, xxlw,xxla,xxgw,xxga
+  PetscReal :: cw
+! PetscReal :: upweight
+! PetscReal :: ukvr,uhh,uconc
+  PetscReal :: dddt,dddp,fg,dfgdp,dfgdt,dhdt,dhdp,dvdt,dvdp, rho, visc
+  PetscReal :: Res(realization%option%ndof), vv_darcy(realization%option%nphase)
  
-! real*8 :: cond, den,
+! PetscReal :: cond, den,
   PetscViewer :: viewer
 
   ! Connection variables
@@ -884,10 +884,10 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
   type(connection_list_type), pointer :: connection_list
   type(connection_type), pointer :: cur_connection_set
   logical :: enthalpy_flag
-  integer :: iconn
-  integer :: sum_connection
-  real*8 :: distance, fraction_upwind
-  real*8 :: distance_gravity, upweight
+  PetscInt :: iconn
+  PetscInt :: sum_connection
+  PetscReal :: distance, fraction_upwind
+  PetscReal :: distance_gravity, upweight
 
   grid => realization%grid
   option => realization%option
@@ -1529,71 +1529,71 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
   Vec, intent(in) :: xx
   Mat, intent(inout) :: A, B
   type(realization_type) :: realization
- ! integer, intent(inout) :: flag
+ ! PetscInt, intent(inout) :: flag
   MatStructure flag
 
-!   integer :: j, jn, jm1, jm2,jmu,mu, 
-  integer :: ierr, i_upstream_revert
-  integer :: nvar,neq,nr
-  integer :: i1, i2, jng, i
-  integer :: ithrm1, ithrm2
-  integer :: ip1, ip2 
-  integer :: p1,p2 
-  real*8 :: dum1, dum2
+!   PetscInt :: j, jn, jm1, jm2,jmu,mu, 
+  PetscInt :: ierr, i_upstream_revert
+  PetscInt :: nvar,neq,nr
+  PetscInt :: i1, i2, jng, i
+  PetscInt :: ithrm1, ithrm2
+  PetscInt :: ip1, ip2 
+  PetscInt :: p1,p2 
+  PetscReal :: dum1, dum2
   PetscViewer :: viewer
 
-  PetscScalar, pointer :: porosity_loc_p(:), volume_p(:), &
+  PetscReal, pointer :: porosity_loc_p(:), volume_p(:), &
                xx_loc_p(:), phis_p(:), tor_loc_p(:),&
                perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
 
-  PetscScalar, pointer :: iphase_loc_p(:), icap_loc_p(:), ithrm_loc_p(:),var_loc_p(:)
-  integer :: iicap,ii,jj,iiphas,iiphas1,iiphas2,iicap1,iicap2
-  integer :: index_var_begin, index_var_end
+  PetscReal, pointer :: iphase_loc_p(:), icap_loc_p(:), ithrm_loc_p(:),var_loc_p(:)
+  PetscInt :: iicap,ii,jj,iiphas,iiphas1,iiphas2,iicap1,iicap2
+  PetscInt :: index_var_begin, index_var_end
 ! integer ibc_hencoeff
-  real*8 :: dw_kg,dw_mol,enth_src_co2,enth_src_h2o,rho,dddt,dddp,fg,dfgdp,&
+  PetscReal :: dw_kg,dw_mol,enth_src_co2,enth_src_h2o,rho,dddt,dddp,fg,dfgdp,&
             dfgdt,eng,dhdt,dhdp,visc,dvdt,dvdp
-! real*8 :: cond, gravity, acc, density_ave, 
-  real*8 :: vv_darcy(realization%option%nphase), voldt, pvoldt
-! real*8 :: fluxl, fluxlh, fluxlv, fluxg, fluxgh, fluxgv, &
+! PetscReal :: cond, gravity, acc, density_ave, 
+  PetscReal :: vv_darcy(realization%option%nphase), voldt, pvoldt
+! PetscReal :: fluxl, fluxlh, fluxlv, fluxg, fluxgh, fluxgv, &
 !           flux, fluxh, fluxv, difff, diffg, diffl,
-  real*8 :: ff,dif(1:realization%option%nphase)
-  real*8 :: tsrc1,qsrc1,csrc1,hsrc1
-  real*8 :: dd1, dd2, dd, f1, f2
-! real*8 :: dfluxp, dfluxt, dfluxp1, dfluxt1, dfluxp2, dfluxt2
-! real*8 :: por1, por2, den
-  real*8 :: perm1, perm2
-! real*8 :: qu_rate, p_vapor,sat_pressure_t
-! real*8 :: cg1,cg2,cg,cg_p,cg_t,cg_s,cg_c
-! real*8 :: Dk, Dq,D0, Dphi, gdz  ! "Diffusion" constant for a phase.
-  real*8 :: D1, D2  ! "Diffusion" constants upstream and downstream of a face.
-! real*8 :: sat_pressure  ! Saturation pressure of water.
-! real*8 :: xxlw,xxla,xxgw,xxga,cw,cw1,cw2,cwu, sat_ave
-  real*8 :: ra(1:realization%option%ndof,1:2*realization%option%ndof)  
-! real*8 :: uhh, uconc, ukvr
-! real*8 :: upweight,m1weight,m2weight,mbweight,mnweight
-  real*8 :: delxbc(1:realization%option%ndof)
-  real*8 :: blkmat11(1:realization%option%ndof,1:realization%option%ndof), &
+  PetscReal :: ff,dif(1:realization%option%nphase)
+  PetscReal :: tsrc1,qsrc1,csrc1,hsrc1
+  PetscReal :: dd1, dd2, dd, f1, f2
+! PetscReal :: dfluxp, dfluxt, dfluxp1, dfluxt1, dfluxp2, dfluxt2
+! PetscReal :: por1, por2, den
+  PetscReal :: perm1, perm2
+! PetscReal :: qu_rate, p_vapor,sat_pressure_t
+! PetscReal :: cg1,cg2,cg,cg_p,cg_t,cg_s,cg_c
+! PetscReal :: Dk, Dq,D0, Dphi, gdz  ! "Diffusion" constant for a phase.
+  PetscReal :: D1, D2  ! "Diffusion" constants upstream and downstream of a face.
+! PetscReal :: sat_pressure  ! Saturation pressure of water.
+! PetscReal :: xxlw,xxla,xxgw,xxga,cw,cw1,cw2,cwu, sat_ave
+  PetscReal :: ra(1:realization%option%ndof,1:2*realization%option%ndof)  
+! PetscReal :: uhh, uconc, ukvr
+! PetscReal :: upweight,m1weight,m2weight,mbweight,mnweight
+  PetscReal :: delxbc(1:realization%option%ndof)
+  PetscReal :: blkmat11(1:realization%option%ndof,1:realization%option%ndof), &
             blkmat12(1:realization%option%ndof,1:realization%option%ndof),&
             blkmat21(1:realization%option%ndof,1:realization%option%ndof),&
             blkmat22(1:realization%option%ndof,1:realization%option%ndof)
-  real*8 :: ResInc(1:realization%grid%nlmax, 1:realization%option%ndof, 1:realization%option%ndof),res(1:realization%option%ndof)  
-  real*8 :: max_dev  
-  real*8 :: xxbc(realization%option%ndof), varbc(1:size_var_node)
-  integer :: iphasebc, idof
+  PetscReal :: ResInc(1:realization%grid%nlmax, 1:realization%option%ndof, 1:realization%option%ndof),res(1:realization%option%ndof)  
+  PetscReal :: max_dev  
+  PetscReal :: xxbc(realization%option%ndof), varbc(1:size_var_node)
+  PetscInt :: iphasebc, idof
   
-  integer :: local_id, ghosted_id
-  integer :: local_id_up, local_id_dn
-  integer :: ghosted_id_up, ghosted_id_dn
-  integer ::  natural_id_up,natural_id_dn
+  PetscInt :: local_id, ghosted_id
+  PetscInt :: local_id_up, local_id_dn
+  PetscInt :: ghosted_id_up, ghosted_id_dn
+  PetscInt ::  natural_id_up,natural_id_dn
   
   type(coupler_type), pointer :: boundary_condition, source_sink
   type(connection_list_type), pointer :: connection_list
   type(connection_type), pointer :: cur_connection_set
   logical :: enthalpy_flag
-  integer :: iconn
-  integer :: sum_connection  
-  real*8 :: distance, fraction_upwind
-  real*8 :: distance_gravity, upweight
+  PetscInt :: iconn
+  PetscInt :: sum_connection  
+  PetscReal :: distance, fraction_upwind
+  PetscReal :: distance_gravity, upweight
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option 
   type(field_type), pointer :: field  
@@ -2234,20 +2234,20 @@ subroutine pflow_mphase_initaccum(realization)
 
   type(realization_type) :: realization 
   
-  integer :: ierr
-  integer :: i, index_var_begin,index_var_end
-  integer :: p1
-  integer :: iicap, iiphase
-  integer :: local_id, ghosted_id  
+  PetscInt :: ierr
+  PetscInt :: i, index_var_begin,index_var_end
+  PetscInt :: p1
+  PetscInt :: iicap, iiphase
+  PetscInt :: local_id, ghosted_id  
 
-  PetscScalar, pointer :: accum_p(:),yy_p(:),volume_p(:),porosity_loc_p(:),&
+  PetscReal, pointer :: accum_p(:),yy_p(:),volume_p(:),porosity_loc_p(:),&
                           var_loc_p(:), icap_loc_p(:),iphase_loc_p(:),ithrm_loc_p(:)
   
- !integer, pointer ::iphase_loc_p(:)
+ !PetscInt, pointer ::iphase_loc_p(:)
   
-! real*8 :: sat_pressure
-  real*8 :: pvol, satw  ! Saturation pressure of water.
-  real*8 :: dif(1:realization%option%nphase),res(1:realization%option%ndof)
+! PetscReal :: sat_pressure
+  PetscReal :: pvol, satw  ! Saturation pressure of water.
+  PetscReal :: dif(1:realization%option%nphase),res(1:realization%option%ndof)
  
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -2345,19 +2345,19 @@ subroutine pflow_update_mphase(realization)
 
   type(realization_type) :: realization 
     
-  integer :: dof_offset
-  integer :: iithrm
-  integer :: ierr,iicap,iiphase
-  PetscScalar, pointer :: xx_p(:),icap_loc_p(:),ithrm_loc_p(:),iphase_loc_p(:), var_loc_p(:)
-  real*8 :: dif(1:realization%option%nphase), dum1, dum2           
-  integer :: local_id, ghosted_id     
-  real*8 :: xxbc(realization%option%ndof), varbc(size_var_use)
-  integer :: iphasebc, idof
+  PetscInt :: dof_offset
+  PetscInt :: iithrm
+  PetscInt :: ierr,iicap,iiphase
+  PetscReal, pointer :: xx_p(:),icap_loc_p(:),ithrm_loc_p(:),iphase_loc_p(:), var_loc_p(:)
+  PetscReal :: dif(1:realization%option%nphase), dum1, dum2           
+  PetscInt :: local_id, ghosted_id     
+  PetscReal :: xxbc(realization%option%ndof), varbc(size_var_use)
+  PetscInt :: iphasebc, idof
   
   type(coupler_type), pointer :: boundary_condition
   type(connection_type), pointer :: cur_connection_set
-  integer :: iconn
-  integer :: sum_connection  
+  PetscInt :: iconn
+  PetscInt :: sum_connection  
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field  
@@ -2507,27 +2507,27 @@ subroutine pflow_mphase_initadj(realization)
  
   type(realization_type) :: realization 
 
-  integer :: ierr
-  integer :: num_connection  
-  integer :: jn
-  integer :: iicap
-  integer :: iiphase,iithrm
-  integer :: local_id, ghosted_id 
+  PetscInt :: ierr
+  PetscInt :: num_connection  
+  PetscInt :: jn
+  PetscInt :: iicap
+  PetscInt :: iiphase,iithrm
+  PetscInt :: local_id, ghosted_id 
 
-  PetscScalar, pointer :: xx_p(:),var_loc_p(:)
-  PetscScalar, pointer ::iphase_loc_p(:), ithrm_loc_p(:),icap_loc_p(:)
+  PetscReal, pointer :: xx_p(:),var_loc_p(:)
+  PetscReal, pointer ::iphase_loc_p(:), ithrm_loc_p(:),icap_loc_p(:)
   
-  real*8  dif(realization%option%nphase), dum1, dum2
+  PetscReal  dif(realization%option%nphase), dum1, dum2
   
-! real*8 :: temp1
-! real*8, parameter :: Rg=8.31415D0
-  real*8 :: xxbc(realization%option%ndof),varbc(1:size_var_use)
-  integer :: iphasebc, idof 
+! PetscReal :: temp1
+! PetscReal, parameter :: Rg=8.31415D0
+  PetscReal :: xxbc(realization%option%ndof),varbc(1:size_var_use)
+  PetscInt :: iphasebc, idof 
 
   type(coupler_type), pointer :: boundary_condition
   type(connection_type), pointer :: cur_connection_set
-  integer :: iconn
-  integer :: sum_connection
+  PetscInt :: iconn
+  PetscInt :: sum_connection
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field  
@@ -2660,8 +2660,8 @@ subroutine createmphaseZeroArray(realization)
   implicit none
 
   type(realization_type) :: realization
-  integer :: ncount, idof
-  integer :: local_id, ghosted_id
+  PetscInt :: ncount, idof
+  PetscInt :: local_id, ghosted_id
 
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option

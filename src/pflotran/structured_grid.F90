@@ -35,33 +35,33 @@ module Structured_Grid_module
 
   type, public :: structured_grid_type
 
-    integer :: nx, ny, nz    ! Global domain dimensions of the grid.
-    integer :: nxy, nmax     ! nx * ny, nx * ny * nz
-    integer :: npx, npy, npz ! Processor partition in each direction.
-    integer :: nlx, nly, nlz ! Local grid dimension w/o ghost nodes.
-    integer :: ngx, ngy, ngz ! Local grid dimension with ghost nodes.
-    integer :: nxs, nys, nzs 
+    PetscInt :: nx, ny, nz    ! Global domain dimensions of the grid.
+    PetscInt :: nxy, nmax     ! nx * ny, nx * ny * nz
+    PetscInt :: npx, npy, npz ! Processor partition in each direction.
+    PetscInt :: nlx, nly, nlz ! Local grid dimension w/o ghost nodes.
+    PetscInt :: ngx, ngy, ngz ! Local grid dimension with ghost nodes.
+    PetscInt :: nxs, nys, nzs 
       ! Global indices of non-ghosted corner (starting) of local domain.
-    integer :: ngxs, ngys, ngzs
+    PetscInt :: ngxs, ngys, ngzs
       ! Global indices of ghosted starting corner of local domain.
-    integer :: nxe, nye, nze, ngxe, ngye, ngze
+    PetscInt :: nxe, nye, nze, ngxe, ngye, ngze
       ! Global indices of non-ghosted/ghosted ending corner of local domain.
-    integer :: nlxy, nlxz, nlyz
-    integer :: ngxy, ngxz, ngyz
+    PetscInt :: nlxy, nlxz, nlyz
+    PetscInt :: ngxy, ngxz, ngyz
     
-    integer :: istart, jstart, kstart, iend, jend, kend
+    PetscInt :: istart, jstart, kstart, iend, jend, kend
       ! istart gives the local x-index of the non-ghosted starting (lower left)
       ! corner. iend gives the local x-index of the non-ghosted ending 
       ! corner. jstart, jend correspond to y-index, kstart, kend to z-index.    
 
-    integer :: nlmax  ! Total number of non-ghosted nodes in local domain.
-    integer :: ngmax  ! Number of ghosted & non-ghosted nodes in local domain.
+    PetscInt :: nlmax  ! Total number of non-ghosted nodes in local domain.
+    PetscInt :: ngmax  ! Number of ghosted & non-ghosted nodes in local domain.
 
-    real*8, pointer :: dx0(:), dy0(:), dz0(:), rd(:)
+    PetscReal, pointer :: dx0(:), dy0(:), dz0(:), rd(:)
     
-    integer :: igeom
+    PetscInt :: igeom
     
-    real*8 :: radius_0
+    PetscReal :: radius_0
     
     logical :: invert_z_axis
     
@@ -216,8 +216,8 @@ subroutine StructuredGridCreateDMs(structured_grid,option)
   type(structured_grid_type) :: structured_grid
   type(option_type) :: option
 
-  integer :: ndof
-  integer, parameter :: stencil_width = 1
+  PetscInt :: ndof
+  PetscInt, parameter :: stencil_width = 1
   PetscErrorCode :: ierr
 
   !-----------------------------------------------------------------------
@@ -328,9 +328,9 @@ subroutine StructuredGridCreateVecFromDA(structured_grid,da_index,vector, &
 
   implicit none
   type(structured_grid_type) :: structured_grid
-  integer :: da_index
+  PetscInt :: da_index
   Vec :: vector
-  integer :: vector_type
+  PetscInt :: vector_type
   
   PetscErrorCode :: ierr
 
@@ -412,7 +412,7 @@ subroutine StructuredGridReadDXYZ(structured_grid,option)
   type(structured_grid_type) :: structured_grid
   type(option_type) :: option
   
-  integer :: i
+  PetscInt :: i
 
   allocate(structured_grid%dx0(structured_grid%nx))
   allocate(structured_grid%dy0(structured_grid%ny))
@@ -447,10 +447,10 @@ subroutine StructuredGridReadArray(a,n,option)
   implicit none
   
   type(option_type) :: option
-  integer*4, intent(in) :: n
-  integer*4 :: i, i1, i2, m
-  integer ::  ierr, nvalue=10
-  real*8, intent(inout) :: a(*)
+  PetscInt :: n
+  PetscInt :: i, i1, i2, m
+  PetscInt ::  ierr, nvalue=10
+  PetscReal, intent(inout) :: a(*)
   character(len=MAXSTRINGLENGTH) :: string 
 
   save nvalue
@@ -506,10 +506,10 @@ subroutine StructuredGridComputeSpacing(structured_grid,nL2A)
   implicit none
   
   type(structured_grid_type) :: structured_grid
-  integer :: nL2A(:)
+  PetscInt :: nL2A(:)
   
-  integer :: i, j, k, n, na
-  PetscScalar, pointer :: dx_p(:), dy_p(:), dz_p(:)
+  PetscInt :: i, j, k, n, na
+  PetscReal, pointer :: dx_p(:), dy_p(:), dz_p(:)
   PetscErrorCode :: ierr
   
   call VecGetArrayF90(structured_grid%dx,dx_p,ierr)
@@ -560,14 +560,14 @@ subroutine StructuredGridComputeCoord(structured_grid,option, &
   
   type(structured_grid_type) :: structured_grid
   type(option_type) :: option
-  real*8 :: origin(3)
-  real*8 :: grid_x(:), grid_y(:), grid_z(:)
-  real*8 :: x_min, x_max, y_min, y_max, z_min, z_max
+  PetscReal :: origin(3)
+  PetscReal :: grid_x(:), grid_y(:), grid_z(:)
+  PetscReal :: x_min, x_max, y_min, y_max, z_min, z_max
 
-! integer :: ierr
-  integer*4 :: i, j, k, n
-  real*8 :: x, y, z
-  integer :: prevnode
+! PetscInt :: ierr
+  PetscInt :: i, j, k, n
+  PetscReal :: x, y, z
+  PetscInt :: prevnode
 
 ! set min and max bounds of domain in coordinate directions
   x_min = origin(X_DIRECTION)
@@ -634,12 +634,12 @@ function StructGridComputeInternConnect(structured_grid,option)
   type(structured_grid_type) :: structured_grid
   
   
-  integer :: i, j, k, iconn, id_up, id_dn
-  real*8 :: dist_up, dist_dn
+  PetscInt :: i, j, k, iconn, id_up, id_dn
+  PetscReal :: dist_up, dist_dn
   type(connection_type), pointer :: connections
   PetscErrorCode :: ierr
   
-  PetscScalar, pointer :: dx_loc_p(:), dy_loc_p(:), dz_loc_p(:)
+  PetscReal, pointer :: dx_loc_p(:), dy_loc_p(:), dz_loc_p(:)
   
   call VecGetArrayF90(structured_grid%dx_loc, dx_loc_p, ierr)
   call VecGetArrayF90(structured_grid%dy_loc, dy_loc_p, ierr)
@@ -759,13 +759,13 @@ subroutine StructGridPopulateConnection(structured_grid,connection,iface, &
  
   type(structured_grid_type) :: structured_grid
   type(connection_type) :: connection
-  integer :: iface
-  integer :: iconn
-  integer :: cell_id_ghosted
+  PetscInt :: iface
+  PetscInt :: iconn
+  PetscInt :: cell_id_ghosted
   
   PetscErrorCode :: ierr
   
-  PetscScalar, pointer :: dx_loc_p(:), dy_loc_p(:), dz_loc_p(:)
+  PetscReal, pointer :: dx_loc_p(:), dy_loc_p(:), dz_loc_p(:)
   
   call VecGetArrayF90(structured_grid%dx_loc, dx_loc_p, ierr)
   call VecGetArrayF90(structured_grid%dy_loc, dy_loc_p, ierr)
@@ -843,13 +843,13 @@ subroutine StructuredGridComputeVolumes(structured_grid,option,nL2G,volume)
   
   type(structured_grid_type) :: structured_grid
   type(option_type) :: option
-  integer :: nL2G(:)
+  PetscInt :: nL2G(:)
   Vec :: volume
   
-  real*8, parameter :: Pi=3.1415926d0
+  PetscReal, parameter :: Pi=3.1415926d0
   
-  integer :: i, n, ng
-  PetscScalar, pointer :: volume_p(:), dx_loc_p(:), dy_loc_p(:), dz_loc_p(:)
+  PetscInt :: i, n, ng
+  PetscReal, pointer :: volume_p(:), dx_loc_p(:), dy_loc_p(:), dz_loc_p(:)
   PetscErrorCode :: ierr
   
   call VecGetArrayF90(volume,volume_p, ierr)
@@ -899,9 +899,9 @@ subroutine StructuredGridMapIndices(structured_grid,nG2L,nL2G,nL2A,nG2A,nG2N)
   implicit none
   
   type(structured_grid_type) :: structured_grid
-  integer, pointer :: nG2L(:), nL2G(:), nL2A(:), nG2A(:), nG2N(:)
+  PetscInt, pointer :: nG2L(:), nL2G(:), nL2A(:), nG2A(:), nG2N(:)
 
-  integer :: i, j, k, n, ng, na, count1
+  PetscInt :: i, j, k, n, ng, na, count1
   PetscErrorCode :: ierr
   
   allocate(nL2G(structured_grid%nlmax))
@@ -1088,7 +1088,7 @@ subroutine StructureGridGlobalToLocal(structured_grid,global_vec,local_vec,da_in
   type(structured_grid_type) :: structured_grid
   Vec :: global_vec
   Vec :: local_vec
-  integer :: da_index
+  PetscInt :: da_index
   
   DA :: da_ptr
   PetscErrorCode :: ierr
@@ -1117,7 +1117,7 @@ subroutine StructureGridLocalToGlobal(structured_grid,local_vec,global_vec, &
   type(structured_grid_type) :: structured_grid
   Vec :: local_vec
   Vec :: global_vec
-  integer :: da_index
+  PetscInt :: da_index
   
   DA :: da_ptr
   PetscErrorCode :: ierr
@@ -1144,7 +1144,7 @@ subroutine StructureGridLocalToLocal(structured_grid,local_vec1,local_vec2, &
   type(structured_grid_type) :: structured_grid
   Vec :: local_vec1
   Vec :: local_vec2
-  integer :: da_index
+  PetscInt :: da_index
   
   DA :: da_ptr
   PetscErrorCode :: ierr
@@ -1173,7 +1173,7 @@ subroutine StructureGridGlobalToNatural(structured_grid,global_vec,natural_vec, 
   type(structured_grid_type) :: structured_grid
   Vec :: global_vec
   Vec :: natural_vec
-  integer :: da_index
+  PetscInt :: da_index
   
   DA :: da_ptr
   PetscErrorCode :: ierr
@@ -1202,7 +1202,7 @@ subroutine StructureGridNaturalToGlobal(structured_grid,natural_vec, &
   type(structured_grid_type) :: structured_grid
   Vec :: natural_vec
   Vec :: global_vec
-  integer :: da_index
+  PetscInt :: da_index
   
   DA :: da_ptr
   PetscErrorCode :: ierr
@@ -1231,7 +1231,7 @@ subroutine StructureGridGlobalToLocalBegin(structured_grid,global_vec, &
   type(structured_grid_type) :: structured_grid
   Vec :: global_vec
   Vec :: local_vec
-  integer :: da_index
+  PetscInt :: da_index
   
   DA :: da_ptr
   PetscErrorCode :: ierr
@@ -1258,7 +1258,7 @@ subroutine StructureGridLocalToLocalBegin(structured_grid,local_vec1, &
   type(structured_grid_type) :: structured_grid
   Vec :: local_vec1
   Vec :: local_vec2
-  integer :: da_index
+  PetscInt :: da_index
   
   DA :: da_ptr
   PetscErrorCode :: ierr
@@ -1285,7 +1285,7 @@ subroutine StructureGridGlobalToNaturBegin(structured_grid,global_vec, &
   type(structured_grid_type) :: structured_grid
   Vec :: global_vec
   Vec :: natural_vec
-  integer :: da_index
+  PetscInt :: da_index
   
   DA :: da_ptr
   PetscErrorCode :: ierr
@@ -1312,7 +1312,7 @@ subroutine StructureGridGlobalToLocalEnd(structured_grid,global_vec,local_vec, &
   type(structured_grid_type) :: structured_grid
   Vec :: global_vec
   Vec :: local_vec
-  integer :: da_index
+  PetscInt :: da_index
   
   DA :: da_ptr
   PetscErrorCode :: ierr
@@ -1339,7 +1339,7 @@ subroutine StructureGridNaturToGlobalBegin(structured_grid,natural_vec, &
   type(structured_grid_type) :: structured_grid
   Vec :: natural_vec
   Vec :: global_vec
-  integer :: da_index
+  PetscInt :: da_index
   
   DA :: da_ptr
   PetscErrorCode :: ierr
@@ -1366,7 +1366,7 @@ subroutine StructureGridLocalToLocalEnd(structured_grid,local_vec1,local_vec2, &
   type(structured_grid_type) :: structured_grid
   Vec :: local_vec1
   Vec :: local_vec2
-  integer :: da_index
+  PetscInt :: da_index
   
   DA :: da_ptr
   PetscErrorCode :: ierr
@@ -1393,7 +1393,7 @@ subroutine StructureGridGlobalToNaturEnd(structured_grid,global_vec, &
   type(structured_grid_type) :: structured_grid
   Vec :: global_vec
   Vec :: natural_vec
-  integer :: da_index
+  PetscInt :: da_index
   
   DA :: da_ptr
   PetscErrorCode :: ierr
@@ -1420,7 +1420,7 @@ subroutine StructureGridNaturToGlobalEnd(structured_grid,natural_vec, &
   type(structured_grid_type) :: structured_grid
   Vec :: natural_vec
   Vec :: global_vec
-  integer :: da_index
+  PetscInt :: da_index
   
   DA :: da_ptr
   PetscErrorCode :: ierr
@@ -1444,7 +1444,7 @@ function StructGridGetDAPtrFromIndex(structured_grid,da_index)
   implicit none
   
   type(structured_grid_type) :: structured_grid
-  integer :: da_index
+  PetscInt :: da_index
   
   DA :: StructGridGetDAPtrFromIndex
   

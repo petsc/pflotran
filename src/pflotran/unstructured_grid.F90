@@ -5,16 +5,17 @@ module Unstructured_Grid_module
   implicit none
 
   private 
-
+  
 #include "definitions.h"
+#include "include/finclude/petsc.h"
 
   type, public :: unstructured_grid_type
-    integer :: num_cells
-    integer :: nmax   ! Total number of nodes in global domain
-    integer :: nlmax  ! Total number of non-ghosted nodes in local domain.
-    integer :: ngmax  ! Number of ghosted & non-ghosted nodes in local domain.
-    integer, pointer :: hash(:,:,:)
-    integer :: num_hash = 100
+    PetscInt :: num_cells
+    PetscInt :: nmax   ! Total number of nodes in global domain
+    PetscInt :: nlmax  ! Total number of non-ghosted nodes in local domain.
+    PetscInt :: ngmax  ! Number of ghosted & non-ghosted nodes in local domain.
+    PetscInt, pointer :: hash(:,:,:)
+    PetscInt :: num_hash = 100
   end type
   
   public :: UnstructuredGridInit, &
@@ -118,11 +119,11 @@ subroutine UnstGridCreateNatToGhostedHash(unstructured_grid,nG2A)
   implicit none
 
   type(unstructured_grid_type) :: unstructured_grid
-  integer :: nG2A(:)
+  PetscInt :: nG2A(:)
 
-  integer :: local_ghosted_id, natural_id 
-  integer :: num_in_hash, num_ids_per_hash, hash_id, id
-  integer, pointer :: temp_hash(:,:,:)
+  PetscInt :: local_ghosted_id, natural_id 
+  PetscInt :: num_in_hash, num_ids_per_hash, hash_id, id
+  PetscInt, pointer :: temp_hash(:,:,:)
 
   ! initial guess of 10% of ids per hash
   num_ids_per_hash = max(unstructured_grid%nlmax/ &
@@ -177,14 +178,14 @@ end subroutine UnstGridCreateNatToGhostedHash
 ! date: 03/07/07
 !
 ! ************************************************************************** !
-integer function UnstructGridGetGhostIdFromHash(unstructured_grid,natural_id)
+PetscInt function UnstructGridGetGhostIdFromHash(unstructured_grid,natural_id)
 
   implicit none
   
   type(unstructured_grid_type) :: unstructured_grid
 
-  integer :: natural_id
-  integer :: hash_id, id
+  PetscInt :: natural_id
+  PetscInt :: hash_id, id
 
   UnstructGridGetGhostIdFromHash = 0
   hash_id = mod(natural_id,unstructured_grid%num_hash)+1 
@@ -210,7 +211,7 @@ subroutine UnstructGridPrintHashTable(unstructured_grid)
 
   type(unstructured_grid_type) :: unstructured_grid
 
-  integer :: ihash, id, fid
+  PetscInt :: ihash, id, fid
 
   fid = 87 
   open(fid,file='hashtable.dat',action='write')

@@ -1,8 +1,13 @@
 module co2eos_module
 
+  implicit none
+  
   private
 
+#include "include/finclude/petsc.h"
+
   public HENRY_co2_noderiv,VISCO2,duanco2,denmix,Henry_duan_sun,Henry_duan_sun_0NaCl
+
 contains
 
 !ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
@@ -50,7 +55,8 @@ contains
 
 !********1*********2*********3*********4*********5*********6*********7**
       SUBROUTINE CO2(TX,PCX,DC,FC,PHI,HC)
-      IMPLICIT DOUBLE PRECISION(A-H,O-Z)
+      implicit PetscReal(A-H,O-Z)
+      implicit PetscInt(I-N)
 !
 !     This subroutine calculates the specific density, fugacity, and 
 !     specific enthalpy of gaseous and supercritical CO2 as a function of
@@ -170,7 +176,7 @@ contains
       
 !********1*********2*********3*********4*********5*********6*********7**
       SUBROUTINE MRK(Y,T,PCX,V,DV,AT)
-      IMPLICIT DOUBLE PRECISION(A-H,O-Z)
+      implicit PetscReal(A-H,O-Z)
 !
 !     This subroutine is called from subroutine CO2 during the Newton
 !     Iteration for the molar volume (V) of CO2 as function of temperature
@@ -263,7 +269,7 @@ contains
       
 !********1*********2*********3*********4*********5*********6*********7**
       SUBROUTINE FUGACITY(Y,T,V,Z,PHI)
-      IMPLICIT DOUBLE PRECISION(A-H,O-Z)
+      implicit PetscReal(A-H,O-Z)
 !
 !     This subroutine is called from subroutine CO2 during the       
 !     calculation of fugacity of CO2 as function of temperature (T),
@@ -358,7 +364,7 @@ contains
       
 !********1*********2*********3*********4*********5*********6*********7**
       SUBROUTINE ENTHALPY(T,V,Z,H)
-      IMPLICIT DOUBLE PRECISION(A-H,O-Z)
+      implicit PetscReal(A-H,O-Z)
 !
 !     This subroutine is called from subroutine CO2 during the       
 !     calculation of the specific enthalpy of CO2 as function of
@@ -512,7 +518,8 @@ contains
 
       subroutine duanco2 (tt,p,dc,fc,phi)
 
-      implicit real*8 (a-h,o-z)
+      implicit PetscReal (a-h,o-z)
+      implicit PetscInt (i-n)
 
       data xmwc /4.40098d-02/
 
@@ -630,8 +637,8 @@ contains
 
   implicit none
 
-  real*8 :: c1,c2,c3,c4,c5,c6,c7,c8,c9,c10
-  real*8 :: p,t,tc,lnt,muco2, henry
+  PetscReal :: c1,c2,c3,c4,c5,c6,c7,c8,c9,c10
+  PetscReal :: p,t,tc,lnt,muco2, henry
 
   c1  = 28.9447706d0
   c2  = -0.0354581768
@@ -666,10 +673,10 @@ contains
 ! ma[anion: mol/kg-H2O], psat[bars]
 
   implicit none
-  real*8, save :: coef(3,11)
-  real*8 :: tc,p,mco2,phico2,mc,ma,psat, t
+  PetscReal, save :: coef(3,11)
+  PetscReal :: tc,p,mco2,phico2,mc,ma,psat, t
 
-  real*8 :: lngamco2, tmp, mu0, lamc, lamca, yco2
+  PetscReal :: lngamco2, tmp, mu0, lamc, lamca, yco2
 
   data coef / 28.9447706, -0.411370585, 3.36389723e-4, &
   -0.0354581768,  6.07632013e-4,  -1.98298980e-5, &
@@ -709,7 +716,7 @@ contains
   
   implicit none
   
-  real*8 :: t,p,par,fac,c(11)
+  PetscReal :: t,p,par,fac,c(11)
   
   fac = 1.d0/(630.d0-t)
   
@@ -760,9 +767,9 @@ contains
       
       implicit none
       
-      real*8, intent(in) :: tx,xphi,pcx
-      real*8, intent(out) :: xmole,x1m,rkh,poyn
-      real*8 :: ams,ama,tk,otk
+      PetscReal, intent(in) :: tx,xphi,pcx
+      PetscReal, intent(out) :: xmole,x1m,rkh,poyn
+      PetscReal :: ams,ama,tk,otk
 
       ams = 18.01534D-3 !h2o
       ama = 44.0098D-3  !co2
@@ -836,7 +843,7 @@ contains
       
       SUBROUTINE HENRY_sullivan (TX,PCX,PS,FC,X1M,XCO2,HP)
 
-      IMPLICIT DOUBLE PRECISION(A-H,O-Z)
+      implicit PetscReal(A-H,O-Z)
 !
 !     This subroutine calculates the mass fraction of CO2 in the liquid 
 !     phase using an extended Henry's Law relationship from Reid et al.
@@ -926,7 +933,7 @@ contains
       
 !********1*********2*********3*********4*********5*********6*********7**
       SUBROUTINE SOLUT(PCX,TX,HSOL)
-      IMPLICIT DOUBLE PRECISION(A-H,O-Z)
+      implicit PetscReal(A-H,O-Z)
 !
 !     This subroutine calculates the enthalpy of CO2 dissolution in
 !     liquid water. The expression is from O'Sullivan et al. (1985).
@@ -952,7 +959,7 @@ contains
       
 !********1*********2*********3*********4*********5*********6*********7**
       SUBROUTINE DENMIX(TX,DW,X1M,D1M)
-      IMPLICIT DOUBLE PRECISION(A-H,O-Z)
+      implicit PetscReal(A-H,O-Z)
 !
 !     This subroutine returns density of CO2-H2O liquid mixture. The
 !     expression is from Anderson et al. (1992).
@@ -1010,7 +1017,7 @@ contains
       
 !********1*********2*********3*********4*********5*********6*********7**
       SUBROUTINE VISCO2(TX,DC,VC)
-      IMPLICIT DOUBLE PRECISION(A-H,O-Z)
+      implicit PetscReal(A-H,O-Z)
 !
 !     This subroutine calculates the viscosity of pure CO2 as a function 
 !     of temperature and density of CO2.  The expressions for calculating
@@ -1099,7 +1106,8 @@ contains
 !--------- Fast SAT M.J.O'Sullivan - 17 SEPT 1990 ---------
 !
 !     20 September 1990.  VAX needs double precision, CRAY does not.
-      IMPLICIT REAL*8 (A-H,O-Z)
+      IMPLICIT PetscReal (A-H,O-Z)
+      implicit PetscInt (I-N)
 !     IMPLICIT REAL (A-H,O-Z)
 !     COMMON/KONIT/KON,DELT,IGOOD
 
@@ -1137,7 +1145,8 @@ contains
       SUBROUTINE COWAT0(TF,PP,D,U)
 !--------- Fast COWAT M.J.O'Sullivan - 17 SEPT 1990 ---------
 !     20 September 1990.  VAX needs double precision, CRAY does not.
-      IMPLICIT REAL*8 (A-H,O-Z)
+      IMPLICIT PetscReal (A-H,O-Z)
+      implicit PetscInt (I-N)
 !     IMPLICIT REAL (A-H,O-Z)
 !pcl  COMMON/KONIT/KON,DELT,IGOOD
 !     save icall
@@ -1240,9 +1249,9 @@ contains
       SUBROUTINE SUPST(T,P,D,U)
 !--------- Fast SUPST M.J.O'Sullivan - 17 SEPT 1990 ---------
 !     20 September 1990.  VAX needs double precision, CRAY does not.
-      IMPLICIT REAL*8 (A-H,O-Z)
+      IMPLICIT PetscReal (A-H,O-Z)
 !     IMPLICIT REAL (A-H,O-Z)
-!     REAL*8 I1
+!     PetscReal I1
       REAL  I1
 !     save icall
       DATA B0,B01,B02,B03,B04,B05/ &
@@ -1385,7 +1394,7 @@ contains
       END subroutine SUPST
 
       SUBROUTINE TSAT(PX,TX00,TS)
-      implicit real*8 (a-h,o-z)
+      implicit PetscReal (a-h,o-z)
 !pcl  COMMON/KONIT/KON,DELT,IGOOD
 !
 !-----FIND SATURATION TEMPERATURE TS AT PRESSURE PX.
@@ -1424,7 +1433,7 @@ contains
       END subroutine TSAT
       
       SUBROUTINE SIGMA(T,ST)
-      implicit real*8 (a-h,o-z)
+      implicit PetscReal (a-h,o-z)
 !
 !-----COMPUTE SURFACE TENSION OF WATER, USING THE
 !     "INTERNATIONAL REPRESENTATION OF THE SURFACE TENSION OF
@@ -1448,7 +1457,7 @@ contains
       END subroutine SIGMA
       
       SUBROUTINE VIS(T,P,D,VW,VS,PS)
-      implicit real*8 (a-h,o-z)
+      implicit PetscReal (a-h,o-z)
 
 !     SAVE ICALL
 !     DATA ICALL/0/
@@ -1470,7 +1479,7 @@ contains
       END subroutine VIS
       
       SUBROUTINE VISW0(T,P,PS,VW)
-      implicit real*8 (a-h,o-z)
+      implicit PetscReal (a-h,o-z)
 
 !     SAVE ICALL
 !     DATA ICALL/0/
@@ -1489,7 +1498,7 @@ contains
       END subroutine VISW0
       
       SUBROUTINE VISS(T,P,D,VS)
-      implicit real*8 (a-h,o-z)
+      implicit PetscReal (a-h,o-z)
 
 !     SAVE ICALL
 !     DATA ICALL/0/
@@ -1507,7 +1516,7 @@ contains
       END subroutine VISS
 
       SUBROUTINE THERC(T,P,D,CONW,CONS,PS)
-      implicit real*8 (a-h,o-z)
+      implicit PetscReal (a-h,o-z)
 !
 !     SAVE ICALL,A0,A1,A2,A3,A4,B0,B1,B2,B3,C0,C1,C2,C3,T0
       DATA A0,A1,A2,A3,A4/-922.47,2839.5,-1800.7,525.77,-73.440/

@@ -5,16 +5,23 @@ module HDF5_module
 #include "include/finclude/petsc.h"
 
 #include "definitions.h"
-  
+
   private
   
   PetscErrorCode :: ierr
-  integer :: hdf5_err
+  PetscInt :: hdf5_err
 
   logical, public :: trick_hdf5 = .false.
 
 #ifdef USE_HDF5
-  
+
+! 64-bit stuff
+#ifdef PETSC_USE_64BIT_INDICES
+#define HDF_NATIVE_INTEGER H5T_STD_I64LE  ! little endian 
+#else
+#define HDF_NATIVE_INTEGER H5T_NATIVE_INTEGER
+#endif
+
   public :: HDF5MapLocalToNaturalIndices, &
             HDF5ReadIntegerArray, &
             HDF5ReadRealArray, &
@@ -55,10 +62,10 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
   type(grid_type) :: grid
   type(option_type) :: option
   character(len=MAXWORDLENGTH) :: dataset_name
-  integer :: dataset_size
+  PetscInt :: dataset_size
   integer(HID_T) :: file_id
-  integer, pointer :: indices(:)
-  integer :: num_indices
+  PetscInt, pointer :: indices(:)
+  PetscInt :: num_indices
   
   integer(HID_T) :: file_space_id
   integer(HID_T) :: memory_space_id
@@ -66,17 +73,17 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
   integer(HID_T) :: prop_id
   integer(HSIZE_T) :: dims(3)
   integer(HSIZE_T) :: offset(3), length(3), stride(3)
-  integer :: rank
-  integer :: local_ghosted_id, local_id, natural_id
-  integer :: index_count
-  integer :: cell_count
+  PetscInt :: rank
+  PetscInt :: local_ghosted_id, local_id, natural_id
+  PetscInt :: index_count
+  PetscInt :: cell_count
   integer(HSIZE_T) :: num_cells_in_file
-  integer :: temp_int, i
+  PetscInt :: temp_int, i
   
-  integer, allocatable :: cell_ids(:), temp(:)
+  PetscInt, allocatable :: cell_ids(:), temp(:)
   
-  integer :: read_block_size = HDF5_READ_BUFFER_SIZE
-  integer :: indices_array_size
+  PetscInt :: read_block_size = HDF5_READ_BUFFER_SIZE
+  PetscInt :: indices_array_size
 
   call h5dopen_f(file_id,dataset_name,data_set_id,hdf5_err)
   call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
@@ -131,7 +138,7 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
 #ifdef HDF5_BROADCAST
     if (option%myrank == 0) then                           
 #endif
-      call h5dread_f(data_set_id,H5T_NATIVE_INTEGER,cell_ids,dims,hdf5_err, &
+      call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,cell_ids,dims,hdf5_err, &
                      memory_space_id,file_space_id,prop_id)                     
 #ifdef HDF5_BROADCAST
     endif
@@ -210,11 +217,11 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
   
   type(option_type) :: option
   character(len=MAXWORDLENGTH) :: dataset_name
-  integer :: dataset_size
+  PetscInt :: dataset_size
   integer(HID_T) :: file_id
-  integer :: indices(:)
-  integer :: num_indices
-  real*8 :: real_array(:)
+  PetscInt :: indices(:)
+  PetscInt :: num_indices
+  PetscReal :: real_array(:)
   
   integer(HID_T) :: file_space_id
   integer(HID_T) :: memory_space_id
@@ -222,15 +229,15 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
   integer(HID_T) :: prop_id
   integer(HSIZE_T) :: dims(3)
   integer(HSIZE_T) :: offset(3), length(3), stride(3)
-  integer :: rank
-  integer :: index_count
-  integer :: real_count, prev_real_count
+  PetscInt :: rank
+  PetscInt :: index_count
+  PetscInt :: real_count, prev_real_count
   integer(HSIZE_T) :: num_reals_in_file
-  integer :: temp_int, i, index
+  PetscInt :: temp_int, i, index
   
-  real*8, allocatable :: real_buffer(:)
+  PetscReal, allocatable :: real_buffer(:)
   
-  integer :: read_block_size = HDF5_READ_BUFFER_SIZE
+  PetscInt :: read_block_size = HDF5_READ_BUFFER_SIZE
 
   call h5dopen_f(file_id,dataset_name,data_set_id,hdf5_err)
   call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
@@ -353,11 +360,11 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
   
   type(option_type) :: option
   character(len=MAXWORDLENGTH) :: dataset_name
-  integer :: dataset_size
+  PetscInt :: dataset_size
   integer(HID_T) :: file_id
-  integer :: indices(:)
-  integer :: num_indices
-  integer :: integer_array(:)
+  PetscInt :: indices(:)
+  PetscInt :: num_indices
+  PetscInt :: integer_array(:)
   
   integer(HID_T) :: file_space_id
   integer(HID_T) :: memory_space_id
@@ -365,15 +372,15 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
   integer(HID_T) :: prop_id
   integer(HSIZE_T) :: dims(3)
   integer(HSIZE_T) :: offset(3), length(3), stride(3)
-  integer :: rank
-  integer :: index_count
-  integer :: integer_count, prev_integer_count
+  PetscInt :: rank
+  PetscInt :: index_count
+  PetscInt :: integer_count, prev_integer_count
   integer(HSIZE_T) :: num_integers_in_file
-  integer :: temp_int, i, index
+  PetscInt :: temp_int, i, index
   
-  integer, allocatable :: integer_buffer(:)
+  PetscInt, allocatable :: integer_buffer(:)
   
-  integer :: read_block_size = HDF5_READ_BUFFER_SIZE
+  PetscInt :: read_block_size = HDF5_READ_BUFFER_SIZE
 
   call h5dopen_f(file_id,dataset_name,data_set_id,hdf5_err)
   call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
@@ -430,7 +437,7 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
 #ifdef HDF5_BROADCAST
         if (option%myrank == 0) then                           
 #endif
-          call h5dread_f(data_set_id,H5T_NATIVE_INTEGER,integer_buffer,dims, &
+          call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,integer_buffer,dims, &
                          hdf5_err,memory_space_id,file_space_id,prop_id)   
 #ifdef HDF5_BROADCAST
         endif
@@ -461,7 +468,7 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
     call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset, &
                                length,hdf5_err,stride,stride) 
     if (option%myrank == 0) then                           
-      call h5dread_f(data_set_id,H5T_NATIVE_INTEGER,integer_buffer,dims, &
+      call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,integer_buffer,dims, &
                      hdf5_err,memory_space_id,file_space_id,prop_id)   
     endif
     if (option%commsize > 1) &
@@ -499,10 +506,10 @@ subroutine HDF5WriteIntegerArray(option,dataset_name,dataset_size,file_id, &
   type(option_type) :: option
   integer(HID_T) :: file_id
   character(len=MAXSTRINGLENGTH) :: dataset_name
-  integer :: dataset_size 
-  integer :: indices(:)
-  integer :: num_indices
-  integer :: integer_array(:)
+  PetscInt :: dataset_size 
+  PetscInt :: indices(:)
+  PetscInt :: num_indices
+  PetscInt :: integer_array(:)
   
   integer(HID_T) :: file_space_id
   integer(HID_T) :: memory_space_id
@@ -510,15 +517,15 @@ subroutine HDF5WriteIntegerArray(option,dataset_name,dataset_size,file_id, &
   integer(HID_T) :: prop_id
   integer(HSIZE_T) :: dims(3)
   integer(HSIZE_T) :: offset(3), length(3), stride(3)
-  integer :: rank
-  integer :: index_count
-  integer :: integer_count, prev_integer_count
+  PetscInt :: rank
+  PetscInt :: index_count
+  PetscInt :: integer_count, prev_integer_count
   integer(HSIZE_T) :: num_integers_in_file
-  integer :: temp_int, i, index
+  PetscInt :: temp_int, i, index
   
-  integer, allocatable :: integer_buffer(:)
+  PetscInt, allocatable :: integer_buffer(:)
   
-  integer :: read_block_size = HDF5_READ_BUFFER_SIZE
+  PetscInt :: read_block_size = HDF5_READ_BUFFER_SIZE
 
   call h5dopen_f(file_id,dataset_name,data_set_id,hdf5_err)
   call h5dget_space_f(data_set_id,file_space_id,hdf5_err)
@@ -575,7 +582,7 @@ subroutine HDF5WriteIntegerArray(option,dataset_name,dataset_size,file_id, &
 #ifdef HDF5_BROADCAST
         if (option%myrank == 0) then                           
 #endif
-          call h5dread_f(data_set_id,H5T_NATIVE_INTEGER,integer_buffer,dims, &
+          call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,integer_buffer,dims, &
                          hdf5_err,memory_space_id,file_space_id,prop_id)   
 #ifdef HDF5_BROADCAST
         endif
@@ -606,7 +613,7 @@ subroutine HDF5WriteIntegerArray(option,dataset_name,dataset_size,file_id, &
     call h5sselect_hyperslab_f(file_space_id, H5S_SELECT_SET_F,offset, &
                                length,hdf5_err,stride,stride) 
     if (option%myrank == 0) then                           
-      call h5dread_f(data_set_id,H5T_NATIVE_INTEGER,integer_buffer,dims, &
+      call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,integer_buffer,dims, &
                      hdf5_err,memory_space_id,file_space_id,prop_id)   
     endif
     if (option%commsize > 1) &
@@ -653,7 +660,7 @@ subroutine HDF5WriteStructDataSetFromVec(name,realization,vec,file_id,data_type)
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
-  PetscScalar, pointer :: vec_ptr(:)
+  PetscReal, pointer :: vec_ptr(:)
   
   grid => realization%grid
   option => realization%option
@@ -692,26 +699,26 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type, &
   implicit none
   
   character(len=32) :: name
-  real*8 :: array(:)
+  PetscReal :: array(:)
   integer(HID_T) :: file_id
   integer(HID_T) :: data_type
-  integer :: nx_local, ny_local, nz_local
-  integer :: nx_global, ny_global, nz_global
-  integer :: istart_local, jstart_local, kstart_local
+  PetscInt :: nx_local, ny_local, nz_local
+  PetscInt :: nx_global, ny_global, nz_global
+  PetscInt :: istart_local, jstart_local, kstart_local
   
   integer(HID_T) :: file_space_id
   integer(HID_T) :: memory_space_id
   integer(HID_T) :: data_set_id
   integer(HID_T) :: prop_id
   integer(HSIZE_T) :: dims(3)
-  integer :: rank
+  PetscInt :: rank
   
-  integer, pointer :: int_array(:)
-  real*8, pointer :: double_array(:)
-  integer :: i, j, k, count, id
+  PetscInt, pointer :: int_array(:)
+  PetscReal, pointer :: double_array(:)
+  PetscInt :: i, j, k, count, id
   integer(HSIZE_T) :: start(3), length(3), stride(3)
-  integer :: ny_local_X_nz_local
-  integer :: num_to_write
+  PetscInt :: ny_local_X_nz_local
+  PetscInt :: num_to_write
 
   ny_local_X_nz_local = ny_local*nz_local
   num_to_write = nx_local*ny_local_X_nz_local
@@ -777,7 +784,7 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type, &
   endif
 #endif
   if (num_to_write > 0) then
-    if (data_type == H5T_NATIVE_INTEGER) then
+    if (data_type == HDF_NATIVE_INTEGER) then
       allocate(int_array(nx_local*ny_local*nz_local))
 #ifdef INVERT
       count = 0
@@ -848,10 +855,10 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
   type(grid_type) :: grid
   type(option_type) :: option
   character(len=MAXWORDLENGTH) :: dataset_name
-  integer :: dataset_size
+  PetscInt :: dataset_size
   integer(HID_T) :: file_id
-  integer, pointer :: indices(:)
-  integer :: num_indices
+  PetscInt, pointer :: indices(:)
+  PetscInt :: num_indices
   
   integer(HID_T) :: file_space_id
   integer(HID_T) :: memory_space_id
@@ -859,10 +866,10 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
   integer(HID_T) :: prop_id
   integer(HSIZE_T) :: dims(3)
   integer(HSIZE_T) :: offset(3), length(3), stride(3)
-  integer :: rank
+  PetscInt :: rank
   integer(HSIZE_T) :: num_data_in_file
   
-  integer :: istart, iend
+  PetscInt :: istart, iend
 
   istart = 0  ! this will be zero-based
   iend = 0
@@ -916,7 +923,7 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
     length(1) = iend-istart
     call h5sselect_hyperslab_f(file_space_id,H5S_SELECT_SET_F,offset, &
                                length,hdf5_err,stride,stride) 
-    call h5dread_f(data_set_id,H5T_NATIVE_INTEGER,indices(1:iend-istart), &
+    call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,indices(1:iend-istart), &
                    dims,hdf5_err,memory_space_id,file_space_id,prop_id)                     
                      
   endif
@@ -952,10 +959,10 @@ subroutine HDF5ReadArray(grid,option,file_id,dataset_name,dataset_size, &
   type(grid_type) :: grid
   type(option_type) :: option
   character(len=MAXWORDLENGTH) :: dataset_name
-  integer :: dataset_size
+  PetscInt :: dataset_size
   integer(HID_T) :: file_id
-  integer, pointer :: indices(:)
-  integer :: num_indices
+  PetscInt, pointer :: indices(:)
+  PetscInt :: num_indices
   Vec :: global_vec
   integer(HID_T) :: data_type
   
@@ -965,13 +972,13 @@ subroutine HDF5ReadArray(grid,option,file_id,dataset_name,dataset_size, &
   integer(HID_T) :: prop_id
   integer(HSIZE_T) :: dims(3)
   integer(HSIZE_T) :: offset(3), length(3), stride(3)
-  integer :: rank
+  PetscInt :: rank
   integer(HSIZE_T) :: num_data_in_file
   Vec :: natural_vec
-  integer :: i, istart, iend
-  real*8, allocatable :: real_buffer(:)
-  integer, allocatable :: integer_buffer(:)
-  integer, allocatable :: indices0(:)
+  PetscInt :: i, istart, iend
+  PetscReal, allocatable :: real_buffer(:)
+  PetscInt, allocatable :: integer_buffer(:)
+  PetscInt, allocatable :: indices0(:)
   
   istart = 0
   iend = 0
@@ -1026,9 +1033,9 @@ subroutine HDF5ReadArray(grid,option,file_id,dataset_name,dataset_size, &
       call h5dread_f(data_set_id,H5T_NATIVE_DOUBLE,real_buffer,dims, &
                      hdf5_err,memory_space_id,file_space_id,prop_id)
       
-    else if (data_type == H5T_NATIVE_INTEGER) then
+    else if (data_type == HDF_NATIVE_INTEGER) then
       allocate(integer_buffer(iend-istart))
-      call h5dread_f(data_set_id,H5T_NATIVE_INTEGER,integer_buffer,dims, &
+      call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,integer_buffer,dims, &
                      hdf5_err,memory_space_id,file_space_id,prop_id)
       do i=1,iend-istart
         real_buffer(i) = real(integer_buffer(i))
@@ -1098,9 +1105,9 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   integer(HID_T) :: prop_id
 #endif
 
-  integer :: num_indices, i, local_id
-  integer, pointer :: indices(:)
-  integer, pointer :: integer_array(:)
+  PetscInt :: num_indices, i, local_id
+  PetscInt, pointer :: indices(:)
+  PetscInt, pointer :: integer_array(:)
   
 #ifndef USE_HDF5
   if (realization%option%myrank == 0) then
@@ -1234,12 +1241,12 @@ subroutine HDF5ReadMaterialsFromFile(realization,filename)
 
   PetscLogDouble :: tstart, tend
   
-  integer, pointer :: indices(:)
-  integer, allocatable :: integer_array(:)
+  PetscInt, pointer :: indices(:)
+  PetscInt, allocatable :: integer_array(:)
   
   Vec :: global
   Vec :: local
-  PetscScalar, pointer :: vec_ptr(:)
+  PetscReal, pointer :: vec_ptr(:)
 
 #ifndef USE_HDF5
   if (realization%option%myrank == 0) then
@@ -1300,7 +1307,7 @@ subroutine HDF5ReadMaterialsFromFile(realization,filename)
   string = "Material Ids"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
   call HDF5ReadArray(grid,option,grp_id,string,grid%nmax, &
-                         indices,global,H5T_NATIVE_INTEGER)
+                         indices,global,HDF_NATIVE_INTEGER)
 #else  
   allocate(indices(grid%nlmax))
   ! Read Cell Ids

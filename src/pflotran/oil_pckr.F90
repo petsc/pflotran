@@ -2,15 +2,15 @@
 module oil_pckr_module
   public
 
-  real*8, private, parameter:: pckr_sat_water_cut = 1.D0 - 5.D-7
- ! real*8, private :: pckr_swir, pckr_soir, pckr_sgir
-  real*8, private, allocatable, save :: kr_so(:,:),kr_sg(:,:)
-  integer, private, save :: kr_so_n, kr_sg_n
-  real*8, private, allocatable, save :: pc_so(:,:),pc_sg(:,:)
-  integer, private, save :: pc_so_n, pc_sg_n
-  real*8, private, save :: alaph_ow= 1.50D-3, alaph_ao=2.64D-4
-  
-  
+#include "include/finclude/petsc.h"
+
+  PetscReal, private, parameter:: pckr_sat_water_cut = 1.D0 - 5.D-7
+ ! PetscReal, private :: pckr_swir, pckr_soir, pckr_sgir
+  PetscReal, private, allocatable, save :: kr_so(:,:),kr_sg(:,:)
+  PetscInt, private, save :: kr_so_n, kr_sg_n
+  PetscReal, private, allocatable, save :: pc_so(:,:),pc_sg(:,:)
+  PetscInt, private, save :: pc_so_n, pc_sg_n
+  PetscReal, private, save :: alaph_ow= 1.50D-3, alaph_ao=2.64D-4
   
   contains 
 
@@ -18,7 +18,7 @@ subroutine oil_pckr_init(myrank)
 
   use Fileio_module
    
-  integer myrank
+  PetscMPIInt myrank
 #include "definitions.h"
   character(len=MAXSTRINGLENGTH) :: string 
   character(len=MAXWORDLENGTH) :: word !, strtim
@@ -90,16 +90,16 @@ subroutine oil_pckr_init(myrank)
   subroutine oil_pckr_noderiv(ipckrtype,pckr_swir, pckr_soir, pckr_lambda, &
                  pckr_alpha,pckr_m,pckr_pcmax,s_w,s_o,pc,kr,pckr_beta,pckr_pwr) 
     implicit none 
-    integer :: ipckrtype
-    real*8 :: s_w,s_o
-    real*8 :: pckr_swir,pckr_soir, pckr_lambda,pckr_alpha,pckr_m,pckr_pcmax,pckr_pwr
-    real*8 :: pc(1:3),kr(1:3)
-    real*8 :: pckr_beta
+    PetscInt :: ipckrtype
+    PetscReal :: s_w,s_o
+    PetscReal :: pckr_swir,pckr_soir, pckr_lambda,pckr_alpha,pckr_m,pckr_pcmax,pckr_pwr
+    PetscReal :: pc(1:3),kr(1:3)
+    PetscReal :: pckr_beta
 
-    real*8 :: se_w,se_t,swir,sw0
-    real*8 :: pcmax
-    real*8 :: pckr_betac,pckr_un, m_r
-!   real*8 :: lam,ala,se,um,un,upc,upc_s,temp,ser,uum,betac,st
+    PetscReal :: se_w,se_t,swir,sw0
+    PetscReal :: pcmax
+    PetscReal :: pckr_betac,pckr_un, m_r
+!   PetscReal :: lam,ala,se,um,un,upc,upc_s,temp,ser,uum,betac,st
 
     ! if(present(pckr_beta))
       pckr_betac=pckr_beta

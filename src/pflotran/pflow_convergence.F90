@@ -46,7 +46,7 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,simulation,ier
   PetscReal :: inorm_update  
   PetscReal :: inorm_residual  
   
-  integer :: i
+  PetscInt :: i
   PetscReal, allocatable :: fnorm_solution_stride(:)
   PetscReal, allocatable :: fnorm_update_stride(:)
   PetscReal, allocatable :: fnorm_residual_stride(:)
@@ -63,16 +63,16 @@ subroutine PFLOWConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,simulation,ier
 
   KSP :: ksp
   
-  integer, allocatable :: imax_solution(:)
-  integer, allocatable :: imax_update(:)
-  integer, allocatable :: imax_residual(:)
+  PetscInt, allocatable :: imax_solution(:)
+  PetscInt, allocatable :: imax_update(:)
+  PetscInt, allocatable :: imax_residual(:)
   PetscReal, allocatable :: max_solution_val(:)
   PetscReal, allocatable :: max_update_val(:)
   PetscReal, allocatable :: max_residual_val(:)
   
-  integer, allocatable :: imin_solution(:)
-  integer, allocatable :: imin_update(:)
-  integer, allocatable :: imin_residual(:)
+  PetscInt, allocatable :: imin_solution(:)
+  PetscInt, allocatable :: imin_update(:)
+  PetscInt, allocatable :: imin_residual(:)
   PetscReal, allocatable :: min_solution_val(:)
   PetscReal, allocatable :: min_update_val(:)
   PetscReal, allocatable :: min_residual_val(:)

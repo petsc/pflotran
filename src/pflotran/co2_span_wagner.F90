@@ -1,5 +1,6 @@
   module span_wagner_module
 
+
   ! module contains only 1 interface with other part, read as:
 
   ! co2_span_wagner(p,t,rho,dddt,dddp,fg,dfgdp,dfgdt,
@@ -10,28 +11,31 @@
   !     rho [kg/m^3] Energy [MJ/kg] Enthalpy [MJ/kg] Vis [Pa s]
 
       implicit none
+
+#include "include/finclude/petsc.h"
+
       save
       
 !     table lookup parameters t[k], p[MPa]
-      real*8,  public :: t0_tab = 35.d0+273.15D0, p0_tab = 0.01d0
+      PetscReal,  public :: t0_tab = 35.d0+273.15D0, p0_tab = 0.01d0
 
-      integer, public :: ntab_t = 100, ntab_p = 500
-      real*8,  public :: dt_tab = 2.5d0, dp_tab = 0.5d0
+      PetscInt, public :: ntab_t = 100, ntab_p = 500
+      PetscReal,  public :: dt_tab = 2.5d0, dp_tab = 0.5d0
 
-!     integer, public :: ntab_t = 100, ntab_p = 1000
-!     real*8,  public :: dt_tab = 2.5d0, dp_tab = 0.25d0
+!     PetscInt, public :: ntab_t = 100, ntab_p = 1000
+!     PetscReal,  public :: dt_tab = 2.5d0, dp_tab = 0.25d0
 
-!     integer, public :: ntab_t = 250, ntab_p = 2500
-!     real*8,  public :: dt_tab = 1.d0, dp_tab = 0.1d0
+!     PetscInt, public :: ntab_t = 250, ntab_p = 2500
+!     PetscReal,  public :: dt_tab = 1.d0, dp_tab = 0.1d0
 
-      real*8, private :: n(42),ti(40),gamma(5),phic(8),c(40),d(40),a(8)
-      real*8, private :: alpha(5),beta(8),delta(4),epsilon(5)
-      real*8, private :: aco2(4),bco2(4),capa(5),capb(5),capc(5),capd(5)
-      real*8, private :: av(0:4)
+      PetscReal, private :: n(42),ti(40),gamma(5),phic(8),c(40),d(40),a(8)
+      PetscReal, private :: alpha(5),beta(8),delta(4),epsilon(5)
+      PetscReal, private :: aco2(4),bco2(4),capa(5),capb(5),capc(5),capd(5)
+      PetscReal, private :: av(0:4)
 
-      real*8, private :: denc,tc,rg,pc
-      real*8 ,private, allocatable :: co2_prop_spwag(:,:,:)
-      real*8, private :: p,t,rhosav
+      PetscReal, private :: denc,tc,rg,pc
+      PetscReal ,private, allocatable :: co2_prop_spwag(:,:,:)
+      PetscReal, private :: p,t,rhosav
 
       public initialize_span_wagner, co2_span_wagner
 
@@ -42,13 +46,14 @@
       subroutine initialize_span_wagner(itable,myrank)
 
       implicit none
-      integer, optional :: itable
+      PetscInt, optional :: itable
       
-      real*8 :: pl,tl,tmp,tmp2,dtmp,dtemp,dpres,dddt,dddp
+      PetscReal :: pl,tl,tmp,tmp2,dtmp,dtemp,dpres,dddt,dddp
       
-      real*8 :: rhodp,rhodt,fgdp,fgdt,engdp,engdt,entdp,entdt,vdp,vdt
+      PetscReal :: rhodp,rhodt,fgdp,fgdt,engdp,engdt,entdp,entdt,vdp,vdt
        
-      integer :: iitable,i,j,myrank
+      PetscInt :: iitable,i,j
+      PetscMPIInt :: myrank
       
       character*3 :: q
       character*1 :: tab
@@ -439,17 +444,17 @@
 
   implicit none
       
-      real*8 :: pl,tl,rho,eng,ent,dhdt,dhdp,dddt,dddp,visc,dvdt,dvdp
-      real*8 :: fiot,fiott,fird,firt,firdt,firdd,firtt,ftau,fdel,del,tau,fir
-!     real*8 :: vpartial, rho_h2o, Cs, xco2, rho_wco2
-      real*8 :: fg,dfgdp,fg1,dfgdt
-      real*8 :: rho1,rho2
+      PetscReal :: pl,tl,rho,eng,ent,dhdt,dhdp,dddt,dddp,visc,dvdt,dvdp
+      PetscReal :: fiot,fiott,fird,firt,firdt,firdd,firtt,ftau,fdel,del,tau,fir
+!     PetscReal :: vpartial, rho_h2o, Cs, xco2, rho_wco2
+      PetscReal :: fg,dfgdp,fg1,dfgdt
+      PetscReal :: rho1,rho2
       
-!     integer :: it
-      integer, optional :: itable
+!     PetscInt :: it
+      PetscInt, optional :: itable
        
-      integer :: iitable,i1,i2,j1,j2,i,isucc
-      real*8 :: iindex,jindex,tmp,factor(1:4)
+      PetscInt :: iitable,i1,i2,j1,j2,i,isucc
+      PetscReal :: iindex,jindex,tmp,factor(1:4)
 
 
       p=pl;t=tl;iitable=0
@@ -675,8 +680,8 @@
 
       implicit none
 
-      real*8 :: ts,dum1,dum2,uguess,lguess,rhov,rhol
-      real*8 :: a1,a2,a3,a4,a5,t1,t2,t3,t4,t5,tr
+      PetscReal :: ts,dum1,dum2,uguess,lguess,rhov,rhol
+      PetscReal :: a1,a2,a3,a4,a5,t1,t2,t3,t4,t5,tr
 
       if (p.le.pc .and. t.le.tc) then
          call vappr (ts,p,dum1,dum2,12)
@@ -781,8 +786,8 @@
   subroutine co2den(den,f,df)
      
     IMPLICIT NONE
-      real*8 :: den,tau1,del1
-      real*8 :: f1,df1,f,df
+      PetscReal :: den,tau1,del1
+      PetscReal :: f1,df1,f,df
 
       tau1 = tc/t
       del1 = den/denc
@@ -795,12 +800,12 @@
       return
       end subroutine co2den
 
-      double precision function psi(i,del2,tau2)
+      PetscReal function psi(i,del2,tau2)
       implicit none
-!     real*8 :: psi
-!     real*8 aco2(4),bco2(4),capa(5),capb(5),capc(5),capd(5)
-      real*8 :: del2,tau2
-      integer :: i
+!     PetscReal :: psi
+!     PetscReal aco2(4),bco2(4),capa(5),capb(5),capc(5),capd(5)
+      PetscReal :: del2,tau2
+      PetscInt :: i
 !     common/params3/aco2,bco2,capa,capb,capc,capd
 
       psi=-(capc(i)*((del2-1.d0)**2.d0))-(capd(i)*((tau2-1.d0)**2.d0))
@@ -810,9 +815,9 @@
 
       subroutine dphiodtau(dr,del2,tau2)
       implicit none
-      integer :: i
-      real*8 :: del2,tau2,dr
-      real*8 :: ideal_helm, derti_helm
+      PetscInt :: i
+      PetscReal :: del2,tau2,dr
+      PetscReal :: ideal_helm, derti_helm
 
       ideal_helm = log(del2)+a(1)+a(2)*tau2+a(3)*log(tau2)
       do i = 4, 8
@@ -835,8 +840,8 @@
       
 !     Span & Wagner (1996) Table 32
 
-      integer :: i
-      real*8 :: del2,tau2,dr,dihelm_dtautau
+      PetscInt :: i
+      PetscReal :: del2,tau2,dr,dihelm_dtautau
 
 !     Table 34 double derivative of ideal helmholtz wrt tau
 
@@ -856,12 +861,12 @@
 
       implicit none
       
-      real*8 :: del2,tau2,r_helm,psi1
-!     real*8 :: x1,x2,x3,x4,x5,x6,x7,x8,x10
-!     real*8 :: e1,e2,e3,e4,e5,e6
-!     real*8 :: tsqr,t1,t2,t3,t6,t7,t8,t12,t14,t16,t22,t24,t28
-      real*8 :: capdel1
-      integer :: i
+      PetscReal :: del2,tau2,r_helm,psi1
+!     PetscReal :: x1,x2,x3,x4,x5,x6,x7,x8,x10
+!     PetscReal :: e1,e2,e3,e4,e5,e6
+!     PetscReal :: tsqr,t1,t2,t3,t6,t7,t8,t12,t14,t16,t22,t24,t28
+      PetscReal :: capdel1
+      PetscInt :: i
 
 !     equation 5.3 for residual part of Helmholtz function
 
@@ -895,12 +900,12 @@
 !     Span & Wagner (1996) Table 32
 
       implicit none
-      integer :: i
-      real*8 :: del2,tau2,dr,derdr_helm
-      real*8 :: psi1,capdel1,dsidd,ddelbdd
-!     real*8 :: d1,d2,d3,d4,d5,d6,d7,d9
-!     real*8 :: e1,e2,e3,e4,e5,e6
-!     real*8 :: tsqr,t1,t2,t3,t6,t7,t8,t12,t14,t16,t22,t24,t28
+      PetscInt :: i
+      PetscReal :: del2,tau2,dr,derdr_helm
+      PetscReal :: psi1,capdel1,dsidd,ddelbdd
+!     PetscReal :: d1,d2,d3,d4,d5,d6,d7,d9
+!     PetscReal :: e1,e2,e3,e4,e5,e6
+!     PetscReal :: tsqr,t1,t2,t3,t6,t7,t8,t12,t14,t16,t22,t24,t28
 
 !     table 32, derivative of residual helmholtz wrt delta
 
@@ -932,14 +937,14 @@
 
       subroutine dphirdddel(dpdd,del2,tau2)
       implicit none
-      integer :: i
-      real*8 :: del2,tau2,derdr_helm
-      real*8 :: dpdd,psi1,capdel1
-      real*8 :: dsidd,d2sidd,ddelbdd
-      real*8 :: d2delbdd
-!     real*8 :: d1,d2,d3,d4,d5,d6,d7,d8,d9
-!     real*8 :: e1,e2,e3,e4,e5,e6
-!     real*8 :: tsqr,t1,t2,t3,t6,t7,t8,t12,t14,t16,t22,t24,t28
+      PetscInt :: i
+      PetscReal :: del2,tau2,derdr_helm
+      PetscReal :: dpdd,psi1,capdel1
+      PetscReal :: dsidd,d2sidd,ddelbdd
+      PetscReal :: d2delbdd
+!     PetscReal :: d1,d2,d3,d4,d5,d6,d7,d8,d9
+!     PetscReal :: e1,e2,e3,e4,e5,e6
+!     PetscReal :: tsqr,t1,t2,t3,t6,t7,t8,t12,t14,t16,t22,t24,t28
 
 !     table 32, derivative of residual helmholtz wrt delta
 
@@ -987,10 +992,10 @@
       subroutine dphirdtau(dpdtau,del2,tau2)
 
       implicit none
-      integer :: i
-      real*8 :: del2,tau2,derdr_helm
-      real*8 :: dpdtau
-      real*8 :: psi1,dbidt,capdel1,dsidt
+      PetscInt :: i
+      PetscReal :: del2,tau2,derdr_helm
+      PetscReal :: dpdtau
+      PetscReal :: psi1,dbidt,capdel1,dsidt
 
 !     table 32, derivative of residual helmholtz wrt delta
 
@@ -1026,11 +1031,11 @@
       subroutine dphirdtautau(dpdtt,del2,tau2)
 
       implicit none
-      integer :: i
-      real*8 :: del2,tau2,derdr_helm
-      real*8 :: dpdtt
-      real*8 :: psi1
-      real*8 :: d2bidtt,capdel1,dbidt,dsidt,d2sidtt
+      PetscInt :: i
+      PetscReal :: del2,tau2,derdr_helm
+      PetscReal :: dpdtt
+      PetscReal :: psi1
+      PetscReal :: d2bidtt,capdel1,dbidt,dsidt,d2sidtt
 
 !     table 36, derivative of residual helmholtz wrt delta
 
@@ -1071,10 +1076,10 @@
       subroutine dphirddeldtau(dpddt,del2,tau2)
 
       implicit none
-      integer :: i
-      real*8 :: del2,tau2,derdr_helm
-      real*8 :: dpddt
-      real*8 :: psi1,capdel1,dsidt,dsiddt,dbidd,dbidt,dsidd,d2biddt
+      PetscInt :: i
+      PetscReal :: del2,tau2,derdr_helm
+      PetscReal :: dpddt
+      PetscReal :: psi1,capdel1,dsidt,dsiddt,dbidd,dbidt,dsidd,d2biddt
 
 !     table 36, derivative of residual helmholtz wrt delta
 
@@ -1118,9 +1123,9 @@
 
       function dpsiddel(i,del2,tau2)
       implicit none
-      real*8 :: dpsiddel
-      real*8 :: del2,tau2,psi1
-      integer :: i
+      PetscReal :: dpsiddel
+      PetscReal :: del2,tau2,psi1
+      PetscInt :: i
 
       psi1=psi(i,del2,tau2)
       dpsiddel = -2.d0*capc(i)*(del2-1.d0)*psi1
@@ -1131,9 +1136,9 @@
 
       function d2psiddel2(i,del2,tau2)
       implicit none
-      real*8 :: d2psiddel2
-      real*8 :: del2,tau2,psi1
-      integer :: i
+      PetscReal :: d2psiddel2
+      PetscReal :: del2,tau2,psi1
+      PetscInt :: i
 
       psi1=psi(i,del2,tau2)
       d2psiddel2 = (2.d0*capc(i)*(del2-1.d0)**2-1.d0)*2.d0*capc(i)*psi1
@@ -1142,9 +1147,9 @@
 
       function dpsidtau(i,del2,tau2)
       implicit none
-      real*8 :: dpsidtau
-      real*8 :: del2,tau2,psi1
-      integer :: i
+      PetscReal :: dpsidtau
+      PetscReal :: del2,tau2,psi1
+      PetscInt :: i
 
       psi1=psi(i,del2,tau2)
       dpsidtau = -2.d0*capd(i)*(tau2-1.d0)*psi1
@@ -1153,9 +1158,9 @@
 
       function d2psidtau2(i,del2,tau2)
       implicit none
-      real*8 :: d2psidtau2
-      real*8 :: del2,tau2,psi1
-      integer :: i
+      PetscReal :: d2psidtau2
+      PetscReal :: del2,tau2,psi1
+      PetscInt :: i
 
       psi1=psi(i,del2,tau2)
       d2psidtau2 = ((2.d0*capd(i)*(tau2-1.d0)**2)-1.d0)*2.d0* &
@@ -1165,9 +1170,9 @@
 
       function d2psiddeltau(i,del2,tau2)
       implicit none
-      real*8 :: d2psiddeltau
-      real*8 :: del2,tau2,psi1
-      integer :: i
+      PetscReal :: d2psiddeltau
+      PetscReal :: del2,tau2,psi1
+      PetscInt :: i
 
       psi1=psi(i,del2,tau2)
       d2psiddeltau = 4.d0*capc(i)*capd(i)*(del2-1.d0)*(tau2-1.d0)*psi1
@@ -1176,9 +1181,9 @@
 
       function theta(i,del2,tau2)
       implicit none
-      real*8 :: theta
-      real*8 :: del2,tau2
-      integer :: i
+      PetscReal :: theta
+      PetscReal :: del2,tau2
+      PetscInt :: i
 
       theta=1.d0-tau2+capa(i)*((del2-1.d0)**2)**(1.d0/(2.d0*beta(i+5)))
 
@@ -1186,9 +1191,9 @@
 
       function capdel(i,del2,tau2)
       implicit none
-      real*8 :: capdel
-      real*8 :: theta1,del2,tau2
-      integer :: i
+      PetscReal :: capdel
+      PetscReal :: theta1,del2,tau2
+      PetscInt :: i
 
       theta1=theta(i,del2,tau2)
       capdel=theta1*theta1+capb(i)*(((del2-1.d0)**2)**aco2(i))
@@ -1196,9 +1201,9 @@
 
       function dcapdelddel(i,del2,tau2)
       implicit none
-      real*8 :: dcapdelddel
-      real*8 :: del2,tau2,theta1
-      integer :: i
+      PetscReal :: dcapdelddel
+      PetscReal :: del2,tau2,theta1
+      PetscInt :: i
 
       theta1=theta(i,del2,tau2)
 !     dcapdelddel=(del2-1.d0)*((capa(i)*theta1*(2.d0/beta(i+5)) &
@@ -1211,10 +1216,10 @@
 
       function d2capdelddel2(i,del2,tau2) ! d^2 Delta/d delta^2
       implicit none
-      real*8 :: d2capdelddel2
-      real*8 :: tmp1,del2,tau2,theta1
-      real*8 :: ddd
-      integer :: i
+      PetscReal :: d2capdelddel2
+      PetscReal :: tmp1,del2,tau2,theta1
+      PetscReal :: ddd
+      PetscInt :: i
 
       theta1=theta(i,del2,tau2)
       tmp1=4.d0*capb(i)*aco2(i)*(aco2(i)-1.d0)*(((del2-1.d0) &
@@ -1236,9 +1241,9 @@
 
       function ddelbiddel(i,del2,tau2)
       implicit none
-      real*8 :: ddelbiddel
-      integer :: i
-      real*8 :: del2,tau2,capdel1,ddd
+      PetscReal :: ddelbiddel
+      PetscInt :: i
+      PetscReal :: del2,tau2,capdel1,ddd
       
       capdel1=capdel(i,del2,tau2)
       ddd=dcapdelddel(i,del2,tau2)*(del2-1.d0)
@@ -1248,9 +1253,9 @@
 
       function d2delbiddel2(i,del2,tau2)
       implicit none
-      real*8 :: d2delbiddel2
-      integer :: i
-      real*8 :: del2,tau2,ddd1,ddd2,capdel1
+      PetscReal :: d2delbiddel2
+      PetscInt :: i
+      PetscReal :: del2,tau2,ddd1,ddd2,capdel1
 
       ddd1=dcapdelddel(i,del2,tau2)*(del2-1.d0)
       ddd2=d2capdelddel2(i,del2,tau2)
@@ -1262,9 +1267,9 @@
 
       function ddelbidtau(i,del2,tau2)
       implicit none
-      real*8 :: ddelbidtau
-      integer :: i
-      real*8 :: del2,tau2,theta1,capdel1
+      PetscReal :: ddelbidtau
+      PetscInt :: i
+      PetscReal :: del2,tau2,theta1,capdel1
 
       theta1=theta(i,del2,tau2)
       capdel1=capdel(i,del2,tau2)
@@ -1275,10 +1280,10 @@
 
       function d2delbidtau2(i,del2,tau2)
       implicit none
-      real*8 :: d2delbidtau2
-      real*8 :: del2,tau2
-      integer :: i
-      real*8 :: capdel1,theta1
+      PetscReal :: d2delbidtau2
+      PetscReal :: del2,tau2
+      PetscInt :: i
+      PetscReal :: capdel1,theta1
 
       capdel1=capdel(i,del2,tau2)
       theta1=theta(i,del2,tau2)
@@ -1289,10 +1294,10 @@
 
       function d2delbiddeltau(i,del2,tau2)
       implicit none
-      real*8 :: d2delbiddeltau
-      real*8 :: tmp3,del2,tau2
-      integer :: i
-      real*8 :: capdel1,ddd,theta1
+      PetscReal :: d2delbiddeltau
+      PetscReal :: tmp3,del2,tau2
+      PetscInt :: i
+      PetscReal :: capdel1,ddd,theta1
 
       capdel1=capdel(i,del2,tau2)
       theta1=theta(i,del2,tau2)
@@ -1313,11 +1318,11 @@
       
 !     co2 vapor pressure curve (Span & Wagner, 1996, p. 1524, eq. (3.13)
 
-      integer :: j,maxit
-      real*8 :: tm,ps,nu,dertp,derpt,ps1,uguess,lguess,xacc
-      real*8 :: a1,a2,a3,a4
-      integer :: ifl1
-      real*8 :: dnu,ps2,f,df
+      PetscInt :: j,maxit
+      PetscReal :: tm,ps,nu,dertp,derpt,ps1,uguess,lguess,xacc
+      PetscReal :: a1,a2,a3,a4
+      PetscInt :: ifl1
+      PetscReal :: dnu,ps2,f,df
 
       parameter(maxit=1000)
       parameter(xacc=1.d-7)
@@ -1367,12 +1372,12 @@
       subroutine viscosity(p,t,rho,drhodp,drhodt,mu,dmudt,dmudp)
 
       implicit none
-      real*8 :: p, t, rho
-      real*8 :: xsection1, xsection2, drhodt, drhodp,dmudp,dmudt
-      real*8 :: dtxsection,dt_zerodenmu,dp_zerodenmu,drho_excessmu
-      real*8 :: dp_excessmu, dt_excessmu
-      real*8 :: t_star, xsection, zeroden_mu, excess_mu, mu
-      real*8 :: lnstr,r2,r4,r5,r6,r7,r8
+      PetscReal :: p, t, rho
+      PetscReal :: xsection1, xsection2, drhodt, drhodp,dmudp,dmudt
+      PetscReal :: dtxsection,dt_zerodenmu,dp_zerodenmu,drho_excessmu
+      PetscReal :: dp_excessmu, dt_excessmu
+      PetscReal :: t_star, xsection, zeroden_mu, excess_mu, mu
+      PetscReal :: lnstr,r2,r4,r5,r6,r7,r8
 
 !     zero density viscosity
 !     av(0) = 0.235156d0
@@ -1440,9 +1445,9 @@
       subroutine dissco2(p,t,mco2,fg,mol)
 
       implicit none
-      real*8 :: p, t, mco2, fg, mol
-      real*8 :: pc_h2o, tc_h2o, t1,ph2o,liq_cp, lambdaco2_na
-      real*8 :: tauco2_na_cl, rhs
+      PetscReal :: p, t, mco2, fg, mol
+      PetscReal :: pc_h2o, tc_h2o, t1,ph2o,liq_cp, lambdaco2_na
+      PetscReal :: tauco2_na_cl, rhs
 
 !     calculate solubility of CO2 based on Duan model
 

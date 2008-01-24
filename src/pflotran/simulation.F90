@@ -5,6 +5,8 @@ module Simulation_module
   use Solver_module
 
   implicit none
+
+#include "include/finclude/petsc.h"
   
   private
 

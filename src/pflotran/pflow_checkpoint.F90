@@ -4,18 +4,22 @@
 ! use the PetscBagGetData() routine.
 ! RTM: This is pretty makeshift.  We need to think about what should 
 ! go into this header and how it should be organized.
-module pflow_chkptheader
-  type, public :: pflowChkPtHeader
-    real*8 :: time
-    real*8 :: dt
-    integer :: flowsteps
-    integer :: newtcum
-    integer :: icutcum
 
-    integer :: timestep_cut_flag
-    integer :: num_timestep_cuts
-    integer :: num_newton_iterations
-    integer :: plot_number
+module pflow_chkptheader
+  implicit none
+  private
+#include "include/finclude/petsc.h"
+  type, public :: pflowChkPtHeader
+    PetscReal :: time
+    PetscReal :: dt
+    PetscInt :: flowsteps
+    PetscInt :: newtcum
+    PetscInt :: icutcum
+
+    PetscInt :: timestep_cut_flag
+    PetscInt :: num_timestep_cuts
+    PetscInt :: num_newton_iterations
+    PetscInt :: plot_number
   end type pflowChkPtHeader
 end module pflow_chkptheader
 
@@ -63,8 +67,8 @@ subroutine pflowGridCheckpoint(realization,flowsteps,newtcum,icutcum, &
 
   type(realization_type) :: realization
   logical :: timestep_cut_flag
-  integer :: num_timestep_cuts, num_newton_iterations
-  integer :: id, flowsteps, newtcum, icutcum
+  PetscInt :: num_timestep_cuts, num_newton_iterations
+  PetscInt :: id, flowsteps, newtcum, icutcum
 
   if(realization%option%myrank == 0) then
     print *, "Warning: pflowGridCheckpoint() not supported with PETSc 2.3.2."
@@ -89,8 +93,8 @@ subroutine pflowGridCheckpoint(realization,flowsteps,newtcum,icutcum, &
 
   type(realization_type) :: realization
   logical :: timestep_cut_flag
-  integer :: num_timestep_cuts, num_newton_iterations
-  integer :: id, flowsteps, newtcum, icutcum
+  PetscInt :: num_timestep_cuts, num_newton_iterations
+  PetscInt :: id, flowsteps, newtcum, icutcum
 #ifdef PetscSizeT
   PetscSizeT :: bagsize
 #else
@@ -103,10 +107,10 @@ subroutine pflowGridCheckpoint(realization,flowsteps,newtcum,icutcum, &
   PetscViewer viewer
   PetscBag bag
   type(pflowChkPtHeader), pointer :: header
-  integer ierr
+  PetscInt :: ierr
   
   Vec :: global, global_var
-  integer :: int_flag
+  PetscInt :: int_flag
   
   type(field_type), pointer :: field
   type(option_type), pointer :: option
@@ -253,8 +257,8 @@ subroutine pflowGridRestart(realization,flowsteps,newtcum,icutcum, &
   type(realization_type) :: realization
   type(stepper_type) :: stepper
   logical :: timestep_cut_flag
-  integer :: num_timestep_cuts, num_newton_iterations
-  integer :: flowsteps, newtcum, icutcum
+  PetscInt :: num_timestep_cuts, num_newton_iterations
+  PetscInt :: flowsteps, newtcum, icutcum
 
   if(realization%option%myrank == 0) then
     print *, "Warning: pflowGridRestart() not supported with PETSc 2.3.2."
@@ -278,16 +282,16 @@ subroutine pflowGridRestart(realization,flowsteps,newtcum,icutcum, &
 
   type(realization_type) :: realization
   logical :: timestep_cut_flag
-  integer :: num_timestep_cuts, num_newton_iterations
-  integer :: flowsteps, newtcum, icutcum
+  PetscInt :: num_timestep_cuts, num_newton_iterations
+  PetscInt :: flowsteps, newtcum, icutcum
 
   PetscViewer viewer
   PetscBag bag
   type(pflowChkPtHeader), pointer :: header
-  integer ierr
+  PetscInt :: ierr
 
   Vec :: global, global_var
-  integer :: int_flag
+  PetscInt :: int_flag
   
   type(field_type), pointer :: field
   type(option_type), pointer :: option
@@ -392,11 +396,11 @@ subroutine pflowGridTHCBinaryOut(grid, kplt)
 #include "definitions.h"
 
   type(pflowGrid), intent(inout) :: grid
-  integer, intent(inout) :: kplt
+  PetscInt, intent(inout) :: kplt
 
   character(len=MAXSTRINGLENGTH) :: fname
   PetscViewer viewer
-  integer ierr
+  PetscInt :: ierr
 
   ! Open the output file.
   write(fname, '(a9,i2)') 'pflow.chk', kplt

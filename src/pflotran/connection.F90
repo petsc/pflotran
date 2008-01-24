@@ -3,21 +3,22 @@ module Connection_module
   implicit none
 
 #include "definitions.h"
+#include "include/finclude/petsc.h"
 
   private
 
   type, public :: connection_type
-    integer :: id
-    integer :: itype                  ! connection type (boundary, internal, source sink
-    integer :: num_connections
-    integer, pointer :: id_up(:)      ! list of ids of upwind cells
-    integer, pointer :: id_dn(:)      ! list of ids of downwind cells
-    real*8, pointer :: dist(:,:)      ! list of distance vectors, size(-1:3,num_connections) where
+    PetscInt :: id
+    PetscInt :: itype                  ! connection type (boundary, internal, source sink
+    PetscInt :: num_connections
+    PetscInt, pointer :: id_up(:)      ! list of ids of upwind cells
+    PetscInt, pointer :: id_dn(:)      ! list of ids of downwind cells
+    PetscReal, pointer :: dist(:,:)      ! list of distance vectors, size(-1:3,num_connections) where
                                       !   -1 = fraction upwind
                                       !   0 = magnitude of distance 
                                       !   1-3 = components of unit vector
-    real*8, pointer :: area(:)        ! list of areas of faces normal to distance vectors
-!    real*8, pointer :: velocity(:,:)  ! velocity scalars for each phase
+    PetscReal, pointer :: area(:)        ! list of areas of faces normal to distance vectors
+!    PetscReal, pointer :: velocity(:,:)  ! velocity scalars for each phase
     type(connection_type), pointer :: next
   end type connection_type
 
@@ -28,7 +29,7 @@ module Connection_module
   end type connection_ptr_type 
   
   type, public :: connection_list_type
-    integer :: num_connection_objects
+    PetscInt :: num_connection_objects
     type(connection_type), pointer :: first
     type(connection_type), pointer :: last
     type(connection_ptr_type), pointer :: array(:)
@@ -56,9 +57,9 @@ function ConnectionCreate(num_connections,num_dof,connection_itype)
 
   implicit none
   
-  integer :: num_connections
-  integer :: num_dof
-  integer :: connection_itype
+  PetscInt :: num_connections
+  PetscInt :: num_dof
+  PetscInt :: connection_itype
   
   type(connection_type), pointer :: ConnectionCreate
 
@@ -117,7 +118,7 @@ function ConnectionGetNumberInList(list)
   
   type(connection_list_type) :: list
 
-  integer :: ConnectionGetNumberInList
+  PetscInt :: ConnectionGetNumberInList
   type(connection_type), pointer :: cur_connection_set
   
   ConnectionGetNumberInList = 0
@@ -206,7 +207,7 @@ subroutine ConnectionConvertListToArray(list)
   
   type(connection_list_type) :: list
     
-  integer :: count
+  PetscInt :: count
   type(connection_type), pointer :: cur_connection
   
   

@@ -76,14 +76,14 @@ subroutine PflowInit(simulation,filename)
   
   ISColoring :: iscoloring
 
-  integer :: mcomp, mphas
-  integer :: temp_int
+  PetscInt :: mcomp, mphas
+  PetscInt :: temp_int
   PetscTruth :: iflag
 
-  real*8, pointer :: phis_p(:)
+  PetscReal, pointer :: phis_p(:)
                        
   ! needed for SNESLineSearchGetParams()/SNESLineSearchSetParams()
-  real*8 :: alpha, maxstep, steptol
+  PetscReal :: alpha, maxstep, steptol
   
   PetscErrorCode :: ierr
   
@@ -974,9 +974,9 @@ subroutine readRequiredCardsFromInput(realization,filename,mcomp,mphas)
 
   type(realization_type) :: realization
   character(len=MAXWORDLENGTH) :: filename
-  integer :: mcomp, mphas
+  PetscInt :: mcomp, mphas
 
-  integer :: ierr
+  PetscInt :: ierr
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXWORDLENGTH) :: name
@@ -985,7 +985,7 @@ subroutine readRequiredCardsFromInput(realization,filename,mcomp,mphas)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   
-  integer :: igeom
+  PetscInt :: igeom
   
   option => realization%option
   
@@ -1232,25 +1232,25 @@ subroutine readInput(simulation,filename)
   type(simulation_type) :: simulation
   character(len=MAXWORDLENGTH) :: filename
 
-  integer :: ierr
+  PetscInt :: ierr
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXNAMELENGTH) :: name
   character(len=MAXWORDLENGTH) :: card
     
-  real*8, parameter:: fmwnacl = 58.44277D0, fmwh2o  = 18.01534d0
-  integer :: i, i1, i2, idum, ireg, isrc, j
-  integer :: ibc, ibrk, ir,np  
+  PetscReal, parameter:: fmwnacl = 58.44277D0, fmwh2o  = 18.01534d0
+  PetscInt :: i, i1, i2, idum, ireg, isrc, j
+  PetscInt :: ibc, ibrk, ir,np  
 
   logical :: continuation_flag
   logical :: periodic_output_flag = .false.
-  real*8 :: periodic_rate = 0.d0
+  PetscReal :: periodic_rate = 0.d0
   
   character(len=1) :: backslash
-  real*8 :: temp_real, temp_real2
-  integer :: temp_int
+  PetscReal :: temp_real, temp_real2
+  PetscInt :: temp_int
   
-  integer :: count, id
+  PetscInt :: count, id
   
 ! keywords: GRID, PROC, COUP, GRAV, OPTS, TOLR, DXYZ, DIFF, RADN, HYDR,  
 !           SOLV, THRM, PCKR, PHIK, INIT, TIME, DTST, BCON, SOUR, BRK, RCTR
@@ -2584,9 +2584,9 @@ subroutine initAccumulation(realization)
   type(realization_type) :: realization
   
   type(option_type), pointer :: option
-  real*8, pointer :: den_p(:), pressure_p(:), temp_p(:), h_p(:)
-  real*8 :: dw_kg,dl,hl
-  integer :: m, ierr
+  PetscReal, pointer :: den_p(:), pressure_p(:), temp_p(:), h_p(:)
+  PetscReal :: dw_kg,dl,hl
+  PetscInt :: m, ierr
   
   option => realization%option
   
@@ -2660,7 +2660,7 @@ subroutine setMode(option,mcomp,mphas)
 #include "definitions.h"  
 
   type(option_type) :: option
-  integer :: mcomp, mphas
+  PetscInt :: mcomp, mphas
   
   call fiCharsToLower(option%mode,len_trim(option%mode))
   if (fiStringCompare(option%mode,"richards",len_trim(option%mode))) then
@@ -2767,18 +2767,18 @@ subroutine assignMaterialPropToRegions(realization)
   type(realization_type) :: realization
   
   character(len=MAXSTRINGLENGTH) :: string
-  PetscScalar, pointer :: icap_loc_p(:)
-  PetscScalar, pointer :: ithrm_loc_p(:)
-  PetscScalar, pointer :: por0_p(:)
-  PetscScalar, pointer :: perm_xx_p(:)
-  PetscScalar, pointer :: perm_yy_p(:)
-  PetscScalar, pointer :: perm_zz_p(:)
-  PetscScalar, pointer :: perm_pow_p(:)
-  PetscScalar, pointer :: tor_loc_p(:)
+  PetscReal, pointer :: icap_loc_p(:)
+  PetscReal, pointer :: ithrm_loc_p(:)
+  PetscReal, pointer :: por0_p(:)
+  PetscReal, pointer :: perm_xx_p(:)
+  PetscReal, pointer :: perm_yy_p(:)
+  PetscReal, pointer :: perm_zz_p(:)
+  PetscReal, pointer :: perm_pow_p(:)
+  PetscReal, pointer :: tor_loc_p(:)
   
-  integer :: icell, local_id, ghosted_id, natural_id, material_id
-  integer :: istart, iend
-  integer :: fid = 86, status
+  PetscInt :: icell, local_id, ghosted_id, natural_id, material_id
+  PetscInt :: istart, iend
+  PetscInt :: fid = 86, status
   PetscErrorCode :: ierr
   
   type(option_type), pointer :: option
@@ -2927,15 +2927,15 @@ subroutine assignInitialConditions(realization)
   
   type(realization_type) :: realization
   
-  PetscScalar, pointer :: pressure_p(:)
-  PetscScalar, pointer :: temp_p(:)
-  PetscScalar, pointer :: sat_p(:)
-  PetscScalar, pointer :: conc_p(:)
-  PetscScalar, pointer :: xmol_p(:)
+  PetscReal, pointer :: pressure_p(:)
+  PetscReal, pointer :: temp_p(:)
+  PetscReal, pointer :: sat_p(:)
+  PetscReal, pointer :: conc_p(:)
+  PetscReal, pointer :: xmol_p(:)
   
-  integer :: icell, iconn, count, jn1, jn2
-  integer :: local_id, ghosted_id, iend, ibegin
-  PetscScalar, pointer :: xx_p(:), iphase_loc_p(:)
+  PetscInt :: icell, iconn, count, jn1, jn2
+  PetscInt :: local_id, ghosted_id, iend, ibegin
+  PetscReal, pointer :: xx_p(:), iphase_loc_p(:)
   PetscErrorCode :: ierr
   
   type(option_type), pointer :: option
@@ -3145,9 +3145,9 @@ subroutine verifyCouplers(realization,coupler_list)
   type(coupler_type), pointer :: coupler
   character(len=MAXWORDLENGTH) :: filename
   character(len=MAXWORDLENGTH) :: dataset_name
-  integer :: iconn, local_id
+  PetscInt :: iconn, local_id
   Vec :: global
-  PetscScalar, pointer :: vec_ptr(:)
+  PetscReal, pointer :: vec_ptr(:)
   PetscErrorCode :: ierr
 
   grid => realization%grid
@@ -3198,8 +3198,8 @@ subroutine initializeSolidReaction(realization)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
-  integer :: icell
-  PetscScalar, pointer :: phis_p(:)
+  PetscInt :: icell
+  PetscReal, pointer :: phis_p(:)
   PetscErrorCode :: ierr
   
   grid => realization%grid
@@ -3279,9 +3279,9 @@ subroutine readMaterialsFromFile(realization,filename)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   character(len=MAXSTRINGLENGTH) :: string
-  integer :: ghosted_id, natural_id, material_id
-  integer :: fid = 86
-  integer :: status, ierr
+  PetscInt :: ghosted_id, natural_id, material_id
+  PetscInt :: fid = 86
+  PetscInt :: status, ierr
 
   field => realization%field
   grid => realization%grid

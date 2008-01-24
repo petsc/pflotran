@@ -7,28 +7,30 @@ module Timestepper_module
   implicit none
 
   private
+  
+#include "include/finclude/petsc.h"
  
   type, public :: stepper_type
   
-    integer :: flowsteps     ! The number of time-steps taken by the flow code.
-    integer :: stepmax       ! The maximum number of time-steps taken by the flow code.
-    integer :: nstpmax       ! The maximum number of time-step increments.
-    integer :: newton_max    ! Max number of Newton steps for one time step.
-    integer :: icut_max      ! Max number of dt cuts for one time step.
-    integer :: ndtcmx        ! Steps needed after cutting to increase time step
-    integer :: newtcum       ! Total number of Newton steps taken.
-    integer :: icutcum       ! Total number of cuts in the timestep taken.    
-    integer :: iaccel    
+    PetscInt :: flowsteps     ! The number of time-steps taken by the flow code.
+    PetscInt :: stepmax       ! The maximum number of time-steps taken by the flow code.
+    PetscInt :: nstpmax       ! The maximum number of time-step increments.
+    PetscInt :: newton_max    ! Max number of Newton steps for one time step.
+    PetscInt :: icut_max      ! Max number of dt cuts for one time step.
+    PetscInt :: ndtcmx        ! Steps needed after cutting to increase time step
+    PetscInt :: newtcum       ! Total number of Newton steps taken.
+    PetscInt :: icutcum       ! Total number of cuts in the timestep taken.    
+    PetscInt :: iaccel    
     
-    real*8 :: dt_min
-    real*8 :: dt_max
-!    real*8, pointer :: tstep(:)
-!    real*8, pointer :: dtstep(:)    
+    PetscReal :: dt_min
+    PetscReal :: dt_max
+!    PetscReal, pointer :: tstep(:)
+!    PetscReal, pointer :: dtstep(:)    
         
     type(solver_type), pointer :: solver
     type(waypoint_list_type), pointer :: waypoints
     type(waypoint_type), pointer :: cur_waypoint
-    real*8, pointer :: steady_eps(:)  ! tolerance for stead state convergence
+    PetscReal, pointer :: steady_eps(:)  ! tolerance for stead state convergence
     
   end type stepper_type
   
@@ -107,13 +109,13 @@ subroutine StepperRun(realization,stepper,stage)
   
   type(option_type), pointer :: option
 
-  real*8 dt_cur
-  real*8, pointer :: dxdt(:)
-  integer :: idx, ista=0  
+  PetscReal dt_cur
+  PetscReal, pointer :: dxdt(:)
+  PetscInt :: idx, ista=0  
   
   logical :: plot_flag, timestep_cut_flag, stop_flag
-  integer :: istep, num_timestep_cuts, start_step
-  integer :: num_newton_iterations
+  PetscInt :: istep, num_timestep_cuts, start_step
+  PetscInt :: num_newton_iterations
   
   PetscLogDouble :: stepper_start_time, current_time, average_step_time
   PetscErrorCode :: ierr
@@ -252,9 +254,9 @@ subroutine StepperUpdateDT(stepper,option,num_newton_iterations)
 
   type(stepper_type) :: stepper
   type(option_type) :: option
-  integer, intent(in) :: num_newton_iterations
+  PetscInt, intent(in) :: num_newton_iterations
   
-  real*8 :: fac,dtt,up,utmp,uc,ut,uus
+  PetscReal :: fac,dtt,up,utmp,uc,ut,uus
   
   if (stepper%iaccel == 0) return
 
@@ -397,17 +399,17 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
   character(len=MAXSTRINGLENGTH) :: string, string2, string3
 
   logical :: plot_flag, timestep_cut_flag
-  integer :: num_timestep_cuts,num_newton_iterations
-  integer :: ierr
-  integer :: icut ! Tracks the number of time step reductions applied
+  PetscInt :: num_timestep_cuts,num_newton_iterations
+  PetscInt :: ierr
+  PetscInt :: icut ! Tracks the number of time step reductions applied
   SNESConvergedReason :: snes_reason 
-  integer :: update_reason, it_linear=0, it_snes
-  integer n, nmax_inf
-  real*8 m_r2norm, s_r2norm, norm_inf, s_r2norm0, norm_inf0, r2norm
-  real*8 :: tsrc
-  real*8, pointer :: r_p(:)  
+  PetscInt :: update_reason, it_linear=0, it_snes
+  PetscInt :: n, nmax_inf
+  PetscReal m_r2norm, s_r2norm, norm_inf, s_r2norm0, norm_inf0, r2norm
+  PetscReal :: tsrc
+  PetscReal, pointer :: r_p(:)  
 
-  integer, save :: linear_solver_divergence_count = 0
+  PetscInt, save :: linear_solver_divergence_count = 0
 
   PetscViewer :: viewer
 
@@ -421,7 +423,7 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
   field => realization%field
   solver => stepper%solver
 
-! real*8, pointer :: xx_p(:), conc_p(:), press_p(:), temp_p(:)
+! PetscReal, pointer :: xx_p(:), conc_p(:), press_p(:), temp_p(:)
 
   num_newton_iterations = 0
   icut = 0
@@ -638,9 +640,7 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
       timestep_cut_flag = 1
 
       if (icut > stepper%icut_max .or. option%dt<1.d-20) then
-!       call MPI_Comm_rank(PETSC_COMM_WORLD, myrank, ierr)
         if (option%myrank == 0) then
-!         t = pflowgrid_get_t(grid)
           print *,"--> icut_max exceeded: icut/icutmax= ",icut,stepper%icut_max, &
                   "t= ",option%time/realization%output_option%tconv, " dt= ", &
                   option%dt/realization%output_option%tconv
@@ -986,9 +986,9 @@ subroutine StepperUpdateSolution(realization)
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
   
-  integer :: ierr
-  integer*4 m, n
-  real*8, pointer :: xx_p(:), conc_p(:), press_p(:), temp_p(:), phis_p(:)
+  PetscInt :: ierr
+  PetscInt :: m, n
+  PetscReal, pointer :: xx_p(:), conc_p(:), press_p(:), temp_p(:), phis_p(:)
   
   option => realization%option
   grid => realization%grid

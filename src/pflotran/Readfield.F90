@@ -48,10 +48,10 @@ subroutine Read_perm_field(grid)
   type(pflowGrid), intent(inout) :: grid
   character(len=MAXSTRINGLENGTH) :: string 
 
-  PetscScalar, pointer :: perm_xx_p(:),perm_yy_p(:),perm_zz_p(:),por_p(:), &
+  PetscReal, pointer :: perm_xx_p(:),perm_yy_p(:),perm_zz_p(:),por_p(:), &
                           tor_p(:)
-  integer iln,na,nx,ny,nz,ir,ierr
-  real*8 ::  px,py,pz, por, tor
+  PetscInt :: iln,na,nx,ny,nz,ir,ierr
+  PetscReal ::  px,py,pz, por, tor
   
   open(60, file="perm_field.in", action="read", status="old")
   read(60,*)
@@ -134,12 +134,12 @@ subroutine Read_init_field(grid, kplt)
 
   type(pflowGrid), intent(inout) :: grid
 !  character(len=MAXSTRINGLENGTH) :: string 
-  integer kplt
+  PetscInt :: kplt
 
-  PetscScalar, pointer :: xx_p(:), iphase_p(:)
-  integer iln,na,nx,ny,nz,ir,ierr,n, ii
-  real*8 xxx(1:grid%ndof)
-  real*8 :: x,y,z,phase,pl,pg,t,sl,sg,xl,xg,vf 
+  PetscReal, pointer :: xx_p(:), iphase_p(:)
+  PetscInt :: iln,na,nx,ny,nz,ir,ierr,n, ii
+  PetscReal xxx(1:grid%ndof)
+  PetscReal :: x,y,z,phase,pl,pg,t,sl,sg,xl,xg,vf 
   
   open(60, file="pflow_init.dat", action="read", status="old")
   read(60)
@@ -198,25 +198,25 @@ subroutine Read_init_field(grid, kplt)
 end subroutine Read_init_field
   
  
-integer function nxyz2na(grid,nx,ny,nz)
+PetscInt function nxyz2na(grid,nx,ny,nz)
 
   implicit none
 
   type(pflowGrid), intent(inout) :: grid
-  integer nx,ny,nz
+  PetscInt :: nx,ny,nz
   
   nxyz2na = nx -1 + (ny-1)*grid%nx + (nz-1)* grid%nxy
 
 end function nxyz2na
  
    
-integer function GetLocalGhostedIdFromNaturalId(natural_id,grid)
+PetscInt function GetLocalGhostedIdFromNaturalId(natural_id,grid)
 
   implicit none
 
   type(pflowGrid) :: grid
 
-  integer :: natural_id, local_ghosted_id
+  PetscInt :: natural_id, local_ghosted_id
   
   do local_ghosted_id = 1, grid%ngmax
     if (natural_id == grid%nG2A(local_ghosted_id)+1) then
@@ -242,18 +242,18 @@ subroutine Read_Geom_field(grid)
   character(len=MAXSTRINGLENGTH) :: string 
 
  
-  PetscScalar, pointer :: perm_xx_p(:),perm_yy_p(:),perm_zz_p(:),por_p(:), &
+  PetscReal, pointer :: perm_xx_p(:),perm_yy_p(:),perm_zz_p(:),por_p(:), &
                           tor_p(:), volume_p(:)
-  integer iln,na,nx,ny,nz,ir,ierr,ng
-  real*8 ::  xc,yc,zc,vc, dx,dy,dz
-  real*8 ::  px,py,pz, por, tor
-  real*8 ::  area, dist1, dist2, grav_ang
-! real*8 ::  x,y,z
+  PetscInt :: iln,na,nx,ny,nz,ir,ierr,ng
+  PetscReal ::  xc,yc,zc,vc, dx,dy,dz
+  PetscReal ::  px,py,pz, por, tor
+  PetscReal ::  area, dist1, dist2, grav_ang
+! PetscReal ::  x,y,z
   character*4 card, word
   ! character(len=MAXSTRINGLENGTH) :: string 
 
-  integer nx1, nx2, ny1, ny2, nz1,nz2, ina1, ina2,nnc, na1,na2, ncna
-  integer iln1, iln2, ng1,ng2, mconn
+  PetscInt :: nx1, nx2, ny1, ny2, nz1,nz2, ina1, ina2,nnc, na1,na2, ncna
+  PetscInt :: iln1, iln2, ng1,ng2, mconn
   
  ! if (grid%igeom /=-1) then
  !   print *, ' Wrong geomtry entry:: STOP !'
@@ -452,8 +452,8 @@ end  subroutine Read_Geom_field
 
    type(pflowGrid), intent(inout) :: grid
    
-   PetscScalar, pointer :: xx_p(:)
-   integer nc,m,ibc,ierr
+   PetscReal, pointer :: xx_p(:)
+   PetscInt :: nc,m,ibc,ierr
 
    call VecGetArrayF90(grid%xx,xx_p,ierr)  
      do nc=1,grid%nconnbc

@@ -4,6 +4,13 @@ module General_Grid_module
 
 #define INVERT
 
+! 64-bit stuff
+#ifdef PETSC_USE_64BIT_INDICES
+#define HDF_NATIVE_INTEGER H5T_STD_I64LE  ! little endian 
+#else
+#define HDF_NATIVE_INTEGER H5T_NATIVE_INTEGER
+#endif
+
  private 
 
 #include "include/finclude/petsc.h"
@@ -17,7 +24,7 @@ module General_Grid_module
 
 #include "definitions.h"
   
-  integer :: hdf5_err
+  PetscInt :: hdf5_err
   PetscErrorCode :: ierr
   public :: ReadStructuredGridHDF5
   
@@ -77,14 +84,14 @@ subroutine ReadStructuredGridHDF5(realization)
   integer(HID_T) :: grp_id
   integer(HID_T) :: prop_id
 
-  integer :: i, local_ghosted_id, iconn
-  integer, pointer :: indices(:)
-  integer, allocatable :: integer_array(:)
-  real*8, allocatable :: real_array(:)
+  PetscInt :: i, local_ghosted_id, iconn
+  PetscInt, pointer :: indices(:)
+  PetscInt, allocatable :: integer_array(:)
+  PetscReal, allocatable :: real_array(:)
   
   Vec :: global
   Vec :: local
-  PetscScalar, pointer :: vec_ptr(:)
+  PetscReal, pointer :: vec_ptr(:)
 
   type(connection_list_type), pointer :: connection_list
   type(connection_type), pointer :: cur_connection_set
@@ -367,7 +374,7 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
   type(option_type) :: option
   
   integer(HID_T) :: file_id
-  integer :: indices(:)
+  PetscInt :: indices(:)
   
   character(len=MAXSTRINGLENGTH) :: string 
   integer(HID_T) :: file_space_id_up, file_space_id_down
@@ -376,17 +383,17 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
   integer(HID_T) :: prop_id
   integer(HSIZE_T) :: dims(3)
   integer(HSIZE_T) :: offset(3), length(3), stride(3)
-  integer :: rank
-  integer :: local_ghosted_id_up, local_id_up, natural_id_up
-  integer :: local_ghosted_id_down, local_id_down, natural_id_down
-  integer :: index_count
-  integer :: connection_count
+  PetscInt :: rank
+  PetscInt :: local_ghosted_id_up, local_id_up, natural_id_up
+  PetscInt :: local_ghosted_id_down, local_id_down, natural_id_down
+  PetscInt :: index_count
+  PetscInt :: connection_count
   integer(HSIZE_T) :: num_connections_in_file
-  integer :: temp_int, i, num_internal_connections
+  PetscInt :: temp_int, i, num_internal_connections
   
-  integer, allocatable :: upwind_ids(:), downwind_ids(:)
+  PetscInt, allocatable :: upwind_ids(:), downwind_ids(:)
   
-  integer :: read_block_size = HDF5_READ_BUFFER_SIZE
+  PetscInt :: read_block_size = HDF5_READ_BUFFER_SIZE
 
   num_internal_connections = ConnectionGetNumberInList(grid%internal_connection_list)
   
@@ -444,7 +451,7 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
 #ifdef HDF5_BROADCAST
     if (option%myrank == 0) then                           
 #endif
-      call h5dread_f(data_set_id_up,H5T_NATIVE_INTEGER,upwind_ids,dims, &
+      call h5dread_f(data_set_id_up,HDF_NATIVE_INTEGER,upwind_ids,dims, &
                      hdf5_err,memory_space_id,file_space_id_up,prop_id)                     
 #ifdef HDF5_BROADCAST
     endif
@@ -457,7 +464,7 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
 #ifdef HDF5_BROADCAST
     if (option%myrank == 0) then                           
 #endif
-      call h5dread_f(data_set_id_down,H5T_NATIVE_INTEGER,downwind_ids,dims, &
+      call h5dread_f(data_set_id_down,HDF_NATIVE_INTEGER,downwind_ids,dims, &
                      hdf5_err,memory_space_id,file_space_id_down,prop_id)                     
 #ifdef HDF5_BROADCAST
     endif
@@ -516,7 +523,7 @@ subroutine UpdateGlobalToLocal(grid,field)
   
   implicit none
   
-  integer :: ierr
+  PetscInt :: ierr
   type(grid_type) :: grid
   type(field_type) :: field
 

@@ -24,13 +24,13 @@ contains
 
   Vec, intent(inout) :: xx
   Vec, intent(in), optional :: v1, v2
-  integer, intent(in), optional :: v1_dof, v2_dof
-  integer, intent(out), optional :: ierr
+  PetscInt, intent(in), optional :: v1_dof, v2_dof
+  PetscInt, intent(out), optional :: ierr
 
-  integer :: i
-  PetscScalar, pointer :: xx_p(:), v1_p(:), v2_p(:)
-  integer :: xx_i, v1_i, v2_i  ! Used to index entries of xx, v1, v2.
-  integer :: xx_size, v1_size, v2_size
+  PetscInt :: i
+  PetscReal, pointer :: xx_p(:), v1_p(:), v2_p(:)
+  PetscInt :: xx_i, v1_i, v2_i  ! Used to index entries of xx, v1, v2.
+  PetscInt :: xx_size, v1_size, v2_size
 
   call VecGetLocalSize(xx, xx_size, ierr)
   call VecGetLocalSize(v1, v1_size, ierr)
@@ -81,17 +81,17 @@ contains
 
   Vec, intent(inout) :: xx
   Vec, intent(in) :: v1, v2, v3
-  integer, intent(in) :: v1_dof, v2_dof, v3_dof
-  integer, intent(out) :: ierr
+  PetscInt, intent(in) :: v1_dof, v2_dof, v3_dof
+  PetscInt, intent(out) :: ierr
 
 ! Vec, intent(in), optional :: v1, v2, v3
-! integer, intent(in), optional :: v1_dof, v2_dof, v3_dof
-! integer, intent(out), optional :: ierr
+! PetscInt, intent(in), optional :: v1_dof, v2_dof, v3_dof
+! PetscInt, intent(out), optional :: ierr
 
-  integer :: i
-  PetscScalar, pointer :: xx_p(:), v1_p(:), v2_p(:), v3_p(:)
-  integer :: xx_i, v1_i, v2_i, v3_i  ! Used to index entries of xx, v1, v2, v3
-  integer :: xx_size, v1_size, v2_size, v3_size
+  PetscInt :: i
+  PetscReal, pointer :: xx_p(:), v1_p(:), v2_p(:), v3_p(:)
+  PetscInt :: xx_i, v1_i, v2_i, v3_i  ! Used to index entries of xx, v1, v2, v3
+  PetscInt :: xx_size, v1_size, v2_size, v3_size
 
 ! call VecView(v3,PETSC_VIEWER_STDOUT_WORLD,ierr)
 
@@ -160,17 +160,17 @@ contains
 
   Vec, intent(inout) :: xx
   Vec, intent(in) :: v1, v2, v3, v4
-  integer, intent(in) :: v1_dof, v2_dof, v3_dof,v4_dof
-  integer, intent(out) :: ierr
+  PetscInt, intent(in) :: v1_dof, v2_dof, v3_dof,v4_dof
+  PetscInt, intent(out) :: ierr
 
 ! Vec, intent(in), optional :: v1, v2, v3
-! integer, intent(in), optional :: v1_dof, v2_dof, v3_dof
-! integer, intent(out), optional :: ierr
+! PetscInt, intent(in), optional :: v1_dof, v2_dof, v3_dof
+! PetscInt, intent(out), optional :: ierr
 
-  PetscScalar, pointer :: xx_p(:), v1_p(:), v2_p(:), v3_p(:),v4_p(:)
-  integer :: xx_i, v1_i, v2_i, v3_i, v4_i
+  PetscReal, pointer :: xx_p(:), v1_p(:), v2_p(:), v3_p(:),v4_p(:)
+  PetscInt :: xx_i, v1_i, v2_i, v3_i, v4_i
   ! Used to index entries of xx, v1, v2, v3
-  integer :: xx_size, v1_size, v2_size, v3_size, v4_size
+  PetscInt :: xx_size, v1_size, v2_size, v3_size, v4_size
 
 ! call VecView(v3,PETSC_VIEWER_STDOUT_WORLD,ierr)
 
@@ -246,12 +246,12 @@ end subroutine pflow_pack_xx4
   Vec, intent(in) :: xx
   Vec, intent(inout) :: press, temp, sat, xmol, den, porosity, enthalpy, &
                         accum, ithrm, iphas
-  integer, intent(in) :: nlmax, ndof, nph, jgas, jh2o
-  real*8, pointer :: ithrm_p(:), iphas_p(:), xx_p(:), &
+  PetscInt, intent(in) :: nlmax, ndof, nph, jgas, jh2o
+  PetscReal, pointer :: ithrm_p(:), iphas_p(:), xx_p(:), &
                      sat_p(:), xmol_p(:), den_p(:), por_p(:), &
                      press_p(:), temp_p(:), enthalpy_p(:), accum_p(:)
-  integer :: ierr, i, j1, j2, j3, m
-  real*8 :: dl,dg,sl,sg,pa,pg,pl,pv,ps,hl,hg,por,porm1,scale,tc, &
+  PetscInt :: ierr, i, j1, j2, j3, m
+  PetscReal :: dl,dg,sl,sg,pa,pg,pl,pv,ps,hl,hg,por,porm1,scale,tc, &
   eqkair,xl1,xl2,xg1,xg2,dencp,dencpr(*)
 
   call VecGetArrayF90(xx,    xx_p,    ierr)

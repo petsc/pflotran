@@ -47,9 +47,9 @@
 
   PetscLogDouble :: timex(4), timex_wall(4)
 
-  integer :: myrank, commsize
+  PetscMPIInt :: myrank, commsize
 
-  integer :: ierr
+  PetscInt :: ierr
   PetscInt :: stage(10)
   PetscTruth :: restartflag
   character(len=MAXSTRINGLENGTH) :: restartfile

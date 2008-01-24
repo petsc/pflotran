@@ -35,7 +35,7 @@
 
  type(realization_type) :: realization
  type(solver_type) :: solver
- integer ierr
+ PetscInt :: ierr
  
  type(option_type), pointer :: option
  
@@ -100,12 +100,12 @@
 
  type(realization_type) :: realization
  KSPConvergedReason :: ksp_reason
- integer :: newton,isucc,ierr,ichange
- integer :: newton_max
- integer :: its_line
-!integer icut
+ PetscInt :: newton,isucc,ierr,ichange
+ PetscInt :: newton_max
+ PetscInt :: its_line
+!PetscInt :: icut
  MatStructure flag
- real*8 :: rnorm, epstol
+ PetscReal :: rnorm, epstol
 
  type(option_type), pointer :: option
  type(field_type), pointer :: field

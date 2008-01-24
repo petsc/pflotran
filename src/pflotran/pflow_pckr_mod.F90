@@ -12,33 +12,42 @@
 
 
 module pckr_module
-  public
 
-  real*8, private, parameter:: pckr_sat_water_cut = 1.D0 - 5.D-7
+  implicit none
   
-   type, private :: pckr_info
-     integer idum
-     integer itype
-     integer ihyst
-     real*8 pckr_par(16)
-     real*8, pointer :: hyst_para(:,:) 
-  end type pckr_info
+  private
 
 #include "definitions.h"
+#include "include/finclude/petsc.h"
+
+  PetscReal, private, parameter:: pckr_sat_water_cut = 1.D0 - 5.D-7
   
+   type, private :: pckr_info
+     PetscInt :: idum
+     PetscInt :: itype
+     PetscInt :: ihyst
+     PetscReal pckr_par(16)
+     PetscReal, pointer :: hyst_para(:,:) 
+  end type pckr_info
+
   type(pckr_info), private, pointer :: pckr_para(:)  
+   
+  public :: pckr_init, pflow_pckr_noderiv_org, pflow_pckr_richards_exec, &
+            pflow_pckr, pflow_pckr_noderiv, pflow_pckr_richards_fw, &
+            pflow_pckr_richards
    
   contains 
 
 
   subroutine pckr_init(nphase, max_reg_reqion, nlmax,ipckrtype, sir, krm, lambda, alpha, pcmax,&
                   betac,pwr)
+    PetscInt :: nlmax
      
-    integer max_reg_reqion,ipckrtype(*), nphase
-    real*8 sir(1:nphase,max_reg_reqion), lambda(max_reg_reqion), krm(max_reg_reqion), alpha(max_reg_reqion)&
+    PetscInt :: max_reg_reqion,ipckrtype(*), nphase
+    PetscReal sir(1:nphase,max_reg_reqion), lambda(max_reg_reqion), krm(max_reg_reqion), alpha(max_reg_reqion)&
          , pcmax(max_reg_reqion), betac(max_reg_reqion),pwr(max_reg_reqion)
     
-    integer ireg, idum
+    PetscInt :: ireg, idum
  
                                 
 ! build pckr data base                                                                                              
@@ -72,16 +81,16 @@ module pckr_module
       implicit none 
 
 
-      integer ipckrtype
+      PetscInt :: ipckrtype
    !formation type, in pflow should be refered by grid%icap_loc
-      real*8 :: pckr_swir,pckr_lambda,pckr_alpha,pckr_m,pckr_pcmax
-      real*8 :: pckr_beta,pckr_pwr
-      real*8 :: sg
-      real*8 :: pc(1:2),kr(1:2)
+      PetscReal :: pckr_swir,pckr_lambda,pckr_alpha,pckr_m,pckr_pcmax
+      PetscReal :: pckr_beta,pckr_pwr
+      PetscReal :: sg
+      PetscReal :: pc(1:2),kr(1:2)
        
-      real*8 :: se,swir,sw0,lam,ala,um,un,upc,upc_s,kr_s, krg_s
-      real*8 :: temp,ser,pcmax,sw
-      real*8 :: uum,pckr_betac,betac,st
+      PetscReal :: se,swir,sw0,lam,ala,um,un,upc,upc_s,kr_s, krg_s
+      PetscReal :: temp,ser,pcmax,sw
+      PetscReal :: uum,pckr_betac,betac,st
      
      
     ! if(present(pckr_beta))
@@ -241,17 +250,17 @@ subroutine pflow_pckr_richards_exec(ipckrtype,pckr_swir,pckr_lambda, &
       implicit none 
 
 
-      integer ipckrtype
+      PetscInt :: ipckrtype
    !formation type, in pflow should be refered by grid%icap_loc
-      real*8 :: pckr_swir,pckr_lambda,pckr_alpha,pckr_m,pckr_pcmax
-      real*8 :: pckr_beta,pckr_pwr
-      real*8 :: sw
-      real*8 :: pc(*),kr(*)
+      PetscReal :: pckr_swir,pckr_lambda,pckr_alpha,pckr_m,pckr_pcmax
+      PetscReal :: pckr_beta,pckr_pwr
+      PetscReal :: sw
+      PetscReal :: pc(*),kr(*)
        
-      real*8 :: se,swir,sw0,lam,ala,um,un
-      real*8 :: temp,pcmax
-      real*8 :: pckr_betac
-!     real*8 :: upc,upc_s,kr_s,krg_s,ser,betac,st,uum
+      PetscReal :: se,swir,sw0,lam,ala,um,un
+      PetscReal :: temp,pcmax
+      PetscReal :: pckr_betac
+!     PetscReal :: upc,upc_s,kr_s,krg_s,ser,betac,st,uum
      
     ! if(present(pckr_beta))
       pckr_betac=pckr_beta
@@ -313,18 +322,18 @@ subroutine pflow_pckr_richards_fw_exec(ipckrtype,pckr_swir,pckr_lambda, &
       implicit none 
 
 
-      integer ipckrtype
+      PetscInt :: ipckrtype
    !formation type, in pflow should be refered by grid%icap_loc
-      real*8 :: pckr_swir,pckr_lambda,pckr_alpha,pckr_m,pckr_pcmax
-      real*8 :: pckr_beta,pckr_pwr
-      real*8 :: sw
-      real*8 :: pc(*),kr(*)
+      PetscReal :: pckr_swir,pckr_lambda,pckr_alpha,pckr_m,pckr_pcmax
+      PetscReal :: pckr_beta,pckr_pwr
+      PetscReal :: sw
+      PetscReal :: pc(*),kr(*)
        
-      real*8 :: se,swir,sw0,lam,ala,um,un
-      real*8 :: temp,pcmax
-      real*8 :: pckr_betac
+      PetscReal :: se,swir,sw0,lam,ala,um,un
+      PetscReal :: temp,pcmax
+      PetscReal :: pckr_betac
 
-!     real*8 :: upc,upc_s,kr_s,krg_s,ser,uum,betac,st
+!     PetscReal :: upc,upc_s,kr_s,krg_s,ser,uum,betac,st
       
     ! if(present(pckr_beta))
       pckr_betac=pckr_beta
@@ -374,15 +383,15 @@ end subroutine  pflow_pckr_richards_fw_exec
               pckr_m ,pckr_pcmax,sg,pc,pc_s,kr,kr_s,pckr_beta,pckr_pwr) 
        
      
-      integer :: ipckrtype
-      real*8 :: sg
-      real*8 :: pckr_swir,pckr_lambda,pckr_alpha,pckr_m,pckr_pcmax,pckr_pwr
-      real*8 :: pc(1:2),pc_s(1:2),kr(1:2),kr_s(1:2)
-      real*8 :: pckr_beta
+      PetscInt :: ipckrtype
+      PetscReal :: sg
+      PetscReal :: pckr_swir,pckr_lambda,pckr_alpha,pckr_m,pckr_pcmax,pckr_pwr
+      PetscReal :: pc(1:2),pc_s(1:2),kr(1:2),kr_s(1:2)
+      PetscReal :: pckr_beta
      
-      real*8 :: sw,se,swir,sw0,lam,ala,um,un,upc,upc_s
-      real*8 :: temp,pcmax,ser
-      real*8 :: uum,pckr_betac,betac,st
+      PetscReal :: sw,se,swir,sw0,lam,ala,um,un,upc,upc_s
+      PetscReal :: temp,pcmax,ser
+      PetscReal :: uum,pckr_betac,betac,st
 
     ! if(present(pckr_beta))
       pckr_betac=pckr_beta
@@ -616,17 +625,17 @@ end subroutine  pflow_pckr_richards_fw_exec
       implicit none 
 
 
-      integer ipckrtype
+      PetscInt :: ipckrtype
    !formation type, in pflow should be refered by grid%icap_loc
-      real*8 :: pckr_sir(:),pckr_lambda,pckr_alpha,pckr_m,pckr_pcmax
-      real*8 :: pckr_beta,pckr_pwr
-      real*8 :: sg
-      real*8 :: pc(1:2),kr(1:2)
+      PetscReal :: pckr_sir(:),pckr_lambda,pckr_alpha,pckr_m,pckr_pcmax
+      PetscReal :: pckr_beta,pckr_pwr
+      PetscReal :: sg
+      PetscReal :: pc(1:2),kr(1:2)
        
-      real*8 :: se,swir,sw0,lam,ala,um,un,upc,upc_s,kr_s, krg_s
-      real*8 :: temp,ser,pcmax,sw
-      real*8 :: uum,pckr_betac,betac,st
-      real*8 :: se0, upc0,upc_s0
+      PetscReal :: se,swir,sw0,lam,ala,um,un,upc,upc_s,kr_s, krg_s
+      PetscReal :: temp,ser,pcmax,sw
+      PetscReal :: uum,pckr_betac,betac,st
+      PetscReal :: se0, upc0,upc_s0
      
     ! if(present(pckr_beta))
       pckr_betac=pckr_beta
@@ -794,10 +803,11 @@ end subroutine  pflow_pckr_richards_fw_exec
 
 
 subroutine pflow_pckr_richards(ipckrreg,saturation,pc,kr)
-  integer ipckrreg
-  real*8 saturation,pc(*),kr(*)
+  PetscInt :: ipckrreg
+  PetscInt :: ireg, ipckrtype
+  PetscReal :: saturation,pc(*),kr(*)
  
-  real*8 pckr_swir,pckr_lambda, &
+  PetscReal pckr_swir,pckr_lambda, &
          pckr_alpha,pckr_m,pckr_pcmax,sw ,pckr_beta,pckr_pwr
   
        ireg= ipckrreg
@@ -824,10 +834,11 @@ end subroutine pflow_pckr_richards
 
 
 subroutine pflow_pckr_richards_fw(ipckrreg,saturation,pc,kr)
-  integer ipckrreg
-  real*8 saturation,pc(*),kr(*)
+  PetscInt :: ipckrreg
+  PetscInt :: ireg, ipckrtype
+  PetscReal saturation,pc(*),kr(*)
  
-  real*8 pckr_swir,pckr_lambda, &
+  PetscReal pckr_swir,pckr_lambda, &
          pckr_alpha,pckr_m,pckr_pcmax,sw ,pckr_beta,pckr_pwr
   
        ireg= ipckrreg
@@ -860,12 +871,12 @@ end subroutine pflow_pckr_richards_fw
 
 
 subroutine pflow_pckr_noderiv(nphase, ipckrreg,saturation,pc,kr)
-  integer ipckrreg, nphase
-  real*8 saturation(nphase),pc(nphase),kr(nphase)
+  PetscInt :: ipckrreg, nphase
+  PetscReal saturation(nphase),pc(nphase),kr(nphase)
   
-  integer ireg, ipckrtype
+  PetscInt :: ireg, ipckrtype
   
-  real*8 pckr_sir(nphase),pckr_lambda, &
+  PetscReal pckr_sir(nphase),pckr_lambda, &
          pckr_alpha,pckr_m,pckr_pcmax,sg ,pckr_beta,pckr_pwr
   
        ireg= ipckrreg

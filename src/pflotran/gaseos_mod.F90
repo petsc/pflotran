@@ -1,21 +1,21 @@
 module Gas_Eos_Module
-implicit none
+  implicit none
 
+#include "include/finclude/petsc.h"
 
   public
- 
  
 contains
 
   subroutine ideal_gaseos_noderiv(p,tc,energyscale,d,h,u)
     
-    real*8,intent(in):: p,tc,energyscale
-   real*8, intent(out):: d,h,u
+    PetscReal,intent(in):: p,tc,energyscale
+   PetscReal, intent(out):: d,h,u
 
    
-    real*8, parameter:: Rg=8.31415 
-    real*8, parameter:: Cpg=Rg*2.5 !maybe
-    real*8  t
+    PetscReal, parameter:: Rg=8.31415 
+    PetscReal, parameter:: Cpg=Rg*2.5 !maybe
+    PetscReal  t
     
     t = tc + 273.15
     d= p / t / Rg /1D3
@@ -28,12 +28,12 @@ contains
  
   subroutine ideal_gaseos(p,tc,energyscale,d,d_p,d_t,h,h_p,h_t,u,u_p,u_t)
     
-    real*8, intent(in):: p,tc,energyscale
-    real*8, intent(out):: d,d_p,d_t,h,h_p,h_t,u,u_p,u_t
+    PetscReal, intent(in):: p,tc,energyscale
+    PetscReal, intent(out):: d,d_p,d_t,h,h_p,h_t,u,u_p,u_t
 
-    real*8, parameter:: Rg=8.31415 
-    real*8, parameter:: Cpg=Rg*2.5 ! maybe
-    real*8  t
+    PetscReal, parameter:: Rg=8.31415 
+    PetscReal, parameter:: Cpg=Rg*2.5 ! maybe
+    PetscReal  t
 
     t = tc + 273.15
     d= p / t / Rg/1D3
@@ -78,13 +78,13 @@ contains
 !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 
  subroutine visgas_noderiv(t,pa,p,ds,visg)
-      real*8  t,pa,p,ds,visg
-      real*8  fmwh2o,fmwa,fair,fwat,cair,cwat
+      PetscReal  t,pa,p,ds,visg
+      PetscReal  fmwh2o,fmwa,fair,fwat,cair,cwat
 
       data  fmwh2o,    fmwa,  fair,   fwat,    cair,  cwat &
            /18.0153d0, 28.96d0, 97.d0, 363.d0, 3.617d0, 2.655d0/
  
-      real*8 fmix,cmix,d,xga,xg1,tk,trd1,trd3,ome1,ome3,ard,fmw3,vis1, &
+      PetscReal fmix,cmix,d,xga,xg1,tk,trd1,trd3,ome1,ome3,ard,fmw3,vis1, &
              v1,vs,vis2,vis3,z1,g,h,e,z2,z3
 
 
@@ -140,12 +140,12 @@ contains
 ! devide it with p
 
     implicit none
-    real*8,intent(in) ::  p,tc,ps
-    real*8,intent(out)::  Henry
+    PetscReal,intent(in) ::  p,tc,ps
+    PetscReal,intent(out)::  Henry
 
-    real*8  Tr,tao,tmp,t
-    real*8, parameter :: a=-9.67578, b=4.72162, c=11.70585
-    real*8, parameter :: Tcl=647.096 ! H2O critical temp(K) from IAPWS(1995b)
+    PetscReal  Tr,tao,tmp,t
+    PetscReal, parameter :: a=-9.67578, b=4.72162, c=11.70585
+    PetscReal, parameter :: Tcl=647.096 ! H2O critical temp(K) from IAPWS(1995b)
 
     t=tc+273.15D0
     Tr=t/Tcl
@@ -159,13 +159,13 @@ contains
 
  subroutine Henry_air(p,tc,ps,ps_p,ps_t,Henry,Henry_p,Henry_t)
    implicit none
-    real*8,intent(in) ::  p,tc,ps,ps_p,ps_t
-    real*8,intent(out)::  Henry,Henry_p,Henry_t
+    PetscReal,intent(in) ::  p,tc,ps,ps_p,ps_t
+    PetscReal,intent(out)::  Henry,Henry_p,Henry_t
 ! note t/K, p/Pa, Henry/Pa 
 
-    real*8  Tr,tao,tmp,t
-    real*8, parameter :: a=-9.67578, b=4.72162, c=11.70585
-    real*8, parameter :: Tcl=647.096 ! H2O critical temp from IAPWS(1995b)
+    PetscReal  Tr,tao,tmp,t
+    PetscReal, parameter :: a=-9.67578, b=4.72162, c=11.70585
+    PetscReal, parameter :: Tcl=647.096 ! H2O critical temp from IAPWS(1995b)
 
     t=tc+273.15D0
     Tr=t/Tcl

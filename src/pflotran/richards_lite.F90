@@ -37,9 +37,9 @@ module Richards_Lite_module
 
 
 ! Cutoff parameters
-  real*8, parameter :: eps       = 1.D-8
-  real*8, parameter :: floweps   = 1.D-24
-  real*8, parameter :: perturbation_tolerance = 1.d-5
+  PetscReal, parameter :: eps       = 1.D-8
+  PetscReal, parameter :: floweps   = 1.D-24
+  PetscReal, parameter :: perturbation_tolerance = 1.d-5
 
   public RichardsLiteResidual,RichardsLiteJacobian, &
          RichardsLiteUpdateFixedAccum,RichardsLiteTimeCut,&
@@ -47,26 +47,26 @@ module Richards_Lite_module
          RichardsLiteGetVarFromArray, RichardsLiteMaxChange
 
   public :: createRichardsLiteZeroArray
-  integer, save :: n_zero_rows = 0
+  PetscInt, save :: n_zero_rows = 0
   logical, save :: inactive_cells_exist = .false.
-  integer, pointer, save :: zero_rows_local(:)  ! 1-based indexing
-  integer, pointer, save :: zero_rows_local_ghosted(:) ! 0-based indexing
+  PetscInt, pointer, save :: zero_rows_local(:)  ! 1-based indexing
+  PetscInt, pointer, save :: zero_rows_local_ghosted(:) ! 0-based indexing
 
   type richards_type
-    real*8 :: pres
-    real*8 :: temp
-    real*8 :: sat
-    real*8 :: den
-    real*8 :: avgmw
-    real*8 :: pc
-!    real*8 :: vis
-!    real*8 :: dvis_dp
-!    real*8 :: kr
-!    real*8 :: dkr_dp
-    real*8 :: kvr
-    real*8 :: dsat_dp
-    real*8 :: dden_dp
-    real*8 :: dkvr_dp
+    PetscReal :: pres
+    PetscReal :: temp
+    PetscReal :: sat
+    PetscReal :: den
+    PetscReal :: avgmw
+    PetscReal :: pc
+!    PetscReal :: vis
+!    PetscReal :: dvis_dp
+!    PetscReal :: kr
+!    PetscReal :: dkr_dp
+    PetscReal :: kvr
+    PetscReal :: dsat_dp
+    PetscReal :: dden_dp
+    PetscReal :: dkvr_dp
   end type richards_type
   
   type(richards_type), pointer :: aux_vars(:), aux_vars_bc(:)
@@ -94,9 +94,9 @@ subroutine RichardsLiteTimeCut(realization)
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
   
-  PetscScalar, pointer :: xx_p(:),yy_p(:)
-  integer :: ierr
-  integer :: local_id
+  PetscReal, pointer :: xx_p(:),yy_p(:)
+  PetscInt :: ierr
+  PetscInt :: local_id
 
   grid => realization%grid
   option => realization%option
@@ -140,7 +140,7 @@ subroutine RichardsLiteSetup(realization)
   type(field_type), pointer :: field
   type(coupler_type), pointer :: boundary_condition
 
-  integer :: ghosted_id, iconn, sum_connection
+  PetscInt :: ghosted_id, iconn, sum_connection
   
   grid => realization%grid
   option => realization%option
@@ -259,10 +259,10 @@ subroutine RichardsLiteUpdateAuxVars(realization)
   type(coupler_type), pointer :: boundary_condition
   type(connection_type), pointer :: cur_connection_set
 
-  integer :: ghosted_id, local_id, sum_connection, idof, iconn
-  integer :: iphasebc, iphase
-  PetscScalar, pointer :: xx_loc_p(:), icap_loc_p(:), iphase_loc_p(:)
-  real*8 :: xxbc(realization%option%ndof)
+  PetscInt :: ghosted_id, local_id, sum_connection, idof, iconn
+  PetscInt :: iphasebc, iphase
+  PetscReal, pointer :: xx_loc_p(:), icap_loc_p(:), iphase_loc_p(:)
+  PetscReal :: xxbc(realization%option%ndof)
   PetscErrorCode :: ierr
   
   option => realization%option
@@ -353,9 +353,9 @@ subroutine RichardsLiteUpdateFixedAccum(realization)
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
 
-  integer :: ghosted_id, local_id, iphase
-  PetscScalar, pointer :: xx_p(:), icap_loc_p(:), iphase_loc_p(:)
-  PetscScalar, pointer :: porosity_loc_p(:), tor_loc_p(:), volume_p(:), &
+  PetscInt :: ghosted_id, local_id, iphase
+  PetscReal, pointer :: xx_p(:), icap_loc_p(:), iphase_loc_p(:)
+  PetscReal, pointer :: porosity_loc_p(:), tor_loc_p(:), volume_p(:), &
                           ithrm_loc_p(:), accum_p(:)
                           
   PetscErrorCode :: ierr
@@ -438,15 +438,15 @@ subroutine RichardsLiteNumericalJacTest(xx,realization)
   PetscViewer :: viewer
   PetscErrorCode :: ierr
   
-  real*8 :: derivative, perturbation
+  PetscReal :: derivative, perturbation
   
-  PetscScalar, pointer :: vec_p(:), vec2_p(:)
+  PetscReal, pointer :: vec_p(:), vec2_p(:)
 
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   
-  integer :: idof, idof2, icell
+  PetscInt :: idof, idof2, icell
 
   grid => realization%grid
   option => realization%option
@@ -519,16 +519,16 @@ subroutine RichardsLiteAccumDerivative(aux_var,por,vol,rock_dencpr,option, &
 
   type(richards_type) :: aux_var
   type(option_type) :: option
-  real*8 vol,por,rock_dencpr
+  PetscReal vol,por,rock_dencpr
   type(saturation_function_type) :: sat_func
-  real*8 :: J(option%ndof,option%ndof)
+  PetscReal :: J(option%ndof,option%ndof)
      
-  integer :: ispec !, iireac=1
-  real*8 :: porXvol, mol(option%nspec), eng
+  PetscInt :: ispec !, iireac=1
+  PetscReal :: porXvol, mol(option%nspec), eng
 
-  integer :: iphase, ideriv
+  PetscInt :: iphase, ideriv
   type(richards_type) :: aux_var_pert
-  real*8 :: x(1), x_pert(1), pert, res(1), res_pert(1), J_pert(1,1)
+  PetscReal :: x(1), x_pert(1), pert, res(1), res_pert(1), J_pert(1,1)
 
   porXvol = por*vol
       
@@ -576,8 +576,8 @@ subroutine RichardsLiteAccumulation(aux_var,por,vol,rock_dencpr,option,Res)
 
   type(richards_type) :: aux_var
   type(option_type) :: option
-  real*8 Res(1:option%ndof) 
-  real*8 vol,por,rock_dencpr
+  PetscReal Res(1:option%ndof) 
+  PetscReal vol,por,rock_dencpr
        
   Res(1) = aux_var%sat * aux_var%den * por * vol
 
@@ -602,30 +602,30 @@ subroutine RichardsLiteFluxDerivative(aux_var_up,por_up,tor_up,sir_up,dd_up,perm
   
   type(richards_type) :: aux_var_up, aux_var_dn
   type(option_type) :: option
-  real*8 :: sir_up, sir_dn
-  real*8 :: por_up, por_dn
-  real*8 :: tor_up, tor_dn
-  real*8 :: dd_up, dd_dn
-  real*8 :: perm_up, perm_dn
-  real*8 :: Dk_up, Dk_dn
-  real*8 :: v_darcy,area
-  real*8 :: dist_gravity  ! distance along gravity vector
+  PetscReal :: sir_up, sir_dn
+  PetscReal :: por_up, por_dn
+  PetscReal :: tor_up, tor_dn
+  PetscReal :: dd_up, dd_dn
+  PetscReal :: perm_up, perm_dn
+  PetscReal :: Dk_up, Dk_dn
+  PetscReal :: v_darcy,area
+  PetscReal :: dist_gravity  ! distance along gravity vector
   type(saturation_function_type) :: sat_func_up, sat_func_dn
-  real*8 :: Jup(option%ndof,option%ndof), Jdn(option%ndof,option%ndof)
+  PetscReal :: Jup(option%ndof,option%ndof), Jdn(option%ndof,option%ndof)
      
-  real*8 :: fluxm(option%nspec),fluxe,q
-  real*8 :: ukvr,DK,Dq,diffdp
-  real*8 :: upweight,density_ave,cond,gravity,dphi
+  PetscReal :: fluxm(option%nspec),fluxe,q
+  PetscReal :: ukvr,DK,Dq,diffdp
+  PetscReal :: upweight,density_ave,cond,gravity,dphi
   
-  real*8 :: dden_ave_dp_up, dden_ave_dp_dn
-  real*8 :: dgravity_dden_up, dgravity_dden_dn
-  real*8 :: dphi_dp_up, dphi_dp_dn
-  real*8 :: dukvr_dp_up, dukvr_dp_dn
-  real*8 :: dq_dp_up, dq_dp_dn
+  PetscReal :: dden_ave_dp_up, dden_ave_dp_dn
+  PetscReal :: dgravity_dden_up, dgravity_dden_dn
+  PetscReal :: dphi_dp_up, dphi_dp_dn
+  PetscReal :: dukvr_dp_up, dukvr_dp_dn
+  PetscReal :: dq_dp_up, dq_dp_dn
 
-  integer :: iphase, ideriv
+  PetscInt :: iphase, ideriv
   type(richards_type) :: aux_var_pert_up, aux_var_pert_dn
-  real*8 :: x_up(1), x_dn(1), x_pert_up(1), x_pert_dn(1), pert_up, pert_dn, &
+  PetscReal :: x_up(1), x_dn(1), x_pert_up(1), x_pert_dn(1), pert_up, pert_dn, &
             res(1), res_pert_up(1), res_pert_dn(1), J_pert_up(1,1), J_pert_dn(1,1)
   
   Dq = (perm_up * perm_dn)/(dd_up*perm_dn + dd_dn*perm_up)
@@ -749,20 +749,20 @@ subroutine RichardsLiteFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up,
   
   type(richards_type) :: aux_var_up, aux_var_dn
   type(option_type) :: option
-  real*8 :: sir_up, sir_dn
-  real*8 :: por_up, por_dn
-  real*8 :: tor_up, tor_dn
-  real*8 :: dd_up, dd_dn
-  real*8 :: perm_up, perm_dn
-  real*8 :: Dk_up, Dk_dn
-  real*8 :: v_darcy,area
-  real*8 :: Res(1:option%ndof) 
-  real*8 :: dist_gravity  ! distance along gravity vector
+  PetscReal :: sir_up, sir_dn
+  PetscReal :: por_up, por_dn
+  PetscReal :: tor_up, tor_dn
+  PetscReal :: dd_up, dd_dn
+  PetscReal :: perm_up, perm_dn
+  PetscReal :: Dk_up, Dk_dn
+  PetscReal :: v_darcy,area
+  PetscReal :: Res(1:option%ndof) 
+  PetscReal :: dist_gravity  ! distance along gravity vector
      
-  integer :: ispec
-  real*8 :: fluxm(option%nspec),fluxe,q
-  real*8 :: uh,uxmol(1:option%nspec),ukvr,difff,diffdp, DK,Dq
-  real*8 :: upweight,density_ave,cond,gravity,dphi
+  PetscInt :: ispec
+  PetscReal :: fluxm(option%nspec),fluxe,q
+  PetscReal :: uh,uxmol(1:option%nspec),ukvr,difff,diffdp, DK,Dq
+  PetscReal :: upweight,density_ave,cond,gravity,dphi
      
   Dq = (perm_up * perm_dn)/(dd_up*perm_dn + dd_dn*perm_up)
   diffdp = (por_up *tor_up * por_dn*tor_dn) / (dd_dn*por_up*tor_up + dd_up*por_dn*tor_dn)*area
@@ -826,33 +826,33 @@ subroutine RichardsLiteBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn,
  
   implicit none
   
-  integer :: ibndtype(:)
+  PetscInt :: ibndtype(:)
   type(richards_type) :: aux_var_up, aux_var_dn
   type(option_type) :: option
-  real*8 :: dd_up, sir_dn
-  real*8 :: aux_vars(:) ! from aux_real_var array in boundary condition
-  real*8 :: por_dn,perm_dn,Dk_dn,tor_dn
-  real*8 :: area
+  PetscReal :: dd_up, sir_dn
+  PetscReal :: aux_vars(:) ! from aux_real_var array in boundary condition
+  PetscReal :: por_dn,perm_dn,Dk_dn,tor_dn
+  PetscReal :: area
   type(saturation_function_type) :: sat_func_dn  
-  real*8 :: Jdn(option%ndof,option%ndof)
+  PetscReal :: Jdn(option%ndof,option%ndof)
   
-  real*8 :: dist_gravity  ! distance along gravity vector
+  PetscReal :: dist_gravity  ! distance along gravity vector
           
-  real*8 :: v_darcy
-  real*8 :: fluxm(option%nspec),q,density_ave
-  real*8 :: ukvr,diffdp,DK,Dq
-  real*8 :: upweight,cond,gravity,dphi
+  PetscReal :: v_darcy
+  PetscReal :: fluxm(option%nspec),q,density_ave
+  PetscReal :: ukvr,diffdp,DK,Dq
+  PetscReal :: upweight,cond,gravity,dphi
 
-  real*8 :: dden_ave_dp_dn
-  real*8 :: dgravity_dden_dn
-  real*8 :: dphi_dp_dn
-  real*8 :: dukvr_dp_dn
-  real*8 :: dq_dp_dn
+  PetscReal :: dden_ave_dp_dn
+  PetscReal :: dgravity_dden_dn
+  PetscReal :: dphi_dp_dn
+  PetscReal :: dukvr_dp_dn
+  PetscReal :: dq_dp_dn
 
-  integer :: iphase, ideriv
+  PetscInt :: iphase, ideriv
   type(richards_type) :: aux_var_pert_dn, aux_var_pert_up
-  real*8 :: perturbation
-  real*8 :: x_dn(1), x_up(1), x_pert_dn(1), x_pert_up(1), pert_dn, res(1), &
+  PetscReal :: perturbation
+  PetscReal :: x_dn(1), x_up(1), x_pert_dn(1), x_pert_up(1), pert_dn, res(1), &
             res_pert_dn(1), J_pert_dn(1,1)
   
   fluxm = 0.d0
@@ -974,21 +974,21 @@ subroutine RichardsLiteBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
  
   implicit none
   
-  integer :: ibndtype(:)
+  PetscInt :: ibndtype(:)
   type(richards_type) :: aux_var_up, aux_var_dn
   type(option_type) :: option
-  real*8 :: dd_up, sir_dn
-  real*8 :: aux_vars(:) ! from aux_real_var array
-  real*8 :: por_dn,perm_dn,Dk_dn,tor_dn
-  real*8 :: v_darcy, area
-  real*8 :: Res(1:option%ndof) 
+  PetscReal :: dd_up, sir_dn
+  PetscReal :: aux_vars(:) ! from aux_real_var array
+  PetscReal :: por_dn,perm_dn,Dk_dn,tor_dn
+  PetscReal :: v_darcy, area
+  PetscReal :: Res(1:option%ndof) 
   
-  real*8 :: dist_gravity  ! distance along gravity vector
+  PetscReal :: dist_gravity  ! distance along gravity vector
           
-  integer ispec
-  real*8 :: fluxm(option%nspec),q,density_ave
-  real*8 :: ukvr,diffdp,DK,Dq
-  real*8 :: upweight,cond,gravity,dphi
+  PetscInt :: ispec
+  PetscReal :: fluxm(option%nspec),q,density_ave
+  PetscReal :: ukvr,diffdp,DK,Dq
+  PetscReal :: upweight,cond,gravity,dphi
   
   fluxm = 0.d0
   v_darcy = 0.d0
@@ -1075,36 +1075,36 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
   Vec, intent(out) :: r
   type(realization_type) :: realization
 
-  integer :: ierr
-  integer :: i, jn
-  integer :: ip1, ip2
-  integer :: local_id, ghosted_id, local_id_up, local_id_dn, ghosted_id_up, ghosted_id_dn
+  PetscInt :: ierr
+  PetscInt :: i, jn
+  PetscInt :: ip1, ip2
+  PetscInt :: local_id, ghosted_id, local_id_up, local_id_dn, ghosted_id_up, ghosted_id_dn
 
-  PetscScalar, pointer ::accum_p(:)
+  PetscReal, pointer ::accum_p(:)
 
-  PetscScalar, pointer :: r_p(:), porosity_loc_p(:), volume_p(:), &
+  PetscReal, pointer :: r_p(:), porosity_loc_p(:), volume_p(:), &
                xx_loc_p(:), xx_p(:), yy_p(:),&
                phis_p(:), tor_loc_p(:),&
                perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:), &
                vl_p(:) 
                           
                
-  PetscScalar, pointer :: iphase_loc_p(:), icap_loc_p(:), ithrm_loc_p(:)
+  PetscReal, pointer :: iphase_loc_p(:), icap_loc_p(:), ithrm_loc_p(:)
 
-  integer :: iphase, index_var_begin, index_var_end,np
-  integer :: icap_up, icap_dn, ithrm_up, ithrm_dn
-  real*8 :: dd_up, dd_dn, &
+  PetscInt :: iphase, index_var_begin, index_var_end,np
+  PetscInt :: icap_up, icap_dn, ithrm_up, ithrm_dn
+  PetscReal :: dd_up, dd_dn, &
             accum
-  real*8 :: dd, f_up, f_dn, ff
-  real*8 :: perm_up, perm_dn
-  real*8 :: D_up, D_dn  ! "Diffusion" constants at upstream, downstream faces.
-  real*8 :: dw_kg, dw_mol, dif(realization%option%nphase)
-  real*8 :: tsrc1, qsrc1, csrc1, enth_src_h2o, enth_src_co2 , hsrc1
-  real*8 :: tmp, upweight
-  real*8 :: rho
-  real*8 :: xxbc(realization%option%ndof)
-  integer :: iphasebc
-  real*8 :: Res(realization%option%ndof), v_darcy
+  PetscReal :: dd, f_up, f_dn, ff
+  PetscReal :: perm_up, perm_dn
+  PetscReal :: D_up, D_dn  ! "Diffusion" constants at upstream, downstream faces.
+  PetscReal :: dw_kg, dw_mol, dif(realization%option%nphase)
+  PetscReal :: tsrc1, qsrc1, csrc1, enth_src_h2o, enth_src_co2 , hsrc1
+  PetscReal :: tmp, upweight
+  PetscReal :: rho
+  PetscReal :: xxbc(realization%option%ndof)
+  PetscInt :: iphasebc
+  PetscReal :: Res(realization%option%ndof), v_darcy
  PetscViewer :: viewer
 
 
@@ -1116,10 +1116,10 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
   type(connection_list_type), pointer :: connection_list
   type(connection_type), pointer :: cur_connection_set
   logical :: enthalpy_flag
-  integer :: iconn, idof
-  integer :: sum_connection
-  real*8 :: distance, fraction_upwind
-  real*8 :: distance_gravity
+  PetscInt :: iconn, idof
+  PetscInt :: sum_connection
+  PetscReal :: distance, fraction_upwind
+  PetscReal :: distance_gravity
   
   grid => realization%grid
   option => realization%option
@@ -1436,54 +1436,54 @@ subroutine RichardsLiteJacobian(snes,xx,A,B,flag,realization,ierr)
   type(realization_type) :: realization
   MatStructure flag
 
-  integer :: ierr
-  integer :: nvar,neq,nr
-  integer :: ithrm_up, ithrm_dn, i
-  integer :: ip1, ip2 
+  PetscInt :: ierr
+  PetscInt :: nvar,neq,nr
+  PetscInt :: ithrm_up, ithrm_dn, i
+  PetscInt :: ip1, ip2 
 
-  PetscScalar, pointer :: porosity_loc_p(:), volume_p(:), &
+  PetscReal, pointer :: porosity_loc_p(:), volume_p(:), &
                           xx_loc_p(:), phis_p(:),  tor_loc_p(:),&
                           perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
-  PetscScalar, pointer :: iphase_loc_p(:), icap_loc_p(:), ithrm_loc_p(:)
-  integer :: icap,iphas,iphas_up,iphas_dn,icap_up,icap_dn
-  integer :: ii, jj
-  integer :: index_var_begin, index_var_end
-  real*8 :: dw_kg,dw_mol,enth_src_co2,enth_src_h2o,rho
-  real*8 :: vv_darcy(realization%option%nphase),voldt,pvoldt
-  real*8 :: ff,dif(1:realization%option%nphase)
-  real*8 :: tsrc1,qsrc1,csrc1,hsrc1
-  real*8 :: dd_up, dd_dn, dd, f_up, f_dn
-  real*8 :: perm_up, perm_dn
-  real*8 :: dw_dp,dw_dt,hw_dp,hw_dt,dresT_dp,dresT_dt
-  real*8 :: D_up, D_dn  ! "Diffusion" constants upstream and downstream of a face.
-  real*8 :: zero, norm
-  real*8 :: ra(1:realization%option%ndof,1:2*realization%option%ndof)  
-  real*8 :: tmp, upweight
-  real*8 :: delxbc(1:realization%option%ndof)
-  real*8 :: blkmat11(1:realization%option%ndof,1:realization%option%ndof), &
+  PetscReal, pointer :: iphase_loc_p(:), icap_loc_p(:), ithrm_loc_p(:)
+  PetscInt :: icap,iphas,iphas_up,iphas_dn,icap_up,icap_dn
+  PetscInt :: ii, jj
+  PetscInt :: index_var_begin, index_var_end
+  PetscReal :: dw_kg,dw_mol,enth_src_co2,enth_src_h2o,rho
+  PetscReal :: vv_darcy(realization%option%nphase),voldt,pvoldt
+  PetscReal :: ff,dif(1:realization%option%nphase)
+  PetscReal :: tsrc1,qsrc1,csrc1,hsrc1
+  PetscReal :: dd_up, dd_dn, dd, f_up, f_dn
+  PetscReal :: perm_up, perm_dn
+  PetscReal :: dw_dp,dw_dt,hw_dp,hw_dt,dresT_dp,dresT_dt
+  PetscReal :: D_up, D_dn  ! "Diffusion" constants upstream and downstream of a face.
+  PetscReal :: zero, norm
+  PetscReal :: ra(1:realization%option%ndof,1:2*realization%option%ndof)  
+  PetscReal :: tmp, upweight
+  PetscReal :: delxbc(1:realization%option%ndof)
+  PetscReal :: blkmat11(1:realization%option%ndof,1:realization%option%ndof), &
             blkmat12(1:realization%option%ndof,1:realization%option%ndof),&
             blkmat21(1:realization%option%ndof,1:realization%option%ndof),&
             blkmat22(1:realization%option%ndof,1:realization%option%ndof)
-  real*8 :: ResInc(1:realization%grid%nlmax, 1:realization%option%ndof, 1:realization%option%ndof),res(1:realization%option%ndof)  
-  real*8 :: max_dev  
-  real*8 :: xxbc(realization%option%ndof)
-  integer :: iphasebc
-  integer :: local_id, ghosted_id
-  integer :: local_id_up, local_id_dn
-  integer :: ghosted_id_up, ghosted_id_dn
-  integer ::  natural_id_up,natural_id_dn
+  PetscReal :: ResInc(1:realization%grid%nlmax, 1:realization%option%ndof, 1:realization%option%ndof),res(1:realization%option%ndof)  
+  PetscReal :: max_dev  
+  PetscReal :: xxbc(realization%option%ndof)
+  PetscInt :: iphasebc
+  PetscInt :: local_id, ghosted_id
+  PetscInt :: local_id_up, local_id_dn
+  PetscInt :: ghosted_id_up, ghosted_id_dn
+  PetscInt ::  natural_id_up,natural_id_dn
   
-  real*8 :: Jup(realization%option%ndof,realization%option%ndof), &
+  PetscReal :: Jup(realization%option%ndof,realization%option%ndof), &
             Jdn(realization%option%ndof,realization%option%ndof)
   
   type(coupler_type), pointer :: boundary_condition, source_sink
   type(connection_list_type), pointer :: connection_list
   type(connection_type), pointer :: cur_connection_set
   logical :: enthalpy_flag
-  integer :: iconn, idof
-  integer :: sum_connection  
-  real*8 :: distance, fraction_upwind
-  real*8 :: distance_gravity 
+  PetscInt :: iconn, idof
+  PetscInt :: sum_connection  
+  PetscReal :: distance, fraction_upwind
+  PetscReal :: distance_gravity 
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option 
   type(field_type), pointer :: field  
@@ -1856,13 +1856,13 @@ subroutine createRichardsLiteZeroArray(realization)
   implicit none
 
   type(realization_type) :: realization
-  integer :: ncount, idof
-  integer :: local_id, ghosted_id
+  PetscInt :: ncount, idof
+  PetscInt :: local_id, ghosted_id
 
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
-  integer :: flag = 0, ierr
+  PetscInt :: flag = 0, ierr
     
   grid => realization%grid
   option => realization%option
@@ -1929,7 +1929,7 @@ subroutine RichardsLiteMaxChange(realization)
   type(option_type), pointer :: option
   type(field_type), pointer :: field  
   
-  integer :: ierr
+  PetscInt :: ierr
   
   option => realization%option
   field => realization%field
@@ -1970,14 +1970,14 @@ subroutine RichardsLiteGetVarFromArray(realization,vec,ivar,isubvar)
   
   type(realization_type) :: realization
   Vec :: vec
-  integer :: ivar
-  integer :: isubvar
+  PetscInt :: ivar
+  PetscInt :: isubvar
 
-  integer :: local_id, ghosted_id
+  PetscInt :: local_id, ghosted_id
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
-  PetscScalar, pointer :: vec_ptr(:), vec2_ptr(:)
+  PetscReal, pointer :: vec_ptr(:), vec2_ptr(:)
   PetscErrorCode :: ierr
 
   option => realization%option
@@ -2055,16 +2055,16 @@ subroutine computeAuxVarLite(x,aux_var,iphase,saturation_function,option)
 
   type(option_type) :: option
   type(saturation_function_type) :: saturation_function
-  real*8 :: x(1)
+  PetscReal :: x(1)
   type(richards_type) :: aux_var
-  integer :: iphase
+  PetscInt :: iphase
 
-  integer :: ierr
-  real*8 :: pw,dw_kg,dw_mol,hw,sat_pressure,visl
-  real*8 :: kr, ds_dp, dkr_dp
-  real*8 :: dvis_dt, dvis_dp, dvis_dpsat
-  real*8 :: dw_dp, dw_dt, hw_dp, hw_dt
-  real*8 :: dpw_dp
+  PetscInt :: ierr
+  PetscReal :: pw,dw_kg,dw_mol,hw,sat_pressure,visl
+  PetscReal :: kr, ds_dp, dkr_dp
+  PetscReal :: dvis_dt, dvis_dp, dvis_dpsat
+  PetscReal :: dw_dp, dw_dt, hw_dp, hw_dt
+  PetscReal :: dpw_dp
   
   aux_var%sat = 0.d0
   aux_var%den = 0.d0

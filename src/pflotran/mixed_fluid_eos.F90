@@ -10,10 +10,12 @@
 module mixture_module
    
  public
+
+#include "include/finclude/petsc.h"
   
- real*8, private, parameter:: fmwh2o = 18.0153D0, fmwa = 28.96D0, &
+ PetscReal, private, parameter:: fmwh2o = 18.0153D0, fmwa = 28.96D0, &
                               fmwco2 = 44.0098D0
- real*8, private, parameter::eps=1.D-6
+ PetscReal, private, parameter::eps=1.D-6
 
  contains
 
@@ -37,25 +39,25 @@ module mixture_module
 
     implicit none
 
-    real*8 :: p,t,xga,sg,energyscale
-    integer :: ipckrtype !, ithrmtype
-    integer :: num_phase,num_spec,num_pricomp
-    real*8 :: pckr_swir,pckr_lambda,pckr_alpha,pckr_m,pckr_pcmax,pckr_betac,pckr_pwr
-    real*8 :: sat_pressure
-    real*8 :: den(num_phase),h(num_phase),u(num_phase), &
+    PetscReal :: p,t,xga,sg,energyscale
+    PetscInt :: ipckrtype !, ithrmtype
+    PetscInt :: num_phase,num_spec,num_pricomp
+    PetscReal :: pckr_swir,pckr_lambda,pckr_alpha,pckr_m,pckr_pcmax,pckr_betac,pckr_pwr
+    PetscReal :: sat_pressure
+    PetscReal :: den(num_phase),h(num_phase),u(num_phase), &
               avgmw(num_phase),pc(num_phase),kvr(num_phase)
-    real*8 :: diff(1:num_phase*num_spec),hen(1:num_phase*num_spec)
-    real*8 :: tmp
+    PetscReal :: diff(1:num_phase*num_spec),hen(1:num_phase*num_spec)
+    PetscReal :: tmp
 
-    integer :: ierr, iitable
-    integer, optional :: itable
-    real*8 :: tk, kr(num_phase),xla,xgw,xlw
-    real*8 :: dstea,dsteamol,dstea_p,dstea_t,hstea,hstea_p,hstea_t
-    real*8 :: dg,hg,visg,ug
-    real*8 :: pw,dw_kg, dw_mol,hw,visl
-    real*8 :: dif(1:num_spec),henry,pa
-    real*8 :: co2_poyn,xphi
-    real*8 :: dddt,dddp,fg,dfgdp,dfgdt,eng,dhdt,dhdp,dvdt,dvdp
+    PetscInt :: ierr, iitable
+    PetscInt, optional :: itable
+    PetscReal :: tk, kr(num_phase),xla,xgw,xlw
+    PetscReal :: dstea,dsteamol,dstea_p,dstea_t,hstea,hstea_p,hstea_t
+    PetscReal :: dg,hg,visg,ug
+    PetscReal :: pw,dw_kg, dw_mol,hw,visl
+    PetscReal :: dif(1:num_spec),henry,pa
+    PetscReal :: co2_poyn,xphi
+    PetscReal :: dddt,dddp,fg,dfgdp,dfgdt,eng,dhdt,dhdp,dvdt,dvdp
 
     ierr=0; iitable=0
     if(present(itable)) iitable = itable
@@ -272,41 +274,41 @@ end subroutine mixture_eos_noderiv
 
 ! Notice: kvrl=krl/visl  kvrg=krg/visg
 !  since the conservation equations do not refer to kr or vis  individually
-    real*8  :: p,t,xga,sg,energyscale
-    integer :: num_phase,num_spec,num_pricomp, ipckrtype
-    integer, optional :: itable
-    real*8  :: pckr_swir,pckr_lambda,pckr_alpha,pckr_m,pckr_pcmax,pckr_betac,pckr_pwr
-    real*8  :: sat_pressure
-    real*8  :: den(num_phase),den_p(num_phase),den_t(num_phase), &
+    PetscReal  :: p,t,xga,sg,energyscale
+    PetscInt :: num_phase,num_spec,num_pricomp, ipckrtype
+    PetscInt, optional :: itable
+    PetscReal  :: pckr_swir,pckr_lambda,pckr_alpha,pckr_m,pckr_pcmax,pckr_betac,pckr_pwr
+    PetscReal  :: sat_pressure
+    PetscReal  :: den(num_phase),den_p(num_phase),den_t(num_phase), &
                               den_s(num_phase),den_c(num_phase*num_pricomp)
-    real*8  :: avgmw(num_phase),avgmw_c(num_phase*num_pricomp)
-    real*8  :: h(num_phase),h_p(num_phase),h_t(num_phase), &
+    PetscReal  :: avgmw(num_phase),avgmw_c(num_phase*num_pricomp)
+    PetscReal  :: h(num_phase),h_p(num_phase),h_t(num_phase), &
                             h_s(num_phase),h_c(num_phase*num_pricomp)
-    real*8  :: u(num_phase),u_p(num_phase),u_t(num_phase), &
+    PetscReal  :: u(num_phase),u_p(num_phase),u_t(num_phase), &
                             u_s(num_phase),u_c(num_phase*num_pricomp)
-    real*8  :: pc(1:num_phase),pc_p(1:num_phase),pc_t(1:num_phase), &
+    PetscReal  :: pc(1:num_phase),pc_p(1:num_phase),pc_t(1:num_phase), &
                              pc_s(1:num_phase),pc_c(1:num_phase*num_pricomp)
-    real*8  :: kvr(1:num_phase),kvr_p(1:num_phase),kvr_t(1:num_phase), &
+    PetscReal  :: kvr(1:num_phase),kvr_p(1:num_phase),kvr_t(1:num_phase), &
                               kvr_s(1:num_phase),kvr_c(1:num_phase*num_pricomp)
-    real*8  :: diff(1:num_phase*num_spec),diff_p(1:num_phase*num_spec),&
+    PetscReal  :: diff(1:num_phase*num_spec),diff_p(1:num_phase*num_spec),&
                diff_t(1:num_phase*num_spec),diff_s(1:num_phase*num_spec),&
                diff_c(1:num_phase*num_spec*num_pricomp)
-    real*8  ::  hen(1:num_phase*num_spec),hen_p(1:num_phase*num_spec),&
+    PetscReal  ::  hen(1:num_phase*num_spec),hen_p(1:num_phase*num_spec),&
                hen_t(1:num_phase*num_spec),hen_s(1:num_phase*num_spec),&
                hen_c(1:num_phase*num_spec*num_pricomp)
 
-    integer :: ierr, iitable
-    real*8 :: sat_pressure_t,sat_pressure_p,pw,dw_kg,dw_mol,dw_p,dw_t,hw,visl
-    real*8 :: hw_p,hw_t,dg,hg,ug
-!   real*8 :: dg_p,dg_t,hg_p,hg_t,ug_p,ug_t
-    real*8 :: dstea,dsteamol,dstea_p,dstea_t, hstea,hstea_p,hstea_t
-    real*8 :: kr(num_phase),kr_s(num_phase),visg,visw_p,visw_t,visg_t,&
+    PetscInt :: ierr, iitable
+    PetscReal :: sat_pressure_t,sat_pressure_p,pw,dw_kg,dw_mol,dw_p,dw_t,hw,visl
+    PetscReal :: hw_p,hw_t,dg,hg,ug
+!   PetscReal :: dg_p,dg_t,hg_p,hg_t,ug_p,ug_t
+    PetscReal :: dstea,dsteamol,dstea_p,dstea_t, hstea,hstea_p,hstea_t
+    PetscReal :: kr(num_phase),kr_s(num_phase),visg,visw_p,visw_t,visg_t,&
                visg_p,visg_c 
-    real*8 :: ps,pa,henry,henry_p,henry_t,henry_c,henry_s
-    real*8 :: xla,xgw,xlw,xlco2,xmlco2
-    real*8 :: tmp,tmp2,tmp3,tmp0,tmp4,tmp5
-    real*8 :: co2_poyn,xphi
-    real*8 :: dddt,dddp,fg,dfgdp,dfgdt,eng,dhdt,dhdp,dvdt,dvdp,tmpdg
+    PetscReal :: ps,pa,henry,henry_p,henry_t,henry_c,henry_s
+    PetscReal :: xla,xgw,xlw,xlco2,xmlco2
+    PetscReal :: tmp,tmp2,tmp3,tmp0,tmp4,tmp5
+    PetscReal :: co2_poyn,xphi
+    PetscReal :: dddt,dddp,fg,dfgdp,dfgdt,eng,dhdt,dhdp,dvdt,dvdp,tmpdg
 
     ierr=0; iitable=0
     if(present(itable)) iitable =itable

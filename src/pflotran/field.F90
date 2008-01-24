@@ -32,7 +32,7 @@ module Field_module
 
   type, public :: field_type 
   
-    real*8, pointer :: density_bc(:),d_p_bc(:),d_t_bc(:), d_s_bc(:),d_c_bc(:),&
+    PetscReal, pointer :: density_bc(:),d_p_bc(:),d_t_bc(:), d_s_bc(:),d_c_bc(:),&
                        avgmw_bc(:),avgmw_c_bc(:),&
                        hh_bc(:),h_p_bc(:),h_t_bc(:),h_s_bc(:), h_c_bc(:), &
                        viscosity_bc(:),v_p_bc(:),v_t_bc(:),&
@@ -41,19 +41,19 @@ module Field_module
                        hen_bc(:),hen_p_bc(:),hen_t_bc(:),hen_s_bc(:),hen_c_bc(:), &
                        pc_bc(:),pc_p_bc(:),pc_t_bc(:),pc_s_bc(:),pc_c_bc(:), &
                        kvr_bc(:),kvr_p_bc(:),kvr_t_bc(:),kvr_s_bc(:),kvr_c_bc(:)
-    real*8, pointer :: xphi_co2(:),xxphi_co2(:),den_co2(:), dden_co2(:)
+    PetscReal, pointer :: xphi_co2(:),xxphi_co2(:),den_co2(:), dden_co2(:)
     
 !geh material id
-    integer, pointer :: imat(:)
+    PetscInt, pointer :: imat(:)
     
-    real*8, pointer :: internal_velocities(:,:)
-    real*8, pointer :: boundary_velocities(:,:)
+    PetscReal, pointer :: internal_velocities(:,:)
+    PetscReal, pointer :: boundary_velocities(:,:)
 
-    real*8, pointer :: xphi_co2_bc(:), xxphi_co2_bc(:)
+    PetscReal, pointer :: xphi_co2_bc(:), xxphi_co2_bc(:)
 
     !block BC values read from input
-    real*8, pointer :: pressurebc0(:,:)
-    real*8, pointer :: velocitybc0(:,:)
+    PetscReal, pointer :: pressurebc0(:,:)
+    PetscReal, pointer :: velocitybc0(:,:)
 
     !-------------------------------------------------------------------
     ! Quantities defined at each grid point.
@@ -125,9 +125,9 @@ module Field_module
 
     Vec :: vl, vvl, vg, vvg ! phase (liquid and gas) velocities stored at interfaces
  
-    real*8, pointer :: vl_loc(:), vvl_loc(:), vg_loc(:), vvg_loc(:)
-    real*8, pointer :: vvlbc(:), vvgbc(:)
-    real*8, pointer :: rtot(:,:),rate(:),area_var(:), delx(:,:)
+    PetscReal, pointer :: vl_loc(:), vvl_loc(:), vg_loc(:), vvg_loc(:)
+    PetscReal, pointer :: vvlbc(:), vvgbc(:)
+    PetscReal, pointer :: rtot(:,:),rate(:),area_var(:), delx(:,:)
 
     ! Solution vectors
     Vec :: xx, xx_loc, dxx, yy, accum
@@ -375,7 +375,7 @@ subroutine FieldDestroy(field)
   
   type(field_type), pointer :: field
   
-  integer :: myrank, ierr
+  PetscMPIInt :: myrank, ierr
   
   call MPI_Comm_Rank(PETSC_COMM_WORLD,myrank,ierr)
   if (myrank == 0) then

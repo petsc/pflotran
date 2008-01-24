@@ -28,11 +28,11 @@ module Grid_module
 
   type, public :: grid_type
   
-    integer :: igrid  ! type of grid (e.g. structured, unstructured, etc.)
+    PetscInt :: igrid  ! type of grid (e.g. structured, unstructured, etc.)
     
-    integer :: nmax   ! Total number of nodes in global domain
-    integer :: nlmax  ! Total number of non-ghosted nodes in local domain.
-    integer :: ngmax  ! Number of ghosted & non-ghosted nodes in local domain.
+    PetscInt :: nmax   ! Total number of nodes in global domain
+    PetscInt :: nlmax  ! Total number of non-ghosted nodes in local domain.
+    PetscInt :: ngmax  ! Number of ghosted & non-ghosted nodes in local domain.
    
     !nL2G :  not collective, local processor: local  =>  ghosted local  
     !nG2L :  not collective, local processor:  ghosted local => local  
@@ -40,20 +40,20 @@ module Grid_module
     !                     matsetvaluesblocked ( not matsetvaluesblockedlocal)  
     !nL2A :   collective, local => natural index, used for initialization   
     !                              and source/sink setup  
-    integer, pointer :: nL2G(:), nG2L(:), nL2A(:), nG2N(:)
-    integer, pointer :: nG2A(:)
+    PetscInt, pointer :: nL2G(:), nG2L(:), nL2A(:), nG2N(:)
+    PetscInt, pointer :: nG2A(:)
     
-    real*8, pointer :: x(:), y(:), z(:)
+    PetscReal, pointer :: x(:), y(:), z(:)
     
-    real*8 :: x_min, x_max, y_min, y_max, z_min, z_max
-    real*8 :: origin(3)
+    PetscReal :: x_min, x_max, y_min, y_max, z_min, z_max
+    PetscReal :: origin(3)
 
     Vec :: volume 
     
-    integer, pointer :: hash(:,:,:)
-    integer :: num_hash_bins
+    PetscInt, pointer :: hash(:,:,:)
+    PetscInt :: num_hash_bins
     
-    integer :: igeom
+    PetscInt :: igeom
     type(structured_grid_type), pointer :: structured_grid
     type(unstructured_grid_type), pointer :: unstructured_grid
     
@@ -109,7 +109,7 @@ function GridCreate(igeom_)
 
   implicit none
   
-  integer :: igeom_
+  PetscInt :: igeom_
   
   type(grid_type), pointer :: GridCreate
   
@@ -228,9 +228,9 @@ subroutine GridCreateVector(grid,dm_index,vector,vector_type)
   implicit none
   
   type(grid_type) :: grid
-  integer :: dm_index
+  PetscInt :: dm_index
   Vec :: vector
-  integer :: vector_type
+  PetscInt :: vector_type
   
   select case(grid%igrid)
     case(STRUCTURED)
@@ -295,10 +295,10 @@ subroutine GridComputeCouplerConnections(grid,option,coupler_list)
   type(option_type) :: option
   type(coupler_type), pointer :: coupler_list
   
-  integer :: iconn
-  integer :: cell_id_local, cell_id_ghosted
-  integer :: connection_itype
-  integer :: iface
+  PetscInt :: iconn
+  PetscInt :: cell_id_local, cell_id_ghosted
+  PetscInt :: connection_itype
+  PetscInt :: iface
   type(connection_type), pointer :: connection
   type(region_type), pointer :: region
   type(coupler_type), pointer :: coupler
@@ -525,7 +525,7 @@ subroutine GridGlobalToLocal(grid,global_vec,local_vec,dm_index)
   type(grid_type) :: grid
   Vec :: global_vec
   Vec :: local_vec
-  integer :: dm_index
+  PetscInt :: dm_index
   
   select case(grid%igrid)
     case(STRUCTURED)
@@ -553,7 +553,7 @@ subroutine GridLocalToGlobal(grid,local_vec,global_vec,dm_index)
   type(grid_type) :: grid
   Vec :: local_vec
   Vec :: global_vec
-  integer :: dm_index
+  PetscInt :: dm_index
   
   select case(grid%igrid)
     case(STRUCTURED)
@@ -578,7 +578,7 @@ subroutine GridLocalToLocal(grid,local_vec1,local_vec2,dm_index)
   type(grid_type) :: grid
   Vec :: local_vec1
   Vec :: local_vec2
-  integer :: dm_index
+  PetscInt :: dm_index
   
   select case(grid%igrid)
     case(STRUCTURED)
@@ -603,7 +603,7 @@ subroutine GridGlobalToNatural(grid,global_vec,natural_vec,dm_index)
   type(grid_type) :: grid
   Vec :: global_vec
   Vec :: natural_vec
-  integer :: dm_index
+  PetscInt :: dm_index
   
   select case(grid%igrid)
     case(STRUCTURED)
@@ -628,7 +628,7 @@ subroutine GridNaturalToGlobal(grid,natural_vec,global_vec,dm_index)
   type(grid_type) :: grid
   Vec :: natural_vec
   Vec :: global_vec
-  integer :: dm_index
+  PetscInt :: dm_index
   
   select case(grid%igrid)
     case(STRUCTURED)
@@ -656,7 +656,7 @@ subroutine GridGlobalToLocalBegin(grid,global_vec,local_vec,dm_index)
   type(grid_type) :: grid
   Vec :: global_vec
   Vec :: local_vec
-  integer :: dm_index
+  PetscInt :: dm_index
   
   select case(grid%igrid)
     case(STRUCTURED)
@@ -684,7 +684,7 @@ subroutine GridGlobalToLocalEnd(grid,global_vec,local_vec,dm_index)
   type(grid_type) :: grid
   Vec :: global_vec
   Vec :: local_vec
-  integer :: dm_index
+  PetscInt :: dm_index
   
   select case(grid%igrid)
     case(STRUCTURED)
@@ -709,7 +709,7 @@ subroutine GridLocalToLocalBegin(grid,local_vec1,local_vec2,dm_index)
   type(grid_type) :: grid
   Vec :: local_vec1
   Vec :: local_vec2
-  integer :: dm_index
+  PetscInt :: dm_index
   
   select case(grid%igrid)
     case(STRUCTURED)
@@ -734,7 +734,7 @@ subroutine GridLocalToLocalEnd(grid,local_vec1,local_vec2,dm_index)
   type(grid_type) :: grid
   Vec :: local_vec1
   Vec :: local_vec2
-  integer :: dm_index
+  PetscInt :: dm_index
   
   select case(grid%igrid)
     case(STRUCTURED)
@@ -759,7 +759,7 @@ subroutine GridGlobalToNaturalBegin(grid,global_vec,natural_vec,dm_index)
   type(grid_type) :: grid
   Vec :: global_vec
   Vec :: natural_vec
-  integer :: dm_index
+  PetscInt :: dm_index
   
   select case(grid%igrid)
     case(STRUCTURED)
@@ -784,7 +784,7 @@ subroutine GridGlobalToNaturalEnd(grid,global_vec,natural_vec,dm_index)
   type(grid_type) :: grid
   Vec :: global_vec
   Vec :: natural_vec
-  integer :: dm_index
+  PetscInt :: dm_index
   
   select case(grid%igrid)
     case(STRUCTURED)
@@ -809,7 +809,7 @@ subroutine GridNaturalToGlobalBegin(grid,natural_vec,global_vec,dm_index)
   type(grid_type) :: grid
   Vec :: natural_vec
   Vec :: global_vec
-  integer :: dm_index
+  PetscInt :: dm_index
   
   select case(grid%igrid)
     case(STRUCTURED)
@@ -834,7 +834,7 @@ subroutine GridNaturalToGlobalEnd(grid,natural_vec,global_vec,dm_index)
   type(grid_type) :: grid
   Vec :: natural_vec
   Vec :: global_vec
-  integer :: dm_index
+  PetscInt :: dm_index
   
   select case(grid%igrid)
     case(STRUCTURED)
@@ -864,8 +864,8 @@ subroutine GridLocalizeRegions(region_list,grid,option)
   type(option_type), pointer :: option
   
   type(region_type), pointer :: region
-  integer, allocatable :: temp_int_array(:)
-  integer :: i, j, k, count, local_count, local_ghosted_id, local_id
+  PetscInt, allocatable :: temp_int_array(:)
+  PetscInt :: i, j, k, count, local_count, local_ghosted_id, local_id
   
   region => region_list%first
   do
@@ -987,11 +987,11 @@ subroutine GridCopyIntegerArrayToPetscVec(array,vector,num_values)
 
   implicit none
   
-  integer :: array(:)
+  PetscInt :: array(:)
   Vec :: vector
-  integer :: num_values
+  PetscInt :: num_values
   
-  PetscScalar, pointer :: vec_ptr(:)
+  PetscReal, pointer :: vec_ptr(:)
   PetscErrorCode :: ierr
   
   call VecGetArrayF90(vector,vec_ptr,ierr)
@@ -1012,11 +1012,11 @@ subroutine GridCopyRealArrayToPetscVec(array,vector,num_values)
 
   implicit none
   
-  real*8 :: array(:)
+  PetscReal :: array(:)
   Vec :: vector
-  integer :: num_values
+  PetscInt :: num_values
   
-  PetscScalar, pointer :: vec_ptr(:)
+  PetscReal, pointer :: vec_ptr(:)
   PetscErrorCode :: ierr
   
   call VecGetArrayF90(vector,vec_ptr,ierr)
@@ -1037,12 +1037,12 @@ subroutine GridCopyPetscVecToIntegerArray(array,vector,num_values)
 
   implicit none
   
-  integer :: array(:)
+  PetscInt :: array(:)
   Vec :: vector
-  integer :: num_values
+  PetscInt :: num_values
   
-  integer :: i
-  PetscScalar, pointer :: vec_ptr(:)
+  PetscInt :: i
+  PetscReal, pointer :: vec_ptr(:)
   PetscErrorCode :: ierr
   
   call VecGetArrayF90(vector,vec_ptr,ierr)
@@ -1065,11 +1065,11 @@ subroutine GridCopyPetscVecToRealArray(array,vector,num_values)
 
   implicit none
   
-  real*8 :: array(:)
+  PetscReal :: array(:)
   Vec :: vector
-  integer :: num_values
+  PetscInt :: num_values
   
-  PetscScalar, pointer :: vec_ptr(:)
+  PetscReal, pointer :: vec_ptr(:)
   PetscErrorCode :: ierr
   
   call VecGetArrayF90(vector,vec_ptr,ierr)
@@ -1099,10 +1099,10 @@ subroutine GridCreateNaturalToGhostedHash(grid,option)
   type(option_type) :: option
 
   character(len=MAXSTRINGLENGTH) :: string
-  integer :: local_ghosted_id, natural_id
-  integer :: num_in_hash, num_ids_per_hash, hash_id, id, ierr
-  integer :: max_num_ids_per_hash = 0
-  integer, pointer :: hash(:,:,:), temp_hash(:,:,:)
+  PetscInt :: local_ghosted_id, natural_id
+  PetscInt :: num_in_hash, num_ids_per_hash, hash_id, id, ierr
+  PetscInt :: max_num_ids_per_hash = 0
+  PetscInt, pointer :: hash(:,:,:), temp_hash(:,:,:)
 
   if (associated(grid%hash)) return
 
@@ -1161,13 +1161,13 @@ end subroutine GridCreateNaturalToGhostedHash
 ! date: 03/07/07
 !
 ! ************************************************************************** !
-integer function GridGetLocalIdFromNaturalId(grid,natural_id)
+PetscInt function GridGetLocalIdFromNaturalId(grid,natural_id)
 
   implicit none
 
   type(grid_type) :: grid
 
-  integer :: natural_id, local_id
+  PetscInt :: natural_id, local_id
   
   do local_id = 1, grid%nlmax
     if (natural_id == grid%nL2A(local_id)+1) then
@@ -1189,14 +1189,14 @@ end function GridGetLocalIdFromNaturalId
 ! date: 03/07/07
 !
 ! ************************************************************************** !
-integer function GridGetLocalGhostedIdFromNatId(grid,natural_id)
+PetscInt function GridGetLocalGhostedIdFromNatId(grid,natural_id)
 
   implicit none
 
   type(grid_type) :: grid
-  integer :: natural_id
+  PetscInt :: natural_id
   
-  integer :: local_ghosted_id
+  PetscInt :: local_ghosted_id
   
   do local_ghosted_id = 1, grid%ngmax
     if (natural_id == grid%nG2A(local_ghosted_id)+1) then
@@ -1216,14 +1216,14 @@ end function GridGetLocalGhostedIdFromNatId
 ! date: 03/07/07
 !
 ! ************************************************************************** !
-integer function GridGetLocalGhostedIdFromHash(grid,natural_id)
+PetscInt function GridGetLocalGhostedIdFromHash(grid,natural_id)
 
   implicit none
 
   type(grid_type) :: grid
-  integer :: natural_id
+  PetscInt :: natural_id
   
-  integer :: hash_id, id
+  PetscInt :: hash_id, id
 
   GridGetLocalGhostedIdFromHash = 0
   hash_id = mod(natural_id,grid%num_hash_bins)+1 
@@ -1268,7 +1268,7 @@ subroutine GridPrintHashTable(grid)
 
   type(grid_type) :: grid
   
-  integer :: ihash, id, fid
+  PetscInt :: ihash, id, fid
 
   fid = 87 
   open(fid,file='hashtable.dat',action='write')

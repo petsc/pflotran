@@ -31,14 +31,14 @@ module Material_module
 #include "include/finclude/petsclog.h"
  
   type, public :: material_type
-    integer :: id
+    PetscInt :: id
     character(len=MAXNAMELENGTH) :: name
-    real*8 :: permeability(3,3)
-    real*8 :: permeability_pwr
-    real*8 :: porosity
-    real*8 :: tortuosity
-    integer :: ithrm
-    integer :: icap
+    PetscReal :: permeability(3,3)
+    PetscReal :: permeability_pwr
+    PetscReal :: porosity
+    PetscReal :: tortuosity
+    PetscInt :: ithrm
+    PetscInt :: icap
     type(material_type), pointer :: next
   end type material_type
   
@@ -47,32 +47,32 @@ module Material_module
   end type material_ptr_type
   
   type, public :: thermal_property_type
-    integer :: id
-    real*8 :: rock_density
-    real*8 :: spec_heat
-    real*8 :: therm_cond_dry
-    real*8 :: therm_cond_wet
-    real*8 :: pore_compress
-    real*8 :: pore_expansivity
-    real*8 :: tort_bin_diff
-    real*8 :: vap_air_diff_coef
-    real*8 :: exp_binary_diff
-    real*8 :: enh_binary_diff_coef
+    PetscInt :: id
+    PetscReal :: rock_density
+    PetscReal :: spec_heat
+    PetscReal :: therm_cond_dry
+    PetscReal :: therm_cond_wet
+    PetscReal :: pore_compress
+    PetscReal :: pore_expansivity
+    PetscReal :: tort_bin_diff
+    PetscReal :: vap_air_diff_coef
+    PetscReal :: exp_binary_diff
+    PetscReal :: enh_binary_diff_coef
     type(thermal_property_type), pointer :: next
   end type thermal_property_type
   
   type, public :: saturation_function_type
-    integer :: id
+    PetscInt :: id
     character(len=MAXNAMELENGTH) :: ctype
-    integer :: itype
-    real*8, pointer :: Sr(:)
-    real*8 :: m
-    real*8 :: lambda
-    real*8 :: alpha
-    real*8 :: pcwmax
-    real*8 :: betac
-    real*8 :: power
-    integer :: ihist 
+    PetscInt :: itype
+    PetscReal, pointer :: Sr(:)
+    PetscReal :: m
+    PetscReal :: lambda
+    PetscReal :: alpha
+    PetscReal :: pcwmax
+    PetscReal :: betac
+    PetscReal :: power
+    PetscInt :: ihist 
     type(saturation_function_type), pointer :: next
   end type saturation_function_type
   
@@ -235,7 +235,7 @@ subroutine MaterialConvertListToArray(list,array)
   type(material_ptr_type), pointer :: array(:)
     
   type(material_type), pointer :: cur_material
-  integer :: max_id = 0
+  PetscInt :: max_id = 0
 
   cur_material => list
   do 
@@ -331,7 +331,7 @@ subroutine SaturatFuncConvertListToArray(list,array)
   type(saturation_function_ptr_type), pointer :: array(:)
     
   type(saturation_function_type), pointer :: cur_saturation_function
-  integer :: count
+  PetscInt :: count
 
   count = 0
   cur_saturation_function => list
@@ -373,12 +373,12 @@ subroutine SaturationFunctionCompute(pressure,saturation,relative_perm, &
 
 #define VAN_GENUCHTEN 1
   
-  real*8 :: pressure, saturation, relative_perm, dsat_dpres, dkr_dpres
+  PetscReal :: pressure, saturation, relative_perm, dsat_dpres, dkr_dpres
   type(saturation_function_type) :: saturation_function
   type(option_type) :: option
 
-  real*8 :: alpha, m, n, Sr
-  real*8 :: pc, Se, one_over_m, Se_one_over_m, dsat_dpc, dkr_dpc
+  PetscReal :: alpha, m, n, Sr
+  PetscReal :: pc, Se, one_over_m, Se_one_over_m, dsat_dpc, dkr_dpc
   
   dsat_dpres = 0.d0
   dkr_dpres = 0.d0

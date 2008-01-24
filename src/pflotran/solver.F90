@@ -24,13 +24,13 @@ module Solver_module
 #include "include/finclude/petscsnes.h"
 
   type, public :: solver_type
-    real*8 :: atol       ! absolute tolerance
-    real*8 :: rtol       ! relative tolerance
-    real*8 :: stol       ! relative tolerance (relative to previous iteration)
-    real*8 :: dtol       ! divergence tolerance
-    real*8 :: inf_tol    ! infinity tolerance
-    integer :: maxit     ! maximum number of iterations
-    integer :: maxf      ! maximum number of function evaluations
+    PetscReal :: atol       ! absolute tolerance
+    PetscReal :: rtol       ! relative tolerance
+    PetscReal :: stol       ! relative tolerance (relative to previous iteration)
+    PetscReal :: dtol       ! divergence tolerance
+    PetscReal :: inf_tol    ! infinity tolerance
+    PetscInt :: maxit     ! maximum number of iterations
+    PetscInt :: maxf      ! maximum number of function evaluations
     
         ! Jacobian matrix
     Mat :: J
@@ -110,12 +110,12 @@ subroutine SolverReadPflow(solver,fid,myrank)
 #include "definitions.h"
     
   type(solver_type) :: solver
-  integer :: fid
-  integer :: myrank
+  PetscInt :: fid
+  PetscMPIInt :: myrank
   
   character(len=MAXSTRINGLENGTH) :: string, error_string
   character(len=MAXWORDLENGTH) :: keyword, word, word2
-  integer :: ierr
+  PetscInt :: ierr
 
   ierr = 0
   do
@@ -187,8 +187,8 @@ subroutine SolverComputeMFJacobian(snes, x, J, B, flag, ctx, ierr)
   Vec, intent(in) :: x
   Mat, intent(out) :: J, B
   MatStructure, intent(in) :: flag
-  integer, intent(inout) :: ctx(*)
-  integer, intent(out) :: ierr
+  PetscInt, intent(inout) :: ctx(*)
+  PetscInt, intent(out) :: ierr
 
   call MatAssemblyBegin(J, MAT_FINAL_ASSEMBLY, ierr)
   call MatAssemblyEnd(J, MAT_FINAL_ASSEMBLY, ierr)
@@ -210,14 +210,14 @@ subroutine SolverMonitorH(snes, its, norm, solver, option)
   implicit none
 
   SNES, intent(in) :: snes
-  integer, intent(in) :: its
+  PetscInt, intent(in) :: its
   PetscReal, intent(in) :: norm
   type(solver_type) :: solver
   type(option_type) :: option
   
-  integer :: ierr
-  integer :: myrank
-  PetscScalar :: h
+  PetscInt :: ierr
+  PetscMPIInt :: myrank
+  PetscReal :: h
   
   call MatMFFDGetH(solver%J, h, ierr)
 

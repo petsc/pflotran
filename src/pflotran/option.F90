@@ -32,16 +32,16 @@ module Option_module
 
   type, public :: option_type 
   
-    integer :: myrank                    ! rank in PETSC_COMM_WORLD
-    integer :: commsize                  ! size of PETSC_COMM_WORLD
+    PetscMPIInt :: myrank                    ! rank in PETSC_COMM_WORLD
+    PetscMPIInt :: commsize                  ! size of PETSC_COMM_WORLD
   
     ! defines the mode (e.g. mph, richards, vadose, etc.
     character(len=MAXNAMELENGTH) :: mode
-    integer :: imode
+    PetscInt :: imode
   
-    integer :: nphase, nvar, ndof  ! Number of phases we are dealing with.
-    integer :: jh2o, jgas, jco2 ! specific phase indices
-    integer :: nspec, npricomp
+    PetscInt :: nphase, nvar, ndof  ! Number of phases we are dealing with.
+    PetscInt :: jh2o, jgas, jco2 ! specific phase indices
+    PetscInt :: nspec, npricomp
 
     ! Program options
     PetscTruth :: use_numerical  ! If true, use numerical Jacobian.
@@ -52,10 +52,10 @@ module Option_module
       ! If true, and if use_matrix_free is true, then store the differencing
       ! values h and print them out at the end of the simulation.
 
-    PetscScalar, pointer :: hhistory(:)
+    PetscReal, pointer :: hhistory(:)
     PetscTruth :: monitor_h
     
-    integer :: idt_switch
+    PetscInt :: idt_switch
     
     PetscTruth :: use_ksp
     PetscTruth :: use_isoth
@@ -75,69 +75,69 @@ module Option_module
     ! pflowGrid_new() and pflowGrid_setup().
     PetscTruth :: run_coupled
 
-    real*8 :: time  ! The time elapsed in the simulation.
-    real*8 :: dt ! The size of the time step.
+    PetscReal :: time  ! The time elapsed in the simulation.
+    PetscReal :: dt ! The size of the time step.
   
-!    real*8, pointer :: tplot(:)
-    real*8, pointer :: tfac(:)
+!    PetscReal, pointer :: tplot(:)
+    PetscReal, pointer :: tfac(:)
       ! An array of multiplicative factors that specify how to increase time step.
-!    integer :: kplot      ! Printout steps.
-    integer :: write_init = 0 ! Flag to printout initial conditions.
-    integer :: imod = 1   ! screen printout modulus
-    integer :: itecplot = 0 ! tecplot print format (1-interchange x and z)
-    integer :: iblkfmt = 0 ! blocked format
-    integer :: isync = 0  ! Synchronize pflow and ptran time steps (1)
+!    PetscInt :: kplot      ! Printout steps.
+    PetscInt :: write_init = 0 ! Flag to printout initial conditions.
+    PetscInt :: imod = 1   ! screen printout modulus
+    PetscInt :: itecplot = 0 ! tecplot print format (1-interchange x and z)
+    PetscInt :: iblkfmt = 0 ! blocked format
+    PetscInt :: isync = 0  ! Synchronize pflow and ptran time steps (1)
   
-    integer :: iphch
-    integer :: iread_init = 0 ! flag for reading initial conditions.
+    PetscInt :: iphch
+    PetscInt :: iread_init = 0 ! flag for reading initial conditions.
       ! Basically our target number of newton iterations per time step.
-    real*8 :: dpmxe,dtmpmxe,dsmxe,dcmxe !maximum allowed changes in field vars.
-    real*8 :: dpmax,dtmpmax,dsmax,dcmax
+    PetscReal :: dpmxe,dtmpmxe,dsmxe,dcmxe !maximum allowed changes in field vars.
+    PetscReal :: dpmax,dtmpmax,dsmax,dcmax
     
-    integer*4 :: nldof  ! nlmax times the number of phases.
-    integer*4 :: ngdof  ! ngmax times the number of phases.
+    PetscInt :: nldof  ! nlmax times the number of phases.
+    PetscInt :: ngdof  ! ngmax times the number of phases.
 
-    integer :: iran_por=0, iread_perm=0, iread_geom =1
-    real*8 :: ran_fac=-1.d0
+    PetscInt :: iran_por=0, iread_perm=0, iread_geom =1
+    PetscReal :: ran_fac=-1.d0
 
 !   solid reaction rate
-    integer*4 :: ityprxn
-    real*8 :: rk=0.d0, phis0, areas0, pwrsrf, vbars, ceq, delHs, delEs, wfmts
-    real*8 ::qu_kin, yh2o_in_co2=0.D0
+    PetscInt :: ityprxn
+    PetscReal :: rk=0.d0, phis0, areas0, pwrsrf, vbars, ceq, delHs, delEs, wfmts
+    PetscReal ::qu_kin, yh2o_in_co2=0.D0
     
 !   breakthrough curves
-    integer :: ibrkcrv = 0
-    integer*4, pointer :: ibrktyp(:),ibrkface(:)
+    PetscInt :: ibrkcrv = 0
+    PetscInt, pointer :: ibrktyp(:),ibrkface(:)
     
 !   dual continuum
-    integer :: idcdm = 0, idcmblk = 0
-    real*8, pointer :: fracture_aperture(:), matrix_block(:)
+    PetscInt :: idcdm = 0, idcmblk = 0
+    PetscReal, pointer :: fracture_aperture(:), matrix_block(:)
     
-    integer*4, pointer :: icap_reg(:),ithrm_reg(:)
-    real*8 :: scale
-    real*8, pointer :: rock_density(:),cpr(:),dencpr(:),ckdry(:),ckwet(:), &
+    PetscInt, pointer :: icap_reg(:),ithrm_reg(:)
+    PetscReal :: scale
+    PetscReal, pointer :: rock_density(:),cpr(:),dencpr(:),ckdry(:),ckwet(:), &
                        tau(:),cdiff(:),cexp(:)
-    real*8, pointer :: swir(:),lambda(:),alpha(:),pckrm(:),pcwmax(:),pcbetac(:), &
+    PetscReal, pointer :: swir(:),lambda(:),alpha(:),pckrm(:),pcwmax(:),pcbetac(:), &
                        pwrprm(:),sir(:,:)
-    integer, pointer:: icaptype(:)
+    PetscInt, pointer:: icaptype(:)
 
-    real*8 :: m_nacl
-    real*8 :: difaq, delhaq, gravity(3), fmwh2o= 18.0153D0, fmwa=28.96D0, &
+    PetscReal :: m_nacl
+    PetscReal :: difaq, delhaq, gravity(3), fmwh2o= 18.0153D0, fmwa=28.96D0, &
               fmwco2=44.0098D0, eqkair, ret=1.d0, fc=1.d0
     
-    integer :: ihydrostatic = 0,ideriv = 1
-    real*8 :: dTdz,beta,tref,pref,conc0  ! these need to go
-    real*8 :: hydro_ref_xyz(3)
+    PetscInt :: ihydrostatic = 0,ideriv = 1
+    PetscReal :: dTdz,beta,tref,pref,conc0  ! these need to go
+    PetscReal :: hydro_ref_xyz(3)
     
 !   table lookup
-    integer :: itable=0
+    PetscInt :: itable=0
 
-    real*8, pointer :: rtot(:,:),rate(:),area_var(:), delx(:,:)
+    PetscReal, pointer :: rtot(:,:),rate(:),area_var(:), delx(:,:)
     
     PetscTruth :: restart_flag
     character(len=MAXWORDLENGTH) :: restart_file
     PetscTruth :: checkpoint_flag
-    integer :: checkpoint_frequency
+    PetscInt :: checkpoint_frequency
     
     PetscLogDouble :: start_time
     PetscTruth :: wallclock_stop_flag
@@ -151,7 +151,7 @@ module Option_module
   type, public :: output_option_type
 
     character(len=2) :: tunit
-    real*8 :: tconv
+    PetscReal :: tconv
   
     logical :: print_hdf5
     logical :: print_hdf5_velocities
@@ -161,7 +161,7 @@ module Option_module
     logical :: print_tecplot_velocities
     logical :: print_tecplot_flux_velocities
 
-    integer :: plot_number
+    PetscInt :: plot_number
     character(len=MAXWORDLENGTH) :: plot_name
     
   end type output_option_type
@@ -465,9 +465,9 @@ function OptionDotProduct1(v1,v2)
 
   implicit none
   
-  real*8 :: v1(3), v2(3)
+  PetscReal :: v1(3), v2(3)
   
-  real*8 :: OptionDotProduct1
+  PetscReal :: OptionDotProduct1
   
   OptionDotProduct1 = v1(1)*v2(1)+v1(2)*v2(2)+v1(3)*v2(3)
 
@@ -484,9 +484,9 @@ function OptionDotProduct2(v1,v2x,v2y,v2z)
 
   implicit none
   
-  real*8 :: v1(3), v2x, v2y, v2z
+  PetscReal :: v1(3), v2x, v2y, v2z
   
-  real*8 :: OptionDotProduct2
+  PetscReal :: OptionDotProduct2
   
   OptionDotProduct2 = v1(1)*v2x+v1(2)*v2y+v1(3)*v2z
 
@@ -504,9 +504,9 @@ function OptionDotProduct3(v1x,v1y,v1z,v2x,v2y,v2z)
 
   implicit none
   
-  real*8 :: v1x, v1y, v1z, v2x, v2y, v2z
+  PetscReal :: v1x, v1y, v1z, v2x, v2y, v2z
   
-  real*8 :: OptionDotProduct3
+  PetscReal :: OptionDotProduct3
   
   OptionDotProduct3 = v1x*v2x+v1y*v2y+v1z*v2z
 

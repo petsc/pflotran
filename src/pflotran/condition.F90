@@ -5,6 +5,7 @@ module Condition_module
   private
   
 #include "definitions.h"
+#include "include/finclude/petsc.h"
 
 !#define X_DIRECTION 1 ! now in definitions.h
 !#define Y_DIRECTION 2
@@ -14,8 +15,8 @@ module Condition_module
 #define LINEAR 1
  
   type, public :: condition_type
-    integer :: id                                 ! id from which condition can be referenced
-    integer, pointer :: itype(:)                  ! integer describing type of condition
+    PetscInt :: id                                 ! id from which condition can be referenced
+    PetscInt, pointer :: itype(:)                  ! integer describing type of condition
     character(len=MAXWORDLENGTH) :: class         ! character string describing class of condition
     character(len=MAXWORDLENGTH), pointer :: ctype(:) ! character string describing type of condition
     character(len=MAXWORDLENGTH) :: name          ! name of condition (e.g. initial, recharge)
@@ -23,18 +24,18 @@ module Condition_module
       ! units(1) = time
       ! units(2) = length
       ! units(3:ndof) = dofs in problem
-    integer :: num_values                         ! number of entries in the arrays of values
-    integer :: num_dof                            ! number of degrees of freedom in condtion
+    PetscInt :: num_values                         ! number of entries in the arrays of values
+    PetscInt :: num_dof                            ! number of degrees of freedom in condtion
     logical :: is_cyclic                          ! cycles after last time
-    integer :: interpolation_method               ! method of interplating condition based on time
-    integer :: iphase
+    PetscInt :: interpolation_method               ! method of interplating condition based on time
+    PetscInt :: iphase
     logical :: is_transient                       ! tells whether condition will change over time
-    real*8, pointer :: times(:)                   ! array of times between which linear interpolation of values occurs
-    real*8, pointer :: values(:,:)                ! array of condition values, size(ndof,max_time_index)
-    real*8, pointer :: cur_value(:)               ! current value of condition a time t, size(ndof)
-    real*8 :: datum(3)                            ! location of reference value(s) in domain
-    real*8, pointer :: gradient(:,:)              ! rate at which reference value(s) change(s) over 3D space
-    integer :: cur_time_index, max_time_index     ! current and maximum time index in arrays
+    PetscReal, pointer :: times(:)                   ! array of times between which linear interpolation of values occurs
+    PetscReal, pointer :: values(:,:)                ! array of condition values, size(ndof,max_time_index)
+    PetscReal, pointer :: cur_value(:)               ! current value of condition a time t, size(ndof)
+    PetscReal :: datum(3)                            ! location of reference value(s) in domain
+    PetscReal, pointer :: gradient(:,:)              ! rate at which reference value(s) change(s) over 3D space
+    PetscInt :: cur_time_index, max_time_index     ! current and maximum time index in arrays
     type(condition_type), pointer :: next         ! pointer to next condition_type for linked-lists
   end type condition_type
   
@@ -43,13 +44,13 @@ module Condition_module
   end type condition_ptr_type
   
   type, public :: condition_list_type
-    integer :: num_conditions
+    PetscInt :: num_conditions
     type(condition_type), pointer :: first
     type(condition_type), pointer :: last
     type(condition_ptr_type), pointer :: array(:)    
   end type condition_list_type
   
-  integer, save :: condition_count = 0
+  PetscInt, save :: condition_count = 0
   
   public :: ConditionCreate, ConditionDestroy, ConditionRead, &
             ConditionAddToList, ConditionInitList, ConditionDestroyList, &
@@ -139,17 +140,17 @@ subroutine ConditionRead(condition,option,fid)
   
   type(condition_type) :: condition
   type(option_type) :: option
-  integer :: fid
+  PetscInt :: fid
   
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
-  real*8, pointer :: pressure(:), flux(:), temperature(:), &
+  PetscReal, pointer :: pressure(:), flux(:), temperature(:), &
                      concentration(:), times(:), enthalpy(:)
   character(len=MAXWORDLENGTH), pointer :: units(:), ctype(:)
-  integer, pointer :: itype(:)
-  integer :: time_index, length_index, pres_index, temp_index, conc_index, iphase
-  integer :: enthalpy_index
-  integer :: max_size, index, idof, ierr, max_index, max_dof, max_required_dof
+  PetscInt, pointer :: itype(:)
+  PetscInt :: time_index, length_index, pres_index, temp_index, conc_index, iphase
+  PetscInt :: enthalpy_index
+  PetscInt :: max_size, index, idof, ierr, max_index, max_dof, max_required_dof
 
   nullify(times)
   nullify(pressure)
@@ -519,12 +520,12 @@ subroutine ConditionReadValues(option,keyword,string,times,values,units)
   type(option_type) :: option
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: keyword
-  real*8, pointer :: times(:), values(:)
+  PetscReal, pointer :: times(:), values(:)
   character(len=MAXWORDLENGTH) :: units
   
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXWORDLENGTH) :: error_string
-  integer :: ierr
+  PetscInt :: ierr
   
   ierr = 0
   call fiReadWord(string,word,.true.,ierr)
@@ -567,14 +568,14 @@ subroutine ConditionReadValuesFromFile(filename,times,values,option)
   
   type(option_type) :: option
   character(len=MAXWORDLENGTH) :: filename
-  real*8, pointer :: times(:), values(:)
+  PetscReal, pointer :: times(:), values(:)
   
   character(len=MAXSTRINGLENGTH) :: string
-  real*8, pointer :: temp_times(:), temp_values(:)
-  real*8 :: temp_time
-  integer :: max_size = 1000
-  integer :: fid
-  integer :: count, i, status, ierr
+  PetscReal, pointer :: temp_times(:), temp_values(:)
+  PetscReal :: temp_time
+  PetscInt :: max_size = 1000
+  PetscInt :: fid
+  PetscInt :: count, i, status, ierr
   
   fid = 86
   open(unit=fid,file=filename,status="old",iostat=status)
@@ -656,11 +657,11 @@ subroutine ConditionUpdate(condition_list,option,time)
   
   type(condition_list_type) :: condition_list
   type(option_type) :: option
-  real*8 :: time
+  PetscReal :: time
   
   type(condition_type), pointer :: condition
-  integer :: cur_time_index, next_time_index, idof
-  real*8 :: time_fraction
+  PetscInt :: cur_time_index, next_time_index, idof
+  PetscReal :: time_fraction
   
   condition => condition_list%first
   do
