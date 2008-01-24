@@ -40,7 +40,7 @@ void GridCell::setMaterialId(PetscInt i) { material_id = i; }
 void GridCell::setActive(PetscInt i) { active = i; }
 void GridCell::setActive() { active = 1; }
 void GridCell::setInactive() { active = 0; }
-void GridCell::negateMaterialId() { material_id = -abs(material_id); }
+void GridCell::negateMaterialId() { material_id = -PetscAbsInt(material_id); }
 
 PetscInt GridCell::getIdLocal() { return id_local; }
 PetscInt GridCell::getIdGhosted() { return id_ghosted; }

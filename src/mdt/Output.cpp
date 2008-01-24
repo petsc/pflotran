@@ -161,7 +161,7 @@ void Output::printHDFMaterialsAndRegions() {
   strcpy(filename,"input.h5");
   PetscOptionsGetString(PETSC_NULL,"-mdtout",filename,1024,&option_found);
 
-  HDF *file = new HDF("filename",1);
+  HDF *file = new HDF(filename,1);
   PetscInt compress = 0;
 
 // materials

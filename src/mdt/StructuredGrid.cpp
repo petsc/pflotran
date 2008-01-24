@@ -225,9 +225,9 @@ void StructuredGrid::computeConnectivity(PetscInt *num_connections,
 
 void StructuredGrid::computeCoordinates() {
 
-  if (fabs(local_origin[0] - -999.) < 1.e-40 &&
-      fabs(local_origin[1] - -999.) < 1.e-40 &&
-      fabs(local_origin[2] - -999.) < 1.e-40) {
+  if (PetscAbsReal(local_origin[0] - -999.) < 1.e-40 &&
+      PetscAbsReal(local_origin[1] - -999.) < 1.e-40 &&
+      PetscAbsReal(local_origin[2] - -999.) < 1.e-40) {
     PetscPrintf(PETSC_COMM_WORLD,"ERROR: Origin must be set before computing coordinates.\n");
     PetscFinalize();
     exit(0);
@@ -309,7 +309,8 @@ void StructuredGrid::mapBoundaryConnection(PetscInt istart, PetscInt iend, Petsc
   kstart = kstart > lzs ? kstart : lzs;
   kend = kend < lze ? kend : lze;
 
-  PetscInt num_connections = abs(iend-istart)*abs(jend-jstart)*abs(kend-kstart);
+  PetscInt num_connections = PetscAbsInt(iend-istart)*PetscAbsInt(jend-jstart)*
+                             PetscAbsInt(kend-kstart);
 
 //  printf("3 %d %d %d %d %d %d\n",istart,iend,jstart,jend,kstart,kend);
 
@@ -466,7 +467,8 @@ void StructuredGrid::mapSource(PetscInt istart, PetscInt iend, PetscInt jstart,
   kstart = kstart > lzs ? kstart : lzs;
   kend = kend < lze ? kend : lze;
 
-  PetscInt num_connections = abs(iend-istart)*abs(jend-jstart)*abs(kend-kstart);
+  PetscInt num_connections = PetscAbsInt(iend-istart)*PetscAbsInt(jend-jstart)*
+                             PetscAbsInt(kend-kstart);
 
 //  printf("3 %d %d %d %d %d %d\n",istart,iend,jstart,jend,kstart,kend);
 
@@ -577,9 +579,9 @@ void StructuredGrid::computeCellMapping(PetscInt *num_cells_local, PetscInt *num
   *num_cells_local = lnx*lny*lnz;
   *num_cells_ghosted = gnx*gny*gnz;
 
-  *cell_mapping_local_to_ghosted = new int[*num_cells_local];
-  *cell_mapping_ghosted_to_local = new int[*num_cells_ghosted];
-  *cell_mapping_ghosted_to_natural = new int[*num_cells_ghosted];
+  *cell_mapping_local_to_ghosted = new PetscInt[*num_cells_local];
+  *cell_mapping_ghosted_to_local = new PetscInt[*num_cells_ghosted];
+  *cell_mapping_ghosted_to_natural = new PetscInt[*num_cells_ghosted];
 
   for (PetscInt i=0; i<*num_cells_local; i++) (*cell_mapping_local_to_ghosted)[i] = -1;
   for (PetscInt i=0; i<*num_cells_ghosted; i++) (*cell_mapping_ghosted_to_local)[i] = -1;
@@ -624,9 +626,9 @@ void StructuredGrid::computeVertexMapping(PetscInt *num_vertices_local,
   *num_vertices_local = (lnx+1)*(lny+1)*(lnz+1);
   *num_vertices_ghosted = (gnx+1)*(gny+1)*(gnz+1);
 
-  *vertex_mapping_local_to_ghosted = new int[*num_vertices_local];
-  *vertex_mapping_ghosted_to_local = new int[*num_vertices_ghosted];
-  *vertex_mapping_ghosted_to_natural = new int[*num_vertices_ghosted];
+  *vertex_mapping_local_to_ghosted = new PetscInt[*num_vertices_local];
+  *vertex_mapping_ghosted_to_local = new PetscInt[*num_vertices_ghosted];
+  *vertex_mapping_ghosted_to_natural = new PetscInt[*num_vertices_ghosted];
 
   for (PetscInt i=0; i<*num_vertices_local; i++) (*vertex_mapping_local_to_ghosted)[i] = -1;
   for (PetscInt i=0; i<*num_vertices_ghosted; i++) (*vertex_mapping_ghosted_to_local)[i] = -1;
@@ -679,7 +681,7 @@ PetscInt *StructuredGrid::getLocalCellVertexNaturalIDs(GridCell *cells, GridVert
 
   PetscInt num_vertices_local = (lnx+1)*(lny+1)*(lnz+1);
 
-  PetscInt *vertex_ids = new int[num_verts_local];
+  PetscInt *vertex_ids = new PetscInt[num_verts_local];
   for (PetscInt ivert=0; ivert<8; ivert++) {
 
     VecGetArray(global,&v_ptr);

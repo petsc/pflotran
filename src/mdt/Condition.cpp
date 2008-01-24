@@ -131,7 +131,7 @@ void Condition::updateConditions(PetscReal time) {
 
     // ensure that condition has started
     if (time >= _array[icond]->times[cur_time_index] ||
-        fabs(time-_array[icond]->times[cur_time_index]) < 1.e-40) {
+        PetscAbsReal(time-_array[icond]->times[cur_time_index]) < 1.e-40) {
       // find appropriate time interval
       while (time >= _array[icond]->times[next_time_index] &&
              cur_time_index != next_time_index) {
