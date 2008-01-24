@@ -57,7 +57,7 @@ PetscInt *BoundarySet::getCellIdsLocal() {
   return cell_ids;
 }
 
-int *BoundarySet::getCellIdsLocal1Based() {
+PetscInt *BoundarySet::getCellIdsLocal1Based() {
   PetscInt *cell_ids = getCellIdsLocal();
   for (PetscInt i=0; i<num_connections_local; i++)
     cell_ids[i] ++;
