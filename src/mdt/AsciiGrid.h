@@ -27,7 +27,7 @@ public:
   PetscReal computeElevationFromCoordinate(PetscReal x, PetscReal y);
   void printInfo();
 
-  static int nasciigrids;
+  static PetscInt nasciigrids;
   
 //private:
 
