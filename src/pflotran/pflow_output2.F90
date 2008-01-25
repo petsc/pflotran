@@ -555,6 +555,7 @@ subroutine OutputFluxVelocitiesTecplot(realization,iphase, &
   use Grid_module
   use Option_module
   use Field_module
+  use Connection_module
   
   implicit none
 
@@ -576,13 +577,17 @@ subroutine OutputFluxVelocitiesTecplot(realization,iphase, &
   PetscInt :: nx_local, ny_local, nz_local
   PetscInt :: nx_global, ny_global, nz_global
   PetscInt :: i, j, k
-  PetscInt :: local_id
+  PetscInt :: local_id, ghosted_id
   PetscInt :: adjusted_size
-  PetscInt :: count
+  PetscInt :: count, iconn
   PetscReal, pointer :: vec_ptr(:)
   PetscReal, pointer :: array(:)
   PetscInt, allocatable :: indices(:)
-  
+  Vec :: global
+
+  type(connection_list_type), pointer :: connection_list
+  type(connection_type), pointer :: cur_connection_set
+    
   nullify(array)
   
   grid => realization%grid
@@ -791,9 +796,28 @@ subroutine OutputFluxVelocitiesTecplot(realization,iphase, &
   call WriteTecplotDataSet(IUNIT3,realization,array,TECPLOT_REAL,adjusted_size)
   deallocate(array)
   nullify(array)
+
+  call GridCreateVector(grid,ONEDOF,global,GLOBAL) 
+  call VecZeroEntries(global,ierr)
+  call VecGetArrayF90(global,vec_ptr,ierr)
   
+  ! place interior velocities in a vector
+  connection_list => grid%internal_connection_list
+  cur_connection_set => connection_list%first
+  do 
+    if (.not.associated(cur_connection_set)) exit
+    do iconn = 1, cur_connection_set%num_connections
+      ghosted_id = cur_connection_set%id_up(iconn)
+      local_id = grid%nG2L(ghosted_id) ! = zero for ghost nodes
+      ! velocities are stored as the downwind face of the upwind cell
+      if (local_id <= 0 .or. &
+          abs(cur_connection_set%dist(direction,iconn)) < 0.99d0) cycle
+      vec_ptr(local_id) = field%internal_velocities(iphase,iconn)
+    enddo
+    cur_connection_set => cur_connection_set%next
+  enddo
+
   ! write out data set
-  call VecGetArrayF90(field%vl,vec_ptr,ierr)
   count = 0
   allocate(array(local_size))
   do k=1,nz_local
@@ -801,12 +825,14 @@ subroutine OutputFluxVelocitiesTecplot(realization,iphase, &
       do i=1,nx_local
         count = count + 1
         local_id = i+(j-1)*grid%structured_grid%nlx+(k-1)*grid%structured_grid%nlxy
-        array(count) = vec_ptr(iphase+(direction-1)*option%nphase+ &
-                               3*option%nphase*(local_id-1))
+        array(count) = vec_ptr(local_id)
       enddo
     enddo
   enddo
-  call VecRestoreArrayF90(field%vl,vec_ptr,ierr)
+  call VecRestoreArrayF90(global,vec_ptr,ierr)
+  
+  call VecDestroy(global,ierr)
+  
 !GEH - Structured Grid Dependence - End
   
   array(1:local_size) = array(1:local_size)*output_option%tconv ! convert time units
@@ -1456,6 +1482,7 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
   use Grid_module
   use Option_module
   use Field_module
+  use Connection_module
   use hdf5
   use HDF5_module
 
@@ -1468,8 +1495,8 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
   integer(HID_T) :: file_id
 
   PetscInt :: i, j, k
-  PetscInt :: count
-  PetscInt :: local_id
+  PetscInt :: count, iconn
+  PetscInt :: local_id, ghosted_id
   PetscInt :: nx_local, ny_local, nz_local
   PetscInt :: nx_global, ny_global, nz_global
   
@@ -1485,7 +1512,12 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
   logical, save :: trick_flux_vel_x = .false.
   logical, save :: trick_flux_vel_y = .false.
   logical, save :: trick_flux_vel_z = .false.
-  
+
+  Vec :: global
+
+  type(connection_list_type), pointer :: connection_list
+  type(connection_type), pointer :: cur_connection_set
+    
   grid => realization%grid
   option => realization%option
   field => realization%field
@@ -1546,7 +1578,27 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
   end select  
   allocate(array(nx_local*ny_local*nz_local))
 
-  call VecGetArrayF90(field%vl,vec_ptr,ierr)
+
+  call GridCreateVector(grid,ONEDOF,global,GLOBAL) 
+  call VecZeroEntries(global,ierr)
+  call VecGetArrayF90(global,vec_ptr,ierr)
+  
+  ! place interior velocities in a vector
+  connection_list => grid%internal_connection_list
+  cur_connection_set => connection_list%first
+  do 
+    if (.not.associated(cur_connection_set)) exit
+    do iconn = 1, cur_connection_set%num_connections
+      ghosted_id = cur_connection_set%id_up(iconn)
+      local_id = grid%nG2L(ghosted_id) ! = zero for ghost nodes
+      ! velocities are stored as the downwind face of the upwind cell
+      if (local_id <= 0 .or. &
+          abs(cur_connection_set%dist(direction,iconn)) < 0.99d0) cycle
+      vec_ptr(local_id) = field%internal_velocities(iphase,iconn)
+    enddo
+    cur_connection_set => cur_connection_set%next
+  enddo
+
   count = 0
   do k=1,nz_local
     do j=1,ny_local
@@ -1558,7 +1610,9 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
       enddo
     enddo
   enddo
-  call VecRestoreArrayF90(field%vl,vec_ptr,ierr)
+  call VecRestoreArrayF90(global,vec_ptr,ierr)
+  
+  call VecDestroy(global,ierr)
   
   array(1:nx_local*ny_local*nz_local) = &  ! convert time units
     array(1:nx_local*ny_local*nz_local) * output_option%tconv
@@ -1867,12 +1921,12 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(output_option_type), pointer :: output_option
-  PetscInt :: i, j, k, local_id, iconn
-  Vec :: local_vec
+  PetscInt :: iconn
+  PetscInt :: local_id_up, local_id_dn, local_id
+  PetscInt :: ghosted_id_up, ghosted_id_dn, ghosted_id
+  PetscReal :: velocity
   
   PetscReal, pointer :: vec_ptr(:)
-  PetscReal, pointer :: vl_ptr(:)
-  PetscReal, pointer :: loc_vec_ptr(:)
   PetscInt, allocatable :: num_additions(:)
   
   type(coupler_type), pointer :: boundary_condition
@@ -1886,106 +1940,57 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
     
   allocate(num_additions(grid%nlmax))
   num_additions(1:grid%nlmax) = 0
-  
+
   call VecSet(vec,0.d0,ierr)
   call VecGetArrayF90(vec,vec_ptr,ierr)
-  call VecGetArrayF90(field%vl,vl_ptr,ierr)
-  do i=1,grid%nlmax
-  ! definitely set up for a structured grid
-  ! I believe that vl_ptr contains the downwind vel for all local nodes
-    vec_ptr(i) = vl_ptr(iphase+(direction-1)*option%nphase+3*option%nphase*(i-1))
+
+  ! interior velocities  
+  connection_list => grid%internal_connection_list
+  cur_connection_set => connection_list%first
+  do 
+    if (.not.associated(cur_connection_set)) exit
+    do iconn = 1, cur_connection_set%num_connections
+      ghosted_id_up = cur_connection_set%id_up(iconn)
+      ghosted_id_dn = cur_connection_set%id_dn(iconn)
+      local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
+      local_id_dn = grid%nG2L(ghosted_id_dn) ! = zero for ghost nodes
+      ! velocities are stored as the downwind face of the upwind cell
+      velocity = field%internal_velocities(iphase,iconn)* &
+                 abs(cur_connection_set%dist(direction,iconn))
+      if (local_id_up > 0) then
+        vec_ptr(local_id_up) = vec_ptr(local_id_up) + velocity
+        num_additions(local_id_up) = num_additions(local_id_up) + 1
+      endif
+      if (local_id_dn > 0) then
+        vec_ptr(local_id_dn) = vec_ptr(local_id_dn) + velocity
+        num_additions(local_id_dn) = num_additions(local_id_dn) + 1
+      endif
+    enddo
+    cur_connection_set => cur_connection_set%next
   enddo
-  call VecRestoreArrayF90(field%vl,vl_ptr,ierr)
-  call VecRestoreArrayF90(vec,vec_ptr,ierr)
-    
-  call GridCreateVector(grid,ONEDOF,local_vec,LOCAL)  
-  call GridGlobalToLocal(grid,vec,local_vec,ONEDOF)
 
-  call VecSet(vec,0.d0,ierr)
-
-  call VecGetArrayF90(vec,vec_ptr,ierr)
-
+  ! boundary velocities
   boundary_condition => realization%boundary_conditions%first
   do
     if (.not.associated(boundary_condition)) exit
     cur_connection_set => boundary_condition%connection
     do iconn = 1, cur_connection_set%num_connections
-      if (cur_connection_set%dist(direction,iconn) < 0.99d0) cycle
       local_id = cur_connection_set%id_dn(iconn)
-      if (iphase == LIQUID_PHASE) then
-        vec_ptr(local_id) = vec_ptr(local_id) + field%boundary_velocities(1,iconn)
-      else
-        vec_ptr(local_id) = vec_ptr(local_id) + field%boundary_velocities(2,iconn)
-      endif
+      vec_ptr(local_id) = vec_ptr(local_id)+ &
+                          field%boundary_velocities(1,iconn)* &
+                          abs(cur_connection_set%dist(direction,iconn))
       num_additions(local_id) = num_additions(local_id) + 1
     enddo
     boundary_condition => boundary_condition%next
   enddo
 
-  call VecRestoreArrayF90(vec,vec_ptr,ierr)
-
-  call VecGetArrayF90(vec,vec_ptr,ierr)
-  call VecGetArrayF90(local_vec,loc_vec_ptr,ierr)
-  ! add in upwind portion from local vector
-  
-!GEH - Structured Grid Dependence - Begin
-  select case(direction)
-    case(X_DIRECTION)
-      do local_id=1,grid%nlmax
-        i= mod(local_id-1,grid%structured_grid%nlx) + 1
-        if (i > 1 .or. grid%structured_grid%nxs-grid%structured_grid%ngxs > 0) then
-          vec_ptr(local_id) = vec_ptr(local_id) + &
-                              loc_vec_ptr(grid%nL2G(local_id)-1)
-          num_additions(local_id) = num_additions(local_id) + 1
-        endif
-        if (i < grid%structured_grid%nlx .or. grid%structured_grid%ngxe-grid%structured_grid%nxe > 0) then
-          vec_ptr(local_id) = vec_ptr(local_id) + &
-                              loc_vec_ptr(grid%nL2G(local_id))
-          num_additions(local_id) = num_additions(local_id) + 1
-        endif
-      enddo
-    case(Y_DIRECTION)
-      do local_id=1,grid%nlmax
-        j= int(mod(local_id-1,grid%structured_grid%nlxy)/grid%structured_grid%nlx) + 1
-        if (j > 1 .or. grid%structured_grid%nys-grid%structured_grid%ngys > 0) then
-          vec_ptr(local_id) = vec_ptr(local_id) + &
-                              loc_vec_ptr(grid%nL2G(local_id)-grid%structured_grid%ngx)
-          num_additions(local_id) = num_additions(local_id) + 1
-        endif
-        if (j < grid%structured_grid%nly .or. grid%structured_grid%ngye-grid%structured_grid%nye > 0) then
-          vec_ptr(local_id) = vec_ptr(local_id) + &
-                              loc_vec_ptr(grid%nL2G(local_id))
-          num_additions(local_id) = num_additions(local_id) + 1
-        endif
-      enddo
-    case(Z_DIRECTION)
-      do local_id=1,grid%nlmax
-        k= int((local_id-1)/grid%structured_grid%nlxy) + 1
-        if (k > 1 .or. grid%structured_grid%nzs-grid%structured_grid%ngzs > 0) then
-          vec_ptr(local_id) = vec_ptr(local_id) + &
-                              loc_vec_ptr(grid%nL2G(local_id)-grid%structured_grid%ngxy)
-          num_additions(local_id) = num_additions(local_id) + 1
-        endif
-        if (k < grid%structured_grid%nlz .or. grid%structured_grid%ngze-grid%structured_grid%nze > 0) then
-          vec_ptr(local_id) = vec_ptr(local_id) + &
-                              loc_vec_ptr(grid%nL2G(local_id))
-          num_additions(local_id) = num_additions(local_id) + 1
-        endif
-      enddo
-  end select
-!GEH - Structured Grid Dependence - End
-
-  call VecRestoreArrayF90(local_vec,loc_vec_ptr,ierr)
-  call VecRestoreArrayF90(vec,vec_ptr,ierr)
-
-  call VecGetArrayF90(vec,vec_ptr,ierr)
-  do i=1,grid%nlmax
-    if (num_additions(i) > 0) &
-      vec_ptr(i) = vec_ptr(i)/real(num_additions(i))*output_option%tconv
+  ! divide by number of additions
+  do local_id=1,grid%nlmax
+    if (num_additions(local_id) > 0) &
+      vec_ptr(local_id) = vec_ptr(local_id)/real(num_additions(local_id))*output_option%tconv
   enddo
   call VecRestoreArrayF90(vec,vec_ptr,ierr)
 
-  call VecDestroy(local_vec,ierr)
   deallocate(num_additions)
 
 end subroutine GetCellCenteredVelocities

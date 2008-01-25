@@ -226,13 +226,6 @@ subroutine PflowInit(simulation,filename)
       call VecDuplicate(field%ppressure_loc, field%v_t_loc, ierr)
   end select
   
-  ! 3 * nphase degrees of freedom (velocity vector)
-  call GridCreateVector(grid,THREENPDOF, field%vl, GLOBAL)
-      
-  if (option%run_coupled == PETSC_TRUE) &
-    call VecDuplicate(field%vl, field%vvl, ierr)
-
-
   if (option%imode == TWOPH_MODE) then
     print *,'2ph add var'
     call VecDuplicate(field%sat, field%d_s, ierr)
@@ -420,8 +413,10 @@ subroutine PflowInit(simulation,filename)
 
   allocate(realization%field%internal_velocities(option%nphase, &
              ConnectionGetNumberInList(realization%grid%internal_connection_list)))
+  realization%field%internal_velocities = 0.d0
   temp_int = CouplerGetNumConnectionsInList(realization%boundary_conditions)
-  allocate(realization%field%boundary_velocities(option%nphase,temp_int))           
+  allocate(realization%field%boundary_velocities(option%nphase,temp_int)) 
+  realization%field%boundary_velocities = 0.d0          
 
   if (option%imode /= RICHARDS_MODE .and. &
       option%imode /= RICHARDS_LITE_MODE) then
@@ -430,8 +425,8 @@ subroutine PflowInit(simulation,filename)
   endif
 
   select case(option%imode)
-    ! everything but RICHARDS_MODE for now
-    case(MPH_MODE,COND_MODE,TWOPH_MODE,VADOSE_MODE,LIQUID_MODE,OWG_MODE, &
+    ! not MPH, RICARDS*
+    case(COND_MODE,TWOPH_MODE,VADOSE_MODE,LIQUID_MODE,OWG_MODE, &
          FLASH_MODE,TH_MODE,THC_MODE)
       temp_int = ConnectionGetNumberInList(grid%internal_connection_list)
       allocate(field%vl_loc(temp_int))
@@ -938,8 +933,7 @@ subroutine PflowInit(simulation,filename)
   end select  
   
 ! zero initial velocity
-  call VecSet(field%vl,0.d0,ierr)
-  if (option%run_coupled == PETSC_TRUE) call VecSet(field%vvl,0.d0,ierr)
+!  if (option%run_coupled == PETSC_TRUE) call VecSet(field%vvl,0.d0,ierr)
  
   if (option%myrank == 0) &
     write(*,'("  Finished setting up of INIT2 ")')
