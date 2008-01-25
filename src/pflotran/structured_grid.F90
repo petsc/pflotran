@@ -239,6 +239,7 @@ subroutine StructuredGridCreateDMs(structured_grid,option)
                   PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
                   structured_grid%da_nphase_dof,ierr)
 
+#if 0
   ndof = 3*option%nphase
   call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &
                   structured_grid%nx,structured_grid%ny,structured_grid%nz, &
@@ -246,6 +247,7 @@ subroutine StructuredGridCreateDMs(structured_grid,option)
                   ndof,stencil_width, &
                   PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
                   structured_grid%da_3np_dof,ierr)                
+#endif
 
   ndof = option%ndof
   call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &

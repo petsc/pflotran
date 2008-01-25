@@ -5,10 +5,11 @@
 ! RTM: This is pretty makeshift.  We need to think about what should 
 ! go into this header and how it should be organized.
 
+#if 0
 module pflow_chkptheader
   implicit none
-  private
 #include "include/finclude/petsc.h"
+  private
   type, public :: pflowChkPtHeader
     PetscReal :: time
     PetscReal :: dt
@@ -20,6 +21,24 @@ module pflow_chkptheader
     PetscInt :: num_timestep_cuts
     PetscInt :: num_newton_iterations
     PetscInt :: plot_number
+  end type pflowChkPtHeader
+end module pflow_chkptheader
+#endif
+
+module pflow_chkptheader
+  implicit none
+  private
+  type, public :: pflowChkPtHeader
+    real*8 :: time
+    real*8 :: dt
+    integer :: flowsteps
+    integer :: newtcum
+    integer :: icutcum
+
+    integer :: timestep_cut_flag
+    integer :: num_timestep_cuts
+    integer :: num_newton_iterations
+    integer :: plot_number
   end type pflowChkPtHeader
 end module pflow_chkptheader
 
