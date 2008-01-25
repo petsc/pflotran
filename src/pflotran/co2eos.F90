@@ -1,7 +1,5 @@
 module co2eos_module
 
-  implicit none
-  
   private
 
 #include "include/finclude/petsc.h"
