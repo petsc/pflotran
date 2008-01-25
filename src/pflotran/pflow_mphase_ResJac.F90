@@ -842,7 +842,7 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
                xx_loc_p(:), xx_p(:), yy_p(:),&
                phis_p(:), tor_loc_p(:),&
                perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:), &
-               vl_p(:), var_loc_p(:) 
+               var_loc_p(:) 
 
   PetscReal :: xxbc(realization%option%ndof),varbc(1:size_var_use)
   PetscInt :: iphasebc, idof                    
@@ -1086,7 +1086,6 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
   call VecGetArrayF90(grid%volume, volume_p, ierr)
   call VecGetArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
   call VecGetArrayF90(field%icap_loc, icap_loc_p, ierr)
-  call VecGetArrayF90(field%vl, vl_p, ierr)
   call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr)
   !print *,' Finished scattering non deriv'
 
@@ -1283,22 +1282,6 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
       field%internal_velocities(1,iconn) = vv_darcy(1) ! liquid
       field%internal_velocities(2,iconn) = vv_darcy(2) ! gas
     
-!   do np = 1, option%nphase
-!     if(vv_darcy(np)>=0.D0) option%iupstream(nc,np) = 1
-!     if(vv_darcy(np)<0.D0) option%iupstream(nc,np) = -1
-!   enddo
-
-      if (local_id_up > 0) then               ! If the upstream node is not a ghost node...
-        do np =1, option%nphase 
-          vl_p(np+(0)*option%nphase+3*option%nphase*(local_id_up-1)) = &
-                              vv_darcy(np)*abs(cur_connection_set%dist(1,iconn))
-          vl_p(np+(1)*option%nphase+3*option%nphase*(local_id_up-1)) = &
-                              vv_darcy(np)*abs(cur_connection_set%dist(2,iconn))
-          vl_p(np+(2)*option%nphase+3*option%nphase*(local_id_up-1)) = &
-                              vv_darcy(np)*abs(cur_connection_set%dist(3,iconn))
-        enddo
-      endif
-     
       Resold_FL(iconn,1:option%ndof) = Res(1:option%ndof) 
     
       if(local_id_up>0)then
@@ -1486,7 +1469,6 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
   call VecRestoreArrayF90(grid%volume, volume_p, ierr)
   call VecRestoreArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
   call VecRestoreArrayF90(field%icap_loc, icap_loc_p, ierr)
-  call VecRestoreArrayF90(field%vl, vl_p, ierr)
   call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr)
   if (option%rk > 0.d0) then
     call VecRestoreArrayF90(field%phis,phis_p,ierr)

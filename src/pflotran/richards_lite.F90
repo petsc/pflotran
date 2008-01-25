@@ -1085,8 +1085,7 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
   PetscReal, pointer :: r_p(:), porosity_loc_p(:), volume_p(:), &
                xx_loc_p(:), xx_p(:), yy_p(:),&
                phis_p(:), tor_loc_p(:),&
-               perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:), &
-               vl_p(:) 
+               perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
                           
                
   PetscReal, pointer :: iphase_loc_p(:), icap_loc_p(:), ithrm_loc_p(:)
@@ -1152,7 +1151,6 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
   call VecGetArrayF90(grid%volume, volume_p, ierr)
   call VecGetArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
   call VecGetArrayF90(field%icap_loc, icap_loc_p, ierr)
-  call VecGetArrayF90(field%vl, vl_p, ierr)
   call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr)
   !print *,' Finished scattering non deriv'
 
@@ -1274,15 +1272,6 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
 
       field%internal_velocities(1,iconn) = v_darcy
 
-      if (local_id_up > 0) then               ! If the upstream node is not a ghost node...
-        vl_p(1+3*(local_id_up-1)) = &
-                           v_darcy*abs(cur_connection_set%dist(1,iconn) )
-        vl_p(2+3*(local_id_up-1)) = &
-                           v_darcy*abs(cur_connection_set%dist(2,iconn))
-        vl_p(3+3*(local_id_up-1)) = &
-                             v_darcy*abs(cur_connection_set%dist(3,iconn))
-      endif
-     
       if (local_id_up>0) then
         r_p(local_id_up) = r_p(local_id_up) + Res(1)
       endif
@@ -1389,7 +1378,6 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
   call VecRestoreArrayF90(grid%volume, volume_p, ierr)
   call VecRestoreArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
   call VecRestoreArrayF90(field%icap_loc, icap_loc_p, ierr)
-  call VecRestoreArrayF90(field%vl, vl_p, ierr)
   call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr)
   if (option%rk > 0.d0) then
     call VecRestoreArrayF90(field%phis,phis_p,ierr)

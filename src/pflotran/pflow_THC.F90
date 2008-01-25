@@ -233,8 +233,6 @@ contains
 
   call VecGetArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
 
-  call VecGetArrayF90(field%vl, vl_p, ierr)
-
   if (option%ideriv == 1) then
     call GridGlobalToLocal(grid, field%d_p, field%d_p_loc, NPHASEDOF)
 
@@ -833,8 +831,6 @@ contains
   call VecRestoreArrayF90(r, r_p, ierr)
 
   call VecRestoreArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
-
-  call VecRestoreArrayF90(field%vl, vl_p, ierr)
 
   if (option%ideriv == 1) then
     call VecRestoreArrayF90(field%d_p_loc, d_p_loc_p, ierr)

@@ -123,7 +123,7 @@ module Field_module
     Vec :: kvr_s, kvr_s_loc  ! dD/dT at time k+1
     Vec :: r             ! The residual.  (NOT the negative of the residual.)
 
-    Vec :: vl, vvl, vg, vvg ! phase (liquid and gas) velocities stored at interfaces
+!geh    Vec :: vl, vvl, vg, vvg ! phase (liquid and gas) velocities stored at interfaces
  
     PetscReal, pointer :: vl_loc(:), vvl_loc(:), vg_loc(:), vvg_loc(:)
     PetscReal, pointer :: vvlbc(:), vvgbc(:)
@@ -267,11 +267,6 @@ function FieldCreate()
   field%kvr_c_loc = 0
   field%kvr_s = 0
   field%kvr_s_loc = 0
-  
-  field%vl = 0
-  field%vvl = 0
-  field%vg = 0
-  field%vvg = 0
   
   field%r = 0
   field%xx = 0
