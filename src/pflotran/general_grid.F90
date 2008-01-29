@@ -6,7 +6,8 @@ module General_Grid_module
 
 ! 64-bit stuff
 #ifdef PETSC_USE_64BIT_INDICES
-#define HDF_NATIVE_INTEGER H5T_STD_I64LE  ! little endian 
+!#define HDF_NATIVE_INTEGER H5T_STD_I64LE  
+#define HDF_NATIVE_INTEGER H5T_NATIVE_INTEGER
 #else
 #define HDF_NATIVE_INTEGER H5T_NATIVE_INTEGER
 #endif
