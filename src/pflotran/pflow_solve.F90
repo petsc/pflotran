@@ -98,8 +98,9 @@
 #include "include/finclude/petscerror.h"
 
  type(realization_type) :: realization
+ PetscInt :: newton,ichange
+ SNESConvergedReason :: isucc
  KSPConvergedReason :: ksp_reason
- PetscInt :: newton,isucc,ichange
  PetscErrorCode :: ierr
  PetscInt :: newton_max
  PetscInt :: its_line

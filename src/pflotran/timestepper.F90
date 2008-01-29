@@ -221,7 +221,7 @@ subroutine StepperRun(realization,stepper,stage)
   if (option%checkpoint_flag == PETSC_TRUE) then
     call pflowGridCheckpoint(realization,stepper%flowsteps,stepper%newtcum, &
                              stepper%icutcum,timestep_cut_flag, &
-                             num_timestep_cuts,num_newton_iterations,-1)
+                             num_timestep_cuts,num_newton_iterations,NEG_ONE_INTEGER)
   endif
 
   if (option%myrank == 0) then
@@ -393,7 +393,7 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
 
   logical :: plot_flag, timestep_cut_flag
   PetscInt :: num_timestep_cuts,num_newton_iterations
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   PetscInt :: icut ! Tracks the number of time step reductions applied
   SNESConvergedReason :: snes_reason 
   PetscInt :: update_reason, it_linear=0, it_snes
@@ -979,7 +979,7 @@ subroutine StepperUpdateSolution(realization)
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
   
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   PetscInt :: m, n
   PetscReal, pointer :: xx_p(:), conc_p(:), press_p(:), temp_p(:), phis_p(:)
   
