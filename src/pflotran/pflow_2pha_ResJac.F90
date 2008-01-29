@@ -62,7 +62,7 @@ private
     Vec, intent(in) :: xx
 
     type(pflowGrid), intent(inout) :: grid
-    PetscInt :: ierr
+    PetscErrorCode :: ierr
     PetscReal, pointer :: xx_p(:)
     PetscInt n
 
@@ -91,7 +91,8 @@ private
 
   PetscReal, pointer :: xx_p(:), yy_p(:), iphase_p(:)
   PetscInt :: n,n0
-  PetscInt :: ierr,iipha
+  PetscInt :: iipha
+  PetscErrorCode :: ierr
 
   PetscReal :: pco2,p,tmp,xw
 
@@ -187,7 +188,8 @@ private
   type(pflowGrid), intent(inout) :: grid
   PetscReal, pointer :: xx_p(:)
   PetscInt :: n,n0,re
-  PetscInt :: re0, ierr
+  PetscInt :: re0
+  PetscErrorCode :: ierr
 
   call VecGetArrayF90(grid%xx, xx_p, ierr); CHKERRQ(ierr)
 
@@ -233,7 +235,7 @@ private
     type(pflowGrid), intent(inout) :: grid
 
  
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   PetscInt :: n, ng, nc, nr
   PetscInt :: i, i1, i2, j, jn, jng, jm1, jm2, jmu
   PetscInt :: m, m1, m2, mu, n1, n2, ip1, ip2, p1, p2, t1, t2, c1, c2,&
@@ -1868,7 +1870,7 @@ if((SSATG_LOC(m1)>eps).or.(SSATG_LOC(m2)>eps))then
    ! PetscInt, intent(inout) :: flag
     MatStructure flag
 
-    PetscInt :: ierr
+    PetscErrorCode :: ierr
     PetscInt :: n, ng, nc
     PetscInt :: i1, i2, j, jn, jng, jm1, jm2,jmu
     PetscInt :: m, m1, m2, mu, n1, n2, ip1, ip2 
@@ -3819,7 +3821,7 @@ end subroutine TTPHASEJacobian
     type(pflowGrid) :: grid 
 
  
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   PetscInt :: n
   PetscInt :: i, j, jn
   PetscInt :: p1, t1, c1, s1
@@ -4003,7 +4005,7 @@ end subroutine pflow_2phase_initaccum
     PetscReal, pointer :: yy_p(:),pc_p(:),hen_p(:)
                         
     PetscInt :: n, ii1, ii2, jn
-    PetscInt :: ierr
+    PetscErrorCode :: ierr
  
     PetscReal :: xxlw,xxla,xxga,xxgw
 
@@ -4133,7 +4135,7 @@ end subroutine pflow_2phase_initaccum
   type(pflowGrid) :: grid 
 
  
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   PetscInt :: n, nc
   PetscInt :: ibc,jn
   PetscInt :: m
@@ -4374,7 +4376,7 @@ end subroutine pflow_2phase_initadj
   type(pflowGrid) :: grid 
   
  
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   PetscInt,save :: icall
   PetscInt :: n
   PetscInt :: j, jn

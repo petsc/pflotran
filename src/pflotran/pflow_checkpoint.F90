@@ -5,41 +5,19 @@
 ! RTM: This is pretty makeshift.  We need to think about what should 
 ! go into this header and how it should be organized.
 
-#if 0
 module pflow_chkptheader
   implicit none
-#include "definitions.h"
-  private
-  type, public :: pflowChkPtHeader
-    PetscReal :: time
-    PetscReal :: dt
-    PetscInt :: flowsteps
-    PetscInt :: newtcum
-    PetscInt :: icutcum
-
-    PetscInt :: timestep_cut_flag
-    PetscInt :: num_timestep_cuts
-    PetscInt :: num_newton_iterations
-    PetscInt :: plot_number
-  end type pflowChkPtHeader
-end module pflow_chkptheader
-#endif
-
-module pflow_chkptheader
-  implicit none
-#include "definitions.h"
   private
   type, public :: pflowChkPtHeader
     real*8 :: time
     real*8 :: dt
-    integer :: flowsteps
-    integer :: newtcum
-    integer :: icutcum
-
-    integer :: timestep_cut_flag
-    integer :: num_timestep_cuts
-    integer :: num_newton_iterations
-    integer :: plot_number
+    integer*8 :: flowsteps
+    integer*8 :: newtcum
+    integer*8 :: icutcum
+    integer*8 :: timestep_cut_flag
+    integer*8 :: num_timestep_cuts
+    integer*8 :: num_newton_iterations
+    integer*8 :: plot_number
   end type pflowChkPtHeader
 end module pflow_chkptheader
 
@@ -126,10 +104,10 @@ subroutine pflowGridCheckpoint(realization,flowsteps,newtcum,icutcum, &
 #endif
 
   character(len=MAXSTRINGLENGTH) :: fname
-  PetscViewer viewer
-  PetscBag bag
+  PetscViewer :: viewer
+  PetscBag :: bag
   type(pflowChkPtHeader), pointer :: header
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   
   Vec :: global_vec, global_var
   PetscInt :: int_flag
@@ -306,7 +284,7 @@ subroutine pflowGridRestart(realization,flowsteps,newtcum,icutcum, &
   PetscViewer viewer
   PetscBag bag
   type(pflowChkPtHeader), pointer :: header
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
 
   Vec :: global_vec, global_var
   PetscInt :: int_flag

@@ -9,6 +9,8 @@
 
 module mixture_module
    
+ implicit none
+
  public
 
 #include "definitions.h"
@@ -49,7 +51,8 @@ module mixture_module
     PetscReal :: diff(1:num_phase*num_spec),hen(1:num_phase*num_spec)
     PetscReal :: tmp
 
-    PetscInt :: ierr, iitable
+    PetscErrorCode :: ierr
+    PetscInt :: iitable
     PetscInt, optional :: itable
     PetscReal :: tk, kr(num_phase),xla,xgw,xlw
     PetscReal :: dstea,dsteamol,dstea_p,dstea_t,hstea,hstea_p,hstea_t
@@ -297,7 +300,8 @@ end subroutine mixture_eos_noderiv
                hen_t(1:num_phase*num_spec),hen_s(1:num_phase*num_spec),&
                hen_c(1:num_phase*num_spec*num_pricomp)
 
-    PetscInt :: ierr, iitable
+    PetscInt :: iitable
+    PetscErrorCode :: ierr
     PetscReal :: sat_pressure_t,sat_pressure_p,pw,dw_kg,dw_mol,dw_p,dw_t,hw,visl
     PetscReal :: hw_p,hw_t,dg,hg,ug
 !   PetscReal :: dg_p,dg_t,hg_p,hg_t,ug_p,ug_t

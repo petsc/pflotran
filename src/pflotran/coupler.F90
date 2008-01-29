@@ -161,7 +161,8 @@ subroutine CouplerRead(coupler,fid,option)
   
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
-  PetscInt :: ierr
+  PetscInt :: length
+  PetscErrorCode :: ierr
 
   ierr = 0
   do
@@ -180,7 +181,8 @@ subroutine CouplerRead(coupler,fid,option)
         call fiReadWord(string,coupler%condition_name,.true.,ierr)
       case('TYPE')
         call fiReadWord(string,coupler%ctype,.true.,ierr)
-        call fiCharsToLower(coupler%ctype,len_trim(coupler%ctype))
+        length = len_trim(coupler%ctype)
+        call fiCharsToLower(coupler%ctype,length)
         select case(trim(coupler%ctype))
           case('initial')
             coupler%itype = INITIAL_COUPLER_TYPE
@@ -194,7 +196,8 @@ subroutine CouplerRead(coupler,fid,option)
         end select    
       case('FACE')
         call fiReadWord(string,word,.true.,ierr)
-        call fiCharsToUpper(word,len_trim(word))
+        length = len_trim(word)
+        call fiCharsToUpper(word,length)
         select case(word)
           case('WEST')
             coupler%iface = 1

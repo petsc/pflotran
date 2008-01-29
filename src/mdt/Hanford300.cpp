@@ -112,7 +112,7 @@ Hanford300::Hanford300(Grid **grid_) {
 //  grid->setOrigin(594860.,114875.,100.); //debug1
   grid->setRotation(14.);
 
-  grid->computeCoordinates();
+//  grid->computeCoordinates();
 //  grid->computeConnectivity();
   grid->computeCellMapping();
   grid->setUpCells();

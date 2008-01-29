@@ -866,12 +866,12 @@ subroutine PflowInit(simulation,filename)
         call VecCopy(field%pressure, field%ppressure, ierr)
         call VecCopy(field%temp, field%ttemp, ierr)
       case(2)
-        call pflow_pack_xx2(field%yy, field%pressure, option%nphase, field%temp, 1, &
+        call pflow_pack_xx2(field%yy, field%pressure, option%nphase, field%temp, ONE_INTEGER, &
                             ierr)
         call VecCopy(field%yy, field%xx, ierr)     
       case(3)
-        call pflow_pack_xx3(field%yy, field%pressure, option%nphase, field%temp, 1, &
-                            field%conc, 1, ierr)
+        call pflow_pack_xx3(field%yy, field%pressure, option%nphase, field%temp, ONE_INTEGER, &
+                            field%conc, ONE_INTEGER, ierr)
         call VecCopy(field%yy, field%xx, ierr)      
     end select
   endif
@@ -883,7 +883,7 @@ subroutine PflowInit(simulation,filename)
     case(TWOPH_MODE)
       call pflow_2phase_initadj(grid)
       call VecCopy(grid%iphas, grid%iphas_old,ierr)
-      call pflow_pack_xx4(grid%yy, grid%pressure, grid%nphase, grid%temp, 1, &
+      call pflow_pack_xx4(grid%yy, grid%pressure, grid%nphase, grid%temp, ONE_INTEGER, &
            grid%xmol,grid%nphase , grid%sat,grid%nphase , ierr)
       call VecCopy(grid%yy, grid%xx, ierr)
       call pflow_update_2phase(grid)
@@ -969,7 +969,7 @@ subroutine readRequiredCardsFromInput(realization,filename,mcomp,mphas)
   character(len=MAXWORDLENGTH) :: filename
   PetscInt :: mcomp, mphas
 
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXWORDLENGTH) :: name
@@ -1225,7 +1225,7 @@ subroutine readInput(simulation,filename)
   type(simulation_type) :: simulation
   character(len=MAXWORDLENGTH) :: filename
 
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXNAMELENGTH) :: name
@@ -1242,7 +1242,7 @@ subroutine readInput(simulation,filename)
   character(len=1) :: backslash
   PetscReal :: temp_real, temp_real2
   PetscInt :: temp_int
-  
+  PetscInt :: length 
   PetscInt :: count, id
   
 ! keywords: GRID, PROC, COUP, GRAV, OPTS, TOLR, DXYZ, DIFF, RADN, HYDR,  
@@ -1283,7 +1283,8 @@ subroutine readInput(simulation,filename)
     if (ierr /= 0) exit
 
     call fiReadWord(string,word,.false.,ierr)
-    call fiCharsToUpper(word,len_trim(word))
+    length = len_trim(word)
+    call fiCharsToUpper(word,length)
 !    call fiReadCard(word,card,ierr)
     card = trim(word)
 
@@ -1318,7 +1319,7 @@ subroutine readInput(simulation,filename)
         call fiReadStringErrorMsg(option%myrank,'REGN',ierr)
         call fiReadWord(string,word,.true.,ierr)
         call fiErrorMsg(option%myrank,'type','REGN', ierr)
-        if (fiStringCompare(word,"BLOCK",5)) then ! block region
+        if (fiStringCompare(word,"BLOCK",FIVE_INTEGER)) then ! block region
           if (grid%igrid /= STRUCTURED) then
             call printErrMsg(option,"BLOCK region not supported for &
                              &unstructured grid")
@@ -1337,10 +1338,10 @@ subroutine readInput(simulation,filename)
           call fiErrorMsg(option%myrank,'k1','REGN', ierr)
           call fiReadInt(string,region%k2,ierr)
           call fiErrorMsg(option%myrank,'k2','REGN', ierr)
-        else if (fiStringCompare(word,"LIST",4)) then
+        else if (fiStringCompare(word,"LIST",FOUR_INTEGER)) then
           word = ""
           call fiReadWord(string,word,.true.,ierr)
-          if (fiStringCompare(word,"file",4)) then
+          if (fiStringCompare(word,"file",FOUR_INTEGER)) then
 !            call fiReadFlotranString(IUNIT1,string,ierr)
             call fiReadStringErrorMsg(option%myrank,'REGN',ierr)
             call fiReadWord(string,word,.true.,ierr)
@@ -1450,7 +1451,8 @@ subroutine readInput(simulation,filename)
         do
           call fiReadWord(string,word,.true.,ierr)
           if (ierr /= 0) exit
-          call fiCharsToUpper(word,len_trim(word))
+          length = len_trim(word)
+          call fiCharsToUpper(word,length)
           call fiReadCard(word,card,ierr)
 
           select case(card)
@@ -1480,7 +1482,8 @@ subroutine readInput(simulation,filename)
         do
           call fiReadWord(string,word,.true.,ierr)
           if (ierr /= 0) exit
-          call fiCharsToUpper(word,len_trim(word))
+          length = len_trim(word)
+          call fiCharsToUpper(word,length)
           call fiReadCard(word,card,ierr)
 
           select case(card)
@@ -1864,7 +1867,7 @@ subroutine readInput(simulation,filename)
           call fiReadStringErrorMsg(option%myrank,'THRM',ierr)
 
           if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
-              fiStringCompare(string,'END',3)) exit
+              fiStringCompare(string,'END',THREE_INTEGER)) exit
        
           count = count + 1
           thermal_property => ThermalPropertyCreate()
@@ -1972,7 +1975,7 @@ subroutine readInput(simulation,filename)
           call fiReadStringErrorMsg(option%myrank,'PCKR',ierr)
 
           if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
-              fiStringCompare(string,'END',3)) exit
+              fiStringCompare(string,'END',THREE_INTEGER)) exit
        
           count = count + 1
           saturation_function => SaturationFunctionCreate(option)
@@ -2135,7 +2138,7 @@ subroutine readInput(simulation,filename)
           call fiReadStringErrorMsg(option%myrank,'PHIK',ierr)
 
           if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
-              fiStringCompare(string,'END',3)) exit
+              fiStringCompare(string,'END',THREE_INTEGER)) exit
        
           count = count + 1
           material => MaterialCreate()
@@ -2371,7 +2374,7 @@ subroutine readInput(simulation,filename)
         call fiReadWord(string,word,.false.,ierr)
         if (ierr == 0) then
           call fiWordToUpper(word)
-          if (fiStringCompare(word,'EVERY',5)) then
+          if (fiStringCompare(word,'EVERY',FIVE_INTEGER)) then
             periodic_output_flag = .true.
             call fiReadDouble(string,periodic_rate,ierr)
           endif
@@ -2579,7 +2582,8 @@ subroutine initAccumulation(realization)
   type(option_type), pointer :: option
   PetscReal, pointer :: den_p(:), pressure_p(:), temp_p(:), h_p(:)
   PetscReal :: dw_kg,dl,hl
-  PetscInt :: m, ierr
+  PetscInt :: m
+  PetscErrorCode :: ierr
   
   option => realization%option
   
@@ -2652,11 +2656,14 @@ subroutine setMode(option,mcomp,mphas)
 
   type(option_type) :: option
   PetscInt :: mcomp, mphas
+  PetscInt :: length
   
-  call fiCharsToLower(option%mode,len_trim(option%mode))
-  if (fiStringCompare(option%mode,"richards",len_trim(option%mode))) then
+  length = len_trim(option%mode)
+  call fiCharsToLower(option%mode,length)
+  length = len_trim(option%mode)
+  if (fiStringCompare(option%mode,"richards",length)) then
     option%imode = RICHARDS_MODE
-  else if (fiStringCompare(option%mode,"richards_lite",len_trim(option%mode))) then
+  else if (fiStringCompare(option%mode,"richards_lite",length)) then
     option%imode = RICHARDS_LITE_MODE
     option%nphase = 1
     option%nspec = 1
@@ -3135,35 +3142,35 @@ subroutine verifyCouplers(realization,coupler_list)
   character(len=MAXWORDLENGTH) :: filename
   character(len=MAXWORDLENGTH) :: dataset_name
   PetscInt :: iconn, local_id
-  Vec :: global
+  Vec :: global_vec
   PetscReal, pointer :: vec_ptr(:)
   PetscErrorCode :: ierr
 
   grid => realization%grid
 
-  call GridCreateVector(grid,ONEDOF,global,GLOBAL)
+  call GridCreateVector(grid,ONEDOF,global_vec,GLOBAL)
 
   coupler => coupler_list%first
 
   do
     if (.not.associated(coupler)) exit
 
-    call VecZeroEntries(global,ierr)
-    call VecGetArrayF90(global,vec_ptr,ierr) 
+    call VecZeroEntries(global_vec,ierr)
+    call VecGetArrayF90(global_vec,vec_ptr,ierr) 
     do iconn = 1, coupler%connection%num_connections
       local_id = coupler%connection%id_dn(iconn)
       vec_ptr(local_id) = coupler%id
     enddo
-    call VecRestoreArrayF90(global,vec_ptr,ierr) 
+    call VecRestoreArrayF90(global_vec,vec_ptr,ierr) 
     dataset_name = trim(coupler%condition%name) // '_' // &
                    trim(coupler%region%name)
     filename = trim(dataset_name) // '.tec'
-    call OutputVectorTecplot(filename,dataset_name,realization,global)
+    call OutputVectorTecplot(filename,dataset_name,realization,global_vec)
 
     coupler => coupler%next
   enddo
 
-  call VecDestroy(global,ierr)
+  call VecDestroy(global_vec,ierr)
 
 end subroutine verifyCouplers
 
@@ -3270,7 +3277,8 @@ subroutine readMaterialsFromFile(realization,filename)
   character(len=MAXSTRINGLENGTH) :: string
   PetscInt :: ghosted_id, natural_id, material_id
   PetscInt :: fid = 86
-  PetscInt :: status, ierr
+  PetscInt :: status
+  PetscErrorCode :: ierr
 
   field => realization%field
   grid => realization%grid

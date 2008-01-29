@@ -114,7 +114,8 @@ subroutine StrataRead(strata,fid,option)
   character(len=MAXSTRINGLENGTH) :: string, error_string
   character(len=MAXWORDLENGTH) :: keyword, word, word2
   PetscReal :: value
-  PetscInt :: ierr, count1, material_file_id = 86
+  PetscInt :: count1, material_file_id = 86
+  PetscErrorCode :: ierr
 
   ierr = 0
   do
@@ -122,7 +123,7 @@ subroutine StrataRead(strata,fid,option)
     call fiReadFlotranString(IUNIT1,string,ierr)
     
     if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
-        fiStringCompare(string,'END',3)) exit  
+        fiStringCompare(string,'END',THREE_INTEGER)) exit  
 
     call fiReadWord(string,keyword,.true.,ierr)
     call fiErrorMsg(option%myrank,'keyword','STRATA', ierr)   

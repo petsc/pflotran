@@ -1,5 +1,8 @@
 
 module oil_pckr_module
+
+  implicit none
+
   public
 
 #include "definitions.h"
@@ -17,8 +20,12 @@ module oil_pckr_module
 subroutine oil_pckr_init(myrank)
 
   use Fileio_module
+
+  implicit none
    
-  PetscMPIInt myrank
+  PetscMPIInt :: myrank
+  PetscInt :: length, i, j
+  PetscErrorCode :: ierr
 
   character(len=MAXSTRINGLENGTH) :: string 
   character(len=MAXWORDLENGTH) :: word !, strtim
@@ -30,7 +37,8 @@ subroutine oil_pckr_init(myrank)
     if(ierr /= 0) exit
 
     call fiReadWord(string,word,.false.,ierr)
-    call fiCharsToUpper(word,len_trim(word))
+    length = len_trim(word)
+    call fiCharsToUpper(word,length)
     call fiReadCard(word,card,ierr)
 
     if (myrank == 0) print *, card
@@ -100,6 +108,7 @@ subroutine oil_pckr_init(myrank)
     PetscReal :: pcmax
     PetscReal :: pckr_betac,pckr_un, m_r
 !   PetscReal :: lam,ala,se,um,un,upc,upc_s,temp,ser,uum,betac,st
+    PetscErrorCode :: ierr
 
     ! if(present(pckr_beta))
       pckr_betac=pckr_beta

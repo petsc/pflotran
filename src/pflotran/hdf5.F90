@@ -1,5 +1,9 @@
 module HDF5_module
 
+#ifdef USE_HDF5
+  use hdf5
+#endif
+
   implicit none
 
 #include "definitions.h"
@@ -7,15 +11,15 @@ module HDF5_module
   private
   
   PetscErrorCode :: ierr
-  PetscInt :: hdf5_err
 
   logical, public :: trick_hdf5 = .false.
 
 #ifdef USE_HDF5
+  PetscMPIInt :: hdf5_err
 
 ! 64-bit stuff
 #ifdef PETSC_USE_64BIT_INDICES
-#define HDF_NATIVE_INTEGER H5T_STD_I64LE  ! little endian 
+#define HDF_NATIVE_INTEGER H5T_STD_I64LE  
 #else
 #define HDF_NATIVE_INTEGER H5T_NATIVE_INTEGER
 #endif
@@ -71,14 +75,15 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
   integer(HID_T) :: prop_id
   integer(HSIZE_T) :: dims(3)
   integer(HSIZE_T) :: offset(3), length(3), stride(3)
-  PetscInt :: rank
+  PetscMPIInt :: rank
   PetscInt :: local_ghosted_id, local_id, natural_id
   PetscInt :: index_count
   PetscInt :: cell_count
   integer(HSIZE_T) :: num_cells_in_file
   PetscInt :: temp_int, i
   
-  PetscInt, allocatable :: cell_ids(:), temp(:)
+  PetscMPIInt, allocatable :: cell_ids(:)
+  PetscInt, allocatable :: temp(:)
   
   PetscInt :: read_block_size = HDF5_READ_BUFFER_SIZE
   PetscInt :: indices_array_size
@@ -227,7 +232,7 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
   integer(HID_T) :: prop_id
   integer(HSIZE_T) :: dims(3)
   integer(HSIZE_T) :: offset(3), length(3), stride(3)
-  PetscInt :: rank
+  PetscMPIInt :: rank
   PetscInt :: index_count
   PetscInt :: real_count, prev_real_count
   integer(HSIZE_T) :: num_reals_in_file
@@ -370,13 +375,13 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
   integer(HID_T) :: prop_id
   integer(HSIZE_T) :: dims(3)
   integer(HSIZE_T) :: offset(3), length(3), stride(3)
-  PetscInt :: rank
+  PetscMPIInt :: rank
   PetscInt :: index_count
   PetscInt :: integer_count, prev_integer_count
   integer(HSIZE_T) :: num_integers_in_file
   PetscInt :: temp_int, i, index
   
-  PetscInt, allocatable :: integer_buffer(:)
+  PetscMPIInt, allocatable :: integer_buffer(:)
   
   PetscInt :: read_block_size = HDF5_READ_BUFFER_SIZE
 
@@ -515,13 +520,13 @@ subroutine HDF5WriteIntegerArray(option,dataset_name,dataset_size,file_id, &
   integer(HID_T) :: prop_id
   integer(HSIZE_T) :: dims(3)
   integer(HSIZE_T) :: offset(3), length(3), stride(3)
-  PetscInt :: rank
+  PetscMPIInt :: rank
   PetscInt :: index_count
   PetscInt :: integer_count, prev_integer_count
   integer(HSIZE_T) :: num_integers_in_file
   PetscInt :: temp_int, i, index
   
-  PetscInt, allocatable :: integer_buffer(:)
+  PetscMPIInt, allocatable :: integer_buffer(:)
   
   PetscInt :: read_block_size = HDF5_READ_BUFFER_SIZE
 
@@ -708,9 +713,9 @@ subroutine HDF5WriteStructuredDataSet(name,array,file_id,data_type, &
   integer(HID_T) :: data_set_id
   integer(HID_T) :: prop_id
   integer(HSIZE_T) :: dims(3)
-  PetscInt :: rank
+  PetscMPIInt :: rank
   
-  PetscInt, pointer :: int_array(:)
+  PetscMPIInt, pointer :: int_array(:)
   PetscReal, pointer :: double_array(:)
   PetscInt :: i, j, k, count, id
   integer(HSIZE_T) :: start(3), length(3), stride(3)
@@ -863,7 +868,8 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
   integer(HID_T) :: prop_id
   integer(HSIZE_T) :: dims(3)
   integer(HSIZE_T) :: offset(3), length(3), stride(3)
-  PetscInt :: rank
+  PetscMPIInt :: rank
+  PetscMPIInt, allocatable :: indices_i4(:)
   integer(HSIZE_T) :: num_data_in_file
   
   PetscInt :: istart, iend
@@ -896,9 +902,10 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
   
   if (istart < num_data_in_file) then
   
+    allocate(indices_i4(-1:iend-istart))
     allocate(indices(-1:iend-istart))
-    indices(-1) = istart
-    indices(0) = iend
+    indices_i4(-1) = istart
+    indices_i4(0) = iend
   
     rank = 1
     offset = 0
@@ -920,15 +927,18 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
     length(1) = iend-istart
     call h5sselect_hyperslab_f(file_space_id,H5S_SELECT_SET_F,offset, &
                                length,hdf5_err,stride,stride) 
-    call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,indices(1:iend-istart), &
+    call h5dread_f(data_set_id,HDF_NATIVE_INTEGER,indices_i4(1:iend-istart), &
                    dims,hdf5_err,memory_space_id,file_space_id,prop_id)                     
-                     
+    indices(-1:iend-istart) = indices_i4(-1:iend-istart)                
+    deallocate(indices_i4)
   endif
   
   call h5pclose_f(prop_id,hdf5_err)
   call h5sclose_f(memory_space_id,hdf5_err)
   call h5sclose_f(file_space_id,hdf5_err)
   call h5dclose_f(data_set_id,hdf5_err)
+
+  
 
 end subroutine HDF5ReadIndices
 
@@ -968,12 +978,12 @@ subroutine HDF5ReadArray(grid,option,file_id,dataset_name,dataset_size, &
   integer(HID_T) :: prop_id
   integer(HSIZE_T) :: dims(3)
   integer(HSIZE_T) :: offset(3), length(3), stride(3)
-  PetscInt :: rank
+  PetscMPIInt :: rank
   integer(HSIZE_T) :: num_data_in_file
   Vec :: natural_vec
   PetscInt :: i, istart, iend
   PetscReal, allocatable :: real_buffer(:)
-  PetscInt, allocatable :: integer_buffer(:)
+  PetscMPIInt, allocatable :: integer_buffer(:)
   PetscInt, allocatable :: indices0(:)
   
   istart = 0
@@ -1152,7 +1162,7 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   ! num_indices <= 0 indicates that the array size is uncertain and
   ! the size will be returned in num_indices
   num_indices = -1
-  call HDF5MapLocalToNaturalIndices(grid,option,grp_id2,string,0,indices, &
+  call HDF5MapLocalToNaturalIndices(grid,option,grp_id2,string,ZERO_INTEGER,indices, &
                                     num_indices)
 
   allocate(integer_array(num_indices))
@@ -1160,7 +1170,7 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   string = "Cell Ids"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
   call HDF5ReadIntegerArray(option,grp_id2,string, &
-                            0,indices,num_indices, &
+                            ZERO_INTEGER,indices,num_indices, &
                             integer_array)
   ! convert cell ids from natural to local
   do i=1,num_indices
@@ -1173,7 +1183,7 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   string = "Face Ids"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
   call HDF5ReadIntegerArray(option,grp_id2,string, &
-                            0,indices,num_indices, &
+                            ZERO_INTEGER,indices,num_indices, &
                             integer_array)
                             
   region%faces => integer_array
@@ -1238,8 +1248,8 @@ subroutine HDF5ReadMaterialsFromFile(realization,filename)
   PetscInt, pointer :: indices(:)
   PetscInt, allocatable :: integer_array(:)
   
-  Vec :: global
-  Vec :: local
+  Vec :: global_vec
+  Vec :: local_vec
   PetscReal, pointer :: vec_ptr(:)
 
 #ifndef USE_HDF5
@@ -1278,8 +1288,8 @@ subroutine HDF5ReadMaterialsFromFile(realization,filename)
   call h5fopen_f(filename,H5F_ACC_RDONLY_F,file_id,hdf5_err,prop_id)
   call h5pclose_f(prop_id,hdf5_err)
 
-  call GridCreateVector(grid,ONEDOF,global,GLOBAL)
-  call GridCreateVector(grid,ONEDOF,local,LOCAL)
+  call GridCreateVector(grid,ONEDOF,global_vec,GLOBAL)
+  call GridCreateVector(grid,ONEDOF,local_vec,LOCAL)
 
   if (option%myrank == 0) print *, 'Setting up grid cell indices'
   ! Open the Materials group
@@ -1301,7 +1311,7 @@ subroutine HDF5ReadMaterialsFromFile(realization,filename)
   string = "Material Ids"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
   call HDF5ReadArray(grid,option,grp_id,string,grid%nmax, &
-                         indices,global,HDF_NATIVE_INTEGER)
+                         indices,global_vec,HDF_NATIVE_INTEGER)
 #else  
   allocate(indices(grid%nlmax))
   ! Read Cell Ids
@@ -1320,12 +1330,12 @@ subroutine HDF5ReadMaterialsFromFile(realization,filename)
   call PetscGetTime(tstart,ierr)
   call HDF5ReadIntegerArray(option,grp_id,string,grid%nlmax,indices, &
                             grid%nlmax,integer_array)
-  call GridCopyIntegerArrayToPetscVec(integer_array,global,grid%nlmax)
+  call GridCopyIntegerArrayToPetscVec(integer_array,global_vec,grid%nlmax)
   deallocate(integer_array)
 #endif
   
-  call GridGlobalToLocal(grid,global,local,ONEDOF)
-  call GridCopyPetscVecToIntegerArray(field%imat,local,grid%ngmax)
+  call GridGlobalToLocal(grid,global_vec,local_vec,ONEDOF)
+  call GridCopyPetscVecToIntegerArray(field%imat,local_vec,grid%ngmax)
   call PetscGetTime(tend,ierr)
   if (option%myrank == 0) print *, '  Time to read material ids:', tend-tstart
 

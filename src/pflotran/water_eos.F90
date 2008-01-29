@@ -29,7 +29,7 @@ contains
     
     PetscReal, intent(in) :: T, P, PS
     PetscReal, intent(out) :: VW,vwt,vwp
-    PetscInt, intent(out) :: ierr
+    PetscErrorCode, intent(out) :: ierr
   
     PetscReal :: EX, PHI, AM, pwr, aln10
   
@@ -54,7 +54,7 @@ contains
     
     PetscReal, intent(in) :: T, P, PS, pswt
     PetscReal, intent(out) :: VW,vwt,vwp
-    PetscInt, intent(out) :: ierr
+    PetscErrorCode, intent(out) :: ierr
   
     PetscReal :: EX, PHI, AM, pwr, aln10
   
@@ -80,7 +80,7 @@ contains
     
     PetscReal, intent(in) :: T, P, PS
     PetscReal, intent(out) :: VW
-    PetscInt, intent(out) :: ierr
+    PetscErrorCode, intent(out) :: ierr
   
     PetscReal :: EX, PHI, AM, pwr
   
@@ -174,7 +174,7 @@ contains
     
     PetscReal, intent(in) :: TC
     PetscReal, intent(out) :: P  ! Saturation pressure
-    PetscInt, intent(out) :: ierr
+    PetscErrorCode, intent(out) :: ierr
   
     PetscReal, save :: A(6),pc
     PetscReal :: SC, Paln, tao
@@ -210,7 +210,7 @@ contains
     
     PetscReal, intent(in) :: TC
     PetscReal, intent(out) :: P,tsp  ! Saturation pressure
-    PetscInt, intent(out) :: ierr
+    PetscErrorCode, intent(out) :: ierr
   
     PetscReal, save :: A(6),pc
     PetscReal :: SC, Paln, tao
@@ -256,7 +256,7 @@ contains
 
     PetscReal, intent(in) :: T
     PetscReal, intent(out) :: P  ! Saturation pressure
-    PetscInt, intent(out) :: ierr
+    PetscErrorCode, intent(out) :: ierr
   
     PetscReal, save, dimension(9) :: A(9)
     PetscReal :: TC, SC, PC
@@ -289,7 +289,7 @@ contains
 
     PetscReal, intent(in) :: T
     PetscReal, intent(out) :: psat, dpsat_dt  ! Saturation pressure
-    PetscInt, intent(out) :: ierr
+    PetscErrorCode, intent(out) :: ierr
   
     PetscReal, save, dimension(9) :: A(9)
     PetscReal :: TC, SC, PC, E1, E2
@@ -335,7 +335,7 @@ contains
   
     PetscReal, intent(in) :: T
     PetscReal, intent(out) :: Ps, tsp  ! Saturation pressure
-    PetscInt, intent(out) :: ierr
+    PetscErrorCode, intent(out) :: ierr
   
     PetscReal, save, dimension(9) :: kn(9)
     PetscReal :: u1,one,two,three,four,five,f,fp,tc1,utc1,pc1
@@ -395,7 +395,7 @@ contains
     PetscReal, intent(in) :: p   ! Pressure in Pascals
     PetscReal, intent(out) :: dw,dwmol,dwp,dwt
     PetscReal, intent(out) :: hw,hwp,hwt
-    PetscInt, intent(out) :: ierr
+    PetscErrorCode, intent(out) :: ierr
   
     PetscInt :: i
     
@@ -596,7 +596,7 @@ contains
     PetscReal, intent(in) :: t   ! Temperature in centigrade.
     PetscReal, intent(in) :: p   ! Pressure in Pascals.
     PetscReal, intent(out) :: dw,dwmol,hw
-    PetscInt, intent(out) :: ierr
+    PetscErrorCode, intent(out) :: ierr
   
     PetscInt :: i
     
@@ -800,7 +800,7 @@ contains
     PetscReal, intent(in) :: p,pa   ! Pressure in Pascals.
     PetscReal, intent(out) :: dg,dgmol,dgp,dgt
     PetscReal, intent(out) :: hg,hgp,hgt
-    PetscInt, intent(out) :: ierr
+    PetscErrorCode, intent(out) :: ierr
   
     PetscInt, save :: n(8),ll(8),x(8,2),z(8,3),xi1,xl0,xl1,xl2
     PetscReal, save :: b(8,2),bb(0:9,0:6)
@@ -1096,7 +1096,7 @@ contains
     PetscReal, intent(in) :: TC     ! Temperature in centigrade.
     PetscReal, intent(in) :: PP     ! Pressure in Pascals.
     PetscReal, intent(out) :: D, U  ! Density [kg/m^3], Energy [J/kg] ? check ?? -pcl
-    PetscInt, intent(out) :: ierr
+    PetscErrorCode, intent(out) :: ierr
   
     PetscInt :: i
     PetscReal, save :: A(23), SA(12) 

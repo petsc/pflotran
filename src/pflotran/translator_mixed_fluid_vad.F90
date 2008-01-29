@@ -69,7 +69,7 @@ subroutine translator_vadose_massbal(grid)
   type(pflowGrid) :: grid 
   
  
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   PetscInt,save :: icall
   PetscInt :: n,n0,nc,np,n2p,n2p0
   PetscReal x,y,z,nzm,nzm0, nxc,nxc0,c0, c00,nyc,nyc0,nzc,nzc0,nsm,nsm0,sm 
@@ -271,7 +271,7 @@ subroutine translator_vad_get_output(grid)
   implicit none
 
   type(pflowGrid), intent(inout) :: grid
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   
   PetscReal, pointer :: t_p(:),p_p(:),c_p(:),s_p(:),cc_p(:),var_P(:)
   PetscInt :: n, index_var_begin ,jn, size_var_node
@@ -328,7 +328,8 @@ subroutine translator_vad_step_maxchange(grid)
 ! PetscReal :: dsm,dcm
   PetscReal :: comp1,comp,cmp  
   PetscReal :: dsm0,dcm0  
-  PetscInt :: n, n0, ierr
+  PetscInt :: n, n0
+  PetscErrorCode :: ierr
 ! PetscInt :: j
 
   call VecWAXPY(grid%dxx,-1.d0,grid%xx,grid%yy,ierr)
@@ -398,7 +399,8 @@ subroutine Translator_vadose_Switching(xx,grid,icri,ichange)
 
   PetscReal, pointer :: xx_p(:), yy_p(:),iphase_p(:)
   PetscInt :: n,n0,ipr
-  PetscInt :: ierr,iipha 
+  PetscInt :: iipha 
+  PetscErrorCode :: ierr
 ! PetscInt :: index,i
 
   PetscReal :: p2,p,tmp,t,sat_pressure
@@ -649,7 +651,8 @@ subroutine pri_var_trans_vad_ninc_2_2(x,iphase,energyscale,num_phase,num_spec,&
   
   implicit none
 
-  PetscInt :: num_phase,num_spec,itable,ierr
+  PetscInt :: num_phase,num_spec,itable
+  PetscErrorCode :: ierr
   PetscInt :: size_var_use 
   PetscReal :: x(1:num_spec+1),energyscale
   PetscReal, target:: var_node(:)
@@ -909,7 +912,8 @@ subroutine pri_var_trans_vad_ninc(x,iphase,energyscale,num_phase,num_spec, &
   PetscReal :: x(1:num_spec+1),energyscale
   PetscReal :: var_node(1:2 + 7*num_phase + 2* num_phase*num_spec)
   PetscReal :: dif(:)
-  PetscInt :: iphase, itable,ierr
+  PetscInt :: iphase, itable
+  PetscErrorCode :: ierr
   PetscInt :: ipckrreg !, ithrmtype
      
     
@@ -942,7 +946,8 @@ subroutine pri_var_trans_vad_winc(x,delx,iphase,energyscale,num_phase,num_spec,&
   PetscReal :: x(1:num_spec+1),delx(1:num_spec+1),energyscale
   PetscReal :: var_node(:)
   PetscReal :: dif(:)
-  PetscInt ::iphase,itable,ierr
+  PetscInt ::iphase,itable
+  PetscErrorCode :: ierr
   PetscInt :: ipckrreg !, ithrmtype
    
   PetscInt :: n

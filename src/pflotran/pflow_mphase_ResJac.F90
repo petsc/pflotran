@@ -71,10 +71,11 @@ subroutine pflow_mphase_timecut(realization)
   type(field_type), pointer :: field
  
   PetscReal, pointer :: xx_p(:),yy_p(:)!,var_loc_p(:),iphase_loc_p(:)
-  PetscInt :: re,ierr
+  PetscInt :: re
+  PetscErrorCode :: ierr
   PetscInt :: dof_offset
   PetscInt :: local_id
-  !integer re0, ierr, index, iipha
+  !PetscInt :: re0, ierr, index, iipha
   !PetscReal, pointer :: sat(:),xmol(:)
 
   grid => realization%grid
@@ -126,7 +127,8 @@ subroutine pflow_mphase_setupini(realization)
   type(coupler_type), pointer :: initial_condition
   
   PetscReal, pointer :: xx_p(:), iphase_loc_p(:)
-  integer local_id, ghosted_id, ibegin, iend, icell, ierr  
+  PetscInt :: local_id, ghosted_id, ibegin, iend, icell
+  PetscErrorCode :: ierr
   
   grid => realization%grid
   option => realization%option
@@ -186,8 +188,9 @@ subroutine MPhase_Update_Reason(reason,realization)
    
   PetscInt, intent(out):: reason
   PetscReal, pointer :: xx_p(:),var_loc_p(:),iphase_loc_p(:), yy_p(:) !,r_p(:)
-  integer dof_offset, temp_reason
-  PetscInt :: ierr, iipha
+  PetscInt :: dof_offset, temp_reason
+  PetscInt :: iipha
+  PetscErrorCode :: ierr
   PetscInt :: local_id, ghosted_id  
 
 ! PetscReal, pointer :: sat(:),xmol(:)
@@ -330,7 +333,8 @@ subroutine MPHASERes_ARCont(node_no, var_node,por,vol,rock_dencpr, option, &
   
   type(option_type) :: option
   PetscInt :: node_no
-  PetscInt, optional:: ireac,ierr
+  PetscInt, optional:: ireac
+  PetscErrorCode :: ierr
   PetscReal, target :: var_node(1:size_var_use)
   PetscReal :: Res_AR(1:option%ndof) 
   PetscReal :: vol,por,rock_dencpr
@@ -395,7 +399,7 @@ subroutine MPHASERes_FLCont(nconn_no,area, &
 
   implicit none
   
-  integer nconn_no
+  PetscInt :: nconn_no
   type(option_type) :: option
   PetscReal :: sir1(1:option%nphase),sir2(1:option%nphase)
   PetscReal, target :: var_node1(1:2+7*option%nphase+2*option%nphase*option%nspec)
@@ -553,7 +557,7 @@ subroutine MPHASERes_FLBCCont(ibndtype,area,aux_vars, &
   
   implicit none
   
-  integer ibndtype(:)
+  PetscInt :: ibndtype(:)
   type(option_type) :: option
   type(field_type) :: field
   PetscReal :: aux_vars(:)
@@ -574,7 +578,7 @@ subroutine MPHASERes_FLBCCont(ibndtype,area,aux_vars, &
   PetscReal, pointer :: sat2(:), density2(:), amw2(:), h2(:), u2(:), pc2(:), kvr2(:)         ! nphase dof
   PetscReal, pointer :: xmol2(:), diff2(:)    
   
-  integer ibase,offset,iphase,idof,ispec,index
+  PetscInt :: ibase,offset,iphase,idof,ispec,index
   PetscReal :: fluxm(option%nspec),fluxe,q(option%nphase)
   PetscReal :: uh(option%nphase),uxmol(option%nspec), ukvr,diff,diffdp, DK,Dq
   PetscReal :: upweight,density_ave(option%nphase),cond,gravity, dphi
@@ -825,7 +829,8 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
   Vec, intent(out) :: r
   type(realization_type) :: realization
 
-  PetscInt :: ierr, ierr0
+  PetscInt :: ierr0
+  PetscErrorCode :: ierr
   PetscInt :: nr
   PetscInt :: i, jn
   PetscInt :: ip2, p1, p2
@@ -884,6 +889,7 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
   PetscInt :: sum_connection
   PetscReal :: distance, fraction_upwind
   PetscReal :: distance_gravity, upweight
+  PetscInt :: ichange
 
   grid => realization%grid
   option => realization%option
@@ -932,7 +938,7 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
 ! allow phase change for first 3 newton iterations except zeroth iteration
   if(option%iphch>0 .and. option%iphch<=3)then
 !  if(option%iphch<=3)then
-    call Translator_MPhase_Switching(xx,realization,0,ierr)   
+    call Translator_MPhase_Switching(xx,realization,ZERO_INTEGER,ichange)   
   endif  
   option%iphch=option%iphch+1
    
@@ -1119,7 +1125,7 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
 
     accum = 0.d0
     call MPHASERes_ARCont(local_id, var_loc_p(index_var_begin: index_var_end),&
-    porosity_loc_p(ghosted_id),volume_p(local_id),option%dencpr(i), option, Res, 1,ierr)
+    porosity_loc_p(ghosted_id),volume_p(local_id),option%dencpr(i), option, Res, ONE_INTEGER,ierr)
    
     r_p(p1:p1+option%ndof-1) = r_p(p1:p1+option%ndof-1) + Res(1:option%ndof)
     Resold_AR(local_id,1:option%ndof)= Res(1:option%ndof) 
@@ -1509,7 +1515,8 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
   MatStructure flag
 
 !   PetscInt :: j, jn, jm1, jm2,jmu,mu, 
-  PetscInt :: ierr, i_upstream_revert
+  PetscInt :: i_upstream_revert
+  PetscErrorCode :: ierr
   PetscInt :: nvar,neq,nr
   PetscInt :: i1, i2, jng, i
   PetscInt :: ithrm1, ithrm2
@@ -1525,7 +1532,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
   PetscReal, pointer :: iphase_loc_p(:), icap_loc_p(:), ithrm_loc_p(:),var_loc_p(:)
   PetscInt :: iicap,ii,jj,iiphas,iiphas1,iiphas2,iicap1,iicap2
   PetscInt :: index_var_begin, index_var_end
-! integer ibc_hencoeff
+! PetscInt :: ibc_hencoeff
   PetscReal :: dw_kg,dw_mol,enth_src_co2,enth_src_h2o,rho,dddt,dddp,fg,dfgdp,&
             dfgdt,eng,dhdt,dhdp,visc,dvdt,dvdp
 ! PetscReal :: cond, gravity, acc, density_ave, 
@@ -1631,7 +1638,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
 
       call MPHASERes_ARCont(local_id, var_loc_p(index_var_begin : index_var_end),&
         porosity_loc_p(ghosted_id),volume_p(local_id),option%dencpr(int(ithrm_loc_p(ghosted_id))),&
-        option, Res,1,ierr)
+        option, Res,ONE_INTEGER,ierr)
       
       ResInc(local_id,:,nvar) = ResInc(local_id,:,nvar) + Res(:)
     enddo
@@ -2210,7 +2217,7 @@ subroutine pflow_mphase_initaccum(realization)
 
   type(realization_type) :: realization 
   
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   PetscInt :: i, index_var_begin,index_var_end
   PetscInt :: p1
   PetscInt :: iicap, iiphase
@@ -2278,7 +2285,7 @@ subroutine pflow_mphase_initaccum(realization)
     
     call MPHASERes_ARCont(local_id, var_loc_p(index_var_begin: index_var_end),&
                           porosity_loc_p(ghosted_id),volume_p(local_id),option%dencpr(i), option, &
-                          Res, 0,ierr)
+                          Res, ZERO_INTEGER,ierr)
  
 
     accum_p(p1:p1+option%ndof-1)=Res(:) 
@@ -2323,7 +2330,8 @@ subroutine pflow_update_mphase(realization)
     
   PetscInt :: dof_offset
   PetscInt :: iithrm
-  PetscInt :: ierr,iicap,iiphase
+  PetscInt :: iicap,iiphase
+  PetscErrorCode :: ierr
   PetscReal, pointer :: xx_p(:),icap_loc_p(:),ithrm_loc_p(:),iphase_loc_p(:), var_loc_p(:)
   PetscReal :: dif(1:realization%option%nphase), dum1, dum2           
   PetscInt :: local_id, ghosted_id     
@@ -2483,7 +2491,7 @@ subroutine pflow_mphase_initadj(realization)
  
   type(realization_type) :: realization 
 
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   PetscInt :: num_connection  
   PetscInt :: jn
   PetscInt :: iicap

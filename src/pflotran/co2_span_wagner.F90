@@ -682,9 +682,10 @@
 
       PetscReal :: ts,dum1,dum2,uguess,lguess,rhov,rhol
       PetscReal :: a1,a2,a3,a4,a5,t1,t2,t3,t4,t5,tr
+      PetscInt, parameter :: TWELVE_INTEGER = 12
 
       if (p.le.pc .and. t.le.tc) then
-         call vappr (ts,p,dum1,dum2,12)
+         call vappr (ts,p,dum1,dum2,TWELVE_INTEGER)
 
 !vapor density
             a1 = -1.7074879d0

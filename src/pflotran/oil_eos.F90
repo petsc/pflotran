@@ -19,7 +19,7 @@ module oil_eos_module
    
    PetscReal, intent(in) :: p,t
    PetscReal, intent(out):: viso
-   PetscInt :: ierr
+   PetscErrorCode :: ierr
    
   viso= vis0 
   end subroutine Vis_oil
@@ -27,7 +27,7 @@ module oil_eos_module
 
   subroutine PSAT_oil(t,psat,ierr)
   PetscReal t,psat
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   end subroutine PSAT_oil
 
 
@@ -39,7 +39,7 @@ module oil_eos_module
     PetscReal, intent(in) :: x_mid, x_heavy, scale
     PetscReal, intent(out) :: denoil
     PetscReal, intent(out) :: h
-    PetscInt, intent(out) :: ierr
+    PetscErrorCode, intent(out) :: ierr
     
 !   PetscReal  Pc,Tc,w
 !   PetscReal  a,b,alaph

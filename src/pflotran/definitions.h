@@ -21,6 +21,10 @@ PetscInt, parameter :: HHISTORY_LENGTH = 1000
 
 PetscInt, parameter :: ZERO_INTEGER = 0
 PetscInt, parameter :: ONE_INTEGER = 1
+PetscInt, parameter :: TWO_INTEGER = 2
+PetscInt, parameter :: THREE_INTEGER = 3
+PetscInt, parameter :: FOUR_INTEGER = 4
+PetscInt, parameter :: FIVE_INTEGER = 5
 PetscInt, parameter :: NEG_ONE_INTEGER = -1
 
 PetscInt, parameter :: X_DIRECTION = 1

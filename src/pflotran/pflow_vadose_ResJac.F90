@@ -68,8 +68,8 @@ subroutine pflow_Vadose_timecut(grid)
   
  
   PetscReal, pointer :: xx_p(:),yy_p(:)!,var_p(:),iphase_p(:)
-  PetscInt :: n,n0,re,ierr
-  !PetscInt :: re0, ierr, index, iiphaVadose
+  PetscInt :: n,n0,re
+  PetscErrorCode :: ierr
   !PetscReal, pointer :: sat(:),xmol(:)
 
   call VecGetArrayF90(grid%xx, xx_p, ierr)
@@ -98,7 +98,8 @@ subroutine pflow_Vadose_setupini(grid)
   type(pflowGrid), intent(inout) :: grid
   
   PetscReal, pointer :: xx_p(:), iphase_p(:)
-  PetscInt :: iln,na,nx,ny,nz,ir,ierr
+  PetscInt :: iln,na,nx,ny,nz,ir
+  PetscErrorCode :: ierr
   
   size_var_use = 2 + 7*grid%nphase + 2* grid%nphase*grid%nspec
   size_var_node = (grid%ndof + 1) * size_var_use
@@ -156,7 +157,8 @@ subroutine Vadose_Update_Reason(reason,grid)
   type(pflowGrid), intent(inout) :: grid
   PetscReal, pointer :: xx_p(:),var_p(:),iphase_p(:), yy_p(:) !,r_p(:)
   PetscInt :: n,n0,re
-  PetscInt :: re0, ierr, iipha
+  PetscInt :: re0, iipha
+  PetscErrorCode :: ierr
 ! PetscInt :: index
 ! PetscReal, pointer :: sat(:),xmol(:)
 ! PetscReal :: rmax(grid%ndof)
@@ -288,7 +290,8 @@ subroutine VadoseRes_ARCont(node_no, var_node,por,vol,rock_dencpr, grid, Res_AR,
   implicit none
 
   PetscInt :: node_no
-  PetscInt, optional:: ireac,ierr
+  PetscInt, optional:: ireac
+  PetscErrorCode :: ierr
   type(pflowGrid), intent(in) :: grid
   PetscReal, target:: var_node(1:size_var_use)
   PetscReal Res_AR(1:grid%ndof) 
@@ -749,7 +752,7 @@ subroutine VadoseResidual(snes,xx,r,grid,ierr)
   type(pflowGrid), intent(inout) :: grid
 
  
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   PetscInt :: n, ng, nc, nr
   PetscInt :: i, i1, i2, jn, jng
   PetscInt :: m, m1, m2, n1, n2, ip1, ip2, p1, p2
@@ -798,6 +801,7 @@ subroutine VadoseResidual(snes,xx,r,grid,ierr)
 ! PetscReal :: dddt,dddp,fg,dfgdp,dfgdt,dhdt,dhdp,dvdt,dvdp,visc
   PetscReal :: Res(grid%ndof),vv_darcy(grid%nphase)
 ! PetscViewer :: viewer
+  PetscInt :: ichange
  
   grid%vvlbc=0.D0
   grid%vvgbc=0.D0
@@ -805,7 +809,7 @@ subroutine VadoseResidual(snes,xx,r,grid,ierr)
   grid%vvg_loc=0.D0
 
   if (grid%iphch<=3) then
-    call Translator_Vadose_Switching(xx,grid,0,ierr)
+    call Translator_Vadose_Switching(xx,grid,ZERO_INTEGER,ichange)
     grid%iphch=grid%iphch+1
   endif  
   call VecGetArrayF90(xx, xx_p, ierr); CHKERRQ(ierr)
@@ -1029,7 +1033,7 @@ subroutine VadoseResidual(snes,xx,r,grid,ierr)
 
     accum = 0.d0
     call VadoseRes_ARCont(n, var_loc_p(index_var_begin: index_var_end),&
-    porosity_loc_p(ng),volume_p(n),grid%dencpr(i), grid, Res, 1,ierr)
+    porosity_loc_p(ng),volume_p(n),grid%dencpr(i), grid, Res, ONE_INTEGER,ierr)
    
     r_p(p1:p1+grid%ndof-1) = r_p(p1:p1+grid%ndof-1) + Res(1:grid%ndof)
     Resold_AR(n,1:grid%ndof)= Res(1:grid%ndof) 
@@ -1485,7 +1489,7 @@ subroutine VadoseJacobian(snes,xx,A,B,flag,grid,ierr)
    ! PetscInt, intent(inout) :: flag
   MatStructure flag
 
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   PetscInt :: n, ng, nc,nvar,neq,nr
   PetscInt :: i1, i2, jng, i
   PetscInt :: kk,ii1,jj1,kk1,ii2,jj2,kk2  
@@ -1605,7 +1609,7 @@ subroutine VadoseJacobian(snes,xx,A,B,flag,grid,ierr)
 
       call VadoseRes_ARCont(n, var_loc_p(index_var_begin : index_var_end), &
                             porosity_loc_p(ng),volume_p(n), &
-                            grid%dencpr(int(ithrm_loc_p(ng))),grid, Res,1,ierr)
+                            grid%dencpr(int(ithrm_loc_p(ng))),grid, Res,ONE_INTEGER,ierr)
       
       ResInc(n,:,nvar) = ResInc(n,:,nvar) + Res(:)
     enddo
@@ -2114,7 +2118,7 @@ subroutine pflow_Vadose_initaccum(grid)
   type(pflowGrid) :: grid 
 
  
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   PetscInt :: n
   PetscInt :: i,index_var_begin,index_var_end
   PetscInt :: p1
@@ -2179,7 +2183,7 @@ subroutine pflow_Vadose_initaccum(grid)
     
     call VadoseRes_ARCont(n,var_p(index_var_begin:index_var_end), &
                           porosity_p(n),volume_p(n),grid%dencpr(i),grid,Res, &
-                          0,ierr)
+                          ZERO_INTEGER,ierr)
  
 
     accum_p(p1:p1+grid%ndof-1)=Res(:) 
@@ -2215,7 +2219,8 @@ subroutine pflow_update_Vadose(grid)
     
 ! PetscInt :: ichange
   PetscInt :: n,n0
-  PetscInt :: ierr,iicap,iiphase
+  PetscErrorCode :: ierr
+  PetscInt :: iicap,iiphase
   PetscReal, pointer :: xx_p(:),icap_p(:),ithrm_p(:),iphase_p(:), var_p(:)
   PetscReal dif(1:grid%nphase), dum1, dum2           
 
@@ -2296,7 +2301,7 @@ subroutine pflow_Vadose_initadj(grid)
   type(pflowGrid) :: grid 
 
  
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   PetscInt :: n, nc
   PetscInt :: ibc,jn
   PetscInt :: m
@@ -2431,7 +2436,7 @@ subroutine pflow_Vadose_bcadj(grid)
   type(pflowGrid) :: grid 
 
  
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   PetscInt :: nc, ibc, m, iicap, iithrm                           
 
   PetscReal, pointer :: ithrm_p(:),icap_p(:)

@@ -49,7 +49,7 @@ contains
     ! Legacy functions for calculating density, internal energy, viscosity,
     ! and saturation pressure of water.
 
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   PetscInt :: n, ng, nc
   PetscInt :: j, jn, jng, jm, jm1, jm2
   PetscInt :: m, m1, m2, n1, n2, ip1, ip2
@@ -390,7 +390,7 @@ contains
     ! Legacy functions for calculating density, internal energy, viscosity,
     ! and saturation pressure of water.
 
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   PetscInt :: n, ng, nc
   PetscInt :: j, jn, jng, jm, jm1, jm2
   PetscInt :: m, m1, m2, n1, n2, ip1, ip2

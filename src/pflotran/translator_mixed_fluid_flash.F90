@@ -1,5 +1,6 @@
  module translator_flash_module
  
+ implicit none
   
  private 
  
@@ -61,7 +62,7 @@
   type(pflowGrid) :: grid 
   
  
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   PetscInt,save :: icall
   PetscInt :: n,n0,nc,np,n2p,n2p0
   PetscReal x,y,z,nzm,nzm0, nxc,nxc0,c0, c00,nyc,nyc0,nzc,nzc0,nsm,nsm0,sm 
@@ -208,6 +209,7 @@
                       kvr(:),xmol(:),diff(:)
       
   PetscReal sum     
+  PetscErrorCode :: ierr
     
   ibase=1;               t=>var_node(ibase)
   ibase=ibase+1;         p=>var_node(ibase)
@@ -257,13 +259,14 @@
 ! PetscReal, pointer :: xx_p(:), yy_p(:), iphase_p(:),var_p(:),iphase_old_p(:)
 ! PetscReal :: dsm,dcm,comp1,comp,cmp  
 ! PetscReal :: dsm0,dcm0  
-! PetscInt :: n
+  PetscInt :: n
+  PetscErrorCode :: ierr
 ! PetscInt :: j
 
   call VecWAXPY(grid%dxx,-1.d0,grid%xx,grid%yy,ierr)
-  call VecStrideNorm(grid%dxx,0,NORM_INFINITY,grid%dpmax,ierr)
-  call VecStrideNorm(grid%dxx,1,NORM_INFINITY,grid%dtmpmax,ierr)
-  call VecStrideNorm(grid%dxx,2,NORM_INFINITY,grid%dcmax,ierr)
+  call VecStrideNorm(grid%dxx,ZERO_INTEGER,NORM_INFINITY,grid%dpmax,ierr)
+  call VecStrideNorm(grid%dxx,ONE_INTEGER,NORM_INFINITY,grid%dtmpmax,ierr)
+  call VecStrideNorm(grid%dxx,TWO_INTEGER,NORM_INFINITY,grid%dcmax,ierr)
   grid%dsmax =0.D0
    
     !   print *, 'max change',grid%dpmax,grid%dtmpmax,grid%dsmax,grid%dcmax
@@ -284,7 +287,8 @@
 
 
     implicit none
-    PetscInt :: num_phase,num_spec, itable, ierr
+    PetscInt :: num_phase,num_spec, itable
+    PetscErrorCode :: ierr
     PetscInt :: size_var_use 
     PetscReal :: x(1:num_spec+1),energyscale
     PetscReal, target :: var_node(:)
@@ -537,7 +541,8 @@
   PetscReal x(1:num_spec+1),energyscale
   PetscReal var_node(1:2 + 7*num_phase + 2* num_phase*num_spec)
   PetscReal :: dif(:)
-  PetscInt ::iphase, itable,ierr
+  PetscInt ::iphase, itable
+  PetscErrorCode :: ierr
   PetscInt :: ipckrreg !, ithrmtype
      
     
@@ -569,7 +574,9 @@
     PetscReal x(1:num_spec+1),delx(1:num_spec+1),energyscale
     PetscReal var_node(:)
   PetscReal :: dif(:)
-  PetscInt ::iphase,itable,ierr
+  PetscInt ::iphase,itable
+  PetscInt :: n
+  PetscErrorCode :: ierr
   PetscInt :: ipckrreg !, ithrmtype
    
   PetscReal xx(1:num_spec+1)

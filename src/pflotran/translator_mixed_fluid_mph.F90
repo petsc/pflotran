@@ -68,7 +68,7 @@ subroutine translator_mphase_massbal(realization)
   type(realization_type) :: realization
  
   PetscInt, save :: icall
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   PetscInt :: nc,np,n2p,n2p0
   PetscReal :: x,y,z,nzm,nzm0, nxc,nxc0,c0, c00,nyc,nyc0,nzc,nzc0,nsm,nsm0,sm 
   PetscReal :: nxm,nxm0
@@ -430,7 +430,8 @@ subroutine Translator_MPhase_Switching(xx,realization,icri,ichange)
 
   PetscReal, pointer :: xx_p(:), yy_p(:),iphase_loc_p(:)
   PetscInt :: ipr
-  PetscInt :: ierr,iipha 
+  PetscInt :: iipha 
+  PetscErrorCode :: ierr
 ! PetscInt :: index,i
   PetscReal :: p2,p,tmp,t
   PetscReal :: dg,dddt,dddp,fg,dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp
@@ -703,7 +704,8 @@ subroutine pri_var_trans_mph_ninc_3_3(x,iphase,energyscale,num_phase,num_spec,&
   PetscInt :: size_var_use
   PetscReal x(1:num_spec+1),energyscale
   PetscReal,target:: var_node(:)
-  PetscInt :: iphase,itable,ierr
+  PetscInt :: iphase,itable
+  PetscErrorCode :: ierr
   PetscInt :: ipckrtype !, ithrmtype
 !   PetscInt :: num_pricomp
   
@@ -773,7 +775,8 @@ subroutine pri_var_trans_mph_ninc_2_2(x,iphase,energyscale,num_phase,num_spec,&
 
   implicit none
   
-  PetscInt :: num_phase,num_spec, itable, ierr
+  PetscInt :: num_phase,num_spec, itable
+  PetscErrorCode :: ierr
   PetscInt :: size_var_use 
   PetscReal x(1:num_spec+1),energyscale
   PetscReal, target:: var_node(:)
@@ -1104,7 +1107,8 @@ subroutine pri_var_trans_mph_ninc(x,iphase,energyscale,num_phase,num_spec,&
   PetscReal x(1:num_spec+1),energyscale
   PetscReal var_node(1:2 + 7*num_phase + 2* num_phase*num_spec)
   PetscReal :: dif(:), m_nacl
-  PetscInt ::iphase, itable,ierr
+  PetscInt ::iphase, itable
+  PetscErrorCode :: ierr
   PetscInt :: ipckrreg !, ithrmtype
        
   PetscReal, optional :: phi_co2, den_co2  
@@ -1137,7 +1141,8 @@ subroutine pri_var_trans_mph_winc(x,delx,iphase,energyscale,num_phase,num_spec,&
   PetscReal x(1:num_spec+1),delx(1:num_spec+1),energyscale
   PetscReal var_node(:),m_nacl
   PetscReal :: dif(:)
-  PetscInt ::iphase,itable,ierr
+  PetscInt ::iphase,itable
+  PetscErrorCode :: ierr
   PetscInt :: ipckrreg !, ithrmtype
   PetscInt :: ispec
    

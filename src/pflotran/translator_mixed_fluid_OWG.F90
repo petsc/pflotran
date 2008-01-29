@@ -1,6 +1,7 @@
  module translator_owg_module
  
-  
+ implicit none
+ 
  private 
 
 #include "definitions.h"
@@ -60,7 +61,7 @@
   type(pflowGrid) :: grid 
   
  
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   PetscInt,save :: icall
   PetscInt :: n,n0,nc,np
   PetscInt :: index, size_var_node
@@ -211,7 +212,8 @@
 ! PetscReal :: dsm,dcm
   PetscReal :: comp1,comp,cmp  
   PetscReal :: dsm0,dcm0  
-  PetscInt :: n, j, iipha
+  PetscInt :: n, n0, j, iipha
+  PetscErrorCode :: ierr
 
   call VecWAXPY(grid%dxx,-1.d0,grid%xx,grid%yy,ierr)
   call VecStrideNorm(grid%dxx,0,NORM_INFINITY,grid%dpmax,ierr)
@@ -296,7 +298,8 @@
   
   type(pflowGrid), intent(inout) :: grid
   Vec, intent(in) :: xx
-  PetscInt :: icri,ichange,ierr 
+  PetscInt :: icri,ichange
+  PetscErrorCode :: ierr
 ! PetscInt :: itable,index,i
 
   PetscReal, pointer :: xx_p(:), yy_p(:),iphase_p(:)
@@ -882,7 +885,8 @@
     PetscInt :: size_var_use
     PetscReal :: energyscale,tref
     PetscReal,target :: var_node(:)
-    PetscInt :: iphase,itable,ierr
+    PetscInt :: iphase,itable
+    PetscErrorCode :: ierr
     PetscInt :: ipckrtype !, ithrmtype
     
     PetscReal :: pckr_sir(1:num_phase),pckr_lambda,pckr_alpha,pckr_m, &
@@ -1205,7 +1209,8 @@
   PetscReal x(:),energyscale
   PetscReal var_node(1:2 + 7*num_phase + 2* num_phase*num_spec)
   PetscReal :: dif(:)
-  PetscInt ::iphase, itable,ierr
+  PetscInt ::iphase, itable
+  PetscErrorCode :: ierr
   PetscInt :: ipckrtype !, ithrmtype
 ! PetscInt :: num_pricomp
     
@@ -1244,7 +1249,8 @@
     PetscReal x(:),delx(:),energyscale
     PetscReal var_node(:)
   PetscReal :: dif(:)
-  PetscInt ::iphase,itable,ierr
+  PetscInt ::iphase,itable,n
+  PetscErrorCode :: ierr
   PetscInt :: ipckrtype !, ithrmtype
     PetscReal  tref
    

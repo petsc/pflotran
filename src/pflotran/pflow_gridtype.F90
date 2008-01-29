@@ -27,7 +27,7 @@ private
 
   type, public:: pflowGrid
 
-    PetscInt :: myrank, commsize  ! Rank in PETSC_COMM_WORLD.
+    PetscMPIInt :: myrank, commsize  ! Rank in PETSC_COMM_WORLD.
 
     PetscInt :: nphase, nvar, ndof  ! Number of phases we are dealing with.
     PetscInt :: jh2o, jgas, jco2 ! specific phase indices

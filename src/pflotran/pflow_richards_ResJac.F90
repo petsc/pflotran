@@ -70,7 +70,8 @@ subroutine pflow_Richards_timecut(realization)
   type(field_type), pointer :: field
   
   PetscReal, pointer :: xx_p(:),yy_p(:)
-  PetscInt :: dof_offset,re,ierr
+  PetscInt :: dof_offset,re
+  PetscErrorCode :: ierr
   PetscInt :: local_id
 
   grid => realization%grid
@@ -113,7 +114,8 @@ subroutine pflow_Richards_setupini(realization)
   type(coupler_type), pointer :: initial_condition
 
   PetscReal, pointer :: xx_p(:), iphase_loc_p(:)
-  PetscInt :: local_id, ghosted_id, ibegin, iend, icell, ierr
+  PetscErrorCode :: ierr
+  PetscInt :: local_id, ghosted_id, ibegin, iend, icell
   
   grid => realization%grid
   option => realization%option
@@ -148,7 +150,8 @@ subroutine Richards_Update_Reason(reason,realization)
   PetscInt, intent(out):: reason
   PetscReal, pointer :: xx_p(:),iphase_loc_p(:), yy_p(:) !,r_p(:)
   PetscInt :: dof_offset, temp_reason
-  PetscInt :: ierr, iipha
+  PetscInt :: iipha
+  PetscErrorCode :: ierr
   PetscInt :: local_id, ghosted_id
   
   grid => realization%grid
@@ -231,7 +234,8 @@ subroutine RichardsRes_ARCont(node_no,var_node,por,vol,rock_dencpr,option,Res_AR
 
   type(option_type) :: option
   PetscInt :: node_no
-  PetscInt, optional:: ireac,ierr
+  PetscInt, optional:: ireac
+  PetscErrorCode :: ierr
   PetscReal, target:: var_node(1:size_var_use)
   PetscReal Res_AR(1:option%ndof) 
   PetscReal vol,por,rock_dencpr
@@ -661,7 +665,7 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
   Vec, intent(out) :: r
   type(realization_type) :: realization
 
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   PetscInt :: nc
   PetscInt :: i, ithrm1, ithrm2, jn
   PetscInt :: ip1, ip2, p1, p2
@@ -846,7 +850,7 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
     accum = 0.d0
     call RichardsRes_ARCont(local_id,var_loc_p(index_var_begin:index_var_end),&
                             porosity_loc_p(ghosted_id),volume_p(local_id), &
-                            option%dencpr(i),option,Res,1,ierr)
+                            option%dencpr(i),option,Res,ONE_INTEGER,ierr)
    
     r_p(p1:p1+option%ndof-1) = r_p(p1:p1+option%ndof-1) + Res(1:option%ndof)
     Resold_AR(local_id,1:option%ndof)= Res(1:option%ndof) 
@@ -1214,7 +1218,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
   type(realization_type) :: realization
   MatStructure flag
 
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   PetscInt :: nvar,neq,nr
   PetscInt :: ithrm1, ithrm2, i
   PetscInt :: ip1, ip2 
@@ -1320,7 +1324,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
 
       call RichardsRes_ARCont(local_id,var_loc_p(index_var_begin:index_var_end), &
                             porosity_loc_p(ghosted_id),volume_p(local_id), &
-                            option%dencpr(int(ithrm_loc_p(ghosted_id))),option, Res,1,ierr)
+                            option%dencpr(int(ithrm_loc_p(ghosted_id))),option, Res,ONE_INTEGER,ierr)
       
       ResInc(local_id,:,nvar) = ResInc(local_id,:,nvar) + Res(:)
     enddo
@@ -1820,7 +1824,7 @@ subroutine pflow_Richards_initaccum(realization)
   type(realization_type) :: realization 
 
  
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   PetscInt :: i, index_var_begin,index_var_end
   PetscInt :: p1
   PetscInt :: iicap, iiphase
@@ -1886,7 +1890,7 @@ subroutine pflow_Richards_initaccum(realization)
     call RichardsRes_ARCont(local_id,var_loc_p(index_var_begin:index_var_end), &
                             porosity_loc_p(ghosted_id),volume_p(local_id), &
                             option%dencpr(i),option,Res, &
-                             0,ierr)
+                             ZERO_INTEGER,ierr)
  
 
     accum_p(p1:p1+option%ndof-1)=Res(:) 
@@ -1925,7 +1929,8 @@ subroutine pflow_update_Richards(realization)
 !geh added for transient boundary conditons
   PetscInt :: iithrm
   PetscReal :: sw, pc(2), kr(2)
-  PetscInt :: ierr,iicap,iiphase, iiphase_old
+  PetscInt :: iicap,iiphase, iiphase_old
+  PetscErrorCode :: ierr
   PetscReal, pointer :: xx_p(:),icap_loc_p(:),ithrm_loc_p(:), &
                           iphase_loc_p(:), var_loc_p(:), yy_p(:), iphase_loc_old_p(:)
   PetscReal :: dif(1:realization%option%nphase)
@@ -2033,7 +2038,7 @@ subroutine pflow_Richards_initadj(realization)
   type(realization_type) :: realization 
 
  
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   PetscInt :: num_connection
   PetscInt :: jn
   PetscInt :: iicap

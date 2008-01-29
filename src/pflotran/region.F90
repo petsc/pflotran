@@ -212,7 +212,8 @@ subroutine RegionReadFromFilename(region,filename)
   PetscInt :: fid
   PetscInt, pointer :: temp_int_array(:)
   PetscInt :: max_size = 1000
-  PetscInt :: count, temp_int, ierr
+  PetscInt :: count, temp_int
+  PetscErrorCode :: ierr
   
   fid = 86
   open(unit=fid,file=filename)
@@ -245,7 +246,8 @@ subroutine RegionReadFromFileId(region,fid)
 
   PetscInt, pointer :: temp_int_array(:)
   PetscInt :: max_size = 1000
-  PetscInt :: count, temp_int, ierr
+  PetscInt :: count, temp_int
+  PetscErrorCode :: ierr
 
   backslash = achar(92)  ! 92 = "\" Some compilers choke on \" thinking it
                           ! is a double quote as in c/c++
@@ -302,6 +304,7 @@ function RegionGetPtrFromList(region_name,region_list)
   
   type(region_type), pointer :: RegionGetPtrFromList
   character(len=MAXNAMELENGTH) :: region_name
+  PetscInt :: length
   type(region_list_type) :: region_list
 
   type(region_type), pointer :: region
@@ -311,8 +314,9 @@ function RegionGetPtrFromList(region_name,region_list)
   
   do 
     if (.not.associated(region)) exit
-    if (len_trim(region_name) == len_trim(region%name) .and. &
-        fiStringCompare(region%name,region_name,len_trim(region_name))) then
+    length = len_trim(region_name)
+    if (length == len_trim(region%name) .and. &
+        fiStringCompare(region%name,region_name,length)) then
       RegionGetPtrFromList => region
       return
     endif

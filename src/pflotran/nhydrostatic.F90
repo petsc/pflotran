@@ -1,6 +1,8 @@
 
 ! This subroutine works only for stuctured grid 
 module nhydrostatic_module
+
+  implicit none
   
 private 
 
@@ -42,6 +44,7 @@ subroutine Get_Hydrosta_Pres(nz, dz, pref0, tref, dtdz, gravity, m_nacl)
   PetscReal,save :: pref 
   data pref/-10.D0/ 
      
+  PetscErrorCode :: ierr
   PetscInt :: n, itrho
   PetscReal depth, pres0, tmp, rho0, rho1, rho, pres, dw_kg
   PetscReal dzz,zz, xm_nacl, p 
@@ -137,7 +140,8 @@ subroutine nhydrostatic(realization)
   PetscReal, pointer :: xx_p(:) 
   
 ! PetscInt :: itrho
-  PetscInt ::  ierr,i,j,k
+  PetscErrorCode :: ierr
+  PetscInt ::  i,j,k
   PetscReal :: depth,horiz,dw_kg,p,dp
 !           dum,dwp,rho,rho1,dw_mol,zz,dzz,tmp,pres,
             
@@ -392,7 +396,8 @@ subroutine nhydrostatic3(grid)
   PetscReal :: reference_temperature, temperature_gradient_X, &
             temperature_gradient_Y, temperature_gradient_Z
 
-  PetscInt :: i, num_increments, ierr
+  PetscInt :: i, num_increments
+  PetscErrorCode :: ierr
   PetscReal :: dx, dy, dz, z, dum, rho, dw_mol, dwp
   PetscReal :: temperature_at_xy, temperature_at_xyz
   PetscReal :: pressure_at_xy, pressure_at_xyz

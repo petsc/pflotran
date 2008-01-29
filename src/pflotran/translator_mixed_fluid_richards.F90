@@ -75,7 +75,7 @@ subroutine translator_Richards_massbal(realization)
   type(option_type), pointer :: option
   type(field_type), pointer :: field
  
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   PetscInt,save :: icall
   PetscInt :: nc,np
 ! PetscReal :: nsm,nsm0,sm 
@@ -231,7 +231,7 @@ subroutine translator_Richards_get_output(realization)
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
   
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   
   PetscReal, pointer :: t_p(:),p_p(:),c_p(:),s_p(:),cc_p(:),var_loc_p(:)
   PetscInt :: local_id, ghosted_id, index_var_begin ,jn, size_var_node
@@ -334,7 +334,8 @@ subroutine Translator_Richards_Switching(xx,realization,icri,ichange)
   
   PetscReal, pointer :: xx_p(:), yy_p(:),iphase_loc_p(:)
   PetscInt :: n,n0,ipr
-  PetscInt :: ierr,iipha
+  PetscInt :: iipha
+  PetscErrorCode :: ierr
 ! PetscInt :: index,i
   PetscInt :: local_id, ghosted_id
   
@@ -588,7 +589,8 @@ subroutine pri_var_trans_Richards_ninc_2_2(x,iphase,energyscale,num_phase,num_sp
   
   implicit none
 
-  PetscInt :: num_phase,num_spec, itable, ierr
+  PetscInt :: num_phase,num_spec, itable
+  PetscErrorCode :: ierr
   PetscInt :: size_var_use 
   PetscReal :: x(1:num_spec+1),energyscale
   PetscReal, target:: var_node(:)
@@ -719,7 +721,8 @@ subroutine pri_var_trans_Richards_ninc(x,iphase,energyscale,num_phase,num_spec, 
   PetscReal :: x(1:num_spec+1),energyscale
   PetscReal :: var_node(1:2 + 7*num_phase + 2* num_phase*num_spec)
   PetscReal :: dif(:)
-  PetscInt :: iphase, itable,ierr
+  PetscInt :: iphase, itable
+  PetscErrorCode :: ierr
   PetscInt :: ipckrreg !, ithrmtype
      
     
@@ -752,7 +755,8 @@ subroutine pri_var_trans_Richards_winc(x,delx,iphase,energyscale,num_phase,num_s
   PetscReal :: x(1:num_spec+1),delx(1:num_spec+1),energyscale, pref
   PetscReal :: var_node(:)
   PetscReal :: dif(:)
-  PetscInt ::iphase,itable,ierr
+  PetscInt ::iphase,itable
+  PetscErrorCode :: ierr
   PetscInt :: ipckrreg !, ithrmtype
    
   PetscInt :: n

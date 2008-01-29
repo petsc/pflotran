@@ -446,9 +446,10 @@ subroutine StructuredGridReadArray(a,n,option)
   type(option_type) :: option
   PetscInt :: n
   PetscInt :: i, i1, i2, m
-  PetscInt ::  ierr, nvalue=10
+  PetscInt ::  nvalue=10
   PetscReal, intent(inout) :: a(*)
   character(len=MAXSTRINGLENGTH) :: string 
+  PetscErrorCode :: ierr
 
   save nvalue
 

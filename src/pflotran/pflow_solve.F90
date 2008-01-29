@@ -99,7 +99,8 @@
 
  type(realization_type) :: realization
  KSPConvergedReason :: ksp_reason
- PetscInt :: newton,isucc,ierr,ichange
+ PetscInt :: newton,isucc,ichange
+ PetscErrorCode :: ierr
  PetscInt :: newton_max
  PetscInt :: its_line
 !PetscInt :: icut

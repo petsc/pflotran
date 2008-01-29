@@ -63,8 +63,9 @@ private
   
  
   PetscReal, pointer :: xx_p(:),yy_p(:)!,var_p(:),iphase_p(:)
-  PetscInt :: n,n0,re,ierr
-  !integer re0, ierr, index, iipha
+  PetscInt :: n,n0,re
+  PetscErrorCode :: ierr
+  !PetscInt ::  re0, ierr, index, iipha
   !PetscReal, pointer :: sat(:),xmol(:)
 
   call VecGetArrayF90(grid%xx, xx_p, ierr)
@@ -93,7 +94,8 @@ private
   type(pflowGrid), intent(inout) :: grid
   
   PetscReal, pointer :: xx_p(:), iphase_p(:)
-  integer iln,na,nx,ny,nz,ir,ierr
+  PetscInt :: iln,na,nx,ny,nz,ir
+  PetscErrorCode :: ierr
   
    size_var_use = 2 + 7*grid%nphase + 2* grid%nphase*grid%nspec
     size_var_node = (grid%ndof + 1) * size_var_use
@@ -146,7 +148,8 @@ private
   type(pflowGrid), intent(inout) :: grid
   PetscReal, pointer :: xx_p(:),var_p(:),iphase_p(:), yy_p(:) !,r_p(:)
   PetscInt :: n,n0,re
-  integer re0, ierr, iipha
+  PetscInt :: re0, iipha
+  PetscErrorCode :: ierr
 ! PetscInt :: index
 ! PetscReal, pointer :: sat(:),xmol(:)
 ! PetscReal rmax(grid%ndof)
@@ -232,8 +235,9 @@ private
 
   subroutine FlashRes_ARCont(node_no, var_node,por,vol,rock_dencpr, grid, Res_AR,ireac,ierr)
   implicit none
-  integer node_no
-  PetscInt, optional:: ireac,ierr
+  PetscInt :: node_no
+  PetscInt, optional:: ireac
+  PetscErrorCode :: ierr
   type(pflowGrid), intent(in) :: grid
   PetscReal, target:: var_node(1:size_var_use)
   PetscReal Res_AR(1:grid%ndof) 
@@ -293,7 +297,7 @@ private
      var_node2,por2,tor2,sir2,dd2,perm2,Dk2,&
      grid, vv_darcy,Res_FL)
  implicit none
-  integer nconn_no
+  PetscInt :: nconn_no
   type(pflowGrid), intent(inout) :: grid
   PetscReal sir1(1:grid%nphase),sir2(1:grid%nphase)
   PetscReal, target:: var_node1(1:2+7*grid%nphase+2*grid%nphase*grid%nspec)
@@ -310,7 +314,7 @@ private
   PetscReal, pointer :: sat2(:), density2(:), amw2(:), h2(:), u2(:), pc2(:), kvr2(:)         ! nphase dof
   PetscReal, pointer :: xmol2(:), diff2(:)    
   
-  integer ibase, m,np, ind
+  PetscInt :: ibase, m,np, ind
   PetscReal  fluxm(grid%nspec),fluxe, v_darcy,q
   PetscReal uh,uxmol(1:grid%nspec), ukvr,difff,diffdp, DK,Dq
   PetscReal upweight,density_ave,cond, gravity, dphi
@@ -435,7 +439,7 @@ private
  ! Notice : index 1 stands for BC node
    implicit none
   
-   integer nbc_no
+   PetscInt :: nbc_no
   type(pflowGrid), intent(inout) :: grid
   PetscReal dd1, sir2(1:grid%nphase)
   PetscReal, target:: var_node1(1:2+7*grid%nphase+2*grid%nphase*grid%nspec)
@@ -452,7 +456,7 @@ private
   PetscReal, pointer :: sat2(:), density2(:), amw2(:), h2(:), u2(:), pc2(:), kvr2(:)         ! nphase dof
   PetscReal, pointer :: xmol2(:), diff2(:)    
   
-  integer ibase, m,np, ind, ibc,j
+  PetscInt :: ibase, m,np, ind, ibc,j
   PetscReal  fluxm(grid%nspec),fluxe, v_darcy,q
   PetscReal uh,uxmol(1:grid%nspec), ukvr,diff,diffdp, DK,Dq
   PetscReal upweight,density_ave,cond,gravity, dphi
@@ -657,7 +661,7 @@ private
     type(pflowGrid), intent(inout) :: grid
 
 ! PetscInt :: j, jm1, jm2, jmu, mu
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   PetscInt :: n, ng, nc, nr
   PetscInt :: i, i1, i2, jn, jng
   PetscInt :: m, m1, m2, n1, n2, ip1, ip2, p1, p2
@@ -887,7 +891,7 @@ private
 
     accum = 0.d0
     call flashRes_ARCont(n, var_loc_p(index_var_begin: index_var_end),&
-    porosity_loc_p(ng),volume_p(n),grid%dencpr(i), grid, Res, 1,ierr)
+    porosity_loc_p(ng),volume_p(n),grid%dencpr(i), grid, Res, ONE_INTEGER,ierr)
    
     r_p(p1:p1+grid%ndof-1) = r_p(p1:p1+grid%ndof-1) + Res(1:grid%ndof)
     Resold_AR(n,1:grid%ndof)= Res(1:grid%ndof) 
@@ -1290,10 +1294,10 @@ private
     MatStructure flag
 
 !   PetscInt :: j, jn, jm1, jm2,jmu, mu
-    PetscInt :: ierr
+    PetscErrorCode :: ierr
     PetscInt :: n, ng, nc,nvar,neq,nr
     PetscInt :: i1, i2, jng, i
-    integer   :: kk,ii1,jj1,kk1,ii2,jj2,kk2  
+    PetscInt :: kk,ii1,jj1,kk1,ii2,jj2,kk2  
     PetscInt :: m, m1, m2, n1, n2, ip1, ip2 
     PetscInt :: p1,p2 !,t1,t2,c1,c2,s1,s2
     PetscInt :: ibc  ! Index that specifies a boundary condition block.
@@ -1337,7 +1341,7 @@ private
             blkmat22(1:grid%ndof,1:grid%ndof)
   PetscReal :: ResInc(1:grid%nlmax, 1:grid%ndof, 1:grid%ndof),res(1:grid%ndof)  
   PetscReal :: max_dev  
-  integer  na1,na2
+  PetscInt :: na1,na2
 !-----------------------------------------------------------------------
 ! R stand for residual
 !  ra       1              2              3              4          5              6            7      8
@@ -1401,7 +1405,7 @@ private
 
        call flashRes_ARCont(n, var_loc_p(index_var_begin : index_var_end),&
         porosity_loc_p(ng),volume_p(n),grid%dencpr(int(ithrm_loc_p(ng))),&
-        grid, Res,1,ierr)
+        grid, Res,ONE_INTEGER,ierr)
       
        ResInc(n,:,nvar) = ResInc(n,:,nvar) + Res(:)
    end do
@@ -1883,7 +1887,7 @@ private
     type(pflowGrid) :: grid 
 
  
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   PetscInt :: n
   PetscInt :: i, index_var_begin,index_var_end
   PetscInt :: p1
@@ -1936,7 +1940,7 @@ private
     i = ithrm_p(n)
     
      call flashRes_ARCont(n, var_p(index_var_begin: index_var_end),&
-    porosity_p(n),volume_p(n),grid%dencpr(i), grid, Res, 0,ierr)
+    porosity_p(n),volume_p(n),grid%dencpr(i), grid, Res, ZERO_INTEGER,ierr)
  
 
   accum_p(p1:p1+grid%ndof-1)=Res(:) 
@@ -1970,7 +1974,8 @@ private
     
 !   PetscInt ichange
     PetscInt :: n, n0
-    PetscInt :: ierr,iicap,iiphase
+    PetscInt :: iicap,iiphase
+    PetscErrorCode :: ierr
     PetscReal, pointer :: xx_p(:),icap_p(:),ithrm_p(:),iphase_p(:), var_p(:),ssat_p(:)
     PetscReal dif(1:grid%nphase), dum1, dum2           
 
@@ -2052,7 +2057,7 @@ private
   type(pflowGrid) :: grid 
 
  
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   PetscInt :: n, nc
   PetscInt :: ibc,jn
   PetscInt :: m

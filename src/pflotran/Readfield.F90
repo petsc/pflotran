@@ -48,11 +48,14 @@ subroutine Read_perm_field(grid)
 
   PetscReal, pointer :: perm_xx_p(:),perm_yy_p(:),perm_zz_p(:),por_p(:), &
                           tor_p(:)
-  PetscInt :: iln,na,nx,ny,nz,ir,ierr
+  PetscInt :: iln,na,nx,ny,nz,ir
+  PetscErrorCode :: ierr
   PetscReal ::  px,py,pz, por, tor
+
+  PetscInt, parameter :: fid=60
   
-  open(60, file="perm_field.in", action="read", status="old")
-  read(60,*)
+  open(fid, file="perm_field.in", action="read", status="old")
+  read(fid,*)
      
   call VecGetArrayF90(grid%perm_xx, perm_xx_p, ierr); CHKERRQ(ierr)
   call VecGetArrayF90(grid%perm_yy, perm_yy_p, ierr); CHKERRQ(ierr)
@@ -61,7 +64,7 @@ subroutine Read_perm_field(grid)
   call VecGetArrayF90(grid%porosity,por_p,ierr)
 
   do 
-    call fiReadFlotranString(60, string, ierr)
+    call fiReadFlotranString(fid, string, ierr)
     if (ierr /= 0) exit
 
     call fiReadInt(string,ir,ierr) 
@@ -86,7 +89,7 @@ subroutine Read_perm_field(grid)
 
 
 
-!  read(60,*)ir,px,py,pz,por,tor
+!  read(fid,*)ir,px,py,pz,por,tor
 !   print *, 'Read filed:',ir,nx,ny,nz,px,py,pz,por,tor
  
     do iln=1, grid%nlmax
@@ -106,7 +109,7 @@ subroutine Read_perm_field(grid)
       endif
     enddo 
   enddo
-  close(60)
+  close(fid)
  
  ! select case(card)
  ! case('LOGO' 
@@ -133,15 +136,17 @@ subroutine Read_init_field(grid, kplt)
   PetscInt :: kplt
 
   PetscReal, pointer :: xx_p(:), iphase_p(:)
-  PetscInt :: iln,na,nx,ny,nz,ir,ierr,n, ii
+  PetscInt :: iln,na,nx,ny,nz,ir,n, ii
+  PetscErrorCode :: ierr
   PetscReal xxx(1:grid%ndof)
   PetscReal :: x,y,z,phase,pl,pg,t,sl,sg,xl,xg,vf 
+  PetscInt, parameter :: fid = 60
   
-  open(60, file="pflow_init.dat", action="read", status="old")
-  read(60)
-!  read(60,'(2i10, 1p2e16.8)') kplt, grid%flowsteps, grid%t, grid%dt
-  read(60)
-  read(60)
+  open(fid, file="pflow_init.dat", action="read", status="old")
+  read(fid)
+!  read(fid,'(2i10, 1p2e16.8)') kplt, grid%flowsteps, grid%t, grid%dt
+  read(fid)
+  read(fid)
        
   call VecGetArrayF90(grid%xx, xx_p, ierr); CHKERRQ(ierr)
   call VecGetArrayF90(grid%iphas, iphase_p,ierr)
@@ -150,10 +155,10 @@ subroutine Read_init_field(grid, kplt)
     ir=n-1
   
 !    if (grid%ny==1) then 
-!     read(60,'(1p11e12.4)')x,z,phase,pl,pg,t,sl,sg,xl,xg,vf
+!     read(fid,'(1p11e12.4)')x,z,phase,pl,pg,t,sl,sg,xl,xg,vf
  !    print *, x,z,phase,pl,pg,t,sl,sg,xl,xg,vf
  !   else
-      read(60,'(i10, 1p20e16.8)') ii, x,y,z,phase, xxx
+      read(fid,'(i10, 1p20e16.8)') ii, x,y,z,phase, xxx
 !    print *,x,y,z,phase,pg,t,sg,xl,xg,vf
  !   endif 
 
@@ -183,7 +188,7 @@ subroutine Read_init_field(grid, kplt)
      
   enddo
   
-  close(60)
+  close(fid)
     
   call VecRestoreArrayF90(grid%xx, xx_p, ierr)
   call VecRestoreArrayF90(grid%iphas, iphase_p,ierr)
@@ -238,16 +243,18 @@ subroutine Read_Geom_field(grid)
  
   PetscReal, pointer :: perm_xx_p(:),perm_yy_p(:),perm_zz_p(:),por_p(:), &
                           tor_p(:), volume_p(:)
-  PetscInt :: iln,na,nx,ny,nz,ir,ierr,ng
+  PetscInt :: iln,na,nx,ny,nz,ir,ng
+  PetscErrorCode :: ierr
   PetscReal ::  xc,yc,zc,vc, dx,dy,dz
   PetscReal ::  px,py,pz, por, tor
   PetscReal ::  area, dist1, dist2, grav_ang
 ! PetscReal ::  x,y,z
-  character*4 card, word
+  character(len=MAXCARDLENGTH) card, word
   ! character(len=MAXSTRINGLENGTH) :: string 
-
+  PetscInt :: length
   PetscInt :: nx1, nx2, ny1, ny2, nz1,nz2, ina1, ina2,nnc, na1,na2, ncna
   PetscInt :: iln1, iln2, ng1,ng2, mconn
+  PetscInt, parameter :: fid = 60
   
  ! if (grid%igeom /=-1) then
  !   print *, ' Wrong geomtry entry:: STOP !'
@@ -268,7 +275,8 @@ subroutine Read_Geom_field(grid)
     if (ierr /= 0) exit
 
     call fiReadWord(string,word,.false.,ierr)
-    call fiCharsToUpper(word,len_trim(word))
+    length = len_trim(word)
+    call fiCharsToUpper(word,length)
     call fiReadCard(word,card,ierr)
 
     if (grid%myrank == 0) print *, card
@@ -318,7 +326,7 @@ subroutine Read_Geom_field(grid)
 !geh          grid%z(ir+1)=zc
 
 
-!         read(60,*)ir,px,py,pz,por,tor
+!         read(fid,*)ir,px,py,pz,por,tor
 !         print *, 'Read geom 0:',ir,xc,yc,zc,vc, px,py, pz,por,tor
           call Natural2LocalIndex(ir,iln, grid%nL2A, grid%nlmax)
             if (iln > 0 ) then
@@ -447,7 +455,8 @@ end  subroutine Read_Geom_field
    type(pflowGrid), intent(inout) :: grid
    
    PetscReal, pointer :: xx_p(:)
-   PetscInt :: nc,m,ibc,ierr
+   PetscInt :: nc,m,ibc
+   PetscErrorCode :: ierr
 
    call VecGetArrayF90(grid%xx,xx_p,ierr)  
      do nc=1,grid%nconnbc

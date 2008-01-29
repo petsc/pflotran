@@ -22,7 +22,7 @@ module General_Grid_module
   ! indication of what the problem is.
 #include "include/finclude/petsclog.h"
 
-  PetscInt :: hdf5_err
+  PetscMPIInt :: hdf5_err
   PetscErrorCode :: ierr
   public :: ReadStructuredGridHDF5
   
@@ -381,7 +381,7 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
   integer(HID_T) :: prop_id
   integer(HSIZE_T) :: dims(3)
   integer(HSIZE_T) :: offset(3), length(3), stride(3)
-  PetscInt :: rank
+  PetscMPIInt :: rank
   PetscInt :: local_ghosted_id_up, local_id_up, natural_id_up
   PetscInt :: local_ghosted_id_down, local_id_down, natural_id_down
   PetscInt :: index_count
@@ -389,7 +389,7 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
   integer(HSIZE_T) :: num_connections_in_file
   PetscInt :: temp_int, i, num_internal_connections
   
-  PetscInt, allocatable :: upwind_ids(:), downwind_ids(:)
+  PetscMPIInt, allocatable :: upwind_ids(:), downwind_ids(:)
   
   PetscInt :: read_block_size = HDF5_READ_BUFFER_SIZE
 

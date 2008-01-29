@@ -1,5 +1,12 @@
 module pflow_read_gridsize_module
 
+  implicit none
+  private
+
+#include "definitions.h"
+
+  public :: pflow_read_gridsize
+
 contains
 
   subroutine pflow_read_gridsize(inputfile, igeom, nx, ny, nz, npx, npy, npz, &
@@ -9,18 +16,18 @@ contains
   
   implicit none
   
-  character(len=*), intent(in) :: inputfile
-
-  integer, intent(out) :: igeom, nx, ny, nz, npx, npy, npz, nphase, ndof
-  
-  integer, intent(out) :: nspec,npricomp,idcdm,itable,ierr
-  integer, intent(out) :: mcomp, mphas
- 
-#include "include/finclude/petsc.h"
 #include "include/finclude/petscdef.h"
 
-#include "definitions.h"
-  integer :: myrank, gridread_flag, commsize
+  character(len=*), intent(in) :: inputfile
+
+  PetscInt, intent(out) :: igeom, nx, ny, nz, npx, npy, npz, nphase, ndof
+  
+  PetscInt, intent(out) :: nspec,npricomp,idcdm,itable
+  PetscErrorCode :: ierr
+  PetscInt, intent(out) :: mcomp, mphas
+ 
+  PetscInt :: gridread_flag, length
+  PetscMPIInt :: myrank, commsize
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXCARDLENGTH) :: card
@@ -43,7 +50,8 @@ contains
     if(ierr /= 0) exit
 
     call fiReadWord(string,word,.false.,ierr)
-    call fiCharsToUpper(word,len_trim(word))
+    length = len_trim(word)
+    call fiCharsToUpper(word,length)
     call fiReadCard(word,card,ierr)
 
     select case(card)
@@ -140,8 +148,9 @@ contains
         call fiReadWord(string,name,.true.,ierr)
         call fiErrorMsg(myrank,'namcx','GAS',ierr)
         
-         call fiWordToUpper(name) 
-        select case(name(1:len_trim(name)))
+        call fiWordToUpper(name) 
+        length = len_trim(name)
+        select case(name(1:length))
           case('H2O')
               mcomp = mcomp +1
           case('TRACER')     
@@ -175,9 +184,9 @@ contains
         call fiReadWord(string,name,.true.,ierr)
         call fiErrorMsg(myrank,'namcx','phase',ierr)
         
-         call fiWordToUpper(name) 
-         
-        select case(name(1:len_trim(name)))
+        call fiWordToUpper(name) 
+        length = len_trim(name) 
+        select case(name(1:length))
           case('ROCK')
               mphas = mphas +1
           case('H2O')     

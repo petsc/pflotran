@@ -102,7 +102,7 @@ subroutine DebugReadPflow(debug,fid,myrank)
   
   character(len=MAXSTRINGLENGTH) :: string, error_string
   character(len=MAXWORDLENGTH) :: keyword, word, word2
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
 
   ierr = 0
   do
@@ -110,7 +110,7 @@ subroutine DebugReadPflow(debug,fid,myrank)
     call fiReadFlotranString(fid,string,ierr)
 
     if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
-        fiStringCompare(string,'END',3)) exit  
+        fiStringCompare(string,'END',THREE_INTEGER)) exit  
 
     call fiReadWord(string,keyword,.true.,ierr)
     call fiErrorMsg(myrank,'keyword','DEBUG', ierr)   

@@ -145,7 +145,9 @@ subroutine ConditionRead(condition,option,fid)
   PetscInt, pointer :: itype(:)
   PetscInt :: time_index, length_index, pres_index, temp_index, conc_index, iphase
   PetscInt :: enthalpy_index
-  PetscInt :: max_size, index, idof, ierr, max_index, max_dof, max_required_dof
+  PetscInt :: max_size, index, idof, max_index, max_dof, max_required_dof
+  PetscInt :: length
+  PetscErrorCode :: ierr
 
   nullify(times)
   nullify(pressure)
@@ -206,7 +208,7 @@ subroutine ConditionRead(condition,option,fid)
     call fiReadStringErrorMsg(option%myrank,'CONDITION',ierr)
           
     if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
-        fiStringCompare(string,'END',3)) exit  
+        fiStringCompare(string,'END',THREE_INTEGER)) exit  
 
     call fiReadWord(string,word,.true.,ierr)
     call fiErrorMsg(option%myrank,'keyword','CONDITION', ierr)   
@@ -238,14 +240,16 @@ subroutine ConditionRead(condition,option,fid)
       case('CLASS') ! read condition class (flow vs. transport)
         call fiReadWord(string,word,.true.,ierr)
         call fiErrorMsg(option%myrank,'CLASS','CONDITION', ierr)   
-        call fiCharsToLower(word,len_trim(word))
+        length = len_trim(word)
+        call fiCharsToLower(word,length)
         condition%class = word
       case('CYCLIC') ! read condition class (flow vs. transport)
         condition%is_cyclic = .true.
       case('INTERPOLATION') ! read condition class (flow vs. transport)
         call fiReadWord(string,word,.true.,ierr)
         call fiErrorMsg(option%myrank,'INTERPOLATION','CONDITION', ierr)   
-        call fiCharsToLower(word,len_trim(word))
+        length = len_trim(word)
+        call fiCharsToLower(word,length)
         select case(word)
           case('step')
             condition%interpolation_method = STEP
@@ -258,7 +262,7 @@ subroutine ConditionRead(condition,option,fid)
           call fiReadStringErrorMsg(option%myrank,'CONDITION',ierr)
           
           if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
-              fiStringCompare(string,'END',3)) exit          
+              fiStringCompare(string,'END',THREE_INTEGER)) exit          
           
           if (ierr /= 0) exit
           call fiReadWord(string,word,.true.,ierr)
@@ -280,7 +284,8 @@ subroutine ConditionRead(condition,option,fid)
           end select
           call fiReadWord(string,word,.true.,ierr)
           call fiErrorMsg(option%myrank,'TYPE','CONDITION', ierr)   
-          call fiCharsToLower(word,len_trim(word))
+          length = len_trim(word)
+          call fiCharsToLower(word,length)
           ctype(index) = word
           select case(word)
             case('dirichlet')
@@ -319,7 +324,7 @@ subroutine ConditionRead(condition,option,fid)
           call fiReadStringErrorMsg(option%myrank,'CONDITION',ierr)
           
           if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
-              fiStringCompare(string,'END',3)) exit          
+              fiStringCompare(string,'END',THREE_INTEGER)) exit          
           
           if (ierr /= 0) exit
           call fiReadWord(string,word,.true.,ierr)
@@ -520,13 +525,15 @@ subroutine ConditionReadValues(option,keyword,string,times,values,units)
   
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXWORDLENGTH) :: error_string
-  PetscInt :: ierr
+  PetscInt :: length
+  PetscErrorCode :: ierr
   
   ierr = 0
   call fiReadWord(string,word,.true.,ierr)
   call fiErrorMsg(option%myrank,'file or value','CONDITION', ierr)
-  call fiCharsToLower(word,len_trim(word))
-  if (fiStringCompare(word,'file',4)) then
+  length = len_trim(word)
+  call fiCharsToLower(word,length)
+  if (fiStringCompare(word,'file',FOUR_INTEGER)) then
     call fiReadWord(string,word,.true.,ierr)
     error_string = keyword // ' FILE'
     call fiErrorMsg(option%myrank,error_string,'CONDITION', ierr)
@@ -570,7 +577,8 @@ subroutine ConditionReadValuesFromFile(filename,times,values,option)
   PetscReal :: temp_time
   PetscInt :: max_size = 1000
   PetscInt :: fid
-  PetscInt :: count, i, status, ierr
+  PetscInt :: count, i, status
+  PetscErrorCode :: ierr
   
   fid = 86
   open(unit=fid,file=filename,status="old",iostat=status)
@@ -789,7 +797,8 @@ function ConditionGetPtrFromList(condition_name,condition_list)
   type(condition_type), pointer :: ConditionGetPtrFromList
   character(len=MAXNAMELENGTH) :: condition_name
   type(condition_list_type) :: condition_list
-
+ 
+  PetscInt :: length
   type(condition_type), pointer :: condition
     
   nullify(ConditionGetPtrFromList)
@@ -797,9 +806,10 @@ function ConditionGetPtrFromList(condition_name,condition_list)
   
   do 
     if (.not.associated(condition)) exit
-    if (len_trim(condition_name) == len_trim(condition%name) .and. &
+    length = len_trim(condition_name)
+    if (length == len_trim(condition%name) .and. &
         fiStringCompare(condition%name,condition_name, &
-                        len_trim(condition_name))) then
+                        length)) then
       ConditionGetPtrFromList => condition
       return
     endif

@@ -112,7 +112,7 @@ subroutine SolverReadPflow(solver,fid,myrank)
   
   character(len=MAXSTRINGLENGTH) :: string, error_string
   character(len=MAXWORDLENGTH) :: keyword, word, word2
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
 
   ierr = 0
   do
@@ -120,7 +120,7 @@ subroutine SolverReadPflow(solver,fid,myrank)
     call fiReadFlotranString(fid,string,ierr)
 
     if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
-        fiStringCompare(string,'END',3)) exit  
+        fiStringCompare(string,'END',THREE_INTEGER)) exit  
 
     call fiReadWord(string,keyword,.true.,ierr)
     call fiErrorMsg(myrank,'keyword','SOLVER', ierr)
@@ -185,7 +185,7 @@ subroutine SolverComputeMFJacobian(snes, x, J, B, flag, ctx, ierr)
   Mat, intent(out) :: J, B
   MatStructure, intent(in) :: flag
   PetscInt, intent(inout) :: ctx(*)
-  PetscInt, intent(out) :: ierr
+  PetscErrorCode, intent(out) :: ierr
 
   call MatAssemblyBegin(J, MAT_FINAL_ASSEMBLY, ierr)
   call MatAssemblyEnd(J, MAT_FINAL_ASSEMBLY, ierr)
@@ -212,7 +212,7 @@ subroutine SolverMonitorH(snes, its, norm, solver, option)
   type(solver_type) :: solver
   type(option_type) :: option
   
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   PetscMPIInt :: myrank
   PetscReal :: h
   

@@ -43,7 +43,7 @@ contains
     ! Also, I'm not sure if this needs to be intent(inout) instead of
     ! intent(in).
 
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   PetscInt :: n, ng, nc
   PetscInt :: i, i1, i2
   PetscInt :: m, m1, m2, n1, n2
@@ -166,7 +166,7 @@ contains
   type(pflowGrid), intent(in) :: grid
   PetscInt, intent(in) :: flag
 
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   PetscInt :: n, ng, nc
   PetscInt :: i, i1, i2
   PetscInt :: m, m1, m2, n1, n2

@@ -432,7 +432,7 @@ function MaterialGetPtrFromList(material_name,material_list)
   type(material_type), pointer :: MaterialGetPtrFromList
   character(len=MAXNAMELENGTH) :: material_name
   type(material_type), pointer :: material_list
-
+  PetscInt :: length
   type(material_type), pointer :: material
     
   nullify(MaterialGetPtrFromList)
@@ -440,9 +440,9 @@ function MaterialGetPtrFromList(material_name,material_list)
   
   do 
     if (.not.associated(material)) exit
-    if (len_trim(material_name) == len_trim(material%name) .and. &
-        fiStringCompare(material%name,material_name, &
-                        len_trim(material_name))) then
+    length = len_trim(material_name)
+    if (length == len_trim(material%name) .and. &
+        fiStringCompare(material%name,material_name,length)) then
       MaterialGetPtrFromList => material
       return
     endif

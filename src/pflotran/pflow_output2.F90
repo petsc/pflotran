@@ -36,7 +36,7 @@ module Output_module
   PetscInt, parameter :: LIQUID_PHASE = 1
   PetscInt, parameter :: GAS_PHASE = 2
 
-  PetscInt :: hdf5_err
+  PetscMPIInt :: hdf5_err
   PetscErrorCode :: ierr
   
   public :: Output, OutputTecplot, OutputHDF5, OutputVectorTecplot
@@ -246,25 +246,25 @@ subroutine OutputTecplot(realization)
       select case(option%imode)
         case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
           ! temperature
-          call GetVarFromArray(realization,global_vec,TEMPERATURE,0)
+          call GetVarFromArray(realization,global_vec,TEMPERATURE,ZERO_INTEGER)
           call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       end select
 
       ! pressure
-      call GetVarFromArray(realization,global_vec,PRESSURE,0)
+      call GetVarFromArray(realization,global_vec,PRESSURE,ZERO_INTEGER)
       call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
       call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
 
       ! liquid saturation
-      call GetVarFromArray(realization,global_vec,LIQUID_SATURATION,0)
+      call GetVarFromArray(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
       call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
       call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
 
       select case(option%imode)
         case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE)
           ! gas saturation
-          call GetVarFromArray(realization,global_vec,GAS_SATURATION,0)
+          call GetVarFromArray(realization,global_vec,GAS_SATURATION,ZERO_INTEGER)
           call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       end select
@@ -272,7 +272,7 @@ subroutine OutputTecplot(realization)
       select case(option%imode)
         case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
           ! liquid energy
-          call GetVarFromArray(realization,global_vec,LIQUID_ENERGY,0)
+          call GetVarFromArray(realization,global_vec,LIQUID_ENERGY,ZERO_INTEGER)
           call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       end select
@@ -280,7 +280,7 @@ subroutine OutputTecplot(realization)
       select case(option%imode)
         case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE)
           ! gas energy
-          call GetVarFromArray(realization,global_vec,GAS_ENERGY,0)
+          call GetVarFromArray(realization,global_vec,GAS_ENERGY,ZERO_INTEGER)
           call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       end select
@@ -307,19 +307,19 @@ subroutine OutputTecplot(realization)
       
       ! Volume Fraction
       if (option%rk > 0.d0) then
-        call GetVarFromArray(realization,global_vec,VOLUME_FRACTION,0)
+        call GetVarFromArray(realization,global_vec,VOLUME_FRACTION,ZERO_INTEGER)
         call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
         call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       endif
     
       ! phase
-      call GetVarFromArray(realization,global_vec,PHASE,0)
+      call GetVarFromArray(realization,global_vec,PHASE,ZERO_INTEGER)
       call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
       call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_INTEGER)
       
       ! material id
       if (associated(field%imat)) then
-        call GetVarFromArray(realization,global_vec,MATERIAL_ID,0)
+        call GetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
         call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
         call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_INTEGER)
       endif
@@ -344,7 +344,7 @@ subroutine OutputTecplot(realization)
 
       ! volume fraction
       if (option%rk > 0.d0) then
-        call GetVarFromArray(realization,global_vec,VOLUME_FRACTION,0)
+        call GetVarFromArray(realization,global_vec,VOLUME_FRACTION,ZERO_INTEGER)
         call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
         call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       endif
@@ -520,7 +520,7 @@ subroutine OutputVelocitiesTecplot(realization)
 
   ! material id
   if (associated(field%imat)) then
-    call GetVarFromArray(realization,global_vec,MATERIAL_ID,0)
+    call GetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
     call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
     call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_INTEGER)
   endif
@@ -925,7 +925,7 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
   call WriteTecplotDataSetFromVec(fid,realization,natural_vec,TECPLOT_REAL)
 
   if (associated(field%imat)) then
-    call GetVarFromArray(realization,global_vec,MATERIAL_ID,0)
+    call GetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
     call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
     call WriteTecplotDataSetFromVec(fid,realization,natural_vec,TECPLOT_INTEGER)
   endif
@@ -959,7 +959,7 @@ subroutine WriteTecplotDataSetFromVec(fid,realization,vec,datatype)
   PetscReal, pointer :: vec_ptr(:)
   
   call VecGetArrayF90(vec,vec_ptr,ierr)
-  call WriteTecplotDataSet(fid,realization,vec_ptr,datatype,0) ! 0 implies grid%nlmax
+  call WriteTecplotDataSet(fid,realization,vec_ptr,datatype,ZERO_INTEGER) ! 0 implies grid%nlmax
   call VecRestoreArrayF90(vec,vec_ptr,ierr)
   
 end subroutine WriteTecplotDataSetFromVec
@@ -1159,7 +1159,7 @@ subroutine OutputHDF5(realization)
 
 ! 64-bit stuff
 #ifdef PETSC_USE_64BIT_INDICES
-#define HDF_NATIVE_INTEGER H5T_STD_I64LE  ! little endian 
+#define HDF_NATIVE_INTEGER H5T_STD_I64LE
 #else
 #define HDF_NATIVE_INTEGER H5T_NATIVE_INTEGER
 #endif
@@ -1176,7 +1176,7 @@ subroutine OutputHDF5(realization)
   integer(HID_T) :: file_space_id
   integer(HID_T) :: realization_set_id
   integer(HID_T) :: prop_id
-  integer(HSIZE_T) :: rank
+  PetscMPIInt :: rank
   integer(HSIZE_T) :: dims(3)
   
   type(grid_type), pointer :: grid
@@ -1289,25 +1289,25 @@ subroutine OutputHDF5(realization)
       ! temperature
       select case(option%imode)
         case (TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
-          call GetVarFromArray(realization,global_vec,TEMPERATURE,0)
+          call GetVarFromArray(realization,global_vec,TEMPERATURE,ZERO_INTEGER)
           string = "Temperature"
           call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
       end select
 
       ! pressure
-      call GetVarFromArray(realization,global_vec,PRESSURE,0)
+      call GetVarFromArray(realization,global_vec,PRESSURE,ZERO_INTEGER)
       string = "Pressure"
       call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
 
       ! liquid saturation
-      call GetVarFromArray(realization,global_vec,LIQUID_SATURATION,0)
+      call GetVarFromArray(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
       string = "Liquid Saturation"
       call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)  
 
       ! gas saturation
       select case(option%imode)
         case (TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE)
-          call GetVarFromArray(realization,global_vec,GAS_SATURATION,0)
+          call GetVarFromArray(realization,global_vec,GAS_SATURATION,ZERO_INTEGER)
           string = "Gas Saturation"
           call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
       end select
@@ -1315,7 +1315,7 @@ subroutine OutputHDF5(realization)
       ! liquid energy
       select case(option%imode)
         case (TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
-          call GetVarFromArray(realization,global_vec,LIQUID_ENERGY,0)
+          call GetVarFromArray(realization,global_vec,LIQUID_ENERGY,ZERO_INTEGER)
           string = "Liquid Energy"
           call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
       end select
@@ -1323,7 +1323,7 @@ subroutine OutputHDF5(realization)
       ! gas energy
       select case(option%imode)
         case (TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE)    
-          call GetVarFromArray(realization,global_vec,GAS_ENERGY,0)
+          call GetVarFromArray(realization,global_vec,GAS_ENERGY,ZERO_INTEGER)
           string = "Gas Energy"
           call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
       end select
@@ -1350,13 +1350,13 @@ subroutine OutputHDF5(realization)
     
       ! Volume Fraction
       if (option%rk > 0.d0) then
-        call GetVarFromArray(realization,global_vec,VOLUME_FRACTION,0)
+        call GetVarFromArray(realization,global_vec,VOLUME_FRACTION,ZERO_INTEGER)
         string = "Volume Fraction"
         call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
       endif
     
       ! phase
-      call GetVarFromArray(realization,global_vec,PHASE,0)
+      call GetVarFromArray(realization,global_vec,PHASE,ZERO_INTEGER)
       string = "Phase"
       call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,HDF_NATIVE_INTEGER) 
   
@@ -1644,7 +1644,7 @@ subroutine WriteHDF5Coordinates(name,option,length,array,file_id)
   integer(HID_T) :: data_set_id
   integer(HID_T) :: prop_id
   integer(HSIZE_T) :: dims(3)
-  PetscInt :: rank
+  PetscMPIInt :: rank
   
   ! write out grid structure
   rank = 1

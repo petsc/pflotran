@@ -30,7 +30,7 @@ contains
   Vec, intent(inout) :: xx
   Vec, intent(in), optional :: v1, v2
   PetscInt, intent(in), optional :: v1_dof, v2_dof
-  PetscInt, intent(out), optional :: ierr
+  PetscErrorCode, intent(out), optional :: ierr
 
   PetscInt :: i
   PetscReal, pointer :: xx_p(:), v1_p(:), v2_p(:)
@@ -86,7 +86,7 @@ contains
   Vec, intent(inout) :: xx
   Vec, intent(in) :: v1, v2, v3
   PetscInt, intent(in) :: v1_dof, v2_dof, v3_dof
-  PetscInt, intent(out) :: ierr
+  PetscErrorCode, intent(out) :: ierr
 
 ! Vec, intent(in), optional :: v1, v2, v3
 ! PetscInt, intent(in), optional :: v1_dof, v2_dof, v3_dof
@@ -164,7 +164,7 @@ contains
   Vec, intent(inout) :: xx
   Vec, intent(in) :: v1, v2, v3, v4
   PetscInt, intent(in) :: v1_dof, v2_dof, v3_dof,v4_dof
-  PetscInt, intent(out) :: ierr
+  PetscErrorCode, intent(out) :: ierr
 
 ! Vec, intent(in), optional :: v1, v2, v3
 ! PetscInt, intent(in), optional :: v1_dof, v2_dof, v3_dof
@@ -252,7 +252,8 @@ end subroutine pflow_pack_xx4
   PetscReal, pointer :: ithrm_p(:), iphas_p(:), xx_p(:), &
                      sat_p(:), xmol_p(:), den_p(:), por_p(:), &
                      press_p(:), temp_p(:), enthalpy_p(:), accum_p(:)
-  PetscInt :: ierr, i, j1, j2, j3, m
+  PetscInt :: i, j1, j2, j3, m
+  PetscErrorCode :: ierr
   PetscReal :: dl,dg,sl,sg,pa,pg,pl,pv,ps,hl,hg,por,porm1,scale,tc, &
   eqkair,xl1,xl2,xg1,xg2,dencp,dencpr(*)
 

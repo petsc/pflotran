@@ -94,7 +94,7 @@ subroutine RichardsLiteTimeCut(realization)
   type(field_type), pointer :: field
   
   PetscReal, pointer :: xx_p(:),yy_p(:)
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   PetscInt :: local_id
 
   grid => realization%grid
@@ -1074,7 +1074,7 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
   Vec, intent(out) :: r
   type(realization_type) :: realization
 
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   PetscInt :: i, jn
   PetscInt :: ip1, ip2
   PetscInt :: local_id, ghosted_id, local_id_up, local_id_dn, ghosted_id_up, ghosted_id_dn
@@ -1423,7 +1423,7 @@ subroutine RichardsLiteJacobian(snes,xx,A,B,flag,realization,ierr)
   type(realization_type) :: realization
   MatStructure flag
 
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   PetscInt :: nvar,neq,nr
   PetscInt :: ithrm_up, ithrm_dn, i
   PetscInt :: ip1, ip2 
@@ -1916,13 +1916,13 @@ subroutine RichardsLiteMaxChange(realization)
   type(option_type), pointer :: option
   type(field_type), pointer :: field  
   
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   
   option => realization%option
   field => realization%field
 
   call VecWAXPY(field%dxx,-1.d0,field%xx,field%yy,ierr)
-  call VecStrideNorm(field%dxx,0,NORM_INFINITY,option%dpmax,ierr)
+  call VecStrideNorm(field%dxx,ZERO_INTEGER,NORM_INFINITY,option%dpmax,ierr)
 
 end subroutine RichardsLiteMaxChange
 
@@ -2046,7 +2046,7 @@ subroutine computeAuxVarLite(x,aux_var,iphase,saturation_function,option)
   type(richards_type) :: aux_var
   PetscInt :: iphase
 
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
   PetscReal :: pw,dw_kg,dw_mol,hw,sat_pressure,visl
   PetscReal :: kr, ds_dp, dkr_dp
   PetscReal :: dvis_dt, dvis_dp, dvis_dpsat

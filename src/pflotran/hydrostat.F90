@@ -29,7 +29,8 @@ subroutine hydrostatic (grid)
 
   type(pflowGrid), intent(inout) :: grid
   
-  PetscInt :: i,ibc,ibc0,ierr,itrho,ireg,j,jm,k,m,n !,nx,ny,nz
+  PetscInt :: i,ibc,ibc0,itrho,ireg,j,jm,k,m,n !,nx,ny,nz
+  PetscErrorCode :: ierr
   PetscReal :: betap,depth,dz1,dz2,horiz,dx1,dx2, rho0,&
             dum,dwp,rho,rho1,dw_mol,zz,dzz,tmp,pres,p,dp
 
@@ -696,7 +697,8 @@ subroutine recondition_bc(grid)
   implicit none
     type(pflowGrid), intent(inout) :: grid
      PetscReal :: p, pres, rho, rho1, rho0,  dum
-     PetscInt :: nx,ny,nz, na,  nc, m, iln, ng, itrho, ierr,ibc  
+     PetscInt :: nx,ny,nz, na,  nc, m, iln, ng, itrho, ibc  
+     PetscErrorCode :: ierr
      PetscReal  tmp, dzz,zz 
      PetscReal, pointer :: xx_p(:)
                
@@ -793,7 +795,8 @@ subroutine mhydrostatic(realization)
   type(realization_type) :: realization
   PetscReal, pointer :: xx_p(:) 
   
-  PetscInt :: ibc,ibc0,ierr,itrho,ireg,iz !,nl,ng
+  PetscInt :: ibc,ibc0,itrho,ireg,iz !,nl,ng
+  PetscErrorCode :: ierr
 ! PetscInt :: i,j,jm,k,m,
   PetscReal :: betap,depth,horiz,dx1,dx2,rho0,&
             rho,rho1,zz,dzz,tmp,pres,p,dp
@@ -1034,7 +1037,8 @@ subroutine owghydrostatic(grid)
   type(pflowGrid), intent(inout) :: grid
   PetscReal, pointer :: xx_p(:) 
   
-  PetscInt :: ibc,ibc0,ierr,itrho,ireg,n,nl,ng
+  PetscInt :: ibc,ibc0,itrho,ireg,n,nl,ng
+  PetscErrorCode :: ierr
 ! PetscInt :: i,j,jm,k,m
   PetscReal :: betap,depth,horiz,dx1,dx2, &
             dum,dwp,rho,rho1,dw_mol,zz,dzz,tmp,pres,p,dp

@@ -43,7 +43,7 @@ subroutine fiDefaultMsg(myrank, string, ierr)
   character(len=*) :: string
   PetscMPIInt :: myrank
   PetscInt :: i
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
 
   if (ierr /= 0) then
     if (myrank == 0) &
@@ -66,7 +66,8 @@ subroutine fiErrorMsg(myrank, string1, string2, ierr)
 
   character(len=*) :: string1, string2
   PetscMPIInt :: myrank
-  PetscInt :: i, ierr
+  PetscInt :: i
+  PetscErrorCode :: ierr
 
   if (ierr /= 0) then
     if (myrank == 0) &
@@ -89,8 +90,9 @@ subroutine fiReadStringErrorMsg(myrank, string, ierr)
   implicit none
 
   character(len=*) :: string
-  PetscInt :: i, ierr
+  PetscInt :: i
   PetscMPIInt ::  myrank
+  PetscErrorCode :: ierr
 
   if (ierr /= 0) then
     if (myrank == 0) &
@@ -113,8 +115,9 @@ subroutine fiFindStringErrorMsg(myrank, string, ierr)
   implicit none
 
   character(len=*) :: string
-  PetscInt :: i, ierr
+  PetscInt :: i
   PetscMPIInt myrank
+  PetscErrorCode :: ierr
 
   if (ierr /= 0) then
     if (myrank == 0) &
@@ -137,8 +140,9 @@ subroutine fiReadInt(string, int, ierr)
   implicit none
 
   character(len=*) :: string
-  character(len=32) :: word
-  PetscInt :: int, ierr
+  character(len=MAXWORDLENGTH) :: word
+  PetscInt :: int
+  PetscErrorCode :: ierr
 
   call fiReadWord(string,word,.true.,ierr)
   
@@ -160,9 +164,9 @@ subroutine fiReadDouble(string, double, ierr)
   implicit none
 
   character(len=*) :: string
-  character(len=32) :: word
+  character(len=MAXWORDLENGTH) :: word
   PetscReal :: double
-  PetscInt :: ierr
+  PetscErrorCode :: ierr
 
   call fiReadWord(string,word,.true.,ierr)
   if (ierr == 0) then
@@ -185,10 +189,11 @@ subroutine fiReadMultDouble(fid, string, doubles, n, variable_name, keyword, &
 
   character(len=*) :: string
   character(len=*) :: variable_name, keyword, subroutine_name
-  character(len=32) :: short_string
-  PetscInt :: i, n, ierr, fid
+  character(len=MAXWORDLENGTH) :: short_string
+  PetscInt :: i, n, fid
   logical :: newline
   PetscReal :: doubles(n)
+  PetscErrorCode :: ierr
 
   i = 1
   ierr = 0
@@ -227,7 +232,8 @@ subroutine fiReadString(fid, string, ierr)
   implicit none
 
   character(len=*) :: string
-  PetscInt :: fid, ierr
+  PetscInt :: fid
+  PetscErrorCode :: ierr
 
 !  if (ierr /= 0) return
   ierr = 0
@@ -249,7 +255,8 @@ subroutine fiReadFlotranString(fid, string, ierr)
 
   character(len=*) :: string
   character(len=strlen) ::  tempstring, word
-  PetscInt :: i, fid, ierr
+  PetscInt :: i, fid
+  PetscErrorCode :: ierr
 
 !  if (ierr /= 0) return
   ierr = 0
@@ -309,9 +316,10 @@ subroutine fiReadCard(word, card, ierr)
 
   implicit none
 
-  PetscInt :: i, ierr, length
+  PetscInt :: i, length
   character(len=*) :: word
   character(len=*) :: card
+  PetscErrorCode :: ierr
 
   card = '    '
   if (ierr /= 0) then
@@ -338,11 +346,12 @@ subroutine fiReadWord(string, word, return_blank_error, ierr)
 
   implicit none
 
-  PetscInt :: i, ierr, begins, ends
+  PetscInt :: i, begins, ends
   logical :: return_blank_error ! Return an error for a blank line
                                 ! Therefore, a blank line is not acceptable.
   character(len=*) :: string
   character(len=*) :: word
+  PetscErrorCode :: ierr
 
   if (ierr /= 0) return
 
@@ -404,11 +413,12 @@ subroutine fiReadNChars(string, chars, n, return_blank_error, ierr)
 
   implicit none
 
-  PetscInt :: i, n, ierr, begins, ends
+  PetscInt :: i, n, begins, ends
   logical :: return_blank_error ! Return an error for a blank line
                                 ! Therefore, a blank line is not acceptable.
   character(len=*) :: string
   character(len=n) :: chars
+  PetscErrorCode :: ierr
 
   if (ierr /= 0) return
 
@@ -498,7 +508,7 @@ subroutine fiWordToUpper(word)
   PetscInt :: i
   character(len=*) :: word
 
-  do i=1,32
+  do i=1,MAXWORDLENGTH
     word(i:i) = fiToUpper(word(i:i))
   enddo
 
@@ -518,7 +528,7 @@ subroutine fiWordToLower(word)
   PetscInt :: i
   character(len=*) :: word
 
-  do i=1,32
+  do i=1,MAXWORDLENGTH
     word(i:i) = fiToLower(word(i:i))
   enddo
 
@@ -645,7 +655,8 @@ subroutine fiReadDBaseString(fid, string, ierr)
 
   character(len=*) :: string
   character(len=dbaselen) :: tempstring, word
-  PetscInt :: i, fid, ierr
+  PetscInt :: i, fid
+  PetscErrorCode :: ierr
 
 !  if (ierr /= 0) return
   ierr = 0
@@ -703,13 +714,14 @@ subroutine fiReadDBaseName(fid, string, name, return_blank_error, ierr)
 
   implicit none
 
-  PetscInt :: i, ierr, begins, ends, realends, fid, length
+  PetscInt :: i, begins, ends, realends, fid, length
   logical :: return_blank_error ! Return an error for a blank line
                                 ! Therefore, a blank line is not acceptable.
   PetscInt, parameter :: n = 20
   character(len=*) :: string
   character(len=*) :: name
   logical :: openquotefound
+  PetscErrorCode :: ierr
 
   if (ierr /= 0) return
 
@@ -779,11 +791,12 @@ subroutine fiReadDBaseWord(fid, string, word, return_blank_error, ierr)
 
   implicit none
 
-  PetscInt :: i, ierr, begins, ends, fid
+  PetscInt :: i, begins, ends, fid
   logical :: return_blank_error ! Return an error for a blank line
                                 ! Therefore, a blank line is not acceptable.
   character(len=*) :: string
   character(len=*) :: word
+  PetscErrorCode :: ierr
 
   if (ierr /= 0) return
 
@@ -844,8 +857,9 @@ subroutine fiReadDBaseInt(fid, string, int, ierr)
   implicit none
 
   character(len=*) :: string
-  character(len=32) :: word
-  PetscInt :: int, ierr, fid
+  character(len=MAXWORDLENGTH) :: word
+  PetscInt :: int, fid
+  PetscErrorCode :: ierr
 
   if(len_trim(string) == 0) then
     call fiReadDBaseString(fid,string,ierr)
@@ -871,9 +885,10 @@ subroutine fiReadDBaseDouble(fid, string, double, ierr)
   implicit none
 
   character(len=*) :: string
-  character(len=32) :: word
+  character(len=MAXWORDLENGTH) :: word
   PetscReal :: double
-  PetscInt :: ierr, fid
+  PetscInt :: fid
+  PetscErrorCode :: ierr
 
   if(len_trim(string) == 0) then
     call fiReadDBaseString(fid,string,ierr)
@@ -899,8 +914,9 @@ end subroutine fiReadDBaseDouble
   implicit none
 
   character(len=*) :: string
-  PetscInt :: i, n, ierr, fid
+  PetscInt :: i, n, fid
   PetscReal :: doubles(n)
+  PetscErrorCode :: ierr
 
   ierr = 0
   do i=1,n
@@ -925,7 +941,8 @@ end subroutine fiReadDBaseDouble
 
   character(len=*) :: string
   character(len=strlen) :: string2
-  PetscInt :: fid, ierr, length
+  PetscInt :: fid, length
+  PetscErrorCode :: ierr
 
   ierr = 0
 
@@ -966,11 +983,12 @@ subroutine fiReadQuotedNChars(string, chars, n, return_blank_error, ierr)
 
   implicit none
 
-  PetscInt :: i, n, ierr, begins, ends
+  PetscInt :: i, n, begins, ends
   logical :: return_blank_error ! Return an error for a blank line
                                 ! Therefore, a blank line is not acceptable.
   character(len=*) :: string
   character(len=n) :: chars
+  PetscErrorCode :: ierr
 
   if (ierr /= 0) return
 
