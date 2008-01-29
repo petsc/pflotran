@@ -3,7 +3,8 @@ module hydrostat_module
   use pflow_gridtype_module
 
 private 
-#include "include/finclude/petsc.h"
+
+#include "definitions.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
   ! It is VERY IMPORTANT to make sure that the above .h90 file gets included.
@@ -13,8 +14,6 @@ private
 #include "include/finclude/petscis.h"
 #include "include/finclude/petscis.h90"
 #include "include/finclude/petsclog.h"
-
-#include "definitions.h"
 
   PetscReal, parameter ::  fmwnacl = 58.44277D0,  fmwh2o = 18.0153D0
 
@@ -38,8 +37,6 @@ subroutine hydrostatic (grid)
 
   Vec :: temp1_nat_vec, temp2_nat_vec, temp3_nat_vec, temp4_nat_vec
   PetscReal, pointer :: pres_p(:), temp_p(:), conc_p(:), xmol_p(:), sat_p(:)
-
-!#include "definitions.h"
 
 ! set up hydrostatic initial and boundary conditions
 ! dp/dz = rho * g, dp/dx = -rho*g*beta, dT/dz = dTdz
@@ -820,8 +817,6 @@ subroutine mhydrostatic(realization)
 ! PetscReal :: dz1,dz2,dum,dwp,dw_mol,
   !Vec :: temp1_nat_vec, temp2_nat_vec, temp3_nat_vec, temp4_nat_vec
 
-!#include "definitions.h"
-
 ! set up hydrostatic initial and boundary conditions
 ! dp/dz = rho * g, dp/dx = -rho*g*beta, dT/dz = dTdz
   
@@ -1049,8 +1044,6 @@ subroutine owghydrostatic(grid)
 
 ! PetscReal :: dz1,dz2
   !Vec :: temp1_nat_vec, temp2_nat_vec, temp3_nat_vec, temp4_nat_vec
-
-!#include "definitions.h"
 
 ! set up hydrostatic initial and boundary conditions
 ! dp/dz = rho * g, dp/dx = -rho*g*beta, dT/dz = dTdz

@@ -7,7 +7,8 @@ module LIQUID_module
 
   use pflow_gridtype_module
 private
-#include "include/finclude/petsc.h"
+
+#include "definitions.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
   ! It is VERY IMPORTANT to make sure that the above .h90 file gets included.

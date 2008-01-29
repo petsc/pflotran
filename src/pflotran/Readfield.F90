@@ -10,7 +10,7 @@ module readfield
 
  private 
 
-#include "include/finclude/petsc.h"
+#include "definitions.h"
 !#include "include/petscf90.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
@@ -42,8 +42,6 @@ subroutine Read_perm_field(grid)
   use Fileio_module
 
   implicit none
-
-#include "definitions.h"
 
   type(pflowGrid), intent(inout) :: grid
   character(len=MAXSTRINGLENGTH) :: string 
@@ -129,8 +127,6 @@ subroutine Read_init_field(grid, kplt)
   use Fileio_module
   use Utility_module
   implicit none
-
-!#include "definitions.h"
 
   type(pflowGrid), intent(inout) :: grid
 !  character(len=MAXSTRINGLENGTH) :: string 
@@ -235,8 +231,6 @@ subroutine Read_Geom_field(grid)
   use Fileio_module
   use Utility_module
   implicit none
-
-#include "definitions.h"
 
   type(pflowGrid), intent(inout) :: grid
   character(len=MAXSTRINGLENGTH) :: string 

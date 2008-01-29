@@ -1,98 +1,104 @@
-#define MAXBCREGIONS 50000
-#define MAXBCBLOCKS 50000
-#define MAXSTRINGLENGTH 512
-#define MAXWORDLENGTH 32
-#define MAXCARDLENGTH 4
-#define MAXNAMELENGTH 20
-#define MAXPERMREGIONS 35000
-!#define MAXINITREGIONS 80000
-#define MAXINITREGIONS 8400000
-#define MAXSRC 10
-#define MAXSRCTIMES 100
-#define IUNIT1 15
-#define IUNIT2 16
-#define IUNIT3 17
-#define IUNIT4 18
-#define HHISTORY_LENGTH 1000
+#include "include/finclude/petsc.h"
+
+PetscInt, parameter :: MAXBCREGIONS = 50000 
+PetscInt, parameter :: MAXBCBLOCKS = 50000 
+PetscInt, parameter :: MAXSTRINGLENGTH = 512
+PetscInt, parameter :: MAXWORDLENGTH = 32
+PetscInt, parameter :: MAXCARDLENGTH = 4
+PetscInt, parameter :: MAXNAMELENGTH = 20
+PetscInt, parameter :: MAXPERMREGIONS = 35000
+!PetscInt, parameter :: MAXINITREGIONS = 80000
+PetscInt, parameter :: MAXINITREGIONS = 8400000
+PetscInt, parameter :: MAXSRC = 10
+PetscInt, parameter :: MAXSRCTIMES = 100
+PetscInt, parameter :: IUNIT1 = 15
+PetscInt, parameter :: IUNIT2 = 16
+PetscInt, parameter :: IUNIT3 = 17
+PetscInt, parameter :: IUNIT4 = 18
+PetscInt, parameter :: HHISTORY_LENGTH = 1000
 ! HHISTORY_LENGTH is the length of the array used to store the differencing
 ! values h.
 
-#define X_DIRECTION 1
-#define Y_DIRECTION 2
-#define Z_DIRECTION 3
+PetscInt, parameter :: ZERO_INTEGER = 0
+PetscInt, parameter :: ONE_INTEGER = 1
+PetscInt, parameter :: NEG_ONE_INTEGER = -1
+
+PetscInt, parameter :: X_DIRECTION = 1
+PetscInt, parameter :: Y_DIRECTION = 2
+PetscInt, parameter :: Z_DIRECTION = 3
 
 ! Macros that are used as 'dm_index' values.  --RTM
-#define ONEDOF 1
-#define NPHASEDOF 2
-#define THREENPDOF 3
-#define NDOF 4
-#define NPHANCOMPDOF 5
-#define NPHANSPECDOF 6
-#define NPHANSPECNCOMPDOF 7
-#define VARDOF 8
+PetscInt, parameter :: ONEDOF = 1
+PetscInt, parameter :: NPHASEDOF = 2
+PetscInt, parameter :: THREENPDOF = 3
+PetscInt, parameter :: NDOF = 4
+PetscInt, parameter :: NPHANCOMPDOF = 5
+PetscInt, parameter :: NPHANSPECDOF = 6
+PetscInt, parameter :: NPHANSPECNCOMPDOF = 7
+PetscInt, parameter :: VARDOF = 8
 
-#define GLOBAL 1
-#define LOCAL 2
-#define NATURAL 3
+PetscInt, parameter :: GLOBAL = 1
+PetscInt, parameter :: LOCAL = 2
+PetscInt, parameter :: NATURAL = 3
 
 ! modes
-#define NULL_MODE 0
-#define RICHARDS_MODE 1
-#define MPH_MODE 2
-#define COND_MODE 3
-#define TWOPH_MODE 4
-#define VADOSE_MODE 5
-#define LIQUID_MODE 6
-#define OWG_MODE 7
-#define FLASH_MODE 8
-#define TH_MODE 9
-#define THC_MODE 10
-#define RICHARDS_LITE_MODE 11
+PetscInt, parameter :: NULL_MODE = 0
+PetscInt, parameter :: RICHARDS_MODE = 1
+PetscInt, parameter :: MPH_MODE = 2
+PetscInt, parameter :: COND_MODE = 3
+PetscInt, parameter :: TWOPH_MODE = 4
+PetscInt, parameter :: VADOSE_MODE = 5
+PetscInt, parameter :: LIQUID_MODE = 6
+PetscInt, parameter :: OWG_MODE = 7
+PetscInt, parameter :: FLASH_MODE = 8
+PetscInt, parameter :: TH_MODE = 9
+PetscInt, parameter :: THC_MODE = 10
+PetscInt, parameter :: RICHARDS_LITE_MODE = 11
 
 ! grid types
-#define STRUCTURED 1
-#define UNSTRUCTURED 2
-#define STRUCTURED_CARTESIAN 10
-#define STRUCTURED_CYLINDRICAL 11
-#define STRUCTURED_SPHERICAL 12
+PetscInt, parameter :: STRUCTURED = 1
+PetscInt, parameter :: UNSTRUCTURED = 2
+PetscInt, parameter :: STRUCTURED_CARTESIAN = 10
+PetscInt, parameter :: STRUCTURED_CYLINDRICAL = 11
+PetscInt, parameter :: STRUCTURED_SPHERICAL = 12
 
 ! condition types
-#define DIRICHLET_BC 1
-#define NEUMANN_BC 2
-#define MASS_RATE 3
-#define ZERO_GRADIENT_BC 5
-#define HYDROSTATIC_BC 6
+PetscInt, parameter :: DIRICHLET_BC = 1
+PetscInt, parameter :: NEUMANN_BC = 2
+PetscInt, parameter :: MASS_RATE = 3
+PetscInt, parameter :: ZERO_GRADIENT_BC = 5
+PetscInt, parameter :: HYDROSTATIC_BC = 6
 
 ! coupler types
-#define INITIAL_COUPLER_TYPE 1
-#define BOUNDARY_COUPLER_TYPE 2
-#define SRC_SINK_COUPLER_TYPE 3
-#define COUPLER_IPHASE_INDEX 1
+PetscInt, parameter :: INITIAL_COUPLER_TYPE = 1
+PetscInt, parameter :: BOUNDARY_COUPLER_TYPE = 2
+PetscInt, parameter :: SRC_SINK_COUPLER_TYPE = 3
+PetscInt, parameter :: COUPLER_IPHASE_INDEX = 1
 
 ! connection types
-#define INTERNAL_CONNECTION_TYPE 1
-#define BOUNDARY_CONNECTION_TYPE 2
-#define INITIAL_CONNECTION_TYPE 3
-#define SRC_SINK_CONNECTION_TYPE 4
+PetscInt, parameter :: INTERNAL_CONNECTION_TYPE = 1
+PetscInt, parameter :: BOUNDARY_CONNECTION_TYPE = 2
+PetscInt, parameter :: INITIAL_CONNECTION_TYPE = 3
+PetscInt, parameter :: SRC_SINK_CONNECTION_TYPE = 4
 
 ! dofs for each mode
-#define RICHARDS_PRESSURE_DOF 1
-#define RICHARDS_CONCENTRATION_DOF 3
-#define RICHARDS_TEMPERATURE_DOF 2
-#define RICHARDS_ENTHALPY_DOF 3
+PetscInt, parameter :: RICHARDS_PRESSURE_DOF = 1
+PetscInt, parameter :: RICHARDS_CONCENTRATION_DOF = 3
+PetscInt, parameter :: RICHARDS_TEMPERATURE_DOF = 2
+PetscInt, parameter :: RICHARDS_ENTHALPY_DOF = 3
 
-#define MPH_PRESSURE_DOF 1
-#define MPH_CONCENTRATION_DOF 3
-#define MPH_TEMPERATURE_DOF 2
-#define MPH_ENTHALPY_DOF 3
+PetscInt, parameter :: MPH_PRESSURE_DOF = 1
+PetscInt, parameter :: MPH_CONCENTRATION_DOF = 3
+PetscInt, parameter :: MPH_TEMPERATURE_DOF = 2
+PetscInt, parameter :: MPH_ENTHALPY_DOF = 3
 
-#define THC_PRESSURE_DOF 1
-#define THC_CONCENTRATION_DOF 3
-#define THC_TEMPERATURE_DOF 2
-#define THC_ENTHALPY_DOF 3
+PetscInt, parameter :: THC_PRESSURE_DOF = 1
+PetscInt, parameter :: THC_CONCENTRATION_DOF = 3
+PetscInt, parameter :: THC_TEMPERATURE_DOF = 2
+PetscInt, parameter :: THC_ENTHALPY_DOF = 3
 
 ! HDF5 stuff
-#define HDF5_READ_BUFFER_SIZE 1000000
+PetscInt, parameter :: HDF5_READ_BUFFER_SIZE = 1000000
 !#define HDF5_BROADCAST
 
 #define HASH

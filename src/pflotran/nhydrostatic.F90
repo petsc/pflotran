@@ -3,7 +3,8 @@
 module nhydrostatic_module
   
 private 
-#include "include/finclude/petsc.h"
+
+#include "definitions.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
   ! It is VERY IMPORTANT to make sure that the above .h90 file gets included.
@@ -14,18 +15,16 @@ private
 #include "include/finclude/petscis.h90"
 #include "include/finclude/petsclog.h"
 
-#include "definitions.h"
-
 PetscReal, parameter ::  fmwnacl = 58.44277D0,  fmwh2o = 18.0153D0
 
 PetscReal, pointer :: hys_pres(:), hys_temp(:)
 
-#define WEST 1
-#define EAST 2
-#define SOUTH 3
-#define NORTH 4
-#define BOTTOM 5
-#define TOP 6
+PetscInt, parameter :: WEST = 1
+PetscInt, parameter :: EAST = 2
+PetscInt, parameter :: SOUTH = 3
+PetscInt, parameter :: NORTH = 4
+PetscInt, parameter :: BOTTOM = 5
+PetscInt, parameter :: TOP = 6
 
 public nhydrostatic
 public nhydrostatic3
@@ -162,8 +161,6 @@ subroutine nhydrostatic(realization)
   field => realization%field
   
   !Vec :: temp1_nat_vec, temp2_nat_vec, temp3_nat_vec, temp4_nat_vec
-
-!#include "definitions.h"
 
 ! set up hydrostatic initial and boundary conditions
 ! dp/dz = rho * g, dp/dx = -rho*g*beta, dT/dz = dTdz

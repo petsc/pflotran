@@ -3,7 +3,8 @@ module translator_Richards_module
   implicit none
   
   private 
-#include "include/finclude/petsc.h"
+
+#include "definitions.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
   ! It is VERY IMPORTANT to make sure that the above .h90 file gets included.
@@ -138,11 +139,11 @@ subroutine translator_Richards_massbal(realization)
           
     do nc = 0,option%nspec
       do np = 0,option%nphase
-        call MPI_REDUCE(tot(nc,np),tot0(nc,np),1,MPI_DOUBLE_PRECISION, &
-                        MPI_SUM,0,PETSC_COMM_WORLD,ierr)
+        call MPI_REDUCE(tot(nc,np),tot0(nc,np),ONE_INTEGER,MPI_DOUBLE_PRECISION, &
+                        MPI_SUM,ZERO_INTEGER,PETSC_COMM_WORLD,ierr)
    
 !       call MPI_BCAST(tot0,(option%nphase+1)*(option%nspec+1),&
-!            MPI_DOUBLE_PRECISION, 0,PETSC_COMM_WORLD,ierr)
+!            MPI_DOUBLE_PRECISION, ZERO_INTEGER,PETSC_COMM_WORLD,ierr)
       enddo
     enddo
  

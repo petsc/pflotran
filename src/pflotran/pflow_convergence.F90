@@ -4,7 +4,7 @@ module pflow_convergence_module
 
   private
 
-#include "include/finclude/petsc.h"
+#include "definitions.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
 #include "include/finclude/petscksp.h"

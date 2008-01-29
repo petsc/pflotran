@@ -2,7 +2,7 @@ module co2eos_module
 
   private
 
-#include "include/finclude/petsc.h"
+#include "definitions.h"
 
   public HENRY_co2_noderiv,VISCO2,duanco2,denmix,Henry_duan_sun,Henry_duan_sun_0NaCl
 

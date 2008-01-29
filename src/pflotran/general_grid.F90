@@ -13,7 +13,7 @@ module General_Grid_module
 
  private 
 
-#include "include/finclude/petsc.h"
+#include "definitions.h"
 !#include "include/petscf90.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
@@ -22,8 +22,6 @@ module General_Grid_module
   ! indication of what the problem is.
 #include "include/finclude/petsclog.h"
 
-#include "definitions.h"
-  
   PetscInt :: hdf5_err
   PetscErrorCode :: ierr
   public :: ReadStructuredGridHDF5
@@ -89,8 +87,8 @@ subroutine ReadStructuredGridHDF5(realization)
   PetscInt, allocatable :: integer_array(:)
   PetscReal, allocatable :: real_array(:)
   
-  Vec :: global
-  Vec :: local
+  Vec :: global_vec
+  Vec :: local_vec
   PetscReal, pointer :: vec_ptr(:)
 
   type(connection_list_type), pointer :: connection_list
@@ -148,43 +146,43 @@ subroutine ReadStructuredGridHDF5(realization)
   if (option%myrank == 0) print *, time4, &
        ' seconds to set up grid cell indices for hdf5 file'
 
-  call GridCreateVector(grid,ONEDOF,global,GLOBAL)
-  call GridCreateVector(grid,ONEDOF,local,LOCAL)
+  call GridCreateVector(grid,ONEDOF,global_vec,GLOBAL)
+  call GridCreateVector(grid,ONEDOF,local_vec,LOCAL)
   
   allocate(integer_array(grid%nlmax))
   string = "Material Id"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
   call HDF5ReadIntegerArray(option,grp_id,string,grid%nmax,indices, &
                             grid%nlmax,integer_array)
-  call GridCopyIntegerArrayToPetscVec(integer_array,global,grid%nlmax)
+  call GridCopyIntegerArrayToPetscVec(integer_array,global_vec,grid%nlmax)
   deallocate(integer_array)
-  call GridGlobalToLocal(grid,global,local,ONEDOF)
-  call GridCopyPetscVecToIntegerArray(field%imat,local,grid%ngmax)
+  call GridGlobalToLocal(grid,global_vec,local_vec,ONEDOF)
+  call GridCopyPetscVecToIntegerArray(field%imat,local_vec,grid%ngmax)
   
   allocate(real_array(grid%nlmax))
   string = "X-Coordinate"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
   call HDF5ReadRealArray(option,grp_id,string,grid%nlmax,indices,grid%nlmax, &
                          real_array)
-  call GridCopyRealArrayToPetscVec(real_array,global,grid%nlmax)
-  call GridGlobalToLocal(grid,global,local,ONEDOF)  
-  call GridCopyPetscVecToRealArray(grid%x,local,grid%ngmax)
+  call GridCopyRealArrayToPetscVec(real_array,global_vec,grid%nlmax)
+  call GridGlobalToLocal(grid,global_vec,local_vec,ONEDOF)  
+  call GridCopyPetscVecToRealArray(grid%x,local_vec,grid%ngmax)
 
   string = "Y-Coordinate"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
   call HDF5ReadRealArray(option,grp_id,string,grid%nlmax,indices,grid%nlmax, &
                          real_array)
-  call GridCopyRealArrayToPetscVec(real_array,global,grid%nlmax)
-  call GridGlobalToLocal(grid,global,local,ONEDOF)  
-  call GridCopyPetscVecToRealArray(grid%y,local,grid%ngmax)
+  call GridCopyRealArrayToPetscVec(real_array,global_vec,grid%nlmax)
+  call GridGlobalToLocal(grid,global_vec,local_vec,ONEDOF)  
+  call GridCopyPetscVecToRealArray(grid%y,local_vec,grid%ngmax)
 
   string = "Z-Coordinate"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
   call HDF5ReadRealArray(option,grp_id,string,grid%nlmax,indices,grid%nlmax, &
                          real_array)
-  call GridCopyRealArrayToPetscVec(real_array,global,grid%nlmax)
-  call GridGlobalToLocal(grid,global,local,ONEDOF)  
-  call GridCopyPetscVecToRealArray(grid%z,local,grid%ngmax)
+  call GridCopyRealArrayToPetscVec(real_array,global_vec,grid%nlmax)
+  call GridGlobalToLocal(grid,global_vec,local_vec,ONEDOF)  
+  call GridCopyPetscVecToRealArray(grid%z,local_vec,grid%ngmax)
 
   deallocate(real_array)
   
@@ -225,14 +223,14 @@ subroutine ReadStructuredGridHDF5(realization)
 
   string = "Tortuosity"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
-  call VecGetArrayF90(global,vec_ptr,ierr); CHKERRQ(ierr)
+  call VecGetArrayF90(global_vec,vec_ptr,ierr); CHKERRQ(ierr)
   call HDF5ReadRealArray(option,grp_id,string,grid%nlmax,indices,grid%nlmax, &
                          vec_ptr)
-  call VecRestoreArrayF90(global,vec_ptr,ierr); CHKERRQ(ierr)
-  call GridGlobalToLocal(grid,global,field%tor_loc,ONEDOF)
+  call VecRestoreArrayF90(global_vec,vec_ptr,ierr); CHKERRQ(ierr)
+  call GridGlobalToLocal(grid,global_vec,field%tor_loc,ONEDOF)
 
-  call VecDestroy(global,ierr)
-  call VecDestroy(local,ierr)
+  call VecDestroy(global_vec,ierr)
+  call VecDestroy(local_vec,ierr)
 
   ! update local vectors
   call UpdateGlobalToLocal(grid,field)
@@ -456,7 +454,7 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
 #ifdef HDF5_BROADCAST
     endif
     if (option%commsize > 1) &
-      call mpi_bcast(upwind_ids,dims(1),MPI_INTEGER,0, &
+      call mpi_bcast(upwind_ids,dims(1),MPI_INTEGER,ZERO_INTEGER, &
                      PETSC_COMM_WORLD,ierr)
 #endif    
     call h5sselect_hyperslab_f(file_space_id_down, H5S_SELECT_SET_F,offset, &
@@ -469,7 +467,7 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
 #ifdef HDF5_BROADCAST
     endif
     if (option%commsize > 1) &
-      call mpi_bcast(downwind_ids,dims(1),MPI_INTEGER,0, &
+      call mpi_bcast(downwind_ids,dims(1),MPI_INTEGER,ZERO_INTEGER, &
                      PETSC_COMM_WORLD,ierr)
 #endif    
     do i=1,dims(1)

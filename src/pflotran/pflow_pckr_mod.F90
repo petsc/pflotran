@@ -18,7 +18,6 @@ module pckr_module
   private
 
 #include "definitions.h"
-#include "include/finclude/petsc.h"
 
   PetscReal, private, parameter:: pckr_sat_water_cut = 1.D0 - 5.D-7
   

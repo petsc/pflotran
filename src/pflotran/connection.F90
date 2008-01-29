@@ -3,7 +3,6 @@ module Connection_module
   implicit none
 
 #include "definitions.h"
-#include "include/finclude/petsc.h"
 
   private
 

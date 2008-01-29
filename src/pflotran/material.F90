@@ -11,7 +11,6 @@ module Material_module
 ! that PETSC_AVOID_DECLARATIONS and PETSC_AVOID_MPIF_H are defined when the
 ! PETSc header files are included.  I can get around this, though, by making
 ! the definitions in these headers private.
-#include "include/finclude/petsc.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
   ! It is VERY IMPORTANT to make sure that the above .h90 file gets included.
@@ -89,6 +88,8 @@ module Material_module
             SaturationFunctionCompute, &
             SaturatFuncConvertListToArray, &
             MaterialConvertListToArray
+
+  PetscInt, parameter :: VAN_GENUCHTEN = 1
   
 contains
 
@@ -371,8 +372,6 @@ subroutine SaturationFunctionCompute(pressure,saturation,relative_perm, &
   
   implicit none
 
-#define VAN_GENUCHTEN 1
-  
   PetscReal :: pressure, saturation, relative_perm, dsat_dpres, dkr_dpres
   type(saturation_function_type) :: saturation_function
   type(option_type) :: option

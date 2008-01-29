@@ -26,7 +26,8 @@
   use pflow_gridtype_module
 
 private 
-#include "include/finclude/petsc.h"
+
+#include "definitions.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
   ! It is VERY IMPORTANT to make sure that the above .h90 file gets included.
@@ -93,8 +94,6 @@ private
   PetscInt :: ierr,iipha
 
   PetscReal :: pco2,p,tmp,xw
-  
-#include "definitions.h"
 
   call VecGetArrayF90(xx, xx_p, ierr); CHKERRQ(ierr)
   call VecGetArrayF90(grid%yy, yy_p, ierr); CHKERRQ(ierr)
@@ -205,9 +204,9 @@ private
   call MPI_Barrier(PETSC_COMM_WORLD,ierr)
   
   if(grid%commsize >1)then
-    call MPI_REDUCE(re, re0,1, MPI_INTEGER,MPI_SUM,0, &
+    call MPI_REDUCE(re, re0,ONE_INTEGER, MPI_INTEGER,MPI_SUM,ZERO_INTEGER, &
     PETSC_COMM_WORLD,ierr)
-    call MPI_BCAST(re0,1, MPI_INTEGER, 0,PETSC_COMM_WORLD,ierr)
+    call MPI_BCAST(re0,ONE_INTEGER, MPI_INTEGER,ZERO_INTEGER,PETSC_COMM_WORLD,ierr)
     if(re0<grid%commsize) re=0
   endif
   reason=re
@@ -4381,8 +4380,6 @@ end subroutine pflow_2phase_initadj
   PetscInt :: j, jn
   PetscInt :: ii1,ii2,iicap
  
-#include "definitions.h"
-
   PetscReal, pointer :: yy_p(:)
   
   PetscReal, pointer ::  porosity_p(:), volume_p(:), &
@@ -4488,10 +4485,10 @@ end subroutine pflow_2phase_initadj
   call VecRestoreArrayF90(grid%iphas, iphase_p, ierr)
   
   if(grid%commsize >1)then
-    call MPI_REDUCE(totl, totl0,1, MPI_DOUBLE_PRECISION,MPI_SUM,0, PETSC_COMM_WORLD,ierr)
-    call MPI_BCAST(totl0,1, MPI_DOUBLE_PRECISION, 0,PETSC_COMM_WORLD,ierr)
-    call MPI_REDUCE(totg, totg0,1, MPI_DOUBLE_PRECISION,MPI_SUM,0, PETSC_COMM_WORLD,ierr)
-    call MPI_BCAST(totg0,1, MPI_DOUBLE_PRECISION, 0,PETSC_COMM_WORLD,ierr)
+    call MPI_REDUCE(totl, totl0,ONE_INTEGER, MPI_DOUBLE_PRECISION,MPI_SUM,ZERO_INTEGER, PETSC_COMM_WORLD,ierr)
+    call MPI_BCAST(totl0,ONE_INTEGER, MPI_DOUBLE_PRECISION, ZERO_INTEGER,PETSC_COMM_WORLD,ierr)
+    call MPI_REDUCE(totg, totg0,ONE_INTEGER, MPI_DOUBLE_PRECISION,MPI_SUM,ZERO_INTEGER, PETSC_COMM_WORLD,ierr)
+    call MPI_BCAST(totg0,ONE_INTEGER, MPI_DOUBLE_PRECISION, ZERO_INTEGER,PETSC_COMM_WORLD,ierr)
     totl = totl0
     totg = totg0
   endif 

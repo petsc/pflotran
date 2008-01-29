@@ -14,7 +14,6 @@ module Grid_module
 ! that PETSC_AVOID_DECLARATIONS and PETSC_AVOID_MPIF_H are defined when the
 ! PETSc header files are included.  I can get around this, though, by making
 ! the definitions in these headers private.
-#include "include/finclude/petsc.h"
 #include "petscreldefs.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
@@ -1093,8 +1092,6 @@ subroutine GridCreateNaturalToGhostedHash(grid,option)
   
   implicit none
   
-#include "definitions.h"
-
   type(grid_type) :: grid
   type(option_type) :: option
 
@@ -1146,7 +1143,7 @@ subroutine GridCreateNaturalToGhostedHash(grid,option)
   grid%hash => hash
   
 !  call GridPrintHashTable(grid)
-  call mpi_allreduce(max_num_ids_per_hash,num_in_hash,1,MPI_INTEGER, &
+  call mpi_allreduce(max_num_ids_per_hash,num_in_hash,ONE_INTEGER,MPI_INTEGER, &
                      MPI_MAX,PETSC_COMM_WORLD,ierr)
   if (option%myrank == 0) print *, 'max_num_ids_per_hash:', num_in_hash
 

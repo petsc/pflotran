@@ -14,7 +14,6 @@ module Richards_Lite_module
 
 #include "definitions.h"
   
-#include "include/finclude/petsc.h"
 !#include "include/petscf90.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
@@ -1886,7 +1885,7 @@ subroutine createRichardsLiteZeroArray(realization)
     enddo
   endif
 
-  call MPI_Allreduce(n_zero_rows,flag,1,MPI_INTEGER,MPI_MAX, &
+  call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
                      PETSC_COMM_WORLD,ierr)
   if (flag > 0) inactive_cells_exist = .true.
 
@@ -1942,20 +1941,20 @@ subroutine RichardsLiteGetVarFromArray(realization,vec,ivar,isubvar)
   use Option_module
   use Field_module
 
-#define TEMPERATURE 4
-#define PRESSURE 5
-#define LIQUID_SATURATION 6
-#define GAS_SATURATION 7
-#define LIQUID_ENERGY 8
-#define GAS_ENERGY 9
-#define LIQUID_MOLE_FRACTION 10
-#define GAS_MOLE_FRACTION 11
-#define VOLUME_FRACTION 12
-#define PHASE 13  
-#define MATERIAL_ID 14
-
   implicit none
   
+  PetscInt, parameter :: TEMPERATURE = 4
+  PetscInt, parameter :: PRESSURE = 5
+  PetscInt, parameter :: LIQUID_SATURATION = 6
+  PetscInt, parameter :: GAS_SATURATION = 7
+  PetscInt, parameter :: LIQUID_ENERGY = 8
+  PetscInt, parameter :: GAS_ENERGY = 9
+  PetscInt, parameter :: LIQUID_MOLE_FRACTION = 10
+  PetscInt, parameter :: GAS_MOLE_FRACTION = 11
+  PetscInt, parameter :: VOLUME_FRACTION = 12
+  PetscInt, parameter :: PHASE = 13
+  PetscInt, parameter :: MATERIAL_ID = 14
+
   type(realization_type) :: realization
   Vec :: vec
   PetscInt :: ivar

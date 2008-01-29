@@ -2,7 +2,8 @@
  
   
  private 
-#include "include/finclude/petsc.h"
+
+#include "definitions.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
   ! It is VERY IMPORTANT to make sure that the above .h90 file gets included.
@@ -113,10 +114,10 @@
   if(grid%commsize >1)then
   do nc =0,grid%nspec
        do np=0,grid%nphase
-    call MPI_REDUCE(tot(nc,np), tot0(nc,np),1,&
-        MPI_DOUBLE_PRECISION,MPI_SUM,0, PETSC_COMM_WORLD,ierr)
+    call MPI_REDUCE(tot(nc,np), tot0(nc,np),ONE_INTEGER,&
+        MPI_DOUBLE_PRECISION,MPI_SUM,ZERO_INTEGER, PETSC_COMM_WORLD,ierr)
 !    call MPI_BCAST(tot0,(grid%nphase+1)*(grid%nspec+1),&
-!        MPI_DOUBLE_PRECISION, 0,PETSC_COMM_WORLD,ierr)
+!        MPI_DOUBLE_PRECISION, ZERO_INTEGER,PETSC_COMM_WORLD,ierr)
     enddo
   enddo
   if(grid%myrank==0) tot = tot0
@@ -264,10 +265,10 @@
  
   
  if(grid%commsize >1)then
-    call MPI_ALLREDUCE(comp1, dsm0,1, MPI_DOUBLE_PRECISION,MPI_MAX, PETSC_COMM_WORLD,ierr)
-    !call MPI_BCAST(dsm0,1, MPI_DOUBLE_PRECISION, 0,PETSC_COMM_WORLD,ierr)
-    call MPI_ALLREDUCE(comp, dcm0,1, MPI_DOUBLE_PRECISION,MPI_MAX, PETSC_COMM_WORLD,ierr)
-    !call MPI_BCAST(dcm0,1, MPI_DOUBLE_PRECISION, 0,PETSC_COMM_WORLD,ierr)
+    call MPI_ALLREDUCE(comp1, dsm0,ONE_INTEGER, MPI_DOUBLE_PRECISION,MPI_MAX, PETSC_COMM_WORLD,ierr)
+    !call MPI_BCAST(dsm0,ONE_INTEGER, MPI_DOUBLE_PRECISION, ZERO_INTEGER,PETSC_COMM_WORLD,ierr)
+    call MPI_ALLREDUCE(comp, dcm0,ONE_INTEGER, MPI_DOUBLE_PRECISION,MPI_MAX, PETSC_COMM_WORLD,ierr)
+    !call MPI_BCAST(dcm0,ONE_INTEGER, MPI_DOUBLE_PRECISION, ZERO_INTEGER,PETSC_COMM_WORLD,ierr)
     comp1 = dsm0
     comp = dcm0
   endif 

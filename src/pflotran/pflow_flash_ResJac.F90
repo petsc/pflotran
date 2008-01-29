@@ -12,7 +12,7 @@
 
 private
 
-#include "include/finclude/petsc.h"
+#include "definitions.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
   ! It is VERY IMPORTANT to make sure that the above .h90 file gets included.
@@ -217,7 +217,7 @@ private
     call MPI_ALLREDUCE(re, re0,1, MPI_INTEGER,MPI_SUM, &
     PETSC_COMM_WORLD,ierr)
   !print *,' update reason re'
-    !call MPI_BCAST(re0,1, MPI_INTEGER, 0,PETSC_COMM_WORLD,ierr)
+    !call MPI_BCAST(re0,ONE_INTEGER, MPI_INTEGER, ZERO_INTEGER,PETSC_COMM_WORLD,ierr)
   !print *,' update reason ca'
     if(re0<grid%commsize) re=0
   endif

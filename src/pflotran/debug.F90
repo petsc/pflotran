@@ -4,7 +4,7 @@ module Debug_module
   
   private
   
-#include "include/finclude/petsc.h"
+#include "definitions.h"
 
   type, public :: pflow_debug_type
     logical :: vecview_residual
@@ -95,8 +95,6 @@ subroutine DebugReadPflow(debug,fid,myrank)
   use Fileio_module
   
   implicit none
-
-#include "definitions.h"
     
   type(pflow_debug_type) :: debug
   PetscInt :: fid

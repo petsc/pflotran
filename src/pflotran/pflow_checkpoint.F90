@@ -8,7 +8,7 @@
 #if 0
 module pflow_chkptheader
   implicit none
-#include "include/finclude/petsc.h"
+#include "definitions.h"
   private
   type, public :: pflowChkPtHeader
     PetscReal :: time
@@ -27,6 +27,7 @@ end module pflow_chkptheader
 
 module pflow_chkptheader
   implicit none
+#include "definitions.h"
   private
   type, public :: pflowChkPtHeader
     real*8 :: time
@@ -45,11 +46,13 @@ end module pflow_chkptheader
 module pflow_checkpoint
   use pflow_chkptheader
 
+  implicit none
+  
   private
 
   public :: pflowGridCheckpoint, pflowGridRestart
 
-#include "include/finclude/petsc.h"
+#include "definitions.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
 #include "include/finclude/petscda.h"
@@ -84,6 +87,8 @@ subroutine pflowGridCheckpoint(realization,flowsteps,newtcum,icutcum, &
   use Realization_module
   use Option_module
 
+  implicit none
+  
   type(realization_type) :: realization
   logical :: timestep_cut_flag
   PetscInt :: num_timestep_cuts, num_newton_iterations
@@ -108,8 +113,6 @@ subroutine pflowGridCheckpoint(realization,flowsteps,newtcum,icutcum, &
 
   implicit none
 
-#include "definitions.h"
-
   type(realization_type) :: realization
   logical :: timestep_cut_flag
   PetscInt :: num_timestep_cuts, num_newton_iterations
@@ -128,7 +131,7 @@ subroutine pflowGridCheckpoint(realization,flowsteps,newtcum,icutcum, &
   type(pflowChkPtHeader), pointer :: header
   PetscInt :: ierr
   
-  Vec :: global, global_var
+  Vec :: global_vec, global_var
   PetscInt :: int_flag
   
   type(field_type), pointer :: field
@@ -209,15 +212,15 @@ subroutine pflowGridCheckpoint(realization,flowsteps,newtcum,icutcum, &
   ! packed for the SNESSolve().
   call VecView(field%xx, viewer, ierr)
 
-  call GridCreateVector(grid,ONEDOF,global,GLOBAL)
+  call GridCreateVector(grid,ONEDOF,global_vec,GLOBAL)
   ! If we are running with multiple phases, we need to dump the vector 
   ! that indicates what phases are present, as well as the 'var' vector 
   ! that holds variables derived from the primary ones via the translator.
   select case(option%imode)
     case(MPH_MODE,VADOSE_MODE,FLASH_MODE,TWOPH_MODE,RICHARDS_MODE, &
          RICHARDS_LITE_MODE)
-      call GridLocalToGlobal(grid,field%iphas_loc,global,ONEDOF)
-      call VecView(global, viewer, ierr)
+      call GridLocalToGlobal(grid,field%iphas_loc,global_vec,ONEDOF)
+      call VecView(global_vec, viewer, ierr)
 #ifdef RICHARDS_ANALYTICAL
       if (option%imode /= RICHARDS_MODE .and. &
           option%imode /= RICHARDS_LITE_MODE) then
@@ -242,16 +245,16 @@ subroutine pflowGridCheckpoint(realization,flowsteps,newtcum,icutcum, &
   ! Porosity and permeability.
   ! (We only write diagonal terms of the permeability tensor for now, 
   ! since we have yet to add the full-tensor formulation.)
-  call GridLocalToGlobal(grid,field%porosity_loc,global,ONEDOF)
-  call VecView(global,viewer,ierr)
-  call GridLocalToGlobal(grid,field%perm_xx_loc,global,ONEDOF)
-  call VecView(global,viewer,ierr)
-  call GridLocalToGlobal(grid,field%perm_yy_loc,global,ONEDOF)
-  call VecView(global,viewer,ierr)
-  call GridLocalToGlobal(grid,field%perm_zz_loc,global,ONEDOF)
-  call VecView(global,viewer,ierr)
+  call GridLocalToGlobal(grid,field%porosity_loc,global_vec,ONEDOF)
+  call VecView(global_vec,viewer,ierr)
+  call GridLocalToGlobal(grid,field%perm_xx_loc,global_vec,ONEDOF)
+  call VecView(global_vec,viewer,ierr)
+  call GridLocalToGlobal(grid,field%perm_yy_loc,global_vec,ONEDOF)
+  call VecView(global_vec,viewer,ierr)
+  call GridLocalToGlobal(grid,field%perm_zz_loc,global_vec,ONEDOF)
+  call VecView(global_vec,viewer,ierr)
 
-  call VecDestroy(global,ierr)
+  call VecDestroy(global_vec,ierr)
 
   ! We are finished, so clean up.
   call PetscViewerDestroy(viewer, ierr)
@@ -269,8 +272,6 @@ subroutine pflowGridRestart(realization,flowsteps,newtcum,icutcum, &
                             num_newton_iterations)
   use Realization_module
   use Option_module
-
-#include "definitions.h"
 
   character(len=MAXSTRINGLENGTH) :: fname
   type(realization_type) :: realization
@@ -297,8 +298,6 @@ subroutine pflowGridRestart(realization,flowsteps,newtcum,icutcum, &
 
   implicit none
 
-#include "definitions.h"
-
   type(realization_type) :: realization
   logical :: timestep_cut_flag
   PetscInt :: num_timestep_cuts, num_newton_iterations
@@ -309,7 +308,7 @@ subroutine pflowGridRestart(realization,flowsteps,newtcum,icutcum, &
   type(pflowChkPtHeader), pointer :: header
   PetscInt :: ierr
 
-  Vec :: global, global_var
+  Vec :: global_vec, global_var
   PetscInt :: int_flag
   
   type(field_type), pointer :: field
@@ -341,7 +340,7 @@ subroutine pflowGridRestart(realization,flowsteps,newtcum,icutcum, &
   call PetscBagDestroy(bag, ierr)
   
   ! Load the PETSc vectors.
-  call GridCreateVector(grid,ONEDOF,global,GLOBAL)
+  call GridCreateVector(grid,ONEDOF,global_vec,GLOBAL)
 
   call VecLoadIntoVector(viewer, field%xx, ierr)
   call VecCopy(field%xx, field%yy, ierr)
@@ -349,8 +348,8 @@ subroutine pflowGridRestart(realization,flowsteps,newtcum,icutcum, &
   select case(option%imode)
     case(MPH_MODE,VADOSE_MODE,FLASH_MODE,TWOPH_MODE,RICHARDS_MODE, &
          RICHARDS_LITE_MODE)
-      call VecLoadIntoVector(viewer, global, ierr)      
-      call GridGlobalToLocal(grid,global,field%iphas_loc,ONEDOF)
+      call VecLoadIntoVector(viewer, global_vec, ierr)      
+      call GridGlobalToLocal(grid,global_vec,field%iphas_loc,ONEDOF)
       call VecCopy(field%iphas_loc, field%iphas_old_loc, ierr)
       call GridLocalToLocal(grid,field%iphas_loc,field%iphas_old_loc,ONEDOF)
 #ifdef RICHARDS_ANALYTICAL
@@ -375,16 +374,16 @@ subroutine pflowGridRestart(realization,flowsteps,newtcum,icutcum, &
     call VecLoadIntoVector(viewer, field%phis, ierr)
   endif
   
-  call VecLoadIntoVector(viewer, global, ierr)
-  call GridGlobalToLocal(grid,global,field%porosity_loc,ONEDOF)
-  call VecLoadIntoVector(viewer, global, ierr)
-  call GridGlobalToLocal(grid,global,field%perm_xx_loc,ONEDOF)
-  call VecLoadIntoVector(viewer, global, ierr)
-  call GridGlobalToLocal(grid,global,field%perm_yy_loc,ONEDOF)
-  call VecLoadIntoVector(viewer, global, ierr)
-  call GridGlobalToLocal(grid,global,field%perm_zz_loc,ONEDOF)
+  call VecLoadIntoVector(viewer, global_vec, ierr)
+  call GridGlobalToLocal(grid,global_vec,field%porosity_loc,ONEDOF)
+  call VecLoadIntoVector(viewer, global_vec, ierr)
+  call GridGlobalToLocal(grid,global_vec,field%perm_xx_loc,ONEDOF)
+  call VecLoadIntoVector(viewer, global_vec, ierr)
+  call GridGlobalToLocal(grid,global_vec,field%perm_yy_loc,ONEDOF)
+  call VecLoadIntoVector(viewer, global_vec, ierr)
+  call GridGlobalToLocal(grid,global_vec,field%perm_zz_loc,ONEDOF)
   
-  call VecDestroy(global,ierr)
+  call VecDestroy(global_vec,ierr)
 
   ! We are finished, so clean up.
   call PetscViewerDestroy(viewer, ierr)
@@ -399,20 +398,6 @@ subroutine pflowGridTHCBinaryOut(grid, kplt)
   use TTPHASE_module
 
   implicit none
-
-!#include "include/finclude/petsc.h"
-!#include "include/finclude/petscda.h"
-!#include "include/finclude/petscda.h90"
-!#include "include/finclude/petscdef.h"
-!#include "include/finclude/petscis.h"
-!#include "include/finclude/petscis.h90"
-!#include "include/finclude/petsclog.h"
-!#include "include/finclude/petscsys.h"
-!#include "include/finclude/petscvec.h"
-!#include "include/finclude/petscvec.h90"
-!#include "include/finclude/petscviewer.h"
-
-#include "definitions.h"
 
   type(pflowGrid), intent(inout) :: grid
   PetscInt, intent(inout) :: kplt

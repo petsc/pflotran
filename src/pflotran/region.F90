@@ -5,7 +5,6 @@ module Region_module
   private
 
 #include "definitions.h"
-#include "include/finclude/petsc.h"
  
   type, public :: block_type
     PetscInt :: i1,i2,j1,j2,k1,k2    

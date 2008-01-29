@@ -11,7 +11,7 @@ module mixture_module
    
  public
 
-#include "include/finclude/petsc.h"
+#include "definitions.h"
   
  PetscReal, private, parameter:: fmwh2o = 18.0153D0, fmwa = 28.96D0, &
                               fmwco2 = 44.0098D0

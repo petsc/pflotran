@@ -2,8 +2,6 @@ module HDF5_module
 
   implicit none
 
-#include "include/finclude/petsc.h"
-
 #include "definitions.h"
 
   private
@@ -143,7 +141,7 @@ subroutine HDF5MapLocalToNaturalIndices(grid,option,file_id, &
 #ifdef HDF5_BROADCAST
     endif
     if (option%commsize > 1) &
-      call mpi_bcast(cell_ids,dims(1),MPI_INTEGER,0,PETSC_COMM_WORLD,ierr)
+      call mpi_bcast(cell_ids,dims(1),MPI_INTEGER,ZERO_INTEGER,PETSC_COMM_WORLD,ierr)
 #endif     
     do i=1,dims(1)
       cell_count = cell_count + 1
@@ -296,7 +294,7 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
 #ifdef HDF5_BROADCAST
         endif
         if (option%commsize > 1) &
-          call mpi_bcast(real_buffer,dims(1),MPI_DOUBLE_PRECISION,0, &
+          call mpi_bcast(real_buffer,dims(1),MPI_DOUBLE_PRECISION,ZERO_INTEGER, &
                          PETSC_COMM_WORLD,ierr)
 #endif
         prev_real_count = real_count
@@ -326,7 +324,7 @@ subroutine HDF5ReadRealArray(option,file_id,dataset_name,dataset_size, &
                      hdf5_err,memory_space_id,file_space_id,prop_id)
     endif
     if (option%commsize > 1) &
-      call mpi_bcast(real_buffer,dims(1),MPI_DOUBLE_PRECISION,0, &
+      call mpi_bcast(real_buffer,dims(1),MPI_DOUBLE_PRECISION,ZERO_INTEGER, &
                      PETSC_COMM_WORLD,ierr)
     real_count = real_count + length(1)                  
   enddo
@@ -442,7 +440,7 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
 #ifdef HDF5_BROADCAST
         endif
         if (option%commsize > 1) &
-          call mpi_bcast(integer_buffer,dims(1),MPI_INTEGER,0, &
+          call mpi_bcast(integer_buffer,dims(1),MPI_INTEGER,ZERO_INTEGER, &
                          PETSC_COMM_WORLD,ierr)
 #endif
         prev_integer_count = integer_count
@@ -472,7 +470,7 @@ subroutine HDF5ReadIntegerArray(option,file_id,dataset_name,dataset_size, &
                      hdf5_err,memory_space_id,file_space_id,prop_id)   
     endif
     if (option%commsize > 1) &
-      call mpi_bcast(integer_buffer,dims(1),MPI_INTEGER,0, &
+      call mpi_bcast(integer_buffer,dims(1),MPI_INTEGER,ZERO_INTEGER, &
                      PETSC_COMM_WORLD,ierr)
     integer_count = integer_count + length(1)                  
   enddo
@@ -587,7 +585,7 @@ subroutine HDF5WriteIntegerArray(option,dataset_name,dataset_size,file_id, &
 #ifdef HDF5_BROADCAST
         endif
         if (option%commsize > 1) &
-          call mpi_bcast(integer_buffer,dims(1),MPI_INTEGER,0, &
+          call mpi_bcast(integer_buffer,dims(1),MPI_INTEGER,ZERO_INTEGER, &
                          PETSC_COMM_WORLD,ierr)
 #endif
         prev_integer_count = integer_count
@@ -617,7 +615,7 @@ subroutine HDF5WriteIntegerArray(option,dataset_name,dataset_size,file_id, &
                      hdf5_err,memory_space_id,file_space_id,prop_id)   
     endif
     if (option%commsize > 1) &
-      call mpi_bcast(integer_buffer,dims(1),MPI_INTEGER,0, &
+      call mpi_bcast(integer_buffer,dims(1),MPI_INTEGER,ZERO_INTEGER, &
                      PETSC_COMM_WORLD,ierr)
     integer_count = integer_count + length(1)                  
   enddo
@@ -648,7 +646,6 @@ subroutine HDF5WriteStructDataSetFromVec(name,realization,vec,file_id,data_type)
   
   implicit none
 
-#include "include/finclude/petsc.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
 
@@ -875,8 +872,8 @@ subroutine HDF5ReadIndices(grid,option,file_id,dataset_name,dataset_size, &
   iend = 0
   
   ! first determine upper and lower bound on PETSc global array
-  call mpi_exscan(grid%nlmax,istart,1,MPI_INTEGER,MPI_SUM,PETSC_COMM_WORLD,ierr)
-  call mpi_scan(grid%nlmax,iend,1,MPI_INTEGER,MPI_SUM,PETSC_COMM_WORLD,ierr)
+  call mpi_exscan(grid%nlmax,istart,ONE_INTEGER,MPI_INTEGER,MPI_SUM,PETSC_COMM_WORLD,ierr)
+  call mpi_scan(grid%nlmax,iend,ONE_INTEGER,MPI_INTEGER,MPI_SUM,PETSC_COMM_WORLD,ierr)
   if (iend /= istart + grid%nlmax) then
     call printErrMsg(option,'ERROR: iend /= istart+grid%nlmax')
   endif
@@ -952,7 +949,6 @@ subroutine HDF5ReadArray(grid,option,file_id,dataset_name,dataset_size, &
   
   implicit none
 
-#include "include/finclude/petsc.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
   
@@ -1086,7 +1082,6 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   
   implicit none
 
-#include "include/finclude/petsc.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
 
@@ -1220,7 +1215,6 @@ subroutine HDF5ReadMaterialsFromFile(realization,filename)
   
   implicit none
 
-#include "include/finclude/petsc.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
 

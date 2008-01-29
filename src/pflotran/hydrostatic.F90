@@ -4,8 +4,6 @@ module Hydrostatic_module
 
   private
 
-#include "include/finclude/petsc.h"
-
 #include "definitions.h"
 
   PetscReal, parameter ::  fmwnacl = 58.44277D0,  fmwh2o = 18.0153D0

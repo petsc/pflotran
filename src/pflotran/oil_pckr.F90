@@ -2,7 +2,7 @@
 module oil_pckr_module
   public
 
-#include "include/finclude/petsc.h"
+#include "definitions.h"
 
   PetscReal, private, parameter:: pckr_sat_water_cut = 1.D0 - 5.D-7
  ! PetscReal, private :: pckr_swir, pckr_soir, pckr_sgir
@@ -19,7 +19,7 @@ subroutine oil_pckr_init(myrank)
   use Fileio_module
    
   PetscMPIInt myrank
-#include "definitions.h"
+
   character(len=MAXSTRINGLENGTH) :: string 
   character(len=MAXWORDLENGTH) :: word !, strtim
   character(len=MAXCARDLENGTH) :: card

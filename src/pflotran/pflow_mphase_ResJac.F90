@@ -12,7 +12,7 @@ module MPHASE_module
   
   private
 
-#include "include/finclude/petsc.h"
+#include "definitions.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
   ! It is VERY IMPORTANT to make sure that the above .h90 file gets included.
@@ -306,10 +306,10 @@ subroutine MPhase_Update_Reason(reason,realization)
   
   if(option%commsize >1)then
     temp_reason = reason
-    call MPI_ALLREDUCE(temp_reason,reason,1, MPI_INTEGER,MPI_SUM, &
+    call MPI_ALLREDUCE(temp_reason,reason,ONE_INTEGER, MPI_INTEGER,MPI_SUM, &
     PETSC_COMM_WORLD,ierr)
   !print *,' update reason re'
-    !call MPI_BCAST(re0,1, MPI_INTEGER, 0,PETSC_COMM_WORLD,ierr)
+    !call MPI_BCAST(re0,ONE_INTEGER, MPI_INTEGER, ZERO_INTEGER,PETSC_COMM_WORLD,ierr)
   !print *,' update reason ca'
     if(reason<option%commsize) reason=0
   endif
@@ -552,8 +552,6 @@ subroutine MPHASERes_FLBCCont(ibndtype,area,aux_vars, &
   use Field_module
   
   implicit none
-  
-#include "definitions.h"
   
   integer ibndtype(:)
   type(option_type) :: option
@@ -821,8 +819,6 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
   use Field_module
 
   implicit none
-  
-#include "definitions.h"  
 
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx
@@ -920,7 +916,7 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
   
   ierr0 = 0
   if(option%commsize >1)then
-    call MPI_ALLREDUCE(ierr, ierr0,1, MPI_INTEGER,MPI_SUM, PETSC_COMM_WORLD,ierr)
+    call MPI_ALLREDUCE(ierr, ierr0,ONE_INTEGER, MPI_INTEGER,MPI_SUM, PETSC_COMM_WORLD,ierr)
     if(ierr0 < 0) then
       ierr=-1      
     endif
@@ -1504,8 +1500,6 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
   use Field_module
   
   implicit none
-
-#include "definitions.h"  
 
   SNES, intent(in) :: snes
   Vec, intent(in) :: xx

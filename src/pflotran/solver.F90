@@ -10,7 +10,6 @@ module Solver_module
 ! that PETSC_AVOID_DECLARATIONS and PETSC_AVOID_MPIF_H are defined when the
 ! PETSc header files are included.  I can get around this, though, by making
 ! the definitions in these headers private.
-#include "include/finclude/petsc.h"
 #include "petscreldefs.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
@@ -107,8 +106,6 @@ subroutine SolverReadPflow(solver,fid,myrank)
   
   implicit none
 
-#include "definitions.h"
-    
   type(solver_type) :: solver
   PetscInt :: fid
   PetscMPIInt :: myrank

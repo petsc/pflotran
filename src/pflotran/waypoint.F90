@@ -6,7 +6,7 @@ module Waypoint_module
   
   private
 
-#include "include/finclude/petsc.h"
+#include "definitions.h"
 
   ! linked-list for waypoints in the simulation
   type, public :: waypoint_type
@@ -254,8 +254,6 @@ subroutine WaypointListRemoveExtraWaypnts(option,waypoint_list)
 
   implicit none
   
-#include "definitions.h"
-
   type(option_type) :: option
   type(waypoint_list_type) :: waypoint_list
   

@@ -9,7 +9,6 @@ module Coupler_module
   private
  
 #include "definitions.h"
-#include "include/finclude/petsc.h"
  
   type, public :: coupler_type
     PetscInt :: id                                       ! id of coupler

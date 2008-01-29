@@ -1,7 +1,5 @@
 !======================================================================
 
-!#include "pflowTHC.F90"
-
 #define PPRESSURE_LOC(j,n) xx_loc_p(j+(n-1)*option%ndof)
 #define PPRESSURE(j,n)     xx_p(j+(n-1)*option%ndof)
 #define PRESSURE(j,n)      yy_p(j+(n-1)*option%ndof)
@@ -11,8 +9,6 @@
 #define CCONC_LOC(n)       xx_loc_p(3+(n-1)*option%ndof)
 #define CCONC(n)           xx_p(3+(n-1)*option%ndof)
 #define CONC(n)            yy_p(3+(n-1)*option%ndof)
-
-#include "definitions.h"
 
 module THC_module
 
@@ -25,7 +21,7 @@ module THC_module
  
  private
 
-#include "include/finclude/petsc.h"
+#include "definitions.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
   ! It is VERY IMPORTANT to make sure that the above .h90 file gets included.

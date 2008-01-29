@@ -12,7 +12,8 @@ module Vadose_module
  ! use pflow_var_module
 
   private 
-#include "include/finclude/petsc.h"
+  
+#include "definitions.h"
 !#include "include/petscf90.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
@@ -21,8 +22,6 @@ module Vadose_module
   ! indication of what the problem is.
 #include "include/finclude/petscmat.h"
 #include "include/finclude/petscmat.h90"
-#include "include/finclude/petscda.h"
-#include "include/finclude/petscda.h90"
 !#ifdef USE_PETSC216
 !#include "include/finclude/petscsles.h"
 !#endif
@@ -267,10 +266,10 @@ subroutine Vadose_Update_Reason(reason,grid)
 
   
   if (grid%commsize >1) then
-    call MPI_ALLREDUCE(re, re0,1, MPI_INTEGER,MPI_SUM, &
+    call MPI_ALLREDUCE(re, re0,ONE_INTEGER, MPI_INTEGER,MPI_SUM, &
                        PETSC_COMM_WORLD,ierr)
   !print *,' update reason re'
-    !call MPI_BCAST(re0,1, MPI_INTEGER, 0,PETSC_COMM_WORLD,ierr)
+    !call MPI_BCAST(re0,ONE_INTEGER, MPI_INTEGER, ZERO_INTEGER,PETSC_COMM_WORLD,ierr)
   !print *,' update reason ca'
     if (re0<grid%commsize) re = 0
   endif

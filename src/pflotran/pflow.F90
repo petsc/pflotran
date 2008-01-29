@@ -40,10 +40,8 @@
   
   implicit none
 
-#include "include/finclude/petsc.h"
-#include "include/finclude/petsclog.h"
-
 #include "definitions.h"
+#include "include/finclude/petsclog.h"
 
   PetscLogDouble :: timex(4), timex_wall(4)
 

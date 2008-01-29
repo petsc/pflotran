@@ -12,13 +12,18 @@
 
 module pflow_vector_ops_module
 
+  implicit none
+
+  private  
+#include "definitions.h"
+
+  public :: pflow_pack_xx2, pflow_pack_xx3, pflow_pack_xx4
 contains
 
   subroutine pflow_pack_xx2(xx, v1, v1_dof, v2, v2_dof, ierr)
   
   implicit none
 
-#include "include/finclude/petsc.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
 
@@ -74,7 +79,6 @@ contains
   
   implicit none
 
-#include "include/finclude/petsc.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
 #include "include/finclude/petscviewer.h"
@@ -153,7 +157,6 @@ contains
   
   implicit none
 
-#include "include/finclude/petsc.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
 #include "include/finclude/petscviewer.h"
@@ -239,7 +242,6 @@ end subroutine pflow_pack_xx4
 
   implicit none
 
-#include "include/finclude/petsc.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
 

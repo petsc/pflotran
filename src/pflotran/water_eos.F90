@@ -4,7 +4,7 @@ module water_eos_module
 
   private
   
-#include "include/finclude/petsc.h"
+#include "definitions.h"
 
   PetscReal, private, parameter::  fmwh2o = 18.01534d0
 

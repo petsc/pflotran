@@ -11,7 +11,8 @@
  ! use pflow_var_module
 
 private 
-#include "include/finclude/petsc.h"
+
+#include "definitions.h"
 !#include "include/petscf90.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
@@ -243,10 +244,10 @@ private
 
   
   if(grid%commsize >1)then
-    call MPI_ALLREDUCE(re, re0,1, MPI_INTEGER,MPI_SUM, &
+    call MPI_ALLREDUCE(re, re0,ONE_INTEGER, MPI_INTEGER,MPI_SUM, &
     PETSC_COMM_WORLD,ierr)
   !print *,' update reason re'
-    !call MPI_BCAST(re0,1, MPI_INTEGER, 0,PETSC_COMM_WORLD,ierr)
+    !call MPI_BCAST(re0,ONE_INTEGER, MPI_INTEGER, 0,PETSC_COMM_WORLD,ierr)
   !print *,' update reason ca'
     if(re0<grid%commsize) re=0
   endif

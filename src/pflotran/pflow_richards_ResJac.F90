@@ -11,7 +11,8 @@ module Richards_module
   implicit none
   
   private 
-#include "include/finclude/petsc.h"
+
+#include "definitions.h"
 !#include "include/petscf90.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
@@ -20,16 +21,12 @@ module Richards_module
   ! indication of what the problem is.
 #include "include/finclude/petscmat.h"
 #include "include/finclude/petscmat.h90"
-#include "include/finclude/petscda.h"
-#include "include/finclude/petscda.h90"
 !#ifdef USE_PETSC216
 !#include "include/finclude/petscsles.h"
 !#endif
 #include "include/finclude/petscsnes.h"
 #include "include/finclude/petscviewer.h"
 #include "include/finclude/petscsys.h"
-#include "include/finclude/petscis.h"
-#include "include/finclude/petscis.h90"
 #include "include/finclude/petsclog.h"
 
 
@@ -213,7 +210,7 @@ subroutine Richards_Update_Reason(reason,realization)
   
   if (option%commsize >1) then
     temp_reason = reason
-    call MPI_ALLREDUCE(temp_reason,reason,1, MPI_INTEGER,MPI_SUM, &
+    call MPI_ALLREDUCE(temp_reason,reason,ONE_INTEGER, MPI_INTEGER,MPI_SUM, &
                        PETSC_COMM_WORLD,ierr)
     if (reason<option%commsize) reason = 0
   endif
@@ -431,8 +428,6 @@ subroutine RichardsRes_FLBCCont(ibndtype,area,aux_vars,var_node1,var_node2,por2,
   use Field_module
  
   implicit none
-  
-#include "definitions.h"
   
   PetscInt :: ibndtype(:)
   type(option_type) :: option
@@ -660,8 +655,6 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
   use Field_module
   
   implicit none
-
-#include "definitions.h"
  
   SNES, intent(in) :: snes
   Vec, intent(inout) :: xx

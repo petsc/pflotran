@@ -2,7 +2,7 @@
 
  private
 
-#include "include/finclude/petsc.h"
+#include "definitions.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
   ! It is VERY IMPORTANT to make sure that the above .h90 file gets included.
@@ -96,7 +96,6 @@
  implicit none
  
 #include "include/finclude/petscerror.h"
-#include "definitions.h"
 
  type(realization_type) :: realization
  KSPConvergedReason :: ksp_reason

@@ -12,7 +12,7 @@
 
       implicit none
 
-#include "include/finclude/petsc.h"
+#include "definitions.h"
 
       save
       

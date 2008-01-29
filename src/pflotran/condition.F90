@@ -5,14 +5,9 @@ module Condition_module
   private
   
 #include "definitions.h"
-#include "include/finclude/petsc.h"
 
-!#define X_DIRECTION 1 ! now in definitions.h
-!#define Y_DIRECTION 2
-!#define Z_DIRECTION 3
-
-#define STEP 0
-#define LINEAR 1
+  PetscInt, parameter :: STEP = 0
+  PetscInt, parameter :: LINEAR = 1
  
   type, public :: condition_type
     PetscInt :: id                                 ! id from which condition can be referenced

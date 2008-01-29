@@ -10,7 +10,6 @@ module Structured_Grid_module
 ! that PETSC_AVOID_DECLARATIONS and PETSC_AVOID_MPIF_H are defined when the
 ! PETSc header files are included.  I can get around this, though, by making
 ! the definitions in these headers private.
-#include "include/finclude/petsc.h"
 #include "petscreldefs.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
@@ -22,16 +21,12 @@ module Structured_Grid_module
 #include "include/finclude/petscda.h"
 #include "include/finclude/petscda.h90"
 
-!#define X_DIRECTION 1 ! now in definitions.h
-!#define Y_DIRECTION 2
-!#define Z_DIRECTION 3
-
-#define WEST 1
-#define EAST 2
-#define SOUTH 3
-#define NORTH 4
-#define BOTTOM 5
-#define TOP 6
+  PetscInt, parameter :: WEST = 1
+  PetscInt, parameter :: EAST = 2
+  PetscInt, parameter :: SOUTH = 3
+  PetscInt, parameter :: NORTH = 4
+  PetscInt, parameter :: BOTTOM = 5
+  PetscInt, parameter :: TOP = 6
 
   type, public :: structured_grid_type
 

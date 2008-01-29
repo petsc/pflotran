@@ -6,7 +6,7 @@ module Fileio_module
 
   private
 
-#include "include/finclude/petsc.h"
+#include "definitions.h"
 
   PetscInt, parameter :: dbaselen = 256, strlen = 256
   save

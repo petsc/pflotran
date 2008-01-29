@@ -8,7 +8,7 @@ module Timestepper_module
 
   private
   
-#include "include/finclude/petsc.h"
+#include "definitions.h"
  
   type, public :: stepper_type
   
@@ -96,8 +96,6 @@ subroutine StepperRun(realization,stepper,stage)
   
   implicit none
   
-#include "definitions.h"
-#include "include/finclude/petsc.h"
 #include "include/finclude/petscdef.h"
 #include "include/finclude/petsclog.h"
 #include "include/finclude/petscsys.h"
@@ -249,9 +247,6 @@ subroutine StepperUpdateDT(stepper,option,num_newton_iterations)
   
   implicit none
 
-#include "include/finclude/petsc.h"
-#include "definitions.h"
-
   type(stepper_type) :: stepper
   type(option_type) :: option
   PetscInt, intent(in) :: num_newton_iterations
@@ -385,8 +380,6 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
   
   implicit none
 
-#include "definitions.h"
-#include "include/finclude/petsc.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
 #include "include/finclude/petscmat.h"
@@ -565,8 +558,8 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
      call VecRestoreArrayF90(field%r, r_p, ierr)
      
       if(option%commsize >1)then 
-      call MPI_REDUCE(s_r2norm, s_r2norm0,1, MPI_DOUBLE_PRECISION ,MPI_SUM,0, PETSC_COMM_WORLD,ierr)
-      call MPI_REDUCE(norm_inf, norm_inf0,1, MPI_DOUBLE_PRECISION, MPI_MAX,0, PETSC_COMM_WORLD,ierr)
+      call MPI_REDUCE(s_r2norm, s_r2norm0,ONE_INTEGER, MPI_DOUBLE_PRECISION ,MPI_SUM,ZERO_INTEGER, PETSC_COMM_WORLD,ierr)
+      call MPI_REDUCE(norm_inf, norm_inf0,ONE_INTEGER, MPI_DOUBLE_PRECISION, MPI_MAX,ZERO_INTEGER, PETSC_COMM_WORLD,ierr)
       if(option%myrank==0) then
         s_r2norm =s_r2norm0
         norm_inf =norm_inf0

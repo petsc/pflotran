@@ -1,6 +1,6 @@
 module Utility_module
 
-#include "include/finclude/petsc.h"
+#include "definitions.h"
 
   contains
 
