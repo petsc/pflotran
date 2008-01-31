@@ -59,22 +59,22 @@ subroutine Output(realization)
   type(realization_type) :: realization
 
   PetscErrorCode :: ierr
-  PetscLogDouble :: start, end
+  PetscLogDouble :: tstart, tend
   
   if (realization%output_option%print_hdf5) then
-    call PetscGetTime(start,ierr) 
+    call PetscGetTime(tstart,ierr) 
     call OutputHDF5(realization)
-    call PetscGetTime(end,ierr) 
+    call PetscGetTime(tend,ierr) 
     if (realization%option%myrank == 0) &
-      print *, '      Seconds to write to HDF5 file: ', (end-start)
+      print *, '      Seconds to write to HDF5 file: ', (tend-tstart)
   endif
  
   if (realization%output_option%print_tecplot) then
-    call PetscGetTime(start,ierr) 
+    call PetscGetTime(tstart,ierr) 
     call OutputTecplot(realization)
-    call PetscGetTime(end,ierr) 
+    call PetscGetTime(tend,ierr) 
     if (realization%option%myrank == 0) &
-      print *, '      Seconds to write to Tecplot file(s): ', (end-start)
+      print *, '      Seconds to write to Tecplot file(s): ', (tend-tstart)
   endif
   
   realization%output_option%plot_number = realization%output_option%plot_number + 1

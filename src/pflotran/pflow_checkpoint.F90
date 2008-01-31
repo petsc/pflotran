@@ -108,6 +108,7 @@ subroutine pflowGridCheckpoint(realization,flowsteps,newtcum,icutcum, &
   PetscBag :: bag
   type(pflowChkPtHeader), pointer :: header
   PetscErrorCode :: ierr
+  PetscLogDouble :: tstart, tend  
   
   Vec :: global_vec, global_var
   PetscInt :: int_flag
@@ -123,6 +124,7 @@ subroutine pflowGridCheckpoint(realization,flowsteps,newtcum,icutcum, &
   output_option => realization%output_option
 
   ! Open the checkpoint file.
+  call PetscGetTime(tstart,ierr)   
   if (id < 0) then
     fname = 'restart.chk'
   else if (id < 10) then
@@ -238,6 +240,9 @@ subroutine pflowGridCheckpoint(realization,flowsteps,newtcum,icutcum, &
   call PetscViewerDestroy(viewer, ierr)
 
   if(option%myrank == 0) write(*, '(" --> Dump checkpoint file: ", a16)') trim(fname)
+  call PetscGetTime(tend,ierr) 
+  if (realization%option%myrank == 0) &
+    print *, '      Seconds to write to checkpoint file: ', (tend-tstart)
 
 end subroutine pflowGridCheckpoint
 
@@ -285,6 +290,7 @@ subroutine pflowGridRestart(realization,flowsteps,newtcum,icutcum, &
   PetscBag bag
   type(pflowChkPtHeader), pointer :: header
   PetscErrorCode :: ierr
+  PetscLogDouble :: tstart, tend
 
   Vec :: global_vec, global_var
   PetscInt :: int_flag
@@ -299,6 +305,7 @@ subroutine pflowGridRestart(realization,flowsteps,newtcum,icutcum, &
   grid => realization%grid
   output_option => realization%output_option
   
+  call PetscGetTime(tstart,ierr)   
   if (option%myrank == 0) print *,'--> Open checkpoint file: ', trim(option%restart_file)
   call PetscViewerBinaryOpen(PETSC_COMM_WORLD, option%restart_file, FILE_MODE_READ, &
                              viewer, ierr)
@@ -365,6 +372,10 @@ subroutine pflowGridRestart(realization,flowsteps,newtcum,icutcum, &
 
   ! We are finished, so clean up.
   call PetscViewerDestroy(viewer, ierr)
+  call PetscGetTime(tend,ierr) 
+  if (realization%option%myrank == 0) &
+    print *, '      Seconds to read checkpoint file: ', (tend-tstart)
+  
 end subroutine pflowGridRestart
 
 #endif
