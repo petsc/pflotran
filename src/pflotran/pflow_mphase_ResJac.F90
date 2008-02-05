@@ -48,7 +48,7 @@ module MPHASE_module
          pflow_update_mphase,pflow_mphase_initadj, pflow_mphase_timecut,&
          pflow_mphase_setupini, MPhase_Update_Reason
 
-  public :: createmphaseZeroArray
+  public :: createMphaseZeroArray
   
   PetscInt, save :: n_zero_rows = 0
   PetscInt, pointer, save :: zero_rows_local(:)  ! 1-based indexing
@@ -1476,16 +1476,16 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
     call VecRestoreArrayF90(field%phis,phis_p,ierr)
   endif
 
-!#define DEBUG_GEH
-!#define DEBUG_GEH_ALL
-#ifdef DEBUG_GEH 
- call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'residual.out',viewer,ierr)
- call VecView(r,viewer,ierr)
- call PetscViewerDestroy(viewer,ierr)
- call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'xx.out',viewer,ierr)
- call VecView(xx,viewer,ierr)
- call PetscViewerDestroy(viewer,ierr)
-#endif
+  if (realization%debug%vecview_residual) then
+    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'residual.out',viewer,ierr)
+    call VecView(r,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+  endif
+  if (realization%debug%vecview_solution) then
+    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'xx.out',viewer,ierr)
+    call VecView(xx,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+  endif
 
 end subroutine MPHASEResidual
                 
@@ -1560,7 +1560,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
             blkmat21(1:realization%option%ndof,1:realization%option%ndof),&
             blkmat22(1:realization%option%ndof,1:realization%option%ndof)
   PetscReal :: ResInc(1:realization%grid%nlmax, 1:realization%option%ndof, 1:realization%option%ndof),res(1:realization%option%ndof)  
-  PetscReal :: max_dev  
+  PetscReal :: max_dev, norm
   PetscReal :: xxbc(realization%option%ndof), varbc(1:size_var_node)
   PetscInt :: iphasebc, idof
   
@@ -2194,11 +2194,24 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
   call MatZeroRowsLocal(A,n_zero_rows,zero_rows_local_ghosted,f1,ierr) 
 #endif
 
-#ifdef DEBUG_GEH    
-  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian.out',viewer,ierr)
-  call MatView(A,viewer,ierr)
-  call PetscViewerDestroy(viewer,ierr)
-#endif
+  if (realization%debug%matview_Jacobian) then
+    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian.out',viewer,ierr)
+    call MatView(A,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+  endif
+  if (realization%debug%norm_Jacobian) then
+    call MatNorm(A,NORM_1,norm,ierr)
+    if (option%myrank == 0) print *, '1 norm:', norm
+    call MatNorm(A,NORM_FROBENIUS,norm,ierr)
+    if (option%myrank == 0) print *, '2 norm:', norm
+    call MatNorm(A,NORM_INFINITY,norm,ierr)
+    if (option%myrank == 0) print *, 'inf norm:', norm
+!    call GridCreateVector(grid,ONEDOF,debug_vec,GLOBAL)
+!    call MatGetRowMaxAbs(A,debug_vec,PETSC_NULL_INTEGER,ierr)
+!    call VecMax(debug_vec,i,norm,ierr)
+!    call VecDestroy(debug_vec,ierr)
+!    if (option%myrank == 0) print *, 'max:', i, norm
+  endif
 
 end subroutine MPHASEJacobian
 
@@ -2634,7 +2647,7 @@ end subroutine pflow_mphase_initadj
 
 
 
-subroutine createmphaseZeroArray(realization)
+subroutine createMphaseZeroArray(realization)
 
   use Realization_module
   use Grid_module
@@ -2713,6 +2726,6 @@ subroutine createmphaseZeroArray(realization)
     stop
   endif
 
-end subroutine createmphaseZeroArray
+end subroutine createMphaseZeroArray
 
 end module MPHASE_module

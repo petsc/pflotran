@@ -53,7 +53,10 @@ PetscReal GridCell::getVolume() { return volume; }
 PetscReal GridCell::getPermX() { return permeability[0]; }
 PetscReal GridCell::getPermY() { return permeability[1]; }
 PetscReal GridCell::getPermZ() { return permeability[2]; }
-PetscInt GridCell::getMaterialId() { return material_id; }
+PetscInt GridCell::getMaterialId() { 
+  if (active) return material_id; 
+  else return 0;
+}
 PetscInt GridCell::getActive() { return active; }
 
 void GridCell::getHexFaceVertices(PetscInt face, PetscInt *vertex_list) {

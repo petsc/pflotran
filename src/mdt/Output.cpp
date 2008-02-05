@@ -208,6 +208,7 @@ void Output::printHDFMaterialsAndRegions() {
   BoundarySet *cur_set = grid->boundary_sets;
   while (cur_set) {
     PetscPrintf(PETSC_COMM_WORLD," %s\n",cur_set->name);
+    cur_set->printInfo();
     file->createGroup(cur_set->name);
 
 // cell ids
@@ -229,9 +230,10 @@ void Output::printHDFMaterialsAndRegions() {
 
       PetscInt *cell_ids = cur_set->getCellIdsLocal1Based();
     // convert cell_ids in local numbering to natural, no need to reorder for now
+    // since 1-based, need to subtract 1 then add 1
       for (PetscInt i=0; i<num_connections_local; i++) {
         cell_ids[i] = grid->cell_mapping_ghosted_to_natural[
-                            grid->cell_mapping_local_to_ghosted[cell_ids[i]]];
+                            grid->cell_mapping_local_to_ghosted[cell_ids[i]-1]]+1;
       }
 
       file->setHyperSlab(num_connections_local);

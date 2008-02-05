@@ -28,8 +28,8 @@ int main(int argc, char **args) {
   Hanford300 *hanford300 = NULL;
   TestCase *testcase = NULL;
 
-  hanford300 = new Hanford300(&grid);
-//  testcase = new TestCase(&grid);
+//  hanford300 = new Hanford300(&grid);
+  testcase = new TestCase(&grid);
 
   Output *out = new Output(grid);
 

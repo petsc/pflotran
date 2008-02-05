@@ -1104,7 +1104,7 @@ subroutine GridCreateNaturalToGhostedHash(grid,option)
   if (associated(grid%hash)) return
 
   ! initial guess of 10% of ids per hash
-  num_ids_per_hash = grid%nlmax/(grid%num_hash_bins/10)
+  num_ids_per_hash = max(grid%nlmax/(grid%num_hash_bins/10),1)
 
   allocate(hash(2,0:num_ids_per_hash,grid%num_hash_bins))
   hash(:,:,:) = 0

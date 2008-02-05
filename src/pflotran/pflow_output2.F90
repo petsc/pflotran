@@ -1878,7 +1878,12 @@ subroutine GetVarFromArray(realization,vec,ivar,isubvar)
         vec_ptr(local_id) = var_ptr(grid%nL2G(local_id))
       enddo
       call VecRestoreArrayF90(field%iphas_loc,var_ptr,ierr)
-     
+
+    case(MATERIAL_ID)
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = field%imat(grid%nL2G(local_id))
+      enddo
+           
   end select
   
   call VecRestoreArrayF90(vec,vec_ptr,ierr)

@@ -157,28 +157,28 @@ void TestCase::computeWestBoundary(Grid *grid, PetscInt complete) {
       if (grid->cells[i].flag & WEST_DIR_WEST_FACE) {
         PetscInt vertex_list[5] = {4,0,0,0,0};
         grid->cells[i].getHexFaceVertices(WEST,vertex_list);
-        west->addConnection(new Connection(local_id,vertex_list));
+        west->addConnection(new Connection(local_id,vertex_list,WEST));
       }
       if (complete) {
         if (grid->cells[i].flag & WEST_DIR_SOUTH_FACE) {
           PetscInt vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(SOUTH,vertex_list);
-          west->addConnection(new Connection(local_id,vertex_list));
+          west->addConnection(new Connection(local_id,vertex_list,SOUTH));
         }
         if (grid->cells[i].flag & WEST_DIR_NORTH_FACE) {
           PetscInt vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(NORTH,vertex_list);
-          west->addConnection(new Connection(local_id,vertex_list));
+          west->addConnection(new Connection(local_id,vertex_list,NORTH));
         }
         if (grid->cells[i].flag & WEST_DIR_BOTTOM_FACE) {
           PetscInt vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(BOTTOM,vertex_list);
-          west->addConnection(new Connection(local_id,vertex_list));
+          west->addConnection(new Connection(local_id,vertex_list,BOTTOM));
         }
         if (grid->cells[i].flag & WEST_DIR_TOP_FACE) {
           PetscInt vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(TOP,vertex_list);
-          west->addConnection(new Connection(local_id,vertex_list));
+          west->addConnection(new Connection(local_id,vertex_list,TOP));
         }
       }
     }
@@ -199,28 +199,28 @@ void TestCase::computeEastBoundary(Grid *grid, PetscInt complete) {
       if (grid->cells[i].flag & EAST_DIR_EAST_FACE) {
         PetscInt vertex_list[5] = {4,0,0,0,0};
         grid->cells[i].getHexFaceVertices(EAST,vertex_list);
-        east->addConnection(new Connection(local_id,vertex_list));
+        east->addConnection(new Connection(local_id,vertex_list,EAST));
       }
       if (complete) {
         if (grid->cells[i].flag & EAST_DIR_SOUTH_FACE) {
           PetscInt vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(SOUTH,vertex_list);
-          east->addConnection(new Connection(local_id,vertex_list));
+          east->addConnection(new Connection(local_id,vertex_list,SOUTH));
         }
         if (grid->cells[i].flag & EAST_DIR_NORTH_FACE) {
           PetscInt vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(NORTH,vertex_list);
-          east->addConnection(new Connection(local_id,vertex_list));
+          east->addConnection(new Connection(local_id,vertex_list,NORTH));
         }
         if (grid->cells[i].flag & EAST_DIR_BOTTOM_FACE) {
           PetscInt vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(BOTTOM,vertex_list);
-          east->addConnection(new Connection(local_id,vertex_list));
+          east->addConnection(new Connection(local_id,vertex_list,BOTTOM));
         }
         if (grid->cells[i].flag & EAST_DIR_TOP_FACE) {
           PetscInt vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(TOP,vertex_list);
-          east->addConnection(new Connection(local_id,vertex_list));
+          east->addConnection(new Connection(local_id,vertex_list,TOP));
         }
       }
     }
@@ -241,28 +241,28 @@ void TestCase::computeSouthBoundary(Grid *grid, PetscInt complete) {
       if (grid->cells[i].flag & SOUTH_DIR_SOUTH_FACE) {
         PetscInt vertex_list[5] = {4,0,0,0,0};
         grid->cells[i].getHexFaceVertices(SOUTH,vertex_list);
-        south->addConnection(new Connection(local_id,vertex_list));
+        south->addConnection(new Connection(local_id,vertex_list,SOUTH));
       }
       if (complete) {
         if (grid->cells[i].flag & SOUTH_DIR_WEST_FACE) {
           PetscInt vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(WEST,vertex_list);
-          south->addConnection(new Connection(local_id,vertex_list));
+          south->addConnection(new Connection(local_id,vertex_list,WEST));
         }
         if (grid->cells[i].flag & SOUTH_DIR_EAST_FACE) {
           PetscInt vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(EAST,vertex_list);
-          south->addConnection(new Connection(local_id,vertex_list));
+          south->addConnection(new Connection(local_id,vertex_list,EAST));
         }
         if (grid->cells[i].flag & SOUTH_DIR_BOTTOM_FACE) {
           PetscInt vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(BOTTOM,vertex_list);
-          south->addConnection(new Connection(local_id,vertex_list));
+          south->addConnection(new Connection(local_id,vertex_list,BOTTOM));
         }
         if (grid->cells[i].flag & SOUTH_DIR_TOP_FACE) {
           PetscInt vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(TOP,vertex_list);
-          south->addConnection(new Connection(local_id,vertex_list));
+          south->addConnection(new Connection(local_id,vertex_list,TOP));
         }
       }
     }
@@ -282,28 +282,28 @@ void TestCase::computeNorthBoundary(Grid *grid, PetscInt complete) {
       if (grid->cells[i].flag & NORTH_DIR_NORTH_FACE) {
         PetscInt vertex_list[5] = {4,0,0,0,0};
         grid->cells[i].getHexFaceVertices(NORTH,vertex_list);
-        north->addConnection(new Connection(local_id,vertex_list));
+        north->addConnection(new Connection(local_id,vertex_list,NORTH));
       }
       if (complete) {
         if (grid->cells[i].flag & NORTH_DIR_WEST_FACE) {
           PetscInt vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(WEST,vertex_list);
-          north->addConnection(new Connection(local_id,vertex_list));
+          north->addConnection(new Connection(local_id,vertex_list,WEST));
         }
         if (grid->cells[i].flag & NORTH_DIR_EAST_FACE) {
           PetscInt vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(EAST,vertex_list);
-          north->addConnection(new Connection(local_id,vertex_list));
+          north->addConnection(new Connection(local_id,vertex_list,EAST));
         }
         if (grid->cells[i].flag & NORTH_DIR_BOTTOM_FACE) {
           PetscInt vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(TOP,vertex_list);
-          north->addConnection(new Connection(local_id,vertex_list));
+          north->addConnection(new Connection(local_id,vertex_list,BOTTOM));
         }
         if (grid->cells[i].flag & NORTH_DIR_TOP_FACE) {
           PetscInt vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(TOP,vertex_list);
-          north->addConnection(new Connection(local_id,vertex_list));
+          north->addConnection(new Connection(local_id,vertex_list,TOP));
         }
       }
     }
@@ -324,28 +324,28 @@ void TestCase::computeBottomBoundary(Grid *grid, PetscInt complete) {
       if (grid->cells[i].flag & BOTTOM_DIR_BOTTOM_FACE) {
         PetscInt vertex_list[5] = {4,0,0,0,0};
         grid->cells[i].getHexFaceVertices(BOTTOM,vertex_list);
-        bottom->addConnection(new Connection(local_id,vertex_list));
+        bottom->addConnection(new Connection(local_id,vertex_list,BOTTOM));
       }
       if (complete) {
         if (grid->cells[i].flag & BOTTOM_DIR_WEST_FACE) {
           PetscInt vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(WEST,vertex_list);
-          bottom->addConnection(new Connection(local_id,vertex_list));
+          bottom->addConnection(new Connection(local_id,vertex_list,WEST));
         }
         if (grid->cells[i].flag & BOTTOM_DIR_EAST_FACE) {
           PetscInt vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(EAST,vertex_list);
-          bottom->addConnection(new Connection(local_id,vertex_list));
+          bottom->addConnection(new Connection(local_id,vertex_list,EAST));
         }
         if (grid->cells[i].flag & BOTTOM_DIR_SOUTH_FACE) {
           PetscInt vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(SOUTH,vertex_list);
-          bottom->addConnection(new Connection(local_id,vertex_list));
+          bottom->addConnection(new Connection(local_id,vertex_list,SOUTH));
         }
         if (grid->cells[i].flag & BOTTOM_DIR_NORTH_FACE) {
           PetscInt vertex_list[5] = {4,0,0,0,0};
           grid->cells[i].getHexFaceVertices(NORTH,vertex_list);
-          bottom->addConnection(new Connection(local_id,vertex_list));
+          bottom->addConnection(new Connection(local_id,vertex_list,NORTH));
         }
       }
     }
@@ -963,17 +963,20 @@ void TestCase::flagGridCells(Grid *grid) {
 void TestCase::setMaterialIdBasedOnNaturalId(PetscInt natural_id, PetscInt material_id,
                                              Grid *grid) {
   for (PetscInt i=0; i<grid->getNumberOfCellsGhosted(); i++) 
-    if (grid->cells[i].getIdNatural() == natural_id)//  {
+    if (grid->cells[i].getIdNatural() == natural_id) {
       grid->cells[i].setMaterialId(material_id);
+      break;
 //printf("%d %d %d %d\n",myrank,i,grid->cells[i].getIdNatural(),grid->cells[i].getMaterialId());
-//}
+  }
 }
 
 void TestCase::setActiveBasedOnNaturalId(PetscInt natural_id, PetscInt active,
                                          Grid *grid) {
   for (PetscInt i=0; i<grid->getNumberOfCellsGhosted(); i++) 
-    if (grid->cells[i].getIdNatural() == natural_id) 
+    if (grid->cells[i].getIdNatural() == natural_id) {
       grid->cells[i].setActive(active);
+      break;
+    }
 }
 
 TestCase::~TestCase() {

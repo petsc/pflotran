@@ -682,41 +682,38 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
       endif
 #endif
 
-      if (option%ndof == 1) then
-        ! VecCopy(x,y): y=x
-        call VecCopy(field%pressure, field%ppressure, ierr)
-        call VecCopy(field%temp, field%ttemp, ierr)
-      else
-        select case(option%imode)
+      select case(option%imode)
+        case(THC_MODE)
+          call VecCopy(field%pressure, field%ppressure, ierr)
+          call VecCopy(field%temp, field%ttemp, ierr)
 #if 0        
 ! needs to be implemented
-          case(OWG_MODE)
-            call pflow_owg_timecut(grid)
-          case(FLASH_MODE)
-            call pflow_flash_timecut(grid)
+        case(OWG_MODE)
+          call pflow_owg_timecut(grid)
+        case(FLASH_MODE)
+          call pflow_flash_timecut(grid)
 #endif            
-          case(RICHARDS_MODE)
+        case(RICHARDS_MODE)
 #ifndef RICHARDS_ANALYTICAL          
-            call pflow_richards_timecut(realization)
+          call pflow_richards_timecut(realization)
 #else            
-            call RichardsTimeCut(realization)
+          call RichardsTimeCut(realization)
 #endif
-          case(RICHARDS_LITE_MODE)
-            call RichardsLiteTimeCut(realization)
-          case(MPH_MODE)
-            call pflow_mphase_timecut(realization)
+        case(RICHARDS_LITE_MODE)
+          call RichardsLiteTimeCut(realization)
+        case(MPH_MODE)
+          call pflow_mphase_timecut(realization)
 #if 0            
 ! needs to be implemented
-          case(VADOSE_MODE)
-            call pflow_vadose_timecut(grid)
-          case default
-            call VecCopy(grid%h, grid%hh, ierr)
-            call VecCopy(grid%yy, field%xx, ierr)
-            call VecCopy(grid%density, grid%ddensity, ierr)
+        case(VADOSE_MODE)
+          call pflow_vadose_timecut(grid)
+        case default
+          call VecCopy(grid%h, grid%hh, ierr)
+          call VecCopy(grid%yy, field%xx, ierr)
+          call VecCopy(grid%density, grid%ddensity, ierr)
 #endif            
-        end select
-        call VecCopy(field%iphas_old_loc, field%iphas_loc, ierr)
-      endif
+      end select
+      call VecCopy(field%iphas_old_loc, field%iphas_loc, ierr)
 
     else
       ! The Newton solver converged, so we can exit.

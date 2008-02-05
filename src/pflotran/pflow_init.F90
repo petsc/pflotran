@@ -403,6 +403,8 @@ subroutine PflowInit(simulation,filename)
   
   if (associated(field%imat)) then
     select case(option%imode)
+      case(MPH_MODE)
+        call createMphaseZeroArray(realization)
       case(RICHARDS_MODE)
         call createRichardsZeroArray(realization)
       case(RICHARDS_LITE_MODE)
