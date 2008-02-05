@@ -339,7 +339,7 @@ BoundaryConnection *Grid::getBoundaryConnections() {
 #endif
 
 void Grid::addBoundarySet(BoundarySet *new_set) {
-  new_set->printInfo();
+//  new_set->printInfo();
   if (!boundary_sets) boundary_sets = new_set;
   else {
     BoundarySet *cur_set = boundary_sets;

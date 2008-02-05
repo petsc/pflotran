@@ -208,7 +208,7 @@ void Output::printHDFMaterialsAndRegions() {
   BoundarySet *cur_set = grid->boundary_sets;
   while (cur_set) {
     PetscPrintf(PETSC_COMM_WORLD," %s\n",cur_set->name);
-    cur_set->printInfo();
+//    cur_set->printInfo();
     file->createGroup(cur_set->name);
 
 // cell ids
