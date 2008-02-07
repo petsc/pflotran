@@ -304,7 +304,7 @@ subroutine RichardsLiteUpdateAuxVars(realization)
         case(DIRICHLET_BC,HYDROSTATIC_BC)
           xxbc(1) = boundary_condition%aux_real_var(RICHARDS_PRESSURE_DOF,iconn)
         case(NEUMANN_BC,ZERO_GRADIENT_BC)
-          xxbc(idof) = xx_loc_p(ghosted_id)
+          xxbc(1) = xx_loc_p(ghosted_id)
       end select
       
       select case(boundary_condition%condition%itype(RICHARDS_PRESSURE_DOF))
@@ -1181,7 +1181,7 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
   do 
     if (.not.associated(source_sink)) exit
     
-    qsrc1 = source_sink%condition%cur_value(RICHARDS_PRESSURE_DOF)
+    qsrc1 = source_sink%condition%pressure%dataset%cur_value(1)
     qsrc1 = qsrc1 / option%fmwh2o ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
       
     cur_connection_set => source_sink%connection
@@ -1546,20 +1546,9 @@ subroutine RichardsLiteJacobian(snes,xx,A,B,flag,realization,ierr)
   do 
     if (.not.associated(source_sink)) exit
     
-    ! check whether enthalpy dof is included
-    if (size(source_sink%condition%cur_value) > RICHARDS_CONCENTRATION_DOF) then
-      enthalpy_flag = .true.
-    else
-      enthalpy_flag = .false.
-    endif
-
-    qsrc1 = source_sink%condition%cur_value(RICHARDS_PRESSURE_DOF)
-    tsrc1 = source_sink%condition%cur_value(RICHARDS_TEMPERATURE_DOF)
-    csrc1 = source_sink%condition%cur_value(RICHARDS_CONCENTRATION_DOF)
-    if (enthalpy_flag) hsrc1 = source_sink%condition%cur_value(RICHARDS_ENTHALPY_DOF)
+    qsrc1 = source_sink%condition%pressure%dataset%cur_value(1)
 
     qsrc1 = qsrc1 / option%fmwh2o ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
-    csrc1 = csrc1 / option%fmwco2
       
     cur_connection_set => source_sink%connection
     

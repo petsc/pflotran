@@ -2931,7 +2931,7 @@ subroutine assignInitialConditions(realization)
   PetscReal, pointer :: conc_p(:)
   PetscReal, pointer :: xmol_p(:)
   
-  PetscInt :: icell, iconn, count, jn1, jn2
+  PetscInt :: icell, iconn, count, jn1, jn2, idof
   PetscInt :: local_id, ghosted_id, iend, ibegin
   PetscReal, pointer :: xx_p(:), iphase_loc_p(:)
   PetscErrorCode :: ierr
@@ -2984,18 +2984,18 @@ subroutine assignInitialConditions(realization)
           jn2 = jn1+1
               
           count = 1
-          pressure_p(jn1) = initial_condition%condition%cur_value(1)
+          pressure_p(jn1) = initial_condition%condition%pressure%dataset%cur_value(1)
           count = count + 1
           
           if (option%nphase>1) then
-            pressure_p(jn2) = initial_condition%condition%cur_value(count)
+            pressure_p(jn2) = initial_condition%condition%pressure%dataset%cur_value(1)
             count = count + 1
           endif
           
-          temp_p(local_id) = initial_condition%condition%cur_value(count)
+          temp_p(local_id) = initial_condition%condition%temperature%dataset%cur_value(1)
           count = count + 1
           
-          sat_p(jn1) = initial_condition%condition%cur_value(count)
+          sat_p(jn1) = initial_condition%condition%concentration%dataset%cur_value(1)
           count = count + 1          
           
           if (option%nphase>1) then
@@ -3003,13 +3003,13 @@ subroutine assignInitialConditions(realization)
             count = count + 1
           endif
           
-          if (option%ndof == 3) then
-            conc_p(local_id) = initial_condition%condition%cur_value(count)
+          if (option%ndof == 3) then                        ! this is bogus
+            conc_p(local_id) = initial_condition%condition%concentration%dataset%cur_value(1)
             count = count + 1
           endif
 
-          if (option%ndof == 4) then
-            xmol_p(jn2) = initial_condition%condition%cur_value(count)
+          if (option%ndof == 4) then                         ! this is bogus
+            xmol_p(jn2) = initial_condition%condition%concentration%dataset%cur_value(1)
             count = count + 1
           endif
                
@@ -3050,8 +3050,10 @@ subroutine assignInitialConditions(realization)
             cycle
           endif
         endif
-        xx_p(ibegin:iend) = &
-          initial_condition%condition%cur_value(1:option%ndof)
+        do idof = 1, option%ndof
+          xx_p(ibegin+idof) = &
+            initial_condition%condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
+        enddo
         iphase_loc_p(ghosted_id)=initial_condition%condition%iphase
       enddo
     else

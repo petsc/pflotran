@@ -265,16 +265,16 @@ subroutine nhydrostatic(realization)
         
       if (boundary_condition%iface /= BOTTOM .and. boundary_condition%iface /= TOP) then
 
-        select case(boundary_condition%condition%itype(1))
+        select case(boundary_condition%condition%pressure%itype)
           case(4)
           case(3)
             natural_id = grid%nL2A(local_id)+1 
             ghosted_id = grid%nL2G(local_id)
             nz = floor(((real(natural_id)-.5D0))/grid%structured_grid%nxy) + 1
-            if (boundary_condition%condition%itype(1) == 1) then
+            if (boundary_condition%condition%pressure%itype == 1) then
               dp = rho_ref * option%gravity(3) * option%beta * &
                    (grid%x_max-0.5d0*grid%x(grid%structured_grid%nx))
-            elseif (boundary_condition%condition%itype(1) == 2) then
+            elseif (boundary_condition%condition%pressure%itype == 2) then
               dp=0.D0
             else   
               dp = rho_ref * option%gravity(3) * option%beta * &
@@ -316,7 +316,7 @@ subroutine nhydrostatic(realization)
             boundary_condition%aux_real_var(2,iconn) = hys_temp(nz)
           end select 
         else if(boundary_condition%iface == 4) then
-          select case(boundary_condition%condition%itype(1))
+          select case(boundary_condition%condition%pressure%itype)
             case(4)
             case(3)
               nz = grid%structured_grid%nz
@@ -350,7 +350,7 @@ subroutine nhydrostatic(realization)
               boundary_condition%aux_real_var(2,iconn) = hys_temp(nz+1)
           end select 
         elseif(boundary_condition%iface == 3) then
-          select case(boundary_condition%condition%itype(1))
+          select case(boundary_condition%condition%pressure%itype)
             case(4)
             case(3,1)
               natural_id=grid%nL2A(local_id)+1

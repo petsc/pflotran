@@ -52,6 +52,8 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   
   type(connection_type), pointer :: cur_connection_set
   
+#if 0
+
   condition => coupler%condition
     
   xm_nacl = option%m_nacl * fmwnacl
@@ -185,6 +187,8 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
     enddo
 
   endif
+
+#endif
     
 end subroutine HydrostaticUpdateCoupler
 
@@ -217,9 +221,13 @@ subroutine HydrostaticUpdateCouplerBetter(coupler,option,grid)
   PetscInt :: local_id, ghosted_id, iconn
   PetscInt :: num_iteration, ipressure, idatum, num_pressures
   PetscReal :: dist_x, dist_y, dist_z, delta_z
-  PetscReal :: rho, rho1, rho0, pressure0, pressure, temperature
+  PetscReal :: rho, rho1, rho0, pressure, pressure0, pressure_at_datum 
+  PetscReal :: temperature_at_datum, temperature
+  PetscReal :: concentration_at_datum
   PetscReal :: xm_nacl, dw_kg
   PetscReal, pointer :: pressure_array(:), density_array(:), z(:)
+  PetscReal :: pressure_gradient(3), datum(3)
+  PetscReal :: temperature_gradient(3), concentration_gradient(3)
   
   type(condition_type), pointer :: condition
   
@@ -233,13 +241,28 @@ subroutine HydrostaticUpdateCouplerBetter(coupler,option,grid)
   nullify(pressure_array)
   
   delta_z = 1.d0
-  temperature = 25.d0
+  temperature_at_datum = 25.d0
+  concentration_at_datum = 0.d0
+  
+  pressure_gradient(1:3) = condition%pressure%gradient%cur_value(1:3)
+  datum(1:3) = condition%pressure%datum%cur_value(1:3)
+  pressure_at_datum = condition%pressure%dataset%cur_value(1)
+  
+  ! for now, just set it; in future need to account for a different temperature datum
+  if (associated(condition%temperature)) then
+    temperature_at_datum = condition%temperature%dataset%cur_value(1)
+    temperature_gradient(1:3) = condition%temperature%gradient%cur_value(1:3)
+  endif
+  if (associated(condition%temperature)) then
+    concentration_at_datum = condition%concentration%dataset%cur_value(1)
+    concentration_gradient(1:3) = condition%concentration%gradient%cur_value(1:3)
+  endif
 
-  if (dabs(condition%gradient(1,Z_DIRECTION)) < 1.d-40) then
+  if (dabs(pressure_gradient(Z_DIRECTION)) < 1.d-40) then
     ! compute the vertical gradient based on a 1 meter vertical spacing and
     ! interpolate the values from that array
-    num_pressures = int((max(grid%z_max,condition%datum(Z_DIRECTION)) - &
-                        min(grid%z_min,condition%datum(Z_DIRECTION))) / &
+    num_pressures = int((max(grid%z_max,datum(Z_DIRECTION)) - &
+                        min(grid%z_min,datum(Z_DIRECTION))) / &
                         delta_z) + 1
     allocate(pressure_array(num_pressures))
     allocate(density_array(num_pressures))
@@ -248,26 +271,25 @@ subroutine HydrostaticUpdateCouplerBetter(coupler,option,grid)
     density_array = 0.d0
     z = 0.d0
     ! place this pressure in the array
-    idatum = int(condition%datum(Z_DIRECTION)/delta_z - &
-                 min(grid%z_min,condition%datum(Z_DIRECTION)) / &
-                 (max(grid%z_max,condition%datum(Z_DIRECTION)) - &
-                  min(grid%z_min,condition%datum(Z_DIRECTION))) * &
+    idatum = int(datum(Z_DIRECTION)/delta_z - &
+                 min(grid%z_min,datum(Z_DIRECTION)) / &
+                 (max(grid%z_max,datum(Z_DIRECTION)) - &
+                  min(grid%z_min,datum(Z_DIRECTION))) * &
                   dble(num_pressures))+1
-    pressure0 = condition%cur_value(1)
-    if (option%imode /= RICHARDS_LITE_MODE) &
-      temperature = condition%cur_value(2)
-    pressure_array(idatum) = pressure0
-    call nacl_den(temperature,pressure0*1.d-6,xm_nacl,dw_kg) 
+    pressure_array(idatum) = pressure_at_datum
+    call nacl_den(temperature_at_datum,pressure_at_datum*1.d-6,xm_nacl,dw_kg) 
+    temperature = temperature_at_datum
+    pressure0 = pressure_at_datum
     rho = dw_kg * 1.d3
     density_array(idatum) = rho
-    z(idatum) = condition%datum(Z_DIRECTION)
+    z(idatum) = datum(Z_DIRECTION)
     ! compute pressures above datum, if any
     dist_z = 0.d0
     rho0 = rho
     do ipressure=idatum+1,num_pressures
       dist_z = dist_z + delta_z
       if (option%imode /= RICHARDS_LITE_MODE) &
-        temperature = temperature + condition%gradient(2,Z_DIRECTION)*delta_z
+        temperature = temperature + temperature_gradient(Z_DIRECTION)*delta_z
       call nacl_den(temperature,pressure0*1.d-6,xm_nacl,dw_kg) 
       rho = dw_kg * 1.d3
 
@@ -296,13 +318,13 @@ subroutine HydrostaticUpdateCouplerBetter(coupler,option,grid)
 
     ! compute pressures above datum, if any
     pressure0 = pressure_array(idatum)
-    if (option%imode /= RICHARDS_LITE_MODE) temperature = condition%cur_value(2)
+    if (option%imode /= RICHARDS_LITE_MODE) temperature = temperature_at_datum
     dist_z = 0.d0
     rho0 = density_array(idatum)
     do ipressure=idatum-1,1,-1
       dist_z = dist_z + delta_z
       if (option%imode /= RICHARDS_LITE_MODE) &
-        temperature = temperature - condition%gradient(2,Z_DIRECTION)*delta_z
+        temperature = temperature - temperature_gradient(Z_DIRECTION)*delta_z
       call nacl_den(temperature,pressure0*1.d-6,xm_nacl,dw_kg) 
       rho = dw_kg * 1.d3
 
@@ -334,33 +356,33 @@ subroutine HydrostaticUpdateCouplerBetter(coupler,option,grid)
     local_id = coupler%connection%id_dn(iconn)
     ghosted_id = grid%nL2G(local_id)
 
-    dist_x = grid%x(ghosted_id)-condition%datum(X_DIRECTION)
-    dist_y = grid%y(ghosted_id)-condition%datum(Y_DIRECTION)
-    dist_z = grid%z(ghosted_id)-condition%datum(Z_DIRECTION)
+    dist_x = grid%x(ghosted_id)-datum(X_DIRECTION)
+    dist_y = grid%y(ghosted_id)-datum(Y_DIRECTION)
+    dist_z = grid%z(ghosted_id)-datum(Z_DIRECTION)
     
     if (associated(pressure_array)) then
       ipressure = idatum+int(dist_z/delta_z)
       pressure = pressure_array(ipressure) + &
                  density_array(ipressure)*option%gravity(Z_DIRECTION) * &
                  (grid%z(ghosted_id)-z(ipressure)) + &
-                 condition%gradient(1,X_DIRECTION)*dist_x + & ! gradient in Pa/m
-                 condition%gradient(1,Y_DIRECTION)*dist_y
+                 pressure_gradient(X_DIRECTION)*dist_x + & ! gradient in Pa/m
+                 pressure_gradient(Y_DIRECTION)*dist_y
     else
-      pressure = condition%cur_value(1) + &
-                 condition%gradient(1,X_DIRECTION)*dist_x + & ! gradient in Pa/m
-                 condition%gradient(1,Y_DIRECTION)*dist_y + &
-                 condition%gradient(1,Z_DIRECTION)*dist_z 
+      pressure = pressure_at_datum + &
+                 pressure_gradient(X_DIRECTION)*dist_x + & ! gradient in Pa/m
+                 pressure_gradient(Y_DIRECTION)*dist_y + &
+                 pressure_gradient(Z_DIRECTION)*dist_z 
     endif
 
     coupler%aux_real_var(1,iconn) = pressure
 
     if (option%imode /= RICHARDS_LITE_MODE) then
-      temperature = condition%cur_value(2) + &
-                    condition%gradient(2,X_DIRECTION)*dist_x + & ! gradient in K/m
-                    condition%gradient(2,Y_DIRECTION)*dist_y + &
-                    condition%gradient(2,Z_DIRECTION)*dist_z 
+      temperature = temperature_at_datum + &
+                    temperature_gradient(X_DIRECTION)*dist_x + & ! gradient in K/m
+                    temperature_gradient(Y_DIRECTION)*dist_y + &
+                    temperature_gradient(Z_DIRECTION)*dist_z 
       coupler%aux_real_var(2,iconn) = temperature
-      coupler%aux_real_var(3,iconn) = condition%cur_value(3)
+      coupler%aux_real_var(3,iconn) = concentration_at_datum
     endif
 
     coupler%aux_int_var(1,iconn) = 1

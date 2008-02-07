@@ -863,16 +863,16 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
     if (.not.associated(source_sink)) exit
     
     ! check whether enthalpy dof is included
-    if (size(source_sink%condition%cur_value) > RICHARDS_CONCENTRATION_DOF) then
+    if (source_sink%condition%num_sub_conditions > RICHARDS_CONCENTRATION_DOF) then
       enthalpy_flag = .true.
     else
       enthalpy_flag = .false.
     endif
 
-    qsrc1 = source_sink%condition%cur_value(RICHARDS_PRESSURE_DOF)
-    tsrc1 = source_sink%condition%cur_value(RICHARDS_TEMPERATURE_DOF)
-    csrc1 = source_sink%condition%cur_value(RICHARDS_CONCENTRATION_DOF)
-    if (enthalpy_flag) hsrc1 = source_sink%condition%cur_value(RICHARDS_ENTHALPY_DOF)
+    qsrc1 = source_sink%condition%pressure%dataset%cur_value(1)
+    tsrc1 = source_sink%condition%temperature%dataset%cur_value(1)
+    csrc1 = source_sink%condition%concentration%dataset%cur_value(1)
+    if (enthalpy_flag) hsrc1 = source_sink%condition%enthalpy%dataset%cur_value(1)
 
     qsrc1 = qsrc1 / option%fmwh2o ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
     csrc1 = csrc1 / option%fmwco2
@@ -1352,9 +1352,9 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
 !      enthalpy_flag = .false.
 !    endif
 
-    qsrc1 = source_sink%condition%cur_value(RICHARDS_PRESSURE_DOF)
-    tsrc1 = source_sink%condition%cur_value(RICHARDS_TEMPERATURE_DOF)
-    csrc1 = source_sink%condition%cur_value(RICHARDS_CONCENTRATION_DOF)
+    qsrc1 = source_sink%condition%pressure%dataset%cur_value(1)
+    tsrc1 = source_sink%condition%temperature%dataset%cur_value(1)
+    csrc1 = source_sink%condition%concentration%dataset%cur_value(1)
 !    if (enthalpy_flag) hsrc1 = source_sink%condition%cur_value(RICHARDS_ENTHALPY_DOF)
 
     qsrc1 = qsrc1 / option%fmwh2o ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]

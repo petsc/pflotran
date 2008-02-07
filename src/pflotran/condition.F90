@@ -6,34 +6,54 @@ module Condition_module
   
 #include "definitions.h"
 
-  PetscInt, parameter :: STEP = 0
-  PetscInt, parameter :: LINEAR = 1
- 
+  PetscInt, parameter :: NULL = 0
+  PetscInt, parameter :: STEP = 1
+  PetscInt, parameter :: LINEAR = 2
+
+  type, public :: condition_dataset_type
+    PetscInt :: rank
+    logical :: is_transient
+    logical :: is_cyclic
+    PetscInt :: interpolation_method
+    PetscReal, pointer :: times(:)
+    PetscReal, pointer :: values(:,:)
+    PetscReal, pointer :: cur_value(:)
+    PetscInt :: cur_time_index
+    PetscInt :: max_time_index
+  end type condition_dataset_type
+  
   type, public :: condition_type
     PetscInt :: id                                 ! id from which condition can be referenced
-    PetscInt, pointer :: itype(:)                  ! integer describing type of condition
     character(len=MAXWORDLENGTH) :: class         ! character string describing class of condition
-    character(len=MAXWORDLENGTH), pointer :: ctype(:) ! character string describing type of condition
     character(len=MAXWORDLENGTH) :: name          ! name of condition (e.g. initial, recharge)
-    character(len=MAXWORDLENGTH), pointer :: units(:)      ! units
-      ! units(1) = time
-      ! units(2) = length
-      ! units(3:ndof) = dofs in problem
-    PetscInt :: num_values                         ! number of entries in the arrays of values
-    PetscInt :: num_dof                            ! number of degrees of freedom in condtion
-    logical :: is_cyclic                          ! cycles after last time
-    PetscInt :: interpolation_method               ! method of interplating condition based on time
+    PetscInt :: num_sub_conditions
     PetscInt :: iphase
-    logical :: is_transient                       ! tells whether condition will change over time
-    PetscReal, pointer :: times(:)                   ! array of times between which linear interpolation of values occurs
-    PetscReal, pointer :: values(:,:)                ! array of condition values, size(ndof,max_time_index)
-    PetscReal, pointer :: cur_value(:)               ! current value of condition a time t, size(ndof)
-    PetscReal :: datum(3)                            ! location of reference value(s) in domain
-    PetscReal, pointer :: gradient(:,:)              ! rate at which reference value(s) change(s) over 3D space
-    PetscInt :: cur_time_index, max_time_index     ! current and maximum time index in arrays
+    PetscInt, pointer :: itype(:)
+    character(len=MAXWORDLENGTH) :: time_units
+    character(len=MAXWORDLENGTH) :: length_units
+    type(sub_condition_type), pointer :: pressure
+    type(sub_condition_type), pointer :: temperature
+    type(sub_condition_type), pointer :: concentration
+    type(sub_condition_type), pointer :: enthalpy
+    type(sub_condition_ptr_type), pointer :: sub_condition_ptr(:)
     type(condition_type), pointer :: next         ! pointer to next condition_type for linked-lists
   end type condition_type
   
+  type, public :: sub_condition_type
+    PetscInt :: itype                  ! integer describing type of condition
+    character(len=MAXWORDLENGTH) :: ctype ! character string describing type of condition
+    character(len=MAXWORDLENGTH) :: units      ! units
+
+    type(condition_dataset_type) :: datum
+    type(condition_dataset_type) :: gradient
+    type(condition_dataset_type) :: dataset
+
+  end type sub_condition_type
+  
+  type, public :: sub_condition_ptr_type
+    type(sub_condition_type), pointer :: ptr
+  end type sub_condition_ptr_type
+    
   type, public :: condition_ptr_type
     type(condition_type), pointer :: ptr
   end type condition_ptr_type
@@ -72,52 +92,217 @@ function ConditionCreate(option)
   type(condition_type), pointer :: condition
   
   allocate(condition)
-  nullify(condition%units)
-  nullify(condition%times)
-  nullify(condition%values)
-  nullify(condition%cur_value)
-  nullify(condition%gradient)
+  nullify(condition%pressure)
+  nullify(condition%temperature)
+  nullify(condition%concentration)
+  nullify(condition%enthalpy)
+  nullify(condition%itype)
   nullify(condition%next)
+  condition%time_units = ""
+  condition%length_units = ""
   condition%id = 0
   condition%iphase = 0
-  condition%num_values = 0
-  condition%num_dof = 0
-  condition%is_cyclic = .false.
-  condition%is_transient = .false.
-!  condition%interpolation_method = LINEAR
-  condition%interpolation_method = STEP ! default to step for src/sinks
-  nullify(condition%itype)
+  condition%num_sub_conditions = 0
   condition%class = ""
-  nullify(condition%ctype)
   condition%name = ""
-  condition%datum = 0.d0
-  condition%cur_time_index = 0
-  condition%max_time_index = 0
-  
+
   condition_count = condition_count + 1
   condition%id = condition_count
   
-  allocate(condition%units(option%ndof+2))
-  select case(option%imode)
-    case(RICHARDS_MODE,MPH_MODE)
-      condition%units(1) = 'yr'
-      condition%units(2) = 'm'
-      condition%units(3) = 'Pa'
-      condition%units(4) = 'C'
-      condition%units(5) = 'M'
-      allocate(condition%gradient(3,option%ndof))
-    case(RICHARDS_LITE_MODE)
-      condition%units(1) = 'yr'
-      condition%units(2) = 'm'
-      condition%units(3) = 'Pa'
-  end select
-  
-  allocate(condition%gradient(option%ndof,3))
-  condition%gradient = 0.d0
-
   ConditionCreate => condition
 
 end function ConditionCreate
+
+! ************************************************************************** !
+!
+! SubConditionCreate: Creates a sub_condition
+! author: Glenn Hammond
+! date: 02/04/08
+!
+! ************************************************************************** !
+function SubConditionCreate()
+
+  use Option_module
+  
+  implicit none
+  
+  type(sub_condition_type), pointer :: SubConditionCreate
+  
+  type(sub_condition_type), pointer :: sub_condition
+  
+  allocate(sub_condition)
+  sub_condition%units = ""
+  sub_condition%itype = 0
+  sub_condition%ctype = ""
+
+  call ConditionDatasetInit(sub_condition%dataset)
+  sub_condition%dataset%rank = 1
+  call ConditionDatasetInit(sub_condition%gradient)
+  sub_condition%gradient%rank = 3
+  call ConditionDatasetInit(sub_condition%datum)
+  sub_condition%datum%rank = 3
+
+  SubConditionCreate => sub_condition
+
+end function SubConditionCreate
+
+! ************************************************************************** !
+!
+! ConditionDatasetInit: Initializes a dataset
+! author: Glenn Hammond
+! date: 02/04/08
+!
+! ************************************************************************** !
+subroutine ConditionDatasetInit(dataset)
+
+  implicit none
+  
+  type(condition_dataset_type) :: dataset
+
+  nullify(dataset%times)
+  nullify(dataset%values)
+  nullify(dataset%cur_value)
+  dataset%cur_time_index = 0
+  dataset%max_time_index = 0
+  dataset%rank = 0
+  dataset%is_cyclic = .false.
+  dataset%is_transient = .false.
+  dataset%interpolation_method = NULL
+    
+end subroutine ConditionDatasetInit
+
+! ************************************************************************** !
+!
+! SubConditionVerify: Verifies the data in a subcondition
+! author: Glenn Hammond
+! date: 02/04/08
+!
+! ************************************************************************** !
+subroutine SubConditionVerify(option, condition, sub_condition_name, &
+                              sub_condition, &
+                              default_time, &
+                              default_ctype, default_itype, &
+                              default_dataset, &
+                              default_datum, default_gradient)
+
+  use Option_module
+
+  implicit none
+  
+  type(option_type) :: option
+  type(condition_type) :: condition
+  character(len=MAXWORDLENGTH) :: sub_condition_name
+  type(sub_condition_type), pointer :: sub_condition
+  character(len=MAXWORDLENGTH) :: default_ctype
+  PetscInt :: default_itype
+  PetscTruth :: default_cyclic
+  PetscInt :: default_interpolation
+  PetscReal :: default_time
+  PetscInt :: default_iphase
+  type(condition_dataset_type) :: default_dataset
+  type(condition_dataset_type) :: default_datum
+  type(condition_dataset_type) :: default_gradient
+
+  PetscInt :: array_size
+
+  if (.not.associated(sub_condition)) return
+  
+  if (.not.associated(sub_condition%dataset%values)) then
+    call SubConditionDestroy(sub_condition)
+    return
+  endif
+  
+  if (len_trim(sub_condition%ctype) < 1) then
+    call printWrnMsg(option,'type of ' // trim(condition%name) // ':' // &
+                     trim(sub_condition_name) // ' set to default')
+    sub_condition%ctype = default_ctype
+    sub_condition%itype = default_itype
+  endif
+  
+  call ConditionDatasetVerify(option,condition%name,sub_condition_name, &
+                              default_time,sub_condition%dataset,default_dataset)
+  call ConditionDatasetVerify(option,condition%name,sub_condition_name, &
+                              default_time,sub_condition%datum,default_datum)
+  call ConditionDatasetVerify(option,condition%name,sub_condition_name, &
+                              default_time,sub_condition%gradient,default_gradient)
+
+end subroutine SubConditionVerify
+
+! ************************************************************************** !
+!
+! ConditionDatasetVerify: Verifies the data in a dataset
+! author: Glenn Hammond
+! date: 02/04/08
+!
+! ************************************************************************** !
+subroutine ConditionDatasetVerify(option, condition_name, sub_condition_name, &
+                                  default_time, &
+                                  dataset, default_dataset)
+  use Option_module
+
+  implicit none
+  
+  type(option_type) :: option
+  character(len=MAXWORDLENGTH) :: condition_name
+  character(len=MAXWORDLENGTH) :: sub_condition_name
+  character(len=MAXWORDLENGTH) :: size1, size2
+  PetscReal :: default_time
+  type(condition_dataset_type) :: dataset
+  type(condition_dataset_type) :: default_dataset
+  
+  PetscInt :: array_size
+  
+  if (default_dataset%is_cyclic) dataset%is_cyclic = .true.
+  if (dataset%interpolation_method == NULL) &
+    dataset%interpolation_method = default_dataset%interpolation_method
+  
+  dataset%max_time_index = 1
+  if (.not.associated(dataset%times)) then
+    if (.not.associated(default_dataset%times)) then
+      array_size = 1
+      allocate(dataset%times(array_size))
+      dataset%times = default_time
+    else
+      array_size = size(default_dataset%times,1)
+      allocate(dataset%times(array_size))
+      dataset%times(1:array_size) = default_dataset%times(1:array_size)
+    endif
+  endif
+  if (.not.associated(dataset%values)) then
+    if (.not.associated(default_dataset%values)) then
+      ! allocate to size 1
+      array_size = 1
+      allocate(dataset%values(1:dataset%rank,array_size))
+      dataset%values(1:dataset%rank,1:array_size) = 0.d0
+    else
+      ! copy default
+      array_size = size(default_dataset%values,2)
+      allocate(dataset%values(1:dataset%rank,array_size))
+      dataset%values(1:dataset%rank,1:array_size) = default_dataset%values(1:dataset%rank,1:array_size)
+    endif
+  endif
+  dataset%max_time_index = size(dataset%times,1) 
+  if (dataset%max_time_index > 1) then
+    if (size(dataset%values,2) /= & ! size of 2nd rank
+        dataset%max_time_index) then
+      write(size1,*) size(dataset%times,1)
+      write(size2,*) size(dataset%values,2)
+      call printErrMsg(option,'times/values ('//trim(size1)//'/'//trim(size2) // &
+                       ') array size mismatch in ' // &
+                       'condition: ' // trim(condition_name) // &
+                       'subcondition: ' // trim(sub_condition_name)) 
+    endif
+    dataset%is_transient = .true.
+  else
+    dataset%is_transient = .false.
+  endif  
+  dataset%cur_time_index = 1
+  
+  allocate(dataset%cur_value(dataset%rank))
+  dataset%cur_value(1:dataset%rank) = dataset%values(1:dataset%rank,1)
+
+
+end subroutine ConditionDatasetVerify
 
 ! ************************************************************************** !
 !
@@ -139,66 +324,49 @@ subroutine ConditionRead(condition,option,fid)
   
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
-  PetscReal, pointer :: pressure(:), flux(:), temperature(:), &
-                     concentration(:), times(:), enthalpy(:)
-  character(len=MAXWORDLENGTH), pointer :: units(:), ctype(:)
-  PetscInt, pointer :: itype(:)
-  PetscInt :: time_index, length_index, pres_index, temp_index, conc_index, iphase
-  PetscInt :: enthalpy_index
-  PetscInt :: max_size, index, idof, max_index, max_dof, max_required_dof
-  PetscInt :: length
+  type(sub_condition_type), pointer :: pressure, flux, temperature, &
+                                       concentration, enthalpy, &
+                                       sub_condition_ptr
+  PetscReal :: default_time = 0.d0
+  PetscInt :: default_iphase = 0
+  type(condition_dataset_type) :: default_dataset
+  type(condition_dataset_type) :: default_datum
+  type(condition_dataset_type) :: default_gradient
+  character(len=MAXWORDLENGTH) :: default_ctype
+  PetscInt :: default_itype
+  PetscInt :: array_size, length, idof
   PetscErrorCode :: ierr
 
-  nullify(times)
-  nullify(pressure)
-  nullify(temperature)
-  nullify(flux)
-  nullify(concentration)
-  nullify(enthalpy)
+  call ConditionDatasetInit(default_dataset)
+  default_dataset%rank = 1
+  default_dataset%interpolation_method = STEP
+  default_dataset%is_cyclic = .false.
+  call ConditionDatasetInit(default_datum)
+  default_datum%rank = 3
+  call ConditionDatasetInit(default_gradient)
+  default_gradient%rank = 3
   
-  ! need to set up indices for potential data contained in condition
-  pres_index = -999
-  temp_index = -999
-  conc_index = -999
-  max_required_dof = -999
-  max_dof = -999
-  time_index = -999
-  length_index = -999
-  max_index = -999
+  pressure => SubConditionCreate()
+  temperature => SubConditionCreate()
+  concentration => SubConditionCreate()
+  enthalpy => SubConditionCreate()
+
   select case(option%imode)
     case(RICHARDS_MODE,MPH_MODE)
-      pres_index = 1
-      temp_index = 2
-      conc_index = 3
-    max_required_dof = 3
-      enthalpy_index = 4
-    max_dof = 4
-      time_index = 5
-      length_index = 6
-      max_index = 6
+      condition%time_units = 'yr'
+      condition%length_units = 'm'
+      pressure%units = 'Pa'
+      temperature%units = 'C'
+      concentration%units = 'M'
     case(RICHARDS_LITE_MODE)
-      pres_index = 1
-    max_required_dof = 1
-    max_dof = 1
-      time_index = 2
-      length_index = 3
-      max_index = 3
-    case default
-      pres_index = 1
-      temp_index = 2
-      conc_index = 3
-    max_required_dof = 3
-    max_dof = 3
-      max_dof = 4
-      max_index = 6  
+      condition%time_units = 'yr'
+      condition%length_units = 'm'
+      pressure%units = 'Pa'
   end select
-  allocate(units(max_index))
-  allocate(itype(max_dof))
-  allocate(ctype(max_dof))  
-  units = ""
-  itype = 0                
-  ctype = ""
-  iphase = 0
+  
+
+  default_ctype = 'dirichlet'
+  default_itype = DIRICHLET_BC
 
   ! read the condition
   ierr = 0
@@ -221,20 +389,19 @@ subroutine ConditionRead(condition,option,fid)
           if (ierr /= 0) exit
           select case(trim(word))
             case('s','sec','min','hr','d','day','y','yr')
-              condition%units(time_index) = trim(word)
+              condition%time_units = trim(word)
             case('mm','cm','m','met','meter','dm','km')
-              condition%units(length_index) = trim(word)
+              condition%length_units = trim(word)
             case('Pa','KPa')
-              condition%units(pres_index) = trim(word)
+              pressure%units = trim(word)
+            case('m/s','m/yr')
+              flux%units = trim(word)
             case('C','K')
-              if (temp_index < 0) cycle
-              condition%units(temp_index) = trim(word)
+              temperature%units = trim(word)
             case('M','mol/L')
-              if (conc_index < 0) cycle
-              condition%units(conc_index) = trim(word)
+              concentration%units = trim(word)
             case('KJ/mol')
-              if (enthalpy_index < 0) cycle
-              condition%units(enthalpy_index) = trim(word)
+              enthalpy%units = trim(word)
           end select
         enddo
       case('CLASS') ! read condition class (flow vs. transport)
@@ -243,18 +410,18 @@ subroutine ConditionRead(condition,option,fid)
         length = len_trim(word)
         call fiCharsToLower(word,length)
         condition%class = word
-      case('CYCLIC') ! read condition class (flow vs. transport)
-        condition%is_cyclic = .true.
-      case('INTERPOLATION') ! read condition class (flow vs. transport)
+      case('CYCLIC')
+        default_dataset%is_cyclic = .true.
+      case('INTERPOLATION')
         call fiReadWord(string,word,.true.,ierr)
         call fiErrorMsg(option%myrank,'INTERPOLATION','CONDITION', ierr)   
         length = len_trim(word)
         call fiCharsToLower(word,length)
         select case(word)
           case('step')
-            condition%interpolation_method = STEP
+            default_dataset%interpolation_method = STEP
           case('linear') 
-            condition%interpolation_method = LINEAR
+            default_dataset%interpolation_method = LINEAR
         end select
       case('TYPE') ! read condition type (dirichlet, neumann, etc) for each dof
         do
@@ -269,55 +436,46 @@ subroutine ConditionRead(condition,option,fid)
           call fiErrorMsg(option%myrank,'keyword','CONDITION,TYPE', ierr)   
           select case(trim(word))
             case('PRES','PRESS','PRESSURE')
-              index = pres_index
+              sub_condition_ptr => pressure
+            case('FLUX')
+              sub_condition_ptr => flux
             case('TEMP','TEMPERATURE')
-              if (temp_index < 0) cycle
-              index = temp_index
+              sub_condition_ptr => temperature
             case('CONC','CONCENTRATION')
-              if (conc_index < 0) cycle
-              index = conc_index
+              sub_condition_ptr => concentration
             case('H','ENTHALPY')
-              if (enthalpy_index < 0) cycle
-              index = enthalpy_index
+              sub_condition_ptr => enthalpy
             case default
-              call printErrMsg(option,'index not recognized in condition,type')
+              call printErrMsg(option,'keyword not recognized in condition,type')
           end select
           call fiReadWord(string,word,.true.,ierr)
           call fiErrorMsg(option%myrank,'TYPE','CONDITION', ierr)   
           length = len_trim(word)
           call fiCharsToLower(word,length)
-          ctype(index) = word
+          sub_condition_ptr%ctype = word
           select case(word)
             case('dirichlet')
-              itype(index) = DIRICHLET_BC
+              sub_condition_ptr%itype = DIRICHLET_BC
             case('neumann')
-              itype(index) = NEUMANN_BC
+              sub_condition_ptr%itype = NEUMANN_BC
             case('mass')
-              itype(index) = MASS_RATE
+              sub_condition_ptr%itype = MASS_RATE
             case('hydrostatic','hydro','hydrostat','static')
-              itype(index) = HYDROSTATIC_BC
+              sub_condition_ptr%itype = HYDROSTATIC_BC
             case('zero_gradient')
-              itype(index) = ZERO_GRADIENT_BC
+              sub_condition_ptr%itype = ZERO_GRADIENT_BC
             case default
               call printErrMsg(option,'bc type not recognized in condition,type')
           end select
         enddo
       case('TIME','TIMES')
-        if (.not.associated(times)) then
-          allocate(times(1))
-        endif
-        call fiReadDouble(string,times(1),ierr)
+        call fiReadDouble(string,default_time,ierr)
         call fiErrorMsg(option%myrank,'TIME','CONDITION', ierr)   
       case('IPHASE')
-        call fiReadInt(string,iphase,ierr)
+        call fiReadInt(string,default_iphase,ierr)
         call fiErrorMsg(option%myrank,'IPHASE','CONDITION', ierr)   
       case('DATUM','DATM')
-        call fiReadDouble(string,condition%datum(X_DIRECTION),ierr)
-        call fiErrorMsg(option%myrank,'X Datum','CONDITION', ierr)   
-        call fiReadDouble(string,condition%datum(Y_DIRECTION),ierr)
-        call fiErrorMsg(option%myrank,'Y Datum','CONDITION', ierr)   
-        call fiReadDouble(string,condition%datum(Z_DIRECTION),ierr)
-        call fiErrorMsg(option%myrank,'Z Datum','CONDITION', ierr)   
+        call ConditionReadValues(option,word,string,default_datum,word)
       case('GRADIENT','GRAD')
         do
           call fiReadFlotranString(IUNIT1,string,ierr)
@@ -331,39 +489,36 @@ subroutine ConditionRead(condition,option,fid)
           call fiErrorMsg(option%myrank,'keyword','CONDITION,TYPE', ierr)   
           select case(trim(word))
             case('PRES','PRESS','PRESSURE')
-              index = pres_index
+              sub_condition_ptr => pressure
+            case('FLUX')
+              sub_condition_ptr => flux
             case('TEMP','TEMPERATURE')
-              if (temp_index < 0) cycle
-              index = temp_index
+              sub_condition_ptr => temperature
             case('CONC','CONCENTRATION')
-              if (conc_index < 0) cycle
-              index = conc_index
+              sub_condition_ptr => concentration
             case('H','ENTHALPY')
-              if (enthalpy_index < 0) cycle
-              index = enthalpy_index
+              sub_condition_ptr => enthalpy
             case default
-              call printErrMsg(option,'index not recognized in condition,gradient')
+              call printErrMsg(option,'keyword not recognized in condition,type')
           end select
-          call fiReadDouble(string,condition%gradient(index,X_DIRECTION),ierr)
-          call fiErrorMsg(option%myrank,'X Gradient','CONDITION', ierr)   
-          call fiReadDouble(string,condition%gradient(index,Y_DIRECTION),ierr)
-          call fiErrorMsg(option%myrank,'Y Gradient','CONDITION', ierr)   
-          call fiReadDouble(string,condition%gradient(index,Z_DIRECTION),ierr)
-          call fiErrorMsg(option%myrank,'Z Gradient','CONDITION', ierr)   
+          call ConditionReadValues(option,word,string,sub_condition_ptr%gradient,word)
+          nullify(sub_condition_ptr)
         enddo
       case('TEMPERATURE','TEMP')
-        if (temp_index < 0) cycle
-        call ConditionReadValues(option,word,string,times,temperature,units(temp_index))
+        call ConditionReadValues(option,word,string,temperature%dataset, &
+                                 temperature%units)
       case('ENTHALPY','H')
-        if (enthalpy_index < 0) cycle
-        call ConditionReadValues(option,word,string,times,enthalpy,units(enthalpy_index))
+        call ConditionReadValues(option,word,string,enthalpy%dataset, &
+                                 enthalpy%units)
       case('PRESSURE','PRES','PRESS')
-        call ConditionReadValues(option,word,string,times,pressure,units(pres_index))
+        call ConditionReadValues(option,word,string,pressure%dataset, &
+                                 pressure%units)
       case('FLUX','VELOCITY','VEL')
-        call ConditionReadValues(option,word,string,times,flux,units(pres_index))
+        call ConditionReadValues(option,word,string,pressure%dataset, &
+                                 pressure%units)
       case('CONC','CONCENTRATION')
-        if (conc_index < 0) cycle
-        call ConditionReadValues(option,word,string,times,concentration,units(conc_index))
+        call ConditionReadValues(option,word,string,concentration%dataset, &
+                                 concentration%units)
     end select 
   
   enddo  
@@ -372,135 +527,107 @@ subroutine ConditionRead(condition,option,fid)
   if (len_trim(condition%class) < 1) then
     call printErrMsg(option,'"class" not set in condition')
   endif
-  do idof=1,max_required_dof
-    if (len_trim(ctype(idof)) < 1) then
-      call printWrnMsg(option,'"type" not set in condition; set to dirichlet')
-      ctype(idof) = 'dirichlet'
-      itype(idof) = DIRICHLET_BC
-    endif
-  enddo
+
   ! check whether
-  if (iphase == 0) then
+  if (default_iphase == 0) then
     call printWrnMsg(option,'"iphase" not set in condition; set to 1')
     condition%iphase = 1
-  endif
-  
-  allocate(condition%units(max_index))
-  condition%units(1:max_index) = units(1:max_index)
-  if (associated(times)) then
-    max_size = size(times)
   else
-    max_size = 1
+    condition%iphase = default_iphase    
   endif
   
-  ! determine whether transient
-  if (max_size > 1) condition%is_transient = .true.
-  if (associated(times)) then
-    if (times(1) > 1.d-40) condition%is_transient = .true.
+  ! update datum and gradient defaults, if null, based on dataset default
+  if (default_dataset%is_cyclic) then
+    default_datum%is_cyclic = .true.
+    default_gradient%is_cyclic = .true.
   endif
+  if (default_datum%interpolation_method == NULL) &
+    default_datum%interpolation_method = default_dataset%interpolation_method
+  if (default_gradient%interpolation_method == NULL) &
+    default_gradient%interpolation_method = default_dataset%interpolation_method
 
-  ! initialize time indices
-  condition%cur_time_index = 1
-  condition%max_time_index = max_size
+  ! verify the datasets
+  word = 'pressure'
+  call SubConditionVerify(option,condition,word,pressure,default_time, &
+                          default_ctype, default_itype, &
+                          default_dataset, &
+                          default_datum, default_gradient)
+  word = 'temperature'
+  call SubConditionVerify(option,condition,word,temperature,default_time, &
+                          default_ctype, default_itype, &
+                          default_dataset, &
+                          default_datum, default_gradient)
+  word = 'concentration'
+  call SubConditionVerify(option,condition,word,concentration,default_time, &
+                          default_ctype, default_itype, &
+                          default_dataset, &
+                          default_datum, default_gradient)
+  word = 'enthalpy'
+  call SubConditionVerify(option,condition,word,enthalpy,default_time, &
+                          default_ctype, default_itype, &
+                          default_dataset, &
+                          default_datum, default_gradient)
   
   select case(option%imode)
     case(RICHARDS_MODE,MPH_MODE)
+      if (.not.associated(pressure)) then
+        call printErrMsg(option,'pressure condition null in condition: ' // &
+                         condition%name)
+      endif                         
+      condition%pressure => pressure
+      if (.not.associated(temperature)) then
+        call printErrMsg(option,'temperature condition null in condition: ' // &
+                         condition%name)
+      endif                         
+      condition%temperature => temperature
+      if (.not.associated(concentration)) then
+        call printErrMsg(option,'concentration condition null in condition: ' // &
+                         condition%name)
+      endif                         
+      condition%concentration => concentration
       if (.not.associated(enthalpy)) then
-        max_index = max_index-1
-        max_dof = max_dof-1
-      endif
-  end select
-  condition%num_dof = max_dof
-  
-  allocate(condition%times(max_size),condition%values(max_dof,max_size))
-  allocate(condition%cur_value(max_dof))
-  allocate(condition%ctype(max_dof))
-  allocate(condition%itype(max_dof))
-  condition%times = -1.d20
-  condition%values = -1.d20
-  condition%cur_value = -1.d20
-  condition%ctype = ""
-  condition%itype = DIRICHLET_BC
-  
-  if (associated(times)) then
-    condition%times(1:max_size) = times(1:max_size)
-  else
-    condition%times = 0.d0
-  endif
-  
-  if (associated(pressure)) then
-    if (size(pressure) < max_size) then
-      condition%values(pres_index,1:max_size) = pressure(1)
-    else
-      condition%values(pres_index,1:max_size) = pressure(1:max_size)
-    endif
-  else if (associated(flux)) then
-    if (size(flux) < max_size) then
-      condition%values(pres_index,1:max_size) = flux(1)
-    else
-      condition%values(pres_index,1:max_size) = flux(1:max_size)
-    endif
-  else
-    call printErrMsg(option,'Pressure conditon not set')
-  endif
-  
-  if (associated(temperature)) then
-    if (size(temperature) < max_size) then
-      condition%values(temp_index,1:max_size) = temperature(1)
-    else
-      condition%values(temp_index,1:max_size) = temperature(1:max_size)
-    endif
-  else if (option%imode /= RICHARDS_LITE_MODE) then
-    call printErrMsg(option,'Temperature condition not set')
-  endif
-  
-  condition%itype(1:max_dof) = itype(1:max_dof)
-  condition%ctype(1:max_dof) = ctype(1:max_dof)
-  
-  if (associated(concentration)) then
-    if (size(concentration) < max_size) then
-      condition%values(conc_index,1:max_size) = concentration(1)
-    else
-      condition%values(conc_index,1:max_size) = concentration(1:max_size)
-    endif
-  else if (option%imode /= RICHARDS_LITE_MODE) then
-    call printErrMsg(option,'Concentration conditon not set') 
-  endif
-  
-  if (associated(enthalpy)) then
-    if (size(enthalpy) < max_size) then
-      condition%values(enthalpy_index,1:max_size) = enthalpy(1)
-    else
-      condition%values(enthalpy_index,1:max_size) = enthalpy(1:max_size)
-    endif
-  else if (option%imode /= RICHARDS_LITE_MODE) then
-    call printWrnMsg(option,'Enthalpy conditon not set')   
-  endif
-  
-  if (minval(condition%values) < -1.d19) then
-    call printErrMsg(option,'Something is wrong in conditions....')
-  endif
-  
-  condition%cur_value(1:max_dof) = condition%values(1:max_dof,1)
-  
-  if (associated(times)) deallocate(times)
-  nullify(times)
-  if (associated(pressure)) deallocate(pressure)
-  nullify(pressure)
-  if (associated(temperature)) deallocate(temperature)
-  nullify(temperature)
-  if (associated(flux)) deallocate(flux)
-  nullify(flux)
-  if (associated(concentration)) deallocate(concentration)
-  nullify(concentration)
-  
-  if (associated(units)) deallocate(units)
-  nullify(units)
-  if (associated(itype)) deallocate(itype)
-  nullify(itype)
-  if (associated(ctype)) deallocate(ctype)
-  nullify(ctype)
+        call printErrMsg(option,'enthalpy condition null in condition: ' // &
+                         condition%name)
+      endif                         
+      condition%enthalpy => enthalpy
+      condition%num_sub_conditions = 3
+      if (associated(enthalpy)) condition%num_sub_conditions = 4
+      allocate(condition%sub_condition_ptr(condition%num_sub_conditions))
+      ! must be in this order, which matches the dofs i problem
+      condition%sub_condition_ptr(ONE_INTEGER)%ptr => pressure
+      condition%sub_condition_ptr(TWO_INTEGER)%ptr => temperature
+      condition%sub_condition_ptr(THREE_INTEGER)%ptr => concentration
+      if (associated(enthalpy)) condition%sub_condition_ptr(FOUR_INTEGER)%ptr => enthalpy
+      
+      allocate(condition%itype(THREE_INTEGER))
+      condition%itype(ONE_INTEGER) = pressure%itype
+      condition%itype(TWO_INTEGER) = temperature%itype
+      condition%itype(THREE_INTEGER) = concentration%itype
+      
+    case(RICHARDS_LITE_MODE)
+      if (.not.associated(pressure)) then
+        call printErrMsg(option,'pressure condition null in condition: ' // &
+                         condition%name)
+      endif                         
+      condition%pressure => pressure
+      condition%num_sub_conditions = 1
+      allocate(condition%sub_condition_ptr(condition%num_sub_conditions))
+      condition%sub_condition_ptr(ONE_INTEGER)%ptr => pressure
 
+      allocate(condition%itype(ONE_INTEGER))
+      condition%itype(ONE_INTEGER) = pressure%itype
+      
+      ! these are not used with richards_lite
+      if (associated(temperature)) call SubConditionDestroy(temperature)
+      if (associated(concentration)) call SubConditionDestroy(concentration)
+      if (associated(enthalpy)) call SubConditionDestroy(enthalpy)
+      
+  end select
+  
+  call ConditionDatasetDestroy(default_dataset)
+  call ConditionDatasetDestroy(default_datum)
+  call ConditionDatasetDestroy(default_gradient)
+    
 end subroutine ConditionRead
 
 ! ************************************************************************** !
@@ -510,7 +637,7 @@ end subroutine ConditionRead
 ! date: 10/31/07
 !
 ! ************************************************************************** !
-subroutine ConditionReadValues(option,keyword,string,times,values,units)
+subroutine ConditionReadValues(option,keyword,string,dataset,units)
 
   use Fileio_module
   use Option_module
@@ -520,15 +647,17 @@ subroutine ConditionReadValues(option,keyword,string,times,values,units)
   type(option_type) :: option
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: keyword
-  PetscReal, pointer :: times(:), values(:)
+  type(condition_dataset_type) :: dataset
   character(len=MAXWORDLENGTH) :: units
   
+  character(len=MAXSTRINGLENGTH) :: string2
   character(len=MAXWORDLENGTH) :: word
-  character(len=MAXWORDLENGTH) :: error_string
-  PetscInt :: length
+  character(len=MAXSTRINGLENGTH) :: error_string
+  PetscInt :: length, irank
   PetscErrorCode :: ierr
   
   ierr = 0
+  string2 = trim(string)
   call fiReadWord(string,word,.true.,ierr)
   call fiErrorMsg(option%myrank,'file or value','CONDITION', ierr)
   length = len_trim(word)
@@ -537,11 +666,15 @@ subroutine ConditionReadValues(option,keyword,string,times,values,units)
     call fiReadWord(string,word,.true.,ierr)
     error_string = keyword // ' FILE'
     call fiErrorMsg(option%myrank,error_string,'CONDITION', ierr)
-    call ConditionReadValuesFromFile(word,times,values,option)
+    call ConditionReadValuesFromFile(word,dataset,option)
   else
-    allocate(values(1))
-    call fiReadDouble(word,values(1),ierr)
-    call fiErrorMsg(option%myrank,'value','CONDITION', ierr) 
+    string = trim(string2)
+    allocate(dataset%values(dataset%rank,1))
+    do irank=1,dataset%rank
+      call fiReadDouble(string,dataset%values(irank,1),ierr)
+      write(error_string,*) trim(keyword) // ' dataset_values, rank = ', irank
+      call fiErrorMsg(option%myrank,error_string,'CONDITION', ierr) 
+    enddo
   endif
   call fiReadWord(string,word,.true.,ierr)
   if (ierr /= 0) then
@@ -560,7 +693,7 @@ end subroutine ConditionReadValues
 ! date: 10/31/07
 !
 ! ************************************************************************** !
-subroutine ConditionReadValuesFromFile(filename,times,values,option)
+subroutine ConditionReadValuesFromFile(filename,dataset,option)
 
   use Fileio_module
   use Utility_module
@@ -569,13 +702,15 @@ subroutine ConditionReadValuesFromFile(filename,times,values,option)
   implicit none
   
   type(option_type) :: option
+  type(condition_dataset_type) :: dataset
   character(len=MAXWORDLENGTH) :: filename
-  PetscReal, pointer :: times(:), values(:)
   
   character(len=MAXSTRINGLENGTH) :: string
-  PetscReal, pointer :: temp_times(:), temp_values(:)
+  PetscReal, pointer :: temp_times(:), temp_array1(:), temp_array2(:), &
+                        temp_array3(:)
   PetscReal :: temp_time
   PetscInt :: max_size = 1000
+  PetscInt :: temp_max_size
   PetscInt :: fid
   PetscInt :: count, i, status
   PetscErrorCode :: ierr
@@ -588,10 +723,19 @@ subroutine ConditionReadValuesFromFile(filename,times,values,option)
   endif
   
   allocate(temp_times(max_size))
-  allocate(temp_values(max_size))
-  
+  allocate(temp_array1(max_size))
   temp_times = 0.d0
-  temp_values = 0.d0
+  temp_array1 = 0.d0
+
+  if (dataset%rank > 1) then
+    allocate(temp_array2(max_size))
+    temp_array2 = 0.d0
+  endif
+  
+  if (dataset%rank > 2) then
+    allocate(temp_array3(max_size))
+    temp_array3 = 0.d0
+  endif
   
   count = 0
   do
@@ -600,46 +744,63 @@ subroutine ConditionReadValuesFromFile(filename,times,values,option)
     count = count + 1
     call fiReadDouble(string,temp_times(count),ierr)
     call fiErrorMsg(option%myrank,'time','CONDITION FILE', ierr)   
-    call fiReadDouble(string,temp_values(count),ierr)
-    call fiErrorMsg(option%myrank,'value','CONDITION FILE', ierr) 
+    call fiReadDouble(string,temp_array1(count),ierr)
+    call fiErrorMsg(option%myrank,'array1','CONDITION FILE', ierr) 
+    if (dataset%rank > 1) then
+      call fiReadDouble(string,temp_array2(count),ierr)
+      call fiErrorMsg(option%myrank,'array2','CONDITION FILE', ierr) 
+    endif
+    if (dataset%rank > 2) then
+      call fiReadDouble(string,temp_array3(count),ierr)
+      call fiErrorMsg(option%myrank,'array3','CONDITION FILE', ierr) 
+    endif
     if (count+1 > max_size) then
-      i = max_size
+      temp_max_size = max_size
       call reallocateRealArray(temp_times,max_size) 
-      ! careful.  max_size is already double, thus use i for now
-      call reallocateRealArray(temp_values,i) 
+      ! careful.  reallocateRealArray double max_size every time.
+      i = temp_max_size
+      call reallocateRealArray(temp_array1,i) 
+      if (dataset%rank > 1) then
+        i = temp_max_size
+        call reallocateRealArray(temp_array2,i)
+      endif
+      if (dataset%rank > 2) then
+        i = temp_max_size
+        call reallocateRealArray(temp_array3,i)
+      endif
     endif  
   enddo
   
-  if (associated(times)) then
-    if (count /= size(times)) then
+  if (associated(dataset%times)) then
+    if (count /= size(dataset%times,1)) then
       print *, 'Number of times (', count, ') in ', trim(filename), &
-               ' does not match previous allocation: ', size(times)
+               ' does not match previous allocation: ', size(dataset%times,1)
       stop
     endif
     do i=1,count
-      if (abs(times(i)-temp_times(i)) > 1.d-8) then
+      if (abs(dataset%times(i)-temp_times(i)) > 1.d-8) then
         print *, 'Time (', temp_times(i), ') in ', trim(filename), &
                  ' does not match previous allocation time: ', &
-                 times(i), i
+                 dataset%times(i), i
         stop
       endif
     enddo
   else
-    allocate(times(count))
+    allocate(dataset%times(count))
   endif
 
-  if (associated(values)) then
-    deallocate(values)
-    allocate(values(count))
-  else
-    allocate(values(count))
-  endif
-  
-  times(1:count) = temp_times(1:count)
-  values(1:count) = temp_values(1:count)
+  if (associated(dataset%values)) deallocate(dataset%values)
+  allocate(dataset%values(dataset%rank,count))
+
+  dataset%times(1:count) = temp_times(1:count)
+  dataset%values(1,1:count) = temp_array1(1:count)
+  if (dataset%rank > 1) dataset%values(2,1:count) = temp_array2(1:count)
+  if (dataset%rank > 2) dataset%values(3,1:count) = temp_array3(1:count)
   
   deallocate(temp_times)
-  deallocate(temp_values)
+  deallocate(temp_array1)
+  if (dataset%rank > 1) deallocate(temp_array2)
+  if (dataset%rank > 2) deallocate(temp_array3)
   
   close(fid)
 
@@ -663,80 +824,115 @@ subroutine ConditionUpdate(condition_list,option,time)
   PetscReal :: time
   
   type(condition_type), pointer :: condition
-  PetscInt :: cur_time_index, next_time_index, idof
-  PetscReal :: time_fraction
+  type(sub_condition_type), pointer :: sub_condition
+  PetscInt :: isub_condition  
   
   condition => condition_list%first
   do
     if (.not.associated(condition)) exit
     
-        ! potentially for initial condition
-    if (time < 1.d-40 .or. condition%is_transient) then
-    
-      ! cycle times if at max_time_index and cyclic
-      if (condition%cur_time_index == condition%max_time_index .and. &
-          condition%is_cyclic .and. condition%max_time_index > 1) then
-          
-        do cur_time_index = 1, condition%max_time_index
-          condition%times(cur_time_index) = condition%times(cur_time_index) + &     
-                                   condition%times(condition%max_time_index)
-        enddo
-        condition%cur_time_index = 1
-      endif
-     
-      cur_time_index = condition%cur_time_index
-      next_time_index = min(condition%cur_time_index+1, &
-                            condition%max_time_index)
+    do isub_condition = 1, condition%num_sub_conditions
 
-      ! ensure that condition has started
-      if (time >= condition%times(cur_time_index) .or. &
-          abs(time-condition%times(cur_time_index)) < 1.d-40) then
-
-        ! find appropriate time interval
-        do
-          if (time < condition%times(next_time_index) .or. &
-              cur_time_index == next_time_index) &
-            exit
-          cur_time_index = next_time_index
-          ! ensure that time index does not go beyond end of array
-          if (next_time_index < condition%max_time_index) &
-            next_time_index = next_time_index + 1
-        enddo
+      sub_condition => condition%sub_condition_ptr(isub_condition)%ptr
+      
+      call SubConditionUpdateDataset(option,time,sub_condition%dataset)
+      call SubConditionUpdateDataset(option,time,sub_condition%datum)
+      call SubConditionUpdateDataset(option,time,sub_condition%gradient)
+      
+    enddo
         
-        condition%cur_time_index = cur_time_index
-        
-        select case(condition%interpolation_method)
-          case(STEP) ! just use the current value
-            do idof=1,condition%num_dof
-              condition%cur_value(idof) =  &
-                                 condition%values(idof,condition%cur_time_index) 
-            enddo 
-          case(LINEAR) ! interpolate the value between times
-            do idof=1,condition%num_dof
-              ! interpolate value based on time
-              condition%cur_time_index = cur_time_index
-              if (cur_time_index < condition%max_time_index) then
-                time_fraction = (time-condition%times(cur_time_index)) / &
-                                  (condition%times(next_time_index) - &
-                                   condition%times(cur_time_index))
-                condition%cur_value(idof) = condition%values(idof,cur_time_index) + &
-                                      time_fraction * &
-                                      (condition%values(idof,next_time_index) - &
-                                       condition%values(idof,cur_time_index))
-              else
-                condition%cur_value(idof) =  &
-                                   condition%values(idof,condition%max_time_index) 
-              endif
-            enddo
-        end select 
-      endif 
-    endif
-    
     condition => condition%next
     
   enddo
   
 end subroutine ConditionUpdate
+
+! ************************************************************************** !
+!
+! SubConditionUpdateDataset: Updates a transient condition dataset
+! author: Glenn Hammond
+! date: 11/02/07
+!
+! ************************************************************************** !
+subroutine SubConditionUpdateDataset(option,time,dataset)
+
+  use Option_module
+  
+  implicit none
+  
+  type(option_type) :: option
+  PetscReal :: time
+  logical :: is_cyclic
+  PetscInt :: interpolation_method
+  type(condition_dataset_type) :: dataset
+  
+  PetscInt :: irank
+  PetscInt :: cur_time_index
+  PetscInt :: next_time_index
+  PetscReal :: time_fraction
+
+ ! potentially for initial condition
+  if (time < 1.d-40 .and. .not.dataset%is_transient) return  
+
+  ! cycle times if at max_time_index and cyclic
+  if (dataset%cur_time_index == dataset%max_time_index .and. &
+      dataset%is_cyclic .and. dataset%max_time_index > 1) then
+      
+    do cur_time_index = 1, dataset%max_time_index
+      dataset%times(cur_time_index) = dataset%times(cur_time_index) + &     
+                               dataset%times(dataset%max_time_index)
+    enddo
+    dataset%cur_time_index = 1
+  endif
+ 
+  cur_time_index = dataset%cur_time_index
+  next_time_index = min(dataset%cur_time_index+1, &
+                        dataset%max_time_index)
+
+  ! ensure that condition has started
+  if (time >= dataset%times(cur_time_index) .or. &
+      abs(time-dataset%times(cur_time_index)) < 1.d-40) then
+
+    ! find appropriate time interval
+    do
+      if (time < dataset%times(next_time_index) .or. &
+          cur_time_index == next_time_index) &
+        exit
+      cur_time_index = next_time_index
+      ! ensure that time index does not go beyond end of array
+      if (next_time_index < dataset%max_time_index) &
+        next_time_index = next_time_index + 1
+    enddo
+    
+    dataset%cur_time_index = cur_time_index
+    
+    select case(dataset%interpolation_method)
+      case(STEP) ! just use the current value
+        do irank=1,dataset%rank
+          dataset%cur_value(irank) =  &
+                             dataset%values(irank,dataset%cur_time_index) 
+        enddo 
+      case(LINEAR) ! interpolate the value between times
+        do irank=1,dataset%rank
+          ! interpolate value based on time
+          dataset%cur_time_index = cur_time_index
+          if (cur_time_index < dataset%max_time_index) then
+            time_fraction = (time-dataset%times(cur_time_index)) / &
+                              (dataset%times(next_time_index) - &
+                               dataset%times(cur_time_index))
+            dataset%cur_value(irank) = dataset%values(irank,cur_time_index) + &
+                                  time_fraction * &
+                                  (dataset%values(irank,next_time_index) - &
+                                   dataset%values(irank,cur_time_index))
+          else
+            dataset%cur_value(irank) =  &
+                               dataset%values(irank,dataset%max_time_index) 
+          endif
+        enddo
+    end select 
+  endif    
+  
+end subroutine SubConditionUpdateDataset
 
 ! ************************************************************************** !
 !
@@ -867,27 +1063,73 @@ subroutine ConditionDestroy(condition)
   
   type(condition_type), pointer :: condition
   
+  PetscInt :: i
+  
   if (.not.associated(condition)) return
   
-  if (associated(condition%times)) deallocate(condition%times)
-  nullify(condition%times)
-  if (associated(condition%values)) deallocate(condition%values)
-  nullify(condition%values)
-  if (associated(condition%cur_value)) deallocate(condition%cur_value)
-  nullify(condition%cur_value)
-  if (associated(condition%units)) deallocate(condition%units)
-  nullify(condition%units)
+  do i=1,condition%num_sub_conditions
+    call SubConditionDestroy(condition%sub_condition_ptr(i)%ptr)
+  enddo
+  deallocate(condition%sub_condition_ptr)
+  
   if (associated(condition%itype)) deallocate(condition%itype)
   nullify(condition%itype)
-  if (associated(condition%ctype)) deallocate(condition%ctype)
-  nullify(condition%ctype)
-  if (associated(condition%gradient)) deallocate(condition%gradient)
-  nullify(condition%gradient)
+  
+  nullify(condition%pressure)
+  nullify(condition%temperature)
+  nullify(condition%concentration)
+  nullify(condition%enthalpy)
+  
+  nullify(condition%sub_condition_ptr)
   nullify(condition%next)  
   
   deallocate(condition)
   nullify(condition)
 
 end subroutine ConditionDestroy
+
+! ************************************************************************** !
+!
+! SubConditionDestroy: Destroys a sub_condition
+! author: Glenn Hammond
+! date: 02/04/08
+!
+! ************************************************************************** !
+subroutine SubConditionDestroy(sub_condition)
+
+  implicit none
   
+  type(sub_condition_type), pointer :: sub_condition
+  
+  if (.not.associated(sub_condition)) return
+  
+  call ConditionDatasetDestroy(sub_condition%dataset)
+  call ConditionDatasetDestroy(sub_condition%datum)
+  call ConditionDatasetDestroy(sub_condition%gradient)
+
+  deallocate(sub_condition)
+  nullify(sub_condition)
+
+end subroutine SubConditionDestroy
+
+! ************************************************************************** !
+!
+! ConditionDatasetDestroy: Destroys a dataset associated with a sub_condition
+! author: Glenn Hammond
+! date: 02/04/08
+!
+! ************************************************************************** !
+subroutine ConditionDatasetDestroy(dataset)
+
+  implicit none
+  
+  type(condition_dataset_type) :: dataset
+  
+  if (associated(dataset%times)) deallocate(dataset%times)
+  nullify(dataset%times)
+  if (associated(dataset%values)) deallocate(dataset%values)
+  nullify(dataset%values)  
+
+end subroutine ConditionDatasetDestroy
+
 end module Condition_module

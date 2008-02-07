@@ -293,6 +293,8 @@ subroutine RealizationUpdateCouplerAuxVars(realization,coupler_list, &
   logical :: force_update_flag
   
   type(coupler_type), pointer :: coupler
+  type(condition_type), pointer :: condition
+  logical :: update
   
   PetscInt :: idof, num_connections
  
@@ -301,26 +303,51 @@ subroutine RealizationUpdateCouplerAuxVars(realization,coupler_list, &
   do
     if (.not.associated(coupler)) exit
     
-    if ((coupler%condition%is_transient .or. &
-         force_update_flag) .and. &
-        associated(coupler%aux_real_var)) then
+    if (associated(coupler%aux_real_var)) then
         
+      num_connections = coupler%connection%num_connections
+
+      condition => coupler%condition
+
+      update = .false.
       select case(realization%option%imode)
-        case(RICHARDS_MODE,MPH_MODE,RICHARDS_LITE_MODE)
-          select case(coupler%condition%itype(RICHARDS_PRESSURE_DOF))
-            case(DIRICHLET_BC,NEUMANN_BC,MASS_RATE,ZERO_GRADIENT_BC)
-              num_connections = coupler%connection%num_connections
-              do idof = 1,realization%option%ndof
-                coupler%aux_real_var(idof,1:num_connections) = &
-                  coupler%condition%cur_value(idof)
-              enddo
-              coupler%aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
-                coupler%condition%iphase
-            case(HYDROSTATIC_BC)
-!              call HydrostaticUpdateCoupler(coupler,realization%option,realization%grid)
-              call HydrostaticUpdateCouplerBetter(coupler,realization%option,realization%grid)
-          end select
+        case(RICHARDS_MODE,MPH_MODE)
+          if (force_update_flag .or. &
+              condition%pressure%dataset%is_transient .or. &
+              condition%pressure%gradient%is_transient .or. &
+              condition%pressure%datum%is_transient .or. &
+              condition%temperature%dataset%is_transient .or. &
+              condition%temperature%gradient%is_transient .or. &
+              condition%temperature%datum%is_transient .or. &
+              condition%concentration%dataset%is_transient .or. &
+              condition%concentration%gradient%is_transient .or. &
+              condition%concentration%datum%is_transient) then
+            update = .true.
+          endif
+        case(RICHARDS_LITE_MODE)
+          if (force_update_flag .or. &
+              condition%pressure%dataset%is_transient .or. &
+              condition%pressure%gradient%is_transient .or. &
+              condition%pressure%datum%is_transient) then
+            update = .true.
+          endif
       end select
+      
+      if (update) then
+        select case(condition%pressure%itype)
+          case(DIRICHLET_BC,NEUMANN_BC,MASS_RATE,ZERO_GRADIENT_BC)
+            do idof = 1, condition%num_sub_conditions
+              coupler%aux_real_var(idof,1:num_connections) = &
+                condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
+            enddo
+            coupler%aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
+              condition%iphase
+          case(HYDROSTATIC_BC)
+  !          call HydrostaticUpdateCoupler(coupler,realization%option,realization%grid)
+            call HydrostaticUpdateCouplerBetter(coupler,realization%option,realization%grid)
+        end select
+      endif
+      
     endif
 
     coupler => coupler%next
@@ -372,31 +399,45 @@ subroutine RealizationAddWaypointsToList(realization,waypoint_list)
   
   character(len=MAXSTRINGLENGTH) :: string
   type(coupler_type), pointer :: coupler
+  type(sub_condition_type), pointer :: sub_condition
   type(waypoint_type), pointer :: waypoint
-  PetscInt :: itime
+  PetscInt :: itime, isub_condition
 
-#if 0  
-  ! Ignore boundary conditions for now
   ! boundary conditions
   coupler => realization%boundary_conditions%first
   do
     if (.not.associated(coupler)) exit
-    endif
+    ! the only way a boundary condition is included as a waypoint is if
+    ! its size is 1 and time > 0.
+    do isub_condition = 1, coupler%condition%num_sub_conditions
+      sub_condition => coupler%condition%sub_condition_ptr(isub_condition)%ptr
+      itime = 1
+      if (sub_condition%dataset%max_time_index == 1 .and. &
+          sub_condition%dataset%times(itime) > 1.d-40) then
+        waypoint => WaypointCreate()
+        waypoint%time = coupler%condition%pressure%dataset%times(itime)
+        waypoint%update_bcs = .true.
+        call WaypointInsertInList(waypoint,waypoint_list)
+        exit
+      endif
+    enddo
     coupler => coupler%next
   enddo
-#endif  
 
   ! source/sinks
-  coupler => realization%boundary_conditions%first
+  coupler => realization%source_sinks%first
   do
     if (.not.associated(coupler)) exit
-    do itime=1,coupler%condition%num_values
-      if (coupler%condition%times(itime) > 1.d-40) then
-        waypoint => WaypointCreate()
-        waypoint%time = coupler%condition%times(itime)
-        waypoint%update_srcs = .true.
-        call WaypointInsertInList(waypoint,waypoint_list)
-      endif
+    do isub_condition = 1, coupler%condition%num_sub_conditions
+      sub_condition => coupler%condition%sub_condition_ptr(isub_condition)%ptr
+      do itime=1,sub_condition%dataset%max_time_index
+        if (sub_condition%dataset%times(itime) > 1.d-40) then
+          waypoint => WaypointCreate()
+          waypoint%time = coupler%condition%pressure%dataset%times(itime)
+          waypoint%update_srcs = .true.
+          call WaypointInsertInList(waypoint,waypoint_list)
+        endif
+      enddo
     enddo
     coupler => coupler%next
   enddo
