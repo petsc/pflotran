@@ -44,9 +44,9 @@ module pckr_module
     implicit none
     
     PetscInt :: nlmax
-    PetscInt :: max_reg_reqion,ipckrtype(*), nphase
-    PetscReal sir(1:nphase,max_reg_reqion), lambda(max_reg_reqion), krm(max_reg_reqion), alpha(max_reg_reqion)&
-         , pcmax(max_reg_reqion), betac(max_reg_reqion),pwr(max_reg_reqion)
+    PetscInt :: max_reg_reqion,ipckrtype(max_reg_reqion), nphase
+    PetscReal :: sir(1:nphase,max_reg_reqion), lambda(max_reg_reqion), krm(max_reg_reqion)
+    PetscReal :: alpha(max_reg_reqion), pcmax(max_reg_reqion), betac(max_reg_reqion),pwr(max_reg_reqion)
     
     PetscInt :: ireg, idum
  
