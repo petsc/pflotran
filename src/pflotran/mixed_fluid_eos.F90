@@ -11,9 +11,9 @@ module mixture_module
    
  implicit none
 
- public
-
 #include "definitions.h"
+
+ public
   
  PetscReal, private, parameter:: fmwh2o = 18.0153D0, fmwa = 28.96D0, &
                               fmwco2 = 44.0098D0

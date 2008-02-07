@@ -39,9 +39,11 @@ module pckr_module
 
 
   subroutine pckr_init(nphase, max_reg_reqion, nlmax,ipckrtype, sir, krm, lambda, alpha, pcmax,&
-                  betac,pwr)
+                       betac,pwr)
+                       
+    implicit none
+    
     PetscInt :: nlmax
-     
     PetscInt :: max_reg_reqion,ipckrtype(*), nphase
     PetscReal sir(1:nphase,max_reg_reqion), lambda(max_reg_reqion), krm(max_reg_reqion), alpha(max_reg_reqion)&
          , pcmax(max_reg_reqion), betac(max_reg_reqion),pwr(max_reg_reqion)
@@ -381,6 +383,7 @@ end subroutine  pflow_pckr_richards_fw_exec
     subroutine pflow_pckr(ipckrtype,pckr_swir,pckr_lambda,pckr_alpha,&
               pckr_m ,pckr_pcmax,sg,pc,pc_s,kr,kr_s,pckr_beta,pckr_pwr) 
        
+      implicit none
      
       PetscInt :: ipckrtype
       PetscReal :: sg
@@ -802,6 +805,9 @@ end subroutine  pflow_pckr_richards_fw_exec
 
 
 subroutine pflow_pckr_richards(ipckrreg,saturation,pc,kr)
+
+  implicit none
+  
   PetscInt :: ipckrreg
   PetscInt :: ireg, ipckrtype
   PetscReal :: saturation,pc(*),kr(*)
@@ -833,6 +839,9 @@ end subroutine pflow_pckr_richards
 
 
 subroutine pflow_pckr_richards_fw(ipckrreg,saturation,pc,kr)
+
+  implicit none
+  
   PetscInt :: ipckrreg
   PetscInt :: ireg, ipckrtype
   PetscReal saturation,pc(*),kr(*)
@@ -870,6 +879,9 @@ end subroutine pflow_pckr_richards_fw
 
 
 subroutine pflow_pckr_noderiv(nphase, ipckrreg,saturation,pc,kr)
+
+  implicit none
+  
   PetscInt :: ipckrreg, nphase
   PetscReal saturation(nphase),pc(nphase),kr(nphase)
   
