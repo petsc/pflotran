@@ -41,6 +41,10 @@ CFLAGS		 =
 FFLAGS		 = #-Rb
 CPPFLAGS         = ${MYFLAGS}
 FPPFLAGS         = ${MYFLAGS}
+ifdef ABSOFT
+FPPFLAGS         += ${MYFLAGS} -p${HDF5_LIB}
+endif
+
 CLEANFILES       = pflow ptran pflotran pflotran_fc
 
 ifdef dev
