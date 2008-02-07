@@ -38,15 +38,16 @@ module pckr_module
   contains 
 
 
-  subroutine pckr_init(nphase, max_reg_reqion, nlmax,ipckrtype, sir, krm, lambda, alpha, pcmax,&
-                       betac,pwr)
+  subroutine pckr_init(nphase, max_reg_reqion, nlmax,ipckrtype, sir, krm, lambda, &
+                       alpha, pcmax, betac,pwr)
                        
     implicit none
     
     PetscInt :: nlmax
     PetscInt :: max_reg_reqion,ipckrtype(max_reg_reqion), nphase
     PetscReal :: sir(1:nphase,max_reg_reqion), lambda(max_reg_reqion), krm(max_reg_reqion)
-    PetscReal :: alpha(max_reg_reqion), pcmax(max_reg_reqion), betac(max_reg_reqion),pwr(max_reg_reqion)
+    PetscReal :: alpha(max_reg_reqion), pcmax(max_reg_reqion), &
+                 betac(max_reg_reqion),pwr(max_reg_reqion)
     
     PetscInt :: ireg, idum
  
