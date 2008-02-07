@@ -1489,21 +1489,19 @@ subroutine RichardsAnalyticalResidual(snes,xx,r,realization,ierr)
                
   PetscReal, pointer :: iphase_loc_p(:), icap_loc_p(:), ithrm_loc_p(:)
 
-  PetscInt :: iphase, index_var_begin, index_var_end,np
+  PetscInt :: iphase
   PetscInt :: icap_up, icap_dn, ithrm_up, ithrm_dn
-  PetscReal :: dd_up, dd_dn, &
-            accum
+  PetscReal :: dd_up, dd_dn
   PetscReal :: dd, f_up, f_dn, ff
   PetscReal :: perm_up, perm_dn
   PetscReal :: D_up, D_dn  ! "Diffusion" constants at upstream, downstream faces.
-  PetscReal :: dw_kg, dw_mol, dif(realization%option%nphase)
+  PetscReal :: dw_kg, dw_mol
   PetscReal :: tsrc1, qsrc1, csrc1, enth_src_h2o, enth_src_co2 , hsrc1
-  PetscReal :: tmp, upweight
-  PetscReal :: rho
+  PetscReal :: upweight
   PetscReal :: xxbc(realization%option%ndof)
   PetscInt :: iphasebc
   PetscReal :: Res(realization%option%ndof), v_darcy
- PetscViewer :: viewer
+  PetscViewer :: viewer
 
 
   type(grid_type), pointer :: grid
@@ -1874,24 +1872,14 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
   PetscReal, pointer :: iphase_loc_p(:), icap_loc_p(:), ithrm_loc_p(:)
   PetscInt :: icap,iphas,iphas_up,iphas_dn,icap_up,icap_dn
   PetscInt :: ii, jj
-  PetscInt :: index_var_begin, index_var_end
   PetscReal :: dw_kg,dw_mol,enth_src_co2,enth_src_h2o,rho
-  PetscReal :: vv_darcy(realization%option%nphase),voldt,pvoldt
-  PetscReal :: ff,dif(1:realization%option%nphase)
   PetscReal :: tsrc1,qsrc1,csrc1,hsrc1
   PetscReal :: dd_up, dd_dn, dd, f_up, f_dn
   PetscReal :: perm_up, perm_dn
   PetscReal :: dw_dp,dw_dt,hw_dp,hw_dt,dresT_dp,dresT_dt
   PetscReal :: D_up, D_dn  ! "Diffusion" constants upstream and downstream of a face.
   PetscReal :: zero, norm
-  PetscReal :: ra(1:realization%option%ndof,1:2*realization%option%ndof)  
-  PetscReal :: tmp, upweight
-  PetscReal :: delxbc(1:realization%option%ndof)
-  PetscReal :: blkmat11(1:realization%option%ndof,1:realization%option%ndof), &
-            blkmat12(1:realization%option%ndof,1:realization%option%ndof),&
-            blkmat21(1:realization%option%ndof,1:realization%option%ndof),&
-            blkmat22(1:realization%option%ndof,1:realization%option%ndof)
-  PetscReal :: ResInc(1:realization%grid%nlmax, 1:realization%option%ndof, 1:realization%option%ndof),res(1:realization%option%ndof)  
+  PetscReal :: upweight
   PetscReal :: max_dev  
   PetscReal :: xxbc(realization%option%ndof)
   PetscInt :: iphasebc

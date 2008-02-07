@@ -1089,15 +1089,15 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
                
   PetscReal, pointer :: iphase_loc_p(:), icap_loc_p(:), ithrm_loc_p(:)
 
-  PetscInt :: iphase, index_var_begin, index_var_end,np
+  PetscInt :: iphase
   PetscInt :: icap_up, icap_dn, ithrm_up, ithrm_dn
   PetscReal :: dd_up, dd_dn, &
             accum
   PetscReal :: dd, f_up, f_dn, ff
   PetscReal :: perm_up, perm_dn
   PetscReal :: D_up, D_dn  ! "Diffusion" constants at upstream, downstream faces.
-  PetscReal :: dw_kg, dw_mol, dif(realization%option%nphase)
-  PetscReal :: tsrc1, qsrc1, csrc1, enth_src_h2o, enth_src_co2 , hsrc1
+  PetscReal :: dw_kg, dw_mol
+  PetscReal :: tsrc1, qsrc1, enth_src_h2o
   PetscReal :: tmp, upweight
   PetscReal :: rho
   PetscReal :: xxbc(realization%option%ndof)
@@ -1434,25 +1434,14 @@ subroutine RichardsLiteJacobian(snes,xx,A,B,flag,realization,ierr)
   PetscReal, pointer :: iphase_loc_p(:), icap_loc_p(:), ithrm_loc_p(:)
   PetscInt :: icap,iphas,iphas_up,iphas_dn,icap_up,icap_dn
   PetscInt :: ii, jj
-  PetscInt :: index_var_begin, index_var_end
   PetscReal :: dw_kg,dw_mol,enth_src_co2,enth_src_h2o,rho
-  PetscReal :: vv_darcy(realization%option%nphase),voldt,pvoldt
-  PetscReal :: ff,dif(1:realization%option%nphase)
-  PetscReal :: tsrc1,qsrc1,csrc1,hsrc1
+  PetscReal :: tsrc1,qsrc1
   PetscReal :: dd_up, dd_dn, dd, f_up, f_dn
   PetscReal :: perm_up, perm_dn
   PetscReal :: dw_dp,dw_dt,hw_dp,hw_dt,dresT_dp,dresT_dt
   PetscReal :: D_up, D_dn  ! "Diffusion" constants upstream and downstream of a face.
   PetscReal :: zero, norm
-  PetscReal :: ra(1:realization%option%ndof,1:2*realization%option%ndof)  
-  PetscReal :: tmp, upweight
-  PetscReal :: delxbc(1:realization%option%ndof)
-  PetscReal :: blkmat11(1:realization%option%ndof,1:realization%option%ndof), &
-            blkmat12(1:realization%option%ndof,1:realization%option%ndof),&
-            blkmat21(1:realization%option%ndof,1:realization%option%ndof),&
-            blkmat22(1:realization%option%ndof,1:realization%option%ndof)
-  PetscReal :: ResInc(1:realization%grid%nlmax, 1:realization%option%ndof, 1:realization%option%ndof),res(1:realization%option%ndof)  
-  PetscReal :: max_dev  
+  PetscReal :: upweight
   PetscReal :: xxbc(realization%option%ndof)
   PetscInt :: iphasebc
   PetscInt :: local_id, ghosted_id
@@ -1461,7 +1450,7 @@ subroutine RichardsLiteJacobian(snes,xx,A,B,flag,realization,ierr)
   PetscInt ::  natural_id_up,natural_id_dn
   
   PetscReal :: Jup(realization%option%ndof,realization%option%ndof), &
-            Jdn(realization%option%ndof,realization%option%ndof)
+               Jdn(realization%option%ndof,realization%option%ndof)
   
   type(coupler_type), pointer :: boundary_condition, source_sink
   type(connection_list_type), pointer :: connection_list
@@ -1576,9 +1565,6 @@ subroutine RichardsLiteJacobian(snes,xx,A,B,flag,realization,ierr)
         ! call MatSetValuesLocal(A,1,istart-1,1,istart-1,dresT_dt,ADD_VALUES,ierr)
       endif  
     
-      if (csrc1 > 0.d0) then ! injection
-        call printErrMsg(option,"concentration source not yet implemented in RichardsLite")
-      endif
   !  else if (qsrc1 < 0.d0) then ! withdrawal
   !  endif
     enddo

@@ -1246,7 +1246,8 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
             blkmat12(1:realization%option%ndof,1:realization%option%ndof),&
             blkmat21(1:realization%option%ndof,1:realization%option%ndof),&
             blkmat22(1:realization%option%ndof,1:realization%option%ndof)
-  PetscReal :: ResInc(1:realization%grid%nlmax, 1:realization%option%ndof, 1:realization%option%ndof),res(1:realization%option%ndof)  
+  PetscReal :: ResInc(1:realization%grid%nlmax,1:realization%option%ndof,1:realization%option%ndof), &
+               res(1:realization%option%ndof)  
   PetscReal :: max_dev  
   PetscReal :: xxbc(realization%option%ndof), varbc(1:size_var_node)
   PetscInt :: iphasebc
