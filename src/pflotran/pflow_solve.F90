@@ -105,7 +105,7 @@
  PetscInt :: newton_max
  PetscInt :: its_line
 !PetscInt :: icut
- MatStructure flag
+ MatStructure :: flag
  PetscReal :: rnorm, epstol
 
  type(option_type), pointer :: option
