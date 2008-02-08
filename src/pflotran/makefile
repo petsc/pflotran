@@ -8,12 +8,6 @@ ptran_src    = ./
 common_src   = ./
 bindir = ./${PETSC_ARCH}/bin
 
-ifdef custom_convergence
-  CUSTOM_CONVERGENCE_FLAGS = -DCHUAN
-endif
-ifdef debug_convergence
-  DEBUG_CONVERGENCE_FLAGS = -DGLENN
-endif
 ifdef hdf5
   ifndef jaguar
     HDF5_FLAGS = -I$(HDF5_INCLUDE) -I$(HDF5_LIB) -DUSE_HDF5
@@ -28,13 +22,8 @@ ifdef compile_broken
   COMPILE_BROKEN_FLAGS = -DCOMPILE_BROKEN
 endif
 
-#MYFLAGS = -I${objdir} -DUSE_COMPRESSIBILITY $(CUSTOM_CONVERGENCE_FLAGS) \
-#         $(DEBUG_CONVERGENCE_FLAGS) $(HDF5_FLAGS) -DOVERHAUL -DOVERHAUL_V2 \
-#         $(COMPILE_BROKEN_FLAGS) -DRICHARDS_ANALYTICAL
-
-MYFLAGS = -I${objdir} $(CUSTOM_CONVERGENCE_FLAGS) \
-          $(DEBUG_CONVERGENCE_FLAGS) $(HDF5_FLAGS) -DOVERHAUL -DOVERHAUL_V2 \
-          $(COMPILE_BROKEN_FLAGS) -DRICHARDS_ANALYTICAL #-DISOTHERMAL
+MYFLAGS = -I${objdir} $(HDF5_FLAGS) \
+          $(COMPILE_BROKEN_FLAGS) -DRICHARDS_ANALYTICAL 
 LIBS = $(HDF5_LIBS)
 
 CFLAGS		 = 
@@ -166,9 +155,9 @@ ascii_to_hdf5: fileio.o hdf5_dataset.o ascii_to_hdf5.o
 # These ensure that the module files are built in the correct order.
 pflow.o : pflow_init.o timestepper.o simulation.o
 simulation.o : timestepper.o realization.o
-pflow_init.o : option.o grid.o realization.o solver.o timestepper.o simulation.o \
-               fileio.o material.o region.o condition.o pflow_convergence.o \
-	       waypoint.o field.o general_grid.o debug.o
+pflow_init.o : option.o grid.o realization.o solver.o timestepper.o \
+               simulation.o fileio.o material.o region.o condition.o \
+               pflow_convergence.o waypoint.o field.o general_grid.o debug.o
 unstructured_grid.o : option.o connection.o solver.o
 structured_grid.o : connection.o option.o fileio.o coupler.o region.o solver.o
 general_grid.o : grid.o realization.o hdf5.o
