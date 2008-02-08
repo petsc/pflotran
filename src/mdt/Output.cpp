@@ -81,6 +81,7 @@ void Output::printGMSDataSet(char *filename, Vec v) {
 
 void Output::writeIntVectorInNaturalOrder(FILE *fp, Vec v, PetscInt one_per_line) {
   Vec natural;
+  PetscInt num_per_line = 20;
   PetscReal *v_ptr = NULL;
   grid->getVectorNatural(&natural);
   grid->globalToNatural(v,natural);
@@ -100,7 +101,7 @@ void Output::writeIntVectorInNaturalOrder(FILE *fp, Vec v, PetscInt one_per_line
       }
       else {
         PetscFPrintf(PETSC_COMM_WORLD,fp,"%d ",values[i]);
-        if (++count%20 == 0) PetscFPrintf(PETSC_COMM_WORLD,fp,"\n");
+        if (++count%num_per_line == 0) PetscFPrintf(PETSC_COMM_WORLD,fp,"\n");
       }
     }
     for (PetscInt iproc=1; iproc<commsize; iproc++) {
@@ -114,11 +115,11 @@ void Output::writeIntVectorInNaturalOrder(FILE *fp, Vec v, PetscInt one_per_line
         }
         else {
           PetscFPrintf(PETSC_COMM_WORLD,fp,"%d ",values[i]);
-          if (++count%20 == 0) PetscFPrintf(PETSC_COMM_WORLD,fp,"\n");
+          if (++count%num_per_line == 0) PetscFPrintf(PETSC_COMM_WORLD,fp,"\n");
         }
       }
     }
-    if (!one_per_line && count%10 != 0) PetscFPrintf(PETSC_COMM_WORLD,fp,"\n");
+    if (!one_per_line && count%num_per_line != 0) PetscFPrintf(PETSC_COMM_WORLD,fp,"\n");
   }
   else {
     MPI_Send(values,grid->num_cells_local,MPIU_INT,0,grid->num_cells_local,

@@ -75,6 +75,10 @@ Hanford300::Hanford300(Grid **grid_) {
 
   PetscInt nx, ny, nz;
 
+  nx = 135;
+  ny = 250;
+  nz = 60;
+
   char filename[1024];
   PetscTruth option_found;
   strcpy(filename,"mdt.in");
@@ -109,7 +113,6 @@ Hanford300::Hanford300(Grid **grid_) {
   grid->setGridSpacing(dx,dy,dz);
 
   grid->setOrigin(593618.9,114565.1,70.);
-//  grid->setOrigin(594860.,114875.,100.); //debug1
   grid->setRotation(14.);
 
 //  grid->computeCoordinates();
@@ -120,8 +123,9 @@ Hanford300::Hanford300(Grid **grid_) {
   grid->setUpVertices();
   grid->mapVerticesToCells();
 
-  river_polygon = new Polygon();
-  river_polygon->createRiverEdgePolygon();
+  // don't know that we need this since we can use conductance of river.
+//  river_polygon = new Polygon();
+//  river_polygon->createRiverEdgePolygon();
 
 #if 0
   char ascii_filename[1024];
@@ -136,13 +140,13 @@ Hanford300::Hanford300(Grid **grid_) {
   AsciiGrid::nasciigrids = 7;
   string *grid_filenames = new string[AsciiGrid::nasciigrids];
 #if 0
-  grid_filenames[0].append("../basalt_PNNL_grid_20m.asc");
-  grid_filenames[1].append("../u9PNNL_grid_20m.asc");
-  grid_filenames[2].append("../u8PNNL_grid_20m.asc");
-  grid_filenames[3].append("../u7PNNL_grid_20m.asc");
-  grid_filenames[4].append("../u6PNNL_grid_20m.asc");
-  grid_filenames[5].append("../u5PNNL_grid_20m.asc");
-  grid_filenames[6].append("../u1PNNL_grid_20m.asc");
+  grid_filenames[0].append("./basalt_PNNL_grid_20m.asc");
+  grid_filenames[1].append("./u9PNNL_grid_20m.asc");
+  grid_filenames[2].append("./u8PNNL_grid_20m.asc");
+  grid_filenames[3].append("./u7PNNL_grid_20m.asc");
+  grid_filenames[4].append("./u6PNNL_grid_20m.asc");
+  grid_filenames[5].append("./u5PNNL_grid_20m.asc");
+  grid_filenames[6].append("./u1PNNL_grid_20m.asc");
 #else
   grid_filenames[0].append("../basalt_PNNL_grid.asc");
   grid_filenames[1].append("../u9PNNL_grid.asc");
@@ -182,9 +186,11 @@ Hanford300::Hanford300(Grid **grid_) {
     }
     if (material_id == 0) grid->cells[i].setActive(0);
     grid->cells[i].setMaterialId(material_id);
-    if (!river_polygon->pointInPolygon(x,y)) {
-      grid->cells[i].setActive(0);
-      grid->cells[i].negateMaterialId();
+    if (river_polygon) {
+      if (!river_polygon->pointInPolygon(x,y)) {
+        grid->cells[i].setActive(0);
+        grid->cells[i].negateMaterialId();
+      }
     }
     if (i%mod == 0) {
       PetscPrintf(PETSC_COMM_WORLD,"%d of %d cells mapped with materials and activity.\n",
@@ -205,14 +211,15 @@ Hanford300::Hanford300(Grid **grid_) {
   BoundarySet *west = grid->getBoundarySet("West");
   BoundarySet *recharge = grid->getBoundarySet("Top");
 
+/*
   Condition *new_condition = new Condition("river.bc");
   river->condition = new_condition;
   new_condition = new Condition("west.bc");
   west->condition = new_condition;
   new_condition = new Condition("recharge.bc");
   recharge->condition = new_condition;
-  
   new_condition = NULL;
+*/  
 
 }
 
@@ -470,12 +477,18 @@ void Hanford300::computeTopBoundary(Grid *grid, PetscInt complete) {
 
 void Hanford300::flagGridCells(Grid *grid) {
 
-  PetscReal top_stage = 1.e20;
-  PetscReal bottom_stage = 1.e20;
-  PetscReal north_stage = 115.;
-  PetscReal south_stage = 115.;
-  PetscReal west_stage = 115.;
-  PetscReal east_stage = 106.;
+  PetscReal top_stage_max = 1.e20;
+  PetscReal top_stage_min = 108.;
+  PetscReal bottom_stage_max = 1.e20;
+  PetscReal bottom_stage_min = -1.e20;
+  PetscReal north_stage_max = 1.e20;
+  PetscReal north_stage_min = -1.e20;
+  PetscReal south_stage_max = 1.e20;
+  PetscReal south_stage_min = -1.e20;
+  PetscReal west_stage_max = 113.;
+  PetscReal west_stage_min = -1.e20;
+  PetscReal east_stage_max = 107.5;
+  PetscReal east_stage_min = -1.e20;
 
   PetscInt nx = grid->getNx();
   PetscInt ny = grid->getNy();
@@ -532,7 +545,8 @@ void Hanford300::flagGridCells(Grid *grid) {
               PetscInt ghosted_id = i+j*gnx+k*gnxXny;
               if (grid->cells[ghosted_id].getIdLocal() > -1 &&
                   grid->cells[ghosted_id].getActive() && 
-                  grid->cells[ghosted_id].getZ() <= west_stage) {
+                  grid->cells[ghosted_id].getZ() <= west_stage_max &&
+                  grid->cells[ghosted_id].getZ() >= west_stage_min) {
                 grid->cells[ghosted_id].flag |= WEST_DIR_WEST_FACE;
                 flag[0] = 1;
                 matrix[jglobal+kglobal*ny] = i+gxs;
@@ -618,7 +632,8 @@ void Hanford300::flagGridCells(Grid *grid) {
               PetscInt ghosted_id = i+j*gnx+k*gnxXny;
               if (grid->cells[ghosted_id].getIdLocal() > -1 &&
                   grid->cells[ghosted_id].getActive() && 
-                  grid->cells[ghosted_id].getZ() <= east_stage) {
+                  grid->cells[ghosted_id].getZ() <= east_stage_max &&
+                  grid->cells[ghosted_id].getZ() >= east_stage_min) {
                 grid->cells[ghosted_id].flag |= EAST_DIR_EAST_FACE;
                 flag[0] = 1;
                 matrix[jglobal+kglobal*ny] = i+gxs;
@@ -704,7 +719,8 @@ void Hanford300::flagGridCells(Grid *grid) {
               PetscInt ghosted_id = i+j*gnx+k*gnxXny;
               if (grid->cells[ghosted_id].getIdLocal() > -1 &&
                   grid->cells[ghosted_id].getActive() && 
-                  grid->cells[ghosted_id].getZ() <= south_stage) {
+                  grid->cells[ghosted_id].getZ() <= south_stage_max &&
+                  grid->cells[ghosted_id].getZ() >= south_stage_min) {
                 grid->cells[ghosted_id].flag |= SOUTH_DIR_SOUTH_FACE;
                 flag[0] = 1;
                 matrix[iglobal+kglobal*nx] = j+gys;
@@ -790,7 +806,8 @@ void Hanford300::flagGridCells(Grid *grid) {
               PetscInt ghosted_id = i+j*gnx+k*gnxXny;
               if (grid->cells[ghosted_id].getIdLocal() > -1 &&
                   grid->cells[ghosted_id].getActive() && 
-                  grid->cells[ghosted_id].getZ() <= north_stage) {
+                  grid->cells[ghosted_id].getZ() <= north_stage_max &&
+                  grid->cells[ghosted_id].getZ() >= north_stage_min) {
                 grid->cells[ghosted_id].flag |= NORTH_DIR_NORTH_FACE;
                 flag[0] = 1;
                 matrix[iglobal+kglobal*nx] = j+gys;
@@ -876,7 +893,8 @@ void Hanford300::flagGridCells(Grid *grid) {
               PetscInt ghosted_id = i+j*gnx+k*gnxXny;
               if (grid->cells[ghosted_id].getIdLocal() > -1 &&
                   grid->cells[ghosted_id].getActive() && 
-                  grid->cells[ghosted_id].getZ() <= bottom_stage) {
+                  grid->cells[ghosted_id].getZ() <= bottom_stage_max &&
+                  grid->cells[ghosted_id].getZ() >= bottom_stage_min) {
                 grid->cells[ghosted_id].flag |= BOTTOM_DIR_BOTTOM_FACE;
                 flag[0] = 1;
                 matrix[iglobal+jglobal*nx] = k+gzs;
@@ -962,7 +980,8 @@ void Hanford300::flagGridCells(Grid *grid) {
               PetscInt ghosted_id = i+j*gnx+k*gnxXny;
               if (grid->cells[ghosted_id].getIdLocal() > -1 &&
                   grid->cells[ghosted_id].getActive() && 
-                  grid->cells[ghosted_id].getZ() <= top_stage) {
+                  grid->cells[ghosted_id].getZ() <= top_stage_max &&
+                  grid->cells[ghosted_id].getZ() >= top_stage_min) {
                 grid->cells[ghosted_id].flag |= TOP_DIR_TOP_FACE;
                 flag[0] = 1;
                 matrix[iglobal+jglobal*nx] = k+gzs;

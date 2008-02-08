@@ -28,8 +28,8 @@ int main(int argc, char **args) {
   Hanford300 *hanford300 = NULL;
   TestCase *testcase = NULL;
 
-//  hanford300 = new Hanford300(&grid);
-  testcase = new TestCase(&grid);
+  hanford300 = new Hanford300(&grid);
+//  testcase = new TestCase(&grid);
 
   Output *out = new Output(grid);
 
@@ -49,10 +49,12 @@ int main(int argc, char **args) {
   if (myrank == 0) printf("  %f seconds to print to HDF5 Mesh\n",end-start); 
 #endif
 
+#if 1
   PetscGetTime(&start);
   out->printHDFMaterialsAndRegions();
   PetscGetTime(&end);
   if (myrank == 0) printf("  %f seconds to print HDF5 Materials and Regions\n",end-start); 
+#endif
 
 #if 0
   PetscGetTime(&start);

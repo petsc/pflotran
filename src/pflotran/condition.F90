@@ -588,7 +588,7 @@ subroutine ConditionRead(condition,option,fid)
       endif                         
       condition%concentration => concentration
       if (.not.associated(enthalpy)) then
-        call printErrMsg(option,'enthalpy condition null in condition: ' // &
+        call printWrnMsg(option,'enthalpy condition null in condition: ' // &
                          condition%name)
       endif                         
       condition%enthalpy => enthalpy

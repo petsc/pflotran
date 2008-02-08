@@ -586,11 +586,11 @@ subroutine StructuredGridComputeCoord(structured_grid,option, &
 
 ! set min and max bounds of domain in coordinate directions
   n = 0
-  z = 0.5d0*structured_grid%dz0(1)
+  z = 0.5d0*structured_grid%dz0(1)+origin(Z_DIRECTION)
   do k=1, structured_grid%nz
-    y = 0.5d0*structured_grid%dy0(1)
+    y = 0.5d0*structured_grid%dy0(1)+origin(Y_DIRECTION)
     do j=1, structured_grid%ny
-      x = 0.5d0*structured_grid%dx0(1)
+      x = 0.5d0*structured_grid%dx0(1)+origin(X_DIRECTION)
       do i=1, structured_grid%nx
         if (i > structured_grid%ngxs .and. i <= structured_grid%ngxe .and. &
             j > structured_grid%ngys .and. j <= structured_grid%ngye .and. &
