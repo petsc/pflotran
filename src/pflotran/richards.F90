@@ -340,7 +340,7 @@ subroutine RichardsUpdateAuxVars(realization)
 
       do idof=1,option%ndof
         select case(boundary_condition%condition%itype(idof))
-          case(DIRICHLET_BC,HYDROSTATIC_BC)
+          case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
             xxbc(idof) = boundary_condition%aux_real_var(idof,iconn)
           case(NEUMANN_BC,ZERO_GRADIENT_BC)
             xxbc(idof) = xx_loc_p((ghosted_id-1)*option%ndof+idof)
@@ -348,7 +348,7 @@ subroutine RichardsUpdateAuxVars(realization)
       enddo
       
       select case(boundary_condition%condition%itype(RICHARDS_PRESSURE_DOF))
-        case(DIRICHLET_BC,HYDROSTATIC_BC)
+        case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
           iphasebc = boundary_condition%aux_int_var(1,iconn)
         case(NEUMANN_BC,ZERO_GRADIENT_BC)
           iphasebc=int(iphase_loc_p(ghosted_id))                               
@@ -1136,7 +1136,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   diffdp = por_dn*tor_dn/dd_up*area
   select case(ibndtype(RICHARDS_PRESSURE_DOF))
     ! figure out the direction of flow
-    case(DIRICHLET_BC,HYDROSTATIC_BC)
+    case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
       Dq = perm_dn / dd_up
       ! Flow term
       if (aux_var_up%sat > sir_dn .or. aux_var_dn%sat > sir_dn) then
@@ -1243,7 +1243,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
 
   ! Diffusion term   
   select case(ibndtype(RICHARDS_CONCENTRATION_DOF))
-    case(DIRICHLET_BC,HYDROSTATIC_BC) 
+    case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC) 
 !      if (aux_var_up%sat > eps .and. aux_var_dn%sat > eps) then
 !        diff = diffdp * 0.25D0*(aux_var_up%sat+aux_var_dn%sat)*(aux_var_up%den+aux_var_dn%den)
 !        ddiff_dp_dn = diffdp * 0.25D0*(aux_var_dn%dsat_dp*(aux_var_up%den+aux_var_dn%den)+ &
@@ -1271,7 +1271,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
 
   ! Conduction term
   select case(ibndtype(RICHARDS_TEMPERATURE_DOF))
-    case(DIRICHLET_BC,HYDROSTATIC_BC)
+    case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
       Dk =  Dk_dn / dd_up
       !cond = Dk*area*(aux_var_up%temp-aux_var_dn%temp) 
       Jdn(option%ndof,2) = Jdn(option%ndof,2)+Dk*area*(-1.d0)
@@ -1364,7 +1364,7 @@ subroutine RichardsBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   diffdp = por_dn*tor_dn/dd_up*area
   select case(ibndtype(RICHARDS_PRESSURE_DOF))
     ! figure out the direction of flow
-    case(DIRICHLET_BC,HYDROSTATIC_BC)
+    case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
       Dq = perm_dn / dd_up
       ! Flow term
       if (aux_var_up%sat > sir_dn .or. aux_var_dn%sat > sir_dn) then
@@ -1422,7 +1422,7 @@ subroutine RichardsBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
 
   ! Diffusion term   
   select case(ibndtype(RICHARDS_CONCENTRATION_DOF))
-    case(DIRICHLET_BC,HYDROSTATIC_BC) 
+    case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC) 
 !      if (aux_var_up%sat > eps .and. aux_var_dn%sat > eps) then
 !        diff = diffdp * 0.25D0*(aux_var_up%sat+aux_var_dn%sat)*(aux_var_up%den+aux_var_dn%den)
       if (aux_var_dn%sat > eps) then
@@ -1436,7 +1436,7 @@ subroutine RichardsBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
 
   ! Conduction term
   select case(ibndtype(RICHARDS_TEMPERATURE_DOF))
-    case(DIRICHLET_BC,HYDROSTATIC_BC)
+    case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
       Dk =  Dk_dn / dd_up
       cond = Dk*area*(aux_var_up%temp-aux_var_dn%temp) 
       fluxe=fluxe + cond
@@ -1748,7 +1748,7 @@ subroutine RichardsAnalyticalResidual(snes,xx,r,realization,ierr)
 
       do idof=1,option%ndof
         select case(boundary_condition%condition%itype(idof))
-          case(DIRICHLET_BC,HYDROSTATIC_BC)
+          case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
             xxbc(idof) = boundary_condition%aux_real_var(idof,iconn)
           case(NEUMANN_BC,ZERO_GRADIENT_BC)
             xxbc(idof) = xx_loc_p((ghosted_id-1)*option%ndof+idof)
@@ -1756,7 +1756,7 @@ subroutine RichardsAnalyticalResidual(snes,xx,r,realization,ierr)
       enddo
       
       select case(boundary_condition%condition%itype(RICHARDS_PRESSURE_DOF))
-        case(DIRICHLET_BC,HYDROSTATIC_BC)
+        case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
           iphasebc = boundary_condition%aux_int_var(1,iconn)
         case(NEUMANN_BC,ZERO_GRADIENT_BC)
           iphasebc=int(iphase_loc_p(ghosted_id))                               
@@ -2170,7 +2170,7 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
 
       do idof=1,option%ndof
         select case(boundary_condition%condition%itype(idof))
-          case(DIRICHLET_BC,HYDROSTATIC_BC)
+          case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
             xxbc(idof) = boundary_condition%aux_real_var(idof,iconn)
           case(NEUMANN_BC,ZERO_GRADIENT_BC)
             xxbc(idof) = xx_loc_p((ghosted_id-1)*option%ndof+idof)
@@ -2178,7 +2178,7 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
       enddo
       
       select case(boundary_condition%condition%itype(RICHARDS_PRESSURE_DOF))
-        case(DIRICHLET_BC,HYDROSTATIC_BC)
+        case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
           iphasebc = boundary_condition%aux_int_var(1,iconn)
         case(NEUMANN_BC,ZERO_GRADIENT_BC)
           iphasebc=int(iphase_loc_p(ghosted_id))                               

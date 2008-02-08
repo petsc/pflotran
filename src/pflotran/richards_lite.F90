@@ -301,14 +301,14 @@ subroutine RichardsLiteUpdateAuxVars(realization)
       endif
 
       select case(boundary_condition%condition%itype(RICHARDS_PRESSURE_DOF))
-        case(DIRICHLET_BC,HYDROSTATIC_BC)
+        case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
           xxbc(1) = boundary_condition%aux_real_var(RICHARDS_PRESSURE_DOF,iconn)
         case(NEUMANN_BC,ZERO_GRADIENT_BC)
           xxbc(1) = xx_loc_p(ghosted_id)
       end select
       
       select case(boundary_condition%condition%itype(RICHARDS_PRESSURE_DOF))
-        case(DIRICHLET_BC,HYDROSTATIC_BC)
+        case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
           iphasebc = boundary_condition%aux_int_var(RICHARDS_PRESSURE_DOF,iconn)
         case(NEUMANN_BC,ZERO_GRADIENT_BC)
           iphasebc=int(iphase_loc_p(ghosted_id))                               
@@ -871,7 +871,7 @@ subroutine RichardsLiteBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn,
   diffdp = por_dn*tor_dn/dd_up*area
   select case(ibndtype(RICHARDS_PRESSURE_DOF))
     ! figure out the direction of flow
-    case(DIRICHLET_BC,HYDROSTATIC_BC)
+    case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
       Dq = perm_dn / dd_up
       ! Flow term
       if (aux_var_up%sat > sir_dn .or. aux_var_dn%sat > sir_dn) then
@@ -998,7 +998,7 @@ subroutine RichardsLiteBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   diffdp = por_dn*tor_dn/dd_up*area
   select case(ibndtype(RICHARDS_PRESSURE_DOF))
     ! figure out the direction of flow
-    case(DIRICHLET_BC,HYDROSTATIC_BC)
+    case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
       Dq = perm_dn / dd_up
       ! Flow term
       if (aux_var_up%sat > sir_dn .or. aux_var_dn%sat > sir_dn) then
@@ -1323,7 +1323,7 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
 
       do idof=1,option%ndof
         select case(boundary_condition%condition%itype(idof))
-          case(DIRICHLET_BC,HYDROSTATIC_BC)
+          case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
             xxbc(idof) = boundary_condition%aux_real_var(idof,iconn)
           case(NEUMANN_BC,ZERO_GRADIENT_BC)
             xxbc(idof) = xx_loc_p((ghosted_id-1)*option%ndof+idof)
@@ -1331,7 +1331,7 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
       enddo
       
       select case(boundary_condition%condition%itype(RICHARDS_PRESSURE_DOF))
-        case(DIRICHLET_BC,HYDROSTATIC_BC)
+        case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
           iphasebc = boundary_condition%aux_int_var(1,iconn)
         case(NEUMANN_BC,ZERO_GRADIENT_BC)
           iphasebc=int(iphase_loc_p(ghosted_id))                               
@@ -1712,7 +1712,7 @@ subroutine RichardsLiteJacobian(snes,xx,A,B,flag,realization,ierr)
 
       do idof=1,option%ndof
         select case(boundary_condition%condition%itype(idof))
-          case(DIRICHLET_BC,HYDROSTATIC_BC)
+          case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
             xxbc(idof) = boundary_condition%aux_real_var(idof,iconn)
           case(NEUMANN_BC,ZERO_GRADIENT_BC)
             xxbc(idof) = xx_loc_p((ghosted_id-1)*option%ndof+idof)
@@ -1720,7 +1720,7 @@ subroutine RichardsLiteJacobian(snes,xx,A,B,flag,realization,ierr)
       enddo
       
       select case(boundary_condition%condition%itype(RICHARDS_PRESSURE_DOF))
-        case(DIRICHLET_BC,HYDROSTATIC_BC)
+        case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
           iphasebc = boundary_condition%aux_int_var(1,iconn)
         case(NEUMANN_BC,ZERO_GRADIENT_BC)
           iphasebc=int(iphase_loc_p(ghosted_id))                               

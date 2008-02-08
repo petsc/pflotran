@@ -72,6 +72,7 @@ PetscInt, parameter :: NEUMANN_BC = 2
 PetscInt, parameter :: MASS_RATE = 3
 PetscInt, parameter :: ZERO_GRADIENT_BC = 5
 PetscInt, parameter :: HYDROSTATIC_BC = 6
+PetscInt, parameter :: SEEPAGE_BC = 7
 
 ! coupler types
 PetscInt, parameter :: INITIAL_COUPLER_TYPE = 1

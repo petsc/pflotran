@@ -342,7 +342,7 @@ subroutine RealizationUpdateCouplerAuxVars(realization,coupler_list, &
             enddo
             coupler%aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
               condition%iphase
-          case(HYDROSTATIC_BC)
+          case(HYDROSTATIC_BC,SEEPAGE_BC)
   !          call HydrostaticUpdateCoupler(coupler,realization%option,realization%grid)
             call HydrostaticUpdateCouplerBetter(coupler,realization%option,realization%grid)
         end select

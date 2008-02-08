@@ -374,7 +374,11 @@ subroutine HydrostaticUpdateCouplerBetter(coupler,option,grid)
                  pressure_gradient(Z_DIRECTION)*dist_z 
     endif
 
-    coupler%aux_real_var(1,iconn) = pressure
+    if (condition%pressure%itype == SEEPAGE_BC) then
+      coupler%aux_real_var(1,iconn) = max(pressure,option%pref)
+    else
+      coupler%aux_real_var(1,iconn) = pressure
+    endif
 
     if (option%imode /= RICHARDS_LITE_MODE) then
       temperature = temperature_at_datum + &

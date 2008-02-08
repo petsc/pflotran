@@ -464,6 +464,8 @@ subroutine ConditionRead(condition,option,fid)
               sub_condition_ptr%itype = HYDROSTATIC_BC
             case('zero_gradient')
               sub_condition_ptr%itype = ZERO_GRADIENT_BC
+            case('seepage')
+              sub_condition_ptr%itype = SEEPAGE_BC
             case default
               call printErrMsg(option,'bc type not recognized in condition,type')
           end select

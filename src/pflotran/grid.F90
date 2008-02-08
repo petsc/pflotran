@@ -309,7 +309,8 @@ subroutine GridComputeCouplerConnections(grid,option,coupler_list)
 
     select case(coupler%itype)
       case(INITIAL_COUPLER_TYPE)
-        if (coupler%condition%pressure%itype /= HYDROSTATIC_BC) then
+        if (coupler%condition%pressure%itype /= HYDROSTATIC_BC .and. &
+            coupler%condition%pressure%itype /= SEEPAGE_BC) then
           nullify(coupler%connection)
           coupler => coupler%next
           cycle
