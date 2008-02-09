@@ -1985,7 +1985,7 @@ subroutine readInput(simulation,filename)
           call fiReadInt(string,saturation_function%id,ierr)
           call fiErrorMsg(option%myrank,'id','PCKR', ierr)
           
-          call fiReadInt(string,saturation_function%itype,ierr)
+          call fiReadInt(string,saturation_function%saturation_function_itype,ierr)
           call fiErrorMsg(option%myrank,'icaptype','PCKR', ierr)
       
           select case(option%imode)
@@ -2002,8 +2002,7 @@ subroutine readInput(simulation,filename)
         
           call fiReadDouble(string,saturation_function%m,ierr)
           call fiErrorMsg(option%myrank,'pckrm','PCKR', ierr)
-          saturation_function%lambda = saturation_function%m / &
-                                      (1.d0-saturation_function%m)
+          saturation_function%lambda = saturation_function%m
 
           call fiReadDouble(string,saturation_function%alpha,ierr)
           call fiErrorMsg(option%myrank,'alpha','PCKR', ierr)
@@ -2054,7 +2053,7 @@ subroutine readInput(simulation,filename)
                                     &number of saturation functions')
           endif
           
-          option%icaptype(id) = saturation_function%itype
+          option%icaptype(id) = saturation_function%saturation_function_itype
           select case(option%imode)
             case(MPH_MODE,OWG_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE, &
                  RICHARDS_LITE_MODE)

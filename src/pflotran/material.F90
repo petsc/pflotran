@@ -62,8 +62,10 @@ module Material_module
   
   type, public :: saturation_function_type
     PetscInt :: id
-    character(len=MAXNAMELENGTH) :: ctype
-    PetscInt :: itype
+    character(len=MAXNAMELENGTH) :: saturation_function_ctype
+    PetscInt :: saturation_function_itype
+    character(len=MAXNAMELENGTH) :: permeability_function_ctype
+    PetscInt :: permeability_function_itype
     PetscReal, pointer :: Sr(:)
     PetscReal :: m
     PetscReal :: lambda
@@ -90,6 +92,11 @@ module Material_module
             MaterialConvertListToArray
 
   PetscInt, parameter :: VAN_GENUCHTEN = 1
+  PetscInt, parameter :: BROOKS_COREY = 2
+
+  PetscInt, parameter :: DEFAULT = 0
+  PetscInt, parameter :: BURDINE = 1
+  PetscInt, parameter :: MUALEM = 2
   
 contains
 
@@ -174,8 +181,10 @@ function SaturationFunctionCreate(option)
   
   allocate(saturation_function)
   saturation_function%id = 0
-  saturation_function%ctype = ""
-  saturation_function%itype = 0
+  saturation_function%saturation_function_ctype = ""
+  saturation_function%saturation_function_itype = VAN_GENUCHTEN
+  saturation_function%permeability_function_ctype = ""
+  saturation_function%permeability_function_itype = BURDINE
   allocate(saturation_function%Sr(option%ndof))
   saturation_function%Sr = 0.d0
   saturation_function%m = 0.d0
@@ -365,54 +374,107 @@ end subroutine SaturatFuncConvertListToArray
 !
 ! ************************************************************************** !
 subroutine SaturationFunctionCompute(pressure,saturation,relative_perm, &
-                                     dsat_dpres,dkr_dpres,saturation_function, &
+                                     dsat_pres,dkr_pres,saturation_function, &
                                      option)
 
   use Option_module
   
   implicit none
 
-  PetscReal :: pressure, saturation, relative_perm, dsat_dpres, dkr_dpres
+  PetscReal :: pressure, saturation, relative_perm, dsat_pres, dkr_pres
   type(saturation_function_type) :: saturation_function
   type(option_type) :: option
 
-  PetscReal :: alpha, m, n, Sr
-  PetscReal :: pc, Se, one_over_m, Se_one_over_m, dsat_dpc, dkr_dpc
+  PetscReal :: alpha, lambda, m, n, Sr
+  PetscReal :: pc, Se, one_over_m, Se_one_over_m, dSe_pc, dsat_pc, dkr_pc
+  PetscReal :: dkr_Se, power
+  PetscReal :: pc_alpha, pc_alpha_n, one_plus_pc_alpha_n
+  PetscReal :: pc_alpha_neg_lambda
   
-  dsat_dpres = 0.d0
-  dkr_dpres = 0.d0
+  dsat_pres = 0.d0
+  dkr_pres = 0.d0
   
-  select case(saturation_function%itype)
-    case(0)
-      call printErrMsg(option,"Unknown saturation function")
+  ! compute saturation
+  select case(saturation_function%saturation_function_itype)
     case(VAN_GENUCHTEN)
       if (pressure >= option%pref) then
         saturation = 1.d0
         relative_perm = 1.d0
+        return
       else
         alpha = saturation_function%alpha
+        pc = option%pref-pressure
         m = saturation_function%m
         n = 1.d0/(1.d0-m)
+        pc_alpha = pc*alpha
+        pc_alpha_n = pc_alpha**n
+        one_plus_pc_alpha_n = 1.d0+pc_alpha_n
         Sr = saturation_function%Sr(option%nphase)
-        pc = option%pref-pressure
-        saturation = Sr + (1.d0-Sr)/(1.d0+(pc*alpha)**n)**m
-        dsat_dpc = -m*n*alpha*(1.d0-Sr)*(pc*alpha)**(n-1.d0)/ &
-                   (1+(pc*alpha)**n)**(m+1)
-        Se = (saturation-Sr)/(1.d0-Sr)
-        one_over_m = 1/m
-        Se_one_over_m = Se**one_over_m
-        relative_perm = sqrt(Se)*(1.d0-(1.d0-Se_one_over_m)**m)**2.d0
-        dkr_dpc = (0.5d0*relative_perm/Se+ &
-                   2.d0*(1.d0-(1.d0-Se_one_over_m)**m)* &
-                   (1-Se_one_over_m)**(m-1.d0)* &
-                   Se**(one_over_m-0.5d0))/ &
-                  (1.d0-Sr)* &
-                  dsat_dpc 
-        dsat_dpres = -dsat_dpc 
-        dkr_dpres = -dkr_dpc
+        Se = one_plus_pc_alpha_n**(-m)
+        dSe_pc = -m*n*alpha*pc_alpha_n/(pc_alpha*one_plus_pc_alpha_n**(m+1))
+        saturation = Sr + (1.d0-Sr)*Se
+        dsat_pc = dSe_pc*(1.d0-Sr)
+!        dsat_pc = -m*n*alpha*(1.d0-Sr)*(pc*alpha)**(n-1.d0)/ &
+!                   (1+(pc*alpha)**n)**(m+1)
       endif
+      ! compute relative permeability
+      select case(saturation_function%permeability_function_itype)
+        case(BURDINE)
+          one_over_m = 1.d0/m
+          Se_one_over_m = Se**one_over_m
+          relative_perm = Se*Se*(1.d0-(1.d0-Se_one_over_m)**m)
+          dkr_Se = 2.d0*relative_perm/Se + &
+                   Se*Se_one_over_m*(1.d0-Se_one_over_m)**(m-1.d0)
+          dkr_pc = dkr_Se*dSe_pc
+        case(MUALEM)
+          one_over_m = 1.d0/m
+          Se_one_over_m = Se**one_over_m
+          relative_perm = sqrt(Se)*(1.d0-(1.d0-Se_one_over_m)**m)**2.d0
+          dkr_Se = 0.5d0*relative_perm/Se+ &
+                   2.d0*Se**(one_over_m-0.5d0)* &
+                        (1.d0-Se_one_over_m)**(m-1.d0)* &
+                        (1.d0-(1.d0-Se_one_over_m)**m)
+          dkr_pc = dkr_Se*dSe_pc
+        case default
+          call printErrMsg(option,"Unknown relative permeabilty function")
+      end select
+    case(BROOKS_COREY)
+      alpha = saturation_function%alpha
+      pc = option%pref-pressure
+      if (pc < alpha) then
+        saturation = 1.d0
+        relative_perm = 1.d0
+        return
+      else
+        lambda = saturation_function%lambda
+        Sr = saturation_function%Sr(option%nphase)
+        pc_alpha_neg_lambda = (pc*alpha)**-lambda
+        Se = pc_alpha_neg_lambda
+        dSe_pc = -lambda/pc*pc_alpha_neg_lambda
+        saturation = Sr + (1.d0-Sr)*Se
+        dsat_pc = -lambda*(1.d0-Sr)/pc*pc_alpha_neg_lambda
+      endif
+      ! compute relative permeability
+      select case(saturation_function%permeability_function_itype)
+        case(BURDINE)
+          power = 3.d0+2.d0/lambda
+          relative_perm = Se**power
+          dkr_Se = power*relative_perm/Se
+          dkr_pc = dkr_Se*dSe_pc
+        case(MUALEM)
+          power = 2.5d0+2.d0/lambda
+          relative_perm = Se**power
+          dkr_Se = power*relative_perm/Se
+          dkr_pc = dkr_Se*dSe_pc
+        case default
+          call printErrMsg(option,"Unknown relative permeabilty function")
+      end select
+    case default
+      call printErrMsg(option,"Unknown saturation function")
   end select
-    
+  dsat_pres = -dsat_pc 
+  dkr_pres = -dkr_pc
+
 end subroutine SaturationFunctionCompute
 
 ! ************************************************************************** !
