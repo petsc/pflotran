@@ -1018,31 +1018,30 @@ end subroutine StructuredGridMapIndices
 ! date: 10/24/07
 !
 ! ************************************************************************** !
-subroutine StructuredGridCreateJacobian(structured_grid,solver,option)
+subroutine StructuredGridCreateJacobian(structured_grid,Jacobian,option)
 
   use Option_module
-  use Solver_module
   
   implicit none
   
   type(structured_grid_type) :: structured_grid
-  type(solver_type) :: solver
+  Mat :: Jacobian
   type(option_type) :: option
   
   PetscErrorCode :: ierr
   
   if (option%iblkfmt == 0) then
-    call DAGetMatrix(structured_grid%da_ndof, MATAIJ, solver%J, ierr)
+    call DAGetMatrix(structured_grid%da_ndof, MATAIJ, Jacobian, ierr)
   else
-    call DAGetMatrix(structured_grid%da_ndof, MATBAIJ, solver%J, ierr)
+    call DAGetMatrix(structured_grid%da_ndof, MATBAIJ, Jacobian, ierr)
   endif
  ! call  MatSetBlocksize(grid%J,grid%ndof,ierr)
 #if (PETSC_VERSION_RELEASE == 1)
-  call MatSetOption(solver%J,MAT_KEEP_ZEROED_ROWS,ierr)
-  call MatSetOption(solver%J,MAT_COLUMN_ORIENTED,ierr)
+  call MatSetOption(Jacobian,MAT_KEEP_ZEROED_ROWS,ierr)
+  call MatSetOption(Jacobian,MAT_COLUMN_ORIENTED,ierr)
 #else
-  call MatSetOption(solver%J,MAT_KEEP_ZEROED_ROWS,PETSC_FALSE,ierr)
-  call MatSetOption(solver%J,MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
+  call MatSetOption(Jacobian,MAT_KEEP_ZEROED_ROWS,PETSC_FALSE,ierr)
+  call MatSetOption(Jacobian,MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
 #endif
   
 end subroutine StructuredGridCreateJacobian

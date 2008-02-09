@@ -525,7 +525,7 @@ subroutine PflowInit(simulation,filename)
       
     temp_int = option%iblkfmt
     option%iblkfmt = 0   ! to turn off MATMPIBAIJ
-    call GridCreateJacobian(grid,solver,option)
+    call GridCreateJacobian(grid,solver%J,option)
     option%iblkfmt = temp_int
 
     call GridCreateColoring(grid,option,iscoloring)
@@ -629,7 +629,7 @@ subroutine PflowInit(simulation,filename)
 
     option%ideriv = 1
   
-    call GridCreateJacobian(grid,solver,option)
+    call GridCreateJacobian(grid,solver%J,option)
   
 !   if (myrank == 0) write(*,'(" analytical jacobian as ")'); &
 !                    print *, grid%iblkfmt

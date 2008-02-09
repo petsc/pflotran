@@ -461,20 +461,19 @@ end subroutine GridComputeVolumes
 ! date: 10/24/07
 !
 ! ************************************************************************** !
-subroutine GridCreateJacobian(grid,solver,option)
+subroutine GridCreateJacobian(grid,Jacobian,option)
 
   use Option_module
-  use Solver_module
   
   implicit none
   
   type(grid_type) :: grid
-  type(solver_type) :: solver
+  Mat :: Jacobian
   type(option_type) :: option
   
   select case(grid%igrid)
     case(STRUCTURED)
-      call StructuredGridCreateJacobian(grid%structured_grid,solver,option)
+      call StructuredGridCreateJacobian(grid%structured_grid,Jacobian,option)
     case(UNSTRUCTURED)
   end select
 
