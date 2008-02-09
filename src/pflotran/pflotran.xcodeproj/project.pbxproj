@@ -22,6 +22,9 @@
 		235817900BBC662B008D3E23 /* unstructured_grid.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = unstructured_grid.F90; sourceTree = "<group>"; };
 		23736B3C0CFF5B82002999ED /* hydrostatic.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = hydrostatic.F90; sourceTree = "<group>"; };
 		23A9520B0CE56A0800468ECC /* waypoint.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = waypoint.F90; sourceTree = "<group>"; };
+		23B3A6AA0D5E1883008903B2 /* richards_lite.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = richards_lite.F90; sourceTree = "<group>"; };
+		23B3A6AB0D5E18A2008903B2 /* hdf5.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = hdf5.F90; sourceTree = "<group>"; };
+		23B3A6AC0D5E18AE008903B2 /* debug.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = debug.F90; sourceTree = "<group>"; };
 		23C3E0960CDF92E1009ADBAF /* connection.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = connection.F90; sourceTree = "<group>"; };
 		23C3E0970CDF92E1009ADBAF /* coupler.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = coupler.F90; sourceTree = "<group>"; };
 		23C3E0980CDF92E1009ADBAF /* general_grid.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = general_grid.F90; sourceTree = "<group>"; };
@@ -124,12 +127,14 @@
 				2358178D0BBC662B008D3E23 /* condition.F90 */,
 				23C3E0960CDF92E1009ADBAF /* connection.F90 */,
 				23C3E0970CDF92E1009ADBAF /* coupler.F90 */,
+				23B3A6AC0D5E18AE008903B2 /* debug.F90 */,
 				33021A9608A12EFD00D082B8 /* definitions.h */,
 				230637130CF2246C00CC3145 /* field.F90 */,
 				33021A9708A12EFD00D082B8 /* fileio.F90 */,
 				33021A9808A12EFD00D082B8 /* gaseos_mod.F90 */,
 				23C3E0980CDF92E1009ADBAF /* general_grid.F90 */,
 				23C3E0990CDF92E1009ADBAF /* grid.F90 */,
+				23B3A6AB0D5E18A2008903B2 /* hdf5.F90 */,
 				2311D0110CA34CA7003AF8E9 /* hdf5_dataset.F90 */,
 				33021A9908A12EFD00D082B8 /* hydrostat.F90 */,
 				23736B3C0CFF5B82002999ED /* hydrostatic.F90 */,
@@ -195,6 +200,7 @@
 				23C3E09D0CDF92E1009ADBAF /* region.F90 */,
 				2319184A0B9DD80900844666 /* remove_ArrayF90.py */,
 				2338BBB40D12F30C0022F2F4 /* richards.F90 */,
+				23B3A6AA0D5E1883008903B2 /* richards_lite.F90 */,
 				33021AC008A12EFD00D082B8 /* rock_react.F90 */,
 				23C3E09E0CDF92E1009ADBAF /* simulation.F90 */,
 				23C3E0A00CDF92E1009ADBAF /* solver.F90 */,
