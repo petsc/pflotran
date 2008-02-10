@@ -157,6 +157,8 @@ subroutine initGrid(grid)
   type(grid_type) :: grid
   
   grid%igeom = 0
+  grid%igrid = 0
+
   nullify(grid%structured_grid)
   nullify(grid%unstructured_grid)
 
@@ -178,8 +180,12 @@ subroutine initGrid(grid)
   grid%y_max = -1.d20
   grid%z_min = 1.d20
   grid%z_max = -1.d20
-  
+
   grid%origin = 0.d0
+
+  grid%nmax = 0
+  grid%nlmax = 0 
+  grid%ngmax = 0
   
   ! nullify DM pointers
   grid%dm_1_dof = 0
@@ -190,6 +196,8 @@ subroutine initGrid(grid)
   grid%dm_nphanspec_dof = 0
   grid%dm_nphanspecncomp_dof = 0
   grid%dm_var_dof = 0
+
+  grid%volume = 0
   
   nullify(grid%hash)
   grid%num_hash_bins = 1000
@@ -281,11 +289,6 @@ subroutine GridCreateDM(grid,dm,ndof,stencil_width)
                                   stencil_width)
     case(UNSTRUCTURED)
   end select
-
-  ! allocate coordinate arrays  
-  allocate(grid%x(grid%ngmax))
-  allocate(grid%y(grid%ngmax))
-  allocate(grid%z(grid%ngmax))
 
 end subroutine GridCreateDM
 
