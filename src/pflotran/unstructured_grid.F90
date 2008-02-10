@@ -18,7 +18,7 @@ module Unstructured_Grid_module
   end type
   
   public :: UnstructuredGridInit, &
-            UnstructuredGridCreateDMs, &
+            UnstructuredGridCreateDM, &
             UnstGridComputeInternConnect, &
             UnstGridComputeBoundConnect, &
             UnstructGridGetGhostIdFromHash, &
@@ -48,16 +48,16 @@ end subroutine UnstructuredGridInit
 ! date: 10/22/07
 !
 ! ************************************************************************** !
-subroutine UnstructuredGridCreateDMs(unstructured_grid,option)
+subroutine UnstructuredGridCreateDM()
       
   use Option_module
       
   implicit none
   
-  type(unstructured_grid_type) :: unstructured_grid
-  type(option_type) :: option
+  PetscInt :: ndof
+  PetscInt :: stencil_width
   
-end subroutine UnstructuredGridCreateDMs
+end subroutine UnstructuredGridCreateDM
   
 ! ************************************************************************** !
 !

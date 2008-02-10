@@ -49,6 +49,9 @@ module Grid_module
 
     Vec :: volume 
     
+    DM :: dm_1_dof, dm_nphase_dof, dm_3np_dof, dm_ndof, dm_nphancomp_dof, &
+          dm_nphanspec_dof, dm_nphanspecncomp_dof, dm_var_dof 
+    
     PetscInt, pointer :: hash(:,:,:)
     PetscInt :: num_hash_bins
     
@@ -178,6 +181,16 @@ subroutine initGrid(grid)
   
   grid%origin = 0.d0
   
+  ! nullify DM pointers
+  grid%dm_1_dof = 0
+  grid%dm_nphase_dof = 0
+  grid%dm_3np_dof = 0
+  grid%dm_ndof = 0
+  grid%dm_nphancomp_dof = 0
+  grid%dm_nphanspec_dof = 0
+  grid%dm_nphanspecncomp_dof = 0
+  grid%dm_var_dof = 0
+  
   nullify(grid%hash)
   grid%num_hash_bins = 1000
 
@@ -187,7 +200,7 @@ end subroutine initGrid
 !
 ! GridCreateDMs: creates distributed, parallel meshes/grids
 ! author: Glenn Hammond
-! date: 10/22/07
+! date: 02/08/08
 !
 ! ************************************************************************** !
 subroutine GridCreateDMs(grid,option)
@@ -198,14 +211,75 @@ subroutine GridCreateDMs(grid,option)
   
   type(grid_type) :: grid
   type(option_type) :: option
+      
+  PetscInt :: ndof
+  PetscInt, parameter :: stencil_width = 1
+  PetscErrorCode :: ierr
+
+  !-----------------------------------------------------------------------
+  ! Generate the DA objects that will manage communication.
+  !-----------------------------------------------------------------------
+  ndof = 1
+  call GridCreateDM(grid,grid%dm_1_dof,ndof,stencil_width)
+  
+  ndof = option%nphase
+  call GridCreateDM(grid,grid%dm_nphase_dof,ndof,stencil_width)
+
+
+  ndof = option%ndof
+  call GridCreateDM(grid,grid%dm_ndof,ndof,stencil_width)
+
+  select case(option%imode) 
+    case(TWOPH_MODE)
+      ndof = option%nphase*option%npricomp
+      call GridCreateDM(grid,grid%dm_nphancomp_dof,ndof,stencil_width)
+
+      ndof = option%nphase*option%nspec
+      call GridCreateDM(grid,grid%dm_nphanspec_dof,ndof,stencil_width)
+
+      ndof = option%nphase*option%nspec*option%npricomp
+      call GridCreateDM(grid,grid%dm_nphanspecncomp_dof,ndof,stencil_width)
+
+    case(MPH_MODE,VADOSE_MODE,FLASH_MODE,OWG_MODE)
+      ndof = (option%ndof+1)*(2+7*option%nphase + 2*option%nspec*option%nphase)
+      call GridCreateDM(grid,grid%dm_var_dof,ndof,stencil_width)
+  end select
   
   select case(grid%igrid)
     case(STRUCTURED)
-      call StructuredGridCreateDMs(grid%structured_grid,option)
       grid%nlmax = grid%structured_grid%nlmax
       grid%ngmax = grid%structured_grid%ngmax
     case(UNSTRUCTURED)
-      call UnstructuredGridCreateDMs(grid%unstructured_grid,option)
+  end select
+
+  ! allocate coordinate arrays  
+  allocate(grid%x(grid%ngmax))
+  allocate(grid%y(grid%ngmax))
+  allocate(grid%z(grid%ngmax))
+  
+end subroutine GridCreateDMs
+
+! ************************************************************************** !
+!
+! GridCreateDM: creates a distributed, parallel mesh/grid
+! author: Glenn Hammond
+! date: 02/08/08
+!
+! ************************************************************************** !
+subroutine GridCreateDM(grid,dm,ndof,stencil_width)
+
+  implicit none
+  
+  type(grid_type) :: grid
+  DM :: dm
+  PetscInt :: ndof
+  PetscInt :: stencil_width
+  
+  select case(grid%igrid)
+    case(STRUCTURED)
+      call StructuredGridCreateDA(grid%structured_grid,dm,ndof, &
+                                  stencil_width)
+    case(UNSTRUCTURED)
   end select
 
   ! allocate coordinate arrays  
@@ -213,7 +287,7 @@ subroutine GridCreateDMs(grid,option)
   allocate(grid%y(grid%ngmax))
   allocate(grid%z(grid%ngmax))
 
-end subroutine GridCreateDMs
+end subroutine GridCreateDM
 
 ! ************************************************************************** !
 !
@@ -231,14 +305,55 @@ subroutine GridCreateVector(grid,dm_index,vector,vector_type)
   Vec :: vector
   PetscInt :: vector_type
   
+  DM :: dm_ptr
+  
+  dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
+  
   select case(grid%igrid)
     case(STRUCTURED)
-      call StructuredGridCreateVecFromDA(grid%structured_grid,dm_index,vector, &
-                                   vector_type)
+      call StructuredGridCreateVecFromDA(dm_ptr,vector,vector_type)
     case(UNSTRUCTURED)
   end select
   
 end subroutine GridCreateVector
+
+! ************************************************************************** !
+!
+! GridGetDMPtrFromIndex: Returns the integer pointer for the DM referenced
+! author: Glenn Hammond
+! date: 02/08/08
+!
+! ************************************************************************** !
+function GridGetDMPtrFromIndex(grid,dm_index)
+
+  implicit none
+  
+  type(grid_type) :: grid
+  PetscInt :: dm_index
+  
+  DM :: GridGetDMPtrFromIndex
+  
+  select case (dm_index)
+    case(ONEDOF)
+      GridGetDMPtrFromIndex = grid%dm_1_dof
+    case(NPHASEDOF)
+      GridGetDMPtrFromIndex = grid%dm_nphase_dof
+    case(THREENPDOF)
+      GridGetDMPtrFromIndex = grid%dm_3np_dof
+    case(NDOF)
+      GridGetDMPtrFromIndex = grid%dm_ndof
+    case(NPHANCOMPDOF)
+      GridGetDMPtrFromIndex = grid%dm_nphancomp_dof
+    case(NPHANSPECDOF)
+      GridGetDMPtrFromIndex = grid%dm_nphanspec_dof
+    case(NPHANSPECNCOMPDOF)
+      GridGetDMPtrFromIndex = grid%dm_nphanspecncomp_dof
+    case(VARDOF)
+      GridGetDMPtrFromIndex = grid%dm_var_dof
+  end select  
+  
+end function GridGetDMPtrFromIndex
+
 ! ************************************************************************** !
 !
 ! GridComputeInternalConnect: computes internal connectivity of a grid
@@ -473,7 +588,7 @@ subroutine GridCreateJacobian(grid,Jacobian,option)
   
   select case(grid%igrid)
     case(STRUCTURED)
-      call StructuredGridCreateJacobian(grid%structured_grid,Jacobian,option)
+      call StructuredGridCreateJacobian(grid%dm_ndof,Jacobian,option)
     case(UNSTRUCTURED)
   end select
 
@@ -501,7 +616,7 @@ subroutine GridCreateColoring(grid,option,coloring)
   
   select case(grid%igrid)
     case(STRUCTURED)
-      call StructuredGridCreateColoring(grid%structured_grid,option,coloring)
+      call StructuredGridCreateColoring(grid%dm_ndof,option,coloring)
     case(UNSTRUCTURED)
   end select
   
@@ -525,11 +640,13 @@ subroutine GridGlobalToLocal(grid,global_vec,local_vec,dm_index)
   Vec :: global_vec
   Vec :: local_vec
   PetscInt :: dm_index
+  DM :: dm_ptr
   
+  dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
+    
   select case(grid%igrid)
     case(STRUCTURED)
-      call StructureGridGlobalToLocal(grid%structured_grid,global_vec,local_vec, &
-                                 dm_index)
+      call StructureGridGlobalToLocal(dm_ptr,global_vec,local_vec)
     case(UNSTRUCTURED)
   end select
   
@@ -553,11 +670,13 @@ subroutine GridLocalToGlobal(grid,local_vec,global_vec,dm_index)
   Vec :: local_vec
   Vec :: global_vec
   PetscInt :: dm_index
+  DM :: dm_ptr
+  
+  dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
   
   select case(grid%igrid)
     case(STRUCTURED)
-      call StructureGridLocalToGlobal(grid%structured_grid,local_vec, &
-                                      global_vec,dm_index)
+      call StructureGridLocalToGlobal(dm_ptr,local_vec,global_vec)
     case(UNSTRUCTURED)
   end select
   
@@ -578,11 +697,13 @@ subroutine GridLocalToLocal(grid,local_vec1,local_vec2,dm_index)
   Vec :: local_vec1
   Vec :: local_vec2
   PetscInt :: dm_index
+  DM :: dm_ptr
+  
+  dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
   
   select case(grid%igrid)
     case(STRUCTURED)
-      call StructureGridLocalToLocal(grid%structured_grid,local_vec1, &
-                                     local_vec2,dm_index)
+      call StructureGridLocalToLocal(dm_ptr,local_vec1,local_vec2)
     case(UNSTRUCTURED)
   end select
   
@@ -603,11 +724,13 @@ subroutine GridGlobalToNatural(grid,global_vec,natural_vec,dm_index)
   Vec :: global_vec
   Vec :: natural_vec
   PetscInt :: dm_index
+  DM :: dm_ptr
+  
+  dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
   
   select case(grid%igrid)
     case(STRUCTURED)
-      call StructureGridGlobalToNatural(grid%structured_grid,global_vec, &
-                                   natural_vec,dm_index)
+      call StructureGridGlobalToNatural(dm_ptr,global_vec,natural_vec)
     case(UNSTRUCTURED)
   end select
   
@@ -628,11 +751,13 @@ subroutine GridNaturalToGlobal(grid,natural_vec,global_vec,dm_index)
   Vec :: natural_vec
   Vec :: global_vec
   PetscInt :: dm_index
+  DM :: dm_ptr
+  
+  dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
   
   select case(grid%igrid)
     case(STRUCTURED)
-      call StructureGridNaturalToGlobal(grid%structured_grid,natural_vec, &
-                                        global_vec,dm_index)
+      call StructureGridNaturalToGlobal(dm_ptr,natural_vec,global_vec)
     case(UNSTRUCTURED)
   end select
   
@@ -656,11 +781,13 @@ subroutine GridGlobalToLocalBegin(grid,global_vec,local_vec,dm_index)
   Vec :: global_vec
   Vec :: local_vec
   PetscInt :: dm_index
+  DM :: dm_ptr
+  
+  dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
   
   select case(grid%igrid)
     case(STRUCTURED)
-      call StructureGridGlobalToLocalBegin(grid%structured_grid,global_vec, &
-                                           local_vec,dm_index)
+      call StructureGridGlobalToLocalBegin(dm_ptr,global_vec,local_vec)
     case(UNSTRUCTURED)
   end select
   
@@ -684,11 +811,13 @@ subroutine GridGlobalToLocalEnd(grid,global_vec,local_vec,dm_index)
   Vec :: global_vec
   Vec :: local_vec
   PetscInt :: dm_index
+  DM :: dm_ptr
+  
+  dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
   
   select case(grid%igrid)
     case(STRUCTURED)
-      call StructureGridGlobalToLocalEnd(grid%structured_grid,global_vec, &
-                                           local_vec,dm_index)
+      call StructureGridGlobalToLocalEnd(dm_ptr,global_vec,local_vec)
     case(UNSTRUCTURED)
   end select
   
@@ -709,11 +838,13 @@ subroutine GridLocalToLocalBegin(grid,local_vec1,local_vec2,dm_index)
   Vec :: local_vec1
   Vec :: local_vec2
   PetscInt :: dm_index
+  DM :: dm_ptr
+  
+  dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
   
   select case(grid%igrid)
     case(STRUCTURED)
-      call StructureGridLocalToLocalBegin(grid%structured_grid,local_vec1, &
-                                          local_vec2,dm_index)
+      call StructureGridLocalToLocalBegin(dm_ptr,local_vec1,local_vec2)
     case(UNSTRUCTURED)
   end select
   
@@ -734,11 +865,13 @@ subroutine GridLocalToLocalEnd(grid,local_vec1,local_vec2,dm_index)
   Vec :: local_vec1
   Vec :: local_vec2
   PetscInt :: dm_index
+  DM :: dm_ptr
+  
+  dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
   
   select case(grid%igrid)
     case(STRUCTURED)
-      call StructureGridLocalToLocalEnd(grid%structured_grid,local_vec1, &
-                                        local_vec2,dm_index)
+      call StructureGridLocalToLocalEnd(dm_ptr,local_vec1,local_vec2)
     case(UNSTRUCTURED)
   end select
   
@@ -759,11 +892,13 @@ subroutine GridGlobalToNaturalBegin(grid,global_vec,natural_vec,dm_index)
   Vec :: global_vec
   Vec :: natural_vec
   PetscInt :: dm_index
+  DM :: dm_ptr
+  
+  dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
   
   select case(grid%igrid)
     case(STRUCTURED)
-      call StructureGridGlobalToNaturBegin(grid%structured_grid,global_vec, &
-                                   natural_vec,dm_index)
+      call StructureGridGlobalToNaturBegin(dm_ptr,global_vec,natural_vec)
     case(UNSTRUCTURED)
   end select
   
@@ -784,11 +919,13 @@ subroutine GridGlobalToNaturalEnd(grid,global_vec,natural_vec,dm_index)
   Vec :: global_vec
   Vec :: natural_vec
   PetscInt :: dm_index
+  DM :: dm_ptr
+  
+  dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
   
   select case(grid%igrid)
     case(STRUCTURED)
-      call StructureGridGlobalToNaturEnd(grid%structured_grid,global_vec, &
-                                         natural_vec,dm_index)
+      call StructureGridGlobalToNaturEnd(dm_ptr,global_vec,natural_vec)
     case(UNSTRUCTURED)
   end select
   
@@ -809,11 +946,13 @@ subroutine GridNaturalToGlobalBegin(grid,natural_vec,global_vec,dm_index)
   Vec :: natural_vec
   Vec :: global_vec
   PetscInt :: dm_index
+  DM :: dm_ptr
+  
+  dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
   
   select case(grid%igrid)
     case(STRUCTURED)
-      call StructureGridNaturToGlobalBegin(grid%structured_grid,natural_vec, &
-                                           global_vec,dm_index)
+      call StructureGridNaturToGlobalBegin(dm_ptr,natural_vec,global_vec)
     case(UNSTRUCTURED)
   end select
   
@@ -834,11 +973,13 @@ subroutine GridNaturalToGlobalEnd(grid,natural_vec,global_vec,dm_index)
   Vec :: natural_vec
   Vec :: global_vec
   PetscInt :: dm_index
+  DM :: dm_ptr
+  
+  dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
   
   select case(grid%igrid)
     case(STRUCTURED)
-      call StructureGridNaturToGlobalEnd(grid%structured_grid,natural_vec, &
-                                         global_vec,dm_index)
+      call StructureGridNaturToGlobalEnd(dm_ptr,natural_vec,global_vec)
     case(UNSTRUCTURED)
   end select
   
@@ -1316,6 +1457,27 @@ subroutine GridDestroy(grid)
   
   if (associated(grid%hash)) call GridDestroyHashTable(grid)
 
+  select case(grid%igrid)
+    case(STRUCTURED)
+      if (grid%dm_1_dof /= 0) &
+        call StructuredGridDestroyDA(grid%dm_1_dof)
+      if (grid%dm_nphase_dof /= 0) &
+        call StructuredGridDestroyDA(grid%dm_nphase_dof)
+      if (grid%dm_3np_dof /= 0) &
+        call StructuredGridDestroyDA(grid%dm_3np_dof)
+      if (grid%dm_ndof /= 0) &
+        call StructuredGridDestroyDA(grid%dm_ndof)
+      if (grid%dm_nphancomp_dof /= 0) &
+        call StructuredGridDestroyDA(grid%dm_nphancomp_dof)
+      if (grid%dm_nphanspec_dof /= 0) &
+        call StructuredGridDestroyDA(grid%dm_nphanspec_dof)
+      if (grid%dm_nphanspecncomp_dof /= 0) &
+        call StructuredGridDestroyDA(grid%dm_nphanspecncomp_dof)
+      if (grid%dm_var_dof /= 0) &
+        call StructuredGridDestroyDA(grid%dm_var_dof)
+    case(UNSTRUCTURED)
+  end select
+  
   call UnstructuredGridDestroy(grid%unstructured_grid)    
   call StructuredGridDestroy(grid%structured_grid)
                                            
