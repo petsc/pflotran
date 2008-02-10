@@ -1248,7 +1248,8 @@ subroutine GridCreateNaturalToGhostedHash(grid,option)
   if (associated(grid%hash)) return
 
   ! initial guess of 10% of ids per hash
-  num_ids_per_hash = max(grid%nlmax/(grid%num_hash_bins/10),1)
+  ! must be at least 5 so that reallocation (*1.2) works below
+  num_ids_per_hash = max(grid%nlmax/(grid%num_hash_bins/10),5)
 
   allocate(hash(2,0:num_ids_per_hash,grid%num_hash_bins))
   hash(:,:,:) = 0
