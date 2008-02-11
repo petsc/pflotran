@@ -170,6 +170,7 @@ subroutine StepperRun(realization,stepper,stage)
       endif
       plot_flag = .false.
     endif
+    call OutputBreakthrough(realization)
     call PetscLogStagePop(ierr)
   
     if (.not.timestep_cut_flag) &

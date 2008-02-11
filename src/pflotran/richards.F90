@@ -43,11 +43,13 @@ module Richards_Analytical_module
   public RichardsAnalyticalResidual,RichardsAnalyticalJacobian, &
          RichardsUpdateFixedAccumulation,RichardsTimeCut,&
          RichardsSetup, RichardsNumericalJacobianTest, &
-         RichardsGetVarFromArray, RichardsMaxChange
+         RichardsGetVarFromArray, RichardsGetVarFromArrayAtCell, &
+         RichardsMaxChange
 
   public :: createRichardsZeroArray
   PetscInt, save :: n_zero_rows = 0
   logical, save :: inactive_cells_exist = .false.
+  logical, save :: aux_vars_up_to_date = .false.
   PetscInt, pointer, save :: zero_rows_local(:)  ! 1-based indexing
   PetscInt, pointer, save :: zero_rows_local_ghosted(:) ! 0-based indexing
 
@@ -366,6 +368,8 @@ subroutine RichardsUpdateAuxVars(realization)
   call VecRestoreArrayF90(field%xx_loc,xx_loc_p, ierr)
   call VecRestoreArrayF90(field%icap_loc,icap_loc_p,ierr)
   call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p,ierr)
+  
+  aux_vars_up_to_date = .true.
 
 end subroutine RichardsUpdateAuxVars
 
@@ -1533,6 +1537,7 @@ subroutine RichardsAnalyticalResidual(snes,xx,r,realization,ierr)
   call GridLocalToLocal(grid,field%ithrm_loc,field%ithrm_loc,ONEDOF)
 
   call RichardsUpdateAuxVars(realization)
+  aux_vars_up_to_date = .false. ! override flags since they will soon be out of date  
 
 ! now assign access pointer to local variables
   call VecGetArrayF90(field%xx_loc, xx_loc_p, ierr)
@@ -2454,7 +2459,7 @@ subroutine RichardsGetVarFromArray(realization,vec,ivar,isubvar)
   grid => realization%grid
   field => realization%field
 
-  call RichardsUpdateAuxVars(realization)
+  if (.not.aux_vars_up_to_date) call RichardsUpdateAuxVars(realization)
 
   call VecGetArrayF90(vec,vec_ptr,ierr)
 
@@ -2498,6 +2503,90 @@ subroutine RichardsGetVarFromArray(realization,vec,ivar,isubvar)
   call VecRestoreArrayF90(vec,vec_ptr,ierr)
 
 end subroutine RichardsGetVarFromArray
+
+! ************************************************************************** !
+!
+! RichardsGetVarFromArrayAtCell: Returns variablesindexed by ivar, isubvar,
+!                                 local id from Richards type
+! author: Glenn Hammond
+! date: 02/11/08
+!
+! ************************************************************************** !
+function RichardsGetVarFromArrayAtCell(realization,ivar,isubvar,local_id)
+
+  use Realization_module
+  use Grid_module
+  use Option_module
+  use Field_module
+
+  implicit none
+  
+  PetscInt, parameter :: TEMPERATURE = 4
+  PetscInt, parameter :: PRESSURE = 5
+  PetscInt, parameter :: LIQUID_SATURATION = 6
+  PetscInt, parameter :: GAS_SATURATION = 7
+  PetscInt, parameter :: LIQUID_ENERGY = 8
+  PetscInt, parameter :: GAS_ENERGY = 9
+  PetscInt, parameter :: LIQUID_MOLE_FRACTION = 10
+  PetscInt, parameter :: GAS_MOLE_FRACTION = 11
+  PetscInt, parameter :: VOLUME_FRACTION = 12
+  PetscInt, parameter :: PHASE = 13
+  PetscInt, parameter :: MATERIAL_ID = 14
+
+  PetscReal :: RichardsGetVarFromArrayAtCell
+  type(realization_type) :: realization
+  PetscInt :: ivar
+  PetscInt :: isubvar
+  PetscInt :: local_id
+
+  PetscInt :: ghosted_id
+  PetscReal :: value
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  PetscReal, pointer :: vec_ptr(:)
+  PetscErrorCode :: ierr
+
+  option => realization%option
+  grid => realization%grid
+  field => realization%field
+
+  if (.not.aux_vars_up_to_date) call RichardsUpdateAuxVars(realization)
+
+  select case(ivar)
+    case(TEMPERATURE,PRESSURE,LIQUID_SATURATION,GAS_SATURATION, &
+         LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION,LIQUID_ENERGY,GAS_ENERGY)
+      ghosted_id = grid%nL2G(local_id)    
+      select case(ivar)
+        case(TEMPERATURE)
+          value = aux_vars(ghosted_id)%temp
+        case(PRESSURE)
+          value = aux_vars(ghosted_id)%pres
+        case(LIQUID_SATURATION)
+          value = aux_vars(ghosted_id)%sat
+        case(GAS_SATURATION,GAS_MOLE_FRACTION,GAS_ENERGY)
+          value = 0.d0
+        case(LIQUID_MOLE_FRACTION)
+          value = aux_vars(ghosted_id)%xmol(isubvar+1)
+        case(LIQUID_ENERGY)
+          value = aux_vars(ghosted_id)%u
+      end select
+    case(VOLUME_FRACTION)
+      ! need to set minimum to 0.
+      call VecGetArrayF90(field%phis,vec_ptr,ierr)
+      value = vec_ptr(local_id)
+      call VecRestoreArrayF90(field%phis,vec_ptr,ierr)
+    case(PHASE)
+      call VecGetArrayF90(field%iphas_loc,vec_ptr,ierr)
+      value = vec_ptr(grid%nL2G(local_id))
+      call VecRestoreArrayF90(field%iphas_loc,vec_ptr,ierr)
+    case(MATERIAL_ID)
+      value = field%imat(grid%nL2G(local_id))
+  end select
+  
+  RichardsGetVarFromArrayAtCell = value
+  
+end function RichardsGetVarFromArrayAtCell
 
 ! ************************************************************************** !
 !

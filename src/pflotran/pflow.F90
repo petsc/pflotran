@@ -112,6 +112,7 @@
     else
    !   call pflow_var_output(grid,kplt,iplot)
     endif
+    call OutputBreakthrough(realization)
   endif
   call PetscLogStagePop(ierr)
 

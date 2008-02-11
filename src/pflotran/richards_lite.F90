@@ -43,10 +43,12 @@ module Richards_Lite_module
   public RichardsLiteResidual,RichardsLiteJacobian, &
          RichardsLiteUpdateFixedAccum,RichardsLiteTimeCut,&
          RichardsLiteSetup, RichardsLiteNumericalJacTest, &
-         RichardsLiteGetVarFromArray, RichardsLiteMaxChange
+         RichardsLiteGetVarFromArray, RichardsLiteGetVarFromArrayAtCell, &
+         RichardsLiteMaxChange
 
   public :: createRichardsLiteZeroArray
   PetscInt, save :: n_zero_rows = 0
+  logical, save :: aux_vars_up_to_date = .false.
   logical, save :: inactive_cells_exist = .false.
   PetscInt, pointer, save :: zero_rows_local(:)  ! 1-based indexing
   PetscInt, pointer, save :: zero_rows_local_ghosted(:) ! 0-based indexing
@@ -326,6 +328,8 @@ subroutine RichardsLiteUpdateAuxVars(realization)
   call VecRestoreArrayF90(field%xx_loc,xx_loc_p, ierr)
   call VecRestoreArrayF90(field%icap_loc,icap_loc_p,ierr)
   call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p,ierr)
+  
+  aux_vars_up_to_date = .true.
 
 end subroutine RichardsLiteUpdateAuxVars
 
@@ -1103,7 +1107,7 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
   PetscReal :: xxbc(realization%option%ndof)
   PetscInt :: iphasebc
   PetscReal :: Res(realization%option%ndof), v_darcy
- PetscViewer :: viewer
+  PetscViewer :: viewer
 
 
   type(grid_type), pointer :: grid
@@ -1135,6 +1139,7 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
   call GridLocalToLocal(grid,field%ithrm_loc,field%ithrm_loc,ONEDOF)
 
   call RichardsLiteUpdateAuxVars(realization)
+  aux_vars_up_to_date = .false. ! override flags since they will soon be out of date
 
 ! now assign access pointer to local variables
   call VecGetArrayF90(field%xx_loc, xx_loc_p, ierr)
@@ -1392,6 +1397,8 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
     call VecView(xx,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
+  
+  aux_vars_up_to_date = .false.
 
 end subroutine RichardsLiteResidual
                 
@@ -1946,7 +1953,7 @@ subroutine RichardsLiteGetVarFromArray(realization,vec,ivar,isubvar)
   grid => realization%grid
   field => realization%field
 
-  call RichardsLiteUpdateAuxVars(realization)
+  if (.not.aux_vars_up_to_date) call RichardsLiteUpdateAuxVars(realization)
 
   call VecGetArrayF90(vec,vec_ptr,ierr)
 
@@ -1997,6 +2004,97 @@ subroutine RichardsLiteGetVarFromArray(realization,vec,ivar,isubvar)
   call VecRestoreArrayF90(vec,vec_ptr,ierr)
 
 end subroutine RichardsLiteGetVarFromArray
+
+! ************************************************************************** !
+!
+! RichardsLiteGetVarFromArrayAtCell: Returns variablesindexed by ivar,
+!                                    isubvar, local id from RichardsLite type
+! author: Glenn Hammond
+! date: 02/11/08
+!
+! ************************************************************************** !
+function RichardsLiteGetVarFromArrayAtCell(realization,ivar,isubvar, &
+                                           local_id)
+
+  use Realization_module
+  use Grid_module
+  use Option_module
+  use Field_module
+
+  implicit none
+  
+  PetscInt, parameter :: TEMPERATURE = 4
+  PetscInt, parameter :: PRESSURE = 5
+  PetscInt, parameter :: LIQUID_SATURATION = 6
+  PetscInt, parameter :: GAS_SATURATION = 7
+  PetscInt, parameter :: LIQUID_ENERGY = 8
+  PetscInt, parameter :: GAS_ENERGY = 9
+  PetscInt, parameter :: LIQUID_MOLE_FRACTION = 10
+  PetscInt, parameter :: GAS_MOLE_FRACTION = 11
+  PetscInt, parameter :: VOLUME_FRACTION = 12
+  PetscInt, parameter :: PHASE = 13
+  PetscInt, parameter :: MATERIAL_ID = 14
+
+  PetscReal :: RichardsLiteGetVarFromArrayAtCell
+  type(realization_type) :: realization
+  PetscInt :: ivar
+  PetscInt :: isubvar
+  PetscInt :: local_id
+
+  PetscReal :: value
+  PetscInt :: ghosted_id
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  PetscReal, pointer :: vec_ptr(:)
+  PetscErrorCode :: ierr
+
+  option => realization%option
+  grid => realization%grid
+  field => realization%field
+
+  if (.not.aux_vars_up_to_date) call RichardsLiteUpdateAuxVars(realization)
+
+  select case(ivar)
+    case(TEMPERATURE,GAS_SATURATION,LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION, &
+         GAS_ENERGY)
+      select case(ivar)
+        case(TEMPERATURE)
+          call printErrMsg(option,'TEMPERATURE not supported by RichardsLite')
+        case(GAS_SATURATION)
+          call printErrMsg(option,'GAS_SATURATION not supported by RichardsLite')
+        case(LIQUID_MOLE_FRACTION)
+          call printErrMsg(option,'LIQUID_MOLE_FRACTION not supported by RichardsLite')
+        case(GAS_MOLE_FRACTION)
+          call printErrMsg(option,'GAS_MOLE_FRACTION not supported by RichardsLite')
+        case(LIQUID_ENERGY)
+          call printErrMsg(option,'LIQUID_ENERGY not supported by RichardsLite')
+        case(GAS_ENERGY)
+          call printErrMsg(option,'GAS_ENERGY not supported by RichardsLite')
+      end select
+    case(PRESSURE,LIQUID_SATURATION)
+      ghosted_id = grid%nL2G(local_id)    
+      select case(ivar)
+        case(PRESSURE)
+          value = aux_vars(ghosted_id)%pres
+        case(LIQUID_SATURATION)
+          value = aux_vars(ghosted_id)%sat
+      end select
+    case(VOLUME_FRACTION)
+      call VecGetArrayF90(field%phis,vec_ptr,ierr)
+      value = vec_ptr(local_id)
+      call VecRestoreArrayF90(field%phis,vec_ptr,ierr)
+    case(PHASE)
+      call VecGetArrayF90(field%iphas_loc,vec_ptr,ierr)
+      value = vec_ptr(grid%nL2G(local_id))
+      call VecRestoreArrayF90(field%iphas_loc,vec_ptr,ierr)
+    case(MATERIAL_ID)
+      value = field%imat(grid%nL2G(local_id))
+  end select
+  
+  RichardsLiteGetVarFromArrayAtCell = value
+  
+end function RichardsLiteGetVarFromArrayAtCell
 
 ! ************************************************************************** !
 !

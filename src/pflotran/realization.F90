@@ -7,6 +7,7 @@ module Realization_module
   use Coupler_module
   use Material_module
   use Strata_module
+  use Breakthrough_module
   use Field_module
   use Debug_module
 
@@ -28,6 +29,7 @@ private
     type(coupler_list_type), pointer :: boundary_conditions
     type(coupler_list_type), pointer :: initial_conditions
     type(coupler_list_type), pointer :: source_sinks
+    type(breakthrough_list_type), pointer :: breakthrough
     type(strata_list_type), pointer :: strata
     
     type(material_type), pointer :: materials
@@ -468,6 +470,7 @@ subroutine RealizationDestroy(realization)
   call CouplerDestroyList(realization%initial_conditions)
   call CouplerDestroyList(realization%source_sinks)
   call StrataDestroyList(realization%strata)
+  call BreakthroughDestroyList(realization%breakthrough)
   
   if (associated(realization%debug)) deallocate(realization%debug)
   nullify(realization%debug)

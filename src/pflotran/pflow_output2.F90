@@ -39,7 +39,8 @@ module Output_module
   PetscMPIInt :: hdf5_err
   PetscErrorCode :: ierr
   
-  public :: Output, OutputTecplot, OutputHDF5, OutputVectorTecplot
+  public :: Output, OutputTecplot, OutputHDF5, OutputVectorTecplot, &
+            OutputBreakthrough
   
 contains
 
@@ -80,6 +81,35 @@ subroutine Output(realization)
   realization%output_option%plot_number = realization%output_option%plot_number + 1
 
 end subroutine Output
+
+! ************************************************************************** !
+!
+! Output_Breakthrough: Main driver for all breakthrough output subroutines
+! author: Glenn Hammond
+! date: 02/11/08
+!
+! ************************************************************************** !
+subroutine OutputBreakthrough(realization)
+
+  use Realization_module
+  
+  implicit none
+  
+  type(realization_type) :: realization
+
+  PetscErrorCode :: ierr
+
+#if 0  
+  if (realization%output_option%print_hdf5) then
+    call OutputHDF5(realization)
+  endif
+#endif
+ 
+  if (realization%output_option%print_tecplot) then
+    call OutputBreakthroughTecplot(realization)
+  endif
+  
+end subroutine OutputBreakthrough
 
 ! ************************************************************************** !
 !
@@ -193,7 +223,6 @@ subroutine OutputTecplot(realization)
         if (option%rk > 0.d0) then
           string = trim(string) // ',"Volume Fraction"'
         endif
-        string = trim(string) // ',"Phase"'
         if (associated(field%imat)) then
           string = trim(string) // ',"Material_ID"'
         endif
@@ -1130,6 +1159,310 @@ end subroutine WriteTecplotDataSet
 
 ! ************************************************************************** !
 !
+! OutputBreakthroughTecplot: Print to breakthrough data to TECPLOT file
+! author: Glenn Hammond
+! date: 02/11/08
+!
+! ************************************************************************** !  
+subroutine OutputBreakthroughTecplot(realization)
+
+  use Realization_module
+  use Grid_module
+  use Option_module
+  use Field_module
+  use Breakthrough_module
+ 
+  implicit none
+
+  type(realization_type) :: realization
+  
+  PetscInt :: fid, icell
+  character(len=MAXNAMELENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: string, string2
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(output_option_type), pointer :: output_option
+  type(breakthrough_type), pointer :: breakthrough
+  logical, save :: first = .false.
+  
+  grid => realization%grid
+  option => realization%option
+  field => realization%field
+  output_option => realization%output_option
+  
+  ! open file
+  if (option%myrank < 10) then
+    write(filename,'("breakthrough_",i1,".tec")') option%myrank  
+  else if (option%myrank < 100) then
+    write(filename,'("breakthrough_",i2,".tec")') option%myrank  
+  else if (option%myrank < 1000) then
+    write(filename,'("breakthrough_",i3,".tec")') option%myrank  
+  else if (option%myrank < 10000) then
+    write(filename,'("breakthrough_",i4,".tec")') option%myrank  
+  else if (option%myrank < 100000) then
+    write(filename,'("breakthrough_",i5,".tec")') option%myrank  
+  endif
+  
+  breakthrough => realization%breakthrough%first
+  
+  if (.not.associated(breakthrough)) return
+
+  fid = 86
+  if (first) then
+    open(unit=fid,file=filename,action="write",status="replace")
+    ! write header
+    ! write title
+    write(fid,'(a)',advance="no") "Time[" // output_option%tunit // "],"
+    do 
+      if (.not.associated(breakthrough)) return
+      do icell=1,breakthrough%region%num_cells
+        call WriteBreakthroughHeaderForCell(fid,realization, &
+                                            breakthrough%region%cell_ids(icell))
+      enddo
+      breakthrough => breakthrough%next
+    enddo
+    write(fid,'(a)',advance="yes") ""
+    breakthrough => realization%breakthrough%first
+  else
+    open(unit=fid,file=filename,action="write",status="old", &
+         position="append")
+  endif
+
+  write(fid,'(1es12.4)',advance="no") option%time/output_option%tconv
+  do 
+    if (.not.associated(breakthrough)) return
+    do icell=1,breakthrough%region%num_cells
+      call WriteBreakthroughDataForCell(fid,realization, &
+                                        breakthrough%region%cell_ids(icell))
+    enddo
+    breakthrough => breakthrough%next
+  enddo
+  write(fid,'(a)',advance="yes") ""
+  close(fid)
+      
+end subroutine OutputBreakthroughTecplot
+
+! ************************************************************************** !
+!
+! WriteBreakthroughHeaderForCell: Print a header for data at a cell
+! author: Glenn Hammond
+! date: 02/11/08
+!
+! ************************************************************************** !  
+subroutine WriteBreakthroughHeaderForCell(fid,realization,local_id)
+
+  use Realization_module
+  use Option_module
+
+  implicit none
+  
+  PetscInt :: fid
+  type(realization_type) :: realization
+  PetscInt :: local_id
+  
+  PetscInt :: i
+  character(len=MAXSTRINGLENGTH) :: string, string2
+  character(len=MAXWORDLENGTH) :: cell_id_string
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(grid_type), pointer :: grid
+  
+  option => realization%option
+  field => realization%field
+  grid => realization%grid
+  
+  write(cell_id_string,*) grid%nL2A(local_id)
+  cell_id_string = adjustl(cell_id_string)
+
+  select case(option%imode)
+    case (TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE)
+      string = '"X [m] '// trim(cell_id_string) // '",' // &
+               '"Y [m] '// trim(cell_id_string) // '",' // &
+               '"Z [m] '// trim(cell_id_string) // '",' // &
+               '"T [C] '// trim(cell_id_string) // '",' // &
+               '"P [Pa] '// trim(cell_id_string) // '",' // &
+               '"sl '// trim(cell_id_string) // '",' // &
+               '"sg '// trim(cell_id_string) // '",' // &
+               '"Ul '// trim(cell_id_string) // '",' // &
+               '"Ug '// trim(cell_id_string) // '",'
+      do i=1,option%nspec
+        write(string2,'(''"Xl('',i2,'') '// trim(cell_id_string) // '",'')') i
+        string = trim(string) // trim(string2)
+      enddo
+      do i=1,option%nspec
+        write(string2,'(''"Xg('',i2,'') '// trim(cell_id_string) // '",'')') i
+        string = trim(string) // trim(string2)
+      enddo
+      if (option%rk > 0.d0) then
+        string = trim(string) // '"Volume Fraction '// trim(cell_id_string) // '"'
+      endif
+      string = trim(string) // ',"Phase '// trim(cell_id_string) // '"'
+      if (associated(field%imat)) then
+        string = trim(string) // ',"Material_ID '// trim(cell_id_string) // '"'
+      endif
+    case(RICHARDS_MODE,RICHARDS_LITE_MODE)
+      if (option%imode == RICHARDS_MODE) then
+        string = 'VARIABLES=' // &
+                 '"X [m] '// trim(cell_id_string) // '",' // &
+                 '"Y [m] '// trim(cell_id_string) // '",' // &
+                 '"Z [m] '// trim(cell_id_string) // '",' // &
+                 '"T [C] '// trim(cell_id_string) // '",' // &
+                 '"P [Pa] '// trim(cell_id_string) // '",' // &
+                 '"sl '// trim(cell_id_string) // '",' // &
+                 '"Ul '// trim(cell_id_string) // '"' 
+      else
+        string = 'VARIABLES=' // &
+                 '"X [m] '// trim(cell_id_string) // '",' // &
+                 '"Y [m] '// trim(cell_id_string) // '",' // &
+                 '"Z [m] '// trim(cell_id_string) // '",' // &
+                 '"P [Pa] '// trim(cell_id_string) // '",'
+      endif
+      if (option%imode == RICHARDS_MODE) then
+        do i=1,option%nspec
+          write(string2,'('',"Xl('',i2,'') '// trim(cell_id_string) // '"'')') i
+          string = trim(string) // trim(string2)
+        enddo
+      endif
+      if (option%rk > 0.d0) then
+        string = trim(string) // ',"Volume Fraction '// trim(cell_id_string) // '"'
+      endif
+      if (associated(field%imat)) then
+        string = trim(string) // ',"Material_ID '// trim(cell_id_string) // '"'
+      endif
+    case default
+      string = 'VARIABLES=' // &
+               '"X [m]",' // &
+               '"Y [m]",' // &
+               '"Z [m]",' // &
+               '"T [C]",' // &
+               '"P [Pa]",' // &
+               '"sl",' // &
+               '"C [mol/L]"'
+      if (option%rk > 0.d0) then
+        string = trim(string) // ',"Volume Fraction"'
+      endif
+  end select
+  write(fid,'(a)',advance="no") trim(string)
+
+end subroutine WriteBreakthroughHeaderForCell
+
+! ************************************************************************** !
+!
+! WriteBreakthroughDataForCell: Print data for data at a cell
+! author: Glenn Hammond
+! date: 02/11/08
+!
+! ************************************************************************** !  
+subroutine WriteBreakthroughDataForCell(fid,realization,local_id)
+
+  use Realization_module
+  use Option_module
+  use Grid_module
+  use Field_module
+
+  implicit none
+  
+  PetscInt :: fid, i
+  type(realization_type) :: realization
+  PetscInt :: local_id
+
+  PetscInt :: ghosted_id
+  type(option_type), pointer :: option
+  type(grid_type), pointer :: grid
+  type(field_type), pointer :: field
+  
+  option => realization%option
+  grid => realization%grid
+  field => realization%field
+
+100 format(es11.4)
+101 format(i)
+110 format(',',es11.4)
+111 format(',',i)
+
+  ghosted_id = grid%nL2G(local_id)
+  ! write out coorindates
+  write(fid,110) grid%x(ghosted_id)
+  write(fid,110) grid%y(ghosted_id)
+  write(fid,110) grid%z(ghosted_id)
+  
+  select case(option%imode)
+    case (TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE, &
+          RICHARDS_LITE_MODE)
+
+      select case(option%imode)
+        case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
+          ! temperature
+          write(fid,110,advance="no") &
+            GetVarFromArrayAtCell(realization,TEMPERATURE,ZERO_INTEGER,local_id)
+      end select
+
+      ! pressure
+      write(fid,110,advance="no") &
+        GetVarFromArrayAtCell(realization,PRESSURE,ZERO_INTEGER,local_id)
+
+      ! liquid saturation
+      write(fid,110,advance="no") &
+        GetVarFromArrayAtCell(realization,LIQUID_SATURATION,ZERO_INTEGER,local_id)
+
+      select case(option%imode)
+        case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE)
+          ! gas saturation
+          write(fid,110,advance="no") &
+            GetVarFromArrayAtCell(realization,GAS_SATURATION,ZERO_INTEGER,local_id)
+      end select
+    
+      select case(option%imode)
+        case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
+          ! liquid energy
+          write(fid,110,advance="no") &
+            GetVarFromArrayAtCell(realization,LIQUID_ENERGY,ZERO_INTEGER,local_id)
+      end select
+    
+      select case(option%imode)
+        case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE)
+          ! gas energy
+          write(fid,110,advance="no") &
+            GetVarFromArrayAtCell(realization,GAS_ENERGY,ZERO_INTEGER,local_id)
+      end select
+
+      select case(option%imode)
+        case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
+          ! liquid mole fractions
+          do i=1,option%nspec
+            write(fid,110,advance="no") &
+              GetVarFromArrayAtCell(realization,LIQUID_MOLE_FRACTION,i-1,local_id)
+          enddo
+      end select
+  
+     select case(option%imode)
+        case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE)
+          ! gas mole fractions
+          do i=1,option%nspec
+            write(fid,110,advance="no") &
+              GetVarFromArrayAtCell(realization,GAS_MOLE_FRACTION,i-1,local_id)
+          enddo
+      end select 
+      
+      ! Volume Fraction
+      if (option%rk > 0.d0) then
+        write(fid,110,advance="no") &
+          GetVarFromArrayAtCell(realization,VOLUME_FRACTION,ZERO_INTEGER,local_id)
+      endif
+    
+      ! phase
+      write(fid,111,advance="no") &
+        int(GetVarFromArrayAtCell(realization,PHASE,ZERO_INTEGER,local_id))
+      
+    case default
+  
+  end select
+
+end subroutine WriteBreakthroughDataForCell
+
+! ************************************************************************** !
+!
 ! OutputHDF5: Print to HDF5 file in Tecplot compatible format
 ! author: Glenn Hammond
 ! date: 10/25/07
@@ -1757,6 +2090,38 @@ subroutine ConvertArrayToNatural(indices,array, &
   call VecDestroy(natural_vec,ierr)
   
 end subroutine ConvertArrayToNatural
+
+! ************************************************************************** !
+!
+! GetVarFromArrayAtCell: Extracts variables indexed by ivar from a multivar array
+! author: Glenn Hammond
+! date: 02/11/08
+!
+! ************************************************************************** !
+function GetVarFromArrayAtCell(realization,ivar,isubvar,local_id)
+
+  use Realization_module
+  use Option_module
+
+  use Richards_Analytical_module
+  use Richards_Lite_module
+
+  implicit none
+  
+  PetscReal :: GetVarFromArrayAtCell
+  type(realization_type) :: realization
+  PetscInt :: ivar
+  PetscInt :: isubvar
+  PetscInt :: local_id
+
+  select case(realization%option%imode)
+    case(RICHARDS_MODE)
+      GetVarFromArrayAtCell = RichardsGetVarFromArrayAtCell(realization,ivar,isubvar,local_id)
+    case(RICHARDS_LITE_MODE)
+      GetVarFromArrayAtCell = RichardsLiteGetVarFromArrayAtCell(realization,ivar,isubvar,local_id)
+  end select
+
+end function GetVarFromArrayAtCell
 
 ! ************************************************************************** !
 !

@@ -1217,6 +1217,7 @@ subroutine readInput(simulation,filename)
   use Condition_module
   use Coupler_module
   use Strata_module
+  use Breakthrough_module
   use Waypoint_module
   use Debug_module
 
@@ -1254,6 +1255,7 @@ subroutine readInput(simulation,filename)
   type(condition_type), pointer :: condition
   type(coupler_type), pointer :: coupler
   type(strata_type), pointer :: strata
+  type(breakthrough_type), pointer :: breakthrough
   
   type(waypoint_type), pointer :: waypoint
   
@@ -2459,57 +2461,11 @@ subroutine readInput(simulation,filename)
         stepper%dt_max = realization%output_option%tconv * stepper%dt_max
 
 !....................
-   
-      case ('BRK')
-        print *, 'BRK (breakthrough) needs to be implemented'
-        stop
-#if 0
-! Needs implementation
-        ibrk = 0
-        do
-          call fiReadFlotranString(IUNIT1,string,ierr)
-          call fiReadStringErrorMsg(option%myrank,'BRK',ierr)
+      case ('BRK','BREAKTHROUGH')
+        breakthrough => BreakthroughCreate()
+        call BreakthroughRead(breakthrough,IUNIT1,option)
+        call BreakthroughAddToList(breakthrough,realization%breakthrough)
       
-          if (string(1:1) == '.' .or. string(1:1) == '/') exit
-          ibrk = ibrk + 1
-
-!GEH - Structured Grid Dependence - Begin
-          call fiReadInt(string,option%i1brk(ibrk),ierr) 
-          call fiDefaultMsg(option%myrank,'i1',ierr)
-          call fiReadInt(string,option%i2brk(ibrk),ierr)
-          call fiDefaultMsg(option%myrank,'i2',ierr)
-          call fiReadInt(string,option%j1brk(ibrk),ierr)
-          call fiDefaultMsg(option%myrank,'j1',ierr)
-          call fiReadInt(string,option%j2brk(ibrk),ierr)
-          call fiDefaultMsg(option%myrank,'j2',ierr)
-          call fiReadInt(string,option%k1brk(ibrk),ierr)
-          call fiDefaultMsg(option%myrank,'k1',ierr)
-          call fiReadInt(string,option%k2brk(ibrk),ierr)
-          call fiDefaultMsg(option%myrank,'k2',ierr)
-!GEH - Structured Grid Dependence - End
-
-          call fiReadInt(string,option%ibrktyp(ibrk),ierr)
-          call fiDefaultMsg(option%myrank,'ibrktyp',ierr)
-
-          call fiReadInt(string,option%ibrkface(ibrk),ierr)
-          call fiDefaultMsg(option%myrank,'ibrkface',ierr)
-        enddo
-        option%ibrkcrv = ibrk
-            
-        if (option%myrank==0) then
-          write(IUNIT2,'(/," *BRK: ibrk = ",i4)') option%ibrkcrv
-          write(IUNIT2,'("  i1  i2  j1  j2  k1  k2  ibrktyp  ibrkface  ")')
-          do ibrk = 1, option%ibrkcrv
-            write(IUNIT2,'(6i4,4x,i2,7x,i2)') &
-              option%i1brk(ibrk),option%i2brk(ibrk), &
-              option%j1brk(ibrk),option%j2brk(ibrk), &
-              option%k1brk(ibrk),option%k2brk(ibrk),option%ibrktyp(ibrk), &
-              option%ibrkface(ibrk)
-          enddo
-        endif
-
-        if (option%ndof == 1) option%ibrkcrv = 0
-#endif
 !....................
       case('SDST')
         print *, 'SDST needs to be implemented'
