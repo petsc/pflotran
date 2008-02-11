@@ -67,6 +67,7 @@ pflow_obj = ${common_src}pflow_vector_ops.o \
 	${common_src}material.o \
 	${common_src}strata.o \
 	${common_src}connection.o \
+	${common_src}breakthrough.o \
 	${common_src}solver.o \
 	${common_src}unstructured_grid.o \
 	${common_src}structured_grid.o \
@@ -153,6 +154,7 @@ ascii_to_hdf5: fileio.o hdf5_dataset.o ascii_to_hdf5.o
 
 # Dependencies stemming from "use" statements.
 # These ensure that the module files are built in the correct order.
+breakthrough.o : region.o option.o fileio.o
 pflow.o : pflow_init.o timestepper.o simulation.o
 simulation.o : timestepper.o realization.o
 pflow_init.o : option.o grid.o realization.o solver.o timestepper.o \
@@ -169,7 +171,7 @@ material.o : region.o option.o fileio.o field.o
 coupler.o : condition.o connection.o region.o fileio.o
 condition.o : fileio.o utility.o option.o field.o
 realization.o : grid.o option.o region.o condition.o coupler.o material.o \
-	     strata.o waypoint.o field.o hydrostatic.o debug.o
+	     strata.o waypoint.o field.o hydrostatic.o debug.o breakthrough.o
 strata.o : fileio.o region.o material.o
 hydrostatic.o : option.o grid.o coupler.o condition.o connection.o region.o \
                 structured_grid.o
@@ -177,7 +179,7 @@ waypoint.o : option.o
 pflow_vector_ops.o : water_eos.o
 pflow_output_new.o : pflow_output.o
 pflow_output2.o : grid.o structured_grid.o option.o realization.o field.o \
-                  coupler.o connection.o hdf5.o
+                  coupler.o connection.o hdf5.o breakthrough.o
 pflow_richards_ResJac.o : realization.o option.o field.o grid.o coupler.o \
                           translator_mixed_fluid_richards.o
 pflow_mphase_ResJac.o : realization.o option.o field.o grid.o coupler.o \
