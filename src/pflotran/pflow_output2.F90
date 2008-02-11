@@ -1253,6 +1253,8 @@ end subroutine OutputBreakthroughTecplot
 subroutine WriteBreakthroughHeaderForCell(fid,realization,local_id)
 
   use Realization_module
+  use Grid_module
+  use Field_module
   use Option_module
 
   implicit none
