@@ -80,6 +80,8 @@ function RealizationCreate()
   call CouplerInitList(realization%source_sinks)
   allocate(realization%strata)
   call StrataInitList(realization%strata)
+  allocate(realization%breakthrough)
+  call BreakthroughInitList(realization%breakthrough)
   
   nullify(realization%materials)
   nullify(realization%thermal_properties)
@@ -108,6 +110,7 @@ subroutine RealizationProcessCouplers(realization)
   character(len=MAXSTRINGLENGTH) :: string
   type(coupler_type), pointer :: coupler
   type(strata_type), pointer :: strata
+  type(breakthrough_type), pointer :: breakthrough
 
 
   ! boundary conditions
@@ -192,7 +195,7 @@ subroutine RealizationProcessCouplers(realization)
                                                   realization%regions)
       if (.not.associated(strata%region)) then
         string = 'Region ' // trim(strata%region_name) // &
-                 ' not found in strata list'
+                 ' not found in region list'
         call printErrMsg(realization%option,string)
       endif
       if (strata%active) then
@@ -201,7 +204,7 @@ subroutine RealizationProcessCouplers(realization)
                                                   realization%materials)
         if (.not.associated(strata%material)) then
           string = 'Material ' // trim(strata%material_name) // &
-                   ' not found in unit list'
+                   ' not found in material list'
           call printErrMsg(realization%option,string)
         endif
       endif
@@ -211,7 +214,22 @@ subroutine RealizationProcessCouplers(realization)
     endif
     strata => strata%next
   enddo 
-    
+
+  ! breakthrough
+  breakthrough => realization%breakthrough%first
+  do
+    if (.not.associated(breakthrough)) exit
+    ! pointer to region
+    breakthrough%region => RegionGetPtrFromList(breakthrough%region_name, &
+                                                realization%regions)
+    if (.not.associated(breakthrough%region)) then
+      string = 'Region ' // trim(breakthrough%region_name) // &
+               ' not found in region list'
+      call printErrMsg(realization%option,string)
+    endif
+    breakthrough => breakthrough%next
+  enddo
+ 
 end subroutine RealizationProcessCouplers
 
 ! ************************************************************************** !

@@ -90,14 +90,14 @@ end subroutine Output
 !
 ! ************************************************************************** !
 subroutine OutputBreakthrough(realization)
-
-  use Realization_module
+                           ! for some flakey reason, current Intel 10.1 reports
+                           ! error if 'only' statement not used.
+  use Realization_module, only : realization_type 
+  use Option_Module
   
   implicit none
   
   type(realization_type) :: realization
-
-  PetscErrorCode :: ierr
 
 #if 0  
   if (realization%output_option%print_hdf5) then
@@ -108,8 +108,9 @@ subroutine OutputBreakthrough(realization)
   if (realization%output_option%print_tecplot) then
     call OutputBreakthroughTecplot(realization)
   endif
-  
+
 end subroutine OutputBreakthrough
+
 
 ! ************************************************************************** !
 !
@@ -171,7 +172,7 @@ subroutine OutputTecplot(realization)
                  option%time/output_option%tconv,output_option%tunit
     ! write variables
     select case(option%imode)
-      case (TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE)
+      case (MPH_MODE,FLASH_MODE)
         string = 'VARIABLES=' // &
                  '"X [m]",' // &
                  '"Y [m]",' // &
@@ -269,11 +270,11 @@ subroutine OutputTecplot(realization)
   call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
 
   select case(option%imode)
-    case (TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE, &
+    case (MPH_MODE,RICHARDS_MODE, &
           RICHARDS_LITE_MODE)
 
       select case(option%imode)
-        case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
+        case(MPH_MODE,RICHARDS_MODE)
           ! temperature
           call GetVarFromArray(realization,global_vec,TEMPERATURE,ZERO_INTEGER)
           call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
@@ -291,7 +292,7 @@ subroutine OutputTecplot(realization)
       call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
 
       select case(option%imode)
-        case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE)
+        case(MPH_MODE,FLASH_MODE)
           ! gas saturation
           call GetVarFromArray(realization,global_vec,GAS_SATURATION,ZERO_INTEGER)
           call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
@@ -299,7 +300,7 @@ subroutine OutputTecplot(realization)
       end select
     
       select case(option%imode)
-        case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
+        case(MPH_MODE,RICHARDS_MODE)
           ! liquid energy
           call GetVarFromArray(realization,global_vec,LIQUID_ENERGY,ZERO_INTEGER)
           call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
@@ -307,7 +308,7 @@ subroutine OutputTecplot(realization)
       end select
     
       select case(option%imode)
-        case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE)
+        case(MPH_MODE,FLASH_MODE)
           ! gas energy
           call GetVarFromArray(realization,global_vec,GAS_ENERGY,ZERO_INTEGER)
           call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
@@ -315,7 +316,7 @@ subroutine OutputTecplot(realization)
       end select
 
       select case(option%imode)
-        case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
+        case(MPH_MODE,RICHARDS_MODE)
           ! liquid mole fractions
           do i=1,option%nspec
             call GetVarFromArray(realization,global_vec,LIQUID_MOLE_FRACTION,i-1)
@@ -325,7 +326,7 @@ subroutine OutputTecplot(realization)
       end select
   
      select case(option%imode)
-        case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE)
+        case(MPH_MODE,FLASH_MODE)
           ! gas mole fractions
           do i=1,option%nspec
             call GetVarFromArray(realization,global_vec,GAS_MOLE_FRACTION,i-1)
@@ -394,7 +395,7 @@ subroutine OutputTecplot(realization)
       call OutputFluxVelocitiesTecplot(realization,LIQUID_PHASE, &
                                        X_DIRECTION)
       select case(option%imode)
-        case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE)
+        case(MPH_MODE,FLASH_MODE)
           call OutputFluxVelocitiesTecplot(realization,GAS_PHASE, &
                                            X_DIRECTION)
       end select
@@ -403,7 +404,7 @@ subroutine OutputTecplot(realization)
       call OutputFluxVelocitiesTecplot(realization,LIQUID_PHASE, &
                                        Y_DIRECTION)
       select case(option%imode)
-        case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE)
+        case(MPH_MODE,FLASH_MODE)
           call OutputFluxVelocitiesTecplot(realization,GAS_PHASE, &
                                            Y_DIRECTION)
       end select
@@ -412,7 +413,7 @@ subroutine OutputTecplot(realization)
       call OutputFluxVelocitiesTecplot(realization,LIQUID_PHASE, &
                                        Z_DIRECTION)
       select case(option%imode)
-        case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE)
+        case(MPH_MODE,FLASH_MODE)
           call OutputFluxVelocitiesTecplot(realization,GAS_PHASE, &
                                            Z_DIRECTION)
       end select
@@ -1184,14 +1185,17 @@ subroutine OutputBreakthroughTecplot(realization)
   type(field_type), pointer :: field
   type(output_option_type), pointer :: output_option
   type(breakthrough_type), pointer :: breakthrough
-  logical, save :: first = .false.
+  logical, save :: first = .true.
   
   grid => realization%grid
   option => realization%option
   field => realization%field
   output_option => realization%output_option
   
-  ! open file
+  breakthrough => realization%breakthrough%first
+  
+  if (.not.associated(breakthrough)) return
+
   if (option%myrank < 10) then
     write(filename,'("breakthrough_",i1,".tec")') option%myrank  
   else if (option%myrank < 100) then
@@ -1204,18 +1208,16 @@ subroutine OutputBreakthroughTecplot(realization)
     write(filename,'("breakthrough_",i5,".tec")') option%myrank  
   endif
   
-  breakthrough => realization%breakthrough%first
-  
-  if (.not.associated(breakthrough)) return
-
+  ! open file
   fid = 86
   if (first) then
+    first = .false.
     open(unit=fid,file=filename,action="write",status="replace")
     ! write header
     ! write title
-    write(fid,'(a)',advance="no") "Time[" // output_option%tunit // "],"
+    write(fid,'(a)',advance="no") "Time[" // trim(output_option%tunit) // "],"
     do 
-      if (.not.associated(breakthrough)) return
+      if (.not.associated(breakthrough)) exit
       do icell=1,breakthrough%region%num_cells
         call WriteBreakthroughHeaderForCell(fid,realization, &
                                             breakthrough%region%cell_ids(icell))
@@ -1231,7 +1233,7 @@ subroutine OutputBreakthroughTecplot(realization)
 
   write(fid,'(1es12.4)',advance="no") option%time/output_option%tconv
   do 
-    if (.not.associated(breakthrough)) return
+    if (.not.associated(breakthrough)) exit
     do icell=1,breakthrough%region%num_cells
       call WriteBreakthroughDataForCell(fid,realization, &
                                         breakthrough%region%cell_ids(icell))
@@ -1278,7 +1280,7 @@ subroutine WriteBreakthroughHeaderForCell(fid,realization,local_id)
   cell_id_string = adjustl(cell_id_string)
 
   select case(option%imode)
-    case (TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE)
+    case (MPH_MODE,FLASH_MODE)
       string = '"X [m] '// trim(cell_id_string) // '",' // &
                '"Y [m] '// trim(cell_id_string) // '",' // &
                '"Z [m] '// trim(cell_id_string) // '",' // &
@@ -1300,13 +1302,9 @@ subroutine WriteBreakthroughHeaderForCell(fid,realization,local_id)
         string = trim(string) // '"Volume Fraction '// trim(cell_id_string) // '"'
       endif
       string = trim(string) // ',"Phase '// trim(cell_id_string) // '"'
-      if (associated(field%imat)) then
-        string = trim(string) // ',"Material_ID '// trim(cell_id_string) // '"'
-      endif
     case(RICHARDS_MODE,RICHARDS_LITE_MODE)
       if (option%imode == RICHARDS_MODE) then
-        string = 'VARIABLES=' // &
-                 '"X [m] '// trim(cell_id_string) // '",' // &
+        string = '"X [m] '// trim(cell_id_string) // '",' // &
                  '"Y [m] '// trim(cell_id_string) // '",' // &
                  '"Z [m] '// trim(cell_id_string) // '",' // &
                  '"T [C] '// trim(cell_id_string) // '",' // &
@@ -1314,11 +1312,11 @@ subroutine WriteBreakthroughHeaderForCell(fid,realization,local_id)
                  '"sl '// trim(cell_id_string) // '",' // &
                  '"Ul '// trim(cell_id_string) // '"' 
       else
-        string = 'VARIABLES=' // &
-                 '"X [m] '// trim(cell_id_string) // '",' // &
+        string = '"X [m] '// trim(cell_id_string) // '",' // &
                  '"Y [m] '// trim(cell_id_string) // '",' // &
                  '"Z [m] '// trim(cell_id_string) // '",' // &
-                 '"P [Pa] '// trim(cell_id_string) // '",'
+                 '"P [Pa] '// trim(cell_id_string) // '",' // &
+                 '"sl '// trim(cell_id_string) // '"'
       endif
       if (option%imode == RICHARDS_MODE) then
         do i=1,option%nspec
@@ -1329,12 +1327,8 @@ subroutine WriteBreakthroughHeaderForCell(fid,realization,local_id)
       if (option%rk > 0.d0) then
         string = trim(string) // ',"Volume Fraction '// trim(cell_id_string) // '"'
       endif
-      if (associated(field%imat)) then
-        string = trim(string) // ',"Material_ID '// trim(cell_id_string) // '"'
-      endif
     case default
-      string = 'VARIABLES=' // &
-               '"X [m]",' // &
+      string = '"X [m]",' // &
                '"Y [m]",' // &
                '"Z [m]",' // &
                '"T [C]",' // &
@@ -1378,59 +1372,64 @@ subroutine WriteBreakthroughDataForCell(fid,realization,local_id)
   grid => realization%grid
   field => realization%field
 
-100 format(es11.4)
+100 format(es13.6)
 101 format(i)
-110 format(',',es11.4)
+110 format(',',es13.6)
 111 format(',',i)
 
   ghosted_id = grid%nL2G(local_id)
   ! write out coorindates
-  write(fid,110) grid%x(ghosted_id)
-  write(fid,110) grid%y(ghosted_id)
-  write(fid,110) grid%z(ghosted_id)
+  write(fid,110,advance="no") grid%x(ghosted_id)
+  write(fid,110,advance="no") grid%y(ghosted_id)
+  write(fid,110,advance="no") grid%z(ghosted_id)
   
   select case(option%imode)
-    case (TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE, &
-          RICHARDS_LITE_MODE)
+    case (MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
 
+      ! temperature
       select case(option%imode)
-        case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
-          ! temperature
+        case(MPH_MODE,RICHARDS_MODE)
           write(fid,110,advance="no") &
             GetVarFromArrayAtCell(realization,TEMPERATURE,ZERO_INTEGER,local_id)
       end select
 
       ! pressure
-      write(fid,110,advance="no") &
-        GetVarFromArrayAtCell(realization,PRESSURE,ZERO_INTEGER,local_id)
+      select case(option%imode)
+        case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
+          write(fid,110,advance="no") &
+            GetVarFromArrayAtCell(realization,PRESSURE,ZERO_INTEGER,local_id)
+      end select
 
       ! liquid saturation
-      write(fid,110,advance="no") &
-        GetVarFromArrayAtCell(realization,LIQUID_SATURATION,ZERO_INTEGER,local_id)
+      select case(option%imode)
+        case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
+          write(fid,110,advance="no") &
+            GetVarFromArrayAtCell(realization,LIQUID_SATURATION,ZERO_INTEGER,local_id)
+      end select
 
       select case(option%imode)
-        case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE)
+        case(MPH_MODE)
           ! gas saturation
           write(fid,110,advance="no") &
             GetVarFromArrayAtCell(realization,GAS_SATURATION,ZERO_INTEGER,local_id)
       end select
     
       select case(option%imode)
-        case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
+        case(MPH_MODE,RICHARDS_MODE)
           ! liquid energy
           write(fid,110,advance="no") &
             GetVarFromArrayAtCell(realization,LIQUID_ENERGY,ZERO_INTEGER,local_id)
       end select
     
       select case(option%imode)
-        case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE)
+        case(MPH_MODE)
           ! gas energy
           write(fid,110,advance="no") &
             GetVarFromArrayAtCell(realization,GAS_ENERGY,ZERO_INTEGER,local_id)
       end select
 
       select case(option%imode)
-        case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
+        case(MPH_MODE,RICHARDS_MODE)
           ! liquid mole fractions
           do i=1,option%nspec
             write(fid,110,advance="no") &
@@ -1438,8 +1437,8 @@ subroutine WriteBreakthroughDataForCell(fid,realization,local_id)
           enddo
       end select
   
-     select case(option%imode)
-        case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE)
+      select case(option%imode)
+        case(MPH_MODE)
           ! gas mole fractions
           do i=1,option%nspec
             write(fid,110,advance="no") &
@@ -1454,8 +1453,11 @@ subroutine WriteBreakthroughDataForCell(fid,realization,local_id)
       endif
     
       ! phase
-      write(fid,111,advance="no") &
-        int(GetVarFromArrayAtCell(realization,PHASE,ZERO_INTEGER,local_id))
+      select case(option%imode)
+        case(MPH_MODE,RICHARDS_MODE)
+          write(fid,111,advance="no") &
+            int(GetVarFromArrayAtCell(realization,PHASE,ZERO_INTEGER,local_id))
+      end select
       
     case default
   
@@ -1619,12 +1621,12 @@ subroutine OutputHDF5(realization)
 
   select case(option%imode)
   
-    case(TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE, &
+    case(MPH_MODE,RICHARDS_MODE, &
          RICHARDS_LITE_MODE)
 
       ! temperature
       select case(option%imode)
-        case (TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
+        case (MPH_MODE,RICHARDS_MODE)
           call GetVarFromArray(realization,global_vec,TEMPERATURE,ZERO_INTEGER)
           string = "Temperature"
           call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
@@ -1642,7 +1644,7 @@ subroutine OutputHDF5(realization)
 
       ! gas saturation
       select case(option%imode)
-        case (TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE)
+        case (MPH_MODE,FLASH_MODE)
           call GetVarFromArray(realization,global_vec,GAS_SATURATION,ZERO_INTEGER)
           string = "Gas Saturation"
           call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
@@ -1650,7 +1652,7 @@ subroutine OutputHDF5(realization)
       
       ! liquid energy
       select case(option%imode)
-        case (TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
+        case (MPH_MODE,RICHARDS_MODE)
           call GetVarFromArray(realization,global_vec,LIQUID_ENERGY,ZERO_INTEGER)
           string = "Liquid Energy"
           call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
@@ -1658,7 +1660,7 @@ subroutine OutputHDF5(realization)
       
       ! gas energy
       select case(option%imode)
-        case (TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE)    
+        case (MPH_MODE,FLASH_MODE)    
           call GetVarFromArray(realization,global_vec,GAS_ENERGY,ZERO_INTEGER)
           string = "Gas Energy"
           call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
@@ -1666,7 +1668,7 @@ subroutine OutputHDF5(realization)
     
       ! liquid mole fractions
       select case(option%imode)
-        case (TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE)
+        case (MPH_MODE,RICHARDS_MODE)
           do i=1,option%nspec
             call GetVarFromArray(realization,global_vec,LIQUID_MOLE_FRACTION,i-1)
             write(string,'(''Liquid Mole Fraction('',i4,'')'')') i
@@ -1676,7 +1678,7 @@ subroutine OutputHDF5(realization)
       
       ! gas mole fractions
       select case(option%imode)
-        case (TWOPH_MODE,MPH_MODE,VADOSE_MODE,FLASH_MODE)      
+        case (MPH_MODE,FLASH_MODE)      
           do i=1,option%nspec
             call GetVarFromArray(realization,global_vec,GAS_MOLE_FRACTION,i-1)
             write(string,'(''Gas Mole Fraction('',i4,'')'')') i
