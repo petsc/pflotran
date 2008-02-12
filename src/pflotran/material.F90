@@ -448,7 +448,7 @@ subroutine SaturationFunctionCompute(pressure,saturation,relative_perm, &
       else
         lambda = saturation_function%lambda
         Sr = saturation_function%Sr(option%nphase)
-        pc_alpha_neg_lambda = (pc*alpha)**-lambda
+        pc_alpha_neg_lambda = (pc*alpha)**(-lambda)
         Se = pc_alpha_neg_lambda
         dSe_pc = -lambda/pc*pc_alpha_neg_lambda
         saturation = Sr + (1.d0-Sr)*Se
