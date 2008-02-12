@@ -121,23 +121,24 @@ function GridCreate(igeom_)
   call initGrid(grid)
   grid%igeom = igeom_
   
-  if (igeom_ > 0) then
-    grid%igrid = STRUCTURED
-    allocate(grid%structured_grid)
-    call StructuredGridInit(grid%structured_grid)
-    select case(igeom_)
-      case(1)
-        grid%structured_grid%igeom = STRUCTURED_CARTESIAN
-      case(2)
-        grid%structured_grid%igeom = STRUCTURED_CYLINDRICAL
-      case(3)
-        grid%structured_grid%igeom = STRUCTURED_SPHERICAL
-    end select
-  else
-    grid%igrid = UNSTRUCTURED
-    allocate(grid%unstructured_grid)
-    call UnstructuredGridInit(grid%unstructured_grid)
-  endif
+  select case(igeom_)
+    case(1,2,3)
+      grid%igrid = STRUCTURED
+      allocate(grid%structured_grid)
+      call StructuredGridInit(grid%structured_grid)
+      select case(igeom_)
+        case(1)
+          grid%structured_grid%igeom = STRUCTURED_CARTESIAN
+        case(2)
+          grid%structured_grid%igeom = STRUCTURED_CYLINDRICAL
+        case(3)
+          grid%structured_grid%igeom = STRUCTURED_SPHERICAL
+      end select
+    case(0)
+      grid%igrid = UNSTRUCTURED
+      allocate(grid%unstructured_grid)
+      call UnstructuredGridInit(grid%unstructured_grid)
+  end select
   
   GridCreate => grid
 
