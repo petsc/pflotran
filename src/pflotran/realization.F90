@@ -267,7 +267,7 @@ subroutine RealizationInitCouplerAuxVars(realization,coupler_list)
       ! allocate arrays that match the number of connections
       select case(option%imode)
 
-        case(FLASH_MODE,RICHARDS_MODE,OWG_MODE,VADOSE_MODE,RICHARDS_LITE_MODE)
+        case(RICHARDS_MODE,RICHARDS_LITE_MODE)
        
           allocate(coupler%aux_real_var(option%ndof*option%nphase,num_connections))
           allocate(coupler%aux_int_var(1,num_connections))
