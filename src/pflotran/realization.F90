@@ -84,6 +84,7 @@ function RealizationCreate()
   call BreakthroughInitList(realization%breakthrough)
   
   nullify(realization%materials)
+  nullify(realization%material_array)
   nullify(realization%thermal_properties)
   nullify(realization%saturation_functions)
   nullify(realization%saturation_function_array)
