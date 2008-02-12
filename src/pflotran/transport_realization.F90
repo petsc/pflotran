@@ -46,7 +46,7 @@ contains
   
 ! ************************************************************************** !
 !
-! RealizationCreate: Allocates and initializes a new Realization object
+! TrRealizationCreate: Allocates and initializes a new Realization object
 ! author: Glenn Hammond
 ! date: 10/25/07
 !
@@ -81,6 +81,7 @@ function TrRealizationCreate()
   call BreakthroughInitList(realization%breakthrough)
   
   nullify(realization%materials)
+  nullify(realization%material_array)
   
   TrRealizationCreate => realization
   
@@ -88,12 +89,12 @@ end function TrRealizationCreate
 
 ! ************************************************************************** !
 !
-! RealizationProcessCouplers: Deallocates a realization
+! TrRealizationProcessCouplers: Deallocates a realization
 ! author: Glenn Hammond
 ! date: 11/01/07
 !
 ! ************************************************************************** !
-subroutine RealizationProcessCouplers(realization)
+subroutine TrRealizationProcessCouplers(realization)
 
   use Option_module
 
@@ -224,17 +225,17 @@ subroutine RealizationProcessCouplers(realization)
     breakthrough => breakthrough%next
   enddo
  
-end subroutine RealizationProcessCouplers
+end subroutine TrRealizationProcessCouplers
 
 ! ************************************************************************** !
 !
-! RealizationInitCouplerAuxVars: Initializes coupler auxillary variables 
+! TrRealizationInitCouplerAuxVars: Initializes coupler auxillary variables 
 !                                within list
 ! author: Glenn Hammond
 ! date: 11/26/07
 !
 ! ************************************************************************** !
-subroutine RealizationInitCouplerAuxVars(realization,coupler_list)
+subroutine TrRealizationInitCouplerAuxVars(realization,coupler_list)
 
   use Connection_module
   
@@ -285,17 +286,17 @@ subroutine RealizationInitCouplerAuxVars(realization,coupler_list)
   call RealizationUpdateCouplerAuxVars(realization,coupler_list, &
                                        force_update_flag)
 
-end subroutine RealizationInitCouplerAuxVars
+end subroutine TrRealizationInitCouplerAuxVars
 
 ! ************************************************************************** !
 !
-! RealizationUpdateCouplerAuxVars: Updates auxilliary variables associated 
+! TrRealizationUpdateCouplerAuxVars: Updates auxilliary variables associated 
 !                                  with couplers in list
 ! author: Glenn Hammond
 ! date: 11/26/07
 !
 ! ************************************************************************** !
-subroutine RealizationUpdateCouplerAuxVars(realization,coupler_list, &
+subroutine TrRealizationUpdateCouplerAuxVars(realization,coupler_list, &
                                            force_update_flag)
 
   implicit none
@@ -364,7 +365,7 @@ subroutine RealizationUpdateCouplerAuxVars(realization,coupler_list, &
     coupler => coupler%next
   enddo
 
-end subroutine RealizationUpdateCouplerAuxVars
+end subroutine TrRealizationUpdateCouplerAuxVars
 
 ! ************************************************************************** !
 !
@@ -373,7 +374,7 @@ end subroutine RealizationUpdateCouplerAuxVars
 ! date: 11/09/07
 !
 ! ************************************************************************** !
-subroutine RealizationUpdate(realization)
+subroutine TrRealizationUpdate(realization)
 
   implicit none
   
@@ -388,17 +389,17 @@ subroutine RealizationUpdate(realization)
 ! currently don't use aux_vars, just condition for src/sinks
 !  call RealizationUpdateSrcSinks(realization)
 
-end subroutine RealizationUpdate
+end subroutine TrRealizationUpdate
 
 ! ************************************************************************** !
 !
-! RealizationAddWaypointsToList: Creates waypoints assoiciated with source/sinks
+! TrRealizationAddWaypointsToList: Creates waypoints assoiciated with source/sinks
 !                             boundary conditions, etc. and add to list
 ! author: Glenn Hammond
 ! date: 11/01/07
 !
 ! ************************************************************************** !
-subroutine RealizationAddWaypointsToList(realization,waypoint_list)
+subroutine TrRealizationAddWaypointsToList(realization,waypoint_list)
 
   use Option_module
   use Waypoint_module
@@ -453,11 +454,11 @@ subroutine RealizationAddWaypointsToList(realization,waypoint_list)
     coupler => coupler%next
   enddo
   
-end subroutine RealizationAddWaypointsToList
+end subroutine TrRealizationAddWaypointsToList
 
 ! ************************************************************************** !
 !
-! RealizationDestroy: Deallocates a realization
+! TrRealizationDestroy: Deallocates a realization
 ! author: Glenn Hammond
 ! date: 11/01/07
 !

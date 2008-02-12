@@ -40,7 +40,7 @@ contains
 
 ! ************************************************************************** !
 !
-! TimestepperCreate: Allocates and initializes a new Timestepper object
+! TrTimestepperCreate: Allocates and initializes a new Timestepper object
 ! author: Glenn Hammond
 ! date: 10/25/07
 !
@@ -80,7 +80,7 @@ end function TrTimestepperCreate
 
 ! ************************************************************************** !
 !
-! StepperRun: Runs the time step loop
+! TrStepperRun: Runs the time step loop
 ! author: Glenn Hammond
 ! date: 10/25/07
 !
@@ -124,7 +124,7 @@ subroutine TrStepperRun(realization,stepper,stage)
   timestep_cut_flag = .false.
   stop_flag = .false.
 
-  call RealizationAddWaypointsToList(realization,stepper%waypoints)
+  call TrRealizationAddWaypointsToList(realization,stepper%waypoints)
   call WaypointListFillIn(option,stepper%waypoints)
   call WaypointListRemoveExtraWaypnts(option,stepper%waypoints)
   call WaypointConvertTimes(stepper%waypoints,realization%output_option%tconv)
@@ -232,12 +232,12 @@ end subroutine TrStepperRun
 
 ! ************************************************************************** !
 !
-! StepperUpdateDT: Updates time step
+! TrStepperUpdateDT: Updates time step
 ! author: 
 ! date: 
 !
 ! ************************************************************************** !
-subroutine StepperUpdateDT(stepper,option,num_newton_iterations)
+subroutine TrStepperUpdateDT(stepper,option,num_newton_iterations)
 
   use Option_module
   
@@ -311,16 +311,16 @@ subroutine StepperUpdateDT(stepper,option,num_newton_iterations)
   if (dtt>.25d0*option%time .and. option%time>1.d-2) dtt=.25d0*option%time
   option%dt = dtt
 #endif
-end subroutine StepperUpdateDT
+end subroutine TrStepperUpdateDT
 
 ! ************************************************************************** !
 !
-! StepperStepDT: Steps forward one step in time
+! TrStepperStepDT: Steps forward one step in time
 ! author: 
 ! date: 
 !
 ! ************************************************************************** !
-subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
+subroutine TrStepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
                          num_timestep_cuts,num_newton_iterations)
   
   use Transport_Realization_module
@@ -606,16 +606,16 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
   endif
 #endif
 
-end subroutine StepperStepDT
+end subroutine TrStepperStepDT
 
 ! ************************************************************************** !
 !
-! StepperUpdateSolution: Updates the realization and realization-dependent variables
+! TrStepperUpdateSolution: Updates the realization and realization-dependent variables
 ! author: 
 ! date: 
 !
 ! ************************************************************************** !
-subroutine StepperUpdateSolution(realization)
+subroutine TrStepperUpdateSolution(realization)
   
   use Transport_Realization_module
   use Option_module
@@ -674,11 +674,11 @@ subroutine StepperUpdateSolution(realization)
   ! update solutoin variables
   call RealizationUpdate(realization)
 #endif
-end subroutine StepperUpdateSolution
+end subroutine TrStepperUpdateSolution
 
 ! ************************************************************************** !
 !
-! TimestepperDestroy: Deallocates a time stepper
+! TrTimestepperDestroy: Deallocates a time stepper
 ! author: Glenn Hammond
 ! date: 11/01/07
 !

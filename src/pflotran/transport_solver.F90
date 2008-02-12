@@ -46,7 +46,7 @@ contains
 
 ! ************************************************************************** !
 !
-! SolverCreate: Allocates and initializes a new Solver object
+! TrSolverCreate: Allocates and initializes a new Solver object
 ! author: Glenn Hammond
 ! date: 10/25/07
 !
@@ -82,7 +82,7 @@ end function TrSolverCreate
   
 ! ************************************************************************** !
 !
-! SolverReadPflow: Reads debugging data from the input file
+! TrSolverReadPflow: Reads debugging data from the input file
 ! author: Glenn Hammond
 ! date: 12/21/07
 !
@@ -158,7 +158,7 @@ end subroutine TrSolverRead
 
 ! ************************************************************************** !
 !
-! SolverDestroy: Deallocates a solver
+! TrSolverDestroy: Deallocates a solver
 ! author: Glenn Hammond
 ! date: 11/01/07
 !
