@@ -22,10 +22,6 @@ ifdef compile_broken
   COMPILE_BROKEN_FLAGS = -DCOMPILE_BROKEN
 endif
 
-ifdef tran
-  TRANSPORT_FLAGS = -DTRANSPORT
-endif
-
 MYFLAGS = -I${objdir} $(HDF5_FLAGS) \
           $(COMPILE_BROKEN_FLAGS) -DRICHARDS_ANALYTICAL \
           $(TRANSPORT_FLAGS)
@@ -41,10 +37,10 @@ endif
 
 CLEANFILES       = pflow ptran pflotran pflotran_fc
 
-ifdef dev
- include ${PETSC_DIR}/conf/base
-else
+ifdef petscrel
  include ${PETSC_DIR}/bmake/common/base
+else
+ include ${PETSC_DIR}/conf/base
 endif
 
 util_obj  = ${common_src}fileio.o \
@@ -123,6 +119,7 @@ pflotran_obj = ${common_src}rock_react.o \
 pflow : $(util_obj) $(pflow_obj) ${pflow_src}pflow.o
 	${FLINKER}   -o pflow $(util_obj) $(pflow_obj) ${pflow_src}pflow.o ${PETSC_LIB} ${LIBS}
 
+ptran : TRANSPORT_FLAGS = -DTRANSPORT
 ptran : $(util_obj) $(ptran_obj) ${ptran_src}ptran.o
 	${FLINKER}   -o ptran $(util_obj) $(ptran_obj) ${ptran_src}ptran.o ${PETSC_LIB} ${LIBS}
 
