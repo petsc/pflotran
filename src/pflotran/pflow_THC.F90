@@ -42,7 +42,6 @@ contains
   subroutine THCResidual(snes, xx, r, grid)
   
   use water_eos_module
-  use hydrostat_module, only: recondition_bc
   implicit none
 
   SNES, intent(in) :: snes

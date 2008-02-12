@@ -57,7 +57,6 @@ subroutine PflowInit(simulation,filename)
   use Richards_Analytical_module
 #endif  
   use pflow_convergence_module
-  use pflow_solv_module 
   use pflow_vector_ops_module
   use Utility_module
     
@@ -113,13 +112,8 @@ subroutine PflowInit(simulation,filename)
   option%jh2o = 1; option%jgas =1
   select case(option%nphase)
     case(2)
-      if (option%imode == TWOPH_MODE) then
-        option%jgas=  2
-        option%jco2 = 3
-      else
-        option%jco2 = 2
-        option%jgas =3 
-      endif
+      option%jco2 = 2
+      option%jgas =3 
     case(3)
       option%jco2 = 2
       option%jgas =3 
@@ -143,9 +137,7 @@ subroutine PflowInit(simulation,filename)
   call VecDuplicate(field%porosity0, field%perm_pow, ierr)
       
   select case(option%imode)
-    ! everything but RICHARDS_MODE for now
-    case(MPH_MODE,COND_MODE,TWOPH_MODE,VADOSE_MODE,LIQUID_MODE,OWG_MODE, &
-         FLASH_MODE,TH_MODE,THC_MODE)
+    case(MPH_MODE,THC_MODE)
       call VecDuplicate(field%porosity0, field%conc, ierr)
       call VecDuplicate(field%porosity0, field%temp, ierr)
       call VecDuplicate(field%porosity0, field%ttemp, ierr)
@@ -159,9 +151,7 @@ subroutine PflowInit(simulation,filename)
   call VecDuplicate(field%porosity_loc, field%iphas_old_loc, ierr)
   
   select case(option%imode)
-    ! everything but RICHARDS_MODE for now
-    case(MPH_MODE,COND_MODE,TWOPH_MODE,VADOSE_MODE,LIQUID_MODE,OWG_MODE, &
-         FLASH_MODE,TH_MODE,THC_MODE)  
+    case(MPH_MODE,THC_MODE)  
       call VecDuplicate(field%porosity_loc, field%ttemp_loc, ierr)
   end select
 
@@ -180,9 +170,7 @@ subroutine PflowInit(simulation,filename)
   endif
 
   select case(option%imode)
-    ! everything but RICHARDS_MODE for now
-    case(MPH_MODE,COND_MODE,TWOPH_MODE,VADOSE_MODE,LIQUID_MODE,OWG_MODE, &
-         FLASH_MODE,TH_MODE,THC_MODE)
+    case(MPH_MODE,THC_MODE)
       ! nphase degrees of freedom
       call GridCreateVector(grid,NPHASEDOF,field%pressure,GLOBAL)
       call VecDuplicate(field%pressure, field%sat, ierr)
@@ -207,9 +195,7 @@ subroutine PflowInit(simulation,filename)
   end select
 
   select case(option%imode)
-    ! everything but RICHARDS_MODE for now
-    case(MPH_MODE,COND_MODE,TWOPH_MODE,VADOSE_MODE,LIQUID_MODE,OWG_MODE, &
-         FLASH_MODE,TH_MODE,THC_MODE)
+    case(MPH_MODE,THC_MODE)
       call GridCreateVector(grid,NPHASEDOF, field%ppressure_loc, LOCAL)
       call VecDuplicate(field%ppressure_loc, field%ssat_loc, ierr)
       call VecDuplicate(field%ppressure_loc, field%xxmol_loc, ierr)
@@ -225,79 +211,8 @@ subroutine PflowInit(simulation,filename)
       call VecDuplicate(field%ppressure_loc, field%v_t_loc, ierr)
   end select
   
-  if (option%imode == TWOPH_MODE) then
-    print *,'2ph add var'
-    call VecDuplicate(field%sat, field%d_s, ierr)
-    call VecDuplicate(field%sat, field%h_s, ierr)
-    call VecDuplicate(field%sat, field%u, ierr)
-    call VecDuplicate(field%sat, field%uu, ierr)
-    call VecDuplicate(field%sat, field%u_s, ierr)
-    call VecDuplicate(field%sat, field%u_p, ierr)
-    call VecDuplicate(field%sat, field%u_t, ierr)
-
-    call VecDuplicate(field%ssat_loc, field%d_s_loc, ierr)
-    call VecDuplicate(field%ssat_loc, field%h_s_loc, ierr)
-    call VecDuplicate(field%ssat_loc, field%u_s_loc, ierr)
-
-    call VecDuplicate(field%sat, field%pcw, ierr)
-    call VecDuplicate(field%sat, field%pc_p, ierr)
-    call VecDuplicate(field%sat, field%pc_t, ierr)
-    call VecDuplicate(field%sat, field%pc_s, ierr)
-    call VecDuplicate(field%ssat_loc, field%pcw_loc, ierr)
-    call VecDuplicate(field%ssat_loc, field%pc_p_loc, ierr)
-    call VecDuplicate(field%ssat_loc, field%pc_t_loc, ierr)
-    call VecDuplicate(field%ssat_loc, field%pc_s_loc, ierr)
-
-
-    call VecDuplicate(field%sat, field%kvr, ierr)
-    call VecDuplicate(field%sat, field%kvr_p, ierr)
-    call VecDuplicate(field%sat, field%kvr_t, ierr)
-    call VecDuplicate(field%sat, field%kvr_s, ierr)
-    call VecDuplicate(field%ssat_loc, field%kvr_loc, ierr)
-    call VecDuplicate(field%ssat_loc, field%kvr_p_loc, ierr)
-    call VecDuplicate(field%ssat_loc, field%kvr_t_loc, ierr)
-    call VecDuplicate(field%ssat_loc, field%kvr_s_loc, ierr)
-
-    call GridCreateVector(grid,NPHANCOMPDOF, field%h_c,GLOBAL)
-    call VecDuplicate(field%h_c, field%u_c, ierr)
-    call VecDuplicate(field%h_c, field%avgmw_c, ierr)
-    call VecDuplicate(field%h_c, field%d_c, ierr)
-    call VecDuplicate(field%h_c, field%pc_c, ierr)
-    call VecDuplicate(field%h_c, field%kvr_c, ierr)
-        
-    call GridCreateVector(grid,NPHANCOMPDOF, field%h_c_loc,LOCAL)
-    call VecDuplicate(field%h_c_loc, field%avgmw_c_loc, ierr)
-    call VecDuplicate(field%h_c_loc, field%d_c_loc, ierr)
-    call VecDuplicate(field%h_c_loc, field%pc_c_loc, ierr)
-    call VecDuplicate(field%h_c_loc, field%kvr_c_loc, ierr)
-
-
-    call GridCreateVector(grid,NPHANSPECDOF, field%hen,GLOBAL)
-    call GridCreateVector(grid,NPHANSPECDOF, field%hen_loc,LOCAL)
-    call VecDuplicate(field%hen, field%hen_p, ierr)
-    call VecDuplicate(field%hen_loc, field%hen_p_loc, ierr)
-    call VecDuplicate(field%hen, field%hen_t, ierr)
-    call VecDuplicate(field%hen_loc, field%hen_t_loc, ierr)
-    call VecDuplicate(field%hen, field%hen_s, ierr)
-    call VecDuplicate(field%hen_loc, field%hen_s_loc, ierr)
-    call VecDuplicate(field%hen, field%df, ierr)
-    call VecDuplicate(field%hen_loc, field%df_loc, ierr)
-    call VecDuplicate(field%df, field%df_p, ierr)
-    call VecDuplicate(field%df_loc, field%df_p_loc, ierr)
-    call VecDuplicate(field%df, field%df_t, ierr)
-    call VecDuplicate(field%df_loc, field%df_t_loc, ierr)
-    call VecDuplicate(field%df, field%df_s, ierr)
-    call VecDuplicate(field%df_loc, field%df_s_loc, ierr)
-  
-    call GridCreateVector(grid,NPHANSPECNCOMPDOF,field%hen_c, GLOBAL)
-    call GridCreateVector(grid,NPHANSPECNCOMPDOF,field%hen_c_loc,LOCAL)
-      
-    call VecDuplicate(field%hen_c, field%df_c, ierr)
-    call VecDuplicate(field%hen_c_loc, field%df_c_loc, ierr)
-  end if  
-
   select case(option%imode)
-    case(MPH_MODE,FLASH_MODE,OWG_MODE,VADOSE_MODE)
+    case(MPH_MODE)
       call GridCreateVector(grid,VARDOF, field%var_loc,LOCAL)
   end select
 
@@ -330,9 +245,7 @@ subroutine PflowInit(simulation,filename)
       ! Allocate memory for allocatable arrays.
 !-----------------------------------------------------------------------
   select case(option%imode)
-    ! everything but RICHARDS_MODE for now
-    case(MPH_MODE,COND_MODE,TWOPH_MODE,VADOSE_MODE,LIQUID_MODE,OWG_MODE, &
-         FLASH_MODE,TH_MODE,THC_MODE)
+    case(MPH_MODE)
       allocate(field%xphi_co2(grid%nlmax))
       allocate(field%xxphi_co2(grid%nlmax))
       allocate(field%den_co2(grid%nlmax))
@@ -366,7 +279,7 @@ subroutine PflowInit(simulation,filename)
   endif
 
   select case(option%imode)
-    case(MPH_MODE,OWG_MODE,FLASH_MODE)
+    case(MPH_MODE)
       call initialize_span_wagner(option%itable,option%myrank)  
   end select
   
@@ -426,9 +339,8 @@ subroutine PflowInit(simulation,filename)
   endif
 
   select case(option%imode)
-    ! not MPH, RICARDS*
-    case(COND_MODE,TWOPH_MODE,VADOSE_MODE,LIQUID_MODE,OWG_MODE, &
-         FLASH_MODE,TH_MODE,THC_MODE)
+    ! not MPH, RICHARDS*
+    case(THC_MODE)
       temp_int = ConnectionGetNumberInList(grid%internal_connection_list)
       allocate(field%vl_loc(temp_int))
       allocate(field%vvl_loc(temp_int))
@@ -443,21 +355,13 @@ subroutine PflowInit(simulation,filename)
 ! check number of dofs and phases
   iflag = PETSC_FALSE
   select case(option%imode)
-    case(COND_MODE)
-      if (option%ndof .ne. 1 .or. option%nphase .ne. 1) iflag = PETSC_TRUE
-    case(TH_MODE)
-      if (option%ndof .ne. 2 .or. option%nphase .ne. 1) iflag = PETSC_TRUE
     case(THC_MODE)
       if (option%ndof .ne. 3 .or. option%nphase .ne. 1) iflag = PETSC_TRUE
-    case(TWOPH_MODE)
-      if (option%ndof .ne. 4 .or. option%nphase .ne. 2) iflag = PETSC_TRUE
-    case(MPH_MODE,RICHARDS_MODE,FLASH_MODE,VADOSE_MODE)
+    case(MPH_MODE,RICHARDS_MODE)
       if (option%ndof .ne. (option%nspec+1)) iflag = PETSC_TRUE
     case(RICHARDS_LITE_MODE)
       if (option%ndof /= 1 .and. option%nphase /= 1 .and. option%nspec /= 1) &
         iflag = PETSC_TRUE
-    case(OWG_MODE)
-      if (option%ndof .ne. (option%nspec)) iflag = PETSC_TRUE
     case default
       if (option%ndof .ne. 1 .or. option%nphase .ne. 1) iflag = PETSC_TRUE
   end select
@@ -481,28 +385,14 @@ subroutine PflowInit(simulation,filename)
     write(*,'(" number of dofs = ",i3,", number of phases = ",i3,i2)') &
       option%ndof,option%nphase
     select case(option%imode)
-      case(COND_MODE)
-        write(*,'(" mode = Conduction: T")')
-      case(TH_MODE)
-        write(*,'(" mode = TH: p, T")')
       case(THC_MODE)
         write(*,'(" mode = THC: p, T, C")')
-      case(TWOPH_MODE)
-        write(*,'(" mode = 2-PH: p, T, s, C")')
       case(MPH_MODE)
         write(*,'(" mode = MPH: p, T, s/C")')
-      case(FLASH_MODE)
-        write(*,'(" mode = flash: p, T, z")')
-      case(VADOSE_MODE)
-        write(*,'(" mode = VAD: p, T, s/C")')
       case(RICHARDS_MODE)
         write(*,'(" mode = Richards: p, T, s/C")')
       case(RICHARDS_LITE_MODE)
         write(*,'(" mode = Richards: p")')      
-      case(OWG_MODE)
-        write(*,'(" mode = O+W+G: p, T, s/C")')
-      case default
-        write(*,'(" mode = Single Liquid Phase: p")')
     end select
   endif
 
@@ -535,27 +425,6 @@ subroutine PflowInit(simulation,filename)
     call ISColoringDestroy(iscoloring, ierr)
 
     select case(option%imode)
-#if 0
-    ! need to be implemented
-      case(COND_MODE)
-        call MatFDColoringSetFunctionSNES(solver%matfdcoloring, &
-                                          CondResidual,option,ierr)
-      case(TH_MODE)
-        call MatFDColoringSetFunctionSNES(solver%matfdcoloring, &
-                                          THResidual,option, ierr)
-      case(THC_MODE)
-        call MatFDColoringSetFunctionSNES(solver%matfdcoloring, &
-                                          THCResidual,option, ierr)
-      case(TWOPH_MODE)
-        call MatFDColoringSetFunctionSNES(solver%matfdcoloring, &
-                                          TTPHASEResidual,option, ierr)
-      case(FLASH_MODE)
-        call MatFDColoringSetFunctionSNES(solver%matfdcoloring, &
-                                          FlashResidual,option, ierr)
-      case(VADOSE_MODE)
-        call MatFDColoringSetFunctionSNES(solver%matfdcoloring, &
-                                          VADOSEResidual,option, ierr)
-#endif                                          
       case(RICHARDS_MODE)
 #ifdef RICHARDS_ANALYTICAL
         call MatFDColoringSetFunctionSNES(solver%matfdcoloring, &
@@ -570,15 +439,6 @@ subroutine PflowInit(simulation,filename)
       case(MPH_MODE)
         call MatFDColoringSetFunctionSNES(solver%matfdcoloring, &
                                           MPHASEResidual,option, ierr)
-#if 0                                          
-    ! need to be implemented
-      case(OWG_MODE)
-        call MatFDColoringSetFunctionSNES(solver%matfdcoloring, &
-                                          OWGResidual,option, ierr)
-      case default
-        call MatFDColoringSetFunctionSNES(solver%matfdcoloring, &
-                                          LiquidResidual,option, ierr)
-#endif                                          
     end select
         
     call MatFDColoringSetFromOptions(solver%matfdcoloring, ierr)
@@ -594,10 +454,7 @@ subroutine PflowInit(simulation,filename)
     if (option%myrank == 0) write(*,'(" Using matrix-free Newton-Krylov")')
 
     select case(option%imode)
-      case(COND_MODE)
-        call MatCreateMFFD(solver%snes,field%ttemp,solver%J,ierr)
-      case(TH_MODE,THC_MODE,TWOPH_MODE,MPH_MODE,FLASH_MODE,RICHARDS_MODE, &
-           VADOSE_MODE,OWG_MODE,RICHARDS_LITE_MODE)
+      case(THC_MODE,MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
         call MatCreateMFFD(solver%snes,field%xx,solver%J,ierr)
       case default
         call MatCreateMFFD(solver%snes,field%ppressure,solver%J,ierr)
@@ -659,29 +516,6 @@ subroutine PflowInit(simulation,filename)
     call printMsg(option,'Preconditioner: '//trim(solver%pc_type))
 
     select case(option%imode)
-#if 0    
-      ! still needs to be implemented
-      case(COND_MODE)
-        call SNESSetJacobian(solver%snes, solver%J, solver%J, CondJacobian, &
-                           grid, ierr); CHKERRQ(ierr)
-      case(TH_MODE)
-        call SNESSetJacobian(solver%snes, solver%J, solver%J, THJacobian, &
-                           grid, ierr); CHKERRQ(ierr)
-      case(THC_MODE)
-        call SNESSetJacobian(solver%snes, solver%J, solver%J, THCJacobian, &
-                           grid, ierr); CHKERRQ(ierr)
-      case(TWOPH_MODE)
-        call SNESSetJacobian(solver%snes, solver%J, solver%J, TTPHASEJacobian, &
-                           grid, ierr); CHKERRQ(ierr)
-      case(FLASH_MODE)
-        call SNESSetJacobian(solver%snes, solver%J, solver%J, FlashJacobian, &
-                           grid, ierr); CHKERRQ(ierr)
-        if (option%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(grid)
-      case(VADOSE_MODE)
-        call SNESSetJacobian(solver%snes, solver%J, solver%J, VADOSEJacobian, &
-                           grid, ierr); CHKERRQ(ierr)
-        if (option%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(grid)
-#endif
       case(RICHARDS_MODE)
 #ifdef RICHARDS_ANALYTICAL
         call SNESSetJacobian(solver%snes, solver%J, solver%J, RichardsAnalyticalJacobian, &
@@ -690,25 +524,12 @@ subroutine PflowInit(simulation,filename)
         call SNESSetJacobian(solver%snes, solver%J, solver%J, RichardsJacobian, &
                              realization, ierr); CHKERRQ(ierr)
 #endif                             
-        if (option%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(realization,solver)
       case(RICHARDS_LITE_MODE)
         call SNESSetJacobian(solver%snes, solver%J, solver%J, RichardsLiteJacobian, &
                              realization, ierr); CHKERRQ(ierr)
-        if (option%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(realization,solver)
       case(MPH_MODE)
         call SNESSetJacobian(solver%snes, solver%J, solver%J, MPHASEJacobian, &
                              realization, ierr); CHKERRQ(ierr)
-        if (option%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(realization,solver)
-#if 0      
-      ! still needs to be implemented
-      case(OWG_MODE)
-        call SNESSetJacobian(solver%snes, solver%J, solver%J, OWGJacobian, &
-                           grid, ierr); CHKERRQ(ierr)
-        if (option%use_ksp == PETSC_TRUE) call pflow_kspsolver_init(grid)
-      case default
-        call SNESSetJacobian(solver%snes, solver%J, solver%J, LiquidJacobian, &
-                           grid, ierr); CHKERRQ(ierr)
-#endif
     end select                         
 
   endif
@@ -717,20 +538,9 @@ subroutine PflowInit(simulation,filename)
                      &++++++++++++++++++++++++++++",/)')
 
   select case(option%imode)
-#if 0  
-    ! need to be implemented
-    case(COND_MODE)
-      call SNESSetFunction(solver%snes,field%r,CondResidual,realization,ierr)
-    case(TH_MODE)
-      call SNESSetFunction(solver%snes,field%r,THResidual,realization,ierr)
+#if 0
     case(THC_MODE)
       call SNESSetFunction(solver%snes,field%r,THCResidual,realization,ierr)
-    case(TWOPH_MODE)
-      call SNESSetFunction(solver%snes,field%r,TTPHASEResidual,realization,ierr)
-    case(FLASH_MODE)
-      call SNESSetFunction(solver%snes,field%r,FlashResidual,realization,ierr)
-    case(VADOSE_MODE)
-      call SNESSetFunction(solver%snes,field%r,VADOSEResidual,realization,ierr)
 #endif      
     case(RICHARDS_MODE)
 #ifdef RICHARDS_ANALYTICAL    
@@ -742,13 +552,6 @@ subroutine PflowInit(simulation,filename)
       call SNESSetFunction(solver%snes,field%r,RichardsLiteResidual,realization,ierr)
     case(MPH_MODE)
       call SNESSetFunction(solver%snes,field%r,MPHASEResidual,realization,ierr)
-#if 0 
-    ! need to be implemented     
-    case(OWG_MODE)
-      call SNESSetFunction(solver%snes,field%r,OWGResidual,realization,ierr)
-    case default
-      call SNESSetFunction(solver%snes,field%r,LiquidResidual,realization,ierr)
-#endif      
   end select
 
   ! Set the tolerances for the Newton solver.
@@ -770,7 +573,7 @@ subroutine PflowInit(simulation,filename)
  
 
   select case(option%imode)
-    case(MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE,OWG_MODE,RICHARDS_LITE_MODE)
+    case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
 !      allocate(field%varbc(1:(option%ndof+1)*(2+7*option%nphase + 2 *  &
 !                                       option%nphase*option%nspec)))
     case default  
@@ -816,34 +619,6 @@ subroutine PflowInit(simulation,filename)
       allocate(field%kvr_s_bc(option%nphase))
   end select
    
-
-  if(option%print_bcinfo == PETSC_TRUE) then
-    if (option%myrank == 0) print *, 'Someone will have to rewrite print_bcinfo'
-  endif
-
-#if 0
-  ! should we still support this
-  if (grid%iread_perm == 1) then
-    call Read_perm_field(grid)
-  endif
-#endif
-!geh
-  if (option%ihydrostatic == 3) then
-    if (option%imode == MPH_MODE .or. &
-        option%imode == VADOSE_MODE .or. &
-        option%imode == FLASH_MODE .or. &
-        option%imode == RICHARDS_MODE) then
-        ! print *,'in nhydro'
-      print *, 'fix nhydrostatic3'
-      stop
-#if 0
-      ! needs to be reimplemented       
-      call nhydrostatic3(grid)
-      ! print *,'out nhydro'
-#endif        
-    endif
-  endif
- 
 ! Note: VecAssemblyBegin/End needed to run on the Mac - pcl (11/21/03)!
   if (field%conc /= 0) then
     call VecAssemblyBegin(field%conc,ierr)
@@ -859,9 +634,8 @@ subroutine PflowInit(simulation,filename)
   !-----------------------------------------------------------------------
   ! Initialize field variables
   !-----------------------------------------------------------------------  
-  if (option%imode /= MPH_MODE .and. option%imode /= OWG_MODE .and. &
-      option%imode /= VADOSE_MODE .and. option%imode /= FLASH_MODE .and. &
-      option%imode /= RICHARDS_MODE .and. option%imode /= RICHARDS_LITE_MODE) then   
+  if (option%imode /= MPH_MODE .and. option%imode /= RICHARDS_MODE .and. &
+      option%imode /= RICHARDS_LITE_MODE) then   
 
     select case(option%ndof)
       case(1)
@@ -880,16 +654,6 @@ subroutine PflowInit(simulation,filename)
       
          
   select case(option%imode)
-#if 0
-    ! still need implementation
-    case(TWOPH_MODE)
-      call pflow_2phase_initadj(grid)
-      call VecCopy(grid%iphas, grid%iphas_old,ierr)
-      call pflow_pack_xx4(grid%yy, grid%pressure, grid%nphase, grid%temp, ONE_INTEGER, &
-           grid%xmol,grid%nphase , grid%sat,grid%nphase , ierr)
-      call VecCopy(grid%yy, grid%xx, ierr)
-      call pflow_update_2phase(grid)
-#endif
     case(RICHARDS_MODE)
 #ifdef RICHARDS_ANALYTICAL
       call RichardsSetup(realization)
@@ -913,24 +677,6 @@ subroutine PflowInit(simulation,filename)
       call VecCopy(field%iphas_loc, field%iphas_old_loc,ierr)
       call VecCopy(field%xx, field%yy, ierr)
       call pflow_update_mphase(realization)
-#if 0
-    ! still need implementation
-    case(FLASH_MODE)
-      call pflow_flash_initadj(grid)
-      call VecCopy(grid%iphas, grid%iphas_old,ierr)
-      call VecCopy(grid%xx, grid%yy, ierr)
-      call pflow_update_flash(grid)
-    case(OWG_MODE)
-      call pflow_owg_initadj(grid)
-      call VecCopy(grid%iphas, grid%iphas_old,ierr)
-      call VecCopy(grid%xx, grid%yy, ierr)
-      call pflow_update_owg(grid)
-    case(VADOSE_MODE)
-      call pflow_vadose_initadj(grid)
-      call VecCopy(grid%iphas, grid%iphas_old,ierr)
-      call VecCopy(grid%xx, grid%yy, ierr)
-      call pflow_update_vadose(grid)
-#endif
   end select  
   
 ! zero initial velocity
@@ -1991,8 +1737,7 @@ subroutine readInput(simulation,filename)
           call fiErrorMsg(option%myrank,'icaptype','PCKR', ierr)
       
           select case(option%imode)
-            case(MPH_MODE,OWG_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE, &
-                 RICHARDS_LITE_MODE)
+            case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
               do np=1, option%nphase
                 call fiReadDouble(string,saturation_function%Sr(np),ierr)
                 call fiErrorMsg(option%myrank,'Sr','PCKR', ierr)
@@ -2028,8 +1773,7 @@ subroutine readInput(simulation,filename)
         option%icaptype = 0
   
         select case(option%imode)
-          case(MPH_MODE,OWG_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE, &
-               RICHARDS_LITE_MODE)
+          case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
             allocate(option%sir(1:option%nphase,count))
           case default
             allocate(option%swir(count))
@@ -2057,8 +1801,7 @@ subroutine readInput(simulation,filename)
           
           option%icaptype(id) = saturation_function%saturation_function_itype
           select case(option%imode)
-            case(MPH_MODE,OWG_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE, &
-                 RICHARDS_LITE_MODE)
+            case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
               do i=1,option%nphase
                 option%sir(i,id) = saturation_function%Sr(i)
               enddo
@@ -2085,8 +1828,6 @@ subroutine readInput(simulation,filename)
         enddo
 
         if (option%imode == MPH_MODE .or. &
-            option%imode == VADOSE_MODE .or. &
-            option%imode == FLASH_MODE .or. &
             option%imode == RICHARDS_MODE .or. &
             option%imode == RICHARDS_LITE_MODE) then
           call pckr_init(option%nphase,count,grid%nlmax, &
@@ -2102,9 +1843,6 @@ subroutine readInput(simulation,filename)
           do j = 1, count
             i=option%icaptype(j)
             if (option%imode == MPH_MODE .or. &
-                option%imode == OWG_MODE .or. &
-                option%imode == VADOSE_MODE .or. &
-                option%imode == FLASH_MODE .or. &
                 option%imode == RICHARDS_MODE .or. &
                 option%imode == RICHARDS_LITE_MODE) then
               write(IUNIT2,'(i4,1p8e12.4)') i,(option%sir(np,i),np=1, &
@@ -2119,8 +1857,6 @@ subroutine readInput(simulation,filename)
         end if
 
         if (option%imode == MPH_MODE .or. &
-            option%imode == VADOSE_MODE .or. &
-            option%imode == FLASH_MODE .or. &
             option%imode == RICHARDS_MODE .or. &
             option%imode == RICHARDS_LITE_MODE) then
           deallocate(option%icaptype, option%pckrm, option%lambda, &
@@ -2632,34 +2368,12 @@ subroutine setMode(option,mcomp,mphas)
 #endif  
   endif 
   
-  if (option%imode /= LIQUID_MODE .and. &
-      option%imode /= COND_MODE .and. &
-      option%imode /= TH_MODE .and. &
-      option%imode /= THC_MODE .and. &
-      option%imode /= TWOPH_MODE .and. &
+  if (option%imode /= THC_MODE .and. &
       option%imode /= MPH_MODE .and. &
-      option%imode /= FLASH_MODE .and. &
-      option%imode /= OWG_MODE .and. &
-      option%imode /= VADOSE_MODE .and. &
       option%imode /= RICHARDS_MODE .and. &
       option%imode /= RICHARDS_LITE_MODE) then 
 
     if (mcomp >0 .and. mphas>0)then
-      if (option%imode /= COND_MODE .and. mcomp ==1)then
-        option%imode = COND_MODE
-        option%mode = 'cond'
-        option%nphase = 1; option%ndof =1
-      endif
-      if (option%imode /= PETSC_FALSE .and. mcomp == 32)then
-        option%imode = COND_MODE
-        option%mode = 'cond'
-        option%nphase = 1; option%ndof =1
-      endif
-      if (option%imode /= TH_MODE .and. mcomp == 33 .and. mphas == 3)then
-        option%imode = TH_MODE
-        option%mode = 'th'
-        option%nphase = 1; option%ndof =2
-      endif
       if (option%imode /= THC_MODE .and. mcomp == 37)then
         option%imode = THC_MODE
         option%mode = 'thc'
@@ -2670,11 +2384,6 @@ subroutine setMode(option,mcomp,mphas)
         option%mode = 'mph'
         option%nphase = 2; option%ndof =3; option%nspec =2 
       endif
-      if (option%imode /= VADOSE_MODE .and. mcomp == 49)then
-        option%imode = VADOSE_MODE
-        option%mode = 'vadose'
-        option%nphase = 2; option%ndof =3; option%nspec =2 
-      endif
       if (option%imode /= RICHARDS_MODE .and. mcomp == 33 .and. mphas == 11) then
         option%imode = RICHARDS_MODE
         option%mode = 'richards'
@@ -2683,11 +2392,6 @@ subroutine setMode(option,mcomp,mphas)
           option%ndof = option%nspec +1
         endif
       endif
-    endif
-    if (option%imode /= OWG_MODE .and. mcomp == 11)then
-      option%imode = OWG_MODE
-      option%mode = 'owg'
-      option%nphase = 3; option%ndof =3; option%nspec =3 
     endif
   endif
   if (option%imode == NULL_MODE) then
@@ -2874,7 +2578,6 @@ subroutine assignInitialConditions(realization)
 #ifndef RICHARDS_ANALYTICAL  
   use Richards_module, only : pflow_Richards_setupini
 #endif
-  use hydrostat_module
 
   implicit none
   
@@ -2901,26 +2604,13 @@ subroutine assignInitialConditions(realization)
   grid => realization%grid
     
   select case(option%imode)
-  ! needs to be implemented
-#if 0
-    case(FLASH_MODE)
-      call pflow_flash_setupini(realization)
-#endif  
     case(RICHARDS_LITE_MODE)
-      !skip
     case(RICHARDS_MODE)
 #ifndef RICHARDS_ANALYTICAL    
       call pflow_richards_setupini(realization)
 #endif
     case(MPH_MODE)
       call pflow_mphase_setupini(realization)
-#if 0
-  ! needs to be implemented
-    case(OWG_MODE)
-      call pflow_owg_setupini(realization)
-    case(VADOSE_MODE)
-      call pflow_vadose_setupini(realization)
-#endif      
     case default
       call VecGetArrayF90(field%pressure,pressure_p,ierr)
       call VecGetArrayF90(field%temp,temp_p,ierr)
@@ -3037,42 +2727,6 @@ subroutine assignInitialConditions(realization)
   call GridGlobalToLocal(grid,field%xx,field%xx_loc,NDOF)  
   call GridLocalToLocal(grid,field%iphas_loc,field%iphas_loc,ONEDOF)  
 
-
-
-#if 1 
-  ! needs to be implemented
-  ! set hydrostatic properties for initial and boundary conditions with depth
-  if (option%ihydrostatic == 1) then
-    select case(option%imode)
-      case(MPH_MODE,VADOSE_MODE,FLASH_MODE)
-        call mhydrostatic(realization)
-      case(OWG_MODE)
-!        call owghydrostatic(realization)
-      case default
-!        call hydrostatic(realization)
-    end select
-  endif
-#endif  
-  !if (grid%iread_init==2) call Read_init_field(grid)
-  
-  if (option%imode == TWOPH_MODE) then
-    field%pressurebc0(2,:) = field%pressurebc0(1,:)
-    field%velocitybc0(2,:) = field%velocitybc0(1,:)
-  endif
-
-#if 0
-  select case(option%imode)
-    case(MPH_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE,OWG_MODE)
-      deallocate(field%xx_ini)
-      deallocate(option%iphas_ini)
-    case default
-      deallocate(option%pres_ini)
-      deallocate(field%temp_ini)
-      deallocate(field%sat_ini)
-      deallocate(field%xmol_ini)
-      deallocate(field%conc_ini)
-  end select
-#endif
 end subroutine assignInitialConditions
 
 ! ************************************************************************** !

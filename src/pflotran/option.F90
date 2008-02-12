@@ -56,7 +56,6 @@ module Option_module
     
     PetscInt :: idt_switch
     
-    PetscTruth :: use_ksp
     PetscTruth :: use_isoth
     PetscTruth :: use_debug
     PetscTruth :: print_bcinfo
@@ -200,7 +199,6 @@ function OptionCreate()
   
   allocate(option)
   
-  option%use_ksp = PETSC_FALSE
   option%use_isoth = PETSC_FALSE
   option%print_bcinfo = PETSC_FALSE
 
@@ -330,8 +328,6 @@ subroutine OptionCheckCommandLine(option)
                            option%monitor_h, ierr) 
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_debug", &
                            option%use_debug, ierr)
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_ksp", &
-                           option%use_ksp, ierr)
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_isoth", &
                            option%use_isoth, ierr)
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-print_bcinfo", &

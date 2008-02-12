@@ -56,8 +56,6 @@ util_obj  = ${common_src}fileio.o \
 	${common_src}petscrelwrappers.o
 
 pflow_obj = ${common_src}pflow_vector_ops.o \
-	${common_src}pflow_read_gridsize.o \
-	${common_src}pflow_gridtype.o \
 	${common_src}pflow_pckr_mod.o \
 	${common_src}option.o \
 	${common_src}field.o \
@@ -77,29 +75,15 @@ pflow_obj = ${common_src}pflow_vector_ops.o \
 	${common_src}hydrostatic.o \
 	${common_src}realization.o \
 	${common_src}hdf5.o \
-	${common_src}Readfield.o \
 	${common_src}mixed_fluid_eos.o \
 	${common_src}translator_mixed_fluid_mph.o \
-	${common_src}translator_mixed_fluid_OWG.o \
-	${common_src}translator_mixed_fluid_vad.o \
 	${common_src}translator_mixed_fluid_richards.o \
-	${common_src}translator_mixed_fluid_flash.o \
-	${common_src}pflow_vadose_ResJac.o\
-	${common_src}hydrostat.o \
-	${common_src}nhydrostatic.o \
-	${common_src}pflow_LIQUID.o \
-	${common_src}pflow_COND.o \
-	${common_src}pflow_TH.o \
 	${common_src}pflow_THC.o \
-	${common_src}pflow_2pha_ResJac.o\
-	${common_src}pflow_owg_ResJac.o\
 	${common_src}pflow_mphase_ResJac.o\
-	${common_src}pflow_flash_ResJac.o\
 	${common_src}pflow_richards_ResJac.o\
 	${common_src}richards.o\
 	${common_src}richards_lite.o\
 	${common_src}general_grid.o \
-	${common_src}pflow_solve.o \
 	${common_src}pflow_checkpoint.o \
 	${common_src}timestepper.o \
 	${common_src}simulation.o \
@@ -177,7 +161,6 @@ hydrostatic.o : option.o grid.o coupler.o condition.o connection.o region.o \
                 structured_grid.o
 waypoint.o : option.o 
 pflow_vector_ops.o : water_eos.o
-pflow_output_new.o : pflow_output.o
 pflow_output2.o : grid.o structured_grid.o option.o realization.o field.o \
                   coupler.o connection.o hdf5.o breakthrough.o
 pflow_richards_ResJac.o : realization.o option.o field.o grid.o coupler.o \
@@ -187,19 +170,11 @@ pflow_mphase_ResJac.o : realization.o option.o field.o grid.o coupler.o \
 timestepper.o : \
 	        mixed_fluid_eos.o \
                 translator_mixed_fluid_mph.o \
-                translator_mixed_fluid_OWG.o \
-                translator_mixed_fluid_vad.o \
-                translator_mixed_fluid_flash.o \
                 translator_mixed_fluid_richards.o \
                 pflow_richards_ResJac.o \
                 richards.o \
                 richards_lite.o \
-                pflow_vadose_ResJac.o \
-                pflow_2pha_ResJac.o \
-                pflow_owg_ResJac.o \
                 pflow_mphase_ResJac.o \
-                pflow_flash_ResJac.o \
-                pflow_solve.o \
                 realization.o \
                 grid.o \
                 option.o \
@@ -207,14 +182,9 @@ timestepper.o : \
                 solver.o \
                 pflow_output2.o \
                 pflow_checkpoint.o \
-                hydrostat.o \
 		waypoint.o
 hdf5.o : realization.o option.o grid.o
-pflow_output.o : pflow_gridtype.o petscrelwrappers.o pflow_output2.o
-pflow_COND.o : pflow_gridtype.o 
-pflow_LIQUID.o : pflow_gridtype.o water_eos.o
-pflow_TH.o : pflow_gridtype.o water_eos.o
-pflow_THC.o : pflow_gridtype.o water_eos.o
+pflow_THC.o : water_eos.o
 pflow.o : simulation.o realization.o timestepper.o solver.o grid.o option.o \
 	  pflow_init.o pflow_output2.o field.o
 pflow_init.o : simulation.o option.o grid.o solver.o realization.o material.o \

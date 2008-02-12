@@ -238,17 +238,7 @@ subroutine GridCreateDMs(grid,option)
   call GridCreateDM(grid,grid%dm_ndof,ndof,stencil_width)
 
   select case(option%imode) 
-    case(TWOPH_MODE)
-      ndof = option%nphase*option%npricomp
-      call GridCreateDM(grid,grid%dm_nphancomp_dof,ndof,stencil_width)
-
-      ndof = option%nphase*option%nspec
-      call GridCreateDM(grid,grid%dm_nphanspec_dof,ndof,stencil_width)
-
-      ndof = option%nphase*option%nspec*option%npricomp
-      call GridCreateDM(grid,grid%dm_nphanspecncomp_dof,ndof,stencil_width)
-
-    case(MPH_MODE,VADOSE_MODE,FLASH_MODE,OWG_MODE)
+    case(MPH_MODE)
       ndof = (option%ndof+1)*(2+7*option%nphase + 2*option%nspec*option%nphase)
       call GridCreateDM(grid,grid%dm_var_dof,ndof,stencil_width)
   end select

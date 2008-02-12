@@ -87,7 +87,6 @@ subroutine pflowGridCheckpoint(realization,flowsteps,newtcum,icutcum, &
   use Option_module
   use Field_module
   use Grid_module
-  use TTPHASE_module
 
   implicit none
 
@@ -197,8 +196,7 @@ subroutine pflowGridCheckpoint(realization,flowsteps,newtcum,icutcum, &
   ! that indicates what phases are present, as well as the 'var' vector 
   ! that holds variables derived from the primary ones via the translator.
   select case(option%imode)
-    case(MPH_MODE,VADOSE_MODE,FLASH_MODE,TWOPH_MODE,RICHARDS_MODE, &
-         RICHARDS_LITE_MODE)
+    case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
       call GridLocalToGlobal(grid,field%iphas_loc,global_vec,ONEDOF)
       call VecView(global_vec, viewer, ierr)
 #ifdef RICHARDS_ANALYTICAL
@@ -277,7 +275,6 @@ subroutine pflowGridRestart(realization,flowsteps,newtcum,icutcum, &
   use Option_module
   use Field_module
   use Grid_module
-  use TTPHASE_module
 
   implicit none
 
@@ -331,8 +328,7 @@ subroutine pflowGridRestart(realization,flowsteps,newtcum,icutcum, &
   call VecCopy(field%xx, field%yy, ierr)
   
   select case(option%imode)
-    case(MPH_MODE,VADOSE_MODE,FLASH_MODE,TWOPH_MODE,RICHARDS_MODE, &
-         RICHARDS_LITE_MODE)
+    case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
       call VecLoadIntoVector(viewer, global_vec, ierr)      
       call GridGlobalToLocal(grid,global_vec,field%iphas_loc,ONEDOF)
       call VecCopy(field%iphas_loc, field%iphas_old_loc, ierr)
@@ -380,11 +376,8 @@ end subroutine pflowGridRestart
 
 #endif
 
-
+#if 0
 subroutine pflowGridTHCBinaryOut(grid, kplt)
-
-  use pflow_gridtype_module
-  use TTPHASE_module
 
   implicit none
 
@@ -451,5 +444,5 @@ subroutine pflowGridTHCBinaryOut(grid, kplt)
   call PetscViewerDestroy(viewer, ierr)
 
 end subroutine pflowGridTHCBinaryOut
-
+#endif
 end module pflow_checkpoint
