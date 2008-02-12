@@ -1,1378 +1,2916 @@
-!ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+module Transport_Init_module
 
-! VERSION/REVISION HISTORY
- 
-! $Id: ptran_init.F90,v 1.1.1.1 2004/07/30 21:49:42 lichtner Exp $
-! $Log: ptran_init.F90,v $
-! Revision 1.1.1.1  2004/07/30 21:49:42  lichtner
-! initial import
-!
-! Revision 1.3  2004/04/06 17:33:01  lichtner
-! Revised storage of phik and surf. Set rho=1 temporarily.
-!
-! Revision 1.2  2004/01/10 18:32:06  lichtner
-! Began work on 2 phase capability.
-!
-! Revision 1.1.1.1  2003/11/23 20:12:46  lichtner
-! initial entry
-!
+  implicit none
 
-!  pFLOTRAN Version 1.0 LANL
-!-----------------------------------------------------------------------
-!  Date             Author(s)                Comments/Modifications
-!-----------------------------------------------------------------------
-!  May  2003        Peter C. Lichtner        Initial Implementation
-!ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+  private
 
-module ptran_init_module
+#include "definitions.h"
 
-  public
+! Apparently the PETSc authors believe that Fortran 90 modules should ensure
+! that PETSC_AVOID_DECLARATIONS and PETSC_AVOID_MPIF_H are defined when the
+! PETSc header files are included.  I can get around this, though, by making
+! the definitions in these headers private.
+#include "petscreldefs.h"
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
+  ! It is VERY IMPORTANT to make sure that the above .h90 file gets included.
+  ! Otherwise some very strange things will happen and PETSc will give no
+  ! indication of what the problem is.
+#include "include/finclude/petscsnes.h"
+#include "include/finclude/petscviewer.h"
+#include "include/finclude/petscis.h"
+#include "include/finclude/petscis.h90"
+#include "include/finclude/petsclog.h"
 
-  interface ptran_init
-    module procedure ptran_init
-  end interface ptran_init
+  public :: PtranInit
 
 contains
 
-  subroutine ptran_init (da,da_mat,da_1dof,da_kin,ksp)
+! ************************************************************************** !
+!
+! PflowInit: Initializes a pflow grid object
+! author: Glenn Hammond
+! date: 10/23/07
+!
+! **************************************************************************
+subroutine PtranInit(simulation,filename)
 
-  use ptran_global_module
-  use trdynmem_module
-  use water_eos_module
-
-  implicit none 
-
-#include "include/finclude/petsc.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
-#include "include/finclude/petscda.h"
-#include "include/finclude/petscda.h90"
-#include "include/finclude/petscksp.h"
-#include "include/finclude/petsclog.h"
-#include "include/finclude/petscmat.h"
-#include "include/finclude/petscpc.h"
-#include "include/finclude/petscviewer.h"
-
-  DA :: da, da_mat, da_1dof, da_kin
-
-  KSPType :: ksp_type
-  PCType  :: pc_type
-  KSP   ::  ksp
-  PC    ::  pc
-  Vec :: temp1_nat_vec,temp2_nat_vec,temp3_nat_vec,temp4_nat_vec
-  Vec :: phik_tmp, surf_tmp
-
-  integer :: ierr,i,j,k,ir,n,ng,nr, na
-! integer :: isumjl
-! integer :: dfill(ncomp*ncomp), ofill(ncomp*ncomp)
-  
-  real*8, pointer :: temploc_p(:),pressloc_p(:)
-  real*8 :: val
-  
-  real*8, pointer :: dx_p(:), dy_p(:), dz_p(:)
-  
-  ierr = 0
-
-!--convert units
-! keff = keff/ceq*1.d3 ! convert to mol/L/s
-  difaq = difaq*1.d-4  ! cm^2/s -> m^2/s
-  difgas = difgas*1.d-4! cm^2/s -> m^2/s
-  vlx0 = vlx0/yrsec    ! m/y -> m/s
-  vly0 = vly0/yrsec    ! m/y -> m/s
-  vlz0 = vlz0/yrsec    ! m/y -> m/s
-  vgx0 = vgx0/yrsec    ! m/y -> m/s
-  vgy0 = vgy0/yrsec    ! m/y -> m/s
-  vgz0 = vgz0/yrsec    ! m/y -> m/s
-
-! do i = 1, kplot
-!   tplot(i) = tplot(i)*yrsec ! y -> s
-! enddo
-! dt    = dt*yrsec     ! y -> s
-! dtmax = dtmax*yrsec  ! y -> s
-
-  nmat = ncomp
-
-  call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &
-       nx,ny,nz,npx,npy,npz,1,1, &
-       PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
-       da_1dof,ierr)
-  
-  call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &
-       nx,ny,nz,npx,npy,npz,nmat,1, &
-       PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
-       da_mat,ierr)
-  
-  call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &
-       nx,ny,nz,npx,npy,npz,ncomp,1, &
-       PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
-       da,ierr)
-
-  if (nkin > 0) &
-  call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &
-       nx,ny,nz,npx,npy,npz,nkin,1, &
-       PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
-       da_kin,ierr)
-
-!---petsc-2.1.6
-  if (iblkfmt == 1) then ! blocked
-!   call DAGetMatrix(da,MATBAIJ,A,ierr)
-    call DAGetMatrix(da_mat,MATBAIJ,A,ierr)
-  else if (iblkfmt == 0) then ! compressed storage
-!   call DAGetMatrix(da,MATAIJ,A,ierr)
-    call DAGetMatrix(da_mat,MATAIJ,A,ierr)
-  else if (iblkfmt == 2) then ! element storage
-    call DAGetMatrix(da,MATAIJ,A,ierr)
-  endif
-
-!===============================================================
-! natural vector:  physical space (natural) ordering
-! global vector:  local processor ordering
-! local vector:   local/ghosted processor ordering (stored as sequential vec)
-
-! global -> local
-! call DAGlobalToLocalBegin(da,cc,INSERT_VALUES,ccloc,ierr)
-! call DAGlobalToLocalEnd(da,cc,INSERT_VALUES,ccloc,ierr)
-
-! VecGetArrayF90: global -> local without ghosted nodes
-! VecGetArrayF90: local -> local with ghosted nodes
-!===============================================================
-
-  call DACreateGlobalVector(da_mat,b,ierr)
-! call DACreateGlobalVector(da,b,ierr)
-  call VecDuplicate(b,x,ierr)
-
-  call DACreateGlobalVector(da,c,ierr)
-  call VecDuplicate(c,cc,ierr)
-  call VecDuplicate(c,dc,ierr)
-  call VecDuplicate(c,ptran_c0,ierr)
-  
-  call DACreateGlobalVector(da_1dof,porosity,ierr)
-  call VecDuplicate(porosity,por,ierr)
-  call VecDuplicate(porosity,tortuosity,ierr)
-  call VecDuplicate(porosity,temp,ierr)
-  call VecDuplicate(porosity,press,ierr)
-  call VecDuplicate(porosity,sat,ierr)
-  call VecDuplicate(porosity,ssat,ierr)
-  call VecDuplicate(porosity,dx,ierr)
-  call VecDuplicate(porosity,dy,ierr)
-  call VecDuplicate(porosity,dz,ierr)
-  call VecDuplicate(porosity,nreg,ierr)
-  call VecDuplicate(porosity,ghost,ierr)
-  call VecDuplicate(porosity,xphi_co2,ierr)
-  call VecDuplicate(porosity,den_co2,ierr)
-  
-  if (nkin > 0) then
-    call DACreateGlobalVector(da_kin,phik,ierr)
-    call VecDuplicate(phik,surf,ierr)
-    call VecDuplicate(phik,phik0,ierr)
-    call VecDuplicate(phik,surf0,ierr)
-    call VecDuplicate(phik,rkin,ierr)
-    call VecDuplicate(phik,rrkin,ierr)
-  endif
-
-  call DACreateLocalVector(da,ccloc,ierr)
-  
-  call DACreateLocalVector(da_1dof,porloc,ierr)
-  call VecDuplicate(porloc,tort_loc,ierr)
-  call VecDuplicate(porloc,temploc,ierr)
-  call VecDuplicate(porloc,pressloc,ierr)
-  call VecDuplicate(porloc,sat_loc,ierr)
-  call VecDuplicate(porloc,ssat_loc,ierr)
-  call VecDuplicate(porloc,xphi_co2_loc,ierr)
-  call VecDuplicate(porloc,den_co2_loc,ierr)
-  call VecDuplicate(porloc,dx_loc,ierr)
-  call VecDuplicate(porloc,dy_loc,ierr)
-  call VecDuplicate(porloc,dz_loc,ierr)
-  call VecDuplicate(porloc,ghost_loc,ierr)
-
-  call KSPCreate(PETSC_COMM_WORLD,ksp,ierr)
-
-! call DAGetCorners(da,nxs,nys,nzs,nlx,nly,nlz,ierr)
-  call DAGetCorners(da_mat,nxs,nys,nzs,nlx,nly,nlz,ierr)
-!-----------------------------------------------------------------
-! nxs,nys,nzs = global corner (starting) indices (without ghost nodes)
-! nlx,nly,nlz = local grid dimension (without ghost nodes)
-!-----------------------------------------------------------------
-
-  nxe   = nxs+nlx
-  nye   = nys+nly
-  nze   = nzs+nlz
-  nlxy  = nlx*nly
-  nlxz  = nlx*nlz
-  nlyz  = nly*nlz
-  nlmax = nlx*nly*nlz
-  nldof = nlmax*ncomp
-
-! Note that we need to allocate this array, even when running coupled 
-! with pflow, because the flow code uses a PETSc vector to store the 
-! volumes.
-! if (using_pflowGrid == PETSC_FALSE) &
-  allocate(vb(nlmax))
-
-  call DAGetGhostCorners(da_mat,ngxs,ngys,ngzs,ngx,ngy,ngz,ierr)
-! call DAGetGhostCorners(da,ngxs,ngys,ngzs,ngx,ngy,ngz,ierr)
-!-----------------------------------------------------------------
-! ngxs,ngys,ngzs = global corner (starting) indices (with ghost nodes)
-! ngx,ngy,ngz = local grid dimension (with ghost nodes)
-!-----------------------------------------------------------------
-
-  ngxe  = ngxs+ngx
-  ngye  = ngys+ngy
-  ngze  = ngzs+ngz
-  ngxy  = ngx*ngy
-  ngxz  = ngx*ngz
-  ngyz  = ngy*ngz
-  ngmax = ngx*ngy*ngz
-  ngdof = ngmax*ncomp
-  
-  write(*,'(" myrank= ",i3,", nlmax= ",i5,", nlx,y,z= ",3i4, &
-  & ", nxs,e = ",2i4,", nys,e = ",2i4,", nzs,e = ",2i4)') &
-  myrank,nlmax,nlx,nly,nlz,nxs,nxe,nys,nye,nzs,nze
-
-  write(*,'(" myrank= ",i3,", ngmax= ",i5,", ngx,y,z= ",3i4, &
-  & ", ngxs,e= ",2i4,", ngys,e= ",2i4,", ngzs,e= ",2i4)') &
-  myrank,ngmax,ngx,ngy,ngz,ngxs,ngxe,ngys,ngye,ngzs,ngze
-
-! Compute arrays for indexing between local ghosted and non-ghosted 
-! arrays
-! if (using_pflowGrid .ne. PETSC_TRUE) then
-    allocate(nL2A(nlmax))
-  allocate(nL2G(nlmax))
-    allocate(nG2L(ngmax))
-
-    nG2L(1:ngmax) = 0
-
-    istart = nxs-ngxs
-    jstart = nys-ngys
-    kstart = nzs-ngzs
-    iend = istart+nlx-1
-    jend = jstart+nly-1
-    kend = kstart+nlz-1
-
-  ! Local <-> Ghosted Transformation
-    n = 0
-    do k=kstart,kend
-      do j=jstart,jend
-        do i=istart,iend
-          n = n + 1
-          ng = i+j*ngx+k*ngxy+1
-!         vb(n) = dx0(i)*dy0(j)*dz0(k)
-          nL2G(n) = ng
-          nG2L(ng) = n
-        enddo
-      enddo
-    enddo
-
-    do i=1,ngmax
-      j = nG2L(i)
-      if (j > 0) then
-        k = nL2G(j)
-        if(i /= k) then
-          print *,'Error in ghost-local node numbering for ghost node =', i
-          print *,'node_id_gtol(i) =', j
-          print *,'node_id_ltog(node_id_gtol(i)) =', k
-          stop
-        endif
-      endif
-    enddo
-  
-   !Local(non ghosted)->Natural(natural order starts from 0)
-    n=0
-    do k=1,nlz
-      do j=1,nly
-        do i=1,nlx
-          n = n + 1
-          na = i-1+nxs+(j-1+nys)*nx+(k-1+nzs)*nxy
-          if(na>(nmax-1)) print *,'Wrong Nature order....'
-          nL2A(n) = na
-          !print *,grid%myrank, k,j,i,n,na
-          !grid%nG2N(ng) = na
-        enddo
-      enddo
-    enddo
-
-  
-  
-  
-! endif
-  
-  ! identify corner ghost nodes
-  call VecSet(ghost_loc,-1.d0,ierr)
-  call VecSet(ghost,0.d0,ierr)
-  call DAGlobalToLocalBegin(da_1dof,ghost,INSERT_VALUES,ghost_loc,ierr)
-  call DAGlobalToLocalEnd(da_1dof,ghost,INSERT_VALUES,ghost_loc,ierr)
-  call VecDestroy(ghost,ierr)
-  call VecGetArrayF90(ghost_loc,ghost_loc_p,ierr)
-! do n = 1, ngmax
-!   m = nG2L(n)
-!   print *,'ptraninit-ghost: ',myrank,n,m,ghost_loc_p(n)
-! enddo
-! call VecRestoreArrayF90(ghost_loc,ghost_loc_p,ierr)
-  
-!-------preconditioner-------------------------
-
-  call KSPGetPC(ksp, pc, ierr)
-
-! pc_type = PCILU
-  if (iblkfmt == 0) then
-    pc_type = PCJACOBI
-  else
-    pc_type = PCBJACOBI
-  endif
-! pc_type = PCASM
-! pc_type = PCNONE
-  call PCSetType(pc,pc_type,ierr)
-
-! call PetscOptionsSetValue('-pc_ilu_damping','1.d-10',ierr)
-! call PCILUSetDamping(pc,1.d-14,ierr)
-
-!-------krylov subspace method ----------------
-  call KSPSetFromOptions(ksp,ierr)
-
-  call KSPSetInitialGuessNonzero(ksp,PETSC_TRUE,ierr)
-
-! ksp_type = KSPGMRES
-  ksp_type = KSPFGMRES
-  call KSPSetType(ksp,ksp_type,ierr)
-
-! Solver
-! atol_petsc = 1.d-12
-! dtol_petsc = 1.d+5
-! rtol_petsc = 1.d-12
-! maxits_petsc = 100
-! restart_petsc = 30
-
-! KSPDefaultConverged() reaches convergence when
-!    rnorm < MAX (rtol * rnorm_0, atol);
-! Divergence is detected if
-!    rnorm > dtol * rnorm_0,
-
-
-  call KSPSetTolerances(ksp,rtol_petsc,atol_petsc,dtol_petsc, &
-      maxits_petsc,ierr)
-
-!--set initial conditions
-
-  if (myrank == 0) write(*,*) '--> allocate memory'
-  call trallocate
-  
-! set dx, dy, dz, nreg
-  call DACreateNaturalVector(da_1dof,temp1_nat_vec,ierr)
-  call VecDuplicate(temp1_nat_vec, temp2_nat_vec, ierr)
-  call VecDuplicate(temp1_nat_vec, temp3_nat_vec, ierr)
-  call VecDuplicate(temp1_nat_vec, temp4_nat_vec, ierr)
-  if (myrank == 0) then
-    do k = 1,nz
-      do j = 1,ny
-        do i = 1,nx
-          n = i+(j-1)*nx+(k-1)*nxy-1
-          val = dx0(i)
-          call VecSetValue(temp1_nat_vec,n,val,INSERT_VALUES,ierr)
-          val = dy0(j)
-          call VecSetValue(temp2_nat_vec,n,val,INSERT_VALUES,ierr)
-          val = dz0(k)
-          call VecSetValue(temp3_nat_vec,n,val,INSERT_VALUES,ierr)
-          val = nreg_val(n+1)
-          call VecSetValue(temp4_nat_vec,n,val,INSERT_VALUES,ierr)
-        enddo
-      enddo
-    enddo
-  endif
-
-  call VecAssemblyBegin(temp1_nat_vec,ierr)
-  call VecAssemblyEnd(temp1_nat_vec,ierr)
-  call VecAssemblyBegin(temp2_nat_vec,ierr)
-  call VecAssemblyEnd(temp2_nat_vec,ierr)
-  call VecAssemblyBegin(temp3_nat_vec,ierr)
-  call VecAssemblyEnd(temp3_nat_vec,ierr)
-  call VecAssemblyBegin(temp4_nat_vec,ierr)
-  call VecAssemblyEnd(temp4_nat_vec,ierr)
-  
-  call DANaturalToGlobalBegin(da_1dof,temp1_nat_vec,INSERT_VALUES, &
-                                dx,ierr)
-  call DANaturalToGlobalEnd(da_1dof,temp1_nat_vec,INSERT_VALUES, &
-                              dx,ierr)
-  call DANaturalToGlobalBegin(da_1dof,temp2_nat_vec,INSERT_VALUES, &
-                                dy,ierr)
-  call DANaturalToGlobalEnd(da_1dof,temp2_nat_vec,INSERT_VALUES, &
-                              dy,ierr)
-  call DANaturalToGlobalBegin(da_1dof,temp3_nat_vec,INSERT_VALUES, &
-                                dz,ierr)
-  call DANaturalToGlobalEnd(da_1dof,temp3_nat_vec,INSERT_VALUES, &
-                              dz,ierr)
-  call DANaturalToGlobalBegin(da_1dof,temp4_nat_vec,INSERT_VALUES, &
-                                nreg,ierr)
-  call DANaturalToGlobalEnd(da_1dof,temp4_nat_vec,INSERT_VALUES, &
-                              nreg,ierr)
-  
-  call VecDestroy(temp1_nat_vec,ierr)
-  call VecDestroy(temp2_nat_vec,ierr)
-  call VecDestroy(temp3_nat_vec,ierr)
-  call VecDestroy(temp4_nat_vec,ierr)
-      
-  
-  ! Calculate volumes of local cells.
-  if (igeom == 1) then
-    call VecGetArrayF90(dx, dx_p, ierr)
-    call VecGetArrayF90(dy, dy_p, ierr)
-    call VecGetArrayF90(dz, dz_p, ierr)
-    do n = 1, nlmax
-      vb(n) = dx_p(n) * dy_p(n) * dz_p(n)
-    enddo
-    call VecRestoreArrayF90(dx, dx_p, ierr)
-    call VecRestoreArrayF90(dy, dy_p, ierr)
-    call VecRestoreArrayF90(dz, dz_p, ierr)
-  else if (igeom == 2) then
-    call VecGetArrayF90(dz, dz_p, ierr)
-    allocate(rd(0:nx))
-    rd = 0.d0
-    rd(0) = 0.d0 
-    do i = 1, nx
-      rd(i) = rd(i-1) + dx0(i)
-    enddo
-    do n=1, nlmax
-      i = mod(mod((n),nlxy),nlx)!+(grid%ngxs-grid%nxs)
-      if (i==0) i = nlx
-      vb(n) = Pi * (rd(i+nxs) + rd(i-1+nxs))*&
-      (rd(i+nxs) - rd(i-1+nxs)) * dz_p(n)
- !     print *, 'setup: Vol ', myrank, n,i, rd(i+nxs),vb(n)
-    enddo
-    call VecRestoreArrayF90(dz, dz_p, ierr)
-  else if (igeom == 3) then
-    allocate(rd(0:nx))
-    rd = 0.d0
-    rd(0) = 0.d0 
-    do i = 1, nx
-      rd(i) = rd(i-1) + dx0(i)
-    enddo
-    do i = 1, nlmax
-      vb(n) = 4.d0*Pi*(rd(i)+rd(i-1))*(rd(i)-rd(i-1))/3.d0
-    enddo
-  endif
-  
-! set temperature, pressure, saturation, and porosity    
-  if (iregfld == 0) then
-
-    if (using_pflowGrid .ne. PETSC_TRUE) then
-      call VecSet(porosity,por0,ierr)
-      call VecSet(temp,temp0+tkelvin,ierr)
-    endif
+  use Simulation_module
+  use Option_module
+  use Grid_module
+  use Transport_Solver_module
+  use Transport_Realization_module
+  use Material_module
+  use Transport_Timestepper_module
+!  use Field_module
+  use Connection_module
+  use Coupler_module
+  use Debug_module
+  use Utility_module
     
-    call VecSet(press,pref0,ierr)
-    call VecSet(sat,sat0,ierr)
-    call VecSet(ssat,sat0,ierr)
-    
-    call VecSet(tortuosity,tor0,ierr)
-
-    call density(temp0,pref0,rho0)
-    rho0 = rho0*1.d-3
-    rho0 = 1.d0
-
-    do n = 1, ngmax
-      if (ghost_loc_p(n) == -1) cycle
-      rho(n) = rho0
-    enddo
-    
-  else if (iregfld > 0) then
+  implicit none
   
-    call VecSet(sat,sat0,ierr)
-    call VecSet(ssat,sat0,ierr)
-
-!---set porosity, pressure, temperature, and saturation by region
-    call DACreateNaturalVector(da_1dof,temp1_nat_vec,ierr)
-    call VecDuplicate(temp1_nat_vec, temp2_nat_vec, ierr)
-    call VecDuplicate(temp1_nat_vec, temp3_nat_vec, ierr)
-    call VecDuplicate(temp1_nat_vec, temp4_nat_vec, ierr)
-    if (myrank == 0) then
-      do ir = 1,iregfld
-        do k = k1reg(ir),k2reg(ir)
-          do j = j1reg(ir),j2reg(ir)
-            do i = i1reg(ir),i2reg(ir)
-              n = i+(j-1)*nx+(k-1)*nxy-1
-              val = por_reg(ir)
-              call VecSetValue(temp1_nat_vec,n,val,INSERT_VALUES,ierr)
-              val = tor_reg(ir)
-              call VecSetValue(temp2_nat_vec,n,val,INSERT_VALUES,ierr)
-              val = pref_reg(ir)
-              call VecSetValue(temp3_nat_vec,n,val,INSERT_VALUES,ierr)
-              val = temp_reg(ir)+tkelvin
-              call VecSetValue(temp4_nat_vec,n,val,INSERT_VALUES,ierr)
-            enddo
-          enddo
-        enddo
-      enddo
-    endif
-    
-    call VecAssemblyBegin(temp1_nat_vec,ierr)
-    call VecAssemblyEnd(temp1_nat_vec,ierr)
-
-    call VecAssemblyBegin(temp2_nat_vec,ierr)
-    call VecAssemblyEnd(temp2_nat_vec,ierr)
-  
-    call VecAssemblyBegin(temp3_nat_vec,ierr)
-    call VecAssemblyEnd(temp3_nat_vec,ierr)
-  
-    call VecAssemblyBegin(temp4_nat_vec,ierr)
-    call VecAssemblyEnd(temp4_nat_vec,ierr)
-  
-    call DANaturalToGlobalBegin(da_1dof,temp1_nat_vec,INSERT_VALUES, &
-                                porosity,ierr)
-    call DANaturalToGlobalEnd(da_1dof,temp1_nat_vec,INSERT_VALUES, &
-                              porosity,ierr)
-    call DANaturalToGlobalBegin(da_1dof,temp2_nat_vec,INSERT_VALUES, &
-                                tortuosity,ierr)
-    call DANaturalToGlobalEnd(da_1dof,temp2_nat_vec,INSERT_VALUES, &
-                              tortuosity,ierr)
-    call DANaturalToGlobalBegin(da_1dof,temp3_nat_vec,INSERT_VALUES, &
-                                press,ierr)
-    call DANaturalToGlobalEnd(da_1dof,temp3_nat_vec,INSERT_VALUES, &
-                              press,ierr)
-    call DANaturalToGlobalBegin(da_1dof,temp4_nat_vec,INSERT_VALUES, &
-                                temp,ierr)
-    call DANaturalToGlobalEnd(da_1dof,temp4_nat_vec,INSERT_VALUES, &
-                              temp,ierr)
-    
-    call VecDestroy(temp1_nat_vec,ierr)
-    call VecDestroy(temp2_nat_vec,ierr)
-    call VecDestroy(temp3_nat_vec,ierr)
-    call VecDestroy(temp4_nat_vec,ierr)
-    
-!   call VecView(temp,PETSC_VIEWER_STDOUT_WORLD,ierr)
-
-!---compute density
-    call DAGlobalToLocalBegin(da_1dof,temp,INSERT_VALUES,temploc,ierr)
-    call DAGlobalToLocalEnd(da_1dof,temp,INSERT_VALUES,temploc,ierr)
-    
-    call DAGlobalToLocalBegin(da_1dof,press,INSERT_VALUES,pressloc,ierr)
-    call DAGlobalToLocalEnd(da_1dof,press,INSERT_VALUES,pressloc,ierr)
-  
-    call VecGetArrayF90(temploc,temploc_p,ierr)
-    call VecGetArrayF90(pressloc,pressloc_p,ierr)
-    do n = 1, ngmax
-      if (ghost_loc_p(n) == -1) cycle
-      call density (temploc_p(n),pressloc_p(n),rho0)
-!     rho(n) = rho0*1.d-3
-      rho(n) = 1.d0
-    enddo
-    call VecRestoreArrayF90(temploc,temploc_p,ierr)
-    call VecRestoreArrayF90(pressloc,pressloc_p,ierr)
-  endif
-  
-! set mineral volume fraction and area by region
-  if (nkin > 0) then
-!   rkin = zero
-    call VecSet(rkin,zero,ierr)
-    call DACreateGlobalVector(da_1dof, phik_tmp, ierr)
-    call VecDuplicate(phik_tmp, surf_tmp, ierr)
-    call DACreateNaturalVector(da_1dof,temp1_nat_vec,ierr)
-    call VecDuplicate(temp1_nat_vec,temp2_nat_vec,ierr)
-    do nr = 1, nkin
-      if (myrank == 0) then
-        do ir = 1,iregkin(nr)
-          do k = k1kin(nr,ir),k2kin(nr,ir)
-            do j = j1kin(nr,ir),j2kin(nr,ir)
-              do i = i1kin(nr,ir),i2kin(nr,ir)
-                n = i+(j-1)*nx+(k-1)*nxy - 1
-                val = phik_reg(nr,ir)
-                call VecSetValue(temp1_nat_vec,n,val,INSERT_VALUES,ierr)
-                val = surf_reg(nr,ir)
-                call VecSetValue(temp2_nat_vec,n,val,INSERT_VALUES,ierr)
-              enddo
-            enddo
-          enddo
-        enddo
-      endif
-
-      call VecAssemblyBegin(temp1_nat_vec,ierr)
-      call VecAssemblyEnd(temp1_nat_vec,ierr)
-
-      call VecAssemblyBegin(temp2_nat_vec,ierr)
-      call VecAssemblyEnd(temp2_nat_vec,ierr)
-
-      call DANaturalToGlobalBegin(da_1dof,temp1_nat_vec,INSERT_VALUES, &
-                                phik_tmp,ierr)
-      call DANaturalToGlobalEnd(da_1dof,temp1_nat_vec,INSERT_VALUES, &
-                              phik_tmp,ierr)
-
-      call DANaturalToGlobalBegin(da_1dof,temp2_nat_vec,INSERT_VALUES, &
-                                surf_tmp,ierr)
-      call DANaturalToGlobalEnd(da_1dof,temp2_nat_vec,INSERT_VALUES, &
-                              surf_tmp,ierr)
-
-      call VecStrideScatter(phik_tmp,nr-1,phik,INSERT_VALUES,ierr)
-      call VecStrideScatter(surf_tmp,nr-1,surf,INSERT_VALUES,ierr)
-    enddo
-    
-    call VecDestroy(temp1_nat_vec,ierr)
-    call VecDestroy(temp2_nat_vec,ierr)
-    call VecDestroy(phik_tmp,ierr)
-    call VecDestroy(surf_tmp,ierr)
-    
-    call VecCopy(phik,phik0,ierr)
-    call VecCopy(surf,surf0,ierr)
-
-!   deallocate(surf_reg)
+  type(simulation_type) :: simulation
+  character(len=MAXWORDLENGTH) :: filename
 
 #if 0
-    do nr = 1, nkin
-      do ir = 1,iregkin(nr)
-      
-        kk1 = k1kin(nr,ir) - nzs
-        kk2 = k2kin(nr,ir) - nzs
-        jj1 = j1kin(nr,ir) - nys
-        jj2 = j2kin(nr,ir) - nys
-        ii1 = i1kin(nr,ir) - nxs
-        ii2 = i2kin(nr,ir) - nxs
-        
-        kk1 = max(1,kk1)
-        kk2 = min(nlz,kk2)
-        jj1 = max(1,jj1)
-        jj2 = min(nly,jj2)
-        ii1 = max(1,ii1)
-        ii2 = min(nlx,ii2)
-        
-        if (ii1 > ii2 .or. jj1 > jj2 .or. kk1 > kk2) cycle
-        
-        do k = kk1,kk2
-          do j = jj1,jj2
-            do i = ii1,ii2
-              n = i+(j-1)*nlx+(k-1)*nlxy
-!             phik(nr,n) = phik_reg(nr,ir)
-              surf(nr,n) = surf_reg(nr,ir)
-            enddo
-          enddo
-        enddo
-      enddo
-    enddo
-#endif
+  type(solver_type), pointer :: solver
+  type(realization_type), pointer :: realization
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(pflow_debug_type), pointer :: debug
+  
+  ISColoring :: iscoloring
 
-    call VecGetArrayF90(phik,phik_p,ierr)
-    call VecGetArrayF90(surf,surf_p,ierr)
-    call VecGetArrayF90(phik0,phik0_p,ierr)
-    call VecGetArrayF90(surf0,surf0_p,ierr)
-    call VecGetArrayF90(por,por_p,ierr)
-    call VecGetArrayF90(rkin,rkin_p,ierr)
-    call VecGetArrayF90(rrkin,rrkin_p,ierr)
+  PetscInt :: mcomp, mphas
+  PetscInt :: temp_int
+  PetscTruth :: iflag
+
+  PetscReal, pointer :: phis_p(:)
+                       
+  ! needed for SNESLineSearchGetParams()/SNESLineSearchSetParams()
+  PetscReal :: alpha, maxstep, steptol
+  
+  PetscErrorCode :: ierr
+  
+  ! set pointers to objects
+  solver => simulation%stepper%solver
+  realization => simulation%realization
+  option => realization%option
+  field => realization%field
+  debug => realization%debug
+  
+  ! read MODE,GRID,PROC,COMP,PHAS cards
+  call readRequiredCardsFromInput(realization,filename,mcomp,mphas)
+  grid => realization%grid
+
+  ! set the operational mode (e.g. RICHARDS_MODE, MPH_MODE, etc)
+  call setMode(option,mcomp,mphas)
+  ! process command line options
+  call OptionCheckCommandLine(option)
+                             
+! hardwire to uncoupled for now
+!  if (icouple == 0) then
+  option%run_coupled = PETSC_FALSE
+!  else
+!    option%run_coupled = PETSC_TRUE
+!  endif
+
+  !set specific phase indices
+  option%jh2o = 1; option%jgas =1
+  select case(option%nphase)
+    case(2)
+      option%jco2 = 2
+      option%jgas =3 
+    case(3)
+      option%jco2 = 2
+      option%jgas =3 
+  end select 
+
+  call GridCreateDMs(grid,option)
+  
+ !-----------------------------------------------------------------------
+ ! Create the vectors with parallel layout corresponding to the DM's,
+ ! and, for vectors that need to be ghosted, create the corresponding
+ ! ghosted vectors.
+ !-----------------------------------------------------------------------
+
+  ! 1 degree of freedom
+  call GridCreateVector(grid,ONEDOF,field%porosity0,GLOBAL)
+  call VecDuplicate(field%porosity0, grid%volume, ierr)
+  call VecDuplicate(field%porosity0, field%phis, ierr)
+  call VecDuplicate(field%porosity0, field%perm0_xx, ierr)
+  call VecDuplicate(field%porosity0, field%perm0_yy, ierr)
+  call VecDuplicate(field%porosity0, field%perm0_zz, ierr)
+  call VecDuplicate(field%porosity0, field%perm_pow, ierr)
+      
+  select case(option%imode)
+    case(MPH_MODE,THC_MODE)
+      call VecDuplicate(field%porosity0, field%conc, ierr)
+      call VecDuplicate(field%porosity0, field%temp, ierr)
+      call VecDuplicate(field%porosity0, field%ttemp, ierr)
+  end select    
+      
+  call GridCreateVector(grid,ONEDOF,field%porosity_loc,LOCAL)
+  call VecDuplicate(field%porosity_loc, field%tor_loc, ierr)
+  call VecDuplicate(field%porosity_loc, field%ithrm_loc, ierr)
+  call VecDuplicate(field%porosity_loc, field%icap_loc, ierr)
+  call VecDuplicate(field%porosity_loc, field%iphas_loc, ierr)
+  call VecDuplicate(field%porosity_loc, field%iphas_old_loc, ierr)
+  
+  select case(option%imode)
+    case(MPH_MODE,THC_MODE)  
+      call VecDuplicate(field%porosity_loc, field%ttemp_loc, ierr)
+  end select
+
+  call VecDuplicate(field%porosity_loc, field%perm_xx_loc, ierr)
+  call VecDuplicate(field%porosity_loc, field%perm_yy_loc, ierr)
+  call VecDuplicate(field%porosity_loc, field%perm_zz_loc, ierr)
+
+  if (associated(grid%structured_grid)) then
+    call VecDuplicate(field%porosity0, grid%structured_grid%dx, ierr)
+    call VecDuplicate(field%porosity0, grid%structured_grid%dy, ierr)
+    call VecDuplicate(field%porosity0, grid%structured_grid%dz, ierr)
+
+    call VecDuplicate(field%porosity_loc, grid%structured_grid%dx_loc, ierr)
+    call VecDuplicate(field%porosity_loc, grid%structured_grid%dy_loc, ierr)
+    call VecDuplicate(field%porosity_loc, grid%structured_grid%dz_loc, ierr)
   endif
 
-  end subroutine ptran_init
+  select case(option%imode)
+    case(MPH_MODE,THC_MODE)
+      ! nphase degrees of freedom
+      call GridCreateVector(grid,NPHASEDOF,field%pressure,GLOBAL)
+      call VecDuplicate(field%pressure, field%sat, ierr)
+      call VecDuplicate(field%pressure, field%xmol, ierr)
+      call VecDuplicate(field%pressure, field%ppressure, ierr)
+      call VecDuplicate(field%pressure, field%ssat, ierr)
+      call VecDuplicate(field%pressure, field%dp, ierr)
+      call VecDuplicate(field%pressure, field%density, ierr)
+      call VecDuplicate(field%pressure, field%ddensity, ierr)
+      call VecDuplicate(field%pressure, field%avgmw, ierr)
+      call VecDuplicate(field%pressure, field%d_p, ierr)
+      call VecDuplicate(field%pressure, field%d_t, ierr)
+      call VecDuplicate(field%pressure, field%h, ierr)
+      call VecDuplicate(field%pressure, field%hh, ierr)
+      call VecDuplicate(field%pressure, field%h_p, ierr)
+      call VecDuplicate(field%pressure, field%h_t, ierr)
+      call VecDuplicate(field%pressure, field%viscosity, ierr)
+      call VecDuplicate(field%pressure, field%v_p, ierr)
+      call VecDuplicate(field%pressure, field%v_t, ierr)
+     ! xmol may not be nphase DOF, need change later 
+      call VecDuplicate(field%pressure, field%xxmol, ierr)
+  end select
+
+  select case(option%imode)
+    case(MPH_MODE,THC_MODE)
+      call GridCreateVector(grid,NPHASEDOF, field%ppressure_loc, LOCAL)
+      call VecDuplicate(field%ppressure_loc, field%ssat_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%xxmol_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%ddensity_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%avgmw_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%d_p_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%d_t_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%hh_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%h_p_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%h_t_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%viscosity_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%v_p_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%v_t_loc, ierr)
+  end select
   
-  subroutine ptran_chem(da,da_1dof,da_kin)
+  select case(option%imode)
+    case(MPH_MODE)
+      call GridCreateVector(grid,VARDOF, field%var_loc,LOCAL)
+  end select
 
-  use ptran_global_module
-  use trdynmem_module
-  use ptran_speciation_module
-  use trgamdh_module
-  use ptran_psi_module
-  use ptran_setbnd_module
+      ! ndof degrees of freedom
+  call GridCreateVector(grid,NDOF, field%xx, GLOBAL)
+  call VecDuplicate(field%xx, field%yy, ierr)
+  call VecDuplicate(field%xx, field%dxx, ierr)
+  call VecDuplicate(field%xx, field%r, ierr)
+  call VecDuplicate(field%xx, field%accum, ierr)
+     
+  call VecSetBlocksize(field%dxx, option%ndof, ierr)
 
-  implicit none 
+  call GridCreateVector(grid,NDOF, field%xx_loc, LOCAL)
+  
+!-----------------------------------------------------------------------
+! Set up PETSc nonlinear solver context.
+!-----------------------------------------------------------------------
+  call SNESCreate(PETSC_COMM_WORLD, solver%snes, ierr)
+  CHKERRQ(ierr)
+!-----------------------------------------------------------------------
+  ! Set up indexing of grid ids (local to global, global to local, etc
+!-----------------------------------------------------------------------
+  ! set up nG2L, NL2G, etc.
+  call GridMapIndices(grid)
 
-#include "include/finclude/petsc.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
-#include "include/finclude/petscda.h"
-#include "include/finclude/petscda.h90"
-#include "include/finclude/petscksp.h"
-#include "include/finclude/petsclog.h"
-#include "include/finclude/petscmat.h"
-#include "include/finclude/petscpc.h"
-#include "include/finclude/petscviewer.h"
+  option%nldof = grid%nlmax * option%nphase
+  option%ngdof = grid%ngmax * option%nphase
+  
+!-----------------------------------------------------------------------
+      ! Allocate memory for allocatable arrays.
+!-----------------------------------------------------------------------
+  select case(option%imode)
+    case(MPH_MODE)
+      allocate(field%xphi_co2(grid%nlmax))
+      allocate(field%xxphi_co2(grid%nlmax))
+      allocate(field%den_co2(grid%nlmax))
+      allocate(field%dden_co2(grid%nlmax))
+      field%xphi_co2 = 1.d0
+      field%xxphi_co2 = 1.d0
+      field%den_co2 = 1.d0
+      field%dden_co2 = 1.d0
+  end select
+  
+  !set scale factor for heat equation, i.e. use units of MJ for energy
+  option%scale = 1.d-6
 
-  DA    :: da, da_1dof, da_kin
+  if (option%run_coupled == PETSC_TRUE) then
+    ! necessary for water balance due to generation/consumption of H20 
+    ! by chemical reactions during coupled pflow/ptran runs
+    allocate(option%rtot(grid%nlmax,2))
+    option%rtot=0.D0
+  endif
 
-! PetscViewer   vecviewer
-  integer :: ierr,i,j,l,m
-! integer :: k,ir,ii1,ii2,jj1,jj2,kk1,kk2,n,ng,nr
-  integer :: isumjl
-  real*8, pointer :: ccloc_p(:),temploc_p(:),ssat_loc_p(:),pressloc_p(:)
+  ! read in the remainder of the input file
+  call readInput(simulation,filename)
 
-  if (myrank == 0) write(*,*) '--> initialize field variables'
-  call trinit
+  if (option%iblkfmt == 0) then
+    select case(option%imode)
+      case(MPH_MODE,RICHARDS_MODE)
+        call printErrMsg(option,&
+                         'AIJ matrix not supported for current mode: '// &
+                         option%mode)
+    end select
+  endif
 
-  if (myrank == 0) write(*,*) '--> speciate initial fluid composition'
-  call trstartup (da,da_1dof,da_kin)
+  select case(option%imode)
+    case(MPH_MODE)
+      call initialize_span_wagner(option%itable,option%myrank)  
+  end select
+  
+  call GridComputeSpacing(grid)
+  call GridComputeCoordinates(grid,option)
+  call GridComputeVolumes(grid,option)
 
-! initialize psi, gam, gamx
+  ! read any regions provided in external files
+  call readRegionFiles(realization)
+  ! clip regions and set up boundary connectivity, distance  
+  call GridLocalizeRegions(realization%regions,realization%grid,realization%option)
+
+  ! set up internal connectivity, distance, etc.
+  call GridComputeInternalConnect(grid,option)
+  call RealizationProcessCouplers(realization)
+
+  ! connectivity between initial conditions, boundary conditions, srcs/sinks, etc and grid
+  call GridComputeCouplerConnections(grid,option,realization%initial_conditions%first)
+  call GridComputeCouplerConnections(grid,option,realization%boundary_conditions%first)
+  call GridComputeCouplerConnections(grid,option,realization%source_sinks%first)
+                                
+  call assignMaterialPropToRegions(realization)
+  call RealizationInitCouplerAuxVars(realization,realization%initial_conditions)
+  call RealizationInitCouplerAuxVars(realization,realization%boundary_conditions)
+  call assignInitialConditions(realization)
+
+  ! should we still support this
+  if (option%use_generalized_grid) then 
+    if (option%myrank == 0) print *, 'Reading structured grid from hdf5' 
+    if (.not.associated(field%imat)) &
+      allocate(field%imat(grid%ngmax))  ! allocate material id array
+    call ReadStructuredGridHDF5(realization)
+  endif
+  
+  if (associated(field%imat)) then
+    select case(option%imode)
+      case(MPH_MODE)
+        call createMphaseZeroArray(realization)
+      case(RICHARDS_MODE)
+        call createRichardsZeroArray(realization)
+      case(RICHARDS_LITE_MODE)
+        call createRichardsLiteZeroArray(realization)
+    end select
+  endif
+
+  allocate(realization%field%internal_velocities(option%nphase, &
+             ConnectionGetNumberInList(realization%grid%internal_connection_list)))
+  realization%field%internal_velocities = 0.d0
+  temp_int = CouplerGetNumConnectionsInList(realization%boundary_conditions)
+  allocate(realization%field%boundary_velocities(option%nphase,temp_int)) 
+  realization%field%boundary_velocities = 0.d0          
+
+  if (option%imode /= RICHARDS_MODE .and. &
+      option%imode /= RICHARDS_LITE_MODE) then
+    allocate(field%xphi_co2_bc(temp_int))
+    allocate(field%xxphi_co2_bc(temp_int))
+  endif
+
+  select case(option%imode)
+    ! not MPH, RICHARDS*
+    case(THC_MODE)
+      temp_int = ConnectionGetNumberInList(grid%internal_connection_list)
+      allocate(field%vl_loc(temp_int))
+      allocate(field%vvl_loc(temp_int))
+      allocate(field%vg_loc(temp_int))
+      allocate(field%vvg_loc(temp_int))
+      field%vl_loc = 0.D0
+      field%vvl_loc = 0.D0
+      field%vg_loc = 0.D0
+      field%vvg_loc = 0.D0
+  end select
+    
+! check number of dofs and phases
+  iflag = PETSC_FALSE
+  select case(option%imode)
+    case(THC_MODE)
+      if (option%ndof .ne. 3 .or. option%nphase .ne. 1) iflag = PETSC_TRUE
+    case(MPH_MODE,RICHARDS_MODE)
+      if (option%ndof .ne. (option%nspec+1)) iflag = PETSC_TRUE
+    case(RICHARDS_LITE_MODE)
+      if (option%ndof /= 1 .and. option%nphase /= 1 .and. option%nspec /= 1) &
+        iflag = PETSC_TRUE
+    case default
+      if (option%ndof .ne. 1 .or. option%nphase .ne. 1) iflag = PETSC_TRUE
+  end select
+  
+  if (iflag == PETSC_TRUE) then
+    write(*,*) 'Specified number of dofs or phases not correct-stop: ', &
+               trim(option%mode), 'ndof= ',option%ndof,' nph= ', &
+               option%nphase
+    stop
+  endif
+
+
+  if (option%myrank == 0) then
+    write(*,'(/,"++++++++++++++++++++++++++++++++++++++++++++++++++++&
+      &++++++++")')
+    if (grid%igrid == STRUCTURED) then
+      write(*,'(" number of processors = ",i5,", npx,y,z= ",3i5)') &
+        option%commsize,grid%structured_grid%npx,grid%structured_grid%npy, &
+        grid%structured_grid%npz
+    endif
+    write(*,'(" number of dofs = ",i3,", number of phases = ",i3,i2)') &
+      option%ndof,option%nphase
+    select case(option%imode)
+      case(THC_MODE)
+        write(*,'(" mode = THC: p, T, C")')
+      case(MPH_MODE)
+        write(*,'(" mode = MPH: p, T, s/C")')
+      case(RICHARDS_MODE)
+        write(*,'(" mode = Richards: p, T, s/C")')
+      case(RICHARDS_LITE_MODE)
+        write(*,'(" mode = Richards: p")')      
+    end select
+  endif
+
+  !-----------------------------------------------------------------------
+  ! Set up the Jacobian matrix.  We do this here instead of in 
+  ! pflowgrid_new() because we may have to parse the input file to 
+  ! determine how we want to do the Jacobian (matrix vs. matrix-free, for
+  ! example).
+  !-----------------------------------------------------------------------
+  if (option%use_numerical == PETSC_TRUE) then
+  
+    option%ideriv = 0
+  
+    if (option%myrank == 0) write(*,'(" numerical jacobian")')
+    ! We will compute the Jacobian via finite differences and store it.
+    
+    ! Create matrix with correct parallel layout and nonzero structure to 
+    ! hold the Jacobian.
+      ! MatFDColoringCreate() currently does not support MATMPIBAIJ.
+      
+    temp_int = option%iblkfmt
+    option%iblkfmt = 0   ! to turn off MATMPIBAIJ
+    call GridCreateJacobian(grid,solver%J,option)
+    option%iblkfmt = temp_int
+
+    call GridCreateColoring(grid,option,iscoloring)
+        
+    call MatFDColoringCreate(solver%J, iscoloring,solver%matfdcoloring, ierr)
+    
+    call ISColoringDestroy(iscoloring, ierr)
+
+    select case(option%imode)
+      case(RICHARDS_MODE)
+#ifdef RICHARDS_ANALYTICAL
+        call MatFDColoringSetFunctionSNES(solver%matfdcoloring, &
+                                          RichardsAnalyticalResidual,option, ierr)
+#else      
+        call MatFDColoringSetFunctionSNES(solver%matfdcoloring, &
+                                          RichardsResidual,option, ierr)
+#endif
+      case(RICHARDS_LITE_MODE)
+        call MatFDColoringSetFunctionSNES(solver%matfdcoloring, &
+                                          RichardsLIteResidual,option, ierr)
+      case(MPH_MODE)
+        call MatFDColoringSetFunctionSNES(solver%matfdcoloring, &
+                                          MPHASEResidual,option, ierr)
+    end select
+        
+    call MatFDColoringSetFromOptions(solver%matfdcoloring, ierr)
+    
+    call SNESSetJacobian(solver%snes, solver%J, solver%J, &
+                         SNESDefaultComputeJacobianColor,  &
+                         solver%matfdcoloring, ierr)
+  
+  else if (option%use_matrix_free == PETSC_TRUE) then
+  
+    option%ideriv = 0
+  
+    if (option%myrank == 0) write(*,'(" Using matrix-free Newton-Krylov")')
+
+    select case(option%imode)
+      case(THC_MODE,MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
+        call MatCreateMFFD(solver%snes,field%xx,solver%J,ierr)
+      case default
+        call MatCreateMFFD(solver%snes,field%ppressure,solver%J,ierr)
+    end select
+    
+    ! It seems that I ought to call SNESSetJacobian here now, but I don't know
+    ! what function I am supposed to pass to it to get it to use one of the 
+    ! finite-difference routines for computing the Jacobian.  It might not
+    ! actually matter if -snes_mf has been specified.
+    ! Pernice thinks that perhaps the I need to provide a function which 
+    ! simply calls MatAssemblyBegin/End.
+    call SNESSetJacobian(solver%snes, solver%J, solver%J, &
+                         SolverComputeMFJacobian, PETSC_NULL_OBJECT, ierr)
+
+    ! Use "Walker-Pernice" differencing.
+    call MatMFFDSetType(solver%J, MATMFFD_WP, ierr)
+
+    if (option%print_hhistory == PETSC_TRUE) then
+      allocate(option%hhistory(HHISTORY_LENGTH))
+      call MatMFFDSetHHistory(solver%J, option%hhistory, HHISTORY_LENGTH, ierr)
+    endif
+
+    if (option%monitor_h == PETSC_TRUE) then
+      call SNESMonitorSet(solver%snes, SolverMonitorH, grid, &
+                          PETSC_NULL_OBJECT, ierr)
+    endif
+    
+  else
+
+    option%ideriv = 1
+  
+    call GridCreateJacobian(grid,solver%J,option)
+  
+!   if (myrank == 0) write(*,'(" analytical jacobian as ")'); &
+!                    print *, grid%iblkfmt
+
+    ! grab handles for ksp and pc
+    call SNESGetKSP(solver%snes,solver%ksp,ierr)
+    call KSPGetPC(solver%ksp,solver%pc,ierr)
+
+    ! if ksp_type or pc_type specified in input file, set them here
+    if (len_trim(solver%ksp_type) > 1) &
+      call KSPSetType(solver%ksp,solver%ksp_type,ierr)
+    if (len_trim(solver%pc_type) > 1) &
+      call PCSetType(solver%pc,solver%pc_type,ierr)
+
+    ! allow override from command line
+    call KSPSetFromOptions(solver%ksp,ierr)
+    call PCSetFromOptions(solver%pc,ierr)
+    
+    ! set inexact newton, currently applies default settings
+    if (option%inexact_newton) call SNESKSPSetUseEW(solver%snes,PETSC_TRUE,ierr)
+
+    ! get the ksp_type and pc_type incase of command line override.
+    call KSPGetType(solver%ksp,solver%ksp_type,ierr)
+    call PCGetType(solver%pc,solver%pc_type,ierr)
+
+    call printMsg(option,'Solver: '//trim(solver%ksp_type))
+    call printMsg(option,'Preconditioner: '//trim(solver%pc_type))
+
+    select case(option%imode)
+      case(RICHARDS_MODE)
+#ifdef RICHARDS_ANALYTICAL
+        call SNESSetJacobian(solver%snes, solver%J, solver%J, RichardsAnalyticalJacobian, &
+                             realization, ierr); CHKERRQ(ierr)
+#else      
+        call SNESSetJacobian(solver%snes, solver%J, solver%J, RichardsJacobian, &
+                             realization, ierr); CHKERRQ(ierr)
+#endif                             
+      case(RICHARDS_LITE_MODE)
+        call SNESSetJacobian(solver%snes, solver%J, solver%J, RichardsLiteJacobian, &
+                             realization, ierr); CHKERRQ(ierr)
+      case(MPH_MODE)
+        call SNESSetJacobian(solver%snes, solver%J, solver%J, MPHASEJacobian, &
+                             realization, ierr); CHKERRQ(ierr)
+    end select                         
+
+  endif
+
+  if (option%myrank == 0) write(*,'("++++++++++++++++++++++++++++++++&
+                     &++++++++++++++++++++++++++++",/)')
+
+  select case(option%imode)
+#if 0
+    case(THC_MODE)
+      call SNESSetFunction(solver%snes,field%r,THCResidual,realization,ierr)
+#endif      
+    case(RICHARDS_MODE)
+#ifdef RICHARDS_ANALYTICAL    
+      call SNESSetFunction(solver%snes,field%r,RichardsAnalyticalResidual,realization,ierr)
+#else
+      call SNESSetFunction(solver%snes,field%r,RichardsResidual,realization,ierr)
+#endif
+    case(RICHARDS_LITE_MODE)
+      call SNESSetFunction(solver%snes,field%r,RichardsLiteResidual,realization,ierr)
+    case(MPH_MODE)
+      call SNESSetFunction(solver%snes,field%r,MPHASEResidual,realization,ierr)
+  end select
+
+  ! Set the tolerances for the Newton solver.
+  call SNESSetTolerances(solver%snes, solver%atol, solver%rtol, solver%stol, & 
+                         solver%maxit, solver%maxf, ierr)
+  call SNESSetFromOptions(solver%snes, ierr)
+  
+  ! shell for custom convergence test.  The default SNES convergence test 
+  ! is call within this function.
+  call SNESSetConvergenceTest(solver%snes,PFLOWConvergenceTest,simulation,ierr)
+                           
+  call SNESLineSearchGetParams(solver%snes, alpha, maxstep, steptol, ierr) 
+  call SNESLineSearchSetParams(solver%snes, alpha, maxstep, solver%stol, ierr) 
+  call SNESGetKSP(solver%snes, solver%ksp, ierr)
+  call KSPSetTolerances(solver%ksp,solver%rtol,solver%atol,solver%dtol, &
+                        10000,ierr)
+
+  if (option%myrank == 0) write(*,'("  Finished setting up of SNES ")')
+ 
+
+  select case(option%imode)
+    case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
+!      allocate(field%varbc(1:(option%ndof+1)*(2+7*option%nphase + 2 *  &
+!                                       option%nphase*option%nspec)))
+    case default  
+      allocate(field%density_bc(option%nphase))
+      allocate(field%d_p_bc(option%nphase))
+      allocate(field%d_t_bc(option%nphase))
+      allocate(field%d_c_bc(option%nphase))
+      allocate(field%d_s_bc(option%nphase))
+      allocate(field%avgmw_bc(option%nphase))
+      allocate(field%avgmw_c_bc(option%nphase*option%npricomp))
+      allocate(field%hh_bc(option%nphase))
+      allocate(field%h_p_bc(option%nphase))
+      allocate(field%h_t_bc(option%nphase))
+      allocate(field%h_c_bc(option%nphase*option%npricomp))
+      allocate(field%h_s_bc(option%nphase))
+      allocate(field%uu_bc(option%nphase))
+      allocate(field%u_p_bc(option%nphase))
+      allocate(field%u_t_bc(option%nphase))
+      allocate(field%u_c_bc(option%nphase*option%npricomp))
+      allocate(field%u_s_bc(option%nphase))
+      allocate(field%df_bc(option%nphase*option%nspec))
+      allocate(field%df_p_bc(option%nphase*option%nspec))
+      allocate(field%df_t_bc(option%nphase*option%nspec))
+      allocate(field%df_c_bc(option%nphase*option%nspec*option%npricomp))
+      allocate(field%df_s_bc(option%nphase*option%nspec))
+      allocate(field%hen_bc(option%nphase*option%nspec))
+      allocate(field%hen_p_bc(option%nphase*option%nspec))
+      allocate(field%hen_t_bc(option%nphase*option%nspec))
+      allocate(field%hen_c_bc(option%nphase*option%nspec*option%npricomp))
+      allocate(field%hen_s_bc(option%nphase*option%nspec))
+      allocate(field%viscosity_bc(option%nphase))
+      allocate(field%v_p_bc(option%nphase))
+      allocate(field%v_t_bc(option%nphase))
+      allocate(field%pc_bc(option%nphase))
+      allocate(field%pc_p_bc(option%nphase))
+      allocate(field%pc_t_bc(option%nphase))
+      allocate(field%pc_c_bc(option%nphase*option%npricomp))
+      allocate(field%pc_s_bc(option%nphase))
+      allocate(field%kvr_bc(option%nphase))
+      allocate(field%kvr_p_bc(option%nphase))
+      allocate(field%kvr_t_bc(option%nphase))
+      allocate(field%kvr_c_bc(option%nphase*option%npricomp))
+      allocate(field%kvr_s_bc(option%nphase))
+  end select
    
-  call DAGlobalToLocalBegin(da_1dof,temp,INSERT_VALUES,temploc,ierr)
-  call DAGlobalToLocalEnd(da_1dof,temp,INSERT_VALUES,temploc,ierr)
+! Note: VecAssemblyBegin/End needed to run on the Mac - pcl (11/21/03)!
+  if (field%conc /= 0) then
+    call VecAssemblyBegin(field%conc,ierr)
+    call VecAssemblyEnd(field%conc,ierr)
+  endif
+  if (field%xmol /= 0) then
+    call VecAssemblyBegin(field%xmol,ierr)
+    call VecAssemblyEnd(field%xmol,ierr)
+  endif
 
-  call DAGlobalToLocalBegin(da,cc,INSERT_VALUES,ccloc,ierr)
-  call DAGlobalToLocalEnd(da,cc,INSERT_VALUES,ccloc,ierr)
+  if (option%myrank == 0) write(*,'("  Finished setting up of INIT ")')
 
-  call DAGlobalToLocalBegin(da_1dof,ssat,INSERT_VALUES,ssat_loc,ierr)
-  call DAGlobalToLocalEnd(da_1dof,ssat,INSERT_VALUES,ssat_loc,ierr)
+  !-----------------------------------------------------------------------
+  ! Initialize field variables
+  !-----------------------------------------------------------------------  
+  if (option%imode /= MPH_MODE .and. option%imode /= RICHARDS_MODE .and. &
+      option%imode /= RICHARDS_LITE_MODE) then   
 
-  call DAGlobalToLocalBegin(da_1dof,sat,INSERT_VALUES,sat_loc,ierr)
-  call DAGlobalToLocalEnd(da_1dof,sat,INSERT_VALUES,sat_loc,ierr)
+    select case(option%ndof)
+      case(1)
+        call VecCopy(field%pressure, field%ppressure, ierr)
+        call VecCopy(field%temp, field%ttemp, ierr)
+      case(2)
+        call pflow_pack_xx2(field%yy, field%pressure, option%nphase, field%temp, ONE_INTEGER, &
+                            ierr)
+        call VecCopy(field%yy, field%xx, ierr)     
+      case(3)
+        call pflow_pack_xx3(field%yy, field%pressure, option%nphase, field%temp, ONE_INTEGER, &
+                            field%conc, ONE_INTEGER, ierr)
+        call VecCopy(field%yy, field%xx, ierr)      
+    end select
+  endif
+      
+         
+  select case(option%imode)
+    case(RICHARDS_MODE)
+#ifdef RICHARDS_ANALYTICAL
+      call RichardsSetup(realization)
+#else    
+      call pflow_richards_initadj(realization)
+#endif
+      call VecCopy(field%iphas_loc, field%iphas_old_loc,ierr)
+      call VecCopy(field%xx, field%yy, ierr)
+#ifdef RICHARDS_ANALYTICAL
+      call RichardsUpdateFixedAccumulation(realization)
+#else    
+      call pflow_update_richards(realization)
+#endif
+    case(RICHARDS_LITE_MODE)
+      call RichardsLiteSetup(realization)
+      call VecCopy(field%iphas_loc, field%iphas_old_loc,ierr)
+      call VecCopy(field%xx, field%yy, ierr)
+      call RichardsLiteUpdateFixedAccum(realization)
+    case(MPH_MODE)
+      call pflow_mphase_initadj(realization)
+      call VecCopy(field%iphas_loc, field%iphas_old_loc,ierr)
+      call VecCopy(field%xx, field%yy, ierr)
+      call pflow_update_mphase(realization)
+  end select  
   
-  call DAGlobalToLocalBegin(da_1dof,press,INSERT_VALUES,pressloc,ierr)
-  call DAGlobalToLocalEnd(da_1dof,press,INSERT_VALUES,pressloc,ierr)
+! zero initial velocity
+!  if (option%run_coupled == PETSC_TRUE) call VecSet(field%vvl,0.d0,ierr)
+ 
+  if (option%myrank == 0) &
+    write(*,'("  Finished setting up of INIT2 ")')
+   
+  call initializeSolidReaction(realization)
 
-  call VecGetArrayF90(temploc,temploc_p,ierr)
-  call VecGetArrayF90(ccloc,ccloc_p,ierr)
-  call VecGetArrayF90(ssat_loc,ssat_loc_p,ierr)
-  call VecGetArrayF90(pressloc,pressloc_p,ierr)
+  if (option%myrank == 0) write(*,'("  Finished setting up ")')
+
+  if (debug%print_couplers) then
+    call verifyCouplers(realization,realization%initial_conditions)
+    call verifyCouplers(realization,realization%boundary_conditions)
+    call verifyCouplers(realization,realization%source_sinks)
+  endif
+#endif  
+end subroutine PtranInit
+#if 0
+! ************************************************************************** !
+!
+! readRequiredCardsFromInput: Reads pflow input file
+! author: Glenn Hammond
+! date: 10/23/07
+!
+! **************************************************************************
+subroutine readRequiredCardsFromInput(realization,filename,mcomp,mphas)
+
+  use Option_module
+  use Grid_module
+  use Fileio_module
+  use Realization_module
   
-  gam = one
-  gamx = one
+  implicit none
 
-!   print *,"Ptran_chem:", ssat_loc_p
+  type(realization_type) :: realization
+  character(len=MAXWORDLENGTH) :: filename
+  PetscInt :: mcomp, mphas
 
-
+  PetscErrorCode :: ierr
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXWORDLENGTH) :: name
+  character(len=MAXCARDLENGTH) :: card
   
-  if (iact == 1) call trgamdh (ccloc_p,temploc_p)
-  call trpsi (ccloc_p,pressloc_p,temploc_p,ssat_loc_p)
-  call VecRestoreArrayF90(temploc,temploc_p,ierr)
-  call VecRestoreArrayF90(ccloc,ccloc_p,ierr)
-  call VecRestoreArrayF90(ssat_loc,ssat_loc_p,ierr)
-  call VecRestoreArrayF90(pressloc,pressloc_p,ierr)
-! initialize total concentrations
-  psi = ppsi
-  if (iphase == 2) psig = ppsig
- ! print *,"Ptran_chem:"
- ! print *, psig
- ! print *, ppsig
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
   
+  PetscInt :: igeom
+  
+  option => realization%option
+  
+  open(IUNIT1, file=filename, action="read", status="old") 
+  open(IUNIT2, file='pflow.out', action="write", status="unknown")
 
-! initialize boundary conditions and source/sinks
-  if (myrank==0) write(*,*) '--> speciate boundary/source fluid composition'
-  call trsetbnd
+  mphas=0
+  mcomp = 0
 
-  allocate(dfill(ncomp*ncomp))
-  allocate(ofill(ncomp*ncomp))
-  allocate(irow1(ncomp))
-  allocate(irow2(ncomp))
-  allocate(icol1(ncomp))
-  allocate(icol2(ncomp))
-! if (iblkfmt == 0) then
-    do j = 1, ncomp
-      do l = 1, ncomp
-        dfill(j+(l-1)*ncomp) = 0
-        ofill(j+(l-1)*ncomp) = 0
-        isumjl = 0
-        do i = 1, ncmplx
-          isumjl = isumjl + shom(j,i)*shom(l,i)
-        enddo
-        if (isumjl.ne.0 .or. j.eq.l) then
-          dfill(j+(l-1)*ncomp) = 1
-          ofill(j+(l-1)*ncomp) = 1
-        endif
-        isumjl = 0
-        do m = 1, nkin
-          isumjl = isumjl + skin(j,m)*skin(l,m)
-        enddo
-        if (isumjl .ne. 0) then
-          dfill(j+(l-1)*ncomp) = 1
-        endif
-      enddo
+! Read in select required cards
+!.........................................................................
+
+  ! MODE information
+  string = "MODE"
+  call fiFindStringInFile(IUNIT1,string,ierr)
+  call fiFindStringErrorMsg(option%myrank,string,ierr)
+
+  ! strip card from front of string
+  call fiReadWord(string,word,.false.,ierr)
+ 
+  ! read in keyword 
+  call fiReadWord(string,option%mode,.true.,ierr)
+  call fiErrorMsg(option%myrank,'mode','mode',ierr)
+
+!.........................................................................
+
+  ! GRID information
+  string = "GRID"
+  call fiFindStringInFile(IUNIT1,string,ierr)
+  call fiFindStringErrorMsg(option%myrank,string,ierr)
+
+  ! strip card from front of string
+  call fiReadWord(string,word,.false.,ierr)
+ 
+  ! key off igeom for structured vs unstructured 
+  call fiReadInt(string,igeom,ierr)
+  call fiDefaultMsg(option%myrank,'igeom',ierr)
+  
+  realization%grid => GridCreate(igeom) 
+  grid => realization%grid
+
+  if (grid%igrid == STRUCTURED) then ! structured
+    call fiReadInt(string,grid%structured_grid%nx,ierr)
+    call fiDefaultMsg(option%myrank,'nx',ierr)
+    
+    call fiReadInt(string,grid%structured_grid%ny,ierr)
+    call fiDefaultMsg(option%myrank,'ny',ierr)
+    
+    call fiReadInt(string,grid%structured_grid%nz,ierr)
+    call fiDefaultMsg(option%myrank,'nz',ierr)
+    
+    grid%structured_grid%nxy = grid%structured_grid%nx*grid%structured_grid%ny
+    grid%structured_grid%nmax = grid%structured_grid%nxy * &
+                                grid%structured_grid%nz
+    grid%nmax = grid%structured_grid%nmax
+  else ! unstructured
+  endif
+      
+  call fiReadInt(string,option%nphase,ierr)
+  call fiDefaultMsg(option%myrank,'nphase',ierr)
+
+  call fiReadInt(string,option%nspec,ierr)
+  call fiDefaultMsg(option%myrank,'nspec',ierr)
+
+  call fiReadInt(string,option%npricomp,ierr)
+  call fiDefaultMsg(option%myrank,'npricomp',ierr)
+
+  call fiReadInt(string,option%ndof,ierr)
+  call fiDefaultMsg(option%myrank,'ndof',ierr)
+      
+  call fiReadInt(string,option%idcdm,ierr)
+  call fiDefaultMsg(option%myrank,'idcdm',ierr)
+
+  call fiReadInt(string,option%itable,ierr)
+  call fiDefaultMsg(option%myrank,'itable',ierr)
+
+  if (option%myrank==0) then
+    if (grid%igrid == STRUCTURED) then
+      write(IUNIT2,'(/," *GRID ",/, &
+        &"  igeom   = ",i4,/, &
+        &"  nx      = ",i4,/, &
+        &"  ny      = ",i4,/, &
+        &"  nz      = ",i4,/, &
+        &"  nphase  = ",i4,/, &
+        &"  ndof    = ",i4,/, &
+        &"  idcdm   = ",i4,/, &
+        &"  itable  = ",i4    &
+        &   )') grid%igeom, grid%structured_grid%nx, &
+                grid%structured_grid%ny, grid%structured_grid%nz, &
+                option%nphase, option%ndof, option%idcdm, option%itable
+    else
+    endif
+  endif
+
+!.........................................................................
+
+  if (grid%igrid == STRUCTURED) then  ! look for processor decomposition
+    
+    ! PROC information
+    string = "PROC"
+    call fiFindStringInFile(IUNIT1,string,ierr)
+
+    if (ierr == 0) then
+
+      ! strip card from front of string
+      call fiReadWord(string,word,.false.,ierr)
+      call fiReadInt(string,grid%structured_grid%npx,ierr)
+      call fiDefaultMsg(option%myrank,'npx',ierr)
+      call fiReadInt(string,grid%structured_grid%npy,ierr)
+      call fiDefaultMsg(option%myrank,'npy',ierr)
+      call fiReadInt(string,grid%structured_grid%npz,ierr)
+      call fiDefaultMsg(option%myrank,'npz',ierr)
+ 
+      if (option%myrank == 0) &
+        write(IUNIT2,'(/," *PROC",/, &
+          & "  npx   = ",3x,i4,/, &
+          & "  npy   = ",3x,i4,/, &
+          & "  npz   = ",3x,i4)') grid%structured_grid%npx, &
+            grid%structured_grid%npy, grid%structured_grid%npz
+  
+      if (option%commsize /= grid%structured_grid%npx * &
+                             grid%structured_grid%npy * &
+                             grid%structured_grid%npz) then
+        if (option%myrank==0) &
+          write(*,*) 'Incorrect number of processors specified: ', &
+                       grid%structured_grid%npx*grid%structured_grid%npy* &
+                       grid%structured_grid%npz,' commsize = ',option%commsize
+        stop
+      endif
+    endif
+  endif
+  
+!.........................................................................
+
+  ! COMP information
+  string = "COMP"
+  call fiFindStringInFile(IUNIT1,string,ierr)
+
+  if (ierr == 0) then
+
+    mcomp = 0
+    do
+      call fiReadFlotranString(IUNIT1,string,ierr)
+      call fiReadStringErrorMsg(option%myrank,'COMP',ierr)
+      
+      if (string(1:1) == '.' .or. string(1:1) == '/') exit
+
+      call fiReadWord(string,name,.true.,ierr)
+      call fiErrorMsg(option%myrank,'namcx','GAS',ierr)
+        
+      call fiWordToUpper(name) 
+      select case(name(1:len_trim(name)))
+        case('H2O')
+            mcomp = mcomp +1
+        case('TRACER')     
+            mcomp = mcomp +4
+        case('CO2')
+            mcomp = mcomp +2   
+        case('C10H22')
+            mcomp = mcomp +8
+        case('AIR')              
+            mcomp = mcomp +16
+        case('ENG')
+            mcomp = mcomp +32
+        case default               
+           print *,' Wrong comp name::  Stop:' 
+           stop
+      end select 
     enddo
-    if (myrank == 0) then
-      write(iunit2,'(/,"dfill:")')
-      write(*,'(/,"dfill:")')
-      do j = 1, ncomp
-        write(iunit2,'(2x,30i2)') (dfill(j+(l-1)*ncomp),l=1,ncomp)
-        write(*,'(2x,30i2)') (dfill(j+(l-1)*ncomp),l=1,ncomp)
-      enddo
-      write(iunit2,'(/,"ofill:")')
-      write(*,'(/,"ofill:")')
-      do j = 1, ncomp
-        write(iunit2,'(2x,30i2)') (ofill(j+(l-1)*ncomp),l=1,ncomp)
-        write(*,'(2x,30i2)') (ofill(j+(l-1)*ncomp),l=1,ncomp)
-      enddo
-    endif
-    if (iblkfmt == 0) then
-      call DASetBlockFills(da,dfill,ofill,ierr)
-!     call DASetBlockFills(da,PETSC_NULL,ofill,ierr);CHKERRQ(ierr);
-!     print *,'DASetBlockFills: ',ierr
-    endif
-! endif
+  endif          
 
-  end subroutine ptran_chem
+!....................................................................
 
-!===================================================================
+  ! COMP information
+  string = "PHAS"
+  call fiFindStringInFile(IUNIT1,string,ierr)
 
-  subroutine trinit
-  
-  use ptran_global_module
-  use trdynmem_module
-  use water_eos_module
+  if (ierr == 0) then
+
+    mphas = 0
+    do
+      call fiReadFlotranString(IUNIT1,string,ierr)
+      call fiReadStringErrorMsg(option%myrank,'phase',ierr)
+    
+      if (string(1:1) == '.' .or. string(1:1) == '/') exit
+
+      call fiReadWord(string,name,.true.,ierr)
+      call fiErrorMsg(option%myrank,'namcx','phase',ierr)
+        
+      call fiWordToUpper(name) 
+         
+      select case(name(1:len_trim(name)))
+        case('ROCK')
+          mphas = mphas +1
+        case('H2O')     
+          mphas = mphas +2
+        case('CO2')
+          mphas = mphas +4   
+        case('GAS')
+          mphas = mphas +8
+        case('NAPL1')              
+          mphas = mphas +16
+        case('NAPL2')
+          mphas = mphas +32
+        case default               
+          print *,' Wrong phase name::  Stop:' 
+          stop
+      end select 
+    enddo
+  endif
+    
+end subroutine readRequiredCardsFromInput
+
+! ************************************************************************** !
+!
+! readInput: Reads pflow input file
+! author: Glenn Hammond
+! date: 10/23/07
+!
+! ************************************************************************** !
+subroutine readInput(simulation,filename)
+
+  use Simulation_module
+  use Option_module
+  use Field_module
+  use Grid_module
+  use Structured_Grid_module
+  use Solver_module
+  use Material_module
+  use Fileio_module
+  use Realization_module
+  use Timestepper_module
+  use Region_module
+  use Condition_module
+  use Coupler_module
+  use Strata_module
+  use Breakthrough_module
+  use Waypoint_module
+  use Debug_module
+
+  use pckr_module 
   
   implicit none
   
-  integer :: i,ii,j,iireg,jj,jaq,k,kk,kcount,kcountp,l,lp,m,mm,ml, &
-             ns,ntemp,ncsq,ncsqdp,ncsqdpg,nr,ncomp_sav
+  type(simulation_type) :: simulation
+  character(len=MAXWORDLENGTH) :: filename
+
+  PetscErrorCode :: ierr
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXNAMELENGTH) :: name
+  character(len=MAXWORDLENGTH) :: card
+    
+  PetscReal, parameter:: fmwnacl = 58.44277D0, fmwh2o  = 18.01534d0
+  PetscInt :: i, i1, i2, idum, ireg, isrc, j
+  PetscInt :: ibc, ibrk, ir,np  
+
+  logical :: continuation_flag
+  logical :: periodic_output_flag = .false.
+  PetscReal :: periodic_rate = 0.d0
   
-  real*8 :: den,atm,btm,bdtm,frc,dadebye,dbdebye,dbext,bextend0,fjl
+  character(len=1) :: backslash
+  PetscReal :: temp_real, temp_real2
+  PetscInt :: temp_int
+  PetscInt :: length 
+  PetscInt :: count, id
+  
+! keywords: GRID, PROC, COUP, GRAV, OPTS, TOLR, DXYZ, DIFF, RADN, HYDR,  
+!           SOLV, THRM, PCKR, PHIK, INIT, TIME, DTST, BCON, SOUR, BRK, RCTR
 
-!-----set activity coefficient algorithm
-      ntemp = ntmpmx
-      i = 1
-      do ii=1,ntemp
+  type(region_type), pointer :: region
+  type(condition_type), pointer :: condition
+  type(coupler_type), pointer :: coupler
+  type(strata_type), pointer :: strata
+  type(breakthrough_type), pointer :: breakthrough
+  
+  type(waypoint_type), pointer :: waypoint
+  
+  type(material_type), pointer :: material
+  type(thermal_property_type), pointer :: thermal_property
+  type(saturation_function_type), pointer :: saturation_function
+
+  type(realization_type), pointer :: realization
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(solver_type), pointer :: solver
+  type(stepper_type), pointer :: stepper
+  
+  realization => simulation%realization
+  grid => realization%grid
+  option => realization%option
+  field => realization%field
+  stepper => simulation%stepper
+  solver => stepper%solver
+
+  backslash = achar(92)  ! 92 = "\" Some compilers choke on \" thinking it
+                          ! is a double quote as in c/c++
+                              
+  rewind(IUNIT1)  
+    
+  do
+    call fiReadFlotranString(IUNIT1, string, ierr)
+    if (ierr /= 0) exit
+
+    call fiReadWord(string,word,.false.,ierr)
+    length = len_trim(word)
+    call fiCharsToUpper(word,length)
+!    call fiReadCard(word,card,ierr)
+    card = trim(word)
+
+    if (option%myrank == 0) print *, 'pflow_read:: ',card
+
+    select case(trim(card))
+
+!....................
+      case ('MODE')
+
+!....................
+      case ('GRID')
       
-!       write(*,*) 'trinit: ',ii,tempini,temptab(ii)
+!....................
+      case ('DEBUG','PFLOW_DEBUG')
+        call DebugRead(realization%debug,IUNIT1,option%myrank)
         
-        if(tempini.le.temptab(ii)) then
-          i = ii
-          goto 10
-        endif
-      enddo
-      if (myrank == 0) write(iunit2,1001) tempini
- 1001 format(' illegal temperature (',1pg12.4,') deg.c')
-      if(tempini.le.300.) then
-        if (myrank == 0) &
-        write(*,*) 'error in temperature interpolation! STOP'
-        stop
-      endif
+!....................
+      case ('GENERALIZED_GRID')
+        option%use_generalized_grid = .true.
+        call fiReadWord(string,option%generalized_grid,.true.,ierr)
 
-   10 continue
-
-      if (i .eq. 1) then
-        adebye  = atab(i)
-        bdebye  = btab(i)
-        bextend0 = bdotab(i)
-      else
-        atm = atab(i-1)
-        btm = btab(i-1)
-        bdtm = bdotab(i-1)
-        frc   = (tempini-temptab(i-1))/(temptab(i)-temptab(i-1))
-        dadebye = atab(i)   - atm
-        dbdebye = btab(i)   - btm
-        dbext   = bdotab(i) - bdtm
-        adebye  = frc*dadebye + atm
-        bdebye  = frc*dbdebye + btm
-        bextend0 = frc*dbext  + bdtm
-      endif
-      if (iact.eq.1) then
-        do j = 1, ncomp
-          bextend(j) = bextend0
-        enddo
-        do i = 1, ncmplx
-          bextendx(i) = bextend0
-        enddo
-      else if (iact .eq. 2) then ! Davies algorithm
-        adebye = half
-        bdebye = one
-        do j = 1, ncomp
-          a0(j) = one
-          bextend(j) = 0.3d0*z(j)*z(j)*half
-        enddo
-        do i = 1, ncmplx
-          ax0(i) = one
-          bextendx(i) = 0.3d0*zx(i)*zx(i)*half
-        enddo
-      else if (iact .eq. 5) then
-        iact = 1
-        bextend0 = zero
-        do j = 1, ncomp
-          bextend(j) = bextend0
-        enddo
-        do i = 1, ncmplx
-          bextendx(i) = bextend0
-        enddo
-      endif
-
-!-----set initial temperature and density fields
-      if (mode .eq. 2) then
-!       do n = 1,nmax
-!         temp(n) = tempini
-!         if (pref0 .gt. zero) then
-!           press(n) = pref0
-!           call density(temp(n),pref0,den)
-!           rho(n) = den*1.d-3
-!         else
-!           press(n) = -pref0
-!           rho(n) = one
-!         endif
-!       enddo
-
-        do ibc = 1,nblkbc
-!         ibc = iregn(mmbc)
-          if (pref0 .gt. zero) then
-            call density (tempbc(ibc),pref0,den)
-            dwbc(ibc) = den*1.d-3
+!....................
+      case ('PROC')
+      
+!....................
+      case ('REGION','REGN')
+        region => RegionCreate()
+        call fiReadWord(string,region%name,.true.,ierr)
+        call fiErrorMsg(option%myrank,'regn','name',ierr) 
+        call fiReadFlotranString(IUNIT1,string,ierr)
+        call fiReadStringErrorMsg(option%myrank,'REGN',ierr)
+        call fiReadWord(string,word,.true.,ierr)
+        call fiErrorMsg(option%myrank,'type','REGN', ierr)
+        if (fiStringCompare(word,"BLOCK",FIVE_INTEGER)) then ! block region
+          if (grid%igrid /= STRUCTURED) then
+            call printErrMsg(option,"BLOCK region not supported for &
+                             &unstructured grid")
+          endif
+          call fiReadFlotranString(IUNIT1,string,ierr)
+          call fiReadStringErrorMsg(option%myrank,'REGN',ierr)
+          call fiReadInt(string,region%i1,ierr) 
+          call fiErrorMsg(option%myrank,'i1','REGN', ierr)
+          call fiReadInt(string,region%i2,ierr)
+          call fiErrorMsg(option%myrank,'i2','REGN', ierr)
+          call fiReadInt(string,region%j1,ierr)
+          call fiErrorMsg(option%myrank,'j1','REGN', ierr)
+          call fiReadInt(string,region%j2,ierr)
+          call fiErrorMsg(option%myrank,'j2','REGN', ierr)
+          call fiReadInt(string,region%k1,ierr)
+          call fiErrorMsg(option%myrank,'k1','REGN', ierr)
+          call fiReadInt(string,region%k2,ierr)
+          call fiErrorMsg(option%myrank,'k2','REGN', ierr)
+        else if (fiStringCompare(word,"LIST",FOUR_INTEGER)) then
+          word = ""
+          call fiReadWord(string,word,.true.,ierr)
+          if (fiStringCompare(word,"file",FOUR_INTEGER)) then
+!            call fiReadFlotranString(IUNIT1,string,ierr)
+            call fiReadStringErrorMsg(option%myrank,'REGN',ierr)
+            call fiReadWord(string,word,.true.,ierr)
+            call fiErrorMsg(option%myrank,'filename','REGN', ierr)
+            region%filename = word
+            ! this file will be read later in readRegionFiles()          
           else
-            dwbc(ibc) = 1.d0
-          endif
-        enddo
-      endif
-      
-      ireg = initreg
-      if (ibcreg(2).gt.0) ireg = ireg + ibcreg(2)-ibcreg(1) + 1
-      if (ibcreg(4).gt.0) ireg = ireg + ibcreg(4)-ibcreg(3) + 1
-
-      do iireg = 1, ireg
-        do j = 1, ncomp
-          if (itype(j,iireg) .eq. 0) then
-            ncon(j,iireg) = 'log'
-          else if (itype(j,iireg) .eq. 1) then
-            ncon(j,iireg) = 'Total'
-          else if (itype(j,iireg) .eq. 2) then
-            ncon(j,iireg) = 'Aq+Sorp'
-          else if (itype(j,iireg) .eq. 21) then
-            ncon(j,iireg) = 'Aq+CEC'
-          else if (itype(j,iireg) .eq. 5) then
-            ncon(j,iireg) = 'Wt%'
-          else if (itype(j,iireg) .eq. 7) then
-            ncon(j,iireg) = 'Conc'
-          else if (itype(j,iireg) .eq. 8) then
-            ncon(j,iireg) = 'pH'
-          else if (itype(j,iireg) .eq. 10) then
-            ncon(j,iireg) = 'Constr. Qty'
-          else if (itype(j,iireg) .eq. -1) then
-            ncon(j,iireg) = 'Charge Bal.'
-          endif
-        enddo
-      enddo
-
-!-----set mineral kinetic rate law translation
-      itypkini(20) = 1
-      itypkini(21) = 2
-      itypkini(22) = 3
-      itypkini(25) = 4
-      itypkini(30) = 5
-      itypkini(90) = 6
-      itypkini(91) = 7
-
-!-----set aqueous kinetic rate law translation
-      itypkiniaq(19) =  1
-      itypkiniaq(20) =  2
-      itypkiniaq(21) =  3
-      itypkiniaq(22) =  4
-      itypkiniaq(23) =  5
-      itypkiniaq(25) =  6
-      itypkiniaq(30) =  7
-      itypkiniaq(60) =  8
-      itypkiniaq(90) =  9
-      itypkiniaq(91) = 10
-      itypkiniaq(95) = 11
-      
-!-----load irreversible mineral properties
-      do nr = 1, nkin
-        do m = 1, mnrl
-          if (namk(nr) .eq. namrl(m)) then
-            ndxkin(nr) = m
-            eqkin(nr) = alnk(m)
-!           ze(nr) = ze0(m)
-            do j = 1, ncpri
-              skin(j,nr) = smnrl(j,m)
-            enddo
-
-!-----------store molar volume - liter/mole
-            vbarkin(nr) = vbar(m)
-            wtkin(nr)   = wtmin(m)
-            goto 20
-          endif
-        enddo
-        if (myrank == 0) write(*,*) 'mineral name not found: ',namk(nr)
-        stop
-   20   continue
-   
-!-----rate constant - mole/cm**2/sec
-
-!-----convert units of kinetic reaction rate from mole/cm**3 to 
-!     mole/liter
-!     aeqkin=ten**eqkin(nr)
-
-        if (rlim0(nr) .lt. zero) rlim0(nr) = ten**rlim0(nr)
-        rlim(nr) = 1.d3*rlim0(nr)
-        do l = npar1(nr), npar2(nr)
-          if (rkf00(l) .lt. zero) rkf00(l) = ten**rkf00(l)
-          rkf0(l)  = 1.d3*rkf00(l)
-          rkf(l)   = rkf0(l)
-        enddo
-        if (rkfa00(nr) .lt. zero) rkfa00(nr) = ten**rkfa00(nr)
-        if (rkfb00(nr) .lt. zero) rkfb00(nr) = ten**rkfb00(nr)
-        rkfa0(nr) = rkfa00(nr)*1.d3
-        rkfb0(nr) = rkfb00(nr)*1.d3
-        rkfa(nr)  = rkfa0(nr)
-        rkfb(nr)  = rkfb0(nr)
-      enddo
-
-!-----compress stoichiometric matrix storage
-!-----homogeneous reactions
-
-!-----store product of stoichiometric coefficients
-
-      ncomp_sav = ncomp
-      ncomp = nmass
-
-      jj = 0
-      do l = 1, ncomp
-        do j = l, ncomp
-          jj = jj + 1
-          do i = 1, ncmplx
-            sshom(i,jj) = shom(j,i)*shom(l,i)
-          enddo
-        enddo
-      enddo
-
-!-----compute nonzero dpsi(j,l) matrix indices: store in jpsi
-      ncsqdp = 0
-      jj = 0
-      do l = 1, ncomp
-        do j = 1, ncomp
-          jj = jj + 1
-          fjl = zero
-          if (j.ne.l) then ! always include diagonal terms
-            do i = 1, ncmplx
-              fjl = shom(j,i)*shom(l,i)
-              if (fjl .ne. zero) goto 555
-            enddo
-            goto 556
-          endif
-  555     continue
-          ncsqdp = ncsqdp + 1
-          jpsi(ncsqdp) = jj
-  556     continue
-        enddo
-      enddo
-
-!-----compute nonzero dpsig(j,l) matrix indices: store in jpsig
-      if (ngas > 0 .and. iphase == 2) then
-      ncsqdpg = 0
-      jj = 0
-      do l = 1, ncomp
-        do j = 1, ncomp
-          jj = jj + 1
-          fjl = zero
-          if (j.ne.l) then ! always include diagonal terms
-            do i = 1, ngas
-              fjl = sgas(j,i)*sgas(l,i)
-              if (fjl .ne. zero) goto 557
-            enddo
-            goto 558
-          endif
-  557     continue
-          ncsqdpg = ncsqdpg + 1
-          jpsig(ncsqdpg) = jj
-  558     continue
-        enddo
-      enddo
-      endif
-      
-      ncsq = ncomp*ncomp
-!     write(iunit2,*) 'trdatint-storage: ',ncsq,ncsqdp,ncsqdpg
-!     do jj = 1, ncsqdp
-!       jjj = jpsi(jj)
-!       write(*,*) 'trdatint: ',jj,jjj,ncsqdp,ncomp*ncomp
-!     enddo
-
-      do j = 1, ncomp
-        k = 0
-        do i = 1, ncmplx
-          if (shom(j,i).ne.zero) then
-            k = k + 1
-            fshom(j,k) = shom(j,i)
-            ki(j,k) = i
-          endif
-        enddo
-        lc(j) = k
-
-        do l = j+1, ncomp
-          kk = 0
-          do i = 1, ncmplx
-            if (shom(j,i).ne.zero .and. shom(l,i).ne.zero) then
-              kk = kk + 1
-              kki(j,l,kk) = i
-              ffshom(j,l,kk) = shom(j,i)*shom(l,i)
-            endif
-          enddo
-          llc(j,l) = kk
-        enddo
-      enddo
-
-!-----gaseous reactions
-
-!-----store product of stoichiometric coefficients
-      if (ngas > 0 .and. iphase == 2) then
-      k = 0
-      do l = 1, ncomp
-        do j = l, ncomp
-          k = k + 1
-          do i = 1, ngas
-            ssgas(i,k) = sgas(j,i)*sgas(l,i)
-          enddo
-        enddo
-      enddo
-
-      do i = 1, ngas
-        njg(i) = 0
-        do j = 1, ncomp
-          if (sgas(j,i).ne.zero) then
-            njg(i) = njg(i) + 1
-            jg(njg(i),i) = j
-          endif
-        enddo
-      enddo
-
-      do j = 1, ncomp
-        k = 0
-        do i = 1, ngas
-          if (sgas(j,i).ne.zero) then
-            k = k + 1
-            fsgas(j,k) = sgas(j,i)
-            kg(j,k) = i
-          endif
-        enddo
-        lg(j) = k
-
-        do l = j+1, ncomp
-          kk = 0
-          do i = 1, ngas
-            if (sgas(j,i).ne.zero .and. sgas(l,i).ne.zero) then
-              kk = kk + 1
-              kkg(j,l,kk) = i
-              ffsgas(j,l,kk) = sgas(j,i)*sgas(l,i)
-            endif
-          enddo
-          llg(j,l) = kk
-        enddo
-      enddo
-      endif
-      
-!-----mineral reactions
-      do nr = 1, nkin
-        k = 0
-        do j = 1, ncomp
-          if (skin(j,nr) .ne. zero) then
-            k = k + 1
-            kinj(nr,k) = j
-            fskin(nr,k) = skin(j,nr)*skin(j,nr)
-          endif
-        enddo
-        kmind(nr) = k
-        k = 0
-        do j = 1, ncomp
-          do l = j+1, ncomp
-            if (skin(j,nr).ne.zero .and. skin(l,nr).ne.zero) then
-              k = k + 1
-              kminj(nr,k) = j
-              kminl(nr,k) = l
-              ffskin(nr,k) = skin(j,nr)*skin(l,nr)
-            endif
-          enddo
-        enddo
-        kkmin(nr) = k
-      enddo
-
-      idebug = 0
-      if (idebug > 0 .and. myrank == 0) then
-        write(iunit2,*)
-        write(iunit2,*) ' stoichiometrix matrix compression'
-        kcount  = 0
-        kcountp = 0
-        do j = 1, ncomp
-          write(iunit2,'(1x,a12,1x,"no. primary species: ",i4)') &
-          nam(j),lc(j)
-          write(iunit2,*) ' complex  stoichiometric coef.'
-          do k = 1, lc(j)
-            kcount = kcount + 1
-            write(iunit2,'(a12,1x,1pe12.4)') namcx(ki(j,k)),fshom(j,k)
-          enddo
-          do l = j+1, ncomp
-            write(iunit2,'("no. pairs: ",2x,2a12,1x,i4)') nam(j), &
-            nam(l),llc(j,l)
-            write(iunit2,*) ' complex  stoichiometric coef.'
-            do k = 1, llc(j,l)
-              kcountp = kcountp + 1
-              write(iunit2,'(a12,1x,1pe12.4)') namcx(kki(j,l,k)), &
-              ffshom(j,l,k)
-            enddo
-          enddo
-        enddo
-
-        write(iunit2,*) ' nonzero terms: ',kcount,' pairs: ',kcountp
-        write(iunit2,*) ' nc x ncx = ',ncomp*ncmplx, &
-        ', nc x nc x ncx = ',ncomp*ncomp*ncmplx
-        write(iunit2,'()')
-      endif
-
-      do i = 1, ncmplx
-        k = 0
-        do j = 1, ncomp
-          if (shom(j,i).ne.zero) then
-            k = k + 1
-            cshom(k,i) = shom(j,i)
-            jcmpr(k,i) = j
-          endif
-        enddo
-        ncmpr(i) = k
-      enddo
-        
-      ncomp = ncomp_sav
-
-!-----water stoichiometric coefficients
-      if (myrank == 0) then
-        write(iunit2,*)
-        write(iunit2,*) 'stoichiometric coefficients for H2O'
-        write(iunit2,*) 'species                   nH2O'
-        if (jh2o.eq.0) then
-          jaq = ncomp+1
+            call RegionReadFromFile(region,IUNIT1)
+          endif            
         else
-          jaq = jh2o
+          call printErrMsg(option,"REGION type not recognized")
         endif
-        do i = 1, ncmplx
-          write(iunit2,'(1x,a20,1x,1pe12.4)') namcx(i),shom(jaq,i)
-        enddo
-        do i = 1, ngas
-          write(iunit2,'(1x,a20,1x,1pe12.4)') namg(i),sgas(jaq,i)
-        enddo
-        do i = 1, nkin
-          write(iunit2,'(1x,a20,1x,1pe12.4)') namk(i),skin(jaq,i)
-        enddo
-        do i = 1, nsrfmx
-          write(iunit2,'(1x,a20,1x,1pe12.4)') namscx(i),ssorp(jaq,i)
-        enddo
-        write(iunit2,*)
-      endif
+        call RegionAddToList(region,realization%regions)      
 
-!-----store mineral kinetic prefactor stoichiometry in proper order
-      do m = 1, nkin
-        do ml = npar1(m), npar2(m)
-
-!---------set primary species prefactor coefficients
-          do j = 1, nkinpri(ml)
-            do l = 1, ncomp
-              if (namprik(j,ml) .eq. nam(l)) then
-                jpri(j,ml) = l
-                goto 222
-              endif
-            enddo
-            write(*,*) 'error finding prefactor primary species: stop', &
-            myrank
-            stop
-  222       continue
-          enddo
-
-!---------set secondary species prefactor coefficients
-          do i = 1, nkinsec(ml)
-            do l = 1, ncmplx
-              if (namseck(i,ml) .eq. namcx(l)) then
-                isec(i,ml) = l
-                goto 223
-              endif
-            enddo
-            write(*,*) 'error finding prefactor secondary species: stop', &
-            myrank
-            stop
-  223       continue
-          enddo
-        enddo
-      enddo
-
-   if (myrank == 0) then
-      if (nkin > 0) then
-        write(iunit2,'(/,"parallel reaction stoichiometry")')
-        write(iunit2,'("mineral",10x,"      npri  nsec")')
-      endif
-      do nr = 1, nkin
-        do lp = npar1(nr), npar2(nr)
-          write(iunit2,'(a20,2i6)') namk(nr),nkinpri(lp),nkinsec(lp)
-          do l = 1, nkinpri(lp)
-            write(iunit2,'(10x,a20,1pe12.4)') nam(jpri(l,lp)), &
-            skinpri(l,lp)
-          enddo
-          do l = 1, nkinsec(lp)
-            write(iunit2,'(10x,a20,1pe12.4)') namcx(isec(l,lp)), &
-            skinsec(l,lp)
-          enddo
-        enddo
-      enddo
-      write(iunit2,*)
-   endif
-
-!-----setup ion-exchange ordering of minerals, colloids, and cations
-      ncollex = 0
-      do m = 1, nexsolid
-!-------set species indices for minerals
-        do ns = 1, nkin
-          if (namex(m) .eq. namk(ns)) then
-            mex(m) = ns
-            goto 50
-          endif
-        enddo
-
-!-------set species indices for ion exchange colloids
-        do j = ncomp-ncoll+1, ncomp
-          if (namex(m) .eq. nam(j)) then
-            mex(m) = j
-            ncollex = ncollex + 1
-            goto 50
-          endif
-        enddo
-
-        write(*,*) 'error in trdatint setting ion exchange colloid ', &
-        'and mineral indices: stop'
-        stop
-
-   50   continue
-
-!-------set species indices for cations
-        do jj = 1, nexmax
-          do l = 1, ncomp
-            if (namcat(jj) .eq. nam(l)) then
-              jex(jj) = l
-              goto 60
-            endif
-          enddo
-          write(*,*) 'error in trdatint setting cation exchange ', &
-          'indices: stop'
-          stop
-   60     continue
-        enddo
-      enddo
-
-!-----determine nr. of colloid surface complexation and exchange solids
-      ncolsrf = 0
-      do m = 1, nsrfmin
-        do mm = 1, ncoll
-          if (namcoll(mm).eq.namsrf(m)) then
-            ncolsrf = ncolsrf + 1
-          endif
-        enddo
-      enddo
+!....................
+      case ('CONDITION','COND')
+        condition => ConditionCreate(option)
+        call fiReadWord(string,condition%name,.true.,ierr)
+        call fiErrorMsg(option%myrank,'cond','name',ierr) 
+        call ConditionRead(condition,option,IUNIT1)
+        call ConditionAddToList(condition,realization%conditions)
       
-      do i = 1, nsrfmx
-!       print *,i,nsrfmx,namscx(i),eqsorp0(i),eqsorp(i)
-        if (eqsorp0(i).ne.zero) eqsorp(i) = eqsorp0(i)
-      enddo
+!....................
+      case ('BOUNDARY_CONDITION')
+        coupler => CouplerCreate(BOUNDARY_COUPLER_TYPE)
+        call CouplerRead(coupler,IUNIT1,option)
+        call CouplerAddToList(coupler,realization%boundary_conditions)
+      
+!....................
+      case ('INITIAL_CONDITION')
+        coupler => CouplerCreate(INITIAL_COUPLER_TYPE)
+        call CouplerRead(coupler,IUNIT1,option)
+        call CouplerAddToList(coupler,realization%initial_conditions)
+      
+!....................
+      case ('STRATIGRAPHY','STRATA')
+        strata => StrataCreate()
+        call StrataRead(strata,IUNIT1,option)
+        call StrataAddToList(strata,realization%strata)
+      
+!....................
+      case ('SOURCE_SINK')
+        coupler => CouplerCreate(SRC_SINK_COUPLER_TYPE)
+        call CouplerRead(coupler,IUNIT1,option)
+        call CouplerAddToList(coupler,realization%source_sinks)
+      
+!.....................
+      case ('COMP') 
+        do
+          call fiReadFlotranString(IUNIT1,string,ierr)
+          call fiReadStringErrorMsg(option%myrank,'COMP',ierr)
+      
+          if (string(1:1) == '.' .or. string(1:1) == '/') exit
+        enddo
+!.....................
+      case ('PHAS')
+        do
+          call fiReadFlotranString(IUNIT1,string,ierr)
+          call fiReadStringErrorMsg(option%myrank,'PHASE',ierr)
+      
+          if (string(1:1) == '.' .or. string(1:1) == '/') exit
+        enddo 
+      
+!....................
 
-!-----setup mineral ordering for surface complexation reactions
-      do mm = 1, nsrfmin
-        do m = 1, nkin
-          if (namsrf(mm) .eq. namk(m)) then
-            msorp(mm) = m
-            if (wtkin(m).le.zero .or. vbarkin(m).le.zero) then
-              write(*,'(''error: zero formula weight or molar volume '', &
-    &         ''for mineral '',a20,'': '',1p2e12.4)') namk(m),wtkin(m), &
-              vbarkin(m)
-              stop
-            endif
-            goto 70
+      case ('COUP')
+
+        call fiReadStringErrorMsg(option%myrank,'COUP',ierr)
+
+        call fiReadInt(string,option%isync,ierr)
+        call fiDefaultMsg(option%myrank,'isync',ierr)
+
+        if (option%myrank == 0) &
+          write(IUNIT2,'(/," *COUP",/, &
+            & "  isync      = ",3x,i2 &
+            & )') option%isync
+
+!....................
+
+      case ('GRAV','GRAVITY')
+
+        call fiReadStringErrorMsg(option%myrank,'GRAV',ierr)
+
+        call fiReadDouble(string,temp_real,ierr)
+        if (ierr /= 0) then
+          call fiDefaultMsg(option%myrank,'gravity',ierr)
+        else
+          call fiReadDouble(string,option%gravity(2),ierr)
+          if (ierr /= 0) then
+            option%gravity(:) = 0.d0
+            option%gravity(3) = temp_real
+          else
+            option%gravity(1) = temp_real
+            call fiReadDouble(string,option%gravity(3),ierr)
+          endif
+        endif
+
+        if (option%myrank == 0) &
+          write(IUNIT2,'(/," *GRAV",/, &
+            & "  gravity    = "," [m/s^2]",3x,3pe12.4 &
+            & )') option%gravity(1:3)
+
+!....................
+
+      case ('HDF5')
+        realization%output_option%print_hdf5 = .true.
+        do
+          call fiReadWord(string,word,.true.,ierr)
+          if (ierr /= 0) exit
+          length = len_trim(word)
+          call fiCharsToUpper(word,length)
+          call fiReadCard(word,card,ierr)
+
+          select case(card)
+            case('VELO')
+              realization%output_option%print_hdf5_velocities = .true.
+            case('FLUX')
+              realization%output_option%print_hdf5_flux_velocities = .true.
+            case default
+          end select
+            
+        enddo
+
+        if (option%myrank == 0) &
+          write(IUNIT2,'(/," *HDF5",10x,i1,/)') realization%output_option%print_hdf5
+
+!.....................
+      case ('INVERT_Z','INVERTZ')
+        if (associated(grid%structured_grid)) then
+          grid%structured_grid%invert_z_axis = .true.
+          option%gravity(3) = -1.d0*option%gravity(3)
+        endif
+      
+!....................
+
+      case ('TECP')
+        realization%output_option%print_tecplot = .true.
+        do
+          call fiReadWord(string,word,.true.,ierr)
+          if (ierr /= 0) exit
+          length = len_trim(word)
+          call fiCharsToUpper(word,length)
+          call fiReadCard(word,card,ierr)
+
+          select case(card)
+            case('VELO')
+              realization%output_option%print_tecplot_velocities = .true.
+            case('FLUX')
+              realization%output_option%print_tecplot_flux_velocities = .true.
+            case default
+          end select
+          
+        enddo
+
+        if (option%myrank == 0) &
+          write(IUNIT2,'(/," *TECP",10x,i1,/)') realization%output_option%print_tecplot
+
+!....................
+
+
+      case ('OPTS')
+
+        call fiReadStringErrorMsg(option%myrank,'OPTS',ierr)
+
+        call fiReadInt(string,option%write_init,ierr)
+        call fiDefaultMsg(option%myrank,'write_init',ierr)
+
+        call fiReadInt(string,id,ierr)
+        call fiDefaultMsg(option%myrank,'iprint',ierr)
+
+        call fiReadInt(string,option%imod,ierr)
+        call fiDefaultMsg(option%myrank,'mod',ierr)
+
+        call fiReadInt(string,option%itecplot,ierr)
+        call fiDefaultMsg(option%myrank,'itecplot',ierr)
+
+        call fiReadInt(string,option%iblkfmt,ierr)
+        call fiDefaultMsg(option%myrank,'iblkfmt',ierr)
+
+        call fiReadInt(string,stepper%ndtcmx,ierr)
+        call fiDefaultMsg(option%myrank,'ndtcmx',ierr)
+
+        call fiReadInt(string,option%iran_por,ierr)
+        call fiDefaultMsg(option%myrank,'iran_por',ierr)
+  
+        call fiReadDouble(string,option%ran_fac,ierr)
+        call fiDefaultMsg(option%myrank,'ran_fac',ierr)
+    
+        call fiReadInt(string,option%iread_perm,ierr)
+        call fiDefaultMsg(option%myrank,'iread_perm',ierr)
+    
+        call fiReadInt(string,option%iread_geom,ierr)
+        call fiDefaultMsg(option%myrank,'iread_geom',ierr)
+
+
+        if (option%myrank == 0) &
+          write(IUNIT2,'(/," *OPTS",/, &
+            & "  write_init = ",3x,i2,/ &
+            & "  imod       = ",3x,i2,/, &
+            & "  itecplot   = ",3x,i2,/, &
+            & "  iblkfmt    = ",3x,i2,/, &
+            & "  ndtcmx     = ",3x,i2,/, &
+            & "  iran_por   = ",3x,i2,/, &
+            & "  ran_fac    = ",3x,1pe12.4,/, &
+            & "  iread_perm = ",3x,i2,/, &
+            & "  iread_geom = ",3x,i2 &
+            & )') option%write_init,option%imod,option%itecplot, &
+            option%iblkfmt,stepper%ndtcmx,option%iran_por,option%ran_fac, &
+            option%iread_perm,option%iread_geom
+
+!....................
+
+      case ('TOLR')
+
+        call fiReadStringErrorMsg(option%myrank,'TOLR',ierr)
+
+        call fiReadInt(string,stepper%stepmax,ierr)
+        call fiDefaultMsg(option%myrank,'stepmax',ierr)
+  
+        call fiReadInt(string,stepper%iaccel,ierr)
+        call fiDefaultMsg(option%myrank,'iaccel',ierr)
+
+        call fiReadInt(string,stepper%newton_max,ierr)
+        call fiDefaultMsg(option%myrank,'newton_max',ierr)
+
+        call fiReadInt(string,stepper%icut_max,ierr)
+        call fiDefaultMsg(option%myrank,'icut_max',ierr)
+
+        call fiReadDouble(string,option%dpmxe,ierr)
+        call fiDefaultMsg(option%myrank,'dpmxe',ierr)
+
+        call fiReadDouble(string,option%dtmpmxe,ierr)
+        call fiDefaultMsg(option%myrank,'dtmpmxe',ierr)
+  
+        call fiReadDouble(string,option%dcmxe,ierr)
+        call fiDefaultMsg(option%myrank,'dcmxe',ierr)
+
+        call fiReadDouble(string,option%dsmxe,ierr)
+        call fiDefaultMsg(option%myrank,'dsmxe',ierr)
+
+        if (option%myrank==0) write(IUNIT2,'(/," *TOLR ",/, &
+          &"  flowsteps  = ",i6,/,      &
+          &"  iaccel     = ",i3,/,      &
+          &"  newtmx     = ",i3,/,      &
+          &"  icutmx     = ",i3,/,      &
+          &"  dpmxe      = ",1pe12.4,/, &
+          &"  dtmpmxe    = ",1pe12.4,/, &
+          &     "  dcmxe      = ",1pe12.4,/, &
+          &"  dsmxe      = ",1pe12.4)') &
+! For commented-out lines to work with the Sun f95 compiler, we have to 
+! terminate the string in the line above; otherwise, the compiler tries to
+! include the commented-out line as part of the continued string.
+          stepper%stepmax,stepper%iaccel,stepper%newton_max,stepper%icut_max, &
+          option%dpmxe,option%dtmpmxe,option%dcmxe, option%dsmxe
+
+!....................
+
+      case ('DXYZ')
+      
+        if (grid%igrid == STRUCTURED) then  ! look for processor decomposition
+          call StructuredGridReadDXYZ(grid%structured_grid,option)
+        else
+          if (option%myrank == 0) &
+            print *, 'ERROR: Keyword "DXYZ" not supported for unstructured grid'
+            stop
+        endif
+
+!....................
+
+      case('ORIG','ORIGIN')
+        call fiReadDouble(string,grid%origin(X_DIRECTION),ierr)
+        call fiErrorMsg(option%myrank,'X direction','Origin',ierr)
+        call fiReadDouble(string,grid%origin(Y_DIRECTION),ierr)
+        call fiErrorMsg(option%myrank,'Y direction','Origin',ierr)
+        call fiReadDouble(string,grid%origin(Z_DIRECTION),ierr)
+        call fiErrorMsg(option%myrank,'Z direction','Origin',ierr)
+        
+!....................
+
+      case('RAD0')
+    
+        if (grid%igrid == STRUCTURED) then  ! look for processor decomposition
+          call fiReadDouble(string,grid%structured_grid%Radius_0,ierr)
+          call fiDefaultMsg(option%myrank,'R_0',ierr)
+        else
+          if (option%myrank == 0) &
+            print *, 'ERROR: Keyword "RAD0" not supported for unstructured grid'
+            stop
+        endif
+
+
+      case ('DIFF')
+
+        call fiReadStringErrorMsg(option%myrank,'DIFF',ierr)
+
+        call fiReadDouble(string,option%difaq,ierr)
+        call fiDefaultMsg(option%myrank,'difaq',ierr)
+
+        call fiReadDouble(string,option%delhaq,ierr)
+        call fiDefaultMsg(option%myrank,'delhaq',ierr)
+
+        if (option%myrank==0) write(IUNIT2,'(/," *DIFF ",/, &
+          &"  difaq       = ",1pe12.4,"[m^2/s]",/, &
+          &"  delhaq      = ",1pe12.4,"[kJ/mol]")') &
+          option%difaq,option%delhaq
+
+!....................
+
+      case ('RCTR')
+
+        call fiReadStringErrorMsg(option%myrank,'RCTR',ierr)
+
+        call fiReadInt(string,option%ityprxn,ierr)
+        call fiDefaultMsg(option%myrank,'ityprxn',ierr)
+
+        call fiReadDouble(string,option%rk,ierr)
+        call fiDefaultMsg(option%myrank,'rk',ierr)
+
+        call fiReadDouble(string,option%phis0,ierr)
+        call fiDefaultMsg(option%myrank,'phis0',ierr)
+
+        call fiReadDouble(string,option%areas0,ierr)
+        call fiDefaultMsg(option%myrank,'areas0',ierr)
+
+        call fiReadDouble(string,option%pwrsrf,ierr)
+        call fiDefaultMsg(option%myrank,'pwrsrf',ierr)
+
+        call fiReadDouble(string,option%vbars,ierr)
+        call fiDefaultMsg(option%myrank,'vbars',ierr)
+
+        call fiReadDouble(string,option%ceq,ierr)
+        call fiDefaultMsg(option%myrank,'ceq',ierr)
+
+        call fiReadDouble(string,option%delHs,ierr)
+        call fiDefaultMsg(option%myrank,'delHs',ierr)
+
+        call fiReadDouble(string,option%delEs,ierr)
+        call fiDefaultMsg(option%myrank,'delEs',ierr)
+
+        call fiReadDouble(string,option%wfmts,ierr)
+        call fiDefaultMsg(option%myrank,'wfmts',ierr)
+
+        if (option%myrank == 0) &
+        write(IUNIT2,'(/," *RCTR",/, &
+          & "  ityp   = ",3x,i3,/, &
+          & "  rk     = ",3x,1pe12.4," [mol/cm^2/s]",/, &
+          & "  phis0  = ",3x,1pe12.4," [-]",/, &
+          & "  areas0 = ",3x,1pe12.4," [1/cm]",/, &
+          & "  pwrsrf = ",3x,1pe12.4," [-]",/, &
+          & "  vbars  = ",3x,1pe12.4," [cm^3/mol]",/, &
+          & "  ceq    = ",3x,1pe12.4," [mol/L]",/, &
+          & "  delHs  = ",3x,1pe12.4," [J/kg]",/, &
+          & "  delEs  = ",3x,1pe12.4," [J/kg]",/, &
+          & "  wfmts  = ",3x,1pe12.4," [g/mol]" &
+          & )') option%ityprxn,option%rk,option%phis0,option%areas0,option%pwrsrf, &
+          option%vbars,option%ceq,option%delHs,option%delEs,option%wfmts
+
+ ! convert: mol/cm^2 -> mol/cm^3 -> mol/dm^3 (note area 1/cm)          
+        option%rk = option%rk * option%areas0 * 1.d3
+        option%vbars = option%vbars * 1.d-3 ! convert: cm^3/mol -> L/mol
+      
+        option%delHs = option%delHs * option%wfmts * 1.d-3 ! convert kJ/kg -> kJ/mol
+!        option%delHs = option%delHs * option%scale ! convert J/kmol -> MJ/kmol
+
+!....................
+
+      case ('RADN')
+
+        call fiReadStringErrorMsg(option%myrank,'RADN',ierr)
+
+        call fiReadDouble(string,option%ret,ierr)
+        call fiDefaultMsg(option%myrank,'ret',ierr)
+
+        call fiReadDouble(string,option%fc,ierr)
+        call fiDefaultMsg(option%myrank,'fc',ierr)
+
+        if (option%myrank==0) write(IUNIT2,'(/," *RADN ",/, &
+          &"  ret     = ",1pe12.4,/, &
+          &"  fc      = ",1pe12.4)') &
+          option%ret,option%fc
+
+!....................
+
+
+      case ('PHAR')
+
+        call fiReadStringErrorMsg(option%myrank,'PHAR',ierr)
+
+        call fiReadDouble(string,option%qu_kin,ierr)
+        call fiDefaultMsg(option%myrank,'TransReaction',ierr)
+        if (option%myrank==0) write(IUNIT2,'(/," *PHAR ",1pe12.4)')option%qu_kin
+        option%yh2o_in_co2 = 0.d0
+        if (option%qu_kin > 0.d0) option%yh2o_in_co2 = 1.d-2 ! check this number!
+     
+!......................
+
+      case('RICH')
+        call fiReadStringErrorMsg(option%myrank,'RICH',ierr)
+        call fiReadDouble(string,option%pref,ierr)
+        call fiDefaultMsg(option%myrank,'Ref. Pressure',ierr) 
+
+!......................
+
+      case('BRIN','BRINE')
+        call fiReadStringErrorMsg(option%myrank,'BRIN',ierr)
+        call fiReadDouble(string,option%m_nacl,ierr)
+        call fiDefaultMsg(option%myrank,'NaCl Concentration',ierr) 
+
+        call fiReadWord(string,word,.false.,ierr)
+        call fiWordToUpper(word)
+        select case(word(1:len_trim(word)))
+          case('MOLAL')
+          case('MASS')
+            option%m_nacl = option%m_nacl /fmwnacl/(1.D0-option%m_nacl)
+          case('MOLE')    
+            option%m_nacl = option%m_nacl /fmwh2o/(1.D0-option%m_nacl)
+          case default
+            print *, 'Wrong unit: ', word(1:len_trim(word))
+            stop
+         end select 
+         if (option%myrank == 0) print *, option%m_nacl
+!......................
+
+      case ('RESTART')
+        option%restart_flag = PETSC_TRUE
+        call fiReadWord(string,option%restart_file,.true.,ierr)
+        call fiErrorMsg(option%myrank,'RESTART','Restart file name',ierr) 
+
+!......................
+
+      case ('CHECKPOINT')
+        option%checkpoint_flag = PETSC_TRUE
+        call fiReadInt(string,option%checkpoint_frequency,ierr)
+        call fiErrorMsg(option%myrank,'CHECKPOINT','Checkpoint frequency',ierr) 
+
+!......................
+
+      case ('NUMERICAL_JACOBIAN')
+        option%numerical_derivatives = .true.
+
+      case ('INEXACT_NEWTON')
+        option%inexact_newton = .true.
+
+!......................
+
+      case ('NO_PRINT_CONVERGENCE')
+        option%print_convergence = PETSC_FALSE
+
+      case ('NO_INF_NORM','NO_INFINITY_NORM')
+        option%check_infinity_norm = PETSC_FALSE
+
+      case ('NO_FORCE_ITERATION')
+        option%force_at_least_1_iteration = PETSC_FALSE
+
+      case ('PRINT_DETAILED_CONVERGENCE')
+        option%print_detailed_convergence = PETSC_TRUE
+
+!....................
+
+      case ('SOLVER')
+        call SolverRead(solver,IUNIT1,option%myrank)
+
+!....................
+
+      case ('SOLV')
+    
+        call fiReadStringErrorMsg(option%myrank,'SOLV',ierr)
+
+!       call fiReadDouble(string,eps,ierr)
+!       call fiDefaultMsg(option%myrank,'eps',ierr)
+
+        call fiReadDouble(string,solver%atol,ierr)
+        call fiDefaultMsg(option%myrank,'atol_petsc',ierr)
+
+        call fiReadDouble(string,solver%rtol,ierr)
+        call fiDefaultMsg(option%myrank,'rtol_petsc',ierr)
+
+        call fiReadDouble(string,solver%stol,ierr)
+        call fiDefaultMsg(option%myrank,'stol_petsc',ierr)
+      
+        solver%dtol=1.D5
+!       if (option%use_ksp == 1) then
+        call fiReadDouble(string,solver%dtol,ierr)
+        call fiDefaultMsg(option%myrank,'dtol_petsc',ierr)
+!       endif
+   
+        call fiReadInt(string,solver%maxit,ierr)
+        call fiDefaultMsg(option%myrank,'maxit',ierr)
+      
+        call fiReadInt(string,solver%maxf,ierr)
+        call fiDefaultMsg(option%myrank,'maxf',ierr)
+       
+        call fiReadInt(string,option%idt_switch,ierr)
+        call fiDefaultMsg(option%myrank,'idt',ierr)
+        
+        solver%inf_tol = solver%atol
+        call fiReadDouble(string,solver%inf_tol,ierr)
+        call fiDefaultMsg(option%myrank,'inf_tol_pflow',ierr)
+ 
+        if (option%myrank==0) write(IUNIT2,'(/," *SOLV ",/, &
+          &"  atol_petsc   = ",1pe12.4,/, &
+          &"  rtol_petsc   = ",1pe12.4,/, &
+          &"  stol_petsc   = ",1pe12.4,/, &
+          &"  dtol_petsc   = ",1pe12.4,/, &
+          &"  maxit        = ",8x,i5,/, &
+          &"  maxf        = ",8x,i5,/, &
+          &"  idt         = ",8x,i5 &
+          &    )') &
+           solver%atol,solver%rtol,solver%stol,solver%dtol,solver%maxit, &
+           solver%maxf,option%idt_switch
+
+! The line below is a commented-out portion of the format string above.
+! We have to put it here because of the stupid Sun compiler.
+!    &"  eps          = ",1pe12.4,/, &
+
+!....................
+
+      case ('THRM','THERMAL_PROPERTY','THERMAL_PROPERTIES')
+
+        count = 0
+        do
+          call fiReadFlotranString(IUNIT1,string,ierr)
+          call fiReadStringErrorMsg(option%myrank,'THRM',ierr)
+
+          if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
+              fiStringCompare(string,'END',THREE_INTEGER)) exit
+       
+          count = count + 1
+          thermal_property => ThermalPropertyCreate()
+      
+          call fiReadInt(string,thermal_property%id,ierr)
+          call fiErrorMsg(option%myrank,'id','THRM', ierr)
+
+          call fiReadDouble(string,thermal_property%rock_density,ierr)
+          call fiErrorMsg(option%myrank,'rock density','THRM', ierr)
+
+          call fiReadDouble(string,thermal_property%spec_heat,ierr)
+          call fiErrorMsg(option%myrank,'cpr','THRM', ierr)
+        
+          call fiReadDouble(string,thermal_property%therm_cond_dry,ierr)
+          call fiErrorMsg(option%myrank,'ckdry','THRM', ierr)
+        
+          call fiReadDouble(string,thermal_property%therm_cond_wet,ierr)
+          call fiErrorMsg(option%myrank,'ckwet','THRM', ierr)
+        
+          call fiReadDouble(string,thermal_property%tort_bin_diff,ierr)
+          call fiErrorMsg(option%myrank,'tau','THRM', ierr)
+
+          call fiReadDouble(string,thermal_property%vap_air_diff_coef,ierr)
+          call fiErrorMsg(option%myrank,'cdiff','THRM', ierr)
+
+          call fiReadDouble(string,thermal_property%exp_binary_diff,ierr)
+          call fiErrorMsg(option%myrank,'cexp','THRM', ierr)
+
+        !scale thermal properties
+          thermal_property%spec_heat = option%scale * &
+                                       thermal_property%spec_heat
+          thermal_property%therm_cond_dry = option%scale * &
+                                            thermal_property%therm_cond_dry
+          thermal_property%therm_cond_wet = option%scale * &
+                                            thermal_property%therm_cond_wet
+          
+          call ThermalAddPropertyToList(thermal_property, &
+                                        realization%thermal_properties)
+        enddo
+        
+        ! allocate dynamic arrays holding saturation function information
+        allocate(option%rock_density(count))
+        allocate(option%cpr(count))
+        allocate(option%dencpr(count))
+        allocate(option%ckdry(count))
+        allocate(option%ckwet(count))
+        allocate(option%tau(count))
+        allocate(option%cdiff(count))
+        allocate(option%cexp(count))
+        
+        ! fill arrays with values from linked list
+        thermal_property => realization%thermal_properties
+        do
+        
+          if (.not.associated(thermal_property)) exit
+          
+          id = thermal_property%id
+          
+          if (id > count) then
+            call printErrMsg(option,'Thermal property id greater than &
+                                    &number of thermal properties')
+          endif
+                    
+          option%rock_density(id) = thermal_property%rock_density
+          option%cpr(id) = thermal_property%spec_heat
+          option%dencpr(id) = thermal_property%rock_density * &
+                              thermal_property%spec_heat
+          option%ckdry(id) = thermal_property%therm_cond_dry
+          option%ckwet(id) = thermal_property%therm_cond_wet
+          option%tau(id) = thermal_property%tort_bin_diff
+          option%cdiff(id) = thermal_property%vap_air_diff_coef
+          option%cexp(id) = thermal_property%exp_binary_diff
+          
+          thermal_property => thermal_property%next
+          
+        enddo
+        
+        do i=1,count
+          if (option%rock_density(i) < 1.d-40) then
+            call printErrMsg(option,'Thermal property ids must be numbered &
+                             &consecutively from 1 to N')
+          endif
+        enddo
+      
+        if (option%myrank==0) then
+          write(IUNIT2,'(/," *THRM: ",i3)') count
+          write(IUNIT2,'("  itm rock_density  cpr        ckdry", &
+            &                 "     ckwet       tau       cdiff     cexp")')
+          write(IUNIT2,'("        [kg/m^3]  [J/kg/K]   [J/m/K/s]", &
+            &              "     [J/m/K/s]     [-]        [m^2/s]       [-]")')
+          do i = 1, count
+            write(IUNIT2,'(i4,1p7e11.4)') i,option%rock_density(i), &
+            option%cpr(i),option%ckdry(i),option%ckwet(i), &
+            option%tau(i),option%cdiff(i),option%cexp(i)
+          enddo
+        endif
+
+!....................
+
+      case ('PCKR','SATURATION_FUNCTION','SATURATION_FUNCTIONS')
+      
+        count = 0
+        do
+          call fiReadFlotranString(IUNIT1,string,ierr)
+          call fiReadStringErrorMsg(option%myrank,'PCKR',ierr)
+
+          if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
+              fiStringCompare(string,'END',THREE_INTEGER)) exit
+       
+          count = count + 1
+          saturation_function => SaturationFunctionCreate(option)
+          
+          call fiReadInt(string,saturation_function%id,ierr)
+          call fiErrorMsg(option%myrank,'id','PCKR', ierr)
+          
+          call fiReadInt(string,saturation_function%saturation_function_itype,ierr)
+          call fiErrorMsg(option%myrank,'icaptype','PCKR', ierr)
+      
+          select case(option%imode)
+            case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
+              do np=1, option%nphase
+                call fiReadDouble(string,saturation_function%Sr(np),ierr)
+                call fiErrorMsg(option%myrank,'Sr','PCKR', ierr)
+              enddo 
+            case default
+              call fiReadDouble(string,saturation_function%Sr(1),ierr)
+              call fiErrorMsg(option%myrank,'Sr','PCKR', ierr)
+          end select
+        
+          call fiReadDouble(string,saturation_function%m,ierr)
+          call fiErrorMsg(option%myrank,'pckrm','PCKR', ierr)
+          saturation_function%lambda = saturation_function%m
+
+          call fiReadDouble(string,saturation_function%alpha,ierr)
+          call fiErrorMsg(option%myrank,'alpha','PCKR', ierr)
+
+          call fiReadDouble(string,saturation_function%pcwmax,ierr)
+          call fiErrorMsg(option%myrank,'pcwmax','PCKR', ierr)
+      
+          call fiReadDouble(string,saturation_function%betac,ierr)
+          call fiErrorMsg(option%myrank,'pbetac','PCKR', ierr)
+      
+          call fiReadDouble(string,saturation_function%power,ierr)
+          call fiErrorMsg(option%myrank,'pwrprm','PCKR', ierr)
+          
+          call SaturationFunctionAddToList(saturation_function, &
+                                           realization%saturation_functions)
+
+        enddo
+        
+        ! allocate dynamic arrays holding saturation function information
+        allocate(option%icaptype(count))
+        option%icaptype = 0
+  
+        select case(option%imode)
+          case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
+            allocate(option%sir(1:option%nphase,count))
+          case default
+            allocate(option%swir(count))
+        end select
+  
+        allocate(option%lambda(count))
+        allocate(option%alpha(count))
+        allocate(option%pckrm(count))
+        allocate(option%pcwmax(count))
+        allocate(option%pcbetac(count))
+        allocate(option%pwrprm(count))
+
+        ! fill arrays with values from linked list
+        saturation_function => realization%saturation_functions
+        do 
+        
+          if (.not.associated(saturation_function)) exit
+          
+          id = saturation_function%id
+          
+          if (id > count) then
+            call printErrMsg(option,'Saturation function id greater than &
+                                    &number of saturation functions')
+          endif
+          
+          option%icaptype(id) = saturation_function%saturation_function_itype
+          select case(option%imode)
+            case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
+              do i=1,option%nphase
+                option%sir(i,id) = saturation_function%Sr(i)
+              enddo
+            case default
+              option%swir(id) = saturation_function%Sr(1)
+          end select
+          option%lambda(id) = saturation_function%lambda
+          option%alpha(id) = saturation_function%alpha
+          option%pckrm(id) = saturation_function%m
+          option%pcwmax(id) = saturation_function%pcwmax
+          option%pcbetac(id) = saturation_function%betac
+          option%pwrprm(id) = saturation_function%power
+          
+          saturation_function => saturation_function%next
+          
+        enddo
+        
+        ! check to ensure that all saturation functions were set based on id
+        do id = 1,count
+          if (option%icaptype(id) == 0) then
+            call printErrMsg(option,'Saturation function ids must be numbered &
+                               &consecutively from 1 to N')
           endif
         enddo
 
-!-------set species indices for surface complexation colloids
-        do j = ncomp-ncoll+1, ncomp
-          if (namsrf(mm) .eq. nam(j)) then
-            msorp(mm) = j
-            if (wt(j).le.zero) then
-              write(*,'(''error: zero formula weight '', &
-    &         ''for colloid '',a20,'': '',1p2e12.4)') nam(j),wt(j)
-              stop
-            endif
-            goto 70
-          endif
-        enddo
+        if (option%imode == MPH_MODE .or. &
+            option%imode == RICHARDS_MODE .or. &
+            option%imode == RICHARDS_LITE_MODE) then
+          call pckr_init(option%nphase,count,grid%nlmax, &
+                         option%icaptype,option%sir, option%pckrm, &
+                         option%lambda,option%alpha,option%pcwmax, &
+                         option%pcbetac,option%pwrprm)
+        endif 
 
-        write(*,*) 'error in trdatint: surface complex mineral not ', &
-        'found! STOP',namsrf(mm),nam(j)
+      
+        if (option%myrank==0) then
+          write(IUNIT2,'(/," *PCKR: ",i3)') ireg
+          write(IUNIT2,'("  icp swir    lambda         alpha")')
+          do j = 1, count
+            i=option%icaptype(j)
+            if (option%imode == MPH_MODE .or. &
+                option%imode == RICHARDS_MODE .or. &
+                option%imode == RICHARDS_LITE_MODE) then
+              write(IUNIT2,'(i4,1p8e12.4)') i,(option%sir(np,i),np=1, &
+                option%nphase),option%lambda(i),option%alpha(i), &
+                option%pcwmax(i),option%pcbetac(i),option%pwrprm(i)
+            else
+              write(IUNIT2,'(i4,1p7e12.4)') i,option%swir(i), &
+                option%lambda(i),option%alpha(i),option%pcwmax(i), &
+                option%pcbetac(i),option%pwrprm(i)
+            endif
+          enddo
+        end if
+
+        if (option%imode == MPH_MODE .or. &
+            option%imode == RICHARDS_MODE .or. &
+            option%imode == RICHARDS_LITE_MODE) then
+          deallocate(option%icaptype, option%pckrm, option%lambda, &
+                     option%alpha,option%pcwmax, option%pcbetac, &
+                     option%pwrprm)
+        endif 
+ 
+        call SaturatFuncConvertListToArray(realization%saturation_functions, &
+                                           realization%saturation_function_array)
+        
+!....................
+      
+      case ('PHIK','MATERIAL','MATERIALS')
+
+        count = 0
+        do
+          call fiReadFlotranString(IUNIT1,string,ierr)
+          call fiReadStringErrorMsg(option%myrank,'PHIK',ierr)
+
+          if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
+              fiStringCompare(string,'END',THREE_INTEGER)) exit
+       
+          count = count + 1
+          material => MaterialCreate()
+
+          call fiReadWord(string,material%name,.true.,ierr)
+          call fiErrorMsg(option%myrank,'name','PHIK', ierr)
+                
+          call fiReadInt(string,material%id,ierr)
+          call fiErrorMsg(option%myrank,'id','PHIK', ierr)
+                
+          call fiReadInt(string,material%icap,ierr)
+          call fiErrorMsg(option%myrank,'icap','PHIK', ierr)
+  
+          call fiReadInt(string,material%ithrm,ierr)
+          call fiErrorMsg(option%myrank,'ithrm','PHIK', ierr)
+  
+          call fiReadDouble(string,material%porosity,ierr)
+          call fiErrorMsg(option%myrank,'por','PHIK', ierr)
+          
+          call fiReadDouble(string,material%tortuosity,ierr)
+          call fiErrorMsg(option%myrank,'tor','PHIK', ierr)
+  
+          call fiReadDouble(string,material%permeability(1,1),ierr)
+          call fiErrorMsg(option%myrank,'permx','PHIK', ierr)
+  
+          call fiReadDouble(string,material%permeability(2,2),ierr)
+          call fiErrorMsg(option%myrank,'permy','PHIK', ierr)
+  
+          call fiReadDouble(string,material%permeability(3,3),ierr)
+          call fiErrorMsg(option%myrank,'permz','PHIK', ierr)
+  
+          call fiReadDouble(string,material%permeability_pwr,ierr)
+          call fiErrorMsg(option%myrank,'permpwr','PHIK', ierr)
+          
+          material%permeability(1:3,1:3) = material%permeability(1:3,1:3)
+          
+          call MaterialAddToList(material,realization%materials)
+          
+        enddo          
+
+        call MaterialConvertListToArray(realization%materials, &
+                                        realization%material_array)
+                                        
+!....................
+      
+      case ('INIT')
+    
+#if 0
+! INIT is deprecated by condition/region coupling
+        call fiReadInt(string,option%iread_init,ierr) 
+        call fiDefaultMsg(option%myrank,'iread_init',ierr)
+      
+        if (option%myrank==0) then
+          write(IUNIT2,'(/," *INIT: iread = ",i2)') option%iread_init
+        endif
+      
+        if (option%iread_init == 0 .or. option%iread_init == 2) then
+      
+          ireg = 0
+          do
+            call fiReadFlotranString(IUNIT1,string,ierr)
+            call fiReadStringErrorMsg(option%myrank,'INIT',ierr)
+
+            if (string(1:1) == '.' .or. string(1:1) == '/') exit
+            ireg = ireg + 1
+            
+!GEH - Structured Grid Dependence - Begin
+            call fiReadInt(string,option%i1ini(ireg),ierr) 
+            call fiDefaultMsg(option%myrank,'i1',ierr)
+            call fiReadInt(string,option%i2ini(ireg),ierr)
+            call fiDefaultMsg(option%myrank,'i2',ierr)
+            call fiReadInt(string,option%j1ini(ireg),ierr)
+            call fiDefaultMsg(option%myrank,'j1',ierr)
+            call fiReadInt(string,option%j2ini(ireg),ierr)
+            call fiDefaultMsg(option%myrank,'j2',ierr)
+            call fiReadInt(string,option%k1ini(ireg),ierr)
+            call fiDefaultMsg(option%myrank,'k1',ierr)
+            call fiReadInt(string,option%k2ini(ireg),ierr)
+            call fiDefaultMsg(option%myrank,'k2',ierr)
+!GEH - Structured Grid Dependence - End
+
+            select case(option%imode)
+              case(MPH_MODE,OWG_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE, &
+                   RICHARDS_LITE_MODE)                
+                call fiReadInt(string,option%iphas_ini(ireg),ierr)
+                call fiDefaultMsg(option%myrank,'iphase',ierr)
+       
+                do j=1,option%ndof
+                  call fiReadDouble(string,field%xx_ini(j,ireg),ierr)
+                  call fiDefaultMsg(option%myrank,'xxini',ierr)
+                enddo
+              case default
+                call fiReadDouble(string,option%pres_ini(ireg),ierr)
+                call fiDefaultMsg(option%myrank,'pres',ierr)
+  
+                call fiReadDouble(string,field%temp_ini(ireg),ierr)
+                call fiDefaultMsg(option%myrank,'temp',ierr)
+  
+                call fiReadDouble(string,field%sat_ini(ireg),ierr)
+                call fiDefaultMsg(option%myrank,'sat',ierr)
+!                field%sat_ini(ireg)=1.D0 - field%sat_ini(ireg)
+  
+                call fiReadDouble(string,field%conc_ini(ireg),ierr)
+                call fiDefaultMsg(option%myrank,'conc',ierr)
+            end select
+          enddo
+      
+          option%iregini = ireg
+      
+          if (option%myrank==0) then
+            write(IUNIT2,'("  ireg = ",i4)') option%iregini
+            write(IUNIT2,'("  i1  i2  j1  j2  k1  k2       p [Pa]     t [C]   &
+              &   ",    "sl [-]      c [mol/L]")')
+            do ireg = 1, option%iregini
+!GEH - Structured Grid Dependence - Begin
+              select case(option%imode)
+                case(MPH_MODE,OWG_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE, &
+                     RICHARDS_LITE_MODE)                
+                  write(IUNIT2,'(7i4,1p10e12.4)') &
+                    option%i1ini(ireg),option%i2ini(ireg), &
+                    option%j1ini(ireg),option%j2ini(ireg), &
+                    option%k1ini(ireg),option%k2ini(ireg), &
+                    option%iphas_ini(ireg),(field%xx_ini(np,ireg),np =1, &
+                                            option%ndof)
+                case default
+                  write(IUNIT2,'(6i4,1p10e12.4)') &
+                    option%i1ini(ireg),option%i2ini(ireg), &
+                    option%j1ini(ireg),option%j2ini(ireg), &
+                    option%k1ini(ireg),option%k2ini(ireg), &
+                    option%pres_ini(ireg),field%temp_ini(ireg), &
+                    field%sat_ini(ireg),field%conc_ini(ireg)
+              end select
+!GEH - Structured Grid Dependence - End
+            enddo
+          endif
+
+        else if (option%iread_init == 1) then
+    
+!     read in initial conditions from file: pflow_init.dat
+          if (option%myrank == 0) then
+            write(*,*) '--> read in initial conditions from file: &
+                        &pflow_init.dat'
+  
+            open(IUNIT3, file='pflow_init.dat', action="read", status="old")
+
+            ireg = 0
+            do
+              call fiReadFlotranString(IUNIT3,string,ierr)
+!             call fiReadStringErrorMsg('INIT',ierr)
+
+              if (string(1:1) == '.' .or. string(1:1) == '/') exit
+              ireg = ireg + 1
+
+!GEH - Structured Grid Dependence - Begin
+              call fiReadInt(string,option%i1ini(ireg),ierr) 
+              call fiDefaultMsg(option%myrank,'i1',ierr)
+              call fiReadInt(string,option%i2ini(ireg),ierr)
+              call fiDefaultMsg(option%myrank,'i2',ierr)
+              call fiReadInt(string,option%j1ini(ireg),ierr)
+              call fiDefaultMsg(option%myrank,'j1',ierr)
+              call fiReadInt(string,option%j2ini(ireg),ierr)
+              call fiDefaultMsg(option%myrank,'j2',ierr)
+              call fiReadInt(string,option%k1ini(ireg),ierr)
+              call fiDefaultMsg(option%myrank,'k1',ierr)
+              call fiReadInt(string,option%k2ini(ireg),ierr)
+              call fiDefaultMsg(option%myrank,'k2',ierr)
+!GEH - Structured Grid Dependence - End
+
+              select case(option%imode)
+                case(MPH_MODE,OWG_MODE,VADOSE_MODE,FLASH_MODE,RICHARDS_MODE, &
+                     RICHARDS_LITE_MODE)
+                  call fiReadInt(string,option%iphas_ini(ireg),ierr)
+                  call fiDefaultMsg(option%myrank,'iphase_ini',ierr)
+            
+                  do j=1,option%ndof
+                    call fiReadDouble(string,field%xx_ini(j,ireg),ierr)
+                    call fiDefaultMsg(option%myrank,'xx_ini',ierr)
+                  enddo
+                case default
+  
+                  call fiReadDouble(string,option%pres_ini(ireg),ierr)
+                  call fiDefaultMsg(option%myrank,'pres',ierr)
+  
+                  call fiReadDouble(string,field%temp_ini(ireg),ierr)
+                  call fiDefaultMsg(option%myrank,'temp',ierr)
+  
+                  call fiReadDouble(string,field%sat_ini(ireg),ierr)
+                  call fiDefaultMsg(option%myrank,'sat',ierr)
+
+                  call fiReadDouble(string,field%conc_ini(ireg),ierr)
+                  call fiDefaultMsg(option%myrank,'conc',ierr)
+              end select
+       
+            enddo
+            option%iregini = ireg
+            close(IUNIT3)
+          endif
+        endif
+#endif
+!....................
+
+      case ('TIME')
+
+        call fiReadStringErrorMsg(option%myrank,'TIME',ierr)
+      
+        call fiReadWord(string,word,.false.,ierr)
+      
+        realization%output_option%tunit = trim(word)
+
+        if (realization%output_option%tunit == 's') then
+          realization%output_option%tconv = 1.d0
+        else if (realization%output_option%tunit == 'm') then
+          realization%output_option%tconv = 60.d0
+        else if (realization%output_option%tunit == 'h') then
+          realization%output_option%tconv = 60.d0 * 60.d0
+        else if (realization%output_option%tunit == 'd') then
+          realization%output_option%tconv = 60.d0 * 60.d0 * 24.d0
+        else if (realization%output_option%tunit == 'mo') then
+          realization%output_option%tconv = 60.d0 * 60.d0 * 24.d0 * 30.d0
+        else if (realization%output_option%tunit == 'y') then
+          realization%output_option%tconv = 60.d0 * 60.d0 * 24.d0 * 365.d0
+        else
+          if (option%myrank == 0) then
+            write(*,'(" Time unit: ",a3,/, &
+              &" Error: time units must be one of ",/, &
+              &"   s -seconds",/,"   m -minutes",/,"   h -hours",/, &
+              &"   d -days", /, "  mo -months",/,"   y -years")') realization%output_option%tunit
+          endif
+          stop
+        endif
+
+
+        call fiReadWord(string,word,.false.,ierr)
+        if (ierr == 0) then
+          call fiWordToUpper(word)
+          if (fiStringCompare(word,'EVERY',FIVE_INTEGER)) then
+            periodic_output_flag = .true.
+            call fiReadDouble(string,periodic_rate,ierr)
+          endif
+        endif
+
+        continuation_flag = .true.
+        do
+          if (.not.continuation_flag) exit
+          call fiReadFlotranString(IUNIT1,string,ierr)
+          if (ierr /= 0) exit
+          continuation_flag = .false.
+          if (index(string,backslash) > 0) continuation_flag = .true.
+          ierr = 0
+          do
+            if (ierr /= 0) exit
+            call fiReadDouble(string,temp_real,ierr)
+            if (ierr == 0) then
+              waypoint => WaypointCreate()
+              waypoint%time = temp_real
+              waypoint%print_output = .true.              
+              call WaypointInsertInList(waypoint,stepper%waypoints)
+            endif
+          enddo
+        enddo
+        
+        ! make last waypoint final
+        waypoint%final = .true.
+        
+        if (periodic_output_flag) then
+          temp_real2 = waypoint%time   ! final simulation time
+          temp_real = periodic_rate
+          do
+            if (temp_real > temp_real2) exit
+            
+            waypoint => WaypointCreate()
+            waypoint%time = temp_real
+            waypoint%print_output = .true.              
+            call WaypointInsertInList(waypoint,stepper%waypoints)
+            
+            temp_real = temp_real + periodic_rate
+          enddo
+        endif
+
+!....................
+
+      case ('DTST')
+
+        call fiReadStringErrorMsg(option%myrank,'DTST',ierr)
+
+        call fiReadDouble(string,stepper%dt_min,ierr)
+        call fiDefaultMsg(option%myrank,'dt_min',ierr)
+            
+        continuation_flag = .true.
+        temp_int = 0       
+        do
+          if (.not.continuation_flag) exit
+          call fiReadFlotranString(IUNIT1,string,ierr)
+          if (ierr /= 0) exit
+          continuation_flag = .false.
+          if (index(string,backslash) > 0) continuation_flag = .true.
+          ierr = 0
+          do
+            if (ierr /= 0) exit
+            call fiReadDouble(string,temp_real,ierr)
+            if (ierr == 0) then
+              waypoint => WaypointCreate()
+              waypoint%time = temp_real
+              call fiReadDouble(string,waypoint%dt_max,ierr)
+              call fiErrorMsg(option%myrank,'dt_max','dtst',ierr)
+              if (temp_int == 0) stepper%dt_max = waypoint%dt_max
+              call WaypointInsertInList(waypoint,stepper%waypoints)
+              temp_int = temp_int + 1
+            endif
+          enddo
+        enddo
+        
+        option%dt = stepper%dt_min
+      
+        option%dt = realization%output_option%tconv * option%dt
+        stepper%dt_min = realization%output_option%tconv * stepper%dt_min
+        stepper%dt_max = realization%output_option%tconv * stepper%dt_max
+
+!....................
+      case ('BRK','BREAKTHROUGH')
+        breakthrough => BreakthroughCreate()
+        call BreakthroughRead(breakthrough,IUNIT1,option)
+        call BreakthroughAddToList(breakthrough,realization%breakthrough)
+      
+!....................
+      case('SDST')
+        print *, 'SDST needs to be implemented'
         stop
-   70   continue
+#if 0
+! Needs implementation         
+        allocate(stepper%steady_eps(option%ndof))
+        do j=1,option%ndof
+          call fiReadDouble(string,stepper%steady_eps(j),ierr)
+          call fiDefaultMsg(option%myrank,'steady tol',ierr)
+        enddo
+        if (option%myrank==0) write(IUNIT2,'(/," *SDST ",/, &
+          &"  dpdt        = ",1pe12.4,/, &
+          &"  dtmpdt        = ",1pe12.4,/, &
+          &"  dcdt        = ",1pe12.4)') &
+          stepper%steady_eps
+#endif
+
+!.....................
+      case ('WALLCLOCK_STOP')
+        option%wallclock_stop_flag = PETSC_TRUE
+        call fiReadDouble(string,option%wallclock_stop_time,ierr)
+        call fiErrorMsg(option%myrank,'stop time','WALLCLOCK_STOP', ierr) 
+        ! convert from hrs to seconds and add to start_time
+        option%wallclock_stop_time = option%start_time + &
+                                     option%wallclock_stop_time*3600.d0
+      
+!....................
+      case default
+    
+        if (option%myrank == 0) then
+          print *, "Error reading input file: keyword (", trim(word), &
+                   ") not found. Terminating."
+        endif
+        call PetscFinalize(ierr)
+        stop
+
+    end select
+
+  enddo
+
+  close(IUNIT1)
+  
+end subroutine readInput
+
+! ************************************************************************** !
+!
+! initAccumulation: Initializes accumulation term?
+! author: 
+! date:
+!
+! ************************************************************************** !
+subroutine initAccumulation(realization)
+!  use water_eos_module
+!  use TTPHASE_module
+!  use Flash_module
+!  use MPHASE_module
+!  use OWG_module
+!  use Vadose_module
+#ifndef RICHARDS_ANALYTCIAL
+  use Richards_module , only: pflow_richards_initaccum  ! for some reason intel compiler fails without "only" clause
+#endif
+
+  use Realization_module
+  use Option_module
+
+  implicit none
+
+  type(realization_type) :: realization
+  
+  type(option_type), pointer :: option
+  PetscReal, pointer :: den_p(:), pressure_p(:), temp_p(:), h_p(:)
+  PetscReal :: dw_kg,dl,hl
+  PetscInt :: m
+  PetscErrorCode :: ierr
+  
+  option => realization%option
+  
+#if 0  
+  ! needs to be implemented
+  if ( grid%use_owg == PETSC_TRUE) then
+    call pflow_owg_initaccum(grid)
+  else if (grid%use_mph == PETSC_TRUE) then
+    call pflow_mphase_initaccum(grid)
+  else if (grid%use_richards == PETSC_TRUE) then
+#endif    
+  if (option%imode == RICHARDS_MODE) then
+#ifndef RICHARDS_ANALYTICAL
+    call pflow_richards_initaccum(realization)
+#endif
+#if 0    
+  ! needs to be implemented
+  else if (grid%use_flash == PETSC_TRUE) then
+    call pflow_flash_initaccum(grid)
+  else if (grid%use_vadose == PETSC_TRUE) then
+    call pflow_vadose_initaccum(grid)
+  else if (grid%use_2ph == PETSC_TRUE) then
+    call pflow_2phase_initaccum(grid)
+  else if (grid%ndof > 1) then
+ !   call VecSet(grid%iphas,1.d0,ierr)
+    call VecGetArrayF90(grid%pressure, pressure_p, ierr)
+    call VecGetArrayF90(grid%temp, temp_p, ierr)
+    call VecGetArrayF90(grid%density, den_p, ierr)
+    call VecGetArrayF90(grid%h, h_p, ierr)
+    do m = 1, grid%nlmax
+      call wateos_noderiv(temp_p(m),pressure_p(m),dw_kg,dl,hl,grid%scale,ierr)
+      den_p(m) = dl
+      h_p(m) = hl
+    enddo
+    call VecRestoreArrayF90(grid%pressure, pressure_p, ierr)
+    call VecRestoreArrayF90(grid%temp, temp_p, ierr)
+    call VecRestoreArrayF90(grid%density, den_p, ierr)
+    call VecRestoreArrayF90(grid%h, h_p, ierr)
+
+  else
+
+    call VecGetArrayF90(grid%pressure, pressure_p, ierr)
+    call VecGetArrayF90(grid%temp, temp_p, ierr)
+    call VecGetArrayF90(grid%density, den_p, ierr)
+    do m = 1, grid%nlmax
+      call wateos_noderiv(temp_p(m),pressure_p(m),dw_kg,dl,hl,grid%scale,ierr)
+      den_p(m) = dl
+    enddo
+    call VecRestoreArrayF90(grid%pressure, pressure_p, ierr)
+    call VecRestoreArrayF90(grid%temp, temp_p, ierr)
+    call VecRestoreArrayF90(grid%density, den_p, ierr)
+#endif
+  endif
+
+end subroutine initAccumulation
+
+! ************************************************************************** !
+!
+! setMode: Sets the flow mode (richards, vadose, mph, etc.)
+! author: Glenn Hammond
+! date: 10/26/07
+!
+! ************************************************************************** !
+subroutine setMode(option,mcomp,mphas)
+
+  use Option_module
+  use Fileio_module
+
+  implicit none 
+
+  type(option_type) :: option
+  PetscInt :: mcomp, mphas
+  PetscInt :: length
+  
+  length = len_trim(option%mode)
+  call fiCharsToLower(option%mode,length)
+  length = len_trim(option%mode)
+  if (fiStringCompare(option%mode,"richards",length)) then
+    option%imode = RICHARDS_MODE
+  else if (fiStringCompare(option%mode,"richards_lite",length)) then
+    option%imode = RICHARDS_LITE_MODE
+    option%nphase = 1
+    option%nspec = 1
+    option%ndof = 1
+#if 0  
+  ! needs to be implemented
+  else if (fiStringCompare(option%mode,"MPH",len_trim(option%mode))) then
+  else if (fiStringCompare(option%mode,"",#)) then
+#endif  
+  endif 
+  
+  if (option%imode /= THC_MODE .and. &
+      option%imode /= MPH_MODE .and. &
+      option%imode /= RICHARDS_MODE .and. &
+      option%imode /= RICHARDS_LITE_MODE) then 
+
+    if (mcomp >0 .and. mphas>0)then
+      if (option%imode /= THC_MODE .and. mcomp == 37)then
+        option%imode = THC_MODE
+        option%mode = 'thc'
+        option%nphase = 1; option%ndof =3
+      endif
+      if (option%imode /= MPH_MODE .and. mcomp == 35)then
+        option%imode = MPH_MODE
+        option%mode = 'mph'
+        option%nphase = 2; option%ndof =3; option%nspec =2 
+      endif
+      if (option%imode /= RICHARDS_MODE .and. mcomp == 33 .and. mphas == 11) then
+        option%imode = RICHARDS_MODE
+        option%mode = 'richards'
+        option%nphase = 1; option%ndof = 2
+        if (option%nspec > 1) then
+          option%ndof = option%nspec +1
+        endif
+      endif
+    endif
+  endif
+  if (option%imode == NULL_MODE) then
+    call printErrMsg(option,"No mode specified")
+  endif       
+
+end subroutine setMode
+
+! ************************************************************************** !
+!
+! assignMaterialPropToRegions: Assigns material properties to 
+!                                    associated regions in the model
+! author: Glenn Hammond
+! date: 11/02/07
+!
+! ************************************************************************** !
+subroutine assignMaterialPropToRegions(realization)
+
+  use Realization_module
+  use Strata_module
+  use Region_module
+  use Material_module
+  use Option_module
+  use Grid_module
+  use Field_module
+  use Fileio_module
+
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscReal, pointer :: icap_loc_p(:)
+  PetscReal, pointer :: ithrm_loc_p(:)
+  PetscReal, pointer :: por0_p(:)
+  PetscReal, pointer :: perm_xx_p(:)
+  PetscReal, pointer :: perm_yy_p(:)
+  PetscReal, pointer :: perm_zz_p(:)
+  PetscReal, pointer :: perm_pow_p(:)
+  PetscReal, pointer :: tor_loc_p(:)
+  
+  PetscInt :: icell, local_id, ghosted_id, natural_id, material_id
+  PetscInt :: istart, iend
+  PetscInt :: fid = 86, status
+  PetscErrorCode :: ierr
+  
+  type(option_type), pointer :: option
+  type(grid_type), pointer :: grid
+  type(field_type), pointer :: field
+  type(strata_type), pointer :: strata
+  
+  type(material_type), pointer :: material
+  type(region_type), pointer :: region
+  
+  option => realization%option
+  grid => realization%grid
+  field => realization%field
+
+  ! loop over all strata to determine if any are inactive or
+  ! have associated cell by cell material ids
+  strata => realization%strata%first
+  do
+    if (.not.associated(strata)) exit
+    if (.not.strata%active .or. .not.associated(strata%region)) then
+      if (.not.associated(field%imat)) then
+        allocate(field%imat(grid%ngmax))
+        field%imat = -999
+      endif
+      exit
+    endif
+    strata => strata%next
+  enddo
+  
+  ! Read in cell by cell material ids if they exist
+  strata => realization%strata%first
+  if (associated(strata)) then
+    if (.not.associated(strata%region) .and. strata%active) then
+      call readMaterialsFromFile(realization,strata%material_name)
+    endif
+  endif
+    
+  call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr)
+  call VecGetArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
+  call VecGetArrayF90(field%porosity0,por0_p,ierr)
+  call VecGetArrayF90(field%tor_loc,tor_loc_p,ierr)
+  call VecGetArrayF90(field%perm0_xx,perm_xx_p,ierr)
+  call VecGetArrayF90(field%perm0_yy,perm_yy_p,ierr)
+  call VecGetArrayF90(field%perm0_zz,perm_zz_p,ierr)
+  call VecGetArrayF90(field%perm_pow,perm_pow_p,ierr)
+
+  strata => realization%strata%first
+  do
+    if (.not.associated(strata)) exit
+   
+    if (strata%active) then
+      region => strata%region
+      material => strata%material
+      if (associated(region)) then
+        istart = 1
+        iend = region%num_cells
+      else
+        istart = 1
+        iend = grid%nlmax
+      endif
+      do icell=istart, iend
+        if (associated(region)) then
+          local_id = region%cell_ids(icell)
+        else
+          local_id = icell
+        endif
+        ghosted_id = grid%nL2G(local_id)
+        if (associated(field%imat)) then
+          ! if field%imat is allocated and the id > 0, the material id 
+          ! supercedes the material pointer for the strata
+          material_id = field%imat(ghosted_id)
+          if (material_id > 0 .and. &
+              material_id <= size(realization%material_array)) then
+            material => realization%material_array(material_id)%ptr
+          endif
+          ! otherwide set the imat value to the stratas material
+          if (material_id < -998) & ! prevent overwrite of cell already set to inactive
+            field%imat(ghosted_id) = material%id
+        endif
+        if (associated(material)) then
+          icap_loc_p(ghosted_id) = material%icap
+          ithrm_loc_p(ghosted_id) = material%ithrm
+          por0_p(local_id) = material%porosity
+          tor_loc_p(ghosted_id) = material%tortuosity
+          perm_xx_p(local_id) = material%permeability(1,1)
+          perm_yy_p(local_id) = material%permeability(2,2)
+          perm_zz_p(local_id) = material%permeability(3,3)
+          perm_pow_p(local_id) = material%permeability_pwr
+        endif
       enddo
+    endif
+    strata => strata%next
+  enddo
 
-  end subroutine trinit
+  call VecRestoreArrayF90(field%icap_loc,icap_loc_p,ierr)
+  call VecRestoreArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
+  call VecRestoreArrayF90(field%porosity0,por0_p,ierr)
+  call VecRestoreArrayF90(field%perm0_xx,perm_xx_p,ierr)
+  call VecRestoreArrayF90(field%perm0_yy,perm_yy_p,ierr)
+  call VecRestoreArrayF90(field%perm0_zz,perm_zz_p,ierr)
+  call VecRestoreArrayF90(field%perm_pow,perm_pow_p,ierr)
+  call VecRestoreArrayF90(field%tor_loc,tor_loc_p,ierr)
 
-end module ptran_init_module
+  call GridGlobalToLocal(realization%grid,field%porosity0, &
+                         field%porosity_loc,ONEDOF)
+  call GridGlobalToLocal(realization%grid,field%perm0_xx, &
+                         field%perm_xx_loc,ONEDOF)  
+  call GridGlobalToLocal(realization%grid,field%perm0_yy, &
+                         field%perm_yy_loc,ONEDOF)  
+  call GridGlobalToLocal(realization%grid,field%perm0_zz, &
+                         field%perm_zz_loc,ONEDOF)   
+
+  call GridLocalToLocal(realization%grid,field%icap_loc, &
+                        field%icap_loc,ONEDOF)   
+  call GridLocalToLocal(realization%grid,field%ithrm_loc, &
+                        field%ithrm_loc,ONEDOF)   
+  call GridLocalToLocal(realization%grid,field%tor_loc, &
+                        field%tor_loc,ONEDOF)   
+  
+end subroutine assignMaterialPropToRegions
+
+! ************************************************************************** !
+!
+! assignInitialConditions: Assigns initial conditions to model
+! author: Glenn Hammond
+! date: 11/02/07
+!
+! ************************************************************************** !
+subroutine assignInitialConditions(realization)
+
+  use Realization_module
+  use Region_module
+  use Option_module
+  use Field_module
+  use Coupler_module
+  use Condition_module
+  use Grid_module
+  
+  use MPHASE_module, only : pflow_mphase_setupini
+#ifndef RICHARDS_ANALYTICAL  
+  use Richards_module, only : pflow_Richards_setupini
+#endif
+
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  PetscReal, pointer :: pressure_p(:)
+  PetscReal, pointer :: temp_p(:)
+  PetscReal, pointer :: sat_p(:)
+  PetscReal, pointer :: conc_p(:)
+  PetscReal, pointer :: xmol_p(:)
+  
+  PetscInt :: icell, iconn, count, jn1, jn2, idof
+  PetscInt :: local_id, ghosted_id, iend, ibegin
+  PetscReal, pointer :: xx_p(:), iphase_loc_p(:)
+  PetscErrorCode :: ierr
+  
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field  
+  type(grid_type), pointer :: grid
+  type(coupler_type), pointer :: initial_condition
+    
+  option => realization%option
+  field => realization%field
+  grid => realization%grid
+    
+  select case(option%imode)
+    case(RICHARDS_LITE_MODE)
+    case(RICHARDS_MODE)
+#ifndef RICHARDS_ANALYTICAL    
+      call pflow_richards_setupini(realization)
+#endif
+    case(MPH_MODE)
+      call pflow_mphase_setupini(realization)
+    case default
+      call VecGetArrayF90(field%pressure,pressure_p,ierr)
+      call VecGetArrayF90(field%temp,temp_p,ierr)
+      call VecGetArrayF90(field%sat,sat_p,ierr)
+      if (option%ndof == 3) call VecGetArrayF90(field%conc,conc_p,ierr)
+      if (option%ndof == 4) call VecGetArrayF90(field%xmol,xmol_p,ierr)
+    
+      initial_condition => realization%initial_conditions%first
+      do
+      
+        if (.not.associated(initial_condition)) exit
+        
+        do icell=1,initial_condition%region%num_cells
+          local_id = initial_condition%region%cell_ids(icell)
+          jn1 = 1+local_id*option%nphase-1
+          jn2 = jn1+1
+              
+          count = 1
+          pressure_p(jn1) = initial_condition%condition%pressure%dataset%cur_value(1)
+          count = count + 1
+          
+          if (option%nphase>1) then
+            pressure_p(jn2) = initial_condition%condition%pressure%dataset%cur_value(1)
+            count = count + 1
+          endif
+          
+          temp_p(local_id) = initial_condition%condition%temperature%dataset%cur_value(1)
+          count = count + 1
+          
+          sat_p(jn1) = initial_condition%condition%concentration%dataset%cur_value(1)
+          count = count + 1          
+          
+          if (option%nphase>1) then
+            sat_p(jn2) = 1.d0 - sat_p(jn1)
+            count = count + 1
+          endif
+          
+          if (option%ndof == 3) then                        ! this is bogus
+            conc_p(local_id) = initial_condition%condition%concentration%dataset%cur_value(1)
+            count = count + 1
+          endif
+
+          if (option%ndof == 4) then                         ! this is bogus
+            xmol_p(jn2) = initial_condition%condition%concentration%dataset%cur_value(1)
+            count = count + 1
+          endif
+               
+        enddo
+  
+        initial_condition => initial_condition%next
+  
+      enddo   
+       
+      call VecRestoreArrayF90(field%pressure,pressure_p,ierr)
+      call VecRestoreArrayF90(field%temp,temp_p,ierr)
+      call VecRestoreArrayF90(field%sat,sat_p,ierr)
+      if (option%ndof == 3) call VecRestoreArrayF90(field%conc,conc_p,ierr)
+      if (option%ndof == 4) call VecRestoreArrayF90(field%xmol,xmol_p,ierr)
+  end select 
+
+  ! assign initial conditions values to domain
+  call VecGetArrayF90(field%xx,xx_p, ierr); CHKERRQ(ierr)
+  call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr)
+  
+  xx_p = -1.d20
+  
+  initial_condition => realization%initial_conditions%first
+  do
+  
+    if (.not.associated(initial_condition)) exit
+
+    if (.not.associated(initial_condition%connection)) then
+      do icell=1,initial_condition%region%num_cells
+        local_id = initial_condition%region%cell_ids(icell)
+        ghosted_id = realization%grid%nL2G(local_id)
+        iend = local_id*option%ndof
+        ibegin = iend-option%ndof+1
+        if (associated(field%imat)) then
+          if (field%imat(ghosted_id) <= 0) then
+            xx_p(ibegin:iend) = 0.d0
+            iphase_loc_p(ghosted_id) = 0
+            cycle
+          endif
+        endif
+        do idof = 1, option%ndof
+          xx_p(ibegin+idof) = &
+            initial_condition%condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
+        enddo
+        iphase_loc_p(ghosted_id)=initial_condition%condition%iphase
+      enddo
+    else
+      do iconn=1,initial_condition%connection%num_connections
+        local_id = initial_condition%connection%id_dn(iconn)
+        ghosted_id = realization%grid%nL2G(local_id)
+        iend = local_id*option%ndof
+        ibegin = iend-option%ndof+1
+        if (associated(field%imat)) then
+          if (field%imat(ghosted_id) <= 0) then
+            xx_p(ibegin:iend) = 0.d0
+            iphase_loc_p(ghosted_id) = 0
+            cycle
+          endif
+        endif
+        xx_p(ibegin:iend) = &
+          initial_condition%aux_real_var(1:option%ndof,iconn)
+        iphase_loc_p(ghosted_id)=initial_condition%aux_int_var(1,iconn)
+      enddo
+    endif
+    initial_condition => initial_condition%next
+  enddo
+  
+  call VecRestoreArrayF90(field%xx,xx_p, ierr)
+  call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p,ierr)
+  call GridGlobalToLocal(grid,field%xx,field%xx_loc,NDOF)  
+  call GridLocalToLocal(grid,field%iphas_loc,field%iphas_loc,ONEDOF)  
+
+end subroutine assignInitialConditions
+
+! ************************************************************************** !
+!
+! verifyCouplers: Verifies the connectivity of a coupler
+! author: Glenn Hammond
+! date: 1/8/08
+!
+! ************************************************************************** !
+subroutine verifyCouplers(realization,coupler_list)
+
+  use Realization_module
+  use Option_module 
+  use Coupler_module
+  use Grid_module
+  use Output_module
+
+  implicit none
+
+  type(realization_type) :: realization
+  type(coupler_list_type) :: coupler_list
+
+  type(option_type), pointer :: option
+  type(grid_type), pointer :: grid
+  type(coupler_type), pointer :: coupler
+  character(len=MAXWORDLENGTH) :: filename
+  character(len=MAXWORDLENGTH) :: dataset_name
+  PetscInt :: iconn, local_id
+  Vec :: global_vec
+  PetscReal, pointer :: vec_ptr(:)
+  PetscErrorCode :: ierr
+
+  grid => realization%grid
+
+  call GridCreateVector(grid,ONEDOF,global_vec,GLOBAL)
+
+  coupler => coupler_list%first
+
+  do
+    if (.not.associated(coupler)) exit
+
+    call VecZeroEntries(global_vec,ierr)
+    call VecGetArrayF90(global_vec,vec_ptr,ierr) 
+    do iconn = 1, coupler%connection%num_connections
+      local_id = coupler%connection%id_dn(iconn)
+      vec_ptr(local_id) = coupler%id
+    enddo
+    call VecRestoreArrayF90(global_vec,vec_ptr,ierr) 
+    dataset_name = trim(coupler%condition%name) // '_' // &
+                   trim(coupler%region%name)
+    filename = trim(dataset_name) // '.tec'
+    call OutputVectorTecplot(filename,dataset_name,realization,global_vec)
+
+    coupler => coupler%next
+  enddo
+
+  call VecDestroy(global_vec,ierr)
+
+end subroutine verifyCouplers
+
+! ************************************************************************** !
+!
+! initializeSolidReaction: Allocates and initializes arrays associated with
+!                          mineral reactions
+! author: Glenn Hammond
+! date: 11/15/07
+!
+! ************************************************************************** !
+subroutine initializeSolidReaction(realization)
+
+  use Realization_module
+  use Grid_module
+  use Option_module
+  use Field_module
+
+  type(realization_type) :: realization
+  
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  PetscInt :: icell
+  PetscReal, pointer :: phis_p(:)
+  PetscErrorCode :: ierr
+  
+  grid => realization%grid
+  option => realization%option
+  field => realization%field
+  
+  if (option%rk > 0.d0) then
+    allocate(option%area_var(grid%nlmax))
+    allocate(option%rate(grid%nlmax))
+    call VecGetArrayF90(field%phis,phis_p,ierr)
+    do icell = 1, grid%nlmax
+      phis_p(icell) = option%phis0
+      option%area_var(icell) = 1.d0
+    enddo
+    call VecRestoreArrayF90(field%phis,phis_p,ierr)
+  endif
+  
+end subroutine initializeSolidReaction
+
+! ************************************************************************** !
+!
+! readRegionFiles: Reads in grid cell ids stored in files
+! author: Glenn Hammond
+! date: 1/03/08
+!
+! ************************************************************************** !
+subroutine readRegionFiles(realization)
+
+  use Realization_module
+  use Region_module
+  use HDF5_module
+
+  implicit none
+
+  type(realization_type) :: realization
+  
+  type(region_type), pointer :: region
+  
+  region => realization%regions%first
+  do 
+    if (.not.associated(region)) exit
+    if (len_trim(region%filename) > 1) then
+      if (index(region%filename,'.h5') > 0) then
+        call HDF5ReadRegionFromFile(realization,region,region%filename)
+      else
+        call RegionReadFromFile(region,region%filename)
+      endif
+    endif
+    region => region%next
+  enddo
+
+end subroutine readRegionFiles
+
+! ************************************************************************** !
+!
+! readMaterialsFromFile: Reads in grid cell materials
+! author: Glenn Hammond
+! date: 1/03/08
+!
+! ************************************************************************** !
+subroutine readMaterialsFromFile(realization,filename)
+
+  use Realization_module
+  use Field_module
+  use Grid_module
+  use Option_module
+  use Fileio_module
+
+  use HDF5_module
+  
+  implicit none
+  
+  type(realization_type) realization
+  character(len=MAXWORDLENGTH) :: filename
+  
+  type(field_type), pointer :: field
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscInt :: ghosted_id, natural_id, material_id
+  PetscInt :: fid = 86
+  PetscInt :: status
+  PetscErrorCode :: ierr
+
+  field => realization%field
+  grid => realization%grid
+  option => realization%option
+
+  if (index(filename,'.h5') > 0) then
+    call HDF5ReadMaterialsFromFile(realization,filename)
+  else
+    call GridCreateNaturalToGhostedHash(grid,option)
+    status = 0
+    open(unit=fid,file=filename,status="old",iostat=status)
+    if (status /= 0) then
+      string = "File: " // filename // " not found."
+      call printErrMsg(option,string)
+    endif
+    do
+      call fiReadFlotranString(fid,string,ierr)
+      if (ierr /= 0) exit
+      call fiReadInt(string,natural_id,ierr)
+      call fiErrorMsg(option%myrank,'natural id','STRATA', ierr)
+      ghosted_id = GridGetLocalGhostedIdFromHash(grid,natural_id)
+      if (ghosted_id > 0) then
+        call fiReadInt(string,material_id,ierr)
+        call fiErrorMsg(option%myrank,'material id','STRATA', ierr)
+        field%imat(ghosted_id) = material_id
+      endif
+    enddo
+    call GridDestroyHashTable(grid)
+  endif
+  
+end subroutine readMaterialsFromFile
+#endif
+end module Transport_Init_module

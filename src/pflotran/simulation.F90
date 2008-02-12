@@ -1,8 +1,15 @@
 module Simulation_module
 
+#ifdef FLOW
   use Realization_module
   use Timestepper_module
   use Solver_module
+#endif  
+#ifdef TRANSPORT
+  use Transport_Realization_module
+  use Transport_Timestepper_module
+  use Transport_Solver_module
+#endif
 
   implicit none
 
@@ -12,8 +19,14 @@ module Simulation_module
 
   type, public :: simulation_type
 
+#ifdef FLOW
     type(realization_type), pointer :: realization
     type(stepper_type), pointer :: stepper
+#endif    
+#ifdef TRANSPORT
+    type(tr_realization_type), pointer :: tr_realization
+    type(tr_stepper_type), pointer :: tr_stepper
+#endif
 
   end type simulation_type
   
@@ -37,8 +50,14 @@ function SimulationCreate()
   type(simulation_type), pointer :: simulation
   
   allocate(simulation)
+#ifdef FLOW  
   simulation%realization => RealizationCreate()
   simulation%stepper => TimestepperCreate()
+#endif
+#ifdef TRANSPORT
+  simulation%tr_realization => TrRealizationCreate()
+  simulation%tr_stepper => TrTimestepperCreate()
+#endif
   
   SimulationCreate => simulation
   
@@ -58,9 +77,15 @@ subroutine SimulationDestroy(simulation)
   type(simulation_type), pointer :: simulation
   
   if (.not.associated(simulation)) return
-    
+
+#ifdef FLOW    
   call RealizationDestroy(simulation%realization)
   call TimestepperDestroy(simulation%stepper)
+#endif
+#ifdef TRANSPORT  
+  call TrRealizationDestroy(simulation%tr_realization)
+  call TrTimestepperDestroy(simulation%tr_stepper)
+#endif  
   
 end subroutine SimulationDestroy
   
