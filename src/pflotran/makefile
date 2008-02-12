@@ -22,8 +22,13 @@ ifdef compile_broken
   COMPILE_BROKEN_FLAGS = -DCOMPILE_BROKEN
 endif
 
+ifdef tran
+  TRANSPORT_FLAGS = -DTRANSPORT
+endif
+
 MYFLAGS = -I${objdir} $(HDF5_FLAGS) \
-          $(COMPILE_BROKEN_FLAGS) -DFLOW -DRICHARDS_ANALYTICAL 
+          $(COMPILE_BROKEN_FLAGS) -DRICHARDS_ANALYTICAL \
+          $(TRANSPORT_FLAGS)
 LIBS = $(HDF5_LIBS)
 
 CFLAGS		 = 
@@ -107,6 +112,7 @@ ptran_obj = ${common_src}option.o \
 	${common_src}grid.o \
 	${common_src}transport_realization.o \
 	${common_src}hdf5.o \
+	${common_src}transport_timestepper.o \
 	${common_src}simulation.o \
 	${common_src}ptran_output.o \
 	${common_src}ptran_init.o
@@ -118,7 +124,7 @@ pflow : $(util_obj) $(pflow_obj) ${pflow_src}pflow.o
 	${FLINKER}   -o pflow $(util_obj) $(pflow_obj) ${pflow_src}pflow.o ${PETSC_LIB} ${LIBS}
 
 ptran : $(util_obj) $(ptran_obj) ${ptran_src}ptran.o
-	${FLINKER}   -o ptran $(util_obj) $(ptran_obj) ${ptran_src}ptran.o ${PETSC_LIB}
+	${FLINKER}   -o ptran $(util_obj) $(ptran_obj) ${ptran_src}ptran.o ${PETSC_LIB} ${LIBS}
 
 pflotran: $(util_obj) $(ptran_obj) $(pflow_obj) $(pflotran_obj) \
 	${pflotran_src}pflotran.o

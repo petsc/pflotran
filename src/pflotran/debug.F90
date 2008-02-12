@@ -27,7 +27,7 @@ module Debug_module
   end interface DebugRead
   
   
-  public :: DebugCreatePflow, DebugRead
+  public :: DebugCreatePflow, DebugCreatePtran, DebugRead
   
 contains
 
