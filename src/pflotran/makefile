@@ -37,10 +37,10 @@ endif
 
 CLEANFILES       = pflow ptran pflotran pflotran_fc
 
-ifdef dev
- include ${PETSC_DIR}/conf/base
-else
+ifdef petscrel
  include ${PETSC_DIR}/bmake/common/base
+else
+ include ${PETSC_DIR}/conf/base
 endif
 
 util_obj  = ${common_src}fileio.o \
