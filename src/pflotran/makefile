@@ -23,7 +23,7 @@ ifdef compile_broken
 endif
 
 MYFLAGS = -I${objdir} $(HDF5_FLAGS) \
-          $(COMPILE_BROKEN_FLAGS) -DRICHARDS_ANALYTICAL 
+          $(COMPILE_BROKEN_FLAGS) -DFLOW -DRICHARDS_ANALYTICAL 
 LIBS = $(HDF5_LIBS)
 
 CFLAGS		 = 
@@ -91,23 +91,25 @@ pflow_obj = ${common_src}pflow_vector_ops.o \
 	${common_src}pflow_convergence.o \
 	${common_src}pflow_init.o
 
-ptran_obj = ${common_src}ptran_psi.o \
-	${common_src}ptran_dbase.o \
-	${common_src}trgamdh.o \
-	${common_src}ptran_speciation.o \
-	${common_src}ptran_setbnd.o \
-	${common_src}ptran_conn.o \
-	${common_src}ptran_destroy.o \
-	${common_src}ptran_dt.o \
-	${common_src}ptran_init.o \
-	${common_src}ptran_out.o \
-	${common_src}ptran_read.o \
-	${common_src}trkinmin.o \
-	${common_src}trionexc.o \
-	${common_src}ptran_multi.o \
-	${common_src}ptran_update.o \
-	${common_src}trstdyst.o \
-	${common_src}ptran_solv.o
+ptran_obj = ${common_src}option.o \
+	${common_src}debug.o \
+	${common_src}waypoint.o \
+	${common_src}region.o \
+	${common_src}material.o \
+	${common_src}strata.o \
+	${common_src}connection.o \
+	${common_src}breakthrough.o \
+	${common_src}transport_solver.o \
+	${common_src}unstructured_grid.o \
+	${common_src}structured_grid.o \
+	${common_src}condition.o \
+	${common_src}coupler.o \
+	${common_src}grid.o \
+	${common_src}transport_realization.o \
+	${common_src}hdf5.o \
+	${common_src}simulation.o \
+	${common_src}ptran_output.o \
+	${common_src}ptran_init.o
 
 pflotran_obj = ${common_src}rock_react.o \
 	${common_src}pflotran_couple.o
@@ -140,7 +142,9 @@ ascii_to_hdf5: fileio.o hdf5_dataset.o ascii_to_hdf5.o
 # These ensure that the module files are built in the correct order.
 breakthrough.o : region.o option.o fileio.o
 pflow.o : pflow_init.o timestepper.o simulation.o
-simulation.o : timestepper.o realization.o
+ptran.o : ptran_init.o transport_timestepper.o simulation.o
+#simulation.o : timestepper.o realization.o transport_realization.o \
+#               transport_timestepper.o
 pflow_init.o : option.o grid.o realization.o solver.o timestepper.o \
                simulation.o fileio.o material.o region.o condition.o \
                pflow_convergence.o waypoint.o field.o general_grid.o debug.o
@@ -156,6 +160,8 @@ coupler.o : condition.o connection.o region.o fileio.o
 condition.o : fileio.o utility.o option.o field.o
 realization.o : grid.o option.o region.o condition.o coupler.o material.o \
 	     strata.o waypoint.o field.o hydrostatic.o debug.o breakthrough.o
+transport_realization.o : grid.o option.o region.o condition.o coupler.o \
+                          material.o strata.o waypoint.o debug.o breakthrough.o
 strata.o : fileio.o region.o material.o
 hydrostatic.o : option.o grid.o coupler.o condition.o connection.o region.o \
                 structured_grid.o
@@ -182,6 +188,14 @@ timestepper.o : \
                 solver.o \
                 pflow_output2.o \
                 pflow_checkpoint.o \
+		waypoint.o
+transport_timestepper.o : \
+                transport_realization.o \
+                grid.o \
+                option.o \
+                field.o \
+                transport_solver.o \
+                ptran_output.o \
 		waypoint.o
 hdf5.o : realization.o option.o grid.o
 pflow_THC.o : water_eos.o
