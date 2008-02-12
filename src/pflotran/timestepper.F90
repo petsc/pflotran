@@ -34,9 +34,7 @@ module Timestepper_module
     
   end type stepper_type
   
-  public :: TimestepperCreate, StepperUpdateDT, StepperStepDT, StepperUpdateSolution, &
-            TimestepperDestroy, StepperRun, &
-            WaypointCreate, WaypointInsertInList
+  public :: TimestepperCreate, TimestepperDestroy, StepperRun
   
 contains
 
