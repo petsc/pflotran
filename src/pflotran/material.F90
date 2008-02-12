@@ -413,9 +413,7 @@ subroutine SaturationFunctionCompute(pressure,saturation,relative_perm, &
         Se = one_plus_pc_alpha_n**(-m)
         dSe_pc = -m*n*alpha*pc_alpha_n/(pc_alpha*one_plus_pc_alpha_n**(m+1))
         saturation = Sr + (1.d0-Sr)*Se
-        dsat_pc = dSe_pc*(1.d0-Sr)
-!        dsat_pc = -m*n*alpha*(1.d0-Sr)*(pc*alpha)**(n-1.d0)/ &
-!                   (1+(pc*alpha)**n)**(m+1)
+        dsat_pc = (1.d0-Sr)*dSe_pc
       endif
       ! compute relative permeability
       select case(saturation_function%permeability_function_itype)
@@ -452,7 +450,8 @@ subroutine SaturationFunctionCompute(pressure,saturation,relative_perm, &
         Se = pc_alpha_neg_lambda
         dSe_pc = -lambda/pc*pc_alpha_neg_lambda
         saturation = Sr + (1.d0-Sr)*Se
-        dsat_pc = -lambda*(1.d0-Sr)/pc*pc_alpha_neg_lambda
+!        dsat_pc = -lambda*(1.d0-Sr)/pc*pc_alpha_neg_lambda
+        dsat_pc = (1.d0-Sr)*dSe_pc
       endif
       ! compute relative permeability
       select case(saturation_function%permeability_function_itype)
