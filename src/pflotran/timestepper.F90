@@ -297,10 +297,10 @@ end subroutine StepperUpdateDT
 subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
                          num_timestep_cuts,num_newton_iterations)
   
-  use translator_mph_module, only : translator_mph_step_maxchange
   use MPHASE_module
   use Richards_Lite_module
   use Richards_Analytical_module
+  use THC_module
   use Output_module
   
   use Realization_module
@@ -413,7 +413,6 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
   do
    
     
-    option%iphch=0
     select case(option%imode)
       case(THC_MODE,MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
         call SNESSolve(solver%snes, PETSC_NULL, field%xx, ierr)
@@ -498,8 +497,7 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
 
       select case(option%imode)
         case(THC_MODE)
-          call VecCopy(field%pressure, field%ppressure, ierr)
-          call VecCopy(field%temp, field%ttemp, ierr)
+          call THCTimeCut(realization)
         case(RICHARDS_MODE)
           call RichardsTimeCut(realization)
         case(RICHARDS_LITE_MODE)
@@ -561,7 +559,7 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
       endif
     endif
   else if (option%imode == MPH_MODE) then
-     call translator_mph_step_maxchange(realization)
+     call MphaseMaxChange(realization)
     ! note use mph will use variable switching, the x and s change is not meaningful 
     if (option%myrank==0) then
       if (mod(stepper%flowsteps,option%imod) == 0 .or. stepper%flowsteps == 1) then
@@ -592,8 +590,8 @@ end subroutine StepperStepDT
 subroutine StepperUpdateSolution(realization)
   
   use MPHASE_module, only: pflow_update_mphase
-  use Richards_Lite_module, only : RichardsLiteUpdateFixedAccum
-  use Richards_Analytical_module, only : RichardsUpdateFixedAccumulation
+  use Richards_Lite_module, only : RichardsLiteUpdateSolution
+  use Richards_Analytical_module, only : RichardsUpdateSolution
 
   use Realization_module
   use Option_module
@@ -601,8 +599,6 @@ subroutine StepperUpdateSolution(realization)
   use Field_module
 
   implicit none
-
-#include "include/finclude/petsc.h"  
 
   type(realization_type) :: realization
 
@@ -622,11 +618,12 @@ subroutine StepperUpdateSolution(realization)
     case(MPH_MODE)
       call pflow_update_mphase(realization)
     case(RICHARDS_MODE)
-      call RichardsUpdateFixedAccumulation(realization)
+      call RichardsUpdateSolution(realization)
     case(RICHARDS_LITE_MODE)
-      call RichardsLiteUpdateFixedAccum(realization)
+      call RichardsLiteUpdateSolution(realization)
   end select    
 
+#if 0
   !integrate solid volume fraction using explicit finite difference
   if (option%rk > 0.d0) then
     call VecGetArrayF90(field%phis,phis_p,ierr)
@@ -639,8 +636,9 @@ subroutine StepperUpdateSolution(realization)
     enddo
     call VecRestoreArrayF90(field%phis,phis_p,ierr)
   endif
+#endif  
   
-  ! update solutoin variables
+  ! update solution variables
   call RealizationUpdate(realization)
 
 end subroutine StepperUpdateSolution

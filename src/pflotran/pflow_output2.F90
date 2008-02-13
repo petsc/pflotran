@@ -191,9 +191,11 @@ subroutine OutputTecplot(realization)
           write(string2,'(''"Xg('',i2,'')",'')') i
           string = trim(string) // trim(string2)
         enddo
+#if 0        
         if (option%rk > 0.d0) then
           string = trim(string) // '"Volume Fraction"'
         endif
+#endif
         string = trim(string) // ',"Phase"'
         if (associated(field%imat)) then
           string = trim(string) // ',"Material_ID"'
@@ -221,9 +223,11 @@ subroutine OutputTecplot(realization)
             string = trim(string) // trim(string2)
           enddo
         endif
+#if 0        
         if (option%rk > 0.d0) then
           string = trim(string) // ',"Volume Fraction"'
         endif
+#endif        
         if (associated(field%imat)) then
           string = trim(string) // ',"Material_ID"'
         endif
@@ -236,9 +240,11 @@ subroutine OutputTecplot(realization)
                  '"P [Pa]",' // &
                  '"sl",' // &
                  '"C [mol/L]"'
+#if 0                 
         if (option%rk > 0.d0) then
           string = trim(string) // ',"Volume Fraction"'
         endif
+#endif        
     end select
     write(IUNIT3,'(a)') trim(string)
   
@@ -339,14 +345,14 @@ subroutine OutputTecplot(realization)
             call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
           enddo
       end select 
-      
+#if 0      
       ! Volume Fraction
       if (option%rk > 0.d0) then
         call GetVarFromArray(realization,global_vec,VOLUME_FRACTION,ZERO_INTEGER)
         call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
         call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       endif
-    
+#endif    
       ! phase
       select case(option%imode)
         case(MPH_MODE)
@@ -364,29 +370,6 @@ subroutine OutputTecplot(realization)
   
     case default
   
-      ! temperature
-      call GridGlobalToNatural(grid,field%temp,natural_vec,ONEDOF)
-      call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
-
-      ! pressure
-      call GridGlobalToNatural(grid,field%pressure,natural_vec,ONEDOF)
-      call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
-
-      ! saturation
-      call GridGlobalToNatural(grid,field%sat,natural_vec,ONEDOF)
-      call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
-
-      ! concentration
-      call GridGlobalToNatural(grid,field%conc,natural_vec,ONEDOF)
-      call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
-
-      ! volume fraction
-      if (option%rk > 0.d0) then
-        call GetVarFromArray(realization,global_vec,VOLUME_FRACTION,ZERO_INTEGER)
-        call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
-        call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
-      endif
-    
   end select
   
   call VecDestroy(natural_vec,ierr)
@@ -1306,9 +1289,11 @@ subroutine WriteBreakthroughHeaderForCell(fid,realization,local_id)
         write(string2,'(''"Xg('',i2,'') '// trim(cell_id_string) // '",'')') i
         string = trim(string) // trim(string2)
       enddo
+#if 0      
       if (option%rk > 0.d0) then
         string = trim(string) // '"Volume Fraction '// trim(cell_id_string) // '"'
       endif
+#endif      
       string = trim(string) // ',"Phase '// trim(cell_id_string) // '"'
     case(RICHARDS_MODE,RICHARDS_LITE_MODE)
       if (option%imode == RICHARDS_MODE) then
@@ -1332,9 +1317,11 @@ subroutine WriteBreakthroughHeaderForCell(fid,realization,local_id)
           string = trim(string) // trim(string2)
         enddo
       endif
+#if 0      
       if (option%rk > 0.d0) then
         string = trim(string) // ',"Volume Fraction '// trim(cell_id_string) // '"'
       endif
+#endif      
     case default
       string = '"X [m]",' // &
                '"Y [m]",' // &
@@ -1343,9 +1330,11 @@ subroutine WriteBreakthroughHeaderForCell(fid,realization,local_id)
                '"P [Pa]",' // &
                '"sl",' // &
                '"C [mol/L]"'
+#if 0               
       if (option%rk > 0.d0) then
         string = trim(string) // ',"Volume Fraction"'
       endif
+#endif      
   end select
   write(fid,'(a)',advance="no") trim(string)
 
@@ -1453,13 +1442,13 @@ subroutine WriteBreakthroughDataForCell(fid,realization,local_id)
               GetVarFromArrayAtCell(realization,GAS_MOLE_FRACTION,i-1,local_id)
           enddo
       end select 
-      
+#if 0      
       ! Volume Fraction
       if (option%rk > 0.d0) then
         write(fid,110,advance="no") &
           GetVarFromArrayAtCell(realization,VOLUME_FRACTION,ZERO_INTEGER,local_id)
       endif
-    
+#endif    
       ! phase
       select case(option%imode)
         case(MPH_MODE,RICHARDS_MODE)
@@ -1699,14 +1688,14 @@ subroutine OutputHDF5(realization)
             call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
           enddo
       end select
-    
+#if 0    
       ! Volume Fraction
       if (option%rk > 0.d0) then
         call GetVarFromArray(realization,global_vec,VOLUME_FRACTION,ZERO_INTEGER)
         string = "Volume Fraction"
         call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
       endif
-    
+#endif    
       ! phase
       select case(option%imode)
         case (MPH_MODE)
@@ -1716,24 +1705,6 @@ subroutine OutputHDF5(realization)
       end select
   
     case default
-      ! temperature
-      string = "Temperature"
-      call HDF5WriteStructDataSetFromVec(string,realization,field%temp,grp_id, &
-                                   H5T_NATIVE_DOUBLE)
-
-      ! pressure
-      string = "Pressure"
-      call HDF5WriteStructDataSetFromVec(string,realization,field%pressure,grp_id, &
-                                   H5T_NATIVE_DOUBLE)
-
-      ! saturation
-      string = "Saturation"
-      call HDF5WriteStructDataSetFromVec(string,realization,field%sat,grp_id,H5T_NATIVE_DOUBLE)
-
-      ! concentration
-      string = "Concentration"
-      call HDF5WriteStructDataSetFromVec(string,realization,field%conc,grp_id, &
-                                   H5T_NATIVE_DOUBLE)
 
   end select
   
@@ -2190,7 +2161,10 @@ subroutine GetVarFromArray(realization,vec,ivar,isubvar)
       call RichardsLiteGetVarFromArray(realization,vec,ivar,isubvar)
       return
   end select
-  
+
+  ! the below is no longer supported.  Each mode needs to have i/o
+  ! routines like the richards* ones above.
+#if 0  
   call VecGetArrayF90(vec,vec_ptr,ierr)
       
   select case(ivar)
@@ -2269,6 +2243,7 @@ subroutine GetVarFromArray(realization,vec,ivar,isubvar)
   end select
   
   call VecRestoreArrayF90(vec,vec_ptr,ierr)
+#endif
 
 end subroutine GetVarFromArray
 

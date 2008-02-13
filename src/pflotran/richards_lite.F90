@@ -44,9 +44,8 @@ module Richards_Lite_module
          RichardsLiteUpdateFixedAccum,RichardsLiteTimeCut,&
          RichardsLiteSetup, RichardsLiteNumericalJacTest, &
          RichardsLiteGetVarFromArray, RichardsLiteGetVarFromArrayAtCell, &
-         RichardsLiteMaxChange
+         RichardsLiteMaxChange, RichardsLiteUpdateSolution
 
-  public :: createRichardsLiteZeroArray
   PetscInt, save :: n_zero_rows = 0
   logical, save :: aux_vars_up_to_date = .false.
   logical, save :: inactive_cells_exist = .false.
@@ -146,11 +145,14 @@ subroutine RichardsLiteSetup(realization)
   grid => realization%grid
   option => realization%option
   
+  ! allocate aux_var data structures for all grid cells  
   allocate(aux_vars(grid%ngmax))
   do ghosted_id = 1, grid%ngmax
     call initAuxVar(aux_vars(ghosted_id),option)
   enddo
-  
+
+  ! count the number of boundary connections and allocate
+  ! aux_var data structures for them  
   boundary_condition => realization%boundary_conditions%first
   sum_connection = 0    
   do 
@@ -163,6 +165,13 @@ subroutine RichardsLiteSetup(realization)
   do iconn = 1, sum_connection
     call initAuxVar(aux_vars_bc(iconn),option)
   enddo
+
+  ! create zero array for zeroing residual and Jacobian (1 on diagonal)
+  ! for inactive cells (and isothermal)
+  call createRichardsLiteZeroArray(realization)
+
+  ! compute initial contribution to accumulation at previous time
+  call RichardsLiteUpdateFixedAccum(realization)
   
 end subroutine RichardsLiteSetup
 
@@ -332,6 +341,27 @@ subroutine RichardsLiteUpdateAuxVars(realization)
   aux_vars_up_to_date = .true.
 
 end subroutine RichardsLiteUpdateAuxVars
+
+
+! ************************************************************************** !
+!
+! RichardsLiteUpdateSolution: Updates data in module after a successful time 
+!                             step
+! author: Glenn Hammond
+! date: 02/13/08
+!
+! ************************************************************************** !
+subroutine RichardsLiteUpdateSolution(realization)
+
+  use Realization_module
+  
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  call RichardsLiteUpdateFixedAccum(realization)
+
+end subroutine RichardsLiteUpdateSolution
 
 ! ************************************************************************** !
 !
@@ -1087,7 +1117,7 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
 
   PetscReal, pointer :: r_p(:), porosity_loc_p(:), volume_p(:), &
                xx_loc_p(:), xx_p(:), yy_p(:),&
-               phis_p(:), tor_loc_p(:),&
+               tor_loc_p(:),&
                perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
                           
                
@@ -1157,10 +1187,6 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
   call VecGetArrayF90(field%icap_loc, icap_loc_p, ierr)
   call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr)
   !print *,' Finished scattering non deriv'
-
-  if (option%rk > 0.d0) then
-    call VecGetArrayF90(field%phis,phis_p,ierr)
-  endif
 
   r_p = 0.d0
 #if 1
@@ -1383,9 +1409,6 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
   call VecRestoreArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
   call VecRestoreArrayF90(field%icap_loc, icap_loc_p, ierr)
   call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr)
-  if (option%rk > 0.d0) then
-    call VecRestoreArrayF90(field%phis,phis_p,ierr)
-  endif
 
   if (realization%debug%vecview_residual) then
     call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'residual.out',viewer,ierr)
@@ -1436,7 +1459,7 @@ subroutine RichardsLiteJacobian(snes,xx,A,B,flag,realization,ierr)
   PetscInt :: ip1, ip2 
 
   PetscReal, pointer :: porosity_loc_p(:), volume_p(:), &
-                          xx_loc_p(:), phis_p(:),  tor_loc_p(:),&
+                          xx_loc_p(:), tor_loc_p(:),&
                           perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
   PetscReal, pointer :: iphase_loc_p(:), icap_loc_p(:), ithrm_loc_p(:)
   PetscInt :: icap,iphas,iphas_up,iphas_dn,icap_up,icap_dn
@@ -1775,9 +1798,6 @@ subroutine RichardsLiteJacobian(snes,xx,A,B,flag,realization,ierr)
   call VecRestoreArrayF90(field%icap_loc, icap_loc_p, ierr)
   call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr)
 
-  if (option%rk > 0.d0) then
-    call VecRestoreArrayF90(field%phis,phis_p,ierr)
-  endif
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
 
@@ -1984,11 +2004,6 @@ subroutine RichardsLiteGetVarFromArray(realization,vec,ivar,isubvar)
             vec_ptr(local_id) = aux_vars(ghosted_id)%sat
         end select
       enddo
-    case(VOLUME_FRACTION)
-      ! need to set minimum to 0.
-      call VecGetArrayF90(field%phis,vec2_ptr,ierr)
-      vec_ptr(1:grid%nlmax) = vec2_ptr(1:grid%nlmax)
-      call VecRestoreArrayF90(field%phis,vec2_ptr,ierr)
     case(PHASE)
       call VecGetArrayF90(field%iphas_loc,vec2_ptr,ierr)
       do local_id=1,grid%nlmax
@@ -2080,10 +2095,6 @@ function RichardsLiteGetVarFromArrayAtCell(realization,ivar,isubvar, &
         case(LIQUID_SATURATION)
           value = aux_vars(ghosted_id)%sat
       end select
-    case(VOLUME_FRACTION)
-      call VecGetArrayF90(field%phis,vec_ptr,ierr)
-      value = vec_ptr(local_id)
-      call VecRestoreArrayF90(field%phis,vec_ptr,ierr)
     case(PHASE)
       call VecGetArrayF90(field%iphas_loc,vec_ptr,ierr)
       value = vec_ptr(grid%nL2G(local_id))

@@ -10,6 +10,99 @@
 #define CCONC(n)           xx_p(3+(n-1)*option%ndof)
 #define CONC(n)            yy_p(3+(n-1)*option%ndof)
 
+module thc_field_module
+  
+  implicit none
+ 
+  private 
+#include "definitions.h"
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
+  ! It is VERY IMPORTANT to make sure that the above .h90 file gets included.
+  ! Otherwise some very strange things will happen and PETSc will give no
+  ! indication of what the problem is.
+#include "include/finclude/petscmat.h"
+#include "include/finclude/petscmat.h90"
+#include "include/finclude/petscda.h"
+#include "include/finclude/petscda.h90"
+#include "include/finclude/petscsnes.h"
+#include "include/finclude/petscviewer.h"
+#include "include/finclude/petscsys.h"
+#include "include/finclude/petscis.h"
+#include "include/finclude/petscis.h90"
+#include "include/finclude/petsclog.h"
+  
+  type, public :: thc_field_type
+    Vec :: density
+    Vec :: ddensity, ddensity_loc
+    Vec :: viscosity, viscosity_loc
+    Vec :: d_p, d_p_loc
+    Vec :: d_t, d_t_loc
+    Vec :: h
+    Vec :: hh, hh_loc
+    Vec :: h_p, h_p_loc
+    Vec :: h_t, h_t_loc
+    Vec :: v_p, v_p_loc
+    Vec :: v_t, v_t_loc
+    Vec :: phis
+ 
+    PetscReal, pointer :: vvl_loc(:)
+    PetscReal, pointer :: d_p_bc(:)
+    PetscReal, pointer :: d_t_bc(:)
+    PetscReal, pointer :: hh_bc(:)
+    PetscReal, pointer :: h_p_bc(:)
+    PetscReal, pointer :: h_t_bc(:)
+    PetscReal, pointer :: viscosity_bc(:)
+    PetscReal, pointer :: v_p_bc(:)
+    PetscReal, pointer :: v_t_bc(:)
+    PetscReal, pointer :: density_bc(:)
+    PetscReal, pointer :: vvlbc(:)
+    
+  end type thc_field_type
+  
+  type(thc_field_type), pointer, public :: thc_field
+  
+end module thc_field_module  
+
+module thc_option_module
+  
+  implicit none
+  
+  private 
+  
+#include "definitions.h"
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
+  ! It is VERY IMPORTANT to make sure that the above .h90 file gets included.
+  ! Otherwise some very strange things will happen and PETSc will give no
+  ! indication of what the problem is.
+#include "include/finclude/petscmat.h"
+#include "include/finclude/petscmat.h90"
+#include "include/finclude/petscda.h"
+#include "include/finclude/petscda.h90"
+#include "include/finclude/petscsnes.h"
+#include "include/finclude/petscviewer.h"
+#include "include/finclude/petscsys.h"
+#include "include/finclude/petscis.h"
+#include "include/finclude/petscis.h90"
+#include "include/finclude/petsclog.h"
+  
+  type, public :: thc_option_type
+    PetscInt :: jh2o = 1
+    PetscReal, pointer :: rate(:)
+    PetscReal, pointer :: area_var(:)
+    
+!   solid reaction rate
+    PetscInt :: ityprxn
+    PetscReal :: rk=0.d0, phis0, areas0, pwrsrf, vbars, ceq, delHs, delEs, wfmts
+    PetscReal ::qu_kin, yh2o_in_co2=0.D0
+        
+  end type thc_option_type
+  
+  type(thc_option_type), pointer, public :: thc_option
+  
+end module thc_option_module  
+
 module THC_module
 
  use Connection_module
@@ -18,6 +111,9 @@ module THC_module
  use Option_module
  use Coupler_module
  use Field_module
+ 
+ use thc_field_module
+ use thc_option_module
  
  private
 
@@ -35,16 +131,218 @@ module THC_module
 #include "include/finclude/petscis.h"
 #include "include/finclude/petsclog.h"
 
-  public THCResidual, THCJacobian
+  public THCResidual, THCJacobian, THCSetup, THCCheckpointRead, &
+          THCCheckpointWrite, THCTimeCut, THCInitializeSolidReaction
 
 contains
 
+! ************************************************************************** !
+!
+! THCCheckpointWrite: Writes vecs to checkpoint file
+! author: 
+! date: 
+!
+! ************************************************************************** !
+subroutine THCCheckpointWrite(grid,viewer)
+
+  use Grid_module
+
+  implicit none
+  
+  type(grid_type) grid
+  PetscViewer :: viewer
+  
+  PetscErrorCode :: ierr
+  
+  call VecView(thc_field%hh, viewer, ierr)
+  call VecView(thc_field%ddensity, viewer, ierr)
+  ! solid volume fraction
+  if (thc_option%rk > 0.d0) then
+    call VecView(thc_field%phis, viewer, ierr)
+  endif  
+  
+end subroutine THCCheckpointWrite
+
+! ************************************************************************** !
+!
+! THCCheckpointRead: Reads vecs from checkpoint file
+! author: 
+! date: 
+!
+! ************************************************************************** !
+subroutine THCCheckpointRead(grid,viewer)
+
+  use Grid_module
+
+  implicit none
+  
+  type(grid_type) grid
+  PetscViewer :: viewer
+  
+  PetscErrorCode :: ierr
+  
+  call VecLoadIntoVector(viewer,thc_field%hh, ierr)
+  call VecCopy(thc_field%hh,thc_field%h, ierr)
+  call VecLoadIntoVector(viewer,thc_field%ddensity, ierr)
+  call VecCopy(thc_field%ddensity,thc_field%density, ierr)
+  ! solid volume fraction
+  if (thc_option%rk > 0.d0) then
+    call VecLoadIntoVector(viewer,thc_field%phis,ierr)
+  endif 
+  
+end subroutine THCCheckpointRead
+
+! ************************************************************************** !
+!
+! THCSetup: Creates arrays for auxilliary variables, initializes, etc.
+! author: 
+! date: 
+!
+! ************************************************************************** !
+subroutine THCSetup(realization)
+
+  use Realization_module
+ 
+  implicit none
+  
+  type(realization_type) :: realization
+
+  call THCInitializeSolidReaction(realization)
+  
+! these vecs need to be local to THC, not in the field type    
 #if 0
 
-  subroutine THCInit()
-  
-    implicit none
+    ! declarations formerly in field.F90
+    PetscReal, pointer :: density_bc(:),d_p_bc(:),d_t_bc(:), d_s_bc(:),d_c_bc(:),&
+                       avgmw_bc(:),avgmw_c_bc(:),&
+                       hh_bc(:),h_p_bc(:),h_t_bc(:),h_s_bc(:), h_c_bc(:), &
+                       viscosity_bc(:),v_p_bc(:),v_t_bc(:),&
+                       uu_bc(:),u_p_bc(:),u_t_bc(:),u_s_bc(:), u_c_bc(:),&    
+                       df_bc(:),df_p_bc(:),df_t_bc(:),df_s_bc(:), df_c_bc(:), &
+                       hen_bc(:),hen_p_bc(:),hen_t_bc(:),hen_s_bc(:),hen_c_bc(:), &
+                       pc_bc(:),pc_p_bc(:),pc_t_bc(:),pc_s_bc(:),pc_c_bc(:), &
+                       kvr_bc(:),kvr_p_bc(:),kvr_t_bc(:),kvr_s_bc(:),kvr_c_bc(:)
+                       
+    Vec :: conc
+    Vec :: ttemp, ttemp_loc, temp ! 1 dof
     
+! someone will have to sort out whether these belong in thc, from field.F90
+    Vec :: ppressure, ppressure_loc, pressure, dp
+    Vec :: ssat, ssat_loc, sat    ! saturation
+    Vec :: xxmol, xxmol_loc, xmol ! mole fraction
+    Vec :: density       ! Density at time k
+    Vec :: ddensity, ddensity_loc  ! Density at time k+1
+    Vec :: d_p, d_p_loc  ! dD/dp at time k+1
+    Vec :: d_t, d_t_loc  ! dD/dT at time k+1
+    Vec :: d_c, d_c_loc  ! dD/dT at time k+1
+    Vec :: d_s, d_s_loc  ! dD/dT at time k+1
+    Vec :: avgmw,avgmw_loc  ! Density at time k+1molecular weight at time k+1
+    Vec :: avgmw_c,avgmw_c_loc
+    Vec :: h             ! H     at time k
+    Vec :: hh, hh_loc    ! H     at time k+1
+    Vec :: h_p, h_p_loc  ! dH/dp at time k+1
+    Vec :: h_t, h_t_loc  ! dH/dT at time k+1
+    Vec :: h_c, h_c_loc  ! dD/dT at time k+1
+    Vec :: h_s, h_s_loc  ! dD/dT at time k+1
+    Vec :: u            ! H     at time k
+    Vec :: uu, uu_loc    ! H     at time k+1
+    Vec :: u_p, u_p_loc  ! dH/dp at time k+1
+    Vec :: u_t, u_t_loc  ! dH/dT at time k+1
+    Vec :: u_c, u_c_loc  ! dD/dT at time k+1
+    Vec :: u_s, u_s_loc  ! dD/dT at time k+1
+    Vec :: hen, hen_loc    ! H     at time k+1
+    Vec :: hen_p, hen_p_loc  ! dH/dp at time k+1
+    Vec :: hen_t, hen_t_loc  ! dH/dT at time k+1
+    Vec :: hen_c, hen_c_loc  ! dD/dT at time k+1
+    Vec :: hen_s, hen_s_loc  ! dD/dT at time k+1
+    Vec :: df, df_loc    ! H     at time k+1
+    Vec :: df_p, df_p_loc  ! dH/dp at time k+1
+    Vec :: df_t, df_t_loc  ! dH/dT at time k+1
+    Vec :: df_c, df_c_loc  ! dD/dT at time k+1
+    Vec :: df_s, df_s_loc  ! dD/dT at time k+1
+    Vec :: viscosity, viscosity_loc  !kept for early routine
+   
+    Vec :: v_p, v_p_loc  ! dv/dp at time k+1
+    Vec :: v_t, v_t_loc  ! dv/dT at time k+1
+    Vec :: pcw, pcw_loc    ! H     at time k+1
+    Vec :: pc_p, pc_p_loc  ! dH/dp at time k+1
+    Vec :: pc_t, pc_t_loc  ! dH/dT at time k+1
+    Vec :: pc_c, pc_c_loc  ! dD/dT at time k+1
+    Vec :: pc_s, pc_s_loc  ! dD/dT at time k+1
+    Vec :: kvr, kvr_loc    ! H     at time k+1
+    Vec :: kvr_p, kvr_p_loc  ! d/dp at time k+1
+    Vec :: kvr_t, kvr_t_loc  ! dm/dT at time k+1
+    Vec :: kvr_c, kvr_c_loc  ! d/d at time k+1
+    Vec :: kvr_s, kvr_s_loc  ! dD/dT at time k+1
+                           
+    PetscReal, pointer :: vl_loc(:), vvl_loc(:), vg_loc(:), vvg_loc(:)
+    PetscReal, pointer :: vvlbc(:), vvgbc(:)
+    PetscReal, pointer :: rtot(:,:),rate(:),area_var(:), delx(:,:)
+
+! from pflow_init
+  select case(option%imode)
+    case(MPH_MODE,THC_MODE)  
+      call VecDuplicate(field%porosity_loc, field%ttemp_loc, ierr)
+  end select
+  
+    ! should these be moved to their respective modules
+  select case(option%imode)
+    case(MPH_MODE,THC_MODE)
+      ! nphase degrees of freedom
+      call GridCreateVector(grid,NPHASEDOF,field%pressure,GLOBAL)
+      call VecDuplicate(field%pressure, field%sat, ierr)
+      call VecDuplicate(field%pressure, field%xmol, ierr)
+      call VecDuplicate(field%pressure, field%ppressure, ierr)
+      call VecDuplicate(field%pressure, field%ssat, ierr)
+      call VecDuplicate(field%pressure, field%dp, ierr)
+      call VecDuplicate(field%pressure, field%density, ierr)
+      call VecDuplicate(field%pressure, field%ddensity, ierr)
+      call VecDuplicate(field%pressure, field%avgmw, ierr)
+      call VecDuplicate(field%pressure, field%d_p, ierr)
+      call VecDuplicate(field%pressure, field%d_t, ierr)
+      call VecDuplicate(field%pressure, field%h, ierr)
+      call VecDuplicate(field%pressure, field%hh, ierr)
+      call VecDuplicate(field%pressure, field%h_p, ierr)
+      call VecDuplicate(field%pressure, field%h_t, ierr)
+      call VecDuplicate(field%pressure, field%viscosity, ierr)
+      call VecDuplicate(field%pressure, field%v_p, ierr)
+      call VecDuplicate(field%pressure, field%v_t, ierr)
+     ! xmol may not be nphase DOF, need change later 
+      call VecDuplicate(field%pressure, field%xxmol, ierr)
+  end select
+
+  ! should these be moved to their respective modules?
+  select case(option%imode)
+    case(MPH_MODE,THC_MODE)
+      call GridCreateVector(grid,NPHASEDOF, field%ppressure_loc, LOCAL)
+      call VecDuplicate(field%ppressure_loc, field%ssat_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%xxmol_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%ddensity_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%avgmw_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%d_p_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%d_t_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%hh_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%h_p_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%h_t_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%viscosity_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%v_p_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%v_t_loc, ierr)
+  end select
+
+
+  ! move to mph, maybe thc too
+! Note: VecAssemblyBegin/End needed to run on the Mac - pcl (11/21/03)!
+  if (field%conc /= 0) then
+    call VecAssemblyBegin(field%conc,ierr)
+    call VecAssemblyEnd(field%conc,ierr)
+  endif
+  if (field%xmol /= 0) then
+    call VecAssemblyBegin(field%xmol,ierr)
+    call VecAssemblyEnd(field%xmol,ierr)
+  endif
+
+
+                       
       allocate(field%density_bc(option%nphase))
       allocate(field%d_p_bc(option%nphase))
       allocate(field%d_t_bc(option%nphase))
@@ -85,11 +383,79 @@ contains
       allocate(field%kvr_t_bc(option%nphase))
       allocate(field%kvr_c_bc(option%nphase*option%npricomp))
       allocate(field%kvr_s_bc(option%nphase))
-    
-  
-  end subroutine THCInit
+      
+      temp_int = ConnectionGetNumberInList(grid%internal_connection_list)
+      allocate(field%vl_loc(temp_int))
+      allocate(field%vvl_loc(temp_int))
+      allocate(field%vg_loc(temp_int))
+      allocate(field%vvg_loc(temp_int))
+      field%vl_loc = 0.D0
+      field%vvl_loc = 0.D0
+      field%vg_loc = 0.D0
+      field%vvg_loc = 0.D0
 
+  ! no longer supported in option, needs to be localized to thc  
+  !set specific phase indices
+  option%jh2o = 1; option%jgas =1
+  select case(option%nphase)
+    case(2)
+      option%jco2 = 2
+      option%jgas =3 
+    case(3)
+      option%jco2 = 2
+      option%jgas =3 
+  end select 
+  
+  ! these vecs need to be stored within this module, not in field
+  select case(option%imode)
+    case(MPH_MODE,THC_MODE)
+      call VecDuplicate(field%porosity0, field%conc, ierr)
+      call VecDuplicate(field%porosity0, field%temp, ierr)
+      call VecDuplicate(field%porosity0, field%ttemp, ierr)
+  end select    
+    
+        
 #endif
+
+end subroutine THCSetup
+
+! ************************************************************************** !
+!
+! THCTimeCut: Resets arrays for time step cut
+! author: Glenn Hammond
+! date: 12/13/07
+!
+! ************************************************************************** !
+subroutine THCTimeCut(realization)
+ 
+  use Realization_module
+  use Option_module
+  use Grid_module
+  use Field_module
+ 
+  implicit none
+  
+  type(realization_type) :: realization
+  type(option_type), pointer :: option
+  type(grid_type), pointer :: grid
+  type(field_type), pointer :: field
+  
+  PetscReal, pointer :: xx_p(:),yy_p(:)
+  PetscInt :: dof_offset,re
+  PetscErrorCode :: ierr
+  PetscInt :: local_id
+
+  grid => realization%grid
+  option => realization%option
+  field => realization%field
+ 
+#if 0
+ ! this can't be write
+  call VecCopy(thc_field%pressure, thc_field%ppressure, ierr)
+  call VecCopy(thc_field%temp, thc_field%ttemp, ierr)
+#endif  
+ 
+end subroutine THCTimeCut
 
   subroutine THCResidual(snes, xx, r, grid)
   
@@ -166,23 +532,23 @@ contains
   !---------------------------------------------------------------------------
  !  call recondition_bc(grid)
   call VecGetArrayF90(xx, xx_p, ierr); CHKERRQ(ierr)
-  call VecGetArrayF90(field%ddensity, ddensity_p, ierr)
-  call VecGetArrayF90(field%hh, hh_p, ierr)
-  call VecGetArrayF90(field%viscosity, viscosity_p, ierr)
+  call VecGetArrayF90(thc_field%ddensity, ddensity_p, ierr)
+  call VecGetArrayF90(thc_field%hh, hh_p, ierr)
+  call VecGetArrayF90(thc_field%viscosity, viscosity_p, ierr)
 
   if (option%ideriv == 1) then
-    call VecGetArrayF90(field%d_p, d_p_p, ierr)
-    call VecGetArrayF90(field%d_t, d_t_p, ierr)
-    call VecGetArrayF90(field%h_p, h_p_p, ierr)
-    call VecGetArrayF90(field%h_t, h_t_p, ierr)
-    call VecGetArrayF90(field%v_p, v_p_p, ierr)
-    call VecGetArrayF90(field%v_t, v_t_p, ierr)
+    call VecGetArrayF90(thc_field%d_p, d_p_p, ierr)
+    call VecGetArrayF90(thc_field%d_t, d_t_p, ierr)
+    call VecGetArrayF90(thc_field%h_p, h_p_p, ierr)
+    call VecGetArrayF90(thc_field%h_t, h_t_p, ierr)
+    call VecGetArrayF90(thc_field%v_p, v_p_p, ierr)
+    call VecGetArrayF90(thc_field%v_t, v_t_p, ierr)
   endif
   
   !get phase properties
   
   do j = 1, option%nphase
-    if (j == option%jh2o) then
+    if (j == thc_option%jh2o) then
       !pure liquid water eos
       do n = 1, grid%nlmax
         jn = j + (n-1)*option%nphase
@@ -231,17 +597,17 @@ contains
   enddo
   
   call VecRestoreArrayF90(xx, xx_p, ierr); CHKERRQ(ierr)
-  call VecRestoreArrayF90(field%ddensity, ddensity_p, ierr)
-  call VecRestoreArrayF90(field%hh, hh_p, ierr)
-  call VecRestoreArrayF90(field%viscosity, viscosity_p, ierr)
+  call VecRestoreArrayF90(thc_field%ddensity, ddensity_p, ierr)
+  call VecRestoreArrayF90(thc_field%hh, hh_p, ierr)
+  call VecRestoreArrayF90(thc_field%viscosity, viscosity_p, ierr)
 
   if (option%ideriv == 1) then  
-    call VecRestoreArrayF90(field%d_p, d_p_p, ierr)
-    call VecRestoreArrayF90(field%d_t, d_t_p, ierr)
-    call VecRestoreArrayF90(field%h_p, h_p_p, ierr)
-    call VecRestoreArrayF90(field%h_t, h_t_p, ierr)
-    call VecRestoreArrayF90(field%v_p, v_p_p, ierr)
-    call VecRestoreArrayF90(field%v_t, v_t_p, ierr)
+    call VecRestoreArrayF90(thc_field%d_p, d_p_p, ierr)
+    call VecRestoreArrayF90(thc_field%d_t, d_t_p, ierr)
+    call VecRestoreArrayF90(thc_field%h_p, h_p_p, ierr)
+    call VecRestoreArrayF90(thc_field%h_t, h_t_p, ierr)
+    call VecRestoreArrayF90(thc_field%v_p, v_p_p, ierr)
+    call VecRestoreArrayF90(thc_field%v_t, v_t_p, ierr)
   endif
 
   !---------------------------------------------------------------------------
@@ -250,12 +616,12 @@ contains
   !---------------------------------------------------------------------------
   call GridGlobalToLocal(grid, xx, field%xx_loc, NDOF)
 
-  call GridGlobalToLocal(grid, field%ddensity, field%ddensity_loc, &
+  call GridGlobalToLocal(grid, thc_field%ddensity, thc_field%ddensity_loc, &
                          NPHASEDOF)
 
-  call GridGlobalToLocal(grid, field%hh, field%hh_loc, NPHASEDOF)
+  call GridGlobalToLocal(grid, thc_field%hh, thc_field%hh_loc, NPHASEDOF)
 
-  call GridGlobalToLocal(grid, field%viscosity, field%viscosity_loc, &
+  call GridGlobalToLocal(grid, thc_field%viscosity, thc_field%viscosity_loc, &
                          NPHASEDOF)
 
   call GridLocalToLocal(grid, field%perm_xx_loc, field%perm_xx_loc, ONEDOF)
@@ -265,11 +631,11 @@ contains
   call VecGetArrayF90(field%xx_loc, xx_loc_p, ierr)
   call VecGetArrayF90(field%yy, yy_p, ierr)
   call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecGetArrayF90(field%ddensity_loc, ddensity_loc_p, ierr)
-  call VecGetArrayF90(field%density, density_p, ierr)
-  call VecGetArrayF90(field%hh_loc, hh_loc_p, ierr)
-  call VecGetArrayF90(field%h, h_p, ierr)
-  call VecGetArrayF90(field%viscosity_loc, viscosity_loc_p, ierr)
+  call VecGetArrayF90(thc_field%ddensity_loc, ddensity_loc_p, ierr)
+  call VecGetArrayF90(thc_field%density, density_p, ierr)
+  call VecGetArrayF90(thc_field%hh_loc, hh_loc_p, ierr)
+  call VecGetArrayF90(thc_field%h, h_p, ierr)
+  call VecGetArrayF90(thc_field%viscosity_loc, viscosity_loc_p, ierr)
   
   call VecGetArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
   call VecGetArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
@@ -281,28 +647,28 @@ contains
   call VecGetArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
 
   if (option%ideriv == 1) then
-    call GridGlobalToLocal(grid, field%d_p, field%d_p_loc, NPHASEDOF)
+    call GridGlobalToLocal(grid, thc_field%d_p, thc_field%d_p_loc, NPHASEDOF)
 
-    call GridGlobalToLocal(grid, field%d_t, field%d_t, NPHASEDOF)
+    call GridGlobalToLocal(grid, thc_field%d_t, thc_field%d_t, NPHASEDOF)
 
-    call GridGlobalToLocal(grid, field%h_p, field%h_p_loc, NPHASEDOF)
+    call GridGlobalToLocal(grid, thc_field%h_p, thc_field%h_p_loc, NPHASEDOF)
 
-    call GridGlobalToLocal(grid, field%h_t, field%h_t_loc, NPHASEDOF)
+    call GridGlobalToLocal(grid, thc_field%h_t, thc_field%h_t_loc, NPHASEDOF)
 
-    call GridGlobalToLocal(grid, field%v_p, field%v_p_loc, NPHASEDOF)
+    call GridGlobalToLocal(grid, thc_field%v_p, thc_field%v_p_loc, NPHASEDOF)
 
-    call GridGlobalToLocal(grid, field%v_t, field%v_t_loc, NPHASEDOF)
+    call GridGlobalToLocal(grid, thc_field%v_t, thc_field%v_t_loc, NPHASEDOF)
 
-    call VecGetArrayF90(field%d_p_loc, d_p_loc_p, ierr)
-    call VecGetArrayF90(field%d_t_loc, d_t_loc_p, ierr)
-    call VecGetArrayF90(field%h_p_loc, h_p_loc_p, ierr)
-    call VecGetArrayF90(field%h_t_loc, h_t_loc_p, ierr)
-    call VecGetArrayF90(field%v_p_loc, v_p_loc_p, ierr)
-    call VecGetArrayF90(field%v_t_loc, v_t_loc_p, ierr)
+    call VecGetArrayF90(thc_field%d_p_loc, d_p_loc_p, ierr)
+    call VecGetArrayF90(thc_field%d_t_loc, d_t_loc_p, ierr)
+    call VecGetArrayF90(thc_field%h_p_loc, h_p_loc_p, ierr)
+    call VecGetArrayF90(thc_field%h_t_loc, h_t_loc_p, ierr)
+    call VecGetArrayF90(thc_field%v_p_loc, v_p_loc_p, ierr)
+    call VecGetArrayF90(thc_field%v_t_loc, v_t_loc_p, ierr)
   endif
 
-  if (option%rk > 0.d0) then
-    call VecGetArrayF90(field%phis,phis_p,ierr)
+  if (thc_option%rk > 0.d0) then
+    call VecGetArrayF90(thc_field%phis,phis_p,ierr)
   endif
 
   !---------------------------------------------------------------------------
@@ -331,7 +697,7 @@ contains
     
 !   heat residual
     i = ithrm_loc_p(ng)
-    j = option%jh2o
+    j = thc_option%jh2o
     jn = j+(n-1)*option%nphase
     jng = j+(ng-1)*option%nphase
     ! rho U = rho H - p
@@ -345,23 +711,23 @@ contains
     r_p(c1) = pvoldt * (CCONC_LOC(ng) - CONC(n)) * option%ret
     
     !kinetic rate term
-    if (option%rk > 0.d0) then
-      option%rate(n) = 0.d0
-      if (option%ityprxn == 1) then
-        if (phis_p(n) > 0.d0 .or. CCONC_LOC(ng)/option%ceq > 1.d0+eps) then
-          option%rate(n) = -option%rk * option%area_var(n) * &
-          (1.d0 - CCONC_LOC(ng)/option%ceq)
-          r_p(c1) = r_p(c1) + option%rate(n) * volume_p(n)
-          r_p(t1) = r_p(t1) - option%delHs * option%rate(n) * &
+    if (thc_option%rk > 0.d0) then
+      thc_option%rate(n) = 0.d0
+      if (thc_option%ityprxn == 1) then
+        if (phis_p(n) > 0.d0 .or. CCONC_LOC(ng)/thc_option%ceq > 1.d0+eps) then
+          thc_option%rate(n) = -thc_option%rk * thc_option%area_var(n) * &
+          (1.d0 - CCONC_LOC(ng)/thc_option%ceq)
+          r_p(c1) = r_p(c1) + thc_option%rate(n) * volume_p(n)
+          r_p(t1) = r_p(t1) - thc_option%delHs * thc_option%rate(n) * &
           volume_p(n)
 !         print *,'resTHC: ',n,ng,phis_p(n),option%rate(n),option%area_var(n), &
 !         CCONC_LOC(ng),CONC(n)
         endif
-      else if (option%ityprxn == 2) then
+      else if (thc_option%ityprxn == 2) then
         if (phis_p(n) > 0.d0 .or. TTEMP_LOC(ng) < 0.d0+eps) then
-          option%rate(n) = -option%rk * option%area_var(n) * TTEMP_LOC(ng)
-          r_p(p1) = r_p(p1) + option%rate(n) * volume_p(n)
-          r_p(t1) = r_p(t1) - option%delHs * option%rate(n) * &
+          thc_option%rate(n) = -thc_option%rk * thc_option%area_var(n) * TTEMP_LOC(ng)
+          r_p(p1) = r_p(p1) + thc_option%rate(n) * volume_p(n)
+          r_p(t1) = r_p(t1) - thc_option%delHs * thc_option%rate(n) * &
           volume_p(n)
 !         print *,'resTHC: ',n,ng,phis_p(n),option%rate(n),option%area_var(n), &
 !         CCONC_LOC(ng),CONC(n)
@@ -451,7 +817,7 @@ contains
                 - gravity * density_ave)
 
       ! store velocities defined at interfaces in PETSc Vec vl at upstream node
-      field%vvl_loc(iconn) = v_darcy     ! use for coupling to ptran
+      thc_field%vvl_loc(iconn) = v_darcy     ! use for coupling to ptran
       if (n1 > 0) then               ! If the upstream node is not a ghost node...
         vl_p(ip1+3*(n1-1)) = v_darcy ! use for print out of velocity
       endif
@@ -561,17 +927,17 @@ contains
       concbc = boundary_condition%aux_real_var(THC_CONCENTRATION_DOF, iconn)
 
       do j = 1, option%nphase
-        if (j == option%jh2o) then
+        if (j == thc_option%jh2o) then
           !pure water eos
           call PSAT(tempbc,sat_pressure,ierr)
           if (option%ideriv == 1) then
             call wateos(tempbc,pressurebc(j),dw_kg, &
-            dw_mol,field%d_p_bc(j),field%d_t_bc(j),field%hh_bc(j), &
-            field%h_p_bc(j),field%h_t_bc(j),option%scale,ierr)
+            dw_mol,thc_field%d_p_bc(j),thc_field%d_t_bc(j),thc_field%hh_bc(j), &
+            thc_field%h_p_bc(j),thc_field%h_t_bc(j),option%scale,ierr)
             
             call VISW(tempbc,pressurebc(j), &
-            sat_pressure,field%viscosity_bc(j), &
-            field%v_t_bc(j),field%v_p_bc(j),ierr)
+            sat_pressure,thc_field%viscosity_bc(j), &
+            thc_field%v_t_bc(j),thc_field%v_p_bc(j),ierr)
 
   !         print *,'thc-bc: ',iconn,j,m,ng,ibc,option%nphase, &
   !         option%tempbc(iconn),option%pressurebc(j),dw_mol, &
@@ -580,12 +946,12 @@ contains
   !         field%viscosity_bc(j),field%v_t_bc(j),field%v_p_bc(j)
           else
             call wateos_noderiv(tempbc,pressurebc(j), &
-            dw_kg,dw_mol,field%hh_bc(j),option%scale,ierr)
+            dw_kg,dw_mol,thc_field%hh_bc(j),option%scale,ierr)
             
             call VISW_noderiv(tempbc,pressurebc(j), &
-            sat_pressure,field%viscosity_bc(j),ierr)
+            sat_pressure,thc_field%viscosity_bc(j),ierr)
           endif
-          field%density_bc(j) = dw_mol
+          thc_field%density_bc(j) = dw_mol
 
   !     else if (j == grid%jco2) then
 
@@ -596,9 +962,9 @@ contains
   !       enddo
         else ! for testing purposes only
           jng = j + (ng-1) * option%nphase
-          field%viscosity_bc(j) = viscosity_loc_p(jng)
-          field%hh_bc(j) = hh_loc_p(jng)
-          field%density_bc(j) = ddensity_loc_p(jng)
+          thc_field%viscosity_bc(j) = viscosity_loc_p(jng)
+          thc_field%hh_bc(j) = hh_loc_p(jng)
+          thc_field%density_bc(j) = ddensity_loc_p(jng)
         endif
       enddo
 
@@ -611,24 +977,24 @@ contains
           jm = j + (m-1) * option%nphase
           jng = j + (ng-1) * option%nphase
 
-          Dq = perm1 / field%viscosity_bc(j) / distance 
+          Dq = perm1 / thc_field%viscosity_bc(j) / distance 
           
           !note: darcy vel. is positive for flow INTO boundary node
           v_darcy = -Dq * (PPRESSURE_LOC(j,ng) - pressurebc(j) &
-                    - gravity * field%density_bc(j))
+                    - gravity * thc_field%density_bc(j))
           q = v_darcy * area
         
   !       print *,'pflowTHC-1: ',iconn,m,ng,ibc,v_darcy,ibndtyp
 
-          fluxbc = q * field%density_bc(j)
+          fluxbc = q * thc_field%density_bc(j)
           fluxp = fluxp - fluxbc
 
           !upstream weighting
           if (q > 0.d0) then
-            fluxh = fluxh + q * field%density_bc(j) * field%hh_bc(j)
+            fluxh = fluxh + q * thc_field%density_bc(j) * thc_field%hh_bc(j)
             fluxc = fluxc + q * concbc  ! note: need to change 
           else                          ! definition of C for multiple phases
-            fluxh = fluxh + q * field%density_bc(j) * hh_loc_p(jng)
+            fluxh = fluxh + q * thc_field%density_bc(j) * hh_loc_p(jng)
             fluxc = fluxc + q * CCONC_LOC(ng) 
           endif
         enddo
@@ -656,7 +1022,7 @@ contains
           
           v_darcy = pressurebc(j)
           
-          q = v_darcy * field%density_bc(j) * area
+          q = v_darcy * thc_field%density_bc(j) * area
           fluxp = fluxp - q
         enddo
 
@@ -751,7 +1117,7 @@ contains
         
       endif
 
-      field%vvlbc(iconn) = v_darcy
+      thc_field%vvlbc(iconn) = v_darcy
     enddo
 
     boundary_condition => boundary_condition%next
@@ -836,7 +1202,7 @@ contains
       endif
 
       if (qsrc1 > 0.d0) then ! injection
-        call wateos_noderiv(tsrc1,PPRESSURE_LOC(option%jh2o,ghosted_id), &
+        call wateos_noderiv(tsrc1,PPRESSURE_LOC(thc_option%jh2o,ghosted_id), &
                             dw_kg,dw_mol,enth_src,option%scale,ierr)
 
         qqsrc = qsrc1/dw_mol  ! Do we still need to divide this? 
@@ -863,11 +1229,11 @@ contains
   call VecRestoreArrayF90(field%xx_loc, xx_loc_p, ierr)
   call VecRestoreArrayF90(field%yy, yy_p, ierr)
   call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecRestoreArrayF90(field%ddensity_loc, ddensity_loc_p, ierr)
-  call VecRestoreArrayF90(field%density, density_p, ierr)
-  call VecRestoreArrayF90(field%hh_loc, hh_loc_p, ierr)
-  call VecRestoreArrayF90(field%h, h_p, ierr)
-  call VecRestoreArrayF90(field%viscosity_loc, viscosity_loc_p, ierr)
+  call VecRestoreArrayF90(thc_field%ddensity_loc, ddensity_loc_p, ierr)
+  call VecRestoreArrayF90(thc_field%density, density_p, ierr)
+  call VecRestoreArrayF90(thc_field%hh_loc, hh_loc_p, ierr)
+  call VecRestoreArrayF90(thc_field%h, h_p, ierr)
+  call VecRestoreArrayF90(thc_field%viscosity_loc, viscosity_loc_p, ierr)
   
 ! call VecRestoreArrayF90(grid%perm_loc, perm_loc_p, ierr)
   call VecRestoreArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
@@ -880,16 +1246,16 @@ contains
   call VecRestoreArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
 
   if (option%ideriv == 1) then
-    call VecRestoreArrayF90(field%d_p_loc, d_p_loc_p, ierr)
-    call VecRestoreArrayF90(field%d_t_loc, d_t_loc_p, ierr)
-    call VecRestoreArrayF90(field%h_p_loc, h_p_loc_p, ierr)
-    call VecRestoreArrayF90(field%h_t_loc, h_t_loc_p, ierr)
-    call VecRestoreArrayF90(field%v_p_loc, v_p_loc_p, ierr)
-    call VecRestoreArrayF90(field%v_t_loc, v_t_loc_p, ierr)
+    call VecRestoreArrayF90(thc_field%d_p_loc, d_p_loc_p, ierr)
+    call VecRestoreArrayF90(thc_field%d_t_loc, d_t_loc_p, ierr)
+    call VecRestoreArrayF90(thc_field%h_p_loc, h_p_loc_p, ierr)
+    call VecRestoreArrayF90(thc_field%h_t_loc, h_t_loc_p, ierr)
+    call VecRestoreArrayF90(thc_field%v_p_loc, v_p_loc_p, ierr)
+    call VecRestoreArrayF90(thc_field%v_t_loc, v_t_loc_p, ierr)
   endif
   
-  if (option%rk > 0.d0) then
-    call VecRestoreArrayF90(field%phis,phis_p,ierr)
+  if (thc_option%rk > 0.d0) then
+    call VecRestoreArrayF90(thc_field%phis,phis_p,ierr)
   endif
 
 ! call VecView(r,PETSC_VIEWER_STDOUT_WORLD,ierr)
@@ -952,22 +1318,22 @@ contains
                           
   call VecGetArrayF90(field%xx_loc, xx_loc_p, ierr)
   call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecGetArrayF90(field%ddensity_loc, ddensity_loc_p, ierr)
+  call VecGetArrayF90(thc_field%ddensity_loc, ddensity_loc_p, ierr)
 ! call VecGetArrayF90(field%density, density_p, ierr)
-  call VecGetArrayF90(field%viscosity_loc, viscosity_loc_p, ierr)
+  call VecGetArrayF90(thc_field%viscosity_loc, viscosity_loc_p, ierr)
   
   call VecGetArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
   call VecGetArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
   call VecGetArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
   
   call VecGetArrayF90(grid%volume, volume_p, ierr)
-  call VecGetArrayF90(field%d_p_loc, d_p_loc_p, ierr)
-  call VecGetArrayF90(field%d_t_loc, d_t_loc_p, ierr)
-  call VecGetArrayF90(field%hh_loc, hh_loc_p, ierr)
-  call VecGetArrayF90(field%h_p_loc, h_p_loc_p, ierr)
-  call VecGetArrayF90(field%h_t_loc, h_t_loc_p, ierr)
-  call VecGetArrayF90(field%v_p_loc, v_p_loc_p, ierr)
-  call VecGetArrayF90(field%v_t_loc, v_t_loc_p, ierr)
+  call VecGetArrayF90(thc_field%d_p_loc, d_p_loc_p, ierr)
+  call VecGetArrayF90(thc_field%d_t_loc, d_t_loc_p, ierr)
+  call VecGetArrayF90(thc_field%hh_loc, hh_loc_p, ierr)
+  call VecGetArrayF90(thc_field%h_p_loc, h_p_loc_p, ierr)
+  call VecGetArrayF90(thc_field%h_t_loc, h_t_loc_p, ierr)
+  call VecGetArrayF90(thc_field%v_p_loc, v_p_loc_p, ierr)
+  call VecGetArrayF90(thc_field%v_t_loc, v_t_loc_p, ierr)
   
   call VecGetArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
   
@@ -1794,22 +2160,22 @@ contains
 
   call VecRestoreArrayF90(field%xx_loc, xx_loc_p, ierr)
   call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecRestoreArrayF90(field%ddensity_loc, ddensity_loc_p, ierr)
+  call VecRestoreArrayF90(thc_field%ddensity_loc, ddensity_loc_p, ierr)
 ! call VecRestoreArrayF90(field%density, density_p, ierr)
-  call VecRestoreArrayF90(field%viscosity_loc, viscosity_loc_p, ierr)
+  call VecRestoreArrayF90(thc_field%viscosity_loc, viscosity_loc_p, ierr)
   
   call VecRestoreArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
   call VecRestoreArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
   call VecRestoreArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
   
   call VecRestoreArrayF90(grid%volume, volume_p, ierr)
-  call VecRestoreArrayF90(field%d_p_loc, d_p_loc_p, ierr)
-  call VecRestoreArrayF90(field%d_t_loc, d_t_loc_p, ierr)
-  call VecRestoreArrayF90(field%hh_loc, hh_loc_p, ierr)
-  call VecRestoreArrayF90(field%h_p_loc, h_p_loc_p, ierr)
-  call VecRestoreArrayF90(field%h_t_loc, h_t_loc_p, ierr)
-  call VecRestoreArrayF90(field%v_p_loc, v_p_loc_p, ierr)
-  call VecRestoreArrayF90(field%v_t_loc, v_t_loc_p, ierr)
+  call VecRestoreArrayF90(thc_field%d_p_loc, d_p_loc_p, ierr)
+  call VecRestoreArrayF90(thc_field%d_t_loc, d_t_loc_p, ierr)
+  call VecRestoreArrayF90(thc_field%hh_loc, hh_loc_p, ierr)
+  call VecRestoreArrayF90(thc_field%h_p_loc, h_p_loc_p, ierr)
+  call VecRestoreArrayF90(thc_field%h_t_loc, h_t_loc_p, ierr)
+  call VecRestoreArrayF90(thc_field%v_p_loc, v_p_loc_p, ierr)
+  call VecRestoreArrayF90(thc_field%v_t_loc, v_t_loc_p, ierr)
 
   call VecRestoreArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
   
@@ -1826,6 +2192,47 @@ contains
   
 #endif  ! End of broken code. 
   end subroutine THCJacobian
+
+! ************************************************************************** !
+!
+! THCInitializeSolidReaction: Allocates and initializes arrays associated with
+!                          mineral reactions
+! author: Glenn Hammond
+! date: 11/15/07
+!
+! ************************************************************************** !
+subroutine THCInitializeSolidReaction(realization)
+
+  use Realization_module
+  use Grid_module
+  use Option_module
+  use Field_module
+
+  type(realization_type) :: realization
+  
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  PetscInt :: icell
+  PetscReal, pointer :: phis_p(:)
+  PetscErrorCode :: ierr
+  
+  grid => realization%grid
+  option => realization%option
+  field => realization%field
+  
+  if (thc_option%rk > 0.d0) then
+    allocate(thc_option%area_var(grid%nlmax))
+    allocate(thc_option%rate(grid%nlmax))
+    call VecGetArrayF90(thc_field%phis,phis_p,ierr)
+    do icell = 1, grid%nlmax
+      phis_p(icell) = thc_option%phis0
+      thc_option%area_var(icell) = 1.d0
+    enddo
+    call VecRestoreArrayF90(thc_field%phis,phis_p,ierr)
+  endif
+  
+end subroutine THCInitializeSolidReaction
   
 end module THC_module
 

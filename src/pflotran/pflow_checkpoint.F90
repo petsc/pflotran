@@ -87,6 +87,9 @@ subroutine pflowGridCheckpoint(realization,flowsteps,newtcum,icutcum, &
   use Option_module
   use Field_module
   use Grid_module
+  
+  use THC_module
+  use MPHASE_module
 
   implicit none
 
@@ -199,22 +202,13 @@ subroutine pflowGridCheckpoint(realization,flowsteps,newtcum,icutcum, &
     case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
       call GridLocalToGlobal(grid,field%iphas_loc,global_vec,ONEDOF)
       call VecView(global_vec, viewer, ierr)
-      if (option%imode /= RICHARDS_MODE .and. &
-          option%imode /= RICHARDS_LITE_MODE) then
-        call GridCreateVector(grid,VARDOF,global_var,GLOBAL)
-        call GridLocalToGlobal(grid,field%var_loc,global_var,VARDOF)
-        call VecView(global_var, viewer, ierr)
-        call VecDestroy(global_var,ierr)
+      if (option%imode == MPH_MODE) then
+      ! get vardof vec from mphase
+        call MphaseCheckpointWrite(grid,viewer)
       endif
     case default
-      call VecView(field%hh, viewer, ierr)
-      call VecView(field%ddensity, viewer, ierr)
+      call THCCheckpointWrite(grid,viewer)
   end select 
-
-  ! solid volume fraction
-  if (option%rk > 0.d0) then
-    call VecView(field%phis, viewer, ierr)
-  endif
 
   ! Porosity and permeability.
   ! (We only write diagonal terms of the permeability tensor for now, 
@@ -271,6 +265,9 @@ subroutine pflowGridRestart(realization,flowsteps,newtcum,icutcum, &
   use Option_module
   use Field_module
   use Grid_module
+  
+  use THC_module
+  use MPHASE_module
 
   implicit none
 
@@ -329,23 +326,13 @@ subroutine pflowGridRestart(realization,flowsteps,newtcum,icutcum, &
       call GridGlobalToLocal(grid,global_vec,field%iphas_loc,ONEDOF)
       call VecCopy(field%iphas_loc, field%iphas_old_loc, ierr)
       call GridLocalToLocal(grid,field%iphas_loc,field%iphas_old_loc,ONEDOF)
-      if (option%imode /= RICHARDS_MODE .and. &
-          option%imode /= RICHARDS_LITE_MODE) then
-        call GridCreateVector(grid,VARDOF,global_var,GLOBAL)
-        call VecLoadIntoVector(viewer, global_var, ierr)
-        call GridGlobalToLocal(grid,global_var,field%var_loc,VARDOF)
-        call VecDestroy(global_var,ierr)
+      if (option%imode == MPH_MODE) then
+      ! set vardof vec in mphase
+        call MphaseCheckpointRead(grid,viewer)
       endif
     case default
-      call VecLoadIntoVector(viewer, field%hh, ierr)
-      call VecCopy(field%hh, field%h, ierr)
-      call VecLoadIntoVector(viewer, field%ddensity, ierr)
-      call VecCopy(field%ddensity, field%density, ierr)
+      call THCCheckpointRead(grid,viewer)
   end select
-  
-  if (option%rk > 0.d0) then
-    call VecLoadIntoVector(viewer, field%phis, ierr)
-  endif
   
   call VecLoadIntoVector(viewer, global_vec, ierr)
   call GridGlobalToLocal(grid,global_vec,field%porosity_loc,ONEDOF)

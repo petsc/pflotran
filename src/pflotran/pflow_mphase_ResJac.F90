@@ -8,6 +8,9 @@
                
 module MPHASE_module
 
+  use mphase_field_module  ! located at top of translator_mixed_fluid_mph.F90
+  use mphase_option_module ! located at top of translator_mixed_fluid_mph.F90
+
   implicit none
   
   private
@@ -46,10 +49,10 @@ module MPHASE_module
 
   public MPHASEResidual, MPHASEJacobian, pflow_mphase_initaccum, &
          pflow_update_mphase,pflow_mphase_initadj, pflow_mphase_timecut,&
-         pflow_mphase_setupini, MPhase_Update_Reason
+         pflow_mphase_setupini, MPhase_Update_Reason, MphaseSetup, &
+         MphaseCheckpointWrite, MphaseCheckpointRead, MphaseMaxChange, &
+         MphaseInitializeSolidReaction
 
-  public :: createMphaseZeroArray
-  
   PetscInt, save :: n_zero_rows = 0
   PetscInt, pointer, save :: zero_rows_local(:)  ! 1-based indexing
   PetscInt, pointer, save :: zero_rows_local_ghosted(:) ! 0-based indexing
@@ -82,6 +85,8 @@ subroutine pflow_mphase_timecut(realization)
   option => realization%option
   field => realization%field  
 
+  mphase_option%iphch=0
+    
   call VecGetArrayF90(field%xx, xx_p, ierr)
   call VecGetArrayF90(field%yy, yy_p, ierr)
  !call VecGetArrayF90(field%var_loc, var_loc_p, ierr); 
@@ -105,6 +110,373 @@ subroutine pflow_mphase_timecut(realization)
  
 end subroutine pflow_mphase_timecut
 
+! ************************************************************************** !
+!
+! MphaseCheckpointWrite: Writes vecs to checkpoint file
+! author: 
+! date: 
+!
+! ************************************************************************** !
+subroutine MphaseCheckpointWrite(grid, viewer)
+
+  use Grid_module
+
+  implicit none
+  
+  type(grid_type) :: grid
+  PetscViewer :: viewer
+  
+  Vec :: global_var
+  PetscErrorCode :: ierr
+  
+  call GridCreateVector(grid,VARDOF,global_var,GLOBAL)
+  call GridLocalToGlobal(grid,mphase_field%var_loc,global_var,VARDOF)
+  call VecView(global_var,viewer,ierr)
+  call VecDestroy(global_var,ierr)
+  
+  ! solid volume fraction
+  if (mphase_option%rk > 0.d0) then
+    call VecView(mphase_field%phis, viewer, ierr)
+  endif  
+  
+end subroutine MphaseCheckpointWrite
+
+! ************************************************************************** !
+!
+! MphaseCheckpointRead: Reads vecs from checkpoint file
+! author: 
+! date: 
+!
+! ************************************************************************** !
+subroutine MphaseCheckpointRead(grid,viewer)
+
+  use Grid_module
+
+  implicit none
+  
+  type(grid_type) :: grid
+  PetscViewer :: viewer
+  
+  Vec :: global_var
+  PetscErrorCode :: ierr
+  
+  call GridCreateVector(grid,VARDOF,global_var,GLOBAL)
+  call VecLoadIntoVector(viewer, global_var, ierr)
+  call GridGlobalToLocal(grid,global_var,mphase_field%var_loc,VARDOF)
+  call VecDestroy(global_var,ierr)
+  ! solid volume fraction
+  if (mphase_option%rk > 0.d0) then
+    call VecLoadIntoVector(viewer, mphase_field%phis, ierr)
+  endif  
+  
+end subroutine MphaseCheckpointRead
+  
+! ************************************************************************** !
+!
+! MphaseMaxChange: 
+! author: 
+! date: 
+!
+! ************************************************************************** !
+subroutine MphaseMaxChange(realization)
+
+  use Realization_module
+  use Option_module
+  use Field_module
+  use Grid_module
+  
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field  
+  type(grid_type), pointer :: grid
+  
+  PetscReal, pointer :: xx_p(:), yy_p(:), iphase_loc_p(:),var_loc_p(:),iphase_old_loc_p(:)
+  PetscReal :: comp1,comp,cmp  
+! PetscReal :: dsm,dcm  
+  PetscReal :: dsm0,dcm0  
+  PetscInt :: local_id, ghosted_id, dof_offset
+! PetscInt :: j
+  PetscErrorCode :: ierr
+  
+  option => realization%option
+  field => realization%field
+  grid => realization%grid
+  
+   call VecWAXPY(field%dxx,-1.d0,field%xx,field%yy,ierr)
+    call VecStrideNorm(field%dxx,0,NORM_INFINITY,option%dpmax,ierr)
+    call VecStrideNorm(field%dxx,1,NORM_INFINITY,option%dtmpmax,ierr)
+
+  call VecGetArrayF90(field%xx, xx_p, ierr); CHKERRQ(ierr)
+  call VecGetArrayF90(field%yy, yy_p, ierr); CHKERRQ(ierr)
+  call VecGetArrayF90(field%iphas_loc, iphase_loc_p,ierr)
+  call VecGetArrayF90(field%iphas_old_loc, iphase_old_loc_p,ierr)
+  call VecGetArrayF90(mphase_field%var_loc, var_loc_p, ierr)
+  
+  comp=0.D0;comp1=0.D0
+  do local_id=1, grid%nlmax
+    ghosted_id = grid%nL2G(local_id)
+    dof_offset=(local_id-1)*option%ndof 
+    if(int(iphase_loc_p(ghosted_id)) == int(iphase_old_loc_p(ghosted_id)))then
+     cmp=dabs(xx_p(dof_offset+3)-yy_p(dof_offset+3))
+     if(int(iphase_loc_p(ghosted_id))==1 .or.int(iphase_loc_p(ghosted_id))==2)then
+       if(comp<cmp) comp=cmp
+     
+    endif   
+       if(int(iphase_loc_p(ghosted_id))==3)then
+       if(comp1<cmp) comp1=cmp
+      
+    endif   
+    else
+!  print *,'phase changed', n, iphase_loc_p(n), iphase_old_p(n)
+
+   endif
+  enddo
+  !call PETSCBarrier(PETSC_NULL_OBJECT,ierr)
+  call VecRestoreArrayF90(field%xx, xx_p, ierr); CHKERRQ(ierr)
+  call VecRestoreArrayF90(field%yy, yy_p, ierr); CHKERRQ(ierr)
+  call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p,ierr)
+  call VecRestoreArrayF90(field%iphas_old_loc, iphase_old_loc_p,ierr)
+  call VecRestoreArrayF90(mphase_field%var_loc, var_loc_p, ierr)
+ 
+  
+  if(option%commsize >1)then
+    call MPI_ALLREDUCE(comp1, dsm0,ONE_INTEGER, MPI_DOUBLE_PRECISION,MPI_MAX, PETSC_COMM_WORLD,ierr)
+    !call MPI_BCAST(dsm0,ONE_INTEGER, MPI_DOUBLE_PRECISION, 0,PETSC_COMM_WORLD,ierr)
+    call MPI_ALLREDUCE(comp, dcm0,ONE_INTEGER, MPI_DOUBLE_PRECISION,MPI_MAX, PETSC_COMM_WORLD,ierr)
+    !call MPI_BCAST(dcm0,ONE_INTEGER, MPI_DOUBLE_PRECISION, 0,PETSC_COMM_WORLD,ierr)
+    comp1 = dsm0
+    comp = dcm0
+  endif 
+
+   option%dsmax=comp1
+   option%dcmax=comp
+!   print *, 'max change',grid%dpmax,option%dtmpmax,grid%dsmax,grid%dcmax
+
+end subroutine MphaseMaxChange
+        
+! ************************************************************************** !
+!
+! MphaseSetup: Creates arrays for auxilliary variables, initializes, etc.
+! author: 
+! date: 
+!
+! ************************************************************************** !
+subroutine MphaseSetup(realization)
+
+  use Realization_module
+ 
+  implicit none
+  
+  type(realization_type) :: realization
+
+  call MphaseInitializeSolidReaction(realization)
+
+#if 0
+
+! from option%iphch
+    PetscInt :: iphch
+
+  ! declarations formerly in field.F90
+  PetscReal, pointer :: xphi_co2(:),xxphi_co2(:),den_co2(:), dden_co2(:)
+  PetscReal, pointer :: xphi_co2_bc(:), xxphi_co2_bc(:)
+  
+  
+  ! not sure if these are need in mphase...?
+    Vec :: conc
+    Vec :: ttemp, ttemp_loc, temp ! 1 dof  
+    
+    
+   Vec :: var_loc
+
+! someone will have to sort out whether these belong in mphase, from field.F90
+    Vec :: ppressure, ppressure_loc, pressure, dp
+    Vec :: ssat, ssat_loc, sat    ! saturation
+    Vec :: xxmol, xxmol_loc, xmol ! mole fraction
+    Vec :: density       ! Density at time k
+    Vec :: ddensity, ddensity_loc  ! Density at time k+1
+    Vec :: d_p, d_p_loc  ! dD/dp at time k+1
+    Vec :: d_t, d_t_loc  ! dD/dT at time k+1
+    Vec :: d_c, d_c_loc  ! dD/dT at time k+1
+    Vec :: d_s, d_s_loc  ! dD/dT at time k+1
+    Vec :: avgmw,avgmw_loc  ! Density at time k+1molecular weight at time k+1
+    Vec :: avgmw_c,avgmw_c_loc
+    Vec :: h             ! H     at time k
+    Vec :: hh, hh_loc    ! H     at time k+1
+    Vec :: h_p, h_p_loc  ! dH/dp at time k+1
+    Vec :: h_t, h_t_loc  ! dH/dT at time k+1
+    Vec :: h_c, h_c_loc  ! dD/dT at time k+1
+    Vec :: h_s, h_s_loc  ! dD/dT at time k+1
+    Vec :: u            ! H     at time k
+    Vec :: uu, uu_loc    ! H     at time k+1
+    Vec :: u_p, u_p_loc  ! dH/dp at time k+1
+    Vec :: u_t, u_t_loc  ! dH/dT at time k+1
+    Vec :: u_c, u_c_loc  ! dD/dT at time k+1
+    Vec :: u_s, u_s_loc  ! dD/dT at time k+1
+    Vec :: hen, hen_loc    ! H     at time k+1
+    Vec :: hen_p, hen_p_loc  ! dH/dp at time k+1
+    Vec :: hen_t, hen_t_loc  ! dH/dT at time k+1
+    Vec :: hen_c, hen_c_loc  ! dD/dT at time k+1
+    Vec :: hen_s, hen_s_loc  ! dD/dT at time k+1
+    Vec :: df, df_loc    ! H     at time k+1
+    Vec :: df_p, df_p_loc  ! dH/dp at time k+1
+    Vec :: df_t, df_t_loc  ! dH/dT at time k+1
+    Vec :: df_c, df_c_loc  ! dD/dT at time k+1
+    Vec :: df_s, df_s_loc  ! dD/dT at time k+1
+    Vec :: viscosity, viscosity_loc  !kept for early routine
+   
+    Vec :: v_p, v_p_loc  ! dv/dp at time k+1
+    Vec :: v_t, v_t_loc  ! dv/dT at time k+1
+    Vec :: pcw, pcw_loc    ! H     at time k+1
+    Vec :: pc_p, pc_p_loc  ! dH/dp at time k+1
+    Vec :: pc_t, pc_t_loc  ! dH/dT at time k+1
+    Vec :: pc_c, pc_c_loc  ! dD/dT at time k+1
+    Vec :: pc_s, pc_s_loc  ! dD/dT at time k+1
+    Vec :: kvr, kvr_loc    ! H     at time k+1
+    Vec :: kvr_p, kvr_p_loc  ! d/dp at time k+1
+    Vec :: kvr_t, kvr_t_loc  ! dm/dT at time k+1
+    Vec :: kvr_c, kvr_c_loc  ! d/d at time k+1
+    Vec :: kvr_s, kvr_s_loc  ! dD/dT at time k+1
+
+    PetscReal, pointer :: vl_loc(:), vvl_loc(:), vg_loc(:), vvg_loc(:)
+    PetscReal, pointer :: vvlbc(:), vvgbc(:)
+    PetscReal, pointer :: rtot(:,:),rate(:),area_var(:), delx(:,:)
+
+! from pflow_init
+  select case(option%imode)
+    case(MPH_MODE,THC_MODE)  
+      call VecDuplicate(field%porosity_loc, field%ttemp_loc, ierr)
+  end select
+
+  ! should these be moved to their respective modules
+  select case(option%imode)
+    case(MPH_MODE,THC_MODE)
+      ! nphase degrees of freedom
+      call GridCreateVector(grid,NPHASEDOF,field%pressure,GLOBAL)
+      call VecDuplicate(field%pressure, field%sat, ierr)
+      call VecDuplicate(field%pressure, field%xmol, ierr)
+      call VecDuplicate(field%pressure, field%ppressure, ierr)
+      call VecDuplicate(field%pressure, field%ssat, ierr)
+      call VecDuplicate(field%pressure, field%dp, ierr)
+      call VecDuplicate(field%pressure, field%density, ierr)
+      call VecDuplicate(field%pressure, field%ddensity, ierr)
+      call VecDuplicate(field%pressure, field%avgmw, ierr)
+      call VecDuplicate(field%pressure, field%d_p, ierr)
+      call VecDuplicate(field%pressure, field%d_t, ierr)
+      call VecDuplicate(field%pressure, field%h, ierr)
+      call VecDuplicate(field%pressure, field%hh, ierr)
+      call VecDuplicate(field%pressure, field%h_p, ierr)
+      call VecDuplicate(field%pressure, field%h_t, ierr)
+      call VecDuplicate(field%pressure, field%viscosity, ierr)
+      call VecDuplicate(field%pressure, field%v_p, ierr)
+      call VecDuplicate(field%pressure, field%v_t, ierr)
+     ! xmol may not be nphase DOF, need change later 
+      call VecDuplicate(field%pressure, field%xxmol, ierr)
+  end select
+
+  ! should these be moved to their respective modules?
+  select case(option%imode)
+    case(MPH_MODE,THC_MODE)
+      call GridCreateVector(grid,NPHASEDOF, field%ppressure_loc, LOCAL)
+      call VecDuplicate(field%ppressure_loc, field%ssat_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%xxmol_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%ddensity_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%avgmw_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%d_p_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%d_t_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%hh_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%h_p_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%h_t_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%viscosity_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%v_p_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%v_t_loc, ierr)
+  end select
+
+  ! move to mph
+  select case(option%imode)
+    case(MPH_MODE)
+      call GridCreateVector(grid,VARDOF, field%var_loc,LOCAL)
+  end select
+
+  ! move to mph
+  select case(option%imode)
+    case(MPH_MODE)
+      call initialize_span_wagner(option%itable,option%myrank)  
+  end select
+
+  ! move to mph
+  select case(option%imode)
+    case(MPH_MODE)
+      allocate(field%xphi_co2(grid%nlmax))
+      allocate(field%xxphi_co2(grid%nlmax))
+      allocate(field%den_co2(grid%nlmax))
+      allocate(field%dden_co2(grid%nlmax))
+      field%xphi_co2 = 1.d0
+      field%xxphi_co2 = 1.d0
+      field%den_co2 = 1.d0
+      field%dden_co2 = 1.d0
+  end select
+  
+  ! move to mph
+! Note: VecAssemblyBegin/End needed to run on the Mac - pcl (11/21/03)!
+  if (field%conc /= 0) then
+    call VecAssemblyBegin(field%conc,ierr)
+    call VecAssemblyEnd(field%conc,ierr)
+  endif
+  if (field%xmol /= 0) then
+    call VecAssemblyBegin(field%xmol,ierr)
+    call VecAssemblyEnd(field%xmol,ierr)
+  endif
+
+
+    
+! These data types need to be localized within this mode, not in the field type
+  if (option%imode /= RICHARDS_MODE .and. &
+      option%imode /= RICHARDS_LITE_MODE) then
+    allocate(field%xphi_co2_bc(temp_int))
+    allocate(field%xxphi_co2_bc(temp_int))
+  endif
+
+  ! no longer supported in option, needs to be localized to mph  
+  !set specific phase indices
+  option%jh2o = 1; option%jgas =1
+  select case(option%nphase)
+    case(2)
+      option%jco2 = 2
+      option%jgas =3 
+    case(3)
+      option%jco2 = 2
+      option%jgas =3 
+  end select   
+
+! from option.F90 (i.e. option%nvar) : no longer supported in option, needs to be localized to this module  
+    PetscInt :: nvar
+    
+    
+    
+  ! these vecs need to be stored within this module, not in field
+  select case(option%imode)
+    case(MPH_MODE,THC_MODE)
+      call VecDuplicate(field%porosity0, field%conc, ierr)
+      call VecDuplicate(field%porosity0, field%temp, ierr)
+      call VecDuplicate(field%porosity0, field%ttemp, ierr)
+  end select    
+  
+   from field
+   Vec :: phis
+    field%phis = 0
+  
+#endif
+
+  mphase_option%iphch=0
+  
+  call createMphaseZeroArray(realization)
+  call pflow_mphase_initadj(realization)
+  call pflow_update_mphase(realization)
+  
+end subroutine MphaseSetup
 
 subroutine pflow_mphase_setupini(realization)
  
@@ -140,8 +512,8 @@ subroutine pflow_mphase_setupini(realization)
   allocate(Resold_AR(grid%nlmax,option%ndof))
   allocate(Resold_FL(ConnectionGetNumberInList(grid%internal_connection_list), &
                      option%ndof))
-  allocate(option%delx(option%ndof,grid%ngmax))
-  option%delx=0.D0
+  allocate(mphase_option%delx(option%ndof,grid%ngmax))
+  mphase_option%delx=0.D0
    
   call VecGetArrayF90(field%xx, xx_p, ierr); CHKERRQ(ierr)
   call VecGetArrayF90(field%iphas_loc, iphase_loc_p,ierr)
@@ -214,7 +586,7 @@ subroutine MPhase_Update_Reason(reason,realization)
   if(reason>0)then
   call VecGetArrayF90(field%xx, xx_p, ierr); CHKERRQ(ierr)
   call VecGetArrayF90(field%yy, yy_p, ierr)
-  call VecGetArrayF90(field%var_loc, var_loc_p, ierr); 
+  call VecGetArrayF90(mphase_field%var_loc, var_loc_p, ierr); 
   call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr); 
   
   do local_id = 1,grid%nlmax
@@ -302,7 +674,7 @@ subroutine MPhase_Update_Reason(reason,realization)
   if(reason<=0) print *,'Sat or Con out of Region at: ',local_id,iipha,xx_p(dof_offset+1:dof_offset+3)
     call VecRestoreArrayF90(field%xx, xx_p, ierr); CHKERRQ(ierr)
     call VecRestoreArrayF90(field%yy, yy_p, ierr)
-    call VecRestoreArrayF90(field%var_loc, var_loc_p, ierr) 
+    call VecRestoreArrayF90(mphase_field%var_loc, var_loc_p, ierr) 
     call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr) 
   endif
  ! print *,' update reason', option%myrank, re,n,grid%nlmax
@@ -937,11 +1309,11 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
 
 
 ! allow phase change for first 3 newton iterations except zeroth iteration
-  if(option%iphch>0 .and. option%iphch<=3)then
+  if(mphase_option%iphch>0 .and. mphase_option%iphch<=3)then
 !  if(option%iphch<=3)then
     call Translator_MPhase_Switching(xx,realization,ZERO_INTEGER,ichange)   
   endif  
-  option%iphch=option%iphch+1
+  mphase_option%iphch=mphase_option%iphch+1
    
   call VecRestoreArrayF90(xx, xx_p, ierr)
 
@@ -962,41 +1334,41 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
       
     iiphase=int(iphase_loc_p(ghosted_id))
 
-    option%delx(1,ghosted_id) = xx_loc_p((ghosted_id-1)*option%ndof+1)*dfac * 1.D-3
-    option%delx(2,ghosted_id) = xx_loc_p((ghosted_id-1)*option%ndof+2)*dfac
+    mphase_option%delx(1,ghosted_id) = xx_loc_p((ghosted_id-1)*option%ndof+1)*dfac * 1.D-3
+    mphase_option%delx(2,ghosted_id) = xx_loc_p((ghosted_id-1)*option%ndof+2)*dfac
 
     select case (iiphase)
       case (1)
         if(xx_loc_p((ghosted_id-1)*option%ndof+3) < .8)then
-          option%delx(3,ghosted_id) =  dfac*xx_loc_p((ghosted_id-1)*option%ndof+3)
+          mphase_option%delx(3,ghosted_id) =  dfac*xx_loc_p((ghosted_id-1)*option%ndof+3)
         else
-          option%delx(3,ghosted_id) = -dfac*xx_loc_p((ghosted_id-1)*option%ndof+3) 
+          mphase_option%delx(3,ghosted_id) = -dfac*xx_loc_p((ghosted_id-1)*option%ndof+3) 
         endif
-        if(option%delx(3,ghosted_id) < 1D-9 .and. option%delx(3,ghosted_id)>=0.D0)option%delx(3,ghosted_id) =1D-9
-        if(option%delx(3,ghosted_id) >-1D-9 .and. option%delx(3,ghosted_id)<0.D0)option%delx(3,ghosted_id) =-1D-9
+        if(mphase_option%delx(3,ghosted_id) < 1D-9 .and. mphase_option%delx(3,ghosted_id)>=0.D0)mphase_option%delx(3,ghosted_id) =1D-9
+        if(mphase_option%delx(3,ghosted_id) >-1D-9 .and. mphase_option%delx(3,ghosted_id)<0.D0)mphase_option%delx(3,ghosted_id) =-1D-9
       case(2)  
         if(xx_loc_p((ghosted_id-1)*option%ndof+3) <0.8)then
-          option%delx(3,ghosted_id) =  dfac*xx_loc_p((ghosted_id-1)*option%ndof+3) 
+          mphase_option%delx(3,ghosted_id) =  dfac*xx_loc_p((ghosted_id-1)*option%ndof+3) 
         else
-          option%delx(3,ghosted_id) = -dfac*xx_loc_p((ghosted_id-1)*option%ndof+3) 
+          mphase_option%delx(3,ghosted_id) = -dfac*xx_loc_p((ghosted_id-1)*option%ndof+3) 
         endif 
-        if(option%delx(3,ghosted_id) < 1D-9 .and. option%delx(3,ghosted_id)>=0.D0)option%delx(3,ghosted_id) =1D-9
-        if(option%delx(3,ghosted_id) >-1D-9 .and. option%delx(3,ghosted_id)<0.D0)option%delx(3,ghosted_id) =-1D-9
+        if(mphase_option%delx(3,ghosted_id) < 1D-9 .and. mphase_option%delx(3,ghosted_id)>=0.D0)mphase_option%delx(3,ghosted_id) =1D-9
+        if(mphase_option%delx(3,ghosted_id) >-1D-9 .and. mphase_option%delx(3,ghosted_id)<0.D0)mphase_option%delx(3,ghosted_id) =-1D-9
       case(3)
         if(xx_loc_p((ghosted_id-1)*option%ndof+3) <=0.9)then
-          option%delx(3,ghosted_id) = dfac*xx_loc_p((ghosted_id-1)*option%ndof+3) 
+          mphase_option%delx(3,ghosted_id) = dfac*xx_loc_p((ghosted_id-1)*option%ndof+3) 
         else
-          option%delx(3,ghosted_id) = -dfac*xx_loc_p((ghosted_id-1)*option%ndof+3) 
+          mphase_option%delx(3,ghosted_id) = -dfac*xx_loc_p((ghosted_id-1)*option%ndof+3) 
         endif 
         
-        if(option%delx(3,ghosted_id) < 1D-9 .and. option%delx(3,ghosted_id)>=0.D0)option%delx(3,ghosted_id) = 1D-9
-        if(option%delx(3,ghosted_id) >-1D-9 .and. option%delx(3,ghosted_id)<0.D0)option%delx(3,ghosted_id) =-1D-9
+        if(mphase_option%delx(3,ghosted_id) < 1D-9 .and. mphase_option%delx(3,ghosted_id)>=0.D0)mphase_option%delx(3,ghosted_id) = 1D-9
+        if(mphase_option%delx(3,ghosted_id) >-1D-9 .and. mphase_option%delx(3,ghosted_id)<0.D0)mphase_option%delx(3,ghosted_id) =-1D-9
         
-        if((option%delx(3,ghosted_id)+xx_loc_p((ghosted_id-1)*option%ndof+3))>1.D0)then
-          option%delx(3,ghosted_id) = (1.D0-xx_loc_p((ghosted_id-1)*option%ndof+3))/1D5
+        if((mphase_option%delx(3,ghosted_id)+xx_loc_p((ghosted_id-1)*option%ndof+3))>1.D0)then
+          mphase_option%delx(3,ghosted_id) = (1.D0-xx_loc_p((ghosted_id-1)*option%ndof+3))/1D5
         endif
-        if((option%delx(3,ghosted_id)+xx_loc_p((ghosted_id-1)*option%ndof+3))<0.D0)then
-          option%delx(3,ghosted_id) = xx_loc_p((ghosted_id-1)*option%ndof+3)/1D5
+        if((mphase_option%delx(3,ghosted_id)+xx_loc_p((ghosted_id-1)*option%ndof+3))<0.D0)then
+          mphase_option%delx(3,ghosted_id) = xx_loc_p((ghosted_id-1)*option%ndof+3)/1D5
         endif
     end select
   enddo
@@ -1008,7 +1380,7 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
   call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr)
   call VecGetArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)  
   call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr)
-  call VecGetArrayF90(field%var_loc,var_loc_p,ierr)
+  call VecGetArrayF90(mphase_field%var_loc,var_loc_p,ierr)
   
   
  ! call VecGetArrayF90(field%ithrm,ithrm_loc_p,ierr)
@@ -1037,13 +1409,13 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
     call pri_var_trans_mph_ninc(xx_p((local_id-1)*option%ndof+1:local_id*option%ndof),iiphase,&
         option%scale,option%nphase,option%nspec,iicap, dif,&
     var_loc_p((ghosted_id-1)*size_var_node+1:(ghosted_id-1)*size_var_node+size_var_use),&
-    option%itable,option%m_nacl,ierr,field%xxphi_co2(local_id), field%dden_co2(local_id))
+    option%itable,option%m_nacl,ierr,mphase_field%xxphi_co2(local_id), mphase_field%dden_co2(local_id))
 
 
 
     if (option%ideriv .eq. 1) then
       call pri_var_trans_mph_winc(xx_p((local_id-1)*option%ndof+1:local_id*option%ndof),&
-        option%delx(1:option%ndof,ghosted_id), iiphase,&
+        mphase_option%delx(1:option%ndof,ghosted_id), iiphase,&
         option%scale,option%nphase,option%nspec, iicap, dif,&
         var_loc_p((ghosted_id-1)*size_var_node+size_var_use+1:ghosted_id*size_var_node),&
       option%itable,option%m_nacl,ierr)
@@ -1057,11 +1429,11 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
   call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p,ierr)
   call VecRestoreArrayF90(field%icap_loc,icap_loc_p,ierr)
   call VecRestoreArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
-  call VecRestoreArrayF90(field%var_loc,var_loc_p,ierr)
+  call VecRestoreArrayF90(mphase_field%var_loc,var_loc_p,ierr)
   ! call VecRestoreArrayF90(field%iphas_loce,iphase_loc_p,ierr)
   
 
-  call GridLocalToLocal(grid,field%var_loc,field%var_loc,VARDOF)
+  call GridLocalToLocal(grid,mphase_field%var_loc,mphase_field%var_loc,VARDOF)
   call GridLocalToLocal(grid,field%perm_xx_loc,field%perm_xx_loc,ONEDOF)
   call GridLocalToLocal(grid,field%perm_yy_loc,field%perm_yy_loc,ONEDOF)
   call GridLocalToLocal(grid,field%perm_zz_loc,field%perm_zz_loc,ONEDOF)
@@ -1079,7 +1451,7 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
 
   ! notice:: here we assume porosity is constant
  
-  call VecGetArrayF90(field%var_loc,var_loc_p,ierr)
+  call VecGetArrayF90(mphase_field%var_loc,var_loc_p,ierr)
   call VecGetArrayF90(field%yy,yy_p,ierr)
   call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
   call VecGetArrayF90(field%tor_loc, tor_loc_p, ierr)
@@ -1093,8 +1465,8 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
   !print *,' Finished scattering non deriv'
 
 
-  if (option%rk > 0.d0) then
-    call VecGetArrayF90(field%phis,phis_p,ierr)
+  if (mphase_option%rk > 0.d0) then
+    call VecGetArrayF90(mphase_field%phis,phis_p,ierr)
   endif
 
   Resold_AR=0.D0; ResOld_FL=0.D0
@@ -1171,10 +1543,10 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
 
 !           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
               
-        r_p((local_id-1)*option%ndof + option%jh2o) = r_p((local_id-1)*option%ndof + option%jh2o) &
+        r_p((local_id-1)*option%ndof + mphase_option%jh2o) = r_p((local_id-1)*option%ndof + mphase_option%jh2o) &
                                                - qsrc1 *option%dt
         r_p(local_id*option%ndof) = r_p(local_id*option%ndof) - qsrc1*enth_src_h2o*option%dt
-        Resold_AR(local_id,option%jh2o)= Resold_AR(local_id,option%jh2o) - qsrc1*option%dt
+        Resold_AR(local_id,mphase_option%jh2o)= Resold_AR(local_id,mphase_option%jh2o) - qsrc1*option%dt
         Resold_AR(local_id,option%ndof)= Resold_AR(local_id,option%ndof) - qsrc1 * &
                                                              enth_src_h2o * option%dt
       endif  
@@ -1197,9 +1569,9 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
 
         enth_src_co2 = enth_src_co2 * option%fmwco2
            
-        r_p((local_id-1)*option%ndof + option%jco2) = r_p((local_id-1)*option%ndof + option%jco2) - csrc1*option%dt
+        r_p((local_id-1)*option%ndof + mphase_option%jco2) = r_p((local_id-1)*option%ndof + mphase_option%jco2) - csrc1*option%dt
         r_p(local_id*option%ndof) = r_p(local_id*option%ndof) - csrc1 * enth_src_co2 *option%dt
-        Resold_AR(local_id,option%jco2)= Resold_AR(local_id,option%jco2) - csrc1*option%dt
+        Resold_AR(local_id,mphase_option%jco2)= Resold_AR(local_id,mphase_option%jco2) - csrc1*option%dt
         Resold_AR(local_id,option%ndof)= Resold_AR(local_id,option%ndof) - csrc1 * enth_src_co2*option%dt
 
      endif
@@ -1400,7 +1772,7 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
       call pri_var_trans_mph_ninc(xxbc,iphasebc, &
                                   option%scale,option%nphase,option%nspec,iicap, &
                                   dif,varbc,option%itable, &
-                                  option%m_nacl,ierr,field%xxphi_co2_bc(sum_connection),cw)
+                                  option%m_nacl,ierr,mphase_field%xxphi_co2_bc(sum_connection),cw)
      
       call MPHASERes_FLBCCont(boundary_condition%condition%itype, &
                               cur_connection_set%area(iconn), &
@@ -1463,7 +1835,7 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
   call VecRestoreArrayF90(field%yy, yy_p, ierr)
   call VecRestoreArrayF90(field%xx_loc, xx_loc_p, ierr)
   call VecRestoreArrayF90(field%accum, accum_p, ierr)
-  call VecRestoreArrayF90(field%var_loc,var_loc_p,ierr)
+  call VecRestoreArrayF90(mphase_field%var_loc,var_loc_p,ierr)
   call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
   call VecRestoreArrayF90(field%tor_loc, tor_loc_p, ierr)
   call VecRestoreArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
@@ -1473,8 +1845,8 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
   call VecRestoreArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
   call VecRestoreArrayF90(field%icap_loc, icap_loc_p, ierr)
   call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr)
-  if (option%rk > 0.d0) then
-    call VecRestoreArrayF90(field%phis,phis_p,ierr)
+  if (mphase_option%rk > 0.d0) then
+    call VecRestoreArrayF90(mphase_field%phis,phis_p,ierr)
   endif
 
   if (realization%debug%vecview_residual) then
@@ -1613,7 +1985,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
   call VecGetArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
   call VecGetArrayF90(field%icap_loc, icap_loc_p, ierr)
   call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr)
-  call VecGetArrayF90(field%var_loc, var_loc_p, ierr)
+  call VecGetArrayF90(mphase_field%var_loc, var_loc_p, ierr)
 
 ! print *,' In mph Jacobian ::  got pointers '
 ! ********************************************************************
@@ -1691,7 +2063,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
 
 !         qqsrc = qsrc1/dw_mol ! [kmol/s / mol/dm^3 = kmol/m^3]
               
-          ResInc(local_id,option%jh2o,nvar)=  ResInc(local_id,option%jh2o,nvar) - qsrc1*option%dt
+          ResInc(local_id,mphase_option%jh2o,nvar)=  ResInc(local_id,mphase_option%jh2o,nvar) - qsrc1*option%dt
           ResInc(local_id,option%ndof,nvar)=  ResInc(local_id,option%ndof,nvar) - qsrc1*enth_src_h2o*option%dt
         enddo
 
@@ -1716,7 +2088,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
 
           enth_src_co2 = enth_src_co2 * option%fmwco2
 
-          ResInc(local_id,option%jco2,nvar)=  ResInc(local_id,option%jco2,nvar) - csrc1*option%dt
+          ResInc(local_id,mphase_option%jco2,nvar)=  ResInc(local_id,mphase_option%jco2,nvar) - csrc1*option%dt
           ResInc(local_id,option%ndof,nvar)=  ResInc(local_id,option%ndof,nvar) - csrc1*enth_src_co2*option%dt
 
         enddo
@@ -1784,7 +2156,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
           iphasebc = boundary_condition%aux_int_var(1,iconn)
         case(NEUMANN_BC)
           xxbc(1:option%ndof) = xx_loc_p((ghosted_id-1)*option%ndof+1:ghosted_id*option%ndof)
-          delxbc(1:option%ndof) = option%delx(1:option%ndof,ghosted_id) 
+          delxbc(1:option%ndof) = mphase_option%delx(1:option%ndof,ghosted_id) 
           iphasebc=int(iphase_loc_p(ghosted_id))                               
           if (boundary_condition%aux_real_var(MPH_PRESSURE_DOF,iconn) > 1.d-20) then
             xxbc(2:option%ndof) = boundary_condition%aux_real_var(2:option%ndof,iconn)
@@ -1794,17 +2166,17 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
           xxbc(1) = boundary_condition%aux_real_var(MPH_PRESSURE_DOF,iconn)
           xxbc(2:option%ndof) = xx_loc_p((ghosted_id-1)*option%ndof+2:ghosted_id*option%ndof)
           delxbc(1) = 0.d0
-          delxbc(2:option%ndof) = option%delx(2:option%ndof,ghosted_id) 
+          delxbc(2:option%ndof) = mphase_option%delx(2:option%ndof,ghosted_id) 
           iphasebc=int(iphase_loc_p(ghosted_id))
         case(ZERO_GRADIENT_BC)
           xxbc(1:option%ndof) = xx_loc_p((ghosted_id-1)*option%ndof+1:ghosted_id*option%ndof)
-          delxbc(1:option%ndof) = option%delx(1:option%ndof,ghosted_id) 
+          delxbc(1:option%ndof) = mphase_option%delx(1:option%ndof,ghosted_id) 
           iphasebc=int(iphase_loc_p(ghosted_id))
         case(4)
           xxbc(1) = xx_loc_p((ghosted_id-1)*option%ndof+MPH_PRESSURE_DOF)
           xxbc(3:option%ndof) = xx_loc_p((ghosted_id-1)*option%ndof+3:ghosted_id*option%ndof)
-          delxbc(1) = option%delx(1,ghosted_id) 
-          delxbc(3:option%ndof) = option%delx(3:option%ndof,ghosted_id) 
+          delxbc(1) = mphase_option%delx(1,ghosted_id) 
+          delxbc(3:option%ndof) = mphase_option%delx(3:option%ndof,ghosted_id) 
           iphasebc=int(iphase_loc_p(ghosted_id))
       end select
 #else
@@ -1815,7 +2187,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
             delxbc(idof) = 0.d0
           case(NEUMANN_BC,ZERO_GRADIENT_BC)
             xxbc(idof) = xx_loc_p((ghosted_id-1)*option%ndof+idof)
-            delxbc(idof) = option%delx(idof,ghosted_id) 
+            delxbc(idof) = mphase_option%delx(idof,ghosted_id) 
         end select
       enddo
       
@@ -1905,8 +2277,8 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
     max_dev=0.D0
     do neq=1, option%ndof
       do nvar=1, option%ndof
-        ra(neq,nvar)=ResInc(local_id,neq,nvar)/option%delx(nvar,ghosted_id) - &
-                     ResOld_AR(local_id,neq)/option%delx(nvar,ghosted_id)
+        ra(neq,nvar)=ResInc(local_id,neq,nvar)/mphase_option%delx(nvar,ghosted_id) - &
+                     ResOld_AR(local_id,neq)/mphase_option%delx(nvar,ghosted_id)
           if(max_dev < dabs(ra(3,nvar))) max_dev = dabs(ra(3,nvar))
      
       enddo      
@@ -2036,7 +2408,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
                               distance_gravity,upweight, &
                               option, vv_darcy,Res)
 
-        ra(:,nvar)= Res(:)/option%delx(nvar,ghosted_id_up)-ResOld_FL(sum_connection,:)/option%delx(nvar,ghosted_id_up)
+        ra(:,nvar)= Res(:)/mphase_option%delx(nvar,ghosted_id_up)-ResOld_FL(sum_connection,:)/mphase_option%delx(nvar,ghosted_id_up)
 
 !     if(vv_darcy(1)>0.D0 .and. option%iupstream(sum_connection,1) == -1) i_upstream_revert =1 
 !     if(vv_darcy(1)<0.D0 .and. option%iupstream(sum_connection,1) == 1)  i_upstream_revert =1
@@ -2058,7 +2430,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
                               distance_gravity,upweight, &
                               option, vv_darcy,Res)
  
-        ra(:,nvar+option%ndof)= Res(:)/option%delx(nvar,ghosted_id_dn)-ResOld_FL(sum_connection,:)/option%delx(nvar,ghosted_id_dn)
+        ra(:,nvar+option%ndof)= Res(:)/mphase_option%delx(nvar,ghosted_id_dn)-ResOld_FL(sum_connection,:)/mphase_option%delx(nvar,ghosted_id_dn)
 
      
 !     if(vv_darcy(1)>0.D0 .and. option%iupstream(sum_connection,1) == -1) i_upstream_revert =3 
@@ -2154,7 +2526,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
   call VecRestoreArrayF90(field%xx_loc, xx_loc_p, ierr)
   call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
   call VecRestoreArrayF90(field%tor_loc, tor_loc_p, ierr)
-  call VecRestoreArrayF90(field%var_loc, var_loc_p, ierr)
+  call VecRestoreArrayF90(mphase_field%var_loc, var_loc_p, ierr)
   call VecRestoreArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
   call VecRestoreArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
   call VecRestoreArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
@@ -2165,8 +2537,8 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
   call VecRestoreArrayF90(field%icap_loc, icap_loc_p, ierr)
   call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr)
 
-  if (option%rk > 0.d0) then
-    call VecRestoreArrayF90(field%phis,phis_p,ierr)
+  if (mphase_option%rk > 0.d0) then
+    call VecRestoreArrayF90(mphase_field%phis,phis_p,ierr)
   endif
 
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
@@ -2259,7 +2631,7 @@ subroutine pflow_mphase_initaccum(realization)
   call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
   call VecGetArrayF90(field%yy, yy_p, ierr); CHKERRQ(ierr)
   call VecGetArrayF90(field%accum, accum_p, ierr)
-  call VecGetArrayF90(field%var_loc, var_loc_p,ierr)
+  call VecGetArrayF90(mphase_field%var_loc, var_loc_p,ierr)
   call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr)
   call VecGetArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
   call VecGetArrayF90(field%icap_loc, icap_loc_p, ierr)
@@ -2283,8 +2655,8 @@ subroutine pflow_mphase_initaccum(realization)
 
   enddo
 
-  call VecRestoreArrayF90(field%var_loc, var_loc_p,ierr)
-  call VecGetArrayF90(field%var_loc, var_loc_p,ierr)
+  call VecRestoreArrayF90(mphase_field%var_loc, var_loc_p,ierr)
+  call VecGetArrayF90(mphase_field%var_loc, var_loc_p,ierr)
 
 !---------------------------------------------------------------------------
   do local_id = 1, grid%nlmax  ! For each local node do...
@@ -2317,7 +2689,7 @@ subroutine pflow_mphase_initaccum(realization)
   call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
   call VecRestoreArrayF90(field%yy, yy_p, ierr); CHKERRQ(ierr)
   call VecRestoreArrayF90(field%accum, accum_p, ierr)
-  call VecRestoreArrayF90(field%var_loc, var_loc_p,ierr)
+  call VecRestoreArrayF90(mphase_field%var_loc, var_loc_p,ierr)
   call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr)
   call VecRestoreArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
   call VecRestoreArrayF90(field%icap_loc, icap_loc_p, ierr)
@@ -2373,7 +2745,7 @@ subroutine pflow_update_mphase(realization)
     call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr)
     call VecGetArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)  
     call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr)
-    call VecGetArrayF90(field%var_loc,var_loc_p,ierr)
+    call VecGetArrayF90(mphase_field%var_loc,var_loc_p,ierr)
 
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)    
@@ -2469,7 +2841,7 @@ subroutine pflow_update_mphase(realization)
     call VecRestoreArrayF90(field%icap_loc,icap_loc_p,ierr)
     call VecRestoreArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)  
     call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr)
-    call VecRestoreArrayF90(field%var_loc,var_loc_p,ierr)
+    call VecRestoreArrayF90(mphase_field%var_loc,var_loc_p,ierr)
      
     if(option%nphase>1) call translator_mphase_massbal(realization)
    ! endif 
@@ -2539,7 +2911,7 @@ subroutine pflow_mphase_initadj(realization)
   call VecGetArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
   call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr)
   call VecGetArrayF90(field%xx, xx_p, ierr)
-  call VecGetArrayF90(field%var_loc, var_loc_p, ierr)
+  call VecGetArrayF90(mphase_field%var_loc, var_loc_p, ierr)
 ! print *,'initadj gotten pointers' 
 
 
@@ -2640,7 +3012,7 @@ subroutine pflow_mphase_initadj(realization)
   call VecRestoreArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
   call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr)
   call VecRestoreArrayF90(field%xx, xx_p, ierr)
-  call VecRestoreArrayF90(field%var_loc, var_loc_p, ierr)
+  call VecRestoreArrayF90(mphase_field%var_loc, var_loc_p, ierr)
   !print *,kgjkdf
   
   !call VecCopy(field%iphas,field%iphas_old,ierr)
@@ -2730,4 +3102,47 @@ subroutine createMphaseZeroArray(realization)
 
 end subroutine createMphaseZeroArray
 
+
+! ************************************************************************** !
+!
+! MphaseInitializeSolidReaction: Allocates and initializes arrays associated with
+!                          mineral reactions
+! author: Glenn Hammond
+! date: 11/15/07
+!
+! ************************************************************************** !
+subroutine MphaseInitializeSolidReaction(realization)
+
+  use Realization_module
+  use Grid_module
+  use Option_module
+  use Field_module
+
+  type(realization_type) :: realization
+  
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  PetscInt :: icell
+  PetscReal, pointer :: phis_p(:)
+  PetscErrorCode :: ierr
+  
+  grid => realization%grid
+  option => realization%option
+  field => realization%field
+  
+  if (mphase_option%rk > 0.d0) then
+    allocate(mphase_option%area_var(grid%nlmax))
+    allocate(mphase_option%rate(grid%nlmax))
+    call VecGetArrayF90(mphase_field%phis,phis_p,ierr)
+    do icell = 1, grid%nlmax
+      phis_p(icell) = mphase_option%phis0
+      mphase_option%area_var(icell) = 1.d0
+    enddo
+    call VecRestoreArrayF90(mphase_field%phis,phis_p,ierr)
+  endif
+  
+end subroutine MphaseInitializeSolidReaction
+
 end module MPHASE_module
+

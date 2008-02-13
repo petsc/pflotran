@@ -38,14 +38,15 @@ module Option_module
     character(len=MAXNAMELENGTH) :: mode
     PetscInt :: imode
   
-    PetscInt :: nphase, nvar, ndof  ! Number of phases we are dealing with.
-    PetscInt :: jh2o, jgas, jco2 ! specific phase indices
+    PetscInt :: nphase, ndof  ! Number of phases we are dealing with.
     PetscInt :: nspec, npricomp
 
     ! Program options
     PetscTruth :: use_matrix_free  ! If true, do not form the Jacobian.
     
     PetscInt :: idt_switch
+    
+    PetscInt :: imod
     
     PetscTruth :: use_isoth
 
@@ -63,36 +64,15 @@ module Option_module
 !    PetscReal, pointer :: tplot(:)
     PetscReal, pointer :: tfac(:)
       ! An array of multiplicative factors that specify how to increase time step.
-!    PetscInt :: kplot      ! Printout steps.
-    PetscInt :: write_init = 0 ! Flag to printout initial conditions.
-    PetscInt :: imod = 1   ! screen printout modulus
-    PetscInt :: itecplot = 0 ! tecplot print format (1-interchange x and z)
+      
     PetscInt :: iblkfmt = 0 ! blocked format
-    PetscInt :: isync = 0  ! Synchronize pflow and ptran time steps (1)
   
-    PetscInt :: iphch
-    PetscInt :: iread_init = 0 ! flag for reading initial conditions.
       ! Basically our target number of newton iterations per time step.
     PetscReal :: dpmxe,dtmpmxe,dsmxe,dcmxe !maximum allowed changes in field vars.
     PetscReal :: dpmax,dtmpmax,dsmax,dcmax
     
-    PetscInt :: iran_por=0, iread_perm=0, iread_geom =1
-    PetscReal :: ran_fac=-1.d0
-
-!   solid reaction rate
-    PetscInt :: ityprxn
-    PetscReal :: rk=0.d0, phis0, areas0, pwrsrf, vbars, ceq, delHs, delEs, wfmts
-    PetscReal ::qu_kin, yh2o_in_co2=0.D0
+    PetscInt :: iread_geom =1
     
-!   breakthrough curves
-    PetscInt :: ibrkcrv = 0
-    PetscInt, pointer :: ibrktyp(:),ibrkface(:)
-    
-!   dual continuum
-    PetscInt :: idcdm = 0, idcmblk = 0
-    PetscReal, pointer :: fracture_aperture(:), matrix_block(:)
-    
-    PetscInt, pointer :: icap_reg(:),ithrm_reg(:)
     PetscReal :: scale
     PetscReal, pointer :: rock_density(:),cpr(:),dencpr(:),ckdry(:),ckwet(:), &
                        tau(:),cdiff(:),cexp(:)
@@ -104,15 +84,12 @@ module Option_module
     PetscReal :: difaq, delhaq, gravity(3), fmwh2o= 18.0153D0, fmwa=28.96D0, &
               fmwco2=44.0098D0, eqkair, ret=1.d0, fc=1.d0
     
-    PetscInt :: ihydrostatic = 0,ideriv = 1
-    PetscReal :: dTdz,beta,tref,pref,conc0  ! these need to go
-    PetscReal :: hydro_ref_xyz(3)
+    PetscInt :: ideriv = 1
+    PetscReal :: tref,pref
     
 !   table lookup
     PetscInt :: itable=0
 
-    PetscReal, pointer :: rtot(:,:),rate(:),area_var(:), delx(:,:)
-    
     PetscTruth :: restart_flag
     character(len=MAXWORDLENGTH) :: restart_file
     PetscTruth :: checkpoint_flag
@@ -123,7 +100,6 @@ module Option_module
     PetscLogDouble :: wallclock_stop_time
     
     logical :: numerical_derivatives
-    logical :: inexact_newton
     
   end type 
   
@@ -206,12 +182,13 @@ function OptionCreate()
   option%tfac(7)  = 1.6d0; option%tfac(8)  = 1.4d0
   option%tfac(9)  = 1.2d0; option%tfac(10) = 1.0d0
   option%tfac(11) = 1.0d0; option%tfac(12) = 1.0d0
-  option%tfac(13) = 1.0d0      
+  option%tfac(13) = 1.0d0    
+  
+  !set scale factor for heat equation, i.e. use units of MJ for energy
+  option%scale = 1.d-6
+
   option%use_matrix_free = 1
 
-  option%ihydrostatic = 0
-  option%conc0 = 1.d-6
-  
   option%dpmxe = 5.d4
   option%dtmpmxe = 2.d0
   option%dsmxe = 5.d0
@@ -243,8 +220,7 @@ function OptionCreate()
   option%wallclock_stop_time = 0.d0
   
   option%numerical_derivatives = .false.
-  option%inexact_newton = .false.
-    
+   
   OptionCreate => option
   
 end function OptionCreate

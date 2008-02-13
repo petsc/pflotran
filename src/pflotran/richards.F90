@@ -44,10 +44,10 @@ module Richards_Analytical_module
          RichardsUpdateFixedAccumulation,RichardsTimeCut,&
          RichardsSetup, RichardsNumericalJacobianTest, &
          RichardsGetVarFromArray, RichardsGetVarFromArrayAtCell, &
-         RichardsMaxChange
+         RichardsMaxChange, RichardsUpdateSolution
 
-  public :: createRichardsZeroArray
   PetscInt, save :: n_zero_rows = 0
+  PetscInt, parameter :: jh2o = 1
   logical, save :: inactive_cells_exist = .false.
   logical, save :: aux_vars_up_to_date = .false.
   PetscInt, pointer, save :: zero_rows_local(:)  ! 1-based indexing
@@ -159,12 +159,15 @@ subroutine RichardsSetup(realization)
   
   grid => realization%grid
   option => realization%option
-  
+    
+  ! allocate aux_var data structures for all grid cells
   allocate(aux_vars(grid%ngmax))
   do ghosted_id = 1, grid%ngmax
     call initAuxVar(aux_vars(ghosted_id),option)
   enddo
   
+  ! count the number of boundary connections and allocate
+  ! aux_var data structures for them
   boundary_condition => realization%boundary_conditions%first
   sum_connection = 0    
   do 
@@ -177,6 +180,13 @@ subroutine RichardsSetup(realization)
   do iconn = 1, sum_connection
     call initAuxVar(aux_vars_bc(iconn),option)
   enddo
+
+  ! create zero array for zeroing residual and Jacobian (1 on diagonal)
+  ! for inactive cells (and isothermal)
+  call createRichardsZeroArray(realization)
+
+  ! compute initial contribution to accumulation at previous time  
+  call RichardsUpdateFixedAccumulation(realization)
   
 end subroutine RichardsSetup
 
@@ -372,6 +382,25 @@ subroutine RichardsUpdateAuxVars(realization)
   aux_vars_up_to_date = .true.
 
 end subroutine RichardsUpdateAuxVars
+
+! ************************************************************************** !
+!
+! RichardsUpdateSolution: Updates data in module after a successful time step
+! author: Glenn Hammond
+! date: 02/13/08
+!
+! ************************************************************************** !
+subroutine RichardsUpdateSolution(realization)
+
+  use Realization_module
+  
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  call RichardsUpdateFixedAccumulation(realization)
+
+end subroutine RichardsUpdateSolution
 
 ! ************************************************************************** !
 !
@@ -1487,7 +1516,7 @@ subroutine RichardsAnalyticalResidual(snes,xx,r,realization,ierr)
 
   PetscReal, pointer :: r_p(:), porosity_loc_p(:), volume_p(:), &
                xx_loc_p(:), xx_p(:), yy_p(:),&
-               phis_p(:), tor_loc_p(:),&
+               tor_loc_p(:),&
                perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
                           
                
@@ -1556,10 +1585,6 @@ subroutine RichardsAnalyticalResidual(snes,xx,r,realization,ierr)
   call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr)
   !print *,' Finished scattering non deriv'
 
-  if (option%rk > 0.d0) then
-    call VecGetArrayF90(field%phis,phis_p,ierr)
-  endif
-
   r_p = 0.d0
 #if 1
   ! Accumulation terms ------------------------------------
@@ -1619,7 +1644,7 @@ subroutine RichardsAnalyticalResidual(snes,xx,r,realization,ierr)
                             dw_kg,dw_mol,enth_src_h2o,option%scale,ierr)
 !           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
 !           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
-        r_p((local_id-1)*option%ndof + option%jh2o) = r_p((local_id-1)*option%ndof + option%jh2o) &
+        r_p((local_id-1)*option%ndof + jh2o) = r_p((local_id-1)*option%ndof + jh2o) &
                                                - qsrc1 *option%dt
         r_p(local_id*option%ndof) = r_p(local_id*option%ndof) - qsrc1*enth_src_h2o*option%dt
       endif  
@@ -1821,9 +1846,6 @@ subroutine RichardsAnalyticalResidual(snes,xx,r,realization,ierr)
   call VecRestoreArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
   call VecRestoreArrayF90(field%icap_loc, icap_loc_p, ierr)
   call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr)
-  if (option%rk > 0.d0) then
-    call VecRestoreArrayF90(field%phis,phis_p,ierr)
-  endif
 
   if (realization%debug%vecview_residual) then
     call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'residual.out',viewer,ierr)
@@ -1872,7 +1894,7 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
   PetscInt :: ip1, ip2 
 
   PetscReal, pointer :: porosity_loc_p(:), volume_p(:), &
-                          xx_loc_p(:), phis_p(:),  tor_loc_p(:),&
+                          xx_loc_p(:), tor_loc_p(:),&
                           perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
   PetscReal, pointer :: iphase_loc_p(:), icap_loc_p(:), ithrm_loc_p(:)
   PetscInt :: icap,iphas,iphas_up,iphas_dn,icap_up,icap_dn
@@ -2232,9 +2254,6 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
   call VecRestoreArrayF90(field%icap_loc, icap_loc_p, ierr)
   call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr)
 
-  if (option%rk > 0.d0) then
-    call VecRestoreArrayF90(field%phis,phis_p,ierr)
-  endif
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
 
@@ -2483,11 +2502,6 @@ subroutine RichardsGetVarFromArray(realization,vec,ivar,isubvar)
             vec_ptr(local_id) = aux_vars(ghosted_id)%u
         end select
       enddo
-    case(VOLUME_FRACTION)
-      ! need to set minimum to 0.
-      call VecGetArrayF90(field%phis,vec2_ptr,ierr)
-      vec_ptr(1:grid%nlmax) = vec2_ptr(1:grid%nlmax)
-      call VecRestoreArrayF90(field%phis,vec2_ptr,ierr)
     case(PHASE)
       call VecGetArrayF90(field%iphas_loc,vec2_ptr,ierr)
       do local_id=1,grid%nlmax
@@ -2571,11 +2585,6 @@ function RichardsGetVarFromArrayAtCell(realization,ivar,isubvar,local_id)
         case(LIQUID_ENERGY)
           value = aux_vars(ghosted_id)%u
       end select
-    case(VOLUME_FRACTION)
-      ! need to set minimum to 0.
-      call VecGetArrayF90(field%phis,vec_ptr,ierr)
-      value = vec_ptr(local_id)
-      call VecRestoreArrayF90(field%phis,vec_ptr,ierr)
     case(PHASE)
       call VecGetArrayF90(field%iphas_loc,vec_ptr,ierr)
       value = vec_ptr(grid%nL2G(local_id))

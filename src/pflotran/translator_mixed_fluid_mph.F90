@@ -1,5 +1,94 @@
+
+module mphase_field_module
+  
+  implicit none
+ 
+  private 
+#include "definitions.h"
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
+  ! It is VERY IMPORTANT to make sure that the above .h90 file gets included.
+  ! Otherwise some very strange things will happen and PETSc will give no
+  ! indication of what the problem is.
+#include "include/finclude/petscmat.h"
+#include "include/finclude/petscmat.h90"
+#include "include/finclude/petscda.h"
+#include "include/finclude/petscda.h90"
+#include "include/finclude/petscsnes.h"
+#include "include/finclude/petscviewer.h"
+#include "include/finclude/petscsys.h"
+#include "include/finclude/petscis.h"
+#include "include/finclude/petscis.h90"
+#include "include/finclude/petsclog.h"
+  
+  type, public :: mphase_field_type
+    Vec :: var_loc
+    Vec :: pressure
+    Vec :: temp
+    Vec :: xmol
+    Vec :: sat
+    Vec :: conc
+    Vec :: phis
+    
+    PetscReal, pointer :: xxphi_co2(:)
+    PetscReal, pointer :: dden_co2(:)
+    PetscReal, pointer :: xxphi_co2_bc(:)
+    
+  end type mphase_field_type
+  
+  type(mphase_field_type), pointer, public :: mphase_field
+  
+end module mphase_field_module  
+
+module mphase_option_module
+  
+  implicit none
+  
+  private 
+  
+#include "definitions.h"
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
+  ! It is VERY IMPORTANT to make sure that the above .h90 file gets included.
+  ! Otherwise some very strange things will happen and PETSc will give no
+  ! indication of what the problem is.
+#include "include/finclude/petscmat.h"
+#include "include/finclude/petscmat.h90"
+#include "include/finclude/petscda.h"
+#include "include/finclude/petscda.h90"
+#include "include/finclude/petscsnes.h"
+#include "include/finclude/petscviewer.h"
+#include "include/finclude/petscsys.h"
+#include "include/finclude/petscis.h"
+#include "include/finclude/petscis.h90"
+#include "include/finclude/petsclog.h"
+  
+  type, public :: mphase_option_type
+    PetscInt :: iphch
+    PetscInt :: jh2o = 1
+    PetscInt :: jco2 = 2
+    PetscInt :: jgas = 3
+
+    PetscReal, pointer :: rate(:)
+    PetscReal, pointer :: area_var(:)
+        
+!   solid reaction rate
+    PetscInt :: ityprxn
+    PetscReal :: rk=0.d0, phis0, areas0, pwrsrf, vbars, ceq, delHs, delEs, wfmts
+    PetscReal ::qu_kin, yh2o_in_co2=0.D0
+    
+    PetscReal, pointer :: delx(:,:)
+  end type mphase_option_type
+  
+  type(mphase_option_type), pointer, public :: mphase_option
+  
+end module mphase_option_module  
+
 module translator_mph_module
  
+  use mphase_field_module  
+  use mphase_option_module 
+  
   implicit none  
 
   private 
@@ -96,7 +185,7 @@ subroutine translator_mphase_massbal(realization)
   option => realization%option
   field => realization%field  
 
-  call VecGetArrayF90(field%var_loc,var_loc_p,ierr)
+  call VecGetArrayF90(mphase_field%var_loc,var_loc_p,ierr)
   call VecGetArrayF90(grid%volume, volume_p, ierr)
   call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)  
   call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr)
@@ -151,7 +240,7 @@ subroutine translator_mphase_massbal(realization)
 !   print *,nzc,c0
   enddo
  !  call PETSCBarrier(PETSC_NULL_OBJECT,ierr)
-  call VecRestoreArrayF90(field%var_loc,var_loc_p,ierr)
+  call VecRestoreArrayF90(mphase_field%var_loc,var_loc_p,ierr)
   call VecRestoreArrayF90(grid%volume, volume_p, ierr)
   call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
   call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr)
@@ -290,12 +379,12 @@ subroutine translator_mph_get_output(realization)
   grid => realization%grid
   field => realization%field
       
-  call VecGetArrayF90(field%var_loc, var_loc_p, ierr)
-  call VecGetArrayF90(field%pressure, p_p, ierr)
-  call VecGetArrayF90(field%temp, t_p, ierr)
-  call VecGetArrayF90(field%xmol, c_p, ierr)
-  call VecGetArrayF90(field%sat, s_p, ierr)
-  call VecGetArrayF90(field%conc, cc_p, ierr)
+  call VecGetArrayF90(mphase_field%var_loc, var_loc_p, ierr)
+  call VecGetArrayF90(mphase_field%pressure, p_p, ierr)
+  call VecGetArrayF90(mphase_field%temp, t_p, ierr)
+  call VecGetArrayF90(mphase_field%xmol, c_p, ierr)
+  call VecGetArrayF90(mphase_field%sat, s_p, ierr)
+  call VecGetArrayF90(mphase_field%conc, cc_p, ierr)
   !print *,' translator_mph_get_output gotten pointers'
   
   size_var_node=(option%ndof+1)*(2+7*option%nphase +2*option%nphase*option%nspec)
@@ -318,12 +407,12 @@ subroutine translator_mph_get_output(realization)
     s_p(jn+1)=var_loc_p(index_var_begin + 4) 
  enddo
  
-  call VecRestoreArrayF90(field%var_loc, var_loc_p, ierr)
-  call VecRestoreArrayF90(field%pressure, p_p, ierr)
-  call VecRestoreArrayF90(field%temp, t_p, ierr)
-  call VecRestoreArrayF90(field%xmol, c_p, ierr)
-  call VecRestoreArrayF90(field%sat, s_p, ierr)
-  call VecRestoreArrayF90(field%conc, cc_p, ierr)
+  call VecRestoreArrayF90(mphase_field%var_loc, var_loc_p, ierr)
+  call VecRestoreArrayF90(mphase_field%pressure, p_p, ierr)
+  call VecRestoreArrayF90(mphase_field%temp, t_p, ierr)
+  call VecRestoreArrayF90(mphase_field%xmol, c_p, ierr)
+  call VecRestoreArrayF90(mphase_field%sat, s_p, ierr)
+  call VecRestoreArrayF90(mphase_field%conc, cc_p, ierr)
  
 ! work only for 2 phases
 end subroutine translator_mph_get_output
@@ -364,7 +453,7 @@ subroutine translator_mph_step_maxchange(realization)
   call VecGetArrayF90(field%yy, yy_p, ierr); CHKERRQ(ierr)
   call VecGetArrayF90(field%iphas_loc, iphase_loc_p,ierr)
   call VecGetArrayF90(field%iphas_old_loc, iphase_old_loc_p,ierr)
-  call VecGetArrayF90(field%var_loc, var_loc_p, ierr)
+  call VecGetArrayF90(mphase_field%var_loc, var_loc_p, ierr)
   
   comp=0.D0;comp1=0.D0
   do local_id=1, grid%nlmax
@@ -390,7 +479,7 @@ subroutine translator_mph_step_maxchange(realization)
   call VecRestoreArrayF90(field%yy, yy_p, ierr); CHKERRQ(ierr)
   call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p,ierr)
   call VecRestoreArrayF90(field%iphas_old_loc, iphase_old_loc_p,ierr)
-  call VecRestoreArrayF90(field%var_loc, var_loc_p, ierr)
+  call VecRestoreArrayF90(mphase_field%var_loc, var_loc_p, ierr)
  
   
   if(option%commsize >1)then
@@ -545,7 +634,7 @@ subroutine Translator_MPhase_Switching(xx,realization,icri,ichange)
       case(0)
         tmp = sat_pressure* 1D5 /p 
         if (xmol(3) >tmp*1.05 .and. iipha==2 )then
-          write(*,'('' Gas -> 2ph '',2i8,1p10e12.4)') option%iphch,local_id,xx_p(dof_offset+1:dof_offset+3)
+          write(*,'('' Gas -> 2ph '',2i8,1p10e12.4)') mphase_option%iphch,local_id,xx_p(dof_offset+1:dof_offset+3)
       !write(IUNIT2,'('' Gas -> 2ph '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3)
           iphase_loc_p(ghosted_id) = 3
           xx_p(dof_offset+3)=1D0-formeps
@@ -559,7 +648,7 @@ subroutine Translator_MPhase_Switching(xx,realization,icri,ichange)
     ! print *,n, tmp, henry,sat_pressure,p
     !if (xx_p(n0+3) > 1.025D0  .and. iipha==1) then
         if (xmol(4) > 1.05D0 *tmp  .and. iipha==1) then
-          write(*,'('' Liq -> 2ph '',2i8,1p10e12.4)') option%iphch,local_id,xx_p(dof_offset+1:dof_offset+3),xmol(4), tmp
+          write(*,'('' Liq -> 2ph '',2i8,1p10e12.4)') mphase_option%iphch,local_id,xx_p(dof_offset+1:dof_offset+3),xmol(4), tmp
       !write(IUNIT2,'('' Liq -> 2ph '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3)
           iphase_loc_p(ghosted_id) = 3
      
@@ -574,7 +663,7 @@ subroutine Translator_MPhase_Switching(xx,realization,icri,ichange)
       
         if(satu(2)>1.0D0.and. iipha==3 )then
   !if(xx_p(n0+3)> 1.D0 .and. iipha==3 )then
-          write(*,'('' 2ph -> Gas '',2i8,1p10e12.4)') option%iphch,local_id,xx_p(dof_offset+1:dof_offset+3)
+          write(*,'('' 2ph -> Gas '',2i8,1p10e12.4)') mphase_option%iphch,local_id,xx_p(dof_offset+1:dof_offset+3)
        ! write(IUNIT2,'('' 2ph -> Gas '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3)
           iphase_loc_p(ghosted_id) = 2
           xx_p(dof_offset + 3) = xmol(4) + (1.D0 - xmol(4)) * formeps
@@ -585,7 +674,7 @@ subroutine Translator_MPhase_Switching(xx,realization,icri,ichange)
 
    ! if(sat(2)<= -formeps .and. iipha==3 )then
         if(satu(2)<= 0.0D0 .and. iipha==3 )then
-          write(*,'('' 2ph -> Liq '',2i8,1p10e12.4)') option%iphch,local_id,xx_p(dof_offset+1:dof_offset+3),satu(1),satu(2)
+          write(*,'('' 2ph -> Liq '',2i8,1p10e12.4)') mphase_option%iphch,local_id,xx_p(dof_offset+1:dof_offset+3),satu(1),satu(2)
       ! write(IUNIT2,'('' 2ph -> Liq '',i8,1p10e12.4)') n,xx_p(n0+1:n0+3)
           iphase_loc_p(ghosted_id) = 1 ! 2ph -> Liq
           ichange = 1;ipr=1
@@ -1165,3 +1254,4 @@ subroutine pri_var_trans_mph_winc(x,delx,iphase,energyscale,num_phase,num_spec,&
 end subroutine pri_var_trans_mph_winc
  
 end module   translator_mph_module
+

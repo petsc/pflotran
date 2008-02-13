@@ -35,6 +35,8 @@ module Solver_module
     PCType  :: pc_type
     KSP   ::  ksp
     PC    ::  pc
+    
+    PetscTruth :: inexact_newton
             
   end type solver_type
   
@@ -81,6 +83,8 @@ function SolverCreate()
   solver%pc_type = ""
   solver%ksp = 0
   solver%pc = 0
+  
+  solver%inexact_newton = PETSC_FALSE
   
   SolverCreate => solver
   
@@ -156,7 +160,8 @@ subroutine SolverSetSNESOptions(solver,option)
                          solver%maxit, solver%maxf, ierr)
 
   ! set inexact newton, currently applies default settings
-  if (option%inexact_newton) call SNESKSPSetUseEW(solver%snes,PETSC_TRUE,ierr)
+  if (solver%inexact_newton == PETSC_TRUE) &
+    call SNESKSPSetUseEW(solver%snes,PETSC_TRUE,ierr)
 
   ! allow override from command line; for some reason must come before
   ! LineSearchParams, or they crash
