@@ -44,7 +44,7 @@ subroutine PflowInit(simulation,filename)
   use Richards_Lite_module
   use Richards_Analytical_module
 
-  use pflow_convergence_module
+  use Convergence_module
   use Utility_module
     
   implicit none

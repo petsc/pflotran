@@ -23,7 +23,7 @@ ifdef compile_broken
 endif
 
 MYFLAGS = -I${objdir} $(HDF5_FLAGS) \
-          $(COMPILE_BROKEN_FLAGS) -DRICHARDS_ANALYTICAL \
+          $(COMPILE_BROKEN_FLAGS) \
           $(TRANSPORT_FLAGS)
 LIBS = $(HDF5_LIBS)
 
@@ -56,8 +56,7 @@ util_obj  = ${common_src}fileio.o \
 	${common_src}trdynmem.o \
 	${common_src}petscrelwrappers.o
 
-pflow_obj = ${common_src}pflow_vector_ops.o \
-	${common_src}pflow_pckr_mod.o \
+pflow_obj = ${common_src}pflow_pckr_mod.o \
 	${common_src}option.o \
 	${common_src}field.o \
 	${common_src}debug.o \
@@ -78,18 +77,16 @@ pflow_obj = ${common_src}pflow_vector_ops.o \
 	${common_src}hdf5.o \
 	${common_src}mixed_fluid_eos.o \
 	${common_src}translator_mixed_fluid_mph.o \
-	${common_src}translator_mixed_fluid_richards.o \
 	${common_src}pflow_THC.o \
 	${common_src}pflow_mphase_ResJac.o\
-	${common_src}pflow_richards_ResJac.o\
 	${common_src}richards.o\
 	${common_src}richards_lite.o\
 	${common_src}general_grid.o \
 	${common_src}pflow_checkpoint.o \
+	${common_src}convergence.o \
 	${common_src}timestepper.o \
 	${common_src}simulation.o \
 	${common_src}pflow_output2.o \
-	${common_src}pflow_convergence.o \
 	${common_src}pflow_init.o
 
 ptran_obj = ${common_src}option.o \
@@ -148,9 +145,11 @@ pflow.o : pflow_init.o timestepper.o simulation.o
 ptran.o : ptran_init.o transport_timestepper.o simulation.o
 #simulation.o : timestepper.o realization.o transport_realization.o \
 #               transport_timestepper.o
-pflow_init.o : option.o grid.o realization.o solver.o timestepper.o \
-               simulation.o fileio.o material.o region.o condition.o \
-               pflow_convergence.o waypoint.o field.o general_grid.o debug.o
+pflow_init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
+	simulation.o fileio.o material.o region.o condition.o convergence.o \
+	waypoint.o field.o general_grid.o co2_span_wagner.o utility.o \
+	coupler.o strata.o pflow_pckr_mod.o field.o pflow_mphase_ResJac.o \
+	richards_lite.o richards.o
 unstructured_grid.o : option.o connection.o solver.o
 structured_grid.o : connection.o option.o fileio.o coupler.o region.o solver.o
 general_grid.o : grid.o realization.o hdf5.o
@@ -160,6 +159,7 @@ solver.o : option.o field.o
 region.o : fileio.o utility.o
 material.o : region.o option.o fileio.o field.o
 coupler.o : condition.o connection.o region.o fileio.o
+convergence.o : option.o solver.o
 condition.o : fileio.o utility.o option.o field.o
 realization.o : grid.o option.o region.o condition.o coupler.o material.o \
 	     strata.o waypoint.o field.o hydrostatic.o debug.o breakthrough.o
@@ -172,15 +172,11 @@ waypoint.o : option.o
 pflow_vector_ops.o : water_eos.o
 pflow_output2.o : grid.o structured_grid.o option.o realization.o field.o \
                   coupler.o connection.o hdf5.o breakthrough.o
-pflow_richards_ResJac.o : realization.o option.o field.o grid.o coupler.o \
-                          translator_mixed_fluid_richards.o
 pflow_mphase_ResJac.o : realization.o option.o field.o grid.o coupler.o \
                           translator_mixed_fluid_mph.o
 timestepper.o : \
 	        mixed_fluid_eos.o \
                 translator_mixed_fluid_mph.o \
-                translator_mixed_fluid_richards.o \
-                pflow_richards_ResJac.o \
                 richards.o \
                 richards_lite.o \
                 pflow_mphase_ResJac.o \
@@ -190,6 +186,7 @@ timestepper.o : \
                 field.o \
                 solver.o \
                 pflow_output2.o \
+                convergence.o \
                 pflow_checkpoint.o \
 		waypoint.o
 transport_timestepper.o : \
@@ -204,8 +201,3 @@ hdf5.o : realization.o option.o grid.o
 pflow_THC.o : water_eos.o
 pflow.o : simulation.o realization.o timestepper.o solver.o grid.o option.o \
 	  pflow_init.o pflow_output2.o field.o
-pflow_init.o : simulation.o option.o grid.o solver.o realization.o material.o \
-	       timestepper.o co2_span_wagner.o pflow_richards_ResJac.o \
-	       pflow_convergence.o pflow_vector_ops.o utility.o fileio.o \
-	       structured_grid.o region.o condition.o coupler.o strata.o \
-	       pflow_pckr_mod.o field.o pflow_mphase_ResJac.o richards_lite.o
