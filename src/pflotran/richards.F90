@@ -117,6 +117,20 @@ subroutine RichardsTimeCut(realization)
   call VecGetArrayF90(field%xx, xx_p, ierr)
   call VecGetArrayF90(field%yy, yy_p, ierr)
 
+! Example of linked list approach needed for AMR
+!
+!  cur_patch => patch_list%first
+!  do 
+!    if (.not.associated(cur_patch)) exit
+!    do local_id=1, cur_patch%grid%nlmax
+!      dof_offset=(local_id-1)*option%ndof
+!      do re = 1, option%ndof
+!        xx_p(dof_offset+re)= yy_p(dof_offset+re)
+!      enddo
+!    enddo 
+!    cur_patch => cur_patch%next
+!  enddo
+
   do local_id=1, grid%nlmax
     dof_offset=(local_id-1)*option%ndof
     do re = 1, option%ndof
