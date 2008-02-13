@@ -44,7 +44,8 @@ module Richards_Analytical_module
          RichardsUpdateFixedAccumulation,RichardsTimeCut,&
          RichardsSetup, RichardsNumericalJacobianTest, &
          RichardsGetVarFromArray, RichardsGetVarFromArrayAtCell, &
-         RichardsMaxChange, RichardsUpdateSolution
+         RichardsMaxChange, RichardsUpdateSolution, &
+         RichardsGetTecplotHeader
 
   PetscInt, save :: n_zero_rows = 0
   PetscInt, parameter :: jh2o = 1
@@ -2446,6 +2447,53 @@ subroutine RichardsMaxChange(realization)
     call VecStrideNorm(field%dxx,TWO_INTEGER,NORM_INFINITY,option%dcmax,ierr)
     
 end subroutine RichardsMaxChange
+
+! ************************************************************************** !
+!
+! RichardsGetTecplotHeader: Returns a Tecplot file header
+! author: Glenn Hammond
+! date: 02/13/08
+!
+! ************************************************************************** !
+function RichardsGetTecplotHeader(realization)
+
+  use Realization_module
+  use Option_module
+  use Field_module
+
+  implicit none
+  
+  character(len=MAXSTRINGLENGTH) :: RichardsGetTecplotHeader
+  type(realization_type) :: realization
+  
+  character(len=MAXSTRINGLENGTH) :: string, string2
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field  
+  PetscInt :: i
+  
+  option => realization%option
+  field => realization%field
+  
+  string = 'VARIABLES=' // &
+           '"X [m]",' // &
+           '"Y [m]",' // &
+           '"Z [m]",' // &
+           '"T [C]",' // &
+           '"P [Pa]",' // &
+           '"sl",' // &
+           '"Ul"' 
+  do i=1,option%nspec
+    write(string2,'('',"Xl('',i2,'')"'')') i
+    string = trim(string) // trim(string2)
+  enddo
+
+  if (associated(field%imat)) then
+    string = trim(string) // ',"Material_ID"'
+  endif
+  
+  RichardsGetTecplotHeader = string
+
+end function RichardsGetTecplotHeader
 
 ! ************************************************************************** !
 !

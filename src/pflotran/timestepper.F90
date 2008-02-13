@@ -622,21 +622,6 @@ subroutine StepperUpdateSolution(realization)
     case(RICHARDS_LITE_MODE)
       call RichardsLiteUpdateSolution(realization)
   end select    
-
-#if 0
-  !integrate solid volume fraction using explicit finite difference
-  if (option%rk > 0.d0) then
-    call VecGetArrayF90(field%phis,phis_p,ierr)
-    do n = 1, grid%nlmax
-      phis_p(n) = phis_p(n) + option%dt * option%vbars * option%rate(n)
-      if (phis_p(n) < 0.d0) phis_p(n) = 0.d0
-      option%area_var(n) = (phis_p(n)/option%phis0)**option%pwrsrf
-      
-!     print *,'update: ',n,phis_p(n),option%rate(n),grid%area_var(n)
-    enddo
-    call VecRestoreArrayF90(field%phis,phis_p,ierr)
-  endif
-#endif  
   
   ! update solution variables
   call RealizationUpdate(realization)

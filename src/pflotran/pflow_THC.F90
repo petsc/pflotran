@@ -132,7 +132,8 @@ module THC_module
 #include "include/finclude/petsclog.h"
 
   public THCResidual, THCJacobian, THCSetup, THCCheckpointRead, &
-          THCCheckpointWrite, THCTimeCut, THCInitializeSolidReaction
+          THCCheckpointWrite, THCTimeCut, THCInitializeSolidReaction, &
+          THCGetTecplotHeader, THCGetVarFromArray
 
 contains
 
@@ -2233,7 +2234,134 @@ subroutine THCInitializeSolidReaction(realization)
   endif
   
 end subroutine THCInitializeSolidReaction
+
+
+! ************************************************************************** !
+!
+! THCGetTecplotHeader: Returns a Tecplot file header
+! author: 
+! date: 
+!
+! ************************************************************************** !
+function THCGetTecplotHeader(realization)
+
+  use Realization_module
+  use Option_module
+  use Field_module
+
+  implicit none
   
+  character(len=MAXSTRINGLENGTH) :: THCGetTecplotHeader
+  type(realization_type) :: realization
+  
+  character(len=MAXSTRINGLENGTH) :: string, string2
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field  
+  PetscInt :: i
+  
+  option => realization%option
+  field => realization%field
+  
+  string = 'VARIABLES=' // &
+           '"X [m]",' // &
+           '"Y [m]",' // &
+           '"Z [m]",' // &
+           '"T [C]",' // &
+           '"P [Pa]",' // &
+           '"sl",' // &
+           '"sg",' // &
+           '"Ul",' // &
+           '"Ug",'
+  do i=1,option%nspec
+    write(string2,'(''"Xl('',i2,'')",'')') i
+    string = trim(string) // trim(string2)
+  enddo
+  do i=1,option%nspec
+    write(string2,'(''"Xg('',i2,'')",'')') i
+    string = trim(string) // trim(string2)
+  enddo
+  if (thc_option%rk > 0.d0) then
+    string = trim(string) // '"Volume Fraction"'
+  endif
+  string = trim(string) // ',"Phase"'
+  if (associated(field%imat)) then
+    string = trim(string) // ',"Material_ID"'
+  endif
+  
+  THCGetTecplotHeader = string
+
+end function THCGetTecplotHeader
+
+! ************************************************************************** !
+!
+! THCGetVarFromArray: Extracts variables indexed by ivar and isubvar
+! author: 
+! date: 
+!
+! ************************************************************************** !
+subroutine THCGetVarFromArray(realization,vec,ivar,isubvar)
+
+  use Realization_module
+  use Grid_module
+  use Option_module
+  use Field_module
+
+  implicit none
+  
+  PetscInt, parameter :: TEMPERATURE = 4
+  PetscInt, parameter :: PRESSURE = 5
+  PetscInt, parameter :: LIQUID_SATURATION = 6
+  PetscInt, parameter :: GAS_SATURATION = 7
+  PetscInt, parameter :: LIQUID_ENERGY = 8
+  PetscInt, parameter :: GAS_ENERGY = 9
+  PetscInt, parameter :: LIQUID_MOLE_FRACTION = 10
+  PetscInt, parameter :: GAS_MOLE_FRACTION = 11
+  PetscInt, parameter :: VOLUME_FRACTION = 12
+  PetscInt, parameter :: PHASE = 13
+  PetscInt, parameter :: MATERIAL_ID = 14
+
+  type(realization_type) :: realization
+  Vec :: vec
+  PetscInt :: ivar
+  PetscInt :: isubvar
+
+  PetscInt :: local_id, ghosted_id
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  PetscReal, pointer :: vec_ptr(:), vec2_ptr(:)
+  PetscErrorCode :: ierr
+
+  option => realization%option
+  grid => realization%grid
+  field => realization%field
+
+  call VecGetArrayF90(vec,vec_ptr,ierr)
+
+  select case(ivar)
+    case(TEMPERATURE,PRESSURE,LIQUID_SATURATION,GAS_SATURATION, &
+         LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION,LIQUID_ENERGY,GAS_ENERGY)
+      do local_id=1,grid%nlmax
+        ghosted_id = grid%nL2G(local_id)    
+        select case(ivar)
+          case(TEMPERATURE)
+            vec_ptr(local_id) = 0.d0 ! to be provided
+          case(PRESSURE)
+            vec_ptr(local_id) = 0.d0 ! to be provided
+          case(LIQUID_ENERGY)
+            vec_ptr(local_id) = 0.d0 ! to be provided
+        end select
+      enddo
+    case(MATERIAL_ID)
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = field%imat(grid%nL2G(local_id))
+      enddo
+  end select
+  
+  call VecRestoreArrayF90(vec,vec_ptr,ierr)
+
+end subroutine THCGetVarFromArray
+
 end module THC_module
 
 #undef PPRESSURE_LOC

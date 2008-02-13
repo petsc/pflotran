@@ -126,6 +126,10 @@ subroutine OutputTecplot(realization)
   use Structured_Grid_module
   use Option_module
   use Field_module
+  
+  use Mphase_module
+  use Richards_Analytical_module
+  use Richards_Lite_module
  
   implicit none
 
@@ -173,78 +177,11 @@ subroutine OutputTecplot(realization)
     ! write variables
     select case(option%imode)
       case (MPH_MODE)
-        string = 'VARIABLES=' // &
-                 '"X [m]",' // &
-                 '"Y [m]",' // &
-                 '"Z [m]",' // &
-                 '"T [C]",' // &
-                 '"P [Pa]",' // &
-                 '"sl",' // &
-                 '"sg",' // &
-                 '"Ul",' // &
-                 '"Ug",'
-        do i=1,option%nspec
-          write(string2,'(''"Xl('',i2,'')",'')') i
-          string = trim(string) // trim(string2)
-        enddo
-        do i=1,option%nspec
-          write(string2,'(''"Xg('',i2,'')",'')') i
-          string = trim(string) // trim(string2)
-        enddo
-#if 0        
-        if (option%rk > 0.d0) then
-          string = trim(string) // '"Volume Fraction"'
-        endif
-#endif
-        string = trim(string) // ',"Phase"'
-        if (associated(field%imat)) then
-          string = trim(string) // ',"Material_ID"'
-        endif
-      case(RICHARDS_MODE,RICHARDS_LITE_MODE)
-        if (option%imode == RICHARDS_MODE) then
-          string = 'VARIABLES=' // &
-                   '"X [m]",' // &
-                   '"Y [m]",' // &
-                   '"Z [m]",' // &
-                   '"T [C]",' // &
-                   '"P [Pa]",' // &
-                   '"sl",' // &
-                   '"Ul"' 
-        else
-          string = 'VARIABLES=' // &
-                   '"X [m]",' // &
-                   '"Y [m]",' // &
-                   '"Z [m]",' // &
-                   '"P [Pa]",'
-        endif
-        if (option%imode == RICHARDS_MODE) then
-          do i=1,option%nspec
-            write(string2,'('',"Xl('',i2,'')"'')') i
-            string = trim(string) // trim(string2)
-          enddo
-        endif
-#if 0        
-        if (option%rk > 0.d0) then
-          string = trim(string) // ',"Volume Fraction"'
-        endif
-#endif        
-        if (associated(field%imat)) then
-          string = trim(string) // ',"Material_ID"'
-        endif
-      case default
-        string = 'VARIABLES=' // &
-                 '"X [m]",' // &
-                 '"Y [m]",' // &
-                 '"Z [m]",' // &
-                 '"T [C]",' // &
-                 '"P [Pa]",' // &
-                 '"sl",' // &
-                 '"C [mol/L]"'
-#if 0                 
-        if (option%rk > 0.d0) then
-          string = trim(string) // ',"Volume Fraction"'
-        endif
-#endif        
+        string = MphaseGetTecplotHeader(realization)
+      case(RICHARDS_MODE)
+        string = RichardsGetTecplotHeader(realization)
+      case(RICHARDS_LITE_MODE)
+        string = RichardsLiteGetTecplotHeader(realization)
     end select
     write(IUNIT3,'(a)') trim(string)
   

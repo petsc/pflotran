@@ -51,7 +51,8 @@ module MPHASE_module
          pflow_update_mphase,pflow_mphase_initadj, pflow_mphase_timecut,&
          pflow_mphase_setupini, MPhase_Update_Reason, MphaseSetup, &
          MphaseCheckpointWrite, MphaseCheckpointRead, MphaseMaxChange, &
-         MphaseInitializeSolidReaction
+         MphaseInitializeSolidReaction, MphaseGetVarFromArray, &
+         MphaseGetTecplotHeader
 
   PetscInt, save :: n_zero_rows = 0
   PetscInt, pointer, save :: zero_rows_local(:)  ! 1-based indexing
@@ -2719,11 +2720,11 @@ subroutine pflow_update_mphase(realization)
   PetscInt :: iithrm
   PetscInt :: iicap,iiphase
   PetscErrorCode :: ierr
-  PetscReal, pointer :: xx_p(:),icap_loc_p(:),ithrm_loc_p(:),iphase_loc_p(:), var_loc_p(:)
+  PetscReal, pointer :: xx_p(:),icap_loc_p(:),ithrm_loc_p(:),iphase_loc_p(:), var_loc_p(:), phis_p(:)
   PetscReal :: dif(1:realization%option%nphase), dum1, dum2           
   PetscInt :: local_id, ghosted_id     
   PetscReal :: xxbc(realization%option%ndof), varbc(size_var_use)
-  PetscInt :: iphasebc, idof
+  PetscInt :: iphasebc, idof, n
   
   type(coupler_type), pointer :: boundary_condition
   type(connection_type), pointer :: cur_connection_set
@@ -2855,6 +2856,19 @@ subroutine pflow_update_mphase(realization)
  !  print *,'translator_get_output done'
   ! the output variables should be put into option%pressure, temp,xmol,sat...
   ! otherwise need to rewrite the pflow_output
+
+  !integrate solid volume fraction using explicit finite difference
+  if (mphase_option%rk > 0.d0) then
+    call VecGetArrayF90(mphase_field%phis,phis_p,ierr)
+    do n = 1, grid%nlmax
+      phis_p(n) = phis_p(n) + option%dt * mphase_option%vbars * mphase_option%rate(n)
+      if (phis_p(n) < 0.d0) phis_p(n) = 0.d0
+      mphase_option%area_var(n) = (phis_p(n)/mphase_option%phis0)**mphase_option%pwrsrf
+      
+!     print *,'update: ',n,phis_p(n),option%rate(n),grid%area_var(n)
+    enddo
+    call VecRestoreArrayF90(mphase_field%phis,phis_p,ierr)
+  endif  
 
 end subroutine pflow_update_mphase
 
@@ -3143,6 +3157,144 @@ subroutine MphaseInitializeSolidReaction(realization)
   endif
   
 end subroutine MphaseInitializeSolidReaction
+
+! ************************************************************************** !
+!
+! MphaseGetTecplotHeader: Returns a Tecplot file header
+! author: 
+! date: 
+!
+! ************************************************************************** !
+function MphaseGetTecplotHeader(realization)
+
+  use Realization_module
+  use Option_module
+  use Field_module
+
+  implicit none
+  
+  character(len=MAXSTRINGLENGTH) :: MphaseGetTecplotHeader
+  type(realization_type) :: realization
+  
+  character(len=MAXSTRINGLENGTH) :: string, string2
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field  
+  PetscInt :: i
+  
+  option => realization%option
+  field => realization%field
+  
+  string = 'VARIABLES=' // &
+           '"X [m]",' // &
+           '"Y [m]",' // &
+           '"Z [m]",' // &
+           '"T [C]",' // &
+           '"P [Pa]",' // &
+           '"sl",' // &
+           '"sg",' // &
+           '"Ul",' // &
+           '"Ug",'
+  do i=1,option%nspec
+    write(string2,'(''"Xl('',i2,'')",'')') i
+    string = trim(string) // trim(string2)
+  enddo
+  do i=1,option%nspec
+    write(string2,'(''"Xg('',i2,'')",'')') i
+    string = trim(string) // trim(string2)
+  enddo
+  if (mphase_option%rk > 0.d0) then
+    string = trim(string) // '"Volume Fraction"'
+  endif
+  string = trim(string) // ',"Phase"'
+  if (associated(field%imat)) then
+    string = trim(string) // ',"Material_ID"'
+  endif
+  
+  MphaseGetTecplotHeader = string
+
+end function MphaseGetTecplotHeader
+
+! ************************************************************************** !
+!
+! MphaseGetVarFromArray: Extracts variables indexed by ivar and isubvar
+! author: 
+! date: 
+!
+! ************************************************************************** !
+subroutine MphaseGetVarFromArray(realization,vec,ivar,isubvar)
+
+  use Realization_module
+  use Grid_module
+  use Option_module
+  use Field_module
+
+  implicit none
+  
+  PetscInt, parameter :: TEMPERATURE = 4
+  PetscInt, parameter :: PRESSURE = 5
+  PetscInt, parameter :: LIQUID_SATURATION = 6
+  PetscInt, parameter :: GAS_SATURATION = 7
+  PetscInt, parameter :: LIQUID_ENERGY = 8
+  PetscInt, parameter :: GAS_ENERGY = 9
+  PetscInt, parameter :: LIQUID_MOLE_FRACTION = 10
+  PetscInt, parameter :: GAS_MOLE_FRACTION = 11
+  PetscInt, parameter :: VOLUME_FRACTION = 12
+  PetscInt, parameter :: PHASE = 13
+  PetscInt, parameter :: MATERIAL_ID = 14
+
+  type(realization_type) :: realization
+  Vec :: vec
+  PetscInt :: ivar
+  PetscInt :: isubvar
+
+  PetscInt :: local_id, ghosted_id
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  PetscReal, pointer :: vec_ptr(:), vec2_ptr(:)
+  PetscErrorCode :: ierr
+
+  option => realization%option
+  grid => realization%grid
+  field => realization%field
+
+  call VecGetArrayF90(vec,vec_ptr,ierr)
+
+  select case(ivar)
+    case(TEMPERATURE,PRESSURE,LIQUID_SATURATION,GAS_SATURATION, &
+         LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION,LIQUID_ENERGY,GAS_ENERGY)
+      do local_id=1,grid%nlmax
+        ghosted_id = grid%nL2G(local_id)    
+        select case(ivar)
+          case(TEMPERATURE)
+            vec_ptr(local_id) = 0.d0 ! to be provided
+          case(PRESSURE)
+            vec_ptr(local_id) = 0.d0 ! to be provided
+          case(LIQUID_SATURATION)
+            vec_ptr(local_id) = 0.d0 ! to be provided
+          case(GAS_SATURATION,GAS_MOLE_FRACTION,GAS_ENERGY)
+            vec_ptr(local_id) = 0.d0 ! to be provided
+          case(LIQUID_MOLE_FRACTION)
+            vec_ptr(local_id) = 0.d0 ! to be provided
+          case(LIQUID_ENERGY)
+            vec_ptr(local_id) = 0.d0 ! to be provided
+        end select
+      enddo
+    case(PHASE)
+      call VecGetArrayF90(field%iphas_loc,vec2_ptr,ierr)
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = vec2_ptr(grid%nL2G(local_id))
+      enddo
+      call VecRestoreArrayF90(field%iphas_loc,vec2_ptr,ierr)
+    case(MATERIAL_ID)
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = field%imat(grid%nL2G(local_id))
+      enddo
+  end select
+  
+  call VecRestoreArrayF90(vec,vec_ptr,ierr)
+
+end subroutine MphaseGetVarFromArray
 
 end module MPHASE_module
 
