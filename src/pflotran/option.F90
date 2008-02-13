@@ -43,23 +43,12 @@ module Option_module
     PetscInt :: nspec, npricomp
 
     ! Program options
-    PetscTruth :: use_numerical  ! If true, use numerical Jacobian.
     PetscTruth :: use_matrix_free  ! If true, do not form the Jacobian.
-      ! Note that if 'use_numerical' is true and 'use_matrix_free' is false,
-      ! the Jacobian will be computed numerically and stored.
-    PetscTruth :: print_hhistory
-      ! If true, and if use_matrix_free is true, then store the differencing
-      ! values h and print them out at the end of the simulation.
-
-    PetscReal, pointer :: hhistory(:)
-    PetscTruth :: monitor_h
     
     PetscInt :: idt_switch
     
     PetscTruth :: use_isoth
-    PetscTruth :: use_debug
-    PetscTruth :: print_bcinfo
-    
+
     PetscTruth :: print_convergence
     PetscTruth :: print_detailed_convergence
     PetscTruth :: check_infinity_norm
@@ -68,11 +57,6 @@ module Option_module
     character(len=MAXWORDLENGTH) :: generalized_grid
     logical :: use_generalized_grid
       
-    ! If run_coupled == PETSC_TRUE, then some parts of ptran_init 
-    ! will not be executed, since they are made redundant by 
-    ! pflowGrid_new() and pflowGrid_setup().
-    PetscTruth :: run_coupled
-
     PetscReal :: time  ! The time elapsed in the simulation.
     PetscReal :: dt ! The size of the time step.
   
@@ -92,9 +76,6 @@ module Option_module
     PetscReal :: dpmxe,dtmpmxe,dsmxe,dcmxe !maximum allowed changes in field vars.
     PetscReal :: dpmax,dtmpmax,dsmax,dcmax
     
-    PetscInt :: nldof  ! nlmax times the number of phases.
-    PetscInt :: ngdof  ! ngmax times the number of phases.
-
     PetscInt :: iran_por=0, iread_perm=0, iread_geom =1
     PetscReal :: ran_fac=-1.d0
 
@@ -200,9 +181,6 @@ function OptionCreate()
   allocate(option)
   
   option%use_isoth = PETSC_FALSE
-  option%print_bcinfo = PETSC_FALSE
-
-  option%use_numerical = PETSC_FALSE
   option%use_matrix_free = PETSC_FALSE
   
   option%print_convergence = PETSC_TRUE
@@ -214,8 +192,6 @@ function OptionCreate()
   option%imode = NULL_MODE
   option%idt_switch = 0
    
-  option%run_coupled = PETSC_FALSE
-  
 !-----------------------------------------------------------------------
       ! Initialize some parameters to sensible values.  These are parameters
       ! which should be set via the command line or the input file, but it
@@ -320,18 +296,8 @@ subroutine OptionCheckCommandLine(option)
   
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-snes_mf", & 
                            option%use_matrix_free, ierr)
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_numerical", &
-                           option%use_numerical, ierr)
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-print_hhistory", &
-                           option%print_hhistory, ierr)
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-monitor_h", &
-                           option%monitor_h, ierr) 
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_debug", &
-                           option%use_debug, ierr)
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_isoth", &
                            option%use_isoth, ierr)
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-print_bcinfo", &
-                           option%print_bcinfo, ierr)
                            
   call PetscOptionsGetString(PETSC_NULL_CHARACTER, '-restart', option%restart_file, &
                              option%restart_flag, ierr)

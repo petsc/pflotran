@@ -43,6 +43,8 @@ contains
 ! ************************************************************************** !
 function SimulationCreate()
 
+  use Option_module
+
   implicit none
   
   type(simulation_type), pointer :: SimulationCreate

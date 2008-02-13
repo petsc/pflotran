@@ -376,13 +376,13 @@ subroutine MPHASERes_ARCont(node_no, var_node,por,vol,rock_dencpr, option, &
   eng = eng * pvol + (1.D0 - por)* vol * rock_dencpr * temp 
   
 ! Reaction terms here
-  if (option%run_coupled == PETSC_TRUE .and. iireac>0) then
+!  if (option%run_coupled == PETSC_TRUE .and. iireac>0) then
 !   H2O
-    mol(1)= mol(1) - option%dt * option%rtot(node_no,1)
+!    mol(1)= mol(1) - option%dt * option%rtot(node_no,1)
 !   CO2
-    mol(2)= mol(2) - option%dt * option%rtot(node_no,2)
+!    mol(2)= mol(2) - option%dt * option%rtot(node_no,2)
 !   should include related energy change here
-  endif
+!  endif
   Res_AR(1:option%ndof-1)=mol(:)
   Res_AR(option%ndof)=eng
 

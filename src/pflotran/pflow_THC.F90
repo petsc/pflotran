@@ -39,6 +39,58 @@ module THC_module
 
 contains
 
+#if 0
+
+  subroutine THCInit()
+  
+    implicit none
+    
+      allocate(field%density_bc(option%nphase))
+      allocate(field%d_p_bc(option%nphase))
+      allocate(field%d_t_bc(option%nphase))
+      allocate(field%d_c_bc(option%nphase))
+      allocate(field%d_s_bc(option%nphase))
+      allocate(field%avgmw_bc(option%nphase))
+      allocate(field%avgmw_c_bc(option%nphase*option%npricomp))
+      allocate(field%hh_bc(option%nphase))
+      allocate(field%h_p_bc(option%nphase))
+      allocate(field%h_t_bc(option%nphase))
+      allocate(field%h_c_bc(option%nphase*option%npricomp))
+      allocate(field%h_s_bc(option%nphase))
+      allocate(field%uu_bc(option%nphase))
+      allocate(field%u_p_bc(option%nphase))
+      allocate(field%u_t_bc(option%nphase))
+      allocate(field%u_c_bc(option%nphase*option%npricomp))
+      allocate(field%u_s_bc(option%nphase))
+      allocate(field%df_bc(option%nphase*option%nspec))
+      allocate(field%df_p_bc(option%nphase*option%nspec))
+      allocate(field%df_t_bc(option%nphase*option%nspec))
+      allocate(field%df_c_bc(option%nphase*option%nspec*option%npricomp))
+      allocate(field%df_s_bc(option%nphase*option%nspec))
+      allocate(field%hen_bc(option%nphase*option%nspec))
+      allocate(field%hen_p_bc(option%nphase*option%nspec))
+      allocate(field%hen_t_bc(option%nphase*option%nspec))
+      allocate(field%hen_c_bc(option%nphase*option%nspec*option%npricomp))
+      allocate(field%hen_s_bc(option%nphase*option%nspec))
+      allocate(field%viscosity_bc(option%nphase))
+      allocate(field%v_p_bc(option%nphase))
+      allocate(field%v_t_bc(option%nphase))
+      allocate(field%pc_bc(option%nphase))
+      allocate(field%pc_p_bc(option%nphase))
+      allocate(field%pc_t_bc(option%nphase))
+      allocate(field%pc_c_bc(option%nphase*option%npricomp))
+      allocate(field%pc_s_bc(option%nphase))
+      allocate(field%kvr_bc(option%nphase))
+      allocate(field%kvr_p_bc(option%nphase))
+      allocate(field%kvr_t_bc(option%nphase))
+      allocate(field%kvr_c_bc(option%nphase*option%npricomp))
+      allocate(field%kvr_s_bc(option%nphase))
+    
+  
+  end subroutine THCInit
+
+#endif
+
   subroutine THCResidual(snes, xx, r, grid)
   
   use water_eos_module

@@ -2158,9 +2158,7 @@ subroutine GetVarFromArray(realization,vec,ivar,isubvar)
   use Option_module
   use Field_module
 
-#ifdef RICHARDS_ANALYTICAL
   use Richards_Analytical_module
-#endif
   use Richards_Lite_module
 
   implicit none
@@ -2185,11 +2183,9 @@ subroutine GetVarFromArray(realization,vec,ivar,isubvar)
   field => realization%field
 
   select case(option%imode)
-#ifdef RICHARDS_ANALYTICAL
     case(RICHARDS_MODE)
       call RichardsGetVarFromArray(realization,vec,ivar,isubvar)
       return
-#endif  
     case(RICHARDS_LITE_MODE)
       call RichardsLiteGetVarFromArray(realization,vec,ivar,isubvar)
       return

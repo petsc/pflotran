@@ -6,16 +6,9 @@ module Solver_module
  
 #include "definitions.h"
 
-! Apparently the PETSc authors believe that Fortran 90 modules should ensure
-! that PETSC_AVOID_DECLARATIONS and PETSC_AVOID_MPIF_H are defined when the
-! PETSc header files are included.  I can get around this, though, by making
-! the definitions in these headers private.
 #include "petscreldefs.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
-  ! It is VERY IMPORTANT to make sure that the above .h90 file gets included.
-  ! Otherwise some very strange things will happen and PETSc will give no
-  ! indication of what the problem is.
 #include "include/finclude/petscmat.h"
 #include "include/finclude/petscmat.h90"
 #include "include/finclude/petscksp.h"
@@ -42,7 +35,7 @@ module Solver_module
     PCType  :: pc_type
     KSP   ::  ksp
     PC    ::  pc
-        
+            
   end type solver_type
   
   interface SolverRead
@@ -51,9 +44,9 @@ module Solver_module
 
   public :: SolverCreate, &
             SolverDestroy, &
-            SolverComputeMFJacobian, &
-            SolverMonitorH, &
-            SolverRead
+            SolverRead, &
+            SolverCreateSNES, &
+            SolverSetSNESOptions
   
 contains
 
@@ -92,6 +85,88 @@ function SolverCreate()
   SolverCreate => solver
   
 end function SolverCreate
+
+! ************************************************************************** !
+!
+! SolverCreateSNES: Create PETSc SNES object
+! author: Glenn Hammond
+! date: 02/12/08
+!
+! ************************************************************************** !
+subroutine SolverCreateSNES(solver)
+
+  use Option_module
+
+  implicit none
+  
+  type(solver_type) :: solver
+
+  PetscErrorCode :: ierr
+  
+  call SNESCreate(PETSC_COMM_WORLD, solver%snes, ierr)
+
+  ! grab handles for ksp and pc
+  call SNESGetKSP(solver%snes,solver%ksp,ierr)
+  call KSPGetPC(solver%ksp,solver%pc,ierr)
+
+end subroutine SolverCreateSNES
+  
+! ************************************************************************** !
+!
+! SolverSetSNESOptions: Sets options for SNES
+! author: Glenn Hammond
+! date: 02/12/08
+!
+! ************************************************************************** !
+subroutine SolverSetSNESOptions(solver,option)
+
+  use Option_module
+
+  implicit none
+  
+  type(solver_type) :: solver
+  type(option_type) :: option
+
+  ! needed for SNESLineSearchGetParams()/SNESLineSearchSetParams()
+  PetscReal :: alpha, maxstep, steptol
+  PetscErrorCode :: ierr
+  
+  ! if ksp_type or pc_type specified in input file, set them here
+  if (len_trim(solver%ksp_type) > 1) &
+    call KSPSetType(solver%ksp,solver%ksp_type,ierr)
+  if (len_trim(solver%pc_type) > 1) &
+    call PCSetType(solver%pc,solver%pc_type,ierr)
+
+  call KSPSetTolerances(solver%ksp,solver%rtol,solver%atol,solver%dtol, &
+                        10000,ierr)
+
+  ! allow override from command line
+  call KSPSetFromOptions(solver%ksp,ierr)
+  call PCSetFromOptions(solver%pc,ierr)
+    
+  ! get the ksp_type and pc_type incase of command line override.
+  call KSPGetType(solver%ksp,solver%ksp_type,ierr)
+  call PCGetType(solver%pc,solver%pc_type,ierr)
+
+  call printMsg(option,'Solver: '//trim(solver%ksp_type))
+  call printMsg(option,'Preconditioner: '//trim(solver%pc_type))
+
+  ! Set the tolerances for the Newton solver.
+  call SNESSetTolerances(solver%snes, solver%atol, solver%rtol, solver%stol, & 
+                         solver%maxit, solver%maxf, ierr)
+
+  ! set inexact newton, currently applies default settings
+  if (option%inexact_newton) call SNESKSPSetUseEW(solver%snes,PETSC_TRUE,ierr)
+
+  ! allow override from command line; for some reason must come before
+  ! LineSearchParams, or they crash
+  call SNESSetFromOptions(solver%snes, ierr) 
+    
+  call SNESLineSearchGetParams(solver%snes, alpha, maxstep, steptol, ierr)  
+  call SNESLineSearchSetParams(solver%snes, alpha, maxstep, solver%stol, ierr)  
+
+
+end subroutine SolverSetSNESOptions
   
 ! ************************************************************************** !
 !
@@ -168,61 +243,6 @@ subroutine SolverReadPflow(solver,fid,myrank)
   enddo  
 
 end subroutine SolverReadPflow
-
-! ************************************************************************** !
-!
-! SolverComputeMFJacobian: Sets Jacobian B = J
-! author:
-! date: 
-!
-! ************************************************************************** !
-subroutine SolverComputeMFJacobian(snes, x, J, B, flag, ctx, ierr)
-  
-  implicit none
-
-  SNES, intent(in) :: snes
-  Vec, intent(in) :: x
-  Mat, intent(out) :: J, B
-  MatStructure, intent(in) :: flag
-  PetscInt, intent(inout) :: ctx(*)
-  PetscErrorCode, intent(out) :: ierr
-
-  call MatAssemblyBegin(J, MAT_FINAL_ASSEMBLY, ierr)
-  call MatAssemblyEnd(J, MAT_FINAL_ASSEMBLY, ierr)
-  B = J
-  
-end subroutine SolverComputeMFJacobian
-
-! ************************************************************************** !
-!
-! SolverMonitorH: Sets Jacobian B = J
-! author:
-! date: 
-!
-! ************************************************************************** !
-subroutine SolverMonitorH(snes, its, norm, solver, option)
-  
-  use Option_module
-  
-  implicit none
-
-  SNES, intent(in) :: snes
-  PetscInt, intent(in) :: its
-  PetscReal, intent(in) :: norm
-  type(solver_type) :: solver
-  type(option_type) :: option
-  
-  PetscErrorCode :: ierr
-  PetscMPIInt :: myrank
-  PetscReal :: h
-  
-  call MatMFFDGetH(solver%J, h, ierr)
-
-  if (option%myrank == 0) then
-    write(*,*) "#At SNES iteration ", its, "h is ", h
-  endif
-
-end subroutine SolverMonitorH
 
 ! ************************************************************************** !
 !

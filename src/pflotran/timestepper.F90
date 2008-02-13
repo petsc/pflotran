@@ -2,7 +2,8 @@ module Timestepper_module
  
   use Solver_module
   use Option_module
-  use Waypoint_module  
+  use Waypoint_module 
+  use Convergence_module 
  
   implicit none
 
@@ -24,13 +25,12 @@ module Timestepper_module
     
     PetscReal :: dt_min
     PetscReal :: dt_max
-!    PetscReal, pointer :: tstep(:)
-!    PetscReal, pointer :: dtstep(:)    
         
     type(solver_type), pointer :: solver
     type(waypoint_list_type), pointer :: waypoints
     type(waypoint_type), pointer :: cur_waypoint
     PetscReal, pointer :: steady_eps(:)  ! tolerance for stead state convergence
+    type(convergence_context_type), pointer :: convergence_context
     
   end type stepper_type
   
@@ -69,6 +69,7 @@ function TimestepperCreate()
   stepper%dt_max = 3.1536d6 ! One-tenth of a year.  
       
   nullify(stepper%solver)
+  nullify(stepper%convergence_context)
   nullify(stepper%cur_waypoint)
   
   stepper%solver => SolverCreate()
@@ -85,7 +86,7 @@ end function TimestepperCreate
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine StepperRun(realization,stepper,stage)
+subroutine StepperRun(realization,stepper)
 
   use Realization_module
   use Option_module
@@ -101,14 +102,9 @@ subroutine StepperRun(realization,stepper,stage)
 
   type(realization_type) :: realization
   type(stepper_type) :: stepper
-  PetscInt :: stage(*)
   
   type(option_type), pointer :: option
 
-  PetscReal dt_cur
-  PetscReal, pointer :: dxdt(:)
-  PetscInt :: idx, ista=0  
-  
   logical :: plot_flag, timestep_cut_flag, stop_flag
   PetscInt :: istep, num_timestep_cuts, start_step
   PetscInt :: num_newton_iterations
@@ -123,9 +119,12 @@ subroutine StepperRun(realization,stepper,stage)
   timestep_cut_flag = .false.
   stop_flag = .false.
 
+  ! add waypoints associated with boundary conditions, source/sinks etc. to list
   call RealizationAddWaypointsToList(realization,stepper%waypoints)
+  ! fill in holes in waypoint data
   call WaypointListFillIn(option,stepper%waypoints)
   call WaypointListRemoveExtraWaypnts(option,stepper%waypoints)
+  ! convert times from in put time to seconds
   call WaypointConvertTimes(stepper%waypoints,realization%output_option%tconv)
   stepper%cur_waypoint => stepper%waypoints%first
 
@@ -138,8 +137,12 @@ subroutine StepperRun(realization,stepper,stage)
     call StepperUpdateSolution(realization)
   endif
 
-  allocate(dxdt(1:option%ndof))  
-
+  ! print initial condition output if not a restarted sim
+  if (option%restart_flag == PETSC_FALSE) then
+    call Output(realization)
+    call OutputBreakthrough(realization)
+  endif
+           
   call PetscGetTime(stepper_start_time, ierr)
   start_step = stepper%flowsteps+1
   do istep = start_step, stepper%stepmax
@@ -148,24 +151,11 @@ subroutine StepperRun(realization,stepper,stage)
                        num_timestep_cuts,num_newton_iterations)
     call StepperUpdateSolution(realization)
 
-#if 0
-    ! needs to be modularized
-    dt_cur = option%dt 
-       
-    if(option%imode == THC_MODE)then
-      dxdt(1)=option%dpmax/dt_cur
-      dxdt(2)=option%dtmpmax/dt_cur
-      dxdt(3)=option%dcmax/dt_cur
-    endif  
-#endif    
-
-    call PetscLogStagePush(stage(2), ierr)
     if (plot_flag) then
       call Output(realization)
       plot_flag = .false.
     endif
     call OutputBreakthrough(realization)
-    call PetscLogStagePop(ierr)
   
     if (.not.timestep_cut_flag) &
       call StepperUpdateDT(stepper,option,num_newton_iterations)
@@ -187,27 +177,12 @@ subroutine StepperRun(realization,stepper,stage)
 
     if (option%checkpoint_flag == PETSC_TRUE .and. &
         mod(istep,option%checkpoint_frequency) == 0) then
-      call PetscLogStagePush(stage(2), ierr)
       call pflowGridCheckpoint(realization,stepper%flowsteps,stepper%newtcum, &
                                stepper%icutcum,timestep_cut_flag, &
                                num_timestep_cuts,num_newton_iterations,istep)
-      call PetscLogStagePop(ierr)
     endif
     
-#if 0    
-    ! needs to be modularized
-    ista=0
-    if(option%imode == THC_MODE)then
-      do idx = 1, option%ndof
-        if(dxdt(idx) < stepper%steady_eps(idx)) ista=ista+1
-      enddo 
-      
-      if(ista >= option%ndof)then
-        realization%output_option%plot_number=option%kplot; iplot=1     
-      endif
-    endif         
-#endif
-    
+   
     ! if at end of waypoint list (i.e. cur_waypoint = null), we are done!
     if (.not.associated(stepper%cur_waypoint) .or. stop_flag) exit
 
@@ -325,12 +300,7 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
   use translator_mph_module, only : translator_mph_step_maxchange
   use MPHASE_module
   use Richards_Lite_module
-#ifndef RICHARDS_ANALYTICAL  
-  use Richards_module
-  use translator_Richards_module, only : translator_ric_step_maxchange
-#else
   use Richards_Analytical_module
-#endif
   use Output_module
   
   use Realization_module
@@ -531,11 +501,7 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
           call VecCopy(field%pressure, field%ppressure, ierr)
           call VecCopy(field%temp, field%ttemp, ierr)
         case(RICHARDS_MODE)
-#ifndef RICHARDS_ANALYTICAL          
-          call pflow_richards_timecut(realization)
-#else            
           call RichardsTimeCut(realization)
-#endif
         case(RICHARDS_LITE_MODE)
           call RichardsLiteTimeCut(realization)
         case(MPH_MODE)
@@ -625,14 +591,9 @@ end subroutine StepperStepDT
 ! ************************************************************************** !
 subroutine StepperUpdateSolution(realization)
   
-  use pflow_vector_ops_module
   use MPHASE_module, only: pflow_update_mphase
   use Richards_Lite_module, only : RichardsLiteUpdateFixedAccum
-#ifndef RICHARDS_ANALYTICAL  
-  use Richards_module, only: pflow_update_richards
-#else
   use Richards_Analytical_module, only : RichardsUpdateFixedAccumulation
-#endif
 
   use Realization_module
   use Option_module
@@ -661,20 +622,11 @@ subroutine StepperUpdateSolution(realization)
     case(MPH_MODE)
       call pflow_update_mphase(realization)
     case(RICHARDS_MODE)
-#ifdef RICHARDS_ANALYTICAL    
       call RichardsUpdateFixedAccumulation(realization)
-#else
-      call pflow_update_richards(realization)
-#endif
     case(RICHARDS_LITE_MODE)
       call RichardsLiteUpdateFixedAccum(realization)
   end select    
 
-  if (option%run_coupled == PETSC_TRUE) then
-    field%xphi_co2 = field%xxphi_co2
-    field%den_co2 = field%dden_co2
-  endif
-  
   !integrate solid volume fraction using explicit finite difference
   if (option%rk > 0.d0) then
     call VecGetArrayF90(field%phis,phis_p,ierr)
@@ -709,6 +661,7 @@ subroutine TimestepperDestroy(stepper)
   if (.not.associated(stepper)) return
     
   call SolverDestroy(stepper%solver)
+  call ConvergenceContextDestroy(stepper%convergence_context)
 
   deallocate(stepper)
   nullify(stepper)
