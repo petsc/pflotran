@@ -38,22 +38,14 @@ module Option_module
     character(len=MAXNAMELENGTH) :: mode
     PetscInt :: imode
   
-    PetscInt :: nphase, ndof  ! Number of phases we are dealing with.
-    PetscInt :: nspec, npricomp
+    PetscInt :: nphase, ndof, nspec, npricomp
 
     ! Program options
     PetscTruth :: use_matrix_free  ! If true, do not form the Jacobian.
     
-    PetscInt :: idt_switch
-    
     PetscInt :: imod
     
     PetscTruth :: use_isoth
-
-    PetscTruth :: print_convergence
-    PetscTruth :: print_detailed_convergence
-    PetscTruth :: check_infinity_norm
-    PetscTruth :: force_at_least_1_iteration  
     
     character(len=MAXWORDLENGTH) :: generalized_grid
     logical :: use_generalized_grid
@@ -159,14 +151,8 @@ function OptionCreate()
   option%use_isoth = PETSC_FALSE
   option%use_matrix_free = PETSC_FALSE
   
-  option%print_convergence = PETSC_TRUE
-  option%print_detailed_convergence = PETSC_FALSE
-  option%check_infinity_norm = PETSC_TRUE
-  option%force_at_least_1_iteration = PETSC_TRUE
-  
   option%mode = ""
   option%imode = NULL_MODE
-  option%idt_switch = 0
    
 !-----------------------------------------------------------------------
       ! Initialize some parameters to sensible values.  These are parameters

@@ -32,7 +32,7 @@
   use Simulation_module
   use Transport_Realization_module
   use Transport_Timestepper_module
-  use Transport_Solver_module
+  use Solver_module
   use Grid_module
   use Option_module
   use Transport_Init_module
@@ -53,7 +53,7 @@
   character(len=MAXSTRINGLENGTH) :: ptranin
   
   type(simulation_type), pointer :: simulation
-  type(tr_solver_type), pointer :: solver
+  type(solver_type), pointer :: solver
   type(tr_stepper_type), pointer :: stepper
   type(tr_realization_type), pointer :: realization
   type(grid_type), pointer :: grid

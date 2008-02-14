@@ -8,7 +8,7 @@ module Simulation_module
 #ifdef TRANSPORT
   use Transport_Realization_module
   use Transport_Timestepper_module
-  use Transport_Solver_module
+  use Solver_module
 #endif
 
   implicit none

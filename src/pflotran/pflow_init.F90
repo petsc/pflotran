@@ -62,10 +62,6 @@ subroutine PflowInit(simulation,filename)
   PetscInt :: mcomp, mphas
   PetscInt :: temp_int
   PetscTruth :: iflag
-
-  PetscReal :: alpha, maxstep, steptol
-
-  PetscReal, pointer :: phis_p(:)
                        
   PetscErrorCode :: ierr
   
@@ -273,7 +269,10 @@ subroutine PflowInit(simulation,filename)
                            realization, ierr)
   end select
 
-  call SolverSetSNESOptions(solver,option)
+  call SolverSetSNESOptions(solver)
+
+  call printMsg(option,'Solver: '//trim(solver%ksp_type))
+  call printMsg(option,'Preconditioner: '//trim(solver%pc_type))
 
   ! shell for custom convergence test.  The default SNES convergence test  
   ! is call within this function. 
@@ -1153,16 +1152,16 @@ subroutine readInput(simulation,filename)
 !......................
 
       case ('NO_PRINT_CONVERGENCE')
-        option%print_convergence = PETSC_FALSE
+        solver%print_convergence = PETSC_FALSE
 
       case ('NO_INF_NORM','NO_INFINITY_NORM')
-        option%check_infinity_norm = PETSC_FALSE
+        solver%check_infinity_norm = PETSC_FALSE
 
       case ('NO_FORCE_ITERATION')
-        option%force_at_least_1_iteration = PETSC_FALSE
+        solver%force_at_least_1_iteration = PETSC_FALSE
 
       case ('PRINT_DETAILED_CONVERGENCE')
-        option%print_detailed_convergence = PETSC_TRUE
+        solver%print_detailed_convergence = PETSC_TRUE
 
 !....................
 
@@ -1199,7 +1198,7 @@ subroutine readInput(simulation,filename)
         call fiReadInt(string,solver%maxf,ierr)
         call fiDefaultMsg(option%myrank,'maxf',ierr)
        
-        call fiReadInt(string,option%idt_switch,ierr)
+        call fiReadInt(string,idum,ierr)
         call fiDefaultMsg(option%myrank,'idt',ierr)
         
         solver%inf_tol = solver%atol
@@ -1216,7 +1215,7 @@ subroutine readInput(simulation,filename)
           &"  idt         = ",8x,i5 &
           &    )') &
            solver%atol,solver%rtol,solver%stol,solver%dtol,solver%maxit, &
-           solver%maxf,option%idt_switch
+           solver%maxf,idum
 
 ! The line below is a commented-out portion of the format string above.
 ! We have to put it here because of the stupid Sun compiler.

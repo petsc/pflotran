@@ -37,6 +37,11 @@ module Solver_module
     PC    ::  pc
     
     PetscTruth :: inexact_newton
+
+    PetscTruth :: print_convergence
+    PetscTruth :: print_detailed_convergence
+    PetscTruth :: check_infinity_norm
+    PetscTruth :: force_at_least_1_iteration    
             
   end type solver_type
   
@@ -86,6 +91,11 @@ function SolverCreate()
   
   solver%inexact_newton = PETSC_FALSE
   
+  solver%print_convergence = PETSC_TRUE
+  solver%print_detailed_convergence = PETSC_FALSE
+  solver%check_infinity_norm = PETSC_TRUE
+  solver%force_at_least_1_iteration = PETSC_TRUE
+    
   SolverCreate => solver
   
 end function SolverCreate
@@ -98,8 +108,6 @@ end function SolverCreate
 !
 ! ************************************************************************** !
 subroutine SolverCreateSNES(solver)
-
-  use Option_module
 
   implicit none
   
@@ -122,15 +130,13 @@ end subroutine SolverCreateSNES
 ! date: 02/12/08
 !
 ! ************************************************************************** !
-subroutine SolverSetSNESOptions(solver,option)
-
-  use Option_module
+subroutine SolverSetSNESOptions(solver)
 
   implicit none
   
   type(solver_type) :: solver
-  type(option_type) :: option
 
+  PetscMPIInt :: myrank
   ! needed for SNESLineSearchGetParams()/SNESLineSearchSetParams()
   PetscReal :: alpha, maxstep, steptol
   PetscErrorCode :: ierr
@@ -151,9 +157,6 @@ subroutine SolverSetSNESOptions(solver,option)
   ! get the ksp_type and pc_type incase of command line override.
   call KSPGetType(solver%ksp,solver%ksp_type,ierr)
   call PCGetType(solver%pc,solver%pc_type,ierr)
-
-  call printMsg(option,'Solver: '//trim(solver%ksp_type))
-  call printMsg(option,'Preconditioner: '//trim(solver%pc_type))
 
   ! Set the tolerances for the Newton solver.
   call SNESSetTolerances(solver%snes, solver%atol, solver%rtol, solver%stol, & 

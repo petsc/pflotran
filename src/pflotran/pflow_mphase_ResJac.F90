@@ -1798,7 +1798,7 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
 
 !adjust residual to R/dt
 
-  select case (option%idt_switch) 
+  select case (mphase_option%idt_switch) 
     case(1) 
       r_p(:) = r_p(:)/option%dt
     case(-1)
@@ -2295,7 +2295,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
   !  print *,'Mph Jaco max dev = ', max_dev
  !  endif
   
-    select case(option%idt_switch)
+    select case(mphase_option%idt_switch)
       case(1) 
         ra(1:option%ndof,1:option%ndof) =ra(1:option%ndof,1:option%ndof) /option%dt
       case(-1)
@@ -2459,7 +2459,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
       p1=(natural_id_up)*option%ndof
       p2=(natural_id_dn)*option%ndof
  
-      select case(option%idt_switch)
+      select case(mphase_option%idt_switch)
         case(1)
           ra =ra / option%dt
         case(-1)  

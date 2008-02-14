@@ -1,6 +1,6 @@
 module Transport_Timestepper_module
  
-  use Transport_Solver_module
+  use Solver_module
   use Option_module
   use Waypoint_module  
  
@@ -27,7 +27,7 @@ module Transport_Timestepper_module
 !    PetscReal, pointer :: tstep(:)
 !    PetscReal, pointer :: dtstep(:)    
         
-    type(tr_solver_type), pointer :: solver
+    type(solver_type), pointer :: solver
     type(waypoint_list_type), pointer :: waypoints
     type(waypoint_type), pointer :: cur_waypoint
     PetscReal, pointer :: steady_eps(:)  ! tolerance for stead state convergence
@@ -71,7 +71,7 @@ function TrTimestepperCreate()
   nullify(stepper%solver)
   nullify(stepper%cur_waypoint)
   
-  stepper%solver => TrSolverCreate()
+  stepper%solver => SolverCreate()
   stepper%waypoints => WaypointListCreate()
   
   TrTimestepperCreate => stepper
@@ -326,7 +326,7 @@ subroutine TrStepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
   use Transport_Realization_module
   use Grid_module
   use Option_module
-  use Transport_Solver_module
+  use Solver_module
 !  use Field_module
   
   implicit none
@@ -691,7 +691,7 @@ subroutine TrTimestepperDestroy(stepper)
   
   if (.not.associated(stepper)) return
     
-  call TrSolverDestroy(stepper%solver)
+  call SolverDestroy(stepper%solver)
 
   deallocate(stepper)
   nullify(stepper)

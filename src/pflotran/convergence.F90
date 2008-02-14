@@ -145,7 +145,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
   option => context%option
 
   ! always take one iteration
-  if (option%force_at_least_1_iteration == PETSC_TRUE) then
+  if (solver%force_at_least_1_iteration == PETSC_TRUE) then
 !    call SNESGetIterationNumber(snes_,it,ierr)
     if (it == 0) then
       reason = 0
@@ -155,7 +155,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
 
   call SNESDefaultConverged(snes_,it,xnorm,pnorm,fnorm,reason,PETSC_NULL_OBJECT,ierr)
  
-  if (reason <= 0 .and. option%check_infinity_norm == PETSC_TRUE) then
+  if (reason <= 0 .and. solver%check_infinity_norm == PETSC_TRUE) then
   
     call SNESGetFunction(snes_,residual_vec,PETSC_NULL_OBJECT,PETSC_NULL_INTEGER, &
                          ierr)
@@ -169,11 +169,11 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
 
   endif    
  
-  if (option%myrank == 0 .and. option%print_convergence == PETSC_TRUE) &
+  if (option%myrank == 0 .and. solver%print_convergence == PETSC_TRUE) &
     print *, 'snes_default', xnorm,pnorm,fnorm,reason
 
 
-  if (option%print_detailed_convergence == PETSC_TRUE) then
+  if (solver%print_detailed_convergence == PETSC_TRUE) then
 
     call SNESGetSolution(snes_,solution_vec,ierr)
     ! the ctx object should really be PETSC_NULL_OBJECT.  A bug in petsc

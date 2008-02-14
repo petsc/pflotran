@@ -68,6 +68,8 @@ module mphase_option_module
     PetscInt :: jh2o = 1
     PetscInt :: jco2 = 2
     PetscInt :: jgas = 3
+    
+    PetscInt :: idt_switch    
 
     PetscReal, pointer :: rate(:)
     PetscReal, pointer :: area_var(:)

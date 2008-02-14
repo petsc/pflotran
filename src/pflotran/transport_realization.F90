@@ -38,9 +38,9 @@ private
   end type tr_realization_type
 
   public :: TrRealizationCreate, TrRealizationDestroy, &
-            RealizationProcessCouplers, &
-            RealizationInitCouplerAuxVars, &
-            RealizationUpdate, RealizationAddWaypointsToList
+            TrRealizationProcessCouplers, &
+            TrRealizationInitCouplerAuxVars, &
+            TrRealizationUpdate, TrRealizationAddWaypointsToList
   
 contains
   
@@ -283,8 +283,8 @@ subroutine TrRealizationInitCouplerAuxVars(realization,coupler_list)
   enddo
   
   force_update_flag = .true.
-  call RealizationUpdateCouplerAuxVars(realization,coupler_list, &
-                                       force_update_flag)
+  call TrRealizationUpdateCouplerAuxVars(realization,coupler_list, &
+                                         force_update_flag)
 
 end subroutine TrRealizationInitCouplerAuxVars
 
@@ -384,8 +384,8 @@ subroutine TrRealizationUpdate(realization)
   
   ! must update conditions first
   call ConditionUpdate(realization%conditions,realization%option,realization%option%time)
-  call RealizationUpdateCouplerAuxVars(realization,realization%boundary_conditions, &
-                                       force_update_flag)
+  call TrRealizationUpdateCouplerAuxVars(realization,realization%boundary_conditions, &
+                                         force_update_flag)
 ! currently don't use aux_vars, just condition for src/sinks
 !  call RealizationUpdateSrcSinks(realization)
 
