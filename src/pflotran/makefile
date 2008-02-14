@@ -113,6 +113,8 @@ ptran_obj = ${common_src}option.o \
 pflotran_obj = ${common_src}rock_react.o \
 	${common_src}pflotran_couple.o
 
+pflowamr: $(util_obj) $(pflow_obj)
+
 pflow : $(util_obj) $(pflow_obj) ${pflow_src}pflow.o
 	${FLINKER}   -o pflow $(util_obj) $(pflow_obj) ${pflow_src}pflow.o ${PETSC_LIB} ${LIBS}
 

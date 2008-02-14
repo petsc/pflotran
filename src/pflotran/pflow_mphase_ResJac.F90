@@ -1340,21 +1340,21 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
 
     select case (iiphase)
       case (1)
-        if(xx_loc_p((ghosted_id-1)*option%ndof+3) < .8)then
+       if(xx_loc_p((ghosted_id-1)*option%ndof+3) < .8)then
           mphase_option%delx(3,ghosted_id) =  dfac*xx_loc_p((ghosted_id-1)*option%ndof+3)
-        else
+       else
           mphase_option%delx(3,ghosted_id) = -dfac*xx_loc_p((ghosted_id-1)*option%ndof+3) 
-        endif
-        if(mphase_option%delx(3,ghosted_id) < 1D-9 .and. mphase_option%delx(3,ghosted_id)>=0.D0)mphase_option%delx(3,ghosted_id) =1D-9
-        if(mphase_option%delx(3,ghosted_id) >-1D-9 .and. mphase_option%delx(3,ghosted_id)<0.D0)mphase_option%delx(3,ghosted_id) =-1D-9
+       endif
+       if(mphase_option%delx(3,ghosted_id)<1D-9 .and. mphase_option%delx(3,ghosted_id)>=0.D0)mphase_option%delx(3,ghosted_id)=1D-9
+       if(mphase_option%delx(3,ghosted_id)>-1D-9 .and. mphase_option%delx(3,ghosted_id)<0.D0)mphase_option%delx(3,ghosted_id)=-1D-9
       case(2)  
-        if(xx_loc_p((ghosted_id-1)*option%ndof+3) <0.8)then
+       if(xx_loc_p((ghosted_id-1)*option%ndof+3) <0.8)then
           mphase_option%delx(3,ghosted_id) =  dfac*xx_loc_p((ghosted_id-1)*option%ndof+3) 
-        else
+       else
           mphase_option%delx(3,ghosted_id) = -dfac*xx_loc_p((ghosted_id-1)*option%ndof+3) 
-        endif 
-        if(mphase_option%delx(3,ghosted_id) < 1D-9 .and. mphase_option%delx(3,ghosted_id)>=0.D0)mphase_option%delx(3,ghosted_id) =1D-9
-        if(mphase_option%delx(3,ghosted_id) >-1D-9 .and. mphase_option%delx(3,ghosted_id)<0.D0)mphase_option%delx(3,ghosted_id) =-1D-9
+       endif 
+       if(mphase_option%delx(3,ghosted_id)<1D-9 .and. mphase_option%delx(3,ghosted_id)>=0.D0)mphase_option%delx(3,ghosted_id)=1D-9
+       if(mphase_option%delx(3,ghosted_id)>-1D-9 .and. mphase_option%delx(3,ghosted_id)<0.D0)mphase_option%delx(3,ghosted_id)=-1D-9
       case(3)
         if(xx_loc_p((ghosted_id-1)*option%ndof+3) <=0.9)then
           mphase_option%delx(3,ghosted_id) = dfac*xx_loc_p((ghosted_id-1)*option%ndof+3) 
@@ -1362,8 +1362,8 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
           mphase_option%delx(3,ghosted_id) = -dfac*xx_loc_p((ghosted_id-1)*option%ndof+3) 
         endif 
         
-        if(mphase_option%delx(3,ghosted_id) < 1D-9 .and. mphase_option%delx(3,ghosted_id)>=0.D0)mphase_option%delx(3,ghosted_id) = 1D-9
-        if(mphase_option%delx(3,ghosted_id) >-1D-9 .and. mphase_option%delx(3,ghosted_id)<0.D0)mphase_option%delx(3,ghosted_id) =-1D-9
+       if(mphase_option%delx(3,ghosted_id)<1D-9 .and. mphase_option%delx(3,ghosted_id)>=0.D0)mphase_option%delx(3,ghosted_id)=1D-9
+       if(mphase_option%delx(3,ghosted_id)>-1D-9 .and. mphase_option%delx(3,ghosted_id)<0.D0)mphase_option%delx(3,ghosted_id)=-1D-9
         
         if((mphase_option%delx(3,ghosted_id)+xx_loc_p((ghosted_id-1)*option%ndof+3))>1.D0)then
           mphase_option%delx(3,ghosted_id) = (1.D0-xx_loc_p((ghosted_id-1)*option%ndof+3))/1D5
@@ -2431,7 +2431,8 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
                               distance_gravity,upweight, &
                               option, vv_darcy,Res)
  
-        ra(:,nvar+option%ndof)= Res(:)/mphase_option%delx(nvar,ghosted_id_dn)-ResOld_FL(sum_connection,:)/mphase_option%delx(nvar,ghosted_id_dn)
+        ra(:,nvar+option%ndof)=Res(:)/mphase_option%delx(nvar,ghosted_id_dn) &
+                              -ResOld_FL(sum_connection,:)/mphase_option%delx(nvar,ghosted_id_dn)
 
      
 !     if(vv_darcy(1)>0.D0 .and. option%iupstream(sum_connection,1) == -1) i_upstream_revert =3 
