@@ -19,7 +19,11 @@ module Debug_module
   end type pflow_debug_type
   
   type, public :: ptran_debug_type
-    logical :: placeholder
+    logical :: vecview_residual
+    logical :: vecview_solution
+    logical :: matview_Jacobian
+    logical :: matview_Jacobian_detailed
+    logical :: norm_Jacobian
   end type ptran_debug_type
 
   interface DebugRead

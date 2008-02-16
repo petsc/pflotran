@@ -10,6 +10,10 @@ module Transport_Realization_module
   use Breakthrough_module
 !  use Field_module
   use Debug_module
+  
+  use RTField_module
+  use RTOption_module
+  use Reactive_Transport_Aux_module
 
   implicit none
 
@@ -34,6 +38,10 @@ private
     
     type(material_type), pointer :: materials
     type(material_ptr_type), pointer :: material_array(:)
+    
+    type(rt_option_type), pointer :: rt_option
+    type(rt_field_type), pointer :: field
+    type(reactive_transport_aux_type), pointer :: aux
     
   end type tr_realization_type
 
@@ -61,6 +69,8 @@ function TrRealizationCreate()
   
   allocate(realization)
   realization%option => OptionCreate()
+  realization%rt_option => RTOptionCreate()
+  realization%field => RTFieldCreate()
 !  realization%field => FieldCreate()
   realization%debug => DebugCreatePtran()
   realization%output_option => OutputOptionCreate()
@@ -79,6 +89,8 @@ function TrRealizationCreate()
   call StrataInitList(realization%strata)
   allocate(realization%breakthrough)
   call BreakthroughInitList(realization%breakthrough)
+  
+  realization%aux => ReactiveTransportAuxCreate()
   
   nullify(realization%materials)
   nullify(realization%material_array)
@@ -489,6 +501,8 @@ subroutine TrRealizationDestroy(realization)
     deallocate(realization%material_array)
   nullify(realization%material_array)
   call MaterialDestroy(realization%materials)
+  
+  call ReactiveTransportAuxDestroy(realization%aux)
     
 end subroutine TrRealizationDestroy
   

@@ -40,18 +40,18 @@ module Transport_Output_module
   PetscMPIInt :: hdf5_err
   PetscErrorCode :: ierr
   
-  public :: TrOutput
+  public :: RTOutput
   
 contains
 
 ! ************************************************************************** !
 !
-! Output: Main driver for all output subroutines
+! RTOutput: Main driver for all output subroutines
 ! author: Glenn Hammond
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine TrOutput(realization)
+subroutine RTOutput(realization)
 
   use Transport_Realization_module
   
@@ -80,7 +80,7 @@ subroutine TrOutput(realization)
   
   realization%output_option%plot_number = realization%output_option%plot_number + 1
 
-end subroutine TrOutput
+end subroutine RTOutput
 #if 0
 ! ************************************************************************** !
 !

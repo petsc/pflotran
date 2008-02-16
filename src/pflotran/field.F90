@@ -7,31 +7,10 @@ module Field_module
   private
 
 #include "definitions.h"
-! Apparently the PETSc authors believe that Fortran 90 modules should ensure
-! that PETSC_AVOID_DECLARATIONS and PETSC_AVOID_MPIF_H are defined when the
-! PETSc header files are included.  I can get around this, though, by making
-! the definitions in these headers private.
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
-  ! It is VERY IMPORTANT to make sure that the above .h90 file gets included.
-  ! Otherwise some very strange things will happen and PETSc will give no
-  ! indication of what the problem is.
-#include "include/finclude/petscmat.h"
-#include "include/finclude/petscmat.h90"
-#include "include/finclude/petscda.h"
-#include "include/finclude/petscda.h90"
-#include "include/finclude/petscsnes.h"
-#include "include/finclude/petscksp.h"
-#include "include/finclude/petscpc.h"
-#include "include/finclude/petscviewer.h"
-#include "include/finclude/petscsys.h"
-#include "include/finclude/petscis.h"
-#include "include/finclude/petscis.h90"
-#include "include/finclude/petsclog.h"
 
   type, public :: field_type 
-  
-
     
 !geh material id
     PetscInt, pointer :: imat(:)
@@ -120,22 +99,44 @@ end function FieldCreate
 ! ************************************************************************** !
 subroutine FieldDestroy(field)
 
-  
-
   implicit none
   
   type(field_type), pointer :: field
   
-  PetscMPIInt :: myrank, ierr
+  PetscErrorCode :: ierr
+
+  ! Destroy PetscVecs
+  if (field%porosity0 /= 0) call VecDestroy(field%porosity0,ierr)
+  if (field%porosity_loc /= 0) call VecDestroy(field%porosity_loc,ierr)
+  if (field%tor_loc /= 0) call VecDestroy(field%tor_loc,ierr)
+  if (field%ithrm_loc /= 0) call VecDestroy(field%ithrm_loc,ierr)
+  if (field%icap_loc /= 0) call VecDestroy(field%icap_loc,ierr)
+  if (field%iphas_loc /= 0) call VecDestroy(field%iphas_loc,ierr)
+  if (field%iphas_old_loc /= 0) call VecDestroy(field%iphas_old_loc,ierr)
+
+  if (field%perm_xx_loc /= 0) call VecDestroy(field%perm_xx_loc,ierr)
+  if (field%perm_yy_loc /= 0) call VecDestroy(field%perm_yy_loc,ierr)
+  if (field%perm_zz_loc /= 0) call VecDestroy(field%perm_zz_loc,ierr)
+  if (field%perm0_xx /= 0) call VecDestroy(field%perm0_xx,ierr)
+  if (field%perm0_yy /= 0) call VecDestroy(field%perm0_yy,ierr)
+  if (field%perm0_zz /= 0) call VecDestroy(field%perm0_zz,ierr)
+  if (field%perm_pow /= 0) call VecDestroy(field%perm_pow,ierr)
   
-  call MPI_Comm_Rank(PETSC_COMM_WORLD,myrank,ierr)
-  if (myrank == 0) then
-    print *, 'Need to implement FieldDestroy'
-  endif
+  if (field%r /= 0) call VecDestroy(field%r,ierr)
+  if (field%xx /= 0) call VecDestroy(field%xx,ierr)
+  if (field%xx_loc /= 0) call VecDestroy(field%xx_loc,ierr)
+  if (field%dxx /= 0) call VecDestroy(field%dxx,ierr)
+  if (field%yy /= 0) call VecDestroy(field%yy,ierr)
+  if (field%accum /= 0) call VecDestroy(field%accum,ierr)
   
-  ! all kinds of stuff needs to be added here.
+  if (associated(field%imat)) deallocate(field%imat)
+  nullify(field%imat)
+  if (associated(field%internal_velocities)) deallocate(field%internal_velocities)
+  nullify(field%internal_velocities)
+  if (associated(field%boundary_velocities)) deallocate(field%boundary_velocities)
+  nullify(field%boundary_velocities)
   
-  
+    
   deallocate(field)
   nullify(field)
   

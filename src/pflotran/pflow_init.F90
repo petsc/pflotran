@@ -676,6 +676,7 @@ subroutine readInput(simulation,filename)
         region => RegionCreate()
         call fiReadWord(string,region%name,.true.,ierr)
         call fiErrorMsg(option%myrank,'regn','name',ierr) 
+        call printMsg(option,region%name)
         call fiReadFlotranString(IUNIT1,string,ierr)
         call fiReadStringErrorMsg(option%myrank,'REGN',ierr)
         call fiReadWord(string,word,.true.,ierr)
@@ -722,6 +723,7 @@ subroutine readInput(simulation,filename)
         condition => ConditionCreate(option)
         call fiReadWord(string,condition%name,.true.,ierr)
         call fiErrorMsg(option%myrank,'cond','name',ierr) 
+        call printMsg(option,condition%name)
         call ConditionRead(condition,option,IUNIT1)
         call ConditionAddToList(condition,realization%conditions)
       
@@ -911,7 +913,7 @@ subroutine readInput(simulation,filename)
             & "  iread_perm = ",3x,i2,/, &
             & "  iread_geom = ",3x,i2 &
             & )') idum,option%imod,idum, &
-            option%iblkfmt,stepper%ndtcmx,idum,idum,idum,option%iread_geom
+            option%iblkfmt,stepper%ndtcmx,idum,rdum,idum,option%iread_geom
 
 !....................
 

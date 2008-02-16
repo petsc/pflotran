@@ -29,13 +29,18 @@ subroutine PtranInit(simulation,filename)
   use Option_module
   use Grid_module
   use Solver_module
-  use Transport_Realization_module
+  use Realization_module
+  use Field_module
   use Material_module
-  use Transport_Timestepper_module
   use Connection_module
   use Coupler_module
   use Debug_module
-  
+
+  use Transport_Realization_module
+  use Transport_Timestepper_module
+  use TROption_module
+  use TRField_module
+    
   use Convergence_module
   use Utility_module
     
@@ -44,12 +49,17 @@ subroutine PtranInit(simulation,filename)
   type(simulation_type) :: simulation
   character(len=MAXWORDLENGTH) :: filename
 
+  type(realization_type), pointer :: f_realization
+  type(tr_realization_type), pointer :: realization
   type(tr_stepper_type), pointer :: stepper
   type(solver_type), pointer :: solver
-  type(tr_realization_type), pointer :: realization
   type(grid_type), pointer :: grid
-  type(option_type), pointer :: option
+  type(option_type), pointer :: f_option
   type(ptran_debug_type), pointer :: debug
+  type(field_type), pointer :: f_field
+  type(rt_field_type), pointer :: field
+  type(rt_option_type), pointer :: option
+  
   PetscInt :: temp_int
 
   PetscErrorCode :: ierr
@@ -74,7 +84,7 @@ subroutine PtranInit(simulation,filename)
   ! process command line options
   call OptionCheckCommandLine(option)
 
- ! call GridCreateTransportDMs(grid,option)
+  call GridCreateTransportDMs(grid,option)
   
  !-----------------------------------------------------------------------
  ! Create the vectors with parallel layout corresponding to the DM's,

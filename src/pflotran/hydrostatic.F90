@@ -225,6 +225,7 @@ subroutine HydrostaticUpdateCouplerBetter(coupler,option,grid)
   PetscReal :: temperature_at_datum, temperature
   PetscReal :: concentration_at_datum
   PetscReal :: xm_nacl, dw_kg
+  PetscReal :: max_z, min_z
   PetscReal, pointer :: pressure_array(:), density_array(:), z(:)
   PetscReal :: pressure_gradient(3), datum(3)
   PetscReal :: temperature_gradient(3), concentration_gradient(3)
@@ -261,9 +262,10 @@ subroutine HydrostaticUpdateCouplerBetter(coupler,option,grid)
   if (dabs(pressure_gradient(Z_DIRECTION)) < 1.d-40) then
     ! compute the vertical gradient based on a 1 meter vertical spacing and
     ! interpolate the values from that array
-    num_pressures = int((max(grid%z_max,datum(Z_DIRECTION)) - &
-                        min(grid%z_min,datum(Z_DIRECTION))) / &
-                        delta_z) + 1
+    max_z = max(grid%z_max,datum(Z_DIRECTION))+1.d0 ! add 1m buffer
+    min_z = min(grid%z_min,datum(Z_DIRECTION))-1.d0
+    
+    num_pressures = int((max_z-min_z)/delta_z) + 1
     allocate(pressure_array(num_pressures))
     allocate(density_array(num_pressures))
     allocate(z(num_pressures))
@@ -272,10 +274,8 @@ subroutine HydrostaticUpdateCouplerBetter(coupler,option,grid)
     z = 0.d0
     ! place this pressure in the array
     idatum = int(datum(Z_DIRECTION)/delta_z - &
-                 min(grid%z_min,datum(Z_DIRECTION)) / &
-                 (max(grid%z_max,datum(Z_DIRECTION)) - &
-                  min(grid%z_min,datum(Z_DIRECTION))) * &
-                  dble(num_pressures))+1
+                 min_z/(max_z-min_z) * &
+                 dble(num_pressures))+1
     pressure_array(idatum) = pressure_at_datum
     call nacl_den(temperature_at_datum,pressure_at_datum*1.d-6,xm_nacl,dw_kg) 
     temperature = temperature_at_datum

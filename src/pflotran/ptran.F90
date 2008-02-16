@@ -48,7 +48,6 @@
   PetscMPIInt :: myrank, commsize
 
   PetscInt :: ierr
-  PetscInt :: stage(10)
   PetscTruth :: option_found  ! For testing presence of a command-line option.
   character(len=MAXSTRINGLENGTH) :: ptranin
   
@@ -84,11 +83,11 @@
   call PtranInit(simulation,ptranin)
 
   if (option%restart_flag == PETSC_FALSE) then
-    call TrOutput(realization)
+    call RTOutput(realization)
 !    call OutputBreakthrough(realization)
   endif
 
-  call TrStepperRun(realization,stepper,stage)
+  call TrStepperRun(realization,stepper)
   
   call SimulationDestroy(simulation)
 

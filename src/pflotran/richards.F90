@@ -412,7 +412,10 @@ subroutine RichardsUpdateSolution(realization)
   implicit none
   
   type(realization_type) :: realization
+
+  PetscErrorCode :: ierr
   
+  call VecCopy(realization%field%xx,realization%field%yy,ierr)   
   call RichardsUpdateFixedAccumulation(realization)
 
 end subroutine RichardsUpdateSolution
@@ -450,8 +453,6 @@ subroutine RichardsUpdateFixedAccumulation(realization)
   option => realization%option
   grid => realization%grid
   field => realization%field
-  
-  call VecCopy(field%xx, field%yy, ierr)   
   
   call VecGetArrayF90(field%xx,xx_p, ierr)
   call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr)
@@ -1546,7 +1547,6 @@ subroutine RichardsAnalyticalResidual(snes,xx,r,realization,ierr)
   PetscReal :: dw_kg, dw_mol
   PetscReal :: tsrc1, qsrc1, csrc1, enth_src_h2o, enth_src_co2 , hsrc1
   PetscReal :: upweight
-  PetscReal :: xxbc(realization%option%ndof)
   PetscInt :: iphasebc
   PetscReal :: Res(realization%option%ndof), v_darcy
   PetscViewer :: viewer
@@ -1791,22 +1791,6 @@ subroutine RichardsAnalyticalResidual(snes,xx,r,realization,ierr)
                          OptionDotProduct(option%gravity, &
                                           cur_connection_set%dist(1:3,iconn))
 
-      do idof=1,option%ndof
-        select case(boundary_condition%condition%itype(idof))
-          case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
-            xxbc(idof) = boundary_condition%aux_real_var(idof,iconn)
-          case(NEUMANN_BC,ZERO_GRADIENT_BC)
-            xxbc(idof) = xx_loc_p((ghosted_id-1)*option%ndof+idof)
-        end select
-      enddo
-      
-      select case(boundary_condition%condition%itype(RICHARDS_PRESSURE_DOF))
-        case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
-          iphasebc = boundary_condition%aux_int_var(1,iconn)
-        case(NEUMANN_BC,ZERO_GRADIENT_BC)
-          iphasebc=int(iphase_loc_p(ghosted_id))                               
-      end select
-
       icap_dn = int(icap_loc_p(ghosted_id))  
 
       call RichardsBCFlux(boundary_condition%condition%itype, &
@@ -1923,7 +1907,6 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
   PetscReal :: zero, norm
   PetscReal :: upweight
   PetscReal :: max_dev  
-  PetscReal :: xxbc(realization%option%ndof)
   PetscInt :: iphasebc
   PetscInt :: local_id, ghosted_id
   PetscInt :: local_id_up, local_id_dn
@@ -2209,23 +2192,6 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
       distance_gravity = cur_connection_set%dist(0,iconn) * &
                          OptionDotProduct(option%gravity, &
                                           cur_connection_set%dist(1:3,iconn))
-
-      do idof=1,option%ndof
-        select case(boundary_condition%condition%itype(idof))
-          case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
-            xxbc(idof) = boundary_condition%aux_real_var(idof,iconn)
-          case(NEUMANN_BC,ZERO_GRADIENT_BC)
-            xxbc(idof) = xx_loc_p((ghosted_id-1)*option%ndof+idof)
-        end select
-      enddo
-      
-      select case(boundary_condition%condition%itype(RICHARDS_PRESSURE_DOF))
-        case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
-          iphasebc = boundary_condition%aux_int_var(1,iconn)
-        case(NEUMANN_BC,ZERO_GRADIENT_BC)
-          iphasebc=int(iphase_loc_p(ghosted_id))                               
-      end select
-
       icap_dn = int(icap_loc_p(ghosted_id))  
 
       call RichardsBCFluxDerivative(boundary_condition%condition%itype, &
@@ -2775,5 +2741,30 @@ subroutine computeAuxVar(x,aux_var,iphase,saturation_function,option)
   aux_var%du_dt = hw_dt + pw/(dw_mol*dw_mol)*option%scale*dw_dt
 
 end subroutine computeAuxVar
+
+
+! ************************************************************************** !
+!
+! RichardsDestroy: Deallocates variables associated with Richard
+! author: Glenn Hammond
+! date: 02/14/08
+!
+! ************************************************************************** !
+subroutine RichardsDestroy()
+
+  implicit none
+  
+  ! need to free array in aux vars
+  
+  deallocate(aux_vars)
+  nullify(aux_vars)
+  deallocate(aux_vars_bc)
+  nullify(aux_vars_bc)
+  deallocate(zero_rows_local)
+  nullify(zero_rows_local)
+  deallocate(zero_rows_local_ghosted)
+  nullify(zero_rows_local_ghosted)
+
+end subroutine RichardsDestroy
 
 end module Richards_Analytical_module
