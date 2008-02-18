@@ -11,7 +11,7 @@ module Transport_Realization_module
 !  use Field_module
   use Debug_module
   
-  use RTField_module
+  use Field_module
   use RTOption_module
   use Reactive_Transport_Aux_module
 
@@ -40,7 +40,7 @@ private
     type(material_ptr_type), pointer :: material_array(:)
     
     type(rt_option_type), pointer :: rt_option
-    type(rt_field_type), pointer :: field
+    type(field_type), pointer :: field
     type(reactive_transport_aux_type), pointer :: aux
     
   end type tr_realization_type
@@ -70,7 +70,7 @@ function TrRealizationCreate()
   allocate(realization)
   realization%option => OptionCreate()
   realization%rt_option => RTOptionCreate()
-  realization%field => RTFieldCreate()
+  realization%field => FieldCreate()
 !  realization%field => FieldCreate()
   realization%debug => DebugCreatePtran()
   realization%output_option => OutputOptionCreate()
@@ -272,18 +272,18 @@ subroutine TrRealizationInitCouplerAuxVars(realization,coupler_list)
       num_connections = coupler%connection%num_connections
 
       ! allocate arrays that match the number of connections
-      select case(option%imode)
+      select case(option%iflowmode)
 
         case(RICHARDS_MODE,RICHARDS_LITE_MODE)
        
-          allocate(coupler%aux_real_var(option%ndof*option%nphase,num_connections))
+          allocate(coupler%aux_real_var(option%nflowdof*option%nphase,num_connections))
           allocate(coupler%aux_int_var(1,num_connections))
           coupler%aux_real_var = 0.d0
           coupler%aux_int_var = 0
 
         case(MPH_MODE)
 
-          allocate(coupler%aux_real_var(option%ndof*option%nphase,num_connections))
+          allocate(coupler%aux_real_var(option%nflowdof*option%nphase,num_connections))
           allocate(coupler%aux_int_var(1,num_connections))
           coupler%aux_real_var = 0.d0
           coupler%aux_int_var = 0
@@ -335,7 +335,7 @@ subroutine TrRealizationUpdateCouplerAuxVars(realization,coupler_list, &
       condition => coupler%condition
 
       update = .false.
-      select case(realization%option%imode)
+      select case(realization%option%iflowmode)
         case(RICHARDS_MODE,MPH_MODE)
           if (force_update_flag .or. &
               condition%pressure%dataset%is_transient .or. &

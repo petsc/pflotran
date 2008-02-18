@@ -28,6 +28,8 @@ module Field_module
     Vec :: perm_xx_loc, perm_yy_loc, perm_zz_loc
     Vec :: perm0_xx, perm0_yy, perm0_zz, perm_pow
     
+    Vec :: saturation_loc
+    
     ! residual vectors
     Vec :: flow_r          
     Vec :: tran_r          
@@ -76,6 +78,8 @@ function FieldCreate()
   field%perm0_yy = 0
   field%perm0_zz = 0
   field%perm_pow = 0
+  
+  field%saturation_loc = 0
   
   field%flow_r = 0
   field%flow_xx = 0
@@ -130,6 +134,8 @@ subroutine FieldDestroy(field)
   if (field%perm0_yy /= 0) call VecDestroy(field%perm0_yy,ierr)
   if (field%perm0_zz /= 0) call VecDestroy(field%perm0_zz,ierr)
   if (field%perm_pow /= 0) call VecDestroy(field%perm_pow,ierr)
+  
+  if (field%saturation_loc /= 0) call VecDestroy(field%saturation_loc,ierr)
   
   if (field%flow_r /= 0) call VecDestroy(field%flow_r,ierr)
   if (field%flow_xx /= 0) call VecDestroy(field%flow_xx,ierr)

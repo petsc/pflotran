@@ -27,6 +27,7 @@ module Timestepper_module
     PetscReal :: dt_max
         
     type(solver_type), pointer :: solver
+    
     type(waypoint_list_type), pointer :: waypoints
     type(waypoint_type), pointer :: cur_waypoint
     PetscReal, pointer :: steady_eps(:)  ! tolerance for stead state convergence
@@ -73,7 +74,7 @@ function TimestepperCreate()
   nullify(stepper%cur_waypoint)
   
   stepper%solver => SolverCreate()
-  stepper%waypoints => WaypointListCreate()
+  nullify(stepper%waypoints)
   
   TimeStepperCreate => stepper
   

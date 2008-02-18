@@ -38,11 +38,14 @@ subroutine PflowInit(simulation,filename)
   use General_Grid_module
   use Debug_module
   use Convergence_module
+  use Waypoint_module
   
   use MPHASE_module
   use Richards_Lite_module
   use Richards_Analytical_module
   use THC_module
+  
+  use Reactive_Transport_module
 
   use Convergence_module
   use Utility_module
@@ -52,13 +55,16 @@ subroutine PflowInit(simulation,filename)
   type(simulation_type) :: simulation
   character(len=MAXWORDLENGTH) :: filename
 
-  type(stepper_type), pointer :: stepper
-  type(solver_type), pointer :: solver
+  type(stepper_type), pointer :: flow_stepper
+  type(stepper_type), pointer :: tran_stepper
+  type(solver_type), pointer :: flow_solver
+  type(solver_type), pointer :: tran_solver
   type(realization_type), pointer :: realization
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(pflow_debug_type), pointer :: debug
+  type(waypoint_list_type), pointer :: waypoint_list
   PetscInt :: mcomp, mphas
   PetscInt :: temp_int
   PetscTruth :: iflag
@@ -66,45 +72,62 @@ subroutine PflowInit(simulation,filename)
   PetscErrorCode :: ierr
   
   ! set pointers to objects
-  stepper => simulation%stepper
-  solver => stepper%solver
+  flow_stepper => simulation%flow_stepper
+  tran_stepper => simulation%tran_stepper
   realization => simulation%realization
   option => realization%option
   field => realization%field
   debug => realization%debug
   
+  nullify(flow_solver)
+  nullify(tran_solver)
+  
   ! read MODE,GRID,PROC,COMP,PHAS cards
   call readRequiredCardsFromInput(realization,filename,mcomp,mphas)
   grid => realization%grid
 
-  ! set the operational mode (e.g. RICHARDS_MODE, MPH_MODE, etc)
-  if (option%nflowdof > 0) &
-    call setFlowMode(option,mcomp,mphas)
-
   ! process command line options
   call OptionCheckCommandLine(option)
 
-! check number of dofs and phases
+  waypoint_list => WaypointListCreate()
+  ! initialize flow mode
   if (option%nflowdof > 0) then
-    iflag = PETSC_FALSE
-    select case(option%iflowmode)
-      case(THC_MODE)
-        if (option%nflowdof .ne. 3 .or. option%nphase .ne. 1) iflag = PETSC_TRUE
-      case(MPH_MODE,RICHARDS_MODE)
-        if (option%nflowdof .ne. (option%nspec+1)) iflag = PETSC_TRUE
-      case(RICHARDS_LITE_MODE)
-        if (option%nflowdof /= 1 .and. option%nphase /= 1 .and. option%nspec /= 1) &
-          iflag = PETSC_TRUE
-      case default
-        if (option%nflowdof .ne. 1 .or. option%nphase .ne. 1) iflag = PETSC_TRUE
-    end select
-    
-    if (iflag == PETSC_TRUE) then
-      write(*,*) 'Specified number of dofs or phases not correct-stop: ', &
-                 trim(option%flowmode), 'ndof= ',option%nflowdof,' nph= ', &
-                 option%nphase
-      stop
+    ! set the operational mode (e.g. RICHARDS_MODE, MPH_MODE, etc)
+    call setFlowMode(option,mcomp,mphas)
+    flow_solver => flow_stepper%solver
+    flow_stepper%waypoints => waypoint_list
+  ! check number of dofs and phases
+    if (option%nflowdof > 0) then
+      iflag = PETSC_FALSE
+      select case(option%iflowmode)
+        case(THC_MODE)
+          if (option%nflowdof .ne. 3 .or. option%nphase .ne. 1) iflag = PETSC_TRUE
+        case(MPH_MODE,RICHARDS_MODE)
+          if (option%nflowdof .ne. (option%nspec+1)) iflag = PETSC_TRUE
+        case(RICHARDS_LITE_MODE)
+          if (option%nflowdof /= 1 .and. option%nphase /= 1 .and. option%nspec /= 1) &
+            iflag = PETSC_TRUE
+        case default
+          if (option%nflowdof .ne. 1 .or. option%nphase .ne. 1) iflag = PETSC_TRUE
+      end select
+      
+      if (iflag == PETSC_TRUE) then
+        write(*,*) 'Specified number of dofs or phases not correct-stop: ', &
+                   trim(option%flowmode), 'ndof= ',option%nflowdof,' nph= ', &
+                   option%nphase
+        stop
+      endif
     endif
+  else
+    call TimestepperDestroy(flow_stepper)
+  endif
+  
+  ! initialize transport mode
+  if (option%ntrandof > 0) then
+    tran_solver => tran_stepper%solver
+    tran_stepper%waypoints => waypoint_list
+  else
+    call TimestepperDestroy(tran_stepper)
   endif
 
   call GridCreateDMs(grid,option)
@@ -119,28 +142,10 @@ subroutine PflowInit(simulation,filename)
   call GridCreateVector(grid,ONEDOF,field%porosity0,GLOBAL)
   call GridDuplicateVector(grid,field%porosity0, grid%volume)
   
-  if (option%nflowdof > 0) then
-    call GridDuplicateVector(grid,field%porosity0, field%perm0_xx)
-    call GridDuplicateVector(grid,field%porosity0, field%perm0_yy)
-    call GridDuplicateVector(grid,field%porosity0, field%perm0_zz)
-    call GridDuplicateVector(grid,field%porosity0, field%perm_pow)
-  endif
-  
   ! 1 degree of freedom, local
   call GridCreateVector(grid,ONEDOF,field%porosity_loc,LOCAL)
   call GridDuplicateVector(grid,field%porosity_loc, field%tor_loc)
   
-  if (option%nflowdof > 0) then
-    call GridDuplicateVector(grid,field%porosity_loc, field%ithrm_loc)
-    call GridDuplicateVector(grid,field%porosity_loc, field%icap_loc)
-    call GridDuplicateVector(grid,field%porosity_loc, field%iphas_loc)
-    call GridDuplicateVector(grid,field%porosity_loc, field%iphas_old_loc)
-  
-    call GridDuplicateVector(grid,field%porosity_loc, field%perm_xx_loc)
-    call GridDuplicateVector(grid,field%porosity_loc, field%perm_yy_loc)
-    call GridDuplicateVector(grid,field%porosity_loc, field%perm_zz_loc)
-  endif
-
   if (associated(grid%structured_grid)) then
     call GridDuplicateVector(grid,field%porosity0, grid%structured_grid%dx)
     call GridDuplicateVector(grid,field%porosity0, grid%structured_grid%dy)
@@ -152,6 +157,22 @@ subroutine PflowInit(simulation,filename)
   endif
 
   if (option%nflowdof > 0) then
+
+    ! 1-dof global  
+    call GridDuplicateVector(grid,field%porosity0, field%perm0_xx)
+    call GridDuplicateVector(grid,field%porosity0, field%perm0_yy)
+    call GridDuplicateVector(grid,field%porosity0, field%perm0_zz)
+    call GridDuplicateVector(grid,field%porosity0, field%perm_pow)
+
+    ! 1-dof local
+    call GridDuplicateVector(grid,field%porosity_loc, field%ithrm_loc)
+    call GridDuplicateVector(grid,field%porosity_loc, field%icap_loc)
+    call GridDuplicateVector(grid,field%porosity_loc, field%iphas_loc)
+    call GridDuplicateVector(grid,field%porosity_loc, field%iphas_old_loc)
+    call GridDuplicateVector(grid,field%porosity_loc, field%perm_xx_loc)
+    call GridDuplicateVector(grid,field%porosity_loc, field%perm_yy_loc)
+    call GridDuplicateVector(grid,field%porosity_loc, field%perm_zz_loc)
+
     ! ndof degrees of freedom, global
     call GridCreateVector(grid,NFLOWDOF, field%flow_xx, GLOBAL)
     call GridDuplicateVector(grid,field%flow_xx, field%flow_yy)
@@ -171,24 +192,122 @@ subroutine PflowInit(simulation,filename)
     call GridDuplicateVector(grid,field%flow_xx, field%tran_r)
     call GridDuplicateVector(grid,field%flow_xx, field%flow_accum)
 
+    call GridDuplicateVector(grid,field%porosity_loc, field%saturation_loc)
+    
     ! ndof degrees of freedom, local
     call GridCreateVector(grid,NTRANDOF, field%flow_xx_loc, LOCAL)
   endif
 
   ! set up nG2L, NL2G, etc.
   call GridMapIndices(grid)
-  
+
   ! read in the remainder of the input file
   call readInput(simulation,filename)
 
-  if (option%iblkfmt == 0) then
-    select case(option%iflowmode)
-      case(MPH_MODE,RICHARDS_MODE)
-        call printErrMsg(option,&
-                         'AIJ matrix not supported for current mode: '// &
-                         option%flowmode)
-    end select
+  if (option%myrank == 0) then
+    ! general print statements for both flow and transport modes
+    write(*,'(/,"++++++++++++++++++++++++++++++++++++++++++++++++++++&
+      &++++++++")')
+    if (grid%igrid == STRUCTURED) then
+      write(*,'(" number of processors = ",i5,", npx,y,z= ",3i5)') &
+        option%commsize,grid%structured_grid%npx,grid%structured_grid%npy, &
+        grid%structured_grid%npz
+    endif
   endif
+
+  ! update flow mode based on optional input
+  if (option%nflowdof > 0) then
+  
+    if (option%iblkfmt == 0) then
+      select case(option%iflowmode)
+        case(MPH_MODE,RICHARDS_MODE)
+          call printErrMsg(option,&
+                           'AIJ matrix not supported for current mode: '// &
+                           option%flowmode)
+      end select
+    endif
+    write(*,'(" number of dofs = ",i3,", number of phases = ",i3,i2)') &
+      option%nflowdof,option%nphase
+    select case(option%iflowmode)
+      case(THC_MODE)
+        write(*,'(" mode = THC: p, T, C")')
+      case(MPH_MODE)
+        write(*,'(" mode = MPH: p, T, s/C")')
+      case(RICHARDS_MODE)
+        write(*,'(" mode = Richards: p, T, s/C")')
+      case(RICHARDS_LITE_MODE)
+        write(*,'(" mode = Richards: p")')      
+    end select
+
+    call printMsg(option,"  Beginning set up of FLOW SNES ")
+
+    call SolverCreateSNES(flow_solver)  
+    call GridCreateJacobian(grid,NFLOWDOF,flow_solver%J,option)
+    
+    select case(option%iflowmode)
+      case(THC_MODE)
+        call SNESSetFunction(flow_solver%snes,field%flow_r,THCResidual,realization,ierr)
+        call SNESSetJacobian(flow_solver%snes, flow_solver%J, flow_solver%J, THCJacobian, &
+                             realization, ierr)
+      case(RICHARDS_MODE)
+        call SNESSetFunction(flow_solver%snes,field%flow_r,RichardsAnalyticalResidual,realization,ierr)
+        call SNESSetJacobian(flow_solver%snes, flow_solver%J, flow_solver%J, RichardsAnalyticalJacobian, &
+                             realization, ierr)
+      case(RICHARDS_LITE_MODE)
+        call SNESSetFunction(flow_solver%snes,field%flow_r,RichardsLiteResidual,realization,ierr)
+        call SNESSetJacobian(flow_solver%snes, flow_solver%J, flow_solver%J, RichardsLiteJacobian, &
+                             realization, ierr)
+      case(MPH_MODE)
+        call SNESSetFunction(flow_solver%snes,field%flow_r,MPHASEResidual,realization,ierr)
+        call SNESSetJacobian(flow_solver%snes, flow_solver%J, flow_solver%J, MPHASEJacobian, &
+                             realization, ierr)
+    end select
+
+    call SolverSetSNESOptions(flow_solver)
+
+    call printMsg(option,'Solver: '//trim(flow_solver%ksp_type))
+    call printMsg(option,'Preconditioner: '//trim(flow_solver%pc_type))
+
+    ! shell for custom convergence test.  The default SNES convergence test  
+    ! is call within this function. 
+    flow_stepper%convergence_context => ConvergenceContextCreate(flow_solver,option)
+    call SNESSetConvergenceTest(flow_solver%snes,ConvergenceTest, &
+                                flow_stepper%convergence_context,ierr) 
+
+    call printMsg(option,"  Finished setting up FLOW SNES ")
+
+  endif
+
+  
+  ! update transport mode based on optional input
+  if (option%ntrandof > 0) then
+
+    call printMsg(option,"  Beginning set up of TRAN SNES ")
+  
+    call SolverCreateSNES(tran_solver)  
+    call GridCreateJacobian(grid,NFLOWDOF,tran_solver%J,option)
+    
+    call SNESSetFunction(tran_solver%snes,field%tran_r,RTResidual,realization,ierr)
+    call SNESSetJacobian(tran_solver%snes, tran_solver%J, tran_solver%J, RTJacobian, &
+                         realization, ierr)
+
+    call SolverSetSNESOptions(tran_solver)
+
+    call printMsg(option,'Solver: '//trim(tran_solver%ksp_type))
+    call printMsg(option,'Preconditioner: '//trim(tran_solver%pc_type))
+
+    ! shell for custom convergence test.  The default SNES convergence test  
+    ! is call within this function. 
+    tran_stepper%convergence_context => ConvergenceContextCreate(tran_solver,option)
+    call SNESSetConvergenceTest(tran_solver%snes,ConvergenceTest, &
+                                tran_stepper%convergence_context,ierr) 
+
+    call printMsg(option,"  Finished setting up TRAN SNES ")
+  
+  endif
+
+  if (option%myrank == 0) write(*,'("++++++++++++++++++++++++++++++++&
+                     &++++++++++++++++++++++++++++",/)')
 
   call GridComputeSpacing(grid)
   call GridComputeCoordinates(grid,option)
@@ -228,84 +347,6 @@ subroutine PflowInit(simulation,filename)
   allocate(realization%field%boundary_velocities(option%nphase,temp_int)) 
   realization%field%boundary_velocities = 0.d0          
 
-  if (option%myrank == 0) then
-    write(*,'(/,"++++++++++++++++++++++++++++++++++++++++++++++++++++&
-      &++++++++")')
-    if (grid%igrid == STRUCTURED) then
-      write(*,'(" number of processors = ",i5,", npx,y,z= ",3i5)') &
-        option%commsize,grid%structured_grid%npx,grid%structured_grid%npy, &
-        grid%structured_grid%npz
-    endif
-    write(*,'(" number of dofs = ",i3,", number of phases = ",i3,i2)') &
-      option%nflowdof,option%nphase
-    select case(option%iflowmode)
-      case(THC_MODE)
-        write(*,'(" mode = THC: p, T, C")')
-      case(MPH_MODE)
-        write(*,'(" mode = MPH: p, T, s/C")')
-      case(RICHARDS_MODE)
-        write(*,'(" mode = Richards: p, T, s/C")')
-      case(RICHARDS_LITE_MODE)
-        write(*,'(" mode = Richards: p")')      
-    end select
-  endif
-  
-  call SolverCreateSNES(solver)  
-
-  if (option%use_matrix_free == PETSC_TRUE) then
-  
-    option%ideriv = 0
-  
-    if (option%myrank == 0) write(*,'(" Using matrix-free Newton-Krylov")')
-
-    select case(option%iflowmode)
-      case(THC_MODE,MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
-        call MatCreateMFFD(solver%snes,field%flow_xx,solver%J,ierr)
-    end select
-        
-  else
-
-    option%ideriv = 1
-  
-    call GridCreateJacobian(grid,NFLOWDOF,solver%J,option)
-  
-  endif
-
-  if (option%myrank == 0) write(*,'("++++++++++++++++++++++++++++++++&
-                     &++++++++++++++++++++++++++++",/)')
-
-  select case(option%iflowmode)
-    case(THC_MODE)
-      call SNESSetFunction(solver%snes,field%flow_r,THCResidual,realization,ierr)
-      call SNESSetJacobian(solver%snes, solver%J, solver%J, THCJacobian, &
-                           realization, ierr)
-    case(RICHARDS_MODE)
-      call SNESSetFunction(solver%snes,field%flow_r,RichardsAnalyticalResidual,realization,ierr)
-      call SNESSetJacobian(solver%snes, solver%J, solver%J, RichardsAnalyticalJacobian, &
-                           realization, ierr)
-    case(RICHARDS_LITE_MODE)
-      call SNESSetFunction(solver%snes,field%flow_r,RichardsLiteResidual,realization,ierr)
-      call SNESSetJacobian(solver%snes, solver%J, solver%J, RichardsLiteJacobian, &
-                           realization, ierr)
-    case(MPH_MODE)
-      call SNESSetFunction(solver%snes,field%flow_r,MPHASEResidual,realization,ierr)
-      call SNESSetJacobian(solver%snes, solver%J, solver%J, MPHASEJacobian, &
-                           realization, ierr)
-  end select
-
-  call SolverSetSNESOptions(solver)
-
-  call printMsg(option,'Solver: '//trim(solver%ksp_type))
-  call printMsg(option,'Preconditioner: '//trim(solver%pc_type))
-
-  ! shell for custom convergence test.  The default SNES convergence test  
-  ! is call within this function. 
-  stepper%convergence_context => ConvergenceContextCreate(solver,option)
-  call SNESSetConvergenceTest(solver%snes,ConvergenceTest, &
-                              stepper%convergence_context,ierr) 
-
-  if (option%myrank == 0) write(*,'("  Finished setting up of SNES ")')
-
   if (option%myrank == 0) write(*,'("  Finished setting up of INIT ")')
          
   ! move each case to its respective module and just call ModeSetup (e.g. RichardsSetup)
@@ -320,7 +361,7 @@ subroutine PflowInit(simulation,filename)
       call THCSetup(realization)
   end select  
 
-  if (option%myrank == 0) write(*,'("  Finished setting up ")')
+  call printMsg(option,"  Finished setting up ")
 
   if (debug%print_couplers) then
     call verifyCouplers(realization,realization%initial_conditions)
@@ -655,7 +696,7 @@ subroutine readInput(simulation,filename)
   grid => realization%grid
   option => realization%option
   field => realization%field
-  stepper => simulation%stepper
+  stepper => simulation%flow_stepper
   solver => stepper%solver
 
   backslash = achar(92)  ! 92 = "\" Some compilers choke on \" thinking it

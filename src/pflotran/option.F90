@@ -63,8 +63,10 @@ module Option_module
     PetscReal :: difaq, delhaq, gravity(3), fmwh2o= 18.0153D0, fmwa=28.96D0, &
               fmwco2=44.0098D0, eqkair, ret=1.d0, fc=1.d0
     
-    PetscInt :: ideriv = 1
+    PetscInt :: ideriv
     PetscReal :: tref,pref
+    
+    PetscReal :: diff, disp
     
 !   table lookup
     PetscInt :: itable=0
@@ -165,7 +167,8 @@ function OptionCreate()
   !set scale factor for heat equation, i.e. use units of MJ for energy
   option%scale = 1.d-6
 
-  option%use_matrix_free = 1
+  option%use_matrix_free = PETSC_FALSE
+  option%ideriv = 1
 
   option%dpmxe = 5.d4
   option%dtmpmxe = 2.d0
@@ -184,6 +187,9 @@ function OptionCreate()
 
   ! default brine concentrations
   option%m_nacl = 0.d0
+  
+  option%disp = 0.d0
+  option%diff = 0.d0
   
   option%generalized_grid = ""
   option%use_generalized_grid = .false.

@@ -6,7 +6,7 @@ module Simulation_module
   use Solver_module
 #endif  
 #ifdef TRANSPORT
-  use Transport_Realization_module
+  use Realization_module
   use Transport_Timestepper_module
   use Solver_module
 #endif
@@ -21,10 +21,11 @@ module Simulation_module
 
 #ifndef TRANSPORT
     type(realization_type), pointer :: realization
-    type(stepper_type), pointer :: stepper
+    type(stepper_type), pointer :: flow_stepper
+    type(stepper_type), pointer :: tran_stepper
 #endif    
 #ifdef TRANSPORT
-    type(tr_realization_type), pointer :: tr_realization
+    type(realization_type), pointer :: tr_realization
     type(tr_stepper_type), pointer :: tr_stepper
 #endif
 
@@ -54,7 +55,8 @@ function SimulationCreate()
   allocate(simulation)
 #ifndef TRANSPORT
   simulation%realization => RealizationCreate()
-  simulation%stepper => TimestepperCreate()
+  simulation%flow_stepper => TimestepperCreate()
+  simulation%tran_stepper => TimestepperCreate()
 #endif
 #ifdef TRANSPORT
   simulation%tr_realization => TrRealizationCreate()
@@ -82,7 +84,8 @@ subroutine SimulationDestroy(simulation)
 
 #ifndef TRANSPORT
   call RealizationDestroy(simulation%realization)
-  call TimestepperDestroy(simulation%stepper)
+  call TimestepperDestroy(simulation%flow_stepper)
+  call TimestepperDestroy(simulation%tran_stepper)
 #endif
 #ifdef TRANSPORT  
   call TrRealizationDestroy(simulation%tr_realization)

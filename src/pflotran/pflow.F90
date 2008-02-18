@@ -62,7 +62,7 @@
   simulation => SimulationCreate()
   realization => simulation%realization
   option => realization%option
-  stepper => simulation%stepper
+  stepper => simulation%flow_stepper
 
   option%myrank = myrank
   option%commsize = commsize
@@ -79,7 +79,7 @@
 
   call PflowInit(simulation,pflowin)
 
-  call StepperRun(simulation%realization,simulation%stepper)
+  call StepperRun(simulation%realization,simulation%flow_stepper)
   
 ! Clean things up.
   call SimulationDestroy(simulation)

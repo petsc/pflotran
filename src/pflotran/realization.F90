@@ -10,7 +10,9 @@ module Realization_module
   use Breakthrough_module
   use Field_module
   use Debug_module
-
+  
+  use Reactive_Transport_Aux_module
+  
   implicit none
 
 private
@@ -37,6 +39,8 @@ private
     type(thermal_property_type), pointer :: thermal_properties
     type(saturation_function_type), pointer :: saturation_functions
     type(saturation_function_ptr_type), pointer :: saturation_function_array(:)
+    
+    type(reactive_transport_aux_type), pointer :: RTaux
     
   end type realization_type
 
@@ -88,6 +92,7 @@ function RealizationCreate()
   nullify(realization%thermal_properties)
   nullify(realization%saturation_functions)
   nullify(realization%saturation_function_array)
+  nullify(realization%RTaux)
   
   RealizationCreate => realization
   
@@ -503,6 +508,8 @@ subroutine RealizationDestroy(realization)
     deallocate(realization%saturation_function_array)
   nullify(realization%saturation_function_array)
   call SaturationFunctionDestroy(realization%saturation_functions)
+  
+  call ReactiveTransportAuxDestroy(realization%RTaux)
     
 end subroutine RealizationDestroy
   
