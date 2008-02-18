@@ -1570,7 +1570,8 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
 
         enth_src_co2 = enth_src_co2 * option%fmwco2
            
-        r_p((local_id-1)*option%nflowdof + mphase_option%jco2) = r_p((local_id-1)*option%nflowdof + mphase_option%jco2) - csrc1*option%dt
+        r_p((local_id-1)*option%nflowdof + mphase_option%jco2) = r_p((local_id-1)*option%nflowdof + &
+                                                                 mphase_option%jco2) - csrc1*option%dt
         r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - csrc1 * enth_src_co2 *option%dt
         Resold_AR(local_id,mphase_option%jco2)= Resold_AR(local_id,mphase_option%jco2) - csrc1*option%dt
         Resold_AR(local_id,option%nflowdof)= Resold_AR(local_id,option%nflowdof) - csrc1 * enth_src_co2*option%dt
@@ -1933,8 +1934,8 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
             blkmat12(1:realization%option%nflowdof,1:realization%option%nflowdof),&
             blkmat21(1:realization%option%nflowdof,1:realization%option%nflowdof),&
             blkmat22(1:realization%option%nflowdof,1:realization%option%nflowdof)
-  PetscReal :: ResInc(1:realization%grid%nlmax,1:realization%option%nflowdof,1:realization%option%nflowdof), &
-               res(1:realization%option%nflowdof)  
+  PetscReal :: ResInc(1:realization%grid%nlmax,1:realization%option%nflowdof,1:realization%option%nflowdof)
+  PetscReal :: res(1:realization%option%nflowdof)  
   PetscReal :: max_dev, norm
   PetscReal :: xxbc(realization%option%nflowdof), varbc(1:size_var_node)
   PetscInt :: iphasebc, idof
