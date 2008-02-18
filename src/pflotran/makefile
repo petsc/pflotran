@@ -58,6 +58,7 @@ util_obj  = ${common_src}fileio.o \
 
 pflow_obj = ${common_src}pflow_pckr_mod.o \
 	${common_src}option.o \
+	${common_src}reactive_transport_aux.o\
 	${common_src}field.o \
 	${common_src}debug.o \
 	${common_src}waypoint.o \
@@ -79,6 +80,9 @@ pflow_obj = ${common_src}pflow_pckr_mod.o \
 	${common_src}translator_mixed_fluid_mph.o \
 	${common_src}pflow_THC.o \
 	${common_src}pflow_mphase_ResJac.o\
+	${common_src}transport.o\
+	${common_src}reaction.o\
+	${common_src}reactive_transport.o\
 	${common_src}richards.o\
 	${common_src}richards_lite.o\
 	${common_src}general_grid.o \
@@ -176,6 +180,9 @@ pflow_output2.o : grid.o structured_grid.o option.o realization.o field.o \
                   coupler.o connection.o hdf5.o breakthrough.o
 pflow_mphase_ResJac.o : realization.o option.o field.o grid.o coupler.o \
                           translator_mixed_fluid_mph.o
+reaction.o : reactive_transport_aux.o
+transport.o : reactive_transport_aux.o
+reactive_transport.o : reaction.o transport.o reactive_transport_aux.o
 timestepper.o : \
 	        mixed_fluid_eos.o \
                 translator_mixed_fluid_mph.o \
