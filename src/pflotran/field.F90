@@ -28,11 +28,13 @@ module Field_module
     Vec :: perm_xx_loc, perm_yy_loc, perm_zz_loc
     Vec :: perm0_xx, perm0_yy, perm0_zz, perm_pow
     
-    ! NDOF degree of freedom
-    ! residual vector
-    Vec :: r            
+    ! residual vectors
+    Vec :: flow_r          
+    Vec :: tran_r          
+      
     ! Solution vectors
-    Vec :: xx, xx_loc, dxx, yy, accum
+    Vec :: flow_xx, flow_xx_loc, flow_dxx, flow_yy, flow_accum
+    Vec :: tran_xx, tran_xx_loc, tran_dxx, tran_yy, tran_accum
    
   end type 
 
@@ -75,12 +77,19 @@ function FieldCreate()
   field%perm0_zz = 0
   field%perm_pow = 0
   
-  field%r = 0
-  field%xx = 0
-  field%xx_loc = 0
-  field%dxx = 0
-  field%yy = 0
-  field%accum = 0
+  field%flow_r = 0
+  field%flow_xx = 0
+  field%flow_xx_loc = 0
+  field%flow_dxx = 0
+  field%flow_yy = 0
+  field%flow_accum = 0
+  
+  field%tran_r = 0
+  field%tran_xx = 0
+  field%tran_xx_loc = 0
+  field%tran_dxx = 0
+  field%tran_yy = 0
+  field%tran_accum = 0
   
   nullify(field%imat)
   nullify(field%internal_velocities)
@@ -122,12 +131,19 @@ subroutine FieldDestroy(field)
   if (field%perm0_zz /= 0) call VecDestroy(field%perm0_zz,ierr)
   if (field%perm_pow /= 0) call VecDestroy(field%perm_pow,ierr)
   
-  if (field%r /= 0) call VecDestroy(field%r,ierr)
-  if (field%xx /= 0) call VecDestroy(field%xx,ierr)
-  if (field%xx_loc /= 0) call VecDestroy(field%xx_loc,ierr)
-  if (field%dxx /= 0) call VecDestroy(field%dxx,ierr)
-  if (field%yy /= 0) call VecDestroy(field%yy,ierr)
-  if (field%accum /= 0) call VecDestroy(field%accum,ierr)
+  if (field%flow_r /= 0) call VecDestroy(field%flow_r,ierr)
+  if (field%flow_xx /= 0) call VecDestroy(field%flow_xx,ierr)
+  if (field%flow_xx_loc /= 0) call VecDestroy(field%flow_xx_loc,ierr)
+  if (field%flow_dxx /= 0) call VecDestroy(field%flow_dxx,ierr)
+  if (field%flow_yy /= 0) call VecDestroy(field%flow_yy,ierr)
+  if (field%flow_accum /= 0) call VecDestroy(field%flow_accum,ierr)
+  
+  if (field%tran_r /= 0) call VecDestroy(field%tran_r,ierr)
+  if (field%tran_xx /= 0) call VecDestroy(field%tran_xx,ierr)
+  if (field%tran_xx_loc /= 0) call VecDestroy(field%tran_xx_loc,ierr)
+  if (field%tran_dxx /= 0) call VecDestroy(field%tran_dxx,ierr)
+  if (field%tran_yy /= 0) call VecDestroy(field%tran_yy,ierr)
+  if (field%tran_accum /= 0) call VecDestroy(field%tran_accum,ierr)
   
   if (associated(field%imat)) deallocate(field%imat)
   nullify(field%imat)
@@ -135,7 +151,6 @@ subroutine FieldDestroy(field)
   nullify(field%internal_velocities)
   if (associated(field%boundary_velocities)) deallocate(field%boundary_velocities)
   nullify(field%boundary_velocities)
-  
     
   deallocate(field)
   nullify(field)

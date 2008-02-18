@@ -78,29 +78,33 @@ subroutine PflowInit(simulation,filename)
   grid => realization%grid
 
   ! set the operational mode (e.g. RICHARDS_MODE, MPH_MODE, etc)
-  call setMode(option,mcomp,mphas)
+  if (option%nflowdof > 0) &
+    call setFlowMode(option,mcomp,mphas)
+
   ! process command line options
   call OptionCheckCommandLine(option)
 
 ! check number of dofs and phases
-  iflag = PETSC_FALSE
-  select case(option%iflowmode)
-    case(THC_MODE)
-      if (option%nflowdof .ne. 3 .or. option%nphase .ne. 1) iflag = PETSC_TRUE
-    case(MPH_MODE,RICHARDS_MODE)
-      if (option%nflowdof .ne. (option%nspec+1)) iflag = PETSC_TRUE
-    case(RICHARDS_LITE_MODE)
-      if (option%nflowdof /= 1 .and. option%nphase /= 1 .and. option%nspec /= 1) &
-        iflag = PETSC_TRUE
-    case default
-      if (option%nflowdof .ne. 1 .or. option%nphase .ne. 1) iflag = PETSC_TRUE
-  end select
-  
-  if (iflag == PETSC_TRUE) then
-    write(*,*) 'Specified number of dofs or phases not correct-stop: ', &
-               trim(option%flowmode), 'ndof= ',option%nflowdof,' nph= ', &
-               option%nphase
-    stop
+  if (option%nflowdof > 0) then
+    iflag = PETSC_FALSE
+    select case(option%iflowmode)
+      case(THC_MODE)
+        if (option%nflowdof .ne. 3 .or. option%nphase .ne. 1) iflag = PETSC_TRUE
+      case(MPH_MODE,RICHARDS_MODE)
+        if (option%nflowdof .ne. (option%nspec+1)) iflag = PETSC_TRUE
+      case(RICHARDS_LITE_MODE)
+        if (option%nflowdof /= 1 .and. option%nphase /= 1 .and. option%nspec /= 1) &
+          iflag = PETSC_TRUE
+      case default
+        if (option%nflowdof .ne. 1 .or. option%nphase .ne. 1) iflag = PETSC_TRUE
+    end select
+    
+    if (iflag == PETSC_TRUE) then
+      write(*,*) 'Specified number of dofs or phases not correct-stop: ', &
+                 trim(option%flowmode), 'ndof= ',option%nflowdof,' nph= ', &
+                 option%nphase
+      stop
+    endif
   endif
 
   call GridCreateDMs(grid,option)
@@ -113,44 +117,64 @@ subroutine PflowInit(simulation,filename)
 
   ! 1 degree of freedom, global
   call GridCreateVector(grid,ONEDOF,field%porosity0,GLOBAL)
-  call VecDuplicate(field%porosity0, grid%volume, ierr)
-  call VecDuplicate(field%porosity0, field%perm0_xx, ierr)
-  call VecDuplicate(field%porosity0, field%perm0_yy, ierr)
-  call VecDuplicate(field%porosity0, field%perm0_zz, ierr)
-  call VecDuplicate(field%porosity0, field%perm_pow, ierr)
-      
+  call GridDuplicateVector(grid,field%porosity0, grid%volume)
+  
+  if (option%nflowdof > 0) then
+    call GridDuplicateVector(grid,field%porosity0, field%perm0_xx)
+    call GridDuplicateVector(grid,field%porosity0, field%perm0_yy)
+    call GridDuplicateVector(grid,field%porosity0, field%perm0_zz)
+    call GridDuplicateVector(grid,field%porosity0, field%perm_pow)
+  endif
+  
   ! 1 degree of freedom, local
   call GridCreateVector(grid,ONEDOF,field%porosity_loc,LOCAL)
-  call VecDuplicate(field%porosity_loc, field%tor_loc, ierr)
-  call VecDuplicate(field%porosity_loc, field%ithrm_loc, ierr)
-  call VecDuplicate(field%porosity_loc, field%icap_loc, ierr)
-  call VecDuplicate(field%porosity_loc, field%iphas_loc, ierr)
-  call VecDuplicate(field%porosity_loc, field%iphas_old_loc, ierr)
+  call GridDuplicateVector(grid,field%porosity_loc, field%tor_loc)
   
-  call VecDuplicate(field%porosity_loc, field%perm_xx_loc, ierr)
-  call VecDuplicate(field%porosity_loc, field%perm_yy_loc, ierr)
-  call VecDuplicate(field%porosity_loc, field%perm_zz_loc, ierr)
-
-  if (associated(grid%structured_grid)) then
-    call VecDuplicate(field%porosity0, grid%structured_grid%dx, ierr)
-    call VecDuplicate(field%porosity0, grid%structured_grid%dy, ierr)
-    call VecDuplicate(field%porosity0, grid%structured_grid%dz, ierr)
-
-    call VecDuplicate(field%porosity_loc, grid%structured_grid%dx_loc, ierr)
-    call VecDuplicate(field%porosity_loc, grid%structured_grid%dy_loc, ierr)
-    call VecDuplicate(field%porosity_loc, grid%structured_grid%dz_loc, ierr)
+  if (option%nflowdof > 0) then
+    call GridDuplicateVector(grid,field%porosity_loc, field%ithrm_loc)
+    call GridDuplicateVector(grid,field%porosity_loc, field%icap_loc)
+    call GridDuplicateVector(grid,field%porosity_loc, field%iphas_loc)
+    call GridDuplicateVector(grid,field%porosity_loc, field%iphas_old_loc)
+  
+    call GridDuplicateVector(grid,field%porosity_loc, field%perm_xx_loc)
+    call GridDuplicateVector(grid,field%porosity_loc, field%perm_yy_loc)
+    call GridDuplicateVector(grid,field%porosity_loc, field%perm_zz_loc)
   endif
 
-  ! ndof degrees of freedom, global
-  call GridCreateVector(grid,NDOF, field%xx, GLOBAL)
-  call VecDuplicate(field%xx, field%yy, ierr)
-  call VecDuplicate(field%xx, field%dxx, ierr)
-  call VecDuplicate(field%xx, field%r, ierr)
-  call VecDuplicate(field%xx, field%accum, ierr)
+  if (associated(grid%structured_grid)) then
+    call GridDuplicateVector(grid,field%porosity0, grid%structured_grid%dx)
+    call GridDuplicateVector(grid,field%porosity0, grid%structured_grid%dy)
+    call GridDuplicateVector(grid,field%porosity0, grid%structured_grid%dz)
 
-  ! ndof degrees of freedom, local
-  call GridCreateVector(grid,NDOF, field%xx_loc, LOCAL)
-     
+    call GridDuplicateVector(grid,field%porosity_loc, grid%structured_grid%dx_loc)
+    call GridDuplicateVector(grid,field%porosity_loc, grid%structured_grid%dy_loc)
+    call GridDuplicateVector(grid,field%porosity_loc, grid%structured_grid%dz_loc)
+  endif
+
+  if (option%nflowdof > 0) then
+    ! ndof degrees of freedom, global
+    call GridCreateVector(grid,NFLOWDOF, field%flow_xx, GLOBAL)
+    call GridDuplicateVector(grid,field%flow_xx, field%flow_yy)
+    call GridDuplicateVector(grid,field%flow_xx, field%flow_dxx)
+    call GridDuplicateVector(grid,field%flow_xx, field%flow_r)
+    call GridDuplicateVector(grid,field%flow_xx, field%flow_accum)
+
+    ! ndof degrees of freedom, local
+    call GridCreateVector(grid,NFLOWDOF, field%flow_xx_loc, LOCAL)
+  endif
+
+  if (option%ntrandof > 0) then
+    ! ndof degrees of freedom, global
+    call GridCreateVector(grid,NTRANDOF, field%flow_xx, GLOBAL)
+    call GridDuplicateVector(grid,field%flow_xx, field%flow_yy)
+    call GridDuplicateVector(grid,field%flow_xx, field%flow_dxx)
+    call GridDuplicateVector(grid,field%flow_xx, field%tran_r)
+    call GridDuplicateVector(grid,field%flow_xx, field%flow_accum)
+
+    ! ndof degrees of freedom, local
+    call GridCreateVector(grid,NTRANDOF, field%flow_xx_loc, LOCAL)
+  endif
+
   ! set up nG2L, NL2G, etc.
   call GridMapIndices(grid)
   
@@ -236,14 +260,14 @@ subroutine PflowInit(simulation,filename)
 
     select case(option%iflowmode)
       case(THC_MODE,MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
-        call MatCreateMFFD(solver%snes,field%xx,solver%J,ierr)
+        call MatCreateMFFD(solver%snes,field%flow_xx,solver%J,ierr)
     end select
         
   else
 
     option%ideriv = 1
   
-    call GridCreateJacobian(grid,solver%J,option)
+    call GridCreateJacobian(grid,NFLOWDOF,solver%J,option)
   
   endif
 
@@ -252,19 +276,19 @@ subroutine PflowInit(simulation,filename)
 
   select case(option%iflowmode)
     case(THC_MODE)
-      call SNESSetFunction(solver%snes,field%r,THCResidual,realization,ierr)
+      call SNESSetFunction(solver%snes,field%flow_r,THCResidual,realization,ierr)
       call SNESSetJacobian(solver%snes, solver%J, solver%J, THCJacobian, &
                            realization, ierr)
     case(RICHARDS_MODE)
-      call SNESSetFunction(solver%snes,field%r,RichardsAnalyticalResidual,realization,ierr)
+      call SNESSetFunction(solver%snes,field%flow_r,RichardsAnalyticalResidual,realization,ierr)
       call SNESSetJacobian(solver%snes, solver%J, solver%J, RichardsAnalyticalJacobian, &
                            realization, ierr)
     case(RICHARDS_LITE_MODE)
-      call SNESSetFunction(solver%snes,field%r,RichardsLiteResidual,realization,ierr)
+      call SNESSetFunction(solver%snes,field%flow_r,RichardsLiteResidual,realization,ierr)
       call SNESSetJacobian(solver%snes, solver%J, solver%J, RichardsLiteJacobian, &
                            realization, ierr)
     case(MPH_MODE)
-      call SNESSetFunction(solver%snes,field%r,MPHASEResidual,realization,ierr)
+      call SNESSetFunction(solver%snes,field%flow_r,MPHASEResidual,realization,ierr)
       call SNESSetJacobian(solver%snes, solver%J, solver%J, MPHASEJacobian, &
                            realization, ierr)
   end select
@@ -1709,12 +1733,12 @@ end subroutine readInput
 
 ! ************************************************************************** !
 !
-! setMode: Sets the flow mode (richards, vadose, mph, etc.)
+! setFlowMode: Sets the flow mode (richards, vadose, mph, etc.)
 ! author: Glenn Hammond
 ! date: 10/26/07
 !
 ! ************************************************************************** !
-subroutine setMode(option,mcomp,mphas)
+subroutine setFlowMode(option,mcomp,mphas)
 
   use Option_module
   use Fileio_module
@@ -1772,7 +1796,7 @@ subroutine setMode(option,mcomp,mphas)
     call printErrMsg(option,"No mode specified")
   endif       
 
-end subroutine setMode
+end subroutine setFlowMode
 
 ! ************************************************************************** !
 !
@@ -1982,7 +2006,7 @@ subroutine assignInitialConditions(realization)
   end select 
 
   ! assign initial conditions values to domain
-  call VecGetArrayF90(field%xx,xx_p, ierr); CHKERRQ(ierr)
+  call VecGetArrayF90(field%flow_xx,xx_p, ierr); CHKERRQ(ierr)
   call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr)
   
   xx_p = -1.d20
@@ -2032,12 +2056,12 @@ subroutine assignInitialConditions(realization)
     initial_condition => initial_condition%next
   enddo
   
-  call VecRestoreArrayF90(field%xx,xx_p, ierr)
+  call VecRestoreArrayF90(field%flow_xx,xx_p, ierr)
   call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p,ierr)
   
   ! update dependent vectors
-  call GridGlobalToLocal(grid,field%xx,field%xx_loc,NDOF)  
-  call VecCopy(field%xx, field%yy, ierr)
+  call GridGlobalToLocal(grid,field%flow_xx,field%flow_xx_loc,NFLOWDOF)  
+  call VecCopy(field%flow_xx, field%flow_yy, ierr)
   call GridLocalToLocal(grid,field%iphas_loc,field%iphas_loc,ONEDOF)  
   call GridLocalToLocal(grid,field%iphas_loc,field%iphas_old_loc,ONEDOF)
 

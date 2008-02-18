@@ -103,7 +103,7 @@ subroutine RichardsLiteTimeCut(realization)
   option => realization%option
   field => realization%field
 
-  call VecCopy(field%yy,field%xx,ierr)
+  call VecCopy(field%flow_yy,field%flow_xx,ierr)
  
 end subroutine RichardsLiteTimeCut
   
@@ -273,7 +273,7 @@ subroutine RichardsLiteUpdateAuxVars(realization)
   grid => realization%grid
   field => realization%field
   
-  call VecGetArrayF90(field%xx_loc,xx_loc_p, ierr)
+  call VecGetArrayF90(field%flow_xx_loc,xx_loc_p, ierr)
   call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr)
   call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr)
 
@@ -328,7 +328,7 @@ subroutine RichardsLiteUpdateAuxVars(realization)
   enddo
 
 
-  call VecRestoreArrayF90(field%xx_loc,xx_loc_p, ierr)
+  call VecRestoreArrayF90(field%flow_xx_loc,xx_loc_p, ierr)
   call VecRestoreArrayF90(field%icap_loc,icap_loc_p,ierr)
   call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p,ierr)
   
@@ -356,7 +356,7 @@ subroutine RichardsLiteUpdateSolution(realization)
 
   PetscErrorCode :: ierr
   
-  call VecCopy(realization%field%xx,realization%field%yy,ierr)   
+  call VecCopy(realization%field%flow_xx,realization%field%flow_yy,ierr)   
   call RichardsLiteUpdateFixedAccum(realization)
 
 end subroutine RichardsLiteUpdateSolution
@@ -395,7 +395,7 @@ subroutine RichardsLiteUpdateFixedAccum(realization)
   grid => realization%grid
   field => realization%field
   
-  call VecGetArrayF90(field%xx,xx_p, ierr)
+  call VecGetArrayF90(field%flow_xx,xx_p, ierr)
   call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr)
   call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr)
   call VecGetArrayF90(field%porosity_loc,porosity_loc_p,ierr)
@@ -403,7 +403,7 @@ subroutine RichardsLiteUpdateFixedAccum(realization)
   call VecGetArrayF90(grid%volume,volume_p,ierr)
   call VecGetArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
 
-  call VecGetArrayF90(field%accum, accum_p, ierr)
+  call VecGetArrayF90(field%flow_accum, accum_p, ierr)
 
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
@@ -423,7 +423,7 @@ subroutine RichardsLiteUpdateFixedAccum(realization)
                                   option,accum_p(local_id:local_id)) 
   enddo
 
-  call VecRestoreArrayF90(field%xx,xx_p, ierr)
+  call VecRestoreArrayF90(field%flow_xx,xx_p, ierr)
   call VecRestoreArrayF90(field%icap_loc,icap_loc_p,ierr)
   call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p,ierr)
   call VecRestoreArrayF90(field%porosity_loc,porosity_loc_p,ierr)
@@ -431,10 +431,10 @@ subroutine RichardsLiteUpdateFixedAccum(realization)
   call VecRestoreArrayF90(grid%volume,volume_p,ierr)
   call VecRestoreArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
 
-  call VecRestoreArrayF90(field%accum, accum_p, ierr)
+  call VecRestoreArrayF90(field%flow_accum, accum_p, ierr)
 
 #if 0
-!  call RichardsLiteNumericalJacTest(field%xx,realization)
+!  call RichardsLiteNumericalJacTest(field%flow_xx,realization)
 #endif
 
 end subroutine RichardsLiteUpdateFixedAccum
@@ -1139,7 +1139,7 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
 
   ! Communication -----------------------------------------
   ! These 3 must be called before RichardsUpdateAuxVars()
-  call GridGlobalToLocal(grid,xx,field%xx_loc,NDOF)
+  call GridGlobalToLocal(grid,xx,field%flow_xx_loc,NFLOWDOF)
   call GridLocalToLocal(grid,field%iphas_loc,field%iphas_loc,ONEDOF)
   call GridLocalToLocal(grid,field%icap_loc,field%icap_loc,ONEDOF)
 
@@ -1152,11 +1152,11 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
   aux_vars_up_to_date = .false. ! override flags since they will soon be out of date
 
 ! now assign access pointer to local variables
-  call VecGetArrayF90(field%xx_loc, xx_loc_p, ierr)
+  call VecGetArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
   call VecGetArrayF90(r, r_p, ierr)
-  call VecGetArrayF90(field%accum, accum_p, ierr)
+  call VecGetArrayF90(field%flow_accum, accum_p, ierr)
  
-  call VecGetArrayF90(field%yy,yy_p,ierr)
+  call VecGetArrayF90(field%flow_yy,yy_p,ierr)
   call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
   call VecGetArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
   call VecGetArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
@@ -1359,9 +1359,9 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
   endif
 
   call VecRestoreArrayF90(r, r_p, ierr)
-  call VecRestoreArrayF90(field%yy, yy_p, ierr)
-  call VecRestoreArrayF90(field%xx_loc, xx_loc_p, ierr)
-  call VecRestoreArrayF90(field%accum, accum_p, ierr)
+  call VecRestoreArrayF90(field%flow_yy, yy_p, ierr)
+  call VecRestoreArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
+  call VecRestoreArrayF90(field%flow_accum, accum_p, ierr)
   call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
   call VecRestoreArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
   call VecRestoreArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
@@ -1481,7 +1481,7 @@ subroutine RichardsLiteJacobian(snes,xx,A,B,flag,realization,ierr)
  ! print *,'*********** In Jacobian ********************** '
   call MatZeroEntries(A,ierr)
 
-  call VecGetArrayF90(field%xx_loc, xx_loc_p, ierr)
+  call VecGetArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
   call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
   call VecGetArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
   call VecGetArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
@@ -1727,7 +1727,7 @@ subroutine RichardsLiteJacobian(snes,xx,A,B,flag,realization,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
   
-  call VecRestoreArrayF90(field%xx_loc, xx_loc_p, ierr)
+  call VecRestoreArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
   call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
   call VecRestoreArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
   call VecRestoreArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
@@ -1864,8 +1864,8 @@ subroutine RichardsLiteMaxChange(realization)
   option => realization%option
   field => realization%field
 
-  call VecWAXPY(field%dxx,-1.d0,field%xx,field%yy,ierr)
-  call VecStrideNorm(field%dxx,ZERO_INTEGER,NORM_INFINITY,option%dpmax,ierr)
+  call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy,ierr)
+  call VecStrideNorm(field%flow_dxx,ZERO_INTEGER,NORM_INFINITY,option%dpmax,ierr)
 
 end subroutine RichardsLiteMaxChange
 

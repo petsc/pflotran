@@ -309,7 +309,7 @@ subroutine THCSetup(realization)
       call VecDuplicate(field%pressure, field%v_p, ierr)
       call VecDuplicate(field%pressure, field%v_t, ierr)
      ! xmol may not be nphase DOF, need change later 
-      call VecDuplicate(field%pressure, field%xxmol, ierr)
+      call VecDuplicate(field%pressure, field%flow_xxmol, ierr)
   end select
 
   ! should these be moved to their respective modules?
@@ -317,7 +317,7 @@ subroutine THCSetup(realization)
     case(MPH_MODE,THC_MODE)
       call GridCreateVector(grid,NPHASEDOF, field%ppressure_loc, LOCAL)
       call VecDuplicate(field%ppressure_loc, field%ssat_loc, ierr)
-      call VecDuplicate(field%ppressure_loc, field%xxmol_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%flow_xxmol_loc, ierr)
       call VecDuplicate(field%ppressure_loc, field%ddensity_loc, ierr)
       call VecDuplicate(field%ppressure_loc, field%avgmw_loc, ierr)
       call VecDuplicate(field%ppressure_loc, field%d_p_loc, ierr)
@@ -615,7 +615,7 @@ end subroutine THCTimeCut
   ! Now that we have calculated the density and viscosity for all local 
   ! nodes, we can perform the global-to-local scatters.
   !---------------------------------------------------------------------------
-  call GridGlobalToLocal(grid, xx, field%xx_loc, NDOF)
+  call GridGlobalToLocal(grid, xx, field%flow_xx_loc, NFLOWDOF)
 
   call GridGlobalToLocal(grid, thc_field%ddensity, thc_field%ddensity_loc, &
                          NPHASEDOF)
@@ -629,8 +629,8 @@ end subroutine THCTimeCut
   call GridLocalToLocal(grid, field%perm_yy_loc, field%perm_yy_loc, ONEDOF)
   call GridLocalToLocal(grid, field%perm_zz_loc, field%perm_zz_loc, ONEDOF)
 
-  call VecGetArrayF90(field%xx_loc, xx_loc_p, ierr)
-  call VecGetArrayF90(field%yy, yy_p, ierr)
+  call VecGetArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
+  call VecGetArrayF90(field%flow_yy, yy_p, ierr)
   call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
   call VecGetArrayF90(thc_field%ddensity_loc, ddensity_loc_p, ierr)
   call VecGetArrayF90(thc_field%density, density_p, ierr)
@@ -1227,8 +1227,8 @@ end subroutine THCTimeCut
     source_sink => source_sink%next
   enddo ! End loop over source-sinks linked list.
 
-  call VecRestoreArrayF90(field%xx_loc, xx_loc_p, ierr)
-  call VecRestoreArrayF90(field%yy, yy_p, ierr)
+  call VecRestoreArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
+  call VecRestoreArrayF90(field%flow_yy, yy_p, ierr)
   call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
   call VecRestoreArrayF90(thc_field%ddensity_loc, ddensity_loc_p, ierr)
   call VecRestoreArrayF90(thc_field%density, density_p, ierr)
@@ -1315,9 +1315,9 @@ end subroutine THCTimeCut
 
 ! Is the following necessary-pcl??? We've already done this in residual call.
 ! Not sure, but snes/examples/tutorials/ex18.c does it.  --RTM
-  call GridGlobalToLocal(grid, xx, field%xx_loc, NDOF)
+  call GridGlobalToLocal(grid, xx, field%flow_xx_loc, NDOF)
                           
-  call VecGetArrayF90(field%xx_loc, xx_loc_p, ierr)
+  call VecGetArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
   call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
   call VecGetArrayF90(thc_field%ddensity_loc, ddensity_loc_p, ierr)
 ! call VecGetArrayF90(field%density, density_p, ierr)
@@ -2159,7 +2159,7 @@ end subroutine THCTimeCut
     endif
   enddo
 
-  call VecRestoreArrayF90(field%xx_loc, xx_loc_p, ierr)
+  call VecRestoreArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
   call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
   call VecRestoreArrayF90(thc_field%ddensity_loc, ddensity_loc_p, ierr)
 ! call VecRestoreArrayF90(field%density, density_p, ierr)

@@ -447,12 +447,12 @@ subroutine translator_mph_step_maxchange(realization)
   field => realization%field
   grid => realization%grid
   
-   call VecWAXPY(field%dxx,-1.d0,field%xx,field%yy,ierr)
-    call VecStrideNorm(field%dxx,0,NORM_INFINITY,option%dpmax,ierr)
-    call VecStrideNorm(field%dxx,1,NORM_INFINITY,option%dtmpmax,ierr)
+   call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy,ierr)
+    call VecStrideNorm(field%flow_dxx,0,NORM_INFINITY,option%dpmax,ierr)
+    call VecStrideNorm(field%flow_dxx,1,NORM_INFINITY,option%dtmpmax,ierr)
 
-  call VecGetArrayF90(field%xx, xx_p, ierr); CHKERRQ(ierr)
-  call VecGetArrayF90(field%yy, yy_p, ierr); CHKERRQ(ierr)
+  call VecGetArrayF90(field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
+  call VecGetArrayF90(field%flow_yy, yy_p, ierr); CHKERRQ(ierr)
   call VecGetArrayF90(field%iphas_loc, iphase_loc_p,ierr)
   call VecGetArrayF90(field%iphas_old_loc, iphase_old_loc_p,ierr)
   call VecGetArrayF90(mphase_field%var_loc, var_loc_p, ierr)
@@ -477,8 +477,8 @@ subroutine translator_mph_step_maxchange(realization)
    endif
   enddo
   !call PETSCBarrier(PETSC_NULL_OBJECT,ierr)
-  call VecRestoreArrayF90(field%xx, xx_p, ierr); CHKERRQ(ierr)
-  call VecRestoreArrayF90(field%yy, yy_p, ierr); CHKERRQ(ierr)
+  call VecRestoreArrayF90(field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
+  call VecRestoreArrayF90(field%flow_yy, yy_p, ierr); CHKERRQ(ierr)
   call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p,ierr)
   call VecRestoreArrayF90(field%iphas_old_loc, iphase_old_loc_p,ierr)
   call VecRestoreArrayF90(mphase_field%var_loc, var_loc_p, ierr)
@@ -541,7 +541,7 @@ subroutine Translator_MPhase_Switching(xx,realization,icri,ichange)
   
 ! mphase code need assemble 
   call VecGetArrayF90(xx, xx_p, ierr); CHKERRQ(ierr)
-  call VecGetArrayF90(field%yy, yy_p, ierr); CHKERRQ(ierr)
+  call VecGetArrayF90(field%flow_yy, yy_p, ierr); CHKERRQ(ierr)
   call VecGetArrayF90(field%iphas_loc, iphase_loc_p,ierr)
  
    
@@ -771,7 +771,7 @@ subroutine Translator_MPhase_Switching(xx,realization,icri,ichange)
   !print *,iphase_loc_p
   call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p,ierr)
   call VecRestoreArrayF90(xx, xx_p, ierr); CHKERRQ(ierr)
-  call VecRestoreArrayF90(field%yy, yy_p, ierr); CHKERRQ(ierr)
+  call VecRestoreArrayF90(field%flow_yy, yy_p, ierr); CHKERRQ(ierr)
 
 end subroutine Translator_MPhase_Switching
   

@@ -190,9 +190,9 @@ subroutine pflowGridCheckpoint(realization,flowsteps,newtcum,icutcum, &
   ! Dump all the relevant vectors.
   !--------------------------------------------------------------------
 
-  ! grid%xx is the vector into which all of the primary variables are 
+  ! grid%flow_xx is the vector into which all of the primary variables are 
   ! packed for the SNESSolve().
-  call VecView(field%xx, viewer, ierr)
+  call VecView(field%flow_xx, viewer, ierr)
 
   call GridCreateVector(grid,ONEDOF,global_vec,GLOBAL)
   ! If we are running with multiple phases, we need to dump the vector 
@@ -317,8 +317,8 @@ subroutine pflowGridRestart(realization,flowsteps,newtcum,icutcum, &
   ! Load the PETSc vectors.
   call GridCreateVector(grid,ONEDOF,global_vec,GLOBAL)
 
-  call VecLoadIntoVector(viewer, field%xx, ierr)
-  call VecCopy(field%xx, field%yy, ierr)
+  call VecLoadIntoVector(viewer, field%flow_xx, ierr)
+  call VecCopy(field%flow_xx, field%flow_yy, ierr)
   
   select case(option%iflowmode)
     case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)

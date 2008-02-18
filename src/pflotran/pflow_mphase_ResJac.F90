@@ -88,8 +88,8 @@ subroutine pflow_mphase_timecut(realization)
 
   mphase_option%iphch=0
     
-  call VecGetArrayF90(field%xx, xx_p, ierr)
-  call VecGetArrayF90(field%yy, yy_p, ierr)
+  call VecGetArrayF90(field%flow_xx, xx_p, ierr)
+  call VecGetArrayF90(field%flow_yy, yy_p, ierr)
  !call VecGetArrayF90(field%var_loc, var_loc_p, ierr); 
  !call VecGetArrayF90(field%iphas, iphase_loc_p, ierr); 
 
@@ -103,10 +103,10 @@ subroutine pflow_mphase_timecut(realization)
 !     endif
     enddo
   enddo 
-  call VecRestoreArrayF90(field%xx, xx_p, ierr) 
-  call VecRestoreArrayF90(field%yy, yy_p, ierr)
+  call VecRestoreArrayF90(field%flow_xx, xx_p, ierr) 
+  call VecRestoreArrayF90(field%flow_yy, yy_p, ierr)
   
-  !call VecCopy(field%xx,field%yy,ierr)
+  !call VecCopy(field%flow_xx,field%flow_yy,ierr)
   !call pflow_mphase_initaccum(grid)
  
 end subroutine pflow_mphase_timecut
@@ -206,12 +206,12 @@ subroutine MphaseMaxChange(realization)
   field => realization%field
   grid => realization%grid
   
-   call VecWAXPY(field%dxx,-1.d0,field%xx,field%yy,ierr)
-    call VecStrideNorm(field%dxx,0,NORM_INFINITY,option%dpmax,ierr)
-    call VecStrideNorm(field%dxx,1,NORM_INFINITY,option%dtmpmax,ierr)
+   call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy,ierr)
+    call VecStrideNorm(field%flow_dxx,0,NORM_INFINITY,option%dpmax,ierr)
+    call VecStrideNorm(field%flow_dxx,1,NORM_INFINITY,option%dtmpmax,ierr)
 
-  call VecGetArrayF90(field%xx, xx_p, ierr); CHKERRQ(ierr)
-  call VecGetArrayF90(field%yy, yy_p, ierr); CHKERRQ(ierr)
+  call VecGetArrayF90(field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
+  call VecGetArrayF90(field%flow_yy, yy_p, ierr); CHKERRQ(ierr)
   call VecGetArrayF90(field%iphas_loc, iphase_loc_p,ierr)
   call VecGetArrayF90(field%iphas_old_loc, iphase_old_loc_p,ierr)
   call VecGetArrayF90(mphase_field%var_loc, var_loc_p, ierr)
@@ -236,8 +236,8 @@ subroutine MphaseMaxChange(realization)
    endif
   enddo
   !call PETSCBarrier(PETSC_NULL_OBJECT,ierr)
-  call VecRestoreArrayF90(field%xx, xx_p, ierr); CHKERRQ(ierr)
-  call VecRestoreArrayF90(field%yy, yy_p, ierr); CHKERRQ(ierr)
+  call VecRestoreArrayF90(field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
+  call VecRestoreArrayF90(field%flow_yy, yy_p, ierr); CHKERRQ(ierr)
   call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p,ierr)
   call VecRestoreArrayF90(field%iphas_old_loc, iphase_old_loc_p,ierr)
   call VecRestoreArrayF90(mphase_field%var_loc, var_loc_p, ierr)
@@ -374,7 +374,7 @@ subroutine MphaseSetup(realization)
       call VecDuplicate(field%pressure, field%v_p, ierr)
       call VecDuplicate(field%pressure, field%v_t, ierr)
      ! xmol may not be nphase DOF, need change later 
-      call VecDuplicate(field%pressure, field%xxmol, ierr)
+      call VecDuplicate(field%pressure, field%flow_xxmol, ierr)
   end select
 
   ! should these be moved to their respective modules?
@@ -382,7 +382,7 @@ subroutine MphaseSetup(realization)
     case(MPH_MODE,THC_MODE)
       call GridCreateVector(grid,NPHASEDOF, field%ppressure_loc, LOCAL)
       call VecDuplicate(field%ppressure_loc, field%ssat_loc, ierr)
-      call VecDuplicate(field%ppressure_loc, field%xxmol_loc, ierr)
+      call VecDuplicate(field%ppressure_loc, field%flow_xxmol_loc, ierr)
       call VecDuplicate(field%ppressure_loc, field%ddensity_loc, ierr)
       call VecDuplicate(field%ppressure_loc, field%avgmw_loc, ierr)
       call VecDuplicate(field%ppressure_loc, field%d_p_loc, ierr)
@@ -516,7 +516,7 @@ subroutine pflow_mphase_setupini(realization)
   allocate(mphase_option%delx(option%nflowdof,grid%ngmax))
   mphase_option%delx=0.D0
    
-  call VecGetArrayF90(field%xx, xx_p, ierr); CHKERRQ(ierr)
+  call VecGetArrayF90(field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
   call VecGetArrayF90(field%iphas_loc, iphase_loc_p,ierr)
   
   initial_condition => realization%initial_conditions%first
@@ -540,7 +540,7 @@ subroutine pflow_mphase_setupini(realization)
   
   enddo
               
-  call VecRestoreArrayF90(field%xx, xx_p, ierr)
+  call VecRestoreArrayF90(field%flow_xx, xx_p, ierr)
   call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p,ierr)
 
 end subroutine pflow_mphase_setupini
@@ -575,7 +575,7 @@ subroutine MPhase_Update_Reason(reason,realization)
   field => realization%field
   
   reason=1
- ! call SNESComputeFunction(option%snes,field%xx,option%r,ierr)
+ ! call SNESComputeFunction(option%snes,field%flow_xx,option%r,ierr)
  ! do n=1,option%nflowdof
  !  call VecStrideNorm(option%r,n-1,NORM_INFINITY,rmax(n),ierr)
  ! enddo
@@ -585,8 +585,8 @@ subroutine MPhase_Update_Reason(reason,realization)
  ! endif
   
   if(reason>0)then
-  call VecGetArrayF90(field%xx, xx_p, ierr); CHKERRQ(ierr)
-  call VecGetArrayF90(field%yy, yy_p, ierr)
+  call VecGetArrayF90(field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
+  call VecGetArrayF90(field%flow_yy, yy_p, ierr)
   call VecGetArrayF90(mphase_field%var_loc, var_loc_p, ierr); 
   call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr); 
   
@@ -673,8 +673,8 @@ subroutine MPhase_Update_Reason(reason,realization)
   !   call PETSCBarrier(PETSC_NULL_OBJECT,ierr)
    !print *,' update reason ba MPI', ierr
   if(reason<=0) print *,'Sat or Con out of Region at: ',local_id,iipha,xx_p(dof_offset+1:dof_offset+3)
-    call VecRestoreArrayF90(field%xx, xx_p, ierr); CHKERRQ(ierr)
-    call VecRestoreArrayF90(field%yy, yy_p, ierr)
+    call VecRestoreArrayF90(field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
+    call VecRestoreArrayF90(field%flow_yy, yy_p, ierr)
     call VecRestoreArrayF90(mphase_field%var_loc, var_loc_p, ierr) 
     call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr) 
   endif
@@ -1318,10 +1318,10 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
    
   call VecRestoreArrayF90(xx, xx_p, ierr)
 
-  call GridGlobalToLocal(grid,xx,field%xx_loc,NDOF)
+  call GridGlobalToLocal(grid,xx,field%flow_xx_loc,NFLOWDOF)
   call GridLocalToLocal(grid,field%iphas_loc,field%iphas_loc,ONEDOF)                          
 
-  call VecGetArrayF90(field%xx_loc, xx_loc_p, ierr); CHKERRQ(ierr)
+  call VecGetArrayF90(field%flow_xx_loc, xx_loc_p, ierr); CHKERRQ(ierr)
   call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr); CHKERRQ(ierr)
 
 ! there is potential possiblity that the pertubation of p may change the direction of pflow.
@@ -1374,7 +1374,7 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
     end select
   enddo
   
-  call VecRestoreArrayF90(field%xx_loc, xx_loc_p, ierr); CHKERRQ(ierr)
+  call VecRestoreArrayF90(field%flow_xx_loc, xx_loc_p, ierr); CHKERRQ(ierr)
   call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr)
 
   call VecGetArrayF90(xx, xx_p, ierr); CHKERRQ(ierr)
@@ -1444,16 +1444,16 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
 
 ! End distribute data 
 ! now assign access pointer to local variables
-  call VecGetArrayF90(field%xx_loc, xx_loc_p, ierr)
+  call VecGetArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
   call VecGetArrayF90(r, r_p, ierr)
-  call VecGetArrayF90(field%accum, accum_p, ierr)
-! call VecGetArrayF90(field%yy, yy_p, ierr)
+  call VecGetArrayF90(field%flow_accum, accum_p, ierr)
+! call VecGetArrayF90(field%flow_yy, yy_p, ierr)
  
 
   ! notice:: here we assume porosity is constant
  
   call VecGetArrayF90(mphase_field%var_loc,var_loc_p,ierr)
-  call VecGetArrayF90(field%yy,yy_p,ierr)
+  call VecGetArrayF90(field%flow_yy,yy_p,ierr)
   call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
   call VecGetArrayF90(field%tor_loc, tor_loc_p, ierr)
   call VecGetArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
@@ -1833,9 +1833,9 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
    
 !print *,'res closing pointer'
   call VecRestoreArrayF90(r, r_p, ierr)
-  call VecRestoreArrayF90(field%yy, yy_p, ierr)
-  call VecRestoreArrayF90(field%xx_loc, xx_loc_p, ierr)
-  call VecRestoreArrayF90(field%accum, accum_p, ierr)
+  call VecRestoreArrayF90(field%flow_yy, yy_p, ierr)
+  call VecRestoreArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
+  call VecRestoreArrayF90(field%flow_accum, accum_p, ierr)
   call VecRestoreArrayF90(mphase_field%var_loc,var_loc_p,ierr)
   call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
   call VecRestoreArrayF90(field%tor_loc, tor_loc_p, ierr)
@@ -1974,7 +1974,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
 ! print *,'*********** In Jacobian ********************** '
   call MatZeroEntries(A,ierr)
 
-  call VecGetArrayF90(field%xx_loc, xx_loc_p, ierr)
+  call VecGetArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
   call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
   call VecGetArrayF90(field%tor_loc, tor_loc_p, ierr)
 ! call VecGetArrayF90(field%perm_loc, perm_loc_p, ierr)
@@ -2525,7 +2525,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
   enddo
  
 
-  call VecRestoreArrayF90(field%xx_loc, xx_loc_p, ierr)
+  call VecRestoreArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
   call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
   call VecRestoreArrayF90(field%tor_loc, tor_loc_p, ierr)
   call VecRestoreArrayF90(mphase_field%var_loc, var_loc_p, ierr)
@@ -2631,8 +2631,8 @@ subroutine pflow_mphase_initaccum(realization)
   
   call VecGetArrayF90(grid%volume, volume_p, ierr)
   call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecGetArrayF90(field%yy, yy_p, ierr); CHKERRQ(ierr)
-  call VecGetArrayF90(field%accum, accum_p, ierr)
+  call VecGetArrayF90(field%flow_yy, yy_p, ierr); CHKERRQ(ierr)
+  call VecGetArrayF90(field%flow_accum, accum_p, ierr)
   call VecGetArrayF90(mphase_field%var_loc, var_loc_p,ierr)
   call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr)
   call VecGetArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
@@ -2689,8 +2689,8 @@ subroutine pflow_mphase_initaccum(realization)
 
   call VecRestoreArrayF90(grid%volume, volume_p, ierr)
   call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecRestoreArrayF90(field%yy, yy_p, ierr); CHKERRQ(ierr)
-  call VecRestoreArrayF90(field%accum, accum_p, ierr)
+  call VecRestoreArrayF90(field%flow_yy, yy_p, ierr); CHKERRQ(ierr)
+  call VecRestoreArrayF90(field%flow_accum, accum_p, ierr)
   call VecRestoreArrayF90(mphase_field%var_loc, var_loc_p,ierr)
   call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr)
   call VecRestoreArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
@@ -2739,11 +2739,11 @@ subroutine pflow_update_mphase(realization)
   field => realization%field
         
   ! if (option%rk > 0.d0) call Rock_Change(grid)
-  ! call Translator_MPhase_Switching(field%xx,grid,1,ierr)
+  ! call Translator_MPhase_Switching(field%flow_xx,grid,1,ierr)
   ! print *,'MPhase_Update done'
  
    !if(ichange ==1)then
-    call VecGetArrayF90(field%xx, xx_p, ierr); CHKERRQ(ierr)
+    call VecGetArrayF90(field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
     call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr)
     call VecGetArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)  
     call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr)
@@ -2839,7 +2839,7 @@ subroutine pflow_update_mphase(realization)
   endif
 
    
-    call VecRestoreArrayF90(field%xx, xx_p, ierr); CHKERRQ(ierr)
+    call VecRestoreArrayF90(field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
     call VecRestoreArrayF90(field%icap_loc,icap_loc_p,ierr)
     call VecRestoreArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)  
     call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr)
@@ -2848,7 +2848,7 @@ subroutine pflow_update_mphase(realization)
     if(option%nphase>1) call translator_mphase_massbal(realization)
    ! endif 
 
-    call VecCopy(field%xx, field%yy, ierr)   
+    call VecCopy(field%flow_xx, field%flow_yy, ierr)   
     call VecCopy(field%iphas_loc, field%iphas_old_loc, ierr)   
      
     call  pflow_mphase_initaccum(realization)
@@ -2925,7 +2925,7 @@ subroutine pflow_mphase_initadj(realization)
   call VecGetArrayF90(field%icap_loc, icap_loc_p, ierr)
   call VecGetArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
   call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr)
-  call VecGetArrayF90(field%xx, xx_p, ierr)
+  call VecGetArrayF90(field%flow_xx, xx_p, ierr)
   call VecGetArrayF90(mphase_field%var_loc, var_loc_p, ierr)
 ! print *,'initadj gotten pointers' 
 
@@ -2971,7 +2971,7 @@ subroutine pflow_mphase_initadj(realization)
 
 !  allocate(yybc(option%nflowdof,num_connection))
 !  allocate(vel_bc(option%nphase,num_connection))
-!  yybc =field%xxbc
+!  yybc =field%flow_xxbc
 !  vel_bc = field%velocitybc
 
   boundary_condition => realization%boundary_conditions%first
@@ -3026,7 +3026,7 @@ subroutine pflow_mphase_initadj(realization)
   call VecRestoreArrayF90(field%icap_loc, icap_loc_p, ierr)
   call VecRestoreArrayF90(field%ithrm_loc, ithrm_loc_p, ierr)
   call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr)
-  call VecRestoreArrayF90(field%xx, xx_p, ierr)
+  call VecRestoreArrayF90(field%flow_xx, xx_p, ierr)
   call VecRestoreArrayF90(mphase_field%var_loc, var_loc_p, ierr)
   !print *,kgjkdf
   

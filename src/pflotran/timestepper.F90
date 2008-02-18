@@ -415,14 +415,14 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
     
     select case(option%iflowmode)
       case(THC_MODE,MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
-        call SNESSolve(solver%snes, PETSC_NULL, field%xx, ierr)
+        call SNESSolve(solver%snes, PETSC_NULL, field%flow_xx, ierr)
     end select
 
 ! do we really need all this? - geh 
     call SNESGetIterationNumber(solver%snes,num_newton_iterations, ierr)
     it_snes = num_newton_iterations
-    call VecNorm(field%r, NORM_2, r2norm, ierr) 
-    call VecGetArrayF90(field%r, r_p, ierr)
+    call VecNorm(field%flow_r, NORM_2, r2norm, ierr) 
+    call VecGetArrayF90(field%flow_r, r_p, ierr)
     
     s_r2norm = 0.D0 ; norm_inf = -1.D0 ; nmax_inf =-1
     do n=1, grid%nlmax
@@ -432,7 +432,7 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
           nmax_inf = grid%nL2A(n)
        endif     
     enddo 
-   call VecRestoreArrayF90(field%r, r_p, ierr)
+   call VecRestoreArrayF90(field%flow_r, r_p, ierr)
    
     if(option%commsize >1)then 
     call MPI_REDUCE(s_r2norm, s_r2norm0,ONE_INTEGER, MPI_DOUBLE_PRECISION ,MPI_SUM,ZERO_INTEGER, PETSC_COMM_WORLD,ierr)
