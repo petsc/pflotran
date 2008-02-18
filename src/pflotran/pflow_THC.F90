@@ -1,14 +1,14 @@
 !======================================================================
 
-#define PPRESSURE_LOC(j,n) xx_loc_p(j+(n-1)*option%ndof)
-#define PPRESSURE(j,n)     xx_p(j+(n-1)*option%ndof)
-#define PRESSURE(j,n)      yy_p(j+(n-1)*option%ndof)
-#define TTEMP_LOC(n)       xx_loc_p(2+(n-1)*option%ndof)
-#define TTEMP(n)           xx_p(2+(n-1)*option%ndof)
-#define TEMP(n)            yy_p(2+(n-1)*option%ndof)
-#define CCONC_LOC(n)       xx_loc_p(3+(n-1)*option%ndof)
-#define CCONC(n)           xx_p(3+(n-1)*option%ndof)
-#define CONC(n)            yy_p(3+(n-1)*option%ndof)
+#define PPRESSURE_LOC(j,n) xx_loc_p(j+(n-1)*option%nflowdof)
+#define PPRESSURE(j,n)     xx_p(j+(n-1)*option%nflowdof)
+#define PRESSURE(j,n)      yy_p(j+(n-1)*option%nflowdof)
+#define TTEMP_LOC(n)       xx_loc_p(2+(n-1)*option%nflowdof)
+#define TTEMP(n)           xx_p(2+(n-1)*option%nflowdof)
+#define TEMP(n)            yy_p(2+(n-1)*option%nflowdof)
+#define CCONC_LOC(n)       xx_loc_p(3+(n-1)*option%nflowdof)
+#define CCONC(n)           xx_p(3+(n-1)*option%nflowdof)
+#define CONC(n)            yy_p(3+(n-1)*option%nflowdof)
 
 module thc_field_module
   
@@ -281,13 +281,13 @@ subroutine THCSetup(realization)
     PetscReal, pointer :: rtot(:,:),rate(:),area_var(:), delx(:,:)
 
 ! from pflow_init
-  select case(option%imode)
+  select case(option%iflowmode)
     case(MPH_MODE,THC_MODE)  
       call VecDuplicate(field%porosity_loc, field%ttemp_loc, ierr)
   end select
   
     ! should these be moved to their respective modules
-  select case(option%imode)
+  select case(option%iflowmode)
     case(MPH_MODE,THC_MODE)
       ! nphase degrees of freedom
       call GridCreateVector(grid,NPHASEDOF,field%pressure,GLOBAL)
@@ -313,7 +313,7 @@ subroutine THCSetup(realization)
   end select
 
   ! should these be moved to their respective modules?
-  select case(option%imode)
+  select case(option%iflowmode)
     case(MPH_MODE,THC_MODE)
       call GridCreateVector(grid,NPHASEDOF, field%ppressure_loc, LOCAL)
       call VecDuplicate(field%ppressure_loc, field%ssat_loc, ierr)
@@ -408,7 +408,7 @@ subroutine THCSetup(realization)
   end select 
   
   ! these vecs need to be stored within this module, not in field
-  select case(option%imode)
+  select case(option%iflowmode)
     case(MPH_MODE,THC_MODE)
       call VecDuplicate(field%porosity0, field%conc, ierr)
       call VecDuplicate(field%porosity0, field%temp, ierr)
@@ -526,7 +526,7 @@ end subroutine THCTimeCut
 !  p - 1:option%nphase
 !  T - option%nphase + 1
 !  C - option%nphase + 2
-!  option%ndof = option%nphase + 2 = 3
+!  option%nflowdof = option%nphase + 2 = 3
   !---------------------------------------------------------------------------
   ! Calculate the density and viscosity of water at step k+1 at each local
   ! node.
@@ -678,7 +678,7 @@ end subroutine THCTimeCut
 
   do n = 1, grid%nlmax  ! For each local node do...
     ng = grid%nL2G(n)
-    p1 = 1 + (n-1)*option%ndof
+    p1 = 1 + (n-1)*option%nflowdof
     t1 = p1 + 1
     c1 = t1 + 1
     voldt = volume_p(n) / option%dt
@@ -757,8 +757,8 @@ end subroutine THCTimeCut
     n1 = grid%nG2L(m1) ! = zero for ghost nodes
     n2 = grid%nG2L(m2) ! Ghost to local mapping
     
-    p1 = 1 + (n1-1)*option%ndof
-    p2 = 1 + (n2-1)*option%ndof
+    p1 = 1 + (n1-1)*option%nflowdof
+    p2 = 1 + (n2-1)*option%nflowdof
     t1 = p1 + 1
     t2 = p2 + 1
     c1 = t1 + 1
@@ -902,7 +902,7 @@ end subroutine THCTimeCut
       ! this must be zeroed since field%vvlbc references it.  
       v_darcy = 0.d0
       
-      p1 = 1 + (m-1) * option%ndof
+      p1 = 1 + (m-1) * option%nflowdof
       t1 = p1 + 1
       c1 = t1 + 1
 
@@ -1194,7 +1194,7 @@ end subroutine THCTimeCut
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
 
-      p1 = (local_id-1)*option%ndof + 1
+      p1 = (local_id-1)*option%nflowdof + 1
       t1 = p1 + 1
       c1 = t1 + 1
 
@@ -1364,9 +1364,9 @@ end subroutine THCTimeCut
   do n = 1, grid%nlmax  ! For each local node do...
     ng = grid%nL2G(n)
 
-    p1 = (ng-1)*option%ndof ! = 1 + (ng-1)*option%ndof-1
-    t1 = p1 + 1           ! = 2 + (ng-1)*option%ndof-1
-    c1 = t1 + 1           ! = 3 + (ng-1)*option%ndof-1
+    p1 = (ng-1)*option%nflowdof ! = 1 + (ng-1)*option%nflowdof-1
+    t1 = p1 + 1           ! = 2 + (ng-1)*option%nflowdof-1
+    c1 = t1 + 1           ! = 3 + (ng-1)*option%nflowdof-1
 
     voldt = volume_p(n) / grid%dt
     pvoldt = porosity_loc_p(ng) * voldt
@@ -1541,10 +1541,10 @@ end subroutine THCTimeCut
     dfluxt1 = 0.d0
     dfluxt2 = 0.d0
     
-    p1 = (m1-1) * option%ndof
+    p1 = (m1-1) * option%nflowdof
     t1 = p1 + 1
     c1 = t1 + 1
-    p2 = (m2-1) * option%ndof
+    p2 = (m2-1) * option%nflowdof
     t2 = p2 + 1
     c2 = t2 + 1
 
@@ -1840,7 +1840,7 @@ end subroutine THCTimeCut
     m = grid%mblkbc(iconn)  ! Note that here, m is NOT ghosted.
     ng = grid%nL2G(m)
     blkmat1 =0.D0
-    p1 = (ng-1)*option%ndof
+    p1 = (ng-1)*option%nflowdof
     t1 = p1 + 1
     c1 = t1 + 1
 

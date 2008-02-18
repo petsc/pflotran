@@ -164,7 +164,7 @@ function SaturationFunctionCreate(option)
   saturation_function%saturation_function_itype = VAN_GENUCHTEN
   saturation_function%permeability_function_ctype = ""
   saturation_function%permeability_function_itype = MUALEM
-  allocate(saturation_function%Sr(option%ndof))
+  allocate(saturation_function%Sr(option%nphase))
   saturation_function%Sr = 0.d0
   saturation_function%m = 0.d0
   saturation_function%lambda = 0.d0
@@ -364,6 +364,7 @@ subroutine SaturationFunctionCompute(pressure,saturation,relative_perm, &
   type(saturation_function_type) :: saturation_function
   type(option_type) :: option
 
+  PetscInt :: iphase = 1
   PetscReal :: alpha, lambda, m, n, Sr
   PetscReal :: pc, Se, one_over_m, Se_one_over_m, dSe_pc, dsat_pc, dkr_pc
   PetscReal :: dkr_Se, power
@@ -388,7 +389,7 @@ subroutine SaturationFunctionCompute(pressure,saturation,relative_perm, &
         pc_alpha = pc*alpha
         pc_alpha_n = pc_alpha**n
         one_plus_pc_alpha_n = 1.d0+pc_alpha_n
-        Sr = saturation_function%Sr(option%nphase)
+        Sr = saturation_function%Sr(iphase)
         Se = one_plus_pc_alpha_n**(-m)
         dSe_pc = -m*n*alpha*pc_alpha_n/(pc_alpha*one_plus_pc_alpha_n**(m+1))
         saturation = Sr + (1.d0-Sr)*Se
@@ -424,7 +425,7 @@ subroutine SaturationFunctionCompute(pressure,saturation,relative_perm, &
         return
       else
         lambda = saturation_function%lambda
-        Sr = saturation_function%Sr(option%nphase)
+        Sr = saturation_function%Sr(iphase)
         pc_alpha_neg_lambda = (pc*alpha)**(-lambda)
         Se = pc_alpha_neg_lambda
         dSe_pc = -lambda/pc*pc_alpha_neg_lambda

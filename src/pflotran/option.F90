@@ -15,10 +15,17 @@ module Option_module
     PetscMPIInt :: commsize                  ! size of PETSC_COMM_WORLD
   
     ! defines the mode (e.g. mph, richards, vadose, etc.
-    character(len=MAXNAMELENGTH) :: mode
-    PetscInt :: imode
+    character(len=MAXNAMELENGTH) :: flowmode
+    PetscInt :: iflowmode
+    character(len=MAXNAMELENGTH) :: tranmode
+    PetscInt :: itranmode
   
-    PetscInt :: nphase, ndof, nspec, npricomp
+    PetscInt :: nphase
+    PetscInt :: nflowdof
+    PetscInt :: nspec
+
+    PetscInt :: ntrandof
+    PetscInt :: ncomp
 
     ! Program options
     PetscTruth :: use_matrix_free  ! If true, do not form the Jacobian.
@@ -131,8 +138,13 @@ function OptionCreate()
   option%use_isoth = PETSC_FALSE
   option%use_matrix_free = PETSC_FALSE
   
-  option%mode = ""
-  option%imode = NULL_MODE
+  option%flowmode = ""
+  option%iflowmode = NULL_MODE
+  option%nflowdof = 0
+
+  option%tranmode = ""
+  option%itranmode = NULL_MODE
+  option%ntrandof = 0
    
 !-----------------------------------------------------------------------
       ! Initialize some parameters to sensible values.  These are parameters
@@ -251,46 +263,18 @@ subroutine OptionCheckCommandLine(option)
   option_found = PETSC_FALSE
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_richards", &
                            option_found, ierr)
-  if (option_found == PETSC_TRUE) option%mode = "richards"                           
+  if (option_found == PETSC_TRUE) option%flowmode = "richards"                           
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_richards_lite", &
                            option_found, ierr)
-  if (option_found == PETSC_TRUE) option%mode = "richards_lite"                           
-  option_found = PETSC_FALSE
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_liquid", &
-                           option_found, ierr)
-  if (option_found == PETSC_TRUE) option%mode = "liquid"                           
-  option_found = PETSC_FALSE
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_cond", &
-                           option_found, ierr)
-  if (option_found == PETSC_TRUE) option%mode = "cond"                           
-  option_found = PETSC_FALSE
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_th", &
-                           option_found, ierr)
-  if (option_found == PETSC_TRUE) option%mode = "th"                           
+  if (option_found == PETSC_TRUE) option%flowmode = "richards_lite"                           
   option_found = PETSC_FALSE
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_thc", &
                            option_found, ierr)
-  if (option_found == PETSC_TRUE) option%mode = "thc"                           
-  option_found = PETSC_FALSE
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_2ph", &
-                           option_found, ierr)
-  if (option_found == PETSC_TRUE) option%mode = "2ph"                           
+  if (option_found == PETSC_TRUE) option%flowmode = "thc"                           
   option_found = PETSC_FALSE
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_mph", &
                            option_found, ierr)
-  if (option_found == PETSC_TRUE) option%mode = "mph"                           
-  option_found = PETSC_FALSE
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_flash", &
-                           option_found, ierr)
-  if (option_found == PETSC_TRUE) option%mode = "flash"                           
-  option_found = PETSC_FALSE
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_owg", &
-                           option_found, ierr)
-  if (option_found == PETSC_TRUE) option%mode = "owg"                           
-  option_found = PETSC_FALSE
-  call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_vadose", &
-                           option_found, ierr)
-  if (option_found == PETSC_TRUE) option%mode = "vadose"                                                     
+  if (option_found == PETSC_TRUE) option%flowmode = "mph"                           
  
 end subroutine OptionCheckCommandLine
 

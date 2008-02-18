@@ -225,7 +225,7 @@ subroutine StepperUpdateDT(stepper,option,num_newton_iterations)
   
   if (stepper%iaccel == 0) return
 
-  select case(option%imode)
+  select case(option%iflowmode)
     case(THC_MODE)
       fac = 0.5d0
       if (num_newton_iterations >= stepper%iaccel) fac = 0.33d0
@@ -413,7 +413,7 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
   do
    
     
-    select case(option%imode)
+    select case(option%iflowmode)
       case(THC_MODE,MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
         call SNESSolve(solver%snes, PETSC_NULL, field%xx, ierr)
     end select
@@ -452,7 +452,7 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
     update_reason = 1
     
     if (snes_reason >= 0) then
-      select case(option%imode)
+      select case(option%iflowmode)
         case(MPH_MODE)
           call MPhase_Update_Reason(update_reason,realization)
         case(RICHARDS_MODE)
@@ -495,7 +495,7 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
             option%time/realization%output_option%tconv, &
             option%dt/realization%output_option%tconv,timestep_cut_flag
 
-      select case(option%imode)
+      select case(option%iflowmode)
         case(THC_MODE)
           call THCTimeCut(realization)
         case(RICHARDS_MODE)
@@ -536,7 +536,7 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
     endif
   endif
   
-  if (option%imode == RICHARDS_MODE) then
+  if (option%iflowmode == RICHARDS_MODE) then
      call RichardsMaxChange(realization)
     if (option%myrank==0) then
       if (mod(stepper%flowsteps,option%imod) == 0 .or. stepper%flowsteps == 1) then
@@ -549,7 +549,7 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
           option%dpmax,option%dtmpmax,option%dcmax
       endif
     endif
-  else if (option%imode == RICHARDS_LITE_MODE) then
+  else if (option%iflowmode == RICHARDS_LITE_MODE) then
     call RichardsLiteMaxChange(realization)
     if (option%myrank==0) then
       if (mod(stepper%flowsteps,option%imod) == 0 .or. stepper%flowsteps == 1) then
@@ -558,7 +558,7 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
         write(IUNIT2,'("  --> max chng: dpmx= ",1pe12.4)') option%dpmax
       endif
     endif
-  else if (option%imode == MPH_MODE) then
+  else if (option%iflowmode == MPH_MODE) then
      call MphaseMaxChange(realization)
     ! note use mph will use variable switching, the x and s change is not meaningful 
     if (option%myrank==0) then
@@ -614,7 +614,7 @@ subroutine StepperUpdateSolution(realization)
   grid => realization%grid
   field => realization%field
   
-  select case(option%imode)
+  select case(option%iflowmode)
     case(MPH_MODE)
       call pflow_update_mphase(realization)
     case(RICHARDS_MODE)

@@ -115,31 +115,7 @@ subroutine RichardsTimeCut(realization)
   option => realization%option
   field => realization%field
  
-  call VecGetArrayF90(field%xx, xx_p, ierr)
-  call VecGetArrayF90(field%yy, yy_p, ierr)
-
-! Example of linked list approach needed for AMR
-!
-!  cur_patch => patch_list%first
-!  do 
-!    if (.not.associated(cur_patch)) exit
-!    do local_id=1, cur_patch%grid%nlmax
-!      dof_offset=(local_id-1)*option%ndof
-!      do re = 1, option%ndof
-!        xx_p(dof_offset+re)= yy_p(dof_offset+re)
-!      enddo
-!    enddo 
-!    cur_patch => cur_patch%next
-!  enddo
-
-  do local_id=1, grid%nlmax
-    dof_offset=(local_id-1)*option%ndof
-    do re = 1, option%ndof
-      xx_p(dof_offset+re)= yy_p(dof_offset+re)
-    enddo
-  enddo 
-  call VecRestoreArrayF90(field%xx, xx_p, ierr) 
-  call VecRestoreArrayF90(field%yy, yy_p, ierr)
+  call VecCopy(field%yy,field%xx)
  
 end subroutine RichardsTimeCut
   
@@ -324,7 +300,7 @@ subroutine RichardsUpdateAuxVars(realization)
   PetscInt :: ghosted_id, local_id, istart, iend, sum_connection, idof, iconn
   PetscInt :: iphasebc, iphase
   PetscReal, pointer :: xx_loc_p(:), icap_loc_p(:), iphase_loc_p(:)
-  PetscReal :: xxbc(realization%option%ndof)
+  PetscReal :: xxbc(realization%option%nflowdof)
   PetscErrorCode :: ierr
   
   option => realization%option
@@ -341,8 +317,8 @@ subroutine RichardsUpdateAuxVars(realization)
     if (associated(field%imat)) then
       if (field%imat(ghosted_id) <= 0) cycle
     endif
-    iend = ghosted_id*option%ndof
-    istart = iend-option%ndof+1
+    iend = ghosted_id*option%nflowdof
+    istart = iend-option%nflowdof+1
     iphase = int(iphase_loc_p(ghosted_id))
    
     call computeAuxVar(xx_loc_p(istart:iend),aux_vars(ghosted_id), &
@@ -365,12 +341,12 @@ subroutine RichardsUpdateAuxVars(realization)
         if (field%imat(ghosted_id) <= 0) cycle
       endif
 
-      do idof=1,option%ndof
+      do idof=1,option%nflowdof
         select case(boundary_condition%condition%itype(idof))
           case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
             xxbc(idof) = boundary_condition%aux_real_var(idof,iconn)
           case(NEUMANN_BC,ZERO_GRADIENT_BC)
-            xxbc(idof) = xx_loc_p((ghosted_id-1)*option%ndof+idof)
+            xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
         end select
       enddo
       
@@ -470,8 +446,8 @@ subroutine RichardsUpdateFixedAccumulation(realization)
     if (associated(field%imat)) then
       if (field%imat(ghosted_id) <= 0) cycle
     endif
-    iend = local_id*option%ndof
-    istart = iend-option%ndof+1
+    iend = local_id*option%nflowdof
+    istart = iend-option%nflowdof+1
     iphase = int(iphase_loc_p(ghosted_id))
     call computeAuxVar(xx_p(istart:iend),aux_vars(ghosted_id), &
                        iphase, &
@@ -545,7 +521,7 @@ subroutine RichardsNumericalJacobianTest(xx,realization)
   call VecDuplicate(xx,res_pert,ierr)
   
   call MatCreate(PETSC_COMM_WORLD,A,ierr)
-  call MatSetSizes(A,PETSC_DECIDE,PETSC_DECIDE,grid%nlmax*option%ndof,grid%nlmax*option%ndof,ierr)
+  call MatSetSizes(A,PETSC_DECIDE,PETSC_DECIDE,grid%nlmax*option%nflowdof,grid%nlmax*option%nflowdof,ierr)
   call MatSetType(A,MATAIJ,ierr)
   call MatSetFromOptions(A,ierr)
     
@@ -555,7 +531,7 @@ subroutine RichardsNumericalJacobianTest(xx,realization)
     if (associated(field%imat)) then
       if (field%imat(grid%nL2G(icell)) <= 0) cycle
     endif
-    do idof = (icell-1)*option%ndof+1,icell*option%ndof 
+    do idof = (icell-1)*option%nflowdof+1,icell*option%nflowdof 
       call veccopy(xx,xx_pert,ierr)
       call vecgetarrayf90(xx_pert,vec_p,ierr)
       perturbation = vec_p(idof)*perturbation_tolerance
@@ -563,7 +539,7 @@ subroutine RichardsNumericalJacobianTest(xx,realization)
       call vecrestorearrayf90(xx_pert,vec_p,ierr)
       call richardsanalyticalresidual(PETSC_NULL_OBJECT,xx_pert,res_pert,realization,ierr)
       call vecgetarrayf90(res_pert,vec_p,ierr)
-      do idof2 = 1, grid%nlmax*option%ndof
+      do idof2 = 1, grid%nlmax*option%nflowdof
         derivative = (vec_p(idof2)-vec2_p(idof2))/perturbation
         if (dabs(derivative) > 1.d-30) then
           call matsetvalue(a,idof2-1,idof-1,derivative,insert_values,ierr)
@@ -608,7 +584,7 @@ subroutine RichardsAccumulationDerivative(aux_var,por,vol,rock_dencpr,option, &
   type(option_type) :: option
   PetscReal vol,por,rock_dencpr
   type(saturation_function_type) :: sat_func
-  PetscReal :: J(option%ndof,option%ndof)
+  PetscReal :: J(option%nflowdof,option%nflowdof)
      
   PetscInt :: ispec !, iireac=1
   PetscReal :: porXvol, mol(option%nspec), eng
@@ -689,7 +665,7 @@ subroutine RichardsAccumulation(aux_var,por,vol,rock_dencpr,option,Res)
 
   type(richards_type) :: aux_var
   type(option_type) :: option
-  PetscReal Res(1:option%ndof) 
+  PetscReal Res(1:option%nflowdof) 
   PetscReal vol,por,rock_dencpr
      
   PetscInt :: ispec !, iireac=1
@@ -716,8 +692,8 @@ subroutine RichardsAccumulation(aux_var,por,vol,rock_dencpr,option,Res)
 !H2O
 !    mol(1)= mol(1) - option%dt * option%rtot(node_no,1)
 !  endif
-  Res(1:option%ndof-1)=mol(:)
-  Res(option%ndof)=eng
+  Res(1:option%nflowdof-1)=mol(:)
+  Res(option%nflowdof)=eng
 
 end subroutine RichardsAccumulation
 
@@ -749,7 +725,7 @@ subroutine RichardsFluxDerivative(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,
   PetscReal :: v_darcy,area
   PetscReal :: dist_gravity  ! distance along gravity vector
   type(saturation_function_type) :: sat_func_up, sat_func_dn
-  PetscReal :: Jup(option%ndof,option%ndof), Jdn(option%ndof,option%ndof)
+  PetscReal :: Jup(option%nflowdof,option%nflowdof), Jdn(option%nflowdof,option%nflowdof)
      
   PetscInt :: ispec
   PetscReal :: fluxm(option%nspec),fluxe,q
@@ -881,11 +857,11 @@ subroutine RichardsFluxDerivative(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,
         
       Jup(1,1) = (dq_dp_up*density_ave+q*dden_ave_dp_up)*uxmol(1)
       Jup(1,2) = (dq_dt_up*density_ave+q*dden_ave_dt_up)*uxmol(1)
-!      Jup(1,3:option%ndof) = 0d.0
+!      Jup(1,3:option%nflowdof) = 0d.0
 
       Jdn(1,1) = (dq_dp_dn*density_ave+q*dden_ave_dp_dn)*uxmol(1)
       Jdn(1,2) = (dq_dt_dn*density_ave+q*dden_ave_dt_dn)*uxmol(1)
-!      Jdn(1,3:option%ndof) = 0.d0
+!      Jdn(1,3:option%nflowdof) = 0.d0
       do ispec=2,option%nspec 
         ! based on flux = q*density_ave*uxmol
         Jup(ispec,1) = (dq_dp_up*density_ave+q*dden_ave_dp_up)*uxmol(ispec)
@@ -897,13 +873,13 @@ subroutine RichardsFluxDerivative(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,
         Jdn(ispec,ispec+1) = q*density_ave*duxmol_dxmol_dn
       enddo
       ! based on flux = q*density_ave*uh
-      Jup(option%ndof,1) = (dq_dp_up*density_ave+q*dden_ave_dp_up)*uh+q*density_ave*duh_dp_up
-      Jup(option%ndof,2) = (dq_dt_up*density_ave+q*dden_ave_dt_up)*uh+q*density_ave*duh_dt_up
-!      Jup(option%ndof,3:option%ndof) = 0d.0
+      Jup(option%nflowdof,1) = (dq_dp_up*density_ave+q*dden_ave_dp_up)*uh+q*density_ave*duh_dp_up
+      Jup(option%nflowdof,2) = (dq_dt_up*density_ave+q*dden_ave_dt_up)*uh+q*density_ave*duh_dt_up
+!      Jup(option%nflowdof,3:option%nflowdof) = 0d.0
 
-      Jdn(option%ndof,1) = (dq_dp_dn*density_ave+q*dden_ave_dp_dn)*uh+q*density_ave*duh_dp_dn
-      Jdn(option%ndof,2) = (dq_dt_dn*density_ave+q*dden_ave_dt_dn)*uh+q*density_ave*duh_dt_dn
-!      Jdn(option%ndof,3:option%ndof) = 0.d0
+      Jdn(option%nflowdof,1) = (dq_dp_dn*density_ave+q*dden_ave_dp_dn)*uh+q*density_ave*duh_dp_dn
+      Jdn(option%nflowdof,2) = (dq_dt_dn*density_ave+q*dden_ave_dt_dn)*uh+q*density_ave*duh_dt_dn
+!      Jdn(option%nflowdof,3:option%nflowdof) = 0.d0
 
     endif
   endif 
@@ -954,8 +930,8 @@ subroutine RichardsFluxDerivative(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,
         
   Dk = (Dk_up * Dk_dn) / (dd_dn*Dk_up + dd_up*Dk_dn)
 !  cond = Dk*area*(aux_var_up%temp-aux_var_dn%temp) 
-  Jup(option%ndof,2) = Jup(option%ndof,2)+Dk*area
-  Jdn(option%ndof,2) = Jdn(option%ndof,2)+Dk*area*(-1.d0)
+  Jup(option%nflowdof,2) = Jup(option%nflowdof,2)+Dk*area
+  Jdn(option%nflowdof,2) = Jdn(option%nflowdof,2)+Dk*area*(-1.d0)
   Jup = Jup*option%dt
   Jdn = Jdn*option%dt
  ! note: Res is the flux contribution, for node up J = J + Jup
@@ -1028,7 +1004,7 @@ subroutine RichardsFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
   PetscReal :: perm_up, perm_dn
   PetscReal :: Dk_up, Dk_dn
   PetscReal :: v_darcy,area
-  PetscReal :: Res(1:option%ndof) 
+  PetscReal :: Res(1:option%nflowdof) 
   PetscReal :: dist_gravity  ! distance along gravity vector
      
   PetscInt :: ispec
@@ -1101,8 +1077,8 @@ subroutine RichardsFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
   cond = Dk*area*(aux_var_up%temp-aux_var_dn%temp) 
   fluxe=fluxe + cond
 
-  Res(1:option%ndof-1) = fluxm(:) * option%dt
-  Res(option%ndof) = fluxe * option%dt
+  Res(1:option%nflowdof-1) = fluxm(:) * option%dt
+  Res(option%nflowdof) = fluxe * option%dt
  ! note: Res is the flux contribution, for node 1 R = R + Res_FL
  !                                              2 R = R - Res_FL  
 
@@ -1133,7 +1109,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   PetscReal :: por_dn,perm_dn,Dk_dn,tor_dn
   PetscReal :: area
   type(saturation_function_type) :: sat_func_dn  
-  PetscReal :: Jdn(option%ndof,option%ndof)
+  PetscReal :: Jdn(option%nflowdof,option%nflowdof)
   
   PetscReal :: dist_gravity  ! distance along gravity vector
           
@@ -1278,7 +1254,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
 
   Jdn(1,1) = (dq_dp_dn*density_ave+q*dden_ave_dp_dn)*uxmol(1)
   Jdn(1,2) = (dq_dt_dn*density_ave+q*dden_ave_dt_dn)*uxmol(1)
-!  Jdn(1,3:option%ndof) = 0.d0
+!  Jdn(1,3:option%nflowdof) = 0.d0
   do ispec=2,option%nspec 
     ! based on flux = q*density_ave*uxmol
     Jdn(ispec,1) = (dq_dp_dn*density_ave+q*dden_ave_dp_dn)*uxmol(ispec)
@@ -1286,9 +1262,9 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
     Jdn(ispec,ispec+1) = q*density_ave*duxmol_dxmol_dn
   enddo
       ! based on flux = q*density_ave*uh
-  Jdn(option%ndof,1) = (dq_dp_dn*density_ave+q*dden_ave_dp_dn)*uh+q*density_ave*duh_dp_dn
-  Jdn(option%ndof,2) = (dq_dt_dn*density_ave+q*dden_ave_dt_dn)*uh+q*density_ave*duh_dt_dn
-!  Jdn(option%ndof,3:option%ndof) = 0.d0
+  Jdn(option%nflowdof,1) = (dq_dp_dn*density_ave+q*dden_ave_dp_dn)*uh+q*density_ave*duh_dp_dn
+  Jdn(option%nflowdof,2) = (dq_dt_dn*density_ave+q*dden_ave_dt_dn)*uh+q*density_ave*duh_dt_dn
+!  Jdn(option%nflowdof,3:option%nflowdof) = 0.d0
 
   ! Diffusion term   
   select case(ibndtype(RICHARDS_CONCENTRATION_DOF))
@@ -1323,7 +1299,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
     case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
       Dk =  Dk_dn / dd_up
       !cond = Dk*area*(aux_var_up%temp-aux_var_dn%temp) 
-      Jdn(option%ndof,2) = Jdn(option%ndof,2)+Dk*area*(-1.d0)
+      Jdn(option%nflowdof,2) = Jdn(option%nflowdof,2)+Dk*area*(-1.d0)
   end select
 
   Jdn = Jdn * option%dt
@@ -1394,7 +1370,7 @@ subroutine RichardsBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   PetscReal :: aux_vars(:) ! from aux_real_var array
   PetscReal :: por_dn,perm_dn,Dk_dn,tor_dn
   PetscReal :: v_darcy, area
-  PetscReal :: Res(1:option%ndof) 
+  PetscReal :: Res(1:option%nflowdof) 
   
   PetscReal :: dist_gravity  ! distance along gravity vector
           
@@ -1492,7 +1468,7 @@ subroutine RichardsBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   end select
 
   Res(1:option%nspec)=fluxm(:)* option%dt
-  Res(option%ndof)=fluxe * option%dt
+  Res(option%nflowdof)=fluxe * option%dt
 
 end subroutine RichardsBCFlux
 
@@ -1547,8 +1523,7 @@ subroutine RichardsAnalyticalResidual(snes,xx,r,realization,ierr)
   PetscReal :: dw_kg, dw_mol
   PetscReal :: tsrc1, qsrc1, csrc1, enth_src_h2o, enth_src_co2 , hsrc1
   PetscReal :: upweight
-  PetscInt :: iphasebc
-  PetscReal :: Res(realization%option%ndof), v_darcy
+  PetscReal :: Res(realization%option%nflowdof), v_darcy
   PetscViewer :: viewer
 
 
@@ -1611,13 +1586,13 @@ subroutine RichardsAnalyticalResidual(snes,xx,r,realization,ierr)
     if (associated(field%imat)) then
       if (field%imat(ghosted_id) <= 0) cycle
     endif
-    iend = local_id*option%ndof
-    istart = iend-option%ndof+1
+    iend = local_id*option%nflowdof
+    istart = iend-option%nflowdof+1
     call RichardsAccumulation(aux_vars(ghosted_id),porosity_loc_p(ghosted_id), &
                               volume_p(local_id), &
                               option%dencpr(int(ithrm_loc_p(ghosted_id))), &
                               option,Res) 
-    r_p(istart:iend) = r_p(istart:iend) + Res(1:option%ndof)
+    r_p(istart:iend) = r_p(istart:iend) + Res(1:option%nflowdof)
   enddo
 #endif
 #if 1
@@ -1651,7 +1626,7 @@ subroutine RichardsAnalyticalResidual(snes,xx,r,realization,ierr)
       endif
       
       if (enthalpy_flag) then
-        r_p(local_id*option%ndof) = r_p(local_id*option%ndof) - hsrc1 * option%dt   
+        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1 * option%dt   
       endif         
 
       if (qsrc1 > 0.d0) then ! injection
@@ -1659,9 +1634,9 @@ subroutine RichardsAnalyticalResidual(snes,xx,r,realization,ierr)
                             dw_kg,dw_mol,enth_src_h2o,option%scale,ierr)
 !           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
 !           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
-        r_p((local_id-1)*option%ndof + jh2o) = r_p((local_id-1)*option%ndof + jh2o) &
+        r_p((local_id-1)*option%nflowdof + jh2o) = r_p((local_id-1)*option%nflowdof + jh2o) &
                                                - qsrc1 *option%dt
-        r_p(local_id*option%ndof) = r_p(local_id*option%ndof) - qsrc1*enth_src_h2o*option%dt
+        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - qsrc1*enth_src_h2o*option%dt
       endif  
     
       if (csrc1 > 0.d0) then ! injection
@@ -1738,15 +1713,15 @@ subroutine RichardsAnalyticalResidual(snes,xx,r,realization,ierr)
       field%internal_velocities(1,iconn) = v_darcy
      
       if (local_id_up>0) then
-        iend = local_id_up*option%ndof
-        istart = iend-option%ndof+1
-        r_p(istart:iend) = r_p(istart:iend) + Res(1:option%ndof)
+        iend = local_id_up*option%nflowdof
+        istart = iend-option%nflowdof+1
+        r_p(istart:iend) = r_p(istart:iend) + Res(1:option%nflowdof)
       endif
    
       if (local_id_dn>0) then
-        iend = local_id_dn*option%ndof
-        istart = iend-option%ndof+1
-        r_p(istart:iend) = r_p(istart:iend) - Res(1:option%ndof)
+        iend = local_id_dn*option%nflowdof
+        istart = iend-option%nflowdof+1
+        r_p(istart:iend) = r_p(istart:iend) - Res(1:option%nflowdof)
       endif
 
     enddo
@@ -1806,9 +1781,9 @@ subroutine RichardsAnalyticalResidual(snes,xx,r,realization,ierr)
                                 v_darcy,Res)
       field%boundary_velocities(1,iconn) = v_darcy
 
-      iend = local_id*option%ndof
-      istart = iend-option%ndof+1
-      r_p(istart:iend)= r_p(istart:iend) - Res(1:option%ndof)
+      iend = local_id*option%nflowdof
+      istart = iend-option%nflowdof+1
+      r_p(istart:iend)= r_p(istart:iend) - Res(1:option%nflowdof)
  
     enddo
     boundary_condition => boundary_condition%next
@@ -1821,8 +1796,8 @@ subroutine RichardsAnalyticalResidual(snes,xx,r,realization,ierr)
       if (associated(field%imat)) then
         if (field%imat(ghosted_id) <= 0) cycle
       endif
-      istart = 3 + (local_id-1)*option%ndof
-      r_p(istart)=xx_loc_p(2 + (ghosted_id-1)*option%ndof)-yy_p(istart-1)
+      istart = 3 + (local_id-1)*option%nflowdof
+      r_p(istart)=xx_loc_p(2 + (ghosted_id-1)*option%nflowdof)-yy_p(istart-1)
     enddo
   endif
 
@@ -1907,14 +1882,13 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
   PetscReal :: zero, norm
   PetscReal :: upweight
   PetscReal :: max_dev  
-  PetscInt :: iphasebc
   PetscInt :: local_id, ghosted_id
   PetscInt :: local_id_up, local_id_dn
   PetscInt :: ghosted_id_up, ghosted_id_dn
   PetscInt ::  natural_id_up,natural_id_dn
   
-  PetscReal :: Jup(realization%option%ndof,realization%option%ndof), &
-            Jdn(realization%option%ndof,realization%option%ndof)
+  PetscReal :: Jup(realization%option%nflowdof,realization%option%nflowdof), &
+            Jdn(realization%option%nflowdof,realization%option%nflowdof)
   
   PetscInt :: istart, iend
   
@@ -1977,8 +1951,8 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
     if (associated(field%imat)) then
       if (field%imat(ghosted_id) <= 0) cycle
     endif
-    iend = local_id*option%ndof
-    istart = iend-option%ndof+1
+    iend = local_id*option%nflowdof
+    istart = iend-option%nflowdof+1
     icap = int(icap_loc_p(ghosted_id))
     call RichardsAccumulationDerivative(aux_vars(ghosted_id), &
                               porosity_loc_p(ghosted_id), &
@@ -2029,7 +2003,7 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
       endif
       
 !      if (enthalpy_flag) then
-!        r_p(local_id*option%ndof) = r_p(local_id*option%ndof) - hsrc1 * option%dt   
+!        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1 * option%dt   
 !      endif         
 
       if (qsrc1 > 0.d0) then ! injection
@@ -2040,8 +2014,8 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
         ! base on r_p() = r_p() - qsrc1*enth_src_h2o*option%dt
         dresT_dp = -qsrc1*hw_dp*option%dt
         ! dresT_dt = -qsrc1*hw_dt*option%dt ! since tsrc1 is prescribed, there is no derivative
-        istart = ghosted_id*option%ndof
-        call MatSetValuesLocal(A,1,istart-1,1,istart-option%ndof,dresT_dp,ADD_VALUES,ierr)
+        istart = ghosted_id*option%nflowdof
+        call MatSetValuesLocal(A,1,istart-1,1,istart-option%nflowdof,dresT_dp,ADD_VALUES,ierr)
         ! call MatSetValuesLocal(A,1,istart-1,1,istart-1,dresT_dt,ADD_VALUES,ierr)
       endif  
     
@@ -2243,11 +2217,11 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
   zero = 0.d0
   call MatZeroRowsLocal(A,n_zero_rows,zero_rows_local_ghosted,zero,ierr) 
   do i=1, n_zero_rows
-    ii = mod(zero_rows_local(i),option%ndof)
+    ii = mod(zero_rows_local(i),option%nflowdof)
     ip1 = zero_rows_local_ghosted(i)
     if (ii == 0) then
       ip2 = ip1-1
-    elseif (ii == option%ndof-1) then
+    elseif (ii == option%nflowdof-1) then
       ip2 = ip1+1
     else
       ip2 = ip1
@@ -2321,7 +2295,7 @@ subroutine createRichardsZeroArray(realization)
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
       if (field%imat(ghosted_id) <= 0) then
-        n_zero_rows = n_zero_rows + option%ndof
+        n_zero_rows = n_zero_rows + option%nflowdof
       else
 #ifdef ISOTHERMAL
         n_zero_rows = n_zero_rows + 1
@@ -2344,16 +2318,16 @@ subroutine createRichardsZeroArray(realization)
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
       if (field%imat(ghosted_id) <= 0) then
-        do idof = 1, option%ndof
+        do idof = 1, option%nflowdof
           ncount = ncount + 1
-          zero_rows_local(ncount) = (local_id-1)*option%ndof+idof
-          zero_rows_local_ghosted(ncount) = (ghosted_id-1)*option%ndof+idof-1
+          zero_rows_local(ncount) = (local_id-1)*option%nflowdof+idof
+          zero_rows_local_ghosted(ncount) = (ghosted_id-1)*option%nflowdof+idof-1
         enddo
       else
 #ifdef ISOTHERMAL
         ncount = ncount + 1
-        zero_rows_local(ncount) = local_id*option%ndof
-        zero_rows_local_ghosted(ncount) = ghosted_id*option%ndof-1
+        zero_rows_local(ncount) = local_id*option%nflowdof
+        zero_rows_local_ghosted(ncount) = ghosted_id*option%nflowdof-1
 #endif
       endif
     enddo
@@ -2362,8 +2336,8 @@ subroutine createRichardsZeroArray(realization)
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
       ncount = ncount + 1
-      zero_rows_local(ncount) = local_id*option%ndof
-      zero_rows_local_ghosted(ncount) = ghosted_id*option%ndof-1
+      zero_rows_local(ncount) = local_id*option%nflowdof
+      zero_rows_local_ghosted(ncount) = ghosted_id*option%nflowdof-1
     enddo
 #endif
   endif
@@ -2409,7 +2383,7 @@ subroutine RichardsMaxChange(realization)
   call VecWAXPY(field%dxx,-1.d0,field%xx,field%yy,ierr)
   call VecStrideNorm(field%dxx,ZERO_INTEGER,NORM_INFINITY,option%dpmax,ierr)
   call VecStrideNorm(field%dxx,ONE_INTEGER,NORM_INFINITY,option%dtmpmax,ierr)
-  if (option%ndof > 2) &
+  if (option%nflowdof > 2) &
     call VecStrideNorm(field%dxx,TWO_INTEGER,NORM_INFINITY,option%dcmax,ierr)
     
 end subroutine RichardsMaxChange
@@ -2644,7 +2618,7 @@ subroutine computeAuxVar(x,aux_var,iphase,saturation_function,option)
 
   type(option_type) :: option
   type(saturation_function_type) :: saturation_function
-  PetscReal :: x(option%ndof)
+  PetscReal :: x(option%nflowdof)
   type(richards_type) :: aux_var
   PetscInt ::iphase
 

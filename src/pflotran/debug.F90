@@ -24,6 +24,7 @@ module Debug_module
     logical :: matview_Jacobian
     logical :: matview_Jacobian_detailed
     logical :: norm_Jacobian
+    logical :: print_couplers    
   end type ptran_debug_type
 
   interface DebugRead
@@ -82,6 +83,14 @@ function DebugCreatePtran()
   type(ptran_debug_type), pointer :: debug
   
   allocate(debug)
+  debug%vecview_residual = .false.
+  debug%vecview_solution = .false.
+  debug%matview_Jacobian = .false.
+  debug%matview_Jacobian_detailed = .false.
+  debug%norm_Jacobian = .false.
+  
+  debug%print_couplers = .false.
+
   
   DebugCreatePtran => debug
 

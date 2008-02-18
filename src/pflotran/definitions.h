@@ -40,6 +40,7 @@ PetscInt, parameter :: NPHANCOMPDOF = 5
 PetscInt, parameter :: NPHANSPECDOF = 6
 PetscInt, parameter :: NPHANSPECNCOMPDOF = 7
 PetscInt, parameter :: VARDOF = 8
+PetscInt, parameter :: NCOMPDOF = 9
 
 PetscInt, parameter :: GLOBAL = 1
 PetscInt, parameter :: LOCAL = 2

@@ -84,21 +84,21 @@ subroutine PflowInit(simulation,filename)
 
 ! check number of dofs and phases
   iflag = PETSC_FALSE
-  select case(option%imode)
+  select case(option%iflowmode)
     case(THC_MODE)
-      if (option%ndof .ne. 3 .or. option%nphase .ne. 1) iflag = PETSC_TRUE
+      if (option%nflowdof .ne. 3 .or. option%nphase .ne. 1) iflag = PETSC_TRUE
     case(MPH_MODE,RICHARDS_MODE)
-      if (option%ndof .ne. (option%nspec+1)) iflag = PETSC_TRUE
+      if (option%nflowdof .ne. (option%nspec+1)) iflag = PETSC_TRUE
     case(RICHARDS_LITE_MODE)
-      if (option%ndof /= 1 .and. option%nphase /= 1 .and. option%nspec /= 1) &
+      if (option%nflowdof /= 1 .and. option%nphase /= 1 .and. option%nspec /= 1) &
         iflag = PETSC_TRUE
     case default
-      if (option%ndof .ne. 1 .or. option%nphase .ne. 1) iflag = PETSC_TRUE
+      if (option%nflowdof .ne. 1 .or. option%nphase .ne. 1) iflag = PETSC_TRUE
   end select
   
   if (iflag == PETSC_TRUE) then
     write(*,*) 'Specified number of dofs or phases not correct-stop: ', &
-               trim(option%mode), 'ndof= ',option%ndof,' nph= ', &
+               trim(option%flowmode), 'ndof= ',option%nflowdof,' nph= ', &
                option%nphase
     stop
   endif
@@ -158,11 +158,11 @@ subroutine PflowInit(simulation,filename)
   call readInput(simulation,filename)
 
   if (option%iblkfmt == 0) then
-    select case(option%imode)
+    select case(option%iflowmode)
       case(MPH_MODE,RICHARDS_MODE)
         call printErrMsg(option,&
                          'AIJ matrix not supported for current mode: '// &
-                         option%mode)
+                         option%flowmode)
     end select
   endif
 
@@ -213,8 +213,8 @@ subroutine PflowInit(simulation,filename)
         grid%structured_grid%npz
     endif
     write(*,'(" number of dofs = ",i3,", number of phases = ",i3,i2)') &
-      option%ndof,option%nphase
-    select case(option%imode)
+      option%nflowdof,option%nphase
+    select case(option%iflowmode)
       case(THC_MODE)
         write(*,'(" mode = THC: p, T, C")')
       case(MPH_MODE)
@@ -234,7 +234,7 @@ subroutine PflowInit(simulation,filename)
   
     if (option%myrank == 0) write(*,'(" Using matrix-free Newton-Krylov")')
 
-    select case(option%imode)
+    select case(option%iflowmode)
       case(THC_MODE,MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
         call MatCreateMFFD(solver%snes,field%xx,solver%J,ierr)
     end select
@@ -250,7 +250,7 @@ subroutine PflowInit(simulation,filename)
   if (option%myrank == 0) write(*,'("++++++++++++++++++++++++++++++++&
                      &++++++++++++++++++++++++++++",/)')
 
-  select case(option%imode)
+  select case(option%iflowmode)
     case(THC_MODE)
       call SNESSetFunction(solver%snes,field%r,THCResidual,realization,ierr)
       call SNESSetJacobian(solver%snes, solver%J, solver%J, THCJacobian, &
@@ -285,7 +285,7 @@ subroutine PflowInit(simulation,filename)
   if (option%myrank == 0) write(*,'("  Finished setting up of INIT ")')
          
   ! move each case to its respective module and just call ModeSetup (e.g. RichardsSetup)
-  select case(option%imode)
+  select case(option%iflowmode)
     case(RICHARDS_MODE)
       call RichardsSetup(realization)
     case(RICHARDS_LITE_MODE)
@@ -357,8 +357,8 @@ subroutine readRequiredCardsFromInput(realization,filename,mcomp,mphas)
   call fiReadWord(string,word,.false.,ierr)
  
   ! read in keyword 
-  call fiReadWord(string,option%mode,.true.,ierr)
-  call fiErrorMsg(option%myrank,'mode','mode',ierr)
+  call fiReadWord(string,option%flowmode,.true.,ierr)
+  call fiErrorMsg(option%myrank,'flowmode','mode',ierr)
 
 !.........................................................................
 
@@ -400,10 +400,10 @@ subroutine readRequiredCardsFromInput(realization,filename,mcomp,mphas)
   call fiReadInt(string,option%nspec,ierr)
   call fiDefaultMsg(option%myrank,'nspec',ierr)
 
-  call fiReadInt(string,option%npricomp,ierr)
+  call fiReadInt(string,idum,ierr)
   call fiDefaultMsg(option%myrank,'npricomp',ierr)
 
-  call fiReadInt(string,option%ndof,ierr)
+  call fiReadInt(string,option%nflowdof,ierr)
   call fiDefaultMsg(option%myrank,'ndof',ierr)
       
   call fiReadInt(string,idum,ierr)
@@ -426,7 +426,7 @@ subroutine readRequiredCardsFromInput(realization,filename,mcomp,mphas)
         &"  itable  = ",i4    &
         &   )') grid%igeom, grid%structured_grid%nx, &
                 grid%structured_grid%ny, grid%structured_grid%nz, &
-                option%nphase, option%ndof, idum, option%itable
+                option%nphase, option%nflowdof, idum, option%itable
     else
     endif
   endif
@@ -1352,7 +1352,7 @@ subroutine readInput(simulation,filename)
           call fiReadInt(string,saturation_function%saturation_function_itype,ierr)
           call fiErrorMsg(option%myrank,'icaptype','PCKR', ierr)
       
-          select case(option%imode)
+          select case(option%iflowmode)
             case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
               do np=1, option%nphase
                 call fiReadDouble(string,saturation_function%Sr(np),ierr)
@@ -1388,7 +1388,7 @@ subroutine readInput(simulation,filename)
         allocate(option%icaptype(count))
         option%icaptype = 0
   
-        select case(option%imode)
+        select case(option%iflowmode)
           case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
             allocate(option%sir(1:option%nphase,count))
           case default
@@ -1416,7 +1416,7 @@ subroutine readInput(simulation,filename)
           endif
           
           option%icaptype(id) = saturation_function%saturation_function_itype
-          select case(option%imode)
+          select case(option%iflowmode)
             case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
               do i=1,option%nphase
                 option%sir(i,id) = saturation_function%Sr(i)
@@ -1443,9 +1443,9 @@ subroutine readInput(simulation,filename)
           endif
         enddo
 
-        if (option%imode == MPH_MODE .or. &
-            option%imode == RICHARDS_MODE .or. &
-            option%imode == RICHARDS_LITE_MODE) then
+        if (option%iflowmode == MPH_MODE .or. &
+            option%iflowmode == RICHARDS_MODE .or. &
+            option%iflowmode == RICHARDS_LITE_MODE) then
           call pckr_init(option%nphase,count,grid%nlmax, &
                          option%icaptype,option%sir, option%pckrm, &
                          option%lambda,option%alpha,option%pcwmax, &
@@ -1458,9 +1458,9 @@ subroutine readInput(simulation,filename)
           write(IUNIT2,'("  icp swir    lambda         alpha")')
           do j = 1, count
             i=option%icaptype(j)
-            if (option%imode == MPH_MODE .or. &
-                option%imode == RICHARDS_MODE .or. &
-                option%imode == RICHARDS_LITE_MODE) then
+            if (option%iflowmode == MPH_MODE .or. &
+                option%iflowmode == RICHARDS_MODE .or. &
+                option%iflowmode == RICHARDS_LITE_MODE) then
               write(IUNIT2,'(i4,1p8e12.4)') i,(option%sir(np,i),np=1, &
                 option%nphase),option%lambda(i),option%alpha(i), &
                 option%pcwmax(i),option%pcbetac(i),option%pwrprm(i)
@@ -1472,9 +1472,9 @@ subroutine readInput(simulation,filename)
           enddo
         end if
 
-        if (option%imode == MPH_MODE .or. &
-            option%imode == RICHARDS_MODE .or. &
-            option%imode == RICHARDS_LITE_MODE) then
+        if (option%iflowmode == MPH_MODE .or. &
+            option%iflowmode == RICHARDS_MODE .or. &
+            option%iflowmode == RICHARDS_LITE_MODE) then
           deallocate(option%icaptype, option%pckrm, option%lambda, &
                      option%alpha,option%pcwmax, option%pcbetac, &
                      option%pwrprm)
@@ -1668,8 +1668,8 @@ subroutine readInput(simulation,filename)
         stop
 #if 0
 ! Needs implementation         
-        allocate(stepper%steady_eps(option%ndof))
-        do j=1,option%ndof
+        allocate(stepper%steady_eps(option%nflowdof))
+        do j=1,option%nflowdof
           call fiReadDouble(string,stepper%steady_eps(j),ierr)
           call fiDefaultMsg(option%myrank,'steady tol',ierr)
         enddo
@@ -1725,50 +1725,50 @@ subroutine setMode(option,mcomp,mphas)
   PetscInt :: mcomp, mphas
   PetscInt :: length
   
-  length = len_trim(option%mode)
-  call fiCharsToLower(option%mode,length)
-  length = len_trim(option%mode)
-  if (fiStringCompare(option%mode,"richards",length)) then
-    option%imode = RICHARDS_MODE
-  else if (fiStringCompare(option%mode,"richards_lite",length)) then
-    option%imode = RICHARDS_LITE_MODE
+  length = len_trim(option%flowmode)
+  call fiCharsToLower(option%flowmode,length)
+  length = len_trim(option%flowmode)
+  if (fiStringCompare(option%flowmode,"richards",length)) then
+    option%iflowmode = RICHARDS_MODE
+  else if (fiStringCompare(option%flowmode,"richards_lite",length)) then
+    option%iflowmode = RICHARDS_LITE_MODE
     option%nphase = 1
     option%nspec = 1
-    option%ndof = 1
+    option%nflowdof = 1
 #if 0  
   ! needs to be implemented
-  else if (fiStringCompare(option%mode,"MPH",len_trim(option%mode))) then
-  else if (fiStringCompare(option%mode,"",#)) then
+  else if (fiStringCompare(option%flowmode,"MPH",len_trim(option%mode))) then
+  else if (fiStringCompare(option%flowmode,"",#)) then
 #endif  
   endif 
   
-  if (option%imode /= THC_MODE .and. &
-      option%imode /= MPH_MODE .and. &
-      option%imode /= RICHARDS_MODE .and. &
-      option%imode /= RICHARDS_LITE_MODE) then 
+  if (option%iflowmode /= THC_MODE .and. &
+      option%iflowmode /= MPH_MODE .and. &
+      option%iflowmode /= RICHARDS_MODE .and. &
+      option%iflowmode /= RICHARDS_LITE_MODE) then 
 
     if (mcomp >0 .and. mphas>0)then
-      if (option%imode /= THC_MODE .and. mcomp == 37)then
-        option%imode = THC_MODE
-        option%mode = 'thc'
-        option%nphase = 1; option%ndof =3
+      if (option%iflowmode /= THC_MODE .and. mcomp == 37)then
+        option%iflowmode = THC_MODE
+        option%flowmode = 'thc'
+        option%nphase = 1; option%nflowdof =3
       endif
-      if (option%imode /= MPH_MODE .and. mcomp == 35)then
-        option%imode = MPH_MODE
-        option%mode = 'mph'
-        option%nphase = 2; option%ndof =3; option%nspec =2 
+      if (option%iflowmode /= MPH_MODE .and. mcomp == 35)then
+        option%iflowmode = MPH_MODE
+        option%flowmode = 'mph'
+        option%nphase = 2; option%nflowdof =3; option%nspec =2 
       endif
-      if (option%imode /= RICHARDS_MODE .and. mcomp == 33 .and. mphas == 11) then
-        option%imode = RICHARDS_MODE
-        option%mode = 'richards'
-        option%nphase = 1; option%ndof = 2
+      if (option%iflowmode /= RICHARDS_MODE .and. mcomp == 33 .and. mphas == 11) then
+        option%iflowmode = RICHARDS_MODE
+        option%flowmode = 'richards'
+        option%nphase = 1; option%nflowdof = 2
         if (option%nspec > 1) then
-          option%ndof = option%nspec +1
+          option%nflowdof = option%nspec +1
         endif
       endif
     endif
   endif
-  if (option%imode == NULL_MODE) then
+  if (option%iflowmode == NULL_MODE) then
     call printErrMsg(option,"No mode specified")
   endif       
 
@@ -1974,7 +1974,7 @@ subroutine assignInitialConditions(realization)
   field => realization%field
   grid => realization%grid
     
-  select case(option%imode)
+  select case(option%iflowmode)
     case(RICHARDS_LITE_MODE)
     case(RICHARDS_MODE)
     case(MPH_MODE)
@@ -1996,8 +1996,8 @@ subroutine assignInitialConditions(realization)
       do icell=1,initial_condition%region%num_cells
         local_id = initial_condition%region%cell_ids(icell)
         ghosted_id = realization%grid%nL2G(local_id)
-        iend = local_id*option%ndof
-        ibegin = iend-option%ndof+1
+        iend = local_id*option%nflowdof
+        ibegin = iend-option%nflowdof+1
         if (associated(field%imat)) then
           if (field%imat(ghosted_id) <= 0) then
             xx_p(ibegin:iend) = 0.d0
@@ -2005,7 +2005,7 @@ subroutine assignInitialConditions(realization)
             cycle
           endif
         endif
-        do idof = 1, option%ndof
+        do idof = 1, option%nflowdof
           xx_p(ibegin+idof) = &
             initial_condition%condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
         enddo
@@ -2015,8 +2015,8 @@ subroutine assignInitialConditions(realization)
       do iconn=1,initial_condition%connection%num_connections
         local_id = initial_condition%connection%id_dn(iconn)
         ghosted_id = realization%grid%nL2G(local_id)
-        iend = local_id*option%ndof
-        ibegin = iend-option%ndof+1
+        iend = local_id*option%nflowdof
+        ibegin = iend-option%nflowdof+1
         if (associated(field%imat)) then
           if (field%imat(ghosted_id) <= 0) then
             xx_p(ibegin:iend) = 0.d0
@@ -2025,7 +2025,7 @@ subroutine assignInitialConditions(realization)
           endif
         endif
         xx_p(ibegin:iend) = &
-          initial_condition%aux_real_var(1:option%ndof,iconn)
+          initial_condition%aux_real_var(1:option%nflowdof,iconn)
         iphase_loc_p(ghosted_id)=initial_condition%aux_int_var(1,iconn)
       enddo
     endif

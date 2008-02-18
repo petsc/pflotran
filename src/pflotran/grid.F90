@@ -50,7 +50,8 @@ module Grid_module
     Vec :: volume 
     
     DM :: dm_1_dof, dm_nphase_dof, dm_3np_dof, dm_ndof, dm_nphancomp_dof, &
-          dm_nphanspec_dof, dm_nphanspecncomp_dof, dm_var_dof 
+          dm_nphanspec_dof, dm_nphanspecncomp_dof, dm_var_dof , &
+          dm_ncomp_dof
     
     PetscInt, pointer :: hash(:,:,:)
     PetscInt :: num_hash_bins
@@ -85,6 +86,9 @@ module Grid_module
             GridNaturalToGlobalEnd, &
             GridMapIndices, &
             GridCreateDMs, &
+#ifdef TRANSPORT            
+            GridCreateTransportDMs, &
+#endif            
             GridComputeSpacing, &
             GridComputeCoordinates, &
             GridComputeVolumes, &
@@ -197,6 +201,8 @@ subroutine initGrid(grid)
   grid%dm_nphanspec_dof = 0
   grid%dm_nphanspecncomp_dof = 0
   grid%dm_var_dof = 0
+  
+  grid%dm_ncomp_dof = 0
 
   grid%volume = 0
   
@@ -234,13 +240,12 @@ subroutine GridCreateDMs(grid,option)
   ndof = option%nphase
   call GridCreateDM(grid,grid%dm_nphase_dof,ndof,stencil_width)
 
-
-  ndof = option%ndof
+  ndof = option%nflowdof
   call GridCreateDM(grid,grid%dm_ndof,ndof,stencil_width)
 
-  select case(option%imode) 
+  select case(option%iflowmode) 
     case(MPH_MODE)
-      ndof = (option%ndof+1)*(2+7*option%nphase + 2*option%nspec*option%nphase)
+      ndof = (option%nflowdof+1)*(2+7*option%nphase + 2*option%nspec*option%nphase)
       call GridCreateDM(grid,grid%dm_var_dof,ndof,stencil_width)
   end select
   
@@ -257,6 +262,53 @@ subroutine GridCreateDMs(grid,option)
   allocate(grid%z(grid%ngmax))
   
 end subroutine GridCreateDMs
+
+#ifdef TRANSPORT 
+! ************************************************************************** !
+!
+! GridCreateTransportDMs: creates distributed, parallel meshes/grids
+! author: Glenn Hammond
+! date: 02/08/08
+!
+! ************************************************************************** !
+subroutine GridCreateTransportDMs(grid,option)
+      
+  use RTOption_module    
+      
+  implicit none
+  
+  type(grid_type) :: grid
+  type(rt_option_type) :: option
+      
+  PetscInt :: ndof
+  PetscInt, parameter :: stencil_width = 1
+  PetscErrorCode :: ierr
+
+  !-----------------------------------------------------------------------
+  ! Generate the DA objects that will manage communication.
+  !-----------------------------------------------------------------------
+  if (grid%dm_1_dof == 0) then
+    ndof = 1
+    call GridCreateDM(grid,grid%dm_1_dof,ndof,stencil_width)
+
+    select case(grid%igrid)
+      case(STRUCTURED)
+        grid%nlmax = grid%structured_grid%nlmax
+        grid%ngmax = grid%structured_grid%ngmax
+      case(UNSTRUCTURED)
+    end select
+  endif
+   
+  ndof = option%ncomp
+  call GridCreateDM(grid,grid%dm_ncomp_dof,ndof,stencil_width)
+
+  ! allocate coordinate arrays  
+  if (.not.associated(grid%x)) allocate(grid%x(grid%ngmax))
+  if (.not.associated(grid%y)) allocate(grid%y(grid%ngmax))
+  if (.not.associated(grid%z)) allocate(grid%z(grid%ngmax))   
+
+end subroutine GridCreateTransportDMs
+#endif
 
 ! ************************************************************************** !
 !
@@ -344,6 +396,8 @@ function GridGetDMPtrFromIndex(grid,dm_index)
       GridGetDMPtrFromIndex = grid%dm_nphanspecncomp_dof
     case(VARDOF)
       GridGetDMPtrFromIndex = grid%dm_var_dof
+    case(NCOMPDOF)
+      GridGetDMPtrFromIndex = grid%dm_ncomp_dof
   end select  
   
 end function GridGetDMPtrFromIndex
@@ -1470,6 +1524,8 @@ subroutine GridDestroy(grid)
         call StructuredGridDestroyDA(grid%dm_nphanspecncomp_dof)
       if (grid%dm_var_dof /= 0) &
         call StructuredGridDestroyDA(grid%dm_var_dof)
+      if (grid%dm_ncomp_dof /= 0) &
+        call StructuredGridDestroyDA(grid%dm_ncomp_dof)
     case(UNSTRUCTURED)
   end select
   

@@ -198,11 +198,11 @@ subroutine pflowGridCheckpoint(realization,flowsteps,newtcum,icutcum, &
   ! If we are running with multiple phases, we need to dump the vector 
   ! that indicates what phases are present, as well as the 'var' vector 
   ! that holds variables derived from the primary ones via the translator.
-  select case(option%imode)
+  select case(option%iflowmode)
     case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
       call GridLocalToGlobal(grid,field%iphas_loc,global_vec,ONEDOF)
       call VecView(global_vec, viewer, ierr)
-      if (option%imode == MPH_MODE) then
+      if (option%iflowmode == MPH_MODE) then
       ! get vardof vec from mphase
         call MphaseCheckpointWrite(grid,viewer)
       endif
@@ -320,13 +320,13 @@ subroutine pflowGridRestart(realization,flowsteps,newtcum,icutcum, &
   call VecLoadIntoVector(viewer, field%xx, ierr)
   call VecCopy(field%xx, field%yy, ierr)
   
-  select case(option%imode)
+  select case(option%iflowmode)
     case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
       call VecLoadIntoVector(viewer, global_vec, ierr)      
       call GridGlobalToLocal(grid,global_vec,field%iphas_loc,ONEDOF)
       call VecCopy(field%iphas_loc, field%iphas_old_loc, ierr)
       call GridLocalToLocal(grid,field%iphas_loc,field%iphas_old_loc,ONEDOF)
-      if (option%imode == MPH_MODE) then
+      if (option%iflowmode == MPH_MODE) then
       ! set vardof vec in mphase
         call MphaseCheckpointRead(grid,viewer)
       endif

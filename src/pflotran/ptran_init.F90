@@ -29,8 +29,8 @@ subroutine PtranInit(simulation,filename)
   use Option_module
   use Grid_module
   use Solver_module
-  use Realization_module
-  use Field_module
+!  use Realization_module
+!  use Field_module
   use Material_module
   use Connection_module
   use Coupler_module
@@ -38,8 +38,9 @@ subroutine PtranInit(simulation,filename)
 
   use Transport_Realization_module
   use Transport_Timestepper_module
-  use TROption_module
-  use TRField_module
+  use Reactive_Transport_module
+  use RTOption_module
+  use RTField_module
     
   use Convergence_module
   use Utility_module
@@ -49,14 +50,14 @@ subroutine PtranInit(simulation,filename)
   type(simulation_type) :: simulation
   character(len=MAXWORDLENGTH) :: filename
 
-  type(realization_type), pointer :: f_realization
+!  type(realization_type), pointer :: f_realization
   type(tr_realization_type), pointer :: realization
   type(tr_stepper_type), pointer :: stepper
   type(solver_type), pointer :: solver
   type(grid_type), pointer :: grid
   type(option_type), pointer :: f_option
   type(ptran_debug_type), pointer :: debug
-  type(field_type), pointer :: f_field
+!  type(field_type), pointer :: f_field
   type(rt_field_type), pointer :: field
   type(rt_option_type), pointer :: option
   
@@ -68,8 +69,13 @@ subroutine PtranInit(simulation,filename)
   stepper => simulation%tr_stepper
   solver => stepper%solver
   realization => simulation%tr_realization
-  option => realization%option
+  option => realization%rt_option
   debug => realization%debug
+  
+  ! bad kludge, but will work for now
+  if (option%f_option%commsize > 0) then
+    option%coupled = .true.
+  endif
   
   ! read MODE,GRID,PROC,COMP,PHAS cards
 #if 0  
@@ -82,7 +88,7 @@ subroutine PtranInit(simulation,filename)
   call setMode(option)
 #endif
   ! process command line options
-  call OptionCheckCommandLine(option)
+  call OptionCheckCommandLine(option%f_option)
 
   call GridCreateTransportDMs(grid,option)
   
@@ -92,80 +98,68 @@ subroutine PtranInit(simulation,filename)
  ! ghosted vectors.
  !-----------------------------------------------------------------------
  
-
-#if 0
-  ! 1 degree of freedom, global
-  call GridCreateVector(grid,ONEDOF,field%porosity0,GLOBAL)
-  call VecDuplicate(field%porosity0, grid%volume, ierr)
-  call VecDuplicate(field%porosity0, field%perm0_xx, ierr)
-  call VecDuplicate(field%porosity0, field%perm0_yy, ierr)
-  call VecDuplicate(field%porosity0, field%perm0_zz, ierr)
-  call VecDuplicate(field%porosity0, field%perm_pow, ierr)
+  if (.not.option%coupled) then
+    ! 1 degree of freedom, global
+    call GridCreateVector(grid,ONEDOF,field%porosity0,GLOBAL)
+    call VecDuplicate(field%porosity0, grid%volume, ierr)
       
-  ! 1 degree of freedom, local
-  call GridCreateVector(grid,ONEDOF,field%porosity_loc,LOCAL)
-  call VecDuplicate(field%porosity_loc, field%tor_loc, ierr)
-  call VecDuplicate(field%porosity_loc, field%ithrm_loc, ierr)
-  call VecDuplicate(field%porosity_loc, field%icap_loc, ierr)
-  call VecDuplicate(field%porosity_loc, field%iphas_loc, ierr)
-  call VecDuplicate(field%porosity_loc, field%iphas_old_loc, ierr)
-  
-  call VecDuplicate(field%porosity_loc, field%perm_xx_loc, ierr)
-  call VecDuplicate(field%porosity_loc, field%perm_yy_loc, ierr)
-  call VecDuplicate(field%porosity_loc, field%perm_zz_loc, ierr)
+    ! 1 degree of freedom, local
+    call GridCreateVector(grid,ONEDOF,field%porosity_loc,LOCAL)
+    call VecDuplicate(field%porosity_loc, field%tor_loc, ierr)
+    call VecDuplicate(field%porosity_loc, field%saturation_loc, ierr)
 
-  if (associated(grid%structured_grid)) then
-    call VecDuplicate(field%porosity0, grid%structured_grid%dx, ierr)
-    call VecDuplicate(field%porosity0, grid%structured_grid%dy, ierr)
-    call VecDuplicate(field%porosity0, grid%structured_grid%dz, ierr)
+    if (associated(grid%structured_grid)) then
+      call VecDuplicate(field%porosity0, grid%structured_grid%dx, ierr)
+      call VecDuplicate(field%porosity0, grid%structured_grid%dy, ierr)
+      call VecDuplicate(field%porosity0, grid%structured_grid%dz, ierr)
 
-    call VecDuplicate(field%porosity_loc, grid%structured_grid%dx_loc, ierr)
-    call VecDuplicate(field%porosity_loc, grid%structured_grid%dy_loc, ierr)
-    call VecDuplicate(field%porosity_loc, grid%structured_grid%dz_loc, ierr)
+      call VecDuplicate(field%porosity_loc, grid%structured_grid%dx_loc, ierr)
+      call VecDuplicate(field%porosity_loc, grid%structured_grid%dy_loc, ierr)
+      call VecDuplicate(field%porosity_loc, grid%structured_grid%dz_loc, ierr)
+    endif
   endif
 
-  ! ndof degrees of freedom, global
-  call GridCreateVector(grid,NDOF, field%xx, GLOBAL)
+  ! ncomp degrees of freedom, global
+  call GridCreateVector(grid,NCOMPDOF, field%xx, GLOBAL)
   call VecDuplicate(field%xx, field%yy, ierr)
   call VecDuplicate(field%xx, field%dxx, ierr)
   call VecDuplicate(field%xx, field%r, ierr)
   call VecDuplicate(field%xx, field%accum, ierr)
 
   ! ndof degrees of freedom, local
-  call GridCreateVector(grid,NDOF, field%xx_loc, LOCAL)
-     
-  ! set up nG2L, NL2G, etc.
-  call GridMapIndices(grid)
+  call GridCreateVector(grid,NCOMPDOF, field%xx_loc, LOCAL)
   
+  if (.not.option%coupled) then
+    ! set up nG2L, NL2G, etc.
+    call GridMapIndices(grid)
+  endif
+  
+#if 0
   ! read in the remainder of the input file
   call readInput(simulation,filename)
+#endif
 
-  if (option%iblkfmt == 0) then
-    select case(option%imode)
-      case(MPH_MODE,RICHARDS_MODE)
-        call printErrMsg(option,&
-                         'AIJ matrix not supported for current mode: '// &
-                         option%mode)
-    end select
+  if (.not.option%coupled) then
+    call GridComputeSpacing(grid)
+    call GridComputeCoordinates(grid,option%f_option)
+    call GridComputeVolumes(grid,option%f_option)
   endif
-
-  call GridComputeSpacing(grid)
-  call GridComputeCoordinates(grid,option)
-  call GridComputeVolumes(grid,option)
-
+  
   ! read any regions provided in external files
   call readRegionFiles(realization)
   ! clip regions and set up boundary connectivity, distance  
   call GridLocalizeRegions(realization%regions,realization%grid,realization%option)
 
-  ! set up internal connectivity, distance, etc.
-  call GridComputeInternalConnect(grid,option)
+  if (.not.option%coupled) then
+    ! set up internal connectivity, distance, etc.
+    call GridComputeInternalConnect(grid,option%f_option)
+  endif
   call RealizationProcessCouplers(realization)
 
   ! connectivity between initial conditions, boundary conditions, srcs/sinks, etc and grid
-  call GridComputeCouplerConnections(grid,option,realization%initial_conditions%first)
-  call GridComputeCouplerConnections(grid,option,realization%boundary_conditions%first)
-  call GridComputeCouplerConnections(grid,option,realization%source_sinks%first)
+  call GridComputeCouplerConnections(grid,option%f_option,realization%initial_conditions%first)
+  call GridComputeCouplerConnections(grid,option%f_option,realization%boundary_conditions%first)
+  call GridComputeCouplerConnections(grid,option%f_option,realization%source_sinks%first)
                                 
   call assignMaterialPropToRegions(realization)
   call RealizationInitCouplerAuxVars(realization,realization%initial_conditions)
@@ -173,90 +167,33 @@ subroutine PtranInit(simulation,filename)
   call assignInitialConditions(realization)
 
   ! should we still support this
-  if (option%use_generalized_grid) then 
+  if (option%f_option%use_generalized_grid) then 
     if (option%myrank == 0) print *, 'Reading structured grid from hdf5' 
-    if (.not.associated(field%imat)) &
-      allocate(field%imat(grid%ngmax))  ! allocate material id array
+    if (.not.associated(field%iactive)) &
+      allocate(field%iactive(grid%ngmax))  ! allocate material id array
     call ReadStructuredGridHDF5(realization)
   endif
-  
-  allocate(realization%field%internal_velocities(option%nphase, &
+
+  allocate(realization%field%internal_velocities(option%f_option%nphase, &
            ConnectionGetNumberInList(realization%grid%internal_connection_list)))
   realization%field%internal_velocities = 0.d0
   temp_int = CouplerGetNumConnectionsInList(realization%boundary_conditions)
-  allocate(realization%field%boundary_velocities(option%nphase,temp_int)) 
+  allocate(realization%field%boundary_velocities(option%f_option%nphase,temp_int)) 
   realization%field%boundary_velocities = 0.d0          
-
-  if (option%myrank == 0) then
-    write(*,'(/,"++++++++++++++++++++++++++++++++++++++++++++++++++++&
-      &++++++++")')
-    if (grid%igrid == STRUCTURED) then
-      write(*,'(" number of processors = ",i5,", npx,y,z= ",3i5)') &
-        option%commsize,grid%structured_grid%npx,grid%structured_grid%npy, &
-        grid%structured_grid%npz
-    endif
-    write(*,'(" number of dofs = ",i3,", number of phases = ",i3,i2)') &
-      option%ndof,option%nphase
-    select case(option%imode)
-      case(THC_MODE)
-        write(*,'(" mode = THC: p, T, C")')
-      case(MPH_MODE)
-        write(*,'(" mode = MPH: p, T, s/C")')
-      case(RICHARDS_MODE)
-        write(*,'(" mode = Richards: p, T, s/C")')
-      case(RICHARDS_LITE_MODE)
-        write(*,'(" mode = Richards: p")')      
-    end select
-  endif
   
   call SolverCreateSNES(solver)  
 
-  if (option%use_matrix_free == PETSC_TRUE) then
-  
-    option%ideriv = 0
-  
-    if (option%myrank == 0) write(*,'(" Using matrix-free Newton-Krylov")')
+  call GridCreateJacobian(grid,solver%J,option%f_option)
 
-    select case(option%imode)
-      case(THC_MODE,MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
-        call MatCreateMFFD(solver%snes,field%xx,solver%J,ierr)
-    end select
-        
-  else
+  call SNESSetFunction(solver%snes,field%r,RTResidual,realization,ierr)
+  call SNESSetJacobian(solver%snes, solver%J, solver%J, RTJacobian, &
+                       realization, ierr)
 
-    option%ideriv = 1
-  
-    call GridCreateJacobian(grid,solver%J,option)
-  
-  endif
-
-  if (option%myrank == 0) write(*,'("++++++++++++++++++++++++++++++++&
-                     &++++++++++++++++++++++++++++",/)')
-
-  select case(option%imode)
-    case(THC_MODE)
-      call SNESSetFunction(solver%snes,field%r,THCResidual,realization,ierr)
-      call SNESSetJacobian(solver%snes, solver%J, solver%J, THCJacobian, &
-                           realization, ierr)
-    case(RICHARDS_MODE)
-      call SNESSetFunction(solver%snes,field%r,RichardsAnalyticalResidual,realization,ierr)
-      call SNESSetJacobian(solver%snes, solver%J, solver%J, RichardsAnalyticalJacobian, &
-                           realization, ierr)
-    case(RICHARDS_LITE_MODE)
-      call SNESSetFunction(solver%snes,field%r,RichardsLiteResidual,realization,ierr)
-      call SNESSetJacobian(solver%snes, solver%J, solver%J, RichardsLiteJacobian, &
-                           realization, ierr)
-    case(MPH_MODE)
-      call SNESSetFunction(solver%snes,field%r,MPHASEResidual,realization,ierr)
-      call SNESSetJacobian(solver%snes, solver%J, solver%J, MPHASEJacobian, &
-                           realization, ierr)
-  end select
-
-  call SolverSetSNESOptions(solver,option)
+  call SolverSetSNESOptions(solver)
 
   ! shell for custom convergence test.  The default SNES convergence test  
   ! is call within this function. 
-  stepper%convergence_context => ConvergenceContextCreate(solver,option)
+  stepper%convergence_context => ConvergenceContextCreate(solver,option%f_option)
   call SNESSetConvergenceTest(solver%snes,ConvergenceTest, &
                               stepper%convergence_context,ierr) 
 
@@ -264,17 +201,7 @@ subroutine PtranInit(simulation,filename)
 
   if (option%myrank == 0) write(*,'("  Finished setting up of INIT ")')
          
-  ! move each case to its respective module and just call ModeSetup (e.g. RichardsSetup)
-  select case(option%imode)
-    case(RICHARDS_MODE)
-      call RichardsSetup(realization)
-    case(RICHARDS_LITE_MODE)
-      call RichardsLiteSetup(realization)
-    case(MPH_MODE)
-      call MphaseSetup(realization)
-    case(THC_MODE)
-      call THCSetup(realization)
-  end select  
+  call RTSetup(realization)
 
   if (option%myrank == 0) write(*,'("  Finished setting up ")')
 
@@ -283,7 +210,7 @@ subroutine PtranInit(simulation,filename)
     call verifyCouplers(realization,realization%boundary_conditions)
     call verifyCouplers(realization,realization%source_sinks)
   endif
-#endif  
+
 end subroutine PtranInit
 
 #if 0

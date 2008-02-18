@@ -351,7 +351,7 @@ subroutine ConditionRead(condition,option,fid)
   concentration => SubConditionCreate()
   enthalpy => SubConditionCreate()
 
-  select case(option%imode)
+  select case(option%iflowmode)
     case(RICHARDS_MODE,MPH_MODE)
       condition%time_units = 'yr'
       condition%length_units = 'm'
@@ -570,7 +570,7 @@ subroutine ConditionRead(condition,option,fid)
                           default_dataset, &
                           default_datum, default_gradient)
   
-  select case(option%imode)
+  select case(option%iflowmode)
     case(RICHARDS_MODE,MPH_MODE)
       if (.not.associated(pressure)) then
         call printErrMsg(option,'pressure condition null in condition: ' // &

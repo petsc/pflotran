@@ -94,8 +94,8 @@ subroutine pflow_mphase_timecut(realization)
  !call VecGetArrayF90(field%iphas, iphase_loc_p, ierr); 
 
   do local_id=1, grid%nlmax
-    dof_offset=(local_id-1)*option%ndof
-    do re = 1, option%ndof
+    dof_offset=(local_id-1)*option%nflowdof
+    do re = 1, option%nflowdof
 !     if (option%snes_reason == -5) then 
 !       xx_p(n0+re)= yy_p(n0+re)       !.5D0 * xx_p(n0+re) +.5D0 *yy_p(n0+re)
 !     else
@@ -219,7 +219,7 @@ subroutine MphaseMaxChange(realization)
   comp=0.D0;comp1=0.D0
   do local_id=1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
-    dof_offset=(local_id-1)*option%ndof 
+    dof_offset=(local_id-1)*option%nflowdof 
     if(int(iphase_loc_p(ghosted_id)) == int(iphase_old_loc_p(ghosted_id)))then
      cmp=dabs(xx_p(dof_offset+3)-yy_p(dof_offset+3))
      if(int(iphase_loc_p(ghosted_id))==1 .or.int(iphase_loc_p(ghosted_id))==2)then
@@ -346,13 +346,13 @@ subroutine MphaseSetup(realization)
     PetscReal, pointer :: rtot(:,:),rate(:),area_var(:), delx(:,:)
 
 ! from pflow_init
-  select case(option%imode)
+  select case(option%iflowmode)
     case(MPH_MODE,THC_MODE)  
       call VecDuplicate(field%porosity_loc, field%ttemp_loc, ierr)
   end select
 
   ! should these be moved to their respective modules
-  select case(option%imode)
+  select case(option%iflowmode)
     case(MPH_MODE,THC_MODE)
       ! nphase degrees of freedom
       call GridCreateVector(grid,NPHASEDOF,field%pressure,GLOBAL)
@@ -378,7 +378,7 @@ subroutine MphaseSetup(realization)
   end select
 
   ! should these be moved to their respective modules?
-  select case(option%imode)
+  select case(option%iflowmode)
     case(MPH_MODE,THC_MODE)
       call GridCreateVector(grid,NPHASEDOF, field%ppressure_loc, LOCAL)
       call VecDuplicate(field%ppressure_loc, field%ssat_loc, ierr)
@@ -396,19 +396,19 @@ subroutine MphaseSetup(realization)
   end select
 
   ! move to mph
-  select case(option%imode)
+  select case(option%iflowmode)
     case(MPH_MODE)
       call GridCreateVector(grid,VARDOF, field%var_loc,LOCAL)
   end select
 
   ! move to mph
-  select case(option%imode)
+  select case(option%iflowmode)
     case(MPH_MODE)
       call initialize_span_wagner(option%itable,option%myrank)  
   end select
 
   ! move to mph
-  select case(option%imode)
+  select case(option%iflowmode)
     case(MPH_MODE)
       allocate(field%xphi_co2(grid%nlmax))
       allocate(field%xxphi_co2(grid%nlmax))
@@ -434,8 +434,8 @@ subroutine MphaseSetup(realization)
 
     
 ! These data types need to be localized within this mode, not in the field type
-  if (option%imode /= RICHARDS_MODE .and. &
-      option%imode /= RICHARDS_LITE_MODE) then
+  if (option%iflowmode /= RICHARDS_MODE .and. &
+      option%iflowmode /= RICHARDS_LITE_MODE) then
     allocate(field%xphi_co2_bc(temp_int))
     allocate(field%xxphi_co2_bc(temp_int))
   endif
@@ -458,7 +458,7 @@ subroutine MphaseSetup(realization)
     
     
   ! these vecs need to be stored within this module, not in field
-  select case(option%imode)
+  select case(option%iflowmode)
     case(MPH_MODE,THC_MODE)
       call VecDuplicate(field%porosity0, field%conc, ierr)
       call VecDuplicate(field%porosity0, field%temp, ierr)
@@ -508,12 +508,12 @@ subroutine pflow_mphase_setupini(realization)
   field => realization%field
     
   size_var_use = 2 + 7*option%nphase + 2* option%nphase*option%nspec
-  size_var_node = (option%ndof + 1) * size_var_use
+  size_var_node = (option%nflowdof + 1) * size_var_use
   
-  allocate(Resold_AR(grid%nlmax,option%ndof))
+  allocate(Resold_AR(grid%nlmax,option%nflowdof))
   allocate(Resold_FL(ConnectionGetNumberInList(grid%internal_connection_list), &
-                     option%ndof))
-  allocate(mphase_option%delx(option%ndof,grid%ngmax))
+                     option%nflowdof))
+  allocate(mphase_option%delx(option%nflowdof,grid%ngmax))
   mphase_option%delx=0.D0
    
   call VecGetArrayF90(field%xx, xx_p, ierr); CHKERRQ(ierr)
@@ -528,8 +528,8 @@ subroutine pflow_mphase_setupini(realization)
     do icell=1,initial_condition%region%num_cells
       local_id = initial_condition%region%cell_ids(icell)
       ghosted_id = grid%nL2G(local_id)
-      ibegin = (local_id-1)*option%ndof
-      do idof=1,option%ndof
+      ibegin = (local_id-1)*option%nflowdof
+      do idof=1,option%nflowdof
         xx_p(ibegin+idof) = &
           initial_condition%condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
       enddo
@@ -568,7 +568,7 @@ subroutine MPhase_Update_Reason(reason,realization)
   PetscInt :: local_id, ghosted_id  
 
 ! PetscReal, pointer :: sat(:),xmol(:)
-! PetscReal rmax(option%ndof)
+! PetscReal rmax(option%nflowdof)
 
   grid => realization%grid
   option => realization%option
@@ -576,7 +576,7 @@ subroutine MPhase_Update_Reason(reason,realization)
   
   reason=1
  ! call SNESComputeFunction(option%snes,field%xx,option%r,ierr)
- ! do n=1,option%ndof
+ ! do n=1,option%nflowdof
  !  call VecStrideNorm(option%r,n-1,NORM_INFINITY,rmax(n),ierr)
  ! enddo
   
@@ -596,7 +596,7 @@ subroutine MPhase_Update_Reason(reason,realization)
       if (associated(field%imat)) then
         if (field%imat(ghosted_id) <= 0) cycle
       endif  
-     dof_offset=(local_id-1)* option%ndof
+     dof_offset=(local_id-1)* option%nflowdof
       !index=(n-1)*size_var_node
       !sat=>var_loc_p(index+2+1:index+2+option%nphase)
       !den=>var_loc_p(index+2+option%nphase+1:index+2+2*option%nphase)
@@ -656,7 +656,7 @@ subroutine MPhase_Update_Reason(reason,realization)
   end do
   
 !  do n = 1,grid%nlmax
-!     n0=(n-1)* option%ndof
+!     n0=(n-1)* option%nflowdof
 !      
 !   if(dabs(xx_p(n0+1)-yy_p(n0+1))>1D6) then
 !      re=0;exit
@@ -710,7 +710,7 @@ subroutine MPHASERes_ARCont(node_no, var_node,por,vol,rock_dencpr, option, &
   PetscInt, optional:: ireac
   PetscErrorCode :: ierr
   PetscReal, target :: var_node(1:size_var_use)
-  PetscReal :: Res_AR(1:option%ndof) 
+  PetscReal :: Res_AR(1:option%nflowdof) 
   PetscReal :: vol,por,rock_dencpr
      
   PetscReal, pointer :: temp, pre_ref   ! 1 dof
@@ -756,8 +756,8 @@ subroutine MPHASERes_ARCont(node_no, var_node,por,vol,rock_dencpr, option, &
 !    mol(2)= mol(2) - option%dt * option%rtot(node_no,2)
 !   should include related energy change here
 !  endif
-  Res_AR(1:option%ndof-1)=mol(:)
-  Res_AR(option%ndof)=eng
+  Res_AR(1:option%nflowdof-1)=mol(:)
+  Res_AR(option%nflowdof)=eng
 
   nullify(temp, pre_ref, sat, density, amw, h,u, pc,kvr,xmol,diff)
   
@@ -780,7 +780,7 @@ subroutine MPHASERes_FLCont(nconn_no,area, &
   PetscReal, target :: var_node2(1:2+7*option%nphase+2*option%nphase*option%nspec)
   PetscReal :: por1,por2,tor1,tor2,perm1,perm2,Dk1,Dk2,dd1,dd2
   PetscReal :: vv_darcy(option%nphase),area
-  PetscReal :: Res_FL(1:option%ndof) 
+  PetscReal :: Res_FL(1:option%nflowdof) 
   
   PetscReal :: dist_gravity ! distance along gravity vector
      
@@ -910,8 +910,8 @@ subroutine MPHASERes_FLCont(nconn_no,area, &
   cond=Dk*area*(temp1-temp2) 
   fluxe=fluxe + cond
    !print *,' FLcont heat cond', Dk, cond
-  Res_FL(1:option%ndof-1)=fluxm(:) * option%dt
-  Res_FL(option%ndof)=fluxe * option%dt
+  Res_FL(1:option%nflowdof-1)=fluxm(:) * option%dt
+  Res_FL(option%nflowdof)=fluxe * option%dt
  ! note: Res_FL is the flux contribution, for node 1 R = R + Res_FL
  ! 2 R = R - Res_FL
  !print *,'end FLcont'
@@ -940,7 +940,7 @@ subroutine MPHASERes_FLBCCont(ibndtype,area,aux_vars, &
   PetscReal, target :: var_node2(1:2+7*option%nphase+2*option%nphase*option%nspec)
   PetscReal :: por2,perm2,Dk2,tor2
   PetscReal :: vv_darcy(option%nphase), area
-  PetscReal :: Res_FL(1:option%ndof) 
+  PetscReal :: Res_FL(1:option%nflowdof) 
   
   PetscReal :: dist_gravity   ! distance along gravity vector
      
@@ -1068,17 +1068,17 @@ subroutine MPHASERes_FLBCCont(ibndtype,area,aux_vars, &
       fluxe=fluxe + cond
  
       Res_FL(1:option%nspec)=fluxm(:)* option%dt
-      Res_FL(option%ndof)=fluxe * option%dt
+      Res_FL(option%nflowdof)=fluxe * option%dt
 
     case(NEUMANN_BC)
     
       if((dabs(aux_vars(MPH_PRESSURE_DOF))+ &
-      dabs(aux_vars(option%ndof+MPH_PRESSURE_DOF)))>floweps)then
+      dabs(aux_vars(option%nflowdof+MPH_PRESSURE_DOF)))>floweps)then
 !       print *, 'FlowBC :',nbc_no,field%velocitybc(1,nbc_no),field%velocitybc(2,nbc_no)
         do iphase=1,option%nphase
  !        fluxm=0.D0; fluxe=0.D0
-          v_darcy = aux_vars((iphase-1)*option%ndof+MPH_PRESSURE_DOF)
-          vv_darcy(iphase) = aux_vars((iphase-1)*option%ndof+MPH_PRESSURE_DOF)
+          v_darcy = aux_vars((iphase-1)*option%nflowdof+MPH_PRESSURE_DOF)
+          vv_darcy(iphase) = aux_vars((iphase-1)*option%nflowdof+MPH_PRESSURE_DOF)
 !         option%vvbc(j+(nc-2)*option%nphase)= field%velocitybc(j,nc)
       !   note different from 2 phase version
 
@@ -1100,7 +1100,7 @@ subroutine MPHASERes_FLBCCont(ibndtype,area,aux_vars, &
         enddo
       endif
       Res_FL(1:option%nspec)=fluxm(:)* option%dt
-      Res_FL(option%ndof)=fluxe * option%dt
+      Res_FL(option%nflowdof)=fluxe * option%dt
 
     case(HYDROSTATIC_BC)
    
@@ -1163,7 +1163,7 @@ subroutine MPHASERes_FLBCCont(ibndtype,area,aux_vars, &
       enddo
    
       Res_FL(1:option%nspec)=fluxm(:)* option%dt
-      Res_FL(option%ndof)=fluxe * option%dt
+      Res_FL(option%nflowdof)=fluxe * option%dt
     
     case(4)
           
@@ -1172,7 +1172,7 @@ subroutine MPHASERes_FLBCCont(ibndtype,area,aux_vars, &
       fluxe=fluxe + cond
      
       Res_FL(1:option%nspec)= 0.D0
-      Res_FL(option%ndof)=fluxe * option%dt
+      Res_FL(option%nflowdof)=fluxe * option%dt
 
   end select
   
@@ -1219,7 +1219,7 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
                perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:), &
                var_loc_p(:) 
 
-  PetscReal :: xxbc(realization%option%ndof),varbc(1:size_var_use)
+  PetscReal :: xxbc(realization%option%nflowdof),varbc(1:size_var_use)
   PetscInt :: iphasebc, idof                    
 
   PetscReal, pointer :: iphase_loc_p(:),icap_loc_p(:), ithrm_loc_p(:)
@@ -1244,7 +1244,7 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
 ! PetscReal :: upweight
 ! PetscReal :: ukvr,uhh,uconc
   PetscReal :: dddt,dddp,fg,dfgdp,dfgdt,dhdt,dhdp,dvdt,dvdp, rho, visc
-  PetscReal :: Res(realization%option%ndof), vv_darcy(realization%option%nphase)
+  PetscReal :: Res(realization%option%nflowdof), vv_darcy(realization%option%nphase)
  
 ! PetscReal :: cond, den,
   PetscViewer :: viewer
@@ -1280,16 +1280,16 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
     endif 
       
 !   insure zero liquid sat not passed to ptran (no effect on pflow)
-    if(xx_p((local_id-1)*option%ndof+3) < 0.D0)xx_p((local_id-1)*option%ndof+3) = zerocut
-    if(xx_p((local_id-1)*option%ndof+3) > 1.D0)xx_p((local_id-1)*option%ndof+3) = 1.D0 - zerocut
+    if(xx_p((local_id-1)*option%nflowdof+3) < 0.D0)xx_p((local_id-1)*option%nflowdof+3) = zerocut
+    if(xx_p((local_id-1)*option%nflowdof+3) > 1.D0)xx_p((local_id-1)*option%nflowdof+3) = 1.D0 - zerocut
     
 !   check if p,T within range of table  
-    if(xx_p((local_id-1)*option%ndof+1)< p0_tab*1D6 &
-      .or. xx_p((local_id-1)*option%ndof+1)>(ntab_p*dp_tab + p0_tab)*1D6)then
+    if(xx_p((local_id-1)*option%nflowdof+1)< p0_tab*1D6 &
+      .or. xx_p((local_id-1)*option%nflowdof+1)>(ntab_p*dp_tab + p0_tab)*1D6)then
        ierr=-1; exit  
      endif  
-    if(xx_p((local_id-1)*option%ndof+2)< t0_tab -273.15D0 &
-      .or. xx_p((local_id-1)*option%ndof+2)>ntab_t*dt_tab + t0_tab-273.15D0)then
+    if(xx_p((local_id-1)*option%nflowdof+2)< t0_tab -273.15D0 &
+      .or. xx_p((local_id-1)*option%nflowdof+2)>ntab_t*dt_tab + t0_tab-273.15D0)then
       ierr=-1; exit
     endif
   enddo
@@ -1335,41 +1335,41 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
       
     iiphase=int(iphase_loc_p(ghosted_id))
 
-    mphase_option%delx(1,ghosted_id) = xx_loc_p((ghosted_id-1)*option%ndof+1)*dfac * 1.D-3
-    mphase_option%delx(2,ghosted_id) = xx_loc_p((ghosted_id-1)*option%ndof+2)*dfac
+    mphase_option%delx(1,ghosted_id) = xx_loc_p((ghosted_id-1)*option%nflowdof+1)*dfac * 1.D-3
+    mphase_option%delx(2,ghosted_id) = xx_loc_p((ghosted_id-1)*option%nflowdof+2)*dfac
 
     select case (iiphase)
       case (1)
-       if(xx_loc_p((ghosted_id-1)*option%ndof+3) < .8)then
-          mphase_option%delx(3,ghosted_id) =  dfac*xx_loc_p((ghosted_id-1)*option%ndof+3)
+       if(xx_loc_p((ghosted_id-1)*option%nflowdof+3) < .8)then
+          mphase_option%delx(3,ghosted_id) =  dfac*xx_loc_p((ghosted_id-1)*option%nflowdof+3)
        else
-          mphase_option%delx(3,ghosted_id) = -dfac*xx_loc_p((ghosted_id-1)*option%ndof+3) 
+          mphase_option%delx(3,ghosted_id) = -dfac*xx_loc_p((ghosted_id-1)*option%nflowdof+3) 
        endif
        if(mphase_option%delx(3,ghosted_id)<1D-9 .and. mphase_option%delx(3,ghosted_id)>=0.D0)mphase_option%delx(3,ghosted_id)=1D-9
        if(mphase_option%delx(3,ghosted_id)>-1D-9 .and. mphase_option%delx(3,ghosted_id)<0.D0)mphase_option%delx(3,ghosted_id)=-1D-9
       case(2)  
-       if(xx_loc_p((ghosted_id-1)*option%ndof+3) <0.8)then
-          mphase_option%delx(3,ghosted_id) =  dfac*xx_loc_p((ghosted_id-1)*option%ndof+3) 
+       if(xx_loc_p((ghosted_id-1)*option%nflowdof+3) <0.8)then
+          mphase_option%delx(3,ghosted_id) =  dfac*xx_loc_p((ghosted_id-1)*option%nflowdof+3) 
        else
-          mphase_option%delx(3,ghosted_id) = -dfac*xx_loc_p((ghosted_id-1)*option%ndof+3) 
+          mphase_option%delx(3,ghosted_id) = -dfac*xx_loc_p((ghosted_id-1)*option%nflowdof+3) 
        endif 
        if(mphase_option%delx(3,ghosted_id)<1D-9 .and. mphase_option%delx(3,ghosted_id)>=0.D0)mphase_option%delx(3,ghosted_id)=1D-9
        if(mphase_option%delx(3,ghosted_id)>-1D-9 .and. mphase_option%delx(3,ghosted_id)<0.D0)mphase_option%delx(3,ghosted_id)=-1D-9
       case(3)
-        if(xx_loc_p((ghosted_id-1)*option%ndof+3) <=0.9)then
-          mphase_option%delx(3,ghosted_id) = dfac*xx_loc_p((ghosted_id-1)*option%ndof+3) 
+        if(xx_loc_p((ghosted_id-1)*option%nflowdof+3) <=0.9)then
+          mphase_option%delx(3,ghosted_id) = dfac*xx_loc_p((ghosted_id-1)*option%nflowdof+3) 
         else
-          mphase_option%delx(3,ghosted_id) = -dfac*xx_loc_p((ghosted_id-1)*option%ndof+3) 
+          mphase_option%delx(3,ghosted_id) = -dfac*xx_loc_p((ghosted_id-1)*option%nflowdof+3) 
         endif 
         
        if(mphase_option%delx(3,ghosted_id)<1D-9 .and. mphase_option%delx(3,ghosted_id)>=0.D0)mphase_option%delx(3,ghosted_id)=1D-9
        if(mphase_option%delx(3,ghosted_id)>-1D-9 .and. mphase_option%delx(3,ghosted_id)<0.D0)mphase_option%delx(3,ghosted_id)=-1D-9
         
-        if((mphase_option%delx(3,ghosted_id)+xx_loc_p((ghosted_id-1)*option%ndof+3))>1.D0)then
-          mphase_option%delx(3,ghosted_id) = (1.D0-xx_loc_p((ghosted_id-1)*option%ndof+3))/1D5
+        if((mphase_option%delx(3,ghosted_id)+xx_loc_p((ghosted_id-1)*option%nflowdof+3))>1.D0)then
+          mphase_option%delx(3,ghosted_id) = (1.D0-xx_loc_p((ghosted_id-1)*option%nflowdof+3))/1D5
         endif
-        if((mphase_option%delx(3,ghosted_id)+xx_loc_p((ghosted_id-1)*option%ndof+3))<0.D0)then
-          mphase_option%delx(3,ghosted_id) = xx_loc_p((ghosted_id-1)*option%ndof+3)/1D5
+        if((mphase_option%delx(3,ghosted_id)+xx_loc_p((ghosted_id-1)*option%nflowdof+3))<0.D0)then
+          mphase_option%delx(3,ghosted_id) = xx_loc_p((ghosted_id-1)*option%nflowdof+3)/1D5
         endif
     end select
   enddo
@@ -1405,9 +1405,9 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
     !*****************
     dif(1)= option%difaq
     dif(2)= option%cdiff(int(ithrm_loc_p(ghosted_id)))
- ! print *, n,iicap,xx_p((n-1)*option%ndof+1:n*option%ndof) 
+ ! print *, n,iicap,xx_p((n-1)*option%nflowdof+1:n*option%nflowdof) 
   !*******************************************
-    call pri_var_trans_mph_ninc(xx_p((local_id-1)*option%ndof+1:local_id*option%ndof),iiphase,&
+    call pri_var_trans_mph_ninc(xx_p((local_id-1)*option%nflowdof+1:local_id*option%nflowdof),iiphase,&
         option%scale,option%nphase,option%nspec,iicap, dif,&
     var_loc_p((ghosted_id-1)*size_var_node+1:(ghosted_id-1)*size_var_node+size_var_use),&
     option%itable,option%m_nacl,ierr,mphase_field%xxphi_co2(local_id), mphase_field%dden_co2(local_id))
@@ -1415,8 +1415,8 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
 
 
     if (option%ideriv .eq. 1) then
-      call pri_var_trans_mph_winc(xx_p((local_id-1)*option%ndof+1:local_id*option%ndof),&
-        mphase_option%delx(1:option%ndof,ghosted_id), iiphase,&
+      call pri_var_trans_mph_winc(xx_p((local_id-1)*option%nflowdof+1:local_id*option%nflowdof),&
+        mphase_option%delx(1:option%nflowdof,ghosted_id), iiphase,&
         option%scale,option%nphase,option%nspec, iicap, dif,&
         var_loc_p((ghosted_id-1)*size_var_node+size_var_use+1:ghosted_id*size_var_node),&
       option%itable,option%m_nacl,ierr)
@@ -1487,7 +1487,7 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
       if (field%imat(ghosted_id) <= 0) cycle
     endif 
     
-    p1 = 1 + (local_id-1)*option%ndof
+    p1 = 1 + (local_id-1)*option%nflowdof
     index_var_begin=(ghosted_id-1)*size_var_node+1
     index_var_end = index_var_begin -1 + size_var_use
     
@@ -1501,8 +1501,8 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
     call MPHASERes_ARCont(local_id, var_loc_p(index_var_begin: index_var_end),&
     porosity_loc_p(ghosted_id),volume_p(local_id),option%dencpr(i), option, Res, ONE_INTEGER,ierr)
    
-    r_p(p1:p1+option%ndof-1) = r_p(p1:p1+option%ndof-1) + Res(1:option%ndof)
-    Resold_AR(local_id,1:option%ndof)= Res(1:option%ndof) 
+    r_p(p1:p1+option%nflowdof-1) = r_p(p1:p1+option%nflowdof-1) + Res(1:option%nflowdof)
+    Resold_AR(local_id,1:option%nflowdof)= Res(1:option%nflowdof) 
   end do
 
 !************************************************************************
@@ -1533,7 +1533,7 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
       ghosted_id = grid%nL2G(local_id)
 
       if (enthalpy_flag) then
-        r_p(local_id*option%ndof) = r_p(local_id*option%ndof) - hsrc1 * option%dt   
+        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1 * option%dt   
       endif         
 
       if (qsrc1 > 0.d0) then ! injection
@@ -1544,11 +1544,11 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
 
 !           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
               
-        r_p((local_id-1)*option%ndof + mphase_option%jh2o) = r_p((local_id-1)*option%ndof + mphase_option%jh2o) &
+        r_p((local_id-1)*option%nflowdof + mphase_option%jh2o) = r_p((local_id-1)*option%nflowdof + mphase_option%jh2o) &
                                                - qsrc1 *option%dt
-        r_p(local_id*option%ndof) = r_p(local_id*option%ndof) - qsrc1*enth_src_h2o*option%dt
+        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - qsrc1*enth_src_h2o*option%dt
         Resold_AR(local_id,mphase_option%jh2o)= Resold_AR(local_id,mphase_option%jh2o) - qsrc1*option%dt
-        Resold_AR(local_id,option%ndof)= Resold_AR(local_id,option%ndof) - qsrc1 * &
+        Resold_AR(local_id,option%nflowdof)= Resold_AR(local_id,option%nflowdof) - qsrc1 * &
                                                              enth_src_h2o * option%dt
       endif  
     
@@ -1570,10 +1570,10 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
 
         enth_src_co2 = enth_src_co2 * option%fmwco2
            
-        r_p((local_id-1)*option%ndof + mphase_option%jco2) = r_p((local_id-1)*option%ndof + mphase_option%jco2) - csrc1*option%dt
-        r_p(local_id*option%ndof) = r_p(local_id*option%ndof) - csrc1 * enth_src_co2 *option%dt
+        r_p((local_id-1)*option%nflowdof + mphase_option%jco2) = r_p((local_id-1)*option%nflowdof + mphase_option%jco2) - csrc1*option%dt
+        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - csrc1 * enth_src_co2 *option%dt
         Resold_AR(local_id,mphase_option%jco2)= Resold_AR(local_id,mphase_option%jco2) - csrc1*option%dt
-        Resold_AR(local_id,option%ndof)= Resold_AR(local_id,option%ndof) - csrc1 * enth_src_co2*option%dt
+        Resold_AR(local_id,option%nflowdof)= Resold_AR(local_id,option%nflowdof) - csrc1 * enth_src_co2*option%dt
 
      endif
   
@@ -1610,8 +1610,8 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
             field%imat(ghosted_id_dn) <= 0) cycle
       endif
 
-      p1 = 1 + (local_id_up-1)*option%ndof 
-      p2 = 1 + (local_id_dn-1)*option%ndof
+      p1 = 1 + (local_id_up-1)*option%nflowdof 
+      p2 = 1 + (local_id_dn-1)*option%nflowdof
 
       fraction_upwind = cur_connection_set%dist(-1,iconn)
       distance = cur_connection_set%dist(0,iconn)
@@ -1658,14 +1658,14 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
       field%internal_velocities(1,iconn) = vv_darcy(1) ! liquid
       field%internal_velocities(2,iconn) = vv_darcy(2) ! gas
     
-      Resold_FL(iconn,1:option%ndof) = Res(1:option%ndof) 
+      Resold_FL(iconn,1:option%nflowdof) = Res(1:option%nflowdof) 
     
       if(local_id_up>0)then
-        r_p(p1:p1+option%ndof-1) = r_p(p1:p1+option%ndof-1) + Res(1:option%ndof)
+        r_p(p1:p1+option%nflowdof-1) = r_p(p1:p1+option%nflowdof-1) + Res(1:option%nflowdof)
       endif
    
       if(local_id_dn>0)then
-        r_p(p2:p2+option%ndof-1) = r_p(p2:p2+option%ndof-1) - Res(1:option%ndof)
+        r_p(p2:p2+option%nflowdof-1) = r_p(p2:p2+option%nflowdof-1) - Res(1:option%nflowdof)
       endif
 
     enddo
@@ -1703,7 +1703,7 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
         stop
       end if
 
-      p1 = 1 + (local_id-1) * option%ndof
+      p1 = 1 + (local_id-1) * option%nflowdof
 
       ithrm2 = ithrm_loc_p(ghosted_id)
       D2 = option%ckwet(ithrm2)
@@ -1724,33 +1724,33 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
 #ifdef MATCH_LEGACY
       select case(boundary_condition%condition%itype(MPH_PRESSURE_DOF))
         case(DIRICHLET_BC)
-          xxbc(1:option%ndof) = boundary_condition%aux_real_var(1:option%ndof,iconn)
+          xxbc(1:option%nflowdof) = boundary_condition%aux_real_var(1:option%nflowdof,iconn)
           iphasebc = boundary_condition%aux_int_var(MPH_PRESSURE_DOF,iconn)
         case(NEUMANN_BC)
-          xxbc(1:option%ndof) = xx_loc_p((ghosted_id-1)*option%ndof+1:ghosted_id*option%ndof)
+          xxbc(1:option%nflowdof) = xx_loc_p((ghosted_id-1)*option%nflowdof+1:ghosted_id*option%nflowdof)
           iphasebc=int(iphase_loc_p(ghosted_id)) 
           if (boundary_condition%aux_real_var(MPH_PRESSURE_DOF,iconn) > 1.d-20) then
-            xxbc(2:option%ndof) = boundary_condition%aux_real_var(2:option%ndof,iconn)
+            xxbc(2:option%nflowdof) = boundary_condition%aux_real_var(2:option%nflowdof,iconn)
           endif
         case(HYDROSTATIC_BC)                              
           xxbc(1) = boundary_condition%aux_real_var(MPH_PRESSURE_DOF,iconn)
-          xxbc(2:option%ndof) = xx_loc_p((ghosted_id-1)*option%ndof+2:ghosted_id*option%ndof)
+          xxbc(2:option%nflowdof) = xx_loc_p((ghosted_id-1)*option%nflowdof+2:ghosted_id*option%nflowdof)
           iphasebc=int(iphase_loc_p(ghosted_id))
         case(ZERO_GRADIENT_BC)
-          xxbc(1:option%ndof) = xx_loc_p((ghosted_id-1)*option%ndof+1:ghosted_id*option%ndof)
+          xxbc(1:option%nflowdof) = xx_loc_p((ghosted_id-1)*option%nflowdof+1:ghosted_id*option%nflowdof)
           iphasebc=int(iphase_loc_p(ghosted_id))
         case(4)
-          xxbc(MPH_PRESSURE_DOF) = xx_loc_p((ghosted_id-1)*option%ndof+MPH_PRESSURE_DOF)
-          xxbc(3:option%ndof) = xx_loc_p((ghosted_id-1)*option%ndof+3:ghosted_id*option%ndof)
+          xxbc(MPH_PRESSURE_DOF) = xx_loc_p((ghosted_id-1)*option%nflowdof+MPH_PRESSURE_DOF)
+          xxbc(3:option%nflowdof) = xx_loc_p((ghosted_id-1)*option%nflowdof+3:ghosted_id*option%nflowdof)
           iphasebc=int(iphase_loc_p(ghosted_id))
       end select
 #else
-      do idof=1,option%ndof
+      do idof=1,option%nflowdof
         select case(boundary_condition%condition%itype(idof))
           case(DIRICHLET_BC,HYDROSTATIC_BC)
             xxbc(idof) = boundary_condition%aux_real_var(idof,iconn)
           case(NEUMANN_BC,ZERO_GRADIENT_BC)
-            xxbc(idof) = xx_loc_p((ghosted_id-1)*option%ndof+idof)
+            xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
         end select
       enddo
       
@@ -1789,8 +1789,8 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
       field%boundary_velocities(1,iconn) = vv_darcy(1)  ! liquid
       field%boundary_velocities(2,iconn) = vv_darcy(2)  ! gas
 
-      r_p(p1:p1-1+option%ndof)= r_p(p1:p1-1+option%ndof) - Res(1:option%ndof)
-      ResOld_AR(local_id,1:option%ndof) = ResOld_AR(local_id,1:option%ndof) - Res(1:option%ndof)
+      r_p(p1:p1-1+option%nflowdof)= r_p(p1:p1-1+option%nflowdof) - Res(1:option%nflowdof)
+      ResOld_AR(local_id,1:option%nflowdof) = ResOld_AR(local_id,1:option%nflowdof) - Res(1:option%nflowdof)
     enddo
     boundary_condition => boundary_condition%next
   enddo
@@ -1806,7 +1806,7 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
   end select    
   
   do local_id = 1, grid%nlmax
-    p1 = 1 + (local_id-1)*option%ndof
+    p1 = 1 + (local_id-1)*option%nflowdof
     if(volume_p(local_id)>1.D0) r_p (p1:p1+2)=r_p(p1:p1+2)/volume_p(local_id)
   enddo  
 
@@ -1820,8 +1820,8 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
       if (associated(field%imat)) then
         if (field%imat(ghosted_id) <= 0) cycle
       endif
-      p1 = 3 + (local_id-1)*option%ndof
-      r_p(p1)=xx_loc_p(2 + (ghosted_id-1)*option%ndof)-yy_p(p1-1)
+      p1 = 3 + (local_id-1)*option%nflowdof
+      r_p(p1)=xx_loc_p(2 + (ghosted_id-1)*option%nflowdof)-yy_p(p1-1)
     enddo
   endif
 
@@ -1925,18 +1925,18 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
   PetscReal :: D1, D2  ! "Diffusion" constants upstream and downstream of a face.
 ! PetscReal :: sat_pressure  ! Saturation pressure of water.
 ! PetscReal :: xxlw,xxla,xxgw,xxga,cw,cw1,cw2,cwu, sat_ave
-  PetscReal :: ra(1:realization%option%ndof,1:2*realization%option%ndof)  
+  PetscReal :: ra(1:realization%option%nflowdof,1:2*realization%option%nflowdof)  
 ! PetscReal :: uhh, uconc, ukvr
 ! PetscReal :: upweight,m1weight,m2weight,mbweight,mnweight
-  PetscReal :: delxbc(1:realization%option%ndof)
-  PetscReal :: blkmat11(1:realization%option%ndof,1:realization%option%ndof), &
-            blkmat12(1:realization%option%ndof,1:realization%option%ndof),&
-            blkmat21(1:realization%option%ndof,1:realization%option%ndof),&
-            blkmat22(1:realization%option%ndof,1:realization%option%ndof)
-  PetscReal :: ResInc(1:realization%grid%nlmax,1:realization%option%ndof,1:realization%option%ndof), &
-               res(1:realization%option%ndof)  
+  PetscReal :: delxbc(1:realization%option%nflowdof)
+  PetscReal :: blkmat11(1:realization%option%nflowdof,1:realization%option%nflowdof), &
+            blkmat12(1:realization%option%nflowdof,1:realization%option%nflowdof),&
+            blkmat21(1:realization%option%nflowdof,1:realization%option%nflowdof),&
+            blkmat22(1:realization%option%nflowdof,1:realization%option%nflowdof)
+  PetscReal :: ResInc(1:realization%grid%nlmax,1:realization%option%nflowdof,1:realization%option%nflowdof), &
+               res(1:realization%option%nflowdof)  
   PetscReal :: max_dev, norm
-  PetscReal :: xxbc(realization%option%ndof), varbc(1:size_var_node)
+  PetscReal :: xxbc(realization%option%nflowdof), varbc(1:size_var_node)
   PetscInt :: iphasebc, idof
   
   PetscInt :: local_id, ghosted_id
@@ -2006,7 +2006,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
 
     iiphas=iphase_loc_p(ghosted_id)
  ! pressure equation    
-    do nvar=1, option%ndof
+    do nvar=1, option%nflowdof
    
       index_var_begin=(ghosted_id-1)*size_var_node+nvar*size_var_use+1
       index_var_end = index_var_begin -1 + size_var_use
@@ -2056,7 +2056,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
 
       if (qsrc1 > 0.d0) then ! injection
       
-        do nvar=1,option%ndof      
+        do nvar=1,option%nflowdof      
           call wateos_noderiv(tsrc1,var_loc_p((ghosted_id-1)*size_var_node+nvar*size_var_use+2),&
                               dw_kg,dw_mol,enth_src_h2o,option%scale,ierr)
 
@@ -2065,7 +2065,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
 !         qqsrc = qsrc1/dw_mol ! [kmol/s / mol/dm^3 = kmol/m^3]
               
           ResInc(local_id,mphase_option%jh2o,nvar)=  ResInc(local_id,mphase_option%jh2o,nvar) - qsrc1*option%dt
-          ResInc(local_id,option%ndof,nvar)=  ResInc(local_id,option%ndof,nvar) - qsrc1*enth_src_h2o*option%dt
+          ResInc(local_id,option%nflowdof,nvar)=  ResInc(local_id,option%nflowdof,nvar) - qsrc1*enth_src_h2o*option%dt
         enddo
 
       endif  
@@ -2079,7 +2079,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
 !       enth_src_co2=enth_src_co2 * 1.D-3     
  
         ! span-wagner
-        do nvar=1,option%ndof     
+        do nvar=1,option%nflowdof     
           rho = var_loc_p((ghosted_id-1)*size_var_node+nvar*size_var_use+4+option%nphase)*option%fmwco2 
           call co2_span_wagner(var_loc_p((ghosted_id-1)*size_var_node+nvar*size_var_use+2)*1.D-6,&
                                tsrc1+273.15D0,rho,dddt,dddp,fg,dfgdp,dfgdt, &
@@ -2090,7 +2090,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
           enth_src_co2 = enth_src_co2 * option%fmwco2
 
           ResInc(local_id,mphase_option%jco2,nvar)=  ResInc(local_id,mphase_option%jco2,nvar) - csrc1*option%dt
-          ResInc(local_id,option%ndof,nvar)=  ResInc(local_id,option%ndof,nvar) - csrc1*enth_src_co2*option%dt
+          ResInc(local_id,option%nflowdof,nvar)=  ResInc(local_id,option%nflowdof,nvar) - csrc1*enth_src_co2*option%dt
 
         enddo
 
@@ -2130,7 +2130,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
         stop
       end if
   
-      p1 = 1 + (local_id-1) * option%ndof
+      p1 = 1 + (local_id-1) * option%nflowdof
       
       ithrm2 = ithrm_loc_p(ghosted_id)
       D2 = option%ckwet(ithrm2)
@@ -2152,42 +2152,42 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
 #ifdef MATCH_LEGACY
       select case(boundary_condition%condition%itype(MPH_PRESSURE_DOF))
         case(DIRICHLET_BC)
-          xxbc(1:option%ndof) = boundary_condition%aux_real_var(1:option%ndof,iconn)
-          delxbc(1:option%ndof) = 0.d0
+          xxbc(1:option%nflowdof) = boundary_condition%aux_real_var(1:option%nflowdof,iconn)
+          delxbc(1:option%nflowdof) = 0.d0
           iphasebc = boundary_condition%aux_int_var(1,iconn)
         case(NEUMANN_BC)
-          xxbc(1:option%ndof) = xx_loc_p((ghosted_id-1)*option%ndof+1:ghosted_id*option%ndof)
-          delxbc(1:option%ndof) = mphase_option%delx(1:option%ndof,ghosted_id) 
+          xxbc(1:option%nflowdof) = xx_loc_p((ghosted_id-1)*option%nflowdof+1:ghosted_id*option%nflowdof)
+          delxbc(1:option%nflowdof) = mphase_option%delx(1:option%nflowdof,ghosted_id) 
           iphasebc=int(iphase_loc_p(ghosted_id))                               
           if (boundary_condition%aux_real_var(MPH_PRESSURE_DOF,iconn) > 1.d-20) then
-            xxbc(2:option%ndof) = boundary_condition%aux_real_var(2:option%ndof,iconn)
-            delxbc(2:option%ndof) = 0.d0
+            xxbc(2:option%nflowdof) = boundary_condition%aux_real_var(2:option%nflowdof,iconn)
+            delxbc(2:option%nflowdof) = 0.d0
           endif
         case(HYDROSTATIC_BC)
           xxbc(1) = boundary_condition%aux_real_var(MPH_PRESSURE_DOF,iconn)
-          xxbc(2:option%ndof) = xx_loc_p((ghosted_id-1)*option%ndof+2:ghosted_id*option%ndof)
+          xxbc(2:option%nflowdof) = xx_loc_p((ghosted_id-1)*option%nflowdof+2:ghosted_id*option%nflowdof)
           delxbc(1) = 0.d0
-          delxbc(2:option%ndof) = mphase_option%delx(2:option%ndof,ghosted_id) 
+          delxbc(2:option%nflowdof) = mphase_option%delx(2:option%nflowdof,ghosted_id) 
           iphasebc=int(iphase_loc_p(ghosted_id))
         case(ZERO_GRADIENT_BC)
-          xxbc(1:option%ndof) = xx_loc_p((ghosted_id-1)*option%ndof+1:ghosted_id*option%ndof)
-          delxbc(1:option%ndof) = mphase_option%delx(1:option%ndof,ghosted_id) 
+          xxbc(1:option%nflowdof) = xx_loc_p((ghosted_id-1)*option%nflowdof+1:ghosted_id*option%nflowdof)
+          delxbc(1:option%nflowdof) = mphase_option%delx(1:option%nflowdof,ghosted_id) 
           iphasebc=int(iphase_loc_p(ghosted_id))
         case(4)
-          xxbc(1) = xx_loc_p((ghosted_id-1)*option%ndof+MPH_PRESSURE_DOF)
-          xxbc(3:option%ndof) = xx_loc_p((ghosted_id-1)*option%ndof+3:ghosted_id*option%ndof)
+          xxbc(1) = xx_loc_p((ghosted_id-1)*option%nflowdof+MPH_PRESSURE_DOF)
+          xxbc(3:option%nflowdof) = xx_loc_p((ghosted_id-1)*option%nflowdof+3:ghosted_id*option%nflowdof)
           delxbc(1) = mphase_option%delx(1,ghosted_id) 
-          delxbc(3:option%ndof) = mphase_option%delx(3:option%ndof,ghosted_id) 
+          delxbc(3:option%nflowdof) = mphase_option%delx(3:option%nflowdof,ghosted_id) 
           iphasebc=int(iphase_loc_p(ghosted_id))
       end select
 #else
-      do idof=1,option%ndof
+      do idof=1,option%nflowdof
         select case(boundary_condition%condition%itype(idof))
           case(DIRICHLET_BC,HYDROSTATIC_BC)
             xxbc(idof) = boundary_condition%aux_real_var(idof,iconn)
             delxbc(idof) = 0.d0
           case(NEUMANN_BC,ZERO_GRADIENT_BC)
-            xxbc(idof) = xx_loc_p((ghosted_id-1)*option%ndof+idof)
+            xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
             delxbc(idof) = mphase_option%delx(idof,ghosted_id) 
         end select
       enddo
@@ -2234,11 +2234,11 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
       call pri_var_trans_mph_winc(xxbc,delxbc,&
                               iphasebc,option%scale,option%nphase, &
                               option%nspec,iicap,dif(1:option%nphase), &
-                              varbc(size_var_use+1:(option%ndof+1)*size_var_use), &
+                              varbc(size_var_use+1:(option%nflowdof+1)*size_var_use), &
                               option%itable,option%m_nacl,ierr)
             
 !    print *,' Mph Jaco BC terms: finish increment'
-      do nvar=1,option%ndof
+      do nvar=1,option%nflowdof
    
         call MPHASERes_FLBCCont(boundary_condition%condition%itype, &
                                 cur_connection_set%area(iconn), &
@@ -2255,7 +2255,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
                                 perm1,D2,distance_gravity,option,field,vv_darcy,Res)
 
     
-        ResInc(local_id,1:option%ndof,nvar) = ResInc(local_id,1:option%ndof,nvar) - Res(1:option%ndof)
+        ResInc(local_id,1:option%nflowdof,nvar) = ResInc(local_id,1:option%nflowdof,nvar) - Res(1:option%nflowdof)
       enddo
 
     enddo
@@ -2273,11 +2273,11 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
     
     natural_id_up= grid%nG2N(ghosted_id)
    ! Remember, the matrix index starts from (0,0)
-    p1 = (ghosted_id-1)*option%ndof ! = 1 + (ng-1)*option%ndof-1
+    p1 = (ghosted_id-1)*option%nflowdof ! = 1 + (ng-1)*option%nflowdof-1
    
     max_dev=0.D0
-    do neq=1, option%ndof
-      do nvar=1, option%ndof
+    do neq=1, option%nflowdof
+      do nvar=1, option%nflowdof
         ra(neq,nvar)=ResInc(local_id,neq,nvar)/mphase_option%delx(nvar,ghosted_id) - &
                      ResOld_AR(local_id,neq)/mphase_option%delx(nvar,ghosted_id)
           if(max_dev < dabs(ra(3,nvar))) max_dev = dabs(ra(3,nvar))
@@ -2286,7 +2286,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
     enddo
     if(option%use_isoth==PETSC_TRUE)then
       ra(:,2)=0.D0
-      ra(3,1:option%ndof)=0.D0
+      ra(3,1:option%nflowdof)=0.D0
       ra(3,2)=1.D0
     endif     
 
@@ -2297,23 +2297,23 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
   
     select case(mphase_option%idt_switch)
       case(1) 
-        ra(1:option%ndof,1:option%ndof) =ra(1:option%ndof,1:option%ndof) /option%dt
+        ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:option%nflowdof) /option%dt
       case(-1)
-        if(option%dt>1) ra(1:option%ndof,1:option%ndof) =ra(1:option%ndof,1:option%ndof) /option%dt
+        if(option%dt>1) ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:option%nflowdof) /option%dt
     end select
       
 
     if (option%iblkfmt == 0) then
-      p1=(natural_id_up)*option%ndof
+      p1=(natural_id_up)*option%nflowdof
      
-      do ii=0,option%ndof-1
-        do jj=0,option%ndof-1
+      do ii=0,option%nflowdof-1
+        do jj=0,option%nflowdof-1
           call MatSetValue(A,p1+ii,p1+jj,ra(ii+1,jj+1)/ volume_p(local_id),ADD_VALUES,ierr)
         enddo
        enddo
     else
-      !ra(1:option%ndof,1:option%ndof) =ra(1:option%ndof,1:option%ndof) /option%dt
-      blkmat11=ra(1:option%ndof,1:option%ndof)
+      !ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:option%nflowdof) /option%dt
+      blkmat11=ra(1:option%nflowdof,1:option%nflowdof)
     
       if(volume_p(local_id)>1.D0 ) blkmat11=blkmat11 / volume_p(local_id)
    
@@ -2355,7 +2355,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
       local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping   
       natural_id_up = grid%nG2N(ghosted_id_up)
       natural_id_dn = grid%nG2N(ghosted_id_dn)
-      p2 =  (ghosted_id_dn-1)*option%ndof
+      p2 =  (ghosted_id_dn-1)*option%nflowdof
    
       fraction_upwind = cur_connection_set%dist(-1,iconn)
       distance = cur_connection_set%dist(0,iconn)
@@ -2392,8 +2392,8 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
       iicap1 = int(icap_loc_p(ghosted_id_up))
       iicap2 = int(icap_loc_p(ghosted_id_dn))
   
-  ! do neq = 1, option%ndof
-      do nvar = 1, option%ndof
+  ! do neq = 1, option%nflowdof
+      do nvar = 1, option%nflowdof
     
         call MPHASERes_FLCont(sum_connection,cur_connection_set%area(iconn), &
                               var_loc_p((ghosted_id_up-1)*size_var_node+ &
@@ -2431,7 +2431,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
                               distance_gravity,upweight, &
                               option, vv_darcy,Res)
  
-        ra(:,nvar+option%ndof)=Res(:)/mphase_option%delx(nvar,ghosted_id_dn) &
+        ra(:,nvar+option%nflowdof)=Res(:)/mphase_option%delx(nvar,ghosted_id_dn) &
                               -ResOld_FL(sum_connection,:)/mphase_option%delx(nvar,ghosted_id_dn)
 
      
@@ -2447,9 +2447,9 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
   ! enddo
    
       if (option%use_isoth==PETSC_TRUE) then
-        ra(3,1:2*option%ndof)=0.D0
+        ra(3,1:2*option%nflowdof)=0.D0
         ra(:,2)=0.D0
-        ra(:,2+option%ndof)=0.D0
+        ra(:,2+option%nflowdof)=0.D0
       endif   
  
 
@@ -2457,8 +2457,8 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
         blkmat11 = 0.D0; blkmat12 = 0.D0; blkmat21 = 0.D0; blkmat22 = 0.D0;
       endif
     
-      p1=(natural_id_up)*option%ndof
-      p2=(natural_id_dn)*option%ndof
+      p1=(natural_id_up)*option%nflowdof
+      p2=(natural_id_dn)*option%nflowdof
  
       select case(mphase_option%idt_switch)
         case(1)
@@ -2467,8 +2467,8 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
           if (option%dt>1) ra =ra / option%dt
       end select  
        
-      do ii=0,option%ndof-1
-        do jj=0,option%ndof-1
+      do ii=0,option%nflowdof-1
+        do jj=0,option%nflowdof-1
           if (local_id_up>0) then
             if (option%iblkfmt == 0) then
               call MatSetValue(A,p1+ii,p1+jj,ra(ii+1,jj+1)/volume_p(local_id_up),ADD_VALUES,ierr)
@@ -2485,19 +2485,19 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
           endif
         enddo
    
-        do jj=option%ndof,2*option%ndof-1
+        do jj=option%nflowdof,2*option%nflowdof-1
           if (local_id_up>0) then
             if (option%iblkfmt == 0) then
-              call MatSetValue(A,p1+ii,p2+jj-option%ndof,ra(ii+1,jj+1)/volume_p(local_id_up),ADD_VALUES,ierr)
+              call MatSetValue(A,p1+ii,p2+jj-option%nflowdof,ra(ii+1,jj+1)/volume_p(local_id_up),ADD_VALUES,ierr)
             else
-              blkmat12(ii+1,jj-option%ndof+1) = blkmat12(ii+1,jj-option%ndof+1) + ra(ii+1,jj+1)
+              blkmat12(ii+1,jj-option%nflowdof+1) = blkmat12(ii+1,jj-option%nflowdof+1) + ra(ii+1,jj+1)
             endif
           endif
           if (local_id_dn>0) then
             if (option%iblkfmt == 0) then
-              call MatSetValue(A,p2+ii,p2+jj-option%ndof,-ra(ii+1,jj+1)/volume_p(local_id_dn),ADD_VALUES,ierr)
+              call MatSetValue(A,p2+ii,p2+jj-option%nflowdof,-ra(ii+1,jj+1)/volume_p(local_id_dn),ADD_VALUES,ierr)
             else
-              blkmat22(ii+1,jj-option%ndof+1) =  blkmat22(ii+1,jj-option%ndof+1) - ra(ii+1,jj+1)
+              blkmat22(ii+1,jj-option%nflowdof+1) =  blkmat22(ii+1,jj-option%nflowdof+1) - ra(ii+1,jj+1)
             endif
           endif
         enddo
@@ -2551,11 +2551,11 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
   f1 = 0.d0
   call MatZeroRowsLocal(A,n_zero_rows,zero_rows_local_ghosted,f1,ierr) 
   do i=1, n_zero_rows
-    ii = mod(zero_rows_local(i),option%ndof)
+    ii = mod(zero_rows_local(i),option%nflowdof)
     p1 = zero_rows_local_ghosted(i)
     if (ii == 0) then
       p2 = p1-1
-    elseif (ii == option%ndof-1) then
+    elseif (ii == option%nflowdof-1) then
       p2 = p1+1
     else
       p2 = p1
@@ -2619,7 +2619,7 @@ subroutine pflow_mphase_initaccum(realization)
   
 ! PetscReal :: sat_pressure
   PetscReal :: pvol, satw  ! Saturation pressure of water.
-  PetscReal :: dif(1:realization%option%nphase),res(1:realization%option%ndof)
+  PetscReal :: dif(1:realization%option%nphase),res(1:realization%option%nflowdof)
  
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -2650,7 +2650,7 @@ subroutine pflow_mphase_initaccum(realization)
     dif(1)= option%difaq
     dif(2)= option%cdiff(int(ithrm_loc_p(ghosted_id)))
 
-    call pri_var_trans_mph_ninc(yy_p((local_id-1)*option%ndof+1:local_id*option%ndof),iiphase,&
+    call pri_var_trans_mph_ninc(yy_p((local_id-1)*option%nflowdof+1:local_id*option%nflowdof),iiphase,&
                                 option%scale,option%nphase,option%nspec, iicap, dif,&
                                 var_loc_p((ghosted_id-1)*size_var_node+1:(ghosted_id-1)*size_var_node+size_var_use),option%itable,&
                                 option%m_nacl,ierr, satw, pvol)
@@ -2667,7 +2667,7 @@ subroutine pflow_mphase_initaccum(realization)
     if (associated(field%imat)) then
       if (field%imat(ghosted_id) <= 0) cycle
     endif 
-    p1 = 1 + (local_id-1)*option%ndof
+    p1 = 1 + (local_id-1)*option%nflowdof
     index_var_begin=(ghosted_id-1)*size_var_node+1
     index_var_end = index_var_begin -1 + size_var_use
     i = ithrm_loc_p(ghosted_id)
@@ -2677,7 +2677,7 @@ subroutine pflow_mphase_initaccum(realization)
                           Res, ZERO_INTEGER,ierr)
  
 
-    accum_p(p1:p1+option%ndof-1)=Res(:) 
+    accum_p(p1:p1+option%nflowdof-1)=Res(:) 
 
    !print *, 'init m accum ', n,  Res 
 
@@ -2724,7 +2724,7 @@ subroutine pflow_update_mphase(realization)
   PetscReal, pointer :: xx_p(:),icap_loc_p(:),ithrm_loc_p(:),iphase_loc_p(:), var_loc_p(:), phis_p(:)
   PetscReal :: dif(1:realization%option%nphase), dum1, dum2           
   PetscInt :: local_id, ghosted_id     
-  PetscReal :: xxbc(realization%option%ndof), varbc(size_var_use)
+  PetscReal :: xxbc(realization%option%nflowdof), varbc(size_var_use)
   PetscInt :: iphasebc, idof, n
   
   type(coupler_type), pointer :: boundary_condition
@@ -2758,14 +2758,14 @@ subroutine pflow_update_mphase(realization)
     
     iicap = icap_loc_p(ghosted_id)
     iiphase = iphase_loc_p(ghosted_id)
-    dof_offset=(local_id-1)*option%ndof
+    dof_offset=(local_id-1)*option%nflowdof
     if(xx_p(dof_offset+3)<0.D0) xx_p(dof_offset+3)=zerocut
 
     ! *****************
       dif(1)= option%difaq
       dif(2)= option%cdiff(int(ithrm_loc_p(ghosted_id)))
     ! *******************************************
-      call pri_var_trans_mph_ninc(xx_p((local_id-1)*option%ndof+1:local_id*option%ndof),iiphase,&
+      call pri_var_trans_mph_ninc(xx_p((local_id-1)*option%nflowdof+1:local_id*option%nflowdof),iiphase,&
                                   option%scale,option%nphase,option%nspec, iicap, dif,&
                                   var_loc_p((ghosted_id-1)*size_var_node+1:(ghosted_id-1)*size_var_node+size_var_use),&
                                   option%itable,option%m_nacl,ierr, dum1, dum2)
@@ -2798,12 +2798,12 @@ subroutine pflow_update_mphase(realization)
         endif
 
         if (boundary_condition%condition%itype(MPH_PRESSURE_DOF) == DIRICHLET_BC) then
-          do idof=1,option%ndof
+          do idof=1,option%nflowdof
             select case(boundary_condition%condition%itype(idof))
               case(DIRICHLET_BC,HYDROSTATIC_BC)
                 xxbc(idof) = boundary_condition%aux_real_var(idof,iconn)
               case(NEUMANN_BC,ZERO_GRADIENT_BC)
-                xxbc(idof) = xx_p((local_id-1)*option%ndof+idof)
+                xxbc(idof) = xx_p((local_id-1)*option%nflowdof+idof)
             end select
           enddo
       
@@ -2815,7 +2815,7 @@ subroutine pflow_update_mphase(realization)
           end select
 
           iicap = icap_loc_p(ghosted_id)
-          dof_offset=(local_id-1)*option%ndof
+          dof_offset=(local_id-1)*option%nflowdof
           if(xx_p(dof_offset+3)<0.D0) xx_p(dof_offset+3)=zerocut
 
           ! *****************
@@ -2907,7 +2907,7 @@ subroutine pflow_mphase_initadj(realization)
   
 ! PetscReal :: temp1
 ! PetscReal, parameter :: Rg=8.31415D0
-  PetscReal :: xxbc(realization%option%ndof),varbc(1:size_var_use)
+  PetscReal :: xxbc(realization%option%nflowdof),varbc(1:size_var_use)
   PetscInt :: iphasebc, idof 
 
   type(coupler_type), pointer :: boundary_condition
@@ -2945,12 +2945,12 @@ subroutine pflow_mphase_initadj(realization)
     dif(1)= option%difaq
     dif(2)= option%cdiff(int(ithrm_loc_p(ghosted_id)))
     !******************************************* 
-    call pri_var_trans_mph_ninc(xx_p((local_id-1)*option%ndof+1:local_id*option%ndof),iiphase,&
+    call pri_var_trans_mph_ninc(xx_p((local_id-1)*option%nflowdof+1:local_id*option%nflowdof),iiphase,&
       option%scale,option%nphase,option%nspec, iicap,  dif,&
       var_loc_p((ghosted_id-1)*size_var_node+1: (ghosted_id-1)*size_var_node+size_var_use), &
       option%itable,option%m_nacl,ierr, dum1, dum2)
    
-   !print *, xx_p((n-1)*option%ndof+1:n*option%ndof)
+   !print *, xx_p((n-1)*option%nflowdof+1:n*option%nflowdof)
     if(translator_check_phase_cond(iiphase, &
       var_loc_p((ghosted_id-1)*size_var_node+1: (ghosted_id-1)*size_var_node+size_var_use),&
       option%nphase,option%nspec) /= 1 ) then
@@ -2969,7 +2969,7 @@ subroutine pflow_mphase_initadj(realization)
 !    boundary_condition => boundary_condition%next
 !  enddo
 
-!  allocate(yybc(option%ndof,num_connection))
+!  allocate(yybc(option%nflowdof,num_connection))
 !  allocate(vel_bc(option%nphase,num_connection))
 !  yybc =field%xxbc
 !  vel_bc = field%velocitybc
@@ -3063,7 +3063,7 @@ subroutine createMphaseZeroArray(realization)
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
       if (field%imat(ghosted_id) <= 0) then
-        n_zero_rows = n_zero_rows + option%ndof
+        n_zero_rows = n_zero_rows + option%nflowdof
       else
 #ifdef ISOTHERMAL
         n_zero_rows = n_zero_rows + 1
@@ -3086,16 +3086,16 @@ subroutine createMphaseZeroArray(realization)
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
       if (field%imat(ghosted_id) <= 0) then
-        do idof = 1, option%ndof
+        do idof = 1, option%nflowdof
           ncount = ncount + 1
-          zero_rows_local(ncount) = (local_id-1)*option%ndof+idof
-          zero_rows_local_ghosted(ncount) = (ghosted_id-1)*option%ndof+idof-1
+          zero_rows_local(ncount) = (local_id-1)*option%nflowdof+idof
+          zero_rows_local_ghosted(ncount) = (ghosted_id-1)*option%nflowdof+idof-1
         enddo
       else
 #ifdef ISOTHERMAL
         ncount = ncount + 1
-        zero_rows_local(ncount) = local_id*option%ndof
-        zero_rows_local_ghosted(ncount) = ghosted_id*option%ndof-1
+        zero_rows_local(ncount) = local_id*option%nflowdof
+        zero_rows_local_ghosted(ncount) = ghosted_id*option%nflowdof-1
 #endif
       endif
     enddo
@@ -3104,8 +3104,8 @@ subroutine createMphaseZeroArray(realization)
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
       ncount = ncount + 1
-      zero_rows_local(ncount) = local_id*option%ndof
-      zero_rows_local_ghosted(ncount) = ghosted_id*option%ndof-1
+      zero_rows_local(ncount) = local_id*option%nflowdof
+      zero_rows_local_ghosted(ncount) = ghosted_id*option%nflowdof-1
     enddo
 #endif
   endif

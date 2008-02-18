@@ -175,7 +175,7 @@ subroutine OutputTecplot(realization)
     write(IUNIT3,'(''TITLE = "'',1es12.4," [",a1,'']"'')') &
                  option%time/output_option%tconv,output_option%tunit
     ! write variables
-    select case(option%imode)
+    select case(option%iflowmode)
       case (MPH_MODE)
         string = MphaseGetTecplotHeader(realization)
       case(RICHARDS_MODE)
@@ -212,11 +212,11 @@ subroutine OutputTecplot(realization)
   call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
   call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
 
-  select case(option%imode)
+  select case(option%iflowmode)
     case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
 
       ! temperature
-      select case(option%imode)
+      select case(option%iflowmode)
         case(MPH_MODE,RICHARDS_MODE)
           call GetVarFromArray(realization,global_vec,TEMPERATURE,ZERO_INTEGER)
           call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
@@ -224,7 +224,7 @@ subroutine OutputTecplot(realization)
       end select
 
       ! pressure
-      select case(option%imode)
+      select case(option%iflowmode)
         case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
           call GetVarFromArray(realization,global_vec,PRESSURE,ZERO_INTEGER)
           call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
@@ -232,7 +232,7 @@ subroutine OutputTecplot(realization)
       end select
 
       ! liquid saturation
-      select case(option%imode)
+      select case(option%iflowmode)
         case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
           call GetVarFromArray(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
           call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
@@ -240,7 +240,7 @@ subroutine OutputTecplot(realization)
       end select
 
       ! gas saturation
-      select case(option%imode)
+      select case(option%iflowmode)
         case(MPH_MODE)
           call GetVarFromArray(realization,global_vec,GAS_SATURATION,ZERO_INTEGER)
           call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
@@ -248,7 +248,7 @@ subroutine OutputTecplot(realization)
       end select
     
       ! liquid energy
-      select case(option%imode)
+      select case(option%iflowmode)
         case(MPH_MODE,RICHARDS_MODE)
           call GetVarFromArray(realization,global_vec,LIQUID_ENERGY,ZERO_INTEGER)
           call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
@@ -256,14 +256,14 @@ subroutine OutputTecplot(realization)
       end select
     
      ! gas energy
-      select case(option%imode)
+      select case(option%iflowmode)
         case(MPH_MODE)
           call GetVarFromArray(realization,global_vec,GAS_ENERGY,ZERO_INTEGER)
           call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       end select
 
-      select case(option%imode)
+      select case(option%iflowmode)
         case(MPH_MODE,RICHARDS_MODE)
           ! liquid mole fractions
           do i=1,option%nspec
@@ -273,7 +273,7 @@ subroutine OutputTecplot(realization)
           enddo
       end select
   
-      select case(option%imode)
+      select case(option%iflowmode)
         case(MPH_MODE)
           ! gas mole fractions
           do i=1,option%nspec
@@ -291,7 +291,7 @@ subroutine OutputTecplot(realization)
       endif
 #endif    
       ! phase
-      select case(option%imode)
+      select case(option%iflowmode)
         case(MPH_MODE)
           call GetVarFromArray(realization,global_vec,PHASE,ZERO_INTEGER)
           call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
@@ -322,7 +322,7 @@ subroutine OutputTecplot(realization)
     if (grid%structured_grid%nx > 1) then
       call OutputFluxVelocitiesTecplot(realization,LIQUID_PHASE, &
                                        X_DIRECTION)
-      select case(option%imode)
+      select case(option%iflowmode)
         case(MPH_MODE)
           call OutputFluxVelocitiesTecplot(realization,GAS_PHASE, &
                                            X_DIRECTION)
@@ -331,7 +331,7 @@ subroutine OutputTecplot(realization)
     if (grid%structured_grid%ny > 1) then
       call OutputFluxVelocitiesTecplot(realization,LIQUID_PHASE, &
                                        Y_DIRECTION)
-      select case(option%imode)
+      select case(option%iflowmode)
         case(MPH_MODE)
           call OutputFluxVelocitiesTecplot(realization,GAS_PHASE, &
                                            Y_DIRECTION)
@@ -340,7 +340,7 @@ subroutine OutputTecplot(realization)
     if (grid%structured_grid%nz > 1) then
       call OutputFluxVelocitiesTecplot(realization,LIQUID_PHASE, &
                                        Z_DIRECTION)
-      select case(option%imode)
+      select case(option%iflowmode)
         case(MPH_MODE)
           call OutputFluxVelocitiesTecplot(realization,GAS_PHASE, &
                                            Z_DIRECTION)
@@ -1207,7 +1207,7 @@ subroutine WriteBreakthroughHeaderForCell(fid,realization,local_id)
   write(cell_id_string,*) grid%nL2A(local_id)
   cell_id_string = adjustl(cell_id_string)
 
-  select case(option%imode)
+  select case(option%iflowmode)
     case (MPH_MODE)
       string = '"X [m] '// trim(cell_id_string) // '",' // &
                '"Y [m] '// trim(cell_id_string) // '",' // &
@@ -1233,7 +1233,7 @@ subroutine WriteBreakthroughHeaderForCell(fid,realization,local_id)
 #endif      
       string = trim(string) // ',"Phase '// trim(cell_id_string) // '"'
     case(RICHARDS_MODE,RICHARDS_LITE_MODE)
-      if (option%imode == RICHARDS_MODE) then
+      if (option%iflowmode == RICHARDS_MODE) then
         string = '"X [m] '// trim(cell_id_string) // '",' // &
                  '"Y [m] '// trim(cell_id_string) // '",' // &
                  '"Z [m] '// trim(cell_id_string) // '",' // &
@@ -1248,7 +1248,7 @@ subroutine WriteBreakthroughHeaderForCell(fid,realization,local_id)
                  '"P [Pa] '// trim(cell_id_string) // '",' // &
                  '"sl '// trim(cell_id_string) // '"'
       endif
-      if (option%imode == RICHARDS_MODE) then
+      if (option%iflowmode == RICHARDS_MODE) then
         do i=1,option%nspec
           write(string2,'('',"Xl('',i2,'') '// trim(cell_id_string) // '"'')') i
           string = trim(string) // trim(string2)
@@ -1317,52 +1317,52 @@ subroutine WriteBreakthroughDataForCell(fid,realization,local_id)
   write(fid,110,advance="no") grid%y(ghosted_id)
   write(fid,110,advance="no") grid%z(ghosted_id)
   
-  select case(option%imode)
+  select case(option%iflowmode)
     case (MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
 
       ! temperature
-      select case(option%imode)
+      select case(option%iflowmode)
         case(MPH_MODE,RICHARDS_MODE)
           write(fid,110,advance="no") &
             GetVarFromArrayAtCell(realization,TEMPERATURE,ZERO_INTEGER,local_id)
       end select
 
       ! pressure
-      select case(option%imode)
+      select case(option%iflowmode)
         case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
           write(fid,110,advance="no") &
             GetVarFromArrayAtCell(realization,PRESSURE,ZERO_INTEGER,local_id)
       end select
 
       ! liquid saturation
-      select case(option%imode)
+      select case(option%iflowmode)
         case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
           write(fid,110,advance="no") &
             GetVarFromArrayAtCell(realization,LIQUID_SATURATION,ZERO_INTEGER,local_id)
       end select
 
-      select case(option%imode)
+      select case(option%iflowmode)
         case(MPH_MODE)
           ! gas saturation
           write(fid,110,advance="no") &
             GetVarFromArrayAtCell(realization,GAS_SATURATION,ZERO_INTEGER,local_id)
       end select
     
-      select case(option%imode)
+      select case(option%iflowmode)
         case(MPH_MODE,RICHARDS_MODE)
           ! liquid energy
           write(fid,110,advance="no") &
             GetVarFromArrayAtCell(realization,LIQUID_ENERGY,ZERO_INTEGER,local_id)
       end select
     
-      select case(option%imode)
+      select case(option%iflowmode)
         case(MPH_MODE)
           ! gas energy
           write(fid,110,advance="no") &
             GetVarFromArrayAtCell(realization,GAS_ENERGY,ZERO_INTEGER,local_id)
       end select
 
-      select case(option%imode)
+      select case(option%iflowmode)
         case(MPH_MODE,RICHARDS_MODE)
           ! liquid mole fractions
           do i=1,option%nspec
@@ -1371,7 +1371,7 @@ subroutine WriteBreakthroughDataForCell(fid,realization,local_id)
           enddo
       end select
   
-      select case(option%imode)
+      select case(option%iflowmode)
         case(MPH_MODE)
           ! gas mole fractions
           do i=1,option%nspec
@@ -1387,7 +1387,7 @@ subroutine WriteBreakthroughDataForCell(fid,realization,local_id)
       endif
 #endif    
       ! phase
-      select case(option%imode)
+      select case(option%iflowmode)
         case(MPH_MODE,RICHARDS_MODE)
           write(fid,111,advance="no") &
             int(GetVarFromArrayAtCell(realization,PHASE,ZERO_INTEGER,local_id))
@@ -1553,13 +1553,13 @@ subroutine OutputHDF5(realization)
   ! write out data sets 
   call GridCreateVector(grid,ONEDOF,global_vec,GLOBAL)   
 
-  select case(option%imode)
+  select case(option%iflowmode)
   
     case(MPH_MODE,RICHARDS_MODE, &
          RICHARDS_LITE_MODE)
 
       ! temperature
-      select case(option%imode)
+      select case(option%iflowmode)
         case (MPH_MODE,RICHARDS_MODE)
           call GetVarFromArray(realization,global_vec,TEMPERATURE,ZERO_INTEGER)
           string = "Temperature"
@@ -1567,7 +1567,7 @@ subroutine OutputHDF5(realization)
       end select
 
       ! pressure
-      select case(option%imode)
+      select case(option%iflowmode)
         case (MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
           call GetVarFromArray(realization,global_vec,PRESSURE,ZERO_INTEGER)
           string = "Pressure"
@@ -1575,7 +1575,7 @@ subroutine OutputHDF5(realization)
       end select
 
       ! liquid saturation
-      select case(option%imode)
+      select case(option%iflowmode)
         case (MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
           call GetVarFromArray(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
           string = "Liquid Saturation"
@@ -1583,7 +1583,7 @@ subroutine OutputHDF5(realization)
       end select
 
       ! gas saturation
-      select case(option%imode)
+      select case(option%iflowmode)
         case (MPH_MODE)
           call GetVarFromArray(realization,global_vec,GAS_SATURATION,ZERO_INTEGER)
           string = "Gas Saturation"
@@ -1591,7 +1591,7 @@ subroutine OutputHDF5(realization)
       end select
       
       ! liquid energy
-      select case(option%imode)
+      select case(option%iflowmode)
         case (MPH_MODE,RICHARDS_MODE)
           call GetVarFromArray(realization,global_vec,LIQUID_ENERGY,ZERO_INTEGER)
           string = "Liquid Energy"
@@ -1599,7 +1599,7 @@ subroutine OutputHDF5(realization)
       end select
       
       ! gas energy
-      select case(option%imode)
+      select case(option%iflowmode)
         case (MPH_MODE)    
           call GetVarFromArray(realization,global_vec,GAS_ENERGY,ZERO_INTEGER)
           string = "Gas Energy"
@@ -1607,7 +1607,7 @@ subroutine OutputHDF5(realization)
       end select
     
       ! liquid mole fractions
-      select case(option%imode)
+      select case(option%iflowmode)
         case (MPH_MODE,RICHARDS_MODE)
           do i=1,option%nspec
             call GetVarFromArray(realization,global_vec,LIQUID_MOLE_FRACTION,i-1)
@@ -1617,7 +1617,7 @@ subroutine OutputHDF5(realization)
       end select
       
       ! gas mole fractions
-      select case(option%imode)
+      select case(option%iflowmode)
         case (MPH_MODE)      
           do i=1,option%nspec
             call GetVarFromArray(realization,global_vec,GAS_MOLE_FRACTION,i-1)
@@ -1634,7 +1634,7 @@ subroutine OutputHDF5(realization)
       endif
 #endif    
       ! phase
-      select case(option%imode)
+      select case(option%iflowmode)
         case (MPH_MODE)
           call GetVarFromArray(realization,global_vec,PHASE,ZERO_INTEGER)
           string = "Phase"
@@ -2043,7 +2043,7 @@ function GetVarFromArrayAtCell(realization,ivar,isubvar,local_id)
   PetscInt :: isubvar
   PetscInt :: local_id
 
-  select case(realization%option%imode)
+  select case(realization%option%iflowmode)
     case(RICHARDS_MODE)
       GetVarFromArrayAtCell = RichardsGetVarFromArrayAtCell(realization,ivar,isubvar,local_id)
     case(RICHARDS_LITE_MODE)
@@ -2090,7 +2090,7 @@ subroutine GetVarFromArray(realization,vec,ivar,isubvar)
   grid => realization%grid
   field => realization%field
 
-  select case(option%imode)
+  select case(option%iflowmode)
     case(RICHARDS_MODE)
       call RichardsGetVarFromArray(realization,vec,ivar,isubvar)
       return
@@ -2123,7 +2123,7 @@ subroutine GetVarFromArray(realization,vec,ivar,isubvar)
       end select
     
       size_var_use = 2 + 7*option%nphase + 2* option%nphase*option%nspec
-      size_var_node = (option%ndof + 1) * size_var_use
+      size_var_node = (option%nflowdof + 1) * size_var_use
         
       call VecGetArrayF90(field%var_loc,var_ptr,ierr)
       do local_id=1,grid%nlmax
@@ -2144,7 +2144,7 @@ subroutine GetVarFromArray(realization,vec,ivar,isubvar)
       end select
 
       size_var_use = 2 + 7*option%nphase + 2* option%nphase*option%nspec
-      size_var_node = (option%ndof + 1) * size_var_use
+      size_var_node = (option%nflowdof + 1) * size_var_use
         
       call VecGetArrayF90(field%var_loc,var_ptr,ierr)
       do local_id=1,grid%nlmax

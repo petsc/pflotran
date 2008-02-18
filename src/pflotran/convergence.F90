@@ -83,7 +83,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
   PetscReal :: inorm_update  
   PetscReal :: inorm_residual  
   
-  PetscInt :: i
+  PetscInt :: i, ndof
   PetscReal, allocatable :: fnorm_solution_stride(:)
   PetscReal, allocatable :: fnorm_update_stride(:)
   PetscReal, allocatable :: fnorm_residual_stride(:)
@@ -190,29 +190,31 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
     call VecNorm(update_vec,NORM_1,norm1_update,ierr)
     call VecNorm(residual_vec,NORM_1,norm1_residual,ierr)
     
-    allocate(fnorm_solution_stride(option%ndof))
-    allocate(fnorm_update_stride(option%ndof))
-    allocate(fnorm_residual_stride(option%ndof))
-    allocate(inorm_solution_stride(option%ndof))
-    allocate(inorm_update_stride(option%ndof))
-    allocate(inorm_residual_stride(option%ndof))
-    allocate(norm1_solution_stride(option%ndof))
-    allocate(norm1_update_stride(option%ndof))
-    allocate(norm1_residual_stride(option%ndof))
+    call VecGetBlockSize(solution_vec,ndof,ierr)
     
-    allocate(imax_solution(option%ndof))
-    allocate(imax_update(option%ndof))
-    allocate(imax_residual(option%ndof))
-    allocate(max_solution_val(option%ndof))
-    allocate(max_update_val(option%ndof))
-    allocate(max_residual_val(option%ndof))
+    allocate(fnorm_solution_stride(ndof))
+    allocate(fnorm_update_stride(ndof))
+    allocate(fnorm_residual_stride(ndof))
+    allocate(inorm_solution_stride(ndof))
+    allocate(inorm_update_stride(ndof))
+    allocate(inorm_residual_stride(ndof))
+    allocate(norm1_solution_stride(ndof))
+    allocate(norm1_update_stride(ndof))
+    allocate(norm1_residual_stride(ndof))
+    
+    allocate(imax_solution(ndof))
+    allocate(imax_update(ndof))
+    allocate(imax_residual(ndof))
+    allocate(max_solution_val(ndof))
+    allocate(max_update_val(ndof))
+    allocate(max_residual_val(ndof))
 
-    allocate(imin_solution(option%ndof))
-    allocate(imin_update(option%ndof))
-    allocate(imin_residual(option%ndof))
-    allocate(min_solution_val(option%ndof))
-    allocate(min_update_val(option%ndof))
-    allocate(min_residual_val(option%ndof))
+    allocate(imin_solution(ndof))
+    allocate(imin_update(ndof))
+    allocate(imin_residual(ndof))
+    allocate(min_solution_val(ndof))
+    allocate(min_update_val(ndof))
+    allocate(min_residual_val(ndof))
 
     call VecStrideNormAll(solution_vec,NORM_1,norm1_solution_stride,ierr)
     call VecStrideNormAll(update_vec,NORM_1,norm1_update_stride,ierr)
@@ -225,24 +227,24 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
     call VecStrideNormAll(residual_vec,NORM_INFINITY,inorm_residual_stride,ierr)
     
     ! can't use VecStrideMaxAll since the index location is not currently supported.
-    do i=1,option%ndof
+    do i=1,ndof
       call VecStrideMax(solution_vec,i-1,imax_solution(i),max_solution_val(i),ierr)
       call VecStrideMax(update_vec,i-1,imax_update(i),max_update_val(i),ierr)
       call VecStrideMax(residual_vec,i-1,imax_residual(i),max_residual_val(i),ierr)
       ! tweak the index to get the cell id from the mdof vector
-      imax_solution(i) = imax_solution(i)/option%ndof
-      imax_update(i) = imax_update(i)/option%ndof
-      imax_residual(i) = imax_residual(i)/option%ndof
+      imax_solution(i) = imax_solution(i)/ndof
+      imax_update(i) = imax_update(i)/ndof
+      imax_residual(i) = imax_residual(i)/ndof
     enddo
 
-    do i=1,option%ndof
+    do i=1,ndof
       call VecStrideMin(solution_vec,i-1,imin_solution(i),min_solution_val(i),ierr)
       call VecStrideMin(update_vec,i-1,imin_update(i),min_update_val(i),ierr)
       call VecStrideMin(residual_vec,i-1,imin_residual(i),min_residual_val(i),ierr)
       ! tweak the index to get the cell id from the mdof vector
-      imin_solution(i) = imin_solution(i)/option%ndof
-      imin_update(i) = imin_update(i)/option%ndof
-      imin_residual(i) = imin_residual(i)/option%ndof
+      imin_solution(i) = imin_solution(i)/ndof
+      imin_update(i) = imin_update(i)/ndof
+      imin_residual(i) = imin_residual(i)/ndof
     enddo
 
     if (option%myrank == 0) then
@@ -315,7 +317,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
       endif
       if (print_max_val_and_loc_info) then
         print *, 'max/min locations by dof:'
-        do i=1,option%ndof
+        do i=1,ndof
           print *, '  dof: ', i
           if (print_sol_norm_info) then
             print *, '    solution_vec max: ', imax_solution(i), max_solution_val(i)
@@ -333,7 +335,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
       endif
       if (print_norm_by_dof_info) then
         print *, 'norm by dof:'
-        do i=1,option%ndof
+        do i=1,ndof
           print *, '  dof: ', i
           if (print_sol_norm_info) then
             if (print_1_norm_info) &

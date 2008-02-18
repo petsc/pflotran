@@ -192,7 +192,7 @@ subroutine translator_mphase_massbal(realization)
   call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)  
   call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr)
  
-  size_var_node=(option%ndof+1)*(2+7*option%nphase+2*option%nphase*option%nspec)
+  size_var_node=(option%nflowdof+1)*(2+7*option%nphase+2*option%nphase*option%nspec)
   tot=0.D0
   n2p=0
   nxc=0.; nyc=0.; nzc=0.D0; nzm=0 !grid%z(grid%nmax); 
@@ -202,7 +202,7 @@ subroutine translator_mphase_massbal(realization)
 
   do local_id = 1,grid%nlmax
     ghosted_id = grid%nL2G(local_id)
-    dof_offset=(local_id-1)* option%ndof
+    dof_offset=(local_id-1)* option%nflowdof
     index=(ghosted_id-1)*size_var_node
     den=>var_loc_p(index+3+option%nphase: index+2+2*option%nphase)
     sat=>var_loc_p(index+2+1:index+2+option%nphase)
@@ -389,7 +389,7 @@ subroutine translator_mph_get_output(realization)
   call VecGetArrayF90(mphase_field%conc, cc_p, ierr)
   !print *,' translator_mph_get_output gotten pointers'
   
-  size_var_node=(option%ndof+1)*(2+7*option%nphase +2*option%nphase*option%nspec)
+  size_var_node=(option%nflowdof+1)*(2+7*option%nphase +2*option%nphase*option%nspec)
   
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
@@ -460,7 +460,7 @@ subroutine translator_mph_step_maxchange(realization)
   comp=0.D0;comp1=0.D0
   do local_id=1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
-    dof_offset=(local_id-1)*option%ndof 
+    dof_offset=(local_id-1)*option%nflowdof 
     if(int(iphase_loc_p(ghosted_id)) == int(iphase_old_loc_p(ghosted_id)))then
      cmp=dabs(xx_p(dof_offset+3)-yy_p(dof_offset+3))
      if(int(iphase_loc_p(ghosted_id))==1 .or.int(iphase_loc_p(ghosted_id))==2)then
@@ -549,7 +549,7 @@ subroutine Translator_MPhase_Switching(xx,realization,icri,ichange)
   do local_id = 1,grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     ipr=0
-    dof_offset=(local_id-1)* option%ndof
+    dof_offset=(local_id-1)* option%nflowdof
     iipha=iphase_loc_p(ghosted_id)
     p = xx_p(dof_offset+1)
     t= xx_p(dof_offset+2)
@@ -745,7 +745,7 @@ subroutine Translator_MPhase_Switching(xx,realization,icri,ichange)
 !        dif(2)= grid%cdiff(int(ithrm_p(n)))
 !        i=ithrm_p(n) 
    
-!  call pri_var_trans_ninc(xx_p((n-1)*option%ndof+1:n*option%ndof),iipha,&
+!  call pri_var_trans_ninc(xx_p((n-1)*option%nflowdof+1:n*option%nflowdof),iipha,&
  !       option%scale,option%nphase,option%nspec,&
  !       iicap, grid%sir(1:option%nphase,iicap),grid%lambda(iicap),&
  !       grid%alpha(iicap),grid%pckrm(iicap),grid%pcwmax(iicap),&
@@ -757,12 +757,12 @@ subroutine Translator_MPhase_Switching(xx,realization,icri,ichange)
  !    index_var_begin=(n-1)*size_var_node+1
   !   index_var_end = index_var_begin -1 + size_var_use
      
-   !  p1 = 1 + (n-1)*option%ndof    
+   !  p1 = 1 + (n-1)*option%nflowdof    
    !  call MPHASERes_ARCont(n, var_loc_p(index_var_begin: index_var_end),&
 !    porosity_loc_p(n),volume_p(n),grid%dencpr(i), grid, Res, 0,ierr)
 
- !  print *,res,accum_p(p1:p1-1+option%ndof)
-   !accum_p(p1:p1-1+option%ndof) =res
+ !  print *,res,accum_p(p1:p1-1+option%nflowdof)
+   !accum_p(p1:p1-1+option%nflowdof) =res
       ipr=0
     endif
 
@@ -875,7 +875,7 @@ subroutine pri_var_trans_mph_ninc_2_2(x,iphase,energyscale,num_phase,num_spec,&
   PetscInt :: ipckrreg !, ithrmtype
   PetscReal :: dif(:)
  
- !   PetscInt :: size_var_node = (option%ndof+1)*size_var_use
+ !   PetscInt :: size_var_node = (option%nflowdof+1)*size_var_use
 
   PetscReal, pointer :: t ,p
   PetscReal, pointer :: den(:),h(:),u(:),avgmw(:),pc(:),kvr(:)
@@ -1246,7 +1246,7 @@ subroutine pri_var_trans_mph_winc(x,delx,iphase,energyscale,num_phase,num_spec,&
   
   do ispec=1,num_spec+1
          xx=x;  xx(ispec)=x(ispec)+ delx(ispec)
-  ! note: var_node here starts from 1 to option%ndof*size_var_use
+  ! note: var_node here starts from 1 to option%nflowdof*size_var_use
     call pri_var_trans_mph_ninc(xx,iphase,energyscale,num_phase,num_spec,&
                                 ipckrreg, dif,&
                                 var_node((ispec-1)*size_var_use+1:ispec*size_var_use),itable,m_nacl,ierr)

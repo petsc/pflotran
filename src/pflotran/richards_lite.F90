@@ -102,15 +102,8 @@ subroutine RichardsLiteTimeCut(realization)
   grid => realization%grid
   option => realization%option
   field => realization%field
- 
-  call VecGetArrayF90(field%xx, xx_p, ierr)
-  call VecGetArrayF90(field%yy, yy_p, ierr)
 
-  do local_id=1, grid%nlmax
-    xx_p(local_id)= yy_p(local_id)
-  enddo 
-  call VecRestoreArrayF90(field%xx, xx_p, ierr) 
-  call VecRestoreArrayF90(field%yy, yy_p, ierr)
+  call VecCopy(field%yy,field%xx,ierr)
  
 end subroutine RichardsLiteTimeCut
   
@@ -273,7 +266,7 @@ subroutine RichardsLiteUpdateAuxVars(realization)
   PetscInt :: ghosted_id, local_id, sum_connection, idof, iconn
   PetscInt :: iphasebc, iphase
   PetscReal, pointer :: xx_loc_p(:), icap_loc_p(:), iphase_loc_p(:)
-  PetscReal :: xxbc(realization%option%ndof)
+  PetscReal :: xxbc(realization%option%nflowdof)
   PetscErrorCode :: ierr
   
   option => realization%option
@@ -418,8 +411,6 @@ subroutine RichardsLiteUpdateFixedAccum(realization)
     if (associated(field%imat)) then
       if (field%imat(ghosted_id) <= 0) cycle
     endif
-!    iend = local_id*option%ndof
-!    istart = iend-option%ndof+1
     iphase = int(iphase_loc_p(ghosted_id))
     call computeAuxVarLite(xx_p(local_id:local_id),aux_vars(ghosted_id), &
                        iphase, &
@@ -493,7 +484,7 @@ subroutine RichardsLiteNumericalJacTest(xx,realization)
   call VecDuplicate(xx,res_pert,ierr)
   
   call MatCreate(PETSC_COMM_WORLD,A,ierr)
-  call MatSetSizes(A,PETSC_DECIDE,PETSC_DECIDE,grid%nlmax*option%ndof,grid%nlmax*option%ndof,ierr)
+  call MatSetSizes(A,PETSC_DECIDE,PETSC_DECIDE,grid%nlmax*option%nflowdof,grid%nlmax*option%nflowdof,ierr)
   call MatSetType(A,MATAIJ,ierr)
   call MatSetFromOptions(A,ierr)
     
@@ -504,7 +495,7 @@ subroutine RichardsLiteNumericalJacTest(xx,realization)
       if (field%imat(grid%nL2G(icell)) <= 0) cycle
     endif
      idof = icell
-!    do idof = (icell-1)*option%ndof+1,icell*option%ndof 
+!    do idof = (icell-1)*option%nflowdof+1,icell*option%nflowdof 
       call veccopy(xx,xx_pert,ierr)
       call vecgetarrayf90(xx_pert,vec_p,ierr)
       perturbation = vec_p(idof)*perturbation_tolerance
@@ -512,7 +503,7 @@ subroutine RichardsLiteNumericalJacTest(xx,realization)
       call vecrestorearrayf90(xx_pert,vec_p,ierr)
       call richardsliteresidual(PETSC_NULL_OBJECT,xx_pert,res_pert,realization,ierr)
       call vecgetarrayf90(res_pert,vec_p,ierr)
-      do idof2 = 1, grid%nlmax*option%ndof
+      do idof2 = 1, grid%nlmax*option%nflowdof
         derivative = (vec_p(idof2)-vec2_p(idof2))/perturbation
         if (dabs(derivative) > 1.d-30) then
           call matsetvalue(a,idof2-1,idof-1,derivative,insert_values,ierr)
@@ -557,10 +548,10 @@ subroutine RichardsLiteAccumDerivative(aux_var,por,vol,rock_dencpr,option, &
   type(option_type) :: option
   PetscReal vol,por,rock_dencpr
   type(saturation_function_type) :: sat_func
-  PetscReal :: J(option%ndof,option%ndof)
+  PetscReal :: J(option%nflowdof,option%nflowdof)
      
   PetscInt :: ispec !, iireac=1
-  PetscReal :: porXvol, mol(option%nspec), eng
+  PetscReal :: porXvol
 
   PetscInt :: iphase, ideriv
   type(richards_type) :: aux_var_pert
@@ -612,7 +603,7 @@ subroutine RichardsLiteAccumulation(aux_var,por,vol,rock_dencpr,option,Res)
 
   type(richards_type) :: aux_var
   type(option_type) :: option
-  PetscReal Res(1:option%ndof) 
+  PetscReal Res(1:option%nflowdof) 
   PetscReal vol,por,rock_dencpr
        
   Res(1) = aux_var%sat * aux_var%den * por * vol
@@ -627,8 +618,8 @@ end subroutine RichardsLiteAccumulation
 ! date: 12/13/07
 !
 ! ************************************************************************** ! 
-subroutine RichardsLiteFluxDerivative(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
-                        aux_var_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
+subroutine RichardsLiteFluxDerivative(aux_var_up,por_up,sir_up,dd_up,perm_up, &
+                        aux_var_dn,por_dn,sir_dn,dd_dn,perm_dn, &
                         area,dist_gravity,upweight, &
                         option,sat_func_up,sat_func_dn,Jup,Jdn)
   use Option_module 
@@ -640,17 +631,15 @@ subroutine RichardsLiteFluxDerivative(aux_var_up,por_up,tor_up,sir_up,dd_up,perm
   type(option_type) :: option
   PetscReal :: sir_up, sir_dn
   PetscReal :: por_up, por_dn
-  PetscReal :: tor_up, tor_dn
   PetscReal :: dd_up, dd_dn
   PetscReal :: perm_up, perm_dn
-  PetscReal :: Dk_up, Dk_dn
   PetscReal :: v_darcy,area
   PetscReal :: dist_gravity  ! distance along gravity vector
   type(saturation_function_type) :: sat_func_up, sat_func_dn
-  PetscReal :: Jup(option%ndof,option%ndof), Jdn(option%ndof,option%ndof)
+  PetscReal :: Jup(option%nflowdof,option%nflowdof), Jdn(option%nflowdof,option%nflowdof)
      
-  PetscReal :: fluxm(option%nspec),fluxe,q
-  PetscReal :: ukvr,DK,Dq,diffdp
+  PetscReal :: q
+  PetscReal :: ukvr,Dq
   PetscReal :: upweight,density_ave,cond,gravity,dphi
   
   PetscReal :: dden_ave_dp_up, dden_ave_dp_dn
@@ -665,10 +654,7 @@ subroutine RichardsLiteFluxDerivative(aux_var_up,por_up,tor_up,sir_up,dd_up,perm
             res(1), res_pert_up(1), res_pert_dn(1), J_pert_up(1,1), J_pert_dn(1,1)
   
   Dq = (perm_up * perm_dn)/(dd_up*perm_dn + dd_dn*perm_up)
-  diffdp = (por_up *tor_up * por_dn*tor_dn) / (dd_dn*por_up*tor_up + dd_up*por_dn*tor_dn)*area
   
-  fluxm = 0.D0
-  fluxe = 0.D0
   v_darcy = 0.D0 
   
   Jup = 0.d0
@@ -739,8 +725,8 @@ subroutine RichardsLiteFluxDerivative(aux_var_up,por_up,tor_up,sir_up,dd_up,perm
     call copyAuxVar(aux_var_dn,aux_var_pert_dn,option)
     x_up(1) = aux_var_up%pres
     x_dn(1) = aux_var_dn%pres
-    call RichardsLiteFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
-                      aux_var_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
+    call RichardsLiteFlux(aux_var_up,por_up,sir_up,dd_up,perm_up, &
+                      aux_var_dn,por_dn,sir_dn,dd_dn,perm_dn, &
                       area,dist_gravity,upweight, &
                       option,v_darcy,res)
     ideriv = 1
@@ -752,12 +738,12 @@ subroutine RichardsLiteFluxDerivative(aux_var_up,por_up,tor_up,sir_up,dd_up,perm
     x_pert_dn(ideriv) = x_pert_dn(ideriv) + pert_dn
     call computeAuxVarLite(x_pert_up(1),aux_var_pert_up,iphase,sat_func_up,option)
     call computeAuxVarLite(x_pert_dn(1),aux_var_pert_dn,iphase,sat_func_dn,option)
-    call RichardsLiteFlux(aux_var_pert_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
-                      aux_var_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
+    call RichardsLiteFlux(aux_var_pert_up,por_up,sir_up,dd_up,perm_up, &
+                      aux_var_dn,por_dn,sir_dn,dd_dn,perm_dn, &
                       area,dist_gravity,upweight, &
                       option,v_darcy,res_pert_up)
-    call RichardsLiteFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
-                      aux_var_pert_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
+    call RichardsLiteFlux(aux_var_up,por_up,sir_up,dd_up,perm_up, &
+                      aux_var_pert_dn,por_dn,sir_dn,dd_dn,perm_dn, &
                       area,dist_gravity,upweight, &
                       option,v_darcy,res_pert_dn)
     J_pert_up(1,ideriv) = (res_pert_up(1)-res(1))/pert_up
@@ -775,8 +761,8 @@ end subroutine RichardsLiteFluxDerivative
 ! date: 12/13/07
 !
 ! ************************************************************************** ! 
-subroutine RichardsLiteFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
-                        aux_var_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
+subroutine RichardsLiteFlux(aux_var_up,por_up,sir_up,dd_up,perm_up, &
+                        aux_var_dn,por_dn,sir_dn,dd_dn,perm_dn, &
                         area,dist_gravity,upweight, &
                         option,v_darcy,Res)
   use Option_module                              
@@ -787,24 +773,20 @@ subroutine RichardsLiteFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up,
   type(option_type) :: option
   PetscReal :: sir_up, sir_dn
   PetscReal :: por_up, por_dn
-  PetscReal :: tor_up, tor_dn
   PetscReal :: dd_up, dd_dn
   PetscReal :: perm_up, perm_dn
-  PetscReal :: Dk_up, Dk_dn
   PetscReal :: v_darcy,area
-  PetscReal :: Res(1:option%ndof) 
+  PetscReal :: Res(1:option%nflowdof) 
   PetscReal :: dist_gravity  ! distance along gravity vector
      
   PetscInt :: ispec
-  PetscReal :: fluxm(option%nspec),fluxe,q
-  PetscReal :: uh,uxmol(1:option%nspec),ukvr,difff,diffdp, DK,Dq
+  PetscReal :: fluxm, q
+  PetscReal :: ukvr,Dq
   PetscReal :: upweight,density_ave,cond,gravity,dphi
      
   Dq = (perm_up * perm_dn)/(dd_up*perm_dn + dd_dn*perm_up)
-  diffdp = (por_up *tor_up * por_dn*tor_dn) / (dd_dn*por_up*tor_up + dd_up*por_dn*tor_dn)*area
   
-  fluxm = 0.D0
-  fluxe = 0.D0
+  fluxm = 0.d0
   v_darcy = 0.D0  
   
 ! Flow term
@@ -835,11 +817,11 @@ subroutine RichardsLiteFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up,
    
       q = v_darcy * area
 
-      fluxm(1) = q*density_ave       
+      fluxm = q*density_ave       
     endif
   endif 
 
-  Res(1) = fluxm(1) * option%dt
+  Res(1) = fluxm * option%dt
  ! note: Res is the flux contribution, for node 1 R = R + Res_FL
  !                                              2 R = R - Res_FL  
 
@@ -854,7 +836,7 @@ end subroutine RichardsLiteFlux
 !
 ! ************************************************************************** !
 subroutine RichardsLiteBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
-                                    por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
+                                    por_dn,sir_dn,dd_up,perm_dn, &
                                     area,dist_gravity,option, &
                                     sat_func_dn,Jdn)
   use Option_module
@@ -867,16 +849,16 @@ subroutine RichardsLiteBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn,
   type(option_type) :: option
   PetscReal :: dd_up, sir_dn
   PetscReal :: aux_vars(:) ! from aux_real_var array in boundary condition
-  PetscReal :: por_dn,perm_dn,Dk_dn,tor_dn
+  PetscReal :: por_dn,perm_dn
   PetscReal :: area
   type(saturation_function_type) :: sat_func_dn  
-  PetscReal :: Jdn(option%ndof,option%ndof)
+  PetscReal :: Jdn(option%nflowdof,option%nflowdof)
   
   PetscReal :: dist_gravity  ! distance along gravity vector
           
   PetscReal :: v_darcy
-  PetscReal :: fluxm(option%nspec),q,density_ave
-  PetscReal :: ukvr,diffdp,DK,Dq
+  PetscReal :: q,density_ave
+  PetscReal :: ukvr,diffdp,Dq
   PetscReal :: upweight,cond,gravity,dphi
 
   PetscReal :: dden_ave_dp_dn
@@ -891,7 +873,6 @@ subroutine RichardsLiteBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn,
   PetscReal :: x_dn(1), x_up(1), x_pert_dn(1), x_pert_up(1), pert_dn, res(1), &
             res_pert_dn(1), J_pert_dn(1,1)
   
-  fluxm = 0.d0
   v_darcy = 0.d0
   density_ave = 0.d0
   q = 0.d0
@@ -905,7 +886,6 @@ subroutine RichardsLiteBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn,
   dq_dp_dn = 0.d0
         
   ! Flow   
-  diffdp = por_dn*tor_dn/dd_up*area
   select case(ibndtype(RICHARDS_PRESSURE_DOF))
     ! figure out the direction of flow
     case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
@@ -972,7 +952,7 @@ subroutine RichardsLiteBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn,
       x_up(ideriv) = x_dn(ideriv)
     endif
     call RichardsLiteBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
-                        por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
+                        por_dn,sir_dn,dd_up,perm_dn, &
                         area,dist_gravity,option,v_darcy,res)
     if (ibndtype(RICHARDS_PRESSURE_DOF) == ZERO_GRADIENT_BC) then
       x_pert_up = x_up
@@ -988,7 +968,7 @@ subroutine RichardsLiteBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn,
     call computeAuxVarLite(x_pert_dn(1),aux_var_pert_dn,iphase,sat_func_dn,option)
     call computeAuxVarLite(x_pert_up(1),aux_var_pert_up,iphase,sat_func_dn,option)
     call RichardsLiteBCFlux(ibndtype,aux_vars,aux_var_pert_up,aux_var_pert_dn, &
-                        por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
+                        por_dn,sir_dn,dd_up,perm_dn, &
                         area,dist_gravity,option,v_darcy,res_pert_dn)
     J_pert_dn(1,ideriv) = (res_pert_dn(1)-res(1))/pert_dn
     Jdn = J_pert_dn
@@ -1004,7 +984,7 @@ end subroutine RichardsLiteBCFluxDerivative
 !
 ! ************************************************************************** !
 subroutine RichardsLiteBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
-                          por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
+                          por_dn,sir_dn,dd_up,perm_dn, &
                           area,dist_gravity,option,v_darcy,Res)
   use Option_module
  
@@ -1015,15 +995,15 @@ subroutine RichardsLiteBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   type(option_type) :: option
   PetscReal :: dd_up, sir_dn
   PetscReal :: aux_vars(:) ! from aux_real_var array
-  PetscReal :: por_dn,perm_dn,Dk_dn,tor_dn
+  PetscReal :: por_dn,perm_dn
   PetscReal :: v_darcy, area
-  PetscReal :: Res(1:option%ndof) 
+  PetscReal :: Res(1:option%nflowdof) 
   
   PetscReal :: dist_gravity  ! distance along gravity vector
           
   PetscInt :: ispec
-  PetscReal :: fluxm(option%nspec),q,density_ave
-  PetscReal :: ukvr,diffdp,DK,Dq
+  PetscReal :: fluxm,q,density_ave
+  PetscReal :: ukvr,diffdp,Dq
   PetscReal :: upweight,cond,gravity,dphi
   
   fluxm = 0.d0
@@ -1032,7 +1012,6 @@ subroutine RichardsLiteBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   q = 0.d0
 
   ! Flow   
-  diffdp = por_dn*tor_dn/dd_up*area
   select case(ibndtype(RICHARDS_PRESSURE_DOF))
     ! figure out the direction of flow
     case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
@@ -1078,9 +1057,9 @@ subroutine RichardsLiteBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
 
   q = v_darcy * area
 
-  fluxm(1) = q*density_ave
+  fluxm = q*density_ave
 
-  Res(1)=fluxm(1)* option%dt
+  Res(1)=fluxm * option%dt
 
 end subroutine RichardsLiteBCFlux
 
@@ -1119,8 +1098,7 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
   PetscReal, pointer ::accum_p(:)
 
   PetscReal, pointer :: r_p(:), porosity_loc_p(:), volume_p(:), &
-               xx_loc_p(:), xx_p(:), yy_p(:),&
-               tor_loc_p(:),&
+               xx_loc_p(:), xx_p(:), yy_p(:), &
                perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
                           
                
@@ -1138,7 +1116,7 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
   PetscReal :: tmp, upweight
   PetscReal :: rho
   PetscInt :: iphasebc
-  PetscReal :: Res(realization%option%ndof), v_darcy
+  PetscReal :: Res(realization%option%nflowdof), v_darcy
   PetscViewer :: viewer
 
 
@@ -1180,7 +1158,6 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
  
   call VecGetArrayF90(field%yy,yy_p,ierr)
   call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecGetArrayF90(field%tor_loc, tor_loc_p, ierr)
   call VecGetArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
   call VecGetArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
   call VecGetArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
@@ -1294,11 +1271,11 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
       D_dn = option%ckwet(ithrm_dn)
 
       call RichardsLiteFlux(aux_vars(ghosted_id_up),porosity_loc_p(ghosted_id_up), &
-                          tor_loc_p(ghosted_id_up),option%sir(1,icap_up), &
-                          dd_up,perm_up,D_up, &
+                          option%sir(1,icap_up), &
+                          dd_up,perm_up, &
                         aux_vars(ghosted_id_dn),porosity_loc_p(ghosted_id_dn), &
-                          tor_loc_p(ghosted_id_dn),option%sir(1,icap_dn), &
-                          dd_dn,perm_dn,D_dn, &
+                          option%sir(1,icap_dn), &
+                          dd_dn,perm_dn, &
                         cur_connection_set%area(iconn),distance_gravity, &
                         upweight,option,v_darcy,Res)
 
@@ -1361,9 +1338,8 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
                                 aux_vars_bc(sum_connection), &
                                 aux_vars(ghosted_id), &
                                 porosity_loc_p(ghosted_id), &
-                                tor_loc_p(ghosted_id), &
                                 option%sir(1,icap_dn), &
-                                cur_connection_set%dist(0,iconn),perm_dn,D_dn, &
+                                cur_connection_set%dist(0,iconn),perm_dn, &
                                 cur_connection_set%area(iconn), &
                                 distance_gravity,option, &
                                 v_darcy,Res)
@@ -1387,7 +1363,6 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
   call VecRestoreArrayF90(field%xx_loc, xx_loc_p, ierr)
   call VecRestoreArrayF90(field%accum, accum_p, ierr)
   call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecRestoreArrayF90(field%tor_loc, tor_loc_p, ierr)
   call VecRestoreArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
   call VecRestoreArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
   call VecRestoreArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
@@ -1445,7 +1420,7 @@ subroutine RichardsLiteJacobian(snes,xx,A,B,flag,realization,ierr)
   PetscInt :: ip1, ip2 
 
   PetscReal, pointer :: porosity_loc_p(:), volume_p(:), &
-                          xx_loc_p(:), tor_loc_p(:),&
+                          xx_loc_p(:), &
                           perm_xx_loc_p(:), perm_yy_loc_p(:), perm_zz_loc_p(:)
   PetscReal, pointer :: iphase_loc_p(:), icap_loc_p(:), ithrm_loc_p(:)
   PetscInt :: icap,iphas,iphas_up,iphas_dn,icap_up,icap_dn
@@ -1464,8 +1439,8 @@ subroutine RichardsLiteJacobian(snes,xx,A,B,flag,realization,ierr)
   PetscInt :: ghosted_id_up, ghosted_id_dn
   PetscInt ::  natural_id_up,natural_id_dn
   
-  PetscReal :: Jup(realization%option%ndof,realization%option%ndof), &
-               Jdn(realization%option%ndof,realization%option%ndof)
+  PetscReal :: Jup(realization%option%nflowdof,realization%option%nflowdof), &
+               Jdn(realization%option%nflowdof,realization%option%nflowdof)
   
   type(coupler_type), pointer :: boundary_condition, source_sink
   type(connection_list_type), pointer :: connection_list
@@ -1508,7 +1483,6 @@ subroutine RichardsLiteJacobian(snes,xx,A,B,flag,realization,ierr)
 
   call VecGetArrayF90(field%xx_loc, xx_loc_p, ierr)
   call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecGetArrayF90(field%tor_loc, tor_loc_p, ierr)
   call VecGetArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
   call VecGetArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
   call VecGetArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
@@ -1565,7 +1539,7 @@ subroutine RichardsLiteJacobian(snes,xx,A,B,flag,realization,ierr)
       endif
       
 !      if (enthalpy_flag) then
-!        r_p(local_id*option%ndof) = r_p(local_id*option%ndof) - hsrc1 * option%dt   
+!        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1 * option%dt   
 !      endif         
 
       if (qsrc1 > 0.d0) then ! injection
@@ -1652,11 +1626,11 @@ subroutine RichardsLiteJacobian(snes,xx,A,B,flag,realization,ierr)
       icap_dn = int(icap_loc_p(ghosted_id_dn))
                               
       call RichardsLiteFluxDerivative(aux_vars(ghosted_id_up),porosity_loc_p(ghosted_id_up), &
-                          tor_loc_p(ghosted_id_up),option%sir(1,icap_up), &
-                          dd_up,perm_up,D_up, &
+                          option%sir(1,icap_up), &
+                          dd_up,perm_up, &
                         aux_vars(ghosted_id_dn),porosity_loc_p(ghosted_id_dn), &
-                          tor_loc_p(ghosted_id_dn),option%sir(1,icap_dn), &
-                          dd_dn,perm_dn,D_dn, &
+                          option%sir(1,icap_dn), &
+                          dd_dn,perm_dn, &
                         cur_connection_set%area(iconn),distance_gravity, &
                         upweight,option,&
                         realization%saturation_function_array(icap_up)%ptr,&
@@ -1732,9 +1706,8 @@ subroutine RichardsLiteJacobian(snes,xx,A,B,flag,realization,ierr)
                                 aux_vars_bc(sum_connection), &
                                 aux_vars(ghosted_id), &
                                 porosity_loc_p(ghosted_id), &
-                                tor_loc_p(ghosted_id), &
                                 option%sir(1,icap_dn), &
-                                cur_connection_set%dist(0,iconn),perm_dn,D_dn, &
+                                cur_connection_set%dist(0,iconn),perm_dn, &
                                 cur_connection_set%area(iconn), &
                                 distance_gravity,option, &
                                 realization%saturation_function_array(icap_dn)%ptr,&
@@ -1756,7 +1729,6 @@ subroutine RichardsLiteJacobian(snes,xx,A,B,flag,realization,ierr)
   
   call VecRestoreArrayF90(field%xx_loc, xx_loc_p, ierr)
   call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
-  call VecRestoreArrayF90(field%tor_loc, tor_loc_p, ierr)
   call VecRestoreArrayF90(field%perm_xx_loc, perm_xx_loc_p, ierr)
   call VecRestoreArrayF90(field%perm_yy_loc, perm_yy_loc_p, ierr)
   call VecRestoreArrayF90(field%perm_zz_loc, perm_zz_loc_p, ierr)
@@ -1832,7 +1804,7 @@ subroutine createRichardsLiteZeroArray(realization)
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
       if (field%imat(ghosted_id) <= 0) then
-        n_zero_rows = n_zero_rows + option%ndof
+        n_zero_rows = n_zero_rows + option%nflowdof
       endif
     enddo
   endif
@@ -1847,10 +1819,10 @@ subroutine createRichardsLiteZeroArray(realization)
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
       if (field%imat(ghosted_id) <= 0) then
-        do idof = 1, option%ndof
+        do idof = 1, option%nflowdof
           ncount = ncount + 1
-          zero_rows_local(ncount) = (local_id-1)*option%ndof+idof
-          zero_rows_local_ghosted(ncount) = (ghosted_id-1)*option%ndof+idof-1
+          zero_rows_local(ncount) = (local_id-1)*option%nflowdof+idof
+          zero_rows_local_ghosted(ncount) = (ghosted_id-1)*option%nflowdof+idof-1
         enddo
       endif
     enddo

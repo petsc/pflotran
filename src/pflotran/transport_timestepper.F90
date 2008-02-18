@@ -2,7 +2,8 @@ module Transport_Timestepper_module
  
   use Solver_module
   use Option_module
-  use Waypoint_module  
+  use Waypoint_module 
+  use Convergence_module 
  
   implicit none
 
@@ -30,7 +31,7 @@ module Transport_Timestepper_module
     type(solver_type), pointer :: solver
     type(waypoint_list_type), pointer :: waypoints
     type(waypoint_type), pointer :: cur_waypoint
-    PetscReal, pointer :: steady_eps(:)  ! tolerance for stead state convergence
+    type(convergence_context_type), pointer :: convergence_context
     
   end type tr_stepper_type
   
