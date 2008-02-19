@@ -35,7 +35,8 @@ module Timestepper_module
     
   end type stepper_type
   
-  public :: TimestepperCreate, TimestepperDestroy, StepperRun
+  public :: TimestepperCreate, TimestepperDestroy, StepperRun, &
+            TimestepperReadTolerances
   
 contains
 
@@ -628,6 +629,84 @@ subroutine StepperUpdateSolution(realization)
   call RealizationUpdate(realization)
 
 end subroutine StepperUpdateSolution
+
+! ************************************************************************** !
+!
+! TimestepperReadTolerances: Reads newton solver tolerance from input file
+! author: Glenn Hammond
+! date: 02/18/08
+!
+! ************************************************************************** !
+subroutine TimestepperReadTolerances(stepper,fid,option)
+
+  use Fileio_module
+  use Option_module
+  
+  implicit none
+
+  type(stepper_type) :: stepper
+  PetscInt :: fid
+  type(option_type) :: option
+  
+  character(len=MAXSTRINGLENGTH) :: string, error_string
+  character(len=MAXWORDLENGTH) :: keyword, word, word2
+  PetscErrorCode :: ierr
+
+  ierr = 0
+  do
+  
+    call fiReadFlotranString(fid,string,ierr)
+
+    if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
+        fiStringCompare(string,'END',THREE_INTEGER)) exit  
+
+    call fiReadWord(string,keyword,.true.,ierr)
+    call fiErrorMsg(option%myrank,'keyword','NEWTON_SOLVER', ierr)
+    call fiWordToUpper(keyword)   
+      
+    select case(trim(keyword))
+    
+      case('FIXED_STEPS_AFTER_TS_CUT')
+        call fiReadInt(string,stepper%ndtcmx,ierr)
+        call fiDefaultMsg(option%myrank,'ndtcmx',ierr)
+
+      case('MAX_STEPS')
+        call fiReadInt(string,stepper%stepmax,ierr)
+        call fiDefaultMsg(option%myrank,'stepmax',ierr)
+  
+      case('TS_ACCELERATION')
+        call fiReadInt(string,stepper%iaccel,ierr)
+        call fiDefaultMsg(option%myrank,'iaccel',ierr)
+
+      case('MAX_NEWTON_ITERATIONS')
+        call fiReadInt(string,stepper%newton_max,ierr)
+        call fiDefaultMsg(option%myrank,'newton_max',ierr)
+
+      case('MAX_TS_CUTS')
+        call fiReadInt(string,stepper%icut_max,ierr)
+        call fiDefaultMsg(option%myrank,'icut_max',ierr)
+
+      case('MAX_PRESSURE_CHANGE')
+        call fiReadDouble(string,option%dpmxe,ierr)
+        call fiDefaultMsg(option%myrank,'dpmxe',ierr)
+
+      case('MAX_TEMPERATURE_CHANGE')
+        call fiReadDouble(string,option%dtmpmxe,ierr)
+        call fiDefaultMsg(option%myrank,'dtmpmxe',ierr)
+  
+      case('MAX_CONCENTRATION')
+        call fiReadDouble(string,option%dcmxe,ierr)
+        call fiDefaultMsg(option%myrank,'dcmxe',ierr)
+
+      case('MAX_SATURATION_CHANGE')
+        call fiReadDouble(string,option%dsmxe,ierr)
+        call fiDefaultMsg(option%myrank,'dsmxe',ierr)
+
+    end select 
+  
+  enddo  
+
+end subroutine TimestepperReadTolerances
 
 ! ************************************************************************** !
 !

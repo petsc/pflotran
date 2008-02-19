@@ -689,15 +689,24 @@ subroutine readInput(simulation,filename)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
-  type(solver_type), pointer :: solver
-  type(stepper_type), pointer :: stepper
+  type(solver_type), pointer :: flow_solver
+  type(solver_type), pointer :: tran_solver
+  type(stepper_type), pointer :: flow_stepper
+  type(stepper_type), pointer :: tran_stepper
+  
+  nullify(flow_stepper)
+  nullify(tran_stepper)
+  nullify(flow_solver)
+  nullify(flow_stepper)
   
   realization => simulation%realization
   grid => realization%grid
   option => realization%option
   field => realization%field
-  stepper => simulation%flow_stepper
-  solver => stepper%solver
+  flow_stepper => simulation%flow_stepper
+  if (associated(flow_stepper)) flow_solver => flow_stepper%solver
+  tran_stepper => simulation%tran_stepper
+  if (associated(tran_stepper)) tran_solver => tran_stepper%solver
 
   backslash = achar(92)  ! 92 = "\" Some compilers choke on \" thinking it
                           ! is a double quote as in c/c++
@@ -950,7 +959,7 @@ subroutine readInput(simulation,filename)
         call fiReadInt(string,option%iblkfmt,ierr)
         call fiDefaultMsg(option%myrank,'iblkfmt',ierr)
 
-        call fiReadInt(string,stepper%ndtcmx,ierr)
+        call fiReadInt(string,flow_stepper%ndtcmx,ierr)
         call fiDefaultMsg(option%myrank,'ndtcmx',ierr)
 
         call fiReadInt(string,idum,ierr)
@@ -978,7 +987,7 @@ subroutine readInput(simulation,filename)
             & "  iread_perm = ",3x,i2,/, &
             & "  iread_geom = ",3x,i2 &
             & )') idum,option%imod,idum, &
-            option%iblkfmt,stepper%ndtcmx,idum,rdum,idum,option%iread_geom
+            option%iblkfmt,flow_stepper%ndtcmx,idum,rdum,idum,option%iread_geom
 
 !....................
 
@@ -986,16 +995,16 @@ subroutine readInput(simulation,filename)
 
         call fiReadStringErrorMsg(option%myrank,'TOLR',ierr)
 
-        call fiReadInt(string,stepper%stepmax,ierr)
+        call fiReadInt(string,flow_stepper%stepmax,ierr)
         call fiDefaultMsg(option%myrank,'stepmax',ierr)
   
-        call fiReadInt(string,stepper%iaccel,ierr)
+        call fiReadInt(string,flow_stepper%iaccel,ierr)
         call fiDefaultMsg(option%myrank,'iaccel',ierr)
 
-        call fiReadInt(string,stepper%newton_max,ierr)
+        call fiReadInt(string,flow_stepper%newton_max,ierr)
         call fiDefaultMsg(option%myrank,'newton_max',ierr)
 
-        call fiReadInt(string,stepper%icut_max,ierr)
+        call fiReadInt(string,flow_stepper%icut_max,ierr)
         call fiDefaultMsg(option%myrank,'icut_max',ierr)
 
         call fiReadDouble(string,option%dpmxe,ierr)
@@ -1022,7 +1031,7 @@ subroutine readInput(simulation,filename)
 ! For commented-out lines to work with the Sun f95 compiler, we have to 
 ! terminate the string in the line above; otherwise, the compiler tries to
 ! include the commented-out line as part of the continued string.
-          stepper%stepmax,stepper%iaccel,stepper%newton_max,stepper%icut_max, &
+          flow_stepper%stepmax,flow_stepper%iaccel,flow_stepper%newton_max,flow_stepper%icut_max, &
           option%dpmxe,option%dtmpmxe,option%dcmxe, option%dsmxe
 
 !....................
@@ -1214,27 +1223,63 @@ subroutine readInput(simulation,filename)
         option%numerical_derivatives = .true.
 
       case ('INEXACT_NEWTON')
-        solver%inexact_newton = .true.
+        flow_solver%inexact_newton = .true.
 
 !......................
 
       case ('NO_PRINT_CONVERGENCE')
-        solver%print_convergence = PETSC_FALSE
+        flow_solver%print_convergence = PETSC_FALSE
 
       case ('NO_INF_NORM','NO_INFINITY_NORM')
-        solver%check_infinity_norm = PETSC_FALSE
+        flow_solver%check_infinity_norm = PETSC_FALSE
 
       case ('NO_FORCE_ITERATION')
-        solver%force_at_least_1_iteration = PETSC_FALSE
+        flow_solver%force_at_least_1_iteration = PETSC_FALSE
 
       case ('PRINT_DETAILED_CONVERGENCE')
-        solver%print_detailed_convergence = PETSC_TRUE
+        flow_solver%print_detailed_convergence = PETSC_TRUE
 
 !....................
 
-      case ('SOLVER')
-        call SolverRead(solver,IUNIT1,option%myrank)
+      case ('LINEAR_SOLVER')
+        call fiReadWord(string,word,.false.,ierr)
+        length = len_trim(word)
+        call fiCharsToUpper(word,length)
+        select case(word)
+          case('TRAN','TRANSPORT')
+            if (associated(tran_solver)) &
+              call SolverReadLinear(tran_solver,IUNIT1,option%myrank)
+          case default
+            if (associated(flow_solver)) &
+              call SolverReadLinear(flow_solver,IUNIT1,option%myrank)
+        end select
 
+      case ('NEWTON_SOLVER')
+        call fiReadWord(string,word,.false.,ierr)
+        length = len_trim(word)
+        call fiCharsToUpper(word,length)
+        select case(word)
+          case('TRAN','TRANSPORT')
+            if (associated(tran_stepper)) &
+              call SolverReadNewton(tran_solver,IUNIT1,option%myrank)
+          case default
+            if (associated(flow_stepper)) &
+              call SolverReadNewton(flow_solver,IUNIT1,option%myrank)
+        end select
+        
+      case ('TIMESTEPPER_TOLERANCES')
+        call fiReadWord(string,word,.false.,ierr)
+        length = len_trim(word)
+        call fiCharsToUpper(word,length)
+        select case(word)
+          case('TRAN','TRANSPORT')
+            if (associated(tran_stepper)) &          
+              call TimestepperReadTolerances(tran_stepper,IUNIT1,option)
+          case default
+            if (associated(flow_stepper)) &          
+              call TimestepperReadTolerances(flow_stepper,IUNIT1,option)
+        end select
+        
 !....................
 
       case ('SOLV')
@@ -1244,32 +1289,32 @@ subroutine readInput(simulation,filename)
 !       call fiReadDouble(string,eps,ierr)
 !       call fiDefaultMsg(option%myrank,'eps',ierr)
 
-        call fiReadDouble(string,solver%atol,ierr)
+        call fiReadDouble(string,flow_solver%newton_atol,ierr)
         call fiDefaultMsg(option%myrank,'atol_petsc',ierr)
 
-        call fiReadDouble(string,solver%rtol,ierr)
+        call fiReadDouble(string,flow_solver%newton_rtol,ierr)
         call fiDefaultMsg(option%myrank,'rtol_petsc',ierr)
 
-        call fiReadDouble(string,solver%stol,ierr)
+        call fiReadDouble(string,flow_solver%newton_stol,ierr)
         call fiDefaultMsg(option%myrank,'stol_petsc',ierr)
       
-        solver%dtol=1.D5
+        flow_solver%newton_dtol=1.D5
 !       if (option%use_ksp == 1) then
-        call fiReadDouble(string,solver%dtol,ierr)
+        call fiReadDouble(string,flow_solver%newton_dtol,ierr)
         call fiDefaultMsg(option%myrank,'dtol_petsc',ierr)
 !       endif
    
-        call fiReadInt(string,solver%maxit,ierr)
+        call fiReadInt(string,flow_solver%newton_maxit,ierr)
         call fiDefaultMsg(option%myrank,'maxit',ierr)
       
-        call fiReadInt(string,solver%maxf,ierr)
+        call fiReadInt(string,flow_solver%newton_maxf,ierr)
         call fiDefaultMsg(option%myrank,'maxf',ierr)
        
         call fiReadInt(string,idum,ierr)
         call fiDefaultMsg(option%myrank,'idt',ierr)
         
-        solver%inf_tol = solver%atol
-        call fiReadDouble(string,solver%inf_tol,ierr)
+        flow_solver%newton_inf_tol = flow_solver%newton_atol
+        call fiReadDouble(string,flow_solver%newton_inf_tol,ierr)
         call fiDefaultMsg(option%myrank,'inf_tol_pflow',ierr)
  
         if (option%myrank==0) write(IUNIT2,'(/," *SOLV ",/, &
@@ -1281,8 +1326,15 @@ subroutine readInput(simulation,filename)
           &"  maxf        = ",8x,i5,/, &
           &"  idt         = ",8x,i5 &
           &    )') &
-           solver%atol,solver%rtol,solver%stol,solver%dtol,solver%maxit, &
-           solver%maxf,idum
+           flow_solver%newton_atol,flow_solver%newton_rtol, &
+           flow_solver%newton_stol,flow_solver%newton_dtol, &
+           flow_solver%newton_maxit,flow_solver%newton_maxf,idum
+
+           flow_solver%linear_atol = flow_solver%newton_atol
+           flow_solver%linear_rtol = flow_solver%newton_rtol
+           flow_solver%linear_stol = flow_solver%newton_stol
+           flow_solver%linear_dtol = flow_solver%newton_dtol
+           flow_solver%linear_atol = flow_solver%newton_atol
 
 ! The line below is a commented-out portion of the format string above.
 ! We have to put it here because of the stupid Sun compiler.
@@ -1659,7 +1711,7 @@ subroutine readInput(simulation,filename)
               waypoint => WaypointCreate()
               waypoint%time = temp_real
               waypoint%print_output = .true.              
-              call WaypointInsertInList(waypoint,stepper%waypoints)
+              call WaypointInsertInList(waypoint,flow_stepper%waypoints)
             endif
           enddo
         enddo
@@ -1676,7 +1728,7 @@ subroutine readInput(simulation,filename)
             waypoint => WaypointCreate()
             waypoint%time = temp_real
             waypoint%print_output = .true.              
-            call WaypointInsertInList(waypoint,stepper%waypoints)
+            call WaypointInsertInList(waypoint,flow_stepper%waypoints)
             
             temp_real = temp_real + periodic_rate
           enddo
@@ -1688,7 +1740,7 @@ subroutine readInput(simulation,filename)
 
         call fiReadStringErrorMsg(option%myrank,'DTST',ierr)
 
-        call fiReadDouble(string,stepper%dt_min,ierr)
+        call fiReadDouble(string,flow_stepper%dt_min,ierr)
         call fiDefaultMsg(option%myrank,'dt_min',ierr)
             
         continuation_flag = .true.
@@ -1708,18 +1760,18 @@ subroutine readInput(simulation,filename)
               waypoint%time = temp_real
               call fiReadDouble(string,waypoint%dt_max,ierr)
               call fiErrorMsg(option%myrank,'dt_max','dtst',ierr)
-              if (temp_int == 0) stepper%dt_max = waypoint%dt_max
-              call WaypointInsertInList(waypoint,stepper%waypoints)
+              if (temp_int == 0) flow_stepper%dt_max = waypoint%dt_max
+              call WaypointInsertInList(waypoint,flow_stepper%waypoints)
               temp_int = temp_int + 1
             endif
           enddo
         enddo
         
-        option%dt = stepper%dt_min
+        option%dt = flow_stepper%dt_min
       
         option%dt = realization%output_option%tconv * option%dt
-        stepper%dt_min = realization%output_option%tconv * stepper%dt_min
-        stepper%dt_max = realization%output_option%tconv * stepper%dt_max
+        flow_stepper%dt_min = realization%output_option%tconv * flow_stepper%dt_min
+        flow_stepper%dt_max = realization%output_option%tconv * flow_stepper%dt_max
 
 !....................
       case ('BRK','BREAKTHROUGH')
@@ -1733,16 +1785,16 @@ subroutine readInput(simulation,filename)
         stop
 #if 0
 ! Needs implementation         
-        allocate(stepper%steady_eps(option%nflowdof))
+        allocate(flow_stepper%steady_eps(option%nflowdof))
         do j=1,option%nflowdof
-          call fiReadDouble(string,stepper%steady_eps(j),ierr)
+          call fiReadDouble(string,flow_stepper%steady_eps(j),ierr)
           call fiDefaultMsg(option%myrank,'steady tol',ierr)
         enddo
         if (option%myrank==0) write(IUNIT2,'(/," *SDST ",/, &
           &"  dpdt        = ",1pe12.4,/, &
           &"  dtmpdt        = ",1pe12.4,/, &
           &"  dcdt        = ",1pe12.4)') &
-          stepper%steady_eps
+          flow_stepper%steady_eps
 #endif
 
 !.....................

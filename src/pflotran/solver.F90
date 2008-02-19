@@ -16,14 +16,20 @@ module Solver_module
 #include "include/finclude/petscsnes.h"
 
   type, public :: solver_type
-    PetscReal :: atol       ! absolute tolerance
-    PetscReal :: rtol       ! relative tolerance
-    PetscReal :: stol       ! relative tolerance (relative to previous iteration)
-    PetscReal :: dtol       ! divergence tolerance
-    PetscReal :: inf_tol    ! infinity tolerance
-    PetscInt :: maxit     ! maximum number of iterations
-    PetscInt :: maxf      ! maximum number of function evaluations
+    PetscReal :: linear_atol       ! absolute tolerance
+    PetscReal :: linear_rtol       ! relative tolerance
+    PetscReal :: linear_stol       ! relative tolerance (relative to previous iteration)
+    PetscReal :: linear_dtol       ! divergence tolerance
+    PetscInt :: linear_maxit     ! maximum number of iterations
     
+    PetscReal :: newton_atol       ! absolute tolerance
+    PetscReal :: newton_rtol       ! relative tolerance
+    PetscReal :: newton_stol       ! relative tolerance (relative to previous iteration)
+    PetscReal :: newton_dtol       ! divergence tolerance
+    PetscReal :: newton_inf_tol    ! infinity tolerance
+    PetscInt :: newton_maxit     ! maximum number of iterations
+    PetscInt :: newton_maxf      ! maximum number of function evaluations
+
         ! Jacobian matrix
     Mat :: J
     MatFDColoring :: matfdcoloring
@@ -45,13 +51,10 @@ module Solver_module
             
   end type solver_type
   
-  interface SolverRead
-    module procedure SolverReadPflow
-  end interface SolverRead
-
   public :: SolverCreate, &
             SolverDestroy, &
-            SolverRead, &
+            SolverReadLinear, &
+            SolverReadNewton, &
             SolverCreateSNES, &
             SolverSetSNESOptions
   
@@ -75,11 +78,19 @@ function SolverCreate()
   allocate(solver)
   
   ! initialize to default values
-  solver%atol = PETSC_DEFAULT_DOUBLE_PRECISION
-  solver%rtol = PETSC_DEFAULT_DOUBLE_PRECISION
-  solver%stol = PETSC_DEFAULT_DOUBLE_PRECISION
-  solver%maxit = PETSC_DEFAULT_INTEGER
-  solver%maxf = PETSC_DEFAULT_INTEGER
+  solver%linear_atol = PETSC_DEFAULT_DOUBLE_PRECISION
+  solver%linear_rtol = PETSC_DEFAULT_DOUBLE_PRECISION
+  solver%linear_stol = PETSC_DEFAULT_DOUBLE_PRECISION
+  solver%linear_dtol = PETSC_DEFAULT_DOUBLE_PRECISION
+  solver%linear_maxit = PETSC_DEFAULT_INTEGER
+  
+  solver%newton_atol = PETSC_DEFAULT_DOUBLE_PRECISION
+  solver%newton_rtol = PETSC_DEFAULT_DOUBLE_PRECISION
+  solver%newton_stol = PETSC_DEFAULT_DOUBLE_PRECISION
+  solver%newton_dtol = PETSC_DEFAULT_DOUBLE_PRECISION
+  solver%newton_inf_tol = PETSC_DEFAULT_DOUBLE_PRECISION
+  solver%newton_maxit = PETSC_DEFAULT_INTEGER
+  solver%newton_maxf = PETSC_DEFAULT_INTEGER
   
   solver%J = 0
   solver%matfdcoloring = 0
@@ -147,8 +158,8 @@ subroutine SolverSetSNESOptions(solver)
   if (len_trim(solver%pc_type) > 1) &
     call PCSetType(solver%pc,solver%pc_type,ierr)
 
-  call KSPSetTolerances(solver%ksp,solver%rtol,solver%atol,solver%dtol, &
-                        10000,ierr)
+  call KSPSetTolerances(solver%ksp,solver%linear_rtol,solver%linear_atol, &
+                        solver%linear_dtol,solver%linear_maxit,ierr)
 
   ! allow override from command line
   call KSPSetFromOptions(solver%ksp,ierr)
@@ -159,8 +170,9 @@ subroutine SolverSetSNESOptions(solver)
   call PCGetType(solver%pc,solver%pc_type,ierr)
 
   ! Set the tolerances for the Newton solver.
-  call SNESSetTolerances(solver%snes, solver%atol, solver%rtol, solver%stol, & 
-                         solver%maxit, solver%maxf, ierr)
+  call SNESSetTolerances(solver%snes, solver%newton_atol, solver%newton_rtol, &
+                         solver%newton_stol,solver%newton_maxit, &
+                         solver%newton_maxf, ierr)
 
   ! set inexact newton, currently applies default settings
   if (solver%inexact_newton == PETSC_TRUE) &
@@ -171,19 +183,19 @@ subroutine SolverSetSNESOptions(solver)
   call SNESSetFromOptions(solver%snes, ierr) 
     
   call SNESLineSearchGetParams(solver%snes, alpha, maxstep, steptol, ierr)  
-  call SNESLineSearchSetParams(solver%snes, alpha, maxstep, solver%stol, ierr)  
+  call SNESLineSearchSetParams(solver%snes, alpha, maxstep, solver%newton_stol, ierr)  
 
 
 end subroutine SolverSetSNESOptions
   
 ! ************************************************************************** !
 !
-! SolverReadPflow: Reads debugging data from the input file
+! SolverReadLinear: Reads parameters associated with linear solver
 ! author: Glenn Hammond
 ! date: 12/21/07
 !
 ! ************************************************************************** !
-subroutine SolverReadPflow(solver,fid,myrank)
+subroutine SolverReadLinear(solver,fid,myrank)
 
   use Fileio_module
   
@@ -206,7 +218,7 @@ subroutine SolverReadPflow(solver,fid,myrank)
         fiStringCompare(string,'END',THREE_INTEGER)) exit  
 
     call fiReadWord(string,keyword,.true.,ierr)
-    call fiErrorMsg(myrank,'keyword','SOLVER', ierr)
+    call fiErrorMsg(myrank,'keyword','LINEAR SOLVER', ierr)
     call fiWordToUpper(keyword)   
       
     select case(trim(keyword))
@@ -245,12 +257,102 @@ subroutine SolverReadPflow(solver,fid,myrank)
             if (myrank == 0) print *, string
             stop
         end select
-        
+
+      case('ATOL')
+        call fiReadDouble(string,solver%linear_atol,ierr)
+        call fiDefaultMsg(myrank,'linear_atol',ierr)
+
+      case('RTOL')
+        call fiReadDouble(string,solver%linear_rtol,ierr)
+        call fiDefaultMsg(myrank,'linear_rtol',ierr)
+
+      case('STOL')
+        call fiReadDouble(string,solver%linear_stol,ierr)
+        call fiDefaultMsg(myrank,'linear_stol',ierr)
+      
+      case('DTOL')
+        call fiReadDouble(string,solver%linear_dtol,ierr)
+        call fiDefaultMsg(myrank,'linear_dtol',ierr)
+   
+      case('MAXIT')
+        call fiReadInt(string,solver%linear_maxit,ierr)
+        call fiDefaultMsg(myrank,'linear_maxit',ierr)
+
     end select 
   
   enddo  
 
-end subroutine SolverReadPflow
+end subroutine SolverReadLinear
+
+! ************************************************************************** !
+!
+! SolverReadNewton: Reads parameters associated with linear solver
+! author: Glenn Hammond
+! date: 12/21/07
+!
+! ************************************************************************** !
+subroutine SolverReadNewton(solver,fid,myrank)
+
+  use Fileio_module
+  
+  implicit none
+
+  type(solver_type) :: solver
+  PetscInt :: fid
+  PetscMPIInt :: myrank
+  
+  character(len=MAXSTRINGLENGTH) :: string, error_string
+  character(len=MAXWORDLENGTH) :: keyword, word, word2
+  PetscErrorCode :: ierr
+
+  ierr = 0
+  do
+  
+    call fiReadFlotranString(fid,string,ierr)
+
+    if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
+        fiStringCompare(string,'END',THREE_INTEGER)) exit  
+
+    call fiReadWord(string,keyword,.true.,ierr)
+    call fiErrorMsg(myrank,'keyword','NEWTON SOLVER', ierr)
+    call fiWordToUpper(keyword)   
+      
+    select case(trim(keyword))
+    
+      case('ATOL')
+        call fiReadDouble(string,solver%newton_atol,ierr)
+        call fiDefaultMsg(myrank,'newton_atol',ierr)
+
+      case('RTOL')
+        call fiReadDouble(string,solver%newton_rtol,ierr)
+        call fiDefaultMsg(myrank,'newton_rtol',ierr)
+
+      case('STOL')
+        call fiReadDouble(string,solver%newton_stol,ierr)
+        call fiDefaultMsg(myrank,'newton_stol',ierr)
+      
+      case('DTOL')
+        call fiReadDouble(string,solver%newton_dtol,ierr)
+        call fiDefaultMsg(myrank,'newton_dtol',ierr)
+   
+      case('ITOL', 'INF_TOL')
+        call fiReadDouble(string,solver%newton_inf_tol,ierr)
+        call fiDefaultMsg(myrank,'newton_inf_tol',ierr)
+   
+      case('MAXIT')
+        call fiReadInt(string,solver%newton_maxit,ierr)
+        call fiDefaultMsg(myrank,'newton_maxit',ierr)
+
+
+      case('MAXF')
+        call fiReadInt(string,solver%newton_maxf,ierr)
+        call fiDefaultMsg(myrank,'newton_maxf',ierr)
+
+    end select 
+  
+  enddo  
+
+end subroutine SolverReadNewton
 
 ! ************************************************************************** !
 !
