@@ -715,8 +715,8 @@ subroutine RichardsLiteFluxDerivative(aux_var_up,por_up,sir_up,dd_up,perm_up, &
     endif
   endif 
 
-  Jup = Jup*option%dt
-  Jdn = Jdn*option%dt
+  Jup = Jup*option%flow_dt
+  Jdn = Jdn*option%flow_dt
  ! note: Res is the flux contribution, for node up J = J + Jup
  !                                              dn J = J - Jdn  
 
@@ -821,7 +821,7 @@ subroutine RichardsLiteFlux(aux_var_up,por_up,sir_up,dd_up,perm_up, &
     endif
   endif 
 
-  Res(1) = fluxm * option%dt
+  Res(1) = fluxm * option%flow_dt
  ! note: Res is the flux contribution, for node 1 R = R + Res_FL
  !                                              2 R = R - Res_FL  
 
@@ -940,7 +940,7 @@ subroutine RichardsLiteBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn,
 
   Jdn(1,1) = (dq_dp_dn*density_ave+q*dden_ave_dp_dn)
 
-  Jdn = Jdn * option%dt
+  Jdn = Jdn * option%flow_dt
 
   if (option%numerical_derivatives) then
     call copyAuxVar(aux_var_up,aux_var_pert_up,option)
@@ -1059,7 +1059,7 @@ subroutine RichardsLiteBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
 
   fluxm = q*density_ave
 
-  Res(1)=fluxm * option%dt
+  Res(1)=fluxm * option%flow_dt
 
 end subroutine RichardsLiteBCFlux
 
@@ -1209,7 +1209,7 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
                             dw_kg,dw_mol,enth_src_h2o,option%scale,ierr)
 !           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
 !           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
-        r_p(local_id) = r_p(local_id) - qsrc1 *option%dt
+        r_p(local_id) = r_p(local_id) - qsrc1 *option%flow_dt
       endif  
   !  else if (qsrc1 < 0.d0) then ! withdrawal
   !  endif
@@ -1539,7 +1539,7 @@ subroutine RichardsLiteJacobian(snes,xx,A,B,flag,realization,ierr)
       endif
       
 !      if (enthalpy_flag) then
-!        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1 * option%dt   
+!        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1 * option%flow_dt   
 !      endif         
 
       if (qsrc1 > 0.d0) then ! injection
@@ -1547,9 +1547,9 @@ subroutine RichardsLiteJacobian(snes,xx,A,B,flag,realization,ierr)
               enth_src_h2o,hw_dp,hw_dt,option%scale,ierr)        
 !           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
 !           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
-        ! base on r_p() = r_p() - qsrc1*enth_src_h2o*option%dt
-!        dresT_dp = -qsrc1*hw_dp*option%dt
-        ! dresT_dt = -qsrc1*hw_dt*option%dt ! since tsrc1 is prescribed, there is no derivative
+        ! base on r_p() = r_p() - qsrc1*enth_src_h2o*option%flow_dt
+!        dresT_dp = -qsrc1*hw_dp*option%flow_dt
+        ! dresT_dt = -qsrc1*hw_dt*option%flow_dt ! since tsrc1 is prescribed, there is no derivative
 !        call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,dresT_dp,ADD_VALUES,ierr)
         ! call MatSetValuesLocal(A,1,istart-1,1,istart-1,dresT_dt,ADD_VALUES,ierr)
       endif  

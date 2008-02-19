@@ -90,12 +90,13 @@ subroutine PflowInit(simulation,filename)
   call OptionCheckCommandLine(option)
 
   waypoint_list => WaypointListCreate()
+  realization%waypoints => waypoint_list
+  
   ! initialize flow mode
   if (option%nflowdof > 0) then
     ! set the operational mode (e.g. RICHARDS_MODE, MPH_MODE, etc)
     call setFlowMode(option,mcomp,mphas)
     flow_solver => flow_stepper%solver
-    flow_stepper%waypoints => waypoint_list
   ! check number of dofs and phases
     if (option%nflowdof > 0) then
       iflag = PETSC_FALSE
@@ -125,7 +126,6 @@ subroutine PflowInit(simulation,filename)
   ! initialize transport mode
   if (option%ntrandof > 0) then
     tran_solver => tran_stepper%solver
-    tran_stepper%waypoints => waypoint_list
   else
     call TimestepperDestroy(simulation%tran_stepper)
   endif
@@ -368,6 +368,17 @@ subroutine PflowInit(simulation,filename)
     call verifyCouplers(realization,realization%boundary_conditions)
     call verifyCouplers(realization,realization%source_sinks)
   endif
+  
+  ! add waypoints associated with boundary conditions, source/sinks etc. to list
+  call RealizationAddWaypointsToList(realization)
+  ! fill in holes in waypoint data
+  call WaypointListFillIn(option,realization%waypoints)
+  call WaypointListRemoveExtraWaypnts(option,realization%waypoints)
+  ! convert times from in put time to seconds
+  call WaypointConvertTimes(realization%waypoints,realization%output_option%tconv)
+
+  if (associated(flow_stepper)) flow_stepper%cur_waypoint => realization%waypoints%first
+  if (associated(tran_stepper)) tran_stepper%cur_waypoint => realization%waypoints%first
   
 end subroutine PflowInit
 
@@ -1020,7 +1031,7 @@ subroutine readInput(simulation,filename)
         call fiDefaultMsg(option%myrank,'dsmxe',ierr)
 
         if (option%myrank==0) write(IUNIT2,'(/," *TOLR ",/, &
-          &"  flowsteps  = ",i6,/,      &
+          &"  steps  = ",i6,/,      &
           &"  iaccel     = ",i3,/,      &
           &"  newtmx     = ",i3,/,      &
           &"  icutmx     = ",i3,/,      &
@@ -1710,7 +1721,7 @@ subroutine readInput(simulation,filename)
               waypoint => WaypointCreate()
               waypoint%time = temp_real
               waypoint%print_output = .true.              
-              call WaypointInsertInList(waypoint,flow_stepper%waypoints)
+              call WaypointInsertInList(waypoint,realization%waypoints)
             endif
           enddo
         enddo
@@ -1727,7 +1738,7 @@ subroutine readInput(simulation,filename)
             waypoint => WaypointCreate()
             waypoint%time = temp_real
             waypoint%print_output = .true.              
-            call WaypointInsertInList(waypoint,flow_stepper%waypoints)
+            call WaypointInsertInList(waypoint,realization%waypoints)
             
             temp_real = temp_real + periodic_rate
           enddo
@@ -1760,15 +1771,15 @@ subroutine readInput(simulation,filename)
               call fiReadDouble(string,waypoint%dt_max,ierr)
               call fiErrorMsg(option%myrank,'dt_max','dtst',ierr)
               if (temp_int == 0) flow_stepper%dt_max = waypoint%dt_max
-              call WaypointInsertInList(waypoint,flow_stepper%waypoints)
+              call WaypointInsertInList(waypoint,realization%waypoints)
               temp_int = temp_int + 1
             endif
           enddo
         enddo
         
-        option%dt = flow_stepper%dt_min
+        option%flow_dt = flow_stepper%dt_min
       
-        option%dt = realization%output_option%tconv * option%dt
+        option%flow_dt = realization%output_option%tconv * option%flow_dt
         flow_stepper%dt_min = realization%output_option%tconv * flow_stepper%dt_min
         flow_stepper%dt_max = realization%output_option%tconv * flow_stepper%dt_max
 

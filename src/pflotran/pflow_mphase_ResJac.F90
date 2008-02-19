@@ -751,9 +751,9 @@ subroutine MPHASERes_ARCont(node_no, var_node,por,vol,rock_dencpr, option, &
 ! Reaction terms here
 !  if (option%run_coupled == PETSC_TRUE .and. iireac>0) then
 !   H2O
-!    mol(1)= mol(1) - option%dt * option%rtot(node_no,1)
+!    mol(1)= mol(1) - option%flow_dt * option%rtot(node_no,1)
 !   CO2
-!    mol(2)= mol(2) - option%dt * option%rtot(node_no,2)
+!    mol(2)= mol(2) - option%flow_dt * option%rtot(node_no,2)
 !   should include related energy change here
 !  endif
   Res_AR(1:option%nflowdof-1)=mol(:)
@@ -910,8 +910,8 @@ subroutine MPHASERes_FLCont(nconn_no,area, &
   cond=Dk*area*(temp1-temp2) 
   fluxe=fluxe + cond
    !print *,' FLcont heat cond', Dk, cond
-  Res_FL(1:option%nflowdof-1)=fluxm(:) * option%dt
-  Res_FL(option%nflowdof)=fluxe * option%dt
+  Res_FL(1:option%nflowdof-1)=fluxm(:) * option%flow_dt
+  Res_FL(option%nflowdof)=fluxe * option%flow_dt
  ! note: Res_FL is the flux contribution, for node 1 R = R + Res_FL
  ! 2 R = R - Res_FL
  !print *,'end FLcont'
@@ -1067,8 +1067,8 @@ subroutine MPHASERes_FLBCCont(ibndtype,area,aux_vars, &
       cond=Dk*area*(temp1-temp2) 
       fluxe=fluxe + cond
  
-      Res_FL(1:option%nspec)=fluxm(:)* option%dt
-      Res_FL(option%nflowdof)=fluxe * option%dt
+      Res_FL(1:option%nspec)=fluxm(:)* option%flow_dt
+      Res_FL(option%nflowdof)=fluxe * option%flow_dt
 
     case(NEUMANN_BC)
     
@@ -1099,8 +1099,8 @@ subroutine MPHASERes_FLBCCont(ibndtype,area,aux_vars, &
           endif 
         enddo
       endif
-      Res_FL(1:option%nspec)=fluxm(:)* option%dt
-      Res_FL(option%nflowdof)=fluxe * option%dt
+      Res_FL(1:option%nspec)=fluxm(:)* option%flow_dt
+      Res_FL(option%nflowdof)=fluxe * option%flow_dt
 
     case(HYDROSTATIC_BC)
    
@@ -1162,8 +1162,8 @@ subroutine MPHASERes_FLBCCont(ibndtype,area,aux_vars, &
         endif 
       enddo
    
-      Res_FL(1:option%nspec)=fluxm(:)* option%dt
-      Res_FL(option%nflowdof)=fluxe * option%dt
+      Res_FL(1:option%nspec)=fluxm(:)* option%flow_dt
+      Res_FL(option%nflowdof)=fluxe * option%flow_dt
     
     case(4)
           
@@ -1172,7 +1172,7 @@ subroutine MPHASERes_FLBCCont(ibndtype,area,aux_vars, &
       fluxe=fluxe + cond
      
       Res_FL(1:option%nspec)= 0.D0
-      Res_FL(option%nflowdof)=fluxe * option%dt
+      Res_FL(option%nflowdof)=fluxe * option%flow_dt
 
   end select
   
@@ -1492,7 +1492,7 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
     index_var_end = index_var_begin -1 + size_var_use
     
     pvol = volume_p(local_id)*porosity_loc_p(ghosted_id)
-    voldt = volume_p(local_id) / option%dt
+    voldt = volume_p(local_id) / option%flow_dt
     pvoldt = porosity_loc_p(ghosted_id) * voldt
     iiphase = iphase_loc_p(ghosted_id)
     i = ithrm_loc_p(ghosted_id)
@@ -1533,7 +1533,7 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
       ghosted_id = grid%nL2G(local_id)
 
       if (enthalpy_flag) then
-        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1 * option%dt   
+        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1 * option%flow_dt   
       endif         
 
       if (qsrc1 > 0.d0) then ! injection
@@ -1545,11 +1545,11 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
 !           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
               
         r_p((local_id-1)*option%nflowdof + mphase_option%jh2o) = r_p((local_id-1)*option%nflowdof + mphase_option%jh2o) &
-                                               - qsrc1 *option%dt
-        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - qsrc1*enth_src_h2o*option%dt
-        Resold_AR(local_id,mphase_option%jh2o)= Resold_AR(local_id,mphase_option%jh2o) - qsrc1*option%dt
+                                               - qsrc1 *option%flow_dt
+        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - qsrc1*enth_src_h2o*option%flow_dt
+        Resold_AR(local_id,mphase_option%jh2o)= Resold_AR(local_id,mphase_option%jh2o) - qsrc1*option%flow_dt
         Resold_AR(local_id,option%nflowdof)= Resold_AR(local_id,option%nflowdof) - qsrc1 * &
-                                                             enth_src_h2o * option%dt
+                                                             enth_src_h2o * option%flow_dt
       endif  
     
       if (csrc1 > 0.d0) then ! injection
@@ -1571,10 +1571,10 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
         enth_src_co2 = enth_src_co2 * option%fmwco2
            
         r_p((local_id-1)*option%nflowdof + mphase_option%jco2) = r_p((local_id-1)*option%nflowdof + &
-                                                                 mphase_option%jco2) - csrc1*option%dt
-        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - csrc1 * enth_src_co2 *option%dt
-        Resold_AR(local_id,mphase_option%jco2)= Resold_AR(local_id,mphase_option%jco2) - csrc1*option%dt
-        Resold_AR(local_id,option%nflowdof)= Resold_AR(local_id,option%nflowdof) - csrc1 * enth_src_co2*option%dt
+                                                                 mphase_option%jco2) - csrc1*option%flow_dt
+        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - csrc1 * enth_src_co2 *option%flow_dt
+        Resold_AR(local_id,mphase_option%jco2)= Resold_AR(local_id,mphase_option%jco2) - csrc1*option%flow_dt
+        Resold_AR(local_id,option%nflowdof)= Resold_AR(local_id,option%nflowdof) - csrc1 * enth_src_co2*option%flow_dt
 
      endif
   
@@ -1801,9 +1801,9 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
 
   select case (mphase_option%idt_switch) 
     case(1) 
-      r_p(:) = r_p(:)/option%dt
+      r_p(:) = r_p(:)/option%flow_dt
     case(-1)
-      if(option%dt>1.D0) r_p(:) = r_p(:)/option%dt
+      if(option%flow_dt>1.D0) r_p(:) = r_p(:)/option%flow_dt
   end select    
   
   do local_id = 1, grid%nlmax
@@ -2002,7 +2002,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
       if (field%imat(ghosted_id) <= 0) cycle
     endif 
     
-    voldt = volume_p(local_id) / option%dt
+    voldt = volume_p(local_id) / option%flow_dt
     pvoldt = porosity_loc_p(ghosted_id) * voldt
 
     iiphas=iphase_loc_p(ghosted_id)
@@ -2065,8 +2065,8 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
 
 !         qqsrc = qsrc1/dw_mol ! [kmol/s / mol/dm^3 = kmol/m^3]
               
-          ResInc(local_id,mphase_option%jh2o,nvar)=  ResInc(local_id,mphase_option%jh2o,nvar) - qsrc1*option%dt
-          ResInc(local_id,option%nflowdof,nvar)=  ResInc(local_id,option%nflowdof,nvar) - qsrc1*enth_src_h2o*option%dt
+          ResInc(local_id,mphase_option%jh2o,nvar)=  ResInc(local_id,mphase_option%jh2o,nvar) - qsrc1*option%flow_dt
+          ResInc(local_id,option%nflowdof,nvar)=  ResInc(local_id,option%nflowdof,nvar) - qsrc1*enth_src_h2o*option%flow_dt
         enddo
 
       endif  
@@ -2090,8 +2090,8 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
 
           enth_src_co2 = enth_src_co2 * option%fmwco2
 
-          ResInc(local_id,mphase_option%jco2,nvar)=  ResInc(local_id,mphase_option%jco2,nvar) - csrc1*option%dt
-          ResInc(local_id,option%nflowdof,nvar)=  ResInc(local_id,option%nflowdof,nvar) - csrc1*enth_src_co2*option%dt
+          ResInc(local_id,mphase_option%jco2,nvar)=  ResInc(local_id,mphase_option%jco2,nvar) - csrc1*option%flow_dt
+          ResInc(local_id,option%nflowdof,nvar)=  ResInc(local_id,option%nflowdof,nvar) - csrc1*enth_src_co2*option%flow_dt
 
         enddo
 
@@ -2298,9 +2298,9 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
   
     select case(mphase_option%idt_switch)
       case(1) 
-        ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:option%nflowdof) /option%dt
+        ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:option%nflowdof) /option%flow_dt
       case(-1)
-        if(option%dt>1) ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:option%nflowdof) /option%dt
+        if(option%flow_dt>1) ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:option%nflowdof) /option%flow_dt
     end select
       
 
@@ -2313,7 +2313,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
         enddo
        enddo
     else
-      !ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:option%nflowdof) /option%dt
+      !ra(1:option%nflowdof,1:option%nflowdof) =ra(1:option%nflowdof,1:option%nflowdof) /option%flow_dt
       blkmat11=ra(1:option%nflowdof,1:option%nflowdof)
     
       if(volume_p(local_id)>1.D0 ) blkmat11=blkmat11 / volume_p(local_id)
@@ -2463,9 +2463,9 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
  
       select case(mphase_option%idt_switch)
         case(1)
-          ra =ra / option%dt
+          ra =ra / option%flow_dt
         case(-1)  
-          if (option%dt>1) ra =ra / option%dt
+          if (option%flow_dt>1) ra =ra / option%flow_dt
       end select  
        
       do ii=0,option%nflowdof-1
@@ -2863,7 +2863,7 @@ subroutine pflow_update_mphase(realization)
   if (mphase_option%rk > 0.d0) then
     call VecGetArrayF90(mphase_field%phis,phis_p,ierr)
     do n = 1, grid%nlmax
-      phis_p(n) = phis_p(n) + option%dt * mphase_option%vbars * mphase_option%rate(n)
+      phis_p(n) = phis_p(n) + option%flow_dt * mphase_option%vbars * mphase_option%rate(n)
       if (phis_p(n) < 0.d0) phis_p(n) = 0.d0
       mphase_option%area_var(n) = (phis_p(n)/mphase_option%phis0)**mphase_option%pwrsrf
       

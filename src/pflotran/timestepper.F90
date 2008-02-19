@@ -13,8 +13,8 @@ module Timestepper_module
  
   type, public :: stepper_type
   
-    PetscInt :: flowsteps     ! The number of time-steps taken by the flow code.
-    PetscInt :: stepmax       ! The maximum number of time-steps taken by the flow code.
+    PetscInt :: steps         ! The number of time-steps taken by the code.
+    PetscInt :: stepmax       ! The maximum number of time-steps taken by the code.
     PetscInt :: nstpmax       ! The maximum number of time-step increments.
     PetscInt :: newton_max    ! Max number of Newton steps for one time step.
     PetscInt :: icut_max      ! Max number of dt cuts for one time step.
@@ -28,9 +28,8 @@ module Timestepper_module
         
     type(solver_type), pointer :: solver
     
-    type(waypoint_list_type), pointer :: waypoints
     type(waypoint_type), pointer :: cur_waypoint
-    PetscReal, pointer :: steady_eps(:)  ! tolerance for stead state convergence
+
     type(convergence_context_type), pointer :: convergence_context
     
   end type stepper_type
@@ -56,7 +55,7 @@ function TimestepperCreate()
   type(stepper_type), pointer :: stepper
   
   allocate(stepper)
-  stepper%flowsteps = 0
+  stepper%steps = 0
   stepper%stepmax = 0
   stepper%nstpmax = 0
   
@@ -75,7 +74,6 @@ function TimestepperCreate()
   nullify(stepper%cur_waypoint)
   
   stepper%solver => SolverCreate()
-  nullify(stepper%waypoints)
   
   TimeStepperCreate => stepper
   
@@ -88,7 +86,7 @@ end function TimestepperCreate
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine StepperRun(realization,stepper)
+subroutine StepperRun(realization,flow_stepper,tran_stepper)
 
   use Realization_module
   use Option_module
@@ -103,7 +101,8 @@ subroutine StepperRun(realization,stepper)
 #include "include/finclude/petscviewer.h"
 
   type(realization_type) :: realization
-  type(stepper_type) :: stepper
+  type(stepper_type), pointer :: flow_stepper
+  type(stepper_type), pointer :: tran_stepper
   
   type(option_type), pointer :: option
 
@@ -121,21 +120,15 @@ subroutine StepperRun(realization,stepper)
   timestep_cut_flag = .false.
   stop_flag = .false.
 
-  ! add waypoints associated with boundary conditions, source/sinks etc. to list
-  call RealizationAddWaypointsToList(realization,stepper%waypoints)
-  ! fill in holes in waypoint data
-  call WaypointListFillIn(option,stepper%waypoints)
-  call WaypointListRemoveExtraWaypnts(option,stepper%waypoints)
-  ! convert times from in put time to seconds
-  call WaypointConvertTimes(stepper%waypoints,realization%output_option%tconv)
-  stepper%cur_waypoint => stepper%waypoints%first
-
   if(option%restart_flag == PETSC_TRUE) then
-    call pflowGridRestart(realization,stepper%flowsteps,stepper%newtcum, &
-                          stepper%icutcum, &
+    call pflowGridRestart(realization,flow_stepper%steps,flow_stepper%newtcum, &
+                          flow_stepper%icutcum, &
                           timestep_cut_flag,num_timestep_cuts, &
                           num_newton_iterations)
-    stepper%cur_waypoint => WaypointSkipToTime(stepper%waypoints,option%time)
+    if (associated(flow_stepper)) flow_stepper%cur_waypoint => &
+      WaypointSkipToTime(realization%waypoints,option%time)
+    if (associated(tran_stepper)) tran_stepper%cur_waypoint => &
+      WaypointSkipToTime(realization%waypoints,option%time)
     call StepperUpdateSolution(realization)
   endif
 
@@ -146,11 +139,19 @@ subroutine StepperRun(realization,stepper)
   endif
            
   call PetscGetTime(stepper_start_time, ierr)
-  start_step = stepper%flowsteps+1
-  do istep = start_step, stepper%stepmax
+  start_step = flow_stepper%steps+1
+  do istep = start_step, flow_stepper%stepmax
+
+    call StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag)
   
-    call StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
-                       num_timestep_cuts,num_newton_iterations)
+    if (associated(flow_stepper)) then
+      call StepperStepFlowDT(realization,flow_stepper,plot_flag,timestep_cut_flag, &
+                         num_timestep_cuts,num_newton_iterations)
+    endif
+    if (associated(tran_stepper)) then
+      call StepperStepTransportDT(realization,tran_stepper,plot_flag,timestep_cut_flag, &
+                         num_timestep_cuts,num_newton_iterations)
+    endif
     call StepperUpdateSolution(realization)
 
     if (plot_flag) then
@@ -160,7 +161,7 @@ subroutine StepperRun(realization,stepper)
     call OutputBreakthrough(realization)
   
     if (.not.timestep_cut_flag) &
-      call StepperUpdateDT(stepper,option,num_newton_iterations)
+      call StepperUpdateDT(flow_stepper,option,num_newton_iterations,option%flow_time,option%flow_dt)
 
     ! if a simulation wallclock duration time is set, check to see that the
     ! next time step will not exceed that value.  If it does, print the
@@ -179,29 +180,29 @@ subroutine StepperRun(realization,stepper)
 
     if (option%checkpoint_flag == PETSC_TRUE .and. &
         mod(istep,option%checkpoint_frequency) == 0) then
-      call pflowGridCheckpoint(realization,stepper%flowsteps,stepper%newtcum, &
-                               stepper%icutcum,timestep_cut_flag, &
+      call pflowGridCheckpoint(realization,flow_stepper%steps,flow_stepper%newtcum, &
+                               flow_stepper%icutcum,timestep_cut_flag, &
                                num_timestep_cuts,num_newton_iterations,istep)
     endif
     
    
     ! if at end of waypoint list (i.e. cur_waypoint = null), we are done!
-    if (.not.associated(stepper%cur_waypoint) .or. stop_flag) exit
+    if (.not.associated(flow_stepper%cur_waypoint) .or. stop_flag) exit
 
   enddo
 
   if (option%checkpoint_flag == PETSC_TRUE) then
-    call pflowGridCheckpoint(realization,stepper%flowsteps,stepper%newtcum, &
-                             stepper%icutcum,timestep_cut_flag, &
+    call pflowGridCheckpoint(realization,flow_stepper%steps,flow_stepper%newtcum, &
+                             flow_stepper%icutcum,timestep_cut_flag, &
                              num_timestep_cuts,num_newton_iterations,NEG_ONE_INTEGER)
   endif
 
   if (option%myrank == 0) then
     write(*,'(/," PFLOW steps = ",i6," newton = ",i6," cuts = ",i6)') &
-          istep-1,stepper%newtcum,stepper%icutcum
+          istep-1,flow_stepper%newtcum,flow_stepper%icutcum
 
     write(IUNIT2,'(/," PFLOW steps = ",i6," newton = ",i6," cuts = ",i6)') &
-          istep-1,stepper%newtcum,stepper%icutcum
+          istep-1,flow_stepper%newtcum,flow_stepper%icutcum
   endif
 
 end subroutine StepperRun
@@ -209,11 +210,11 @@ end subroutine StepperRun
 ! ************************************************************************** !
 !
 ! StepperUpdateDT: Updates time step
-! author: 
-! date: 
+! author: Glenn Hammond
+! date: 02/19/2008
 !
 ! ************************************************************************** !
-subroutine StepperUpdateDT(stepper,option,num_newton_iterations)
+subroutine StepperUpdateDT(stepper,option,num_newton_iterations,time,dt)
 
   use Option_module
   
@@ -222,6 +223,7 @@ subroutine StepperUpdateDT(stepper,option,num_newton_iterations)
   type(stepper_type) :: stepper
   type(option_type) :: option
   PetscInt, intent(in) :: num_newton_iterations
+  PetscReal :: time, dt
   
   PetscReal :: fac,dtt,up,utmp,uc,ut,uus
   
@@ -235,7 +237,7 @@ subroutine StepperUpdateDT(stepper,option,num_newton_iterations)
       utmp = option%dtmpmxe/(option%dtmpmax+1.d-5)
       uc = option%dcmxe/(option%dcmax+1.d-6)
       ut = min(up,utmp,uc)
-      dtt = fac * option%dt * (1.d0 + ut)
+      dtt = fac * dt * (1.d0 + ut)
     case(MPH_MODE)   
       fac = 0.5d0
       if (num_newton_iterations >= stepper%iaccel) then
@@ -248,7 +250,7 @@ subroutine StepperUpdateDT(stepper,option,num_newton_iterations)
         uus= option%dsmxe/(option%dsmax+1.d-6)
         ut = min(up,utmp,uc,uus)
       endif
-      dtt = fac * option%dt * (1.d0 + ut)
+      dtt = fac * dt * (1.d0 + ut)
     case(RICHARDS_MODE)
       fac = 0.5d0
       if (num_newton_iterations >= stepper%iaccel) then
@@ -260,7 +262,7 @@ subroutine StepperUpdateDT(stepper,option,num_newton_iterations)
         uus= option%dsmxe/(option%dsmax+1.d-6)
         ut = min(up,utmp,uus)
       endif
-      dtt = fac * option%dt * (1.d0 + ut)
+      dtt = fac * dt * (1.d0 + ut)
     case(RICHARDS_LITE_MODE)
       fac = 0.5d0
       if (num_newton_iterations >= stepper%iaccel) then
@@ -270,34 +272,119 @@ subroutine StepperUpdateDT(stepper,option,num_newton_iterations)
         up = option%dpmxe/(option%dpmax+0.1)
         ut = up
       endif
-      dtt = fac * option%dt * (1.d0 + ut)
+      dtt = fac * dt * (1.d0 + ut)
     case default
       if (num_newton_iterations <= stepper%iaccel .and. &
           num_newton_iterations <= size(option%tfac)) then
         if (num_newton_iterations == 0) then
-          dtt = option%tfac(1) * option%dt
+          dtt = option%tfac(1) * dt
         else
-          dtt = option%tfac(num_newton_iterations) * option%dt
+          dtt = option%tfac(num_newton_iterations) * dt
         endif
       endif
   end select
   
-  if (dtt > 2.d0 * option%dt) dtt = 2.d0 * option%dt 
+  if (dtt > 2.d0 * dt) dtt = 2.d0 * dt
   if (dtt > stepper%dt_max) dtt = stepper%dt_max
-  if (dtt>.25d0*option%time .and. option%time>1.d-2) dtt=.25d0*option%time
-  option%dt = dtt
+  if (dtt>.25d0*time .and. time>1.d-2) dtt=.25d0*time
+  dt = dtt
 
 end subroutine StepperUpdateDT
 
 ! ************************************************************************** !
 !
-! StepperStepDT: Steps forward one step in time
-! author: 
-! date: 
+! StepperSetTargetTimes: Sets target time for flow and transport solvers
+! author: Glenn Hammond
+! date: 02/19/2008
 !
 ! ************************************************************************** !
-subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
-                         num_timestep_cuts,num_newton_iterations)
+subroutine StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag)
+
+  use Option_module
+  
+  implicit none
+
+  type(stepper_type), pointer :: flow_stepper, tran_stepper
+  type(option_type) :: option
+  logical :: plot_flag
+  
+  PetscReal :: time
+  PetscReal :: dt
+  PetscReal :: dt_max
+  PetscInt :: steps
+  PetscInt :: stepmax
+  type(waypoint_type), pointer :: cur_waypoint
+
+  ! target time will always be dictated by the flow solver, if present
+  if (associated(flow_stepper)) then
+    time = option%flow_time + option%flow_dt
+    dt = option%flow_dt
+    dt_max = flow_stepper%dt_max
+    cur_waypoint => flow_stepper%cur_waypoint
+    steps = flow_stepper%steps
+    stepmax = flow_stepper%stepmax
+  else
+    time = option%tran_time + option%tran_dt
+    dt = option%tran_dt
+    dt_max = tran_stepper%dt_max
+    cur_waypoint => tran_stepper%cur_waypoint
+    steps = tran_stepper%steps
+    stepmax = tran_stepper%stepmax
+  endif
+
+! If a waypoint calls for a plot or change in src/sinks, adjust time step to match waypoint
+  if (time + 0.2*dt >= cur_waypoint%time .and. &
+      (cur_waypoint%update_srcs .or. &
+       cur_waypoint%print_output)) then
+    time = time - dt
+    dt = cur_waypoint%time - time
+    if (dt > dt_max .and. dabs(dt-dt_max) > 1.d0) then ! 1 sec tolerance to avoid cancellation
+      dt = dt_max                    ! error from waypoint%time - time
+      time = time + dt
+    else
+      time = cur_waypoint%time
+      if (cur_waypoint%print_output) plot_flag = .true.
+      cur_waypoint => cur_waypoint%next
+      if (associated(cur_waypoint)) &
+        dt_max = cur_waypoint%dt_max
+    endif
+  else if (time > cur_waypoint%time) then
+    cur_waypoint => cur_waypoint%next
+    if (associated(cur_waypoint)) &
+      dt_max = cur_waypoint%dt_max
+  else if (steps >= stepmax) then
+    plot_flag = .true.
+    nullify(cur_waypoint)
+  endif
+    
+  ! target time will always be dictated by the flow solver, if present
+  if (associated(flow_stepper)) then
+    option%flow_time = time
+    option%flow_dt = dt
+    flow_stepper%dt_max = dt_max
+    flow_stepper%cur_waypoint => cur_waypoint
+  endif
+  if (associated(tran_stepper)) then
+    option%tran_time = time
+    option%tran_dt = dt
+    tran_stepper%dt_max = dt_max
+    tran_stepper%cur_waypoint => cur_waypoint
+  endif
+  
+  option%time = time
+  option%dt = dt
+  
+end subroutine StepperSetTargetTimes
+
+! ************************************************************************** !
+!
+! StepperStepFlowDT: Steps forward one step in time
+! author: Glenn Hammond
+! date: 02/19/2008
+!
+! ************************************************************************** !
+subroutine StepperStepFlowDT(realization,stepper,plot_flag,timestep_cut_flag, &
+                             num_timestep_cuts,num_newton_iterations)
   
   use MPHASE_module
   use Richards_Lite_module
@@ -367,39 +454,41 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
   call GridLocalToLocal(grid,field%ithrm_loc,field%ithrm_loc,ONEDOF)
   call GridLocalToLocal(grid,field%iphas_loc,field%iphas_loc,ONEDOF)
 
-  option%time = option%time + option%dt
-  stepper%flowsteps = stepper%flowsteps + 1
+#if 0
+  option%flow_time = option%flow_time + option%flow_dt
+  stepper%steps = stepper%steps + 1
 
-!print *, 'pflow_step:1:',  ntstep, option%dt
+!print *, 'pflow_step:1:',  ntstep, option%flow_dt
  
 
 ! If a waypoint calls for a plot or change in src/sinks, adjust time step to match waypoint
-  if (option%time + 0.2*option%dt >= stepper%cur_waypoint%time .and. &
+  if (option%flow_time + 0.2*option%flow_dt >= stepper%cur_waypoint%time .and. &
       (stepper%cur_waypoint%update_srcs .or. &
        stepper%cur_waypoint%print_output)) then
-    option%time = option%time - option%dt
-    option%dt = stepper%cur_waypoint%time - option%time
-    if (option%dt > stepper%dt_max .and. &
-        dabs(option%dt-stepper%dt_max) > 1.d0) then ! 1 sec tolerance to avoid cancellation
-      option%dt = stepper%dt_max                    ! error from waypoint%time - option%time
-      option%time = option%time + option%dt
+    option%flow_time = option%flow_time - option%flow_dt
+    option%flow_dt = stepper%cur_waypoint%time - option%flow_time
+    if (option%flow_dt > stepper%dt_max .and. &
+        dabs(option%flow_dt-stepper%dt_max) > 1.d0) then ! 1 sec tolerance to avoid cancellation
+      option%flow_dt = stepper%dt_max                    ! error from waypoint%time - option%time
+      option%flow_time = option%flow_time + option%flow_dt
     else
-      option%time = stepper%cur_waypoint%time
+      option%flow_time = stepper%cur_waypoint%time
       if (stepper%cur_waypoint%print_output) plot_flag = .true.
       stepper%cur_waypoint => stepper%cur_waypoint%next
       if (associated(stepper%cur_waypoint)) &
         stepper%dt_max = stepper%cur_waypoint%dt_max
     endif
-  else if (option%time > stepper%cur_waypoint%time) then
+  else if (option%flow_time > stepper%cur_waypoint%time) then
     stepper%cur_waypoint => stepper%cur_waypoint%next
     if (associated(stepper%cur_waypoint)) &
       stepper%dt_max = stepper%cur_waypoint%dt_max
-  else if (stepper%flowsteps == stepper%stepmax) then
+  else if (stepper%steps == stepper%stepmax) then
     plot_flag = .true.
     nullify(stepper%cur_waypoint)
   endif
+#endif
   
-   ! print *, 'pflow_step:3:',  ntstep, option%dt
+   ! print *, 'pflow_step:3:',  ntstep, option%flow_dt
   if (timestep_cut_flag) then
     num_timestep_cuts = num_timestep_cuts + 1
     if (num_timestep_cuts > stepper%ndtcmx) then
@@ -413,7 +502,6 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
   endif
   
   do
-   
     
     select case(option%iflowmode)
       case(THC_MODE,MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
@@ -472,11 +560,11 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
       icut = icut + 1
       timestep_cut_flag = 1
 
-      if (icut > stepper%icut_max .or. option%dt<1.d-20) then
+      if (icut > stepper%icut_max .or. option%flow_dt<1.d-20) then
         if (option%myrank == 0) then
           print *,"--> icut_max exceeded: icut/icutmax= ",icut,stepper%icut_max, &
-                  "t= ",option%time/realization%output_option%tconv, " dt= ", &
-                  option%dt/realization%output_option%tconv
+                  "t= ",option%flow_time/realization%output_option%tconv, " dt= ", &
+                  option%flow_dt/realization%output_option%tconv
           print *,"Stopping execution!"
         endif
         realization%output_option%plot_name = 'cut_to_failure'
@@ -487,15 +575,15 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
         stop
       endif
 
-      option%time = option%time - option%dt
-      option%dt = 0.5d0 * option%dt
-      option%time = option%time + option%dt
+      option%flow_time = option%flow_time - option%flow_dt
+      option%flow_dt = 0.5d0 * option%flow_dt
+      option%flow_time = option%flow_time + option%flow_dt
     
       if (option%myrank == 0) write(*,'('' -> Cut time step: snes='',i3, &
         &   '' icut= '',i2,''['',i3,'']'','' t= '',1pe12.4, '' dt= '', &
         &   1pe12.4,i2)')  snes_reason,icut,stepper%icutcum, &
-            option%time/realization%output_option%tconv, &
-            option%dt/realization%output_option%tconv,timestep_cut_flag
+            option%flow_time/realization%output_option%tconv, &
+            option%flow_dt/realization%output_option%tconv,timestep_cut_flag
 
       select case(option%iflowmode)
         case(THC_MODE)
@@ -511,6 +599,7 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
 
     else
       ! The Newton solver converged, so we can exit.
+      stepper%steps = stepper%steps + 1      
       exit
     endif
   enddo
@@ -520,11 +609,11 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
 
 ! print screen output
   if (option%myrank == 0) then
-    if (mod(stepper%flowsteps,option%imod) == 0 .or. stepper%flowsteps == 1) then
+    if (mod(stepper%steps,option%imod) == 0 .or. stepper%steps == 1) then
       write(*, '(/," FLOW ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1,"]", &
       & " snes_conv_reason: ",i4,/,"  newt= ",i2," [",i6,"]"," cut= ",i2," [",i4,"]")') &
-      stepper%flowsteps,option%time/realization%output_option%tconv, &
-      option%dt/realization%output_option%tconv,realization%output_option%tunit, &
+      stepper%steps,option%flow_time/realization%output_option%tconv, &
+      option%flow_dt/realization%output_option%tconv,realization%output_option%tunit, &
       snes_reason,num_newton_iterations,stepper%newtcum,icut,stepper%icutcum
 
       print *,' --> SNES Linear/Non-Linear Interations = ',it_linear,it_snes
@@ -532,8 +621,8 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
        
       write(IUNIT2, '(" FLOW ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1, &
       & "]"," snes_conv_reason: ",i4,/,"  newt= ",i2," [",i6,"]"," cut= ",i2," [",i4, &
-      & "]")') stepper%flowsteps,option%time/realization%output_option%tconv, &
-      option%dt/realization%output_option%tconv, &
+      & "]")') stepper%steps,option%flow_time/realization%output_option%tconv, &
+      option%flow_dt/realization%output_option%tconv, &
       realization%output_option%tunit, snes_reason,num_newton_iterations,stepper%newtcum,icut,stepper%icutcum
     endif
   endif
@@ -541,7 +630,7 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
   if (option%iflowmode == RICHARDS_MODE) then
      call RichardsMaxChange(realization)
     if (option%myrank==0) then
-      if (mod(stepper%flowsteps,option%imod) == 0 .or. stepper%flowsteps == 1) then
+      if (mod(stepper%steps,option%imod) == 0 .or. stepper%steps == 1) then
         write(*,'("  --> max chng: dpmx= ",1pe12.4, &
           & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4)') &
           option%dpmax,option%dtmpmax, option%dcmax
@@ -554,7 +643,7 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
   else if (option%iflowmode == RICHARDS_LITE_MODE) then
     call RichardsLiteMaxChange(realization)
     if (option%myrank==0) then
-      if (mod(stepper%flowsteps,option%imod) == 0 .or. stepper%flowsteps == 1) then
+      if (mod(stepper%steps,option%imod) == 0 .or. stepper%steps == 1) then
         write(*,'("  --> max chng: dpmx= ",1pe12.4)') option%dpmax
         
         write(IUNIT2,'("  --> max chng: dpmx= ",1pe12.4)') option%dpmax
@@ -564,7 +653,7 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
      call MphaseMaxChange(realization)
     ! note use mph will use variable switching, the x and s change is not meaningful 
     if (option%myrank==0) then
-      if (mod(stepper%flowsteps,option%imod) == 0 .or. stepper%flowsteps == 1) then
+      if (mod(stepper%steps,option%imod) == 0 .or. stepper%steps == 1) then
         write(*,'("  --> max chng: dpmx= ",1pe12.4, &
           & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4," dsmx= ",1pe12.4)') &
           option%dpmax,option%dtmpmax,option%dcmax,option%dsmax
@@ -576,17 +665,246 @@ subroutine StepperStepDT(realization,stepper,plot_flag,timestep_cut_flag, &
     endif
   endif
 
-  if (option%myrank == 0 .and. mod(stepper%flowsteps,option%imod) == 0) then
+  if (option%myrank == 0 .and. mod(stepper%steps,option%imod) == 0) then
     print *, ""
   endif
 
-end subroutine StepperStepDT
+end subroutine StepperStepFlowDT
+
+! ************************************************************************** !
+!
+! StepperStepTransportDT: Steps forward one step in time
+! author: Glenn Hammond
+! date: 02/19/2008
+!
+! ************************************************************************** !
+subroutine StepperStepTransportDT(realization,stepper,plot_flag,timestep_cut_flag, &
+                             num_timestep_cuts,num_newton_iterations)
+  
+  use Reactive_Transport_module
+  use Output_module
+  
+  use Realization_module
+  use Grid_module
+  use Option_module
+  use Solver_module
+  use Field_module
+  
+  implicit none
+
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
+#include "include/finclude/petscmat.h"
+#include "include/finclude/petscviewer.h"
+#include "include/finclude/petscsnes.h"
+
+  type(realization_type) :: realization
+  type(stepper_type) :: stepper
+
+  character(len=MAXSTRINGLENGTH) :: string, string2, string3
+
+  logical :: plot_flag, timestep_cut_flag
+  PetscInt :: num_timestep_cuts,num_newton_iterations
+  PetscErrorCode :: ierr
+  PetscInt :: icut ! Tracks the number of time step reductions applied
+  SNESConvergedReason :: snes_reason 
+  PetscInt :: update_reason, it_linear=0, it_snes
+  PetscInt :: n, nmax_inf
+  PetscReal m_r2norm, s_r2norm, norm_inf, s_r2norm0, norm_inf0, r2norm
+  PetscReal :: tsrc
+  PetscReal, pointer :: r_p(:)  
+
+  PetscInt, save :: linear_solver_divergence_count = 0
+
+  PetscViewer :: viewer
+
+  type(option_type), pointer :: option
+  type(grid_type), pointer :: grid
+  type(field_type), pointer :: field  
+  type(solver_type), pointer :: solver
+
+  option => realization%option
+  grid => realization%grid
+  field => realization%field
+  solver => stepper%solver
+
+! PetscReal, pointer :: xx_p(:), conc_p(:), press_p(:), temp_p(:)
+
+  num_newton_iterations = 0
+  icut = 0
+
+  call GridLocalToLocal(grid,field%porosity_loc,field%porosity_loc,ONEDOF)
+  call GridLocalToLocal(grid,field%tor_loc,field%tor_loc,ONEDOF)
+
+  option%tran_time = option%tran_time + option%tran_dt
+  stepper%steps = stepper%steps + 1
+
+! If a waypoint calls for a plot or change in src/sinks, adjust time step to match waypoint
+  if (option%tran_time + 0.2*option%tran_dt >= stepper%cur_waypoint%time .and. &
+      (stepper%cur_waypoint%update_srcs .or. &
+       stepper%cur_waypoint%print_output)) then
+    option%tran_time = option%tran_time - option%tran_dt
+    option%tran_dt = stepper%cur_waypoint%time - option%tran_time
+    if (option%tran_dt > stepper%dt_max .and. &
+        dabs(option%tran_dt-stepper%dt_max) > 1.d0) then ! 1 sec tolerance to avoid cancellation
+      option%tran_dt = stepper%dt_max                    ! error from waypoint%time - option%time
+      option%tran_time = option%tran_time + option%tran_dt
+    else
+      option%tran_time = stepper%cur_waypoint%time
+      if (stepper%cur_waypoint%print_output) plot_flag = .true.
+      stepper%cur_waypoint => stepper%cur_waypoint%next
+      if (associated(stepper%cur_waypoint)) &
+        stepper%dt_max = stepper%cur_waypoint%dt_max
+    endif
+  else if (option%tran_time > stepper%cur_waypoint%time) then
+    stepper%cur_waypoint => stepper%cur_waypoint%next
+    if (associated(stepper%cur_waypoint)) &
+      stepper%dt_max = stepper%cur_waypoint%dt_max
+  else if (stepper%steps == stepper%stepmax) then
+    plot_flag = .true.
+    nullify(stepper%cur_waypoint)
+  endif
+  
+   ! print *, 'pflow_step:3:',  ntstep, option%tran_dt
+  if (timestep_cut_flag) then
+    num_timestep_cuts = num_timestep_cuts + 1
+    if (num_timestep_cuts > stepper%ndtcmx) then
+      timestep_cut_flag = .false.
+      num_timestep_cuts = 0
+    endif
+  endif
+  
+  if (option%myrank == 0) then
+    write(*,'(/,60("="))')
+  endif
+  
+  do
+   
+    call SNESSolve(solver%snes, PETSC_NULL, field%tran_xx, ierr)
+
+! do we really need all this? - geh 
+    call SNESGetIterationNumber(solver%snes,num_newton_iterations, ierr)
+    it_snes = num_newton_iterations
+    call VecNorm(field%tran_r, NORM_2, r2norm, ierr) 
+    call VecGetArrayF90(field%tran_r, r_p, ierr)
+    
+    call SNESGetLinearSolveIterations(solver%snes, it_linear, ierr)
+    call SNESGetConvergedReason(solver%snes, snes_reason, ierr)
+
+    if (snes_reason <= 0) then
+      ! The Newton solver diverged, so try reducing the time step.
+      icut = icut + 1
+      timestep_cut_flag = 1
+
+      if (icut > stepper%icut_max .or. option%tran_dt<1.d-20) then
+        if (option%myrank == 0) then
+          print *,"--> icut_max exceeded: icut/icutmax= ",icut,stepper%icut_max, &
+                  "t= ",option%tran_time/realization%output_option%tconv, " dt= ", &
+                  option%tran_dt/realization%output_option%tconv
+          print *,"Stopping execution!"
+        endif
+        realization%output_option%plot_name = 'cut_to_failure'
+        call Output(realization)
+        realization%output_option%plot_name = ''
+ !       call pflowgrid_destroy(grid)
+        call PetscFinalize(ierr)
+        stop
+      endif
+
+      option%tran_time = option%tran_time - option%tran_dt
+      option%tran_dt = 0.5d0 * option%tran_dt
+      option%tran_time = option%tran_time + option%tran_dt
+    
+      if (option%myrank == 0) write(*,'('' -> Cut time step: snes='',i3, &
+        &   '' icut= '',i2,''['',i3,'']'','' t= '',1pe12.4, '' dt= '', &
+        &   1pe12.4,i2)')  snes_reason,icut,stepper%icutcum, &
+            option%tran_time/realization%output_option%tconv, &
+            option%tran_dt/realization%output_option%tconv,timestep_cut_flag
+
+      call RTTimeCut(realization)
+
+    else
+      ! The Newton solver converged, so we can exit.
+      exit
+    endif
+  enddo
+
+  stepper%newtcum = stepper%newtcum + num_newton_iterations
+  stepper%icutcum = stepper%icutcum + icut
+
+#if 0
+! print screen output
+  if (option%myrank == 0) then
+    if (mod(stepper%steps,option%imod) == 0 .or. stepper%steps == 1) then
+      write(*, '(/," FLOW ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1,"]", &
+      & " snes_conv_reason: ",i4,/,"  newt= ",i2," [",i6,"]"," cut= ",i2," [",i4,"]")') &
+      stepper%steps,option%tran_time/realization%output_option%tconv, &
+      option%tran_dt/realization%output_option%tconv,realization%output_option%tunit, &
+      snes_reason,num_newton_iterations,stepper%newtcum,icut,stepper%icutcum
+
+      print *,' --> SNES Linear/Non-Linear Interations = ',it_linear,it_snes
+      print *,' --> SNES Residual: ', r2norm, s_r2norm, m_r2norm, norm_inf 
+       
+      write(IUNIT2, '(" FLOW ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1, &
+      & "]"," snes_conv_reason: ",i4,/,"  newt= ",i2," [",i6,"]"," cut= ",i2," [",i4, &
+      & "]")') stepper%steps,option%tran_time/realization%output_option%tconv, &
+      option%tran_dt/realization%output_option%tconv, &
+      realization%output_option%tunit, snes_reason,num_newton_iterations,stepper%newtcum,icut,stepper%icutcum
+    endif
+  endif
+  
+  if (option%iflowmode == RICHARDS_MODE) then
+     call RichardsMaxChange(realization)
+    if (option%myrank==0) then
+      if (mod(stepper%steps,option%imod) == 0 .or. stepper%steps == 1) then
+        write(*,'("  --> max chng: dpmx= ",1pe12.4, &
+          & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4)') &
+          option%dpmax,option%dtmpmax, option%dcmax
+        
+        write(IUNIT2,'("  --> max chng: dpmx= ",1pe12.4, &
+          & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4)') &
+          option%dpmax,option%dtmpmax,option%dcmax
+      endif
+    endif
+  else if (option%iflowmode == RICHARDS_LITE_MODE) then
+    call RichardsLiteMaxChange(realization)
+    if (option%myrank==0) then
+      if (mod(stepper%steps,option%imod) == 0 .or. stepper%steps == 1) then
+        write(*,'("  --> max chng: dpmx= ",1pe12.4)') option%dpmax
+        
+        write(IUNIT2,'("  --> max chng: dpmx= ",1pe12.4)') option%dpmax
+      endif
+    endif
+  else if (option%iflowmode == MPH_MODE) then
+     call MphaseMaxChange(realization)
+    ! note use mph will use variable switching, the x and s change is not meaningful 
+    if (option%myrank==0) then
+      if (mod(stepper%steps,option%imod) == 0 .or. stepper%steps == 1) then
+        write(*,'("  --> max chng: dpmx= ",1pe12.4, &
+          & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4," dsmx= ",1pe12.4)') &
+          option%dpmax,option%dtmpmax,option%dcmax,option%dsmax
+        
+        write(IUNIT2,'("  --> max chng: dpmx= ",1pe12.4, &
+          & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4," dsmx= ",1pe12.4)') &
+          option%dpmax,option%dtmpmax,option%dcmax,option%dsmax
+      endif
+    endif
+  endif
+
+  if (option%myrank == 0 .and. mod(stepper%steps,option%imod) == 0) then
+    print *, ""
+  endif
+#endif
+
+  stepper%steps = stepper%steps + 1      
+
+end subroutine StepperStepTransportDT
 
 ! ************************************************************************** !
 !
 ! StepperUpdateSolution: Updates the realization and realization-dependent variables
-! author: 
-! date: 
+! author: Glenn Hammond
+! date: 02/19/2008 
 !
 ! ************************************************************************** !
 subroutine StepperUpdateSolution(realization)

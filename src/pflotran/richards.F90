@@ -690,7 +690,7 @@ subroutine RichardsAccumulation(aux_var,por,vol,rock_dencpr,option,Res)
 ! Reaction terms here
 !  if (option%run_coupled == PETSC_TRUE .and. iireac>0) then
 !H2O
-!    mol(1)= mol(1) - option%dt * option%rtot(node_no,1)
+!    mol(1)= mol(1) - option%flow_dt * option%rtot(node_no,1)
 !  endif
   Res(1:option%nflowdof-1)=mol(:)
   Res(option%nflowdof)=eng
@@ -932,8 +932,8 @@ subroutine RichardsFluxDerivative(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,
 !  cond = Dk*area*(aux_var_up%temp-aux_var_dn%temp) 
   Jup(option%nflowdof,2) = Jup(option%nflowdof,2)+Dk*area
   Jdn(option%nflowdof,2) = Jdn(option%nflowdof,2)+Dk*area*(-1.d0)
-  Jup = Jup*option%dt
-  Jdn = Jdn*option%dt
+  Jup = Jup*option%flow_dt
+  Jdn = Jdn*option%flow_dt
  ! note: Res is the flux contribution, for node up J = J + Jup
  !                                              dn J = J - Jdn  
 
@@ -1077,8 +1077,8 @@ subroutine RichardsFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
   cond = Dk*area*(aux_var_up%temp-aux_var_dn%temp) 
   fluxe=fluxe + cond
 
-  Res(1:option%nflowdof-1) = fluxm(:) * option%dt
-  Res(option%nflowdof) = fluxe * option%dt
+  Res(1:option%nflowdof-1) = fluxm(:) * option%flow_dt
+  Res(option%nflowdof) = fluxe * option%flow_dt
  ! note: Res is the flux contribution, for node 1 R = R + Res_FL
  !                                              2 R = R - Res_FL  
 
@@ -1302,7 +1302,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
       Jdn(option%nflowdof,2) = Jdn(option%nflowdof,2)+Dk*area*(-1.d0)
   end select
 
-  Jdn = Jdn * option%dt
+  Jdn = Jdn * option%flow_dt
 
   if (option%numerical_derivatives) then
     allocate(aux_var_pert_dn%xmol(option%nspec),aux_var_pert_dn%diff(option%nspec))
@@ -1467,8 +1467,8 @@ subroutine RichardsBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
       fluxe=fluxe + cond
   end select
 
-  Res(1:option%nspec)=fluxm(:)* option%dt
-  Res(option%nflowdof)=fluxe * option%dt
+  Res(1:option%nspec)=fluxm(:)* option%flow_dt
+  Res(option%nflowdof)=fluxe * option%flow_dt
 
 end subroutine RichardsBCFlux
 
@@ -1626,7 +1626,7 @@ subroutine RichardsAnalyticalResidual(snes,xx,r,realization,ierr)
       endif
       
       if (enthalpy_flag) then
-        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1 * option%dt   
+        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1 * option%flow_dt   
       endif         
 
       if (qsrc1 > 0.d0) then ! injection
@@ -1635,8 +1635,8 @@ subroutine RichardsAnalyticalResidual(snes,xx,r,realization,ierr)
 !           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
 !           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
         r_p((local_id-1)*option%nflowdof + jh2o) = r_p((local_id-1)*option%nflowdof + jh2o) &
-                                               - qsrc1 *option%dt
-        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - qsrc1*enth_src_h2o*option%dt
+                                               - qsrc1 *option%flow_dt
+        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - qsrc1*enth_src_h2o*option%flow_dt
       endif  
     
       if (csrc1 > 0.d0) then ! injection
@@ -2003,7 +2003,7 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
       endif
       
 !      if (enthalpy_flag) then
-!        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1 * option%dt   
+!        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1 * option%flow_dt   
 !      endif         
 
       if (qsrc1 > 0.d0) then ! injection
@@ -2011,9 +2011,9 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
               enth_src_h2o,hw_dp,hw_dt,option%scale,ierr)        
 !           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
 !           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
-        ! base on r_p() = r_p() - qsrc1*enth_src_h2o*option%dt
-        dresT_dp = -qsrc1*hw_dp*option%dt
-        ! dresT_dt = -qsrc1*hw_dt*option%dt ! since tsrc1 is prescribed, there is no derivative
+        ! base on r_p() = r_p() - qsrc1*enth_src_h2o*option%flow_dt
+        dresT_dp = -qsrc1*hw_dp*option%flow_dt
+        ! dresT_dt = -qsrc1*hw_dt*option%flow_dt ! since tsrc1 is prescribed, there is no derivative
         istart = ghosted_id*option%nflowdof
         call MatSetValuesLocal(A,1,istart-1,1,istart-option%nflowdof,dresT_dp,ADD_VALUES,ierr)
         ! call MatSetValuesLocal(A,1,istart-1,1,istart-1,dresT_dt,ADD_VALUES,ierr)

@@ -37,8 +37,8 @@ module Option_module
     character(len=MAXWORDLENGTH) :: generalized_grid
     logical :: use_generalized_grid
       
-    PetscReal :: time  ! The time elapsed in the simulation.
-    PetscReal :: dt ! The size of the time step.
+    PetscReal :: flow_time, tran_time, time  ! The time elapsed in the simulation.
+    PetscReal :: flow_dt, tran_dt, dt ! The size of the time step.
   
 !    PetscReal, pointer :: tplot(:)
     PetscReal, pointer :: tfac(:)

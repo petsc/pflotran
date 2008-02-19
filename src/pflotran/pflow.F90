@@ -51,7 +51,6 @@
 
   
   type(simulation_type), pointer :: simulation
-  type(stepper_type), pointer :: stepper
   type(realization_type), pointer :: realization
   type(option_type), pointer :: option
   
@@ -62,7 +61,6 @@
   simulation => SimulationCreate()
   realization => simulation%realization
   option => realization%option
-  stepper => simulation%flow_stepper
 
   option%myrank = myrank
   option%commsize = commsize
@@ -79,7 +77,8 @@
 
   call PflowInit(simulation,pflowin)
 
-  call StepperRun(simulation%realization,simulation%flow_stepper)
+  call StepperRun(simulation%realization,simulation%flow_stepper, &
+                  simulation%tran_stepper)
   
 ! Clean things up.
   call SimulationDestroy(simulation)

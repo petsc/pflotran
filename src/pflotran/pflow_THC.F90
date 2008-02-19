@@ -681,7 +681,7 @@ end subroutine THCTimeCut
     p1 = 1 + (n-1)*option%nflowdof
     t1 = p1 + 1
     c1 = t1 + 1
-    voldt = volume_p(n) / option%dt
+    voldt = volume_p(n) / option%flow_dt
     pvoldt = porosity_loc_p(ng) * voldt
     accum = 0.d0
     do j = 1, option%nphase

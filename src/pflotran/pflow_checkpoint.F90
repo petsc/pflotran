@@ -11,7 +11,7 @@ module pflow_chkptheader
   type, public :: pflowChkPtHeader
     real*8 :: time
     real*8 :: dt
-    integer*8 :: flowsteps
+    integer*8 :: steps
     integer*8 :: newtcum
     integer*8 :: icutcum
     integer*8 :: timestep_cut_flag
@@ -59,7 +59,7 @@ contains
 
 #if (PETSC_VERSION_RELEASE == 1 && PETSC_VERSION_SUBMINOR < 3)
 
-subroutine pflowGridCheckpoint(realization,flowsteps,newtcum,icutcum, &
+subroutine pflowGridCheckpoint(realization,steps,newtcum,icutcum, &
                                timestep_cut_flag,num_timestep_cuts, &
                                num_newton_iterations,id)
   use Realization_module
@@ -70,7 +70,7 @@ subroutine pflowGridCheckpoint(realization,flowsteps,newtcum,icutcum, &
   type(realization_type) :: realization
   logical :: timestep_cut_flag
   PetscInt :: num_timestep_cuts, num_newton_iterations
-  PetscInt :: id, flowsteps, newtcum, icutcum
+  PetscInt :: id, steps, newtcum, icutcum
 
   if(realization%option%myrank == 0) then
     print *, "Warning: pflowGridCheckpoint() not supported with PETSc 2.3.2."
@@ -79,7 +79,7 @@ end subroutine pflowGridCheckpoint
 
 #else
 
-subroutine pflowGridCheckpoint(realization,flowsteps,newtcum,icutcum, &
+subroutine pflowGridCheckpoint(realization,steps,newtcum,icutcum, &
                                timestep_cut_flag,num_timestep_cuts, &
                                num_newton_iterations,id)
 
@@ -96,7 +96,7 @@ subroutine pflowGridCheckpoint(realization,flowsteps,newtcum,icutcum, &
   type(realization_type) :: realization
   logical :: timestep_cut_flag
   PetscInt :: num_timestep_cuts, num_newton_iterations
-  PetscInt :: id, flowsteps, newtcum, icutcum
+  PetscInt :: id, steps, newtcum, icutcum
 #ifdef PetscSizeT
   PetscSizeT :: bagsize
 #else
@@ -175,7 +175,7 @@ subroutine pflowGridCheckpoint(realization,flowsteps,newtcum,icutcum, &
                             "Simulation time (years)", ierr)
   call PetscBagRegisterReal(bag, header%dt, option%dt, "dt", &
                             "Current size of timestep (years)", ierr)
-  call PetscBagRegisterInt(bag, header%flowsteps, flowsteps, "flowsteps", &
+  call PetscBagRegisterInt(bag, header%steps, steps, "steps", &
                             "Total number of flow steps taken", ierr)
   call PetscBagRegisterInt(bag, header%newtcum, newtcum, "newtcum", &
                             "Total number of Newton steps taken", ierr)
@@ -238,7 +238,7 @@ end subroutine pflowGridCheckpoint
 
 #if (PETSC_VERSION_RELEASE == 1 && PETSC_VERSION_SUBMINOR < 3)
 
-subroutine pflowGridRestart(realization,flowsteps,newtcum,icutcum, &
+subroutine pflowGridRestart(realization,steps,newtcum,icutcum, &
                             timestep_cut_flag,num_timestep_cuts, &
                             num_newton_iterations)
   use Realization_module
@@ -249,7 +249,7 @@ subroutine pflowGridRestart(realization,flowsteps,newtcum,icutcum, &
   type(stepper_type) :: stepper
   logical :: timestep_cut_flag
   PetscInt :: num_timestep_cuts, num_newton_iterations
-  PetscInt :: flowsteps, newtcum, icutcum
+  PetscInt :: steps, newtcum, icutcum
 
   if(realization%option%myrank == 0) then
     print *, "Warning: pflowGridRestart() not supported with PETSc 2.3.2."
@@ -258,7 +258,7 @@ end subroutine pflowGridRestart
 
 #else
 
-subroutine pflowGridRestart(realization,flowsteps,newtcum,icutcum, &
+subroutine pflowGridRestart(realization,steps,newtcum,icutcum, &
                             timestep_cut_flag,num_timestep_cuts, &
                             num_newton_iterations)
   use Realization_module
@@ -274,7 +274,7 @@ subroutine pflowGridRestart(realization,flowsteps,newtcum,icutcum, &
   type(realization_type) :: realization
   logical :: timestep_cut_flag
   PetscInt :: num_timestep_cuts, num_newton_iterations
-  PetscInt :: flowsteps, newtcum, icutcum
+  PetscInt :: steps, newtcum, icutcum
 
   PetscViewer viewer
   PetscBag bag
@@ -309,7 +309,7 @@ subroutine pflowGridRestart(realization,flowsteps,newtcum,icutcum, &
   num_timestep_cuts = header%num_timestep_cuts
   option%time = header%time
   option%dt = header%dt
-  flowsteps = header%flowsteps
+  steps = header%steps
   newtcum = header%newtcum
   icutcum = header%icutcum
   call PetscBagDestroy(bag, ierr)
@@ -378,7 +378,7 @@ subroutine pflowGridTHCBinaryOut(grid, kplt)
   !--------------------------------------------------------------------
 
   ! RTM: I need to write this code!
-  ! Members of 'grid' that have to be dumped: t, dt, flowsteps, kplot
+  ! Members of 'grid' that have to be dumped: t, dt, steps, kplot
   ! What else?
 
   !--------------------------------------------------------------------

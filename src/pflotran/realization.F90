@@ -10,6 +10,7 @@ module Realization_module
   use Breakthrough_module
   use Field_module
   use Debug_module
+  use Waypoint_module
   
   use Reactive_Transport_Aux_module
   
@@ -41,6 +42,8 @@ private
     type(saturation_function_ptr_type), pointer :: saturation_function_array(:)
     
     type(reactive_transport_aux_type), pointer :: RTaux
+    
+    type(waypoint_list_type), pointer :: waypoints
     
   end type realization_type
 
@@ -413,21 +416,23 @@ end subroutine RealizationUpdate
 ! date: 11/01/07
 !
 ! ************************************************************************** !
-subroutine RealizationAddWaypointsToList(realization,waypoint_list)
+subroutine RealizationAddWaypointsToList(realization)
 
   use Option_module
   use Waypoint_module
 
   implicit none
   
-  type(waypoint_list_type) :: waypoint_list
   type(realization_type) :: realization
   
   character(len=MAXSTRINGLENGTH) :: string
+  type(waypoint_list_type), pointer :: waypoint_list
   type(coupler_type), pointer :: coupler
   type(sub_condition_type), pointer :: sub_condition
   type(waypoint_type), pointer :: waypoint
   PetscInt :: itime, isub_condition
+
+  waypoint_list => realization%waypoints
 
   ! boundary conditions
   coupler => realization%boundary_conditions%first
