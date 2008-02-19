@@ -119,7 +119,7 @@ subroutine PflowInit(simulation,filename)
       endif
     endif
   else
-    call TimestepperDestroy(flow_stepper)
+    call TimestepperDestroy(simulation%flow_stepper)
   endif
   
   ! initialize transport mode
@@ -127,7 +127,7 @@ subroutine PflowInit(simulation,filename)
     tran_solver => tran_stepper%solver
     tran_stepper%waypoints => waypoint_list
   else
-    call TimestepperDestroy(tran_stepper)
+    call TimestepperDestroy(simulation%tran_stepper)
   endif
 
   call GridCreateDMs(grid,option)

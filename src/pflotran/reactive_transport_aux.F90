@@ -121,9 +121,9 @@ subroutine AuxVarDestroy(aux_var)
 
   type(reactive_transport_auxvar_type) :: aux_var
   
-  deallocate(aux_var%total)
+  if (associated(aux_var%total)) deallocate(aux_var%total)
   nullify(aux_var%total)
-  deallocate(aux_var%dtotal)
+  if (associated(aux_var%dtotal))deallocate(aux_var%dtotal)
   nullify(aux_var%dtotal)
 
 end subroutine AuxVarDestroy
@@ -142,6 +142,8 @@ subroutine ReactiveTransportAuxDestroy(aux)
   type(reactive_transport_aux_type), pointer :: aux
   PetscInt :: iaux
   
+  if (.not.associated(aux)) return
+  
   do iaux = 1, aux%num_aux
     call AuxVarDestroy(aux%aux_vars(iaux))
   enddo  
@@ -149,13 +151,13 @@ subroutine ReactiveTransportAuxDestroy(aux)
     call AuxVarDestroy(aux%aux_vars_bc(iaux))
   enddo  
   
-  deallocate(aux%aux_vars)
+  if (associated(aux%aux_vars)) deallocate(aux%aux_vars)
   nullify(aux%aux_vars)
-  deallocate(aux%aux_vars_bc)
+  if (associated(aux%aux_vars_bc)) deallocate(aux%aux_vars_bc)
   nullify(aux%aux_vars_bc)
-  deallocate(aux%zero_rows_local)
+  if (associated(aux%zero_rows_local)) deallocate(aux%zero_rows_local)
   nullify(aux%zero_rows_local)
-  deallocate(aux%zero_rows_local_ghosted)
+  if (associated(aux%zero_rows_local_ghosted)) deallocate(aux%zero_rows_local_ghosted)
   nullify(aux%zero_rows_local_ghosted)
     
 end subroutine ReactiveTransportAuxDestroy
