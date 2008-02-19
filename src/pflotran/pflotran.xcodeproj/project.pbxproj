@@ -20,6 +20,10 @@
 		2358178E0BBC662B008D3E23 /* pflow_flash_ResJac.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = pflow_flash_ResJac.F90; sourceTree = "<group>"; };
 		2358178F0BBC662B008D3E23 /* translator_mixed_fluid_flash.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = translator_mixed_fluid_flash.F90; sourceTree = "<group>"; };
 		235817900BBC662B008D3E23 /* unstructured_grid.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = unstructured_grid.F90; sourceTree = "<group>"; };
+		236412860D6A842100D37189 /* reaction.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = reaction.F90; sourceTree = SOURCE_ROOT; };
+		236412870D6A842100D37189 /* reactive_transport_aux.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = reactive_transport_aux.F90; sourceTree = SOURCE_ROOT; };
+		236412880D6A842100D37189 /* reactive_transport.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = reactive_transport.F90; sourceTree = SOURCE_ROOT; };
+		236412890D6A842100D37189 /* transport.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = transport.F90; sourceTree = SOURCE_ROOT; };
 		23736B3C0CFF5B82002999ED /* hydrostatic.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = hydrostatic.F90; sourceTree = "<group>"; };
 		23A9520B0CE56A0800468ECC /* waypoint.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = waypoint.F90; sourceTree = "<group>"; };
 		23B3A6AA0D5E1883008903B2 /* richards_lite.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; path = richards_lite.F90; sourceTree = "<group>"; };
@@ -241,6 +245,10 @@
 		33ED60270CC5238800C50BCE /* new_derived_types */ = {
 			isa = PBXGroup;
 			children = (
+				236412860D6A842100D37189 /* reaction.F90 */,
+				236412870D6A842100D37189 /* reactive_transport_aux.F90 */,
+				236412880D6A842100D37189 /* reactive_transport.F90 */,
+				236412890D6A842100D37189 /* transport.F90 */,
 				33ED60280CC5238800C50BCE /* boundary_condition.F90 */,
 				33ED60290CC5238800C50BCE /* condition.F90 */,
 				33ED602A0CC5238800C50BCE /* region.F90 */,
