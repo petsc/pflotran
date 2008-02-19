@@ -1334,7 +1334,6 @@ subroutine readInput(simulation,filename)
            flow_solver%linear_rtol = flow_solver%newton_rtol
            flow_solver%linear_stol = flow_solver%newton_stol
            flow_solver%linear_dtol = flow_solver%newton_dtol
-           flow_solver%linear_atol = flow_solver%newton_atol
 
 ! The line below is a commented-out portion of the format string above.
 ! We have to put it here because of the stupid Sun compiler.
