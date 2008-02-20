@@ -120,13 +120,13 @@ subroutine RichardsLiteSetup(realization)
   use Option_module
   use Coupler_module
   use Connection_module
+  use Grid_module
  
   implicit none
   
   type(realization_type) :: realization
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
-  type(field_type), pointer :: field
   type(coupler_type), pointer :: boundary_condition
 
   PetscInt :: ghosted_id, iconn, sum_connection

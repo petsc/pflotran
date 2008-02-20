@@ -283,9 +283,10 @@ subroutine translator_mphase_massbal(realization)
   
   
     write(*,'(" Total CO2: t= ",1pe12.4," dt= ",1pe12.4," liq:",1pe13.6,&
-   &" gas:",1pe13.6, " tot:", 1p2e13.6, " [kmol]",1p3e13.6)') &
-    option%flow_time/realization%output_option%tconv,option%flow_dt/realization%output_option%tconv,tot(2,1),tot(2,2),tot(2,1)+tot(2,2) !,nzc,nzm,nsm
-! & option%t/realization%output_option%tconv,tot(2,1),tot(2,2),tot(2,0),tot(2,1)+tot(2,2) !,nzc,nzm,nsm
+              &" gas:",1pe13.6, " tot:", 1p2e13.6, " [kmol]",1p3e13.6)') &
+      option%flow_time/realization%output_option%tconv, &
+      option%flow_dt/realization%output_option%tconv, &
+      tot(2,1),tot(2,2),tot(2,1)+tot(2,2) 
     if (icall==0) then
       open(unit=13,file='massbal.dat',status='unknown')
       write(13,'(''# time   dt   totl   totg   tot n2p'')')
@@ -294,7 +295,8 @@ subroutine translator_mphase_massbal(realization)
 !   write(13,'(" Total CO2: t=",1pe13.6," liq:",1pe13.6,&
 ! &  " gas:",1pe13.6," tot:",1p2e13.6," [kmol]")')&
 ! & option%t/realization%output_option%tconv,tot(2,1),tot(2,2),tot(2,0),tot(2,1)+tot(2,2)
-    write(13,'(1p19e12.4)') option%flow_time/realization%output_option%tconv,option%flow_dt/realization%output_option%tconv,&
+    write(13,'(1p19e12.4)') option%flow_time/realization%output_option%tconv, &
+                            option%flow_dt/realization%output_option%tconv,&
     tot(2,1),tot(2,2),tot(2,1)+tot(2,2),real(n2p), nzm, nxm,&
     sat_avg, sat_min, sat_max, sat_var 
   endif    
