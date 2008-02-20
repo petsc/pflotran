@@ -28,10 +28,17 @@ private
     type(pflow_debug_type), pointer :: debug
     type(output_option_type), pointer :: output_option
     type(region_list_type), pointer :: regions
-    type(condition_list_type), pointer :: conditions
-    type(coupler_list_type), pointer :: boundary_conditions
-    type(coupler_list_type), pointer :: initial_conditions
-    type(coupler_list_type), pointer :: source_sinks
+    
+    type(condition_list_type), pointer :: flow_conditions
+    type(coupler_list_type), pointer :: flow_boundary_conditions
+    type(coupler_list_type), pointer :: flow_initial_conditions
+    type(coupler_list_type), pointer :: flow_source_sinks
+    
+    type(condition_list_type), pointer :: transport_conditions
+    type(coupler_list_type), pointer :: transport_boundary_conditions
+    type(coupler_list_type), pointer :: transport_initial_conditions
+    type(coupler_list_type), pointer :: transport_source_sinks
+    
     type(breakthrough_list_type), pointer :: breakthrough
     type(strata_list_type), pointer :: strata
     
@@ -77,14 +84,25 @@ function RealizationCreate()
   nullify(realization%grid)
   allocate(realization%regions)
   call RegionInitList(realization%regions)
-  allocate(realization%conditions)
-  call ConditionInitList(realization%conditions)
-  allocate(realization%boundary_conditions)
-  call CouplerInitList(realization%boundary_conditions)
-  allocate(realization%initial_conditions)
-  call CouplerInitList(realization%initial_conditions)
-  allocate(realization%source_sinks)
-  call CouplerInitList(realization%source_sinks)
+
+  allocate(realization%flow_conditions)
+  call ConditionInitList(realization%flow_conditions)
+  allocate(realization%flow_boundary_conditions)
+  call CouplerInitList(realization%flow_boundary_conditions)
+  allocate(realization%flow_initial_conditions)
+  call CouplerInitList(realization%flow_initial_conditions)
+  allocate(realization%flow_source_sinks)
+  call CouplerInitList(realization%flow_source_sinks)
+
+  allocate(realization%transport_conditions)
+  call ConditionInitList(realization%transport_conditions)
+  allocate(realization%transport_boundary_conditions)
+  call CouplerInitList(realization%transport_boundary_conditions)
+  allocate(realization%transport_initial_conditions)
+  call CouplerInitList(realization%transport_initial_conditions)
+  allocate(realization%transport_source_sinks)
+  call CouplerInitList(realization%transport_source_sinks)
+
   allocate(realization%strata)
   call StrataInitList(realization%strata)
   allocate(realization%breakthrough)
@@ -118,12 +136,12 @@ subroutine RealizationProcessCouplers(realization)
   
   character(len=MAXSTRINGLENGTH) :: string
   type(coupler_type), pointer :: coupler
+  type(coupler_list_type), pointer :: coupler_list 
   type(strata_type), pointer :: strata
   type(breakthrough_type), pointer :: breakthrough
-
-
+  
   ! boundary conditions
-  coupler => realization%boundary_conditions%first
+  coupler => realization%flow_boundary_conditions%first
   do
     if (.not.associated(coupler)) exit
     ! pointer to region
@@ -136,7 +154,11 @@ subroutine RealizationProcessCouplers(realization)
     endif
     ! pointer to flow condition
     coupler%condition => ConditionGetPtrFromList(coupler%condition_name, &
-                                                 realization%conditions)
+                                                 realization%flow_conditions)
+    if (.not.associated(coupler%condition)) then
+      coupler%condition => ConditionGetPtrFromList(coupler%condition_name, &
+                                                   realization%transport_conditions)
+    endif
     if (.not.associated(coupler%condition)) then
       string = 'Condition ' // trim(coupler%condition_name) // &
                ' not found in boundary condition list'
@@ -147,7 +169,7 @@ subroutine RealizationProcessCouplers(realization)
 
 
   ! initial conditions
-  coupler => realization%initial_conditions%first
+  coupler => realization%flow_initial_conditions%first
   do
     if (.not.associated(coupler)) exit
     ! pointer to region
@@ -160,7 +182,11 @@ subroutine RealizationProcessCouplers(realization)
     endif
     ! pointer to flow condition
     coupler%condition => ConditionGetPtrFromList(coupler%condition_name, &
-                                                 realization%conditions)
+                                                 realization%flow_conditions)
+    if (.not.associated(coupler%condition)) then
+      coupler%condition => ConditionGetPtrFromList(coupler%condition_name, &
+                                                   realization%transport_conditions)
+    endif
     if (.not.associated(coupler%condition)) then
       string = 'Condition ' // trim(coupler%condition_name) // &
                ' not found in initial condition list'
@@ -170,7 +196,7 @@ subroutine RealizationProcessCouplers(realization)
   enddo
 
   ! source/sinks
-  coupler => realization%source_sinks%first
+  coupler => realization%flow_source_sinks%first
   do
     if (.not.associated(coupler)) exit
     ! pointer to region
@@ -183,7 +209,11 @@ subroutine RealizationProcessCouplers(realization)
     endif
     ! pointer to flow condition
     coupler%condition => ConditionGetPtrFromList(coupler%condition_name, &
-                                                 realization%conditions)
+                                                 realization%flow_conditions)
+    if (.not.associated(coupler%condition)) then
+      coupler%condition => ConditionGetPtrFromList(coupler%condition_name, &
+                                                   realization%transport_conditions)
+    endif
     if (.not.associated(coupler%condition)) then
       string = 'Condition ' // trim(coupler%condition_name) // &
                ' not found in source/sink list'
@@ -192,6 +222,28 @@ subroutine RealizationProcessCouplers(realization)
     coupler => coupler%next
   enddo
   
+! Initially, all couplers are in flow lists.  Need to separate
+! them into flow and transport lists. 
+  call CouplerListSplitFlowAndTran(realization%flow_boundary_conditions, &
+                                   realization%transport_boundary_conditions)
+  call CouplerListSplitFlowAndTran(realization%flow_initial_conditions, &
+                                   realization%transport_initial_conditions)
+  call CouplerListSplitFlowAndTran(realization%flow_source_sinks, &
+                                   realization%transport_source_sinks)
+
+  if (realization%option%nflowdof == 0) then
+    call CouplerDestroyList(realization%flow_boundary_conditions)
+    call CouplerDestroyList(realization%flow_initial_conditions)
+    call CouplerDestroyList(realization%flow_source_sinks)
+  endif
+  if (realization%option%ntrandof == 0) then
+    call CouplerDestroyList(realization%transport_boundary_conditions)
+    call CouplerDestroyList(realization%transport_initial_conditions)
+    call CouplerDestroyList(realization%transport_source_sinks)
+  endif
+
+!----------------------------  
+! AUX  
     
   ! strata
   ! connect pointers from strata to regions
@@ -256,7 +308,7 @@ subroutine RealizationInitCouplerAuxVars(realization,coupler_list)
   implicit none
   
   type(realization_type) :: realization
-  type(coupler_list_type) :: coupler_list
+  type(coupler_list_type), pointer :: coupler_list
   
   PetscInt :: num_connections
   logical :: force_update_flag
@@ -265,6 +317,8 @@ subroutine RealizationInitCouplerAuxVars(realization,coupler_list)
   type(coupler_type), pointer :: coupler
     
   option => realization%option
+  
+  if (.not.associated(coupler_list)) return
     
   coupler => coupler_list%first
   do
@@ -273,25 +327,35 @@ subroutine RealizationInitCouplerAuxVars(realization,coupler_list)
     if (associated(coupler%connection)) then
       num_connections = coupler%connection%num_connections
 
-      ! allocate arrays that match the number of connections
-      select case(option%iflowmode)
+      if (coupler%condition%iclass == FLOW_CLASS) then
 
-        case(RICHARDS_MODE,RICHARDS_LITE_MODE)
-       
-          allocate(coupler%aux_real_var(option%nflowdof*option%nphase,num_connections))
-          allocate(coupler%aux_int_var(1,num_connections))
-          coupler%aux_real_var = 0.d0
-          coupler%aux_int_var = 0
+        ! allocate arrays that match the number of connections
+        select case(option%iflowmode)
 
-        case(MPH_MODE)
+          case(RICHARDS_MODE,RICHARDS_LITE_MODE)
+         
+            allocate(coupler%aux_real_var(option%nflowdof*option%nphase,num_connections))
+            allocate(coupler%aux_int_var(1,num_connections))
+            coupler%aux_real_var = 0.d0
+            coupler%aux_int_var = 0
 
-          allocate(coupler%aux_real_var(option%nflowdof*option%nphase,num_connections))
-          allocate(coupler%aux_int_var(1,num_connections))
-          coupler%aux_real_var = 0.d0
-          coupler%aux_int_var = 0
-            
-        case default
-      end select 
+          case(MPH_MODE)
+
+            allocate(coupler%aux_real_var(option%nflowdof*option%nphase,num_connections))
+            allocate(coupler%aux_int_var(1,num_connections))
+            coupler%aux_real_var = 0.d0
+            coupler%aux_int_var = 0
+              
+          case default
+        end select
+         
+      else ! TRANSPORT_CLASS
+
+        allocate(coupler%aux_real_var(option%ntrandof,num_connections))
+        coupler%aux_real_var = 0.d0
+
+      endif
+      
     endif
     coupler => coupler%next
   enddo
@@ -318,7 +382,7 @@ subroutine RealizationUpdateCouplerAuxVars(realization,coupler_list, &
   implicit none
   
   type(realization_type) :: realization
-  type(coupler_list_type) :: coupler_list
+  type(coupler_list_type), pointer :: coupler_list
   logical :: force_update_flag
   
   type(coupler_type), pointer :: coupler
@@ -326,6 +390,8 @@ subroutine RealizationUpdateCouplerAuxVars(realization,coupler_list, &
   logical :: update
   
   PetscInt :: idof, num_connections
+  
+  if (.not.associated(coupler_list)) return
  
   coupler => coupler_list%first
   
@@ -337,44 +403,65 @@ subroutine RealizationUpdateCouplerAuxVars(realization,coupler_list, &
       num_connections = coupler%connection%num_connections
 
       condition => coupler%condition
-
-      update = .false.
-      select case(realization%option%iflowmode)
-        case(RICHARDS_MODE,MPH_MODE)
-          if (force_update_flag .or. &
-              condition%pressure%dataset%is_transient .or. &
-              condition%pressure%gradient%is_transient .or. &
-              condition%pressure%datum%is_transient .or. &
-              condition%temperature%dataset%is_transient .or. &
-              condition%temperature%gradient%is_transient .or. &
-              condition%temperature%datum%is_transient .or. &
-              condition%concentration%dataset%is_transient .or. &
-              condition%concentration%gradient%is_transient .or. &
-              condition%concentration%datum%is_transient) then
-            update = .true.
-          endif
-        case(RICHARDS_LITE_MODE)
-          if (force_update_flag .or. &
-              condition%pressure%dataset%is_transient .or. &
-              condition%pressure%gradient%is_transient .or. &
-              condition%pressure%datum%is_transient) then
-            update = .true.
-          endif
-      end select
       
-      if (update) then
-        select case(condition%pressure%itype)
-          case(DIRICHLET_BC,NEUMANN_BC,MASS_RATE,ZERO_GRADIENT_BC)
-            do idof = 1, condition%num_sub_conditions
-              coupler%aux_real_var(idof,1:num_connections) = &
-                condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
-            enddo
-            coupler%aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
-              condition%iphase
-          case(HYDROSTATIC_BC,SEEPAGE_BC)
-  !          call HydrostaticUpdateCoupler(coupler,realization%option,realization%grid)
-            call HydrostaticUpdateCouplerBetter(coupler,realization%option,realization%grid)
+      if (condition%iclass == FLOW_CLASS) then
+
+        update = .false.
+        select case(realization%option%iflowmode)
+          case(RICHARDS_MODE,MPH_MODE)
+            if (force_update_flag .or. &
+                condition%pressure%dataset%is_transient .or. &
+                condition%pressure%gradient%is_transient .or. &
+                condition%pressure%datum%is_transient .or. &
+                condition%temperature%dataset%is_transient .or. &
+                condition%temperature%gradient%is_transient .or. &
+                condition%temperature%datum%is_transient .or. &
+                condition%concentration%dataset%is_transient .or. &
+                condition%concentration%gradient%is_transient .or. &
+                condition%concentration%datum%is_transient) then
+              update = .true.
+            endif
+          case(RICHARDS_LITE_MODE)
+            if (force_update_flag .or. &
+                condition%pressure%dataset%is_transient .or. &
+                condition%pressure%gradient%is_transient .or. &
+                condition%pressure%datum%is_transient) then
+              update = .true.
+            endif
         end select
+        
+        if (update) then
+          select case(condition%pressure%itype)
+            case(DIRICHLET_BC,NEUMANN_BC,MASS_RATE,ZERO_GRADIENT_BC)
+              do idof = 1, condition%num_sub_conditions
+                coupler%aux_real_var(idof,1:num_connections) = &
+                  condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
+              enddo
+              coupler%aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
+                condition%iphase
+            case(HYDROSTATIC_BC,SEEPAGE_BC)
+    !          call HydrostaticUpdateCoupler(coupler,realization%option,realization%grid)
+              call HydrostaticUpdateCouplerBetter(coupler,realization%option,realization%grid)
+          end select
+        endif
+        
+      else ! TRANSPORT_CLASS
+
+        update = .false.
+        if (force_update_flag .or. &
+            condition%concentration%dataset%is_transient .or. &
+            condition%concentration%gradient%is_transient .or. &
+            condition%concentration%datum%is_transient) then
+          update = .true.
+        endif
+        
+        if (update) then ! for now, everything transport is dirichlet-type
+          do idof = 1, condition%num_sub_conditions
+            coupler%aux_real_var(idof,1:num_connections) = &
+              condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
+          enddo
+        endif
+
       endif
       
     endif
@@ -400,8 +487,15 @@ subroutine RealizationUpdate(realization)
   logical :: force_update_flag = .false.
   
   ! must update conditions first
-  call ConditionUpdate(realization%conditions,realization%option,realization%option%time)
-  call RealizationUpdateCouplerAuxVars(realization,realization%boundary_conditions, &
+  call ConditionUpdate(realization%flow_conditions,realization%option, &
+                       realization%option%time)
+  call ConditionUpdate(realization%transport_conditions,realization%option, &
+                       realization%option%time)
+  call RealizationUpdateCouplerAuxVars(realization, &
+                                       realization%flow_boundary_conditions, &
+                                       force_update_flag)
+  call RealizationUpdateCouplerAuxVars(realization, &
+                                       realization%transport_boundary_conditions, &
                                        force_update_flag)
 ! currently don't use aux_vars, just condition for src/sinks
 !  call RealizationUpdateSrcSinks(realization)
@@ -434,44 +528,89 @@ subroutine RealizationAddWaypointsToList(realization)
 
   waypoint_list => realization%waypoints
 
-  ! boundary conditions
-  coupler => realization%boundary_conditions%first
-  do
-    if (.not.associated(coupler)) exit
-    ! the only way a boundary condition is included as a waypoint is if
-    ! its size is 1 and time > 0.
-    do isub_condition = 1, coupler%condition%num_sub_conditions
-      sub_condition => coupler%condition%sub_condition_ptr(isub_condition)%ptr
-      itime = 1
-      if (sub_condition%dataset%max_time_index == 1 .and. &
-          sub_condition%dataset%times(itime) > 1.d-40) then
-        waypoint => WaypointCreate()
-        waypoint%time = coupler%condition%pressure%dataset%times(itime)
-        waypoint%update_bcs = .true.
-        call WaypointInsertInList(waypoint,waypoint_list)
-        exit
-      endif
-    enddo
-    coupler => coupler%next
-  enddo
-
-  ! source/sinks
-  coupler => realization%source_sinks%first
-  do
-    if (.not.associated(coupler)) exit
-    do isub_condition = 1, coupler%condition%num_sub_conditions
-      sub_condition => coupler%condition%sub_condition_ptr(isub_condition)%ptr
-      do itime=1,sub_condition%dataset%max_time_index
-        if (sub_condition%dataset%times(itime) > 1.d-40) then
+  if (realization%option%nflowdof > 0) then
+  ! FLOW ----------------
+    ! boundary conditions
+    coupler => realization%flow_boundary_conditions%first
+    do
+      if (.not.associated(coupler)) exit
+      ! the only way a boundary condition is included as a waypoint is if
+      ! its size is 1 and time > 0.
+      do isub_condition = 1, coupler%condition%num_sub_conditions
+        sub_condition => coupler%condition%sub_condition_ptr(isub_condition)%ptr
+        itime = 1
+        if (sub_condition%dataset%max_time_index == 1 .and. &
+            sub_condition%dataset%times(itime) > 1.d-40) then
           waypoint => WaypointCreate()
           waypoint%time = coupler%condition%pressure%dataset%times(itime)
-          waypoint%update_srcs = .true.
+          waypoint%update_bcs = .true.
           call WaypointInsertInList(waypoint,waypoint_list)
+          exit
         endif
       enddo
+      coupler => coupler%next
     enddo
-    coupler => coupler%next
-  enddo
+
+    ! source/sinks
+    coupler => realization%flow_source_sinks%first
+    do
+      if (.not.associated(coupler)) exit
+      do isub_condition = 1, coupler%condition%num_sub_conditions
+        sub_condition => coupler%condition%sub_condition_ptr(isub_condition)%ptr
+        do itime=1,sub_condition%dataset%max_time_index
+          if (sub_condition%dataset%times(itime) > 1.d-40) then
+            waypoint => WaypointCreate()
+            waypoint%time = coupler%condition%pressure%dataset%times(itime)
+            waypoint%update_srcs = .true.
+            call WaypointInsertInList(waypoint,waypoint_list)
+          endif
+        enddo
+      enddo
+      coupler => coupler%next
+    enddo
+  endif
+    
+  if (realization%option%ntrandof > 0) then
+  ! TRANSPORT ----------------
+    ! boundary conditions
+    coupler => realization%transport_boundary_conditions%first
+    do
+      if (.not.associated(coupler)) exit
+      ! the only way a boundary condition is included as a waypoint is if
+      ! its size is 1 and time > 0.
+      do isub_condition = 1, coupler%condition%num_sub_conditions
+        sub_condition => coupler%condition%sub_condition_ptr(isub_condition)%ptr
+        itime = 1
+        if (sub_condition%dataset%max_time_index == 1 .and. &
+            sub_condition%dataset%times(itime) > 1.d-40) then
+          waypoint => WaypointCreate()
+          waypoint%time = coupler%condition%pressure%dataset%times(itime)
+          waypoint%update_bcs = .true.
+          call WaypointInsertInList(waypoint,waypoint_list)
+          exit
+        endif
+      enddo
+      coupler => coupler%next
+    enddo
+
+    ! source/sinks
+    coupler => realization%transport_source_sinks%first
+    do
+      if (.not.associated(coupler)) exit
+      do isub_condition = 1, coupler%condition%num_sub_conditions
+        sub_condition => coupler%condition%sub_condition_ptr(isub_condition)%ptr
+        do itime=1,sub_condition%dataset%max_time_index
+          if (sub_condition%dataset%times(itime) > 1.d-40) then
+            waypoint => WaypointCreate()
+            waypoint%time = coupler%condition%pressure%dataset%times(itime)
+            waypoint%update_srcs = .true.
+            call WaypointInsertInList(waypoint,waypoint_list)
+          endif
+        enddo
+      enddo
+      coupler => coupler%next
+    enddo
+  endif
   
 end subroutine RealizationAddWaypointsToList
 
@@ -494,10 +633,17 @@ subroutine RealizationDestroy(realization)
   call FieldDestroy(realization%field)
   call OptionDestroy(realization%option)
   call RegionDestroyList(realization%regions)
-  call ConditionDestroyList(realization%conditions)
-  call CouplerDestroyList(realization%boundary_conditions)
-  call CouplerDestroyList(realization%initial_conditions)
-  call CouplerDestroyList(realization%source_sinks)
+  
+  call ConditionDestroyList(realization%flow_conditions)
+  call CouplerDestroyList(realization%flow_boundary_conditions)
+  call CouplerDestroyList(realization%flow_initial_conditions)
+  call CouplerDestroyList(realization%flow_source_sinks)
+  
+  call ConditionDestroyList(realization%transport_conditions)
+  call CouplerDestroyList(realization%transport_boundary_conditions)
+  call CouplerDestroyList(realization%transport_initial_conditions)
+  call CouplerDestroyList(realization%transport_source_sinks)
+  
   call StrataDestroyList(realization%strata)
   call BreakthroughDestroyList(realization%breakthrough)
   

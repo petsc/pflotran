@@ -881,7 +881,7 @@ end subroutine THCTimeCut
 ! Flux terms for boundary nodes.
 !---------------------------------------------------------------------------
 
-  boundary_condition => realization%boundary_conditions%first
+  boundary_condition => realization%flow_boundary_conditions%first
 
   do
     if (.not. associated(boundary_condition)) exit
@@ -1129,7 +1129,7 @@ end subroutine THCTimeCut
 ! add source/sink terms
 !---------------------------------------------------------------------------
 
-  source_sink => realization%source_sinks%first
+  source_sink => realization%flow_source_sinks%first
   do
     if(.not. associated(source_sink)) exit
 

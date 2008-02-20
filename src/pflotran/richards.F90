@@ -159,7 +159,7 @@ subroutine RichardsSetup(realization)
   
   ! count the number of boundary connections and allocate
   ! aux_var data structures for them
-  boundary_condition => realization%boundary_conditions%first
+  boundary_condition => realization%flow_boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -328,7 +328,7 @@ subroutine RichardsUpdateAuxVars(realization)
     iphase_loc_p(ghosted_id) = iphase
   enddo
 
-  boundary_condition => realization%boundary_conditions%first
+  boundary_condition => realization%flow_boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -1597,7 +1597,7 @@ subroutine RichardsAnalyticalResidual(snes,xx,r,realization,ierr)
 #endif
 #if 1
   ! Source/sink terms -------------------------------------
-  source_sink => realization%source_sinks%first 
+  source_sink => realization%flow_source_sinks%first 
   do 
     if (.not.associated(source_sink)) exit
     
@@ -1730,7 +1730,7 @@ subroutine RichardsAnalyticalResidual(snes,xx,r,realization,ierr)
 #endif
 #if 1
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => realization%boundary_conditions%first
+  boundary_condition => realization%flow_boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -1973,7 +1973,7 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
   endif
 #if 1
   ! Source/sink terms -------------------------------------
-  source_sink => realization%source_sinks%first 
+  source_sink => realization%flow_source_sinks%first 
   do 
     if (.not.associated(source_sink)) exit
     
@@ -2131,7 +2131,7 @@ subroutine RichardsAnalyticalJacobian(snes,xx,A,B,flag,realization,ierr)
   endif
 #if 1
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => realization%boundary_conditions%first
+  boundary_condition => realization%flow_boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit

@@ -25,6 +25,7 @@ module Condition_module
   type, public :: condition_type
     PetscInt :: id                                 ! id from which condition can be referenced
     character(len=MAXWORDLENGTH) :: class         ! character string describing class of condition
+    PetscInt :: iclass                            ! integer id for class
     character(len=MAXWORDLENGTH) :: name          ! name of condition (e.g. initial, recharge)
     PetscInt :: num_sub_conditions
     PetscInt :: iphase
@@ -104,6 +105,7 @@ function ConditionCreate(option)
   condition%iphase = 0
   condition%num_sub_conditions = 0
   condition%class = ""
+  condition%iclass = NULL_CLASS
   condition%name = ""
 
   condition_count = condition_count + 1
@@ -410,6 +412,14 @@ subroutine ConditionRead(condition,option,fid)
         length = len_trim(word)
         call fiCharsToLower(word,length)
         condition%class = word
+        select case(word)
+          case('flow')
+            condition%iclass = FLOW_CLASS
+          case('tran','transport')
+            condition%iclass = TRANSPORT_CLASS
+          case default
+            call printErrMsg(option,'class: '//word//' not recognized in condition')
+        end select
       case('CYCLIC')
         default_dataset%is_cyclic = .true.
       case('INTERPOLATION')
@@ -513,6 +523,7 @@ subroutine ConditionRead(condition,option,fid)
         call ConditionReadValues(option,word,string,enthalpy%dataset, &
                                  enthalpy%units)
       case('PRESSURE','PRES','PRESS')
+        if (condition%iclass == NULL_CLASS) condition%iclass = FLOW_CLASS
         call ConditionReadValues(option,word,string,pressure%dataset, &
                                  pressure%units)
       case('FLUX','VELOCITY','VEL')
@@ -569,62 +580,82 @@ subroutine ConditionRead(condition,option,fid)
                           default_ctype, default_itype, &
                           default_dataset, &
                           default_datum, default_gradient)
-  
-  select case(option%iflowmode)
-    case(RICHARDS_MODE,MPH_MODE)
-      if (.not.associated(pressure)) then
-        call printErrMsg(option,'pressure condition null in condition: ' // &
-                         condition%name)
-      endif                         
-      condition%pressure => pressure
-      if (.not.associated(temperature)) then
-        call printErrMsg(option,'temperature condition null in condition: ' // &
-                         condition%name)
-      endif                         
-      condition%temperature => temperature
-      if (.not.associated(concentration)) then
-        call printErrMsg(option,'concentration condition null in condition: ' // &
-                         condition%name)
-      endif                         
-      condition%concentration => concentration
-      if (.not.associated(enthalpy)) then
-        call printWrnMsg(option,'enthalpy condition null in condition: ' // &
-                         condition%name)
-      endif                         
-      condition%enthalpy => enthalpy
-      condition%num_sub_conditions = 3
-      if (associated(enthalpy)) condition%num_sub_conditions = 4
-      allocate(condition%sub_condition_ptr(condition%num_sub_conditions))
-      ! must be in this order, which matches the dofs i problem
-      condition%sub_condition_ptr(ONE_INTEGER)%ptr => pressure
-      condition%sub_condition_ptr(TWO_INTEGER)%ptr => temperature
-      condition%sub_condition_ptr(THREE_INTEGER)%ptr => concentration
-      if (associated(enthalpy)) condition%sub_condition_ptr(FOUR_INTEGER)%ptr => enthalpy
-      
-      allocate(condition%itype(THREE_INTEGER))
-      condition%itype(ONE_INTEGER) = pressure%itype
-      condition%itype(TWO_INTEGER) = temperature%itype
-      condition%itype(THREE_INTEGER) = concentration%itype
-      
-    case(RICHARDS_LITE_MODE)
-      if (.not.associated(pressure)) then
-        call printErrMsg(option,'pressure condition null in condition: ' // &
-                         condition%name)
-      endif                         
-      condition%pressure => pressure
-      condition%num_sub_conditions = 1
-      allocate(condition%sub_condition_ptr(condition%num_sub_conditions))
-      condition%sub_condition_ptr(ONE_INTEGER)%ptr => pressure
+    
+  if (condition%iclass == FLOW_CLASS) then
+    select case(option%iflowmode)
+      case(RICHARDS_MODE,MPH_MODE)
+        if (.not.associated(pressure)) then
+          call printErrMsg(option,'pressure condition null in condition: ' // &
+                           condition%name)
+        endif                         
+        condition%pressure => pressure
+        if (.not.associated(temperature)) then
+          call printErrMsg(option,'temperature condition null in condition: ' // &
+                           condition%name)
+        endif                         
+        condition%temperature => temperature
+        if (.not.associated(concentration)) then
+          call printErrMsg(option,'concentration condition null in condition: ' // &
+                           condition%name)
+        endif                         
+        condition%concentration => concentration
+        if (.not.associated(enthalpy)) then
+          call printWrnMsg(option,'enthalpy condition null in condition: ' // &
+                           condition%name)
+        endif                         
+        condition%enthalpy => enthalpy
+        condition%num_sub_conditions = 3
+        if (associated(enthalpy)) condition%num_sub_conditions = 4
+        allocate(condition%sub_condition_ptr(condition%num_sub_conditions))
+        ! must be in this order, which matches the dofs i problem
+        condition%sub_condition_ptr(ONE_INTEGER)%ptr => pressure
+        condition%sub_condition_ptr(TWO_INTEGER)%ptr => temperature
+        condition%sub_condition_ptr(THREE_INTEGER)%ptr => concentration
+        if (associated(enthalpy)) condition%sub_condition_ptr(FOUR_INTEGER)%ptr => enthalpy
+        
+        allocate(condition%itype(THREE_INTEGER))
+        condition%itype(ONE_INTEGER) = pressure%itype
+        condition%itype(TWO_INTEGER) = temperature%itype
+        condition%itype(THREE_INTEGER) = concentration%itype
+        
+      case(RICHARDS_LITE_MODE)
+        if (.not.associated(pressure)) then
+          call printErrMsg(option,'pressure condition null in condition: ' // &
+                           condition%name)
+        endif                         
+        condition%pressure => pressure
+        condition%num_sub_conditions = 1
+        allocate(condition%sub_condition_ptr(condition%num_sub_conditions))
+        condition%sub_condition_ptr(ONE_INTEGER)%ptr => pressure
 
-      allocate(condition%itype(ONE_INTEGER))
-      condition%itype(ONE_INTEGER) = pressure%itype
-      
-      ! these are not used with richards_lite
-      if (associated(temperature)) call SubConditionDestroy(temperature)
-      if (associated(concentration)) call SubConditionDestroy(concentration)
-      if (associated(enthalpy)) call SubConditionDestroy(enthalpy)
-      
-  end select
+        allocate(condition%itype(ONE_INTEGER))
+        condition%itype(ONE_INTEGER) = pressure%itype
+        
+        ! these are not used with richards_lite
+        if (associated(temperature)) call SubConditionDestroy(temperature)
+        if (associated(concentration)) call SubConditionDestroy(concentration)
+        if (associated(enthalpy)) call SubConditionDestroy(enthalpy)
+        
+    end select
+  else
+    if (.not.associated(concentration)) then
+      call printErrMsg(option,'concentration condition null in condition: ' // &
+                       condition%name)
+    endif                         
+    condition%concentration => concentration
+    condition%num_sub_conditions = 1
+    allocate(condition%sub_condition_ptr(condition%num_sub_conditions))
+    condition%sub_condition_ptr(ONE_INTEGER)%ptr => concentration
+
+    allocate(condition%itype(ONE_INTEGER))
+    condition%itype(ONE_INTEGER) = concentration%itype
+    
+    ! these are not used with richards_lite
+    if (associated(pressure)) call SubConditionDestroy(pressure)
+    if (associated(temperature)) call SubConditionDestroy(temperature)
+    if (associated(pressure)) call SubConditionDestroy(pressure)
+    if (associated(enthalpy)) call SubConditionDestroy(enthalpy)
+  endif
   
   call ConditionDatasetDestroy(default_dataset)
   call ConditionDatasetDestroy(default_datum)

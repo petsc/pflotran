@@ -519,7 +519,7 @@ subroutine pflow_mphase_setupini(realization)
   call VecGetArrayF90(field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
   call VecGetArrayF90(field%iphas_loc, iphase_loc_p,ierr)
   
-  initial_condition => realization%initial_conditions%first
+  initial_condition => realization%flow_initial_conditions%first
   
   do
   
@@ -1507,7 +1507,7 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
 
 !************************************************************************
 ! add source/sink terms
-  source_sink => realization%source_sinks%first 
+  source_sink => realization%flow_source_sinks%first 
   do 
     if (.not.associated(source_sink)) exit
     
@@ -1682,7 +1682,7 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
 !  print *,'2ph bc-sgbc', option%myrank, option%sgbc    
 
  
-  boundary_condition => realization%boundary_conditions%first
+  boundary_condition => realization%flow_boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -2029,7 +2029,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
 #endif
 ! Source / Sink term
 ! add source/sink terms
-  source_sink => realization%source_sinks%first 
+  source_sink => realization%flow_source_sinks%first 
   do 
     if (.not.associated(source_sink)) exit
 
@@ -2109,7 +2109,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
   ! print *,' Mph Jaco Finished source terms'
   
 ! Contribution from BC
-  boundary_condition => realization%boundary_conditions%first
+  boundary_condition => realization%flow_boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -2776,7 +2776,7 @@ subroutine pflow_update_mphase(realization)
   !geh added for transient boundary conditions  
   if (associated(field%imat) .and. option%iread_geom < 0) then
 
-    boundary_condition => realization%boundary_conditions%first
+    boundary_condition => realization%flow_boundary_conditions%first
     sum_connection = 0
     do 
       if (.not.associated(boundary_condition)) exit
@@ -2975,7 +2975,7 @@ subroutine pflow_mphase_initadj(realization)
 !  yybc =field%flow_xxbc
 !  vel_bc = field%velocitybc
 
-  boundary_condition => realization%boundary_conditions%first
+  boundary_condition => realization%flow_boundary_conditions%first
   sum_connection = 0  
   do 
     if (.not.associated(boundary_condition)) exit

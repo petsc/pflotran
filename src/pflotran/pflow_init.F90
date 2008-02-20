@@ -323,13 +323,29 @@ subroutine PflowInit(simulation,filename)
   call RealizationProcessCouplers(realization)
 
   ! connectivity between initial conditions, boundary conditions, srcs/sinks, etc and grid
-  call GridComputeCouplerConnections(grid,option,realization%initial_conditions%first)
-  call GridComputeCouplerConnections(grid,option,realization%boundary_conditions%first)
-  call GridComputeCouplerConnections(grid,option,realization%source_sinks%first)
+  call CouplerListComputeConnections(grid,option, &
+                                     realization%flow_initial_conditions)
+  call CouplerListComputeConnections(grid,option, &
+                                     realization%flow_boundary_conditions)
+  call CouplerListComputeConnections(grid,option, &
+                                     realization%flow_source_sinks)
                                 
+  call CouplerListComputeConnections(grid,option, &
+                                     realization%transport_initial_conditions)
+  call CouplerListComputeConnections(grid,option, &
+                                     realization%transport_boundary_conditions)
+  call CouplerListComputeConnections(grid,option, &
+                                     realization%transport_source_sinks)
+
   call assignMaterialPropToRegions(realization)
-  call RealizationInitCouplerAuxVars(realization,realization%initial_conditions)
-  call RealizationInitCouplerAuxVars(realization,realization%boundary_conditions)
+  call RealizationInitCouplerAuxVars(realization, &
+                                     realization%flow_initial_conditions)
+  call RealizationInitCouplerAuxVars(realization, &
+                                     realization%flow_boundary_conditions)
+  call RealizationInitCouplerAuxVars(realization, &
+                                     realization%transport_initial_conditions)
+  call RealizationInitCouplerAuxVars(realization, &
+                                     realization%transport_boundary_conditions)
   call assignInitialConditions(realization)
 
   ! should we still support this
@@ -343,7 +359,11 @@ subroutine PflowInit(simulation,filename)
   allocate(realization%field%internal_velocities(option%nphase, &
            ConnectionGetNumberInList(realization%grid%internal_connection_list)))
   realization%field%internal_velocities = 0.d0
-  temp_int = CouplerGetNumConnectionsInList(realization%boundary_conditions)
+  if (option%nflowdof > 0) then
+    temp_int = CouplerGetNumConnectionsInList(realization%flow_boundary_conditions)
+  else
+    temp_int = CouplerGetNumConnectionsInList(realization%transport_boundary_conditions)
+  endif
   allocate(realization%field%boundary_velocities(option%nphase,temp_int)) 
   realization%field%boundary_velocities = 0.d0          
 
@@ -370,9 +390,12 @@ subroutine PflowInit(simulation,filename)
   call printMsg(option,"  Finished setting up ")
 
   if (debug%print_couplers) then
-    call verifyCouplers(realization,realization%initial_conditions)
-    call verifyCouplers(realization,realization%boundary_conditions)
-    call verifyCouplers(realization,realization%source_sinks)
+    call verifyCouplers(realization,realization%flow_initial_conditions)
+    call verifyCouplers(realization,realization%flow_boundary_conditions)
+    call verifyCouplers(realization,realization%flow_source_sinks)
+    call verifyCouplers(realization,realization%transport_initial_conditions)
+    call verifyCouplers(realization,realization%transport_boundary_conditions)
+    call verifyCouplers(realization,realization%transport_source_sinks)
   endif
   
   ! add waypoints associated with boundary conditions, source/sinks etc. to list
@@ -837,19 +860,23 @@ subroutine readInput(simulation,filename)
         call fiErrorMsg(option%myrank,'cond','name',ierr) 
         call printMsg(option,condition%name)
         call ConditionRead(condition,option,IUNIT1)
-        call ConditionAddToList(condition,realization%conditions)
-      
+        if (condition%iclass == FLOW_CLASS) then
+          call ConditionAddToList(condition,realization%flow_conditions)
+        else
+          call ConditionAddToList(condition,realization%transport_conditions)
+        endif
+        
 !....................
       case ('BOUNDARY_CONDITION')
         coupler => CouplerCreate(BOUNDARY_COUPLER_TYPE)
         call CouplerRead(coupler,IUNIT1,option)
-        call CouplerAddToList(coupler,realization%boundary_conditions)
+        call CouplerAddToList(coupler,realization%flow_boundary_conditions)
       
 !....................
       case ('INITIAL_CONDITION')
         coupler => CouplerCreate(INITIAL_COUPLER_TYPE)
         call CouplerRead(coupler,IUNIT1,option)
-        call CouplerAddToList(coupler,realization%initial_conditions)
+        call CouplerAddToList(coupler,realization%flow_initial_conditions)
       
 !....................
       case ('STRATIGRAPHY','STRATA')
@@ -861,7 +888,7 @@ subroutine readInput(simulation,filename)
       case ('SOURCE_SINK')
         coupler => CouplerCreate(SRC_SINK_COUPLER_TYPE)
         call CouplerRead(coupler,IUNIT1,option)
-        call CouplerAddToList(coupler,realization%source_sinks)
+        call CouplerAddToList(coupler,realization%flow_source_sinks)
       
 !.....................
       case ('COMP') 
@@ -2128,72 +2155,132 @@ subroutine assignInitialConditions(realization)
   field => realization%field
   grid => realization%grid
     
-  select case(option%iflowmode)
-    case(RICHARDS_LITE_MODE)
-    case(RICHARDS_MODE)
-    case(MPH_MODE)
-      call pflow_mphase_setupini(realization)
-  end select 
+  if (option%nflowdof > 0) then
+  
+    select case(option%iflowmode)
+      case(RICHARDS_LITE_MODE)
+      case(RICHARDS_MODE)
+      case(MPH_MODE)
+        call pflow_mphase_setupini(realization)
+    end select 
 
-  ! assign initial conditions values to domain
-  call VecGetArrayF90(field%flow_xx,xx_p, ierr); CHKERRQ(ierr)
-  call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr)
-  
-  xx_p = -1.d20
-  
-  initial_condition => realization%initial_conditions%first
-  do
-  
-    if (.not.associated(initial_condition)) exit
+    ! assign initial conditions values to domain
+    call VecGetArrayF90(field%flow_xx,xx_p, ierr); CHKERRQ(ierr)
+    call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr)
+    
+    xx_p = -1.d20
+    
+    initial_condition => realization%flow_initial_conditions%first
+    do
+    
+      if (.not.associated(initial_condition)) exit
 
-    if (.not.associated(initial_condition%connection)) then
-      do icell=1,initial_condition%region%num_cells
-        local_id = initial_condition%region%cell_ids(icell)
-        ghosted_id = realization%grid%nL2G(local_id)
-        iend = local_id*option%nflowdof
-        ibegin = iend-option%nflowdof+1
-        if (associated(field%imat)) then
-          if (field%imat(ghosted_id) <= 0) then
-            xx_p(ibegin:iend) = 0.d0
-            iphase_loc_p(ghosted_id) = 0
-            cycle
+      if (.not.associated(initial_condition%connection)) then
+        do icell=1,initial_condition%region%num_cells
+          local_id = initial_condition%region%cell_ids(icell)
+          ghosted_id = realization%grid%nL2G(local_id)
+          iend = local_id*option%nflowdof
+          ibegin = iend-option%nflowdof+1
+          if (associated(field%imat)) then
+            if (field%imat(ghosted_id) <= 0) then
+              xx_p(ibegin:iend) = 0.d0
+              iphase_loc_p(ghosted_id) = 0
+              cycle
+            endif
           endif
-        endif
-        do idof = 1, option%nflowdof
-          xx_p(ibegin+idof) = &
-            initial_condition%condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
+          do idof = 1, option%nflowdof
+            xx_p(ibegin+idof) = &
+              initial_condition%condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
+          enddo
+          iphase_loc_p(ghosted_id)=initial_condition%condition%iphase
         enddo
-        iphase_loc_p(ghosted_id)=initial_condition%condition%iphase
-      enddo
-    else
-      do iconn=1,initial_condition%connection%num_connections
-        local_id = initial_condition%connection%id_dn(iconn)
-        ghosted_id = realization%grid%nL2G(local_id)
-        iend = local_id*option%nflowdof
-        ibegin = iend-option%nflowdof+1
-        if (associated(field%imat)) then
-          if (field%imat(ghosted_id) <= 0) then
-            xx_p(ibegin:iend) = 0.d0
-            iphase_loc_p(ghosted_id) = 0
-            cycle
+      else
+        do iconn=1,initial_condition%connection%num_connections
+          local_id = initial_condition%connection%id_dn(iconn)
+          ghosted_id = realization%grid%nL2G(local_id)
+          iend = local_id*option%nflowdof
+          ibegin = iend-option%nflowdof+1
+          if (associated(field%imat)) then
+            if (field%imat(ghosted_id) <= 0) then
+              xx_p(ibegin:iend) = 0.d0
+              iphase_loc_p(ghosted_id) = 0
+              cycle
+            endif
           endif
-        endif
-        xx_p(ibegin:iend) = &
-          initial_condition%aux_real_var(1:option%nflowdof,iconn)
-        iphase_loc_p(ghosted_id)=initial_condition%aux_int_var(1,iconn)
-      enddo
-    endif
-    initial_condition => initial_condition%next
-  enddo
+          xx_p(ibegin:iend) = &
+            initial_condition%aux_real_var(1:option%nflowdof,iconn)
+          iphase_loc_p(ghosted_id)=initial_condition%aux_int_var(1,iconn)
+        enddo
+      endif
+      initial_condition => initial_condition%next
+    enddo
+    
+    call VecRestoreArrayF90(field%flow_xx,xx_p, ierr)
+    call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p,ierr)
+    
+    ! update dependent vectors
+    call GridGlobalToLocal(grid,field%flow_xx,field%flow_xx_loc,NFLOWDOF)  
+    call VecCopy(field%flow_xx, field%flow_yy, ierr)
+    call GridLocalToLocal(grid,field%iphas_loc,field%iphas_loc,ONEDOF)  
+    call GridLocalToLocal(grid,field%iphas_loc,field%iphas_old_loc,ONEDOF)
+    
+  endif
   
-  call VecRestoreArrayF90(field%flow_xx,xx_p, ierr)
-  call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p,ierr)
-  
-  ! update dependent vectors
-  call GridGlobalToLocal(grid,field%flow_xx,field%flow_xx_loc,NFLOWDOF)  
-  call VecCopy(field%flow_xx, field%flow_yy, ierr)
-  call GridLocalToLocal(grid,field%iphas_loc,field%iphas_loc,ONEDOF)  
-  call GridLocalToLocal(grid,field%iphas_loc,field%iphas_old_loc,ONEDOF)
+  if (option%ntrandof > 0) then
+
+    ! assign initial conditions values to domain
+    call VecGetArrayF90(field%tran_xx,xx_p, ierr); CHKERRQ(ierr)
+    
+    xx_p = -1.d20
+    
+    initial_condition => realization%transport_initial_conditions%first
+    do
+    
+      if (.not.associated(initial_condition)) exit
+
+      if (.not.associated(initial_condition%connection)) then
+        do icell=1,initial_condition%region%num_cells
+          local_id = initial_condition%region%cell_ids(icell)
+          ghosted_id = realization%grid%nL2G(local_id)
+          iend = local_id*option%ntrandof
+          ibegin = iend-option%ntrandof+1
+          if (associated(field%imat)) then
+            if (field%imat(ghosted_id) <= 0) then
+              xx_p(ibegin:iend) = 0.d0
+              cycle
+            endif
+          endif
+          do idof = 1, option%ntrandof
+            xx_p(ibegin+idof) = &
+              initial_condition%condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
+          enddo
+        enddo
+      else
+        do iconn=1,initial_condition%connection%num_connections
+          local_id = initial_condition%connection%id_dn(iconn)
+          ghosted_id = realization%grid%nL2G(local_id)
+          iend = local_id*option%ntrandof
+          ibegin = iend-option%ntrandof+1
+          if (associated(field%imat)) then
+            if (field%imat(ghosted_id) <= 0) then
+              xx_p(ibegin:iend) = 0.d0
+              cycle
+            endif
+          endif
+          xx_p(ibegin:iend) = &
+            initial_condition%aux_real_var(1:option%ntrandof,iconn)
+        enddo
+      endif
+      initial_condition => initial_condition%next
+    enddo
+    
+    call VecRestoreArrayF90(field%tran_xx,xx_p, ierr)
+    
+    ! update dependent vectors
+    call GridGlobalToLocal(grid,field%tran_xx,field%tran_xx_loc,NTRANDOF)  
+    call VecCopy(field%tran_xx, field%tran_yy, ierr)
+
+  endif
 
 end subroutine assignInitialConditions
 
@@ -2209,13 +2296,14 @@ subroutine verifyCouplers(realization,coupler_list)
   use Realization_module
   use Option_module 
   use Coupler_module
+  use Condition_module
   use Grid_module
   use Output_module
 
   implicit none
 
   type(realization_type) :: realization
-  type(coupler_list_type) :: coupler_list
+  type(coupler_list_type), pointer :: coupler_list
 
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
@@ -2228,6 +2316,8 @@ subroutine verifyCouplers(realization,coupler_list)
   PetscErrorCode :: ierr
 
   grid => realization%grid
+
+  if (.not.associated(coupler_list)) return
 
   call GridCreateVector(grid,ONEDOF,global_vec,GLOBAL)
 
@@ -2243,7 +2333,14 @@ subroutine verifyCouplers(realization,coupler_list)
       vec_ptr(local_id) = coupler%id
     enddo
     call VecRestoreArrayF90(global_vec,vec_ptr,ierr) 
-    dataset_name = trim(coupler%condition%name) // '_' // &
+    select case(coupler%condition%iclass)
+      case(FLOW_CLASS)
+        dataset_name = 'flow'
+      case(TRANSPORT_CLASS)
+        dataset_name = 'tran'
+    end select
+    dataset_name = trim(dataset_name) // &
+                   trim(coupler%condition%name) // '_' // &
                    trim(coupler%region%name)
     filename = trim(dataset_name) // '.tec'
     call OutputVectorTecplot(filename,dataset_name,realization,global_vec)

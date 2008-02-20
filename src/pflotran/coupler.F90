@@ -41,7 +41,8 @@ module Coupler_module
   PetscInt, save :: num_couplers = 0
   
   public :: CouplerCreate, CouplerDestroy, CouplerInitList, CouplerAddToList, &
-            CouplerRead, CouplerDestroyList, CouplerGetNumConnectionsInList
+            CouplerRead, CouplerDestroyList, CouplerGetNumConnectionsInList, &
+            CouplerListSplitFlowAndTran, CouplerListComputeConnections
 
   
   interface CouplerCreate
@@ -245,6 +246,154 @@ subroutine CouplerAddToList(new_coupler,list)
   
 end subroutine CouplerAddToList
 
+
+! ************************************************************************** !
+!
+! CouplerListSplitFlowAndTran: Splits a list of mixed flow and transport
+!                              couplers into separate lists
+! author: Glenn Hammond
+! date: 02/19/08
+!
+! ************************************************************************** !
+subroutine CouplerListSplitFlowAndTran(flow_list,transport_list)
+
+  implicit none
+  
+  type(coupler_list_type), pointer :: flow_list 
+  type(coupler_list_type), pointer :: transport_list 
+  
+  type(coupler_type), pointer :: coupler, next_coupler
+  
+! Initially, all couplers are in flow lists.  Need to separate
+! them into flow and transport lists. 
+
+  ! boundary conditions
+  ! get pointer to first in list
+  coupler => flow_list%first
+  ! disassociate list object with list
+  nullify(flow_list%first)
+  ! destroy old list object and reallocate list object
+  call CouplerDestroyList(flow_list)
+  allocate(flow_list)
+  call CouplerInitList(flow_list)
+  ! divvy between lists
+  do
+    if (.not.associated(coupler)) exit
+    next_coupler => coupler%next
+    nullify(coupler%next)
+    if (coupler%condition%iclass == FLOW_CLASS) then
+      call CouplerAddToList(coupler,flow_list)
+    else
+      call CouplerAddToList(coupler,transport_list)
+    endif
+    coupler => next_coupler
+  enddo 
+
+end subroutine CouplerListSplitFlowAndTran
+! ************************************************************************** !
+!
+! CouplerListComputeConnections: computes connectivity for a list of couplers
+! author: Glenn Hammond
+! date: 02/20/08
+!
+! ************************************************************************** !
+subroutine CouplerListComputeConnections(grid,option,coupler_list)
+
+  use Option_module
+  use Grid_module
+  
+  implicit none
+ 
+  type(grid_type) :: grid
+  type(option_type) :: option
+  type(coupler_list_type), pointer :: coupler_list
+  
+  type(coupler_type), pointer :: coupler
+  
+  if (.not.associated(coupler_list)) return
+  
+  coupler => coupler_list%first
+  do
+    if (.not.associated(coupler)) exit  
+    call CouplerComputeConnections(grid,option,coupler)
+    coupler => coupler%next
+  enddo
+
+end subroutine CouplerListComputeConnections
+
+! ************************************************************************** !
+!
+! CouplerComputeConnections: computes connectivity coupler to a grid
+! author: Glenn Hammond
+! date: 02/20/08
+!
+! ************************************************************************** !
+subroutine CouplerComputeConnections(grid,option,coupler)
+
+  use Connection_module
+  use Option_module
+  use Region_module
+  use Grid_module
+  
+  implicit none
+ 
+  type(grid_type) :: grid
+  type(option_type) :: option
+  type(coupler_type), pointer :: coupler_list
+  
+  PetscInt :: iconn
+  PetscInt :: cell_id_local, cell_id_ghosted
+  PetscInt :: connection_itype
+  PetscInt :: iface
+  type(connection_type), pointer :: connection
+  type(region_type), pointer :: region
+  type(coupler_type), pointer :: coupler
+  PetscErrorCode :: ierr
+
+  if (.not.associated(coupler)) return
+  
+  select case(coupler%itype)
+    case(INITIAL_COUPLER_TYPE)
+      if (coupler%condition%iclass == FLOW_CLASS) then
+        if (coupler%condition%pressure%itype /= HYDROSTATIC_BC .and. &
+            coupler%condition%pressure%itype /= SEEPAGE_BC) then
+          nullify(coupler%connection)
+          return
+        endif
+      else
+        nullify(coupler%connection)
+        return
+      endif
+      connection_itype = INITIAL_CONNECTION_TYPE
+    case(SRC_SINK_COUPLER_TYPE)
+      connection_itype = SRC_SINK_CONNECTION_TYPE
+    case(BOUNDARY_COUPLER_TYPE)
+      if (option%myrank == 0) &
+        print *, 'Need a check to ensure that boundary conditions connect to exterior boundary'
+      connection_itype = BOUNDARY_CONNECTION_TYPE
+  end select
+  
+  region => coupler%region
+
+  connection => ConnectionCreate(region%num_cells,option%nphase, &
+                                 connection_itype)
+
+  iface = coupler%iface
+  do iconn = 1,region%num_cells
+    
+    cell_id_local = region%cell_ids(iconn)
+    if (associated(region%faces)) iface = region%faces(iconn)
+    
+    connection%id_dn(iconn) = cell_id_local
+
+    call GridPopulateConnection(grid,connection,iface,iconn,cell_id_local)
+  enddo
+
+  coupler%connection => connection
+  nullify(connection)
+ 
+end subroutine CouplerComputeConnections
+
 ! ************************************************************************** !
 !
 ! CouplerGetNumConnectionsInList: Returns the number of connections associated
@@ -289,6 +438,7 @@ subroutine CouplerDestroyList(coupler_list)
   
   type(coupler_type), pointer :: coupler, prev_coupler
   
+  if (.not.associated(coupler_list)) return
   
   coupler => coupler_list%first
   do 

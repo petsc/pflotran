@@ -633,9 +633,6 @@ subroutine StructGridPopulateConnection(structured_grid,connection,iface, &
                                         iconn,cell_id_ghosted)
 
   use Connection_module
-  use Option_module
-  use Coupler_module
-  use Region_module
   
   implicit none
  

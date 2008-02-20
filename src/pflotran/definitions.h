@@ -31,6 +31,11 @@ PetscInt, parameter :: X_DIRECTION = 1
 PetscInt, parameter :: Y_DIRECTION = 2
 PetscInt, parameter :: Z_DIRECTION = 3
 
+! Classes
+PetscInt, parameter :: NULL_CLASS = 0
+PetscInt, parameter :: FLOW_CLASS = 1
+PetscInt, parameter :: TRANSPORT_CLASS = 2
+
 ! Macros that are used as 'dm_index' values.  --RTM
 PetscInt, parameter :: ONEDOF = 1
 PetscInt, parameter :: NPHASEDOF = 2

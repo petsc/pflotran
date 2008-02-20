@@ -95,7 +95,7 @@ subroutine RTSetup(realization)
   
   ! count the number of boundary connections and allocate
   ! aux_var data structures for them
-  boundary_condition => realization%boundary_conditions%first
+  boundary_condition => realization%transport_boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -412,7 +412,7 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
 #endif
 #if 1
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => realization%boundary_conditions%first
+  boundary_condition => realization%transport_boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -617,7 +617,7 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
 #endif
 #if 1
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => realization%boundary_conditions%first
+  boundary_condition => realization%transport_boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -732,7 +732,7 @@ subroutine RTUpdateAuxVars(realization)
                          option)
   enddo
 
-  boundary_condition => realization%boundary_conditions%first
+  boundary_condition => realization%transport_boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit

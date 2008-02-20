@@ -118,12 +118,7 @@ subroutine RichardsLiteSetup(realization)
 
   use Realization_module
   use Option_module
-  use Grid_module
-  use Field_module
-  use Region_module
-  use Structured_Grid_module
   use Coupler_module
-  use Condition_module
   use Connection_module
  
   implicit none
@@ -147,7 +142,7 @@ subroutine RichardsLiteSetup(realization)
 
   ! count the number of boundary connections and allocate
   ! aux_var data structures for them  
-  boundary_condition => realization%boundary_conditions%first
+  boundary_condition => realization%flow_boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -292,7 +287,7 @@ subroutine RichardsLiteUpdateAuxVars(realization)
     iphase_loc_p(ghosted_id) = iphase
   enddo
 
-  boundary_condition => realization%boundary_conditions%first
+  boundary_condition => realization%flow_boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -1187,7 +1182,7 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
 #endif
 #if 1
   ! Source/sink terms -------------------------------------
-  source_sink => realization%source_sinks%first 
+  source_sink => realization%flow_source_sinks%first 
   do 
     if (.not.associated(source_sink)) exit
     
@@ -1295,7 +1290,7 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
 #endif
 #if 1
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => realization%boundary_conditions%first
+  boundary_condition => realization%flow_boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -1520,7 +1515,7 @@ subroutine RichardsLiteJacobian(snes,xx,A,B,flag,realization,ierr)
   endif
 #if 1
   ! Source/sink terms -------------------------------------
-  source_sink => realization%source_sinks%first 
+  source_sink => realization%flow_source_sinks%first 
   do 
     if (.not.associated(source_sink)) exit
     
@@ -1663,7 +1658,7 @@ subroutine RichardsLiteJacobian(snes,xx,A,B,flag,realization,ierr)
   endif
 #if 1
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => realization%boundary_conditions%first
+  boundary_condition => realization%flow_boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit

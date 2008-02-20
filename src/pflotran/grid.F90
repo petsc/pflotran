@@ -91,7 +91,7 @@ module Grid_module
             GridComputeCoordinates, &
             GridComputeVolumes, &
             GridLocalizeRegions, &
-            GridComputeCouplerConnections, &
+            GridPopulateConnection, &
             GridCopyIntegerArrayToPetscVec, &
             GridCopyRealArrayToPetscVec, &
             GridCopyPetscVecToIntegerArray, &
@@ -420,88 +420,39 @@ end subroutine GridComputeInternalConnect
 
 ! ************************************************************************** !
 !
-! GridComputeCouplerConnections: computes connectivity coupler to a grid
+! GridPopulateConnection: computes connectivity coupler to a grid
 ! author: Glenn Hammond
 ! date: 11/09/07
 !
 ! ************************************************************************** !
-subroutine GridComputeCouplerConnections(grid,option,coupler_list)
+subroutine GridPopulateConnection(grid,connection,iface,iconn,cell_id_local)
 
   use Connection_module
-  use Option_module
-  use Coupler_module
-  use Region_module
   use Structured_Grid_module
   
   implicit none
  
   type(grid_type) :: grid
-  type(option_type) :: option
-  type(coupler_type), pointer :: coupler_list
-  
-  PetscInt :: iconn
-  PetscInt :: cell_id_local, cell_id_ghosted
-  PetscInt :: connection_itype
+  type(connection_type) :: connection
   PetscInt :: iface
-  type(connection_type), pointer :: connection
-  type(region_type), pointer :: region
-  type(coupler_type), pointer :: coupler
-  PetscErrorCode :: ierr
+  PetscInt :: iconn
+  PetscInt :: cell_id_local
   
-  coupler => coupler_list
-  do
-    if (.not.associated(coupler)) exit  
+  PetscInt :: cell_id_ghosted
+  
+  cell_id_ghosted = grid%nL2G(cell_id_local)
+  ! Use ghosted index to access dx, dy, dz because we have
+  ! already done a global-to-local scatter for computing the
+  ! interior node connections.
+  
+  select case(grid%igrid)
+    case(STRUCTURED)
+      call StructGridPopulateConnection(grid%structured_grid,connection, &
+                                        iface,iconn,cell_id_ghosted)
+    case(UNSTRUCTURED)
+  end select
 
-    select case(coupler%itype)
-      case(INITIAL_COUPLER_TYPE)
-        if (coupler%condition%pressure%itype /= HYDROSTATIC_BC .and. &
-            coupler%condition%pressure%itype /= SEEPAGE_BC) then
-          nullify(coupler%connection)
-          coupler => coupler%next
-          cycle
-        endif
-        connection_itype = INITIAL_CONNECTION_TYPE
-      case(SRC_SINK_COUPLER_TYPE)
-        connection_itype = SRC_SINK_CONNECTION_TYPE
-      case(BOUNDARY_COUPLER_TYPE)
-        if (option%myrank == 0) &
-          print *, 'Need a check to ensure that boundary conditions connect to exterior boundary'
-        connection_itype = BOUNDARY_CONNECTION_TYPE
-    end select
-    
-    region => coupler%region
-
-    connection => ConnectionCreate(region%num_cells,option%nphase, &
-                                   connection_itype)
-
-    iface = coupler%iface
-    do iconn = 1,region%num_cells
-      
-      cell_id_local = region%cell_ids(iconn)
-      if (associated(region%faces)) iface = region%faces(iconn)
-      
-      connection%id_dn(iconn) = cell_id_local
-
-      cell_id_ghosted = grid%nL2G(cell_id_local)
-      ! Use ghosted index to access dx, dy, dz because we have
-      ! already done a global-to-local scatter for computing the
-      ! interior node connections.
-      
-      select case(grid%igrid)
-        case(STRUCTURED)
-          call StructGridPopulateConnection(grid%structured_grid,connection, &
-                                            iface,iconn,cell_id_ghosted)
-        case(UNSTRUCTURED)
-      end select
-    enddo
-
-    coupler%connection => connection
-    nullify(connection)
-
-    coupler => coupler%next
-  enddo
-   
-end subroutine GridComputeCouplerConnections
+end subroutine GridPopulateConnection
 
 ! ************************************************************************** !
 !

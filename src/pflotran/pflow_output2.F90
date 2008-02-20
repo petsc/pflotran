@@ -2261,7 +2261,7 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
   enddo
 
   ! boundary velocities
-  boundary_condition => realization%boundary_conditions%first
+  boundary_condition => realization%flow_boundary_conditions%first
   do
     if (.not.associated(boundary_condition)) exit
     cur_connection_set => boundary_condition%connection
