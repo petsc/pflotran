@@ -1,0 +1,125 @@
+:    igeom nx  ny   nz nphase  nspec  npricomp    ndof  idcdm  itable
+GRID    1  107  1   51   2       2       1         3     0       2
+:GRID    1   128   1  128   1       1       1          3     0
+:GRID      128   1  128   1                          2     0
+:
+COMP
+H2O
+CO2
+Eng
+/
+PHAS
+H2O
+CO2
+ROCK
+/
+:    npx npy npz
+:PROC  1   1   1
+:
+:RAD0 0.d0
+:
+:write_init iprint imod itecplot iblkfmt ndtcmx iran_por ran_fac iread_perm iread_geom
+OPTS   0       0     1     1      1         3          0   0.D0       0         0
+ :
+:      steps    iaccel newtmx icutmx    dpmx   dtmpmx   dcmx    dsmx
+TOLR   30000       6     16      16     5.e4     5.     1.5e-1   1.5e-1
+:
+DXYZ
+3.
+1.
+1.
+:    atol     rtol     stol   dtol   newton_max   maxf
+SOLV 1.d-12   1.d-12   1.d-8   1D15      25        100
+:  d0[m^2/s] delhaq[kJ/mol]
+DIFF  1.D-16       12.6
+: ReacKincoeff
+:PHAR 1.D-12
+:
+PCKR
+:1-vanG, 2-BrooksCorey, 3-linear, 4-SC-W
+: ist itype swir sgir  lambda   alpha   pcwmax   betac   pwr
+  1     1  0.1   1e-4   0.75    1.e-3    1.e8    0.e0    1.D0
+  2     2  0.1   1e-4   0.75    1.e-3    1.e8    0.e0    1.D0
+  3     4  0.1   0.D-5  0.762   7.5e-4   1.e6    2.e0    7.D0
+  4     4  0.1   0.D-5  0.762   7.5e-4   1.e6    2.e0    7.D0
+/
+THRM
+:ithm rho     cpr   ckdry  cksat  tau    cdiff      cexp
+  1  2.65e3 1000.e0   0.5    0.5    0.5    2.13e-5    1.8
+/
+:
+PHIK
+:i1  i2  j1  j2  k1  k2 icap ithm  por  tor  permx     permy     permz   permpwr
+  1  53   1   1   1   51  3   1   0.15   1.0  1.e-15    1.e-15    1.e-17     1.e0
+ 54 107   1   1   1   51  4   1   0.15   1.0  1.e-15    1.e-15    1.e-17     1.e0
+:  1 107   1   1  10   15  4   1   0.05  1.0  1.e-18    1.e-18    1.e-20    1.e0
+/
+:
+INIT 0
+:i1  i2  j1  j2  k1  k2     iphase          pf    tf    sl        conc
+  1 107   1   1   1  51       1       2.000e7  50.0   1D-6
+/
+:
+BRINe 5.d0 molal
+:
+BCON
+:ibndtyp iface
+   2       1
+:i1  i2  j1  j2  k1  k2
+  1   1   1  1   1   51
+: iphase  Pressure [Pa] Temp [C]  sl       Conc
+    1      0.D0   0.D0        50.e0     1.e-6
+/
+:ibndtyp iface
+  2       2
+:i1  i2  j1  j2  k1  k2
+107  107   1  1   1   51
+:iphase liqvel gasvel Temp [C]   sl      Conc
+    1     0.D0    0.D0        50.0e0     1.e-6
+/
+:ibndtyp iface
+  3       3
+:i1  i2  j1  j2  k1  k2
+  1 107   1   1   1   1
+: iphase  Pressure [Pa] Temp [C]   sl      Conc
+     1      2.00e7        50.0e0     1.e-6
+/
+:ibndtyp iface
+  2       4
+:i1  i2  j1  j2  k1  k2
+  1 107  1   1    51  51
+: iphase  liqvel gasvel  Temp [C]   sl      Conc
+    1      0.D0   0.D0    50.0e0     1.e-6
+/
+/
+:
+:       alpha [C/m]  beta [m/m]  tref [C]  pref [Pa]  conc
+HYDR 1  0.025e0      0.e-2       50.e0       2.e7     1D-6
+:
+:SKIP
+SOUR
+:is1 is2 js1 js2 ks1 ks2
+  54  54   1   1  34  34
+: timeq(sec)   T/qht[oC/(J/s)]   water  co2(kg/s)
+   .0          50.e0             0.e-0  1.e-4
+:3.1535e8       50.e0             0.e-0  0.e-4
+3.1536e8       50.e0             0.e-0  1.e-4
+:6.3072e8       50.e0             0.e-0  1.e-4 
+3.15361e8      50.e0             0.e-0  0.e0
+1.e30          50.e0             0.e-0  0.e0 
+/
+/
+NOSKIP
+:
+SKIP
+BRK
+:i1  i2  j1  j2  k1  k2  brktyp  axis
+ 50  50   1   1   1   1    1       1
+/
+NOSKIP
+:
+TIME y 8
+ 1. 5. 10.  50. 100. 500. 1000.  5000.
+DTST  1  5000.
+1.e-3 50.0
+:
