@@ -157,14 +157,14 @@ pflow_init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
 	coupler.o strata.o pflow_pckr_mod.o field.o pflow_mphase_ResJac.o \
 	richards_lite.o richards.o
 unstructured_grid.o : option.o connection.o solver.o
-structured_grid.o : connection.o option.o fileio.o coupler.o region.o solver.o
+structured_grid.o : connection.o option.o fileio.o region.o solver.o
 general_grid.o : grid.o realization.o hdf5.o
 grid.o : structured_grid.o unstructured_grid.o option.o region.o connection.o \
-	 coupler.o solver.o
+	 solver.o
 solver.o : option.o field.o
 region.o : fileio.o utility.o
 material.o : region.o option.o fileio.o field.o
-coupler.o : condition.o connection.o region.o fileio.o
+coupler.o : condition.o connection.o region.o fileio.o grid.o
 convergence.o : option.o solver.o
 condition.o : fileio.o utility.o option.o field.o
 realization.o : grid.o option.o region.o condition.o coupler.o material.o \
