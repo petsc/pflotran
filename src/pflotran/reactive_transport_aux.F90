@@ -49,7 +49,8 @@ function ReactiveTransportAuxCreate()
   type(reactive_transport_aux_type), pointer :: ReactiveTransportAuxCreate
   
   type(reactive_transport_aux_type), pointer :: aux
-  
+
+  allocate(aux)  
   aux%num_aux = 0
   aux%num_aux_bc = 0
   nullify(aux%aux_vars)

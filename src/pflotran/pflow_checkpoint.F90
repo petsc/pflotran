@@ -9,13 +9,14 @@ module pflow_chkptheader
   implicit none
   private
   type, public :: pflowChkPtHeader
-    real*8 :: time
-    real*8 :: dt
+    real*8 :: flow_time
+    real*8 :: flow_dt
+    real*8 :: tran_time
+    real*8 :: tran_dt
     integer*8 :: steps
     integer*8 :: newtcum
     integer*8 :: icutcum
-    integer*8 :: timestep_cut_flag
-    integer*8 :: num_timestep_cuts
+    integer*8 :: num_const_timesteps
     integer*8 :: num_newton_iterations
     integer*8 :: plot_number
   end type pflowChkPtHeader
@@ -60,7 +61,7 @@ contains
 #if (PETSC_VERSION_RELEASE == 1 && PETSC_VERSION_SUBMINOR < 3)
 
 subroutine pflowGridCheckpoint(realization,steps,newtcum,icutcum, &
-                               timestep_cut_flag,num_timestep_cuts, &
+                               timestep_cut_flag, &
                                num_newton_iterations,id)
   use Realization_module
   use Option_module
@@ -69,7 +70,7 @@ subroutine pflowGridCheckpoint(realization,steps,newtcum,icutcum, &
   
   type(realization_type) :: realization
   logical :: timestep_cut_flag
-  PetscInt :: num_timestep_cuts, num_newton_iterations
+  PetscInt :: num_newton_iterations
   PetscInt :: id, steps, newtcum, icutcum
 
   if(realization%option%myrank == 0) then
@@ -80,7 +81,7 @@ end subroutine pflowGridCheckpoint
 #else
 
 subroutine pflowGridCheckpoint(realization,steps,newtcum,icutcum, &
-                               timestep_cut_flag,num_timestep_cuts, &
+                               num_const_timesteps, &
                                num_newton_iterations,id)
 
   use Realization_module
@@ -94,8 +95,8 @@ subroutine pflowGridCheckpoint(realization,steps,newtcum,icutcum, &
   implicit none
 
   type(realization_type) :: realization
-  logical :: timestep_cut_flag
-  PetscInt :: num_timestep_cuts, num_newton_iterations
+  PetscInt :: num_const_timesteps
+  PetscInt :: num_newton_iterations
   PetscInt :: id, steps, newtcum, icutcum
 #ifdef PetscSizeT
   PetscSizeT :: bagsize
@@ -153,7 +154,7 @@ subroutine pflowGridCheckpoint(realization,steps,newtcum,icutcum, &
   ! We manually specify the number of bytes required for the 
   ! checkpoint header, since sizeof() is not supported by some Fortran 
   ! compilers.  To be on the safe side, we assume an integer is 8 bytes.
-  bagsize = 72
+  bagsize = 80
   call PetscBagCreate(PETSC_COMM_WORLD, bagsize, bag, ierr)
   call PetscBagGetData(bag, header, ierr); CHKERRQ(ierr)
 
@@ -163,18 +164,18 @@ subroutine pflowGridCheckpoint(realization,steps,newtcum,icutcum, &
                            "Number of Newton iterations in last SNES solve", ierr)
   call PetscBagRegisterInt(bag, header%plot_number, output_option%plot_number, &
                            "plot_number","plot_number", ierr)
-  int_flag = 0
-  if (timestep_cut_flag) int_flag = 1
-  call PetscBagRegisterInt(bag, header%timestep_cut_flag, int_flag, &
-                           "timestep_cut_flag","timestep_cut_flag", ierr)
-  call PetscBagRegisterInt(bag, header%num_timestep_cuts, num_timestep_cuts, &
-                           "num_timestep_cuts","num_timestep_cuts", ierr)
+  call PetscBagRegisterInt(bag, header%num_const_timesteps, num_const_timesteps, &
+                           "num_const_timesteps","num_const_timesteps", ierr)
   
   ! Register relevant components of the pflowGrid.
-  call PetscBagRegisterReal(bag, header%time, option%time, "time", &
-                            "Simulation time (years)", ierr)
-  call PetscBagRegisterReal(bag, header%dt, option%dt, "dt", &
-                            "Current size of timestep (years)", ierr)
+  call PetscBagRegisterReal(bag, header%flow_time, option%flow_time, "time", &
+                            "Flow Simulation time (seconds)", ierr)
+  call PetscBagRegisterReal(bag, header%flow_dt, option%flow_dt, "dt", &
+                            "Current size of flow timestep (seconds)", ierr)
+  call PetscBagRegisterReal(bag, header%tran_time, option%tran_time, "time", &
+                            "Transport Simulation time (seconds)", ierr)
+  call PetscBagRegisterReal(bag, header%tran_dt, option%tran_dt, "dt", &
+                            "Current size of transport timestep (years)", ierr)
   call PetscBagRegisterInt(bag, header%steps, steps, "steps", &
                             "Total number of flow steps taken", ierr)
   call PetscBagRegisterInt(bag, header%newtcum, newtcum, "newtcum", &
@@ -239,7 +240,7 @@ end subroutine pflowGridCheckpoint
 #if (PETSC_VERSION_RELEASE == 1 && PETSC_VERSION_SUBMINOR < 3)
 
 subroutine pflowGridRestart(realization,steps,newtcum,icutcum, &
-                            timestep_cut_flag,num_timestep_cuts, &
+                            num_const_timesteps, &
                             num_newton_iterations)
   use Realization_module
   use Option_module
@@ -247,8 +248,8 @@ subroutine pflowGridRestart(realization,steps,newtcum,icutcum, &
   character(len=MAXSTRINGLENGTH) :: fname
   type(realization_type) :: realization
   type(stepper_type) :: stepper
-  logical :: timestep_cut_flag
-  PetscInt :: num_timestep_cuts, num_newton_iterations
+  PetscInt :: num_const_timesteps
+  PetscInt :: num_newton_iterations
   PetscInt :: steps, newtcum, icutcum
 
   if(realization%option%myrank == 0) then
@@ -259,7 +260,7 @@ end subroutine pflowGridRestart
 #else
 
 subroutine pflowGridRestart(realization,steps,newtcum,icutcum, &
-                            timestep_cut_flag,num_timestep_cuts, &
+                            num_const_timesteps, &
                             num_newton_iterations)
   use Realization_module
   use Option_module
@@ -272,8 +273,8 @@ subroutine pflowGridRestart(realization,steps,newtcum,icutcum, &
   implicit none
 
   type(realization_type) :: realization
-  logical :: timestep_cut_flag
-  PetscInt :: num_timestep_cuts, num_newton_iterations
+  PetscInt :: num_const_timesteps
+  PetscInt :: num_newton_iterations
   PetscInt :: steps, newtcum, icutcum
 
   PetscViewer viewer
@@ -305,10 +306,11 @@ subroutine pflowGridRestart(realization,steps,newtcum,icutcum, &
   call PetscBagGetData(bag, header, ierr)
   num_newton_iterations = header%num_newton_iterations
   output_option%plot_number = header%plot_number
-  timestep_cut_flag = header%timestep_cut_flag
-  num_timestep_cuts = header%num_timestep_cuts
-  option%time = header%time
-  option%dt = header%dt
+  num_const_timesteps = header%num_const_timesteps
+  option%flow_time = header%flow_time
+  option%flow_dt = header%flow_dt
+  option%tran_time = header%tran_time
+  option%tran_dt = header%tran_dt
   steps = header%steps
   newtcum = header%newtcum
   icutcum = header%icutcum

@@ -21,7 +21,8 @@ module Reactive_Transport_module
   logical :: aux_vars_up_to_date = .false.
   logical :: inactive_cells_exist = .false.
   
-  public :: RTTimeCut, RTMaxChange, RTUpdateSolution, RTResidual, RTJacobian
+  public :: RTTimeCut, RTSetup, RTMaxChange, RTUpdateSolution, RTResidual, &
+            RTJacobian
   
 contains
 
@@ -82,7 +83,8 @@ subroutine RTSetup(realization)
   grid => realization%grid
   option => realization%option
 
-  aux_vars => realization%RTaux%aux_vars
+  realization%RTaux => ReactiveTransportAuxCreate()
+
   ! allocate aux_var data structures for all grid cells
   allocate(aux_vars(grid%ngmax))
   do ghosted_id = 1, grid%ngmax
@@ -229,11 +231,11 @@ subroutine RTAccumulationDerivative(aux_var,por,sat,vol,option,Res)
   PetscReal :: Res(option%ncomp)
   
   PetscInt :: icomp
-  PetscReal :: psv
+  PetscReal :: psv_t
   
-  psv = por*sat*vol
+  psv_t = por*sat*vol/option%dt
   do icomp=1,option%ncomp
-    Res(icomp) = psv 
+    Res(icomp) = psv_t
   enddo
 
 end subroutine RTAccumulationDerivative
@@ -258,11 +260,11 @@ subroutine RTAccumulation(aux_var,por,sat,vol,option,Res)
   PetscReal :: Res(option%ncomp)
   
   PetscInt :: icomp
-  PetscReal :: psv
+  PetscReal :: psv_t
   
-  psv = por*sat*vol
+  psv_t = por*sat*vol/option%dt
   do icomp=1,option%ncomp
-    Res(icomp) = psv*aux_var%total(icomp) 
+    Res(icomp) = psv_t*aux_var%total(icomp) 
   enddo
 
 end subroutine RTAccumulation

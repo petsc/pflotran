@@ -249,7 +249,7 @@ subroutine GridCreateDMs(grid,option)
   endif
   
   if (option%ntrandof > 0) then
-    ndof = option%ncomp
+    ndof = option%ntrandof
     call GridCreateDM(grid,grid%dm_ntrandof,ndof,stencil_width)
   endif
 

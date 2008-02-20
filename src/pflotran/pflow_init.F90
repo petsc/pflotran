@@ -186,16 +186,16 @@ subroutine PflowInit(simulation,filename)
 
   if (option%ntrandof > 0) then
     ! ndof degrees of freedom, global
-    call GridCreateVector(grid,NTRANDOF, field%flow_xx, GLOBAL)
-    call GridDuplicateVector(grid,field%flow_xx, field%flow_yy)
-    call GridDuplicateVector(grid,field%flow_xx, field%flow_dxx)
-    call GridDuplicateVector(grid,field%flow_xx, field%tran_r)
-    call GridDuplicateVector(grid,field%flow_xx, field%flow_accum)
+    call GridCreateVector(grid,NTRANDOF, field%tran_xx, GLOBAL)
+    call GridDuplicateVector(grid,field%tran_xx, field%tran_yy)
+    call GridDuplicateVector(grid,field%tran_xx, field%tran_dxx)
+    call GridDuplicateVector(grid,field%tran_xx, field%tran_r)
+    call GridDuplicateVector(grid,field%tran_xx, field%tran_accum)
 
     call GridDuplicateVector(grid,field%porosity_loc, field%saturation_loc)
     
     ! ndof degrees of freedom, local
-    call GridCreateVector(grid,NTRANDOF, field%flow_xx_loc, LOCAL)
+    call GridCreateVector(grid,NTRANDOF, field%tran_xx_loc, LOCAL)
   endif
 
   ! set up nG2L, NL2G, etc.
@@ -285,7 +285,7 @@ subroutine PflowInit(simulation,filename)
     call printMsg(option,"  Beginning set up of TRAN SNES ")
   
     call SolverCreateSNES(tran_solver)  
-    call GridCreateJacobian(grid,NFLOWDOF,tran_solver%J,option)
+    call GridCreateJacobian(grid,NTRANDOF,tran_solver%J,option)
     
     call SNESSetFunction(tran_solver%snes,field%tran_r,RTResidual,realization,ierr)
     call SNESSetJacobian(tran_solver%snes, tran_solver%J, tran_solver%J, RTJacobian, &
@@ -350,16 +350,22 @@ subroutine PflowInit(simulation,filename)
   if (option%myrank == 0) write(*,'("  Finished setting up of INIT ")')
          
   ! move each case to its respective module and just call ModeSetup (e.g. RichardsSetup)
-  select case(option%iflowmode)
-    case(RICHARDS_MODE)
-      call RichardsSetup(realization)
-    case(RICHARDS_LITE_MODE)
-      call RichardsLiteSetup(realization)
-    case(MPH_MODE)
-      call MphaseSetup(realization)
-    case(THC_MODE)
-      call THCSetup(realization)
-  end select  
+  if (option%nflowdof > 0) then
+    select case(option%iflowmode)
+      case(RICHARDS_MODE)
+        call RichardsSetup(realization)
+      case(RICHARDS_LITE_MODE)
+        call RichardsLiteSetup(realization)
+      case(MPH_MODE)
+        call MphaseSetup(realization)
+      case(THC_MODE)
+        call THCSetup(realization)
+    end select
+  endif
+  
+  if (option%ntrandof > 0) then
+    call RTSetup(realization)
+  endif
 
   call printMsg(option,"  Finished setting up ")
 
@@ -623,6 +629,24 @@ subroutine readRequiredCardsFromInput(realization,filename,mcomp,mphas)
       end select 
     enddo
   endif
+
+!....................................................................
+
+  ! TRAN information
+  string = "TRAN"
+  call fiFindStringInFile(IUNIT1,string,ierr)
+
+  if (ierr == 0) then
+
+    ! strip card from front of string
+    call fiReadWord(string,word,.false.,ierr)
+
+    call fiReadInt(string,option%ntrandof,ierr)
+    call fiDefaultMsg(option%myrank,'ntrandof',ierr)
+    option%ncomp = option%ntrandof
+
+  endif          
+
     
 end subroutine readRequiredCardsFromInput
 
@@ -743,6 +767,9 @@ subroutine readInput(simulation,filename)
 
 !....................
       case ('GRID')
+      
+!....................
+      case ('TRAN')
       
 !....................
       case ('DEBUG','PFLOW_DEBUG')
