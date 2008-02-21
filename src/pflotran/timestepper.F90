@@ -504,7 +504,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   call GridLocalToLocal(grid,field%iphas_loc,field%iphas_loc,ONEDOF)
   
   if (option%myrank == 0) then
-    write(*,'(/,60("="))')
+    write(*,'(/,"FLOW ",55("="))')
   endif
   
   select case(option%iflowmode)
@@ -781,7 +781,7 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
   call RTInitializeTimestep(realization)
 
   if (option%myrank == 0) then
-    write(*,'(/,60("="))')
+    write(*,'(/,"TRANSPORT ",50("="))')
   endif
   
   do
