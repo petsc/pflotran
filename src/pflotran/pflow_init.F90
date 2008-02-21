@@ -1073,6 +1073,10 @@ subroutine readInput(simulation,filename)
         call fiReadInt(string,option%iread_geom,ierr)
         call fiDefaultMsg(option%myrank,'iread_geom',ierr)
 
+        if (associated(tran_stepper)) then
+          tran_stepper%ndtcmx = master_stepper%ndtcmx
+        endif
+
         idum = 0
         if (option%myrank == 0) &
           write(IUNIT2,'(/," *OPTS",/, &
@@ -1117,6 +1121,11 @@ subroutine readInput(simulation,filename)
 
         call fiReadDouble(string,option%dsmxe,ierr)
         call fiDefaultMsg(option%myrank,'dsmxe',ierr)
+        
+        if (associated(tran_stepper)) then
+          tran_stepper%icut_max = master_stepper%icut_max
+          tran_stepper%newton_max = master_stepper%newton_max
+        endif
 
         if (option%myrank==0) write(IUNIT2,'(/," *TOLR ",/, &
           &"  steps  = ",i6,/,      &
@@ -1130,7 +1139,8 @@ subroutine readInput(simulation,filename)
 ! For commented-out lines to work with the Sun f95 compiler, we have to 
 ! terminate the string in the line above; otherwise, the compiler tries to
 ! include the commented-out line as part of the continued string.
-          master_stepper%stepmax,master_stepper%iaccel,master_stepper%newton_max,master_stepper%icut_max, &
+          master_stepper%stepmax,master_stepper%iaccel, &
+          master_stepper%newton_max,master_stepper%icut_max, &
           option%dpmxe,option%dtmpmxe,option%dcmxe, option%dsmxe
 
 !....................

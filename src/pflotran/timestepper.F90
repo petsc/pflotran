@@ -162,6 +162,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     if (associated(tran_stepper)) then
       call StepperStepTransportDT(realization,tran_stepper,timestep_cut_flag, &
                                   idum)
+      if (.not.associated(flow_stepper)) num_newton_iterations = idum
     endif
 
       ! update solution variables
@@ -313,6 +314,7 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option,timestep_cut_flag, &
       endif
       dtt = fac * dt * (1.d0 + ut)
     case default
+      dtt = dt
       if (num_newton_iterations <= stepper%iaccel .and. &
           num_newton_iterations <= size(option%tfac)) then
         if (num_newton_iterations == 0) then
@@ -617,9 +619,11 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
     endif
   enddo
 
-  ! for debuggin
-  call RichardsInitializeTimestep(realization)    
-  call SNESComputeFunction(stepper%solver%snes,field%flow_xx,field%flow_r)
+  ! for debugging
+!  call RichardsInitializeTimestep(realization)    
+!  call SNESComputeFunction(stepper%solver%snes,field%flow_xx,field%flow_r,ierr)
+!  call SNESComputeJacobian(stepper%solver%snes,field%flow_xx,stepper%solver%J, &
+!                           stepper%solver%J,PETSC_NULL_INTEGER,ierr)
 
   stepper%newtcum = stepper%newtcum + num_newton_iterations
   stepper%icutcum = stepper%icutcum + icut
@@ -775,7 +779,7 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
   endif
   
   call RTInitializeTimestep(realization)
-  
+
   if (option%myrank == 0) then
     write(*,'(/,60("="))')
   endif

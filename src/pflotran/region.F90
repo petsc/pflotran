@@ -253,6 +253,8 @@ subroutine RegionRead(region,string,fid,option)
         call fiReadWord(string,word,.true.,ierr)
         call fiErrorMsg(option%myrank,'filename','REGN', ierr)
         region%filename = word
+      case('LIST')
+        call printErrMsg(option,'REGION LIST currently not implemented')
       case('FACE')
         call fiReadWord(string,word,.true.,ierr)
         call fiErrorMsg(option%myrank,'face','REGN', ierr)
@@ -274,7 +276,7 @@ subroutine RegionRead(region,string,fid,option)
       case('END')
         exit        
       case default
-        call printErrMsg(option,"REGION keyword not recognized")
+        call printErrMsg(option,'REGION keyword: '//trim(word)//' not recognized')
     end select
   enddo
  

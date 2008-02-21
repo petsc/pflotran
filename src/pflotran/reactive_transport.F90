@@ -18,6 +18,8 @@ module Reactive_Transport_module
 #include "include/finclude/petscviewer.h"
 #include "include/finclude/petsclog.h"
 
+  PetscReal, parameter :: perturbation_tolerance = 1.d-5
+  
   logical :: aux_vars_up_to_date = .false.
   logical :: inactive_cells_exist = .false.
   
@@ -223,7 +225,101 @@ subroutine RTUpdateFixedAccumulation(realization)
 
   call VecRestoreArrayF90(field%tran_accum, accum_p, ierr)
 
+#if 0
+  call RTNumericalJacobianTest(field%tran_xx,realization)
+#endif
+
 end subroutine RTUpdateFixedAccumulation
+
+! ************************************************************************** !
+!
+! RTNumericalJacobianTest: Computes the a test numerical jacobian
+! author: Glenn Hammond
+! date: 02/20/08
+!
+! ************************************************************************** !
+subroutine RTNumericalJacobianTest(xx,realization)
+
+  use Realization_module
+  use Option_module
+  use Grid_module
+  use Field_module
+
+  implicit none
+
+  Vec :: xx
+  type(realization_type) :: realization
+
+  Vec :: xx_pert
+  Vec :: res
+  Vec :: res_pert
+  Mat :: A
+  PetscViewer :: viewer
+  PetscErrorCode :: ierr
+  
+  PetscReal :: derivative, perturbation
+  
+  PetscReal, pointer :: vec_p(:), vec2_p(:)
+
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  
+  PetscInt :: idof, idof2, icell
+
+  grid => realization%grid
+  option => realization%option
+  field => realization%field
+  
+  call VecDuplicate(xx,xx_pert,ierr)
+  call VecDuplicate(xx,res,ierr)
+  call VecDuplicate(xx,res_pert,ierr)
+  
+  call MatCreate(PETSC_COMM_WORLD,A,ierr)
+  call MatSetSizes(A,PETSC_DECIDE,PETSC_DECIDE, &
+                   grid%nlmax*option%ntrandof, &
+                   grid%nlmax*option%ntrandof,ierr)
+  call MatSetType(A,MATAIJ,ierr)
+  call MatSetFromOptions(A,ierr)
+    
+  call RTResidual(PETSC_NULL_OBJECT,xx,res,realization,ierr)
+  call VecGetArrayF90(res,vec2_p,ierr)
+  do icell = 1,grid%nlmax
+    if (associated(field%imat)) then
+      if (field%imat(grid%nL2G(icell)) <= 0) cycle
+    endif
+    do idof = (icell-1)*option%ntrandof+1,icell*option%ntrandof 
+      call veccopy(xx,xx_pert,ierr)
+      call vecgetarrayf90(xx_pert,vec_p,ierr)
+      perturbation = vec_p(idof)*perturbation_tolerance
+      vec_p(idof) = vec_p(idof)+perturbation
+      call vecrestorearrayf90(xx_pert,vec_p,ierr)
+      call RTResidual(PETSC_NULL_OBJECT,xx_pert,res_pert,realization,ierr)
+      call vecgetarrayf90(res_pert,vec_p,ierr)
+      do idof2 = 1, grid%nlmax*option%ntrandof
+        derivative = (vec_p(idof2)-vec2_p(idof2))/perturbation
+        if (dabs(derivative) > 1.d-30) then
+          call matsetvalue(a,idof2-1,idof-1,derivative,insert_values,ierr)
+        endif
+      enddo
+      call VecRestoreArrayF90(res_pert,vec_p,ierr)
+    enddo
+  enddo
+  call VecRestoreArrayF90(res,vec2_p,ierr)
+
+  call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
+  call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
+  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'RTnumerical_jacobian.out',viewer,ierr)
+  call MatView(A,viewer,ierr)
+  call PetscViewerDestroy(viewer,ierr)
+
+  call MatDestroy(A,ierr)
+  
+  call VecDestroy(xx_pert,ierr)
+  call VecDestroy(res,ierr)
+  call VecDestroy(res_pert,ierr)
+  
+end subroutine RTNumericalJacobianTest
 
 ! ************************************************************************** !
 !
@@ -481,12 +577,12 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
   call VecRestoreArrayF90(grid%volume, volume_p, ierr)
 
   if (realization%debug%vecview_residual) then
-    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'residual.out',viewer,ierr)
+    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'RTresidual.out',viewer,ierr)
     call VecView(r,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
   if (realization%debug%vecview_solution) then
-    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'xx.out',viewer,ierr)
+    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'RTxx.out',viewer,ierr)
     call VecView(xx,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
@@ -567,9 +663,9 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
     endif
     iend = local_id*option%ncomp
     istart = iend-option%ncomp+1
-    call RTAccumulation(aux_vars(ghosted_id),porosity_loc_p(ghosted_id), &
-                        saturation_loc_p(ghosted_id),volume_p(local_id), &
-                        option,Jup) 
+    call RTAccumulationDerivative(aux_vars(ghosted_id),porosity_loc_p(ghosted_id), &
+                                  saturation_loc_p(ghosted_id),volume_p(local_id), &
+                                  option,Jup) 
     call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)                        
   enddo
 #endif
@@ -689,7 +785,7 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
   endif
 
   if (realization%debug%matview_Jacobian) then
-    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian.out',viewer,ierr)
+    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'RTjacobian.out',viewer,ierr)
     call MatView(A,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
@@ -1032,7 +1128,7 @@ function RTGetTecplotHeader(realization)
   
   string = '' 
   do i=1,option%ntrandof
-    write(string2,'('',"Xl('',i2,'')"'')') i
+    write(string2,'('',"COMP('',i2,'')"'')') i
     string = trim(string) // trim(string2)
   enddo
   

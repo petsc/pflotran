@@ -91,15 +91,15 @@ BLOCK 1 1 1 1 1 1
 END
 
 REGION West
-LIST file input.h5
+file input.h5
 END
 
 REGION East
-LIST file input.h5
+file input.h5
 END
 
 REGION Top
-LIST file input.h5
+file input.h5
 END
 
 skip
