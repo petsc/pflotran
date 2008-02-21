@@ -283,13 +283,15 @@ subroutine PflowInit(simulation,filename)
   if (option%ntrandof > 0) then
 
     call printMsg(option,"  Beginning set up of TRAN SNES ")
-  
+    
     call SolverCreateSNES(tran_solver)  
     call GridCreateJacobian(grid,NTRANDOF,tran_solver%J,option)
     
     call SNESSetFunction(tran_solver%snes,field%tran_r,RTResidual,realization,ierr)
     call SNESSetJacobian(tran_solver%snes, tran_solver%J, tran_solver%J, RTJacobian, &
                          realization, ierr)
+
+    call SNESLineSearchSet(tran_solver%snes,SNESLineSearchNo,PETSC_NULL,ierr)
 
     call SolverSetSNESOptions(tran_solver)
 
@@ -367,26 +369,6 @@ subroutine PflowInit(simulation,filename)
   allocate(realization%field%boundary_velocities(option%nphase,temp_int)) 
   realization%field%boundary_velocities = 0.d0          
 
-  if (option%myrank == 0) write(*,'("  Finished setting up of INIT ")')
-         
-  ! move each case to its respective module and just call ModeSetup (e.g. RichardsSetup)
-  if (option%nflowdof > 0) then
-    select case(option%iflowmode)
-      case(RICHARDS_MODE)
-        call RichardsSetup(realization)
-      case(RICHARDS_LITE_MODE)
-        call RichardsLiteSetup(realization)
-      case(MPH_MODE)
-        call MphaseSetup(realization)
-      case(THC_MODE)
-        call THCSetup(realization)
-    end select
-  endif
-  
-  if (option%ntrandof > 0) then
-    call RTSetup(realization)
-  endif
-
   call printMsg(option,"  Finished setting up ")
 
   if (debug%print_couplers) then
@@ -409,6 +391,31 @@ subroutine PflowInit(simulation,filename)
   if (associated(flow_stepper)) flow_stepper%cur_waypoint => realization%waypoints%first
   if (associated(tran_stepper)) tran_stepper%cur_waypoint => realization%waypoints%first
   
+  ! move each case to its respective module and just call ModeSetup (e.g. RichardsSetup)
+  if (option%nflowdof > 0) then
+    select case(option%iflowmode)
+      case(RICHARDS_MODE)
+        call RichardsSetup(realization)
+      case(RICHARDS_LITE_MODE)
+        call RichardsLiteSetup(realization)
+      case(MPH_MODE)
+        call MphaseSetup(realization)
+      case(THC_MODE)
+        call THCSetup(realization)
+    end select
+  endif
+  
+  if (option%ntrandof > 0) then
+    if (abs(option%uniform_velocity(1)) + abs(option%uniform_velocity(2)) + &
+        abs(option%uniform_velocity(3)) >  0.d0) then
+      call assignUniformVelocity(realization)
+    endif
+    call VecSet(field%saturation_loc,1.d0,ierr)
+    call RTSetup(realization)
+  endif
+
+  if (option%myrank == 0) write(*,'("  Finished setting up of INIT ")')
+         
 end subroutine PflowInit
 
 ! ************************************************************************** !
@@ -456,14 +463,15 @@ subroutine readRequiredCardsFromInput(realization,filename,mcomp,mphas)
   ! MODE information
   string = "MODE"
   call fiFindStringInFile(IUNIT1,string,ierr)
-  call fiFindStringErrorMsg(option%myrank,string,ierr)
 
-  ! strip card from front of string
-  call fiReadWord(string,word,.false.,ierr)
+  if (ierr == 0) then  
+    ! strip card from front of string
+    call fiReadWord(string,word,.false.,ierr)
  
-  ! read in keyword 
-  call fiReadWord(string,option%flowmode,.true.,ierr)
-  call fiErrorMsg(option%myrank,'flowmode','mode',ierr)
+    ! read in keyword 
+    call fiReadWord(string,option%flowmode,.true.,ierr)
+    call fiErrorMsg(option%myrank,'flowmode','mode',ierr)
+  endif
 
 !.........................................................................
 
@@ -510,6 +518,7 @@ subroutine readRequiredCardsFromInput(realization,filename,mcomp,mphas)
 
   call fiReadInt(string,option%nflowdof,ierr)
   call fiDefaultMsg(option%myrank,'ndof',ierr)
+  if (len_trim(option%flowmode) < 1) option%nflowdof = 0
       
   call fiReadInt(string,idum,ierr)
   call fiDefaultMsg(option%myrank,'idcdm',ierr)
@@ -749,22 +758,34 @@ subroutine readInput(simulation,filename)
   type(field_type), pointer :: field
   type(solver_type), pointer :: flow_solver
   type(solver_type), pointer :: tran_solver
+  type(solver_type), pointer :: master_solver
   type(stepper_type), pointer :: flow_stepper
   type(stepper_type), pointer :: tran_stepper
+  type(stepper_type), pointer :: master_stepper
+  
   
   nullify(flow_stepper)
   nullify(tran_stepper)
   nullify(flow_solver)
-  nullify(flow_stepper)
+  nullify(tran_solver)
   
   realization => simulation%realization
   grid => realization%grid
   option => realization%option
   field => realization%field
-  flow_stepper => simulation%flow_stepper
-  if (associated(flow_stepper)) flow_solver => flow_stepper%solver
+
   tran_stepper => simulation%tran_stepper
   if (associated(tran_stepper)) tran_solver => tran_stepper%solver
+  flow_stepper => simulation%flow_stepper
+  if (associated(flow_stepper)) flow_solver => flow_stepper%solver
+
+  if (associated(flow_stepper)) then
+    master_stepper => flow_stepper
+    master_solver => flow_solver
+  else
+    master_stepper => tran_stepper
+    master_solver => tran_solver
+  endif
 
   backslash = achar(92)  ! 92 = "\" Some compilers choke on \" thinking it
                           ! is a double quote as in c/c++
@@ -793,6 +814,15 @@ subroutine readInput(simulation,filename)
       
 !....................
       case ('TRAN')
+
+!....................
+      case ('UNIFORM_VELOCITY')
+        call fiReadDouble(string,option%uniform_velocity(1),ierr)
+        call fiErrorMsg(option%myrank,'velx','UNIFORM_VELOCITY', ierr)
+        call fiReadDouble(string,option%uniform_velocity(2),ierr)
+        call fiErrorMsg(option%myrank,'vely','UNIFORM_VELOCITY', ierr)
+        call fiReadDouble(string,option%uniform_velocity(3),ierr)
+        call fiErrorMsg(option%myrank,'velz','UNIFORM_VELOCITY', ierr)
       
 !....................
       case ('DEBUG','PFLOW_DEBUG')
@@ -809,6 +839,7 @@ subroutine readInput(simulation,filename)
 !....................
       case ('REGION','REGN')
         region => RegionCreate()
+#if 0        
         call fiReadWord(string,region%name,.true.,ierr)
         call fiErrorMsg(option%myrank,'regn','name',ierr) 
         call printMsg(option,region%name)
@@ -851,6 +882,9 @@ subroutine readInput(simulation,filename)
         else
           call printErrMsg(option,"REGION type not recognized")
         endif
+#else        
+        call RegionRead(region,string,IUNIT1,option)
+#endif        
         call RegionAddToList(region,realization%regions)      
 
 !....................
@@ -1024,7 +1058,7 @@ subroutine readInput(simulation,filename)
         call fiReadInt(string,option%iblkfmt,ierr)
         call fiDefaultMsg(option%myrank,'iblkfmt',ierr)
 
-        call fiReadInt(string,flow_stepper%ndtcmx,ierr)
+        call fiReadInt(string,master_stepper%ndtcmx,ierr)
         call fiDefaultMsg(option%myrank,'ndtcmx',ierr)
 
         call fiReadInt(string,idum,ierr)
@@ -1052,7 +1086,7 @@ subroutine readInput(simulation,filename)
             & "  iread_perm = ",3x,i2,/, &
             & "  iread_geom = ",3x,i2 &
             & )') idum,option%imod,idum, &
-            option%iblkfmt,flow_stepper%ndtcmx,idum,rdum,idum,option%iread_geom
+            option%iblkfmt,master_stepper%ndtcmx,idum,rdum,idum,option%iread_geom
 
 !....................
 
@@ -1060,16 +1094,16 @@ subroutine readInput(simulation,filename)
 
         call fiReadStringErrorMsg(option%myrank,'TOLR',ierr)
 
-        call fiReadInt(string,flow_stepper%stepmax,ierr)
+        call fiReadInt(string,master_stepper%stepmax,ierr)
         call fiDefaultMsg(option%myrank,'stepmax',ierr)
   
-        call fiReadInt(string,flow_stepper%iaccel,ierr)
+        call fiReadInt(string,master_stepper%iaccel,ierr)
         call fiDefaultMsg(option%myrank,'iaccel',ierr)
 
-        call fiReadInt(string,flow_stepper%newton_max,ierr)
+        call fiReadInt(string,master_stepper%newton_max,ierr)
         call fiDefaultMsg(option%myrank,'newton_max',ierr)
 
-        call fiReadInt(string,flow_stepper%icut_max,ierr)
+        call fiReadInt(string,master_stepper%icut_max,ierr)
         call fiDefaultMsg(option%myrank,'icut_max',ierr)
 
         call fiReadDouble(string,option%dpmxe,ierr)
@@ -1096,7 +1130,7 @@ subroutine readInput(simulation,filename)
 ! For commented-out lines to work with the Sun f95 compiler, we have to 
 ! terminate the string in the line above; otherwise, the compiler tries to
 ! include the commented-out line as part of the continued string.
-          flow_stepper%stepmax,flow_stepper%iaccel,flow_stepper%newton_max,flow_stepper%icut_max, &
+          master_stepper%stepmax,master_stepper%iaccel,master_stepper%newton_max,master_stepper%icut_max, &
           option%dpmxe,option%dtmpmxe,option%dcmxe, option%dsmxe
 
 !....................
@@ -1288,21 +1322,21 @@ subroutine readInput(simulation,filename)
         option%numerical_derivatives = .true.
 
       case ('INEXACT_NEWTON')
-        flow_solver%inexact_newton = .true.
+        master_solver%inexact_newton = .true.
 
 !......................
 
       case ('NO_PRINT_CONVERGENCE')
-        flow_solver%print_convergence = PETSC_FALSE
+        master_solver%print_convergence = PETSC_FALSE
 
       case ('NO_INF_NORM','NO_INFINITY_NORM')
-        flow_solver%check_infinity_norm = PETSC_FALSE
+        master_solver%check_infinity_norm = PETSC_FALSE
 
       case ('NO_FORCE_ITERATION')
-        flow_solver%force_at_least_1_iteration = PETSC_FALSE
+        master_solver%force_at_least_1_iteration = PETSC_FALSE
 
       case ('PRINT_DETAILED_CONVERGENCE')
-        flow_solver%print_detailed_convergence = PETSC_TRUE
+        master_solver%print_detailed_convergence = PETSC_TRUE
 
 !....................
 
@@ -1354,32 +1388,32 @@ subroutine readInput(simulation,filename)
 !       call fiReadDouble(string,eps,ierr)
 !       call fiDefaultMsg(option%myrank,'eps',ierr)
 
-        call fiReadDouble(string,flow_solver%newton_atol,ierr)
+        call fiReadDouble(string,master_solver%newton_atol,ierr)
         call fiDefaultMsg(option%myrank,'atol_petsc',ierr)
 
-        call fiReadDouble(string,flow_solver%newton_rtol,ierr)
+        call fiReadDouble(string,master_solver%newton_rtol,ierr)
         call fiDefaultMsg(option%myrank,'rtol_petsc',ierr)
 
-        call fiReadDouble(string,flow_solver%newton_stol,ierr)
+        call fiReadDouble(string,master_solver%newton_stol,ierr)
         call fiDefaultMsg(option%myrank,'stol_petsc',ierr)
       
-        flow_solver%newton_dtol=1.D5
+        master_solver%newton_dtol=1.D5
 !       if (option%use_ksp == 1) then
-        call fiReadDouble(string,flow_solver%newton_dtol,ierr)
+        call fiReadDouble(string,master_solver%newton_dtol,ierr)
         call fiDefaultMsg(option%myrank,'dtol_petsc',ierr)
 !       endif
    
-        call fiReadInt(string,flow_solver%newton_maxit,ierr)
+        call fiReadInt(string,master_solver%newton_maxit,ierr)
         call fiDefaultMsg(option%myrank,'maxit',ierr)
       
-        call fiReadInt(string,flow_solver%newton_maxf,ierr)
+        call fiReadInt(string,master_solver%newton_maxf,ierr)
         call fiDefaultMsg(option%myrank,'maxf',ierr)
        
         call fiReadInt(string,idum,ierr)
         call fiDefaultMsg(option%myrank,'idt',ierr)
         
-        flow_solver%newton_inf_tol = flow_solver%newton_atol
-        call fiReadDouble(string,flow_solver%newton_inf_tol,ierr)
+        master_solver%newton_inf_tol = master_solver%newton_atol
+        call fiReadDouble(string,master_solver%newton_inf_tol,ierr)
         call fiDefaultMsg(option%myrank,'inf_tol_pflow',ierr)
  
         if (option%myrank==0) write(IUNIT2,'(/," *SOLV ",/, &
@@ -1391,14 +1425,14 @@ subroutine readInput(simulation,filename)
           &"  maxf        = ",8x,i5,/, &
           &"  idt         = ",8x,i5 &
           &    )') &
-           flow_solver%newton_atol,flow_solver%newton_rtol, &
-           flow_solver%newton_stol,flow_solver%newton_dtol, &
-           flow_solver%newton_maxit,flow_solver%newton_maxf,idum
+           master_solver%newton_atol,master_solver%newton_rtol, &
+           master_solver%newton_stol,master_solver%newton_dtol, &
+           master_solver%newton_maxit,master_solver%newton_maxf,idum
 
-           flow_solver%linear_atol = flow_solver%newton_atol
-           flow_solver%linear_rtol = flow_solver%newton_rtol
-           flow_solver%linear_stol = flow_solver%newton_stol
-           flow_solver%linear_dtol = flow_solver%newton_dtol
+           master_solver%linear_atol = master_solver%newton_atol
+           master_solver%linear_rtol = master_solver%newton_rtol
+           master_solver%linear_stol = master_solver%newton_stol
+           master_solver%linear_dtol = master_solver%newton_dtol
 
 ! The line below is a commented-out portion of the format string above.
 ! We have to put it here because of the stupid Sun compiler.
@@ -1804,7 +1838,7 @@ subroutine readInput(simulation,filename)
 
         call fiReadStringErrorMsg(option%myrank,'DTST',ierr)
 
-        call fiReadDouble(string,flow_stepper%dt_min,ierr)
+        call fiReadDouble(string,master_stepper%dt_min,ierr)
         call fiDefaultMsg(option%myrank,'dt_min',ierr)
             
         continuation_flag = .true.
@@ -1824,19 +1858,19 @@ subroutine readInput(simulation,filename)
               waypoint%time = temp_real
               call fiReadDouble(string,waypoint%dt_max,ierr)
               call fiErrorMsg(option%myrank,'dt_max','dtst',ierr)
-              if (temp_int == 0) flow_stepper%dt_max = waypoint%dt_max
+              if (temp_int == 0) master_stepper%dt_max = waypoint%dt_max
               call WaypointInsertInList(waypoint,realization%waypoints)
               temp_int = temp_int + 1
             endif
           enddo
         enddo
         
-        option%flow_dt = flow_stepper%dt_min
-      
-        option%flow_dt = realization%output_option%tconv * option%flow_dt
-        flow_stepper%dt_min = realization%output_option%tconv * flow_stepper%dt_min
-        flow_stepper%dt_max = realization%output_option%tconv * flow_stepper%dt_max
+        master_stepper%dt_min = realization%output_option%tconv * master_stepper%dt_min
+        master_stepper%dt_max = realization%output_option%tconv * master_stepper%dt_max
 
+        option%flow_dt = master_stepper%dt_min
+        option%tran_dt = master_stepper%dt_min
+      
 !....................
       case ('BRK','BREAKTHROUGH')
         breakthrough => BreakthroughCreate()
@@ -1849,16 +1883,16 @@ subroutine readInput(simulation,filename)
         stop
 #if 0
 ! Needs implementation         
-        allocate(flow_stepper%steady_eps(option%nflowdof))
+        allocate(master_stepper%steady_eps(option%nflowdof))
         do j=1,option%nflowdof
-          call fiReadDouble(string,flow_stepper%steady_eps(j),ierr)
+          call fiReadDouble(string,master_stepper%steady_eps(j),ierr)
           call fiDefaultMsg(option%myrank,'steady tol',ierr)
         enddo
         if (option%myrank==0) write(IUNIT2,'(/," *SDST ",/, &
           &"  dpdt        = ",1pe12.4,/, &
           &"  dtmpdt        = ",1pe12.4,/, &
           &"  dcdt        = ",1pe12.4)') &
-          flow_stepper%steady_eps
+          master_stepper%steady_eps
 #endif
 
 !.....................
@@ -2028,14 +2062,16 @@ subroutine assignMaterialPropToRegions(realization)
     endif
   endif
     
-  call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr)
-  call VecGetArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
+  if (option%nflowdof > 0) then
+    call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr)
+    call VecGetArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
+    call VecGetArrayF90(field%perm0_xx,perm_xx_p,ierr)
+    call VecGetArrayF90(field%perm0_yy,perm_yy_p,ierr)
+    call VecGetArrayF90(field%perm0_zz,perm_zz_p,ierr)
+    call VecGetArrayF90(field%perm_pow,perm_pow_p,ierr)
+  endif
   call VecGetArrayF90(field%porosity0,por0_p,ierr)
   call VecGetArrayF90(field%tor_loc,tor_loc_p,ierr)
-  call VecGetArrayF90(field%perm0_xx,perm_xx_p,ierr)
-  call VecGetArrayF90(field%perm0_yy,perm_yy_p,ierr)
-  call VecGetArrayF90(field%perm0_zz,perm_zz_p,ierr)
-  call VecGetArrayF90(field%perm_pow,perm_pow_p,ierr)
 
   strata => realization%strata%first
   do
@@ -2071,42 +2107,49 @@ subroutine assignMaterialPropToRegions(realization)
             field%imat(ghosted_id) = material%id
         endif
         if (associated(material)) then
-          icap_loc_p(ghosted_id) = material%icap
-          ithrm_loc_p(ghosted_id) = material%ithrm
+          if (option%nflowdof > 0) then
+            icap_loc_p(ghosted_id) = material%icap
+            ithrm_loc_p(ghosted_id) = material%ithrm
+            perm_xx_p(local_id) = material%permeability(1,1)
+            perm_yy_p(local_id) = material%permeability(2,2)
+            perm_zz_p(local_id) = material%permeability(3,3)
+            perm_pow_p(local_id) = material%permeability_pwr
+          endif
           por0_p(local_id) = material%porosity
           tor_loc_p(ghosted_id) = material%tortuosity
-          perm_xx_p(local_id) = material%permeability(1,1)
-          perm_yy_p(local_id) = material%permeability(2,2)
-          perm_zz_p(local_id) = material%permeability(3,3)
-          perm_pow_p(local_id) = material%permeability_pwr
         endif
       enddo
     endif
     strata => strata%next
   enddo
 
-  call VecRestoreArrayF90(field%icap_loc,icap_loc_p,ierr)
-  call VecRestoreArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
+  if (option%nflowdof > 0) then
+    call VecRestoreArrayF90(field%icap_loc,icap_loc_p,ierr)
+    call VecRestoreArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
+    call VecRestoreArrayF90(field%perm0_xx,perm_xx_p,ierr)
+    call VecRestoreArrayF90(field%perm0_yy,perm_yy_p,ierr)
+    call VecRestoreArrayF90(field%perm0_zz,perm_zz_p,ierr)
+    call VecRestoreArrayF90(field%perm_pow,perm_pow_p,ierr)
+  endif
   call VecRestoreArrayF90(field%porosity0,por0_p,ierr)
-  call VecRestoreArrayF90(field%perm0_xx,perm_xx_p,ierr)
-  call VecRestoreArrayF90(field%perm0_yy,perm_yy_p,ierr)
-  call VecRestoreArrayF90(field%perm0_zz,perm_zz_p,ierr)
-  call VecRestoreArrayF90(field%perm_pow,perm_pow_p,ierr)
   call VecRestoreArrayF90(field%tor_loc,tor_loc_p,ierr)
+
+  if (option%nflowdof > 0) then
+    call GridGlobalToLocal(realization%grid,field%perm0_xx, &
+                           field%perm_xx_loc,ONEDOF)  
+    call GridGlobalToLocal(realization%grid,field%perm0_yy, &
+                           field%perm_yy_loc,ONEDOF)  
+    call GridGlobalToLocal(realization%grid,field%perm0_zz, &
+                           field%perm_zz_loc,ONEDOF)   
+
+    call GridLocalToLocal(realization%grid,field%icap_loc, &
+                          field%icap_loc,ONEDOF)   
+    call GridLocalToLocal(realization%grid,field%ithrm_loc, &
+                          field%ithrm_loc,ONEDOF)
+  endif   
 
   call GridGlobalToLocal(realization%grid,field%porosity0, &
                          field%porosity_loc,ONEDOF)
-  call GridGlobalToLocal(realization%grid,field%perm0_xx, &
-                         field%perm_xx_loc,ONEDOF)  
-  call GridGlobalToLocal(realization%grid,field%perm0_yy, &
-                         field%perm_yy_loc,ONEDOF)  
-  call GridGlobalToLocal(realization%grid,field%perm0_zz, &
-                         field%perm_zz_loc,ONEDOF)   
-
-  call GridLocalToLocal(realization%grid,field%icap_loc, &
-                        field%icap_loc,ONEDOF)   
-  call GridLocalToLocal(realization%grid,field%ithrm_loc, &
-                        field%ithrm_loc,ONEDOF)   
   call GridLocalToLocal(realization%grid,field%tor_loc, &
                         field%tor_loc,ONEDOF)   
   
@@ -2168,7 +2211,7 @@ subroutine assignInitialConditions(realization)
     call VecGetArrayF90(field%flow_xx,xx_p, ierr); CHKERRQ(ierr)
     call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr)
     
-    xx_p = -1.d20
+    xx_p = -999.d0
     
     initial_condition => realization%flow_initial_conditions%first
     do
@@ -2189,7 +2232,7 @@ subroutine assignInitialConditions(realization)
             endif
           endif
           do idof = 1, option%nflowdof
-            xx_p(ibegin+idof) = &
+            xx_p(ibegin+idof-1) = &
               initial_condition%condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
           enddo
           iphase_loc_p(ghosted_id)=initial_condition%condition%iphase
@@ -2231,7 +2274,7 @@ subroutine assignInitialConditions(realization)
     ! assign initial conditions values to domain
     call VecGetArrayF90(field%tran_xx,xx_p, ierr); CHKERRQ(ierr)
     
-    xx_p = -1.d20
+    xx_p = -999.d0
     
     initial_condition => realization%transport_initial_conditions%first
     do
@@ -2251,7 +2294,7 @@ subroutine assignInitialConditions(realization)
             endif
           endif
           do idof = 1, option%ntrandof
-            xx_p(ibegin+idof) = &
+            xx_p(ibegin+idof-1) = &
               initial_condition%condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
           enddo
         enddo
@@ -2283,6 +2326,71 @@ subroutine assignInitialConditions(realization)
   endif
 
 end subroutine assignInitialConditions
+
+! ************************************************************************** !
+!
+! assignUniformVelocity: Assigns uniform velocity in connection list
+!                        darcy velocities
+! author: Glenn Hammond
+! date: 02/20/08
+!
+! ************************************************************************** !
+subroutine assignUniformVelocity(realization)
+
+  use Realization_module
+  use Region_module
+  use Option_module
+  use Field_module
+  use Coupler_module
+  use Condition_module
+  use Grid_module
+  
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field  
+  type(grid_type), pointer :: grid
+  type(coupler_type), pointer :: boundary_condition
+  type(connection_type), pointer :: cur_connection_set
+  PetscInt :: iconn, sum_connection
+  PetscReal :: vdarcy
+    
+  option => realization%option
+  field => realization%field
+  grid => realization%grid
+    
+  ! Internal Flux Terms -----------------------------------
+  cur_connection_set => grid%internal_connection_list%first
+  sum_connection = 0
+  do 
+    if (.not.associated(cur_connection_set)) exit
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+      vdarcy = OptionDotProduct(option%uniform_velocity, &
+                                cur_connection_set%dist(1:3,iconn))
+      field%internal_velocities(1,sum_connection) = vdarcy
+    enddo
+    cur_connection_set => cur_connection_set%next
+  enddo    
+
+  ! Boundary Flux Terms -----------------------------------
+  boundary_condition => realization%transport_boundary_conditions%first
+  sum_connection = 0
+  do 
+    if (.not.associated(boundary_condition)) exit
+    cur_connection_set => boundary_condition%connection
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+      vdarcy = OptionDotProduct(option%uniform_velocity, &
+                                cur_connection_set%dist(1:3,iconn))
+      field%boundary_velocities(1,sum_connection) = vdarcy
+    enddo
+    boundary_condition => boundary_condition%next
+  enddo
+
+end subroutine assignUniformVelocity
 
 ! ************************************************************************** !
 !

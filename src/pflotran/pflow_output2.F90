@@ -11,22 +11,6 @@ module Output_module
 #include "include/finclude/petscda.h90"
 #include "include/finclude/petsclog.h"
 
-  PetscInt, parameter :: X_COORDINATE = 1
-  PetscInt, parameter :: Y_COORDINATE = 2
-  PetscInt, parameter :: Z_COORDINATE = 3
-
-  PetscInt, parameter :: TEMPERATURE = 4
-  PetscInt, parameter :: PRESSURE = 5
-  PetscInt, parameter :: LIQUID_SATURATION = 6
-  PetscInt, parameter :: GAS_SATURATION = 7
-  PetscInt, parameter :: LIQUID_ENERGY = 8
-  PetscInt, parameter :: GAS_ENERGY = 9
-  PetscInt, parameter :: LIQUID_MOLE_FRACTION = 10
-  PetscInt, parameter :: GAS_MOLE_FRACTION = 11
-  PetscInt, parameter :: VOLUME_FRACTION = 12
-  PetscInt, parameter :: PHASE = 13
-  PetscInt, parameter :: MATERIAL_ID = 14
-
   PetscInt, parameter :: TECPLOT_INTEGER = 0
   PetscInt, parameter :: TECPLOT_REAL = 1
 
@@ -40,7 +24,7 @@ module Output_module
   PetscErrorCode :: ierr
   
   public :: Output, OutputTecplot, OutputHDF5, OutputVectorTecplot, &
-            OutputBreakthrough
+            OutputBreakthrough, OutputGetVarFromArray
   
 contains
 
@@ -130,6 +114,8 @@ subroutine OutputTecplot(realization)
   use Mphase_module
   use Richards_Analytical_module
   use Richards_Lite_module
+  
+  use Reactive_Transport_module
  
   implicit none
 
@@ -174,21 +160,43 @@ subroutine OutputTecplot(realization)
     ! write title
     write(IUNIT3,'(''TITLE = "'',1es12.4," [",a1,'']"'')') &
                  option%time/output_option%tconv,output_option%tunit
-    ! write variables
+
+    ! initial portion of header
+    string = 'VARIABLES=' // &
+             '"X [m]",' // &
+             '"Y [m]",' // &
+             '"Z [m]"'
+
+    ! write flow variables
+    string2 = ''
     select case(option%iflowmode)
       case (MPH_MODE)
-        string = MphaseGetTecplotHeader(realization)
+        string2 = MphaseGetTecplotHeader(realization)
       case(RICHARDS_MODE)
-        string = RichardsGetTecplotHeader(realization)
+        string2 = RichardsGetTecplotHeader(realization)
       case(RICHARDS_LITE_MODE)
-        string = RichardsLiteGetTecplotHeader(realization)
+        string2 = RichardsLiteGetTecplotHeader(realization)
     end select
+    string = trim(string) // trim(string2)
+    
+    ! write transport variables
+    if (option%ntrandof > 0) then
+      string2 = RTGetTecplotHeader(realization)
+      string = trim(string) // trim(string2)
+    endif
+
+    ! write material ids
+    if (associated(field%imat)) then
+      string = trim(string) // ',"Material_ID"'
+    endif
+
     write(IUNIT3,'(a)') trim(string)
   
     ! write zone header
     write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
                  &'', K='',i4,'','')') &
-                 option%time/output_option%tconv,grid%structured_grid%nx,grid%structured_grid%ny,grid%structured_grid%nz 
+                 option%time/output_option%tconv,grid%structured_grid%nx, &
+                 grid%structured_grid%ny,grid%structured_grid%nz 
     string = trim(string) // ' DATAPACKING=BLOCK'
     write(IUNIT3,'(a)') trim(string)
 
@@ -218,7 +226,7 @@ subroutine OutputTecplot(realization)
       ! temperature
       select case(option%iflowmode)
         case(MPH_MODE,RICHARDS_MODE)
-          call GetVarFromArray(realization,global_vec,TEMPERATURE,ZERO_INTEGER)
+          call OutputGetVarFromArray(realization,global_vec,TEMPERATURE,ZERO_INTEGER)
           call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       end select
@@ -226,7 +234,7 @@ subroutine OutputTecplot(realization)
       ! pressure
       select case(option%iflowmode)
         case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
-          call GetVarFromArray(realization,global_vec,PRESSURE,ZERO_INTEGER)
+          call OutputGetVarFromArray(realization,global_vec,PRESSURE,ZERO_INTEGER)
           call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       end select
@@ -234,7 +242,7 @@ subroutine OutputTecplot(realization)
       ! liquid saturation
       select case(option%iflowmode)
         case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
-          call GetVarFromArray(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
+          call OutputGetVarFromArray(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
           call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       end select
@@ -242,7 +250,7 @@ subroutine OutputTecplot(realization)
       ! gas saturation
       select case(option%iflowmode)
         case(MPH_MODE)
-          call GetVarFromArray(realization,global_vec,GAS_SATURATION,ZERO_INTEGER)
+          call OutputGetVarFromArray(realization,global_vec,GAS_SATURATION,ZERO_INTEGER)
           call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       end select
@@ -250,7 +258,7 @@ subroutine OutputTecplot(realization)
       ! liquid energy
       select case(option%iflowmode)
         case(MPH_MODE,RICHARDS_MODE)
-          call GetVarFromArray(realization,global_vec,LIQUID_ENERGY,ZERO_INTEGER)
+          call OutputGetVarFromArray(realization,global_vec,LIQUID_ENERGY,ZERO_INTEGER)
           call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       end select
@@ -258,7 +266,7 @@ subroutine OutputTecplot(realization)
      ! gas energy
       select case(option%iflowmode)
         case(MPH_MODE)
-          call GetVarFromArray(realization,global_vec,GAS_ENERGY,ZERO_INTEGER)
+          call OutputGetVarFromArray(realization,global_vec,GAS_ENERGY,ZERO_INTEGER)
           call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       end select
@@ -267,7 +275,7 @@ subroutine OutputTecplot(realization)
         case(MPH_MODE,RICHARDS_MODE)
           ! liquid mole fractions
           do i=1,option%nspec
-            call GetVarFromArray(realization,global_vec,LIQUID_MOLE_FRACTION,i-1)
+            call OutputGetVarFromArray(realization,global_vec,LIQUID_MOLE_FRACTION,i)
             call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
             call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
           enddo
@@ -277,7 +285,7 @@ subroutine OutputTecplot(realization)
         case(MPH_MODE)
           ! gas mole fractions
           do i=1,option%nspec
-            call GetVarFromArray(realization,global_vec,GAS_MOLE_FRACTION,i-1)
+            call OutputGetVarFromArray(realization,global_vec,GAS_MOLE_FRACTION,i)
             call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
             call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
           enddo
@@ -285,7 +293,7 @@ subroutine OutputTecplot(realization)
 #if 0      
       ! Volume Fraction
       if (option%rk > 0.d0) then
-        call GetVarFromArray(realization,global_vec,VOLUME_FRACTION,ZERO_INTEGER)
+        call OutputGetVarFromArray(realization,global_vec,VOLUME_FRACTION,ZERO_INTEGER)
         call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
         call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       endif
@@ -293,22 +301,30 @@ subroutine OutputTecplot(realization)
       ! phase
       select case(option%iflowmode)
         case(MPH_MODE)
-          call GetVarFromArray(realization,global_vec,PHASE,ZERO_INTEGER)
+          call OutputGetVarFromArray(realization,global_vec,PHASE,ZERO_INTEGER)
           call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_INTEGER)
       end select
       
-      ! material id
-      if (associated(field%imat)) then
-        call GetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
-        call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
-        call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_INTEGER)
-      endif
-  
     case default
   
   end select
   
+  if (option%ntrandof > 0) then
+    do i=1,option%ntrandof
+      call OutputGetVarFromArray(realization,global_vec,TOTAL_CONCENTRATION,i)
+      call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
+      call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+    enddo
+  endif  
+  
+  ! material id
+  if (associated(field%imat)) then
+    call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
+    call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
+    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_INTEGER)
+  endif
+
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
 
@@ -478,7 +494,7 @@ subroutine OutputVelocitiesTecplot(realization)
 
   ! material id
   if (associated(field%imat)) then
-    call GetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
+    call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
     call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
     call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_INTEGER)
   endif
@@ -883,7 +899,7 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
   call WriteTecplotDataSetFromVec(fid,realization,natural_vec,TECPLOT_REAL)
 
   if (associated(field%imat)) then
-    call GetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
+    call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
     call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
     call WriteTecplotDataSetFromVec(fid,realization,natural_vec,TECPLOT_INTEGER)
   endif
@@ -1324,42 +1340,42 @@ subroutine WriteBreakthroughDataForCell(fid,realization,local_id)
       select case(option%iflowmode)
         case(MPH_MODE,RICHARDS_MODE)
           write(fid,110,advance="no") &
-            GetVarFromArrayAtCell(realization,TEMPERATURE,ZERO_INTEGER,local_id)
+            OutputGetVarFromArrayAtCell(realization,TEMPERATURE,ZERO_INTEGER,local_id)
       end select
 
       ! pressure
       select case(option%iflowmode)
         case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
           write(fid,110,advance="no") &
-            GetVarFromArrayAtCell(realization,PRESSURE,ZERO_INTEGER,local_id)
+            OutputGetVarFromArrayAtCell(realization,PRESSURE,ZERO_INTEGER,local_id)
       end select
 
       ! liquid saturation
       select case(option%iflowmode)
         case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
           write(fid,110,advance="no") &
-            GetVarFromArrayAtCell(realization,LIQUID_SATURATION,ZERO_INTEGER,local_id)
+            OutputGetVarFromArrayAtCell(realization,LIQUID_SATURATION,ZERO_INTEGER,local_id)
       end select
 
       select case(option%iflowmode)
         case(MPH_MODE)
           ! gas saturation
           write(fid,110,advance="no") &
-            GetVarFromArrayAtCell(realization,GAS_SATURATION,ZERO_INTEGER,local_id)
+            OutputGetVarFromArrayAtCell(realization,GAS_SATURATION,ZERO_INTEGER,local_id)
       end select
     
       select case(option%iflowmode)
         case(MPH_MODE,RICHARDS_MODE)
           ! liquid energy
           write(fid,110,advance="no") &
-            GetVarFromArrayAtCell(realization,LIQUID_ENERGY,ZERO_INTEGER,local_id)
+            OutputGetVarFromArrayAtCell(realization,LIQUID_ENERGY,ZERO_INTEGER,local_id)
       end select
     
       select case(option%iflowmode)
         case(MPH_MODE)
           ! gas energy
           write(fid,110,advance="no") &
-            GetVarFromArrayAtCell(realization,GAS_ENERGY,ZERO_INTEGER,local_id)
+            OutputGetVarFromArrayAtCell(realization,GAS_ENERGY,ZERO_INTEGER,local_id)
       end select
 
       select case(option%iflowmode)
@@ -1367,7 +1383,7 @@ subroutine WriteBreakthroughDataForCell(fid,realization,local_id)
           ! liquid mole fractions
           do i=1,option%nspec
             write(fid,110,advance="no") &
-              GetVarFromArrayAtCell(realization,LIQUID_MOLE_FRACTION,i-1,local_id)
+              OutputGetVarFromArrayAtCell(realization,LIQUID_MOLE_FRACTION,i-1,local_id)
           enddo
       end select
   
@@ -1376,21 +1392,21 @@ subroutine WriteBreakthroughDataForCell(fid,realization,local_id)
           ! gas mole fractions
           do i=1,option%nspec
             write(fid,110,advance="no") &
-              GetVarFromArrayAtCell(realization,GAS_MOLE_FRACTION,i-1,local_id)
+              OutputGetVarFromArrayAtCell(realization,GAS_MOLE_FRACTION,i-1,local_id)
           enddo
       end select 
 #if 0      
       ! Volume Fraction
       if (option%rk > 0.d0) then
         write(fid,110,advance="no") &
-          GetVarFromArrayAtCell(realization,VOLUME_FRACTION,ZERO_INTEGER,local_id)
+          OutputGetVarFromArrayAtCell(realization,VOLUME_FRACTION,ZERO_INTEGER,local_id)
       endif
 #endif    
       ! phase
       select case(option%iflowmode)
         case(MPH_MODE,RICHARDS_MODE)
           write(fid,111,advance="no") &
-            int(GetVarFromArrayAtCell(realization,PHASE,ZERO_INTEGER,local_id))
+            int(OutputGetVarFromArrayAtCell(realization,PHASE,ZERO_INTEGER,local_id))
       end select
       
     case default
@@ -1561,7 +1577,7 @@ subroutine OutputHDF5(realization)
       ! temperature
       select case(option%iflowmode)
         case (MPH_MODE,RICHARDS_MODE)
-          call GetVarFromArray(realization,global_vec,TEMPERATURE,ZERO_INTEGER)
+          call OutputGetVarFromArray(realization,global_vec,TEMPERATURE,ZERO_INTEGER)
           string = "Temperature"
           call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
       end select
@@ -1569,7 +1585,7 @@ subroutine OutputHDF5(realization)
       ! pressure
       select case(option%iflowmode)
         case (MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
-          call GetVarFromArray(realization,global_vec,PRESSURE,ZERO_INTEGER)
+          call OutputGetVarFromArray(realization,global_vec,PRESSURE,ZERO_INTEGER)
           string = "Pressure"
           call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
       end select
@@ -1577,7 +1593,7 @@ subroutine OutputHDF5(realization)
       ! liquid saturation
       select case(option%iflowmode)
         case (MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
-          call GetVarFromArray(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
+          call OutputGetVarFromArray(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
           string = "Liquid Saturation"
           call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)  
       end select
@@ -1585,7 +1601,7 @@ subroutine OutputHDF5(realization)
       ! gas saturation
       select case(option%iflowmode)
         case (MPH_MODE)
-          call GetVarFromArray(realization,global_vec,GAS_SATURATION,ZERO_INTEGER)
+          call OutputGetVarFromArray(realization,global_vec,GAS_SATURATION,ZERO_INTEGER)
           string = "Gas Saturation"
           call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
       end select
@@ -1593,7 +1609,7 @@ subroutine OutputHDF5(realization)
       ! liquid energy
       select case(option%iflowmode)
         case (MPH_MODE,RICHARDS_MODE)
-          call GetVarFromArray(realization,global_vec,LIQUID_ENERGY,ZERO_INTEGER)
+          call OutputGetVarFromArray(realization,global_vec,LIQUID_ENERGY,ZERO_INTEGER)
           string = "Liquid Energy"
           call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
       end select
@@ -1601,7 +1617,7 @@ subroutine OutputHDF5(realization)
       ! gas energy
       select case(option%iflowmode)
         case (MPH_MODE)    
-          call GetVarFromArray(realization,global_vec,GAS_ENERGY,ZERO_INTEGER)
+          call OutputGetVarFromArray(realization,global_vec,GAS_ENERGY,ZERO_INTEGER)
           string = "Gas Energy"
           call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
       end select
@@ -1610,7 +1626,7 @@ subroutine OutputHDF5(realization)
       select case(option%iflowmode)
         case (MPH_MODE,RICHARDS_MODE)
           do i=1,option%nspec
-            call GetVarFromArray(realization,global_vec,LIQUID_MOLE_FRACTION,i-1)
+            call OutputGetVarFromArray(realization,global_vec,LIQUID_MOLE_FRACTION,i-1)
             write(string,'(''Liquid Mole Fraction('',i4,'')'')') i
             call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
           enddo
@@ -1620,7 +1636,7 @@ subroutine OutputHDF5(realization)
       select case(option%iflowmode)
         case (MPH_MODE)      
           do i=1,option%nspec
-            call GetVarFromArray(realization,global_vec,GAS_MOLE_FRACTION,i-1)
+            call OutputGetVarFromArray(realization,global_vec,GAS_MOLE_FRACTION,i-1)
             write(string,'(''Gas Mole Fraction('',i4,'')'')') i
             call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
           enddo
@@ -1628,7 +1644,7 @@ subroutine OutputHDF5(realization)
 #if 0    
       ! Volume Fraction
       if (option%rk > 0.d0) then
-        call GetVarFromArray(realization,global_vec,VOLUME_FRACTION,ZERO_INTEGER)
+        call OutputGetVarFromArray(realization,global_vec,VOLUME_FRACTION,ZERO_INTEGER)
         string = "Volume Fraction"
         call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
       endif
@@ -1636,7 +1652,7 @@ subroutine OutputHDF5(realization)
       ! phase
       select case(option%iflowmode)
         case (MPH_MODE)
-          call GetVarFromArray(realization,global_vec,PHASE,ZERO_INTEGER)
+          call OutputGetVarFromArray(realization,global_vec,PHASE,ZERO_INTEGER)
           string = "Phase"
           call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,HDF_NATIVE_INTEGER) 
       end select
@@ -2022,22 +2038,22 @@ end subroutine ConvertArrayToNatural
 
 ! ************************************************************************** !
 !
-! GetVarFromArrayAtCell: Extracts variables indexed by ivar from a multivar array
+! OutputGetVarFromArrayAtCell: Extracts variables indexed by ivar from a multivar array
 ! author: Glenn Hammond
 ! date: 02/11/08
 !
 ! ************************************************************************** !
-function GetVarFromArrayAtCell(realization,ivar,isubvar,local_id)
+function OutputGetVarFromArrayAtCell(realization,ivar,isubvar,local_id)
 
   use Realization_module
   use Option_module
 
-  use Richards_Analytical_module
-  use Richards_Lite_module
+  use Richards_Analytical_module, only : RichardsGetVarFromArrayAtCell
+  use Richards_Lite_module, only : RichardsLiteGetVarFromArrayAtCell
 
   implicit none
   
-  PetscReal :: GetVarFromArrayAtCell
+  PetscReal :: OutputGetVarFromArrayAtCell
   type(realization_type) :: realization
   PetscInt :: ivar
   PetscInt :: isubvar
@@ -2045,29 +2061,30 @@ function GetVarFromArrayAtCell(realization,ivar,isubvar,local_id)
 
   select case(realization%option%iflowmode)
     case(RICHARDS_MODE)
-      GetVarFromArrayAtCell = RichardsGetVarFromArrayAtCell(realization,ivar,isubvar,local_id)
+      OutputGetVarFromArrayAtCell = RichardsGetVarFromArrayAtCell(realization,ivar,isubvar,local_id)
     case(RICHARDS_LITE_MODE)
-      GetVarFromArrayAtCell = RichardsLiteGetVarFromArrayAtCell(realization,ivar,isubvar,local_id)
+      OutputGetVarFromArrayAtCell = RichardsLiteGetVarFromArrayAtCell(realization,ivar,isubvar,local_id)
   end select
 
-end function GetVarFromArrayAtCell
+end function OutputGetVarFromArrayAtCell
 
 ! ************************************************************************** !
 !
-! GetVarFromArray: Extracts variables indexed by ivar from a multivar array
+! OutputGetVarFromArray: Extracts variables indexed by ivar from a multivar array
 ! author: Glenn Hammond
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine GetVarFromArray(realization,vec,ivar,isubvar)
+subroutine OutputGetVarFromArray(realization,vec,ivar,isubvar)
 
   use Realization_module
   use Grid_module
   use Option_module
   use Field_module
 
-  use Richards_Analytical_module
-  use Richards_Lite_module
+  use Richards_Analytical_module, only : RichardsGetVarFromArray
+  use Richards_Lite_module, only : RichardsLiteGetVarFromArray
+  use Reactive_Transport_module, only : RTGetVarFromArray
 
   implicit none
   
@@ -2076,113 +2093,42 @@ subroutine GetVarFromArray(realization,vec,ivar,isubvar)
   PetscInt :: ivar
   PetscInt :: isubvar
 
-  PetscInt :: local_id, ghosted_id
-  PetscInt :: offset, saturation_offset
-  PetscInt :: size_var_use
-  PetscInt :: size_var_node
-  type(grid_type), pointer :: grid
   type(option_type), pointer :: option
-  type(field_type), pointer :: field
-  PetscReal, pointer :: var_ptr(:)
-  PetscReal, pointer :: vec_ptr(:)
 
   option => realization%option
-  grid => realization%grid
-  field => realization%field
 
-  select case(option%iflowmode)
-    case(RICHARDS_MODE)
-      call RichardsGetVarFromArray(realization,vec,ivar,isubvar)
-      return
-    case(RICHARDS_LITE_MODE)
-      call RichardsLiteGetVarFromArray(realization,vec,ivar,isubvar)
-      return
-  end select
-
-  ! the below is no longer supported.  Each mode needs to have i/o
-  ! routines like the richards* ones above.
-#if 0  
-  call VecGetArrayF90(vec,vec_ptr,ierr)
-      
   select case(ivar)
-    case(TEMPERATURE,PRESSURE,LIQUID_SATURATION,GAS_SATURATION, &
-         LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION)
-      select case(ivar)
-        case(TEMPERATURE)
-          offset = 1
-        case(PRESSURE)
-          offset = 2
-        case(LIQUID_SATURATION)
-          offset = 3
-        case(GAS_SATURATION)
-          offset = 4
-        case(LIQUID_MOLE_FRACTION)
-          offset = 17+isubvar
-        case(GAS_MOLE_FRACTION)
-          offset = 17+option%nspec+isubvar
+    case(TEMPERATURE,PRESSURE,LIQUID_SATURATION,GAS_SATURATION,LIQUID_ENERGY, &
+         GAS_ENERGY,LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION,VOLUME_FRACTION, &
+         PHASE)
+      select case(option%iflowmode)
+        case(RICHARDS_MODE)
+          call RichardsGetVarFromArray(realization,vec,ivar,isubvar)
+          return
+        case(RICHARDS_LITE_MODE)
+          call RichardsLiteGetVarFromArray(realization,vec,ivar,isubvar)
+          return
       end select
-    
-      size_var_use = 2 + 7*option%nphase + 2* option%nphase*option%nspec
-      size_var_node = (option%nflowdof + 1) * size_var_use
-        
-      call VecGetArrayF90(field%var_loc,var_ptr,ierr)
-      do local_id=1,grid%nlmax
-        ghosted_id = grid%nL2G(local_id)
-        vec_ptr(local_id) = var_ptr((ghosted_id-1)*size_var_node+offset)
-      enddo
-      call VecRestoreArrayF90(field%var_loc,var_ptr,ierr)
-
-    case(LIQUID_ENERGY,GAS_ENERGY)
-
-      select case (ivar)
-        case(LIQUID_ENERGY)
-          offset = 11
-          saturation_offset = 3
-        case(GAS_ENERGY)
-          offset = 12
-          saturation_offset = 4  
-      end select
-
-      size_var_use = 2 + 7*option%nphase + 2* option%nphase*option%nspec
-      size_var_node = (option%nflowdof + 1) * size_var_use
-        
-      call VecGetArrayF90(field%var_loc,var_ptr,ierr)
-      do local_id=1,grid%nlmax
-        ghosted_id = grid%nL2G(local_id)      
-        if (var_ptr((ghosted_id-1)*size_var_node+saturation_offset) > 1.d-30) then
-          vec_ptr(local_id) = var_ptr((ghosted_id-1)*size_var_node+offset)
-        else
-          vec_ptr(local_id) = 0.d0
-        endif
-      enddo
-      call VecRestoreArrayF90(field%var_loc,var_ptr,ierr)
-
-    case(VOLUME_FRACTION)
-    
-      ! need to set minimum to 0.
-      call VecGetArrayF90(field%phis,var_ptr,ierr)
-      vec_ptr(1:grid%nlmax) = var_ptr(1:grid%nlmax)
-      call VecRestoreArrayF90(field%phis,var_ptr,ierr)
-     
-    case(PHASE)
-    
-      call VecGetArrayF90(field%iphas_loc,var_ptr,ierr)
-      do local_id=1,grid%nlmax
-        vec_ptr(local_id) = var_ptr(grid%nL2G(local_id))
-      enddo
-      call VecRestoreArrayF90(field%iphas_loc,var_ptr,ierr)
-
+    case(FREE_ION_CONCENTRATION,TOTAL_CONCENTRATION)
+      call RTGetVarFromArray(realization,vec,ivar,isubvar)
     case(MATERIAL_ID)
-      do local_id=1,grid%nlmax
-        vec_ptr(local_id) = field%imat(grid%nL2G(local_id))
-      enddo
-           
+      if (option%nflowdof > 0) then
+        select case(option%iflowmode)
+          case(RICHARDS_MODE)
+            call RichardsGetVarFromArray(realization,vec,ivar,isubvar)
+            return
+          case(RICHARDS_LITE_MODE)
+            call RichardsLiteGetVarFromArray(realization,vec,ivar,isubvar)
+            return
+        end select
+      else
+        call RTGetVarFromArray(realization,vec,ivar,isubvar)
+      endif
+    case default
+      call printErrMsg(realization%option,'IVAR not found in OutputGetVarFromArray')
   end select
   
-  call VecRestoreArrayF90(vec,vec_ptr,ierr)
-#endif
-
-end subroutine GetVarFromArray
+end subroutine OutputGetVarFromArray
 
 ! ************************************************************************** !
 !

@@ -26,6 +26,8 @@ module Option_module
 
     PetscInt :: ntrandof
     PetscInt :: ncomp
+    
+    PetscReal :: uniform_velocity(3)
 
     ! Program options
     PetscTruth :: use_matrix_free  ! If true, do not form the Jacobian.
@@ -147,6 +149,8 @@ function OptionCreate()
   option%tranmode = ""
   option%itranmode = NULL_MODE
   option%ntrandof = 0
+  
+  option%uniform_velocity = 0.d0
    
 !-----------------------------------------------------------------------
       ! Initialize some parameters to sensible values.  These are parameters

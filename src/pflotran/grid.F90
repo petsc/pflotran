@@ -1033,6 +1033,10 @@ subroutine GridLocalizeRegions(region_list,grid,option)
                            (region%j2-region%j1+1)* &
                            (region%k2-region%k1+1)
         allocate(region%cell_ids(region%num_cells))
+        if (region%iface /= 0) then
+          allocate(region%faces(region%num_cells))
+          region%faces = region%iface
+        endif
         region%cell_ids = 0
         do k=region%k1,region%k2
           do j=region%j1,region%j2
@@ -1100,6 +1104,8 @@ subroutine GridLocalizeRegions(region_list,grid,option)
     
     if (region%num_cells == 0 .and. associated(region%cell_ids)) &
       deallocate(region%cell_ids)
+    if (region%num_cells == 0 .and. associated(region%faces)) &
+      deallocate(region%faces)
     region => region%next
     
   enddo

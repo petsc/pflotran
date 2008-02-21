@@ -65,36 +65,40 @@ DTST 1.d-3
 
 : REGIONS ------------------------------------------------
 REGION all
-BLOCK 
-1 107 1 1 1 51
+BLOCK 1 107 1 1 1 51
+END
 
 REGION rock_region_1
-BLOCK 
-1 53 1 1 1 51
+BLOCK 1 53 1 1 1 51
+END
 
 REGION rock_region_2
-BLOCK 
-54 107 1 1 1 51
+BLOCK 54 107 1 1 1 51
+END
 
 REGION West
-BLOCK
-1 1 1 1 1 51
+BLOCK 1 1 1 1 1 51
+FACE west
+END
 
 REGION East
-BLOCK
-107 107 1 1 1 51
+BLOCK 107 107 1 1 1 51
+FACE east
+END
 
 REGION Top
-BLOCK
-1 107 1 1 51 51
+BLOCK 1 107 1 1 51 51
+FACE top
+END
 
 REGION Bottom
-BLOCK
-1 107 1 1 1 1
+BLOCK 1 107 1 1 1 1
+FACE bottom
+END
 
 REGION Source
-BLOCK
-54 54 1 1 34 34
+BLOCK 54 54 1 1 34 34
+END
 
 : CONDITIONS ------------------------------------------------
 CONDITION initial

@@ -45,7 +45,7 @@ module Richards_Analytical_module
          RichardsSetup, RichardsNumericalJacobianTest, &
          RichardsGetVarFromArray, RichardsGetVarFromArrayAtCell, &
          RichardsMaxChange, RichardsUpdateSolution, &
-         RichardsGetTecplotHeader
+         RichardsGetTecplotHeader, RichardsInitializeTimestep
 
   PetscInt, save :: n_zero_rows = 0
   PetscInt, parameter :: jh2o = 1
@@ -176,9 +176,6 @@ subroutine RichardsSetup(realization)
   ! for inactive cells (and isothermal)
   call createRichardsZeroArray(realization)
 
-  ! compute initial contribution to accumulation at previous time  
-  call RichardsUpdateFixedAccumulation(realization)
-  
 end subroutine RichardsSetup
 
 ! ************************************************************************** !
@@ -376,6 +373,25 @@ end subroutine RichardsUpdateAuxVars
 
 ! ************************************************************************** !
 !
+! RichardsInitializeTimestep: Update data in module prior to time step
+! author: Glenn Hammond
+! date: 02/20/08
+!
+! ************************************************************************** !
+subroutine RichardsInitializeTimestep(realization)
+
+  use Realization_module
+  
+  implicit none
+  
+  type(realization_type) :: realization
+
+  call RichardsUpdateFixedAccumulation(realization)
+
+end subroutine RichardsInitializeTimestep
+
+! ************************************************************************** !
+!
 ! RichardsUpdateSolution: Updates data in module after a successful time step
 ! author: Glenn Hammond
 ! date: 02/13/08
@@ -392,7 +408,6 @@ subroutine RichardsUpdateSolution(realization)
   PetscErrorCode :: ierr
   
   call VecCopy(realization%field%flow_xx,realization%field%flow_yy,ierr)   
-  call RichardsUpdateFixedAccumulation(realization)
 
 end subroutine RichardsUpdateSolution
 
@@ -1710,7 +1725,7 @@ subroutine RichardsAnalyticalResidual(snes,xx,r,realization,ierr)
                         cur_connection_set%area(iconn),distance_gravity, &
                         upweight,option,v_darcy,Res)
 
-      field%internal_velocities(1,iconn) = v_darcy
+      field%internal_velocities(1,sum_connection) = v_darcy
      
       if (local_id_up>0) then
         iend = local_id_up*option%nflowdof
@@ -1779,7 +1794,7 @@ subroutine RichardsAnalyticalResidual(snes,xx,r,realization,ierr)
                                 cur_connection_set%area(iconn), &
                                 distance_gravity,option, &
                                 v_darcy,Res)
-      field%boundary_velocities(1,iconn) = v_darcy
+      field%boundary_velocities(1,sum_connection) = v_darcy
 
       iend = local_id*option%nflowdof
       istart = iend-option%nflowdof+1
@@ -2390,7 +2405,8 @@ end subroutine RichardsMaxChange
 
 ! ************************************************************************** !
 !
-! RichardsGetTecplotHeader: Returns a Tecplot file header
+! RichardsLiteGetTecplotHeader: Returns Richards contribution to 
+!                               Tecplot file header
 ! author: Glenn Hammond
 ! date: 02/13/08
 !
@@ -2414,11 +2430,7 @@ function RichardsGetTecplotHeader(realization)
   option => realization%option
   field => realization%field
   
-  string = 'VARIABLES=' // &
-           '"X [m]",' // &
-           '"Y [m]",' // &
-           '"Z [m]",' // &
-           '"T [C]",' // &
+  string = '"T [C]",' // &
            '"P [Pa]",' // &
            '"sl",' // &
            '"Ul"' 
@@ -2426,10 +2438,6 @@ function RichardsGetTecplotHeader(realization)
     write(string2,'('',"Xl('',i2,'')"'')') i
     string = trim(string) // trim(string2)
   enddo
-
-  if (associated(field%imat)) then
-    string = trim(string) // ',"Material_ID"'
-  endif
   
   RichardsGetTecplotHeader = string
 
@@ -2451,18 +2459,6 @@ subroutine RichardsGetVarFromArray(realization,vec,ivar,isubvar)
   use Field_module
 
   implicit none
-  
-  PetscInt, parameter :: TEMPERATURE = 4
-  PetscInt, parameter :: PRESSURE = 5
-  PetscInt, parameter :: LIQUID_SATURATION = 6
-  PetscInt, parameter :: GAS_SATURATION = 7
-  PetscInt, parameter :: LIQUID_ENERGY = 8
-  PetscInt, parameter :: GAS_ENERGY = 9
-  PetscInt, parameter :: LIQUID_MOLE_FRACTION = 10
-  PetscInt, parameter :: GAS_MOLE_FRACTION = 11
-  PetscInt, parameter :: VOLUME_FRACTION = 12
-  PetscInt, parameter :: PHASE = 13
-  PetscInt, parameter :: MATERIAL_ID = 14
 
   type(realization_type) :: realization
   Vec :: vec
@@ -2499,7 +2495,7 @@ subroutine RichardsGetVarFromArray(realization,vec,ivar,isubvar)
           case(GAS_SATURATION,GAS_MOLE_FRACTION,GAS_ENERGY)
             vec_ptr(local_id) = 0.d0
           case(LIQUID_MOLE_FRACTION)
-            vec_ptr(local_id) = aux_vars(ghosted_id)%xmol(isubvar+1)
+            vec_ptr(local_id) = aux_vars(ghosted_id)%xmol(isubvar)
           case(LIQUID_ENERGY)
             vec_ptr(local_id) = aux_vars(ghosted_id)%u
         end select
@@ -2536,18 +2532,6 @@ function RichardsGetVarFromArrayAtCell(realization,ivar,isubvar,local_id)
   use Field_module
 
   implicit none
-  
-  PetscInt, parameter :: TEMPERATURE = 4
-  PetscInt, parameter :: PRESSURE = 5
-  PetscInt, parameter :: LIQUID_SATURATION = 6
-  PetscInt, parameter :: GAS_SATURATION = 7
-  PetscInt, parameter :: LIQUID_ENERGY = 8
-  PetscInt, parameter :: GAS_ENERGY = 9
-  PetscInt, parameter :: LIQUID_MOLE_FRACTION = 10
-  PetscInt, parameter :: GAS_MOLE_FRACTION = 11
-  PetscInt, parameter :: VOLUME_FRACTION = 12
-  PetscInt, parameter :: PHASE = 13
-  PetscInt, parameter :: MATERIAL_ID = 14
 
   PetscReal :: RichardsGetVarFromArrayAtCell
   type(realization_type) :: realization

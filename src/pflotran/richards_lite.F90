@@ -39,13 +39,13 @@ module Richards_Lite_module
   PetscReal, parameter :: eps       = 1.D-8
   PetscReal, parameter :: floweps   = 1.D-24
   PetscReal, parameter :: perturbation_tolerance = 1.d-5
-
+  
   public RichardsLiteResidual,RichardsLiteJacobian, &
          RichardsLiteUpdateFixedAccum,RichardsLiteTimeCut,&
          RichardsLiteSetup, RichardsLiteNumericalJacTest, &
          RichardsLiteGetVarFromArray, RichardsLiteGetVarFromArrayAtCell, &
          RichardsLiteMaxChange, RichardsLiteUpdateSolution, &
-         RichardsLiteGetTecplotHeader
+         RichardsLiteGetTecplotHeader, RichardsLiteInitializeTimestep
 
   PetscInt, save :: n_zero_rows = 0
   logical, save :: aux_vars_up_to_date = .false.
@@ -159,9 +159,6 @@ subroutine RichardsLiteSetup(realization)
   ! for inactive cells (and isothermal)
   call createRichardsLiteZeroArray(realization)
 
-  ! compute initial contribution to accumulation at previous time
-  call RichardsLiteUpdateFixedAccum(realization)
-  
 end subroutine RichardsLiteSetup
 
 ! ************************************************************************** !
@@ -331,6 +328,24 @@ subroutine RichardsLiteUpdateAuxVars(realization)
 
 end subroutine RichardsLiteUpdateAuxVars
 
+! ************************************************************************** !
+!
+! RichardsLiteInitializeTimestep: Update data in module prior to time step
+! author: Glenn Hammond
+! date: 02/20/08
+!
+! ************************************************************************** !
+subroutine RichardsLiteInitializeTimestep(realization)
+
+  use Realization_module
+  
+  implicit none
+  
+  type(realization_type) :: realization
+
+  call RichardsLiteUpdateFixedAccum(realization)
+
+end subroutine RichardsLiteInitializeTimestep
 
 ! ************************************************************************** !
 !
@@ -343,16 +358,18 @@ end subroutine RichardsLiteUpdateAuxVars
 subroutine RichardsLiteUpdateSolution(realization)
 
   use Realization_module
-  use Field_module  
+  use Field_module
   
   implicit none
   
   type(realization_type) :: realization
 
+  type(field_type), pointer :: field
   PetscErrorCode :: ierr
   
-  call VecCopy(realization%field%flow_xx,realization%field%flow_yy,ierr)   
-  call RichardsLiteUpdateFixedAccum(realization)
+  field => realization%field
+  
+  call VecCopy(field%flow_xx,field%flow_yy,ierr)   
 
 end subroutine RichardsLiteUpdateSolution
 
@@ -1274,7 +1291,7 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
                         cur_connection_set%area(iconn),distance_gravity, &
                         upweight,option,v_darcy,Res)
 
-      field%internal_velocities(1,iconn) = v_darcy
+      field%internal_velocities(1,sum_connection) = v_darcy
 
       if (local_id_up>0) then
         r_p(local_id_up) = r_p(local_id_up) + Res(1)
@@ -1338,7 +1355,7 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
                                 cur_connection_set%area(iconn), &
                                 distance_gravity,option, &
                                 v_darcy,Res)
-      field%boundary_velocities(1,iconn) = v_darcy
+      field%boundary_velocities(1,sum_connection) = v_darcy
 
       r_p(local_id)= r_p(local_id) - Res(1)
  
@@ -1866,7 +1883,8 @@ end subroutine RichardsLiteMaxChange
 
 ! ************************************************************************** !
 !
-! RichardsLiteGetTecplotHeader: Returns a Tecplot file header
+! RichardsLiteGetTecplotHeader: Returns Richards Lite contribution to 
+!                               Tecplot file header
 ! author: Glenn Hammond
 ! date: 02/13/08
 !
@@ -1889,17 +1907,9 @@ function RichardsLiteGetTecplotHeader(realization)
   option => realization%option
   field => realization%field
 
-  string = 'VARIABLES=' // &
-           '"X [m]",' // &
-           '"Y [m]",' // &
-           '"Z [m]",' // &
-           '"P [Pa]",' // &
+  string = '"P [Pa]",' // &
            '"sl"'
  
-  if (associated(field%imat)) then
-    string = trim(string) // ',"Material_ID"'
-  endif
-  
   RichardsLiteGetTecplotHeader = string
 
 end function RichardsLiteGetTecplotHeader
@@ -1920,18 +1930,6 @@ subroutine RichardsLiteGetVarFromArray(realization,vec,ivar,isubvar)
   use Field_module
 
   implicit none
-  
-  PetscInt, parameter :: TEMPERATURE = 4
-  PetscInt, parameter :: PRESSURE = 5
-  PetscInt, parameter :: LIQUID_SATURATION = 6
-  PetscInt, parameter :: GAS_SATURATION = 7
-  PetscInt, parameter :: LIQUID_ENERGY = 8
-  PetscInt, parameter :: GAS_ENERGY = 9
-  PetscInt, parameter :: LIQUID_MOLE_FRACTION = 10
-  PetscInt, parameter :: GAS_MOLE_FRACTION = 11
-  PetscInt, parameter :: VOLUME_FRACTION = 12
-  PetscInt, parameter :: PHASE = 13
-  PetscInt, parameter :: MATERIAL_ID = 14
 
   type(realization_type) :: realization
   Vec :: vec
@@ -2013,18 +2011,6 @@ function RichardsLiteGetVarFromArrayAtCell(realization,ivar,isubvar, &
   use Field_module
 
   implicit none
-  
-  PetscInt, parameter :: TEMPERATURE = 4
-  PetscInt, parameter :: PRESSURE = 5
-  PetscInt, parameter :: LIQUID_SATURATION = 6
-  PetscInt, parameter :: GAS_SATURATION = 7
-  PetscInt, parameter :: LIQUID_ENERGY = 8
-  PetscInt, parameter :: GAS_ENERGY = 9
-  PetscInt, parameter :: LIQUID_MOLE_FRACTION = 10
-  PetscInt, parameter :: GAS_MOLE_FRACTION = 11
-  PetscInt, parameter :: VOLUME_FRACTION = 12
-  PetscInt, parameter :: PHASE = 13
-  PetscInt, parameter :: MATERIAL_ID = 14
 
   PetscReal :: RichardsLiteGetVarFromArrayAtCell
   type(realization_type) :: realization

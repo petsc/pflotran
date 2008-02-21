@@ -22,7 +22,8 @@ module Reactive_Transport_module
   logical :: inactive_cells_exist = .false.
   
   public :: RTTimeCut, RTSetup, RTMaxChange, RTUpdateSolution, RTResidual, &
-            RTJacobian
+            RTJacobian, RTInitializeTimestep, RTGetTecplotHeader, &
+            RTGetVarFromArray
   
 contains
 
@@ -114,15 +115,30 @@ subroutine RTSetup(realization)
   ! for inactive cells 
   call RTZeroArrayCreate(realization)
 
-  ! compute initial contribution to accumulation at previous time  
-  call RTUpdateFixedAccumulation(realization)
-  
 end subroutine RTSetup
   
 ! ************************************************************************** !
 !
-! RTUpdateSolution: Updates data in module after a successful 
-!                                  time step
+! RTInitializeTimestep: Update data in module prior to time step
+! author: Glenn Hammond
+! date: 02/20/08
+!
+! ************************************************************************** !
+subroutine RTInitializeTimestep(realization)
+
+  use Realization_module
+  
+  implicit none
+  
+  type(realization_type) :: realization
+
+  call RTUpdateFixedAccumulation(realization)
+
+end subroutine RTInitializeTimestep
+  
+! ************************************************************************** !
+!
+! RTUpdateSolution: Updates data in module after a successful time step
 ! author: Glenn Hammond
 ! date: 02/13/08
 !
@@ -139,7 +155,6 @@ subroutine RTUpdateSolution(realization)
   PetscErrorCode :: ierr
   
   call VecCopy(realization%field%tran_xx,realization%field%tran_yy,ierr)
-  call RTUpdateFixedAccumulation(realization)
 
 end subroutine RTUpdateSolution
 
@@ -316,8 +331,9 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
   
   option => realization%option
   field => realization%field
+  grid => realization%grid
   aux_vars => realization%RTaux%aux_vars
-  aux_vars_bc => realization%RTaux%aux_vars
+  aux_vars_bc => realization%RTaux%aux_vars_bc
   
   ! Communication -----------------------------------------
   ! These 3 must be called before RTUpdateAuxVars()
@@ -437,7 +453,7 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
                    saturation_loc_p(ghosted_id), &
                    cur_connection_set%dist(0,iconn), &
                    cur_connection_set%area(iconn), &
-                   option,field%boundary_velocities(:,iconn),Res)
+                   option,field%boundary_velocities(:,sum_connection),Res)
  
       iend = local_id*option%ncomp
       istart = iend-option%ncomp+1
@@ -526,8 +542,9 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
   
   option => realization%option
   field => realization%field
+  grid => realization%grid
   aux_vars => realization%RTaux%aux_vars
-  aux_vars_bc => realization%RTaux%aux_vars
+  aux_vars_bc => realization%RTaux%aux_vars_bc
 
   flag = SAME_NONZERO_PATTERN  
   call MatZeroEntries(A,ierr)
@@ -642,7 +659,7 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
                    saturation_loc_p(ghosted_id), &
                    cur_connection_set%dist(0,iconn), &
                    cur_connection_set%area(iconn), &
-                   option,field%boundary_velocities(:,iconn),Jdn)
+                   option,field%boundary_velocities(:,sum_connection),Jdn)
  
       Jdn = -1.d0*Jdn
       
@@ -852,6 +869,113 @@ end subroutine RTZeroArrayCreate
 
 ! ************************************************************************** !
 !
+! RTGetVarFromArray: Extracts variables indexed by ivar and isubvar
+!                          from RT type
+! author: Glenn Hammond
+! date: 10/25/07
+!
+! ************************************************************************** !
+subroutine RTGetVarFromArray(realization,vec,ivar,isubvar)
+
+  use Realization_module
+  use Grid_module
+  use Option_module
+  use Field_module
+
+  implicit none
+
+  type(realization_type) :: realization
+  Vec :: vec
+  PetscInt :: ivar
+  PetscInt :: isubvar
+
+  PetscInt :: local_id, ghosted_id
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  PetscReal, pointer :: vec_ptr(:), vec2_ptr(:)
+  PetscErrorCode :: ierr
+
+  option => realization%option
+  grid => realization%grid
+  field => realization%field
+
+  if (.not.aux_vars_up_to_date) call RTUpdateAuxVars(realization)
+
+  select case(ivar)
+    case(FREE_ION_CONCENTRATION)
+      call VecStrideGather(field%tran_xx,isubvar,vec,INSERT_VALUES,ierr)
+    case(MATERIAL_ID,TOTAL_CONCENTRATION)
+      call VecGetArrayF90(vec,vec_ptr,ierr)
+      select case(ivar)
+        case(TOTAL_CONCENTRATION)
+          do local_id=1,grid%nlmax
+            ghosted_id = grid%nL2G(local_id)    
+            vec_ptr(local_id) = realization%RTaux%aux_vars(ghosted_id)%total(isubvar)
+          enddo
+        case(MATERIAL_ID)
+          do local_id=1,grid%nlmax
+            vec_ptr(local_id) = field%imat(grid%nL2G(local_id))
+          enddo
+      end select
+      call VecRestoreArrayF90(vec,vec_ptr,ierr)
+  end select
+  
+end subroutine RTGetVarFromArray
+
+! ************************************************************************** !
+!
+! RTGetVarFromArrayAtCell: Returns variables indexed by ivar,
+!                          isubvar, local id from Reactive Transport type
+! author: Glenn Hammond
+! date: 02/11/08
+!
+! ************************************************************************** !
+function RTGetVarFromArrayAtCell(realization,ivar,isubvar,local_id)
+
+  use Realization_module
+  use Grid_module
+  use Option_module
+  use Field_module
+
+  implicit none
+
+  PetscReal :: RTGetVarFromArrayAtCell
+  type(realization_type) :: realization
+  PetscInt :: ivar
+  PetscInt :: isubvar
+  PetscInt :: local_id
+
+  PetscReal :: value
+  PetscInt :: ghosted_id
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  PetscReal, pointer :: vec_ptr(:)
+  PetscErrorCode :: ierr
+
+  option => realization%option
+  grid => realization%grid
+  field => realization%field
+
+  if (.not.aux_vars_up_to_date) call RTUpdateAuxVars(realization)
+
+  select case(ivar)
+    case(FREE_ION_CONCENTRATION)
+      call VecGetArrayF90(field%tran_xx,vec_ptr,ierr)
+      value = vec_ptr((local_id-1)*option%ntrandof+isubvar)
+      call VecRestoreArrayF90(field%tran_xx,vec_ptr,ierr)
+    case(TOTAL_CONCENTRATION)
+      ghosted_id = grid%nL2G(local_id)    
+      value = realization%RTaux%aux_vars(ghosted_id)%total(isubvar)
+  end select
+  
+  RTGetVarFromArrayAtCell = value
+  
+end function RTGetVarFromArrayAtCell
+
+! ************************************************************************** !
+!
 ! RTMaxChange: Computes the maximum change in the solution vector
 ! author: Glenn Hammond
 ! date: 02/15/08
@@ -881,5 +1005,39 @@ subroutine RTMaxChange(realization)
   call VecStrideNormAll(field%tran_dxx,ZERO_INTEGER,NORM_INFINITY,option%dcmax,ierr)
     
 end subroutine RTMaxChange
+
+! ************************************************************************** !
+!
+! RTGetTecplotHeader: Returns Reactive Transport contribution to 
+!                     Tecplot file header
+! author: Glenn Hammond
+! date: 02/13/08
+!
+! ************************************************************************** !
+function RTGetTecplotHeader(realization)
+
+  use Realization_module
+  use Option_module
+
+  implicit none
+  
+  character(len=MAXSTRINGLENGTH) :: RTGetTecplotHeader
+  type(realization_type) :: realization
+  
+  character(len=MAXSTRINGLENGTH) :: string, string2
+  type(option_type), pointer :: option
+  PetscInt :: i
+  
+  option => realization%option
+  
+  string = '' 
+  do i=1,option%ntrandof
+    write(string2,'('',"Xl('',i2,'')"'')') i
+    string = trim(string) // trim(string2)
+  enddo
+  
+  RTGetTecplotHeader = string
+
+end function RTGetTecplotHeader
 
 end module Reactive_Transport_module

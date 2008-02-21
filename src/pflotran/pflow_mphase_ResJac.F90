@@ -3162,7 +3162,8 @@ end subroutine MphaseInitializeSolidReaction
 
 ! ************************************************************************** !
 !
-! MphaseGetTecplotHeader: Returns a Tecplot file header
+! RichardsLiteGetTecplotHeader: Returns MPHASE contribution to 
+!                               Tecplot file header
 ! author: 
 ! date: 
 !
@@ -3186,11 +3187,7 @@ function MphaseGetTecplotHeader(realization)
   option => realization%option
   field => realization%field
   
-  string = 'VARIABLES=' // &
-           '"X [m]",' // &
-           '"Y [m]",' // &
-           '"Z [m]",' // &
-           '"T [C]",' // &
+  string = '"T [C]",' // &
            '"P [Pa]",' // &
            '"sl",' // &
            '"sg",' // &
@@ -3208,9 +3205,6 @@ function MphaseGetTecplotHeader(realization)
     string = trim(string) // '"Volume Fraction"'
   endif
   string = trim(string) // ',"Phase"'
-  if (associated(field%imat)) then
-    string = trim(string) // ',"Material_ID"'
-  endif
   
   MphaseGetTecplotHeader = string
 
@@ -3231,18 +3225,6 @@ subroutine MphaseGetVarFromArray(realization,vec,ivar,isubvar)
   use Field_module
 
   implicit none
-  
-  PetscInt, parameter :: TEMPERATURE = 4
-  PetscInt, parameter :: PRESSURE = 5
-  PetscInt, parameter :: LIQUID_SATURATION = 6
-  PetscInt, parameter :: GAS_SATURATION = 7
-  PetscInt, parameter :: LIQUID_ENERGY = 8
-  PetscInt, parameter :: GAS_ENERGY = 9
-  PetscInt, parameter :: LIQUID_MOLE_FRACTION = 10
-  PetscInt, parameter :: GAS_MOLE_FRACTION = 11
-  PetscInt, parameter :: VOLUME_FRACTION = 12
-  PetscInt, parameter :: PHASE = 13
-  PetscInt, parameter :: MATERIAL_ID = 14
 
   type(realization_type) :: realization
   Vec :: vec

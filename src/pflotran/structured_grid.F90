@@ -21,13 +21,6 @@ module Structured_Grid_module
 #include "include/finclude/petscda.h"
 #include "include/finclude/petscda.h90"
 
-  PetscInt, parameter :: WEST = 1
-  PetscInt, parameter :: EAST = 2
-  PetscInt, parameter :: SOUTH = 3
-  PetscInt, parameter :: NORTH = 4
-  PetscInt, parameter :: BOTTOM = 5
-  PetscInt, parameter :: TOP = 6
-
   type, public :: structured_grid_type
 
     PetscInt :: nx, ny, nz    ! Global domain dimensions of the grid.
@@ -655,39 +648,39 @@ subroutine StructGridPopulateConnection(structured_grid,connection,iface, &
       select case(structured_grid%igeom)
         case(STRUCTURED_CARTESIAN) ! cartesian
           select case(iface)
-            case(WEST,EAST)
+            case(WEST_FACE,EAST_FACE)
               connection%dist(:,iconn) = 0.d0
               connection%dist(0,iconn) = 0.5d0*dx_loc_p(cell_id_ghosted)
               connection%area(iconn) = dy_loc_p(cell_id_ghosted)* &
                                         dz_loc_p(cell_id_ghosted)
-              if (iface ==  WEST) then
+              if (iface ==  WEST_FACE) then
                 connection%dist(1,iconn) = 1.d0
               else
                 connection%dist(1,iconn) = -1.d0
               endif
-            case(SOUTH,NORTH)
+            case(SOUTH_FACE,NORTH_FACE)
               connection%dist(:,iconn) = 0.d0
               connection%dist(0,iconn) = 0.5d0*dy_loc_p(cell_id_ghosted)
               connection%area(iconn) = dx_loc_p(cell_id_ghosted)* &
                                         dz_loc_p(cell_id_ghosted)
-              if (iface ==  SOUTH) then
+              if (iface ==  SOUTH_FACE) then
                 connection%dist(2,iconn) = 1.d0
               else
                 connection%dist(2,iconn) = -1.d0
               endif
-            case(BOTTOM,TOP)
+            case(BOTTOM_FACE,TOP_FACE)
               connection%dist(:,iconn) = 0.d0
               connection%dist(0,iconn) = 0.5d0*dz_loc_p(cell_id_ghosted)
               connection%area(iconn) = dx_loc_p(cell_id_ghosted)* &
                                         dy_loc_p(cell_id_ghosted)
               if (structured_grid%invert_z_axis) then
-                if (iface ==  TOP) then 
+                if (iface ==  TOP_FACE) then 
                   connection%dist(3,iconn) = 1.d0
                 else
                   connection%dist(3,iconn) = -1.d0
                 endif
               else
-                if (iface ==  TOP) then 
+                if (iface ==  TOP_FACE) then 
                   connection%dist(3,iconn) = -1.d0
                 else
                   connection%dist(3,iconn) = 1.d0

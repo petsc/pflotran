@@ -103,6 +103,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   type(realization_type) :: realization
   type(stepper_type), pointer :: flow_stepper
   type(stepper_type), pointer :: tran_stepper
+  type(stepper_type), pointer :: master_stepper
   
   type(option_type), pointer :: option
 
@@ -115,6 +116,12 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   PetscErrorCode :: ierr
   
   option => realization%option
+  
+  if (associated(flow_stepper)) then
+    master_stepper => flow_stepper
+  else
+    master_stepper => tran_stepper
+  endif
 
   plot_flag = .false.
   timestep_cut_flag = .false.
@@ -122,16 +129,17 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   num_const_timesteps = 0  
 
   if(option%restart_flag == PETSC_TRUE) then
-    call pflowGridRestart(realization,flow_stepper%steps,flow_stepper%newtcum, &
-                          flow_stepper%icutcum, &
+    call pflowGridRestart(realization,master_stepper%steps,master_stepper%newtcum, &
+                          master_stepper%icutcum, &
                           num_const_timesteps, &
                           num_newton_iterations)
     if (associated(flow_stepper)) flow_stepper%cur_waypoint => &
       WaypointSkipToTime(realization%waypoints,option%time)
     if (associated(tran_stepper)) tran_stepper%cur_waypoint => &
       WaypointSkipToTime(realization%waypoints,option%time)
-    call StepperUpdateSolution(realization)
   endif
+
+  call StepperUpdateSolution(realization)
 
   ! print initial condition output if not a restarted sim
   if (option%restart_flag == PETSC_FALSE) then
@@ -140,8 +148,8 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   endif
            
   call PetscGetTime(stepper_start_time, ierr)
-  start_step = flow_stepper%steps+1
-  do istep = start_step, flow_stepper%stepmax
+  start_step = master_stepper%steps+1
+  do istep = start_step, master_stepper%stepmax
 
     timestep_cut_flag = .false.
     plot_flag = .false.
@@ -184,29 +192,29 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
 
     if (option%checkpoint_flag == PETSC_TRUE .and. &
         mod(istep,option%checkpoint_frequency) == 0) then
-      call pflowGridCheckpoint(realization,flow_stepper%steps,flow_stepper%newtcum, &
-                               flow_stepper%icutcum,num_const_timesteps, &
+      call pflowGridCheckpoint(realization,master_stepper%steps,master_stepper%newtcum, &
+                               master_stepper%icutcum,num_const_timesteps, &
                                num_newton_iterations,istep)
     endif
     
    
     ! if at end of waypoint list (i.e. cur_waypoint = null), we are done!
-    if (.not.associated(flow_stepper%cur_waypoint) .or. stop_flag) exit
+    if (.not.associated(master_stepper%cur_waypoint) .or. stop_flag) exit
 
   enddo
 
   if (option%checkpoint_flag == PETSC_TRUE) then
-    call pflowGridCheckpoint(realization,flow_stepper%steps,flow_stepper%newtcum, &
-                             flow_stepper%icutcum,num_const_timesteps, &
+    call pflowGridCheckpoint(realization,master_stepper%steps,master_stepper%newtcum, &
+                             master_stepper%icutcum,num_const_timesteps, &
                              num_newton_iterations,NEG_ONE_INTEGER)
   endif
 
   if (option%myrank == 0) then
     write(*,'(/," PFLOW steps = ",i6," newton = ",i6," cuts = ",i6)') &
-          istep-1,flow_stepper%newtcum,flow_stepper%icutcum
+          istep-1,master_stepper%newtcum,master_stepper%icutcum
 
     write(IUNIT2,'(/," PFLOW steps = ",i6," newton = ",i6," cuts = ",i6)') &
-          istep-1,flow_stepper%newtcum,flow_stepper%icutcum
+          istep-1,master_stepper%newtcum,master_stepper%icutcum
   endif
 
 end subroutine StepperRun
@@ -458,9 +466,9 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   PetscInt :: update_reason, it_linear=0, it_snes
   PetscInt :: n, nmax_inf
   PetscReal m_r2norm, s_r2norm, norm_inf, s_r2norm0, norm_inf0, r2norm
-  PetscReal :: tsrc
   PetscReal, pointer :: r_p(:)  
-
+  Vec :: global_vec
+  
   PetscInt, save :: linear_solver_divergence_count = 0
 
   PetscViewer :: viewer
@@ -492,10 +500,19 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   call GridLocalToLocal(grid,field%icap_loc,field%icap_loc,ONEDOF)
   call GridLocalToLocal(grid,field%ithrm_loc,field%ithrm_loc,ONEDOF)
   call GridLocalToLocal(grid,field%iphas_loc,field%iphas_loc,ONEDOF)
-
+  
   if (option%myrank == 0) then
     write(*,'(/,60("="))')
   endif
+  
+  select case(option%iflowmode)
+    case(THC_MODE)
+    case(RICHARDS_MODE)
+      call RichardsInitializeTimestep(realization)
+    case(RICHARDS_LITE_MODE)
+      call RichardsLiteInitializeTimestep(realization)
+    case(MPH_MODE)
+  end select
   
   do
     
@@ -600,8 +617,26 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
     endif
   enddo
 
+  ! for debuggin
+  call RichardsInitializeTimestep(realization)    
+  call SNESComputeFunction(stepper%solver%snes,field%flow_xx,field%flow_r)
+
   stepper%newtcum = stepper%newtcum + num_newton_iterations
   stepper%icutcum = stepper%icutcum + icut
+
+  if (field%saturation_loc /= 0) then ! store saturations for transport
+   call GridCreateVector(grid,ONEDOF,global_vec,GLOBAL)
+    select case(option%iflowmode)
+      case(THC_MODE)
+      case(RICHARDS_MODE)
+        call RichardsGetVarFromArray(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
+      case(RICHARDS_LITE_MODE)
+        call RichardsLiteGetVarFromArray(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
+      case(MPH_MODE)
+    end select
+    call GridGlobalToLocal(grid,global_vec,field%saturation_loc,ONEDOF)   
+    call VecDestroy(global_vec,ierr)
+  endif
 
 ! print screen output
   if (option%myrank == 0) then
@@ -707,7 +742,7 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
   PetscInt :: update_reason, it_linear=0, it_snes
   PetscInt :: n, nmax_inf
   PetscReal m_r2norm, s_r2norm, norm_inf, s_r2norm0, norm_inf0, r2norm
-  PetscReal :: tsrc
+  
   PetscReal, pointer :: r_p(:)  
 
   PetscInt, save :: linear_solver_divergence_count = 0
@@ -738,7 +773,9 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
     option%time = option%flow_time
     option%dt = option%flow_dt
   endif
-
+  
+  call RTInitializeTimestep(realization)
+  
   if (option%myrank == 0) then
     write(*,'(/,60("="))')
   endif

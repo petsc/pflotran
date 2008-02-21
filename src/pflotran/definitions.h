@@ -108,6 +108,33 @@ PetscInt, parameter :: THC_CONCENTRATION_DOF = 3
 PetscInt, parameter :: THC_TEMPERATURE_DOF = 2
 PetscInt, parameter :: THC_ENTHALPY_DOF = 3
 
+! output definitions
+PetscInt, parameter :: X_COORDINATE = 1
+PetscInt, parameter :: Y_COORDINATE = 2
+PetscInt, parameter :: Z_COORDINATE = 3
+PetscInt, parameter :: TEMPERATURE = 4
+PetscInt, parameter :: PRESSURE = 5
+PetscInt, parameter :: LIQUID_SATURATION = 6
+PetscInt, parameter :: GAS_SATURATION = 7
+PetscInt, parameter :: LIQUID_ENERGY = 8
+PetscInt, parameter :: GAS_ENERGY = 9
+PetscInt, parameter :: LIQUID_MOLE_FRACTION = 10
+PetscInt, parameter :: GAS_MOLE_FRACTION = 11
+PetscInt, parameter :: VOLUME_FRACTION = 12
+PetscInt, parameter :: PHASE = 13
+PetscInt, parameter :: MATERIAL_ID = 14
+
+PetscInt, parameter :: FREE_ION_CONCENTRATION = 15
+PetscInt, parameter :: TOTAL_CONCENTRATION = 16
+
+! structured grid faces
+PetscInt, parameter :: WEST_FACE = 1
+PetscInt, parameter :: EAST_FACE = 2
+PetscInt, parameter :: SOUTH_FACE = 3
+PetscInt, parameter :: NORTH_FACE = 4
+PetscInt, parameter :: BOTTOM_FACE = 5
+PetscInt, parameter :: TOP_FACE = 6
+
 ! HDF5 stuff
 PetscInt, parameter :: HDF5_READ_BUFFER_SIZE = 1000000
 !#define HDF5_BROADCAST

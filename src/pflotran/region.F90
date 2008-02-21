@@ -17,6 +17,7 @@ module Region_module
     character(len=MAXWORDLENGTH) :: filename
     type(block_type), pointer :: block_list
     PetscInt :: i1,i2,j1,j2,k1,k2
+    PetscInt :: iface
     PetscInt :: num_cells
     PetscInt, pointer :: cell_ids(:)
     PetscInt, pointer :: faces(:)
@@ -48,7 +49,7 @@ module Region_module
   end interface RegionReadFromFile
   
   public :: RegionCreate, RegionDestroy, RegionAddToList, RegionReadFromFile, &
-            RegionInitList, RegionDestroyList, RegionGetPtrFromList
+            RegionInitList, RegionDestroyList, RegionGetPtrFromList, RegionRead
   
 contains
 
@@ -77,6 +78,7 @@ function RegionCreateWithNothing()
   region%j2 = 0
   region%k1 = 0
   region%k2 = 0
+  region%iface = 0
   region%num_cells = 0
   nullify(region%cell_ids)
   nullify(region%faces)
@@ -188,6 +190,95 @@ subroutine RegionAddToList(new_region,list)
   list%last => new_region
   
 end subroutine RegionAddToList
+
+! ************************************************************************** !
+!
+! RegionRead: Reads a region from the input file
+! author: Glenn Hammond
+! date: 02/20/07
+!
+! ************************************************************************** !
+subroutine RegionRead(region,string,fid,option)
+
+  use Fileio_module
+  use Option_module
+  
+  implicit none
+  
+  type(option_type) :: option
+  type(region_type) :: region
+  PetscInt :: fid
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: word
+  PetscInt :: length
+  PetscErrorCode :: ierr
+
+  call fiReadWord(string,region%name,.true.,ierr)
+  call fiErrorMsg(option%myrank,'regn','name',ierr) 
+  call printMsg(option,region%name)
+
+  ierr = 0
+  do
+  
+    call fiReadFlotranString(IUNIT1,string,ierr)
+    if (ierr /= 0) exit
+
+    call fiReadWord(string,word,.true.,ierr)
+    call fiErrorMsg(option%myrank,'keyword','REGION', ierr)
+    call fiWordToUpper(word)   
+
+    select case(trim(word))
+    
+      case('BLOCK')
+        call fiReadInt(string,region%i1,ierr) 
+        if (ierr /= 0) then
+          ierr = 0
+          call fiReadFlotranString(IUNIT1,string,ierr)
+          call fiReadStringErrorMsg(option%myrank,'REGN',ierr)
+          call fiReadInt(string,region%i1,ierr) 
+        endif
+        call fiErrorMsg(option%myrank,'i1','REGN', ierr)
+        call fiReadInt(string,region%i2,ierr)
+        call fiErrorMsg(option%myrank,'i2','REGN', ierr)
+        call fiReadInt(string,region%j1,ierr)
+        call fiErrorMsg(option%myrank,'j1','REGN', ierr)
+        call fiReadInt(string,region%j2,ierr)
+        call fiErrorMsg(option%myrank,'j2','REGN', ierr)
+        call fiReadInt(string,region%k1,ierr)
+        call fiErrorMsg(option%myrank,'k1','REGN', ierr)
+        call fiReadInt(string,region%k2,ierr)
+        call fiErrorMsg(option%myrank,'k2','REGN', ierr)
+      case('FILE')
+        call fiReadWord(string,word,.true.,ierr)
+        call fiErrorMsg(option%myrank,'filename','REGN', ierr)
+        region%filename = word
+      case('FACE')
+        call fiReadWord(string,word,.true.,ierr)
+        call fiErrorMsg(option%myrank,'face','REGN', ierr)
+        call fiWordToUpper(word)
+        select case(word)
+          case('WEST')
+            region%iface = WEST_FACE
+          case('EAST')
+            region%iface = EAST_FACE
+          case('NORTH')
+            region%iface = NORTH_FACE
+          case('SOUTH')
+            region%iface = SOUTH_FACE
+          case('BOTTOM')
+            region%iface = BOTTOM_FACE
+          case('TOP')
+            region%iface = TOP_FACE
+        end select
+      case('END')
+        exit        
+      case default
+        call printErrMsg(option,"REGION keyword not recognized")
+    end select
+  enddo
+ 
+end subroutine RegionRead
 
 ! ************************************************************************** !
 !

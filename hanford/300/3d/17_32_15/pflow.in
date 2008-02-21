@@ -83,12 +83,12 @@ DTST 1.d-2
 1. 1.d0
 :
 REGION all
-BLOCK 
-1 17 1 32 1 15
+BLOCK 1 17 1 32 1 15
+END
 
 REGION breakthrough
-BLOCK
-1 1 1 1 1 1
+BLOCK 1 1 1 1 1 1
+END
 
 REGION West
 LIST file input.h5
