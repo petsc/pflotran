@@ -59,7 +59,7 @@ subroutine TFlux(aux_var_up,por_up,tor_up,sat_up,dist_up, &
     stp_dn = sat_dn*tor_dn*por_dn
     weight = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
     ! need to account for multiple phases
-    diffusion = weight*(option%disp+option%diff)
+    diffusion = weight*(option%disp+option%difaq)
   endif
   
   !upstream weighting
@@ -76,7 +76,7 @@ subroutine TFlux(aux_var_up,por_up,tor_up,sat_up,dist_up, &
   
   Res(1:option%ncomp) = coef_up*aux_var_up%total(1:option%ncomp) + &
                         coef_dn*aux_var_dn%total(1:option%ncomp)
-
+                        
 end subroutine TFlux
 
 ! ************************************************************************** !
@@ -117,7 +117,7 @@ subroutine TFluxDerivative(aux_var_up,por_up,tor_up,sat_up,dist_up, &
     stp_dn = sat_dn*tor_dn*por_dn
     weight = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
     ! need to account for multiple phases
-    diffusion = weight*(option%disp+option%diff)
+    diffusion = weight*(option%disp+option%difaq)
   endif
   
   !upstream weighting
@@ -179,7 +179,7 @@ subroutine TBCFlux(ibndtype, &
         stp_dn = sat_dn*tor_dn*por_dn
         weight = stp_dn/dist_dn
         ! need to account for multiple phases
-        diffusion = weight*(option%disp+option%diff)
+        diffusion = weight*(option%disp+option%difaq)
       endif
     case(NEUMANN_BC,ZERO_GRADIENT_BC)
   end select
@@ -243,7 +243,7 @@ subroutine TBCFluxDerivative(ibndtype, &
         stp_dn = sat_dn*tor_dn*por_dn
         weight = stp_dn/dist_dn
         ! need to account for multiple phases
-        diffusion = weight*(option%disp+option%diff)
+        diffusion = weight*(option%disp+option%difaq)
       endif
     case(NEUMANN_BC,ZERO_GRADIENT_BC)
   end select
