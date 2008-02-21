@@ -47,7 +47,6 @@ subroutine PflowInit(simulation,filename)
   
   use Reactive_Transport_module
 
-  use Convergence_module
   use Utility_module
     
   implicit none

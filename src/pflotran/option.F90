@@ -68,7 +68,7 @@ module Option_module
     PetscInt :: ideriv
     PetscReal :: tref,pref
     
-    PetscReal :: diff, disp
+    PetscReal :: disp
     
 !   table lookup
     PetscInt :: itable=0
@@ -180,7 +180,8 @@ function OptionCreate()
   option%dcmxe = 5.d0
 
   !physical constants and defult variables
-  option%difaq = 1.d-9 ! m^2/s read from input file
+!  option%difaq = 1.d-9 ! m^2/s read from input file
+  option%difaq = 0.d0
   option%delhaq = 12.6d0 ! kJ/mol read from input file
   option%gravity(:) = 0.d0
   option%gravity(3) = -9.8068d0    ! m/s^2
@@ -193,7 +194,6 @@ function OptionCreate()
   option%m_nacl = 0.d0
   
   option%disp = 0.d0
-  option%diff = 0.d0
   
   option%generalized_grid = ""
   option%use_generalized_grid = .false.
