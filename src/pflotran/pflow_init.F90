@@ -2353,6 +2353,7 @@ subroutine assignUniformVelocity(realization)
   use Field_module
   use Coupler_module
   use Condition_module
+  use Connection_module
   use Grid_module
   
   implicit none
