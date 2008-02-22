@@ -153,6 +153,7 @@ subroutine translator_mphase_massbal(realization)
   use Grid_module
   use Option_module
   use Field_module
+  use Patch_module
   
   implicit none
   
@@ -182,8 +183,9 @@ subroutine translator_mphase_massbal(realization)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
+  type(patch_type), pointer :: patch
   
-  grid => realization%grid
+  grid => patch%grid
   option => realization%option
   field => realization%field  
 
@@ -363,6 +365,7 @@ subroutine translator_mph_get_output(realization)
   use Option_module
   use Grid_module, only : grid_type
   use Field_module 
+  use Patch_module
   
   implicit none
   
@@ -378,9 +381,10 @@ subroutine translator_mph_get_output(realization)
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
-  
+  type(patch_type), pointer :: patch
+    
   option => realization%option
-  grid => realization%grid
+  grid => patch%grid
   field => realization%field
       
   call VecGetArrayF90(mphase_field%var_loc, var_loc_p, ierr)
@@ -428,6 +432,7 @@ subroutine translator_mph_step_maxchange(realization)
   use Option_module
   use Field_module
   use Grid_module
+  use Patch_module
   
   implicit none
   
@@ -436,6 +441,7 @@ subroutine translator_mph_step_maxchange(realization)
   type(option_type), pointer :: option
   type(field_type), pointer :: field  
   type(grid_type), pointer :: grid
+  type(patch_type), pointer :: patch  
   
   PetscReal, pointer :: xx_p(:), yy_p(:), iphase_loc_p(:),var_loc_p(:),iphase_old_loc_p(:)
   PetscReal :: comp1,comp,cmp  
@@ -447,7 +453,7 @@ subroutine translator_mph_step_maxchange(realization)
   
   option => realization%option
   field => realization%field
-  grid => realization%grid
+  grid => patch%grid
   
    call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy,ierr)
     call VecStrideNorm(field%flow_dxx,0,NORM_INFINITY,option%dpmax,ierr)
@@ -508,6 +514,7 @@ subroutine Translator_MPhase_Switching(xx,realization,icri,ichange)
   use Option_module
   use Field_module
   use Grid_module
+  use Patch_module
   
   use water_eos_module
   use gas_eos_module  
@@ -536,10 +543,12 @@ subroutine Translator_MPhase_Switching(xx,realization,icri,ichange)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
-  
-  grid => realization%grid
+  type(patch_type), pointer :: patch
+    
+  grid => patch%grid
   option => realization%option
   field => realization%field
+  
   
 ! mphase code need assemble 
   call VecGetArrayF90(xx, xx_p, ierr); CHKERRQ(ierr)

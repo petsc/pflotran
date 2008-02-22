@@ -56,49 +56,82 @@ end subroutine RTTimeCut
 
 ! ************************************************************************** !
 !
-! RTSetup: Creates arrays for auxilliary variables
+! RTSetup: 
 ! author: Glenn Hammond
-! date: 02/15/08
+! date: 00/00/00
 !
 ! ************************************************************************** !
 subroutine RTSetup(realization)
 
   use Realization_module
-  use Reactive_Transport_Aux_module
+  use Level_module
+  use Patch_module
+
+  type(realization_type) :: realization
+  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call RTSetupPatch(realization)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+end subroutine RTSetup
+
+! ************************************************************************** !
+!
+! RTSetupPatch: 
+! author: Glenn Hammond
+! date: 00/00/00
+!
+! ************************************************************************** !
+subroutine RTSetupPatch(realization)
+
+  use Realization_module
+  use Patch_module
   use Option_module
   use Grid_module
-  use Field_module
+  use Region_module
   use Coupler_module
   use Condition_module
   use Connection_module
  
   implicit none
-  
+
   type(realization_type) :: realization
+  
+  type(patch_type), pointer :: patch
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
-  type(field_type), pointer :: field
   type(coupler_type), pointer :: boundary_condition
-  type(reactive_transport_auxvar_type), pointer :: aux_vars(:)
 
   PetscInt :: ghosted_id, iconn, sum_connection
   
-  grid => realization%grid
   option => realization%option
+  patch => realization%patch
+  grid => patch%grid
 
-  realization%RTaux => ReactiveTransportAuxCreate()
-
+  patch%RTAux => RTAuxCreate()
+    
   ! allocate aux_var data structures for all grid cells
-  allocate(aux_vars(grid%ngmax))
+  allocate(patch%RTAux%aux_vars(grid%ngmax))
   do ghosted_id = 1, grid%ngmax
-    call RTAuxVarInit(aux_vars(ghosted_id),option)
+    call RTAuxVarInit(patch%RTAux%aux_vars(ghosted_id),option)
   enddo
-  realization%RTaux%aux_vars => aux_vars
-  nullify(aux_vars)
+  patch%RTAux%num_aux = grid%ngmax
   
   ! count the number of boundary connections and allocate
   ! aux_var data structures for them
-  boundary_condition => realization%transport_boundary_conditions%first
+  boundary_condition => patch%flow_boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -106,19 +139,51 @@ subroutine RTSetup(realization)
                      boundary_condition%connection%num_connections
     boundary_condition => boundary_condition%next
   enddo
-  allocate(aux_vars(sum_connection))
+  allocate(patch%RTAux%aux_vars_bc(sum_connection))
   do iconn = 1, sum_connection
-    call RTAuxVarInit(aux_vars(iconn),option)
+    call RTAuxVarInit(patch%RTAux%aux_vars_bc(iconn),option)
   enddo
-  realization%RTaux%aux_vars_bc => aux_vars
-  nullify(aux_vars)  
+  patch%RTAux%num_aux_bc = sum_connection
 
   ! create zero array for zeroing residual and Jacobian (1 on diagonal)
-  ! for inactive cells 
-  call RTZeroArrayCreate(realization)
+  ! for inactive cells (and isothermal)
+  call RTCreateZeroArray(patch,option)
 
-end subroutine RTSetup
+end subroutine RTSetupPatch
+
+! ************************************************************************** !
+!
+! RTInitializeTimestep: 
+! author: Glenn Hammond
+! date: 00/00/00
+!
+! ************************************************************************** !
+subroutine RTInitializeTimestep(realization)
+
+  use Realization_module
+  use Level_module
+  use Patch_module
+
+  type(realization_type) :: realization
   
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call RTInitializeTimestepPatch(realization)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+end subroutine RTInitializeTimestep
+
 ! ************************************************************************** !
 !
 ! RTInitializeTimestep: Update data in module prior to time step
@@ -126,7 +191,7 @@ end subroutine RTSetup
 ! date: 02/20/08
 !
 ! ************************************************************************** !
-subroutine RTInitializeTimestep(realization)
+subroutine RTInitializeTimestepPatch(realization)
 
   use Realization_module
   
@@ -134,9 +199,9 @@ subroutine RTInitializeTimestep(realization)
   
   type(realization_type) :: realization
 
-  call RTUpdateFixedAccumulation(realization)
+  call RTUpdateFixedAccumulationPatch(realization)
 
-end subroutine RTInitializeTimestep
+end subroutine RTInitializeTimestepPatch
   
 ! ************************************************************************** !
 !
@@ -162,13 +227,13 @@ end subroutine RTUpdateSolution
 
 ! ************************************************************************** !
 !
-! RTUpdateFixedAccumulation: Computes derivative of accumulation term in 
+! RTUpdateFixedAccumulationPatch: Computes derivative of accumulation term in 
 !                           residual function 
 ! author: Glenn Hammond
 ! date: 02/15/08
 !
 ! ************************************************************************** !
-subroutine RTUpdateFixedAccumulation(realization)
+subroutine RTUpdateFixedAccumulationPatch(realization)
 
   use Realization_module
   use Reactive_Transport_Aux_module
@@ -182,6 +247,7 @@ subroutine RTUpdateFixedAccumulation(realization)
   
   type(reactive_transport_auxvar_type), pointer :: aux_vars(:)
   type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
   PetscReal, pointer :: xx_p(:), porosity_loc_p(:), saturation_loc_p(:), &
@@ -190,9 +256,10 @@ subroutine RTUpdateFixedAccumulation(realization)
   PetscInt :: istart, iend
   PetscErrorCode :: ierr
   
-  aux_vars => realization%RTaux%aux_vars
+  aux_vars => patch%RTAux%aux_vars
   option => realization%option
-  grid => realization%grid
+  patch => realization%patch
+  grid => patch%grid
   field => realization%field
 
   call VecGetArrayF90(field%tran_xx,xx_p, ierr)
@@ -206,8 +273,8 @@ subroutine RTUpdateFixedAccumulation(realization)
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     !geh - Ignore inactive cells with inactive materials
-    if (associated(field%imat)) then
-      if (field%imat(ghosted_id) <= 0) cycle
+    if (associated(patch%imat)) then
+      if (patch%imat(ghosted_id) <= 0) cycle
     endif
     iend = local_id*option%ncomp
     istart = iend-option%ncomp+1
@@ -229,7 +296,7 @@ subroutine RTUpdateFixedAccumulation(realization)
   call RTNumericalJacobianTest(field%tran_xx,realization)
 #endif
 
-end subroutine RTUpdateFixedAccumulation
+end subroutine RTUpdateFixedAccumulationPatch
 
 ! ************************************************************************** !
 !
@@ -264,10 +331,12 @@ subroutine RTNumericalJacobianTest(xx,realization)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
+  type(patch_type), pointer :: patch
   
   PetscInt :: idof, idof2, icell
 
-  grid => realization%grid
+  patch => realization%patch
+  grid => patch%grid
   option => realization%option
   field => realization%field
   
@@ -285,8 +354,8 @@ subroutine RTNumericalJacobianTest(xx,realization)
   call RTResidual(PETSC_NULL_OBJECT,xx,res,realization,ierr)
   call VecGetArrayF90(res,vec2_p,ierr)
   do icell = 1,grid%nlmax
-    if (associated(field%imat)) then
-      if (field%imat(grid%nL2G(icell)) <= 0) cycle
+    if (associated(patch%imat)) then
+      if (patch%imat(grid%nL2G(icell)) <= 0) cycle
     endif
     do idof = (icell-1)*option%ntrandof+1,icell*option%ntrandof 
       call veccopy(xx,xx_pert,ierr)
@@ -382,12 +451,68 @@ end subroutine RTAccumulation
 
 ! ************************************************************************** !
 !
-! ReactiveTransportResidual: Computes residual function for reactive transport
+! RTResidual: Computes the residual equation 
+! author: Glenn Hammond
+! date: 12/10/07
+!
+! ************************************************************************** !
+subroutine RTResidual(snes,xx,r,realization,ierr)
+
+  use Realization_module
+  use Patch_module
+  use Grid_module
+  use Option_module
+
+  implicit none
+
+  SNES :: snes
+  Vec :: xx
+  Vec :: r
+  type(realization_type) :: realization
+  PetscErrorCode :: ierr
+  
+  type(grid_type), pointer :: grid
+  type(field_type), pointer :: field
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  
+  field => realization%field
+  grid => realization%patch%grid
+  
+  ! Communication -----------------------------------------
+  ! These 3 must be called before RichardsUpdateAuxVars()
+  call GridGlobalToLocal(grid,xx,field%flow_xx_loc,NFLOWDOF)
+  call GridLocalToLocal(grid,field%iphas_loc,field%iphas_loc,ONEDOF)
+  call GridLocalToLocal(grid,field%icap_loc,field%icap_loc,ONEDOF)
+
+  call GridLocalToLocal(grid,field%perm_xx_loc,field%perm_xx_loc,ONEDOF)
+  call GridLocalToLocal(grid,field%perm_yy_loc,field%perm_yy_loc,ONEDOF)
+  call GridLocalToLocal(grid,field%perm_zz_loc,field%perm_zz_loc,ONEDOF)
+  call GridLocalToLocal(grid,field%ithrm_loc,field%ithrm_loc,ONEDOF)
+  
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call RTResidualPatch(snes,xx,r,realization,ierr)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+end subroutine RTResidual
+
+! ************************************************************************** !
+!
+! RTResidualPatch: Computes residual function for reactive transport
 ! author: Glenn Hammond
 ! date: 02/14/08
 !
 ! ************************************************************************** !
-subroutine RTResidual(snes,xx,r,realization,ierr)
+subroutine RTResidualPatch(snes,xx,r,realization,ierr)
 
   use Realization_module
   use Transport_module
@@ -414,6 +539,7 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
+  type(patch_type), pointer :: patch
   type(reactive_transport_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
   PetscReal :: Res(realization%option%ncomp)
   PetscViewer :: viewer
@@ -427,9 +553,10 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
   
   option => realization%option
   field => realization%field
-  grid => realization%grid
-  aux_vars => realization%RTaux%aux_vars
-  aux_vars_bc => realization%RTaux%aux_vars_bc
+  patch => realization%patch
+  grid => patch%grid
+  aux_vars => patch%RTAux%aux_vars
+  aux_vars_bc => patch%RTAux%aux_vars_bc
   
   ! Communication -----------------------------------------
   ! These 3 must be called before RTUpdateAuxVars()
@@ -456,8 +583,8 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
   do local_id = 1, grid%nlmax  ! For each local node do...
     ghosted_id = grid%nL2G(local_id)
     !geh - Ignore inactive cells with inactive materials
-    if (associated(field%imat)) then
-      if (field%imat(ghosted_id) <= 0) cycle
+    if (associated(patch%imat)) then
+      if (patch%imat(ghosted_id) <= 0) cycle
     endif
     iend = local_id*option%ncomp
     istart = iend-option%ncomp+1
@@ -486,9 +613,9 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
       local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
       local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping   
 
-      if (associated(field%imat)) then
-        if (field%imat(ghosted_id_up) <= 0 .or.  &
-            field%imat(ghosted_id_dn) <= 0) cycle
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id_up) <= 0 .or.  &
+            patch%imat(ghosted_id_dn) <= 0) cycle
       endif
 
       fraction_upwind = cur_connection_set%dist(-1,iconn)
@@ -504,7 +631,7 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
                  tor_loc_p(ghosted_id_dn),saturation_loc_p(ghosted_id_dn), &
                  dist_up, &
                  cur_connection_set%area(iconn),option, &
-                 field%internal_velocities(:,iconn),Res)
+                 patch%internal_velocities(:,iconn),Res)
 
       if (local_id_up>0) then
         iend = local_id_up*option%ncomp
@@ -524,7 +651,7 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
 #endif
 #if 1
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => realization%transport_boundary_conditions%first
+  boundary_condition => patch%transport_boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -537,8 +664,8 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
 
-      if (associated(field%imat)) then
-        if (field%imat(ghosted_id) <= 0) cycle
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
       endif
 
       call TBCFlux(boundary_condition%condition%itype(1), &
@@ -549,7 +676,7 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
                    saturation_loc_p(ghosted_id), &
                    cur_connection_set%dist(0,iconn), &
                    cur_connection_set%area(iconn), &
-                   option,field%boundary_velocities(:,sum_connection),Res)
+                   option,patch%boundary_velocities(:,sum_connection),Res)
  
       iend = local_id*option%ncomp
       istart = iend-option%ncomp+1
@@ -561,8 +688,8 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
 #endif  
 
   if (inactive_cells_exist) then
-    do i=1,realization%RTaux%n_zero_rows
-      r_p(realization%RTaux%zero_rows_local(i)) = 0.d0
+    do i=1,patch%RTAux%n_zero_rows
+      r_p(patch%RTAux%zero_rows_local(i)) = 0.d0
     enddo
   endif
   
@@ -587,16 +714,57 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
   
-end subroutine RTResidual
+end subroutine RTResidualPatch
 
 ! ************************************************************************** !
 !
-! ReactiveTransportJacobian: Computes residual function for reactive transport
+! RTJacobian: Computes the Jacobian
+! author: Glenn Hammond
+! date: 12/10/07
+!
+! ************************************************************************** !
+subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
+
+  use Realization_module
+  use Patch_module
+  use Grid_module
+  use Option_module
+
+  implicit none
+
+  SNES :: snes
+  Vec :: xx
+  Mat :: A, B
+  type(realization_type) :: realization
+  MatStructure flag
+  PetscErrorCode :: ierr
+  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+end subroutine RTJacobian
+
+! ************************************************************************** !
+!
+! RTJacobianPatch: Computes Jacobian for reactive transport
 ! author: Glenn Hammond
 ! date: 02/14/08
 !
 ! ************************************************************************** !
-subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
+subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 
   use Realization_module
   use Transport_module
@@ -624,6 +792,8 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
+  type(patch_type), pointer :: patch
+    
   type(reactive_transport_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
   PetscReal :: Jup(realization%option%ncomp,realization%option%ncomp)
   PetscReal :: Jdn(realization%option%ncomp,realization%option%ncomp)
@@ -638,9 +808,10 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
   
   option => realization%option
   field => realization%field
-  grid => realization%grid
-  aux_vars => realization%RTaux%aux_vars
-  aux_vars_bc => realization%RTaux%aux_vars_bc
+  patch => realization%patch  
+  grid => patch%grid
+  aux_vars => patch%RTAux%aux_vars
+  aux_vars_bc => patch%RTAux%aux_vars_bc
 
   flag = SAME_NONZERO_PATTERN  
   call MatZeroEntries(A,ierr)
@@ -658,8 +829,8 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
   do local_id = 1, grid%nlmax  ! For each local node do...
     ghosted_id = grid%nL2G(local_id)
     !geh - Ignore inactive cells with inactive materials
-    if (associated(field%imat)) then
-      if (field%imat(ghosted_id) <= 0) cycle
+    if (associated(patch%imat)) then
+      if (patch%imat(ghosted_id) <= 0) cycle
     endif
     iend = local_id*option%ncomp
     istart = iend-option%ncomp+1
@@ -688,9 +859,9 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
       local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
       local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping   
 
-      if (associated(field%imat)) then
-        if (field%imat(ghosted_id_up) <= 0 .or.  &
-            field%imat(ghosted_id_dn) <= 0) cycle
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id_up) <= 0 .or.  &
+            patch%imat(ghosted_id_dn) <= 0) cycle
       endif
 
       fraction_upwind = cur_connection_set%dist(-1,iconn)
@@ -706,7 +877,7 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
                  tor_loc_p(ghosted_id_dn),saturation_loc_p(ghosted_id_dn), &
                  dist_up, &
                  cur_connection_set%area(iconn),option, &
-                 field%internal_velocities(:,iconn),Jup,Jdn)
+                 patch%internal_velocities(:,iconn),Jup,Jdn)
 
       if (local_id_up>0) then
         call MatSetValuesBlockedLocal(A,1,ghosted_id_up-1,1,ghosted_id_up-1, &
@@ -730,7 +901,7 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
 #endif
 #if 1
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => realization%transport_boundary_conditions%first
+  boundary_condition => patch%transport_boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -743,8 +914,8 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
 
-      if (associated(field%imat)) then
-        if (field%imat(ghosted_id) <= 0) cycle
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
       endif
 
       call TBCFluxDerivative(boundary_condition%condition%itype(1), &
@@ -755,7 +926,7 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
                    saturation_loc_p(ghosted_id), &
                    cur_connection_set%dist(0,iconn), &
                    cur_connection_set%area(iconn), &
-                   option,field%boundary_velocities(:,sum_connection),Jdn)
+                   option,patch%boundary_velocities(:,sum_connection),Jdn)
  
       Jdn = -1.d0*Jdn
       
@@ -780,8 +951,8 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
   
   if (inactive_cells_exist) then
     rdum = 1.d0
-    call MatZeroRowsLocal(A,realization%RTaux%n_zero_rows, &
-                          realization%RTaux%zero_rows_local_ghosted,rdum,ierr) 
+    call MatZeroRowsLocal(A,patch%RTAux%n_zero_rows, &
+                          patch%RTAux%zero_rows_local_ghosted,rdum,ierr) 
   endif
 
   if (realization%debug%matview_Jacobian) then
@@ -790,7 +961,7 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
     
-end subroutine RTJacobian
+end subroutine RTJacobianPatch
 
 ! ************************************************************************** !
 !
@@ -817,6 +988,7 @@ subroutine RTUpdateAuxVars(realization)
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(grid_type), pointer :: grid
+  type(patch_type), pointer :: patch  
   type(coupler_type), pointer :: boundary_condition
   type(connection_type), pointer :: cur_connection_set
 
@@ -826,7 +998,8 @@ subroutine RTUpdateAuxVars(realization)
   PetscErrorCode :: ierr
   
   option => realization%option
-  grid => realization%grid
+  patch => realization%patch  
+  grid => patch%grid
   field => realization%field
   
   call VecGetArrayF90(field%tran_xx_loc,xx_loc_p, ierr)
@@ -834,18 +1007,18 @@ subroutine RTUpdateAuxVars(realization)
   do ghosted_id = 1, grid%ngmax
     if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
     !geh - Ignore inactive cells with inactive materials
-    if (associated(field%imat)) then
-      if (field%imat(ghosted_id) <= 0) cycle
+    if (associated(patch%imat)) then
+      if (patch%imat(ghosted_id) <= 0) cycle
     endif
     iend = ghosted_id*option%ncomp
     istart = iend-option%ncomp+1
    
     call RTAuxVarCompute(xx_loc_p(istart:iend), &
-                         realization%RTaux%aux_vars(ghosted_id), &
+                         patch%RTAux%aux_vars(ghosted_id), &
                          option)
   enddo
 
-  boundary_condition => realization%transport_boundary_conditions%first
+  boundary_condition => patch%transport_boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -854,8 +1027,8 @@ subroutine RTUpdateAuxVars(realization)
       sum_connection = sum_connection + 1
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
-      if (associated(field%imat)) then
-        if (field%imat(ghosted_id) <= 0) cycle
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
       endif
 
       do idof=1,option%ncomp
@@ -868,7 +1041,7 @@ subroutine RTUpdateAuxVars(realization)
       enddo
       
       call RTAuxVarCompute(xxbc, &
-                           realization%RTaux%aux_vars_bc(sum_connection), &
+                           patch%RTAux%aux_vars_bc(sum_connection), &
                            option)
     enddo
     boundary_condition => boundary_condition%next
@@ -883,44 +1056,40 @@ end subroutine RTUpdateAuxVars
 
 ! ************************************************************************** !
 !
-! RTZeroArrayCreate: Computes the zeroed rows for inactive grid cells
+! RTCreateZeroArray: Computes the zeroed rows for inactive grid cells
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
 ! ************************************************************************** !
-subroutine RTZeroArrayCreate(realization)
+subroutine RTCreateZeroArray(patch,option)
 
-  use Realization_module
-  use Reactive_Transport_Aux_module
+  use Patch_module
   use Grid_module
   use Option_module
-  use Field_module
   
   implicit none
 
-  type(realization_type) :: realization
-  PetscInt :: ncount, icomp
-  PetscInt :: local_id, ghosted_id
+  type(patch_type) :: patch
+  type(option_type) :: option
+  
+  PetscInt :: ncount, idof
+  PetscInt :: local_id, ghosted_id, icomp
 
   type(grid_type), pointer :: grid
-  type(option_type), pointer :: option
-  type(field_type), pointer :: field
   PetscInt :: flag = 0
+  PetscInt :: n_zero_rows
   PetscInt, pointer :: zero_rows_local(:)
   PetscInt, pointer :: zero_rows_local_ghosted(:)
-  PetscInt :: n_zero_rows
   PetscErrorCode :: ierr
-    
-  grid => realization%grid
-  option => realization%option
-  field => realization%field
+
+  grid => patch%grid
   
   n_zero_rows = 0
 
-  if (associated(field%imat)) then
+  if (associated(patch%imat)) then
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
-      if (field%imat(ghosted_id) <= 0) then
+      if (patch%imat(ghosted_id) <= 0) then
         n_zero_rows = n_zero_rows + option%ncomp
       else
       endif
@@ -930,14 +1099,15 @@ subroutine RTZeroArrayCreate(realization)
 
   allocate(zero_rows_local(n_zero_rows))
   allocate(zero_rows_local_ghosted(n_zero_rows))
+
   zero_rows_local = 0
   zero_rows_local_ghosted = 0
   ncount = 0
 
-  if (associated(field%imat)) then
+  if (associated(patch%imat)) then
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
-      if (field%imat(ghosted_id) <= 0) then
+      if (patch%imat(ghosted_id) <= 0) then
         do icomp = 1, option%ncomp
           ncount = ncount + 1
           zero_rows_local(ncount) = (local_id-1)*option%ncomp+icomp
@@ -948,6 +1118,10 @@ subroutine RTZeroArrayCreate(realization)
     enddo
   endif
 
+  patch%RTAux%zero_rows_local => zero_rows_local
+  patch%RTAux%zero_rows_local_ghosted => zero_rows_local_ghosted
+  patch%RTAux%n_zero_rows = n_zero_rows  
+
   call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
                      PETSC_COMM_WORLD,ierr)
   if (flag > 0) inactive_cells_exist = .true.
@@ -957,11 +1131,7 @@ subroutine RTZeroArrayCreate(realization)
     stop
   endif
   
-  realization%RTaux%n_zero_rows = n_zero_rows
-  realization%RTaux%zero_rows_local => zero_rows_local
-  realization%RTaux%zero_rows_local_ghosted => zero_rows_local_ghosted
-
-end subroutine RTZeroArrayCreate
+end subroutine RTCreateZeroArray
 
 ! ************************************************************************** !
 !
@@ -989,11 +1159,13 @@ subroutine RTGetVarFromArray(realization,vec,ivar,isubvar)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
+  type(patch_type), pointer :: patch  
   PetscReal, pointer :: vec_ptr(:), vec2_ptr(:)
   PetscErrorCode :: ierr
 
   option => realization%option
-  grid => realization%grid
+  patch => realization%patch  
+  grid => patch%grid
   field => realization%field
 
   if (.not.aux_vars_up_to_date) call RTUpdateAuxVars(realization)
@@ -1007,11 +1179,11 @@ subroutine RTGetVarFromArray(realization,vec,ivar,isubvar)
         case(TOTAL_CONCENTRATION)
           do local_id=1,grid%nlmax
             ghosted_id = grid%nL2G(local_id)    
-            vec_ptr(local_id) = realization%RTaux%aux_vars(ghosted_id)%total(isubvar)
+            vec_ptr(local_id) = patch%RTAux%aux_vars(ghosted_id)%total(isubvar)
           enddo
         case(MATERIAL_ID)
           do local_id=1,grid%nlmax
-            vec_ptr(local_id) = field%imat(grid%nL2G(local_id))
+            vec_ptr(local_id) = patch%imat(grid%nL2G(local_id))
           enddo
       end select
       call VecRestoreArrayF90(vec,vec_ptr,ierr)
@@ -1047,11 +1219,13 @@ function RTGetVarFromArrayAtCell(realization,ivar,isubvar,local_id)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
+  type(patch_type), pointer :: patch  
   PetscReal, pointer :: vec_ptr(:)
   PetscErrorCode :: ierr
 
   option => realization%option
-  grid => realization%grid
+  patch => realization%patch  
+  grid => patch%grid
   field => realization%field
 
   if (.not.aux_vars_up_to_date) call RTUpdateAuxVars(realization)
@@ -1063,7 +1237,7 @@ function RTGetVarFromArrayAtCell(realization,ivar,isubvar,local_id)
       call VecRestoreArrayF90(field%tran_xx,vec_ptr,ierr)
     case(TOTAL_CONCENTRATION)
       ghosted_id = grid%nL2G(local_id)    
-      value = realization%RTaux%aux_vars(ghosted_id)%total(isubvar)
+      value = patch%RTAux%aux_vars(ghosted_id)%total(isubvar)
   end select
   
   RTGetVarFromArrayAtCell = value

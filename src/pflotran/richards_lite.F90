@@ -1,13 +1,7 @@
-! introduced grid variables: e_total :: 1 dof
-!Richards translator_module                           c_total :: option%nspec dof
-!                            p_total :: 1 dof
-!                            s_total :: (option%nphase-1) dof
-!  stands for the accumulation term at last time step, except the /Dt part 
-!  should be updated in pflowgrid_mod.F90 :: pflowgrid_step          
-
-               
 module Richards_Lite_module
 
+  use Richards_Lite_Aux_module
+  
   implicit none
   
   private 
@@ -47,31 +41,6 @@ module Richards_Lite_module
          RichardsLiteMaxChange, RichardsLiteUpdateSolution, &
          RichardsLiteGetTecplotHeader, RichardsLiteInitializeTimestep
 
-  PetscInt, save :: n_zero_rows = 0
-  logical, save :: aux_vars_up_to_date = .false.
-  logical, save :: inactive_cells_exist = .false.
-  PetscInt, pointer, save :: zero_rows_local(:)  ! 1-based indexing
-  PetscInt, pointer, save :: zero_rows_local_ghosted(:) ! 0-based indexing
-
-  type richards_type
-    PetscReal :: pres
-    PetscReal :: temp
-    PetscReal :: sat
-    PetscReal :: den
-    PetscReal :: avgmw
-    PetscReal :: pc
-!    PetscReal :: vis
-!    PetscReal :: dvis_dp
-!    PetscReal :: kr
-!    PetscReal :: dkr_dp
-    PetscReal :: kvr
-    PetscReal :: dsat_dp
-    PetscReal :: dden_dp
-    PetscReal :: dkvr_dp
-  end type richards_type
-  
-  type(richards_type), pointer :: aux_vars(:), aux_vars_bc(:)
-
 contains
 
 ! ************************************************************************** !
@@ -85,36 +54,66 @@ subroutine RichardsLiteTimeCut(realization)
  
   use Realization_module
   use Option_module
-  use Grid_module
   use Field_module
  
   implicit none
   
   type(realization_type) :: realization
   type(option_type), pointer :: option
-  type(grid_type), pointer :: grid
   type(field_type), pointer :: field
   
   PetscReal, pointer :: xx_p(:),yy_p(:)
   PetscErrorCode :: ierr
   PetscInt :: local_id
 
-  grid => realization%grid
   option => realization%option
   field => realization%field
 
   call VecCopy(field%flow_yy,field%flow_xx,ierr)
  
 end subroutine RichardsLiteTimeCut
+
+! ************************************************************************** !
+!
+! RichardsLiteSetup: 
+! author: Glenn Hammond
+! date: 00/00/00
+!
+! ************************************************************************** !
+subroutine RichardsLiteSetup(realization)
+
+  use Realization_module
+  use Level_module
+  use Patch_module
+
+  type(realization_type) :: realization
+  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call RichardsLiteSetupPatch(realization)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+end subroutine RichardsLiteSetup
   
 ! ************************************************************************** !
 !
-! RichardsLiteSetup: Creates arrays for auxilliary variables
+! RichardsLiteSetupPatch: Creates arrays for auxilliary variables
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
 ! ************************************************************************** !
-subroutine RichardsLiteSetup(realization)
+subroutine RichardsLiteSetupPatch(realization)
 
   use Realization_module
   use Option_module
@@ -125,24 +124,30 @@ subroutine RichardsLiteSetup(realization)
   implicit none
   
   type(realization_type) :: realization
+
   type(option_type), pointer :: option
+  type(patch_type),pointer :: patch
   type(grid_type), pointer :: grid
   type(coupler_type), pointer :: boundary_condition
 
   PetscInt :: ghosted_id, iconn, sum_connection
+  type(richards_lite_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)  
   
-  grid => realization%grid
   option => realization%option
+  patch => realization%patch
+  grid => patch%grid
   
   ! allocate aux_var data structures for all grid cells  
   allocate(aux_vars(grid%ngmax))
   do ghosted_id = 1, grid%ngmax
-    call initAuxVar(aux_vars(ghosted_id),option)
+    call RichardsLiteAuxVarInit(aux_vars(ghosted_id),option)
   enddo
-
+  patch%RichardsLiteAux%aux_vars => aux_vars
+  patch%RichardsLiteAux%num_aux = grid%ngmax
+  
   ! count the number of boundary connections and allocate
   ! aux_var data structures for them  
-  boundary_condition => realization%flow_boundary_conditions%first
+  boundary_condition => patch%flow_boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -152,81 +157,17 @@ subroutine RichardsLiteSetup(realization)
   enddo
   allocate(aux_vars_bc(sum_connection))
   do iconn = 1, sum_connection
-    call initAuxVar(aux_vars_bc(iconn),option)
+    call RichardsLiteAuxVarInit(aux_vars_bc(iconn),option)
   enddo
-
+  patch%RichardsLiteAux%aux_vars_bc => aux_vars
+  patch%RichardsLiteAux%num_aux_bc = grid%ngmax
+  
   ! create zero array for zeroing residual and Jacobian (1 on diagonal)
   ! for inactive cells (and isothermal)
-  call createRichardsLiteZeroArray(realization)
+  call RichardsLiteCreateZeroArray(patch,option)
 
-end subroutine RichardsLiteSetup
+end subroutine RichardsLiteSetupPatch
 
-! ************************************************************************** !
-!
-! initAuxVar: Zeros the auxilliary variable for a grid cell
-! author: Glenn Hammond
-! date: 12/13/07
-!
-! ************************************************************************** !  
-subroutine initAuxVar(aux_var,option)
-
-  use Option_module
-
-  implicit none
-  
-  type(richards_type) :: aux_var
-  type(option_type) :: option
-
-  aux_var%pres = 0.d0
-  aux_var%temp = 0.d0
-  aux_var%sat = 0.d0
-  aux_var%den = 0.d0
-  aux_var%avgmw = 0.d0
-  aux_var%pc = 0.d0
-!  aux_var%kr = 0.d0
-!  aux_var%dkr_dp = 0.d0
-!  aux_var%vis = 0.d0
-!  aux_var%dvis_dp = 0.d0
-  aux_var%kvr = 0.d0
-  aux_var%dsat_dp = 0.d0
-  aux_var%dden_dp = 0.d0
-  aux_var%dkvr_dp = 0.d0
-
-end subroutine initAuxVar
-
-! ************************************************************************** !
-!
-! copyAuxVar: Copies an auxilliary variable
-! author: Glenn Hammond
-! date: 12/13/07
-!
-! ************************************************************************** !  
-subroutine copyAuxVar(aux_var,aux_var2,option)
-
-  use Option_module
-
-  implicit none
-  
-  type(richards_type) :: aux_var, aux_var2
-  type(option_type) :: option
-
-  aux_var2%pres = aux_var%pres
-  aux_var2%temp = aux_var%temp
-  aux_var2%sat = aux_var%sat
-  aux_var2%den = aux_var%den
-  aux_var2%avgmw = aux_var%avgmw
-  aux_var2%pc = aux_var%pc
-!  aux_var2%kr = aux_var%kr
-!  aux_var2%dkr_dp = aux_var%dkr_dp
-!  aux_var2%vis = aux_var%vis
-!  aux_var2%dvis_dp = aux_var%dvis_dp
-  aux_var2%kvr = aux_var%kvr
-  aux_var2%dsat_dp = aux_var%dsat_dp
-  aux_var2%dden_dp = aux_var%dden_dp
-  aux_var2%dkvr_dp = aux_var%dkvr_dp
-
-end subroutine copyAuxVar
-  
 ! ************************************************************************** !
 !
 ! RichardsLiteUpdateAuxVars: Updates the auxilliary variables associated with 
@@ -236,6 +177,40 @@ end subroutine copyAuxVar
 !
 ! ************************************************************************** !
 subroutine RichardsLiteUpdateAuxVars(realization)
+
+  use Realization_module
+  use Level_module
+  use Patch_module
+
+  type(realization_type) :: realization
+  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call RichardsLiteUpdateAuxVarsPatch(realization)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+end subroutine RichardsLiteUpdateAuxVars
+
+! ************************************************************************** !
+!
+! RichardsLiteUpdateAuxVarsPatch: Updates the auxilliary variables associated with 
+!                        the Richards problem
+! author: Glenn Hammond
+! date: 12/10/07
+!
+! ************************************************************************** !
+subroutine RichardsLiteUpdateAuxVarsPatch(realization)
 
   use Realization_module
   use Option_module
@@ -250,10 +225,12 @@ subroutine RichardsLiteUpdateAuxVars(realization)
   type(realization_type) :: realization
   
   type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
   type(coupler_type), pointer :: boundary_condition
   type(connection_type), pointer :: cur_connection_set
+  type(richards_lite_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)  
 
   PetscInt :: ghosted_id, local_id, sum_connection, idof, iconn
   PetscInt :: iphasebc, iphase
@@ -262,9 +239,13 @@ subroutine RichardsLiteUpdateAuxVars(realization)
   PetscErrorCode :: ierr
   
   option => realization%option
-  grid => realization%grid
+  patch => realization%patch
+  grid => patch%grid
   field => realization%field
-  
+
+  aux_vars => patch%RichardsLiteAux%aux_vars
+  aux_vars_bc => patch%RichardsLiteAux%aux_vars_bc
+    
   call VecGetArrayF90(field%flow_xx_loc,xx_loc_p, ierr)
   call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr)
   call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr)
@@ -272,19 +253,19 @@ subroutine RichardsLiteUpdateAuxVars(realization)
   do ghosted_id = 1, grid%ngmax
     if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
     !geh - Ignore inactive cells with inactive materials
-    if (associated(field%imat)) then
-      if (field%imat(ghosted_id) <= 0) cycle
+    if (associated(patch%imat)) then
+      if (patch%imat(ghosted_id) <= 0) cycle
     endif
     iphase = int(iphase_loc_p(ghosted_id))
    
-    call computeAuxVarLite(xx_loc_p(ghosted_id:ghosted_id),aux_vars(ghosted_id), &
+    call RichardsLiteAuxVarCompute(xx_loc_p(ghosted_id:ghosted_id),aux_vars(ghosted_id), &
                        iphase, &
                        realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                        option)
     iphase_loc_p(ghosted_id) = iphase
   enddo
 
-  boundary_condition => realization%flow_boundary_conditions%first
+  boundary_condition => patch%flow_boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -293,8 +274,8 @@ subroutine RichardsLiteUpdateAuxVars(realization)
       sum_connection = sum_connection + 1
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
-      if (associated(field%imat)) then
-        if (field%imat(ghosted_id) <= 0) cycle
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
       endif
 
       select case(boundary_condition%condition%itype(RICHARDS_PRESSURE_DOF))
@@ -311,7 +292,7 @@ subroutine RichardsLiteUpdateAuxVars(realization)
           iphasebc=int(iphase_loc_p(ghosted_id))                               
       end select
 
-      call computeAuxVarLite(xxbc(1),aux_vars_bc(sum_connection), &
+      call RichardsLiteAuxVarCompute(xxbc(1),aux_vars_bc(sum_connection), &
                          iphasebc, &
                          realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                          option)
@@ -324,9 +305,9 @@ subroutine RichardsLiteUpdateAuxVars(realization)
   call VecRestoreArrayF90(field%icap_loc,icap_loc_p,ierr)
   call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p,ierr)
   
-  aux_vars_up_to_date = .true.
+  patch%RichardsLiteAux%aux_vars_up_to_date = .true.
 
-end subroutine RichardsLiteUpdateAuxVars
+end subroutine RichardsLiteUpdateAuxVarsPatch
 
 ! ************************************************************************** !
 !
@@ -384,6 +365,40 @@ end subroutine RichardsLiteUpdateSolution
 subroutine RichardsLiteUpdateFixedAccum(realization)
 
   use Realization_module
+  use Level_module
+  use Patch_module
+
+  type(realization_type) :: realization
+  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call RichardsLiUpdateFixedAccumPatch(realization)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+end subroutine RichardsLiteUpdateFixedAccum
+
+! ************************************************************************** !
+!
+! RichardsLiUpdateFixedAccumPatch: Updates the fixed portion of the 
+!                                  accumulation term
+! author: Glenn Hammond
+! date: 12/10/07
+!
+! ************************************************************************** !
+subroutine RichardsLiUpdateFixedAccumPatch(realization)
+
+  use Realization_module
   use Option_module
   use Field_module
   use Grid_module
@@ -393,8 +408,10 @@ subroutine RichardsLiteUpdateFixedAccum(realization)
   type(realization_type) :: realization
   
   type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
+  type(richards_lite_auxvar_type), pointer :: aux_vars(:)
 
   PetscInt :: ghosted_id, local_id, iphase
   PetscReal, pointer :: xx_p(:), icap_loc_p(:), iphase_loc_p(:)
@@ -404,9 +421,12 @@ subroutine RichardsLiteUpdateFixedAccum(realization)
   PetscErrorCode :: ierr
   
   option => realization%option
-  grid => realization%grid
   field => realization%field
-  
+  patch => realization%patch
+  grid => patch%grid
+
+  aux_vars => patch%RichardsLiteAux%aux_vars
+    
   call VecGetArrayF90(field%flow_xx,xx_p, ierr)
   call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr)
   call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr)
@@ -420,11 +440,11 @@ subroutine RichardsLiteUpdateFixedAccum(realization)
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     !geh - Ignore inactive cells with inactive materials
-    if (associated(field%imat)) then
-      if (field%imat(ghosted_id) <= 0) cycle
+    if (associated(patch%imat)) then
+      if (patch%imat(ghosted_id) <= 0) cycle
     endif
     iphase = int(iphase_loc_p(ghosted_id))
-    call computeAuxVarLite(xx_p(local_id:local_id),aux_vars(ghosted_id), &
+    call RichardsLiteAuxVarCompute(xx_p(local_id:local_id),aux_vars(ghosted_id), &
                        iphase, &
                        realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                        option)
@@ -449,7 +469,7 @@ subroutine RichardsLiteUpdateFixedAccum(realization)
 !  call RichardsLiteNumericalJacTest(field%flow_xx,realization)
 #endif
 
-end subroutine RichardsLiteUpdateFixedAccum
+end subroutine RichardsLiUpdateFixedAccumPatch
 
 ! ************************************************************************** !
 !
@@ -483,11 +503,13 @@ subroutine RichardsLiteNumericalJacTest(xx,realization)
 
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
+  type(patch_type), pointer :: patch
   type(field_type), pointer :: field
   
   PetscInt :: idof, idof2, icell
 
-  grid => realization%grid
+  patch => realization%patch
+  grid => patch%grid
   option => realization%option
   field => realization%field
   
@@ -503,8 +525,8 @@ subroutine RichardsLiteNumericalJacTest(xx,realization)
   call RichardsLiteResidual(PETSC_NULL_OBJECT,xx,res,realization,ierr)
   call VecGetArrayF90(res,vec2_p,ierr)
   do icell = 1,grid%nlmax
-    if (associated(field%imat)) then
-      if (field%imat(grid%nL2G(icell)) <= 0) cycle
+    if (associated(patch%imat)) then
+      if (patch%imat(grid%nL2G(icell)) <= 0) cycle
     endif
      idof = icell
 !    do idof = (icell-1)*option%nflowdof+1,icell*option%nflowdof 
@@ -556,7 +578,7 @@ subroutine RichardsLiteAccumDerivative(aux_var,por,vol,rock_dencpr,option, &
   
   implicit none
 
-  type(richards_type) :: aux_var
+  type(richards_lite_auxvar_type) :: aux_var
   type(option_type) :: option
   PetscReal vol,por,rock_dencpr
   type(saturation_function_type) :: sat_func
@@ -566,7 +588,7 @@ subroutine RichardsLiteAccumDerivative(aux_var,por,vol,rock_dencpr,option, &
   PetscReal :: porXvol
 
   PetscInt :: iphase, ideriv
-  type(richards_type) :: aux_var_pert
+  type(richards_lite_auxvar_type) :: aux_var_pert
   PetscReal :: x(1), x_pert(1), pert, res(1), res_pert(1), J_pert(1,1)
 
   porXvol = por*vol
@@ -574,14 +596,14 @@ subroutine RichardsLiteAccumDerivative(aux_var,por,vol,rock_dencpr,option, &
   J(1,1) = (aux_var%sat*aux_var%dden_dp+aux_var%dsat_dp*aux_var%den)*porXvol
 
   if (option%numerical_derivatives) then
-    call copyAuxVar(aux_var,aux_var_pert,option)
+    call RichardsLiteAuxVarCopy(aux_var,aux_var_pert,option)
     x(1) = aux_var%pres
     call RichardsLiteAccumulation(aux_var,por,vol,rock_dencpr,option,res)
     ideriv = 1
     pert = x(ideriv)*perturbation_tolerance
     x_pert = x
     x_pert(ideriv) = x_pert(ideriv) + pert
-    call computeAuxVarLite(x_pert(1),aux_var_pert,iphase,sat_func,option)
+    call RichardsLiteAuxVarCompute(x_pert(1),aux_var_pert,iphase,sat_func,option)
 #if 0      
       select case(ideriv)
         case(1)
@@ -613,7 +635,7 @@ subroutine RichardsLiteAccumulation(aux_var,por,vol,rock_dencpr,option,Res)
   
   implicit none
 
-  type(richards_type) :: aux_var
+  type(richards_lite_auxvar_type) :: aux_var
   type(option_type) :: option
   PetscReal Res(1:option%nflowdof) 
   PetscReal vol,por,rock_dencpr
@@ -639,7 +661,7 @@ subroutine RichardsLiteFluxDerivative(aux_var_up,por_up,sir_up,dd_up,perm_up, &
   
   implicit none
   
-  type(richards_type) :: aux_var_up, aux_var_dn
+  type(richards_lite_auxvar_type) :: aux_var_up, aux_var_dn
   type(option_type) :: option
   PetscReal :: sir_up, sir_dn
   PetscReal :: por_up, por_dn
@@ -661,7 +683,7 @@ subroutine RichardsLiteFluxDerivative(aux_var_up,por_up,sir_up,dd_up,perm_up, &
   PetscReal :: dq_dp_up, dq_dp_dn
 
   PetscInt :: iphase, ideriv
-  type(richards_type) :: aux_var_pert_up, aux_var_pert_dn
+  type(richards_lite_auxvar_type) :: aux_var_pert_up, aux_var_pert_dn
   PetscReal :: x_up(1), x_dn(1), x_pert_up(1), x_pert_dn(1), pert_up, pert_dn, &
             res(1), res_pert_up(1), res_pert_dn(1), J_pert_up(1,1), J_pert_dn(1,1)
   
@@ -733,8 +755,8 @@ subroutine RichardsLiteFluxDerivative(aux_var_up,por_up,sir_up,dd_up,perm_up, &
  !                                              dn J = J - Jdn  
 
   if (option%numerical_derivatives) then
-    call copyAuxVar(aux_var_up,aux_var_pert_up,option)
-    call copyAuxVar(aux_var_dn,aux_var_pert_dn,option)
+    call RichardsLiteAuxVarCopy(aux_var_up,aux_var_pert_up,option)
+    call RichardsLiteAuxVarCopy(aux_var_dn,aux_var_pert_dn,option)
     x_up(1) = aux_var_up%pres
     x_dn(1) = aux_var_dn%pres
     call RichardsLiteFlux(aux_var_up,por_up,sir_up,dd_up,perm_up, &
@@ -748,8 +770,8 @@ subroutine RichardsLiteFluxDerivative(aux_var_up,por_up,sir_up,dd_up,perm_up, &
     x_pert_dn = x_dn
     x_pert_up(ideriv) = x_pert_up(ideriv) + pert_up
     x_pert_dn(ideriv) = x_pert_dn(ideriv) + pert_dn
-    call computeAuxVarLite(x_pert_up(1),aux_var_pert_up,iphase,sat_func_up,option)
-    call computeAuxVarLite(x_pert_dn(1),aux_var_pert_dn,iphase,sat_func_dn,option)
+    call RichardsLiteAuxVarCompute(x_pert_up(1),aux_var_pert_up,iphase,sat_func_up,option)
+    call RichardsLiteAuxVarCompute(x_pert_dn(1),aux_var_pert_dn,iphase,sat_func_dn,option)
     call RichardsLiteFlux(aux_var_pert_up,por_up,sir_up,dd_up,perm_up, &
                       aux_var_dn,por_dn,sir_dn,dd_dn,perm_dn, &
                       area,dist_gravity,upweight, &
@@ -781,7 +803,7 @@ subroutine RichardsLiteFlux(aux_var_up,por_up,sir_up,dd_up,perm_up, &
   
   implicit none
   
-  type(richards_type) :: aux_var_up, aux_var_dn
+  type(richards_lite_auxvar_type) :: aux_var_up, aux_var_dn
   type(option_type) :: option
   PetscReal :: sir_up, sir_dn
   PetscReal :: por_up, por_dn
@@ -857,7 +879,7 @@ subroutine RichardsLiteBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn,
   implicit none
   
   PetscInt :: ibndtype(:)
-  type(richards_type) :: aux_var_up, aux_var_dn
+  type(richards_lite_auxvar_type) :: aux_var_up, aux_var_dn
   type(option_type) :: option
   PetscReal :: dd_up, sir_dn
   PetscReal :: aux_vars(:) ! from aux_real_var array in boundary condition
@@ -880,7 +902,7 @@ subroutine RichardsLiteBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn,
   PetscReal :: dq_dp_dn
 
   PetscInt :: iphase, ideriv
-  type(richards_type) :: aux_var_pert_dn, aux_var_pert_up
+  type(richards_lite_auxvar_type) :: aux_var_pert_dn, aux_var_pert_up
   PetscReal :: perturbation
   PetscReal :: x_dn(1), x_up(1), x_pert_dn(1), x_pert_up(1), pert_dn, res(1), &
             res_pert_dn(1), J_pert_dn(1,1)
@@ -955,8 +977,8 @@ subroutine RichardsLiteBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn,
   Jdn = Jdn * option%flow_dt
 
   if (option%numerical_derivatives) then
-    call copyAuxVar(aux_var_up,aux_var_pert_up,option)
-    call copyAuxVar(aux_var_dn,aux_var_pert_dn,option)
+    call RichardsLiteAuxVarCopy(aux_var_up,aux_var_pert_up,option)
+    call RichardsLiteAuxVarCopy(aux_var_dn,aux_var_pert_dn,option)
     x_up(1) = aux_var_up%pres
     x_dn(1) = aux_var_dn%pres
     ideriv = 1
@@ -977,8 +999,8 @@ subroutine RichardsLiteBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn,
     if (ibndtype(ideriv) == ZERO_GRADIENT_BC) then
       x_pert_up(ideriv) = x_pert_dn(ideriv)
     endif   
-    call computeAuxVarLite(x_pert_dn(1),aux_var_pert_dn,iphase,sat_func_dn,option)
-    call computeAuxVarLite(x_pert_up(1),aux_var_pert_up,iphase,sat_func_dn,option)
+    call RichardsLiteAuxVarCompute(x_pert_dn(1),aux_var_pert_dn,iphase,sat_func_dn,option)
+    call RichardsLiteAuxVarCompute(x_pert_up(1),aux_var_pert_up,iphase,sat_func_dn,option)
     call RichardsLiteBCFlux(ibndtype,aux_vars,aux_var_pert_up,aux_var_pert_dn, &
                         por_dn,sir_dn,dd_up,perm_dn, &
                         area,dist_gravity,option,v_darcy,res_pert_dn)
@@ -1003,7 +1025,7 @@ subroutine RichardsLiteBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   implicit none
   
   PetscInt :: ibndtype(:)
-  type(richards_type) :: aux_var_up, aux_var_dn
+  type(richards_lite_auxvar_type) :: aux_var_up, aux_var_dn
   type(option_type) :: option
   PetscReal :: dd_up, sir_dn
   PetscReal :: aux_vars(:) ! from aux_real_var array
@@ -1084,6 +1106,62 @@ end subroutine RichardsLiteBCFlux
 ! ************************************************************************** !
 subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
 
+  use Realization_module
+  use Patch_module
+  use Grid_module
+  use Option_module
+
+  implicit none
+
+  SNES :: snes
+  Vec :: xx
+  Vec :: r
+  type(realization_type) :: realization
+  PetscErrorCode :: ierr
+  
+  type(grid_type), pointer :: grid
+  type(field_type), pointer :: field
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  
+  field => realization%field
+  grid => realization%patch%grid
+  
+  ! Communication -----------------------------------------
+  ! These 3 must be called before RichardsUpdateAuxVars()
+  call GridGlobalToLocal(grid,xx,field%flow_xx_loc,NFLOWDOF)
+  call GridLocalToLocal(grid,field%iphas_loc,field%iphas_loc,ONEDOF)
+  call GridLocalToLocal(grid,field%icap_loc,field%icap_loc,ONEDOF)
+
+  call GridLocalToLocal(grid,field%perm_xx_loc,field%perm_xx_loc,ONEDOF)
+  call GridLocalToLocal(grid,field%perm_yy_loc,field%perm_yy_loc,ONEDOF)
+  call GridLocalToLocal(grid,field%perm_zz_loc,field%perm_zz_loc,ONEDOF)
+  call GridLocalToLocal(grid,field%ithrm_loc,field%ithrm_loc,ONEDOF)
+  
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call RichardsLiteResidualPatch(snes,xx,r,realization,ierr)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+end subroutine RichardsLiteResidual
+
+! ************************************************************************** !
+!
+! RichardsLiteResidualPatch: Computes the residual equation 
+! author: Glenn Hammond
+! date: 12/10/07
+!
+! ************************************************************************** !
+subroutine RichardsLiteResidualPatch(snes,xx,r,realization,ierr)
+
   use water_eos_module
   use Gas_Eos_Module
 
@@ -1133,9 +1211,10 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
 
 
   type(grid_type), pointer :: grid
+  type(patch_type), pointer :: patch
   type(option_type), pointer :: option
   type(field_type), pointer :: field
-  
+  type(richards_lite_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
   type(coupler_type), pointer :: boundary_condition, source_sink
   type(connection_list_type), pointer :: connection_list
   type(connection_type), pointer :: cur_connection_set
@@ -1145,23 +1224,17 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
   PetscReal :: distance, fraction_upwind
   PetscReal :: distance_gravity
   
-  grid => realization%grid
+  
+  patch => realization%patch
+  grid => patch%grid
   option => realization%option
   field => realization%field
 
-  ! Communication -----------------------------------------
-  ! These 3 must be called before RichardsUpdateAuxVars()
-  call GridGlobalToLocal(grid,xx,field%flow_xx_loc,NFLOWDOF)
-  call GridLocalToLocal(grid,field%iphas_loc,field%iphas_loc,ONEDOF)
-  call GridLocalToLocal(grid,field%icap_loc,field%icap_loc,ONEDOF)
-
-  call GridLocalToLocal(grid,field%perm_xx_loc,field%perm_xx_loc,ONEDOF)
-  call GridLocalToLocal(grid,field%perm_yy_loc,field%perm_yy_loc,ONEDOF)
-  call GridLocalToLocal(grid,field%perm_zz_loc,field%perm_zz_loc,ONEDOF)
-  call GridLocalToLocal(grid,field%ithrm_loc,field%ithrm_loc,ONEDOF)
+  aux_vars => patch%RichardsLiteAux%aux_vars
+  aux_vars_bc => patch%RichardsLiteAux%aux_vars_bc
 
   call RichardsLiteUpdateAuxVars(realization)
-  aux_vars_up_to_date = .false. ! override flags since they will soon be out of date
+  patch%RichardsLiteAux%aux_vars_up_to_date = .false. ! override flags since they will soon be out of date
 
 ! now assign access pointer to local variables
   call VecGetArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
@@ -1187,8 +1260,8 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
   do local_id = 1, grid%nlmax  ! For each local node do...
     ghosted_id = grid%nL2G(local_id)
     !geh - Ignore inactive cells with inactive materials
-    if (associated(field%imat)) then
-      if (field%imat(ghosted_id) <= 0) cycle
+    if (associated(patch%imat)) then
+      if (patch%imat(ghosted_id) <= 0) cycle
     endif
     call RichardsLiteAccumulation(aux_vars(ghosted_id),porosity_loc_p(ghosted_id), &
                                   volume_p(local_id), &
@@ -1199,7 +1272,7 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
 #endif
 #if 1
   ! Source/sink terms -------------------------------------
-  source_sink => realization%flow_source_sinks%first 
+  source_sink => patch%flow_source_sinks%first 
   do 
     if (.not.associated(source_sink)) exit
     
@@ -1211,8 +1284,8 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
     do iconn = 1, cur_connection_set%num_connections      
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
-      if (associated(field%imat)) then
-        if (field%imat(ghosted_id) <= 0) cycle
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
       endif
       
       if (qsrc1 > 0.d0) then ! injection
@@ -1245,9 +1318,9 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
       local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
       local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping   
 
-      if (associated(field%imat)) then
-        if (field%imat(ghosted_id_up) <= 0 .or.  &
-            field%imat(ghosted_id_dn) <= 0) cycle
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id_up) <= 0 .or.  &
+            patch%imat(ghosted_id_dn) <= 0) cycle
       endif
 
       fraction_upwind = cur_connection_set%dist(-1,iconn)
@@ -1291,7 +1364,7 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
                         cur_connection_set%area(iconn),distance_gravity, &
                         upweight,option,v_darcy,Res)
 
-      field%internal_velocities(1,sum_connection) = v_darcy
+      patch%internal_velocities(1,sum_connection) = v_darcy
 
       if (local_id_up>0) then
         r_p(local_id_up) = r_p(local_id_up) + Res(1)
@@ -1307,7 +1380,7 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
 #endif
 #if 1
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => realization%flow_boundary_conditions%first
+  boundary_condition => patch%flow_boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -1320,8 +1393,8 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
 
-      if (associated(field%imat)) then
-        if (field%imat(ghosted_id) <= 0) cycle
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
       endif
 
       if (ghosted_id<=0) then
@@ -1355,7 +1428,7 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
                                 cur_connection_set%area(iconn), &
                                 distance_gravity,option, &
                                 v_darcy,Res)
-      field%boundary_velocities(1,sum_connection) = v_darcy
+      patch%boundary_velocities(1,sum_connection) = v_darcy
 
       r_p(local_id)= r_p(local_id) - Res(1)
  
@@ -1364,9 +1437,9 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
   enddo
 #endif  
 
-  if (inactive_cells_exist) then
-    do i=1,n_zero_rows
-      r_p(zero_rows_local(i)) = 0.d0
+  if (patch%RichardsLiteAux%inactive_cells_exist) then
+    do i=1,patch%RichardsLiteAux%n_zero_rows
+      r_p(patch%RichardsLiteAux%zero_rows_local(i)) = 0.d0
     enddo
   endif
 
@@ -1394,18 +1467,59 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
   
-  aux_vars_up_to_date = .false.
+  patch%RichardsLiteAux%aux_vars_up_to_date = .false.
 
-end subroutine RichardsLiteResidual
-                
+end subroutine RichardsLiteResidualPatch
+
 ! ************************************************************************** !
 !
 ! RichardsLiteJacobian: Computes the Jacobian
 ! author: Glenn Hammond
-! date: 12/13/07
+! date: 12/10/07
 !
 ! ************************************************************************** !
 subroutine RichardsLiteJacobian(snes,xx,A,B,flag,realization,ierr)
+
+  use Realization_module
+  use Patch_module
+  use Grid_module
+  use Option_module
+
+  implicit none
+
+  SNES :: snes
+  Vec :: xx
+  Mat :: A, B
+  type(realization_type) :: realization
+  MatStructure flag
+  PetscErrorCode :: ierr
+  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call RichardsLiteJacobianPatch(snes,xx,A,B,flag,realization,ierr)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+end subroutine RichardsLiteJacobian
+                
+! ************************************************************************** !
+!
+! RichardsLiteJacobianPatch: Computes the Jacobian
+! author: Glenn Hammond
+! date: 12/13/07
+!
+! ************************************************************************** !
+subroutine RichardsLiteJacobianPatch(snes,xx,A,B,flag,realization,ierr)
        
   use water_eos_module
   use gas_eos_module
@@ -1463,8 +1577,10 @@ subroutine RichardsLiteJacobian(snes,xx,A,B,flag,realization,ierr)
   PetscReal :: distance, fraction_upwind
   PetscReal :: distance_gravity 
   type(grid_type), pointer :: grid
+  type(patch_type), pointer :: patch
   type(option_type), pointer :: option 
-  type(field_type), pointer :: field  
+  type(field_type), pointer :: field 
+  type(richards_lite_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:) 
   
   PetscViewer :: viewer
   Vec :: debug_vec
@@ -1477,9 +1593,13 @@ subroutine RichardsLiteJacobian(snes,xx,A,B,flag,realization,ierr)
 ! 4  s         
 !-----------------------------------------------------------------------
 
-  grid => realization%grid
+  patch => realization%patch
+  grid => patch%grid
   option => realization%option
   field => realization%field
+
+  aux_vars => patch%RichardsLiteAux%aux_vars
+  aux_vars_bc => patch%RichardsLiteAux%aux_vars_bc
 
 ! dropped derivatives:
 !   1.D0 gas phase viscocity to all p,t,c,s
@@ -1509,8 +1629,8 @@ subroutine RichardsLiteJacobian(snes,xx,A,B,flag,realization,ierr)
   do local_id = 1, grid%nlmax  ! For each local node do...
     ghosted_id = grid%nL2G(local_id)
     !geh - Ignore inactive cells with inactive materials
-    if (associated(field%imat)) then
-      if (field%imat(ghosted_id) <= 0) cycle
+    if (associated(patch%imat)) then
+      if (patch%imat(ghosted_id) <= 0) cycle
     endif
     icap = int(icap_loc_p(ghosted_id))
     call RichardsLiteAccumDerivative(aux_vars(ghosted_id), &
@@ -1532,7 +1652,7 @@ subroutine RichardsLiteJacobian(snes,xx,A,B,flag,realization,ierr)
   endif
 #if 1
   ! Source/sink terms -------------------------------------
-  source_sink => realization%flow_source_sinks%first 
+  source_sink => patch%flow_source_sinks%first 
   do 
     if (.not.associated(source_sink)) exit
     
@@ -1546,8 +1666,8 @@ subroutine RichardsLiteJacobian(snes,xx,A,B,flag,realization,ierr)
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
 
-      if (associated(field%imat)) then
-        if (field%imat(ghosted_id) <= 0) cycle
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
       endif
       
 !      if (enthalpy_flag) then
@@ -1592,9 +1712,9 @@ subroutine RichardsLiteJacobian(snes,xx,A,B,flag,realization,ierr)
       ghosted_id_up = cur_connection_set%id_up(iconn)
       ghosted_id_dn = cur_connection_set%id_dn(iconn)
 
-      if (associated(field%imat)) then
-        if (field%imat(ghosted_id_up) <= 0 .or. &
-            field%imat(ghosted_id_dn) <= 0) cycle
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id_up) <= 0 .or. &
+            patch%imat(ghosted_id_dn) <= 0) cycle
       endif
 
       local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
@@ -1675,7 +1795,7 @@ subroutine RichardsLiteJacobian(snes,xx,A,B,flag,realization,ierr)
   endif
 #if 1
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => realization%flow_boundary_conditions%first
+  boundary_condition => patch%flow_boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -1688,8 +1808,8 @@ subroutine RichardsLiteJacobian(snes,xx,A,B,flag,realization,ierr)
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
 
-      if (associated(field%imat)) then
-        if (field%imat(ghosted_id) <= 0) cycle
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
       endif
 
       if (ghosted_id<=0) then
@@ -1755,9 +1875,10 @@ subroutine RichardsLiteJacobian(snes,xx,A,B,flag,realization,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
 
 ! zero out isothermal and inactive cells
-  if (inactive_cells_exist) then
+  if (patch%RichardsLiteAux%inactive_cells_exist) then
     f_up = 1.d0
-    call MatZeroRowsLocal(A,n_zero_rows,zero_rows_local_ghosted,f_up,ierr) 
+    call MatZeroRowsLocal(A,patch%RichardsLiteAux%n_zero_rows, &
+                          patch%RichardsLiteAux%zero_rows_local_ghosted,f_up,ierr) 
   endif
 
   if (realization%debug%matview_Jacobian) then
@@ -1779,16 +1900,16 @@ subroutine RichardsLiteJacobian(snes,xx,A,B,flag,realization,ierr)
 !    if (option%myrank == 0) print *, 'max:', i, norm
   endif
 
-end subroutine RichardsLiteJacobian
+end subroutine RichardsLiteJacobianPatch
 
 ! ************************************************************************** !
 !
-! createRichardsLiteZeroArray: Computes the zeroed rows for inactive grid cells
+! RichardsLiteCreateZeroArray: Computes the zeroed rows for inactive grid cells
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
 ! ************************************************************************** !
-subroutine createRichardsLiteZeroArray(realization)
+subroutine RichardsLiteCreateZeroArray(patch,option)
 
   use Realization_module
   use Grid_module
@@ -1797,25 +1918,27 @@ subroutine createRichardsLiteZeroArray(realization)
   
   implicit none
 
-  type(realization_type) :: realization
+  type(patch_type) :: patch
+  type(option_type) :: option
+  
   PetscInt :: ncount, idof
   PetscInt :: local_id, ghosted_id
 
   type(grid_type), pointer :: grid
-  type(option_type), pointer :: option
-  type(field_type), pointer :: field
-  PetscInt :: flag = 0, ierr
+  PetscInt :: flag = 0
+  PetscInt :: n_zero_rows
+  PetscInt, pointer :: zero_rows_local(:)
+  PetscInt, pointer :: zero_rows_local_ghosted(:)
+  PetscErrorCode :: ierr
     
-  grid => realization%grid
-  option => realization%option
-  field => realization%field
+  grid => patch%grid
   
   n_zero_rows = 0
 
-  if (associated(field%imat)) then
+  if (associated(patch%imat)) then
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
-      if (field%imat(ghosted_id) <= 0) then
+      if (patch%imat(ghosted_id) <= 0) then
         n_zero_rows = n_zero_rows + option%nflowdof
       endif
     enddo
@@ -1823,14 +1946,15 @@ subroutine createRichardsLiteZeroArray(realization)
 
   allocate(zero_rows_local(n_zero_rows))
   allocate(zero_rows_local_ghosted(n_zero_rows))
+
   zero_rows_local = 0
   zero_rows_local_ghosted = 0
   ncount = 0
 
-  if (associated(field%imat)) then
+  if (associated(patch%imat)) then
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
-      if (field%imat(ghosted_id) <= 0) then
+      if (patch%imat(ghosted_id) <= 0) then
         do idof = 1, option%nflowdof
           ncount = ncount + 1
           zero_rows_local(ncount) = (local_id-1)*option%nflowdof+idof
@@ -1840,16 +1964,20 @@ subroutine createRichardsLiteZeroArray(realization)
     enddo
   endif
 
+  patch%RichardsLiteAux%zero_rows_local => zero_rows_local
+  patch%RichardsLiteAux%zero_rows_local_ghosted => zero_rows_local_ghosted
+  patch%RichardsLiteAux%n_zero_rows = n_zero_rows
+  
   call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
                      PETSC_COMM_WORLD,ierr)
-  if (flag > 0) inactive_cells_exist = .true.
+  if (flag > 0) patch%RichardsLiteAux%inactive_cells_exist = .true.
 
   if (ncount /= n_zero_rows) then
     print *, 'Error:  Mismatch in non-zero row count!', ncount, n_zero_rows
     stop
   endif
 
-end subroutine createRichardsLiteZeroArray
+end subroutine RichardsLiteCreateZeroArray
 
 ! ************************************************************************** !
 !
@@ -1940,15 +2068,20 @@ subroutine RichardsLiteGetVarFromArray(realization,vec,ivar,isubvar)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
+  type(patch_type), pointer :: patch  
+  type(richards_lite_auxvar_type), pointer :: aux_vars(:)  
   PetscReal, pointer :: vec_ptr(:), vec2_ptr(:)
   PetscErrorCode :: ierr
 
   option => realization%option
-  grid => realization%grid
+  patch => realization%patch
+  grid => patch%grid
   field => realization%field
 
-  if (.not.aux_vars_up_to_date) call RichardsLiteUpdateAuxVars(realization)
+  if (.not.patch%RichardsLiteAux%aux_vars_up_to_date) call RichardsLiteUpdateAuxVars(realization)
 
+  aux_vars => patch%RichardsLiteAux%aux_vars
+  
   call VecGetArrayF90(vec,vec_ptr,ierr)
 
   select case(ivar)
@@ -1986,7 +2119,7 @@ subroutine RichardsLiteGetVarFromArray(realization,vec,ivar,isubvar)
       call VecRestoreArrayF90(field%iphas_loc,vec2_ptr,ierr)
     case(MATERIAL_ID)
       do local_id=1,grid%nlmax
-        vec_ptr(local_id) = field%imat(grid%nL2G(local_id))
+        vec_ptr(local_id) = patch%imat(grid%nL2G(local_id))
       enddo
   end select
   
@@ -2023,15 +2156,20 @@ function RichardsLiteGetVarFromArrayAtCell(realization,ivar,isubvar, &
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
+  type(patch_type), pointer :: patch
+  type(richards_lite_auxvar_type), pointer :: aux_vars(:)   
   PetscReal, pointer :: vec_ptr(:)
   PetscErrorCode :: ierr
 
   option => realization%option
-  grid => realization%grid
+  patch => realization%patch
+  grid => patch%grid
   field => realization%field
 
-  if (.not.aux_vars_up_to_date) call RichardsLiteUpdateAuxVars(realization)
+  if (.not.patch%RichardsLiteAux%aux_vars_up_to_date) call RichardsLiteUpdateAuxVars(realization)
 
+  aux_vars => patch%RichardsLiteAux%aux_vars
+  
   select case(ivar)
     case(TEMPERATURE,GAS_SATURATION,LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION, &
          GAS_ENERGY)
@@ -2062,7 +2200,7 @@ function RichardsLiteGetVarFromArrayAtCell(realization,ivar,isubvar, &
       value = vec_ptr(grid%nL2G(local_id))
       call VecRestoreArrayF90(field%iphas_loc,vec_ptr,ierr)
     case(MATERIAL_ID)
-      value = field%imat(grid%nL2G(local_id))
+      value = patch%imat(grid%nL2G(local_id))
   end select
   
   RichardsLiteGetVarFromArrayAtCell = value
@@ -2071,119 +2209,21 @@ end function RichardsLiteGetVarFromArrayAtCell
 
 ! ************************************************************************** !
 !
-! computeAuxVarLite: Computes secondary variables for each grid cell
-! author: Glenn Hammond
-! date: 12/15/07
-!
-! ************************************************************************** !
-subroutine computeAuxVarLite(x,aux_var,iphase,saturation_function,option)
-
-  use Option_module
-  use water_eos_module
-  use gas_eos_module  
-  use pckr_module
-  use Material_module
-  
-  implicit none
-
-  type(option_type) :: option
-  type(saturation_function_type) :: saturation_function
-  PetscReal :: x(1)
-  type(richards_type) :: aux_var
-  PetscInt :: iphase
-
-  PetscErrorCode :: ierr
-  PetscReal :: pw,dw_kg,dw_mol,hw,sat_pressure,visl
-  PetscReal :: kr, ds_dp, dkr_dp
-  PetscReal :: dvis_dt, dvis_dp, dvis_dpsat
-  PetscReal :: dw_dp, dw_dt, hw_dp, hw_dt
-  PetscReal :: dpw_dp
-  
-  aux_var%sat = 0.d0
-  aux_var%den = 0.d0
-  aux_var%avgmw = 0.d0
-  aux_var%kvr = 0.d0
-  kr = 0.d0
- 
-  aux_var%pres = x(1)
-  aux_var%temp = 25.d0
- 
-  aux_var%pc = option%pref - aux_var%pres
-
-!***************  Liquid phase properties **************************
-  !geh aux_var%avgmw = option%fmwh2o  ! hardwire for comparison with old code
-  aux_var%avgmw = 18.0153d0
-
-  pw = option%pref
-  ds_dp = 0.d0
-  dkr_dp = 0.d0
-!  if (aux_var%pc > 0.d0) then
-  if (aux_var%pc > 1.d0) then
-    iphase = 3
-    call SaturationFunctionCompute(aux_var%pres,aux_var%sat,kr, &
-                                   ds_dp,dkr_dp, &
-                                   saturation_function, &
-                                   option)
-    dpw_dp = 0
-!    call pflow_pckr_richards(ipckr,aux_var%sat,aux_var%pc,kr)
-  else
-    iphase = 1
-    aux_var%pc = 0.d0
-    aux_var%sat = 1.d0  
-    kr = 1.d0    
-    pw = aux_var%pres
-    dpw_dp = 1.d0
-  endif  
-
-!  call wateos_noderiv(option%temp,pw,dw_kg,dw_mol,hw,option%scale,ierr)
-  call wateos(aux_var%temp,pw,dw_kg,dw_mol,dw_dp,dw_dt,hw,hw_dp,hw_dt, &
-              option%scale,ierr)
-
-! may need to compute dpsat_dt to pass to VISW
-  call psat(aux_var%temp,sat_pressure,ierr)
-!  call VISW_noderiv(option%temp,pw,sat_pressure,visl,ierr)
-  call VISW(aux_var%temp,pw,sat_pressure,visl,dvis_dt,dvis_dp,ierr) 
-  dvis_dpsat = -dvis_dp 
-  if (iphase == 3) then !kludge since pw is constant in the unsat zone
-    dvis_dp = 0.d0
-    dw_dp = 0.d0
-    hw_dp = 0.d0
-  endif
- 
-  aux_var%den = dw_mol
-  aux_var%kvr = kr/visl
-  
-!  aux_var%vis = visl
-!  aux_var%dvis_dp = dvis_dp
-!  aux_var%kr = kr
-!  aux_var%dkr_dp = dkr_dp
-  aux_var%dsat_dp = ds_dp
-
-  aux_var%dden_dp = dw_dp
-  
-  aux_var%dkvr_dp = dkr_dp/visl - kr/(visl*visl)*dvis_dp
-
-end subroutine computeAuxVarLite
-
-! ************************************************************************** !
-!
-! RichardsLiteDestroy: Deallocates variables associated with RichardLite
+! RichardsLiteDestroy: Deallocates variables associated with Richard
 ! author: Glenn Hammond
 ! date: 02/14/08
 !
 ! ************************************************************************** !
-subroutine RichardsLiteDestroy()
+subroutine RichardsLiteDestroy(patch)
+
+  use Patch_module
 
   implicit none
   
-  deallocate(aux_vars)
-  nullify(aux_vars)
-  deallocate(aux_vars_bc)
-  nullify(aux_vars_bc)
-  deallocate(zero_rows_local)
-  nullify(zero_rows_local)
-  deallocate(zero_rows_local_ghosted)
-  nullify(zero_rows_local_ghosted)
+  type(patch_type) :: patch
+  
+  ! need to free array in aux vars
+  call RichardsLiteAuxDestroy(patch%RichardsLiteAux)
 
 end subroutine RichardsLiteDestroy
 

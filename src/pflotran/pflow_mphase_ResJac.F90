@@ -66,6 +66,7 @@ subroutine pflow_mphase_timecut(realization)
   use Option_module
   use Grid_module
   use Field_module 
+  use Patch_module
  
   implicit none
 
@@ -73,6 +74,7 @@ subroutine pflow_mphase_timecut(realization)
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
+  type(patch_type), pointer :: patch  
  
   PetscReal, pointer :: xx_p(:),yy_p(:)!,var_loc_p(:),iphase_loc_p(:)
   PetscInt :: re
@@ -82,7 +84,7 @@ subroutine pflow_mphase_timecut(realization)
   !PetscInt :: re0, ierr, index, iipha
   !PetscReal, pointer :: sat(:),xmol(:)
 
-  grid => realization%grid
+  grid => patch%grid
   option => realization%option
   field => realization%field  
 
@@ -185,6 +187,7 @@ subroutine MphaseMaxChange(realization)
   use Option_module
   use Field_module
   use Grid_module
+  use Patch_module
   
   implicit none
   
@@ -193,6 +196,7 @@ subroutine MphaseMaxChange(realization)
   type(option_type), pointer :: option
   type(field_type), pointer :: field  
   type(grid_type), pointer :: grid
+  type(patch_type), pointer :: patch  
   
   PetscReal, pointer :: xx_p(:), yy_p(:), iphase_loc_p(:),var_loc_p(:),iphase_old_loc_p(:)
   PetscReal :: comp1,comp,cmp  
@@ -204,7 +208,7 @@ subroutine MphaseMaxChange(realization)
   
   option => realization%option
   field => realization%field
-  grid => realization%grid
+  grid => patch%grid
   
    call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy,ierr)
     call VecStrideNorm(field%flow_dxx,0,NORM_INFINITY,option%dpmax,ierr)
@@ -347,13 +351,13 @@ subroutine MphaseSetup(realization)
 
 ! from pflow_init
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE)  
+    case(MPH_MODE)  
       call VecDuplicate(field%porosity_loc, field%ttemp_loc, ierr)
   end select
 
   ! should these be moved to their respective modules
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE)
+    case(MPH_MODE)
       ! nphase degrees of freedom
       call GridCreateVector(grid,NPHASEDOF,field%pressure,GLOBAL)
       call VecDuplicate(field%pressure, field%sat, ierr)
@@ -379,7 +383,7 @@ subroutine MphaseSetup(realization)
 
   ! should these be moved to their respective modules?
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE)
+    case(MPH_MODE)
       call GridCreateVector(grid,NPHASEDOF, field%ppressure_loc, LOCAL)
       call VecDuplicate(field%ppressure_loc, field%ssat_loc, ierr)
       call VecDuplicate(field%ppressure_loc, field%flow_xxmol_loc, ierr)
@@ -459,7 +463,7 @@ subroutine MphaseSetup(realization)
     
   ! these vecs need to be stored within this module, not in field
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE)
+    case(MPH_MODE)
       call VecDuplicate(field%porosity0, field%conc, ierr)
       call VecDuplicate(field%porosity0, field%temp, ierr)
       call VecDuplicate(field%porosity0, field%ttemp, ierr)
@@ -490,6 +494,7 @@ subroutine pflow_mphase_setupini(realization)
   use Coupler_module
   use Condition_module
   use Connection_module
+  use Patch_module
   
   implicit none
   
@@ -497,13 +502,14 @@ subroutine pflow_mphase_setupini(realization)
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
+  type(patch_type), pointer :: patch  
   type(coupler_type), pointer :: initial_condition
   
   PetscReal, pointer :: xx_p(:), iphase_loc_p(:)
   PetscInt :: local_id, ghosted_id, ibegin, iend, icell, idof
   PetscErrorCode :: ierr
   
-  grid => realization%grid
+  grid => patch%grid
   option => realization%option
   field => realization%field
     
@@ -519,7 +525,7 @@ subroutine pflow_mphase_setupini(realization)
   call VecGetArrayF90(field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
   call VecGetArrayF90(field%iphas_loc, iphase_loc_p,ierr)
   
-  initial_condition => realization%flow_initial_conditions%first
+  initial_condition => patch%flow_initial_conditions%first
   
   do
   
@@ -552,6 +558,7 @@ subroutine MPhase_Update_Reason(reason,realization)
   use Grid_module
   use Option_module
   use Field_module
+  use Patch_module
     
   implicit none
 
@@ -559,6 +566,7 @@ subroutine MPhase_Update_Reason(reason,realization)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
+  type(patch_type), pointer :: patch  
    
   PetscInt, intent(out):: reason
   PetscReal, pointer :: xx_p(:),var_loc_p(:),iphase_loc_p(:), yy_p(:) !,r_p(:)
@@ -570,7 +578,7 @@ subroutine MPhase_Update_Reason(reason,realization)
 ! PetscReal, pointer :: sat(:),xmol(:)
 ! PetscReal rmax(option%nflowdof)
 
-  grid => realization%grid
+  grid => patch%grid
   option => realization%option
   field => realization%field
   
@@ -593,8 +601,8 @@ subroutine MPhase_Update_Reason(reason,realization)
   do local_id = 1,grid%nlmax
       ghosted_id = grid%nL2G(local_id)
       !geh - Ignore inactive cells with inactive materials
-      if (associated(field%imat)) then
-        if (field%imat(ghosted_id) <= 0) cycle
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
       endif  
      dof_offset=(local_id-1)* option%nflowdof
       !index=(n-1)*size_var_node
@@ -1195,6 +1203,7 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
   use Option_module
   use Coupler_module 
   use Field_module
+  use Patch_module
 
   implicit none
 
@@ -1254,6 +1263,7 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field 
+  type(patch_type), pointer :: patch  
   
   type(coupler_type), pointer :: boundary_condition, source_sink
   type(connection_list_type), pointer :: connection_list
@@ -1265,7 +1275,7 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
   PetscReal :: distance_gravity, upweight
   PetscInt :: ichange
 
-  grid => realization%grid
+  grid => patch%grid
   option => realization%option
   field => realization%field
  
@@ -1275,8 +1285,8 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     !geh - Ignore inactive cells with inactive materials
-    if (associated(field%imat)) then
-      if (field%imat(ghosted_id) <= 0) cycle
+    if (associated(patch%imat)) then
+      if (patch%imat(ghosted_id) <= 0) cycle
     endif 
       
 !   insure zero liquid sat not passed to ptran (no effect on pflow)
@@ -1329,8 +1339,8 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
   do ghosted_id = 1, grid%ngmax 
 
     !geh - Ignore inactive cells with inactive materials
-    if (associated(field%imat)) then
-      if (field%imat(ghosted_id) <= 0) cycle
+    if (associated(patch%imat)) then
+      if (patch%imat(ghosted_id) <= 0) cycle
     endif 
       
     iiphase=int(iphase_loc_p(ghosted_id))
@@ -1395,8 +1405,8 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     !geh - Ignore inactive cells with inactive materials
-    if (associated(field%imat)) then
-      if (field%imat(ghosted_id) <= 0) cycle
+    if (associated(patch%imat)) then
+      if (patch%imat(ghosted_id) <= 0) cycle
     endif  
     
     jn = 1 + (local_id-1)*option%nphase
@@ -1483,8 +1493,8 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
 
     ghosted_id = grid%nL2G(local_id)
     !geh - Ignore inactive cells with inactive materials
-    if (associated(field%imat)) then
-      if (field%imat(ghosted_id) <= 0) cycle
+    if (associated(patch%imat)) then
+      if (patch%imat(ghosted_id) <= 0) cycle
     endif 
     
     p1 = 1 + (local_id-1)*option%nflowdof
@@ -1507,7 +1517,7 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
 
 !************************************************************************
 ! add source/sink terms
-  source_sink => realization%flow_source_sinks%first 
+  source_sink => patch%flow_source_sinks%first 
   do 
     if (.not.associated(source_sink)) exit
     
@@ -1606,9 +1616,9 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
       local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
       local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping   
 
-      if (associated(field%imat)) then
-        if (field%imat(ghosted_id_up) <= 0 .or.  &
-            field%imat(ghosted_id_dn) <= 0) cycle
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id_up) <= 0 .or.  &
+            patch%imat(ghosted_id_dn) <= 0) cycle
       endif
 
       p1 = 1 + (local_id_up-1)*option%nflowdof 
@@ -1656,8 +1666,8 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
                             porosity_loc_p(ghosted_id_dn),tor_loc_p(ghosted_id_dn), &
                             option%sir(1:option%nphase,iicap2),dd2,perm2,D2,&
                             distance_gravity,upweight,option,vv_darcy,Res)
-      field%internal_velocities(1,iconn) = vv_darcy(1) ! liquid
-      field%internal_velocities(2,iconn) = vv_darcy(2) ! gas
+      patch%internal_velocities(1,iconn) = vv_darcy(1) ! liquid
+      patch%internal_velocities(2,iconn) = vv_darcy(2) ! gas
     
       Resold_FL(iconn,1:option%nflowdof) = Res(1:option%nflowdof) 
     
@@ -1682,7 +1692,7 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
 !  print *,'2ph bc-sgbc', option%myrank, option%sgbc    
 
  
-  boundary_condition => realization%flow_boundary_conditions%first
+  boundary_condition => patch%flow_boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -1695,8 +1705,8 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
 
-      if (associated(field%imat)) then
-        if (field%imat(ghosted_id) <= 0) cycle
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
       endif
 
       if(ghosted_id<=0)then
@@ -1787,8 +1797,8 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
                               cur_connection_set%dist(0,iconn),perm1,D2, &
                               distance_gravity,option,field,vv_darcy,Res)
                               
-      field%boundary_velocities(1,iconn) = vv_darcy(1)  ! liquid
-      field%boundary_velocities(2,iconn) = vv_darcy(2)  ! gas
+      patch%boundary_velocities(1,iconn) = vv_darcy(1)  ! liquid
+      patch%boundary_velocities(2,iconn) = vv_darcy(2)  ! gas
 
       r_p(p1:p1-1+option%nflowdof)= r_p(p1:p1-1+option%nflowdof) - Res(1:option%nflowdof)
       ResOld_AR(local_id,1:option%nflowdof) = ResOld_AR(local_id,1:option%nflowdof) - Res(1:option%nflowdof)
@@ -1818,8 +1828,8 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
     do local_id = 1, grid%nlmax  ! For each local node do...
       ghosted_id = grid%nL2G(local_id)
       !geh - Ignore inactive cells with inactive materials
-      if (associated(field%imat)) then
-        if (field%imat(ghosted_id) <= 0) cycle
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
       endif
       p1 = 3 + (local_id-1)*option%nflowdof
       r_p(p1)=xx_loc_p(2 + (ghosted_id-1)*option%nflowdof)-yy_p(p1-1)
@@ -1879,6 +1889,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
   use Realization_module
   use Coupler_module
   use Field_module
+  use Patch_module
   
   implicit none
 
@@ -1934,7 +1945,8 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
             blkmat12(1:realization%option%nflowdof,1:realization%option%nflowdof),&
             blkmat21(1:realization%option%nflowdof,1:realization%option%nflowdof),&
             blkmat22(1:realization%option%nflowdof,1:realization%option%nflowdof)
-  PetscReal :: ResInc(1:realization%grid%nlmax,1:realization%option%nflowdof,1:realization%option%nflowdof)
+  PetscReal :: ResInc(1:realization%patch%grid%nlmax,1:realization%option%nflowdof, &
+                      1:realization%option%nflowdof)
   PetscReal :: res(1:realization%option%nflowdof)  
   PetscReal :: max_dev, norm
   PetscReal :: xxbc(realization%option%nflowdof), varbc(1:size_var_node)
@@ -1956,6 +1968,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option 
   type(field_type), pointer :: field  
+  type(patch_type), pointer :: patch  
 
 !-----------------------------------------------------------------------
 ! R stand for residual
@@ -1966,7 +1979,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
 ! 4  s         
 !-----------------------------------------------------------------------
 
-  grid => realization%grid
+  grid => patch%grid
   option => realization%option
   field => realization%field
   
@@ -1998,8 +2011,8 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
   do local_id = 1, grid%nlmax  ! For each local node do...
     ghosted_id = grid%nL2G(local_id)
     !geh - Ignore inactive cells with inactive materials
-    if (associated(field%imat)) then
-      if (field%imat(ghosted_id) <= 0) cycle
+    if (associated(patch%imat)) then
+      if (patch%imat(ghosted_id) <= 0) cycle
     endif 
     
     voldt = volume_p(local_id) / option%flow_dt
@@ -2029,7 +2042,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
 #endif
 ! Source / Sink term
 ! add source/sink terms
-  source_sink => realization%flow_source_sinks%first 
+  source_sink => patch%flow_source_sinks%first 
   do 
     if (.not.associated(source_sink)) exit
 
@@ -2109,7 +2122,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
   ! print *,' Mph Jaco Finished source terms'
   
 ! Contribution from BC
-  boundary_condition => realization%flow_boundary_conditions%first
+  boundary_condition => patch%flow_boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -2122,8 +2135,8 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
 
-      if (associated(field%imat)) then
-        if (field%imat(ghosted_id) <= 0) cycle
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
       endif
 
       if(ghosted_id<=0)then
@@ -2268,8 +2281,8 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
     
     ghosted_id = grid%nL2G(local_id)
     !geh - Ignore inactive cells with inactive materials
-    if (associated(field%imat)) then
-      if (field%imat(ghosted_id) <= 0) cycle
+    if (associated(patch%imat)) then
+      if (patch%imat(ghosted_id) <= 0) cycle
     endif 
     
     natural_id_up= grid%nG2N(ghosted_id)
@@ -2348,8 +2361,8 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
       ghosted_id_up = cur_connection_set%id_up(iconn)
       ghosted_id_dn = cur_connection_set%id_dn(iconn)
 
-      if (associated(field%imat)) then
-        if (field%imat(ghosted_id_up) <= 0 .or. field%imat(ghosted_id_dn) <= 0) cycle
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id_up) <= 0 .or. patch%imat(ghosted_id_dn) <= 0) cycle
       endif
 
       local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
@@ -2602,6 +2615,7 @@ subroutine pflow_mphase_initaccum(realization)
   use Grid_module
   use Field_module
   use Option_module
+  use Patch_module
   
   implicit none
 
@@ -2625,8 +2639,9 @@ subroutine pflow_mphase_initaccum(realization)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
+  type(patch_type), pointer :: patch  
   
-  grid => realization%grid
+  grid => patch%grid
   option => realization%option
   field => realization%field
   
@@ -2643,8 +2658,8 @@ subroutine pflow_mphase_initaccum(realization)
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     !geh - Ignore inactive cells with inactive materials
-    if (associated(field%imat)) then
-      if (field%imat(ghosted_id) <= 0) cycle
+    if (associated(patch%imat)) then
+      if (patch%imat(ghosted_id) <= 0) cycle
     endif 
     iicap=int(icap_loc_p(ghosted_id))
     iiphase = int(iphase_loc_p(ghosted_id))
@@ -2665,8 +2680,8 @@ subroutine pflow_mphase_initaccum(realization)
   do local_id = 1, grid%nlmax  ! For each local node do...
     ghosted_id = grid%nL2G(local_id)
     !geh - Ignore inactive cells with inactive materials
-    if (associated(field%imat)) then
-      if (field%imat(ghosted_id) <= 0) cycle
+    if (associated(patch%imat)) then
+      if (patch%imat(ghosted_id) <= 0) cycle
     endif 
     p1 = 1 + (local_id-1)*option%nflowdof
     index_var_begin=(ghosted_id-1)*size_var_node+1
@@ -2713,6 +2728,7 @@ subroutine pflow_update_mphase(realization)
   use Option_module
   use Coupler_module 
   use Field_module 
+  use Patch_module
 
   implicit none
 
@@ -2735,7 +2751,9 @@ subroutine pflow_update_mphase(realization)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field  
-  grid => realization%grid
+  type(patch_type), pointer :: patch
+    
+  grid => patch%grid
   option => realization%option
   field => realization%field
         
@@ -2753,8 +2771,8 @@ subroutine pflow_update_mphase(realization)
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)    
     !geh - Ignore inactive cells with inactive materials
-    if (associated(field%imat)) then
-      if (field%imat(ghosted_id) <= 0) cycle
+    if (associated(patch%imat)) then
+      if (patch%imat(ghosted_id) <= 0) cycle
     endif
     
     iicap = icap_loc_p(ghosted_id)
@@ -2774,9 +2792,9 @@ subroutine pflow_update_mphase(realization)
     enddo
 
   !geh added for transient boundary conditions  
-  if (associated(field%imat) .and. option%iread_geom < 0) then
+  if (associated(patch%imat) .and. option%iread_geom < 0) then
 
-    boundary_condition => realization%flow_boundary_conditions%first
+    boundary_condition => patch%flow_boundary_conditions%first
     sum_connection = 0
     do 
       if (.not.associated(boundary_condition)) exit
@@ -2789,8 +2807,8 @@ subroutine pflow_update_mphase(realization)
         local_id = cur_connection_set%id_dn(iconn)
         ghosted_id = grid%nL2G(local_id)
 
-        if (associated(field%imat)) then
-          if (field%imat(ghosted_id) <= 0) cycle
+        if (associated(patch%imat)) then
+          if (patch%imat(ghosted_id) <= 0) cycle
         endif
        
         if (local_id<0) then
@@ -2889,6 +2907,7 @@ subroutine pflow_mphase_initadj(realization)
   use Option_module
   use Coupler_module
   use Field_module
+  use Patch_module
   
   implicit none
  
@@ -2918,7 +2937,9 @@ subroutine pflow_mphase_initadj(realization)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field  
-  grid => realization%grid
+  type(patch_type), pointer :: patch
+    
+  grid => patch%grid
   option => realization%option 
   field => realization%field 
 
@@ -2934,8 +2955,8 @@ subroutine pflow_mphase_initadj(realization)
  do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
     !geh - Ignore inactive cells with inactive materials
-    if (associated(field%imat)) then
-      if (field%imat(ghosted_id) <= 0) cycle
+    if (associated(patch%imat)) then
+      if (patch%imat(ghosted_id) <= 0) cycle
     endif
      
     jn = 1 + (local_id-1)*option%nphase
@@ -2975,7 +2996,7 @@ subroutine pflow_mphase_initadj(realization)
 !  yybc =field%flow_xxbc
 !  vel_bc = field%velocitybc
 
-  boundary_condition => realization%flow_boundary_conditions%first
+  boundary_condition => patch%flow_boundary_conditions%first
   sum_connection = 0  
   do 
     if (.not.associated(boundary_condition)) exit
@@ -2988,8 +3009,8 @@ subroutine pflow_mphase_initadj(realization)
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
   
-      if (associated(field%imat)) then
-        if (field%imat(ghosted_id) <= 0) cycle
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
       endif
        
 
@@ -3043,6 +3064,7 @@ subroutine createMphaseZeroArray(realization)
   use Grid_module
   use Option_module
   use Field_module
+  use Patch_module
   
   implicit none
 
@@ -3053,17 +3075,18 @@ subroutine createMphaseZeroArray(realization)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
+  type(patch_type), pointer :: patch  
     
-  grid => realization%grid
+  grid => patch%grid
   option => realization%option
   field => realization%field
   
   n_zero_rows = 0
 
-  if (associated(field%imat)) then
+  if (associated(patch%imat)) then
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
-      if (field%imat(ghosted_id) <= 0) then
+      if (patch%imat(ghosted_id) <= 0) then
         n_zero_rows = n_zero_rows + option%nflowdof
       else
 #ifdef ISOTHERMAL
@@ -3083,10 +3106,10 @@ subroutine createMphaseZeroArray(realization)
   zero_rows_local_ghosted = 0
   ncount = 0
 
-  if (associated(field%imat)) then
+  if (associated(patch%imat)) then
     do local_id = 1, grid%nlmax
       ghosted_id = grid%nL2G(local_id)
-      if (field%imat(ghosted_id) <= 0) then
+      if (patch%imat(ghosted_id) <= 0) then
         do idof = 1, option%nflowdof
           ncount = ncount + 1
           zero_rows_local(ncount) = (local_id-1)*option%nflowdof+idof
@@ -3133,17 +3156,20 @@ subroutine MphaseInitializeSolidReaction(realization)
   use Grid_module
   use Option_module
   use Field_module
+  use Patch_module
 
   type(realization_type) :: realization
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
+  type(patch_type), pointer :: patch
+    
   PetscInt :: icell
   PetscReal, pointer :: phis_p(:)
   PetscErrorCode :: ierr
   
-  grid => realization%grid
+  grid => patch%grid
   option => realization%option
   field => realization%field
   
@@ -3223,6 +3249,7 @@ subroutine MphaseGetVarFromArray(realization,vec,ivar,isubvar)
   use Grid_module
   use Option_module
   use Field_module
+  use Patch_module
 
   implicit none
 
@@ -3235,11 +3262,13 @@ subroutine MphaseGetVarFromArray(realization,vec,ivar,isubvar)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
+  type(patch_type), pointer :: patch
+    
   PetscReal, pointer :: vec_ptr(:), vec2_ptr(:)
   PetscErrorCode :: ierr
 
   option => realization%option
-  grid => realization%grid
+  grid => patch%grid
   field => realization%field
 
   call VecGetArrayF90(vec,vec_ptr,ierr)
@@ -3272,7 +3301,7 @@ subroutine MphaseGetVarFromArray(realization,vec,ivar,isubvar)
       call VecRestoreArrayF90(field%iphas_loc,vec2_ptr,ierr)
     case(MATERIAL_ID)
       do local_id=1,grid%nlmax
-        vec_ptr(local_id) = field%imat(grid%nL2G(local_id))
+        vec_ptr(local_id) = patch%imat(grid%nL2G(local_id))
       enddo
   end select
   

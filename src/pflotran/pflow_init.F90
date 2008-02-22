@@ -39,11 +39,11 @@ subroutine PflowInit(simulation,filename)
   use Debug_module
   use Convergence_module
   use Waypoint_module
+  use Patch_module
   
   use MPHASE_module
   use Richards_Lite_module
-  use Richards_Analytical_module
-  use THC_module
+  use Richards_module
   
   use Reactive_Transport_module
 
@@ -62,6 +62,7 @@ subroutine PflowInit(simulation,filename)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
+  type(patch_type), pointer :: patch  
   type(pflow_debug_type), pointer :: debug
   type(waypoint_list_type), pointer :: waypoint_list
   PetscInt :: mcomp, mphas
@@ -83,7 +84,8 @@ subroutine PflowInit(simulation,filename)
   
   ! read MODE,GRID,PROC,COMP,PHAS cards
   call readRequiredCardsFromInput(realization,filename,mcomp,mphas)
-  grid => realization%grid
+  patch => realization%patch
+  grid => patch%grid
 
   ! process command line options
   call OptionCheckCommandLine(option)
@@ -100,8 +102,6 @@ subroutine PflowInit(simulation,filename)
     if (option%nflowdof > 0) then
       iflag = PETSC_FALSE
       select case(option%iflowmode)
-        case(THC_MODE)
-          if (option%nflowdof .ne. 3 .or. option%nphase .ne. 1) iflag = PETSC_TRUE
         case(MPH_MODE,RICHARDS_MODE)
           if (option%nflowdof .ne. (option%nspec+1)) iflag = PETSC_TRUE
         case(RICHARDS_LITE_MODE)
@@ -228,8 +228,6 @@ subroutine PflowInit(simulation,filename)
     write(*,'(" number of dofs = ",i3,", number of phases = ",i3,i2)') &
       option%nflowdof,option%nphase
     select case(option%iflowmode)
-      case(THC_MODE)
-        write(*,'(" mode = THC: p, T, C")')
       case(MPH_MODE)
         write(*,'(" mode = MPH: p, T, s/C")')
       case(RICHARDS_MODE)
@@ -244,13 +242,9 @@ subroutine PflowInit(simulation,filename)
     call GridCreateJacobian(grid,NFLOWDOF,flow_solver%J,option)
     
     select case(option%iflowmode)
-      case(THC_MODE)
-        call SNESSetFunction(flow_solver%snes,field%flow_r,THCResidual,realization,ierr)
-        call SNESSetJacobian(flow_solver%snes, flow_solver%J, flow_solver%J, THCJacobian, &
-                             realization, ierr)
       case(RICHARDS_MODE)
-        call SNESSetFunction(flow_solver%snes,field%flow_r,RichardsAnalyticalResidual,realization,ierr)
-        call SNESSetJacobian(flow_solver%snes, flow_solver%J, flow_solver%J, RichardsAnalyticalJacobian, &
+        call SNESSetFunction(flow_solver%snes,field%flow_r,RichardsResidual,realization,ierr)
+        call SNESSetJacobian(flow_solver%snes, flow_solver%J, flow_solver%J, RichardsJacobian, &
                              realization, ierr)
       case(RICHARDS_LITE_MODE)
         call SNESSetFunction(flow_solver%snes,field%flow_r,RichardsLiteResidual,realization,ierr)
@@ -317,7 +311,7 @@ subroutine PflowInit(simulation,filename)
   ! read any regions provided in external files
   call readRegionFiles(realization)
   ! clip regions and set up boundary connectivity, distance  
-  call GridLocalizeRegions(realization%regions,realization%grid,realization%option)
+  call GridLocalizeRegions(realization%regions,patch%grid,realization%option)
 
   ! set up internal connectivity, distance, etc.
   call GridComputeInternalConnect(grid,option)
@@ -325,58 +319,51 @@ subroutine PflowInit(simulation,filename)
 
   ! connectivity between initial conditions, boundary conditions, srcs/sinks, etc and grid
   call CouplerListComputeConnections(grid,option, &
-                                     realization%flow_initial_conditions)
+                                     patch%flow_initial_conditions)
   call CouplerListComputeConnections(grid,option, &
-                                     realization%flow_boundary_conditions)
+                                     patch%flow_boundary_conditions)
   call CouplerListComputeConnections(grid,option, &
-                                     realization%flow_source_sinks)
+                                     patch%flow_source_sinks)
                                 
   call CouplerListComputeConnections(grid,option, &
-                                     realization%transport_initial_conditions)
+                                     patch%transport_initial_conditions)
   call CouplerListComputeConnections(grid,option, &
-                                     realization%transport_boundary_conditions)
+                                     patch%transport_boundary_conditions)
   call CouplerListComputeConnections(grid,option, &
-                                     realization%transport_source_sinks)
+                                     patch%transport_source_sinks)
 
   call assignMaterialPropToRegions(realization)
-  call RealizationInitCouplerAuxVars(realization, &
-                                     realization%flow_initial_conditions)
-  call RealizationInitCouplerAuxVars(realization, &
-                                     realization%flow_boundary_conditions)
-  call RealizationInitCouplerAuxVars(realization, &
-                                     realization%transport_initial_conditions)
-  call RealizationInitCouplerAuxVars(realization, &
-                                     realization%transport_boundary_conditions)
+  call RealizationInitAllCouplerAuxVars(realization)
   call assignInitialConditions(realization)
 
   ! should we still support this
   if (option%use_generalized_grid) then 
     if (option%myrank == 0) print *, 'Reading structured grid from hdf5' 
-    if (.not.associated(field%imat)) &
-      allocate(field%imat(grid%ngmax))  ! allocate material id array
+    if (.not.associated(patch%imat)) &
+      allocate(patch%imat(grid%ngmax))  ! allocate material id array
     call ReadStructuredGridHDF5(realization)
   endif
   
-  allocate(realization%field%internal_velocities(option%nphase, &
-           ConnectionGetNumberInList(realization%grid%internal_connection_list)))
-  realization%field%internal_velocities = 0.d0
+  allocate(realization%patch%internal_velocities(option%nphase, &
+           ConnectionGetNumberInList(patch%grid%internal_connection_list)))
+  realization%patch%internal_velocities = 0.d0
   if (option%nflowdof > 0) then
-    temp_int = CouplerGetNumConnectionsInList(realization%flow_boundary_conditions)
+    temp_int = CouplerGetNumConnectionsInList(patch%flow_boundary_conditions)
   else
-    temp_int = CouplerGetNumConnectionsInList(realization%transport_boundary_conditions)
+    temp_int = CouplerGetNumConnectionsInList(patch%transport_boundary_conditions)
   endif
-  allocate(realization%field%boundary_velocities(option%nphase,temp_int)) 
-  realization%field%boundary_velocities = 0.d0          
+  allocate(realization%patch%boundary_velocities(option%nphase,temp_int)) 
+  realization%patch%boundary_velocities = 0.d0          
 
   call printMsg(option,"  Finished setting up ")
 
   if (debug%print_couplers) then
-    call verifyCouplers(realization,realization%flow_initial_conditions)
-    call verifyCouplers(realization,realization%flow_boundary_conditions)
-    call verifyCouplers(realization,realization%flow_source_sinks)
-    call verifyCouplers(realization,realization%transport_initial_conditions)
-    call verifyCouplers(realization,realization%transport_boundary_conditions)
-    call verifyCouplers(realization,realization%transport_source_sinks)
+    call verifyCouplers(realization,patch%flow_initial_conditions)
+    call verifyCouplers(realization,patch%flow_boundary_conditions)
+    call verifyCouplers(realization,patch%flow_source_sinks)
+    call verifyCouplers(realization,patch%transport_initial_conditions)
+    call verifyCouplers(realization,patch%transport_boundary_conditions)
+    call verifyCouplers(realization,patch%transport_source_sinks)
   endif
   
   ! add waypoints associated with boundary conditions, source/sinks etc. to list
@@ -399,8 +386,6 @@ subroutine PflowInit(simulation,filename)
         call RichardsLiteSetup(realization)
       case(MPH_MODE)
         call MphaseSetup(realization)
-      case(THC_MODE)
-        call THCSetup(realization)
     end select
   endif
   
@@ -429,6 +414,7 @@ subroutine readRequiredCardsFromInput(realization,filename,mcomp,mphas)
   use Option_module
   use Grid_module
   use Fileio_module
+  use Patch_module
   use Realization_module
   
   implicit none
@@ -443,11 +429,13 @@ subroutine readRequiredCardsFromInput(realization,filename,mcomp,mphas)
   character(len=MAXWORDLENGTH) :: name
   character(len=MAXCARDLENGTH) :: card
   
+  type(patch_type), pointer :: patch 
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   
   PetscInt :: igeom
   
+  patch => realization%patch
   option => realization%option
   
   open(IUNIT1, file=filename, action="read", status="old") 
@@ -486,8 +474,8 @@ subroutine readRequiredCardsFromInput(realization,filename,mcomp,mphas)
   call fiReadInt(string,igeom,ierr)
   call fiDefaultMsg(option%myrank,'igeom',ierr)
   
-  realization%grid => GridCreate(igeom) 
-  grid => realization%grid
+  patch%grid => GridCreate(igeom) 
+  grid => patch%grid
 
   if (grid%igrid == STRUCTURED) then ! structured
     call fiReadInt(string,grid%structured_grid%nx,ierr)
@@ -707,6 +695,7 @@ subroutine readInput(simulation,filename)
   use Breakthrough_module
   use Waypoint_module
   use Debug_module
+  use Patch_module
 
   use pckr_module 
   
@@ -755,6 +744,7 @@ subroutine readInput(simulation,filename)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
+  type(patch_type), pointer :: patch   
   type(solver_type), pointer :: flow_solver
   type(solver_type), pointer :: tran_solver
   type(solver_type), pointer :: master_solver
@@ -769,7 +759,8 @@ subroutine readInput(simulation,filename)
   nullify(tran_solver)
   
   realization => simulation%realization
-  grid => realization%grid
+  patch => realization%patch
+  grid => patch%grid
   option => realization%option
   field => realization%field
 
@@ -903,25 +894,25 @@ subroutine readInput(simulation,filename)
       case ('BOUNDARY_CONDITION')
         coupler => CouplerCreate(BOUNDARY_COUPLER_TYPE)
         call CouplerRead(coupler,IUNIT1,option)
-        call CouplerAddToList(coupler,realization%flow_boundary_conditions)
+        call CouplerAddToList(coupler,patch%flow_boundary_conditions)
       
 !....................
       case ('INITIAL_CONDITION')
         coupler => CouplerCreate(INITIAL_COUPLER_TYPE)
         call CouplerRead(coupler,IUNIT1,option)
-        call CouplerAddToList(coupler,realization%flow_initial_conditions)
+        call CouplerAddToList(coupler,patch%flow_initial_conditions)
       
 !....................
       case ('STRATIGRAPHY','STRATA')
         strata => StrataCreate()
         call StrataRead(strata,IUNIT1,option)
-        call StrataAddToList(strata,realization%strata)
+        call StrataAddToList(strata,patch%strata)
       
 !....................
       case ('SOURCE_SINK')
         coupler => CouplerCreate(SRC_SINK_COUPLER_TYPE)
         call CouplerRead(coupler,IUNIT1,option)
-        call CouplerAddToList(coupler,realization%flow_source_sinks)
+        call CouplerAddToList(coupler,patch%flow_source_sinks)
       
 !.....................
       case ('COMP') 
@@ -1884,7 +1875,7 @@ subroutine readInput(simulation,filename)
       case ('BRK','BREAKTHROUGH')
         breakthrough => BreakthroughCreate()
         call BreakthroughRead(breakthrough,IUNIT1,option)
-        call BreakthroughAddToList(breakthrough,realization%breakthrough)
+        call BreakthroughAddToList(breakthrough,patch%breakthrough)
       
 !....................
       case('SDST')
@@ -1966,17 +1957,11 @@ subroutine setFlowMode(option,mcomp,mphas)
 #endif  
   endif 
   
-  if (option%iflowmode /= THC_MODE .and. &
-      option%iflowmode /= MPH_MODE .and. &
+  if (option%iflowmode /= MPH_MODE .and. &
       option%iflowmode /= RICHARDS_MODE .and. &
       option%iflowmode /= RICHARDS_LITE_MODE) then 
 
     if (mcomp >0 .and. mphas>0)then
-      if (option%iflowmode /= THC_MODE .and. mcomp == 37)then
-        option%iflowmode = THC_MODE
-        option%flowmode = 'thc'
-        option%nphase = 1; option%nflowdof =3
-      endif
       if (option%iflowmode /= MPH_MODE .and. mcomp == 35)then
         option%iflowmode = MPH_MODE
         option%flowmode = 'mph'
@@ -2016,6 +2001,7 @@ subroutine assignMaterialPropToRegions(realization)
   use Grid_module
   use Field_module
   use Fileio_module
+  use Patch_module
 
   implicit none
   
@@ -2040,23 +2026,25 @@ subroutine assignMaterialPropToRegions(realization)
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
   type(strata_type), pointer :: strata
+  type(patch_type), pointer :: patch  
   
   type(material_type), pointer :: material
   type(region_type), pointer :: region
   
   option => realization%option
-  grid => realization%grid
+  patch => realization%patch
+  grid => patch%grid
   field => realization%field
 
   ! loop over all strata to determine if any are inactive or
   ! have associated cell by cell material ids
-  strata => realization%strata%first
+  strata => patch%strata%first
   do
     if (.not.associated(strata)) exit
     if (.not.strata%active .or. .not.associated(strata%region)) then
-      if (.not.associated(field%imat)) then
-        allocate(field%imat(grid%ngmax))
-        field%imat = -999
+      if (.not.associated(patch%imat)) then
+        allocate(patch%imat(grid%ngmax))
+        patch%imat = -999
       endif
       exit
     endif
@@ -2064,7 +2052,7 @@ subroutine assignMaterialPropToRegions(realization)
   enddo
   
   ! Read in cell by cell material ids if they exist
-  strata => realization%strata%first
+  strata => patch%strata%first
   if (associated(strata)) then
     if (.not.associated(strata%region) .and. strata%active) then
       call readMaterialsFromFile(realization,strata%material_name)
@@ -2082,7 +2070,7 @@ subroutine assignMaterialPropToRegions(realization)
   call VecGetArrayF90(field%porosity0,por0_p,ierr)
   call VecGetArrayF90(field%tor_loc,tor_loc_p,ierr)
 
-  strata => realization%strata%first
+  strata => patch%strata%first
   do
     if (.not.associated(strata)) exit
    
@@ -2103,17 +2091,17 @@ subroutine assignMaterialPropToRegions(realization)
           local_id = icell
         endif
         ghosted_id = grid%nL2G(local_id)
-        if (associated(field%imat)) then
-          ! if field%imat is allocated and the id > 0, the material id 
+        if (associated(patch%imat)) then
+          ! if patch%imat is allocated and the id > 0, the material id 
           ! supercedes the material pointer for the strata
-          material_id = field%imat(ghosted_id)
+          material_id = patch%imat(ghosted_id)
           if (material_id > 0 .and. &
               material_id <= size(realization%material_array)) then
             material => realization%material_array(material_id)%ptr
           endif
           ! otherwide set the imat value to the stratas material
           if (material_id < -998) & ! prevent overwrite of cell already set to inactive
-            field%imat(ghosted_id) = material%id
+            patch%imat(ghosted_id) = material%id
         endif
         if (associated(material)) then
           if (option%nflowdof > 0) then
@@ -2144,22 +2132,22 @@ subroutine assignMaterialPropToRegions(realization)
   call VecRestoreArrayF90(field%tor_loc,tor_loc_p,ierr)
 
   if (option%nflowdof > 0) then
-    call GridGlobalToLocal(realization%grid,field%perm0_xx, &
+    call GridGlobalToLocal(patch%grid,field%perm0_xx, &
                            field%perm_xx_loc,ONEDOF)  
-    call GridGlobalToLocal(realization%grid,field%perm0_yy, &
+    call GridGlobalToLocal(patch%grid,field%perm0_yy, &
                            field%perm_yy_loc,ONEDOF)  
-    call GridGlobalToLocal(realization%grid,field%perm0_zz, &
+    call GridGlobalToLocal(patch%grid,field%perm0_zz, &
                            field%perm_zz_loc,ONEDOF)   
 
-    call GridLocalToLocal(realization%grid,field%icap_loc, &
+    call GridLocalToLocal(patch%grid,field%icap_loc, &
                           field%icap_loc,ONEDOF)   
-    call GridLocalToLocal(realization%grid,field%ithrm_loc, &
+    call GridLocalToLocal(patch%grid,field%ithrm_loc, &
                           field%ithrm_loc,ONEDOF)
   endif   
 
-  call GridGlobalToLocal(realization%grid,field%porosity0, &
+  call GridGlobalToLocal(patch%grid,field%porosity0, &
                          field%porosity_loc,ONEDOF)
-  call GridLocalToLocal(realization%grid,field%tor_loc, &
+  call GridLocalToLocal(patch%grid,field%tor_loc, &
                         field%tor_loc,ONEDOF)   
   
 end subroutine assignMaterialPropToRegions
@@ -2180,6 +2168,7 @@ subroutine assignInitialConditions(realization)
   use Coupler_module
   use Condition_module
   use Grid_module
+  use Patch_module
   
   use MPHASE_module, only : pflow_mphase_setupini
 
@@ -2201,11 +2190,13 @@ subroutine assignInitialConditions(realization)
   type(option_type), pointer :: option
   type(field_type), pointer :: field  
   type(grid_type), pointer :: grid
+  type(patch_type), pointer :: patch   
   type(coupler_type), pointer :: initial_condition
     
   option => realization%option
   field => realization%field
-  grid => realization%grid
+  patch => realization%patch
+  grid => patch%grid
     
   if (option%nflowdof > 0) then
   
@@ -2222,7 +2213,7 @@ subroutine assignInitialConditions(realization)
     
     xx_p = -999.d0
     
-    initial_condition => realization%flow_initial_conditions%first
+    initial_condition => patch%flow_initial_conditions%first
     do
     
       if (.not.associated(initial_condition)) exit
@@ -2230,11 +2221,11 @@ subroutine assignInitialConditions(realization)
       if (.not.associated(initial_condition%connection)) then
         do icell=1,initial_condition%region%num_cells
           local_id = initial_condition%region%cell_ids(icell)
-          ghosted_id = realization%grid%nL2G(local_id)
+          ghosted_id = patch%grid%nL2G(local_id)
           iend = local_id*option%nflowdof
           ibegin = iend-option%nflowdof+1
-          if (associated(field%imat)) then
-            if (field%imat(ghosted_id) <= 0) then
+          if (associated(patch%imat)) then
+            if (patch%imat(ghosted_id) <= 0) then
               xx_p(ibegin:iend) = 0.d0
               iphase_loc_p(ghosted_id) = 0
               cycle
@@ -2249,11 +2240,11 @@ subroutine assignInitialConditions(realization)
       else
         do iconn=1,initial_condition%connection%num_connections
           local_id = initial_condition%connection%id_dn(iconn)
-          ghosted_id = realization%grid%nL2G(local_id)
+          ghosted_id = patch%grid%nL2G(local_id)
           iend = local_id*option%nflowdof
           ibegin = iend-option%nflowdof+1
-          if (associated(field%imat)) then
-            if (field%imat(ghosted_id) <= 0) then
+          if (associated(patch%imat)) then
+            if (patch%imat(ghosted_id) <= 0) then
               xx_p(ibegin:iend) = 0.d0
               iphase_loc_p(ghosted_id) = 0
               cycle
@@ -2285,7 +2276,7 @@ subroutine assignInitialConditions(realization)
     
     xx_p = -999.d0
     
-    initial_condition => realization%transport_initial_conditions%first
+    initial_condition => patch%transport_initial_conditions%first
     do
     
       if (.not.associated(initial_condition)) exit
@@ -2293,11 +2284,11 @@ subroutine assignInitialConditions(realization)
       if (.not.associated(initial_condition%connection)) then
         do icell=1,initial_condition%region%num_cells
           local_id = initial_condition%region%cell_ids(icell)
-          ghosted_id = realization%grid%nL2G(local_id)
+          ghosted_id = patch%grid%nL2G(local_id)
           iend = local_id*option%ntrandof
           ibegin = iend-option%ntrandof+1
-          if (associated(field%imat)) then
-            if (field%imat(ghosted_id) <= 0) then
+          if (associated(patch%imat)) then
+            if (patch%imat(ghosted_id) <= 0) then
               xx_p(ibegin:iend) = 0.d0
               cycle
             endif
@@ -2310,11 +2301,11 @@ subroutine assignInitialConditions(realization)
       else
         do iconn=1,initial_condition%connection%num_connections
           local_id = initial_condition%connection%id_dn(iconn)
-          ghosted_id = realization%grid%nL2G(local_id)
+          ghosted_id = patch%grid%nL2G(local_id)
           iend = local_id*option%ntrandof
           ibegin = iend-option%ntrandof+1
-          if (associated(field%imat)) then
-            if (field%imat(ghosted_id) <= 0) then
+          if (associated(patch%imat)) then
+            if (patch%imat(ghosted_id) <= 0) then
               xx_p(ibegin:iend) = 0.d0
               cycle
             endif
@@ -2354,6 +2345,7 @@ subroutine assignUniformVelocity(realization)
   use Condition_module
   use Connection_module
   use Grid_module
+  use Patch_module
   
   implicit none
   
@@ -2362,6 +2354,7 @@ subroutine assignUniformVelocity(realization)
   type(option_type), pointer :: option
   type(field_type), pointer :: field  
   type(grid_type), pointer :: grid
+  type(patch_type), pointer :: patch   
   type(coupler_type), pointer :: boundary_condition
   type(connection_type), pointer :: cur_connection_set
   PetscInt :: iconn, sum_connection
@@ -2369,7 +2362,8 @@ subroutine assignUniformVelocity(realization)
     
   option => realization%option
   field => realization%field
-  grid => realization%grid
+  patch => realization%patch
+  grid => patch%grid
     
   ! Internal Flux Terms -----------------------------------
   cur_connection_set => grid%internal_connection_list%first
@@ -2380,13 +2374,13 @@ subroutine assignUniformVelocity(realization)
       sum_connection = sum_connection + 1
       vdarcy = OptionDotProduct(option%uniform_velocity, &
                                 cur_connection_set%dist(1:3,iconn))
-      field%internal_velocities(1,sum_connection) = vdarcy
+      patch%internal_velocities(1,sum_connection) = vdarcy
     enddo
     cur_connection_set => cur_connection_set%next
   enddo    
 
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => realization%transport_boundary_conditions%first
+  boundary_condition => patch%transport_boundary_conditions%first
   sum_connection = 0
   do 
     if (.not.associated(boundary_condition)) exit
@@ -2395,7 +2389,7 @@ subroutine assignUniformVelocity(realization)
       sum_connection = sum_connection + 1
       vdarcy = OptionDotProduct(option%uniform_velocity, &
                                 cur_connection_set%dist(1:3,iconn))
-      field%boundary_velocities(1,sum_connection) = vdarcy
+      patch%boundary_velocities(1,sum_connection) = vdarcy
     enddo
     boundary_condition => boundary_condition%next
   enddo
@@ -2417,6 +2411,7 @@ subroutine verifyCouplers(realization,coupler_list)
   use Condition_module
   use Grid_module
   use Output_module
+  use Patch_module
 
   implicit none
 
@@ -2425,6 +2420,7 @@ subroutine verifyCouplers(realization,coupler_list)
 
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
+  type(patch_type), pointer :: patch  
   type(coupler_type), pointer :: coupler
   character(len=MAXWORDLENGTH) :: filename
   character(len=MAXWORDLENGTH) :: dataset_name
@@ -2433,7 +2429,8 @@ subroutine verifyCouplers(realization,coupler_list)
   PetscReal, pointer :: vec_ptr(:)
   PetscErrorCode :: ierr
 
-  grid => realization%grid
+  patch => realization%patch
+  grid => patch%grid
 
   if (.not.associated(coupler_list)) return
 
@@ -2518,6 +2515,7 @@ subroutine readMaterialsFromFile(realization,filename)
   use Grid_module
   use Option_module
   use Fileio_module
+  use Patch_module
 
   use HDF5_module
   
@@ -2529,6 +2527,7 @@ subroutine readMaterialsFromFile(realization,filename)
   type(field_type), pointer :: field
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
+  type(patch_type), pointer :: patch   
   character(len=MAXSTRINGLENGTH) :: string
   PetscInt :: ghosted_id, natural_id, material_id
   PetscInt :: fid = 86
@@ -2536,7 +2535,8 @@ subroutine readMaterialsFromFile(realization,filename)
   PetscErrorCode :: ierr
 
   field => realization%field
-  grid => realization%grid
+  patch => realization%patch
+  grid => patch%grid
   option => realization%option
 
   if (index(filename,'.h5') > 0) then
@@ -2558,7 +2558,7 @@ subroutine readMaterialsFromFile(realization,filename)
       if (ghosted_id > 0) then
         call fiReadInt(string,material_id,ierr)
         call fiErrorMsg(option%myrank,'material id','STRATA', ierr)
-        field%imat(ghosted_id) = material_id
+        patch%imat(ghosted_id) = material_id
       endif
     enddo
     call GridDestroyHashTable(grid)

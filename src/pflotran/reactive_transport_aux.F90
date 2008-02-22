@@ -1,33 +1,27 @@
 module Reactive_Transport_Aux_module
 
+  ! this module cannot depend on any other modules beside Option_module
+
   implicit none
   
   private 
 
 #include "definitions.h"
-  
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
-#include "include/finclude/petscmat.h"
-#include "include/finclude/petscmat.h90"
-#include "include/finclude/petscsnes.h"
-#include "include/finclude/petscviewer.h"
-#include "include/finclude/petsclog.h"
-
+ 
   type, public :: reactive_transport_auxvar_type
     PetscReal, pointer :: total(:)
     PetscReal, pointer :: dtotal(:,:)
   end type reactive_transport_auxvar_type
   
-  type, public :: reactive_transport_aux_type
+  type, public :: reactive_transport_type
     PetscInt :: num_aux, num_aux_bc
     PetscInt, pointer :: zero_rows_local(:), zero_rows_local_ghosted(:)
     PetscInt :: n_zero_rows
     type(reactive_transport_auxvar_type), pointer :: aux_vars(:)
     type(reactive_transport_auxvar_type), pointer :: aux_vars_bc(:)
-  end type reactive_transport_aux_type
+  end type reactive_transport_type
 
-  public :: ReactiveTransportAuxCreate, ReactiveTransportAuxDestroy, &
+  public :: RTAuxCreate, RTAuxDestroy, &
             RTAuxVarCompute, RTAuxVarInit
 
 contains
@@ -35,20 +29,20 @@ contains
 
 ! ************************************************************************** !
 !
-! ReactiveTransportAuxCreate: Allocate and initialize auxilliary object
+! RTAuxCreate: Allocate and initialize auxilliary object
 ! author: Glenn Hammond
 ! date: 02/14/08
 !
 ! ************************************************************************** !
-function ReactiveTransportAuxCreate()
+function RTAuxCreate()
 
   use Option_module
 
   implicit none
   
-  type(reactive_transport_aux_type), pointer :: ReactiveTransportAuxCreate
+  type(reactive_transport_type), pointer :: RTAuxCreate
   
-  type(reactive_transport_aux_type), pointer :: aux
+  type(reactive_transport_type), pointer :: aux
 
   allocate(aux)  
   aux%num_aux = 0
@@ -59,9 +53,9 @@ function ReactiveTransportAuxCreate()
   nullify(aux%zero_rows_local)
   nullify(aux%zero_rows_local_ghosted)
 
-  ReactiveTransportAuxCreate => aux
+  RTAuxCreate => aux
   
-end function ReactiveTransportAuxCreate
+end function RTAuxCreate
 
 ! ************************************************************************** !
 !
@@ -131,16 +125,16 @@ end subroutine AuxVarDestroy
 
 ! ************************************************************************** !
 !
-! ReactiveTransportAuxDestroy: Deallocates a reactive transport auxilliary object
+! RTAuxDestroy: Deallocates a reactive transport auxilliary object
 ! author: Glenn Hammond
 ! date: 02/14/08
 !
 ! ************************************************************************** !
-subroutine ReactiveTransportAuxDestroy(aux)
+subroutine RTAuxDestroy(aux)
 
   implicit none
 
-  type(reactive_transport_aux_type), pointer :: aux
+  type(reactive_transport_type), pointer :: aux
   PetscInt :: iaux
   
   if (.not.associated(aux)) return
@@ -161,6 +155,6 @@ subroutine ReactiveTransportAuxDestroy(aux)
   if (associated(aux%zero_rows_local_ghosted)) deallocate(aux%zero_rows_local_ghosted)
   nullify(aux%zero_rows_local_ghosted)
     
-end subroutine ReactiveTransportAuxDestroy
+end subroutine RTAuxDestroy
 
 end module Reactive_Transport_Aux_module

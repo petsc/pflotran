@@ -649,6 +649,7 @@ subroutine HDF5WriteStructDataSetFromVec(name,realization,vec,file_id,data_type)
   use Realization_module
   use Grid_module
   use Option_module
+  use Patch_module
   
   implicit none
 
@@ -663,9 +664,11 @@ subroutine HDF5WriteStructDataSetFromVec(name,realization,vec,file_id,data_type)
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
+  type(patch_type), pointer :: patch  
   PetscReal, pointer :: vec_ptr(:)
   
-  grid => realization%grid
+  patch => realization%patch
+  grid => patch%grid
   option => realization%option
   
   call VecGetArrayF90(vec,vec_ptr,ierr)
@@ -1090,6 +1093,7 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
   use Option_module
   use Grid_module
   use Region_module
+  use Patch_module
   
   implicit none
 
@@ -1102,6 +1106,7 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
 
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
+  type(patch_type), pointer :: patch  
 
   character(len=MAXSTRINGLENGTH) :: string 
 
@@ -1128,7 +1133,8 @@ subroutine HDF5ReadRegionFromFile(realization,region,filename)
 
 
   option => realization%option
-  grid => realization%grid
+  patch => realization%patch
+  grid => patch%grid
 
   ! create hash table for fast lookup
 #ifdef HASH
@@ -1223,6 +1229,7 @@ subroutine HDF5ReadMaterialsFromFile(realization,filename)
   use Option_module
   use Grid_module
   use Field_module
+  use Patch_module
   
   implicit none
 
@@ -1235,6 +1242,7 @@ subroutine HDF5ReadMaterialsFromFile(realization,filename)
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
+  type(patch_type), pointer :: patch  
 
   character(len=MAXSTRINGLENGTH) :: string 
 
@@ -1267,7 +1275,8 @@ subroutine HDF5ReadMaterialsFromFile(realization,filename)
   nullify(indices)
 
   option => realization%option
-  grid => realization%grid
+  patch => realization%patch
+  grid => patch%grid
   field => realization%field
 
   ! create hash table for fast lookup
@@ -1336,7 +1345,7 @@ subroutine HDF5ReadMaterialsFromFile(realization,filename)
 #endif
   
   call GridGlobalToLocal(grid,global_vec,local_vec,ONEDOF)
-  call GridCopyPetscVecToIntegerArray(field%imat,local_vec,grid%ngmax)
+  call GridCopyPetscVecToIntegerArray(patch%imat,local_vec,grid%ngmax)
   call PetscGetTime(tend,ierr)
   if (option%myrank == 0) print *, '  Time to read material ids:', tend-tstart
 

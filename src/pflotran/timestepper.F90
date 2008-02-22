@@ -270,14 +270,6 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option,timestep_cut_flag, &
   if (stepper%iaccel == 0) return
 
   select case(option%iflowmode)
-    case(THC_MODE)
-      fac = 0.5d0
-      if (num_newton_iterations >= stepper%iaccel) fac = 0.33d0
-      up = option%dpmxe/(option%dpmax+0.1)
-      utmp = option%dtmpmxe/(option%dtmpmax+1.d-5)
-      uc = option%dcmxe/(option%dcmax+1.d-6)
-      ut = min(up,utmp,uc)
-      dtt = fac * dt * (1.d0 + ut)
     case(MPH_MODE)   
       fac = 0.5d0
       if (num_newton_iterations >= stepper%iaccel) then
@@ -437,8 +429,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   
   use MPHASE_module
   use Richards_Lite_module
-  use Richards_Analytical_module
-  use THC_module
+  use Richards_module
   use Output_module
   
   use Realization_module
@@ -446,6 +437,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   use Option_module
   use Solver_module
   use Field_module
+  use Patch_module  
   
   implicit none
 
@@ -479,9 +471,11 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field  
   type(solver_type), pointer :: solver
+  type(patch_type), pointer :: patch  
 
   option => realization%option
-  grid => realization%grid
+  patch => realization%patch
+  grid => patch%grid
   field => realization%field
   solver => stepper%solver
 
@@ -508,7 +502,6 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   endif
   
   select case(option%iflowmode)
-    case(THC_MODE)
     case(RICHARDS_MODE)
       call RichardsInitializeTimestep(realization)
     case(RICHARDS_LITE_MODE)
@@ -519,7 +512,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   do
     
     select case(option%iflowmode)
-      case(THC_MODE,MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
+      case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
         call SNESSolve(solver%snes, PETSC_NULL, field%flow_xx, ierr)
     end select
 
@@ -601,8 +594,6 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
             option%flow_dt/realization%output_option%tconv,timestep_cut_flag
 
       select case(option%iflowmode)
-        case(THC_MODE)
-          call THCTimeCut(realization)
         case(RICHARDS_MODE)
           call RichardsTimeCut(realization)
         case(RICHARDS_LITE_MODE)
@@ -631,7 +622,6 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   if (field%saturation_loc /= 0) then ! store saturations for transport
    call GridCreateVector(grid,ONEDOF,global_vec,GLOBAL)
     select case(option%iflowmode)
-      case(THC_MODE)
       case(RICHARDS_MODE)
         call RichardsGetVarFromArray(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
       case(RICHARDS_LITE_MODE)
@@ -724,6 +714,7 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
   use Option_module
   use Solver_module
   use Field_module
+  use Patch_module
   
   implicit none
 
@@ -757,9 +748,11 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field  
   type(solver_type), pointer :: solver
+  type(patch_type), pointer :: patch  
 
   option => realization%option
-  grid => realization%grid
+  patch => realization%patch
+  grid => patch%grid
   field => realization%field
   solver => stepper%solver
 
@@ -942,7 +935,7 @@ subroutine StepperUpdateFlowSolution(realization)
   
   use MPHASE_module, only: pflow_update_mphase
   use Richards_Lite_module, only : RichardsLiteUpdateSolution
-  use Richards_Analytical_module, only : RichardsUpdateSolution
+  use Richards_module, only : RichardsUpdateSolution
 
   use Realization_module
   use Option_module

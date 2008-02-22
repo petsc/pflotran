@@ -13,11 +13,6 @@ module Field_module
   type, public :: field_type 
     
 !geh material id
-    PetscInt, pointer :: imat(:)
-    
-    PetscReal, pointer :: internal_velocities(:,:)
-    PetscReal, pointer :: boundary_velocities(:,:)
-
     ! 1 degree of freedom
     Vec :: porosity0, porosity_loc
     Vec :: tor_loc
@@ -95,10 +90,6 @@ function FieldCreate()
   field%tran_yy = 0
   field%tran_accum = 0
   
-  nullify(field%imat)
-  nullify(field%internal_velocities)
-  nullify(field%boundary_velocities)
-  
   FieldCreate => field
   
 end function FieldCreate
@@ -150,13 +141,6 @@ subroutine FieldDestroy(field)
   if (field%tran_dxx /= 0) call VecDestroy(field%tran_dxx,ierr)
   if (field%tran_yy /= 0) call VecDestroy(field%tran_yy,ierr)
   if (field%tran_accum /= 0) call VecDestroy(field%tran_accum,ierr)
-  
-  if (associated(field%imat)) deallocate(field%imat)
-  nullify(field%imat)
-  if (associated(field%internal_velocities)) deallocate(field%internal_velocities)
-  nullify(field%internal_velocities)
-  if (associated(field%boundary_velocities)) deallocate(field%boundary_velocities)
-  nullify(field%boundary_velocities)
     
   deallocate(field)
   nullify(field)

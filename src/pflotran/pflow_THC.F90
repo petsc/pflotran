@@ -2335,7 +2335,7 @@ subroutine THCGetVarFromArray(realization,vec,ivar,isubvar)
       enddo
     case(MATERIAL_ID)
       do local_id=1,grid%nlmax
-        vec_ptr(local_id) = field%imat(grid%nL2G(local_id))
+        vec_ptr(local_id) = patch%imat(grid%nL2G(local_id))
       enddo
   end select
   

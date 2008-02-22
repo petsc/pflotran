@@ -88,8 +88,8 @@ subroutine pflowGridCheckpoint(realization,steps,newtcum,icutcum, &
   use Option_module
   use Field_module
   use Grid_module
+  use Patch_module
   
-  use THC_module
   use MPHASE_module
 
   implicit none
@@ -119,11 +119,13 @@ subroutine pflowGridCheckpoint(realization,steps,newtcum,icutcum, &
   type(field_type), pointer :: field
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
+  type(patch_type), pointer :: patch  
   type(output_option_type), pointer :: output_option
   
   field => realization%field
   option => realization%option
-  grid => realization%grid
+  patch => realization%patch
+  grid => patch%grid
   output_option => realization%output_option
 
   ! Open the checkpoint file.
@@ -208,7 +210,6 @@ subroutine pflowGridCheckpoint(realization,steps,newtcum,icutcum, &
         call MphaseCheckpointWrite(grid,viewer)
       endif
     case default
-      call THCCheckpointWrite(grid,viewer)
   end select 
 
   ! Porosity and permeability.
@@ -266,8 +267,8 @@ subroutine pflowGridRestart(realization,steps,newtcum,icutcum, &
   use Option_module
   use Field_module
   use Grid_module
+  use Patch_module
   
-  use THC_module
   use MPHASE_module
 
   implicit none
@@ -289,11 +290,13 @@ subroutine pflowGridRestart(realization,steps,newtcum,icutcum, &
   type(field_type), pointer :: field
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
+  type(patch_type), pointer :: patch  
   type(output_option_type), pointer :: output_option
   
   field => realization%field
   option => realization%option
-  grid => realization%grid
+  patch => realization%patch
+  grid => patch%grid
   output_option => realization%output_option
   
   call PetscGetTime(tstart,ierr)   
@@ -333,7 +336,6 @@ subroutine pflowGridRestart(realization,steps,newtcum,icutcum, &
         call MphaseCheckpointRead(grid,viewer)
       endif
     case default
-      call THCCheckpointRead(grid,viewer)
   end select
   
   call VecLoadIntoVector(viewer, global_vec, ierr)
@@ -357,73 +359,4 @@ end subroutine pflowGridRestart
 
 #endif
 
-#if 0
-subroutine pflowGridTHCBinaryOut(grid, kplt)
-
-  implicit none
-
-  type(pflowGrid), intent(inout) :: grid
-  PetscInt, intent(inout) :: kplt
-
-  character(len=MAXSTRINGLENGTH) :: fname
-  PetscViewer viewer
-  PetscInt :: ierr
-
-  ! Open the output file.
-  write(fname, '(a9,i2)') 'pflow.chk', kplt
-  call PetscViewerBinaryOpen(PETSC_COMM_WORLD, fname, FILE_MODE_WRITE, &
-                        viewer, ierr)
-
-  !--------------------------------------------------------------------
-  ! Dump some important information such as simulation time, 
-  ! time step size, etc.
-  !--------------------------------------------------------------------
-
-  ! RTM: I need to write this code!
-  ! Members of 'grid' that have to be dumped: t, dt, steps, kplot
-  ! What else?
-
-  !--------------------------------------------------------------------
-  ! Dump all the relevant vectors.
-  !--------------------------------------------------------------------
-
-  call VecView(grid%conc, viewer, ierr)
-  call VecView(grid%vl, viewer, ierr)
-  call VecView(grid%vg, viewer, ierr)
-    ! RTM: When do we actually need to dump the gas velocities vg?
-  call VecView(grid%pressure, viewer, ierr)
-  call VecView(grid%temp, viewer, ierr)
-  call VecView(grid%sat, viewer, ierr)
-
-  ! primary variables
-  if(grid%use_2ph == PETSC_TRUE .or. grid%use_mph == PETSC_TRUE &
-                                .or. grid%use_vadose == PETSC_TRUE &
-                                .or. grid%use_flash == PETSC_TRUE &
-                                 .or. grid%use_richards == PETSC_TRUE) then
-    call VecView(grid%xmol, viewer, ierr)
-  endif  
-  if(grid%use_mph == PETSC_TRUE .or. grid%use_vadose == PETSC_TRUE &
-     .or. grid%use_flash == PETSC_TRUE &
-      .or. grid%use_richards == PETSC_TRUE ) then
-    call VecView(grid%iphas, viewer, ierr)
-  endif  
-
-  ! solid volume fraction
-  if (grid%rk > 0.d0) then
-    call VecView(grid%phis, viewer, ierr)
-  endif
-
-  ! Porosity and permeability.
-  ! (We only write diagonal terms of the permeability tensor for now, 
-  ! since we have yet to add the full-tensor formulation.)
-  call VecView(grid%porosity, viewer, ierr)
-  call VecView(grid%perm_xx, viewer, ierr)
-  call VecView(grid%perm_yy, viewer, ierr)
-  call VecView(grid%perm_zz, viewer, ierr)
-
-  ! We are finished, so clean up.
-  call PetscViewerDestroy(viewer, ierr)
-
-end subroutine pflowGridTHCBinaryOut
-#endif
 end module pflow_checkpoint

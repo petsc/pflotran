@@ -67,6 +67,7 @@ subroutine ReadStructuredGridHDF5(realization)
   use Field_module
   use Connection_module
   use HDF5_module
+  use Patch_module
   
   implicit none
 
@@ -75,6 +76,7 @@ subroutine ReadStructuredGridHDF5(realization)
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
+  type(patch_type), pointer :: patch  
 
   character(len=MAXSTRINGLENGTH) :: string 
   character(len=MAXSTRINGLENGTH) :: filename
@@ -101,7 +103,8 @@ subroutine ReadStructuredGridHDF5(realization)
 
   field => realization%field
   option => realization%option
-  grid => realization%grid
+  patch => realization%patch
+  grid => patch%grid
 
   call PetscGetTime(time0, ierr)
 
@@ -158,7 +161,7 @@ subroutine ReadStructuredGridHDF5(realization)
   call GridCopyIntegerArrayToPetscVec(integer_array,global_vec,grid%nlmax)
   deallocate(integer_array)
   call GridGlobalToLocal(grid,global_vec,local_vec,ONEDOF)
-  call GridCopyPetscVecToIntegerArray(field%imat,local_vec,grid%ngmax)
+  call GridCopyPetscVecToIntegerArray(patch%imat,local_vec,grid%ngmax)
   
   allocate(real_array(grid%nlmax))
   string = "X-Coordinate"

@@ -110,9 +110,10 @@ subroutine OutputTecplot(realization)
   use Structured_Grid_module
   use Option_module
   use Field_module
+  use Patch_module
   
   use Mphase_module
-  use Richards_Analytical_module
+  use Richards_module
   use Richards_Lite_module
   
   use Reactive_Transport_module
@@ -127,12 +128,14 @@ subroutine OutputTecplot(realization)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
+  type(patch_type), pointer :: patch  
   type(output_option_type), pointer :: output_option
   PetscReal, pointer :: vec_ptr(:)
   Vec :: global_vec
   Vec :: natural_vec
   
-  grid => realization%grid
+  patch => realization%patch
+  grid => patch%grid
   option => realization%option
   field => realization%field
   output_option => realization%output_option
@@ -186,7 +189,7 @@ subroutine OutputTecplot(realization)
     endif
 
     ! write material ids
-    if (associated(field%imat)) then
+    if (associated(patch%imat)) then
       string = trim(string) // ',"Material_ID"'
     endif
 
@@ -319,7 +322,7 @@ subroutine OutputTecplot(realization)
   endif  
   
   ! material id
-  if (associated(field%imat)) then
+  if (associated(patch%imat)) then
     call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
     call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
     call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_INTEGER)
@@ -379,6 +382,7 @@ subroutine OutputVelocitiesTecplot(realization)
   use Grid_module
   use Option_module
   use Field_module
+  use Patch_module
   
   implicit none
 
@@ -387,6 +391,7 @@ subroutine OutputVelocitiesTecplot(realization)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
+  type(patch_type), pointer :: patch  
   type(output_option_type), pointer :: output_option
   character(len=MAXNAMELENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: string
@@ -395,7 +400,8 @@ subroutine OutputVelocitiesTecplot(realization)
 
   PetscReal, pointer :: vec_ptr(:)
   
-  grid => realization%grid
+  patch => realization%patch
+  grid => patch%grid
   field => realization%field
   option => realization%option
   output_option => realization%output_option
@@ -433,7 +439,7 @@ subroutine OutputVelocitiesTecplot(realization)
                '"vgy [m/y]",' // &
                '"vgz [m/y]"'
     endif
-        if (associated(field%imat)) then
+        if (associated(patch%imat)) then
           string = trim(string) // ',"Material_ID"'
         endif
     write(IUNIT3,'(a)') trim(string)
@@ -493,7 +499,7 @@ subroutine OutputVelocitiesTecplot(realization)
   endif
 
   ! material id
-  if (associated(field%imat)) then
+  if (associated(patch%imat)) then
     call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
     call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
     call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_INTEGER)
@@ -524,6 +530,7 @@ subroutine OutputFluxVelocitiesTecplot(realization,iphase, &
   use Option_module
   use Field_module
   use Connection_module
+  use Patch_module
   
   implicit none
 
@@ -534,6 +541,7 @@ subroutine OutputFluxVelocitiesTecplot(realization,iphase, &
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
+  type(patch_type), pointer :: patch  
   type(output_option_type), pointer :: output_option
   
   character(len=MAXNAMELENGTH) :: filename
@@ -556,7 +564,8 @@ subroutine OutputFluxVelocitiesTecplot(realization,iphase, &
     
   nullify(array)
   
-  grid => realization%grid
+  patch => realization%patch
+  grid => patch%grid
   option => realization%option
   field => realization%field
   output_option => realization%output_option
@@ -778,7 +787,7 @@ subroutine OutputFluxVelocitiesTecplot(realization,iphase, &
       ! velocities are stored as the downwind face of the upwind cell
       if (local_id <= 0 .or. &
           abs(cur_connection_set%dist(direction,iconn)) < 0.99d0) cycle
-      vec_ptr(local_id) = field%internal_velocities(iphase,iconn)
+      vec_ptr(local_id) = patch%internal_velocities(iphase,iconn)
     enddo
     cur_connection_set => cur_connection_set%next
   enddo
@@ -828,6 +837,7 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
   use Option_module
   use Field_module
   use Grid_module
+  use Patch_module
   
   implicit none
 
@@ -840,12 +850,13 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
+  type(patch_type), pointer :: patch  
   Vec :: natural_vec
   Vec :: global_vec
   PetscInt, parameter :: fid=86
 
   option => realization%option
-  grid => realization%grid
+  grid => patch%grid
   field => realization%field
   
   ! open file
@@ -862,7 +873,7 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
              '"Y [m]",' // &
              '"Z [m]",'
     string = trim(string) // '"' // trim(dataset_name) // '"'
-    if (associated(field%imat)) then
+    if (associated(patch%imat)) then
       string = trim(string) // ',"Material_ID"'
     endif
     write(fid,'(a)') trim(string)
@@ -898,7 +909,7 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
   call GridGlobalToNatural(grid,vector,natural_vec,ONEDOF)
   call WriteTecplotDataSetFromVec(fid,realization,natural_vec,TECPLOT_REAL)
 
-  if (associated(field%imat)) then
+  if (associated(patch%imat)) then
     call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
     call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
     call WriteTecplotDataSetFromVec(fid,realization,natural_vec,TECPLOT_INTEGER)
@@ -951,6 +962,7 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
   use Realization_module
   use Grid_module
   use Option_module
+  use Patch_module
 
   implicit none
   
@@ -963,6 +975,7 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
+  type(patch_type), pointer :: patch  
   PetscInt :: i
   PetscMPIInt :: iproc, recv_size
   PetscInt :: max_local_size, local_size
@@ -971,7 +984,8 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
   PetscInt, allocatable :: integer_data(:), integer_data_recv(:)
   PetscReal, allocatable :: real_data(:), real_data_recv(:)
   
-  grid => realization%grid
+  patch => realization%patch
+  grid => patch%grid
   option => realization%option
   
   if (size_flag /= 0) then
@@ -1115,6 +1129,7 @@ subroutine OutputBreakthroughTecplot(realization)
   use Grid_module
   use Option_module
   use Field_module
+  use Patch_module
   use Breakthrough_module
  
   implicit none
@@ -1127,16 +1142,18 @@ subroutine OutputBreakthroughTecplot(realization)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
+  type(patch_type), pointer :: patch  
   type(output_option_type), pointer :: output_option
   type(breakthrough_type), pointer :: breakthrough
   logical, save :: first = .true.
   
-  grid => realization%grid
+  patch => realization%patch
+  grid => patch%grid
   option => realization%option
   field => realization%field
   output_option => realization%output_option
   
-  breakthrough => realization%breakthrough%first
+  breakthrough => patch%breakthrough%first
   
   if (.not.associated(breakthrough)) return
 
@@ -1169,7 +1186,7 @@ subroutine OutputBreakthroughTecplot(realization)
       breakthrough => breakthrough%next
     enddo
     write(fid,'(a)',advance="yes") ""
-    breakthrough => realization%breakthrough%first
+    breakthrough => patch%breakthrough%first
   else
     open(unit=fid,file=filename,action="write",status="old", &
          position="append")
@@ -1202,6 +1219,7 @@ subroutine WriteBreakthroughHeaderForCell(fid,realization,local_id)
   use Grid_module
   use Field_module
   use Option_module
+  use Patch_module
 
   implicit none
   
@@ -1215,10 +1233,12 @@ subroutine WriteBreakthroughHeaderForCell(fid,realization,local_id)
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(grid_type), pointer :: grid
+  type(patch_type), pointer :: patch  
   
+  patch => realization%patch
   option => realization%option
   field => realization%field
-  grid => realization%grid
+  grid => patch%grid
   
   write(cell_id_string,*) grid%nL2A(local_id)
   cell_id_string = adjustl(cell_id_string)
@@ -1306,6 +1326,7 @@ subroutine WriteBreakthroughDataForCell(fid,realization,local_id)
   use Option_module
   use Grid_module
   use Field_module
+  use Patch_module
 
   implicit none
   
@@ -1317,9 +1338,11 @@ subroutine WriteBreakthroughDataForCell(fid,realization,local_id)
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
+  type(patch_type), pointer :: patch  
   
   option => realization%option
-  grid => realization%grid
+  patch => realization%patch
+  grid => patch%grid
   field => realization%field
 
 100 format(es13.6)
@@ -1428,6 +1451,7 @@ subroutine OutputHDF5(realization)
   use Option_module
   use Grid_module
   use Field_module
+  use Patch_module
   
 #ifndef USE_HDF5
   implicit none
@@ -1470,6 +1494,7 @@ subroutine OutputHDF5(realization)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
+  type(patch_type), pointer :: patch  
   type(output_option_type), pointer :: output_option
   
   Vec :: global_vec
@@ -1482,7 +1507,8 @@ subroutine OutputHDF5(realization)
   PetscReal, pointer :: array(:)
   PetscInt :: i
   
-  grid => realization%grid
+  patch => realization%patch
+  grid => patch%grid
   option => realization%option
   field => realization%field
   output_option => realization%output_option
@@ -1753,6 +1779,7 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
   use Option_module
   use Field_module
   use Connection_module
+  use Patch_module
   use hdf5
   use HDF5_module
 
@@ -1773,6 +1800,7 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
+  type(patch_type), pointer :: patch  
   type(output_option_type), pointer :: output_option
     
   PetscReal, allocatable :: array(:)
@@ -1788,7 +1816,8 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
   type(connection_list_type), pointer :: connection_list
   type(connection_type), pointer :: cur_connection_set
     
-  grid => realization%grid
+  patch => realization%patch
+  grid => patch%grid
   option => realization%option
   field => realization%field
   output_option => realization%output_option  
@@ -1864,7 +1893,7 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
       ! velocities are stored as the downwind face of the upwind cell
       if (local_id <= 0 .or. &
           abs(cur_connection_set%dist(direction,iconn)) < 0.99d0) cycle
-      vec_ptr(local_id) = field%internal_velocities(iphase,iconn)
+      vec_ptr(local_id) = patch%internal_velocities(iphase,iconn)
     enddo
     cur_connection_set => cur_connection_set%next
   enddo
@@ -2048,7 +2077,7 @@ function OutputGetVarFromArrayAtCell(realization,ivar,isubvar,local_id)
   use Realization_module
   use Option_module
 
-  use Richards_Analytical_module, only : RichardsGetVarFromArrayAtCell
+  use Richards_module, only : RichardsGetVarFromArrayAtCell
   use Richards_Lite_module, only : RichardsLiteGetVarFromArrayAtCell
 
   implicit none
@@ -2082,7 +2111,7 @@ subroutine OutputGetVarFromArray(realization,vec,ivar,isubvar)
   use Option_module
   use Field_module
 
-  use Richards_Analytical_module, only : RichardsGetVarFromArray
+  use Richards_module, only : RichardsGetVarFromArray
   use Richards_Lite_module, only : RichardsLiteGetVarFromArray
   use Reactive_Transport_module, only : RTGetVarFromArray
 
@@ -2146,6 +2175,7 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
   use Connection_module
   use Coupler_module
   use Field_module
+  use Patch_module
 
   implicit none
   
@@ -2157,6 +2187,7 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
+  type(patch_type), pointer :: patch  
   type(output_option_type), pointer :: output_option
   PetscInt :: iconn
   PetscInt :: local_id_up, local_id_dn, local_id
@@ -2170,7 +2201,8 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
   type(connection_list_type), pointer :: connection_list
   type(connection_type), pointer :: cur_connection_set
   
-  grid => realization%grid
+  patch => realization%patch
+  grid => patch%grid
   option => realization%option
   field => realization%field
   output_option => realization%output_option
@@ -2192,7 +2224,7 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
       local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
       local_id_dn = grid%nG2L(ghosted_id_dn) ! = zero for ghost nodes
       ! velocities are stored as the downwind face of the upwind cell
-      velocity = field%internal_velocities(iphase,iconn)* &
+      velocity = patch%internal_velocities(iphase,iconn)* &
                  abs(cur_connection_set%dist(direction,iconn))
       if (local_id_up > 0) then
         vec_ptr(local_id_up) = vec_ptr(local_id_up) + velocity
@@ -2207,14 +2239,14 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
   enddo
 
   ! boundary velocities
-  boundary_condition => realization%flow_boundary_conditions%first
+  boundary_condition => patch%flow_boundary_conditions%first
   do
     if (.not.associated(boundary_condition)) exit
     cur_connection_set => boundary_condition%connection
     do iconn = 1, cur_connection_set%num_connections
       local_id = cur_connection_set%id_dn(iconn)
       vec_ptr(local_id) = vec_ptr(local_id)+ &
-                          field%boundary_velocities(1,iconn)* &
+                          patch%boundary_velocities(1,iconn)* &
                           abs(cur_connection_set%dist(direction,iconn))
       num_additions(local_id) = num_additions(local_id) + 1
     enddo

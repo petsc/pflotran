@@ -55,15 +55,7 @@ PetscInt, parameter :: NATURAL = 3
 PetscInt, parameter :: NULL_MODE = 0
 PetscInt, parameter :: RICHARDS_MODE = 1
 PetscInt, parameter :: MPH_MODE = 2
-PetscInt, parameter :: COND_MODE = 3
-PetscInt, parameter :: TWOPH_MODE = 4
-PetscInt, parameter :: VADOSE_MODE = 5
-PetscInt, parameter :: LIQUID_MODE = 6
-PetscInt, parameter :: OWG_MODE = 7
-PetscInt, parameter :: FLASH_MODE = 8
-PetscInt, parameter :: TH_MODE = 9
-PetscInt, parameter :: THC_MODE = 10
-PetscInt, parameter :: RICHARDS_LITE_MODE = 11
+PetscInt, parameter :: RICHARDS_LITE_MODE = 3
 
 ! grid types
 PetscInt, parameter :: STRUCTURED = 1

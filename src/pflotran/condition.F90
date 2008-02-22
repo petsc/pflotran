@@ -26,6 +26,7 @@ module Condition_module
     PetscInt :: id                                 ! id from which condition can be referenced
     character(len=MAXWORDLENGTH) :: class         ! character string describing class of condition
     PetscInt :: iclass                            ! integer id for class
+    logical :: sync_time_with_update
     character(len=MAXWORDLENGTH) :: name          ! name of condition (e.g. initial, recharge)
     PetscInt :: num_sub_conditions
     PetscInt :: iphase
@@ -99,6 +100,7 @@ function ConditionCreate(option)
   nullify(condition%enthalpy)
   nullify(condition%itype)
   nullify(condition%next)
+  condition%sync_time_with_update = .false.
   condition%time_units = ""
   condition%length_units = ""
   condition%id = 0
