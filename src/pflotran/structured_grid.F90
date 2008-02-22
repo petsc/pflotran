@@ -45,11 +45,7 @@ module Structured_Grid_module
     PetscInt :: nlmax  ! Total number of non-ghosted nodes in local domain.
     PetscInt :: ngmax  ! Number of ghosted & non-ghosted nodes in local domain.
 
-    PetscReal, pointer :: dx0(:), dy0(:), dz0(:), rd(:)
-    
-    PetscInt :: igeom
-    
-    PetscReal :: radius_0
+    PetscReal, pointer :: dx0(:), dy0(:), dz0(:)
     
     logical :: invert_z_axis
     
@@ -59,7 +55,7 @@ module Structured_Grid_module
 
   end type
 
-  public :: StructuredGridInit, &
+  public :: StructuredGridCreate, &
             StructuredGridDestroy, &
             StructuredGridCreateDA, &
             StructGridComputeInternConnect, &
@@ -91,17 +87,20 @@ contains
 
 ! ************************************************************************** !
 !
-! StructuredGridInit: Initializes a structured grid object
+! StructuredGridCreate: Creates a structured grid object
 ! author: Glenn Hammond
 ! date: 10/22/07
 !
 ! ************************************************************************** !
-subroutine StructuredGridInit(structured_grid)
+function StructuredGridCreate()
 
   implicit none
   
-  type(structured_grid_type) :: structured_grid
+  type(structured_grid_type), pointer :: StructuredGridCreate
 
+  type(structured_grid_type), pointer :: structured_grid
+
+  allocate(structured_grid)
   structured_grid%nx = 0
   structured_grid%ny = 0
   structured_grid%nz = 0
@@ -159,11 +158,6 @@ subroutine StructuredGridInit(structured_grid)
   nullify(structured_grid%dy0)
   nullify(structured_grid%dz0)
   
-  nullify(structured_grid%rd)
-  
-  structured_grid%igeom = 0
-  structured_grid%radius_0 = 0.d0
-  
   structured_grid%invert_z_axis = .false.
   
   ! nullify Vec pointers
@@ -176,7 +170,9 @@ subroutine StructuredGridInit(structured_grid)
   
   structured_grid%da_1_dof = 0
   
-end subroutine StructuredGridInit
+  StructuredGridCreate => structured_grid
+  
+end function StructuredGridCreate
   
 ! ************************************************************************** !
 !
@@ -598,15 +594,6 @@ function StructGridComputeInternConnect(structured_grid,option)
     enddo
   endif
   
-  if (structured_grid%igeom == STRUCTURED_CYLINDRICAL) then
-    allocate(structured_grid%rd(0:structured_grid%nx))
-    structured_grid%rd = 0.D0
-    structured_grid%rd(0) = structured_grid%Radius_0 
-    do i = 1, structured_grid%nx
-      structured_grid%rd(i) = structured_grid%rd(i-1) + structured_grid%dx0(i)
-    enddo
-  endif 
-
   call VecRestoreArrayF90(structured_grid%dx_loc, dx_loc_p, ierr)
   call VecRestoreArrayF90(structured_grid%dy_loc, dy_loc_p, ierr)
   call VecRestoreArrayF90(structured_grid%dz_loc, dz_loc_p, ierr)
@@ -645,50 +632,45 @@ subroutine StructGridPopulateConnection(structured_grid,connection,iface, &
   
   select case(connection%itype)
     case(BOUNDARY_CONNECTION_TYPE)
-      select case(structured_grid%igeom)
-        case(STRUCTURED_CARTESIAN) ! cartesian
-          select case(iface)
-            case(WEST_FACE,EAST_FACE)
-              connection%dist(:,iconn) = 0.d0
-              connection%dist(0,iconn) = 0.5d0*dx_loc_p(cell_id_ghosted)
-              connection%area(iconn) = dy_loc_p(cell_id_ghosted)* &
-                                        dz_loc_p(cell_id_ghosted)
-              if (iface ==  WEST_FACE) then
-                connection%dist(1,iconn) = 1.d0
-              else
-                connection%dist(1,iconn) = -1.d0
-              endif
-            case(SOUTH_FACE,NORTH_FACE)
-              connection%dist(:,iconn) = 0.d0
-              connection%dist(0,iconn) = 0.5d0*dy_loc_p(cell_id_ghosted)
-              connection%area(iconn) = dx_loc_p(cell_id_ghosted)* &
-                                        dz_loc_p(cell_id_ghosted)
-              if (iface ==  SOUTH_FACE) then
-                connection%dist(2,iconn) = 1.d0
-              else
-                connection%dist(2,iconn) = -1.d0
-              endif
-            case(BOTTOM_FACE,TOP_FACE)
-              connection%dist(:,iconn) = 0.d0
-              connection%dist(0,iconn) = 0.5d0*dz_loc_p(cell_id_ghosted)
-              connection%area(iconn) = dx_loc_p(cell_id_ghosted)* &
-                                        dy_loc_p(cell_id_ghosted)
-              if (structured_grid%invert_z_axis) then
-                if (iface ==  TOP_FACE) then 
-                  connection%dist(3,iconn) = 1.d0
-                else
-                  connection%dist(3,iconn) = -1.d0
-                endif
-              else
-                if (iface ==  TOP_FACE) then 
-                  connection%dist(3,iconn) = -1.d0
-                else
-                  connection%dist(3,iconn) = 1.d0
-                endif
-              endif
-          end select
-        case(STRUCTURED_CYLINDRICAL) ! cylindrical
-        case(STRUCTURED_SPHERICAL) ! spherical
+      select case(iface)
+        case(WEST_FACE,EAST_FACE)
+          connection%dist(:,iconn) = 0.d0
+          connection%dist(0,iconn) = 0.5d0*dx_loc_p(cell_id_ghosted)
+          connection%area(iconn) = dy_loc_p(cell_id_ghosted)* &
+                                    dz_loc_p(cell_id_ghosted)
+          if (iface ==  WEST_FACE) then
+            connection%dist(1,iconn) = 1.d0
+          else
+            connection%dist(1,iconn) = -1.d0
+          endif
+        case(SOUTH_FACE,NORTH_FACE)
+          connection%dist(:,iconn) = 0.d0
+          connection%dist(0,iconn) = 0.5d0*dy_loc_p(cell_id_ghosted)
+          connection%area(iconn) = dx_loc_p(cell_id_ghosted)* &
+                                    dz_loc_p(cell_id_ghosted)
+          if (iface ==  SOUTH_FACE) then
+            connection%dist(2,iconn) = 1.d0
+          else
+            connection%dist(2,iconn) = -1.d0
+          endif
+        case(BOTTOM_FACE,TOP_FACE)
+          connection%dist(:,iconn) = 0.d0
+          connection%dist(0,iconn) = 0.5d0*dz_loc_p(cell_id_ghosted)
+          connection%area(iconn) = dx_loc_p(cell_id_ghosted)* &
+                                    dy_loc_p(cell_id_ghosted)
+          if (structured_grid%invert_z_axis) then
+            if (iface ==  TOP_FACE) then 
+              connection%dist(3,iconn) = 1.d0
+            else
+              connection%dist(3,iconn) = -1.d0
+            endif
+          else
+            if (iface ==  TOP_FACE) then 
+              connection%dist(3,iconn) = -1.d0
+            else
+              connection%dist(3,iconn) = 1.d0
+            endif
+          endif
       end select
     case(INITIAL_CONNECTION_TYPE)
     case(SRC_SINK_CONNECTION_TYPE)
@@ -730,16 +712,7 @@ subroutine StructuredGridComputeVolumes(structured_grid,option,nL2G,volume)
   call VecGetArrayF90(structured_grid%dz_loc,dz_loc_p,ierr)
   do n=1, structured_grid%nlmax
     ng = nL2G(n)
-    if (structured_grid%igeom == STRUCTURED_CARTESIAN) then
-      volume_p(n) = dx_loc_p(ng) * dy_loc_p(ng) * dz_loc_p(ng)
-    else if (structured_grid%igeom == STRUCTURED_CYLINDRICAL) then
-      i = mod(mod((n),structured_grid%nlxy),structured_grid%nlx)!+(grid%ngxs-grid%nxs)
-      if (i==0) i = structured_grid%nlx
-      volume_p(n) = Pi * (structured_grid%rd(i+structured_grid%nxs) + structured_grid%rd(i-1+structured_grid%nxs))*&
-      (structured_grid%rd(i+structured_grid%nxs) - structured_grid%rd(i-1+structured_grid%nxs)) * dz_loc_p(ng)
-  !   print *, 'setup: Vol ', grid%myrank, n,ng,i, dz_loc_p(ng),grid%rd(i+grid%nxs),volume_p(n)
-    else if (structured_grid%igeom == STRUCTURED_SPHERICAL) then
-    endif
+    volume_p(n) = dx_loc_p(ng) * dy_loc_p(ng) * dz_loc_p(ng)
   enddo
   call VecRestoreArrayF90(volume,volume_p, ierr)
   call VecRestoreArrayF90(structured_grid%dx_loc,dx_loc_p,ierr)
@@ -1264,8 +1237,6 @@ subroutine StructuredGridDestroy(structured_grid)
   nullify(structured_grid%dy0)
   if (associated(structured_grid%dz0)) deallocate(structured_grid%dz0)
   nullify(structured_grid%dz0)
-  if (associated(structured_grid%rd)) deallocate(structured_grid%rd)
-  nullify(structured_grid%rd)
 
   if (structured_grid%dx /= 0) call VecDestroy(structured_grid%dx,ierr)
   if (structured_grid%dy /= 0) call VecDestroy(structured_grid%dy,ierr)

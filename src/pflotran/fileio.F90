@@ -19,7 +19,7 @@ module Fileio_module
             fiReadInt, fiReadDouble, fiReadMultDouble, &
             fiDefaultMsg, fiErrorMsg, fiReadStringErrorMsg, &
             fiStringCompare, fiFindStringInFile, fiReadQuotedNChars, &
-            fiFindStringErrorMsg
+            fiFindStringErrorMsg, fiSkipToEND
 
   public :: fiReadDBaseString, fiReadDBaseName, fiReadDBaseInt, &
             fiReadDBaseDouble, fiReadDBaseMultDouble
@@ -1047,5 +1047,34 @@ subroutine fiReadQuotedNChars(string, chars, n, return_blank_error, ierr)
   endif
 
 end subroutine fiReadQuotedNChars
+
+! ************************************************************************** !
+!
+! fiSkipToEND: Skips to keyword END
+! author: Glenn Hammond
+! date: 10/26/07
+!
+! ************************************************************************** !
+subroutine fiSkipToEND(fid,myrank,card)
+
+  use Option_module
+
+  implicit none
+  
+  PetscInt :: fid
+  character(len=MAXWORDLENGTH) :: card
+  PetscMPIInt :: myrank
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscErrorCode :: ierr
+
+  do
+    call fiReadFlotranString(IUNIT1,string,ierr)
+    call fiReadStringErrorMsg(myrank,card,ierr)
+    if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
+        fiStringCompare(string,'END',THREE_INTEGER)) exit
+  enddo
+
+end subroutine fiSkipToEND
 
 end module Fileio_module

@@ -1,7 +1,6 @@
 module Patch_module
 
   use Option_module
-  use Field_module
   use Grid_module
   use Coupler_module
   use Breakthrough_module
@@ -65,7 +64,8 @@ module Patch_module
     
   public :: PatchCreate, PatchDestroy, PatchCreateList, PatchDestroyList, &
             PatchAddToList, PatchConvertListToArray, PatchProcessCouplers, &
-            PatchUpdateAllCouplerAuxVars, PatchInitAllCouplerAuxVars
+            PatchUpdateAllCouplerAuxVars, PatchInitAllCouplerAuxVars, &
+            PatchLocalizeRegions, PatchAssignUniformVelocity
 
 contains
 
@@ -115,6 +115,10 @@ function PatchCreate()
 
   allocate(patch%strata)
   call StrataInitList(patch%strata)
+  
+  nullify(patch%RTAux)
+  nullify(patch%RichardsAux)
+  nullify(patch%RichardsLiteAux)
   
   nullify(patch%next)
   
@@ -200,40 +204,36 @@ end subroutine PatchConvertListToArray
 
 ! ************************************************************************** !
 !
-! PatchDestroyList: Deallocates a patch list and array of patches
+! PatchLocalizeRegions: Localizes regions within each patch
 ! author: Glenn Hammond
-! date: 10/15/07
+! date: 00/00/00
 !
 ! ************************************************************************** !
-subroutine PatchDestroyList(patch_list)
+subroutine PatchLocalizeRegions(patch,regions,option)
+
+  use Option_module
+  use Region_module
 
   implicit none
   
-  type(patch_list_type), pointer :: patch_list
-    
-  type(patch_type), pointer :: cur_patch, prev_patch
+  type(patch_type) :: patch
+  type(region_list_type) :: regions
+  type(option_type) :: option
   
-  if (.not.associated(patch_list)) return
+  type(region_type), pointer :: cur_region
+  type(region_type), pointer :: patch_region
   
-  if (associated(patch_list%array)) deallocate(patch_list%array)
-  nullify(patch_list%array)
-  
-  cur_patch => patch_list%first
-  do 
-    if (.not.associated(cur_patch)) exit
-    prev_patch => cur_patch
-    cur_patch => cur_patch%next
-    call PatchDestroy(prev_patch)
+  cur_region => regions%first
+  do
+    if (.not.associated(cur_region)) exit
+    patch_region => RegionCreate(cur_region)
+    call RegionAddToList(patch_region,patch%regions)
+    cur_region => cur_region%next
   enddo
   
-  nullify(patch_list%first)
-  nullify(patch_list%last)
-  patch_list%num_patch_objects = 0
-  
-  deallocate(patch_list)
-  nullify(patch_list)
-
-end subroutine PatchDestroyList
+  call GridLocalizeRegions(patch%grid,patch%regions,option)
+ 
+end subroutine PatchLocalizeRegions
 
 ! ************************************************************************** !
 !
@@ -248,6 +248,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   use Option_module
   use Material_module
   use Condition_module
+  use Connection_module
 
   implicit none
   
@@ -262,6 +263,8 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   type(coupler_list_type), pointer :: coupler_list 
   type(strata_type), pointer :: strata
   type(breakthrough_type), pointer :: breakthrough
+  
+  PetscInt :: temp_int
   
   ! boundary conditions
   coupler => patch%flow_boundary_conditions%first
@@ -414,6 +417,32 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
     breakthrough => breakthrough%next
   enddo
  
+  ! connectivity between initial conditions, boundary conditions, srcs/sinks, etc and grid
+  call CouplerListComputeConnections(patch%grid,option, &
+                                     patch%flow_initial_conditions)
+  call CouplerListComputeConnections(patch%grid,option, &
+                                     patch%flow_boundary_conditions)
+  call CouplerListComputeConnections(patch%grid,option, &
+                                     patch%flow_source_sinks)
+                                
+  call CouplerListComputeConnections(patch%grid,option, &
+                                     patch%transport_initial_conditions)
+  call CouplerListComputeConnections(patch%grid,option, &
+                                     patch%transport_boundary_conditions)
+  call CouplerListComputeConnections(patch%grid,option, &
+                                     patch%transport_source_sinks)
+                                     
+  allocate(patch%internal_velocities(option%nphase, &
+           ConnectionGetNumberInList(patch%grid%internal_connection_list)))
+  patch%internal_velocities = 0.d0
+  if (option%nflowdof > 0) then
+    temp_int = CouplerGetNumConnectionsInList(patch%flow_boundary_conditions)
+  else
+    temp_int = CouplerGetNumConnectionsInList(patch%transport_boundary_conditions)
+  endif
+  allocate(patch%boundary_velocities(option%nphase,temp_int)) 
+  patch%boundary_velocities = 0.d0          
+
 end subroutine PatchProcessCouplers
 
 ! ************************************************************************** !
@@ -648,6 +677,102 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
   enddo
 
 end subroutine PatchUpdateCouplerAuxVars
+
+! ************************************************************************** !
+!
+! PatchAssignUniformVelocity: Assigns uniform velocity in connection list
+!                        darcy velocities
+! author: Glenn Hammond
+! date: 02/20/08
+!
+! ************************************************************************** !
+subroutine PatchAssignUniformVelocity(patch,option)
+
+  use Option_module
+  use Coupler_module
+  use Condition_module
+  use Connection_module
+  
+  implicit none
+  
+  type(patch_type), pointer :: patch   
+  type(option_type), pointer :: option
+
+  type(grid_type), pointer :: grid
+  type(coupler_type), pointer :: boundary_condition
+  type(connection_type), pointer :: cur_connection_set
+  PetscInt :: iconn, sum_connection
+  PetscReal :: vdarcy
+
+  grid => patch%grid
+    
+  ! Internal Flux Terms -----------------------------------
+  cur_connection_set => grid%internal_connection_list%first
+  sum_connection = 0
+  do 
+    if (.not.associated(cur_connection_set)) exit
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+      vdarcy = OptionDotProduct(option%uniform_velocity, &
+                                cur_connection_set%dist(1:3,iconn))
+      patch%internal_velocities(1,sum_connection) = vdarcy
+    enddo
+    cur_connection_set => cur_connection_set%next
+  enddo    
+
+  ! Boundary Flux Terms -----------------------------------
+  boundary_condition => patch%transport_boundary_conditions%first
+  sum_connection = 0
+  do 
+    if (.not.associated(boundary_condition)) exit
+    cur_connection_set => boundary_condition%connection
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+      vdarcy = OptionDotProduct(option%uniform_velocity, &
+                                cur_connection_set%dist(1:3,iconn))
+      patch%boundary_velocities(1,sum_connection) = vdarcy
+    enddo
+    boundary_condition => boundary_condition%next
+  enddo
+
+end subroutine PatchAssignUniformVelocity
+
+! ************************************************************************** !
+!
+! PatchDestroyList: Deallocates a patch list and array of patches
+! author: Glenn Hammond
+! date: 10/15/07
+!
+! ************************************************************************** !
+subroutine PatchDestroyList(patch_list)
+
+  implicit none
+  
+  type(patch_list_type), pointer :: patch_list
+    
+  type(patch_type), pointer :: cur_patch, prev_patch
+  
+  if (.not.associated(patch_list)) return
+  
+  if (associated(patch_list%array)) deallocate(patch_list%array)
+  nullify(patch_list%array)
+  
+  cur_patch => patch_list%first
+  do 
+    if (.not.associated(cur_patch)) exit
+    prev_patch => cur_patch
+    cur_patch => cur_patch%next
+    call PatchDestroy(prev_patch)
+  enddo
+  
+  nullify(patch_list%first)
+  nullify(patch_list%last)
+  patch_list%num_patch_objects = 0
+  
+  deallocate(patch_list)
+  nullify(patch_list)
+
+end subroutine PatchDestroyList
 
 ! ************************************************************************** !
 !

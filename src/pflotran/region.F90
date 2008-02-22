@@ -15,7 +15,6 @@ module Region_module
     PetscInt :: id
     character(len=MAXWORDLENGTH) :: name
     character(len=MAXWORDLENGTH) :: filename
-    type(block_type), pointer :: block_list
     PetscInt :: i1,i2,j1,j2,k1,k2
     PetscInt :: iface
     PetscInt :: num_cells
@@ -35,12 +34,11 @@ module Region_module
     type(region_type), pointer :: array(:)
   end type region_list_type
   
-  PetscInt, save :: num_regions = 0
-  
   interface RegionCreate
     module procedure RegionCreateWithBlock
     module procedure RegionCreateWithList
     module procedure RegionCreateWithNothing
+    module procedure RegionCreateWithRegion    
   end interface RegionCreate
   
   interface RegionReadFromFile
@@ -83,10 +81,6 @@ function RegionCreateWithNothing()
   nullify(region%cell_ids)
   nullify(region%faces)
   nullify(region%next)
-  
-  num_regions = num_regions + 1
-  
-  region%id = num_regions
   
   RegionCreateWithNothing => region
 
@@ -149,6 +143,48 @@ function RegionCreateWithList(list)
 
 end function RegionCreateWithList
 
+! ************************************************************************** !
+!
+! RegionCreateWithRegion: Creates a copy of a region
+! author: Glenn Hammond
+! date: 00/00/00
+!
+! ************************************************************************** !
+function RegionCreateWithRegion(region)
+
+  implicit none
+  
+  type(region_type), pointer :: RegionCreateWithRegion
+  type(region_type), pointer :: region
+  
+  type(region_type), pointer :: new_region
+  
+  new_region => RegionCreateWithNothing()
+  
+  new_region%id = region%id
+  new_region%name = region%name
+  new_region%filename = region%filename
+  new_region%i1 = region%i1
+  new_region%i2 = region%i2
+  new_region%j1 = region%j1
+  new_region%j2 = region%j2
+  new_region%k1 = region%k1
+  new_region%k2 = region%k2
+  new_region%iface = region%iface
+  new_region%num_cells = region%num_cells
+  if (associated(region%cell_ids)) then
+    allocate(new_region%cell_ids(new_region%num_cells))
+    new_region%cell_ids(1:new_region%num_cells) = region%cell_ids(1:region%num_cells)
+  endif
+  if (associated(region%faces)) then
+    allocate(new_region%faces(new_region%num_cells))
+    new_region%faces(1:new_region%num_cells) = region%faces(1:region%num_cells)
+  endif
+  
+  RegionCreateWithRegion => new_region
+  
+end function RegionCreateWithRegion
+  
 ! ************************************************************************** !
 !
 ! RegionInitList: Initializes a region list

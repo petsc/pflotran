@@ -42,10 +42,6 @@ PetscInt, parameter :: NPHASEDOF = 2
 PetscInt, parameter :: THREENPDOF = 3
 PetscInt, parameter :: NFLOWDOF = 4
 PetscInt, parameter :: NTRANDOF = 5
-PetscInt, parameter :: NPHANCOMPDOF = 6
-PetscInt, parameter :: NPHANSPECDOF = 7
-PetscInt, parameter :: NPHANSPECNCOMPDOF = 8
-PetscInt, parameter :: VARDOF = 9
 
 PetscInt, parameter :: GLOBAL = 1
 PetscInt, parameter :: LOCAL = 2
@@ -58,11 +54,10 @@ PetscInt, parameter :: MPH_MODE = 2
 PetscInt, parameter :: RICHARDS_LITE_MODE = 3
 
 ! grid types
-PetscInt, parameter :: STRUCTURED = 1
-PetscInt, parameter :: UNSTRUCTURED = 2
-PetscInt, parameter :: STRUCTURED_CARTESIAN = 10
-PetscInt, parameter :: STRUCTURED_CYLINDRICAL = 11
-PetscInt, parameter :: STRUCTURED_SPHERICAL = 12
+PetscInt, parameter :: STRUCTURED_GRID = 1
+PetscInt, parameter :: UNSTRUCTURED_GRID = 2
+PetscInt, parameter :: AMR_GRID = 3
+
 
 ! condition types
 PetscInt, parameter :: DIRICHLET_BC = 1

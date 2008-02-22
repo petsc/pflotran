@@ -136,6 +136,8 @@ subroutine RichardsLiteSetupPatch(realization)
   option => realization%option
   patch => realization%patch
   grid => patch%grid
+
+  patch%RichardsLiteAux => RichardsLiteAuxCreate()
   
   ! allocate aux_var data structures for all grid cells  
   allocate(aux_vars(grid%ngmax))
@@ -159,8 +161,8 @@ subroutine RichardsLiteSetupPatch(realization)
   do iconn = 1, sum_connection
     call RichardsLiteAuxVarInit(aux_vars_bc(iconn),option)
   enddo
-  patch%RichardsLiteAux%aux_vars_bc => aux_vars
-  patch%RichardsLiteAux%num_aux_bc = grid%ngmax
+  patch%RichardsLiteAux%aux_vars_bc => aux_vars_bc
+  patch%RichardsLiteAux%num_aux_bc = sum_connection
   
   ! create zero array for zeroing residual and Jacobian (1 on diagonal)
   ! for inactive cells (and isothermal)

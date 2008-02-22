@@ -38,8 +38,6 @@ module Coupler_module
     type(coupler_ptr_type), pointer :: array(:)    
   end type coupler_list_type
   
-  PetscInt, save :: num_couplers = 0
-  
   public :: CouplerCreate, CouplerDestroy, CouplerInitList, CouplerAddToList, &
             CouplerRead, CouplerDestroyList, CouplerGetNumConnectionsInList, &
             CouplerListSplitFlowAndTran, CouplerListComputeConnections
@@ -48,6 +46,7 @@ module Coupler_module
   interface CouplerCreate
     module procedure CouplerCreate1
     module procedure CouplerCreate2
+    module procedure CouplerCreateFromCoupler
   end interface
     
 contains
@@ -82,9 +81,6 @@ function CouplerCreate1()
   nullify(coupler%region)
   nullify(coupler%connection)
   nullify(coupler%next)
-  
-  num_couplers = num_couplers + 1
-  coupler%id = num_couplers
   
   CouplerCreate1 => coupler
 
@@ -121,6 +117,45 @@ function CouplerCreate2(itype)
   CouplerCreate2 => coupler
 
 end function CouplerCreate2
+
+! ************************************************************************** !
+!
+! CouplerCreateFromCoupler: Creates a coupler
+! author: Glenn Hammond
+! date: 10/23/07
+!
+! ************************************************************************** !
+function CouplerCreateFromCoupler(coupler)
+
+  implicit none
+  
+  type(coupler_type), pointer :: coupler
+  
+  type(coupler_type), pointer :: CouplerCreateFromCoupler
+  type(coupler_type), pointer :: new_coupler
+
+  new_coupler => CouplerCreate1()
+
+  new_coupler%id = coupler%id
+  new_coupler%itype = coupler%itype
+  new_coupler%ctype = coupler%ctype
+  new_coupler%condition_name = coupler%condition_name
+  new_coupler%region_name = coupler%region_name
+  new_coupler%icondition = coupler%icondition
+  new_coupler%iregion = coupler%iregion
+  new_coupler%iface = coupler%iface
+
+  ! these must remain null  
+  nullify(coupler%condition)
+  nullify(coupler%region)
+  nullify(coupler%aux_int_var)
+  nullify(coupler%aux_real_var)
+  nullify(coupler%connection)
+  nullify(coupler%next)
+
+  CouplerCreateFromCoupler => new_coupler
+
+end function CouplerCreateFromCoupler
 
 ! ************************************************************************** !
 !
@@ -192,8 +227,7 @@ subroutine CouplerRead(coupler,fid,option)
           case('source_sink')
             coupler%itype = SRC_SINK_COUPLER_TYPE
           case default
-            print *, 'ERROR: TYPE option (', trim(coupler%ctype), ') not recognized.'
-            stop
+            call printErrMsg(option,'coupler type: '//trim(coupler%ctype)//' not recognized.')
         end select    
       case('FACE')
         call fiReadWord(string,word,.true.,ierr)

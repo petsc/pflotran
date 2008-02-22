@@ -26,21 +26,26 @@ module Breakthrough_module
   public :: BreakthroughCreate, BreakthroughDestroy, BreakthroughRead, &
             BreakthroughAddToList, BreakthroughInitList, BreakthroughDestroyList, &
             BreakthroughGetPtrFromList
-  
+
+  interface BreakthroughCreate
+    module procedure BreakthroughCreate1
+    module procedure BreakthroughCreateFromBreakthrough
+  end interface
+    
 contains
 
 ! ************************************************************************** !
 !
-! BreakthroughCreate: Create object that stores breakthrough regions
+! BreakthroughCreate1: Create object that stores breakthrough regions
 ! author: Glenn Hammond
 ! date: 02/11/08
 !
 ! ************************************************************************** !
-function BreakthroughCreate()
+function BreakthroughCreate1()
 
   implicit none
   
-  type(breakthrough_type), pointer :: BreakthroughCreate
+  type(breakthrough_type), pointer :: BreakthroughCreate1
   
   type(breakthrough_type), pointer :: breakthrough
   
@@ -52,9 +57,38 @@ function BreakthroughCreate()
   nullify(breakthrough%region)
   nullify(breakthrough%next)
   
-  BreakthroughCreate => breakthrough
+  BreakthroughCreate1 => breakthrough
 
-end function BreakthroughCreate
+end function BreakthroughCreate1
+
+! ************************************************************************** !
+!
+! BreakthroughCreate: Create object that stores breakthrough regions
+! author: Glenn Hammond
+! date: 02/11/08
+!
+! ************************************************************************** !
+function BreakthroughCreateFromBreakthrough(breakthrough)
+
+  implicit none
+  
+  type(breakthrough_type), pointer :: BreakthroughCreateFromBreakthrough
+  type(breakthrough_type), pointer :: breakthrough
+
+  type(breakthrough_type), pointer :: new_breakthrough
+  
+  new_breakthrough => BreakthroughCreate1()
+  
+  new_breakthrough%name = breakthrough%name
+  new_breakthrough%region_name = breakthrough%region_name
+  new_breakthrough%id = breakthrough%id
+  ! keep these null for now to catch bugs
+  nullify(new_breakthrough%region)
+  nullify(new_breakthrough%region)
+  
+  BreakthroughCreateFromBreakthrough => breakthrough
+
+end function BreakthroughCreateFromBreakthrough
 
 ! ************************************************************************** !
 !

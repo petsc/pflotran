@@ -132,8 +132,8 @@ subroutine MphaseCheckpointWrite(grid, viewer)
   Vec :: global_var
   PetscErrorCode :: ierr
   
-  call GridCreateVector(grid,VARDOF,global_var,GLOBAL)
-  call GridLocalToGlobal(grid,mphase_field%var_loc,global_var,VARDOF)
+!  call GridCreateVector(grid,VARDOF,global_var,GLOBAL)
+!  call GridLocalToGlobal(grid,mphase_field%var_loc,global_var,VARDOF)
   call VecView(global_var,viewer,ierr)
   call VecDestroy(global_var,ierr)
   
@@ -163,9 +163,9 @@ subroutine MphaseCheckpointRead(grid,viewer)
   Vec :: global_var
   PetscErrorCode :: ierr
   
-  call GridCreateVector(grid,VARDOF,global_var,GLOBAL)
+!  call GridCreateVector(grid,VARDOF,global_var,GLOBAL)
   call VecLoadIntoVector(viewer, global_var, ierr)
-  call GridGlobalToLocal(grid,global_var,mphase_field%var_loc,VARDOF)
+!  call GridGlobalToLocal(grid,global_var,mphase_field%var_loc,VARDOF)
   call VecDestroy(global_var,ierr)
   ! solid volume fraction
   if (mphase_option%rk > 0.d0) then
@@ -1444,7 +1444,7 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
   ! call VecRestoreArrayF90(field%iphas_loce,iphase_loc_p,ierr)
   
 
-  call GridLocalToLocal(grid,mphase_field%var_loc,mphase_field%var_loc,VARDOF)
+!  call GridLocalToLocal(grid,mphase_field%var_loc,mphase_field%var_loc,VARDOF)
   call GridLocalToLocal(grid,field%perm_xx_loc,field%perm_xx_loc,ONEDOF)
   call GridLocalToLocal(grid,field%perm_yy_loc,field%perm_yy_loc,ONEDOF)
   call GridLocalToLocal(grid,field%perm_zz_loc,field%perm_zz_loc,ONEDOF)

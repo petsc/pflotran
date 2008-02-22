@@ -131,7 +131,7 @@ subroutine RTSetupPatch(realization)
   
   ! count the number of boundary connections and allocate
   ! aux_var data structures for them
-  boundary_condition => patch%flow_boundary_conditions%first
+  boundary_condition => patch%transport_boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -256,11 +256,11 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
   PetscInt :: istart, iend
   PetscErrorCode :: ierr
   
-  aux_vars => patch%RTAux%aux_vars
   option => realization%option
-  patch => realization%patch
-  grid => patch%grid
   field => realization%field
+  patch => realization%patch
+  aux_vars => patch%RTAux%aux_vars
+  grid => patch%grid
 
   call VecGetArrayF90(field%tran_xx,xx_p, ierr)
   call VecGetArrayF90(field%porosity_loc,porosity_loc_p,ierr)
@@ -335,11 +335,11 @@ subroutine RTNumericalJacobianTest(xx,realization)
   
   PetscInt :: idof, idof2, icell
 
-  patch => realization%patch
-  grid => patch%grid
   option => realization%option
   field => realization%field
-  
+  patch => realization%patch
+  grid => patch%grid
+
   call VecDuplicate(xx,xx_pert,ierr)
   call VecDuplicate(xx,res,ierr)
   call VecDuplicate(xx,res_pert,ierr)
@@ -481,7 +481,7 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
   
   ! Communication -----------------------------------------
   ! These 3 must be called before RichardsUpdateAuxVars()
-  call GridGlobalToLocal(grid,xx,field%flow_xx_loc,NFLOWDOF)
+  call GridGlobalToLocal(grid,xx,field%tran_xx_loc,NTRANDOF)
   call GridLocalToLocal(grid,field%iphas_loc,field%iphas_loc,ONEDOF)
   call GridLocalToLocal(grid,field%icap_loc,field%icap_loc,ONEDOF)
 

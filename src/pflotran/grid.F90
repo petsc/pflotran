@@ -27,7 +27,8 @@ module Grid_module
 
   type, public :: grid_type
   
-    PetscInt :: igrid  ! type of grid (e.g. structured, unstructured, etc.)
+    character(len=MAXWORDLENGTH) :: ctype
+    PetscInt :: itype  ! type of grid (e.g. structured, unstructured, etc.)
     
     PetscInt :: nmax   ! Total number of nodes in global domain
     PetscInt :: nlmax  ! Total number of non-ghosted nodes in local domain.
@@ -49,9 +50,7 @@ module Grid_module
 
     Vec :: volume 
     
-    DM :: dm_1_dof, dm_nphase_dof, dm_3np_dof, dm_nflowdof, dm_nphancomp_dof, &
-          dm_nphanspec_dof, dm_nphanspecncomp_dof, dm_var_dof , &
-          dm_ntrandof
+    DM :: dm_1_dof, dm_nflowdof, dm_ntrandof
     
     PetscInt, pointer :: hash(:,:,:)
     PetscInt :: num_hash_bins
@@ -67,6 +66,7 @@ module Grid_module
 
   public :: GridCreate, &
             GridDestroy, &
+            GridRead, &
             GridComputeInternalConnect, &
             GridCreateVector, &
             GridDuplicateVector, &         
@@ -109,7 +109,7 @@ contains
 ! date: 10/23/07
 !
 ! ************************************************************************** !
-function GridCreate(igeom_)
+function GridCreate()
 
   implicit none
   
@@ -120,47 +120,8 @@ function GridCreate(igeom_)
   type(grid_type), pointer :: grid
   
   allocate(grid)
-  call initGrid(grid)
-  grid%igeom = igeom_
-  
-  select case(igeom_)
-    case(1,2,3)
-      grid%igrid = STRUCTURED
-      allocate(grid%structured_grid)
-      call StructuredGridInit(grid%structured_grid)
-      select case(igeom_)
-        case(1)
-          grid%structured_grid%igeom = STRUCTURED_CARTESIAN
-        case(2)
-          grid%structured_grid%igeom = STRUCTURED_CYLINDRICAL
-        case(3)
-          grid%structured_grid%igeom = STRUCTURED_SPHERICAL
-      end select
-    case(0)
-      grid%igrid = UNSTRUCTURED
-      allocate(grid%unstructured_grid)
-      call UnstructuredGridInit(grid%unstructured_grid)
-  end select
-  
-  GridCreate => grid
-
-end function GridCreate
-
-! ************************************************************************** !
-!
-! initGrid: Initializes the abstract grid object
-! author: Glenn Hammond
-! date: 10/23/07
-!
-! ************************************************************************** !
-subroutine initGrid(grid)
-
-  implicit none
-  
-  type(grid_type) :: grid
-  
-  grid%igeom = 0
-  grid%igrid = 0
+  grid%ctype = ''
+  grid%itype = 0
 
   nullify(grid%structured_grid)
   nullify(grid%unstructured_grid)
@@ -192,21 +153,100 @@ subroutine initGrid(grid)
   
   ! nullify DM pointers
   grid%dm_1_dof = 0
-  grid%dm_nphase_dof = 0
-  grid%dm_3np_dof = 0
   grid%dm_nflowdof = 0
   grid%dm_ntrandof = 0
-  grid%dm_nphancomp_dof = 0
-  grid%dm_nphanspec_dof = 0
-  grid%dm_nphanspecncomp_dof = 0
-  grid%dm_var_dof = 0
   
   grid%volume = 0
   
   nullify(grid%hash)
   grid%num_hash_bins = 1000
 
-end subroutine initGrid
+  GridCreate => grid
+
+end function GridCreate
+
+! ************************************************************************** !
+!
+! GridRead: Reads a grid from the input file
+! author: Glenn Hammond
+! date: 11/01/07
+!
+! ************************************************************************** !
+subroutine GridRead(grid,fid,option)
+
+  use Fileio_module
+  use Option_module
+  
+  implicit none
+  
+  type(option_type) :: option
+  type(grid_type) :: grid
+  PetscInt :: fid
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: word
+  PetscInt :: length
+  PetscInt :: nx, ny, nz
+  PetscErrorCode :: ierr
+
+  nx = 0
+  ny = 0
+  nz = 0
+
+  ierr = 0
+  do
+  
+    call fiReadFlotranString(IUNIT1,string,ierr)
+    if (ierr /= 0) exit
+
+    call fiReadWord(string,word,.true.,ierr)
+    call fiErrorMsg(option%myrank,'keyword','GRID', ierr)   
+    length = len_trim(word)
+    call fiCharsToUpper(word,length)
+      
+    select case(trim(word))
+      case('TYPE')
+        call fiReadWord(string,grid%ctype,.true.,ierr)
+        call fiErrorMsg(option%myrank,'type','GRID', ierr)   
+        length = len_trim(grid%ctype)
+        call fiCharsToLower(grid%ctype,length)
+        select case(trim(grid%ctype))
+          case('structured')
+            grid%itype = STRUCTURED_GRID
+          case('unstructured')
+            grid%itype = UNSTRUCTURED_GRID
+          case('amr')
+            grid%itype = AMR_GRID
+          case default
+            call printErrMsg(option,'Grid type: '//trim(grid%ctype)//' not recognized.')
+        end select    
+      case('NXYZ')
+        call fiReadInt(string,nx,ierr)
+        call fiErrorMsg(option%myrank,'nx','GRID', ierr)
+        call fiReadInt(string,ny,ierr)
+        call fiErrorMsg(option%myrank,'ny','GRID', ierr)
+        call fiReadInt(string,nz,ierr)
+        call fiErrorMsg(option%myrank,'nz','GRID', ierr)
+      case('FILE')
+      case('END')
+        exit
+    end select 
+  
+  enddo  
+
+  if (grid%itype == STRUCTURED_GRID) then ! structured
+    if (nx*ny*nz == 0) call printErrMsg(option,'NXYZ not set correctly for structured grid.')
+    grid%structured_grid => StructuredGridCreate()
+    grid%structured_grid%nx = nx
+    grid%structured_grid%ny = ny
+    grid%structured_grid%nz = nz
+    grid%structured_grid%nxy = grid%structured_grid%nx*grid%structured_grid%ny
+    grid%structured_grid%nmax = grid%structured_grid%nxy * &
+                                grid%structured_grid%nz
+    grid%nmax = grid%structured_grid%nmax
+  endif
+
+end subroutine GridRead
 
 ! ************************************************************************** !
 !
@@ -235,17 +275,8 @@ subroutine GridCreateDMs(grid,option)
   call GridCreateDM(grid,grid%dm_1_dof,ndof,stencil_width)
   
   if (option%nflowdof > 0) then
-    ndof = option%nphase
-    call GridCreateDM(grid,grid%dm_nphase_dof,ndof,stencil_width)
-
     ndof = option%nflowdof
     call GridCreateDM(grid,grid%dm_nflowdof,ndof,stencil_width)
-
-    select case(option%iflowmode) 
-      case(MPH_MODE)
-        ndof = (option%nflowdof+1)*(2+7*option%nphase + 2*option%nspec*option%nphase)
-        call GridCreateDM(grid,grid%dm_var_dof,ndof,stencil_width)
-    end select
   endif
   
   if (option%ntrandof > 0) then
@@ -253,11 +284,11 @@ subroutine GridCreateDMs(grid,option)
     call GridCreateDM(grid,grid%dm_ntrandof,ndof,stencil_width)
   endif
 
-  select case(grid%igrid)
-    case(STRUCTURED)
+  select case(grid%itype)
+    case(STRUCTURED_GRID)
       grid%nlmax = grid%structured_grid%nlmax
       grid%ngmax = grid%structured_grid%ngmax
-    case(UNSTRUCTURED)
+    case(UNSTRUCTURED_GRID)
   end select
 
   ! allocate coordinate arrays  
@@ -283,11 +314,11 @@ subroutine GridCreateDM(grid,dm,ndof,stencil_width)
   PetscInt :: ndof
   PetscInt :: stencil_width
   
-  select case(grid%igrid)
-    case(STRUCTURED)
+  select case(grid%itype)
+    case(STRUCTURED_GRID)
       call StructuredGridCreateDA(grid%structured_grid,dm,ndof, &
                                   stencil_width)
-    case(UNSTRUCTURED)
+    case(UNSTRUCTURED_GRID)
   end select
 
 end subroutine GridCreateDM
@@ -312,10 +343,10 @@ subroutine GridCreateVector(grid,dm_index,vector,vector_type)
   
   dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
   
-  select case(grid%igrid)
-    case(STRUCTURED)
+  select case(grid%itype)
+    case(STRUCTURED_GRID)
       call StructuredGridCreateVecFromDA(dm_ptr,vector,vector_type)
-    case(UNSTRUCTURED)
+    case(UNSTRUCTURED_GRID)
   end select
   
 end subroutine GridCreateVector
@@ -337,8 +368,8 @@ subroutine GridDuplicateVector(grid,vector1,vector2)
   
   PetscErrorCode :: ierr
   
-  select case(grid%igrid)
-    case(STRUCTURED,UNSTRUCTURED)
+  select case(grid%itype)
+    case(STRUCTURED_GRID,UNSTRUCTURED_GRID)
       call VecDuplicate(vector1,vector2,ierr)
   end select
   
@@ -363,22 +394,10 @@ function GridGetDMPtrFromIndex(grid,dm_index)
   select case (dm_index)
     case(ONEDOF)
       GridGetDMPtrFromIndex = grid%dm_1_dof
-    case(NPHASEDOF)
-      GridGetDMPtrFromIndex = grid%dm_nphase_dof
-    case(THREENPDOF)
-      GridGetDMPtrFromIndex = grid%dm_3np_dof
     case(NFLOWDOF)
       GridGetDMPtrFromIndex = grid%dm_nflowdof
     case(NTRANDOF)
       GridGetDMPtrFromIndex = grid%dm_ntrandof
-    case(NPHANCOMPDOF)
-      GridGetDMPtrFromIndex = grid%dm_nphancomp_dof
-    case(NPHANSPECDOF)
-      GridGetDMPtrFromIndex = grid%dm_nphanspec_dof
-    case(NPHANSPECNCOMPDOF)
-      GridGetDMPtrFromIndex = grid%dm_nphanspecncomp_dof
-    case(VARDOF)
-      GridGetDMPtrFromIndex = grid%dm_var_dof
 
   end select  
   
@@ -403,11 +422,11 @@ subroutine GridComputeInternalConnect(grid,option)
   
   type(connection_type), pointer :: connection
   
-  select case(grid%igrid)
-    case(STRUCTURED)
+  select case(grid%itype)
+    case(STRUCTURED_GRID)
       connection => &
         StructGridComputeInternConnect(grid%structured_grid,option)
-    case(UNSTRUCTURED) 
+    case(UNSTRUCTURED_GRID) 
       connection => &
         UnstGridComputeInternConnect(grid%unstructured_grid,option)
   end select
@@ -445,11 +464,11 @@ subroutine GridPopulateConnection(grid,connection,iface,iconn,cell_id_local)
   ! already done a global-to-local scatter for computing the
   ! interior node connections.
   
-  select case(grid%igrid)
-    case(STRUCTURED)
+  select case(grid%itype)
+    case(STRUCTURED_GRID)
       call StructGridPopulateConnection(grid%structured_grid,connection, &
                                         iface,iconn,cell_id_ghosted)
-    case(UNSTRUCTURED)
+    case(UNSTRUCTURED_GRID)
   end select
 
 end subroutine GridPopulateConnection
@@ -468,11 +487,11 @@ subroutine GridMapIndices(grid)
   
   type(grid_type) :: grid
   
-  select case(grid%igrid)
-    case(STRUCTURED)
+  select case(grid%itype)
+    case(STRUCTURED_GRID)
       call StructuredGridMapIndices(grid%structured_grid,grid%nG2L,grid%nL2G, &
                                     grid%nL2A,grid%nG2A,grid%nG2N)
-    case(UNSTRUCTURED)
+    case(UNSTRUCTURED_GRID)
   end select
   
 end subroutine GridMapIndices
@@ -490,10 +509,10 @@ subroutine GridComputeSpacing(grid)
   
   type(grid_type) :: grid
   
-  select case(grid%igrid)
-    case(STRUCTURED)
+  select case(grid%itype)
+    case(STRUCTURED_GRID)
       call StructuredGridComputeSpacing(grid%structured_grid,grid%nL2A)
-    case(UNSTRUCTURED)
+    case(UNSTRUCTURED_GRID)
   end select
   
 end subroutine GridComputeSpacing
@@ -514,13 +533,13 @@ subroutine GridComputeCoordinates(grid,option)
   type(grid_type) :: grid
   type(option_type) :: option
   
-  select case(grid%igrid)
-    case(STRUCTURED)
+  select case(grid%itype)
+    case(STRUCTURED_GRID)
       call StructuredGridComputeCoord(grid%structured_grid,option, &
                                       grid%origin,grid%x,grid%y,grid%z, &
                                       grid%x_min,grid%x_max,grid%y_min, &
                                       grid%y_max,grid%z_min,grid%z_max)
-    case(UNSTRUCTURED)
+    case(UNSTRUCTURED_GRID)
   end select
 
 end subroutine GridComputeCoordinates
@@ -541,11 +560,11 @@ subroutine GridComputeVolumes(grid,option)
   type(grid_type) :: grid
   type(option_type) :: option
   
-  select case(grid%igrid)
-    case(STRUCTURED)
+  select case(grid%itype)
+    case(STRUCTURED_GRID)
       call StructuredGridComputeVolumes(grid%structured_grid,option, &
                                         grid%nL2G,grid%volume)
-    case(UNSTRUCTURED)
+    case(UNSTRUCTURED_GRID)
   end select
 
 end subroutine GridComputeVolumes
@@ -572,10 +591,10 @@ subroutine GridCreateJacobian(grid,dm_index,Jacobian,option)
   
   dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
     
-  select case(grid%igrid)
-    case(STRUCTURED)
+  select case(grid%itype)
+    case(STRUCTURED_GRID)
       call StructuredGridCreateJacobian(dm_ptr,Jacobian,option)
-    case(UNSTRUCTURED)
+    case(UNSTRUCTURED_GRID)
   end select
 
 end subroutine GridCreateJacobian
@@ -605,10 +624,10 @@ subroutine GridCreateColoring(grid,dm_index,option,coloring)
   
   dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
     
-  select case(grid%igrid)
-    case(STRUCTURED)
+  select case(grid%itype)
+    case(STRUCTURED_GRID)
       call StructuredGridCreateColoring(dm_ptr,option,coloring)
-    case(UNSTRUCTURED)
+    case(UNSTRUCTURED_GRID)
   end select
   
 end subroutine GridCreateColoring
@@ -635,10 +654,10 @@ subroutine GridGlobalToLocal(grid,global_vec,local_vec,dm_index)
   
   dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
     
-  select case(grid%igrid)
-    case(STRUCTURED)
+  select case(grid%itype)
+    case(STRUCTURED_GRID)
       call StructureGridGlobalToLocal(dm_ptr,global_vec,local_vec)
-    case(UNSTRUCTURED)
+    case(UNSTRUCTURED_GRID)
   end select
   
 end subroutine GridGlobalToLocal
@@ -665,10 +684,10 @@ subroutine GridLocalToGlobal(grid,local_vec,global_vec,dm_index)
   
   dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
   
-  select case(grid%igrid)
-    case(STRUCTURED)
+  select case(grid%itype)
+    case(STRUCTURED_GRID)
       call StructureGridLocalToGlobal(dm_ptr,local_vec,global_vec)
-    case(UNSTRUCTURED)
+    case(UNSTRUCTURED_GRID)
   end select
   
 end subroutine GridLocalToGlobal
@@ -692,10 +711,10 @@ subroutine GridLocalToLocal(grid,local_vec1,local_vec2,dm_index)
   
   dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
   
-  select case(grid%igrid)
-    case(STRUCTURED)
+  select case(grid%itype)
+    case(STRUCTURED_GRID)
       call StructureGridLocalToLocal(dm_ptr,local_vec1,local_vec2)
-    case(UNSTRUCTURED)
+    case(UNSTRUCTURED_GRID)
   end select
   
 end subroutine GridLocalToLocal
@@ -719,10 +738,10 @@ subroutine GridGlobalToNatural(grid,global_vec,natural_vec,dm_index)
   
   dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
   
-  select case(grid%igrid)
-    case(STRUCTURED)
+  select case(grid%itype)
+    case(STRUCTURED_GRID)
       call StructureGridGlobalToNatural(dm_ptr,global_vec,natural_vec)
-    case(UNSTRUCTURED)
+    case(UNSTRUCTURED_GRID)
   end select
   
 end subroutine GridGlobalToNatural
@@ -746,10 +765,10 @@ subroutine GridNaturalToGlobal(grid,natural_vec,global_vec,dm_index)
   
   dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
   
-  select case(grid%igrid)
-    case(STRUCTURED)
+  select case(grid%itype)
+    case(STRUCTURED_GRID)
       call StructureGridNaturalToGlobal(dm_ptr,natural_vec,global_vec)
-    case(UNSTRUCTURED)
+    case(UNSTRUCTURED_GRID)
   end select
   
 end subroutine GridNaturalToGlobal
@@ -776,10 +795,10 @@ subroutine GridGlobalToLocalBegin(grid,global_vec,local_vec,dm_index)
   
   dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
   
-  select case(grid%igrid)
-    case(STRUCTURED)
+  select case(grid%itype)
+    case(STRUCTURED_GRID)
       call StructureGridGlobalToLocalBegin(dm_ptr,global_vec,local_vec)
-    case(UNSTRUCTURED)
+    case(UNSTRUCTURED_GRID)
   end select
   
 end subroutine GridGlobalToLocalBegin
@@ -806,10 +825,10 @@ subroutine GridGlobalToLocalEnd(grid,global_vec,local_vec,dm_index)
   
   dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
   
-  select case(grid%igrid)
-    case(STRUCTURED)
+  select case(grid%itype)
+    case(STRUCTURED_GRID)
       call StructureGridGlobalToLocalEnd(dm_ptr,global_vec,local_vec)
-    case(UNSTRUCTURED)
+    case(UNSTRUCTURED_GRID)
   end select
   
 end subroutine GridGlobalToLocalEnd
@@ -833,10 +852,10 @@ subroutine GridLocalToLocalBegin(grid,local_vec1,local_vec2,dm_index)
   
   dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
   
-  select case(grid%igrid)
-    case(STRUCTURED)
+  select case(grid%itype)
+    case(STRUCTURED_GRID)
       call StructureGridLocalToLocalBegin(dm_ptr,local_vec1,local_vec2)
-    case(UNSTRUCTURED)
+    case(UNSTRUCTURED_GRID)
   end select
   
 end subroutine GridLocalToLocalBegin
@@ -860,10 +879,10 @@ subroutine GridLocalToLocalEnd(grid,local_vec1,local_vec2,dm_index)
   
   dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
   
-  select case(grid%igrid)
-    case(STRUCTURED)
+  select case(grid%itype)
+    case(STRUCTURED_GRID)
       call StructureGridLocalToLocalEnd(dm_ptr,local_vec1,local_vec2)
-    case(UNSTRUCTURED)
+    case(UNSTRUCTURED_GRID)
   end select
   
 end subroutine GridLocalToLocalEnd
@@ -887,10 +906,10 @@ subroutine GridGlobalToNaturalBegin(grid,global_vec,natural_vec,dm_index)
   
   dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
   
-  select case(grid%igrid)
-    case(STRUCTURED)
+  select case(grid%itype)
+    case(STRUCTURED_GRID)
       call StructureGridGlobalToNaturBegin(dm_ptr,global_vec,natural_vec)
-    case(UNSTRUCTURED)
+    case(UNSTRUCTURED_GRID)
   end select
   
 end subroutine GridGlobalToNaturalBegin
@@ -914,10 +933,10 @@ subroutine GridGlobalToNaturalEnd(grid,global_vec,natural_vec,dm_index)
   
   dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
   
-  select case(grid%igrid)
-    case(STRUCTURED)
+  select case(grid%itype)
+    case(STRUCTURED_GRID)
       call StructureGridGlobalToNaturEnd(dm_ptr,global_vec,natural_vec)
-    case(UNSTRUCTURED)
+    case(UNSTRUCTURED_GRID)
   end select
   
 end subroutine GridGlobalToNaturalEnd
@@ -941,10 +960,10 @@ subroutine GridNaturalToGlobalBegin(grid,natural_vec,global_vec,dm_index)
   
   dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
   
-  select case(grid%igrid)
-    case(STRUCTURED)
+  select case(grid%itype)
+    case(STRUCTURED_GRID)
       call StructureGridNaturToGlobalBegin(dm_ptr,natural_vec,global_vec)
-    case(UNSTRUCTURED)
+    case(UNSTRUCTURED_GRID)
   end select
   
 end subroutine GridNaturalToGlobalBegin
@@ -968,10 +987,10 @@ subroutine GridNaturalToGlobalEnd(grid,natural_vec,global_vec,dm_index)
   
   dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
   
-  select case(grid%igrid)
-    case(STRUCTURED)
+  select case(grid%itype)
+    case(STRUCTURED_GRID)
       call StructureGridNaturToGlobalEnd(dm_ptr,natural_vec,global_vec)
-    case(UNSTRUCTURED)
+    case(UNSTRUCTURED_GRID)
   end select
   
 end subroutine GridNaturalToGlobalEnd
@@ -983,7 +1002,7 @@ end subroutine GridNaturalToGlobalEnd
 ! date: 10/29/07
 !
 ! ************************************************************************** !
-subroutine GridLocalizeRegions(region_list,grid,option)
+subroutine GridLocalizeRegions(grid,region_list,option)
 
   use Option_module
   use Region_module
@@ -992,7 +1011,7 @@ subroutine GridLocalizeRegions(region_list,grid,option)
   
   type(region_list_type), pointer :: region_list
   type(grid_type), pointer :: grid
-  type(option_type), pointer :: option
+  type(option_type) :: option
   
   type(region_type), pointer :: region
   PetscInt, allocatable :: temp_int_array(:)
@@ -1059,7 +1078,7 @@ subroutine GridLocalizeRegions(region_list,grid,option)
 #if 0
       allocate(temp_int_array(region%num_cells))
       temp_int_array = 0
-      if (grid%igrid == STRUCTURED) then
+      if (grid%itype == STRUCTURED) then
         do count=1,region%num_cells
           i = mod(region%cell_ids(count),grid%structured_grid%nx) - &
                 grid%structured_grid%nxs
@@ -1455,27 +1474,15 @@ subroutine GridDestroy(grid)
   
   if (associated(grid%hash)) call GridDestroyHashTable(grid)
 
-  select case(grid%igrid)
-    case(STRUCTURED)
+  select case(grid%itype)
+    case(STRUCTURED_GRID)
       if (grid%dm_1_dof /= 0) &
         call StructuredGridDestroyDA(grid%dm_1_dof)
-      if (grid%dm_nphase_dof /= 0) &
-        call StructuredGridDestroyDA(grid%dm_nphase_dof)
-      if (grid%dm_3np_dof /= 0) &
-        call StructuredGridDestroyDA(grid%dm_3np_dof)
       if (grid%dm_nflowdof /= 0) &
         call StructuredGridDestroyDA(grid%dm_nflowdof)
-      if (grid%dm_nphancomp_dof /= 0) &
-        call StructuredGridDestroyDA(grid%dm_nphancomp_dof)
-      if (grid%dm_nphanspec_dof /= 0) &
-        call StructuredGridDestroyDA(grid%dm_nphanspec_dof)
-      if (grid%dm_nphanspecncomp_dof /= 0) &
-        call StructuredGridDestroyDA(grid%dm_nphanspecncomp_dof)
-      if (grid%dm_var_dof /= 0) &
-        call StructuredGridDestroyDA(grid%dm_var_dof)
       if (grid%dm_ntrandof /= 0) &
         call StructuredGridDestroyDA(grid%dm_ntrandof)
-    case(UNSTRUCTURED)
+    case(UNSTRUCTURED_GRID)
   end select
   
   call UnstructuredGridDestroy(grid%unstructured_grid)    

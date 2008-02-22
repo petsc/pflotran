@@ -33,7 +33,10 @@ module Strata_module
     type(strata_ptr_type), pointer :: array(:)    
   end type strata_list_type
   
-  PetscInt, save :: num_strata = 0
+  interface StrataCreate
+    module procedure StrataCreate1
+    module procedure StrataCreateFromStrata
+  end interface
   
   public :: StrataCreate, StrataDestroy, StrataInitList, &
             StrataAddToList, StrataRead, StrataDestroyList
@@ -42,16 +45,16 @@ contains
 
 ! ************************************************************************** !
 !
-! StrataCreate: Creates a strata
+! StrataCreate1: Creates a strata
 ! author: Glenn Hammond
 ! date: 10/23/07
 !
 ! ************************************************************************** !
-function StrataCreate()
+function StrataCreate1()
 
   implicit none
 
-  type(strata_type), pointer :: StrataCreate
+  type(strata_type), pointer :: StrataCreate1
   
   type(strata_type), pointer :: strata
   
@@ -66,12 +69,42 @@ function StrataCreate()
   nullify(strata%material)
   nullify(strata%next)
   
-  num_strata = num_strata + 1
-  strata%id = num_strata
-  
-  StrataCreate => strata
+  StrataCreate1 => strata
 
-end function StrataCreate
+end function StrataCreate1
+
+! ************************************************************************** !
+!
+! StrataCreateFromStrata: Creates a strata
+! author: Glenn Hammond
+! date: 10/23/07
+!
+! ************************************************************************** !
+function StrataCreateFromStrata(strata)
+
+  implicit none
+
+  type(strata_type), pointer :: StrataCreateFromStrata
+  type(strata_type), pointer :: strata
+
+  type(strata_type), pointer :: new_strata
+  
+  new_strata => StrataCreate1()
+  
+  new_strata%id = strata%id
+  new_strata%active = strata%active
+  new_strata%material_name = strata%material_name
+  new_strata%region_name = strata%region_name
+  new_strata%iregion = strata%iregion
+
+  ! keep these null
+  nullify(new_strata%region)
+  nullify(new_strata%material)
+  nullify(new_strata%next)
+  
+  StrataCreateFromStrata => new_strata
+
+end function StrataCreateFromStrata
 
 ! ************************************************************************** !
 !

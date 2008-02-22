@@ -83,10 +83,11 @@ subroutine PflowInit(simulation,filename)
   nullify(tran_solver)
   
   ! read MODE,GRID,PROC,COMP,PHAS cards
-  call readRequiredCardsFromInput(realization,filename,mcomp,mphas)
+  call readRequiredCardsFromInput(realization,filename)
+
   patch => realization%patch
   grid => patch%grid
-
+  
   ! process command line options
   call OptionCheckCommandLine(option)
 
@@ -94,30 +95,10 @@ subroutine PflowInit(simulation,filename)
   realization%waypoints => waypoint_list
   
   ! initialize flow mode
-  if (option%nflowdof > 0) then
+  if (len_trim(option%flowmode) > 0) then
     ! set the operational mode (e.g. RICHARDS_MODE, MPH_MODE, etc)
-    call setFlowMode(option,mcomp,mphas)
+    call setFlowMode(option)
     flow_solver => flow_stepper%solver
-  ! check number of dofs and phases
-    if (option%nflowdof > 0) then
-      iflag = PETSC_FALSE
-      select case(option%iflowmode)
-        case(MPH_MODE,RICHARDS_MODE)
-          if (option%nflowdof .ne. (option%nspec+1)) iflag = PETSC_TRUE
-        case(RICHARDS_LITE_MODE)
-          if (option%nflowdof /= 1 .and. option%nphase /= 1 .and. option%nspec /= 1) &
-            iflag = PETSC_TRUE
-        case default
-          if (option%nflowdof .ne. 1 .or. option%nphase .ne. 1) iflag = PETSC_TRUE
-      end select
-      
-      if (iflag == PETSC_TRUE) then
-        write(*,*) 'Specified number of dofs or phases not correct-stop: ', &
-                   trim(option%flowmode), 'ndof= ',option%nflowdof,' nph= ', &
-                   option%nphase
-        stop
-      endif
-    endif
   else
     call TimestepperDestroy(simulation%flow_stepper)
   endif
@@ -129,85 +110,17 @@ subroutine PflowInit(simulation,filename)
     call TimestepperDestroy(simulation%tran_stepper)
   endif
 
-  call GridCreateDMs(grid,option)
-  
- !-----------------------------------------------------------------------
- ! Create the vectors with parallel layout corresponding to the DM's,
- ! and, for vectors that need to be ghosted, create the corresponding
- ! ghosted vectors.
- !-----------------------------------------------------------------------
-
-  ! 1 degree of freedom, global
-  call GridCreateVector(grid,ONEDOF,field%porosity0,GLOBAL)
-  call GridDuplicateVector(grid,field%porosity0, grid%volume)
-  
-  ! 1 degree of freedom, local
-  call GridCreateVector(grid,ONEDOF,field%porosity_loc,LOCAL)
-  call GridDuplicateVector(grid,field%porosity_loc, field%tor_loc)
-  
-  if (associated(grid%structured_grid)) then
-    call GridDuplicateVector(grid,field%porosity0, grid%structured_grid%dx)
-    call GridDuplicateVector(grid,field%porosity0, grid%structured_grid%dy)
-    call GridDuplicateVector(grid,field%porosity0, grid%structured_grid%dz)
-
-    call GridDuplicateVector(grid,field%porosity_loc, grid%structured_grid%dx_loc)
-    call GridDuplicateVector(grid,field%porosity_loc, grid%structured_grid%dy_loc)
-    call GridDuplicateVector(grid,field%porosity_loc, grid%structured_grid%dz_loc)
-  endif
-
-  if (option%nflowdof > 0) then
-
-    ! 1-dof global  
-    call GridDuplicateVector(grid,field%porosity0, field%perm0_xx)
-    call GridDuplicateVector(grid,field%porosity0, field%perm0_yy)
-    call GridDuplicateVector(grid,field%porosity0, field%perm0_zz)
-    call GridDuplicateVector(grid,field%porosity0, field%perm_pow)
-
-    ! 1-dof local
-    call GridDuplicateVector(grid,field%porosity_loc, field%ithrm_loc)
-    call GridDuplicateVector(grid,field%porosity_loc, field%icap_loc)
-    call GridDuplicateVector(grid,field%porosity_loc, field%iphas_loc)
-    call GridDuplicateVector(grid,field%porosity_loc, field%iphas_old_loc)
-    call GridDuplicateVector(grid,field%porosity_loc, field%perm_xx_loc)
-    call GridDuplicateVector(grid,field%porosity_loc, field%perm_yy_loc)
-    call GridDuplicateVector(grid,field%porosity_loc, field%perm_zz_loc)
-
-    ! ndof degrees of freedom, global
-    call GridCreateVector(grid,NFLOWDOF, field%flow_xx, GLOBAL)
-    call GridDuplicateVector(grid,field%flow_xx, field%flow_yy)
-    call GridDuplicateVector(grid,field%flow_xx, field%flow_dxx)
-    call GridDuplicateVector(grid,field%flow_xx, field%flow_r)
-    call GridDuplicateVector(grid,field%flow_xx, field%flow_accum)
-
-    ! ndof degrees of freedom, local
-    call GridCreateVector(grid,NFLOWDOF, field%flow_xx_loc, LOCAL)
-  endif
-
-  if (option%ntrandof > 0) then
-    ! ndof degrees of freedom, global
-    call GridCreateVector(grid,NTRANDOF, field%tran_xx, GLOBAL)
-    call GridDuplicateVector(grid,field%tran_xx, field%tran_yy)
-    call GridDuplicateVector(grid,field%tran_xx, field%tran_dxx)
-    call GridDuplicateVector(grid,field%tran_xx, field%tran_r)
-    call GridDuplicateVector(grid,field%tran_xx, field%tran_accum)
-
-    call GridDuplicateVector(grid,field%porosity_loc, field%saturation_loc)
-    
-    ! ndof degrees of freedom, local
-    call GridCreateVector(grid,NTRANDOF, field%tran_xx_loc, LOCAL)
-  endif
-
-  ! set up nG2L, NL2G, etc.
-  call GridMapIndices(grid)
-
   ! read in the remainder of the input file
   call readInput(simulation,filename)
 
+  ! create grid and allocate vectors
+  call RealizationCreateDiscretization(realization)
+  
   if (option%myrank == 0) then
     ! general print statements for both flow and transport modes
     write(*,'(/,"++++++++++++++++++++++++++++++++++++++++++++++++++++&
       &++++++++")')
-    if (grid%igrid == STRUCTURED) then
+    if (realization%discretization == STRUCTURED_GRID) then
       write(*,'(" number of processors = ",i5,", npx,y,z= ",3i5)') &
         option%commsize,grid%structured_grid%npx,grid%structured_grid%npy, &
         grid%structured_grid%npz
@@ -304,37 +217,16 @@ subroutine PflowInit(simulation,filename)
   if (option%myrank == 0) write(*,'("++++++++++++++++++++++++++++++++&
                      &++++++++++++++++++++++++++++",/)')
 
-  call GridComputeSpacing(grid)
-  call GridComputeCoordinates(grid,option)
-  call GridComputeVolumes(grid,option)
 
   ! read any regions provided in external files
   call readRegionFiles(realization)
   ! clip regions and set up boundary connectivity, distance  
-  call GridLocalizeRegions(realization%regions,patch%grid,realization%option)
-
-  ! set up internal connectivity, distance, etc.
-  call GridComputeInternalConnect(grid,option)
+  call RealizationLocalizeRegions(realization)
+  ! link conditions with regions through couplers and generate connectivity
   call RealizationProcessCouplers(realization)
-
-  ! connectivity between initial conditions, boundary conditions, srcs/sinks, etc and grid
-  call CouplerListComputeConnections(grid,option, &
-                                     patch%flow_initial_conditions)
-  call CouplerListComputeConnections(grid,option, &
-                                     patch%flow_boundary_conditions)
-  call CouplerListComputeConnections(grid,option, &
-                                     patch%flow_source_sinks)
-                                
-  call CouplerListComputeConnections(grid,option, &
-                                     patch%transport_initial_conditions)
-  call CouplerListComputeConnections(grid,option, &
-                                     patch%transport_boundary_conditions)
-  call CouplerListComputeConnections(grid,option, &
-                                     patch%transport_source_sinks)
-
   call assignMaterialPropToRegions(realization)
   call RealizationInitAllCouplerAuxVars(realization)
-  call assignInitialConditions(realization)
+  call RealizAssignInitialConditions(realization)
 
   ! should we still support this
   if (option%use_generalized_grid) then 
@@ -344,26 +236,10 @@ subroutine PflowInit(simulation,filename)
     call ReadStructuredGridHDF5(realization)
   endif
   
-  allocate(realization%patch%internal_velocities(option%nphase, &
-           ConnectionGetNumberInList(patch%grid%internal_connection_list)))
-  realization%patch%internal_velocities = 0.d0
-  if (option%nflowdof > 0) then
-    temp_int = CouplerGetNumConnectionsInList(patch%flow_boundary_conditions)
-  else
-    temp_int = CouplerGetNumConnectionsInList(patch%transport_boundary_conditions)
-  endif
-  allocate(realization%patch%boundary_velocities(option%nphase,temp_int)) 
-  realization%patch%boundary_velocities = 0.d0          
-
   call printMsg(option,"  Finished setting up ")
 
   if (debug%print_couplers) then
-    call verifyCouplers(realization,patch%flow_initial_conditions)
-    call verifyCouplers(realization,patch%flow_boundary_conditions)
-    call verifyCouplers(realization,patch%flow_source_sinks)
-    call verifyCouplers(realization,patch%transport_initial_conditions)
-    call verifyCouplers(realization,patch%transport_boundary_conditions)
-    call verifyCouplers(realization,patch%transport_source_sinks)
+    call verifyAllCouplers(realization)
   endif
   
   ! add waypoints associated with boundary conditions, source/sinks etc. to list
@@ -392,7 +268,7 @@ subroutine PflowInit(simulation,filename)
   if (option%ntrandof > 0) then
     if (abs(option%uniform_velocity(1)) + abs(option%uniform_velocity(2)) + &
         abs(option%uniform_velocity(3)) >  0.d0) then
-      call assignUniformVelocity(realization)
+      call RealizAssignUniformVelocity(realization)
     endif
     call VecSet(field%saturation_loc,1.d0,ierr)
     call RTSetup(realization)
@@ -409,19 +285,20 @@ end subroutine PflowInit
 ! date: 10/23/07
 !
 ! **************************************************************************
-subroutine readRequiredCardsFromInput(realization,filename,mcomp,mphas)
+subroutine readRequiredCardsFromInput(realization,filename)
 
   use Option_module
   use Grid_module
   use Fileio_module
   use Patch_module
+  use Level_module
   use Realization_module
   
   implicit none
 
   type(realization_type) :: realization
   character(len=MAXWORDLENGTH) :: filename
-  PetscInt :: mcomp, mphas, idum
+  PetscInt ::  idum
 
   PetscErrorCode :: ierr
   character(len=MAXSTRINGLENGTH) :: string
@@ -430,19 +307,15 @@ subroutine readRequiredCardsFromInput(realization,filename,mcomp,mphas)
   character(len=MAXCARDLENGTH) :: card
   
   type(patch_type), pointer :: patch 
+  type(level_type), pointer :: level
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
-  
-  PetscInt :: igeom
   
   patch => realization%patch
   option => realization%option
   
   open(IUNIT1, file=filename, action="read", status="old") 
   open(IUNIT2, file='pflow.out', action="write", status="unknown")
-
-  mphas=0
-  mcomp = 0
 
 ! Read in select required cards
 !.........................................................................
@@ -467,74 +340,26 @@ subroutine readRequiredCardsFromInput(realization,filename,mcomp,mphas)
   call fiFindStringInFile(IUNIT1,string,ierr)
   call fiFindStringErrorMsg(option%myrank,string,ierr)
 
-  ! strip card from front of string
-  call fiReadWord(string,word,.false.,ierr)
- 
-  ! key off igeom for structured vs unstructured 
-  call fiReadInt(string,igeom,ierr)
-  call fiDefaultMsg(option%myrank,'igeom',ierr)
+  patch => PatchCreate()
+  grid => GridCreate()
+  call GridRead(grid,IUNIT1,option)
   
-  patch%grid => GridCreate(igeom) 
-  grid => patch%grid
-
-  if (grid%igrid == STRUCTURED) then ! structured
-    call fiReadInt(string,grid%structured_grid%nx,ierr)
-    call fiDefaultMsg(option%myrank,'nx',ierr)
-    
-    call fiReadInt(string,grid%structured_grid%ny,ierr)
-    call fiDefaultMsg(option%myrank,'ny',ierr)
-    
-    call fiReadInt(string,grid%structured_grid%nz,ierr)
-    call fiDefaultMsg(option%myrank,'nz',ierr)
-    
-    grid%structured_grid%nxy = grid%structured_grid%nx*grid%structured_grid%ny
-    grid%structured_grid%nmax = grid%structured_grid%nxy * &
-                                grid%structured_grid%nz
-    grid%nmax = grid%structured_grid%nmax
-  else ! unstructured
-  endif
-      
-  call fiReadInt(string,option%nphase,ierr)
-  call fiDefaultMsg(option%myrank,'nphase',ierr)
-
-  call fiReadInt(string,option%nspec,ierr)
-  call fiDefaultMsg(option%myrank,'nspec',ierr)
-
-  call fiReadInt(string,idum,ierr)
-  call fiDefaultMsg(option%myrank,'npricomp',ierr)
-
-  call fiReadInt(string,option%nflowdof,ierr)
-  call fiDefaultMsg(option%myrank,'ndof',ierr)
-  if (len_trim(option%flowmode) < 1) option%nflowdof = 0
-      
-  call fiReadInt(string,idum,ierr)
-  call fiDefaultMsg(option%myrank,'idcdm',ierr)
-
-  call fiReadInt(string,option%itable,ierr)
-  call fiDefaultMsg(option%myrank,'itable',ierr)
-
-  if (option%myrank==0) then
-    idum = 0
-    if (grid%igrid == STRUCTURED) then
-      write(IUNIT2,'(/," *GRID ",/, &
-        &"  igeom   = ",i4,/, &
-        &"  nx      = ",i4,/, &
-        &"  ny      = ",i4,/, &
-        &"  nz      = ",i4,/, &
-        &"  nphase  = ",i4,/, &
-        &"  ndof    = ",i4,/, &
-        &"  idcdm   = ",i4,/, &
-        &"  itable  = ",i4    &
-        &   )') grid%igeom, grid%structured_grid%nx, &
-                grid%structured_grid%ny, grid%structured_grid%nz, &
-                option%nphase, option%nflowdof, idum, option%itable
-    else
-    endif
-  endif
-
+  select case(grid%itype)
+    case(STRUCTURED_GRID,UNSTRUCTURED_GRID)
+      patch%grid => grid
+      if (.not.associated(realization%level_list)) then
+        realization%level_list => LevelCreateList()
+      endif
+      level => LevelCreate()
+      call LevelAddToList(level,realization%level_list)
+      level%patch_list => PatchCreateList()
+      call PatchAddToList(patch,level%patch_list)
+      realization%patch => patch
+      realization%discretization = grid%itype
+  end select
 !.........................................................................
 
-  if (grid%igrid == STRUCTURED) then  ! look for processor decomposition
+  if (realization%discretization == STRUCTURED_GRID) then  ! look for processor decomposition
     
     ! PROC information
     string = "PROC"
@@ -577,36 +402,7 @@ subroutine readRequiredCardsFromInput(realization,filename,mcomp,mphas)
   call fiFindStringInFile(IUNIT1,string,ierr)
 
   if (ierr == 0) then
-
-    mcomp = 0
-    do
-      call fiReadFlotranString(IUNIT1,string,ierr)
-      call fiReadStringErrorMsg(option%myrank,'COMP',ierr)
-      
-      if (string(1:1) == '.' .or. string(1:1) == '/') exit
-
-      call fiReadWord(string,name,.true.,ierr)
-      call fiErrorMsg(option%myrank,'namcx','GAS',ierr)
-        
-      call fiWordToUpper(name) 
-      select case(name(1:len_trim(name)))
-        case('H2O')
-            mcomp = mcomp +1
-        case('TRACER')     
-            mcomp = mcomp +4
-        case('CO2')
-            mcomp = mcomp +2   
-        case('C10H22')
-            mcomp = mcomp +8
-        case('AIR')              
-            mcomp = mcomp +16
-        case('ENG')
-            mcomp = mcomp +32
-        case default               
-           print *,' Wrong comp name::  Stop:' 
-           stop
-      end select 
-    enddo
+    ! enter src here
   endif          
 
 !....................................................................
@@ -616,37 +412,7 @@ subroutine readRequiredCardsFromInput(realization,filename,mcomp,mphas)
   call fiFindStringInFile(IUNIT1,string,ierr)
 
   if (ierr == 0) then
-
-    mphas = 0
-    do
-      call fiReadFlotranString(IUNIT1,string,ierr)
-      call fiReadStringErrorMsg(option%myrank,'phase',ierr)
-    
-      if (string(1:1) == '.' .or. string(1:1) == '/') exit
-
-      call fiReadWord(string,name,.true.,ierr)
-      call fiErrorMsg(option%myrank,'namcx','phase',ierr)
-        
-      call fiWordToUpper(name) 
-         
-      select case(name(1:len_trim(name)))
-        case('ROCK')
-          mphas = mphas +1
-        case('H2O')     
-          mphas = mphas +2
-        case('CO2')
-          mphas = mphas +4   
-        case('GAS')
-          mphas = mphas +8
-        case('NAPL1')              
-          mphas = mphas +16
-        case('NAPL2')
-          mphas = mphas +32
-        case default               
-          print *,' Wrong phase name::  Stop:' 
-          stop
-      end select 
-    enddo
+    ! enter src here
   endif
 
 !....................................................................
@@ -801,7 +567,8 @@ subroutine readInput(simulation,filename)
 
 !....................
       case ('GRID')
-      
+        call fiSkipToEND(IUNIT1,option%myrank,card)
+
 !....................
       case ('TRAN')
 
@@ -829,52 +596,9 @@ subroutine readInput(simulation,filename)
 !....................
       case ('REGION','REGN')
         region => RegionCreate()
-#if 0        
-        call fiReadWord(string,region%name,.true.,ierr)
-        call fiErrorMsg(option%myrank,'regn','name',ierr) 
-        call printMsg(option,region%name)
-        call fiReadFlotranString(IUNIT1,string,ierr)
-        call fiReadStringErrorMsg(option%myrank,'REGN',ierr)
-        call fiReadWord(string,word,.true.,ierr)
-        call fiErrorMsg(option%myrank,'type','REGN', ierr)
-        if (fiStringCompare(word,"BLOCK",FIVE_INTEGER)) then ! block region
-          if (grid%igrid /= STRUCTURED) then
-            call printErrMsg(option,"BLOCK region not supported for &
-                             &unstructured grid")
-          endif
-          call fiReadFlotranString(IUNIT1,string,ierr)
-          call fiReadStringErrorMsg(option%myrank,'REGN',ierr)
-          call fiReadInt(string,region%i1,ierr) 
-          call fiErrorMsg(option%myrank,'i1','REGN', ierr)
-          call fiReadInt(string,region%i2,ierr)
-          call fiErrorMsg(option%myrank,'i2','REGN', ierr)
-          call fiReadInt(string,region%j1,ierr)
-          call fiErrorMsg(option%myrank,'j1','REGN', ierr)
-          call fiReadInt(string,region%j2,ierr)
-          call fiErrorMsg(option%myrank,'j2','REGN', ierr)
-          call fiReadInt(string,region%k1,ierr)
-          call fiErrorMsg(option%myrank,'k1','REGN', ierr)
-          call fiReadInt(string,region%k2,ierr)
-          call fiErrorMsg(option%myrank,'k2','REGN', ierr)
-        else if (fiStringCompare(word,"LIST",FOUR_INTEGER)) then
-          word = ""
-          call fiReadWord(string,word,.true.,ierr)
-          if (fiStringCompare(word,"file",FOUR_INTEGER)) then
-!            call fiReadFlotranString(IUNIT1,string,ierr)
-            call fiReadStringErrorMsg(option%myrank,'REGN',ierr)
-            call fiReadWord(string,word,.true.,ierr)
-            call fiErrorMsg(option%myrank,'filename','REGN', ierr)
-            region%filename = word
-            ! this file will be read later in readRegionFiles()          
-          else
-            call RegionReadFromFile(region,IUNIT1)
-          endif            
-        else
-          call printErrMsg(option,"REGION type not recognized")
-        endif
-#else        
         call RegionRead(region,string,IUNIT1,option)
-#endif        
+        ! we don't copy regions down to patches quite yet, since we
+        ! don't want to duplicate IO in reading the regions
         call RegionAddToList(region,realization%regions)      
 
 !....................
@@ -894,42 +618,33 @@ subroutine readInput(simulation,filename)
       case ('BOUNDARY_CONDITION')
         coupler => CouplerCreate(BOUNDARY_COUPLER_TYPE)
         call CouplerRead(coupler,IUNIT1,option)
-        call CouplerAddToList(coupler,patch%flow_boundary_conditions)
+        call RealizationAddCoupler(realization,coupler)
       
 !....................
       case ('INITIAL_CONDITION')
         coupler => CouplerCreate(INITIAL_COUPLER_TYPE)
         call CouplerRead(coupler,IUNIT1,option)
-        call CouplerAddToList(coupler,patch%flow_initial_conditions)
-      
-!....................
-      case ('STRATIGRAPHY','STRATA')
-        strata => StrataCreate()
-        call StrataRead(strata,IUNIT1,option)
-        call StrataAddToList(strata,patch%strata)
+        call RealizationAddCoupler(realization,coupler)
       
 !....................
       case ('SOURCE_SINK')
         coupler => CouplerCreate(SRC_SINK_COUPLER_TYPE)
         call CouplerRead(coupler,IUNIT1,option)
-        call CouplerAddToList(coupler,patch%flow_source_sinks)
+        call RealizationAddCoupler(realization,coupler)
+      
+!....................
+      case ('STRATIGRAPHY','STRATA')
+        strata => StrataCreate()
+        call StrataRead(strata,IUNIT1,option)
+        call RealizationAddStrata(realization,strata)
       
 !.....................
       case ('COMP') 
-        do
-          call fiReadFlotranString(IUNIT1,string,ierr)
-          call fiReadStringErrorMsg(option%myrank,'COMP',ierr)
-      
-          if (string(1:1) == '.' .or. string(1:1) == '/') exit
-        enddo
+        call fiSkipToEND(IUNIT1,option%myrank,card)
+        
 !.....................
       case ('PHAS')
-        do
-          call fiReadFlotranString(IUNIT1,string,ierr)
-          call fiReadStringErrorMsg(option%myrank,'PHASE',ierr)
-      
-          if (string(1:1) == '.' .or. string(1:1) == '/') exit
-        enddo 
+        call fiSkipToEND(IUNIT1,option%myrank,card)
       
 !....................
 
@@ -1137,7 +852,7 @@ subroutine readInput(simulation,filename)
 
       case ('DXYZ')
       
-        if (grid%igrid == STRUCTURED) then  ! look for processor decomposition
+        if (realization%discretization == STRUCTURED_GRID) then  ! look for processor decomposition
           call StructuredGridReadDXYZ(grid%structured_grid,option)
         else
           if (option%myrank == 0) &
@@ -1156,18 +871,6 @@ subroutine readInput(simulation,filename)
         call fiErrorMsg(option%myrank,'Z direction','Origin',ierr)
         
 !....................
-
-      case('RAD0')
-    
-        if (grid%igrid == STRUCTURED) then  ! look for processor decomposition
-          call fiReadDouble(string,grid%structured_grid%Radius_0,ierr)
-          call fiDefaultMsg(option%myrank,'R_0',ierr)
-        else
-          if (option%myrank == 0) &
-            print *, 'ERROR: Keyword "RAD0" not supported for unstructured grid'
-            stop
-        endif
-
 
       case ('DIFF')
 
@@ -1875,7 +1578,7 @@ subroutine readInput(simulation,filename)
       case ('BRK','BREAKTHROUGH')
         breakthrough => BreakthroughCreate()
         call BreakthroughRead(breakthrough,IUNIT1,option)
-        call BreakthroughAddToList(breakthrough,patch%breakthrough)
+        call RealizationAddBreakthrough(realization,breakthrough)        
       
 !....................
       case('SDST')
@@ -1929,7 +1632,7 @@ end subroutine readInput
 ! date: 10/26/07
 !
 ! ************************************************************************** !
-subroutine setFlowMode(option,mcomp,mphas)
+subroutine setFlowMode(option)
 
   use Option_module
   use Fileio_module
@@ -1937,50 +1640,31 @@ subroutine setFlowMode(option,mcomp,mphas)
   implicit none 
 
   type(option_type) :: option
-  PetscInt :: mcomp, mphas
   PetscInt :: length
   
   length = len_trim(option%flowmode)
-  call fiCharsToLower(option%flowmode,length)
-  length = len_trim(option%flowmode)
-  if (fiStringCompare(option%flowmode,"richards",length)) then
-    option%iflowmode = RICHARDS_MODE
-  else if (fiStringCompare(option%flowmode,"richards_lite",length)) then
-    option%iflowmode = RICHARDS_LITE_MODE
-    option%nphase = 1
-    option%nspec = 1
-    option%nflowdof = 1
-#if 0  
-  ! needs to be implemented
-  else if (fiStringCompare(option%flowmode,"MPH",len_trim(option%mode))) then
-  else if (fiStringCompare(option%flowmode,"",#)) then
-#endif  
-  endif 
+  call fiCharsToUpper(option%flowmode,length)
+  select case(option%flowmode)
+    case('RICHARDS')
+      option%iflowmode = RICHARDS_MODE
+      option%nphase = 1
+      option%nflowdof = 3
+      option%nspec = 2
+    case('RICHARDS_LITE')
+      option%iflowmode = RICHARDS_LITE_MODE
+      option%nphase = 1
+      option%nflowdof = 1
+      option%nspec = 1
+    case('MPH','MPHASE')
+      option%iflowmode = MPH_MODE
+      option%nphase = 2
+      option%nflowdof = 3
+      option%nspec = 2
+      option%itable = 2
+    case default
+      call printErrMsg(option,'Mode: '//trim(option%flowmode)//' not recognized.')
+  end select
   
-  if (option%iflowmode /= MPH_MODE .and. &
-      option%iflowmode /= RICHARDS_MODE .and. &
-      option%iflowmode /= RICHARDS_LITE_MODE) then 
-
-    if (mcomp >0 .and. mphas>0)then
-      if (option%iflowmode /= MPH_MODE .and. mcomp == 35)then
-        option%iflowmode = MPH_MODE
-        option%flowmode = 'mph'
-        option%nphase = 2; option%nflowdof =3; option%nspec =2 
-      endif
-      if (option%iflowmode /= RICHARDS_MODE .and. mcomp == 33 .and. mphas == 11) then
-        option%iflowmode = RICHARDS_MODE
-        option%flowmode = 'richards'
-        option%nphase = 1; option%nflowdof = 2
-        if (option%nspec > 1) then
-          option%nflowdof = option%nspec +1
-        endif
-      endif
-    endif
-  endif
-  if (option%iflowmode == NULL_MODE) then
-    call printErrMsg(option,"No mode specified")
-  endif       
-
 end subroutine setFlowMode
 
 ! ************************************************************************** !
@@ -2154,181 +1838,6 @@ end subroutine assignMaterialPropToRegions
 
 ! ************************************************************************** !
 !
-! assignInitialConditions: Assigns initial conditions to model
-! author: Glenn Hammond
-! date: 11/02/07
-!
-! ************************************************************************** !
-subroutine assignInitialConditions(realization)
-
-  use Realization_module
-  use Region_module
-  use Option_module
-  use Field_module
-  use Coupler_module
-  use Condition_module
-  use Grid_module
-  use Patch_module
-  
-  use MPHASE_module, only : pflow_mphase_setupini
-
-  implicit none
-  
-  type(realization_type) :: realization
-  
-  PetscReal, pointer :: pressure_p(:)
-  PetscReal, pointer :: temp_p(:)
-  PetscReal, pointer :: sat_p(:)
-  PetscReal, pointer :: conc_p(:)
-  PetscReal, pointer :: xmol_p(:)
-  
-  PetscInt :: icell, iconn, count, jn1, jn2, idof
-  PetscInt :: local_id, ghosted_id, iend, ibegin
-  PetscReal, pointer :: xx_p(:), iphase_loc_p(:)
-  PetscErrorCode :: ierr
-  
-  type(option_type), pointer :: option
-  type(field_type), pointer :: field  
-  type(grid_type), pointer :: grid
-  type(patch_type), pointer :: patch   
-  type(coupler_type), pointer :: initial_condition
-    
-  option => realization%option
-  field => realization%field
-  patch => realization%patch
-  grid => patch%grid
-    
-  if (option%nflowdof > 0) then
-  
-    select case(option%iflowmode)
-      case(RICHARDS_LITE_MODE)
-      case(RICHARDS_MODE)
-      case(MPH_MODE)
-        call pflow_mphase_setupini(realization)
-    end select 
-
-    ! assign initial conditions values to domain
-    call VecGetArrayF90(field%flow_xx,xx_p, ierr); CHKERRQ(ierr)
-    call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr)
-    
-    xx_p = -999.d0
-    
-    initial_condition => patch%flow_initial_conditions%first
-    do
-    
-      if (.not.associated(initial_condition)) exit
-
-      if (.not.associated(initial_condition%connection)) then
-        do icell=1,initial_condition%region%num_cells
-          local_id = initial_condition%region%cell_ids(icell)
-          ghosted_id = patch%grid%nL2G(local_id)
-          iend = local_id*option%nflowdof
-          ibegin = iend-option%nflowdof+1
-          if (associated(patch%imat)) then
-            if (patch%imat(ghosted_id) <= 0) then
-              xx_p(ibegin:iend) = 0.d0
-              iphase_loc_p(ghosted_id) = 0
-              cycle
-            endif
-          endif
-          do idof = 1, option%nflowdof
-            xx_p(ibegin+idof-1) = &
-              initial_condition%condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
-          enddo
-          iphase_loc_p(ghosted_id)=initial_condition%condition%iphase
-        enddo
-      else
-        do iconn=1,initial_condition%connection%num_connections
-          local_id = initial_condition%connection%id_dn(iconn)
-          ghosted_id = patch%grid%nL2G(local_id)
-          iend = local_id*option%nflowdof
-          ibegin = iend-option%nflowdof+1
-          if (associated(patch%imat)) then
-            if (patch%imat(ghosted_id) <= 0) then
-              xx_p(ibegin:iend) = 0.d0
-              iphase_loc_p(ghosted_id) = 0
-              cycle
-            endif
-          endif
-          xx_p(ibegin:iend) = &
-            initial_condition%aux_real_var(1:option%nflowdof,iconn)
-          iphase_loc_p(ghosted_id)=initial_condition%aux_int_var(1,iconn)
-        enddo
-      endif
-      initial_condition => initial_condition%next
-    enddo
-    
-    call VecRestoreArrayF90(field%flow_xx,xx_p, ierr)
-    call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p,ierr)
-    
-    ! update dependent vectors
-    call GridGlobalToLocal(grid,field%flow_xx,field%flow_xx_loc,NFLOWDOF)  
-    call VecCopy(field%flow_xx, field%flow_yy, ierr)
-    call GridLocalToLocal(grid,field%iphas_loc,field%iphas_loc,ONEDOF)  
-    call GridLocalToLocal(grid,field%iphas_loc,field%iphas_old_loc,ONEDOF)
-    
-  endif
-  
-  if (option%ntrandof > 0) then
-
-    ! assign initial conditions values to domain
-    call VecGetArrayF90(field%tran_xx,xx_p, ierr); CHKERRQ(ierr)
-    
-    xx_p = -999.d0
-    
-    initial_condition => patch%transport_initial_conditions%first
-    do
-    
-      if (.not.associated(initial_condition)) exit
-
-      if (.not.associated(initial_condition%connection)) then
-        do icell=1,initial_condition%region%num_cells
-          local_id = initial_condition%region%cell_ids(icell)
-          ghosted_id = patch%grid%nL2G(local_id)
-          iend = local_id*option%ntrandof
-          ibegin = iend-option%ntrandof+1
-          if (associated(patch%imat)) then
-            if (patch%imat(ghosted_id) <= 0) then
-              xx_p(ibegin:iend) = 0.d0
-              cycle
-            endif
-          endif
-          do idof = 1, option%ntrandof
-            xx_p(ibegin+idof-1) = &
-              initial_condition%condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
-          enddo
-        enddo
-      else
-        do iconn=1,initial_condition%connection%num_connections
-          local_id = initial_condition%connection%id_dn(iconn)
-          ghosted_id = patch%grid%nL2G(local_id)
-          iend = local_id*option%ntrandof
-          ibegin = iend-option%ntrandof+1
-          if (associated(patch%imat)) then
-            if (patch%imat(ghosted_id) <= 0) then
-              xx_p(ibegin:iend) = 0.d0
-              cycle
-            endif
-          endif
-          xx_p(ibegin:iend) = &
-            initial_condition%aux_real_var(1:option%ntrandof,iconn)
-        enddo
-      endif
-      initial_condition => initial_condition%next
-    enddo
-    
-    call VecRestoreArrayF90(field%tran_xx,xx_p, ierr)
-    
-    ! update dependent vectors
-    call GridGlobalToLocal(grid,field%tran_xx,field%tran_xx_loc,NTRANDOF)  
-    call VecCopy(field%tran_xx, field%tran_yy, ierr)
-
-  endif
-
-end subroutine assignInitialConditions
-
-! ************************************************************************** !
-!
 ! assignUniformVelocity: Assigns uniform velocity in connection list
 !                        darcy velocities
 ! author: Glenn Hammond
@@ -2398,12 +1907,53 @@ end subroutine assignUniformVelocity
 
 ! ************************************************************************** !
 !
-! verifyCouplers: Verifies the connectivity of a coupler
+! verifyAllCouplers: Verifies the connectivity of a coupler
 ! author: Glenn Hammond
 ! date: 1/8/08
 !
 ! ************************************************************************** !
-subroutine verifyCouplers(realization,coupler_list)
+subroutine verifyAllCouplers(realization)
+
+  use Realization_module
+  use Coupler_module
+  use Patch_module
+
+  implicit none
+
+  type(realization_type) :: realization
+  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+
+  cur_level => realization%level_list%first
+  do 
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+
+        call verifyCoupler(realization,cur_patch,cur_patch%flow_initial_conditions)
+        call verifyCoupler(realization,cur_patch,cur_patch%flow_boundary_conditions)
+        call verifyCoupler(realization,cur_patch,cur_patch%flow_source_sinks)
+        call verifyCoupler(realization,cur_patch,cur_patch%transport_initial_conditions)
+        call verifyCoupler(realization,cur_patch,cur_patch%transport_boundary_conditions)
+        call verifyCoupler(realization,cur_patch,cur_patch%transport_source_sinks)
+
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+  
+end subroutine verifyAllCouplers
+
+! ************************************************************************** !
+!
+! verifyCoupler: Verifies the connectivity of a coupler
+! author: Glenn Hammond
+! date: 1/8/08
+!
+! ************************************************************************** !
+subroutine verifyCoupler(realization,patch,coupler_list)
 
   use Realization_module
   use Option_module 
@@ -2422,6 +1972,7 @@ subroutine verifyCouplers(realization,coupler_list)
   type(grid_type), pointer :: grid
   type(patch_type), pointer :: patch  
   type(coupler_type), pointer :: coupler
+  character(len=MAXWORDLENGTH) :: word
   character(len=MAXWORDLENGTH) :: filename
   character(len=MAXWORDLENGTH) :: dataset_name
   PetscInt :: iconn, local_id
@@ -2454,9 +2005,11 @@ subroutine verifyCouplers(realization,coupler_list)
       case(TRANSPORT_CLASS)
         dataset_name = 'tran'
     end select
+    write(word,*) patch%id
     dataset_name = trim(dataset_name) // &
                    trim(coupler%condition%name) // '_' // &
-                   trim(coupler%region%name)
+                   trim(coupler%region%name) // '_' // &
+                   adjustl(trim(word))
     filename = trim(dataset_name) // '.tec'
     call OutputVectorTecplot(filename,dataset_name,realization,global_vec)
 
@@ -2465,7 +2018,7 @@ subroutine verifyCouplers(realization,coupler_list)
 
   call VecDestroy(global_vec,ierr)
 
-end subroutine verifyCouplers
+end subroutine verifyCoupler
 
 ! ************************************************************************** !
 !

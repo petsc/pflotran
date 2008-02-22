@@ -1,21 +1,15 @@
 module Realization_module
 
-  use Grid_module
   use Option_module
   use Region_module
   use Condition_module
-  use Coupler_module
   use Material_module
-  use Strata_module
-  use Breakthrough_module
   use Field_module
   use Debug_module
   use Waypoint_module
   
   use Level_module
   use Patch_module
-  
-  use Reactive_Transport_Aux_module
   
   implicit none
 
@@ -25,6 +19,7 @@ private
 
   type, public :: realization_type
 
+    PetscInt :: discretization
     type(level_list_type), pointer :: level_list
     type(patch_type), pointer :: patch
 
@@ -32,8 +27,8 @@ private
     type(field_type), pointer :: field
     type(pflow_debug_type), pointer :: debug
     type(output_option_type), pointer :: output_option
+
     type(region_list_type), pointer :: regions
-    
     type(condition_list_type), pointer :: flow_conditions
     type(condition_list_type), pointer :: transport_conditions
     
@@ -50,7 +45,12 @@ private
   public :: RealizationCreate, RealizationDestroy, &
             RealizationProcessCouplers, &
             RealizationInitAllCouplerAuxVars, &
-            RealizationUpdate, RealizationAddWaypointsToList
+            RealizationUpdate, RealizationAddWaypointsToList, &
+            RealizationCreateDiscretization, &
+            RealizationLocalizeRegions, &
+            RealizationAddCoupler, RealizationAddStrata, &
+            RealizationAddBreakthrough, RealizAssignInitialConditions, &
+            RealizAssignUniformVelocity
   
 contains
   
@@ -70,10 +70,13 @@ function RealizationCreate()
   type(realization_type), pointer :: realization
   
   allocate(realization)
+  realization%discretization = 0
   realization%option => OptionCreate()
   realization%field => FieldCreate()
   realization%debug => DebugCreatePflow()
   realization%output_option => OutputOptionCreate()
+
+  realization%level_list => LevelCreateList()
 
   allocate(realization%regions)
   call RegionInitList(realization%regions)
@@ -96,7 +99,256 @@ end function RealizationCreate
 
 ! ************************************************************************** !
 !
-! RealizationProcessCouplers: Deallocates a realization
+! RealizationCreateDiscretization: Creates grid
+! author: Glenn Hammond
+! date: 00/00/00
+!
+! ************************************************************************** !
+subroutine RealizationCreateDiscretization(realization)
+
+  use Grid_module
+
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  type(grid_type), pointer :: grid
+  type(field_type), pointer :: field
+  type(option_type), pointer :: option
+  option => realization%option
+  field => realization%field
+  
+  select case(realization%discretization)
+    case(STRUCTURED_GRID,UNSTRUCTURED_GRID)
+    
+      grid => realization%patch%grid
+      
+      call GridCreateDMs(grid,option)
+      
+      ! 1 degree of freedom, global
+      call GridCreateVector(grid,ONEDOF,field%porosity0,GLOBAL)
+      call GridDuplicateVector(grid,field%porosity0, grid%volume)
+      
+      ! 1 degree of freedom, local
+      call GridCreateVector(grid,ONEDOF,field%porosity_loc,LOCAL)
+      call GridDuplicateVector(grid,field%porosity_loc, field%tor_loc)
+      
+      if (associated(grid%structured_grid)) then
+        call GridDuplicateVector(grid,field%porosity0, grid%structured_grid%dx)
+        call GridDuplicateVector(grid,field%porosity0, grid%structured_grid%dy)
+        call GridDuplicateVector(grid,field%porosity0, grid%structured_grid%dz)
+
+        call GridDuplicateVector(grid,field%porosity_loc, grid%structured_grid%dx_loc)
+        call GridDuplicateVector(grid,field%porosity_loc, grid%structured_grid%dy_loc)
+        call GridDuplicateVector(grid,field%porosity_loc, grid%structured_grid%dz_loc)
+      endif
+
+      if (option%nflowdof > 0) then
+
+        ! 1-dof global  
+        call GridDuplicateVector(grid,field%porosity0, field%perm0_xx)
+        call GridDuplicateVector(grid,field%porosity0, field%perm0_yy)
+        call GridDuplicateVector(grid,field%porosity0, field%perm0_zz)
+        call GridDuplicateVector(grid,field%porosity0, field%perm_pow)
+
+        ! 1-dof local
+        call GridDuplicateVector(grid,field%porosity_loc, field%ithrm_loc)
+        call GridDuplicateVector(grid,field%porosity_loc, field%icap_loc)
+        call GridDuplicateVector(grid,field%porosity_loc, field%iphas_loc)
+        call GridDuplicateVector(grid,field%porosity_loc, field%iphas_old_loc)
+        call GridDuplicateVector(grid,field%porosity_loc, field%perm_xx_loc)
+        call GridDuplicateVector(grid,field%porosity_loc, field%perm_yy_loc)
+        call GridDuplicateVector(grid,field%porosity_loc, field%perm_zz_loc)
+
+        ! ndof degrees of freedom, global
+        call GridCreateVector(grid,NFLOWDOF, field%flow_xx, GLOBAL)
+        call GridDuplicateVector(grid,field%flow_xx, field%flow_yy)
+        call GridDuplicateVector(grid,field%flow_xx, field%flow_dxx)
+        call GridDuplicateVector(grid,field%flow_xx, field%flow_r)
+        call GridDuplicateVector(grid,field%flow_xx, field%flow_accum)
+
+        ! ndof degrees of freedom, local
+        call GridCreateVector(grid,NFLOWDOF, field%flow_xx_loc, LOCAL)
+      endif
+
+      if (option%ntrandof > 0) then
+        ! ndof degrees of freedom, global
+        call GridCreateVector(grid,NTRANDOF, field%tran_xx, GLOBAL)
+        call GridDuplicateVector(grid,field%tran_xx, field%tran_yy)
+        call GridDuplicateVector(grid,field%tran_xx, field%tran_dxx)
+        call GridDuplicateVector(grid,field%tran_xx, field%tran_r)
+        call GridDuplicateVector(grid,field%tran_xx, field%tran_accum)
+
+        call GridDuplicateVector(grid,field%porosity_loc, field%saturation_loc)
+        
+        ! ndof degrees of freedom, local
+        call GridCreateVector(grid,NTRANDOF, field%tran_xx_loc, LOCAL)
+      endif
+
+      ! set up nG2L, NL2G, etc.
+      call GridMapIndices(grid)
+      call GridComputeSpacing(grid)
+      call GridComputeCoordinates(grid,option)
+      call GridComputeVolumes(grid,option)
+      ! set up internal connectivity, distance, etc.
+      call GridComputeInternalConnect(grid,option)
+
+    case(AMR_GRID)
+    
+  end select      
+
+end subroutine RealizationCreateDiscretization
+
+! ************************************************************************** !
+!
+! RealizationLocalizeRegions: Localizes regions within each patch
+! author: Glenn Hammond
+! date: 00/00/00
+!
+! ************************************************************************** !
+subroutine RealizationLocalizeRegions(realization)
+
+  use Option_module
+
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+
+  cur_level => realization%level_list%first
+  do 
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      call PatchLocalizeRegions(cur_patch,realization%regions, &
+                                realization%option)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+ 
+end subroutine RealizationLocalizeRegions
+
+! ************************************************************************** !
+!
+! RealizationAddCoupler: Adds a copy of a coupler to a list
+! author: Glenn Hammond
+! date: 00/00/00
+!
+! ************************************************************************** !
+subroutine RealizationAddCoupler(realization,coupler)
+
+  use Coupler_module
+
+  implicit none
+  
+  type(realization_type) :: realization
+  type(coupler_type), pointer :: coupler
+  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  
+  cur_level => realization%level_list%first
+  do 
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      ! only add to flow list for now, since they will be split out later
+      select case(coupler%itype)
+        case(BOUNDARY_COUPLER_TYPE)
+          call CouplerAddToList(CouplerCreate(coupler),cur_patch%flow_boundary_conditions)
+        case(INITIAL_COUPLER_TYPE)
+          call CouplerAddToList(CouplerCreate(coupler),cur_patch%flow_initial_conditions)
+        case(SRC_SINK_COUPLER_TYPE)
+          call CouplerAddToList(CouplerCreate(coupler),cur_patch%flow_source_sinks)
+      end select
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+  
+  call CouplerDestroy(coupler)
+ 
+end subroutine RealizationAddCoupler
+
+! ************************************************************************** !
+!
+! RealizationAddStrata: Adds a copy of a strata to a list
+! author: Glenn Hammond
+! date: 00/00/00
+!
+! ************************************************************************** !
+subroutine RealizationAddStrata(realization,strata)
+
+  use Strata_module
+
+  implicit none
+  
+  type(realization_type) :: realization
+  type(strata_type), pointer :: strata
+  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  
+  cur_level => realization%level_list%first
+  do 
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      call StrataAddToList(StrataCreate(strata),cur_patch%strata)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+  
+  call StrataDestroy(strata)
+ 
+end subroutine RealizationAddStrata
+
+! ************************************************************************** !
+!
+! RealizationAddBreakthrough: Adds a copy of a breakthrough object to a list
+! author: Glenn Hammond
+! date: 00/00/00
+!
+! ************************************************************************** !
+subroutine RealizationAddBreakthrough(realization,breakthrough)
+
+  use Breakthrough_module
+
+  implicit none
+  
+  type(realization_type) :: realization
+  type(breakthrough_type), pointer :: breakthrough
+  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  
+  cur_level => realization%level_list%first
+  do 
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      call BreakthroughAddToList(BreakthroughCreate(breakthrough), &
+                                 cur_patch%breakthrough)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+  
+  call BreakthroughDestroy(breakthrough)
+ 
+end subroutine RealizationAddBreakthrough
+
+! ************************************************************************** !
+!
+! RealizationProcessCouplers: Sets connectivity and pointers for couplers
 ! author: Glenn Hammond
 ! date: 00/00/00
 !
@@ -111,7 +363,7 @@ subroutine RealizationProcessCouplers(realization)
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
-
+  
   cur_level => realization%level_list%first
   do 
     if (.not.associated(cur_level)) exit
@@ -147,7 +399,7 @@ subroutine RealizationInitAllCouplerAuxVars(realization)
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
 
- cur_level => realization%level_list%first
+  cur_level => realization%level_list%first
   do 
     if (.not.associated(cur_level)) exit
     cur_patch => cur_level%patch_list%first
@@ -181,7 +433,7 @@ subroutine RealizUpdateAllCouplerAuxVars(realization,force_update_flag)
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
 
- cur_level => realization%level_list%first
+  cur_level => realization%level_list%first
   do 
     if (.not.associated(cur_level)) exit
     cur_patch => cur_level%patch_list%first
@@ -221,6 +473,227 @@ subroutine RealizationUpdate(realization)
 !  call RealizationUpdateSrcSinks(realization)
 
 end subroutine RealizationUpdate
+
+! ************************************************************************** !
+!
+! RealizAssignInitialConditions: Assigns initial conditions to model
+! author: Glenn Hammond
+! date: 11/02/07
+!
+! ************************************************************************** !
+subroutine RealizAssignInitialConditions(realization)
+
+  use Region_module
+  use Option_module
+  use Field_module
+  use Coupler_module
+  use Condition_module
+  use Grid_module
+  use Patch_module
+  
+  implicit none
+
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
+  
+  type(realization_type) :: realization
+  
+  PetscReal, pointer :: pressure_p(:)
+  PetscReal, pointer :: temp_p(:)
+  PetscReal, pointer :: sat_p(:)
+  PetscReal, pointer :: conc_p(:)
+  PetscReal, pointer :: xmol_p(:)
+  
+  PetscInt :: icell, iconn, count, jn1, jn2, idof
+  PetscInt :: local_id, ghosted_id, iend, ibegin
+  PetscReal, pointer :: xx_p(:), iphase_loc_p(:)
+  PetscErrorCode :: ierr
+  
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field  
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(coupler_type), pointer :: initial_condition
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+
+  option => realization%option
+  field => realization%field
+  patch => realization%patch
+  grid => patch%grid
+
+  cur_level => realization%level_list%first
+  do 
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+
+      if (option%nflowdof > 0) then
+      
+        select case(option%iflowmode)
+          case(RICHARDS_LITE_MODE)
+          case(RICHARDS_MODE)
+          case(MPH_MODE)
+!            call pflow_mphase_setupini(realization)
+        end select 
+
+        ! assign initial conditions values to domain
+        call VecGetArrayF90(field%flow_xx,xx_p, ierr); CHKERRQ(ierr)
+        call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr)
+        
+        xx_p = -999.d0
+        
+        initial_condition => cur_patch%flow_initial_conditions%first
+        do
+        
+          if (.not.associated(initial_condition)) exit
+
+          if (.not.associated(initial_condition%connection)) then
+            do icell=1,initial_condition%region%num_cells
+              local_id = initial_condition%region%cell_ids(icell)
+              ghosted_id = patch%grid%nL2G(local_id)
+              iend = local_id*option%nflowdof
+              ibegin = iend-option%nflowdof+1
+              if (associated(patch%imat)) then
+                if (patch%imat(ghosted_id) <= 0) then
+                  xx_p(ibegin:iend) = 0.d0
+                  iphase_loc_p(ghosted_id) = 0
+                  cycle
+                endif
+              endif
+              do idof = 1, option%nflowdof
+                xx_p(ibegin+idof-1) = &
+                  initial_condition%condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
+              enddo
+              iphase_loc_p(ghosted_id)=initial_condition%condition%iphase
+            enddo
+          else
+            do iconn=1,initial_condition%connection%num_connections
+              local_id = initial_condition%connection%id_dn(iconn)
+              ghosted_id = patch%grid%nL2G(local_id)
+              iend = local_id*option%nflowdof
+              ibegin = iend-option%nflowdof+1
+              if (associated(patch%imat)) then
+                if (patch%imat(ghosted_id) <= 0) then
+                  xx_p(ibegin:iend) = 0.d0
+                  iphase_loc_p(ghosted_id) = 0
+                  cycle
+                endif
+              endif
+              xx_p(ibegin:iend) = &
+                initial_condition%aux_real_var(1:option%nflowdof,iconn)
+              iphase_loc_p(ghosted_id)=initial_condition%aux_int_var(1,iconn)
+            enddo
+          endif
+          initial_condition => initial_condition%next
+        enddo
+        
+        call VecRestoreArrayF90(field%flow_xx,xx_p, ierr)
+        call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p,ierr)
+        
+        ! update dependent vectors
+        call GridGlobalToLocal(grid,field%flow_xx,field%flow_xx_loc,NFLOWDOF)  
+        call VecCopy(field%flow_xx, field%flow_yy, ierr)
+        call GridLocalToLocal(grid,field%iphas_loc,field%iphas_loc,ONEDOF)  
+        call GridLocalToLocal(grid,field%iphas_loc,field%iphas_old_loc,ONEDOF)
+        
+      endif
+      
+      if (option%ntrandof > 0) then
+
+        ! assign initial conditions values to domain
+        call VecGetArrayF90(field%tran_xx,xx_p, ierr); CHKERRQ(ierr)
+        
+        xx_p = -999.d0
+        
+        initial_condition => cur_patch%transport_initial_conditions%first
+        do
+        
+          if (.not.associated(initial_condition)) exit
+
+          if (.not.associated(initial_condition%connection)) then
+            do icell=1,initial_condition%region%num_cells
+              local_id = initial_condition%region%cell_ids(icell)
+              ghosted_id = patch%grid%nL2G(local_id)
+              iend = local_id*option%ntrandof
+              ibegin = iend-option%ntrandof+1
+              if (associated(patch%imat)) then
+                if (patch%imat(ghosted_id) <= 0) then
+                  xx_p(ibegin:iend) = 0.d0
+                  cycle
+                endif
+              endif
+              do idof = 1, option%ntrandof
+                xx_p(ibegin+idof-1) = &
+                  initial_condition%condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
+              enddo
+            enddo
+          else
+            do iconn=1,initial_condition%connection%num_connections
+              local_id = initial_condition%connection%id_dn(iconn)
+              ghosted_id = patch%grid%nL2G(local_id)
+              iend = local_id*option%ntrandof
+              ibegin = iend-option%ntrandof+1
+              if (associated(patch%imat)) then
+                if (patch%imat(ghosted_id) <= 0) then
+                  xx_p(ibegin:iend) = 0.d0
+                  cycle
+                endif
+              endif
+              xx_p(ibegin:iend) = &
+                initial_condition%aux_real_var(1:option%ntrandof,iconn)
+            enddo
+          endif
+          initial_condition => initial_condition%next
+        enddo
+        
+        call VecRestoreArrayF90(field%tran_xx,xx_p, ierr)
+        
+        ! update dependent vectors
+        call GridGlobalToLocal(grid,field%tran_xx,field%tran_xx_loc,NTRANDOF)  
+        call VecCopy(field%tran_xx, field%tran_yy, ierr)
+
+      endif
+
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+   
+end subroutine RealizAssignInitialConditions
+
+! ************************************************************************** !
+!
+! RealizAssignUniformVelocity: Assigns uniform velocity for transport
+! author: Glenn Hammond
+! date: 00/00/00
+!
+! ************************************************************************** !
+subroutine RealizAssignUniformVelocity(realization)
+
+  use Option_module
+
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  
+  cur_level => realization%level_list%first
+  do 
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      call PatchAssignUniformVelocity(cur_patch,realization%option)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+ 
+end subroutine RealizAssignUniformVelocity
 
 ! ************************************************************************** !
 !
