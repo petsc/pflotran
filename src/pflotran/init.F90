@@ -2078,7 +2078,7 @@ subroutine readMaterialsFromFile(realization,filename)
   
   implicit none
   
-  type(realization_type) realization
+  type(realization_type) :: realization
   character(len=MAXWORDLENGTH) :: filename
   
   type(field_type), pointer :: field

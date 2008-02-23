@@ -84,7 +84,7 @@ module Option_module
     
     logical :: numerical_derivatives
     
-  end type 
+  end type option_type
   
   type, public :: output_option_type
 

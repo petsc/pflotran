@@ -15,7 +15,7 @@ module Unstructured_Grid_module
     PetscInt :: ngmax  ! Number of ghosted & non-ghosted nodes in local domain.
     PetscInt, pointer :: hash(:,:,:)
     PetscInt :: num_hash = 100
-  end type
+  end type unstructured_grid_type
   
   public :: UnstructuredGridInit, &
             UnstructuredGridCreateDM, &

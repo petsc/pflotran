@@ -18,7 +18,7 @@ module Region_module
     
     type(region), pointer :: next ! pointer for linked list
   
-  end type
+  end type region
 
   ! pointer data structure required for making an array of region pointers in F90
   type :: region_ptr

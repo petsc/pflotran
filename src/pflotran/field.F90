@@ -33,7 +33,7 @@ module Field_module
     Vec :: flow_xx, flow_xx_loc, flow_dxx, flow_yy, flow_accum
     Vec :: tran_xx, tran_xx_loc, tran_dxx, tran_yy, tran_accum
    
-  end type 
+  end type field_type
 
   public :: FieldCreate, &
             FieldDestroy

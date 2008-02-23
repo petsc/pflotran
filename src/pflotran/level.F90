@@ -14,7 +14,7 @@ module Level_module
     type(patch_list_type), pointer :: patch_list
     type(level_type), pointer :: next
 
-  end type 
+  end type level_type
 
   ! pointer data structure required for making an array of level pointers in F90
   type, public :: level_ptr_type

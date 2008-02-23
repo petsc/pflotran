@@ -53,7 +53,7 @@ module Structured_Grid_module
     
     DA :: da_1_dof
 
-  end type
+  end type structured_grid_type
 
   public :: StructuredGridCreate, &
             StructuredGridDestroy, &
