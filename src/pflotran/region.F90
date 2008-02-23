@@ -234,7 +234,7 @@ end subroutine RegionAddToList
 ! date: 02/20/07
 !
 ! ************************************************************************** !
-subroutine RegionRead(region,string,fid,option)
+subroutine RegionRead(region,fid,option)
 
   use Fileio_module
   use Option_module
@@ -249,10 +249,6 @@ subroutine RegionRead(region,string,fid,option)
   character(len=MAXWORDLENGTH) :: word
   PetscInt :: length
   PetscErrorCode :: ierr
-
-  call fiReadWord(string,region%name,.true.,ierr)
-  call fiErrorMsg(option%myrank,'regn','name',ierr) 
-  call printMsg(option,region%name)
 
   ierr = 0
   do
@@ -271,29 +267,29 @@ subroutine RegionRead(region,string,fid,option)
         if (ierr /= 0) then
           ierr = 0
           call fiReadFlotranString(IUNIT1,string,ierr)
-          call fiReadStringErrorMsg(option%myrank,'REGN',ierr)
+          call fiReadStringErrorMsg(option%myrank,'REGION',ierr)
           call fiReadInt(string,region%i1,ierr) 
         endif
-        call fiErrorMsg(option%myrank,'i1','REGN', ierr)
+        call fiErrorMsg(option%myrank,'i1','REGION', ierr)
         call fiReadInt(string,region%i2,ierr)
-        call fiErrorMsg(option%myrank,'i2','REGN', ierr)
+        call fiErrorMsg(option%myrank,'i2','REGION', ierr)
         call fiReadInt(string,region%j1,ierr)
-        call fiErrorMsg(option%myrank,'j1','REGN', ierr)
+        call fiErrorMsg(option%myrank,'j1','REGION', ierr)
         call fiReadInt(string,region%j2,ierr)
-        call fiErrorMsg(option%myrank,'j2','REGN', ierr)
+        call fiErrorMsg(option%myrank,'j2','REGION', ierr)
         call fiReadInt(string,region%k1,ierr)
-        call fiErrorMsg(option%myrank,'k1','REGN', ierr)
+        call fiErrorMsg(option%myrank,'k1','REGION', ierr)
         call fiReadInt(string,region%k2,ierr)
-        call fiErrorMsg(option%myrank,'k2','REGN', ierr)
+        call fiErrorMsg(option%myrank,'k2','REGION', ierr)
       case('FILE')
         call fiReadWord(string,word,.true.,ierr)
-        call fiErrorMsg(option%myrank,'filename','REGN', ierr)
+        call fiErrorMsg(option%myrank,'filename','REGION', ierr)
         region%filename = word
       case('LIST')
         call printErrMsg(option,'REGION LIST currently not implemented')
       case('FACE')
         call fiReadWord(string,word,.true.,ierr)
-        call fiErrorMsg(option%myrank,'face','REGN', ierr)
+        call fiErrorMsg(option%myrank,'face','REGION', ierr)
         call fiWordToUpper(word)
         select case(word)
           case('WEST')

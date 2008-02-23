@@ -594,9 +594,12 @@ subroutine readInput(simulation,filename)
       case ('PROC')
       
 !....................
-      case ('REGION','REGN')
+      case ('REGION')
         region => RegionCreate()
-        call RegionRead(region,string,IUNIT1,option)
+        call fiReadWord(string,region%name,.true.,ierr)
+        call fiErrorMsg(option%myrank,'name','REGION',ierr) 
+        call printMsg(option,region%name)
+        call RegionRead(region,IUNIT1,option)
         ! we don't copy regions down to patches quite yet, since we
         ! don't want to duplicate IO in reading the regions
         call RegionAddToList(region,realization%regions)      
