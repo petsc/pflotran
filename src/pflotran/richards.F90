@@ -388,7 +388,7 @@ subroutine RichardsUpdateFixedAccumulation(realization)
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      call RichardsUpdateFixedAccumulationPatch(realization)
+      call RichardsUpdateFixedAccumPatch(realization)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -398,13 +398,13 @@ end subroutine RichardsUpdateFixedAccumulation
 
 ! ************************************************************************** !
 !
-! RichardsUpdateFixedAccumulationPatch: Updates the fixed portion of the 
+! RichardsUpdateFixedAccumPatch: Updates the fixed portion of the 
 !                                  accumulation term
 ! author: Glenn Hammond
 ! date: 12/10/07
 !
 ! ************************************************************************** !
-subroutine RichardsUpdateFixedAccumulationPatch(realization)
+subroutine RichardsUpdateFixedAccumPatch(realization)
 
   use Realization_module
   use Patch_module
@@ -482,7 +482,7 @@ subroutine RichardsUpdateFixedAccumulationPatch(realization)
 !  call RichardsNumericalJacobianTest(field%flow_xx,realization)
 #endif
 
-end subroutine RichardsUpdateFixedAccumulationPatch
+end subroutine RichardsUpdateFixedAccumPatch
 
 ! ************************************************************************** !
 !
