@@ -1,0 +1,177 @@
+:Description: 3D toy problem for richards equation
+:
+:MODE RICHARDS
+MODE RICHARDS_LITE
+:
+:NUMERICAL_JACOBIAN
+:INEXACT_NEWTON
+:
+:CHECKPOINT 50
+:WALLCLOCK_STOP 0.
+:
+:DEBUG
+:MATVIEW_JACOBIAN
+:VECVIEW_RESIDUAL
+:END
+:
+GRID
+TYPE STRUCTURED
+NXYZ 17 32 15
+END
+:
+:    npx npy npz
+:PROC  2   2   2
+:
+:RAD0 0.d0
+:
+:write_init iprint imod itecplot iblkfmt ndtcmx   iran_por  ran_fac readfield
+OPTS   0       -1      1     1      1          10      0       0.        0     0
+:HDF5 VELO FLUX
+TECP VELO FLUX
+:
+:      steps    iaccel newtmx icutmx dpmx dtmpmx dcmx   dsmx
+TOLR   50000    5      16     16     1.e5 2.     .25d-1 0.2
+:
+:    isync
+COUP   0
+:
+DXYZ
+80.d0
+80.d0
+4.d0
+:    atol  rtol  stol   dtol  newton_max maxf idt
+SOLV 1.d-9 1.d-9 1.d-10 1.D10 25         100  -1 1.d-6
+:  d0[m^2/s] delhaq[kJ/mol]
+:NO_INFINITY_NORM
+!NO_PRINT_CONVERGENCE
+!PRINT_DETAILED_CONVERGENCE
+:
+DIFF  1.D-9       12.6
+:
+: Richards Equation Pref
+RICH 101325.
+:
+SATURATION_FUNCTIONS
+:id itype swir   lambda alpha     pcwmax betac pwr
+ 1  1     0.1471 0.7465 4.4317d-4 1.e8   0.d0  1.d0
+ 2  1     0.1299 0.5193 1.4319d-4 1.e8   0.d0  1.d0 
+END
+
+THERMAL_PROPERTIES
+:ithm rho    cpr     ckdry cksat tau cdiff   cexp
+  1   2.75e3 1000.e0 0.5   0.5   0.5 2.13d-5 1.8
+END
+:
+MATERIALS
+:name   id icap ithm por  tau permx     permy     permz     permpwr
+Hanford 1  2    1    0.18 0.5 1.578d-9  1.578d-9  1.578d-10 1.e0
+Unit2   2  2    1    0.25 0.5 0.d0      0.d0      0.d0      1.d0
+Unit3   3  2    1    0.25 0.5 0.d0      0.d0      0.d0      1.d0
+Unit4   4  2    1    0.25 0.5 0.d0      0.d0      0.d0      1.d0
+Unit5   5  2    1    0.25 0.5 1.578d-10 1.578d-10 1.578d-11 1.e0
+Unit6   6  2    1    0.25 0.5 1.052d-14 1.052d-14 1.052d-15 1.e0
+Unit7   7  2    1    0.25 0.5 4.523d-11 4.523d-11 4.523d-12 1.e0
+Unit8   8  2    1    0.25 0.5 5.259d-17 5.259d-17 5.259d-18 1.e0
+Unit9   9  2    1    0.25 0.5 5.259d-17 5.259d-17 5.259d-18 1.e0
+Unit10  10 2    1    0.25 0.5 1.d-20    1.d-20    1.d-20    1.e0
+END
+:
+:
+:
+:
+TIME h every 168
+1
+:
+DTST 1.d-2
+1. 1.d0
+:
+REGION all
+BLOCK 1 17 1 32 1 15
+END
+
+REGION breakthrough
+BLOCK 1 1 1 1 1 1
+END
+
+REGION West
+file input.h5
+END
+
+REGION East
+file input.h5
+END
+
+REGION Top
+file input.h5
+END
+
+skip
+BREAKTHROUGH 
+REGION breakthrough
+END
+noskip
+
+CONDITION river
+CLASS flow
+TYPE
+PRESSURE hydrostatic
+TEMPERATURE dirichlet
+CONCENTRATION dirichlet
+END
+INTERPOLATION linear
+DATUM 0.d0 0.d0 22.75d0
+PRESSURE file river.txt 
+TEMPERATURE 25.d0 
+CONCENTRATION 1.d-3 
+END
+
+CONDITION west
+CLASS flow
+TYPE
+PRESSURE hydrostatic
+TEMPERATURE dirichlet
+CONCENTRATION dirichlet
+END
+INTERPOLATION linear
+DATUM 0.d0 0.d0 2.5d0
+PRESSURE file west.txt
+TEMPERATURE 25.d0 
+CONCENTRATION 1.d-6 
+END
+
+CONDITION initial
+UNITS Pa,C,M,yr
+CLASS flow
+TYPE
+PRESSURE hydrostatic
+TEMPERATURE dirichlet
+CONCENTRATION dirichlet
+END
+DATUM 0.d0 0.d0 22.75d0
+PRESSURE 219729.d0 
+TEMPERATURE 25.d0 
+CONCENTRATION 1.d-6 
+END
+
+: initial condition
+INITIAL_CONDITION
+CONDITION initial
+REGION all
+END
+
+: river boundary condition
+BOUNDARY_CONDITION
+CONDITION west
+REGION West
+END
+
+: east boundary condition
+BOUNDARY_CONDITION
+CONDITION river
+REGION East
+END
+
+STRATA
+MATERIAL input.h5
+END
+
