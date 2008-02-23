@@ -48,10 +48,9 @@ util_obj  = ${common_src}fileio.o \
 	${common_src}co2eos.o \
 	${common_src}co2_sw_rtsafe.o \
 	${common_src}co2_span_wagner.o \
-	${common_src}utility.o \
-	${common_src}petscrelwrappers.o
+	${common_src}utility.o
 
-pflow_obj = ${common_src}pflow_pckr_mod.o \
+pflotran_obj = ${common_src}pflow_pckr_mod.o \
 	${common_src}option.o \
 	${common_src}reactive_transport_aux.o\
 	${common_src}richards_aux.o\
@@ -75,7 +74,6 @@ pflow_obj = ${common_src}pflow_pckr_mod.o \
 	${common_src}level.o \
 	${common_src}realization.o \
 	${common_src}hdf5.o \
-	${common_src}mixed_fluid_eos.o \
 	${common_src}translator_mixed_fluid_mph.o \
 	${common_src}pflow_mphase_ResJac.o\
 	${common_src}transport.o\
@@ -84,17 +82,17 @@ pflow_obj = ${common_src}pflow_pckr_mod.o \
 	${common_src}richards.o\
 	${common_src}richards_lite.o\
 	${common_src}general_grid.o \
-	${common_src}pflow_checkpoint.o \
+	${common_src}checkpoint.o \
 	${common_src}convergence.o \
 	${common_src}timestepper.o \
 	${common_src}simulation.o \
-	${common_src}pflow_output2.o \
-	${common_src}pflow_init.o
+	${common_src}output.o \
+	${common_src}init.o
 
-pflowamr: $(util_obj) $(pflow_obj)
+pflotranamr: $(util_obj) $(pflotran_obj)
 
-pflow : $(util_obj) $(pflow_obj) ${pflow_src}pflow.o
-	${FLINKER}   -o pflow $(util_obj) $(pflow_obj) ${pflow_src}pflow.o ${PETSC_LIB} ${LIBS}
+pflotran : $(util_obj) $(pflotran_obj) ${pflotran_src}pflotran.o
+	${FLINKER}   -o pflotran $(util_obj) $(pflotran_obj) ${pflotran_src}pflotran.o ${PETSC_LIB} ${LIBS}
 
 ascii_to_hdf5: fileio.o hdf5_dataset.o ascii_to_hdf5.o 
 	${FLINKER} -o ascii_to_hdf5 ascii_to_hdf5.o hdf5_dataset.o fileio.o \
@@ -109,12 +107,9 @@ test: test.o functions.o
 
 # Dependencies stemming from "use" statements.
 # These ensure that the module files are built in the correct order.
-breakthrough.o : region.o option.o fileio.o
-pflow.o : pflow_init.o timestepper.o simulation.o
-ptran.o : ptran_init.o transport_timestepper.o simulation.o
-#simulation.o : timestepper.o realization.o transport_realization.o \
-#               transport_timestepper.o
-pflow_init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
+pflotran.o : simulation.o output.o init.o
+simulation.o : timestepper.o realization.o 
+init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
 	simulation.o fileio.o material.o region.o condition.o convergence.o \
 	waypoint.o field.o general_grid.o co2_span_wagner.o utility.o \
 	coupler.o strata.o pflow_pckr_mod.o field.o pflow_mphase_ResJac.o \
@@ -128,6 +123,7 @@ solver.o : option.o field.o
 region.o : fileio.o utility.o
 material.o : region.o option.o fileio.o field.o
 coupler.o : condition.o connection.o region.o fileio.o grid.o
+breakthrough.o : region.o option.o fileio.o
 convergence.o : option.o solver.o
 condition.o : fileio.o utility.o option.o field.o
 realization.o : grid.o option.o region.o condition.o coupler.o material.o \
@@ -142,11 +138,12 @@ strata.o : fileio.o region.o material.o
 hydrostatic.o : option.o grid.o coupler.o condition.o connection.o region.o \
                 structured_grid.o
 waypoint.o : option.o 
-pflow_vector_ops.o : water_eos.o
-pflow_output2.o : grid.o structured_grid.o option.o realization.o field.o \
-                  coupler.o connection.o hdf5.o breakthrough.o
+output.o : grid.o structured_grid.o option.o realization.o field.o \
+           coupler.o connection.o hdf5.o breakthrough.o \
+           reactive_transport.o richards.o richards_lite.o
 pflow_mphase_ResJac.o : realization.o option.o field.o grid.o coupler.o \
-                          translator_mixed_fluid_mph.o
+                        translator_mixed_fluid_mph.o
+translator_mixed_fluid_mph.o : pflow_pckr_mod.o
 reaction.o : reactive_transport_aux.o option.o
 transport.o : reactive_transport_aux.o option.o
 reactive_transport.o : realization.o reaction.o transport.o \
@@ -156,30 +153,7 @@ richards.o : richards_aux.o realization.o
 richards_lite.o : richards_lite_aux.o realization.o
 richards_aux.o : option.o material.o water_eos.o
 richards_lite_aux.o : option.o material.o water_eos.o
-timestepper.o : \
-	        mixed_fluid_eos.o \
-                translator_mixed_fluid_mph.o \
-                richards.o \
-                richards_lite.o \
-                pflow_mphase_ResJac.o \
-                realization.o \
-                grid.o \
-                option.o \
-                field.o \
-                solver.o \
-                pflow_output2.o \
-                convergence.o \
-                pflow_checkpoint.o \
-		waypoint.o
-transport_timestepper.o : \
-                transport_realization.o \
-                grid.o \
-                option.o \
-                field.o \
-                transport_solver.o \
-                ptran_output.o \
-		waypoint.o
+timestepper.o : richards.o richards_lite.o pflow_mphase_ResJac.o \
+                realization.o grid.o option.o field.o solver.o \
+                output.o convergence.o checkpoint.o waypoint.o
 hdf5.o : realization.o option.o grid.o
-pflow_THC.o : water_eos.o
-pflow.o : simulation.o realization.o timestepper.o solver.o grid.o option.o \
-	  pflow_init.o pflow_output2.o field.o

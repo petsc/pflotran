@@ -91,7 +91,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   use Realization_module
   use Option_module
   use Output_module
-  use pflow_checkpoint
+  use Checkpoint_module
   
   implicit none
   
@@ -129,10 +129,9 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   num_const_timesteps = 0  
 
   if(option%restart_flag == PETSC_TRUE) then
-    call pflowGridRestart(realization,master_stepper%steps,master_stepper%newtcum, &
-                          master_stepper%icutcum, &
-                          num_const_timesteps, &
-                          num_newton_iterations)
+    call Restart(realization,master_stepper%steps,master_stepper%newtcum, &
+                 master_stepper%icutcum,num_const_timesteps, &
+                 num_newton_iterations)
     if (associated(flow_stepper)) flow_stepper%cur_waypoint => &
       WaypointSkipToTime(realization%waypoints,option%time)
     if (associated(tran_stepper)) tran_stepper%cur_waypoint => &
@@ -193,9 +192,9 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
 
     if (option%checkpoint_flag == PETSC_TRUE .and. &
         mod(istep,option%checkpoint_frequency) == 0) then
-      call pflowGridCheckpoint(realization,master_stepper%steps,master_stepper%newtcum, &
-                               master_stepper%icutcum,num_const_timesteps, &
-                               num_newton_iterations,istep)
+      call Checkpoint(realization,master_stepper%steps,master_stepper%newtcum, &
+                      master_stepper%icutcum,num_const_timesteps, &
+                      num_newton_iterations,istep)
     endif
     
    
@@ -205,8 +204,8 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   enddo
 
   if (option%checkpoint_flag == PETSC_TRUE) then
-    call pflowGridCheckpoint(realization,master_stepper%steps,master_stepper%newtcum, &
-                             master_stepper%icutcum,num_const_timesteps, &
+    call Checkpoint(realization,master_stepper%steps,master_stepper%newtcum, &
+                    master_stepper%icutcum,num_const_timesteps, &
                              num_newton_iterations,NEG_ONE_INTEGER)
   endif
 

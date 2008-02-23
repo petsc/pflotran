@@ -12,18 +12,18 @@ module Init_module
 #include "include/finclude/petscsnes.h"
 
 
-  public :: PflowInit
+  public :: Init
 
 contains
 
 ! ************************************************************************** !
 !
-! PflowInit: Initializes a pflow grid object
+! Init: Initializes a pflow grid object
 ! author: Glenn Hammond
 ! date: 10/23/07
 !
 ! **************************************************************************
-subroutine PflowInit(simulation,filename)
+subroutine Init(simulation,filename)
 
   use Simulation_module
   use Option_module
@@ -276,7 +276,7 @@ subroutine PflowInit(simulation,filename)
 
   if (option%myrank == 0) write(*,'("  Finished setting up of INIT ")')
          
-end subroutine PflowInit
+end subroutine Init
 
 ! ************************************************************************** !
 !

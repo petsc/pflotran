@@ -5,10 +5,10 @@
 ! RTM: This is pretty makeshift.  We need to think about what should 
 ! go into this header and how it should be organized.
 
-module pflow_chkptheader
+module Checkpoint_Header_module
   implicit none
   private
-  type, public :: pflowChkPtHeader
+  type, public :: checkpoint_header_type
     real*8 :: flow_time
     real*8 :: flow_dt
     real*8 :: tran_time
@@ -19,17 +19,18 @@ module pflow_chkptheader
     integer*8 :: num_const_timesteps
     integer*8 :: num_newton_iterations
     integer*8 :: plot_number
-  end type pflowChkPtHeader
-end module pflow_chkptheader
+  end type checkpoint_header_type
+end module Checkpoint_Header_module
 
-module pflow_checkpoint
-  use pflow_chkptheader
+module Checkpoint_module
+
+  use Checkpoint_Header_module
 
   implicit none
   
   private
 
-  public :: pflowGridCheckpoint, pflowGridRestart
+  public :: Checkpoint, Restart
 
 #include "definitions.h"
 #include "include/finclude/petscvec.h"
@@ -47,9 +48,9 @@ module pflow_checkpoint
 
   Interface PetscBagGetData
     Subroutine PetscBagGetData(bag,ctx,ierr)
-      use pflow_chkptheader
+      use Checkpoint_Header_module
       PetscBag bag
-      type(pflowChkPtHeader), pointer :: ctx
+      type(checkpoint_header_type), pointer :: ctx
       PetscErrorCode ierr
     End Subroutine
   End Interface PetscBagGetData
@@ -60,7 +61,7 @@ contains
 
 #if (PETSC_VERSION_RELEASE == 1 && PETSC_VERSION_SUBMINOR < 3)
 
-subroutine pflowGridCheckpoint(realization,steps,newtcum,icutcum, &
+subroutine Checkpoint(realization,steps,newtcum,icutcum, &
                                timestep_cut_flag, &
                                num_newton_iterations,id)
   use Realization_module
@@ -74,13 +75,13 @@ subroutine pflowGridCheckpoint(realization,steps,newtcum,icutcum, &
   PetscInt :: id, steps, newtcum, icutcum
 
   if(realization%option%myrank == 0) then
-    print *, "Warning: pflowGridCheckpoint() not supported with PETSc 2.3.2."
+    print *, "Warning: Checkpoint() not supported with PETSc 2.3.2."
   endif
-end subroutine pflowGridCheckpoint
+end subroutine Checkpoint
 
 #else
 
-subroutine pflowGridCheckpoint(realization,steps,newtcum,icutcum, &
+subroutine Checkpoint(realization,steps,newtcum,icutcum, &
                                num_const_timesteps, &
                                num_newton_iterations,id)
 
@@ -109,7 +110,7 @@ subroutine pflowGridCheckpoint(realization,steps,newtcum,icutcum, &
   character(len=MAXSTRINGLENGTH) :: fname
   PetscViewer :: viewer
   PetscBag :: bag
-  type(pflowChkPtHeader), pointer :: header
+  type(checkpoint_header_type), pointer :: header
   PetscErrorCode :: ierr
   PetscLogDouble :: tstart, tend  
   
@@ -133,17 +134,17 @@ subroutine pflowGridCheckpoint(realization,steps,newtcum,icutcum, &
   if (id < 0) then
     fname = 'restart.chk'
   else if (id < 10) then
-    write(fname, '(a9,i1)') 'pflow.chk', id
+    write(fname, '(a9,i1)') 'pflotran.chk', id
   else if (id < 100) then
-    write(fname, '(a9,i2)') 'pflow.chk', id
+    write(fname, '(a9,i2)') 'pflotran.chk', id
   else if (id < 1000) then
-    write(fname, '(a9,i3)') 'pflow.chk', id
+    write(fname, '(a9,i3)') 'pflotran.chk', id
   else if (id < 10000) then
-    write(fname, '(a9,i4)') 'pflow.chk', id
+    write(fname, '(a9,i4)') 'pflotran.chk', id
   else if (id < 100000) then
-    write(fname, '(a9,i5)') 'pflow.chk', id
+    write(fname, '(a9,i5)') 'pflotran.chk', id
   else if (id < 1000000) then
-    write(fname, '(a9,i6)') 'pflow.chk', id
+    write(fname, '(a9,i6)') 'pflotran.chk', id
   endif
   call PetscViewerBinaryOpen(PETSC_COMM_WORLD, fname, FILE_MODE_WRITE, &
                              viewer, ierr)
@@ -160,7 +161,7 @@ subroutine pflowGridCheckpoint(realization,steps,newtcum,icutcum, &
   call PetscBagCreate(PETSC_COMM_WORLD, bagsize, bag, ierr)
   call PetscBagGetData(bag, header, ierr); CHKERRQ(ierr)
 
-  ! Register variables that are passed into pflowGrid_step().
+  ! Register variables that are passed into timestepper().
   call PetscBagRegisterInt(bag, header%num_newton_iterations, num_newton_iterations, &
                            "num_newton_iterations", &
                            "Number of Newton iterations in last SNES solve", ierr)
@@ -169,7 +170,7 @@ subroutine pflowGridCheckpoint(realization,steps,newtcum,icutcum, &
   call PetscBagRegisterInt(bag, header%num_const_timesteps, num_const_timesteps, &
                            "num_const_timesteps","num_const_timesteps", ierr)
   
-  ! Register relevant components of the pflowGrid.
+  ! Register relevant components of the stepper.
   call PetscBagRegisterReal(bag, header%flow_time, option%flow_time, "time", &
                             "Flow Simulation time (seconds)", ierr)
   call PetscBagRegisterReal(bag, header%flow_dt, option%flow_dt, "dt", &
@@ -234,13 +235,13 @@ subroutine pflowGridCheckpoint(realization,steps,newtcum,icutcum, &
   if (realization%option%myrank == 0) &
     print *, '      Seconds to write to checkpoint file: ', (tend-tstart)
 
-end subroutine pflowGridCheckpoint
+end subroutine Checkpoint
 
 #endif
 
 #if (PETSC_VERSION_RELEASE == 1 && PETSC_VERSION_SUBMINOR < 3)
 
-subroutine pflowGridRestart(realization,steps,newtcum,icutcum, &
+subroutine Restart(realization,steps,newtcum,icutcum, &
                             num_const_timesteps, &
                             num_newton_iterations)
   use Realization_module
@@ -254,13 +255,13 @@ subroutine pflowGridRestart(realization,steps,newtcum,icutcum, &
   PetscInt :: steps, newtcum, icutcum
 
   if(realization%option%myrank == 0) then
-    print *, "Warning: pflowGridRestart() not supported with PETSc 2.3.2."
+    print *, "Warning: Restart() not supported with PETSc 2.3.2."
   endif
-end subroutine pflowGridRestart
+end subroutine Restart
 
 #else
 
-subroutine pflowGridRestart(realization,steps,newtcum,icutcum, &
+subroutine Restart(realization,steps,newtcum,icutcum, &
                             num_const_timesteps, &
                             num_newton_iterations)
   use Realization_module
@@ -280,7 +281,7 @@ subroutine pflowGridRestart(realization,steps,newtcum,icutcum, &
 
   PetscViewer viewer
   PetscBag bag
-  type(pflowChkPtHeader), pointer :: header
+  type(checkpoint_header_type), pointer :: header
   PetscErrorCode :: ierr
   PetscLogDouble :: tstart, tend
 
@@ -355,8 +356,8 @@ subroutine pflowGridRestart(realization,steps,newtcum,icutcum, &
   if (realization%option%myrank == 0) &
     print *, '      Seconds to read checkpoint file: ', (tend-tstart)
   
-end subroutine pflowGridRestart
+end subroutine Restart
 
 #endif
 
-end module pflow_checkpoint
+end module Checkpoint_module
