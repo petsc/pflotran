@@ -116,6 +116,7 @@ end subroutine RichardsLiteSetup
 subroutine RichardsLiteSetupPatch(realization)
 
   use Realization_module
+  use Patch_module
   use Option_module
   use Coupler_module
   use Connection_module
@@ -215,6 +216,7 @@ end subroutine RichardsLiteUpdateAuxVars
 subroutine RichardsLiteUpdateAuxVarsPatch(realization)
 
   use Realization_module
+  use Patch_module
   use Option_module
   use Field_module
   use Grid_module
@@ -401,6 +403,7 @@ end subroutine RichardsLiteUpdateFixedAccum
 subroutine RichardsLiUpdateFixedAccumPatch(realization)
 
   use Realization_module
+  use Patch_module
   use Option_module
   use Field_module
   use Grid_module
@@ -483,6 +486,7 @@ end subroutine RichardsLiUpdateFixedAccumPatch
 subroutine RichardsLiteNumericalJacTest(xx,realization)
 
   use Realization_module
+  use Patch_module
   use Option_module
   use Grid_module
   use Field_module
@@ -1109,8 +1113,10 @@ end subroutine RichardsLiteBCFlux
 subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
 
   use Realization_module
+  use Level_module
   use Patch_module
   use Grid_module
+  use Field_module
   use Option_module
 
   implicit none
@@ -1165,10 +1171,10 @@ end subroutine RichardsLiteResidual
 subroutine RichardsLiteResidualPatch(snes,xx,r,realization,ierr)
 
   use water_eos_module
-  use Gas_Eos_Module
 
   use Connection_module
   use Realization_module
+  use Patch_module
   use Grid_module
   use Option_module
   use Coupler_module  
@@ -1483,6 +1489,7 @@ end subroutine RichardsLiteResidualPatch
 subroutine RichardsLiteJacobian(snes,xx,A,B,flag,realization,ierr)
 
   use Realization_module
+  use Level_module
   use Patch_module
   use Grid_module
   use Option_module
@@ -1524,12 +1531,12 @@ end subroutine RichardsLiteJacobian
 subroutine RichardsLiteJacobianPatch(snes,xx,A,B,flag,realization,ierr)
        
   use water_eos_module
-  use gas_eos_module
 
   use Connection_module
-  use Option_module
-  use Grid_module
   use Realization_module
+  use Option_module
+  use Patch_module
+  use Grid_module
   use Coupler_module
   use Field_module
   use Debug_module
@@ -1914,6 +1921,7 @@ end subroutine RichardsLiteJacobianPatch
 subroutine RichardsLiteCreateZeroArray(patch,option)
 
   use Realization_module
+  use Patch_module
   use Grid_module
   use Option_module
   use Field_module
@@ -2055,6 +2063,7 @@ end function RichardsLiteGetTecplotHeader
 subroutine RichardsLiteGetVarFromArray(realization,vec,ivar,isubvar)
 
   use Realization_module
+  use Patch_module
   use Grid_module
   use Option_module
   use Field_module
@@ -2141,6 +2150,7 @@ function RichardsLiteGetVarFromArrayAtCell(realization,ivar,isubvar, &
                                            local_id)
 
   use Realization_module
+  use Patch_module
   use Grid_module
   use Option_module
   use Field_module

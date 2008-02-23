@@ -150,8 +150,6 @@ subroutine RichardsLiteAuxVarCompute(x,aux_var,iphase,saturation_function,option
 
   use Option_module
   use water_eos_module
-  use gas_eos_module  
-  use pckr_module
   use Material_module
   
   implicit none
@@ -195,7 +193,6 @@ subroutine RichardsLiteAuxVarCompute(x,aux_var,iphase,saturation_function,option
                                    saturation_function, &
                                    option)
     dpw_dp = 0
-!    call pflow_pckr_richards(ipckr,aux_var%sat,aux_var%pc,kr)
   else
     iphase = 1
     aux_var%pc = 0.d0

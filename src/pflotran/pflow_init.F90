@@ -1915,8 +1915,9 @@ end subroutine assignUniformVelocity
 subroutine verifyAllCouplers(realization)
 
   use Realization_module
-  use Coupler_module
+  use Level_module
   use Patch_module
+  use Coupler_module
 
   implicit none
 

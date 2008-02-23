@@ -221,6 +221,7 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
 
   use Realization_module
   use Patch_module
+  use Field_module
   use Option_module
   use Grid_module
   use Coupler_module
@@ -493,6 +494,7 @@ end subroutine RichardsUpdateFixedAccumulationPatch
 subroutine RichardsNumericalJacobianTest(xx,realization)
 
   use Realization_module
+  use Patch_module
   use Option_module
   use Grid_module
   use Field_module
@@ -1491,8 +1493,10 @@ end subroutine RichardsBCFlux
 subroutine RichardsResidual(snes,xx,r,realization,ierr)
 
   use Realization_module
+  use Level_module
   use Patch_module
   use Grid_module
+  use Field_module
   use Option_module
 
   implicit none
@@ -1547,10 +1551,10 @@ end subroutine RichardsResidual
 subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
 
   use water_eos_module
-  use Gas_Eos_Module
 
   use Connection_module
   use Realization_module
+  use Patch_module
   use Grid_module
   use Option_module
   use Coupler_module  
@@ -1905,6 +1909,7 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
 
   use Realization_module
   use Patch_module
+  use Level_module
   use Grid_module
   use Option_module
 
@@ -1945,7 +1950,6 @@ end subroutine RichardsJacobian
 subroutine RichardsJacobianPatch(snes,xx,A,B,flag,realization,ierr)
        
   use water_eos_module
-  use gas_eos_module
 
   use Connection_module
   use Option_module

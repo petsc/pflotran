@@ -236,6 +236,7 @@ end subroutine RTUpdateSolution
 subroutine RTUpdateFixedAccumulationPatch(realization)
 
   use Realization_module
+  use Patch_module
   use Reactive_Transport_Aux_module
   use Option_module
   use Field_module  
@@ -308,6 +309,7 @@ end subroutine RTUpdateFixedAccumulationPatch
 subroutine RTNumericalJacobianTest(xx,realization)
 
   use Realization_module
+  use Patch_module
   use Option_module
   use Grid_module
   use Field_module
@@ -459,7 +461,9 @@ end subroutine RTAccumulation
 subroutine RTResidual(snes,xx,r,realization,ierr)
 
   use Realization_module
+  use Field_module
   use Patch_module
+  use Level_module
   use Grid_module
   use Option_module
 
@@ -515,6 +519,7 @@ end subroutine RTResidual
 subroutine RTResidualPatch(snes,xx,r,realization,ierr)
 
   use Realization_module
+  use Patch_module
   use Transport_module
   use Option_module
   use Field_module
@@ -726,6 +731,7 @@ end subroutine RTResidualPatch
 subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
 
   use Realization_module
+  use Level_module
   use Patch_module
   use Grid_module
   use Option_module
@@ -767,6 +773,7 @@ end subroutine RTJacobian
 subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 
   use Realization_module
+  use Patch_module
   use Transport_module
   use Option_module
   use Field_module
@@ -974,6 +981,7 @@ end subroutine RTJacobianPatch
 subroutine RTUpdateAuxVars(realization)
 
   use Realization_module
+  use Patch_module
   use Reactive_Transport_Aux_module
   use Grid_module
   use Coupler_module
@@ -1144,6 +1152,7 @@ end subroutine RTCreateZeroArray
 subroutine RTGetVarFromArray(realization,vec,ivar,isubvar)
 
   use Realization_module
+  use Patch_module
   use Grid_module
   use Option_module
   use Field_module
@@ -1202,6 +1211,7 @@ end subroutine RTGetVarFromArray
 function RTGetVarFromArrayAtCell(realization,ivar,isubvar,local_id)
 
   use Realization_module
+  use Patch_module
   use Grid_module
   use Option_module
   use Field_module
