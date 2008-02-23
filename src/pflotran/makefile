@@ -45,20 +45,18 @@ endif
 
 util_obj  = ${common_src}fileio.o \
 	${common_src}water_eos.o \
-	${common_src}co2eos.o \
 	${common_src}gaseos_mod.o \
+	${common_src}co2eos.o \
 	${common_src}co2_sw_rtsafe.o \
 	${common_src}co2_span_wagner.o \
-	${common_src}oil_eos.o \
-	${common_src}oil_pckr.o \
 	${common_src}utility.o \
-	${common_src}ptran_global.o \
-	${common_src}trdynmem.o \
 	${common_src}petscrelwrappers.o
 
 pflow_obj = ${common_src}pflow_pckr_mod.o \
 	${common_src}option.o \
 	${common_src}reactive_transport_aux.o\
+	${common_src}richards_aux.o\
+	${common_src}richards_lite_aux.o\
 	${common_src}field.o \
 	${common_src}debug.o \
 	${common_src}waypoint.o \
@@ -74,11 +72,12 @@ pflow_obj = ${common_src}pflow_pckr_mod.o \
 	${common_src}coupler.o \
 	${common_src}grid.o \
 	${common_src}hydrostatic.o \
+	${common_src}patch.o \
+	${common_src}level.o \
 	${common_src}realization.o \
 	${common_src}hdf5.o \
 	${common_src}mixed_fluid_eos.o \
 	${common_src}translator_mixed_fluid_mph.o \
-	${common_src}pflow_THC.o \
 	${common_src}pflow_mphase_ResJac.o\
 	${common_src}transport.o\
 	${common_src}reaction.o\
@@ -93,52 +92,17 @@ pflow_obj = ${common_src}pflow_pckr_mod.o \
 	${common_src}pflow_output2.o \
 	${common_src}pflow_init.o
 
-ptran_obj = ${common_src}option.o \
-	${common_src}debug.o \
-	${common_src}waypoint.o \
-	${common_src}region.o \
-	${common_src}material.o \
-	${common_src}strata.o \
-	${common_src}connection.o \
-	${common_src}breakthrough.o \
-	${common_src}transport_solver.o \
-	${common_src}unstructured_grid.o \
-	${common_src}structured_grid.o \
-	${common_src}condition.o \
-	${common_src}coupler.o \
-	${common_src}grid.o \
-	${common_src}transport_realization.o \
-	${common_src}hdf5.o \
-	${common_src}transport_timestepper.o \
-	${common_src}simulation.o \
-	${common_src}ptran_output.o \
-	${common_src}ptran_init.o
-
-pflotran_obj = ${common_src}rock_react.o \
-	${common_src}pflotran_couple.o
-
 pflowamr: $(util_obj) $(pflow_obj)
 
 pflow : $(util_obj) $(pflow_obj) ${pflow_src}pflow.o
 	${FLINKER}   -o pflow $(util_obj) $(pflow_obj) ${pflow_src}pflow.o ${PETSC_LIB} ${LIBS}
 
-ptran : TRANSPORT_FLAGS = -DTRANSPORT
-ptran : $(util_obj) $(ptran_obj) ${ptran_src}ptran.o
-	${FLINKER}   -o ptran $(util_obj) $(ptran_obj) ${ptran_src}ptran.o ${PETSC_LIB} ${LIBS}
-
-pflotran: $(util_obj) $(ptran_obj) $(pflow_obj) $(pflotran_obj) \
-	${pflotran_src}pflotran.o
-	${FLINKER}   -o pflotran $(util_obj) $(ptran_obj) $(pflow_obj) \
-	$(pflotran_obj) ${pflotran_src}pflotran.o ${PETSC_LIB}
-
-pflotran_fc: $(util_obj) $(ptran_obj) $(pflow_obj) $(pflotran_obj) \
-	${pflotran_src}pflotran_fc.o
-	${FLINKER}   -o pflotran_fc $(util_obj) $(ptran_obj) $(pflow_obj) \
-	$(pflotran_obj) ${pflotran_src}pflotran_fc.o ${PETSC_LIB}
-
 ascii_to_hdf5: fileio.o hdf5_dataset.o ascii_to_hdf5.o 
 	${FLINKER} -o ascii_to_hdf5 ascii_to_hdf5.o hdf5_dataset.o fileio.o \
 	$(LIBS)
+
+test: test.o functions.o
+	${FLINKER} -o test test.o functions.o $(LIBS) $(PETSC_LIB)
 
 # Should add this to default PETSc targets as well?
 %.mod : %.F90
@@ -168,7 +132,11 @@ coupler.o : condition.o connection.o region.o fileio.o grid.o
 convergence.o : option.o solver.o
 condition.o : fileio.o utility.o option.o field.o
 realization.o : grid.o option.o region.o condition.o coupler.o material.o \
-	     strata.o waypoint.o field.o hydrostatic.o debug.o breakthrough.o
+	     strata.o waypoint.o field.o hydrostatic.o debug.o breakthrough.o \
+             patch.o level.o
+level.o : patch.o option.o
+patch.o : option.o grid.o coupler.o breakthrough.o strata.o region.o \
+          richards_aux.o richards_lite_aux.o reactive_transport_aux.o
 transport_realization.o : grid.o option.o region.o condition.o coupler.o \
                           material.o strata.o waypoint.o debug.o breakthrough.o
 strata.o : fileio.o region.o material.o
@@ -180,9 +148,15 @@ pflow_output2.o : grid.o structured_grid.o option.o realization.o field.o \
                   coupler.o connection.o hdf5.o breakthrough.o
 pflow_mphase_ResJac.o : realization.o option.o field.o grid.o coupler.o \
                           translator_mixed_fluid_mph.o
-reaction.o : reactive_transport_aux.o
-transport.o : reactive_transport_aux.o
-reactive_transport.o : reaction.o transport.o reactive_transport_aux.o
+reaction.o : reactive_transport_aux.o option.o
+transport.o : reactive_transport_aux.o option.o
+reactive_transport.o : realization.o reaction.o transport.o \
+                       reactive_transport_aux.o
+reactive_transport_aux.o : option.o
+richards.o : richards_aux.o realization.o
+richards_lite.o : richards_lite_aux.o realization.o
+richards_aux.o : option.o material.o water_eos.o
+richards_lite_aux.o : option.o material.o water_eos.o
 timestepper.o : \
 	        mixed_fluid_eos.o \
                 translator_mixed_fluid_mph.o \

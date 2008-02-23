@@ -1057,8 +1057,6 @@ end subroutine fiReadQuotedNChars
 ! ************************************************************************** !
 subroutine fiSkipToEND(fid,myrank,card)
 
-  use Option_module
-
   implicit none
   
   PetscInt :: fid
