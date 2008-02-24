@@ -175,7 +175,7 @@ end subroutine RichardsAuxVarCopy
 !
 ! RichardsAuxVarCompute: Computes auxilliary variables for each grid cell
 ! author: Glenn Hammond
-! date: 00/00/00
+! date: 02/22/08
 !
 ! ************************************************************************** !
 subroutine RichardsAuxVarCompute(x,aux_var,iphase,saturation_function,option)

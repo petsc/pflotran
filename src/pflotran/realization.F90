@@ -101,7 +101,7 @@ end function RealizationCreate
 !
 ! RealizationCreateDiscretization: Creates grid
 ! author: Glenn Hammond
-! date: 00/00/00
+! date: 02/22/08
 !
 ! ************************************************************************** !
 subroutine RealizationCreateDiscretization(realization)
@@ -203,7 +203,7 @@ end subroutine RealizationCreateDiscretization
 !
 ! RealizationLocalizeRegions: Localizes regions within each patch
 ! author: Glenn Hammond
-! date: 00/00/00
+! date: 02/22/08
 !
 ! ************************************************************************** !
 subroutine RealizationLocalizeRegions(realization)
@@ -236,7 +236,7 @@ end subroutine RealizationLocalizeRegions
 !
 ! RealizationAddCoupler: Adds a copy of a coupler to a list
 ! author: Glenn Hammond
-! date: 00/00/00
+! date: 02/22/08
 !
 ! ************************************************************************** !
 subroutine RealizationAddCoupler(realization,coupler)
@@ -279,7 +279,7 @@ end subroutine RealizationAddCoupler
 !
 ! RealizationAddStrata: Adds a copy of a strata to a list
 ! author: Glenn Hammond
-! date: 00/00/00
+! date: 02/22/08
 !
 ! ************************************************************************** !
 subroutine RealizationAddStrata(realization,strata)
@@ -314,7 +314,7 @@ end subroutine RealizationAddStrata
 !
 ! RealizationAddBreakthrough: Adds a copy of a breakthrough object to a list
 ! author: Glenn Hammond
-! date: 00/00/00
+! date: 02/22/08
 !
 ! ************************************************************************** !
 subroutine RealizationAddBreakthrough(realization,breakthrough)
@@ -350,7 +350,7 @@ end subroutine RealizationAddBreakthrough
 !
 ! RealizationProcessCouplers: Sets connectivity and pointers for couplers
 ! author: Glenn Hammond
-! date: 00/00/00
+! date: 02/22/08
 !
 ! ************************************************************************** !
 subroutine RealizationProcessCouplers(realization)
@@ -385,7 +385,7 @@ end subroutine RealizationProcessCouplers
 ! RealizationInitCouplerAuxVars: Initializes coupler auxillary variables 
 !                                within list
 ! author: Glenn Hammond
-! date: 00/00/00
+! date: 02/22/08
 !
 ! ************************************************************************** !
 subroutine RealizationInitAllCouplerAuxVars(realization)
@@ -418,7 +418,7 @@ end subroutine RealizationInitAllCouplerAuxVars
 ! RealizUpdateAllCouplerAuxVars: Updates auxilliary variables associated 
 !                                  with couplers in lis
 ! author: Glenn Hammond
-! date: 00/00/00
+! date: 02/22/08
 !
 ! ************************************************************************** !
 subroutine RealizUpdateAllCouplerAuxVars(realization,force_update_flag)
@@ -667,7 +667,7 @@ end subroutine RealizAssignInitialConditions
 !
 ! RealizAssignUniformVelocity: Assigns uniform velocity for transport
 ! author: Glenn Hammond
-! date: 00/00/00
+! date: 02/22/08
 !
 ! ************************************************************************** !
 subroutine RealizAssignUniformVelocity(realization)

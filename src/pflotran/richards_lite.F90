@@ -77,7 +77,7 @@ end subroutine RichardsLiteTimeCut
 !
 ! RichardsLiteSetup: 
 ! author: Glenn Hammond
-! date: 00/00/00
+! date: 02/22/08
 !
 ! ************************************************************************** !
 subroutine RichardsLiteSetup(realization)

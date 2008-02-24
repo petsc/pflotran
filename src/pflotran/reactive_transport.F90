@@ -58,7 +58,7 @@ end subroutine RTTimeCut
 !
 ! RTSetup: 
 ! author: Glenn Hammond
-! date: 00/00/00
+! date: 02/22/08
 !
 ! ************************************************************************** !
 subroutine RTSetup(realization)
@@ -91,7 +91,7 @@ end subroutine RTSetup
 !
 ! RTSetupPatch: 
 ! author: Glenn Hammond
-! date: 00/00/00
+! date: 02/22/08
 !
 ! ************************************************************************** !
 subroutine RTSetupPatch(realization)
@@ -155,7 +155,7 @@ end subroutine RTSetupPatch
 !
 ! RTInitializeTimestep: 
 ! author: Glenn Hammond
-! date: 00/00/00
+! date: 02/22/08
 !
 ! ************************************************************************** !
 subroutine RTInitializeTimestep(realization)

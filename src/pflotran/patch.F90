@@ -73,7 +73,7 @@ contains
 !
 ! PatchCreate: Allocates and initializes a new Patch object
 ! author: Glenn Hammond
-! date: 00/00/00
+! date: 02/22/08
 !
 ! ************************************************************************** !
 function PatchCreate()
@@ -130,7 +130,7 @@ end function PatchCreate
 !
 ! PatchListCreate: Creates a patch list
 ! author: Glenn Hammond
-! date: 00/00/00
+! date: 02/22/08
 !
 ! ************************************************************************** !
 function PatchCreateList()
@@ -155,7 +155,7 @@ end function PatchCreateList
 !
 ! PatchAddToList: Adds a new patch to list
 ! author: Glenn Hammond
-! date: 00/00/00
+! date: 02/22/08
 !
 ! ************************************************************************** !
 subroutine PatchAddToList(new_patch,patch_list)
@@ -178,7 +178,7 @@ end subroutine PatchAddToList
 ! PatchConvertListToArray: Creates an array of pointers to the 
 !                               patchs in the patch list
 ! author: Glenn Hammond
-! date: 00/00/00
+! date: 02/22/08
 !
 ! ************************************************************************** !
 subroutine PatchConvertListToArray(patch_list)
@@ -206,7 +206,7 @@ end subroutine PatchConvertListToArray
 !
 ! PatchLocalizeRegions: Localizes regions within each patch
 ! author: Glenn Hammond
-! date: 00/00/00
+! date: 02/22/08
 !
 ! ************************************************************************** !
 subroutine PatchLocalizeRegions(patch,regions,option)
@@ -239,7 +239,7 @@ end subroutine PatchLocalizeRegions
 !
 ! PatchProcessCouplers: Deallocates a patch
 ! author: Glenn Hammond
-! date: 00/00/00
+! date: 02/22/08
 !
 ! ************************************************************************** !
 subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
@@ -450,7 +450,7 @@ end subroutine PatchProcessCouplers
 ! PatchInitAllCouplerAuxVars: Initializes coupler auxillary variables 
 !                                within list
 ! author: Glenn Hammond
-! date: 00/00/00
+! date: 02/22/08
 !
 ! ************************************************************************** !
 subroutine PatchInitAllCouplerAuxVars(patch,option)
@@ -478,7 +478,7 @@ end subroutine PatchInitAllCouplerAuxVars
 ! PatchInitCouplerAuxVars: Initializes coupler auxillary variables 
 !                                within list
 ! author: Glenn Hammond
-! date: 00/00/00
+! date: 02/22/08
 !
 ! ************************************************************************** !
 subroutine PatchInitCouplerAuxVars(patch,coupler_list,option)
@@ -546,7 +546,7 @@ end subroutine PatchInitCouplerAuxVars
 ! PatchUpdateAllCouplerAuxVars: Updates auxilliary variables associated 
 !                                  with couplers in list
 ! author: Glenn Hammond
-! date: 00/00/00
+! date: 02/22/08
 !
 ! ************************************************************************** !
 subroutine PatchUpdateAllCouplerAuxVars(patch,force_update_flag,option)
@@ -778,7 +778,7 @@ end subroutine PatchDestroyList
 !
 ! PatchDestroy: Deallocates a patch object
 ! author: Glenn Hammond
-! date: 00/00/00
+! date: 02/22/08
 !
 ! ************************************************************************** !
 subroutine PatchDestroy(patch)

@@ -37,7 +37,7 @@ contains
 !
 ! LevelCreate: Allocates and initializes a new Level object
 ! author: Glenn Hammond
-! date: 00/00/00
+! date: 02/22/08
 !
 ! ************************************************************************** !
 function LevelCreate()
@@ -62,7 +62,7 @@ end function LevelCreate
 !
 ! LevelListCreate: Creates a level list
 ! author: Glenn Hammond
-! date: 00/00/00
+! date: 02/22/08
 !
 ! ************************************************************************** !
 function LevelCreateList()
@@ -87,7 +87,7 @@ end function LevelCreateList
 !
 ! LevelAddPatch: Adds a new level to list
 ! author: Glenn Hammond
-! date: 00/00/00
+! date: 02/22/08
 !
 ! ************************************************************************** !
 subroutine LevelAddPatch(new_patch,level)
@@ -105,7 +105,7 @@ end subroutine LevelAddPatch
 !
 ! LevelAddToList: Adds a new level to list
 ! author: Glenn Hammond
-! date: 00/00/00
+! date: 02/22/08
 !
 ! ************************************************************************** !
 subroutine LevelAddToList(new_level,level_list)
@@ -128,7 +128,7 @@ end subroutine LevelAddToList
 ! LevelConvertListToArray: Creates an array of pointers to the 
 !                               levels in the level list
 ! author: Glenn Hammond
-! date: 00/00/00
+! date: 02/22/08
 !
 ! ************************************************************************** !
 subroutine LevelConvertListToArray(level_list)
@@ -156,7 +156,7 @@ end subroutine LevelConvertListToArray
 !
 ! LevelProcessCouplers: Deallocates a realization
 ! author: Glenn Hammond
-! date: 00/00/00
+! date: 02/22/08
 !
 ! ************************************************************************** !
 subroutine LevelProcessCouplers(level,flow_conditions,transport_conditions, &
@@ -191,7 +191,7 @@ end subroutine LevelProcessCouplers
 ! LevelInitAllCouplerAuxVars: Initializes coupler auxillary variables 
 !                                within list
 ! author: Glenn Hammond
-! date: 00/00/00
+! date: 02/22/08
 !
 ! ************************************************************************** !
 subroutine LevelInitAllCouplerAuxVars(level,option)
@@ -219,7 +219,7 @@ end subroutine LevelInitAllCouplerAuxVars
 ! LevelInitCouplerAuxVars: Initializes coupler auxillary variables 
 !                                within list
 ! author: Glenn Hammond
-! date: 00/00/00
+! date: 02/22/08
 !
 ! ************************************************************************** !
 subroutine LevelInitCouplerAuxVars(level,option)
@@ -247,7 +247,7 @@ end subroutine LevelInitCouplerAuxVars
 ! LevelUpdateAllCouplerAuxVars: Updates auxilliary variables associated 
 !                                  with couplers in lis
 ! author: Glenn Hammond
-! date: 00/00/00
+! date: 02/22/08
 !
 ! ************************************************************************** !
 subroutine LevelUpdateAllCouplerAuxVars(level,force_update_flag,option)
@@ -276,7 +276,7 @@ end subroutine LevelUpdateAllCouplerAuxVars
 ! LevelUpdateCouplerAuxVars: Updates auxilliary variables associated 
 !                                  with couplers in lis
 ! author: Glenn Hammond
-! date: 00/00/00
+! date: 02/22/08
 !
 ! ************************************************************************** !
 subroutine LevelUpdateCouplerAuxVars(level,force_update_flag,option)
@@ -341,7 +341,7 @@ end subroutine LevelDestroyList
 !
 ! LevelDestroy: Deallocates a level object
 ! author: Glenn Hammond
-! date: 00/00/00
+! date: 02/22/08
 !
 ! ************************************************************************** !
 subroutine LevelDestroy(level)

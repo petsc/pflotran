@@ -147,7 +147,7 @@ end function RegionCreateWithList
 !
 ! RegionCreateWithRegion: Creates a copy of a region
 ! author: Glenn Hammond
-! date: 00/00/00
+! date: 02/22/08
 !
 ! ************************************************************************** !
 function RegionCreateWithRegion(region)

@@ -79,7 +79,7 @@ end subroutine RichardsTimeCut
 !
 ! RichardsSetup: 
 ! author: Glenn Hammond
-! date: 00/00/00
+! date: 02/22/08
 !
 ! ************************************************************************** !
 subroutine RichardsSetup(realization)
@@ -112,7 +112,7 @@ end subroutine RichardsSetup
 !
 ! RichardsSetupPatch: 
 ! author: Glenn Hammond
-! date: 00/00/00
+! date: 02/22/08
 !
 ! ************************************************************************** !
 subroutine RichardsSetupPatch(realization)
