@@ -46,13 +46,11 @@ module Option_module
     PetscReal, pointer :: tfac(:)
       ! An array of multiplicative factors that specify how to increase time step.
       
-    PetscInt :: iblkfmt = 0 ! blocked format
+    PetscInt :: iblkfmt ! blocked format
   
       ! Basically our target number of newton iterations per time step.
     PetscReal :: dpmxe,dtmpmxe,dsmxe,dcmxe !maximum allowed changes in field vars.
     PetscReal :: dpmax,dtmpmax,dsmax,dcmax
-    
-    PetscInt :: iread_geom =1
     
     PetscReal :: scale
     PetscReal, pointer :: rock_density(:),cpr(:),dencpr(:),ckdry(:),ckwet(:), &
@@ -151,6 +149,8 @@ function OptionCreate()
   option%ntrandof = 0
   
   option%uniform_velocity = 0.d0
+  option%iblkfmt = 1
+  option%imod = 1
    
 !-----------------------------------------------------------------------
       ! Initialize some parameters to sensible values.  These are parameters

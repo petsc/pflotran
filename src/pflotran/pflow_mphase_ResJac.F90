@@ -2792,7 +2792,7 @@ subroutine pflow_update_mphase(realization)
     enddo
 
   !geh added for transient boundary conditions  
-  if (associated(patch%imat) .and. option%iread_geom < 0) then
+  if (associated(patch%imat)) then
 
     boundary_condition => patch%flow_boundary_conditions%first
     sum_connection = 0

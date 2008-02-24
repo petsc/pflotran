@@ -1,7 +1,6 @@
 module Timestepper_module
  
   use Solver_module
-  use Option_module
   use Waypoint_module 
   use Convergence_module 
  
@@ -14,14 +13,13 @@ module Timestepper_module
   type, public :: stepper_type
   
     PetscInt :: steps         ! The number of time-steps taken by the code.
-    PetscInt :: stepmax       ! The maximum number of time-steps taken by the code.
-    PetscInt :: nstpmax       ! The maximum number of time-step increments.
-    PetscInt :: newton_max    ! Max number of Newton steps for one time step.
-    PetscInt :: icut_max      ! Max number of dt cuts for one time step.
+    PetscInt :: nstepmax      ! Maximum number of timesteps taken by the code.
+    PetscInt :: newton_max    ! Maximum number of Newton steps for one time step.
+    PetscInt :: icut_max      ! Maximum number of timestep cuts within one time step.
     PetscInt :: ndtcmx        ! Steps needed after cutting to increase time step
     PetscInt :: newtcum       ! Total number of Newton steps taken.
     PetscInt :: icutcum       ! Total number of cuts in the timestep taken.    
-    PetscInt :: iaccel    
+    PetscInt :: iaccel        ! Accelerator index
     
     PetscReal :: dt_min
     PetscReal :: dt_max
@@ -35,7 +33,7 @@ module Timestepper_module
   end type stepper_type
   
   public :: TimestepperCreate, TimestepperDestroy, StepperRun, &
-            TimestepperReadTolerances
+            TimestepperRead, TimestepperPrintInfo
   
 contains
 
@@ -56,15 +54,14 @@ function TimestepperCreate()
   
   allocate(stepper)
   stepper%steps = 0
-  stepper%stepmax = 0
-  stepper%nstpmax = 0
+  stepper%nstepmax = 999999
   
-  stepper%newton_max = 0
-  stepper%icut_max = 0
+  stepper%newton_max = 16
+  stepper%icut_max = 16
   stepper%ndtcmx = 5
   stepper%newtcum = 0
   stepper%icutcum = 0    
-  stepper%iaccel = 1
+  stepper%iaccel = 5
   
   stepper%dt_min = 1.d0
   stepper%dt_max = 3.1536d6 ! One-tenth of a year.  
@@ -78,6 +75,87 @@ function TimestepperCreate()
   TimeStepperCreate => stepper
   
 end function TimestepperCreate 
+  
+! ************************************************************************** !
+!
+! TimestepperRead: Reads parameters associated with time stepper
+! author: Glenn Hammond
+! date: 02/23/08
+!
+! ************************************************************************** !
+subroutine TimestepperRead(stepper,fid,option)
+
+  use Option_module
+  use Fileio_module
+  
+  implicit none
+
+  type(stepper_type) :: stepper
+  PetscInt :: fid
+  type(option_type) :: option
+  
+  character(len=MAXSTRINGLENGTH) :: string, error_string
+  character(len=MAXWORDLENGTH) :: keyword, word, word2
+  PetscErrorCode :: ierr
+
+  ierr = 0
+  do
+  
+    call fiReadFlotranString(fid,string,ierr)
+
+    if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
+        fiStringCompare(string,'END',THREE_INTEGER)) exit  
+
+    call fiReadWord(string,keyword,.true.,ierr)
+    call fiErrorMsg(option%myrank,'keyword','TIMESTEPPER', ierr)
+    call fiWordToUpper(keyword)   
+      
+    select case(trim(keyword))
+
+      case('NUM_STEPS_AFTER_TS_CUT')
+        call fiReadInt(string,stepper%ndtcmx,ierr)
+        call fiDefaultMsg(option%myrank,'num_steps_after_ts_cut',ierr)
+
+      case('MAX_STEPS')
+        call fiReadInt(string,stepper%nstepmax,ierr)
+        call fiDefaultMsg(option%myrank,'nstepmax',ierr)
+  
+      case('TS_ACCELERATION')
+        call fiReadInt(string,stepper%iaccel,ierr)
+        call fiDefaultMsg(option%myrank,'iaccel',ierr)
+
+      case('MAX_NEWTON_ITERATIONS')
+        call fiReadInt(string,stepper%newton_max,ierr)
+        call fiDefaultMsg(option%myrank,'newton_max',ierr)
+
+      case('MAX_TS_CUTS')
+        call fiReadInt(string,stepper%icut_max,ierr)
+        call fiDefaultMsg(option%myrank,'icut_max',ierr)
+
+      case('MAX_PRESSURE_CHANGE')
+        call fiReadDouble(string,option%dpmxe,ierr)
+        call fiDefaultMsg(option%myrank,'dpmxe',ierr)
+
+      case('MAX_TEMPERATURE_CHANGE')
+        call fiReadDouble(string,option%dtmpmxe,ierr)
+        call fiDefaultMsg(option%myrank,'dtmpmxe',ierr)
+  
+      case('MAX_CONCENTRATION')
+        call fiReadDouble(string,option%dcmxe,ierr)
+        call fiDefaultMsg(option%myrank,'dcmxe',ierr)
+
+      case('MAX_SATURATION_CHANGE')
+        call fiReadDouble(string,option%dsmxe,ierr)
+        call fiDefaultMsg(option%myrank,'dsmxe',ierr)
+
+      case default
+        call printErrMsg(option,'Timestepper option: '//trim(word)// &
+                         ' not recognized.')
+    end select 
+  
+  enddo  
+
+end subroutine TimestepperRead
 
 ! ************************************************************************** !
 !
@@ -148,7 +226,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
            
   call PetscGetTime(stepper_start_time, ierr)
   start_step = master_stepper%steps+1
-  do istep = start_step, master_stepper%stepmax
+  do istep = start_step, master_stepper%nstepmax
 
     timestep_cut_flag = .false.
     plot_flag = .false.
@@ -352,7 +430,7 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag)
   PetscReal :: dt
   PetscReal :: dt_max
   PetscInt :: steps
-  PetscInt :: stepmax
+  PetscInt :: nstepmax
   type(waypoint_type), pointer :: cur_waypoint
 
   ! target time will always be dictated by the flow solver, if present
@@ -362,14 +440,14 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag)
     dt_max = flow_stepper%dt_max
     cur_waypoint => flow_stepper%cur_waypoint
     steps = flow_stepper%steps
-    stepmax = flow_stepper%stepmax
+    nstepmax = flow_stepper%nstepmax
   else
     time = option%tran_time + option%tran_dt
     dt = option%tran_dt
     dt_max = tran_stepper%dt_max
     cur_waypoint => tran_stepper%cur_waypoint
     steps = tran_stepper%steps
-    stepmax = tran_stepper%stepmax
+    nstepmax = tran_stepper%nstepmax
   endif
 
 ! If a waypoint calls for a plot or change in src/sinks, adjust time step to match waypoint
@@ -392,7 +470,7 @@ subroutine StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag)
     cur_waypoint => cur_waypoint%next
     if (associated(cur_waypoint)) &
       dt_max = cur_waypoint%dt_max
-  else if (steps >= stepmax) then
+  else if (steps >= nstepmax) then
     plot_flag = .true.
     nullify(cur_waypoint)
   endif
@@ -497,7 +575,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   call GridLocalToLocal(grid,field%iphas_loc,field%iphas_loc,ONEDOF)
   
   if (option%myrank == 0) then
-    write(*,'(/,"FLOW ",55("="))')
+    write(*,'(/,2("=")," FLOW ",52("="))')
   endif
   
   select case(option%iflowmode)
@@ -773,7 +851,7 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
   call RTInitializeTimestep(realization)
 
   if (option%myrank == 0) then
-    write(*,'(/,"TRANSPORT ",50("="))')
+    write(*,'(/,2("=")" TRANSPORT ",47("="))')
   endif
   
   do
@@ -984,81 +1062,40 @@ end subroutine StepperUpdateTransportSolution
 
 ! ************************************************************************** !
 !
-! TimestepperReadTolerances: Reads newton solver tolerance from input file
+! TimestepperPrintInfo: Prints information about time stepper
 ! author: Glenn Hammond
-! date: 02/18/08
+! date: 02/23/08
 !
 ! ************************************************************************** !
-subroutine TimestepperReadTolerances(stepper,fid,option)
+subroutine TimestepperPrintInfo(stepper,fid,header,option)
 
-  use Fileio_module
   use Option_module
   
   implicit none
-
+  
   type(stepper_type) :: stepper
   PetscInt :: fid
+  character(len=MAXSTRINGLENGTH) :: header  
   type(option_type) :: option
   
-  character(len=MAXSTRINGLENGTH) :: string, error_string
-  character(len=MAXWORDLENGTH) :: keyword, word, word2
-  PetscErrorCode :: ierr
+  character(len=MAXSTRINGLENGTH) :: string
 
-  ierr = 0
-  do
-  
-    call fiReadFlotranString(fid,string,ierr)
+  if (option%myrank == 0) then
+    write(*,*) 
+    write(fid,*) 
+    write(*,'(a)') trim(header)
+    write(fid,'(a)') trim(header)
+    write(*,'("max steps:",i6)') stepper%nstepmax
+    write(fid,'("max steps:",i6)') stepper%nstepmax
+    write(*,'("max newton its:",i4)') stepper%newton_max
+    write(fid,'("max newton its:",i4)') stepper%newton_max
+    write(*,'("max const steps:",i4)') stepper%ndtcmx
+    write(fid,'("max const steps:",i4)') stepper%ndtcmx
+    write(*,'("max cuts:",i4)') stepper%icut_max
+    write(fid,'("max cuts:",i4)') stepper%icut_max
+  endif    
 
-    if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
-        fiStringCompare(string,'END',THREE_INTEGER)) exit  
-
-    call fiReadWord(string,keyword,.true.,ierr)
-    call fiErrorMsg(option%myrank,'keyword','NEWTON_SOLVER', ierr)
-    call fiWordToUpper(keyword)   
-      
-    select case(trim(keyword))
-    
-      case('FIXED_STEPS_AFTER_TS_CUT')
-        call fiReadInt(string,stepper%ndtcmx,ierr)
-        call fiDefaultMsg(option%myrank,'ndtcmx',ierr)
-
-      case('MAX_STEPS')
-        call fiReadInt(string,stepper%stepmax,ierr)
-        call fiDefaultMsg(option%myrank,'stepmax',ierr)
-  
-      case('TS_ACCELERATION')
-        call fiReadInt(string,stepper%iaccel,ierr)
-        call fiDefaultMsg(option%myrank,'iaccel',ierr)
-
-      case('MAX_NEWTON_ITERATIONS')
-        call fiReadInt(string,stepper%newton_max,ierr)
-        call fiDefaultMsg(option%myrank,'newton_max',ierr)
-
-      case('MAX_TS_CUTS')
-        call fiReadInt(string,stepper%icut_max,ierr)
-        call fiDefaultMsg(option%myrank,'icut_max',ierr)
-
-      case('MAX_PRESSURE_CHANGE')
-        call fiReadDouble(string,option%dpmxe,ierr)
-        call fiDefaultMsg(option%myrank,'dpmxe',ierr)
-
-      case('MAX_TEMPERATURE_CHANGE')
-        call fiReadDouble(string,option%dtmpmxe,ierr)
-        call fiDefaultMsg(option%myrank,'dtmpmxe',ierr)
-  
-      case('MAX_CONCENTRATION')
-        call fiReadDouble(string,option%dcmxe,ierr)
-        call fiDefaultMsg(option%myrank,'dcmxe',ierr)
-
-      case('MAX_SATURATION_CHANGE')
-        call fiReadDouble(string,option%dsmxe,ierr)
-        call fiDefaultMsg(option%myrank,'dsmxe',ierr)
-
-    end select 
-  
-  enddo  
-
-end subroutine TimestepperReadTolerances
+end subroutine TimestepperPrintInfo
 
 ! ************************************************************************** !
 !

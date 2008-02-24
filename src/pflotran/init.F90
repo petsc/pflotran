@@ -65,9 +65,8 @@ subroutine Init(simulation,filename)
   type(patch_type), pointer :: patch  
   type(pflow_debug_type), pointer :: debug
   type(waypoint_list_type), pointer :: waypoint_list
-  PetscInt :: mcomp, mphas
+  character(len=MAXSTRINGLENGTH) :: string
   PetscInt :: temp_int
-  PetscTruth :: iflag
                        
   PetscErrorCode :: ierr
   
@@ -101,6 +100,7 @@ subroutine Init(simulation,filename)
     flow_solver => flow_stepper%solver
   else
     call TimestepperDestroy(simulation%flow_stepper)
+    nullify(flow_stepper)
   endif
   
   ! initialize transport mode
@@ -108,6 +108,7 @@ subroutine Init(simulation,filename)
     tran_solver => tran_stepper%solver
   else
     call TimestepperDestroy(simulation%tran_stepper)
+    nullify(tran_stepper)
   endif
 
   ! read in the remainder of the input file
@@ -235,8 +236,6 @@ subroutine Init(simulation,filename)
       allocate(patch%imat(grid%ngmax))  ! allocate material id array
     call ReadStructuredGridHDF5(realization)
   endif
-  
-  call printMsg(option,"  Finished setting up ")
 
   if (debug%print_couplers) then
     call verifyAllCouplers(realization)
@@ -273,8 +272,34 @@ subroutine Init(simulation,filename)
     call VecSet(field%saturation_loc,1.d0,ierr)
     call RTSetup(realization)
   endif
-
-  if (option%myrank == 0) write(*,'("  Finished setting up of INIT ")')
+  
+  ! print info
+  if (associated(flow_stepper)) then
+    string = 'Flow Stepper:'
+    call TimestepperPrintInfo(flow_stepper,IUNIT2,string,option)
+  endif    
+  if (associated(tran_stepper)) then
+    string = 'Transport Stepper:'
+    call TimestepperPrintInfo(tran_stepper,IUNIT2,string,option)
+  endif    
+  if (associated(flow_solver)) then
+    string = 'Flow Newton Solver:'
+    call SolverPrintNewtonInfo(flow_solver,IUNIT2,string,option%myrank)
+  endif    
+  if (associated(tran_solver)) then
+    string = 'Transport Newton Solver:'
+    call SolverPrintNewtonInfo(tran_solver,IUNIT2,string,option%myrank)
+  endif    
+  if (associated(flow_solver)) then
+    string = 'Flow Linear Solver:'
+    call SolverPrintLinearInfo(flow_solver,IUNIT2,string,option%myrank)
+  endif    
+  if (associated(tran_solver)) then
+    string = 'Transport Linear Solver'
+    call SolverPrintLinearInfo(tran_solver,IUNIT2,string,option%myrank)
+  endif    
+  
+  call printMsg(option,"  Finished Initialization")
          
 end subroutine Init
 
@@ -558,7 +583,7 @@ subroutine readInput(simulation,filename)
 !    call fiReadCard(word,card,ierr)
     card = trim(word)
 
-    if (option%myrank == 0) print *, 'pflow_read:: ',card
+    call printMsg(option,'pflotran card:: '//trim(card))
 
     select case(trim(card))
 
@@ -746,59 +771,9 @@ subroutine readInput(simulation,filename)
 
 !....................
 
-
-      case ('OPTS')
-
-        call fiReadStringErrorMsg(option%myrank,'OPTS',ierr)
-
-        call fiReadInt(string,idum,ierr)
-        call fiDefaultMsg(option%myrank,'write_init',ierr)
-
-        call fiReadInt(string,idum,ierr)
-        call fiDefaultMsg(option%myrank,'iprint',ierr)
-
+      case ('IMOD')
         call fiReadInt(string,option%imod,ierr)
         call fiDefaultMsg(option%myrank,'mod',ierr)
-
-        call fiReadInt(string,idum,ierr)
-        call fiDefaultMsg(option%myrank,'itecplot',ierr)
-
-        call fiReadInt(string,option%iblkfmt,ierr)
-        call fiDefaultMsg(option%myrank,'iblkfmt',ierr)
-
-        call fiReadInt(string,master_stepper%ndtcmx,ierr)
-        call fiDefaultMsg(option%myrank,'ndtcmx',ierr)
-
-        call fiReadInt(string,idum,ierr)
-        call fiDefaultMsg(option%myrank,'iran_por',ierr)
-  
-        call fiReadDouble(string,rdum,ierr)
-        call fiDefaultMsg(option%myrank,'ran_fac',ierr)
-    
-        call fiReadInt(string,idum,ierr)
-        call fiDefaultMsg(option%myrank,'iread_perm',ierr)
-    
-        call fiReadInt(string,option%iread_geom,ierr)
-        call fiDefaultMsg(option%myrank,'iread_geom',ierr)
-
-        if (associated(tran_stepper)) then
-          tran_stepper%ndtcmx = master_stepper%ndtcmx
-        endif
-
-        idum = 0
-        if (option%myrank == 0) &
-          write(IUNIT2,'(/," *OPTS",/, &
-            & "  write_init = ",3x,i2,/ &
-            & "  imod       = ",3x,i2,/, &
-            & "  itecplot   = ",3x,i2,/, &
-            & "  iblkfmt    = ",3x,i2,/, &
-            & "  ndtcmx     = ",3x,i2,/, &
-            & "  iran_por   = ",3x,i2,/, &
-            & "  ran_fac    = ",3x,1pe12.4,/, &
-            & "  iread_perm = ",3x,i2,/, &
-            & "  iread_geom = ",3x,i2 &
-            & )') idum,option%imod,idum, &
-            option%iblkfmt,master_stepper%ndtcmx,idum,rdum,idum,option%iread_geom
 
 !....................
 
@@ -806,8 +781,8 @@ subroutine readInput(simulation,filename)
 
         call fiReadStringErrorMsg(option%myrank,'TOLR',ierr)
 
-        call fiReadInt(string,master_stepper%stepmax,ierr)
-        call fiDefaultMsg(option%myrank,'stepmax',ierr)
+        call fiReadInt(string,master_stepper%nstepmax,ierr)
+        call fiDefaultMsg(option%myrank,'nstepmax',ierr)
   
         call fiReadInt(string,master_stepper%iaccel,ierr)
         call fiDefaultMsg(option%myrank,'iaccel',ierr)
@@ -847,7 +822,7 @@ subroutine readInput(simulation,filename)
 ! For commented-out lines to work with the Sun f95 compiler, we have to 
 ! terminate the string in the line above; otherwise, the compiler tries to
 ! include the commented-out line as part of the continued string.
-          master_stepper%stepmax,master_stepper%iaccel, &
+          master_stepper%nstepmax,master_stepper%iaccel, &
           master_stepper%newton_max,master_stepper%icut_max, &
           option%dpmxe,option%dtmpmxe,option%dcmxe, option%dsmxe
 
@@ -1027,22 +1002,26 @@ subroutine readInput(simulation,filename)
       case ('NUMERICAL_JACOBIAN')
         option%numerical_derivatives = .true.
 
-      case ('INEXACT_NEWTON')
-        master_solver%inexact_newton = .true.
+!....................
 
-!......................
-
-      case ('NO_PRINT_CONVERGENCE')
-        master_solver%print_convergence = PETSC_FALSE
-
-      case ('NO_INF_NORM','NO_INFINITY_NORM')
-        master_solver%check_infinity_norm = PETSC_FALSE
-
-      case ('NO_FORCE_ITERATION')
-        master_solver%force_at_least_1_iteration = PETSC_FALSE
-
-      case ('PRINT_DETAILED_CONVERGENCE')
-        master_solver%print_detailed_convergence = PETSC_TRUE
+      case ('TIMESTEPPER')
+        call fiReadWord(string,word,.false.,ierr)
+        length = len_trim(word)
+        call fiCharsToUpper(word,length)
+        select case(word)
+          case('TRAN','TRANSPORT')
+            if (associated(tran_solver)) then
+              call TimestepperRead(tran_stepper,IUNIT1,option)
+            else
+              call fiSkipToEND(IUNIT1,option%myrank,card)
+            endif
+          case default
+            if (associated(flow_solver)) then
+              call TimestepperRead(flow_stepper,IUNIT1,option)
+            else
+              call fiSkipToEND(IUNIT1,option%myrank,card)
+            endif
+        end select
 
 !....................
 
@@ -1052,12 +1031,20 @@ subroutine readInput(simulation,filename)
         call fiCharsToUpper(word,length)
         select case(word)
           case('TRAN','TRANSPORT')
-            if (associated(tran_solver)) &
+            if (associated(tran_solver)) then
               call SolverReadLinear(tran_solver,IUNIT1,option%myrank)
+            else
+              call fiSkipToEND(IUNIT1,option%myrank,card)
+            endif
           case default
-            if (associated(flow_solver)) &
+            if (associated(flow_solver)) then
               call SolverReadLinear(flow_solver,IUNIT1,option%myrank)
+            else
+              call fiSkipToEND(IUNIT1,option%myrank,card)
+            endif
         end select
+
+!....................
 
       case ('NEWTON_SOLVER')
         call fiReadWord(string,word,.false.,ierr)
@@ -1065,85 +1052,19 @@ subroutine readInput(simulation,filename)
         call fiCharsToUpper(word,length)
         select case(word)
           case('TRAN','TRANSPORT')
-            if (associated(tran_stepper)) &
+            if (associated(tran_stepper)) then
               call SolverReadNewton(tran_solver,IUNIT1,option%myrank)
+            else
+              call fiSkipToEND(IUNIT1,option%myrank,card)
+            endif
           case default
-            if (associated(flow_stepper)) &
+            if (associated(flow_stepper)) then
               call SolverReadNewton(flow_solver,IUNIT1,option%myrank)
+            else
+              call fiSkipToEND(IUNIT1,option%myrank,card)
+            endif
         end select
         
-      case ('TIMESTEPPER_TOLERANCES')
-        call fiReadWord(string,word,.false.,ierr)
-        length = len_trim(word)
-        call fiCharsToUpper(word,length)
-        select case(word)
-          case('TRAN','TRANSPORT')
-            if (associated(tran_stepper)) &          
-              call TimestepperReadTolerances(tran_stepper,IUNIT1,option)
-          case default
-            if (associated(flow_stepper)) &          
-              call TimestepperReadTolerances(flow_stepper,IUNIT1,option)
-        end select
-        
-!....................
-
-      case ('SOLV')
-    
-        call fiReadStringErrorMsg(option%myrank,'SOLV',ierr)
-
-!       call fiReadDouble(string,eps,ierr)
-!       call fiDefaultMsg(option%myrank,'eps',ierr)
-
-        call fiReadDouble(string,master_solver%newton_atol,ierr)
-        call fiDefaultMsg(option%myrank,'atol_petsc',ierr)
-
-        call fiReadDouble(string,master_solver%newton_rtol,ierr)
-        call fiDefaultMsg(option%myrank,'rtol_petsc',ierr)
-
-        call fiReadDouble(string,master_solver%newton_stol,ierr)
-        call fiDefaultMsg(option%myrank,'stol_petsc',ierr)
-      
-        master_solver%newton_dtol=1.D5
-!       if (option%use_ksp == 1) then
-        call fiReadDouble(string,master_solver%newton_dtol,ierr)
-        call fiDefaultMsg(option%myrank,'dtol_petsc',ierr)
-!       endif
-   
-        call fiReadInt(string,master_solver%newton_maxit,ierr)
-        call fiDefaultMsg(option%myrank,'maxit',ierr)
-      
-        call fiReadInt(string,master_solver%newton_maxf,ierr)
-        call fiDefaultMsg(option%myrank,'maxf',ierr)
-       
-        call fiReadInt(string,idum,ierr)
-        call fiDefaultMsg(option%myrank,'idt',ierr)
-        
-        master_solver%newton_inf_tol = master_solver%newton_atol
-        call fiReadDouble(string,master_solver%newton_inf_tol,ierr)
-        call fiDefaultMsg(option%myrank,'inf_tol_pflow',ierr)
- 
-        if (option%myrank==0) write(IUNIT2,'(/," *SOLV ",/, &
-          &"  atol_petsc   = ",1pe12.4,/, &
-          &"  rtol_petsc   = ",1pe12.4,/, &
-          &"  stol_petsc   = ",1pe12.4,/, &
-          &"  dtol_petsc   = ",1pe12.4,/, &
-          &"  maxit        = ",8x,i5,/, &
-          &"  maxf        = ",8x,i5,/, &
-          &"  idt         = ",8x,i5 &
-          &    )') &
-           master_solver%newton_atol,master_solver%newton_rtol, &
-           master_solver%newton_stol,master_solver%newton_dtol, &
-           master_solver%newton_maxit,master_solver%newton_maxf,idum
-
-           master_solver%linear_atol = master_solver%newton_atol
-           master_solver%linear_rtol = master_solver%newton_rtol
-           master_solver%linear_stol = master_solver%newton_stol
-           master_solver%linear_dtol = master_solver%newton_dtol
-
-! The line below is a commented-out portion of the format string above.
-! We have to put it here because of the stupid Sun compiler.
-!    &"  eps          = ",1pe12.4,/, &
-
 !....................
 
       case ('THRM','THERMAL_PROPERTY','THERMAL_PROPERTIES')
