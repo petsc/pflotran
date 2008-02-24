@@ -88,7 +88,7 @@ function SolverCreate()
   solver%newton_rtol = PETSC_DEFAULT_DOUBLE_PRECISION
   solver%newton_stol = PETSC_DEFAULT_DOUBLE_PRECISION
   solver%newton_dtol = PETSC_DEFAULT_DOUBLE_PRECISION
-  solver%newton_inf_tol = 1.d-6 ! arbitrarily set by geh
+  solver%newton_inf_tol = 1.d-50 ! arbitrarily set by geh
   solver%newton_maxit = PETSC_DEFAULT_INTEGER
   solver%newton_maxf = PETSC_DEFAULT_INTEGER
   

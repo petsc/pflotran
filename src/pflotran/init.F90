@@ -340,7 +340,7 @@ subroutine readRequiredCardsFromInput(realization,filename)
   option => realization%option
   
   open(IUNIT1, file=filename, action="read", status="old") 
-  open(IUNIT2, file='pflow.out', action="write", status="unknown")
+  open(IUNIT2, file='pflotran.out', action="write", status="unknown")
 
 ! Read in select required cards
 !.........................................................................
