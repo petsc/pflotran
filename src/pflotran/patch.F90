@@ -48,7 +48,7 @@ module Patch_module
     
     type(patch_type), pointer :: next
 
-  end type 
+  end type patch_type
 
   ! pointer data structure required for making an array of patch pointers in F90
   type, public :: patch_ptr_type
