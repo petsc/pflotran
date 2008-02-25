@@ -267,7 +267,7 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
   call VecGetArrayF90(field%porosity_loc,porosity_loc_p,ierr)
   call VecGetArrayF90(field%saturation_loc,saturation_loc_p,ierr)
   call VecGetArrayF90(field%tor_loc,tor_loc_p,ierr)
-  call VecGetArrayF90(grid%volume,volume_p,ierr)
+  call VecGetArrayF90(field%volume,volume_p,ierr)
 
   call VecGetArrayF90(field%tran_accum, accum_p, ierr)
 
@@ -289,7 +289,7 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
   call VecRestoreArrayF90(field%porosity_loc,porosity_loc_p,ierr)
   call VecRestoreArrayF90(field%saturation_loc,saturation_loc_p,ierr)
   call VecRestoreArrayF90(field%tor_loc,tor_loc_p,ierr)
-  call VecRestoreArrayF90(grid%volume,volume_p,ierr)
+  call VecRestoreArrayF90(field%volume,volume_p,ierr)
 
   call VecRestoreArrayF90(field%tran_accum, accum_p, ierr)
 
@@ -578,7 +578,7 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
   call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
   call VecGetArrayF90(field%saturation_loc, saturation_loc_p, ierr)
   call VecGetArrayF90(field%tor_loc, tor_loc_p, ierr)
-  call VecGetArrayF90(grid%volume, volume_p, ierr)
+  call VecGetArrayF90(field%volume, volume_p, ierr)
 
   r_p = 0.d0
 #if 1
@@ -706,7 +706,7 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
   call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
   call VecRestoreArrayF90(field%saturation_loc, saturation_loc_p, ierr)
   call VecRestoreArrayF90(field%tor_loc, tor_loc_p, ierr)
-  call VecRestoreArrayF90(grid%volume, volume_p, ierr)
+  call VecRestoreArrayF90(field%volume, volume_p, ierr)
 
   if (realization%debug%vecview_residual) then
     call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'RTresidual.out',viewer,ierr)
@@ -830,7 +830,7 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
   call VecGetArrayF90(field%saturation_loc, saturation_loc_p, ierr)
   call VecGetArrayF90(field%tor_loc, tor_loc_p, ierr)
-  call VecGetArrayF90(grid%volume, volume_p, ierr)
+  call VecGetArrayF90(field%volume, volume_p, ierr)
     
 #if 1  
   do local_id = 1, grid%nlmax  ! For each local node do...
@@ -951,7 +951,7 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
   call VecRestoreArrayF90(field%saturation_loc, saturation_loc_p, ierr)
   call VecRestoreArrayF90(field%tor_loc, tor_loc_p, ierr)
-  call VecRestoreArrayF90(grid%volume, volume_p, ierr)
+  call VecRestoreArrayF90(field%volume, volume_p, ierr)
 
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)

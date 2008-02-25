@@ -192,10 +192,10 @@ subroutine ReadStructuredGridHDF5(realization)
   
   string = "Volume"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
-  call VecGetArrayF90(grid%volume,vec_ptr,ierr); CHKERRQ(ierr)
+  call VecGetArrayF90(field%volume,vec_ptr,ierr); CHKERRQ(ierr)
   call HDF5ReadRealArray(option,grp_id,string,grid%nlmax,indices,grid%nlmax, &
                          vec_ptr)
-  call VecRestoreArrayF90(grid%volume,vec_ptr,ierr); CHKERRQ(ierr)
+  call VecRestoreArrayF90(field%volume,vec_ptr,ierr); CHKERRQ(ierr)
   
   string = "X-Permeability"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)

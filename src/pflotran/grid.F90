@@ -48,8 +48,6 @@ module Grid_module
     PetscReal :: x_min, x_max, y_min, y_max, z_min, z_max
     PetscReal :: origin(3)
 
-    Vec :: volume 
-    
     DM :: dm_1_dof, dm_nflowdof, dm_ntrandof
     
     PetscInt, pointer :: hash(:,:,:)
@@ -155,8 +153,6 @@ function GridCreate()
   grid%dm_1_dof = 0
   grid%dm_nflowdof = 0
   grid%dm_ntrandof = 0
-  
-  grid%volume = 0
   
   nullify(grid%hash)
   grid%num_hash_bins = 1000
@@ -551,7 +547,7 @@ end subroutine GridComputeCoordinates
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine GridComputeVolumes(grid,option)
+subroutine GridComputeVolumes(grid,volume,option)
 
   use Option_module
   
@@ -559,11 +555,12 @@ subroutine GridComputeVolumes(grid,option)
   
   type(grid_type) :: grid
   type(option_type) :: option
+  Vec :: volume
   
   select case(grid%itype)
     case(STRUCTURED_GRID)
       call StructuredGridComputeVolumes(grid%structured_grid,option, &
-                                        grid%nL2G,grid%volume)
+                                        grid%nL2G,volume)
     case(UNSTRUCTURED_GRID)
   end select
 

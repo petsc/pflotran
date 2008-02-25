@@ -127,7 +127,7 @@ subroutine RealizationCreateDiscretization(realization)
       
       ! 1 degree of freedom, global
       call GridCreateVector(grid,ONEDOF,field%porosity0,GLOBAL)
-      call GridDuplicateVector(grid,field%porosity0, grid%volume)
+      call GridDuplicateVector(grid,field%porosity0, field%volume)
       
       ! 1 degree of freedom, local
       call GridCreateVector(grid,ONEDOF,field%porosity_loc,LOCAL)
@@ -189,7 +189,7 @@ subroutine RealizationCreateDiscretization(realization)
       call GridMapIndices(grid)
       call GridComputeSpacing(grid)
       call GridComputeCoordinates(grid,option)
-      call GridComputeVolumes(grid,option)
+      call GridComputeVolumes(grid,field%volume,option)
       ! set up internal connectivity, distance, etc.
       call GridComputeInternalConnect(grid,option)
 

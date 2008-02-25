@@ -190,7 +190,7 @@ subroutine translator_mphase_massbal(realization)
   field => realization%field  
 
   call VecGetArrayF90(mphase_field%var_loc,var_loc_p,ierr)
-  call VecGetArrayF90(grid%volume, volume_p, ierr)
+  call VecGetArrayF90(field%volume, volume_p, ierr)
   call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)  
   call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr)
  
@@ -245,7 +245,7 @@ subroutine translator_mphase_massbal(realization)
   enddo
  !  call PETSCBarrier(PETSC_NULL_OBJECT,ierr)
   call VecRestoreArrayF90(mphase_field%var_loc,var_loc_p,ierr)
-  call VecRestoreArrayF90(grid%volume, volume_p, ierr)
+  call VecRestoreArrayF90(field%volume, volume_p, ierr)
   call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
   call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr)
  
