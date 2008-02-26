@@ -227,7 +227,7 @@ subroutine HydrostaticUpdateCouplerBetter(coupler,option,grid)
   PetscReal :: xm_nacl, dw_kg
   PetscReal :: max_z, min_z
   PetscReal, pointer :: pressure_array(:), density_array(:), z(:)
-  PetscReal :: pressure_gradient(3), datum(3)
+  PetscReal :: pressure_gradient(3), piezometric_head_gradient(3), datum(3)
   PetscReal :: temperature_gradient(3), concentration_gradient(3)
   
   type(condition_type), pointer :: condition
@@ -245,9 +245,6 @@ subroutine HydrostaticUpdateCouplerBetter(coupler,option,grid)
   temperature_at_datum = 25.d0
   concentration_at_datum = 0.d0
   
-  pressure_gradient(1:3) = condition%pressure%gradient%cur_value(1:3)
-  datum(1:3) = condition%pressure%datum%cur_value(1:3)
-  pressure_at_datum = condition%pressure%dataset%cur_value(1)
   
   ! for now, just set it; in future need to account for a different temperature datum
   if (associated(condition%temperature)) then
@@ -258,6 +255,15 @@ subroutine HydrostaticUpdateCouplerBetter(coupler,option,grid)
     concentration_at_datum = condition%concentration%dataset%cur_value(1)
     concentration_gradient(1:3) = condition%concentration%gradient%cur_value(1:3)
   endif
+
+  datum(1:3) = condition%pressure%datum%cur_value(1:3)
+  pressure_at_datum = condition%pressure%dataset%cur_value(1)
+  ! gradient is in m/m; needs conversion to Pa/m
+  piezometric_head_gradient(1:3) = condition%pressure%gradient%cur_value(1:3)
+  call nacl_den(temperature_at_datum,pressure_at_datum*1.d-6,xm_nacl,dw_kg) 
+  rho = dw_kg * 1.d3
+  pressure_gradient(1:3) = piezometric_head_gradient(1:3)* &
+                           rho*option%gravity(Z_DIRECTION)
 
   if (dabs(pressure_gradient(Z_DIRECTION)) < 1.d-40) then
     ! compute the vertical gradient based on a 1 meter vertical spacing and
