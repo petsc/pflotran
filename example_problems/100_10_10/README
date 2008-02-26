@@ -1,4 +1,4 @@
-100_10_10 is a horizontal 100x10x10 grid cell column composed of 1m cubic grid cells.  A pressure gradient of 1000 Pa/meter is applied across the column with the west face 100Kpa higher than the east.  A solute concentraion of 1.0 is introduced at the west inlet.
+100_10_10 is a horizontal 100x10x10 grid cell column composed of 1m cubic grid cells.  A pressure gradient of 1000 Pa/meter is applied across the column with the west face 100Kpa higher than the east.  A solute concentration of 1.0 is introduced at the west inlet.
 
 Command Line:
 
