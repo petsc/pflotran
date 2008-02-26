@@ -126,7 +126,7 @@ Hanford300::Hanford300(Grid **grid_) {
   grid->mapVerticesToCells();
 
   // don't know that we need this since we can use conductance of river.
-    river_polygon = new Polygon();
+//  river_polygon = new Polygon();
 //  river_polygon->createRiverEdgePolygon();
 
   north_pond_west_trench = new Polygon();
@@ -492,9 +492,9 @@ void Hanford300::computeNorthPondWestTrBoundary(Grid *grid, Polygon *p) {
   for (PetscInt i=0; i<grid->getNumberOfCellsGhosted(); i++) {
     PetscInt local_id = grid->cells[i].getIdLocal();
     if (local_id > -1) {
-      if (grid->cells[i].flag & TOP_DIR_TOP_FACE ){//&&
-     //     p->pointInPolygon(grid->cells[i].getX(),
-     //                       grid->cells[i].getY())) {
+      if (grid->cells[i].flag & TOP_DIR_TOP_FACE &&
+          p->pointInPolygon(grid->cells[i].getX(),
+                            grid->cells[i].getY())) {
         PetscInt vertex_list[5] = {4,0,0,0,0};
         grid->cells[i].getHexFaceVertices(TOP,vertex_list);
         pond->addConnection(new Connection(local_id,vertex_list,TOP));
