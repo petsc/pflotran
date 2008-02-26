@@ -237,10 +237,6 @@ subroutine Init(simulation,filename)
     call ReadStructuredGridHDF5(realization)
   endif
 
-  if (debug%print_couplers) then
-    call verifyAllCouplers(realization)
-  endif
-  
   ! add waypoints associated with boundary conditions, source/sinks etc. to list
   call RealizationAddWaypointsToList(realization)
   ! fill in holes in waypoint data
@@ -298,6 +294,10 @@ subroutine Init(simulation,filename)
     string = 'Transport Linear Solver'
     call SolverPrintLinearInfo(tran_solver,IUNIT2,string,option%myrank)
   endif    
+
+  if (debug%print_couplers) then
+    call verifyAllCouplers(realization)
+  endif
   
   call printMsg(option,"  Finished Initialization")
          
@@ -498,7 +498,7 @@ subroutine readInput(simulation,filename)
   PetscErrorCode :: ierr
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
-  character(len=MAXNAMELENGTH) :: name
+  character(len=MAXWORDLENGTH) :: name
   character(len=MAXWORDLENGTH) :: card
     
   PetscReal, parameter:: fmwnacl = 58.44277D0, fmwh2o  = 18.01534d0
@@ -1931,7 +1931,7 @@ subroutine verifyCoupler(realization,patch,coupler_list)
         dataset_name = 'tran'
     end select
     write(word,*) patch%id
-    dataset_name = trim(dataset_name) // &
+    dataset_name = trim(dataset_name) // '_' // &
                    trim(coupler%condition%name) // '_' // &
                    trim(coupler%region%name) // '_' // &
                    adjustl(trim(word))

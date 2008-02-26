@@ -329,7 +329,7 @@ subroutine RegionReadFromFilename(region,filename)
   implicit none
   
   type(region_type), pointer :: region
-  character(len=MAXNAMELENGTH) :: filename
+  character(len=MAXWORDLENGTH) :: filename
   
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
@@ -428,7 +428,7 @@ function RegionGetPtrFromList(region_name,region_list)
   implicit none
   
   type(region_type), pointer :: RegionGetPtrFromList
-  character(len=MAXNAMELENGTH) :: region_name
+  character(len=MAXWORDLENGTH) :: region_name
   PetscInt :: length
   type(region_list_type) :: region_list
 

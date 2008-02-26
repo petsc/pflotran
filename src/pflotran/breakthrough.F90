@@ -191,7 +191,7 @@ function BreakthroughGetPtrFromList(breakthrough_name,breakthrough_list)
   implicit none
   
   type(breakthrough_type), pointer :: BreakthroughGetPtrFromList
-  character(len=MAXNAMELENGTH) :: breakthrough_name
+  character(len=MAXWORDLENGTH) :: breakthrough_name
   type(breakthrough_list_type) :: breakthrough_list
  
   PetscInt :: length

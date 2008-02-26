@@ -123,7 +123,7 @@ subroutine OutputTecplot(realization)
   type(realization_type) :: realization
   
   PetscInt :: i
-  character(len=MAXNAMELENGTH) :: filename
+  character(len=MAXWORDLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: string, string2
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -393,7 +393,7 @@ subroutine OutputVelocitiesTecplot(realization)
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch  
   type(output_option_type), pointer :: output_option
-  character(len=MAXNAMELENGTH) :: filename
+  character(len=MAXWORDLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: string
   Vec :: global_vec
   Vec :: natural_vec
@@ -544,7 +544,7 @@ subroutine OutputFluxVelocitiesTecplot(realization,iphase, &
   type(patch_type), pointer :: patch  
   type(output_option_type), pointer :: output_option
   
-  character(len=MAXNAMELENGTH) :: filename
+  character(len=MAXWORDLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: string
   
   PetscInt :: local_size, global_size
@@ -841,8 +841,8 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
   
   implicit none
 
-  character(len=MAXNAMELENGTH) :: filename
-  character(len=MAXNAMELENGTH) :: dataset_name
+  character(len=MAXWORDLENGTH) :: filename
+  character(len=MAXWORDLENGTH) :: dataset_name
   type(realization_type) :: realization
   Vec :: vector
 
@@ -856,6 +856,7 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
   PetscInt, parameter :: fid=86
 
   option => realization%option
+  patch => realization%patch
   grid => patch%grid
   field => realization%field
   
@@ -1137,7 +1138,7 @@ subroutine OutputBreakthroughTecplot(realization)
   type(realization_type) :: realization
   
   PetscInt :: fid, icell
-  character(len=MAXNAMELENGTH) :: filename
+  character(len=MAXWORDLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: string, string2
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -1501,7 +1502,7 @@ subroutine OutputHDF5(realization)
   Vec :: natural_vec
   PetscReal, pointer :: v_ptr
   
-  character(len=MAXNAMELENGTH) :: filename = "pflow.h5"
+  character(len=MAXWORDLENGTH) :: filename = "pflow.h5"
   character(len=MAXSTRINGLENGTH) :: string
   logical, save :: first = .true.
   PetscReal, pointer :: array(:)

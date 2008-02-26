@@ -1026,7 +1026,7 @@ function ConditionGetPtrFromList(condition_name,condition_list)
   implicit none
   
   type(condition_type), pointer :: ConditionGetPtrFromList
-  character(len=MAXNAMELENGTH) :: condition_name
+  character(len=MAXWORDLENGTH) :: condition_name
   type(condition_list_type) :: condition_list
  
   PetscInt :: length

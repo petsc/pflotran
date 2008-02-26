@@ -14,6 +14,7 @@ public:
   void createRiverEdgePolygon();
   void createNorthPondWestTrPolygon();
   void createNorthPondEastTrPolygon();
+  void createPlumePolygon();
   PetscInt pointInPolygon(PetscReal x_, PetscReal y_);
   
 private:

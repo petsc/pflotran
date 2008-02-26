@@ -12,74 +12,21 @@ Hanford300::Hanford300(Grid **grid_) {
   river_polygon = NULL;
   north_pond_west_trench = NULL;
   north_pond_east_trench = NULL;
+  plume = NULL;
   ascii_grids = NULL;
 
   PetscReal mx = 1.;
   PetscReal my = 1.;
   PetscReal mz = 1.;
 
-#if 0
-#if 1
-  PetscInt nx = 1350;
-  PetscInt ny = 2500;
-  PetscInt nz = 120;
-  mx = 0.1;
-  my = mx;
-  mz = 0.5;
-#elif 0
-  PetscInt nx = 1350;
-  PetscInt ny = 2500;
-  PetscInt nz = 60;
-  mx = 0.1;
-  my = mx;
-#elif 0
-  PetscInt nx = 675;
-  PetscInt ny = 1250;
-  PetscInt nz = 60;
-  mx = 0.2;
-  my = mx;
-#elif 0
-  PetscInt nx = 270;
-  PetscInt ny = 500;
-  PetscInt nz = 60;
-  mx = 0.5;
-  my = mx;
-#elif 0
-  PetscInt nx = 135;
-  PetscInt ny = 250;
-  PetscInt nz = 60;
-#elif 0
-  PetscInt nx = 68;
-  PetscInt ny = 125;
-  PetscInt nz = 30;
-  mx = 2.;
-  my = mx;
-  mz = 2.;
-#elif 0
-  PetscInt nx = 34;
-  PetscInt ny = 64;
-  PetscInt nz = 30;
-  mx = 4.;
-  my = mx;
-  mz = 2.;
-#else
-  PetscInt nx = 17;
-  PetscInt ny = 32;
-  PetscInt nz = 15;
-  mx = 8.;
-  my = mx;
-  mz = 4.;
-#endif
-#endif
-//  PetscInt nx = 1; //debug1
-//  PetscInt ny = 1; //debug1
-//  PetscInt nz = 15; //debug1
-
   PetscInt nx, ny, nz;
 
-  nx = 135;
-  ny = 250;
-  nz = 60;
+//  nx = 135;
+//  ny = 250;
+//  nz = 60;
+  nx = 70;
+  ny = 125;
+  nz = 10;
 
   char filename[1024];
   PetscTruth option_found;
@@ -99,7 +46,8 @@ Hanford300::Hanford300(Grid **grid_) {
 
   PetscReal len_x = 1350.;
   PetscReal len_y = 2500.;
-  PetscReal len_z = 60.;
+//  PetscReal len_z = 60.;
+  PetscReal len_z = 20.;
 
   dx = len_x/(PetscReal)nx;
   dy = len_y/(PetscReal)ny;
@@ -114,7 +62,8 @@ Hanford300::Hanford300(Grid **grid_) {
   Grid *grid = *grid_;
   grid->setGridSpacing(dx,dy,dz);
 
-  grid->setOrigin(593618.9,114565.1,70.);
+//  grid->setOrigin(593618.9,114565.1,70.);
+  grid->setOrigin(593618.9,114565.1,90.);
   grid->setRotation(14.);
 
 //  grid->computeCoordinates();
@@ -133,6 +82,8 @@ Hanford300::Hanford300(Grid **grid_) {
   north_pond_west_trench->createNorthPondWestTrPolygon();
   north_pond_east_trench = new Polygon();
   north_pond_east_trench->createNorthPondEastTrPolygon();
+  plume = new Polygon();
+  plume->createPlumePolygon();
 
 #if 0
   char ascii_filename[1024];
@@ -214,6 +165,7 @@ Hanford300::Hanford300(Grid **grid_) {
   computeTopBoundary(grid,0);
   computeNorthPondWestTrBoundary(grid,north_pond_west_trench);
   computeNorthPondEastTrBoundary(grid,north_pond_east_trench);
+  computePlumeBoundary(grid,plume);
 //  computeSouthBoundary(grid);
 
   BoundarySet *river = grid->getBoundarySet("East");
@@ -535,6 +487,33 @@ void Hanford300::computeNorthPondEastTrBoundary(Grid *grid, Polygon *p) {
 
   grid->addBoundarySet(pond);
   pond = NULL;
+
+}
+
+void Hanford300::computePlumeBoundary(Grid *grid, Polygon *p) {
+
+  BoundarySet *plume = new BoundarySet("Plume");
+
+  PetscInt count = 0;
+  for (PetscInt i=0; i<grid->getNumberOfCellsGhosted(); i++) {
+    PetscInt local_id = grid->cells[i].getIdLocal();
+    if (local_id > -1) {
+      if (grid->cells[i].getZ() >= 97. && grid->cells[i].getZ() < 107. &&
+          p->pointInPolygon(grid->cells[i].getX(),
+                            grid->cells[i].getY())) {
+        PetscInt vertex_list[5] = {4,0,0,0,0};
+        grid->cells[i].getHexFaceVertices(TOP,vertex_list);
+        plume->addConnection(new Connection(local_id,vertex_list,TOP));
+        count++;
+      }
+    }
+  }
+
+  PetscPrintf(PETSC_COMM_WORLD,"%d cell mapped mapped to Plume.\n",
+                  count);
+
+  grid->addBoundarySet(plume);
+  plume = NULL;
 
 }
 

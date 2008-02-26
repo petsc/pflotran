@@ -279,8 +279,7 @@ subroutine HydrostaticUpdateCouplerBetter(coupler,option,grid)
     density_array = 0.d0
     z = 0.d0
     ! place this pressure in the array
-    idatum = int(datum(Z_DIRECTION)/delta_z - &
-                 min_z/(max_z-min_z) * &
+    idatum = int((datum(Z_DIRECTION)-min_z)/(max_z-min_z) * &
                  dble(num_pressures))+1
     pressure_array(idatum) = pressure_at_datum
     call nacl_den(temperature_at_datum,pressure_at_datum*1.d-6,xm_nacl,dw_kg) 

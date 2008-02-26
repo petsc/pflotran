@@ -15,9 +15,9 @@ module Option_module
     PetscMPIInt :: commsize                  ! size of PETSC_COMM_WORLD
   
     ! defines the mode (e.g. mph, richards, vadose, etc.
-    character(len=MAXNAMELENGTH) :: flowmode
+    character(len=MAXWORDLENGTH) :: flowmode
     PetscInt :: iflowmode
-    character(len=MAXNAMELENGTH) :: tranmode
+    character(len=MAXWORDLENGTH) :: tranmode
     PetscInt :: itranmode
   
     PetscInt :: nphase

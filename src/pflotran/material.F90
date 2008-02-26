@@ -10,7 +10,7 @@ module Material_module
  
   type, public :: material_type
     PetscInt :: id
-    character(len=MAXNAMELENGTH) :: name
+    character(len=MAXWORDLENGTH) :: name
     PetscReal :: permeability(3,3)
     PetscReal :: permeability_pwr
     PetscReal :: porosity
@@ -41,9 +41,9 @@ module Material_module
   
   type, public :: saturation_function_type
     PetscInt :: id
-    character(len=MAXNAMELENGTH) :: saturation_function_ctype
+    character(len=MAXWORDLENGTH) :: saturation_function_ctype
     PetscInt :: saturation_function_itype
-    character(len=MAXNAMELENGTH) :: permeability_function_ctype
+    character(len=MAXWORDLENGTH) :: permeability_function_ctype
     PetscInt :: permeability_function_itype
     PetscReal, pointer :: Sr(:)
     PetscReal :: m
@@ -471,7 +471,7 @@ function MaterialGetPtrFromList(material_name,material_list)
   implicit none
   
   type(material_type), pointer :: MaterialGetPtrFromList
-  character(len=MAXNAMELENGTH) :: material_name
+  character(len=MAXWORDLENGTH) :: material_name
   type(material_type), pointer :: material_list
   PetscInt :: length
   type(material_type), pointer :: material

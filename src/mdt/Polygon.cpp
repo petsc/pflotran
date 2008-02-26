@@ -52,6 +52,20 @@ void Polygon::createNorthPondEastTrPolygon() {
 
 }
 
+void Polygon::createPlumePolygon() {
+
+  num_points = 4;
+  x = new PetscReal[num_points];
+  y = new PetscReal[num_points];
+
+  PetscInt n = 0;
+  x[n] = 594260.9; y[n++] = 115996.65;
+  x[n] = 594309.51; y[n++] = 116008.59;
+  x[n] = 594297.43; y[n++] = 116057.06;
+  x[n] = 594248.82; y[n++] = 116045.26;
+
+}
+
 PetscInt Polygon::pointInPolygon(PetscReal x_, PetscReal y_) {
 
   PetscInt inside = 0;
