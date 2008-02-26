@@ -25,11 +25,15 @@ public:
   void computeSouthBoundary(Grid *grid, PetscInt complete);
   void computeEastBoundary(Grid *grid, PetscInt complete);
   void computeWestBoundary(Grid *grid, PetscInt complete);
+  void computeNorthPondWestTrBoundary(Grid *grid, Polygon *p);
+  void computeNorthPondEastTrBoundary(Grid *grid, Polygon *p);
   void flagGridCells(Grid *grid);
 
 private:
 
   Polygon *river_polygon;
+  Polygon *north_pond_west_trench;
+  Polygon *north_pond_east_trench;
   AsciiGrid **ascii_grids;
 
   void setMaterialIdBasedOnNaturalId(PetscInt natural_id, PetscInt material_id,

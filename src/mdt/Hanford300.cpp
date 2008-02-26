@@ -10,6 +10,8 @@
 Hanford300::Hanford300(Grid **grid_) {
 
   river_polygon = NULL;
+  north_pond_west_trench = NULL;
+  north_pond_east_trench = NULL;
   ascii_grids = NULL;
 
   PetscReal mx = 1.;
@@ -124,8 +126,13 @@ Hanford300::Hanford300(Grid **grid_) {
   grid->mapVerticesToCells();
 
   // don't know that we need this since we can use conductance of river.
-//  river_polygon = new Polygon();
+    river_polygon = new Polygon();
 //  river_polygon->createRiverEdgePolygon();
+
+  north_pond_west_trench = new Polygon();
+  north_pond_west_trench->createNorthPondWestTrPolygon();
+  north_pond_east_trench = new Polygon();
+  north_pond_east_trench->createNorthPondEastTrPolygon();
 
 #if 0
   char ascii_filename[1024];
@@ -139,7 +146,7 @@ Hanford300::Hanford300(Grid **grid_) {
 
   AsciiGrid::nasciigrids = 7;
   string *grid_filenames = new string[AsciiGrid::nasciigrids];
-#if 0
+#if 1
   grid_filenames[0].append("./basalt_PNNL_grid_20m.asc");
   grid_filenames[1].append("./u9PNNL_grid_20m.asc");
   grid_filenames[2].append("./u8PNNL_grid_20m.asc");
@@ -205,6 +212,8 @@ Hanford300::Hanford300(Grid **grid_) {
   computeEastBoundary(grid,1);
   computeWestBoundary(grid,1);
   computeTopBoundary(grid,0);
+  computeNorthPondWestTrBoundary(grid,north_pond_west_trench);
+  computeNorthPondEastTrBoundary(grid,north_pond_east_trench);
 //  computeSouthBoundary(grid);
 
   BoundarySet *river = grid->getBoundarySet("East");
@@ -472,6 +481,60 @@ void Hanford300::computeTopBoundary(Grid *grid, PetscInt complete) {
 
   grid->addBoundarySet(top);
   top = NULL;
+
+}
+
+void Hanford300::computeNorthPondWestTrBoundary(Grid *grid, Polygon *p) {
+
+  BoundarySet *pond = new BoundarySet("North_Pond_West_Trench");
+
+  PetscInt count = 0;
+  for (PetscInt i=0; i<grid->getNumberOfCellsGhosted(); i++) {
+    PetscInt local_id = grid->cells[i].getIdLocal();
+    if (local_id > -1) {
+      if (grid->cells[i].flag & TOP_DIR_TOP_FACE ){//&&
+     //     p->pointInPolygon(grid->cells[i].getX(),
+     //                       grid->cells[i].getY())) {
+        PetscInt vertex_list[5] = {4,0,0,0,0};
+        grid->cells[i].getHexFaceVertices(TOP,vertex_list);
+        pond->addConnection(new Connection(local_id,vertex_list,TOP));
+        count++;
+      }
+    }
+  }
+
+  PetscPrintf(PETSC_COMM_WORLD,"%d cell mapped mapped to North Pond West Trench.\n",
+                  count);
+
+  grid->addBoundarySet(pond);
+  pond = NULL;
+
+}
+
+void Hanford300::computeNorthPondEastTrBoundary(Grid *grid, Polygon *p) {
+
+  BoundarySet *pond = new BoundarySet("North_Pond_East_Trench");
+
+  PetscInt count = 0;
+  for (PetscInt i=0; i<grid->getNumberOfCellsGhosted(); i++) {
+    PetscInt local_id = grid->cells[i].getIdLocal();
+    if (local_id > -1) {
+      if (grid->cells[i].flag & TOP_DIR_TOP_FACE &&
+          p->pointInPolygon(grid->cells[i].getX(),
+                            grid->cells[i].getY())) {
+        PetscInt vertex_list[5] = {4,0,0,0,0};
+        grid->cells[i].getHexFaceVertices(TOP,vertex_list);
+        pond->addConnection(new Connection(local_id,vertex_list,TOP));
+        count++;
+      }
+    }
+  }
+
+  PetscPrintf(PETSC_COMM_WORLD,"%d cell mapped mapped to North Pond East Trench.\n",
+                  count);
+
+  grid->addBoundarySet(pond);
+  pond = NULL;
 
 }
 

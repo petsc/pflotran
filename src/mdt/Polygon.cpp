@@ -22,6 +22,33 @@ void Polygon::createRiverEdgePolygon() {
   x[n] = 592637.; y[n++] = 117114.;
   x[n] = 593288.; y[n++] = 114309.;
 
+}
+
+void Polygon::createNorthPondWestTrPolygon() {
+
+  num_points = 4;
+  x = new PetscReal[num_points];
+  y = new PetscReal[num_points];
+
+  PetscInt n = 0;
+  x[n] = 594149.71; y[n++] = 116442.83;
+  x[n] = 594169.08; y[n++] = 116447.74;
+  x[n] = 594164.31; y[n++] = 116467.14;
+  x[n] = 594144.91; y[n++] = 116462.3;
+
+}
+
+void Polygon::createNorthPondEastTrPolygon() {
+
+  num_points = 4;
+  x = new PetscReal[num_points];
+  y = new PetscReal[num_points];
+
+  PetscInt n = 0;
+  x[n] = 594178.86; y[n++] = 116450.12;
+  x[n] = 594198.18; y[n++] = 116455.04;
+  x[n] = 594193.44; y[n++] = 116474.39;
+  x[n] = 594173.93; y[n++] = 116469.47;
 
 }
 

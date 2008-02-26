@@ -12,6 +12,8 @@ public:
   virtual ~Polygon();
 
   void createRiverEdgePolygon();
+  void createNorthPondWestTrPolygon();
+  void createNorthPondEastTrPolygon();
   PetscInt pointInPolygon(PetscReal x_, PetscReal y_);
   
 private:
