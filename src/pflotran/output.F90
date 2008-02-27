@@ -145,13 +145,13 @@ subroutine OutputTecplot(realization)
     filename = trim(output_option%plot_name) // '.tec'
   else
     if (output_option%plot_number < 10) then
-      write(filename,'("pflow00",i1,".tec")') output_option%plot_number  
+      write(filename,'("pflotran00",i1,".tec")') output_option%plot_number  
     else if (output_option%plot_number < 100) then
-      write(filename,'("pflow0",i2,".tec")') output_option%plot_number  
+      write(filename,'("pflotran0",i2,".tec")') output_option%plot_number  
     else if (output_option%plot_number < 1000) then
-      write(filename,'("pflow",i3,".tec")') output_option%plot_number  
+      write(filename,'("pflotran",i3,".tec")') output_option%plot_number  
     else if (output_option%plot_number < 10000) then
-      write(filename,'("pflow",i4,".tec")') output_option%plot_number  
+      write(filename,'("pflotran",i4,".tec")') output_option%plot_number  
     endif
   endif
   
@@ -434,13 +434,13 @@ subroutine OutputVelocitiesTecplot(realization)
   
   ! open file
   if (output_option%plot_number < 10) then
-    write(filename,'("pflow_vel00",i1,".tec")') output_option%plot_number  
+    write(filename,'("pflotran_vel00",i1,".tec")') output_option%plot_number  
   else if (output_option%plot_number < 100) then
-    write(filename,'("pflow_vel0",i2,".tec")') output_option%plot_number  
+    write(filename,'("pflotran_vel0",i2,".tec")') output_option%plot_number  
   else if (output_option%plot_number < 1000) then
-    write(filename,'("pflow_vel",i3,".tec")') output_option%plot_number  
+    write(filename,'("pflotran_vel",i3,".tec")') output_option%plot_number  
   else if (output_option%plot_number < 10000) then
-    write(filename,'("pflow_vel",i4,".tec")') output_option%plot_number  
+    write(filename,'("pflotran_vel",i4,".tec")') output_option%plot_number  
   endif
   
   if (option%myrank == 0) then
@@ -597,7 +597,7 @@ subroutine OutputFluxVelocitiesTecplot(realization,iphase, &
   output_option => realization%output_option
   
   ! open file
-  filename = 'pflow_'
+  filename = 'pflotran_'
   
   select case(iphase)
     case(LIQUID_PHASE)
