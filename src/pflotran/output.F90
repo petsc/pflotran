@@ -232,7 +232,7 @@ subroutine OutputTecplot(realization)
   call GridCreateVector(grid,ONEDOF,global_vec,GLOBAL)  
   call GridCreateVector(grid,ONEDOF,natural_vec,NATURAL)  
 
-  ! write out coorindates
+  ! write out coordinates
   if (realization%discretization == STRUCTURED_GRID) then
     call WriteTecplotStructuredGrid(IUNIT3,realization)
   else
@@ -471,11 +471,24 @@ subroutine OutputVelocitiesTecplot(realization)
     write(IUNIT3,'(a)') trim(string)
   
     ! write zone header
-    write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
-                 &'', K='',i4,'','')') &
-                 option%time/output_option%tconv, &
-                 grid%structured_grid%nx,grid%structured_grid%ny,grid%structured_grid%nz 
-    string = trim(string) // ' DATAPACKING=BLOCK'
+    if (realization%discretization == STRUCTURED_GRID) then
+      write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
+                   &'', K='',i4,'','')') &
+                   option%time/output_option%tconv, &
+                   grid%structured_grid%nx+1,grid%structured_grid%ny+1,grid%structured_grid%nz+1
+      string = trim(string) // ' DATAPACKING=BLOCK'
+      if (option%nphase > 1) then
+        string = trim(string) // ', VARLOCATION=([4-10]=CELLCENTERED)'
+      else
+        string = trim(string) // ', VARLOCATION=([4-7]=CELLCENTERED)'
+      endif
+    else
+      write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
+                   &'', K='',i4,'','')') &
+                   option%time/output_option%tconv, &
+                   grid%structured_grid%nx,grid%structured_grid%ny,grid%structured_grid%nz 
+      string = trim(string) // ' DATAPACKING=BLOCK'
+    endif
     write(IUNIT3,'(a)') trim(string)
 
   endif
@@ -486,18 +499,22 @@ subroutine OutputVelocitiesTecplot(realization)
   call GridCreateVector(grid,ONEDOF,natural_vec,NATURAL)    
 
   ! write out coorindates
-  call GetCoordinates(grid,global_vec,X_COORDINATE)
-  call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
-  call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+  if (realization%discretization == STRUCTURED_GRID) then
+    call WriteTecplotStructuredGrid(IUNIT3,realization)
+  else
+    call GetCoordinates(grid,global_vec,X_COORDINATE)
+    call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
+    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
 
-  call GetCoordinates(grid,global_vec,Y_COORDINATE)
-  call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
-  call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+    call GetCoordinates(grid,global_vec,Y_COORDINATE)
+    call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
+    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
 
-  call GetCoordinates(grid,global_vec,Z_COORDINATE)
-  call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
-  call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
-
+    call GetCoordinates(grid,global_vec,Z_COORDINATE)
+    call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
+    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+  endif
+  
   call GetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,X_DIRECTION)
   call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
   call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -583,7 +600,9 @@ subroutine OutputFluxVelocitiesTecplot(realization,iphase, &
   PetscReal, pointer :: vec_ptr(:)
   PetscReal, pointer :: array(:)
   PetscInt, allocatable :: indices(:)
-  Vec :: global_vec
+  Vec :: global_vec, global_vec2
+  PetscReal :: sum, average, max, min , std_dev
+  PetscInt :: max_loc, min_loc
 
   type(connection_list_type), pointer :: connection_list
   type(connection_type), pointer :: cur_connection_set
@@ -818,6 +837,49 @@ subroutine OutputFluxVelocitiesTecplot(realization,iphase, &
     cur_connection_set => cur_connection_set%next
   enddo
 
+  ! compute stats
+  if (option%compute_statistics) then
+    call VecDuplicate(global_vec,global_vec2,ierr)
+    call VecSum(global_vec,sum,ierr)
+    average = sum/real(grid%nlmax)
+    call VecSet(global_vec2,average,ierr)
+    call VecMax(global_vec,max_loc,max,ierr)
+    call VecMin(global_vec,min_loc,min,ierr)
+    call VecAYPX(global_vec2,-1.d0,global_vec,ierr)
+    call VecNorm(global_vec2,NORM_2,std_dev,ierr)
+    select case(direction)
+      case(X_DIRECTION)
+        string = 'X-Direction,'
+      case(Y_DIRECTION)
+        string = 'Y-Direction,'
+      case(Z_DIRECTION)
+        string = 'Z-Direction,'
+    end select
+    select case(iphase)
+      case(LIQUID_PHASE)
+        string = trim(string) // ' Liquid Phase'
+      case(GAS_PHASE)
+        string = trim(string) // ' Gas Phase'
+    end select
+    string = trim(string) // ' Flux Velocity Statistics:'
+    if (option%myrank == 0) then
+      write(*,'(/,a,/, &
+                   &"Average:",1es12.4,/, &
+                   &"Max:    ",1es12.4,"  Location:",i11,/, &
+                   &"Min:    ",1es12.4,"  Location:",i11,/, &
+                   &"Std Dev:",1es12.4,/)') trim(string), &
+                                            average,max,max_loc+1, &
+                                            min,min_loc+1,std_dev
+      write(IUNIT2,'(/,a,/, &
+                   &"Average:",1es12.4,/, &
+                   &"Max:    ",1es12.4,"  Location:",i11,/, &
+                   &"Min:    ",1es12.4,"  Location:",i11,/, &
+                   &"Std Dev:",1es12.4,/)') trim(string), &
+                                            average,max,max_loc+1, &
+                                            min,min_loc+1,std_dev
+    endif
+  endif
+
   ! write out data set
   count = 0
   allocate(array(local_size))
@@ -906,11 +968,21 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
     write(fid,'(a)') trim(string)
   
     ! write zone header
-    write(string,'(''ZONE T= "'',a,''",'','' I='',i4,'', J='',i4, &
-                 &'', K='',i4,'','')') trim(dataset_name), &
-                 grid%structured_grid%nx,grid%structured_grid%ny, &
-                 grid%structured_grid%nz 
-    string = trim(string) // ' DATAPACKING=BLOCK'
+    if (realization%discretization == STRUCTURED_GRID) then
+      write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
+                   &'', K='',i4,'','')') &
+                   option%time/realization%output_option%tconv, &
+                   grid%structured_grid%nx+1,grid%structured_grid%ny+1,grid%structured_grid%nz+1
+      string = trim(string) // ' DATAPACKING=BLOCK'
+                                                ! 4=dataset name, 5=material_id
+      string = trim(string) // ', VARLOCATION=([4-5]=CELLCENTERED)'
+    else
+      write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
+                   &'', K='',i4,'','')') &
+                   option%time/realization%output_option%tconv, &
+                   grid%structured_grid%nx,grid%structured_grid%ny,grid%structured_grid%nz 
+      string = trim(string) // ' DATAPACKING=BLOCK'
+    endif
     write(fid,'(a)') trim(string)
 
   endif
@@ -2323,10 +2395,14 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
   PetscInt :: iconn
   PetscInt :: local_id_up, local_id_dn, local_id
   PetscInt :: ghosted_id_up, ghosted_id_dn, ghosted_id
-  PetscReal :: velocity
+  PetscReal :: velocity, area
+  Vec :: global_vec
+  PetscReal :: average, sum, max, min, std_dev
+  PetscInt :: max_loc, min_loc
+  character(len=MAXSTRINGLENGTH) :: string
   
   PetscReal, pointer :: vec_ptr(:)
-  PetscInt, allocatable :: num_additions(:)
+  PetscReal, allocatable :: sum_area(:)
   
   type(coupler_type), pointer :: boundary_condition
   type(connection_list_type), pointer :: connection_list
@@ -2338,8 +2414,8 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
   field => realization%field
   output_option => realization%output_option
     
-  allocate(num_additions(grid%nlmax))
-  num_additions(1:grid%nlmax) = 0
+  allocate(sum_area(grid%nlmax))
+  sum_area(1:grid%nlmax) = 0.d0
 
   call VecSet(vec,0.d0,ierr)
   call VecGetArrayF90(vec,vec_ptr,ierr)
@@ -2355,15 +2431,17 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
       local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
       local_id_dn = grid%nG2L(ghosted_id_dn) ! = zero for ghost nodes
       ! velocities are stored as the downwind face of the upwind cell
+      area = cur_connection_set%area(iconn)* &
+             abs(cur_connection_set%dist(direction,iconn))
       velocity = patch%internal_velocities(iphase,iconn)* &
-                 abs(cur_connection_set%dist(direction,iconn))
+                 area
       if (local_id_up > 0) then
         vec_ptr(local_id_up) = vec_ptr(local_id_up) + velocity
-        num_additions(local_id_up) = num_additions(local_id_up) + 1
+        sum_area(local_id_up) = sum_area(local_id_up) + area
       endif
       if (local_id_dn > 0) then
         vec_ptr(local_id_dn) = vec_ptr(local_id_dn) + velocity
-        num_additions(local_id_dn) = num_additions(local_id_dn) + 1
+        sum_area(local_id_dn) = sum_area(local_id_dn) + area
       endif
     enddo
     cur_connection_set => cur_connection_set%next
@@ -2376,22 +2454,67 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
     cur_connection_set => boundary_condition%connection
     do iconn = 1, cur_connection_set%num_connections
       local_id = cur_connection_set%id_dn(iconn)
+      area = cur_connection_set%area(iconn)* &
+             abs(cur_connection_set%dist(direction,iconn))
       vec_ptr(local_id) = vec_ptr(local_id)+ &
                           patch%boundary_velocities(1,iconn)* &
-                          abs(cur_connection_set%dist(direction,iconn))
-      num_additions(local_id) = num_additions(local_id) + 1
+                          area
+      sum_area(local_id) = sum_area(local_id) + area
     enddo
     boundary_condition => boundary_condition%next
   enddo
 
-  ! divide by number of additions
+  ! divide by total area
   do local_id=1,grid%nlmax
-    if (num_additions(local_id) > 0) &
-      vec_ptr(local_id) = vec_ptr(local_id)/real(num_additions(local_id))*output_option%tconv
+    if (sum_area(local_id) > 0.d0) &
+      vec_ptr(local_id) = vec_ptr(local_id)/sum_area(local_id)*output_option%tconv
   enddo
   call VecRestoreArrayF90(vec,vec_ptr,ierr)
 
-  deallocate(num_additions)
+  deallocate(sum_area)
+
+  ! compute stats
+  if (option%compute_statistics) then
+    call VecDuplicate(vec,global_vec,ierr)
+    call VecSum(vec,sum,ierr)
+    average = sum/real(grid%nlmax)
+    call VecSet(global_vec,average,ierr)
+    call VecMax(vec,max_loc,max,ierr)
+    call VecMin(vec,min_loc,min,ierr)
+    call VecAYPX(global_vec,-1.d0,vec,ierr)
+    call VecNorm(global_vec,NORM_2,std_dev,ierr)
+    select case(direction)
+      case(X_DIRECTION)
+        string = 'X-Direction,'
+      case(Y_DIRECTION)
+        string = 'Y-Direction,'
+      case(Z_DIRECTION)
+        string = 'Z-Direction,'
+    end select
+    select case(iphase)
+      case(LIQUID_PHASE)
+        string = trim(string) // ' Liquid Phase'
+      case(GAS_PHASE)
+        string = trim(string) // ' Gas Phase'
+    end select
+    string = trim(string) // ' Velocity Statistics:'
+    if (option%myrank == 0) then
+      write(*,'(/,a,/, &
+                   &"Average:",1es12.4,/, &
+                   &"Max:    ",1es12.4,"  Location:",i11,/, &
+                   &"Min:    ",1es12.4,"  Location:",i11,/, &
+                   &"Std Dev:",1es12.4,/)') trim(string), &
+                                            average,max,max_loc+1, &
+                                            min,min_loc+1,std_dev
+      write(IUNIT2,'(/,a,/, &
+                   &"Average:",1es12.4,/, &
+                   &"Max:    ",1es12.4,"  Location:",i11,/, &
+                   &"Min:    ",1es12.4,"  Location:",i11,/, &
+                   &"Std Dev:",1es12.4,/)') trim(string), &
+                                            average,max,max_loc+1, &
+                                            min,min_loc+1,std_dev
+    endif
+  endif
 
 end subroutine GetCellCenteredVelocities
 

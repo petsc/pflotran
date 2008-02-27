@@ -1004,6 +1004,11 @@ subroutine readInput(simulation,filename)
       case ('NUMERICAL_JACOBIAN')
         option%numerical_derivatives = .true.
 
+!......................
+
+      case ('COMPUTE_STATISTICS','STATISTICS')
+        option%compute_statistics = .true.
+
 !....................
 
       case ('TIMESTEPPER')

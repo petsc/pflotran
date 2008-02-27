@@ -81,6 +81,7 @@ module Option_module
     PetscLogDouble :: wallclock_stop_time
     
     logical :: numerical_derivatives
+    logical :: compute_statistics
     
   end type option_type
   
@@ -208,6 +209,7 @@ function OptionCreate()
   option%wallclock_stop_time = 0.d0
   
   option%numerical_derivatives = .false.
+  option%compute_statistics = .false.
    
   OptionCreate => option
   
