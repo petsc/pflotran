@@ -45,6 +45,8 @@ module Structured_Grid_module
     PetscInt :: nlmax  ! Total number of non-ghosted nodes in local domain.
     PetscInt :: ngmax  ! Number of ghosted & non-ghosted nodes in local domain.
 
+    PetscReal :: origin(3)
+
     PetscReal, pointer :: dx0(:), dy0(:), dz0(:)
     
     logical :: invert_z_axis
@@ -157,6 +159,8 @@ function StructuredGridCreate()
   nullify(structured_grid%dx0)
   nullify(structured_grid%dy0)
   nullify(structured_grid%dz0)
+  
+  structured_grid%origin = 0.d0
   
   structured_grid%invert_z_axis = .false.
   
@@ -422,7 +426,7 @@ end subroutine StructuredGridComputeSpacing
 !
 ! ************************************************************************** !
 subroutine StructuredGridComputeCoord(structured_grid,option, &
-                                      origin,grid_x,grid_y,grid_z, &
+                                      grid_x,grid_y,grid_z, &
                                       x_min,x_max,y_min,y_max,z_min,z_max)
 
   use Option_module
@@ -431,7 +435,6 @@ subroutine StructuredGridComputeCoord(structured_grid,option, &
   
   type(structured_grid_type) :: structured_grid
   type(option_type) :: option
-  PetscReal :: origin(3)
   PetscReal :: grid_x(:), grid_y(:), grid_z(:)
   PetscReal :: x_min, x_max, y_min, y_max, z_min, z_max
 
@@ -441,9 +444,9 @@ subroutine StructuredGridComputeCoord(structured_grid,option, &
   PetscInt :: prevnode
 
 ! set min and max bounds of domain in coordinate directions
-  x_min = origin(X_DIRECTION)
-  y_min = origin(Y_DIRECTION)
-  z_min = origin(Z_DIRECTION)
+  x_min = structured_grid%origin(X_DIRECTION)
+  y_min = structured_grid%origin(Y_DIRECTION)
+  z_min = structured_grid%origin(Z_DIRECTION)
   x_max = x_min
   y_max = y_min
   z_max = z_min
@@ -459,11 +462,11 @@ subroutine StructuredGridComputeCoord(structured_grid,option, &
 
 ! set min and max bounds of domain in coordinate directions
   n = 0
-  z = 0.5d0*structured_grid%dz0(1)+origin(Z_DIRECTION)
+  z = 0.5d0*structured_grid%dz0(1)+structured_grid%origin(Z_DIRECTION)
   do k=1, structured_grid%nz
-    y = 0.5d0*structured_grid%dy0(1)+origin(Y_DIRECTION)
+    y = 0.5d0*structured_grid%dy0(1)+structured_grid%origin(Y_DIRECTION)
     do j=1, structured_grid%ny
-      x = 0.5d0*structured_grid%dx0(1)+origin(X_DIRECTION)
+      x = 0.5d0*structured_grid%dx0(1)+structured_grid%origin(X_DIRECTION)
       do i=1, structured_grid%nx
         if (i > structured_grid%ngxs .and. i <= structured_grid%ngxe .and. &
             j > structured_grid%ngys .and. j <= structured_grid%ngye .and. &

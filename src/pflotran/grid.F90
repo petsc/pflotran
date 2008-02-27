@@ -143,8 +143,6 @@ function GridCreate()
   grid%z_min = 1.d20
   grid%z_max = -1.d20
 
-  grid%origin = 0.d0
-
   grid%nmax = 0
   grid%nlmax = 0 
   grid%ngmax = 0
@@ -532,7 +530,7 @@ subroutine GridComputeCoordinates(grid,option)
   select case(grid%itype)
     case(STRUCTURED_GRID)
       call StructuredGridComputeCoord(grid%structured_grid,option, &
-                                      grid%origin,grid%x,grid%y,grid%z, &
+                                      grid%x,grid%y,grid%z, &
                                       grid%x_min,grid%x_max,grid%y_min, &
                                       grid%y_max,grid%z_min,grid%z_max)
     case(UNSTRUCTURED_GRID)

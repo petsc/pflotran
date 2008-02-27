@@ -122,7 +122,7 @@ subroutine OutputTecplot(realization)
 
   type(realization_type) :: realization
   
-  PetscInt :: i
+  PetscInt :: i, comma_count, quote_count
   character(len=MAXWORDLENGTH) :: filename
   character(len=MAXSTRINGLENGTH) :: string, string2
   type(grid_type), pointer :: grid
@@ -196,13 +196,35 @@ subroutine OutputTecplot(realization)
     write(IUNIT3,'(a)') trim(string)
   
     ! write zone header
-    write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
-                 &'', K='',i4,'','')') &
-                 option%time/output_option%tconv,grid%structured_grid%nx, &
-                 grid%structured_grid%ny,grid%structured_grid%nz 
-    string = trim(string) // ' DATAPACKING=BLOCK'
+    if (realization%discretization == STRUCTURED_GRID) then
+      ! count vars in string
+      quote_count = 0
+      comma_count = 0
+      do i=1,len_trim(string)
+        ! 34 = '"'
+        if (iachar(string(i:i)) == 34) then
+          quote_count = quote_count + 1
+        ! 44 = ','
+        else if (iachar(string(i:i)) == 44 .and. mod(quote_count,2) == 0) then
+          comma_count = comma_count + 1
+        endif
+      enddo
+      ! there are comma_count+1 variables
+      write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
+                   &'', K='',i4)') &
+                   option%time/output_option%tconv,grid%structured_grid%nx+1, &
+                   grid%structured_grid%ny+1,grid%structured_grid%nz+1
+      write(string2,'(i5)') comma_count+1
+      string = trim(string) // ', VARLOCATION=([4-' // &
+               trim(adjustl(string2)) // ']=CELLCENTERED)'
+    else
+      write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
+                   &'', K='',i4)') &
+                   option%time/output_option%tconv,grid%structured_grid%nx, &
+                   grid%structured_grid%ny,grid%structured_grid%nz 
+    endif
+    string = trim(string) // ', DATAPACKING=BLOCK'
     write(IUNIT3,'(a)') trim(string)
-
   endif
   
   ! write blocks
@@ -211,17 +233,21 @@ subroutine OutputTecplot(realization)
   call GridCreateVector(grid,ONEDOF,natural_vec,NATURAL)  
 
   ! write out coorindates
-  call GetCoordinates(grid,global_vec,X_COORDINATE)
-  call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
-  call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+  if (realization%discretization == STRUCTURED_GRID) then
+    call WriteTecplotStructuredGrid(IUNIT3,realization)
+  else
+    call GetCoordinates(grid,global_vec,X_COORDINATE)
+    call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
+    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
 
-  call GetCoordinates(grid,global_vec,Y_COORDINATE)
-  call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
-  call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+    call GetCoordinates(grid,global_vec,Y_COORDINATE)
+    call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
+    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
 
-  call GetCoordinates(grid,global_vec,Z_COORDINATE)
-  call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
-  call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+    call GetCoordinates(grid,global_vec,Z_COORDINATE)
+    call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
+    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+  endif
 
   select case(option%iflowmode)
     case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
@@ -949,6 +975,110 @@ subroutine WriteTecplotDataSetFromVec(fid,realization,vec,datatype)
   call VecRestoreArrayF90(vec,vec_ptr,ierr)
   
 end subroutine WriteTecplotDataSetFromVec
+
+! ************************************************************************** !
+!
+! WriteTecplotStructuredGrid: Writes structured grid face coordinates 
+! author: Glenn Hammond
+! date: 02/26/08
+!
+! ************************************************************************** !
+subroutine WriteTecplotStructuredGrid(fid,realization)
+
+  use Realization_module
+  use Grid_module
+  use Option_module
+  use Patch_module
+
+  implicit none
+  
+  PetscInt :: fid
+  type(realization_type) :: realization
+  
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch  
+  PetscInt :: i, j, k, count, nx, ny, nz
+  PetscReal :: temp_real
+    
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+  
+  nx = grid%structured_grid%nx
+  ny = grid%structured_grid%ny
+  nz = grid%structured_grid%nz
+  
+  if (option%myrank == 0) then
+    ! x-dir
+    count = 0
+    do k=1,nz+1
+      do j=1,ny+1
+        temp_real = grid%structured_grid%origin(X_DIRECTION)
+        write(fid,'(es11.4,x)',advance='no') temp_real
+        do i=1,nx
+          temp_real = temp_real + grid%structured_grid%dx0(i)
+          write(fid,'(es11.4,x)',advance='no') temp_real
+          count = count + 1
+          if (mod(count,10) == 0) then
+            write(fid,'("")')
+            count = 0
+          endif
+        enddo
+      enddo
+    enddo
+    ! y-dir
+    count = 0
+    do k=1,nz+1
+      temp_real = grid%structured_grid%origin(Y_DIRECTION)
+      do i=1,nx+1
+        write(fid,'(es11.4,x)',advance='no') temp_real
+        count = count + 1
+        if (mod(count,10) == 0) then
+          write(fid,'("")')
+          count = 0
+        endif
+      enddo
+      do j=1,ny
+        temp_real = temp_real + grid%structured_grid%dy0(j)
+        do i=1,nx+1
+          write(fid,'(es11.4,x)',advance='no') temp_real
+          count = count + 1
+          if (mod(count,10) == 0) then
+            write(fid,'("")')
+            count = 0
+          endif
+        enddo
+      enddo
+    enddo
+    ! z-dir
+    count = 0
+    temp_real = grid%structured_grid%origin(Z_DIRECTION)
+    do i=1,(nx+1)*(ny+1)
+      write(fid,'(es11.4,x)',advance='no') temp_real
+      count = count + 1
+      if (mod(count,10) == 0) then
+        write(fid,'("")')
+        count = 0
+      endif
+    enddo
+    do k=1,nz
+      temp_real = temp_real + grid%structured_grid%dz0(k)
+      do j=1,ny+1
+        do i=1,nx+1
+          write(fid,'(es11.4,x)',advance='no') temp_real
+          count = count + 1
+          if (mod(count,10) == 0) then
+            write(fid,'("")')
+            count = 0
+          endif
+        enddo
+      enddo
+    enddo
+
+  endif
+  
+end subroutine WriteTecplotStructuredGrid
 
 ! ************************************************************************** !
 !

@@ -2045,7 +2045,8 @@ function RichardsLiteGetTecplotHeader(realization)
   option => realization%option
   field => realization%field
 
-  string = '"P [Pa]",' // &
+  string = ',' // &
+           '"P [Pa]",' // &
            '"sl"'
  
   RichardsLiteGetTecplotHeader = string

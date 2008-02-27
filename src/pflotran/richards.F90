@@ -2533,7 +2533,8 @@ function RichardsGetTecplotHeader(realization)
   option => realization%option
   field => realization%field
   
-  string = '"T [C]",' // &
+  string = ',' // &
+           '"T [C]",' // &
            '"P [Pa]",' // &
            '"sl",' // &
            '"Ul"' 

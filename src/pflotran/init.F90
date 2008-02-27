@@ -841,12 +841,14 @@ subroutine readInput(simulation,filename)
 !....................
 
       case('ORIG','ORIGIN')
-        call fiReadDouble(string,grid%origin(X_DIRECTION),ierr)
-        call fiErrorMsg(option%myrank,'X direction','Origin',ierr)
-        call fiReadDouble(string,grid%origin(Y_DIRECTION),ierr)
-        call fiErrorMsg(option%myrank,'Y direction','Origin',ierr)
-        call fiReadDouble(string,grid%origin(Z_DIRECTION),ierr)
-        call fiErrorMsg(option%myrank,'Z direction','Origin',ierr)
+        if (associated(grid%structured_grid)) then
+          call fiReadDouble(string,grid%structured_grid%origin(X_DIRECTION),ierr)
+          call fiErrorMsg(option%myrank,'X direction','Origin',ierr)
+          call fiReadDouble(string,grid%structured_grid%origin(Y_DIRECTION),ierr)
+          call fiErrorMsg(option%myrank,'Y direction','Origin',ierr)
+          call fiReadDouble(string,grid%structured_grid%origin(Z_DIRECTION),ierr)
+          call fiErrorMsg(option%myrank,'Z direction','Origin',ierr)
+        endif          
         
 !....................
 
@@ -1934,7 +1936,7 @@ subroutine verifyCoupler(realization,patch,coupler_list)
     dataset_name = trim(dataset_name) // '_' // &
                    trim(coupler%condition%name) // '_' // &
                    trim(coupler%region%name) // '_' // &
-                   adjustl(trim(word))
+                   trim(adjustl(word))
     filename = trim(dataset_name) // '.tec'
     call OutputVectorTecplot(filename,dataset_name,realization,global_vec)
 
