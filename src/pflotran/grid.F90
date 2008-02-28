@@ -25,7 +25,7 @@ module Grid_module
     !                     matsetvaluesblocked ( not matsetvaluesblockedlocal)  
     !nL2A :   collective, local => natural index, used for initialization   
     !                              and source/sink setup  
-    PetscInt, pointer :: nL2G(:), nG2L(:), nL2A(:), nG2N(:)
+    PetscInt, pointer :: nL2G(:), nG2L(:), nL2A(:)
     PetscInt, pointer :: nG2A(:)
     
     PetscReal, pointer :: x(:), y(:), z(:)
@@ -89,7 +89,6 @@ function GridCreate()
   nullify(grid%nL2G)
   nullify(grid%nG2L)
   nullify(grid%nL2A)
-  nullify(grid%nG2N)
   nullify(grid%nG2A)
 
   nullify(grid%x)
@@ -192,22 +191,14 @@ end subroutine GridPopulateConnection
 ! date: 10/24/07
 !
 ! ************************************************************************** !
-subroutine GridMapIndices(grid,dm)
+subroutine GridMapIndices(grid)
 
   implicit none
-
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
-#include "include/finclude/petscda.h"
-#include "include/finclude/petscda.h90"
   
   type(grid_type) :: grid
-  DM :: dm
-  PetscErrorCode :: ierr
   
   select case(grid%itype)
     case(STRUCTURED_GRID)
-      call DAGetGlobalIndicesF90(dm,grid%ngmax,grid%nG2N, ierr)
       call StructuredGridMapIndices(grid%structured_grid,grid%nG2L,grid%nL2G, &
                                     grid%nL2A,grid%nG2A)
     case(UNSTRUCTURED_GRID)
@@ -762,10 +753,6 @@ subroutine GridDestroy(grid)
   nullify(grid%nG2L)
   if (associated(grid%nL2A)) deallocate(grid%nL2A)
   nullify(grid%nL2A)
-  ! Since nG2N is actually a pointer to a Petsc IS, cannot deallocate
-  ! unless we change it.
-!  if (associated(grid%nG2N)) deallocate(grid%nG2N)
-!  nullify(grid%nG2N)
   if (associated(grid%nG2A)) deallocate(grid%nG2A)
   nullify(grid%nG2A)
 

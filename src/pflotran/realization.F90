@@ -180,7 +180,7 @@ subroutine RealizationCreateDiscretization(realization)
       endif
 
       ! set up nG2L, NL2G, etc.
-      call GridMapIndices(grid,discretization%dm_1_dof)
+      call GridMapIndices(grid)
       call GridComputeSpacing(grid)
       call GridComputeCoordinates(grid,option)
       call GridComputeVolumes(grid,field%volume,option)

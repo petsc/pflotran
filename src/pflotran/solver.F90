@@ -250,9 +250,9 @@ subroutine SolverReadLinear(solver,fid,myrank)
         call fiErrorMsg(myrank,'pc_type','SOLVER', ierr)   
         call fiWordToUpper(word)
         select case(trim(word))
-          case('ILU')
+          case('ILU','PCILU')
             solver%pc_type = PCILU
-          case('LU')
+          case('LU','PCLU')
             solver%pc_type = PCLU
           case('BJACOBI','BLOCK_JACOBI')
             solver%pc_type = PCBJACOBI

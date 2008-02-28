@@ -2288,7 +2288,6 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
       if (patch%imat(ghosted_id) <= 0) cycle
     endif 
     
-    natural_id_up= grid%nG2N(ghosted_id)
    ! Remember, the matrix index starts from (0,0)
     p1 = (ghosted_id-1)*option%nflowdof ! = 1 + (ng-1)*option%nflowdof-1
    
@@ -2370,8 +2369,6 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
 
       local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
       local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping   
-      natural_id_up = grid%nG2N(ghosted_id_up)
-      natural_id_dn = grid%nG2N(ghosted_id_dn)
       p2 =  (ghosted_id_dn-1)*option%nflowdof
    
       fraction_upwind = cur_connection_set%dist(-1,iconn)
