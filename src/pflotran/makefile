@@ -69,6 +69,7 @@ pflotran_obj = ${common_src}pflow_pckr_mod.o \
 	${common_src}condition.o \
 	${common_src}coupler.o \
 	${common_src}grid.o \
+	${common_src}discretization.o \
 	${common_src}hydrostatic.o \
 	${common_src}patch.o \
 	${common_src}level.o \
@@ -113,10 +114,12 @@ init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
 	simulation.o fileio.o material.o region.o condition.o convergence.o \
 	waypoint.o field.o general_grid.o co2_span_wagner.o utility.o \
 	coupler.o strata.o pflow_pckr_mod.o field.o pflow_mphase_ResJac.o \
-	richards_lite.o richards.o
+	richards_lite.o richards.o discretization.o
 unstructured_grid.o : option.o connection.o solver.o
 structured_grid.o : connection.o option.o fileio.o region.o solver.o
 general_grid.o : grid.o realization.o hdf5.o
+discretization.o : grid.o structured_grid.o unstructured_grid.o option.o \
+                   fileio.o
 grid.o : structured_grid.o unstructured_grid.o option.o region.o connection.o \
 	 solver.o
 solver.o : option.o field.o
@@ -128,7 +131,7 @@ convergence.o : option.o solver.o
 condition.o : fileio.o utility.o option.o field.o
 realization.o : grid.o option.o region.o condition.o coupler.o material.o \
 	     strata.o waypoint.o field.o hydrostatic.o debug.o breakthrough.o \
-             patch.o level.o
+             patch.o level.o discretization.o
 level.o : patch.o option.o
 patch.o : option.o grid.o coupler.o breakthrough.o strata.o region.o \
           richards_aux.o richards_lite_aux.o reactive_transport_aux.o
@@ -139,10 +142,10 @@ hydrostatic.o : option.o grid.o coupler.o condition.o connection.o region.o \
                 structured_grid.o
 waypoint.o : option.o 
 output.o : grid.o structured_grid.o option.o realization.o field.o \
-           coupler.o connection.o hdf5.o breakthrough.o \
-           reactive_transport.o richards.o richards_lite.o
+           coupler.o connection.o hdf5.o breakthrough.o reactive_transport.o \
+           richards.o richards_lite.o discretization.o
 pflow_mphase_ResJac.o : realization.o option.o field.o grid.o coupler.o \
-                        translator_mixed_fluid_mph.o
+                        translator_mixed_fluid_mph.o discretization.o
 translator_mixed_fluid_mph.o : pflow_pckr_mod.o
 reaction.o : reactive_transport_aux.o option.o
 transport.o : reactive_transport_aux.o option.o
@@ -156,4 +159,5 @@ richards_lite_aux.o : option.o material.o water_eos.o
 timestepper.o : richards.o richards_lite.o pflow_mphase_ResJac.o \
                 realization.o grid.o option.o field.o solver.o \
                 output.o convergence.o checkpoint.o waypoint.o
-hdf5.o : realization.o option.o grid.o
+hdf5.o : realization.o option.o
+checkpoint.o : realization.o
