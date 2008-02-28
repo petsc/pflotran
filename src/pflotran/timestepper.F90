@@ -322,7 +322,8 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option,timestep_cut_flag, &
   PetscReal :: time, dt
   PetscReal :: fac,dtt,up,utmp,uc,ut,uus
 
-  if (timestep_cut_flag) num_const_timesteps = num_const_timesteps + 1
+  if (timestep_cut_flag .or. &
+      num_const_timesteps > 0) num_const_timesteps = num_const_timesteps + 1
 
   if (associated(flow_stepper)) then
     if (num_const_timesteps > flow_stepper%ndtcmx) then
