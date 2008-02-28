@@ -170,6 +170,8 @@ subroutine Init(simulation,filename)
                              realization, ierr)
     end select
 
+    !call SNESLineSearchSet(flow_solver%snes,SNESLineSearchNo,PETSC_NULL,ierr)
+
     call SolverSetSNESOptions(flow_solver)
 
     call printMsg(option,'Solver: '//trim(flow_solver%ksp_type))
@@ -1227,6 +1229,8 @@ subroutine readInput(simulation,filename)
       
           call fiReadDouble(string,saturation_function%power,ierr)
           call fiErrorMsg(option%myrank,'pwrprm','PCKR', ierr)
+
+          call SaturationFunctionComputeSpline(option,saturation_function)
           
           call SaturationFunctionAddToList(saturation_function, &
                                            realization%saturation_functions)

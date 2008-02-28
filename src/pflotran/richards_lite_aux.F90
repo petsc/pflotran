@@ -165,7 +165,6 @@ subroutine RichardsLiteAuxVarCompute(x,aux_var,iphase,saturation_function,option
   PetscReal :: kr, ds_dp, dkr_dp
   PetscReal :: dvis_dt, dvis_dp, dvis_dpsat
   PetscReal :: dw_dp, dw_dt, hw_dp, hw_dt
-  PetscReal :: dpw_dp
   
   aux_var%sat = 0.d0
   aux_var%den = 0.d0
@@ -192,14 +191,12 @@ subroutine RichardsLiteAuxVarCompute(x,aux_var,iphase,saturation_function,option
                                    ds_dp,dkr_dp, &
                                    saturation_function, &
                                    option)
-    dpw_dp = 0
   else
     iphase = 1
     aux_var%pc = 0.d0
     aux_var%sat = 1.d0  
     kr = 1.d0    
     pw = aux_var%pres
-    dpw_dp = 1.d0
   endif  
 
 !  call wateos_noderiv(option%temp,pw,dw_kg,dw_mol,hw,option%scale,ierr)

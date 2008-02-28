@@ -53,6 +53,8 @@ module Material_module
     PetscReal :: betac
     PetscReal :: power
     PetscInt :: ihist 
+    PetscReal :: BC_pressure_offset
+    PetscReal :: BC_spline_coefficients(4)
     type(saturation_function_type), pointer :: next
   end type saturation_function_type
   
@@ -68,7 +70,8 @@ module Material_module
             MaterialGetPtrFromList, &
             SaturationFunctionCompute, &
             SaturatFuncConvertListToArray, &
-            MaterialConvertListToArray
+            MaterialConvertListToArray, &
+            SaturationFunctionComputeSpline
 
   PetscInt, parameter :: VAN_GENUCHTEN = 1
   PetscInt, parameter :: BROOKS_COREY = 2
@@ -163,7 +166,7 @@ function SaturationFunctionCreate(option)
   saturation_function%saturation_function_ctype = ""
   saturation_function%saturation_function_itype = VAN_GENUCHTEN
   saturation_function%permeability_function_ctype = ""
-  saturation_function%permeability_function_itype = MUALEM
+  saturation_function%permeability_function_itype = BURDINE
   allocate(saturation_function%Sr(option%nphase))
   saturation_function%Sr = 0.d0
   saturation_function%m = 0.d0
@@ -173,10 +176,80 @@ function SaturationFunctionCreate(option)
   saturation_function%betac = 0.d0
   saturation_function%power = 0.d0
   saturation_function%ihist = 0
+  saturation_function%BC_pressure_offset = 0.d0
+  saturation_function%BC_spline_coefficients = 0.d0
   nullify(saturation_function%next)
   SaturationFunctionCreate => saturation_function
 
 end function SaturationFunctionCreate
+
+! ************************************************************************** !
+!
+! SaturationFunctionComputeSpline: Computes a spline spanning the 
+!                                  discontinuity in Brooks Corey
+! author: Glenn Hammond
+! date: 02/27/08
+!
+! ************************************************************************** !
+subroutine SaturationFunctionComputeSpline(option,saturation_function)
+  
+  use Option_module
+  use Utility_module
+  
+  implicit none
+
+  type(option_type) :: option
+  type(saturation_function_type) :: saturation_function
+  
+  PetscReal :: A(4,4), x(4), b(4)
+  PetscInt :: indx(4)
+  PetscInt :: d
+  PetscReal :: pressure_a, pressure_b
+  
+  PetscReal :: alpha
+
+  if (saturation_function%saturation_function_itype /= BROOKS_COREY) &
+    return
+  
+  alpha = saturation_function%alpha
+  
+  ! fill matix with values
+  saturation_function%BC_pressure_offset = 50.d0
+  pressure_a = 1.d0/alpha+saturation_function%BC_pressure_offset
+  pressure_b = 1.d0/alpha-saturation_function%BC_pressure_offset
+  
+  A(1,1) = 1.d0
+  A(2,1) = 1.d0
+  A(3,1) = 0.d0
+  A(4,1) = 0.d0
+  
+  A(1,2) = pressure_a
+  A(2,2) = pressure_b
+  A(3,2) = 1.d0
+  A(4,2) = 1.d0
+  
+  A(1,3) = pressure_a**2.d0
+  A(2,3) = pressure_b**2.d0
+  A(3,3) = 2.d0*pressure_a
+  A(4,3) = 2.d0*pressure_b
+  
+  A(1,4) = pressure_a**3.d0
+  A(2,4) = pressure_b**3.d0
+  A(3,4) = 3.d0*pressure_a**2.d0
+  A(4,4) = 3.d0*pressure_b**2.d0
+  
+  b(1) = (pressure_a*alpha)**(-1.d0*saturation_function%lambda)
+  b(2) = 1.d0
+  b(3) = -1.d0*saturation_function%lambda/pressure_a* &
+        (pressure_a*alpha)**(-1.d0*saturation_function%lambda)
+  b(4) = 0.d0
+  
+  call ludcmp(A,4,indx,d)
+  call lubksb(A,4,indx,b)
+  
+  saturation_function%BC_spline_coefficients(1:4) = b(1:4)
+  
+end subroutine SaturationFunctionComputeSpline
 
 ! ************************************************************************** !
 !
@@ -365,7 +438,7 @@ subroutine SaturationFunctionCompute(pressure,saturation,relative_perm, &
   type(option_type) :: option
 
   PetscInt :: iphase = 1
-  PetscReal :: alpha, lambda, m, n, Sr
+  PetscReal :: alpha, lambda, m, n, Sr, one_over_alpha
   PetscReal :: pc, Se, one_over_m, Se_one_over_m, dSe_pc, dsat_pc, dkr_pc
   PetscReal :: dkr_Se, power
   PetscReal :: pc_alpha, pc_alpha_n, one_plus_pc_alpha_n
@@ -418,11 +491,22 @@ subroutine SaturationFunctionCompute(pressure,saturation,relative_perm, &
       end select
     case(BROOKS_COREY)
       alpha = saturation_function%alpha
+      one_over_alpha = 1.d0/alpha
       pc = option%pref-pressure
-      if (pc < alpha) then
+      if (pc < one_over_alpha-saturation_function%BC_pressure_offset) then
         saturation = 1.d0
         relative_perm = 1.d0
         return
+      else if (pc < one_over_alpha+saturation_function%BC_pressure_offset) then
+        Se = saturation_function%BC_spline_coefficients(1)+ &
+             saturation_function%BC_spline_coefficients(2)*pc+ &
+             saturation_function%BC_spline_coefficients(3)*pc**2.d0+ &
+             saturation_function%BC_spline_coefficients(4)*pc**3.d0
+        dSe_pc = saturation_function%BC_spline_coefficients(2)+ &
+                  saturation_function%BC_spline_coefficients(3)*2.d0*pc+ &
+                  saturation_function%BC_spline_coefficients(4)*3.d0*pc**2.d0
+        saturation = Sr + (1.d0-Sr)*Se
+        dsat_pc = (1.d0-Sr)*dSe_pc
       else
         lambda = saturation_function%lambda
         Sr = saturation_function%Sr(iphase)

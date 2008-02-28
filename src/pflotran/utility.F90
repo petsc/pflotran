@@ -224,4 +224,120 @@ subroutine reallocateRealArray(array,size)
 
 end subroutine reallocateRealArray
 
+!* Given an NxN matrix A, with physical dimension NP, this routine replaces it
+!* by the LU decomposition of a rowwise permutation of itself.
+!* A and N are input. A is output; INDX is output vector which records the
+!* row permutation effected by the partial pivoting; D id output as +1 or -1
+!* depending on whether the number of row interchanges was odd or even,
+!* respectively. This routine is used in combination with lubksb to solve
+!* linear equations or invert a matrix.
+subroutine ludcmp(A,N,INDX,D)
+
+  implicit none
+
+  integer :: N
+  real*8, parameter :: tiny=1.0d-20
+  real*8 :: A(N,N),VV(N)
+  integer :: INDX(N)
+  integer :: D
+
+  integer :: i, j, k, imax
+  real*8 :: aamax, sum, dum
+
+  D=1
+  do i=1,N
+    aamax=0
+    do j=1,N
+      if (abs(A(i,j)).gt.aamax) aamax=abs(A(i,j))
+    enddo
+    if (aamax.eq.0) &
+      pause 'Singular Matrix.'
+    VV(i)=1./aamax
+  enddo
+  do j=1,N
+    do i=1,j-1
+      sum=A(i,j)
+      do k=1,i-1
+        sum=sum-A(i,k)*A(k,j)
+      enddo
+      A(i,j)=sum
+    enddo
+    aamax=0
+    do i=j,N
+      sum=A(i,j)
+      do k=1,j-1
+        sum=sum-A(i,k)*A(k,j)
+      enddo
+      A(i,j)=sum
+      dum=VV(i)*abs(sum)
+      if (dum.ge.aamax) then
+        imax=i
+        aamax=dum
+      endif
+    enddo
+    if (j.ne.imax) then
+      do k=1,N
+        dum=A(imax,k)
+        A(imax,k)=A(j,k)
+        A(j,k)=dum
+      enddo
+      D=-D
+      VV(imax)=VV(j)
+    endif
+    INDX(j)=imax
+    if (A(j,j).eq.0.) A(j,j)=tiny
+    if (j.ne.N) then
+      dum=1./A(j,j)
+      do i=j+1,N
+        A(i,j)=A(i,j)*dum
+      enddo
+    endif
+  enddo
+  return
+
+end subroutine ludcmp
+
+!* Solves the set of N linear equations A.X=D. Here A is input, not as a matrix
+!* A but rather as its LU decomposition. INDX is the input as the permutation
+!* vector returned bu ludcmp. B is input as the right-hand side vector B, and
+!* returns with the solution vector X.
+subroutine lubksb(A,N,INDX,B)
+
+  implicit none
+
+  integer :: N
+  real*8 :: A(N,N),B(N)
+  integer :: INDX(N)
+
+  integer :: i, j, ii, ll
+  real*8 :: sum
+
+
+  ii=0
+  do i=1,N
+    ll=INDX(i)
+    sum=B(ll)
+    B(ll)=B(i)
+    if (ii.ne.0) then
+      do j=ii,i-1
+        sum=sum-A(i,j)*B(j)
+      enddo
+    else if (sum.ne.0) then
+      ii=i
+    endif
+    B(i)=sum
+  enddo
+  do i=N,1,-1
+    sum=B(i)
+    if (i.lt.N) then
+      do j=i+1,N
+        sum=sum-A(i,j)*B(j)
+      enddo
+    endif
+    B(i)=sum/A(i,i)
+  enddo
+  return
+
+end subroutine lubksb
+
 end module Utility_module
