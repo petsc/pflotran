@@ -62,6 +62,7 @@ subroutine ReadStructuredGridHDF5(realization)
   use hdf5
   
   use Realization_module
+  use Discretization_module
   use Option_module
   use Grid_module
   use Field_module
@@ -74,6 +75,7 @@ subroutine ReadStructuredGridHDF5(realization)
   type(realization_type) :: realization
 
   type(option_type), pointer :: option
+  type(discretization_type), pointer :: discretization
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch  
@@ -102,6 +104,7 @@ subroutine ReadStructuredGridHDF5(realization)
   PetscLogDouble :: time0, time1, time3, time4
 
   field => realization%field
+  discretization => realization%discretization
   option => realization%option
   patch => realization%patch
   grid => patch%grid
@@ -150,8 +153,8 @@ subroutine ReadStructuredGridHDF5(realization)
   if (option%myrank == 0) print *, time4, &
        ' seconds to set up grid cell indices for hdf5 file'
 
-  call GridCreateVector(grid,ONEDOF,global_vec,GLOBAL)
-  call GridCreateVector(grid,ONEDOF,local_vec,LOCAL)
+  call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL)
+  call DiscretizationCreateVector(discretization,ONEDOF,local_vec,LOCAL)
   
   allocate(integer_array(grid%nlmax))
   string = "Material Id"
@@ -160,7 +163,7 @@ subroutine ReadStructuredGridHDF5(realization)
                             grid%nlmax,integer_array)
   call GridCopyIntegerArrayToPetscVec(integer_array,global_vec,grid%nlmax)
   deallocate(integer_array)
-  call GridGlobalToLocal(grid,global_vec,local_vec,ONEDOF)
+  call DiscretizationGlobalToLocal(discretization,global_vec,local_vec,ONEDOF)
   call GridCopyPetscVecToIntegerArray(patch%imat,local_vec,grid%ngmax)
   
   allocate(real_array(grid%nlmax))
@@ -169,7 +172,7 @@ subroutine ReadStructuredGridHDF5(realization)
   call HDF5ReadRealArray(option,grp_id,string,grid%nlmax,indices,grid%nlmax, &
                          real_array)
   call GridCopyRealArrayToPetscVec(real_array,global_vec,grid%nlmax)
-  call GridGlobalToLocal(grid,global_vec,local_vec,ONEDOF)  
+  call DiscretizationGlobalToLocal(discretization,global_vec,local_vec,ONEDOF)  
   call GridCopyPetscVecToRealArray(grid%x,local_vec,grid%ngmax)
 
   string = "Y-Coordinate"
@@ -177,7 +180,7 @@ subroutine ReadStructuredGridHDF5(realization)
   call HDF5ReadRealArray(option,grp_id,string,grid%nlmax,indices,grid%nlmax, &
                          real_array)
   call GridCopyRealArrayToPetscVec(real_array,global_vec,grid%nlmax)
-  call GridGlobalToLocal(grid,global_vec,local_vec,ONEDOF)  
+  call DiscretizationGlobalToLocal(discretization,global_vec,local_vec,ONEDOF)  
   call GridCopyPetscVecToRealArray(grid%y,local_vec,grid%ngmax)
 
   string = "Z-Coordinate"
@@ -185,7 +188,7 @@ subroutine ReadStructuredGridHDF5(realization)
   call HDF5ReadRealArray(option,grp_id,string,grid%nlmax,indices,grid%nlmax, &
                          real_array)
   call GridCopyRealArrayToPetscVec(real_array,global_vec,grid%nlmax)
-  call GridGlobalToLocal(grid,global_vec,local_vec,ONEDOF)  
+  call DiscretizationGlobalToLocal(discretization,global_vec,local_vec,ONEDOF)  
   call GridCopyPetscVecToRealArray(grid%z,local_vec,grid%ngmax)
 
   deallocate(real_array)
@@ -231,13 +234,13 @@ subroutine ReadStructuredGridHDF5(realization)
   call HDF5ReadRealArray(option,grp_id,string,grid%nlmax,indices,grid%nlmax, &
                          vec_ptr)
   call VecRestoreArrayF90(global_vec,vec_ptr,ierr); CHKERRQ(ierr)
-  call GridGlobalToLocal(grid,global_vec,field%tor_loc,ONEDOF)
+  call DiscretizationGlobalToLocal(discretization,global_vec,field%tor_loc,ONEDOF)
 
   call VecDestroy(global_vec,ierr)
   call VecDestroy(local_vec,ierr)
 
   ! update local vectors
-  call UpdateGlobalToLocal(grid,field)
+  call UpdateGlobalToLocal(discretization,field)
 
   deallocate(indices)
   if (option%myrank == 0) print *, 'Closing group: Grid Cells'
@@ -518,33 +521,33 @@ end subroutine SetupConnectionIndices
 ! date: 06/20/07
 !
 ! ************************************************************************** !
-subroutine UpdateGlobalToLocal(grid,field)
+subroutine UpdateGlobalToLocal(discretization,field)
 
-  use Grid_module
+  use Discretization_module
   use Field_module
   
   implicit none
   
   PetscInt :: ierr
-  type(grid_type) :: grid
+  type(discretization_type) :: discretization
   type(field_type) :: field
 
   ! icap
-  call GridLocalToLocal(grid,field%icap_loc,field%icap_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%icap_loc,field%icap_loc,ONEDOF)
 
   ! ithrm
-  call GridLocalToLocal(grid,field%ithrm_loc,field%ithrm_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%ithrm_loc,field%ithrm_loc,ONEDOF)
 
   ! perm_xx, perm_yy, perm_zz
-  call GridGlobalToLocal(grid,field%perm0_xx,field%perm_xx_loc,ONEDOF)
-  call GridGlobalToLocal(grid,field%perm0_yy,field%perm_yy_loc,ONEDOF)
-  call GridGlobalToLocal(grid,field%perm0_zz,field%perm_zz_loc,ONEDOF)
+  call DiscretizationGlobalToLocal(discretization,field%perm0_xx,field%perm_xx_loc,ONEDOF)
+  call DiscretizationGlobalToLocal(discretization,field%perm0_yy,field%perm_yy_loc,ONEDOF)
+  call DiscretizationGlobalToLocal(discretization,field%perm0_zz,field%perm_zz_loc,ONEDOF)
 
   ! tor
-  call GridLocalToLocal(grid,field%tor_loc,field%tor_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%tor_loc,field%tor_loc,ONEDOF)
 
   ! por
-  call GridGlobalToLocal(grid,field%porosity0,field%porosity_loc,ONEDOF)
+  call DiscretizationGlobalToLocal(discretization,field%porosity0,field%porosity_loc,ONEDOF)
 
 end subroutine UpdateGlobalToLocal
 

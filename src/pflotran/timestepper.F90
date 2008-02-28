@@ -511,11 +511,10 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   use Output_module
   
   use Realization_module
-  use Grid_module
+  use Discretization_module
   use Option_module
   use Solver_module
   use Field_module
-  use Patch_module  
   
   implicit none
 
@@ -546,14 +545,12 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   PetscViewer :: viewer
 
   type(option_type), pointer :: option
-  type(grid_type), pointer :: grid
-  type(field_type), pointer :: field  
+  type(field_type), pointer :: field 
+  type(discretization_type), pointer :: discretization 
   type(solver_type), pointer :: solver
-  type(patch_type), pointer :: patch  
 
   option => realization%option
-  patch => realization%patch
-  grid => patch%grid
+  discretization => realization%discretization
   field => realization%field
   solver => stepper%solver
 
@@ -569,11 +566,11 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   ! vector, as that needs to be done within the residual calculation routine
   ! because that routine may get called several times during one Newton step
   ! if a method such as line search is being used.
-  call GridLocalToLocal(grid,field%porosity_loc,field%porosity_loc,ONEDOF)
-  call GridLocalToLocal(grid,field%tor_loc,field%tor_loc,ONEDOF)
-  call GridLocalToLocal(grid,field%icap_loc,field%icap_loc,ONEDOF)
-  call GridLocalToLocal(grid,field%ithrm_loc,field%ithrm_loc,ONEDOF)
-  call GridLocalToLocal(grid,field%iphas_loc,field%iphas_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%porosity_loc,field%porosity_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%tor_loc,field%tor_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%icap_loc,field%icap_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%ithrm_loc,field%ithrm_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%iphas_loc,field%iphas_loc,ONEDOF)
   
   if (option%myrank == 0) then
     write(*,'(/,2("=")," FLOW ",52("="))')
@@ -601,11 +598,11 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
     call VecGetArrayF90(field%flow_r, r_p, ierr)
     
     s_r2norm = 0.D0 ; norm_inf = -1.D0 ; nmax_inf =-1
-    do n=1, grid%nlmax
+    do n=1, discretization%grid%nlmax
        s_r2norm = s_r2norm + r_p(n)* r_p(n)
        if(dabs(r_p(n))> norm_inf)then
           norm_inf = dabs(r_p(n))
-          nmax_inf = grid%nL2A(n)
+          nmax_inf = discretization%grid%nL2A(n)
        endif     
     enddo 
    call VecRestoreArrayF90(field%flow_r, r_p, ierr)
@@ -619,7 +616,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
     endif
    endif
     s_r2norm = dsqrt(s_r2norm)
-    m_r2norm = s_r2norm/grid%nmax   
+    m_r2norm = s_r2norm/discretization%grid%nmax   
 #if (PETSC_VERSION_RELEASE == 0 || PETSC_VERSION_SUBMINOR == 3)      
     call SNESGetLinearSolveIterations(solver%snes, it_linear, ierr)
 #endif      
@@ -656,7 +653,6 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
         realization%output_option%plot_name = 'cut_to_failure'
         call Output(realization)
         realization%output_option%plot_name = ''
- !       call pflowgrid_destroy(grid)
         call PetscFinalize(ierr)
         stop
       endif
@@ -698,7 +694,8 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   stepper%icutcum = stepper%icutcum + icut
 
   if (field%saturation_loc /= 0) then ! store saturations for transport
-   call GridCreateVector(grid,ONEDOF,global_vec,GLOBAL)
+   call DiscretizationCreateVector(realization%discretization,ONEDOF, &
+                                   global_vec,GLOBAL)
     select case(option%iflowmode)
       case(RICHARDS_MODE)
         call RichardsGetVarFromArray(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
@@ -706,7 +703,8 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
         call RichardsLiteGetVarFromArray(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
       case(MPH_MODE)
     end select
-    call GridGlobalToLocal(grid,global_vec,field%saturation_loc,ONEDOF)   
+    call DiscretizationGlobalToLocal(realization%discretization, &
+                                     global_vec,field%saturation_loc,ONEDOF)   
     call VecDestroy(global_vec,ierr)
   endif
 
@@ -788,11 +786,10 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
   use Output_module
   
   use Realization_module
-  use Grid_module
+  use Discretization_module
   use Option_module
   use Solver_module
   use Field_module
-  use Patch_module
   
   implicit none
 
@@ -823,14 +820,12 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
   PetscViewer :: viewer
 
   type(option_type), pointer :: option
-  type(grid_type), pointer :: grid
+  type(discretization_type), pointer :: discretization
   type(field_type), pointer :: field  
   type(solver_type), pointer :: solver
-  type(patch_type), pointer :: patch  
 
   option => realization%option
-  patch => realization%patch
-  grid => patch%grid
+  discretization => realization%discretization
   field => realization%field
   solver => stepper%solver
 
@@ -839,8 +834,8 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
   num_newton_iterations = 0
   icut = 0
 
-  call GridLocalToLocal(grid,field%porosity_loc,field%porosity_loc,ONEDOF)
-  call GridLocalToLocal(grid,field%tor_loc,field%tor_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%porosity_loc,field%porosity_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%tor_loc,field%tor_loc,ONEDOF)
 
   if (timestep_cut_flag) then
     option%tran_time = option%flow_time
@@ -883,7 +878,6 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
         realization%output_option%plot_name = 'cut_to_failure'
         call Output(realization)
         realization%output_option%plot_name = ''
- !       call pflowgrid_destroy(grid)
         call PetscFinalize(ierr)
         stop
       endif

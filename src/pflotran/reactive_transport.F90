@@ -464,7 +464,7 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
   use Field_module
   use Patch_module
   use Level_module
-  use Grid_module
+  use Discretization_module
   use Option_module
 
   implicit none
@@ -475,25 +475,17 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
   type(realization_type) :: realization
   PetscErrorCode :: ierr
   
-  type(grid_type), pointer :: grid
+  type(discretization_type), pointer :: discretization
   type(field_type), pointer :: field
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   
   field => realization%field
-  grid => realization%patch%grid
+  discretization => realization%discretization
   
   ! Communication -----------------------------------------
-  ! These 3 must be called before RichardsUpdateAuxVars()
-  call GridGlobalToLocal(grid,xx,field%tran_xx_loc,NTRANDOF)
-  call GridLocalToLocal(grid,field%iphas_loc,field%iphas_loc,ONEDOF)
-  call GridLocalToLocal(grid,field%icap_loc,field%icap_loc,ONEDOF)
+  call DiscretizationGlobalToLocal(discretization,xx,field%tran_xx_loc,NTRANDOF)
 
-  call GridLocalToLocal(grid,field%perm_xx_loc,field%perm_xx_loc,ONEDOF)
-  call GridLocalToLocal(grid,field%perm_yy_loc,field%perm_yy_loc,ONEDOF)
-  call GridLocalToLocal(grid,field%perm_zz_loc,field%perm_zz_loc,ONEDOF)
-  call GridLocalToLocal(grid,field%ithrm_loc,field%ithrm_loc,ONEDOF)
-  
   cur_level => realization%level_list%first
   do
     if (.not.associated(cur_level)) exit
@@ -563,10 +555,6 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
   aux_vars => patch%RTAux%aux_vars
   aux_vars_bc => patch%RTAux%aux_vars_bc
   
-  ! Communication -----------------------------------------
-  ! These 3 must be called before RTUpdateAuxVars()
-  call GridGlobalToLocal(grid,xx,field%tran_xx_loc,NTRANDOF)
-
   call RTUpdateAuxVars(realization)
   aux_vars_up_to_date = .false. ! override flags since they will soon be out of date  
 

@@ -10,21 +10,6 @@ module Grid_module
  
 #include "definitions.h"
 
-! Apparently the PETSc authors believe that Fortran 90 modules should ensure
-! that PETSC_AVOID_DECLARATIONS and PETSC_AVOID_MPIF_H are defined when the
-! PETSc header files are included.  I can get around this, though, by making
-! the definitions in these headers private.
-#include "petscreldefs.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
-  ! It is VERY IMPORTANT to make sure that the above .h90 file gets included.
-  ! Otherwise some very strange things will happen and PETSc will give no
-  ! indication of what the problem is.
-#include "include/finclude/petscmat.h"
-#include "include/finclude/petscmat.h90"
-#include "include/finclude/petscda.h"
-#include "include/finclude/petscda.h90"
-
   type, public :: grid_type
   
     character(len=MAXWORDLENGTH) :: ctype
@@ -46,14 +31,10 @@ module Grid_module
     PetscReal, pointer :: x(:), y(:), z(:)
     
     PetscReal :: x_min, x_max, y_min, y_max, z_min, z_max
-    PetscReal :: origin(3)
 
-    DM :: dm_1_dof, dm_nflowdof, dm_ntrandof
-    
     PetscInt, pointer :: hash(:,:,:)
     PetscInt :: num_hash_bins
-    
-    PetscInt :: igeom
+
     type(structured_grid_type), pointer :: structured_grid
     type(unstructured_grid_type), pointer :: unstructured_grid
     
@@ -64,27 +45,8 @@ module Grid_module
 
   public :: GridCreate, &
             GridDestroy, &
-            GridRead, &
             GridComputeInternalConnect, &
-            GridCreateVector, &
-            GridDuplicateVector, &         
-            GridCreateJacobian, &
-            GridCreateColoring, &
-            GridGlobalToLocal, &
-            GridLocalToGlobal, &
-            GridLocalToLocal, &
-            GridGlobalToNatural, &
-            GridNaturalToGlobal, &
-            GridGlobalToLocalBegin, &
-            GridGlobalToLocalEnd, &
-            GridLocalToLocalBegin, &
-            GridLocalToLocalEnd, &
-            GridGlobalToNaturalBegin, &
-            GridGlobalToNaturalEnd, &
-            GridNaturalToGlobalBegin, &
-            GridNaturalToGlobalEnd, &
             GridMapIndices, &
-            GridCreateDMs, &
             GridComputeSpacing, &
             GridComputeCoordinates, &
             GridComputeVolumes, &
@@ -110,8 +72,6 @@ contains
 function GridCreate()
 
   implicit none
-  
-  PetscInt :: igeom_
   
   type(grid_type), pointer :: GridCreate
   
@@ -147,255 +107,12 @@ function GridCreate()
   grid%nlmax = 0 
   grid%ngmax = 0
   
-  ! nullify DM pointers
-  grid%dm_1_dof = 0
-  grid%dm_nflowdof = 0
-  grid%dm_ntrandof = 0
-  
   nullify(grid%hash)
   grid%num_hash_bins = 1000
 
   GridCreate => grid
 
 end function GridCreate
-
-! ************************************************************************** !
-!
-! GridRead: Reads a grid from the input file
-! author: Glenn Hammond
-! date: 11/01/07
-!
-! ************************************************************************** !
-subroutine GridRead(grid,fid,option)
-
-  use Fileio_module
-  use Option_module
-  
-  implicit none
-  
-  type(option_type) :: option
-  type(grid_type) :: grid
-  PetscInt :: fid
-  
-  character(len=MAXSTRINGLENGTH) :: string
-  character(len=MAXWORDLENGTH) :: word
-  PetscInt :: length
-  PetscInt :: nx, ny, nz
-  PetscErrorCode :: ierr
-
-  nx = 0
-  ny = 0
-  nz = 0
-
-  ierr = 0
-  do
-  
-    call fiReadFlotranString(IUNIT1,string,ierr)
-    if (ierr /= 0) exit
-
-    call fiReadWord(string,word,.true.,ierr)
-    call fiErrorMsg(option%myrank,'keyword','GRID', ierr)   
-    length = len_trim(word)
-    call fiCharsToUpper(word,length)
-      
-    select case(trim(word))
-      case('TYPE')
-        call fiReadWord(string,grid%ctype,.true.,ierr)
-        call fiErrorMsg(option%myrank,'type','GRID', ierr)   
-        length = len_trim(grid%ctype)
-        call fiCharsToLower(grid%ctype,length)
-        select case(trim(grid%ctype))
-          case('structured')
-            grid%itype = STRUCTURED_GRID
-          case('unstructured')
-            grid%itype = UNSTRUCTURED_GRID
-          case('amr')
-            grid%itype = AMR_GRID
-          case default
-            call printErrMsg(option,'Grid type: '//trim(grid%ctype)//' not recognized.')
-        end select    
-      case('NXYZ')
-        call fiReadInt(string,nx,ierr)
-        call fiErrorMsg(option%myrank,'nx','GRID', ierr)
-        call fiReadInt(string,ny,ierr)
-        call fiErrorMsg(option%myrank,'ny','GRID', ierr)
-        call fiReadInt(string,nz,ierr)
-        call fiErrorMsg(option%myrank,'nz','GRID', ierr)
-      case('FILE')
-      case('END')
-        exit
-    end select 
-  
-  enddo  
-
-  if (grid%itype == STRUCTURED_GRID) then ! structured
-    if (nx*ny*nz == 0) call printErrMsg(option,'NXYZ not set correctly for structured grid.')
-    grid%structured_grid => StructuredGridCreate()
-    grid%structured_grid%nx = nx
-    grid%structured_grid%ny = ny
-    grid%structured_grid%nz = nz
-    grid%structured_grid%nxy = grid%structured_grid%nx*grid%structured_grid%ny
-    grid%structured_grid%nmax = grid%structured_grid%nxy * &
-                                grid%structured_grid%nz
-    grid%nmax = grid%structured_grid%nmax
-  endif
-
-end subroutine GridRead
-
-! ************************************************************************** !
-!
-! GridCreateDMs: creates distributed, parallel meshes/grids
-! author: Glenn Hammond
-! date: 02/08/08
-!
-! ************************************************************************** !
-subroutine GridCreateDMs(grid,option)
-      
-  use Option_module    
-      
-  implicit none
-  
-  type(grid_type) :: grid
-  type(option_type) :: option
-      
-  PetscInt :: ndof
-  PetscInt, parameter :: stencil_width = 1
-  PetscErrorCode :: ierr
-
-  !-----------------------------------------------------------------------
-  ! Generate the DA objects that will manage communication.
-  !-----------------------------------------------------------------------
-  ndof = 1
-  call GridCreateDM(grid,grid%dm_1_dof,ndof,stencil_width)
-  
-  if (option%nflowdof > 0) then
-    ndof = option%nflowdof
-    call GridCreateDM(grid,grid%dm_nflowdof,ndof,stencil_width)
-  endif
-  
-  if (option%ntrandof > 0) then
-    ndof = option%ntrandof
-    call GridCreateDM(grid,grid%dm_ntrandof,ndof,stencil_width)
-  endif
-
-  select case(grid%itype)
-    case(STRUCTURED_GRID)
-      grid%nlmax = grid%structured_grid%nlmax
-      grid%ngmax = grid%structured_grid%ngmax
-    case(UNSTRUCTURED_GRID)
-  end select
-
-  ! allocate coordinate arrays  
-  allocate(grid%x(grid%ngmax))
-  allocate(grid%y(grid%ngmax))
-  allocate(grid%z(grid%ngmax))
-  
-end subroutine GridCreateDMs
-
-! ************************************************************************** !
-!
-! GridCreateDM: creates a distributed, parallel mesh/grid
-! author: Glenn Hammond
-! date: 02/08/08
-!
-! ************************************************************************** !
-subroutine GridCreateDM(grid,dm,ndof,stencil_width)
-
-  implicit none
-  
-  type(grid_type) :: grid
-  DM :: dm
-  PetscInt :: ndof
-  PetscInt :: stencil_width
-  
-  select case(grid%itype)
-    case(STRUCTURED_GRID)
-      call StructuredGridCreateDA(grid%structured_grid,dm,ndof, &
-                                  stencil_width)
-    case(UNSTRUCTURED_GRID)
-  end select
-
-end subroutine GridCreateDM
-
-! ************************************************************************** !
-!
-! GridCreateVector: Creates a global PETSc vector
-! author: Glenn Hammond
-! date: 10/24/07
-!
-! ************************************************************************** !
-subroutine GridCreateVector(grid,dm_index,vector,vector_type)
-
-  implicit none
-  
-  type(grid_type) :: grid
-  PetscInt :: dm_index
-  Vec :: vector
-  PetscInt :: vector_type
-  
-  DM :: dm_ptr
-  
-  dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
-  
-  select case(grid%itype)
-    case(STRUCTURED_GRID)
-      call StructuredGridCreateVecFromDA(dm_ptr,vector,vector_type)
-    case(UNSTRUCTURED_GRID)
-  end select
-  
-end subroutine GridCreateVector
-
-! ************************************************************************** !
-!
-! GridDuplicateVector: Creates a global PETSc vector
-! author: Glenn Hammond
-! date: 10/24/07
-!
-! ************************************************************************** !
-subroutine GridDuplicateVector(grid,vector1,vector2)
-
-  implicit none
-  
-  type(grid_type) :: grid
-  Vec :: vector1
-  Vec :: vector2
-  
-  PetscErrorCode :: ierr
-  
-  select case(grid%itype)
-    case(STRUCTURED_GRID,UNSTRUCTURED_GRID)
-      call VecDuplicate(vector1,vector2,ierr)
-  end select
-  
-end subroutine GridDuplicateVector
-
-! ************************************************************************** !
-!
-! GridGetDMPtrFromIndex: Returns the integer pointer for the DM referenced
-! author: Glenn Hammond
-! date: 02/08/08
-!
-! ************************************************************************** !
-function GridGetDMPtrFromIndex(grid,dm_index)
-
-  implicit none
-  
-  type(grid_type) :: grid
-  PetscInt :: dm_index
-  
-  DM :: GridGetDMPtrFromIndex
-  
-  select case (dm_index)
-    case(ONEDOF)
-      GridGetDMPtrFromIndex = grid%dm_1_dof
-    case(NFLOWDOF)
-      GridGetDMPtrFromIndex = grid%dm_nflowdof
-    case(NTRANDOF)
-      GridGetDMPtrFromIndex = grid%dm_ntrandof
-
-  end select  
-  
-end function GridGetDMPtrFromIndex
 
 ! ************************************************************************** !
 !
@@ -475,16 +192,24 @@ end subroutine GridPopulateConnection
 ! date: 10/24/07
 !
 ! ************************************************************************** !
-subroutine GridMapIndices(grid)
+subroutine GridMapIndices(grid,dm)
 
   implicit none
+
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
+#include "include/finclude/petscda.h"
+#include "include/finclude/petscda.h90"
   
   type(grid_type) :: grid
+  DM :: dm
+  PetscErrorCode :: ierr
   
   select case(grid%itype)
     case(STRUCTURED_GRID)
+      call DAGetGlobalIndicesF90(dm,grid%ngmax,grid%nG2N, ierr)
       call StructuredGridMapIndices(grid%structured_grid,grid%nG2L,grid%nL2G, &
-                                    grid%nL2A,grid%nG2A,grid%nG2N)
+                                    grid%nL2A,grid%nG2A)
     case(UNSTRUCTURED_GRID)
   end select
   
@@ -505,7 +230,8 @@ subroutine GridComputeSpacing(grid)
   
   select case(grid%itype)
     case(STRUCTURED_GRID)
-      call StructuredGridComputeSpacing(grid%structured_grid,grid%nL2A)
+      call StructuredGridComputeSpacing(grid%structured_grid,grid%nG2A, &
+                                        grid%nG2L)
     case(UNSTRUCTURED_GRID)
   end select
   
@@ -529,6 +255,12 @@ subroutine GridComputeCoordinates(grid,option)
   
   select case(grid%itype)
     case(STRUCTURED_GRID)
+      allocate(grid%x(grid%ngmax))
+      grid%x = 0.d0
+      allocate(grid%y(grid%ngmax))
+      grid%y = 0.d0
+      allocate(grid%z(grid%ngmax))
+      grid%z = 0.d0
       call StructuredGridComputeCoord(grid%structured_grid,option, &
                                       grid%x,grid%y,grid%z, &
                                       grid%x_min,grid%x_max,grid%y_min, &
@@ -550,6 +282,9 @@ subroutine GridComputeVolumes(grid,volume,option)
   use Option_module
   
   implicit none
+
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
   
   type(grid_type) :: grid
   type(option_type) :: option
@@ -563,432 +298,6 @@ subroutine GridComputeVolumes(grid,volume,option)
   end select
 
 end subroutine GridComputeVolumes
-
-! ************************************************************************** !
-!
-! GridCreateJacobian: Creates Jacobian matrix associated with grid
-! author: Glenn Hammond
-! date: 10/24/07
-!
-! ************************************************************************** !
-subroutine GridCreateJacobian(grid,dm_index,Jacobian,option)
-
-  use Option_module
-  
-  implicit none
-  
-  type(grid_type) :: grid
-  PetscInt :: dm_index
-  Mat :: Jacobian
-  type(option_type) :: option
-
-  DM :: dm_ptr
-  
-  dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
-    
-  select case(grid%itype)
-    case(STRUCTURED_GRID)
-      call StructuredGridCreateJacobian(dm_ptr,Jacobian,option)
-    case(UNSTRUCTURED_GRID)
-  end select
-
-end subroutine GridCreateJacobian
-
-! ************************************************************************** !
-!
-! GridCreateColoring: Creates ISColoring for grid
-! author: Glenn Hammond
-! date: 10/24/07
-!
-! ************************************************************************** !
-subroutine GridCreateColoring(grid,dm_index,option,coloring)
-
-  use Option_module
-  
-  implicit none
-
-#include "include/finclude/petscis.h"
-#include "include/finclude/petscis.h90"
-  
-  type(grid_type) :: grid
-  PetscInt :: dm_index
-  type(option_type) :: option
-  ISColoring :: coloring
-
-  DM :: dm_ptr
-  
-  dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
-    
-  select case(grid%itype)
-    case(STRUCTURED_GRID)
-      call StructuredGridCreateColoring(dm_ptr,option,coloring)
-    case(UNSTRUCTURED_GRID)
-  end select
-  
-end subroutine GridCreateColoring
-
-! ************************************************************************** !
-!
-! GridGlobalToLocal: Performs global to local communication with DM
-! author: Glenn Hammond
-! date: 10/24/07
-!
-! Note that 'dm_index' should correspond to one of the macros defined 
-! in 'definitions.h' such as ONEDOF, NPHASEDOF, etc.  --RTM
-!
-! ************************************************************************** !
-subroutine GridGlobalToLocal(grid,global_vec,local_vec,dm_index)
-
-  implicit none
-  
-  type(grid_type) :: grid
-  Vec :: global_vec
-  Vec :: local_vec
-  PetscInt :: dm_index
-  DM :: dm_ptr
-  
-  dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
-    
-  select case(grid%itype)
-    case(STRUCTURED_GRID)
-      call StructureGridGlobalToLocal(dm_ptr,global_vec,local_vec)
-    case(UNSTRUCTURED_GRID)
-  end select
-  
-end subroutine GridGlobalToLocal
-  
-! ************************************************************************** !
-!
-! GridLocalToGlobal: Performs local to global communication with DM
-! author: Glenn Hammond
-! date: 1/02/08
-!
-! Note that 'dm_index' should correspond to one of the macros defined 
-! in 'definitions.h' such as ONEDOF, NPHASEDOF, etc.  --RTM
-!
-! ************************************************************************** !
-subroutine GridLocalToGlobal(grid,local_vec,global_vec,dm_index)
-
-  implicit none
-  
-  type(grid_type) :: grid
-  Vec :: local_vec
-  Vec :: global_vec
-  PetscInt :: dm_index
-  DM :: dm_ptr
-  
-  dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
-  
-  select case(grid%itype)
-    case(STRUCTURED_GRID)
-      call StructureGridLocalToGlobal(dm_ptr,local_vec,global_vec)
-    case(UNSTRUCTURED_GRID)
-  end select
-  
-end subroutine GridLocalToGlobal
-  
-! ************************************************************************** !
-!
-! GridLocalToLocal: Performs local to local communication with DM
-! author: Glenn Hammond
-! date: 11/14/07
-!
-! ************************************************************************** !
-subroutine GridLocalToLocal(grid,local_vec1,local_vec2,dm_index)
-
-  implicit none
-  
-  type(grid_type) :: grid
-  Vec :: local_vec1
-  Vec :: local_vec2
-  PetscInt :: dm_index
-  DM :: dm_ptr
-  
-  dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
-  
-  select case(grid%itype)
-    case(STRUCTURED_GRID)
-      call StructureGridLocalToLocal(dm_ptr,local_vec1,local_vec2)
-    case(UNSTRUCTURED_GRID)
-  end select
-  
-end subroutine GridLocalToLocal
-  
-! ************************************************************************** !
-!
-! GridGlobalToNatural: Performs global to natural communication with DM
-! author: Glenn Hammond
-! date: 10/24/07
-!
-! ************************************************************************** !
-subroutine GridGlobalToNatural(grid,global_vec,natural_vec,dm_index)
-
-  implicit none
-  
-  type(grid_type) :: grid
-  Vec :: global_vec
-  Vec :: natural_vec
-  PetscInt :: dm_index
-  DM :: dm_ptr
-  
-  dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
-  
-  select case(grid%itype)
-    case(STRUCTURED_GRID)
-      call StructureGridGlobalToNatural(dm_ptr,global_vec,natural_vec)
-    case(UNSTRUCTURED_GRID)
-  end select
-  
-end subroutine GridGlobalToNatural
-
-! ************************************************************************** !
-!
-! GridNaturalToGlobal: Performs natural to global communication with DM
-! author: Glenn Hammond
-! date: 01/12/08
-!
-! ************************************************************************** !
-subroutine GridNaturalToGlobal(grid,natural_vec,global_vec,dm_index)
-
-  implicit none
-  
-  type(grid_type) :: grid
-  Vec :: natural_vec
-  Vec :: global_vec
-  PetscInt :: dm_index
-  DM :: dm_ptr
-  
-  dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
-  
-  select case(grid%itype)
-    case(STRUCTURED_GRID)
-      call StructureGridNaturalToGlobal(dm_ptr,natural_vec,global_vec)
-    case(UNSTRUCTURED_GRID)
-  end select
-  
-end subroutine GridNaturalToGlobal
-
-! ************************************************************************** !
-!
-! GridGlobalToLocalBegin: Begins global to local communication with DM
-! author: Glenn Hammond
-! date: 10/24/07
-!
-! Note that 'dm_index' should correspond to one of the macros defined 
-! in 'definitions.h' such as ONEDOF, NPHASEDOF, etc.  --RTM
-!
-! ************************************************************************** !
-subroutine GridGlobalToLocalBegin(grid,global_vec,local_vec,dm_index)
-
-  implicit none
-  
-  type(grid_type) :: grid
-  Vec :: global_vec
-  Vec :: local_vec
-  PetscInt :: dm_index
-  DM :: dm_ptr
-  
-  dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
-  
-  select case(grid%itype)
-    case(STRUCTURED_GRID)
-      call StructureGridGlobalToLocalBegin(dm_ptr,global_vec,local_vec)
-    case(UNSTRUCTURED_GRID)
-  end select
-  
-end subroutine GridGlobalToLocalBegin
-  
-! ************************************************************************** !
-!
-! GridGlobalToLocalEnd: Ends global to local communication with DM
-! author: Glenn Hammond
-! date: 10/24/07
-!
-! Note that 'dm_index' should correspond to one of the macros defined 
-! in 'definitions.h' such as ONEDOF, NPHASEDOF, etc.  --RTM
-!
-! ************************************************************************** !
-subroutine GridGlobalToLocalEnd(grid,global_vec,local_vec,dm_index)
-
-  implicit none
-  
-  type(grid_type) :: grid
-  Vec :: global_vec
-  Vec :: local_vec
-  PetscInt :: dm_index
-  DM :: dm_ptr
-  
-  dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
-  
-  select case(grid%itype)
-    case(STRUCTURED_GRID)
-      call StructureGridGlobalToLocalEnd(dm_ptr,global_vec,local_vec)
-    case(UNSTRUCTURED_GRID)
-  end select
-  
-end subroutine GridGlobalToLocalEnd
-  
-! ************************************************************************** !
-!
-! GridLocalToLocalBegin: Begins local to local communication with DM
-! author: Glenn Hammond
-! date: 11/14/07
-!
-! ************************************************************************** !
-subroutine GridLocalToLocalBegin(grid,local_vec1,local_vec2,dm_index)
-
-  implicit none
-  
-  type(grid_type) :: grid
-  Vec :: local_vec1
-  Vec :: local_vec2
-  PetscInt :: dm_index
-  DM :: dm_ptr
-  
-  dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
-  
-  select case(grid%itype)
-    case(STRUCTURED_GRID)
-      call StructureGridLocalToLocalBegin(dm_ptr,local_vec1,local_vec2)
-    case(UNSTRUCTURED_GRID)
-  end select
-  
-end subroutine GridLocalToLocalBegin
-  
-! ************************************************************************** !
-!
-! GridLocalToLocalEnd: Ends local to local communication with DM
-! author: Glenn Hammond
-! date: 11/14/07
-!
-! ************************************************************************** !
-subroutine GridLocalToLocalEnd(grid,local_vec1,local_vec2,dm_index)
-
-  implicit none
-  
-  type(grid_type) :: grid
-  Vec :: local_vec1
-  Vec :: local_vec2
-  PetscInt :: dm_index
-  DM :: dm_ptr
-  
-  dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
-  
-  select case(grid%itype)
-    case(STRUCTURED_GRID)
-      call StructureGridLocalToLocalEnd(dm_ptr,local_vec1,local_vec2)
-    case(UNSTRUCTURED_GRID)
-  end select
-  
-end subroutine GridLocalToLocalEnd
-  
-! ************************************************************************** !
-!
-! GridGlobalToNaturalBegin: Begins global to natural communication with DM
-! author: Glenn Hammond
-! date: 10/24/07
-!
-! ************************************************************************** !
-subroutine GridGlobalToNaturalBegin(grid,global_vec,natural_vec,dm_index)
-
-  implicit none
-  
-  type(grid_type) :: grid
-  Vec :: global_vec
-  Vec :: natural_vec
-  PetscInt :: dm_index
-  DM :: dm_ptr
-  
-  dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
-  
-  select case(grid%itype)
-    case(STRUCTURED_GRID)
-      call StructureGridGlobalToNaturBegin(dm_ptr,global_vec,natural_vec)
-    case(UNSTRUCTURED_GRID)
-  end select
-  
-end subroutine GridGlobalToNaturalBegin
-
-! ************************************************************************** !
-!
-! GridGlobalToNaturalEnd: Ends global to natural communication with DM
-! author: Glenn Hammond
-! date: 10/24/07
-!
-! ************************************************************************** !
-subroutine GridGlobalToNaturalEnd(grid,global_vec,natural_vec,dm_index)
-
-  implicit none
-  
-  type(grid_type) :: grid
-  Vec :: global_vec
-  Vec :: natural_vec
-  PetscInt :: dm_index
-  DM :: dm_ptr
-  
-  dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
-  
-  select case(grid%itype)
-    case(STRUCTURED_GRID)
-      call StructureGridGlobalToNaturEnd(dm_ptr,global_vec,natural_vec)
-    case(UNSTRUCTURED_GRID)
-  end select
-  
-end subroutine GridGlobalToNaturalEnd
-
-! ************************************************************************** !
-!
-! GridNaturalToGlobalBegin: Begins natural to global communication with DM
-! author: Glenn Hammond
-! date: 01/12/08
-!
-! ************************************************************************** !
-subroutine GridNaturalToGlobalBegin(grid,natural_vec,global_vec,dm_index)
-
-  implicit none
-  
-  type(grid_type) :: grid
-  Vec :: natural_vec
-  Vec :: global_vec
-  PetscInt :: dm_index
-  DM :: dm_ptr
-  
-  dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
-  
-  select case(grid%itype)
-    case(STRUCTURED_GRID)
-      call StructureGridNaturToGlobalBegin(dm_ptr,natural_vec,global_vec)
-    case(UNSTRUCTURED_GRID)
-  end select
-  
-end subroutine GridNaturalToGlobalBegin
-
-! ************************************************************************** !
-!
-! GridNaturalToGlobalEnd: Ends natural to global communication with DM
-! author: Glenn Hammond
-! date: 01/12/08
-!
-! ************************************************************************** !
-subroutine GridNaturalToGlobalEnd(grid,natural_vec,global_vec,dm_index)
-
-  implicit none
-  
-  type(grid_type) :: grid
-  Vec :: natural_vec
-  Vec :: global_vec
-  PetscInt :: dm_index
-  DM :: dm_ptr
-  
-  dm_ptr = GridGetDMPtrFromIndex(grid,dm_index)
-  
-  select case(grid%itype)
-    case(STRUCTURED_GRID)
-      call StructureGridNaturToGlobalEnd(dm_ptr,natural_vec,global_vec)
-    case(UNSTRUCTURED_GRID)
-  end select
-  
-end subroutine GridNaturalToGlobalEnd
 
 ! ************************************************************************** !
 !
@@ -1468,17 +777,6 @@ subroutine GridDestroy(grid)
   nullify(grid%z)
   
   if (associated(grid%hash)) call GridDestroyHashTable(grid)
-
-  select case(grid%itype)
-    case(STRUCTURED_GRID)
-      if (grid%dm_1_dof /= 0) &
-        call StructuredGridDestroyDA(grid%dm_1_dof)
-      if (grid%dm_nflowdof /= 0) &
-        call StructuredGridDestroyDA(grid%dm_nflowdof)
-      if (grid%dm_ntrandof /= 0) &
-        call StructuredGridDestroyDA(grid%dm_ntrandof)
-    case(UNSTRUCTURED_GRID)
-  end select
   
   call UnstructuredGridDestroy(grid%unstructured_grid)    
   call StructuredGridDestroy(grid%structured_grid)

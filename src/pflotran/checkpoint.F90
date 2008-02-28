@@ -86,10 +86,9 @@ subroutine Checkpoint(realization,steps,newtcum,icutcum, &
                                num_newton_iterations,id)
 
   use Realization_module
+  use Discretization_module
   use Option_module
   use Field_module
-  use Grid_module
-  use Patch_module
   
   use MPHASE_module
 
@@ -119,14 +118,12 @@ subroutine Checkpoint(realization,steps,newtcum,icutcum, &
   
   type(field_type), pointer :: field
   type(option_type), pointer :: option
-  type(grid_type), pointer :: grid
-  type(patch_type), pointer :: patch  
+  type(discretization_type), pointer :: discretization
   type(output_option_type), pointer :: output_option
   
   field => realization%field
   option => realization%option
-  patch => realization%patch
-  grid => patch%grid
+  discretization => realization%discretization
   output_option => realization%output_option
 
   ! Open the checkpoint file.
@@ -198,17 +195,19 @@ subroutine Checkpoint(realization,steps,newtcum,icutcum, &
   ! packed for the SNESSolve().
   call VecView(field%flow_xx, viewer, ierr)
 
-  call GridCreateVector(grid,ONEDOF,global_vec,GLOBAL)
+  call DiscretizationCreateVector(realization%discretization,ONEDOF, &
+                                  global_vec,GLOBAL)
   ! If we are running with multiple phases, we need to dump the vector 
   ! that indicates what phases are present, as well as the 'var' vector 
   ! that holds variables derived from the primary ones via the translator.
   select case(option%iflowmode)
     case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
-      call GridLocalToGlobal(grid,field%iphas_loc,global_vec,ONEDOF)
+      call DiscretizationLocalToGlobal(realization%discretization,field%iphas_loc, &
+                             global_vec,ONEDOF)
       call VecView(global_vec, viewer, ierr)
       if (option%iflowmode == MPH_MODE) then
       ! get vardof vec from mphase
-        call MphaseCheckpointWrite(grid,viewer)
+        call MphaseCheckpointWrite(realization%discretization,viewer)
       endif
     case default
   end select 
@@ -216,13 +215,13 @@ subroutine Checkpoint(realization,steps,newtcum,icutcum, &
   ! Porosity and permeability.
   ! (We only write diagonal terms of the permeability tensor for now, 
   ! since we have yet to add the full-tensor formulation.)
-  call GridLocalToGlobal(grid,field%porosity_loc,global_vec,ONEDOF)
+  call DiscretizationLocalToGlobal(discretization,field%porosity_loc,global_vec,ONEDOF)
   call VecView(global_vec,viewer,ierr)
-  call GridLocalToGlobal(grid,field%perm_xx_loc,global_vec,ONEDOF)
+  call DiscretizationLocalToGlobal(discretization,field%perm_xx_loc,global_vec,ONEDOF)
   call VecView(global_vec,viewer,ierr)
-  call GridLocalToGlobal(grid,field%perm_yy_loc,global_vec,ONEDOF)
+  call DiscretizationLocalToGlobal(discretization,field%perm_yy_loc,global_vec,ONEDOF)
   call VecView(global_vec,viewer,ierr)
-  call GridLocalToGlobal(grid,field%perm_zz_loc,global_vec,ONEDOF)
+  call DiscretizationLocalToGlobal(discretization,field%perm_zz_loc,global_vec,ONEDOF)
   call VecView(global_vec,viewer,ierr)
 
   call VecDestroy(global_vec,ierr)
@@ -265,10 +264,9 @@ subroutine Restart(realization,steps,newtcum,icutcum, &
                             num_const_timesteps, &
                             num_newton_iterations)
   use Realization_module
+  use Discretization_module
   use Option_module
   use Field_module
-  use Grid_module
-  use Patch_module
   
   use MPHASE_module
 
@@ -289,15 +287,13 @@ subroutine Restart(realization,steps,newtcum,icutcum, &
   PetscInt :: int_flag
   
   type(field_type), pointer :: field
+  type(discretization_type), pointer :: discretization
   type(option_type), pointer :: option
-  type(grid_type), pointer :: grid
-  type(patch_type), pointer :: patch  
   type(output_option_type), pointer :: output_option
   
   field => realization%field
   option => realization%option
-  patch => realization%patch
-  grid => patch%grid
+  discretization => realization%discretization
   output_option => realization%output_option
   
   call PetscGetTime(tstart,ierr)   
@@ -321,7 +317,7 @@ subroutine Restart(realization,steps,newtcum,icutcum, &
   call PetscBagDestroy(bag, ierr)
   
   ! Load the PETSc vectors.
-  call GridCreateVector(grid,ONEDOF,global_vec,GLOBAL)
+  call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL)
 
   call VecLoadIntoVector(viewer, field%flow_xx, ierr)
   call VecCopy(field%flow_xx, field%flow_yy, ierr)
@@ -329,24 +325,23 @@ subroutine Restart(realization,steps,newtcum,icutcum, &
   select case(option%iflowmode)
     case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
       call VecLoadIntoVector(viewer, global_vec, ierr)      
-      call GridGlobalToLocal(grid,global_vec,field%iphas_loc,ONEDOF)
+      call DiscretizationGlobalToLocal(discretization,global_vec,field%iphas_loc,ONEDOF)
       call VecCopy(field%iphas_loc, field%iphas_old_loc, ierr)
-      call GridLocalToLocal(grid,field%iphas_loc,field%iphas_old_loc,ONEDOF)
+      call DiscretizationLocalToLocal(discretization,field%iphas_loc,field%iphas_old_loc,ONEDOF)
       if (option%iflowmode == MPH_MODE) then
       ! set vardof vec in mphase
-        call MphaseCheckpointRead(grid,viewer)
       endif
     case default
   end select
   
   call VecLoadIntoVector(viewer, global_vec, ierr)
-  call GridGlobalToLocal(grid,global_vec,field%porosity_loc,ONEDOF)
+  call DiscretizationGlobalToLocal(discretization,global_vec,field%porosity_loc,ONEDOF)
   call VecLoadIntoVector(viewer, global_vec, ierr)
-  call GridGlobalToLocal(grid,global_vec,field%perm_xx_loc,ONEDOF)
+  call DiscretizationGlobalToLocal(discretization,global_vec,field%perm_xx_loc,ONEDOF)
   call VecLoadIntoVector(viewer, global_vec, ierr)
-  call GridGlobalToLocal(grid,global_vec,field%perm_yy_loc,ONEDOF)
+  call DiscretizationGlobalToLocal(discretization,global_vec,field%perm_yy_loc,ONEDOF)
   call VecLoadIntoVector(viewer, global_vec, ierr)
-  call GridGlobalToLocal(grid,global_vec,field%perm_zz_loc,ONEDOF)
+  call DiscretizationGlobalToLocal(discretization,global_vec,field%perm_zz_loc,ONEDOF)
   
   call VecDestroy(global_vec,ierr)
 

@@ -4,6 +4,7 @@ module Realization_module
   use Region_module
   use Condition_module
   use Material_module
+  use Discretization_module
   use Field_module
   use Debug_module
   use Waypoint_module
@@ -19,7 +20,7 @@ private
 
   type, public :: realization_type
 
-    PetscInt :: discretization
+    type(discretization_type), pointer :: discretization
     type(level_list_type), pointer :: level_list
     type(patch_type), pointer :: patch
 
@@ -70,7 +71,7 @@ function RealizationCreate()
   type(realization_type), pointer :: realization
   
   allocate(realization)
-  realization%discretization = 0
+  realization%discretization => DiscretizationCreate()
   realization%option => OptionCreate()
   realization%field => FieldCreate()
   realization%debug => DebugCreatePflow()
@@ -112,81 +113,74 @@ subroutine RealizationCreateDiscretization(realization)
   
   type(realization_type) :: realization
   
+  type(discretization_type), pointer :: discretization
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
   type(option_type), pointer :: option
   option => realization%option
   field => realization%field
   
-  select case(realization%discretization)
+  discretization => realization%discretization
+
+  select case(discretization%itype)
     case(STRUCTURED_GRID,UNSTRUCTURED_GRID)
     
-      grid => realization%patch%grid
+      grid => discretization%grid
       
-      call GridCreateDMs(grid,option)
+      call DiscretizationCreateDMs(discretization,option)
       
       ! 1 degree of freedom, global
-      call GridCreateVector(grid,ONEDOF,field%porosity0,GLOBAL)
-      call GridDuplicateVector(grid,field%porosity0, field%volume)
+      call DiscretizationCreateVector(discretization,ONEDOF,field%porosity0,GLOBAL)
+      call DiscretizationDuplicateVector(discretization,field%porosity0, field%volume)
       
       ! 1 degree of freedom, local
-      call GridCreateVector(grid,ONEDOF,field%porosity_loc,LOCAL)
-      call GridDuplicateVector(grid,field%porosity_loc, field%tor_loc)
+      call DiscretizationCreateVector(discretization,ONEDOF,field%porosity_loc,LOCAL)
+      call DiscretizationDuplicateVector(discretization,field%porosity_loc, field%tor_loc)
       
-      if (associated(grid%structured_grid)) then
-        call GridDuplicateVector(grid,field%porosity0, grid%structured_grid%dx)
-        call GridDuplicateVector(grid,field%porosity0, grid%structured_grid%dy)
-        call GridDuplicateVector(grid,field%porosity0, grid%structured_grid%dz)
-
-        call GridDuplicateVector(grid,field%porosity_loc, grid%structured_grid%dx_loc)
-        call GridDuplicateVector(grid,field%porosity_loc, grid%structured_grid%dy_loc)
-        call GridDuplicateVector(grid,field%porosity_loc, grid%structured_grid%dz_loc)
-      endif
-
       if (option%nflowdof > 0) then
 
         ! 1-dof global  
-        call GridDuplicateVector(grid,field%porosity0, field%perm0_xx)
-        call GridDuplicateVector(grid,field%porosity0, field%perm0_yy)
-        call GridDuplicateVector(grid,field%porosity0, field%perm0_zz)
-        call GridDuplicateVector(grid,field%porosity0, field%perm_pow)
+        call DiscretizationDuplicateVector(discretization,field%porosity0, field%perm0_xx)
+        call DiscretizationDuplicateVector(discretization,field%porosity0, field%perm0_yy)
+        call DiscretizationDuplicateVector(discretization,field%porosity0, field%perm0_zz)
+        call DiscretizationDuplicateVector(discretization,field%porosity0, field%perm_pow)
 
         ! 1-dof local
-        call GridDuplicateVector(grid,field%porosity_loc, field%ithrm_loc)
-        call GridDuplicateVector(grid,field%porosity_loc, field%icap_loc)
-        call GridDuplicateVector(grid,field%porosity_loc, field%iphas_loc)
-        call GridDuplicateVector(grid,field%porosity_loc, field%iphas_old_loc)
-        call GridDuplicateVector(grid,field%porosity_loc, field%perm_xx_loc)
-        call GridDuplicateVector(grid,field%porosity_loc, field%perm_yy_loc)
-        call GridDuplicateVector(grid,field%porosity_loc, field%perm_zz_loc)
+        call DiscretizationDuplicateVector(discretization,field%porosity_loc, field%ithrm_loc)
+        call DiscretizationDuplicateVector(discretization,field%porosity_loc, field%icap_loc)
+        call DiscretizationDuplicateVector(discretization,field%porosity_loc, field%iphas_loc)
+        call DiscretizationDuplicateVector(discretization,field%porosity_loc, field%iphas_old_loc)
+        call DiscretizationDuplicateVector(discretization,field%porosity_loc, field%perm_xx_loc)
+        call DiscretizationDuplicateVector(discretization,field%porosity_loc, field%perm_yy_loc)
+        call DiscretizationDuplicateVector(discretization,field%porosity_loc, field%perm_zz_loc)
 
         ! ndof degrees of freedom, global
-        call GridCreateVector(grid,NFLOWDOF, field%flow_xx, GLOBAL)
-        call GridDuplicateVector(grid,field%flow_xx, field%flow_yy)
-        call GridDuplicateVector(grid,field%flow_xx, field%flow_dxx)
-        call GridDuplicateVector(grid,field%flow_xx, field%flow_r)
-        call GridDuplicateVector(grid,field%flow_xx, field%flow_accum)
+        call DiscretizationCreateVector(discretization,NFLOWDOF, field%flow_xx, GLOBAL)
+        call DiscretizationDuplicateVector(discretization,field%flow_xx, field%flow_yy)
+        call DiscretizationDuplicateVector(discretization,field%flow_xx, field%flow_dxx)
+        call DiscretizationDuplicateVector(discretization,field%flow_xx, field%flow_r)
+        call DiscretizationDuplicateVector(discretization,field%flow_xx, field%flow_accum)
 
         ! ndof degrees of freedom, local
-        call GridCreateVector(grid,NFLOWDOF, field%flow_xx_loc, LOCAL)
+        call DiscretizationCreateVector(discretization,NFLOWDOF, field%flow_xx_loc, LOCAL)
       endif
 
       if (option%ntrandof > 0) then
         ! ndof degrees of freedom, global
-        call GridCreateVector(grid,NTRANDOF, field%tran_xx, GLOBAL)
-        call GridDuplicateVector(grid,field%tran_xx, field%tran_yy)
-        call GridDuplicateVector(grid,field%tran_xx, field%tran_dxx)
-        call GridDuplicateVector(grid,field%tran_xx, field%tran_r)
-        call GridDuplicateVector(grid,field%tran_xx, field%tran_accum)
+        call DiscretizationCreateVector(discretization,NTRANDOF, field%tran_xx, GLOBAL)
+        call DiscretizationDuplicateVector(discretization,field%tran_xx, field%tran_yy)
+        call DiscretizationDuplicateVector(discretization,field%tran_xx, field%tran_dxx)
+        call DiscretizationDuplicateVector(discretization,field%tran_xx, field%tran_r)
+        call DiscretizationDuplicateVector(discretization,field%tran_xx, field%tran_accum)
 
-        call GridDuplicateVector(grid,field%porosity_loc, field%saturation_loc)
+        call DiscretizationDuplicateVector(discretization,field%porosity_loc, field%saturation_loc)
         
         ! ndof degrees of freedom, local
-        call GridCreateVector(grid,NTRANDOF, field%tran_xx_loc, LOCAL)
+        call DiscretizationCreateVector(discretization,NTRANDOF, field%tran_xx_loc, LOCAL)
       endif
 
       ! set up nG2L, NL2G, etc.
-      call GridMapIndices(grid)
+      call GridMapIndices(grid,discretization%dm_1_dof)
       call GridComputeSpacing(grid)
       call GridComputeCoordinates(grid,option)
       call GridComputeVolumes(grid,field%volume,option)
@@ -513,11 +507,13 @@ subroutine RealizAssignInitialConditions(realization)
   type(field_type), pointer :: field  
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
+  type(discretization_type), pointer :: discretization
   type(coupler_type), pointer :: initial_condition
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
 
   option => realization%option
+  discretization => realization%discretization
   field => realization%field
   patch => realization%patch
   grid => patch%grid
@@ -593,10 +589,10 @@ subroutine RealizAssignInitialConditions(realization)
         call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p,ierr)
         
         ! update dependent vectors
-        call GridGlobalToLocal(grid,field%flow_xx,field%flow_xx_loc,NFLOWDOF)  
+        call DiscretizationGlobalToLocal(discretization,field%flow_xx,field%flow_xx_loc,NFLOWDOF)  
         call VecCopy(field%flow_xx, field%flow_yy, ierr)
-        call GridLocalToLocal(grid,field%iphas_loc,field%iphas_loc,ONEDOF)  
-        call GridLocalToLocal(grid,field%iphas_loc,field%iphas_old_loc,ONEDOF)
+        call DiscretizationLocalToLocal(discretization,field%iphas_loc,field%iphas_loc,ONEDOF)  
+        call DiscretizationLocalToLocal(discretization,field%iphas_loc,field%iphas_old_loc,ONEDOF)
         
       endif
       
@@ -651,7 +647,7 @@ subroutine RealizAssignInitialConditions(realization)
         call VecRestoreArrayF90(field%tran_xx,xx_p, ierr)
         
         ! update dependent vectors
-        call GridGlobalToLocal(grid,field%tran_xx,field%tran_xx_loc,NTRANDOF)  
+        call DiscretizationGlobalToLocal(discretization,field%tran_xx,field%tran_xx_loc,NTRANDOF)  
         call VecCopy(field%tran_xx, field%tran_yy, ierr)
 
       endif

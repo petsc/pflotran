@@ -6,21 +6,6 @@ module Structured_Grid_module
  
 #include "definitions.h"
 
-! Apparently the PETSc authors believe that Fortran 90 modules should ensure
-! that PETSC_AVOID_DECLARATIONS and PETSC_AVOID_MPIF_H are defined when the
-! PETSc header files are included.  I can get around this, though, by making
-! the definitions in these headers private.
-#include "petscreldefs.h"
-#include "include/finclude/petscvec.h"
-#include "include/finclude/petscvec.h90"
-  ! It is VERY IMPORTANT to make sure that the above .h90 file gets included.
-  ! Otherwise some very strange things will happen and PETSc will give no
-  ! indication of what the problem is.
-#include "include/finclude/petscmat.h"
-#include "include/finclude/petscmat.h90"
-#include "include/finclude/petscda.h"
-#include "include/finclude/petscda.h90"
-
   type, public :: structured_grid_type
 
     PetscInt :: nx, ny, nz    ! Global domain dimensions of the grid.
@@ -51,10 +36,8 @@ module Structured_Grid_module
     
     logical :: invert_z_axis
     
-    Vec :: dx, dy, dz, dx_loc, dy_loc, dz_loc  ! Grid spacings
+    PetscReal, pointer :: dx(:), dy(:), dz(:), dxg(:), dyg(:), dzg(:)  ! Grid spacings
     
-    DA :: da_1_dof
-
   end type structured_grid_type
 
   public :: StructuredGridCreate, &
@@ -65,25 +48,9 @@ module Structured_Grid_module
             StructuredGridMapIndices, &
             StructuredGridComputeSpacing, &
             StructuredGridComputeCoord, &
-            StructuredGridCreateJacobian, &
-            StructuredGridCreateColoring, &
-            StructureGridGlobalToLocal, &
-            StructureGridLocalToGlobal, &
-            StructureGridGlobalToNatural, &
-            StructureGridNaturalToGlobal, &
-            StructureGridLocalToLocalBegin, &
-            StructureGridLocalToLocalEnd, &
-            StructureGridGlobalToLocalBegin, &
-            StructureGridGlobalToLocalEnd, &
-            StructureGridGlobalToNaturBegin, &
-            StructureGridGlobalToNaturEnd, &
-            StructureGridNaturToGlobalBegin, &
-            StructureGridNaturToGlobalEnd, &
-            StructureGridLocalToLocal, &
             StructuredGridReadDXYZ, &
             StructuredGridComputeVolumes, &
-            StructGridPopulateConnection, &
-            StructuredGridDestroyDA
+            StructGridPopulateConnection
 
 contains
 
@@ -159,20 +126,17 @@ function StructuredGridCreate()
   nullify(structured_grid%dx0)
   nullify(structured_grid%dy0)
   nullify(structured_grid%dz0)
+  nullify(structured_grid%dx)
+  nullify(structured_grid%dy)
+  nullify(structured_grid%dz)
+  nullify(structured_grid%dxg)
+  nullify(structured_grid%dyg)
+  nullify(structured_grid%dzg)
+  
   
   structured_grid%origin = 0.d0
   
   structured_grid%invert_z_axis = .false.
-  
-  ! nullify Vec pointers
-  structured_grid%dx = 0
-  structured_grid%dy = 0
-  structured_grid%dz = 0
-  structured_grid%dx_loc = 0
-  structured_grid%dy_loc = 0
-  structured_grid%dz_loc = 0
-  
-  structured_grid%da_1_dof = 0
   
   StructuredGridCreate => structured_grid
   
@@ -190,7 +154,12 @@ subroutine StructuredGridCreateDA(structured_grid,da,ndof,stencil_width)
   use Option_module
       
   implicit none
-  
+
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
+#include "include/finclude/petscda.h"
+#include "include/finclude/petscda.h90"
+
   type(structured_grid_type) :: structured_grid
   DA :: da
   PetscInt :: ndof
@@ -208,10 +177,7 @@ subroutine StructuredGridCreateDA(structured_grid,da,ndof,stencil_width)
                   PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
                   da,ierr)
 
-  if (ndof == 1 .and. &
-      structured_grid%nlx+structured_grid%nly+structured_grid%nlz == 0) then
-
-    structured_grid%da_1_dof = da
+  if (structured_grid%nlx+structured_grid%nly+structured_grid%nlz == 0) then
 
    ! get corner information
     call DAGetCorners(da, structured_grid%nxs, &
@@ -289,9 +255,12 @@ subroutine StructuredGridReadDXYZ(structured_grid,option)
   PetscInt :: i
 
   allocate(structured_grid%dx0(structured_grid%nx))
+  structured_grid%dx0 = 0.d0
   allocate(structured_grid%dy0(structured_grid%ny))
+  structured_grid%dy0 = 0.d0
   allocate(structured_grid%dz0(structured_grid%nz))
-        
+  structured_grid%dz0 = 0.d0
+
   call StructuredGridReadArray(structured_grid%dx0,structured_grid%nx,option)
   call StructuredGridReadArray(structured_grid%dy0,structured_grid%ny,option)
   call StructuredGridReadArray(structured_grid%dz0,structured_grid%nz,option)
@@ -376,45 +345,46 @@ end subroutine StructuredGridReadArray
 ! date: 10/26/07
 !
 ! ************************************************************************** !
-subroutine StructuredGridComputeSpacing(structured_grid,nL2A)
+subroutine StructuredGridComputeSpacing(structured_grid,nG2A,nG2L)
 
   implicit none
   
   type(structured_grid_type) :: structured_grid
-  PetscInt :: nL2A(:)
+  PetscInt :: nG2A(:)
+  PetscInt :: nG2L(:)
   
-  PetscInt :: i, j, k, n, na
-  PetscReal, pointer :: dx_p(:), dy_p(:), dz_p(:)
+  PetscInt :: i, j, k, nl, ng, na
   PetscErrorCode :: ierr
+
+  allocate(structured_grid%dx(structured_grid%nlmax))
+  structured_grid%dx = 0.d0
+  allocate(structured_grid%dy(structured_grid%nlmax))
+  structured_grid%dy = 0.d0
+  allocate(structured_grid%dz(structured_grid%nlmax))
+  structured_grid%dz = 0.d0
   
-  call VecGetArrayF90(structured_grid%dx,dx_p,ierr)
-  call VecGetArrayF90(structured_grid%dy,dy_p,ierr)
-  call VecGetArrayF90(structured_grid%dz,dz_p,ierr)
-  do n = 1,structured_grid%nlmax
-    na = nL2A(n)
-    k= int(na/structured_grid%nxy) + 1
-    j= int(mod(na,structured_grid%nxy)/structured_grid%nx) + 1
-    i= mod(mod(na,structured_grid%nxy),structured_grid%nx) + 1
-    dx_p(n) = structured_grid%dx0(i)
-    dy_p(n) = structured_grid%dy0(j)
-    dz_p(n) = structured_grid%dz0(k)
+  allocate(structured_grid%dxg(structured_grid%ngmax))
+  structured_grid%dxg = 0.d0
+  allocate(structured_grid%dyg(structured_grid%ngmax))
+  structured_grid%dyg = 0.d0
+  allocate(structured_grid%dzg(structured_grid%ngmax))
+  structured_grid%dzg = 0.d0
+        
+  do ng = 1,structured_grid%ngmax
+    na = nG2A(ng)
+    nl = nG2L(ng)
+    k= int(na/structured_grid%ngxy) + 1
+    j= int(mod(na,structured_grid%ngxy)/structured_grid%ngx) + 1
+    i= mod(mod(na,structured_grid%ngxy),structured_grid%ngx) + 1
+    structured_grid%dxg(ng) = structured_grid%dx0(i)
+    structured_grid%dyg(ng) = structured_grid%dy0(j)
+    structured_grid%dzg(ng) = structured_grid%dz0(k)
+    if (nl > 0) then
+      structured_grid%dxg(nl) = structured_grid%dx0(i)
+      structured_grid%dyg(nl) = structured_grid%dy0(j)
+      structured_grid%dzg(nl) = structured_grid%dz0(k)
+    endif
   enddo
-  call VecRestoreArrayF90(structured_grid%dx,dx_p,ierr)
-  call VecRestoreArrayF90(structured_grid%dy,dy_p,ierr)
-  call VecRestoreArrayF90(structured_grid%dz,dz_p,ierr)
-  
-  call DAGlobalToLocalBegin(structured_grid%da_1_dof, structured_grid%dx, INSERT_VALUES, &
-                            structured_grid%dx_loc, ierr)
-  call DAGlobalToLocalEnd(structured_grid%da_1_dof, structured_grid%dx, INSERT_VALUES, &
-                          structured_grid%dx_loc, ierr)
-  call DAGlobalToLocalBegin(structured_grid%da_1_dof, structured_grid%dy, INSERT_VALUES, &
-                            structured_grid%dy_loc, ierr)
-  call DAGlobalToLocalEnd(structured_grid%da_1_dof, structured_grid%dy, INSERT_VALUES, &
-                          structured_grid%dy_loc,ierr)
-  call DAGlobalToLocalBegin(structured_grid%da_1_dof, structured_grid%dz, INSERT_VALUES, &
-                            structured_grid%dz_loc, ierr)
-  call DAGlobalToLocalEnd(structured_grid%da_1_dof, structured_grid%dz, INSERT_VALUES, &
-                          structured_grid%dz_loc,ierr)
   
 end subroutine StructuredGridComputeSpacing
 
@@ -513,12 +483,6 @@ function StructGridComputeInternConnect(structured_grid,option)
   type(connection_type), pointer :: connections
   PetscErrorCode :: ierr
   
-  PetscReal, pointer :: dx_loc_p(:), dy_loc_p(:), dz_loc_p(:)
-  
-  call VecGetArrayF90(structured_grid%dx_loc, dx_loc_p, ierr)
-  call VecGetArrayF90(structured_grid%dy_loc, dy_loc_p, ierr)
-  call VecGetArrayF90(structured_grid%dz_loc, dz_loc_p, ierr)
-  
   call ConnectionAllocateLists()
   
   connections => &
@@ -542,12 +506,12 @@ function StructGridComputeInternConnect(structured_grid,option)
           connections%id_up(iconn) = id_up
           connections%id_dn(iconn) = id_dn
           connections%dist(-1:3,iconn) = 0.d0
-          dist_up = 0.5d0*dx_loc_p(id_up)
-          dist_dn = 0.5d0*dx_loc_p(id_dn)
+          dist_up = 0.5d0*structured_grid%dxg(id_up)
+          dist_dn = 0.5d0*structured_grid%dxg(id_dn)
           connections%dist(-1,iconn) = dist_up/(dist_up+dist_dn)
           connections%dist(0,iconn) = dist_up+dist_dn
           connections%dist(1,iconn) = 1.d0  ! x component of unit vector
-          connections%area(iconn) = dy_loc_p(id_up)*dz_loc_p(id_up)
+          connections%area(iconn) = structured_grid%dyg(id_up)*structured_grid%dzg(id_up)
         enddo
       enddo
     enddo
@@ -564,12 +528,12 @@ function StructGridComputeInternConnect(structured_grid,option)
           connections%id_up(iconn) = id_up
           connections%id_dn(iconn) = id_dn
           connections%dist(-1:3,iconn) = 0.d0
-          dist_up = 0.5d0*dy_loc_p(id_up)
-          dist_dn = 0.5d0*dy_loc_p(id_dn)
+          dist_up = 0.5d0*structured_grid%dyg(id_up)
+          dist_dn = 0.5d0*structured_grid%dyg(id_dn)
           connections%dist(-1,iconn) = dist_up/(dist_up+dist_dn)
           connections%dist(0,iconn) = dist_up+dist_dn
           connections%dist(2,iconn) = 1.d0  ! y component of unit vector
-          connections%area(iconn) = dx_loc_p(id_up)*dz_loc_p(id_up)
+          connections%area(iconn) = structured_grid%dxg(id_up)*structured_grid%dzg(id_up)
         enddo
       enddo
     enddo
@@ -586,20 +550,16 @@ function StructGridComputeInternConnect(structured_grid,option)
           connections%id_up(iconn) = id_up
           connections%id_dn(iconn) = id_dn
           connections%dist(-1:3,iconn) = 0.d0
-          dist_up = 0.5d0*dz_loc_p(id_up)
-          dist_dn = 0.5d0*dz_loc_p(id_dn)
+          dist_up = 0.5d0*structured_grid%dzg(id_up)
+          dist_dn = 0.5d0*structured_grid%dzg(id_dn)
           connections%dist(-1,iconn) = dist_up/(dist_up+dist_dn)
           connections%dist(0,iconn) = dist_up+dist_dn
           connections%dist(3,iconn) = 1.d0  ! z component of unit vector
-          connections%area(iconn) = dx_loc_p(id_up)*dy_loc_p(id_up)
+          connections%area(iconn) = structured_grid%dxg(id_up)*structured_grid%dyg(id_up)
         enddo
       enddo
     enddo
   endif
-  
-  call VecRestoreArrayF90(structured_grid%dx_loc, dx_loc_p, ierr)
-  call VecRestoreArrayF90(structured_grid%dy_loc, dy_loc_p, ierr)
-  call VecRestoreArrayF90(structured_grid%dz_loc, dz_loc_p, ierr)
   
   StructGridComputeInternConnect => connections
 
@@ -627,20 +587,14 @@ subroutine StructGridPopulateConnection(structured_grid,connection,iface, &
   
   PetscErrorCode :: ierr
   
-  PetscReal, pointer :: dx_loc_p(:), dy_loc_p(:), dz_loc_p(:)
-  
-  call VecGetArrayF90(structured_grid%dx_loc, dx_loc_p, ierr)
-  call VecGetArrayF90(structured_grid%dy_loc, dy_loc_p, ierr)
-  call VecGetArrayF90(structured_grid%dz_loc, dz_loc_p, ierr)
-  
   select case(connection%itype)
     case(BOUNDARY_CONNECTION_TYPE)
       select case(iface)
         case(WEST_FACE,EAST_FACE)
           connection%dist(:,iconn) = 0.d0
-          connection%dist(0,iconn) = 0.5d0*dx_loc_p(cell_id_ghosted)
-          connection%area(iconn) = dy_loc_p(cell_id_ghosted)* &
-                                    dz_loc_p(cell_id_ghosted)
+          connection%dist(0,iconn) = 0.5d0*structured_grid%dxg(cell_id_ghosted)
+          connection%area(iconn) = structured_grid%dyg(cell_id_ghosted)* &
+                                   structured_grid%dzg(cell_id_ghosted)
           if (iface ==  WEST_FACE) then
             connection%dist(1,iconn) = 1.d0
           else
@@ -648,9 +602,9 @@ subroutine StructGridPopulateConnection(structured_grid,connection,iface, &
           endif
         case(SOUTH_FACE,NORTH_FACE)
           connection%dist(:,iconn) = 0.d0
-          connection%dist(0,iconn) = 0.5d0*dy_loc_p(cell_id_ghosted)
-          connection%area(iconn) = dx_loc_p(cell_id_ghosted)* &
-                                    dz_loc_p(cell_id_ghosted)
+          connection%dist(0,iconn) = 0.5d0*structured_grid%dyg(cell_id_ghosted)
+          connection%area(iconn) = structured_grid%dxg(cell_id_ghosted)* &
+                                   structured_grid%dzg(cell_id_ghosted)
           if (iface ==  SOUTH_FACE) then
             connection%dist(2,iconn) = 1.d0
           else
@@ -658,9 +612,9 @@ subroutine StructGridPopulateConnection(structured_grid,connection,iface, &
           endif
         case(BOTTOM_FACE,TOP_FACE)
           connection%dist(:,iconn) = 0.d0
-          connection%dist(0,iconn) = 0.5d0*dz_loc_p(cell_id_ghosted)
-          connection%area(iconn) = dx_loc_p(cell_id_ghosted)* &
-                                    dy_loc_p(cell_id_ghosted)
+          connection%dist(0,iconn) = 0.5d0*structured_grid%dzg(cell_id_ghosted)
+          connection%area(iconn) = structured_grid%dxg(cell_id_ghosted)* &
+                                   structured_grid%dyg(cell_id_ghosted)
           if (structured_grid%invert_z_axis) then
             if (iface ==  TOP_FACE) then 
               connection%dist(3,iconn) = 1.d0
@@ -679,10 +633,6 @@ subroutine StructGridPopulateConnection(structured_grid,connection,iface, &
     case(SRC_SINK_CONNECTION_TYPE)
   end select
   
-  call VecRestoreArrayF90(structured_grid%dx_loc, dx_loc_p, ierr)
-  call VecRestoreArrayF90(structured_grid%dy_loc, dy_loc_p, ierr)
-  call VecRestoreArrayF90(structured_grid%dz_loc, dz_loc_p, ierr)
-    
 end subroutine StructGridPopulateConnection
 
 ! ************************************************************************** !
@@ -710,17 +660,12 @@ subroutine StructuredGridComputeVolumes(structured_grid,option,nL2G,volume)
   PetscErrorCode :: ierr
   
   call VecGetArrayF90(volume,volume_p, ierr)
-  call VecGetArrayF90(structured_grid%dx_loc,dx_loc_p,ierr)
-  call VecGetArrayF90(structured_grid%dy_loc,dy_loc_p,ierr)
-  call VecGetArrayF90(structured_grid%dz_loc,dz_loc_p,ierr)
   do n=1, structured_grid%nlmax
     ng = nL2G(n)
-    volume_p(n) = dx_loc_p(ng) * dy_loc_p(ng) * dz_loc_p(ng)
+    volume_p(n) = structured_grid%dxg(ng) * structured_grid%dyg(ng) * &
+                  structured_grid%dzg(ng)
   enddo
   call VecRestoreArrayF90(volume,volume_p, ierr)
-  call VecRestoreArrayF90(structured_grid%dx_loc,dx_loc_p,ierr)
-  call VecRestoreArrayF90(structured_grid%dy_loc,dy_loc_p,ierr)
-  call VecRestoreArrayF90(structured_grid%dz_loc,dz_loc_p,ierr)
   
   write(*,'(" rank= ",i3,", nlmax= ",i6,", nlx,y,z= ",3i4, &
     & ", nxs,e = ",2i4,", nys,e = ",2i4,", nzs,e = ",2i4)') &
@@ -742,12 +687,12 @@ end subroutine StructuredGridComputeVolumes
 ! date: 10/24/07
 !
 ! ************************************************************************** !
-subroutine StructuredGridMapIndices(structured_grid,nG2L,nL2G,nL2A,nG2A,nG2N)
+subroutine StructuredGridMapIndices(structured_grid,nG2L,nL2G,nL2A,nG2A)
 
   implicit none
-  
+
   type(structured_grid_type) :: structured_grid
-  PetscInt, pointer :: nG2L(:), nL2G(:), nL2A(:), nG2A(:), nG2N(:)
+  PetscInt, pointer :: nG2L(:), nL2G(:), nL2A(:), nG2A(:)
 
   PetscInt :: i, j, k, n, ng, na, count1
   PetscErrorCode :: ierr
@@ -755,7 +700,6 @@ subroutine StructuredGridMapIndices(structured_grid,nG2L,nL2G,nL2A,nG2A,nG2N)
   allocate(nL2G(structured_grid%nlmax))
   allocate(nG2L(structured_grid%ngmax))
   allocate(nL2A(structured_grid%nlmax))
-  allocate(nG2N(structured_grid%ngmax))
   allocate(nG2A(structured_grid%ngmax))
   
   structured_grid%istart = structured_grid%nxs-structured_grid%ngxs
@@ -770,7 +714,6 @@ subroutine StructuredGridMapIndices(structured_grid,nG2L,nL2G,nL2A,nG2A,nG2N)
   nL2G = 0
   nG2A = 0
   nL2A = 0
-  nG2N = 0
   
   n = 0
   do k=structured_grid%kstart,structured_grid%kend
@@ -834,7 +777,8 @@ subroutine StructuredGridMapIndices(structured_grid,nG2L,nL2G,nL2A,nG2A,nG2N)
     do j=1,structured_grid%nly
       do i=1,structured_grid%nlx
         n = n + 1
-        na = i-1+structured_grid%nxs+(j-1+structured_grid%nys)*structured_grid%nx+(k-1+structured_grid%nzs)*structured_grid%nxy
+        na = i-1+structured_grid%nxs+(j-1+structured_grid%nys)*structured_grid%nx+ &
+             (k-1+structured_grid%nzs)*structured_grid%nxy
         if (na>(structured_grid%nmax-1)) print *,'Wrong Nature order....'
         nL2A(n) = na
         !print *,grid%myrank, k,j,i,n,na
@@ -848,7 +792,8 @@ subroutine StructuredGridMapIndices(structured_grid,nG2L,nL2G,nL2A,nG2A,nG2N)
     do j=1,structured_grid%ngy
       do i=1,structured_grid%ngx
         n = n + 1
-        na = i-1+structured_grid%ngxs+(j-1+structured_grid%ngys)*structured_grid%nx+(k-1+structured_grid%ngzs)*structured_grid%nxy
+        na = i-1+structured_grid%ngxs+(j-1+structured_grid%ngys)*structured_grid%nx+ &
+             (k-1+structured_grid%ngzs)*structured_grid%nxy
         if (na>(structured_grid%nmax-1)) print *,'Wrong Nature order....'
         nG2A(n) = na
 !        print *,grid%myrank, k,j,i,n,na
@@ -856,365 +801,8 @@ subroutine StructuredGridMapIndices(structured_grid,nG2L,nL2G,nL2A,nG2A,nG2N)
       enddo
     enddo
   enddo
-   
-  call DAGetGlobalIndicesF90(structured_grid%da_1_dof,structured_grid%ngmax,nG2N, ierr)
-
+ 
 end subroutine StructuredGridMapIndices
-
-! ************************************************************************** !
-!
-! StructuredGridCreateJacobian: Creates Jacobian matrix associated with grid
-! author: Glenn Hammond
-! date: 10/24/07
-!
-! ************************************************************************** !
-subroutine StructuredGridCreateJacobian(da,Jacobian,option)
-
-  use Option_module
-  
-  implicit none
-  
-  DA :: da
-  Mat :: Jacobian
-  type(option_type) :: option
-  
-  PetscErrorCode :: ierr
-  
-  if (option%iblkfmt == 0) then
-    call DAGetMatrix(da, MATAIJ, Jacobian, ierr)
-  else
-    call DAGetMatrix(da, MATBAIJ, Jacobian, ierr)
-  endif
- ! call  MatSetBlocksize(grid%J,grid%ndof,ierr)
-#if (PETSC_VERSION_RELEASE == 1)
-  call MatSetOption(Jacobian,MAT_KEEP_ZEROED_ROWS,ierr)
-  call MatSetOption(Jacobian,MAT_COLUMN_ORIENTED,ierr)
-#else
-  call MatSetOption(Jacobian,MAT_KEEP_ZEROED_ROWS,PETSC_FALSE,ierr)
-  call MatSetOption(Jacobian,MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
-#endif
-  
-end subroutine StructuredGridCreateJacobian
-
-! ************************************************************************** !
-!
-! StructuredGridCreateColoring: Creates ISColoring for grid
-! author: Glenn Hammond
-! date: 10/24/07
-!
-! ************************************************************************** !
-subroutine StructuredGridCreateColoring(da,option,coloring)
-
-  use Option_module
-  
-  implicit none
-
-#include "include/finclude/petscis.h"
-#include "include/finclude/petscis.h90"
-  
-  DA :: da
-  type(option_type) :: option
-  ISColoring :: coloring
-  PetscErrorCode :: ierr
-  
-  call DAGetColoring(da,IS_COLORING_GLOBAL,coloring,ierr)
-
-end subroutine StructuredGridCreateColoring
-
-! ************************************************************************** !
-!
-! StructureGridGlobalToLocal: Performs global to local communication with DA
-! author: Glenn Hammond
-! date: 10/24/07
-!
-! ************************************************************************** !
-subroutine StructureGridGlobalToLocal(da,global_vec,local_vec)
-
-  implicit none
-  
-  DA :: da
-  Vec :: global_vec
-  Vec :: local_vec
-  
-  PetscErrorCode :: ierr
-
-  call DAGlobalToLocalBegin(da,global_vec,INSERT_VALUES,local_vec,ierr)
-  call DAGlobalToLocalEnd(da,global_vec, INSERT_VALUES,local_vec, ierr)
-                          
-end subroutine StructureGridGlobalToLocal
-
-! ************************************************************************** !
-!
-! StructureGridLocalToGlobal: Performs local to global communication with DA
-! author: Glenn Hamm8ond
-! date: 1/2/07
-!
-! ************************************************************************** !
-subroutine StructureGridLocalToGlobal(da,local_vec,global_vec)
-
-  implicit none
-  
-  DA :: da
-  Vec :: local_vec
-  Vec :: global_vec
-  
-  PetscErrorCode :: ierr
-
-  call DALocalToGlobal(da,local_vec,INSERT_VALUES,global_vec,ierr)
-                          
-end subroutine StructureGridLocalToGlobal
-
-! ************************************************************************** !
-!
-! StructureGridLocalToLocal: Performs local to local communication with DA
-! author: Glenn Hammond
-! date: 11/14/07
-!
-! ************************************************************************** !
-subroutine StructureGridLocalToLocal(da,local_vec1,local_vec2)
-
-  implicit none
-  
-  DA :: da
-  Vec :: local_vec1
-  Vec :: local_vec2
-  
-  PetscErrorCode :: ierr
-
-  call DALocalToLocalBegin(da,local_vec1,INSERT_VALUES,local_vec2,ierr)
-  call DALocalToLocalEnd(da,local_vec1, INSERT_VALUES,local_vec2, ierr)
-                          
-end subroutine StructureGridLocalToLocal
-
-! ************************************************************************** !
-!
-! StructureGridGlobalToNatural: Performs global to natural communication with DA
-! author: Glenn Hammond
-! date: 10/24/07
-!
-! ************************************************************************** !
-subroutine StructureGridGlobalToNatural(da,global_vec,natural_vec)
-
-  implicit none
-  
-  DA :: da
-  Vec :: global_vec
-  Vec :: natural_vec
-  
-  PetscErrorCode :: ierr
-
-  call DAGlobalToNaturalBegin(da,global_vec,INSERT_VALUES,natural_vec,ierr)
-  call DAGlobalToNaturalEnd(da,global_vec,INSERT_VALUES,natural_vec, ierr)
-                          
-end subroutine StructureGridGlobalToNatural
-
-! ************************************************************************** !
-!
-! StructureGridNaturalToGlobal: Performs natural to global communication with DA
-! author: Glenn Hammond
-! date: 01/12/08
-!
-! ************************************************************************** !
-subroutine StructureGridNaturalToGlobal(da,natural_vec,global_vec)
-
-  implicit none
-  
-  DA :: da
-  Vec :: natural_vec
-  Vec :: global_vec
-
-  PetscErrorCode :: ierr
-
-  call DANaturalToGlobalBegin(da,natural_vec,INSERT_VALUES,global_vec,ierr)
-  call DANaturalToGlobalEnd(da,natural_vec,INSERT_VALUES,global_vec,ierr)
-                          
-end subroutine StructureGridNaturalToGlobal
-
-! ************************************************************************** !
-!
-! StructureGridGlobalToLocalBegin: Begins global to local communication with DA
-! author: Glenn Hammond
-! date: 10/24/07
-!
-! ************************************************************************** !
-subroutine StructureGridGlobalToLocalBegin(da,global_vec,local_vec)
-
-  implicit none
-  
-  DA :: da
-  Vec :: global_vec
-  Vec :: local_vec
-
-  PetscErrorCode :: ierr
-
-  call DAGlobalToLocalBegin(da,global_vec,INSERT_VALUES,local_vec,ierr)
-                          
-end subroutine StructureGridGlobalToLocalBegin
-
-! ************************************************************************** !
-!
-! StructureGridLocalToLocalBegin: Begins local to local communication with DA
-! author: Glenn Hammond
-! date: 11/14/07
-!
-! ************************************************************************** !
-subroutine StructureGridLocalToLocalBegin(da,local_vec1,local_vec2)
-
-  implicit none
-  
-  DA :: da
-  Vec :: local_vec1
-  Vec :: local_vec2
-
-  PetscErrorCode :: ierr
-
-  call DALocalToLocalBegin(da,local_vec1,INSERT_VALUES,local_vec2,ierr)
-                          
-end subroutine StructureGridLocalToLocalBegin
-
-! ************************************************************************** !
-!
-! StructureGridGlobalToNaturBegin: Begins global to natural communication with DA
-! author: Glenn Hammond
-! date: 10/24/07
-!
-! ************************************************************************** !
-subroutine StructureGridGlobalToNaturBegin(da,global_vec,natural_vec)
-
-  implicit none
-  
-  DA :: da
-  Vec :: global_vec
-  Vec :: natural_vec
-
-  PetscErrorCode :: ierr
-
-  call DAGlobalToNaturalBegin(da,global_vec,INSERT_VALUES,natural_vec,ierr)
-                          
-end subroutine StructureGridGlobalToNaturBegin
-
-! ************************************************************************** !
-!
-! StructureGridGlobalToLocalEnd: Ends global to local communication with DA
-! author: Glenn Hammond
-! date: 10/24/07
-!
-! ************************************************************************** !
-subroutine StructureGridGlobalToLocalEnd(da,global_vec,local_vec)
-
-  implicit none
-  
-  DA :: da
-  Vec :: global_vec
-  Vec :: local_vec
-
-  PetscErrorCode :: ierr
-
-  call DAGlobalToLocalEnd(da,INSERT_VALUES,local_vec, ierr)
-                          
-end subroutine StructureGridGlobalToLocalEnd
-
-! ************************************************************************** !
-!
-! StructureGridNaturToGlobalBegin: Begins global to natural communication with DA
-! author: Glenn Hammond
-! date: 10/24/07
-!
-! ************************************************************************** !
-subroutine StructureGridNaturToGlobalBegin(da,natural_vec,global_vec)
-
-  implicit none
-  
-  DA :: da
-  Vec :: natural_vec
-  Vec :: global_vec
-
-  PetscErrorCode :: ierr
-
-  call DANaturalToGlobalBegin(da,natural_vec,INSERT_VALUES,global_vec,ierr)
-                          
-end subroutine StructureGridNaturToGlobalBegin
-
-! ************************************************************************** !
-!
-! StructureGridLocalToLocalEnd: Ends local to local communication with DA
-! author: Glenn Hammond
-! date: 11/14/07
-!
-! ************************************************************************** !
-subroutine StructureGridLocalToLocalEnd(da,local_vec1,local_vec2)
-
-  implicit none
-  
-  DA :: da
-  Vec :: local_vec1
-  Vec :: local_vec2
-
-  PetscErrorCode :: ierr
-
-  call DALocalToLocalEnd(da,local_vec1,INSERT_VALUES,local_vec2, ierr)
-                          
-end subroutine StructureGridLocalToLocalEnd
-
-! ************************************************************************** !
-!
-! StructureGridGlobalToNaturEnd: Ends global to natural communication with DA
-! author: Glenn Hammond
-! date: 10/24/07
-!
-! ************************************************************************** !
-subroutine StructureGridGlobalToNaturEnd(da,global_vec,natural_vec)
-
-  implicit none
-  
-  DA :: da
-  Vec :: global_vec
-  Vec :: natural_vec
-
-  PetscErrorCode :: ierr
-
-  call DAGlobalToNaturalEnd(da,global_vec,INSERT_VALUES,natural_vec, ierr)
-                          
-end subroutine StructureGridGlobalToNaturEnd
-
-! ************************************************************************** !
-!
-! StructureGridNaturToGlobalEnd: Ends global to natural communication with DA
-! author: Glenn Hammond
-! date: 10/24/07
-!
-! ************************************************************************** !
-subroutine StructureGridNaturToGlobalEnd(da,natural_vec,global_vec)
-
-  implicit none
-  
-  DA :: da
-  Vec :: natural_vec
-  Vec :: global_vec
-
-  PetscErrorCode :: ierr
-
-  call DANaturalToGlobalEnd(da,natural_vec,INSERT_VALUES,global_vec,ierr)
-                          
-end subroutine StructureGridNaturToGlobalEnd
-
-! ************************************************************************** !
-!
-! StructuredGridDestroyDA: Deallocates a structured grid DA
-! author: Glenn Hammond
-! date: 02/08/08
-!
-! ************************************************************************** !
-subroutine StructuredGridDestroyDA(da)
-
-  implicit none
-  
-  DA :: da
-  PetscErrorCode :: ierr
-  
-  call DADestroy(da,ierr)
-
-end subroutine StructuredGridDestroyDA
 
 ! ************************************************************************** !
 !
@@ -1241,13 +829,19 @@ subroutine StructuredGridDestroy(structured_grid)
   if (associated(structured_grid%dz0)) deallocate(structured_grid%dz0)
   nullify(structured_grid%dz0)
 
-  if (structured_grid%dx /= 0) call VecDestroy(structured_grid%dx,ierr)
-  if (structured_grid%dy /= 0) call VecDestroy(structured_grid%dy,ierr)
-  if (structured_grid%dz /= 0) call VecDestroy(structured_grid%dz,ierr)
-  if (structured_grid%dx_loc /= 0) call VecDestroy(structured_grid%dx_loc,ierr)
-  if (structured_grid%dy_loc /= 0) call VecDestroy(structured_grid%dy_loc,ierr)
-  if (structured_grid%dz_loc /= 0) call VecDestroy(structured_grid%dz_loc,ierr)
-
+  if (associated(structured_grid%dx)) deallocate(structured_grid%dx)
+  nullify(structured_grid%dx)
+  if (associated(structured_grid%dy)) deallocate(structured_grid%dy)
+  nullify(structured_grid%dy)
+  if (associated(structured_grid%dz)) deallocate(structured_grid%dz)
+  nullify(structured_grid%dz)
+  if (associated(structured_grid%dxg)) deallocate(structured_grid%dxg)
+  nullify(structured_grid%dxg)
+  if (associated(structured_grid%dyg)) deallocate(structured_grid%dyg)
+  nullify(structured_grid%dyg)
+  if (associated(structured_grid%dzg)) deallocate(structured_grid%dzg)
+  nullify(structured_grid%dzg)
+  
   deallocate(structured_grid)
   nullify(structured_grid)
 

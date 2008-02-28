@@ -29,6 +29,7 @@ subroutine Init(simulation,filename)
   use Option_module
   use Grid_module
   use Solver_module
+  use Discretization_module
   use Realization_module
   use Material_module
   use Timestepper_module
@@ -59,6 +60,7 @@ subroutine Init(simulation,filename)
   type(solver_type), pointer :: flow_solver
   type(solver_type), pointer :: tran_solver
   type(realization_type), pointer :: realization
+  type(discretization_type), pointer :: discretization
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
@@ -74,6 +76,7 @@ subroutine Init(simulation,filename)
   flow_stepper => simulation%flow_stepper
   tran_stepper => simulation%tran_stepper
   realization => simulation%realization
+  discretization => realization%discretization
   option => realization%option
   field => realization%field
   debug => realization%debug
@@ -121,7 +124,7 @@ subroutine Init(simulation,filename)
     ! general print statements for both flow and transport modes
     write(*,'(/,"++++++++++++++++++++++++++++++++++++++++++++++++++++&
       &++++++++")')
-    if (realization%discretization == STRUCTURED_GRID) then
+    if (realization%discretization%itype == STRUCTURED_GRID) then
       write(*,'(" number of processors = ",i5,", npx,y,z= ",3i5)') &
         option%commsize,grid%structured_grid%npx,grid%structured_grid%npy, &
         grid%structured_grid%npz
@@ -153,7 +156,7 @@ subroutine Init(simulation,filename)
     call printMsg(option,"  Beginning set up of FLOW SNES ")
 
     call SolverCreateSNES(flow_solver)  
-    call GridCreateJacobian(grid,NFLOWDOF,flow_solver%J,option)
+    call DiscretizationCreateJacobian(discretization,NFLOWDOF,flow_solver%J,option)
     
     select case(option%iflowmode)
       case(RICHARDS_MODE)
@@ -194,7 +197,7 @@ subroutine Init(simulation,filename)
     call printMsg(option,"  Beginning set up of TRAN SNES ")
     
     call SolverCreateSNES(tran_solver)  
-    call GridCreateJacobian(grid,NTRANDOF,tran_solver%J,option)
+    call DiscretizationCreateJacobian(discretization,NTRANDOF,tran_solver%J,option)
     
     call SNESSetFunction(tran_solver%snes,field%tran_r,RTResidual,realization,ierr)
     call SNESSetJacobian(tran_solver%snes, tran_solver%J, tran_solver%J, RTJacobian, &
@@ -315,6 +318,7 @@ end subroutine Init
 subroutine readRequiredCardsFromInput(realization,filename)
 
   use Option_module
+  use Discretization_module
   use Grid_module
   use Fileio_module
   use Patch_module
@@ -336,10 +340,12 @@ subroutine readRequiredCardsFromInput(realization,filename)
   type(patch_type), pointer :: patch 
   type(level_type), pointer :: level
   type(grid_type), pointer :: grid
+  type(discretization_type), pointer :: discretization
   type(option_type), pointer :: option
   
   patch => realization%patch
   option => realization%option
+  discretization => realization%discretization
   
   open(IUNIT1, file=filename, action="read", status="old") 
   open(IUNIT2, file='pflotran.out', action="write", status="unknown")
@@ -367,13 +373,12 @@ subroutine readRequiredCardsFromInput(realization,filename)
   call fiFindStringInFile(IUNIT1,string,ierr)
   call fiFindStringErrorMsg(option%myrank,string,ierr)
 
-  patch => PatchCreate()
-  grid => GridCreate()
-  call GridRead(grid,IUNIT1,option)
+  call DiscretizationRead(discretization,IUNIT1,option)
   
-  select case(grid%itype)
+  select case(discretization%grid%itype)
     case(STRUCTURED_GRID,UNSTRUCTURED_GRID)
-      patch%grid => grid
+      patch => PatchCreate()
+      patch%grid => discretization%grid
       if (.not.associated(realization%level_list)) then
         realization%level_list => LevelCreateList()
       endif
@@ -382,11 +387,10 @@ subroutine readRequiredCardsFromInput(realization,filename)
       level%patch_list => PatchCreateList()
       call PatchAddToList(patch,level%patch_list)
       realization%patch => patch
-      realization%discretization = grid%itype
   end select
 !.........................................................................
 
-  if (realization%discretization == STRUCTURED_GRID) then  ! look for processor decomposition
+  if (realization%discretization%itype == STRUCTURED_GRID) then  ! look for processor decomposition
     
     ! PROC information
     string = "PROC"
@@ -832,7 +836,7 @@ subroutine readInput(simulation,filename)
 
       case ('DXYZ')
       
-        if (realization%discretization == STRUCTURED_GRID) then  ! look for processor decomposition
+        if (realization%discretization%itype == STRUCTURED_GRID) then  ! look for processor decomposition
           call StructuredGridReadDXYZ(grid%structured_grid,option)
         else
           if (option%myrank == 0) &
@@ -1613,6 +1617,7 @@ end subroutine setFlowMode
 subroutine assignMaterialPropToRegions(realization)
 
   use Realization_module
+  use Discretization_module
   use Strata_module
   use Region_module
   use Material_module
@@ -1643,6 +1648,7 @@ subroutine assignMaterialPropToRegions(realization)
   
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
+  type(discretization_type), pointer :: discretization
   type(field_type), pointer :: field
   type(strata_type), pointer :: strata
   type(patch_type), pointer :: patch  
@@ -1651,6 +1657,7 @@ subroutine assignMaterialPropToRegions(realization)
   type(region_type), pointer :: region
   
   option => realization%option
+  discretization => realization%discretization
   patch => realization%patch
   grid => patch%grid
   field => realization%field
@@ -1751,22 +1758,22 @@ subroutine assignMaterialPropToRegions(realization)
   call VecRestoreArrayF90(field%tor_loc,tor_loc_p,ierr)
 
   if (option%nflowdof > 0) then
-    call GridGlobalToLocal(patch%grid,field%perm0_xx, &
+    call DiscretizationGlobalToLocal(discretization,field%perm0_xx, &
                            field%perm_xx_loc,ONEDOF)  
-    call GridGlobalToLocal(patch%grid,field%perm0_yy, &
+    call DiscretizationGlobalToLocal(discretization,field%perm0_yy, &
                            field%perm_yy_loc,ONEDOF)  
-    call GridGlobalToLocal(patch%grid,field%perm0_zz, &
+    call DiscretizationGlobalToLocal(discretization,field%perm0_zz, &
                            field%perm_zz_loc,ONEDOF)   
 
-    call GridLocalToLocal(patch%grid,field%icap_loc, &
+    call DiscretizationLocalToLocal(discretization,field%icap_loc, &
                           field%icap_loc,ONEDOF)   
-    call GridLocalToLocal(patch%grid,field%ithrm_loc, &
+    call DiscretizationLocalToLocal(discretization,field%ithrm_loc, &
                           field%ithrm_loc,ONEDOF)
   endif   
 
-  call GridGlobalToLocal(patch%grid,field%porosity0, &
+  call DiscretizationGlobalToLocal(discretization,field%porosity0, &
                          field%porosity_loc,ONEDOF)
-  call GridLocalToLocal(patch%grid,field%tor_loc, &
+  call DiscretizationLocalToLocal(discretization,field%tor_loc, &
                         field%tor_loc,ONEDOF)   
   
 end subroutine assignMaterialPropToRegions
@@ -1892,6 +1899,7 @@ end subroutine verifyAllCouplers
 subroutine verifyCoupler(realization,patch,coupler_list)
 
   use Realization_module
+  use Discretization_module
   use Option_module 
   use Coupler_module
   use Condition_module
@@ -1921,7 +1929,8 @@ subroutine verifyCoupler(realization,patch,coupler_list)
 
   if (.not.associated(coupler_list)) return
 
-  call GridCreateVector(grid,ONEDOF,global_vec,GLOBAL)
+  call DiscretizationCreateVector(realization%discretization,ONEDOF, &
+                                  global_vec,GLOBAL)
 
   coupler => coupler_list%first
 

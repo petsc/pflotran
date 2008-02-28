@@ -953,19 +953,22 @@ end subroutine HDF5ReadIndices
 ! date: 01/12/08
 !
 ! ************************************************************************** !
-subroutine HDF5ReadArray(grid,option,file_id,dataset_name,dataset_size, &
+subroutine HDF5ReadArray(discretization,grid,option,file_id,dataset_name, &
+                         dataset_size, &
                          indices,global_vec,data_type)
                          
   use hdf5
   
   use Option_module
   use Grid_Module
+  use Discretization_module
   
   implicit none
 
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
   
+  type(discretization_type) :: discretization
   type(grid_type) :: grid
   type(option_type) :: option
   character(len=MAXWORDLENGTH) :: dataset_name
@@ -1018,7 +1021,8 @@ subroutine HDF5ReadArray(grid,option,file_id,dataset_name,dataset_size, &
   call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F,hdf5_err)
 #endif
 
-  call GridCreateVector(grid,ONEDOF,natural_vec,NATURAL)
+  call DiscretizationCreateVector(discretization,ONEDOF, &
+                                  natural_vec,NATURAL)
   call VecZeroEntries(natural_vec,ierr)
 
   ! must initialize here to avoid error below when closing memory space
@@ -1069,7 +1073,8 @@ subroutine HDF5ReadArray(grid,option,file_id,dataset_name,dataset_size, &
 
   call VecAssemblyBegin(natural_vec,ierr)
   call VecAssemblyEnd(natural_vec,ierr)
-  call GridNaturalToGlobal(grid,natural_vec,global_vec,ONEDOF)
+  call DiscretizationNaturalToGlobal(discretization,natural_vec,global_vec, &
+                                     ONEDOF)
   call VecDestroy(natural_vec,ierr)
   
 end subroutine HDF5ReadArray
@@ -1226,6 +1231,7 @@ subroutine HDF5ReadMaterialsFromFile(realization,filename)
 #endif
   
   use Realization_module
+  use Discretization_module
   use Option_module
   use Grid_module
   use Field_module
@@ -1241,6 +1247,7 @@ subroutine HDF5ReadMaterialsFromFile(realization,filename)
 
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
+  type(discretization_type), pointer :: discretization
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch  
 
@@ -1275,6 +1282,7 @@ subroutine HDF5ReadMaterialsFromFile(realization,filename)
   nullify(indices)
 
   option => realization%option
+  discretization => realization%discretization
   patch => realization%patch
   grid => patch%grid
   field => realization%field
@@ -1298,8 +1306,8 @@ subroutine HDF5ReadMaterialsFromFile(realization,filename)
   call h5fopen_f(filename,H5F_ACC_RDONLY_F,file_id,hdf5_err,prop_id)
   call h5pclose_f(prop_id,hdf5_err)
 
-  call GridCreateVector(grid,ONEDOF,global_vec,GLOBAL)
-  call GridCreateVector(grid,ONEDOF,local_vec,LOCAL)
+  call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL)
+  call DiscretizationCreateVector(discretization,ONEDOF,local_vec,LOCAL)
 
   if (option%myrank == 0) print *, 'Setting up grid cell indices'
   ! Open the Materials group
@@ -1320,8 +1328,8 @@ subroutine HDF5ReadMaterialsFromFile(realization,filename)
   call PetscGetTime(tstart,ierr)
   string = "Material Ids"
   if (option%myrank == 0) print *, 'Reading dataset: ', trim(string)
-  call HDF5ReadArray(grid,option,grp_id,string,grid%nmax, &
-                         indices,global_vec,HDF_NATIVE_INTEGER)
+  call HDF5ReadArray(discretization,grid,option,grp_id,string,grid%nmax, &
+                     indices,global_vec,HDF_NATIVE_INTEGER)
 #else  
   allocate(indices(grid%nlmax))
   ! Read Cell Ids
@@ -1344,7 +1352,7 @@ subroutine HDF5ReadMaterialsFromFile(realization,filename)
   deallocate(integer_array)
 #endif
   
-  call GridGlobalToLocal(grid,global_vec,local_vec,ONEDOF)
+  call DiscretizationGlobalToLocal(discretization,global_vec,local_vec,ONEDOF)
   call GridCopyPetscVecToIntegerArray(patch%imat,local_vec,grid%ngmax)
   call PetscGetTime(tend,ierr)
   if (option%myrank == 0) print *, '  Time to read material ids:', tend-tstart

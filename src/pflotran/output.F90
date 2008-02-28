@@ -106,6 +106,7 @@ end subroutine OutputBreakthrough
 subroutine OutputTecplot(realization)
 
   use Realization_module
+  use Discretization_module
   use Grid_module
   use Structured_Grid_module
   use Option_module
@@ -127,6 +128,7 @@ subroutine OutputTecplot(realization)
   character(len=MAXSTRINGLENGTH) :: string, string2
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
+  type(discretization_type), pointer :: discretization
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch  
   type(output_option_type), pointer :: output_option
@@ -134,6 +136,7 @@ subroutine OutputTecplot(realization)
   Vec :: global_vec
   Vec :: natural_vec
   
+  discretization => realization%discretization
   patch => realization%patch
   grid => patch%grid
   option => realization%option
@@ -196,7 +199,7 @@ subroutine OutputTecplot(realization)
     write(IUNIT3,'(a)') trim(string)
   
     ! write zone header
-    if (realization%discretization == STRUCTURED_GRID) then
+    if (realization%discretization%itype == STRUCTURED_GRID) then
       ! count vars in string
       quote_count = 0
       comma_count = 0
@@ -229,23 +232,23 @@ subroutine OutputTecplot(realization)
   
   ! write blocks
   ! write out data sets  
-  call GridCreateVector(grid,ONEDOF,global_vec,GLOBAL)  
-  call GridCreateVector(grid,ONEDOF,natural_vec,NATURAL)  
+  call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL)  
+  call DiscretizationCreateVector(discretization,ONEDOF,natural_vec,NATURAL)  
 
   ! write out coordinates
-  if (realization%discretization == STRUCTURED_GRID) then
+  if (realization%discretization%itype == STRUCTURED_GRID) then
     call WriteTecplotStructuredGrid(IUNIT3,realization)
   else
     call GetCoordinates(grid,global_vec,X_COORDINATE)
-    call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
+    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
     call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
 
     call GetCoordinates(grid,global_vec,Y_COORDINATE)
-    call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
+    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
     call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
 
     call GetCoordinates(grid,global_vec,Z_COORDINATE)
-    call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
+    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
     call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
   endif
 
@@ -256,7 +259,7 @@ subroutine OutputTecplot(realization)
       select case(option%iflowmode)
         case(MPH_MODE,RICHARDS_MODE)
           call OutputGetVarFromArray(realization,global_vec,TEMPERATURE,ZERO_INTEGER)
-          call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       end select
 
@@ -264,7 +267,7 @@ subroutine OutputTecplot(realization)
       select case(option%iflowmode)
         case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
           call OutputGetVarFromArray(realization,global_vec,PRESSURE,ZERO_INTEGER)
-          call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       end select
 
@@ -272,7 +275,7 @@ subroutine OutputTecplot(realization)
       select case(option%iflowmode)
         case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
-          call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       end select
 
@@ -280,7 +283,7 @@ subroutine OutputTecplot(realization)
       select case(option%iflowmode)
         case(MPH_MODE)
           call OutputGetVarFromArray(realization,global_vec,GAS_SATURATION,ZERO_INTEGER)
-          call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       end select
     
@@ -288,7 +291,7 @@ subroutine OutputTecplot(realization)
       select case(option%iflowmode)
         case(MPH_MODE,RICHARDS_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_ENERGY,ZERO_INTEGER)
-          call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       end select
     
@@ -296,7 +299,7 @@ subroutine OutputTecplot(realization)
       select case(option%iflowmode)
         case(MPH_MODE)
           call OutputGetVarFromArray(realization,global_vec,GAS_ENERGY,ZERO_INTEGER)
-          call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       end select
 
@@ -305,7 +308,7 @@ subroutine OutputTecplot(realization)
           ! liquid mole fractions
           do i=1,option%nspec
             call OutputGetVarFromArray(realization,global_vec,LIQUID_MOLE_FRACTION,i)
-            call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
+            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
             call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
           enddo
       end select
@@ -315,7 +318,7 @@ subroutine OutputTecplot(realization)
           ! gas mole fractions
           do i=1,option%nspec
             call OutputGetVarFromArray(realization,global_vec,GAS_MOLE_FRACTION,i)
-            call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
+            call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
             call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
           enddo
       end select 
@@ -323,7 +326,7 @@ subroutine OutputTecplot(realization)
       ! Volume Fraction
       if (option%rk > 0.d0) then
         call OutputGetVarFromArray(realization,global_vec,VOLUME_FRACTION,ZERO_INTEGER)
-        call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
+        call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
         call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       endif
 #endif    
@@ -331,7 +334,7 @@ subroutine OutputTecplot(realization)
       select case(option%iflowmode)
         case(MPH_MODE)
           call OutputGetVarFromArray(realization,global_vec,PHASE,ZERO_INTEGER)
-          call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_INTEGER)
       end select
       
@@ -342,7 +345,7 @@ subroutine OutputTecplot(realization)
   if (option%ntrandof > 0) then
     do i=1,option%ntrandof
       call OutputGetVarFromArray(realization,global_vec,TOTAL_CONCENTRATION,i)
-      call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
+      call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
       call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
     enddo
   endif  
@@ -350,7 +353,7 @@ subroutine OutputTecplot(realization)
   ! material id
   if (associated(patch%imat)) then
     call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
-    call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
+    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
     call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_INTEGER)
   endif
 
@@ -405,6 +408,7 @@ end subroutine OutputTecplot
 subroutine OutputVelocitiesTecplot(realization)
  
   use Realization_module
+  use Discretization_module
   use Grid_module
   use Option_module
   use Field_module
@@ -417,6 +421,7 @@ subroutine OutputVelocitiesTecplot(realization)
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
+  type(discretization_type), pointer :: discretization
   type(patch_type), pointer :: patch  
   type(output_option_type), pointer :: output_option
   character(len=MAXWORDLENGTH) :: filename
@@ -431,6 +436,7 @@ subroutine OutputVelocitiesTecplot(realization)
   field => realization%field
   option => realization%option
   output_option => realization%output_option
+  discretization => realization%discretization
   
   ! open file
   if (output_option%plot_number < 10) then
@@ -471,7 +477,7 @@ subroutine OutputVelocitiesTecplot(realization)
     write(IUNIT3,'(a)') trim(string)
   
     ! write zone header
-    if (realization%discretization == STRUCTURED_GRID) then
+    if (realization%discretization%itype == STRUCTURED_GRID) then
       write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
                    &'', K='',i4,'','')') &
                    option%time/output_option%tconv, &
@@ -495,56 +501,56 @@ subroutine OutputVelocitiesTecplot(realization)
   
   ! write blocks
   ! write out data sets  
-  call GridCreateVector(grid,ONEDOF,global_vec,GLOBAL)  
-  call GridCreateVector(grid,ONEDOF,natural_vec,NATURAL)    
+  call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL)  
+  call DiscretizationCreateVector(discretization,ONEDOF,natural_vec,NATURAL)    
 
   ! write out coorindates
-  if (realization%discretization == STRUCTURED_GRID) then
+  if (realization%discretization%itype == STRUCTURED_GRID) then
     call WriteTecplotStructuredGrid(IUNIT3,realization)
   else
     call GetCoordinates(grid,global_vec,X_COORDINATE)
-    call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
+    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
     call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
 
     call GetCoordinates(grid,global_vec,Y_COORDINATE)
-    call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
+    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
     call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
 
     call GetCoordinates(grid,global_vec,Z_COORDINATE)
-    call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
+    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
     call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
   endif
   
   call GetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,X_DIRECTION)
-  call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
+  call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
   call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
 
   call GetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Y_DIRECTION)
-  call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
+  call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
   call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
 
   call GetCellCenteredVelocities(realization,global_vec,LIQUID_PHASE,Z_DIRECTION)
-  call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
+  call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
   call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
 
   if (option%nphase > 1) then
     call GetCellCenteredVelocities(realization,global_vec,GAS_PHASE,X_DIRECTION)
-    call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
+    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
     call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
 
     call GetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Y_DIRECTION)
-    call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
+    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
     call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
 
     call GetCellCenteredVelocities(realization,global_vec,GAS_PHASE,Z_DIRECTION)
-    call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
+    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
     call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
   endif
 
   ! material id
   if (associated(patch%imat)) then
     call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
-    call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
+    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
     call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_INTEGER)
   endif
   
@@ -569,6 +575,7 @@ subroutine OutputFluxVelocitiesTecplot(realization,iphase, &
 !geh - specifically, the flow velocities at the interfaces between cells
  
   use Realization_module
+  use Discretization_module
   use Grid_module
   use Option_module
   use Field_module
@@ -584,7 +591,8 @@ subroutine OutputFluxVelocitiesTecplot(realization,iphase, &
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
-  type(patch_type), pointer :: patch  
+  type(patch_type), pointer :: patch
+  type(discretization_type), pointer :: discretization  
   type(output_option_type), pointer :: output_option
   
   character(len=MAXWORDLENGTH) :: filename
@@ -609,6 +617,7 @@ subroutine OutputFluxVelocitiesTecplot(realization,iphase, &
     
   nullify(array)
   
+  discretization => realization%discretization
   patch => realization%patch
   grid => patch%grid
   option => realization%option
@@ -749,7 +758,6 @@ subroutine OutputFluxVelocitiesTecplot(realization,iphase, &
   enddo
   
   ! X-coordinates
-  call VecGetArrayF90(grid%structured_grid%dx,vec_ptr,ierr)
   count = 0
   allocate(array(local_size))
   do k=1,nz_local
@@ -759,11 +767,10 @@ subroutine OutputFluxVelocitiesTecplot(realization,iphase, &
         local_id = i+(j-1)*grid%structured_grid%nlx+(k-1)*grid%structured_grid%nlxy
         array(count) = grid%x(grid%nL2G(local_id))
         if (direction == X_DIRECTION) &
-          array(count) = array(count) + 0.5d0*vec_ptr(local_id)
+          array(count) = array(count) + 0.5d0*grid%structured_grid%dx(local_id)
       enddo
     enddo
   enddo
-  call VecRestoreArrayF90(grid%structured_grid%dx,vec_ptr,ierr)
   ! warning: adjusted size will be changed in ConvertArrayToNatural
   ! thus, you cannot pass in local_size, since it is needed later
   adjusted_size = local_size
@@ -776,7 +783,6 @@ subroutine OutputFluxVelocitiesTecplot(realization,iphase, &
   ! Y-coordinates
   count = 0
   allocate(array(local_size))
-  call VecGetArrayF90(grid%structured_grid%dy,vec_ptr,ierr)
   do k=1,nz_local
     do j=1,ny_local
       do i=1,nx_local
@@ -784,11 +790,10 @@ subroutine OutputFluxVelocitiesTecplot(realization,iphase, &
         local_id = i+(j-1)*grid%structured_grid%nlx+(k-1)*grid%structured_grid%nlxy
         array(count) = grid%y(grid%nL2G(local_id))
         if (direction == Y_DIRECTION) &
-          array(count) = array(count) + 0.5d0*vec_ptr(local_id)
+          array(count) = array(count) + 0.5d0*grid%structured_grid%dy(local_id)
       enddo
     enddo
   enddo
-  call VecRestoreArrayF90(grid%structured_grid%dy,vec_ptr,ierr)
   adjusted_size = local_size
   call ConvertArrayToNatural(indices,array,adjusted_size,global_size)
   call WriteTecplotDataSet(IUNIT3,realization,array,TECPLOT_REAL,adjusted_size)
@@ -798,7 +803,6 @@ subroutine OutputFluxVelocitiesTecplot(realization,iphase, &
   ! Z-coordinates
   count = 0
   allocate(array(local_size))
-  call VecGetArrayF90(grid%structured_grid%dz,vec_ptr,ierr)
   do k=1,nz_local
     do j=1,ny_local
       do i=1,nx_local
@@ -806,18 +810,17 @@ subroutine OutputFluxVelocitiesTecplot(realization,iphase, &
         local_id = i+(j-1)*grid%structured_grid%nlx+(k-1)*grid%structured_grid%nlxy
         array(count) = grid%z(grid%nL2G(local_id))
         if (direction == Z_DIRECTION) &
-          array(count) = array(count) + 0.5d0*vec_ptr(local_id)
+          array(count) = array(count) + 0.5d0*grid%structured_grid%dz(local_id)
       enddo
     enddo
   enddo
-  call VecRestoreArrayF90(grid%structured_grid%dz,vec_ptr,ierr)
   adjusted_size = local_size
   call ConvertArrayToNatural(indices,array,adjusted_size,global_size)
   call WriteTecplotDataSet(IUNIT3,realization,array,TECPLOT_REAL,adjusted_size)
   deallocate(array)
   nullify(array)
 
-  call GridCreateVector(grid,ONEDOF,global_vec,GLOBAL) 
+  call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL) 
   call VecZeroEntries(global_vec,ierr)
   call VecGetArrayF90(global_vec,vec_ptr,ierr)
   
@@ -922,6 +925,7 @@ end subroutine OutputFluxVelocitiesTecplot
 subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
  
   use Realization_module
+  use Discretization_module
   use Option_module
   use Field_module
   use Grid_module
@@ -938,6 +942,7 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
+  type(discretization_type), pointer :: discretization
   type(patch_type), pointer :: patch  
   Vec :: natural_vec
   Vec :: global_vec
@@ -947,6 +952,7 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
   patch => realization%patch
   grid => patch%grid
   field => realization%field
+  discretization => realization%discretization
   
   ! open file
   if (option%myrank == 0) then
@@ -968,7 +974,7 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
     write(fid,'(a)') trim(string)
   
     ! write zone header
-    if (realization%discretization == STRUCTURED_GRID) then
+    if (realization%discretization%itype == STRUCTURED_GRID) then
       write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
                    &'', K='',i4,'','')') &
                    option%time/realization%output_option%tconv, &
@@ -989,28 +995,30 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
   
   ! write blocks
   ! write out data sets  
-  call GridCreateVector(grid,ONEDOF,global_vec,GLOBAL)  
-  call GridCreateVector(grid,ONEDOF,natural_vec,NATURAL)    
+  call DiscretizationCreateVector(discretization,ONEDOF, &
+                                  global_vec,GLOBAL)  
+  call DiscretizationCreateVector(discretization,ONEDOF, &
+                                  natural_vec,NATURAL)    
 
   ! write out coorindates
   call GetCoordinates(grid,global_vec,X_COORDINATE)
-  call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
+  call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
   call WriteTecplotDataSetFromVec(fid,realization,natural_vec,TECPLOT_REAL)
 
   call GetCoordinates(grid,global_vec,Y_COORDINATE)
-  call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
+  call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
   call WriteTecplotDataSetFromVec(fid,realization,natural_vec,TECPLOT_REAL)
 
   call GetCoordinates(grid,global_vec,Z_COORDINATE)
-  call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
+  call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
   call WriteTecplotDataSetFromVec(fid,realization,natural_vec,TECPLOT_REAL)
 
-  call GridGlobalToNatural(grid,vector,natural_vec,ONEDOF)
+  call DiscretizationGlobalToNatural(discretization,vector,natural_vec,ONEDOF)
   call WriteTecplotDataSetFromVec(fid,realization,natural_vec,TECPLOT_REAL)
 
   if (associated(patch%imat)) then
     call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
-    call GridGlobalToNatural(grid,global_vec,natural_vec,ONEDOF)
+    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
     call WriteTecplotDataSetFromVec(fid,realization,natural_vec,TECPLOT_INTEGER)
   endif
   
@@ -1329,6 +1337,7 @@ end subroutine WriteTecplotDataSet
 subroutine OutputBreakthroughTecplot(realization)
 
   use Realization_module
+  use Discretization_module
   use Grid_module
   use Option_module
   use Field_module
@@ -1651,6 +1660,7 @@ end subroutine WriteBreakthroughDataForCell
 subroutine OutputHDF5(realization)
 
   use Realization_module
+  use Discretization_module
   use Option_module
   use Grid_module
   use Field_module
@@ -1695,6 +1705,7 @@ subroutine OutputHDF5(realization)
   integer(HSIZE_T) :: dims(3)
   
   type(grid_type), pointer :: grid
+  type(discretization_type), pointer :: discretization
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch  
@@ -1710,6 +1721,7 @@ subroutine OutputHDF5(realization)
   PetscReal, pointer :: array(:)
   PetscInt :: i
   
+  discretization => realization%discretization
   patch => realization%patch
   grid => patch%grid
   option => realization%option
@@ -1796,7 +1808,7 @@ subroutine OutputHDF5(realization)
   call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
   
   ! write out data sets 
-  call GridCreateVector(grid,ONEDOF,global_vec,GLOBAL)   
+  call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL)   
 
   select case(option%iflowmode)
   
@@ -1978,6 +1990,7 @@ end subroutine OutputHDF5
 subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
 
   use Realization_module
+  use Discretization_module
   use Grid_module
   use Option_module
   use Field_module
@@ -2001,6 +2014,7 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
   PetscInt :: nx_global, ny_global, nz_global
   
   type(grid_type), pointer :: grid
+  type(discretization_type), pointer :: discretization
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch  
@@ -2019,6 +2033,7 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
   type(connection_list_type), pointer :: connection_list
   type(connection_type), pointer :: cur_connection_set
     
+  discretization => realization%discretization
   patch => realization%patch
   grid => patch%grid
   option => realization%option
@@ -2081,7 +2096,7 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
   allocate(array(nx_local*ny_local*nz_local))
 
 
-  call GridCreateVector(grid,ONEDOF,global_vec,GLOBAL) 
+  call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL) 
   call VecZeroEntries(global_vec,ierr)
   call VecGetArrayF90(global_vec,vec_ptr,ierr)
   

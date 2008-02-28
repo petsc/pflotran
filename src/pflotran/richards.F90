@@ -1495,7 +1495,7 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
   use Realization_module
   use Level_module
   use Patch_module
-  use Grid_module
+  use Discretization_module
   use Field_module
   use Option_module
 
@@ -1507,24 +1507,24 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
   type(realization_type) :: realization
   PetscErrorCode :: ierr
   
-  type(grid_type), pointer :: grid
+  type(discretization_type), pointer :: discretization
   type(field_type), pointer :: field
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   
   field => realization%field
-  grid => realization%patch%grid
+  discretization => realization%discretization
   
   ! Communication -----------------------------------------
   ! These 3 must be called before RichardsUpdateAuxVars()
-  call GridGlobalToLocal(grid,xx,field%flow_xx_loc,NFLOWDOF)
-  call GridLocalToLocal(grid,field%iphas_loc,field%iphas_loc,ONEDOF)
-  call GridLocalToLocal(grid,field%icap_loc,field%icap_loc,ONEDOF)
+  call DiscretizationGlobalToLocal(discretization,xx,field%flow_xx_loc,NFLOWDOF)
+  call DiscretizationLocalToLocal(discretization,field%iphas_loc,field%iphas_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%icap_loc,field%icap_loc,ONEDOF)
 
-  call GridLocalToLocal(grid,field%perm_xx_loc,field%perm_xx_loc,ONEDOF)
-  call GridLocalToLocal(grid,field%perm_yy_loc,field%perm_yy_loc,ONEDOF)
-  call GridLocalToLocal(grid,field%perm_zz_loc,field%perm_zz_loc,ONEDOF)
-  call GridLocalToLocal(grid,field%ithrm_loc,field%ithrm_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%perm_xx_loc,field%perm_xx_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%perm_yy_loc,field%perm_yy_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%perm_zz_loc,field%perm_zz_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%ithrm_loc,field%ithrm_loc,ONEDOF)
   
   cur_level => realization%level_list%first
   do
@@ -2363,7 +2363,7 @@ subroutine RichardsJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     if (option%myrank == 0) print *, '2 norm:', norm
     call MatNorm(A,NORM_INFINITY,norm,ierr)
     if (option%myrank == 0) print *, 'inf norm:', norm
-!    call GridCreateVector(grid,ONEDOF,debug_vec,GLOBAL)
+!    call DiscretizationCreateVector(grid,ONEDOF,debug_vec,GLOBAL)
 !    call MatGetRowMaxAbs(A,debug_vec,PETSC_NULL_INTEGER,ierr)
 !    call VecMax(debug_vec,i,norm,ierr)
 !    call VecDestroy(debug_vec,ierr)
