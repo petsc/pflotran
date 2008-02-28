@@ -647,6 +647,9 @@ subroutine StructuredGridComputeVolumes(structured_grid,option,nL2G,volume)
   use Option_module
   
   implicit none
+
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
   
   type(structured_grid_type) :: structured_grid
   type(option_type) :: option
@@ -656,7 +659,7 @@ subroutine StructuredGridComputeVolumes(structured_grid,option,nL2G,volume)
   PetscReal, parameter :: Pi=3.1415926d0
   
   PetscInt :: i, n, ng
-  PetscReal, pointer :: volume_p(:), dx_loc_p(:), dy_loc_p(:), dz_loc_p(:)
+  PetscReal, pointer :: volume_p(:)
   PetscErrorCode :: ierr
   
   call VecGetArrayF90(volume,volume_p, ierr)

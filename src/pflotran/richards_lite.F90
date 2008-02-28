@@ -1572,7 +1572,6 @@ subroutine RichardsLiteJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   PetscInt :: local_id, ghosted_id
   PetscInt :: local_id_up, local_id_dn
   PetscInt :: ghosted_id_up, ghosted_id_dn
-  PetscInt ::  natural_id_up,natural_id_dn
   
   PetscReal :: Jup(realization%option%nflowdof,realization%option%nflowdof), &
                Jdn(realization%option%nflowdof,realization%option%nflowdof)
@@ -1728,8 +1727,6 @@ subroutine RichardsLiteJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 
       local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
       local_id_dn = grid%nG2L(ghosted_id_dn) ! Ghost to local mapping   
-      natural_id_up = grid%nG2N(ghosted_id_up)
-      natural_id_dn = grid%nG2N(ghosted_id_dn)
    
       fraction_upwind = cur_connection_set%dist(-1,iconn)
       distance = cur_connection_set%dist(0,iconn)

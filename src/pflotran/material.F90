@@ -493,7 +493,7 @@ subroutine SaturationFunctionCompute(pressure,saturation,relative_perm, &
       alpha = saturation_function%alpha
       one_over_alpha = 1.d0/alpha
       pc = option%pref-pressure
-#if 0      
+#if 1      
       if (pc < one_over_alpha-saturation_function%BC_pressure_offset) then
         saturation = 1.d0
         relative_perm = 1.d0

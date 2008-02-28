@@ -41,10 +41,10 @@ module Discretization_module
             DiscretizationGlobalToLocalEnd, &
             DiscretizationLocalToLocalBegin, &
             DiscretizationLocalToLocalEnd, &
-            DiscretizationGlobalToNaturalBegin, &
-            DiscretizationGlobalToNaturalEnd, &
-            DiscretizationNaturalToGlobalBegin, &
-            DiscretizationNaturalToGlobalEnd, &
+            DiscretizGlobalToNaturalBegin, &
+            DiscretizGlobalToNaturalEnd, &
+            DiscretizNaturalToGlobalBegin, &
+            DiscretizNaturalToGlobalEnd, &
             DiscretizationCreateDMs
   
 contains
@@ -164,6 +164,8 @@ subroutine DiscretizationRead(discretization,fid,option)
           grid%nmax = str_grid%nmax
       end select
       discretization%grid => grid
+      grid%itype = discretization%itype
+      grid%ctype = discretization%ctype
   end select
 
 end subroutine DiscretizationRead
@@ -350,11 +352,11 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,Jacobian,option)
   dm_ptr = DiscretizationGetDMPtrFromIndex(discretization,dm_index)
     
   select case(discretization%itype)
-    case(STRUCTURED_GRID,UNSTRUCTURED_GRID)
+    case(STRUCTURED_GRID)
       if (option%iblkfmt == 0) then
-        call DMGetMatrix(dm_ptr,MATAIJ,Jacobian,ierr)
+        call DAGetMatrix(dm_ptr,MATAIJ,Jacobian,ierr)
       else
-        call DMGetMatrix(dm_ptr,MATBAIJ,Jacobian,ierr)
+        call DAGetMatrix(dm_ptr,MATBAIJ,Jacobian,ierr)
       endif
 #if (PETSC_VERSION_RELEASE == 1)
       call MatSetOption(Jacobian,MAT_KEEP_ZEROED_ROWS,ierr)
@@ -363,6 +365,7 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,Jacobian,option)
       call MatSetOption(Jacobian,MAT_KEEP_ZEROED_ROWS,PETSC_FALSE,ierr)
       call MatSetOption(Jacobian,MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
 #endif
+    case(UNSTRUCTURED_GRID)
   end select
 
 end subroutine DiscretizationCreateJacobian
@@ -667,12 +670,12 @@ end subroutine DiscretizationLocalToLocalEnd
   
 ! ************************************************************************** !
 !
-! DiscretizationGlobalToNaturalBegin: Begins global to natural communication with DM
+! DiscretizGlobalToNaturalBegin: Begins global to natural communication with DM
 ! author: Glenn Hammond
 ! date: 10/24/07
 !
 ! ************************************************************************** !
-subroutine DiscretizationGlobalToNaturalBegin(discretization,global_vec,natural_vec,dm_index)
+subroutine DiscretizGlobalToNaturalBegin(discretization,global_vec,natural_vec,dm_index)
 
   implicit none
   
@@ -691,16 +694,16 @@ subroutine DiscretizationGlobalToNaturalBegin(discretization,global_vec,natural_
     case(UNSTRUCTURED_GRID)
   end select
   
-end subroutine DiscretizationGlobalToNaturalBegin
+end subroutine DiscretizGlobalToNaturalBegin
 
 ! ************************************************************************** !
 !
-! DiscretizationGlobalToNaturalEnd: Ends global to natural communication with DM
+! DiscretizGlobalToNaturalEnd: Ends global to natural communication with DM
 ! author: Glenn Hammond
 ! date: 10/24/07
 !
 ! ************************************************************************** !
-subroutine DiscretizationGlobalToNaturalEnd(discretization,global_vec,natural_vec,dm_index)
+subroutine DiscretizGlobalToNaturalEnd(discretization,global_vec,natural_vec,dm_index)
 
   implicit none
   
@@ -719,16 +722,16 @@ subroutine DiscretizationGlobalToNaturalEnd(discretization,global_vec,natural_ve
     case(UNSTRUCTURED_GRID)
   end select
   
-end subroutine DiscretizationGlobalToNaturalEnd
+end subroutine DiscretizGlobalToNaturalEnd
 
 ! ************************************************************************** !
 !
-! DiscretizationNaturalToGlobalBegin: Begins natural to global communication with DM
+! DiscretizNaturalToGlobalBegin: Begins natural to global communication with DM
 ! author: Glenn Hammond
 ! date: 01/12/08
 !
 ! ************************************************************************** !
-subroutine DiscretizationNaturalToGlobalBegin(discretization,natural_vec,global_vec,dm_index)
+subroutine DiscretizNaturalToGlobalBegin(discretization,natural_vec,global_vec,dm_index)
 
   implicit none
   
@@ -747,16 +750,16 @@ subroutine DiscretizationNaturalToGlobalBegin(discretization,natural_vec,global_
     case(UNSTRUCTURED_GRID)
   end select
   
-end subroutine DiscretizationNaturalToGlobalBegin
+end subroutine DiscretizNaturalToGlobalBegin
 
 ! ************************************************************************** !
 !
-! DiscretizationNaturalToGlobalEnd: Ends natural to global communication with DM
+! DiscretizNaturalToGlobalEnd: Ends natural to global communication with DM
 ! author: Glenn Hammond
 ! date: 01/12/08
 !
 ! ************************************************************************** !
-subroutine DiscretizationNaturalToGlobalEnd(discretization,natural_vec,global_vec,dm_index)
+subroutine DiscretizNaturalToGlobalEnd(discretization,natural_vec,global_vec,dm_index)
 
   implicit none
   
@@ -775,7 +778,7 @@ subroutine DiscretizationNaturalToGlobalEnd(discretization,natural_vec,global_ve
     case(UNSTRUCTURED_GRID)
   end select
   
-end subroutine DiscretizationNaturalToGlobalEnd
+end subroutine DiscretizNaturalToGlobalEnd
 
 ! ************************************************************************** !
 !

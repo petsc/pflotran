@@ -375,7 +375,7 @@ subroutine readRequiredCardsFromInput(realization,filename)
 
   call DiscretizationRead(discretization,IUNIT1,option)
   
-  select case(discretization%grid%itype)
+  select case(discretization%itype)
     case(STRUCTURED_GRID,UNSTRUCTURED_GRID)
       patch => PatchCreate()
       patch%grid => discretization%grid
