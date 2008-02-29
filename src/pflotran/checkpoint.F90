@@ -131,17 +131,17 @@ subroutine Checkpoint(realization,steps,newtcum,icutcum, &
   if (id < 0) then
     fname = 'restart.chk'
   else if (id < 10) then
-    write(fname, '(a9,i1)') 'pflotran.chk', id
+    write(fname, '(a12,i1)') 'pflotran.chk', id
   else if (id < 100) then
-    write(fname, '(a9,i2)') 'pflotran.chk', id
+    write(fname, '(a12,i2)') 'pflotran.chk', id
   else if (id < 1000) then
-    write(fname, '(a9,i3)') 'pflotran.chk', id
+    write(fname, '(a12,i3)') 'pflotran.chk', id
   else if (id < 10000) then
-    write(fname, '(a9,i4)') 'pflotran.chk', id
+    write(fname, '(a12,i4)') 'pflotran.chk', id
   else if (id < 100000) then
-    write(fname, '(a9,i5)') 'pflotran.chk', id
+    write(fname, '(a12,i5)') 'pflotran.chk', id
   else if (id < 1000000) then
-    write(fname, '(a9,i6)') 'pflotran.chk', id
+    write(fname, '(a12,i6)') 'pflotran.chk', id
   endif
   call PetscViewerBinaryOpen(PETSC_COMM_WORLD, fname, FILE_MODE_WRITE, &
                              viewer, ierr)

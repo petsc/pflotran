@@ -210,6 +210,13 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     call Restart(realization,master_stepper%steps,master_stepper%newtcum, &
                  master_stepper%icutcum,num_const_timesteps, &
                  num_newton_iterations)
+    if (option%restart_time < -998.d0) then
+      option%time = max(option%flow_time,option%tran_time)
+    else
+      option%time = option%restart_time
+      option%flow_time = option%restart_time
+      option%tran_time = option%restart_time
+    endif
     if (associated(flow_stepper)) flow_stepper%cur_waypoint => &
       WaypointSkipToTime(realization%waypoints,option%time)
     if (associated(tran_stepper)) tran_stepper%cur_waypoint => &

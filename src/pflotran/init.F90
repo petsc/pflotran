@@ -996,6 +996,8 @@ subroutine readInput(simulation,filename)
         option%restart_flag = PETSC_TRUE
         call fiReadWord(string,option%restart_file,.true.,ierr)
         call fiErrorMsg(option%myrank,'RESTART','Restart file name',ierr) 
+        call fiReadDouble(string,option%restart_time,ierr)
+        call fiDefaultMsg(option%myrank,'Restart time',ierr) 
 
 !......................
 
