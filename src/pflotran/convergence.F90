@@ -316,7 +316,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
         if (print_res_norm_info) print *, 'norm_inf_residual: ', inorm_residual
       endif
       if (print_max_val_and_loc_info) then
-        print *, 'max/min locations by dof:'
+        print *, 'max/min locations (zero-based index) by dof:'
         do i=1,ndof
           print *, '  dof: ', i
           if (print_sol_norm_info) then
