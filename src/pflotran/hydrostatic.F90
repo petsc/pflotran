@@ -263,7 +263,7 @@ subroutine HydrostaticUpdateCouplerBetter(coupler,option,grid)
   call nacl_den(temperature_at_datum,pressure_at_datum*1.d-6,xm_nacl,dw_kg) 
   rho = dw_kg * 1.d3
   pressure_gradient(1:3) = piezometric_head_gradient(1:3)* &
-                           rho*option%gravity(Z_DIRECTION)
+                           rho*abs(option%gravity(Z_DIRECTION)) ! gravity is negative, but we just want magnitude
 
   if (dabs(pressure_gradient(Z_DIRECTION)) < 1.d-40) then
     ! compute the vertical gradient based on a 1 meter vertical spacing and
