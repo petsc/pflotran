@@ -24,9 +24,14 @@ Hanford300::Hanford300(Grid **grid_) {
 //  nx = 135;
 //  ny = 250;
 //  nz = 60;
-  nx = 70;
-  ny = 125;
-  nz = 10;
+
+//  nx = 70;
+//  ny = 125;
+//  nz = 10;
+
+  nx = 17;
+  ny = 32;
+  nz = 15;
 
   char filename[1024];
   PetscTruth option_found;

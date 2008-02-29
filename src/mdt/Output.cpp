@@ -210,64 +210,71 @@ void Output::printHDFMaterialsAndRegions() {
   while (cur_set) {
     PetscPrintf(PETSC_COMM_WORLD," %s\n",cur_set->name);
 //    cur_set->printInfo();
-    file->createGroup(cur_set->name);
-
 // cell ids
     PetscInt num_connections_global = cur_set->getNumberOfConnectionsGlobal();
     PetscInt num_connections_local = cur_set->getNumberOfConnectionsLocal();
-// hdf5 cannot handle a zero-length memory space and hyperslab.  Therefore,
-// trick it by setting then length to 1 and writing independently (non-
-// collective) for those procs with num_connections_local > 0).
-    PetscInt trick_hdf5_local = num_connections_local > 0 ? 
-                                             num_connections_local : 1;
-    PetscInt trick_hdf5_global = num_connections_global > 0 ? 
-                                             num_connections_global : 1;
 
-    file->createDataSpace(1,trick_hdf5_global,0,0);
-    PetscPrintf(PETSC_COMM_WORLD,"  Cell Ids\n");
-    file->createDataSet("Cell Ids",HDF_NATIVE_INT,compress);
-
-    if (num_connections_global > 0) {
-
-      PetscInt *cell_ids = cur_set->getCellIdsLocal1Based();
-    // convert cell_ids in local numbering to natural, no need to reorder for now
-    // since 1-based, need to subtract 1 then add 1
-      for (PetscInt i=0; i<num_connections_local; i++) {
-        cell_ids[i] = grid->cell_mapping_ghosted_to_natural[
-                            grid->cell_mapping_local_to_ghosted[cell_ids[i]-1]]+1;
-      }
-
-      file->setHyperSlab(num_connections_local);
-      file->createMemorySpace(1,num_connections_local,NULL,NULL);
-      if (num_connections_local > 0) {
-        file->writeInt(cell_ids,INDEPENDENT);
-      }
-      delete [] cell_ids;
-      cell_ids = NULL;
+    if (num_connections_global == 0) {
+      PetscPrintf(PETSC_COMM_WORLD,"   Boundary Condition: %s has not connections, skipping.\n",cur_set->name);
     }
-    file->closeDataSet();
-    file->closeDataSpaces();
+    else {
+      
+      file->createGroup(cur_set->name);
 
-    file->createDataSpace(1,trick_hdf5_global,0,0);
-    PetscPrintf(PETSC_COMM_WORLD,"  Face Ids\n");
-    file->createDataSet("Face Ids",HDF_NATIVE_INT,compress);
+  // hdf5 cannot handle a zero-length memory space and hyperslab.  Therefore,
+  // trick it by setting then length to 1 and writing independently (non-
+  // collective) for those procs with num_connections_local > 0).
+      PetscInt trick_hdf5_local = num_connections_local > 0 ? 
+                                               num_connections_local : 1;
+      PetscInt trick_hdf5_global = num_connections_global > 0 ? 
+                                               num_connections_global : 1;
 
-    if (num_connections_global > 0) {
+      file->createDataSpace(1,trick_hdf5_global,0,0);
+      PetscPrintf(PETSC_COMM_WORLD,"  Cell Ids\n");
+      file->createDataSet("Cell Ids",HDF_NATIVE_INT,compress);
 
-      PetscInt *face_ids = cur_set->getFaceIdsLocal();
+      if (num_connections_global > 0) {
 
-      file->setHyperSlab(num_connections_local);
-      file->createMemorySpace(1,num_connections_local,NULL,NULL);
-      if (num_connections_local > 0) {
-        file->writeInt(face_ids,INDEPENDENT);
+        PetscInt *cell_ids = cur_set->getCellIdsLocal1Based();
+      // convert cell_ids in local numbering to natural, no need to reorder for now
+      // since 1-based, need to subtract 1 then add 1
+        for (PetscInt i=0; i<num_connections_local; i++) {
+          cell_ids[i] = grid->cell_mapping_ghosted_to_natural[
+                              grid->cell_mapping_local_to_ghosted[cell_ids[i]-1]]+1;
+        }
+
+        file->setHyperSlab(num_connections_local);
+        file->createMemorySpace(1,num_connections_local,NULL,NULL);
+        if (num_connections_local > 0) {
+          file->writeInt(cell_ids,INDEPENDENT);
+        }
+        delete [] cell_ids;
+        cell_ids = NULL;
       }
-      delete [] face_ids;
-      face_ids = NULL;
-    }
-    file->closeDataSet();
-    file->closeDataSpaces();
+      file->closeDataSet();
+      file->closeDataSpaces();
 
-    file->closeGroup();
+      file->createDataSpace(1,trick_hdf5_global,0,0);
+      PetscPrintf(PETSC_COMM_WORLD,"  Face Ids\n");
+      file->createDataSet("Face Ids",HDF_NATIVE_INT,compress);
+
+      if (num_connections_global > 0) {
+
+        PetscInt *face_ids = cur_set->getFaceIdsLocal();
+
+        file->setHyperSlab(num_connections_local);
+        file->createMemorySpace(1,num_connections_local,NULL,NULL);
+        if (num_connections_local > 0) {
+          file->writeInt(face_ids,INDEPENDENT);
+        }
+        delete [] face_ids;
+        face_ids = NULL;
+      }
+      file->closeDataSet();
+      file->closeDataSpaces();
+
+      file->closeGroup();
+    }
     cur_set = cur_set->next;
   }
   file->closeGroup();

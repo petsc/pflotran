@@ -72,6 +72,7 @@ module Option_module
     PetscInt :: itable=0
 
     PetscTruth :: restart_flag
+    PetscReal :: restart_time
     character(len=MAXWORDLENGTH) :: restart_file
     PetscTruth :: checkpoint_flag
     PetscInt :: checkpoint_frequency
@@ -201,6 +202,7 @@ function OptionCreate()
 
   option%restart_flag = PETSC_FALSE
   option%restart_file = ""
+  option%restart_time = -999.d0
   option%checkpoint_flag = PETSC_FALSE
   option%checkpoint_frequency = int(1d20)
   
