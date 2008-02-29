@@ -1101,7 +1101,7 @@ subroutine WriteTecplotStructuredGrid(fid,realization)
           write(fid,'(es11.4,x)',advance='no') temp_real
           count = count + 1
           if (mod(count,10) == 0) then
-            write(fid,'("")')
+            write(fid,'(a)') ""
             count = 0
           endif
         enddo
@@ -1115,7 +1115,7 @@ subroutine WriteTecplotStructuredGrid(fid,realization)
         write(fid,'(es11.4,x)',advance='no') temp_real
         count = count + 1
         if (mod(count,10) == 0) then
-          write(fid,'("")')
+          write(fid,'(a)') ""
           count = 0
         endif
       enddo
@@ -1125,7 +1125,7 @@ subroutine WriteTecplotStructuredGrid(fid,realization)
           write(fid,'(es11.4,x)',advance='no') temp_real
           count = count + 1
           if (mod(count,10) == 0) then
-            write(fid,'("")')
+            write(fid,'(a)') ""
             count = 0
           endif
         enddo
@@ -1138,7 +1138,7 @@ subroutine WriteTecplotStructuredGrid(fid,realization)
       write(fid,'(es11.4,x)',advance='no') temp_real
       count = count + 1
       if (mod(count,10) == 0) then
-        write(fid,'("")')
+        write(fid,'(a)') ""
         count = 0
       endif
     enddo
@@ -1149,7 +1149,7 @@ subroutine WriteTecplotStructuredGrid(fid,realization)
           write(fid,'(es11.4,x)',advance='no') temp_real
           count = count + 1
           if (mod(count,10) == 0) then
-            write(fid,'("")')
+            write(fid,'(a)') ""
             count = 0
           endif
         enddo
