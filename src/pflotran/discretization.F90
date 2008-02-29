@@ -487,8 +487,8 @@ subroutine DiscretizationLocalToLocal(discretization,local_vec1,local_vec2,dm_in
   
   select case(discretization%itype)
     case(STRUCTURED_GRID)
-      call DAGlobalToLocalBegin(dm_ptr,local_vec1,INSERT_VALUES,local_vec2,ierr)
-      call DAGlobalToLocalEnd(dm_ptr,local_vec1,INSERT_VALUES,local_vec2,ierr)
+      call DALocalToLocalBegin(dm_ptr,local_vec1,INSERT_VALUES,local_vec2,ierr)
+      call DALocalToLocalEnd(dm_ptr,local_vec1,INSERT_VALUES,local_vec2,ierr)
     case(UNSTRUCTURED_GRID)
   end select
   
@@ -516,8 +516,8 @@ subroutine DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,d
   
   select case(discretization%itype)
     case(STRUCTURED_GRID)
-      call DAGlobalToLocalBegin(dm_ptr,global_vec,INSERT_VALUES,natural_vec,ierr)
-      call DAGlobalToLocalEnd(dm_ptr,global_vec,INSERT_VALUES,natural_vec,ierr)
+      call DAGlobalToNaturalBegin(dm_ptr,global_vec,INSERT_VALUES,natural_vec,ierr)
+      call DAGlobalToNaturalEnd(dm_ptr,global_vec,INSERT_VALUES,natural_vec,ierr)
     case(UNSTRUCTURED_GRID)
   end select
   
@@ -545,8 +545,8 @@ subroutine DiscretizationNaturalToGlobal(discretization,natural_vec,global_vec,d
   
   select case(discretization%itype)
     case(STRUCTURED_GRID)
-      call DAGlobalToLocalBegin(dm_ptr,natural_vec,INSERT_VALUES,global_vec,ierr)
-      call DAGlobalToLocalEnd(dm_ptr,natural_vec,INSERT_VALUES,global_vec,ierr)
+      call DANaturalToGlobalBegin(dm_ptr,natural_vec,INSERT_VALUES,global_vec,ierr)
+      call DANaturalToGlobalEnd(dm_ptr,natural_vec,INSERT_VALUES,global_vec,ierr)
     case(UNSTRUCTURED_GRID)
   end select
   
