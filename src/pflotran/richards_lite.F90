@@ -1614,10 +1614,6 @@ subroutine RichardsLiteJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 !   2. Average molecular weights to p,t,s
   flag = SAME_NONZERO_PATTERN
 
-#if 0
-!  call RichardsLiteNumericalJacTest(xx,realization)
-#endif
-
  ! print *,'*********** In Jacobian ********************** '
   call MatZeroEntries(A,ierr)
 
@@ -1650,6 +1646,7 @@ subroutine RichardsLiteJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                               Jup) 
     call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)
   enddo
+
 #endif
   if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)

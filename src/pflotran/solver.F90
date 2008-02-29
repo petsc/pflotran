@@ -6,7 +6,6 @@ module Solver_module
  
 #include "definitions.h"
 
-#include "petscreldefs.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
 #include "include/finclude/petscmat.h"

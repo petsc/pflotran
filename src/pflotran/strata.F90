@@ -64,6 +64,7 @@ function StrataCreate1()
   strata%material_name = ""
   strata%region_name = ""
   strata%iregion = 0
+  strata%imaterial = 0
 
   nullify(strata%region)
   nullify(strata%material)

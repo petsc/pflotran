@@ -437,6 +437,9 @@ end subroutine GridLocalizeRegions
 subroutine GridCopyIntegerArrayToPetscVec(array,vector,num_values)
 
   implicit none
+
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
   
   PetscInt :: array(:)
   Vec :: vector
@@ -463,6 +466,9 @@ subroutine GridCopyRealArrayToPetscVec(array,vector,num_values)
 
   implicit none
   
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
+    
   PetscReal :: array(:)
   Vec :: vector
   PetscInt :: num_values
@@ -487,6 +493,9 @@ end subroutine GridCopyRealArrayToPetscVec
 subroutine GridCopyPetscVecToIntegerArray(array,vector,num_values)
 
   implicit none
+
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
   
   PetscInt :: array(:)
   Vec :: vector
@@ -516,6 +525,9 @@ subroutine GridCopyPetscVecToRealArray(array,vector,num_values)
 
   implicit none
   
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
+    
   PetscReal :: array(:)
   Vec :: vector
   PetscInt :: num_values
