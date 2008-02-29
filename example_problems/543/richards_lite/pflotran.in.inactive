@@ -1,0 +1,191 @@
+:Description: 3D toy problem for richards equation
+:
+:MODE RICHARDS
+MODE RICHARDS_LITE
+:
+:NUMERICAL_JACOBIAN
+:INEXACT_NEWTON
+:
+:CHECKPOINT 50
+:WALLCLOCK_STOP 0.05
+:
+DEBUG
+:MATVIEW_JACOBIAN
+:VECVIEW_RESIDUAL
+END
+:
+GRID
+TYPE structured
+NXYZ 5 4 3
+END
+:
+NEWTON_SOLVER
+RTOL 1.d-8
+:ATOL 0.d0
+:NO_INFINITY_NORM
+:NO_PRINT_CONVERGENCE
+:PRINT_DETAILED_CONVERGENCE
+END
+:
+LINEAR_SOLVER
+KSP_TYPE PREONLY
+PC_TYPE LU
+END
+:
+STATISTICS
+:
+:HDF5 VELO FLUX
+TECP VELO FLUX
+:
+DXYZ
+10. 11. 12. 13. 14.
+13. 12. 11. 10.
+15. 20. 25.
+:
+DIFF  1.D-9       12.6
+:
+: Richards Equation Pref
+RICH 101325.
+:
+SATURATION_FUNCTIONS
+:id itype swir   lambda alpha     pcwmax betac pwr
+ 1  2     0.10   2.67   2.042d-4  1.e8   0.d0  1.d0
+ 2  2     0.11   2.68   2.553d-4  1.e8   0.d0  1.d0
+ 3  2     0.12   2.69   3.404d-4  1.e8   0.d0  1.d0
+ 4  2     0.13   2.70   5.105d-4  1.e8   0.d0  1.d0
+END
+
+THERMAL_PROPERTIES
+:ithm rho    cpr     ckdry cksat tau cdiff   cexp
+  1   2.75e3 1000.e0 0.5   0.5   0.5 2.13d-5 1.8
+END
+:
+MATERIALS
+:name   id icap ithm por  tau permx     permy     permz     permpwr
+Soil1   1  1    1    0.25 0.5 1.d-12    1.d-12    1.d-13    1.d0
+Soil2   2  2    1    0.25 0.5 1.d-11    1.d-11    1.d-12    1.d0
+Soil3   3  3    1    0.20 0.5 1.d-10    1.d-10    1.d-11    1.d0
+Soil4   4  4    1    0.25 0.5 1.d-9     1.d-9     1.d-10    1.d0
+END
+:
+TIME d 
+.001 .01 .1 1. 10. 100.
+:
+DTST 1.d-6
+10. 10.0d0
+:
+REGION all
+BLOCK 1 5 1 4 1 3
+END
+
+REGION West
+:FILE 543.h5
+BLOCK 1 1 1 4 1 2
+END
+
+REGION East
+:FILE 543.h5
+BLOCK 5 5 1 4 1 3
+END
+
+REGION Top
+FILE 543.h5
+END
+
+REGION Inlet
+BLOCK 4 4 2 3 3 3
+END
+
+skip
+CONDITION zero_flux
+UNITS Pa,C,M,yr
+CLASS flow
+TYPE
+PRESSURE neumann
+TEMPERATURE zero_gradient
+CONCENTRATION zero_gradient
+END
+FLUX 0.d0
+TEMPERATURE 25.d0 C
+CONCENTRATION 0.d0 M
+END
+
+CONDITION west
+UNITS Pa,C,M,yr
+CLASS flow
+TYPE
+PRESSURE hydrostatic
+TEMPERATURE zero_gradient
+CONCENTRATION zero_gradient
+END
+DATUM 0.d0 0.d0 35.d0
+PRESSURE 101325.d0
+TEMPERATURE 25.d0 C
+CONCENTRATION 0.d0 M
+END
+
+CONDITION east
+UNITS Pa,C,M,yr
+CLASS flow
+TYPE
+PRESSURE hydrostatic
+TEMPERATURE zero_gradient
+CONCENTRATION zero_gradient
+END
+PRESSURE 101325.d0
+TEMPERATURE 25.d0 C
+CONCENTRATION 0.d0 M
+END
+noskip
+
+CONDITION initial
+CLASS flow
+TYPE
+PRESSURE hydrostatic
+TEMPERATURE zero_gradient
+CONCENTRATION zero_gradient
+END
+DATUM 0.d0 0.d0 35.d0
+PRESSURE 101325.d0
+TEMPERATURE 25.d0 C
+CONCENTRATION 0.d0 M
+END
+
+CONDITION flux
+CLASS flow
+TYPE
+PRESSURE neumann
+TEMPERATURE zero_gradient
+CONCENTRATION zero_gradient
+END
+FLUX 1.d-4
+TEMPERATURE 25.d0 C
+CONCENTRATION 0.d0 M
+END
+
+INITIAL_CONDITION
+CONDITION initial
+REGION all
+END
+
+BOUNDARY_CONDITION
+FACE west
+CONDITION initial
+REGION West
+END
+
+:skip
+BOUNDARY_CONDITION
+FACE top
+CONDITION flux
+REGION Inlet
+END
+:noskip
+
+STRATA
+MATERIAL 543.h5
+:MATERIAL 543_active.h5
+:MATERIAL Soil1
+:REGION all
+END
+
