@@ -373,16 +373,16 @@ subroutine StructuredGridComputeSpacing(structured_grid,nG2A,nG2L)
   do ng = 1,structured_grid%ngmax
     na = nG2A(ng)
     nl = nG2L(ng)
-    k= int(na/structured_grid%ngxy) + 1
-    j= int(mod(na,structured_grid%ngxy)/structured_grid%ngx) + 1
-    i= mod(mod(na,structured_grid%ngxy),structured_grid%ngx) + 1
+    k= int(na/structured_grid%nxy) + 1
+    j= int(mod(na,structured_grid%nxy)/structured_grid%nx) + 1
+    i= mod(mod(na,structured_grid%nxy),structured_grid%nx) + 1
     structured_grid%dxg(ng) = structured_grid%dx0(i)
     structured_grid%dyg(ng) = structured_grid%dy0(j)
     structured_grid%dzg(ng) = structured_grid%dz0(k)
     if (nl > 0) then
-      structured_grid%dxg(nl) = structured_grid%dx0(i)
-      structured_grid%dyg(nl) = structured_grid%dy0(j)
-      structured_grid%dzg(nl) = structured_grid%dz0(k)
+      structured_grid%dx(nl) = structured_grid%dx0(i)
+      structured_grid%dy(nl) = structured_grid%dy0(j)
+      structured_grid%dz(nl) = structured_grid%dz0(k)
     endif
   enddo
   
@@ -658,27 +658,30 @@ subroutine StructuredGridComputeVolumes(structured_grid,option,nL2G,volume)
   
   PetscReal, parameter :: Pi=3.1415926d0
   
-  PetscInt :: i, n, ng
+  PetscInt :: nl, ng
   PetscReal, pointer :: volume_p(:)
   PetscErrorCode :: ierr
   
   call VecGetArrayF90(volume,volume_p, ierr)
-  do n=1, structured_grid%nlmax
-    ng = nL2G(n)
-    volume_p(n) = structured_grid%dxg(ng) * structured_grid%dyg(ng) * &
-                  structured_grid%dzg(ng)
+  do nl=1, structured_grid%nlmax
+    volume_p(nl) = structured_grid%dx(nl) * structured_grid%dy(nl) * &
+                   structured_grid%dz(nl)
   enddo
   call VecRestoreArrayF90(volume,volume_p, ierr)
   
   write(*,'(" rank= ",i3,", nlmax= ",i6,", nlx,y,z= ",3i4, &
     & ", nxs,e = ",2i4,", nys,e = ",2i4,", nzs,e = ",2i4)') &
-    option%myrank,structured_grid%nlmax,structured_grid%nlx,structured_grid%nly,structured_grid%nlz, &
-    structured_grid%nxs,structured_grid%nxe,structured_grid%nys,structured_grid%nye,structured_grid%nzs,structured_grid%nze
+    option%myrank,structured_grid%nlmax,structured_grid%nlx, &
+      structured_grid%nly,structured_grid%nlz,structured_grid%nxs, &
+      structured_grid%nxe,structured_grid%nys,structured_grid%nye, &
+      structured_grid%nzs,structured_grid%nze
 
   write(*,'(" rank= ",i3,", ngmax= ",i6,", ngx,y,z= ",3i4, &
     & ", ngxs,e= ",2i4,", ngys,e= ",2i4,", ngzs,e= ",2i4)') &
-    option%myrank,structured_grid%ngmax,structured_grid%ngx,structured_grid%ngy,structured_grid%ngz, &
-    structured_grid%ngxs,structured_grid%ngxe,structured_grid%ngys,structured_grid%ngye,structured_grid%ngzs,structured_grid%ngze
+    option%myrank,structured_grid%ngmax,structured_grid%ngx, &
+      structured_grid%ngy,structured_grid%ngz,structured_grid%ngxs, &
+      structured_grid%ngxe,structured_grid%ngys,structured_grid%ngye, &
+      structured_grid%ngzs,structured_grid%ngze
 
 end subroutine StructuredGridComputeVolumes
 
