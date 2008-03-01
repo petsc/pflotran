@@ -115,13 +115,12 @@ init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
 	waypoint.o field.o general_grid.o co2_span_wagner.o utility.o \
 	coupler.o strata.o pflow_pckr_mod.o field.o pflow_mphase_ResJac.o \
 	richards_lite.o richards.o discretization.o
-unstructured_grid.o : option.o connection.o solver.o
-structured_grid.o : connection.o option.o fileio.o region.o solver.o
+unstructured_grid.o : option.o connection.o 
+structured_grid.o : connection.o option.o fileio.o 
 general_grid.o : grid.o realization.o hdf5.o
 discretization.o : grid.o structured_grid.o unstructured_grid.o option.o \
                    fileio.o
-grid.o : structured_grid.o unstructured_grid.o option.o region.o connection.o \
-	 solver.o
+grid.o : structured_grid.o unstructured_grid.o option.o region.o connection.o
 solver.o : option.o field.o
 region.o : fileio.o utility.o
 material.o : region.o option.o fileio.o field.o

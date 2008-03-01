@@ -183,7 +183,8 @@ subroutine Init(simulation,filename)
     ! is call within this function. 
     flow_stepper%convergence_context => ConvergenceContextCreate(flow_solver,option)
     call SNESSetConvergenceTest(flow_solver%snes,ConvergenceTest, &
-                                flow_stepper%convergence_context,ierr) 
+                                flow_stepper%convergence_context, &
+                                PETSC_NULL_FUNCTION,ierr) 
 
     call printMsg(option,"  Finished setting up FLOW SNES ")
 
