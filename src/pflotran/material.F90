@@ -499,6 +499,7 @@ subroutine SaturationFunctionCompute(pressure,saturation,relative_perm, &
         relative_perm = 1.d0
         return
       else if (pc < one_over_alpha+saturation_function%BC_pressure_offset) then
+        Sr = saturation_function%Sr(iphase)
         Se = saturation_function%BC_spline_coefficients(1)+ &
              saturation_function%BC_spline_coefficients(2)*pc+ &
              saturation_function%BC_spline_coefficients(3)*pc**2.d0+ &
