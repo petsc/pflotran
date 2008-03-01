@@ -273,6 +273,7 @@ subroutine DiscretizationCreateVector(discretization,dm_index,vector,vector_type
       end select
     case(UNSTRUCTURED_GRID)
   end select
+  call VecSet(vector,0.d0,ierr)
   
 end subroutine DiscretizationCreateVector
 
@@ -297,6 +298,7 @@ subroutine DiscretizationDuplicateVector(discretization,vector1,vector2)
     case(STRUCTURED_GRID,UNSTRUCTURED_GRID)
       call VecDuplicate(vector1,vector2,ierr)
   end select
+  call VecCopy(vector1,vector2,ierr)
   
 end subroutine DiscretizationDuplicateVector
 
