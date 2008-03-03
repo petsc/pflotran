@@ -52,6 +52,7 @@ util_obj  = ${common_src}fileio.o \
 
 pflotran_obj = ${common_src}pflow_pckr_mod.o \
 	${common_src}option.o \
+	${common_src}logging.o \
 	${common_src}reactive_transport_aux.o\
 	${common_src}richards_aux.o\
 	${common_src}richards_lite_aux.o\
@@ -108,26 +109,26 @@ test: test.o functions.o
 
 # Dependencies stemming from "use" statements.
 # These ensure that the module files are built in the correct order.
-pflotran.o : simulation.o output.o init.o
+pflotran.o : simulation.o output.o init.o timestepper.o logging.o
 simulation.o : timestepper.o realization.o 
 init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
 	simulation.o fileio.o material.o region.o condition.o convergence.o \
 	waypoint.o field.o general_grid.o co2_span_wagner.o utility.o \
 	coupler.o strata.o pflow_pckr_mod.o field.o pflow_mphase_ResJac.o \
-	richards_lite.o richards.o discretization.o
+	richards_lite.o richards.o discretization.o logging.o
 unstructured_grid.o : option.o connection.o 
 structured_grid.o : connection.o option.o fileio.o 
-general_grid.o : grid.o realization.o hdf5.o
+general_grid.o : grid.o realization.o hdf5.o logging.o
 discretization.o : grid.o structured_grid.o unstructured_grid.o option.o \
                    fileio.o
 grid.o : structured_grid.o unstructured_grid.o option.o region.o connection.o
 solver.o : option.o field.o
-region.o : fileio.o utility.o
+region.o : fileio.o utility.o logging.o
 material.o : region.o option.o fileio.o field.o
 coupler.o : condition.o connection.o region.o fileio.o grid.o
 breakthrough.o : region.o option.o fileio.o
 convergence.o : option.o solver.o
-condition.o : fileio.o utility.o option.o field.o
+condition.o : fileio.o utility.o option.o field.o logging.o
 realization.o : grid.o option.o region.o condition.o coupler.o material.o \
 	     strata.o waypoint.o field.o hydrostatic.o debug.o breakthrough.o \
              patch.o level.o discretization.o
@@ -142,7 +143,7 @@ hydrostatic.o : option.o grid.o coupler.o condition.o connection.o region.o \
 waypoint.o : option.o 
 output.o : grid.o structured_grid.o option.o realization.o field.o \
            coupler.o connection.o hdf5.o breakthrough.o reactive_transport.o \
-           richards.o richards_lite.o discretization.o
+           richards.o richards_lite.o discretization.o logging.o
 pflow_mphase_ResJac.o : realization.o option.o field.o grid.o coupler.o \
                         translator_mixed_fluid_mph.o discretization.o
 translator_mixed_fluid_mph.o : pflow_pckr_mod.o
@@ -157,6 +158,6 @@ richards_aux.o : option.o material.o water_eos.o
 richards_lite_aux.o : option.o material.o water_eos.o
 timestepper.o : richards.o richards_lite.o pflow_mphase_ResJac.o \
                 realization.o grid.o option.o field.o solver.o \
-                output.o convergence.o checkpoint.o waypoint.o
-hdf5.o : realization.o option.o
-checkpoint.o : realization.o
+                output.o convergence.o checkpoint.o waypoint.o logging.o
+hdf5.o : realization.o option.o logging.o
+checkpoint.o : realization.o logging.o

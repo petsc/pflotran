@@ -153,31 +153,48 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
     endif
   endif
 
-  call SNESDefaultConverged(snes_,it,xnorm,pnorm,fnorm,reason,PETSC_NULL_OBJECT,ierr)
- 
+  call SNESDefaultConverged(snes_,it,xnorm,pnorm,fnorm,reason, &
+                            PETSC_NULL_OBJECT,ierr)
+  string2 = ""
   if (reason <= 0 .and. solver%check_infinity_norm == PETSC_TRUE) then
   
-    call SNESGetFunction(snes_,residual_vec,PETSC_NULL_OBJECT,PETSC_NULL_INTEGER, &
-                         ierr)
+    call SNESGetFunction(snes_,residual_vec,PETSC_NULL_OBJECT, &
+                         PETSC_NULL_INTEGER,ierr)
 
     call VecNorm(residual_vec,NORM_INFINITY,inorm_residual,ierr)
+
+print *, 'here2' 
+    write(string2,'(/,"  inorm:",es12.4)') inorm_residual
   
     if (inorm_residual < solver%newton_inf_tol) then
-      if (option%myrank == 0) print *, 'converged from infinity', inorm_residual
+!      if (option%myrank == 0) print *, 'converged from infinity', inorm_residual
       reason = 1
     endif
-
+    write(string,'("---", &
+                 & /,"  xnorm:",es12.4, &
+                 & /,"  pnorm:",es12.4, &
+                 & /,"  fnorm:",es12.4, &
+                 & /,"  inorm:",es12.4, &
+                 & /,"  reason:",i3)') xnorm, pnorm, fnorm, inorm_residual, &
+                                       reason
+  else
+    write(string,'("---", &
+                 & /,"  xnorm:",es12.4, &
+                 & /,"  pnorm:",es12.4, &
+                 & /,"  fnorm:",es12.4, &
+                 & /,"  reason:",i3)') xnorm, pnorm, fnorm, &
+                                       reason
   endif    
- 
-  if (option%myrank == 0 .and. solver%print_convergence == PETSC_TRUE) &
-    print *, 'snes_default', xnorm,pnorm,fnorm,reason
 
+  if (option%myrank == 0 .and. solver%print_convergence == PETSC_TRUE) &
+    print *, trim(string)
 
   if (solver%print_detailed_convergence == PETSC_TRUE) then
 
     call SNESGetSolution(snes_,solution_vec,ierr)
     ! the ctx object should really be PETSC_NULL_OBJECT.  A bug in petsc
-    call SNESGetFunction(snes_,residual_vec,PETSC_NULL_OBJECT,PETSC_NULL_INTEGER, &
+    call SNESGetFunction(snes_,residual_vec,PETSC_NULL_OBJECT, &
+                         PETSC_NULL_INTEGER, &
                          ierr)
     call SNESGetSolutionUpdate(snes_,update_vec,ierr)
     
