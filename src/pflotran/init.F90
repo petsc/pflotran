@@ -40,6 +40,7 @@ subroutine Init(simulation,filename)
   use Convergence_module
   use Waypoint_module
   use Patch_module
+  use Logging_module  
   
   use MPHASE_module
   use Richards_Lite_module
@@ -70,6 +71,11 @@ subroutine Init(simulation,filename)
   PetscInt :: temp_int
                        
   PetscErrorCode :: ierr
+
+  call PetscLogStagePush(logging%stage(INIT_STAGE),ierr)
+  call PetscLogEventBegin(logging%event_init,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,ierr)
   
   ! set pointers to objects
   flow_stepper => simulation%flow_stepper
@@ -224,6 +230,9 @@ subroutine Init(simulation,filename)
                      &++++++++++++++++++++++++++++",/)')
 
 
+  call PetscLogEventBegin(logging%event_setup,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,ierr)
   ! read any regions provided in external files
   call readRegionFiles(realization)
   ! clip regions and set up boundary connectivity, distance  
@@ -241,6 +250,9 @@ subroutine Init(simulation,filename)
       allocate(patch%imat(grid%ngmax))  ! allocate material id array
     call ReadStructuredGridHDF5(realization)
   endif
+  call PetscLogEventEnd(logging%event_setup,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,ierr)
 
   ! add waypoints associated with boundary conditions, source/sinks etc. to list
   call RealizationAddWaypointsToList(realization)
@@ -305,7 +317,12 @@ subroutine Init(simulation,filename)
   endif
   
   call printMsg(option,"  Finished Initialization")
-         
+
+  call PetscLogEventEnd(logging%event_init,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,ierr)
+  call PetscLogStagePop(ierr)
+
 end subroutine Init
 
 ! ************************************************************************** !
@@ -2016,6 +2033,7 @@ subroutine readMaterialsFromFile(realization,filename)
   use Option_module
   use Fileio_module
   use Patch_module
+  use Logging_module
 
   use HDF5_module
   
@@ -2049,6 +2067,9 @@ subroutine readMaterialsFromFile(realization,filename)
       string = "File: " // filename // " not found."
       call printErrMsg(option,string)
     endif
+    call PetscLogEventBegin(logging%event_hash_map, &
+                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
     do
       call fiReadFlotranString(fid,string,ierr)
       if (ierr /= 0) exit
@@ -2061,6 +2082,9 @@ subroutine readMaterialsFromFile(realization,filename)
         patch%imat(ghosted_id) = material_id
       endif
     enddo
+    call PetscLogEventEnd(logging%event_hash_map, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
     call GridDestroyHashTable(grid)
   endif
   

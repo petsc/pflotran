@@ -170,6 +170,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   use Option_module
   use Output_module
   use Checkpoint_module
+  use Logging_module  
   
   implicit none
   
@@ -192,6 +193,8 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   
   PetscLogDouble :: stepper_start_time, current_time, average_step_time
   PetscErrorCode :: ierr
+
+  call PetscLogStagePush(logging%stage(TS_STAGE),ierr)
   
   option => realization%option
   
@@ -227,8 +230,10 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
 
   ! print initial condition output if not a restarted sim
   if (option%restart_flag == PETSC_FALSE) then
+    call PetscLogStagePush(logging%stage(OUTPUT_STAGE),ierr)
     call Output(realization)
     call OutputBreakthrough(realization)
+    call PetscLogStagePop(ierr)
   endif
            
   call PetscGetTime(stepper_start_time, ierr)
@@ -252,10 +257,12 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
       ! update solution variables
     call StepperUpdateSolution(realization)
 
+    call PetscLogStagePush(option%log_stage(OUTPUT_STAGE),ierr)
     if (plot_flag) then
       call Output(realization)
     endif
     call OutputBreakthrough(realization)
+    call PetscLogStagePop(ierr)
   
     call StepperUpdateDT(flow_stepper,tran_stepper,option,timestep_cut_flag, &
                          num_const_timesteps,num_newton_iterations)
@@ -301,6 +308,8 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     write(IUNIT2,'(/," PFLOW steps = ",i6," newton = ",i6," cuts = ",i6)') &
           istep-1,master_stepper%newtcum,master_stepper%icutcum
   endif
+
+  call PetscLogStagePop(ierr)
 
 end subroutine StepperRun
 

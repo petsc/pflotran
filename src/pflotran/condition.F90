@@ -319,6 +319,7 @@ subroutine ConditionRead(condition,option,fid)
 
   use Option_module
   use Fileio_module
+  use Logging_module  
   
   implicit none
   
@@ -340,6 +341,10 @@ subroutine ConditionRead(condition,option,fid)
   PetscInt :: default_itype
   PetscInt :: array_size, length, idof
   PetscErrorCode :: ierr
+
+  call PetscLogEventBegin(logging%event_condition_read, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
 
   call ConditionDatasetInit(default_dataset)
   default_dataset%rank = 1
@@ -663,6 +668,10 @@ subroutine ConditionRead(condition,option,fid)
   call ConditionDatasetDestroy(default_datum)
   call ConditionDatasetDestroy(default_gradient)
     
+  call PetscLogEventEnd(logging%event_condition_read, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+
 end subroutine ConditionRead
 
 ! ************************************************************************** !
@@ -676,6 +685,7 @@ subroutine ConditionReadValues(option,keyword,string,dataset,units)
 
   use Fileio_module
   use Option_module
+  use Logging_module
 
   implicit none
   
@@ -690,7 +700,10 @@ subroutine ConditionReadValues(option,keyword,string,dataset,units)
   character(len=MAXSTRINGLENGTH) :: error_string
   PetscInt :: length, irank
   PetscErrorCode :: ierr
-  
+
+  call PetscLogEventBegin(logging%event_condition_read_values, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
   ierr = 0
   string2 = trim(string)
   call fiReadWord(string,word,.true.,ierr)
@@ -718,6 +731,10 @@ subroutine ConditionReadValues(option,keyword,string,dataset,units)
   else
     units = trim(word)
   endif
+
+  call PetscLogEventEnd(logging%event_condition_read_values, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
 
 end subroutine ConditionReadValues
 

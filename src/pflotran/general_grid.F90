@@ -372,6 +372,7 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
   use Connection_module
   use Grid_module
   use Option_module
+  use Logging_module
   
   implicit none
   
@@ -456,8 +457,14 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
 #ifdef HDF5_BROADCAST
     if (option%myrank == 0) then                           
 #endif
+      call PetscLogEventBegin(logging%event_h5dread_f, &
+                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
       call h5dread_f(data_set_id_up,HDF_NATIVE_INTEGER,upwind_ids,dims, &
                      hdf5_err,memory_space_id,file_space_id_up,prop_id)                     
+      call PetscLogEventEnd(logging%event_h5dread_f, &
+                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
 #ifdef HDF5_BROADCAST
     endif
     if (option%commsize > 1) &
@@ -469,8 +476,14 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
 #ifdef HDF5_BROADCAST
     if (option%myrank == 0) then                           
 #endif
+      call PetscLogEventBegin(logging%event_h5dread_f, &
+                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
       call h5dread_f(data_set_id_down,HDF_NATIVE_INTEGER,downwind_ids,dims, &
                      hdf5_err,memory_space_id,file_space_id_down,prop_id)                     
+      call PetscLogEventEnd(logging%event_h5dread_f, &
+                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)                              
 #ifdef HDF5_BROADCAST
     endif
     if (option%commsize > 1) &

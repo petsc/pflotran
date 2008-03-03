@@ -553,6 +553,7 @@ end subroutine GridCopyPetscVecToRealArray
 subroutine GridCreateNaturalToGhostedHash(grid,option)
 
   use Option_module
+  use Logging_module  
   
   implicit none
   
@@ -567,6 +568,10 @@ subroutine GridCreateNaturalToGhostedHash(grid,option)
 
   if (associated(grid%hash)) return
 
+  call PetscLogEventBegin(logging%event_hash_create, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
+                          
   ! initial guess of 10% of ids per hash
   ! must be at least 5 so that reallocation (*1.2) works below
   num_ids_per_hash = max(grid%nlmax/(grid%num_hash_bins/10),5)
@@ -611,6 +616,10 @@ subroutine GridCreateNaturalToGhostedHash(grid,option)
   call mpi_allreduce(max_num_ids_per_hash,num_in_hash,ONE_INTEGER,MPI_INTEGER, &
                      MPI_MAX,PETSC_COMM_WORLD,ierr)
   if (option%myrank == 0) print *, 'max_num_ids_per_hash:', num_in_hash
+
+  call PetscLogEventEnd(logging%event_hash_create, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
 
 end subroutine GridCreateNaturalToGhostedHash
 

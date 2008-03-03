@@ -358,6 +358,7 @@ subroutine RegionReadFromFileId(region,fid)
 
   use Fileio_module
   use Utility_module
+  use Logging_module
   
   implicit none
   
@@ -373,6 +374,10 @@ subroutine RegionReadFromFileId(region,fid)
   PetscInt :: max_size = 1000
   PetscInt :: count, temp_int
   PetscErrorCode :: ierr
+
+  call PetscLogEventBegin(logging%event_region_read_ascii, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
 
   backslash = achar(92)  ! 92 = "\" Some compilers choke on \" thinking it
                           ! is a double quote as in c/c++
@@ -411,6 +416,10 @@ subroutine RegionReadFromFileId(region,fid)
   endif
 
   deallocate(temp_int_array) 
+
+  call PetscLogEventEnd(logging%event_region_read_ascii, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
 
 end subroutine RegionReadFromFileId
 

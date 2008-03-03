@@ -58,7 +58,6 @@ PetscInt, parameter :: STRUCTURED_GRID = 1
 PetscInt, parameter :: UNSTRUCTURED_GRID = 2
 PetscInt, parameter :: AMR_GRID = 3
 
-
 ! condition types
 PetscInt, parameter :: DIRICHLET_BC = 1
 PetscInt, parameter :: NEUMANN_BC = 2

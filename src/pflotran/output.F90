@@ -1,7 +1,9 @@
 module Output_module
 
-  implicit none
+  use Logging_module  
   
+  implicit none
+
   private
 
 #include "definitions.h"
@@ -48,7 +50,13 @@ subroutine Output(realization)
   
   if (realization%output_option%print_hdf5) then
     call PetscGetTime(tstart,ierr) 
+    call PetscLogEventBegin(logging%event_output_hdf5, &
+                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
     call OutputHDF5(realization)
+    call PetscLogEventEnd(logging%event_output_hdf5, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
     call PetscGetTime(tend,ierr) 
     if (realization%option%myrank == 0) &
       print *, '      Seconds to write to HDF5 file: ', (tend-tstart)
@@ -56,7 +64,13 @@ subroutine Output(realization)
  
   if (realization%output_option%print_tecplot) then
     call PetscGetTime(tstart,ierr) 
+    call PetscLogEventBegin(logging%event_output_tecplot, &
+                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
     call OutputTecplot(realization)
+    call PetscLogEventEnd(logging%event_output_tecplot, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
     call PetscGetTime(tend,ierr) 
     if (realization%option%myrank == 0) &
       print *, '      Seconds to write to Tecplot file(s): ', (tend-tstart)
@@ -616,7 +630,11 @@ subroutine OutputFluxVelocitiesTecplot(realization,iphase, &
   type(connection_type), pointer :: cur_connection_set
     
   nullify(array)
-  
+
+  call PetscLogEventBegin(logging%event_output_write_flux_tecplot, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+                          
   discretization => realization%discretization
   patch => realization%patch
   grid => patch%grid
@@ -912,6 +930,10 @@ subroutine OutputFluxVelocitiesTecplot(realization,iphase, &
   deallocate(indices)
 
   close(IUNIT3)
+
+  call PetscLogEventEnd(logging%event_output_write_flux_tecplot, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
   
 end subroutine OutputFluxVelocitiesTecplot
 
@@ -947,6 +969,10 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
   Vec :: natural_vec
   Vec :: global_vec
   PetscInt, parameter :: fid=86
+
+  call PetscLogEventBegin(logging%event_output_vec_tecplot, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
 
   option => realization%option
   patch => realization%patch
@@ -1026,7 +1052,11 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
   call VecDestroy(global_vec,ierr)
 
   close(fid)
-  
+
+  call PetscLogEventEnd(logging%event_output_vec_tecplot, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+                            
 end subroutine OutputVectorTecplot
 
 ! ************************************************************************** !
@@ -1080,7 +1110,11 @@ subroutine WriteTecplotStructuredGrid(fid,realization)
   type(patch_type), pointer :: patch  
   PetscInt :: i, j, k, count, nx, ny, nz
   PetscReal :: temp_real
-    
+
+  call PetscLogEventBegin(logging%event_output_str_grid_tecplot, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+                              
   patch => realization%patch
   grid => patch%grid
   option => realization%option
@@ -1157,7 +1191,11 @@ subroutine WriteTecplotStructuredGrid(fid,realization)
     enddo
 
   endif
-  
+
+  call PetscLogEventEnd(logging%event_output_str_grid_tecplot, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+                            
 end subroutine WriteTecplotStructuredGrid
 
 ! ************************************************************************** !
@@ -1198,6 +1236,10 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
   patch => realization%patch
   grid => patch%grid
   option => realization%option
+
+  call PetscLogEventBegin(logging%event_output_write_tecplot, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
   
   if (size_flag /= 0) then
     call MPI_Allreduce(size_flag,max_local_size,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
@@ -1325,6 +1367,10 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
     deallocate(real_data)
   endif
 
+  call PetscLogEventEnd(logging%event_output_write_tecplot, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
+
 end subroutine WriteTecplotDataSet
 
 ! ************************************************************************** !
@@ -1358,6 +1404,10 @@ subroutine OutputBreakthroughTecplot(realization)
   type(output_option_type), pointer :: output_option
   type(breakthrough_type), pointer :: breakthrough
   logical, save :: first = .true.
+
+  call PetscLogEventBegin(logging%event_output_breakthrough, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
   
   patch => realization%patch
   grid => patch%grid
@@ -1415,6 +1465,10 @@ subroutine OutputBreakthroughTecplot(realization)
   enddo
   write(fid,'(a)',advance="yes") ""
   close(fid)
+
+  call PetscLogEventEnd(logging%event_output_breakthrough, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
       
 end subroutine OutputBreakthroughTecplot
 
@@ -2172,6 +2226,10 @@ subroutine WriteHDF5Coordinates(name,option,length,array,file_id)
   integer(HSIZE_T) :: dims(3)
   PetscMPIInt :: rank
   
+  call PetscLogEventBegin(logging%event_output_coordinates_hdf5, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+                            
   ! write out grid structure
   rank = 1
   dims = 0
@@ -2188,12 +2246,22 @@ subroutine WriteHDF5Coordinates(name,option,length,array,file_id)
   call h5pset_dxpl_mpio_f(prop_id,H5FD_MPIO_INDEPENDENT_F,hdf5_err) ! must be independent and only from p0
 #endif
   if (option%myrank == 0) then
+    call PetscLogEventBegin(logging%event_h5dwrite_f, &
+                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)     
     call h5dwrite_f(data_set_id,H5T_NATIVE_DOUBLE,array,dims, &
                     hdf5_err,H5S_ALL_F,H5S_ALL_F,prop_id)
+    call PetscLogEventEnd(logging%event_h5dwrite_f, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)
   endif
   call h5pclose_f(prop_id,hdf5_err)
   call h5dclose_f(data_set_id,hdf5_err)
   call h5sclose_f(file_space_id,hdf5_err)
+
+  call PetscLogEventEnd(logging%event_output_coordinates_hdf5, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
 
 end subroutine WriteHDF5Coordinates
 #endif
@@ -2342,6 +2410,10 @@ subroutine OutputGetVarFromArray(realization,vec,ivar,isubvar)
 
   type(option_type), pointer :: option
 
+  call PetscLogEventBegin(logging%event_output_get_var_from_array, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+                        
   option => realization%option
 
   select case(ivar)
@@ -2374,6 +2446,10 @@ subroutine OutputGetVarFromArray(realization,vec,ivar,isubvar)
     case default
       call printErrMsg(realization%option,'IVAR not found in OutputGetVarFromArray')
   end select
+
+  call PetscLogEventEnd(logging%event_output_get_var_from_array, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
   
 end subroutine OutputGetVarFromArray
 
@@ -2422,7 +2498,11 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
   type(coupler_type), pointer :: boundary_condition
   type(connection_list_type), pointer :: connection_list
   type(connection_type), pointer :: cur_connection_set
-  
+
+  call PetscLogEventBegin(logging%event_output_get_cell_vel, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
+                            
   patch => realization%patch
   grid => patch%grid
   option => realization%option
@@ -2530,6 +2610,10 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
                                             min,min_loc+1,std_dev
     endif
   endif
+
+  call PetscLogEventEnd(logging%event_output_get_cell_vel, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
 
 end subroutine GetCellCenteredVelocities
 

@@ -89,6 +89,7 @@ subroutine Checkpoint(realization,steps,newtcum,icutcum, &
   use Discretization_module
   use Option_module
   use Field_module
+  use Logging_module
   
   use MPHASE_module
 
@@ -120,7 +121,11 @@ subroutine Checkpoint(realization,steps,newtcum,icutcum, &
   type(option_type), pointer :: option
   type(discretization_type), pointer :: discretization
   type(output_option_type), pointer :: output_option
-  
+
+  call PetscLogEventBegin(logging%event_checkpoint, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)  
+    
   field => realization%field
   option => realization%option
   discretization => realization%discretization
@@ -234,6 +239,10 @@ subroutine Checkpoint(realization,steps,newtcum,icutcum, &
   if (realization%option%myrank == 0) &
     print *, '      Seconds to write to checkpoint file: ', (tend-tstart)
 
+  call PetscLogEventEnd(logging%event_checkpoint, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)  
+
 end subroutine Checkpoint
 
 #endif
@@ -267,7 +276,8 @@ subroutine Restart(realization,steps,newtcum,icutcum, &
   use Discretization_module
   use Option_module
   use Field_module
-  
+  use Logging_module
+
   use MPHASE_module
 
   implicit none
@@ -290,6 +300,10 @@ subroutine Restart(realization,steps,newtcum,icutcum, &
   type(discretization_type), pointer :: discretization
   type(option_type), pointer :: option
   type(output_option_type), pointer :: output_option
+
+  call PetscLogEventBegin(logging%event_restart, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)  
   
   field => realization%field
   option => realization%option
@@ -350,6 +364,10 @@ subroutine Restart(realization,steps,newtcum,icutcum, &
   call PetscGetTime(tend,ierr) 
   if (realization%option%myrank == 0) &
     print *, '      Seconds to read checkpoint file: ', (tend-tstart)
+
+  call PetscLogEventEnd(logging%event_restart, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                        PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)  
   
 end subroutine Restart
 

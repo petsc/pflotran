@@ -34,6 +34,7 @@
   use Timestepper_module
   use Option_module
   use Init_module
+  use Logging_module
   
   implicit none
 
@@ -57,6 +58,8 @@
   call PetscInitialize(PETSC_NULL_CHARACTER, ierr)
   call MPI_Comm_rank(PETSC_COMM_WORLD,myrank, ierr)
   call MPI_Comm_size(PETSC_COMM_WORLD,commsize,ierr)
+  
+  call LoggingCreate()
 
   simulation => SimulationCreate()
   realization => simulation%realization
@@ -79,7 +82,7 @@
 
   call StepperRun(simulation%realization,simulation%flow_stepper, &
                   simulation%tran_stepper)
-  
+
 ! Clean things up.
   call SimulationDestroy(simulation)
 
@@ -112,6 +115,7 @@
 
   close(IUNIT2)
 
+  call LoggingDestroy()
   call PetscFinalize (ierr)
 
   end program pflotran

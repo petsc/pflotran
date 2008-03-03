@@ -81,6 +81,8 @@ module Option_module
     PetscTruth :: wallclock_stop_flag
     PetscLogDouble :: wallclock_stop_time
     
+    PetscInt :: log_stage(10)
+    
     logical :: numerical_derivatives
     logical :: compute_statistics
     
@@ -210,9 +212,11 @@ function OptionCreate()
   option%wallclock_stop_flag = PETSC_FALSE
   option%wallclock_stop_time = 0.d0
   
+  option%log_stage = 0
+  
   option%numerical_derivatives = .false.
   option%compute_statistics = .false.
-   
+
   OptionCreate => option
   
 end function OptionCreate
