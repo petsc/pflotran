@@ -164,29 +164,31 @@ subroutine Checkpoint(realization,steps,newtcum,icutcum, &
   call PetscBagGetData(bag, header, ierr); CHKERRQ(ierr)
 
   ! Register variables that are passed into timestepper().
-  call PetscBagRegisterInt(bag, header%num_newton_iterations, num_newton_iterations, &
+  call PetscBagRegisterInt(bag,header%num_newton_iterations, &
+                           num_newton_iterations, &
                            "num_newton_iterations", &
-                           "Number of Newton iterations in last SNES solve", ierr)
-  call PetscBagRegisterInt(bag, header%plot_number, output_option%plot_number, &
-                           "plot_number","plot_number", ierr)
-  call PetscBagRegisterInt(bag, header%num_const_timesteps, num_const_timesteps, &
-                           "num_const_timesteps","num_const_timesteps", ierr)
+                           "Number of Newton iterations in last SNES solve", &
+                           ierr)
+  call PetscBagRegisterInt(bag,header%plot_number,output_option%plot_number, &
+                           "plot_number","plot_number",ierr)
+  call PetscBagRegisterInt(bag,header%num_const_timesteps,num_const_timesteps, &
+                           "num_const_timesteps","num_const_timesteps",ierr)
   
   ! Register relevant components of the stepper.
-  call PetscBagRegisterReal(bag, header%flow_time, option%flow_time, "time", &
-                            "Flow Simulation time (seconds)", ierr)
-  call PetscBagRegisterReal(bag, header%flow_dt, option%flow_dt, "dt", &
-                            "Current size of flow timestep (seconds)", ierr)
-  call PetscBagRegisterReal(bag, header%tran_time, option%tran_time, "time", &
-                            "Transport Simulation time (seconds)", ierr)
-  call PetscBagRegisterReal(bag, header%tran_dt, option%tran_dt, "dt", &
-                            "Current size of transport timestep (years)", ierr)
-  call PetscBagRegisterInt(bag, header%steps, steps, "steps", &
-                            "Total number of flow steps taken", ierr)
-  call PetscBagRegisterInt(bag, header%newtcum, newtcum, "newtcum", &
-                            "Total number of Newton steps taken", ierr)
-  call PetscBagRegisterInt(bag, header%icutcum, icutcum, "icutcum", &
-                            "Total number of time step cuts", ierr)
+  call PetscBagRegisterReal(bag,header%flow_time,option%flow_time,"time", &
+                            "Flow Simulation time (seconds)",ierr)
+  call PetscBagRegisterReal(bag,header%flow_dt,option%flow_dt,"dt", &
+                            "Current size of flow timestep (seconds)",ierr)
+  call PetscBagRegisterReal(bag,header%tran_time,option%tran_time,"time", &
+                            "Transport Simulation time (seconds)",ierr)
+  call PetscBagRegisterReal(bag,header%tran_dt,option%tran_dt,"dt", &
+                            "Current size of transport timestep (years)",ierr)
+  call PetscBagRegisterInt(bag,header%steps,steps,"steps", &
+                            "Total number of flow steps taken",ierr)
+  call PetscBagRegisterInt(bag,header%newtcum,newtcum,"newtcum", &
+                            "Total number of Newton steps taken",ierr)
+  call PetscBagRegisterInt(bag,header%icutcum,icutcum,"icutcum", &
+                            "Total number of time step cuts",ierr)
 
   ! Actually write the components of the PetscBag and then free it.
   call PetscBagView(bag, viewer, ierr)
@@ -207,8 +209,8 @@ subroutine Checkpoint(realization,steps,newtcum,icutcum, &
   ! that holds variables derived from the primary ones via the translator.
   select case(option%iflowmode)
     case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
-      call DiscretizationLocalToGlobal(realization%discretization,field%iphas_loc, &
-                             global_vec,ONEDOF)
+      call DiscretizationLocalToGlobal(realization%discretization, &
+                                       field%iphas_loc,global_vec,ONEDOF)
       call VecView(global_vec, viewer, ierr)
       if (option%iflowmode == MPH_MODE) then
       ! get vardof vec from mphase
@@ -220,13 +222,17 @@ subroutine Checkpoint(realization,steps,newtcum,icutcum, &
   ! Porosity and permeability.
   ! (We only write diagonal terms of the permeability tensor for now, 
   ! since we have yet to add the full-tensor formulation.)
-  call DiscretizationLocalToGlobal(discretization,field%porosity_loc,global_vec,ONEDOF)
+  call DiscretizationLocalToGlobal(discretization,field%porosity_loc, &
+                                   global_vec,ONEDOF)
   call VecView(global_vec,viewer,ierr)
-  call DiscretizationLocalToGlobal(discretization,field%perm_xx_loc,global_vec,ONEDOF)
+  call DiscretizationLocalToGlobal(discretization,field%perm_xx_loc, &
+                                   global_vec,ONEDOF)
   call VecView(global_vec,viewer,ierr)
-  call DiscretizationLocalToGlobal(discretization,field%perm_yy_loc,global_vec,ONEDOF)
+  call DiscretizationLocalToGlobal(discretization,field%perm_yy_loc, &
+                                   global_vec,ONEDOF)
   call VecView(global_vec,viewer,ierr)
-  call DiscretizationLocalToGlobal(discretization,field%perm_zz_loc,global_vec,ONEDOF)
+  call DiscretizationLocalToGlobal(discretization,field%perm_zz_loc, &
+                                   global_vec,ONEDOF)
   call VecView(global_vec,viewer,ierr)
 
   call VecDestroy(global_vec,ierr)
@@ -234,7 +240,8 @@ subroutine Checkpoint(realization,steps,newtcum,icutcum, &
   ! We are finished, so clean up.
   call PetscViewerDestroy(viewer, ierr)
 
-  if(option%myrank == 0) write(*, '(" --> Dump checkpoint file: ", a16)') trim(fname)
+  if (option%myrank == 0) &
+    write(*, '(" --> Dump checkpoint file: ", a16)') trim(fname)
   call PetscGetTime(tend,ierr) 
   if (realization%option%myrank == 0) &
     print *, '      Seconds to write to checkpoint file: ', (tend-tstart)
@@ -311,9 +318,10 @@ subroutine Restart(realization,steps,newtcum,icutcum, &
   output_option => realization%output_option
   
   call PetscGetTime(tstart,ierr)   
-  if (option%myrank == 0) print *,'--> Open checkpoint file: ', trim(option%restart_file)
-  call PetscViewerBinaryOpen(PETSC_COMM_WORLD, option%restart_file, FILE_MODE_READ, &
-                             viewer, ierr)
+  if (option%myrank == 0) &
+    print *,'--> Open checkpoint file: ', trim(option%restart_file)
+  call PetscViewerBinaryOpen(PETSC_COMM_WORLD,option%restart_file, &
+                             FILE_MODE_READ,viewer,ierr)
  
   ! Get the header data.
   call PetscBagLoad(viewer, bag, ierr)
@@ -333,15 +341,19 @@ subroutine Restart(realization,steps,newtcum,icutcum, &
   ! Load the PETSc vectors.
   call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL)
 
-  call VecLoadIntoVector(viewer, field%flow_xx, ierr)
-  call VecCopy(field%flow_xx, field%flow_yy, ierr)
+  call VecLoadIntoVector(viewer,field%flow_xx,ierr)
+  call DiscretizationGlobalToLocal(discretization,field%flow_xx, &
+                                   field%flow_xx_loc,NFLOWDOF)
+  call VecCopy(field%flow_xx,field%flow_yy,ierr)
   
   select case(option%iflowmode)
     case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
       call VecLoadIntoVector(viewer, global_vec, ierr)      
-      call DiscretizationGlobalToLocal(discretization,global_vec,field%iphas_loc,ONEDOF)
-      call VecCopy(field%iphas_loc, field%iphas_old_loc, ierr)
-      call DiscretizationLocalToLocal(discretization,field%iphas_loc,field%iphas_old_loc,ONEDOF)
+      call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                       field%iphas_loc,ONEDOF)
+      call VecCopy(field%iphas_loc,field%iphas_old_loc,ierr)
+      call DiscretizationLocalToLocal(discretization,field%iphas_loc, &
+                                      field%iphas_old_loc,ONEDOF)
       if (option%iflowmode == MPH_MODE) then
       ! set vardof vec in mphase
       endif
@@ -349,13 +361,17 @@ subroutine Restart(realization,steps,newtcum,icutcum, &
   end select
   
   call VecLoadIntoVector(viewer, global_vec, ierr)
-  call DiscretizationGlobalToLocal(discretization,global_vec,field%porosity_loc,ONEDOF)
-  call VecLoadIntoVector(viewer, global_vec, ierr)
-  call DiscretizationGlobalToLocal(discretization,global_vec,field%perm_xx_loc,ONEDOF)
-  call VecLoadIntoVector(viewer, global_vec, ierr)
-  call DiscretizationGlobalToLocal(discretization,global_vec,field%perm_yy_loc,ONEDOF)
-  call VecLoadIntoVector(viewer, global_vec, ierr)
-  call DiscretizationGlobalToLocal(discretization,global_vec,field%perm_zz_loc,ONEDOF)
+  call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                   field%porosity_loc,ONEDOF)
+  call VecLoadIntoVector(viewer,global_vec,ierr)
+  call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                   field%perm_xx_loc,ONEDOF)
+  call VecLoadIntoVector(viewer,global_vec,ierr)
+  call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                   field%perm_yy_loc,ONEDOF)
+  call VecLoadIntoVector(viewer,global_vec,ierr)
+  call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                   field%perm_zz_loc,ONEDOF)
   
   call VecDestroy(global_vec,ierr)
 

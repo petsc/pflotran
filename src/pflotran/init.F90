@@ -316,6 +316,7 @@ subroutine Init(simulation,filename)
     call verifyAllCouplers(realization)
   endif
   
+  call printMsg(option," ")
   call printMsg(option,"  Finished Initialization")
 
   call PetscLogEventEnd(logging%event_init,PETSC_NULL_OBJECT, &

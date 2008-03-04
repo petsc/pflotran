@@ -219,6 +219,12 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
       option%time = option%restart_time
       option%flow_time = option%restart_time
       option%tran_time = option%restart_time
+      master_stepper%steps = 0
+      master_stepper%newtcum = 0
+      master_stepper%icutcum = 0
+      num_const_timesteps = 0
+      num_newton_iterations = 0
+      realization%output_option%plot_number = 0
     endif
     if (associated(flow_stepper)) flow_stepper%cur_waypoint => &
       WaypointSkipToTime(realization%waypoints,option%time)
@@ -229,7 +235,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   call StepperUpdateSolution(realization)
 
   ! print initial condition output if not a restarted sim
-  if (option%restart_flag == PETSC_FALSE) then
+  if (realization%output_option%plot_number == 0) then
     call PetscLogStagePush(logging%stage(OUTPUT_STAGE),ierr)
     call Output(realization)
     call OutputBreakthrough(realization)

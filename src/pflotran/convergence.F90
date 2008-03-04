@@ -168,19 +168,16 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
       reason = 1
     endif
     if (option%myrank == 0 .and. solver%print_convergence == PETSC_TRUE) &
-      write(*,'("  xnorm:",es12.4, &
-              &  ,"  pnorm:",es12.4, &
-              &  ,"  fnorm:",es12.4, &
-              &  ,"  inorm:",es12.4, &
-              & /,"  reason:",i3, &
-              & /,"  --")') xnorm, pnorm, fnorm, inorm_residual, reason
+      write(*,'(" fnorm:",es12.4, &
+              & ,"  pnorm:",es12.4, &
+              & ,"  inorm:",es12.4, &
+              & ,"  reason:",i3)') fnorm, pnorm, inorm_residual, reason
   else
     if (option%myrank == 0 .and. solver%print_convergence == PETSC_TRUE) &
-      write(*,'("  xnorm:",es12.4, &
-              &  ,"  pnorm:",es12.4, &
-              &  ,"  fnorm:",es12.4, &
-              & /,"  reason:",i3, &
-              & /,"  --")') xnorm, pnorm, fnorm, reason
+      write(*,'(" fnorm:",es12.4, &
+              & ,"  pnorm:",es12.4, &
+              & ,20x, &
+              & ,"  reason:",i3)') fnorm, pnorm, reason
   endif    
 
   if (solver%print_detailed_convergence == PETSC_TRUE) then
