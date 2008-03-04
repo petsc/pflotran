@@ -549,17 +549,15 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   type(realization_type) :: realization
   type(stepper_type) :: stepper
 
-  character(len=MAXSTRINGLENGTH) :: string, string2, string3
-
-  logical :: plot_flag, timestep_cut_flag
+  logical :: timestep_cut_flag
   PetscInt :: num_newton_iterations
+  
+  character(len=MAXSTRINGLENGTH) :: string, string2, string3
   PetscErrorCode :: ierr
   PetscInt :: icut ! Tracks the number of time step reductions applied
   SNESConvergedReason :: snes_reason 
   PetscInt :: update_reason, it_linear=0, it_snes
-  PetscInt :: n, nmax_inf
-  PetscReal m_r2norm, s_r2norm, norm_inf, s_r2norm0, norm_inf0, r2norm
-  PetscReal, pointer :: r_p(:)  
+  PetscReal :: fnorm, scaled_fnorm, inorm
   Vec :: global_vec
   
   PetscInt, save :: linear_solver_divergence_count = 0
@@ -588,11 +586,16 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   ! vector, as that needs to be done within the residual calculation routine
   ! because that routine may get called several times during one Newton step
   ! if a method such as line search is being used.
-  call DiscretizationLocalToLocal(discretization,field%porosity_loc,field%porosity_loc,ONEDOF)
-  call DiscretizationLocalToLocal(discretization,field%tor_loc,field%tor_loc,ONEDOF)
-  call DiscretizationLocalToLocal(discretization,field%icap_loc,field%icap_loc,ONEDOF)
-  call DiscretizationLocalToLocal(discretization,field%ithrm_loc,field%ithrm_loc,ONEDOF)
-  call DiscretizationLocalToLocal(discretization,field%iphas_loc,field%iphas_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%porosity_loc, &
+                                  field%porosity_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%tor_loc, &
+                                  field%tor_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%icap_loc, &
+                                  field%icap_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%ithrm_loc, &
+                                  field%ithrm_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%iphas_loc, &
+                                  field%iphas_loc,ONEDOF)
   
   if (option%myrank == 0) then
     write(*,'(/,2("=")," FLOW ",52("="))')
@@ -616,32 +619,10 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
 ! do we really need all this? - geh 
     call SNESGetIterationNumber(solver%snes,num_newton_iterations, ierr)
     it_snes = num_newton_iterations
-    call VecNorm(field%flow_r, NORM_2, r2norm, ierr) 
-    call VecGetArrayF90(field%flow_r, r_p, ierr)
-    
-    s_r2norm = 0.D0 ; norm_inf = -1.D0 ; nmax_inf =-1
-    do n=1, discretization%grid%nlmax
-       s_r2norm = s_r2norm + r_p(n)* r_p(n)
-       if(dabs(r_p(n))> norm_inf)then
-          norm_inf = dabs(r_p(n))
-          nmax_inf = discretization%grid%nL2A(n)
-       endif     
-    enddo 
-   call VecRestoreArrayF90(field%flow_r, r_p, ierr)
-   
-    if(option%commsize >1)then 
-    call MPI_REDUCE(s_r2norm, s_r2norm0,ONE_INTEGER, MPI_DOUBLE_PRECISION ,MPI_SUM,ZERO_INTEGER, PETSC_COMM_WORLD,ierr)
-    call MPI_REDUCE(norm_inf, norm_inf0,ONE_INTEGER, MPI_DOUBLE_PRECISION, MPI_MAX,ZERO_INTEGER, PETSC_COMM_WORLD,ierr)
-    if(option%myrank==0) then
-      s_r2norm =s_r2norm0
-      norm_inf =norm_inf0
-    endif
-   endif
-    s_r2norm = dsqrt(s_r2norm)
-    m_r2norm = s_r2norm/discretization%grid%nmax   
-#if (PETSC_VERSION_RELEASE == 0 || PETSC_VERSION_SUBMINOR == 3)      
+    call VecNorm(field%flow_r,NORM_2,fnorm,ierr) 
+    call VecNorm(field%flow_r,NORM_INFINITY,inorm,ierr)
+    scaled_fnorm = fnorm/discretization%grid%nmax   
     call SNESGetLinearSolveIterations(solver%snes, it_linear, ierr)
-#endif      
     call SNESGetConvergedReason(solver%snes, snes_reason, ierr)
 
     update_reason = 1
@@ -667,8 +648,9 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
 
       if (icut > stepper%icut_max .or. option%flow_dt<1.d-20) then
         if (option%myrank == 0) then
-          print *,"--> icut_max exceeded: icut/icutmax= ",icut,stepper%icut_max, &
-                  "t= ",option%flow_time/realization%output_option%tconv, " dt= ", &
+          print *,"--> icut_max exceeded: icut/icutmax= ",icut, &
+                  stepper%icut_max, "t= ", &
+                  option%flow_time/realization%output_option%tconv, " dt= ", &
                   option%flow_dt/realization%output_option%tconv
           print *,"Stopping execution!"
         endif
@@ -720,9 +702,11 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
                                    global_vec,GLOBAL)
     select case(option%iflowmode)
       case(RICHARDS_MODE)
-        call RichardsGetVarFromArray(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
+        call RichardsGetVarFromArray(realization,global_vec, &
+                                     LIQUID_SATURATION,ZERO_INTEGER)
       case(RICHARDS_LITE_MODE)
-        call RichardsLiteGetVarFromArray(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
+        call RichardsLiteGetVarFromArray(realization,global_vec, &
+                                         LIQUID_SATURATION,ZERO_INTEGER)
       case(MPH_MODE)
     end select
     call DiscretizationGlobalToLocal(realization%discretization, &
@@ -734,19 +718,23 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   if (option%myrank == 0) then
     if (mod(stepper%steps,option%imod) == 0 .or. stepper%steps == 1) then
       write(*, '(/," FLOW ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1,"]", &
-      & " snes_conv_reason: ",i4,/,"  newt= ",i2," [",i6,"]"," cut= ",i2," [",i4,"]")') &
-      stepper%steps,option%flow_time/realization%output_option%tconv, &
-      option%flow_dt/realization%output_option%tconv,realization%output_option%tunit, &
-      snes_reason,num_newton_iterations,stepper%newtcum,icut,stepper%icutcum
+        & " snes_conv_reason: ",i4,/,"  newt= ",i2," [",i6,"]"," cut= ",i2, &
+        & " [",i4,"]")') &
+        stepper%steps,option%flow_time/realization%output_option%tconv, &
+        option%flow_dt/realization%output_option%tconv, &
+        realization%output_option%tunit,snes_reason,num_newton_iterations, &
+        stepper%newtcum,icut,stepper%icutcum
 
       print *,' --> SNES Linear/Non-Linear Interations = ',it_linear,it_snes
-      print *,' --> SNES Residual: ', r2norm, s_r2norm, m_r2norm, norm_inf 
+      print *,' --> SNES Residual: ', fnorm, scaled_fnorm, inorm 
        
       write(IUNIT2, '(" FLOW ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1, &
-      & "]"," snes_conv_reason: ",i4,/,"  newt= ",i2," [",i6,"]"," cut= ",i2," [",i4, &
-      & "]")') stepper%steps,option%flow_time/realization%output_option%tconv, &
-      option%flow_dt/realization%output_option%tconv, &
-      realization%output_option%tunit, snes_reason,num_newton_iterations,stepper%newtcum,icut,stepper%icutcum
+        & "]"," snes_conv_reason: ",i4,/,"  newt= ",i2," [",i6,"]"," cut= ", &
+        & i2," [",i4,"]")') stepper%steps, &
+        option%flow_time/realization%output_option%tconv, &
+        option%flow_dt/realization%output_option%tconv, &
+        realization%output_option%tunit, snes_reason,num_newton_iterations, &
+        stepper%newtcum,icut,stepper%icutcum
     endif
   endif
   
