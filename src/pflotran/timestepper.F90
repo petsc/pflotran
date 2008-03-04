@@ -185,6 +185,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   type(stepper_type), pointer :: master_stepper
   
   type(option_type), pointer :: option
+  type(waypoint_type), pointer :: prev_waypoint  
 
   logical :: plot_flag, timestep_cut_flag, stop_flag
   PetscInt :: istep, start_step
@@ -218,7 +219,9 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     else
       option%time = option%restart_time
       option%flow_time = option%restart_time
+      option%flow_dt = master_stepper%dt_min
       option%tran_time = option%restart_time
+      option%tran_dt = master_stepper%dt_min
       master_stepper%steps = 0
       master_stepper%newtcum = 0
       master_stepper%icutcum = 0
@@ -246,6 +249,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   start_step = master_stepper%steps+1
   do istep = start_step, master_stepper%nstepmax
 
+    prev_waypoint => master_stepper%cur_waypoint
     timestep_cut_flag = .false.
     plot_flag = .false.
     call StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag)
@@ -260,8 +264,15 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
       if (.not.associated(flow_stepper)) num_newton_iterations = idum
     endif
 
-      ! update solution variables
+    ! update solution variables
     call StepperUpdateSolution(realization)
+    
+    ! if a time step cut has occured, need to set the below back to original values
+    ! if they changed. 
+    if (timestep_cut_flag) then
+      master_stepper%cur_waypoint => prev_waypoint
+      plot_flag = .false.
+    endif
 
     call PetscLogStagePush(option%log_stage(OUTPUT_STAGE),ierr)
     if (plot_flag) then
