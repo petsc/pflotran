@@ -214,7 +214,7 @@ subroutine SaturationFunctionComputeSpline(option,saturation_function)
   alpha = saturation_function%alpha
   
   ! fill matix with values
-  saturation_function%BC_pressure_offset = 500.d0
+  saturation_function%BC_pressure_offset = 5.d0
   pressure_a = 1.d0/alpha+saturation_function%BC_pressure_offset
   pressure_b = 1.d0/alpha-saturation_function%BC_pressure_offset
   
@@ -493,7 +493,7 @@ subroutine SaturationFunctionCompute(pressure,saturation,relative_perm, &
       alpha = saturation_function%alpha
       one_over_alpha = 1.d0/alpha
       pc = option%pref-pressure
-#if 1      
+#if 0      
       if (pc < one_over_alpha-saturation_function%BC_pressure_offset) then
         saturation = 1.d0
         relative_perm = 1.d0

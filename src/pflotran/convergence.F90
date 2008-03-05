@@ -168,7 +168,8 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
   call SNESDefaultConverged(snes_,it,xnorm,pnorm,fnorm,reason, &
                             PETSC_NULL_OBJECT,ierr)
 
-  if (reason <= 0 .and. solver%check_infinity_norm == PETSC_TRUE) then
+!  if (reason <= 0 .and. solver%check_infinity_norm == PETSC_TRUE) then
+  if (solver%check_infinity_norm == PETSC_TRUE) then
   
     call SNESGetFunction(snes_,residual_vec,PETSC_NULL_OBJECT, &
                          PETSC_NULL_INTEGER,ierr)
@@ -177,7 +178,10 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
 
     if (inorm_residual < solver%newton_inf_tol) then
 !      if (option%myrank == 0) print *, 'converged from infinity', inorm_residual
-      reason = 1
+      reason = 9
+    else
+      if (reason > 0 .and. inorm_residual > 100.d0*solver%newton_inf_tol) &
+        reason = 0
     endif
     if (option%myrank == 0 .and. solver%print_convergence == PETSC_TRUE) &
       write(*,'(i3,"  fnorm:",es12.4, &
