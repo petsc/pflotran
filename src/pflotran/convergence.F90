@@ -180,7 +180,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
 !      if (option%myrank == 0) print *, 'converged from infinity', inorm_residual
       reason = 9
     else
-      if (reason > 0 .and. inorm_residual > 100.d0*solver%newton_inf_tol) &
+      if (reason > 0 .and. inorm_residual < 100.d0*solver%newton_inf_tol) &
         reason = 0
     endif
     if (option%myrank == 0 .and. solver%print_convergence == PETSC_TRUE) &
