@@ -14,7 +14,6 @@ module Timestepper_module
   
     PetscInt :: steps         ! The number of time-steps taken by the code.
     PetscInt :: nstepmax      ! Maximum number of timesteps taken by the code.
-    PetscInt :: newton_max    ! Maximum number of Newton steps for one time step.
     PetscInt :: icut_max      ! Maximum number of timestep cuts within one time step.
     PetscInt :: ndtcmx        ! Steps needed after cutting to increase time step
     PetscInt :: newtcum       ! Total number of Newton steps taken.
@@ -56,7 +55,6 @@ function TimestepperCreate()
   stepper%steps = 0
   stepper%nstepmax = 999999
   
-  stepper%newton_max = 16
   stepper%icut_max = 16
   stepper%ndtcmx = 5
   stepper%newtcum = 0
@@ -123,10 +121,6 @@ subroutine TimestepperRead(stepper,fid,option)
       case('TS_ACCELERATION')
         call fiReadInt(string,stepper%iaccel,ierr)
         call fiDefaultMsg(option%myrank,'iaccel',ierr)
-
-      case('MAX_NEWTON_ITERATIONS')
-        call fiReadInt(string,stepper%newton_max,ierr)
-        call fiDefaultMsg(option%myrank,'newton_max',ierr)
 
       case('MAX_TS_CUTS')
         call fiReadInt(string,stepper%icut_max,ierr)
@@ -239,10 +233,8 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
 
   ! print initial condition output if not a restarted sim
   if (realization%output_option%plot_number == 0) then
-    call PetscLogStagePush(logging%stage(OUTPUT_STAGE),ierr)
-    call Output(realization)
-    call OutputBreakthrough(realization)
-    call PetscLogStagePop(ierr)
+    plot_flag = .true.
+    call Output(realization,plot_flag)
   endif
            
   call PetscGetTime(stepper_start_time, ierr)
@@ -274,12 +266,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
       plot_flag = .false.
     endif
 
-    call PetscLogStagePush(option%log_stage(OUTPUT_STAGE),ierr)
-    if (plot_flag) then
-      call Output(realization)
-    endif
-    call OutputBreakthrough(realization)
-    call PetscLogStagePop(ierr)
+    call Output(realization,plot_flag)
   
     call StepperUpdateDT(flow_stepper,tran_stepper,option,timestep_cut_flag, &
                          num_const_timesteps,num_newton_iterations)
@@ -570,6 +557,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   PetscInt :: update_reason, it_linear=0, it_snes
   PetscReal :: fnorm, scaled_fnorm, inorm
   Vec :: global_vec
+  logical :: plot_flag
   
   PetscInt, save :: linear_solver_divergence_count = 0
 
@@ -666,8 +654,8 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
           print *,"Stopping execution!"
         endif
         realization%output_option%plot_name = 'cut_to_failure'
-        call Output(realization)
-        realization%output_option%plot_name = ''
+        plot_flag = .true.
+        call Output(realization,plot_flag)
         call PetscFinalize(ierr)
         stop
       endif
@@ -678,7 +666,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
     
       if (option%myrank == 0) write(*,'('' -> Cut time step: snes='',i3, &
         &   '' icut= '',i2,''['',i3,'']'','' t= '',1pe12.4, '' dt= '', &
-        &   1pe12.4,i2)')  snes_reason,icut,stepper%icutcum, &
+        &   1pe12.4,i3)')  snes_reason,icut,stepper%icutcum, &
             option%flow_time/realization%output_option%tconv, &
             option%flow_dt/realization%output_option%tconv,timestep_cut_flag
 
@@ -833,7 +821,7 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
   PetscInt :: update_reason, it_linear=0, it_snes
   PetscInt :: n, nmax_inf
   PetscReal m_r2norm, s_r2norm, norm_inf, s_r2norm0, norm_inf0, r2norm
-  
+  logical :: plot_flag  
   PetscReal, pointer :: r_p(:)  
 
   PetscInt, save :: linear_solver_divergence_count = 0
@@ -897,8 +885,8 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
           print *,"Stopping execution!"
         endif
         realization%output_option%plot_name = 'cut_to_failure'
-        call Output(realization)
-        realization%output_option%plot_name = ''
+        plot_flag = .true.
+        call Output(realization,plot_flag)
         call PetscFinalize(ierr)
         stop
       endif
@@ -909,7 +897,7 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
     
       if (option%myrank == 0) write(*,'('' -> Cut time step: snes='',i3, &
         &   '' icut= '',i2,''['',i3,'']'','' t= '',1pe12.4, '' dt= '', &
-        &   1pe12.4,i2)')  snes_reason,icut,stepper%icutcum, &
+        &   1pe12.4,i3)')  snes_reason,icut,stepper%icutcum, &
             option%tran_time/realization%output_option%tconv, &
             option%tran_dt/realization%output_option%tconv,timestep_cut_flag
 
@@ -1103,8 +1091,6 @@ subroutine TimestepperPrintInfo(stepper,fid,header,option)
     write(fid,'(a)') trim(header)
     write(*,'("max steps:",i6)') stepper%nstepmax
     write(fid,'("max steps:",i6)') stepper%nstepmax
-    write(*,'("max newton its:",i4)') stepper%newton_max
-    write(fid,'("max newton its:",i4)') stepper%newton_max
     write(*,'("max const steps:",i4)') stepper%ndtcmx
     write(fid,'("max const steps:",i4)') stepper%ndtcmx
     write(*,'("max cuts:",i4)') stepper%icut_max

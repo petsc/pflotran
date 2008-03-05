@@ -114,7 +114,8 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
   PetscReal, allocatable :: min_update_val(:)
   PetscReal, allocatable :: min_residual_val(:)
   
-  character(len=128) :: string, string2, string3
+  character(len=MAXSTRINGLENGTH) :: string, string2, string3
+  character(len=MAXWORDLENGTH) :: word
   logical :: print_sol_norm_info = .false.
   logical :: print_upd_norm_info = .false.
   logical :: print_res_norm_info = .false.
@@ -144,6 +145,17 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
   solver => context%solver
   option => context%option
 
+  if (option%use_touch_options) then
+    word = 'detailed_convergence'
+    if (OptionCheckTouch(word)) then
+      if (solver%print_detailed_convergence == PETSC_TRUE) then
+        solver%print_detailed_convergence = PETSC_FALSE
+      else
+        solver%print_detailed_convergence = PETSC_TRUE
+      endif
+    endif
+  endif
+  
   ! always take one iteration
   if (solver%force_at_least_1_iteration == PETSC_TRUE) then
 !    call SNESGetIterationNumber(snes_,it,ierr)
@@ -168,16 +180,16 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
       reason = 1
     endif
     if (option%myrank == 0 .and. solver%print_convergence == PETSC_TRUE) &
-      write(*,'(" fnorm:",es12.4, &
+      write(*,'(i3,"  fnorm:",es12.4, &
               & "  pnorm:",es12.4, &
               & "  inorm:",es12.4, &
-              & "  reason:",i3)') fnorm, pnorm, inorm_residual, reason
+              & "  reason:",i3)') it, fnorm, pnorm, inorm_residual, reason
   else
     if (option%myrank == 0 .and. solver%print_convergence == PETSC_TRUE) &
-      write(*,'(" fnorm:",es12.4, &
+      write(*,'(i3,"  fnorm:",es12.4, &
               & "  pnorm:",es12.4, &
               & 20x, &
-              & "  reason:",i3)') fnorm, pnorm, reason
+              & "  reason:",i3)') it, fnorm, pnorm, reason
   endif    
 
   if (solver%print_detailed_convergence == PETSC_TRUE) then

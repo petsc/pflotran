@@ -85,6 +85,7 @@ module Option_module
     
     logical :: numerical_derivatives
     logical :: compute_statistics
+    logical :: use_touch_options
     
   end type option_type
   
@@ -100,7 +101,7 @@ module Option_module
     logical :: print_tecplot 
     logical :: print_tecplot_velocities
     logical :: print_tecplot_flux_velocities
-
+    
     PetscInt :: plot_number
     character(len=MAXWORDLENGTH) :: plot_name
     
@@ -120,6 +121,7 @@ module Option_module
             printMsg, &
             OptionDotProduct, &
             OptionDestroy, &
+            OptionCheckTouch, &
             OutputOptionDestroy
 
 contains
@@ -216,6 +218,8 @@ function OptionCreate()
   
   option%numerical_derivatives = .false.
   option%compute_statistics = .false.
+
+  option%use_touch_options = .false.
 
   OptionCreate => option
   
@@ -414,6 +418,30 @@ function OptionDotProduct3(v1x,v1y,v1z,v2x,v2y,v2z)
   OptionDotProduct3 = v1x*v2x+v1y*v2y+v1z*v2z
 
 end function OptionDotProduct3
+
+! ************************************************************************** !
+!
+! OptionCheckTouch: Users can steer the code by touching files.
+! author: Glenn Hammond
+! date: 03/04/08
+!
+! ************************************************************************** !
+function OptionCheckTouch(filename)
+
+  character(len=MAXWORDLENGTH) :: filename
+  
+  PetscInt :: ios
+  PetscInt :: fid = 86
+  logical :: OptionCheckTouch
+  
+  OptionCheckTouch = .false.
+  open(unit=fid,file=trim(filename),status='old',iostat=ios)
+  if (ios == 0) then
+    close(fid,status='delete')
+    OptionCheckTouch = .true.
+  endif
+
+end function OptionCheckTouch
 
 ! ************************************************************************** !
 !

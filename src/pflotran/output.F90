@@ -37,47 +37,75 @@ contains
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine Output(realization)
+subroutine Output(realization,plot_flag)
 
   use Realization_module
+  use Option_module
   
   implicit none
   
   type(realization_type) :: realization
+  logical :: plot_flag
 
+  character(len=MAXWORDLENGTH) :: word
   PetscErrorCode :: ierr
   PetscLogDouble :: tstart, tend
-  
-  if (realization%output_option%print_hdf5) then
-    call PetscGetTime(tstart,ierr) 
-    call PetscLogEventBegin(logging%event_output_hdf5, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
-    call OutputHDF5(realization)
-    call PetscLogEventEnd(logging%event_output_hdf5, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
-    call PetscGetTime(tend,ierr) 
-    if (realization%option%myrank == 0) &
-      print *, '      Seconds to write to HDF5 file: ', (tend-tstart)
-  endif
- 
-  if (realization%output_option%print_tecplot) then
-    call PetscGetTime(tstart,ierr) 
-    call PetscLogEventBegin(logging%event_output_tecplot, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
-    call OutputTecplot(realization)
-    call PetscLogEventEnd(logging%event_output_tecplot, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
-                          PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
-    call PetscGetTime(tend,ierr) 
-    if (realization%option%myrank == 0) &
-      print *, '      Seconds to write to Tecplot file(s): ', (tend-tstart)
-  endif
-  
-  realization%output_option%plot_number = realization%output_option%plot_number + 1
 
+  call PetscLogStagePush(logging%stage(OUTPUT_STAGE),ierr)
+
+  ! check for plot request from active directory
+  if (.not.plot_flag) then
+
+    if (realization%option%use_touch_options) then
+      word = 'plot'
+      if (OptionCheckTouch(word)) then
+        realization%output_option%plot_name = 'plot'
+        plot_flag = .true.
+      endif
+    endif
+
+  endif
+
+  if (plot_flag) then
+  
+    if (realization%output_option%print_hdf5) then
+      call PetscGetTime(tstart,ierr) 
+      call PetscLogEventBegin(logging%event_output_hdf5, &
+                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
+      call OutputHDF5(realization)
+      call PetscLogEventEnd(logging%event_output_hdf5, &
+                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
+      call PetscGetTime(tend,ierr) 
+      if (realization%option%myrank == 0) &
+        print *, '      Seconds to write to HDF5 file: ', (tend-tstart)
+    endif
+   
+    if (realization%output_option%print_tecplot) then
+      call PetscGetTime(tstart,ierr) 
+      call PetscLogEventBegin(logging%event_output_tecplot, &
+                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                              PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
+      call OutputTecplot(realization)
+      call PetscLogEventEnd(logging%event_output_tecplot, &
+                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
+                            PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
+      call PetscGetTime(tend,ierr) 
+      if (realization%option%myrank == 0) &
+        print *, '      Seconds to write to Tecplot file(s): ', (tend-tstart)
+    endif
+  
+    realization%output_option%plot_number = realization%output_option%plot_number + 1
+  
+  endif
+  
+  call OutputBreakthrough(realization)
+
+  plot_flag = .false.
+
+  call PetscLogStagePop(ierr)
+  
 end subroutine Output
 
 ! ************************************************************************** !
@@ -99,7 +127,7 @@ subroutine OutputBreakthrough(realization)
 
 #if 0  
   if (realization%output_option%print_hdf5) then
-    call OutputHDF5(realization)
+    call OutputBreakthroughHDF5(realization)
   endif
 #endif
  
@@ -160,6 +188,7 @@ subroutine OutputTecplot(realization)
   ! open file
   if (len_trim(output_option%plot_name) > 2) then
     filename = trim(output_option%plot_name) // '.tec'
+    output_option%plot_name = ''
   else
     if (output_option%plot_number < 10) then
       write(filename,'("pflotran00",i1,".tec")') output_option%plot_number  

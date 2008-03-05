@@ -126,6 +126,7 @@ subroutine SolverCreateSNES(solver)
   PetscErrorCode :: ierr
   
   call SNESCreate(PETSC_COMM_WORLD, solver%snes, ierr)
+  call SNESSetFromOptions(solver%snes, ierr) 
 
   ! grab handles for ksp and pc
   call SNESGetKSP(solver%snes,solver%ksp,ierr)
@@ -177,6 +178,8 @@ subroutine SolverSetSNESOptions(solver)
   if (solver%inexact_newton == PETSC_TRUE) &
     call SNESKSPSetUseEW(solver%snes,PETSC_TRUE,ierr)
 
+!  call SNESLineSearchSet(solver%snes,SNESLineSearchNo,PETSC_NULL,ierr)
+
   ! allow override from command line; for some reason must come before
   ! LineSearchParams, or they crash
   call SNESSetFromOptions(solver%snes, ierr) 
@@ -189,7 +192,7 @@ subroutine SolverSetSNESOptions(solver)
                          solver%newton_maxf,ierr)
 
   call KSPGetTolerances(solver%ksp,solver%linear_rtol,solver%linear_atol, &
-                         solver%linear_dtol,solver%newton_maxit,ierr)
+                         solver%linear_dtol,solver%linear_maxit,ierr)
 
 end subroutine SolverSetSNESOptions
   
@@ -228,7 +231,7 @@ subroutine SolverReadLinear(solver,fid,myrank)
       
     select case(trim(keyword))
     
-      case('SOVLER_TYPE','SOLVER','KRYLOV_TYPE','KRYLOV','KSP','KSP_TYPE')
+      case('SOLVER_TYPE','SOLVER','KRYLOV_TYPE','KRYLOV','KSP','KSP_TYPE')
         call fiReadWord(string,word,.true.,ierr)
         call fiErrorMsg(myrank,'ksp_type','SOLVER', ierr)   
         call fiWordToUpper(word)
@@ -398,8 +401,8 @@ subroutine SolverPrintLinearInfo(solver,fid,header,myrank)
     write(fid,'(" rtol:",1pe12.4)') solver%linear_rtol
     write(*,'(" dtol:",1pe12.4)') solver%linear_dtol
     write(fid,'(" dtol:",1pe12.4)') solver%linear_dtol
-    write(*,'("maxit:",i6)') solver%linear_maxit
-    write(fid,'("maxit:",i6)') solver%linear_maxit
+    write(*,'("maxit:",i7)') solver%linear_maxit
+    write(fid,'("maxit:",i7)') solver%linear_maxit
   endif
 
 end subroutine SolverPrintLinearInfo
@@ -441,8 +444,8 @@ subroutine SolverPrintNewtonInfo(solver,fid,header,myrank)
     write(fid,'("inftol:",1pe12.4)') solver%newton_inf_tol
     write(*,'(" maxit:",i6)') solver%newton_maxit
     write(fid,'(" maxit:",i6)') solver%newton_maxit
-    write(*,'("  maxf:",i4)') solver%newton_maxf
-    write(fid,'("  maxf:",i4)') solver%newton_maxf
+    write(*,'("  maxf:",i6)') solver%newton_maxf
+    write(fid,'("  maxf:",i6)') solver%newton_maxf
   
     if (solver%inexact_newton == PETSC_TRUE) then
       write(*,'("inexact newton: on")')

@@ -178,8 +178,6 @@ subroutine Init(simulation,filename)
                              realization, ierr)
     end select
 
-    !call SNESLineSearchSet(flow_solver%snes,SNESLineSearchNo,PETSC_NULL,ierr)
-
     call SolverSetSNESOptions(flow_solver)
 
     call printMsg(option,'Solver: '//trim(flow_solver%ksp_type))
@@ -811,7 +809,7 @@ subroutine readInput(simulation,filename)
         call fiReadInt(string,master_stepper%iaccel,ierr)
         call fiDefaultMsg(option%myrank,'iaccel',ierr)
 
-        call fiReadInt(string,master_stepper%newton_max,ierr)
+        call fiReadInt(string,idum,ierr)
         call fiDefaultMsg(option%myrank,'newton_max',ierr)
 
         call fiReadInt(string,master_stepper%icut_max,ierr)
@@ -831,9 +829,9 @@ subroutine readInput(simulation,filename)
         
         if (associated(tran_stepper)) then
           tran_stepper%icut_max = master_stepper%icut_max
-          tran_stepper%newton_max = master_stepper%newton_max
         endif
 
+        idum = 0
         if (option%myrank==0) write(IUNIT2,'(/," *TOLR ",/, &
           &"  steps  = ",i6,/,      &
           &"  iaccel     = ",i3,/,      &
@@ -847,7 +845,7 @@ subroutine readInput(simulation,filename)
 ! terminate the string in the line above; otherwise, the compiler tries to
 ! include the commented-out line as part of the continued string.
           master_stepper%nstepmax,master_stepper%iaccel, &
-          master_stepper%newton_max,master_stepper%icut_max, &
+          idum,master_stepper%icut_max, &
           option%dpmxe,option%dtmpmxe,option%dcmxe, option%dsmxe
 
 !....................
@@ -1415,7 +1413,10 @@ subroutine readInput(simulation,filename)
                                         realization%material_array)
                                         
 !....................
-      
+
+      case ('UNPLANNED_PLOT_POSSIBLE')
+        option%use_touch_options = .true.
+
       case ('TIME')
 
         call fiReadStringErrorMsg(option%myrank,'TIME',ierr)
