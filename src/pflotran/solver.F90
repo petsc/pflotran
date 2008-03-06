@@ -24,7 +24,8 @@ module Solver_module
     PetscReal :: newton_rtol       ! relative tolerance
     PetscReal :: newton_stol       ! relative tolerance (relative to previous iteration)
     PetscReal :: newton_dtol       ! divergence tolerance
-    PetscReal :: newton_inf_tol    ! infinity tolerance
+    PetscReal :: newton_inf_res_tol    ! infinity tolerance for residual
+    PetscReal :: newton_inf_upd_tol    ! infinity tolerance for update
     PetscInt :: newton_maxit     ! maximum number of iterations
     PetscInt :: newton_maxf      ! maximum number of function evaluations
 
@@ -87,7 +88,8 @@ function SolverCreate()
   solver%newton_rtol = PETSC_DEFAULT_DOUBLE_PRECISION
   solver%newton_stol = PETSC_DEFAULT_DOUBLE_PRECISION
   solver%newton_dtol = PETSC_DEFAULT_DOUBLE_PRECISION
-  solver%newton_inf_tol = 1.d-50 ! arbitrarily set by geh
+  solver%newton_inf_res_tol = 1.d-50 ! arbitrarily set by geh
+  solver%newton_inf_upd_tol = 1.d-50 ! arbitrarily set by geh
   solver%newton_maxit = PETSC_DEFAULT_INTEGER
   solver%newton_maxf = PETSC_DEFAULT_INTEGER
   
@@ -282,6 +284,10 @@ subroutine SolverReadLinear(solver,fid,myrank)
         call fiReadInt(string,solver%linear_maxit,ierr)
         call fiDefaultMsg(myrank,'linear_maxit',ierr)
 
+      case default
+        if (myrank == 0) print *, 'Keyword: '//keyword// &
+                                  &' not recognized in linear solver'    
+
     end select 
   
   enddo  
@@ -354,9 +360,13 @@ subroutine SolverReadNewton(solver,fid,myrank)
         call fiReadDouble(string,solver%newton_dtol,ierr)
         call fiDefaultMsg(myrank,'newton_dtol',ierr)
    
-      case('ITOL', 'INF_TOL')
-        call fiReadDouble(string,solver%newton_inf_tol,ierr)
-        call fiDefaultMsg(myrank,'newton_inf_tol',ierr)
+      case('ITOL', 'INF_TOL', 'ITOL_RES', 'INF_TOL_RES')
+        call fiReadDouble(string,solver%newton_inf_res_tol,ierr)
+        call fiDefaultMsg(myrank,'newton_inf_res_tol',ierr)
+   
+      case('ITOL_UPDATE', 'INF_TOL_UPDATE')
+        call fiReadDouble(string,solver%newton_inf_upd_tol,ierr)
+        call fiDefaultMsg(myrank,'newton_inf_upd_tol',ierr)
    
       case('MAXIT')
         call fiReadInt(string,solver%newton_maxit,ierr)
@@ -366,6 +376,9 @@ subroutine SolverReadNewton(solver,fid,myrank)
         call fiReadInt(string,solver%newton_maxf,ierr)
         call fiDefaultMsg(myrank,'newton_maxf',ierr)
 
+      case default
+        if (myrank == 0) print *, 'Keyword: '//keyword// &
+                                  &' not recognized in Newton solver'
     end select 
   
   enddo  
@@ -432,20 +445,22 @@ subroutine SolverPrintNewtonInfo(solver,fid,header,myrank)
     write(fid,*) 
     write(*,'(a)') trim(header)
     write(fid,'(a)') trim(header)
-    write(*,'("  atol:",1pe12.4)') solver%newton_atol
-    write(fid,'("  atol:",1pe12.4)') solver%newton_atol
-    write(*,'("  rtol:",1pe12.4)') solver%newton_rtol
-    write(fid,'("  rtol:",1pe12.4)') solver%newton_rtol
-    write(*,'("  stol:",1pe12.4)') solver%newton_stol
-    write(fid,'("  stol:",1pe12.4)') solver%newton_stol
-    write(*,'("  dtol:",1pe12.4)') solver%newton_dtol
-    write(fid,'("  dtol:",1pe12.4)') solver%newton_dtol
-    write(*,'("inftol:",1pe12.4)') solver%newton_inf_tol
-    write(fid,'("inftol:",1pe12.4)') solver%newton_inf_tol
-    write(*,'(" maxit:",i6)') solver%newton_maxit
-    write(fid,'(" maxit:",i6)') solver%newton_maxit
-    write(*,'("  maxf:",i6)') solver%newton_maxf
-    write(fid,'("  maxf:",i6)') solver%newton_maxf
+    write(*,'("     atol:",1pe12.4)') solver%newton_atol
+    write(fid,'("     atol:",1pe12.4)') solver%newton_atol
+    write(*,'("     rtol:",1pe12.4)') solver%newton_rtol
+    write(fid,'("     rtol:",1pe12.4)') solver%newton_rtol
+    write(*,'("     stol:",1pe12.4)') solver%newton_stol
+    write(fid,'("     stol:",1pe12.4)') solver%newton_stol
+    write(*,'("     dtol:",1pe12.4)') solver%newton_dtol
+    write(fid,'("     dtol:",1pe12.4)') solver%newton_dtol
+    write(*,'("inftolres:",1pe12.4)') solver%newton_inf_res_tol
+    write(fid,'("inftolres:",1pe12.4)') solver%newton_inf_res_tol
+    write(*,'("inftolupd:",1pe12.4)') solver%newton_inf_upd_tol
+    write(fid,'("inftolupd:",1pe12.4)') solver%newton_inf_upd_tol
+    write(*,'("    maxit:",i6)') solver%newton_maxit
+    write(fid,'("    maxit:",i6)') solver%newton_maxit
+    write(*,'("     maxf:",i6)') solver%newton_maxf
+    write(fid,'("     maxf:",i6)') solver%newton_maxf
   
     if (solver%inexact_newton == PETSC_TRUE) then
       write(*,'("inexact newton: on")')

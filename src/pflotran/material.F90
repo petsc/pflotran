@@ -53,7 +53,8 @@ module Material_module
     PetscReal :: betac
     PetscReal :: power
     PetscInt :: ihist 
-    PetscReal :: BC_pressure_offset
+    PetscReal :: BC_pressure_low
+    PetscReal :: BC_pressure_high
     PetscReal :: BC_spline_coefficients(4)
     type(saturation_function_type), pointer :: next
   end type saturation_function_type
@@ -176,7 +177,8 @@ function SaturationFunctionCreate(option)
   saturation_function%betac = 0.d0
   saturation_function%power = 0.d0
   saturation_function%ihist = 0
-  saturation_function%BC_pressure_offset = 0.d0
+  saturation_function%BC_pressure_low = 0.d0
+  saturation_function%BC_pressure_high = 0.d0
   saturation_function%BC_spline_coefficients = 0.d0
   nullify(saturation_function%next)
   SaturationFunctionCreate => saturation_function
@@ -204,7 +206,7 @@ subroutine SaturationFunctionComputeSpline(option,saturation_function)
   PetscReal :: A(4,4), x(4), b(4)
   PetscInt :: indx(4)
   PetscInt :: d
-  PetscReal :: pressure_a, pressure_b
+  PetscReal :: pressure_high, pressure_low
   
   PetscReal :: alpha
 
@@ -214,34 +216,37 @@ subroutine SaturationFunctionComputeSpline(option,saturation_function)
   alpha = saturation_function%alpha
   
   ! fill matix with values
-  saturation_function%BC_pressure_offset = 5.d0
-  pressure_a = 1.d0/alpha+saturation_function%BC_pressure_offset
-  pressure_b = 1.d0/alpha-saturation_function%BC_pressure_offset
+  pressure_high = 1.d0/alpha*2.d0
+  pressure_low = 1.d0/alpha*0.5d0
+  
+  saturation_function%BC_pressure_low = pressure_low
+  saturation_function%BC_pressure_high = pressure_high
+  
   
   A(1,1) = 1.d0
   A(2,1) = 1.d0
   A(3,1) = 0.d0
   A(4,1) = 0.d0
   
-  A(1,2) = pressure_a
-  A(2,2) = pressure_b
+  A(1,2) = pressure_high
+  A(2,2) = pressure_low
   A(3,2) = 1.d0
   A(4,2) = 1.d0
   
-  A(1,3) = pressure_a**2.d0
-  A(2,3) = pressure_b**2.d0
-  A(3,3) = 2.d0*pressure_a
-  A(4,3) = 2.d0*pressure_b
+  A(1,3) = pressure_high**2.d0
+  A(2,3) = pressure_low**2.d0
+  A(3,3) = 2.d0*pressure_high
+  A(4,3) = 2.d0*pressure_low
   
-  A(1,4) = pressure_a**3.d0
-  A(2,4) = pressure_b**3.d0
-  A(3,4) = 3.d0*pressure_a**2.d0
-  A(4,4) = 3.d0*pressure_b**2.d0
+  A(1,4) = pressure_high**3.d0
+  A(2,4) = pressure_low**3.d0
+  A(3,4) = 3.d0*pressure_high**2.d0
+  A(4,4) = 3.d0*pressure_low**2.d0
   
-  b(1) = (pressure_a*alpha)**(-1.d0*saturation_function%lambda)
+  b(1) = (pressure_high*alpha)**(-1.d0*saturation_function%lambda)
   b(2) = 1.d0
-  b(3) = -1.d0*saturation_function%lambda/pressure_a* &
-        (pressure_a*alpha)**(-1.d0*saturation_function%lambda)
+  b(3) = -1.d0*saturation_function%lambda/pressure_high* &
+        (pressure_high*alpha)**(-1.d0*saturation_function%lambda)
   b(4) = 0.d0
   
   call ludcmp(A,4,indx,d)
@@ -468,6 +473,11 @@ subroutine SaturationFunctionCompute(pressure,saturation,relative_perm, &
         saturation = Sr + (1.d0-Sr)*Se
         dsat_pc = (1.d0-Sr)*dSe_pc
       endif
+      if (saturation > 1.d0) then
+        print *, option%myrank, 'vG Saturation > 1:', saturation
+      else if (saturation > 1.d0 .or. saturation < Sr) then
+        print *, option%myrank, 'vG Saturation < Sr:', saturation, Sr
+      endif
       ! compute relative permeability
       select case(saturation_function%permeability_function_itype)
         case(BURDINE)
@@ -494,11 +504,11 @@ subroutine SaturationFunctionCompute(pressure,saturation,relative_perm, &
       one_over_alpha = 1.d0/alpha
       pc = option%pref-pressure
 #if 0      
-      if (pc < one_over_alpha-saturation_function%BC_pressure_offset) then
+      if (pc < saturation_function%BC_pressure_low) then
         saturation = 1.d0
         relative_perm = 1.d0
         return
-      else if (pc < one_over_alpha+saturation_function%BC_pressure_offset) then
+      else if (pc < saturation_function%BC_pressure_high) then
         Sr = saturation_function%Sr(iphase)
         Se = saturation_function%BC_spline_coefficients(1)+ &
              saturation_function%BC_spline_coefficients(2)*pc+ &
@@ -524,6 +534,11 @@ subroutine SaturationFunctionCompute(pressure,saturation,relative_perm, &
         saturation = Sr + (1.d0-Sr)*Se
 !        dsat_pc = -lambda*(1.d0-Sr)/pc*pc_alpha_neg_lambda
         dsat_pc = (1.d0-Sr)*dSe_pc
+      endif
+      if (saturation > 1.d0) then
+        print *, option%myrank, 'BC Saturation > 1:', saturation
+      else if (saturation > 1.d0 .or. saturation < Sr) then
+        print *, option%myrank, 'BC Saturation < Sr:', saturation, Sr
       endif
       ! compute relative permeability
       select case(saturation_function%permeability_function_itype)

@@ -176,13 +176,22 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
 
     call VecNorm(residual_vec,NORM_INFINITY,inorm_residual,ierr)
 
-    if (inorm_residual < solver%newton_inf_tol) then
+    call SNESGetSolutionUpdate(snes_,update_vec,ierr)
+    call VecNorm(residual_vec,NORM_INFINITY,inorm_update,ierr)
+
+    if (inorm_residual < solver%newton_inf_res_tol) then
 !      if (option%myrank == 0) print *, 'converged from infinity', inorm_residual
-      reason = 9
+      reason = 10
     else
-      if (reason > 0 .and. inorm_residual < 100.d0*solver%newton_inf_tol) &
+      if (reason > 0 .and. inorm_residual < 100.d0*solver%newton_inf_res_tol) &
         reason = 0
     endif
+
+    if (inorm_update < solver%newton_inf_upd_tol) then
+!      if (option%myrank == 0) print *, 'converged from infinity', inorm_residual
+      reason = 11
+    endif
+
     if (option%myrank == 0 .and. solver%print_convergence == PETSC_TRUE) &
       write(*,'(i3,"  fnorm:",es12.4, &
               & "  pnorm:",es12.4, &
