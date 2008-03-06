@@ -21,6 +21,10 @@ Hanford300::Hanford300(Grid **grid_) {
 
   PetscInt nx, ny, nz;
 
+  nx = 270;
+  ny = 500;
+  nz = 80;
+
 //  nx = 135;
 //  ny = 250;
 //  nz = 60;
@@ -29,9 +33,9 @@ Hanford300::Hanford300(Grid **grid_) {
 //  ny = 125;
 //  nz = 10;
 
-  nx = 17;
-  ny = 32;
-  nz = 15;
+//  nx = 17;
+//  ny = 32;
+//  nz = 15;
 
   char filename[1024];
   PetscTruth option_found;
@@ -45,9 +49,9 @@ Hanford300::Hanford300(Grid **grid_) {
   file->readInt(&nz);
   delete file;
 
-  PetscReal dx = 10.*mx;
-  PetscReal dy = 10.*my;
-  PetscReal dz = 1.*mz;// */
+  PetscReal dx;
+  PetscReal dy;
+  PetscReal dz;// */
 
   PetscReal len_x = 1350.;
   PetscReal len_y = 2500.;
