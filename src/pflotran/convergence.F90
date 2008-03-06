@@ -183,7 +183,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
 !      if (option%myrank == 0) print *, 'converged from infinity', inorm_residual
       reason = 10
     else
-      if (reason > 0 .and. inorm_residual < 100.d0*solver%newton_inf_res_tol) &
+      if (reason > 0 .and. inorm_residual > 100.d0*solver%newton_inf_res_tol) &
         reason = 0
     endif
 
