@@ -28,6 +28,7 @@ public:
   void computeNorthPondWestTrBoundary(Grid *grid, Polygon *p);
   void computeNorthPondEastTrBoundary(Grid *grid, Polygon *p);
   void computePlumeBoundary(Grid *grid, Polygon *p);
+  void computePlumeSource(Grid *grid, Polygon *p);
   void computePlumeCells(Grid *grid, Polygon *p);
   void flagGridCells(Grid *grid);
 

@@ -587,9 +587,32 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
     r_p(istart:iend) = r_p(istart:iend) + Res(1:option%ncomp)
   enddo
 #endif
+#if 1
+  ! Source/sink terms -------------------------------------
+  source_sink => patch%flow_source_sinks%first 
+  do 
+    if (.not.associated(source_sink)) exit
+    
+    cur_connection_set => source_sink%connection
+    
+    do iconn = 1, cur_connection_set%num_connections      
+      local_id = cur_connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
 
-  ! Source/Sink terms -------------------------------------
-  
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
+      endif
+      
+      Res(1:option%ncomp) = -1000.d0* &
+                            (1.d0-aux_vars(ghosted_id)%total(1:option%ncomp)/ &
+                                  source_sink%condition%concentration%dataset%cur_value(1))
+      iend = local_id*option%ncomp
+      istart = iend-option%ncomp+1
+      r_p(istart:iend) = r_p(istart:iend) + Res(1:option%ncomp)                                  
+    enddo
+    source_sink => source_sink%next
+  enddo
+#endif
 #if 1
   ! Interior Flux Terms -----------------------------------
   connection_list => grid%internal_connection_list
@@ -835,9 +858,32 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)                        
   enddo
 #endif
-
+#if 1
   ! Source/Sink terms -------------------------------------
-  
+  source_sink => patch%flow_source_sinks%first 
+  do 
+    if (.not.associated(source_sink)) exit
+    
+    cur_connection_set => source_sink%connection
+    
+    do iconn = 1, cur_connection_set%num_connections      
+      local_id = cur_connection_set%id_dn(iconn)
+      ghosted_id = grid%nL2G(local_id)
+
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) cycle
+      endif
+      
+      Jup = 0.d0
+      do istart = 1, option%ncomp
+        Jup(istart,istart) = 1000.d0* &
+                             1.d0/source_sink%condition%concentration%dataset%cur_value(1)
+      enddo
+      call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)                        
+    enddo
+    source_sink => source_sink%next
+  enddo
+#endif
 #if 1
   ! Interior Flux Terms -----------------------------------
   connection_list => grid%internal_connection_list

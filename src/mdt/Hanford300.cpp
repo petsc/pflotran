@@ -176,6 +176,7 @@ Hanford300::Hanford300(Grid **grid_) {
   computeNorthPondEastTrBoundary(grid,north_pond_east_trench);
   computePlumeBoundary(grid,plume);
   computePlumeCells(grid,plume);
+  computePlumeSource(grid,plume);
 //  computeSouthBoundary(grid);
 
   BoundarySet *river = grid->getBoundarySet("East");
@@ -520,6 +521,33 @@ void Hanford300::computePlumeBoundary(Grid *grid, Polygon *p) {
   }
 
   PetscPrintf(PETSC_COMM_WORLD,"%d cells mapped to Plume Surface.\n",
+                  count);
+
+  grid->addBoundarySet(plume);
+  plume = NULL;
+
+}
+
+void Hanford300::computePlumeSource(Grid *grid, Polygon *p) {
+
+  BoundarySet *plume = new BoundarySet("Plume_Source");
+
+  PetscInt count = 0;
+  for (PetscInt i=0; i<grid->getNumberOfCellsGhosted(); i++) {
+    PetscInt local_id = grid->cells[i].getIdLocal();
+    if (local_id > -1) {
+      if (grid->cells[i].getZ() >= 104. && grid->cells[i].getZ() < 106. &&
+          p->pointInPolygon(grid->cells[i].getX(),
+                            grid->cells[i].getY())) {
+        PetscInt vertex_list[5] = {4,0,0,0,0};
+        grid->cells[i].getHexFaceVertices(TOP,vertex_list);
+        plume->addConnection(new Connection(local_id,vertex_list,TOP));
+        count++;
+      }
+    }
+  }
+
+  PetscPrintf(PETSC_COMM_WORLD,"%d cells mapped to Plume Source.\n",
                   count);
 
   grid->addBoundarySet(plume);
