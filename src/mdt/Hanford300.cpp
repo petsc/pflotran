@@ -518,7 +518,7 @@ void Hanford300::computePlumeBoundary(Grid *grid, Polygon *p) {
     }
   }
 
-  PetscPrintf(PETSC_COMM_WORLD,"%d cell mapped mapped to Plume.\n",
+  PetscPrintf(PETSC_COMM_WORLD,"%d cells mapped to Plume.\n",
                   count);
 
   grid->addBoundarySet(plume);

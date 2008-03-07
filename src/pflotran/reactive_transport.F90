@@ -1270,8 +1270,8 @@ subroutine RTMaxChange(realization)
   option%dcmax=0.D0
   
   call VecWAXPY(field%tran_dxx,-1.d0,field%tran_xx,field%tran_yy,ierr)
-  call VecStrideNormAll(field%tran_dxx,ZERO_INTEGER,NORM_INFINITY,option%dcmax,ierr)
-    
+  call VecStrideNorm(field%tran_dxx,ZERO_INTEGER,NORM_INFINITY,option%dcmax,ierr)
+      
 end subroutine RTMaxChange
 
 ! ************************************************************************** !

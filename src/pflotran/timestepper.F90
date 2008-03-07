@@ -820,7 +820,7 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
   SNESConvergedReason :: snes_reason 
   PetscInt :: update_reason, it_linear=0, it_snes
   PetscInt :: n, nmax_inf
-  PetscReal m_r2norm, s_r2norm, norm_inf, s_r2norm0, norm_inf0, r2norm
+  PetscReal :: fnorm, scaled_fnorm, inorm
   logical :: plot_flag  
   PetscReal, pointer :: r_p(:)  
 
@@ -866,9 +866,9 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
 ! do we really need all this? - geh 
     call SNESGetIterationNumber(solver%snes,num_newton_iterations, ierr)
     it_snes = num_newton_iterations
-    call VecNorm(field%tran_r, NORM_2, r2norm, ierr) 
-    call VecGetArrayF90(field%tran_r, r_p, ierr)
-    
+    call VecNorm(field%tran_r,NORM_2,fnorm,ierr) 
+    call VecNorm(field%tran_r,NORM_INFINITY,inorm,ierr)
+    scaled_fnorm = fnorm/discretization%grid%nmax   
     call SNESGetLinearSolveIterations(solver%snes, it_linear, ierr)
     call SNESGetConvergedReason(solver%snes, snes_reason, ierr)
 
@@ -912,69 +912,42 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
   stepper%newtcum = stepper%newtcum + num_newton_iterations
   stepper%icutcum = stepper%icutcum + icut
 
-#if 0
 ! print screen output
   if (option%myrank == 0) then
     if (mod(stepper%steps,option%imod) == 0 .or. stepper%steps == 1) then
-      write(*, '(/," FLOW ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1,"]", &
-      & " snes_conv_reason: ",i4,/,"  newt= ",i2," [",i6,"]"," cut= ",i2," [",i4,"]")') &
-      stepper%steps,option%tran_time/realization%output_option%tconv, &
-      option%tran_dt/realization%output_option%tconv,realization%output_option%tunit, &
-      snes_reason,num_newton_iterations,stepper%newtcum,icut,stepper%icutcum
+      write(*, '(/," TRAN ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1,"]", &
+        & " snes_conv_reason: ",i4,/,"  newt= ",i2," [",i6,"]"," cut= ",i2, &
+        & " [",i4,"]")') &
+        stepper%steps,option%tran_time/realization%output_option%tconv, &
+        option%tran_dt/realization%output_option%tconv, &
+        realization%output_option%tunit,snes_reason,num_newton_iterations, &
+        stepper%newtcum,icut,stepper%icutcum
 
       print *,' --> SNES Linear/Non-Linear Interations = ',it_linear,it_snes
-      print *,' --> SNES Residual: ', r2norm, s_r2norm, m_r2norm, norm_inf 
+      print *,' --> SNES Residual: ', fnorm, scaled_fnorm, inorm 
        
-      write(IUNIT2, '(" FLOW ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1, &
-      & "]"," snes_conv_reason: ",i4,/,"  newt= ",i2," [",i6,"]"," cut= ",i2," [",i4, &
-      & "]")') stepper%steps,option%tran_time/realization%output_option%tconv, &
-      option%tran_dt/realization%output_option%tconv, &
-      realization%output_option%tunit, snes_reason,num_newton_iterations,stepper%newtcum,icut,stepper%icutcum
+      write(IUNIT2, '(" TRAN ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1, &
+        & "]"," snes_conv_reason: ",i4,/,"  newt= ",i2," [",i6,"]"," cut= ", &
+        & i2," [",i4,"]")') stepper%steps, &
+        option%tran_time/realization%output_option%tconv, &
+        option%tran_dt/realization%output_option%tconv, &
+        realization%output_option%tunit, snes_reason,num_newton_iterations, &
+        stepper%newtcum,icut,stepper%icutcum
     endif
   endif
   
-  if (option%iflowmode == RICHARDS_MODE) then
-     call RichardsMaxChange(realization)
-    if (option%myrank==0) then
-      if (mod(stepper%steps,option%imod) == 0 .or. stepper%steps == 1) then
-        write(*,'("  --> max chng: dpmx= ",1pe12.4, &
-          & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4)') &
-          option%dpmax,option%dtmpmax, option%dcmax
+  call RTMaxChange(realization)
+  if (option%myrank==0) then
+    if (mod(stepper%steps,option%imod) == 0 .or. stepper%steps == 1) then
+      write(*,'("  --> max chng: dcmx= ",1pe12.4)') option%dcmax
         
-        write(IUNIT2,'("  --> max chng: dpmx= ",1pe12.4, &
-          & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4)') &
-          option%dpmax,option%dtmpmax,option%dcmax
-      endif
-    endif
-  else if (option%iflowmode == RICHARDS_LITE_MODE) then
-    call RichardsLiteMaxChange(realization)
-    if (option%myrank==0) then
-      if (mod(stepper%steps,option%imod) == 0 .or. stepper%steps == 1) then
-        write(*,'("  --> max chng: dpmx= ",1pe12.4)') option%dpmax
-        
-        write(IUNIT2,'("  --> max chng: dpmx= ",1pe12.4)') option%dpmax
-      endif
-    endif
-  else if (option%iflowmode == MPH_MODE) then
-     call MphaseMaxChange(realization)
-    ! note use mph will use variable switching, the x and s change is not meaningful 
-    if (option%myrank==0) then
-      if (mod(stepper%steps,option%imod) == 0 .or. stepper%steps == 1) then
-        write(*,'("  --> max chng: dpmx= ",1pe12.4, &
-          & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4," dsmx= ",1pe12.4)') &
-          option%dpmax,option%dtmpmax,option%dcmax,option%dsmax
-        
-        write(IUNIT2,'("  --> max chng: dpmx= ",1pe12.4, &
-          & " dtmpmx= ",1pe12.4," dcmx= ",1pe12.4," dsmx= ",1pe12.4)') &
-          option%dpmax,option%dtmpmax,option%dcmax,option%dsmax
-      endif
+      write(IUNIT2,'("  --> max chng: dcmx= ",1pe12.4)') option%dcmax
     endif
   endif
 
   if (option%myrank == 0 .and. mod(stepper%steps,option%imod) == 0) then
     print *, ""
   endif
-#endif
 
   stepper%steps = stepper%steps + 1      
 
