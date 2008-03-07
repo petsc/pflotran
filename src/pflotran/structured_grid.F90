@@ -669,19 +669,21 @@ subroutine StructuredGridComputeVolumes(structured_grid,option,nL2G,volume)
   enddo
   call VecRestoreArrayF90(volume,volume_p, ierr)
   
-  write(*,'(" rank= ",i3,", nlmax= ",i6,", nlx,y,z= ",3i4, &
-    & ", nxs,e = ",2i4,", nys,e = ",2i4,", nzs,e = ",2i4)') &
-    option%myrank,structured_grid%nlmax,structured_grid%nlx, &
-      structured_grid%nly,structured_grid%nlz,structured_grid%nxs, &
-      structured_grid%nxe,structured_grid%nys,structured_grid%nye, &
-      structured_grid%nzs,structured_grid%nze
+  if (option%commsize <= 16) then
+    write(*,'(" rank= ",i3,", nlmax= ",i6,", nlx,y,z= ",3i4, &
+      & ", nxs,e = ",2i4,", nys,e = ",2i4,", nzs,e = ",2i4)') &
+      option%myrank,structured_grid%nlmax,structured_grid%nlx, &
+        structured_grid%nly,structured_grid%nlz,structured_grid%nxs, &
+        structured_grid%nxe,structured_grid%nys,structured_grid%nye, &
+        structured_grid%nzs,structured_grid%nze
 
-  write(*,'(" rank= ",i3,", ngmax= ",i6,", ngx,y,z= ",3i4, &
-    & ", ngxs,e= ",2i4,", ngys,e= ",2i4,", ngzs,e= ",2i4)') &
-    option%myrank,structured_grid%ngmax,structured_grid%ngx, &
-      structured_grid%ngy,structured_grid%ngz,structured_grid%ngxs, &
-      structured_grid%ngxe,structured_grid%ngys,structured_grid%ngye, &
-      structured_grid%ngzs,structured_grid%ngze
+    write(*,'(" rank= ",i3,", ngmax= ",i6,", ngx,y,z= ",3i4, &
+      & ", ngxs,e= ",2i4,", ngys,e= ",2i4,", ngzs,e= ",2i4)') &
+      option%myrank,structured_grid%ngmax,structured_grid%ngx, &
+        structured_grid%ngy,structured_grid%ngz,structured_grid%ngxs, &
+        structured_grid%ngxe,structured_grid%ngys,structured_grid%ngye, &
+        structured_grid%ngzs,structured_grid%ngze
+  endif
 
 end subroutine StructuredGridComputeVolumes
 
