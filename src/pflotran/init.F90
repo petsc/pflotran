@@ -1415,8 +1415,11 @@ subroutine readInput(simulation,filename)
                                         
 !....................
 
-      case ('UNPLANNED_PLOT_POSSIBLE')
+      case ('USE_TOUCH_OPTIONS')
         option%use_touch_options = .true.
+
+      case ('OVERWRITE_RESTART_TRANSPORT')
+        option%overwrite_restart_transport = .true.
 
       case ('TIME')
 

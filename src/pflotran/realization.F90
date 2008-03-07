@@ -51,7 +51,7 @@ private
             RealizationLocalizeRegions, &
             RealizationAddCoupler, RealizationAddStrata, &
             RealizationAddBreakthrough, RealizAssignInitialConditions, &
-            RealizAssignUniformVelocity
+            RealizAssignUniformVelocity, RealizAssignTransportInitCond
   
 contains
   
@@ -476,6 +476,24 @@ end subroutine RealizationUpdate
 !
 ! ************************************************************************** !
 subroutine RealizAssignInitialConditions(realization)
+  
+  implicit none
+
+  type(realization_type) :: realization
+
+  call RealizAssignFlowInitCond(realization)
+  call RealizAssignTransportInitCond(realization)
+
+end subroutine RealizAssignInitialConditions
+
+! ************************************************************************** !
+!
+! RealizAssignFlowInitCond: Assigns flow initial conditions to model
+! author: Glenn Hammond
+! date: 11/02/07
+!
+! ************************************************************************** !
+subroutine RealizAssignFlowInitCond(realization)
 
   use Region_module
   use Option_module
@@ -492,13 +510,7 @@ subroutine RealizAssignInitialConditions(realization)
   
   type(realization_type) :: realization
   
-  PetscReal, pointer :: pressure_p(:)
-  PetscReal, pointer :: temp_p(:)
-  PetscReal, pointer :: sat_p(:)
-  PetscReal, pointer :: conc_p(:)
-  PetscReal, pointer :: xmol_p(:)
-  
-  PetscInt :: icell, iconn, count, jn1, jn2, idof
+  PetscInt :: icell, iconn, idof
   PetscInt :: local_id, ghosted_id, iend, ibegin
   PetscReal, pointer :: xx_p(:), iphase_loc_p(:)
   PetscErrorCode :: ierr
@@ -596,6 +608,64 @@ subroutine RealizAssignInitialConditions(realization)
         
       endif
       
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+   
+end subroutine RealizAssignFlowInitCond
+
+! ************************************************************************** !
+!
+! RealizAssignTransportInitCond: Assigns transport initial conditions to model
+! author: Glenn Hammond
+! date: 11/02/07
+!
+! ************************************************************************** !
+subroutine RealizAssignTransportInitCond(realization)
+
+  use Region_module
+  use Option_module
+  use Field_module
+  use Coupler_module
+  use Condition_module
+  use Grid_module
+  use Patch_module
+  
+  implicit none
+
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
+  
+  type(realization_type) :: realization
+  
+  PetscInt :: icell, iconn, idof
+  PetscInt :: local_id, ghosted_id, iend, ibegin
+  PetscReal, pointer :: xx_p(:)
+  PetscErrorCode :: ierr
+  
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field  
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(discretization_type), pointer :: discretization
+  type(coupler_type), pointer :: initial_condition
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+
+  option => realization%option
+  discretization => realization%discretization
+  field => realization%field
+  patch => realization%patch
+  grid => patch%grid
+
+  cur_level => realization%level_list%first
+  do 
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+
       if (option%ntrandof > 0) then
 
         ! assign initial conditions values to domain
@@ -657,7 +727,7 @@ subroutine RealizAssignInitialConditions(realization)
     cur_level => cur_level%next
   enddo
    
-end subroutine RealizAssignInitialConditions
+end subroutine RealizAssignTransportInitCond
 
 ! ************************************************************************** !
 !

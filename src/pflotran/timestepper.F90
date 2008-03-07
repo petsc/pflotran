@@ -229,6 +229,10 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
       WaypointSkipToTime(realization%waypoints,option%time)
   endif
 
+  if (option%overwrite_restart_transport .and. option%ntrandof > 0) then
+    call RealizAssignTransportInitCond(realization)  
+  endif
+  
   call StepperUpdateSolution(realization)
 
   ! print initial condition output if not a restarted sim

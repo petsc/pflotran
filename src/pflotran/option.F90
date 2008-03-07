@@ -86,6 +86,7 @@ module Option_module
     logical :: numerical_derivatives
     logical :: compute_statistics
     logical :: use_touch_options
+    logical :: overwrite_restart_transport
     
   end type option_type
   
@@ -220,6 +221,7 @@ function OptionCreate()
   option%compute_statistics = .false.
 
   option%use_touch_options = .false.
+  option%overwrite_restart_transport = .false.
 
   OptionCreate => option
   
