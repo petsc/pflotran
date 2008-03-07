@@ -589,7 +589,7 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
 #endif
 #if 1
   ! Source/sink terms -------------------------------------
-  source_sink => patch%flow_source_sinks%first 
+  source_sink => patch%transport_source_sinks%first 
   do 
     if (.not.associated(source_sink)) exit
     
@@ -860,7 +860,7 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 #endif
 #if 1
   ! Source/Sink terms -------------------------------------
-  source_sink => patch%flow_source_sinks%first 
+  source_sink => patch%transport_source_sinks%first 
   do 
     if (.not.associated(source_sink)) exit
     
