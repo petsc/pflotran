@@ -1035,6 +1035,7 @@ subroutine StepperCheckpoint(realization,flow_stepper,tran_stepper, &
 
   use Realization_module
   use Checkpoint_module
+  use Option_module
 
   implicit none
 
@@ -1089,6 +1090,7 @@ subroutine StepperRestart(realization,flow_stepper,tran_stepper, &
 
   use Realization_module
   use Checkpoint_module
+  use Option_module
 
   implicit none
 
