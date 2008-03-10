@@ -113,6 +113,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
   PetscReal, allocatable :: min_solution_val(:)
   PetscReal, allocatable :: min_update_val(:)
   PetscReal, allocatable :: min_residual_val(:)
+  PetscReal, pointer :: vec_ptr(:)
   
   character(len=MAXSTRINGLENGTH) :: string, string2, string3
   character(len=MAXWORDLENGTH) :: word
@@ -339,9 +340,9 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
         if (print_res_norm_info) print *, 'norm_1_residual:   ', norm1_residual
       endif
       if (print_2_norm_info) then
-        if (print_sol_norm_info) print *, 'norm_2_solution:   ', xnorm
-        if (print_upd_norm_info) print *, 'norm_2_update:     ', pnorm
-        if (print_res_norm_info) print *, 'norm_2_residual:   ', fnorm
+        if (print_sol_norm_info) print *, 'norm_2_solution:   ', fnorm_solution_stride
+        if (print_upd_norm_info) print *, 'norm_2_update:     ', fnorm_update_stride
+        if (print_res_norm_info) print *, 'norm_2_residual:   ', fnorm_residual_stride
       endif
       if (print_inf_norm_info) then
         if (print_sol_norm_info) print *, 'norm_inf_solution: ', inorm_solution
