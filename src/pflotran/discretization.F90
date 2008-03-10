@@ -431,8 +431,13 @@ subroutine DiscretizationGlobalToLocal(discretization,global_vec,local_vec,dm_in
     
   select case(discretization%itype)
     case(STRUCTURED_GRID,UNSTRUCTURED_GRID)
+#if (PETSC_VERSION_RELEASE == 1)    
+      call DAGlobalToLocalBegin(dm_ptr,global_vec,INSERT_VALUES,local_vec,ierr)
+      call DAGlobalToLocalEnd(dm_ptr,global_vec,INSERT_VALUES,local_vec,ierr)
+#else
       call DMGlobalToLocalBegin(dm_ptr,global_vec,INSERT_VALUES,local_vec,ierr)
       call DMGlobalToLocalEnd(dm_ptr,global_vec,INSERT_VALUES,local_vec,ierr)
+#endif
   end select
   
 end subroutine DiscretizationGlobalToLocal
@@ -462,7 +467,11 @@ subroutine DiscretizationLocalToGlobal(discretization,local_vec,global_vec,dm_in
   
   select case(discretization%itype)
     case(STRUCTURED_GRID,UNSTRUCTURED_GRID)
+#if (PETSC_VERSION_RELEASE == 1)
+      call DALocalToGlobal(dm_ptr,local_vec,INSERT_VALUES,global_vec,ierr)
+#else    
       call DMLocalToGlobal(dm_ptr,local_vec,INSERT_VALUES,global_vec,ierr)
+#endif
   end select
   
 end subroutine DiscretizationLocalToGlobal
@@ -579,7 +588,11 @@ subroutine DiscretizationGlobalToLocalBegin(discretization,global_vec,local_vec,
   
   select case(discretization%itype)
     case(STRUCTURED_GRID,UNSTRUCTURED_GRID)
+#if (PETSC_VERSION_RELEASE == 1)    
+      call DAGlobalToLocalBegin(dm_ptr,global_vec,INSERT_VALUES,local_vec,ierr)
+#else
       call DMGlobalToLocalBegin(dm_ptr,global_vec,INSERT_VALUES,local_vec,ierr)
+#endif      
   end select
   
 end subroutine DiscretizationGlobalToLocalBegin
@@ -609,7 +622,11 @@ subroutine DiscretizationGlobalToLocalEnd(discretization,global_vec,local_vec,dm
   
   select case(discretization%itype)
     case(STRUCTURED_GRID,UNSTRUCTURED_GRID)
+#if (PETSC_VERSION_RELEASE == 1)        
+      call DAGlobalToLocalEnd(dm_ptr,global_vec,INSERT_VALUES,local_vec,ierr)
+#else
       call DMGlobalToLocalEnd(dm_ptr,global_vec,INSERT_VALUES,local_vec,ierr)
+#endif      
   end select
   
 end subroutine DiscretizationGlobalToLocalEnd
@@ -801,6 +818,7 @@ subroutine DiscretizationDestroy(discretization)
       
   select case(discretization%itype)
     case(STRUCTURED_GRID)
+#if (PETSC_VERSION_RELEASE == 1)    
       if (discretization%dm_1_dof /= 0) &
         call DMDestroy(discretization%dm_1_dof,ierr)
       discretization%dm_1_dof = 0
@@ -810,6 +828,17 @@ subroutine DiscretizationDestroy(discretization)
       if (discretization%dm_ntrandof /= 0) &
         call DMDestroy(discretization%dm_ntrandof,ierr)
       discretization%dm_ntrandof = 0
+#else
+      if (discretization%dm_1_dof /= 0) &
+        call DADestroy(discretization%dm_1_dof,ierr)
+      discretization%dm_1_dof = 0
+      if (discretization%dm_nflowdof /= 0) &
+        call DADestroy(discretization%dm_nflowdof,ierr)
+      discretization%dm_nflowdof = 0
+      if (discretization%dm_ntrandof /= 0) &
+        call DADestroy(discretization%dm_ntrandof,ierr)
+      discretization%dm_ntrandof = 0
+#endif
     case(UNSTRUCTURED_GRID)
   end select
   
