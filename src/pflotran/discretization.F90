@@ -818,7 +818,7 @@ subroutine DiscretizationDestroy(discretization)
       
   select case(discretization%itype)
     case(STRUCTURED_GRID)
-#if (PETSC_VERSION_RELEASE == 1)    
+#if (PETSC_VERSION_RELEASE == 0)    
       if (discretization%dm_1_dof /= 0) &
         call DMDestroy(discretization%dm_1_dof,ierr)
       discretization%dm_1_dof = 0
