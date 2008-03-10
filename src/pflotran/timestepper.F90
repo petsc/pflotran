@@ -163,7 +163,6 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   use Realization_module
   use Option_module
   use Output_module
-  use Checkpoint_module
   use Logging_module  
   
   implicit none
@@ -204,25 +203,9 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   stop_flag = .false.
   num_const_timesteps = 0  
 
-  if(option%restart_flag == PETSC_TRUE) then
-    call Restart(realization,master_stepper%steps,master_stepper%newtcum, &
-                 master_stepper%icutcum,num_const_timesteps, &
-                 num_newton_iterations)
-    if (option%restart_time < -998.d0) then
-      option%time = max(option%flow_time,option%tran_time)
-    else
-      option%time = option%restart_time
-      option%flow_time = option%restart_time
-      option%flow_dt = master_stepper%dt_min
-      option%tran_time = option%restart_time
-      option%tran_dt = master_stepper%dt_min
-      master_stepper%steps = 0
-      master_stepper%newtcum = 0
-      master_stepper%icutcum = 0
-      num_const_timesteps = 0
-      num_newton_iterations = 0
-      realization%output_option%plot_number = 0
-    endif
+  if (option%restart_flag == PETSC_TRUE) then
+    call StepperRestart(realization,flow_stepper,tran_stepper, &
+                        num_const_timesteps,num_newton_iterations)
     if (associated(flow_stepper)) flow_stepper%cur_waypoint => &
       WaypointSkipToTime(realization%waypoints,option%time)
     if (associated(tran_stepper)) tran_stepper%cur_waypoint => &
@@ -292,9 +275,9 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
 
     if (option%checkpoint_flag == PETSC_TRUE .and. &
         mod(istep,option%checkpoint_frequency) == 0) then
-      call Checkpoint(realization,master_stepper%steps,master_stepper%newtcum, &
-                      master_stepper%icutcum,num_const_timesteps, &
-                      num_newton_iterations,istep)
+      call StepperCheckpoint(realization,flow_stepper,tran_stepper, &
+                             num_const_timesteps,num_newton_iterations, &
+                             istep)  
     endif
     
    
@@ -304,9 +287,9 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   enddo
 
   if (option%checkpoint_flag == PETSC_TRUE) then
-    call Checkpoint(realization,master_stepper%steps,master_stepper%newtcum, &
-                    master_stepper%icutcum,num_const_timesteps, &
-                             num_newton_iterations,NEG_ONE_INTEGER)
+    call StepperCheckpoint(realization,flow_stepper,tran_stepper, &
+                           num_const_timesteps,num_newton_iterations, &
+                           NEG_ONE_INTEGER)  
   endif
 
   if (option%myrank == 0) then
@@ -909,6 +892,7 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
 
     else
       ! The Newton solver converged, so we can exit.
+      stepper%steps = stepper%steps + 1      
       exit
     endif
   enddo
@@ -952,8 +936,6 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
   if (option%myrank == 0 .and. mod(stepper%steps,option%imod) == 0) then
     print *, ""
   endif
-
-  stepper%steps = stepper%steps + 1      
 
 end subroutine StepperStepTransportDT
 
@@ -1040,6 +1022,132 @@ subroutine StepperUpdateTransportSolution(realization)
   call RTUpdateSolution(realization)
 
 end subroutine StepperUpdateTransportSolution
+
+! ************************************************************************** !
+!
+! StepperCheckpoint: Calls appropriate routines to write a checkpoint file
+! author: Glenn Hammond
+! date: 03/07/2008 
+!
+! ************************************************************************** !
+subroutine StepperCheckpoint(realization,flow_stepper,tran_stepper, &
+                             num_const_timesteps,num_newton_iterations,id)
+
+  use Realization_module
+  use Checkpoint_module
+
+  implicit none
+
+  type(realization_type) :: realization
+  type(stepper_type), pointer :: flow_stepper
+  type(stepper_type), pointer :: tran_stepper
+  PetscInt :: num_const_timesteps, num_newton_iterations  
+  PetscInt :: id
+
+  type(option_type), pointer :: option
+  PetscInt :: flow_steps, flow_newtcum, flow_icutcum, &
+              flow_num_const_timesteps, flow_num_newton_iterations
+  PetscInt :: tran_steps, tran_newtcum, tran_icutcum, &
+              tran_num_const_timesteps, tran_num_newton_iterations
+  
+  option => realization%option
+
+  if (associated(flow_stepper)) then
+    flow_steps = flow_stepper%steps
+    flow_newtcum = flow_stepper%newtcum
+    flow_icutcum = flow_stepper%icutcum
+    flow_num_const_timesteps = num_const_timesteps
+    flow_num_newton_iterations = num_newton_iterations
+  endif
+  if (associated(tran_stepper)) then
+    tran_steps = tran_stepper%steps
+    tran_newtcum = tran_stepper%newtcum
+    tran_icutcum = tran_stepper%icutcum
+    tran_num_const_timesteps = num_const_timesteps
+    tran_num_newton_iterations = num_newton_iterations
+  endif
+  
+  call Checkpoint(realization, &
+                  flow_steps,flow_newtcum,flow_icutcum, &
+                  flow_num_const_timesteps,flow_num_newton_iterations, &
+                  tran_steps,tran_newtcum,tran_icutcum, &
+                  tran_num_const_timesteps,tran_num_newton_iterations, &
+                  id)
+                      
+end subroutine StepperCheckpoint
+
+! ************************************************************************** !
+!
+! StepperRestart: Calls appropriate routines to read checkpoint file and
+!                 restart
+! author: Glenn Hammond
+! date: 03/07/2008 
+!
+! ************************************************************************** !
+subroutine StepperRestart(realization,flow_stepper,tran_stepper, &
+                          num_const_timesteps,num_newton_iterations)
+
+  use Realization_module
+  use Checkpoint_module
+
+  implicit none
+
+  type(realization_type) :: realization
+  type(stepper_type), pointer :: flow_stepper
+  type(stepper_type), pointer :: tran_stepper
+  PetscInt :: num_const_timesteps, num_newton_iterations
+
+  type(option_type), pointer :: option
+  PetscInt :: flow_steps, flow_newtcum, flow_icutcum, &
+              flow_num_const_timesteps, flow_num_newton_iterations
+  PetscInt :: tran_steps, tran_newtcum, tran_icutcum, &
+              tran_num_const_timesteps, tran_num_newton_iterations
+  
+  option => realization%option
+
+  call Restart(realization, &
+               flow_steps,flow_newtcum,flow_icutcum, &
+               flow_num_const_timesteps,flow_num_newton_iterations, &
+               tran_steps,tran_newtcum,tran_icutcum, &
+               tran_num_const_timesteps,tran_num_newton_iterations)
+  if (option%restart_time < -998.d0) then
+    option%time = max(option%flow_time,option%tran_time)
+    if (associated(flow_stepper)) then
+      flow_stepper%steps = flow_steps
+      flow_stepper%newtcum = flow_newtcum
+      flow_stepper%icutcum = flow_icutcum
+    endif
+    if (associated(tran_stepper)) then
+      tran_stepper%steps = tran_steps
+      tran_stepper%newtcum = tran_newtcum
+      tran_stepper%icutcum = tran_icutcum
+    endif
+    num_const_timesteps = flow_num_const_timesteps
+    num_newton_iterations = flow_num_newton_iterations
+!    num_const_timesteps = tran_num_const_timesteps
+!    num_newton_iterations = tran_num_newton_iterations
+  else
+    option%time = option%restart_time
+    option%flow_time = option%restart_time
+    option%flow_dt = flow_stepper%dt_min
+    option%tran_time = option%restart_time
+    option%tran_dt = tran_stepper%dt_min
+    if (associated(flow_stepper)) then
+      flow_stepper%steps = 0
+      flow_stepper%newtcum = 0
+      flow_stepper%icutcum = 0
+    endif
+    if (associated(tran_stepper)) then
+      tran_stepper%steps = 0
+      tran_stepper%newtcum = 0
+      tran_stepper%icutcum = 0
+    endif
+    num_const_timesteps = 0
+    num_newton_iterations = 0
+    realization%output_option%plot_number = 0
+  endif
+    
+end subroutine StepperRestart
 
 ! ************************************************************************** !
 !
