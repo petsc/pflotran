@@ -2625,7 +2625,8 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
       case(GAS_PHASE)
         string = trim(string) // ' Gas Phase'
     end select
-    string = trim(string) // ' Velocity Statistics:'
+    string = trim(string) // ' Velocity Statistics [m/' // &
+             trim(output_option%tunit) // ']:'
     if (option%myrank == 0) then
       write(*,'(/,a,/, &
                    &"Average:",1es12.4,/, &
