@@ -16,13 +16,16 @@ syntax: glob
 src/.DS_Store
 src/pflotran/*.o
 src/pflotran/*.MOD
-src/pflotran/build
 src/pflotran/pflotran
 src/pflotran/pflotran_fc
 src/pflotran/pflow
 src/pflotran/ptran
+src/pflotran/build
+src/pflotran/pflotran_xcode/build
 src/pflotran/pflotran.xcodeproj/*.pbxuser
 src/pflotran/pflotran.xcodeproj/*.mode1
+src/pflotran/pflotran_xcode/pflotran_xcode.xcodeproj/*.pbxuser
+src/pflotran/pflotran_xcode/pflotran_xcode.xcodeproj/*.mode1
 src/pims/*.o
 src/pims/*.MOD
 src/pims/build

@@ -186,6 +186,7 @@ subroutine Init(simulation,filename)
     ! shell for custom convergence test.  The default SNES convergence test  
     ! is call within this function. 
     flow_stepper%convergence_context => ConvergenceContextCreate(flow_solver,option)
+!#if 0
 #if (PETSC_VERSION_RELEASE == 0)
     call SNESSetConvergenceTest(flow_solver%snes,ConvergenceTest, &
                                 flow_stepper%convergence_context, &
@@ -195,6 +196,7 @@ subroutine Init(simulation,filename)
                                 flow_stepper%convergence_context, &
                                 ierr) 
 #endif
+!#endif
     call printMsg(option,"  Finished setting up FLOW SNES ")
 
   endif
@@ -222,6 +224,7 @@ subroutine Init(simulation,filename)
     ! shell for custom convergence test.  The default SNES convergence test  
     ! is call within this function. 
     tran_stepper%convergence_context => ConvergenceContextCreate(tran_solver,option)
+!#if 0
 #if (PETSC_VERSION_RELEASE == 0)
     call SNESSetConvergenceTest(tran_solver%snes,ConvergenceTest, &
                                 tran_stepper%convergence_context, &
@@ -231,6 +234,7 @@ subroutine Init(simulation,filename)
                                 tran_stepper%convergence_context, &
                                 ierr) 
 #endif
+!#endif
 
     call printMsg(option,"  Finished setting up TRAN SNES ")
   
