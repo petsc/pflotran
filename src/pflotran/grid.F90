@@ -400,12 +400,12 @@ subroutine GridLocalizeRegions(grid,region_list,option)
             else
               region%num_cells = 0
             endif
-            call MPI_Allreduce(count,region%num_cells,ONE_INTEGER,MPI_INTEGER,MPI_SUM, &
+            call MPI_Allreduce(region%num_cells,count,ONE_INTEGER,MPI_INTEGER,MPI_SUM, &
                                PETSC_COMM_WORLD,ierr)   
             if (count /= 1) then
               write(string,*) 'Region: (coord)', region%coordinate(1), &
                               region%coordinate(2), region%coordinate(3), &
-                              ' not found in global domain.'
+                              ' not found in global domain.', count
               call printErrMsg(option,string)
             endif
         end select

@@ -496,8 +496,13 @@ subroutine StructGridGetIJKFromCoordinate(structured_grid,x,y,z,i,j,k)
     z_lower_face = z_lower_face + structured_grid%dz0(k)
   enddo
 
-  if (i > structured_grid%nx .and. j > structured_grid%ny .and. &
-      k > structured_grid%nz) then
+  ! remember, zero-based 
+  if (i <= structured_grid%nxs .or. &
+      i > structured_grid%nxe .or. &
+      j <= structured_grid%nys .or. &
+      j > structured_grid%nye .or. &
+      k <= structured_grid%nzs .or. &
+      k > structured_grid%nze) then
     i = -1
     j = -1
     k = -1

@@ -536,7 +536,8 @@ void Hanford300::computePlumeSource(Grid *grid, Polygon *p) {
   for (PetscInt i=0; i<grid->getNumberOfCellsGhosted(); i++) {
     PetscInt local_id = grid->cells[i].getIdLocal();
     if (local_id > -1) {
-      if (grid->cells[i].getZ() >= 104. && grid->cells[i].getZ() < 106. &&
+//      if (grid->cells[i].getZ() >= 104. && grid->cells[i].getZ() < 106. &&
+      if (grid->cells[i].getZ() >= 104. &&
           p->pointInPolygon(grid->cells[i].getX(),
                             grid->cells[i].getY())) {
         PetscInt vertex_list[5] = {4,0,0,0,0};
