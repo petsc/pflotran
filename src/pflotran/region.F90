@@ -16,6 +16,7 @@ module Region_module
     character(len=MAXWORDLENGTH) :: name
     character(len=MAXWORDLENGTH) :: filename
     PetscInt :: i1,i2,j1,j2,k1,k2
+    PetscReal :: coordinate(3)
     PetscInt :: iface
     PetscInt :: num_cells
     PetscInt, pointer :: cell_ids(:)
@@ -76,6 +77,7 @@ function RegionCreateWithNothing()
   region%j2 = 0
   region%k1 = 0
   region%k2 = 0
+  region%coordinate = 0.d0
   region%iface = 0
   region%num_cells = 0
   nullify(region%cell_ids)
@@ -281,6 +283,19 @@ subroutine RegionRead(region,fid,option)
         call fiErrorMsg(option%myrank,'k1','REGION', ierr)
         call fiReadInt(string,region%k2,ierr)
         call fiErrorMsg(option%myrank,'k2','REGION', ierr)
+      case('COORDINATE')
+        call fiReadDouble(string,region%coordinate(1),ierr) 
+        if (ierr /= 0) then
+          ierr = 0
+          call fiReadFlotranString(IUNIT1,string,ierr)
+          call fiReadStringErrorMsg(option%myrank,'REGION',ierr)
+          call fiReadDouble(string,region%coordinate(1),ierr) 
+        endif
+        call fiErrorMsg(option%myrank,'x-coordinate','REGION', ierr)
+        call fiReadDouble(string,region%coordinate(2),ierr)
+        call fiErrorMsg(option%myrank,'y-coordinate','REGION', ierr)
+        call fiReadDouble(string,region%coordinate(3),ierr)
+        call fiErrorMsg(option%myrank,'z-coordinate','REGION', ierr)
       case('FILE')
         call fiReadWord(string,word,.true.,ierr)
         call fiErrorMsg(option%myrank,'filename','REGION', ierr)
