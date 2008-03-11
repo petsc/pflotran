@@ -506,6 +506,10 @@ subroutine StructGridGetIJKFromCoordinate(structured_grid,x,y,z,i,j,k)
     i = -1
     j = -1
     k = -1
+  else
+   i = i - structured_grid%nxs
+   j = j - structured_grid%nys
+   k = k - structured_grid%nzs
   endif
     
 end subroutine StructGridGetIJKFromCoordinate

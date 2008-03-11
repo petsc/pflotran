@@ -1446,54 +1446,56 @@ subroutine OutputBreakthroughTecplot(realization)
   
   breakthrough => patch%breakthrough%first
   
-  if (.not.associated(breakthrough)) return
+  if (associated(breakthrough)) then
 
-  if (option%myrank < 10) then
-    write(filename,'("breakthrough_",i1,".tec")') option%myrank  
-  else if (option%myrank < 100) then
-    write(filename,'("breakthrough_",i2,".tec")') option%myrank  
-  else if (option%myrank < 1000) then
-    write(filename,'("breakthrough_",i3,".tec")') option%myrank  
-  else if (option%myrank < 10000) then
-    write(filename,'("breakthrough_",i4,".tec")') option%myrank  
-  else if (option%myrank < 100000) then
-    write(filename,'("breakthrough_",i5,".tec")') option%myrank  
-  endif
+    if (option%myrank < 10) then
+      write(filename,'("breakthrough_",i1,".tec")') option%myrank  
+    else if (option%myrank < 100) then
+      write(filename,'("breakthrough_",i2,".tec")') option%myrank  
+    else if (option%myrank < 1000) then
+      write(filename,'("breakthrough_",i3,".tec")') option%myrank  
+    else if (option%myrank < 10000) then
+      write(filename,'("breakthrough_",i4,".tec")') option%myrank  
+    else if (option%myrank < 100000) then
+      write(filename,'("breakthrough_",i5,".tec")') option%myrank  
+    endif
   
-  ! open file
-  fid = 86
-  if (first) then
-    first = .false.
-    open(unit=fid,file=filename,action="write",status="replace")
-    ! write header
-    ! write title
-    write(fid,'(a)',advance="no") '"Time[' // trim(output_option%tunit) // ']"'
+    ! open file
+    fid = 86
+    if (first) then
+      first = .false.
+      open(unit=fid,file=filename,action="write",status="replace")
+      ! write header
+      ! write title
+      write(fid,'(a)',advance="no") '"Time[' // trim(output_option%tunit) // ']"'
+      do 
+        if (.not.associated(breakthrough)) exit
+        do icell=1,breakthrough%region%num_cells
+          call WriteBreakthroughHeaderForCell(fid,realization, &
+                                              breakthrough%region,icell)
+        enddo
+        breakthrough => breakthrough%next
+      enddo
+      write(fid,'(a)',advance="yes") ""
+      breakthrough => patch%breakthrough%first
+    else
+      open(unit=fid,file=filename,action="write",status="old", &
+           position="append")
+    endif
+  
+    write(fid,'(1es12.4)',advance="no") option%time/output_option%tconv
     do 
       if (.not.associated(breakthrough)) exit
       do icell=1,breakthrough%region%num_cells
-        call WriteBreakthroughHeaderForCell(fid,realization, &
-                                            breakthrough%region,icell)
+        call WriteBreakthroughDataForCell(fid,realization, &
+                                          breakthrough%region%cell_ids(icell))
       enddo
       breakthrough => breakthrough%next
     enddo
     write(fid,'(a)',advance="yes") ""
-    breakthrough => patch%breakthrough%first
-  else
-    open(unit=fid,file=filename,action="write",status="old", &
-         position="append")
-  endif
+    close(fid)
 
-  write(fid,'(1es12.4)',advance="no") option%time/output_option%tconv
-  do 
-    if (.not.associated(breakthrough)) exit
-    do icell=1,breakthrough%region%num_cells
-      call WriteBreakthroughDataForCell(fid,realization, &
-                                        breakthrough%region%cell_ids(icell))
-    enddo
-    breakthrough => breakthrough%next
-  enddo
-  write(fid,'(a)',advance="yes") ""
-  close(fid)
+  endif
 
   call PetscLogEventEnd(logging%event_output_breakthrough, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
