@@ -308,7 +308,7 @@ end subroutine StepperRun
 !
 ! StepperUpdateDT: Updates time step
 ! author: Glenn Hammond
-! date: 02/19/2008
+! date: 02/19/08
 !
 ! ************************************************************************** !
 subroutine StepperUpdateDT(flow_stepper,tran_stepper,option,timestep_cut_flag, &
@@ -421,7 +421,7 @@ end subroutine StepperUpdateDT
 !
 ! StepperSetTargetTimes: Sets target time for flow and transport solvers
 ! author: Glenn Hammond
-! date: 02/19/2008
+! date: 02/19/08
 !
 ! ************************************************************************** !
 subroutine StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag)
@@ -506,7 +506,7 @@ end subroutine StepperSetTargetTimes
 !
 ! StepperStepFlowDT: Steps forward one step in time
 ! author: Glenn Hammond
-! date: 02/19/2008
+! date: 02/19/08
 !
 ! ************************************************************************** !
 subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
@@ -772,7 +772,7 @@ end subroutine StepperStepFlowDT
 !
 ! StepperStepTransportDT: Steps forward one step in time
 ! author: Glenn Hammond
-! date: 02/19/2008
+! date: 02/19/08
 !
 ! ************************************************************************** !
 subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
@@ -943,7 +943,7 @@ end subroutine StepperStepTransportDT
 !
 ! StepperUpdateSolution: Updates the solution variables
 ! author: Glenn Hammond
-! date: 02/19/2008 
+! date: 02/19/08 
 !
 ! ************************************************************************** !
 subroutine StepperUpdateSolution(realization)
@@ -968,7 +968,7 @@ end subroutine StepperUpdateSolution
 !
 ! StepperUpdateFlowSolution: Updates the flow solution variables
 ! author: Glenn Hammond
-! date: 02/19/2008 
+! date: 02/19/08 
 !
 ! ************************************************************************** !
 subroutine StepperUpdateFlowSolution(realization)
@@ -1005,7 +1005,7 @@ end subroutine StepperUpdateFlowSolution
 !
 ! StepperUpdateTransportSolution: Updates the transport solution variables
 ! author: Glenn Hammond
-! date: 02/19/2008 
+! date: 02/19/08 
 !
 ! ************************************************************************** !
 subroutine StepperUpdateTransportSolution(realization)
@@ -1027,7 +1027,7 @@ end subroutine StepperUpdateTransportSolution
 !
 ! StepperCheckpoint: Calls appropriate routines to write a checkpoint file
 ! author: Glenn Hammond
-! date: 03/07/2008 
+! date: 03/07/08 
 !
 ! ************************************************************************** !
 subroutine StepperCheckpoint(realization,flow_stepper,tran_stepper, &
@@ -1082,7 +1082,7 @@ end subroutine StepperCheckpoint
 ! StepperRestart: Calls appropriate routines to read checkpoint file and
 !                 restart
 ! author: Glenn Hammond
-! date: 03/07/2008 
+! date: 03/07/08 
 !
 ! ************************************************************************** !
 subroutine StepperRestart(realization,flow_stepper,tran_stepper, &

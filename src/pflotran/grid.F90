@@ -309,71 +309,112 @@ subroutine GridLocalizeRegions(grid,region_list,option)
   type(option_type) :: option
   
   type(region_type), pointer :: region
+  character(len=MAXSTRINGLENGTH) :: string
   PetscInt, allocatable :: temp_int_array(:)
   PetscInt :: i, j, k, count, local_count, local_ghosted_id, local_id
+  PetscErrorCode :: ierr
   
   region => region_list%first
   do
   
     if (.not.associated(region)) exit
     
-    if (.not.associated(region%cell_ids) .and. &
-        region%i1 > 0 .and. region%i2 > 0 .and. &
-        region%j1 > 0 .and. region%j2 > 0 .and. &
-        region%k1 > 0 .and. region%k2 > 0) then
+    if (.not.associated(region%cell_ids)) then
+      if (region%i1 > 0 .and. region%i2 > 0 .and. &
+          region%j1 > 0 .and. region%j2 > 0 .and. &
+          region%k1 > 0 .and. region%k2 > 0) then
 
-      ! convert indexing from global (entire domain) to local processor
-      region%i1 = region%i1 - grid%structured_grid%nxs
-      region%i2 = region%i2 - grid%structured_grid%nxs
-      region%j1 = region%j1 - grid%structured_grid%nys
-      region%j2 = region%j2 - grid%structured_grid%nys
-      region%k1 = region%k1 - grid%structured_grid%nzs
-      region%k2 = region%k2 - grid%structured_grid%nzs
-        
-      ! clip region to within local processor domain
-      region%i1 = max(region%i1,1)
+        ! convert indexing from global (entire domain) to local processor
+        region%i1 = region%i1 - grid%structured_grid%nxs
+        region%i2 = region%i2 - grid%structured_grid%nxs
+        region%j1 = region%j1 - grid%structured_grid%nys
+        region%j2 = region%j2 - grid%structured_grid%nys
+        region%k1 = region%k1 - grid%structured_grid%nzs
+        region%k2 = region%k2 - grid%structured_grid%nzs
+          
+        ! clip region to within local processor domain
+        region%i1 = max(region%i1,1)
 
-      region%i2 = min(region%i2,grid%structured_grid%nlx)
-      region%j1 = max(region%j1,1)
-      region%j2 = min(region%j2,grid%structured_grid%nly)
-      region%k1 = max(region%k1,1)
-      region%k2 = min(region%k2,grid%structured_grid%nlz)
-       
-      count = 0  
-      if (region%i1 <= region%i2 .and. &
-          region%j1 <= region%j2 .and. &
-          region%k1 <= region%k2) then
-        region%num_cells = (region%i2-region%i1+1)* &
-                           (region%j2-region%j1+1)* &
-                           (region%k2-region%k1+1)
-        allocate(region%cell_ids(region%num_cells))
-        if (region%iface /= 0) then
-          allocate(region%faces(region%num_cells))
-          region%faces = region%iface
-        endif
-        region%cell_ids = 0
-        do k=region%k1,region%k2
-          do j=region%j1,region%j2
-            do i=region%i1,region%i2
-              count = count + 1
-              region%cell_ids(count) = &
-                     i + (j-1)*grid%structured_grid%nlx + &
-                     (k-1)*grid%structured_grid%nlxy
+        region%i2 = min(region%i2,grid%structured_grid%nlx)
+        region%j1 = max(region%j1,1)
+        region%j2 = min(region%j2,grid%structured_grid%nly)
+        region%k1 = max(region%k1,1)
+        region%k2 = min(region%k2,grid%structured_grid%nlz)
+         
+        count = 0  
+        if (region%i1 <= region%i2 .and. &
+            region%j1 <= region%j2 .and. &
+            region%k1 <= region%k2) then
+          region%num_cells = (region%i2-region%i1+1)* &
+                             (region%j2-region%j1+1)* &
+                             (region%k2-region%k1+1)
+          allocate(region%cell_ids(region%num_cells))
+          if (region%iface /= 0) then
+            allocate(region%faces(region%num_cells))
+            region%faces = region%iface
+          endif
+          region%cell_ids = 0
+          do k=region%k1,region%k2
+            do j=region%j1,region%j2
+              do i=region%i1,region%i2
+                count = count + 1
+                region%cell_ids(count) = &
+                       i + (j-1)*grid%structured_grid%nlx + &
+                       (k-1)*grid%structured_grid%nlxy
+              enddo
             enddo
           enddo
-        enddo
-      else
-        region%num_cells = 0
-      endif
+        else
+          region%num_cells = 0
+        endif
      
-      if (count /= region%num_cells) &
-        call printErrMsg(option,"Mismatch in number of cells in block region")
+        if (count /= region%num_cells) &
+          call printErrMsg(option,"Mismatch in number of cells in block region")
 
+      else if (dabs(region%coordinate(1)) > 1.d-40 .and. &
+               dabs(region%coordinate(2)) > 1.d-40 .and. &
+               dabs(region%coordinate(3)) > 1.d-40 .and. &
+               region%coordinate(1) >= grid%x_min .and. &
+               region%coordinate(1) <= grid%x_max .and. &
+               region%coordinate(2) >= grid%y_min .and. &
+               region%coordinate(2) <= grid%y_max .and. &
+               region%coordinate(3) >= grid%z_min .and. &
+               region%coordinate(3) <= grid%z_max) then
+        select case(grid%itype)
+          case(STRUCTURED_GRID)
+            call StructGridGetIJKFromCoordinate(grid%structured_grid, &
+                                                region%coordinate(1), &
+                                                region%coordinate(2), &
+                                                region%coordinate(3), &
+                                                i,j,k)
+            if (i > 0 .and. j > 0 .and. k > 0) then
+              region%num_cells = 1
+              allocate(region%cell_ids(region%num_cells))
+              if (region%iface /= 0) then
+                allocate(region%faces(region%num_cells))
+                region%faces = region%iface
+              endif
+              region%cell_ids = 0
+              region%cell_ids(1) = i + (j-1)*grid%structured_grid%nlx + &
+                                  (k-1)*grid%structured_grid%nlxy
+            else
+              region%num_cells = 0
+            endif
+            call MPI_Allreduce(count,region%num_cells,ONE_INTEGER,MPI_INTEGER,MPI_SUM, &
+                               PETSC_COMM_WORLD,ierr)   
+            if (count /= 1) then
+              write(string,*) 'Region: (coord)', region%coordinate(1), &
+                              region%coordinate(2), region%coordinate(3), &
+                              ' not found in global domain.'
+              call printErrMsg(option,string)
+            endif
+        end select
+      endif
     else
 #if 0
       allocate(temp_int_array(region%num_cells))
       temp_int_array = 0
-      if (grid%itype == STRUCTURED) then
+      if (grid%itype == STRUCTURED_GRID) then
         do count=1,region%num_cells
           i = mod(region%cell_ids(count),grid%structured_grid%nx) - &
                 grid%structured_grid%nxs

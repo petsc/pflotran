@@ -830,7 +830,7 @@ subroutine ConditionReadValuesFromFile(filename,dataset,option)
       stop
     endif
     do i=1,count
-      if (abs(dataset%times(i)-temp_times(i)) > 1.d-8) then
+      if (dabs(dataset%times(i)-temp_times(i)) > 1.d-8) then
         print *, 'Time (', temp_times(i), ') in ', trim(filename), &
                  ' does not match previous allocation time: ', &
                  dataset%times(i), i
@@ -943,7 +943,7 @@ subroutine SubConditionUpdateDataset(option,time,dataset)
 
   ! ensure that condition has started
   if (time >= dataset%times(cur_time_index) .or. &
-      abs(time-dataset%times(cur_time_index)) < 1.d-40) then
+      dabs(time-dataset%times(cur_time_index)) < 1.d-40) then
 
     ! find appropriate time interval
     do

@@ -288,8 +288,8 @@ subroutine Init(simulation,filename)
   endif
   
   if (option%ntrandof > 0) then
-    if (abs(option%uniform_velocity(1)) + abs(option%uniform_velocity(2)) + &
-        abs(option%uniform_velocity(3)) >  0.d0) then
+    if (dabs(option%uniform_velocity(1)) + dabs(option%uniform_velocity(2)) + &
+        dabs(option%uniform_velocity(3)) >  0.d0) then
       call RealizAssignUniformVelocity(realization)
     endif
     call VecSet(field%saturation_loc,1.d0,ierr)

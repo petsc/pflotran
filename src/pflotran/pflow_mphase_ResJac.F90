@@ -1643,13 +1643,13 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
       upweight = dd2/(dd1+dd2)
         
       ! for now, just assume diagonal tensor
-      perm1 = perm_xx_loc_p(ghosted_id_up)*abs(cur_connection_set%dist(1,iconn))+ &
-              perm_yy_loc_p(ghosted_id_up)*abs(cur_connection_set%dist(2,iconn))+ &
-              perm_zz_loc_p(ghosted_id_up)*abs(cur_connection_set%dist(3,iconn))
+      perm1 = perm_xx_loc_p(ghosted_id_up)*dabs(cur_connection_set%dist(1,iconn))+ &
+              perm_yy_loc_p(ghosted_id_up)*dabs(cur_connection_set%dist(2,iconn))+ &
+              perm_zz_loc_p(ghosted_id_up)*dabs(cur_connection_set%dist(3,iconn))
 
-      perm2 = perm_xx_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(1,iconn))+ &
-              perm_yy_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(2,iconn))+ &
-              perm_zz_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(3,iconn))
+      perm2 = perm_xx_loc_p(ghosted_id_dn)*dabs(cur_connection_set%dist(1,iconn))+ &
+              perm_yy_loc_p(ghosted_id_dn)*dabs(cur_connection_set%dist(2,iconn))+ &
+              perm_zz_loc_p(ghosted_id_dn)*dabs(cur_connection_set%dist(3,iconn))
 
       ithrm1 = ithrm_loc_p(ghosted_id_up)
       ithrm2 = ithrm_loc_p(ghosted_id_dn)
@@ -1723,9 +1723,9 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
       D2 = option%ckwet(ithrm2)
 
       ! for now, just assume diagonal tensor
-      perm1 = perm_xx_loc_p(ghosted_id)*abs(cur_connection_set%dist(1,iconn))+ &
-              perm_yy_loc_p(ghosted_id)*abs(cur_connection_set%dist(2,iconn))+ &
-              perm_zz_loc_p(ghosted_id)*abs(cur_connection_set%dist(3,iconn))
+      perm1 = perm_xx_loc_p(ghosted_id)*dabs(cur_connection_set%dist(1,iconn))+ &
+              perm_yy_loc_p(ghosted_id)*dabs(cur_connection_set%dist(2,iconn))+ &
+              perm_zz_loc_p(ghosted_id)*dabs(cur_connection_set%dist(3,iconn))
       ! dist(0,iconn) = scalar - magnitude of distance
       ! gravity = vector(3)
       ! dist(1:3,iconn) = vector(3) - unit vector
@@ -2153,9 +2153,9 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
       D2 = option%ckwet(ithrm2)
 
       ! for now, just assume diagonal tensor
-      perm1 = perm_xx_loc_p(ghosted_id)*abs(cur_connection_set%dist(1,iconn))+ &
-              perm_yy_loc_p(ghosted_id)*abs(cur_connection_set%dist(2,iconn))+ &
-              perm_zz_loc_p(ghosted_id)*abs(cur_connection_set%dist(3,iconn))
+      perm1 = perm_xx_loc_p(ghosted_id)*dabs(cur_connection_set%dist(1,iconn))+ &
+              perm_yy_loc_p(ghosted_id)*dabs(cur_connection_set%dist(2,iconn))+ &
+              perm_zz_loc_p(ghosted_id)*dabs(cur_connection_set%dist(3,iconn))
       ! dist(0,iconn) = scalar - magnitude of distance
       ! gravity = vector(3)
       ! dist(1:3,iconn) = vector(3) - unit vector
@@ -2387,13 +2387,13 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
       upweight = dd2/(dd1+dd2)
     
       ! for now, just assume diagonal tensor
-      perm1 = perm_xx_loc_p(ghosted_id_up)*abs(cur_connection_set%dist(1,iconn))+ &
-              perm_yy_loc_p(ghosted_id_up)*abs(cur_connection_set%dist(2,iconn))+ &
-              perm_zz_loc_p(ghosted_id_up)*abs(cur_connection_set%dist(3,iconn))
+      perm1 = perm_xx_loc_p(ghosted_id_up)*dabs(cur_connection_set%dist(1,iconn))+ &
+              perm_yy_loc_p(ghosted_id_up)*dabs(cur_connection_set%dist(2,iconn))+ &
+              perm_zz_loc_p(ghosted_id_up)*dabs(cur_connection_set%dist(3,iconn))
 
-      perm2 = perm_xx_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(1,iconn))+ &
-              perm_yy_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(2,iconn))+ &
-              perm_zz_loc_p(ghosted_id_dn)*abs(cur_connection_set%dist(3,iconn))
+      perm2 = perm_xx_loc_p(ghosted_id_dn)*dabs(cur_connection_set%dist(1,iconn))+ &
+              perm_yy_loc_p(ghosted_id_dn)*dabs(cur_connection_set%dist(2,iconn))+ &
+              perm_zz_loc_p(ghosted_id_dn)*dabs(cur_connection_set%dist(3,iconn))
     
       iiphas1 = iphase_loc_p(ghosted_id_up)
       iiphas2 = iphase_loc_p(ghosted_id_dn)

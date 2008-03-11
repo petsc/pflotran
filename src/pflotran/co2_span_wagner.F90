@@ -1356,7 +1356,7 @@
           df=-(ps1+(ps2*(1.d0-nu)))/((1.d0-nu)**2)
           dnu=f/df
           nu=nu-dnu
-          if(abs(dnu).lt.xacc) goto 10
+          if(dabs(dnu).lt.xacc) goto 10
         enddo
  10     continue
         tm = tc*(1.d0-nu)

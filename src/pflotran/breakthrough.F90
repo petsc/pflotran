@@ -84,9 +84,9 @@ function BreakthroughCreateFromBreakthrough(breakthrough)
   new_breakthrough%id = breakthrough%id
   ! keep these null for now to catch bugs
   nullify(new_breakthrough%region)
-  nullify(new_breakthrough%region)
+  nullify(new_breakthrough%next)
   
-  BreakthroughCreateFromBreakthrough => breakthrough
+  BreakthroughCreateFromBreakthrough => new_breakthrough
 
 end function BreakthroughCreateFromBreakthrough
 

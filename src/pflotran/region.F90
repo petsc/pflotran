@@ -172,6 +172,7 @@ function RegionCreateWithRegion(region)
   new_region%j2 = region%j2
   new_region%k1 = region%k1
   new_region%k2 = region%k2
+  new_region%coordinate = region%coordinate
   new_region%iface = region%iface
   new_region%num_cells = region%num_cells
   if (associated(region%cell_ids)) then

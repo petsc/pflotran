@@ -44,12 +44,12 @@
     xl=x2
   end if
   rtsafe=0.5*(x1+x2)
-  dxold=abs(x2-x1)
+  dxold=dabs(x2-x1)
   dx=dxold
   call funcd(rtsafe,f,df)
   do j=1,MAXIT
     if (((rtsafe-xh)*df-f)*((rtsafe-xl)*df-f) >= 0.0 .or. &
-      abs(2.0*f) > abs(dxold*df) ) then
+      dabs(2.0*f) > dabs(dxold*df) ) then
       dxold=dx
       dx=0.5*(xh-xl)
       rtsafe=xl+dx
@@ -61,7 +61,7 @@
       rtsafe=rtsafe-dx
       if (temp == rtsafe) RETURN
     end if
-    if (abs(dx) < xacc) RETURN
+    if (dabs(dx) < xacc) RETURN
     call funcd(rtsafe,f,df)
     if (f < 0.0) then
       xl=rtsafe
@@ -87,7 +87,7 @@
   ifind = 1
   do i = 1, 200
     if(f1*f2 < 0.d0) return
-    if (abs(f1) < abs(f2)) then
+    if (dabs(f1) < dabs(f2)) then
       x1 = x1+fac*(x1-x2)
       call func(x1,f1,df)
      else

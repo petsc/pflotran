@@ -90,7 +90,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
         pressure = pressure0 + rho * option%gravity(3) * dist_z
         call nacl_den(temperature,pressure*1.d-6,xm_nacl,dw_kg) 
         rho1 = dw_kg * 1.d3
-        if (abs(rho-rho1) < 1.d-10) exit
+        if (dabs(rho-rho1) < 1.d-10) exit
         rho = rho1
         num_iteration = num_iteration + 1
         if (num_iteration > 100) then
@@ -148,7 +148,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
         endif
         call nacl_den(temperature,pressure*1.d-6,xm_nacl,dw_kg) 
         rho1 = dw_kg * 1.d3
-        if (abs(rho-rho1) < 1.d-10) exit
+        if (dabs(rho-rho1) < 1.d-10) exit
         rho = rho1
         num_iteration = num_iteration + 1
         if (num_iteration > 100) then
@@ -263,7 +263,7 @@ subroutine HydrostaticUpdateCouplerBetter(coupler,option,grid)
   call nacl_den(temperature_at_datum,pressure_at_datum*1.d-6,xm_nacl,dw_kg) 
   rho = dw_kg * 1.d3
   pressure_gradient(1:3) = piezometric_head_gradient(1:3)* &
-                           rho*abs(option%gravity(Z_DIRECTION)) ! gravity is negative, but we just want magnitude
+                           rho*dabs(option%gravity(Z_DIRECTION)) ! gravity is negative, but we just want magnitude
 
   if (dabs(pressure_gradient(Z_DIRECTION)) < 1.d-40) then
     ! compute the vertical gradient based on a 1 meter vertical spacing and
@@ -304,7 +304,7 @@ subroutine HydrostaticUpdateCouplerBetter(coupler,option,grid)
                    option%gravity(Z_DIRECTION) * delta_z
         call nacl_den(temperature,pressure*1.d-6,xm_nacl,dw_kg) 
         rho1 = dw_kg * 1.d3
-        if (abs(rho-rho1) < 1.d-10) exit
+        if (dabs(rho-rho1) < 1.d-10) exit
         rho = rho1
         num_iteration = num_iteration + 1
         if (num_iteration > 100) then
@@ -339,7 +339,7 @@ subroutine HydrostaticUpdateCouplerBetter(coupler,option,grid)
                    option%gravity(Z_DIRECTION) * delta_z
         call nacl_den(temperature,pressure*1.d-6,xm_nacl,dw_kg) 
         rho1 = dw_kg * 1.d3
-        if (abs(rho-rho1) < 1.d-10) exit
+        if (dabs(rho-rho1) < 1.d-10) exit
         rho = rho1
         num_iteration = num_iteration + 1
         if (num_iteration > 100) then
@@ -462,7 +462,7 @@ subroutine HydrostaticTest()
         pressure = pressure0 + rho * 9.8068d0 * increment(i_increment)
         call nacl_den(temperature,pressure*1.d-6,xm_nacl,dw_kg) 
         rho1 = dw_kg * 1.d3
-        if (abs(rho-rho1) < 1.d-10) exit
+        if (dabs(rho-rho1) < 1.d-10) exit
         rho = rho1
         num_iteration = num_iteration + 1
         if (num_iteration > 100) then

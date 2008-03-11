@@ -592,7 +592,7 @@ contains
       f1 = z-zeq
 
 !-----check convergence
-      if (abs(f1).lt.epsilon .and. iter.gt.2) goto 30
+      if (dabs(f1).lt.epsilon .and. iter.gt.2) goto 30
 
       ov = 1.d0/v
       df1 = pr/vc/tr + (b + (2.d0*c + (4.d0*d + 5.d0*e*vr1)*vr2 &

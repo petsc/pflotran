@@ -603,7 +603,7 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
       
-      Res(1:option%ncomp) = -1000.d0* &
+      Res(1:option%ncomp) = -1.d-4* &
                             (1.d0-aux_vars(ghosted_id)%total(1:option%ncomp)/ &
                                   source_sink%condition%concentration%dataset%cur_value(1))
       iend = local_id*option%ncomp
@@ -876,7 +876,7 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       
       Jup = 0.d0
       do istart = 1, option%ncomp
-        Jup(istart,istart) = 1000.d0* &
+        Jup(istart,istart) = 1.d-4* &
                              1.d0/source_sink%condition%concentration%dataset%cur_value(1)
       enddo
       call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)                        

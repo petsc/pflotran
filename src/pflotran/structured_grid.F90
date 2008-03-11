@@ -50,7 +50,8 @@ module Structured_Grid_module
             StructuredGridComputeCoord, &
             StructuredGridReadDXYZ, &
             StructuredGridComputeVolumes, &
-            StructGridPopulateConnection
+            StructGridPopulateConnection, &
+            StructGridGetIJKFromCoordinate
 
 contains
 
@@ -457,6 +458,52 @@ subroutine StructuredGridComputeCoord(structured_grid,option, &
              'does not match number of ghosted cells (', structured_grid%ngmax, ')'             
     
 end subroutine StructuredGridComputeCoord
+
+! ************************************************************************** !
+!
+! StructGridGetIJKFromCoordinate: Finds i,j,k indices for grid cell 
+!                                 encompassing coordinate
+! author: Glenn Hammond
+! date: 03/10/08
+!
+! ************************************************************************** !
+subroutine StructGridGetIJKFromCoordinate(structured_grid,x,y,z,i,j,k)
+
+  use Option_module
+  
+  implicit none
+  
+  type(structured_grid_type) :: structured_grid
+  type(option_type) :: option
+  PetscInt :: i, j, k
+  PetscReal :: x, y, z
+  
+  PetscReal :: x_lower_face, y_lower_face, z_lower_face
+
+  x_lower_face = structured_grid%origin(X_DIRECTION)
+  do i=1,structured_grid%nx
+    if (x >= x_lower_face .and. x <= x_lower_face+structured_grid%dx0(i)) exit
+    x_lower_face = x_lower_face + structured_grid%dx0(i)
+  enddo
+  y_lower_face = structured_grid%origin(Y_DIRECTION)
+  do j=1,structured_grid%ny
+    if (y >= y_lower_face .and. y <= y_lower_face+structured_grid%dy0(j)) exit
+    y_lower_face = y_lower_face + structured_grid%dy0(j)
+  enddo
+  z_lower_face = structured_grid%origin(Z_DIRECTION)
+  do k=1,structured_grid%nz
+    if (z >= z_lower_face .and. z <= z_lower_face+structured_grid%dz0(k)) exit
+    z_lower_face = z_lower_face + structured_grid%dz0(k)
+  enddo
+
+  if (i > structured_grid%nx .and. j > structured_grid%ny .and. &
+      k > structured_grid%nz) then
+    i = -1
+    j = -1
+    k = -1
+  endif
+    
+end subroutine StructGridGetIJKFromCoordinate
 
 ! ************************************************************************** !
 !

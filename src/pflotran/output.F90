@@ -881,7 +881,7 @@ subroutine OutputFluxVelocitiesTecplot(realization,iphase, &
       local_id = grid%nG2L(ghosted_id) ! = zero for ghost nodes
       ! velocities are stored as the downwind face of the upwind cell
       if (local_id <= 0 .or. &
-          abs(cur_connection_set%dist(direction,iconn)) < 0.99d0) cycle
+          dabs(cur_connection_set%dist(direction,iconn)) < 0.99d0) cycle
       vec_ptr(local_id) = patch%internal_velocities(iphase,iconn)
     enddo
     cur_connection_set => cur_connection_set%next
@@ -1467,12 +1467,12 @@ subroutine OutputBreakthroughTecplot(realization)
     open(unit=fid,file=filename,action="write",status="replace")
     ! write header
     ! write title
-    write(fid,'(a)',advance="no") "Time[" // trim(output_option%tunit) // "],"
+    write(fid,'(a)',advance="no") '"Time[' // trim(output_option%tunit) // ']"'
     do 
       if (.not.associated(breakthrough)) exit
       do icell=1,breakthrough%region%num_cells
         call WriteBreakthroughHeaderForCell(fid,realization, &
-                                            breakthrough%region%cell_ids(icell))
+                                            breakthrough%region,icell)
       enddo
       breakthrough => breakthrough%next
     enddo
@@ -1508,19 +1508,21 @@ end subroutine OutputBreakthroughTecplot
 ! date: 02/11/08
 !
 ! ************************************************************************** !  
-subroutine WriteBreakthroughHeaderForCell(fid,realization,local_id)
+subroutine WriteBreakthroughHeaderForCell(fid,realization,region,icell)
 
   use Realization_module
   use Grid_module
   use Field_module
   use Option_module
   use Patch_module
+  use Region_module
 
   implicit none
   
   PetscInt :: fid
   type(realization_type) :: realization
-  PetscInt :: local_id
+  type(region_type) :: region
+  PetscInt :: icell
   
   PetscInt :: i
   character(len=MAXSTRINGLENGTH) :: string, string2
@@ -1535,12 +1537,12 @@ subroutine WriteBreakthroughHeaderForCell(fid,realization,local_id)
   field => realization%field
   grid => patch%grid
   
-  write(cell_id_string,*) grid%nL2A(local_id)
-  cell_id_string = adjustl(cell_id_string)
+  write(cell_id_string,*) grid%nL2A(region%cell_ids(icell))
+  cell_id_string = trim(region%name) // ' ' //adjustl(cell_id_string)
 
   select case(option%iflowmode)
     case (MPH_MODE)
-      string = '"X [m] '// trim(cell_id_string) // '",' // &
+      string = ',"X [m] '// trim(cell_id_string) // '",' // &
                '"Y [m] '// trim(cell_id_string) // '",' // &
                '"Z [m] '// trim(cell_id_string) // '",' // &
                '"T [C] '// trim(cell_id_string) // '",' // &
@@ -1565,7 +1567,7 @@ subroutine WriteBreakthroughHeaderForCell(fid,realization,local_id)
       string = trim(string) // ',"Phase '// trim(cell_id_string) // '"'
     case(RICHARDS_MODE,RICHARDS_LITE_MODE)
       if (option%iflowmode == RICHARDS_MODE) then
-        string = '"X [m] '// trim(cell_id_string) // '",' // &
+        string = ',"X [m] '// trim(cell_id_string) // '",' // &
                  '"Y [m] '// trim(cell_id_string) // '",' // &
                  '"Z [m] '// trim(cell_id_string) // '",' // &
                  '"T [C] '// trim(cell_id_string) // '",' // &
@@ -1573,7 +1575,7 @@ subroutine WriteBreakthroughHeaderForCell(fid,realization,local_id)
                  '"sl '// trim(cell_id_string) // '",' // &
                  '"Ul '// trim(cell_id_string) // '"' 
       else
-        string = '"X [m] '// trim(cell_id_string) // '",' // &
+        string = ',"X [m] '// trim(cell_id_string) // '",' // &
                  '"Y [m] '// trim(cell_id_string) // '",' // &
                  '"Z [m] '// trim(cell_id_string) // '",' // &
                  '"P [Pa] '// trim(cell_id_string) // '",' // &
@@ -1591,7 +1593,7 @@ subroutine WriteBreakthroughHeaderForCell(fid,realization,local_id)
       endif
 #endif      
     case default
-      string = '"X [m]",' // &
+      string = ',"X [m]",' // &
                '"Y [m]",' // &
                '"Z [m]",' // &
                '"T [C]",' // &
@@ -2193,7 +2195,7 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
       local_id = grid%nG2L(ghosted_id) ! = zero for ghost nodes
       ! velocities are stored as the downwind face of the upwind cell
       if (local_id <= 0 .or. &
-          abs(cur_connection_set%dist(direction,iconn)) < 0.99d0) cycle
+          dabs(cur_connection_set%dist(direction,iconn)) < 0.99d0) cycle
       vec_ptr(local_id) = patch%internal_velocities(iphase,iconn)
     enddo
     cur_connection_set => cur_connection_set%next
@@ -2556,7 +2558,7 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
       local_id_dn = grid%nG2L(ghosted_id_dn) ! = zero for ghost nodes
       ! velocities are stored as the downwind face of the upwind cell
       area = cur_connection_set%area(iconn)* &
-             abs(cur_connection_set%dist(direction,iconn))
+             dabs(cur_connection_set%dist(direction,iconn))
       velocity = patch%internal_velocities(iphase,iconn)* &
                  area
       if (local_id_up > 0) then
@@ -2579,7 +2581,7 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
     do iconn = 1, cur_connection_set%num_connections
       local_id = cur_connection_set%id_dn(iconn)
       area = cur_connection_set%area(iconn)* &
-             abs(cur_connection_set%dist(direction,iconn))
+             dabs(cur_connection_set%dist(direction,iconn))
       vec_ptr(local_id) = vec_ptr(local_id)+ &
                           patch%boundary_velocities(1,iconn)* &
                           area
