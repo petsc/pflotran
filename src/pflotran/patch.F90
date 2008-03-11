@@ -262,7 +262,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   type(coupler_type), pointer :: coupler
   type(coupler_list_type), pointer :: coupler_list 
   type(strata_type), pointer :: strata
-  type(breakthrough_type), pointer :: breakthrough
+  type(breakthrough_type), pointer :: breakthrough, next_breakthrough
   
   PetscInt :: temp_int
   
@@ -406,6 +406,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   breakthrough => patch%breakthrough%first
   do
     if (.not.associated(breakthrough)) exit
+    next_breakthrough => breakthrough%next
     ! pointer to region
     breakthrough%region => RegionGetPtrFromList(breakthrough%region_name, &
                                                 patch%regions)
@@ -414,7 +415,11 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
                ' not found in region list'
       call printErrMsg(option,string)
     endif
-    breakthrough => breakthrough%next
+    if (breakthrough%region%num_cells == 0) then
+      ! remove the breakthrough object
+      call BreakthroughRemoveFromList(breakthrough,patch%breakthrough)
+    endif
+    breakthrough => next_breakthrough
   enddo
  
   ! connectivity between initial conditions, boundary conditions, srcs/sinks, etc and grid

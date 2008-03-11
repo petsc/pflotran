@@ -25,7 +25,7 @@ module Breakthrough_module
 
   public :: BreakthroughCreate, BreakthroughDestroy, BreakthroughRead, &
             BreakthroughAddToList, BreakthroughInitList, BreakthroughDestroyList, &
-            BreakthroughGetPtrFromList
+            BreakthroughGetPtrFromList, BreakthroughRemoveFromList
 
   interface BreakthroughCreate
     module procedure BreakthroughCreate1
@@ -175,6 +175,46 @@ subroutine BreakthroughAddToList(new_breakthrough,list)
   list%last => new_breakthrough
   
 end subroutine BreakthroughAddToList
+
+! ************************************************************************** !
+!
+! BreakthroughRemoveFromList: Removes a breakthrough from a breakthrough list
+! author: Glenn Hammond
+! date: 02/11/08
+!
+! ************************************************************************** !
+subroutine BreakthroughRemoveFromList(breakthrough,list)
+
+  implicit none
+  
+  type(breakthrough_type), pointer :: breakthrough
+  type(breakthrough_list_type) :: list
+  
+  type(breakthrough_type), pointer :: cur_breakthrough, prev_breakthrough
+  
+  cur_breakthrough => list%first
+  nullify(prev_breakthrough)
+  
+  do
+    if (.not.associated(cur_breakthrough)) exit
+    if (associated(cur_breakthrough,breakthrough)) then
+      if (associated(prev_breakthrough)) then
+        prev_breakthrough%next => cur_breakthrough%next
+      else
+        list%first => cur_breakthrough%next
+      endif
+      if (.not.associated(cur_breakthrough%next)) then
+        list%last => prev_breakthrough
+      endif
+      list%num_breakthroughs = list%num_breakthroughs-1
+      call BreakthroughDestroy(cur_breakthrough)
+      return
+    endif
+    prev_breakthrough => cur_breakthrough
+    cur_breakthrough => cur_breakthrough%next
+  enddo
+  
+end subroutine BreakthroughRemoveFromList
 
 ! ************************************************************************** !
 !
