@@ -609,7 +609,7 @@ subroutine MPhase_Update_Reason(reason,realization)
       !sat=>var_loc_p(index+2+1:index+2+option%nphase)
       !den=>var_loc_p(index+2+option%nphase+1:index+2+2*option%nphase)
     !xmol=>var_loc_p(index+2+7*option%nphase+1:index+2+7*option%nphase + option%nphase*option%nspec)    
-      iipha=int(iphase_loc_p(local_id))
+      iipha=int(iphase_loc_p(ghosted_id))
      !if(n==3583 .or. n==3587)
    !print *, 'update reson', grid%nlmax, n, iipha, xx_p(n0+1:n0+3)
    !if(xmol(4)>1.0) re=0; goto 1

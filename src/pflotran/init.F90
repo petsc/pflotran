@@ -293,6 +293,7 @@ subroutine Init(simulation,filename)
       call RealizAssignUniformVelocity(realization)
     endif
     call VecSet(field%saturation_loc,1.d0,ierr)
+    call VecSet(field%density_loc,55.357308212035d0,ierr)
     call RTSetup(realization)
   endif
   

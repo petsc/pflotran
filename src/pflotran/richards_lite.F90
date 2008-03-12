@@ -2091,23 +2091,21 @@ subroutine RichardsLiteGetVarFromArray(realization,vec,ivar,isubvar)
   call VecGetArrayF90(vec,vec_ptr,ierr)
 
   select case(ivar)
-    case(TEMPERATURE,GAS_SATURATION,LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION, &
-         GAS_ENERGY)
-      select case(ivar)
-        case(TEMPERATURE)
-          call printErrMsg(option,'TEMPERATURE not supported by RichardsLite')
-        case(GAS_SATURATION)
-          call printErrMsg(option,'GAS_SATURATION not supported by RichardsLite')
-        case(LIQUID_MOLE_FRACTION)
-          call printErrMsg(option,'LIQUID_MOLE_FRACTION not supported by RichardsLite')
-        case(GAS_MOLE_FRACTION)
-          call printErrMsg(option,'GAS_MOLE_FRACTION not supported by RichardsLite')
-        case(LIQUID_ENERGY)
-          call printErrMsg(option,'LIQUID_ENERGY not supported by RichardsLite')
-        case(GAS_ENERGY)
-          call printErrMsg(option,'GAS_ENERGY not supported by RichardsLite')
-      end select
-    case(PRESSURE,LIQUID_SATURATION)
+    case(TEMPERATURE)
+      call printErrMsg(option,'TEMPERATURE not supported by RichardsLite')
+    case(GAS_SATURATION)
+      call printErrMsg(option,'GAS_SATURATION not supported by RichardsLite')
+    case(GAS_DENSITY)
+      call printErrMsg(option,'GAS_DENSITY not supported by RichardsLite')
+    case(LIQUID_MOLE_FRACTION)
+      call printErrMsg(option,'LIQUID_MOLE_FRACTION not supported by RichardsLite')
+    case(GAS_MOLE_FRACTION)
+      call printErrMsg(option,'GAS_MOLE_FRACTION not supported by RichardsLite')
+    case(LIQUID_ENERGY)
+      call printErrMsg(option,'LIQUID_ENERGY not supported by RichardsLite')
+    case(GAS_ENERGY)
+      call printErrMsg(option,'GAS_ENERGY not supported by RichardsLite')
+    case(PRESSURE,LIQUID_SATURATION,LIQUID_DENSITY)
       do local_id=1,grid%nlmax
         ghosted_id = grid%nL2G(local_id)    
         select case(ivar)
@@ -2115,6 +2113,8 @@ subroutine RichardsLiteGetVarFromArray(realization,vec,ivar,isubvar)
             vec_ptr(local_id) = aux_vars(ghosted_id)%pres
           case(LIQUID_SATURATION)
             vec_ptr(local_id) = aux_vars(ghosted_id)%sat
+          case(LIQUID_DENSITY)
+            vec_ptr(local_id) = aux_vars(ghosted_id)%den
         end select
       enddo
     case(PHASE)
@@ -2179,7 +2179,7 @@ function RichardsLiteGetVarFromArrayAtCell(realization,ivar,isubvar, &
   
   select case(ivar)
     case(TEMPERATURE,GAS_SATURATION,LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION, &
-         GAS_ENERGY)
+         GAS_ENERGY,GAS_DENSITY)
       select case(ivar)
         case(TEMPERATURE)
           call printErrMsg(option,'TEMPERATURE not supported by RichardsLite')
@@ -2193,6 +2193,8 @@ function RichardsLiteGetVarFromArrayAtCell(realization,ivar,isubvar, &
           call printErrMsg(option,'LIQUID_ENERGY not supported by RichardsLite')
         case(GAS_ENERGY)
           call printErrMsg(option,'GAS_ENERGY not supported by RichardsLite')
+        case(GAS_DENSITY)
+          call printErrMsg(option,'GAS_DENSITY not supported by RichardsLite')
       end select
     case(PRESSURE,LIQUID_SATURATION)
       ghosted_id = grid%nL2G(local_id)    
@@ -2201,6 +2203,8 @@ function RichardsLiteGetVarFromArrayAtCell(realization,ivar,isubvar, &
           value = aux_vars(ghosted_id)%pres
         case(LIQUID_SATURATION)
           value = aux_vars(ghosted_id)%sat
+        case(LIQUID_DENSITY)
+          value = aux_vars(ghosted_id)%den
       end select
     case(PHASE)
       call VecGetArrayF90(field%iphas_loc,vec_ptr,ierr)

@@ -174,6 +174,7 @@ subroutine RealizationCreateDiscretization(realization)
         call DiscretizationDuplicateVector(discretization,field%tran_xx, field%tran_accum)
 
         call DiscretizationDuplicateVector(discretization,field%porosity_loc, field%saturation_loc)
+        call DiscretizationDuplicateVector(discretization,field%porosity_loc, field%density_loc)
         
         ! ndof degrees of freedom, local
         call DiscretizationCreateVector(discretization,NTRANDOF, field%tran_xx_loc, LOCAL)

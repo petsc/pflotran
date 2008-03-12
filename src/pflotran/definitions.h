@@ -102,16 +102,18 @@ PetscInt, parameter :: TEMPERATURE = 4
 PetscInt, parameter :: PRESSURE = 5
 PetscInt, parameter :: LIQUID_SATURATION = 6
 PetscInt, parameter :: GAS_SATURATION = 7
-PetscInt, parameter :: LIQUID_ENERGY = 8
-PetscInt, parameter :: GAS_ENERGY = 9
-PetscInt, parameter :: LIQUID_MOLE_FRACTION = 10
-PetscInt, parameter :: GAS_MOLE_FRACTION = 11
-PetscInt, parameter :: VOLUME_FRACTION = 12
-PetscInt, parameter :: PHASE = 13
-PetscInt, parameter :: MATERIAL_ID = 14
+PetscInt, parameter :: LIQUID_DENSITY = 8
+PetscInt, parameter :: GAS_DENSITY = 9
+PetscInt, parameter :: LIQUID_ENERGY = 10
+PetscInt, parameter :: GAS_ENERGY = 11
+PetscInt, parameter :: LIQUID_MOLE_FRACTION = 12
+PetscInt, parameter :: GAS_MOLE_FRACTION = 13
+PetscInt, parameter :: VOLUME_FRACTION = 14
+PetscInt, parameter :: PHASE = 15
+PetscInt, parameter :: MATERIAL_ID = 16
 
-PetscInt, parameter :: FREE_ION_CONCENTRATION = 15
-PetscInt, parameter :: TOTAL_CONCENTRATION = 16
+PetscInt, parameter :: FREE_ION_CONCENTRATION = 17
+PetscInt, parameter :: TOTAL_CONCENTRATION = 18
 
 ! structured grid faces
 PetscInt, parameter :: WEST_FACE = 1

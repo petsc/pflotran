@@ -690,9 +690,21 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
       case(RICHARDS_MODE)
         call RichardsGetVarFromArray(realization,global_vec, &
                                      LIQUID_SATURATION,ZERO_INTEGER)
+        call DiscretizationGlobalToLocal(realization%discretization, &
+                                         global_vec,field%saturation_loc,ONEDOF)   
+        call RichardsGetVarFromArray(realization,global_vec, &
+                                     LIQUID_DENSITY,ZERO_INTEGER)
+        call DiscretizationGlobalToLocal(realization%discretization, &
+                                         global_vec,field%density_loc,ONEDOF)   
       case(RICHARDS_LITE_MODE)
         call RichardsLiteGetVarFromArray(realization,global_vec, &
                                          LIQUID_SATURATION,ZERO_INTEGER)
+        call DiscretizationGlobalToLocal(realization%discretization, &
+                                         global_vec,field%saturation_loc,ONEDOF)   
+        call RichardsLiteGetVarFromArray(realization,global_vec, &
+                                         LIQUID_DENSITY,ZERO_INTEGER)
+        call DiscretizationGlobalToLocal(realization%discretization, &
+                                         global_vec,field%density_loc,ONEDOF)   
       case(MPH_MODE)
     end select
     call DiscretizationGlobalToLocal(realization%discretization, &

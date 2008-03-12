@@ -2589,7 +2589,8 @@ subroutine RichardsGetVarFromArray(realization,vec,ivar,isubvar)
 
   select case(ivar)
     case(TEMPERATURE,PRESSURE,LIQUID_SATURATION,GAS_SATURATION, &
-         LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION,LIQUID_ENERGY,GAS_ENERGY)
+         LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION,LIQUID_ENERGY,GAS_ENERGY, &
+         LIQUID_DENSITY,GAS_DENSITY)
       do local_id=1,grid%nlmax
         ghosted_id = grid%nL2G(local_id)    
         select case(ivar)
@@ -2599,7 +2600,9 @@ subroutine RichardsGetVarFromArray(realization,vec,ivar,isubvar)
             vec_ptr(local_id) = aux_vars(ghosted_id)%pres
           case(LIQUID_SATURATION)
             vec_ptr(local_id) = aux_vars(ghosted_id)%sat
-          case(GAS_SATURATION,GAS_MOLE_FRACTION,GAS_ENERGY)
+          case(LIQUID_DENSITY)
+            vec_ptr(local_id) = aux_vars(ghosted_id)%den
+          case(GAS_SATURATION,GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY)
             vec_ptr(local_id) = 0.d0
           case(LIQUID_MOLE_FRACTION)
             vec_ptr(local_id) = aux_vars(ghosted_id)%xmol(isubvar)
@@ -2666,30 +2669,29 @@ function RichardsGetVarFromArrayAtCell(realization,ivar,isubvar,local_id)
 
   aux_vars => patch%RichardsAux%aux_vars
   
+  ghosted_id = grid%nL2G(local_id)    
+
   select case(ivar)
-    case(TEMPERATURE,PRESSURE,LIQUID_SATURATION,GAS_SATURATION, &
-         LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION,LIQUID_ENERGY,GAS_ENERGY)
-      ghosted_id = grid%nL2G(local_id)    
-      select case(ivar)
-        case(TEMPERATURE)
-          value = aux_vars(ghosted_id)%temp
-        case(PRESSURE)
-          value = aux_vars(ghosted_id)%pres
-        case(LIQUID_SATURATION)
-          value = aux_vars(ghosted_id)%sat
-        case(GAS_SATURATION,GAS_MOLE_FRACTION,GAS_ENERGY)
-          value = 0.d0
-        case(LIQUID_MOLE_FRACTION)
-          value = aux_vars(ghosted_id)%xmol(isubvar+1)
-        case(LIQUID_ENERGY)
-          value = aux_vars(ghosted_id)%u
-      end select
+    case(TEMPERATURE)
+      value = aux_vars(ghosted_id)%temp
+    case(PRESSURE)
+      value = aux_vars(ghosted_id)%pres
+    case(LIQUID_SATURATION)
+      value = aux_vars(ghosted_id)%sat
+    case(LIQUID_DENSITY)
+      value = aux_vars(ghosted_id)%den
+    case(GAS_SATURATION,GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY)
+      value = 0.d0
+    case(LIQUID_MOLE_FRACTION)
+      value = aux_vars(ghosted_id)%xmol(isubvar+1)
+    case(LIQUID_ENERGY)
+      value = aux_vars(ghosted_id)%u
     case(PHASE)
       call VecGetArrayF90(field%iphas_loc,vec_ptr,ierr)
-      value = vec_ptr(grid%nL2G(local_id))
+      value = vec_ptr(ghosted_id)
       call VecRestoreArrayF90(field%iphas_loc,vec_ptr,ierr)
     case(MATERIAL_ID)
-      value = patch%imat(grid%nL2G(local_id))
+      value = patch%imat(ghosted_id)
   end select
   
   RichardsGetVarFromArrayAtCell = value

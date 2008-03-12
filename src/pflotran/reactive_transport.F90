@@ -252,7 +252,7 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
   PetscReal, pointer :: xx_p(:), porosity_loc_p(:), saturation_loc_p(:), &
-                        tor_loc_p(:), volume_p(:), accum_p(:)
+                        tor_loc_p(:), volume_p(:), accum_p(:), density_loc_p(:)
   PetscInt :: local_id, ghosted_id
   PetscInt :: istart, iend
   PetscErrorCode :: ierr
@@ -266,6 +266,7 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
   call VecGetArrayF90(field%tran_xx,xx_p, ierr)
   call VecGetArrayF90(field%porosity_loc,porosity_loc_p,ierr)
   call VecGetArrayF90(field%saturation_loc,saturation_loc_p,ierr)
+  call VecGetArrayF90(field%density_loc,density_loc_p,ierr)
   call VecGetArrayF90(field%tor_loc,tor_loc_p,ierr)
   call VecGetArrayF90(field%volume,volume_p,ierr)
 
@@ -281,13 +282,16 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
     istart = iend-option%ncomp+1
     call RTAuxVarCompute(xx_p(istart:iend),aux_vars(ghosted_id),option)
     call RTAccumulation(aux_vars(ghosted_id),porosity_loc_p(ghosted_id), &
-                        saturation_loc_p(local_id), volume_p(local_id), &
+                        saturation_loc_p(ghosted_id), &
+                        density_loc_p(ghosted_id), &
+                        volume_p(local_id), &
                         option,accum_p(istart:iend)) 
   enddo
 
   call VecRestoreArrayF90(field%tran_xx,xx_p, ierr)
   call VecRestoreArrayF90(field%porosity_loc,porosity_loc_p,ierr)
   call VecRestoreArrayF90(field%saturation_loc,saturation_loc_p,ierr)
+  call VecRestoreArrayF90(field%density_loc,density_loc_p,ierr)
   call VecRestoreArrayF90(field%tor_loc,tor_loc_p,ierr)
   call VecRestoreArrayF90(field%volume,volume_p,ierr)
 
@@ -400,7 +404,7 @@ end subroutine RTNumericalJacobianTest
 ! date: 02/15/08
 !
 ! ************************************************************************** !
-subroutine RTAccumulationDerivative(aux_var,por,sat,vol,option,Res)
+subroutine RTAccumulationDerivative(aux_var,por,sat,den,vol,option,Res)
 
   use Reactive_Transport_Aux_module
   use Option_module
@@ -408,14 +412,14 @@ subroutine RTAccumulationDerivative(aux_var,por,sat,vol,option,Res)
   implicit none
   
   type(reactive_transport_auxvar_type) :: aux_var
-  PetscReal :: por, sat, vol
+  PetscReal :: por, sat, vol, den
   type(option_type) :: option
   PetscReal :: Res(option%ncomp)
   
   PetscInt :: icomp
   PetscReal :: psv_t
   
-  psv_t = por*sat*vol/option%dt
+  psv_t = por*sat*den*vol/option%dt
   do icomp=1,option%ncomp
     Res(icomp) = psv_t
   enddo
@@ -429,7 +433,7 @@ end subroutine RTAccumulationDerivative
 ! date: 02/15/08
 !
 ! ************************************************************************** !
-subroutine RTAccumulation(aux_var,por,sat,vol,option,Res)
+subroutine RTAccumulation(aux_var,por,sat,den,vol,option,Res)
 
   use Reactive_Transport_Aux_module
   use Option_module
@@ -437,14 +441,14 @@ subroutine RTAccumulation(aux_var,por,sat,vol,option,Res)
   implicit none
   
   type(reactive_transport_auxvar_type) :: aux_var
-  PetscReal :: por, sat, vol
+  PetscReal :: por, sat, vol, den
   type(option_type) :: option
   PetscReal :: Res(option%ncomp)
   
   PetscInt :: icomp
   PetscReal :: psv_t
   
-  psv_t = por*sat*vol/option%dt
+  psv_t = por*sat*den*vol/option%dt
   do icomp=1,option%ncomp
     Res(icomp) = psv_t*aux_var%total(icomp) 
   enddo
@@ -530,7 +534,7 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
   
   PetscReal, pointer :: xx_loc_p(:), r_p(:), accum_p(:)
   PetscReal, pointer :: porosity_loc_p(:), saturation_loc_p(:), tor_loc_p(:), &
-                        volume_p(:)
+                        volume_p(:), density_loc_p(:)
   PetscInt :: local_id, ghosted_id
   PetscInt :: i, istart, iend                        
   type(grid_type), pointer :: grid
@@ -565,6 +569,7 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
  
   call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
   call VecGetArrayF90(field%saturation_loc, saturation_loc_p, ierr)
+  call VecGetArrayF90(field%density_loc, density_loc_p, ierr)
   call VecGetArrayF90(field%tor_loc, tor_loc_p, ierr)
   call VecGetArrayF90(field%volume, volume_p, ierr)
 
@@ -582,8 +587,9 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
     iend = local_id*option%ncomp
     istart = iend-option%ncomp+1
     call RTAccumulation(aux_vars(ghosted_id),porosity_loc_p(ghosted_id), &
-                        saturation_loc_p(ghosted_id),volume_p(local_id), &
-                        option,Res) 
+                        saturation_loc_p(ghosted_id), &
+                        density_loc_p(ghosted_id), &
+                        volume_p(local_id),option,Res) 
     r_p(istart:iend) = r_p(istart:iend) + Res(1:option%ncomp)
   enddo
 #endif
@@ -603,7 +609,7 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
       
-      Res(1:option%ncomp) = -1.d-4* &
+      Res(1:option%ncomp) = -1.d-1* &
                             (1.d0-aux_vars(ghosted_id)%total(1:option%ncomp)/ &
                                   source_sink%condition%concentration%dataset%cur_value(1))
       iend = local_id*option%ncomp
@@ -642,9 +648,11 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
 
       call TFlux(aux_vars(ghosted_id_up),porosity_loc_p(ghosted_id_up), &
                  tor_loc_p(ghosted_id_up),saturation_loc_p(ghosted_id_up), &
+                 density_loc_p(ghosted_id_up), &
                  dist_up, &
                  aux_vars(ghosted_id_dn),porosity_loc_p(ghosted_id_dn), &
                  tor_loc_p(ghosted_id_dn),saturation_loc_p(ghosted_id_dn), &
+                 density_loc_p(ghosted_id_dn), &
                  dist_up, &
                  cur_connection_set%area(iconn),option, &
                  patch%internal_velocities(:,iconn),Res)
@@ -690,6 +698,7 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
                    porosity_loc_p(ghosted_id), &
                    tor_loc_p(ghosted_id), &
                    saturation_loc_p(ghosted_id), &
+                   density_loc_p(ghosted_id), &
                    cur_connection_set%dist(0,iconn), &
                    cur_connection_set%area(iconn), &
                    option,patch%boundary_velocities(:,sum_connection),Res)
@@ -716,6 +725,7 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
  
   call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
   call VecRestoreArrayF90(field%saturation_loc, saturation_loc_p, ierr)
+  call VecRestoreArrayF90(field%density_loc, density_loc_p, ierr)
   call VecRestoreArrayF90(field%tor_loc, tor_loc_p, ierr)
   call VecRestoreArrayF90(field%volume, volume_p, ierr)
 
@@ -804,7 +814,7 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   
   PetscReal, pointer :: xx_loc_p(:), r_p(:), accum_p(:)
   PetscReal, pointer :: porosity_loc_p(:), saturation_loc_p(:), tor_loc_p(:), &
-                        volume_p(:)
+                        volume_p(:), density_loc_p(:)
   PetscInt :: local_id, ghosted_id
   PetscInt :: istart, iend                        
   type(grid_type), pointer :: grid
@@ -840,6 +850,7 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
  
   call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)
   call VecGetArrayF90(field%saturation_loc, saturation_loc_p, ierr)
+  call VecGetArrayF90(field%density_loc, density_loc_p, ierr)
   call VecGetArrayF90(field%tor_loc, tor_loc_p, ierr)
   call VecGetArrayF90(field%volume, volume_p, ierr)
     
@@ -853,8 +864,9 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     iend = local_id*option%ncomp
     istart = iend-option%ncomp+1
     call RTAccumulationDerivative(aux_vars(ghosted_id),porosity_loc_p(ghosted_id), &
-                                  saturation_loc_p(ghosted_id),volume_p(local_id), &
-                                  option,Jup) 
+                                  saturation_loc_p(ghosted_id), &
+                                  density_loc_p(ghosted_id), &
+                                  volume_p(local_id),option,Jup) 
     call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)                        
   enddo
 #endif
@@ -876,7 +888,7 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       
       Jup = 0.d0
       do istart = 1, option%ncomp
-        Jup(istart,istart) = 1.d-4* &
+        Jup(istart,istart) = 1.d-1* &
                              1.d0/source_sink%condition%concentration%dataset%cur_value(1)
       enddo
       call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)                        
@@ -913,10 +925,10 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 
       call TFluxDerivative(aux_vars(ghosted_id_up),porosity_loc_p(ghosted_id_up), &
                  tor_loc_p(ghosted_id_up),saturation_loc_p(ghosted_id_up), &
-                 dist_up, &
+                 density_loc_p(ghosted_id_up),dist_up, &
                  aux_vars(ghosted_id_dn),porosity_loc_p(ghosted_id_dn), &
                  tor_loc_p(ghosted_id_dn),saturation_loc_p(ghosted_id_dn), &
-                 dist_up, &
+                 density_loc_p(ghosted_id_dn),dist_up, &
                  cur_connection_set%area(iconn),option, &
                  patch%internal_velocities(:,iconn),Jup,Jdn)
 
@@ -965,6 +977,7 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                    porosity_loc_p(ghosted_id), &
                    tor_loc_p(ghosted_id), &
                    saturation_loc_p(ghosted_id), &
+                   density_loc_p(ghosted_id), &
                    cur_connection_set%dist(0,iconn), &
                    cur_connection_set%area(iconn), &
                    option,patch%boundary_velocities(:,sum_connection),Jdn)
@@ -984,6 +997,7 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
  
   call VecRestoreArrayF90(field%porosity_loc, porosity_loc_p, ierr)
   call VecRestoreArrayF90(field%saturation_loc, saturation_loc_p, ierr)
+  call VecRestoreArrayF90(field%density_loc, density_loc_p, ierr)
   call VecRestoreArrayF90(field%tor_loc, tor_loc_p, ierr)
   call VecRestoreArrayF90(field%volume, volume_p, ierr)
 
