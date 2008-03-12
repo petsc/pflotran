@@ -597,6 +597,7 @@ subroutine OutputVelocitiesTecplot(realization)
     call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_INTEGER)
   endif
   
+  call ComputeFlowMassBalance(realization,global_vec)
   
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
@@ -2650,6 +2651,130 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
 
 end subroutine GetCellCenteredVelocities
+
+! ************************************************************************** !
+!
+! ComputeFlowMassBalance: 
+! author: Glenn Hammond
+! date: 03/11/08
+!
+! ************************************************************************** !
+subroutine ComputeFlowMassBalance(realization,vec)
+
+  use Realization_module
+  use Grid_module
+  use Option_module
+  use Connection_module
+  use Coupler_module
+  use Field_module
+  use Patch_module
+
+  implicit none
+  
+  type(realization_type) :: realization
+  Vec :: vec
+  
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(patch_type), pointer :: patch  
+  type(output_option_type), pointer :: output_option
+  PetscInt :: iconn
+  PetscInt :: local_id_up, local_id_dn, local_id
+  PetscInt :: ghosted_id_up, ghosted_id_dn, ghosted_id
+  PetscReal :: volume
+  Vec :: global_vec
+  PetscReal :: average, sum, max, min, std_dev
+  PetscInt :: max_loc, min_loc
+  character(len=MAXSTRINGLENGTH) :: string
+  
+  PetscReal, pointer :: vec_ptr(:)
+  PetscReal, allocatable :: sum_area(:)
+  
+  type(coupler_type), pointer :: boundary_condition
+  type(connection_list_type), pointer :: connection_list
+  type(connection_type), pointer :: cur_connection_set
+
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+  field => realization%field
+  output_option => realization%output_option
+    
+  allocate(sum_area(grid%nlmax))
+  sum_area(1:grid%nlmax) = 0.d0
+
+  call VecSet(vec,0.d0,ierr)
+  call VecGetArrayF90(vec,vec_ptr,ierr)
+
+  ! interior velocities  
+  connection_list => grid%internal_connection_list
+  cur_connection_set => connection_list%first
+  do 
+    if (.not.associated(cur_connection_set)) exit
+    do iconn = 1, cur_connection_set%num_connections
+      ghosted_id_up = cur_connection_set%id_up(iconn)
+      ghosted_id_dn = cur_connection_set%id_dn(iconn)
+      local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
+      local_id_dn = grid%nG2L(ghosted_id_dn) ! = zero for ghost nodes
+      ! velocities are stored as the downwind face of the upwind cell
+      volume = patch%internal_velocities(1,iconn)* &
+               cur_connection_set%area(iconn)
+      if (local_id_up > 0) then
+        vec_ptr(local_id_up) = vec_ptr(local_id_up) - volume
+      endif
+      if (local_id_dn > 0) then
+        vec_ptr(local_id_dn) = vec_ptr(local_id_dn) + volume
+      endif
+    enddo
+    cur_connection_set => cur_connection_set%next
+  enddo
+
+  ! boundary velocities
+  boundary_condition => patch%flow_boundary_conditions%first
+  do
+    if (.not.associated(boundary_condition)) exit
+    cur_connection_set => boundary_condition%connection
+    do iconn = 1, cur_connection_set%num_connections
+      local_id = cur_connection_set%id_dn(iconn)
+      vec_ptr(local_id) = vec_ptr(local_id)+ &
+                          patch%boundary_velocities(1,iconn)* &
+                          cur_connection_set%area(iconn)
+    enddo
+    boundary_condition => boundary_condition%next
+  enddo
+
+  call VecRestoreArrayF90(vec,vec_ptr,ierr)
+
+  if (option%compute_statistics) then
+    call VecDuplicate(vec,global_vec,ierr)
+    call VecSum(vec,sum,ierr)
+    average = sum/real(grid%nlmax)
+    call VecSet(global_vec,average,ierr)
+    call VecMax(vec,max_loc,max,ierr)
+    call VecMin(vec,min_loc,min,ierr)
+    call VecAYPX(global_vec,-1.d0,vec,ierr)
+    call VecNorm(global_vec,NORM_2,std_dev,ierr)
+    string = 'Mass Balance'
+    if (option%myrank == 0) then
+      write(*,'(/,a,/, &
+                   &"Average:",1es12.4,/, &
+                   &"Max:    ",1es12.4,"  Location:",i11,/, &
+                   &"Min:    ",1es12.4,"  Location:",i11,/, &
+                   &"Std Dev:",1es12.4,/)') trim(string), &
+                                            average,max,max_loc+1, &
+                                            min,min_loc+1,std_dev
+      write(IUNIT2,'(/,a,/, &
+                   &"Average:",1es12.4,/, &
+                   &"Max:    ",1es12.4,"  Location:",i11,/, &
+                   &"Min:    ",1es12.4,"  Location:",i11,/, &
+                   &"Std Dev:",1es12.4,/)') trim(string), &
+                                            average,max,max_loc+1, &
+                                            min,min_loc+1,std_dev
+    endif
+  endif
+
+end subroutine ComputeFlowMassBalance
 
 end module Output_module
 
