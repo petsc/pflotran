@@ -609,9 +609,13 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
       
-      Res(1:option%ncomp) = -1.d-1* &
-                            (1.d0-aux_vars(ghosted_id)%total(1:option%ncomp)/ &
-                                  source_sink%condition%concentration%dataset%cur_value(1))
+      Res(1:option%ncomp) = -1.d-6* &
+                            porosity_loc_p(ghosted_id)* &
+                            saturation_loc_p(ghosted_id)* &
+                            density_loc_p(ghosted_id)* &
+                            volume_p(local_id)* &
+                            (source_sink%condition%concentration%dataset%cur_value(1)- &
+                             aux_vars(ghosted_id)%total(1:option%ncomp))
       iend = local_id*option%ncomp
       istart = iend-option%ncomp+1
       r_p(istart:iend) = r_p(istart:iend) + Res(1:option%ncomp)                                  
@@ -888,8 +892,13 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       
       Jup = 0.d0
       do istart = 1, option%ncomp
-        Jup(istart,istart) = 1.d-1* &
-                             1.d0/source_sink%condition%concentration%dataset%cur_value(1)
+        Jup(istart,istart) = 1.d-6* &
+                             porosity_loc_p(ghosted_id)* &
+                             saturation_loc_p(ghosted_id)* &
+                             density_loc_p(ghosted_id)* &
+                             volume_p(local_id)
+!        Jup(istart,istart) = 1.d-1* &
+!                             1.d0/source_sink%condition%concentration%dataset%cur_value(1)
       enddo
       call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)                        
     enddo
