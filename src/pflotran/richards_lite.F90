@@ -2114,7 +2114,7 @@ subroutine RichardsLiteGetVarFromArray(realization,vec,ivar,isubvar)
           case(LIQUID_SATURATION)
             vec_ptr(local_id) = aux_vars(ghosted_id)%sat
           case(LIQUID_DENSITY)
-            vec_ptr(local_id) = aux_vars(ghosted_id)%den
+            vec_ptr(local_id) = aux_vars(ghosted_id)%den_kg
         end select
       enddo
     case(PHASE)
@@ -2204,7 +2204,7 @@ function RichardsLiteGetVarFromArrayAtCell(realization,ivar,isubvar, &
         case(LIQUID_SATURATION)
           value = aux_vars(ghosted_id)%sat
         case(LIQUID_DENSITY)
-          value = aux_vars(ghosted_id)%den
+          value = aux_vars(ghosted_id)%den_kg
       end select
     case(PHASE)
       call VecGetArrayF90(field%iphas_loc,vec_ptr,ierr)

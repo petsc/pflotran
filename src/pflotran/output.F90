@@ -102,6 +102,10 @@ subroutine Output(realization,plot_flag)
   
   call OutputBreakthrough(realization)
 
+  if (realization%option%compute_statistics) then
+    call ComputeFlowMassBalance(realization)
+  endif
+  
   plot_flag = .false.
 
   call PetscLogStagePop(ierr)
@@ -402,7 +406,7 @@ subroutine OutputTecplot(realization)
 
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
-
+  
   close(IUNIT3)
   
   if (output_option%print_tecplot_velocities) then
@@ -596,8 +600,6 @@ subroutine OutputVelocitiesTecplot(realization)
     call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
     call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_INTEGER)
   endif
-  
-  call ComputeFlowMassBalance(realization,global_vec)
   
   call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
@@ -2453,7 +2455,7 @@ subroutine OutputGetVarFromArray(realization,vec,ivar,isubvar)
   select case(ivar)
     case(TEMPERATURE,PRESSURE,LIQUID_SATURATION,GAS_SATURATION,LIQUID_ENERGY, &
          GAS_ENERGY,LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION,VOLUME_FRACTION, &
-         PHASE)
+         PHASE,LIQUID_DENSITY,GAS_DENSITY)
       select case(option%iflowmode)
         case(RICHARDS_MODE)
           call RichardsGetVarFromArray(realization,vec,ivar,isubvar)
@@ -2659,7 +2661,7 @@ end subroutine GetCellCenteredVelocities
 ! date: 03/11/08
 !
 ! ************************************************************************** !
-subroutine ComputeFlowMassBalance(realization,vec)
+subroutine ComputeFlowMassBalance(realization)
 
   use Realization_module
   use Grid_module
@@ -2668,27 +2670,31 @@ subroutine ComputeFlowMassBalance(realization,vec)
   use Coupler_module
   use Field_module
   use Patch_module
+  use Discretization_module
 
   implicit none
   
   type(realization_type) :: realization
-  Vec :: vec
   
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch  
+  type(discretization_type), pointer :: discretization
   type(output_option_type), pointer :: output_option
-  PetscInt :: iconn
+  PetscInt :: iconn, i
   PetscInt :: local_id_up, local_id_dn, local_id
   PetscInt :: ghosted_id_up, ghosted_id_dn, ghosted_id
-  PetscReal :: volume
+  PetscReal :: flux
   Vec :: global_vec
+  Vec :: mass_vec
+  Vec :: density_loc
+  Vec :: total_mass_vec
   PetscReal :: average, sum, max, min, std_dev
   PetscInt :: max_loc, min_loc
   character(len=MAXSTRINGLENGTH) :: string
   
-  PetscReal, pointer :: vec_ptr(:)
+  PetscReal, pointer :: vec_ptr(:), vec2_ptr(:), den_loc_p(:)
   PetscReal, allocatable :: sum_area(:)
   
   type(coupler_type), pointer :: boundary_condition
@@ -2700,12 +2706,21 @@ subroutine ComputeFlowMassBalance(realization,vec)
   option => realization%option
   field => realization%field
   output_option => realization%output_option
+  discretization => realization%discretization
     
   allocate(sum_area(grid%nlmax))
   sum_area(1:grid%nlmax) = 0.d0
 
-  call VecSet(vec,0.d0,ierr)
-  call VecGetArrayF90(vec,vec_ptr,ierr)
+  call VecDuplicate(field%porosity0,total_mass_vec,ierr)
+  call VecDuplicate(field%porosity0,mass_vec,ierr)
+  call VecDuplicate(field%porosity0,global_vec,ierr)
+  call VecDuplicate(field%porosity_loc,density_loc,ierr)
+  call OutputGetVarFromArray(realization,global_vec,LIQUID_DENSITY,ZERO_INTEGER)
+  call DiscretizationGlobalToLocal(discretization,global_vec,density_loc,ONEDOF)
+
+  call VecSet(mass_vec,0.d0,ierr)
+  call VecGetArrayF90(mass_vec,vec_ptr,ierr)
+  call VecGetArrayF90(density_loc,den_loc_p,ierr)
 
   ! interior velocities  
   connection_list => grid%internal_connection_list
@@ -2718,13 +2733,18 @@ subroutine ComputeFlowMassBalance(realization,vec)
       local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
       local_id_dn = grid%nG2L(ghosted_id_dn) ! = zero for ghost nodes
       ! velocities are stored as the downwind face of the upwind cell
-      volume = patch%internal_velocities(1,iconn)* &
+      flux = patch%internal_velocities(1,iconn)* &
                cur_connection_set%area(iconn)
+      if (patch%internal_velocities(1,iconn) > 0.d0) then
+        flux = flux*den_loc_p(ghosted_id_up)
+      else
+        flux = flux*den_loc_p(ghosted_id_dn)
+      endif
       if (local_id_up > 0) then
-        vec_ptr(local_id_up) = vec_ptr(local_id_up) - volume
+        vec_ptr(local_id_up) = vec_ptr(local_id_up) - flux
       endif
       if (local_id_dn > 0) then
-        vec_ptr(local_id_dn) = vec_ptr(local_id_dn) + volume
+        vec_ptr(local_id_dn) = vec_ptr(local_id_dn) + flux
       endif
     enddo
     cur_connection_set => cur_connection_set%next
@@ -2739,40 +2759,65 @@ subroutine ComputeFlowMassBalance(realization,vec)
       local_id = cur_connection_set%id_dn(iconn)
       vec_ptr(local_id) = vec_ptr(local_id)+ &
                           patch%boundary_velocities(1,iconn)* &
-                          cur_connection_set%area(iconn)
+                          cur_connection_set%area(iconn)* &
+                          den_loc_p(grid%nL2G(local_id))
     enddo
     boundary_condition => boundary_condition%next
   enddo
 
-  call VecRestoreArrayF90(vec,vec_ptr,ierr)
+  call VecRestoreArrayF90(mass_vec,vec_ptr,ierr)
+  call VecRestoreArrayF90(density_loc,den_loc_p,ierr)
 
-  if (option%compute_statistics) then
-    call VecDuplicate(vec,global_vec,ierr)
-    call VecSum(vec,sum,ierr)
-    average = sum/real(grid%nlmax)
-    call VecSet(global_vec,average,ierr)
-    call VecMax(vec,max_loc,max,ierr)
-    call VecMin(vec,min_loc,min,ierr)
-    call VecAYPX(global_vec,-1.d0,vec,ierr)
-    call VecNorm(global_vec,NORM_2,std_dev,ierr)
-    string = 'Mass Balance'
-    if (option%myrank == 0) then
-      write(*,'(/,a,/, &
-                   &"Average:",1es12.4,/, &
-                   &"Max:    ",1es12.4,"  Location:",i11,/, &
-                   &"Min:    ",1es12.4,"  Location:",i11,/, &
-                   &"Std Dev:",1es12.4,/)') trim(string), &
-                                            average,max,max_loc+1, &
-                                            min,min_loc+1,std_dev
-      write(IUNIT2,'(/,a,/, &
-                   &"Average:",1es12.4,/, &
-                   &"Max:    ",1es12.4,"  Location:",i11,/, &
-                   &"Min:    ",1es12.4,"  Location:",i11,/, &
-                   &"Std Dev:",1es12.4,/)') trim(string), &
-                                            average,max,max_loc+1, &
-                                            min,min_loc+1,std_dev
+  ! scale by mass of water in cell
+  call DiscretizationLocalToGlobal(discretization,density_loc,global_vec,ONEDOF)
+  call VecPointWiseMult(total_mass_vec,global_vec,field%volume,ierr) ! global_vec is density
+  call DiscretizationLocalToGlobal(discretization,field%porosity_loc,global_vec,ONEDOF)
+  call VecPointWiseMult(total_mass_vec,total_mass_vec,global_vec,ierr)
+  call OutputGetVarFromArray(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
+  call VecPointWiseMult(total_mass_vec,total_mass_vec,global_vec,ierr) ! global_vec is saturation
+
+  ! have to divide through on our own since zero values exist on inactive cells
+  call VecGetArrayF90(mass_vec,vec_ptr,ierr)
+  call VecGetArrayF90(total_mass_vec,vec2_ptr,ierr)
+  do i=1,grid%nlmax
+    if (dabs(vec2_ptr(i)) > 1.d-40) then
+      vec_ptr(i) = vec_ptr(i)/vec2_ptr(i)
+    else
+      vec_ptr(i) = 0.d0
     endif
+  enddo
+  call VecRestoreArrayF90(mass_vec,vec_ptr,ierr)
+  call VecRestoreArrayF90(total_mass_vec,vec2_ptr,ierr)
+
+  call VecSum(mass_vec,sum,ierr)
+  average = sum/real(grid%nlmax)
+  call VecSet(global_vec,average,ierr)
+  call VecMax(mass_vec,max_loc,max,ierr)
+  call VecMin(mass_vec,min_loc,min,ierr)
+  call VecAYPX(global_vec,-1.d0,mass_vec,ierr)
+  call VecNorm(global_vec,NORM_2,std_dev,ierr)
+  string = 'Mass Balance'
+  if (option%myrank == 0) then
+    write(*,'(/,a,/, &
+                 &"Average:",1es12.4,/, &
+                 &"Max:    ",1es12.4,"  Location:",i11,/, &
+                 &"Min:    ",1es12.4,"  Location:",i11,/, &
+                 &"Std Dev:",1es12.4,/)') trim(string), &
+                                          average,max,max_loc+1, &
+                                          min,min_loc+1,std_dev
+    write(IUNIT2,'(/,a,/, &
+                 &"Average:",1es12.4,/, &
+                 &"Max:    ",1es12.4,"  Location:",i11,/, &
+                 &"Min:    ",1es12.4,"  Location:",i11,/, &
+                 &"Std Dev:",1es12.4,/)') trim(string), &
+                                          average,max,max_loc+1, &
+                                          min,min_loc+1,std_dev
   endif
+
+  call VecDestroy(total_mass_vec,ierr)
+  call VecDestroy(mass_vec,ierr)
+  call VecDestroy(global_vec,ierr)
+  call VecDestroy(density_loc,ierr)
 
 end subroutine ComputeFlowMassBalance
 

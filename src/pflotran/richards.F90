@@ -2601,8 +2601,8 @@ subroutine RichardsGetVarFromArray(realization,vec,ivar,isubvar)
           case(LIQUID_SATURATION)
             vec_ptr(local_id) = aux_vars(ghosted_id)%sat
           case(LIQUID_DENSITY)
-            vec_ptr(local_id) = aux_vars(ghosted_id)%den
-          case(GAS_SATURATION,GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY)
+            vec_ptr(local_id) = aux_vars(ghosted_id)%den_kg
+          case(GAS_SATURATION,GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY) ! still need implementation
             vec_ptr(local_id) = 0.d0
           case(LIQUID_MOLE_FRACTION)
             vec_ptr(local_id) = aux_vars(ghosted_id)%xmol(isubvar)
@@ -2679,8 +2679,8 @@ function RichardsGetVarFromArrayAtCell(realization,ivar,isubvar,local_id)
     case(LIQUID_SATURATION)
       value = aux_vars(ghosted_id)%sat
     case(LIQUID_DENSITY)
-      value = aux_vars(ghosted_id)%den
-    case(GAS_SATURATION,GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY)
+      value = aux_vars(ghosted_id)%den_kg
+    case(GAS_SATURATION,GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY) ! still needs implementation
       value = 0.d0
     case(LIQUID_MOLE_FRACTION)
       value = aux_vars(ghosted_id)%xmol(isubvar+1)

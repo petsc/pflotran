@@ -11,6 +11,7 @@ module Richards_Lite_Aux_module
     PetscReal :: temp
     PetscReal :: sat
     PetscReal :: den
+    PetscReal :: den_kg
     PetscReal :: avgmw
     PetscReal :: pc
 !    PetscReal :: vis
@@ -93,6 +94,7 @@ subroutine RichardsLiteAuxVarInit(aux_var,option)
   aux_var%temp = 0.d0
   aux_var%sat = 0.d0
   aux_var%den = 0.d0
+  aux_var%den_kg = 0.d0
   aux_var%avgmw = 0.d0
   aux_var%pc = 0.d0
 !  aux_var%kr = 0.d0
@@ -126,6 +128,7 @@ subroutine RichardsLiteAuxVarCopy(aux_var,aux_var2,option)
   aux_var2%temp = aux_var%temp
   aux_var2%sat = aux_var%sat
   aux_var2%den = aux_var%den
+  aux_var2%den_kg = aux_var%den_kg
   aux_var2%avgmw = aux_var%avgmw
   aux_var2%pc = aux_var%pc
 !  aux_var2%kr = aux_var%kr
@@ -168,6 +171,7 @@ subroutine RichardsLiteAuxVarCompute(x,aux_var,iphase,saturation_function,option
   
   aux_var%sat = 0.d0
   aux_var%den = 0.d0
+  aux_var%den_kg = 0.d0
   aux_var%avgmw = 0.d0
   aux_var%kvr = 0.d0
   kr = 0.d0
@@ -215,6 +219,7 @@ subroutine RichardsLiteAuxVarCompute(x,aux_var,iphase,saturation_function,option
   endif
  
   aux_var%den = dw_mol
+  aux_var%den_kg = dw_kg
   aux_var%kvr = kr/visl
   
 !  aux_var%vis = visl

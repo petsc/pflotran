@@ -11,6 +11,7 @@ module Richards_Aux_module
     PetscReal :: temp
     PetscReal :: sat
     PetscReal :: den
+    PetscReal :: den_kg
     PetscReal :: avgmw
     PetscReal :: h
     PetscReal :: u
@@ -103,6 +104,7 @@ subroutine RichardsAuxVarInit(aux_var,option)
   aux_var%temp = 0.d0
   aux_var%sat = 0.d0
   aux_var%den = 0.d0
+  aux_var%den_kg = 0.d0
   aux_var%avgmw = 0.d0
   aux_var%h = 0.d0
   aux_var%u = 0.d0
@@ -148,6 +150,7 @@ subroutine RichardsAuxVarCopy(aux_var,aux_var2,option)
   aux_var2%temp = aux_var%temp
   aux_var2%sat = aux_var%sat
   aux_var2%den = aux_var%den
+  aux_var2%den_kg = aux_var%den_kg
   aux_var2%avgmw = aux_var%avgmw
   aux_var2%h = aux_var%h
   aux_var2%u = aux_var%u
@@ -204,6 +207,7 @@ subroutine RichardsAuxVarCompute(x,aux_var,iphase,saturation_function,option)
   aux_var%h = 0.d0
   aux_var%u = 0.d0
   aux_var%den = 0.d0
+  aux_var%den_kg = 0.d0
   aux_var%avgmw = 0.d0
   aux_var%xmol = 0.d0
   aux_var%kvr = 0.d0
@@ -257,6 +261,7 @@ subroutine RichardsAuxVarCompute(x,aux_var,iphase,saturation_function,option)
   endif
  
   aux_var%den = dw_mol
+  aux_var%den_kg = dw_kg
   aux_var%h = hw
   aux_var%u = aux_var%h - pw / dw_mol * option%scale
   aux_var%diff(1:option%nspec) = option%difaq
