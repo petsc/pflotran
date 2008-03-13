@@ -892,6 +892,22 @@ subroutine OutputFluxVelocitiesTecplot(realization,iphase, &
     cur_connection_set => cur_connection_set%next
   enddo
 
+  ! write out data set 
+  count = 0 
+  allocate(array(local_size)) 
+  do k=1,nz_local 
+    do j=1,ny_local 
+      do i=1,nx_local 
+        count = count + 1 
+        local_id = i+(j-1)*grid%structured_grid%nlx+(k-1)*grid%structured_grid%nlxy 
+        array(count) = vec_ptr(local_id) 
+      enddo 
+    enddo 
+  enddo 
+  call VecRestoreArrayF90(global_vec,vec_ptr,ierr) 
+   
+  call VecDestroy(global_vec,ierr) 
+
 !GEH - Structured Grid Dependence - End
   
   array(1:local_size) = array(1:local_size)*output_option%tconv ! convert time units
