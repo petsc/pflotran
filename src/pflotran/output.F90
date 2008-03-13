@@ -103,6 +103,8 @@ subroutine Output(realization,plot_flag)
   call OutputBreakthrough(realization)
 
   if (realization%option%compute_statistics) then
+    call ComputeFlowCellVelocityStats(realization)
+    call ComputeFlowFluxVelocityStats(realization)
     call ComputeFlowMassBalance(realization)
   endif
   
@@ -2523,10 +2525,8 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
   PetscInt :: local_id_up, local_id_dn, local_id
   PetscInt :: ghosted_id_up, ghosted_id_dn, ghosted_id
   PetscReal :: velocity, area
-  Vec :: global_vec
   PetscReal :: average, sum, max, min, std_dev
   PetscInt :: max_loc, min_loc
-  character(len=MAXSTRINGLENGTH) :: string
   
   PetscReal, pointer :: vec_ptr(:)
   PetscReal, allocatable :: sum_area(:)
@@ -2604,50 +2604,6 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
 
   deallocate(sum_area)
 
-  ! compute stats
-  if (option%compute_statistics) then
-    call VecDuplicate(vec,global_vec,ierr)
-    call VecSum(vec,sum,ierr)
-    average = sum/real(grid%nmax)
-    call VecSet(global_vec,average,ierr)
-    call VecMax(vec,max_loc,max,ierr)
-    call VecMin(vec,min_loc,min,ierr)
-    call VecAYPX(global_vec,-1.d0,vec,ierr)
-    call VecNorm(global_vec,NORM_2,std_dev,ierr)
-    select case(direction)
-      case(X_DIRECTION)
-        string = 'X-Direction,'
-      case(Y_DIRECTION)
-        string = 'Y-Direction,'
-      case(Z_DIRECTION)
-        string = 'Z-Direction,'
-    end select
-    select case(iphase)
-      case(LIQUID_PHASE)
-        string = trim(string) // ' Liquid Phase'
-      case(GAS_PHASE)
-        string = trim(string) // ' Gas Phase'
-    end select
-    string = trim(string) // ' Velocity Statistics [m/' // &
-             trim(output_option%tunit) // ']:'
-    if (option%myrank == 0) then
-      write(*,'(/,a,/, &
-                   &"Average:",1es12.4,/, &
-                   &"Max:    ",1es12.4,"  Location:",i11,/, &
-                   &"Min:    ",1es12.4,"  Location:",i11,/, &
-                   &"Std Dev:",1es12.4,/)') trim(string), &
-                                            average,max,max_loc+1, &
-                                            min,min_loc+1,std_dev
-      write(IUNIT2,'(/,a,/, &
-                   &"Average:",1es12.4,/, &
-                   &"Max:    ",1es12.4,"  Location:",i11,/, &
-                   &"Min:    ",1es12.4,"  Location:",i11,/, &
-                   &"Std Dev:",1es12.4,/)') trim(string), &
-                                            average,max,max_loc+1, &
-                                            min,min_loc+1,std_dev
-    endif
-  endif
-
   call PetscLogEventEnd(logging%event_output_get_cell_vel, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
@@ -2695,7 +2651,6 @@ subroutine ComputeFlowMassBalance(realization)
   character(len=MAXSTRINGLENGTH) :: string
   
   PetscReal, pointer :: vec_ptr(:), vec2_ptr(:), den_loc_p(:)
-  PetscReal, allocatable :: sum_area(:)
   
   type(coupler_type), pointer :: boundary_condition
   type(connection_list_type), pointer :: connection_list
@@ -2707,14 +2662,12 @@ subroutine ComputeFlowMassBalance(realization)
   field => realization%field
   output_option => realization%output_option
   discretization => realization%discretization
-    
-  allocate(sum_area(grid%nlmax))
-  sum_area(1:grid%nlmax) = 0.d0
 
   call VecDuplicate(field%porosity0,total_mass_vec,ierr)
   call VecDuplicate(field%porosity0,mass_vec,ierr)
   call VecDuplicate(field%porosity0,global_vec,ierr)
   call VecDuplicate(field%porosity_loc,density_loc,ierr)
+  
   call OutputGetVarFromArray(realization,global_vec,LIQUID_DENSITY,ZERO_INTEGER)
   call DiscretizationGlobalToLocal(discretization,global_vec,density_loc,ONEDOF)
 
@@ -2820,6 +2773,284 @@ subroutine ComputeFlowMassBalance(realization)
   call VecDestroy(density_loc,ierr)
 
 end subroutine ComputeFlowMassBalance
+
+! ************************************************************************** !
+!
+! ComputeFlowCellVelocityStats: 
+! author: Glenn Hammond
+! date: 03/11/08
+!
+! ************************************************************************** !
+subroutine ComputeFlowCellVelocityStats(realization)
+
+  use Realization_module
+  use Grid_module
+  use Option_module
+  use Connection_module
+  use Coupler_module
+  use Field_module
+  use Patch_module
+  use Discretization_module
+
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(patch_type), pointer :: patch  
+  type(discretization_type), pointer :: discretization
+  type(output_option_type), pointer :: output_option
+  PetscInt :: iconn, i, direction, iphase
+  PetscInt :: local_id_up, local_id_dn, local_id
+  PetscInt :: ghosted_id_up, ghosted_id_dn, ghosted_id
+  PetscReal :: flux
+  Vec :: global_vec, global_vec2
+
+  PetscReal :: average, sum, max, min, std_dev
+  PetscInt :: max_loc, min_loc
+  character(len=MAXSTRINGLENGTH) :: string
+  
+  PetscReal, pointer :: vec_ptr(:), vec2_ptr(:), den_loc_p(:)
+  PetscReal, allocatable :: sum_area(:)
+  
+  type(coupler_type), pointer :: boundary_condition
+  type(connection_list_type), pointer :: connection_list
+  type(connection_type), pointer :: cur_connection_set
+
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+  field => realization%field
+  output_option => realization%output_option
+  discretization => realization%discretization
+    
+  allocate(sum_area(grid%nlmax))
+  call VecDuplicate(field%porosity0,global_vec,ierr)
+
+  do iphase = 1,option%nphase
+
+    do direction = 1,3
+    
+      sum_area(1:grid%nlmax) = 0.d0
+      call VecSet(global_vec,0.d0,ierr)
+      call VecGetArrayF90(global_vec,vec_ptr,ierr)
+
+      ! interior velocities  
+      connection_list => grid%internal_connection_list
+      cur_connection_set => connection_list%first
+      do 
+        if (.not.associated(cur_connection_set)) exit
+        do iconn = 1, cur_connection_set%num_connections
+          ghosted_id_up = cur_connection_set%id_up(iconn)
+          ghosted_id_dn = cur_connection_set%id_dn(iconn)
+          local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
+          local_id_dn = grid%nG2L(ghosted_id_dn) ! = zero for ghost nodes
+          ! velocities are stored as the downwind face of the upwind cell
+          flux = patch%internal_velocities(iphase,iconn)* &
+                   cur_connection_set%area(iconn)* &
+                   dabs(cur_connection_set%dist(direction,iconn))
+          if (local_id_up > 0) then
+            vec_ptr(local_id_up) = vec_ptr(local_id_up) - flux
+          endif
+          if (local_id_dn > 0) then
+            vec_ptr(local_id_dn) = vec_ptr(local_id_dn) + flux
+          endif
+        enddo
+        cur_connection_set => cur_connection_set%next
+      enddo
+
+      ! boundary velocities
+      boundary_condition => patch%flow_boundary_conditions%first
+      do
+        if (.not.associated(boundary_condition)) exit
+        cur_connection_set => boundary_condition%connection
+        do iconn = 1, cur_connection_set%num_connections
+          local_id = cur_connection_set%id_dn(iconn)
+          vec_ptr(local_id) = vec_ptr(local_id)+ &
+                              patch%boundary_velocities(iphase,iconn)* &
+                              cur_connection_set%area(iconn)* &
+                              dabs(cur_connection_set%dist(direction,iconn))
+        enddo
+        boundary_condition => boundary_condition%next
+      enddo
+
+      call VecRestoreArrayF90(global_vec,vec_ptr,ierr)
+
+      call VecSum(global_vec,sum,ierr)
+      average = sum/real(grid%nmax)
+      call VecSet(global_vec2,average,ierr)
+      call VecMax(global_vec,max_loc,max,ierr)
+      call VecMin(global_vec,min_loc,min,ierr)
+      call VecAYPX(global_vec2,-1.d0,global_vec,ierr)
+      call VecNorm(global_vec2,NORM_2,std_dev,ierr)
+      select case(direction)
+        case(X_DIRECTION)
+          string = 'X-Direction,'
+        case(Y_DIRECTION)
+          string = 'Y-Direction,'
+        case(Z_DIRECTION)
+          string = 'Z-Direction,'
+      end select
+      select case(iphase)
+        case(LIQUID_PHASE)
+          string = trim(string) // ' Liquid Phase'
+        case(GAS_PHASE)
+          string = trim(string) // ' Gas Phase'
+      end select
+      string = trim(string) // ' Velocity Statistics [m/' // &
+               trim(output_option%tunit) // ']:'
+
+      if (option%myrank == 0) then
+        write(*,'(/,a,/, &
+                     &"Average:",1es12.4,/, &
+                     &"Max:    ",1es12.4,"  Location:",i11,/, &
+                     &"Min:    ",1es12.4,"  Location:",i11,/, &
+                     &"Std Dev:",1es12.4,/)') trim(string), &
+                                              average,max,max_loc+1, &
+                                              min,min_loc+1,std_dev
+        write(IUNIT2,'(/,a,/, &
+                     &"Average:",1es12.4,/, &
+                     &"Max:    ",1es12.4,"  Location:",i11,/, &
+                     &"Min:    ",1es12.4,"  Location:",i11,/, &
+                     &"Std Dev:",1es12.4,/)') trim(string), &
+                                              average,max,max_loc+1, &
+                                              min,min_loc+1,std_dev
+      endif
+
+    enddo
+  enddo
+  
+  if (allocated(sum_area)) deallocate(sum_area)
+  call VecDestroy(global_vec,ierr)
+  call VecDestroy(global_vec2,ierr)
+
+end subroutine ComputeFlowCellVelocityStats
+
+! ************************************************************************** !
+!
+! ComputeFlowFluxVelocityStats: Print flux statistics
+! author: Glenn Hammond
+! date: 03/11/08
+!
+! ************************************************************************** !
+subroutine ComputeFlowFluxVelocityStats(realization)
+!geh - specifically, the flow velocities at the interfaces between cells
+ 
+  use Realization_module
+  use Discretization_module
+  use Grid_module
+  use Option_module
+  use Field_module
+  use Connection_module
+  use Patch_module
+  
+  implicit none
+
+  type(realization_type) :: realization
+  
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(patch_type), pointer :: patch
+  type(discretization_type), pointer :: discretization  
+  type(output_option_type), pointer :: output_option
+  
+  character(len=MAXWORDLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: string
+  
+  PetscInt :: iphase
+  PetscInt :: direction
+  PetscInt :: local_id, ghosted_id
+  PetscInt :: iconn
+  PetscReal, pointer :: vec_ptr(:)
+  Vec :: global_vec, global_vec2
+  PetscReal :: sum, average, max, min , std_dev
+  PetscInt :: max_loc, min_loc
+
+  type(connection_list_type), pointer :: connection_list
+  type(connection_type), pointer :: cur_connection_set
+    
+  discretization => realization%discretization
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+  field => realization%field
+  output_option => realization%output_option
+  
+  call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL) 
+  call DiscretizationDuplicateVector(discretization,global_vec,global_vec2) 
+
+  do iphase = 1,option%nphase
+    do direction = 1,3
+    
+      call VecZeroEntries(global_vec,ierr)
+      call VecGetArrayF90(global_vec,vec_ptr,ierr)
+      
+      ! place interior velocities in a vector
+      connection_list => grid%internal_connection_list
+      cur_connection_set => connection_list%first
+      do 
+        if (.not.associated(cur_connection_set)) exit
+        do iconn = 1, cur_connection_set%num_connections
+          ghosted_id = cur_connection_set%id_up(iconn)
+          local_id = grid%nG2L(ghosted_id) ! = zero for ghost nodes
+          ! velocities are stored as the downwind face of the upwind cell
+          if (local_id <= 0 .or. &
+              dabs(cur_connection_set%dist(direction,iconn)) < 0.99d0) cycle
+          vec_ptr(local_id) = patch%internal_velocities(iphase,iconn)
+        enddo
+        cur_connection_set => cur_connection_set%next
+      enddo
+
+      ! compute stats
+      call VecDuplicate(global_vec,global_vec2,ierr)
+      call VecSum(global_vec,sum,ierr)
+      average = sum/real(grid%nmax)
+      call VecSet(global_vec2,average,ierr)
+      call VecMax(global_vec,max_loc,max,ierr)
+      call VecMin(global_vec,min_loc,min,ierr)
+      call VecAYPX(global_vec2,-1.d0,global_vec,ierr)
+      call VecNorm(global_vec2,NORM_2,std_dev,ierr)
+      select case(direction)
+        case(X_DIRECTION)
+          string = 'X-Direction,'
+        case(Y_DIRECTION)
+          string = 'Y-Direction,'
+        case(Z_DIRECTION)
+          string = 'Z-Direction,'
+      end select
+      select case(iphase)
+        case(LIQUID_PHASE)
+          string = trim(string) // ' Liquid Phase'
+        case(GAS_PHASE)
+          string = trim(string) // ' Gas Phase'
+      end select
+      string = trim(string) // ' Flux Velocity Statistics:'
+      if (option%myrank == 0) then
+        write(*,'(/,a,/, &
+                     &"Average:",1es12.4,/, &
+                     &"Max:    ",1es12.4,"  Location:",i11,/, &
+                     &"Min:    ",1es12.4,"  Location:",i11,/, &
+                     &"Std Dev:",1es12.4,/)') trim(string), &
+                                              average,max,max_loc+1, &
+                                              min,min_loc+1,std_dev
+        write(IUNIT2,'(/,a,/, &
+                     &"Average:",1es12.4,/, &
+                     &"Max:    ",1es12.4,"  Location:",i11,/, &
+                     &"Min:    ",1es12.4,"  Location:",i11,/, &
+                     &"Std Dev:",1es12.4,/)') trim(string), &
+                                              average,max,max_loc+1, &
+                                              min,min_loc+1,std_dev
+      endif
+    enddo
+  enddo
+  
+  call VecDestroy(global_vec,ierr)
+  call VecDestroy(global_vec2,ierr)
+  
+end subroutine ComputeFlowFluxVelocityStats
 
 end module Output_module
 
