@@ -390,7 +390,7 @@ subroutine Restart(realization, &
   if (option%ntrandof > 0) then
     call VecLoadIntoVector(viewer,field%tran_xx,ierr)
     call DiscretizationGlobalToLocal(discretization,field%tran_xx, &
-                                     field%tran_xx_loc,NFLOWDOF)
+                                     field%tran_xx_loc,NTRANDOF)
     call VecCopy(field%tran_xx,field%tran_yy,ierr)
   endif
   
