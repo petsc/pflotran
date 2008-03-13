@@ -194,20 +194,26 @@ subroutine DiscretizationCreateDMs(discretization,option)
   ! Generate the DA objects that will manage communication.
   !-----------------------------------------------------------------------
   ndof = 1
-  call DiscretizationCreateDM(discretization,discretization%dm_1_dof,ndof,stencil_width)
+  call DiscretizationCreateDM(discretization,discretization%dm_1_dof,ndof, &
+                              stencil_width)
   
   if (option%nflowdof > 0) then
     ndof = option%nflowdof
-    call DiscretizationCreateDM(discretization,discretization%dm_nflowdof,ndof,stencil_width)
+    call DiscretizationCreateDM(discretization,discretization%dm_nflowdof, &
+                                ndof,stencil_width)
   endif
   
   if (option%ntrandof > 0) then
     ndof = option%ntrandof
-    call DiscretizationCreateDM(discretization,discretization%dm_ntrandof,ndof,stencil_width)
+    call DiscretizationCreateDM(discretization,discretization%dm_ntrandof, &
+                                ndof,stencil_width)
   endif
 
   select case(discretization%itype)
     case(STRUCTURED_GRID)
+      ! this function must be called to set up str_grid%nxs, etc.
+      call StructGridComputeLocalBounds(discretization%grid%structured_grid, &
+                                        discretization%dm_1_dof)    
       discretization%grid%nlmax = discretization%grid%structured_grid%nlmax
       discretization%grid%ngmax = discretization%grid%structured_grid%ngmax
     case(UNSTRUCTURED_GRID)

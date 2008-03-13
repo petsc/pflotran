@@ -43,6 +43,7 @@ module Structured_Grid_module
   public :: StructuredGridCreate, &
             StructuredGridDestroy, &
             StructuredGridCreateDA, &
+            StructGridComputeLocalBounds, &
             StructGridComputeInternConnect, &
             StructuredGridCreateVecFromDA, &
             StructuredGridMapIndices, &
@@ -152,8 +153,6 @@ end function StructuredGridCreate
 ! ************************************************************************** !
 subroutine StructuredGridCreateDA(structured_grid,da,ndof,stencil_width)
       
-  use Option_module
-      
   implicit none
 
 #include "include/finclude/petscvec.h"
@@ -178,36 +177,57 @@ subroutine StructuredGridCreateDA(structured_grid,da,ndof,stencil_width)
                   PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &
                   da,ierr)
 
-  if (structured_grid%nlx+structured_grid%nly+structured_grid%nlz == 0) then
-
-   ! get corner information
-    call DAGetCorners(da, structured_grid%nxs, &
-                      structured_grid%nys, structured_grid%nzs, structured_grid%nlx, &
-                      structured_grid%nly, structured_grid%nlz, ierr)
-
-    structured_grid%nxe = structured_grid%nxs + structured_grid%nlx
-    structured_grid%nye = structured_grid%nys + structured_grid%nly
-    structured_grid%nze = structured_grid%nzs + structured_grid%nlz
-    structured_grid%nlxy = structured_grid%nlx * structured_grid%nly
-    structured_grid%nlxz = structured_grid%nlx * structured_grid%nlz
-    structured_grid%nlyz = structured_grid%nly * structured_grid%nlz
-    structured_grid%nlmax = structured_grid%nlx * structured_grid%nly * structured_grid%nlz
-
-    ! get ghosted corner information
-    call DAGetGhostCorners(da, structured_grid%ngxs, &
-                           structured_grid%ngys, structured_grid%ngzs, structured_grid%ngx, &
-                           structured_grid%ngy, structured_grid%ngz, ierr)
-
-    structured_grid%ngxe = structured_grid%ngxs + structured_grid%ngx
-    structured_grid%ngye = structured_grid%ngys + structured_grid%ngy
-    structured_grid%ngze = structured_grid%ngzs + structured_grid%ngz
-    structured_grid%ngxy = structured_grid%ngx * structured_grid%ngy
-    structured_grid%ngxz = structured_grid%ngx * structured_grid%ngz
-    structured_grid%ngyz = structured_grid%ngy * structured_grid%ngz
-    structured_grid%ngmax = structured_grid%ngx * structured_grid%ngy * structured_grid%ngz
-  endif
-  
 end subroutine StructuredGridCreateDA
+
+! ************************************************************************** !
+!
+! StructGridComputeLocalBounds: Computes the corners for the local portion
+!                               of the structured grid
+! author: Glenn Hammond
+! date: 03/13/08
+!
+! ************************************************************************** !
+subroutine StructGridComputeLocalBounds(structured_grid,da)
+
+  implicit none
+
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
+#include "include/finclude/petscda.h"
+#include "include/finclude/petscda.h90"
+
+  type(structured_grid_type) :: structured_grid
+  DA :: da
+
+  PetscErrorCode :: ierr
+
+ ! get corner information
+  call DAGetCorners(da, structured_grid%nxs, &
+                    structured_grid%nys, structured_grid%nzs, structured_grid%nlx, &
+                    structured_grid%nly, structured_grid%nlz, ierr)
+
+  structured_grid%nxe = structured_grid%nxs + structured_grid%nlx
+  structured_grid%nye = structured_grid%nys + structured_grid%nly
+  structured_grid%nze = structured_grid%nzs + structured_grid%nlz
+  structured_grid%nlxy = structured_grid%nlx * structured_grid%nly
+  structured_grid%nlxz = structured_grid%nlx * structured_grid%nlz
+  structured_grid%nlyz = structured_grid%nly * structured_grid%nlz
+  structured_grid%nlmax = structured_grid%nlx * structured_grid%nly * structured_grid%nlz
+
+  ! get ghosted corner information
+  call DAGetGhostCorners(da, structured_grid%ngxs, &
+                         structured_grid%ngys, structured_grid%ngzs, structured_grid%ngx, &
+                         structured_grid%ngy, structured_grid%ngz, ierr)
+
+  structured_grid%ngxe = structured_grid%ngxs + structured_grid%ngx
+  structured_grid%ngye = structured_grid%ngys + structured_grid%ngy
+  structured_grid%ngze = structured_grid%ngzs + structured_grid%ngz
+  structured_grid%ngxy = structured_grid%ngx * structured_grid%ngy
+  structured_grid%ngxz = structured_grid%ngx * structured_grid%ngz
+  structured_grid%ngyz = structured_grid%ngy * structured_grid%ngz
+  structured_grid%ngmax = structured_grid%ngx * structured_grid%ngy * structured_grid%ngz
+  
+end subroutine StructGridComputeLocalBounds
 
 ! ************************************************************************** !
 !
