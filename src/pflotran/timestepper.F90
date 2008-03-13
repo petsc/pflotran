@@ -707,8 +707,6 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
                                          global_vec,field%density_loc,ONEDOF)   
       case(MPH_MODE)
     end select
-    call DiscretizationGlobalToLocal(realization%discretization, &
-                                     global_vec,field%saturation_loc,ONEDOF)   
     call VecDestroy(global_vec,ierr)
   endif
 
