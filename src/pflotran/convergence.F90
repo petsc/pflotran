@@ -178,7 +178,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
     call VecNorm(residual_vec,NORM_INFINITY,inorm_residual,ierr)
 
     call SNESGetSolutionUpdate(snes_,update_vec,ierr)
-    call VecNorm(residual_vec,NORM_INFINITY,inorm_update,ierr)
+    call VecNorm(update_vec,NORM_INFINITY,inorm_update,ierr)
 
     if (inorm_residual < solver%newton_inf_res_tol) then
 !      if (option%myrank == 0) print *, 'converged from infinity', inorm_residual
@@ -188,22 +188,23 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
 !        reason = 0
     endif
 
-    if (inorm_update < solver%newton_inf_upd_tol) then
+    if (inorm_update < solver%newton_inf_upd_tol .and. it > 0) then
 !      if (option%myrank == 0) print *, 'converged from infinity', inorm_residual
       reason = 11
     endif
 
     if (option%myrank == 0 .and. solver%print_convergence == PETSC_TRUE) &
-      write(*,'(i3,"  fnorm:",es12.4, &
-              & "  pnorm:",es12.4, &
-              & "  inorm:",es12.4, &
-              & "  reason:",i3)') it, fnorm, pnorm, inorm_residual, reason
+      write(*,'(i3," fnrm:",es9.2, &
+              & " pnrm:",es9.2, &
+              & " inrmr:",es9.2, &
+              & " inrmu:",es9.2, &
+              & " rsn:",i3)') it, fnorm, pnorm, inorm_residual, inorm_update, reason
   else
     if (option%myrank == 0 .and. solver%print_convergence == PETSC_TRUE) &
-      write(*,'(i3,"  fnorm:",es12.4, &
-              & "  pnorm:",es12.4, &
-              & 20x, &
-              & "  reason:",i3)') it, fnorm, pnorm, reason
+      write(*,'(i3," fnrm:",es10.2, &
+              & " pnrm:",es10.2, &
+              & 32x, &
+              & " rsn:",i3)') it, fnorm, pnorm, reason
   endif    
 
   if (solver%print_detailed_convergence == PETSC_TRUE) then
@@ -357,9 +358,9 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
             print *, '    solution_vec max: ', imax_solution(i), max_solution_val(i)
             print *, '    solution_vec min: ', imin_solution(i), min_solution_val(i)
           endif
-          if (print_upd_norm_info) then
-            print *, '    update_vec max:   ', imax_update(i), max_update_val(i)
-            print *, '    update_vec min:   ', imin_update(i), min_update_val(i)
+          if (print_upd_norm_info) then ! since update is -dx, need to invert
+            print *, '    update_vec max:   ', imin_update(i), -1.d0*min_update_val(i)
+            print *, '    update_vec min:   ', imax_update(i), -1.d0*max_update_val(i)
           endif
           if (print_res_norm_info) then
             print *, '    residual_vec max: ', imax_residual(i), max_residual_val(i)
