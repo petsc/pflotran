@@ -417,11 +417,11 @@ subroutine RTAccumulationDerivative(aux_var,por,sat,den,vol,option,Res)
   PetscReal :: Res(option%ncomp)
   
   PetscInt :: icomp
-  PetscReal :: psv_t
+  PetscReal :: psdv_t
   
-  psv_t = por*sat*den*vol/option%dt
+  psdv_t = por*sat*den*vol/option%dt
   do icomp=1,option%ncomp
-    Res(icomp) = psv_t
+    Res(icomp) = psdv_t
   enddo
 
 end subroutine RTAccumulationDerivative
@@ -446,11 +446,11 @@ subroutine RTAccumulation(aux_var,por,sat,den,vol,option,Res)
   PetscReal :: Res(option%ncomp)
   
   PetscInt :: icomp
-  PetscReal :: psv_t
+  PetscReal :: psdv_t
   
-  psv_t = por*sat*den*vol/option%dt
+  psdv_t = por*sat*den*vol/option%dt
   do icomp=1,option%ncomp
-    Res(icomp) = psv_t*aux_var%total(icomp) 
+    Res(icomp) = psdv_t*aux_var%total(icomp) 
   enddo
 
 end subroutine RTAccumulation
