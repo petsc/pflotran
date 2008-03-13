@@ -1967,7 +1967,7 @@ subroutine verifyCoupler(realization,patch,coupler_list)
   if (.not.associated(coupler_list)) return
 
   call DiscretizationCreateVector(realization%discretization,ONEDOF, &
-                                  global_vec,GLOBAL)
+                                  global_vec,GLOBAL,option)
 
   coupler => coupler_list%first
 

@@ -1896,7 +1896,7 @@ subroutine RichardsLiteJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     if (option%myrank == 0) print *, '2 norm:', norm
     call MatNorm(A,NORM_INFINITY,norm,ierr)
     if (option%myrank == 0) print *, 'inf norm:', norm
-!    call DiscretizationCreateVector(grid,ONEDOF,debug_vec,GLOBAL)
+!    call DiscretizationCreateVector(grid,ONEDOF,debug_vec,GLOBAL,option)
 !    call MatGetRowMaxAbs(A,debug_vec,PETSC_NULL_INTEGER,ierr)
 !    call VecMax(debug_vec,i,norm,ierr)
 !    call VecDestroy(debug_vec,ierr)

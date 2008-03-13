@@ -153,8 +153,10 @@ subroutine ReadStructuredGridHDF5(realization)
   if (option%myrank == 0) print *, time4, &
        ' seconds to set up grid cell indices for hdf5 file'
 
-  call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL)
-  call DiscretizationCreateVector(discretization,ONEDOF,local_vec,LOCAL)
+  call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
+                                  option)
+  call DiscretizationCreateVector(discretization,ONEDOF,local_vec,LOCAL, &
+                                  option)
   
   allocate(integer_array(grid%nlmax))
   string = "Material Id"

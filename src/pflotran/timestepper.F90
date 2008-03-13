@@ -685,7 +685,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
 
   if (field%saturation_loc /= 0) then ! store saturations for transport
    call DiscretizationCreateVector(realization%discretization,ONEDOF, &
-                                   global_vec,GLOBAL)
+                                   global_vec,GLOBAL,option)
     select case(option%iflowmode)
       case(RICHARDS_MODE)
         call RichardsGetVarFromArray(realization,global_vec, &

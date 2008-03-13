@@ -1149,7 +1149,7 @@ subroutine HDF5ReadArray(discretization,grid,option,file_id,dataset_name, &
 #endif
 
   call DiscretizationCreateVector(discretization,ONEDOF, &
-                                  natural_vec,NATURAL)
+                                  natural_vec,NATURAL,option)
   call VecZeroEntries(natural_vec,ierr)
 
   ! must initialize here to avoid error below when closing memory space
@@ -1466,8 +1466,10 @@ subroutine HDF5ReadMaterialsFromFile(realization,filename)
   call h5fopen_f(filename,H5F_ACC_RDONLY_F,file_id,hdf5_err,prop_id)
   call h5pclose_f(prop_id,hdf5_err)
 
-  call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL)
-  call DiscretizationCreateVector(discretization,ONEDOF,local_vec,LOCAL)
+  call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
+                                  option)
+  call DiscretizationCreateVector(discretization,ONEDOF,local_vec,LOCAL, &
+                                  option)
 
   if (option%myrank == 0) print *, 'Setting up grid cell indices'
   ! Open the Materials group

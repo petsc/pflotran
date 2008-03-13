@@ -215,7 +215,7 @@ subroutine Checkpoint(realization, &
     call VecView(field%flow_xx, viewer, ierr)
 
     call DiscretizationCreateVector(realization%discretization,ONEDOF, &
-                                    global_vec,GLOBAL)
+                                    global_vec,GLOBAL,option)
     ! If we are running with multiple phases, we need to dump the vector 
     ! that indicates what phases are present, as well as the 'var' vector 
     ! that holds variables derived from the primary ones via the translator.
@@ -349,7 +349,8 @@ subroutine Restart(realization, &
   
   ! Load the PETSc vectors.
   if (option%nflowdof > 0) then
-    call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL)
+    call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
+                                    option)
 
     call VecLoadIntoVector(viewer,field%flow_xx,ierr)
     call DiscretizationGlobalToLocal(discretization,field%flow_xx, &

@@ -281,8 +281,10 @@ subroutine OutputTecplot(realization)
   
   ! write blocks
   ! write out data sets  
-  call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL)  
-  call DiscretizationCreateVector(discretization,ONEDOF,natural_vec,NATURAL)  
+  call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
+                                  option)  
+  call DiscretizationCreateVector(discretization,ONEDOF,natural_vec,NATURAL, &
+                                  option)  
 
   ! write out coordinates
   if (realization%discretization%itype == STRUCTURED_GRID) then
@@ -550,8 +552,10 @@ subroutine OutputVelocitiesTecplot(realization)
   
   ! write blocks
   ! write out data sets  
-  call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL)  
-  call DiscretizationCreateVector(discretization,ONEDOF,natural_vec,NATURAL)    
+  call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
+                                  option)  
+  call DiscretizationCreateVector(discretization,ONEDOF,natural_vec,NATURAL, &
+                                  option)    
 
   ! write out coorindates
   if (realization%discretization%itype == STRUCTURED_GRID) then
@@ -872,7 +876,8 @@ subroutine OutputFluxVelocitiesTecplot(realization,iphase, &
   deallocate(array)
   nullify(array)
 
-  call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL) 
+  call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
+                                  option) 
   call VecZeroEntries(global_vec,ierr)
   call VecGetArrayF90(global_vec,vec_ptr,ierr)
   
@@ -1013,9 +1018,9 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
   ! write blocks
   ! write out data sets  
   call DiscretizationCreateVector(discretization,ONEDOF, &
-                                  global_vec,GLOBAL)  
+                                  global_vec,GLOBAL,option)  
   call DiscretizationCreateVector(discretization,ONEDOF, &
-                                  natural_vec,NATURAL)    
+                                  natural_vec,NATURAL,option)    
 
   ! write out coorindates
   call GetCoordinates(grid,global_vec,X_COORDINATE)
@@ -1857,7 +1862,8 @@ subroutine OutputHDF5(realization)
   call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
   
   ! write out data sets 
-  call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL)   
+  call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
+                                  option)   
 
   select case(option%iflowmode)
   
@@ -2145,7 +2151,8 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
   allocate(array(nx_local*ny_local*nz_local))
 
 
-  call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL) 
+  call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
+                                  option) 
   call VecZeroEntries(global_vec,ierr)
   call VecGetArrayF90(global_vec,vec_ptr,ierr)
   

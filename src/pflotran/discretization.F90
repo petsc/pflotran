@@ -247,7 +247,9 @@ end subroutine DiscretizationCreateDM
 ! date: 10/24/07
 !
 ! ************************************************************************** !
-subroutine DiscretizationCreateVector(discretization,dm_index,vector,vector_type)
+subroutine DiscretizationCreateVector(discretization,dm_index,vector, &
+                                      vector_type,option)
+  use Option_module                                      
 
   implicit none
   
@@ -255,6 +257,8 @@ subroutine DiscretizationCreateVector(discretization,dm_index,vector,vector_type
   PetscInt :: dm_index
   Vec :: vector
   PetscInt :: vector_type
+  type(option_type) :: option
+  
   PetscErrorCode :: ierr
   
   DM :: dm_ptr
@@ -272,6 +276,15 @@ subroutine DiscretizationCreateVector(discretization,dm_index,vector,vector_type
           call DACreateNaturalVector(dm_ptr,vector,ierr)
       end select
     case(UNSTRUCTURED_GRID)
+    case(AMR_GRID)
+      select case(dm_index)
+        case(ONEDOF)
+        ! use ndof = 1
+        case(NFLOWDOF)
+        ! use ndof = option%nflowdof
+        case(NTRANDOF)
+        ! use ndof = option%ntrandof
+      end select
   end select
   call VecSet(vector,0.d0,ierr)
   

@@ -122,64 +122,93 @@ subroutine RealizationCreateDiscretization(realization)
   
   discretization => realization%discretization
 
+  grid => discretization%grid
+  
+  call DiscretizationCreateDMs(discretization,option)
+  
+  ! 1 degree of freedom, global
+  call DiscretizationCreateVector(discretization,ONEDOF,field%porosity0, &
+                                  GLOBAL,option)
+  call DiscretizationDuplicateVector(discretization,field%porosity0, &
+                                     field%volume)
+  
+  ! 1 degree of freedom, local
+  call DiscretizationCreateVector(discretization,ONEDOF,field%porosity_loc, &
+                                  LOCAL,option)
+  call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
+                                     field%tor_loc)
+  
+  if (option%nflowdof > 0) then
+
+    ! 1-dof global  
+    call DiscretizationDuplicateVector(discretization,field%porosity0, &
+                                       field%perm0_xx)
+    call DiscretizationDuplicateVector(discretization,field%porosity0, &
+                                       field%perm0_yy)
+    call DiscretizationDuplicateVector(discretization,field%porosity0, &
+                                       field%perm0_zz)
+    call DiscretizationDuplicateVector(discretization,field%porosity0, &
+                                       field%perm_pow)
+
+    ! 1-dof local
+    call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
+                                       field%ithrm_loc)
+    call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
+                                       field%icap_loc)
+    call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
+                                       field%iphas_loc)
+    call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
+                                       field%iphas_old_loc)
+    call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
+                                       field%perm_xx_loc)
+    call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
+                                       field%perm_yy_loc)
+    call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
+                                       field%perm_zz_loc)
+
+    ! ndof degrees of freedom, global
+    call DiscretizationCreateVector(discretization,NFLOWDOF,field%flow_xx, &
+                                    GLOBAL,option)
+    call DiscretizationDuplicateVector(discretization,field%flow_xx, &
+                                       field%flow_yy)
+    call DiscretizationDuplicateVector(discretization,field%flow_xx, &
+                                       field%flow_dxx)
+    call DiscretizationDuplicateVector(discretization,field%flow_xx, &
+                                       field%flow_r)
+    call DiscretizationDuplicateVector(discretization,field%flow_xx, &
+                                       field%flow_accum)
+
+    ! ndof degrees of freedom, local
+    call DiscretizationCreateVector(discretization,NFLOWDOF,field%flow_xx_loc, &
+                                    LOCAL,option)
+  endif
+
+  if (option%ntrandof > 0) then
+    ! ndof degrees of freedom, global
+    call DiscretizationCreateVector(discretization,NTRANDOF,field%tran_xx, &
+                                    GLOBAL,option)
+    call DiscretizationDuplicateVector(discretization,field%tran_xx, &
+                                       field%tran_yy)
+    call DiscretizationDuplicateVector(discretization,field%tran_xx, &
+                                       field%tran_dxx)
+    call DiscretizationDuplicateVector(discretization,field%tran_xx, &
+                                       field%tran_r)
+    call DiscretizationDuplicateVector(discretization,field%tran_xx, &
+                                       field%tran_accum)
+
+    call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
+                                       field%saturation_loc)
+    call DiscretizationDuplicateVector(discretization,field%porosity_loc, &
+                                       field%density_loc)
+    
+    ! ndof degrees of freedom, local
+    call DiscretizationCreateVector(discretization,NTRANDOF,field%tran_xx_loc, &
+                                    LOCAL,option)
+  endif
+
   select case(discretization%itype)
     case(STRUCTURED_GRID,UNSTRUCTURED_GRID)
     
-      grid => discretization%grid
-      
-      call DiscretizationCreateDMs(discretization,option)
-      
-      ! 1 degree of freedom, global
-      call DiscretizationCreateVector(discretization,ONEDOF,field%porosity0,GLOBAL)
-      call DiscretizationDuplicateVector(discretization,field%porosity0, field%volume)
-      
-      ! 1 degree of freedom, local
-      call DiscretizationCreateVector(discretization,ONEDOF,field%porosity_loc,LOCAL)
-      call DiscretizationDuplicateVector(discretization,field%porosity_loc, field%tor_loc)
-      
-      if (option%nflowdof > 0) then
-
-        ! 1-dof global  
-        call DiscretizationDuplicateVector(discretization,field%porosity0, field%perm0_xx)
-        call DiscretizationDuplicateVector(discretization,field%porosity0, field%perm0_yy)
-        call DiscretizationDuplicateVector(discretization,field%porosity0, field%perm0_zz)
-        call DiscretizationDuplicateVector(discretization,field%porosity0, field%perm_pow)
-
-        ! 1-dof local
-        call DiscretizationDuplicateVector(discretization,field%porosity_loc, field%ithrm_loc)
-        call DiscretizationDuplicateVector(discretization,field%porosity_loc, field%icap_loc)
-        call DiscretizationDuplicateVector(discretization,field%porosity_loc, field%iphas_loc)
-        call DiscretizationDuplicateVector(discretization,field%porosity_loc, field%iphas_old_loc)
-        call DiscretizationDuplicateVector(discretization,field%porosity_loc, field%perm_xx_loc)
-        call DiscretizationDuplicateVector(discretization,field%porosity_loc, field%perm_yy_loc)
-        call DiscretizationDuplicateVector(discretization,field%porosity_loc, field%perm_zz_loc)
-
-        ! ndof degrees of freedom, global
-        call DiscretizationCreateVector(discretization,NFLOWDOF, field%flow_xx, GLOBAL)
-        call DiscretizationDuplicateVector(discretization,field%flow_xx, field%flow_yy)
-        call DiscretizationDuplicateVector(discretization,field%flow_xx, field%flow_dxx)
-        call DiscretizationDuplicateVector(discretization,field%flow_xx, field%flow_r)
-        call DiscretizationDuplicateVector(discretization,field%flow_xx, field%flow_accum)
-
-        ! ndof degrees of freedom, local
-        call DiscretizationCreateVector(discretization,NFLOWDOF, field%flow_xx_loc, LOCAL)
-      endif
-
-      if (option%ntrandof > 0) then
-        ! ndof degrees of freedom, global
-        call DiscretizationCreateVector(discretization,NTRANDOF, field%tran_xx, GLOBAL)
-        call DiscretizationDuplicateVector(discretization,field%tran_xx, field%tran_yy)
-        call DiscretizationDuplicateVector(discretization,field%tran_xx, field%tran_dxx)
-        call DiscretizationDuplicateVector(discretization,field%tran_xx, field%tran_r)
-        call DiscretizationDuplicateVector(discretization,field%tran_xx, field%tran_accum)
-
-        call DiscretizationDuplicateVector(discretization,field%porosity_loc, field%saturation_loc)
-        call DiscretizationDuplicateVector(discretization,field%porosity_loc, field%density_loc)
-        
-        ! ndof degrees of freedom, local
-        call DiscretizationCreateVector(discretization,NTRANDOF, field%tran_xx_loc, LOCAL)
-      endif
-
       ! set up nG2L, NL2G, etc.
       call GridMapIndices(grid)
       call GridComputeSpacing(grid)

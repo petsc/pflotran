@@ -132,8 +132,6 @@ subroutine MphaseCheckpointWrite(discretization, viewer)
   Vec :: global_var
   PetscErrorCode :: ierr
   
-!  call DiscretizationCreateVector(discretization,VARDOF,global_var,GLOBAL)
-!  call DiscretizationLocalToGlobal(discretization,mphase_field%var_loc,global_var,VARDOF)
   call VecView(global_var,viewer,ierr)
   call VecDestroy(global_var,ierr)
   
@@ -163,9 +161,7 @@ subroutine MphaseCheckpointRead(discretization,viewer)
   Vec :: global_var
   PetscErrorCode :: ierr
   
-!  call DiscretizationCreateVector(discretization,VARDOF,global_var,GLOBAL)
   call VecLoadIntoVector(viewer, global_var, ierr)
-!  call DiscretizationGlobalToLocal(discretization,global_var,mphase_field%var_loc,VARDOF)
   call VecDestroy(global_var,ierr)
   ! solid volume fraction
   if (mphase_option%rk > 0.d0) then
@@ -359,7 +355,8 @@ subroutine MphaseSetup(realization)
   select case(option%iflowmode)
     case(MPH_MODE)
       ! nphase degrees of freedom
-      call DiscretizationCreateVector(grid,NPHASEDOF,field%pressure,GLOBAL)
+      call DiscretizationCreateVector(grid,NPHASEDOF,field%pressure,GLOBAL, &
+                                      option)
       call VecDuplicate(field%pressure, field%sat, ierr)
       call VecDuplicate(field%pressure, field%xmol, ierr)
       call VecDuplicate(field%pressure, field%ppressure, ierr)
@@ -384,7 +381,8 @@ subroutine MphaseSetup(realization)
   ! should these be moved to their respective modules?
   select case(option%iflowmode)
     case(MPH_MODE)
-      call DiscretizationCreateVector(grid,NPHASEDOF, field%ppressure_loc, LOCAL)
+      call DiscretizationCreateVector(grid,NPHASEDOF, field%ppressure_loc, LOCAL, &
+                                      option)
       call VecDuplicate(field%ppressure_loc, field%ssat_loc, ierr)
       call VecDuplicate(field%ppressure_loc, field%flow_xxmol_loc, ierr)
       call VecDuplicate(field%ppressure_loc, field%ddensity_loc, ierr)
