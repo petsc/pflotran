@@ -892,65 +892,6 @@ subroutine OutputFluxVelocitiesTecplot(realization,iphase, &
     cur_connection_set => cur_connection_set%next
   enddo
 
-  ! compute stats
-  if (option%compute_statistics) then
-    call VecDuplicate(global_vec,global_vec2,ierr)
-    call VecSum(global_vec,sum,ierr)
-    average = sum/real(grid%nmax)
-    call VecSet(global_vec2,average,ierr)
-    call VecMax(global_vec,max_loc,max,ierr)
-    call VecMin(global_vec,min_loc,min,ierr)
-    call VecAYPX(global_vec2,-1.d0,global_vec,ierr)
-    call VecNorm(global_vec2,NORM_2,std_dev,ierr)
-    select case(direction)
-      case(X_DIRECTION)
-        string = 'X-Direction,'
-      case(Y_DIRECTION)
-        string = 'Y-Direction,'
-      case(Z_DIRECTION)
-        string = 'Z-Direction,'
-    end select
-    select case(iphase)
-      case(LIQUID_PHASE)
-        string = trim(string) // ' Liquid Phase'
-      case(GAS_PHASE)
-        string = trim(string) // ' Gas Phase'
-    end select
-    string = trim(string) // ' Flux Velocity Statistics:'
-    if (option%myrank == 0) then
-      write(*,'(/,a,/, &
-                   &"Average:",1es12.4,/, &
-                   &"Max:    ",1es12.4,"  Location:",i11,/, &
-                   &"Min:    ",1es12.4,"  Location:",i11,/, &
-                   &"Std Dev:",1es12.4,/)') trim(string), &
-                                            average,max,max_loc+1, &
-                                            min,min_loc+1,std_dev
-      write(IUNIT2,'(/,a,/, &
-                   &"Average:",1es12.4,/, &
-                   &"Max:    ",1es12.4,"  Location:",i11,/, &
-                   &"Min:    ",1es12.4,"  Location:",i11,/, &
-                   &"Std Dev:",1es12.4,/)') trim(string), &
-                                            average,max,max_loc+1, &
-                                            min,min_loc+1,std_dev
-    endif
-  endif
-
-  ! write out data set
-  count = 0
-  allocate(array(local_size))
-  do k=1,nz_local
-    do j=1,ny_local
-      do i=1,nx_local
-        count = count + 1
-        local_id = i+(j-1)*grid%structured_grid%nlx+(k-1)*grid%structured_grid%nlxy
-        array(count) = vec_ptr(local_id)
-      enddo
-    enddo
-  enddo
-  call VecRestoreArrayF90(global_vec,vec_ptr,ierr)
-  
-  call VecDestroy(global_vec,ierr)
-  
 !GEH - Structured Grid Dependence - End
   
   array(1:local_size) = array(1:local_size)*output_option%tconv ! convert time units
@@ -2663,10 +2604,10 @@ subroutine ComputeFlowMassBalance(realization)
   output_option => realization%output_option
   discretization => realization%discretization
 
-  call VecDuplicate(field%porosity0,total_mass_vec,ierr)
-  call VecDuplicate(field%porosity0,mass_vec,ierr)
-  call VecDuplicate(field%porosity0,global_vec,ierr)
-  call VecDuplicate(field%porosity_loc,density_loc,ierr)
+  call DiscretizationDuplicateVector(discretization,field%porosity0,total_mass_vec)
+  call DiscretizationDuplicateVector(discretization,field%porosity0,mass_vec)
+  call DiscretizationDuplicateVector(discretization,field%porosity0,global_vec)
+  call DiscretizationDuplicateVector(discretization,field%porosity_loc,density_loc)
   
   call OutputGetVarFromArray(realization,global_vec,LIQUID_DENSITY,ZERO_INTEGER)
   call DiscretizationGlobalToLocal(discretization,global_vec,density_loc,ONEDOF)
@@ -2827,7 +2768,8 @@ subroutine ComputeFlowCellVelocityStats(realization)
   discretization => realization%discretization
     
   allocate(sum_area(grid%nlmax))
-  call VecDuplicate(field%porosity0,global_vec,ierr)
+  call DiscretizationDuplicateVector(discretization,field%porosity0,global_vec)
+  call DiscretizationDuplicateVector(discretization,field%porosity0,global_vec2)
 
   do iphase = 1,option%nphase
 
@@ -2979,8 +2921,8 @@ subroutine ComputeFlowFluxVelocityStats(realization)
   field => realization%field
   output_option => realization%output_option
   
-  call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL) 
-  call DiscretizationDuplicateVector(discretization,global_vec,global_vec2) 
+  call DiscretizationDuplicateVector(discretization,field%porosity0,global_vec) 
+  call DiscretizationDuplicateVector(discretization,field%porosity0,global_vec2) 
 
   do iphase = 1,option%nphase
     do direction = 1,3
@@ -3005,7 +2947,6 @@ subroutine ComputeFlowFluxVelocityStats(realization)
       enddo
 
       ! compute stats
-      call VecDuplicate(global_vec,global_vec2,ierr)
       call VecSum(global_vec,sum,ierr)
       average = sum/real(grid%nmax)
       call VecSet(global_vec2,average,ierr)
@@ -3027,7 +2968,8 @@ subroutine ComputeFlowFluxVelocityStats(realization)
         case(GAS_PHASE)
           string = trim(string) // ' Gas Phase'
       end select
-      string = trim(string) // ' Flux Velocity Statistics:'
+      string = trim(string) // ' Flux Velocity Statistics [m/' // &
+               trim(output_option%tunit) // ']:'
       if (option%myrank == 0) then
         write(*,'(/,a,/, &
                      &"Average:",1es12.4,/, &
