@@ -211,7 +211,7 @@ end subroutine TBCFlux
 ! ************************************************************************** !
 subroutine TBCFluxDerivative(ibndtype, &
                              aux_var_up, &
-                             aux_var_dn,por_dn,tor_dn,sat_dn,dist_dn,den_dn, &
+                             aux_var_dn,por_dn,tor_dn,sat_dn,den_dn,dist_dn, &
                              area,option,velocity,J_dn)
 
   use Reactive_Transport_Aux_module
