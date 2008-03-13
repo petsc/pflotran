@@ -364,7 +364,7 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,Jacobian,option)
       call MatSetOption(Jacobian,MAT_KEEP_ZEROED_ROWS,ierr)
       call MatSetOption(Jacobian,MAT_COLUMN_ORIENTED,ierr)
 #else
-      call MatSetOption(Jacobian,MAT_KEEP_ZEROED_ROWS,PETSC_TRUE,ierr)
+      call MatSetOption(Jacobian,MAT_KEEP_ZEROED_ROWS,PETSC_FALSE,ierr)
       call MatSetOption(Jacobian,MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
 #endif
     case(UNSTRUCTURED_GRID)
