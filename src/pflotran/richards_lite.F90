@@ -946,15 +946,9 @@ subroutine RichardsLiteBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn,
                   (1.D0-upweight)*aux_var_dn%den*aux_var_dn%avgmw) &
                   * dist_gravity
         dgravity_dden_dn = (1.d0-upweight)*aux_var_dn%avgmw*dist_gravity
-
-        if (ibndtype(RICHARDS_PRESSURE_DOF) /= SEEPAGE_BC .or. &
-            aux_var_dn%pres >= option%pref) then
-          dphi = aux_var_up%pres - aux_var_dn%pres + gravity
-          dphi_dp_dn = -1.d0 + dgravity_dden_dn*aux_var_dn%dden_dp
-        else
-          dphi = 0.d0
-          dphi_dp_dn = 0.d0
-        endif
+        
+        dphi = aux_var_up%pres - aux_var_dn%pres + gravity
+        dphi_dp_dn = -1.d0 + dgravity_dden_dn*aux_var_dn%dden_dp
         
         if (dphi>=0.D0) then
           ukvr = aux_var_up%kvr
@@ -1076,12 +1070,7 @@ subroutine RichardsLiteBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
                   (1.D0-upweight)*aux_var_dn%den*aux_var_dn%avgmw) &
                   * dist_gravity
        
-        if (ibndtype(RICHARDS_PRESSURE_DOF) /= SEEPAGE_BC .or. &
-            aux_var_dn%pres >= option%pref) then
-          dphi = aux_var_up%pres - aux_var_dn%pres + gravity
-        else
-          dphi = 0.d0
-        endif
+        dphi = aux_var_up%pres - aux_var_dn%pres + gravity
    
         if (dphi>=0.D0) then
           ukvr = aux_var_up%kvr
