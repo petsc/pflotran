@@ -146,7 +146,7 @@ ascii_to_hdf5: fileio.o hdf5_dataset.o ascii_to_hdf5.o
 	${FLINKER} -o ascii_to_hdf5 ascii_to_hdf5.o hdf5_dataset.o fileio.o \
 	$(LIBS)
 
-test: test.o functions.o
+test: function.o test.o
 	${FLINKER} -o test test.o functions.o $(LIBS) $(PETSC_LIB)
 
 # Should add this to default PETSc targets as well?
