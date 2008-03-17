@@ -70,10 +70,55 @@ pflotran_obj = ${common_src}pflow_pckr_mod.o \
 	${common_src}condition.o \
 	${common_src}coupler.o \
 	${common_src}grid.o \
-	${common_src}discretization.o \
 	${common_src}hydrostatic.o \
 	${common_src}patch.o \
 	${common_src}level.o \
+	${common_src}amrgrid.o\
+	${common_src}discretization.o \
+	${common_src}realization.o \
+	${common_src}hdf5.o \
+	${common_src}translator_mixed_fluid_mph.o \
+	${common_src}pflow_mphase_ResJac.o\
+	${common_src}transport.o\
+	${common_src}reaction.o\
+	${common_src}reactive_transport.o\
+	${common_src}richards.o\
+	${common_src}richards_lite.o\
+	${common_src}general_grid.o \
+	${common_src}checkpoint.o \
+	${common_src}convergence.o \
+	${common_src}timestepper.o \
+	${common_src}simulation.o \
+	${common_src}output.o \
+	${common_src}init.o\
+	${common_src}amrstubs.o
+
+
+pflotranamr_obj = ${common_src}pflow_pckr_mod.o \
+	${common_src}option.o \
+	${common_src}logging.o \
+	${common_src}reactive_transport_aux.o\
+	${common_src}richards_aux.o\
+	${common_src}richards_lite_aux.o\
+	${common_src}field.o \
+	${common_src}debug.o \
+	${common_src}waypoint.o \
+	${common_src}region.o \
+	${common_src}material.o \
+	${common_src}strata.o \
+	${common_src}connection.o \
+	${common_src}breakthrough.o \
+	${common_src}solver.o \
+	${common_src}unstructured_grid.o \
+	${common_src}structured_grid.o \
+	${common_src}condition.o \
+	${common_src}coupler.o \
+	${common_src}grid.o \
+	${common_src}hydrostatic.o \
+	${common_src}patch.o \
+	${common_src}level.o \
+	${common_src}amrgrid.o\
+	${common_src}discretization.o \
 	${common_src}realization.o \
 	${common_src}hdf5.o \
 	${common_src}translator_mixed_fluid_mph.o \
@@ -91,7 +136,8 @@ pflotran_obj = ${common_src}pflow_pckr_mod.o \
 	${common_src}output.o \
 	${common_src}init.o
 
-pflotranamr: $(util_obj) $(pflotran_obj)
+pflotranamr: $(util_obj) $(pflotranamr_obj)
+	ar ru libpflotranamr.a $(util_obj) $(pflotranamr_obj)
 
 pflotran : $(util_obj) $(pflotran_obj) ${pflotran_src}pflotran.o
 	${FLINKER}   -o pflotran $(util_obj) $(pflotran_obj) ${pflotran_src}pflotran.o ${PETSC_LIB} ${LIBS}

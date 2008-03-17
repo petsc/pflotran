@@ -1,0 +1,49 @@
+DIRICHLET = 0
+NEUMANN   = 1
+MIXED     = 2
+ROBIN     = 4
+
+CartesianGeometry{
+   domain_boxes = [(0,0,0), (49,0,0)]
+   x_lo         = 0.0e0, 0.0e0, 0.0e0  
+   x_up         = 1.0e0, 1.0e0, 1.0e0
+}
+
+
+GriddingAlgorithm{
+   max_levels = 1
+   largest_patch_size {
+      level_0 = 256, 1, 1
+   }
+ smallest_patch_size {
+      level_0 = 4,1,1
+   }
+   ratio_to_coarser {
+      level_1  = 2, 1, 1
+   }
+   combine_efficiency = 0.95
+   efficiency_tolerance = 0.95
+}
+
+StandardTagAndInitialize{
+   tagging_method = "REFINE_BOXES"
+   RefineBoxes{
+      level_0 = [(2,0,0),(5,0,0)]
+   }
+}
+
+LoadBalancer{
+   bin_pack = "SPATIAL"
+}
+
+PIMS{
+  pims_file = "pflow.in"
+}
+
+PredictorCorrector{
+   initial_time = 0.0
+   final_time = 100
+   max_integrator_steps = 1000000
+   initial_timestep = 0.01
+   c1 = 0.005
+}

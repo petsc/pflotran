@@ -38,6 +38,8 @@ module Structured_Grid_module
     
     PetscReal, pointer :: dx(:), dy(:), dz(:), dxg(:), dyg(:), dzg(:)  ! Grid spacings
     
+    PetscFortranAddr p_samr_patch ! pointer to a SAMRAI patch object
+
   end type structured_grid_type
 
   public :: StructuredGridCreate, &
@@ -140,6 +142,8 @@ function StructuredGridCreate()
   
   structured_grid%invert_z_axis = .false.
   
+  structured_grid%p_samr_patch=0
+
   StructuredGridCreate => structured_grid
   
 end function StructuredGridCreate
@@ -201,32 +205,59 @@ subroutine StructGridComputeLocalBounds(structured_grid,da)
 
   PetscErrorCode :: ierr
 
- ! get corner information
-  call DAGetCorners(da, structured_grid%nxs, &
-                    structured_grid%nys, structured_grid%nzs, structured_grid%nlx, &
-                    structured_grid%nly, structured_grid%nlz, ierr)
-
-  structured_grid%nxe = structured_grid%nxs + structured_grid%nlx
-  structured_grid%nye = structured_grid%nys + structured_grid%nly
-  structured_grid%nze = structured_grid%nzs + structured_grid%nlz
-  structured_grid%nlxy = structured_grid%nlx * structured_grid%nly
-  structured_grid%nlxz = structured_grid%nlx * structured_grid%nlz
-  structured_grid%nlyz = structured_grid%nly * structured_grid%nlz
-  structured_grid%nlmax = structured_grid%nlx * structured_grid%nly * structured_grid%nlz
-
-  ! get ghosted corner information
-  call DAGetGhostCorners(da, structured_grid%ngxs, &
-                         structured_grid%ngys, structured_grid%ngzs, structured_grid%ngx, &
-                         structured_grid%ngy, structured_grid%ngz, ierr)
-
-  structured_grid%ngxe = structured_grid%ngxs + structured_grid%ngx
-  structured_grid%ngye = structured_grid%ngys + structured_grid%ngy
-  structured_grid%ngze = structured_grid%ngzs + structured_grid%ngz
-  structured_grid%ngxy = structured_grid%ngx * structured_grid%ngy
-  structured_grid%ngxz = structured_grid%ngx * structured_grid%ngz
-  structured_grid%ngyz = structured_grid%ngy * structured_grid%ngz
-  structured_grid%ngmax = structured_grid%ngx * structured_grid%ngy * structured_grid%ngz
-  
+  if(structured_grid%p_samr_patch==0) then
+      ! get corner information
+     call DAGetCorners(da, structured_grid%nxs, &
+          structured_grid%nys, structured_grid%nzs, structured_grid%nlx, &
+          structured_grid%nly, structured_grid%nlz, ierr)
+     
+     structured_grid%nxe = structured_grid%nxs + structured_grid%nlx
+     structured_grid%nye = structured_grid%nys + structured_grid%nly
+     structured_grid%nze = structured_grid%nzs + structured_grid%nlz
+     structured_grid%nlxy = structured_grid%nlx * structured_grid%nly
+     structured_grid%nlxz = structured_grid%nlx * structured_grid%nlz
+     structured_grid%nlyz = structured_grid%nly * structured_grid%nlz
+     structured_grid%nlmax = structured_grid%nlx * structured_grid%nly * structured_grid%nlz
+     
+     ! get ghosted corner information
+     call DAGetGhostCorners(da, structured_grid%ngxs, &
+          structured_grid%ngys, structured_grid%ngzs, structured_grid%ngx, &
+          structured_grid%ngy, structured_grid%ngz, ierr)
+     
+     structured_grid%ngxe = structured_grid%ngxs + structured_grid%ngx
+     structured_grid%ngye = structured_grid%ngys + structured_grid%ngy
+     structured_grid%ngze = structured_grid%ngzs + structured_grid%ngz
+     structured_grid%ngxy = structured_grid%ngx * structured_grid%ngy
+     structured_grid%ngxz = structured_grid%ngx * structured_grid%ngz
+     structured_grid%ngyz = structured_grid%ngy * structured_grid%ngz
+     structured_grid%ngmax = structured_grid%ngx * structured_grid%ngy * structured_grid%ngz
+  else
+     ! get corner information
+     call samr_patch_get_corners(structured_grid%p_samr_patch, &
+          structured_grid%nxs, structured_grid%nys, structured_grid%nzs, &
+          structured_grid%nlx, structured_grid%nly, structured_grid%nlz)
+     
+     structured_grid%nxe = structured_grid%nxs + structured_grid%nlx
+     structured_grid%nye = structured_grid%nys + structured_grid%nly
+     structured_grid%nze = structured_grid%nzs + structured_grid%nlz
+     structured_grid%nlxy = structured_grid%nlx * structured_grid%nly
+     structured_grid%nlxz = structured_grid%nlx * structured_grid%nlz
+     structured_grid%nlyz = structured_grid%nly * structured_grid%nlz
+     structured_grid%nlmax = structured_grid%nlx * structured_grid%nly * structured_grid%nlz
+     
+     ! get ghosted corner information
+     call samr_patch_get_ghostcorners(structured_grid%p_samr_patch, &
+          structured_grid%ngxs, structured_grid%ngys, structured_grid%ngzs, &
+          structured_grid%ngx, structured_grid%ngy, structured_grid%ngz)
+     structured_grid%ngxe = structured_grid%ngxs + structured_grid%ngx
+     structured_grid%ngye = structured_grid%ngys + structured_grid%ngy
+     structured_grid%ngze = structured_grid%ngzs + structured_grid%ngz
+     structured_grid%ngxy = structured_grid%ngx * structured_grid%ngy
+     structured_grid%ngxz = structured_grid%ngx * structured_grid%ngz
+     structured_grid%ngyz = structured_grid%ngy * structured_grid%ngz
+     structured_grid%ngmax = structured_grid%ngx * structured_grid%ngy * structured_grid%ngz
+   endif
+   
 end subroutine StructGridComputeLocalBounds
 
 ! ************************************************************************** !
