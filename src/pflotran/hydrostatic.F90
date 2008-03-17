@@ -378,9 +378,11 @@ subroutine HydrostaticUpdateCouplerBetter(coupler,option,grid)
 
     if (associated(pressure_array)) then
       ipressure = idatum+int(dist_z/delta_z)
+      dist_z = grid%z(ghosted_id)-dz_conn-z(ipressure)
       pressure = pressure_array(ipressure) + &
                  density_array(ipressure)*option%gravity(Z_DIRECTION) * &
-                 (grid%z(ghosted_id)-z(ipressure)) + &
+                 dist_z + &
+!                 (grid%z(ghosted_id)-z(ipressure)) + &
                  pressure_gradient(X_DIRECTION)*dist_x + & ! gradient in Pa/m
                  pressure_gradient(Y_DIRECTION)*dist_y
     else
