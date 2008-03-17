@@ -599,7 +599,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
     
     select case(option%iflowmode)
       case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
-        call SNESSolve(solver%snes, PETSC_NULL, field%flow_xx, ierr)
+        call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)
     end select
 
 ! do we really need all this? - geh 
@@ -858,7 +858,7 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
   
   do
    
-    call SNESSolve(solver%snes, PETSC_NULL, field%tran_xx, ierr)
+    call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%tran_xx, ierr)
 
 ! do we really need all this? - geh 
     call SNESGetIterationNumber(solver%snes,num_newton_iterations, ierr)

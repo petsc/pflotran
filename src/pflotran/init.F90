@@ -215,7 +215,7 @@ subroutine Init(simulation,filename)
     call SNESSetJacobian(tran_solver%snes, tran_solver%J, tran_solver%J, RTJacobian, &
                          realization, ierr)
 
-    call SNESLineSearchSet(tran_solver%snes,SNESLineSearchNo,PETSC_NULL,ierr)
+    call SNESLineSearchSet(tran_solver%snes,SNESLineSearchNo,PETSC_NULL_OBJECT,ierr)
 
     call SolverSetSNESOptions(tran_solver)
 
