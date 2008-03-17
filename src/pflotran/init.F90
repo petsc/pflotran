@@ -147,16 +147,19 @@ subroutine Init(simulation,filename)
                            option%flowmode)
       end select
     endif
-    write(*,'(" number of dofs = ",i3,", number of phases = ",i3,i2)') &
-      option%nflowdof,option%nphase
-    select case(option%iflowmode)
-      case(MPH_MODE)
-        write(*,'(" mode = MPH: p, T, s/C")')
-      case(RICHARDS_MODE)
-        write(*,'(" mode = Richards: p, T, s/C")')
-      case(RICHARDS_LITE_MODE)
-        write(*,'(" mode = Richards: p")')      
-    end select
+
+    if (option%myrank == 0) then
+      write(*,'(" number of dofs = ",i3,", number of phases = ",i3,i2)') &
+        option%nflowdof,option%nphase
+      select case(option%iflowmode)
+        case(MPH_MODE)
+          write(*,'(" mode = MPH: p, T, s/C")')
+        case(RICHARDS_MODE)
+          write(*,'(" mode = Richards: p, T, s/C")')
+        case(RICHARDS_LITE_MODE)
+          write(*,'(" mode = Richards: p")')      
+      end select
+    endif
 
     call printMsg(option,"  Beginning set up of FLOW SNES ")
 
