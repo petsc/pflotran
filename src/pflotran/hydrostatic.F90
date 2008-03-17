@@ -221,6 +221,7 @@ subroutine HydrostaticUpdateCouplerBetter(coupler,option,grid)
   PetscInt :: local_id, ghosted_id, iconn
   PetscInt :: num_iteration, ipressure, idatum, num_pressures
   PetscReal :: dist_x, dist_y, dist_z, delta_z
+  PetscReal :: dx_conn, dy_conn, dz_conn
   PetscReal :: rho, rho1, rho0, pressure, pressure0, pressure_at_datum 
   PetscReal :: temperature_at_datum, temperature
   PetscReal :: concentration_at_datum
@@ -357,14 +358,24 @@ subroutine HydrostaticUpdateCouplerBetter(coupler,option,grid)
     enddo
   endif
 
+  dx_conn = 0.d0
+  dy_conn = 0.d0
+  dz_conn = 0.d0
+
   do iconn=1,coupler%connection%num_connections
     local_id = coupler%connection%id_dn(iconn)
     ghosted_id = grid%nL2G(local_id)
 
-    dist_x = grid%x(ghosted_id)-datum(X_DIRECTION)
-    dist_y = grid%y(ghosted_id)-datum(Y_DIRECTION)
-    dist_z = grid%z(ghosted_id)-datum(Z_DIRECTION)
-    
+    if (associated(coupler%connection%dist)) then
+      dx_conn = coupler%connection%dist(0,iconn)*coupler%connection%dist(1,iconn)
+      dy_conn = coupler%connection%dist(0,iconn)*coupler%connection%dist(2,iconn)
+      dz_conn = coupler%connection%dist(0,iconn)*coupler%connection%dist(3,iconn)
+    endif
+    ! note the negative (-) d?_conn is required due to the offset of the boundary face
+    dist_x = grid%x(ghosted_id)-dx_conn-datum(X_DIRECTION)
+    dist_y = grid%y(ghosted_id)-dy_conn-datum(Y_DIRECTION)
+    dist_z = grid%z(ghosted_id)-dz_conn-datum(Z_DIRECTION)
+
     if (associated(pressure_array)) then
       ipressure = idatum+int(dist_z/delta_z)
       pressure = pressure_array(ipressure) + &
