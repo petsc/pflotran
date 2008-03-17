@@ -183,8 +183,10 @@ subroutine Init(simulation,filename)
 
     call SolverSetSNESOptions(flow_solver)
 
-    call printMsg(option,'Solver: '//trim(flow_solver%ksp_type))
-    call printMsg(option,'Preconditioner: '//trim(flow_solver%pc_type))
+    string = 'Solver: ' // trim(flow_solver%ksp_type)
+    call printMsg(option,string)
+    string = 'Preconditioner: ' // trim(flow_solver%pc_type)
+    call printMsg(option,string)
 
     ! shell for custom convergence test.  The default SNES convergence test  
     ! is call within this function. 
@@ -219,8 +221,10 @@ subroutine Init(simulation,filename)
 
     call SolverSetSNESOptions(tran_solver)
 
-    call printMsg(option,'Solver: '//trim(tran_solver%ksp_type))
-    call printMsg(option,'Preconditioner: '//trim(tran_solver%pc_type))
+    string = 'Solver: ' // trim(tran_solver%ksp_type)
+    call printMsg(option,string)
+    string = 'Preconditioner: ' // trim(tran_solver%pc_type)
+    call printMsg(option,string)
 
     ! shell for custom convergence test.  The default SNES convergence test  
     ! is call within this function. 
