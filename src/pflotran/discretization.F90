@@ -3,7 +3,8 @@ module Discretization_module
   use Grid_module
   use Structured_Grid_module
   use Unstructured_Grid_module
- 
+  use AMR_Grid_Module
+
   implicit none
 
   private
@@ -22,6 +23,7 @@ module Discretization_module
     PetscInt :: itype  ! type of discretization (e.g. structured, unstructured, etc.)
     character(len=MAXWORDLENGTH) :: ctype
     type(grid_type), pointer :: grid  ! pointer to a grid object
+    type(amrgrid_type), pointer :: amrgrid  ! pointer to an amr grid object
     DM :: dm_1_dof, dm_nflowdof, dm_ntrandof
   end type discretization_type
 
@@ -88,7 +90,8 @@ subroutine DiscretizationRead(discretization,fid,option)
 
   use Fileio_module
   use Option_module
-  
+  use AMR_Grid_module
+
   implicit none
   
   type(option_type) :: option
@@ -99,6 +102,7 @@ subroutine DiscretizationRead(discretization,fid,option)
   character(len=MAXWORDLENGTH) :: word
   type(grid_type), pointer :: grid
   type(structured_grid_type), pointer :: str_grid
+  type(amrgrid_type), pointer :: amrgrid
   PetscInt :: length
   PetscInt :: nx, ny, nz
   PetscErrorCode :: ierr
@@ -166,6 +170,9 @@ subroutine DiscretizationRead(discretization,fid,option)
       discretization%grid => grid
       grid%itype = discretization%itype
       grid%ctype = discretization%ctype
+    case(AMR_GRID)
+       amrgrid=>discretization%amrgrid
+       call AMRGridInitialize(amrgrid)
   end select
 
 end subroutine DiscretizationRead
@@ -264,7 +271,7 @@ subroutine DiscretizationCreateVector(discretization,dm_index,vector, &
   Vec :: vector
   PetscInt :: vector_type
   type(option_type) :: option
-  
+  PetscInt :: ndof
   PetscErrorCode :: ierr
   
   DM :: dm_ptr
@@ -285,12 +292,13 @@ subroutine DiscretizationCreateVector(discretization,dm_index,vector, &
     case(AMR_GRID)
       select case(dm_index)
         case(ONEDOF)
-        ! use ndof = 1
+           ndof = 1
         case(NFLOWDOF)
-        ! use ndof = option%nflowdof
+           ndof = option%nflowdof
         case(NTRANDOF)
-        ! use ndof = option%ntrandof
+           ndof = option%ntrandof
       end select
+      call AMRGridCreateVector(discretization%amrgrid, ndof, vector, vector_type)
   end select
   call VecSet(vector,0.d0,ierr)
   
@@ -312,11 +320,7 @@ subroutine DiscretizationDuplicateVector(discretization,vector1,vector2)
   Vec :: vector2
   
   PetscErrorCode :: ierr
-  
-  select case(discretization%itype)
-    case(STRUCTURED_GRID,UNSTRUCTURED_GRID)
-      call VecDuplicate(vector1,vector2,ierr)
-  end select
+  call VecDuplicate(vector1,vector2,ierr)
   call VecCopy(vector1,vector2,ierr)
   
 end subroutine DiscretizationDuplicateVector

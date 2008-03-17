@@ -108,7 +108,7 @@ end function RealizationCreate
 subroutine RealizationCreateDiscretization(realization)
 
   use Grid_module
-
+  use AMR_Grid_module
   implicit none
   
   type(realization_type) :: realization
@@ -121,8 +121,6 @@ subroutine RealizationCreateDiscretization(realization)
   field => realization%field
   
   discretization => realization%discretization
-
-  grid => discretization%grid
   
   call DiscretizationCreateDMs(discretization,option)
   
@@ -209,6 +207,8 @@ subroutine RealizationCreateDiscretization(realization)
   select case(discretization%itype)
     case(STRUCTURED_GRID,UNSTRUCTURED_GRID)
     
+      grid => discretization%grid
+
       ! set up nG2L, NL2G, etc.
       call GridMapIndices(grid)
       call GridComputeSpacing(grid)
@@ -218,7 +218,7 @@ subroutine RealizationCreateDiscretization(realization)
       call GridComputeInternalConnect(grid,option)
 
     case(AMR_GRID)
-    
+       call AMRGridComputeGeometryInformation(discretization%amrgrid, field, option)
   end select      
 
 end subroutine RealizationCreateDiscretization

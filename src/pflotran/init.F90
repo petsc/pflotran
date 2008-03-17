@@ -353,7 +353,8 @@ subroutine readRequiredCardsFromInput(realization,filename)
   use Patch_module
   use Level_module
   use Realization_module
-  
+  use AMR_Grid_module
+
   implicit none
 
   type(realization_type) :: realization
@@ -416,6 +417,9 @@ subroutine readRequiredCardsFromInput(realization,filename)
       level%patch_list => PatchCreateList()
       call PatchAddToList(patch,level%patch_list)
       realization%patch => patch
+    case(AMR_GRID)
+       realization%level_list => AMRGridCreateLevelPatchLists(discretization%amrgrid)
+       realization%patch => realization%level_list%first%patch_list%first
   end select
 !.........................................................................
 
@@ -867,6 +871,7 @@ subroutine readInput(simulation,filename)
       
         if (realization%discretization%itype == STRUCTURED_GRID) then  ! look for processor decomposition
           call StructuredGridReadDXYZ(grid%structured_grid,option)
+        else if(realization%discretization%itype == AMR_GRID) then
         else
           if (option%myrank == 0) &
             print *, 'ERROR: Keyword "DXYZ" not supported for unstructured grid'
@@ -876,7 +881,7 @@ subroutine readInput(simulation,filename)
 !....................
 
       case('ORIG','ORIGIN')
-        if (associated(grid%structured_grid)) then
+        if (realization%discretization%itype/=AMR_GRID .and. associated(grid%structured_grid)) then
           call fiReadDouble(string,grid%structured_grid%origin(X_DIRECTION),ierr)
           call fiErrorMsg(option%myrank,'X direction','Origin',ierr)
           call fiReadDouble(string,grid%structured_grid%origin(Y_DIRECTION),ierr)
