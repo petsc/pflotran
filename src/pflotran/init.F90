@@ -1968,7 +1968,7 @@ subroutine verifyCoupler(realization,patch,coupler_list)
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXWORDLENGTH) :: filename
   character(len=MAXWORDLENGTH) :: dataset_name
-  PetscInt :: iconn, local_id
+  PetscInt :: iconn, icell, local_id
   Vec :: global_vec
   PetscReal, pointer :: vec_ptr(:)
   PetscErrorCode :: ierr
@@ -1988,10 +1988,19 @@ subroutine verifyCoupler(realization,patch,coupler_list)
 
     call VecZeroEntries(global_vec,ierr)
     call VecGetArrayF90(global_vec,vec_ptr,ierr) 
-    do iconn = 1, coupler%connection%num_connections
-      local_id = coupler%connection%id_dn(iconn)
-      vec_ptr(local_id) = coupler%id
-    enddo
+    if (associated(coupler%connection)) then
+      do iconn = 1, coupler%connection%num_connections
+        local_id = coupler%connection%id_dn(iconn)
+        vec_ptr(local_id) = coupler%id
+      enddo
+    else
+      if (associated(coupler%region)) then
+        do icell = 1, coupler%region%num_cells
+          local_id = coupler%region%cell_ids(icell)
+          vec_ptr(local_id) = coupler%id
+        enddo
+      endif
+    endif
     call VecRestoreArrayF90(global_vec,vec_ptr,ierr) 
     select case(coupler%condition%iclass)
       case(FLOW_CLASS)
