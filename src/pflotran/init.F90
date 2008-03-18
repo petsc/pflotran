@@ -1967,7 +1967,7 @@ subroutine verifyCoupler(realization,patch,coupler_list)
   type(coupler_type), pointer :: coupler
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXWORDLENGTH) :: filename
-  character(len=MAXWORDLENGTH) :: dataset_name
+  character(len=MAXSTRINGLENGTH) :: dataset_name
   PetscInt :: iconn, local_id
   Vec :: global_vec
   PetscReal, pointer :: vec_ptr(:)
@@ -2004,6 +2004,7 @@ subroutine verifyCoupler(realization,patch,coupler_list)
                    trim(coupler%condition%name) // '_' // &
                    trim(coupler%region%name) // '_' // &
                    trim(adjustl(word))
+    dataset_name = dataset_name(1:28)
     filename = trim(dataset_name) // '.tec'
     call OutputVectorTecplot(filename,dataset_name,realization,global_vec)
 
