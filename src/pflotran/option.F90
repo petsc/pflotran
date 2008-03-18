@@ -319,7 +319,7 @@ subroutine printErrMsg(option,string)
   PetscErrorCode :: ierr
   
   if (option%myrank == 0) then
-    print *, 'ERROR: ' // string
+    print *, 'ERROR: ' // trim(string)
     print *, 'Stopping!'
   endif    
   call PetscFinalize(ierr)
@@ -341,7 +341,7 @@ subroutine printWrnMsg(option,string)
   type(option_type) :: option
   character(len=*) :: string
   
-  if (option%myrank == 0) print *, 'WARNING: ' // string
+  if (option%myrank == 0) print *, 'WARNING: ' // trim(string)
   
 end subroutine printWrnMsg
 
@@ -359,7 +359,7 @@ subroutine printMsg(option,string)
   type(option_type) :: option
   character(len=*) :: string
   
-  if (option%myrank == 0) print *, string
+  if (option%myrank == 0) print *, trim(string)
   
 end subroutine printMsg
 
