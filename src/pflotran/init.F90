@@ -713,6 +713,25 @@ subroutine readInput(simulation,filename)
         call RealizationAddStrata(realization,strata)
       
 !.....................
+      case ('DATASET') 
+        call fiReadWord(string,word,.true.,ierr)
+        call fiErrorMsg(option%myrank,'dataset','name',ierr) 
+        call printMsg(option,word)
+        length = len_trim(word)
+        call fiCharsToLower(word,length)        
+        select case(word)
+          case('permx')
+            call fiReadWord(string,option%permx_filename,.true.,ierr)
+            call fiErrorMsg(option%myrank,'dataset','permx_filename',ierr) 
+          case('permy')
+            call fiReadWord(string,option%permy_filename,.true.,ierr)
+            call fiErrorMsg(option%myrank,'dataset','permy_filename',ierr) 
+          case('permz')
+            call fiReadWord(string,option%permz_filename,.true.,ierr)
+            call fiErrorMsg(option%myrank,'dataset','permz_filename',ierr) 
+        end select          
+        
+!.....................
       case ('COMP') 
         call fiSkipToEND(IUNIT1,option%myrank,card)
         
@@ -1805,6 +1824,20 @@ subroutine assignMaterialPropToRegions(realization)
   endif
   call VecRestoreArrayF90(field%porosity0,por0_p,ierr)
   call VecRestoreArrayF90(field%tor_loc,tor_loc_p,ierr)
+  
+  ! read in any cell by cell data 
+  if (len_trim(option%permx_filename) > 1) then
+    call readVectorFromFile(realization,field%perm_xx_loc, &
+                            option%permx_filename,LOCAL)  
+  endif
+  if (len_trim(option%permy_filename) > 1) then
+    call readVectorFromFile(realization,field%perm_yy_loc, &
+                            option%permy_filename,LOCAL)  
+  endif
+  if (len_trim(option%permz_filename) > 1) then
+    call readVectorFromFile(realization,field%perm_zz_loc, &
+                            option%permz_filename,LOCAL)  
+  endif
 
   if (option%nflowdof > 0) then
     call DiscretizationGlobalToLocal(discretization,field%perm0_xx, &
@@ -2129,5 +2162,118 @@ subroutine readMaterialsFromFile(realization,filename)
   endif
   
 end subroutine readMaterialsFromFile
+
+! ************************************************************************** !
+!
+! readVectorFromFile: Reads data from a file into an associated vector
+! author: Glenn Hammond
+! date: 03/18/08
+!
+! ************************************************************************** !
+subroutine readVectorFromFile(realization,vector,filename,vector_type)
+
+  use Realization_module
+  use Discretization_module
+  use Field_module
+  use Grid_module
+  use Option_module
+  use Fileio_module
+  use Patch_module
+  use Logging_module
+
+  use HDF5_module
+  
+  implicit none
+  
+  type(realization_type) :: realization
+  Vec :: vector
+  character(len=MAXWORDLENGTH) :: filename
+  PetscInt :: vector_type
+  
+  type(discretization_type), pointer :: discretization
+  type(field_type), pointer :: field
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(patch_type), pointer :: patch   
+  character(len=MAXSTRINGLENGTH) :: string
+  PetscInt :: ghosted_id, natural_id, material_id
+  PetscInt :: fid = 86
+  PetscInt :: status
+  PetscErrorCode :: ierr
+  PetscInt :: count, read_count, i
+  PetscInt, pointer :: indices(:)
+  PetscReal, pointer :: values(:)
+  PetscInt, parameter :: block_size = 10000
+  Vec :: natural_vec, global_vec
+  PetscMPIInt :: source = 0
+
+  discretization => realization%discretization
+  field => realization%field
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+
+  if (index(filename,'.h5') > 0) then
+    ! to be taken care of later
+  else
+    open(unit=fid,file=filename,status="old",iostat=status)
+    if (status /= 0) then
+      string = "File: " // filename // " not found."
+      call printErrMsg(option,string)
+    endif
+    allocate(values(block_size))
+    allocate(indices(block_size))
+    call DiscretizationCreateVector(discretization,ONEDOF,natural_vec, &
+                                    NATURAL,option)
+    count = 0
+    do
+      if (count >= grid%nmax) exit
+      read_count = min(block_size,grid%nmax-count)
+      do i=1,read_count
+        indices(i) = count+i-1 ! zero-based indexing
+      enddo
+      ierr = 0
+      if (option%myrank == 0) read(fid,*,iostat=ierr) values(1:read_count)
+      call mpi_bcast(ierr,ONE_INTEGER,MPI_INTEGER,source,PETSC_COMM_WORLD,ierr)      
+      if (ierr /= 0) then
+        string = 'Insufficent data in file: ' // filename
+        call printErrMsg(option,string)
+      endif
+      if (option%myrank == 0) then
+        call VecSetValues(natural_vec,read_count,indices,values,INSERT_VALUES, &
+                          ierr)
+      endif
+      count = count + read_count
+    enddo
+    call mpi_bcast(count,ONE_INTEGER,MPI_INTEGER,source,PETSC_COMM_WORLD,ierr)      
+    if (count /= grid%nmax) then
+      write(string,'(a,i8,a,i8,a)') 'Number of data in file (', count, &
+                                    ') does not match size of vector (', &
+                                    grid%nlmax, ')'
+      call printErrMsg(option,string)
+    endif
+    deallocate(values)
+    nullify(values)
+    deallocate(indices)
+    nullify(indices)
+    call VecAssemblyBegin(natural_vec,ierr)
+    call VecAssemblyEnd(natural_vec,ierr)
+    select case(vector_type)
+      case(LOCAL)
+        call DiscretizationCreateVector(discretization,ONEDOF,global_vec, &
+                                        GLOBAL,option)        
+        call DiscretizationNaturalToGlobal(discretization,natural_vec, &
+                                           global_vec,ONEDOF)  
+        call DiscretizationGlobalToLocal(discretization,global_vec, &
+                                         vector,ONEDOF)
+        call VecDestroy(global_vec,ierr)  
+      case(GLOBAL)
+        call DiscretizationNaturalToGlobal(discretization,natural_vec, &
+                                          vector,ONEDOF) 
+    end select 
+    call VecDestroy(natural_vec,ierr)
+  endif
+  
+end subroutine readVectorFromFile
 
 end module Init_module

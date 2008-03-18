@@ -88,6 +88,10 @@ module Option_module
     logical :: use_touch_options
     logical :: overwrite_restart_transport
     
+    character(len=MAXWORDLENGTH) :: permx_filename
+    character(len=MAXWORDLENGTH) :: permy_filename
+    character(len=MAXWORDLENGTH) :: permz_filename
+    
   end type option_type
   
   type, public :: output_option_type
@@ -105,7 +109,7 @@ module Option_module
     
     PetscInt :: plot_number
     character(len=MAXWORDLENGTH) :: plot_name
-    
+
   end type output_option_type
 
   interface OptionDotProduct
@@ -222,6 +226,10 @@ function OptionCreate()
 
   option%use_touch_options = .false.
   option%overwrite_restart_transport = .false.
+  
+  option%permx_filename = ""
+  option%permy_filename = ""
+  option%permz_filename = ""
 
   OptionCreate => option
   
