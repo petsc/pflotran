@@ -177,7 +177,7 @@ subroutine SolverSetSNESOptions(solver)
                          solver%newton_maxf, ierr)
 
   ! set inexact newton, currently applies default settings
-  if (solver%inexact_newton == PETSC_TRUE) &
+  if (solver%inexact_newton) &
     call SNESKSPSetUseEW(solver%snes,PETSC_TRUE,ierr)
 
 !  call SNESLineSearchSet(solver%snes,SNESLineSearchNo,PETSC_NULL,ierr)
@@ -462,7 +462,7 @@ subroutine SolverPrintNewtonInfo(solver,fid,header,myrank)
     write(*,'("     maxf:",i6)') solver%newton_maxf
     write(fid,'("     maxf:",i6)') solver%newton_maxf
   
-    if (solver%inexact_newton == PETSC_TRUE) then
+    if (solver%inexact_newton) then
       write(*,'("inexact newton: on")')
       write(fid,'("inexact newton: on")')
     else
@@ -470,7 +470,7 @@ subroutine SolverPrintNewtonInfo(solver,fid,header,myrank)
       write(fid,'("inexact newton: off")')
     endif
         
-    if (solver%print_convergence == PETSC_TRUE) then
+    if (solver%print_convergence) then
       write(*,'("print convergence: on")')
       write(fid,'("print convergence: on")')
     else
@@ -478,7 +478,7 @@ subroutine SolverPrintNewtonInfo(solver,fid,header,myrank)
       write(fid,'("print convergence: off")')
     endif
         
-    if (solver%print_detailed_convergence == PETSC_TRUE) then
+    if (solver%print_detailed_convergence) then
       write(*,'("print detailed convergence: on")')
       write(fid,'("print detailed convergence: on")')
     else
@@ -486,7 +486,7 @@ subroutine SolverPrintNewtonInfo(solver,fid,header,myrank)
       write(fid,'("print detailed convergence: off")')
     endif
         
-    if (solver%check_infinity_norm == PETSC_TRUE) then
+    if (solver%check_infinity_norm) then
       write(*,'("check infinity norm: on")')
       write(fid,'("check infinity norm: on")')
     else
@@ -494,7 +494,7 @@ subroutine SolverPrintNewtonInfo(solver,fid,header,myrank)
       write(fid,'("check infinity norm: off")')
     endif
         
-    if (solver%force_at_least_1_iteration == PETSC_TRUE) then
+    if (solver%force_at_least_1_iteration) then
       write(*,'("force at least 1 iteration: on")')
       write(fid,'("force at least 1 iteration: on")')
     else

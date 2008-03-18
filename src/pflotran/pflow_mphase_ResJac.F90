@@ -755,7 +755,7 @@ subroutine MPHASERes_ARCont(node_no, var_node,por,vol,rock_dencpr, option, &
   eng = eng * pvol + (1.D0 - por)* vol * rock_dencpr * temp 
   
 ! Reaction terms here
-!  if (option%run_coupled == PETSC_TRUE .and. iireac>0) then
+!  if (option%run_coupled .and. iireac>0) then
 !   H2O
 !    mol(1)= mol(1) - option%flow_dt * option%rtot(node_no,1)
 !   CO2
@@ -1823,7 +1823,7 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
   enddo  
 
   ! for inactive regions
-  if (option%use_isoth==PETSC_TRUE) then
+  if (option%use_isoth) then
     print *, 'option%use_isoth needs to be verified in pflow_mphase_ResJac.F90'
     stop
     do local_id = 1, grid%nlmax  ! For each local node do...
@@ -2298,7 +2298,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
      
       enddo      
     enddo
-    if(option%use_isoth==PETSC_TRUE)then
+    if(option%use_isoth)then
       ra(:,2)=0.D0
       ra(3,1:option%nflowdof)=0.D0
       ra(3,2)=1.D0
@@ -2458,7 +2458,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
   
   ! enddo
    
-      if (option%use_isoth==PETSC_TRUE) then
+      if (option%use_isoth) then
         ra(3,1:2*option%nflowdof)=0.D0
         ra(:,2)=0.D0
         ra(:,2+option%nflowdof)=0.D0

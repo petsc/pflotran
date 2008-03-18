@@ -203,7 +203,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   stop_flag = .false.
   num_const_timesteps = 0  
 
-  if (option%restart_flag == PETSC_TRUE) then
+  if (option%restart_flag) then
     call StepperRestart(realization,flow_stepper,tran_stepper, &
                         num_const_timesteps,num_newton_iterations)
     if (associated(flow_stepper)) flow_stepper%cur_waypoint => &
@@ -261,7 +261,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     ! if a simulation wallclock duration time is set, check to see that the
     ! next time step will not exceed that value.  If it does, print the
     ! checkpoint and exit.
-    if (option%wallclock_stop_flag == PETSC_TRUE) then
+    if (option%wallclock_stop_flag) then
       call PetscGetTime(current_time, ierr)
       average_step_time = (current_time-stepper_start_time)/ &
                           real(istep-start_step+1) &
@@ -273,7 +273,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
       endif
     endif
 
-    if (option%checkpoint_flag == PETSC_TRUE .and. &
+    if (option%checkpoint_flag .and. &
         mod(istep,option%checkpoint_frequency) == 0) then
       call StepperCheckpoint(realization,flow_stepper,tran_stepper, &
                              num_const_timesteps,num_newton_iterations, &
@@ -286,7 +286,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
 
   enddo
 
-  if (option%checkpoint_flag == PETSC_TRUE) then
+  if (option%checkpoint_flag) then
     call StepperCheckpoint(realization,flow_stepper,tran_stepper, &
                            num_const_timesteps,num_newton_iterations, &
                            NEG_ONE_INTEGER)  

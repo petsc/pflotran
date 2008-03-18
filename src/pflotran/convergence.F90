@@ -149,7 +149,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
   if (option%use_touch_options) then
     word = 'detailed_convergence'
     if (OptionCheckTouch(word)) then
-      if (solver%print_detailed_convergence == PETSC_TRUE) then
+      if (solver%print_detailed_convergence) then
         solver%print_detailed_convergence = PETSC_FALSE
       else
         solver%print_detailed_convergence = PETSC_TRUE
@@ -158,7 +158,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
   endif
   
   ! always take one iteration
-  if (solver%force_at_least_1_iteration == PETSC_TRUE) then
+  if (solver%force_at_least_1_iteration) then
 !    call SNESGetIterationNumber(snes_,it,ierr)
     if (it == 0) then
       reason = 0
@@ -169,8 +169,8 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
   call SNESDefaultConverged(snes_,it,xnorm,pnorm,fnorm,reason, &
                             PETSC_NULL_OBJECT,ierr)
 
-!  if (reason <= 0 .and. solver%check_infinity_norm == PETSC_TRUE) then
-  if (solver%check_infinity_norm == PETSC_TRUE) then
+!  if (reason <= 0 .and. solver%check_infinity_norm) then
+  if (solver%check_infinity_norm) then
   
     call SNESGetFunction(snes_,residual_vec,PETSC_NULL_OBJECT, &
                          PETSC_NULL_INTEGER,ierr)
@@ -193,21 +193,21 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
       reason = 11
     endif
 
-    if (option%myrank == 0 .and. solver%print_convergence == PETSC_TRUE) &
+    if (option%myrank == 0 .and. solver%print_convergence) &
       write(*,'(i3," fnrm:",es9.2, &
               & " pnrm:",es9.2, &
               & " inrmr:",es9.2, &
               & " inrmu:",es9.2, &
               & " rsn:",i3)') it, fnorm, pnorm, inorm_residual, inorm_update, reason
   else
-    if (option%myrank == 0 .and. solver%print_convergence == PETSC_TRUE) &
+    if (option%myrank == 0 .and. solver%print_convergence) &
       write(*,'(i3," fnrm:",es10.2, &
               & " pnrm:",es10.2, &
               & 32x, &
               & " rsn:",i3)') it, fnorm, pnorm, reason
   endif    
 
-  if (solver%print_detailed_convergence == PETSC_TRUE) then
+  if (solver%print_detailed_convergence) then
 
     call SNESGetSolution(snes_,solution_vec,ierr)
     ! the ctx object should really be PETSC_NULL_OBJECT.  A bug in petsc

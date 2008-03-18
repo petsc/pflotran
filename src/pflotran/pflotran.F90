@@ -70,7 +70,7 @@
 
   call PetscOptionsGetString(PETSC_NULL_CHARACTER, "-pflotranin", &
                              pflotranin, option_found, ierr)
-  if(option_found /= PETSC_TRUE) pflotranin = "pflotran.in"
+  if(.not.option_found) pflotranin = "pflotran.in"
   
   call PetscGetCPUTime(timex(1), ierr)
   call PetscGetTime(timex_wall(1), ierr)

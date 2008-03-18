@@ -699,7 +699,7 @@ subroutine RichardsAccumulation(aux_var,por,vol,rock_dencpr,option,Res)
         porXvol + (1.d0 - por)* vol * rock_dencpr * aux_var%temp 
  
 ! Reaction terms here
-!  if (option%run_coupled == PETSC_TRUE .and. iireac>0) then
+!  if (option%run_coupled .and. iireac>0) then
 !H2O
 !    mol(1)= mol(1) - option%flow_dt * option%rtot(node_no,1)
 !  endif
@@ -1869,7 +1869,7 @@ subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
     boundary_condition => boundary_condition%next
   enddo
 #endif  
-  if (option%use_isoth==PETSC_TRUE) then
+  if (option%use_isoth) then
     do local_id = 1, grid%nlmax  ! For each local node do...
       ghosted_id = grid%nL2G(local_id)
       !geh - Ignore inactive cells with inactive materials

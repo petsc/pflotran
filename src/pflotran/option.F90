@@ -295,18 +295,18 @@ subroutine OptionCheckCommandLine(option)
   option_found = PETSC_FALSE
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_richards", &
                            option_found, ierr)
-  if (option_found == PETSC_TRUE) option%flowmode = "richards"                           
+  if (option_found) option%flowmode = "richards"                           
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_richards_lite", &
                            option_found, ierr)
-  if (option_found == PETSC_TRUE) option%flowmode = "richards_lite"                           
+  if (option_found) option%flowmode = "richards_lite"                           
   option_found = PETSC_FALSE
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_thc", &
                            option_found, ierr)
-  if (option_found == PETSC_TRUE) option%flowmode = "thc"                           
+  if (option_found) option%flowmode = "thc"                           
   option_found = PETSC_FALSE
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_mph", &
                            option_found, ierr)
-  if (option_found == PETSC_TRUE) option%flowmode = "mph"                           
+  if (option_found) option%flowmode = "mph"                           
  
 end subroutine OptionCheckCommandLine
 
