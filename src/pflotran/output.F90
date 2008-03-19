@@ -1612,9 +1612,9 @@ subroutine WriteBreakthroughDataForCell(fid,realization,local_id)
   field => realization%field
 
 100 format(es13.6)
-101 format(i)
+101 format("i")
 110 format(',',es13.6)
-111 format(',',i)
+111 format(',',"i")
 
   ghosted_id = grid%nL2G(local_id)
   ! write out coorindates
