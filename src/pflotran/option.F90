@@ -213,7 +213,7 @@ function OptionCreate()
   option%restart_file = ""
   option%restart_time = -999.d0
   option%checkpoint_flag = PETSC_FALSE
-  option%checkpoint_frequency = int(1d20)
+  option%checkpoint_frequency = huge(option%checkpoint_frequency)
   
   option%start_time = 0.d0
   option%wallclock_stop_flag = PETSC_FALSE
