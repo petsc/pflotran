@@ -193,18 +193,51 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
       reason = 11
     endif
 
-    if (option%myrank == 0 .and. solver%print_convergence) &
+    if (option%myrank == 0 .and. solver%print_convergence) then
+      i = int(reason)
+      select case(i)
+        case(2)
+          string = 'atol'
+        case(3)
+          string = 'rtol'
+        case(4)
+          string = 'stol'
+        case(10)
+          string = 'stol_res'
+        case(11)
+          string = 'itol_upd'
+        case default
+          write(string,'(i3)') reason
+      end select
       write(*,'(i3," fnrm:",es9.2, &
               & " pnrm:",es9.2, &
               & " inrmr:",es9.2, &
               & " inrmu:",es9.2, &
-              & " rsn:",i3)') it, fnorm, pnorm, inorm_residual, inorm_update, reason
+              & " rsn: ",a)') it, fnorm, pnorm, inorm_residual, inorm_update, &
+                              trim(string)
+    endif
   else
-    if (option%myrank == 0 .and. solver%print_convergence) &
+    if (option%myrank == 0 .and. solver%print_convergence) then
+      i = int(reason)
+      select case(i)
+        case(2)
+          string = 'atol'
+        case(3)
+          string = 'rtol'
+        case(4)
+          string = 'stol'
+        case(10)
+          string = 'stol_res'
+        case(11)
+          string = 'itol_upd'
+        case default
+          write(string,'(i3)') reason
+      end select
       write(*,'(i3," fnrm:",es10.2, &
               & " pnrm:",es10.2, &
               & 32x, &
-              & " rsn:",i3)') it, fnorm, pnorm, reason
+              & " rsn: ",a)') it, fnorm, pnorm, trim(string)
+    endif
   endif    
 
   if (solver%print_detailed_convergence) then
@@ -284,8 +317,10 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
 
     if (option%myrank == 0) then
       select case(reason)
-        case (1)
-          string = "CONVERGED_USER_NORM_INF"
+        case (10)
+          string = "CONVERGED_USER_NORM_INF_REL"
+        case (11)
+          string = "CONVERGED_USER_NORM_INF_UPD"
         case(SNES_CONVERGED_FNORM_ABS)
           string = "SNES_CONVERGED_FNORM_ABS"
         case(SNES_CONVERGED_FNORM_RELATIVE)
