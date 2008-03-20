@@ -203,7 +203,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
         case(4)
           string = 'stol'
         case(10)
-          string = 'stol_res'
+          string = 'itol_res'
         case(11)
           string = 'itol_upd'
         case default
@@ -227,7 +227,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
         case(4)
           string = 'stol'
         case(10)
-          string = 'stol_res'
+          string = 'itol_res'
         case(11)
           string = 'itol_upd'
         case default
