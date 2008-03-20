@@ -111,6 +111,7 @@ subroutine Checkpoint(realization, &
   type(discretization_type), pointer :: discretization
   type(output_option_type), pointer :: output_option
 
+  call PetscLogStagePush(logging%stage(OUTPUT_STAGE),ierr)
   call PetscLogEventBegin(logging%event_checkpoint, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)  
@@ -267,6 +268,7 @@ subroutine Checkpoint(realization, &
   call PetscLogEventEnd(logging%event_checkpoint, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)  
+  call PetscLogStagePop(ierr)
 
 end subroutine Checkpoint
 
