@@ -252,6 +252,9 @@ subroutine CouplerRead(coupler,fid,option)
         end select
       case('END')
         exit
+      case default
+        string = 'Coupler card (' // trim(word) // ') not recognized.'
+        call printErrMsg(option,string)        
     end select 
   
   enddo  
