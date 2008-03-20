@@ -97,17 +97,17 @@ subroutine Output(realization,plot_flag)
     endif
   
     realization%output_option%plot_number = realization%output_option%plot_number + 1
+
+    if (realization%option%compute_statistics) then
+      call ComputeFlowCellVelocityStats(realization)
+      call ComputeFlowFluxVelocityStats(realization)
+      call ComputeFlowMassBalance(realization)
+    endif
   
   endif
   
   call OutputBreakthrough(realization)
 
-  if (realization%option%compute_statistics) then
-    call ComputeFlowCellVelocityStats(realization)
-    call ComputeFlowFluxVelocityStats(realization)
-    call ComputeFlowMassBalance(realization)
-  endif
-  
   plot_flag = .false.
 
   call PetscLogStagePop(ierr)
