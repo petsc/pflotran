@@ -1,7 +1,7 @@
 #include "include/finclude/petsc.h"
 
-PetscInt, parameter :: MAXBCREGIONS = 50000 
-PetscInt, parameter :: MAXBCBLOCKS = 50000 
+PetscInt, parameter :: MAXBCREGIONS = 50000
+PetscInt, parameter :: MAXBCBLOCKS = 50000
 PetscInt, parameter :: MAXSTRINGLENGTH = 512
 PetscInt, parameter :: MAXWORDLENGTH = 32
 PetscInt, parameter :: MAXCARDLENGTH = 4
