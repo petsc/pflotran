@@ -9,7 +9,9 @@ module Breakthrough_module
 #include "definitions.h"
 
   type, public :: breakthrough_type
+    ! all added variables must be included in BreakthroughCreateFromBreakthrough
     PetscInt :: id
+    PetscTruth :: print_velocities
     character(len=MAXWORDLENGTH) :: name
     character(len=MAXWORDLENGTH) :: region_name
     type(region_type), pointer :: region
@@ -54,6 +56,7 @@ function BreakthroughCreate1()
   breakthrough%name = ""
   breakthrough%region_name = ""
   breakthrough%id = 0
+  breakthrough%print_velocities = PETSC_FALSE
   nullify(breakthrough%region)
   nullify(breakthrough%next)
   
@@ -82,6 +85,7 @@ function BreakthroughCreateFromBreakthrough(breakthrough)
   new_breakthrough%name = breakthrough%name
   new_breakthrough%region_name = breakthrough%region_name
   new_breakthrough%id = breakthrough%id
+  new_breakthrough%print_velocities = breakthrough%print_velocities
   ! keep these null for now to catch bugs
   nullify(new_breakthrough%region)
   nullify(new_breakthrough%next)
@@ -128,6 +132,12 @@ subroutine BreakthroughRead(breakthrough,fid,option)
       case('REGION')
         call fiReadWord(string,breakthrough%region_name,.true.,ierr)
         call fiErrorMsg(option%myrank,'region name','BREAKTHROUGH', ierr)
+      case('VELOCITY')
+        breakthrough%print_velocities = PETSC_TRUE
+      case default
+        string = 'Keyword (' // trim(word) // ') not recognized under' // &
+                 ' BREAKTHROUGH.'
+        call printErrMsg(option,string)
     end select 
   
   enddo  

@@ -656,7 +656,7 @@ subroutine OutputFluxVelocitiesTecplot(realization,iphase, &
   PetscInt :: i, j, k
   PetscInt :: local_id, ghosted_id
   PetscInt :: adjusted_size
-  PetscInt :: count, iconn
+  PetscInt :: count, iconn, sum_connection
   PetscReal, pointer :: vec_ptr(:)
   PetscReal, pointer :: array(:)
   PetscInt, allocatable :: indices(:)
@@ -884,15 +884,17 @@ subroutine OutputFluxVelocitiesTecplot(realization,iphase, &
   ! place interior velocities in a vector
   connection_list => grid%internal_connection_list
   cur_connection_set => connection_list%first
+  sum_connection = 0
   do 
     if (.not.associated(cur_connection_set)) exit
     do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
       ghosted_id = cur_connection_set%id_up(iconn)
       local_id = grid%nG2L(ghosted_id) ! = zero for ghost nodes
       ! velocities are stored as the downwind face of the upwind cell
       if (local_id <= 0 .or. &
           dabs(cur_connection_set%dist(direction,iconn)) < 0.99d0) cycle
-      vec_ptr(local_id) = patch%internal_velocities(iphase,iconn)
+      vec_ptr(local_id) = patch%internal_velocities(iphase,sum_connection)
     enddo
     cur_connection_set => cur_connection_set%next
   enddo
@@ -1439,7 +1441,8 @@ subroutine OutputBreakthroughTecplot(realization)
         if (.not.associated(breakthrough)) exit
         do icell=1,breakthrough%region%num_cells
           call WriteBreakthroughHeaderForCell(fid,realization, &
-                                              breakthrough%region,icell)
+                                              breakthrough%region,icell, &
+                                              breakthrough%print_velocities)
         enddo
         breakthrough => breakthrough%next
       enddo
@@ -1456,6 +1459,10 @@ subroutine OutputBreakthroughTecplot(realization)
       do icell=1,breakthrough%region%num_cells
         call WriteBreakthroughDataForCell(fid,realization, &
                                           breakthrough%region%cell_ids(icell))
+        if (breakthrough%print_velocities) then
+          call WriteVelocityAtCell(fid,realization, &
+                                   breakthrough%region%cell_ids(icell))
+        endif                                          
       enddo
       breakthrough => breakthrough%next
     enddo
@@ -1477,7 +1484,8 @@ end subroutine OutputBreakthroughTecplot
 ! date: 02/11/08
 !
 ! ************************************************************************** !  
-subroutine WriteBreakthroughHeaderForCell(fid,realization,region,icell)
+subroutine WriteBreakthroughHeaderForCell(fid,realization,region,icell, &
+                                          print_velocities)
 
   use Realization_module
   use Grid_module
@@ -1492,6 +1500,7 @@ subroutine WriteBreakthroughHeaderForCell(fid,realization,region,icell)
   type(realization_type) :: realization
   type(region_type) :: region
   PetscInt :: icell
+  PetscTruth :: print_velocities
   
   PetscInt :: i
   character(len=MAXSTRINGLENGTH) :: string, string2
@@ -1576,6 +1585,16 @@ subroutine WriteBreakthroughHeaderForCell(fid,realization,region,icell)
 #endif      
   end select
   write(fid,'(a)',advance="no") trim(string)
+
+  if (print_velocities) then 
+    string = ',"vlx [m/'//trim(realization%output_option%tunit)//'] '// &
+             trim(cell_id_string) // '"' // &
+             ',"vly [m/'//trim(realization%output_option%tunit)//'] '// &
+             trim(cell_id_string) // '"' // &
+             ',"vlz [m/'//trim(realization%output_option%tunit)//'] '// &
+             trim(cell_id_string) // '"'
+    write(fid,'(a)',advance="no") trim(string)
+  endif
 
 end subroutine WriteBreakthroughHeaderForCell
 
@@ -1703,6 +1722,111 @@ subroutine WriteBreakthroughDataForCell(fid,realization,local_id)
   end select
 
 end subroutine WriteBreakthroughDataForCell
+
+! ************************************************************************** !
+!
+! WriteVelocityAtCell: Computes velocities at a grid cell
+! author: Glenn Hammond
+! note: limited to structured grids
+! date: 03/20/08
+!
+! ************************************************************************** !  
+subroutine WriteVelocityAtCell(fid,realization,local_id)
+
+  use Realization_module
+  use Option_module
+  use Grid_module
+  use Field_module
+  use Patch_module
+  use Connection_module
+  use Coupler_module
+
+  implicit none
+  
+  PetscInt :: fid
+  type(realization_type) :: realization
+  PetscInt :: local_id
+
+  PetscInt :: ghosted_id
+  type(option_type), pointer :: option
+  type(grid_type), pointer :: grid
+  type(field_type), pointer :: field
+  type(patch_type), pointer :: patch  
+  type(connection_list_type), pointer :: connection_list
+  type(coupler_type), pointer :: boundary_condition
+  type(connection_type), pointer :: cur_connection_set
+  PetscInt :: iconn, sum_connection
+  PetscInt :: local_id_up, local_id_dn
+  PetscInt :: direction, iphase
+  PetscReal :: area
+  PetscReal :: sum_velocity(1:3), sum_area(1:3), velocity(1:3)
+  
+  option => realization%option
+  patch => realization%patch
+  grid => patch%grid
+  field => realization%field
+
+200 format(3(',',es13.6))
+
+  sum_velocity = 0.d0
+  sum_area = 0.d0
+  iphase = 1
+
+  ! interior velocities  
+  connection_list => grid%internal_connection_list
+  cur_connection_set => connection_list%first
+  sum_connection = 0
+  do 
+    if (.not.associated(cur_connection_set)) exit
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+      local_id_up = grid%nG2L(cur_connection_set%id_up(iconn)) ! = zero for ghost nodes
+      local_id_dn = grid%nG2L(cur_connection_set%id_dn(iconn)) ! = zero for ghost nodes
+      if (local_id_up == local_id .or. local_id_dn == local_id) then
+        do direction=1,3        
+          area = cur_connection_set%area(iconn)* &
+                 dabs(cur_connection_set%dist(direction,iconn))
+          sum_velocity(direction) = sum_velocity(direction) + &
+                                    patch%internal_velocities(iphase,sum_connection)* &
+                                    area
+          sum_area(direction) = sum_area(direction) + area
+        enddo
+      endif
+    enddo
+    cur_connection_set => cur_connection_set%next
+  enddo
+
+  ! boundary velocities
+  boundary_condition => patch%flow_boundary_conditions%first
+  sum_connection = 0
+  do
+    if (.not.associated(boundary_condition)) exit
+    cur_connection_set => boundary_condition%connection
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+      if (cur_connection_set%id_dn(iconn) == local_id) then
+        do direction=1,3        
+          area = cur_connection_set%area(iconn)* &
+                 dabs(cur_connection_set%dist(direction,iconn))
+          sum_velocity(direction) = sum_velocity(direction) + &
+                                    patch%internal_velocities(iphase,sum_connection)* &
+                                    area
+          sum_area(direction) = sum_area(direction) + area
+        enddo
+      endif
+    enddo
+    boundary_condition => boundary_condition%next
+  enddo
+
+  velocity = 0.d0
+  do direction = 1,3
+    if (abs(sum_area(direction)) > 1.d-40) &
+      velocity(direction) = sum_velocity(direction)/sum_area(direction)
+  enddo
+  
+  write(fid,200,advance="no") velocity(1:3)*realization%output_option%tconv   
+
+end subroutine WriteVelocityAtCell
 
 ! ************************************************************************** !
 !
@@ -2485,7 +2609,7 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch  
   type(output_option_type), pointer :: output_option
-  PetscInt :: iconn
+  PetscInt :: iconn, sum_connection
   PetscInt :: local_id_up, local_id_dn, local_id
   PetscInt :: ghosted_id_up, ghosted_id_dn, ghosted_id
   PetscReal :: velocity, area
@@ -2518,9 +2642,11 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
   ! interior velocities  
   connection_list => grid%internal_connection_list
   cur_connection_set => connection_list%first
+  sum_connection = 0
   do 
     if (.not.associated(cur_connection_set)) exit
     do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
       ghosted_id_up = cur_connection_set%id_up(iconn)
       ghosted_id_dn = cur_connection_set%id_dn(iconn)
       local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
@@ -2528,7 +2654,7 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
       ! velocities are stored as the downwind face of the upwind cell
       area = cur_connection_set%area(iconn)* &
              dabs(cur_connection_set%dist(direction,iconn))
-      velocity = patch%internal_velocities(iphase,iconn)* &
+      velocity = patch%internal_velocities(iphase,sum_connection)* &
                  area
       if (local_id_up > 0) then
         vec_ptr(local_id_up) = vec_ptr(local_id_up) + velocity
@@ -2544,15 +2670,17 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
 
   ! boundary velocities
   boundary_condition => patch%flow_boundary_conditions%first
+  sum_connection = 0
   do
     if (.not.associated(boundary_condition)) exit
     cur_connection_set => boundary_condition%connection
     do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
       local_id = cur_connection_set%id_dn(iconn)
       area = cur_connection_set%area(iconn)* &
              dabs(cur_connection_set%dist(direction,iconn))
       vec_ptr(local_id) = vec_ptr(local_id)+ &
-                          patch%boundary_velocities(1,iconn)* &
+                          patch%boundary_velocities(1,sum_connection)* &
                           area
       sum_area(local_id) = sum_area(local_id) + area
     enddo
@@ -2602,7 +2730,7 @@ subroutine ComputeFlowMassBalance(realization)
   type(patch_type), pointer :: patch  
   type(discretization_type), pointer :: discretization
   type(output_option_type), pointer :: output_option
-  PetscInt :: iconn, i
+  PetscInt :: iconn, i, sum_connection
   PetscInt :: local_id_up, local_id_dn, local_id
   PetscInt :: ghosted_id_up, ghosted_id_dn, ghosted_id
   PetscReal :: flux
@@ -2642,9 +2770,11 @@ subroutine ComputeFlowMassBalance(realization)
   ! interior velocities  
   connection_list => grid%internal_connection_list
   cur_connection_set => connection_list%first
+  sum_connection = 0
   do 
     if (.not.associated(cur_connection_set)) exit
     do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
       ghosted_id_up = cur_connection_set%id_up(iconn)
       ghosted_id_dn = cur_connection_set%id_dn(iconn)
       local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
@@ -2669,13 +2799,15 @@ subroutine ComputeFlowMassBalance(realization)
 
   ! boundary velocities
   boundary_condition => patch%flow_boundary_conditions%first
+  sum_connection = 0
   do
     if (.not.associated(boundary_condition)) exit
     cur_connection_set => boundary_condition%connection
     do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
       local_id = cur_connection_set%id_dn(iconn)
       vec_ptr(local_id) = vec_ptr(local_id)+ &
-                          patch%boundary_velocities(1,iconn)* &
+                          patch%boundary_velocities(1,sum_connection)* &
                           cur_connection_set%area(iconn)* &
                           den_loc_p(grid%nL2G(local_id))
     enddo
@@ -2766,7 +2898,7 @@ subroutine ComputeFlowCellVelocityStats(realization)
   type(patch_type), pointer :: patch  
   type(discretization_type), pointer :: discretization
   type(output_option_type), pointer :: output_option
-  PetscInt :: iconn, i, direction, iphase
+  PetscInt :: iconn, i, direction, iphase, sum_connection
   PetscInt :: local_id_up, local_id_dn, local_id
   PetscInt :: ghosted_id_up, ghosted_id_dn, ghosted_id
   PetscReal :: flux
@@ -2805,15 +2937,17 @@ subroutine ComputeFlowCellVelocityStats(realization)
       ! interior velocities  
       connection_list => grid%internal_connection_list
       cur_connection_set => connection_list%first
+      sum_connection = 0
       do 
         if (.not.associated(cur_connection_set)) exit
         do iconn = 1, cur_connection_set%num_connections
+          sum_connection = sum_connection + 1
           ghosted_id_up = cur_connection_set%id_up(iconn)
           ghosted_id_dn = cur_connection_set%id_dn(iconn)
           local_id_up = grid%nG2L(ghosted_id_up) ! = zero for ghost nodes
           local_id_dn = grid%nG2L(ghosted_id_dn) ! = zero for ghost nodes
           ! velocities are stored as the downwind face of the upwind cell
-          flux = patch%internal_velocities(iphase,iconn)* &
+          flux = patch%internal_velocities(iphase,sum_connection)* &
                    cur_connection_set%area(iconn)* &
                    dabs(cur_connection_set%dist(direction,iconn))
           if (local_id_up > 0) then
@@ -2828,13 +2962,15 @@ subroutine ComputeFlowCellVelocityStats(realization)
 
       ! boundary velocities
       boundary_condition => patch%flow_boundary_conditions%first
+      sum_connection = 0
       do
         if (.not.associated(boundary_condition)) exit
         cur_connection_set => boundary_condition%connection
         do iconn = 1, cur_connection_set%num_connections
+          sum_connection = sum_connection + 1
           local_id = cur_connection_set%id_dn(iconn)
           vec_ptr(local_id) = vec_ptr(local_id)+ &
-                              patch%boundary_velocities(iphase,iconn)* &
+                              patch%boundary_velocities(iphase,sum_connection)* &
                               cur_connection_set%area(iconn)* &
                               dabs(cur_connection_set%dist(direction,iconn))
         enddo
@@ -2928,7 +3064,7 @@ subroutine ComputeFlowFluxVelocityStats(realization)
   PetscInt :: iphase
   PetscInt :: direction
   PetscInt :: local_id, ghosted_id
-  PetscInt :: iconn
+  PetscInt :: iconn, sum_connection
   PetscReal, pointer :: vec_ptr(:)
   Vec :: global_vec, global_vec2
   PetscReal :: sum, average, max, min , std_dev
@@ -2956,15 +3092,17 @@ subroutine ComputeFlowFluxVelocityStats(realization)
       ! place interior velocities in a vector
       connection_list => grid%internal_connection_list
       cur_connection_set => connection_list%first
+      sum_connection = 0
       do 
         if (.not.associated(cur_connection_set)) exit
         do iconn = 1, cur_connection_set%num_connections
+          sum_connection = sum_connection + 1
           ghosted_id = cur_connection_set%id_up(iconn)
           local_id = grid%nG2L(ghosted_id) ! = zero for ghost nodes
           ! velocities are stored as the downwind face of the upwind cell
           if (local_id <= 0 .or. &
               dabs(cur_connection_set%dist(direction,iconn)) < 0.99d0) cycle
-          vec_ptr(local_id) = patch%internal_velocities(iphase,iconn)
+          vec_ptr(local_id) = patch%internal_velocities(iphase,sum_connection)
         enddo
         cur_connection_set => cur_connection_set%next
       enddo
