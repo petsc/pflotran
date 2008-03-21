@@ -2252,6 +2252,7 @@ subroutine readVectorFromFile(realization,vector,filename,vector_type)
                                     grid%nlmax, ')'
       call printErrMsg(option,string)
     endif
+    close(fid)
     deallocate(values)
     nullify(values)
     deallocate(indices)
