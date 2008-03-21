@@ -186,9 +186,9 @@ function OptionCreate()
   option%ideriv = 1
 
   option%dpmxe = 5.d4
-  option%dtmpmxe = 2.d0
-  option%dsmxe = 5.d0
-  option%dcmxe = 5.d0
+  option%dtmpmxe = 5.d0
+  option%dsmxe = 0.5d0
+  option%dcmxe = 1.d0
 
   !physical constants and defult variables
 !  option%difaq = 1.d-9 ! m^2/s read from input file
