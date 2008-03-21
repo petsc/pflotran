@@ -134,7 +134,7 @@ subroutine TimestepperRead(stepper,fid,option)
         call fiReadDouble(string,option%dtmpmxe,ierr)
         call fiDefaultMsg(option%myrank,'dtmpmxe',ierr)
   
-      case('MAX_CONCENTRATION')
+      case('MAX_CONCENTRATION_CHANGE')
         call fiReadDouble(string,option%dcmxe,ierr)
         call fiDefaultMsg(option%myrank,'dcmxe',ierr)
 

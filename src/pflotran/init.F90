@@ -1827,16 +1827,16 @@ subroutine assignMaterialPropToRegions(realization)
   
   ! read in any cell by cell data 
   if (len_trim(option%permx_filename) > 1) then
-    call readVectorFromFile(realization,field%perm_xx_loc, &
-                            option%permx_filename,LOCAL)  
+    call readVectorFromFile(realization,field%perm0_xx, &
+                            option%permx_filename,GLOBAL)  
   endif
   if (len_trim(option%permy_filename) > 1) then
-    call readVectorFromFile(realization,field%perm_yy_loc, &
-                            option%permy_filename,LOCAL)  
+    call readVectorFromFile(realization,field%perm0_yy, &
+                            option%permy_filename,GLOBAL)  
   endif
   if (len_trim(option%permz_filename) > 1) then
-    call readVectorFromFile(realization,field%perm_zz_loc, &
-                            option%permz_filename,LOCAL)  
+    call readVectorFromFile(realization,field%perm0_zz, &
+                            option%permz_filename,GLOBAL)  
   endif
 
   if (option%nflowdof > 0) then
