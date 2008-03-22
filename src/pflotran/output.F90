@@ -522,17 +522,17 @@ subroutine OutputVelocitiesTecplot(realization)
                '"vgy [m/y]",' // &
                '"vgz [m/y]"'
     endif
-        if (associated(patch%imat)) then
-          string = trim(string) // ',"Material_ID"'
-        endif
+    if (associated(patch%imat)) then
+      string = trim(string) // ',"Material_ID"'
+    endif
     write(IUNIT3,'(a)') trim(string)
   
     ! write zone header
     if (realization%discretization%itype == STRUCTURED_GRID) then
       write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
-                   &'', K='',i4,'','')') &
-                   option%time/output_option%tconv, &
-                   grid%structured_grid%nx+1,grid%structured_grid%ny+1,grid%structured_grid%nz+1
+      &'', K='',i4,'','')') &
+      option%time/output_option%tconv, &
+      grid%structured_grid%nx+1,grid%structured_grid%ny+1,grid%structured_grid%nz+1
       string = trim(string) // ' DATAPACKING=BLOCK'
       if (option%nphase > 1) then
         string = trim(string) // ', VARLOCATION=([4-10]=CELLCENTERED)'
@@ -541,9 +541,9 @@ subroutine OutputVelocitiesTecplot(realization)
       endif
     else
       write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
-                   &'', K='',i4,'','')') &
-                   option%time/output_option%tconv, &
-                   grid%structured_grid%nx,grid%structured_grid%ny,grid%structured_grid%nz 
+      &'', K='',i4,'','')') &
+      option%time/output_option%tconv, &
+      grid%structured_grid%nx,grid%structured_grid%ny,grid%structured_grid%nz 
       string = trim(string) // ' DATAPACKING=BLOCK'
     endif
     write(IUNIT3,'(a)') trim(string)
@@ -746,16 +746,19 @@ subroutine OutputFluxVelocitiesTecplot(realization,iphase, &
     select case(direction)
       case(X_DIRECTION)
         write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
-                     &'', K='',i4,'','')') &
-                     option%time/output_option%tconv,grid%structured_grid%nx-1,grid%structured_grid%ny,grid%structured_grid%nz 
+        &'', K='',i4,'','')') &
+        option%time/output_option%tconv, &
+        grid%structured_grid%nx-1,grid%structured_grid%ny,grid%structured_grid%nz 
       case(Y_DIRECTION)
         write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
-                     &'', K='',i4,'','')') &
-                     option%time/output_option%tconv,grid%structured_grid%nx,grid%structured_grid%ny-1,grid%structured_grid%nz 
+        &'', K='',i4,'','')') &
+        option%time/output_option%tconv, &
+        grid%structured_grid%nx,grid%structured_grid%ny-1,grid%structured_grid%nz 
       case(Z_DIRECTION)
         write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
-                     &'', K='',i4,'','')') &
-                     option%time/output_option%tconv,grid%structured_grid%nx,grid%structured_grid%ny,grid%structured_grid%nz-1
+        &'', K='',i4,'','')') &
+        option%time/output_option%tconv, &
+        grid%structured_grid%nx,grid%structured_grid%ny,grid%structured_grid%nz-1
     end select 
   
   
@@ -1000,17 +1003,17 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
     ! write zone header
     if (realization%discretization%itype == STRUCTURED_GRID) then
       write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
-                   &'', K='',i4,'','')') &
-                   option%time/realization%output_option%tconv, &
-                   grid%structured_grid%nx+1,grid%structured_grid%ny+1,grid%structured_grid%nz+1
+      &'', K='',i4,'','')') &
+      option%time/realization%output_option%tconv, &
+      grid%structured_grid%nx+1,grid%structured_grid%ny+1,grid%structured_grid%nz+1
       string = trim(string) // ' DATAPACKING=BLOCK'
                                                 ! 4=dataset name, 5=material_id
       string = trim(string) // ', VARLOCATION=([4-5]=CELLCENTERED)'
     else
       write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
-                   &'', K='',i4,'','')') &
-                   option%time/realization%output_option%tconv, &
-                   grid%structured_grid%nx,grid%structured_grid%ny,grid%structured_grid%nz 
+      &'', K='',i4,'','')') &
+      option%time/realization%output_option%tconv, &
+      grid%structured_grid%nx,grid%structured_grid%ny,grid%structured_grid%nz 
       string = trim(string) // ' DATAPACKING=BLOCK'
     endif
     write(fid,'(a)') trim(string)
