@@ -1136,6 +1136,7 @@ subroutine WriteTecplotStructuredGrid(fid,realization)
       do j=1,ny+1
         temp_real = grid%structured_grid%origin(X_DIRECTION)
         write(fid,'(es11.4,x)',advance='no') temp_real
+        count = count + 1
         do i=1,nx
           temp_real = temp_real + grid%structured_grid%dx0(i)
           write(fid,'(es11.4,x)',advance='no') temp_real
