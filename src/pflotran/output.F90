@@ -534,10 +534,18 @@ subroutine OutputVelocitiesTecplot(realization)
                    option%time/output_option%tconv, &
                    grid%structured_grid%nx+1,grid%structured_grid%ny+1,grid%structured_grid%nz+1
       string = trim(string) // ' DATAPACKING=BLOCK'
-      if (option%nphase > 1) then
-        string = trim(string) // ', VARLOCATION=([4-10]=CELLCENTERED)'
+      if (associated(patch%imat)) then
+        if (option%nphase > 1) then
+          string = trim(string) // ', VARLOCATION=([4-10]=CELLCENTERED)'
+        else
+          string = trim(string) // ', VARLOCATION=([4-7]=CELLCENTERED)'
+        endif
       else
-        string = trim(string) // ', VARLOCATION=([4-7]=CELLCENTERED)'
+        if (option%nphase > 1) then
+          string = trim(string) // ', VARLOCATION=([4-9]=CELLCENTERED)'
+        else
+          string = trim(string) // ', VARLOCATION=([4-6]=CELLCENTERED)'
+        endif
       endif
     else
       write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
