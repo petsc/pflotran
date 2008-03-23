@@ -251,7 +251,13 @@
 
 \noindent
 \scriptsize
-Los Alamos National Laboratory, an affirmative action/equal opportunity employer, is operated by the Los Alamos National Security, LLCfor the National Nuclear Security Administration of the U.S. Department of Energy under contract DE-AC52-06NA25396. By acceptanceof this article, the publisher recognizes that the U.S. Government retains a nonexclusive, royalty-free license to publish or reproduce thepublished form of this contribution, or to allow others to do so, for U.S. Government purposes. Los Alamos National Laboratory requeststhat the publisher identify this article as work performed under the auspices of the U.S. Department of Energy. Los Alamos NationalLaboratory strongly supports academic freedom and a researcher’s right to publish; as an institution, however, the Laboratory does notendorse the viewpoint of a publication or guarantee its technical correctness.
+Los Alamos National Laboratory, an affirmative action/equal opportunity employer, is operated by the Los Alamos National Security, LLC
+for the National Nuclear Security Administration of the U.S. Department of Energy under contract DE-AC52-06NA25396. By acceptance
+of this article, the publisher recognizes that the U.S. Government retains a nonexclusive, royalty-free license to publish or reproduce the
+published form of this contribution, or to allow others to do so, for U.S. Government purposes. Los Alamos National Laboratory requests
+that the publisher identify this article as work performed under the auspices of the U.S. Department of Energy. Los Alamos National
+Laboratory strongly supports academic freedom and a researcher’s right to publish; as an institution, however, the Laboratory does not
+endorse the viewpoint of a publication or guarantee its technical correctness.
 
 \hfill Form 836 (7/06)
 
@@ -272,7 +278,7 @@ Los Alamos National Laboratory, an affirmative action/equal opportunity employer
 
 \section{PFLOTRAN Keywords}
 
-The PFLOTRAN input file construction is based on keywords. Lines beginning with a colon (:) are treated as comments. Each entry to the input file must begin in the first column. Keywords {\tt SKIP} and {\tt NOSKIP} are used to skip over sections of the input file. Blank lines may occur in input file. Alternate keyword spelling is indicated in round brackets (~). Input options are indicated in square brackets [~]. Curly brackets \{~\} indicate the result of invoking the corresponding keyword. Always refer to source code when in doubt!
+The PFLOTRAN input file construction is based on keywords. Lines beginning with a colon (:) are treated as comments. Each entry to the input file must begin in the first column. Keywords {\tt SKIP} and {\tt NOSKIP} are used to skip over sections of the input file. Blank lines may occur in input file. Alternate keyword spelling is indicated in round brackets (~). Input options are indicated in square brackets [~], as well as default values. Curly brackets \{~\} indicate the result of invoking the corresponding keyword. Always refer to source code when in doubt!
 
 Initial and boundary conditions and material properties are assigned to spatial regions using a novel {\em coupler} approach. In this approach, initial and boundary conditions (keyword CONDITION) are assigned to regions (keyword REGION) using keywords INITIAL\_CONDITION and BOUNDARY\_CONDITION. Material properties (keyword MATERIAL) are assigned to regions using the keyword STRATIGRAPHY.
 
@@ -446,7 +452,7 @@ Initial and boundary conditions and material properties are assigned to spatial 
       hydrostatic (hydro, hydrostat), static,
       zero\_gradient,
       seepage]
-    \item[TEMP, TEMPERATURE]
+    \item[TEMPERATURE (TEMP)]
       [dirichlet, 
       neumann,
       mass,
