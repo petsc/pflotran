@@ -1,0 +1,1272 @@
+\documentclass[12pt]{article} 
+%\usepackage{times}
+%\usepackage{palatino}
+\usepackage{fourier}
+\usepackage{amsmath,amsbsy,amssymb}
+\usepackage{deflist}
+%\usepackage{fancyheadings}
+\usepackage{fancyhdr}
+\usepackage{tabularx}
+\usepackage{verbatim}
+\usepackage{moreverb}
+\usepackage{float}
+\usepackage{fancybox}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{subfigure}
+\usepackage{ssss}
+\usepackage{booktabs}
+%\usepackage{toc_entr}
+\usepackage[debug=false, colorlinks=true, pdfstartview=FitV, linkcolor=blue, citecolor=black, urlcolor=blue]{hyperref}
+
+\textwidth 6.5in
+\textheight 8.75in
+\topmargin -0.75in
+%\topmargin -3.280cm 
+\newlength{\boxwidth}
+\setlength{\boxwidth}{5.8in}
+\oddsidemargin 0.in
+\evensidemargin 0.in
+\headheight 0.25in
+\lhead{\sl PFLOTRAN Quick Reference User Guide}
+\chead{} 
+%\chead{\rm - \thepage\ -} 
+\rhead{DRAFT \qquad \qquad \ \today} 
+%\rfoot{\today--[\thepage]}
+\rfoot{}
+\cfoot{\rm - \thepage\ -}
+%\cfoot{}
+%\footrulewidth 0.4pt
+\newcommand{\negsp}{\vspace{-4mm}} 
+\newcommand\secsp{\vspace{-3 mm}}
+\newcommand\secspb{\vspace{-2 mm}}
+\newcommand\subsecsp{\vspace{-0.0 mm}}
+\newcommand\pflotran{{\bf\sl PFLOTRAN}}
+\newcommand\pflow{{\bf\sl PFLOW}}
+\newcommand\ptran{{\bf\sl PTRAN}}
+\renewcommand{\baselinestretch}{1.01} 
+%\setlength{\baselineskip}{13pt}
+\def\EQ#1\EN{\begin{equation}#1\end{equation}}
+\def\BA#1\EA{\begin{align}#1\end{align}}
+\def\BS#1\ES{\begin{split}#1\end{split}}
+%\newcommand{\EQ}{\begin{equation}} 
+%\newcommand{\EN}{\end{equation}} 
+\newcommand{\longline}{\noindent\rule[-0.1in]{\textwidth}{0.01in}}
+\newcommand{\bc}{\begin{center}} 
+\newcommand{\ec}{\end{center}} 
+\newcommand{\degc}{$^\circ$C} 
+\newcommand{\eq}{\ =\ } 
+\newcommand{\eff}{{\rm eff}}
+\newcommand{\eqr}{{\rm le}}
+\newcommand{\equ}{{\rm eq}} 
+\newcommand{\kin}{{\rm kin}} 
+\newcommand{\rdx}{{\rm rdx}} 
+\newcommand{\ind}{{\rm id}} 
+\newcommand{\dep}{{\rm dp}}
+\newcommand{\e}{{\rm{e}}} 
+\newcommand{\erf}{{\rm{erf}}} 
+\newcommand{\erfc}{{\rm{erfc}}} 
+\renewcommand{\sc}{{\rm sc}}
+\newcommand{\sign}{{\rm{sign}}} 
+\newcommand{\p}{{\partial}}
+\newcommand{\A}{{\mathcal A}}
+\newcommand{\B}{{\mathcal B}}
+\newcommand{\C}{{\mathcal C}}
+\newcommand{\D}{{\mathcal D}}
+\newcommand{\E}{{\mathcal E}}
+\newcommand{\F}{{\mathcal F}}
+\newcommand{\G}{{\mathcal G}}
+\newcommand{\J}{{\mathcal J}}
+\newcommand{\jo}{{j_o}}
+\newcommand{\M}{{\mathcal M}}
+\newcommand{\mO}{{\mathcal O}}
+\renewcommand{\P}{{{\mathcal P}}}
+\newcommand{\Q}{{\mathcal Q}}
+\newcommand{\R}{{{\mathcal R}}}
+\renewcommand{\S}{{\mathcal S}}
+\newcommand{\T}{{\mathcal T}}
+\newcommand{\W}{{\mathcal W}}
+\newcommand{\X}{{\mathcal X}}
+\newcommand{\Y}{{\mathcal Y}}
+\newcommand{\Z}{{\mathcal Z}}
+\newcommand{\rev}{{\rm rev}}
+\newcommand{\irr}{{\rm irr}}
+\renewcommand{\a}{{\alpha}} 
+\newcommand{\abar}{{\bar \alpha}} 
+\renewcommand{\b}{{\beta}} 
+\renewcommand{\c}{{\rm CO_2}}
+\newcommand{\w}{{\rm H_2O}}
+\newcommand{\air}{{\rm N_2}}
+\newcommand{\pe}{{\rm Pe}}
+\newcommand{\da}{{\rm Da}}
+\renewcommand{\k}{{\dot R}^0}
+\renewcommand{\L}{\widehat{\mathcal L}}
+\renewcommand{\bar}{\overline}
+\newcommand{\dsty}{{\displaystyle}}
+\newcommand{\diff}{{\mathcal D}} 
+\newcommand{\surf}{\equiv \!\!\!}
+\newcommand{\bnabla}{\boldsymbol{\nabla}}
+\newcommand{\bA}{\boldsymbol{A}}
+\newcommand{\ba}{\boldsymbol{a}}
+\newcommand{\bB}{\boldsymbol{B}}
+\newcommand{\bC}{\boldsymbol{C}}
+\newcommand{\bE}{\boldsymbol{E}}
+\newcommand{\bF}{\boldsymbol{F}}
+\newcommand{\bi}{\boldsymbol{i}}
+\newcommand{\bI}{\boldsymbol{I}}
+\newcommand{\bJ}{\boldsymbol{J}}
+\newcommand{\bK}{\boldsymbol{K}}
+\newcommand{\bM}{\boldsymbol{M}}
+\newcommand{\bg}{\boldsymbol{g}}
+\newcommand{\bGamma}{\boldsymbol{\Gamma}}
+\newcommand{\bOmega}{\boldsymbol{\Omega}}
+\newcommand{\bPsi}{\boldsymbol{\Psi}}
+\newcommand{\bO}{\boldsymbol{O}}
+\newcommand{\bnu}{\boldsymbol{\nu}}
+\newcommand{\bdS}{\boldsymbol{dS}}
+\newcommand{\bq}{\boldsymbol{q}}
+\newcommand{\br}{\boldsymbol{r}}
+\newcommand{\bR}{\boldsymbol{R}}
+\newcommand{\bS}{\boldsymbol{S}}
+\newcommand{\bu}{\boldsymbol{u}}
+\newcommand{\bv}{\boldsymbol{v}}
+\newcommand{\bz}{\boldsymbol{z}}
+\newcommand{\arrows}{~\rightleftharpoons~} 
+\newcommand{\arrowstab}{\!\!\!\rightleftharpoons\!\!\!} 
+\newcommand{\CA}{C_{\rm A}}
+\newcommand{\CB}{C_{\rm B}}
+\newcommand{\CC}{C_{\rm C}}
+\newcommand{\CAB}{C_{\rm AB}}
+\newcommand{\CBC}{C_{\rm BC}}
+\newcommand{\RA}{\R_{\rm A}}
+\newcommand{\RB}{\R_{\rm B}}
+\newcommand{\RC}{\R_{\rm C}}
+\newcommand{\RAB}{\R_{\rm AB}}
+\newcommand{\RBC}{\R_{\rm BC}}
+%\newcommand{\kdsc}{K^{DS}}
+%\newcommand{\kdec}{K^{DE}}
+%\newcommand{\kdsm}{\overline K^{DS}}
+%\newcommand{\kdem}{\overline K^{DE}}
+\newcommand{\kdsc}{K^{sc}}
+\newcommand{\kdec}{K^{ec}}
+\newcommand{\kdsm}{K^{sm}}
+\newcommand{\kdem}{K^{em}}
+\newcommand{\csm}{S}
+\renewcommand{\csc}{S}
+\newcommand{\cem}{\E}
+\newcommand{\cec}{\E}
+\renewcommand{\min}{{\rm min}}
+\newcommand{\coll}{{\rm coll}}
+\newcommand{\ex}{{\rm ex}}
+\newcommand{\srf}{{\rm srf}}
+\def\dbar{{\mkern2mu\mathchar'26\mkern-11mu\mathrm{d}}}
+
+\newcounter{saveeqn}%
+\newcommand{\alpheqn}{\setcounter{saveeqn}{\value{equation}}%
+\stepcounter{saveeqn}\setcounter{equation}{0}%
+\renewcommand{\theequation}
+      {\mbox{\arabic{saveeqn}\alph{equation}}}}%
+\newcommand{\reseteqn}{\setcounter{equation}{\value{saveeqn}}%
+\renewcommand{\theequation}{\arabic{equation}}}%
+
+\renewcommand{\contentsname}{TABLE OF CONTENTS}
+\renewcommand{\listfigurename}{{LIST OF FIGURES}}
+\renewcommand{\listtablename}{{LIST OF TABLES}}
+
+\renewcommand{\arraystretch}{1.3}
+
+\setlength{\parindent}{0.3125in}
+\setlength{\parskip}{2ex plus 0.2ex minus 0.2ex}
+
+\setcounter{secnumdepth}{4}
+\setcounter{tocdepth}{4}
+
+\pagestyle{fancy}
+%\pagestyle{empty}
+
+\thispagestyle{empty}
+
+\renewcommand{\theequation}{\arabic{equation}}
+%\renewcommand{\thetable}{{\protect\bf\arabic{table}}}
+%\renewcommand{\thefigure}{{\protect\bf\arabic{figure}}}
+%\renewcommand{\thepage}{\roman{page}}
+
+\setlongtables
+
+\begin{document}
+
+%begin title page
+\noindent
+{\large\sffamily LA-UR-06-7048}
+
+\medskip
+
+\noindent
+\scriptsize
+{\em Approved for public release;}\\
+{\em distribution is unlimited.}
+
+\normalsize
+
+\bc
+\begin{tabular}{r|l}
+~ & ~\\
+{\em Title:} & {\sl Quick Reference Guide: PFLOTRAN 1.0 (LA-CC 06-093)}\\
+~ & {\sl Multiphase-Multicomponent-Multiscale Massively Parallel} \\
+~ & {\sl Reactive Transport Code}\\
+~ & ~\\
+~ & ~\\
+{\em Author(s):} & SciDAC-2 Project (PI: Peter C. Lichtner, lichtner@lanl.gov)\\
+~ & ~\\
+~ & ~\\
+{\em Contacts:}  & Glenn Hammond (glenn.hammond@pnnl.gov)\\
+%~ & Chuan Lu (clu@egi.utah.edu)\\
+~ & Richard Mills (rmills@ornl.gov)\\
+%~ & %David Moulton (moulton@lanl.gov)\\
+%~ & Bobby Philip (bphilip@lanl.gov)\\
+~ & \\%Barry Smith (bsmith@anl.gov)\\
+~ & \\%Albert Valocchi (clu@lanl.gov)\\
+~ & ~\\
+%{\em Submitted to:} & \\
+~ & ~\\
+{\em Date:} & \today \\
+~ & ~\\
+~ & ~\\
+~ & {\bf \huge DRAFT}\\
+~ & ~\\
+\end{tabular}
+\ec
+
+\vfill
+
+\noindent
+{\Huge\sffamily Los Alamos}
+
+\vspace{-8pt}
+
+\noindent
+{\sffamily NATIONAL LABORATORY}
+
+\vspace{-6pt}
+
+\noindent
+\scriptsize
+Los Alamos National Laboratory, an affirmative action/equal opportunity employer, is operated by the Los Alamos National Security, LLCfor the National Nuclear Security Administration of the U.S. Department of Energy under contract DE-AC52-06NA25396. By acceptanceof this article, the publisher recognizes that the U.S. Government retains a nonexclusive, royalty-free license to publish or reproduce thepublished form of this contribution, or to allow others to do so, for U.S. Government purposes. Los Alamos National Laboratory requeststhat the publisher identify this article as work performed under the auspices of the U.S. Department of Energy. Los Alamos NationalLaboratory strongly supports academic freedom and a researcher’s right to publish; as an institution, however, the Laboratory does notendorse the viewpoint of a publication or guarantee its technical correctness.
+
+\hfill Form 836 (7/06)
+
+\normalsize
+
+\clearpage
+
+%\tableofcontents
+%\clearpage
+
+%\listoffigures
+
+%\listoftables
+
+%\clearpage
+
+\section{Introduction}
+
+\section{PFLOTRAN Keywords}
+
+The PFLOTRAN input file construction is based on keywords. Lines beginning with a colon (:) are treated as comments. Each entry to the input file must begin in the first column. Keywords {\tt SKIP} and {\tt NOSKIP} are used to skip over sections of the input file. Blank lines may occur in input file. Alternate keyword spelling is indicated in round brackets (~). Input options are indicated in square brackets [~]. Curly brackets \{~\} indicate the result of invoking the corresponding keyword. Always refer to source code when in doubt!
+
+Initial and boundary conditions and material properties are assigned to spatial regions using a novel {\em coupler} approach. In this approach, initial and boundary conditions (keyword CONDITION) are assigned to regions (keyword REGION) using keywords INITIAL\_CONDITION and BOUNDARY\_CONDITION. Material properties (keyword MATERIAL) are assigned to regions using the keyword STRATIGRAPHY.
+
+\begin{longtable}{lll}%[h]%\centering
+%\caption{PFLOTRAN Keywords}\label{flkeywd} 
+
+%\vspace{4mm}
+
+%\begin{tabular}{lll} 
+\toprule[1.5pt]
+\multicolumn{1}{c}{Keyword} & \multicolumn{1}{c}{Status} &\multicolumn{1}{c}{Comments}\\
+\midrule[1pt]
+\hyperlink{target_bcon}{BOUNDARY\_CONDITION} & \\
+\hyperlink{target_brk}{BREAKTHROUGH} & \\
+\hyperlink{target_brine}{BRINE (BRIN)} & \\
+\hyperlink{target_ckpt}{CHECKPOINT} & \\
+\hyperlink{target_stat}{COMPUTE\_STATISTICS (STATISTICS)} & \\
+\hyperlink{target_cond}{CONDITION} & \\
+\hyperlink{target_datset}{DATASET} & \\
+\hyperlink{target_dbg}{DEBUG} & \\
+\hyperlink{target_dif}{DIFF} & \\
+\hyperlink{target_dtst}{DTST} & \\
+\hyperlink{target_dxyz}{DXYZ} & \\
+\hyperlink{target_gravity}{GRAVITY} & \\
+\hyperlink{target_grid}{GRID} & \\
+\hyperlink{target_hdf5}{HDF5} & \\
+\hyperlink{target_imod}{IMOD} & \\
+\hyperlink{target_invert}{INVERT\_Z (INVERTZ)} & \\
+\hyperlink{target_init}{INITIAL\_CONDITION} & \\
+\hyperlink{target_linsolv}{LINEAR\_SOLVER} & \\
+\hyperlink{target_mat}{MATERIAL (MATERIALS, PHIK)} & \\
+\hyperlink{target_mode}{MODE} & \\
+\hyperlink{target_newt}{NEWTON\_SOLVER} & \\
+\hyperlink{target_numjac}{NUMERICAL\_JACOBIAN} & \\
+\hyperlink{target_orig}{ORIG, ORIGIN} & \\
+\hyperlink{target_overwrite}{OVERWRITE\_RESTART\_TRANSPORT} & \\
+\hyperlink{target_region}{REGION} & \\
+\hyperlink{target_restart}{RESTART} & \\
+\hyperlink{target_rich}{RICH} & \\
+\hyperlink{target_sat}{SATURATION\_FUNCTION (SATURATION\_FUNCTION, PCKR)} & \\
+\hyperlink{target_src}{SOURCE\_SINK} & \\
+\hyperlink{target_strata}{STRATIGRAPHY (STRATA)} & \\
+\hyperlink{target_tecp}{TECP} & \\
+\hyperlink{target_thrm}{THRM, THERMAL\_PROPERTY (THERMAL\_PROPERTIES)} & \\
+\hyperlink{target_time}{TIME} & \\
+\hyperlink{target_timestep}{TIMESTEPPER} & \\
+\hyperlink{target_tran}{TRAN} & \\
+\hyperlink{target_unifvel}{UNIFORM\_VELOCITY} & \\
+\hyperlink{target_touch}{USE\_TOUCH\_OPTIONS} & \\
+\hyperlink{target_wallclk}{WALLCLOCK\_STOP} & \\
+\bottomrule[1.5pt]
+%\end{tabular} 
+\end{longtable}
+
+\protect\hypertarget{target_bcon}{}
+
+\subsection*{\bf Keyword: BOUNDARY\_CONDITION}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[BOUNDARY\_CONDITION]
+\item[REGION] region\_name
+\item[CONDITION] condition\_name
+\item[TYPE] [initial, boundary, source\_sink]
+\item[FACE] [WEST, EAST, NORTH, SOUTH, BOTTOM, TOP]
+\item[END]
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_brk}{}
+
+\subsection*{Keyword: BREAKTHROUGH (BRK)}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[BREAKTHROUGH]
+\item[REGION] region\_name
+\item[VELOCITY] \{print\_velocities == PETSC\_TRUE\}
+\item[(., /, END)]
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_brine}{}
+
+\subsection*{Keyword: BRINE (BRIN)}
+
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[BRIN, BRINE] m\_nacl [MOLAL, MASS, MOLE]
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_ckpt}{}
+
+\subsection*{Keyword: CHECKPOINT}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item [CHECKPOINT] checkpoint\_frequency
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_stat}{}
+
+\subsection*{Keyword: COMPUTE\_STATISTICS (STATISTICS)}
+
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item [COMPUTE\_STATISTICS, STATISTICS] \{compute\_statistics = .true.\}
+\end{deflist}
+\end{minipage}
+}
+
+%================================================================
+
+\protect\hypertarget{target_cond}{}
+
+\subsection*{Keyword: CONDITION (COND)}
+
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item [CONDITION (COND)] condition\_name
+\item [UNITS] ~
+\begin{deflist}{0000000000}
+\item    s, sec, min, hr, d, day, y, yr
+\item    mm, cm, m, met, meter, dm, km
+\item    Pa, KPa
+\item    m/s, m/yr
+\item    C, K
+\item    M, mol/L
+\item    KJ/mol
+\end{deflist}
+
+\item[(., /, END)]
+  
+\item[CLASS] [flow, transport (tran)]
+  
+\item[CYCLIC] \{is\_cyclic = .true.\}
+  
+\item[INTERPOLATION] step linear
+  
+\item[TYPE] ~
+
+\begin{deflist}{0000000000}
+    \item[PRESSURE (PRES, PRESS)]
+      [dirichlet, 
+      neumann,
+      mass,
+      hydrostatic (hydro, hydrostat), static,
+      zero\_gradient,
+      seepage]
+    \item[FLUX]
+      [dirichlet, 
+      neumann,
+      mass,
+      hydrostatic (hydro, hydrostat), static,
+      zero\_gradient,
+      seepage]
+    \item[TEMP, TEMPERATURE]
+      [dirichlet, 
+      neumann,
+      mass,
+      hydrostatic (hydro, hydrostat), static,
+      zero\_gradient,
+      seepage]
+    \item[CONCENTRATION (CONC)]
+      [dirichlet, 
+      neumann,
+      mass,
+      hydrostatic (hydro, hydrostat), static,
+      zero\_gradient,
+      seepage]
+    \item[ENTHALPY (H)]
+      [dirichlet, 
+      neumann,
+      mass,
+      hydrostatic (hydro, hydrostat), static,
+      zero\_gradient,
+      seepage]
+      
+  \item[(., /, END)]
+\end{deflist}
+\item[TIME] ~
+  
+\item[IPHASE] ~
+  
+\item[DATUM (DATM)] ~
+ \item  [[Continued]]
+\end{deflist}
+\end{minipage}
+}
+
+\subsection*{Keyword: CONDITION (COND) [Continued]}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[GRADIENT (GRAD)] ~
+\item    PRESSURE (PRES, PRESS)
+\item    FLUX
+\item    TEMPERATURE (TEMP)
+\item    CONCENTRATION (CONC)
+\item    ENTHALPY (H)
+\item[(., /, END)] ~
+\item[TEMPERATURE (TEMP)] ~
+\item[ENTHALPY (H)] ~
+\item[PRESSURE (PRES, PRESS)] ~
+\item[FLUX (VELOCITY, VEL)] ~
+\item[CONCENTRATION (CONC)] ~
+\item[(., /, END)] ~
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_datset}{}
+
+\subsection*{Keyword: DATASET}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[DATASET] [permx, permy, permz] [permx\_filename, permy\_filename, permz\_filename]
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_dbg}{}
+
+\subsection*{Keyword: DEBUG}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[DEBUG]
+\item  PRINT\_SOLUTION (VECVIEW\_SOLUTION, VIEW\_SOLUTION)
+\item  PRINT\_RESIDUAL (VECVIEW\_RESIDUAL,VIEW\_RESIDUAL)
+\item  PRINT\_JACOBIAN (MATVIEW\_JACOBIAN, VIEW\_JACOBIAN)
+\item  PRINT\_JACOBIAN\_NORM (NORM\_JACOBIAN)
+\item  PRINT\_COUPLERS (PRINT\_COUPLER)
+\item  PRINT\_JACOBIAN\_DETAILED (MATVIEW\_JACOBIAN\_DETAILED, VIEW\_JACOBIAN\_DETAILED)
+\item  PRINT\_NUMERICAL\_DERIVATIVES (VIEW\_NUMERICAL\_DERIVATIVES)
+\item[END]
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_dif}{}
+
+\subsection*{Keyword: DIFF}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[DIFF] difaq delhaq
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_dtst}{}
+
+\subsection*{Keyword: DTST}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[DTST] dt\_min
+\item dt1, dt2, dt3, \ldots, dt\_max
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_dxyz}{}
+
+\subsection*{Keyword: DXYZ}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[DXYZ] [STRUCTURED\_GRID, AMR\_GRID]
+\item dx0 
+\item dy0 
+\item dz0
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_gravity}{}
+
+\subsection*{Keyword: GRAVITY (GRAV)}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[GRAVITY (GRAV)] gravity
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_grid}{}
+
+\subsection*{Keyword: GRID}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[GRID]
+\item TYPE [structured, unstructured, amr]
+\item NXYZ nx ny nz
+\item FILE
+\item[END]
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_hdf5}{}
+
+\subsection*{Keyword: HDF5}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[HDF5] [VELO, FLUX]
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_imod}{}
+
+\subsection*{Keyword: IMOD}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[IMOD] mod
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_invert}{}
+
+\subsection*{Keyword: INVERT\_Z (INVERTZ)}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[INVERT\_Z (INVERTZ)] \{invert\_z\_axis = .true.\}
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_init}{}
+
+\subsection*{Keyword: INITIAL\_CONDITION}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[INITIAL\_CONDITION]
+\item REGION region\_name
+\item CONDITION condition\_name
+\item TYPE [initial, boundary, source\_sink]
+\item FACE [WEST, EAST, NORTH, SOUTH, BOTTOM, TOP]
+\item[END]
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_linsolv}{}
+
+\subsection*{Keyword: LINEAR\_SOLVER}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[LINEAR\_SOLVER]
+\item TRAN, TRANSPORT (tran\_solver) / DEFAULT (flow\_solver)
+\item SOLVER\_TYPE (SOLVER, KRYLOV\_TYPE, KRYLOV, KSP, KSP\_TYPE)
+\begin{deflist}{0000000000}
+\item    NONE (PREONLY)
+\item    GMRES
+\item    BCGS (BICGSTAB, BI-CGSTAB)
+\end{deflist}
+\item  PRECONDITIONER\_TYPE (PRECONDITIONER, PC, PC\_TYPE)
+\begin{deflist}{0000000000}
+\item    ILU (PCILU)
+\item    LU (PCLU)
+\item    BJACOBI (BLOCK\_JACOBI)
+\item    ASM (ADDITIVE\_SCHWARTZ)
+\item    PCASM
+\item  ATOL
+\item  RTOL
+\item  DTOL
+\item  MAXIT
+\end{deflist}
+\item[(., /, END)]
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_mat}{}
+
+\subsection*{Keyword: MATERIAL (MATERIALS, PHIK)}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[MATERIAL (MATERIALS, PHIK)] 
+\item name id \ icap \ ithrm \ por \ tor \ permx \ permy \ permz \ permpwr
+\item[(., /, END)]
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_mode}{}
+
+\subsection*{Keyword: MODE}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[MODE] [RICHARDS\_LITE, RICHARDS, MPH]
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_newt}{}
+
+\subsection*{Keyword: NEWTON\_SOLVER}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[NEWTON\_SOLVER]
+\item  TRAN, TRANSPORT (tran\_solver) / DEFAULT (flow\_solver)
+\item  INEXACT\_NEWTON
+\item  NO\_PRINT\_CONVERGENCE
+\item  NO\_INF\_NORM (NO\_INFINITY\_NORM)
+\item  NO\_FORCE\_ITERATION
+\item  PRINT\_DETAILED\_CONVERGENCE
+\item  ATOL
+\item  RTOL
+\item  STOL
+\item  DTOL
+\item  ITOL (INF\_TOL, ITOL\_RES, INF\_TOL\_RES)
+\item  ITOL\_UPDATE (INF\_TOL\_UPDATE)
+\item  MAXIT
+\item  MAXF
+\item[(., /, END)]
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_numjac}{}
+
+\subsection*{Keyword: NUMERICAL\_JACOBIAN}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[NUMERICAL\_JACOBIAN] \{numerical\_derivatives = .true.\}
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_orig}{}
+
+\subsection*{Keyword: ORIGIN (ORIG)}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[ORIGIN (ORIG)] X\_DIRECTION Y\_DIRECTION Z\_DIRECTION
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_overwrite}{}
+
+\subsection*{Keyword: OVERWRITE\_RESTART\_TRANSPORT}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[OVERWRITE\_RESTART\_TRANSPORT] \{overwrite\_restart\_transport = .true.\}
+\end{deflist}
+\end{minipage}
+}
+
+%================================================================
+
+\protect\hypertarget{target_region}{}
+
+\subsection*{Keyword: REGION}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[REGION] region\_name
+\item  BLOCK i1 i2 j1 j2 k1 k2
+\item  COORDINATE x-coordinate y-coordinate z-coordinate
+\item  FILE filename
+\item  LIST (not implemented)
+\item  FACE [WEST, EAST, NORTH, SOUTH, BOTTOM, TOP]
+\item END
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_restart}{}
+
+\subsection*{Keyword: RESTART}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[RESTART] restart\_file restart\_time
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_rich}{}
+
+\subsection*{Keyword: RICH}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[RICH] pref
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_sat}{}
+
+\subsection*{Keyword: SATURATION\_FUNCTION (SATURATION\_FUNCTIONS, PCKR)}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[SATURATION\_FUNCTION (SATURATION\_FUNCTIONS, PCKR)]
+\item id \ icaptype \ [(Sr[np],np=1,nphase), Sr] \ pckrm \ alpha \ pcwmax \ pbetac \ pwrprm
+\item[(., /, END)]
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_src}{}
+
+\subsection*{Keyword: SOURCE\_SINK}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[SOURCE\_SINK]
+\item  REGION region\_name
+\item  CONDITION condition\_name
+\item  TYPE [initial, boundary, source\_sink]
+\item  FACE [WEST, EAST, NORTH, SOUTH, BOTTOM, TOP]
+\item END
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_strata}{}
+
+\subsection*{Keyword: STRATIGRAPHY (STRATA)}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[STRATIGRAPHY (STRATA)]
+\item  REGION region\_name
+\item  MATERIAL material\_name
+\item  INACTIVE
+\item[(., /, END)]
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_tecp}{}
+
+\subsection*{Keyword: TECP}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[TECP] [VELO, FLUX]
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_thrm}{}
+
+\subsection*{Keyword: THRM (THERMAL\_PROPERTY, THERMAL\_PROPERTIES)}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[THRM (THERMAL\_PROPERTY, THERMAL\_PROPERTIES)]
+\item id \ rock\_density \ spec\_heat \ therm\_cond\_dry \ therm\_cond\_wet \ tort\_bin\_diff \ vap\_air\_diff\_coef \ exp\_binary\_diff
+\item[(., /, END)]
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_time}{}
+
+\subsection*{Keyword: TIME}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[TIME] [s, m, h, d, mo, y] [every \#]
+\item t1, t2, t3, \ldots
+\end{deflist}
+\end{minipage}
+}
+
+%================================================================
+
+\protect\hypertarget{target_timestep}{}
+
+\subsection*{Keyword: TIMESTEPPER}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[TIMESTEPPER]
+\item  NUM\_STEPS\_AFTER\_TS\_CUT [5]
+\item  MAX\_STEPS [999999]
+\item  TS\_ACCELERATION [5]
+\item  MAX\_TS\_CUTS [16]
+\item  MAX\_PRESSURE\_CHANGE [5.d4]
+\item  MAX\_TEMPERATURE\_CHANGE [5.d0]
+\item  MAX\_CONCENTRATION\_CHANGE [1.d0]
+\item  MAX\_SATURATION\_CHANGE [0.5d0]
+\item[(., /, END)]
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_tran}{}
+
+\subsection*{Keyword: TRAN}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[TRAN] ntrandof
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_unifvel}{}
+
+\subsection*{Keyword: UNIFORM\_VELOCITY}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[UNIFORM\_VELOCITY] vlx vly vlz
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_touch}{}
+
+\subsection*{Keyword: USE\_TOUCH\_OPTIONS}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[USE\_TOUCH\_OPTIONS] \{use\_touch\_options = .true.\}
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_wallclk}{}
+
+\subsection*{Keyword: WALLCLOCK\_STOP}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[WALLCLOCK\_STOP] wallclock\_stop\_time
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+%========================================================================
+
+%Obsolete
+
+%========================================================================
+
+%COMP (not implemented)
+
+%========================================================================
+
+%PHAS (not implemented)
+
+%========================================================================
+
+%TOLR nstepmax iaccel newton\_max icut\_max dpmxe dtmpmxe dcmxe dsmxe 
+
+%========================================================================
+
+%COUP (not implemented)
+
+%========================================================================
+
+%PHAR (not implemented)
+
+%========================================================================
+
+%RCTR (not implemented)
+
+%========================================================================
+
+%========================================================================
+
+%========================================================================
+
+%========================================================================
+
+\section*{Example Input File}
+
+%\footnotesize
+\begin{verbatim}
+:Description: 2D problem for saturated layered medium
+:
+:MODE RICHARDS
+MODE RICHARDS_LITE
+TRAN 1
+:
+:NUMERICAL_JACOBIAN
+:INEXACT_NEWTON
+:USE_TOUCH_OPTIONS
+:
+:CHECKPOINT 1000
+:RESTART steady.chk 0.d0
+:OVERWRITE_RESTART_TRANSPORT
+:COMPUTE_STATISTICS
+:USE_TOUCH_OPTIONS
+:WALLCLOCK_STOP 0.d0
+:
+DEBUG
+:MATVIEW_JACOBIAN
+:VECVIEW_RESIDUAL
+:VECVIEW_SOLUTION
+:PRINT_COUPLERS
+END
+:
+GRID
+TYPE structured
+NXYZ 450 1 4430 
+END
+:
+ORIGIN 0.d0 0.d0 0.d0
+:
+NEWTON_SOLVER
+RTOL 1.d-5
+ATOL 1.d-7
+STOL 1.d-10
+:ITOL_RES 1.d-8
+:ITOL_UPDATE 0.05d0  ! Pa
+NO_INFINITY_NORM
+:NO_FORCE_ITERATION
+:NO_PRINT_CONVERGENCE
+:PRINT_DETAILED_CONVERGENCE
+MAXIT 20
+END
+:noskip
+:
+NEWTON_SOLVER TRANSPORT
+:RTOL 1.d-50
+ATOL 1.d-50
+STOL 1.d-50
+ITOL_RES 1.d-8
+:ITOL_UPDATE 5.d0  ! Pa
+:NO_INFINITY_NORM
+:NO_FORCE_ITERATION
+:NO_PRINT_CONVERGENCE
+:PRINT_DETAILED_CONVERGENCE
+MAXIT 10
+END
+:
+TIMESTEPPER
+TS_ACCELERATION 8
+END
+:
+:HDF5 !VELO !FLUX
+TECP VELO !FLUX
+:
+DXYZ
+0.02d0
+1.d0
+0.002d0
+:
+:  d0[m^2/s] delhaq[kJ/mol]
+DIFF  1.D-9       12.6
+:
+: Richards Equation Pref
+RICH 101325.
+:
+SATURATION_FUNCTIONS
+: van Genuchten
+:id itype swir   m      alpha     pcwmax betac pwr
+ 1  1     0.1600 0.3391 7.2727d-4 1.e8   0.d0  1.d0
+ 2  1     0.1299 0.7479 1.4319d-4 1.e8   0.d0  1.d0 
+: Brooks-Corey
+:id itype swir   lambda alpha     pcwmax betac pwr
+: 1  2     0.1600 1.97   7.2727d-4 1.e8   0.d0  1.d0
+: 2  2     0.1299 0.5193 1.4319d-4 1.e8   0.d0  1.d0 
+END
+
+THERMAL_PROPERTIES
+:ithm rho    cpr     ckdry cksat tau cdiff   cexp
+  1   2.76e3 1000.e0 0.5   0.5   0.5 2.13d-5 1.8
+END
+:
+MATERIALS
+:name id icap ithm por  tau permx  permy  permz  permpwr
+tuff 1  1    1    0.2 0.5 1.d-19 1.d-19 1.d-19 1.d0
+END
+:
+:
+:TIME y every 10.
+TIME y
+0.1 0.25 0.5 0.75 1.
+:
+DTST 1.d-8
+1. 0.001d0
+:
+:define regions--------------------------------------------------------------
+:
+REGION all
+BLOCK 1 450 1 1 1 4430
+END
+
+REGION Left
+FACE west
+BLOCK 1 1 1 1 3931 4430
+END
+
+REGION Right
+FACE east
+BLOCK 450 450 1 1 1 500
+END
+
+:define initial and boundary conditions---------------------------------------
+
+:flow----------------------
+
+CONDITION initial
+CLASS flow
+TYPE
+PRESSURE hydrostatic
+END
+DATUM 0.d0 0.d0 10.d0
+PRESSURE 101325.d0
+END
+
+CONDITION Left
+CLASS flow
+TYPE
+PRESSURE neumann
+END
+PRESSURE 1.5854896d-7 ! 5000 mm/yr
+END
+
+CONDITION Right
+CLASS flow
+TYPE
+PRESSURE neumann
+END
+PRESSURE -1.5854896d-7 ! 5000 mm/yr
+END
+
+:transport-----------------
+
+CONDITION initial_c
+CLASS transport
+CONCENTRATION 1.d-8
+END
+
+CONDITION outlet_c
+CLASS transport
+TYPE
+CONCENTRATION zero_gradient
+END
+CONCENTRATION 1.d-8
+END
+
+CONDITION inlet_c
+CLASS transport
+CONCENTRATION 1.d0
+END
+
+:set initial and boundary conditions----------------------------------------
+
+:flow-----------------------
+
+: initial condition
+INITIAL_CONDITION
+CONDITION initial
+REGION all
+END
+
+BOUNDARY_CONDITION
+CONDITION Left
+REGION Left
+END
+
+BOUNDARY_CONDITION
+CONDITION initial
+REGION Right
+END
+
+:transport------------------
+
+: initial condition
+INITIAL_CONDITION
+CONDITION initial_c
+REGION all
+END
+
+BOUNDARY_CONDITION
+CONDITION inlet_c
+REGION Left
+END
+
+BOUNDARY_CONDITION
+CONDITION outlet_c
+REGION Right
+END
+
+:set material properties---------------------------------------------------
+
+STRATA
+MATERIAL tuff
+REGION all
+END
+
+:read in permeability field-------------------------------------------------
+
+DATASET permx perm_inv.dat
+DATASET permy perm_inv.dat
+DATASET permz perm_inv.dat
+
+\end{verbatim}
+
+\end{document}
+
