@@ -265,31 +265,139 @@ endorse the viewpoint of a publication or guarantee its technical correctness.
 
 \clearpage
 
-%\tableofcontents
+\tableofcontents
 %\clearpage
 
 %\listoffigures
 
 %\listoftables
 
-%\clearpage
+\clearpage
 
 \section{Introduction}
 
-\section{PFLOTRAN Keywords}
+PFLOTRAN solves a system of generally nonlinear partial differential equations describing multiphase, multicomponent and multiscale reactive flow and transport in porous materials. The code is designed to run on massively parallel computing architectures as well as workstations and labtops. Parallelization is achieved through domain decomposition using the PETSc (Portable Extensible Toolkit for Scientific Computation) libraries for the parallelization framework  (Balay et al., 1997).
+
+\section{Installation}
+
+\subsection{Openmpi}
+
+Set environment variables \verb|PKGS| and \verb|MPI_HOME| and the appropriate \verb|PATH|:
+
+\verb|setenv PKGS /Users/lichtner/petsc/packages|
+
+\verb|setenv MPI_HOME $PKGS/openmpi/openmpi-1.2.5-gcc-4.3.0-absoft-10.1|
+
+\verb|setenv PATH \$PKGS/openmpi/openmpi-1.2.5-gcc-4.3.0-absoft-10.1:\$PATH|
+
+\verb|setenv F90 f90|
+
+\verb|setenv F77 'f90 -YEXT_NAMES=LCS -YEXT_SFX= -f'|
+
+\verb|setenv FC 'f90 -YEXT_NAMES=LCS -YEXT_SFX= -f'|
+
+\verb|setenv CC gcc|
+
+\noindent
+Configure using:
+ 
+\verb|./configure --prefix=$PKGS/openmpi/openmpi-1.2.5-gcc-4.3.0-absoft-10.1|
+
+\noindent
+Finally, compile, check installation and install:
+
+\verb|make|
+
+\verb|make check|
+
+\verb|make install|
+
+\subsection{PETSc}
+
+PFLOTRAN uses the Developer version of PETSc. To install PETSc first set the enviroment variables \verb|PETSC_DIR| and \verb|PETSC_ARCH|:
+
+\verb|setenv PETSC_DIR /Users/lichtner/petsc/petsc-dev|
+
+\verb|setenv PETSC_ARCH Intel_MacOSX10.4.11|
+
+\noindent
+Configure PETSc on a Mac using openmpi and Fortran 90 Absoft 10.1:
+\begin{verbatim}
+./config/configure.py 
+--with-blas-lapack-lib="-framework vecLib" 
+--with-mpi-dir=$PKGS/openmpi/openmpi-1.2.5-gcc-4.3.0-absoft-10.1  
+--with-debugging=0 
+--with-shared=0
+\end{verbatim}
+
+\noindent
+Compile and test the PESTc installation with:
+
+\verb|make all test|
+
+\noindent
+Optionally install PETSc:
+
+\verb|make install|
+
+
+\subsection{HDF5}
+
+To install HDF5 set the following environment variables:
+
+\verb|setenv HDF5_INCLUDE $PKGS/hdf/hdf5-1.6.7-gcc-4.3.0-absoft-10.1/include|
+
+\verb|setenv HDF5_LIB $PKGS/hdf/hdf5-1.6.7-gcc-4.3.0-absoft-10.1/lib|
+
+\verb|setenv CC $MPI_HOME/bin/mpicc|
+
+\verb|setenv F9X $MPI_HOME/bin/mpif90|
+
+\verb|setenv CFLAGS -fno-strict-aliasing|
+
+\verb|setenv FFLAGS ""|
+
+\begin{verbatim}
+./configure --enable-fortran 
+--prefix=$PKGS/hdf/hdf5-1.6.7-gcc-4.3.0-absoft-10.1 
+--disable-debug --enable-production --enable-parallel 
+--enable-static --disable-shared
+\end{verbatim}
+
+\verb|make|
+
+\verb|make check|
+
+\verb|make install|
+
+\subsection{PFLOTRAN}
+
+Compile PFLOTRAN using the command
+
+\verb|make [hdf5=1] pflotran|
+
+\noindent
+Create input file \verb|pflotran.in| and run PFLOTRAN with the command:
+
+\verb|mpirun -n #proc pflotran|
+
+\noindent
+where \verb|#proc| is the desired number of processor cores.
+
+\section{Creating the Input File: PFLOTRAN Keywords}
 
 The PFLOTRAN input file construction is based on keywords. Lines beginning with a colon (:) are treated as comments. Each entry to the input file must begin in the first column. Keywords {\tt SKIP} and {\tt NOSKIP} are used to skip over sections of the input file. Blank lines may occur in input file. Alternate keyword spelling is indicated in round brackets (~). Input options are indicated in square brackets [~], as well as default values. Curly brackets \{~\} indicate the result of invoking the corresponding keyword. Always refer to source code when in doubt!
 
 Initial and boundary conditions and material properties are assigned to spatial regions using a novel {\em coupler} approach. In this approach, initial and boundary conditions (keyword CONDITION) are assigned to regions (keyword REGION) using keywords INITIAL\_CONDITION and BOUNDARY\_CONDITION. Material properties (keyword MATERIAL) are assigned to regions using the keyword STRATIGRAPHY.
 
-\begin{longtable}{lll}%[h]%\centering
+\begin{longtable}{ll}%[h]%\centering
 %\caption{PFLOTRAN Keywords}\label{flkeywd} 
 
 %\vspace{4mm}
 
 %\begin{tabular}{lll} 
 \toprule[1.5pt]
-\multicolumn{1}{c}{Keyword} & \multicolumn{1}{c}{Status} &\multicolumn{1}{c}{Comments}\\
+\multicolumn{1}{c}{Keyword} & \multicolumn{1}{c}{Description}\\
 \midrule[1pt]
 \hyperlink{target_bcon}{BOUNDARY\_CONDITION} & \\
 \hyperlink{target_brk}{BREAKTHROUGH} & \\
@@ -1273,6 +1381,14 @@ DATASET permy perm_inv.dat
 DATASET permz perm_inv.dat
 
 \end{verbatim}
+
+\section{References}
+
+\begin{description}
+
+\item Balay S, Eijkhout V, Gropp WD, McInnes LC and Smith BF (1997) Modern Software Tools in Scientific Computing, Eds. Arge E, Bruaset AM and Langtangen HP (Birkha\"user Press), pp. 163--202.
+
+\end{description}
 
 \end{document}
 
