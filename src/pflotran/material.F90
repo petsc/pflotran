@@ -567,8 +567,8 @@ subroutine SaturationFunctionCompute(pressure,saturation,relative_perm, &
       Fg = saturation_function%alpha
       a = saturation_function%m
       Pd = 100.d0*por/sqrt(perm/(3.8068d0*(Fg**(-1.334d0)))) ! psi
-      if (pc > Pd) then
-        PHg = 9.63051d-4*pc
+      PHg = 9.63051d-4*pc
+      if (PHg > Pd) then
         saturation = 1.d0-exp(-Fg/log10(PHg/Pd))
 #if 0
         alpha = pc*(1.d0+1.d-8)
