@@ -243,6 +243,7 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
   PetscInt :: ghosted_id, local_id, istart, iend, sum_connection, idof, iconn
   PetscInt :: iphasebc, iphase
   PetscReal, pointer :: xx_loc_p(:), icap_loc_p(:), iphase_loc_p(:)
+  PetscReal, pointer :: perm_xx_loc_p(:), porosity_loc_p(:)
   PetscReal :: xxbc(realization%option%nflowdof)
   PetscErrorCode :: ierr
   
@@ -257,6 +258,8 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
   call VecGetArrayF90(field%flow_xx_loc,xx_loc_p, ierr)
   call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr)
   call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr)
+  call VecGetArrayF90(field%perm_xx_loc,perm_xx_loc_p,ierr)
+  call VecGetArrayF90(field%porosity_loc,porosity_loc_p,ierr)
 
   do ghosted_id = 1, grid%ngmax
     if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
@@ -272,6 +275,7 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
                        aux_vars(ghosted_id), &
                        iphase, &
                        realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
+                       porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &
                        option)
     iphase_loc_p(ghosted_id) = iphase
   enddo
@@ -308,6 +312,7 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
       call RichardsAuxVarCompute(xxbc,aux_vars_bc(sum_connection), &
                          iphasebc, &
                          realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
+                         porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &
                          option)
     enddo
     boundary_condition => boundary_condition%next
@@ -317,6 +322,8 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
   call VecRestoreArrayF90(field%flow_xx_loc,xx_loc_p, ierr)
   call VecRestoreArrayF90(field%icap_loc,icap_loc_p,ierr)
   call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p,ierr)
+  call VecRestoreArrayF90(field%perm_xx_loc,perm_xx_loc_p,ierr)
+  call VecRestoreArrayF90(field%porosity_loc,porosity_loc_p,ierr)
   
   patch%RichardsAux%aux_vars_up_to_date = .true.
 
@@ -425,7 +432,7 @@ subroutine RichardsUpdateFixedAccumPatch(realization)
   PetscInt :: ghosted_id, local_id, istart, iend, iphase
   PetscReal, pointer :: xx_p(:), icap_loc_p(:), iphase_loc_p(:)
   PetscReal, pointer :: porosity_loc_p(:), tor_loc_p(:), volume_p(:), &
-                          ithrm_loc_p(:), accum_p(:)
+                          ithrm_loc_p(:), accum_p(:), perm_xx_loc_p(:)
                           
   PetscErrorCode :: ierr
   
@@ -443,6 +450,7 @@ subroutine RichardsUpdateFixedAccumPatch(realization)
   call VecGetArrayF90(field%tor_loc,tor_loc_p,ierr)
   call VecGetArrayF90(field%volume,volume_p,ierr)
   call VecGetArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
+  call VecGetArrayF90(field%perm_xx_loc,perm_xx_loc_p,ierr)
 
   call VecGetArrayF90(field%flow_accum, accum_p, ierr)
 
@@ -459,6 +467,7 @@ subroutine RichardsUpdateFixedAccumPatch(realization)
                        aux_vars(ghosted_id), &
                        iphase, &
                        realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
+                       porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                       
                        option)
     iphase_loc_p(ghosted_id) = iphase
     call RichardsAccumulation(aux_vars(ghosted_id), &
@@ -475,6 +484,7 @@ subroutine RichardsUpdateFixedAccumPatch(realization)
   call VecRestoreArrayF90(field%tor_loc,tor_loc_p,ierr)
   call VecRestoreArrayF90(field%volume,volume_p,ierr)
   call VecRestoreArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
+  call VecRestoreArrayF90(field%perm_xx_loc,perm_xx_loc_p,ierr)
 
   call VecRestoreArrayF90(field%flow_accum, accum_p, ierr)
 
@@ -633,7 +643,8 @@ subroutine RichardsAccumulationDerivative(aux_var,por,vol,rock_dencpr,option, &
       pert = x(ideriv)*perturbation_tolerance
       x_pert = x
       x_pert(ideriv) = x_pert(ideriv) + pert
-      call RichardsAuxVarCompute(x_pert,aux_var_pert,iphase,sat_func,option)
+      call RichardsAuxVarCompute(x_pert,aux_var_pert,iphase,sat_func, &
+                                 0.d0,0.d0,option)
 #if 0      
       select case(ideriv)
         case(1)
@@ -970,8 +981,10 @@ subroutine RichardsFluxDerivative(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,
       x_pert_dn = x_dn
       x_pert_up(ideriv) = x_pert_up(ideriv) + pert_up
       x_pert_dn(ideriv) = x_pert_dn(ideriv) + pert_dn
-      call RichardsAuxVarCompute(x_pert_up,aux_var_pert_up,iphase,sat_func_up,option)
-      call RichardsAuxVarCompute(x_pert_dn,aux_var_pert_dn,iphase,sat_func_dn,option)
+      call RichardsAuxVarCompute(x_pert_up,aux_var_pert_up,iphase,sat_func_up, &
+                                 0.d0,0.d0,option)
+      call RichardsAuxVarCompute(x_pert_dn,aux_var_pert_dn,iphase,sat_func_dn, &
+                                 0.d0,0.d0,option)
       call RichardsFlux(aux_var_pert_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
                         aux_var_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
                         area,dist_gravity,upweight, &
@@ -1356,8 +1369,10 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
       if (ibndtype(ideriv) == ZERO_GRADIENT_BC) then
         x_pert_up(ideriv) = x_pert_dn(ideriv)
       endif   
-      call RichardsAuxVarCompute(x_pert_dn,aux_var_pert_dn,iphase,sat_func_dn,option)
-      call RichardsAuxVarCompute(x_pert_up,aux_var_pert_up,iphase,sat_func_dn,option)
+      call RichardsAuxVarCompute(x_pert_dn,aux_var_pert_dn,iphase,sat_func_dn, &
+                                 0.d0,0.d0,option)
+      call RichardsAuxVarCompute(x_pert_up,aux_var_pert_up,iphase,sat_func_dn, &
+                                 0.d0,0.d0,option)
       call RichardsBCFlux(ibndtype,aux_vars,aux_var_pert_up,aux_var_pert_dn, &
                           por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
                           area,dist_gravity,option,v_darcy,res_pert_dn)
