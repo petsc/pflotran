@@ -1013,7 +1013,11 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
                    grid%structured_grid%nx+1,grid%structured_grid%ny+1,grid%structured_grid%nz+1
       string = trim(string) // ' DATAPACKING=BLOCK'
                                                 ! 4=dataset name, 5=material_id
-      string = trim(string) // ', VARLOCATION=([4-5]=CELLCENTERED)'
+      if (associated(patch%imat)) then
+        string = trim(string) // ', VARLOCATION=([4-5]=CELLCENTERED)'
+      else
+        string = trim(string) // ', VARLOCATION=([4]=CELLCENTERED)'
+      endif
     else
       write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
                    &'', K='',i4,'','')') &
@@ -1033,17 +1037,22 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
                                   natural_vec,NATURAL,option)    
 
   ! write out coorindates
-  call GetCoordinates(grid,global_vec,X_COORDINATE)
-  call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-  call WriteTecplotDataSetFromVec(fid,realization,natural_vec,TECPLOT_REAL)
 
-  call GetCoordinates(grid,global_vec,Y_COORDINATE)
-  call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-  call WriteTecplotDataSetFromVec(fid,realization,natural_vec,TECPLOT_REAL)
+  if (realization%discretization%itype == STRUCTURED_GRID) then
+    call WriteTecplotStructuredGrid(fid,realization)
+  else  
+    call GetCoordinates(grid,global_vec,X_COORDINATE)
+    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+    call WriteTecplotDataSetFromVec(fid,realization,natural_vec,TECPLOT_REAL)
 
-  call GetCoordinates(grid,global_vec,Z_COORDINATE)
-  call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-  call WriteTecplotDataSetFromVec(fid,realization,natural_vec,TECPLOT_REAL)
+    call GetCoordinates(grid,global_vec,Y_COORDINATE)
+    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+    call WriteTecplotDataSetFromVec(fid,realization,natural_vec,TECPLOT_REAL)
+
+    call GetCoordinates(grid,global_vec,Z_COORDINATE)
+    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+    call WriteTecplotDataSetFromVec(fid,realization,natural_vec,TECPLOT_REAL)
+  endif    
 
   call DiscretizationGlobalToNatural(discretization,vector,natural_vec,ONEDOF)
   call WriteTecplotDataSetFromVec(fid,realization,natural_vec,TECPLOT_REAL)
