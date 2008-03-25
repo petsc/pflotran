@@ -1390,5 +1390,19 @@ DATASET permz perm_inv.dat
 
 \end{description}
 
+\newpage
+\section{FAQ}
+
+\subsection{\sl iobuf load errors}
+
+It may be the case that the `iobuf'module is causing problems.  That is a module that, if it's loaded, links
+with an IO buffering library. It can speed up IO considerably, but there
+are have been some bugs (hopefully fixed) identified with it before.  It
+is loaded by default.  You might want to try a 'module unload' of that
+before building PFLOTRAN, and seeing if that works. Unfortunately, it
+may be necessary to mess with the configuration files for the PETSc builds to
+make sure that you don't link with the iobuf library.
+
+
 \end{document}
 
