@@ -76,6 +76,7 @@ module Material_module
 
   PetscInt, parameter :: VAN_GENUCHTEN = 1
   PetscInt, parameter :: BROOKS_COREY = 2
+  PetscInt, parameter :: THOMEER_COREY = 3
 
   PetscInt, parameter :: DEFAULT = 0
   PetscInt, parameter :: BURDINE = 1
@@ -431,8 +432,9 @@ end subroutine SaturatFuncConvertListToArray
 !
 ! ************************************************************************** !
 subroutine SaturationFunctionCompute(pressure,saturation,relative_perm, &
-                                     dsat_pres,dkr_pres,saturation_function, &
-                                     option)
+                                     dsat_pres,dkr_pres, &
+                                     saturation_function, &
+                                     auxvar1,auxvar2,option)
 
   use Option_module
   
@@ -440,6 +442,7 @@ subroutine SaturationFunctionCompute(pressure,saturation,relative_perm, &
 
   PetscReal :: pressure, saturation, relative_perm, dsat_pres, dkr_pres
   type(saturation_function_type) :: saturation_function
+  PetscReal :: auxvar1,auxvar2
   type(option_type) :: option
 
   PetscInt :: iphase = 1
@@ -448,6 +451,8 @@ subroutine SaturationFunctionCompute(pressure,saturation,relative_perm, &
   PetscReal :: dkr_Se, power
   PetscReal :: pc_alpha, pc_alpha_n, one_plus_pc_alpha_n
   PetscReal :: pc_alpha_neg_lambda
+  PetscReal :: por, perm
+  PetscReal :: Fg, a, Pd, PHg
   
   dsat_pres = 0.d0
   dkr_pres = 0.d0
@@ -555,6 +560,31 @@ subroutine SaturationFunctionCompute(pressure,saturation,relative_perm, &
         case default
           call printErrMsg(option,"Unknown relative permeabilty function")
       end select
+    case(THOMEER_COREY)
+      pc = option%pref-pressure
+      por = auxvar1
+      perm = auxvar2*1.013202d15 ! convert from m^2 to mD
+      Fg = saturation_function%alpha
+      a = saturation_function%m
+      Pd = 100.d0*por/sqrt(perm/(3.8068d0*(Fg**(-1.334d0)))) ! psi
+      PHg = 9.63051d-4*pc
+      if (PHg > Pd) then
+        saturation = 1.d0-exp(-Fg/log10(PHg/Pd))
+#if 0
+        alpha = pc*(1.d0+1.d-8)
+        m = 9.63051d-4*alpha
+        n = 1.d0-exp(-Fg/log10(m/Pd))
+        n = (n-saturation)/(alpha-pc)
+#endif        
+        dsat_pc = (saturation-1.d0)*Fg/(log10(PHg/Pd)**2.d0)/(pc*2.30258509d0)
+        ! Sr assumed to be zero
+        relative_perm = saturation**a
+        dkr_pc = a*saturation**(a-1.d0)*dsat_pc
+      else
+        saturation = 1.d0
+        relative_perm = 1.d0
+        return
+      endif
     case default
       call printErrMsg(option,"Unknown saturation function")
   end select

@@ -404,7 +404,7 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option,timestep_cut_flag, &
   
   if (dtt > 2.d0 * dt) dtt = 2.d0 * dt
   if (dtt > stepper%dt_max) dtt = stepper%dt_max
-  if (dtt>.25d0*time .and. time>1.d-2) dtt=.25d0*time
+  if (dtt>.25d0*time .and. time>5.d2) dtt=.25d0*time
   dt = dtt
 
   if (associated(flow_stepper)) then

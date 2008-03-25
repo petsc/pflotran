@@ -181,7 +181,8 @@ end subroutine RichardsAuxVarCopy
 ! date: 02/22/08
 !
 ! ************************************************************************** !
-subroutine RichardsAuxVarCompute(x,aux_var,iphase,saturation_function,option)
+subroutine RichardsAuxVarCompute(x,aux_var,iphase,saturation_function, &
+                                 por,perm,option)
 
   use Option_module
   use water_eos_module
@@ -193,7 +194,8 @@ subroutine RichardsAuxVarCompute(x,aux_var,iphase,saturation_function,option)
   type(saturation_function_type) :: saturation_function
   PetscReal :: x(option%nflowdof)
   type(richards_auxvar_type) :: aux_var
-  PetscInt ::iphase
+  PetscReal :: por, perm
+  PetscInt :: iphase
 
   PetscErrorCode :: ierr
   PetscReal :: pw,dw_kg,dw_mol,hw,sat_pressure,visl
@@ -234,6 +236,7 @@ subroutine RichardsAuxVarCompute(x,aux_var,iphase,saturation_function,option)
     call SaturationFunctionCompute(aux_var%pres,aux_var%sat,kr, &
                                    ds_dp,dkr_dp, &
                                    saturation_function, &
+                                   por,perm, &
                                    option)
     dpw_dp = 0
   else

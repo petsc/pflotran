@@ -1376,17 +1376,16 @@ subroutine readInput(simulation,filename)
           write(IUNIT2,'(/," *PCKR: ",i3)') ireg
           write(IUNIT2,'("  icp swir    lambda         alpha")')
           do j = 1, count
-            i=option%icaptype(j)
             if (option%iflowmode == MPH_MODE .or. &
                 option%iflowmode == RICHARDS_MODE .or. &
                 option%iflowmode == RICHARDS_LITE_MODE) then
-              write(IUNIT2,'(i4,1p8e12.4)') i,(option%sir(np,i),np=1, &
-                option%nphase),option%lambda(i),option%alpha(i), &
-                option%pcwmax(i),option%pcbetac(i),option%pwrprm(i)
+              write(IUNIT2,'(i4,1p8e12.4)') option%icaptype(j),(option%sir(np,j),np=1, &
+                option%nphase),option%lambda(j),option%alpha(j), &
+                option%pcwmax(j),option%pcbetac(j),option%pwrprm(j)
             else
-              write(IUNIT2,'(i4,1p7e12.4)') i,option%swir(i), &
-                option%lambda(i),option%alpha(i),option%pcwmax(i), &
-                option%pcbetac(i),option%pwrprm(i)
+              write(IUNIT2,'(i4,1p7e12.4)') option%icaptype(j),option%swir(j), &
+                option%lambda(j),option%alpha(j),option%pcwmax(j), &
+                option%pcbetac(j),option%pwrprm(j)
             endif
           enddo
         end if
