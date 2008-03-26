@@ -1937,6 +1937,10 @@ subroutine OutputHDF5(realization)
                                    filename
   endif
   
+  ! write out data sets 
+  call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
+                                  option)   
+
   if (first) then
 
     ! create a group for the coordinates data set
@@ -1982,6 +1986,14 @@ subroutine OutputHDF5(realization)
     deallocate(array)
 !GEH - Structured Grid Dependence - End
 
+    ! material id
+    if (associated(patch%imat)) then
+      call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
+      string = "Material ID"
+      call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id, &
+                                         HDF_NATIVE_INTEGER) 
+    endif
+
     call h5gclose_f(grp_id,hdf5_err)
     
   endif
@@ -1994,10 +2006,6 @@ subroutine OutputHDF5(realization)
   endif
   call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
   
-  ! write out data sets 
-  call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
-                                  option)   
-
   select case(option%iflowmode)
   
     case(MPH_MODE,RICHARDS_MODE, &
@@ -2089,6 +2097,15 @@ subroutine OutputHDF5(realization)
     case default
 
   end select
+
+  if (option%ntrandof > 0) then
+    do i=1,option%ntrandof
+      call OutputGetVarFromArray(realization,global_vec,TOTAL_CONCENTRATION,i)
+      string = "Concentration"
+      call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id, &
+                                         H5T_NATIVE_DOUBLE)
+    enddo
+  endif  
   
   if (output_option%print_hdf5_velocities) then
 
@@ -2156,7 +2173,7 @@ subroutine OutputHDF5(realization)
     endif
     
   endif 
-  
+
   ! call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
 
