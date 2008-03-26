@@ -137,9 +137,9 @@ subroutine OutputBreakthrough(realization)
   endif
 #endif
  
-!  if (realization%output_option%print_tecplot) then
+  if (realization%output_option%print_tecplot) then
     call OutputBreakthroughTecplot(realization)
-!  endif
+  endif
 
 end subroutine OutputBreakthrough
 
