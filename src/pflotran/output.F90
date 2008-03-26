@@ -1902,7 +1902,7 @@ subroutine OutputHDF5(realization)
   Vec :: natural_vec
   PetscReal, pointer :: v_ptr
   
-  character(len=MAXWORDLENGTH) :: filename = "pflow.h5"
+  character(len=MAXWORDLENGTH) :: filename = "pflotran.h5"
   character(len=MAXSTRINGLENGTH) :: string
   logical, save :: first = .true.
   PetscReal, pointer :: array(:)
