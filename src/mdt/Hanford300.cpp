@@ -23,7 +23,7 @@ Hanford300::Hanford300(Grid **grid_) {
 
   nx = 270;
   ny = 500;
-  nz = 80;
+  nz = 120;
 
 //  nx = 135;
 //  ny = 250;
@@ -56,7 +56,8 @@ Hanford300::Hanford300(Grid **grid_) {
   PetscReal len_x = 1350.;
   PetscReal len_y = 2500.;
 //  PetscReal len_z = 60.;
-  PetscReal len_z = 20.;
+  PetscReal len_z = 30.;
+//  PetscReal len_z = 20.;
 
   dx = len_x/(PetscReal)nx;
   dy = len_y/(PetscReal)ny;
@@ -71,8 +72,8 @@ Hanford300::Hanford300(Grid **grid_) {
   Grid *grid = *grid_;
   grid->setGridSpacing(dx,dy,dz);
 
-//  grid->setOrigin(593618.9,114565.1,70.);
-  grid->setOrigin(593618.9,114565.1,90.);
+//  grid->setOrigin(593618.9,114565.1,70.); // for 60m depth
+  grid->setOrigin(593618.9,114565.1,90.); // for 20m and 30m dept
   grid->setRotation(14.);
 
 //  grid->computeCoordinates();
@@ -537,7 +538,8 @@ void Hanford300::computePlumeSource(Grid *grid, Polygon *p) {
     PetscInt local_id = grid->cells[i].getIdLocal();
     if (local_id > -1) {
 //      if (grid->cells[i].getZ() >= 104. && grid->cells[i].getZ() < 106. &&
-      if (grid->cells[i].getZ() >= 104. &&
+      if (grid->cells[i].getZ() >= 104. && grid->cells[i].getZ() < 110. &&
+//      if (grid->cells[i].getZ() >= 104. &&
           p->pointInPolygon(grid->cells[i].getX(),
                             grid->cells[i].getY())) {
         PetscInt vertex_list[5] = {4,0,0,0,0};
