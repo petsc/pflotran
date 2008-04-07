@@ -21,17 +21,17 @@ Hanford300::Hanford300(Grid **grid_) {
 
   PetscInt nx, ny, nz;
 
-  nx = 270;
-  ny = 500;
-  nz = 80;
+//  nx = 270;
+//  ny = 500;
+//  nz = 80;
 
 //  nx = 135;
 //  ny = 250;
 //  nz = 60;
 
-//  nx = 70;
-//  ny = 125;
-//  nz = 10;
+//  nx = 71;
+//  ny = 120;
+//  nz = 20;
 
 //  nx = 17;
 //  ny = 32;
@@ -69,7 +69,35 @@ Hanford300::Hanford300(Grid **grid_) {
   PetscPrintf(PETSC_COMM_WORLD,"nz = %d, dz = %f, lenz = %f\n",nz,dz,nz*dz);
   *grid_ = new Grid(nx,ny,nz);
   Grid *grid = *grid_;
+
+// grid spacing with a bias
+#if 0
+  PetscReal sum_x = 0.;
+  PetscReal sum_y = 0.;
+  PetscReal *dx_array = new double[nx];
+  PetscReal *dy_array = new double[ny];
+  PetscReal *dz_array = new double[nz];
+  for (int i=0; i<nx; i++)
+    dx_array[i] = 10.;
+  for (int i=0; i<ny; i++)
+    dy_array[i] = 10.;
+  for (int i=0; i<nz; i++)
+    dz_array[i] = 1.;
+
+  for (int i=10; i>-1; i--) {
+    dx_array[i] = 10.*pow(1.303527,11.-i);
+    sum_x += dx_array[i];
+  }
+
+  for (int i=0; i<10; i++) {
+    dy_array[110+i] = 10.*pow(1.353088,i+1.);
+    dy_array[9-i] = 10.*pow(1.353088,i+1.);
+    sum_y += dy_array[9-i];
+  }
+  grid->setGridSpacing(dx_array,dy_array,dz_array);
+#else
   grid->setGridSpacing(dx,dy,dz);
+#endif
 
 //  grid->setOrigin(593618.9,114565.1,70.);
   grid->setOrigin(593618.9,114565.1,90.);
@@ -106,7 +134,7 @@ Hanford300::Hanford300(Grid **grid_) {
 
   AsciiGrid::nasciigrids = 7;
   string *grid_filenames = new string[AsciiGrid::nasciigrids];
-#if 0
+#if 1
   grid_filenames[0].append("./basalt_PNNL_grid_20m.asc");
   grid_filenames[1].append("./u9PNNL_grid_20m.asc");
   grid_filenames[2].append("./u8PNNL_grid_20m.asc");

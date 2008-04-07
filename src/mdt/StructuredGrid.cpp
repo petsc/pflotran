@@ -54,6 +54,8 @@ void StructuredGrid::setGridSpacing(PetscReal *dx_, PetscReal *dy_, PetscReal *d
   for (PetscInt k=0; k<nz; k++)
     dz[k] = dz_[k];
 
+  setLocalGridSpacing();
+
 }
 
 void StructuredGrid::setGridSpacing(PetscReal dx_, PetscReal dy_, PetscReal dz_) {
