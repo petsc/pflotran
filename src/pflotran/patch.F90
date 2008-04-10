@@ -7,9 +7,7 @@ module Patch_module
   use Strata_module
   use Region_module
   
-  use Richards_Aux_module
-  use Richards_Lite_Aux_module
-  use Reactive_Transport_Aux_module
+  use Auxilliary_module
 
   implicit none
 
@@ -42,9 +40,7 @@ module Patch_module
     type(strata_list_type), pointer :: strata
     type(breakthrough_list_type), pointer :: breakthrough
     
-    type(reactive_transport_type), pointer :: RTAux
-    type(richards_type), pointer :: RichardsAux
-    type(richards_lite_type), pointer :: RichardsLiteAux
+    type(auxilliary_type) :: aux
     
     type(patch_type), pointer :: next
 
@@ -116,9 +112,7 @@ function PatchCreate()
   allocate(patch%strata)
   call StrataInitList(patch%strata)
   
-  nullify(patch%RTAux)
-  nullify(patch%RichardsAux)
-  nullify(patch%RichardsLiteAux)
+  call AuxDestroy(patch%aux)
   
   nullify(patch%next)
   
@@ -812,9 +806,7 @@ subroutine PatchDestroy(patch)
   call BreakthroughDestroyList(patch%breakthrough)
   call StrataDestroyList(patch%strata)
   
-  call RTAuxDestroy(patch%RTAux)
-  call RichardsAuxDestroy(patch%RichardsAux)
-  call RichardsLiteAuxDestroy(patch%RichardsLiteAux)
+  call AuxDestroy(patch%aux)
   
   call BreakthroughDestroyList(patch%breakthrough)
   

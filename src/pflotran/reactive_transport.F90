@@ -120,14 +120,14 @@ subroutine RTSetupPatch(realization)
   patch => realization%patch
   grid => patch%grid
 
-  patch%RTAux => RTAuxCreate()
+  patch%aux%RT => RTAuxCreate()
     
   ! allocate aux_var data structures for all grid cells
-  allocate(patch%RTAux%aux_vars(grid%ngmax))
+  allocate(patch%aux%RT%aux_vars(grid%ngmax))
   do ghosted_id = 1, grid%ngmax
-    call RTAuxVarInit(patch%RTAux%aux_vars(ghosted_id),option)
+    call RTAuxVarInit(patch%aux%RT%aux_vars(ghosted_id),option)
   enddo
-  patch%RTAux%num_aux = grid%ngmax
+  patch%aux%RT%num_aux = grid%ngmax
   
   ! count the number of boundary connections and allocate
   ! aux_var data structures for them
@@ -139,11 +139,11 @@ subroutine RTSetupPatch(realization)
                      boundary_condition%connection%num_connections
     boundary_condition => boundary_condition%next
   enddo
-  allocate(patch%RTAux%aux_vars_bc(sum_connection))
+  allocate(patch%aux%RT%aux_vars_bc(sum_connection))
   do iconn = 1, sum_connection
-    call RTAuxVarInit(patch%RTAux%aux_vars_bc(iconn),option)
+    call RTAuxVarInit(patch%aux%RT%aux_vars_bc(iconn),option)
   enddo
-  patch%RTAux%num_aux_bc = sum_connection
+  patch%aux%RT%num_aux_bc = sum_connection
 
   ! create zero array for zeroing residual and Jacobian (1 on diagonal)
   ! for inactive cells (and isothermal)
@@ -260,7 +260,7 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
   option => realization%option
   field => realization%field
   patch => realization%patch
-  aux_vars => patch%RTAux%aux_vars
+  aux_vars => patch%aux%RT%aux_vars
   grid => patch%grid
 
   call VecGetArrayF90(field%tran_xx,xx_p, ierr)
@@ -556,8 +556,8 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
   field => realization%field
   patch => realization%patch
   grid => patch%grid
-  aux_vars => patch%RTAux%aux_vars
-  aux_vars_bc => patch%RTAux%aux_vars_bc
+  aux_vars => patch%aux%RT%aux_vars
+  aux_vars_bc => patch%aux%RT%aux_vars_bc
   
   call RTUpdateAuxVars(realization)
   aux_vars_up_to_date = .false. ! override flags since they will soon be out of date  
@@ -717,8 +717,8 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
 #endif  
 
   if (inactive_cells_exist) then
-    do i=1,patch%RTAux%n_zero_rows
-      r_p(patch%RTAux%zero_rows_local(i)) = 0.d0
+    do i=1,patch%aux%RT%n_zero_rows
+      r_p(patch%aux%RT%zero_rows_local(i)) = 0.d0
     enddo
   endif
   
@@ -842,8 +842,8 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   field => realization%field
   patch => realization%patch  
   grid => patch%grid
-  aux_vars => patch%RTAux%aux_vars
-  aux_vars_bc => patch%RTAux%aux_vars_bc
+  aux_vars => patch%aux%RT%aux_vars
+  aux_vars_bc => patch%aux%RT%aux_vars_bc
 
   flag = SAME_NONZERO_PATTERN  
   call MatZeroEntries(A,ierr)
@@ -1015,8 +1015,8 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   
   if (inactive_cells_exist) then
     rdum = 1.d0
-    call MatZeroRowsLocal(A,patch%RTAux%n_zero_rows, &
-                          patch%RTAux%zero_rows_local_ghosted,rdum,ierr) 
+    call MatZeroRowsLocal(A,patch%aux%RT%n_zero_rows, &
+                          patch%aux%RT%zero_rows_local_ghosted,rdum,ierr) 
   endif
 
   if (realization%debug%matview_Jacobian) then
@@ -1079,7 +1079,7 @@ subroutine RTUpdateAuxVars(realization)
     istart = iend-option%ncomp+1
    
     call RTAuxVarCompute(xx_loc_p(istart:iend), &
-                         patch%RTAux%aux_vars(ghosted_id), &
+                         patch%aux%RT%aux_vars(ghosted_id), &
                          option)
   enddo
 
@@ -1106,7 +1106,7 @@ subroutine RTUpdateAuxVars(realization)
       enddo
       
       call RTAuxVarCompute(xxbc, &
-                           patch%RTAux%aux_vars_bc(sum_connection), &
+                           patch%aux%RT%aux_vars_bc(sum_connection), &
                            option)
     enddo
     boundary_condition => boundary_condition%next
@@ -1183,9 +1183,9 @@ subroutine RTCreateZeroArray(patch,option)
     enddo
   endif
 
-  patch%RTAux%zero_rows_local => zero_rows_local
-  patch%RTAux%zero_rows_local_ghosted => zero_rows_local_ghosted
-  patch%RTAux%n_zero_rows = n_zero_rows  
+  patch%aux%RT%zero_rows_local => zero_rows_local
+  patch%aux%RT%zero_rows_local_ghosted => zero_rows_local_ghosted
+  patch%aux%RT%n_zero_rows = n_zero_rows  
 
   call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
                      PETSC_COMM_WORLD,ierr)
@@ -1245,7 +1245,7 @@ subroutine RTGetVarFromArray(realization,vec,ivar,isubvar)
         case(TOTAL_CONCENTRATION)
           do local_id=1,grid%nlmax
             ghosted_id = grid%nL2G(local_id)    
-            vec_ptr(local_id) = patch%RTAux%aux_vars(ghosted_id)%total(isubvar)
+            vec_ptr(local_id) = patch%aux%RT%aux_vars(ghosted_id)%total(isubvar)
           enddo
         case(MATERIAL_ID)
           do local_id=1,grid%nlmax
@@ -1304,7 +1304,7 @@ function RTGetVarFromArrayAtCell(realization,ivar,isubvar,local_id)
       call VecRestoreArrayF90(field%tran_xx,vec_ptr,ierr)
     case(TOTAL_CONCENTRATION)
       ghosted_id = grid%nL2G(local_id)    
-      value = patch%RTAux%aux_vars(ghosted_id)%total(isubvar)
+      value = patch%aux%RT%aux_vars(ghosted_id)%total(isubvar)
   end select
   
   RTGetVarFromArrayAtCell = value

@@ -138,15 +138,15 @@ subroutine RichardsLiteSetupPatch(realization)
   patch => realization%patch
   grid => patch%grid
 
-  patch%RichardsLiteAux => RichardsLiteAuxCreate()
+  patch%aux%RichardsLite => RichardsLiteAuxCreate()
   
   ! allocate aux_var data structures for all grid cells  
   allocate(aux_vars(grid%ngmax))
   do ghosted_id = 1, grid%ngmax
     call RichardsLiteAuxVarInit(aux_vars(ghosted_id),option)
   enddo
-  patch%RichardsLiteAux%aux_vars => aux_vars
-  patch%RichardsLiteAux%num_aux = grid%ngmax
+  patch%aux%RichardsLite%aux_vars => aux_vars
+  patch%aux%RichardsLite%num_aux = grid%ngmax
   
   ! count the number of boundary connections and allocate
   ! aux_var data structures for them  
@@ -162,8 +162,8 @@ subroutine RichardsLiteSetupPatch(realization)
   do iconn = 1, sum_connection
     call RichardsLiteAuxVarInit(aux_vars_bc(iconn),option)
   enddo
-  patch%RichardsLiteAux%aux_vars_bc => aux_vars_bc
-  patch%RichardsLiteAux%num_aux_bc = sum_connection
+  patch%aux%RichardsLite%aux_vars_bc => aux_vars_bc
+  patch%aux%RichardsLite%num_aux_bc = sum_connection
   
   ! create zero array for zeroing residual and Jacobian (1 on diagonal)
   ! for inactive cells (and isothermal)
@@ -248,8 +248,8 @@ subroutine RichardsLiteUpdateAuxVarsPatch(realization)
   grid => patch%grid
   field => realization%field
 
-  aux_vars => patch%RichardsLiteAux%aux_vars
-  aux_vars_bc => patch%RichardsLiteAux%aux_vars_bc
+  aux_vars => patch%aux%RichardsLite%aux_vars
+  aux_vars_bc => patch%aux%RichardsLite%aux_vars_bc
     
   call VecGetArrayF90(field%flow_xx_loc,xx_loc_p, ierr)
   call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr)
@@ -316,7 +316,7 @@ subroutine RichardsLiteUpdateAuxVarsPatch(realization)
   call VecRestoreArrayF90(field%perm_xx_loc,perm_xx_loc_p,ierr)
   call VecRestoreArrayF90(field%porosity_loc,porosity_loc_p,ierr)  
   
-  patch%RichardsLiteAux%aux_vars_up_to_date = .true.
+  patch%aux%RichardsLite%aux_vars_up_to_date = .true.
 
 end subroutine RichardsLiteUpdateAuxVarsPatch
 
@@ -437,7 +437,7 @@ subroutine RichardsLiUpdateFixedAccumPatch(realization)
   patch => realization%patch
   grid => patch%grid
 
-  aux_vars => patch%RichardsLiteAux%aux_vars
+  aux_vars => patch%aux%RichardsLite%aux_vars
     
   call VecGetArrayF90(field%flow_xx,xx_p, ierr)
   call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr)
@@ -1268,11 +1268,11 @@ subroutine RichardsLiteResidualPatch(snes,xx,r,realization,ierr)
   option => realization%option
   field => realization%field
 
-  aux_vars => patch%RichardsLiteAux%aux_vars
-  aux_vars_bc => patch%RichardsLiteAux%aux_vars_bc
+  aux_vars => patch%aux%RichardsLite%aux_vars
+  aux_vars_bc => patch%aux%RichardsLite%aux_vars_bc
 
   call RichardsLiteUpdateAuxVars(realization)
-  patch%RichardsLiteAux%aux_vars_up_to_date = .false. ! override flags since they will soon be out of date
+  patch%aux%RichardsLite%aux_vars_up_to_date = .false. ! override flags since they will soon be out of date
 
 ! now assign access pointer to local variables
   call VecGetArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
@@ -1475,9 +1475,9 @@ subroutine RichardsLiteResidualPatch(snes,xx,r,realization,ierr)
   enddo
 #endif  
 
-  if (patch%RichardsLiteAux%inactive_cells_exist) then
-    do i=1,patch%RichardsLiteAux%n_zero_rows
-      r_p(patch%RichardsLiteAux%zero_rows_local(i)) = 0.d0
+  if (patch%aux%RichardsLite%inactive_cells_exist) then
+    do i=1,patch%aux%RichardsLite%n_zero_rows
+      r_p(patch%aux%RichardsLite%zero_rows_local(i)) = 0.d0
     enddo
   endif
 
@@ -1505,7 +1505,7 @@ subroutine RichardsLiteResidualPatch(snes,xx,r,realization,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
   
-  patch%RichardsLiteAux%aux_vars_up_to_date = .false.
+  patch%aux%RichardsLite%aux_vars_up_to_date = .false.
 
 end subroutine RichardsLiteResidualPatch
 
@@ -1636,8 +1636,8 @@ subroutine RichardsLiteJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   option => realization%option
   field => realization%field
 
-  aux_vars => patch%RichardsLiteAux%aux_vars
-  aux_vars_bc => patch%RichardsLiteAux%aux_vars_bc
+  aux_vars => patch%aux%RichardsLite%aux_vars
+  aux_vars_bc => patch%aux%RichardsLite%aux_vars_bc
 
 ! dropped derivatives:
 !   1.D0 gas phase viscocity to all p,t,c,s
@@ -1908,10 +1908,10 @@ subroutine RichardsLiteJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
 
 ! zero out isothermal and inactive cells
-  if (patch%RichardsLiteAux%inactive_cells_exist) then
+  if (patch%aux%RichardsLite%inactive_cells_exist) then
     f_up = 1.d0
-    call MatZeroRowsLocal(A,patch%RichardsLiteAux%n_zero_rows, &
-                          patch%RichardsLiteAux%zero_rows_local_ghosted,f_up,ierr) 
+    call MatZeroRowsLocal(A,patch%aux%RichardsLite%n_zero_rows, &
+                          patch%aux%RichardsLite%zero_rows_local_ghosted,f_up,ierr) 
   endif
 
   if (realization%debug%matview_Jacobian) then
@@ -1998,13 +1998,13 @@ subroutine RichardsLiteCreateZeroArray(patch,option)
     enddo
   endif
 
-  patch%RichardsLiteAux%zero_rows_local => zero_rows_local
-  patch%RichardsLiteAux%zero_rows_local_ghosted => zero_rows_local_ghosted
-  patch%RichardsLiteAux%n_zero_rows = n_zero_rows
+  patch%aux%RichardsLite%zero_rows_local => zero_rows_local
+  patch%aux%RichardsLite%zero_rows_local_ghosted => zero_rows_local_ghosted
+  patch%aux%RichardsLite%n_zero_rows = n_zero_rows
   
   call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
                      PETSC_COMM_WORLD,ierr)
-  if (flag > 0) patch%RichardsLiteAux%inactive_cells_exist = .true.
+  if (flag > 0) patch%aux%RichardsLite%inactive_cells_exist = .true.
 
   if (ncount /= n_zero_rows) then
     print *, 'Error:  Mismatch in non-zero row count!', ncount, n_zero_rows
@@ -2114,9 +2114,9 @@ subroutine RichardsLiteGetVarFromArray(realization,vec,ivar,isubvar)
   grid => patch%grid
   field => realization%field
 
-  if (.not.patch%RichardsLiteAux%aux_vars_up_to_date) call RichardsLiteUpdateAuxVars(realization)
+  if (.not.patch%aux%RichardsLite%aux_vars_up_to_date) call RichardsLiteUpdateAuxVars(realization)
 
-  aux_vars => patch%RichardsLiteAux%aux_vars
+  aux_vars => patch%aux%RichardsLite%aux_vars
   
   call VecGetArrayF90(vec,vec_ptr,ierr)
 
@@ -2203,9 +2203,9 @@ function RichardsLiteGetVarFromArrayAtCell(realization,ivar,isubvar, &
   grid => patch%grid
   field => realization%field
 
-  if (.not.patch%RichardsLiteAux%aux_vars_up_to_date) call RichardsLiteUpdateAuxVars(realization)
+  if (.not.patch%aux%RichardsLite%aux_vars_up_to_date) call RichardsLiteUpdateAuxVars(realization)
 
-  aux_vars => patch%RichardsLiteAux%aux_vars
+  aux_vars => patch%aux%RichardsLite%aux_vars
   
   select case(ivar)
     case(TEMPERATURE,GAS_SATURATION,LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION, &
@@ -2264,7 +2264,7 @@ subroutine RichardsLiteDestroy(patch)
   type(patch_type) :: patch
   
   ! need to free array in aux vars
-  call RichardsLiteAuxDestroy(patch%RichardsLiteAux)
+  call RichardsLiteAuxDestroy(patch%aux%RichardsLite)
 
 end subroutine RichardsLiteDestroy
 
