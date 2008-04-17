@@ -54,7 +54,9 @@ module Structured_Grid_module
             StructuredGridReadDXYZ, &
             StructuredGridComputeVolumes, &
             StructGridPopulateConnection, &
-            StructGridGetIJKFromCoordinate
+            StructGridGetIJKFromCoordinate, &
+            StructGridGetIJKFromLocalID, &
+            StructGridGetIJKFromGhostedID
 
 contains
 
@@ -548,22 +550,72 @@ subroutine StructGridGetIJKFromCoordinate(structured_grid,x,y,z,i,j,k)
   enddo
 
   ! remember, zero-based 
-  if (i <= structured_grid%nxs .or. &
-      i > structured_grid%nxe .or. &
-      j <= structured_grid%nys .or. &
-      j > structured_grid%nye .or. &
-      k <= structured_grid%nzs .or. &
-      k > structured_grid%nze) then
+  if (i <= structured_grid%ngxs .or. &
+      i > structured_grid%ngxe .or. &
+      j <= structured_grid%ngys .or. &
+      j > structured_grid%ngye .or. &
+      k <= structured_grid%ngzs .or. &
+      k > structured_grid%ngze) then
     i = -1
     j = -1
     k = -1
   else
-   i = i - structured_grid%nxs
-   j = j - structured_grid%nys
-   k = k - structured_grid%nzs
+   i = i - structured_grid%ngxs
+   j = j - structured_grid%ngys
+   k = k - structured_grid%ngzs
   endif
     
 end subroutine StructGridGetIJKFromCoordinate
+
+! ************************************************************************** !
+!
+! StructGridGetIJKFromLocalID: Finds i,j,k indices for grid cell defined by 
+!                              local_id
+! author: Glenn Hammond
+! date: 04/11/08
+!
+! ************************************************************************** !
+subroutine StructGridGetIJKFromLocalID(structured_grid,local_id,i,j,k)
+
+  use Option_module
+  
+  implicit none
+  
+  type(structured_grid_type) :: structured_grid
+  type(option_type) :: option
+  PetscInt :: local_id
+  PetscReal :: i, j, k
+  
+  k= int((local_id-1)/structured_grid%nlxy) + 1
+  j= int(mod((local_id-1),structured_grid%nlxy)/structured_grid%nlx) + 1
+  i= mod(mod((local_id-1),structured_grid%nlxy),structured_grid%nlx) + 1  
+  
+end subroutine StructGridGetIJKFromLocalID
+
+! ************************************************************************** !
+!
+! StructGridGetIJKFromGhostedID: Finds i,j,k indices for grid cell defined by 
+!                                a ghosted id
+! author: Glenn Hammond
+! date: 04/11/08
+!
+! ************************************************************************** !
+subroutine StructGridGetIJKFromGhostedID(structured_grid,ghosted_id,i,j,k)
+
+  use Option_module
+  
+  implicit none
+  
+  type(structured_grid_type) :: structured_grid
+  type(option_type) :: option
+  PetscInt :: ghosted_id
+  PetscInt :: i, j, k
+  
+  k= int((ghosted_id-1)/structured_grid%ngxy) + 1
+  j= int(mod((ghosted_id-1),structured_grid%ngxy)/structured_grid%ngx) + 1
+  i= mod(mod((ghosted_id-1),structured_grid%ngxy),structured_grid%ngx) + 1  
+  
+end subroutine StructGridGetIJKFromGhostedID
 
 ! ************************************************************************** !
 !

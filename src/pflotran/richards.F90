@@ -2665,7 +2665,7 @@ end subroutine RichardsGetVarFromArray
 ! date: 02/11/08
 !
 ! ************************************************************************** !
-function RichardsGetVarFromArrayAtCell(realization,ivar,isubvar,local_id)
+function RichardsGetVarFromArrayAtCell(realization,ivar,isubvar,ghosted_id)
 
   use Realization_module
   use Grid_module
@@ -2679,9 +2679,8 @@ function RichardsGetVarFromArrayAtCell(realization,ivar,isubvar,local_id)
   type(realization_type) :: realization
   PetscInt :: ivar
   PetscInt :: isubvar
-  PetscInt :: local_id
-
   PetscInt :: ghosted_id
+
   PetscReal :: value
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -2699,8 +2698,6 @@ function RichardsGetVarFromArrayAtCell(realization,ivar,isubvar,local_id)
   if (.not.patch%aux%Richards%aux_vars_up_to_date) call RichardsUpdateAuxVars(realization)
 
   aux_vars => patch%aux%Richards%aux_vars
-  
-  ghosted_id = grid%nL2G(local_id)    
 
   select case(ivar)
     case(TEMPERATURE)

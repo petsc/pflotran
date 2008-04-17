@@ -371,21 +371,21 @@ subroutine GridLocalizeRegions(grid,region_list,option)
         if (count /= region%num_cells) &
           call printErrMsg(option,"Mismatch in number of cells in block region")
 
-      else if (dabs(region%coordinate(1)) > 1.d-40 .and. &
-               dabs(region%coordinate(2)) > 1.d-40 .and. &
-               dabs(region%coordinate(3)) > 1.d-40 .and. &
-               region%coordinate(1) >= grid%x_min .and. &
-               region%coordinate(1) <= grid%x_max .and. &
-               region%coordinate(2) >= grid%y_min .and. &
-               region%coordinate(2) <= grid%y_max .and. &
-               region%coordinate(3) >= grid%z_min .and. &
-               region%coordinate(3) <= grid%z_max) then
+      else if (dabs(region%coordinate(X_DIRECTION)) > 1.d-40 .and. &
+               dabs(region%coordinate(Y_DIRECTION)) > 1.d-40 .and. &
+               dabs(region%coordinate(Z_DIRECTION)) > 1.d-40 .and. &
+               region%coordinate(X_DIRECTION) >= grid%x_min .and. &
+               region%coordinate(X_DIRECTION) <= grid%x_max .and. &
+               region%coordinate(Y_DIRECTION) >= grid%y_min .and. &
+               region%coordinate(Y_DIRECTION) <= grid%y_max .and. &
+               region%coordinate(Z_DIRECTION) >= grid%z_min .and. &
+               region%coordinate(Z_DIRECTION) <= grid%z_max) then
         select case(grid%itype)
           case(STRUCTURED_GRID)
             call StructGridGetIJKFromCoordinate(grid%structured_grid, &
-                                                region%coordinate(1), &
-                                                region%coordinate(2), &
-                                                region%coordinate(3), &
+                                                region%coordinate(X_DIRECTION), &
+                                                region%coordinate(Y_DIRECTION), &
+                                                region%coordinate(Z_DIRECTION), &
                                                 i,j,k)
             if (i > 0 .and. j > 0 .and. k > 0) then
               region%num_cells = 1
@@ -403,8 +403,8 @@ subroutine GridLocalizeRegions(grid,region_list,option)
             call MPI_Allreduce(region%num_cells,count,ONE_INTEGER,MPI_INTEGER,MPI_SUM, &
                                PETSC_COMM_WORLD,ierr)   
             if (count /= 1) then
-              write(string,*) 'Region: (coord)', region%coordinate(1), &
-                              region%coordinate(2), region%coordinate(3), &
+              write(string,*) 'Region: (coord)', region%coordinate(X_DIRECTION), &
+                              region%coordinate(Y_DIRECTION), region%coordinate(Z_DIRECTION), &
                               ' not found in global domain.', count
               call printErrMsg(option,string)
             endif

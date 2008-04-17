@@ -2172,7 +2172,7 @@ end subroutine RichardsLiteGetVarFromArray
 !
 ! ************************************************************************** !
 function RichardsLiteGetVarFromArrayAtCell(realization,ivar,isubvar, &
-                                           local_id)
+                                           ghosted_id)
 
   use Realization_module
   use Patch_module
@@ -2186,10 +2186,9 @@ function RichardsLiteGetVarFromArrayAtCell(realization,ivar,isubvar, &
   type(realization_type) :: realization
   PetscInt :: ivar
   PetscInt :: isubvar
-  PetscInt :: local_id
+  PetscInt :: ghosted_id
 
   PetscReal :: value
-  PetscInt :: ghosted_id
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
@@ -2227,7 +2226,6 @@ function RichardsLiteGetVarFromArrayAtCell(realization,ivar,isubvar, &
           call printErrMsg(option,'GAS_DENSITY not supported by RichardsLite')
       end select
     case(PRESSURE,LIQUID_SATURATION)
-      ghosted_id = grid%nL2G(local_id)    
       select case(ivar)
         case(PRESSURE)
           value = aux_vars(ghosted_id)%pres
@@ -2238,10 +2236,10 @@ function RichardsLiteGetVarFromArrayAtCell(realization,ivar,isubvar, &
       end select
     case(PHASE)
       call VecGetArrayF90(field%iphas_loc,vec_ptr,ierr)
-      value = vec_ptr(grid%nL2G(local_id))
+      value = vec_ptr(ghosted_id)
       call VecRestoreArrayF90(field%iphas_loc,vec_ptr,ierr)
     case(MATERIAL_ID)
-      value = patch%imat(grid%nL2G(local_id))
+      value = patch%imat(ghosted_id)
   end select
   
   RichardsLiteGetVarFromArrayAtCell = value
