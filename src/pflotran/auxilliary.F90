@@ -16,9 +16,29 @@ module Auxilliary_module
     type(richards_lite_type), pointer :: RichardsLite
   end type auxilliary_type
   
-  public :: AuxDestroy
+  public :: AuxInit, &
+            AuxDestroy
 
 contains
+
+! ************************************************************************** !
+!
+! AuxInit: Nullifies pointers in auxilliary object
+! author: Glenn Hammond
+! date: 04/09/08
+!
+! ************************************************************************** !
+subroutine AuxInit(aux)
+
+  implicit none
+  
+  type(auxilliary_type) :: aux
+  
+  nullify(aux%RT)
+  nullify(aux%Richards)
+  nullify(aux%RichardsLite)
+  
+end subroutine AuxInit
 
 ! ************************************************************************** !
 !
