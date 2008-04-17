@@ -112,6 +112,8 @@ function PatchCreate()
   allocate(patch%strata)
   call StrataInitList(patch%strata)
   
+  call AuxInit(patch%aux)
+  
   nullify(patch%next)
   
   PatchCreate => patch
