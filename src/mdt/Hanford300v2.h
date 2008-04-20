@@ -1,5 +1,5 @@
-#ifndef HANFORD300_H_
-#define HANFORD300_H_
+#ifndef HANFORD300V2_H_
+#define HANFORD300V2_H_
 
 #include <string.h>
 
@@ -14,11 +14,11 @@
 
 #include "include/petsc.h"
 
-class Hanford300 {
+class Hanford300v2 {
   
 public:
-  Hanford300(Grid **grid);
-  virtual ~Hanford300();
+  Hanford300v2(Grid **grid);
+  virtual ~Hanford300v2();
 
   void computeTopBoundary(Grid *grid, PetscInt complete);
   void computeBottomBoundary(Grid *grid, PetscInt complete);
@@ -48,4 +48,4 @@ private:
 
 };
 
-#endif /*HANFORD300_H_*/
+#endif /*HANFORD300V2_H_*/
