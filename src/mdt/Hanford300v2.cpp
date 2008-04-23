@@ -134,7 +134,7 @@ Hanford300v2::Hanford300v2(Grid **grid_) {
 
   AsciiGrid::nasciigrids = 7;
   string *grid_filenames = new string[AsciiGrid::nasciigrids];
-#if 1
+#if 0
   grid_filenames[0].append("./basalt_PNNL_grid_20m.asc");
   grid_filenames[1].append("./u9PNNL_grid_20m.asc");
   grid_filenames[2].append("./u8PNNL_grid_20m.asc");
