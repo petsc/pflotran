@@ -1245,7 +1245,7 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch  
   PetscInt :: i
-  PetscInt :: max_proc
+  PetscInt :: max_proc, max_proc_prefetch
   PetscMPIInt :: iproc, recv_size
   PetscInt :: max_local_size, local_size
   PetscInt :: istart, iend, num_in_array
@@ -1269,6 +1269,7 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
   ! maximum number of initial messages  
 #define HANDSHAKE  
   max_proc = option%io_handshake_buffer_size
+  max_proc_prefetch = option%io_handshake_buffer_size / 10
 
   if (size_flag /= 0) then
     call MPI_Allreduce(size_flag,max_local_size,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
@@ -1331,7 +1332,8 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
     endif
     do iproc=1,option%commsize-1
 #ifdef HANDSHAKE    
-      if (option%io_handshake_buffer_size > 0 .and. iproc+10 > max_proc) then
+      if (option%io_handshake_buffer_size > 0 .and. &
+          iproc+max_proc_prefetch >= max_proc) then
         max_proc = max_proc + option%io_handshake_buffer_size
         call MPI_Bcast(max_proc,1,MPI_INTEGER,ZERO_INTEGER,PETSC_COMM_WORLD, &
                        ierr)
@@ -1398,7 +1400,7 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
 #ifdef HANDSHAKE    
     if (option%io_handshake_buffer_size > 0) then
       do
-        if (iproc < max_proc) exit
+        if (option%myrank < max_proc) exit
         call MPI_Bcast(max_proc,1,MPI_INTEGER,ZERO_INTEGER,PETSC_COMM_WORLD, &
                        ierr)
       enddo
