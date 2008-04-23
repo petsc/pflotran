@@ -182,9 +182,11 @@
 		2366A7870D8605330003BB1F /* Project object */ = {
 			isa = PBXProject;
 			buildConfigurationList = 2366A7880D8605330003BB1F /* Build configuration list for PBXProject "pflotran_xcode" */;
+			compatibilityVersion = "Xcode 2.4";
 			hasScannedForEncodings = 0;
 			mainGroup = 2366A7850D8605330003BB1F;
 			projectDirPath = "";
+			projectRoot = "";
 			targets = (
 			);
 		};
