@@ -1245,6 +1245,7 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch  
   PetscInt :: i
+  PetscInt :: max_proc
   PetscMPIInt :: iproc, recv_size
   PetscInt :: max_local_size, local_size
   PetscInt :: istart, iend, num_in_array
@@ -1264,7 +1265,11 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
   call PetscLogEventBegin(logging%event_output_write_tecplot, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
-  
+
+  ! maximum number of initial messages  
+#define HANDSHAKE  
+  max_proc = option%io_handshake_buffer_size
+
   if (size_flag /= 0) then
     call MPI_Allreduce(size_flag,max_local_size,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
                        PETSC_COMM_WORLD,ierr)
@@ -1325,6 +1330,13 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
       num_in_array = local_size-iend
     endif
     do iproc=1,option%commsize-1
+#ifdef HANDSHAKE    
+      if (option%io_handshake_buffer_size > 0 .and. iproc+10 > max_proc) then
+        max_proc = max_proc + option%io_handshake_buffer_size
+        call MPI_Bcast(max_proc,1,MPI_INTEGER,ZERO_INTEGER,PETSC_COMM_WORLD, &
+                       ierr)
+      endif
+#endif      
       call MPI_Probe(iproc,MPI_ANY_TAG,PETSC_COMM_WORLD,status,ierr)
       recv_size = status(MPI_TAG)
       if (datatype == 0) then
@@ -1367,6 +1379,13 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
         endif
       endif
     enddo
+#ifdef HANDSHAKE    
+    if (option%io_handshake_buffer_size > 0) then
+      max_proc = -1
+      call MPI_Bcast(max_proc,1,MPI_INTEGER,ZERO_INTEGER,PETSC_COMM_WORLD, &
+                     ierr)
+    endif
+#endif      
     ! Print the remaining values, if they exist
     if (datatype == 0) then
       if (num_in_array > 0) &
@@ -1376,6 +1395,15 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
         write(fid,1001) real_data(1:num_in_array)
     endif
   else
+#ifdef HANDSHAKE    
+    if (option%io_handshake_buffer_size > 0) then
+      do
+        if (iproc < max_proc) exit
+        call MPI_Bcast(max_proc,1,MPI_INTEGER,ZERO_INTEGER,PETSC_COMM_WORLD, &
+                       ierr)
+      enddo
+    endif
+#endif    
     if (datatype == TECPLOT_INTEGER) then
       call MPI_Send(integer_data,local_size,MPI_INTEGER,ZERO_INTEGER,local_size, &
                     PETSC_COMM_WORLD,ierr)
@@ -1383,6 +1411,15 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
       call MPI_Send(real_data,local_size,MPI_DOUBLE_PRECISION,ZERO_INTEGER,local_size, &
                     PETSC_COMM_WORLD,ierr)
     endif
+#ifdef HANDSHAKE    
+    if (option%io_handshake_buffer_size > 0) then
+      do
+        call MPI_Bcast(max_proc,1,MPI_INTEGER,ZERO_INTEGER,PETSC_COMM_WORLD, &
+                       ierr)
+        if (max_proc < 0) exit
+      enddo
+    endif
+#endif    
   endif
       
   if (datatype == TECPLOT_INTEGER) then

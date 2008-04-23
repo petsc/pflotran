@@ -1460,6 +1460,10 @@ subroutine readInput(simulation,filename)
       case ('USE_TOUCH_OPTIONS')
         option%use_touch_options = .true.
 
+      case ('HANDSHAKE_IO')
+        call fiReadInt(string,option%io_handshake_buffer_size,ierr)
+        call fiErrorMsg(option%myrank,'io_handshake_buffer_size','HANDSHAKE_IO', ierr)
+
       case ('OVERWRITE_RESTART_TRANSPORT')
         option%overwrite_restart_transport = .true.
 
