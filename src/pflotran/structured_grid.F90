@@ -550,19 +550,19 @@ subroutine StructGridGetIJKFromCoordinate(structured_grid,x,y,z,i,j,k)
   enddo
 
   ! remember, zero-based 
-  if (i <= structured_grid%ngxs .or. &
-      i > structured_grid%ngxe .or. &
-      j <= structured_grid%ngys .or. &
-      j > structured_grid%ngye .or. &
-      k <= structured_grid%ngzs .or. &
-      k > structured_grid%ngze) then
+  if (i <= structured_grid%nxs .or. &
+      i > structured_grid%nxe .or. &
+      j <= structured_grid%nys .or. &
+      j > structured_grid%nye .or. &
+      k <= structured_grid%nzs .or. &
+      k > structured_grid%nze) then
     i = -1
     j = -1
     k = -1
   else
-   i = i - structured_grid%ngxs
-   j = j - structured_grid%ngys
-   k = k - structured_grid%ngzs
+   i = i - structured_grid%nxs
+   j = j - structured_grid%nys
+   k = k - structured_grid%nzs
   endif
     
 end subroutine StructGridGetIJKFromCoordinate
