@@ -53,6 +53,7 @@ util_obj  = ${common_src}fileio.o \
 pflotran_obj = ${common_src}pflow_pckr_mod.o \
 	${common_src}option.o \
 	${common_src}logging.o \
+	${common_src}reaction_aux.o\
 	${common_src}reactive_transport_aux.o\
 	${common_src}richards_aux.o\
 	${common_src}richards_lite_aux.o\
@@ -195,7 +196,7 @@ output.o : grid.o structured_grid.o option.o realization.o field.o \
 pflow_mphase_ResJac.o : realization.o option.o field.o grid.o coupler.o \
                         translator_mixed_fluid_mph.o discretization.o
 translator_mixed_fluid_mph.o : pflow_pckr_mod.o
-reaction.o : reactive_transport_aux.o option.o
+reaction.o : reactive_transport_aux.o reaction_aux.o option.o
 transport.o : reactive_transport_aux.o option.o
 reactive_transport.o : realization.o reaction.o transport.o \
                        reactive_transport_aux.o
