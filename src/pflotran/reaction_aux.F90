@@ -13,7 +13,10 @@ module Reaction_Aux_module
     character(len=MAXNAMELENGTH), pointer :: comp_name(:)
     PetscReal, pointer :: stoich(:)
     PetscInt, pointer :: comp_ids(:)
+    PetscReal, pointer :: a0
+    PetscReal, pointer :: z
     PetscReal, pointer :: logK
+    type(equilibrium_rxn_type), pointer :: next
   end type equilibrium_rxn_type
 
   type, public :: kinetic_rxn_type
@@ -24,6 +27,7 @@ module Reaction_Aux_module
     PetscReal, pointer :: logK
     PetscReal :: rate_forward
     PetscReal :: rate_reverse
+    type(kinetic_rxn_type), pointer :: next
   end type kinetic_rxn_type
 
   type, public :: mineral_rxn_type
@@ -41,11 +45,10 @@ module Reaction_Aux_module
   end type mineral_rxn_type
   
   type, public :: ion_exchange_rxn_type
-    character(len=MAXNAMELENGTH) :: mnrl_name
+    character(len=MAXNAMELENGTH) :: cation_name
     PetscInt :: ncomp
     character(len=MAXNAMELENGTH), pointer :: comp_name(:)
     PetscInt, pointer :: comp_ids(:)
-    PetscReal, pointer :: stoich(:)
     PetscReal, pointer :: z(:)
     PetscReal, pointer :: k(:)
     PetscReal, pointer :: X_(:)
@@ -55,8 +58,7 @@ module Reaction_Aux_module
   end type ion_exchange_rxn_type
  
   type, public :: surface_complexation_rxn_type
-    character(len=MAXNAMELENGTH) :: mnrl_name
-    PetscInt :: mrnl_id
+    character(len=MAXNAMELENGTH) :: surfcmplx_name
     PetscInt :: ncomp
     character(len=MAXNAMELENGTH), pointer :: comp_name(:)
     PetscInt, pointer :: comp_ids(:)
