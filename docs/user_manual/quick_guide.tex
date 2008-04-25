@@ -280,6 +280,8 @@ PFLOTRAN solves a system of generally nonlinear partial differential equations d
 
 \section{Installation}
 
+The following instructions should aid in installing openmpi, PETSc, HDF5 and PFLOTRAN on a UNIX or Mac computer running MacOSX 10.4 or later.
+
 \subsection{Openmpi}
 
 Set environment variables \verb|PKGS| and \verb|MPI_HOME| and the appropriate \verb|PATH|:
@@ -388,7 +390,35 @@ where \verb|#proc| is the desired number of processor cores.
 
 This section gives an overview in alphabetical order of the objects and their data structures used in PFLOTRAN. The upper most object is {\bf Simulation} followed by {\bf Realization}, followed by {\bf Level}, {\bf Patch} and {\bf Grid}.
 
+\begin{longtable}{ll}%[h]%\centering
+%\caption{PFLOTRAN Keywords}\label{flkeywd} 
+
+%\vspace{4mm}
+
+%\begin{tabular}{lll} 
+\toprule[1.5pt]
+\multicolumn{1}{c}{Object} & \multicolumn{1}{c}{Description}\\
+\midrule[1pt]
+\hyperlink{target_obj_cond}{Condition} & \\
+\hyperlink{target_obj_conn}{Connection} & \\
+\hyperlink{target_obj_coupler}{Coupler} & \\
+\hyperlink{target_obj_grid}{Grid} & \\
+\hyperlink{target_obj_level}{Level} & \\
+\hyperlink{target_obj_mat}{Material} & \\
+\hyperlink{target_obj_option}{Option} & \\
+\hyperlink{target_obj_patch}{Patch} & \\
+\hyperlink{target_obj_real}{Realization} & \\
+\hyperlink{target_obj_region}{Region} & \\
+\hyperlink{target_obj_simulation}{Simulation} & \\
+\hyperlink{target_obj_solver}{Solver} & \\
+\hyperlink{target_obj_stepper}{Stepper} & \\
+\hyperlink{target_obj_strata}{Strata} & \\
+\bottomrule[1.5pt]
+%\end{tabular} 
+\end{longtable}
+
 \subsection{Condition}
+\protect\hypertarget{target_obj_cond}{}
 
 \begin{verbatim}
   type, public :: condition_dataset_type
@@ -453,6 +483,7 @@ This section gives an overview in alphabetical order of the objects and their da
 \end{verbatim}
 
 \subsection{Connection}
+\protect\hypertarget{target_obj_conn}{}
 
 \begin{verbatim}
   type, public :: connection_set_type
@@ -489,6 +520,7 @@ This section gives an overview in alphabetical order of the objects and their da
 \end{verbatim}
 
 \subsection{Coupler}
+\protect\hypertarget{target_obj_coupler}{}
 
 \begin{verbatim}
   type, public :: coupler_type
@@ -526,6 +558,7 @@ This section gives an overview in alphabetical order of the objects and their da
 \end{verbatim}
 
 \subsection{Grid}
+\protect\hypertarget{target_obj_grid}{}
 
 \begin{verbatim}
   type, public :: grid_type
@@ -562,6 +595,7 @@ This section gives an overview in alphabetical order of the objects and their da
 \end{verbatim}
 
 \subsection{Level}
+\protect\hypertarget{target_obj_level}{}
 
 \begin{verbatim}
   type, public :: level_type 
@@ -586,6 +620,7 @@ This section gives an overview in alphabetical order of the objects and their da
 \end{verbatim}
 
 \subsection{Material}
+\protect\hypertarget{target_obj_mat}{}
 
 \begin{verbatim}
   type, public :: material_type
@@ -645,6 +680,7 @@ This section gives an overview in alphabetical order of the objects and their da
 \end{verbatim}
 
 \subsection{Option}
+\protect\hypertarget{target_obj_option}{}
 
 \begin{verbatim}
   type, public :: option_type 
@@ -692,9 +728,9 @@ This section gives an overview in alphabetical order of the objects and their da
     
     PetscReal :: scale
     PetscReal, pointer :: rock_density(:),cpr(:),dencpr(:),ckdry(:),ckwet(:), &
-                       tau(:),cdiff(:),cexp(:)
-    PetscReal, pointer :: swir(:),lambda(:),alpha(:),pckrm(:),pcwmax(:),pcbetac(:), &
-                       pwrprm(:),sir(:,:)
+                          tau(:),cdiff(:),cexp(:)
+    PetscReal, pointer :: swir(:),lambda(:),alpha(:),pckrm(:),pcwmax(:), &
+                          pcbetac(:),pwrprm(:),sir(:,:)
     PetscInt, pointer:: icaptype(:)
 
     PetscReal :: m_nacl
@@ -753,6 +789,7 @@ This section gives an overview in alphabetical order of the objects and their da
 \end{verbatim}
 
 \subsection{Patch}
+\protect\hypertarget{target_obj_patch}{}
 
 \begin{verbatim}
   type, public :: patch_type 
@@ -800,6 +837,7 @@ This section gives an overview in alphabetical order of the objects and their da
 \end{verbatim}
 
 \subsection{Realization}
+\protect\hypertarget{target_obj_real}{}
 
 \begin{verbatim}
   type, public :: realization_type
@@ -829,6 +867,7 @@ This section gives an overview in alphabetical order of the objects and their da
 \end{verbatim}
 
 \subsection{Region}
+\protect\hypertarget{target_obj_region}{}
 
 \begin{verbatim}
   type, public :: block_type
@@ -862,6 +901,7 @@ This section gives an overview in alphabetical order of the objects and their da
 \end{verbatim}
 
 \subsection{Simulation}
+\protect\hypertarget{target_obj_simulation}{}
 
 \begin{verbatim}
   type, public :: simulation_type
@@ -874,6 +914,7 @@ This section gives an overview in alphabetical order of the objects and their da
 \end{verbatim}
 
 \subsection{Solver}
+\protect\hypertarget{target_obj_solver}{}
 
 \begin{verbatim}
   type, public :: solver_type
@@ -915,17 +956,18 @@ This section gives an overview in alphabetical order of the objects and their da
 \end{verbatim}
 
 \subsection{Stepper}
+\protect\hypertarget{target_obj_stepper}{}
 
 \begin{verbatim}
   type, public :: stepper_type
   
-    PetscInt :: steps         ! The number of time-steps taken by the code.
-    PetscInt :: nstepmax      ! Maximum number of timesteps taken by the code.
-    PetscInt :: icut_max      ! Maximum number of timestep cuts within one time step.
-    PetscInt :: ndtcmx        ! Steps needed after cutting to increase time step
-    PetscInt :: newtcum       ! Total number of Newton steps taken.
-    PetscInt :: icutcum       ! Total number of cuts in the timestep taken.    
-    PetscInt :: iaccel        ! Accelerator index
+    PetscInt :: steps     ! The number of time-steps taken by the code.
+    PetscInt :: nstepmax  ! Maximum number of timesteps taken by the code.
+    PetscInt :: icut_max  ! Maximum number of timestep cuts within one time step.
+    PetscInt :: ndtcmx    ! Steps needed after cutting to increase time step
+    PetscInt :: newtcum   ! Total number of Newton steps taken.
+    PetscInt :: icutcum   ! Total number of cuts in the timestep taken.    
+    PetscInt :: iaccel    ! Accelerator index
     
     PetscReal :: dt_min
     PetscReal :: dt_max
@@ -940,7 +982,8 @@ This section gives an overview in alphabetical order of the objects and their da
 \end{verbatim}
 
 \subsection{Strata}
- 
+\protect\hypertarget{target_obj_strata}{}
+
 \begin{verbatim}
   type, public :: strata_type
     PetscInt :: id                                 ! id of strata
