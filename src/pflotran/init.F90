@@ -1920,7 +1920,7 @@ subroutine assignUniformVelocity(realization)
   sum_connection = 0
   do 
     if (.not.associated(boundary_condition)) exit
-    cur_connection_set => boundary_condition%connection
+    cur_connection_set => boundary_condition%connection_set
     do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
       vdarcy = OptionDotProduct(option%uniform_velocity, &
@@ -2024,9 +2024,9 @@ subroutine verifyCoupler(realization,patch,coupler_list)
 
     call VecZeroEntries(global_vec,ierr)
     call VecGetArrayF90(global_vec,vec_ptr,ierr) 
-    if (associated(coupler%connection)) then
-      do iconn = 1, coupler%connection%num_connections
-        local_id = coupler%connection%id_dn(iconn)
+    if (associated(coupler%connection_set)) then
+      do iconn = 1, coupler%connection_set%num_connections
+        local_id = coupler%connection_set%id_dn(iconn)
         vec_ptr(local_id) = coupler%id
       enddo
     else

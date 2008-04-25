@@ -1537,7 +1537,7 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
     qsrc1 = qsrc1 / option%fmwh2o ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
     csrc1 = csrc1 / option%fmwco2
       
-    cur_connection_set => source_sink%connection
+    cur_connection_set => source_sink%connection_set
     
     do iconn = 1, cur_connection_set%num_connections      
       local_id = cur_connection_set%id_dn(iconn)
@@ -1698,7 +1698,7 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
   do 
     if (.not.associated(boundary_condition)) exit
     
-    cur_connection_set => boundary_condition%connection
+    cur_connection_set => boundary_condition%connection_set
     
     do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
@@ -2063,7 +2063,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
     qsrc1 = qsrc1 / option%fmwh2o ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
     csrc1 = csrc1 / option%fmwco2
       
-    cur_connection_set => source_sink%connection
+    cur_connection_set => source_sink%connection_set
     
     do iconn = 1, cur_connection_set%num_connections      
       local_id = cur_connection_set%id_dn(iconn)
@@ -2128,7 +2128,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
   do 
     if (.not.associated(boundary_condition)) exit
     
-    cur_connection_set => boundary_condition%connection
+    cur_connection_set => boundary_condition%connection_set
 
     do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
@@ -2797,7 +2797,7 @@ subroutine pflow_update_mphase(realization)
     do 
       if (.not.associated(boundary_condition)) exit
     
-      cur_connection_set => boundary_condition%connection
+      cur_connection_set => boundary_condition%connection_set
 
       do iconn = 1, cur_connection_set%num_connections
         sum_connection = sum_connection + 1
@@ -2985,7 +2985,7 @@ subroutine pflow_mphase_initadj(realization)
 !  num_connection = 0
 !  do 
 !    if (.not.associated(boundary_condition)) exit    
-!    num_connection = num_connection + boundary_condition%connection%num_connections
+!    num_connection = num_connection + boundary_condition%connection_set%num_connections
 !    boundary_condition => boundary_condition%next
 !  enddo
 
@@ -2999,7 +2999,7 @@ subroutine pflow_mphase_initadj(realization)
   do 
     if (.not.associated(boundary_condition)) exit
     
-    cur_connection_set => boundary_condition%connection
+    cur_connection_set => boundary_condition%connection_set
     
     do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1

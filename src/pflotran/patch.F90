@@ -502,8 +502,8 @@ subroutine PatchInitCouplerAuxVars(patch,coupler_list,option)
   do
     if (.not.associated(coupler)) exit
     
-    if (associated(coupler%connection)) then
-      num_connections = coupler%connection%num_connections
+    if (associated(coupler%connection_set)) then
+      num_connections = coupler%connection_set%num_connections
 
       if (coupler%condition%iclass == FLOW_CLASS) then
 
@@ -606,7 +606,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
     
     if (associated(coupler%aux_real_var)) then
         
-      num_connections = coupler%connection%num_connections
+      num_connections = coupler%connection_set%num_connections
 
       condition => coupler%condition
       
@@ -724,7 +724,7 @@ subroutine PatchAssignUniformVelocity(patch,option)
   sum_connection = 0
   do 
     if (.not.associated(boundary_condition)) exit
-    cur_connection_set => boundary_condition%connection
+    cur_connection_set => boundary_condition%connection_set
     do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
       vdarcy = OptionDotProduct(option%uniform_velocity, &

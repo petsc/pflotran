@@ -177,18 +177,18 @@ end subroutine ConnectionInitList
 ! date: 10/15/07
 !
 ! ************************************************************************** !
-subroutine ConnectionAddToList(new_connection,list)
+subroutine ConnectionAddToList(new_connection_set,list)
 
   implicit none
   
-  type(connection_set_type), pointer :: new_connection
+  type(connection_set_type), pointer :: new_connection_set
   type(connection_set_list_type) :: list
   
   list%num_connection_objects = list%num_connection_objects + 1
-  new_connection%id = list%num_connection_objects
-  if (.not.associated(list%first)) list%first => new_connection
-  if (associated(list%last)) list%last%next => new_connection
-  list%last => new_connection
+  new_connection_set%id = list%num_connection_objects
+  if (.not.associated(list%first)) list%first => new_connection_set
+  if (associated(list%last)) list%last%next => new_connection_set
+  list%last => new_connection_set
   
 end subroutine ConnectionAddToList
 
@@ -207,16 +207,16 @@ subroutine ConnectionConvertListToArray(list)
   type(connection_set_list_type) :: list
     
   PetscInt :: count
-  type(connection_set_type), pointer :: cur_connection
+  type(connection_set_type), pointer :: cur_connection_set
   
   
   allocate(list%array(list%num_connection_objects))
   
-  cur_connection => list%first
+  cur_connection_set => list%first
   do 
-    if (.not.associated(cur_connection)) exit
-    list%array(cur_connection%id)%ptr => cur_connection
-    cur_connection => cur_connection%next
+    if (.not.associated(cur_connection_set)) exit
+    list%array(cur_connection_set%id)%ptr => cur_connection_set
+    cur_connection_set => cur_connection_set%next
   enddo
 
 end subroutine ConnectionConvertListToArray
@@ -266,19 +266,19 @@ subroutine ConnectionDestroyList(list)
   
   type(connection_set_list_type), pointer :: list
     
-  type(connection_set_type), pointer :: cur_connection, prev_connection
+  type(connection_set_type), pointer :: cur_connection_set, prev_connection_set
   
   if (.not.associated(list)) return
   
   if (associated(list%array)) deallocate(list%array)
   nullify(list%array)
   
-  cur_connection => list%first
+  cur_connection_set => list%first
   do 
-    if (.not.associated(cur_connection)) exit
-    prev_connection => cur_connection
-    cur_connection => cur_connection%next
-    call ConnectionDestroy(prev_connection)
+    if (.not.associated(cur_connection_set)) exit
+    prev_connection_set => cur_connection_set
+    cur_connection_set => cur_connection_set%next
+    call ConnectionDestroy(prev_connection_set)
   enddo
   
   nullify(list%first)

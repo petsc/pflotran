@@ -130,20 +130,20 @@ subroutine GridComputeInternalConnect(grid,option)
   type(grid_type) :: grid
   type(option_type) :: option
   
-  type(connection_set_type), pointer :: connection
+  type(connection_set_type), pointer :: connection_set
   
   select case(grid%itype)
     case(STRUCTURED_GRID)
-      connection => &
+      connection_set => &
         StructGridComputeInternConnect(grid%structured_grid,option)
     case(UNSTRUCTURED_GRID) 
-      connection => &
+      connection_set => &
         UnstGridComputeInternConnect(grid%unstructured_grid,option)
   end select
   
   allocate(grid%internal_connection_set_list)
   call ConnectionInitList(grid%internal_connection_set_list)
-  call ConnectionAddToList(connection,grid%internal_connection_set_list)
+  call ConnectionAddToList(connection_set,grid%internal_connection_set_list)
   
 end subroutine GridComputeInternalConnect
 

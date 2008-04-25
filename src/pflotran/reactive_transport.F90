@@ -136,7 +136,7 @@ subroutine RTSetupPatch(realization)
   do 
     if (.not.associated(boundary_condition)) exit
     sum_connection = sum_connection + &
-                     boundary_condition%connection%num_connections
+                     boundary_condition%connection_set%num_connections
     boundary_condition => boundary_condition%next
   enddo
   allocate(patch%aux%RT%aux_vars_bc(sum_connection))
@@ -599,7 +599,7 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
   do 
     if (.not.associated(source_sink)) exit
     
-    cur_connection_set => source_sink%connection
+    cur_connection_set => source_sink%connection_set
     
     do iconn = 1, cur_connection_set%num_connections      
       local_id = cur_connection_set%id_dn(iconn)
@@ -684,7 +684,7 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
   do 
     if (.not.associated(boundary_condition)) exit
     
-    cur_connection_set => boundary_condition%connection
+    cur_connection_set => boundary_condition%connection_set
     
     do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
@@ -880,7 +880,7 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   do 
     if (.not.associated(source_sink)) exit
     
-    cur_connection_set => source_sink%connection
+    cur_connection_set => source_sink%connection_set
     
     do iconn = 1, cur_connection_set%num_connections      
       local_id = cur_connection_set%id_dn(iconn)
@@ -968,7 +968,7 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   do 
     if (.not.associated(boundary_condition)) exit
     
-    cur_connection_set => boundary_condition%connection
+    cur_connection_set => boundary_condition%connection_set
     
     do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
@@ -1087,7 +1087,7 @@ subroutine RTUpdateAuxVars(realization)
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
-    cur_connection_set => boundary_condition%connection
+    cur_connection_set => boundary_condition%connection_set
     do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
       local_id = cur_connection_set%id_dn(iconn)

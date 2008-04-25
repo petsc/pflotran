@@ -2217,7 +2217,7 @@ function GetVelocityAtCell(fid,realization,local_id)
   sum_connection = 0
   do
     if (.not.associated(boundary_condition)) exit
-    cur_connection_set => boundary_condition%connection
+    cur_connection_set => boundary_condition%connection_set
     do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
       if (cur_connection_set%id_dn(iconn) == local_id) then
@@ -2377,7 +2377,7 @@ function GetVelocityAtCoord(fid,realization,local_id,coordinate)
   sum_connection = 0
   do
     if (.not.associated(boundary_condition)) exit
-    cur_connection_set => boundary_condition%connection
+    cur_connection_set => boundary_condition%connection_set
     do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
       if (cur_connection_set%id_dn(iconn) == local_id) then
@@ -3329,7 +3329,7 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
   sum_connection = 0
   do
     if (.not.associated(boundary_condition)) exit
-    cur_connection_set => boundary_condition%connection
+    cur_connection_set => boundary_condition%connection_set
     do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
       local_id = cur_connection_set%id_dn(iconn)
@@ -3458,7 +3458,7 @@ subroutine ComputeFlowMassBalance(realization)
   sum_connection = 0
   do
     if (.not.associated(boundary_condition)) exit
-    cur_connection_set => boundary_condition%connection
+    cur_connection_set => boundary_condition%connection_set
     do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
       local_id = cur_connection_set%id_dn(iconn)
@@ -3621,7 +3621,7 @@ subroutine ComputeFlowCellVelocityStats(realization)
       sum_connection = 0
       do
         if (.not.associated(boundary_condition)) exit
-        cur_connection_set => boundary_condition%connection
+        cur_connection_set => boundary_condition%connection_set
         do iconn = 1, cur_connection_set%num_connections
           sum_connection = sum_connection + 1
           local_id = cur_connection_set%id_dn(iconn)
