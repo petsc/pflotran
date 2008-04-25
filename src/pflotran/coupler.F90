@@ -13,7 +13,7 @@ module Coupler_module
   type, public :: coupler_type
     PetscInt :: id                                       ! id of coupler
     PetscInt :: itype                                    ! integer defining type
-    character(len=MAXWORDLENGTH) :: ctype               ! character string definign type
+    character(len=MAXWORDLENGTH) :: ctype               ! character string defining type
     character(len=MAXWORDLENGTH) :: condition_name      ! character string defining name of condition to be applied
     character(len=MAXWORDLENGTH) :: region_name         ! character string defining name of region to be applied
     PetscInt :: icondition                               ! id of condition in condition array/list
