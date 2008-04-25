@@ -11,7 +11,7 @@ module Reactive_Transport_Aux_module
   type, public :: reactive_transport_auxvar_type
     PetscReal, pointer :: total(:)
     PetscReal, pointer :: dtotal(:,:)
-    PetscReal, pointer :: free_ion(:)
+    PetscReal, pointer :: primary_spec(:)
   end type reactive_transport_auxvar_type
   
   type, public :: reactive_transport_type
@@ -78,8 +78,8 @@ subroutine RTAuxVarInit(aux_var,option)
   aux_var%total = 0.d0
   allocate(aux_var%dtotal(option%ncomp,option%ncomp))
   aux_var%dtotal = 0.d0
-  allocate(aux_var%free_ion(option%ncomp))
-  aux_var%free_ion = 0.d0
+  allocate(aux_var%primary_spec(option%ncomp))
+  aux_var%primary_spec = 0.d0
   
 end subroutine RTAuxVarInit
 

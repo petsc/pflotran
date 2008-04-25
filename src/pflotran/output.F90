@@ -3210,7 +3210,7 @@ subroutine OutputGetVarFromArray(realization,vec,ivar,isubvar)
           call RichardsLiteGetVarFromArray(realization,vec,ivar,isubvar)
           return
       end select
-    case(FREE_ION_CONCENTRATION,TOTAL_CONCENTRATION)
+    case(PRIMARY_SPEC_CONCENTRATION,TOTAL_CONCENTRATION)
       call RTGetVarFromArray(realization,vec,ivar,isubvar)
     case(MATERIAL_ID)
       if (option%nflowdof > 0) then
