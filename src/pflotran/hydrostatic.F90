@@ -50,7 +50,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   
   type(condition_type), pointer :: condition
   
-  type(connection_type), pointer :: cur_connection_set
+  type(connection_set_type), pointer :: cur_connection_set
   
 #if 0
 
@@ -233,7 +233,7 @@ subroutine HydrostaticUpdateCouplerBetter(coupler,option,grid)
   
   type(condition_type), pointer :: condition
   
-  type(connection_type), pointer :: cur_connection_set
+  type(connection_set_type), pointer :: cur_connection_set
   
   condition => coupler%condition
     

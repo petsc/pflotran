@@ -6,7 +6,7 @@ module Connection_module
 
   private
 
-  type, public :: connection_type
+  type, public :: connection_set_type
     PetscInt :: id
     PetscInt :: itype                  ! connection type (boundary, internal, source sink
     PetscInt :: num_connections
@@ -18,24 +18,24 @@ module Connection_module
                                       !   1-3 = components of unit vector
     PetscReal, pointer :: area(:)        ! list of areas of faces normal to distance vectors
 !    PetscReal, pointer :: velocity(:,:)  ! velocity scalars for each phase
-    type(connection_type), pointer :: next
-  end type connection_type
+    type(connection_set_type), pointer :: next
+  end type connection_set_type
 
 
   ! pointer data structure required for making an array of region pointers in F90
-  type, public :: connection_ptr_type
-    type(connection_type), pointer :: ptr           ! pointer to the connection_type
-  end type connection_ptr_type 
+  type, public :: connection_set_ptr_type
+    type(connection_set_type), pointer :: ptr           ! pointer to the connection_set_type
+  end type connection_set_ptr_type 
   
-  type, public :: connection_list_type
+  type, public :: connection_set_list_type
     PetscInt :: num_connection_objects
-    type(connection_type), pointer :: first
-    type(connection_type), pointer :: last
-    type(connection_ptr_type), pointer :: array(:)
-  end type connection_list_type
+    type(connection_set_type), pointer :: first
+    type(connection_set_type), pointer :: last
+    type(connection_set_ptr_type), pointer :: array(:)
+  end type connection_set_list_type
   
-  type(connection_list_type), pointer, private :: internal_connection_list, &
-                                                  boundary_connection_list
+  type(connection_set_list_type), pointer, private :: internal_connection_set_list, &
+                                                      boundary_connection_set_list
 
 
   public :: ConnectionCreate, ConnectionAddToList, &
@@ -60,9 +60,9 @@ function ConnectionCreate(num_connections,num_dof,connection_itype)
   PetscInt :: num_dof
   PetscInt :: connection_itype
   
-  type(connection_type), pointer :: ConnectionCreate
+  type(connection_set_type), pointer :: ConnectionCreate
 
-  type(connection_type), pointer :: connection
+  type(connection_set_type), pointer :: connection
 
   allocate(connection)
   connection%id = 0
@@ -115,10 +115,10 @@ function ConnectionGetNumberInList(list)
 
   implicit none
   
-  type(connection_list_type) :: list
+  type(connection_set_list_type) :: list
 
   PetscInt :: ConnectionGetNumberInList
-  type(connection_type), pointer :: cur_connection_set
+  type(connection_set_type), pointer :: cur_connection_set
   
   ConnectionGetNumberInList = 0
   cur_connection_set => list%first
@@ -142,10 +142,10 @@ subroutine ConnectionAllocateLists()
 
   implicit none
   
-  allocate(internal_connection_list)
-  call ConnectionInitList(internal_connection_list)
-  allocate(boundary_connection_list)
-  call ConnectionInitList(boundary_connection_list)
+  allocate(internal_connection_set_list)
+  call ConnectionInitList(internal_connection_set_list)
+  allocate(boundary_connection_set_list)
+  call ConnectionInitList(boundary_connection_set_list)
   
 end subroutine
 
@@ -160,7 +160,7 @@ subroutine ConnectionInitList(list)
 
   implicit none
 
-  type(connection_list_type) :: list
+  type(connection_set_list_type) :: list
   
   nullify(list%first)
   nullify(list%last)
@@ -181,8 +181,8 @@ subroutine ConnectionAddToList(new_connection,list)
 
   implicit none
   
-  type(connection_type), pointer :: new_connection
-  type(connection_list_type) :: list
+  type(connection_set_type), pointer :: new_connection
+  type(connection_set_list_type) :: list
   
   list%num_connection_objects = list%num_connection_objects + 1
   new_connection%id = list%num_connection_objects
@@ -204,10 +204,10 @@ subroutine ConnectionConvertListToArray(list)
 
   implicit none
   
-  type(connection_list_type) :: list
+  type(connection_set_list_type) :: list
     
   PetscInt :: count
-  type(connection_type), pointer :: cur_connection
+  type(connection_set_type), pointer :: cur_connection
   
   
   allocate(list%array(list%num_connection_objects))
@@ -232,7 +232,7 @@ subroutine ConnectionDestroy(connection)
 
   implicit none
   
-  type(connection_type), pointer :: connection
+  type(connection_set_type), pointer :: connection
   
   if (.not.associated(connection)) return
   
@@ -264,9 +264,9 @@ subroutine ConnectionDestroyList(list)
 
   implicit none
   
-  type(connection_list_type), pointer :: list
+  type(connection_set_list_type), pointer :: list
     
-  type(connection_type), pointer :: cur_connection, prev_connection
+  type(connection_set_type), pointer :: cur_connection, prev_connection
   
   if (.not.associated(list)) return
   

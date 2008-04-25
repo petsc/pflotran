@@ -632,14 +632,14 @@ function StructGridComputeInternConnect(structured_grid,option)
   
   implicit none
   
-  type(connection_type), pointer :: StructGridComputeInternConnect
+  type(connection_set_type), pointer :: StructGridComputeInternConnect
   type(option_type) :: option
   type(structured_grid_type) :: structured_grid
   
   
   PetscInt :: i, j, k, iconn, id_up, id_dn
   PetscReal :: dist_up, dist_dn
-  type(connection_type), pointer :: connections
+  type(connection_set_type), pointer :: connections
   PetscErrorCode :: ierr
   
   call ConnectionAllocateLists()
@@ -739,7 +739,7 @@ subroutine StructGridPopulateConnection(structured_grid,connection,iface, &
   implicit none
  
   type(structured_grid_type) :: structured_grid
-  type(connection_type) :: connection
+  type(connection_set_type) :: connection
   PetscInt :: iface
   PetscInt :: iconn
   PetscInt :: cell_id_ghosted

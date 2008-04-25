@@ -23,7 +23,7 @@ module Coupler_module
     PetscReal, pointer :: aux_real_var(:,:)                ! auxilliary array for real values
     type(condition_type), pointer :: condition          ! pointer to condition in condition array/list
     type(region_type), pointer :: region                ! pointer to region in region array/list
-    type(connection_type), pointer :: connection        ! pointer to an array/list of connections
+    type(connection_set_type), pointer :: connection        ! pointer to an array/list of connections
     type(coupler_type), pointer :: next                 ! pointer to next coupler
   end type coupler_type
   
@@ -382,7 +382,7 @@ subroutine CouplerComputeConnections(grid,option,coupler)
   PetscInt :: cell_id_local, cell_id_ghosted
   PetscInt :: connection_itype
   PetscInt :: iface
-  type(connection_type), pointer :: connection
+  type(connection_set_type), pointer :: connection
   type(region_type), pointer :: region
   type(coupler_type), pointer :: coupler
   PetscErrorCode :: ierr

@@ -38,7 +38,7 @@ module Grid_module
     type(structured_grid_type), pointer :: structured_grid
     type(unstructured_grid_type), pointer :: unstructured_grid
     
-    type(connection_list_type), pointer :: internal_connection_list
+    type(connection_set_list_type), pointer :: internal_connection_set_list
 
   end type grid_type
 
@@ -84,7 +84,7 @@ function GridCreate()
   nullify(grid%structured_grid)
   nullify(grid%unstructured_grid)
 
-  nullify(grid%internal_connection_list)
+  nullify(grid%internal_connection_set_list)
 
   nullify(grid%nL2G)
   nullify(grid%nG2L)
@@ -130,7 +130,7 @@ subroutine GridComputeInternalConnect(grid,option)
   type(grid_type) :: grid
   type(option_type) :: option
   
-  type(connection_type), pointer :: connection
+  type(connection_set_type), pointer :: connection
   
   select case(grid%itype)
     case(STRUCTURED_GRID)
@@ -141,9 +141,9 @@ subroutine GridComputeInternalConnect(grid,option)
         UnstGridComputeInternConnect(grid%unstructured_grid,option)
   end select
   
-  allocate(grid%internal_connection_list)
-  call ConnectionInitList(grid%internal_connection_list)
-  call ConnectionAddToList(connection,grid%internal_connection_list)
+  allocate(grid%internal_connection_set_list)
+  call ConnectionInitList(grid%internal_connection_set_list)
+  call ConnectionAddToList(connection,grid%internal_connection_set_list)
   
 end subroutine GridComputeInternalConnect
 
@@ -162,7 +162,7 @@ subroutine GridPopulateConnection(grid,connection,iface,iconn,cell_id_local)
   implicit none
  
   type(grid_type) :: grid
-  type(connection_type) :: connection
+  type(connection_set_type) :: connection
   PetscInt :: iface
   PetscInt :: iconn
   PetscInt :: cell_id_local
@@ -830,7 +830,7 @@ subroutine GridDestroy(grid)
   call UnstructuredGridDestroy(grid%unstructured_grid)    
   call StructuredGridDestroy(grid%structured_grid)
                                            
-  call ConnectionDestroyList(grid%internal_connection_list)
+  call ConnectionDestroyList(grid%internal_connection_set_list)
 
 end subroutine GridDestroy
   

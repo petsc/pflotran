@@ -1892,7 +1892,7 @@ subroutine assignUniformVelocity(realization)
   type(grid_type), pointer :: grid
   type(patch_type), pointer :: patch   
   type(coupler_type), pointer :: boundary_condition
-  type(connection_type), pointer :: cur_connection_set
+  type(connection_set_type), pointer :: cur_connection_set
   PetscInt :: iconn, sum_connection
   PetscReal :: vdarcy
     
@@ -1902,7 +1902,7 @@ subroutine assignUniformVelocity(realization)
   grid => patch%grid
     
   ! Internal Flux Terms -----------------------------------
-  cur_connection_set => grid%internal_connection_list%first
+  cur_connection_set => grid%internal_connection_set_list%first
   sum_connection = 0
   do 
     if (.not.associated(cur_connection_set)) exit

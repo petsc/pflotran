@@ -672,8 +672,8 @@ subroutine OutputFluxVelocitiesTecplot(realization,iphase, &
   PetscReal :: sum, average, max, min , std_dev
   PetscInt :: max_loc, min_loc
 
-  type(connection_list_type), pointer :: connection_list
-  type(connection_type), pointer :: cur_connection_set
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
     
   nullify(array)
 
@@ -890,8 +890,8 @@ subroutine OutputFluxVelocitiesTecplot(realization,iphase, &
   call VecGetArrayF90(global_vec,vec_ptr,ierr)
   
   ! place interior velocities in a vector
-  connection_list => grid%internal_connection_list
-  cur_connection_set => connection_list%first
+  connection_set_list => grid%internal_connection_set_list
+  cur_connection_set => connection_set_list%first
   sum_connection = 0
   do 
     if (.not.associated(cur_connection_set)) exit
@@ -2170,9 +2170,9 @@ function GetVelocityAtCell(fid,realization,local_id)
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch  
-  type(connection_list_type), pointer :: connection_list
+  type(connection_set_list_type), pointer :: connection_set_list
   type(coupler_type), pointer :: boundary_condition
-  type(connection_type), pointer :: cur_connection_set
+  type(connection_set_type), pointer :: cur_connection_set
   PetscInt :: iconn, sum_connection
   PetscInt :: local_id_up, local_id_dn
   PetscInt :: direction, iphase
@@ -2189,8 +2189,8 @@ function GetVelocityAtCell(fid,realization,local_id)
   iphase = 1
 
   ! interior velocities  
-  connection_list => grid%internal_connection_list
-  cur_connection_set => connection_list%first
+  connection_set_list => grid%internal_connection_set_list
+  cur_connection_set => connection_set_list%first
   sum_connection = 0
   do 
     if (.not.associated(cur_connection_set)) exit
@@ -2307,9 +2307,9 @@ function GetVelocityAtCoord(fid,realization,local_id,coordinate)
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch  
-  type(connection_list_type), pointer :: connection_list
+  type(connection_set_list_type), pointer :: connection_set_list
   type(coupler_type), pointer :: boundary_condition
-  type(connection_type), pointer :: cur_connection_set
+  type(connection_set_type), pointer :: cur_connection_set
   PetscInt :: iconn, sum_connection
   PetscInt :: local_id_up, local_id_dn
   PetscReal :: cell_coord(3), face_coord
@@ -2334,8 +2334,8 @@ function GetVelocityAtCoord(fid,realization,local_id,coordinate)
   cell_coord(Z_DIRECTION) = grid%z(ghosted_id)
 
   ! interior velocities  
-  connection_list => grid%internal_connection_list
-  cur_connection_set => connection_list%first
+  connection_set_list => grid%internal_connection_set_list
+  cur_connection_set => connection_set_list%first
   sum_connection = 0
   do 
     if (.not.associated(cur_connection_set)) exit
@@ -2792,8 +2792,8 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
 
   Vec :: global_vec
 
-  type(connection_list_type), pointer :: connection_list
-  type(connection_type), pointer :: cur_connection_set
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
     
   discretization => realization%discretization
   patch => realization%patch
@@ -2864,8 +2864,8 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
   call VecGetArrayF90(global_vec,vec_ptr,ierr)
   
   ! place interior velocities in a vector
-  connection_list => grid%internal_connection_list
-  cur_connection_set => connection_list%first
+  connection_set_list => grid%internal_connection_set_list
+  cur_connection_set => connection_set_list%first
   do 
     if (.not.associated(cur_connection_set)) exit
     do iconn = 1, cur_connection_set%num_connections
@@ -3276,8 +3276,8 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
   PetscReal, allocatable :: sum_area(:)
   
   type(coupler_type), pointer :: boundary_condition
-  type(connection_list_type), pointer :: connection_list
-  type(connection_type), pointer :: cur_connection_set
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
 
   call PetscLogEventBegin(logging%event_output_get_cell_vel, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
@@ -3296,8 +3296,8 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
   call VecGetArrayF90(vec,vec_ptr,ierr)
 
   ! interior velocities  
-  connection_list => grid%internal_connection_list
-  cur_connection_set => connection_list%first
+  connection_set_list => grid%internal_connection_set_list
+  cur_connection_set => connection_set_list%first
   sum_connection = 0
   do 
     if (.not.associated(cur_connection_set)) exit
@@ -3401,8 +3401,8 @@ subroutine ComputeFlowMassBalance(realization)
   PetscReal, pointer :: vec_ptr(:), vec2_ptr(:), den_loc_p(:)
   
   type(coupler_type), pointer :: boundary_condition
-  type(connection_list_type), pointer :: connection_list
-  type(connection_type), pointer :: cur_connection_set
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
 
   patch => realization%patch
   grid => patch%grid
@@ -3424,8 +3424,8 @@ subroutine ComputeFlowMassBalance(realization)
   call VecGetArrayF90(density_loc,den_loc_p,ierr)
 
   ! interior velocities  
-  connection_list => grid%internal_connection_list
-  cur_connection_set => connection_list%first
+  connection_set_list => grid%internal_connection_set_list
+  cur_connection_set => connection_set_list%first
   sum_connection = 0
   do 
     if (.not.associated(cur_connection_set)) exit
@@ -3568,8 +3568,8 @@ subroutine ComputeFlowCellVelocityStats(realization)
   PetscReal, allocatable :: sum_area(:)
   
   type(coupler_type), pointer :: boundary_condition
-  type(connection_list_type), pointer :: connection_list
-  type(connection_type), pointer :: cur_connection_set
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
 
   patch => realization%patch
   grid => patch%grid
@@ -3591,8 +3591,8 @@ subroutine ComputeFlowCellVelocityStats(realization)
       call VecGetArrayF90(global_vec,vec_ptr,ierr)
 
       ! interior velocities  
-      connection_list => grid%internal_connection_list
-      cur_connection_set => connection_list%first
+      connection_set_list => grid%internal_connection_set_list
+      cur_connection_set => connection_set_list%first
       sum_connection = 0
       do 
         if (.not.associated(cur_connection_set)) exit
@@ -3726,8 +3726,8 @@ subroutine ComputeFlowFluxVelocityStats(realization)
   PetscReal :: sum, average, max, min , std_dev
   PetscInt :: max_loc, min_loc
 
-  type(connection_list_type), pointer :: connection_list
-  type(connection_type), pointer :: cur_connection_set
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
     
   discretization => realization%discretization
   patch => realization%patch
@@ -3746,8 +3746,8 @@ subroutine ComputeFlowFluxVelocityStats(realization)
       call VecGetArrayF90(global_vec,vec_ptr,ierr)
       
       ! place interior velocities in a vector
-      connection_list => grid%internal_connection_list
-      cur_connection_set => connection_list%first
+      connection_set_list => grid%internal_connection_set_list
+      cur_connection_set => connection_set_list%first
       sum_connection = 0
       do 
         if (.not.associated(cur_connection_set)) exit

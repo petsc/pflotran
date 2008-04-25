@@ -432,7 +432,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
                                      patch%transport_source_sinks)
                                      
   allocate(patch%internal_velocities(option%nphase, &
-           ConnectionGetNumberInList(patch%grid%internal_connection_list)))
+           ConnectionGetNumberInList(patch%grid%internal_connection_set_list)))
   patch%internal_velocities = 0.d0
   if (option%nflowdof > 0) then
     temp_int = CouplerGetNumConnectionsInList(patch%flow_boundary_conditions)
@@ -699,14 +699,14 @@ subroutine PatchAssignUniformVelocity(patch,option)
 
   type(grid_type), pointer :: grid
   type(coupler_type), pointer :: boundary_condition
-  type(connection_type), pointer :: cur_connection_set
+  type(connection_set_type), pointer :: cur_connection_set
   PetscInt :: iconn, sum_connection
   PetscReal :: vdarcy
 
   grid => patch%grid
     
   ! Internal Flux Terms -----------------------------------
-  cur_connection_set => grid%internal_connection_list%first
+  cur_connection_set => grid%internal_connection_set_list%first
   sum_connection = 0
   do 
     if (.not.associated(cur_connection_set)) exit

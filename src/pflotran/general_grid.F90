@@ -96,8 +96,8 @@ subroutine ReadStructuredGridHDF5(realization)
   Vec :: local_vec
   PetscReal, pointer :: vec_ptr(:)
 
-  type(connection_list_type), pointer :: connection_list
-  type(connection_type), pointer :: cur_connection_set
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
       
   PetscTruth :: option_found
 
@@ -116,8 +116,8 @@ subroutine ReadStructuredGridHDF5(realization)
                              filename, option_found, ierr)
  
   ! grab connection object
-  connection_list => grid%internal_connection_list
-  cur_connection_set => connection_list%first
+  connection_set_list => grid%internal_connection_set_list
+  cur_connection_set => connection_set_list%first
   
   ! create hash table for fast lookup
 #ifdef HASH
@@ -403,7 +403,7 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
   
   PetscInt :: read_block_size = HDF5_READ_BUFFER_SIZE
 
-  num_internal_connections = ConnectionGetNumberInList(grid%internal_connection_list)
+  num_internal_connections = ConnectionGetNumberInList(grid%internal_connection_set_list)
   
   string = "Id Upwind"
   call h5dopen_f(file_id,string,data_set_id_up,hdf5_err)

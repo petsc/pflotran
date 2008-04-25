@@ -546,8 +546,8 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
   PetscViewer :: viewer
   
   type(coupler_type), pointer :: boundary_condition, source_sink
-  type(connection_list_type), pointer :: connection_list
-  type(connection_type), pointer :: cur_connection_set
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
   PetscInt :: sum_connection, iconn
   PetscInt :: ghosted_id_up, ghosted_id_dn, local_id_up, local_id_dn
   PetscReal :: fraction_upwind, distance, dist_up, dist_dn
@@ -625,8 +625,8 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
 #endif
 #if 1
   ! Interior Flux Terms -----------------------------------
-  connection_list => grid%internal_connection_list
-  cur_connection_set => connection_list%first
+  connection_set_list => grid%internal_connection_set_list
+  cur_connection_set => connection_set_list%first
   sum_connection = 0  
   do 
     if (.not.associated(cur_connection_set)) exit
@@ -831,8 +831,8 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   PetscReal :: Jdn(realization%option%ncomp,realization%option%ncomp)
   
   type(coupler_type), pointer :: boundary_condition, source_sink
-  type(connection_list_type), pointer :: connection_list
-  type(connection_type), pointer :: cur_connection_set
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
   PetscInt :: sum_connection, iconn
   PetscInt :: ghosted_id_up, ghosted_id_dn, local_id_up, local_id_dn
   PetscReal :: fraction_upwind, distance, dist_up, dist_dn, rdum
@@ -907,8 +907,8 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 #endif
 #if 1
   ! Interior Flux Terms -----------------------------------
-  connection_list => grid%internal_connection_list
-  cur_connection_set => connection_list%first
+  connection_set_list => grid%internal_connection_set_list
+  cur_connection_set => connection_set_list%first
   sum_connection = 0  
   do 
     if (.not.associated(cur_connection_set)) exit
@@ -1055,7 +1055,7 @@ subroutine RTUpdateAuxVars(realization)
   type(grid_type), pointer :: grid
   type(patch_type), pointer :: patch  
   type(coupler_type), pointer :: boundary_condition
-  type(connection_type), pointer :: cur_connection_set
+  type(connection_set_type), pointer :: cur_connection_set
 
   PetscInt :: ghosted_id, local_id, istart, iend, sum_connection, idof, iconn
   PetscReal, pointer :: xx_loc_p(:)

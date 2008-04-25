@@ -233,7 +233,7 @@ subroutine RichardsLiteUpdateAuxVarsPatch(realization)
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
   type(coupler_type), pointer :: boundary_condition
-  type(connection_type), pointer :: cur_connection_set
+  type(connection_set_type), pointer :: cur_connection_set
   type(richards_lite_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)  
 
   PetscInt :: ghosted_id, local_id, sum_connection, idof, iconn
@@ -1254,8 +1254,8 @@ subroutine RichardsLiteResidualPatch(snes,xx,r,realization,ierr)
   type(field_type), pointer :: field
   type(richards_lite_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
   type(coupler_type), pointer :: boundary_condition, source_sink
-  type(connection_list_type), pointer :: connection_list
-  type(connection_type), pointer :: cur_connection_set
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
   logical :: enthalpy_flag
   PetscInt :: iconn, idof
   PetscInt :: sum_connection
@@ -1342,8 +1342,8 @@ subroutine RichardsLiteResidualPatch(snes,xx,r,realization,ierr)
 #endif
 #if 1
   ! Interior Flux Terms -----------------------------------
-  connection_list => grid%internal_connection_list
-  cur_connection_set => connection_list%first
+  connection_set_list => grid%internal_connection_set_list
+  cur_connection_set => connection_set_list%first
   sum_connection = 0  
   do 
     if (.not.associated(cur_connection_set)) exit
@@ -1607,8 +1607,8 @@ subroutine RichardsLiteJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                Jdn(realization%option%nflowdof,realization%option%nflowdof)
   
   type(coupler_type), pointer :: boundary_condition, source_sink
-  type(connection_list_type), pointer :: connection_list
-  type(connection_type), pointer :: cur_connection_set
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
   logical :: enthalpy_flag
   PetscInt :: iconn, idof
   PetscInt :: sum_connection  
@@ -1736,8 +1736,8 @@ subroutine RichardsLiteJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   endif
 #if 1
   ! Interior Flux Terms -----------------------------------  
-  connection_list => grid%internal_connection_list
-  cur_connection_set => connection_list%first
+  connection_set_list => grid%internal_connection_set_list
+  cur_connection_set => connection_set_list%first
   sum_connection = 0    
   do 
     if (.not.associated(cur_connection_set)) exit
