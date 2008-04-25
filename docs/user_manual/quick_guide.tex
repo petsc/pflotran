@@ -455,34 +455,37 @@ This section gives an overview in alphabetical order of the objects and their da
 \subsection{Connection}
 
 \begin{verbatim}
-  type, public :: connection_type
+  type, public :: connection_set_type
     PetscInt :: id
-    PetscInt :: itype    ! connection type (boundary, internal, source sink
+    PetscInt :: itype                  ! connection type (boundary, internal,
+                                         source sink
     PetscInt :: num_connections
     PetscInt, pointer :: id_up(:)      ! list of ids of upwind cells
     PetscInt, pointer :: id_dn(:)      ! list of ids of downwind cells
-    PetscReal, pointer :: dist(:,:)      ! list of distance vectors, size(-1:3,num_connections) where
+    PetscReal, pointer :: dist(:,:)    ! list of distance vectors, 
+                                         size(-1:3,num_connections) where
                                       !   -1 = fraction upwind
                                       !   0 = magnitude of distance 
                                       !   1-3 = components of unit vector
-    PetscReal, pointer :: area(:)     ! list of areas of faces normal to 
-                                        distance vectors
-!    PetscReal, pointer :: velocity(:,:) ! velocity scalars for each phase
-    type(connection_type), pointer :: next
-  end type connection_type
+    PetscReal, pointer :: area(:)        ! list of areas of faces normal to 
+                                           distance vectors
+!    PetscReal, pointer :: velocity(:,:)  ! velocity scalars for each phase
+    type(connection_set_type), pointer :: next
+  end type connection_set_type
 
 
   ! pointer data structure required for making an array of region pointers in F90
-  type, public :: connection_ptr_type
-    type(connection_type), pointer :: ptr  ! pointer to the connection_type
-  end type connection_ptr_type 
+  type, public :: connection_set_ptr_type
+    type(connection_set_type), pointer :: ptr           ! pointer to the 
+                                                          connection_set_type
+  end type connection_set_ptr_type 
   
-  type, public :: connection_list_type
+  type, public :: connection_set_list_type
     PetscInt :: num_connection_objects
-    type(connection_type), pointer :: first
-    type(connection_type), pointer :: last
-    type(connection_ptr_type), pointer :: array(:)
-  end type connection_list_type
+    type(connection_set_type), pointer :: first
+    type(connection_set_type), pointer :: last
+    type(connection_set_ptr_type), pointer :: array(:)
+  end type connection_set_list_type
 \end{verbatim}
 
 \subsection{Coupler}
