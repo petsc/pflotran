@@ -13,6 +13,7 @@ module Solver_module
 #include "include/finclude/petscksp.h"
 #include "include/finclude/petscpc.h"
 #include "include/finclude/petscsnes.h"
+#include "include/finclude/petscmg.h"
 
   type, public :: solver_type
     PetscReal :: linear_atol       ! absolute tolerance
@@ -29,10 +30,12 @@ module Solver_module
     PetscInt :: newton_maxit     ! maximum number of iterations
     PetscInt :: newton_maxf      ! maximum number of function evaluations
 
-        ! Jacobian matrix
+    ! Jacobian matrix
     Mat :: J
     MatFDColoring :: matfdcoloring
       ! Coloring used for computing the Jacobian via finite differences.
+
+    Mat :: Rt  ! Interpolation/restriction operator for Galerkin multigrid.
 
     ! PETSc nonlinear solver context
     SNES :: snes
@@ -94,6 +97,7 @@ function SolverCreate()
   solver%newton_maxf = PETSC_DEFAULT_INTEGER
   
   solver%J = 0
+  solver%Rt = 0
   solver%matfdcoloring = 0
   solver%snes = 0
   solver%ksp_type = KSPBCGS
@@ -143,11 +147,14 @@ end subroutine SolverCreateSNES
 ! date: 02/12/08
 !
 ! ************************************************************************** !
-subroutine SolverSetSNESOptions(solver)
+subroutine SolverSetSNESOptions(solver, option)
+
+  use Option_module
 
   implicit none
   
   type(solver_type) :: solver
+  type(option_type), pointer :: option
 
   PetscMPIInt :: myrank
   ! needed for SNESLineSearchGetParams()/SNESLineSearchSetParams()
@@ -182,6 +189,14 @@ subroutine SolverSetSNESOptions(solver)
 
 !  call SNESLineSearchSet(solver%snes,SNESLineSearchNo,PETSC_NULL,ierr)
 
+  ! Setup for 2-level Galerkin multigrid.
+  if (option%use_galerkin_mg) then
+    call PCSetType(solver%pc, PCMG, ierr)
+    call PCMGSetLevels(solver%pc, 2, PETSC_NULL_OBJECT, ierr)
+    call PCMGSetInterpolation(solver%pc, 1, solver%Rt, ierr)
+    call PCMGSetGalerkin(solver%pc, ierr)
+  endif
+  
   ! allow override from command line; for some reason must come before
   ! LineSearchParams, or they crash
   call SNESSetFromOptions(solver%snes, ierr) 

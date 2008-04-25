@@ -165,6 +165,9 @@ subroutine Init(simulation,filename)
 
     call SolverCreateSNES(flow_solver)  
     call DiscretizationCreateJacobian(discretization,NFLOWDOF,flow_solver%J,option)
+    if (option%use_galerkin_mg) then
+      call DiscretizationCreateRt(discretization,NFLOWDOF,flow_solver%Rt,option)
+    endif
     
     select case(option%iflowmode)
       case(RICHARDS_MODE)
@@ -181,7 +184,7 @@ subroutine Init(simulation,filename)
                              realization, ierr)
     end select
 
-    call SolverSetSNESOptions(flow_solver)
+    call SolverSetSNESOptions(flow_solver, option)
 
     string = 'Solver: ' // trim(flow_solver%ksp_type)
     call printMsg(option,string)
@@ -213,13 +216,17 @@ subroutine Init(simulation,filename)
     call SolverCreateSNES(tran_solver)  
     call DiscretizationCreateJacobian(discretization,NTRANDOF,tran_solver%J,option)
     
+    if (option%use_galerkin_mg) then
+      call DiscretizationCreateRt(discretization,NTRANDOF,tran_solver%Rt,option)
+    endif
+
     call SNESSetFunction(tran_solver%snes,field%tran_r,RTResidual,realization,ierr)
     call SNESSetJacobian(tran_solver%snes, tran_solver%J, tran_solver%J, RTJacobian, &
                          realization, ierr)
 
     call SNESLineSearchSet(tran_solver%snes,SNESLineSearchNo,PETSC_NULL_OBJECT,ierr)
 
-    call SolverSetSNESOptions(tran_solver)
+    call SolverSetSNESOptions(tran_solver, option)
 
     string = 'Solver: ' // trim(tran_solver%ksp_type)
     call printMsg(option,string)

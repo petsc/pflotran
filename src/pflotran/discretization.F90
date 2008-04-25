@@ -25,6 +25,11 @@ module Discretization_module
     type(grid_type), pointer :: grid  ! pointer to a grid object
     type(amrgrid_type), pointer :: amrgrid  ! pointer to an amr grid object
     DM :: dm_1_dof, dm_nflowdof, dm_ntrandof
+    DM :: dmc_nflowdof, dmc_ntrandof
+!    DM, pointer :: dmc_nflowdof(:), dmc_ntrandof(:)
+      ! Arrays containing hierarchy of coarsened DMs, for use with Galerkin 
+      ! multigrid.
+
   end type discretization_type
 
   public :: DiscretizationCreate, &
@@ -33,6 +38,7 @@ module Discretization_module
             DiscretizationCreateVector, &
             DiscretizationDuplicateVector, &         
             DiscretizationCreateJacobian, &
+            DiscretizationCreateRt, &
             DiscretizationCreateColoring, &
             DiscretizationGlobalToLocal, &
             DiscretizationLocalToGlobal, &
@@ -196,6 +202,7 @@ subroutine DiscretizationCreateDMs(discretization,option)
   PetscInt :: ndof
   PetscInt, parameter :: stencil_width = 1
   PetscErrorCode :: ierr
+  PetscInt :: i
 
   !-----------------------------------------------------------------------
   ! Generate the DA objects that will manage communication.
@@ -353,6 +360,24 @@ function DiscretizationGetDMPtrFromIndex(discretization,dm_index)
   
 end function DiscretizationGetDMPtrFromIndex
 
+function DiscretizationGetDMCPtrFromIndex(discretization,dm_index)
+
+  implicit none
+  
+  type(discretization_type) :: discretization
+  PetscInt :: dm_index
+  
+  DM :: DiscretizationGetDMCPtrFromIndex
+  
+  select case (dm_index)
+    case(NFLOWDOF)
+      DiscretizationGetDMCPtrFromIndex = discretization%dmc_nflowdof
+    case(NTRANDOF)
+      DiscretizationGetDMCPtrFromIndex = discretization%dmc_ntrandof
+  end select  
+  
+end function DiscretizationGetDMCPtrFromIndex
+
 ! ************************************************************************** !
 !
 ! DiscretizationCreateJacobian: Creates Jacobian matrix associated with discretization
@@ -394,6 +419,40 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,Jacobian,option)
   end select
 
 end subroutine DiscretizationCreateJacobian
+
+subroutine DiscretizationCreateRt(discretization,dm_index,Rt,option)
+
+  use Option_module
+  
+  implicit none
+  
+  type(discretization_type) :: discretization
+  PetscInt :: dm_index
+  PetscErrorCode :: ierr
+  Mat :: Rt
+  type(option_type) :: option
+
+  DM :: dm_ptr
+  DM :: dmc_ptr
+  
+  dm_ptr = DiscretizationGetDMPtrFromIndex(discretization,dm_index)
+!  dmc_ptr = DiscretizationGetDMCPtrFromIndex(discretization,dm_index)
+  select case (dm_index)
+    case(NFLOWDOF)
+      dmc_ptr = discretization%dmc_nflowdof
+    case(NTRANDOF)
+      dmc_ptr = discretization%dmc_ntrandof
+  end select  
+   
+  select case(discretization%itype)
+    case(STRUCTURED_GRID)
+      call DASetInterpolationType(dm_ptr, DA_Q0, ierr)
+      call DACoarsen(dm_ptr, PETSC_COMM_WORLD, dmc_ptr, ierr)
+      call DAGetInterpolation(dmc_ptr, dm_ptr, Rt, PETSC_NULL_OBJECT, ierr)
+    case(UNSTRUCTURED_GRID)
+  end select
+
+end subroutine DiscretizationCreateRt
 
 ! ************************************************************************** !
 !
@@ -866,5 +925,5 @@ subroutine DiscretizationDestroy(discretization)
   end select
   
 end subroutine DiscretizationDestroy
-  
+ 
 end module Discretization_module
