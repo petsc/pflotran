@@ -112,7 +112,7 @@ PetscInt, parameter :: VOLUME_FRACTION = 14
 PetscInt, parameter :: PHASE = 15
 PetscInt, parameter :: MATERIAL_ID = 16
 
-PetscInt, parameter :: FREE_ION_CONCENTRATION = 17
+PetscInt, parameter :: PRIMARY_SPEC_CONCENTRATION = 17
 PetscInt, parameter :: TOTAL_CONCENTRATION = 18
 
 ! structured grid faces

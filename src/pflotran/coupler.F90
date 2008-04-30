@@ -13,7 +13,7 @@ module Coupler_module
   type, public :: coupler_type
     PetscInt :: id                                       ! id of coupler
     PetscInt :: itype                                    ! integer defining type
-    character(len=MAXWORDLENGTH) :: ctype               ! character string definign type
+    character(len=MAXWORDLENGTH) :: ctype               ! character string defining type
     character(len=MAXWORDLENGTH) :: condition_name      ! character string defining name of condition to be applied
     character(len=MAXWORDLENGTH) :: region_name         ! character string defining name of region to be applied
     PetscInt :: icondition                               ! id of condition in condition array/list
@@ -23,7 +23,7 @@ module Coupler_module
     PetscReal, pointer :: aux_real_var(:,:)                ! auxilliary array for real values
     type(condition_type), pointer :: condition          ! pointer to condition in condition array/list
     type(region_type), pointer :: region                ! pointer to region in region array/list
-    type(connection_type), pointer :: connection        ! pointer to an array/list of connections
+    type(connection_set_type), pointer :: connection_set! pointer to an array/list of connections
     type(coupler_type), pointer :: next                 ! pointer to next coupler
   end type coupler_type
   
@@ -79,7 +79,7 @@ function CouplerCreate1()
   nullify(coupler%aux_real_var)
   nullify(coupler%condition)
   nullify(coupler%region)
-  nullify(coupler%connection)
+  nullify(coupler%connection_set)
   nullify(coupler%next)
   
   CouplerCreate1 => coupler
@@ -150,7 +150,7 @@ function CouplerCreateFromCoupler(coupler)
   nullify(coupler%region)
   nullify(coupler%aux_int_var)
   nullify(coupler%aux_real_var)
-  nullify(coupler%connection)
+  nullify(coupler%connection_set)
   nullify(coupler%next)
 
   CouplerCreateFromCoupler => new_coupler
@@ -382,7 +382,7 @@ subroutine CouplerComputeConnections(grid,option,coupler)
   PetscInt :: cell_id_local, cell_id_ghosted
   PetscInt :: connection_itype
   PetscInt :: iface
-  type(connection_type), pointer :: connection
+  type(connection_set_type), pointer :: connection_set
   type(region_type), pointer :: region
   type(coupler_type), pointer :: coupler
   PetscErrorCode :: ierr
@@ -394,11 +394,11 @@ subroutine CouplerComputeConnections(grid,option,coupler)
       if (coupler%condition%iclass == FLOW_CLASS) then
         if (coupler%condition%pressure%itype /= HYDROSTATIC_BC .and. &
             coupler%condition%pressure%itype /= SEEPAGE_BC) then
-          nullify(coupler%connection)
+          nullify(coupler%connection_set)
           return
         endif
       else
-        nullify(coupler%connection)
+        nullify(coupler%connection_set)
         return
       endif
       connection_itype = INITIAL_CONNECTION_TYPE
@@ -412,7 +412,7 @@ subroutine CouplerComputeConnections(grid,option,coupler)
   
   region => coupler%region
 
-  connection => ConnectionCreate(region%num_cells,option%nphase, &
+  connection_set => ConnectionCreate(region%num_cells,option%nphase, &
                                  connection_itype)
 
   iface = coupler%iface
@@ -421,13 +421,13 @@ subroutine CouplerComputeConnections(grid,option,coupler)
     cell_id_local = region%cell_ids(iconn)
     if (associated(region%faces)) iface = region%faces(iconn)
     
-    connection%id_dn(iconn) = cell_id_local
+    connection_set%id_dn(iconn) = cell_id_local
 
-    call GridPopulateConnection(grid,connection,iface,iconn,cell_id_local)
+    call GridPopulateConnection(grid,connection_set,iface,iconn,cell_id_local)
   enddo
 
-  coupler%connection => connection
-  nullify(connection)
+  coupler%connection_set => connection_set
+  nullify(connection_set)
  
 end subroutine CouplerComputeConnections
 
@@ -454,7 +454,7 @@ function CouplerGetNumConnectionsInList(list)
   do
     if (.not.associated(coupler)) exit
     CouplerGetNumConnectionsInList = CouplerGetNumConnectionsInList + &
-                                     coupler%connection%num_connections
+                                     coupler%connection_set%num_connections
     coupler => coupler%next
   enddo
 
@@ -520,8 +520,8 @@ subroutine CouplerDestroy(coupler)
   if (associated(coupler%aux_int_var)) deallocate(coupler%aux_int_var)
   if (associated(coupler%aux_real_var)) deallocate(coupler%aux_real_var)
 
-  call ConnectionDestroy(coupler%connection)
-  nullify(coupler%connection)
+  call ConnectionDestroy(coupler%connection_set)
+  nullify(coupler%connection_set)
   
   deallocate(coupler)
   nullify(coupler)

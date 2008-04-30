@@ -7,6 +7,7 @@ PetscMPIInt commsize = 0;
 #include "Globals.h"
 #include "Grid.h"
 #include "Hanford300.h"
+#include "Hanford300v2.h"
 #include "TestCase.h"
 #include "Output.h"
 
@@ -25,10 +26,12 @@ int main(int argc, char **args) {
   if (myrank == 0) printf("commsize: %d\n",commsize);
 
   Grid *grid = NULL;
-  Hanford300 *hanford300 = NULL;
+//  Hanford300 *hanford300 = NULL;
+  Hanford300v2 *hanford300 = NULL;
   TestCase *testcase = NULL;
 
-  hanford300 = new Hanford300(&grid);
+//  hanford300 = new Hanford300(&grid);
+  hanford300 = new Hanford300v2(&grid);
 //  testcase = new TestCase(&grid);
 
   Output *out = new Output(grid);

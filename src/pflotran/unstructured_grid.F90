@@ -74,7 +74,7 @@ function UnstGridComputeInternConnect(unstructured_grid,option)
   
   implicit none
   
-  type(connection_type), pointer :: UnstGridComputeInternConnect
+  type(connection_set_type), pointer :: UnstGridComputeInternConnect
   type(unstructured_grid_type) :: unstructured_grid
   type(option_type) :: option
 
@@ -97,7 +97,7 @@ function UnstGridComputeBoundConnect(unstructured_grid,option)
   
   implicit none
 
-  type(connection_type), pointer :: UnstGridComputeBoundConnect  
+  type(connection_set_type), pointer :: UnstGridComputeBoundConnect  
   type(unstructured_grid_type) :: unstructured_grid
   type(option_type) :: option
   

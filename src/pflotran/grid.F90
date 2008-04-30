@@ -38,7 +38,7 @@ module Grid_module
     type(structured_grid_type), pointer :: structured_grid
     type(unstructured_grid_type), pointer :: unstructured_grid
     
-    type(connection_list_type), pointer :: internal_connection_list
+    type(connection_set_list_type), pointer :: internal_connection_set_list
 
   end type grid_type
 
@@ -84,7 +84,7 @@ function GridCreate()
   nullify(grid%structured_grid)
   nullify(grid%unstructured_grid)
 
-  nullify(grid%internal_connection_list)
+  nullify(grid%internal_connection_set_list)
 
   nullify(grid%nL2G)
   nullify(grid%nG2L)
@@ -130,20 +130,20 @@ subroutine GridComputeInternalConnect(grid,option)
   type(grid_type) :: grid
   type(option_type) :: option
   
-  type(connection_type), pointer :: connection
+  type(connection_set_type), pointer :: connection_set
   
   select case(grid%itype)
     case(STRUCTURED_GRID)
-      connection => &
+      connection_set => &
         StructGridComputeInternConnect(grid%structured_grid,option)
     case(UNSTRUCTURED_GRID) 
-      connection => &
+      connection_set => &
         UnstGridComputeInternConnect(grid%unstructured_grid,option)
   end select
   
-  allocate(grid%internal_connection_list)
-  call ConnectionInitList(grid%internal_connection_list)
-  call ConnectionAddToList(connection,grid%internal_connection_list)
+  allocate(grid%internal_connection_set_list)
+  call ConnectionInitList(grid%internal_connection_set_list)
+  call ConnectionAddToList(connection_set,grid%internal_connection_set_list)
   
 end subroutine GridComputeInternalConnect
 
@@ -162,7 +162,7 @@ subroutine GridPopulateConnection(grid,connection,iface,iconn,cell_id_local)
   implicit none
  
   type(grid_type) :: grid
-  type(connection_type) :: connection
+  type(connection_set_type) :: connection
   PetscInt :: iface
   PetscInt :: iconn
   PetscInt :: cell_id_local
@@ -371,21 +371,21 @@ subroutine GridLocalizeRegions(grid,region_list,option)
         if (count /= region%num_cells) &
           call printErrMsg(option,"Mismatch in number of cells in block region")
 
-      else if (dabs(region%coordinate(1)) > 1.d-40 .and. &
-               dabs(region%coordinate(2)) > 1.d-40 .and. &
-               dabs(region%coordinate(3)) > 1.d-40 .and. &
-               region%coordinate(1) >= grid%x_min .and. &
-               region%coordinate(1) <= grid%x_max .and. &
-               region%coordinate(2) >= grid%y_min .and. &
-               region%coordinate(2) <= grid%y_max .and. &
-               region%coordinate(3) >= grid%z_min .and. &
-               region%coordinate(3) <= grid%z_max) then
+      else if (dabs(region%coordinate(X_DIRECTION)) > 1.d-40 .and. &
+               dabs(region%coordinate(Y_DIRECTION)) > 1.d-40 .and. &
+               dabs(region%coordinate(Z_DIRECTION)) > 1.d-40 .and. &
+               region%coordinate(X_DIRECTION) >= grid%x_min .and. &
+               region%coordinate(X_DIRECTION) <= grid%x_max .and. &
+               region%coordinate(Y_DIRECTION) >= grid%y_min .and. &
+               region%coordinate(Y_DIRECTION) <= grid%y_max .and. &
+               region%coordinate(Z_DIRECTION) >= grid%z_min .and. &
+               region%coordinate(Z_DIRECTION) <= grid%z_max) then
         select case(grid%itype)
           case(STRUCTURED_GRID)
             call StructGridGetIJKFromCoordinate(grid%structured_grid, &
-                                                region%coordinate(1), &
-                                                region%coordinate(2), &
-                                                region%coordinate(3), &
+                                                region%coordinate(X_DIRECTION), &
+                                                region%coordinate(Y_DIRECTION), &
+                                                region%coordinate(Z_DIRECTION), &
                                                 i,j,k)
             if (i > 0 .and. j > 0 .and. k > 0) then
               region%num_cells = 1
@@ -403,8 +403,8 @@ subroutine GridLocalizeRegions(grid,region_list,option)
             call MPI_Allreduce(region%num_cells,count,ONE_INTEGER,MPI_INTEGER,MPI_SUM, &
                                PETSC_COMM_WORLD,ierr)   
             if (count /= 1) then
-              write(string,*) 'Region: (coord)', region%coordinate(1), &
-                              region%coordinate(2), region%coordinate(3), &
+              write(string,*) 'Region: (coord)', region%coordinate(X_DIRECTION), &
+                              region%coordinate(Y_DIRECTION), region%coordinate(Z_DIRECTION), &
                               ' not found in global domain.', count
               call printErrMsg(option,string)
             endif
@@ -830,7 +830,7 @@ subroutine GridDestroy(grid)
   call UnstructuredGridDestroy(grid%unstructured_grid)    
   call StructuredGridDestroy(grid%structured_grid)
                                            
-  call ConnectionDestroyList(grid%internal_connection_list)
+  call ConnectionDestroyList(grid%internal_connection_set_list)
 
 end subroutine GridDestroy
   

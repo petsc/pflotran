@@ -50,7 +50,7 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
   
   type(condition_type), pointer :: condition
   
-  type(connection_type), pointer :: cur_connection_set
+  type(connection_set_type), pointer :: cur_connection_set
   
 #if 0
 
@@ -61,8 +61,8 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
 
   if (coupler%itype == INITIAL_COUPLER_TYPE) then
 
-    do iconn=1,coupler%connection%num_connections
-      local_id = coupler%connection%id_dn(iconn)
+    do iconn=1,coupler%connection_set%num_connections
+      local_id = coupler%connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
 
       dist_x = grid%x(ghosted_id)-condition%datum(1)
@@ -161,8 +161,8 @@ subroutine HydrostaticUpdateCoupler(coupler,option,grid)
       rho0 = rho  
     enddo
     
-    do iconn=1,coupler%connection%num_connections
-      local_id = coupler%connection%id_dn(iconn)
+    do iconn=1,coupler%connection_set%num_connections
+      local_id = coupler%connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
       dist_z = 0.d0
       do iz=1,grid%structured_grid%nz
@@ -233,7 +233,7 @@ subroutine HydrostaticUpdateCouplerBetter(coupler,option,grid)
   
   type(condition_type), pointer :: condition
   
-  type(connection_type), pointer :: cur_connection_set
+  type(connection_set_type), pointer :: cur_connection_set
   
   condition => coupler%condition
     
@@ -362,14 +362,14 @@ subroutine HydrostaticUpdateCouplerBetter(coupler,option,grid)
   dy_conn = 0.d0
   dz_conn = 0.d0
 
-  do iconn=1,coupler%connection%num_connections
-    local_id = coupler%connection%id_dn(iconn)
+  do iconn=1,coupler%connection_set%num_connections
+    local_id = coupler%connection_set%id_dn(iconn)
     ghosted_id = grid%nL2G(local_id)
 
-    if (associated(coupler%connection%dist)) then
-      dx_conn = coupler%connection%dist(0,iconn)*coupler%connection%dist(1,iconn)
-      dy_conn = coupler%connection%dist(0,iconn)*coupler%connection%dist(2,iconn)
-      dz_conn = coupler%connection%dist(0,iconn)*coupler%connection%dist(3,iconn)
+    if (associated(coupler%connection_set%dist)) then
+      dx_conn = coupler%connection_set%dist(0,iconn)*coupler%connection_set%dist(1,iconn)
+      dy_conn = coupler%connection_set%dist(0,iconn)*coupler%connection_set%dist(2,iconn)
+      dz_conn = coupler%connection_set%dist(0,iconn)*coupler%connection_set%dist(3,iconn)
     endif
     ! note the negative (-) d?_conn is required due to the offset of the boundary face
     dist_x = grid%x(ghosted_id)-dx_conn-datum(X_DIRECTION)

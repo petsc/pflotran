@@ -515,7 +515,7 @@ subroutine pflow_mphase_setupini(realization)
   size_var_node = (option%nflowdof + 1) * size_var_use
   
   allocate(Resold_AR(grid%nlmax,option%nflowdof))
-  allocate(Resold_FL(ConnectionGetNumberInList(grid%internal_connection_list), &
+  allocate(Resold_FL(ConnectionGetNumberInList(grid%internal_connection_set_list), &
                      option%nflowdof))
   allocate(mphase_option%delx(option%nflowdof,grid%ngmax))
   mphase_option%delx=0.D0
@@ -1266,8 +1266,8 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
   type(patch_type), pointer :: patch  
   
   type(coupler_type), pointer :: boundary_condition, source_sink
-  type(connection_list_type), pointer :: connection_list
-  type(connection_type), pointer :: cur_connection_set
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
   logical :: enthalpy_flag
   PetscInt :: iconn
   PetscInt :: sum_connection
@@ -1537,7 +1537,7 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
     qsrc1 = qsrc1 / option%fmwh2o ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
     csrc1 = csrc1 / option%fmwco2
       
-    cur_connection_set => source_sink%connection
+    cur_connection_set => source_sink%connection_set
     
     do iconn = 1, cur_connection_set%num_connections      
       local_id = cur_connection_set%id_dn(iconn)
@@ -1606,8 +1606,8 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
 ! option%iupstream = 0; option%iupstreambc = 0
 
   ! loop over internal connections
-  connection_list => grid%internal_connection_list
-  cur_connection_set => connection_list%first
+  connection_set_list => grid%internal_connection_set_list
+  cur_connection_set => connection_set_list%first
   do 
     if (.not.associated(cur_connection_set)) exit
     do iconn = 1, cur_connection_set%num_connections
@@ -1698,7 +1698,7 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
   do 
     if (.not.associated(boundary_condition)) exit
     
-    cur_connection_set => boundary_condition%connection
+    cur_connection_set => boundary_condition%connection_set
     
     do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
@@ -1959,8 +1959,8 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
   PetscInt ::  natural_id_up,natural_id_dn
   
   type(coupler_type), pointer :: boundary_condition, source_sink
-  type(connection_list_type), pointer :: connection_list
-  type(connection_type), pointer :: cur_connection_set
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
   logical :: enthalpy_flag
   PetscInt :: iconn
   PetscInt :: sum_connection  
@@ -2063,7 +2063,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
     qsrc1 = qsrc1 / option%fmwh2o ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
     csrc1 = csrc1 / option%fmwco2
       
-    cur_connection_set => source_sink%connection
+    cur_connection_set => source_sink%connection_set
     
     do iconn = 1, cur_connection_set%num_connections      
       local_id = cur_connection_set%id_dn(iconn)
@@ -2128,7 +2128,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
   do 
     if (.not.associated(boundary_condition)) exit
     
-    cur_connection_set => boundary_condition%connection
+    cur_connection_set => boundary_condition%connection_set
 
     do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
@@ -2350,8 +2350,8 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
  !print *,'phase cond: ',iphase_loc_p
   ResInc=0.D0
  
-  connection_list => grid%internal_connection_list
-  cur_connection_set => connection_list%first
+  connection_set_list => grid%internal_connection_set_list
+  cur_connection_set => connection_set_list%first
   sum_connection = 0    
   do 
     if (.not.associated(cur_connection_set)) exit
@@ -2743,7 +2743,7 @@ subroutine pflow_update_mphase(realization)
   PetscInt :: iphasebc, idof, n
   
   type(coupler_type), pointer :: boundary_condition
-  type(connection_type), pointer :: cur_connection_set
+  type(connection_set_type), pointer :: cur_connection_set
   PetscInt :: iconn
   PetscInt :: sum_connection  
   type(grid_type), pointer :: grid
@@ -2797,7 +2797,7 @@ subroutine pflow_update_mphase(realization)
     do 
       if (.not.associated(boundary_condition)) exit
     
-      cur_connection_set => boundary_condition%connection
+      cur_connection_set => boundary_condition%connection_set
 
       do iconn = 1, cur_connection_set%num_connections
         sum_connection = sum_connection + 1
@@ -2929,7 +2929,7 @@ subroutine pflow_mphase_initadj(realization)
   PetscInt :: iphasebc, idof 
 
   type(coupler_type), pointer :: boundary_condition
-  type(connection_type), pointer :: cur_connection_set
+  type(connection_set_type), pointer :: cur_connection_set
   PetscInt :: iconn
   PetscInt :: sum_connection
   type(grid_type), pointer :: grid
@@ -2985,7 +2985,7 @@ subroutine pflow_mphase_initadj(realization)
 !  num_connection = 0
 !  do 
 !    if (.not.associated(boundary_condition)) exit    
-!    num_connection = num_connection + boundary_condition%connection%num_connections
+!    num_connection = num_connection + boundary_condition%connection_set%num_connections
 !    boundary_condition => boundary_condition%next
 !  enddo
 
@@ -2999,7 +2999,7 @@ subroutine pflow_mphase_initadj(realization)
   do 
     if (.not.associated(boundary_condition)) exit
     
-    cur_connection_set => boundary_condition%connection
+    cur_connection_set => boundary_condition%connection_set
     
     do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1

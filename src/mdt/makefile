@@ -31,6 +31,7 @@ mdt_obj = ${common_src}AsciiGrid.o \
 	${common_src}GridCell.o \
 	${common_src}GridVertex.o \
 	${common_src}Hanford300.o \
+	${common_src}Hanford300v2.o \
 	${common_src}HDF.o \
 	${common_src}Material.o \
 	${common_src}ModelDevelopmentToolkit.o \
@@ -55,9 +56,10 @@ GridCell.o :
 Grid.o : BoundarySet.o GridCell.o GridVertex.o Source.o StructuredGrid.o
 GridVertex.o :
 Hanford300.o : AsciiGrid.o BoundarySet.o Connection.o Grid.o Polygon.o
+Hanford300v2.o : AsciiGrid.o BoundarySet.o Connection.o Grid.o Polygon.o
 HDF.o :
 Material.o :
-ModelDevelopmentToolkit.o : Grid.o Hanford300.o Output.o
+ModelDevelopmentToolkit.o : Grid.o Hanford300.o Hanford300v2.o Output.o
 Output.o : BoundarySet.o Grid.o HDF.o
 Polygon.o :
 Source.o :

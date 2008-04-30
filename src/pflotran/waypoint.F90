@@ -139,8 +139,8 @@ subroutine WaypointInsertInList(new_waypoint,waypoint_list)
               call WaypointMerge(waypoint,new_waypoint)
               return
             elseif (associated(waypoint%next)) then 
-              if (new_waypoint%time > waypoint%time .and. & ! within list
-                  new_waypoint%time < waypoint%next%time) then 
+              if (new_waypoint%time-waypoint%time > 1.d-10 .and. & ! within list
+                  new_waypoint%time-waypoint%next%time < -1.d-10) then 
                 new_waypoint%next => waypoint%next
                 new_waypoint%next%prev => new_waypoint
                 waypoint%next => new_waypoint
@@ -306,7 +306,8 @@ subroutine WaypointMerge(old_waypoint,new_waypoint)
 !    logical :: update_bcs
 !    logical :: update_srcs
 !    PetscReal :: dt_max
-
+!    logical :: final  ! any waypoint after this will be deleted
+    
   if (old_waypoint%print_output .or. new_waypoint%print_output) then
     old_waypoint%print_output = .true.
   else
@@ -329,6 +330,12 @@ subroutine WaypointMerge(old_waypoint,new_waypoint)
     old_waypoint%dt_max = new_waypoint%dt_max
   endif
   
+  if (old_waypoint%final .or. new_waypoint%final) then
+    old_waypoint%final = .true.
+  else
+    old_waypoint%final = .false.
+  endif
+
   ! deallocate new waypoint
   deallocate(new_waypoint)
   ! point new_waypoint to old

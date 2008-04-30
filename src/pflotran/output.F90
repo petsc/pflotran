@@ -24,10 +24,10 @@ module Output_module
 
   PetscMPIInt :: hdf5_err
   PetscErrorCode :: ierr
-  
+
   public :: Output, OutputTecplot, OutputHDF5, OutputVectorTecplot, &
             OutputBreakthrough, OutputGetVarFromArray
-  
+
 contains
 
 ! ************************************************************************** !
@@ -672,8 +672,8 @@ subroutine OutputFluxVelocitiesTecplot(realization,iphase, &
   PetscReal :: sum, average, max, min , std_dev
   PetscInt :: max_loc, min_loc
 
-  type(connection_list_type), pointer :: connection_list
-  type(connection_type), pointer :: cur_connection_set
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
     
   nullify(array)
 
@@ -890,8 +890,8 @@ subroutine OutputFluxVelocitiesTecplot(realization,iphase, &
   call VecGetArrayF90(global_vec,vec_ptr,ierr)
   
   ! place interior velocities in a vector
-  connection_list => grid%internal_connection_list
-  cur_connection_set => connection_list%first
+  connection_set_list => grid%internal_connection_set_list
+  cur_connection_set => connection_set_list%first
   sum_connection = 0
   do 
     if (.not.associated(cur_connection_set)) exit
@@ -1013,7 +1013,11 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
                    grid%structured_grid%nx+1,grid%structured_grid%ny+1,grid%structured_grid%nz+1
       string = trim(string) // ' DATAPACKING=BLOCK'
                                                 ! 4=dataset name, 5=material_id
-      string = trim(string) // ', VARLOCATION=([4-5]=CELLCENTERED)'
+      if (associated(patch%imat)) then
+        string = trim(string) // ', VARLOCATION=([4-5]=CELLCENTERED)'
+      else
+        string = trim(string) // ', VARLOCATION=([4]=CELLCENTERED)'
+      endif
     else
       write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
                    &'', K='',i4,'','')') &
@@ -1033,17 +1037,22 @@ subroutine OutputVectorTecplot(filename,dataset_name,realization,vector)
                                   natural_vec,NATURAL,option)    
 
   ! write out coorindates
-  call GetCoordinates(grid,global_vec,X_COORDINATE)
-  call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-  call WriteTecplotDataSetFromVec(fid,realization,natural_vec,TECPLOT_REAL)
 
-  call GetCoordinates(grid,global_vec,Y_COORDINATE)
-  call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-  call WriteTecplotDataSetFromVec(fid,realization,natural_vec,TECPLOT_REAL)
+  if (realization%discretization%itype == STRUCTURED_GRID) then
+    call WriteTecplotStructuredGrid(fid,realization)
+  else  
+    call GetCoordinates(grid,global_vec,X_COORDINATE)
+    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+    call WriteTecplotDataSetFromVec(fid,realization,natural_vec,TECPLOT_REAL)
 
-  call GetCoordinates(grid,global_vec,Z_COORDINATE)
-  call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-  call WriteTecplotDataSetFromVec(fid,realization,natural_vec,TECPLOT_REAL)
+    call GetCoordinates(grid,global_vec,Y_COORDINATE)
+    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+    call WriteTecplotDataSetFromVec(fid,realization,natural_vec,TECPLOT_REAL)
+
+    call GetCoordinates(grid,global_vec,Z_COORDINATE)
+    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+    call WriteTecplotDataSetFromVec(fid,realization,natural_vec,TECPLOT_REAL)
+  endif    
 
   call DiscretizationGlobalToNatural(discretization,vector,natural_vec,ONEDOF)
   call WriteTecplotDataSetFromVec(fid,realization,natural_vec,TECPLOT_REAL)
@@ -1117,6 +1126,9 @@ subroutine WriteTecplotStructuredGrid(fid,realization)
   PetscInt :: i, j, k, count, nx, ny, nz
   PetscReal :: temp_real
 
+1000 format(es11.4)
+1001 format(10(es11.4,x))
+  
   call PetscLogEventBegin(logging%event_output_str_grid_tecplot, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
@@ -1135,11 +1147,11 @@ subroutine WriteTecplotStructuredGrid(fid,realization)
     do k=1,nz+1
       do j=1,ny+1
         temp_real = grid%structured_grid%origin(X_DIRECTION)
-        write(fid,'(es11.4,x)',advance='no') temp_real
+        write(fid,1000,advance='no') temp_real
         count = count + 1
         do i=1,nx
           temp_real = temp_real + grid%structured_grid%dx0(i)
-          write(fid,'(es11.4,x)',advance='no') temp_real
+          write(fid,1000,advance='no') temp_real
           count = count + 1
           if (mod(count,10) == 0) then
             write(fid,'(a)') ""
@@ -1153,7 +1165,7 @@ subroutine WriteTecplotStructuredGrid(fid,realization)
     do k=1,nz+1
       temp_real = grid%structured_grid%origin(Y_DIRECTION)
       do i=1,nx+1
-        write(fid,'(es11.4,x)',advance='no') temp_real
+        write(fid,1000,advance='no') temp_real
         count = count + 1
         if (mod(count,10) == 0) then
           write(fid,'(a)') ""
@@ -1163,7 +1175,7 @@ subroutine WriteTecplotStructuredGrid(fid,realization)
       do j=1,ny
         temp_real = temp_real + grid%structured_grid%dy0(j)
         do i=1,nx+1
-          write(fid,'(es11.4,x)',advance='no') temp_real
+          write(fid,1000,advance='no') temp_real
           count = count + 1
           if (mod(count,10) == 0) then
             write(fid,'(a)') ""
@@ -1176,7 +1188,7 @@ subroutine WriteTecplotStructuredGrid(fid,realization)
     count = 0
     temp_real = grid%structured_grid%origin(Z_DIRECTION)
     do i=1,(nx+1)*(ny+1)
-      write(fid,'(es11.4,x)',advance='no') temp_real
+      write(fid,1000,advance='no') temp_real
       count = count + 1
       if (mod(count,10) == 0) then
         write(fid,'(a)') ""
@@ -1187,7 +1199,7 @@ subroutine WriteTecplotStructuredGrid(fid,realization)
       temp_real = temp_real + grid%structured_grid%dz0(k)
       do j=1,ny+1
         do i=1,nx+1
-          write(fid,'(es11.4,x)',advance='no') temp_real
+          write(fid,1000,advance='no') temp_real
           count = count + 1
           if (mod(count,10) == 0) then
             write(fid,'(a)') ""
@@ -1233,12 +1245,18 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
   type(option_type), pointer :: option
   type(patch_type), pointer :: patch  
   PetscInt :: i
+  PetscInt :: max_proc, max_proc_prefetch
   PetscMPIInt :: iproc, recv_size
   PetscInt :: max_local_size, local_size
   PetscInt :: istart, iend, num_in_array
   PetscInt :: status(MPI_STATUS_SIZE)
   PetscInt, allocatable :: integer_data(:), integer_data_recv(:)
   PetscReal, allocatable :: real_data(:), real_data_recv(:)
+
+1000 format(es11.4)
+1001 format(10(es11.4,x))
+!1000 format(es16.9)
+!1001 format(10(es16.9,x))
   
   patch => realization%patch
   grid => patch%grid
@@ -1247,7 +1265,12 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
   call PetscLogEventBegin(logging%event_output_write_tecplot, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr)    
-  
+
+  ! maximum number of initial messages  
+#define HANDSHAKE  
+  max_proc = option%io_handshake_buffer_size
+  max_proc_prefetch = option%io_handshake_buffer_size / 10
+
   if (size_flag /= 0) then
     call MPI_Allreduce(size_flag,max_local_size,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
                        PETSC_COMM_WORLD,ierr)
@@ -1301,13 +1324,21 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
         istart = iend+1
         if (iend+10 > local_size) exit
         iend = istart+9
-        write(fid,'(10(es11.4,x))') real_data(istart:iend)
+        write(fid,1001) real_data(istart:iend)
       enddo
       ! shift remaining data to front of array
       real_data(1:local_size-iend) = real_data(iend+1:local_size)
       num_in_array = local_size-iend
     endif
     do iproc=1,option%commsize-1
+#ifdef HANDSHAKE    
+      if (option%io_handshake_buffer_size > 0 .and. &
+          iproc+max_proc_prefetch >= max_proc) then
+        max_proc = max_proc + option%io_handshake_buffer_size
+        call MPI_Bcast(max_proc,1,MPI_INTEGER,ZERO_INTEGER,PETSC_COMM_WORLD, &
+                       ierr)
+      endif
+#endif      
       call MPI_Probe(iproc,MPI_ANY_TAG,PETSC_COMM_WORLD,status,ierr)
       recv_size = status(MPI_TAG)
       if (datatype == 0) then
@@ -1342,7 +1373,7 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
           istart = iend+1
           if (iend+10 > num_in_array) exit
           iend = istart+9
-          write(fid,'(10(es11.4,x))') real_data(istart:iend)
+          write(fid,1001) real_data(istart:iend)
         enddo
         if (iend > 0) then
           real_data(1:num_in_array-iend) = real_data(iend+1:num_in_array)
@@ -1350,15 +1381,31 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
         endif
       endif
     enddo
+#ifdef HANDSHAKE    
+    if (option%io_handshake_buffer_size > 0) then
+      max_proc = -1
+      call MPI_Bcast(max_proc,1,MPI_INTEGER,ZERO_INTEGER,PETSC_COMM_WORLD, &
+                     ierr)
+    endif
+#endif      
     ! Print the remaining values, if they exist
     if (datatype == 0) then
       if (num_in_array > 0) &
         write(fid,'(10(i3,x))') integer_data(1:num_in_array)
     else
       if (num_in_array > 0) &
-        write(fid,'(10(es11.4,x))') real_data(1:num_in_array)
+        write(fid,1001) real_data(1:num_in_array)
     endif
   else
+#ifdef HANDSHAKE    
+    if (option%io_handshake_buffer_size > 0) then
+      do
+        if (option%myrank < max_proc) exit
+        call MPI_Bcast(max_proc,1,MPI_INTEGER,ZERO_INTEGER,PETSC_COMM_WORLD, &
+                       ierr)
+      enddo
+    endif
+#endif    
     if (datatype == TECPLOT_INTEGER) then
       call MPI_Send(integer_data,local_size,MPI_INTEGER,ZERO_INTEGER,local_size, &
                     PETSC_COMM_WORLD,ierr)
@@ -1366,6 +1413,15 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
       call MPI_Send(real_data,local_size,MPI_DOUBLE_PRECISION,ZERO_INTEGER,local_size, &
                     PETSC_COMM_WORLD,ierr)
     endif
+#ifdef HANDSHAKE    
+    if (option%io_handshake_buffer_size > 0) then
+      do
+        call MPI_Bcast(max_proc,1,MPI_INTEGER,ZERO_INTEGER,PETSC_COMM_WORLD, &
+                       ierr)
+        if (max_proc < 0) exit
+      enddo
+    endif
+#endif    
   endif
       
   if (datatype == TECPLOT_INTEGER) then
@@ -1449,9 +1505,12 @@ subroutine OutputBreakthroughTecplot(realization)
       do 
         if (.not.associated(breakthrough)) exit
         do icell=1,breakthrough%region%num_cells
-          call WriteBreakthroughHeaderForCell(fid,realization, &
-                                              breakthrough%region,icell, &
-                                              breakthrough%print_velocities)
+!          call WriteBreakthroughHeaderForCell(fid,realization, &
+!                                              breakthrough%region,icell, &
+!                                              breakthrough%print_velocities)
+          call WriteBreakthroughHeaderForCoord(fid,realization, &
+                                               breakthrough%region, &
+                                               breakthrough%print_velocities)
         enddo
         breakthrough => breakthrough%next
       enddo
@@ -1465,14 +1524,18 @@ subroutine OutputBreakthroughTecplot(realization)
     write(fid,'(1es12.4)',advance="no") option%time/output_option%tconv
     do 
       if (.not.associated(breakthrough)) exit
-      do icell=1,breakthrough%region%num_cells
-        call WriteBreakthroughDataForCell(fid,realization, &
-                                          breakthrough%region%cell_ids(icell))
+!      do icell=1,breakthrough%region%num_cells
+!        call WriteBreakthroughDataForCell(fid,realization, &
+!                                          breakthrough%region%cell_ids(icell))
+        call WriteBreakthroughDataForCoord(fid,realization, &
+                                           breakthrough%region)
         if (breakthrough%print_velocities) then
-          call WriteVelocityAtCell(fid,realization, &
-                                   breakthrough%region%cell_ids(icell))
+!          call WriteVelocityAtCell(fid,realization, &
+!                                   breakthrough%region%cell_ids(icell))
+          call WriteVelocityAtCoord(fid,realization, &
+                                    breakthrough%region)
         endif                                          
-      enddo
+ !     enddo
       breakthrough => breakthrough%next
     enddo
     write(fid,'(a)',advance="yes") ""
@@ -1609,6 +1672,127 @@ end subroutine WriteBreakthroughHeaderForCell
 
 ! ************************************************************************** !
 !
+! WriteBreakthroughHeaderForCoord: Print a header for data at a coordinate
+! author: Glenn Hammond
+! date: 04/11/08
+!
+! ************************************************************************** !  
+subroutine WriteBreakthroughHeaderForCoord(fid,realization,region, &
+                                           print_velocities)
+
+  use Realization_module
+  use Grid_module
+  use Field_module
+  use Option_module
+  use Patch_module
+  use Region_module
+
+  implicit none
+  
+  PetscInt :: fid
+  type(realization_type) :: realization
+  type(region_type) :: region
+  PetscTruth :: print_velocities
+  
+  PetscInt :: i
+  character(len=MAXSTRINGLENGTH) :: string, string2
+  character(len=MAXWORDLENGTH) :: cell_id_string
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(grid_type), pointer :: grid
+  type(patch_type), pointer :: patch  
+  
+  patch => realization%patch
+  option => realization%option
+  field => realization%field
+  grid => patch%grid
+  
+!  write(cell_id_string,*) grid%nL2A(region%cell_ids(icell))
+!  cell_id_string = trim(region%name) // ' ' //adjustl(cell_id_string)
+  cell_id_string = trim(region%name)
+
+  select case(option%iflowmode)
+    case (MPH_MODE)
+      string = ',"X [m] '// trim(cell_id_string) // '",' // &
+               '"Y [m] '// trim(cell_id_string) // '",' // &
+               '"Z [m] '// trim(cell_id_string) // '",' // &
+               '"T [C] '// trim(cell_id_string) // '",' // &
+               '"P [Pa] '// trim(cell_id_string) // '",' // &
+               '"sl '// trim(cell_id_string) // '",' // &
+               '"sg '// trim(cell_id_string) // '",' // &
+               '"Ul '// trim(cell_id_string) // '",' // &
+               '"Ug '// trim(cell_id_string) // '",'
+      do i=1,option%nspec
+        write(string2,'(''"Xl('',i2,'') '// trim(cell_id_string) // '",'')') i
+        string = trim(string) // trim(string2)
+      enddo
+      do i=1,option%nspec
+        write(string2,'(''"Xg('',i2,'') '// trim(cell_id_string) // '",'')') i
+        string = trim(string) // trim(string2)
+      enddo
+#if 0      
+      if (option%rk > 0.d0) then
+        string = trim(string) // '"Volume Fraction '// trim(cell_id_string) // '"'
+      endif
+#endif      
+      string = trim(string) // ',"Phase '// trim(cell_id_string) // '"'
+    case(RICHARDS_MODE,RICHARDS_LITE_MODE)
+      if (option%iflowmode == RICHARDS_MODE) then
+        string = ',"X [m] '// trim(cell_id_string) // '",' // &
+                 '"Y [m] '// trim(cell_id_string) // '",' // &
+                 '"Z [m] '// trim(cell_id_string) // '",' // &
+                 '"T [C] '// trim(cell_id_string) // '",' // &
+                 '"P [Pa] '// trim(cell_id_string) // '",' // &
+                 '"sl '// trim(cell_id_string) // '",' // &
+                 '"Ul '// trim(cell_id_string) // '"' 
+      else
+        string = ',"X [m] '// trim(cell_id_string) // '",' // &
+                 '"Y [m] '// trim(cell_id_string) // '",' // &
+                 '"Z [m] '// trim(cell_id_string) // '",' // &
+                 '"P [Pa] '// trim(cell_id_string) // '",' // &
+                 '"sl '// trim(cell_id_string) // '"'
+      endif
+      if (option%iflowmode == RICHARDS_MODE) then
+        do i=1,option%nspec
+          write(string2,'('',"Xl('',i2,'') '// trim(cell_id_string) // '"'')') i
+          string = trim(string) // trim(string2)
+        enddo
+      endif
+#if 0      
+      if (option%rk > 0.d0) then
+        string = trim(string) // ',"Volume Fraction '// trim(cell_id_string) // '"'
+      endif
+#endif      
+    case default
+      string = ',"X [m]",' // &
+               '"Y [m]",' // &
+               '"Z [m]",' // &
+               '"T [C]",' // &
+               '"P [Pa]",' // &
+               '"sl",' // &
+               '"C [mol/L]"'
+#if 0               
+      if (option%rk > 0.d0) then
+        string = trim(string) // ',"Volume Fraction"'
+      endif
+#endif      
+  end select
+  write(fid,'(a)',advance="no") trim(string)
+
+  if (print_velocities) then 
+    string = ',"vlx [m/'//trim(realization%output_option%tunit)//'] '// &
+             trim(cell_id_string) // '"' // &
+             ',"vly [m/'//trim(realization%output_option%tunit)//'] '// &
+             trim(cell_id_string) // '"' // &
+             ',"vlz [m/'//trim(realization%output_option%tunit)//'] '// &
+             trim(cell_id_string) // '"'
+    write(fid,'(a)',advance="no") trim(string)
+  endif
+
+end subroutine WriteBreakthroughHeaderForCoord
+
+! ************************************************************************** !
+!
 ! WriteBreakthroughDataForCell: Print data for data at a cell
 ! author: Glenn Hammond
 ! date: 02/11/08
@@ -1734,6 +1918,201 @@ end subroutine WriteBreakthroughDataForCell
 
 ! ************************************************************************** !
 !
+! WriteBreakthroughDataForCoord: Print data for data at a coordinate
+! author: Glenn Hammond
+! date: 04/11/08
+!
+! ************************************************************************** !  
+subroutine WriteBreakthroughDataForCoord(fid,realization,region)
+
+  use Realization_module
+  use Option_module
+  use Region_module  
+  use Grid_module
+  use Field_module
+  use Patch_module
+  
+  use Structured_Grid_module
+
+  implicit none
+  
+  PetscInt :: fid
+  type(realization_type) :: realization
+  type(region_type) :: region
+
+  PetscInt :: local_id
+  PetscInt :: ghosted_id
+  type(option_type), pointer :: option
+  type(grid_type), pointer :: grid
+  type(field_type), pointer :: field
+  type(patch_type), pointer :: patch  
+  PetscInt :: ghosted_ids(8)
+  PetscInt :: count
+  PetscInt :: i, j, k
+  PetscInt :: istart, iend, jstart, jend, kstart, kend
+  
+  option => realization%option
+  patch => realization%patch
+  grid => patch%grid
+  field => realization%field
+
+100 format(es13.6)
+!100 format(es16.9)
+101 format("i")
+110 format(',',es13.6)
+!110 format(',',es16.9)
+111 format(',',"i")
+
+!print *, 'Fix format statements in output!!!!!'
+
+  ! write out coorindates
+  write(fid,110,advance="no") region%coordinate(X_DIRECTION)
+  write(fid,110,advance="no") region%coordinate(Y_DIRECTION)
+  write(fid,110,advance="no") region%coordinate(Z_DIRECTION)
+  
+  count = 0
+  local_id = region%cell_ids(1)
+  ghosted_id = grid%nL2G(local_id)
+  call StructGridGetIJKFromGhostedID(grid%structured_grid,ghosted_id,i,j,k)
+  istart = i
+  iend = i
+  jstart = j
+  jend = j
+  kstart = k
+  kend = k
+  ! find the neighboring cells, between which to interpolate
+  if (grid%x(ghosted_id) > region%coordinate(X_DIRECTION)) then
+    if (i > 1) then
+      istart = i-1
+    endif
+  else
+    if (i < grid%structured_grid%ngx) then
+      iend = i+1
+    endif
+  endif
+  if (grid%y(ghosted_id) > region%coordinate(Y_DIRECTION)) then
+    if (j > 1) then
+      jstart = j-1
+    endif
+  else
+    if (j < grid%structured_grid%ngy) then
+      jend = j+1
+    endif
+  endif
+  if (grid%z(ghosted_id) > region%coordinate(Z_DIRECTION)) then
+    if (k > 1) then
+      kstart = k-1
+    endif
+  else
+    if (k < grid%structured_grid%ngz) then
+      kend = k+1
+    endif
+  endif
+  count = 0
+  do k=kstart,kend
+    do j=jstart,jend
+      do i=istart,iend
+        count = count + 1
+        ghosted_ids(count) = i + (j-1)*grid%structured_grid%ngx + &
+                             (k-1)*grid%structured_grid%ngxy
+      enddo
+    enddo
+  enddo
+  
+  select case(option%iflowmode)
+    case (MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
+
+      ! temperature
+      select case(option%iflowmode)
+        case(MPH_MODE,RICHARDS_MODE)
+          write(fid,110,advance="no") &
+            OutputGetVarFromArrayAtCoord(realization,TEMPERATURE,ZERO_INTEGER, &
+                                         region%coordinate,count,ghosted_ids)
+      end select
+
+      ! pressure
+      select case(option%iflowmode)
+        case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
+          write(fid,110,advance="no") &
+            OutputGetVarFromArrayAtCoord(realization,PRESSURE,ZERO_INTEGER, &
+                                         region%coordinate,count,ghosted_ids)
+      end select
+
+      ! liquid saturation
+      select case(option%iflowmode)
+        case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
+          write(fid,110,advance="no") &
+            OutputGetVarFromArrayAtCoord(realization,LIQUID_SATURATION,ZERO_INTEGER, &
+                                         region%coordinate,count,ghosted_ids)
+      end select
+
+      select case(option%iflowmode)
+        case(MPH_MODE)
+          ! gas saturation
+          write(fid,110,advance="no") &
+            OutputGetVarFromArrayAtCoord(realization,GAS_SATURATION,ZERO_INTEGER, &
+                                         region%coordinate,count,ghosted_ids)
+      end select
+    
+      select case(option%iflowmode)
+        case(MPH_MODE,RICHARDS_MODE)
+          ! liquid energy
+          write(fid,110,advance="no") &
+            OutputGetVarFromArrayAtCoord(realization,LIQUID_ENERGY,ZERO_INTEGER, &
+                                         region%coordinate,count,ghosted_ids)
+      end select
+    
+      select case(option%iflowmode)
+        case(MPH_MODE)
+          ! gas energy
+          write(fid,110,advance="no") &
+            OutputGetVarFromArrayAtCoord(realization,GAS_ENERGY,ZERO_INTEGER, &
+                                         region%coordinate,count,ghosted_ids)
+      end select
+
+      select case(option%iflowmode)
+        case(MPH_MODE,RICHARDS_MODE)
+          ! liquid mole fractions
+          do i=1,option%nspec
+            write(fid,110,advance="no") &
+              OutputGetVarFromArrayAtCoord(realization,LIQUID_MOLE_FRACTION,i-1, &
+                                           region%coordinate,count,ghosted_ids)
+          enddo
+      end select
+  
+      select case(option%iflowmode)
+        case(MPH_MODE)
+          ! gas mole fractions
+          do i=1,option%nspec
+            write(fid,110,advance="no") &
+              OutputGetVarFromArrayAtCoord(realization,GAS_MOLE_FRACTION,i-1, &
+                                           region%coordinate,count,ghosted_ids)
+          enddo
+      end select 
+#if 0      
+      ! Volume Fraction
+      if (option%rk > 0.d0) then
+        write(fid,110,advance="no") &
+          OutputGetVarFromArrayAtCoord(realization,VOLUME_FRACTION,ZERO_INTEGER, &
+                                       region%coordinate,count,ghosted_ids)
+      endif
+#endif    
+      ! phase
+      select case(option%iflowmode)
+        case(MPH_MODE,RICHARDS_MODE)
+          write(fid,111,advance="no") &
+            int(OutputGetVarFromArrayAtCoord(realization,PHASE,ZERO_INTEGER, &
+                                             region%coordinate,count,ghosted_ids))
+      end select
+      
+    case default
+  
+  end select
+
+end subroutine WriteBreakthroughDataForCoord
+
+! ************************************************************************** !
+!
 ! WriteVelocityAtCell: Computes velocities at a grid cell
 ! author: Glenn Hammond
 ! note: limited to structured grids
@@ -1741,6 +2120,35 @@ end subroutine WriteBreakthroughDataForCell
 !
 ! ************************************************************************** !  
 subroutine WriteVelocityAtCell(fid,realization,local_id)
+
+  use Realization_module
+  use Option_module
+
+  implicit none
+  
+  PetscInt :: fid
+  type(realization_type) :: realization
+  PetscInt :: local_id
+
+  PetscReal :: velocity(1:3)
+  
+200 format(3(',',es13.6))
+  
+  velocity = GetVelocityAtCell(fid,realization,local_id)
+  
+  write(fid,200,advance="no") velocity(1:3)*realization%output_option%tconv   
+
+end subroutine WriteVelocityAtCell
+
+! ************************************************************************** !
+!
+! GetVelocityAtCell: Computes velocities at a grid cell
+! author: Glenn Hammond
+! note: limited to structured grids
+! date: 03/20/08
+!
+! ************************************************************************** !  
+function GetVelocityAtCell(fid,realization,local_id)
 
   use Realization_module
   use Option_module
@@ -1752,6 +2160,7 @@ subroutine WriteVelocityAtCell(fid,realization,local_id)
 
   implicit none
   
+  PetscReal :: GetVelocityAtCell(3)
   PetscInt :: fid
   type(realization_type) :: realization
   PetscInt :: local_id
@@ -1761,9 +2170,9 @@ subroutine WriteVelocityAtCell(fid,realization,local_id)
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch  
-  type(connection_list_type), pointer :: connection_list
+  type(connection_set_list_type), pointer :: connection_set_list
   type(coupler_type), pointer :: boundary_condition
-  type(connection_type), pointer :: cur_connection_set
+  type(connection_set_type), pointer :: cur_connection_set
   PetscInt :: iconn, sum_connection
   PetscInt :: local_id_up, local_id_dn
   PetscInt :: direction, iphase
@@ -1775,15 +2184,13 @@ subroutine WriteVelocityAtCell(fid,realization,local_id)
   grid => patch%grid
   field => realization%field
 
-200 format(3(',',es13.6))
-
   sum_velocity = 0.d0
   sum_area = 0.d0
   iphase = 1
 
   ! interior velocities  
-  connection_list => grid%internal_connection_list
-  cur_connection_set => connection_list%first
+  connection_set_list => grid%internal_connection_set_list
+  cur_connection_set => connection_set_list%first
   sum_connection = 0
   do 
     if (.not.associated(cur_connection_set)) exit
@@ -1810,7 +2217,7 @@ subroutine WriteVelocityAtCell(fid,realization,local_id)
   sum_connection = 0
   do
     if (.not.associated(boundary_condition)) exit
-    cur_connection_set => boundary_condition%connection
+    cur_connection_set => boundary_condition%connection_set
     do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
       if (cur_connection_set%id_dn(iconn) == local_id) then
@@ -1832,10 +2239,177 @@ subroutine WriteVelocityAtCell(fid,realization,local_id)
     if (abs(sum_area(direction)) > 1.d-40) &
       velocity(direction) = sum_velocity(direction)/sum_area(direction)
   enddo
+
+  GetVelocityAtCell = velocity  
+
+end function GetVelocityAtCell
+
+! ************************************************************************** !
+!
+! WriteVelocityAtCoord: Computes velocities at a coordinate
+! author: Glenn Hammond
+! note: limited to structured grids
+! date: 03/20/08
+!
+! ************************************************************************** !  
+subroutine WriteVelocityAtCoord(fid,realization,region)
+
+  use Realization_module
+  use Region_module
+  use Option_module
+
+  implicit none
+  
+  PetscInt :: fid
+  type(realization_type) :: realization
+  type(region_type) :: region
+  PetscInt :: local_id
+  PetscReal :: coordinate(3)
+
+  PetscReal :: velocity(1:3)
+  
+200 format(3(',',es13.6))
+  
+  velocity = GetVelocityAtCoord(fid,realization,region%cell_ids(1), &
+                                region%coordinate)
   
   write(fid,200,advance="no") velocity(1:3)*realization%output_option%tconv   
 
-end subroutine WriteVelocityAtCell
+end subroutine WriteVelocityAtCoord
+
+! ************************************************************************** !
+!
+! GetVelocityAtCoord: Computes velocities at a coordinate
+! author: Glenn Hammond
+! note: limited to structured grids
+! date: 03/20/08
+!
+! ************************************************************************** !  
+function GetVelocityAtCoord(fid,realization,local_id,coordinate)
+  use Realization_module
+  use Option_module
+  use Grid_module
+  use Field_module
+  use Patch_module
+  use Connection_module
+  use Coupler_module
+
+  implicit none
+  
+  PetscReal :: GetVelocityAtCoord(3)
+  PetscInt :: fid
+  type(realization_type) :: realization
+  PetscInt :: local_id
+  PetscReal :: coordinate(3)
+
+  PetscInt :: ghosted_id
+  type(option_type), pointer :: option
+  type(grid_type), pointer :: grid
+  type(field_type), pointer :: field
+  type(patch_type), pointer :: patch  
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(coupler_type), pointer :: boundary_condition
+  type(connection_set_type), pointer :: cur_connection_set
+  PetscInt :: iconn, sum_connection
+  PetscInt :: local_id_up, local_id_dn
+  PetscReal :: cell_coord(3), face_coord
+  PetscInt :: direction, iphase
+  PetscReal :: area, weight, distance
+  PetscReal :: sum_velocity(1:3), velocity(1:3)
+  PetscReal :: sum_weight(1:3)
+  
+  option => realization%option
+  patch => realization%patch
+  grid => patch%grid
+  field => realization%field
+
+  sum_velocity = 0.d0
+  sum_weight = 0.d0
+  iphase = 1
+
+  ghosted_id = grid%nL2G(local_id)
+
+  cell_coord(X_DIRECTION) = grid%x(ghosted_id)
+  cell_coord(Y_DIRECTION) = grid%y(ghosted_id)
+  cell_coord(Z_DIRECTION) = grid%z(ghosted_id)
+
+  ! interior velocities  
+  connection_set_list => grid%internal_connection_set_list
+  cur_connection_set => connection_set_list%first
+  sum_connection = 0
+  do 
+    if (.not.associated(cur_connection_set)) exit
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+      local_id_up = grid%nG2L(cur_connection_set%id_up(iconn)) ! = zero for ghost nodes
+      local_id_dn = grid%nG2L(cur_connection_set%id_dn(iconn)) ! = zero for ghost nodes
+      if (local_id_up == local_id .or. local_id_dn == local_id) then
+        do direction=1,3
+          if (local_id_up == local_id) then
+            face_coord = cell_coord(direction) + &
+                         cur_connection_set%dist(-1,iconn)* &
+                         cur_connection_set%dist(0,iconn)* &
+                         cur_connection_set%dist(direction,iconn)
+          else
+            face_coord = cell_coord(direction) - &
+                         (1.d0-cur_connection_set%dist(-1,iconn))* &
+                         cur_connection_set%dist(0,iconn)* &
+                         cur_connection_set%dist(direction,iconn)
+          endif
+          distance = dabs(face_coord-coordinate(direction))
+          if (distance < 1.d-40) distance = 1.d-40
+          weight = cur_connection_set%area(iconn)* &
+                 dabs(cur_connection_set%dist(direction,iconn))/ &
+                 distance
+ 
+          sum_velocity(direction) = sum_velocity(direction) + &
+                                    patch%internal_velocities(iphase,sum_connection)* &
+                                    weight
+          sum_weight(direction) = sum_weight(direction) + weight
+       enddo
+      endif
+    enddo
+    cur_connection_set => cur_connection_set%next
+  enddo
+
+  ! boundary velocities
+  boundary_condition => patch%flow_boundary_conditions%first
+  sum_connection = 0
+  do
+    if (.not.associated(boundary_condition)) exit
+    cur_connection_set => boundary_condition%connection_set
+    do iconn = 1, cur_connection_set%num_connections
+      sum_connection = sum_connection + 1
+      if (cur_connection_set%id_dn(iconn) == local_id) then
+        do direction=1,3        
+          face_coord = cell_coord(direction) - &
+                    !   (1.d0-cur_connection_set%dist(-1,iconn))* & ! fraction upwind is always 0.d0
+                       cur_connection_set%dist(0,iconn)* &
+                       cur_connection_set%dist(direction,iconn)
+          distance = dabs(face_coord-coordinate(direction))
+          if (distance < 1.d-40) distance = 1.d-40
+          weight = cur_connection_set%area(iconn)* &
+                   dabs(cur_connection_set%dist(direction,iconn))/ &
+                   distance
+          sum_velocity(direction) = sum_velocity(direction) + &
+                                    patch%boundary_velocities(iphase,sum_connection)* &
+                                    weight
+          sum_weight(direction) = sum_weight(direction) + weight
+        enddo
+      endif
+    enddo
+    boundary_condition => boundary_condition%next
+  enddo
+
+  velocity = 0.d0
+  do direction = 1,3
+    if (abs(sum_weight(direction)) > 1.d-40) &
+      velocity(direction) = sum_velocity(direction)/sum_weight(direction)
+  enddo
+
+  GetVelocityAtCoord = velocity  
+
+end function GetVelocityAtCoord
 
 ! ************************************************************************** !
 !
@@ -1902,7 +2476,7 @@ subroutine OutputHDF5(realization)
   Vec :: natural_vec
   PetscReal, pointer :: v_ptr
   
-  character(len=MAXWORDLENGTH) :: filename = "pflotran.h5"
+  character(len=MAXWORDLENGTH) :: filename = "pflow.h5"
   character(len=MAXSTRINGLENGTH) :: string
   logical, save :: first = .true.
   PetscReal, pointer :: array(:)
@@ -1937,10 +2511,6 @@ subroutine OutputHDF5(realization)
                                    filename
   endif
   
-  ! write out data sets 
-  call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
-                                  option)   
-
   if (first) then
 
     ! create a group for the coordinates data set
@@ -1986,14 +2556,6 @@ subroutine OutputHDF5(realization)
     deallocate(array)
 !GEH - Structured Grid Dependence - End
 
-    ! material id
-    if (associated(patch%imat)) then
-      call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
-      string = "Material ID"
-      call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id, &
-                                         HDF_NATIVE_INTEGER) 
-    endif
-
     call h5gclose_f(grp_id,hdf5_err)
     
   endif
@@ -2006,6 +2568,10 @@ subroutine OutputHDF5(realization)
   endif
   call h5gcreate_f(file_id,string,grp_id,hdf5_err,OBJECT_NAMELEN_DEFAULT_F)
   
+  ! write out data sets 
+  call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
+                                  option)   
+
   select case(option%iflowmode)
   
     case(MPH_MODE,RICHARDS_MODE, &
@@ -2097,15 +2663,6 @@ subroutine OutputHDF5(realization)
     case default
 
   end select
-
-  if (option%ntrandof > 0) then
-    do i=1,option%ntrandof
-      call OutputGetVarFromArray(realization,global_vec,TOTAL_CONCENTRATION,i)
-      string = "Concentration"
-      call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id, &
-                                         H5T_NATIVE_DOUBLE)
-    enddo
-  endif  
   
   if (output_option%print_hdf5_velocities) then
 
@@ -2173,7 +2730,7 @@ subroutine OutputHDF5(realization)
     endif
     
   endif 
-
+  
   ! call VecDestroy(natural_vec,ierr)
   call VecDestroy(global_vec,ierr)
 
@@ -2235,8 +2792,8 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
 
   Vec :: global_vec
 
-  type(connection_list_type), pointer :: connection_list
-  type(connection_type), pointer :: cur_connection_set
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
     
   discretization => realization%discretization
   patch => realization%patch
@@ -2307,8 +2864,8 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
   call VecGetArrayF90(global_vec,vec_ptr,ierr)
   
   ! place interior velocities in a vector
-  connection_list => grid%internal_connection_list
-  cur_connection_set => connection_list%first
+  connection_set_list => grid%internal_connection_set_list
+  cur_connection_set => connection_set_list%first
   do 
     if (.not.associated(cur_connection_set)) exit
     do iconn = 1, cur_connection_set%num_connections
@@ -2526,14 +3083,87 @@ function OutputGetVarFromArrayAtCell(realization,ivar,isubvar,local_id)
   PetscInt :: isubvar
   PetscInt :: local_id
 
+  PetscInt :: ghosted_id
+
+  ghosted_id = realization%patch%grid%nL2G(local_id)
+
   select case(realization%option%iflowmode)
     case(RICHARDS_MODE)
-      OutputGetVarFromArrayAtCell = RichardsGetVarFromArrayAtCell(realization,ivar,isubvar,local_id)
+      OutputGetVarFromArrayAtCell = &
+        RichardsGetVarFromArrayAtCell(realization,ivar,isubvar,ghosted_id)
     case(RICHARDS_LITE_MODE)
-      OutputGetVarFromArrayAtCell = RichardsLiteGetVarFromArrayAtCell(realization,ivar,isubvar,local_id)
+      OutputGetVarFromArrayAtCell = &
+        RichardsLiteGetVarFromArrayAtCell(realization,ivar,isubvar,ghosted_id)
   end select
 
 end function OutputGetVarFromArrayAtCell
+
+! ************************************************************************** !
+!
+! OutputGetVarFromArrayAtCoord: Extracts variables indexed by ivar from a multivar array
+! author: Glenn Hammond
+! date: 02/11/08
+!
+! ************************************************************************** !
+function OutputGetVarFromArrayAtCoord(realization,ivar,isubvar,coordinate, &
+                                      num_cells,ghosted_ids)
+
+  use Realization_module
+  use Grid_module
+  use Option_module
+
+  use Richards_module, only : RichardsGetVarFromArrayAtCell
+  use Richards_Lite_module, only : RichardsLiteGetVarFromArrayAtCell
+
+  implicit none
+  
+  PetscReal :: OutputGetVarFromArrayAtCoord
+  type(realization_type) :: realization
+  PetscInt :: ivar
+  PetscInt :: isubvar
+  PetscReal :: coordinate(3)
+  PetscInt :: num_cells
+  PetscInt :: ghosted_ids(num_cells)
+
+  type(grid_type), pointer :: grid
+  PetscInt :: icell, ghosted_id
+  PetscReal :: dx, dy, dz
+  PetscReal :: value, sum_value
+  PetscReal :: weight, sum_weight, sum_root
+  
+  sum_value = 0.d0
+  sum_weight = 0.d0
+  
+  grid => realization%patch%grid
+
+  do icell=1, num_cells
+    ghosted_id = ghosted_ids(icell)
+    dx = coordinate(1)-grid%x(ghosted_id)
+    dy = coordinate(2)-grid%y(ghosted_id)
+    dz = coordinate(3)-grid%z(ghosted_id)
+    sum_root = sqrt(dx*dx+dy*dy+dz*dz)
+    value = 0.d0
+    select case(realization%option%iflowmode)
+      case(RICHARDS_MODE)
+        value = &
+          RichardsGetVarFromArrayAtCell(realization,ivar,isubvar,ghosted_id)
+      case(RICHARDS_LITE_MODE)
+        value = &
+          RichardsLiteGetVarFromArrayAtCell(realization,ivar,isubvar,ghosted_id)  
+    end select
+    if (sum_root < 1.d-40) then ! bail because it is right on this coordinate
+      sum_weight = 1.d0
+      sum_value = value
+      exit
+    endif
+    weight = 1.d0/sum_root
+    sum_weight = sum_weight + weight
+    sum_value = sum_value + weight * value
+  enddo
+  
+  OutputGetVarFromArrayAtCoord = sum_value/sum_weight
+
+end function OutputGetVarFromArrayAtCoord
 
 ! ************************************************************************** !
 !
@@ -2580,7 +3210,7 @@ subroutine OutputGetVarFromArray(realization,vec,ivar,isubvar)
           call RichardsLiteGetVarFromArray(realization,vec,ivar,isubvar)
           return
       end select
-    case(FREE_ION_CONCENTRATION,TOTAL_CONCENTRATION)
+    case(PRIMARY_SPEC_CONCENTRATION,TOTAL_CONCENTRATION)
       call RTGetVarFromArray(realization,vec,ivar,isubvar)
     case(MATERIAL_ID)
       if (option%nflowdof > 0) then
@@ -2646,8 +3276,8 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
   PetscReal, allocatable :: sum_area(:)
   
   type(coupler_type), pointer :: boundary_condition
-  type(connection_list_type), pointer :: connection_list
-  type(connection_type), pointer :: cur_connection_set
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
 
   call PetscLogEventBegin(logging%event_output_get_cell_vel, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
@@ -2666,8 +3296,8 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
   call VecGetArrayF90(vec,vec_ptr,ierr)
 
   ! interior velocities  
-  connection_list => grid%internal_connection_list
-  cur_connection_set => connection_list%first
+  connection_set_list => grid%internal_connection_set_list
+  cur_connection_set => connection_set_list%first
   sum_connection = 0
   do 
     if (.not.associated(cur_connection_set)) exit
@@ -2699,7 +3329,7 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
   sum_connection = 0
   do
     if (.not.associated(boundary_condition)) exit
-    cur_connection_set => boundary_condition%connection
+    cur_connection_set => boundary_condition%connection_set
     do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
       local_id = cur_connection_set%id_dn(iconn)
@@ -2771,8 +3401,8 @@ subroutine ComputeFlowMassBalance(realization)
   PetscReal, pointer :: vec_ptr(:), vec2_ptr(:), den_loc_p(:)
   
   type(coupler_type), pointer :: boundary_condition
-  type(connection_list_type), pointer :: connection_list
-  type(connection_type), pointer :: cur_connection_set
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
 
   patch => realization%patch
   grid => patch%grid
@@ -2794,8 +3424,8 @@ subroutine ComputeFlowMassBalance(realization)
   call VecGetArrayF90(density_loc,den_loc_p,ierr)
 
   ! interior velocities  
-  connection_list => grid%internal_connection_list
-  cur_connection_set => connection_list%first
+  connection_set_list => grid%internal_connection_set_list
+  cur_connection_set => connection_set_list%first
   sum_connection = 0
   do 
     if (.not.associated(cur_connection_set)) exit
@@ -2828,7 +3458,7 @@ subroutine ComputeFlowMassBalance(realization)
   sum_connection = 0
   do
     if (.not.associated(boundary_condition)) exit
-    cur_connection_set => boundary_condition%connection
+    cur_connection_set => boundary_condition%connection_set
     do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
       local_id = cur_connection_set%id_dn(iconn)
@@ -2938,8 +3568,8 @@ subroutine ComputeFlowCellVelocityStats(realization)
   PetscReal, allocatable :: sum_area(:)
   
   type(coupler_type), pointer :: boundary_condition
-  type(connection_list_type), pointer :: connection_list
-  type(connection_type), pointer :: cur_connection_set
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
 
   patch => realization%patch
   grid => patch%grid
@@ -2961,8 +3591,8 @@ subroutine ComputeFlowCellVelocityStats(realization)
       call VecGetArrayF90(global_vec,vec_ptr,ierr)
 
       ! interior velocities  
-      connection_list => grid%internal_connection_list
-      cur_connection_set => connection_list%first
+      connection_set_list => grid%internal_connection_set_list
+      cur_connection_set => connection_set_list%first
       sum_connection = 0
       do 
         if (.not.associated(cur_connection_set)) exit
@@ -2991,7 +3621,7 @@ subroutine ComputeFlowCellVelocityStats(realization)
       sum_connection = 0
       do
         if (.not.associated(boundary_condition)) exit
-        cur_connection_set => boundary_condition%connection
+        cur_connection_set => boundary_condition%connection_set
         do iconn = 1, cur_connection_set%num_connections
           sum_connection = sum_connection + 1
           local_id = cur_connection_set%id_dn(iconn)
@@ -3096,8 +3726,8 @@ subroutine ComputeFlowFluxVelocityStats(realization)
   PetscReal :: sum, average, max, min , std_dev
   PetscInt :: max_loc, min_loc
 
-  type(connection_list_type), pointer :: connection_list
-  type(connection_type), pointer :: cur_connection_set
+  type(connection_set_list_type), pointer :: connection_set_list
+  type(connection_set_type), pointer :: cur_connection_set
     
   discretization => realization%discretization
   patch => realization%patch
@@ -3116,8 +3746,8 @@ subroutine ComputeFlowFluxVelocityStats(realization)
       call VecGetArrayF90(global_vec,vec_ptr,ierr)
       
       ! place interior velocities in a vector
-      connection_list => grid%internal_connection_list
-      cur_connection_set => connection_list%first
+      connection_set_list => grid%internal_connection_set_list
+      cur_connection_set => connection_set_list%first
       sum_connection = 0
       do 
         if (.not.associated(cur_connection_set)) exit

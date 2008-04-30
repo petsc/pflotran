@@ -1467,6 +1467,10 @@ subroutine readInput(simulation,filename)
       case ('USE_TOUCH_OPTIONS')
         option%use_touch_options = .true.
 
+      case ('HANDSHAKE_IO')
+        call fiReadInt(string,option%io_handshake_buffer_size,ierr)
+        call fiErrorMsg(option%myrank,'io_handshake_buffer_size','HANDSHAKE_IO', ierr)
+
       case ('OVERWRITE_RESTART_TRANSPORT')
         option%overwrite_restart_transport = .true.
 
@@ -1895,7 +1899,7 @@ subroutine assignUniformVelocity(realization)
   type(grid_type), pointer :: grid
   type(patch_type), pointer :: patch   
   type(coupler_type), pointer :: boundary_condition
-  type(connection_type), pointer :: cur_connection_set
+  type(connection_set_type), pointer :: cur_connection_set
   PetscInt :: iconn, sum_connection
   PetscReal :: vdarcy
     
@@ -1905,7 +1909,7 @@ subroutine assignUniformVelocity(realization)
   grid => patch%grid
     
   ! Internal Flux Terms -----------------------------------
-  cur_connection_set => grid%internal_connection_list%first
+  cur_connection_set => grid%internal_connection_set_list%first
   sum_connection = 0
   do 
     if (.not.associated(cur_connection_set)) exit
@@ -1923,7 +1927,7 @@ subroutine assignUniformVelocity(realization)
   sum_connection = 0
   do 
     if (.not.associated(boundary_condition)) exit
-    cur_connection_set => boundary_condition%connection
+    cur_connection_set => boundary_condition%connection_set
     do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
       vdarcy = OptionDotProduct(option%uniform_velocity, &
@@ -2027,9 +2031,9 @@ subroutine verifyCoupler(realization,patch,coupler_list)
 
     call VecZeroEntries(global_vec,ierr)
     call VecGetArrayF90(global_vec,vec_ptr,ierr) 
-    if (associated(coupler%connection)) then
-      do iconn = 1, coupler%connection%num_connections
-        local_id = coupler%connection%id_dn(iconn)
+    if (associated(coupler%connection_set)) then
+      do iconn = 1, coupler%connection_set%num_connections
+        local_id = coupler%connection_set%id_dn(iconn)
         vec_ptr(local_id) = coupler%id
       enddo
     else

@@ -280,6 +280,8 @@ PFLOTRAN solves a system of generally nonlinear partial differential equations d
 
 \section{Installation}
 
+The following instructions should aid in installing openmpi, PETSc, HDF5 and PFLOTRAN on a UNIX or Mac computer running MacOSX 10.4 or later.
+
 \subsection{Openmpi}
 
 Set environment variables \verb|PKGS| and \verb|MPI_HOME| and the appropriate \verb|PATH|:
@@ -383,6 +385,948 @@ Create input file \verb|pflotran.in| and run PFLOTRAN with the command:
 
 \noindent
 where \verb|#proc| is the desired number of processor cores.
+
+\section{PFLOTRAN Objects}
+
+This section gives an overview in alphabetical order of the objects and their data structures used in PFLOTRAN. The upper most object is {\bf Simulation} followed by {\bf Realization}, followed by {\bf Level}, {\bf Patch} and {\bf Grid}.
+
+\begin{longtable}{ll}%[h]%\centering
+%\caption{PFLOTRAN Keywords}\label{flkeywd} 
+
+%\vspace{4mm}
+
+%\begin{tabular}{lll} 
+\toprule[1.5pt]
+\multicolumn{1}{c}{Object} & \multicolumn{1}{c}{Description}\\
+\midrule[1pt]
+\hyperlink{target_obj_breakthrough}{Breakthrough} & \\
+\hyperlink{target_obj_cond}{Condition} & \\
+\hyperlink{target_obj_conn}{Connection} & \\
+\hyperlink{target_obj_coupler}{Coupler} & \\
+\hyperlink{target_obj_discretization}{Discretization} & \\
+\hyperlink{target_obj_field}{Field} & \\
+\hyperlink{target_obj_grid}{Grid} & \\
+\hyperlink{target_obj_level}{Level} & \\
+\hyperlink{target_obj_logging}{Logging} & \\
+\hyperlink{target_obj_mat}{Material} & \\
+\hyperlink{target_obj_option}{Option} & \\
+\hyperlink{target_obj_patch}{Patch} & \\
+\hyperlink{target_obj_real}{Realization} & \\
+\hyperlink{target_obj_region}{Region} & \\
+\hyperlink{target_obj_richards}{Richards} & \\
+\hyperlink{target_obj_richards_lite}{Richards\_lite} & \\
+\hyperlink{target_obj_simulation}{Simulation} & \\
+\hyperlink{target_obj_solver}{Solver} & \\
+\hyperlink{target_obj_stepper}{Stepper} & \\
+\hyperlink{target_obj_strata}{Strata} & \\
+\hyperlink{target_obj_structured_grid}{Structured\_grid} & \\
+\hyperlink{target_obj_waypoint}{Waypoint} & \\
+\bottomrule[1.5pt]
+%\end{tabular} 
+\end{longtable}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\protect\hypertarget{target_obj_breakthrough}{}
+\subsection{Breakthrough}
+
+\begin{verbatim}
+  type, public :: breakthrough_type
+    ! all added variables must be included in BreakthroughCreateFromBreakthrough
+    PetscInt :: id
+    PetscTruth :: print_velocities
+    character(len=MAXWORDLENGTH) :: name
+    character(len=MAXWORDLENGTH) :: region_name
+    type(region_type), pointer :: region
+    type(breakthrough_type), pointer :: next
+  end type breakthrough_type
+  
+  type, public :: breakthrough_list_type
+    PetscInt :: num_breakthroughs
+    type(breakthrough_type), pointer :: first
+    type(breakthrough_type), pointer :: last
+    type(breakthrough_type), pointer :: array(:)
+  end type breakthrough_list_type
+\end{verbatim}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\protect\hypertarget{target_obj_cond}{}
+\subsection{Condition}
+
+\begin{verbatim}
+  type, public :: condition_dataset_type
+    PetscInt :: rank
+    logical :: is_transient
+    logical :: is_cyclic
+    PetscInt :: interpolation_method
+    PetscReal, pointer :: times(:)
+    PetscReal, pointer :: values(:,:)
+    PetscReal, pointer :: cur_value(:)
+    PetscInt :: cur_time_index
+    PetscInt :: max_time_index
+  end type condition_dataset_type
+  
+  type, public :: condition_type
+    PetscInt :: id                    ! id from which condition can be referenced
+    character(len=MAXWORDLENGTH) :: class ! character string describing class of
+                                            condition
+    PetscInt :: iclass                            ! integer id for class
+    logical :: sync_time_with_update
+    character(len=MAXWORDLENGTH) :: name ! name of condition (e.g. initial,
+                                           recharge)
+    PetscInt :: num_sub_conditions
+    PetscInt :: iphase
+    PetscInt, pointer :: itype(:)
+    character(len=MAXWORDLENGTH) :: time_units
+    character(len=MAXWORDLENGTH) :: length_units
+    type(sub_condition_type), pointer :: pressure
+    type(sub_condition_type), pointer :: temperature
+    type(sub_condition_type), pointer :: concentration
+    type(sub_condition_type), pointer :: enthalpy
+    type(sub_condition_ptr_type), pointer :: sub_condition_ptr(:)
+    type(condition_type), pointer :: next ! pointer to next condition_type for 
+                                            linked-lists
+  end type condition_type
+  
+  type, public :: sub_condition_type
+    PetscInt :: itype                  ! integer describing type of condition
+    character(len=MAXWORDLENGTH) :: ctype ! character string describing type of 
+                                            condition
+    character(len=MAXWORDLENGTH) :: units      ! units
+
+    type(condition_dataset_type) :: datum
+    type(condition_dataset_type) :: gradient
+    type(condition_dataset_type) :: dataset
+
+  end type sub_condition_type
+  
+  type, public :: sub_condition_ptr_type
+    type(sub_condition_type), pointer :: ptr
+  end type sub_condition_ptr_type
+    
+  type, public :: condition_ptr_type
+    type(condition_type), pointer :: ptr
+  end type condition_ptr_type
+  
+  type, public :: condition_list_type
+    PetscInt :: num_conditions
+    type(condition_type), pointer :: first
+    type(condition_type), pointer :: last
+    type(condition_ptr_type), pointer :: array(:)    
+  end type condition_list_type
+\end{verbatim}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\protect\hypertarget{target_obj_conn}{}
+\subsection{Connection}
+
+\begin{verbatim}
+  type, public :: connection_set_type
+    PetscInt :: id
+    PetscInt :: itype                  ! connection type (boundary, internal,
+                                         source sink
+    PetscInt :: num_connections
+    PetscInt, pointer :: id_up(:)      ! list of ids of upwind cells
+    PetscInt, pointer :: id_dn(:)      ! list of ids of downwind cells
+    PetscReal, pointer :: dist(:,:)    ! list of distance vectors, 
+                                         size(-1:3,num_connections) where
+                                      !   -1 = fraction upwind
+                                      !   0 = magnitude of distance 
+                                      !   1-3 = components of unit vector
+    PetscReal, pointer :: area(:)        ! list of areas of faces normal to 
+                                           distance vectors
+!    PetscReal, pointer :: velocity(:,:)  ! velocity scalars for each phase
+    type(connection_set_type), pointer :: next
+  end type connection_set_type
+
+
+  ! pointer data structure required for making an array of region pointers in F90
+  type, public :: connection_set_ptr_type
+    type(connection_set_type), pointer :: ptr           ! pointer to the 
+                                                          connection_set_type
+  end type connection_set_ptr_type 
+  
+  type, public :: connection_set_list_type
+    PetscInt :: num_connection_objects
+    type(connection_set_type), pointer :: first
+    type(connection_set_type), pointer :: last
+    type(connection_set_ptr_type), pointer :: array(:)
+  end type connection_set_list_type
+\end{verbatim}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\protect\hypertarget{target_obj_coupler}{}
+\subsection{Coupler}
+
+\begin{verbatim}
+  type, public :: coupler_type
+    PetscInt :: id                                       ! id of coupler
+    PetscInt :: itype                                    ! integer defining type
+    character(len=MAXWORDLENGTH) :: ctype        ! character string defining type
+    character(len=MAXWORDLENGTH) :: condition_name      ! character string 
+                                         defining name of condition to be applied
+    character(len=MAXWORDLENGTH) :: region_name         ! character string 
+                                         defining name of region to be applied
+    PetscInt :: icondition          ! id of condition in condition array/list
+    PetscInt :: iregion             ! id of region in region array/list
+    PetscInt :: iface                               ! for structured grids only
+    PetscInt, pointer :: aux_int_var(:,:) ! auxilliary array for integer value
+    PetscReal, pointer :: aux_real_var(:,:) ! auxilliary array for real values
+    type(condition_type), pointer :: condition          ! pointer to condition in
+                                                          condition array/list
+    type(region_type), pointer :: region                ! pointer to region in 
+                                                          region array/list
+    type(connection_type), pointer :: connection        ! pointer to an array/list
+                                                          of connections
+    type(coupler_type), pointer :: next                 ! pointer to next coupler
+  end type coupler_type
+  
+  type, public :: coupler_ptr_type
+    type(coupler_type), pointer :: ptr
+  end type coupler_ptr_type
+    
+  type, public :: coupler_list_type
+    PetscInt :: num_couplers
+    type(coupler_type), pointer :: first
+    type(coupler_type), pointer :: last
+    type(coupler_ptr_type), pointer :: array(:)    
+  end type coupler_list_type
+\end{verbatim}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\protect\hypertarget{target_obj_discretization}{}
+\subsection{Discretization}
+
+\begin{verbatim}
+  type, public :: discretization_type
+    PetscInt :: itype ! type of discretization (e.g. structured, unstructured,
+                        etc.)
+    character(len=MAXWORDLENGTH) :: ctype
+    type(grid_type), pointer :: grid  ! pointer to a grid object
+    type(amrgrid_type), pointer :: amrgrid  ! pointer to an amr grid object
+    DM :: dm_1_dof, dm_nflowdof, dm_ntrandof
+  end type discretization_type
+\end{verbatim}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\protect\hypertarget{target_obj_field}{}
+\subsection{Field}
+
+\begin{verbatim}
+  type, public :: field_type 
+    
+!geh material id
+    ! 1 degree of freedom
+    Vec :: porosity0, porosity_loc
+    Vec :: tor_loc
+    Vec :: ithrm_loc
+    Vec :: icap_loc
+    Vec :: iphas_loc, iphas_old_loc
+
+    Vec :: perm_xx_loc, perm_yy_loc, perm_zz_loc
+    Vec :: perm0_xx, perm0_yy, perm0_zz, perm_pow
+    
+    Vec :: saturation_loc, density_loc
+
+    Vec :: volume 
+    
+    ! residual vectors
+    Vec :: flow_r          
+    Vec :: tran_r          
+      
+    ! Solution vectors
+    Vec :: flow_xx, flow_xx_loc, flow_dxx, flow_yy, flow_accum
+    Vec :: tran_xx, tran_xx_loc, tran_dxx, tran_yy, tran_accum
+   
+  end type field_type
+\end{verbatim}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\protect\hypertarget{target_obj_grid}{}
+\subsection{Grid}
+
+\begin{verbatim}
+  type, public :: grid_type
+  
+    character(len=MAXWORDLENGTH) :: ctype
+    PetscInt :: itype  ! type of grid (e.g. structured, unstructured, etc.)
+    
+    PetscInt :: nmax   ! Total number of nodes in global domain
+    PetscInt :: nlmax  ! Total number of non-ghosted nodes in local domain.
+    PetscInt :: ngmax  ! Number of ghosted & non-ghosted nodes in local domain.
+   
+    !nL2G :  not collective, local processor: local  =>  ghosted local  
+    !nG2L :  not collective, local processor:  ghosted local => local  
+    !nG2N :  collective,  ghosted local => global index , used for   
+    !                     matsetvaluesblocked ( not matsetvaluesblockedlocal)  
+    !nL2A :   collective, local => natural index, used for initialization   
+    !                              and source/sink setup  
+    PetscInt, pointer :: nL2G(:), nG2L(:), nL2A(:)
+    PetscInt, pointer :: nG2A(:)
+    
+    PetscReal, pointer :: x(:), y(:), z(:)
+    
+    PetscReal :: x_min, x_max, y_min, y_max, z_min, z_max
+
+    PetscInt, pointer :: hash(:,:,:)
+    PetscInt :: num_hash_bins
+
+    type(structured_grid_type), pointer :: structured_grid
+    type(unstructured_grid_type), pointer :: unstructured_grid
+    
+    type(connection_list_type), pointer :: internal_connection_list
+
+  end type grid_type
+\end{verbatim}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\protect\hypertarget{target_obj_level}{}
+\subsection{Level}
+
+\begin{verbatim}
+  type, public :: level_type 
+    
+    PetscInt :: id
+    type(patch_list_type), pointer :: patch_list
+    type(level_type), pointer :: next
+
+  end type level_type
+
+  ! pointer data structure required for making an array of level pointers in F90
+  type, public :: level_ptr_type
+    type(level_type), pointer :: ptr           ! pointer to the level_type
+  end type level_ptr_type 
+
+  type, public :: level_list_type
+    PetscInt :: num_level_objects
+    type(level_type), pointer :: first
+    type(level_type), pointer :: last
+    type(level_ptr_type), pointer :: array(:)
+  end type level_list_type
+\end{verbatim}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\protect\hypertarget{target_obj_logging}{}
+\subsection{Logging}
+
+\begin{verbatim}
+  type, public :: logging_type 
+  
+    PetscInt :: stage(10)
+    
+    PetscInt :: class_pflotran
+    
+    PetscEvent :: event_init
+    PetscEvent :: event_setup
+
+    PetscEvent :: event_restart
+    PetscEvent :: event_checkpoint
+
+    PetscEvent :: event_condition_read
+    PetscEvent :: event_condition_read_values
+
+    PetscEvent :: event_h5dread_f
+    PetscEvent :: event_h5dwrite_f
+    PetscEvent :: event_read_indices_hdf5
+    PetscEvent :: event_map_indices_hdf5
+    PetscEvent :: event_hash_create
+    PetscEvent :: event_hash_map
+    PetscEvent :: event_read_real_array_hdf5
+    PetscEvent :: event_read_int_array_hdf5
+    PetscEvent :: event_write_real_array_hdf5
+    PetscEvent :: event_write_int_array_hdf5
+    PetscEvent :: event_read_array_hdf5    
+    PetscEvent :: event_write_struct_dataset_hdf5
+    PetscEvent :: event_region_read_hdf5
+    PetscEvent :: event_region_read_ascii
+    PetscEvent :: event_material_read_hdf5
+
+    PetscEvent :: event_output_tecplot
+    PetscEvent :: event_output_hdf5
+    PetscEvent :: event_output_str_grid_tecplot
+    PetscEvent :: event_output_write_tecplot
+    PetscEvent :: event_output_write_flux_tecplot
+    PetscEvent :: event_output_get_var_from_array
+    PetscEvent :: event_output_get_cell_vel
+    PetscEvent :: event_output_vec_tecplot
+    PetscEvent :: event_output_breakthrough
+    PetscEvent :: event_output_coordinates_hdf5
+    
+  end type logging_type
+\end{verbatim}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\protect\hypertarget{target_obj_mat}{}
+\subsection{Material}
+
+\begin{verbatim}
+  type, public :: material_type
+    PetscInt :: id
+    character(len=MAXWORDLENGTH) :: name
+    PetscReal :: permeability(3,3)
+    PetscReal :: permeability_pwr
+    PetscReal :: porosity
+    PetscReal :: tortuosity
+    PetscInt :: ithrm
+    PetscInt :: icap
+    type(material_type), pointer :: next
+  end type material_type
+  
+  type, public :: material_ptr_type
+    type(material_type), pointer :: ptr
+  end type material_ptr_type
+  
+  type, public :: thermal_property_type
+    PetscInt :: id
+    PetscReal :: rock_density
+    PetscReal :: spec_heat
+    PetscReal :: therm_cond_dry
+    PetscReal :: therm_cond_wet
+    PetscReal :: pore_compress
+    PetscReal :: pore_expansivity
+    PetscReal :: tort_bin_diff
+    PetscReal :: vap_air_diff_coef
+    PetscReal :: exp_binary_diff
+    PetscReal :: enh_binary_diff_coef
+    type(thermal_property_type), pointer :: next
+  end type thermal_property_type
+  
+  type, public :: saturation_function_type
+    PetscInt :: id
+    character(len=MAXWORDLENGTH) :: saturation_function_ctype
+    PetscInt :: saturation_function_itype
+    character(len=MAXWORDLENGTH) :: permeability_function_ctype
+    PetscInt :: permeability_function_itype
+    PetscReal, pointer :: Sr(:)
+    PetscReal :: m
+    PetscReal :: lambda
+    PetscReal :: alpha
+    PetscReal :: pcwmax
+    PetscReal :: betac
+    PetscReal :: power
+    PetscInt :: ihist 
+    PetscReal :: BC_pressure_low
+    PetscReal :: BC_pressure_high
+    PetscReal :: BC_spline_coefficients(4)
+    type(saturation_function_type), pointer :: next
+  end type saturation_function_type
+  
+  type, public :: saturation_function_ptr_type
+    type(saturation_function_type), pointer :: ptr
+  end type saturation_function_ptr_type
+\end{verbatim}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\protect\hypertarget{target_obj_option}{}
+\subsection{Option}
+
+\begin{verbatim}
+  type, public :: option_type 
+  
+    PetscMPIInt :: myrank                    ! rank in PETSC_COMM_WORLD
+    PetscMPIInt :: commsize                  ! size of PETSC_COMM_WORLD
+  
+    ! defines the mode (e.g. mph, richards, vadose, etc.
+    character(len=MAXWORDLENGTH) :: flowmode
+    PetscInt :: iflowmode
+    character(len=MAXWORDLENGTH) :: tranmode
+    PetscInt :: itranmode
+  
+    PetscInt :: nphase
+    PetscInt :: nflowdof
+    PetscInt :: nspec
+
+    PetscInt :: ntrandof
+    PetscInt :: ncomp
+    
+    PetscReal :: uniform_velocity(3)
+
+    ! Program options
+    PetscTruth :: use_matrix_free  ! If true, do not form the Jacobian.
+    
+    PetscInt :: imod
+    
+    PetscTruth :: use_isoth
+    
+    character(len=MAXWORDLENGTH) :: generalized_grid
+    logical :: use_generalized_grid
+      
+    PetscReal :: flow_time, tran_time, time  ! The time elapsed in the simulation.
+    PetscReal :: flow_dt, tran_dt, dt ! The size of the time step.
+  
+!    PetscReal, pointer :: tplot(:)
+    PetscReal, pointer :: tfac(:)
+      ! An array of multiplicative factors that specify how to increase time step.
+      
+    PetscInt :: iblkfmt ! blocked format
+  
+      ! Basically our target number of newton iterations per time step.
+    PetscReal :: dpmxe,dtmpmxe,dsmxe,dcmxe !maximum allowed changes in field vars.
+    PetscReal :: dpmax,dtmpmax,dsmax,dcmax
+    
+    PetscReal :: scale
+    PetscReal, pointer :: rock_density(:),cpr(:),dencpr(:),ckdry(:),ckwet(:), &
+                          tau(:),cdiff(:),cexp(:)
+    PetscReal, pointer :: swir(:),lambda(:),alpha(:),pckrm(:),pcwmax(:), &
+                          pcbetac(:),pwrprm(:),sir(:,:)
+    PetscInt, pointer:: icaptype(:)
+
+    PetscReal :: m_nacl
+    PetscReal :: difaq, delhaq, gravity(3), fmwh2o= 18.0153D0, fmwa=28.96D0, &
+              fmwco2=44.0098D0, eqkair, ret=1.d0, fc=1.d0
+    
+    PetscInt :: ideriv
+    PetscReal :: tref,pref
+    
+    PetscReal :: disp
+    
+!   table lookup
+    PetscInt :: itable=0
+
+    PetscTruth :: restart_flag
+    PetscReal :: restart_time
+    character(len=MAXWORDLENGTH) :: restart_file
+    PetscTruth :: checkpoint_flag
+    PetscInt :: checkpoint_frequency
+    
+    PetscLogDouble :: start_time
+    PetscTruth :: wallclock_stop_flag
+    PetscLogDouble :: wallclock_stop_time
+    
+    PetscInt :: log_stage(10)
+    
+    logical :: numerical_derivatives
+    logical :: compute_statistics
+    logical :: use_touch_options
+    logical :: overwrite_restart_transport
+    PetscInt :: io_handshake_buffer_size
+    
+    character(len=MAXWORDLENGTH) :: permx_filename
+    character(len=MAXWORDLENGTH) :: permy_filename
+    character(len=MAXWORDLENGTH) :: permz_filename
+    
+  end type option_type
+  
+  type, public :: output_option_type
+
+    character(len=2) :: tunit
+    PetscReal :: tconv
+  
+    logical :: print_hdf5
+    logical :: print_hdf5_velocities
+    logical :: print_hdf5_flux_velocities
+
+    logical :: print_tecplot 
+    logical :: print_tecplot_velocities
+    logical :: print_tecplot_flux_velocities
+    
+    PetscInt :: plot_number
+    character(len=MAXWORDLENGTH) :: plot_name
+
+  end type output_option_type
+\end{verbatim}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\protect\hypertarget{target_obj_patch}{}
+\subsection{Patch}
+
+\begin{verbatim}
+  type, public :: patch_type 
+    
+    PetscInt :: id
+    
+    ! thiese arrays will be used by all modes, mode-specific arrays should
+    ! go in the auxilliary data stucture for that mode
+    PetscInt, pointer :: imat(:)
+    PetscReal, pointer :: internal_velocities(:,:)
+    PetscReal, pointer :: boundary_velocities(:,:)
+    
+    type(grid_type), pointer :: grid
+
+    type(region_list_type), pointer :: regions
+
+    type(coupler_list_type), pointer :: transport_boundary_conditions
+    type(coupler_list_type), pointer :: transport_initial_conditions
+    type(coupler_list_type), pointer :: transport_source_sinks
+
+    type(coupler_list_type), pointer :: flow_boundary_conditions
+    type(coupler_list_type), pointer :: flow_initial_conditions
+    type(coupler_list_type), pointer :: flow_source_sinks
+    
+    type(strata_list_type), pointer :: strata
+    type(breakthrough_list_type), pointer :: breakthrough
+    
+    type(auxilliary_type) :: aux
+    
+    type(patch_type), pointer :: next
+
+  end type patch_type
+
+  ! pointer data structure required for making an array of patch pointers in F90
+  type, public :: patch_ptr_type
+    type(patch_type), pointer :: ptr           ! pointer to the patch_type
+  end type patch_ptr_type 
+
+  type, public :: patch_list_type
+    PetscInt :: num_patch_objects
+    type(patch_type), pointer :: first
+    type(patch_type), pointer :: last
+    type(patch_ptr_type), pointer :: array(:)
+  end type patch_list_type
+\end{verbatim}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\protect\hypertarget{target_obj_real}{}
+\subsection{Realization}
+
+\begin{verbatim}
+  type, public :: realization_type
+
+    type(discretization_type), pointer :: discretization
+    type(level_list_type), pointer :: level_list
+    type(patch_type), pointer :: patch
+
+    type(option_type), pointer :: option
+    type(field_type), pointer :: field
+    type(pflow_debug_type), pointer :: debug
+    type(output_option_type), pointer :: output_option
+
+    type(region_list_type), pointer :: regions
+    type(condition_list_type), pointer :: flow_conditions
+    type(condition_list_type), pointer :: transport_conditions
+    
+    type(material_type), pointer :: materials
+    type(material_ptr_type), pointer :: material_array(:)
+    type(thermal_property_type), pointer :: thermal_properties
+    type(saturation_function_type), pointer :: saturation_functions
+    type(saturation_function_ptr_type), pointer :: saturation_function_array(:)
+    
+    type(waypoint_list_type), pointer :: waypoints
+    
+  end type realization_type
+\end{verbatim}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\protect\hypertarget{target_obj_region}{}
+\subsection{Region}
+
+\begin{verbatim}
+  type, public :: block_type
+    PetscInt :: i1,i2,j1,j2,k1,k2    
+    type(block_type), pointer :: next
+  end type block_type
+ 
+  type, public :: region_type
+    PetscInt :: id
+    character(len=MAXWORDLENGTH) :: name
+    character(len=MAXWORDLENGTH) :: filename
+    PetscInt :: i1,i2,j1,j2,k1,k2
+    PetscReal :: coordinate(3)
+    PetscInt :: iface
+    PetscInt :: num_cells
+    PetscInt, pointer :: cell_ids(:)
+    PetscInt, pointer :: faces(:)
+    type(region_type), pointer :: next
+  end type region_type
+  
+  type, public :: region_ptr_type
+    type(region_type), pointer :: ptr
+  end type region_ptr_type
+  
+  type, public :: region_list_type
+    PetscInt :: num_regions
+    type(region_type), pointer :: first
+    type(region_type), pointer :: last
+    type(region_type), pointer :: array(:)
+  end type region_list_type
+\end{verbatim}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\protect\hypertarget{target_obj_richards}{}
+\subsection{Richards}
+
+\begin{verbatim}
+  type, public :: richards_auxvar_type
+    PetscReal :: pres
+    PetscReal :: temp
+    PetscReal :: sat
+    PetscReal :: den
+    PetscReal :: den_kg
+    PetscReal :: avgmw
+    PetscReal :: h
+    PetscReal :: u
+    PetscReal :: pc
+!    PetscReal :: vis
+!    PetscReal :: dvis_dp
+!    PetscReal :: kr
+!    PetscReal :: dkr_dp
+    PetscReal :: kvr
+    PetscReal :: dsat_dp
+    PetscReal :: dden_dp
+    PetscReal :: dden_dt
+    PetscReal :: dkvr_dp
+    PetscReal :: dkvr_dt
+    PetscReal :: dh_dp
+    PetscReal :: dh_dt
+    PetscReal :: du_dp
+    PetscReal :: du_dt
+    PetscReal, pointer :: xmol(:)
+    PetscReal, pointer :: diff(:)
+  end type richards_auxvar_type
+  
+  type, public :: richards_type
+    PetscInt :: n_zero_rows
+    PetscInt, pointer :: zero_rows_local(:), zero_rows_local_ghosted(:)
+
+    logical :: aux_vars_up_to_date
+    logical :: inactive_cells_exist
+    PetscInt :: num_aux, num_aux_bc
+    type(richards_auxvar_type), pointer :: aux_vars(:)
+    type(richards_auxvar_type), pointer :: aux_vars_bc(:)
+  end type richards_type
+\end{verbatim}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\protect\hypertarget{target_obj_richards_lite}{}
+\subsection{Richards\_lite}
+
+\begin{verbatim}
+  type, public :: richards_lite_auxvar_type
+    PetscReal :: pres
+    PetscReal :: temp
+    PetscReal :: sat
+    PetscReal :: den
+    PetscReal :: den_kg
+    PetscReal :: avgmw
+    PetscReal :: pc
+!    PetscReal :: vis
+!    PetscReal :: dvis_dp
+!    PetscReal :: kr
+!    PetscReal :: dkr_dp
+    PetscReal :: kvr
+    PetscReal :: dsat_dp
+    PetscReal :: dden_dp
+    PetscReal :: dkvr_dp
+  end type richards_lite_auxvar_type
+  
+  type, public :: richards_lite_type
+    PetscInt :: n_zero_rows
+    PetscInt, pointer :: zero_rows_local(:), zero_rows_local_ghosted(:)
+
+    logical :: aux_vars_up_to_date
+    logical :: inactive_cells_exist
+    PetscInt :: num_aux, num_aux_bc
+    type(richards_lite_auxvar_type), pointer :: aux_vars(:)
+    type(richards_lite_auxvar_type), pointer :: aux_vars_bc(:)
+  end type richards_lite_type
+\end{verbatim}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\protect\hypertarget{target_obj_simulation}{}
+\subsection{Simulation}
+
+\begin{verbatim}
+  type, public :: simulation_type
+
+    type(realization_type), pointer :: realization
+    type(stepper_type), pointer :: flow_stepper
+    type(stepper_type), pointer :: tran_stepper
+
+  end type simulation_type
+\end{verbatim}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\protect\hypertarget{target_obj_solver}{}
+\subsection{Solver}
+
+\begin{verbatim}
+  type, public :: solver_type
+    PetscReal :: linear_atol       ! absolute tolerance
+    PetscReal :: linear_rtol       ! relative tolerance
+    PetscReal :: linear_dtol       ! divergence tolerance
+    PetscInt :: linear_maxit     ! maximum number of iterations
+    
+    PetscReal :: newton_atol       ! absolute tolerance
+    PetscReal :: newton_rtol       ! relative tolerance
+    PetscReal :: newton_stol       ! relative tolerance (relative to previous 
+                                     iteration)
+    PetscReal :: newton_dtol       ! divergence tolerance
+    PetscReal :: newton_inf_res_tol    ! infinity tolerance for residual
+    PetscReal :: newton_inf_upd_tol    ! infinity tolerance for update
+    PetscInt :: newton_maxit     ! maximum number of iterations
+    PetscInt :: newton_maxf      ! maximum number of function evaluations
+
+        ! Jacobian matrix
+    Mat :: J
+    MatFDColoring :: matfdcoloring
+      ! Coloring used for computing the Jacobian via finite differences.
+
+    ! PETSc nonlinear solver context
+    SNES :: snes
+    KSPType :: ksp_type
+    PCType  :: pc_type
+    KSP   ::  ksp
+    PC    ::  pc
+    
+    PetscTruth :: inexact_newton
+
+    PetscTruth :: print_convergence
+    PetscTruth :: print_detailed_convergence
+    PetscTruth :: check_infinity_norm
+    PetscTruth :: force_at_least_1_iteration    
+            
+  end type solver_type
+\end{verbatim}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\protect\hypertarget{target_obj_stepper}{}
+\subsection{Stepper}
+
+\begin{verbatim}
+  type, public :: stepper_type
+  
+    PetscInt :: steps     ! The number of time-steps taken by the code.
+    PetscInt :: nstepmax  ! Maximum number of timesteps taken by the code.
+    PetscInt :: icut_max  ! Maximum number of timestep cuts within one time step.
+    PetscInt :: ndtcmx    ! Steps needed after cutting to increase time step
+    PetscInt :: newtcum   ! Total number of Newton steps taken.
+    PetscInt :: icutcum   ! Total number of cuts in the timestep taken.    
+    PetscInt :: iaccel    ! Accelerator index
+    
+    PetscReal :: dt_min
+    PetscReal :: dt_max
+        
+    type(solver_type), pointer :: solver
+    
+    type(waypoint_type), pointer :: cur_waypoint
+
+    type(convergence_context_type), pointer :: convergence_context
+    
+  end type stepper_type
+\end{verbatim}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\protect\hypertarget{target_obj_strata}{}
+\subsection{Strata}
+
+\begin{verbatim}
+  type, public :: strata_type
+    PetscInt :: id                                 ! id of strata
+    logical :: active
+    character(len=MAXWORDLENGTH) :: material_name  ! character string defining 
+                                                   name of material to be applied
+    character(len=MAXWORDLENGTH) :: region_name    ! character string defining 
+                                                   name of region to be applied
+    PetscInt :: imaterial                ! id of material in material array/list
+    PetscInt :: iregion                      ! id of region in region array/list
+    type(material_type), pointer :: material       ! pointer to material in 
+                                                     material array/list
+    type(region_type), pointer :: region           ! pointer to region in region 
+                                                     array/list
+    type(strata_type), pointer :: next             ! pointer to next strata
+  end type strata_type
+  
+  type, public :: strata_ptr_type
+    type(strata_type), pointer :: ptr
+  end type strata_ptr_type
+    
+  type, public :: strata_list_type
+    PetscInt :: num_strata
+    type(strata_type), pointer :: first
+    type(strata_type), pointer :: last
+    type(strata_ptr_type), pointer :: array(:)    
+  end type strata_list_type
+\end{verbatim}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\protect\hypertarget{target_obj_structured_grid}{}
+\subsection{Structured\_grid}
+
+\begin{verbatim}
+  type, public :: structured_grid_type
+
+    PetscInt :: nx, ny, nz    ! Global domain dimensions of the grid.
+    PetscInt :: nxy, nmax     ! nx * ny, nx * ny * nz
+    PetscInt :: npx, npy, npz ! Processor partition in each direction.
+    PetscInt :: nlx, nly, nlz ! Local grid dimension w/o ghost nodes.
+    PetscInt :: ngx, ngy, ngz ! Local grid dimension with ghost nodes.
+    PetscInt :: nxs, nys, nzs 
+      ! Global indices of non-ghosted corner (starting) of local domain.
+    PetscInt :: ngxs, ngys, ngzs
+      ! Global indices of ghosted starting corner of local domain.
+    PetscInt :: nxe, nye, nze, ngxe, ngye, ngze
+      ! Global indices of non-ghosted/ghosted ending corner of local domain.
+    PetscInt :: nlxy, nlxz, nlyz
+    PetscInt :: ngxy, ngxz, ngyz
+    
+    PetscInt :: istart, jstart, kstart, iend, jend, kend
+      ! istart gives the local x-index of the non-ghosted starting (lower left)
+      ! corner. iend gives the local x-index of the non-ghosted ending 
+      ! corner. jstart, jend correspond to y-index, kstart, kend to z-index.    
+
+    PetscInt :: nlmax  ! Total number of non-ghosted nodes in local domain.
+    PetscInt :: ngmax  ! Number of ghosted & non-ghosted nodes in local domain.
+
+    PetscReal :: origin(3)
+
+    PetscReal, pointer :: dx0(:), dy0(:), dz0(:)
+    
+    logical :: invert_z_axis
+    
+    PetscReal, pointer :: dx(:),dy(:),dz(:),dxg(:),dyg(:),dzg(:) ! Grid spacings
+    
+    PetscFortranAddr p_samr_patch ! pointer to a SAMRAI patch object
+
+  end type structured_grid_type
+\end{verbatim}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\protect\hypertarget{target_obj_waypoint}{}
+\subsection{Waypoint}
+
+\begin{verbatim}
+  type, public :: waypoint_type
+    PetscReal :: time
+    logical :: print_output
+    type(output_option_type), pointer :: output_option
+    logical :: update_bcs
+    logical :: update_srcs
+    PetscReal :: dt_max
+    logical :: final  ! any waypoint after this will be deleted
+    type(waypoint_type), pointer :: prev
+    type(waypoint_type), pointer :: next
+  end type waypoint_type
+  
+  type, public :: waypoint_list_type
+    PetscInt :: num_waypoints
+    type(waypoint_type), pointer :: first
+    type(waypoint_type), pointer :: last
+    type(waypoint_type), pointer :: array(:)    
+  end type waypoint_list_type
+\end{verbatim}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \section{Creating the Input File: PFLOTRAN Keywords}
 

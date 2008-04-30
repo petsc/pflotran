@@ -91,6 +91,7 @@ module Option_module
     logical :: compute_statistics
     logical :: use_touch_options
     logical :: overwrite_restart_transport
+    PetscInt :: io_handshake_buffer_size
     
     character(len=MAXWORDLENGTH) :: permx_filename
     character(len=MAXWORDLENGTH) :: permy_filename
@@ -232,6 +233,8 @@ function OptionCreate()
 
   option%use_touch_options = .false.
   option%overwrite_restart_transport = .false.
+  
+  option%io_handshake_buffer_size = 0
   
   option%permx_filename = ""
   option%permy_filename = ""

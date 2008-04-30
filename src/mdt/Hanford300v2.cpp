@@ -1,4 +1,4 @@
-#include "Hanford300.h"
+#include "Hanford300v2.h"
 
 #ifndef MAX
 #define MAX(X,Y) ((X) > (Y) ? (X) : (Y))
@@ -7,7 +7,7 @@
 #define MIN(X,Y) ((X) < (Y) ? (X) : (Y))
 #endif
 
-Hanford300::Hanford300(Grid **grid_) {
+Hanford300v2::Hanford300v2(Grid **grid_) {
 
   river_polygon = NULL;
   north_pond_west_trench = NULL;
@@ -199,16 +199,19 @@ Hanford300::Hanford300(Grid **grid_) {
 
   computeEastBoundary(grid,1);
   computeWestBoundary(grid,1);
+  computeNorthBoundary(grid,0);
+  computeSouthBoundary(grid,0);
   computeTopBoundary(grid,0);
   computeNorthPondWestTrBoundary(grid,north_pond_west_trench);
   computeNorthPondEastTrBoundary(grid,north_pond_east_trench);
   computePlumeBoundary(grid,plume);
   computePlumeCells(grid,plume);
   computePlumeSource(grid,plume);
-//  computeSouthBoundary(grid);
 
   BoundarySet *river = grid->getBoundarySet("East");
   BoundarySet *west = grid->getBoundarySet("West");
+  BoundarySet *north = grid->getBoundarySet("North");
+  BoundarySet *south = grid->getBoundarySet("South");
   BoundarySet *recharge = grid->getBoundarySet("Top");
 
 /*
@@ -224,7 +227,7 @@ Hanford300::Hanford300(Grid **grid_) {
 }
 
 
-void Hanford300::computeWestBoundary(Grid *grid, PetscInt complete) {
+void Hanford300v2::computeWestBoundary(Grid *grid, PetscInt complete) {
 
   BoundarySet *west = new BoundarySet("West");
 
@@ -266,7 +269,7 @@ void Hanford300::computeWestBoundary(Grid *grid, PetscInt complete) {
 
 }
 
-void Hanford300::computeEastBoundary(Grid *grid, PetscInt complete) {
+void Hanford300v2::computeEastBoundary(Grid *grid, PetscInt complete) {
 
   BoundarySet *east = new BoundarySet("East");
 
@@ -308,7 +311,7 @@ void Hanford300::computeEastBoundary(Grid *grid, PetscInt complete) {
 
 }
 
-void Hanford300::computeSouthBoundary(Grid *grid, PetscInt complete) {
+void Hanford300v2::computeSouthBoundary(Grid *grid, PetscInt complete) {
 
   BoundarySet *south = new BoundarySet("South");
 
@@ -349,7 +352,7 @@ void Hanford300::computeSouthBoundary(Grid *grid, PetscInt complete) {
   south = NULL;
 }
 
-void Hanford300::computeNorthBoundary(Grid *grid, PetscInt complete) {
+void Hanford300v2::computeNorthBoundary(Grid *grid, PetscInt complete) {
 
   BoundarySet *north = new BoundarySet("North");
 
@@ -391,7 +394,7 @@ void Hanford300::computeNorthBoundary(Grid *grid, PetscInt complete) {
 
 }
 
-void Hanford300::computeBottomBoundary(Grid *grid, PetscInt complete) {
+void Hanford300v2::computeBottomBoundary(Grid *grid, PetscInt complete) {
 
   BoundarySet *bottom = new BoundarySet("Bottom");
 
@@ -433,7 +436,7 @@ void Hanford300::computeBottomBoundary(Grid *grid, PetscInt complete) {
 
 }
 
-void Hanford300::computeTopBoundary(Grid *grid, PetscInt complete) {
+void Hanford300v2::computeTopBoundary(Grid *grid, PetscInt complete) {
 
   BoundarySet *top = new BoundarySet("Top");
 
@@ -445,28 +448,31 @@ void Hanford300::computeTopBoundary(Grid *grid, PetscInt complete) {
         grid->cells[i].getHexFaceVertices(TOP,vertex_list);
         top->addConnection(new Connection(local_id,vertex_list,TOP));
       }
-#if 0
-      if (grid->cells[i].flag & TOP_DIR_WEST_FACE) {
-        PetscInt vertex_list[5] = {4,0,0,0,0};
-        grid->cells[i].getHexFaceVertices(WEST,vertex_list);
-        top->addConnection(new Connection(local_id,vertex_list));
-      }
-      if (grid->cells[i].flag & TOP_DIR_EAST_FACE) {
-        PetscInt vertex_list[5] = {4,0,0,0,0};
-        grid->cells[i].getHexFaceVertices(EAST,vertex_list);
-        top->addConnection(new Connection(local_id,vertex_list));
-      }
-      if (grid->cells[i].flag & TOP_DIR_SOUTH_FACE) {
-        PetscInt vertex_list[5] = {4,0,0,0,0};
-        grid->cells[i].getHexFaceVertices(SOUTH,vertex_list);
-        top->addConnection(new Connection(local_id,vertex_list));
-      }
-      if (grid->cells[i].flag & TOP_DIR_NORTH_FACE) {
-        PetscInt vertex_list[5] = {4,0,0,0,0};
-        grid->cells[i].getHexFaceVertices(NORTH,vertex_list);
-        top->addConnection(new Connection(local_id,vertex_list));
-      }
+      if (complete) {
+#if 0  
+! not enough space to define these
+        if (grid->cells[i].flag & TOP_DIR_WEST_FACE) {
+          PetscInt vertex_list[5] = {4,0,0,0,0};
+          grid->cells[i].getHexFaceVertices(WEST,vertex_list);
+          top->addConnection(new Connection(local_id,vertex_list));
+        }
+        if (grid->cells[i].flag & TOP_DIR_EAST_FACE) {
+          PetscInt vertex_list[5] = {4,0,0,0,0};
+          grid->cells[i].getHexFaceVertices(EAST,vertex_list);
+          top->addConnection(new Connection(local_id,vertex_list));
+        }
+        if (grid->cells[i].flag & TOP_DIR_SOUTH_FACE) {
+          PetscInt vertex_list[5] = {4,0,0,0,0};
+          grid->cells[i].getHexFaceVertices(SOUTH,vertex_list);
+          top->addConnection(new Connection(local_id,vertex_list));
+        }
+        if (grid->cells[i].flag & TOP_DIR_NORTH_FACE) {
+          PetscInt vertex_list[5] = {4,0,0,0,0};
+          grid->cells[i].getHexFaceVertices(NORTH,vertex_list);
+          top->addConnection(new Connection(local_id,vertex_list));
+        }
 #endif
+      }
     }
   }
 
@@ -475,7 +481,7 @@ void Hanford300::computeTopBoundary(Grid *grid, PetscInt complete) {
 
 }
 
-void Hanford300::computeNorthPondWestTrBoundary(Grid *grid, Polygon *p) {
+void Hanford300v2::computeNorthPondWestTrBoundary(Grid *grid, Polygon *p) {
 
   BoundarySet *pond = new BoundarySet("North_Pond_West_Trench");
 
@@ -502,7 +508,7 @@ void Hanford300::computeNorthPondWestTrBoundary(Grid *grid, Polygon *p) {
 
 }
 
-void Hanford300::computeNorthPondEastTrBoundary(Grid *grid, Polygon *p) {
+void Hanford300v2::computeNorthPondEastTrBoundary(Grid *grid, Polygon *p) {
 
   BoundarySet *pond = new BoundarySet("North_Pond_East_Trench");
 
@@ -529,7 +535,7 @@ void Hanford300::computeNorthPondEastTrBoundary(Grid *grid, Polygon *p) {
 
 }
 
-void Hanford300::computePlumeBoundary(Grid *grid, Polygon *p) {
+void Hanford300v2::computePlumeBoundary(Grid *grid, Polygon *p) {
 
   BoundarySet *plume = new BoundarySet("Plume_Surface");
 
@@ -556,7 +562,7 @@ void Hanford300::computePlumeBoundary(Grid *grid, Polygon *p) {
 
 }
 
-void Hanford300::computePlumeSource(Grid *grid, Polygon *p) {
+void Hanford300v2::computePlumeSource(Grid *grid, Polygon *p) {
 
   BoundarySet *plume = new BoundarySet("Plume_Source");
 
@@ -584,7 +590,7 @@ void Hanford300::computePlumeSource(Grid *grid, Polygon *p) {
 
 }
 
-void Hanford300::computePlumeCells(Grid *grid, Polygon *p) {
+void Hanford300v2::computePlumeCells(Grid *grid, Polygon *p) {
 
   BoundarySet *plume = new BoundarySet("Plume_Cells");
 
@@ -611,7 +617,7 @@ void Hanford300::computePlumeCells(Grid *grid, Polygon *p) {
 
 }
 
-void Hanford300::flagGridCells(Grid *grid) {
+void Hanford300v2::flagGridCells(Grid *grid) {
 
   PetscReal top_stage_max = 1.e20;
   PetscReal top_stage_min = 108.;
@@ -621,7 +627,7 @@ void Hanford300::flagGridCells(Grid *grid) {
   PetscReal north_stage_min = -1.e20;
   PetscReal south_stage_max = 1.e20;
   PetscReal south_stage_min = -1.e20;
-  PetscReal west_stage_max = 113.;
+  PetscReal west_stage_max = 1.e20;
   PetscReal west_stage_min = -1.e20;
   PetscReal east_stage_max = 107.5;
   PetscReal east_stage_min = -1.e20;
@@ -1185,7 +1191,7 @@ void Hanford300::flagGridCells(Grid *grid) {
 
 }
 
-void Hanford300::setMaterialIdBasedOnNaturalId(PetscInt natural_id, PetscInt material_id,
+void Hanford300v2::setMaterialIdBasedOnNaturalId(PetscInt natural_id, PetscInt material_id,
                                              Grid *grid) {
   for (PetscInt i=0; i<grid->getNumberOfCellsGhosted(); i++) 
     if (grid->cells[i].getIdNatural() == natural_id)//  {
@@ -1194,7 +1200,7 @@ void Hanford300::setMaterialIdBasedOnNaturalId(PetscInt natural_id, PetscInt mat
 //}
 }
 
-void Hanford300::setActiveBasedOnNaturalId(PetscInt natural_id, PetscInt active,
+void Hanford300v2::setActiveBasedOnNaturalId(PetscInt natural_id, PetscInt active,
                                          Grid *grid) {
   for (PetscInt i=0; i<grid->getNumberOfCellsGhosted(); i++) 
     if (grid->cells[i].getIdNatural() == natural_id) 
@@ -1202,7 +1208,7 @@ void Hanford300::setActiveBasedOnNaturalId(PetscInt natural_id, PetscInt active,
 }
 
 
-Hanford300::~Hanford300() {
+Hanford300v2::~Hanford300v2() {
   if (ascii_grids) {
     for (PetscInt i=0; i<AsciiGrid::nasciigrids; i++)
       delete ascii_grids[i];

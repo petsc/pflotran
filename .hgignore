@@ -26,6 +26,7 @@ src/pflotran/pflotran.xcodeproj/*.pbxuser
 src/pflotran/pflotran.xcodeproj/*.mode1
 src/pflotran/pflotran_xcode/pflotran_xcode.xcodeproj/*.pbxuser
 src/pflotran/pflotran_xcode/pflotran_xcode.xcodeproj/*.mode1
+src/pflotran/pflotran_xcode/pflotran_xcode.xcodeproj/*.mode1v3
 src/pims/*.o
 src/pims/*.MOD
 src/pims/build

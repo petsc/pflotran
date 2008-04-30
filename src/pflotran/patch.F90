@@ -7,9 +7,7 @@ module Patch_module
   use Strata_module
   use Region_module
   
-  use Richards_Aux_module
-  use Richards_Lite_Aux_module
-  use Reactive_Transport_Aux_module
+  use Auxilliary_module
 
   implicit none
 
@@ -42,9 +40,7 @@ module Patch_module
     type(strata_list_type), pointer :: strata
     type(breakthrough_list_type), pointer :: breakthrough
     
-    type(reactive_transport_type), pointer :: RTAux
-    type(richards_type), pointer :: RichardsAux
-    type(richards_lite_type), pointer :: RichardsLiteAux
+    type(auxilliary_type) :: aux
     
     type(patch_type), pointer :: next
 
@@ -116,9 +112,7 @@ function PatchCreate()
   allocate(patch%strata)
   call StrataInitList(patch%strata)
   
-  nullify(patch%RTAux)
-  nullify(patch%RichardsAux)
-  nullify(patch%RichardsLiteAux)
+  call AuxInit(patch%aux)
   
   nullify(patch%next)
   
@@ -438,7 +432,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
                                      patch%transport_source_sinks)
                                      
   allocate(patch%internal_velocities(option%nphase, &
-           ConnectionGetNumberInList(patch%grid%internal_connection_list)))
+           ConnectionGetNumberInList(patch%grid%internal_connection_set_list)))
   patch%internal_velocities = 0.d0
   if (option%nflowdof > 0) then
     temp_int = CouplerGetNumConnectionsInList(patch%flow_boundary_conditions)
@@ -508,8 +502,8 @@ subroutine PatchInitCouplerAuxVars(patch,coupler_list,option)
   do
     if (.not.associated(coupler)) exit
     
-    if (associated(coupler%connection)) then
-      num_connections = coupler%connection%num_connections
+    if (associated(coupler%connection_set)) then
+      num_connections = coupler%connection_set%num_connections
 
       if (coupler%condition%iclass == FLOW_CLASS) then
 
@@ -612,7 +606,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
     
     if (associated(coupler%aux_real_var)) then
         
-      num_connections = coupler%connection%num_connections
+      num_connections = coupler%connection_set%num_connections
 
       condition => coupler%condition
       
@@ -705,14 +699,14 @@ subroutine PatchAssignUniformVelocity(patch,option)
 
   type(grid_type), pointer :: grid
   type(coupler_type), pointer :: boundary_condition
-  type(connection_type), pointer :: cur_connection_set
+  type(connection_set_type), pointer :: cur_connection_set
   PetscInt :: iconn, sum_connection
   PetscReal :: vdarcy
 
   grid => patch%grid
     
   ! Internal Flux Terms -----------------------------------
-  cur_connection_set => grid%internal_connection_list%first
+  cur_connection_set => grid%internal_connection_set_list%first
   sum_connection = 0
   do 
     if (.not.associated(cur_connection_set)) exit
@@ -730,7 +724,7 @@ subroutine PatchAssignUniformVelocity(patch,option)
   sum_connection = 0
   do 
     if (.not.associated(boundary_condition)) exit
-    cur_connection_set => boundary_condition%connection
+    cur_connection_set => boundary_condition%connection_set
     do iconn = 1, cur_connection_set%num_connections
       sum_connection = sum_connection + 1
       vdarcy = OptionDotProduct(option%uniform_velocity, &
@@ -812,9 +806,7 @@ subroutine PatchDestroy(patch)
   call BreakthroughDestroyList(patch%breakthrough)
   call StrataDestroyList(patch%strata)
   
-  call RTAuxDestroy(patch%RTAux)
-  call RichardsAuxDestroy(patch%RichardsAux)
-  call RichardsLiteAuxDestroy(patch%RichardsLiteAux)
+  call AuxDestroy(patch%aux)
   
   call BreakthroughDestroyList(patch%breakthrough)
   

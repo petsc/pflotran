@@ -587,7 +587,7 @@ subroutine RealizAssignFlowInitCond(realization)
         
           if (.not.associated(initial_condition)) exit
 
-          if (.not.associated(initial_condition%connection)) then
+          if (.not.associated(initial_condition%connection_set)) then
             do icell=1,initial_condition%region%num_cells
               local_id = initial_condition%region%cell_ids(icell)
               ghosted_id = patch%grid%nL2G(local_id)
@@ -607,8 +607,8 @@ subroutine RealizAssignFlowInitCond(realization)
               iphase_loc_p(ghosted_id)=initial_condition%condition%iphase
             enddo
           else
-            do iconn=1,initial_condition%connection%num_connections
-              local_id = initial_condition%connection%id_dn(iconn)
+            do iconn=1,initial_condition%connection_set%num_connections
+              local_id = initial_condition%connection_set%id_dn(iconn)
               ghosted_id = patch%grid%nL2G(local_id)
               iend = local_id*option%nflowdof
               ibegin = iend-option%nflowdof+1
@@ -708,7 +708,7 @@ subroutine RealizAssignTransportInitCond(realization)
         
           if (.not.associated(initial_condition)) exit
 
-          if (.not.associated(initial_condition%connection)) then
+          if (.not.associated(initial_condition%connection_set)) then
             do icell=1,initial_condition%region%num_cells
               local_id = initial_condition%region%cell_ids(icell)
               ghosted_id = patch%grid%nL2G(local_id)
@@ -726,8 +726,8 @@ subroutine RealizAssignTransportInitCond(realization)
               enddo
             enddo
           else
-            do iconn=1,initial_condition%connection%num_connections
-              local_id = initial_condition%connection%id_dn(iconn)
+            do iconn=1,initial_condition%connection_set%num_connections
+              local_id = initial_condition%connection_set%id_dn(iconn)
               ghosted_id = patch%grid%nL2G(local_id)
               iend = local_id*option%ntrandof
               ibegin = iend-option%ntrandof+1
