@@ -280,6 +280,8 @@ PFLOTRAN solves a system of generally nonlinear partial differential equations d
 
 \section{Installation}
 
+The following instructions should aid in installing openmpi, PETSc, HDF5 and PFLOTRAN on a UNIX or Mac computer running MacOSX 10.4 or later.
+
 \subsection{Openmpi}
 
 Set environment variables \verb|PKGS| and \verb|MPI_HOME| and the appropriate \verb|PATH|:
@@ -388,6 +390,68 @@ where \verb|#proc| is the desired number of processor cores.
 
 This section gives an overview in alphabetical order of the objects and their data structures used in PFLOTRAN. The upper most object is {\bf Simulation} followed by {\bf Realization}, followed by {\bf Level}, {\bf Patch} and {\bf Grid}.
 
+\begin{longtable}{ll}%[h]%\centering
+%\caption{PFLOTRAN Keywords}\label{flkeywd} 
+
+%\vspace{4mm}
+
+%\begin{tabular}{lll} 
+\toprule[1.5pt]
+\multicolumn{1}{c}{Object} & \multicolumn{1}{c}{Description}\\
+\midrule[1pt]
+\hyperlink{target_obj_breakthrough}{Breakthrough} & \\
+\hyperlink{target_obj_cond}{Condition} & \\
+\hyperlink{target_obj_conn}{Connection} & \\
+\hyperlink{target_obj_coupler}{Coupler} & \\
+\hyperlink{target_obj_discretization}{Discretization} & \\
+\hyperlink{target_obj_field}{Field} & \\
+\hyperlink{target_obj_grid}{Grid} & \\
+\hyperlink{target_obj_level}{Level} & \\
+\hyperlink{target_obj_logging}{Logging} & \\
+\hyperlink{target_obj_mat}{Material} & \\
+\hyperlink{target_obj_option}{Option} & \\
+\hyperlink{target_obj_patch}{Patch} & \\
+\hyperlink{target_obj_real}{Realization} & \\
+\hyperlink{target_obj_region}{Region} & \\
+\hyperlink{target_obj_richards}{Richards} & \\
+\hyperlink{target_obj_richards_lite}{Richards\_lite} & \\
+\hyperlink{target_obj_simulation}{Simulation} & \\
+\hyperlink{target_obj_solver}{Solver} & \\
+\hyperlink{target_obj_stepper}{Stepper} & \\
+\hyperlink{target_obj_strata}{Strata} & \\
+\hyperlink{target_obj_structured_grid}{Structured\_grid} & \\
+\hyperlink{target_obj_waypoint}{Waypoint} & \\
+\bottomrule[1.5pt]
+%\end{tabular} 
+\end{longtable}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\protect\hypertarget{target_obj_breakthrough}{}
+\subsection{Breakthrough}
+
+\begin{verbatim}
+  type, public :: breakthrough_type
+    ! all added variables must be included in BreakthroughCreateFromBreakthrough
+    PetscInt :: id
+    PetscTruth :: print_velocities
+    character(len=MAXWORDLENGTH) :: name
+    character(len=MAXWORDLENGTH) :: region_name
+    type(region_type), pointer :: region
+    type(breakthrough_type), pointer :: next
+  end type breakthrough_type
+  
+  type, public :: breakthrough_list_type
+    PetscInt :: num_breakthroughs
+    type(breakthrough_type), pointer :: first
+    type(breakthrough_type), pointer :: last
+    type(breakthrough_type), pointer :: array(:)
+  end type breakthrough_list_type
+\end{verbatim}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\protect\hypertarget{target_obj_cond}{}
 \subsection{Condition}
 
 \begin{verbatim}
@@ -409,7 +473,8 @@ This section gives an overview in alphabetical order of the objects and their da
                                             condition
     PetscInt :: iclass                            ! integer id for class
     logical :: sync_time_with_update
-    character(len=MAXWORDLENGTH) :: name ! name of condition (e.g. initial, recharge)
+    character(len=MAXWORDLENGTH) :: name ! name of condition (e.g. initial,
+                                           recharge)
     PetscInt :: num_sub_conditions
     PetscInt :: iphase
     PetscInt, pointer :: itype(:)
@@ -452,6 +517,9 @@ This section gives an overview in alphabetical order of the objects and their da
   end type condition_list_type
 \end{verbatim}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\protect\hypertarget{target_obj_conn}{}
 \subsection{Connection}
 
 \begin{verbatim}
@@ -488,6 +556,9 @@ This section gives an overview in alphabetical order of the objects and their da
   end type connection_set_list_type
 \end{verbatim}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\protect\hypertarget{target_obj_coupler}{}
 \subsection{Coupler}
 
 \begin{verbatim}
@@ -525,6 +596,59 @@ This section gives an overview in alphabetical order of the objects and their da
   end type coupler_list_type
 \end{verbatim}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\protect\hypertarget{target_obj_discretization}{}
+\subsection{Discretization}
+
+\begin{verbatim}
+  type, public :: discretization_type
+    PetscInt :: itype ! type of discretization (e.g. structured, unstructured,
+                        etc.)
+    character(len=MAXWORDLENGTH) :: ctype
+    type(grid_type), pointer :: grid  ! pointer to a grid object
+    type(amrgrid_type), pointer :: amrgrid  ! pointer to an amr grid object
+    DM :: dm_1_dof, dm_nflowdof, dm_ntrandof
+  end type discretization_type
+\end{verbatim}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\protect\hypertarget{target_obj_field}{}
+\subsection{Field}
+
+\begin{verbatim}
+  type, public :: field_type 
+    
+!geh material id
+    ! 1 degree of freedom
+    Vec :: porosity0, porosity_loc
+    Vec :: tor_loc
+    Vec :: ithrm_loc
+    Vec :: icap_loc
+    Vec :: iphas_loc, iphas_old_loc
+
+    Vec :: perm_xx_loc, perm_yy_loc, perm_zz_loc
+    Vec :: perm0_xx, perm0_yy, perm0_zz, perm_pow
+    
+    Vec :: saturation_loc, density_loc
+
+    Vec :: volume 
+    
+    ! residual vectors
+    Vec :: flow_r          
+    Vec :: tran_r          
+      
+    ! Solution vectors
+    Vec :: flow_xx, flow_xx_loc, flow_dxx, flow_yy, flow_accum
+    Vec :: tran_xx, tran_xx_loc, tran_dxx, tran_yy, tran_accum
+   
+  end type field_type
+\end{verbatim}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\protect\hypertarget{target_obj_grid}{}
 \subsection{Grid}
 
 \begin{verbatim}
@@ -561,6 +685,9 @@ This section gives an overview in alphabetical order of the objects and their da
   end type grid_type
 \end{verbatim}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\protect\hypertarget{target_obj_level}{}
 \subsection{Level}
 
 \begin{verbatim}
@@ -585,6 +712,60 @@ This section gives an overview in alphabetical order of the objects and their da
   end type level_list_type
 \end{verbatim}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\protect\hypertarget{target_obj_logging}{}
+\subsection{Logging}
+
+\begin{verbatim}
+  type, public :: logging_type 
+  
+    PetscInt :: stage(10)
+    
+    PetscInt :: class_pflotran
+    
+    PetscEvent :: event_init
+    PetscEvent :: event_setup
+
+    PetscEvent :: event_restart
+    PetscEvent :: event_checkpoint
+
+    PetscEvent :: event_condition_read
+    PetscEvent :: event_condition_read_values
+
+    PetscEvent :: event_h5dread_f
+    PetscEvent :: event_h5dwrite_f
+    PetscEvent :: event_read_indices_hdf5
+    PetscEvent :: event_map_indices_hdf5
+    PetscEvent :: event_hash_create
+    PetscEvent :: event_hash_map
+    PetscEvent :: event_read_real_array_hdf5
+    PetscEvent :: event_read_int_array_hdf5
+    PetscEvent :: event_write_real_array_hdf5
+    PetscEvent :: event_write_int_array_hdf5
+    PetscEvent :: event_read_array_hdf5    
+    PetscEvent :: event_write_struct_dataset_hdf5
+    PetscEvent :: event_region_read_hdf5
+    PetscEvent :: event_region_read_ascii
+    PetscEvent :: event_material_read_hdf5
+
+    PetscEvent :: event_output_tecplot
+    PetscEvent :: event_output_hdf5
+    PetscEvent :: event_output_str_grid_tecplot
+    PetscEvent :: event_output_write_tecplot
+    PetscEvent :: event_output_write_flux_tecplot
+    PetscEvent :: event_output_get_var_from_array
+    PetscEvent :: event_output_get_cell_vel
+    PetscEvent :: event_output_vec_tecplot
+    PetscEvent :: event_output_breakthrough
+    PetscEvent :: event_output_coordinates_hdf5
+    
+  end type logging_type
+\end{verbatim}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\protect\hypertarget{target_obj_mat}{}
 \subsection{Material}
 
 \begin{verbatim}
@@ -644,6 +825,9 @@ This section gives an overview in alphabetical order of the objects and their da
   end type saturation_function_ptr_type
 \end{verbatim}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\protect\hypertarget{target_obj_option}{}
 \subsection{Option}
 
 \begin{verbatim}
@@ -692,9 +876,9 @@ This section gives an overview in alphabetical order of the objects and their da
     
     PetscReal :: scale
     PetscReal, pointer :: rock_density(:),cpr(:),dencpr(:),ckdry(:),ckwet(:), &
-                       tau(:),cdiff(:),cexp(:)
-    PetscReal, pointer :: swir(:),lambda(:),alpha(:),pckrm(:),pcwmax(:),pcbetac(:), &
-                       pwrprm(:),sir(:,:)
+                          tau(:),cdiff(:),cexp(:)
+    PetscReal, pointer :: swir(:),lambda(:),alpha(:),pckrm(:),pcwmax(:), &
+                          pcbetac(:),pwrprm(:),sir(:,:)
     PetscInt, pointer:: icaptype(:)
 
     PetscReal :: m_nacl
@@ -752,6 +936,9 @@ This section gives an overview in alphabetical order of the objects and their da
   end type output_option_type
 \end{verbatim}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\protect\hypertarget{target_obj_patch}{}
 \subsection{Patch}
 
 \begin{verbatim}
@@ -799,6 +986,9 @@ This section gives an overview in alphabetical order of the objects and their da
   end type patch_list_type
 \end{verbatim}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\protect\hypertarget{target_obj_real}{}
 \subsection{Realization}
 
 \begin{verbatim}
@@ -828,6 +1018,9 @@ This section gives an overview in alphabetical order of the objects and their da
   end type realization_type
 \end{verbatim}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\protect\hypertarget{target_obj_region}{}
 \subsection{Region}
 
 \begin{verbatim}
@@ -861,6 +1054,91 @@ This section gives an overview in alphabetical order of the objects and their da
   end type region_list_type
 \end{verbatim}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\protect\hypertarget{target_obj_richards}{}
+\subsection{Richards}
+
+\begin{verbatim}
+  type, public :: richards_auxvar_type
+    PetscReal :: pres
+    PetscReal :: temp
+    PetscReal :: sat
+    PetscReal :: den
+    PetscReal :: den_kg
+    PetscReal :: avgmw
+    PetscReal :: h
+    PetscReal :: u
+    PetscReal :: pc
+!    PetscReal :: vis
+!    PetscReal :: dvis_dp
+!    PetscReal :: kr
+!    PetscReal :: dkr_dp
+    PetscReal :: kvr
+    PetscReal :: dsat_dp
+    PetscReal :: dden_dp
+    PetscReal :: dden_dt
+    PetscReal :: dkvr_dp
+    PetscReal :: dkvr_dt
+    PetscReal :: dh_dp
+    PetscReal :: dh_dt
+    PetscReal :: du_dp
+    PetscReal :: du_dt
+    PetscReal, pointer :: xmol(:)
+    PetscReal, pointer :: diff(:)
+  end type richards_auxvar_type
+  
+  type, public :: richards_type
+    PetscInt :: n_zero_rows
+    PetscInt, pointer :: zero_rows_local(:), zero_rows_local_ghosted(:)
+
+    logical :: aux_vars_up_to_date
+    logical :: inactive_cells_exist
+    PetscInt :: num_aux, num_aux_bc
+    type(richards_auxvar_type), pointer :: aux_vars(:)
+    type(richards_auxvar_type), pointer :: aux_vars_bc(:)
+  end type richards_type
+\end{verbatim}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\protect\hypertarget{target_obj_richards_lite}{}
+\subsection{Richards\_lite}
+
+\begin{verbatim}
+  type, public :: richards_lite_auxvar_type
+    PetscReal :: pres
+    PetscReal :: temp
+    PetscReal :: sat
+    PetscReal :: den
+    PetscReal :: den_kg
+    PetscReal :: avgmw
+    PetscReal :: pc
+!    PetscReal :: vis
+!    PetscReal :: dvis_dp
+!    PetscReal :: kr
+!    PetscReal :: dkr_dp
+    PetscReal :: kvr
+    PetscReal :: dsat_dp
+    PetscReal :: dden_dp
+    PetscReal :: dkvr_dp
+  end type richards_lite_auxvar_type
+  
+  type, public :: richards_lite_type
+    PetscInt :: n_zero_rows
+    PetscInt, pointer :: zero_rows_local(:), zero_rows_local_ghosted(:)
+
+    logical :: aux_vars_up_to_date
+    logical :: inactive_cells_exist
+    PetscInt :: num_aux, num_aux_bc
+    type(richards_lite_auxvar_type), pointer :: aux_vars(:)
+    type(richards_lite_auxvar_type), pointer :: aux_vars_bc(:)
+  end type richards_lite_type
+\end{verbatim}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\protect\hypertarget{target_obj_simulation}{}
 \subsection{Simulation}
 
 \begin{verbatim}
@@ -873,6 +1151,9 @@ This section gives an overview in alphabetical order of the objects and their da
   end type simulation_type
 \end{verbatim}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\protect\hypertarget{target_obj_solver}{}
 \subsection{Solver}
 
 \begin{verbatim}
@@ -914,18 +1195,21 @@ This section gives an overview in alphabetical order of the objects and their da
   end type solver_type
 \end{verbatim}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\protect\hypertarget{target_obj_stepper}{}
 \subsection{Stepper}
 
 \begin{verbatim}
   type, public :: stepper_type
   
-    PetscInt :: steps         ! The number of time-steps taken by the code.
-    PetscInt :: nstepmax      ! Maximum number of timesteps taken by the code.
-    PetscInt :: icut_max      ! Maximum number of timestep cuts within one time step.
-    PetscInt :: ndtcmx        ! Steps needed after cutting to increase time step
-    PetscInt :: newtcum       ! Total number of Newton steps taken.
-    PetscInt :: icutcum       ! Total number of cuts in the timestep taken.    
-    PetscInt :: iaccel        ! Accelerator index
+    PetscInt :: steps     ! The number of time-steps taken by the code.
+    PetscInt :: nstepmax  ! Maximum number of timesteps taken by the code.
+    PetscInt :: icut_max  ! Maximum number of timestep cuts within one time step.
+    PetscInt :: ndtcmx    ! Steps needed after cutting to increase time step
+    PetscInt :: newtcum   ! Total number of Newton steps taken.
+    PetscInt :: icutcum   ! Total number of cuts in the timestep taken.    
+    PetscInt :: iaccel    ! Accelerator index
     
     PetscReal :: dt_min
     PetscReal :: dt_max
@@ -939,8 +1223,11 @@ This section gives an overview in alphabetical order of the objects and their da
   end type stepper_type
 \end{verbatim}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\protect\hypertarget{target_obj_strata}{}
 \subsection{Strata}
- 
+
 \begin{verbatim}
   type, public :: strata_type
     PetscInt :: id                                 ! id of strata
@@ -969,6 +1256,77 @@ This section gives an overview in alphabetical order of the objects and their da
     type(strata_ptr_type), pointer :: array(:)    
   end type strata_list_type
 \end{verbatim}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\protect\hypertarget{target_obj_structured_grid}{}
+\subsection{Structured\_grid}
+
+\begin{verbatim}
+  type, public :: structured_grid_type
+
+    PetscInt :: nx, ny, nz    ! Global domain dimensions of the grid.
+    PetscInt :: nxy, nmax     ! nx * ny, nx * ny * nz
+    PetscInt :: npx, npy, npz ! Processor partition in each direction.
+    PetscInt :: nlx, nly, nlz ! Local grid dimension w/o ghost nodes.
+    PetscInt :: ngx, ngy, ngz ! Local grid dimension with ghost nodes.
+    PetscInt :: nxs, nys, nzs 
+      ! Global indices of non-ghosted corner (starting) of local domain.
+    PetscInt :: ngxs, ngys, ngzs
+      ! Global indices of ghosted starting corner of local domain.
+    PetscInt :: nxe, nye, nze, ngxe, ngye, ngze
+      ! Global indices of non-ghosted/ghosted ending corner of local domain.
+    PetscInt :: nlxy, nlxz, nlyz
+    PetscInt :: ngxy, ngxz, ngyz
+    
+    PetscInt :: istart, jstart, kstart, iend, jend, kend
+      ! istart gives the local x-index of the non-ghosted starting (lower left)
+      ! corner. iend gives the local x-index of the non-ghosted ending 
+      ! corner. jstart, jend correspond to y-index, kstart, kend to z-index.    
+
+    PetscInt :: nlmax  ! Total number of non-ghosted nodes in local domain.
+    PetscInt :: ngmax  ! Number of ghosted & non-ghosted nodes in local domain.
+
+    PetscReal :: origin(3)
+
+    PetscReal, pointer :: dx0(:), dy0(:), dz0(:)
+    
+    logical :: invert_z_axis
+    
+    PetscReal, pointer :: dx(:),dy(:),dz(:),dxg(:),dyg(:),dzg(:) ! Grid spacings
+    
+    PetscFortranAddr p_samr_patch ! pointer to a SAMRAI patch object
+
+  end type structured_grid_type
+\end{verbatim}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\protect\hypertarget{target_obj_waypoint}{}
+\subsection{Waypoint}
+
+\begin{verbatim}
+  type, public :: waypoint_type
+    PetscReal :: time
+    logical :: print_output
+    type(output_option_type), pointer :: output_option
+    logical :: update_bcs
+    logical :: update_srcs
+    PetscReal :: dt_max
+    logical :: final  ! any waypoint after this will be deleted
+    type(waypoint_type), pointer :: prev
+    type(waypoint_type), pointer :: next
+  end type waypoint_type
+  
+  type, public :: waypoint_list_type
+    PetscInt :: num_waypoints
+    type(waypoint_type), pointer :: first
+    type(waypoint_type), pointer :: last
+    type(waypoint_type), pointer :: array(:)    
+  end type waypoint_list_type
+\end{verbatim}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \section{Creating the Input File: PFLOTRAN Keywords}
 
