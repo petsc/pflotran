@@ -100,8 +100,8 @@ Hanford300v2::Hanford300v2(Grid **grid_) {
 #endif
 
 //  grid->setOrigin(593618.9,114565.1,70.);
+  grid->setRotation(14.); // must come before ->setOrigin()
   grid->setOrigin(593618.9,114565.1,90.);
-  grid->setRotation(14.);
 
 //  grid->computeCoordinates();
 //  grid->computeConnectivity();

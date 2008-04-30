@@ -100,8 +100,8 @@ Hanford300::Hanford300(Grid **grid_) {
 #endif
 
 //  grid->setOrigin(593618.9,114565.1,70.);
+  grid->setRotation(14.); // must come before ->setOrigin()
   grid->setOrigin(593618.9,114565.1,90.);
-  grid->setRotation(14.);
 
 //  grid->computeCoordinates();
 //  grid->computeConnectivity();
@@ -134,7 +134,7 @@ Hanford300::Hanford300(Grid **grid_) {
 
   AsciiGrid::nasciigrids = 7;
   string *grid_filenames = new string[AsciiGrid::nasciigrids];
-#if 1
+#if 0
   grid_filenames[0].append("./basalt_PNNL_grid_20m.asc");
   grid_filenames[1].append("./u9PNNL_grid_20m.asc");
   grid_filenames[2].append("./u8PNNL_grid_20m.asc");

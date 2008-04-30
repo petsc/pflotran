@@ -146,6 +146,15 @@ void StructuredGrid::setOrigin(PetscReal origx, PetscReal origy, PetscReal origz
 }
 
 void StructuredGrid::setRotation(PetscReal r) {
+  
+  if (PetscAbsReal(local_origin[0] - -999.) > 1.e-40 &&
+      PetscAbsReal(local_origin[1] - -999.) > 1.e-40 &&
+      PetscAbsReal(local_origin[2] - -999.) > 1.e-40) {
+    PetscPrintf(PETSC_COMM_WORLD,"ERROR: Rotation must be set before setting origin.\n");
+    PetscFinalize();
+    exit(0);
+  }
+
   rotationZdegrees = r;
   rotationZradians = r/180.*PI; // convert from degrees to radians
 }
@@ -495,19 +504,25 @@ void StructuredGrid::mapSource(PetscInt istart, PetscInt iend, PetscInt jstart,
 }
 
 void StructuredGrid::setUpCells(PetscInt num_cells, GridCell *cells) {
-  PetscReal z = 0.5*gdz[0];
+  PetscReal z;
+  if (lzs-gzs > 0) z = -0.5*gdz[0];
+  else z = 0.5*gdz[0];
   for (PetscInt k=0; k<gnz; k++) {
-    PetscReal y = 0.5*gdy[0];
+    PetscReal y;
+    if (lys-gys > 0) y = -0.5*gdy[0];
+    else y = 0.5*gdy[0];
     for (PetscInt j=0; j<gny; j++) {
-      PetscReal x = 0.5*gdx[0];
+      PetscReal x;
+      if (lxs-gxs > 0) x = -0.5*gdx[0];
+      else x = 0.5*gdx[0];
       for (PetscInt i=0; i<gnx; i++) {
         PetscInt id = i+j*gnx+k*gnxXny;
         cells[id].setVolume(gdx[i]*gdy[j]*gdz[k]);
-        PetscReal x_rot = local_origin[0] + (x-(lxs-gxs>0?gdx[0]:0.))*cos(rotationZradians) - 
-                                         (y-(lys-gys>0?gdy[0]:0.))*sin(rotationZradians);
-        PetscReal y_rot = local_origin[1] + (x-(lxs-gxs>0?gdx[0]:0.))*sin(rotationZradians) + 
-                                         (y-(lys-gys>0?gdy[0]:0.))*cos(rotationZradians);
-        PetscReal z_adj = local_origin[2] + (z-(lzs-gzs>0?gdz[0]:0.));
+        PetscReal x_rot = local_origin[0] + x*cos(rotationZradians) -
+                                            y*sin(rotationZradians);
+        PetscReal y_rot = local_origin[1] + x*sin(rotationZradians) +
+                                            y*cos(rotationZradians);
+        PetscReal z_adj = local_origin[2] + z;
         cells[id].setCentroid(x_rot,y_rot,z_adj);
         if (i < gnx-1) x += 0.5*(gdx[i]+gdx[i+1]);
       }
