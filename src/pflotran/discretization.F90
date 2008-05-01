@@ -420,6 +420,14 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,Jacobian,option)
 
 end subroutine DiscretizationCreateJacobian
 
+! ************************************************************************** !
+!
+! DiscretizationCreateInterpolation: Creates interpolation matrix associated 
+! with discretization for geometric multigrid.
+! author: Richard Mills
+! date: 4/25/08.
+!
+! ************************************************************************** !
 subroutine DiscretizationCreateInterpolation(discretization,dm_index, &
                                              interpolation,option)
 
