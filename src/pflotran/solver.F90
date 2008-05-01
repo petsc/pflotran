@@ -35,7 +35,7 @@ module Solver_module
     MatFDColoring :: matfdcoloring
       ! Coloring used for computing the Jacobian via finite differences.
 
-    Mat :: Rt  ! Interpolation/restriction operator for Galerkin multigrid.
+    Mat :: interpolation ! Interpolation operator for Galerkin multigrid.
 
     ! PETSc nonlinear solver context
     SNES :: snes
@@ -97,7 +97,7 @@ function SolverCreate()
   solver%newton_maxf = PETSC_DEFAULT_INTEGER
   
   solver%J = 0
-  solver%Rt = 0
+  solver%interpolation = 0
   solver%matfdcoloring = 0
   solver%snes = 0
   solver%ksp_type = KSPBCGS
@@ -193,7 +193,7 @@ subroutine SolverSetSNESOptions(solver, option)
   if (option%use_galerkin_mg) then
     call PCSetType(solver%pc, PCMG, ierr)
     call PCMGSetLevels(solver%pc, 2, PETSC_NULL_OBJECT, ierr)
-    call PCMGSetInterpolation(solver%pc, 1, solver%Rt, ierr)
+    call PCMGSetInterpolation(solver%pc, 1, solver%interpolation, ierr)
     call PCMGSetGalerkin(solver%pc, ierr)
   endif
   

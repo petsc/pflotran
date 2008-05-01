@@ -38,7 +38,7 @@ module Discretization_module
             DiscretizationCreateVector, &
             DiscretizationDuplicateVector, &         
             DiscretizationCreateJacobian, &
-            DiscretizationCreateRt, &
+            DiscretizationCreateInterpolation, &
             DiscretizationCreateColoring, &
             DiscretizationGlobalToLocal, &
             DiscretizationLocalToGlobal, &
@@ -420,7 +420,8 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,Jacobian,option)
 
 end subroutine DiscretizationCreateJacobian
 
-subroutine DiscretizationCreateRt(discretization,dm_index,Rt,option)
+subroutine DiscretizationCreateInterpolation(discretization,dm_index, &
+                                             interpolation,option)
 
   use Option_module
   
@@ -429,7 +430,7 @@ subroutine DiscretizationCreateRt(discretization,dm_index,Rt,option)
   type(discretization_type) :: discretization
   PetscInt :: dm_index
   PetscErrorCode :: ierr
-  Mat :: Rt
+  Mat :: interpolation
   type(option_type) :: option
 
   DM :: dm_ptr
@@ -448,11 +449,12 @@ subroutine DiscretizationCreateRt(discretization,dm_index,Rt,option)
     case(STRUCTURED_GRID)
       call DASetInterpolationType(dm_ptr, DA_Q0, ierr)
       call DACoarsen(dm_ptr, PETSC_COMM_WORLD, dmc_ptr, ierr)
-      call DAGetInterpolation(dmc_ptr, dm_ptr, Rt, PETSC_NULL_OBJECT, ierr)
+      call DAGetInterpolation(dmc_ptr, dm_ptr, interpolation, &
+                              PETSC_NULL_OBJECT, ierr)
     case(UNSTRUCTURED_GRID)
   end select
 
-end subroutine DiscretizationCreateRt
+end subroutine DiscretizationCreateInterpolation
 
 ! ************************************************************************** !
 !

@@ -166,7 +166,8 @@ subroutine Init(simulation,filename)
     call SolverCreateSNES(flow_solver)  
     call DiscretizationCreateJacobian(discretization,NFLOWDOF,flow_solver%J,option)
     if (option%use_galerkin_mg) then
-      call DiscretizationCreateRt(discretization,NFLOWDOF,flow_solver%Rt,option)
+      call DiscretizationCreateInterpolation(discretization,NFLOWDOF, &
+                                             flow_solver%interpolation,option)
     endif
     
     select case(option%iflowmode)
@@ -217,7 +218,8 @@ subroutine Init(simulation,filename)
     call DiscretizationCreateJacobian(discretization,NTRANDOF,tran_solver%J,option)
     
     if (option%use_galerkin_mg) then
-      call DiscretizationCreateRt(discretization,NTRANDOF,tran_solver%Rt,option)
+      call DiscretizationCreateInterpolation(discretization,NTRANDOF, &
+                                             tran_solver%interpolation,option)
     endif
 
     call SNESSetFunction(tran_solver%snes,field%tran_r,RTResidual,realization,ierr)
