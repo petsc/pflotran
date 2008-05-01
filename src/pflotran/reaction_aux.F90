@@ -8,70 +8,95 @@ module Reaction_Aux_module
 
 #include "definitions.h"
 
+  type, public :: aq_species_type
+    character(len=MAXNAMELENGTH) :: spec_name
+    PetscReal :: a0
+    PetscReal :: molar_weight
+    PetscReal :: valence
+    type(equilibrium_rxn_type), pointer :: eqrxn
+  end type aq_species_type
+
+  type, public :: gas_species_type
+    character(len=MAXNAMELENGTH) :: spec_name
+    PetscReal :: molar_volume
+    PetscReal :: molar_weight
+    type(equilibrium_rxn_type), pointer :: eqrxn
+  end type gas_species_type
+
   type, public :: equilibrium_rxn_type
-    PetscInt :: ncomp
-    character(len=MAXNAMELENGTH), pointer :: comp_name(:)
+    PetscInt :: nspec
+    character(len=MAXNAMELENGTH), pointer :: spec_name(:)
     PetscReal, pointer :: stoich(:)
-    PetscInt, pointer :: comp_ids(:)
-    PetscReal, pointer :: a0
-    PetscReal, pointer :: z
+    PetscInt, pointer :: spec_ids(:)
     PetscReal, pointer :: logK
-    type(equilibrium_rxn_type), pointer :: next
   end type equilibrium_rxn_type
 
   type, public :: kinetic_rxn_type
-    PetscInt :: ncomp
-    character(len=MAXNAMELENGTH), pointer :: comp_name(:)
+    PetscInt :: nspec
+    character(len=MAXNAMELENGTH), pointer :: spec_name(:)
     PetscReal, pointer :: stoich(:)
-    PetscInt, pointer :: comp_ids(:)
-    PetscReal, pointer :: logK
+    PetscInt, pointer :: spec_ids(:)
+    PetscReal :: logK
     PetscReal :: rate_forward
     PetscReal :: rate_reverse
-    type(kinetic_rxn_type), pointer :: next
   end type kinetic_rxn_type
 
-  type, public :: mineral_rxn_type
+  type, public :: mineral_type
     character(len=MAXNAMELENGTH) :: mnrl_name
     PetscReal :: molar_volume
     PetscReal :: molar_weight
-    PetscInt :: ncomp
-    character(len=MAXNAMELENGTH), pointer :: comp_name(:)
-    PetscInt, pointer :: comp_ids(:)
+    type(transition_state_rxn_type), pointer :: tstrxn
+    type(mineral_type), pointer :: next
+  end type mineral_type
+
+  type, public :: transition_state_rxn_type
+    PetscInt :: nspec
+    character(len=MAXNAMELENGTH), pointer :: spec_name(:)
+    PetscInt, pointer :: spec_ids(:)
     PetscReal, pointer :: stoich(:)
+    PetscInt :: nspec_primary_prefactor
+    character(len=MAXNAMELENGTH), pointer :: spec_name_primary_prefactor(:)
+    PetscInt, pointer :: spec_ids_primary_prefactor(:)
+    PetscReal, pointer :: stoich_primary_prefactor(:)
+    PetscInt :: nspec_secondary_prefactor
+    character(len=MAXNAMELENGTH), pointer :: spec_name_secondary_prefactor(:)
+    PetscInt, pointer :: spec_ids_secondary_prefactor(:)
+    PetscReal, pointer :: stoich_secondary_prefactor(:)
+    PetscReal :: affinity_factor_sigma
+    PetscReal :: affinity_factor_beta
     PetscReal :: logK
     PetscReal :: rate
-    PetscReal :: area
-    type(mineral_rxn_type), pointer :: next
-  end type mineral_rxn_type
+    PetscReal :: area0
+  end type transition_state_rxn_type
   
-  type, public :: ion_exchange_rxn_type
-    character(len=MAXNAMELENGTH) :: cation_name
-    PetscInt :: ncomp
-    character(len=MAXNAMELENGTH), pointer :: comp_name(:)
-    PetscInt, pointer :: comp_ids(:)
-    PetscReal, pointer :: z(:)
-    PetscReal, pointer :: k(:)
-    PetscReal, pointer :: X_(:)
-    PetscReal, pointer :: prev_X_(:)
+  type, public :: ion_exchange_type
+    character(len=MAXNAMELENGTH) :: reference_cation_name
+    character(len=MAXNAMELENGTH) :: mnrl_name
+    PetscInt :: ncation
+    character(len=MAXNAMELENGTH), pointer :: cation_name(:)
+    PetscInt, pointer :: cation_ids(:)
+    PetscReal, pointer :: k(:)  ! selectivity coefficient
     PetscReal :: CEC
-    type (ion_exchange_rxn_type), pointer :: next
-  end type ion_exchange_rxn_type
- 
+    type (ion_exchange_type), pointer :: next
+  end type ion_exchange_type
+
   type, public :: surface_complexation_rxn_type
     character(len=MAXNAMELENGTH) :: surfcmplx_name
     PetscInt :: ncomp
-    character(len=MAXNAMELENGTH), pointer :: comp_name(:)
-    PetscInt, pointer :: comp_ids(:)
+    character(len=MAXNAMELENGTH), pointer :: spec_name(:)
+    PetscInt, pointer :: spec_ids(:)
     PetscReal, pointer :: stoich(:)
-    PetscReal :: charge
+    PetscReal, pointer :: free_site_stoich
+    PetscReal :: logK
+    PetscReal :: valence
     type (surface_complexation_rxn_type), pointer :: next
   end type surface_complexation_rxn_type
   
   type, public :: reaction_type
-    type(equilibrium_rxn_type), pointer :: equilibrium_list
-    type(kinetic_rxn_type), pointer :: kinetic_list
-    type(mineral_rxn_type), pointer :: mineral_list
-    type(ion_exchange_rxn_type), pointer :: ion_exchange_list
+!    type(equilibrium_rxn_type), pointer :: equilibrium_list
+!    type(kinetic_rxn_type), pointer :: kinetic_list
+!    type(mineral_rxn_type), pointer :: mineral_list
+    type(ion_exchange_type), pointer :: ion_exchange_list
     type(surface_complexation_rxn_type), pointer :: surface_complex_list
     ! compressed arrays for efficient computation
     ! equilibrium complexation
