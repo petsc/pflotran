@@ -538,6 +538,7 @@ subroutine SolverDestroy(solver)
   if (.not.associated(solver)) return
     
   if (solver%J /= 0) call MatDestroy(solver%J,ierr)
+  if (solver%interpolation /= 0) call MatDestroy(solver%interpolation,ierr)
   if (solver%matfdcoloring /= 0) call MatFDColoringDestroy(solver%matfdcoloring,ierr)
   if (solver%snes /= 0) call SNESDestroy(solver%snes,ierr)
   solver%ksp = 0
