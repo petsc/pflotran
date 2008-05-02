@@ -176,8 +176,8 @@ subroutine translator_mphase_massbal(realization)
   PetscReal, pointer ::  den(:),sat(:),xmol(:)
   PetscReal :: sat_avg, sat_max, sat_min, sat_var
   PetscReal :: sat_avg0, sat_max0, sat_min0, sat_var0
-  PetscReal :: tot(0:realization%option%nspec,0:realization%option%nphase), &
-            tot0(0:realization%option%nspec,0:realization%option%nphase)  
+  PetscReal :: tot(0:realization%option%nflowspec,0:realization%option%nphase), &
+            tot0(0:realization%option%nflowspec,0:realization%option%nphase)  
   data icall/0/
     
   type(grid_type), pointer :: grid
@@ -194,7 +194,7 @@ subroutine translator_mphase_massbal(realization)
   call VecGetArrayF90(field%porosity_loc, porosity_loc_p, ierr)  
   call VecGetArrayF90(field%iphas_loc, iphase_loc_p, ierr)
  
-  size_var_node=(option%nflowdof+1)*(2+7*option%nphase+2*option%nphase*option%nspec)
+  size_var_node=(option%nflowdof+1)*(2+7*option%nphase+2*option%nphase*option%nflowspec)
   tot=0.D0
   n2p=0
   nxc=0.; nyc=0.; nzc=0.D0; nzm=0 !grid%z(grid%nmax); 
@@ -209,7 +209,7 @@ subroutine translator_mphase_massbal(realization)
     den=>var_loc_p(index+3+option%nphase: index+2+2*option%nphase)
     sat=>var_loc_p(index+2+1:index+2+option%nphase)
     xmol=>var_loc_p(index+2+7*option%nphase+1:index+2+7*option%nphase +&
-                    option%nphase*option%nspec)    
+                    option%nphase*option%nflowspec)    
    
     pvol=volume_p(local_id)*porosity_loc_p(ghosted_id)         
     if(dabs(iphase_loc_p(ghosted_id)- 3.D0)<.25D0)then
@@ -232,9 +232,9 @@ subroutine translator_mphase_massbal(realization)
 
      endif
 
-    do nc =1,option%nspec
+    do nc =1,option%nflowspec
       do np=1,option%nphase
-        sum= sat(np)* xmol((np-1)*option%nspec +nc)*den(np)
+        sum= sat(np)* xmol((np-1)*option%nflowspec +nc)*den(np)
         tot(nc,np)= pvol*sum + tot(nc,np)
        !tot(0,np)=tot(0,np)+tot(nc,np)
        !tot(nc,0)=tot(nc,0)+tot(nc,np)
@@ -261,12 +261,12 @@ subroutine translator_mphase_massbal(realization)
     call MPI_REDUCE(sat_max, sat_max0,ONE_INTEGER, MPI_DOUBLE_PRECISION,MPI_MAX,ZERO_INTEGER, PETSC_COMM_WORLD,ierr)
    
       
-    do nc = 0,option%nspec
+    do nc = 0,option%nflowspec
       do np = 0,option%nphase
         call MPI_REDUCE(tot(nc,np), tot0(nc,np),ONE_INTEGER,&
             MPI_DOUBLE_PRECISION,MPI_SUM,ZERO_INTEGER, PETSC_COMM_WORLD,ierr)
    
-!       call MPI_BCAST(tot0,(option%nphase+1)*(option%nspec+1),&
+!       call MPI_BCAST(tot0,(option%nphase+1)*(option%nflowspec+1),&
 !            MPI_DOUBLE_PRECISION, ZERO_INTEGER,PETSC_COMM_WORLD,ierr)
       enddo
     enddo
@@ -395,7 +395,7 @@ subroutine translator_mph_get_output(realization)
   call VecGetArrayF90(mphase_field%conc, cc_p, ierr)
   !print *,' translator_mph_get_output gotten pointers'
   
-  size_var_node=(option%nflowdof+1)*(2+7*option%nphase +2*option%nphase*option%nspec)
+  size_var_node=(option%nflowdof+1)*(2+7*option%nphase +2*option%nphase*option%nflowspec)
   
   do local_id = 1, grid%nlmax
     ghosted_id = grid%nL2G(local_id)
@@ -536,7 +536,7 @@ subroutine Translator_MPhase_Switching(xx,realization,icri,ichange)
   PetscReal :: p2,p,tmp,t
   PetscReal :: dg,dddt,dddp,fg,dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp
   PetscReal :: ug,xphi,henry,sat_pressure
-  PetscReal :: xmol(realization%option%nphase*realization%option%nspec),satu(realization%option%nphase)
+  PetscReal :: xmol(realization%option%nphase*realization%option%nflowspec),satu(realization%option%nphase)
 ! PetscReal :: xla,co2_poyn
   PetscInt :: local_id, ghosted_id, dof_offset
   
@@ -757,7 +757,7 @@ subroutine Translator_MPhase_Switching(xx,realization,icri,ichange)
 !        i=ithrm_p(n) 
    
 !  call pri_var_trans_ninc(xx_p((n-1)*option%nflowdof+1:n*option%nflowdof),iipha,&
- !       option%scale,option%nphase,option%nspec,&
+ !       option%scale,option%nphase,option%nflowspec,&
  !       iicap, grid%sir(1:option%nphase,iicap),grid%lambda(iicap),&
  !       grid%alpha(iicap),grid%pckrm(iicap),grid%pcwmax(iicap),&
  !       grid%pcbetac(iicap),grid%pwrprm(iicap),dif,&

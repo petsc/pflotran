@@ -9,9 +9,21 @@ module Reactive_Transport_Aux_module
 #include "definitions.h"
  
   type, public :: reactive_transport_auxvar_type
-    PetscReal, pointer :: total(:)
-    PetscReal, pointer :: dtotal(:,:)
+    ! phase dependent totals
+    PetscReal, pointer :: total(:,:)
+    PetscReal, pointer :: dtotal(:,:,:)
+    ! aqueous species
     PetscReal, pointer :: primary_spec(:)
+    ! aqueous complexes
+    PetscReal, pointer :: secondary_spec(:)
+    ! sorption reactions
+    PetscReal, pointer :: kinsurfcmplx_spec(:)
+    PetscReal, pointer :: kinionx_molfrac(:)
+    PetscReal, pointer :: eqsurfcmplx_spec(:)
+    PetscReal, pointer :: eqionx_molfrac(:)
+    ! mineral reactions
+    PetscReal, pointer :: mnrl_volfrac(:)
+    PetscReal, pointer :: mnrl_area0(:)
   end type reactive_transport_auxvar_type
   
   type, public :: reactive_transport_type
@@ -74,12 +86,14 @@ subroutine RTAuxVarInit(aux_var,option)
   type(reactive_transport_auxvar_type) :: aux_var
   type(option_type) :: option  
   
-  allocate(aux_var%total(option%ncomp))
+  allocate(aux_var%total(option%ncomp,option%nphase))
   aux_var%total = 0.d0
-  allocate(aux_var%dtotal(option%ncomp,option%ncomp))
+  allocate(aux_var%dtotal(option%ncomp,option%ncomp,option%nphase))
   aux_var%dtotal = 0.d0
   allocate(aux_var%primary_spec(option%ncomp))
   aux_var%primary_spec = 0.d0
+  allocate(aux_var%secondary_spec(option%ncmplx))
+  aux_var%secondary_spec = 0.d0
   
 end subroutine RTAuxVarInit
 
@@ -101,7 +115,7 @@ subroutine RTAuxVarCompute(x,aux_var,option)
   type(reactive_transport_auxvar_type) :: aux_var
 
   ! update totals  
-  aux_var%total(1:option%ncomp) = x(1:option%ncomp)
+  aux_var%total(1:option%ncomp,1) = x(1:option%ncomp)
   ! add in other later
   
 end subroutine RTAuxVarCompute

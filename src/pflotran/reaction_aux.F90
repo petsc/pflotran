@@ -99,24 +99,53 @@ module Reaction_Aux_module
     type(ion_exchange_type), pointer :: ion_exchange_list
     type(surface_complexation_rxn_type), pointer :: surface_complex_list
     ! compressed arrays for efficient computation
-    ! equilibrium complexation
-    PetscInt, allocatable :: eqspeccmpid(:,:)
-    PetscReal, allocatable :: steqspec(:,:)
-    PetscReal, allocatable :: Keqspec(:)
-    ! kinetic reversible
-    PetscInt, allocatable :: kincmpid(:,:)
-    PetscReal, allocatable :: stkin(:,:)
-    PetscReal, allocatable :: Kkin(:)
-    PetscReal, allocatable :: ratefor(:)
-    PetscReal, allocatable :: ratebac(:)
-    ! kinetic mineral precipitation/dissolution
-    PetscInt, allocatable :: kinmnrlcmpid(:,:)
-    PetscReal, allocatable :: stkinmnrl(:,:)
-    PetscReal, allocatable :: Kkinmnrl(:)
-    PetscReal, allocatable :: kinmnrlrate(:)
-    PetscReal, allocatable :: kinmnrlarea(:)
-    ! ion exchange
-    ! surface complexation
+    ! primary aqueous complexes
+    PetscReal, allocatable :: primary_spec_molwt(:)
+    PetscReal, allocatable :: primary_spec_a0(:)
+    PetscReal, allocatable :: primary_spec_Z(:)
+    ! aqueous complexes
+    PetscInt, allocatable :: eqcmplxspecid(:,:)   ! (0:ncomp in rxn)
+    PetscReal, allocatable :: eqcmplxstoich(:,:)
+    PetscReal, allocatable :: eqcmplx_a0(:)
+    PetscReal, allocatable :: eqcmplx_K(:)
+    ! ionx exchange reactions
+    PetscInt, allocatable :: eqionx_ncation(:)
+    PetscReal, allocatable :: eqionx_CEC(:)
+    PetscReal, allocatable :: eqionx_k(:,:)
+    PetscInt, allocatable :: eqionx_cationid(:)
+    PetscInt, allocatable :: eqionx_rxn_offset(:)
+    PetscInt, allocatable :: kinionx_ncation(:)
+    PetscReal, allocatable :: kinionx_CEC(:)
+    PetscReal, allocatable :: kinionx_k(:,:)
+    PetscInt, allocatable :: kinionx_cationid(:)
+    PetscInt, allocatable :: kinionx_rxn_offset(:)
+    ! surface complexation reactions
+    PetscInt, allocatable :: eqsurfcmplxspecid(:,:)
+    PetscReal, allocatable :: eqsurfcmplxstoich(:,:)
+    PetscReal, allocatable :: eqsurfcmplx_freesite_stoich(:,:)
+    PetscReal, allocatable :: eqsurfcmplx_K(:)
+    PetscReal, allocatable :: eqsurfcmplx_Z(:)  ! valence
+    PetscInt, allocatable :: kinsurfcmplxspecid(:,:)
+    PetscReal, allocatable :: kinsurfcmplxstoich(:,:)
+    PetscReal, allocatable :: kinsurfcmplx_freesite_stoich(:,:)
+    PetscReal, allocatable :: kinsurfcmplx_K(:)
+    PetscReal, allocatable :: kinsurfcmplx_Z(:)  ! valence
+    ! mineral reactions
+      ! for saturation states
+    PetscInt, allocatable :: mnrlspecid(:,:)
+    PetscReal, allocatable :: mnrlstoich(:,:)
+    PetscReal, allocatable :: mnrl_K(:)
+      ! for kinetic reactions
+    PetscInt, allocatable :: kinmnrlspecid(:,:)
+    PetscReal, allocatable :: kinmnrlstoich(:,:)
+    PetscReal, allocatable :: kinmnrl_K(:)
+    PetscReal, allocatable :: kinmnrl_rate(:)
+    PetscInt, allocatable :: kinmnrl_pri_prefactor_id(:,:)
+    PetscInt, allocatable :: kinmnrl_sec_prefactor_id(:,:)
+    PetscInt, allocatable :: kinmnrl_pri_prefactor_stoich(:,:)
+    PetscInt, allocatable :: kinmnrl_sec_prefactor_stoich(:,:)
+    PetscReal, allocatable :: kinmnrl_affinity_factor_sigma(:)
+    PetscReal, allocatable :: kinmnrl_affinity_factor_beta(:)
   end type reaction_type
   
 contains

@@ -1,5 +1,5 @@
 ! introduced grid variables: e_total :: 1 dof
-! translator_module                           c_total :: option%nspec dof
+! translator_module                           c_total :: option%nflowspec dof
 !                            p_total :: 1 dof
 !                            s_total :: (option%nphase-1) dof
 !  stands for the accumulation term at last time step, except the /Dt part 
@@ -511,7 +511,7 @@ subroutine pflow_mphase_setupini(realization)
   option => realization%option
   field => realization%field
     
-  size_var_use = 2 + 7*option%nphase + 2* option%nphase*option%nspec
+  size_var_use = 2 + 7*option%nphase + 2* option%nphase*option%nflowspec
   size_var_node = (option%nflowdof + 1) * size_var_use
   
   allocate(Resold_AR(grid%nlmax,option%nflowdof))
@@ -606,7 +606,7 @@ subroutine MPhase_Update_Reason(reason,realization)
       !index=(n-1)*size_var_node
       !sat=>var_loc_p(index+2+1:index+2+option%nphase)
       !den=>var_loc_p(index+2+option%nphase+1:index+2+2*option%nphase)
-    !xmol=>var_loc_p(index+2+7*option%nphase+1:index+2+7*option%nphase + option%nphase*option%nspec)    
+    !xmol=>var_loc_p(index+2+7*option%nphase+1:index+2+7*option%nphase + option%nphase*option%nflowspec)    
       iipha=int(iphase_loc_p(ghosted_id))
      !if(n==3583 .or. n==3587)
    !print *, 'update reson', grid%nlmax, n, iipha, xx_p(n0+1:n0+3)
@@ -724,7 +724,7 @@ subroutine MPHASERes_ARCont(node_no, var_node,por,vol,rock_dencpr, option, &
   PetscReal, pointer :: xmol(:), diff(:)            ! nphase*nspec
   
   PetscInt :: ibase, m,np, iireac=1
-  PetscReal :: pvol,mol(option%nspec),eng
+  PetscReal :: pvol,mol(option%nflowspec),eng
   
   if(present(ireac)) iireac=ireac
   pvol=vol*por
@@ -738,15 +738,15 @@ subroutine MPHASERes_ARCont(node_no, var_node,por,vol,rock_dencpr, option, &
   ibase=ibase+option%nphase; u=>var_node(ibase:ibase+option%nphase-1)
   ibase=ibase+option%nphase; pc=>var_node(ibase:ibase+option%nphase-1)
   ibase=ibase+option%nphase; kvr=>var_node(ibase:ibase+option%nphase-1)
-  ibase=ibase+option%nphase; xmol=>var_node(ibase:ibase+option%nphase*option%nspec-1)
-  ibase=ibase+option%nphase*option%nspec; 
-  diff=>var_node(ibase:ibase+option%nphase*option%nspec-1)
+  ibase=ibase+option%nphase; xmol=>var_node(ibase:ibase+option%nphase*option%nflowspec-1)
+  ibase=ibase+option%nphase*option%nflowspec; 
+  diff=>var_node(ibase:ibase+option%nphase*option%nflowspec-1)
 
   !sumation of component
   mol=0.D0; eng=0.D0
   do np = 1, option%nphase
-    do m=1, option%nspec  
-      mol(m) = mol(m) + sat(np)*density(np)*xmol(m + (np-1)*option%nspec)
+    do m=1, option%nflowspec  
+      mol(m) = mol(m) + sat(np)*density(np)*xmol(m + (np-1)*option%nflowspec)
     enddo
     eng = eng + density(np)*u(np) *sat(np)
   enddo
@@ -782,8 +782,8 @@ subroutine MPHASERes_FLCont(nconn_no,area, &
   PetscInt :: nconn_no
   type(option_type) :: option
   PetscReal :: sir1(1:option%nphase),sir2(1:option%nphase)
-  PetscReal, target :: var_node1(1:2+7*option%nphase+2*option%nphase*option%nspec)
-  PetscReal, target :: var_node2(1:2+7*option%nphase+2*option%nphase*option%nspec)
+  PetscReal, target :: var_node1(1:2+7*option%nphase+2*option%nphase*option%nflowspec)
+  PetscReal, target :: var_node2(1:2+7*option%nphase+2*option%nphase*option%nflowspec)
   PetscReal :: por1,por2,tor1,tor2,perm1,perm2,Dk1,Dk2,dd1,dd2
   PetscReal :: vv_darcy(option%nphase),area
   PetscReal :: Res_FL(1:option%nflowdof) 
@@ -799,8 +799,8 @@ subroutine MPHASERes_FLCont(nconn_no,area, &
   PetscReal, pointer :: xmol2(:), diff2(:)    
   
   PetscInt :: ibase, m,np, ind
-  PetscReal :: fluxm(option%nspec),fluxe, v_darcy,q
-  PetscReal :: uh,uxmol(1:option%nspec), ukvr,difff,diffdp, DK,Dq
+  PetscReal :: fluxm(option%nflowspec),fluxe, v_darcy,q
+  PetscReal :: uh,uxmol(1:option%nflowspec), ukvr,difff,diffdp, DK,Dq
   PetscReal :: upweight,density_ave,cond, gravity, dphi
   
 !  m1=option%nd1(nc); n1 = grid%nG2L(m1) ! = zero for ghost nodes 
@@ -825,11 +825,11 @@ subroutine MPHASERes_FLCont(nconn_no,area, &
                            pc2=>var_node2(ibase:ibase+option%nphase-1)
   ibase=ibase+option%nphase; kvr1=>var_node1(ibase:ibase+option%nphase-1)
                            kvr2=>var_node2(ibase:ibase+option%nphase-1)
-  ibase=ibase+option%nphase; xmol1=>var_node1(ibase:ibase+option%nphase*option%nspec-1)
-                           xmol2=>var_node2(ibase:ibase+option%nphase*option%nspec-1)
-  ibase=ibase+option%nphase*option%nspec;
-               diff1=>var_node1(ibase:ibase+option%nphase*option%nspec-1)    
-               diff2=>var_node2(ibase:ibase+option%nphase*option%nspec-1)
+  ibase=ibase+option%nphase; xmol1=>var_node1(ibase:ibase+option%nphase*option%nflowspec-1)
+                           xmol2=>var_node2(ibase:ibase+option%nphase*option%nflowspec-1)
+  ibase=ibase+option%nphase*option%nflowspec;
+               diff1=>var_node1(ibase:ibase+option%nphase*option%nflowspec-1)    
+               diff2=>var_node2(ibase:ibase+option%nphase*option%nflowspec-1)
 
   !print *,' FLcont got pointers' ,var_node1,var_node2,sir1,sir2
   !print *,' tmp=',temp1,temp2
@@ -867,21 +867,21 @@ subroutine MPHASERes_FLCont(nconn_no,area, &
         if(dphi>=0.D0)then
           ukvr=kvr1(np)
           uh=h1(np)
-          uxmol(1:option%nspec)=xmol1((np-1)*option%nspec+1 : np*option%nspec)
+          uxmol(1:option%nflowspec)=xmol1((np-1)*option%nflowspec+1 : np*option%nflowspec)
         else
           ukvr=kvr2(np)
           uh=h2(np)
-          uxmol(1:option%nspec)=xmol2((np-1)*option%nspec+1 : np*option%nspec)
+          uxmol(1:option%nflowspec)=xmol2((np-1)*option%nflowspec+1 : np*option%nflowspec)
         endif      
 !     else
 !       if(option%iupstream(nconn_no, np) >=0 )then
 !         ukvr=kvr1(np)
 !         uh=h1(np)
-!         uxmol(1:option%nspec)=xmol1((np-1)*option%nspec+1 : np*option%nspec)
+!         uxmol(1:option%nflowspec)=xmol1((np-1)*option%nflowspec+1 : np*option%nflowspec)
 !       else
 !         ukvr=kvr2(np)
 !         uh=h2(np)
-!         uxmol(1:option%nspec)=xmol2((np-1)*option%nspec+1 : np*option%nspec)
+!         uxmol(1:option%nflowspec)=xmol2((np-1)*option%nflowspec+1 : np*option%nflowspec)
 !       endif      
 !     endif  
      
@@ -891,7 +891,7 @@ subroutine MPHASERes_FLCont(nconn_no,area, &
         !option%vvl_loc(nconn_no) = v_darcy
         vv_darcy(np)=v_darcy
         q=v_darcy * area
-        do m=1, option%nspec 
+        do m=1, option%nflowspec 
           fluxm(m)=fluxm(m) + q*density_ave*uxmol(m)
         enddo
         fluxe = fluxe + q*density_ave*uh 
@@ -902,8 +902,8 @@ subroutine MPHASERes_FLCont(nconn_no,area, &
 !   Note : average rule may not be correct  
     if ((sat1(np) > eps) .and. (sat2(np) > eps))then
       difff =diffdp * 0.25D0*(sat1(np)+sat2(np))*(density1(np)+density2(np))
-      do m = 1, option%nspec
-        ind=m+(np-1)*option%nspec
+      do m = 1, option%nflowspec
+        ind=m+(np-1)*option%nflowspec
         fluxm(m) = fluxm(m) + difff * .5D0 * &
         (diff1(ind) + diff2(ind))*(xmol1(ind)-xmol2(ind))
       enddo  
@@ -942,8 +942,8 @@ subroutine MPHASERes_FLBCCont(ibndtype,area,aux_vars, &
   type(field_type) :: field
   PetscReal :: aux_vars(:)
   PetscReal :: dd1, sir2(1:option%nphase)
-  PetscReal, target :: var_node1(1:2+7*option%nphase+2*option%nphase*option%nspec)
-  PetscReal, target :: var_node2(1:2+7*option%nphase+2*option%nphase*option%nspec)
+  PetscReal, target :: var_node1(1:2+7*option%nphase+2*option%nphase*option%nflowspec)
+  PetscReal, target :: var_node2(1:2+7*option%nphase+2*option%nphase*option%nflowspec)
   PetscReal :: por2,perm2,Dk2,tor2
   PetscReal :: vv_darcy(option%nphase), area
   PetscReal :: Res_FL(1:option%nflowdof) 
@@ -959,8 +959,8 @@ subroutine MPHASERes_FLBCCont(ibndtype,area,aux_vars, &
   PetscReal, pointer :: xmol2(:), diff2(:)    
   
   PetscInt :: ibase,offset,iphase,idof,ispec,index
-  PetscReal :: fluxm(option%nspec),fluxe,q(option%nphase)
-  PetscReal :: uh(option%nphase),uxmol(option%nspec), ukvr,diff,diffdp, DK,Dq
+  PetscReal :: fluxm(option%nflowspec),fluxe,q(option%nphase)
+  PetscReal :: uh(option%nphase),uxmol(option%nflowspec), ukvr,diff,diffdp, DK,Dq
   PetscReal :: upweight,density_ave(option%nphase),cond,gravity, dphi
 
   PetscReal :: v_darcy
@@ -983,11 +983,11 @@ subroutine MPHASERes_FLBCCont(ibndtype,area,aux_vars, &
                            pc2=>var_node2(ibase:ibase+option%nphase-1)
   ibase=ibase+option%nphase; kvr1=>var_node1(ibase:ibase+option%nphase-1)
                            kvr2=>var_node2(ibase:ibase+option%nphase-1)
-  ibase=ibase+option%nphase; xmol1=>var_node1(ibase:ibase+option%nphase*option%nspec-1)
-                           xmol2=>var_node2(ibase:ibase+option%nphase*option%nspec-1)
-  ibase=ibase+option%nphase*option%nspec;
-               diff1=>var_node1(ibase:ibase+option%nphase*option%nspec-1)    
-               diff2=>var_node2(ibase:ibase+option%nphase*option%nspec-1)
+  ibase=ibase+option%nphase; xmol1=>var_node1(ibase:ibase+option%nphase*option%nflowspec-1)
+                           xmol2=>var_node2(ibase:ibase+option%nphase*option%nflowspec-1)
+  ibase=ibase+option%nphase*option%nflowspec;
+               diff1=>var_node1(ibase:ibase+option%nphase*option%nflowspec-1)    
+               diff2=>var_node2(ibase:ibase+option%nphase*option%nflowspec-1)
 
 
   fluxm=0.D0
@@ -1022,21 +1022,21 @@ subroutine MPHASERes_FLBCCont(ibndtype,area,aux_vars, &
             if(dphi>=0.D0)then
               ukvr=kvr1(iphase)
               uh=h1(iphase)
-              uxmol(1:option%nspec)=xmol1((iphase-1)*option%nspec+1 : iphase*option%nspec)
+              uxmol(1:option%nflowspec)=xmol1((iphase-1)*option%nflowspec+1 : iphase*option%nflowspec)
            else
               ukvr=kvr2(iphase)
               uh=h2(iphase)
-              uxmol(1:option%nspec)=xmol2((iphase-1)*option%nspec+1 : iphase*option%nspec)
+              uxmol(1:option%nflowspec)=xmol2((iphase-1)*option%nflowspec+1 : iphase*option%nflowspec)
             endif      
 !         else
 !          if(option%iupstreambc(nbc_no, iphase) >=0 )then
 !             ukvr=kvr1(iphase)
 !             uh=h1(iphase)
-!             uxmol(1:option%nspec)=xmol1((iphase-1)*option%nspec+1 : iphase*option%nspec)
+!             uxmol(1:option%nflowspec)=xmol1((iphase-1)*option%nflowspec+1 : iphase*option%nflowspec)
 !           else
 !             ukvr=kvr2(iphase)
 !             uh=h2(iphase)
-!             uxmol(1:option%nspec)=xmol2((iphase-1)*option%nspec+1 : iphase*option%nspec)
+!             uxmol(1:option%nflowspec)=xmol2((iphase-1)*option%nflowspec+1 : iphase*option%nflowspec)
 !           endif      
 !         endif  
 
@@ -1048,7 +1048,7 @@ subroutine MPHASERes_FLBCCont(ibndtype,area,aux_vars, &
      
             q(iphase)=v_darcy * area
           
-            do idof=1, option%nspec 
+            do idof=1, option%nflowspec 
               fluxm(idof)=fluxm(idof) + q(iphase)*density_ave(iphase)*uxmol(idof)
             enddo
             fluxe = fluxe + q(iphase)*density_ave(iphase)*uh(iphase)
@@ -1059,8 +1059,8 @@ subroutine MPHASERes_FLBCCont(ibndtype,area,aux_vars, &
 !       Note : average rule may not be correct  
         if ((sat1(iphase) > eps) .and. (sat2(iphase) > eps))then
           diff =diffdp * 0.25D0*(sat1(iphase)+sat2(iphase))*(density1(iphase)+density2(iphase))
-          do idof = 1, option%nspec
-            offset=idof+(iphase-1)*option%nspec
+          do idof = 1, option%nflowspec
+            offset=idof+(iphase-1)*option%nflowspec
             fluxm(idof) = fluxm(idof) + diff * diff2(offset)&
             *( xmol1(offset)-xmol2(offset))
           enddo  
@@ -1073,7 +1073,7 @@ subroutine MPHASERes_FLBCCont(ibndtype,area,aux_vars, &
       cond=Dk*area*(temp1-temp2) 
       fluxe=fluxe + cond
  
-      Res_FL(1:option%nspec)=fluxm(:)* option%flow_dt
+      Res_FL(1:option%nflowspec)=fluxm(:)* option%flow_dt
       Res_FL(option%nflowdof)=fluxe * option%flow_dt
 
     case(NEUMANN_BC)
@@ -1093,19 +1093,19 @@ subroutine MPHASERes_FLBCCont(ibndtype,area,aux_vars, &
             !q = 0.d0
             !flux = flux - q
             fluxe = fluxe - q(iphase)  * h1(iphase) 
-            do idof=1, option%nspec
-              fluxm(idof)=fluxm(idof) + q(iphase) * xmol1(idof + (iphase-1)*option%nspec)
+            do idof=1, option%nflowspec
+              fluxm(idof)=fluxm(idof) + q(iphase) * xmol1(idof + (iphase-1)*option%nflowspec)
             enddo 
           else 
             q(iphase) =  v_darcy * density2(iphase) * area   
             fluxe = fluxe - q(iphase)  * h2(iphase) 
-            do idof=1, option%nspec
-              fluxm(idof)=fluxm(idof) + q(iphase) * xmol2(idof + (iphase-1)*option%nspec)
+            do idof=1, option%nflowspec
+              fluxm(idof)=fluxm(idof) + q(iphase) * xmol2(idof + (iphase-1)*option%nflowspec)
             enddo 
           endif 
         enddo
       endif
-      Res_FL(1:option%nspec)=fluxm(:)* option%flow_dt
+      Res_FL(1:option%nflowspec)=fluxm(:)* option%flow_dt
       Res_FL(option%nflowdof)=fluxe * option%flow_dt
 
     case(HYDROSTATIC_BC)
@@ -1134,21 +1134,21 @@ subroutine MPHASERes_FLBCCont(ibndtype,area,aux_vars, &
              if(dphi>=0.D0)then
                ukvr=kvr1(iphase)
                uh(iphase)=h1(iphase)
-               uxmol(1:option%nspec)=xmol1((iphase-1)*option%nspec+1 : iphase*option%nspec)
+               uxmol(1:option%nflowspec)=xmol1((iphase-1)*option%nflowspec+1 : iphase*option%nflowspec)
             else
                ukvr=kvr2(iphase)
                uh(iphase)=h2(iphase)
-               uxmol(1:option%nspec)=xmol2((iphase-1)*option%nspec+1 : iphase*option%nspec)
+               uxmol(1:option%nflowspec)=xmol2((iphase-1)*option%nflowspec+1 : iphase*option%nflowspec)
              endif      
 !          else
 !           if(option%iupstreambc(nbc_no, iphase) >=0 )then
 !              ukvr=kvr1(iphase)
 !              uh=h1(iphase)
-!              uxmol(1:option%nspec)=xmol1((iphase-1)*option%nspec+1 : iphase*option%nspec)
+!              uxmol(1:option%nflowspec)=xmol1((iphase-1)*option%nflowspec+1 : iphase*option%nflowspec)
 !            else
 !              ukvr=kvr2(iphase)
 !              uh=h2(iphase)
-!              uxmol(1:option%nspec)=xmol2((iphase-1)*option%nspec+1 : iphase*option%nspec)
+!              uxmol(1:option%nflowspec)=xmol2((iphase-1)*option%nflowspec+1 : iphase*option%nflowspec)
 !            endif      
 !          endif  
  
@@ -1160,7 +1160,7 @@ subroutine MPHASERes_FLBCCont(ibndtype,area,aux_vars, &
            
             q(iphase)=v_darcy * area
                 
-            do idof=1, option%nspec 
+            do idof=1, option%nflowspec 
               fluxm(idof)=fluxm(idof) + q(iphase)*density_ave(iphase)*uxmol(idof)
             enddo
             fluxe = fluxe + q(iphase)*density_ave(iphase)*uh(iphase) 
@@ -1168,7 +1168,7 @@ subroutine MPHASERes_FLBCCont(ibndtype,area,aux_vars, &
         endif 
       enddo
    
-      Res_FL(1:option%nspec)=fluxm(:)* option%flow_dt
+      Res_FL(1:option%nflowspec)=fluxm(:)* option%flow_dt
       Res_FL(option%nflowdof)=fluxe * option%flow_dt
     
     case(4)
@@ -1177,7 +1177,7 @@ subroutine MPHASERes_FLBCCont(ibndtype,area,aux_vars, &
       cond = Dk*area*(temp1-temp2) 
       fluxe=fluxe + cond
      
-      Res_FL(1:option%nspec)= 0.D0
+      Res_FL(1:option%nflowspec)= 0.D0
       Res_FL(option%nflowdof)=fluxe * option%flow_dt
 
   end select
@@ -1419,7 +1419,7 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
  ! print *, n,iicap,xx_p((n-1)*option%nflowdof+1:n*option%nflowdof) 
   !*******************************************
     call pri_var_trans_mph_ninc(xx_p((local_id-1)*option%nflowdof+1:local_id*option%nflowdof),iiphase,&
-        option%scale,option%nphase,option%nspec,iicap, dif,&
+        option%scale,option%nphase,option%nflowspec,iicap, dif,&
     var_loc_p((ghosted_id-1)*size_var_node+1:(ghosted_id-1)*size_var_node+size_var_use),&
     option%itable,option%m_nacl,ierr,mphase_field%xxphi_co2(local_id), mphase_field%dden_co2(local_id))
 
@@ -1428,7 +1428,7 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
     if (option%ideriv .eq. 1) then
       call pri_var_trans_mph_winc(xx_p((local_id-1)*option%nflowdof+1:local_id*option%nflowdof),&
         mphase_option%delx(1:option%nflowdof,ghosted_id), iiphase,&
-        option%scale,option%nphase,option%nspec, iicap, dif,&
+        option%scale,option%nphase,option%nflowspec, iicap, dif,&
         var_loc_p((ghosted_id-1)*size_var_node+size_var_use+1:ghosted_id*size_var_node),&
       option%itable,option%m_nacl,ierr)
     endif
@@ -1783,7 +1783,7 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
 
   
       call pri_var_trans_mph_ninc(xxbc,iphasebc, &
-                                  option%scale,option%nphase,option%nspec,iicap, &
+                                  option%scale,option%nphase,option%nflowspec,iicap, &
                                   dif,varbc,option%itable, &
                                   option%m_nacl,ierr,mphase_field%xxphi_co2_bc(sum_connection),cw)
      
@@ -2242,13 +2242,13 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
 
   ! here should pay attention to BC type !!!
       call pri_var_trans_mph_ninc(xxbc,iphasebc,&
-                              option%scale,option%nphase,option%nspec,iicap,dif,&
+                              option%scale,option%nphase,option%nflowspec,iicap,dif,&
                               varbc(1:size_var_use),option%itable, &
                               option%m_nacl,ierr, dum1, dum2)
   
       call pri_var_trans_mph_winc(xxbc,delxbc,&
                               iphasebc,option%scale,option%nphase, &
-                              option%nspec,iicap,dif(1:option%nphase), &
+                              option%nflowspec,iicap,dif(1:option%nphase), &
                               varbc(size_var_use+1:(option%nflowdof+1)*size_var_use), &
                               option%itable,option%m_nacl,ierr)
             
@@ -2665,7 +2665,7 @@ subroutine pflow_mphase_initaccum(realization)
     dif(2)= option%cdiff(int(ithrm_loc_p(ghosted_id)))
 
     call pri_var_trans_mph_ninc(yy_p((local_id-1)*option%nflowdof+1:local_id*option%nflowdof),iiphase,&
-                                option%scale,option%nphase,option%nspec, iicap, dif,&
+                                option%scale,option%nphase,option%nflowspec, iicap, dif,&
                                 var_loc_p((ghosted_id-1)*size_var_node+1:(ghosted_id-1)*size_var_node+size_var_use),option%itable,&
                                 option%m_nacl,ierr, satw, pvol)
 
@@ -2697,7 +2697,7 @@ subroutine pflow_mphase_initaccum(realization)
 
 ! print *,n,accum_p(p1),accum_p(t1),accum_p(c1),accum_p(s1)
  !print *,  n, PRESSURE(n),TEMP(n), density_p(jn), density_p(jn+1), u_p(jn),u_p(jn+1),&
- !hen_p(2+(j-1)*option%nspec+(n-1)*option%nphase*option%nspec),kvr_p(jn),kvr_p(jn+1)
+ !hen_p(2+(j-1)*option%nflowspec+(n-1)*option%nphase*option%nflowspec),kvr_p(jn),kvr_p(jn+1)
 
   enddo
 
@@ -2783,7 +2783,7 @@ subroutine pflow_update_mphase(realization)
       dif(2)= option%cdiff(int(ithrm_loc_p(ghosted_id)))
     ! *******************************************
       call pri_var_trans_mph_ninc(xx_p((local_id-1)*option%nflowdof+1:local_id*option%nflowdof),iiphase,&
-                                  option%scale,option%nphase,option%nspec, iicap, dif,&
+                                  option%scale,option%nphase,option%nflowspec, iicap, dif,&
                                   var_loc_p((ghosted_id-1)*size_var_node+1:(ghosted_id-1)*size_var_node+size_var_use),&
                                   option%itable,option%m_nacl,ierr, dum1, dum2)
 
@@ -2839,11 +2839,11 @@ subroutine pflow_update_mphase(realization)
           dif(1)= option%difaq
           dif(2)= option%cdiff(int(ithrm_loc_p(ghosted_id)))
           ! *****************
-          call pri_var_trans_mph_ninc(xxbc,iphasebc,option%scale,option%nphase,option%nspec, &
+          call pri_var_trans_mph_ninc(xxbc,iphasebc,option%scale,option%nphase,option%nflowspec, &
                                       iicap,dif,&
                                       varbc,option%itable,option%m_nacl,ierr,dum1, dum2)
 
-          if (translator_check_phase_cond(iphasebc,varbc,option%nphase,option%nspec) /=1) then
+          if (translator_check_phase_cond(iphasebc,varbc,option%nphase,option%nflowspec) /=1) then
             print *," Wrong bounday node init...  STOP!!!", xxbc
       
             print *, varbc
@@ -2966,14 +2966,14 @@ subroutine pflow_mphase_initadj(realization)
     dif(2)= option%cdiff(int(ithrm_loc_p(ghosted_id)))
     !******************************************* 
     call pri_var_trans_mph_ninc(xx_p((local_id-1)*option%nflowdof+1:local_id*option%nflowdof),iiphase,&
-      option%scale,option%nphase,option%nspec, iicap,  dif,&
+      option%scale,option%nphase,option%nflowspec, iicap,  dif,&
       var_loc_p((ghosted_id-1)*size_var_node+1: (ghosted_id-1)*size_var_node+size_var_use), &
       option%itable,option%m_nacl,ierr, dum1, dum2)
    
    !print *, xx_p((n-1)*option%nflowdof+1:n*option%nflowdof)
     if(translator_check_phase_cond(iiphase, &
       var_loc_p((ghosted_id-1)*size_var_node+1: (ghosted_id-1)*size_var_node+size_var_use),&
-      option%nphase,option%nspec) /= 1 ) then
+      option%nphase,option%nflowspec) /= 1 ) then
       print *," Wrong internal node init...  STOP!!!"
       stop    
     endif 
@@ -3025,13 +3025,13 @@ subroutine pflow_mphase_initadj(realization)
         dif(2)= option%cdiff(iithrm)
 
         call pri_var_trans_mph_ninc(xxbc,iphasebc,&
-                                    option%scale,option%nphase,option%nspec,iicap, &
+                                    option%scale,option%nphase,option%nflowspec,iicap, &
                                     dif,varbc, &
                                     option%itable,option%m_nacl,ierr, dum1, dum2)
       
         if (translator_check_phase_cond(iphasebc, &
                                         varbc, &
-                                        option%nphase,option%nspec) &
+                                        option%nphase,option%nflowspec) &
             /=1) then
           print *," Wrong bounday node init...  STOP!!!", xxbc
       
@@ -3218,11 +3218,11 @@ function MphaseGetTecplotHeader(realization)
            '"sg",' // &
            '"Ul",' // &
            '"Ug",'
-  do i=1,option%nspec
+  do i=1,option%nflowspec
     write(string2,'(''"Xl('',i2,'')",'')') i
     string = trim(string) // trim(string2)
   enddo
-  do i=1,option%nspec
+  do i=1,option%nflowspec
     write(string2,'(''"Xg('',i2,'')",'')') i
     string = trim(string) // trim(string2)
   enddo

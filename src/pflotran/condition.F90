@@ -124,13 +124,15 @@ end function ConditionCreate
 ! date: 02/04/08
 !
 ! ************************************************************************** !
-function SubConditionCreate()
+function SubConditionCreate(ndof)
 
   use Option_module
   
   implicit none
   
   type(sub_condition_type), pointer :: SubConditionCreate
+  
+  PetscInt :: ndof
   
   type(sub_condition_type), pointer :: sub_condition
   
@@ -140,7 +142,7 @@ function SubConditionCreate()
   sub_condition%ctype = ""
 
   call ConditionDatasetInit(sub_condition%dataset)
-  sub_condition%dataset%rank = 1
+  sub_condition%dataset%rank = ndof
   call ConditionDatasetInit(sub_condition%gradient)
   sub_condition%gradient%rank = 3
   call ConditionDatasetInit(sub_condition%datum)
@@ -355,10 +357,14 @@ subroutine ConditionRead(condition,option,fid)
   call ConditionDatasetInit(default_gradient)
   default_gradient%rank = 3
   
-  pressure => SubConditionCreate()
-  temperature => SubConditionCreate()
-  concentration => SubConditionCreate()
-  enthalpy => SubConditionCreate()
+  pressure => SubConditionCreate(option%nphase)
+  temperature => SubConditionCreate(ONE_INTEGER)
+  if (option%ntrandof > 0) then
+    concentration => SubConditionCreate(option%ntrandof)
+  else
+    concentration => SubConditionCreate(ONE_INTEGER)
+  endif
+  enthalpy => SubConditionCreate(option%nphase)
 
   select case(option%iflowmode)
     case(RICHARDS_MODE,MPH_MODE)

@@ -1668,17 +1668,17 @@ subroutine setFlowMode(option)
       option%iflowmode = RICHARDS_MODE
       option%nphase = 1
       option%nflowdof = 3
-      option%nspec = 2
+      option%nflowspec = 2
     case('RICHARDS_LITE')
       option%iflowmode = RICHARDS_LITE_MODE
       option%nphase = 1
       option%nflowdof = 1
-      option%nspec = 1
+      option%nflowspec = 1
     case('MPH','MPHASE')
       option%iflowmode = MPH_MODE
       option%nphase = 2
       option%nflowdof = 3
-      option%nspec = 2
+      option%nflowspec = 2
       option%itable = 2
     case default
       call printErrMsg(option,'Mode: '//trim(option%flowmode)//' not recognized.')

@@ -446,11 +446,13 @@ subroutine RTAccumulation(aux_var,por,sat,den,vol,option,Res)
   PetscReal :: Res(option%ncomp)
   
   PetscInt :: icomp
+  PetscInt :: iphase
   PetscReal :: psdv_t
   
+  iphase = 1
   psdv_t = por*sat*den*vol/option%dt
   do icomp=1,option%ncomp
-    Res(icomp) = psdv_t*aux_var%total(icomp) 
+    Res(icomp) = psdv_t*aux_var%total(icomp,iphase) 
   enddo
 
 end subroutine RTAccumulation
@@ -536,6 +538,7 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
   PetscReal, pointer :: porosity_loc_p(:), saturation_loc_p(:), tor_loc_p(:), &
                         volume_p(:), density_loc_p(:)
   PetscInt :: local_id, ghosted_id
+  PetscInt :: iphase
   PetscInt :: i, istart, iend                        
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -595,6 +598,7 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
 #endif
 #if 1
   ! Source/sink terms -------------------------------------
+  iphase = 1
   source_sink => patch%transport_source_sinks%first 
   do 
     if (.not.associated(source_sink)) exit
@@ -615,7 +619,7 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
                             density_loc_p(ghosted_id)* &
                             volume_p(local_id)* &
                             (source_sink%condition%concentration%dataset%cur_value(1)- &
-                             aux_vars(ghosted_id)%total(1:option%ncomp))
+                             aux_vars(ghosted_id)%total(1:option%ncomp,iphase))
       iend = local_id*option%ncomp
       istart = iend-option%ncomp+1
       r_p(istart:iend) = r_p(istart:iend) + Res(1:option%ncomp)                                  
@@ -1220,6 +1224,7 @@ subroutine RTGetVarFromArray(realization,vec,ivar,isubvar)
   Vec :: vec
   PetscInt :: ivar
   PetscInt :: isubvar
+  PetscInt :: iphase
 
   PetscInt :: local_id, ghosted_id
   type(grid_type), pointer :: grid
@@ -1236,6 +1241,7 @@ subroutine RTGetVarFromArray(realization,vec,ivar,isubvar)
 
   if (.not.aux_vars_up_to_date) call RTUpdateAuxVars(realization)
 
+  iphase = 1
   select case(ivar)
     case(PRIMARY_SPEC_CONCENTRATION)
       call VecStrideGather(field%tran_xx,isubvar,vec,INSERT_VALUES,ierr)
@@ -1245,7 +1251,7 @@ subroutine RTGetVarFromArray(realization,vec,ivar,isubvar)
         case(TOTAL_CONCENTRATION)
           do local_id=1,grid%nlmax
             ghosted_id = grid%nL2G(local_id)    
-            vec_ptr(local_id) = patch%aux%RT%aux_vars(ghosted_id)%total(isubvar)
+            vec_ptr(local_id) = patch%aux%RT%aux_vars(ghosted_id)%total(isubvar,iphase)
           enddo
         case(MATERIAL_ID)
           do local_id=1,grid%nlmax
@@ -1279,6 +1285,7 @@ function RTGetVarFromArrayAtCell(realization,ivar,isubvar,local_id)
   type(realization_type) :: realization
   PetscInt :: ivar
   PetscInt :: isubvar
+  PetscInt :: iphase
   PetscInt :: local_id
 
   PetscReal :: value
@@ -1297,6 +1304,7 @@ function RTGetVarFromArrayAtCell(realization,ivar,isubvar,local_id)
 
   if (.not.aux_vars_up_to_date) call RTUpdateAuxVars(realization)
 
+  iphase = 1
   select case(ivar)
     case(PRIMARY_SPEC_CONCENTRATION)
       call VecGetArrayF90(field%tran_xx,vec_ptr,ierr)
@@ -1304,7 +1312,7 @@ function RTGetVarFromArrayAtCell(realization,ivar,isubvar,local_id)
       call VecRestoreArrayF90(field%tran_xx,vec_ptr,ierr)
     case(TOTAL_CONCENTRATION)
       ghosted_id = grid%nL2G(local_id)    
-      value = patch%aux%RT%aux_vars(ghosted_id)%total(isubvar)
+      value = patch%aux%RT%aux_vars(ghosted_id)%total(isubvar,iphase)
   end select
   
   RTGetVarFromArrayAtCell = value

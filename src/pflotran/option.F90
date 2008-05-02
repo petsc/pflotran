@@ -22,10 +22,13 @@ module Option_module
   
     PetscInt :: nphase
     PetscInt :: nflowdof
-    PetscInt :: nspec
+    PetscInt :: nflowspec
 
     PetscInt :: ntrandof
-    PetscInt :: ncomp
+    PetscInt :: ncomp      ! # of primary aqueous species
+    PetscInt :: ncmplx     ! # of secondary aqueous species
+    PetscInt :: nsorb      ! # of primary sorbed species
+
     
     PetscReal :: uniform_velocity(3)
 

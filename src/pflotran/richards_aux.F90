@@ -123,9 +123,9 @@ subroutine RichardsAuxVarInit(aux_var,option)
   aux_var%dh_dt = 0.d0
   aux_var%du_dp = 0.d0
   aux_var%du_dt = 0.d0    
-  allocate(aux_var%xmol(option%nspec))
+  allocate(aux_var%xmol(option%nflowspec))
   aux_var%xmol = 0.d0
-  allocate(aux_var%diff(option%nspec))
+  allocate(aux_var%diff(option%nflowspec))
   aux_var%diff = 0.d0
 
 end subroutine RichardsAuxVarInit
@@ -221,7 +221,7 @@ subroutine RichardsAuxVarCompute(x,aux_var,iphase,saturation_function, &
  
   aux_var%pc = option%pref - aux_var%pres
   aux_var%xmol(1) = 1.d0
-  if (option%nspec > 1) aux_var%xmol(2:option%nspec) = x(3:option%nspec+1)   
+  if (option%nflowspec > 1) aux_var%xmol(2:option%nflowspec) = x(3:option%nflowspec+1)   
 
 !***************  Liquid phase properties **************************
   !geh aux_var%avgmw = option%fmwh2o  ! hardwire for comparison with old code
@@ -267,7 +267,7 @@ subroutine RichardsAuxVarCompute(x,aux_var,iphase,saturation_function, &
   aux_var%den_kg = dw_kg
   aux_var%h = hw
   aux_var%u = aux_var%h - pw / dw_mol * option%scale
-  aux_var%diff(1:option%nspec) = option%difaq
+  aux_var%diff(1:option%nflowspec) = option%difaq
   aux_var%kvr = kr/visl
   
 !  aux_var%vis = visl

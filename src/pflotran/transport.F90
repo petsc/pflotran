@@ -46,6 +46,7 @@ subroutine TFlux(aux_var_up,por_up,tor_up,sat_up,den_up,dist_up, &
   PetscReal :: Res(option%ncomp)
   
   PetscInt :: icomp
+  PetscInt :: iphase
   PetscReal :: weight
   PetscReal :: stpd_up, stpd_dn
   PetscReal :: coef_up, coef_dn
@@ -53,7 +54,8 @@ subroutine TFlux(aux_var_up,por_up,tor_up,sat_up,den_up,dist_up, &
   
   diffusion = 0.d0
 
-  q = velocity(1)
+  iphase = 1
+  q = velocity(iphase)
   if (sat_up > eps .and. sat_dn > eps) then
     stpd_up = sat_up*tor_up*por_up*den_up
     stpd_dn = sat_dn*tor_dn*por_dn*den_dn
@@ -74,8 +76,8 @@ subroutine TFlux(aux_var_up,por_up,tor_up,sat_up,den_up,dist_up, &
   coef_up = coef_up*area
   coef_dn = coef_dn*area
   
-  Res(1:option%ncomp) = coef_up*aux_var_up%total(1:option%ncomp) + &
-                        coef_dn*aux_var_dn%total(1:option%ncomp)
+  Res(1:option%ncomp) = coef_up*aux_var_up%total(1:option%ncomp,iphase) + &
+                        coef_dn*aux_var_dn%total(1:option%ncomp,iphase)
                         
 end subroutine TFlux
 
@@ -104,6 +106,7 @@ subroutine TFluxDerivative(aux_var_up,por_up,tor_up,sat_up,den_up,dist_up, &
   PetscReal :: J_up(option%ncomp,option%ncomp), J_dn(option%ncomp,option%ncomp)
   
   PetscInt :: icomp
+  PetscInt :: iphase
   PetscReal :: weight
   PetscReal :: stpd_up, stpd_dn
   PetscReal :: coef_up, coef_dn
@@ -111,7 +114,8 @@ subroutine TFluxDerivative(aux_var_up,por_up,tor_up,sat_up,den_up,dist_up, &
   
   diffusion = 0.d0
 
-  q = velocity(1)
+  iphase = 1
+  q = velocity(iphase)
   if (sat_up > eps .and. sat_dn > eps) then
     stpd_up = sat_up*tor_up*por_up*den_up
     stpd_dn = sat_dn*tor_dn*por_dn*den_dn
@@ -164,6 +168,7 @@ subroutine TBCFlux(ibndtype, &
   PetscReal :: Res(option%ncomp)
   
   PetscInt :: icomp
+  PetscInt :: iphase
   PetscReal :: weight
   PetscReal :: stpd_dn
   PetscReal :: coef_up, coef_dn
@@ -171,7 +176,8 @@ subroutine TBCFlux(ibndtype, &
   
   diffusion = 0.d0
 
-  q = velocity(1)
+  iphase = 1
+  q = velocity(iphase)
 
   select case(ibndtype)
     case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
@@ -196,8 +202,8 @@ subroutine TBCFlux(ibndtype, &
   coef_up = coef_up*area
   coef_dn = coef_dn*area
   
-  Res(1:option%ncomp) = coef_up*aux_var_up%total(1:option%ncomp) + &
-                        coef_dn*aux_var_dn%total(1:option%ncomp)  
+  Res(1:option%ncomp) = coef_up*aux_var_up%total(1:option%ncomp,iphase) + &
+                        coef_dn*aux_var_dn%total(1:option%ncomp,iphase)  
 
 end subroutine TBCFlux
 
@@ -228,6 +234,7 @@ subroutine TBCFluxDerivative(ibndtype, &
   PetscReal :: J_dn(option%ncomp,option%ncomp)
   
   PetscInt :: icomp
+  PetscInt :: iphase
   PetscReal :: weight
   PetscReal :: stpd_dn
   PetscReal :: coef_dn
@@ -235,7 +242,8 @@ subroutine TBCFluxDerivative(ibndtype, &
   
   diffusion = 0.d0
 
-  q = velocity(1)
+  iphase = 1
+  q = velocity(iphase)
 
   select case(ibndtype)
     case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
