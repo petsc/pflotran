@@ -93,9 +93,10 @@ module Reaction_Aux_module
   end type surface_complexation_rxn_type
   
   type, public :: reaction_type
-!    type(equilibrium_rxn_type), pointer :: equilibrium_list
-!    type(kinetic_rxn_type), pointer :: kinetic_list
-!    type(mineral_rxn_type), pointer :: mineral_list
+    type(aq_species_type), pointer :: primary_species_list
+    type(aq_species_type), pointer :: secondary_species_list
+    type(gas_species_type), pointer :: gas_species_list
+    type(mineral_type), pointer :: mineral_list
     type(ion_exchange_type), pointer :: ion_exchange_list
     type(surface_complexation_rxn_type), pointer :: surface_complex_list
     ! compressed arrays for efficient computation

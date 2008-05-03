@@ -370,6 +370,7 @@ subroutine readRequiredCardsFromInput(realization,filename)
   use Level_module
   use Realization_module
   use AMR_Grid_module
+  use Chemistry_module
 
   implicit none
 
@@ -475,6 +476,17 @@ subroutine readRequiredCardsFromInput(realization,filename)
     endif
   endif
   
+!.........................................................................
+
+  ! COMP information
+  string = "CHEMISTRY"
+  call fiFindStringInFile(IUNIT1,string,ierr)
+
+  if (ierr == 0) then
+    realization%chemistry => ChemistryCreate()
+    call ChemistryRead(realization%chemistry,IUNIT1,option)        
+  endif
+
 !.........................................................................
 
   ! COMP information

@@ -9,6 +9,8 @@ module Realization_module
   use Debug_module
   use Waypoint_module
   
+  use Chemistry_module
+  
   use Level_module
   use Patch_module
   
@@ -32,6 +34,8 @@ private
     type(region_list_type), pointer :: regions
     type(condition_list_type), pointer :: flow_conditions
     type(condition_list_type), pointer :: transport_conditions
+    
+    type(reaction_type), pointer :: chemistry
     
     type(material_type), pointer :: materials
     type(material_ptr_type), pointer :: material_array(:)
@@ -93,6 +97,8 @@ function RealizationCreate()
   nullify(realization%thermal_properties)
   nullify(realization%saturation_functions)
   nullify(realization%saturation_function_array)
+  
+  nullify(realization%chemistry)
   
   RealizationCreate => realization
   
