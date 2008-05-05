@@ -77,12 +77,12 @@ pflotran_obj = ${common_src}pflow_pckr_mod.o \
 	${common_src}level.o \
 	${common_src}amrgrid.o\
 	${common_src}discretization.o \
+	${common_src}reaction.o\
 	${common_src}realization.o \
 	${common_src}hdf5.o \
 	${common_src}translator_mixed_fluid_mph.o \
 	${common_src}pflow_mphase_ResJac.o\
 	${common_src}transport.o\
-	${common_src}reaction.o\
 	${common_src}reactive_transport.o\
 	${common_src}richards.o\
 	${common_src}richards_lite.o\

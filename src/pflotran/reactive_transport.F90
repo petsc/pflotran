@@ -1,7 +1,7 @@
 module Reactive_Transport_module
 
   use Transport_module
-  use Reaction_module
+  use Chemistry_module
   use Reactive_Transport_Aux_module
   
   implicit none
