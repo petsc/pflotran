@@ -11,19 +11,24 @@ module Coupler_module
 #include "definitions.h"
  
   type, public :: coupler_type
-    PetscInt :: id                                       ! id of coupler
-    PetscInt :: itype                                    ! integer defining type
+    PetscInt :: id                                      ! id of coupler
+    PetscInt :: itype                                   ! integer defining type
     character(len=MAXWORDLENGTH) :: ctype               ! character string defining type
-    character(len=MAXWORDLENGTH) :: condition_name      ! character string defining name of condition to be applied
+    character(len=MAXWORDLENGTH) :: flow_condition_name ! character string defining name of condition to be applied
+    character(len=MAXWORDLENGTH) :: tran_condition_name ! character string defining name of condition to be applied
     character(len=MAXWORDLENGTH) :: region_name         ! character string defining name of region to be applied
-    PetscInt :: icondition                               ! id of condition in condition array/list
-    PetscInt :: iregion                                  ! id of region in region array/list
-    PetscInt :: iface                                    ! for structured grids only
-    PetscInt, pointer :: aux_int_var(:,:)                ! auxilliary array for integer value
-    PetscReal, pointer :: aux_real_var(:,:)                ! auxilliary array for real values
-    type(condition_type), pointer :: condition          ! pointer to condition in condition array/list
+    PetscInt :: iflow_condition                         ! id of condition in condition array/list
+    PetscInt :: itran_condition                         ! id of condition in condition array/list
+    PetscInt :: iregion                                 ! id of region in region array/list
+    PetscInt :: iface                                   ! for structured grids only
+    PetscInt, pointer :: flow_aux_int_var(:,:)          ! auxilliary array for integer value
+    PetscReal, pointer :: flow_aux_real_var(:,:)        ! auxilliary array for real values
+    PetscInt, pointer :: tran_aux_int_var(:,:)          ! auxilliary array for integer value
+    PetscReal, pointer :: tran_aux_real_var(:,:)        ! auxilliary array for real values
+    type(condition_type), pointer :: flow_condition     ! pointer to condition in condition array/list
+    type(condition_type), pointer :: tran_condition     ! pointer to condition in condition array/list
     type(region_type), pointer :: region                ! pointer to region in region array/list
-    type(connection_set_type), pointer :: connection_set! pointer to an array/list of connections
+    type(connection_set_type), pointer :: connection_set ! pointer to an array/list of connections
     type(coupler_type), pointer :: next                 ! pointer to next coupler
   end type coupler_type
   
@@ -40,7 +45,7 @@ module Coupler_module
   
   public :: CouplerCreate, CouplerDestroy, CouplerInitList, CouplerAddToList, &
             CouplerRead, CouplerDestroyList, CouplerGetNumConnectionsInList, &
-            CouplerListSplitFlowAndTran, CouplerListComputeConnections
+            CouplerListComputeConnections
 
   
   interface CouplerCreate
@@ -70,14 +75,19 @@ function CouplerCreate1()
   coupler%id = 0
   coupler%itype = BOUNDARY_COUPLER_TYPE
   coupler%ctype = "boundary"
-  coupler%condition_name = ""
+  coupler%flow_condition_name = ""
+  coupler%tran_condition_name = ""
   coupler%region_name = ""
-  coupler%icondition = 0
+  coupler%iflow_condition = 0
+  coupler%itran_condition = 0
   coupler%iregion = 0
   coupler%iface = 0
-  nullify(coupler%aux_int_var)
-  nullify(coupler%aux_real_var)
-  nullify(coupler%condition)
+  nullify(coupler%flow_aux_int_var)
+  nullify(coupler%flow_aux_real_var)
+  nullify(coupler%tran_aux_int_var)
+  nullify(coupler%tran_aux_real_var)
+  nullify(coupler%flow_condition)
+  nullify(coupler%tran_condition)
   nullify(coupler%region)
   nullify(coupler%connection_set)
   nullify(coupler%next)
@@ -139,17 +149,22 @@ function CouplerCreateFromCoupler(coupler)
   new_coupler%id = coupler%id
   new_coupler%itype = coupler%itype
   new_coupler%ctype = coupler%ctype
-  new_coupler%condition_name = coupler%condition_name
+  new_coupler%flow_condition_name = coupler%flow_condition_name
+  new_coupler%tran_condition_name = coupler%tran_condition_name
   new_coupler%region_name = coupler%region_name
-  new_coupler%icondition = coupler%icondition
+  new_coupler%iflow_condition = coupler%iflow_condition
+  new_coupler%itran_condition = coupler%itran_condition
   new_coupler%iregion = coupler%iregion
   new_coupler%iface = coupler%iface
 
   ! these must remain null  
-  nullify(coupler%condition)
+  nullify(coupler%flow_condition)
+  nullify(coupler%tran_condition)
   nullify(coupler%region)
-  nullify(coupler%aux_int_var)
-  nullify(coupler%aux_real_var)
+  nullify(coupler%flow_aux_int_var)
+  nullify(coupler%flow_aux_real_var)
+  nullify(coupler%tran_aux_int_var)
+  nullify(coupler%tran_aux_real_var)
   nullify(coupler%connection_set)
   nullify(coupler%next)
 
@@ -214,7 +229,11 @@ subroutine CouplerRead(coupler,fid,option)
       case('REGION')
         call fiReadWord(string,coupler%region_name,.true.,ierr)
       case('CONDITION')
-        call fiReadWord(string,coupler%condition_name,.true.,ierr)
+        call fiReadWord(string,coupler%flow_condition_name,.true.,ierr)
+      case('FLOW_CONDITION')
+        call fiReadWord(string,coupler%flow_condition_name,.true.,ierr)
+      case('TRANSPORT_CONDITION','TRAN_CONDITION')
+        call fiReadWord(string,coupler%tran_condition_name,.true.,ierr)
       case('TYPE')
         call fiReadWord(string,coupler%ctype,.true.,ierr)
         length = len_trim(coupler%ctype)
@@ -283,7 +302,7 @@ subroutine CouplerAddToList(new_coupler,list)
   
 end subroutine CouplerAddToList
 
-
+#if 0
 ! ************************************************************************** !
 !
 ! CouplerListSplitFlowAndTran: Splits a list of mixed flow and transport
@@ -318,7 +337,7 @@ subroutine CouplerListSplitFlowAndTran(flow_list,transport_list)
     if (.not.associated(coupler)) exit
     next_coupler => coupler%next
     nullify(coupler%next)
-    if (coupler%condition%iclass == FLOW_CLASS) then
+    if (coupler%flow_condition%iclass == FLOW_CLASS) then
       call CouplerAddToList(coupler,flow_list)
     else
       call CouplerAddToList(coupler,transport_list)
@@ -327,6 +346,8 @@ subroutine CouplerListSplitFlowAndTran(flow_list,transport_list)
   enddo 
 
 end subroutine CouplerListSplitFlowAndTran
+#endif
+
 ! ************************************************************************** !
 !
 ! CouplerListComputeConnections: computes connectivity for a list of couplers
@@ -391,9 +412,9 @@ subroutine CouplerComputeConnections(grid,option,coupler)
   
   select case(coupler%itype)
     case(INITIAL_COUPLER_TYPE)
-      if (coupler%condition%iclass == FLOW_CLASS) then
-        if (coupler%condition%pressure%itype /= HYDROSTATIC_BC .and. &
-            coupler%condition%pressure%itype /= SEEPAGE_BC) then
+      if (associated(coupler%flow_condition)) then
+        if (coupler%flow_condition%pressure%itype /= HYDROSTATIC_BC .and. &
+            coupler%flow_condition%pressure%itype /= SEEPAGE_BC) then
           nullify(coupler%connection_set)
           return
         endif
@@ -514,11 +535,14 @@ subroutine CouplerDestroy(coupler)
   ! since the below are simply pointers to objects in list that have already
   ! or will be deallocated from the list, nullify instead of destroying
   
-  nullify(coupler%condition)     ! since these are simply pointers to 
+  nullify(coupler%flow_condition)     ! since these are simply pointers to 
+  nullify(coupler%tran_condition)     ! since these are simply pointers to 
   nullify(coupler%region)        ! conditoins in list, nullify
 
-  if (associated(coupler%aux_int_var)) deallocate(coupler%aux_int_var)
-  if (associated(coupler%aux_real_var)) deallocate(coupler%aux_real_var)
+  if (associated(coupler%flow_aux_int_var)) deallocate(coupler%flow_aux_int_var)
+  if (associated(coupler%flow_aux_real_var)) deallocate(coupler%flow_aux_real_var)
+  if (associated(coupler%tran_aux_int_var)) deallocate(coupler%tran_aux_int_var)
+  if (associated(coupler%tran_aux_real_var)) deallocate(coupler%tran_aux_real_var)
 
   call ConnectionDestroy(coupler%connection_set)
   nullify(coupler%connection_set)

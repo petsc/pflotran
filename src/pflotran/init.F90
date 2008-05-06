@@ -703,11 +703,7 @@ subroutine readInput(simulation,filename)
         call fiErrorMsg(option%myrank,'cond','name',ierr) 
         call printMsg(option,condition%name)
         call ConditionRead(condition,option,IUNIT1)
-        if (condition%iclass == FLOW_CLASS) then
-          call ConditionAddToList(condition,realization%flow_conditions)
-        else
-          call ConditionAddToList(condition,realization%transport_conditions)
-        endif
+        call ConditionAddToList(condition,realization%conditions)
         
 !....................
       case ('BOUNDARY_CONDITION')
@@ -1937,7 +1933,7 @@ subroutine assignUniformVelocity(realization)
   enddo    
 
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%transport_boundary_conditions%first
+  boundary_condition => patch%boundary_conditions%first
   sum_connection = 0
   do 
     if (.not.associated(boundary_condition)) exit
@@ -1981,12 +1977,9 @@ subroutine verifyAllCouplers(realization)
     do
       if (.not.associated(cur_patch)) exit
 
-        call verifyCoupler(realization,cur_patch,cur_patch%flow_initial_conditions)
-        call verifyCoupler(realization,cur_patch,cur_patch%flow_boundary_conditions)
-        call verifyCoupler(realization,cur_patch,cur_patch%flow_source_sinks)
-        call verifyCoupler(realization,cur_patch,cur_patch%transport_initial_conditions)
-        call verifyCoupler(realization,cur_patch,cur_patch%transport_boundary_conditions)
-        call verifyCoupler(realization,cur_patch,cur_patch%transport_source_sinks)
+        call verifyCoupler(realization,cur_patch,cur_patch%initial_conditions)
+        call verifyCoupler(realization,cur_patch,cur_patch%boundary_conditions)
+        call verifyCoupler(realization,cur_patch,cur_patch%source_sinks)
 
       cur_patch => cur_patch%next
     enddo
@@ -2059,15 +2052,13 @@ subroutine verifyCoupler(realization,patch,coupler_list)
       endif
     endif
     call VecRestoreArrayF90(global_vec,vec_ptr,ierr) 
-    select case(coupler%condition%iclass)
-      case(FLOW_CLASS)
-        dataset_name = 'flow'
-      case(TRANSPORT_CLASS)
-        dataset_name = 'tran'
-    end select
+    if (len_trim(coupler%flow_condition_name) > 0) then
+      dataset_name = coupler%flow_condition_name
+    elseif (len_trim(coupler%tran_condition_name) > 0) then
+      dataset_name = coupler%tran_condition_name
+    endif
     write(word,*) patch%id
     dataset_name = trim(dataset_name) // '_' // &
-                   trim(coupler%condition%name) // '_' // &
                    trim(coupler%region%name) // '_' // &
                    trim(adjustl(word))
     dataset_name = dataset_name(1:28)

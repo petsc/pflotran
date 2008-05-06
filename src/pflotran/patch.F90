@@ -29,14 +29,10 @@ module Patch_module
 
     type(region_list_type), pointer :: regions
 
-    type(coupler_list_type), pointer :: transport_boundary_conditions
-    type(coupler_list_type), pointer :: transport_initial_conditions
-    type(coupler_list_type), pointer :: transport_source_sinks
+    type(coupler_list_type), pointer :: boundary_conditions
+    type(coupler_list_type), pointer :: initial_conditions
+    type(coupler_list_type), pointer :: source_sinks
 
-    type(coupler_list_type), pointer :: flow_boundary_conditions
-    type(coupler_list_type), pointer :: flow_initial_conditions
-    type(coupler_list_type), pointer :: flow_source_sinks
-    
     type(strata_list_type), pointer :: strata
     type(breakthrough_list_type), pointer :: breakthrough
     
@@ -92,19 +88,12 @@ function PatchCreate()
   allocate(patch%regions)
   call RegionInitList(patch%regions)
   
-  allocate(patch%flow_boundary_conditions)
-  call CouplerInitList(patch%flow_boundary_conditions)
-  allocate(patch%flow_initial_conditions)
-  call CouplerInitList(patch%flow_initial_conditions)
-  allocate(patch%flow_source_sinks)
-  call CouplerInitList(patch%flow_source_sinks)
-
-  allocate(patch%transport_boundary_conditions)
-  call CouplerInitList(patch%transport_boundary_conditions)
-  allocate(patch%transport_initial_conditions)
-  call CouplerInitList(patch%transport_initial_conditions)
-  allocate(patch%transport_source_sinks)
-  call CouplerInitList(patch%transport_source_sinks)
+  allocate(patch%boundary_conditions)
+  call CouplerInitList(patch%boundary_conditions)
+  allocate(patch%initial_conditions)
+  call CouplerInitList(patch%initial_conditions)
+  allocate(patch%source_sinks)
+  call CouplerInitList(patch%source_sinks)
 
   allocate(patch%breakthrough)
   call BreakthroughInitList(patch%breakthrough)
@@ -236,8 +225,7 @@ end subroutine PatchLocalizeRegions
 ! date: 02/22/08
 !
 ! ************************************************************************** !
-subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
-                                materials,option)
+subroutine PatchProcessCouplers(patch,conditions,materials,option)
 
   use Option_module
   use Material_module
@@ -248,8 +236,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   
   type(patch_type) :: patch
   type(material_type), pointer :: materials
-  type(condition_list_type) :: flow_conditions
-  type(condition_list_type) :: transport_conditions
+  type(condition_list_type) :: conditions
   type(option_type) :: option
   
   character(len=MAXSTRINGLENGTH) :: string
@@ -261,7 +248,7 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
   PetscInt :: temp_int
   
   ! boundary conditions
-  coupler => patch%flow_boundary_conditions%first
+  coupler => patch%boundary_conditions%first
   do
     if (.not.associated(coupler)) exit
     ! pointer to region
@@ -273,23 +260,31 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
       call printErrMsg(option,string)
     endif
     ! pointer to flow condition
-    coupler%condition => ConditionGetPtrFromList(coupler%condition_name, &
-                                                 flow_conditions)
-    if (.not.associated(coupler%condition)) then
-      coupler%condition => ConditionGetPtrFromList(coupler%condition_name, &
-                                                   transport_conditions)
+    if (len_trim(coupler%flow_condition_name) > 0) then
+      coupler%flow_condition => &
+        ConditionGetPtrFromList(coupler%flow_condition_name,conditions)
+      if (.not.associated(coupler%flow_condition)) then
+        string = 'Condition ' // trim(coupler%flow_condition_name) // &
+                 ' not found in boundary condition list'
+        call printErrMsg(option,string)
+      endif
     endif
-    if (.not.associated(coupler%condition)) then
-      string = 'Condition ' // trim(coupler%condition_name) // &
-               ' not found in boundary condition list'
-      call printErrMsg(option,string)
+    ! pointer to transport condition
+    if (len_trim(coupler%tran_condition_name) > 0) then
+      coupler%tran_condition => &
+        ConditionGetPtrFromList(coupler%tran_condition_name,conditions)
+      if (.not.associated(coupler%tran_condition)) then
+        string = 'Condition ' // trim(coupler%tran_condition_name) // &
+                 ' not found in boundary condition list'
+        call printErrMsg(option,string)
+      endif
     endif
     coupler => coupler%next
   enddo
 
 
   ! initial conditions
-  coupler => patch%flow_initial_conditions%first
+  coupler => patch%initial_conditions%first
   do
     if (.not.associated(coupler)) exit
     ! pointer to region
@@ -301,22 +296,30 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
       call printErrMsg(option,string)
     endif
     ! pointer to flow condition
-    coupler%condition => ConditionGetPtrFromList(coupler%condition_name, &
-                                                 flow_conditions)
-    if (.not.associated(coupler%condition)) then
-      coupler%condition => ConditionGetPtrFromList(coupler%condition_name, &
-                                                   transport_conditions)
+    if (len_trim(coupler%flow_condition_name) > 0) then
+      coupler%flow_condition => &
+        ConditionGetPtrFromList(coupler%flow_condition_name,conditions)
+      if (.not.associated(coupler%flow_condition)) then
+        string = 'Condition ' // trim(coupler%flow_condition_name) // &
+                 ' not found in initial condition list'
+        call printErrMsg(option,string)
+      endif
     endif
-    if (.not.associated(coupler%condition)) then
-      string = 'Condition ' // trim(coupler%condition_name) // &
-               ' not found in initial condition list'
-      call printErrMsg(option,string)
+    ! pointer to transport condition
+    if (len_trim(coupler%tran_condition_name) > 0) then
+      coupler%tran_condition => &
+        ConditionGetPtrFromList(coupler%tran_condition_name,conditions)
+      if (.not.associated(coupler%tran_condition)) then
+        string = 'Condition ' // trim(coupler%tran_condition_name) // &
+                 ' not found in initial condition list'
+        call printErrMsg(option,string)
+      endif
     endif
     coupler => coupler%next
   enddo
 
   ! source/sinks
-  coupler => patch%flow_source_sinks%first
+  coupler => patch%source_sinks%first
   do
     if (.not.associated(coupler)) exit
     ! pointer to region
@@ -328,39 +331,27 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
       call printErrMsg(option,string)
     endif
     ! pointer to flow condition
-    coupler%condition => ConditionGetPtrFromList(coupler%condition_name, &
-                                                 flow_conditions)
-    if (.not.associated(coupler%condition)) then
-      coupler%condition => ConditionGetPtrFromList(coupler%condition_name, &
-                                                   transport_conditions)
+    if (len_trim(coupler%flow_condition_name) > 0) then
+      coupler%flow_condition => &
+        ConditionGetPtrFromList(coupler%flow_condition_name,conditions)
+      if (.not.associated(coupler%flow_condition)) then
+        string = 'Condition ' // trim(coupler%flow_condition_name) // &
+                 ' not found in source/sink condition list'
+        call printErrMsg(option,string)
+      endif
     endif
-    if (.not.associated(coupler%condition)) then
-      string = 'Condition ' // trim(coupler%condition_name) // &
-               ' not found in source/sink list'
-      call printErrMsg(option,string)
+    ! pointer to transport condition
+    if (len_trim(coupler%tran_condition_name) > 0) then
+      coupler%tran_condition => &
+        ConditionGetPtrFromList(coupler%tran_condition_name,conditions)
+      if (.not.associated(coupler%tran_condition)) then
+        string = 'Condition ' // trim(coupler%tran_condition_name) // &
+                 ' not found in source/sink condition list'
+        call printErrMsg(option,string)
+      endif
     endif
     coupler => coupler%next
   enddo
-  
-! Initially, all couplers are in flow lists.  Need to separate
-! them into flow and transport lists. 
-  call CouplerListSplitFlowAndTran(patch%flow_boundary_conditions, &
-                                   patch%transport_boundary_conditions)
-  call CouplerListSplitFlowAndTran(patch%flow_initial_conditions, &
-                                   patch%transport_initial_conditions)
-  call CouplerListSplitFlowAndTran(patch%flow_source_sinks, &
-                                   patch%transport_source_sinks)
-
-  if (option%nflowdof == 0) then
-    call CouplerDestroyList(patch%flow_boundary_conditions)
-    call CouplerDestroyList(patch%flow_initial_conditions)
-    call CouplerDestroyList(patch%flow_source_sinks)
-  endif
-  if (option%ntrandof == 0) then
-    call CouplerDestroyList(patch%transport_boundary_conditions)
-    call CouplerDestroyList(patch%transport_initial_conditions)
-    call CouplerDestroyList(patch%transport_source_sinks)
-  endif
 
 !----------------------------  
 ! AUX  
@@ -418,27 +409,16 @@ subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
  
   ! connectivity between initial conditions, boundary conditions, srcs/sinks, etc and grid
   call CouplerListComputeConnections(patch%grid,option, &
-                                     patch%flow_initial_conditions)
+                                     patch%initial_conditions)
   call CouplerListComputeConnections(patch%grid,option, &
-                                     patch%flow_boundary_conditions)
+                                     patch%boundary_conditions)
   call CouplerListComputeConnections(patch%grid,option, &
-                                     patch%flow_source_sinks)
-                                
-  call CouplerListComputeConnections(patch%grid,option, &
-                                     patch%transport_initial_conditions)
-  call CouplerListComputeConnections(patch%grid,option, &
-                                     patch%transport_boundary_conditions)
-  call CouplerListComputeConnections(patch%grid,option, &
-                                     patch%transport_source_sinks)
+                                     patch%source_sinks)
                                      
   allocate(patch%internal_velocities(option%nphase, &
            ConnectionGetNumberInList(patch%grid%internal_connection_set_list)))
   patch%internal_velocities = 0.d0
-  if (option%nflowdof > 0) then
-    temp_int = CouplerGetNumConnectionsInList(patch%flow_boundary_conditions)
-  else
-    temp_int = CouplerGetNumConnectionsInList(patch%transport_boundary_conditions)
-  endif
+  temp_int = CouplerGetNumConnectionsInList(patch%boundary_conditions)
   allocate(patch%boundary_velocities(option%nphase,temp_int)) 
   patch%boundary_velocities = 0.d0          
 
@@ -463,11 +443,9 @@ subroutine PatchInitAllCouplerAuxVars(patch,option)
   
   logical :: force_update_flag = .true.
   
-  call PatchInitCouplerAuxVars(patch,patch%flow_boundary_conditions,option)
-  call PatchInitCouplerAuxVars(patch,patch%flow_initial_conditions,option)
-  call PatchInitCouplerAuxVars(patch,patch%transport_boundary_conditions,option)
-  call PatchInitCouplerAuxVars(patch,patch%transport_initial_conditions,option)
-
+  call PatchInitCouplerAuxVars(patch,patch%boundary_conditions,option)
+  call PatchInitCouplerAuxVars(patch,patch%initial_conditions,option)
+  
   call PatchUpdateAllCouplerAuxVars(patch,force_update_flag,option)
 
 end subroutine PatchInitAllCouplerAuxVars
@@ -505,32 +483,36 @@ subroutine PatchInitCouplerAuxVars(patch,coupler_list,option)
     if (associated(coupler%connection_set)) then
       num_connections = coupler%connection_set%num_connections
 
-      if (coupler%condition%iclass == FLOW_CLASS) then
+      ! FLOW
+      if (associated(coupler%flow_condition)) then
 
         ! allocate arrays that match the number of connections
         select case(option%iflowmode)
 
           case(RICHARDS_MODE,RICHARDS_LITE_MODE)
          
-            allocate(coupler%aux_real_var(option%nflowdof*option%nphase,num_connections))
-            allocate(coupler%aux_int_var(1,num_connections))
-            coupler%aux_real_var = 0.d0
-            coupler%aux_int_var = 0
+            allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
+            allocate(coupler%flow_aux_int_var(1,num_connections))
+            coupler%flow_aux_real_var = 0.d0
+            coupler%flow_aux_int_var = 0
 
           case(MPH_MODE)
 
-            allocate(coupler%aux_real_var(option%nflowdof*option%nphase,num_connections))
-            allocate(coupler%aux_int_var(1,num_connections))
-            coupler%aux_real_var = 0.d0
-            coupler%aux_int_var = 0
+            allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
+            allocate(coupler%flow_aux_int_var(1,num_connections))
+            coupler%flow_aux_real_var = 0.d0
+            coupler%flow_aux_int_var = 0
               
           case default
         end select
-         
-      else ! TRANSPORT_CLASS
+      
+      endif
+      
+      ! TRANSPORT   
+      if (associated(coupler%tran_condition)) then
 
-        allocate(coupler%aux_real_var(option%ntrandof,num_connections))
-        coupler%aux_real_var = 0.d0
+        allocate(coupler%tran_aux_real_var(option%ntrandof,num_connections))
+        coupler%tran_aux_real_var = 0.d0
 
       endif
       
@@ -558,13 +540,9 @@ subroutine PatchUpdateAllCouplerAuxVars(patch,force_update_flag,option)
   logical :: force_update_flag
   type(option_type) :: option
   
-  call PatchUpdateCouplerAuxVars(patch,patch%flow_boundary_conditions, &
+  call PatchUpdateCouplerAuxVars(patch,patch%boundary_conditions, &
                                  force_update_flag,option)
-  call PatchUpdateCouplerAuxVars(patch,patch%flow_initial_conditions, &
-                                 force_update_flag,option)
-  call PatchUpdateCouplerAuxVars(patch,patch%transport_boundary_conditions, &
-                                 force_update_flag,option)
-  call PatchUpdateCouplerAuxVars(patch,patch%transport_initial_conditions, &
+  call PatchUpdateCouplerAuxVars(patch,patch%initial_conditions, &
                                  force_update_flag,option)
 
 end subroutine PatchUpdateAllCouplerAuxVars
@@ -604,70 +582,74 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
   do
     if (.not.associated(coupler)) exit
     
-    if (associated(coupler%aux_real_var)) then
+    ! FLOW
+    if (associated(coupler%flow_aux_real_var)) then
         
       num_connections = coupler%connection_set%num_connections
 
-      condition => coupler%condition
+      condition => coupler%flow_condition
+
+      update = .false.
+      select case(option%iflowmode)
+        case(RICHARDS_MODE,MPH_MODE)
+          if (force_update_flag .or. &
+              condition%pressure%dataset%is_transient .or. &
+              condition%pressure%gradient%is_transient .or. &
+              condition%pressure%datum%is_transient .or. &
+              condition%temperature%dataset%is_transient .or. &
+              condition%temperature%gradient%is_transient .or. &
+              condition%temperature%datum%is_transient .or. &
+              condition%concentration%dataset%is_transient .or. &
+              condition%concentration%gradient%is_transient .or. &
+              condition%concentration%datum%is_transient) then
+            update = .true.
+          endif
+        case(RICHARDS_LITE_MODE)
+          if (force_update_flag .or. &
+              condition%pressure%dataset%is_transient .or. &
+              condition%pressure%gradient%is_transient .or. &
+              condition%pressure%datum%is_transient) then
+            update = .true.
+          endif
+      end select
       
-      if (condition%iclass == FLOW_CLASS) then
-
-        update = .false.
-        select case(option%iflowmode)
-          case(RICHARDS_MODE,MPH_MODE)
-            if (force_update_flag .or. &
-                condition%pressure%dataset%is_transient .or. &
-                condition%pressure%gradient%is_transient .or. &
-                condition%pressure%datum%is_transient .or. &
-                condition%temperature%dataset%is_transient .or. &
-                condition%temperature%gradient%is_transient .or. &
-                condition%temperature%datum%is_transient .or. &
-                condition%concentration%dataset%is_transient .or. &
-                condition%concentration%gradient%is_transient .or. &
-                condition%concentration%datum%is_transient) then
-              update = .true.
-            endif
-          case(RICHARDS_LITE_MODE)
-            if (force_update_flag .or. &
-                condition%pressure%dataset%is_transient .or. &
-                condition%pressure%gradient%is_transient .or. &
-                condition%pressure%datum%is_transient) then
-              update = .true.
-            endif
+      if (update) then
+        select case(condition%pressure%itype)
+          case(DIRICHLET_BC,NEUMANN_BC,MASS_RATE,ZERO_GRADIENT_BC)
+            do idof = 1, condition%num_sub_conditions
+              coupler%flow_aux_real_var(idof,1:num_connections) = &
+                condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
+            enddo
+            coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
+              condition%iphase
+          case(HYDROSTATIC_BC,SEEPAGE_BC)
+  !          call HydrostaticUpdateCoupler(coupler,patch%option,patch%grid)
+            call HydrostaticUpdateCouplerBetter(coupler,option,patch%grid)
         end select
-        
-        if (update) then
-          select case(condition%pressure%itype)
-            case(DIRICHLET_BC,NEUMANN_BC,MASS_RATE,ZERO_GRADIENT_BC)
-              do idof = 1, condition%num_sub_conditions
-                coupler%aux_real_var(idof,1:num_connections) = &
-                  condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
-              enddo
-              coupler%aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
-                condition%iphase
-            case(HYDROSTATIC_BC,SEEPAGE_BC)
-    !          call HydrostaticUpdateCoupler(coupler,patch%option,patch%grid)
-              call HydrostaticUpdateCouplerBetter(coupler,option,patch%grid)
-          end select
-        endif
-        
-      else ! TRANSPORT_CLASS
+      endif
+     
+    endif
+      
+    ! TRANSPORT
+    if (associated(coupler%tran_aux_real_var)) then
+    
+      num_connections = coupler%connection_set%num_connections
 
-        update = .false.
-        if (force_update_flag .or. &
-            condition%concentration%dataset%is_transient .or. &
-            condition%concentration%gradient%is_transient .or. &
-            condition%concentration%datum%is_transient) then
-          update = .true.
-        endif
-        
-        if (update) then ! for now, everything transport is dirichlet-type
-          do idof = 1, condition%num_sub_conditions
-            coupler%aux_real_var(idof,1:num_connections) = &
-              condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
-          enddo
-        endif
+      condition => coupler%tran_condition
 
+      update = .false.
+      if (force_update_flag .or. &
+          condition%concentration%dataset%is_transient .or. &
+          condition%concentration%gradient%is_transient .or. &
+          condition%concentration%datum%is_transient) then
+        update = .true.
+      endif
+      
+      if (update) then ! for now, everything transport is dirichlet-type
+        do idof = 1, condition%num_sub_conditions
+          coupler%tran_aux_real_var(idof,1:num_connections) = &
+            condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
+        enddo
       endif
       
     endif
@@ -720,7 +702,7 @@ subroutine PatchAssignUniformVelocity(patch,option)
   enddo    
 
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%transport_boundary_conditions%first
+  boundary_condition => patch%boundary_conditions%first
   sum_connection = 0
   do 
     if (.not.associated(boundary_condition)) exit
@@ -795,13 +777,9 @@ subroutine PatchDestroy(patch)
 
   call GridDestroy(patch%grid)
   call RegionDestroyList(patch%regions)
-  call CouplerDestroyList(patch%flow_boundary_conditions)
-  call CouplerDestroyList(patch%flow_initial_conditions)
-  call CouplerDestroyList(patch%flow_source_sinks)
-  
-  call CouplerDestroyList(patch%transport_boundary_conditions)
-  call CouplerDestroyList(patch%transport_initial_conditions)
-  call CouplerDestroyList(patch%transport_source_sinks)
+  call CouplerDestroyList(patch%boundary_conditions)
+  call CouplerDestroyList(patch%initial_conditions)
+  call CouplerDestroyList(patch%source_sinks)
   
   call BreakthroughDestroyList(patch%breakthrough)
   call StrataDestroyList(patch%strata)

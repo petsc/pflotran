@@ -523,7 +523,7 @@ subroutine pflow_mphase_setupini(realization)
   call VecGetArrayF90(field%flow_xx, xx_p, ierr); CHKERRQ(ierr)
   call VecGetArrayF90(field%iphas_loc, iphase_loc_p,ierr)
   
-  initial_condition => patch%flow_initial_conditions%first
+  initial_condition => patch%initial_conditions%first
   
   do
   
@@ -535,9 +535,9 @@ subroutine pflow_mphase_setupini(realization)
       ibegin = (local_id-1)*option%nflowdof
       do idof=1,option%nflowdof
         xx_p(ibegin+idof) = &
-          initial_condition%condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
+          initial_condition%flow_condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
       enddo
-      iphase_loc_p(ghosted_id)=initial_condition%condition%iphase
+      iphase_loc_p(ghosted_id)=initial_condition%flow_condition%iphase
     enddo
   
     initial_condition => initial_condition%next
@@ -1518,21 +1518,21 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
 
 !************************************************************************
 ! add source/sink terms
-  source_sink => patch%flow_source_sinks%first 
+  source_sink => patch%source_sinks%first 
   do 
     if (.not.associated(source_sink)) exit
     
     ! check whether enthalpy dof is included
-    if (source_sink%condition%num_sub_conditions > MPH_CONCENTRATION_DOF) then
+    if (source_sink%flow_condition%num_sub_conditions > MPH_CONCENTRATION_DOF) then
       enthalpy_flag = .true.
     else
       enthalpy_flag = .false.
     endif
 
-    qsrc1 = source_sink%condition%pressure%dataset%cur_value(1)
-    tsrc1 = source_sink%condition%temperature%dataset%cur_value(1)
-    csrc1 = source_sink%condition%concentration%dataset%cur_value(1)
-    if (enthalpy_flag) hsrc1 = source_sink%condition%enthalpy%dataset%cur_value(1)
+    qsrc1 = source_sink%flow_condition%pressure%dataset%cur_value(1)
+    tsrc1 = source_sink%flow_condition%temperature%dataset%cur_value(1)
+    csrc1 = source_sink%flow_condition%concentration%dataset%cur_value(1)
+    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%dataset%cur_value(1)
 
     qsrc1 = qsrc1 / option%fmwh2o ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
     csrc1 = csrc1 / option%fmwco2
@@ -1693,7 +1693,7 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
 !  print *,'2ph bc-sgbc', option%myrank, option%sgbc    
 
  
-  boundary_condition => patch%flow_boundary_conditions%first
+  boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -1734,18 +1734,18 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
 ! in order to match the legacy code
 #define MATCH_LEGACY
 #ifdef MATCH_LEGACY
-      select case(boundary_condition%condition%itype(MPH_PRESSURE_DOF))
+      select case(boundary_condition%flow_condition%itype(MPH_PRESSURE_DOF))
         case(DIRICHLET_BC)
-          xxbc(1:option%nflowdof) = boundary_condition%aux_real_var(1:option%nflowdof,iconn)
-          iphasebc = boundary_condition%aux_int_var(MPH_PRESSURE_DOF,iconn)
+          xxbc(1:option%nflowdof) = boundary_condition%flow_aux_real_var(1:option%nflowdof,iconn)
+          iphasebc = boundary_condition%flow_aux_int_var(MPH_PRESSURE_DOF,iconn)
         case(NEUMANN_BC)
           xxbc(1:option%nflowdof) = xx_loc_p((ghosted_id-1)*option%nflowdof+1:ghosted_id*option%nflowdof)
           iphasebc=int(iphase_loc_p(ghosted_id)) 
-          if (boundary_condition%aux_real_var(MPH_PRESSURE_DOF,iconn) > 1.d-20) then
-            xxbc(2:option%nflowdof) = boundary_condition%aux_real_var(2:option%nflowdof,iconn)
+          if (boundary_condition%flow_aux_real_var(MPH_PRESSURE_DOF,iconn) > 1.d-20) then
+            xxbc(2:option%nflowdof) = boundary_condition%flow_aux_real_var(2:option%nflowdof,iconn)
           endif
         case(HYDROSTATIC_BC)                              
-          xxbc(1) = boundary_condition%aux_real_var(MPH_PRESSURE_DOF,iconn)
+          xxbc(1) = boundary_condition%flow_aux_real_var(MPH_PRESSURE_DOF,iconn)
           xxbc(2:option%nflowdof) = xx_loc_p((ghosted_id-1)*option%nflowdof+2:ghosted_id*option%nflowdof)
           iphasebc=int(iphase_loc_p(ghosted_id))
         case(ZERO_GRADIENT_BC)
@@ -1758,9 +1758,9 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
       end select
 #else
       do idof=1,option%nflowdof
-        select case(boundary_condition%condition%itype(idof))
+        select case(boundary_condition%flow_condition%itype(idof))
           case(DIRICHLET_BC,HYDROSTATIC_BC)
-            xxbc(idof) = boundary_condition%aux_real_var(idof,iconn)
+            xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
           case(NEUMANN_BC,ZERO_GRADIENT_BC)
             xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
         end select
@@ -1787,9 +1787,9 @@ subroutine MPHASEResidual(snes,xx,r,realization,ierr)
                                   dif,varbc,option%itable, &
                                   option%m_nacl,ierr,mphase_field%xxphi_co2_bc(sum_connection),cw)
      
-      call MPHASERes_FLBCCont(boundary_condition%condition%itype, &
+      call MPHASERes_FLBCCont(boundary_condition%flow_condition%itype, &
                               cur_connection_set%area(iconn), &
-                              boundary_condition%aux_real_var(:,iconn), &
+                              boundary_condition%flow_aux_real_var(:,iconn), &
                               varbc(1:size_var_use), &
                               var_loc_p((ghosted_id-1)*size_var_node+1: &
                                         (ghosted_id-1)*size_var_node+size_var_use), &
@@ -2043,7 +2043,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
 #endif
 ! Source / Sink term
 ! add source/sink terms
-  source_sink => patch%flow_source_sinks%first 
+  source_sink => patch%source_sinks%first 
   do 
     if (.not.associated(source_sink)) exit
 
@@ -2055,9 +2055,9 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
 !      enthalpy_flag = .false.
 !    endif
 
-    qsrc1 = source_sink%condition%pressure%dataset%cur_value(1)
-    tsrc1 = source_sink%condition%temperature%dataset%cur_value(1)
-    csrc1 = source_sink%condition%concentration%dataset%cur_value(1)
+    qsrc1 = source_sink%flow_condition%pressure%dataset%cur_value(1)
+    tsrc1 = source_sink%flow_condition%temperature%dataset%cur_value(1)
+    csrc1 = source_sink%flow_condition%concentration%dataset%cur_value(1)
 !    if (enthalpy_flag) hsrc1 = source_sink%condition%cur_value(MPH_ENTHALPY_DOF)
 
     qsrc1 = qsrc1 / option%fmwh2o ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
@@ -2123,7 +2123,7 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
   ! print *,' Mph Jaco Finished source terms'
   
 ! Contribution from BC
-  boundary_condition => patch%flow_boundary_conditions%first
+  boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -2165,21 +2165,21 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
 
 ! in order to match the legacy code
 #ifdef MATCH_LEGACY
-      select case(boundary_condition%condition%itype(MPH_PRESSURE_DOF))
+      select case(boundary_condition%flow_condition%itype(MPH_PRESSURE_DOF))
         case(DIRICHLET_BC)
-          xxbc(1:option%nflowdof) = boundary_condition%aux_real_var(1:option%nflowdof,iconn)
+          xxbc(1:option%nflowdof) = boundary_condition%flow_aux_real_var(1:option%nflowdof,iconn)
           delxbc(1:option%nflowdof) = 0.d0
-          iphasebc = boundary_condition%aux_int_var(1,iconn)
+          iphasebc = boundary_condition%flow_aux_int_var(1,iconn)
         case(NEUMANN_BC)
           xxbc(1:option%nflowdof) = xx_loc_p((ghosted_id-1)*option%nflowdof+1:ghosted_id*option%nflowdof)
           delxbc(1:option%nflowdof) = mphase_option%delx(1:option%nflowdof,ghosted_id) 
           iphasebc=int(iphase_loc_p(ghosted_id))                               
-          if (boundary_condition%aux_real_var(MPH_PRESSURE_DOF,iconn) > 1.d-20) then
-            xxbc(2:option%nflowdof) = boundary_condition%aux_real_var(2:option%nflowdof,iconn)
+          if (boundary_condition%flow_aux_real_var(MPH_PRESSURE_DOF,iconn) > 1.d-20) then
+            xxbc(2:option%nflowdof) = boundary_condition%flow_aux_real_var(2:option%nflowdof,iconn)
             delxbc(2:option%nflowdof) = 0.d0
           endif
         case(HYDROSTATIC_BC)
-          xxbc(1) = boundary_condition%aux_real_var(MPH_PRESSURE_DOF,iconn)
+          xxbc(1) = boundary_condition%flow_aux_real_var(MPH_PRESSURE_DOF,iconn)
           xxbc(2:option%nflowdof) = xx_loc_p((ghosted_id-1)*option%nflowdof+2:ghosted_id*option%nflowdof)
           delxbc(1) = 0.d0
           delxbc(2:option%nflowdof) = mphase_option%delx(2:option%nflowdof,ghosted_id) 
@@ -2197,9 +2197,9 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
       end select
 #else
       do idof=1,option%nflowdof
-        select case(boundary_condition%condition%itype(idof))
+        select case(boundary_condition%flow_condition%itype(idof))
           case(DIRICHLET_BC,HYDROSTATIC_BC)
-            xxbc(idof) = boundary_condition%aux_real_var(idof,iconn)
+            xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
             delxbc(idof) = 0.d0
           case(NEUMANN_BC,ZERO_GRADIENT_BC)
             xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
@@ -2207,9 +2207,9 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
         end select
       enddo
       
-      select case(boundary_condition%condition%itype(MPH_PRESSURE_DOF))
+      select case(boundary_condition%flow_condition%itype(MPH_PRESSURE_DOF))
         case(DIRICHLET_BC,HYDROSTATIC_BC)
-          iphasebc = boundary_condition%aux_int_var(1,iconn)
+          iphasebc = boundary_condition%flow_aux_int_var(1,iconn)
         case(NEUMANN_BC,ZERO_GRADIENT_BC)
           iphasebc=int(iphase_loc_p(ghosted_id))                               
       end select
@@ -2255,9 +2255,9 @@ subroutine MPHASEJacobian(snes,xx,A,B,flag,realization,ierr)
 !    print *,' Mph Jaco BC terms: finish increment'
       do nvar=1,option%nflowdof
    
-        call MPHASERes_FLBCCont(boundary_condition%condition%itype, &
+        call MPHASERes_FLBCCont(boundary_condition%flow_condition%itype, &
                                 cur_connection_set%area(iconn), &
-                                boundary_condition%aux_real_var(:,iconn), &
+                                boundary_condition%flow_aux_real_var(:,iconn), &
                                 varbc(nvar*size_var_use+1: &
                                            (nvar+1)*size_var_use), &
                                 var_loc_p((ghosted_id-1)*size_var_node+ &
@@ -2792,7 +2792,7 @@ subroutine pflow_update_mphase(realization)
   !geh added for transient boundary conditions  
   if (associated(patch%imat)) then
 
-    boundary_condition => patch%flow_boundary_conditions%first
+    boundary_condition => patch%boundary_conditions%first
     sum_connection = 0
     do 
       if (.not.associated(boundary_condition)) exit
@@ -2814,19 +2814,19 @@ subroutine pflow_update_mphase(realization)
           stop
         endif
 
-        if (boundary_condition%condition%itype(MPH_PRESSURE_DOF) == DIRICHLET_BC) then
+        if (boundary_condition%flow_condition%itype(MPH_PRESSURE_DOF) == DIRICHLET_BC) then
           do idof=1,option%nflowdof
-            select case(boundary_condition%condition%itype(idof))
+            select case(boundary_condition%flow_condition%itype(idof))
               case(DIRICHLET_BC,HYDROSTATIC_BC)
-                xxbc(idof) = boundary_condition%aux_real_var(idof,iconn)
+                xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
               case(NEUMANN_BC,ZERO_GRADIENT_BC)
                 xxbc(idof) = xx_p((local_id-1)*option%nflowdof+idof)
             end select
           enddo
       
-          select case(boundary_condition%condition%itype(MPH_PRESSURE_DOF))
+          select case(boundary_condition%flow_condition%itype(MPH_PRESSURE_DOF))
             case(DIRICHLET_BC,HYDROSTATIC_BC)
-              iphasebc = boundary_condition%aux_int_var(1,iconn)
+              iphasebc = boundary_condition%flow_aux_int_var(1,iconn)
             case(NEUMANN_BC,ZERO_GRADIENT_BC)
               iphasebc=int(iphase_loc_p(ghosted_id))                
           end select
@@ -2994,7 +2994,7 @@ subroutine pflow_mphase_initadj(realization)
 !  yybc =field%flow_xxbc
 !  vel_bc = field%velocitybc
 
-  boundary_condition => patch%flow_boundary_conditions%first
+  boundary_condition => patch%boundary_conditions%first
   sum_connection = 0  
   do 
     if (.not.associated(boundary_condition)) exit
@@ -3017,7 +3017,7 @@ subroutine pflow_mphase_initadj(realization)
          stop
       end if
 
-      if (boundary_condition%condition%itype(1)==1) then
+      if (boundary_condition%flow_condition%itype(1)==1) then
 !          boundary_condition%condition%itype(1)==3) then      
         iicap=int(icap_loc_p(ghosted_id))
         iithrm=int(ithrm_loc_p(ghosted_id)) 

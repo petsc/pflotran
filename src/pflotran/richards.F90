@@ -154,7 +154,7 @@ subroutine RichardsSetupPatch(realization)
   
   ! count the number of boundary connections and allocate
   ! aux_var data structures for them
-  boundary_condition => patch%flow_boundary_conditions%first
+  boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -280,7 +280,7 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
     iphase_loc_p(ghosted_id) = iphase
   enddo
 
-  boundary_condition => patch%flow_boundary_conditions%first
+  boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -294,17 +294,17 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
       endif
 
       do idof=1,option%nflowdof
-        select case(boundary_condition%condition%itype(idof))
+        select case(boundary_condition%flow_condition%itype(idof))
           case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
-            xxbc(idof) = boundary_condition%aux_real_var(idof,iconn)
+            xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
           case(NEUMANN_BC,ZERO_GRADIENT_BC)
             xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
         end select
       enddo
       
-      select case(boundary_condition%condition%itype(RICHARDS_PRESSURE_DOF))
+      select case(boundary_condition%flow_condition%itype(RICHARDS_PRESSURE_DOF))
         case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
-          iphasebc = boundary_condition%aux_int_var(1,iconn)
+          iphasebc = boundary_condition%flow_aux_int_var(1,iconn)
         case(NEUMANN_BC,ZERO_GRADIENT_BC)
           iphasebc=int(iphase_loc_p(ghosted_id))                               
       end select
@@ -1692,21 +1692,21 @@ subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
 #endif
 #if 1
   ! Source/sink terms -------------------------------------
-  source_sink => patch%flow_source_sinks%first 
+  source_sink => patch%source_sinks%first 
   do 
     if (.not.associated(source_sink)) exit
     
     ! check whether enthalpy dof is included
-    if (source_sink%condition%num_sub_conditions > RICHARDS_CONCENTRATION_DOF) then
+    if (source_sink%flow_condition%num_sub_conditions > RICHARDS_CONCENTRATION_DOF) then
       enthalpy_flag = .true.
     else
       enthalpy_flag = .false.
     endif
 
-    qsrc1 = source_sink%condition%pressure%dataset%cur_value(1)
-    tsrc1 = source_sink%condition%temperature%dataset%cur_value(1)
-    csrc1 = source_sink%condition%concentration%dataset%cur_value(1)
-    if (enthalpy_flag) hsrc1 = source_sink%condition%enthalpy%dataset%cur_value(1)
+    qsrc1 = source_sink%flow_condition%pressure%dataset%cur_value(1)
+    tsrc1 = source_sink%flow_condition%temperature%dataset%cur_value(1)
+    csrc1 = source_sink%flow_condition%concentration%dataset%cur_value(1)
+    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%dataset%cur_value(1)
 
     qsrc1 = qsrc1 / option%fmwh2o ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
     csrc1 = csrc1 / option%fmwco2
@@ -1825,7 +1825,7 @@ subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
 #endif
 #if 1
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%flow_boundary_conditions%first
+  boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -1863,8 +1863,8 @@ subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
 
       icap_dn = int(icap_loc_p(ghosted_id))  
 
-      call RichardsBCFlux(boundary_condition%condition%itype, &
-                                boundary_condition%aux_real_var(:,iconn), &
+      call RichardsBCFlux(boundary_condition%flow_condition%itype, &
+                                boundary_condition%flow_aux_real_var(:,iconn), &
                                 aux_vars_bc(sum_connection), &
                                 aux_vars(ghosted_id), &
                                 porosity_loc_p(ghosted_id), &
@@ -2115,21 +2115,21 @@ subroutine RichardsJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   endif
 #if 1
   ! Source/sink terms -------------------------------------
-  source_sink => patch%flow_source_sinks%first 
+  source_sink => patch%source_sinks%first 
   do 
     if (.not.associated(source_sink)) exit
     
     ! check whether enthalpy dof is included
-    if (source_sink%condition%num_sub_conditions > RICHARDS_CONCENTRATION_DOF) then
+    if (source_sink%flow_condition%num_sub_conditions > RICHARDS_CONCENTRATION_DOF) then
       enthalpy_flag = .true.
     else
       enthalpy_flag = .false.
     endif
 
-    qsrc1 = source_sink%condition%pressure%dataset%cur_value(1)
-    tsrc1 = source_sink%condition%temperature%dataset%cur_value(1)
-    csrc1 = source_sink%condition%concentration%dataset%cur_value(1)
-    if (enthalpy_flag) hsrc1 = source_sink%condition%enthalpy%dataset%cur_value(1)
+    qsrc1 = source_sink%flow_condition%pressure%dataset%cur_value(1)
+    tsrc1 = source_sink%flow_condition%temperature%dataset%cur_value(1)
+    csrc1 = source_sink%flow_condition%concentration%dataset%cur_value(1)
+    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%dataset%cur_value(1)
 
     qsrc1 = qsrc1 / option%fmwh2o ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
     csrc1 = csrc1 / option%fmwco2
@@ -2271,7 +2271,7 @@ subroutine RichardsJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   endif
 #if 1
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%flow_boundary_conditions%first
+  boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -2308,8 +2308,8 @@ subroutine RichardsJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                                           cur_connection_set%dist(1:3,iconn))
       icap_dn = int(icap_loc_p(ghosted_id))  
 
-      call RichardsBCFluxDerivative(boundary_condition%condition%itype, &
-                                boundary_condition%aux_real_var(:,iconn), &
+      call RichardsBCFluxDerivative(boundary_condition%flow_condition%itype, &
+                                boundary_condition%flow_aux_real_var(:,iconn), &
                                 aux_vars_bc(sum_connection), &
                                 aux_vars(ghosted_id), &
                                 porosity_loc_p(ghosted_id), &
