@@ -1156,6 +1156,31 @@ subroutine readInput(simulation,filename)
               call fiSkipToEND(IUNIT1,option%myrank,card)
             endif
         end select
+
+!....................
+
+      case ('FLUID_PROPERTY','FLUID_PROPERTIES')
+
+        realization%fluid_properties => FluidPropertyCreate(option%nphase)
+        
+        count = 0
+        do
+          call fiReadFlotranString(IUNIT1,string,ierr)
+          call fiReadStringErrorMsg(option%myrank,'THRM',ierr)
+          
+          if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
+              fiStringCompare(string,'END',THREE_INTEGER)) exit
+         
+          count = count + 1 
+          if (count > option%nphase) exit              
+                        
+          call fiReadDouble(string,realization%fluid_properties%diff_base(count),ierr)
+          call fiErrorMsg(option%myrank,'diff_base','FLUID_PROPERTY', ierr)          
+        
+          call fiReadDouble(string,realization%fluid_properties%diff_exp(count),ierr)
+          call fiErrorMsg(option%myrank,'diff_base','FLUID_PROPERTY', ierr)          
+
+        enddo
         
 !....................
 

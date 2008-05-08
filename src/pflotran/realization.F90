@@ -41,6 +41,7 @@ private
     type(thermal_property_type), pointer :: thermal_properties
     type(saturation_function_type), pointer :: saturation_functions
     type(saturation_function_ptr_type), pointer :: saturation_function_array(:)
+    type(fluid_property_type), pointer :: fluid_properties
     
     type(waypoint_list_type), pointer :: waypoints
     
@@ -93,6 +94,7 @@ function RealizationCreate()
   nullify(realization%thermal_properties)
   nullify(realization%saturation_functions)
   nullify(realization%saturation_function_array)
+  nullify(realization%fluid_properties)
   
   nullify(realization%chemistry)
   
@@ -863,6 +865,8 @@ subroutine RealizationDestroy(realization)
 
   if (associated(realization%debug)) deallocate(realization%debug)
   nullify(realization%debug)
+  
+  call FluidPropertyDestroy(realization%fluid_properties)
   
   if (associated(realization%material_array)) &
     deallocate(realization%material_array)
