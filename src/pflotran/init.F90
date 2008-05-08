@@ -164,7 +164,9 @@ subroutine Init(simulation,filename)
     call printMsg(option,"  Beginning set up of FLOW SNES ")
 
     call SolverCreateSNES(flow_solver)  
+    call SNESSetOptionsPrefix(flow_solver%snes, "flow_", ierr)
     call DiscretizationCreateJacobian(discretization,NFLOWDOF,flow_solver%J,option)
+    call MatSetOptionsPrefix(flow_solver%J, "flow_", ierr)
     if (option%use_galerkin_mg) then
       call DiscretizationCreateInterpolation(discretization,NFLOWDOF, &
                                              flow_solver%interpolation,option)
@@ -215,7 +217,9 @@ subroutine Init(simulation,filename)
     call printMsg(option,"  Beginning set up of TRAN SNES ")
     
     call SolverCreateSNES(tran_solver)  
+    call SNESSetOptionsPrefix(tran_solver%snes, "tran_", ierr)
     call DiscretizationCreateJacobian(discretization,NTRANDOF,tran_solver%J,option)
+    call MatSetOptionsPrefix(tran_solver%J, "tran_", ierr)
     
     if (option%use_galerkin_mg) then
       call DiscretizationCreateInterpolation(discretization,NTRANDOF, &
