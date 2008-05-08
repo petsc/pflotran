@@ -66,7 +66,10 @@ contains
 
 ! ************************************************************************** !
 !
-! SolverCreate: Allocates and initializes a new Solver object
+! SolverCreate: Allocates and initializes a new (empty) Solver object
+! Note that this does not create the PETSc solver contexts associated 
+! with the Solver.  These contexts are created via a subsequent call to 
+! SolverCreateSNES().
 ! author: Glenn Hammond
 ! date: 10/25/07
 !
