@@ -131,11 +131,10 @@ subroutine OutputBreakthrough(realization)
   
   type(realization_type) :: realization
 
-#if 0  
   if (realization%output_option%print_hdf5) then
-    call OutputBreakthroughHDF5(realization)
+!    call OutputBreakthroughHDF5(realization)
+    call OutputBreakthroughTecplot(realization)
   endif
-#endif
  
   if (realization%output_option%print_tecplot) then
     call OutputBreakthroughTecplot(realization)
@@ -1126,7 +1125,7 @@ subroutine WriteTecplotStructuredGrid(fid,realization)
   PetscInt :: i, j, k, count, nx, ny, nz
   PetscReal :: temp_real
 
-1000 format(es11.4)
+1000 format(es11.4,x)
 1001 format(10(es11.4,x))
   
   call PetscLogEventBegin(logging%event_output_str_grid_tecplot, &
@@ -1160,6 +1159,7 @@ subroutine WriteTecplotStructuredGrid(fid,realization)
         enddo
       enddo
     enddo
+    if (count /= 0) write(fid,'(a)') ""
     ! y-dir
     count = 0
     do k=1,nz+1
@@ -1184,6 +1184,7 @@ subroutine WriteTecplotStructuredGrid(fid,realization)
         enddo
       enddo
     enddo
+    if (count /= 0) write(fid,'(a)') ""
     ! z-dir
     count = 0
     temp_real = grid%structured_grid%origin(Z_DIRECTION)
@@ -1208,6 +1209,7 @@ subroutine WriteTecplotStructuredGrid(fid,realization)
         enddo
       enddo
     enddo
+    if (count /= 0) write(fid,'(a)') ""
 
   endif
 
