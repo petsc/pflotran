@@ -20,6 +20,11 @@ module Material_module
     type(material_type), pointer :: next
   end type material_type
   
+  type, public :: fluid_property_type
+    PetscReal, pointer :: diff_base(:)
+    PetscReal, pointer :: diff_exp(:)
+  end type fluid_property_type
+  
   type, public :: material_ptr_type
     type(material_type), pointer :: ptr
   end type material_ptr_type
@@ -52,7 +57,8 @@ module Material_module
     PetscReal :: pcwmax
     PetscReal :: betac
     PetscReal :: power
-    PetscInt :: ihist 
+    PetscInt :: hysteresis_id
+    PetscInt :: hysteresis_params(6)
     PetscReal :: BC_pressure_low
     PetscReal :: BC_pressure_high
     PetscReal :: BC_spline_coefficients(4)
@@ -72,7 +78,9 @@ module Material_module
             SaturationFunctionCompute, &
             SaturatFuncConvertListToArray, &
             MaterialConvertListToArray, &
-            SaturationFunctionComputeSpline
+            SaturationFunctionComputeSpline, &
+            FluidPropertyCreate, &
+            FluidPropertyDestroy
 
   PetscInt, parameter :: VAN_GENUCHTEN = 1
   PetscInt, parameter :: BROOKS_COREY = 2
@@ -147,6 +155,31 @@ end function ThermalPropertyCreate
 
 ! ************************************************************************** !
 !
+! FluidPropertyCreate: Creates a fluid property object
+! author: Glenn Hammond
+! date: 05/07/08
+!
+! ************************************************************************** !
+function FluidPropertyCreate(nphase)
+  
+  implicit none
+
+  type(fluid_property_type), pointer :: FluidPropertyCreate
+  integer :: nphase
+  
+  type(fluid_property_type), pointer :: fluid_property
+  
+  allocate(fluid_property)
+  allocate(fluid_property%diff_base(nphase))
+  allocate(fluid_property%diff_exp(nphase))
+  fluid_property%diff_base = 0.d0
+  fluid_property%diff_exp = 0.d0
+  FluidPropertyCreate => fluid_property
+
+end function FluidPropertyCreate
+
+! ************************************************************************** !
+!
 ! SaturationFunctionCreate: Creates a saturation function
 ! author: Glenn Hammond
 ! date: 11/02/07
@@ -177,7 +210,8 @@ function SaturationFunctionCreate(option)
   saturation_function%pcwmax = 0.d0
   saturation_function%betac = 0.d0
   saturation_function%power = 0.d0
-  saturation_function%ihist = 0
+  saturation_function%hysteresis_id = 0
+  saturation_function%hysteresis_params = 0
   saturation_function%BC_pressure_low = 0.d0
   saturation_function%BC_pressure_high = 0.d0
   saturation_function%BC_spline_coefficients = 0.d0
@@ -628,6 +662,33 @@ function MaterialGetPtrFromList(material_name,material_list)
   enddo
   
 end function MaterialGetPtrFromList
+
+! ************************************************************************** !
+!
+! FluidPropertyDestroy: Destroys a fluid property object
+! author: Glenn Hammond
+! date: 05/07/08
+!
+! ************************************************************************** !
+subroutine FluidPropertyDestroy(fluid_property)
+
+  implicit none
+  
+  type(fluid_property_type), pointer :: fluid_property
+  
+  if (.not.associated(fluid_property)) return
+  
+  if (associated(fluid_property%diff_base)) &
+    deallocate(fluid_property%diff_base)
+  nullify(fluid_property%diff_base)
+  if (associated(fluid_property%diff_exp)) &
+    deallocate(fluid_property%diff_exp)
+  nullify(fluid_property%diff_exp)
+  
+  deallocate(fluid_property)
+  nullify(fluid_property)
+  
+end subroutine FluidPropertyDestroy
 
 ! ************************************************************************** !
 !

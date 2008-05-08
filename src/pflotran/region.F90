@@ -234,7 +234,7 @@ end subroutine RegionAddToList
 !
 ! RegionRead: Reads a region from the input file
 ! author: Glenn Hammond
-! date: 02/20/07
+! date: 02/20/08
 !
 ! ************************************************************************** !
 subroutine RegionRead(region,fid,option)

@@ -154,7 +154,7 @@ subroutine RichardsSetupPatch(realization)
   
   ! count the number of boundary connections and allocate
   ! aux_var data structures for them
-  boundary_condition => patch%flow_boundary_conditions%first
+  boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -280,7 +280,7 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
     iphase_loc_p(ghosted_id) = iphase
   enddo
 
-  boundary_condition => patch%flow_boundary_conditions%first
+  boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -294,17 +294,17 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
       endif
 
       do idof=1,option%nflowdof
-        select case(boundary_condition%condition%itype(idof))
+        select case(boundary_condition%flow_condition%itype(idof))
           case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
-            xxbc(idof) = boundary_condition%aux_real_var(idof,iconn)
+            xxbc(idof) = boundary_condition%flow_aux_real_var(idof,iconn)
           case(NEUMANN_BC,ZERO_GRADIENT_BC)
             xxbc(idof) = xx_loc_p((ghosted_id-1)*option%nflowdof+idof)
         end select
       enddo
       
-      select case(boundary_condition%condition%itype(RICHARDS_PRESSURE_DOF))
+      select case(boundary_condition%flow_condition%itype(RICHARDS_PRESSURE_DOF))
         case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
-          iphasebc = boundary_condition%aux_int_var(1,iconn)
+          iphasebc = boundary_condition%flow_aux_int_var(1,iconn)
         case(NEUMANN_BC,ZERO_GRADIENT_BC)
           iphasebc=int(iphase_loc_p(ghosted_id))                               
       end select
@@ -608,7 +608,7 @@ subroutine RichardsAccumulationDerivative(aux_var,por,vol,rock_dencpr,option, &
   PetscReal :: J(option%nflowdof,option%nflowdof)
      
   PetscInt :: ispec !, iireac=1
-  PetscReal :: porXvol, mol(option%nspec), eng
+  PetscReal :: porXvol, mol(option%nflowspec), eng
 
   PetscInt :: iphase, ideriv
   type(richards_auxvar_type) :: aux_var_pert
@@ -633,7 +633,7 @@ subroutine RichardsAccumulationDerivative(aux_var,por,vol,rock_dencpr,option, &
   J(3,3) = 0.d0 
 
   if (option%numerical_derivatives) then
-    allocate(aux_var_pert%xmol(option%nspec),aux_var_pert%diff(option%nspec))
+    allocate(aux_var_pert%xmol(option%nflowspec),aux_var_pert%diff(option%nflowspec))
     call RichardsAuxVarCopy(aux_var,aux_var_pert,option)
     x(1) = aux_var%pres
     x(2) = aux_var%temp
@@ -691,14 +691,14 @@ subroutine RichardsAccumulation(aux_var,por,vol,rock_dencpr,option,Res)
   PetscReal vol,por,rock_dencpr
      
   PetscInt :: ispec !, iireac=1
-  PetscReal :: porXvol, mol(option%nspec), eng
+  PetscReal :: porXvol, mol(option%nflowspec), eng
   
  ! if (present(ireac)) iireac=ireac
 
   porXvol = por*vol
       
   mol=0.d0
-  do ispec=1, option%nspec  
+  do ispec=1, option%nflowspec  
     mol(ispec) = mol(ispec) + aux_var%sat * &
                               aux_var%den * &
                               aux_var%xmol(ispec)
@@ -750,8 +750,8 @@ subroutine RichardsFluxDerivative(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,
   PetscReal :: Jup(option%nflowdof,option%nflowdof), Jdn(option%nflowdof,option%nflowdof)
      
   PetscInt :: ispec
-  PetscReal :: fluxm(option%nspec),fluxe,q
-  PetscReal :: uh,uxmol(1:option%nspec),ukvr,difff,diffdp, DK,Dq
+  PetscReal :: fluxm(option%nflowspec),fluxe,q
+  PetscReal :: uh,uxmol(1:option%nflowspec),ukvr,difff,diffdp, DK,Dq
   PetscReal :: upweight,density_ave,cond,gravity,dphi
   
   PetscReal :: ddifff_dp_up, ddifff_dp_dn, ddifff_dt_up, ddifff_dt_dn
@@ -846,7 +846,7 @@ subroutine RichardsFluxDerivative(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,
       duh_dt_up = aux_var_up%dh_dt
 !      duh_dt_dn = 0.d0
       
-      uxmol(1:option%nspec) = aux_var_up%xmol(1:option%nspec)
+      uxmol(1:option%nflowspec) = aux_var_up%xmol(1:option%nflowspec)
       duxmol_dxmol_up = 1.d0
 !      duxmol_dxmol_dn = 0.d0
     else
@@ -862,7 +862,7 @@ subroutine RichardsFluxDerivative(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,
 !      duh_dt_up = 0.d0
       duh_dt_dn = aux_var_dn%dh_dt
       
-      uxmol(1:option%nspec) = aux_var_dn%xmol(1:option%nspec)
+      uxmol(1:option%nflowspec) = aux_var_dn%xmol(1:option%nflowspec)
 !      duxmol_dxmol_up = 0.d0
       duxmol_dxmol_dn = 1.d0
     endif      
@@ -884,7 +884,7 @@ subroutine RichardsFluxDerivative(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,
       Jdn(1,1) = (dq_dp_dn*density_ave+q*dden_ave_dp_dn)*uxmol(1)
       Jdn(1,2) = (dq_dt_dn*density_ave+q*dden_ave_dt_dn)*uxmol(1)
 !      Jdn(1,3:option%nflowdof) = 0.d0
-      do ispec=2,option%nspec 
+      do ispec=2,option%nflowspec 
         ! based on flux = q*density_ave*uxmol
         Jup(ispec,1) = (dq_dp_up*density_ave+q*dden_ave_dp_up)*uxmol(ispec)
         Jup(ispec,2) = (dq_dt_up*density_ave+q*dden_ave_dt_up)*uxmol(ispec)
@@ -910,7 +910,7 @@ subroutine RichardsFluxDerivative(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,
   if ((aux_var_up%sat > eps) .and. (aux_var_dn%sat > eps)) then
 !    difff = diffdp * 0.25D0*(aux_var_up%sat+aux_var_dn%sat)* &
 !                            (aux_var_up%den+aux_var_dn%den)
-!    do ispec=1, option%nspec
+!    do ispec=1, option%nflowspec
 !      fluxm(ispec) = fluxm(ispec) + difff * .5D0 * &
 !                 (aux_var_up%diff(ispec) + aux_var_dn%diff(ispec))* &
 !                 (aux_var_up%xmol(ispec) - aux_var_dn%xmol(ispec))
@@ -933,7 +933,7 @@ subroutine RichardsFluxDerivative(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,
                                            (aux_var_up%xmol(1) - aux_var_dn%xmol(1))
     Jdn(1,2) = Jdn(1,2)+ddifff_dt_dn*0.5d0*(aux_var_up%diff(1) + aux_var_dn%diff(1))*&
                                            (aux_var_up%xmol(1) - aux_var_dn%xmol(1))
-    do ispec=2, option%nspec
+    do ispec=2, option%nflowspec
       Jup(ispec,1) = Jup(ispec,1)+ddifff_dp_up*0.5d0*(aux_var_up%diff(ispec) + aux_var_dn%diff(ispec))*&
                                                      (aux_var_up%xmol(ispec) - aux_var_dn%xmol(ispec))
       Jup(ispec,2) = Jup(ispec,2)+ddifff_dt_up*0.5d0*(aux_var_up%diff(ispec) + aux_var_dn%diff(ispec))*&
@@ -960,8 +960,8 @@ subroutine RichardsFluxDerivative(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,
  !                                              dn J = J - Jdn  
 
   if (option%numerical_derivatives) then
-    allocate(aux_var_pert_up%xmol(option%nspec),aux_var_pert_up%diff(option%nspec))
-    allocate(aux_var_pert_dn%xmol(option%nspec),aux_var_pert_dn%diff(option%nspec))
+    allocate(aux_var_pert_up%xmol(option%nflowspec),aux_var_pert_up%diff(option%nflowspec))
+    allocate(aux_var_pert_dn%xmol(option%nflowspec),aux_var_pert_dn%diff(option%nflowspec))
     call RichardsAuxVarCopy(aux_var_up,aux_var_pert_up,option)
     call RichardsAuxVarCopy(aux_var_dn,aux_var_pert_dn,option)
     x_up(1) = aux_var_up%pres
@@ -1032,8 +1032,8 @@ subroutine RichardsFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
   PetscReal :: dist_gravity  ! distance along gravity vector
      
   PetscInt :: ispec
-  PetscReal :: fluxm(option%nspec),fluxe,q
-  PetscReal :: uh,uxmol(1:option%nspec),ukvr,difff,diffdp, DK,Dq
+  PetscReal :: fluxm(option%nflowspec),fluxe,q
+  PetscReal :: uh,uxmol(1:option%nflowspec),ukvr,difff,diffdp, DK,Dq
   PetscReal :: upweight,density_ave,cond,gravity,dphi
      
   Dq = (perm_up * perm_dn)/(dd_up*perm_dn + dd_dn*perm_up)
@@ -1062,11 +1062,11 @@ subroutine RichardsFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
     if (dphi>=0.D0) then
       ukvr = aux_var_up%kvr
       uh = aux_var_up%h
-      uxmol(1:option%nspec) = aux_var_up%xmol(1:option%nspec)
+      uxmol(1:option%nflowspec) = aux_var_up%xmol(1:option%nflowspec)
     else
       ukvr = aux_var_dn%kvr
       uh = aux_var_dn%h
-      uxmol(1:option%nspec) = aux_var_dn%xmol(1:option%nspec)
+      uxmol(1:option%nflowspec) = aux_var_dn%xmol(1:option%nflowspec)
     endif      
    
 
@@ -1075,7 +1075,7 @@ subroutine RichardsFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
    
       q = v_darcy * area
         
-      do ispec=1, option%nspec 
+      do ispec=1, option%nflowspec 
         fluxm(ispec)=fluxm(ispec) + q*density_ave*uxmol(ispec)
       enddo
       fluxe = fluxe + q*density_ave*uh 
@@ -1088,7 +1088,7 @@ subroutine RichardsFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
    
     difff = diffdp * 0.25D0*(aux_var_up%sat+aux_var_dn%sat)* &
                             (aux_var_up%den+aux_var_dn%den)
-    do ispec=1, option%nspec
+    do ispec=1, option%nflowspec
       fluxm(ispec) = fluxm(ispec) + difff * .5D0 * &
                  (aux_var_up%diff(ispec) + aux_var_dn%diff(ispec))* &
                  (aux_var_up%xmol(ispec) - aux_var_dn%xmol(ispec))
@@ -1139,8 +1139,8 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
           
   PetscInt :: ispec
   PetscReal :: v_darcy
-  PetscReal :: fluxm(option%nspec),fluxe,q,density_ave
-  PetscReal :: uh,uxmol(1:option%nspec),ukvr,diff,diffdp,DK,Dq
+  PetscReal :: fluxm(option%nflowspec),fluxe,q,density_ave
+  PetscReal :: uh,uxmol(1:option%nflowspec),ukvr,diff,diffdp,DK,Dq
   PetscReal :: upweight,cond,gravity,dphi
 
   PetscReal :: ddiff_dp_dn, ddiff_dt_dn
@@ -1266,7 +1266,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
 
   if (v_darcy >= 0.D0) then
     uh = aux_var_up%h
-    uxmol(:)=aux_var_up%xmol(1:option%nspec)
+    uxmol(:)=aux_var_up%xmol(1:option%nflowspec)
     if (ibndtype(RICHARDS_PRESSURE_DOF) == ZERO_GRADIENT_BC) then
       duh_dp_dn = aux_var_up%dh_dp
     endif
@@ -1281,14 +1281,14 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
     duh_dp_dn = aux_var_dn%dh_dp
     duh_dt_dn = aux_var_dn%dh_dt
 
-    uxmol(:)=aux_var_dn%xmol(1:option%nspec)
+    uxmol(:)=aux_var_dn%xmol(1:option%nflowspec)
     duxmol_dxmol_dn = 1.d0
   endif      
 
   Jdn(1,1) = (dq_dp_dn*density_ave+q*dden_ave_dp_dn)*uxmol(1)
   Jdn(1,2) = (dq_dt_dn*density_ave+q*dden_ave_dt_dn)*uxmol(1)
 !  Jdn(1,3:option%nflowdof) = 0.d0
-  do ispec=2,option%nspec 
+  do ispec=2,option%nflowspec 
     ! based on flux = q*density_ave*uxmol
     Jdn(ispec,1) = (dq_dp_dn*density_ave+q*dden_ave_dp_dn)*uxmol(ispec)
     Jdn(ispec,2) = (dq_dt_dn*density_ave+q*dden_ave_dt_dn)*uxmol(ispec)
@@ -1317,7 +1317,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
                                         (aux_var_up%xmol(1) - aux_var_dn%xmol(1))
         Jdn(1,2) = Jdn(1,2)+ddiff_dt_dn*aux_var_dn%diff(1)*&
                                         (aux_var_up%xmol(1) - aux_var_dn%xmol(1))
-        do ispec=2, option%nspec
+        do ispec=2, option%nflowspec
           Jdn(ispec,1) = Jdn(ispec,1)+ddiff_dp_dn*aux_var_dn%diff(ispec)*&
                                                 (aux_var_up%xmol(ispec) - aux_var_dn%xmol(ispec))
           Jdn(ispec,2) = Jdn(ispec,2)+ddiff_dt_dn*aux_var_dn%diff(ispec)*&
@@ -1338,8 +1338,8 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   Jdn = Jdn * option%flow_dt
 
   if (option%numerical_derivatives) then
-    allocate(aux_var_pert_dn%xmol(option%nspec),aux_var_pert_dn%diff(option%nspec))
-    allocate(aux_var_pert_up%xmol(option%nspec),aux_var_pert_up%diff(option%nspec))
+    allocate(aux_var_pert_dn%xmol(option%nflowspec),aux_var_pert_dn%diff(option%nflowspec))
+    allocate(aux_var_pert_up%xmol(option%nflowspec),aux_var_pert_up%diff(option%nflowspec))
     call RichardsAuxVarCopy(aux_var_up,aux_var_pert_up,option)
     call RichardsAuxVarCopy(aux_var_dn,aux_var_pert_dn,option)
     x_up(1) = aux_var_up%pres
@@ -1410,8 +1410,8 @@ subroutine RichardsBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   PetscReal :: dist_gravity  ! distance along gravity vector
           
   PetscInt :: ispec
-  PetscReal :: fluxm(option%nspec),fluxe,q,density_ave
-  PetscReal :: uh,uxmol(1:option%nspec),ukvr,diff,diffdp,DK,Dq
+  PetscReal :: fluxm(option%nflowspec),fluxe,q,density_ave
+  PetscReal :: uh,uxmol(1:option%nflowspec),ukvr,diff,diffdp,DK,Dq
   PetscReal :: upweight,cond,gravity,dphi
   
   fluxm = 0.d0
@@ -1476,13 +1476,13 @@ subroutine RichardsBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
 
   if (v_darcy >= 0.D0) then
     uh = aux_var_up%h
-    uxmol(:)=aux_var_up%xmol(1:option%nspec)
+    uxmol(:)=aux_var_up%xmol(1:option%nflowspec)
   else
     uh = aux_var_dn%h
-    uxmol(:)=aux_var_dn%xmol(1:option%nspec)
+    uxmol(:)=aux_var_dn%xmol(1:option%nflowspec)
   endif      
     
-  do ispec=1, option%nspec 
+  do ispec=1, option%nflowspec 
     fluxm(ispec) = fluxm(ispec) + q*density_ave*uxmol(ispec)
   enddo
   fluxe = fluxe + q*density_ave*uh
@@ -1494,7 +1494,7 @@ subroutine RichardsBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
 !        diff = diffdp * 0.25D0*(aux_var_up%sat+aux_var_dn%sat)*(aux_var_up%den+aux_var_dn%den)
       if (aux_var_dn%sat > eps) then
         diff = diffdp * aux_var_dn%sat*aux_var_dn%den
-        do ispec = 1, option%nspec
+        do ispec = 1, option%nflowspec
           fluxm(ispec) = fluxm(ispec) + diff * aux_var_dn%diff(ispec)* &
                            (aux_var_up%xmol(ispec)-aux_var_dn%xmol(ispec))
         enddo  
@@ -1509,7 +1509,7 @@ subroutine RichardsBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
       fluxe=fluxe + cond
   end select
 
-  Res(1:option%nspec)=fluxm(:)* option%flow_dt
+  Res(1:option%nflowspec)=fluxm(:)* option%flow_dt
   Res(option%nflowdof)=fluxe * option%flow_dt
 
 end subroutine RichardsBCFlux
@@ -1692,21 +1692,21 @@ subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
 #endif
 #if 1
   ! Source/sink terms -------------------------------------
-  source_sink => patch%flow_source_sinks%first 
+  source_sink => patch%source_sinks%first 
   do 
     if (.not.associated(source_sink)) exit
     
     ! check whether enthalpy dof is included
-    if (source_sink%condition%num_sub_conditions > RICHARDS_CONCENTRATION_DOF) then
+    if (source_sink%flow_condition%num_sub_conditions > RICHARDS_CONCENTRATION_DOF) then
       enthalpy_flag = .true.
     else
       enthalpy_flag = .false.
     endif
 
-    qsrc1 = source_sink%condition%pressure%dataset%cur_value(1)
-    tsrc1 = source_sink%condition%temperature%dataset%cur_value(1)
-    csrc1 = source_sink%condition%concentration%dataset%cur_value(1)
-    if (enthalpy_flag) hsrc1 = source_sink%condition%enthalpy%dataset%cur_value(1)
+    qsrc1 = source_sink%flow_condition%pressure%dataset%cur_value(1)
+    tsrc1 = source_sink%flow_condition%temperature%dataset%cur_value(1)
+    csrc1 = source_sink%flow_condition%concentration%dataset%cur_value(1)
+    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%dataset%cur_value(1)
 
     qsrc1 = qsrc1 / option%fmwh2o ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
     csrc1 = csrc1 / option%fmwco2
@@ -1825,7 +1825,7 @@ subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
 #endif
 #if 1
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%flow_boundary_conditions%first
+  boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -1863,8 +1863,8 @@ subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
 
       icap_dn = int(icap_loc_p(ghosted_id))  
 
-      call RichardsBCFlux(boundary_condition%condition%itype, &
-                                boundary_condition%aux_real_var(:,iconn), &
+      call RichardsBCFlux(boundary_condition%flow_condition%itype, &
+                                boundary_condition%flow_aux_real_var(:,iconn), &
                                 aux_vars_bc(sum_connection), &
                                 aux_vars(ghosted_id), &
                                 porosity_loc_p(ghosted_id), &
@@ -2115,21 +2115,21 @@ subroutine RichardsJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   endif
 #if 1
   ! Source/sink terms -------------------------------------
-  source_sink => patch%flow_source_sinks%first 
+  source_sink => patch%source_sinks%first 
   do 
     if (.not.associated(source_sink)) exit
     
     ! check whether enthalpy dof is included
-    if (source_sink%condition%num_sub_conditions > RICHARDS_CONCENTRATION_DOF) then
+    if (source_sink%flow_condition%num_sub_conditions > RICHARDS_CONCENTRATION_DOF) then
       enthalpy_flag = .true.
     else
       enthalpy_flag = .false.
     endif
 
-    qsrc1 = source_sink%condition%pressure%dataset%cur_value(1)
-    tsrc1 = source_sink%condition%temperature%dataset%cur_value(1)
-    csrc1 = source_sink%condition%concentration%dataset%cur_value(1)
-    if (enthalpy_flag) hsrc1 = source_sink%condition%enthalpy%dataset%cur_value(1)
+    qsrc1 = source_sink%flow_condition%pressure%dataset%cur_value(1)
+    tsrc1 = source_sink%flow_condition%temperature%dataset%cur_value(1)
+    csrc1 = source_sink%flow_condition%concentration%dataset%cur_value(1)
+    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%dataset%cur_value(1)
 
     qsrc1 = qsrc1 / option%fmwh2o ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
     csrc1 = csrc1 / option%fmwco2
@@ -2271,7 +2271,7 @@ subroutine RichardsJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   endif
 #if 1
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%flow_boundary_conditions%first
+  boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -2308,8 +2308,8 @@ subroutine RichardsJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                                           cur_connection_set%dist(1:3,iconn))
       icap_dn = int(icap_loc_p(ghosted_id))  
 
-      call RichardsBCFluxDerivative(boundary_condition%condition%itype, &
-                                boundary_condition%aux_real_var(:,iconn), &
+      call RichardsBCFluxDerivative(boundary_condition%flow_condition%itype, &
+                                boundary_condition%flow_aux_real_var(:,iconn), &
                                 aux_vars_bc(sum_connection), &
                                 aux_vars(ghosted_id), &
                                 porosity_loc_p(ghosted_id), &
@@ -2566,7 +2566,7 @@ function RichardsGetTecplotHeader(realization)
            '"P [Pa]",' // &
            '"sl",' // &
            '"Ul"' 
-  do i=1,option%nspec
+  do i=1,option%nflowspec
     write(string2,'('',"Xl('',i2,'')"'')') i
     string = trim(string) // trim(string2)
   enddo

@@ -124,13 +124,15 @@ end function ConditionCreate
 ! date: 02/04/08
 !
 ! ************************************************************************** !
-function SubConditionCreate()
+function SubConditionCreate(ndof)
 
   use Option_module
   
   implicit none
   
   type(sub_condition_type), pointer :: SubConditionCreate
+  
+  PetscInt :: ndof
   
   type(sub_condition_type), pointer :: sub_condition
   
@@ -140,7 +142,7 @@ function SubConditionCreate()
   sub_condition%ctype = ""
 
   call ConditionDatasetInit(sub_condition%dataset)
-  sub_condition%dataset%rank = 1
+  sub_condition%dataset%rank = ndof
   call ConditionDatasetInit(sub_condition%gradient)
   sub_condition%gradient%rank = 3
   call ConditionDatasetInit(sub_condition%datum)
@@ -355,10 +357,14 @@ subroutine ConditionRead(condition,option,fid)
   call ConditionDatasetInit(default_gradient)
   default_gradient%rank = 3
   
-  pressure => SubConditionCreate()
-  temperature => SubConditionCreate()
-  concentration => SubConditionCreate()
-  enthalpy => SubConditionCreate()
+  pressure => SubConditionCreate(option%nphase)
+  temperature => SubConditionCreate(ONE_INTEGER)
+  if (option%ntrandof > 0) then
+    concentration => SubConditionCreate(option%ntrandof)
+  else
+    concentration => SubConditionCreate(ONE_INTEGER)
+  endif
+  enthalpy => SubConditionCreate(option%nphase)
 
   select case(option%iflowmode)
     case(RICHARDS_MODE,MPH_MODE)
@@ -865,7 +871,7 @@ end subroutine ConditionReadValuesFromFile
 ! date: 11/02/07
 !
 ! ************************************************************************** !
-subroutine ConditionUpdate(condition_list,option,time)
+subroutine ConditionUpdate(condition_list,option,time,iclass)
 
   use Option_module
   
@@ -874,6 +880,7 @@ subroutine ConditionUpdate(condition_list,option,time)
   type(condition_list_type) :: condition_list
   type(option_type) :: option
   PetscReal :: time
+  PetscInt :: iclass
   
   type(condition_type), pointer :: condition
   type(sub_condition_type), pointer :: sub_condition
@@ -883,15 +890,20 @@ subroutine ConditionUpdate(condition_list,option,time)
   do
     if (.not.associated(condition)) exit
     
-    do isub_condition = 1, condition%num_sub_conditions
+    if (iclass == NULL_CLASS .or. &
+        iclass == condition%iclass) then
+    
+      do isub_condition = 1, condition%num_sub_conditions
 
-      sub_condition => condition%sub_condition_ptr(isub_condition)%ptr
+        sub_condition => condition%sub_condition_ptr(isub_condition)%ptr
+        
+        call SubConditionUpdateDataset(option,time,sub_condition%dataset)
+        call SubConditionUpdateDataset(option,time,sub_condition%datum)
+        call SubConditionUpdateDataset(option,time,sub_condition%gradient)
+        
+      enddo
       
-      call SubConditionUpdateDataset(option,time,sub_condition%dataset)
-      call SubConditionUpdateDataset(option,time,sub_condition%datum)
-      call SubConditionUpdateDataset(option,time,sub_condition%gradient)
-      
-    enddo
+    endif
         
     condition => condition%next
     

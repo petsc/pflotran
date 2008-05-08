@@ -164,7 +164,13 @@ subroutine Init(simulation,filename)
     call printMsg(option,"  Beginning set up of FLOW SNES ")
 
     call SolverCreateSNES(flow_solver)  
+    call SNESSetOptionsPrefix(flow_solver%snes, "flow_", ierr)
     call DiscretizationCreateJacobian(discretization,NFLOWDOF,flow_solver%J,option)
+    call MatSetOptionsPrefix(flow_solver%J, "flow_", ierr)
+    if (option%use_galerkin_mg) then
+      call DiscretizationCreateInterpolation(discretization,NFLOWDOF, &
+                                             flow_solver%interpolation,option)
+    endif
     
     select case(option%iflowmode)
       case(RICHARDS_MODE)
@@ -181,7 +187,7 @@ subroutine Init(simulation,filename)
                              realization, ierr)
     end select
 
-    call SolverSetSNESOptions(flow_solver)
+    call SolverSetSNESOptions(flow_solver, option)
 
     string = 'Solver: ' // trim(flow_solver%ksp_type)
     call printMsg(option,string)
@@ -211,15 +217,22 @@ subroutine Init(simulation,filename)
     call printMsg(option,"  Beginning set up of TRAN SNES ")
     
     call SolverCreateSNES(tran_solver)  
+    call SNESSetOptionsPrefix(tran_solver%snes, "tran_", ierr)
     call DiscretizationCreateJacobian(discretization,NTRANDOF,tran_solver%J,option)
+    call MatSetOptionsPrefix(tran_solver%J, "tran_", ierr)
     
+    if (option%use_galerkin_mg) then
+      call DiscretizationCreateInterpolation(discretization,NTRANDOF, &
+                                             tran_solver%interpolation,option)
+    endif
+
     call SNESSetFunction(tran_solver%snes,field%tran_r,RTResidual,realization,ierr)
     call SNESSetJacobian(tran_solver%snes, tran_solver%J, tran_solver%J, RTJacobian, &
                          realization, ierr)
 
     call SNESLineSearchSet(tran_solver%snes,SNESLineSearchNo,PETSC_NULL_OBJECT,ierr)
 
-    call SolverSetSNESOptions(tran_solver)
+    call SolverSetSNESOptions(tran_solver, option)
 
     string = 'Solver: ' // trim(tran_solver%ksp_type)
     call printMsg(option,string)
@@ -361,6 +374,7 @@ subroutine readRequiredCardsFromInput(realization,filename)
   use Level_module
   use Realization_module
   use AMR_Grid_module
+  use Chemistry_module
 
   implicit none
 
@@ -466,6 +480,17 @@ subroutine readRequiredCardsFromInput(realization,filename)
     endif
   endif
   
+!.........................................................................
+
+  ! COMP information
+  string = "CHEMISTRY"
+  call fiFindStringInFile(IUNIT1,string,ierr)
+
+  if (ierr == 0) then
+    realization%chemistry => ChemistryCreate()
+    call ChemistryRead(realization%chemistry,IUNIT1,option)        
+  endif
+
 !.........................................................................
 
   ! COMP information
@@ -686,7 +711,7 @@ subroutine readInput(simulation,filename)
           call ConditionAddToList(condition,realization%flow_conditions)
         else
           call ConditionAddToList(condition,realization%transport_conditions)
-        endif
+        endif  
         
 !....................
       case ('BOUNDARY_CONDITION')
@@ -1139,6 +1164,31 @@ subroutine readInput(simulation,filename)
               call fiSkipToEND(IUNIT1,option%myrank,card)
             endif
         end select
+
+!....................
+
+      case ('FLUID_PROPERTY','FLUID_PROPERTIES')
+
+        realization%fluid_properties => FluidPropertyCreate(option%nphase)
+        
+        count = 0
+        do
+          call fiReadFlotranString(IUNIT1,string,ierr)
+          call fiReadStringErrorMsg(option%myrank,'THRM',ierr)
+          
+          if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
+              fiStringCompare(string,'END',THREE_INTEGER)) exit
+         
+          count = count + 1 
+          if (count > option%nphase) exit              
+                        
+          call fiReadDouble(string,realization%fluid_properties%diff_base(count),ierr)
+          call fiErrorMsg(option%myrank,'diff_base','FLUID_PROPERTY', ierr)          
+        
+          call fiReadDouble(string,realization%fluid_properties%diff_exp(count),ierr)
+          call fiErrorMsg(option%myrank,'diff_base','FLUID_PROPERTY', ierr)          
+
+        enddo
         
 !....................
 
@@ -1659,17 +1709,17 @@ subroutine setFlowMode(option)
       option%iflowmode = RICHARDS_MODE
       option%nphase = 1
       option%nflowdof = 3
-      option%nspec = 2
+      option%nflowspec = 2
     case('RICHARDS_LITE')
       option%iflowmode = RICHARDS_LITE_MODE
       option%nphase = 1
       option%nflowdof = 1
-      option%nspec = 1
+      option%nflowspec = 1
     case('MPH','MPHASE')
       option%iflowmode = MPH_MODE
       option%nphase = 2
       option%nflowdof = 3
-      option%nspec = 2
+      option%nflowspec = 2
       option%itable = 2
     case default
       call printErrMsg(option,'Mode: '//trim(option%flowmode)//' not recognized.')
@@ -1916,7 +1966,7 @@ subroutine assignUniformVelocity(realization)
   enddo    
 
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%transport_boundary_conditions%first
+  boundary_condition => patch%boundary_conditions%first
   sum_connection = 0
   do 
     if (.not.associated(boundary_condition)) exit
@@ -1960,12 +2010,9 @@ subroutine verifyAllCouplers(realization)
     do
       if (.not.associated(cur_patch)) exit
 
-        call verifyCoupler(realization,cur_patch,cur_patch%flow_initial_conditions)
-        call verifyCoupler(realization,cur_patch,cur_patch%flow_boundary_conditions)
-        call verifyCoupler(realization,cur_patch,cur_patch%flow_source_sinks)
-        call verifyCoupler(realization,cur_patch,cur_patch%transport_initial_conditions)
-        call verifyCoupler(realization,cur_patch,cur_patch%transport_boundary_conditions)
-        call verifyCoupler(realization,cur_patch,cur_patch%transport_source_sinks)
+        call verifyCoupler(realization,cur_patch,cur_patch%initial_conditions)
+        call verifyCoupler(realization,cur_patch,cur_patch%boundary_conditions)
+        call verifyCoupler(realization,cur_patch,cur_patch%source_sinks)
 
       cur_patch => cur_patch%next
     enddo
@@ -2038,15 +2085,13 @@ subroutine verifyCoupler(realization,patch,coupler_list)
       endif
     endif
     call VecRestoreArrayF90(global_vec,vec_ptr,ierr) 
-    select case(coupler%condition%iclass)
-      case(FLOW_CLASS)
-        dataset_name = 'flow'
-      case(TRANSPORT_CLASS)
-        dataset_name = 'tran'
-    end select
+    if (len_trim(coupler%flow_condition_name) > 0) then
+      dataset_name = coupler%flow_condition_name
+    elseif (len_trim(coupler%tran_condition_name) > 0) then
+      dataset_name = coupler%tran_condition_name
+    endif
     write(word,*) patch%id
     dataset_name = trim(dataset_name) // '_' // &
-                   trim(coupler%condition%name) // '_' // &
                    trim(coupler%region%name) // '_' // &
                    trim(adjustl(word))
     dataset_name = dataset_name(1:28)

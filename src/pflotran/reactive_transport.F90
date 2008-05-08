@@ -1,7 +1,7 @@
 module Reactive_Transport_module
 
   use Transport_module
-  use Reaction_module
+  use Chemistry_module
   use Reactive_Transport_Aux_module
   
   implicit none
@@ -131,7 +131,7 @@ subroutine RTSetupPatch(realization)
   
   ! count the number of boundary connections and allocate
   ! aux_var data structures for them
-  boundary_condition => patch%transport_boundary_conditions%first
+  boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -446,11 +446,13 @@ subroutine RTAccumulation(aux_var,por,sat,den,vol,option,Res)
   PetscReal :: Res(option%ncomp)
   
   PetscInt :: icomp
+  PetscInt :: iphase
   PetscReal :: psdv_t
   
+  iphase = 1
   psdv_t = por*sat*den*vol/option%dt
   do icomp=1,option%ncomp
-    Res(icomp) = psdv_t*aux_var%total(icomp) 
+    Res(icomp) = psdv_t*aux_var%total(icomp,iphase) 
   enddo
 
 end subroutine RTAccumulation
@@ -536,6 +538,7 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
   PetscReal, pointer :: porosity_loc_p(:), saturation_loc_p(:), tor_loc_p(:), &
                         volume_p(:), density_loc_p(:)
   PetscInt :: local_id, ghosted_id
+  PetscInt :: iphase
   PetscInt :: i, istart, iend                        
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
@@ -595,7 +598,8 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
 #endif
 #if 1
   ! Source/sink terms -------------------------------------
-  source_sink => patch%transport_source_sinks%first 
+  iphase = 1
+  source_sink => patch%source_sinks%first 
   do 
     if (.not.associated(source_sink)) exit
     
@@ -614,8 +618,8 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
                             saturation_loc_p(ghosted_id)* &
                             density_loc_p(ghosted_id)* &
                             volume_p(local_id)* &
-                            (source_sink%condition%concentration%dataset%cur_value(1)- &
-                             aux_vars(ghosted_id)%total(1:option%ncomp))
+                            (source_sink%tran_condition%concentration%dataset%cur_value(1)- &
+                             aux_vars(ghosted_id)%total(1:option%ncomp,iphase))
       iend = local_id*option%ncomp
       istart = iend-option%ncomp+1
       r_p(istart:iend) = r_p(istart:iend) + Res(1:option%ncomp)                                  
@@ -679,7 +683,7 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
 #endif
 #if 1
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%transport_boundary_conditions%first
+  boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -696,7 +700,7 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
 
-      call TBCFlux(boundary_condition%condition%itype(1), &
+      call TBCFlux(boundary_condition%tran_condition%itype(1), &
                    aux_vars_bc(sum_connection), &
                    aux_vars(ghosted_id), &
                    porosity_loc_p(ghosted_id), &
@@ -876,7 +880,7 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 #endif
 #if 1
   ! Source/Sink terms -------------------------------------
-  source_sink => patch%transport_source_sinks%first 
+  source_sink => patch%source_sinks%first 
   do 
     if (.not.associated(source_sink)) exit
     
@@ -898,7 +902,7 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                              density_loc_p(ghosted_id)* &
                              volume_p(local_id)
 !        Jup(istart,istart) = 1.d-1* &
-!                             1.d0/source_sink%condition%concentration%dataset%cur_value(1)
+!                             1.d0/source_sink%tran_condition%concentration%dataset%cur_value(1)
       enddo
       call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)                        
     enddo
@@ -963,7 +967,7 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 #endif
 #if 1
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%transport_boundary_conditions%first
+  boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -980,7 +984,7 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
 
-      call TBCFluxDerivative(boundary_condition%condition%itype(1), &
+      call TBCFluxDerivative(boundary_condition%tran_condition%itype(1), &
                    aux_vars_bc(sum_connection), &
                    aux_vars(ghosted_id), &
                    porosity_loc_p(ghosted_id), &
@@ -1083,7 +1087,7 @@ subroutine RTUpdateAuxVars(realization)
                          option)
   enddo
 
-  boundary_condition => patch%transport_boundary_conditions%first
+  boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -1097,9 +1101,9 @@ subroutine RTUpdateAuxVars(realization)
       endif
 
       do idof=1,option%ncomp
-        select case(boundary_condition%condition%itype(idof))
+        select case(boundary_condition%tran_condition%itype(idof))
           case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,NEUMANN_BC)
-            xxbc(idof) = boundary_condition%aux_real_var(idof,iconn)
+            xxbc(idof) = boundary_condition%tran_aux_real_var(idof,iconn)
           case(ZERO_GRADIENT_BC)
             xxbc(idof) = xx_loc_p((ghosted_id-1)*option%ncomp+idof)
         end select
@@ -1220,6 +1224,7 @@ subroutine RTGetVarFromArray(realization,vec,ivar,isubvar)
   Vec :: vec
   PetscInt :: ivar
   PetscInt :: isubvar
+  PetscInt :: iphase
 
   PetscInt :: local_id, ghosted_id
   type(grid_type), pointer :: grid
@@ -1236,6 +1241,7 @@ subroutine RTGetVarFromArray(realization,vec,ivar,isubvar)
 
   if (.not.aux_vars_up_to_date) call RTUpdateAuxVars(realization)
 
+  iphase = 1
   select case(ivar)
     case(PRIMARY_SPEC_CONCENTRATION)
       call VecStrideGather(field%tran_xx,isubvar,vec,INSERT_VALUES,ierr)
@@ -1245,7 +1251,7 @@ subroutine RTGetVarFromArray(realization,vec,ivar,isubvar)
         case(TOTAL_CONCENTRATION)
           do local_id=1,grid%nlmax
             ghosted_id = grid%nL2G(local_id)    
-            vec_ptr(local_id) = patch%aux%RT%aux_vars(ghosted_id)%total(isubvar)
+            vec_ptr(local_id) = patch%aux%RT%aux_vars(ghosted_id)%total(isubvar,iphase)
           enddo
         case(MATERIAL_ID)
           do local_id=1,grid%nlmax
@@ -1279,6 +1285,7 @@ function RTGetVarFromArrayAtCell(realization,ivar,isubvar,local_id)
   type(realization_type) :: realization
   PetscInt :: ivar
   PetscInt :: isubvar
+  PetscInt :: iphase
   PetscInt :: local_id
 
   PetscReal :: value
@@ -1297,6 +1304,7 @@ function RTGetVarFromArrayAtCell(realization,ivar,isubvar,local_id)
 
   if (.not.aux_vars_up_to_date) call RTUpdateAuxVars(realization)
 
+  iphase = 1
   select case(ivar)
     case(PRIMARY_SPEC_CONCENTRATION)
       call VecGetArrayF90(field%tran_xx,vec_ptr,ierr)
@@ -1304,7 +1312,7 @@ function RTGetVarFromArrayAtCell(realization,ivar,isubvar,local_id)
       call VecRestoreArrayF90(field%tran_xx,vec_ptr,ierr)
     case(TOTAL_CONCENTRATION)
       ghosted_id = grid%nL2G(local_id)    
-      value = patch%aux%RT%aux_vars(ghosted_id)%total(isubvar)
+      value = patch%aux%RT%aux_vars(ghosted_id)%total(isubvar,iphase)
   end select
   
   RTGetVarFromArrayAtCell = value

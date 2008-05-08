@@ -9,6 +9,8 @@ module Realization_module
   use Debug_module
   use Waypoint_module
   
+  use Chemistry_module
+  
   use Level_module
   use Patch_module
   
@@ -33,11 +35,14 @@ private
     type(condition_list_type), pointer :: flow_conditions
     type(condition_list_type), pointer :: transport_conditions
     
+    type(reaction_type), pointer :: chemistry
+    
     type(material_type), pointer :: materials
     type(material_ptr_type), pointer :: material_array(:)
     type(thermal_property_type), pointer :: thermal_properties
     type(saturation_function_type), pointer :: saturation_functions
     type(saturation_function_ptr_type), pointer :: saturation_function_array(:)
+    type(fluid_property_type), pointer :: fluid_properties
     
     type(waypoint_list_type), pointer :: waypoints
     
@@ -84,7 +89,6 @@ function RealizationCreate()
 
   allocate(realization%flow_conditions)
   call ConditionInitList(realization%flow_conditions)
-
   allocate(realization%transport_conditions)
   call ConditionInitList(realization%transport_conditions)
 
@@ -93,6 +97,9 @@ function RealizationCreate()
   nullify(realization%thermal_properties)
   nullify(realization%saturation_functions)
   nullify(realization%saturation_function_array)
+  nullify(realization%fluid_properties)
+  
+  nullify(realization%chemistry)
   
   RealizationCreate => realization
   
@@ -284,11 +291,11 @@ subroutine RealizationAddCoupler(realization,coupler)
       ! only add to flow list for now, since they will be split out later
       select case(coupler%itype)
         case(BOUNDARY_COUPLER_TYPE)
-          call CouplerAddToList(CouplerCreate(coupler),cur_patch%flow_boundary_conditions)
+          call CouplerAddToList(CouplerCreate(coupler),cur_patch%boundary_conditions)
         case(INITIAL_COUPLER_TYPE)
-          call CouplerAddToList(CouplerCreate(coupler),cur_patch%flow_initial_conditions)
+          call CouplerAddToList(CouplerCreate(coupler),cur_patch%initial_conditions)
         case(SRC_SINK_COUPLER_TYPE)
-          call CouplerAddToList(CouplerCreate(coupler),cur_patch%flow_source_sinks)
+          call CouplerAddToList(CouplerCreate(coupler),cur_patch%source_sinks)
       end select
       cur_patch => cur_patch%next
     enddo
@@ -489,9 +496,9 @@ subroutine RealizationUpdate(realization)
   
   ! must update conditions first
   call ConditionUpdate(realization%flow_conditions,realization%option, &
-                       realization%option%time)
+                       realization%option%time,NULL_CLASS)
   call ConditionUpdate(realization%transport_conditions,realization%option, &
-                       realization%option%time)
+                       realization%option%time,NULL_CLASS)
   call RealizUpdateAllCouplerAuxVars(realization,force_update_flag)
 ! currently don't use aux_vars, just condition for src/sinks
 !  call RealizationUpdateSrcSinks(realization)
@@ -582,7 +589,7 @@ subroutine RealizAssignFlowInitCond(realization)
         
         xx_p = -999.d0
         
-        initial_condition => cur_patch%flow_initial_conditions%first
+        initial_condition => cur_patch%initial_conditions%first
         do
         
           if (.not.associated(initial_condition)) exit
@@ -602,9 +609,9 @@ subroutine RealizAssignFlowInitCond(realization)
               endif
               do idof = 1, option%nflowdof
                 xx_p(ibegin+idof-1) = &
-                  initial_condition%condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
+                  initial_condition%flow_condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
               enddo
-              iphase_loc_p(ghosted_id)=initial_condition%condition%iphase
+              iphase_loc_p(ghosted_id)=initial_condition%flow_condition%iphase
             enddo
           else
             do iconn=1,initial_condition%connection_set%num_connections
@@ -620,8 +627,8 @@ subroutine RealizAssignFlowInitCond(realization)
                 endif
               endif
               xx_p(ibegin:iend) = &
-                initial_condition%aux_real_var(1:option%nflowdof,iconn)
-              iphase_loc_p(ghosted_id)=initial_condition%aux_int_var(1,iconn)
+                initial_condition%flow_aux_real_var(1:option%nflowdof,iconn)
+              iphase_loc_p(ghosted_id)=initial_condition%flow_aux_int_var(1,iconn)
             enddo
           endif
           initial_condition => initial_condition%next
@@ -703,7 +710,7 @@ subroutine RealizAssignTransportInitCond(realization)
         
         xx_p = -999.d0
         
-        initial_condition => cur_patch%transport_initial_conditions%first
+        initial_condition => cur_patch%initial_conditions%first
         do
         
           if (.not.associated(initial_condition)) exit
@@ -722,7 +729,7 @@ subroutine RealizAssignTransportInitCond(realization)
               endif
               do idof = 1, option%ntrandof
                 xx_p(ibegin+idof-1) = &
-                  initial_condition%condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
+                  initial_condition%tran_condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
               enddo
             enddo
           else
@@ -738,7 +745,7 @@ subroutine RealizAssignTransportInitCond(realization)
                 endif
               endif
               xx_p(ibegin:iend) = &
-                initial_condition%aux_real_var(1:option%ntrandof,iconn)
+                initial_condition%tran_aux_real_var(1:option%ntrandof,iconn)
             enddo
           endif
           initial_condition => initial_condition%next
@@ -817,54 +824,46 @@ subroutine RealizationAddWaypointsToList(realization)
 
   waypoint_list => realization%waypoints
 
-  if (realization%option%nflowdof > 0) then
-  ! FLOW ----------------
-    ! boundary conditions
-    cur_condition => realization%flow_conditions%first
-    do
-      if (.not.associated(cur_condition)) exit
-      if (cur_condition%sync_time_with_update) then
-        do isub_condition = 1, cur_condition%num_sub_conditions
-          sub_condition => cur_condition%sub_condition_ptr(isub_condition)%ptr
-          itime = 1
-          if (sub_condition%dataset%max_time_index == 1 .and. &
-              sub_condition%dataset%times(itime) > 1.d-40) then
-            waypoint => WaypointCreate()
-            waypoint%time = cur_condition%pressure%dataset%times(itime)
-            waypoint%update_bcs = .true.
-            call WaypointInsertInList(waypoint,waypoint_list)
-            exit
-          endif
-        enddo
-      endif
-      cur_condition => cur_condition%next
-    enddo
-  endif
-    
-  if (realization%option%ntrandof > 0) then
-  ! TRANSPORT ----------------
-    ! boundary conditions
-    cur_condition => realization%transport_conditions%first
-    do
-      if (.not.associated(cur_condition)) exit
-      if (cur_condition%sync_time_with_update) then
-        do isub_condition = 1, cur_condition%num_sub_conditions
-          sub_condition => cur_condition%sub_condition_ptr(isub_condition)%ptr
-          itime = 1
-          if (sub_condition%dataset%max_time_index == 1 .and. &
-              sub_condition%dataset%times(itime) > 1.d-40) then
-            waypoint => WaypointCreate()
-            waypoint%time = cur_condition%pressure%dataset%times(itime)
-            waypoint%update_bcs = .true.
-            call WaypointInsertInList(waypoint,waypoint_list)
-            exit
-          endif
-        enddo
-      endif
-      cur_condition => cur_condition%next
-    enddo
-  endif
-  
+  cur_condition => realization%flow_conditions%first
+  do
+    if (.not.associated(cur_condition)) exit
+    if (cur_condition%sync_time_with_update) then
+      do isub_condition = 1, cur_condition%num_sub_conditions
+        sub_condition => cur_condition%sub_condition_ptr(isub_condition)%ptr
+        itime = 1
+        if (sub_condition%dataset%max_time_index == 1 .and. &
+            sub_condition%dataset%times(itime) > 1.d-40) then
+          waypoint => WaypointCreate()
+          waypoint%time = sub_condition%dataset%times(itime)
+          waypoint%update_bcs = .true.
+          call WaypointInsertInList(waypoint,waypoint_list)
+          exit
+        endif
+      enddo
+    endif
+    cur_condition => cur_condition%next
+  enddo
+      
+  cur_condition => realization%transport_conditions%first
+  do
+    if (.not.associated(cur_condition)) exit
+    if (cur_condition%sync_time_with_update) then
+      do isub_condition = 1, cur_condition%num_sub_conditions
+        sub_condition => cur_condition%sub_condition_ptr(isub_condition)%ptr
+        itime = 1
+        if (sub_condition%dataset%max_time_index == 1 .and. &
+            sub_condition%dataset%times(itime) > 1.d-40) then
+          waypoint => WaypointCreate()
+          waypoint%time = sub_condition%dataset%times(itime)
+          waypoint%update_bcs = .true.
+          call WaypointInsertInList(waypoint,waypoint_list)
+          exit
+        endif
+      enddo
+    endif
+    cur_condition => cur_condition%next
+  enddo
+      
 end subroutine RealizationAddWaypointsToList
 
 ! ************************************************************************** !
@@ -893,6 +892,8 @@ subroutine RealizationDestroy(realization)
 
   if (associated(realization%debug)) deallocate(realization%debug)
   nullify(realization%debug)
+  
+  call FluidPropertyDestroy(realization%fluid_properties)
   
   if (associated(realization%material_array)) &
     deallocate(realization%material_array)
