@@ -131,7 +131,7 @@ subroutine RTSetupPatch(realization)
   
   ! count the number of boundary connections and allocate
   ! aux_var data structures for them
-  boundary_condition => patch%transport_boundary_conditions%first
+  boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -599,7 +599,7 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
 #if 1
   ! Source/sink terms -------------------------------------
   iphase = 1
-  source_sink => patch%transport_source_sinks%first 
+  source_sink => patch%source_sinks%first 
   do 
     if (.not.associated(source_sink)) exit
     
@@ -618,7 +618,7 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
                             saturation_loc_p(ghosted_id)* &
                             density_loc_p(ghosted_id)* &
                             volume_p(local_id)* &
-                            (source_sink%condition%concentration%dataset%cur_value(1)- &
+                            (source_sink%tran_condition%concentration%dataset%cur_value(1)- &
                              aux_vars(ghosted_id)%total(1:option%ncomp,iphase))
       iend = local_id*option%ncomp
       istart = iend-option%ncomp+1
@@ -683,7 +683,7 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
 #endif
 #if 1
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%transport_boundary_conditions%first
+  boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -700,7 +700,7 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
 
-      call TBCFlux(boundary_condition%condition%itype(1), &
+      call TBCFlux(boundary_condition%tran_condition%itype(1), &
                    aux_vars_bc(sum_connection), &
                    aux_vars(ghosted_id), &
                    porosity_loc_p(ghosted_id), &
@@ -880,7 +880,7 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 #endif
 #if 1
   ! Source/Sink terms -------------------------------------
-  source_sink => patch%transport_source_sinks%first 
+  source_sink => patch%source_sinks%first 
   do 
     if (.not.associated(source_sink)) exit
     
@@ -902,7 +902,7 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                              density_loc_p(ghosted_id)* &
                              volume_p(local_id)
 !        Jup(istart,istart) = 1.d-1* &
-!                             1.d0/source_sink%condition%concentration%dataset%cur_value(1)
+!                             1.d0/source_sink%tran_condition%concentration%dataset%cur_value(1)
       enddo
       call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)                        
     enddo
@@ -967,7 +967,7 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 #endif
 #if 1
   ! Boundary Flux Terms -----------------------------------
-  boundary_condition => patch%transport_boundary_conditions%first
+  boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -984,7 +984,7 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
 
-      call TBCFluxDerivative(boundary_condition%condition%itype(1), &
+      call TBCFluxDerivative(boundary_condition%tran_condition%itype(1), &
                    aux_vars_bc(sum_connection), &
                    aux_vars(ghosted_id), &
                    porosity_loc_p(ghosted_id), &
@@ -1087,7 +1087,7 @@ subroutine RTUpdateAuxVars(realization)
                          option)
   enddo
 
-  boundary_condition => patch%transport_boundary_conditions%first
+  boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
   do 
     if (.not.associated(boundary_condition)) exit
@@ -1101,9 +1101,9 @@ subroutine RTUpdateAuxVars(realization)
       endif
 
       do idof=1,option%ncomp
-        select case(boundary_condition%condition%itype(idof))
+        select case(boundary_condition%tran_condition%itype(idof))
           case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,NEUMANN_BC)
-            xxbc(idof) = boundary_condition%aux_real_var(idof,iconn)
+            xxbc(idof) = boundary_condition%tran_aux_real_var(idof,iconn)
           case(ZERO_GRADIENT_BC)
             xxbc(idof) = xx_loc_p((ghosted_id-1)*option%ncomp+idof)
         end select

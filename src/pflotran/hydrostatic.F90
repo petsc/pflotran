@@ -235,7 +235,7 @@ subroutine HydrostaticUpdateCouplerBetter(coupler,option,grid)
   
   type(connection_set_type), pointer :: cur_connection_set
   
-  condition => coupler%condition
+  condition => coupler%flow_condition
     
   xm_nacl = option%m_nacl * fmwnacl
   xm_nacl = xm_nacl /(1.d3 + xm_nacl)
@@ -393,9 +393,9 @@ subroutine HydrostaticUpdateCouplerBetter(coupler,option,grid)
     endif
 
     if (condition%pressure%itype == SEEPAGE_BC) then
-      coupler%aux_real_var(1,iconn) = max(pressure,option%pref)
+      coupler%flow_aux_real_var(1,iconn) = max(pressure,option%pref)
     else
-      coupler%aux_real_var(1,iconn) = pressure
+      coupler%flow_aux_real_var(1,iconn) = pressure
     endif
 
     if (option%iflowmode /= RICHARDS_LITE_MODE) then
@@ -403,15 +403,15 @@ subroutine HydrostaticUpdateCouplerBetter(coupler,option,grid)
                     temperature_gradient(X_DIRECTION)*dist_x + & ! gradient in K/m
                     temperature_gradient(Y_DIRECTION)*dist_y + &
                     temperature_gradient(Z_DIRECTION)*dist_z 
-      coupler%aux_real_var(2,iconn) = temperature
-      coupler%aux_real_var(3,iconn) = concentration_at_datum
+      coupler%flow_aux_real_var(2,iconn) = temperature
+      coupler%flow_aux_real_var(3,iconn) = concentration_at_datum
     endif
 
-    coupler%aux_int_var(1,iconn) = 1
+    coupler%flow_aux_int_var(1,iconn) = 1
 !    if (structured_pressure(iz) > patm) then
-!      coupler%aux_int_var(1,iconn) = condition%iphase
+!      coupler%flow_aux_int_var(1,iconn) = condition%iphase
 !    else
-!      coupler%aux_int_var(1,iconn) = 3
+!      coupler%flow_aux_int_var(1,iconn) = 3
 !    endif
       
   enddo

@@ -2213,7 +2213,7 @@ function GetVelocityAtCell(fid,realization,local_id)
   enddo
 
   ! boundary velocities
-  boundary_condition => patch%flow_boundary_conditions%first
+  boundary_condition => patch%boundary_conditions%first
   sum_connection = 0
   do
     if (.not.associated(boundary_condition)) exit
@@ -2373,7 +2373,7 @@ function GetVelocityAtCoord(fid,realization,local_id,coordinate)
   enddo
 
   ! boundary velocities
-  boundary_condition => patch%flow_boundary_conditions%first
+  boundary_condition => patch%boundary_conditions%first
   sum_connection = 0
   do
     if (.not.associated(boundary_condition)) exit
@@ -3325,7 +3325,7 @@ subroutine GetCellCenteredVelocities(realization,vec,iphase,direction)
   enddo
 
   ! boundary velocities
-  boundary_condition => patch%flow_boundary_conditions%first
+  boundary_condition => patch%boundary_conditions%first
   sum_connection = 0
   do
     if (.not.associated(boundary_condition)) exit
@@ -3454,7 +3454,7 @@ subroutine ComputeFlowMassBalance(realization)
   enddo
 
   ! boundary velocities
-  boundary_condition => patch%flow_boundary_conditions%first
+  boundary_condition => patch%boundary_conditions%first
   sum_connection = 0
   do
     if (.not.associated(boundary_condition)) exit
@@ -3617,7 +3617,7 @@ subroutine ComputeFlowCellVelocityStats(realization)
       enddo
 
       ! boundary velocities
-      boundary_condition => patch%flow_boundary_conditions%first
+      boundary_condition => patch%boundary_conditions%first
       sum_connection = 0
       do
         if (.not.associated(boundary_condition)) exit
