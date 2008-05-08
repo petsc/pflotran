@@ -220,12 +220,13 @@ end subroutine PatchLocalizeRegions
 
 ! ************************************************************************** !
 !
-! PatchProcessCouplers: Deallocates a patch
+! PatchProcessCouplers: Assigns conditions and regions to couplers
 ! author: Glenn Hammond
 ! date: 02/22/08
 !
 ! ************************************************************************** !
-subroutine PatchProcessCouplers(patch,conditions,materials,option)
+subroutine PatchProcessCouplers(patch,flow_conditions,transport_conditions, &
+                                materials,option)
 
   use Option_module
   use Material_module
@@ -236,7 +237,8 @@ subroutine PatchProcessCouplers(patch,conditions,materials,option)
   
   type(patch_type) :: patch
   type(material_type), pointer :: materials
-  type(condition_list_type) :: conditions
+  type(condition_list_type) :: flow_conditions
+  type(condition_list_type) :: transport_conditions
   type(option_type) :: option
   
   character(len=MAXSTRINGLENGTH) :: string
@@ -262,20 +264,30 @@ subroutine PatchProcessCouplers(patch,conditions,materials,option)
     ! pointer to flow condition
     if (len_trim(coupler%flow_condition_name) > 0) then
       coupler%flow_condition => &
-        ConditionGetPtrFromList(coupler%flow_condition_name,conditions)
+        ConditionGetPtrFromList(coupler%flow_condition_name,flow_conditions)
       if (.not.associated(coupler%flow_condition)) then
         string = 'Condition ' // trim(coupler%flow_condition_name) // &
                  ' not found in boundary condition list'
+        call printErrMsg(option,string)
+      endif
+      if (coupler%flow_condition%iclass /= FLOW_CLASS) then
+        string = 'Condition ' // trim(coupler%flow_condition_name) // &
+                 ' is not of the FLOW class'
         call printErrMsg(option,string)
       endif
     endif
     ! pointer to transport condition
     if (len_trim(coupler%tran_condition_name) > 0) then
       coupler%tran_condition => &
-        ConditionGetPtrFromList(coupler%tran_condition_name,conditions)
+        ConditionGetPtrFromList(coupler%tran_condition_name,transport_conditions)
       if (.not.associated(coupler%tran_condition)) then
         string = 'Condition ' // trim(coupler%tran_condition_name) // &
                  ' not found in boundary condition list'
+        call printErrMsg(option,string)
+      endif
+      if (coupler%tran_condition%iclass /= TRANSPORT_CLASS) then
+        string = 'Condition ' // trim(coupler%tran_condition_name) // &
+                 ' is not of the TRAN class'
         call printErrMsg(option,string)
       endif
     endif
@@ -298,20 +310,30 @@ subroutine PatchProcessCouplers(patch,conditions,materials,option)
     ! pointer to flow condition
     if (len_trim(coupler%flow_condition_name) > 0) then
       coupler%flow_condition => &
-        ConditionGetPtrFromList(coupler%flow_condition_name,conditions)
+        ConditionGetPtrFromList(coupler%flow_condition_name,flow_conditions)
       if (.not.associated(coupler%flow_condition)) then
         string = 'Condition ' // trim(coupler%flow_condition_name) // &
                  ' not found in initial condition list'
+        call printErrMsg(option,string)
+      endif
+      if (coupler%flow_condition%iclass /= FLOW_CLASS) then
+        string = 'Condition ' // trim(coupler%flow_condition_name) // &
+                 ' is not of the FLOW class'
         call printErrMsg(option,string)
       endif
     endif
     ! pointer to transport condition
     if (len_trim(coupler%tran_condition_name) > 0) then
       coupler%tran_condition => &
-        ConditionGetPtrFromList(coupler%tran_condition_name,conditions)
+        ConditionGetPtrFromList(coupler%tran_condition_name,transport_conditions)
       if (.not.associated(coupler%tran_condition)) then
         string = 'Condition ' // trim(coupler%tran_condition_name) // &
                  ' not found in initial condition list'
+        call printErrMsg(option,string)
+      endif
+      if (coupler%tran_condition%iclass /= TRANSPORT_CLASS) then
+        string = 'Condition ' // trim(coupler%tran_condition_name) // &
+                 ' is not of the TRAN class'
         call printErrMsg(option,string)
       endif
     endif
@@ -333,20 +355,30 @@ subroutine PatchProcessCouplers(patch,conditions,materials,option)
     ! pointer to flow condition
     if (len_trim(coupler%flow_condition_name) > 0) then
       coupler%flow_condition => &
-        ConditionGetPtrFromList(coupler%flow_condition_name,conditions)
+        ConditionGetPtrFromList(coupler%flow_condition_name,flow_conditions)
       if (.not.associated(coupler%flow_condition)) then
         string = 'Condition ' // trim(coupler%flow_condition_name) // &
                  ' not found in source/sink condition list'
+        call printErrMsg(option,string)
+      endif
+      if (coupler%flow_condition%iclass /= FLOW_CLASS) then
+        string = 'Condition ' // trim(coupler%flow_condition_name) // &
+                 ' is not of the FLOW class'
         call printErrMsg(option,string)
       endif
     endif
     ! pointer to transport condition
     if (len_trim(coupler%tran_condition_name) > 0) then
       coupler%tran_condition => &
-        ConditionGetPtrFromList(coupler%tran_condition_name,conditions)
+        ConditionGetPtrFromList(coupler%tran_condition_name,transport_conditions)
       if (.not.associated(coupler%tran_condition)) then
         string = 'Condition ' // trim(coupler%tran_condition_name) // &
                  ' not found in source/sink condition list'
+        call printErrMsg(option,string)
+      endif
+      if (coupler%tran_condition%iclass /= TRANSPORT_CLASS) then
+        string = 'Condition ' // trim(coupler%tran_condition_name) // &
+                 ' is not of the TRAN class'
         call printErrMsg(option,string)
       endif
     endif

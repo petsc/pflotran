@@ -32,7 +32,8 @@ private
     type(output_option_type), pointer :: output_option
 
     type(region_list_type), pointer :: regions
-    type(condition_list_type), pointer :: conditions
+    type(condition_list_type), pointer :: flow_conditions
+    type(condition_list_type), pointer :: transport_conditions
     
     type(reaction_type), pointer :: chemistry
     
@@ -86,8 +87,10 @@ function RealizationCreate()
   allocate(realization%regions)
   call RegionInitList(realization%regions)
 
-  allocate(realization%conditions)
-  call ConditionInitList(realization%conditions)
+  allocate(realization%flow_conditions)
+  call ConditionInitList(realization%flow_conditions)
+  allocate(realization%transport_conditions)
+  call ConditionInitList(realization%transport_conditions)
 
   nullify(realization%materials)
   nullify(realization%material_array)
@@ -398,7 +401,8 @@ subroutine RealizationProcessCouplers(realization)
     cur_patch => cur_level%patch_list%first
     do
       if (.not.associated(cur_patch)) exit
-      call PatchProcessCouplers(cur_patch,realization%conditions, &
+      call PatchProcessCouplers(cur_patch,realization%flow_conditions, &
+                                realization%transport_conditions, &
                                 realization%materials,realization%option)
       cur_patch => cur_patch%next
     enddo
@@ -491,7 +495,9 @@ subroutine RealizationUpdate(realization)
   logical :: force_update_flag = .false.
   
   ! must update conditions first
-  call ConditionUpdate(realization%conditions,realization%option, &
+  call ConditionUpdate(realization%flow_conditions,realization%option, &
+                       realization%option%time,NULL_CLASS)
+  call ConditionUpdate(realization%transport_conditions,realization%option, &
                        realization%option%time,NULL_CLASS)
   call RealizUpdateAllCouplerAuxVars(realization,force_update_flag)
 ! currently don't use aux_vars, just condition for src/sinks
@@ -818,7 +824,27 @@ subroutine RealizationAddWaypointsToList(realization)
 
   waypoint_list => realization%waypoints
 
-  cur_condition => realization%conditions%first
+  cur_condition => realization%flow_conditions%first
+  do
+    if (.not.associated(cur_condition)) exit
+    if (cur_condition%sync_time_with_update) then
+      do isub_condition = 1, cur_condition%num_sub_conditions
+        sub_condition => cur_condition%sub_condition_ptr(isub_condition)%ptr
+        itime = 1
+        if (sub_condition%dataset%max_time_index == 1 .and. &
+            sub_condition%dataset%times(itime) > 1.d-40) then
+          waypoint => WaypointCreate()
+          waypoint%time = sub_condition%dataset%times(itime)
+          waypoint%update_bcs = .true.
+          call WaypointInsertInList(waypoint,waypoint_list)
+          exit
+        endif
+      enddo
+    endif
+    cur_condition => cur_condition%next
+  enddo
+      
+  cur_condition => realization%transport_conditions%first
   do
     if (.not.associated(cur_condition)) exit
     if (cur_condition%sync_time_with_update) then
@@ -859,7 +885,8 @@ subroutine RealizationDestroy(realization)
   call OptionDestroy(realization%option)
   call RegionDestroyList(realization%regions)
   
-  call ConditionDestroyList(realization%conditions)
+  call ConditionDestroyList(realization%flow_conditions)
+  call ConditionDestroyList(realization%transport_conditions)
 
   call LevelDestroyList(realization%level_list)
 

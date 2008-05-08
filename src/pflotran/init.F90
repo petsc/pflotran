@@ -703,7 +703,11 @@ subroutine readInput(simulation,filename)
         call fiErrorMsg(option%myrank,'cond','name',ierr) 
         call printMsg(option,condition%name)
         call ConditionRead(condition,option,IUNIT1)
-        call ConditionAddToList(condition,realization%conditions)
+        if (condition%iclass == FLOW_CLASS) then
+          call ConditionAddToList(condition,realization%flow_conditions)
+        else
+          call ConditionAddToList(condition,realization%transport_conditions)
+        endif  
         
 !....................
       case ('BOUNDARY_CONDITION')
