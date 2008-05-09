@@ -167,7 +167,9 @@ subroutine Init(simulation,filename)
     call SNESSetOptionsPrefix(flow_solver%snes, "flow_", ierr)
     call DiscretizationCreateJacobian(discretization,NFLOWDOF,flow_solver%J,option)
     call MatSetOptionsPrefix(flow_solver%J, "flow_", ierr)
-    if (option%use_galerkin_mg) then
+    call SolverCheckCommandLine(flow_solver)
+
+    if (flow_solver%use_galerkin_mg) then
       call DiscretizationCreateInterpolation(discretization,NFLOWDOF, &
                                              flow_solver%interpolation,option)
     endif
@@ -187,7 +189,7 @@ subroutine Init(simulation,filename)
                              realization, ierr)
     end select
 
-    call SolverSetSNESOptions(flow_solver, option)
+    call SolverSetSNESOptions(flow_solver)
 
     string = 'Solver: ' // trim(flow_solver%ksp_type)
     call printMsg(option,string)
@@ -220,8 +222,9 @@ subroutine Init(simulation,filename)
     call SNESSetOptionsPrefix(tran_solver%snes, "tran_", ierr)
     call DiscretizationCreateJacobian(discretization,NTRANDOF,tran_solver%J,option)
     call MatSetOptionsPrefix(tran_solver%J, "tran_", ierr)
+    call SolverCheckCommandLine(tran_solver)
     
-    if (option%use_galerkin_mg) then
+    if (tran_solver%use_galerkin_mg) then
       call DiscretizationCreateInterpolation(discretization,NTRANDOF, &
                                              tran_solver%interpolation,option)
     endif
@@ -232,7 +235,7 @@ subroutine Init(simulation,filename)
 
     call SNESLineSearchSet(tran_solver%snes,SNESLineSearchNo,PETSC_NULL_OBJECT,ierr)
 
-    call SolverSetSNESOptions(tran_solver, option)
+    call SolverSetSNESOptions(tran_solver)
 
     string = 'Solver: ' // trim(tran_solver%ksp_type)
     call printMsg(option,string)

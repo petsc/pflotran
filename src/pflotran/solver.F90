@@ -30,6 +30,11 @@ module Solver_module
     PetscInt :: newton_maxit     ! maximum number of iterations
     PetscInt :: newton_maxf      ! maximum number of function evaluations
 
+    PetscTruth :: use_galerkin_mg  ! If true, precondition linear systems with 
+                                   ! Galerkin-type geometric multigrid.
+    PetscInt :: galerkin_mg_levels  ! Number of discretization levels for 
+                                    ! the Galerkin MG (includes finest level).
+
     ! Jacobian matrix
     Mat :: J
     MatFDColoring :: matfdcoloring
@@ -60,7 +65,8 @@ module Solver_module
             SolverCreateSNES, &
             SolverSetSNESOptions, &
             SolverPrintNewtonInfo, &
-            SolverPrintLinearInfo
+            SolverPrintLinearInfo, &
+            SolverCheckCommandLine
   
 contains
 
@@ -98,6 +104,9 @@ function SolverCreate()
   solver%newton_inf_upd_tol = 1.d-50 ! arbitrarily set by geh
   solver%newton_maxit = PETSC_DEFAULT_INTEGER
   solver%newton_maxf = PETSC_DEFAULT_INTEGER
+
+  solver%use_galerkin_mg = PETSC_FALSE
+  solver%galerkin_mg_levels = 1
   
   solver%J = 0
   solver%interpolation = 0
@@ -150,14 +159,11 @@ end subroutine SolverCreateSNES
 ! date: 02/12/08
 !
 ! ************************************************************************** !
-subroutine SolverSetSNESOptions(solver, option)
-
-  use Option_module
+subroutine SolverSetSNESOptions(solver)
 
   implicit none
   
   type(solver_type) :: solver
-  type(option_type), pointer :: option
 
   PetscMPIInt :: myrank
   ! needed for SNESLineSearchGetParams()/SNESLineSearchSetParams()
@@ -193,7 +199,7 @@ subroutine SolverSetSNESOptions(solver, option)
 !  call SNESLineSearchSet(solver%snes,SNESLineSearchNo,PETSC_NULL,ierr)
 
   ! Setup for 2-level Galerkin multigrid.
-  if (option%use_galerkin_mg) then
+  if (solver%use_galerkin_mg) then
     call PCSetType(solver%pc, PCMG, ierr)
     call PCMGSetLevels(solver%pc, 2, PETSC_NULL_OBJECT, ierr)
     call PCMGSetInterpolation(solver%pc, 1, solver%interpolation, ierr)
@@ -522,6 +528,39 @@ subroutine SolverPrintNewtonInfo(solver,fid,header,myrank)
   endif
 
 end subroutine SolverPrintNewtonInfo
+
+! ************************************************************************** !
+!
+! SolverCheckCommandLine: Parses the command line for various solver 
+! options.
+! Note: In order to use the PETSc OptionsPrefix associated with 
+! solver%snes in parsing the options, the call to SolverCheckCommandLine() 
+! should come after the SNESSetOptionsPrefix(solver%snes,...) call.
+! author: Richard Tran Mills
+! date: 05/09/2008
+!
+! ************************************************************************** !
+subroutine SolverCheckCommandLine(solver)
+
+  implicit none
+  
+  type(solver_type) :: solver
+
+  PetscErrorCode :: ierr
+  character(len=MAXSTRINGLENGTH) :: prefix
+
+  if (solver%snes /= 0) then
+    call SNESGetOptionsPrefix(solver%snes, prefix, ierr)
+  else
+    prefix = PETSC_NULL_CHARACTER
+  endif
+
+  call PetscOptionsGetInt(prefix, '-galerkin_mg', &
+                          solver%galerkin_mg_levels, solver%use_galerkin_mg, &
+                          ierr)
+                             
+
+end subroutine SolverCheckCommandLine
 
 ! ************************************************************************** !
 !

@@ -34,10 +34,6 @@ module Option_module
 
     ! Program options
     PetscTruth :: use_matrix_free  ! If true, do not form the Jacobian.
-    PetscTruth :: use_galerkin_mg  ! If true, precondition linear systems with 
-                                   ! Galerkin-type geometric multigrid.
-    PetscInt :: galerkin_mg_levels  ! Number of discretization levels for 
-                                    ! the Galerkin MG (includes finest level).
     
     PetscInt :: imod
     
@@ -191,8 +187,6 @@ function OptionCreate()
   option%scale = 1.d-6
 
   option%use_matrix_free = PETSC_FALSE
-  option%use_galerkin_mg = PETSC_FALSE
-  option%galerkin_mg_levels = 1
   option%ideriv = 1
 
   option%dpmxe = 5.d4
@@ -302,10 +296,6 @@ subroutine OptionCheckCommandLine(option)
   call PetscOptionsGetInt(PETSC_NULL_CHARACTER, '-chkptfreq', &
                           option%checkpoint_frequency, &
                           option%checkpoint_flag, ierr)                           
-  call PetscOptionsGetInt(PETSC_NULL_CHARACTER, '-galerkin_mg', &
-                          option%galerkin_mg_levels, option%use_galerkin_mg, &
-                          ierr)
-                             
   ! check on possible modes                                                     
   option_found = PETSC_FALSE
   call PetscOptionsHasName(PETSC_NULL_CHARACTER, "-use_richards", &
