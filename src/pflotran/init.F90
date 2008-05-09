@@ -1517,6 +1517,9 @@ subroutine readInput(simulation,filename)
       case ('OVERWRITE_RESTART_TRANSPORT')
         option%overwrite_restart_transport = .true.
 
+      case ('OVERWRITE_RESTART_FLOW_PARAMS')
+        option%overwrite_restart_flow_params = .true.
+
       case ('TIME')
 
         call fiReadStringErrorMsg(option%myrank,'TIME',ierr)

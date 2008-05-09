@@ -216,6 +216,10 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     call RealizAssignTransportInitCond(realization)  
   endif
   
+  if (option%overwrite_restart_flow_params) then
+    call RealizationRevertFlowParameters(realization)
+  endif
+  
   call StepperUpdateSolution(realization)
 
   ! print initial condition output if not a restarted sim
