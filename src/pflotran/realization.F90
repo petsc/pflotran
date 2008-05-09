@@ -56,7 +56,8 @@ private
             RealizationLocalizeRegions, &
             RealizationAddCoupler, RealizationAddStrata, &
             RealizationAddBreakthrough, RealizAssignInitialConditions, &
-            RealizAssignUniformVelocity, RealizAssignTransportInitCond
+            RealizAssignUniformVelocity, RealizAssignTransportInitCond, &
+            RealizationRevertFlowParameters
   
 contains
   
@@ -765,6 +766,44 @@ subroutine RealizAssignTransportInitCond(realization)
   enddo
    
 end subroutine RealizAssignTransportInitCond
+
+! ************************************************************************** !
+!
+! RealizationRevertFlowParameters: Assigns initial porosity/perms to vecs
+! author: Glenn Hammond
+! date: 05/09/08
+!
+! ************************************************************************** !
+subroutine RealizationRevertFlowParameters(realization)
+
+  use Option_module
+  use Field_module
+  use Discretization_module
+
+  implicit none
+  
+  type(realization_type) :: realization
+  
+  type(field_type), pointer :: field
+  type(option_type), pointer :: option
+  type(discretization_type), pointer :: discretization
+  
+  option => realization%option
+  field => realization%field
+  discretization => realization%discretization
+
+  if (option%nflowdof > 0) then
+    call DiscretizationGlobalToLocal(discretization,field%perm0_xx, &
+                           field%perm_xx_loc,ONEDOF)  
+    call DiscretizationGlobalToLocal(discretization,field%perm0_yy, &
+                           field%perm_yy_loc,ONEDOF)  
+    call DiscretizationGlobalToLocal(discretization,field%perm0_zz, &
+                           field%perm_zz_loc,ONEDOF)   
+  endif   
+  call DiscretizationGlobalToLocal(discretization,field%porosity0, &
+                         field%porosity_loc,ONEDOF)
+                           
+end subroutine RealizationRevertFlowParameters
 
 ! ************************************************************************** !
 !

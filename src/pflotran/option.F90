@@ -90,6 +90,7 @@ module Option_module
     logical :: compute_statistics
     logical :: use_touch_options
     logical :: overwrite_restart_transport
+    logical :: overwrite_restart_flow_params
     PetscInt :: io_handshake_buffer_size
     
     character(len=MAXWORDLENGTH) :: permx_filename
@@ -230,6 +231,8 @@ function OptionCreate()
 
   option%use_touch_options = .false.
   option%overwrite_restart_transport = .false.
+  option%overwrite_restart_flow_params = .false.
+
   
   option%io_handshake_buffer_size = 0
   

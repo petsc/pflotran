@@ -57,7 +57,8 @@ module Material_module
     PetscReal :: pcwmax
     PetscReal :: betac
     PetscReal :: power
-    PetscInt :: ihist 
+    PetscInt :: hysteresis_id
+    PetscInt :: hysteresis_params(6)
     PetscReal :: BC_pressure_low
     PetscReal :: BC_pressure_high
     PetscReal :: BC_spline_coefficients(4)
@@ -209,7 +210,8 @@ function SaturationFunctionCreate(option)
   saturation_function%pcwmax = 0.d0
   saturation_function%betac = 0.d0
   saturation_function%power = 0.d0
-  saturation_function%ihist = 0
+  saturation_function%hysteresis_id = 0
+  saturation_function%hysteresis_params = 0
   saturation_function%BC_pressure_low = 0.d0
   saturation_function%BC_pressure_high = 0.d0
   saturation_function%BC_spline_coefficients = 0.d0
