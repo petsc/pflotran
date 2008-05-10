@@ -1166,62 +1166,58 @@ Initial and boundary conditions and material properties are assigned to spatial 
 
 %\footnotesize
 \begin{verbatim}
-:Description: 2D problem for saturated layered medium
+:Description: 3D toy problem for richards equation
 :
-:MODE RICHARDS
 MODE RICHARDS_LITE
 TRAN 1
 :
-:NUMERICAL_JACOBIAN
-:INEXACT_NEWTON
-:USE_TOUCH_OPTIONS
-:
-:CHECKPOINT 1000
-:RESTART steady.chk 0.d0
-:OVERWRITE_RESTART_TRANSPORT
-:COMPUTE_STATISTICS
-:USE_TOUCH_OPTIONS
-:WALLCLOCK_STOP 0.d0
-:
-DEBUG
-:MATVIEW_JACOBIAN
-:VECVIEW_RESIDUAL
-:VECVIEW_SOLUTION
-:PRINT_COUPLERS
-END
+CHECKPOINT 1000
+RESTART steady_68_125_20_Scope3.chk 0.d0
+OVERWRITE_RESTART_TRANSPORT
+OVERWRITE_RESTART_FLOW_PARAMS
+WALLCLOCK_STOP 3.95
 :
 GRID
 TYPE structured
-NXYZ 450 1 4430 
+NXYZ 68 125 20
 END
 :
-ORIGIN 0.d0 0.d0 0.d0
+ORIGIN 0.d0 0.d0 90.d0
 :
-NEWTON_SOLVER
+NEWTON_SOLVER FLOW
+:RTOL 1.d-50
 RTOL 1.d-5
-ATOL 1.d-7
-STOL 1.d-10
-:ITOL_RES 1.d-8
-:ITOL_UPDATE 0.05d0  ! Pa
+:ATOL 1.d-50
+ATOL 1.d-8
+:STOL 1.d-50
+STOL 1.d-6
+:ITOL_RES 1.d-4
+:ITOL_UPDATE 0.5d0  ! Pa
 NO_INFINITY_NORM
-:NO_FORCE_ITERATION
+NO_FORCE_ITERATION
 :NO_PRINT_CONVERGENCE
 :PRINT_DETAILED_CONVERGENCE
 MAXIT 20
 END
-:noskip
 :
 NEWTON_SOLVER TRANSPORT
 :RTOL 1.d-50
-ATOL 1.d-50
-STOL 1.d-50
-ITOL_RES 1.d-8
-:ITOL_UPDATE 5.d0  ! Pa
-:NO_INFINITY_NORM
+RTOL 1.d-6
+:ATOL 1.d-50
+:STOL 1.d-50
+:STOL 1.d-6
+:ITOL_RES 1.d-8
+NO_INFINITY_NORM
 :NO_FORCE_ITERATION
 :NO_PRINT_CONVERGENCE
 :PRINT_DETAILED_CONVERGENCE
 MAXIT 10
+END
+:
+LINEAR_SOLVER FLOW
+:KSP_TYPE gmres
+:RTOL 1.d-50
+:ATOL 1.d-10
 END
 :
 TIMESTEPPER
@@ -1232,9 +1228,9 @@ END
 TECP VELO !FLUX
 :
 DXYZ
-0.02d0
+19.8529411765d0
+20.d0
 1.d0
-0.002d0
 :
 :  d0[m^2/s] delhaq[kJ/mol]
 DIFF  1.D-9       12.6
@@ -1247,10 +1243,6 @@ SATURATION_FUNCTIONS
 :id itype swir   m      alpha     pcwmax betac pwr
  1  1     0.1600 0.3391 7.2727d-4 1.e8   0.d0  1.d0
  2  1     0.1299 0.7479 1.4319d-4 1.e8   0.d0  1.d0 
-: Brooks-Corey
-:id itype swir   lambda alpha     pcwmax betac pwr
-: 1  2     0.1600 1.97   7.2727d-4 1.e8   0.d0  1.d0
-: 2  2     0.1299 0.5193 1.4319d-4 1.e8   0.d0  1.d0 
 END
 
 THERMAL_PROPERTIES
@@ -1259,126 +1251,383 @@ THERMAL_PROPERTIES
 END
 :
 MATERIALS
-:name id icap ithm por  tau permx  permy  permz  permpwr
-tuff 1  1    1    0.2 0.5 1.d-19 1.d-19 1.d-19 1.d0
+:name   id icap ithm por  tau permx     permy     permz     permpwr
+:Hanford 1  1    1    0.20 0.5 7.387d-9  7.387d-9  7.387d-10 1.d0
+Hanford 1  1    1    0.20 0.5 7.387d-10 7.387d-10 7.387d-10 1.d0
+Unit2   2  2    1    0.25 0.5 0.d0      0.d0      0.d0      1.d0
+Unit3   3  2    1    0.25 0.5 0.d0      0.d0      0.d0      1.d0
+Unit4   4  2    1    0.25 0.5 0.d0      0.d0      0.d0      1.d0
+Unit5   5  2    1    0.25 0.5 4.221d-11 4.221d-11 4.221d-12 1.d0
+Unit6   6  2    1    0.25 0.5 1.052d-14 1.052d-14 1.052d-15 1.e0
+Unit7   7  2    1    0.25 0.5 4.523d-11 4.523d-11 4.523d-12 1.e0
+Unit8   8  2    1    0.25 0.5 5.259d-17 5.259d-17 5.259d-18 1.e0
+Unit9   9  2    1    0.25 0.5 5.259d-17 5.259d-17 5.259d-18 1.e0
+Unit10  10 2    1    0.25 0.5 1.d-20    1.d-20    1.d-20    1.e0
 END
 :
+:TIME h
+:100000.
+TIME h every 168
+7500.
 :
-:TIME y every 10.
-TIME y
-0.1 0.25 0.5 0.75 1.
-:
-DTST 1.d-8
-1. 0.001d0
-:
-:define regions--------------------------------------------------------------
+:DTST 1.d-6
+:1. 100000.
+DTST 1.d-2
+1. 1.d0
 :
 REGION all
-BLOCK 1 450 1 1 1 4430
+BLOCK 1 68 1 125 1 20
 END
 
-REGION Left
-FACE west
-BLOCK 1 1 1 1 3931 4430
+REGION West
+FILE input_68_125_20_Scope3.h5
 END
 
-REGION Right
-FACE east
-BLOCK 450 450 1 1 1 500
+REGION East
+FILE input_68_125_20_Scope3.h5
 END
 
-:define initial and boundary conditions---------------------------------------
+REGION North
+FILE input_68_125_20_Scope3.h5
+END
 
-:flow----------------------
+REGION South
+FILE input_68_125_20_Scope3.h5
+END
+
+REGION Top
+FILE input_68_125_20_Scope3.h5
+END
+
+REGION North_Pond_West_Trench
+FILE input_68_125_20_Scope3.h5
+END
+
+REGION North_Pond_East_Trench
+FILE input_68_125_20_Scope3.h5
+END
+
+:REGION Plume
+:FILE input_68_125_20_Scope3.h5
+:END
+
+REGION Plume_Source
+FILE input_68_125_20_Scope3.h5
+:BLOCK 60 62 70 72 15 17 
+END
+
+REGION 399-1-1
+COORDINATE 1208.69 1784.40 100.0
+END
+
+REGION 399-1-2
+COORDINATE 876.57 1599.94 100.0
+END
+
+REGION 399-2-1
+COORDINATE 1199.61 1304.67 100.0
+END
+
+REGION 399-2-2
+COORDINATE 1159.62 1480.95 100.0
+END
+
+REGION 399-3-9
+COORDINATE 1186.58 1098.39 100.0
+END
+
+REGION 399-3-12
+COORDINATE 911.44 1196.74 100.0
+END
+
+REGION 399-4-1
+COORDINATE 870.96 784.91 100.0
+END
+
+REGION 399-4-7
+COORDINATE 1179.54 661.80 100.0
+END
+
+REGION 399-4-9
+COORDINATE 1176.30 919.13 100.0
+END
+
+REGION 399-5-1
+COORDINATE 360.22 899.80 100.0
+END
+
+REGION ifc
+COORDINATE 979.57 1302.39 100.0
+END
+
+BREAKTHROUGH 
+REGION 399-1-1
+END
+
+BREAKTHROUGH 
+REGION 399-1-2
+END
+
+BREAKTHROUGH 
+REGION 399-2-1
+END
+
+BREAKTHROUGH 
+REGION 399-2-2
+END
+
+BREAKTHROUGH 
+REGION 399-3-9
+END
+
+BREAKTHROUGH 
+REGION 399-3-12
+END
+
+BREAKTHROUGH 
+REGION 399-4-1
+END
+
+BREAKTHROUGH 
+REGION 399-4-9
+END
+
+BREAKTHROUGH 
+REGION 399-5-1
+END
+
+BREAKTHROUGH 
+REGION ifc
+VELOCITY
+END
 
 CONDITION initial
+UNITS Pa,C,M,yr
 CLASS flow
 TYPE
 PRESSURE hydrostatic
+TEMPERATURE dirichlet
+CONCENTRATION dirichlet
 END
-DATUM 0.d0 0.d0 10.d0
+:DATUM file initial_data.datum
+DATUM 1.2294770e+003 9.4611630e+002 1.0559964e+002
+GRADIENT
+:PRESSURE file initial_data.gradient
+PRESSURE 1.9538819e-004 2.8407287e-004 0.0000000e+000
+END
 PRESSURE 101325.d0
+TEMPERATURE 25.d0 
+CONCENTRATION 1.d-6
 END
 
-CONDITION Left
+CONDITION river
+CLASS flow
+TYPE
+PRESSURE seepage
+TEMPERATURE dirichlet
+CONCENTRATION dirichlet
+END
+INTERPOLATION linear
+DATUM file river.datum
+:DATUM  1.2294770e+003 9.4611630e+002 1.0559964e+002
+GRADIENT
+PRESSURE file river.gradient_adj
+:PRESSURE 0.d0 0.00027389 0.d0
+END
+PRESSURE 101325.d0
+TEMPERATURE 25.d0 
+CONCENTRATION 1.d-6 
+END
+
+CONDITION west
+CLASS flow
+TYPE
+PRESSURE hydrostatic
+TEMPERATURE dirichlet
+CONCENTRATION dirichlet
+END
+INTERPOLATION linear
+DATUM file well_data.datum
+:DATUM 2.1149088e+002 1.2272915e+003 1.0548061e+002
+GRADIENT
+PRESSURE file well_data.gradient
+:PRESSURE -7.8414067e-004 3.4105428e-004 0.0000000e+000
+END
+PRESSURE 101325.d0
+TEMPERATURE 25.d0 
+CONCENTRATION 1.d-6 
+END
+
+CONDITION north
+CLASS flow
+TYPE
+PRESSURE hydrostatic
+TEMPERATURE dirichlet
+CONCENTRATION dirichlet
+END
+INTERPOLATION linear
+DATUM file north.datum
+:DATUM 0. 2500. 106.0805113
+GRADIENT
+PRESSURE file north.gradient
+:PRESSURE -4.09472e-05 0. 0.
+END
+PRESSURE 101325.d0
+TEMPERATURE 25.d0 
+CONCENTRATION 1.d-6 
+END
+
+CONDITION south
+CLASS flow
+TYPE
+PRESSURE hydrostatic
+TEMPERATURE dirichlet
+CONCENTRATION dirichlet
+END
+INTERPOLATION linear
+DATUM file south.datum
+:DATUM 0       0       105.2278756
+GRADIENT
+PRESSURE file south.gradient
+:PRESSURE 8.34319e-05 0. 0.
+END
+PRESSURE 101325.d0
+TEMPERATURE 25.d0 
+CONCENTRATION 1.d-6 
+END
+
+CONDITION recharge
+CLASS flow
+TYPE
+PRESSURE neumann
+TEMPERATURE dirichlet
+CONCENTRATION dirichlet
+END
+FLUX file recharge.txt
+:FLUX 1.756d-9
+TEMPERATURE 25.d0 
+CONCENTRATION 1.d-6 
+END
+
+CONDITION plume
 CLASS flow
 TYPE
 PRESSURE neumann
 END
-PRESSURE 1.5854896d-7 ! 5000 mm/yr
+FLUX 0.d0
 END
 
-CONDITION Right
+CONDITION north_pond_west_trench
 CLASS flow
 TYPE
 PRESSURE neumann
+TEMPERATURE dirichlet
+CONCENTRATION dirichlet
 END
-PRESSURE -1.5854896d-7 ! 5000 mm/yr
+FLUX file north_pond_west_trench.txt
+:FLUX  4.500d-5
+TEMPERATURE 25.d0 
+CONCENTRATION 1.d-6 
 END
 
-:transport-----------------
+CONDITION north_pond_east_trench
+CLASS flow
+TYPE
+PRESSURE neumann
+TEMPERATURE dirichlet
+CONCENTRATION dirichlet
+END
+FLUX file north_pond_east_trench.txt
+:FLUX 0.d0
+TEMPERATURE 25.d0 
+CONCENTRATION 1.d-6 
+END
+
+CONDITION river_c
+CLASS transport
+CONCENTRATION 1.d-40 
+END
+
+CONDITION west_c
+CLASS transport
+CONCENTRATION 1.d-40
+END
 
 CONDITION initial_c
 CLASS transport
-CONCENTRATION 1.d-8
+CONCENTRATION 1.d-40
 END
 
-CONDITION outlet_c
-CLASS transport
-TYPE
-CONCENTRATION zero_gradient
-END
-CONCENTRATION 1.d-8
-END
-
-CONDITION inlet_c
+CONDITION plume_c
 CLASS transport
 CONCENTRATION 1.d0
 END
 
-:set initial and boundary conditions----------------------------------------
-
-:flow-----------------------
-
 : initial condition
 INITIAL_CONDITION
-CONDITION initial
+FLOW_CONDITION initial
+TRANSPORT_CONDITION initial_c
 REGION all
 END
 
+: inland boundary condition
 BOUNDARY_CONDITION
-CONDITION Left
-REGION Left
+FLOW_CONDITION west
+TRANSPORT_CONDITION initial_c
+REGION West
 END
 
+: river boundary condition
 BOUNDARY_CONDITION
-CONDITION initial
-REGION Right
+FLOW_CONDITION river
+TRANSPORT_CONDITION initial_c
+REGION East
 END
 
-:transport------------------
-
-: initial condition
-INITIAL_CONDITION
-CONDITION initial_c
-REGION all
-END
-
+: north boundary condition
 BOUNDARY_CONDITION
-CONDITION inlet_c
-REGION Left
+FLOW_CONDITION north
+TRANSPORT_CONDITION initial_c
+REGION North
 END
 
+: south boundary condition
 BOUNDARY_CONDITION
-CONDITION outlet_c
-REGION Right
+FLOW_CONDITION south
+TRANSPORT_CONDITION initial_c
+REGION South
 END
 
-:set material properties---------------------------------------------------
+: recharge boundary condition
+BOUNDARY_CONDITION
+FLOW_CONDITION recharge
+TRANSPORT_CONDITION initial_c
+REGION Top
+END
+
+: north pond west trench boundary condition
+BOUNDARY_CONDITION
+FLOW_CONDITION north_pond_west_trench
+TRANSPORT_CONDITION initial_c
+REGION North_Pond_West_Trench
+END
+
+: north pond east trench boundary condition
+BOUNDARY_CONDITION
+FLOW_CONDITION north_pond_east_trench
+TRANSPORT_CONDITION initial_c
+REGION North_Pond_East_Trench
+END
+
+: plume source
+SOURCE_SINK
+FLOW_CONDITION plume
+TRANSPORT_CONDITION plume_c
+REGION Plume_Source
+END
 
 STRATA
-MATERIAL tuff
-REGION all
+MATERIAL input_68_125_20_Scope3.h5
 END
 
 :read in permeability field-------------------------------------------------
