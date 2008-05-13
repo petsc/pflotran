@@ -17,7 +17,7 @@ PetscInt, parameter, public :: OUTPUT_STAGE = 3
   
     PetscInt :: stage(10)
     
-    PetscInt :: class_pflotran
+    PetscCookie :: class_pflotran
     
     PetscLogEvent :: event_init
     PetscLogEvent :: event_setup
