@@ -15,7 +15,7 @@ PetscInt, parameter, public :: OUTPUT_STAGE = 3
 
   type, public :: logging_type 
   
-    PetscInt :: stage(10)
+    PetscLogStage :: stage(10)
     
     PetscCookie :: class_pflotran
     
