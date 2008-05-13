@@ -294,9 +294,9 @@ Set environment variables \verb|PKGS| and \verb|MPI_HOME| and the appropriate \v
 
 \verb|setenv F90 f90|
 
-\verb|setenv F77 'f90 -YEXT_NAMES=LCS -YEXT_SFX= -f'|
+%\verb|setenv F77 'f90 -YEXT_NAMES=LCS -YEXT_SFX= -f'|
 
-\verb|setenv FC 'f90 -YEXT_NAMES=LCS -YEXT_SFX= -f'|
+%\verb|setenv FC 'f90 -YEXT_NAMES=LCS -YEXT_SFX= -f'|
 
 \verb|setenv CC gcc|
 
@@ -320,7 +320,7 @@ PFLOTRAN uses the Developer version of PETSc. To install PETSc first set the env
 
 \verb|setenv PETSC_DIR /Users/lichtner/petsc/petsc-dev|
 
-\verb|setenv PETSC_ARCH Intel_MacOSX10.4.11|
+\verb|setenv PETSC_ARCH Intel_MacOSX10.5|
 
 \noindent
 Configure PETSc on a Mac using openmpi and Fortran 90 Absoft 10.1:
@@ -385,6 +385,1260 @@ Create input file \verb|pflotran.in| and run PFLOTRAN with the command:
 
 \noindent
 where \verb|#proc| is the desired number of processor cores.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Creating the Input File: PFLOTRAN Keywords}
+
+The PFLOTRAN input file construction is based on keywords. Lines beginning with a colon (:) are treated as comments. Each entry to the input file must begin in the first column. Keywords {\tt SKIP} and {\tt NOSKIP} are used to skip over sections of the input file. Blank lines may occur in input file. Alternate keyword spelling is indicated in round brackets (~). Input options are indicated in square brackets [~], as well as default values. Curly brackets \{~\} indicate the result of invoking the corresponding keyword. Always refer to source code when in doubt!
+
+Initial and boundary conditions and material properties are assigned to spatial regions using a novel {\em coupler} approach. In this approach, initial and boundary conditions (keyword CONDITION) are assigned to regions (keyword REGION) using keywords INITIAL\_CONDITION and BOUNDARY\_CONDITION. Material properties (keyword MATERIAL) are assigned to regions using the keyword STRATIGRAPHY.
+
+\begin{longtable}{ll}%[h]%\centering
+%\caption{PFLOTRAN Keywords}\label{flkeywd} 
+
+%\vspace{4mm}
+
+%\begin{tabular}{lll} 
+\toprule[1.5pt]
+\multicolumn{1}{c}{Keyword} & \multicolumn{1}{c}{Description}\\
+\midrule[1pt]
+\hyperlink{target_bcon}{BOUNDARY\_CONDITION} & \\
+\hyperlink{target_brk}{BREAKTHROUGH} & \\
+\hyperlink{target_brine}{BRINE (BRIN)} & \\
+\hyperlink{target_ckpt}{CHECKPOINT} & \\
+\hyperlink{target_stat}{COMPUTE\_STATISTICS (STATISTICS)} & \\
+\hyperlink{target_cond}{CONDITION} & \\
+\hyperlink{target_datset}{DATASET} & \\
+\hyperlink{target_dbg}{DEBUG} & \\
+\hyperlink{target_dif}{DIFF} & \\
+\hyperlink{target_dtst}{DTST} & \\
+\hyperlink{target_dxyz}{DXYZ} & \\
+\hyperlink{target_gravity}{GRAVITY} & \\
+\hyperlink{target_grid}{GRID} & \\
+\hyperlink{target_hdf5}{HDF5} & \\
+\hyperlink{target_imod}{IMOD} & \\
+\hyperlink{target_invert}{INVERT\_Z (INVERTZ)} & \\
+\hyperlink{target_init}{INITIAL\_CONDITION} & \\
+\hyperlink{target_linsolv}{LINEAR\_SOLVER} & \\
+\hyperlink{target_mat}{MATERIAL (MATERIALS, PHIK)} & \\
+\hyperlink{target_mode}{MODE} & \\
+\hyperlink{target_newt}{NEWTON\_SOLVER} & \\
+\hyperlink{target_numjac}{NUMERICAL\_JACOBIAN} & \\
+\hyperlink{target_orig}{ORIG, ORIGIN} & \\
+\hyperlink{target_overwrite}{OVERWRITE\_RESTART\_TRANSPORT} & \\
+\hyperlink{target_region}{REGION} & \\
+\hyperlink{target_restart}{RESTART} & \\
+\hyperlink{target_rich}{RICH} & \\
+\hyperlink{target_sat}{SATURATION\_FUNCTION (SATURATION\_FUNCTION, PCKR)} & \\
+\hyperlink{target_src}{SOURCE\_SINK} & \\
+\hyperlink{target_strata}{STRATIGRAPHY (STRATA)} & \\
+\hyperlink{target_tecp}{TECP} & \\
+\hyperlink{target_thrm}{THRM, THERMAL\_PROPERTY (THERMAL\_PROPERTIES)} & \\
+\hyperlink{target_time}{TIME} & \\
+\hyperlink{target_timestep}{TIMESTEPPER} & \\
+\hyperlink{target_tran}{TRAN} & \\
+\hyperlink{target_unifvel}{UNIFORM\_VELOCITY} & \\
+\hyperlink{target_touch}{USE\_TOUCH\_OPTIONS} & \\
+\hyperlink{target_wallclk}{WALLCLOCK\_STOP} & \\
+\bottomrule[1.5pt]
+%\end{tabular} 
+\end{longtable}
+
+\protect\hypertarget{target_bcon}{}
+
+\subsection{Keyword: BOUNDARY\_CONDITION}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[BOUNDARY\_CONDITION]
+\item[REGION] region\_name
+\item[CONDITION] condition\_name
+\item[TYPE] [initial, boundary, source\_sink]
+\item[FACE] [WEST, EAST, NORTH, SOUTH, BOTTOM, TOP]
+\item[END]
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_brk}{}
+
+\subsection{Keyword: BREAKTHROUGH (BRK)}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[BREAKTHROUGH]
+\item[REGION] region\_name
+\item[VELOCITY] \{print\_velocities == PETSC\_TRUE\}
+\item[(., /, END)]
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_brine}{}
+
+\subsection{Keyword: BRINE (BRIN)}
+
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[BRIN, BRINE] m\_nacl [MOLAL, MASS, MOLE]
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_ckpt}{}
+
+\subsection{Keyword: CHECKPOINT}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item [CHECKPOINT] checkpoint\_frequency
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_stat}{}
+
+\subsection{Keyword: COMPUTE\_STATISTICS (STATISTICS)}
+
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item [COMPUTE\_STATISTICS, STATISTICS] \{compute\_statistics = .true.\}
+\end{deflist}
+\end{minipage}
+}
+
+%================================================================
+
+\protect\hypertarget{target_cond}{}
+
+\subsection{Keyword: CONDITION (COND)}
+
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item [CONDITION (COND)] condition\_name
+\item [UNITS] ~
+\begin{deflist}{0000000000}
+\item    s, sec, min, hr, d, day, y, yr
+\item    mm, cm, m, met, meter, dm, km
+\item    Pa, KPa
+\item    m/s, m/yr
+\item    C, K
+\item    M, mol/L
+\item    KJ/mol
+\end{deflist}
+
+\item[(., /, END)]
+  
+\item[CLASS] [flow, transport (tran)]
+  
+\item[CYCLIC] \{is\_cyclic = .true.\}
+  
+\item[INTERPOLATION] step linear
+  
+\item[TYPE] ~
+
+\begin{deflist}{0000000000}
+    \item[PRESSURE (PRES, PRESS)]
+      [dirichlet, 
+      neumann,
+      mass,
+      hydrostatic (hydro, hydrostat), static,
+      zero\_gradient,
+      seepage]
+    \item[FLUX]
+      [dirichlet, 
+      neumann,
+      mass,
+      hydrostatic (hydro, hydrostat), static,
+      zero\_gradient,
+      seepage]
+    \item[TEMPERATURE (TEMP)]
+      [dirichlet, 
+      neumann,
+      mass,
+      hydrostatic (hydro, hydrostat), static,
+      zero\_gradient,
+      seepage]
+    \item[CONCENTRATION (CONC)]
+      [dirichlet, 
+      neumann,
+      mass,
+      hydrostatic (hydro, hydrostat), static,
+      zero\_gradient,
+      seepage]
+    \item[ENTHALPY (H)]
+      [dirichlet, 
+      neumann,
+      mass,
+      hydrostatic (hydro, hydrostat), static,
+      zero\_gradient,
+      seepage]
+      
+  \item[(., /, END)]
+\end{deflist}
+\item[TIME] ~
+  
+\item[IPHASE] ~
+  
+\item[DATUM (DATM)] ~
+ \item  [[Continued]]
+\end{deflist}
+\end{minipage}
+}
+
+\subsection{Keyword: CONDITION (COND) [Continued]}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[GRADIENT (GRAD)] ~
+\item    PRESSURE (PRES, PRESS)
+\item    FLUX
+\item    TEMPERATURE (TEMP)
+\item    CONCENTRATION (CONC)
+\item    ENTHALPY (H)
+\item[(., /, END)] ~
+\item[TEMPERATURE (TEMP)] ~
+\item[ENTHALPY (H)] ~
+\item[PRESSURE (PRES, PRESS)] ~
+\item[FLUX (VELOCITY, VEL)] ~
+\item[CONCENTRATION (CONC)] ~
+\item[(., /, END)] ~
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_datset}{}
+
+\subsection{Keyword: DATASET}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[DATASET] [permx, permy, permz] [permx\_filename, permy\_filename, permz\_filename]
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_dbg}{}
+
+\subsection{Keyword: DEBUG}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[DEBUG]
+\item  PRINT\_SOLUTION (VECVIEW\_SOLUTION, VIEW\_SOLUTION)
+\item  PRINT\_RESIDUAL (VECVIEW\_RESIDUAL,VIEW\_RESIDUAL)
+\item  PRINT\_JACOBIAN (MATVIEW\_JACOBIAN, VIEW\_JACOBIAN)
+\item  PRINT\_JACOBIAN\_NORM (NORM\_JACOBIAN)
+\item  PRINT\_COUPLERS (PRINT\_COUPLER)
+\item  PRINT\_JACOBIAN\_DETAILED (MATVIEW\_JACOBIAN\_DETAILED, VIEW\_JACOBIAN\_DETAILED)
+\item  PRINT\_NUMERICAL\_DERIVATIVES (VIEW\_NUMERICAL\_DERIVATIVES)
+\item[END]
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_dif}{}
+
+\subsection{Keyword: DIFF}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[DIFF] difaq delhaq
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_dtst}{}
+
+\subsection{Keyword: DTST}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[DTST] $\Delta t$\_min
+\item $t_1$ \ $\Delta t_1$
+\item $t_2$ \ $\Delta t_2$
+\item \ldots
+\item $t_N$ \ $\Delta t$\_max
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_dxyz}{}
+
+\subsection{Keyword: DXYZ}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[DXYZ] [STRUCTURED\_GRID, AMR\_GRID]
+\item dx0 
+\item dy0 
+\item dz0
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_gravity}{}
+
+\subsection{Keyword: GRAVITY (GRAV)}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[GRAVITY (GRAV)] gravity
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_grid}{}
+
+\subsection{Keyword: GRID}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[GRID]
+\item TYPE [structured, unstructured, amr]
+\item NXYZ nx ny nz
+\item FILE
+\item[END]
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_hdf5}{}
+
+\subsection{Keyword: HDF5}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[HDF5] [VELO, FLUX]
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_imod}{}
+
+\subsection{Keyword: IMOD}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[IMOD] mod
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_invert}{}
+
+\subsection{Keyword: INVERT\_Z (INVERTZ)}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[INVERT\_Z (INVERTZ)] \{invert\_z\_axis = .true.\}
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_init}{}
+
+\subsection{Keyword: INITIAL\_CONDITION}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[INITIAL\_CONDITION]
+\item REGION region\_name
+\item CONDITION condition\_name
+\item TYPE [initial, boundary, source\_sink]
+\item FACE [WEST, EAST, NORTH, SOUTH, BOTTOM, TOP]
+\item[END]
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_linsolv}{}
+
+\subsection{Keyword: LINEAR\_SOLVER}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[LINEAR\_SOLVER]
+\item TRAN, TRANSPORT (tran\_solver) / DEFAULT (flow\_solver)
+\item SOLVER\_TYPE (SOLVER, KRYLOV\_TYPE, KRYLOV, KSP, KSP\_TYPE)
+\begin{deflist}{0000000000}
+\item    NONE (PREONLY)
+\item    GMRES
+\item    BCGS (BICGSTAB, BI-CGSTAB)
+\end{deflist}
+\item  PRECONDITIONER\_TYPE (PRECONDITIONER, PC, PC\_TYPE)
+\begin{deflist}{0000000000}
+\item    ILU (PCILU)
+\item    LU (PCLU)
+\item    BJACOBI (BLOCK\_JACOBI)
+\item    ASM (ADDITIVE\_SCHWARTZ)
+\item    PCASM
+\item  ATOL
+\item  RTOL
+\item  DTOL
+\item  MAXIT
+\end{deflist}
+\item[(., /, END)]
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_mat}{}
+
+\subsection{Keyword: MATERIAL (MATERIALS, PHIK)}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[MATERIAL (MATERIALS, PHIK)] 
+\item name id \ icap \ ithrm \ por \ tor \ permx \ permy \ permz \ permpwr
+\item[(., /, END)]
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_mode}{}
+
+\subsection{Keyword: MODE}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[MODE] [RICHARDS\_LITE, RICHARDS, MPH]
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_newt}{}
+
+\subsection{Keyword: NEWTON\_SOLVER}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[NEWTON\_SOLVER]
+\item  TRAN, TRANSPORT (tran\_solver) / DEFAULT (flow\_solver)
+\item  INEXACT\_NEWTON
+\item  NO\_PRINT\_CONVERGENCE
+\item  NO\_INF\_NORM (NO\_INFINITY\_NORM)
+\item  NO\_FORCE\_ITERATION
+\item  PRINT\_DETAILED\_CONVERGENCE
+\item  ATOL
+\item  RTOL
+\item  STOL
+\item  DTOL
+\item  ITOL (INF\_TOL, ITOL\_RES, INF\_TOL\_RES)
+\item  ITOL\_UPDATE (INF\_TOL\_UPDATE)
+\item  MAXIT
+\item  MAXF
+\item[(., /, END)]
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_numjac}{}
+
+\subsection{Keyword: NUMERICAL\_JACOBIAN}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[NUMERICAL\_JACOBIAN] \{numerical\_derivatives = .true.\}
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_orig}{}
+
+\subsection{Keyword: ORIGIN (ORIG)}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[ORIGIN (ORIG)] X\_DIRECTION Y\_DIRECTION Z\_DIRECTION
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_overwrite}{}
+
+\subsection{Keyword: OVERWRITE\_RESTART\_TRANSPORT}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[OVERWRITE\_RESTART\_TRANSPORT] \{overwrite\_restart\_transport = .true.\}
+\end{deflist}
+\end{minipage}
+}
+
+%================================================================
+
+\protect\hypertarget{target_region}{}
+
+\subsection{Keyword: REGION}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[REGION] region\_name
+\item  BLOCK i1 i2 j1 j2 k1 k2
+\item  COORDINATE x-coordinate y-coordinate z-coordinate
+\item  FILE filename
+\item  LIST (not implemented)
+\item  FACE [WEST, EAST, NORTH, SOUTH, BOTTOM, TOP]
+\item END
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_restart}{}
+
+\subsection{Keyword: RESTART}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[RESTART] restart\_file restart\_time
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_rich}{}
+
+\subsection{Keyword: RICH}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[RICH] pref
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_sat}{}
+
+\subsection{Keyword: SATURATION\_FUNCTION (SATURATION\_FUNCTIONS, PCKR)}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[SATURATION\_FUNCTION (SATURATION\_FUNCTIONS, PCKR)]
+\item id \ icaptype \ [(Sr[np],np=1,nphase), Sr] \ pckrm \ alpha \ pcwmax \ pbetac \ pwrprm
+\item[(., /, END)]
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_src}{}
+
+\subsection{Keyword: SOURCE\_SINK}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[SOURCE\_SINK]
+\item  REGION region\_name
+\item  CONDITION condition\_name
+\item  TYPE [initial, boundary, source\_sink]
+\item  FACE [WEST, EAST, NORTH, SOUTH, BOTTOM, TOP]
+\item END
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_strata}{}
+
+\subsection{Keyword: STRATIGRAPHY (STRATA)}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[STRATIGRAPHY (STRATA)]
+\item  REGION region\_name
+\item  MATERIAL material\_name
+\item  INACTIVE
+\item[(., /, END)]
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_tecp}{}
+
+\subsection{Keyword: TECP}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[TECP] [VELO, FLUX]
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_thrm}{}
+
+\subsection{Keyword: THRM (THERMAL\_PROPERTY, THERMAL\_PROPERTIES)}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[THRM (THERMAL\_PROPERTY, THERMAL\_PROPERTIES)]
+\item id \ rock\_density \ spec\_heat \ therm\_cond\_dry \ therm\_cond\_wet \ tort\_bin\_diff \ vap\_air\_diff\_coef \ exp\_binary\_diff
+\item[(., /, END)]
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_time}{}
+
+\subsection{Keyword: TIME}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[TIME] [s, m, h, d, mo, y] [every \#]
+\item t1, t2, t3, \ldots
+\end{deflist}
+\end{minipage}
+}
+
+%================================================================
+
+\protect\hypertarget{target_timestep}{}
+
+\subsection{Keyword: TIMESTEPPER}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[TIMESTEPPER]
+\item  NUM\_STEPS\_AFTER\_TS\_CUT [5]
+\item  MAX\_STEPS [999999]
+\item  TS\_ACCELERATION [5]
+\item  MAX\_TS\_CUTS [16]
+\item  MAX\_PRESSURE\_CHANGE [5.d4]
+\item  MAX\_TEMPERATURE\_CHANGE [5.d0]
+\item  MAX\_CONCENTRATION\_CHANGE [1.d0]
+\item  MAX\_SATURATION\_CHANGE [0.5d0]
+\item[(., /, END)]
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_tran}{}
+
+\subsection{Keyword: TRAN}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[TRAN] ntrandof
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_unifvel}{}
+
+\subsection{Keyword: UNIFORM\_VELOCITY}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[UNIFORM\_VELOCITY] vlx vly vlz
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_touch}{}
+
+\subsection{Keyword: USE\_TOUCH\_OPTIONS}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[USE\_TOUCH\_OPTIONS] \{use\_touch\_options = .true.\}
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_wallclk}{}
+
+\subsection{Keyword: WALLCLOCK\_STOP}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[WALLCLOCK\_STOP] wallclock\_stop\_time
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+%========================================================================
+
+%Obsolete
+
+%========================================================================
+
+%COMP (not implemented)
+
+%========================================================================
+
+%PHAS (not implemented)
+
+%========================================================================
+
+%TOLR nstepmax iaccel newton\_max icut\_max dpmxe dtmpmxe dcmxe dsmxe 
+
+%========================================================================
+
+%COUP (not implemented)
+
+%========================================================================
+
+%PHAR (not implemented)
+
+%========================================================================
+
+%RCTR (not implemented)
+
+%========================================================================
+
+%========================================================================
+
+%========================================================================
+
+%========================================================================
+
+\section*{Example Input File}
+
+%\footnotesize
+\begin{verbatim}
+:Description: 3D toy problem for richards equation
+:
+MODE RICHARDS_LITE
+TRAN 1
+:
+CHECKPOINT 1000
+RESTART steady_68_125_20_Scope3.chk 0.d0
+OVERWRITE_RESTART_TRANSPORT
+OVERWRITE_RESTART_FLOW_PARAMS
+WALLCLOCK_STOP 3.95
+:
+GRID
+TYPE structured
+NXYZ 68 125 20
+END
+:
+ORIGIN 0.d0 0.d0 90.d0
+:
+NEWTON_SOLVER FLOW
+:RTOL 1.d-50
+RTOL 1.d-5
+:ATOL 1.d-50
+ATOL 1.d-8
+:STOL 1.d-50
+STOL 1.d-6
+:ITOL_RES 1.d-4
+:ITOL_UPDATE 0.5d0  ! Pa
+NO_INFINITY_NORM
+NO_FORCE_ITERATION
+:NO_PRINT_CONVERGENCE
+:PRINT_DETAILED_CONVERGENCE
+MAXIT 20
+END
+:
+NEWTON_SOLVER TRANSPORT
+:RTOL 1.d-50
+RTOL 1.d-6
+:ATOL 1.d-50
+:STOL 1.d-50
+:STOL 1.d-6
+:ITOL_RES 1.d-8
+NO_INFINITY_NORM
+:NO_FORCE_ITERATION
+:NO_PRINT_CONVERGENCE
+:PRINT_DETAILED_CONVERGENCE
+MAXIT 10
+END
+:
+LINEAR_SOLVER FLOW
+:KSP_TYPE gmres
+:RTOL 1.d-50
+:ATOL 1.d-10
+END
+:
+TIMESTEPPER
+TS_ACCELERATION 8
+END
+:
+:HDF5 !VELO !FLUX
+TECP VELO !FLUX
+:
+DXYZ
+19.8529411765d0
+20.d0
+1.d0
+:
+:  d0[m^2/s] delhaq[kJ/mol]
+DIFF  1.D-9       12.6
+:
+: Richards Equation Pref
+RICH 101325.
+:
+SATURATION_FUNCTIONS
+: van Genuchten
+:id itype swir   m      alpha     pcwmax betac pwr
+ 1  1     0.1600 0.3391 7.2727d-4 1.e8   0.d0  1.d0
+ 2  1     0.1299 0.7479 1.4319d-4 1.e8   0.d0  1.d0 
+END
+
+THERMAL_PROPERTIES
+:ithm rho    cpr     ckdry cksat tau cdiff   cexp
+  1   2.76e3 1000.e0 0.5   0.5   0.5 2.13d-5 1.8
+END
+:
+MATERIALS
+:name   id icap ithm por  tau permx     permy     permz     permpwr
+:Hanford 1  1    1    0.20 0.5 7.387d-9  7.387d-9  7.387d-10 1.d0
+Hanford 1  1    1    0.20 0.5 7.387d-10 7.387d-10 7.387d-10 1.d0
+Unit2   2  2    1    0.25 0.5 0.d0      0.d0      0.d0      1.d0
+Unit3   3  2    1    0.25 0.5 0.d0      0.d0      0.d0      1.d0
+Unit4   4  2    1    0.25 0.5 0.d0      0.d0      0.d0      1.d0
+Unit5   5  2    1    0.25 0.5 4.221d-11 4.221d-11 4.221d-12 1.d0
+Unit6   6  2    1    0.25 0.5 1.052d-14 1.052d-14 1.052d-15 1.e0
+Unit7   7  2    1    0.25 0.5 4.523d-11 4.523d-11 4.523d-12 1.e0
+Unit8   8  2    1    0.25 0.5 5.259d-17 5.259d-17 5.259d-18 1.e0
+Unit9   9  2    1    0.25 0.5 5.259d-17 5.259d-17 5.259d-18 1.e0
+Unit10  10 2    1    0.25 0.5 1.d-20    1.d-20    1.d-20    1.e0
+END
+:
+:TIME h
+:100000.
+TIME h every 168
+7500.
+:
+:DTST 1.d-6
+:1. 100000.
+DTST 1.d-2
+1. 1.d0
+:
+REGION all
+BLOCK 1 68 1 125 1 20
+END
+
+REGION West
+FILE input_68_125_20_Scope3.h5
+END
+
+REGION East
+FILE input_68_125_20_Scope3.h5
+END
+
+REGION North
+FILE input_68_125_20_Scope3.h5
+END
+
+REGION South
+FILE input_68_125_20_Scope3.h5
+END
+
+REGION Top
+FILE input_68_125_20_Scope3.h5
+END
+
+REGION North_Pond_West_Trench
+FILE input_68_125_20_Scope3.h5
+END
+
+REGION North_Pond_East_Trench
+FILE input_68_125_20_Scope3.h5
+END
+
+:REGION Plume
+:FILE input_68_125_20_Scope3.h5
+:END
+
+REGION Plume_Source
+FILE input_68_125_20_Scope3.h5
+:BLOCK 60 62 70 72 15 17 
+END
+
+REGION 399-1-1
+COORDINATE 1208.69 1784.40 100.0
+END
+
+REGION 399-1-2
+COORDINATE 876.57 1599.94 100.0
+END
+
+REGION 399-2-1
+COORDINATE 1199.61 1304.67 100.0
+END
+
+REGION 399-2-2
+COORDINATE 1159.62 1480.95 100.0
+END
+
+REGION 399-3-9
+COORDINATE 1186.58 1098.39 100.0
+END
+
+REGION 399-3-12
+COORDINATE 911.44 1196.74 100.0
+END
+
+REGION 399-4-1
+COORDINATE 870.96 784.91 100.0
+END
+
+REGION 399-4-7
+COORDINATE 1179.54 661.80 100.0
+END
+
+REGION 399-4-9
+COORDINATE 1176.30 919.13 100.0
+END
+
+REGION 399-5-1
+COORDINATE 360.22 899.80 100.0
+END
+
+REGION ifc
+COORDINATE 979.57 1302.39 100.0
+END
+
+BREAKTHROUGH 
+REGION 399-1-1
+END
+
+BREAKTHROUGH 
+REGION 399-1-2
+END
+
+BREAKTHROUGH 
+REGION 399-2-1
+END
+
+BREAKTHROUGH 
+REGION 399-2-2
+END
+
+BREAKTHROUGH 
+REGION 399-3-9
+END
+
+BREAKTHROUGH 
+REGION 399-3-12
+END
+
+BREAKTHROUGH 
+REGION 399-4-1
+END
+
+BREAKTHROUGH 
+REGION 399-4-9
+END
+
+BREAKTHROUGH 
+REGION 399-5-1
+END
+
+BREAKTHROUGH 
+REGION ifc
+VELOCITY
+END
+
+CONDITION initial
+UNITS Pa,C,M,yr
+CLASS flow
+TYPE
+PRESSURE hydrostatic
+TEMPERATURE dirichlet
+CONCENTRATION dirichlet
+END
+:DATUM file initial_data.datum
+DATUM 1.2294770e+003 9.4611630e+002 1.0559964e+002
+GRADIENT
+:PRESSURE file initial_data.gradient
+PRESSURE 1.9538819e-004 2.8407287e-004 0.0000000e+000
+END
+PRESSURE 101325.d0
+TEMPERATURE 25.d0 
+CONCENTRATION 1.d-6
+END
+
+CONDITION river
+CLASS flow
+TYPE
+PRESSURE seepage
+TEMPERATURE dirichlet
+CONCENTRATION dirichlet
+END
+INTERPOLATION linear
+DATUM file river.datum
+:DATUM  1.2294770e+003 9.4611630e+002 1.0559964e+002
+GRADIENT
+PRESSURE file river.gradient_adj
+:PRESSURE 0.d0 0.00027389 0.d0
+END
+PRESSURE 101325.d0
+TEMPERATURE 25.d0 
+CONCENTRATION 1.d-6 
+END
+
+CONDITION west
+CLASS flow
+TYPE
+PRESSURE hydrostatic
+TEMPERATURE dirichlet
+CONCENTRATION dirichlet
+END
+INTERPOLATION linear
+DATUM file well_data.datum
+:DATUM 2.1149088e+002 1.2272915e+003 1.0548061e+002
+GRADIENT
+PRESSURE file well_data.gradient
+:PRESSURE -7.8414067e-004 3.4105428e-004 0.0000000e+000
+END
+PRESSURE 101325.d0
+TEMPERATURE 25.d0 
+CONCENTRATION 1.d-6 
+END
+
+CONDITION north
+CLASS flow
+TYPE
+PRESSURE hydrostatic
+TEMPERATURE dirichlet
+CONCENTRATION dirichlet
+END
+INTERPOLATION linear
+DATUM file north.datum
+:DATUM 0. 2500. 106.0805113
+GRADIENT
+PRESSURE file north.gradient
+:PRESSURE -4.09472e-05 0. 0.
+END
+PRESSURE 101325.d0
+TEMPERATURE 25.d0 
+CONCENTRATION 1.d-6 
+END
+
+CONDITION south
+CLASS flow
+TYPE
+PRESSURE hydrostatic
+TEMPERATURE dirichlet
+CONCENTRATION dirichlet
+END
+INTERPOLATION linear
+DATUM file south.datum
+:DATUM 0       0       105.2278756
+GRADIENT
+PRESSURE file south.gradient
+:PRESSURE 8.34319e-05 0. 0.
+END
+PRESSURE 101325.d0
+TEMPERATURE 25.d0 
+CONCENTRATION 1.d-6 
+END
+
+CONDITION recharge
+CLASS flow
+TYPE
+PRESSURE neumann
+TEMPERATURE dirichlet
+CONCENTRATION dirichlet
+END
+FLUX file recharge.txt
+:FLUX 1.756d-9
+TEMPERATURE 25.d0 
+CONCENTRATION 1.d-6 
+END
+
+CONDITION plume
+CLASS flow
+TYPE
+PRESSURE neumann
+END
+FLUX 0.d0
+END
+
+CONDITION north_pond_west_trench
+CLASS flow
+TYPE
+PRESSURE neumann
+TEMPERATURE dirichlet
+CONCENTRATION dirichlet
+END
+FLUX file north_pond_west_trench.txt
+:FLUX  4.500d-5
+TEMPERATURE 25.d0 
+CONCENTRATION 1.d-6 
+END
+
+CONDITION north_pond_east_trench
+CLASS flow
+TYPE
+PRESSURE neumann
+TEMPERATURE dirichlet
+CONCENTRATION dirichlet
+END
+FLUX file north_pond_east_trench.txt
+:FLUX 0.d0
+TEMPERATURE 25.d0 
+CONCENTRATION 1.d-6 
+END
+
+CONDITION river_c
+CLASS transport
+CONCENTRATION 1.d-40 
+END
+
+CONDITION west_c
+CLASS transport
+CONCENTRATION 1.d-40
+END
+
+CONDITION initial_c
+CLASS transport
+CONCENTRATION 1.d-40
+END
+
+CONDITION plume_c
+CLASS transport
+CONCENTRATION 1.d0
+END
+
+: initial condition
+INITIAL_CONDITION
+FLOW_CONDITION initial
+TRANSPORT_CONDITION initial_c
+REGION all
+END
+
+: inland boundary condition
+BOUNDARY_CONDITION
+FLOW_CONDITION west
+TRANSPORT_CONDITION initial_c
+REGION West
+END
+
+: river boundary condition
+BOUNDARY_CONDITION
+FLOW_CONDITION river
+TRANSPORT_CONDITION initial_c
+REGION East
+END
+
+: north boundary condition
+BOUNDARY_CONDITION
+FLOW_CONDITION north
+TRANSPORT_CONDITION initial_c
+REGION North
+END
+
+: south boundary condition
+BOUNDARY_CONDITION
+FLOW_CONDITION south
+TRANSPORT_CONDITION initial_c
+REGION South
+END
+
+: recharge boundary condition
+BOUNDARY_CONDITION
+FLOW_CONDITION recharge
+TRANSPORT_CONDITION initial_c
+REGION Top
+END
+
+: north pond west trench boundary condition
+BOUNDARY_CONDITION
+FLOW_CONDITION north_pond_west_trench
+TRANSPORT_CONDITION initial_c
+REGION North_Pond_West_Trench
+END
+
+: north pond east trench boundary condition
+BOUNDARY_CONDITION
+FLOW_CONDITION north_pond_east_trench
+TRANSPORT_CONDITION initial_c
+REGION North_Pond_East_Trench
+END
+
+: plume source
+SOURCE_SINK
+FLOW_CONDITION plume
+TRANSPORT_CONDITION plume_c
+REGION Plume_Source
+END
+
+STRATA
+MATERIAL input_68_125_20_Scope3.h5
+END
+
+:read in permeability field-------------------------------------------------
+
+DATASET permx perm_inv.dat
+DATASET permy perm_inv.dat
+DATASET permz perm_inv.dat
+
+\end{verbatim}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \section{PFLOTRAN Objects}
 
@@ -1328,1012 +2582,6 @@ This section gives an overview in alphabetical order of the objects and their da
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section{Creating the Input File: PFLOTRAN Keywords}
-
-The PFLOTRAN input file construction is based on keywords. Lines beginning with a colon (:) are treated as comments. Each entry to the input file must begin in the first column. Keywords {\tt SKIP} and {\tt NOSKIP} are used to skip over sections of the input file. Blank lines may occur in input file. Alternate keyword spelling is indicated in round brackets (~). Input options are indicated in square brackets [~], as well as default values. Curly brackets \{~\} indicate the result of invoking the corresponding keyword. Always refer to source code when in doubt!
-
-Initial and boundary conditions and material properties are assigned to spatial regions using a novel {\em coupler} approach. In this approach, initial and boundary conditions (keyword CONDITION) are assigned to regions (keyword REGION) using keywords INITIAL\_CONDITION and BOUNDARY\_CONDITION. Material properties (keyword MATERIAL) are assigned to regions using the keyword STRATIGRAPHY.
-
-\begin{longtable}{ll}%[h]%\centering
-%\caption{PFLOTRAN Keywords}\label{flkeywd} 
-
-%\vspace{4mm}
-
-%\begin{tabular}{lll} 
-\toprule[1.5pt]
-\multicolumn{1}{c}{Keyword} & \multicolumn{1}{c}{Description}\\
-\midrule[1pt]
-\hyperlink{target_bcon}{BOUNDARY\_CONDITION} & \\
-\hyperlink{target_brk}{BREAKTHROUGH} & \\
-\hyperlink{target_brine}{BRINE (BRIN)} & \\
-\hyperlink{target_ckpt}{CHECKPOINT} & \\
-\hyperlink{target_stat}{COMPUTE\_STATISTICS (STATISTICS)} & \\
-\hyperlink{target_cond}{CONDITION} & \\
-\hyperlink{target_datset}{DATASET} & \\
-\hyperlink{target_dbg}{DEBUG} & \\
-\hyperlink{target_dif}{DIFF} & \\
-\hyperlink{target_dtst}{DTST} & \\
-\hyperlink{target_dxyz}{DXYZ} & \\
-\hyperlink{target_gravity}{GRAVITY} & \\
-\hyperlink{target_grid}{GRID} & \\
-\hyperlink{target_hdf5}{HDF5} & \\
-\hyperlink{target_imod}{IMOD} & \\
-\hyperlink{target_invert}{INVERT\_Z (INVERTZ)} & \\
-\hyperlink{target_init}{INITIAL\_CONDITION} & \\
-\hyperlink{target_linsolv}{LINEAR\_SOLVER} & \\
-\hyperlink{target_mat}{MATERIAL (MATERIALS, PHIK)} & \\
-\hyperlink{target_mode}{MODE} & \\
-\hyperlink{target_newt}{NEWTON\_SOLVER} & \\
-\hyperlink{target_numjac}{NUMERICAL\_JACOBIAN} & \\
-\hyperlink{target_orig}{ORIG, ORIGIN} & \\
-\hyperlink{target_overwrite}{OVERWRITE\_RESTART\_TRANSPORT} & \\
-\hyperlink{target_region}{REGION} & \\
-\hyperlink{target_restart}{RESTART} & \\
-\hyperlink{target_rich}{RICH} & \\
-\hyperlink{target_sat}{SATURATION\_FUNCTION (SATURATION\_FUNCTION, PCKR)} & \\
-\hyperlink{target_src}{SOURCE\_SINK} & \\
-\hyperlink{target_strata}{STRATIGRAPHY (STRATA)} & \\
-\hyperlink{target_tecp}{TECP} & \\
-\hyperlink{target_thrm}{THRM, THERMAL\_PROPERTY (THERMAL\_PROPERTIES)} & \\
-\hyperlink{target_time}{TIME} & \\
-\hyperlink{target_timestep}{TIMESTEPPER} & \\
-\hyperlink{target_tran}{TRAN} & \\
-\hyperlink{target_unifvel}{UNIFORM\_VELOCITY} & \\
-\hyperlink{target_touch}{USE\_TOUCH\_OPTIONS} & \\
-\hyperlink{target_wallclk}{WALLCLOCK\_STOP} & \\
-\bottomrule[1.5pt]
-%\end{tabular} 
-\end{longtable}
-
-\protect\hypertarget{target_bcon}{}
-
-\subsection*{\bf Keyword: BOUNDARY\_CONDITION}
-\shadowbox{
-\begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
-\item[BOUNDARY\_CONDITION]
-\item[REGION] region\_name
-\item[CONDITION] condition\_name
-\item[TYPE] [initial, boundary, source\_sink]
-\item[FACE] [WEST, EAST, NORTH, SOUTH, BOTTOM, TOP]
-\item[END]
-\end{deflist}
-\end{minipage}
-}
-
-%========================================================================
-
-\protect\hypertarget{target_brk}{}
-
-\subsection*{Keyword: BREAKTHROUGH (BRK)}
-\shadowbox{
-\begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
-\item[BREAKTHROUGH]
-\item[REGION] region\_name
-\item[VELOCITY] \{print\_velocities == PETSC\_TRUE\}
-\item[(., /, END)]
-\end{deflist}
-\end{minipage}
-}
-
-%========================================================================
-
-\protect\hypertarget{target_brine}{}
-
-\subsection*{Keyword: BRINE (BRIN)}
-
-\shadowbox{
-\begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
-\item[BRIN, BRINE] m\_nacl [MOLAL, MASS, MOLE]
-\end{deflist}
-\end{minipage}
-}
-
-%========================================================================
-
-\protect\hypertarget{target_ckpt}{}
-
-\subsection*{Keyword: CHECKPOINT}
-\shadowbox{
-\begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
-\item [CHECKPOINT] checkpoint\_frequency
-\end{deflist}
-\end{minipage}
-}
-
-%========================================================================
-
-\protect\hypertarget{target_stat}{}
-
-\subsection*{Keyword: COMPUTE\_STATISTICS (STATISTICS)}
-
-\shadowbox{
-\begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
-\item [COMPUTE\_STATISTICS, STATISTICS] \{compute\_statistics = .true.\}
-\end{deflist}
-\end{minipage}
-}
-
-%================================================================
-
-\protect\hypertarget{target_cond}{}
-
-\subsection*{Keyword: CONDITION (COND)}
-
-\shadowbox{
-\begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
-\item [CONDITION (COND)] condition\_name
-\item [UNITS] ~
-\begin{deflist}{0000000000}
-\item    s, sec, min, hr, d, day, y, yr
-\item    mm, cm, m, met, meter, dm, km
-\item    Pa, KPa
-\item    m/s, m/yr
-\item    C, K
-\item    M, mol/L
-\item    KJ/mol
-\end{deflist}
-
-\item[(., /, END)]
-  
-\item[CLASS] [flow, transport (tran)]
-  
-\item[CYCLIC] \{is\_cyclic = .true.\}
-  
-\item[INTERPOLATION] step linear
-  
-\item[TYPE] ~
-
-\begin{deflist}{0000000000}
-    \item[PRESSURE (PRES, PRESS)]
-      [dirichlet, 
-      neumann,
-      mass,
-      hydrostatic (hydro, hydrostat), static,
-      zero\_gradient,
-      seepage]
-    \item[FLUX]
-      [dirichlet, 
-      neumann,
-      mass,
-      hydrostatic (hydro, hydrostat), static,
-      zero\_gradient,
-      seepage]
-    \item[TEMPERATURE (TEMP)]
-      [dirichlet, 
-      neumann,
-      mass,
-      hydrostatic (hydro, hydrostat), static,
-      zero\_gradient,
-      seepage]
-    \item[CONCENTRATION (CONC)]
-      [dirichlet, 
-      neumann,
-      mass,
-      hydrostatic (hydro, hydrostat), static,
-      zero\_gradient,
-      seepage]
-    \item[ENTHALPY (H)]
-      [dirichlet, 
-      neumann,
-      mass,
-      hydrostatic (hydro, hydrostat), static,
-      zero\_gradient,
-      seepage]
-      
-  \item[(., /, END)]
-\end{deflist}
-\item[TIME] ~
-  
-\item[IPHASE] ~
-  
-\item[DATUM (DATM)] ~
- \item  [[Continued]]
-\end{deflist}
-\end{minipage}
-}
-
-\subsection*{Keyword: CONDITION (COND) [Continued]}
-\shadowbox{
-\begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
-\item[GRADIENT (GRAD)] ~
-\item    PRESSURE (PRES, PRESS)
-\item    FLUX
-\item    TEMPERATURE (TEMP)
-\item    CONCENTRATION (CONC)
-\item    ENTHALPY (H)
-\item[(., /, END)] ~
-\item[TEMPERATURE (TEMP)] ~
-\item[ENTHALPY (H)] ~
-\item[PRESSURE (PRES, PRESS)] ~
-\item[FLUX (VELOCITY, VEL)] ~
-\item[CONCENTRATION (CONC)] ~
-\item[(., /, END)] ~
-\end{deflist}
-\end{minipage}
-}
-
-%========================================================================
-
-\protect\hypertarget{target_datset}{}
-
-\subsection*{Keyword: DATASET}
-\shadowbox{
-\begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
-\item[DATASET] [permx, permy, permz] [permx\_filename, permy\_filename, permz\_filename]
-\end{deflist}
-\end{minipage}
-}
-
-%========================================================================
-
-\protect\hypertarget{target_dbg}{}
-
-\subsection*{Keyword: DEBUG}
-\shadowbox{
-\begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
-\item[DEBUG]
-\item  PRINT\_SOLUTION (VECVIEW\_SOLUTION, VIEW\_SOLUTION)
-\item  PRINT\_RESIDUAL (VECVIEW\_RESIDUAL,VIEW\_RESIDUAL)
-\item  PRINT\_JACOBIAN (MATVIEW\_JACOBIAN, VIEW\_JACOBIAN)
-\item  PRINT\_JACOBIAN\_NORM (NORM\_JACOBIAN)
-\item  PRINT\_COUPLERS (PRINT\_COUPLER)
-\item  PRINT\_JACOBIAN\_DETAILED (MATVIEW\_JACOBIAN\_DETAILED, VIEW\_JACOBIAN\_DETAILED)
-\item  PRINT\_NUMERICAL\_DERIVATIVES (VIEW\_NUMERICAL\_DERIVATIVES)
-\item[END]
-\end{deflist}
-\end{minipage}
-}
-
-%========================================================================
-
-\protect\hypertarget{target_dif}{}
-
-\subsection*{Keyword: DIFF}
-\shadowbox{
-\begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
-\item[DIFF] difaq delhaq
-\end{deflist}
-\end{minipage}
-}
-
-%========================================================================
-
-\protect\hypertarget{target_dtst}{}
-
-\subsection*{Keyword: DTST}
-\shadowbox{
-\begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
-\item[DTST] dt\_min
-\item dt1, dt2, dt3, \ldots, dt\_max
-\end{deflist}
-\end{minipage}
-}
-
-%========================================================================
-
-\protect\hypertarget{target_dxyz}{}
-
-\subsection*{Keyword: DXYZ}
-\shadowbox{
-\begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
-\item[DXYZ] [STRUCTURED\_GRID, AMR\_GRID]
-\item dx0 
-\item dy0 
-\item dz0
-\end{deflist}
-\end{minipage}
-}
-
-%========================================================================
-
-\protect\hypertarget{target_gravity}{}
-
-\subsection*{Keyword: GRAVITY (GRAV)}
-\shadowbox{
-\begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
-\item[GRAVITY (GRAV)] gravity
-\end{deflist}
-\end{minipage}
-}
-
-%========================================================================
-
-\protect\hypertarget{target_grid}{}
-
-\subsection*{Keyword: GRID}
-\shadowbox{
-\begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
-\item[GRID]
-\item TYPE [structured, unstructured, amr]
-\item NXYZ nx ny nz
-\item FILE
-\item[END]
-\end{deflist}
-\end{minipage}
-}
-
-%========================================================================
-
-\protect\hypertarget{target_hdf5}{}
-
-\subsection*{Keyword: HDF5}
-\shadowbox{
-\begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
-\item[HDF5] [VELO, FLUX]
-\end{deflist}
-\end{minipage}
-}
-
-%========================================================================
-
-\protect\hypertarget{target_imod}{}
-
-\subsection*{Keyword: IMOD}
-\shadowbox{
-\begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
-\item[IMOD] mod
-\end{deflist}
-\end{minipage}
-}
-
-%========================================================================
-
-\protect\hypertarget{target_invert}{}
-
-\subsection*{Keyword: INVERT\_Z (INVERTZ)}
-\shadowbox{
-\begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
-\item[INVERT\_Z (INVERTZ)] \{invert\_z\_axis = .true.\}
-\end{deflist}
-\end{minipage}
-}
-
-%========================================================================
-
-\protect\hypertarget{target_init}{}
-
-\subsection*{Keyword: INITIAL\_CONDITION}
-\shadowbox{
-\begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
-\item[INITIAL\_CONDITION]
-\item REGION region\_name
-\item CONDITION condition\_name
-\item TYPE [initial, boundary, source\_sink]
-\item FACE [WEST, EAST, NORTH, SOUTH, BOTTOM, TOP]
-\item[END]
-\end{deflist}
-\end{minipage}
-}
-
-%========================================================================
-
-\protect\hypertarget{target_linsolv}{}
-
-\subsection*{Keyword: LINEAR\_SOLVER}
-\shadowbox{
-\begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
-\item[LINEAR\_SOLVER]
-\item TRAN, TRANSPORT (tran\_solver) / DEFAULT (flow\_solver)
-\item SOLVER\_TYPE (SOLVER, KRYLOV\_TYPE, KRYLOV, KSP, KSP\_TYPE)
-\begin{deflist}{0000000000}
-\item    NONE (PREONLY)
-\item    GMRES
-\item    BCGS (BICGSTAB, BI-CGSTAB)
-\end{deflist}
-\item  PRECONDITIONER\_TYPE (PRECONDITIONER, PC, PC\_TYPE)
-\begin{deflist}{0000000000}
-\item    ILU (PCILU)
-\item    LU (PCLU)
-\item    BJACOBI (BLOCK\_JACOBI)
-\item    ASM (ADDITIVE\_SCHWARTZ)
-\item    PCASM
-\item  ATOL
-\item  RTOL
-\item  DTOL
-\item  MAXIT
-\end{deflist}
-\item[(., /, END)]
-\end{deflist}
-\end{minipage}
-}
-
-%========================================================================
-
-\protect\hypertarget{target_mat}{}
-
-\subsection*{Keyword: MATERIAL (MATERIALS, PHIK)}
-\shadowbox{
-\begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
-\item[MATERIAL (MATERIALS, PHIK)] 
-\item name id \ icap \ ithrm \ por \ tor \ permx \ permy \ permz \ permpwr
-\item[(., /, END)]
-\end{deflist}
-\end{minipage}
-}
-
-%========================================================================
-
-\protect\hypertarget{target_mode}{}
-
-\subsection*{Keyword: MODE}
-\shadowbox{
-\begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
-\item[MODE] [RICHARDS\_LITE, RICHARDS, MPH]
-\end{deflist}
-\end{minipage}
-}
-
-%========================================================================
-
-\protect\hypertarget{target_newt}{}
-
-\subsection*{Keyword: NEWTON\_SOLVER}
-\shadowbox{
-\begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
-\item[NEWTON\_SOLVER]
-\item  TRAN, TRANSPORT (tran\_solver) / DEFAULT (flow\_solver)
-\item  INEXACT\_NEWTON
-\item  NO\_PRINT\_CONVERGENCE
-\item  NO\_INF\_NORM (NO\_INFINITY\_NORM)
-\item  NO\_FORCE\_ITERATION
-\item  PRINT\_DETAILED\_CONVERGENCE
-\item  ATOL
-\item  RTOL
-\item  STOL
-\item  DTOL
-\item  ITOL (INF\_TOL, ITOL\_RES, INF\_TOL\_RES)
-\item  ITOL\_UPDATE (INF\_TOL\_UPDATE)
-\item  MAXIT
-\item  MAXF
-\item[(., /, END)]
-\end{deflist}
-\end{minipage}
-}
-
-%========================================================================
-
-\protect\hypertarget{target_numjac}{}
-
-\subsection*{Keyword: NUMERICAL\_JACOBIAN}
-\shadowbox{
-\begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
-\item[NUMERICAL\_JACOBIAN] \{numerical\_derivatives = .true.\}
-\end{deflist}
-\end{minipage}
-}
-
-%========================================================================
-
-\protect\hypertarget{target_orig}{}
-
-\subsection*{Keyword: ORIGIN (ORIG)}
-\shadowbox{
-\begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
-\item[ORIGIN (ORIG)] X\_DIRECTION Y\_DIRECTION Z\_DIRECTION
-\end{deflist}
-\end{minipage}
-}
-
-%========================================================================
-
-\protect\hypertarget{target_overwrite}{}
-
-\subsection*{Keyword: OVERWRITE\_RESTART\_TRANSPORT}
-\shadowbox{
-\begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
-\item[OVERWRITE\_RESTART\_TRANSPORT] \{overwrite\_restart\_transport = .true.\}
-\end{deflist}
-\end{minipage}
-}
-
-%================================================================
-
-\protect\hypertarget{target_region}{}
-
-\subsection*{Keyword: REGION}
-\shadowbox{
-\begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
-\item[REGION] region\_name
-\item  BLOCK i1 i2 j1 j2 k1 k2
-\item  COORDINATE x-coordinate y-coordinate z-coordinate
-\item  FILE filename
-\item  LIST (not implemented)
-\item  FACE [WEST, EAST, NORTH, SOUTH, BOTTOM, TOP]
-\item END
-\end{deflist}
-\end{minipage}
-}
-
-%========================================================================
-
-\protect\hypertarget{target_restart}{}
-
-\subsection*{Keyword: RESTART}
-\shadowbox{
-\begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
-\item[RESTART] restart\_file restart\_time
-\end{deflist}
-\end{minipage}
-}
-
-%========================================================================
-
-\protect\hypertarget{target_rich}{}
-
-\subsection*{Keyword: RICH}
-\shadowbox{
-\begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
-\item[RICH] pref
-\end{deflist}
-\end{minipage}
-}
-
-%========================================================================
-
-\protect\hypertarget{target_sat}{}
-
-\subsection*{Keyword: SATURATION\_FUNCTION (SATURATION\_FUNCTIONS, PCKR)}
-\shadowbox{
-\begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
-\item[SATURATION\_FUNCTION (SATURATION\_FUNCTIONS, PCKR)]
-\item id \ icaptype \ [(Sr[np],np=1,nphase), Sr] \ pckrm \ alpha \ pcwmax \ pbetac \ pwrprm
-\item[(., /, END)]
-\end{deflist}
-\end{minipage}
-}
-
-%========================================================================
-
-\protect\hypertarget{target_src}{}
-
-\subsection*{Keyword: SOURCE\_SINK}
-\shadowbox{
-\begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
-\item[SOURCE\_SINK]
-\item  REGION region\_name
-\item  CONDITION condition\_name
-\item  TYPE [initial, boundary, source\_sink]
-\item  FACE [WEST, EAST, NORTH, SOUTH, BOTTOM, TOP]
-\item END
-\end{deflist}
-\end{minipage}
-}
-
-%========================================================================
-
-\protect\hypertarget{target_strata}{}
-
-\subsection*{Keyword: STRATIGRAPHY (STRATA)}
-\shadowbox{
-\begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
-\item[STRATIGRAPHY (STRATA)]
-\item  REGION region\_name
-\item  MATERIAL material\_name
-\item  INACTIVE
-\item[(., /, END)]
-\end{deflist}
-\end{minipage}
-}
-
-%========================================================================
-
-\protect\hypertarget{target_tecp}{}
-
-\subsection*{Keyword: TECP}
-\shadowbox{
-\begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
-\item[TECP] [VELO, FLUX]
-\end{deflist}
-\end{minipage}
-}
-
-%========================================================================
-
-\protect\hypertarget{target_thrm}{}
-
-\subsection*{Keyword: THRM (THERMAL\_PROPERTY, THERMAL\_PROPERTIES)}
-\shadowbox{
-\begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
-\item[THRM (THERMAL\_PROPERTY, THERMAL\_PROPERTIES)]
-\item id \ rock\_density \ spec\_heat \ therm\_cond\_dry \ therm\_cond\_wet \ tort\_bin\_diff \ vap\_air\_diff\_coef \ exp\_binary\_diff
-\item[(., /, END)]
-\end{deflist}
-\end{minipage}
-}
-
-%========================================================================
-
-\protect\hypertarget{target_time}{}
-
-\subsection*{Keyword: TIME}
-\shadowbox{
-\begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
-\item[TIME] [s, m, h, d, mo, y] [every \#]
-\item t1, t2, t3, \ldots
-\end{deflist}
-\end{minipage}
-}
-
-%================================================================
-
-\protect\hypertarget{target_timestep}{}
-
-\subsection*{Keyword: TIMESTEPPER}
-\shadowbox{
-\begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
-\item[TIMESTEPPER]
-\item  NUM\_STEPS\_AFTER\_TS\_CUT [5]
-\item  MAX\_STEPS [999999]
-\item  TS\_ACCELERATION [5]
-\item  MAX\_TS\_CUTS [16]
-\item  MAX\_PRESSURE\_CHANGE [5.d4]
-\item  MAX\_TEMPERATURE\_CHANGE [5.d0]
-\item  MAX\_CONCENTRATION\_CHANGE [1.d0]
-\item  MAX\_SATURATION\_CHANGE [0.5d0]
-\item[(., /, END)]
-\end{deflist}
-\end{minipage}
-}
-
-%========================================================================
-
-\protect\hypertarget{target_tran}{}
-
-\subsection*{Keyword: TRAN}
-\shadowbox{
-\begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
-\item[TRAN] ntrandof
-\end{deflist}
-\end{minipage}
-}
-
-%========================================================================
-
-\protect\hypertarget{target_unifvel}{}
-
-\subsection*{Keyword: UNIFORM\_VELOCITY}
-\shadowbox{
-\begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
-\item[UNIFORM\_VELOCITY] vlx vly vlz
-\end{deflist}
-\end{minipage}
-}
-
-%========================================================================
-
-\protect\hypertarget{target_touch}{}
-
-\subsection*{Keyword: USE\_TOUCH\_OPTIONS}
-\shadowbox{
-\begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
-\item[USE\_TOUCH\_OPTIONS] \{use\_touch\_options = .true.\}
-\end{deflist}
-\end{minipage}
-}
-
-%========================================================================
-
-\protect\hypertarget{target_wallclk}{}
-
-\subsection*{Keyword: WALLCLOCK\_STOP}
-\shadowbox{
-\begin{minipage}{6.5in}
-\begin{deflist}{0000000000} 
-\item[WALLCLOCK\_STOP] wallclock\_stop\_time
-\end{deflist}
-\end{minipage}
-}
-
-%========================================================================
-%========================================================================
-
-%Obsolete
-
-%========================================================================
-
-%COMP (not implemented)
-
-%========================================================================
-
-%PHAS (not implemented)
-
-%========================================================================
-
-%TOLR nstepmax iaccel newton\_max icut\_max dpmxe dtmpmxe dcmxe dsmxe 
-
-%========================================================================
-
-%COUP (not implemented)
-
-%========================================================================
-
-%PHAR (not implemented)
-
-%========================================================================
-
-%RCTR (not implemented)
-
-%========================================================================
-
-%========================================================================
-
-%========================================================================
-
-%========================================================================
-
-\section*{Example Input File}
-
-%\footnotesize
-\begin{verbatim}
-:Description: 2D problem for saturated layered medium
-:
-:MODE RICHARDS
-MODE RICHARDS_LITE
-TRAN 1
-:
-:NUMERICAL_JACOBIAN
-:INEXACT_NEWTON
-:USE_TOUCH_OPTIONS
-:
-:CHECKPOINT 1000
-:RESTART steady.chk 0.d0
-:OVERWRITE_RESTART_TRANSPORT
-:COMPUTE_STATISTICS
-:USE_TOUCH_OPTIONS
-:WALLCLOCK_STOP 0.d0
-:
-DEBUG
-:MATVIEW_JACOBIAN
-:VECVIEW_RESIDUAL
-:VECVIEW_SOLUTION
-:PRINT_COUPLERS
-END
-:
-GRID
-TYPE structured
-NXYZ 450 1 4430 
-END
-:
-ORIGIN 0.d0 0.d0 0.d0
-:
-NEWTON_SOLVER
-RTOL 1.d-5
-ATOL 1.d-7
-STOL 1.d-10
-:ITOL_RES 1.d-8
-:ITOL_UPDATE 0.05d0  ! Pa
-NO_INFINITY_NORM
-:NO_FORCE_ITERATION
-:NO_PRINT_CONVERGENCE
-:PRINT_DETAILED_CONVERGENCE
-MAXIT 20
-END
-:noskip
-:
-NEWTON_SOLVER TRANSPORT
-:RTOL 1.d-50
-ATOL 1.d-50
-STOL 1.d-50
-ITOL_RES 1.d-8
-:ITOL_UPDATE 5.d0  ! Pa
-:NO_INFINITY_NORM
-:NO_FORCE_ITERATION
-:NO_PRINT_CONVERGENCE
-:PRINT_DETAILED_CONVERGENCE
-MAXIT 10
-END
-:
-TIMESTEPPER
-TS_ACCELERATION 8
-END
-:
-:HDF5 !VELO !FLUX
-TECP VELO !FLUX
-:
-DXYZ
-0.02d0
-1.d0
-0.002d0
-:
-:  d0[m^2/s] delhaq[kJ/mol]
-DIFF  1.D-9       12.6
-:
-: Richards Equation Pref
-RICH 101325.
-:
-SATURATION_FUNCTIONS
-: van Genuchten
-:id itype swir   m      alpha     pcwmax betac pwr
- 1  1     0.1600 0.3391 7.2727d-4 1.e8   0.d0  1.d0
- 2  1     0.1299 0.7479 1.4319d-4 1.e8   0.d0  1.d0 
-: Brooks-Corey
-:id itype swir   lambda alpha     pcwmax betac pwr
-: 1  2     0.1600 1.97   7.2727d-4 1.e8   0.d0  1.d0
-: 2  2     0.1299 0.5193 1.4319d-4 1.e8   0.d0  1.d0 
-END
-
-THERMAL_PROPERTIES
-:ithm rho    cpr     ckdry cksat tau cdiff   cexp
-  1   2.76e3 1000.e0 0.5   0.5   0.5 2.13d-5 1.8
-END
-:
-MATERIALS
-:name id icap ithm por  tau permx  permy  permz  permpwr
-tuff 1  1    1    0.2 0.5 1.d-19 1.d-19 1.d-19 1.d0
-END
-:
-:
-:TIME y every 10.
-TIME y
-0.1 0.25 0.5 0.75 1.
-:
-DTST 1.d-8
-1. 0.001d0
-:
-:define regions--------------------------------------------------------------
-:
-REGION all
-BLOCK 1 450 1 1 1 4430
-END
-
-REGION Left
-FACE west
-BLOCK 1 1 1 1 3931 4430
-END
-
-REGION Right
-FACE east
-BLOCK 450 450 1 1 1 500
-END
-
-:define initial and boundary conditions---------------------------------------
-
-:flow----------------------
-
-CONDITION initial
-CLASS flow
-TYPE
-PRESSURE hydrostatic
-END
-DATUM 0.d0 0.d0 10.d0
-PRESSURE 101325.d0
-END
-
-CONDITION Left
-CLASS flow
-TYPE
-PRESSURE neumann
-END
-PRESSURE 1.5854896d-7 ! 5000 mm/yr
-END
-
-CONDITION Right
-CLASS flow
-TYPE
-PRESSURE neumann
-END
-PRESSURE -1.5854896d-7 ! 5000 mm/yr
-END
-
-:transport-----------------
-
-CONDITION initial_c
-CLASS transport
-CONCENTRATION 1.d-8
-END
-
-CONDITION outlet_c
-CLASS transport
-TYPE
-CONCENTRATION zero_gradient
-END
-CONCENTRATION 1.d-8
-END
-
-CONDITION inlet_c
-CLASS transport
-CONCENTRATION 1.d0
-END
-
-:set initial and boundary conditions----------------------------------------
-
-:flow-----------------------
-
-: initial condition
-INITIAL_CONDITION
-CONDITION initial
-REGION all
-END
-
-BOUNDARY_CONDITION
-CONDITION Left
-REGION Left
-END
-
-BOUNDARY_CONDITION
-CONDITION initial
-REGION Right
-END
-
-:transport------------------
-
-: initial condition
-INITIAL_CONDITION
-CONDITION initial_c
-REGION all
-END
-
-BOUNDARY_CONDITION
-CONDITION inlet_c
-REGION Left
-END
-
-BOUNDARY_CONDITION
-CONDITION outlet_c
-REGION Right
-END
-
-:set material properties---------------------------------------------------
-
-STRATA
-MATERIAL tuff
-REGION all
-END
-
-:read in permeability field-------------------------------------------------
-
-DATASET permx perm_inv.dat
-DATASET permy perm_inv.dat
-DATASET permz perm_inv.dat
-
-\end{verbatim}
-
-\section{References}
-
-\begin{description}
-
-\item Balay S, Eijkhout V, Gropp WD, McInnes LC and Smith BF (1997) Modern Software Tools in Scientific Computing, Eds. Arge E, Bruaset AM and Langtangen HP (Birkha\"user Press), pp. 163--202.
-
-\end{description}
-
 \newpage
 \section{FAQ}
 
@@ -2347,6 +2595,15 @@ before building PFLOTRAN, and seeing if that works. Unfortunately, it
 may be necessary to mess with the configuration files for the PETSc builds to
 make sure that you don't link with the iobuf library.
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{References}
+
+\begin{description}
+
+\item Balay S, Eijkhout V, Gropp WD, McInnes LC and Smith BF (1997) Modern Software Tools in Scientific Computing, Eds. Arge E, Bruaset AM and Langtangen HP (Birkha\"user Press), pp. 163--202.
+
+\end{description}
 
 \end{document}
 
