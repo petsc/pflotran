@@ -19,41 +19,41 @@ PetscInt, parameter, public :: OUTPUT_STAGE = 3
     
     PetscInt :: class_pflotran
     
-    PetscEvent :: event_init
-    PetscEvent :: event_setup
+    PetscLogEvent :: event_init
+    PetscLogEvent :: event_setup
 
-    PetscEvent :: event_restart
-    PetscEvent :: event_checkpoint
+    PetscLogEvent :: event_restart
+    PetscLogEvent :: event_checkpoint
 
-    PetscEvent :: event_condition_read
-    PetscEvent :: event_condition_read_values
+    PetscLogEvent :: event_condition_read
+    PetscLogEvent :: event_condition_read_values
 
-    PetscEvent :: event_h5dread_f
-    PetscEvent :: event_h5dwrite_f
-    PetscEvent :: event_read_indices_hdf5
-    PetscEvent :: event_map_indices_hdf5
-    PetscEvent :: event_hash_create
-    PetscEvent :: event_hash_map
-    PetscEvent :: event_read_real_array_hdf5
-    PetscEvent :: event_read_int_array_hdf5
-    PetscEvent :: event_write_real_array_hdf5
-    PetscEvent :: event_write_int_array_hdf5
-    PetscEvent :: event_read_array_hdf5    
-    PetscEvent :: event_write_struct_dataset_hdf5
-    PetscEvent :: event_region_read_hdf5
-    PetscEvent :: event_region_read_ascii
-    PetscEvent :: event_material_read_hdf5
+    PetscLogEvent :: event_h5dread_f
+    PetscLogEvent :: event_h5dwrite_f
+    PetscLogEvent :: event_read_indices_hdf5
+    PetscLogEvent :: event_map_indices_hdf5
+    PetscLogEvent :: event_hash_create
+    PetscLogEvent :: event_hash_map
+    PetscLogEvent :: event_read_real_array_hdf5
+    PetscLogEvent :: event_read_int_array_hdf5
+    PetscLogEvent :: event_write_real_array_hdf5
+    PetscLogEvent :: event_write_int_array_hdf5
+    PetscLogEvent :: event_read_array_hdf5    
+    PetscLogEvent :: event_write_struct_dataset_hdf5
+    PetscLogEvent :: event_region_read_hdf5
+    PetscLogEvent :: event_region_read_ascii
+    PetscLogEvent :: event_material_read_hdf5
 
-    PetscEvent :: event_output_tecplot
-    PetscEvent :: event_output_hdf5
-    PetscEvent :: event_output_str_grid_tecplot
-    PetscEvent :: event_output_write_tecplot
-    PetscEvent :: event_output_write_flux_tecplot
-    PetscEvent :: event_output_get_var_from_array
-    PetscEvent :: event_output_get_cell_vel
-    PetscEvent :: event_output_vec_tecplot
-    PetscEvent :: event_output_breakthrough
-    PetscEvent :: event_output_coordinates_hdf5
+    PetscLogEvent :: event_output_tecplot
+    PetscLogEvent :: event_output_hdf5
+    PetscLogEvent :: event_output_str_grid_tecplot
+    PetscLogEvent :: event_output_write_tecplot
+    PetscLogEvent :: event_output_write_flux_tecplot
+    PetscLogEvent :: event_output_get_var_from_array
+    PetscLogEvent :: event_output_get_cell_vel
+    PetscLogEvent :: event_output_vec_tecplot
+    PetscLogEvent :: event_output_breakthrough
+    PetscLogEvent :: event_output_coordinates_hdf5
     
   end type logging_type
   
@@ -79,111 +79,111 @@ subroutine LoggingCreate()
   
   allocate(logging)
 
-  call PetscLogStageRegister(logging%stage(INIT_STAGE), &
-                             "Init Stage",ierr)
-  call PetscLogStageRegister(logging%stage(TS_STAGE), &
-                             "Time Step Stage",ierr)
-  call PetscLogStageRegister(logging%stage(OUTPUT_STAGE), &
-                             "Output Stage",ierr)
+  call PetscLogStageRegister('Init Stage',  & 
+                             logging%stage(INIT_STAGE),ierr)
+  call PetscLogStageRegister('Time Step Stage', &
+                             logging%stage(TS_STAGE),ierr)
+  call PetscLogStageRegister('Output Stage', &
+                             logging%stage(OUTPUT_STAGE),ierr)
                              
-  call PetscLogClassRegister(logging%class_pflotran,'PFLTORAN',ierr)
+  call PetscCookieRegister('PFLTORAN',logging%class_pflotran,ierr)
 
-  call PetscLogEventRegister(logging%event_init, &
-                             'Init', &
+  call PetscLogEventRegister('Init', &
+                             logging%event_init, &
                              logging%class_pflotran,ierr)
-  call PetscLogEventRegister(logging%event_setup, &
-                             'Init,Setup', &
-                             logging%class_pflotran,ierr)
-
-  call PetscLogEventRegister(logging%event_restart, &
-                             'Restart', &
-                             logging%class_pflotran,ierr)
-  call PetscLogEventRegister(logging%event_checkpoint, &
-                             'Checkpoint', &
+  call PetscLogEventRegister('Init,Setup', &
+                             logging%event_setup, &
                              logging%class_pflotran,ierr)
 
-  call PetscLogEventRegister(logging%event_condition_read, &
-                             'ConditionRead', &
+  call PetscLogEventRegister('Restart', &
+                             logging%event_restart, &
                              logging%class_pflotran,ierr)
-  call PetscLogEventRegister(logging%event_condition_read_values, &
-                             'ConditionRdVals', &
-                             logging%class_pflotran,ierr)
-
-  call PetscLogEventRegister(logging%event_h5dread_f, &
-                             'H5DRead_F', &
-                             logging%class_pflotran,ierr)
-  call PetscLogEventRegister(logging%event_h5dwrite_f, &
-                             'H5DWrite_F', &
-                             logging%class_pflotran,ierr)
-  call PetscLogEventRegister(logging%event_read_indices_hdf5, &
-                             'HDF5ReadIndices', &
-                             logging%class_pflotran,ierr)
-  call PetscLogEventRegister(logging%event_map_indices_hdf5, &
-                             'H5MapLoc2NatIndx', &
-                             logging%class_pflotran,ierr)
-  call PetscLogEventRegister(logging%event_hash_create, &
-                             'GrdCrNat2GhstHsh', &
-                             logging%class_pflotran,ierr)
-  call PetscLogEventRegister(logging%event_hash_map, &
-                             'GrdLocGhstIdHsh', &
-                             logging%class_pflotran,ierr)
-  call PetscLogEventRegister(logging%event_read_real_array_hdf5, &
-                             'H5ReadRealArray', &
-                             logging%class_pflotran,ierr)
-  call PetscLogEventRegister(logging%event_read_int_array_hdf5, &
-                             'H5ReadIntArray', &
-                             logging%class_pflotran,ierr)
-  call PetscLogEventRegister(logging%event_read_array_hdf5, &
-                             'H5ReadArray', &
-                             logging%class_pflotran,ierr)
-  call PetscLogEventRegister(logging%event_write_real_array_hdf5, &
-                             'H5WriteRealArray', &
-                             logging%class_pflotran,ierr)
-  call PetscLogEventRegister(logging%event_write_int_array_hdf5, &
-                             'H5WriteIntArray', &
-                             logging%class_pflotran,ierr)
-  call PetscLogEventRegister(logging%event_write_struct_dataset_hdf5, &
-                             'H5WriteStrData', &
-                             logging%class_pflotran,ierr)
-  call PetscLogEventRegister(logging%event_region_read_hdf5, &
-                             'H5ReadRegFrmFile', &
-                             logging%class_pflotran,ierr)
-  call PetscLogEventRegister(logging%event_region_read_ascii, &
-                             'RegReadFrmFileId', &
-                             logging%class_pflotran,ierr)
-  call PetscLogEventRegister(logging%event_material_read_hdf5, &
-                             'H5ReadMatFrmFile', &
+  call PetscLogEventRegister('Checkpoint', &
+                             logging%event_checkpoint, &
                              logging%class_pflotran,ierr)
 
-  call PetscLogEventRegister(logging%event_output_tecplot, &
-                             'OutputTecplot', &
+  call PetscLogEventRegister('ConditionRead', &
+                             logging%event_condition_read, &
                              logging%class_pflotran,ierr)
-  call PetscLogEventRegister(logging%event_output_hdf5, &
-                             'OutputHDF5', &
+  call PetscLogEventRegister('ConditionRdVals', &
+                             logging%event_condition_read_values, &
                              logging%class_pflotran,ierr)
-  call PetscLogEventRegister(logging%event_output_str_grid_tecplot, &
-                             'WriteTecStrGrid', &
+
+  call PetscLogEventRegister('H5DRead_F', &
+                             logging%event_h5dread_f, &
                              logging%class_pflotran,ierr)
-  call PetscLogEventRegister(logging%event_output_write_tecplot, &
-                             'WriteTecDataSet', &
+  call PetscLogEventRegister('H5DWrite_F', &
+                             logging%event_h5dwrite_f, &
                              logging%class_pflotran,ierr)
-  call PetscLogEventRegister(logging%event_output_write_flux_tecplot, &
-                             'OutputFluxVelTec', &
+  call PetscLogEventRegister('HDF5ReadIndices', &
+                             logging%event_read_indices_hdf5, &
                              logging%class_pflotran,ierr)
-  call PetscLogEventRegister(logging%event_output_get_var_from_array, &
-                             'OutputGtVrFrmArr', &
+  call PetscLogEventRegister('H5MapLoc2NatIndx', &
+                             logging%event_map_indices_hdf5, &
                              logging%class_pflotran,ierr)
-  call PetscLogEventRegister(logging%event_output_get_cell_vel, &
-                             'GetCellCentVel', &
+  call PetscLogEventRegister('GrdCrNat2GhstHsh', &
+                             logging%event_hash_create, &
                              logging%class_pflotran,ierr)
-  call PetscLogEventRegister(logging%event_output_vec_tecplot, &
-                             'OutputFluxVelTec', &
+  call PetscLogEventRegister('GrdLocGhstIdHsh', &
+                             logging%event_hash_map, &
                              logging%class_pflotran,ierr)
-  call PetscLogEventRegister(logging%event_output_breakthrough, &
-                             'OutputBrkthuTec', &
+  call PetscLogEventRegister('H5ReadRealArray', &
+                             logging%event_read_real_array_hdf5, &
                              logging%class_pflotran,ierr)
-  call PetscLogEventRegister(logging%event_output_coordinates_hdf5, &
-                             'WriteHDF5Coord', &
+  call PetscLogEventRegister('H5ReadIntArray', &
+                             logging%event_read_int_array_hdf5, &
+                             logging%class_pflotran,ierr)
+  call PetscLogEventRegister('H5ReadArray', &
+                             logging%event_read_array_hdf5, &
+                             logging%class_pflotran,ierr)
+  call PetscLogEventRegister('H5WriteRealArray', &
+                             logging%event_write_real_array_hdf5, &
+                             logging%class_pflotran,ierr)
+  call PetscLogEventRegister('H5WriteIntArray', &
+                             logging%event_write_int_array_hdf5, &
+                             logging%class_pflotran,ierr)
+  call PetscLogEventRegister('H5WriteStrData', &
+                             logging%event_write_struct_dataset_hdf5, &
+                             logging%class_pflotran,ierr)
+  call PetscLogEventRegister('H5ReadRegFrmFile', &
+                             logging%event_region_read_hdf5, &
+                             logging%class_pflotran,ierr)
+  call PetscLogEventRegister('RegReadFrmFileId', &
+                             logging%event_region_read_ascii, &
+                             logging%class_pflotran,ierr)
+  call PetscLogEventRegister('H5ReadMatFrmFile', &
+                             logging%event_material_read_hdf5, &
+                             logging%class_pflotran,ierr)
+
+  call PetscLogEventRegister('OutputTecplot', &
+                             logging%event_output_tecplot, &
+                             logging%class_pflotran,ierr)
+  call PetscLogEventRegister('OutputHDF5', &
+                             logging%event_output_hdf5, &
+                             logging%class_pflotran,ierr)
+  call PetscLogEventRegister('WriteTecStrGrid', &
+                             logging%event_output_str_grid_tecplot, &
+                             logging%class_pflotran,ierr)
+  call PetscLogEventRegister('WriteTecDataSet', &
+                             logging%event_output_write_tecplot, &
+                             logging%class_pflotran,ierr)
+  call PetscLogEventRegister('OutputFluxVelTec', &
+                             logging%event_output_write_flux_tecplot, &
+                             logging%class_pflotran,ierr)
+  call PetscLogEventRegister('OutputGtVrFrmArr', &
+                             logging%event_output_get_var_from_array, &
+                             logging%class_pflotran,ierr)
+  call PetscLogEventRegister('GetCellCentVel', &
+                             logging%event_output_get_cell_vel, &
+                             logging%class_pflotran,ierr)
+  call PetscLogEventRegister('OutputFluxVelTec', &
+                             logging%event_output_vec_tecplot, &
+                             logging%class_pflotran,ierr)
+  call PetscLogEventRegister('OutputBrkthuTec', &
+                             logging%event_output_breakthrough, &
+                             logging%class_pflotran,ierr)
+  call PetscLogEventRegister('WriteHDF5Coord', &
+                             logging%event_output_coordinates_hdf5, &
                              logging%class_pflotran,ierr)
   
 end subroutine LoggingCreate
