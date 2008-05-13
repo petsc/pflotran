@@ -1,9 +1,11 @@
 :Description: 3D toy problem for richards equation
 :
-MODE RICHARDS
-:MODE RICHARDS_LITE
+:MODE RICHARDS
+MODE RICHARDS_LITE
 TRAN 1
 :
+:CHECKPOINT 1
+RESTART pflotran.chk4
 :UNIFORM_VELOCITY 1.d0 0.d0 0.d0
 :NUMERICAL_JACOBIAN
 :INEXACT_NEWTON
@@ -137,39 +139,41 @@ END
 
 : initial condition
 INITIAL_CONDITION
-CONDITION initial
+FLOW_CONDITION initial
+TRANSPORT_CONDITION initial_c
 REGION all
 END
 
 : west boundary condition
 BOUNDARY_CONDITION
-CONDITION west
+FLOW_CONDITION west
+TRANSPORT_CONDITION west_c
 REGION West
 END
 
 : east boundary condition
 BOUNDARY_CONDITION
-CONDITION initial
+FLOW_CONDITION initial
+TRANSPORT_CONDITION initial_c
 REGION East
 END
 
+skip
 : initial condition
 INITIAL_CONDITION
-CONDITION initial_c
 REGION all
 END
 
 : west boundary condition
 BOUNDARY_CONDITION
-CONDITION west_c
 REGION West
 END
 
 : east boundary condition
 BOUNDARY_CONDITION
-CONDITION initial_c
 REGION East
 END
+noskip
 
 STRATA
 REGION all
