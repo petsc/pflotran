@@ -86,7 +86,7 @@ subroutine LoggingCreate()
   call PetscLogStageRegister('Output Stage', &
                              logging%stage(OUTPUT_STAGE),ierr)
                              
-  call PetscCookieRegister('PFLTORAN',logging%class_pflotran,ierr)
+  call PetscCookieRegister('PFLOTRAN',logging%class_pflotran,ierr)
 
   call PetscLogEventRegister('Init', &
                              logging%event_init, &
