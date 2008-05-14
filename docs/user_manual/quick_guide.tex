@@ -288,22 +288,22 @@ Set environment variables \verb|PKGS| and \verb|MPI_HOME| and the appropriate \v
 
 \verb|setenv PKGS /Users/lichtner/petsc/packages|
 
-\verb|setenv MPI_HOME $PKGS/openmpi/openmpi-1.2.5-gcc-4.3.0-absoft-10.1|
+\verb|setenv MPI_HOME $PKGS/openmpi/openmpi-1.2.5-gcc-4.0.1-absoft-10.1|
 
-\verb|setenv PATH \$PKGS/openmpi/openmpi-1.2.5-gcc-4.3.0-absoft-10.1:\$PATH|
+\verb|setenv PATH \$PKGS/openmpi/openmpi-1.2.5-gcc-4.0.1-absoft-10.1:\$PATH|
 
 \verb|setenv F90 f90|
 
-%\verb|setenv F77 'f90 -YEXT_NAMES=LCS -YEXT_SFX= -f'|
+\verb|setenv F77 'f90 -YEXT_NAMES=LCS -YEXT_SFX= -f'|
 
-%\verb|setenv FC 'f90 -YEXT_NAMES=LCS -YEXT_SFX= -f'|
+\verb|setenv FC 'f90 -YEXT_NAMES=LCS -YEXT_SFX= -f'|
 
 \verb|setenv CC gcc|
 
 \noindent
 Configure using:
  
-\verb|./configure --prefix=$PKGS/openmpi/openmpi-1.2.5-gcc-4.3.0-absoft-10.1|
+\verb|./configure --prefix=$PKGS/openmpi/openmpi-1.2.6-gcc-4.0.1-absoft-10.1|
 
 \noindent
 Finally, compile, check installation and install:
@@ -327,7 +327,7 @@ Configure PETSc on a Mac using openmpi and Fortran 90 Absoft 10.1:
 \begin{verbatim}
 ./config/configure.py 
 --with-blas-lapack-lib="-framework vecLib" 
---with-mpi-dir=$PKGS/openmpi/openmpi-1.2.5-gcc-4.3.0-absoft-10.1  
+--with-mpi-dir=$PKGS/openmpi/openmpi-1.2.6-gcc-4.0.1-absoft-10.1  
 --with-debugging=0 
 --with-shared=0
 \end{verbatim}
@@ -347,9 +347,9 @@ Optionally install PETSc:
 
 To install HDF5 set the following environment variables:
 
-\verb|setenv HDF5_INCLUDE $PKGS/hdf/hdf5-1.6.7-gcc-4.3.0-absoft-10.1/include|
+\verb|setenv HDF5_INCLUDE $PKGS/hdf/hdf5-1.6.7-gcc-4.0.1-absoft-10.1/include|
 
-\verb|setenv HDF5_LIB $PKGS/hdf/hdf5-1.6.7-gcc-4.3.0-absoft-10.1/lib|
+\verb|setenv HDF5_LIB $PKGS/hdf/hdf5-1.6.7-gcc-4.0.1-absoft-10.1/lib|
 
 \verb|setenv CC $MPI_HOME/bin/mpicc|
 
@@ -361,7 +361,7 @@ To install HDF5 set the following environment variables:
 
 \begin{verbatim}
 ./configure --enable-fortran 
---prefix=$PKGS/hdf/hdf5-1.6.7-gcc-4.3.0-absoft-10.1 
+--prefix=$PKGS/hdf/hdf5-1.6.7-gcc-4.0.1-absoft-10.1 
 --disable-debug --enable-production --enable-parallel 
 --enable-static --disable-shared
 \end{verbatim}
