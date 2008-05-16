@@ -229,7 +229,7 @@ subroutine OutputTecplot(realization)
       case(RICHARDS_MODE)
         string2 = RichardsGetTecplotHeader(realization)
       case(RICHARDS_LITE_MODE)
-        string2 = RichardsLiteGetTecplotHeader(realization)
+       string2 = RichardsLiteGetTecplotHeader(realization)
     end select
     string = trim(string) // trim(string2)
     
@@ -3152,6 +3152,9 @@ function OutputGetVarFromArrayAtCoord(realization,ivar,isubvar,coordinate, &
       case(RICHARDS_LITE_MODE)
         value = &
           RichardsLiteGetVarFromArrayAtCell(realization,ivar,isubvar,ghosted_id)  
+      case(MPH_MODE)
+        value = &
+          MphaseGetVarFromArrayAtCell(realization,ivar,isubvar,ghosted_id)  
     end select
     if (sum_root < 1.d-40) then ! bail because it is right on this coordinate
       sum_weight = 1.d0
@@ -3184,7 +3187,8 @@ subroutine OutputGetVarFromArray(realization,vec,ivar,isubvar)
   use Richards_module, only : RichardsGetVarFromArray
   use Richards_Lite_module, only : RichardsLiteGetVarFromArray
   use Reactive_Transport_module, only : RTGetVarFromArray
-
+  use Mphase_module, only :: MphaseGetVarFromArray
+    
   implicit none
   
   type(realization_type) :: realization
@@ -3223,6 +3227,10 @@ subroutine OutputGetVarFromArray(realization,vec,ivar,isubvar)
           case(RICHARDS_LITE_MODE)
             call RichardsLiteGetVarFromArray(realization,vec,ivar,isubvar)
             return
+          case(MPH_MODE)
+            call RichardsLiteGetVarFromArray(realization,vec,ivar,isubvar)
+            return
+            
         end select
       else
         call RTGetVarFromArray(realization,vec,ivar,isubvar)

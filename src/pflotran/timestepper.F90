@@ -597,6 +597,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
     case(RICHARDS_LITE_MODE)
       call RichardsLiteInitializeTimestep(realization)
     case(MPH_MODE)
+      call MphaseInitializeTimestep(realization)
   end select
   
   do
@@ -667,7 +668,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
         case(RICHARDS_LITE_MODE)
           call RichardsLiteTimeCut(realization)
         case(MPH_MODE)
-          call pflow_mphase_timecut(realization)
+          call MphaseTimeCut(realization)
       end select
       call VecCopy(field%iphas_old_loc, field%iphas_loc, ierr)
 
@@ -1006,7 +1007,7 @@ subroutine StepperUpdateFlowSolution(realization)
   
   select case(option%iflowmode)
     case(MPH_MODE)
-      call pflow_update_mphase(realization)
+      call MphaseUpdateSolution(realization)
     case(RICHARDS_MODE)
       call RichardsUpdateSolution(realization)
     case(RICHARDS_LITE_MODE)

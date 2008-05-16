@@ -3,6 +3,7 @@ module Auxilliary_module
   use Richards_Aux_module
   use Richards_Lite_Aux_module
   use Reactive_Transport_Aux_module
+  use Mphase_Aux_module
 
   implicit none
 
@@ -14,6 +15,7 @@ module Auxilliary_module
     type(reactive_transport_type), pointer :: RT
     type(richards_type), pointer :: Richards
     type(richards_lite_type), pointer :: RichardsLite
+    type(mphase_auxvar_type), pointer :: Mphase
   end type auxilliary_type
   
   public :: AuxInit, &
@@ -37,6 +39,7 @@ subroutine AuxInit(aux)
   nullify(aux%RT)
   nullify(aux%Richards)
   nullify(aux%RichardsLite)
+  nullify(aux%Mphase)
   
 end subroutine AuxInit
 
@@ -56,10 +59,12 @@ subroutine AuxDestroy(aux)
   call RTAuxDestroy(aux%RT)
   call RichardsAuxDestroy(aux%Richards)
   call RichardsLiteAuxDestroy(aux%RichardsLite)
+  call MphaseAuxDestroy(aux%Mphase)
   
   nullify(aux%RT)
   nullify(aux%Richards)
   nullify(aux%RichardsLite)
+  nullify(aux%Mphase)
   
 end subroutine AuxDestroy
 

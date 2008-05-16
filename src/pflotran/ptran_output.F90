@@ -2140,6 +2140,8 @@ function GetVarFromArrayAtCell(realization,ivar,isubvar,local_id)
       GetVarFromArrayAtCell = RichardsGetVarFromArrayAtCell(realization,ivar,isubvar,local_id)
     case(RICHARDS_LITE_MODE)
       GetVarFromArrayAtCell = RichardsLiteGetVarFromArrayAtCell(realization,ivar,isubvar,local_id)
+    case(MPH_MODE)
+      GetVarFromArrayAtCell = MphaseGetVarFromArrayAtCell(realization,ivar,isubvar,local_id)
   end select
 
 end function GetVarFromArrayAtCell
