@@ -1641,11 +1641,15 @@ subroutine setMode(option)
     option%nphase = 1
     option%nspec = 1
     option%ndof = 1
-#if 0  
+!#if 0  clu implement on 05/16/08
   ! needs to be implemented
-  else if (fiStringCompare(option%mode,"MPH",len_trim(option%mode))) then
+  else if (fiStringCompare(option%mode,"mph",len_trim(option%mode))) then
+    option%imode = MPH_MODE
+    option%nphase = 2
+    option%nspec = 2
+    option%ndof = 3
   else if (fiStringCompare(option%mode,"",#)) then
-#endif  
+!#endif  
   endif 
   
   if (option%imode /= THC_MODE .and. &
@@ -1884,7 +1888,7 @@ subroutine assignInitialConditions(realization)
     case(RICHARDS_LITE_MODE)
     case(RICHARDS_MODE)
     case(MPH_MODE)
-      call pflow_mphase_setupini(realization)
+  !    call pflow_mphase_setupini(realization)
   end select 
 
   ! assign initial conditions values to domain

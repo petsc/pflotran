@@ -621,7 +621,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
     if (snes_reason >= 0) then
       select case(option%iflowmode)
         case(MPH_MODE)
-          call MPhase_Update_Reason(update_reason,realization)
+          call MPhaseUpdateReason(update_reason,realization)
         case(RICHARDS_MODE)
           update_reason=1
         case(RICHARDS_LITE_MODE)
@@ -710,7 +710,17 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
                                          LIQUID_DENSITY,ZERO_INTEGER)
         call DiscretizationGlobalToLocal(realization%discretization, &
                                          global_vec,field%density_loc,ONEDOF)   
-      case(MPH_MODE)
+! ** clu: Not sure mphase need this by now
+      case(MPH_MODE) 
+        call MphaseGetVarFromArray(realization,global_vec, &
+                                     LIQUID_SATURATION,ZERO_INTEGER)
+        call DiscretizationGlobalToLocal(realization%discretization, &
+                                         global_vec,field%saturation_loc,ONEDOF)   
+        call MphaseGetVarFromArray(realization,global_vec, &
+                                     LIQUID_DENSITY,ZERO_INTEGER)
+        call DiscretizationGlobalToLocal(realization%discretization, &
+                                         global_vec,field%density_loc,ONEDOF)   
+
     end select
     call VecDestroy(global_vec,ierr)
   endif
