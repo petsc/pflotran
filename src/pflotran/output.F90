@@ -2478,7 +2478,7 @@ subroutine OutputHDF5(realization)
   Vec :: natural_vec
   PetscReal, pointer :: v_ptr
   
-  character(len=MAXWORDLENGTH) :: filename = "pflow.h5"
+  character(len=MAXWORDLENGTH) :: filename = "pflotran.h5"
   character(len=MAXSTRINGLENGTH) :: string
   logical, save :: first = .true.
   PetscReal, pointer :: array(:)
@@ -2669,7 +2669,7 @@ subroutine OutputHDF5(realization)
   if (option%ntrandof > 0) then
     do i=1,option%ntrandof
       call OutputGetVarFromArray(realization,global_vec,TOTAL_CONCENTRATION,i)
-      write(string,'('',"COMP('',i2,'')"'')') i
+      write(string,'(''COMP('',i2,'')'')') i
       call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
     enddo
   endif  
