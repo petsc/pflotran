@@ -2665,7 +2665,22 @@ subroutine OutputHDF5(realization)
     case default
 
   end select
+
+  if (option%ntrandof > 0) then
+    do i=1,option%ntrandof
+      call OutputGetVarFromArray(realization,global_vec,TOTAL_CONCENTRATION,i)
+      write(string,'('',"COMP('',i2,'')"'')') i
+      call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
+    enddo
+  endif  
   
+  ! material id
+  if (associated(patch%imat)) then
+    call OutputGetVarFromArray(realization,global_vec,MATERIAL_ID,ZERO_INTEGER)
+    string = "Material_ID"
+    call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,HDF_NATIVE_INTEGER) 
+  endif
+
   if (output_option%print_hdf5_velocities) then
 
     ! velocities
