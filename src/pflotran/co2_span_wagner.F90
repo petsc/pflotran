@@ -37,7 +37,7 @@
       PetscReal ,private, allocatable :: co2_prop_spwag(:,:,:)
       PetscReal, private :: p,t,rhosav
 
-      public initialize_span_wagner, co2_span_wagner
+      public initialize_span_wagner, co2_span_wagner, vappr
 
       private
 

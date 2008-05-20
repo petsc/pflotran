@@ -48,12 +48,12 @@ util_obj  = ${common_src}fileio.o \
 	${common_src}co2eos.o \
 	${common_src}co2_sw_rtsafe.o \
 	${common_src}co2_span_wagner.o \
+	${common_src}spline.o \
 	${common_src}co2_span_wagner_spline.o \
 	${common_src}co2_sw.o \
 	${common_src}utility.o
 
-pflotran_obj = ${common_src}pflow_pckr_mod.o \
-	${common_src}option.o \
+pflotran_obj = ${common_src}option.o \
 	${common_src}logging.o \
 	${common_src}reaction_aux.o\
 	${common_src}reactive_transport_aux.o\
@@ -66,6 +66,7 @@ pflotran_obj = ${common_src}pflow_pckr_mod.o \
 	${common_src}waypoint.o \
 	${common_src}region.o \
 	${common_src}material.o \
+	${common_src}pckr_mod.o \
 	${common_src}strata.o \
 	${common_src}connection.o \
 	${common_src}breakthrough.o \
@@ -210,7 +211,7 @@ mphase.o : realization.o option.o field.o grid.o coupler.o \
                         mphase_aux.o discretization.o
 mphase_aux.o :  option.o material.o water_eos.o co2_span_wagner.o \
 		co2eos.o co2_span_wagner_spline.o co2_sw.o material.o pckr_mod.o
-timestepper.o : richards.o richards_lite.o pflow_mphase_ResJac.o \
+timestepper.o : richards.o richards_lite.o mphase.o \
                 realization.o grid.o option.o field.o solver.o \
                 output.o convergence.o checkpoint.o waypoint.o logging.o
 hdf5.o : realization.o option.o logging.o
