@@ -179,8 +179,10 @@ subroutine OutputTecplot(realization)
                  '"Z [m]",' // &
                  '"T [C]",' // &
                  '"P [Pa]",' // &
-                 '"sl",' // &
+                 '"Phase",' // &
                  '"sg",' // &
+                 '"Den(l)",' // &
+                 '"Den(g)",' // &
                  '"Ul",' // &
                  '"Ug",'
         do i=1,option%nspec
@@ -194,8 +196,7 @@ subroutine OutputTecplot(realization)
         if (option%rk > 0.d0) then
           string = trim(string) // '"Volume Fraction"'
         endif
-        string = trim(string) // ',"Phase"'
-        if (associated(field%imat)) then
+         if (associated(field%imat)) then
           string = trim(string) // ',"Material_ID"'
         endif
       case(RICHARDS_MODE,RICHARDS_LITE_MODE)

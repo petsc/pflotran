@@ -48,6 +48,8 @@ util_obj  = ${common_src}fileio.o \
 	${common_src}co2eos.o \
 	${common_src}co2_sw_rtsafe.o \
 	${common_src}co2_span_wagner.o \
+	${common_src}co2_span_wagner_spline.o \
+	${common_src}co2_sw.o \
 	${common_src}utility.o
 
 pflotran_obj = ${common_src}pflow_pckr_mod.o \
@@ -57,6 +59,7 @@ pflotran_obj = ${common_src}pflow_pckr_mod.o \
 	${common_src}reactive_transport_aux.o\
 	${common_src}richards_aux.o\
 	${common_src}richards_lite_aux.o\
+	${common_src}mphase_aux.o\
 	${common_src}auxilliary.o\
 	${common_src}field.o \
 	${common_src}debug.o \
@@ -80,8 +83,7 @@ pflotran_obj = ${common_src}pflow_pckr_mod.o \
 	${common_src}reaction.o\
 	${common_src}realization.o \
 	${common_src}hdf5.o \
-	${common_src}translator_mixed_fluid_mph.o \
-	${common_src}pflow_mphase_ResJac.o\
+	${common_src}mphase.o\
 	${common_src}transport.o\
 	${common_src}reactive_transport.o\
 	${common_src}richards.o\
@@ -96,12 +98,13 @@ pflotran_obj = ${common_src}pflow_pckr_mod.o \
 	${common_src}amrstubs.o
 
 
-pflotranamr_obj = ${common_src}pflow_pckr_mod.o \
+pflotranamr_obj = ${common_src}pckr_mod.o \
 	${common_src}option.o \
 	${common_src}logging.o \
 	${common_src}reactive_transport_aux.o\
 	${common_src}richards_aux.o\
 	${common_src}richards_lite_aux.o\
+	${common_src}mphase_aux.o\
 	${common_src}field.o \
 	${common_src}debug.o \
 	${common_src}waypoint.o \
@@ -123,8 +126,7 @@ pflotranamr_obj = ${common_src}pflow_pckr_mod.o \
 	${common_src}discretization.o \
 	${common_src}realization.o \
 	${common_src}hdf5.o \
-	${common_src}translator_mixed_fluid_mph.o \
-	${common_src}pflow_mphase_ResJac.o\
+	${common_src}mphase.o\
 	${common_src}transport.o\
 	${common_src}reaction.o\
 	${common_src}reactive_transport.o\
@@ -157,13 +159,15 @@ test: functions.o test.o
 
 # Dependencies stemming from "use" statements.
 # These ensure that the module files are built in the correct order.
-auxilliary.o : richards_aux.o richards_lite_aux.o reactive_transport_aux.o
+auxilliary.o : richards_aux.o richards_lite_aux.o reactive_transport_aux.o \
+	mphase_aux.o
 pflotran.o : simulation.o output.o init.o timestepper.o logging.o
 simulation.o : timestepper.o realization.o 
 init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
 	simulation.o fileio.o material.o region.o condition.o convergence.o \
 	waypoint.o field.o general_grid.o co2_span_wagner.o utility.o \
-	coupler.o strata.o pflow_pckr_mod.o field.o pflow_mphase_ResJac.o \
+	co2_span_wagner_spline.o co2_sw.o
+	coupler.o strata.o pckr_mod.o field.o mphase.o \
 	richards_lite.o richards.o discretization.o logging.o
 unstructured_grid.o : option.o connection.o 
 structured_grid.o : connection.o option.o fileio.o 
@@ -192,10 +196,7 @@ hydrostatic.o : option.o grid.o coupler.o condition.o connection.o region.o \
 waypoint.o : option.o 
 output.o : grid.o structured_grid.o option.o realization.o field.o \
            coupler.o connection.o hdf5.o breakthrough.o reactive_transport.o \
-           richards.o richards_lite.o discretization.o logging.o
-pflow_mphase_ResJac.o : realization.o option.o field.o grid.o coupler.o \
-                        translator_mixed_fluid_mph.o discretization.o
-translator_mixed_fluid_mph.o : pflow_pckr_mod.o
+           richards.o richards_lite.o mphase.o discretization.o logging.o
 reaction.o : reactive_transport_aux.o reaction_aux.o option.o
 transport.o : reactive_transport_aux.o option.o
 reactive_transport.o : realization.o reaction.o transport.o \
@@ -205,6 +206,10 @@ richards.o : richards_aux.o realization.o
 richards_lite.o : richards_lite_aux.o realization.o
 richards_aux.o : option.o material.o water_eos.o
 richards_lite_aux.o : option.o material.o water_eos.o
+mphase.o : realization.o option.o field.o grid.o coupler.o \
+                        mphase_aux.o discretization.o
+mphase_aux.o :  option.o material.o water_eos.o co2_span_wagner.o \
+		co2eos.o co2_span_wagner_spline.o co2_sw.o material.o pckr_mod.o
 timestepper.o : richards.o richards_lite.o pflow_mphase_ResJac.o \
                 realization.o grid.o option.o field.o solver.o \
                 output.o convergence.o checkpoint.o waypoint.o logging.o

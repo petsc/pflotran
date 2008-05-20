@@ -3215,6 +3215,9 @@ subroutine OutputGetVarFromArray(realization,vec,ivar,isubvar)
         case(RICHARDS_LITE_MODE)
           call RichardsLiteGetVarFromArray(realization,vec,ivar,isubvar)
           return
+      case(MPH_MODE)
+          call MphaseGetVarFromArray(realization,vec,ivar,isubvar)
+          return
       end select
     case(PRIMARY_SPEC_CONCENTRATION,TOTAL_CONCENTRATION)
       call RTGetVarFromArray(realization,vec,ivar,isubvar)
@@ -3228,7 +3231,7 @@ subroutine OutputGetVarFromArray(realization,vec,ivar,isubvar)
             call RichardsLiteGetVarFromArray(realization,vec,ivar,isubvar)
             return
           case(MPH_MODE)
-            call RichardsLiteGetVarFromArray(realization,vec,ivar,isubvar)
+            call MphaseGetVarFromArray(realization,vec,ivar,isubvar)
             return
             
         end select
