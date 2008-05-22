@@ -1260,11 +1260,7 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
      p2=p
 !    p2=p*xmol(4)
     if(p2>=5d4)then
-<<<<<<< local
        if(option%co2eos == EOS_SPAN_WAGNER)then
-=======
-       if(trim(option%co2eos) == 'EOS_SPAN_WAGNER')then
->>>>>>> other
          select case(option%itable)  
           case(0,1,2,4,5)
           if(option%itable >=4) then
@@ -1284,11 +1280,7 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
             fg= fg * 1.D6 
             hg= hg * option%fmwco2
           end select     
-<<<<<<< local
         elseif(option%co2eos == EOS_MRK)then
-=======
-        elseif(trim(option%co2eos) == 'EOS_MRK')then
->>>>>>> other
 ! MRK eos [modified version from  Kerrick and Jacobs (1981) and Weir et al. (1996).]     
           call CO2( t,p2, dg,fg, xphi, hg)
           dg = dg / option%fmwco2
@@ -1648,11 +1640,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
     
       if (csrc1 > 0.d0) then ! injection
 !        call printErrMsg(option,"concentration source not yet implemented in Mphase")
-<<<<<<< local
       if(option%co2eos == EOS_SPAN_WAGNER)then
-=======
-      if(trim(option%co2eos) == 'EOS_SPAN_WAGNER')then
->>>>>>> other
          !  span-wagner
             rho = aux_vars(ghosted_id)%aux_var_elem(0)%den(jco2)*option%fmwco2  
           select case(option%itable)  
@@ -1673,11 +1661,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
 
          !  units: rho [kg/m^3]; csrc1 [kmol/s]
             enth_src_co2 = enth_src_co2 * option%fmwco2
-<<<<<<< local
       else if(option%co2eos == EOS_SPAN_WAGNER)then
-=======
-      else if(trim(option%co2eos) == 'EOS_SPAN_WAGNER')then
->>>>>>> other
 ! MRK eos [modified version from  Kerrick and Jacobs (1981) and Weir et al. (1996).]
             call CO2(tsrc1,aux_vars(ghosted_id)%aux_var_elem(0)%pres,&
             rho,fg, xphi,enth_src_co2)
@@ -2177,11 +2161,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       if (csrc1 > 0.d0) then ! injection
             do nvar=1,option%nflowdof     
               rho = aux_vars(ghosted_id)%aux_var_elem(nvar)%den(jco2)*option%fmwco2 
-<<<<<<< local
             if(option%co2eos == EOS_SPAN_WAGNER)then
-=======
-            if(trim(option%co2eos) == 'EOS_SPAN_WAGNER')then
->>>>>>> other
          !    span-wagner
             select case(option%itable)
              case(0,1,2, 4,5)
@@ -2199,11 +2179,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                 enth_src_co2, eng, fg)
           end select     
           enth_src_co2 = enth_src_co2 * option%fmwco2  
-<<<<<<< local
           elseif(option%co2eos == EOS_MRK)then 
-=======
-          elseif(trim(option%co2eos) == 'EOS_MRK')then 
->>>>>>> other
 ! MRK eos [modified version from Kerrick and Jacobs (1981) and Weir et al. (1996).]     
               call CO2(tsrc1,aux_vars(ghosted_id)%aux_var_elem(nvar)%pres,&
                 rho,fg, xphi,enth_src_co2 )
