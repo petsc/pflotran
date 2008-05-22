@@ -1640,7 +1640,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
     
       if (csrc1 > 0.d0) then ! injection
 !        call printErrMsg(option,"concentration source not yet implemented in Mphase")
-      if(option%co2eos == 'EOS_SPAN_WAGNER')then
+      if(trim(option%co2eos) == 'EOS_SPAN_WAGNER')then
          !  span-wagner
             rho = aux_vars(ghosted_id)%aux_var_elem(0)%den(jco2)*option%fmwco2  
           select case(option%itable)  
@@ -2161,7 +2161,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       if (csrc1 > 0.d0) then ! injection
             do nvar=1,option%nflowdof     
               rho = aux_vars(ghosted_id)%aux_var_elem(nvar)%den(jco2)*option%fmwco2 
-            if(option%co2eos == 'EOS_SPAN_WAGNER')then
+            if(trim(option%co2eos) == 'EOS_SPAN_WAGNER')then
          !    span-wagner
             select case(option%itable)
              case(0,1,2, 4,5)
