@@ -308,7 +308,11 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,iphase,saturation_function, &
 
     if(p2>=5d4)then
        
+<<<<<<< local
+       if(option%co2eos == EOS_SPAN_WAGNER)then
+=======
        if(trim(option%co2eos) == 'EOS_SPAN_WAGNER')then
+>>>>>>> other
 ! ************ Span-Wagner EOS ********************             
           select case(option%itable)  
           case(0,1,2,4,5)
@@ -333,7 +337,11 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,iphase,saturation_function, &
              hg= hg * option%fmwco2
              xphi = fg/p2
           end select
+<<<<<<< local
+       elseif(option%co2eos == EOS_MRK)then
+=======
        elseif(trim(option%co2eos) == 'EOS_MRK')then
+>>>>>>> other
 ! MRK eos [modified version from  Kerrick and Jacobs (1981) and Weir et al. (1996).]     
           call CO2(t, p2,  dg,fg, xphi, hg)
           call visco2( t,dg,visg)

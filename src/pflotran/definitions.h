@@ -123,6 +123,10 @@ PetscInt, parameter :: NORTH_FACE = 4
 PetscInt, parameter :: BOTTOM_FACE = 5
 PetscInt, parameter :: TOP_FACE = 6
 
+! mphase equation of state
+PetscInt, parameter :: EOS_SPAN_WAGNER = 1
+PetscInt, parameter :: EOS_MRK = 2
+
 ! HDF5 stuff
 PetscInt, parameter :: HDF5_READ_BUFFER_SIZE = 1000000
 !#define HDF5_BROADCAST

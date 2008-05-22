@@ -74,7 +74,11 @@ module Option_module
     
 !   table lookup
     PetscInt :: itable=0
+<<<<<<< local
+    PetscInt :: co2eos=EOS_SPAN_WAGNER
+=======
     character(len=26) :: co2eos='EOS_SPAN_WAGNER'
+>>>>>>> other
     
 
     PetscTruth :: restart_flag
