@@ -27,7 +27,7 @@ module Mphase_module
 #include "include/finclude/petscis.h"
 #include "include/finclude/petscis.h90"
 #include "include/finclude/petsclog.h"
-
+#include "include/finclude/petscerror.h"
 
 ! Cutoff parameters
   PetscReal, parameter :: formeps   = 1.D-4
@@ -1117,7 +1117,7 @@ subroutine MphaseResidual(snes,xx,r,realization,ierr)
   ierr = MphaseInitGuessCheck(realization)
 
   if(ierr<0)then
-    ierr = 1 !PETSC_ERR_ARG_DOMAIN
+    ierr = PETSC_ERR_ARG_OUTOFRANGE
     if (option%myrank==0) print *,'table out of range: ',ierr
     return
   endif 
