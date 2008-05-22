@@ -167,7 +167,7 @@ simulation.o : timestepper.o realization.o
 init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
 	simulation.o fileio.o material.o region.o condition.o convergence.o \
 	waypoint.o field.o general_grid.o co2_span_wagner.o utility.o \
-	co2_span_wagner_spline.o co2_sw.o
+	co2_span_wagner_spline.o co2_sw.o \
 	coupler.o strata.o pckr_mod.o field.o mphase.o \
 	richards_lite.o richards.o discretization.o logging.o
 unstructured_grid.o : option.o connection.o 
@@ -196,8 +196,10 @@ hydrostatic.o : option.o grid.o coupler.o condition.o connection.o region.o \
                 structured_grid.o
 waypoint.o : option.o 
 output.o : grid.o structured_grid.o option.o realization.o field.o \
-           coupler.o connection.o hdf5.o breakthrough.o reactive_transport.o \
-           richards.o richards_lite.o mphase.o discretization.o logging.o
+           coupler.o connection.o hdf5.o breakthrough.o \
+					 reactive_transport.o \
+           richards.o richards_lite.o mphase.o \
+					 discretization.o logging.o
 reaction.o : reactive_transport_aux.o reaction_aux.o option.o
 transport.o : reactive_transport_aux.o option.o
 reactive_transport.o : realization.o reaction.o transport.o \
@@ -207,10 +209,9 @@ richards.o : richards_aux.o realization.o
 richards_lite.o : richards_lite_aux.o realization.o
 richards_aux.o : option.o material.o water_eos.o
 richards_lite_aux.o : option.o material.o water_eos.o
-mphase.o : realization.o option.o field.o grid.o coupler.o \
-                        mphase_aux.o discretization.o
+mphase.o : mphase_aux.o realization.o 
 mphase_aux.o :  option.o material.o water_eos.o co2_span_wagner.o \
-		co2eos.o co2_span_wagner_spline.o co2_sw.o material.o pckr_mod.o
+		co2eos.o co2_span_wagner_spline.o co2_sw.o pckr_mod.o
 timestepper.o : richards.o richards_lite.o mphase.o \
                 realization.o grid.o option.o field.o solver.o \
                 output.o convergence.o checkpoint.o waypoint.o logging.o

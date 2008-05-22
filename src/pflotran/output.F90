@@ -3131,6 +3131,7 @@ function OutputGetVarFromArrayAtCoord(realization,ivar,isubvar,coordinate, &
 
   use Richards_module, only : RichardsGetVarFromArrayAtCell
   use Richards_Lite_module, only : RichardsLiteGetVarFromArrayAtCell
+  use Mphase_module, only : MphaseGetVarFromArrayAtCell
 
   implicit none
   
@@ -3202,7 +3203,7 @@ subroutine OutputGetVarFromArray(realization,vec,ivar,isubvar)
   use Richards_module, only : RichardsGetVarFromArray
   use Richards_Lite_module, only : RichardsLiteGetVarFromArray
   use Reactive_Transport_module, only : RTGetVarFromArray
-  use Mphase_module, only :: MphaseGetVarFromArray
+  use Mphase_module, only : MphaseGetVarFromArray
     
   implicit none
   

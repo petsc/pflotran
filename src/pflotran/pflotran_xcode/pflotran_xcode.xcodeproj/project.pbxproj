@@ -39,15 +39,12 @@
 		2366A7A70D86058C0003BB1F /* logging.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = logging.F90; path = ../logging.F90; sourceTree = SOURCE_ROOT; };
 		2366A7A80D86058C0003BB1F /* makefile */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.make; name = makefile; path = ../makefile; sourceTree = SOURCE_ROOT; };
 		2366A7A90D86058C0003BB1F /* material.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = material.F90; path = ../material.F90; sourceTree = SOURCE_ROOT; };
-		2366A7AA0D86058C0003BB1F /* mixed_fluid_eos.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = mixed_fluid_eos.F90; path = ../mixed_fluid_eos.F90; sourceTree = SOURCE_ROOT; };
 		2366A7AB0D86058C0003BB1F /* oil_eos.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = oil_eos.F90; path = ../oil_eos.F90; sourceTree = SOURCE_ROOT; };
 		2366A7AC0D86058C0003BB1F /* option.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = option.F90; path = ../option.F90; sourceTree = SOURCE_ROOT; };
 		2366A7AD0D86058C0003BB1F /* output.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = output.F90; path = ../output.F90; sourceTree = SOURCE_ROOT; };
 		2366A7AE0D86058C0003BB1F /* patch.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = patch.F90; path = ../patch.F90; sourceTree = SOURCE_ROOT; };
 		2366A7AF0D86058C0003BB1F /* petscreldefs.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = petscreldefs.h; path = ../petscreldefs.h; sourceTree = SOURCE_ROOT; };
 		2366A7B00D86058C0003BB1F /* pflotran.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = pflotran.F90; path = ../pflotran.F90; sourceTree = SOURCE_ROOT; };
-		2366A7B10D86058C0003BB1F /* pflow_mphase_ResJac.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = pflow_mphase_ResJac.F90; path = ../pflow_mphase_ResJac.F90; sourceTree = SOURCE_ROOT; };
-		2366A7B20D86058C0003BB1F /* pflow_pckr_mod.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = pflow_pckr_mod.F90; path = ../pflow_pckr_mod.F90; sourceTree = SOURCE_ROOT; };
 		2366A7B30D86058C0003BB1F /* ptran_conn.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = ptran_conn.F90; path = ../ptran_conn.F90; sourceTree = SOURCE_ROOT; };
 		2366A7B40D86058C0003BB1F /* ptran_dbase.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = ptran_dbase.F90; path = ../ptran_dbase.F90; sourceTree = SOURCE_ROOT; };
 		2366A7B50D86058C0003BB1F /* ptran_destroy.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = ptran_destroy.F90; path = ../ptran_destroy.F90; sourceTree = SOURCE_ROOT; };
@@ -80,7 +77,6 @@
 		2366A7D00D86058C0003BB1F /* strata.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = strata.F90; path = ../strata.F90; sourceTree = SOURCE_ROOT; };
 		2366A7D10D86058C0003BB1F /* structured_grid.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = structured_grid.F90; path = ../structured_grid.F90; sourceTree = SOURCE_ROOT; };
 		2366A7D20D86058C0003BB1F /* timestepper.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = timestepper.F90; path = ../timestepper.F90; sourceTree = SOURCE_ROOT; };
-		2366A7D30D86058C0003BB1F /* translator_mixed_fluid_mph.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = translator_mixed_fluid_mph.F90; path = ../translator_mixed_fluid_mph.F90; sourceTree = SOURCE_ROOT; };
 		2366A7D40D86058C0003BB1F /* transport.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = transport.F90; path = ../transport.F90; sourceTree = SOURCE_ROOT; };
 		2366A7D50D86058C0003BB1F /* trdynmem.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = trdynmem.F90; path = ../trdynmem.F90; sourceTree = SOURCE_ROOT; };
 		2366A7D60D86058C0003BB1F /* trgamdh.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = trgamdh.F90; path = ../trgamdh.F90; sourceTree = SOURCE_ROOT; };
@@ -136,7 +132,6 @@
 				2366A7A70D86058C0003BB1F /* logging.F90 */,
 				2366A7A80D86058C0003BB1F /* makefile */,
 				2366A7A90D86058C0003BB1F /* material.F90 */,
-				2366A7AA0D86058C0003BB1F /* mixed_fluid_eos.F90 */,
 				899DEDE20DE3377C0060475D /* mphase.F90 */,
 				899DEDE30DE3377C0060475D /* mphase_aux.F90 */,
 				2366A7AB0D86058C0003BB1F /* oil_eos.F90 */,
@@ -146,8 +141,6 @@
 				899DEDE60DE337870060475D /* pckr_mod.F90 */,
 				2366A7AF0D86058C0003BB1F /* petscreldefs.h */,
 				2366A7B00D86058C0003BB1F /* pflotran.F90 */,
-				2366A7B10D86058C0003BB1F /* pflow_mphase_ResJac.F90 */,
-				2366A7B20D86058C0003BB1F /* pflow_pckr_mod.F90 */,
 				2366A7C20D86058C0003BB1F /* ptran.F90 */,
 				2366A7B30D86058C0003BB1F /* ptran_conn.F90 */,
 				2366A7B40D86058C0003BB1F /* ptran_dbase.F90 */,
@@ -183,7 +176,6 @@
 				2366A7D10D86058C0003BB1F /* structured_grid.F90 */,
 				2329A3DE0DC0F3F900AB44B2 /* sub_grid.F90 */,
 				2366A7D20D86058C0003BB1F /* timestepper.F90 */,
-				2366A7D30D86058C0003BB1F /* translator_mixed_fluid_mph.F90 */,
 				2366A7D40D86058C0003BB1F /* transport.F90 */,
 				2366A7D50D86058C0003BB1F /* trdynmem.F90 */,
 				2366A7D60D86058C0003BB1F /* trgamdh.F90 */,

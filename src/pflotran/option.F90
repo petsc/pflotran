@@ -67,12 +67,15 @@ module Option_module
               fmwco2=44.0098D0, eqkair, ret=1.d0, fc=1.d0
     
     PetscInt :: ideriv
+    PetscInt :: idt_switch = -1
     PetscReal :: tref,pref
     
     PetscReal :: disp
     
 !   table lookup
     PetscInt :: itable=0
+    PetscInt :: co2eos=1
+    
 
     PetscTruth :: restart_flag
     PetscReal :: restart_time

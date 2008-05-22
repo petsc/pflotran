@@ -561,9 +561,7 @@ subroutine readInput(simulation,filename)
   use Waypoint_module
   use Debug_module
   use Patch_module
-
-  use pckr_module 
-  
+ 
   implicit none
   
   type(simulation_type) :: simulation
@@ -1415,6 +1413,8 @@ subroutine readInput(simulation,filename)
           endif
         enddo
 
+      !clu removed on 05/21/08
+#if 0
         if (option%iflowmode == MPH_MODE .or. &
             option%iflowmode == RICHARDS_MODE .or. &
             option%iflowmode == RICHARDS_LITE_MODE) then
@@ -1423,7 +1423,7 @@ subroutine readInput(simulation,filename)
                          option%lambda,option%alpha,option%pcwmax, &
                          option%pcbetac,option%pwrprm)
         endif 
-
+#endif
       
         if (option%myrank==0) then
           write(IUNIT2,'(/," *PCKR: ",i3)') ireg

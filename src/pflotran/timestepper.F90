@@ -998,7 +998,7 @@ end subroutine StepperUpdateSolution
 ! ************************************************************************** !
 subroutine StepperUpdateFlowSolution(realization)
   
-  use MPHASE_module, only: pflow_update_mphase
+  use MPHASE_module, only: MphaseUpdateSolution
   use Richards_Lite_module, only : RichardsLiteUpdateSolution
   use Richards_module, only : RichardsUpdateSolution
 

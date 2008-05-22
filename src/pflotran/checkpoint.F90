@@ -225,11 +225,7 @@ subroutine Checkpoint(realization, &
         call DiscretizationLocalToGlobal(realization%discretization, &
                                          field%iphas_loc,global_vec,ONEDOF)
         call VecView(global_vec, viewer, ierr)
-        if (option%iflowmode == MPH_MODE) then
-        ! get vardof vec from mphase
-          call MphaseCheckpointWrite(realization%discretization,viewer)
-        endif
-      case default
+       case default
     end select 
 
     ! Porosity and permeability.

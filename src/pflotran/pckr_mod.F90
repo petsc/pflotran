@@ -3,9 +3,11 @@ use Material_module
 use Option_module
 implicit none
 
+private
 #include "definitions.h"
   PetscReal, private, parameter:: pckr_sat_water_cut = 1.D0 - 5.D-7
-     
+  
+  public ::  pckrNH_noderiv, pckrHY_noderiv     
   contains 
 
 !------------------------------------------------------------------------
@@ -439,17 +441,14 @@ end subroutine pflow_pckr_noderiv_exec
 subroutine pckrNH_noderiv( sat, pc, kr, saturation_function, option)
 
   implicit none
-  PetscReal sat(option%nphase),pc(option%nphase),kr(option%nphase)
   type(saturation_function_type) :: saturation_function
   type(option_type) :: option
-   
-  PetscReal pckr_sir(nphase),pckr_lambda, &
+  PetscReal :: sat(option%nphase),pc(option%nphase),kr(option%nphase)
+
+  PetscReal :: pckr_sir(option%nphase),pckr_lambda, &
        pckr_alpha,pckr_m,pckr_pcmax,sg ,pckr_beta,pckr_pwr
   
-  ireg= ipckrreg
-  ipckrtype = pckr_para(ireg)%itype
   
-  pckr_para(ireg)%ihyst =  0    
   pckr_sir(:) = saturation_function%Sr(:)
   pckr_m = saturation_function%m
   pckr_lambda = saturation_function%lambda
@@ -475,14 +474,16 @@ end subroutine pckrNH_noderiv
 subroutine pckrHY_noderiv(sat, hysdat, pc, kr, saturation_function, option)
 
   implicit none
-  PetscReal :: sat(option%nphase),pc(option%nphase),kr(option%nphase)
-  type(hyster_pckr_data_type) :: hysdat
   type(saturation_function_type) :: saturation_function
   type(option_type) :: option
+  PetscReal :: sat(option%nphase),pc(option%nphase),kr(option%nphase)
+  PetscReal :: hysdat(:)
   
   pc=0.D0
   kr=1.D0  
 
 end subroutine pckrHY_noderiv
+
+
 
 end module mphase_pckr_module
