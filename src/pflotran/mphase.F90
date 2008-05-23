@@ -1117,8 +1117,9 @@ subroutine MphaseResidual(snes,xx,r,realization,ierr)
   ierr = MphaseInitGuessCheck(realization)
 
   if(ierr<0)then
-    ierr = PETSC_ERR_ARG_OUTOFRANGE
+    !ierr = PETSC_ERR_ARG_OUTOFRANGE
     if (option%myrank==0) print *,'table out of range: ',ierr
+    call SNESSetFunctionDomainError() 
     return
   endif 
   ! end check ---------------------------------------------------------
