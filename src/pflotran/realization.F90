@@ -282,6 +282,7 @@ subroutine RealizationAddCoupler(realization,coupler)
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
+  type(coupler_type), pointer :: new_coupler
   
   cur_level => realization%level_list%first
   do 
@@ -290,14 +291,16 @@ subroutine RealizationAddCoupler(realization,coupler)
     do
       if (.not.associated(cur_patch)) exit
       ! only add to flow list for now, since they will be split out later
+      new_coupler => CouplerCreate(coupler)
       select case(coupler%itype)
         case(BOUNDARY_COUPLER_TYPE)
-          call CouplerAddToList(CouplerCreate(coupler),cur_patch%boundary_conditions)
+          call CouplerAddToList(new_coupler,cur_patch%boundary_conditions)
         case(INITIAL_COUPLER_TYPE)
-          call CouplerAddToList(CouplerCreate(coupler),cur_patch%initial_conditions)
+          call CouplerAddToList(new_coupler,cur_patch%initial_conditions)
         case(SRC_SINK_COUPLER_TYPE)
-          call CouplerAddToList(CouplerCreate(coupler),cur_patch%source_sinks)
+          call CouplerAddToList(new_coupler,cur_patch%source_sinks)
       end select
+      nullify(new_coupler)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -325,6 +328,7 @@ subroutine RealizationAddStrata(realization,strata)
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
+  type(strata_type), pointer :: new_strata
   
   cur_level => realization%level_list%first
   do 
@@ -332,7 +336,9 @@ subroutine RealizationAddStrata(realization,strata)
     cur_patch => cur_level%patch_list%first
     do
       if (.not.associated(cur_patch)) exit
-      call StrataAddToList(StrataCreate(strata),cur_patch%strata)
+      new_strata => StrataCreate(strata)
+      call StrataAddToList(new_strata,cur_patch%strata)
+      nullify(new_strata)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -360,6 +366,7 @@ subroutine RealizationAddBreakthrough(realization,breakthrough)
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
+  type(breakthrough_type), pointer :: new_breakthrough
   
   cur_level => realization%level_list%first
   do 
@@ -367,8 +374,10 @@ subroutine RealizationAddBreakthrough(realization,breakthrough)
     cur_patch => cur_level%patch_list%first
     do
       if (.not.associated(cur_patch)) exit
-      call BreakthroughAddToList(BreakthroughCreate(breakthrough), &
+      new_breakthrough => BreakthroughCreate(breakthrough)
+      call BreakthroughAddToList(new_breakthrough, &
                                  cur_patch%breakthrough)
+      nullify(new_breakthrough)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
