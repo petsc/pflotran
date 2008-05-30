@@ -69,7 +69,7 @@ module Chemistry_module
     PetscReal :: area0
   end type transition_state_rxn_type
   
-  type, public :: ion_exchange_type
+  type, public :: ion_exchange_rxn_type
     character(len=MAXNAMELENGTH) :: reference_cation_name
     character(len=MAXNAMELENGTH) :: mnrl_name
     PetscInt :: ncation
@@ -77,8 +77,8 @@ module Chemistry_module
     PetscInt, pointer :: cation_ids(:)
     PetscReal, pointer :: k(:)  ! selectivity coefficient
     PetscReal :: CEC
-    type (ion_exchange_type), pointer :: next
-  end type ion_exchange_type
+    type (ion_exchange_rxn_type), pointer :: next
+  end type ion_exchange_rxn_type
 
   type, public :: surface_complexation_rxn_type
     character(len=MAXNAMELENGTH) :: surfcmplx_name
@@ -97,7 +97,7 @@ module Chemistry_module
     type(aq_species_type), pointer :: secondary_species_list
     type(gas_species_type), pointer :: gas_species_list
     type(mineral_type), pointer :: mineral_list
-    type(ion_exchange_type), pointer :: ion_exchange_list
+    type(ion_exchange_rxn_type), pointer :: ion_exchange_list
     type(surface_complexation_rxn_type), pointer :: surface_complex_list
     ! compressed arrays for efficient computation
     ! primary aqueous complexes
@@ -427,5 +427,353 @@ subroutine ChemistryRead(chemistry,fid,option)
   enddo
  
 end subroutine ChemistryRead
+
+! ************************************************************************** !
+!
+! AqueousSpeciesDestroy: Deallocates an aqueous species
+! author: Glenn Hammond
+! date: 05/29/07
+!
+! ************************************************************************** !
+subroutine AqueousSpeciesDestroy(species)
+
+  implicit none
+    
+  type(aq_species_type), pointer :: species
+
+  if (associated(species%eqrxn)) call EquilibriumRxnDestroy(species%eqrxn)
+  deallocate(species)  
+  nullify(species)
+
+end subroutine AqueousSpeciesDestroy
+
+! ************************************************************************** !
+!
+! GasSpeciesDestroy: Deallocates a gas species
+! author: Glenn Hammond
+! date: 05/29/07
+!
+! ************************************************************************** !
+subroutine GasSpeciesDestroy(species)
+
+  implicit none
+    
+  type(gas_species_type), pointer :: species
+
+  if (associated(species%eqrxn)) call EquilibriumRxnDestroy(species%eqrxn)
+  deallocate(species)  
+  nullify(species)
+
+end subroutine GasSpeciesDestroy
+
+! ************************************************************************** !
+!
+! MineralDestroy: Deallocates a mineral
+! author: Glenn Hammond
+! date: 05/29/07
+!
+! ************************************************************************** !
+subroutine MineralDestroy(mineral)
+
+  implicit none
+    
+  type(mineral_type), pointer :: mineral
+
+  if (associated(mineral%tstrxn)) call TransitionStateRxnDestroy(mineral%tstrxn)
+  deallocate(mineral)  
+  nullify(mineral)
+
+end subroutine MineralDestroy
+
+! ************************************************************************** !
+!
+! EquilibriumRxnDestroy: Deallocates an equilibrium reaction
+! author: Glenn Hammond
+! date: 05/29/07
+!
+! ************************************************************************** !
+subroutine EquilibriumRxnDestroy(eqrxn)
+
+  implicit none
+    
+  type(equilibrium_rxn_type), pointer :: eqrxn
+
+  if (.not.associated(eqrxn)) return
+  
+  if (associated(eqrxn%spec_name)) deallocate(eqrxn%spec_name)
+  nullify(eqrxn%spec_name)
+  if (associated(eqrxn%spec_ids)) deallocate(eqrxn%spec_ids)
+  nullify(eqrxn%spec_ids)
+  if (associated(eqrxn%stoich)) deallocate(eqrxn%stoich)
+  nullify(eqrxn%stoich)
+
+  deallocate(eqrxn)  
+  nullify(eqrxn)
+
+end subroutine EquilibriumRxnDestroy
+
+! ************************************************************************** !
+!
+! TransitionStateRxnDestroy: Deallocates a transition state reaction
+! author: Glenn Hammond
+! date: 05/29/07
+!
+! ************************************************************************** !
+subroutine TransitionStateRxnDestroy(tstrxn)
+
+  implicit none
+    
+  type(transition_state_rxn_type), pointer :: tstrxn
+
+  if (.not.associated(tstrxn)) return
+  
+  if (associated(tstrxn%spec_name)) deallocate(tstrxn%spec_name)
+  nullify(tstrxn%spec_name)
+  if (associated(tstrxn%spec_ids)) deallocate(tstrxn%spec_ids)
+  nullify(tstrxn%spec_ids)
+  if (associated(tstrxn%stoich)) deallocate(tstrxn%stoich)
+  nullify(tstrxn%stoich)
+  if (associated(tstrxn%spec_name_primary_prefactor)) deallocate(tstrxn%spec_name_primary_prefactor)
+  nullify(tstrxn%spec_name_primary_prefactor)
+  if (associated(tstrxn%spec_ids_primary_prefactor)) deallocate(tstrxn%spec_ids_primary_prefactor)
+  nullify(tstrxn%spec_ids_primary_prefactor)
+  if (associated(tstrxn%stoich_primary_prefactor)) deallocate(tstrxn%stoich_primary_prefactor)
+  nullify(tstrxn%stoich_primary_prefactor)
+  if (associated(tstrxn%spec_name_secondary_prefactor)) deallocate(tstrxn%spec_name_secondary_prefactor)
+  nullify(tstrxn%spec_name_secondary_prefactor)
+  if (associated(tstrxn%spec_ids_secondary_prefactor)) deallocate(tstrxn%spec_ids_secondary_prefactor)
+  nullify(tstrxn%spec_ids_secondary_prefactor)
+  if (associated(tstrxn%stoich_secondary_prefactor)) deallocate(tstrxn%stoich_secondary_prefactor)
+  nullify(tstrxn%stoich_secondary_prefactor)
+
+  deallocate(tstrxn)  
+  nullify(tstrxn)
+
+end subroutine TransitionStateRxnDestroy
+
+! ************************************************************************** !
+!
+! IonExchangeRxnDestroy: Deallocates an ion exchange reaction
+! author: Glenn Hammond
+! date: 05/29/07
+!
+! ************************************************************************** !
+subroutine IonExchangeRxnDestroy(ionxrxn)
+
+  implicit none
+    
+  type(ion_exchange_rxn_type), pointer :: ionxrxn
+
+  if (.not.associated(ionxrxn)) return
+  
+  if (associated(ionxrxn%cation_name)) deallocate(ionxrxn%cation_name)
+  nullify(ionxrxn%cation_name)
+  if (associated(ionxrxn%cation_ids)) deallocate(ionxrxn%cation_ids)
+  nullify(ionxrxn%cation_ids)
+  if (associated(ionxrxn%k)) deallocate(ionxrxn%k)
+  nullify(ionxrxn%k)
+
+  deallocate(ionxrxn)  
+  nullify(ionxrxn)
+
+end subroutine IonExchangeRxnDestroy
+
+! ************************************************************************** !
+!
+! SurfaceComplexationRxnDestroy: Deallocates a surface complexation reaction
+! author: Glenn Hammond
+! date: 05/29/07
+!
+! ************************************************************************** !
+subroutine SurfaceComplexationRxnDestroy(surfcplxrxn)
+
+  implicit none
+    
+  type(surface_complexation_rxn_type), pointer :: surfcplxrxn
+
+  if (.not.associated(surfcplxrxn)) return
+  
+  if (associated(surfcplxrxn%spec_name)) deallocate(surfcplxrxn%spec_name)
+  nullify(surfcplxrxn%spec_name)
+  if (associated(surfcplxrxn%spec_ids)) deallocate(surfcplxrxn%spec_ids)
+  nullify(surfcplxrxn%spec_ids)
+  if (associated(surfcplxrxn%stoich)) deallocate(surfcplxrxn%stoich)
+  nullify(surfcplxrxn%stoich)
+
+  deallocate(surfcplxrxn)  
+  nullify(surfcplxrxn)
+
+end subroutine SurfaceComplexationRxnDestroy
+
+! ************************************************************************** !
+!
+! ChemistryDestroy: Deallocates a chemistry object
+! author: Glenn Hammond
+! date: 05/29/08
+!
+! ************************************************************************** !
+subroutine ChemistryDestroy(chemistry)
+
+  implicit none
+
+  type(reaction_type), pointer :: chemistry
+  
+  type(aq_species_type), pointer :: aq_species, prev_aq_species
+  type(gas_species_type), pointer :: gas_species, prev_gas_species
+  type(mineral_type), pointer :: mineral, prev_mineral
+  type(ion_exchange_rxn_type), pointer :: ionxrxn, prev_ionxrxn
+  type(surface_complexation_rxn_type), pointer :: surfcplxrxn, prev_surfcplxrxn
+
+  if (.not.associated(chemistry)) return 
+
+  ! primary species
+  aq_species => chemistry%primary_species_list
+  do
+    if (.not.associated(aq_species)) exit
+    prev_aq_species => aq_species
+    aq_species => aq_species%next
+    call AqueousSpeciesDestroy(prev_aq_species)
+  enddo  
+  nullify(chemistry%primary_species_list)
+
+  ! secondary species
+  aq_species => chemistry%secondary_species_list
+  do
+    if (.not.associated(aq_species)) exit
+    prev_aq_species => aq_species
+    aq_species => aq_species%next
+    call AqueousSpeciesDestroy(prev_aq_species)
+  enddo  
+  nullify(chemistry%secondary_species_list)
+
+  ! gas species
+  gas_species => chemistry%gas_species_list
+  do
+    if (.not.associated(gas_species)) exit
+    prev_gas_species => gas_species
+    gas_species => gas_species%next
+    call GasSpeciesDestroy(prev_gas_species)
+  enddo  
+  nullify(chemistry%gas_species_list)
+  
+  ! mineral species
+  mineral => chemistry%mineral_list
+  do
+    if (.not.associated(mineral)) exit
+    prev_mineral => mineral
+    mineral => mineral%next
+    call MineralDestroy(prev_mineral)
+  enddo    
+  nullify(chemistry%mineral_list)
+  
+  ! ionx exchange reactions
+  ionxrxn => chemistry%ion_exchange_list
+  do
+    if (.not.associated(ionxrxn)) exit
+    prev_ionxrxn => ionxrxn
+    ionxrxn => ionxrxn%next
+    call IonExchangeRxnDestroy(prev_ionxrxn)
+  enddo    
+  nullify(chemistry%ion_exchange_list)
+
+  ! surface complexation reactions
+  surfcplxrxn => chemistry%surface_complex_list
+  do
+    if (.not.associated(surfcplxrxn)) exit
+    prev_surfcplxrxn => surfcplxrxn
+    surfcplxrxn => surfcplxrxn%next
+    call SurfaceComplexationRxnDestroy(prev_surfcplxrxn)
+  enddo    
+  nullify(chemistry%surface_complex_list)
+  
+  if (associated(chemistry%primary_spec_molwt)) deallocate(chemistry%primary_spec_molwt)
+  nullify(chemistry%primary_spec_molwt)
+  if (associated(chemistry%primary_spec_a0)) deallocate(chemistry%primary_spec_a0)
+  nullify(chemistry%primary_spec_a0)
+  if (associated(chemistry%primary_spec_Z)) deallocate(chemistry%primary_spec_Z)
+  nullify(chemistry%primary_spec_Z)
+  
+  if (associated(chemistry%eqcmplxspecid)) deallocate(chemistry%eqcmplxspecid)
+  nullify(chemistry%eqcmplxspecid)
+  if (associated(chemistry%eqcmplxstoich)) deallocate(chemistry%eqcmplxstoich)
+  nullify(chemistry%eqcmplxstoich)
+  if (associated(chemistry%eqcmplx_a0)) deallocate(chemistry%eqcmplx_a0)
+  nullify(chemistry%eqcmplx_a0)
+  if (associated(chemistry%eqcmplx_K)) deallocate(chemistry%eqcmplx_K)
+  nullify(chemistry%eqcmplx_K)
+  
+  if (associated(chemistry%eqionx_ncation)) deallocate(chemistry%eqionx_ncation)
+  nullify(chemistry%eqionx_ncation)
+  if (associated(chemistry%eqionx_CEC)) deallocate(chemistry%eqionx_CEC)
+  nullify(chemistry%eqionx_CEC)
+  if (associated(chemistry%eqionx_k)) deallocate(chemistry%eqionx_k)
+  nullify(chemistry%eqionx_k)
+  if (associated(chemistry%eqionx_cationid)) deallocate(chemistry%eqionx_cationid)
+  nullify(chemistry%eqionx_cationid)
+  if (associated(chemistry%eqionx_cationid)) deallocate(chemistry%eqionx_cationid)
+  nullify(chemistry%eqionx_rxn_offset)
+  
+  if (associated(chemistry%kinionx_ncation)) deallocate(chemistry%kinionx_ncation)
+  nullify(chemistry%kinionx_ncation)
+  if (associated(chemistry%kinionx_CEC)) deallocate(chemistry%kinionx_CEC)
+  nullify(chemistry%kinionx_CEC)
+  if (associated(chemistry%kinionx_k)) deallocate(chemistry%kinionx_k)
+  nullify(chemistry%kinionx_k)
+  if (associated(chemistry%kinionx_cationid)) deallocate(chemistry%kinionx_cationid)
+  nullify(chemistry%kinionx_cationid)
+  if (associated(chemistry%kinionx_rxn_offset)) deallocate(chemistry%kinionx_rxn_offset)
+  nullify(chemistry%kinionx_rxn_offset)
+  
+  if (associated(chemistry%eqsurfcmplxspecid)) deallocate(chemistry%eqsurfcmplxspecid)
+  nullify(chemistry%eqsurfcmplxspecid)
+  if (associated(chemistry%eqsurfcmplxstoich)) deallocate(chemistry%eqsurfcmplxstoich)
+  nullify(chemistry%eqsurfcmplxstoich)
+  if (associated(chemistry%eqsurfcmplx_freesite_stoich)) deallocate(chemistry%eqsurfcmplx_freesite_stoich)
+  nullify(chemistry%eqsurfcmplx_freesite_stoich)
+  if (associated(chemistry%eqsurfcmplx_K)) deallocate(chemistry%eqsurfcmplx_K)
+  nullify(chemistry%eqsurfcmplx_K)
+  if (associated(chemistry%eqsurfcmplx_Z)) deallocate(chemistry%eqsurfcmplx_Z)
+  nullify(chemistry%eqsurfcmplx_Z)
+  
+  if (associated(chemistry%kinsurfcmplxspecid)) deallocate(chemistry%kinsurfcmplxspecid)
+  nullify(chemistry%kinsurfcmplxspecid)
+  if (associated(chemistry%kinsurfcmplxstoich)) deallocate(chemistry%kinsurfcmplxstoich)
+  nullify(chemistry%kinsurfcmplxstoich)
+  if (associated(chemistry%kinsurfcmplx_freesite_stoich)) deallocate(chemistry%kinsurfcmplx_freesite_stoich)
+  nullify(chemistry%kinsurfcmplx_freesite_stoich)
+  if (associated(chemistry%kinsurfcmplx_K)) deallocate(chemistry%kinsurfcmplx_K)
+  nullify(chemistry%kinsurfcmplx_K)
+  if (associated(chemistry%kinsurfcmplx_Z)) deallocate(chemistry%kinsurfcmplx_Z)
+  nullify(chemistry%kinsurfcmplx_Z)
+  
+  if (associated(chemistry%mnrlspecid)) deallocate(chemistry%mnrlspecid)
+  nullify(chemistry%mnrlspecid)
+  if (associated(chemistry%mnrlstoich)) deallocate(chemistry%mnrlstoich)
+  nullify(chemistry%mnrlstoich)
+  if (associated(chemistry%mnrl_K)) deallocate(chemistry%mnrl_K)
+  nullify(chemistry%mnrl_K)
+  
+  if (associated(chemistry%kinmnrlspecid)) deallocate(chemistry%kinmnrlspecid)
+  nullify(chemistry%kinmnrlspecid)
+  if (associated(chemistry%kinmnrlstoich)) deallocate(chemistry%kinmnrlstoich)
+  nullify(chemistry%kinmnrlstoich)
+  if (associated(chemistry%kinmnrl_K)) deallocate(chemistry%kinmnrl_K)
+  nullify(chemistry%kinmnrl_K)
+  if (associated(chemistry%kinmnrl_rate)) deallocate(chemistry%kinmnrl_rate)
+  nullify(chemistry%kinmnrl_rate)
+  if (associated(chemistry%kinmnrl_pri_prefactor_id)) deallocate(chemistry%kinmnrl_sec_prefactor_id)
+  nullify(chemistry%kinmnrl_pri_prefactor_id)
+  if (associated(chemistry%kinmnrl_sec_prefactor_id)) deallocate(chemistry%kinmnrl_sec_prefactor_id)
+  nullify(chemistry%kinmnrl_sec_prefactor_id)
+  if (associated(chemistry%kinmnrl_pri_prefactor_stoich)) deallocate(chemistry%kinmnrl_pri_prefactor_stoich)
+  nullify(chemistry%kinmnrl_pri_prefactor_stoich)
+  if (associated(chemistry%kinmnrl_sec_prefactor_stoich)) deallocate(chemistry%kinmnrl_sec_prefactor_stoich)
+  nullify(chemistry%kinmnrl_sec_prefactor_stoich)
+  if (associated(chemistry%kinmnrl_affinity_factor_sigma)) deallocate(chemistry%kinmnrl_affinity_factor_sigma)
+  nullify(chemistry%kinmnrl_affinity_factor_sigma)
+  if (associated(chemistry%kinmnrl_affinity_factor_beta)) deallocate(chemistry%kinmnrl_affinity_factor_beta)
+  nullify(chemistry%kinmnrl_affinity_factor_beta)
+
+end subroutine ChemistryDestroy
 
 end module Chemistry_module

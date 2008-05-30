@@ -14,6 +14,7 @@ module Reaction_Aux_module
     PetscReal :: molar_weight
     PetscReal :: valence
     type(equilibrium_rxn_type), pointer :: eqrxn
+    type(aq_species_type), pointer :: next
   end type aq_species_type
 
   type, public :: gas_species_type
@@ -21,6 +22,7 @@ module Reaction_Aux_module
     PetscReal :: molar_volume
     PetscReal :: molar_weight
     type(equilibrium_rxn_type), pointer :: eqrxn
+    type(gas_species_type), pointer :: next
   end type gas_species_type
 
   type, public :: equilibrium_rxn_type
