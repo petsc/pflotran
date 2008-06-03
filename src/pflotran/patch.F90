@@ -670,11 +670,17 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
       condition => coupler%tran_condition
 
       update = .false.
-      if (force_update_flag .or. &
-          condition%concentration%dataset%is_transient .or. &
-          condition%concentration%gradient%is_transient .or. &
-          condition%concentration%datum%is_transient) then
+      if (force_update_flag) then
         update = .true.
+      else 
+        do idof = 1, condition%num_sub_conditions
+          if (condition%sub_condition_ptr(idof)%ptr%dataset%is_transient .or. &
+              condition%sub_condition_ptr(idof)%ptr%gradient%is_transient .or. &
+              condition%sub_condition_ptr(idof)%ptr%datum%is_transient) then
+            update = .true.
+            exit
+          endif
+        enddo
       endif
       
       if (update) then ! for now, everything transport is dirichlet-type

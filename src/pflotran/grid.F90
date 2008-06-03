@@ -371,6 +371,10 @@ subroutine GridLocalizeRegions(grid,region_list,option)
         if (count /= region%num_cells) &
           call printErrMsg(option,"Mismatch in number of cells in block region")
 
+        region%coordinate(X_DIRECTION) = grid%x(region%cell_ids(1))
+        region%coordinate(Y_DIRECTION) = grid%y(region%cell_ids(1))
+        region%coordinate(Z_DIRECTION) = grid%z(region%cell_ids(1))
+
       else if (dabs(region%coordinate(X_DIRECTION)) > 1.d-40 .and. &
                dabs(region%coordinate(Y_DIRECTION)) > 1.d-40 .and. &
                dabs(region%coordinate(Z_DIRECTION)) > 1.d-40 .and. &

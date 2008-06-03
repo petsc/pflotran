@@ -136,6 +136,8 @@ subroutine TFluxDerivative(aux_var_up,por_up,tor_up,sat_up,den_up,dist_up, &
   coef_up = coef_up*area
   coef_dn = coef_dn*area
   
+  J_up = 0.d0
+  J_dn = 0.d0
   do icomp = 1, option%ncomp
     J_up(icomp,icomp) = coef_up
     J_dn(icomp,icomp) = coef_dn
@@ -265,6 +267,7 @@ subroutine TBCFluxDerivative(ibndtype, &
   
   coef_dn = coef_dn*area
 
+  J_dn = 0.d0
   do icomp = 1, option%ncomp
     J_dn(icomp,icomp) = coef_dn
   enddo

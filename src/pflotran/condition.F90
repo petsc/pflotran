@@ -36,6 +36,7 @@ module Condition_module
     type(sub_condition_type), pointer :: pressure
     type(sub_condition_type), pointer :: temperature
     type(sub_condition_type), pointer :: concentration
+    type(sub_condition_ptr_type), pointer :: transport_concentrations(:)
     type(sub_condition_type), pointer :: enthalpy
     type(sub_condition_ptr_type), pointer :: sub_condition_ptr(:)
     type(condition_type), pointer :: next         ! pointer to next condition_type for linked-lists
@@ -45,7 +46,7 @@ module Condition_module
     PetscInt :: itype                  ! integer describing type of condition
     character(len=MAXWORDLENGTH) :: ctype ! character string describing type of condition
     character(len=MAXWORDLENGTH) :: units      ! units
-
+    character(len=MAXWORDLENGTH) :: name
     type(condition_dataset_type) :: datum
     type(condition_dataset_type) :: gradient
     type(condition_dataset_type) :: dataset
@@ -98,6 +99,8 @@ function ConditionCreate(option)
   nullify(condition%temperature)
   nullify(condition%concentration)
   nullify(condition%enthalpy)
+  nullify(condition%transport_concentrations)
+  nullify(condition%sub_condition_ptr)
   nullify(condition%itype)
   nullify(condition%next)
   condition%sync_time_with_update = .false.
@@ -140,6 +143,7 @@ function SubConditionCreate(ndof)
   sub_condition%units = ""
   sub_condition%itype = 0
   sub_condition%ctype = ""
+  sub_condition%name = ""
 
   call ConditionDatasetInit(sub_condition%dataset)
   sub_condition%dataset%rank = ndof
@@ -152,6 +156,37 @@ function SubConditionCreate(ndof)
 
 end function SubConditionCreate
 
+! ************************************************************************** !
+!
+! GetSubConditionFromArrayByName: returns a pointer to a subcondition with
+!                                 matching name
+! author: Glenn Hammond
+! date: 06/02/08
+!
+! ************************************************************************** !
+function GetSubConditionFromArrayByName(sub_condition_ptr_list,name)
+
+  use Fileio_module
+  
+  implicit none
+  
+  type(sub_condition_type), pointer :: GetSubConditionFromArrayByName
+  type(sub_condition_ptr_type), pointer :: sub_condition_ptr_list(:)
+  character(len=MAXWORDLENGTH) :: name
+  
+  PetscInt :: idof
+  
+  nullify(GetSubConditionFromArrayByName)
+  do idof = 1, size(sub_condition_ptr_list)
+    if (len_trim(name) == len_trim(sub_condition_ptr_list(idof)%ptr%name) .and. &
+        fiStringCompare(name,sub_condition_ptr_list(idof)%ptr%name,len_trim(name))) then
+      GetSubConditionFromArrayByName => sub_condition_ptr_list(idof)%ptr
+      return
+    endif
+  enddo
+  
+end function GetSubConditionFromArrayByName
+          
 ! ************************************************************************** !
 !
 ! ConditionDatasetInit: Initializes a dataset
@@ -334,6 +369,7 @@ subroutine ConditionRead(condition,option,fid)
   type(sub_condition_type), pointer :: pressure, flux, temperature, &
                                        concentration, enthalpy, &
                                        sub_condition_ptr
+  type(sub_condition_ptr_type), pointer :: transport_concentrations(:)
   PetscReal :: default_time = 0.d0
   PetscInt :: default_iphase = 0
   type(condition_dataset_type) :: default_dataset
@@ -342,6 +378,7 @@ subroutine ConditionRead(condition,option,fid)
   character(len=MAXWORDLENGTH) :: default_ctype
   PetscInt :: default_itype
   PetscInt :: array_size, length, idof
+  logical :: found
   PetscErrorCode :: ierr
 
   call PetscLogEventBegin(logging%event_condition_read, &
@@ -359,27 +396,26 @@ subroutine ConditionRead(condition,option,fid)
   
   pressure => SubConditionCreate(option%nphase)
   temperature => SubConditionCreate(ONE_INTEGER)
-  if (option%ntrandof > 0) then
-    concentration => SubConditionCreate(option%ntrandof)
-  else
-    concentration => SubConditionCreate(ONE_INTEGER)
-  endif
+  concentration => SubConditionCreate(ONE_INTEGER)
   enthalpy => SubConditionCreate(option%nphase)
 
-  select case(option%iflowmode)
-    case(RICHARDS_MODE,MPH_MODE)
-      condition%time_units = 'yr'
-      condition%length_units = 'm'
-      pressure%units = 'Pa'
-      temperature%units = 'C'
-      concentration%units = 'M'
-    case(RICHARDS_LITE_MODE)
-      condition%time_units = 'yr'
-      condition%length_units = 'm'
-      pressure%units = 'Pa'
-  end select
-  
+  condition%time_units = 'yr'
+  condition%length_units = 'm'
+  pressure%units = 'Pa'
+  temperature%units = 'C'
+  concentration%units = 'M'
 
+  if (option%ntrandof > 0) then
+    allocate(transport_concentrations(option%ntrandof))
+    do idof = 1, option%ntrandof
+      transport_concentrations(idof)%ptr => SubConditionCreate(ONE_INTEGER)
+      transport_concentrations(idof)%ptr%name = option%comp_names(idof)
+      transport_concentrations(idof)%ptr%units = 'M'
+    enddo
+  else
+    nullify(transport_concentrations)
+  endif
+  
   default_ctype = 'dirichlet'
   default_itype = DIRICHLET_BC
 
@@ -414,7 +450,13 @@ subroutine ConditionRead(condition,option,fid)
             case('C','K')
               temperature%units = trim(word)
             case('M','mol/L')
-              concentration%units = trim(word)
+              if (condition%iclass == TRANSPORT_CLASS) then
+                do idof = 1, option%ntrandof
+                  transport_concentrations(idof)%ptr%units = trim(word)
+                enddo
+              else
+                concentration%units = trim(word)
+              endif
             case('KJ/mol')
               enthalpy%units = trim(word)
           end select
@@ -465,7 +507,24 @@ subroutine ConditionRead(condition,option,fid)
             case('TEMP','TEMPERATURE')
               sub_condition_ptr => temperature
             case('CONC','CONCENTRATION')
-              sub_condition_ptr => concentration
+              if (condition%iclass == TRANSPORT_CLASS) then
+                call fiReadWord(string,word,.true.,ierr)
+                call fiErrorMsg(option%myrank,'name','CONDITION,CONCENTRATION', ierr)
+                nullify(sub_condition_ptr)
+                if (option%ntrandof > 0) then
+                  sub_condition_ptr => &
+                    GetSubConditionFromArrayByName(transport_concentrations,word)
+                  if (.not.associated(sub_condition_ptr)) then
+                    string = 'solute name "' // trim(word) // &
+                             '" not recognized in condition'
+                    call printErrMsg(option,string)
+                  endif
+                else
+                  sub_condition_ptr => concentration
+                endif
+              else            
+                sub_condition_ptr => concentration
+              endif
             case('H','ENTHALPY')
               sub_condition_ptr => enthalpy
             case default
@@ -490,7 +549,8 @@ subroutine ConditionRead(condition,option,fid)
             case('seepage')
               sub_condition_ptr%itype = SEEPAGE_BC
             case default
-              call printErrMsg(option,'bc type not recognized in condition,type')
+              string = 'bc type "' // trim(word) // '" not recognized in condition,type'
+              call printErrMsg(option,string)
           end select
         enddo
       case('TIME','TIMES')
@@ -520,7 +580,24 @@ subroutine ConditionRead(condition,option,fid)
             case('TEMP','TEMPERATURE')
               sub_condition_ptr => temperature
             case('CONC','CONCENTRATION')
-              sub_condition_ptr => concentration
+              if (condition%iclass == TRANSPORT_CLASS) then
+                call fiReadWord(string,word,.true.,ierr)
+                call fiErrorMsg(option%myrank,'name','CONDITION,CONCENTRATION', ierr)
+                nullify(sub_condition_ptr)
+                if (option%ntrandof > 0) then                
+                  sub_condition_ptr => &
+                    GetSubConditionFromArrayByName(transport_concentrations,word)
+                  if (.not.associated(sub_condition_ptr)) then
+                    string = 'solute name "' // trim(word) // &
+                             '" not recognized in condition'
+                    call printErrMsg(option,string)
+                  endif
+                else
+                  sub_condition_ptr => concentration
+                endif
+              else            
+                sub_condition_ptr => concentration
+              endif
             case('H','ENTHALPY')
               sub_condition_ptr => enthalpy
             case default
@@ -543,8 +620,26 @@ subroutine ConditionRead(condition,option,fid)
         call ConditionReadValues(option,word,string,pressure%dataset, &
                                  pressure%units)
       case('CONC','CONCENTRATION')
-        call ConditionReadValues(option,word,string,concentration%dataset, &
-                                 concentration%units)
+        if (condition%iclass == TRANSPORT_CLASS) then
+          call fiReadWord(string,word,.true.,ierr)
+          call fiErrorMsg(option%myrank,'name','CONDITION,CONCENTRATION', ierr)
+          nullify(sub_condition_ptr)
+          if (option%ntrandof > 0) then           
+            sub_condition_ptr => &
+              GetSubConditionFromArrayByName(transport_concentrations,word)
+            if (.not.associated(sub_condition_ptr)) then
+              string = 'solute name "' // trim(word) // &
+                       '" not recognized in condition'
+              call printErrMsg(option,string)
+            endif
+          else
+            sub_condition_ptr => concentration
+          endif
+        else
+          sub_condition_ptr => concentration
+        endif
+        call ConditionReadValues(option,word,string,sub_condition_ptr%dataset, &
+                                 sub_condition_ptr%units)
     end select 
   
   enddo  
@@ -573,26 +668,48 @@ subroutine ConditionRead(condition,option,fid)
     default_gradient%interpolation_method = default_dataset%interpolation_method
 
   ! verify the datasets
-  word = 'pressure'
-  call SubConditionVerify(option,condition,word,pressure,default_time, &
-                          default_ctype, default_itype, &
-                          default_dataset, &
-                          default_datum, default_gradient)
-  word = 'temperature'
-  call SubConditionVerify(option,condition,word,temperature,default_time, &
-                          default_ctype, default_itype, &
-                          default_dataset, &
-                          default_datum, default_gradient)
-  word = 'concentration'
-  call SubConditionVerify(option,condition,word,concentration,default_time, &
-                          default_ctype, default_itype, &
-                          default_dataset, &
-                          default_datum, default_gradient)
-  word = 'enthalpy'
-  call SubConditionVerify(option,condition,word,enthalpy,default_time, &
-                          default_ctype, default_itype, &
-                          default_dataset, &
-                          default_datum, default_gradient)
+  if (condition%iclass == FLOW_CLASS) then
+    word = 'pressure'
+    call SubConditionVerify(option,condition,word,pressure,default_time, &
+                            default_ctype, default_itype, &
+                            default_dataset, &
+                            default_datum, default_gradient)
+    word = 'temperature'
+    call SubConditionVerify(option,condition,word,temperature,default_time, &
+                            default_ctype, default_itype, &
+                            default_dataset, &
+                            default_datum, default_gradient)
+    word = 'concentration'
+    call SubConditionVerify(option,condition,word,concentration,default_time, &
+                            default_ctype, default_itype, &
+                            default_dataset, &
+                            default_datum, default_gradient)
+    word = 'enthalpy'
+    call SubConditionVerify(option,condition,word,enthalpy,default_time, &
+                            default_ctype, default_itype, &
+                            default_dataset, &
+                            default_datum, default_gradient)
+    ! these are not used with transport
+    do idof = 1, option%ntrandof
+      if (associated(transport_concentrations(idof)%ptr)) &
+        call SubConditionDestroy(transport_concentrations(idof)%ptr)
+    enddo
+    if (associated(transport_concentrations)) deallocate(transport_concentrations)
+    nullify(transport_concentrations)
+  else
+    do idof = 1, option%ntrandof
+      word = 'solute concentration: ' // trim(transport_concentrations(idof)%ptr%name)
+      call SubConditionVerify(option,condition,word,transport_concentrations(idof)%ptr,default_time, &
+                              default_ctype, default_itype, &
+                              default_dataset, &
+                              default_datum, default_gradient)
+    enddo
+    ! these are not used with transport
+    if (associated(pressure)) call SubConditionDestroy(pressure)
+    if (associated(temperature)) call SubConditionDestroy(temperature)
+    if (associated(concentration)) call SubConditionDestroy(concentration)
+    if (associated(enthalpy)) call SubConditionDestroy(enthalpy)    
+  endif
     
   if (condition%iclass == FLOW_CLASS) then
     select case(option%iflowmode)
@@ -651,23 +768,13 @@ subroutine ConditionRead(condition,option,fid)
         
     end select
   else
-    if (.not.associated(concentration)) then
-      call printErrMsg(option,'concentration condition null in condition: ' // &
-                       condition%name)
-    endif                         
-    condition%concentration => concentration
-    condition%num_sub_conditions = 1
+    condition%num_sub_conditions = option%ntrandof
     allocate(condition%sub_condition_ptr(condition%num_sub_conditions))
-    condition%sub_condition_ptr(ONE_INTEGER)%ptr => concentration
-
-    allocate(condition%itype(ONE_INTEGER))
-    condition%itype(ONE_INTEGER) = concentration%itype
-    
-    ! these are not used with richards_lite
-    if (associated(pressure)) call SubConditionDestroy(pressure)
-    if (associated(temperature)) call SubConditionDestroy(temperature)
-    if (associated(pressure)) call SubConditionDestroy(pressure)
-    if (associated(enthalpy)) call SubConditionDestroy(enthalpy)
+    allocate(condition%itype(condition%num_sub_conditions))
+    do idof = 1, option%ntrandof
+      condition%sub_condition_ptr(idof)%ptr => transport_concentrations(idof)%ptr
+      condition%itype(idof) = condition%sub_condition_ptr(idof)%ptr%itype
+    enddo
   endif
   
   call ConditionDatasetDestroy(default_dataset)
@@ -726,7 +833,7 @@ subroutine ConditionReadValues(option,keyword,string,dataset,units)
     allocate(dataset%values(dataset%rank,1))
     do irank=1,dataset%rank
       call fiReadDouble(string,dataset%values(irank,1),ierr)
-      write(error_string,*) trim(keyword) // ' dataset_values, rank = ', irank
+      write(error_string,*) trim(keyword) // ' dataset_values, irank = ', irank
       call fiErrorMsg(option%myrank,error_string,'CONDITION', ierr) 
     enddo
   endif

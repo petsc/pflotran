@@ -491,7 +491,10 @@ subroutine readRequiredCardsFromInput(realization,filename)
 
   if (ierr == 0) then
     realization%chemistry => ChemistryCreate()
-    call ChemistryRead(realization%chemistry,IUNIT1,option)        
+    call ChemistryRead(realization%chemistry,IUNIT1,option)
+    option%ntrandof = GetPrimarySpeciesCount(realization%chemistry)
+    option%comp_names => GetPrimarySpeciesNames(realization%chemistry)
+    option%ncomp = option%ntrandof
   endif
 
 !.........................................................................
@@ -568,7 +571,7 @@ subroutine readInput(simulation,filename)
   character(len=MAXWORDLENGTH) :: filename
 
   PetscErrorCode :: ierr
-  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXSTRINGLENGTH) :: string, string2
   character(len=MAXWORDLENGTH) :: word
   character(len=MAXWORDLENGTH) :: name
   character(len=MAXWORDLENGTH) :: card
@@ -665,6 +668,23 @@ subroutine readInput(simulation,filename)
 !....................
       case ('GRID')
         call fiSkipToEND(IUNIT1,option%myrank,card)
+
+!....................
+      case ('CHEMISTRY')
+        do
+          call fiReadFlotranString(IUNIT1,string,ierr)
+          call fiReadStringErrorMsg(option%myrank,card,ierr)
+          string2 = string
+          call fiReadWord(string2,word,.true.,ierr)
+          call fiErrorMsg(option%myrank,'word','CHEMISTRY',ierr) 
+          select case(word)
+            case('PRIMARY_SPECIES','SECONDARY_SPECIES','GAS_SPECIES', &
+                 'MINERALS')
+              call fiSkipToEND(IUNIT1,option%myrank,card)
+          end select
+          if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
+              fiStringCompare(string,'END',THREE_INTEGER)) exit
+        enddo
 
 !....................
       case ('TRAN')

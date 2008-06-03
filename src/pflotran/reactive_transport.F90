@@ -404,7 +404,7 @@ end subroutine RTNumericalJacobianTest
 ! date: 02/15/08
 !
 ! ************************************************************************** !
-subroutine RTAccumulationDerivative(aux_var,por,sat,den,vol,option,Res)
+subroutine RTAccumulationDerivative(aux_var,por,sat,den,vol,option,J)
 
   use Reactive_Transport_Aux_module
   use Option_module
@@ -414,14 +414,15 @@ subroutine RTAccumulationDerivative(aux_var,por,sat,den,vol,option,Res)
   type(reactive_transport_auxvar_type) :: aux_var
   PetscReal :: por, sat, vol, den
   type(option_type) :: option
-  PetscReal :: Res(option%ncomp)
+  PetscReal :: J(option%ncomp,option%ncomp)
   
   PetscInt :: icomp
   PetscReal :: psdv_t
   
+  J = 0.d0
   psdv_t = por*sat*den*vol/option%dt
   do icomp=1,option%ncomp
-    Res(icomp) = psdv_t
+    J(icomp,icomp) = psdv_t
   enddo
 
 end subroutine RTAccumulationDerivative
@@ -1377,7 +1378,7 @@ function RTGetTecplotHeader(realization)
   
   string = '' 
   do i=1,option%ntrandof
-    write(string2,'('',"COMP('',i2,'')"'')') i
+    write(string2,'('',"'',a,''"'')') option%comp_names(i)
     string = trim(string) // trim(string2)
   enddo
   
