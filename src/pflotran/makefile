@@ -81,11 +81,11 @@ pflotran_obj = ${common_src}option.o \
 	${common_src}level.o \
 	${common_src}amrgrid.o\
 	${common_src}discretization.o \
-	${common_src}reaction.o\
 	${common_src}realization.o \
 	${common_src}hdf5.o \
 	${common_src}mphase.o\
 	${common_src}transport.o\
+	${common_src}reaction.o\
 	${common_src}reactive_transport.o\
 	${common_src}richards.o\
 	${common_src}richards_lite.o\
@@ -185,12 +185,10 @@ convergence.o : option.o solver.o
 condition.o : fileio.o utility.o option.o field.o logging.o
 realization.o : grid.o option.o region.o condition.o coupler.o material.o \
 	     strata.o waypoint.o field.o hydrostatic.o debug.o breakthrough.o \
-             patch.o level.o discretization.o
+             patch.o level.o discretization.o reaction.o
 level.o : patch.o option.o
 patch.o : option.o grid.o coupler.o breakthrough.o strata.o region.o \
           auxilliary.o
-transport_realization.o : grid.o option.o region.o condition.o coupler.o \
-                          material.o strata.o waypoint.o debug.o breakthrough.o
 strata.o : fileio.o region.o material.o
 hydrostatic.o : option.o grid.o coupler.o condition.o connection.o region.o \
                 structured_grid.o
