@@ -1,0 +1,180 @@
+:Description: 3D toy problem for testing TAO optimization
+ 
+MODE RICHARDS_LITE
+ 
+GRID
+TYPE structured
+NXYZ 100 10 10
+END
+ 
+ORIGIN 0.d0 0.d0 0.d0
+ 
+TECP 
+ 
+DXYZ
+1.d0
+1.d0
+1.d0
+ 
+:  d0[m^2/s] delhaq[kJ/mol]
+DIFF  1.D-9       12.6
+ 
+: Richards Equation Pref
+RICH 101325.
+ 
+SATURATION_FUNCTIONS
+:id itype swir   lambda alpha     pcwmax betac pwr
+ 1  1     0.1471 0.7465 4.4317d-4 1.e8   0.d0  1.d0
+END
+
+THERMAL_PROPERTIES
+:ithm rho    cpr     ckdry cksat tau cdiff   cexp
+  1   2.75e3 1000.e0 0.5   0.5   0.5 2.13d-5 1.8
+END
+ 
+MATERIALS
+:name id icap ithm por  tau permx  permy  permz  permpwr
+soil1 1  1    1    0.25 0.5 1.d-13 1.d-13 1.d-13 1.d0
+soil2 2  1    1    0.25 0.5 1.d-14 1.d-14 1.d-14 1.d0
+END
+ 
+TIME d every 10
+100.d0
+ 
+DTST 1.d-2
+1. 10.d0
+ 
+REGION all
+BLOCK 1 100 1 10 1 10
+END
+
+REGION region1
+BLOCK 1 50 1 10 1 10
+END
+
+REGION region2
+BLOCK 51 100 1 10 1 10
+END
+
+REGION breakthrough_1
+BLOCK 25 25 3 3 3 3
+END
+
+REGION breakthrough_2
+BLOCK 25 25 7 7 3 3
+END
+
+REGION breakthrough_3
+BLOCK 25 25 3 3 7 7
+END
+
+REGION breakthrough_4
+BLOCK 25 25 7 7 7 7
+END
+
+REGION breakthrough_5
+BLOCK 75 75 3 3 3 3
+END
+
+REGION breakthrough_6
+BLOCK 75 75 7 7 3 3
+END
+
+REGION breakthrough_7
+BLOCK 75 75 3 3 7 7
+END
+
+REGION breakthrough_8
+BLOCK 75 75 7 7 7 7
+END
+
+REGION West
+BLOCK 1 1 1 10 1 10
+FACE west
+END
+
+REGION East
+BLOCK 100 100 1 10 1 10
+FACE east
+END
+
+BREAKTHROUGH 
+REGION breakthrough_1
+END
+
+BREAKTHROUGH 
+REGION breakthrough_2
+END
+
+BREAKTHROUGH 
+REGION breakthrough_3
+END
+
+BREAKTHROUGH 
+REGION breakthrough_4
+END
+
+BREAKTHROUGH 
+REGION breakthrough_5
+END
+
+BREAKTHROUGH 
+REGION breakthrough_6
+END
+
+BREAKTHROUGH 
+REGION breakthrough_7
+END
+
+BREAKTHROUGH 
+REGION breakthrough_8
+END
+
+CONDITION west
+CLASS flow
+TYPE
+PRESSURE hydrostatic
+END
+INTERPOLATION linear
+DATUM 0.d0 0.d0 10.d0
+PRESSURE 201325.d0
+END
+
+CONDITION initial
+CLASS flow
+TYPE
+PRESSURE hydrostatic
+END
+INTERPOLATION linear
+DATUM 0.d0 0.d0 10.d0
+PRESSURE 101325.d0
+END
+
+: initial condition
+INITIAL_CONDITION
+FLOW_CONDITION initial
+REGION all
+END
+
+: west boundary condition
+BOUNDARY_CONDITION
+FLOW_CONDITION west
+REGION West
+END
+
+: east boundary condition
+BOUNDARY_CONDITION
+FLOW_CONDITION initial
+REGION East
+END
+
+STRATA
+REGION region1
+MATERIAL soil1
+END
+
+STRATA
+REGION region2
+MATERIAL soil2
+END
+
