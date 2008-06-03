@@ -543,7 +543,7 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
                        aux_vars(ghosted_id)%aux_var_elem(0), &
                        iphase, &
                        realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
-                       option)
+                       realization%fluid_properties,option)
     iphase_loc_p(ghosted_id) = iphase
   enddo
 
@@ -585,7 +585,7 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
       call MphaseAuxVarCompute_NINC(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0), &
                          iphasebc, &
                          realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
-                         option)
+                         realization%fluid_properties, option)
     enddo
     boundary_condition => boundary_condition%next
   enddo
@@ -740,7 +740,7 @@ subroutine MphaseUpdateFixedAccumPatch(realization)
                        aux_vars(ghosted_id)%aux_var_elem(0), &
                        iphase, &
                        realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
-                       option)
+                       realization%fluid_properties,option)
     iphase_loc_p(ghosted_id) = iphase
     call MphaseAccumulation(aux_vars(ghosted_id)%aux_var_elem(0), &
                               porosity_loc_p(ghosted_id), &
@@ -1274,7 +1274,7 @@ subroutine MphaseVarSwitchPatch(xx, realization, icri, ichange)
           dg= dg / option%fmwco2
           fg= fg * 1.D6 
           hg= hg * option%fmwco2
-   ! Span-Wagner EOS with Bi-Cubic Spline interpolation
+! Span-Wagner EOS with Bi-Cubic Spline interpolation
           case(3) 
             call sw_prop(t,p2*1D-6,dg,hg, eng, fg)
             dg= dg / option%fmwco2
@@ -1524,7 +1524,8 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
      iphase =int(iphase_loc_p(ng))
  
      call MphaseAuxVarCompute_Ninc(xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0),iphase,&
-          realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,option)
+          realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
+          realization%fluid_properties,option)
      if (option%numerical_derivatives) then
         delx(1,ng) = xx_loc_p((ng-1)*option%nflowdof+1)*dfac * 1.D-3
         delx(2,ng) = xx_loc_p((ng-1)*option%nflowdof+2)*dfac
@@ -1565,7 +1566,8 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
  
         call MphaseAuxVarCompute_Winc(xx_loc_p(istart:iend),delx(:,ng),&
              aux_vars(ng)%aux_var_elem(1:option%nflowdof),iphase,&
-             realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,option)
+             realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
+             realization%fluid_properties,option)
      endif
   enddo
 #endif
@@ -1746,7 +1748,8 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
     end select
  
     call MphaseAuxVarCompute_Ninc(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0),iphase,&
-         realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,option)
+         realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
+         realization%fluid_properties, option)
 
     call MphaseBCFlux(boundary_condition%flow_condition%itype, &
          boundary_condition%flow_aux_real_var(:,iconn), &
@@ -2262,10 +2265,12 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     end select
  
     call MphaseAuxVarCompute_Ninc(xxbc,aux_vars_bc(sum_connection)%aux_var_elem(0),iphasebc,&
-         realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,option)
+         realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
+         realization%fluid_properties, option)
     call MphaseAuxVarCompute_Winc(xxbc,delxbc,&
          aux_vars_bc(sum_connection)%aux_var_elem(1:option%nflowdof),iphasebc,&
-         realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,option)
+         realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr,&
+         realization%fluid_properties,option)
     
     do nvar=1,option%nflowdof
        call MphaseBCFlux(boundary_condition%flow_condition%itype, &
