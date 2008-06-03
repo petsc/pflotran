@@ -2,8 +2,17 @@
 :
 :MODE RICHARDS
 MODE RICHARDS_LITE
-TRAN 1
- 
+:skip
+:TRAN 1
+CHEMISTRY
+PRIMARY_SPECIES
+river_c
+groundwater_c
+plume_c
+END
+END
+:noskip
+:
 :CHECKPOINT 1
 :RESTART pflotran.chk4
 :UNIFORM_VELOCITY 1.d0 0.d0 0.d0
@@ -55,6 +64,7 @@ END
 MATERIALS
 :name id icap ithm por  tau permx  permy  permz  permpwr
 soil1 1  1    1    0.25 0.5 1.d-12 1.d-12 1.d-12 1.d0
+soil2 2  1    1    0.25 0.5 1.d-13 1.d-13 1.d-13 1.d0
 END
 :
 :
@@ -66,6 +76,14 @@ DTST 1.d-2
 :
 REGION all
 BLOCK 1 100 1 10 1 10
+END
+
+REGION region1
+BLOCK 1 50 1 10 1 10
+END
+
+REGION region2
+BLOCK 51 100 1 10 1 10
 END
 
 REGION breakthrough
@@ -119,22 +137,25 @@ END
 CONDITION west_c
 CLASS transport
 TYPE
-CONCENTRATION dirichlet
+CONCENTRATION river_c dirichlet
+CONCENTRATION groundwater_c dirichlet
+CONCENTRATION plume_c dirichlet
 END
-CONCENTRATION 1.d0 
+CONCENTRATION river_c 1.d-6 
+CONCENTRATION groundwater_c 1.d-6 
+CONCENTRATION plume_c 1.d0 
 END
 
 CONDITION initial_c
 CLASS transport
 TYPE
-CONCENTRATION zero_gradient
+CONCENTRATION river_c zero_gradient
+CONCENTRATION groundwater_c zero_gradient
+CONCENTRATION plume_c zero_gradient
 END
-CONCENTRATION 1.d-6 
-END
-
-CONDITION initial
-CLASS transport
-CONCENTRATION 1.d-6 
+CONCENTRATION river_c 1.d-6 
+CONCENTRATION groundwater_c 1.d0 
+CONCENTRATION plume_c 1.d-6 
 END
 
 : initial condition
@@ -159,7 +180,12 @@ REGION East
 END
 
 STRATA
-REGION all
+REGION region1
 MATERIAL soil1
+END
+
+STRATA
+REGION region2
+MATERIAL soil2
 END
 
