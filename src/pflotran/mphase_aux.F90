@@ -213,7 +213,7 @@ end subroutine MphaseAuxVarCopy
 !
 ! ************************************************************************** !
 subroutine MphaseAuxVarCompute_NINC(x,aux_var,iphase,saturation_function, &
-                                   option)
+                                   fluid_properties,option)
 
   use Option_module
   use water_eos_module
@@ -228,6 +228,7 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,iphase,saturation_function, &
   implicit none
 
   type(option_type) :: option
+  type(fluid_property_type) :: fluid_properties
   type(saturation_function_type) :: saturation_function
   PetscReal :: x(option%nflowdof)
   type(mphase_auxvar_elem_type) :: aux_var
@@ -377,7 +378,9 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,iphase,saturation_function, &
    aux_var%h(2)=  hg  
    aux_var%u(2)=  hg - p/dg * option%scale
    aux_var%pc(2)=0D0
-   aux_var%diff(option%nflowspec+1:option%nflowspec*2)= 2.13D-5
+   aux_var%diff(option%nflowspec+1:option%nflowspec*2)=&
+       fluid_properties%diff_base(2)
+! Note: not temperature dependent yet.       
    aux_var%zco2=aux_var%den(2)/(p/rgasj/(t+273.15D0)*1D-3)
 
 !***************  Liquid phase properties **************************
@@ -385,8 +388,7 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,iphase,saturation_function, &
 !  avgmw(1)= xmol(1)* fmwh2o + xmol(2) * fmwco2 
   aux_var%h(1) = hw
   aux_var%u(1) = aux_var%h(1) - pw /dw_mol* option%scale
-  aux_var%diff(1:option%nflowspec) = 1D-9
-  ! Hardwared for now
+  aux_var%diff(1:option%nflowspec) = fluid_properties%diff_base(1)
 
   xm_nacl = option%m_nacl * fmwnacl
   xm_nacl = xm_nacl /(1.D3 + xm_nacl)
@@ -453,7 +455,7 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,iphase,saturation_function, &
 
 
 subroutine MphaseAuxVarCompute_WINC(x, delx, aux_var,iphase,saturation_function, &
-                                    option)
+                                    fluid_properties,option)
 
   use Option_module
   use water_eos_module
@@ -462,6 +464,7 @@ subroutine MphaseAuxVarCompute_WINC(x, delx, aux_var,iphase,saturation_function,
   implicit none
 
   type(option_type) :: option
+  type(fluid_property_type) :: fluid_properties
   type(saturation_function_type) :: saturation_function
   PetscReal :: x(option%nflowdof), xx(option%nflowdof), delx(option%nflowdof)
   type(mphase_auxvar_elem_type) :: aux_var(1:option%nflowdof)
@@ -473,7 +476,7 @@ subroutine MphaseAuxVarCompute_WINC(x, delx, aux_var,iphase,saturation_function,
      xx=x;  xx(n)=x(n)+ delx(n)
 ! ***   note: var_node here starts from 1 to option%flowdof ***
     call  MphaseAuxVarCompute_NINC(xx,aux_var(n),iphase,saturation_function, &
-                                   option)
+                                   fluid_properties, option)
   enddo
 
 end subroutine MphaseAuxVarCompute_WINC
