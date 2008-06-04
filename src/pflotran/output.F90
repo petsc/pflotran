@@ -1148,6 +1148,10 @@ subroutine WriteTecplotStructuredGrid(fid,realization)
         temp_real = grid%structured_grid%origin(X_DIRECTION)
         write(fid,1000,advance='no') temp_real
         count = count + 1
+        if (mod(count,10) == 0) then
+          write(fid,'(a)') ""
+          count = 0
+        endif
         do i=1,nx
           temp_real = temp_real + grid%structured_grid%dx0(i)
           write(fid,1000,advance='no') temp_real
