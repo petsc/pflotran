@@ -1380,7 +1380,7 @@ function RTGetTecplotHeader(realization)
   
   string = '' 
   do i=1,option%ntrandof
-    write(string2,'('',"'',a,''"'')') option%comp_names(i)
+    write(string2,'('',"'',a,''"'')') trim(option%comp_names(i))
     string = trim(string) // trim(string2)
   enddo
   
