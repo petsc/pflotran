@@ -2,8 +2,14 @@ common_src   = ./
 
 #hdf5 = 1
 ifdef hdf5
-  HDF5_FLAGS = -I${HDF5_INCLUDE} -DUSE_HDF5
-  HDF5_LIBS = -L${HDF5_LIB} -lhdf5 -lz
+  ifndef jaguar
+    HDF5_FLAGS = -I${HDF5_INCLUDE} -DUSE_HDF5
+    HDF5_LIBS = -L${HDF5_LIB} -lhdf5 -lz
+  else
+# the below is for jaguar
+    HDF5_FLAGS = $(HDF5_CLIB) -DUSE_HDF5
+    HDF5_LIBS = $(HDF5_CLIB) -lhdf5 -lz
+  endif
 endif
 
 LIBS = ${HDF5_LIBS}
