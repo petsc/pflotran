@@ -614,13 +614,15 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
       
-      Res(1:option%ncomp) = -1.d-6* &
-                            porosity_loc_p(ghosted_id)* &
-                            saturation_loc_p(ghosted_id)* &
-                            density_loc_p(ghosted_id)* &
-                            volume_p(local_id)* &
-                            (source_sink%tran_condition%concentration%dataset%cur_value(1)- &
-                             aux_vars(ghosted_id)%total(1:option%ncomp,iphase))
+      do istart = 1, option%ncomp
+        Res(istart) = -1.d-6* &
+                      porosity_loc_p(ghosted_id)* &
+                      saturation_loc_p(ghosted_id)* &
+                      density_loc_p(ghosted_id)* &
+                      volume_p(local_id)* &
+                      (source_sink%tran_condition%sub_condition_ptr(istart)%ptr%dataset%cur_value(1)- &
+                       aux_vars(ghosted_id)%total(istart,iphase))
+      enddo
       iend = local_id*option%ncomp
       istart = iend-option%ncomp+1
       r_p(istart:iend) = r_p(istart:iend) + Res(1:option%ncomp)                                  
