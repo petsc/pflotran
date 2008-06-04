@@ -512,14 +512,14 @@ subroutine OutputVelocitiesTecplot(realization)
              '"X [m]",' // &
              '"Y [m]",' // &
              '"Z [m]",' // &
-             '"vlx [m/y]",' // &
-             '"vly [m/y]",' // &
-             '"vlz [m/y]"'
+             '"vlx [m/' // trim(output_option%tunit) // ']",' // &
+             '"vly [m/' // trim(output_option%tunit) // ']",' // &
+             '"vlz [m/' // trim(output_option%tunit) // ']"'
     if (option%nphase > 1) then
       string = trim(string) // &
-               ',"vgx [m/y]",' // &
-               '"vgy [m/y]",' // &
-               '"vgz [m/y]"'
+               ',"vgx [m/' // trim(output_option%tunit) // ']",' // &
+               '"vgy [m/' // trim(output_option%tunit) // ']",' // &
+               '"vgz [m/' // trim(output_option%tunit) // ']"'
     endif
         if (associated(patch%imat)) then
           string = trim(string) // ',"Material_ID"'
@@ -740,11 +740,11 @@ subroutine OutputFluxVelocitiesTecplot(realization,iphase, &
   
     select case(direction)
       case(X_DIRECTION)
-        string = trim(string) // ' vlx [m/y]"'
+        string = trim(string) // ' vlx [m/' // trim(output_option%tunit) // ']"'
       case(Y_DIRECTION)
-        string = trim(string) // ' vly [m/y]"'
+        string = trim(string) // ' vly [m/' // trim(output_option%tunit) // ']"'
       case(Z_DIRECTION)
-        string = trim(string) // ' vlz [m/y]"'
+        string = trim(string) // ' vlz [m/' // trim(output_option%tunit) // ']"'
     end select 
     
     write(IUNIT3,'(a)') trim(string)
@@ -1148,6 +1148,10 @@ subroutine WriteTecplotStructuredGrid(fid,realization)
         temp_real = grid%structured_grid%origin(X_DIRECTION)
         write(fid,1000,advance='no') temp_real
         count = count + 1
+        if (mod(count,10) == 0) then
+          write(fid,'(a)') ""
+          count = 0
+        endif
         do i=1,nx
           temp_real = temp_real + grid%structured_grid%dx0(i)
           write(fid,1000,advance='no') temp_real
@@ -1698,7 +1702,9 @@ subroutine WriteBreakthroughHeaderForCoord(fid,realization,region, &
   
   PetscInt :: i
   character(len=MAXSTRINGLENGTH) :: string, string2
-  character(len=MAXWORDLENGTH) :: cell_id_string
+  character(len=MAXSTRINGLENGTH) :: cell_id_string
+  character(len=MAXSTRINGLENGTH) :: coordinate_string
+  character(len=MAXWORDLENGTH) :: x_string, y_string, z_string
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(grid_type), pointer :: grid
@@ -1712,13 +1718,20 @@ subroutine WriteBreakthroughHeaderForCoord(fid,realization,region, &
 !  write(cell_id_string,*) grid%nL2A(region%cell_ids(icell))
 !  cell_id_string = trim(region%name) // ' ' //adjustl(cell_id_string)
   cell_id_string = trim(region%name)
+  
+  110 format(1pg12.4)
+  write(x_string,110) region%coordinate(X_DIRECTION)
+  write(y_string,110) region%coordinate(Y_DIRECTION)
+  write(z_string,110) region%coordinate(Z_DIRECTION)
+  cell_id_string = trim(cell_id_string) // ' ' // trim(adjustl(x_string)) // ' ' // &
+                   trim(adjustl(y_string)) // ' ' // trim(adjustl(z_string))
 
   select case(option%iflowmode)
     case (MPH_MODE)
-      string = ',"X [m] '// trim(cell_id_string) // '",' // &
-               '"Y [m] '// trim(cell_id_string) // '",' // &
-               '"Z [m] '// trim(cell_id_string) // '",' // &
-               '"T [C] '// trim(cell_id_string) // '",' // &
+!      string = ',"X [m] '// trim(cell_id_string) // '",' // &
+!               '"Y [m] '// trim(cell_id_string) // '",' // &
+!               '"Z [m] '// trim(cell_id_string) // '",' // &
+       string = ',"T [C] '// trim(cell_id_string) // '",' // &
                '"P [Pa] '// trim(cell_id_string) // '",' // &
                '"sl '// trim(cell_id_string) // '",' // &
                '"sg '// trim(cell_id_string) // '",' // &
@@ -1740,18 +1753,18 @@ subroutine WriteBreakthroughHeaderForCoord(fid,realization,region, &
       string = trim(string) // ',"Phase '// trim(cell_id_string) // '"'
     case(RICHARDS_MODE,RICHARDS_LITE_MODE)
       if (option%iflowmode == RICHARDS_MODE) then
-        string = ',"X [m] '// trim(cell_id_string) // '",' // &
-                 '"Y [m] '// trim(cell_id_string) // '",' // &
-                 '"Z [m] '// trim(cell_id_string) // '",' // &
-                 '"T [C] '// trim(cell_id_string) // '",' // &
+!        string = ',"X [m] '// trim(cell_id_string) // '",' // &
+!                 '"Y [m] '// trim(cell_id_string) // '",' // &
+!                 '"Z [m] '// trim(cell_id_string) // '",' // &
+        string = ',"T [C] '// trim(cell_id_string) // '",' // &
                  '"P [Pa] '// trim(cell_id_string) // '",' // &
                  '"sl '// trim(cell_id_string) // '",' // &
                  '"Ul '// trim(cell_id_string) // '"' 
       else
-        string = ',"X [m] '// trim(cell_id_string) // '",' // &
-                 '"Y [m] '// trim(cell_id_string) // '",' // &
-                 '"Z [m] '// trim(cell_id_string) // '",' // &
-                 '"P [Pa] '// trim(cell_id_string) // '",' // &
+!        string = ',"X [m] '// trim(cell_id_string) // '",' // &
+!                 '"Y [m] '// trim(cell_id_string) // '",' // &
+!                 '"Z [m] '// trim(cell_id_string) // '",' // &
+        string = ',"P [Pa] '// trim(cell_id_string) // '",' // &
                  '"sl '// trim(cell_id_string) // '"'
       endif
       if (option%iflowmode == RICHARDS_MODE) then
@@ -1766,10 +1779,10 @@ subroutine WriteBreakthroughHeaderForCoord(fid,realization,region, &
       endif
 #endif      
     case default
-      string = ',"X [m]",' // &
-               '"Y [m]",' // &
-               '"Z [m]",' // &
-               '"T [C]",' // &
+!      string = ',"X [m]",' // &
+!               '"Y [m]",' // &
+!               '"Z [m]",' // &
+      string = ',"T [C]",' // &
                '"P [Pa]",' // &
                '"sl",' // &
                '"C [mol/L]"'
@@ -1832,9 +1845,9 @@ subroutine WriteBreakthroughDataForCell(fid,realization,local_id)
 
   ghosted_id = grid%nL2G(local_id)
   ! write out coorindates
-  write(fid,110,advance="no") grid%x(ghosted_id)
-  write(fid,110,advance="no") grid%y(ghosted_id)
-  write(fid,110,advance="no") grid%z(ghosted_id)
+  !write(fid,110,advance="no") grid%x(ghosted_id)
+  !write(fid,110,advance="no") grid%y(ghosted_id)
+  !write(fid,110,advance="no") grid%z(ghosted_id)
   
   select case(option%iflowmode)
     case (MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
@@ -1968,9 +1981,10 @@ subroutine WriteBreakthroughDataForCoord(fid,realization,region)
 !print *, 'Fix format statements in output!!!!!'
 
   ! write out coorindates
-  write(fid,110,advance="no") region%coordinate(X_DIRECTION)
-  write(fid,110,advance="no") region%coordinate(Y_DIRECTION)
-  write(fid,110,advance="no") region%coordinate(Z_DIRECTION)
+!geh - do not print coordinates for now
+  !write(fid,110,advance="no") region%coordinate(X_DIRECTION)
+  !write(fid,110,advance="no") region%coordinate(Y_DIRECTION)
+  !write(fid,110,advance="no") region%coordinate(Z_DIRECTION)
   
   count = 0
   local_id = region%cell_ids(1)
@@ -2669,7 +2683,7 @@ subroutine OutputHDF5(realization)
   if (option%ntrandof > 0) then
     do i=1,option%ntrandof
       call OutputGetVarFromArray(realization,global_vec,TOTAL_CONCENTRATION,i)
-      write(string,'(''COMP('',i2,'')'')') i
+      write(string,'(a)') option%comp_names(i)
       call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
     enddo
   endif  

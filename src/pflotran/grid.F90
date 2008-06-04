@@ -364,6 +364,11 @@ subroutine GridLocalizeRegions(grid,region_list,option)
               enddo
             enddo
           enddo
+          if (region%num_cells > 0) then
+            region%coordinate(X_DIRECTION) = grid%x(region%cell_ids(ONE_INTEGER))
+            region%coordinate(Y_DIRECTION) = grid%y(region%cell_ids(ONE_INTEGER))
+            region%coordinate(Z_DIRECTION) = grid%z(region%cell_ids(ONE_INTEGER))
+          endif
         else
           region%num_cells = 0
         endif

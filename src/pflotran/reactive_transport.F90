@@ -404,7 +404,7 @@ end subroutine RTNumericalJacobianTest
 ! date: 02/15/08
 !
 ! ************************************************************************** !
-subroutine RTAccumulationDerivative(aux_var,por,sat,den,vol,option,Res)
+subroutine RTAccumulationDerivative(aux_var,por,sat,den,vol,option,J)
 
   use Reactive_Transport_Aux_module
   use Option_module
@@ -414,14 +414,15 @@ subroutine RTAccumulationDerivative(aux_var,por,sat,den,vol,option,Res)
   type(reactive_transport_auxvar_type) :: aux_var
   PetscReal :: por, sat, vol, den
   type(option_type) :: option
-  PetscReal :: Res(option%ncomp)
+  PetscReal :: J(option%ncomp,option%ncomp)
   
   PetscInt :: icomp
   PetscReal :: psdv_t
   
+  J = 0.d0
   psdv_t = por*sat*den*vol/option%dt
   do icomp=1,option%ncomp
-    Res(icomp) = psdv_t
+    J(icomp,icomp) = psdv_t
   enddo
 
 end subroutine RTAccumulationDerivative
@@ -613,13 +614,15 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
       
-      Res(1:option%ncomp) = -1.d-6* &
-                            porosity_loc_p(ghosted_id)* &
-                            saturation_loc_p(ghosted_id)* &
-                            density_loc_p(ghosted_id)* &
-                            volume_p(local_id)* &
-                            (source_sink%tran_condition%concentration%dataset%cur_value(1)- &
-                             aux_vars(ghosted_id)%total(1:option%ncomp,iphase))
+      do istart = 1, option%ncomp
+        Res(istart) = -1.d-6* &
+                      porosity_loc_p(ghosted_id)* &
+                      saturation_loc_p(ghosted_id)* &
+                      density_loc_p(ghosted_id)* &
+                      volume_p(local_id)* &
+                      (source_sink%tran_condition%sub_condition_ptr(istart)%ptr%dataset%cur_value(1)- &
+                       aux_vars(ghosted_id)%total(istart,iphase))
+      enddo
       iend = local_id*option%ncomp
       istart = iend-option%ncomp+1
       r_p(istart:iend) = r_p(istart:iend) + Res(1:option%ncomp)                                  
@@ -1377,7 +1380,7 @@ function RTGetTecplotHeader(realization)
   
   string = '' 
   do i=1,option%ntrandof
-    write(string2,'('',"COMP('',i2,'')"'')') i
+    write(string2,'('',"'',a,''"'')') trim(option%comp_names(i))
     string = trim(string) // trim(string2)
   enddo
   

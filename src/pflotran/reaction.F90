@@ -150,7 +150,9 @@ module Chemistry_module
   end type reaction_type
 
   public :: ChemistryCreate, &
-            ChemistryRead
+            ChemistryRead, &
+            GetPrimarySpeciesCount, &
+            GetPrimarySpeciesNames
 
 contains
 
@@ -316,6 +318,67 @@ function MineralCreate()
   MineralCreate => mineral
   
 end function MineralCreate
+
+
+! ************************************************************************** !
+!
+! GetPrimarySpeciesNames: Returns the names of primary species in an array
+! author: Glenn Hammond
+! date: 06/02/08
+!
+! ************************************************************************** !
+function GetPrimarySpeciesNames(chemistry)
+
+  implicit none
+  
+  character(len=MAXWORDLENGTH), pointer :: GetPrimarySpeciesNames(:)
+  type(reaction_type) :: chemistry
+
+  PetscInt :: count
+  character(len=MAXWORDLENGTH), pointer :: names(:)
+  type(aq_species_type), pointer :: species
+
+  count = GetPrimarySpeciesCount(chemistry)
+  allocate(names(count))
+  
+  count = 1
+  species => chemistry%primary_species_list
+  do
+    if (.not.associated(species)) exit
+    names(count) = species%spec_name
+    count = count + 1
+    species => species%next
+  enddo
+
+  GetPrimarySpeciesNames => names
+  
+end function GetPrimarySpeciesNames
+
+! ************************************************************************** !
+!
+! GetPrimarySpeciesCount: Returns the number of primary species
+! author: Glenn Hammond
+! date: 06/02/08
+!
+! ************************************************************************** !
+function GetPrimarySpeciesCount(chemistry)
+
+  implicit none
+  
+  integer :: GetPrimarySpeciesCount
+  type(reaction_type) :: chemistry
+
+  type(aq_species_type), pointer :: species
+
+  GetPrimarySpeciesCount = 0
+  species => chemistry%primary_species_list
+  do
+    if (.not.associated(species)) exit
+    GetPrimarySpeciesCount = GetPrimarySpeciesCount + 1
+    species => species%next
+  enddo
+
+end function GetPrimarySpeciesCount
 
 ! ************************************************************************** !
 !

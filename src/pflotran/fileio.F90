@@ -481,7 +481,7 @@ logical function fiStringCompare(string1,string2,n)
 
   PetscInt :: i, n
   character(len=n) :: string1, string2
-
+  
   do i=1,n
     if (string1(i:i) /= string2(i:i)) then
       fiStringCompare = .false.
@@ -940,18 +940,22 @@ end subroutine fiReadDBaseDouble
   implicit none
 
   character(len=*) :: string
-  character(len=strlen) :: string2
-  PetscInt :: fid, length
+  character(len=strlen) :: string2, string3
+  character(len=MAXWORDLENGTH) :: word
+  PetscInt :: fid, length1, length2
   PetscErrorCode :: ierr
 
   ierr = 0
 
-  length = len_trim(string)
+  length1 = len_trim(string)
 
   do 
     call fiReadFlotranString(fid,string2,ierr)
-    if (fiStringCompare(string,string2,length)) exit
+    string3 = string2
+    call fiReadWord(string2,word,.true.,ierr)
     if (ierr /= 0) exit
+    length2 = len_trim(word)
+    if (length1 == length2 .and. fiStringCompare(string,word,length1)) exit
   enddo
   
   ! if not found, rewind once and try again.  this approach avoids excessive 
@@ -962,12 +966,15 @@ end subroutine fiReadDBaseDouble
     rewind(fid)
     do 
       call fiReadFlotranString(fid,string2,ierr)
-      if (fiStringCompare(string,string2,length)) exit
+      string3 = string2
+      call fiReadWord(string2,word,.true.,ierr)
       if (ierr /= 0) exit
+      length2 = len_trim(word)
+      if (length1 == length2 .and. fiStringCompare(string,word,length1)) exit
     enddo
   endif    
   
-  if (ierr == 0) string = trim(string2)
+  if (ierr == 0) string = trim(string3)
 
   end subroutine fiFindStringInFile
 

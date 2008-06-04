@@ -28,6 +28,7 @@ module Option_module
     PetscInt :: ncomp      ! # of primary aqueous species
     PetscInt :: ncmplx     ! # of secondary aqueous species
     PetscInt :: nsorb      ! # of primary sorbed species
+    character(len=MAXWORDLENGTH), pointer :: comp_names(:)
 
     
     PetscReal :: uniform_velocity(3)
@@ -496,6 +497,47 @@ subroutine OptionDestroy(option)
   type(option_type), pointer :: option
   
   ! all kinds of stuff needs to be added here.
+
+  if (associated(option%comp_names)) deallocate(option%comp_names)
+  nullify(option%comp_names)
+  
+  ! all the below should be placed somewhere other than option.F90
+  if (associated(option%rock_density)) deallocate(option%rock_density)
+  nullify(option%rock_density)
+  if (associated(option%cpr)) deallocate(option%cpr)
+  nullify(option%cpr)
+  if (associated(option%dencpr)) deallocate(option%dencpr)
+  nullify(option%dencpr)
+  if (associated(option%ckdry)) deallocate(option%ckdry)
+  nullify(option%ckdry)
+  if (associated(option%ckwet)) deallocate(option%ckwet)
+  nullify(option%ckwet)
+  if (associated(option%tau)) deallocate(option%tau)
+  nullify(option%tau)
+  if (associated(option%cdiff)) deallocate(option%cdiff)
+  nullify(option%cdiff)
+  if (associated(option%cexp)) deallocate(option%cexp)
+  nullify(option%cexp)
+  if (associated(option%swir)) deallocate(option%swir)
+  nullify(option%swir)
+  if (associated(option%lambda)) deallocate(option%lambda)
+  nullify(option%lambda)
+  if (associated(option%alpha)) deallocate(option%alpha)
+  nullify(option%alpha)
+  if (associated(option%pckrm)) deallocate(option%pckrm)
+  nullify(option%pckrm)
+  if (associated(option%pcwmax)) deallocate(option%pcwmax)
+  nullify(option%pcwmax)
+  if (associated(option%pcbetac)) deallocate(option%pcbetac)
+  nullify(option%pcbetac)
+  if (associated(option%pwrprm)) deallocate(option%pwrprm)
+  nullify(option%pwrprm)
+  if (associated(option%sir)) deallocate(option%sir)
+  nullify(option%sir)
+  if (associated(option%icaptype)) deallocate(option%icaptype)
+  nullify(option%icaptype)
+  if (associated(option%tfac)) deallocate(option%tfac)
+  nullify(option%tfac)
   
   deallocate(option)
   nullify(option)
