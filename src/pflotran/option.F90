@@ -51,6 +51,12 @@ module Option_module
       ! An array of multiplicative factors that specify how to increase time step.
       
     PetscInt :: iblkfmt ! blocked format
+      ! iblkfmt is obsolete, as it was primarily intended to specify 
+      ! whether to use blocked versions of matrix entry setting routines.
+      ! Since MATAIJ now supports these calls, iblkfmt is no longer 
+      ! necessary.  Until we have removed references to it throughout the 
+      ! code, however, I am leaving it here for this "legacy" code.
+      !   --RTM, 06/04/2007.
   
       ! Basically our target number of newton iterations per time step.
     PetscReal :: dpmxe,dtmpmxe,dsmxe,dcmxe !maximum allowed changes in field vars.

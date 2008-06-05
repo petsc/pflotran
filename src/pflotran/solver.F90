@@ -37,6 +37,8 @@ module Solver_module
 
     ! Jacobian matrix
     Mat :: J
+    MatType :: mat_type
+
     MatFDColoring :: matfdcoloring
       ! Coloring used for computing the Jacobian via finite differences.
 
@@ -109,6 +111,7 @@ function SolverCreate()
   solver%galerkin_mg_levels = 1
   
   solver%J = 0
+  solver%mat_type = MATBAIJ
   solver%interpolation = 0
   solver%matfdcoloring = 0
   solver%snes = 0
@@ -558,6 +561,10 @@ subroutine SolverCheckCommandLine(solver)
   call PetscOptionsGetInt(prefix, '-galerkin_mg', &
                           solver%galerkin_mg_levels, solver%use_galerkin_mg, &
                           ierr)
+  if (solver%use_galerkin_mg) then
+    solver%mat_type = MATAIJ
+      ! Must use AIJ above, as BAIJ is not supported for Galerkin MG solver.
+  endif
                              
 
 end subroutine SolverCheckCommandLine

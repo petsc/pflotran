@@ -385,7 +385,7 @@ end function DiscretizationGetDMCPtrFromIndex
 ! date: 10/24/07
 !
 ! ************************************************************************** !
-subroutine DiscretizationCreateJacobian(discretization,dm_index,Jacobian,option)
+subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobian,option)
 
   use Option_module
   
@@ -394,6 +394,7 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,Jacobian,option)
   type(discretization_type) :: discretization
   PetscInt :: dm_index
   PetscErrorCode :: ierr
+  MatType :: mat_type
   Mat :: Jacobian
   type(option_type) :: option
 
@@ -403,11 +404,7 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,Jacobian,option)
     
   select case(discretization%itype)
     case(STRUCTURED_GRID)
-      if (option%iblkfmt == 0) then
-        call DAGetMatrix(dm_ptr,MATAIJ,Jacobian,ierr)
-      else
-        call DAGetMatrix(dm_ptr,MATBAIJ,Jacobian,ierr)
-      endif
+      call DAGetMatrix(dm_ptr,mat_type,Jacobian,ierr)
 #if (PETSC_VERSION_RELEASE == 1)
       call MatSetOption(Jacobian,MAT_KEEP_ZEROED_ROWS,ierr)
       call MatSetOption(Jacobian,MAT_COLUMN_ORIENTED,ierr)
