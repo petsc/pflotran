@@ -23,7 +23,7 @@ contains
 ! author: Glenn Hammond
 ! date: 10/23/07
 !
-! **************************************************************************
+! ************************************************************************** !
 subroutine Init(simulation,filename)
 
   use Simulation_module
@@ -370,7 +370,7 @@ end subroutine Init
 ! author: Glenn Hammond
 ! date: 10/23/07
 !
-! **************************************************************************
+! ************************************************************************** !
 subroutine readRequiredCardsFromInput(realization,filename)
 
   use Option_module
