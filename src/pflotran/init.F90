@@ -8,6 +8,8 @@ module Init_module
 
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
+#include "include/finclude/petscmat.h"
+#include "include/finclude/petscmat.h90"
 #include "include/finclude/petscsnes.h"
 
 
@@ -139,7 +141,7 @@ subroutine Init(simulation,filename)
   ! update flow mode based on optional input
   if (option%nflowdof > 0) then
   
-    if (option%iblkfmt == 0) then
+    if (flow_solver%mat_type == MATAIJ) then
       select case(option%iflowmode)
         case(MPH_MODE,RICHARDS_MODE)
           call printErrMsg(option,&

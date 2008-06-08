@@ -281,6 +281,7 @@ subroutine SolverReadLinear(solver,fid,myrank)
             if (myrank == 0) print *, string
             stop
         end select
+
       case('PRECONDITIONER_TYPE','PRECONDITIONER','PC','PC_TYPE')
         call fiReadWord(string,word,.true.,ierr)
         call fiErrorMsg(myrank,'pc_type','SOLVER', ierr)   
@@ -300,6 +301,21 @@ subroutine SolverReadLinear(solver,fid,myrank)
             stop
         end select
 
+      case('MATRIX_TYPE')
+        call fiReadWord(string,word,.true.,ierr)
+        call fiErrorMsg(myrank,'mat_type','SOLVER', ierr)   
+        call fiWordToUpper(word)
+        select case(trim(word))
+          case('BAIJ')
+            solver%mat_type = MATBAIJ
+          case('AIJ')
+            solver%mat_type = MATBAIJ
+          case default
+            string  = 'ERROR: Matrix type: ' // trim(word) // ' unknown.'
+            if (myrank == 0) print *, string
+            stop
+        end select
+        
       case('ATOL')
         call fiReadDouble(string,solver%linear_atol,ierr)
         call fiDefaultMsg(myrank,'linear_atol',ierr)
@@ -408,6 +424,21 @@ subroutine SolverReadNewton(solver,fid,myrank)
         call fiReadInt(string,solver%newton_maxf,ierr)
         call fiDefaultMsg(myrank,'newton_maxf',ierr)
 
+      case('MATRIX_TYPE')
+        call fiReadWord(string,word,.true.,ierr)
+        call fiErrorMsg(myrank,'mat_type','SOLVER', ierr)   
+        call fiWordToUpper(word)
+        select case(trim(word))
+          case('BAIJ')
+            solver%mat_type = MATBAIJ
+          case('AIJ')
+            solver%mat_type = MATBAIJ
+          case default
+            string  = 'ERROR: Matrix type: ' // trim(word) // ' unknown.'
+            if (myrank == 0) print *, string
+            stop
+        end select
+        
       case default
         if (myrank == 0) print *, 'Keyword: '//keyword// &
                                   &' not recognized in Newton solver'
