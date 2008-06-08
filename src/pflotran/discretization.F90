@@ -27,7 +27,7 @@ module Discretization_module
     DM :: dm_1_dof, dm_nflowdof, dm_ntrandof
     DM, pointer :: dmc_nflowdof(:), dmc_ntrandof(:)
       ! Arrays containing hierarchy of coarsened DMs, for use with Galerkin 
-      ! multigrid.
+      ! multigrid.  Element i of each array is a *finer* DM than element i-1.
 
   end type discretization_type
 
@@ -459,7 +459,7 @@ subroutine DiscretizationCreateInterpolation(discretization,dm_index, &
   select case(discretization%itype)
     case(STRUCTURED_GRID)
       dm_fine_ptr => dm_ptr
-      do i=1,mg_levels-1
+      do i=mg_levels-1,1,-1
         call DASetInterpolationType(dm_fine_ptr, DA_Q0, ierr)
         call DACoarsen(dm_fine_ptr, PETSC_COMM_WORLD, dmc_ptr(i), ierr)
         call DAGetInterpolation(dmc_ptr(i), dm_fine_ptr, interpolation(i), &
