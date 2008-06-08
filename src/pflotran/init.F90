@@ -172,7 +172,8 @@ subroutine Init(simulation,filename)
 
     if (flow_solver%use_galerkin_mg) then
       call DiscretizationCreateInterpolation(discretization,NFLOWDOF, &
-                                             flow_solver%interpolation,option)
+                                             flow_solver%interpolation, &
+                                             flow_solver%galerkin_mg_levels)
     endif
     
     select case(option%iflowmode)
@@ -228,7 +229,8 @@ subroutine Init(simulation,filename)
     
     if (tran_solver%use_galerkin_mg) then
       call DiscretizationCreateInterpolation(discretization,NTRANDOF, &
-                                             tran_solver%interpolation,option)
+                                             tran_solver%interpolation, &
+                                             tran_solver%galerkin_mg_levels)
     endif
 
     call SNESSetFunction(tran_solver%snes,field%tran_r,RTResidual,realization,ierr)

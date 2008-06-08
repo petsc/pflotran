@@ -25,8 +25,7 @@ module Discretization_module
     type(grid_type), pointer :: grid  ! pointer to a grid object
     type(amrgrid_type), pointer :: amrgrid  ! pointer to an amr grid object
     DM :: dm_1_dof, dm_nflowdof, dm_ntrandof
-    DM :: dmc_nflowdof, dmc_ntrandof
-!    DM, pointer :: dmc_nflowdof(:), dmc_ntrandof(:)
+    DM, pointer :: dmc_nflowdof(:), dmc_ntrandof(:)
       ! Arrays containing hierarchy of coarsened DMs, for use with Galerkin 
       ! multigrid.
 
@@ -367,7 +366,7 @@ function DiscretizationGetDMCPtrFromIndex(discretization,dm_index)
   type(discretization_type) :: discretization
   PetscInt :: dm_index
   
-  DM :: DiscretizationGetDMCPtrFromIndex
+  DM, pointer :: DiscretizationGetDMCPtrFromIndex(:)
   
   select case (dm_index)
     case(NFLOWDOF)
@@ -426,7 +425,7 @@ end subroutine DiscretizationCreateJacobian
 !
 ! ************************************************************************** !
 subroutine DiscretizationCreateInterpolation(discretization,dm_index, &
-                                             interpolation,option)
+                                             interpolation,mg_levels)
 
   use Option_module
   
@@ -435,11 +434,15 @@ subroutine DiscretizationCreateInterpolation(discretization,dm_index, &
   type(discretization_type) :: discretization
   PetscInt :: dm_index
   PetscErrorCode :: ierr
-  Mat :: interpolation
-  type(option_type) :: option
+  Mat, pointer :: interpolation(:)
+  PetscInt :: mg_levels
 
-  DM :: dm_ptr
-  DM :: dmc_ptr
+  DM, target :: dm_ptr
+  DM, pointer :: dmc_ptr(:)
+  PetscInt :: i
+  DM, pointer :: dm_fine_ptr
+    ! Used to point to finer-grid DM in the loop that constructst the 
+    ! interpolation hierarchy.
   
   dm_ptr = DiscretizationGetDMPtrFromIndex(discretization,dm_index)
 !  dmc_ptr = DiscretizationGetDMCPtrFromIndex(discretization,dm_index)
@@ -450,12 +453,19 @@ subroutine DiscretizationCreateInterpolation(discretization,dm_index, &
       dmc_ptr = discretization%dmc_ntrandof
   end select  
    
+  allocate(dmc_ptr(mg_levels))
+  allocate(interpolation(mg_levels))
+
   select case(discretization%itype)
     case(STRUCTURED_GRID)
-      call DASetInterpolationType(dm_ptr, DA_Q0, ierr)
-      call DACoarsen(dm_ptr, PETSC_COMM_WORLD, dmc_ptr, ierr)
-      call DAGetInterpolation(dmc_ptr, dm_ptr, interpolation, &
-                              PETSC_NULL_OBJECT, ierr)
+      dm_fine_ptr => dm_ptr
+      do i=1,mg_levels-1
+        call DASetInterpolationType(dm_fine_ptr, DA_Q0, ierr)
+        call DACoarsen(dm_fine_ptr, PETSC_COMM_WORLD, dmc_ptr(i), ierr)
+        call DAGetInterpolation(dmc_ptr(i), dm_fine_ptr, interpolation(i), &
+                                PETSC_NULL_OBJECT, ierr)
+        dm_fine_ptr => dmc_ptr(i)
+      enddo
     case(UNSTRUCTURED_GRID)
   end select
 
@@ -902,6 +912,7 @@ subroutine DiscretizationDestroy(discretization)
   type(discretization_type), pointer :: discretization
   
   PetscErrorCode :: ierr
+  integer :: i
     
   if (.not.associated(discretization)) return
       
@@ -917,6 +928,12 @@ subroutine DiscretizationDestroy(discretization)
       if (discretization%dm_ntrandof /= 0) &
         call DMDestroy(discretization%dm_ntrandof,ierr)
       discretization%dm_ntrandof = 0
+      if (associated(discretization%dmc_nflowdof)) then
+        do i=1,size(discretization%dmc_nflowdof)
+          call DMDestroy(discretization%dmc_nflowdof(i),ierr)
+        enddo
+        deallocate(discretization%dmc_nflowdof)
+      endif
 #else
       if (discretization%dm_1_dof /= 0) &
         call DADestroy(discretization%dm_1_dof,ierr)
