@@ -100,21 +100,24 @@ pflotran_obj = ${common_src}option.o \
 	${common_src}amrstubs.o
 
 
-pflotranamr_obj = ${common_src}pckr_mod.o \
-	${common_src}option.o \
+pflotranamr_obj = ${common_src}option.o \
 	${common_src}logging.o \
+	${common_src}reaction_aux.o\
 	${common_src}reactive_transport_aux.o\
 	${common_src}richards_aux.o\
 	${common_src}richards_lite_aux.o\
 	${common_src}mphase_aux.o\
+	${common_src}auxilliary.o\
 	${common_src}field.o \
 	${common_src}debug.o \
 	${common_src}waypoint.o \
 	${common_src}region.o \
 	${common_src}material.o \
+        ${common_src}pckr_mod.o \
 	${common_src}strata.o \
 	${common_src}connection.o \
 	${common_src}breakthrough.o \
+	${common_src}cf90bridge.o \
 	${common_src}solver.o \
 	${common_src}unstructured_grid.o \
 	${common_src}structured_grid.o \

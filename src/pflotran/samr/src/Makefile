@@ -104,7 +104,7 @@ endif
 
 
 SAMRAIDriver: SAMRAIDriver.o $(COBJS) $(CXXOBJS) ${F90OBJS}
-	$(CXX) -g $(CXXOBJS) $(COBJS) ${F90OBJS} ${FOBJS} ${PETSC_FORTRAN_LIB} $(LDFLAGS) $(LIBSAMRAI3D) $(LIBSAMRAI) -lhdf5_fortran  $(LDLIBS) -lU77 -laf90math -lamisc -o $@
+	$(CXX) -g $(CXXOBJS) $(COBJS) ${F90OBJS} ${FOBJS} ${PETSC_FORTRAN_LIB} $(LDFLAGS) $(LIBSAMRAI3D) $(LIBSAMRAI) -lhdf5_fortran  $(LDLIBS) -lU77 -o $@
 
 clean:
 	$(RM) SAMRAIDriver *.f core *~ *.mod

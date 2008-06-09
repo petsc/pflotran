@@ -16,7 +16,7 @@ void  cf90bridge_(void *, int*, void *);
 extern "C" {
 int hierarchy_number_levels_(SAMRAI::hier::PatchHierarchy<NDIM> **hierarchy)
 {
-   return (*hierarchy)->getNumberLevels();
+   return (*hierarchy)->getNumberOfLevels();
 }
 
 int level_number_patches_(SAMRAI::hier::PatchHierarchy<NDIM> **hierarchy, int *ln)

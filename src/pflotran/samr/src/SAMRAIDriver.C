@@ -156,7 +156,7 @@ int main( int argc, char *argv[] )
    params->npy = 1;
    params->npz = 1;
    params->nphase = 1;
-   params->nlevels = hierarchy->getNumberLevels();
+   params->nlevels = hierarchy->getNumberOfLevels();
    params->usesamrai = PETSC_TRUE;
    params->p_samr_hierarchy = p_samr_hierarchy;
 

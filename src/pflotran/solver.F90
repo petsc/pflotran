@@ -113,7 +113,8 @@ function SolverCreate()
   
   solver%J = 0
   solver%mat_type = MATBAIJ
-  solver%interpolation = 0
+!  solver%interpolation = 0
+  nullify(solver%interpolation)
   solver%matfdcoloring = 0
   solver%snes = 0
   solver%ksp_type = KSPBCGS
