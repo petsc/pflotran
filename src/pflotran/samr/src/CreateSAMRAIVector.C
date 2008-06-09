@@ -32,11 +32,11 @@ void create_samrai_vec_(SAMRAI::hier::PatchHierarchy<NDIM> **hierarchy,
 {
 
    static int vec_i = 0;
-   ostringstream ibuffer;
+   std::ostringstream ibuffer;
    ibuffer<<(long)vec_i;
-   string object_str=ibuffer.str();
+   std::string object_str=ibuffer.str();
 
-   string dataName("PFLOW_variable_");
+   std::string dataName("PFLOW_variable_");
    dataName+=object_str;
 
    vec_i++;

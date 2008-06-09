@@ -1,4 +1,4 @@
-subroutine pflotran_vecgetarrayf90(p_samr_patch, vec, f90ptr, ierr)
+subroutine struct_vecgetarrayf90(p_samr_patch, vec, f90ptr, ierr)
  use cf90interface_module
  implicit none 
 
@@ -26,7 +26,7 @@ subroutine pflotran_vecgetarrayf90(p_samr_patch, vec, f90ptr, ierr)
      deallocate(ptr)
   endif
 
-end subroutine pflotran_vecgetarrayf90
+end subroutine struct_vecgetarrayf90
   
 subroutine cf90bridge(array, len, f90wrap)
 

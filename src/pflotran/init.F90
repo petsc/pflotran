@@ -557,6 +557,7 @@ subroutine readInput(simulation,filename)
   use Field_module
   use Grid_module
   use Structured_Grid_module
+  use AMR_Grid_module
   use Solver_module
   use Material_module
   use Fileio_module
@@ -950,6 +951,7 @@ subroutine readInput(simulation,filename)
         if (realization%discretization%itype == STRUCTURED_GRID) then  ! look for processor decomposition
           call StructuredGridReadDXYZ(grid%structured_grid,option)
         else if(realization%discretization%itype == AMR_GRID) then
+          call AMRGridReadDXYZ(realization%discretization%amrgrid,option)
         else
           if (option%myrank == 0) &
             print *, 'ERROR: Keyword "DXYZ" not supported for unstructured grid'

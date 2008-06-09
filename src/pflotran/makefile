@@ -71,6 +71,7 @@ pflotran_obj = ${common_src}option.o \
 	${common_src}connection.o \
 	${common_src}breakthrough.o \
 	${common_src}solver.o \
+	${common_src}cf90bridge.o\
 	${common_src}unstructured_grid.o \
 	${common_src}structured_grid.o \
 	${common_src}condition.o \
@@ -139,7 +140,8 @@ pflotranamr_obj = ${common_src}pckr_mod.o \
 	${common_src}timestepper.o \
 	${common_src}simulation.o \
 	${common_src}output.o \
-	${common_src}init.o
+	${common_src}init.o\
+	${common_src}cf90bridge.o
 
 pflotranamr: $(util_obj) $(pflotranamr_obj)
 	ar ru libpflotranamr.a $(util_obj) $(pflotranamr_obj)

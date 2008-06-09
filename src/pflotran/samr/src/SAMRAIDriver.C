@@ -32,7 +32,7 @@ using namespace std;
 #include "tbox/InputManager.h"
 #include "IntVector.h"
 #include "LoadBalancer.h"
-#include "tbox/MPI.h"
+#include "tbox/SAMRAI_MPI.h"
 #include "Patch.h"
 #include "PatchGeometry.h"
 #include "tbox/PIO.h"
@@ -78,7 +78,7 @@ int main( int argc, char *argv[] )
    
    tbox::Pointer<hier::PatchHierarchy<NDIM> > hierarchy;
 
-   tbox::MPI::init(&argc, &argv);
+   tbox::SAMRAI_MPI::init(&argc, &argv);
    tbox::SAMRAIManager::startup();
    int ierr = PetscInitializeNoArguments();
    PetscInitializeFortran();
@@ -226,7 +226,7 @@ int main( int argc, char *argv[] )
     */
    PetscFinalize();
    tbox::SAMRAIManager::shutdown();
-   tbox::MPI::finalize();
+   tbox::SAMRAI_MPI::finalize();
 
    return(0);
 }

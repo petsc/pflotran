@@ -87,7 +87,11 @@ LDFLAGS += ${PFLOW_LD_FLAGS}
 
 MYFLAGS = ${PETSCFLAGS} -I${PFLOW_DIR} -g -p ${PFLOW_DIR}
 
-include ${PETSC_DIR}/bmake/common/base
+ifdef petscrel
+ include ${PETSC_DIR}/bmake/common/base
+else
+ include ${PETSC_DIR}/conf/base
+endif
 
 .F90.mod :
 	${FLINKER} $< -c ${PETSC_INCLUDE} 

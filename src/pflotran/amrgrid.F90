@@ -1,6 +1,7 @@
 module AMR_Grid_module
 
   use Grid_module
+  use Structured_Grid_module
 
   implicit none
  
@@ -38,9 +39,12 @@ module AMR_Grid_module
            AMRGridDestroy, &
            AMRGridCreateLevelPatchLists, &
            AMRGridInitialize, &
+           AMRGridComputeLocalBounds, &
+           AMRGridComputeGridSpacing, &
            AMRGridCreateVector, &
            AMRGridCreateJacobian, &
            AMRGridComputeGeometryInformation, &
+           AMRGridReadDXYZ, &
            AMRGridGlobalToLocal, &
            AMRGridLocalToGlobal, &
            AMRGridLocalToLocal
@@ -144,6 +148,127 @@ function AMRGridCreateLevelPatchLists(amrgrid)
   AMRGridCreateLevelPatchLists => level_list
   
 end function AMRGridCreateLevelPatchLists
+
+subroutine AMRGridComputeLocalBounds(amrgrid)
+  use Grid_module
+  use Structured_Grid_module
+
+  implicit none
+
+  type(amrgrid_type), pointer :: amrgrid
+  type(structured_grid_type), pointer :: structured_grid
+
+  interface
+   integer function hierarchy_number_levels(p_hierarchy)
+     PetscFortranAddr, intent(inout) :: p_hierarchy
+   end function hierarchy_number_levels
+
+   integer function level_number_patches(p_hierarchy, ln)
+     PetscFortranAddr, intent(inout) :: p_hierarchy
+     integer, intent(in) :: ln
+   end function level_number_patches
+
+   logical function is_local_patch(p_hierarchy, ln, pn)
+     PetscFortranAddr, intent(inout) :: p_hierarchy
+     integer, intent(in) :: ln
+     integer, intent(in) :: pn
+   end function is_local_patch
+  end interface
+
+#include "include/finclude/petsc.h"
+  PetscFortranAddr :: p_samr_hierarchy
+
+  integer :: nlevels
+  integer :: npatches
+  integer :: ln
+  integer :: pn
+  logical :: islocal
+  DA :: da
+
+  p_samr_hierarchy = amrgrid%p_samr_hierarchy
+
+  nlevels =  hierarchy_number_levels(p_samr_hierarchy)
+
+  do ln=0,nlevels-1
+     npatches = level_number_patches(p_samr_hierarchy, ln )
+     do pn=0,npatches-1
+        islocal = is_local_patch(p_samr_hierarchy, ln, pn);
+        if(islocal) then
+           structured_grid=>amrgrid%gridlevel(ln+1)%grids(pn+1)%grid_ptr%structured_grid
+           call StructGridComputeLocalBounds(structured_grid, da)
+           amrgrid%gridlevel(ln+1)%grids(pn+1)%grid_ptr%nlmax = structured_grid%nlmax
+           amrgrid%gridlevel(ln+1)%grids(pn+1)%grid_ptr%ngmax = structured_grid%ngmax
+        endif
+     end do
+  end do
+
+end subroutine AMRGridComputeLocalBounds
+
+subroutine AMRGridComputeGridSpacing(amrgrid)
+  implicit none
+  type(amrgrid_type), pointer :: amrgrid
+  type(structured_grid_type), pointer :: structured_grid
+
+  interface   
+     integer function hierarchy_number_levels(p_hierarchy)
+     PetscFortranAddr, intent(inout) :: p_hierarchy
+   end function hierarchy_number_levels
+
+   integer function level_number_patches(p_hierarchy, ln)
+     PetscFortranAddr, intent(inout) :: p_hierarchy
+     integer, intent(in) :: ln
+   end function level_number_patches
+
+   logical function is_local_patch(p_hierarchy, ln, pn)
+     PetscFortranAddr, intent(inout) :: p_hierarchy
+     integer, intent(in) :: ln
+     integer, intent(in) :: pn
+   end function is_local_patch
+  end interface
+
+#include "include/finclude/petsc.h"
+  PetscFortranAddr :: p_samr_hierarchy
+  PetscFortranAddr :: p_samr_patch
+  PetscReal :: dx, dy, dz
+
+  integer :: nlevels
+  integer :: npatches
+  integer :: ln
+  integer :: pn
+  logical :: islocal
+
+  
+  p_samr_hierarchy = amrgrid%p_samr_hierarchy
+
+  nlevels =  hierarchy_number_levels(p_samr_hierarchy)
+
+  do ln=0,nlevels-1
+     npatches = level_number_patches(p_samr_hierarchy, ln )
+     do pn=0,npatches-1
+        islocal = is_local_patch(p_samr_hierarchy, ln, pn);
+        if(islocal) then
+           structured_grid =>amrgrid%gridlevel(ln+1)%grids(pn+1)%grid_ptr%structured_grid
+           p_samr_patch = structured_grid%p_samr_patch
+           call samr_patch_get_spacing(p_samr_patch, dx, dy, dz)
+           allocate(structured_grid%dx(structured_grid%nlmax))
+           structured_grid%dx = dx
+           allocate(structured_grid%dy(structured_grid%nlmax))
+           structured_grid%dy = dy
+           allocate(structured_grid%dz(structured_grid%nlmax))
+           structured_grid%dz = dz
+           
+           allocate(structured_grid%dxg(structured_grid%ngmax))
+           structured_grid%dxg = dx
+           allocate(structured_grid%dyg(structured_grid%ngmax))
+           structured_grid%dyg = dy
+           allocate(structured_grid%dzg(structured_grid%ngmax))
+           structured_grid%dzg = dz
+        endif
+     end do
+  end do
+   
+end subroutine AMRGridComputeGridSpacing
+
 
 ! ************************************************************************** !
 !
@@ -337,6 +462,8 @@ subroutine AMRGridComputeGeometryInformation(amrgrid, field, option)
   integer :: ln
   integer :: pn
 
+  call AMRGridComputeGridSpacing(amrgrid)
+  
   p_samr_hierarchy = amrgrid%p_samr_hierarchy
 
   nlevels =  hierarchy_number_levels(p_samr_hierarchy)
@@ -347,7 +474,6 @@ subroutine AMRGridComputeGeometryInformation(amrgrid, field, option)
         if (associated(amrgrid%gridlevel(ln+1)%grids(pn+1)%grid_ptr)) then
            grid => amrgrid%gridlevel(ln+1)%grids(pn+1)%grid_ptr
            call GridMapIndices(grid)
-           call GridComputeSpacing(grid)
            call GridComputeCoordinates(grid,option)
            call GridComputeVolumes(grid,field%volume,option)
            ! set up internal connectivity, distance, etc.
@@ -357,6 +483,23 @@ subroutine AMRGridComputeGeometryInformation(amrgrid, field, option)
   end do
 
 end subroutine AMRGridComputeGeometryInformation
+
+subroutine AMRGridReadDXYZ(amrgrid, option)
+  use Option_module
+
+  implicit none
+
+  type(amrgrid_type), pointer:: amrgrid
+  type(option_type), pointer :: option
+  type(grid_type), pointer :: grid
+
+  ! get a pointer to the first grid
+  ! note that this will need to be modified for parallel processing
+  grid => amrgrid%gridlevel(1)%grids(1)%grid_ptr
+  ! for the first cut we only read in the coarsest level
+  call StructuredGridReadDXYZ(grid%structured_grid,option)
+
+end subroutine AMRGridReadDXYZ
 
 ! ************************************************************************** !
 !

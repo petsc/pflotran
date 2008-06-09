@@ -230,6 +230,8 @@ subroutine DiscretizationCreateDMs(discretization,option)
       discretization%grid%nlmax = discretization%grid%structured_grid%nlmax
       discretization%grid%ngmax = discretization%grid%structured_grid%ngmax
     case(UNSTRUCTURED_GRID)
+    case(AMR_GRID)
+      call AMRGridComputeLocalBounds(discretization%amrgrid)
   end select
   
 end subroutine DiscretizationCreateDMs
@@ -412,6 +414,8 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
       call MatSetOption(Jacobian,MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
 #endif
     case(UNSTRUCTURED_GRID)
+    case(AMR_GRID)
+
   end select
 
 end subroutine DiscretizationCreateJacobian
