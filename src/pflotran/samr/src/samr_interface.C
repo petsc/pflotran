@@ -4,6 +4,7 @@
 #include "PETSc_SAMRAIVectorReal.h"
 #include "CellData.h"
 #include "CartesianGridGeometry.h"
+#include "CartesianPatchGeometry.h"
 
 extern "C" {
 #include "petscvec.h"
@@ -15,7 +16,7 @@ void  cf90bridge_(void *, int*, void *);
 extern "C" {
 int hierarchy_number_levels_(SAMRAI::hier::PatchHierarchy<NDIM> **hierarchy)
 {
-   return (*hierarchy)->getNumberLevels();
+   return (*hierarchy)->getNumberOfLevels();
 }
 
 int level_number_patches_(SAMRAI::hier::PatchHierarchy<NDIM> **hierarchy, int *ln)
@@ -116,5 +117,17 @@ int samr_patch_at_bc_(SAMRAI::hier::Patch<NDIM> **patch,
    return istouching;
 }
 
+
+void samr_patch_get_spacing_(SAMRAI::hier::Patch<NDIM> **patch, 
+                             double *dx, double *dy, double *dz)
+{
+   SAMRAI::tbox::Pointer<SAMRAI::geom::CartesianPatchGeometry<NDIM> > patch_geometry = (*patch)->getPatchGeometry();
+   const double* ds = patch_geometry->getDx();
+   *dx = ds[0];
+   *dy = ds[1];
+   *dz = ds[2];
 }
+
+}
+
 #endif

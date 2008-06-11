@@ -87,7 +87,11 @@ LDFLAGS += ${PFLOW_LD_FLAGS}
 
 MYFLAGS = ${PETSCFLAGS} -I${PFLOW_DIR} -g -p ${PFLOW_DIR}
 
-include ${PETSC_DIR}/bmake/common/base
+ifdef petscrel
+ include ${PETSC_DIR}/bmake/common/base
+else
+ include ${PETSC_DIR}/conf/base
+endif
 
 .F90.mod :
 	${FLINKER} $< -c ${PETSC_INCLUDE} 
@@ -100,7 +104,7 @@ include ${PETSC_DIR}/bmake/common/base
 
 
 SAMRAIDriver: SAMRAIDriver.o $(COBJS) $(CXXOBJS) ${F90OBJS}
-	$(CXX) -g $(CXXOBJS) $(COBJS) ${F90OBJS} ${FOBJS} ${PETSC_FORTRAN_LIB} $(LDFLAGS) $(LIBSAMRAI3D) $(LIBSAMRAI) -lhdf5_fortran  $(LDLIBS) -lU77 -laf90math -lamisc -o $@
+	$(CXX) -g $(CXXOBJS) $(COBJS) ${F90OBJS} ${FOBJS} ${PETSC_FORTRAN_LIB} $(LDFLAGS) $(LIBSAMRAI3D) $(LIBSAMRAI) -lhdf5_fortran  $(LDLIBS) -lU77 -o $@
 
 clean:
 	$(RM) SAMRAIDriver *.f core *~ *.mod

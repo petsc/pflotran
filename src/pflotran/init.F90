@@ -174,7 +174,8 @@ subroutine Init(simulation,filename)
 
     if (flow_solver%use_galerkin_mg) then
       call DiscretizationCreateInterpolation(discretization,NFLOWDOF, &
-                                             flow_solver%interpolation,option)
+                                             flow_solver%interpolation, &
+                                             flow_solver%galerkin_mg_levels)
     endif
     
     select case(option%iflowmode)
@@ -230,7 +231,8 @@ subroutine Init(simulation,filename)
     
     if (tran_solver%use_galerkin_mg) then
       call DiscretizationCreateInterpolation(discretization,NTRANDOF, &
-                                             tran_solver%interpolation,option)
+                                             tran_solver%interpolation, &
+                                             tran_solver%galerkin_mg_levels)
     endif
 
     call SNESSetFunction(tran_solver%snes,field%tran_r,RTResidual,realization,ierr)
@@ -555,6 +557,7 @@ subroutine readInput(simulation,filename)
   use Field_module
   use Grid_module
   use Structured_Grid_module
+  use AMR_Grid_module
   use Solver_module
   use Material_module
   use Fileio_module
@@ -948,6 +951,7 @@ subroutine readInput(simulation,filename)
         if (realization%discretization%itype == STRUCTURED_GRID) then  ! look for processor decomposition
           call StructuredGridReadDXYZ(grid%structured_grid,option)
         else if(realization%discretization%itype == AMR_GRID) then
+          call AMRGridReadDXYZ(realization%discretization%amrgrid,option)
         else
           if (option%myrank == 0) &
             print *, 'ERROR: Keyword "DXYZ" not supported for unstructured grid'

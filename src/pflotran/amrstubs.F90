@@ -88,3 +88,22 @@ subroutine samr_get_origin(p_hierarchy, x0, y0, z0)
   PetscReal, intent(inout) :: z0
   
 end subroutine samr_get_origin
+
+subroutine assign_c_ptr(return_arg, pointer_arg)
+ use cf90interface_module
+  type(f90ptrwrap), pointer :: pointer_arg
+  PetscFortranAddr :: return_arg
+
+end subroutine assign_c_ptr
+
+subroutine samr_vecgetarrayf90(patch, petscvec, f90wrap)
+  PetscFortranAddr, intent(inout):: patch
+  Vec:: petscvec
+  PetscFortranAddr :: f90wrap
+end subroutine samr_vecgetarrayf90
+
+subroutine samr_patch_get_spacing(p_samr_patch, dx, dy, dz)
+  PetscFortranAddr :: p_samr_patch
+  PetscReal :: dx, dy, dz
+
+end subroutine samr_patch_get_spacing

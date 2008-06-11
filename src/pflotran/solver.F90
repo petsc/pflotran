@@ -42,7 +42,8 @@ module Solver_module
     MatFDColoring :: matfdcoloring
       ! Coloring used for computing the Jacobian via finite differences.
 
-    Mat :: interpolation ! Interpolation operator for Galerkin multigrid.
+    Mat, pointer :: interpolation(:)
+      ! Hierarchy of interpolation operators for Galerkin multigrid.
 
     ! PETSc nonlinear solver context
     SNES :: snes
@@ -112,7 +113,8 @@ function SolverCreate()
   
   solver%J = 0
   solver%mat_type = MATBAIJ
-  solver%interpolation = 0
+!  solver%interpolation = 0
+  nullify(solver%interpolation)
   solver%matfdcoloring = 0
   solver%snes = 0
   solver%ksp_type = KSPBCGS
@@ -172,6 +174,7 @@ subroutine SolverSetSNESOptions(solver)
   ! needed for SNESLineSearchGetParams()/SNESLineSearchSetParams()
   PetscReal :: alpha, maxstep, steptol
   PetscErrorCode :: ierr
+  PetscInt :: i
   
   ! if ksp_type or pc_type specified in input file, set them here
   if (len_trim(solver%ksp_type) > 1) &
@@ -201,12 +204,15 @@ subroutine SolverSetSNESOptions(solver)
 
 !  call SNESLineSearchSet(solver%snes,SNESLineSearchNo,PETSC_NULL,ierr)
 
-  ! Setup for 2-level Galerkin multigrid.
+  ! Setup for n-level Galerkin multigrid.
   if (solver%use_galerkin_mg) then
     call PCSetType(solver%pc, PCMG, ierr)
-    call PCMGSetLevels(solver%pc, 2, PETSC_NULL_OBJECT, ierr)
-    call PCMGSetInterpolation(solver%pc, 1, solver%interpolation, ierr)
-    call PCMGSetGalerkin(solver%pc, ierr)
+    call PCMGSetLevels(solver%pc, solver%galerkin_mg_levels, &
+                       PETSC_NULL_OBJECT, ierr)
+    do i=1,solver%galerkin_mg_levels-1
+      call PCMGSetInterpolation(solver%pc, i, solver%interpolation(i), ierr)
+      call PCMGSetGalerkin(solver%pc, ierr)
+    enddo
   endif
   
   ! allow override from command line; for some reason must come before
@@ -614,11 +620,17 @@ subroutine SolverDestroy(solver)
   type(solver_type), pointer :: solver
   
   PetscErrorCode :: ierr
+  integer :: i
 
   if (.not.associated(solver)) return
     
   if (solver%J /= 0) call MatDestroy(solver%J,ierr)
-  if (solver%interpolation /= 0) call MatDestroy(solver%interpolation,ierr)
+  if (associated(solver%interpolation)) then
+    do i=1,solver%galerkin_mg_levels-1
+      call MatDestroy(solver%interpolation(i),ierr)
+    enddo
+    deallocate(solver%interpolation)
+  endif
   if (solver%matfdcoloring /= 0) call MatFDColoringDestroy(solver%matfdcoloring,ierr)
   if (solver%snes /= 0) call SNESDestroy(solver%snes,ierr)
   solver%ksp = 0
