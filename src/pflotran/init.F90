@@ -1537,6 +1537,10 @@ subroutine readInput(simulation,filename)
       case ('USE_TOUCH_OPTIONS')
         option%use_touch_options = .true.
 
+      case ('MPI_IO')
+        string = '-viewer_binary_mpiio'
+!        call PetscOptionsInsertString(string,ierr)
+
       case ('HANDSHAKE_IO')
         call fiReadInt(string,option%io_handshake_buffer_size,ierr)
         call fiErrorMsg(option%myrank,'io_handshake_buffer_size','HANDSHAKE_IO', ierr)
