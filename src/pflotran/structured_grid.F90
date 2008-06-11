@@ -1028,8 +1028,17 @@ subroutine StructuredGridDestroy(structured_grid)
 
 end subroutine StructuredGridDestroy
                           
+! ************************************************************************** !
+!
+! StructuredGridVecGetArrayF90: Interface for SAMRAI AMR
+! author: Bobby Philip
+! date: 06/09/08
+!
+! ************************************************************************** !
 subroutine StructuredGridVecGetArrayF90(p_samr_patch, vec, f90ptr, ierr)
+
  use cf90interface_module
+
  implicit none 
 
 #include "include/finclude/petsc.h"

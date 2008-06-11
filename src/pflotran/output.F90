@@ -3537,6 +3537,9 @@ subroutine ComputeFlowMassBalance(realization)
   call VecRestoreArrayF90(mass_vec,vec_ptr,ierr)
   call VecRestoreArrayF90(total_mass_vec,vec2_ptr,ierr)
 
+  string = 'mass_balance.tec'
+  call OutputVectorTecplot(string,string,realization,mass_vec)
+
   call VecSum(mass_vec,sum,ierr)
   average = sum/real(grid%nmax)
   call VecSet(global_vec,average,ierr)
