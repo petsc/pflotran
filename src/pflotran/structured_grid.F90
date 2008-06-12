@@ -807,16 +807,16 @@ subroutine StructuredGridComputeVolumes(structured_grid,option,nL2G,volume)
   
   implicit none
 
-!#include "include/finclude/petsc.h"
-!#include "include/finclude/petscvec.h"
-!#include "include/finclude/petscvec.h90"
+! These includes are needed for VecRestoreArrayF90() - geh
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
 !  interface
 !   subroutine struct_vecgetarrayf90(p_samr_patch, vec, f90ptr, ierr)
 !     use cf90interface_module
 !     implicit none 
 !     PetscFortranAddr, intent(inout):: p_samr_patch
 !     Vec:: vec
-!     PetscScalar, pointer :: f90ptr(:)
+!     PetscReal, pointer :: f90ptr(:)
 !     integer :: ierr
 !   end subroutine struct_vecgetarrayf90
 !  end interface
@@ -1047,7 +1047,7 @@ subroutine StructuredGridVecGetArrayF90(p_samr_patch, vec, f90ptr, ierr)
 
   PetscFortranAddr, intent(inout):: p_samr_patch
   Vec:: vec
-  PetscScalar, pointer :: f90ptr(:)
+  PetscReal, pointer :: f90ptr(:)
   integer :: ierr
 
   type(f90ptrwrap), pointer :: ptr
