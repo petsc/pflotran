@@ -30,6 +30,7 @@ module Option_module
     PetscInt :: nsorb      ! # of primary sorbed species
     character(len=MAXWORDLENGTH), pointer :: comp_names(:)
 
+    PetscInt :: iflag
     
     PetscReal :: uniform_velocity(3)
 
@@ -155,6 +156,7 @@ function OptionCreate()
   
   allocate(option)
   
+  option%iflag = 0
   option%use_isoth = PETSC_FALSE
   option%use_matrix_free = PETSC_FALSE
   
