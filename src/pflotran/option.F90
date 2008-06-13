@@ -458,9 +458,14 @@ function OptionCheckTouch(option,filename)
   PetscInt :: ios
   PetscInt :: fid = 86
   logical :: OptionCheckTouch
+  PetscErrorCode :: ierr
   
   OptionCheckTouch = .false.
-  open(unit=fid,file=trim(filename),status='old',iostat=ios)
+
+  if (option%myrank == 0) &
+    open(unit=fid,file=trim(filename),status='old',iostat=ios)
+  call MPI_Bcast(ios,1,MPI_INTEGER,ZERO_INTEGER,PETSC_COMM_WORLD,ierr)
+
   if (ios == 0) then
     if (option%myrank == 0) close(fid,status='delete')
     OptionCheckTouch = .true.
