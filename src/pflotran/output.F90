@@ -58,7 +58,7 @@ subroutine Output(realization,plot_flag)
 
     if (realization%option%use_touch_options) then
       word = 'plot'
-      if (OptionCheckTouch(word)) then
+      if (OptionCheckTouch(realization%option,word)) then
         realization%output_option%plot_name = 'plot'
         plot_flag = .true.
       endif

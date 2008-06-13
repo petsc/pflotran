@@ -30,6 +30,7 @@ module Option_module
     PetscInt :: nsorb      ! # of primary sorbed species
     character(len=MAXWORDLENGTH), pointer :: comp_names(:)
 
+    PetscInt :: iflag
     
     PetscReal :: uniform_velocity(3)
 
@@ -154,6 +155,8 @@ function OptionCreate()
   type(option_type), pointer :: option
   
   allocate(option)
+
+  option%iflag = 0
   
   option%use_isoth = PETSC_FALSE
   option%use_matrix_free = PETSC_FALSE
@@ -445,8 +448,11 @@ end function OptionDotProduct3
 ! date: 03/04/08
 !
 ! ************************************************************************** !
-function OptionCheckTouch(filename)
+function OptionCheckTouch(option,filename)
 
+  implicit none
+
+  type(option_type) :: option
   character(len=MAXWORDLENGTH) :: filename
   
   PetscInt :: ios
@@ -456,7 +462,7 @@ function OptionCheckTouch(filename)
   OptionCheckTouch = .false.
   open(unit=fid,file=trim(filename),status='old',iostat=ios)
   if (ios == 0) then
-    close(fid,status='delete')
+    if (option%myrank == 0) close(fid,status='delete')
     OptionCheckTouch = .true.
   endif
 
