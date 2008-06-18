@@ -21,10 +21,10 @@ FPPFLAGS         =
 CLEANFILES       = mdt
 
 
-ifdef dev
- include ${PETSC_DIR}/conf/base
-else
+ifdef rel
  include ${PETSC_DIR}/bmake/common/base
+else
+ include ${PETSC_DIR}/conf/base
 endif
 
 mdt_obj = ${common_src}AsciiGrid.o \
