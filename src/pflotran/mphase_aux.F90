@@ -124,7 +124,8 @@ subroutine MphaseAuxVarInit(aux_var,option)
   PetscInt :: nvar 
 
   allocate(aux_var%aux_var_elem(0 : option%nflowdof))
-  allocate(aux_var%aux_var_elem(0)%hysdat(4)) 
+  allocate(aux_var%aux_var_elem(0)%hysdat(4))
+ 
   do nvar = 0, option%nflowdof
      allocate ( aux_var%aux_var_elem(nvar)%sat(option%nphase))
      allocate ( aux_var%aux_var_elem(nvar)%den(option%nphase))
@@ -134,8 +135,8 @@ subroutine MphaseAuxVarInit(aux_var,option)
      allocate ( aux_var%aux_var_elem(nvar)%pc(option%nphase))
      allocate ( aux_var%aux_var_elem(nvar)%kvr(option%nphase))
      allocate ( aux_var%aux_var_elem(nvar)%xmol(option%nphase*option%nflowspec))
-     allocate ( aux_var%aux_var_elem(nvar)%xmol(option%nphase*option%nflowspec))
-    if(nvar>0)&
+     allocate ( aux_var%aux_var_elem(nvar)%diff(option%nphase*option%nflowspec))
+     if(nvar>0)&
      aux_var%aux_var_elem(nvar)%hysdat => aux_var%aux_var_elem(0)%hysdat
 
      aux_var%aux_var_elem(nvar)%pres = 0.d0
@@ -263,7 +264,7 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,iphase,saturation_function, &
 
   p= aux_var%pres
   t= aux_var%temp
- 
+  print *,'MphaseAuxVarCompute_NINC:: begin calc'
   select case(iphase)
 !******* Only aqueous phase exist ***********  
     case(1)
@@ -301,7 +302,7 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,iphase,saturation_function, &
         aux_var%xmol(1)=1.D0; aux_var%xmol(2)=0.D0
         aux_var%xmol(3)=temp; aux_var%xmol(4)=1.D0-aux_var%xmol(3)
    end select
-
+print *,'MphaseAuxVarCompute_NINC:: end X'
 ! ********************* Gas phase properties ***********************
     call PSAT(t, sat_pressure, ierr)
     err=1.D0
@@ -311,6 +312,7 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,iphase,saturation_function, &
        
        if(option%co2eos == EOS_SPAN_WAGNER)then
 ! ************ Span-Wagner EOS ********************             
+          print *,'MphaseAuxVarCompute_NINC:: gas sw:', option%itable
           select case(option%itable)  
           case(0,1,2,4,5)
              if( option%itable >=4) then
@@ -321,6 +323,7 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,iphase,saturation_function, &
                 call co2_span_wagner(p2*1.D-6, t +273.15D0,dg,dddt,dddp,fg,&
                      dfgdp,dfgdt,eng,hg,dhdt,dhdp,visg,dvdt,dvdp,option%itable)
              endif
+              print *,'MphaseAuxVarCompute_NINC:: sw end'
              dg= dg / option%fmwco2
              fg= fg * 1.D6 
              hg= hg * option%fmwco2
@@ -378,17 +381,19 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,iphase,saturation_function, &
    aux_var%h(2)=  hg  
    aux_var%u(2)=  hg - p/dg * option%scale
    aux_var%pc(2)=0D0
-   aux_var%diff(option%nflowspec+1:option%nflowspec*2)=&
-       fluid_properties%diff_base(2)
+   print *,'MphaseAuxVarCompute_NINC:: SC pc end'
+   aux_var%diff(option%nflowspec+1:option%nflowspec*2)= 2.13D-5
+!       fluid_properties%diff_base(2)
 ! Note: not temperature dependent yet.       
    aux_var%zco2=aux_var%den(2)/(p/rgasj/(t+273.15D0)*1D-3)
-
+  print *,'MphaseAuxVarCompute_NINC:: SC end'
 !***************  Liquid phase properties **************************
  
 !  avgmw(1)= xmol(1)* fmwh2o + xmol(2) * fmwco2 
   aux_var%h(1) = hw
   aux_var%u(1) = aux_var%h(1) - pw /dw_mol* option%scale
-  aux_var%diff(1:option%nflowspec) = fluid_properties%diff_base(1)
+  aux_var%diff(1:option%nflowspec) = 1D-9
+  ! fluid_properties%diff_base(1)
 
   xm_nacl = option%m_nacl * fmwnacl
   xm_nacl = xm_nacl /(1.D3 + xm_nacl)
@@ -418,21 +423,24 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,iphase,saturation_function, &
  !      + (t+273.15)*(0.883148 - 0.00228*(t+273.15))  
  !  den(1)=dw_kg + (den(1)-dw_kg)*xmol(2)/p*henry
  !  den(1)=den(1)/avgmw(1)
+print *,'MphaseAuxVarCompute_NINC:: Liq end'
 
 !******************************** 2 phase S-Pc-kr relation ***********************************
-
+print *,'MphaseAuxVarCompute_NINC:: pckr begin'
+print *,'MphaseAuxVarCompute_NINC:: pckr begin', saturation_function%hysteresis_id 
     if(option%nphase>=2)then
-      if(saturation_function%hysteresis_id >0 ) then 
+      if(saturation_function%hysteresis_id <=0.1D0 ) then 
          call pckrNH_noderiv(aux_var%sat,aux_var%pc,kr, &
                                    saturation_function, &
                                    option)
         pw=p !-pc(1)
-     ! print *, num_phase,ipckrreg,satu,pc,kr
+     
        else
+       print *,'MphaseAuxVarCompute_NINC:: pckr begin'
           call pckrHY_noderiv(aux_var%sat,aux_var%hysdat,aux_var%pc,kr, &
                                    saturation_function, &
                                    option)
-     !  print *, num_phase,ipckrreg,satu,pc,kr
+    print *,'MphaseAuxVarCompute_NINC:: pckr end'
      end if
    endif
 
@@ -450,6 +458,7 @@ subroutine MphaseAuxVarCompute_NINC(x,aux_var,iphase,saturation_function, &
            aux_var%pc =0.D0
       end select          
 
+print *,'MphaseAuxVarCompute_NINC::end'
     end subroutine MphaseAuxVarCompute_NINC
 
 

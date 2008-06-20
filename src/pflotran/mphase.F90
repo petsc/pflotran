@@ -94,12 +94,30 @@ subroutine MphaseSetup(realization)
   use Realization_module
   use Level_module
   use Patch_module
-
+  use span_wagner_module
+  use co2_sw_module
+  use span_wagner_spline_module 
+   
   type(realization_type) :: realization
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   
+  if (realization%option%co2eos == EOS_SPAN_WAGNER)then
+    select case(realization%option%itable)
+       case(0,1,2)
+         call initialize_span_wagner(realization%option%itable,realization%option%myrank)
+       case(4,5)
+         call initialize_span_wagner(0,realization%option%myrank)
+         call initialize_sw_interp(realization%option%itable, realization%option%myrank)
+       case(3)
+         call sw_spline_read
+       case default
+         print *, 'Wrong table option : STOP'
+      stop
+    end select
+  endif
+ 
   cur_level => realization%level_list%first
   do
     if (.not.associated(cur_level)) exit
@@ -146,22 +164,24 @@ subroutine MphaseSetupPatch(realization)
   option => realization%option
   patch => realization%patch
   grid => patch%grid
-
+  print *,' mph setup get patch'
   patch%aux%Mphase => MphaseAuxCreate()
-  
+  print *,' mph setup get Aux'
   ! allocate aux_var data structures for all grid cells  
   allocate(aux_vars(grid%ngmax))
+  print *,' mph setup get Aux alloc', grid%ngmax
   do ghosted_id = 1, grid%ngmax
     call MphaseAuxVarInit(aux_vars(ghosted_id),option)
   enddo
   patch%aux%Mphase%aux_vars => aux_vars
   patch%aux%Mphase%num_aux = grid%ngmax
-  
+  print *,' mph setup get Aux init'
+
   allocate(delx(option%nflowdof, grid%ngmax))
   allocate(Resold_AR(grid%nlmax,option%nflowdof))
   allocate(Resold_FL(ConnectionGetNumberInList(patch%grid%&
            internal_connection_set_list),option%nflowdof))
-
+  print *,' mph setup allocate app array'
    ! count the number of boundary connections and allocate
   ! aux_var data structures for them  
   boundary_condition => patch%boundary_conditions%first
@@ -173,12 +193,13 @@ subroutine MphaseSetupPatch(realization)
     boundary_condition => boundary_condition%next
   enddo
   allocate(aux_vars_bc(sum_connection))
+  print *,' mph setup get AuxBc alloc', sum_connection
   do iconn = 1, sum_connection
     call MphaseAuxVarInit(aux_vars_bc(iconn),option)
   enddo
   patch%aux%Mphase%aux_vars_bc => aux_vars_bc
   patch%aux%Mphase%num_aux_bc = sum_connection
-  
+  print *,' mph setup get AuxBc point'
   ! create zero array for zeroing residual and Jacobian (1 on diagonal)
   ! for inactive cells (and isothermal)
   call MphaseCreateZeroArray(patch,option)
@@ -528,7 +549,7 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
   call VecGetArrayF90(field%flow_xx_loc,xx_loc_p, ierr)
   call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr)
   call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr)
-
+print *,'MphaseUpdateAuxVarsPatch: get pointer'
   do ghosted_id = 1, grid%ngmax
     if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
     !geh - Ignore inactive cells with inactive materials
@@ -538,6 +559,10 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
     iend = ghosted_id*option%nflowdof
     istart = iend-option%nflowdof+1
     iphase = int(iphase_loc_p(ghosted_id))
+    print *,'MphaseUpdateAuxVarsPatch: begin cal', istart, iend, iphase
+if(.not. associated(realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr))then
+ print*, 'error!!! saturation function not allocated', ghosted_id,icap_loc_p(ghosted_id)
+endif
    
     call MphaseAuxVarCompute_NINC(xx_loc_p(istart:iend), &
                        aux_vars(ghosted_id)%aux_var_elem(0), &
@@ -546,7 +571,7 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
                        realization%fluid_properties,option)
     iphase_loc_p(ghosted_id) = iphase
   enddo
-
+  print *,'MphaseUpdateAuxVarsPatch: end internal'  
   boundary_condition => patch%boundary_conditions%first
   sum_connection = 0    
   do 
@@ -2572,10 +2597,10 @@ subroutine MphaseCreateZeroArray(patch,option)
     n_zero_rows = n_zero_rows + grid%nlmax
 #endif
   endif
-
+  print *,'zero rows=', n_zero_rows
   allocate(zero_rows_local(n_zero_rows))
   allocate(zero_rows_local_ghosted(n_zero_rows))
-
+  print *,'zero rows allocated' 
   zero_rows_local = 0
   zero_rows_local_ghosted = 0
   ncount = 0
@@ -2607,20 +2632,22 @@ subroutine MphaseCreateZeroArray(patch,option)
     enddo
 #endif
   endif
-
-  patch%aux%Richards%zero_rows_local => zero_rows_local
-  patch%aux%Richards%zero_rows_local_ghosted => zero_rows_local_ghosted
-  patch%aux%Richards%n_zero_rows = n_zero_rows
-
+print *,'zero rows point 1'
+  patch%aux%Mphase%n_zero_rows = n_zero_rows
+print *,'zero rows point 2'
+  patch%aux%Mphase%zero_rows_local => zero_rows_local
+print *,'zero rows point 3'  
+  patch%aux%Mphase%zero_rows_local_ghosted => zero_rows_local_ghosted
+print *,'zero rows point 4'
   call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
                      PETSC_COMM_WORLD,ierr)
-  if (flag > 0) patch%aux%Richards%inactive_cells_exist = .true.
+  if (flag > 0) patch%aux%Mphase%inactive_cells_exist = .true.
 
   if (ncount /= n_zero_rows) then
     print *, 'Error:  Mismatch in non-zero row count!', ncount, n_zero_rows
     stop
   endif
-
+ print *,'zero rows', flag
 end subroutine MphaseCreateZeroArray
 
 ! ************************************************************************** !
@@ -2839,11 +2866,11 @@ subroutine MphaseGetVarFromArray(realization,vec,ivar,isubvar)
   patch => realization%patch
   grid => patch%grid
   field => realization%field
-
+  print *,'MphaseGetVarFromArray, get pointer'
   if (.not.patch%aux%Mphase%aux_vars_up_to_date) call MphaseUpdateAuxVars(realization)
-
+print *,'MphaseGetVarFromArray, updated'
   aux_vars => patch%aux%Mphase%aux_vars
-  
+  print *,'MphaseGetVarFromArray, get var'
   call VecGetArrayF90(vec,vec_ptr,ierr)
 
   select case(ivar)
@@ -2854,6 +2881,7 @@ subroutine MphaseGetVarFromArray(realization,vec,ivar,isubvar)
         ghosted_id = grid%nL2G(local_id)    
         select case(ivar)
           case(TEMPERATURE)
+            print *,'MphaseGetVarFromArray:temp'
             vec_ptr(local_id) = aux_vars(ghosted_id)%aux_var_elem(0)%temp
           case(PRESSURE)
             vec_ptr(local_id) = aux_vars(ghosted_id)%aux_var_elem(0)%pres
