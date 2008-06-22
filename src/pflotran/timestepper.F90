@@ -164,6 +164,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   use Option_module
   use Output_module
   use Logging_module  
+  use Mass_Balance_module
   
   implicit none
   
@@ -257,6 +258,10 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
       plot_flag = .false.
     endif
 
+    if (option%compute_mass_balance) then
+      call MassBalanceUpdate(realization,flow_stepper%solver, &
+                             tran_stepper%solver)
+    endif
     call Output(realization,plot_flag)
   
     call StepperUpdateDT(flow_stepper,tran_stepper,option,timestep_cut_flag, &

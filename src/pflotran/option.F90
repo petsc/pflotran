@@ -91,6 +91,7 @@ module Option_module
     
     logical :: numerical_derivatives
     logical :: compute_statistics
+    logical :: compute_mass_balance
     logical :: use_touch_options
     logical :: overwrite_restart_transport
     logical :: overwrite_restart_flow_params
@@ -231,6 +232,7 @@ function OptionCreate()
   
   option%numerical_derivatives = .false.
   option%compute_statistics = .false.
+  option%compute_mass_balance = .false.
 
   option%use_touch_options = .false.
   option%overwrite_restart_transport = .false.

@@ -42,6 +42,7 @@ subroutine Init(simulation,filename)
   use Convergence_module
   use Waypoint_module
   use Patch_module
+  use Mass_Balance_module
   use Logging_module  
   
   use MPHASE_module
@@ -126,6 +127,9 @@ subroutine Init(simulation,filename)
 
   ! create grid and allocate vectors
   call RealizationCreateDiscretization(realization)
+  if (option%compute_mass_balance) then
+    call MassBalanceCreate(realization)
+  endif  
   
   if (option%myrank == 0) then
     ! general print statements for both flow and transport modes
@@ -1130,6 +1134,9 @@ subroutine readInput(simulation,filename)
 
       case ('COMPUTE_STATISTICS','STATISTICS')
         option%compute_statistics = .true.
+
+      case ('COMPUTE_MASS_BALANCE','MASS_BALANCE')
+        option%compute_mass_balance = .true.
 
 !....................
 

@@ -55,6 +55,8 @@ PetscInt, parameter, public :: OUTPUT_STAGE = 3
     PetscLogEvent :: event_output_breakthrough
     PetscLogEvent :: event_output_coordinates_hdf5
     
+    PetscLogEvent :: event_mass_balance
+
   end type logging_type
   
   type(logging_type), pointer, public :: logging
@@ -185,6 +187,10 @@ subroutine LoggingCreate()
   call PetscLogEventRegister('WriteHDF5Coord', &
                              logging%class_pflotran, &
                              logging%event_output_coordinates_hdf5,ierr)
+                             
+  call PetscLogEventRegister('MassBalance', &
+                             logging%class_pflotran, &
+                             logging%event_mass_balance,ierr)
   
 end subroutine LoggingCreate
 
