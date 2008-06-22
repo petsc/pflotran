@@ -34,6 +34,9 @@ module Solver_module
                                    ! Galerkin-type geometric multigrid.
     PetscInt :: galerkin_mg_levels  ! Number of discretization levels for 
                                     ! the Galerkin MG (includes finest level).
+    PetscInt :: galerkin_mg_levels_x
+    PetscInt :: galerkin_mg_levels_y
+    PetscInt :: galerkin_mg_levels_z
 
     ! Jacobian matrix
     Mat :: J
@@ -110,6 +113,9 @@ function SolverCreate()
 
   solver%use_galerkin_mg = PETSC_FALSE
   solver%galerkin_mg_levels = 1
+  solver%galerkin_mg_levels_x = 1
+  solver%galerkin_mg_levels_y = 1
+  solver%galerkin_mg_levels_z = 1
   
   solver%J = 0
   solver%mat_type = MATBAIJ
@@ -588,6 +594,7 @@ subroutine SolverCheckCommandLine(solver)
 
   PetscErrorCode :: ierr
   character(len=MAXSTRINGLENGTH) :: prefix
+  PetscTruth :: is_present
 
   if (solver%snes /= 0) then
     call SNESGetOptionsPrefix(solver%snes, prefix, ierr)
@@ -595,12 +602,38 @@ subroutine SolverCheckCommandLine(solver)
     prefix = PETSC_NULL_CHARACTER
   endif
 
+  ! Parse the options for the Galerkin multigrid solver.
+  ! Users can specify the number of levels of coarsening via the 
+  ! 'galerkin_mg N' option, which will set the number of levels in the 
+  ! x, y, and z directions all to N.  For semi-coarsening, however, 
+  ! it is possible to set the number of levels in each direction 
+  ! individually via options such as '-galerkin_mg_x N', which would 
+  ! override the number of levels in the x direction set by '-galerkin_mg'.
   call PetscOptionsGetInt(prefix, '-galerkin_mg', &
                           solver%galerkin_mg_levels, solver%use_galerkin_mg, &
                           ierr)
   if (solver%use_galerkin_mg) then
+    solver%galerkin_mg_levels_x = solver%galerkin_mg_levels
+    solver%galerkin_mg_levels_y = solver%galerkin_mg_levels
+    solver%galerkin_mg_levels_z = solver%galerkin_mg_levels
+  endif
+
+  call PetscOptionsGetInt(prefix, '-galerkin_mg_x', &
+                          solver%galerkin_mg_levels_x, is_present, ierr)
+  if (is_present) solver%use_galerkin_mg = PETSC_TRUE
+  call PetscOptionsGetInt(prefix, '-galerkin_mg_y', &
+                          solver%galerkin_mg_levels_y, is_present, ierr)
+  if (is_present) solver%use_galerkin_mg = PETSC_TRUE
+  call PetscOptionsGetInt(prefix, '-galerkin_mg_z', &
+                          solver%galerkin_mg_levels_z, is_present, ierr)
+  if (is_present) solver%use_galerkin_mg = PETSC_TRUE
+
+  if (solver%use_galerkin_mg) then
     solver%mat_type = MATAIJ
       ! Must use AIJ above, as BAIJ is not supported for Galerkin MG solver.
+    solver%galerkin_mg_levels = max(solver%galerkin_mg_levels_x, &
+                                    solver%galerkin_mg_levels_y, &
+                                    solver%galerkin_mg_levels_z)
   endif
                              
 
