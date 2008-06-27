@@ -164,7 +164,9 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   use Option_module
   use Output_module
   use Logging_module  
+#ifdef PFLOTRAN_HAVE_MASS_BALANCE
   use Mass_Balance_module
+#endif
   
   implicit none
   
@@ -259,8 +261,10 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     endif
 
     if (option%compute_mass_balance) then
+#ifdef PFLOTRAN_HAVE_MASS_BALANCE
       call MassBalanceUpdate(realization,flow_stepper%solver, &
                              tran_stepper%solver)
+#endif
     endif
     call Output(realization,plot_flag)
   
