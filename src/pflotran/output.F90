@@ -3581,6 +3581,7 @@ end subroutine ComputeFlowMassBalance
 ! date: 06/18/08
 !
 ! ************************************************************************** !  
+#if 0
 subroutine OutputMassBalance(realization)
 
   use Realization_module
@@ -3755,6 +3756,7 @@ subroutine OutputMassBalance(realization)
   end select
 
 end subroutine OutputMassBalance
+#endif
 
 ! ************************************************************************** !
 !
