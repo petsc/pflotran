@@ -866,7 +866,7 @@ subroutine readInput(simulation,filename)
         enddo
 
         if (option%myrank == 0) &
-          write(IUNIT2,'(/," *HDF5",10x,i1,/)') realization%output_option%print_hdf5
+          write(IUNIT2,'(/," *HDF5",10x,l1,/)') realization%output_option%print_hdf5
 
 !.....................
       case ('INVERT_Z','INVERTZ')
@@ -897,7 +897,7 @@ subroutine readInput(simulation,filename)
         enddo
 
         if (option%myrank == 0) &
-          write(IUNIT2,'(/," *TECP",10x,i1,/)') realization%output_option%print_tecplot
+          write(IUNIT2,'(/," *TECP",10x,l1,/)') realization%output_option%print_tecplot
 
 !....................
 
