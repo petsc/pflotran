@@ -34,6 +34,7 @@ module Condition_module
     character(len=MAXWORDLENGTH) :: time_units
     character(len=MAXWORDLENGTH) :: length_units
     type(sub_condition_type), pointer :: pressure
+    type(sub_condition_type), pointer :: mass_rate
     type(sub_condition_type), pointer :: temperature
     type(sub_condition_type), pointer :: concentration
     type(sub_condition_ptr_type), pointer :: transport_concentrations(:)
@@ -96,6 +97,7 @@ function ConditionCreate(option)
   
   allocate(condition)
   nullify(condition%pressure)
+  nullify(condition%mass_rate)
   nullify(condition%temperature)
   nullify(condition%concentration)
   nullify(condition%enthalpy)
@@ -367,7 +369,7 @@ subroutine ConditionRead(condition,option,fid)
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXWORDLENGTH) :: word
   type(sub_condition_type), pointer :: pressure, flux, temperature, &
-                                       concentration, enthalpy, &
+                                       concentration, enthalpy, mass_rate, &
                                        sub_condition_ptr
   type(sub_condition_ptr_type), pointer :: transport_concentrations(:)
   PetscReal :: default_time = 0.d0
@@ -395,6 +397,7 @@ subroutine ConditionRead(condition,option,fid)
   default_gradient%rank = 3
   
   pressure => SubConditionCreate(option%nphase)
+  mass_rate => SubConditionCreate(option%nflowspec)
   temperature => SubConditionCreate(ONE_INTEGER)
   concentration => SubConditionCreate(ONE_INTEGER)
   enthalpy => SubConditionCreate(option%nphase)
@@ -402,6 +405,7 @@ subroutine ConditionRead(condition,option,fid)
   condition%time_units = 'yr'
   condition%length_units = 'm'
   pressure%units = 'Pa'
+  mass_rate%units = 'kg/s'
   temperature%units = 'C'
   concentration%units = 'M'
 
@@ -445,6 +449,8 @@ subroutine ConditionRead(condition,option,fid)
               condition%length_units = trim(word)
             case('Pa','KPa')
               pressure%units = trim(word)
+            case('kg/s','kg/yr')
+              mass_rate%units = trim(word)
             case('m/s','m/yr')
               flux%units = trim(word)
             case('C','K')
@@ -502,6 +508,8 @@ subroutine ConditionRead(condition,option,fid)
           select case(trim(word))
             case('PRES','PRESS','PRESSURE')
               sub_condition_ptr => pressure
+            case('MASS','MASS_RATE')
+              sub_condition_ptr => mass_rate
             case('FLUX')
               sub_condition_ptr => flux
             case('TEMP','TEMPERATURE')
@@ -540,8 +548,8 @@ subroutine ConditionRead(condition,option,fid)
               sub_condition_ptr%itype = DIRICHLET_BC
             case('neumann')
               sub_condition_ptr%itype = NEUMANN_BC
-            case('mass')
-              sub_condition_ptr%itype = MASS_RATE
+            case('mass','mass_rate')
+              sub_condition_ptr%itype = MASS_RATE_SS
             case('hydrostatic','hydro','hydrostat','static')
               sub_condition_ptr%itype = HYDROSTATIC_BC
             case('zero_gradient')
@@ -575,6 +583,8 @@ subroutine ConditionRead(condition,option,fid)
           select case(trim(word))
             case('PRES','PRESS','PRESSURE')
               sub_condition_ptr => pressure
+            case('MASS','MASS_RATE')
+              sub_condition_ptr => mass_rate
             case('FLUX')
               sub_condition_ptr => flux
             case('TEMP','TEMPERATURE')
@@ -616,6 +626,10 @@ subroutine ConditionRead(condition,option,fid)
         if (condition%iclass == NULL_CLASS) condition%iclass = FLOW_CLASS
         call ConditionReadValues(option,word,string,pressure%dataset, &
                                  pressure%units)
+      case('MASS','MASS_RATE')
+        if (condition%iclass == NULL_CLASS) condition%iclass = FLOW_CLASS
+        call ConditionReadValues(option,word,string,mass_rate%dataset, &
+                                 mass_rate%units)
       case('FLUX','VELOCITY','VEL')
         call ConditionReadValues(option,word,string,pressure%dataset, &
                                  pressure%units)
@@ -674,6 +688,11 @@ subroutine ConditionRead(condition,option,fid)
                             default_ctype, default_itype, &
                             default_dataset, &
                             default_datum, default_gradient)
+    word = 'mass_rate'
+    call SubConditionVerify(option,condition,word,mass_rate,default_time, &
+                            default_ctype, default_itype, &
+                            default_dataset, &
+                            default_datum, default_gradient)
     word = 'temperature'
     call SubConditionVerify(option,condition,word,temperature,default_time, &
                             default_ctype, default_itype, &
@@ -706,6 +725,7 @@ subroutine ConditionRead(condition,option,fid)
     enddo
     ! these are not used with transport
     if (associated(pressure)) call SubConditionDestroy(pressure)
+    if (associated(mass_rate)) call SubConditionDestroy(mass_rate)
     if (associated(temperature)) call SubConditionDestroy(temperature)
     if (associated(concentration)) call SubConditionDestroy(concentration)
     if (associated(enthalpy)) call SubConditionDestroy(enthalpy)    
@@ -714,11 +734,16 @@ subroutine ConditionRead(condition,option,fid)
   if (condition%iclass == FLOW_CLASS) then
     select case(option%iflowmode)
       case(RICHARDS_MODE,MPH_MODE)
-        if (.not.associated(pressure)) then
-          call printErrMsg(option,'pressure condition null in condition: ' // &
+        if (.not.associated(pressure) .and. .not.associated(mass_rate)) then
+          call printErrMsg(option,'pressure and mass_rate condition null in condition: ' // &
                            condition%name)
         endif                         
-        condition%pressure => pressure
+        if (.not.associated(pressure)) then
+          condition%pressure => pressure
+        endif                         
+        if (.not.associated(mass_rate)) then
+          condition%mass_rate => mass_rate
+        endif                         
         if (.not.associated(temperature)) then
           call printErrMsg(option,'temperature condition null in condition: ' // &
                            condition%name)
@@ -734,32 +759,44 @@ subroutine ConditionRead(condition,option,fid)
                            condition%name)
         endif                         
         condition%enthalpy => enthalpy
-        condition%num_sub_conditions = 3
-        if (associated(enthalpy)) condition%num_sub_conditions = 4
+        condition%num_sub_conditions = 5
         allocate(condition%sub_condition_ptr(condition%num_sub_conditions))
+        do idof = 1, 5
+          nullify(condition%sub_condition_ptr(idof)%ptr)
+        enddo
         ! must be in this order, which matches the dofs i problem
-        condition%sub_condition_ptr(ONE_INTEGER)%ptr => pressure
-        condition%sub_condition_ptr(TWO_INTEGER)%ptr => temperature
-        condition%sub_condition_ptr(THREE_INTEGER)%ptr => concentration
-        if (associated(enthalpy)) condition%sub_condition_ptr(FOUR_INTEGER)%ptr => enthalpy
+        if (associated(pressure)) condition%sub_condition_ptr(ONE_INTEGER)%ptr => pressure
+        if (associated(mass_rate)) condition%sub_condition_ptr(TWO_INTEGER)%ptr => mass_rate
+        condition%sub_condition_ptr(THREE_INTEGER)%ptr => temperature
+        condition%sub_condition_ptr(FOUR_INTEGER)%ptr => concentration
+        if (associated(enthalpy)) condition%sub_condition_ptr(FIVE_INTEGER)%ptr => enthalpy
         
-        allocate(condition%itype(THREE_INTEGER))
-        condition%itype(ONE_INTEGER) = pressure%itype
-        condition%itype(TWO_INTEGER) = temperature%itype
-        condition%itype(THREE_INTEGER) = concentration%itype
+        allocate(condition%itype(FIVE_INTEGER))
+        condition%itype = 0
+        if (associated(pressure)) condition%itype(ONE_INTEGER) = pressure%itype
+        if (associated(mass_rate)) condition%itype(TWO_INTEGER) = concentration%itype
+        condition%itype(THREE_INTEGER) = temperature%itype
+        condition%itype(FOUR_INTEGER) = concentration%itype
+        if (associated(enthalpy)) condition%itype(FIVE_INTEGER) = concentration%itype
         
       case(RICHARDS_LITE_MODE)
-        if (.not.associated(pressure)) then
-          call printErrMsg(option,'pressure condition null in condition: ' // &
+        if (.not.associated(pressure) .and. .not.associated(mass_rate)) then
+          call printErrMsg(option,'pressure and mass_rate condition null in condition: ' // &
                            condition%name)
         endif                         
-        condition%pressure => pressure
+        if (.not.associated(pressure)) then
+          condition%pressure => pressure
+        endif                         
+        if (.not.associated(mass_rate)) then
+          condition%mass_rate => mass_rate
+        endif                         
         condition%num_sub_conditions = 1
         allocate(condition%sub_condition_ptr(condition%num_sub_conditions))
         condition%sub_condition_ptr(ONE_INTEGER)%ptr => pressure
 
         allocate(condition%itype(ONE_INTEGER))
-        condition%itype(ONE_INTEGER) = pressure%itype
+        if (associated(pressure)) condition%itype(ONE_INTEGER) = pressure%itype
+        if (associated(mass_rate)) condition%itype(TWO_INTEGER) = mass_rate%itype
         
         ! these are not used with richards_lite
         if (associated(temperature)) call SubConditionDestroy(temperature)
@@ -1247,6 +1284,7 @@ subroutine ConditionDestroy(condition)
   nullify(condition%itype)
   
   nullify(condition%pressure)
+  nullify(condition%mass_rate)
   nullify(condition%temperature)
   nullify(condition%concentration)
   nullify(condition%enthalpy)
