@@ -738,10 +738,10 @@ subroutine ConditionRead(condition,option,fid)
           call printErrMsg(option,'pressure and mass_rate condition null in condition: ' // &
                            condition%name)
         endif                         
-        if (.not.associated(pressure)) then
+        if (associated(pressure)) then
           condition%pressure => pressure
         endif                         
-        if (.not.associated(mass_rate)) then
+        if (associated(mass_rate)) then
           condition%mass_rate => mass_rate
         endif                         
         if (.not.associated(temperature)) then
@@ -784,10 +784,10 @@ subroutine ConditionRead(condition,option,fid)
           call printErrMsg(option,'pressure and mass_rate condition null in condition: ' // &
                            condition%name)
         endif                         
-        if (.not.associated(pressure)) then
+        if (associated(pressure)) then
           condition%pressure => pressure
         endif                         
-        if (.not.associated(mass_rate)) then
+        if (associated(mass_rate)) then
           condition%mass_rate => mass_rate
         endif                         
         condition%num_sub_conditions = 1
