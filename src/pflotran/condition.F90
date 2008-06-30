@@ -1041,9 +1041,11 @@ subroutine ConditionUpdate(condition_list,option,time,iclass)
 
         sub_condition => condition%sub_condition_ptr(isub_condition)%ptr
         
-        call SubConditionUpdateDataset(option,time,sub_condition%dataset)
-        call SubConditionUpdateDataset(option,time,sub_condition%datum)
-        call SubConditionUpdateDataset(option,time,sub_condition%gradient)
+        if (associated(sub_condition)) then
+          call SubConditionUpdateDataset(option,time,sub_condition%dataset)
+          call SubConditionUpdateDataset(option,time,sub_condition%datum)
+          call SubConditionUpdateDataset(option,time,sub_condition%gradient)
+        endif
         
       enddo
       
