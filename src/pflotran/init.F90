@@ -42,9 +42,7 @@ subroutine Init(simulation,filename)
   use Convergence_module
   use Waypoint_module
   use Patch_module
-#ifdef PFLOTRAN_HAVE_MASS_BALANCE
   use Mass_Balance_module
-#endif
   use Logging_module  
   
   use MPHASE_module
@@ -130,9 +128,7 @@ subroutine Init(simulation,filename)
   ! create grid and allocate vectors
   call RealizationCreateDiscretization(realization)
   if (option%compute_mass_balance) then
-#ifdef PFLOTRAN_HAVE_MASS_BALANCE
     call MassBalanceCreate(realization)
-#endif
   endif  
   
   if (option%myrank == 0) then
