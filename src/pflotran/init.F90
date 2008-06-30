@@ -1226,7 +1226,7 @@ subroutine readInput(simulation,filename)
           call fiErrorMsg(option%myrank,'diff_base','FLUID_PROPERTIES', ierr)          
         
           call fiReadDouble(string,realization%fluid_properties%diff_exp(count),ierr)
-          call fiErrorMsg(option%myrank,'diff_base','FLUID_PROPERTIES', ierr)          
+          call fiErrorMsg(option%myrank,'diff_exp','FLUID_PROPERTIES', ierr)          
 
         enddo
         
