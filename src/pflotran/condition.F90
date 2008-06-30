@@ -759,25 +759,25 @@ subroutine ConditionRead(condition,option,fid)
                            condition%name)
         endif                         
         condition%enthalpy => enthalpy
-        condition%num_sub_conditions = 5
+        condition%num_sub_conditions = 4
         allocate(condition%sub_condition_ptr(condition%num_sub_conditions))
-        do idof = 1, 5
+        do idof = 1, 4
           nullify(condition%sub_condition_ptr(idof)%ptr)
         enddo
         ! must be in this order, which matches the dofs i problem
+        if (associated(mass_rate)) condition%sub_condition_ptr(ONE_INTEGER)%ptr => mass_rate
         if (associated(pressure)) condition%sub_condition_ptr(ONE_INTEGER)%ptr => pressure
-        if (associated(mass_rate)) condition%sub_condition_ptr(TWO_INTEGER)%ptr => mass_rate
-        condition%sub_condition_ptr(THREE_INTEGER)%ptr => temperature
-        condition%sub_condition_ptr(FOUR_INTEGER)%ptr => concentration
-        if (associated(enthalpy)) condition%sub_condition_ptr(FIVE_INTEGER)%ptr => enthalpy
+        condition%sub_condition_ptr(TWO_INTEGER)%ptr => temperature
+        condition%sub_condition_ptr(THREE_INTEGER)%ptr => concentration
+        if (associated(enthalpy)) condition%sub_condition_ptr(FOUR_INTEGER)%ptr => enthalpy
         
         allocate(condition%itype(FIVE_INTEGER))
         condition%itype = 0
+        if (associated(mass_rate)) condition%itype(ONE_INTEGER) = mass_rate%itype
         if (associated(pressure)) condition%itype(ONE_INTEGER) = pressure%itype
-        if (associated(mass_rate)) condition%itype(TWO_INTEGER) = concentration%itype
-        condition%itype(THREE_INTEGER) = temperature%itype
-        condition%itype(FOUR_INTEGER) = concentration%itype
-        if (associated(enthalpy)) condition%itype(FIVE_INTEGER) = concentration%itype
+        condition%itype(TWO_INTEGER) = temperature%itype
+        condition%itype(THREE_INTEGER) = concentration%itype
+        if (associated(enthalpy)) condition%itype(FOUR_INTEGER) = concentration%itype
         
       case(RICHARDS_LITE_MODE)
         if (.not.associated(pressure) .and. .not.associated(mass_rate)) then
@@ -795,8 +795,8 @@ subroutine ConditionRead(condition,option,fid)
         condition%sub_condition_ptr(ONE_INTEGER)%ptr => pressure
 
         allocate(condition%itype(ONE_INTEGER))
+        if (associated(mass_rate)) condition%itype(ONE_INTEGER) = mass_rate%itype
         if (associated(pressure)) condition%itype(ONE_INTEGER) = pressure%itype
-        if (associated(mass_rate)) condition%itype(TWO_INTEGER) = mass_rate%itype
         
         ! these are not used with richards_lite
         if (associated(temperature)) call SubConditionDestroy(temperature)
