@@ -1214,7 +1214,7 @@ subroutine readInput(simulation,filename)
         count = 0
         do
           call fiReadFlotranString(IUNIT1,string,ierr)
-          call fiReadStringErrorMsg(option%myrank,'THRM',ierr)
+          call fiReadStringErrorMsg(option%myrank,'FLUID_PROPERTIES',ierr)
           
           if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
               fiStringCompare(string,'END',THREE_INTEGER)) exit
@@ -1223,10 +1223,10 @@ subroutine readInput(simulation,filename)
           if (count > option%nphase) exit              
                         
           call fiReadDouble(string,realization%fluid_properties%diff_base(count),ierr)
-          call fiErrorMsg(option%myrank,'diff_base','FLUID_PROPERTY', ierr)          
+          call fiErrorMsg(option%myrank,'diff_base','FLUID_PROPERTIES', ierr)          
         
           call fiReadDouble(string,realization%fluid_properties%diff_exp(count),ierr)
-          call fiErrorMsg(option%myrank,'diff_base','FLUID_PROPERTY', ierr)          
+          call fiErrorMsg(option%myrank,'diff_base','FLUID_PROPERTIES', ierr)          
 
         enddo
         
