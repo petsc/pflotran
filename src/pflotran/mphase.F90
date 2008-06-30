@@ -1810,7 +1810,8 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
          distance_gravity,option, &
          v_darcy,Res)
     patch%boundary_velocities(:,sum_connection) = v_darcy(:)
-
+     print *,'Res:bc:', xxbc, cur_connection_set%area(iconn), cur_connection_set%dist(0,iconn)
+print *,'Res:bc:',aux_vars_bc(sum_connection)%aux_var_elem(0)%kvr,perm_dn, iphase
       iend = local_id*option%nflowdof
       istart = iend-option%nflowdof+1
       r_p(istart:iend)= r_p(istart:iend) - Res(1:option%nflowdof)
