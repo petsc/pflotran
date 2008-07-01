@@ -265,8 +265,8 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
 
   call VecGetArrayF90(field%tran_xx,xx_p, ierr)
   call VecGetArrayF90(field%porosity_loc,porosity_loc_p,ierr)
-  call VecGetArrayF90(field%saturation_loc,saturation_loc_p,ierr)
-  call VecGetArrayF90(field%density_loc,density_loc_p,ierr)
+  call VecGetArrayF90(field%saturation0_loc,saturation_loc_p,ierr)
+  call VecGetArrayF90(field%density0_loc,density_loc_p,ierr)
   call VecGetArrayF90(field%tor_loc,tor_loc_p,ierr)
   call VecGetArrayF90(field%volume,volume_p,ierr)
 
@@ -290,8 +290,8 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
 
   call VecRestoreArrayF90(field%tran_xx,xx_p, ierr)
   call VecRestoreArrayF90(field%porosity_loc,porosity_loc_p,ierr)
-  call VecRestoreArrayF90(field%saturation_loc,saturation_loc_p,ierr)
-  call VecRestoreArrayF90(field%density_loc,density_loc_p,ierr)
+  call VecRestoreArrayF90(field%saturation0_loc,saturation_loc_p,ierr)
+  call VecRestoreArrayF90(field%density0_loc,density_loc_p,ierr)
   call VecRestoreArrayF90(field%tor_loc,tor_loc_p,ierr)
   call VecRestoreArrayF90(field%volume,volume_p,ierr)
 

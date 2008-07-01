@@ -24,6 +24,7 @@ module Field_module
     Vec :: perm0_xx, perm0_yy, perm0_zz, perm_pow
     
     Vec :: saturation_loc, density_loc
+    Vec :: saturation0_loc, density0_loc
 
     Vec :: volume 
     
@@ -81,6 +82,8 @@ function FieldCreate()
   
   field%saturation_loc = 0
   field%density_loc = 0
+  field%saturation0_loc = 0
+  field%density0_loc = 0
   field%volume = 0
   
   field%flow_r = 0
@@ -140,6 +143,8 @@ subroutine FieldDestroy(field)
   
   if (field%saturation_loc /= 0) call VecDestroy(field%saturation_loc,ierr)
   if (field%density_loc /= 0) call VecDestroy(field%density_loc,ierr)
+  if (field%saturation0_loc /= 0) call VecDestroy(field%saturation0_loc,ierr)
+  if (field%density0_loc /= 0) call VecDestroy(field%density0_loc,ierr)
   if (field%volume /= 0) call VecDestroy(field%volume,ierr)
   
   if (field%flow_r /= 0) call VecDestroy(field%flow_r,ierr)
