@@ -148,7 +148,7 @@ subroutine ConvergenceTest(snes_,it,xnorm,pnorm,fnorm,reason,context,ierr)
 
   if (option%use_touch_options) then
     word = 'detailed_convergence'
-    if (OptionCheckTouch(word)) then
+    if (OptionCheckTouch(option,word)) then
       if (solver%print_detailed_convergence) then
         solver%print_detailed_convergence = PETSC_FALSE
       else
