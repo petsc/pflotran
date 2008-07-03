@@ -191,8 +191,6 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   PetscLogDouble :: stepper_start_time, current_time, average_step_time
   PetscErrorCode :: ierr
 
-  call PetscLogStagePush(logging%stage(TS_STAGE),ierr)
-  
   option => realization%option
   
   if (associated(flow_stepper)) then
@@ -222,6 +220,9 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   if (option%overwrite_restart_flow_params) then
     call RealizationRevertFlowParameters(realization)
   endif
+
+  call PetscLogStagePop(ierr)
+  call PetscLogStagePush(logging%stage(TS_STAGE),ierr)
   
   call StepperUpdateSolution(realization)
 

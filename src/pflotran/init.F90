@@ -372,7 +372,6 @@ subroutine Init(simulation,filename)
   call PetscLogEventEnd(logging%event_init,PETSC_NULL_OBJECT, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                         PETSC_NULL_OBJECT,ierr)
-  call PetscLogStagePop(ierr)
 
 end subroutine Init
 
