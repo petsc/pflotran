@@ -25,6 +25,8 @@ PetscInt, parameter :: TWO_INTEGER = 2
 PetscInt, parameter :: THREE_INTEGER = 3
 PetscInt, parameter :: FOUR_INTEGER = 4
 PetscInt, parameter :: FIVE_INTEGER = 5
+PetscInt, parameter :: SIX_INTEGER = 6
+PetscInt, parameter :: SEVERN_INTEGER = 7
 PetscInt, parameter :: NEG_ONE_INTEGER = -1
 
 PetscInt, parameter :: X_DIRECTION = 1
@@ -61,7 +63,7 @@ PetscInt, parameter :: AMR_GRID = 3
 ! condition types
 PetscInt, parameter :: DIRICHLET_BC = 1
 PetscInt, parameter :: NEUMANN_BC = 2
-PetscInt, parameter :: MASS_RATE = 3
+PetscInt, parameter :: MASS_RATE_SS = 3
 PetscInt, parameter :: ZERO_GRADIENT_BC = 5
 PetscInt, parameter :: HYDROSTATIC_BC = 6
 PetscInt, parameter :: SEEPAGE_BC = 7
@@ -80,19 +82,22 @@ PetscInt, parameter :: SRC_SINK_CONNECTION_TYPE = 4
 
 ! dofs for each mode
 PetscInt, parameter :: RICHARDS_PRESSURE_DOF = 1
-PetscInt, parameter :: RICHARDS_CONCENTRATION_DOF = 3
-PetscInt, parameter :: RICHARDS_TEMPERATURE_DOF = 2
-PetscInt, parameter :: RICHARDS_ENTHALPY_DOF = 3
+PetscInt, parameter :: RICHARDS_MASS_RATE_DOF = 2
+PetscInt, parameter :: RICHARDS_TEMPERATURE_DOF = 3
+PetscInt, parameter :: RICHARDS_CONCENTRATION_DOF = 4
+PetscInt, parameter :: RICHARDS_ENTHALPY_DOF = 5
 
 PetscInt, parameter :: MPH_PRESSURE_DOF = 1
-PetscInt, parameter :: MPH_CONCENTRATION_DOF = 3
-PetscInt, parameter :: MPH_TEMPERATURE_DOF = 2
-PetscInt, parameter :: MPH_ENTHALPY_DOF = 3
+PetscInt, parameter :: MPH_MASS_RATE_DOF = 2
+PetscInt, parameter :: MPH_TEMPERATURE_DOF = 3
+PetscInt, parameter :: MPH_CONCENTRATION_DOF = 4
+PetscInt, parameter :: MPH_ENTHALPY_DOF = 5
 
 PetscInt, parameter :: THC_PRESSURE_DOF = 1
-PetscInt, parameter :: THC_CONCENTRATION_DOF = 3
-PetscInt, parameter :: THC_TEMPERATURE_DOF = 2
-PetscInt, parameter :: THC_ENTHALPY_DOF = 3
+PetscInt, parameter :: THC_MASS_RATE_DOF = 2
+PetscInt, parameter :: THC_TEMPERATURE_DOF = 3
+PetscInt, parameter :: THC_CONCENTRATION_DOF = 4
+PetscInt, parameter :: THC_ENTHALPY_DOF = 5
 
 ! output definitions
 PetscInt, parameter :: X_COORDINATE = 1

@@ -96,14 +96,15 @@ subroutine Output(realization,plot_flag)
         print *, '      Seconds to write to Tecplot file(s): ', (tend-tstart)
     endif
   
-    realization%output_option%plot_number = realization%output_option%plot_number + 1
-
     if (realization%option%compute_statistics) then
       call ComputeFlowCellVelocityStats(realization)
       call ComputeFlowFluxVelocityStats(realization)
-      call ComputeFlowMassBalance(realization)
+!      call OutputMassBalance(realization)
+!      call ComputeFlowMassBalance(realization)
     endif
   
+    realization%output_option%plot_number = realization%output_option%plot_number + 1
+
   endif
   
   call OutputBreakthrough(realization)
@@ -131,12 +132,13 @@ subroutine OutputBreakthrough(realization)
   
   type(realization_type) :: realization
 
-  if (realization%output_option%print_hdf5) then
+!  if (realization%output_option%print_hdf5) then
 !    call OutputBreakthroughHDF5(realization)
-    call OutputBreakthroughTecplot(realization)
-  endif
+!    call OutputBreakthroughTecplot(realization)
+!  endif
  
-  if (realization%output_option%print_tecplot) then
+  if (realization%output_option%print_tecplot .or. &
+      realization%output_option%print_hdf5) then
     call OutputBreakthroughTecplot(realization)
   endif
 
@@ -3571,6 +3573,190 @@ subroutine ComputeFlowMassBalance(realization)
   call VecDestroy(density_loc,ierr)
 
 end subroutine ComputeFlowMassBalance
+
+! ************************************************************************** !
+!
+! OutputMassBalance: Print to Tecplot file in BLOCK format
+! author: Glenn Hammond
+! date: 06/18/08
+!
+! ************************************************************************** !  
+#if 0
+subroutine OutputMassBalance(realization)
+
+  use Realization_module
+  use Discretization_module
+  use Grid_module
+  use Structured_Grid_module
+  use Option_module
+  use Field_module
+  use Patch_module
+  
+  implicit none
+
+  type(realization_type) :: realization
+  
+  PetscInt :: i, comma_count, quote_count
+  character(len=MAXWORDLENGTH) :: filename
+  character(len=MAXSTRINGLENGTH) :: string, string2
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  type(discretization_type), pointer :: discretization
+  type(field_type), pointer :: field
+  type(patch_type), pointer :: patch  
+  type(output_option_type), pointer :: output_option
+  PetscReal, pointer :: vec_ptr(:)
+  Vec :: global_vec
+  Vec :: natural_vec
+  
+  discretization => realization%discretization
+  patch => realization%patch
+  grid => patch%grid
+  option => realization%option
+  field => realization%field
+  output_option => realization%output_option
+  
+  ! open file
+  if (len_trim(output_option%plot_name) > 2) then
+    filename = trim(output_option%plot_name) // '.tec'
+    output_option%plot_name = ''
+  else
+    if (output_option%plot_number < 10) then
+      write(filename,'("mass00",i1,".tec")') output_option%plot_number  
+    else if (output_option%plot_number < 100) then
+      write(filename,'("mass0",i2,".tec")') output_option%plot_number  
+    else if (output_option%plot_number < 1000) then
+      write(filename,'("mass",i3,".tec")') output_option%plot_number  
+    else if (output_option%plot_number < 10000) then
+      write(filename,'("mass",i4,".tec")') output_option%plot_number  
+    endif
+  endif
+  
+  if (option%myrank == 0) then
+    print *, '--> write tecplot output file: ', filename
+    open(unit=IUNIT3,file=filename,action="write")
+  
+    ! write header
+    ! write title
+    write(IUNIT3,'(''TITLE = "'',1es12.4," [",a1,'']"'')') &
+                 option%time/output_option%tconv,output_option%tunit
+
+    ! initial portion of header
+    string = 'VARIABLES=' // &
+             '"X [m]",' // &
+             '"Y [m]",' // &
+             '"Z [m]"'
+
+    ! write flow variables
+    string2 = ''
+    select case(option%iflowmode)
+      case (MPH_MODE)
+      case(RICHARDS_MODE)
+        string2 = '"Water [kg]","Solute [mol]","Energy []"'
+      case(RICHARDS_LITE_MODE)
+    end select
+    string = trim(string) // trim(string2)
+    
+    ! write transport variables
+    if (option%ntrandof > 0) then
+ !     string2 = RTGetTecplotHeader(realization)
+ !     string = trim(string) // trim(string2)
+    endif
+
+    ! write material ids
+    if (associated(patch%imat)) then
+      string = trim(string) // ',"Material_ID"'
+    endif
+
+    write(IUNIT3,'(a)') trim(string)
+  
+    ! write zone header
+    if (realization%discretization%itype == STRUCTURED_GRID) then
+      ! count vars in string
+      quote_count = 0
+      comma_count = 0
+      do i=1,len_trim(string)
+        ! 34 = '"'
+        if (iachar(string(i:i)) == 34) then
+          quote_count = quote_count + 1
+        ! 44 = ','
+        else if (iachar(string(i:i)) == 44 .and. mod(quote_count,2) == 0) then
+          comma_count = comma_count + 1
+        endif
+      enddo
+      ! there are comma_count+1 variables
+      write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
+                   &'', K='',i4)') &
+                   option%time/output_option%tconv,grid%structured_grid%nx+1, &
+                   grid%structured_grid%ny+1,grid%structured_grid%nz+1
+      write(string2,'(i5)') comma_count+1
+      string = trim(string) // ', VARLOCATION=([4-' // &
+               trim(adjustl(string2)) // ']=CELLCENTERED)'
+    else
+      write(string,'(''ZONE T= "'',1es12.4,''",'','' I='',i4,'', J='',i4, &
+                   &'', K='',i4)') &
+                   option%time/output_option%tconv,grid%structured_grid%nx, &
+                   grid%structured_grid%ny,grid%structured_grid%nz 
+    endif
+    string = trim(string) // ', DATAPACKING=BLOCK'
+    write(IUNIT3,'(a)') trim(string)
+  endif
+  
+  ! write blocks
+  ! write out data sets  
+  call DiscretizationCreateVector(discretization,ONEDOF,global_vec,GLOBAL, &
+                                  option)  
+  call DiscretizationCreateVector(discretization,ONEDOF,natural_vec,NATURAL, &
+                                  option)  
+
+  ! write out coordinates
+  if (realization%discretization%itype == STRUCTURED_GRID) then
+    call WriteTecplotStructuredGrid(IUNIT3,realization)
+  else
+    call GetCoordinates(grid,global_vec,X_COORDINATE)
+    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+
+    call GetCoordinates(grid,global_vec,Y_COORDINATE)
+    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+
+    call GetCoordinates(grid,global_vec,Z_COORDINATE)
+    call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+    call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+  endif
+
+  select case(option%iflowmode)
+    case(RICHARDS_MODE)
+#if 0
+      ! water mass
+      select case(option%iflowmode)
+        case(MPH_MODE,RICHARDS_MODE)
+          call OutputGetVarFromArray(realization,global_vec,TEMPERATURE,ZERO_INTEGER)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+      end select
+
+      ! solute mass
+      select case(option%iflowmode)
+        case(MPH_MODE,RICHARDS_MODE)
+          call OutputGetVarFromArray(realization,global_vec,TEMPERATURE,ZERO_INTEGER)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+      end select
+
+      ! energy
+      select case(option%iflowmode)
+        case(MPH_MODE,RICHARDS_MODE)
+          call OutputGetVarFromArray(realization,global_vec,TEMPERATURE,ZERO_INTEGER)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+      end select
+#endif
+  end select
+
+end subroutine OutputMassBalance
+#endif
 
 ! ************************************************************************** !
 !

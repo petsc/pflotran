@@ -88,6 +88,7 @@
 		2366A7DC0D86058C0003BB1F /* utility.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = utility.F90; path = ../utility.F90; sourceTree = SOURCE_ROOT; };
 		2366A7DD0D86058C0003BB1F /* water_eos.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = water_eos.F90; path = ../water_eos.F90; sourceTree = SOURCE_ROOT; };
 		2366A7DE0D86058C0003BB1F /* waypoint.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = waypoint.F90; path = ../waypoint.F90; sourceTree = SOURCE_ROOT; };
+		23FEACC60E19539F004B4044 /* mass_balance.F90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = mass_balance.F90; path = ../mass_balance.F90; sourceTree = SOURCE_ROOT; };
 		899DEDDE0DE327110060475D /* co2_span_wagner_spline.F90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = co2_span_wagner_spline.F90; path = ../co2_span_wagner_spline.F90; sourceTree = SOURCE_ROOT; };
 		899DEDDF0DE327110060475D /* co2_sw.F90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = co2_sw.F90; path = ../co2_sw.F90; sourceTree = SOURCE_ROOT; };
 		899DEDE20DE3377C0060475D /* mphase.F90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = mphase.F90; path = ../mphase.F90; sourceTree = SOURCE_ROOT; };
@@ -131,6 +132,7 @@
 				2366A7A60D86058C0003BB1F /* level.F90 */,
 				2366A7A70D86058C0003BB1F /* logging.F90 */,
 				2366A7A80D86058C0003BB1F /* makefile */,
+				23FEACC60E19539F004B4044 /* mass_balance.F90 */,
 				2366A7A90D86058C0003BB1F /* material.F90 */,
 				899DEDE20DE3377C0060475D /* mphase.F90 */,
 				899DEDE30DE3377C0060475D /* mphase_aux.F90 */,

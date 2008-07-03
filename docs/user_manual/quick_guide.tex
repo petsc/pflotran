@@ -414,6 +414,7 @@ Initial and boundary conditions and material properties are assigned to spatial 
 \hyperlink{target_dif}{DIFF} & \\
 \hyperlink{target_dtst}{DTST} & \\
 \hyperlink{target_dxyz}{DXYZ} & \\
+\hyperlink{target_fluid_properties}{FLUID\_PROPERTIES} & \\
 \hyperlink{target_gravity}{GRAVITY} & \\
 \hyperlink{target_grid}{GRID} & \\
 \hyperlink{target_hdf5}{HDF5} & \\
@@ -558,6 +559,8 @@ Initial and boundary conditions and material properties are assigned to spatial 
       hydrostatic (hydro, hydrostat), static,
       zero\_gradient,
       seepage]
+    \item[MASS\_RATE (MASS)]
+      [mass]
     \item[FLUX]
       [dirichlet, 
       neumann,
@@ -696,6 +699,22 @@ Initial and boundary conditions and material properties are assigned to spatial 
 \item dx0 
 \item dy0 
 \item dz0
+\end{deflist}
+\end{minipage}
+}
+
+%========================================================================
+
+\protect\hypertarget{target_fluid_properties}{}
+
+\subsection{Keyword: FLUID\_PROPERTIES (FLUID\_PROPERTY)}
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item[FLUID\_PROPERTIES (FLUID\_PROPERTY)] 
+\item diff\_base
+\item diff\_exp
+\item[(., /, END)]
 \end{deflist}
 \end{minipage}
 }

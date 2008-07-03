@@ -42,6 +42,7 @@ subroutine Init(simulation,filename)
   use Convergence_module
   use Waypoint_module
   use Patch_module
+  use Mass_Balance_module
   use Logging_module  
   
   use MPHASE_module
@@ -126,6 +127,9 @@ subroutine Init(simulation,filename)
 
   ! create grid and allocate vectors
   call RealizationCreateDiscretization(realization)
+  if (option%compute_mass_balance) then
+    call MassBalanceCreate(realization)
+  endif  
   
   if (option%myrank == 0) then
     ! general print statements for both flow and transport modes
@@ -175,7 +179,9 @@ subroutine Init(simulation,filename)
     if (flow_solver%use_galerkin_mg) then
       call DiscretizationCreateInterpolation(discretization,NFLOWDOF, &
                                              flow_solver%interpolation, &
-                                             flow_solver%galerkin_mg_levels)
+                                             flow_solver%galerkin_mg_levels_x, &
+                                             flow_solver%galerkin_mg_levels_y, &
+                                             flow_solver%galerkin_mg_levels_z)
     endif
     
     select case(option%iflowmode)
@@ -232,7 +238,9 @@ subroutine Init(simulation,filename)
     if (tran_solver%use_galerkin_mg) then
       call DiscretizationCreateInterpolation(discretization,NTRANDOF, &
                                              tran_solver%interpolation, &
-                                             tran_solver%galerkin_mg_levels)
+                                             tran_solver%galerkin_mg_levels_x, &
+                                             tran_solver%galerkin_mg_levels_y, &
+                                             tran_solver%galerkin_mg_levels_z)
     endif
 
     call SNESSetFunction(tran_solver%snes,field%tran_r,RTResidual,realization,ierr)
@@ -322,7 +330,9 @@ subroutine Init(simulation,filename)
       call RealizAssignUniformVelocity(realization)
     endif
     call VecSet(field%saturation_loc,1.d0,ierr)
+    call VecCopy(field%saturation_loc,field%saturation0_loc,ierr)
     call VecSet(field%density_loc,55.357308212035d0,ierr)
+    call VecCopy(field%density_loc,field%density0_loc,ierr)
     call RTSetup(realization)
   endif
   
@@ -854,7 +864,7 @@ subroutine readInput(simulation,filename)
         enddo
 
         if (option%myrank == 0) &
-          write(IUNIT2,'(/," *HDF5",10x,i1,/)') realization%output_option%print_hdf5
+          write(IUNIT2,'(/," *HDF5",10x,l1,/)') realization%output_option%print_hdf5
 
 !.....................
       case ('INVERT_Z','INVERTZ')
@@ -885,7 +895,7 @@ subroutine readInput(simulation,filename)
         enddo
 
         if (option%myrank == 0) &
-          write(IUNIT2,'(/," *TECP",10x,i1,/)') realization%output_option%print_tecplot
+          write(IUNIT2,'(/," *TECP",10x,l1,/)') realization%output_option%print_tecplot
 
 !....................
 
@@ -1131,6 +1141,9 @@ subroutine readInput(simulation,filename)
       case ('COMPUTE_STATISTICS','STATISTICS')
         option%compute_statistics = .true.
 
+      case ('COMPUTE_MASS_BALANCE','MASS_BALANCE')
+        option%compute_mass_balance = .true.
+
 !....................
 
       case ('TIMESTEPPER')
@@ -1203,7 +1216,7 @@ subroutine readInput(simulation,filename)
         count = 0
         do
           call fiReadFlotranString(IUNIT1,string,ierr)
-          call fiReadStringErrorMsg(option%myrank,'THRM',ierr)
+          call fiReadStringErrorMsg(option%myrank,'FLUID_PROPERTIES',ierr)
           
           if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
               fiStringCompare(string,'END',THREE_INTEGER)) exit
@@ -1212,10 +1225,10 @@ subroutine readInput(simulation,filename)
           if (count > option%nphase) exit              
                         
           call fiReadDouble(string,realization%fluid_properties%diff_base(count),ierr)
-          call fiErrorMsg(option%myrank,'diff_base','FLUID_PROPERTY', ierr)          
+          call fiErrorMsg(option%myrank,'diff_base','FLUID_PROPERTIES', ierr)          
         
           call fiReadDouble(string,realization%fluid_properties%diff_exp(count),ierr)
-          call fiErrorMsg(option%myrank,'diff_base','FLUID_PROPERTY', ierr)          
+          call fiErrorMsg(option%myrank,'diff_exp','FLUID_PROPERTIES', ierr)          
 
         enddo
         

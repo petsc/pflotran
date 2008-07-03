@@ -429,7 +429,8 @@ end subroutine DiscretizationCreateJacobian
 !
 ! ************************************************************************** !
 subroutine DiscretizationCreateInterpolation(discretization,dm_index, &
-                                             interpolation,mg_levels)
+                                             interpolation,mg_levels_x, &
+                                             mg_levels_y, mg_levels_z)
 
   use Option_module
   
@@ -439,8 +440,10 @@ subroutine DiscretizationCreateInterpolation(discretization,dm_index, &
   PetscInt :: dm_index
   PetscErrorCode :: ierr
   Mat, pointer :: interpolation(:)
-  PetscInt :: mg_levels
+  PetscInt :: mg_levels_x, mg_levels_y, mg_levels_z
 
+  PetscInt :: mg_levels
+  PetscInt :: refine_x, refine_y, refine_z
   DM, target :: dm_ptr
   DM, pointer :: dmc_ptr(:)
   PetscInt :: i
@@ -448,6 +451,7 @@ subroutine DiscretizationCreateInterpolation(discretization,dm_index, &
     ! Used to point to finer-grid DM in the loop that constructst the 
     ! interpolation hierarchy.
   
+  mg_levels = max(mg_levels_x, mg_levels_y, mg_levels_z)
   dm_ptr = DiscretizationGetDMPtrFromIndex(discretization,dm_index)
 !  dmc_ptr = DiscretizationGetDMCPtrFromIndex(discretization,dm_index)
   select case (dm_index)
@@ -463,7 +467,15 @@ subroutine DiscretizationCreateInterpolation(discretization,dm_index, &
   select case(discretization%itype)
     case(STRUCTURED_GRID)
       dm_fine_ptr => dm_ptr
+      refine_x = 2; refine_y = 2; refine_z = 2
       do i=mg_levels-1,1,-1
+        ! If number of coarsenings performed so far exceeds mg_levels_x-1, 
+        ! set refine_x = 1; likewise for y and z.
+        if (i <= mg_levels - mg_levels_x ) refine_x = 1
+        if (i <= mg_levels - mg_levels_y ) refine_y = 1
+        if (i <= mg_levels - mg_levels_z ) refine_z = 1
+        call DASetRefinementFactor(dm_fine_ptr, refine_x, refine_y, refine_z, &
+                                   ierr)
         call DASetInterpolationType(dm_fine_ptr, DA_Q0, ierr)
         call DACoarsen(dm_fine_ptr, PETSC_COMM_WORLD, dmc_ptr(i), ierr)
         call DAGetInterpolation(dmc_ptr(i), dm_fine_ptr, interpolation(i), &

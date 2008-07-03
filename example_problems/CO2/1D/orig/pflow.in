@@ -1,0 +1,86 @@
+:    igeom nx  ny   nz nphase  nspec  npricomp    ndof  idcdm  itable
+GRID    1  10  1    1   2       2       1         3     0       2
+:
+COMP
+H2O
+CO2
+Eng
+/
+PHAS
+H2O
+CO2
+ROCK
+/
+:    npx npy npz
+:PROC  1   1   1
+:
+:RAD0 0.d0
+:
+:write_init iprint imod itecplot iblkfmt ndtcmx iran_por ran_fac iread_perm iread_geom
+OPTS   0       0     1     1      1         3          0   0.D0       0         0
+ :
+:      steps    iaccel newtmx icutmx    dpmx   dtmpmx   dcmx    dsmx
+:TOLR   30000       6     16      16     5.e4     5.     1.5e-1   1.5e-1
+TOLR   30000       6     16      16     5.e4     5.     0.01    0.025
+:
+DXYZ
+1.
+1.
+1.
+:    atol     rtol     stol   dtol   newton_max   maxf  idt   inf_norm
+SOLV 1.d-12   1.d-12   1.d-25 1D15      25        100   -1    1.e-8
+:  d0[m^2/s] delhaq[kJ/mol]
+DIFF  1.D-9       12.6
+: ReacKincoeff
+:PHAR 1.D-12
+:
+PCKR
+:1-vanG, 2-BrooksCorey, 3-linear, 4-SC-W
+: ist itype swir   sgir   lambda    alpha     pcwmax   betac   pwr
+  1    1   0.1471  0.D0    0.7465  4.4317d-4   1.e8    1.d0  1.d0
+  2     2  0.1   1e-4   0.75    1.e-3    1.e8    0.e0    1.D0
+  3     4  0.1   0.D-5  0.762   7.5e-4   1.e6    2.e0    7.D0
+  4     4  0.1   0.D-5  0.762   7.5e-4   1.e6    2.e0    7.D0
+/
+THRM
+:ithm rho     cpr   ckdry  cksat  tau    cdiff      cexp
+  1  2.75e3 1000.e0   0.5    0.5    0.5    2.13e-5    1.8
+/
+:
+PHIK
+:i1  i2  j1  j2  k1  k2 icap ithm  por  tor   permx     permy     permz   permpwr
+  1  10   1   1   1  1   1    1   0.25   0.5  1.e-13    1.e-12    1.e-12     1.e0
+/
+:
+INIT 0
+:i1  i2  j1  j2  k1  k2     iphase          pf    tf    sl        conc
+  1  10   1   1   1  1       3       2.000e7  50.0   0.35
+/
+:
+:BRINe 5.d0 molal
+:
+BCON
+:ibndtyp iface
+   1       1
+:i1  i2  j1  j2  k1  k2
+  1   1   1  1   1   1
+: iphase  Pressure [Pa] Temp [C]  sl       Conc
+    3      2.01D7     50.e0     5D-1
+/
+:ibndtyp iface
+  3       2
+:i1  i2  j1  j2  k1  k2
+10  10   1  1   1  1
+:iphase liqvel gasvel Temp [C]   sl      Conc
+    1     2.D7   50.0e0     0.35
+/
+/
+:
+:       alpha [C/m]  beta [m/m]  tref [C]  pref [Pa]  conc
+:HYDR 1  0.025e0      0.e-2       50.e0       2.e7     1D-6
+:
+TIME d 10
+ 10. 20. 30.  40. 50. 60. 70.  80. 90. 100.
+DTST  1  100.
+1.e-2 1.0
+:

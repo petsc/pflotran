@@ -16,7 +16,8 @@ module Timestepper_module
     PetscInt :: nstepmax      ! Maximum number of timesteps taken by the code.
     PetscInt :: icut_max      ! Maximum number of timestep cuts within one time step.
     PetscInt :: ndtcmx        ! Steps needed after cutting to increase time step
-    PetscInt :: newtcum       ! Total number of Newton steps taken.
+    PetscInt :: newton_cum       ! Total number of Newton iterations
+    PetscInt :: linear_cum     ! Total number of linear iterations
     PetscInt :: icutcum       ! Total number of cuts in the timestep taken.    
     PetscInt :: iaccel        ! Accelerator index
     
@@ -57,7 +58,8 @@ function TimestepperCreate()
   
   stepper%icut_max = 16
   stepper%ndtcmx = 5
-  stepper%newtcum = 0
+  stepper%newton_cum = 0
+  stepper%linear_cum = 0
   stepper%icutcum = 0    
   stepper%iaccel = 5
   
@@ -164,6 +166,7 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   use Option_module
   use Output_module
   use Logging_module  
+  use Mass_Balance_module
   
   implicit none
   
@@ -257,6 +260,10 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
       plot_flag = .false.
     endif
 
+    if (option%compute_mass_balance) then
+      call MassBalanceUpdate(realization,flow_stepper%solver, &
+                             tran_stepper%solver)
+    endif
     call Output(realization,plot_flag)
   
     call StepperUpdateDT(flow_stepper,tran_stepper,option,timestep_cut_flag, &
@@ -297,11 +304,28 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
   endif
 
   if (option%myrank == 0) then
-    write(*,'(/," PFLOW steps = ",i6," newton = ",i6," cuts = ",i6)') &
-          istep-1,master_stepper%newtcum,master_stepper%icutcum
+    if (option%nflowdof > 0) then
+      write(*,'(/," FLOW steps = ",i6," newton = ",i6," linear = ",i6, &
+            & " cuts = ",i6)') &
+            istep,flow_stepper%newton_cum,flow_stepper%linear_cum, &
+            flow_stepper%icutcum
 
-    write(IUNIT2,'(/," PFLOW steps = ",i6," newton = ",i6," cuts = ",i6)') &
-          istep-1,master_stepper%newtcum,master_stepper%icutcum
+      write(IUNIT2,'(/," FLOW steps = ",i6," newton = ",i6," linear = ",i6, &
+            & " cuts = ",i6)') &
+            istep,flow_stepper%newton_cum,flow_stepper%linear_cum, &
+            flow_stepper%icutcum
+    endif
+    if (option%ntrandof > 0) then
+      write(*,'(/," TRAN steps = ",i6," newton = ",i6," linear = ",i6, &
+            & " cuts = ",i6)') &
+            istep,tran_stepper%newton_cum,tran_stepper%linear_cum, &
+            tran_stepper%icutcum
+
+      write(IUNIT2,'(/," TRAN steps = ",i6," newton = ",i6," linear = ",i6, &
+            & " cuts = ",i6)') &
+            istep,tran_stepper%newton_cum,tran_stepper%linear_cum, &
+            tran_stepper%icutcum
+    endif            
   endif
 
   call PetscLogStagePop(ierr)
@@ -545,7 +569,8 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   PetscErrorCode :: ierr
   PetscInt :: icut ! Tracks the number of time step reductions applied
   SNESConvergedReason :: snes_reason 
-  PetscInt :: update_reason, it_linear=0, it_snes
+  PetscInt :: update_reason
+  PetscInt :: sum_newton_iterations, sum_linear_iterations, num_linear_iterations
   PetscReal :: fnorm, scaled_fnorm, inorm
   Vec :: global_vec
   logical :: plot_flag
@@ -590,6 +615,43 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   if (option%myrank == 0) then
     write(*,'(/,2("=")," FLOW ",52("="))')
   endif
+
+  if (field%saturation0_loc /= 0) then ! store initial saturations for transport
+    call DiscretizationCreateVector(realization%discretization,ONEDOF, &
+                                    global_vec,GLOBAL,option)
+    select case(option%iflowmode)
+      case(RICHARDS_MODE)
+        call RichardsGetVarFromArray(realization,global_vec, &
+                                     LIQUID_SATURATION,ZERO_INTEGER)
+        call DiscretizationGlobalToLocal(realization%discretization, &
+                                         global_vec,field%saturation0_loc,ONEDOF)   
+        call RichardsGetVarFromArray(realization,global_vec, &
+                                     LIQUID_DENSITY,ZERO_INTEGER)
+        call DiscretizationGlobalToLocal(realization%discretization, &
+                                         global_vec,field%density0_loc,ONEDOF)   
+      case(RICHARDS_LITE_MODE)
+        call RichardsLiteGetVarFromArray(realization,global_vec, &
+                                         LIQUID_SATURATION,ZERO_INTEGER)
+        call DiscretizationGlobalToLocal(realization%discretization, &
+                                         global_vec,field%saturation0_loc,ONEDOF)   
+        call RichardsLiteGetVarFromArray(realization,global_vec, &
+                                         LIQUID_DENSITY,ZERO_INTEGER)
+        call DiscretizationGlobalToLocal(realization%discretization, &
+                                         global_vec,field%density0_loc,ONEDOF)   
+! ** clu: Not sure mphase need this by now
+      case(MPH_MODE) 
+        call MphaseGetVarFromArray(realization,global_vec, &
+                                     LIQUID_SATURATION,ZERO_INTEGER)
+        call DiscretizationGlobalToLocal(realization%discretization, &
+                                         global_vec,field%saturation0_loc,ONEDOF)   
+        call MphaseGetVarFromArray(realization,global_vec, &
+                                     LIQUID_DENSITY,ZERO_INTEGER)
+        call DiscretizationGlobalToLocal(realization%discretization, &
+                                         global_vec,field%density0_loc,ONEDOF)   
+
+    end select
+    call VecDestroy(global_vec,ierr)
+  endif
   
   select case(option%iflowmode)
     case(RICHARDS_MODE)
@@ -600,6 +662,9 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
       call MphaseInitializeTimestep(realization)
   end select
   
+  sum_newton_iterations = 0
+  sum_linear_iterations = 0
+    
   do
     
     select case(option%iflowmode)
@@ -609,13 +674,14 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
 
 ! do we really need all this? - geh 
     call SNESGetIterationNumber(solver%snes,num_newton_iterations, ierr)
-    it_snes = num_newton_iterations
+    call SNESGetLinearSolveIterations(solver%snes,num_linear_iterations, ierr)
     call VecNorm(field%flow_r,NORM_2,fnorm,ierr) 
     call VecNorm(field%flow_r,NORM_INFINITY,inorm,ierr)
     scaled_fnorm = fnorm/discretization%grid%nmax   
-    call SNESGetLinearSolveIterations(solver%snes, it_linear, ierr)
     call SNESGetConvergedReason(solver%snes, snes_reason, ierr)
 
+    sum_newton_iterations = sum_newton_iterations + num_newton_iterations
+    sum_linear_iterations = sum_linear_iterations + num_linear_iterations
     update_reason = 1
     
     if (snes_reason >= 0) then
@@ -685,12 +751,13 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
 !  call SNESComputeJacobian(stepper%solver%snes,field%flow_xx,stepper%solver%J, &
 !                           stepper%solver%J,PETSC_NULL_INTEGER,ierr)
 
-  stepper%newtcum = stepper%newtcum + num_newton_iterations
+  stepper%newton_cum = stepper%newton_cum + sum_newton_iterations
+  stepper%linear_cum = stepper%linear_cum + sum_linear_iterations
   stepper%icutcum = stepper%icutcum + icut
 
-  if (field%saturation_loc /= 0) then ! store saturations for transport
-   call DiscretizationCreateVector(realization%discretization,ONEDOF, &
-                                   global_vec,GLOBAL,option)
+  if (field%saturation_loc /= 0) then ! store final saturations for transport
+    call DiscretizationCreateVector(realization%discretization,ONEDOF, &
+                                    global_vec,GLOBAL,option)
     select case(option%iflowmode)
       case(RICHARDS_MODE)
         call RichardsGetVarFromArray(realization,global_vec, &
@@ -729,23 +796,26 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   if (option%myrank == 0) then
     if (mod(stepper%steps,option%imod) == 0 .or. stepper%steps == 1) then
       write(*, '(/," FLOW ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1,"]", &
-        & " snes_conv_reason: ",i4,/,"  newt= ",i2," [",i6,"]"," cut= ",i2, &
-        & " [",i4,"]")') &
+        & " snes_conv_reason: ",i4,/,"  newton = ",i2," [",i6,"]", &
+        & " linear = ",i5," [",i8,"]"," cuts = ",i2," [",i4,"]")') &
         stepper%steps,option%flow_time/realization%output_option%tconv, &
         option%flow_dt/realization%output_option%tconv, &
         realization%output_option%tunit,snes_reason,num_newton_iterations, &
-        stepper%newtcum,icut,stepper%icutcum
+        stepper%newton_cum,num_linear_iterations,stepper%linear_cum,icut, &
+        stepper%icutcum
 
-      print *,' --> SNES Linear/Non-Linear Interations = ',it_linear,it_snes
+      print *,' --> SNES Linear/Non-Linear Interations = ', &
+               num_linear_iterations,num_newton_iterations
       print *,' --> SNES Residual: ', fnorm, scaled_fnorm, inorm 
        
       write(IUNIT2, '(" FLOW ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1, &
-        & "]"," snes_conv_reason: ",i4,/,"  newt= ",i2," [",i6,"]"," cut= ", &
-        & i2," [",i4,"]")') stepper%steps, &
+        & "]"," snes_conv_reason: ",i4,/,"  newton = ",i2," [",i6,"]", &
+        & " linear = ",i5," [",i8,"]"," cuts = ",i2," [",i4,"]")') stepper%steps, &
         option%flow_time/realization%output_option%tconv, &
         option%flow_dt/realization%output_option%tconv, &
-        realization%output_option%tunit, snes_reason,num_newton_iterations, &
-        stepper%newtcum,icut,stepper%icutcum
+        realization%output_option%tunit,snes_reason,num_newton_iterations, &
+        stepper%newton_cum,num_linear_iterations,stepper%linear_cum,icut, &
+        stepper%icutcum
     endif
   endif
   
@@ -830,7 +900,8 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
   PetscErrorCode :: ierr
   PetscInt :: icut ! Tracks the number of time step reductions applied
   SNESConvergedReason :: snes_reason 
-  PetscInt :: update_reason, it_linear=0, it_snes
+  PetscInt :: update_reason
+  PetscInt :: sum_newton_iterations, sum_linear_iterations, num_linear_iterations
   PetscInt :: n, nmax_inf
   PetscReal :: fnorm, scaled_fnorm, inorm
   logical :: plot_flag  
@@ -852,7 +923,8 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
 
 ! PetscReal, pointer :: xx_p(:), conc_p(:), press_p(:), temp_p(:)
 
-  num_newton_iterations = 0
+  sum_newton_iterations = 0
+  sum_linear_iterations = 0
   icut = 0
 
   call DiscretizationLocalToLocal(discretization,field%porosity_loc,field%porosity_loc,ONEDOF)
@@ -877,13 +949,15 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
 
 ! do we really need all this? - geh 
     call SNESGetIterationNumber(solver%snes,num_newton_iterations, ierr)
-    it_snes = num_newton_iterations
+    call SNESGetLinearSolveIterations(solver%snes,num_linear_iterations, ierr)
     call VecNorm(field%tran_r,NORM_2,fnorm,ierr) 
     call VecNorm(field%tran_r,NORM_INFINITY,inorm,ierr)
     scaled_fnorm = fnorm/discretization%grid%nmax   
-    call SNESGetLinearSolveIterations(solver%snes, it_linear, ierr)
     call SNESGetConvergedReason(solver%snes, snes_reason, ierr)
 
+    sum_newton_iterations = sum_newton_iterations + num_newton_iterations
+    sum_linear_iterations = sum_linear_iterations + num_linear_iterations
+    
     if (snes_reason <= 0) then
       ! The Newton solver diverged, so try reducing the time step.
       icut = icut + 1
@@ -922,30 +996,34 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
     endif
   enddo
 
-  stepper%newtcum = stepper%newtcum + num_newton_iterations
+  stepper%newton_cum = stepper%newton_cum + sum_newton_iterations
+  stepper%linear_cum = stepper%linear_cum + sum_linear_iterations
   stepper%icutcum = stepper%icutcum + icut
 
 ! print screen output
   if (option%myrank == 0) then
     if (mod(stepper%steps,option%imod) == 0 .or. stepper%steps == 1) then
       write(*, '(/," TRAN ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1,"]", &
-        & " snes_conv_reason: ",i4,/,"  newt= ",i2," [",i6,"]"," cut= ",i2, &
-        & " [",i4,"]")') &
-        stepper%steps,option%tran_time/realization%output_option%tconv, &
-        option%tran_dt/realization%output_option%tconv, &
+        & " snes_conv_reason: ",i4,/,"  newton = ",i2," [",i6,"]", &
+        & " linear = ",i5," [",i8,"]"," cuts = ",i2," [",i4,"]")') &
+        stepper%steps,option%flow_time/realization%output_option%tconv, &
+        option%flow_dt/realization%output_option%tconv, &
         realization%output_option%tunit,snes_reason,num_newton_iterations, &
-        stepper%newtcum,icut,stepper%icutcum
+        stepper%newton_cum,num_linear_iterations,stepper%linear_cum,icut, &
+        stepper%icutcum
 
-      print *,' --> SNES Linear/Non-Linear Interations = ',it_linear,it_snes
+      print *,' --> SNES Linear/Non-Linear Interations = ', &
+               num_linear_iterations,num_newton_iterations
       print *,' --> SNES Residual: ', fnorm, scaled_fnorm, inorm 
        
       write(IUNIT2, '(" TRAN ",i6," Time= ",1pe12.4," Dt= ",1pe12.4," [",a1, &
-        & "]"," snes_conv_reason: ",i4,/,"  newt= ",i2," [",i6,"]"," cut= ", &
-        & i2," [",i4,"]")') stepper%steps, &
-        option%tran_time/realization%output_option%tconv, &
-        option%tran_dt/realization%output_option%tconv, &
-        realization%output_option%tunit, snes_reason,num_newton_iterations, &
-        stepper%newtcum,icut,stepper%icutcum
+        & "]"," snes_conv_reason: ",i4,/,"  newton = ",i2," [",i6,"]", &
+        & " linear = ",i5," [",i8,"]"," cuts = ",i2," [",i4,"]")') stepper%steps, &
+        option%flow_time/realization%output_option%tconv, &
+        option%flow_dt/realization%output_option%tconv, &
+        realization%output_option%tunit,snes_reason,num_newton_iterations, &
+        stepper%newton_cum,num_linear_iterations,stepper%linear_cum,icut, &
+        stepper%icutcum
     endif
   endif
   
@@ -1071,32 +1149,32 @@ subroutine StepperCheckpoint(realization,flow_stepper,tran_stepper, &
   PetscInt :: id
 
   type(option_type), pointer :: option
-  PetscInt :: flow_steps, flow_newtcum, flow_icutcum, &
+  PetscInt :: flow_steps, flow_newton_cum, flow_icutcum, &
               flow_num_const_timesteps, flow_num_newton_iterations
-  PetscInt :: tran_steps, tran_newtcum, tran_icutcum, &
+  PetscInt :: tran_steps, tran_newton_cum, tran_icutcum, &
               tran_num_const_timesteps, tran_num_newton_iterations
   
   option => realization%option
 
   if (associated(flow_stepper)) then
     flow_steps = flow_stepper%steps
-    flow_newtcum = flow_stepper%newtcum
+    flow_newton_cum = flow_stepper%newton_cum
     flow_icutcum = flow_stepper%icutcum
     flow_num_const_timesteps = num_const_timesteps
     flow_num_newton_iterations = num_newton_iterations
   endif
   if (associated(tran_stepper)) then
     tran_steps = tran_stepper%steps
-    tran_newtcum = tran_stepper%newtcum
+    tran_newton_cum = tran_stepper%newton_cum
     tran_icutcum = tran_stepper%icutcum
     tran_num_const_timesteps = num_const_timesteps
     tran_num_newton_iterations = num_newton_iterations
   endif
   
   call Checkpoint(realization, &
-                  flow_steps,flow_newtcum,flow_icutcum, &
+                  flow_steps,flow_newton_cum,flow_icutcum, &
                   flow_num_const_timesteps,flow_num_newton_iterations, &
-                  tran_steps,tran_newtcum,tran_icutcum, &
+                  tran_steps,tran_newton_cum,tran_icutcum, &
                   tran_num_const_timesteps,tran_num_newton_iterations, &
                   id)
                       
@@ -1125,28 +1203,28 @@ subroutine StepperRestart(realization,flow_stepper,tran_stepper, &
   PetscInt :: num_const_timesteps, num_newton_iterations
 
   type(option_type), pointer :: option
-  PetscInt :: flow_steps, flow_newtcum, flow_icutcum, &
+  PetscInt :: flow_steps, flow_newton_cum, flow_icutcum, &
               flow_num_const_timesteps, flow_num_newton_iterations
-  PetscInt :: tran_steps, tran_newtcum, tran_icutcum, &
+  PetscInt :: tran_steps, tran_newton_cum, tran_icutcum, &
               tran_num_const_timesteps, tran_num_newton_iterations
   
   option => realization%option
 
   call Restart(realization, &
-               flow_steps,flow_newtcum,flow_icutcum, &
+               flow_steps,flow_newton_cum,flow_icutcum, &
                flow_num_const_timesteps,flow_num_newton_iterations, &
-               tran_steps,tran_newtcum,tran_icutcum, &
+               tran_steps,tran_newton_cum,tran_icutcum, &
                tran_num_const_timesteps,tran_num_newton_iterations)
   if (option%restart_time < -998.d0) then
     option%time = max(option%flow_time,option%tran_time)
     if (associated(flow_stepper)) then
       flow_stepper%steps = flow_steps
-      flow_stepper%newtcum = flow_newtcum
+      flow_stepper%newton_cum = flow_newton_cum
       flow_stepper%icutcum = flow_icutcum
     endif
     if (associated(tran_stepper)) then
       tran_stepper%steps = tran_steps
-      tran_stepper%newtcum = tran_newtcum
+      tran_stepper%newton_cum = tran_newton_cum
       tran_stepper%icutcum = tran_icutcum
     endif
     num_const_timesteps = flow_num_const_timesteps
@@ -1161,12 +1239,12 @@ subroutine StepperRestart(realization,flow_stepper,tran_stepper, &
     option%tran_dt = tran_stepper%dt_min
     if (associated(flow_stepper)) then
       flow_stepper%steps = 0
-      flow_stepper%newtcum = 0
+      flow_stepper%newton_cum = 0
       flow_stepper%icutcum = 0
     endif
     if (associated(tran_stepper)) then
       tran_stepper%steps = 0
-      tran_stepper%newtcum = 0
+      tran_stepper%newton_cum = 0
       tran_stepper%icutcum = 0
     endif
     num_const_timesteps = 0

@@ -40,7 +40,7 @@ module Richards_module
          RichardsGetVarFromArray, RichardsGetVarFromArrayAtCell, &
          RichardsMaxChange, RichardsUpdateSolution, &
          RichardsGetTecplotHeader, RichardsInitializeTimestep, &
-         RichardsSetup
+         RichardsSetup, RichardsResidualToMass
 
   PetscInt, parameter :: jh2o = 1
 
@@ -2533,6 +2533,75 @@ subroutine RichardsMaxChange(realization)
     call VecStrideNorm(field%flow_dxx,TWO_INTEGER,NORM_INFINITY,option%dcmax,ierr)
     
 end subroutine RichardsMaxChange
+
+! ************************************************************************** !
+!
+! RichardsResidualToMass: Computes mass balance from residual equation
+! author: Glenn Hammond
+! date: 12/10/07
+!
+! ************************************************************************** !
+subroutine RichardsResidualToMass(realization)
+
+  use Realization_module
+  use Level_module
+  use Patch_module
+  use Discretization_module
+  use Field_module
+  use Option_module
+  use Grid_module
+
+  implicit none
+
+  Vec :: ts_mass_balance
+  type(realization_type) :: realization
+  
+  type(field_type), pointer :: field
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  type(grid_type), pointer :: grid
+  type(option_type), pointer :: option
+  
+  PetscReal, pointer :: mass_balance_p(:)
+  type(richards_auxvar_type), pointer :: aux_vars(:) 
+  PetscErrorCode :: ierr
+  PetscInt :: local_id, ghosted_id
+  PetscInt :: istart
+  
+  option => realization%option
+  field => realization%field
+
+  call VecGetArrayF90(field%flow_ts_mass_balance,mass_balance_p, ierr)
+  
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+
+      grid => cur_patch%grid
+      aux_vars => cur_patch%aux%Richards%aux_vars
+
+      do local_id = 1, grid%nlmax
+        ghosted_id = grid%nL2G(local_id)
+        if (associated(cur_patch%imat)) then
+          if (cur_patch%imat(ghosted_id) <= 0) cycle
+        endif
+        
+        istart = (ghosted_id-1)*option%nflowdof+1
+        mass_balance_p(istart) = mass_balance_p(istart)/ &
+                                 aux_vars(ghosted_id)%den* &
+                                 aux_vars(ghosted_id)%den_kg
+      enddo
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+  call VecRestoreArrayF90(field%flow_ts_mass_balance,mass_balance_p, ierr)
+
+end subroutine RichardsResidualToMass
 
 ! ************************************************************************** !
 !

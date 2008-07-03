@@ -518,25 +518,29 @@ subroutine PatchInitCouplerAuxVars(patch,coupler_list,option)
       ! FLOW
       if (associated(coupler%flow_condition)) then
 
-        ! allocate arrays that match the number of connections
-        select case(option%iflowmode)
+        if (associated(coupler%flow_condition%pressure)) then
 
-          case(RICHARDS_MODE,RICHARDS_LITE_MODE)
-         
-            allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
-            allocate(coupler%flow_aux_int_var(1,num_connections))
-            coupler%flow_aux_real_var = 0.d0
-            coupler%flow_aux_int_var = 0
+          ! allocate arrays that match the number of connections
+          select case(option%iflowmode)
 
-          case(MPH_MODE)
+            case(RICHARDS_MODE,RICHARDS_LITE_MODE)
+           
+              allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
+              allocate(coupler%flow_aux_int_var(1,num_connections))
+              coupler%flow_aux_real_var = 0.d0
+              coupler%flow_aux_int_var = 0
 
-            allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
-            allocate(coupler%flow_aux_int_var(1,num_connections))
-            coupler%flow_aux_real_var = 0.d0
-            coupler%flow_aux_int_var = 0
-              
-          case default
-        end select
+            case(MPH_MODE)
+
+              allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
+              allocate(coupler%flow_aux_int_var(1,num_connections))
+              coupler%flow_aux_real_var = 0.d0
+              coupler%flow_aux_int_var = 0
+                
+            case default
+          end select
+      
+        endif
       
       endif
       
@@ -646,18 +650,43 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
       end select
       
       if (update) then
-        select case(condition%pressure%itype)
-          case(DIRICHLET_BC,NEUMANN_BC,MASS_RATE,ZERO_GRADIENT_BC)
-            do idof = 1, condition%num_sub_conditions
-              coupler%flow_aux_real_var(idof,1:num_connections) = &
-                condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
-            enddo
-            coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
-              condition%iphase
-          case(HYDROSTATIC_BC,SEEPAGE_BC)
-  !          call HydrostaticUpdateCoupler(coupler,patch%option,patch%grid)
-            call HydrostaticUpdateCouplerBetter(coupler,option,patch%grid)
-        end select
+        if (associated(condition%pressure)) then
+          select case(condition%pressure%itype)
+            case(DIRICHLET_BC,NEUMANN_BC,MASS_RATE_SS,ZERO_GRADIENT_BC)
+!              do idof = 1, condition%num_sub_conditions
+!                if (associated(condition%sub_condition_ptr(idof)%ptr)) then
+!                  coupler%flow_aux_real_var(idof,1:num_connections) = &
+!                    condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
+!                endif
+!              enddo
+              select case(option%iflowmode)
+                case(MPH_MODE)
+                  coupler%flow_aux_real_var(ONE_INTEGER,1:num_connections) = &
+                    condition%pressure%dataset%cur_value(1)  ! <-- Chuan Fix
+                  coupler%flow_aux_real_var(TWO_INTEGER,1:num_connections) = &
+                    condition%temperature%dataset%cur_value(1)! <-- Chuan Fix
+                  coupler%flow_aux_real_var(THREE_INTEGER,1:num_connections) = &
+                    condition%concentration%dataset%cur_value(1)! <-- Chuan Fix
+                  coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
+                    condition%iphase
+                case(RICHARDS_MODE)
+                  coupler%flow_aux_real_var(ONE_INTEGER,1:num_connections) = &
+                    condition%pressure%dataset%cur_value(1)
+                  coupler%flow_aux_real_var(TWO_INTEGER,1:num_connections) = &
+                    condition%temperature%dataset%cur_value(1)
+                  coupler%flow_aux_real_var(THREE_INTEGER,1:num_connections) = &
+                    condition%concentration%dataset%cur_value(1)
+                  coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
+                    condition%iphase
+                case(RICHARDS_LITE_MODE)
+                  coupler%flow_aux_real_var(ONE_INTEGER,1:num_connections) = &
+                    condition%pressure%dataset%cur_value(1)
+              end select
+            case(HYDROSTATIC_BC,SEEPAGE_BC)
+    !          call HydrostaticUpdateCoupler(coupler,patch%option,patch%grid)
+              call HydrostaticUpdateCouplerBetter(coupler,option,patch%grid)
+          end select
+        endif
       endif
      
     endif
