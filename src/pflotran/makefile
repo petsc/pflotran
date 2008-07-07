@@ -90,6 +90,7 @@ pflotran_obj = ${common_src}option.o \
 	${common_src}reactive_transport.o\
 	${common_src}richards.o\
 	${common_src}richards_lite.o\
+	${common_src}mass_balance.o\
 	${common_src}general_grid.o \
 	${common_src}checkpoint.o \
 	${common_src}convergence.o \
@@ -137,6 +138,7 @@ pflotranamr_obj = ${common_src}option.o \
 	${common_src}reactive_transport.o\
 	${common_src}richards.o\
 	${common_src}richards_lite.o\
+	${common_src}mass_balance.o\
 	${common_src}general_grid.o \
 	${common_src}checkpoint.o \
 	${common_src}convergence.o \
@@ -174,7 +176,7 @@ init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
 	waypoint.o field.o general_grid.o co2_span_wagner.o utility.o \
 	co2_span_wagner_spline.o co2_sw.o \
 	coupler.o strata.o pckr_mod.o field.o mphase.o \
-	richards_lite.o richards.o discretization.o logging.o
+	richards_lite.o richards.o discretization.o logging.o mass_balance.o
 unstructured_grid.o : option.o connection.o 
 structured_grid.o : connection.o option.o fileio.o 
 general_grid.o : grid.o realization.o hdf5.o logging.o
@@ -217,6 +219,8 @@ mphase_aux.o :  option.o material.o water_eos.o co2_span_wagner.o \
 		co2eos.o co2_span_wagner_spline.o co2_sw.o pckr_mod.o
 timestepper.o : richards.o richards_lite.o mphase.o \
                 realization.o grid.o option.o field.o solver.o \
-                output.o convergence.o checkpoint.o waypoint.o logging.o
+                output.o convergence.o checkpoint.o waypoint.o logging.o \
+                mass_balance.o
 hdf5.o : realization.o option.o logging.o
 checkpoint.o : realization.o logging.o
+mass_balance.o : realization.o option.o field.o solver.o logging.o richards.o

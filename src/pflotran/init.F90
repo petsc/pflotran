@@ -330,7 +330,9 @@ subroutine Init(simulation,filename)
       call RealizAssignUniformVelocity(realization)
     endif
     call VecSet(field%saturation_loc,1.d0,ierr)
+    call VecCopy(field%saturation_loc,field%saturation0_loc,ierr)
     call VecSet(field%density_loc,55.357308212035d0,ierr)
+    call VecCopy(field%density_loc,field%density0_loc,ierr)
     call RTSetup(realization)
   endif
   
@@ -370,7 +372,6 @@ subroutine Init(simulation,filename)
   call PetscLogEventEnd(logging%event_init,PETSC_NULL_OBJECT, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                         PETSC_NULL_OBJECT,ierr)
-  call PetscLogStagePop(ierr)
 
 end subroutine Init
 
@@ -862,7 +863,7 @@ subroutine readInput(simulation,filename)
         enddo
 
         if (option%myrank == 0) &
-          write(IUNIT2,'(/," *HDF5",10x,i1,/)') realization%output_option%print_hdf5
+          write(IUNIT2,'(/," *HDF5",10x,l1,/)') realization%output_option%print_hdf5
 
 !.....................
       case ('INVERT_Z','INVERTZ')
@@ -893,7 +894,7 @@ subroutine readInput(simulation,filename)
         enddo
 
         if (option%myrank == 0) &
-          write(IUNIT2,'(/," *TECP",10x,i1,/)') realization%output_option%print_tecplot
+          write(IUNIT2,'(/," *TECP",10x,l1,/)') realization%output_option%print_tecplot
 
 !....................
 
@@ -1214,7 +1215,7 @@ subroutine readInput(simulation,filename)
         count = 0
         do
           call fiReadFlotranString(IUNIT1,string,ierr)
-          call fiReadStringErrorMsg(option%myrank,'THRM',ierr)
+          call fiReadStringErrorMsg(option%myrank,'FLUID_PROPERTIES',ierr)
           
           if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
               fiStringCompare(string,'END',THREE_INTEGER)) exit
@@ -1223,10 +1224,10 @@ subroutine readInput(simulation,filename)
           if (count > option%nphase) exit              
                         
           call fiReadDouble(string,realization%fluid_properties%diff_base(count),ierr)
-          call fiErrorMsg(option%myrank,'diff_base','FLUID_PROPERTY', ierr)          
+          call fiErrorMsg(option%myrank,'diff_base','FLUID_PROPERTIES', ierr)          
         
           call fiReadDouble(string,realization%fluid_properties%diff_exp(count),ierr)
-          call fiErrorMsg(option%myrank,'diff_base','FLUID_PROPERTY', ierr)          
+          call fiErrorMsg(option%myrank,'diff_exp','FLUID_PROPERTIES', ierr)          
 
         enddo
         
