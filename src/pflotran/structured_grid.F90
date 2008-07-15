@@ -56,8 +56,9 @@ module Structured_Grid_module
             StructGridPopulateConnection, &
             StructGridGetIJKFromCoordinate, &
             StructGridGetIJKFromLocalID, &
-            StructGridGetIJKFromGhostedID
-
+            StructGridGetIJKFromGhostedID, &
+            StructuredGridVecGetArrayF90, &
+            StructGridVecRestoreArrayF90
 contains
 
 ! ************************************************************************** !
@@ -810,16 +811,6 @@ subroutine StructuredGridComputeVolumes(structured_grid,option,nL2G,volume)
 ! These includes are needed for VecRestoreArrayF90() - geh
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
-!  interface
-!   subroutine struct_vecgetarrayf90(p_samr_patch, vec, f90ptr, ierr)
-!     use cf90interface_module
-!     implicit none 
-!     PetscFortranAddr, intent(inout):: p_samr_patch
-!     Vec:: vec
-!     PetscReal, pointer :: f90ptr(:)
-!     integer :: ierr
-!   end subroutine struct_vecgetarrayf90
-!  end interface
   
   type(structured_grid_type) :: structured_grid
   type(option_type) :: option
@@ -833,8 +824,7 @@ subroutine StructuredGridComputeVolumes(structured_grid,option,nL2G,volume)
   PetscErrorCode :: ierr
   
 !  call VecGetArrayF90(volume,volume_p, ierr)
-!  call struct_vecgetarrayf90(structured_grid%p_samr_patch, volume,volume_p, ierr)
-  call StructuredGridVecGetArrayF90(structured_grid%p_samr_patch, volume,volume_p, ierr)
+  call StructuredGridVecGetArrayF90(structured_grid, volume,volume_p, ierr)
 
   do nl=1, structured_grid%nlmax
     volume_p(nl) = structured_grid%dx(nl) * structured_grid%dy(nl) * &
@@ -1035,7 +1025,7 @@ end subroutine StructuredGridDestroy
 ! date: 06/09/08
 !
 ! ************************************************************************** !
-subroutine StructuredGridVecGetArrayF90(p_samr_patch, vec, f90ptr, ierr)
+subroutine StructuredGridVecGetArrayF90(structured_grid, vec, f90ptr, ierr)
 
  use cf90interface_module
 
@@ -1045,26 +1035,60 @@ subroutine StructuredGridVecGetArrayF90(p_samr_patch, vec, f90ptr, ierr)
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
 
-  PetscFortranAddr, intent(inout):: p_samr_patch
-  Vec:: vec
-  PetscReal, pointer :: f90ptr(:)
-  integer :: ierr
-
-  type(f90ptrwrap), pointer :: ptr
-  PetscFortranAddr :: cptr
-
-  if(p_samr_patch .eq. 0) then
-     call VecGetArrayF90(vec, f90ptr, ierr)
-  else
-     ierr=0
-     allocate(ptr)
-     nullify(ptr%f90ptr)
-     call assign_c_ptr(cptr, ptr)
-     call samr_vecgetarrayf90(p_samr_patch, vec, cptr)
-     f90ptr => ptr%f90ptr
-     deallocate(ptr)
-  endif
-
+ type(structured_grid_type) :: structured_grid
+ Vec:: vec
+ PetscReal, pointer :: f90ptr(:)
+ integer :: ierr
+ 
+ type(f90ptrwrap), pointer :: ptr
+ PetscFortranAddr :: cptr
+ 
+ if(structured_grid%p_samr_patch .eq. 0) then
+    call VecGetArrayF90(vec, f90ptr, ierr)
+ else
+    ierr=0
+    allocate(ptr)
+    nullify(ptr%f90ptr)
+    call assign_c_ptr(cptr, ptr)
+    call samr_vecgetarrayf90(structured_grid%p_samr_patch, vec, cptr)
+    f90ptr => ptr%f90ptr
+    deallocate(ptr)
+ endif
+ 
 end subroutine StructuredGridVecGetArrayF90
+
+! ************************************************************************** !
+!
+! StructuredGridVecGetArrayF90: Interface for SAMRAI AMR
+! author: Bobby Philip
+! date: 06/09/08
+!
+! ************************************************************************** !
+subroutine StructGridVecRestoreArrayF90(structured_grid, vec, f90ptr, ierr)
+
+ use cf90interface_module
+
+ implicit none 
+
+#include "include/finclude/petsc.h"
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
+
+ type(structured_grid_type) :: structured_grid
+ Vec:: vec
+ PetscReal, pointer :: f90ptr(:)
+ integer :: ierr
+ 
+ type(f90ptrwrap), pointer :: ptr
+ PetscFortranAddr :: cptr
+ 
+ if(structured_grid%p_samr_patch .eq. 0) then
+    call VecRestoreArrayF90(vec, f90ptr, ierr)
+ else
+    ierr=0
+! do nothing for now    
+ endif
+ 
+end subroutine StructGridVecRestoreArrayF90
 
 end module Structured_Grid_module

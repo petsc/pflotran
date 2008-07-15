@@ -1797,6 +1797,7 @@ subroutine assignMaterialPropToRegions(realization)
   use Field_module
   use Fileio_module
   use Patch_module
+  use Level_module
 
   implicit none
   
@@ -1823,7 +1824,9 @@ subroutine assignMaterialPropToRegions(realization)
   type(field_type), pointer :: field
   type(strata_type), pointer :: strata
   type(patch_type), pointer :: patch  
-  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+
   type(material_type), pointer :: material
   type(region_type), pointer :: region
   
@@ -1835,132 +1838,168 @@ subroutine assignMaterialPropToRegions(realization)
 
   ! loop over all strata to determine if any are inactive or
   ! have associated cell by cell material ids
-  strata => patch%strata%first
-  do
-    if (.not.associated(strata)) exit
-    if (.not.strata%active .or. .not.associated(strata%region)) then
-      if (.not.associated(patch%imat)) then
-        allocate(patch%imat(grid%ngmax))
-        patch%imat = -999
-      endif
-      exit
-    endif
-    strata => strata%next
+  cur_level => realization%level_list%first
+  do 
+     if (.not.associated(cur_level)) exit
+     cur_patch => cur_level%patch_list%first
+     do
+        if (.not.associated(cur_patch)) exit
+        strata => cur_patch%strata%first
+        do
+           if (.not.associated(strata)) exit
+           if (.not.strata%active .or. .not.associated(strata%region)) then
+              if (.not.associated(cur_patch%imat)) then
+                 allocate(cur_patch%imat(cur_patch%grid%ngmax))
+                 cur_patch%imat = -999
+              endif
+              exit
+           endif
+           strata => strata%next
+        enddo
+        cur_patch => cur_patch%next
+     enddo
+     cur_level => cur_level%next
   enddo
-  
+
   ! Read in cell by cell material ids if they exist
-  strata => patch%strata%first
-  if (associated(strata)) then
-    if (.not.associated(strata%region) .and. strata%active) then
-      call readMaterialsFromFile(realization,strata%material_name)
-    endif
-  endif
+  cur_level => realization%level_list%first
+  do 
+     if (.not.associated(cur_level)) exit
+     cur_patch => cur_level%patch_list%first
+     do
+        if (.not.associated(cur_patch)) exit
+        strata => cur_patch%strata%first
+        do
+           if (.not.associated(strata)) exit
+           if (.not.associated(strata%region) .and. strata%active) then
+              call readMaterialsFromFile(realization,strata%material_name)
+           endif
+           strata => strata%next
+        end do
+        cur_patch => cur_patch%next
+     enddo
+     cur_level => cur_level%next
+  enddo
     
-  if (option%nflowdof > 0) then
-    call VecGetArrayF90(field%icap_loc,icap_loc_p,ierr)
-    call VecGetArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
-    call VecGetArrayF90(field%perm0_xx,perm_xx_p,ierr)
-    call VecGetArrayF90(field%perm0_yy,perm_yy_p,ierr)
-    call VecGetArrayF90(field%perm0_zz,perm_zz_p,ierr)
-    call VecGetArrayF90(field%perm_pow,perm_pow_p,ierr)
-  endif
-  call VecGetArrayF90(field%porosity0,por0_p,ierr)
-  call VecGetArrayF90(field%tor_loc,tor_loc_p,ierr)
+  cur_level => realization%level_list%first
+  do 
+     if (.not.associated(cur_level)) exit
+     cur_patch => cur_level%patch_list%first
+     do
+        if (.not.associated(cur_patch)) exit
 
-  strata => patch%strata%first
-  do
-    if (.not.associated(strata)) exit
-   
-    if (strata%active) then
-      region => strata%region
-      material => strata%material
-      if (associated(region)) then
-        istart = 1
-        iend = region%num_cells
-      else
-        istart = 1
-        iend = grid%nlmax
-      endif
-      do icell=istart, iend
-        if (associated(region)) then
-          local_id = region%cell_ids(icell)
-        else
-          local_id = icell
+        grid => cur_patch%grid
+
+        if (option%nflowdof > 0) then
+           call GridVecGetArrayF90(grid,field%icap_loc,icap_loc_p,ierr)
+           call GridVecGetArrayF90(grid,field%ithrm_loc,ithrm_loc_p,ierr)
+           call GridVecGetArrayF90(grid,field%perm0_xx,perm_xx_p,ierr)
+           call GridVecGetArrayF90(grid,field%perm0_yy,perm_yy_p,ierr)
+           call GridVecGetArrayF90(grid,field%perm0_zz,perm_zz_p,ierr)
+           call GridVecGetArrayF90(grid,field%perm_pow,perm_pow_p,ierr)
         endif
-        ghosted_id = grid%nL2G(local_id)
-        if (associated(patch%imat)) then
-          ! if patch%imat is allocated and the id > 0, the material id 
-          ! supercedes the material pointer for the strata
-          material_id = patch%imat(ghosted_id)
-          if (material_id > 0 .and. &
-              material_id <= size(realization%material_array)) then
-            material => realization%material_array(material_id)%ptr
-          endif
-          ! otherwide set the imat value to the stratas material
-          if (material_id < -998) & ! prevent overwrite of cell already set to inactive
-            patch%imat(ghosted_id) = material%id
+        call GridVecGetArrayF90(grid,field%porosity0,por0_p,ierr)
+        call GridVecGetArrayF90(grid,field%tor_loc,tor_loc_p,ierr)
+        
+        strata => cur_patch%strata%first
+        do
+           if (.not.associated(strata)) exit
+           
+           if (strata%active) then
+              region => strata%region
+              material => strata%material
+              if (associated(region)) then
+                 istart = 1
+                 iend = region%num_cells
+              else
+                 istart = 1
+                 iend = grid%nlmax
+              endif
+              do icell=istart, iend
+                 if (associated(region)) then
+                    local_id = region%cell_ids(icell)
+                 else
+                    local_id = icell
+                 endif
+
+                 ghosted_id = grid%nL2G(local_id)
+                 if (associated(cur_patch%imat)) then
+                    ! if patch%imat is allocated and the id > 0, the material id 
+                    ! supercedes the material pointer for the strata
+                    material_id = cur_patch%imat(ghosted_id)
+                    if (material_id > 0 .and. &
+                         material_id <= size(realization%material_array)) then
+                       material => realization%material_array(material_id)%ptr
+                    endif
+                    ! otherwide set the imat value to the stratas material
+                    if (material_id < -998) & ! prevent overwrite of cell already set to inactive
+                         cur_patch%imat(ghosted_id) = material%id
+                 endif
+                 if (associated(material)) then
+                    if (option%nflowdof > 0) then
+                       icap_loc_p(ghosted_id) = material%icap
+                       ithrm_loc_p(ghosted_id) = material%ithrm
+                       perm_xx_p(local_id) = material%permeability(1,1)
+                       perm_yy_p(local_id) = material%permeability(2,2)
+                       perm_zz_p(local_id) = material%permeability(3,3)
+                       perm_pow_p(local_id) = material%permeability_pwr
+                    endif
+                    por0_p(local_id) = material%porosity
+                    tor_loc_p(ghosted_id) = material%tortuosity
+                 endif
+              enddo
+           endif
+           strata => strata%next
+        enddo
+
+        if (option%nflowdof > 0) then
+           call GridVecRestoreArrayF90(grid,field%icap_loc,icap_loc_p,ierr)
+           call GridVecRestoreArrayF90(grid,field%ithrm_loc,ithrm_loc_p,ierr)
+           call GridVecRestoreArrayF90(grid,field%perm0_xx,perm_xx_p,ierr)
+           call GridVecRestoreArrayF90(grid,field%perm0_yy,perm_yy_p,ierr)
+           call GridVecRestoreArrayF90(grid,field%perm0_zz,perm_zz_p,ierr)
+           call GridVecRestoreArrayF90(grid,field%perm_pow,perm_pow_p,ierr)
         endif
-        if (associated(material)) then
-          if (option%nflowdof > 0) then
-            icap_loc_p(ghosted_id) = material%icap
-            ithrm_loc_p(ghosted_id) = material%ithrm
-            perm_xx_p(local_id) = material%permeability(1,1)
-            perm_yy_p(local_id) = material%permeability(2,2)
-            perm_zz_p(local_id) = material%permeability(3,3)
-            perm_pow_p(local_id) = material%permeability_pwr
-          endif
-          por0_p(local_id) = material%porosity
-          tor_loc_p(ghosted_id) = material%tortuosity
+        call GridVecRestoreArrayF90(grid,field%porosity0,por0_p,ierr)
+        call GridVecRestoreArrayF90(grid,field%tor_loc,tor_loc_p,ierr)
+        
+        ! read in any cell by cell data 
+        if (len_trim(option%permx_filename) > 1) then
+           call readVectorFromFile(realization,field%perm0_xx, &
+                option%permx_filename,GLOBAL)  
         endif
-      enddo
-    endif
-    strata => strata%next
+        if (len_trim(option%permy_filename) > 1) then
+           call readVectorFromFile(realization,field%perm0_yy, &
+                option%permy_filename,GLOBAL)  
+        endif
+        if (len_trim(option%permz_filename) > 1) then
+           call readVectorFromFile(realization,field%perm0_zz, &
+                option%permz_filename,GLOBAL)  
+        endif
+        
+        if (option%nflowdof > 0) then
+           call DiscretizationGlobalToLocal(discretization,field%perm0_xx, &
+                 field%perm_xx_loc,ONEDOF)  
+           call DiscretizationGlobalToLocal(discretization,field%perm0_yy, &
+                field%perm_yy_loc,ONEDOF)  
+           call DiscretizationGlobalToLocal(discretization,field%perm0_zz, &
+                field%perm_zz_loc,ONEDOF)   
+           
+           call DiscretizationLocalToLocal(discretization,field%icap_loc, &
+                field%icap_loc,ONEDOF)   
+           call DiscretizationLocalToLocal(discretization,field%ithrm_loc, &
+                field%ithrm_loc,ONEDOF)
+        endif
+        
+        call DiscretizationGlobalToLocal(discretization,field%porosity0, &
+             field%porosity_loc,ONEDOF)
+        call DiscretizationLocalToLocal(discretization,field%tor_loc, &
+             field%tor_loc,ONEDOF)   
+        cur_patch => cur_patch%next
+     enddo
+     cur_level => cur_level%next
   enddo
 
-  if (option%nflowdof > 0) then
-    call VecRestoreArrayF90(field%icap_loc,icap_loc_p,ierr)
-    call VecRestoreArrayF90(field%ithrm_loc,ithrm_loc_p,ierr)
-    call VecRestoreArrayF90(field%perm0_xx,perm_xx_p,ierr)
-    call VecRestoreArrayF90(field%perm0_yy,perm_yy_p,ierr)
-    call VecRestoreArrayF90(field%perm0_zz,perm_zz_p,ierr)
-    call VecRestoreArrayF90(field%perm_pow,perm_pow_p,ierr)
-  endif
-  call VecRestoreArrayF90(field%porosity0,por0_p,ierr)
-  call VecRestoreArrayF90(field%tor_loc,tor_loc_p,ierr)
-  
-  ! read in any cell by cell data 
-  if (len_trim(option%permx_filename) > 1) then
-    call readVectorFromFile(realization,field%perm0_xx, &
-                            option%permx_filename,GLOBAL)  
-  endif
-  if (len_trim(option%permy_filename) > 1) then
-    call readVectorFromFile(realization,field%perm0_yy, &
-                            option%permy_filename,GLOBAL)  
-  endif
-  if (len_trim(option%permz_filename) > 1) then
-    call readVectorFromFile(realization,field%perm0_zz, &
-                            option%permz_filename,GLOBAL)  
-  endif
-
-  if (option%nflowdof > 0) then
-    call DiscretizationGlobalToLocal(discretization,field%perm0_xx, &
-                           field%perm_xx_loc,ONEDOF)  
-    call DiscretizationGlobalToLocal(discretization,field%perm0_yy, &
-                           field%perm_yy_loc,ONEDOF)  
-    call DiscretizationGlobalToLocal(discretization,field%perm0_zz, &
-                           field%perm_zz_loc,ONEDOF)   
-
-    call DiscretizationLocalToLocal(discretization,field%icap_loc, &
-                          field%icap_loc,ONEDOF)   
-    call DiscretizationLocalToLocal(discretization,field%ithrm_loc, &
-                          field%ithrm_loc,ONEDOF)
-  endif   
-
-  call DiscretizationGlobalToLocal(discretization,field%porosity0, &
-                         field%porosity_loc,ONEDOF)
-  call DiscretizationLocalToLocal(discretization,field%tor_loc, &
-                        field%tor_loc,ONEDOF)   
-  
 end subroutine assignMaterialPropToRegions
 
 ! ************************************************************************** !

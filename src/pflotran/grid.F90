@@ -10,7 +10,7 @@ module Grid_module
  
 #include "definitions.h"
 
-  type, public :: grid_type
+  type, public :: grid_type 
   
     character(len=MAXWORDLENGTH) :: ctype
     PetscInt :: itype  ! type of grid (e.g. structured, unstructured, etc.)
@@ -58,8 +58,9 @@ module Grid_module
             GridCopyPetscVecToRealArray, &
             GridCreateNaturalToGhostedHash, &
             GridDestroyHashTable, &
-            GridGetLocalGhostedIdFromHash
-  
+            GridGetLocalGhostedIdFromHash, &
+            GridVecGetArrayF90, &
+            GridVecRestoreArrayF90
 contains
 
 ! ************************************************************************** !
@@ -838,5 +839,39 @@ subroutine GridDestroy(grid)
   call ConnectionDestroyList(grid%internal_connection_set_list)
 
 end subroutine GridDestroy
-  
+
+subroutine GridVecGetArrayF90(grid, vec, f90ptr, ierr)
+
+  implicit none
+
+  type(grid_type) :: grid
+  Vec:: vec
+  PetscReal, pointer :: f90ptr(:)
+  integer :: ierr
+
+  if (.not.associated(grid%structured_grid)) then
+     call VecGetArrayF90(vec, f90ptr, ierr)
+  else
+     call StructuredGridVecGetArrayF90(grid%structured_grid, vec, f90ptr, ierr)
+  endif
+
+end subroutine GridVecGetArrayF90
+
+subroutine GridVecRestoreArrayF90(grid, vec, f90ptr, ierr)
+
+  implicit none
+
+  type(grid_type) :: grid
+  Vec:: vec
+  PetscReal, pointer :: f90ptr(:)
+  integer :: ierr
+
+  if (.not.associated(grid%structured_grid)) then
+     call VecRestoreArrayF90(vec, f90ptr, ierr)
+  else
+     call StructGridVecRestoreArrayF90(grid%structured_grid, vec, f90ptr, ierr)
+  endif
+
+end subroutine GridVecRestoreArrayF90
+
 end module Grid_module
