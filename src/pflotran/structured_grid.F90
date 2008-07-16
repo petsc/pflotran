@@ -647,19 +647,41 @@ function StructGridComputeInternConnect(structured_grid,option)
   
   
   PetscInt :: i, j, k, iconn, id_up, id_dn, len, samr_of
+  PetscInt :: nconn
   PetscReal :: dist_up, dist_dn
   type(connection_set_type), pointer :: connections
   PetscErrorCode :: ierr
   
   call ConnectionAllocateLists()
   
+  ! the adjustments in the case of AMR are based on the PIMS code adjustments by LC
+  nconn = (structured_grid%ngx-1)*structured_grid%nly*structured_grid%nlz+ &
+          structured_grid%nlx*(structured_grid%ngy-1)*structured_grid%nlz+ &
+          structured_grid%nlx*structured_grid%nly*(structured_grid%ngz-1)
+
+  if(.not.(structured_grid%p_samr_patch.eq.0)) then
+     if(samr_patch_at_bc(structured_grid%p_samr_patch, 0, 0) ==1) then
+        nconn = nconn - structured_grid%nlyz
+     endif  
+     if(samr_patch_at_bc(structured_grid%p_samr_patch, 0, 1) ==1) then 
+        nconn = nconn - structured_grid%nlyz
+     endif  
+     if(samr_patch_at_bc(structured_grid%p_samr_patch, 1, 0) ==1) then
+        nconn = nconn - structured_grid%nlxz
+     endif  
+     if(samr_patch_at_bc(structured_grid%p_samr_patch, 1, 1) ==1) then
+        nconn = nconn - structured_grid%nlxz
+     endif  
+     if(samr_patch_at_bc(structured_grid%p_samr_patch, 2, 0) ==1) then
+        nconn = nconn - structured_grid%nlxy
+     endif  
+     if(samr_patch_at_bc(structured_grid%p_samr_patch, 2, 1) ==1) then
+        nconn = nconn - structured_grid%nlxy
+     endif  
+  endif
+
   connections => &
-       ConnectionCreate((structured_grid%ngx-1)*structured_grid%nly* &
-                          structured_grid%nlz+ &
-                        structured_grid%nlx*(structured_grid%ngy-1)* &
-                          structured_grid%nlz+ &
-                        structured_grid%nlx*structured_grid%nly* &
-                          (structured_grid%ngz-1), &
+       ConnectionCreate(nconn, &
                         option%nphase,INTERNAL_CONNECTION_TYPE)
 
   iconn = 0
