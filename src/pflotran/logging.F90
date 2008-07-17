@@ -11,7 +11,9 @@ module Logging_module
 ! stages
 PetscInt, parameter, public :: INIT_STAGE = 1
 PetscInt, parameter, public :: TS_STAGE = 2
-PetscInt, parameter, public :: OUTPUT_STAGE = 3
+PetscInt, parameter, public :: FLOW_STAGE = 3
+PetscInt, parameter, public :: TRAN_STAGE = 4
+PetscInt, parameter, public :: OUTPUT_STAGE = 5
 
   type, public :: logging_type 
   
@@ -85,6 +87,10 @@ subroutine LoggingCreate()
                              logging%stage(INIT_STAGE),ierr)
   call PetscLogStageRegister('Time Step Stage', &
                              logging%stage(TS_STAGE),ierr)
+  call PetscLogStageRegister('Flow Stage', &
+                             logging%stage(FLOW_STAGE),ierr)
+  call PetscLogStageRegister('Transport Stage', &
+                             logging%stage(TRAN_STAGE),ierr)
   call PetscLogStageRegister('Output Stage', &
                              logging%stage(OUTPUT_STAGE),ierr)
                              

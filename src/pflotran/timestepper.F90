@@ -242,12 +242,16 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
     call StepperSetTargetTimes(flow_stepper,tran_stepper,option,plot_flag)
   
     if (associated(flow_stepper)) then
+      call PetscLogStagePush(logging%stage(FLOW_STAGE),ierr)
       call StepperStepFlowDT(realization,flow_stepper,timestep_cut_flag, &
                              num_newton_iterations)
+      call PetscLogStagePop(ierr)
     endif
     if (associated(tran_stepper)) then
+      call PetscLogStagePush(logging%stage(TRAN_STAGE),ierr)
       call StepperStepTransportDT(realization,tran_stepper,timestep_cut_flag, &
                                   idum)
+      call PetscLogStagePop(ierr)
       if (.not.associated(flow_stepper)) num_newton_iterations = idum
     endif
 
