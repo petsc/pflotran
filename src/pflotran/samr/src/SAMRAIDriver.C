@@ -125,6 +125,7 @@ int main( int argc, char *argv[] )
 
    f_initialize_simulation_(&p_pflotran_sim);
 
+   f_stepper_run_(&p_pflotran_sim);
 #if 0
    void *p_pflowhierarchy=NULL;
    f_create_hierarchy_data_(&p_pflowhierarchy);

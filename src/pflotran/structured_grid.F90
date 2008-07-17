@@ -56,8 +56,9 @@ module Structured_Grid_module
             StructGridPopulateConnection, &
             StructGridGetIJKFromCoordinate, &
             StructGridGetIJKFromLocalID, &
-            StructGridGetIJKFromGhostedID
-
+            StructGridGetIJKFromGhostedID, &
+            StructuredGridVecGetArrayF90, &
+            StructGridVecRestoreArrayF90
 contains
 
 ! ************************************************************************** !
@@ -631,36 +632,74 @@ function StructGridComputeInternConnect(structured_grid,option)
   use Option_module
   
   implicit none
-  
+
+  interface
+     integer function samr_patch_at_bc(p_patch, axis, dim)
+#include "include/finclude/petsc.h"
+       PetscFortranAddr :: p_patch
+       integer :: axis,dim
+     end function samr_patch_at_bc
+  end interface
+
   type(connection_set_type), pointer :: StructGridComputeInternConnect
   type(option_type) :: option
   type(structured_grid_type) :: structured_grid
   
   
-  PetscInt :: i, j, k, iconn, id_up, id_dn
+  PetscInt :: i, j, k, iconn, id_up, id_dn, len, samr_of
+  PetscInt :: nconn
   PetscReal :: dist_up, dist_dn
   type(connection_set_type), pointer :: connections
   PetscErrorCode :: ierr
   
   call ConnectionAllocateLists()
   
+  ! the adjustments in the case of AMR are based on the PIMS code adjustments by LC
+  nconn = (structured_grid%ngx-1)*structured_grid%nly*structured_grid%nlz+ &
+          structured_grid%nlx*(structured_grid%ngy-1)*structured_grid%nlz+ &
+          structured_grid%nlx*structured_grid%nly*(structured_grid%ngz-1)
+
+  if(.not.(structured_grid%p_samr_patch.eq.0)) then
+     if(samr_patch_at_bc(structured_grid%p_samr_patch, 0, 0) ==1) then
+        nconn = nconn - structured_grid%nlyz
+     endif  
+     if(samr_patch_at_bc(structured_grid%p_samr_patch, 0, 1) ==1) then 
+        nconn = nconn - structured_grid%nlyz
+     endif  
+     if(samr_patch_at_bc(structured_grid%p_samr_patch, 1, 0) ==1) then
+        nconn = nconn - structured_grid%nlxz
+     endif  
+     if(samr_patch_at_bc(structured_grid%p_samr_patch, 1, 1) ==1) then
+        nconn = nconn - structured_grid%nlxz
+     endif  
+     if(samr_patch_at_bc(structured_grid%p_samr_patch, 2, 0) ==1) then
+        nconn = nconn - structured_grid%nlxy
+     endif  
+     if(samr_patch_at_bc(structured_grid%p_samr_patch, 2, 1) ==1) then
+        nconn = nconn - structured_grid%nlxy
+     endif  
+  endif
+
   connections => &
-       ConnectionCreate((structured_grid%ngx-1)*structured_grid%nly* &
-                          structured_grid%nlz+ &
-                        structured_grid%nlx*(structured_grid%ngy-1)* &
-                          structured_grid%nlz+ &
-                        structured_grid%nlx*structured_grid%nly* &
-                          (structured_grid%ngz-1), &
+       ConnectionCreate(nconn, &
                         option%nphase,INTERNAL_CONNECTION_TYPE)
 
   iconn = 0
   ! x-connections
   if (structured_grid%ngx > 1) then
+    len = structured_grid%ngx - 1
+    samr_of=0
+    ! the adjustments in the case of AMR are based on the PIMS code adjustments by LC
+    if(.not.(structured_grid%p_samr_patch .eq.0)) then
+       samr_of = 1
+       if(samr_patch_at_bc(structured_grid%p_samr_patch,0,1)==1) len = len-1       
+    endif
+
     do k = structured_grid%kstart, structured_grid%kend
       do j = structured_grid%jstart, structured_grid%jend
-        do i = 1, structured_grid%ngx - 1
+        do i = 1, len
           iconn = iconn+1
-          id_up = i + j * structured_grid%ngx + k * structured_grid%ngxy
+          id_up = i + j * structured_grid%ngx + k * structured_grid%ngxy+samr_of
           id_dn = id_up + 1
           connections%id_up(iconn) = id_up
           connections%id_dn(iconn) = id_dn
@@ -678,11 +717,20 @@ function StructGridComputeInternConnect(structured_grid,option)
 
   ! y-connections
   if (structured_grid%ngy > 1) then
+
+    len = structured_grid%ngy - 1
+    samr_of=0
+    ! the adjustments in the case of AMR are based on the PIMS code adjustments by LC
+    if(.not.(structured_grid%p_samr_patch .eq.0)) then
+       samr_of = structured_grid%ngx
+       if(samr_patch_at_bc(structured_grid%p_samr_patch,1,1)==1) len = len-1       
+    endif
+
     do k = structured_grid%kstart, structured_grid%kend
       do i = structured_grid%istart, structured_grid%iend
-        do j = 1, structured_grid%ngy - 1
+        do j = 1, len
           iconn = iconn+1
-          id_up = i + 1 + (j-1) * structured_grid%ngx + k * structured_grid%ngxy
+          id_up = i + 1 + (j-1) * structured_grid%ngx + k * structured_grid%ngxy+samr_of
           id_dn = id_up + structured_grid%ngx
           connections%id_up(iconn) = id_up
           connections%id_dn(iconn) = id_dn
@@ -700,11 +748,20 @@ function StructGridComputeInternConnect(structured_grid,option)
       
   ! z-connections
   if (structured_grid%ngz > 1) then
+
+    len = structured_grid%ngz - 1
+    samr_of=0
+    ! the adjustments in the case of AMR are based on the PIMS code adjustments by LC
+    if(.not.(structured_grid%p_samr_patch .eq.0)) then
+       samr_of = structured_grid%ngxy
+       if(samr_patch_at_bc(structured_grid%p_samr_patch,2,1)==1) len = len-1       
+    endif
+
     do j = structured_grid%jstart, structured_grid%jend
       do i = structured_grid%istart, structured_grid%iend
-        do k = 1, structured_grid%ngz - 1
+        do k = 1, len
           iconn = iconn+1
-          id_up = i + 1 + j * structured_grid%ngx + (k-1) * structured_grid%ngxy
+          id_up = i + 1 + j * structured_grid%ngx + (k-1) * structured_grid%ngxy+samr_of
           id_dn = id_up + structured_grid%ngxy
           connections%id_up(iconn) = id_up
           connections%id_dn(iconn) = id_dn
@@ -810,16 +867,6 @@ subroutine StructuredGridComputeVolumes(structured_grid,option,nL2G,volume)
 ! These includes are needed for VecRestoreArrayF90() - geh
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
-!  interface
-!   subroutine struct_vecgetarrayf90(p_samr_patch, vec, f90ptr, ierr)
-!     use cf90interface_module
-!     implicit none 
-!     PetscFortranAddr, intent(inout):: p_samr_patch
-!     Vec:: vec
-!     PetscReal, pointer :: f90ptr(:)
-!     integer :: ierr
-!   end subroutine struct_vecgetarrayf90
-!  end interface
   
   type(structured_grid_type) :: structured_grid
   type(option_type) :: option
@@ -833,8 +880,7 @@ subroutine StructuredGridComputeVolumes(structured_grid,option,nL2G,volume)
   PetscErrorCode :: ierr
   
 !  call VecGetArrayF90(volume,volume_p, ierr)
-!  call struct_vecgetarrayf90(structured_grid%p_samr_patch, volume,volume_p, ierr)
-  call StructuredGridVecGetArrayF90(structured_grid%p_samr_patch, volume,volume_p, ierr)
+  call StructuredGridVecGetArrayF90(structured_grid, volume,volume_p, ierr)
 
   do nl=1, structured_grid%nlmax
     volume_p(nl) = structured_grid%dx(nl) * structured_grid%dy(nl) * &
@@ -880,9 +926,13 @@ subroutine StructuredGridMapIndices(structured_grid,nG2L,nL2G,nL2A,nG2A)
   
   allocate(nL2G(structured_grid%nlmax))
   allocate(nG2L(structured_grid%ngmax))
-  allocate(nL2A(structured_grid%nlmax))
-  allocate(nG2A(structured_grid%ngmax))
-  
+! only allocate space for the next two arrays if the current grid is not
+! not part of an AMR grid hierarchy
+  if(structured_grid%p_samr_patch.eq.0) then
+     allocate(nL2A(structured_grid%nlmax))
+     allocate(nG2A(structured_grid%ngmax))
+  endif
+
   structured_grid%istart = structured_grid%nxs-structured_grid%ngxs
   structured_grid%jstart = structured_grid%nys-structured_grid%ngys
   structured_grid%kstart = structured_grid%nzs-structured_grid%ngzs
@@ -893,9 +943,12 @@ subroutine StructuredGridMapIndices(structured_grid,nG2L,nL2G,nL2A,nG2A)
   ! Local <-> Ghosted Transformation
   nG2L = 0  ! Must initialize this to zero!
   nL2G = 0
-  nG2A = 0
-  nL2A = 0
-  
+
+  if(structured_grid%p_samr_patch.eq.0)then
+     nG2A = 0
+     nL2A = 0
+  endif
+
   n = 0
   do k=structured_grid%kstart,structured_grid%kend
     do j=structured_grid%jstart,structured_grid%jend
@@ -953,36 +1006,38 @@ subroutine StructuredGridMapIndices(structured_grid,nG2L,nL2G,nL2A,nG2A)
     enddo
   enddo
 
-  n=0
-  do k=1,structured_grid%nlz
-    do j=1,structured_grid%nly
-      do i=1,structured_grid%nlx
-        n = n + 1
-        na = i-1+structured_grid%nxs+(j-1+structured_grid%nys)*structured_grid%nx+ &
-             (k-1+structured_grid%nzs)*structured_grid%nxy
-        if (na>(structured_grid%nmax-1)) print *,'Wrong Nature order....'
-        nL2A(n) = na
-        !print *,grid%myrank, k,j,i,n,na
-        !grid%nG2N(ng) = na
-      enddo
-    enddo
-  enddo
-  ! Local(ghosted)->Natural(natural order starts from 0)
-  n=0
-  do k=1,structured_grid%ngz
-    do j=1,structured_grid%ngy
-      do i=1,structured_grid%ngx
-        n = n + 1
-        na = i-1+structured_grid%ngxs+(j-1+structured_grid%ngys)*structured_grid%nx+ &
-             (k-1+structured_grid%ngzs)*structured_grid%nxy
-        if (na>(structured_grid%nmax-1)) print *,'Wrong Nature order....'
-        nG2A(n) = na
-!        print *,grid%myrank, k,j,i,n,na
-        !grid%nG2N(ng) = na
-      enddo
-    enddo
-  enddo
- 
+  if(structured_grid%p_samr_patch.eq.0) then
+     n=0
+     do k=1,structured_grid%nlz
+        do j=1,structured_grid%nly
+           do i=1,structured_grid%nlx
+              n = n + 1
+              na = i-1+structured_grid%nxs+(j-1+structured_grid%nys)*structured_grid%nx+ &
+                   (k-1+structured_grid%nzs)*structured_grid%nxy
+              if (na>(structured_grid%nmax-1)) print *,'Wrong Nature order....'
+              nL2A(n) = na
+              !print *,grid%myrank, k,j,i,n,na
+              !grid%nG2N(ng) = na
+           enddo
+        enddo
+     enddo
+     ! Local(ghosted)->Natural(natural order starts from 0)
+     n=0
+     do k=1,structured_grid%ngz
+        do j=1,structured_grid%ngy
+           do i=1,structured_grid%ngx
+              n = n + 1
+              na = i-1+structured_grid%ngxs+(j-1+structured_grid%ngys)*structured_grid%nx+ &
+                   (k-1+structured_grid%ngzs)*structured_grid%nxy
+              if (na>(structured_grid%nmax-1)) print *,'Wrong Nature order....'
+              nG2A(n) = na
+              !        print *,grid%myrank, k,j,i,n,na
+              !grid%nG2N(ng) = na
+           enddo
+        enddo
+     enddo
+  endif
+
 end subroutine StructuredGridMapIndices
 
 ! ************************************************************************** !
@@ -1035,7 +1090,7 @@ end subroutine StructuredGridDestroy
 ! date: 06/09/08
 !
 ! ************************************************************************** !
-subroutine StructuredGridVecGetArrayF90(p_samr_patch, vec, f90ptr, ierr)
+subroutine StructuredGridVecGetArrayF90(structured_grid, vec, f90ptr, ierr)
 
  use cf90interface_module
 
@@ -1045,26 +1100,60 @@ subroutine StructuredGridVecGetArrayF90(p_samr_patch, vec, f90ptr, ierr)
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
 
-  PetscFortranAddr, intent(inout):: p_samr_patch
-  Vec:: vec
-  PetscReal, pointer :: f90ptr(:)
-  integer :: ierr
-
-  type(f90ptrwrap), pointer :: ptr
-  PetscFortranAddr :: cptr
-
-  if(p_samr_patch .eq. 0) then
-     call VecGetArrayF90(vec, f90ptr, ierr)
-  else
-     ierr=0
-     allocate(ptr)
-     nullify(ptr%f90ptr)
-     call assign_c_ptr(cptr, ptr)
-     call samr_vecgetarrayf90(p_samr_patch, vec, cptr)
-     f90ptr => ptr%f90ptr
-     deallocate(ptr)
-  endif
-
+ type(structured_grid_type) :: structured_grid
+ Vec:: vec
+ PetscReal, pointer :: f90ptr(:)
+ integer :: ierr
+ 
+ type(f90ptrwrap), pointer :: ptr
+ PetscFortranAddr :: cptr
+ 
+ if(structured_grid%p_samr_patch .eq. 0) then
+    call VecGetArrayF90(vec, f90ptr, ierr)
+ else
+    ierr=0
+    allocate(ptr)
+    nullify(ptr%f90ptr)
+    call assign_c_ptr(cptr, ptr)
+    call samr_vecgetarrayf90(structured_grid%p_samr_patch, vec, cptr)
+    f90ptr => ptr%f90ptr
+    deallocate(ptr)
+ endif
+ 
 end subroutine StructuredGridVecGetArrayF90
+
+! ************************************************************************** !
+!
+! StructuredGridVecGetArrayF90: Interface for SAMRAI AMR
+! author: Bobby Philip
+! date: 06/09/08
+!
+! ************************************************************************** !
+subroutine StructGridVecRestoreArrayF90(structured_grid, vec, f90ptr, ierr)
+
+ use cf90interface_module
+
+ implicit none 
+
+#include "include/finclude/petsc.h"
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
+
+ type(structured_grid_type) :: structured_grid
+ Vec:: vec
+ PetscReal, pointer :: f90ptr(:)
+ integer :: ierr
+ 
+ type(f90ptrwrap), pointer :: ptr
+ PetscFortranAddr :: cptr
+ 
+ if(structured_grid%p_samr_patch .eq. 0) then
+    call VecRestoreArrayF90(vec, f90ptr, ierr)
+ else
+    ierr=0
+! do nothing for now    
+ endif
+ 
+end subroutine StructGridVecRestoreArrayF90
 
 end module Structured_Grid_module

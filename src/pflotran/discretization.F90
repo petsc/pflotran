@@ -415,7 +415,7 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
 #endif
     case(UNSTRUCTURED_GRID)
     case(AMR_GRID)
-
+       call MatCreateShell(PETSC_COMM_WORLD, 0,0, PETSC_DETERMINE, PETSC_DETERMINE, PETSC_NULL, Jacobian, ierr)
   end select
 
 end subroutine DiscretizationCreateJacobian
