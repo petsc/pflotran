@@ -57,6 +57,7 @@ Hanford300::Hanford300(Grid **grid_) {
   PetscReal len_y = 2500.;
 //  PetscReal len_z = 60.;
   PetscReal len_z = 20.;
+//  PetscReal len_z = 30.;
 
   dx = len_x/(PetscReal)nx;
   dy = len_y/(PetscReal)ny;
