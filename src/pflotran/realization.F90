@@ -588,6 +588,8 @@ subroutine RealizAssignFlowInitCond(realization)
     do
       if (.not.associated(cur_patch)) exit
 
+      grid => cur_patch%grid
+
       if (option%nflowdof > 0) then
       
         select case(option%iflowmode)
@@ -598,8 +600,8 @@ subroutine RealizAssignFlowInitCond(realization)
         end select 
 
         ! assign initial conditions values to domain
-        call VecGetArrayF90(field%flow_xx,xx_p, ierr); CHKERRQ(ierr)
-        call VecGetArrayF90(field%iphas_loc,iphase_loc_p,ierr)
+        call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr); CHKERRQ(ierr)
+        call GridVecGetArrayF90(grid,field%iphas_loc,iphase_loc_p,ierr)
         
         xx_p = -999.d0
         
@@ -611,11 +613,11 @@ subroutine RealizAssignFlowInitCond(realization)
           if (.not.associated(initial_condition%connection_set)) then
             do icell=1,initial_condition%region%num_cells
               local_id = initial_condition%region%cell_ids(icell)
-              ghosted_id = patch%grid%nL2G(local_id)
+              ghosted_id = grid%nL2G(local_id)
               iend = local_id*option%nflowdof
               ibegin = iend-option%nflowdof+1
-              if (associated(patch%imat)) then
-                if (patch%imat(ghosted_id) <= 0) then
+              if (associated(cur_patch%imat)) then
+                if (cur_patch%imat(ghosted_id) <= 0) then
                   xx_p(ibegin:iend) = 0.d0
                   iphase_loc_p(ghosted_id) = 0
                   cycle
@@ -630,11 +632,11 @@ subroutine RealizAssignFlowInitCond(realization)
           else
             do iconn=1,initial_condition%connection_set%num_connections
               local_id = initial_condition%connection_set%id_dn(iconn)
-              ghosted_id = patch%grid%nL2G(local_id)
+              ghosted_id = grid%nL2G(local_id)
               iend = local_id*option%nflowdof
               ibegin = iend-option%nflowdof+1
-              if (associated(patch%imat)) then
-                if (patch%imat(ghosted_id) <= 0) then
+              if (associated(cur_patch%imat)) then
+                if (cur_patch%imat(ghosted_id) <= 0) then
                   xx_p(ibegin:iend) = 0.d0
                   iphase_loc_p(ghosted_id) = 0
                   cycle
@@ -648,8 +650,8 @@ subroutine RealizAssignFlowInitCond(realization)
           initial_condition => initial_condition%next
         enddo
         
-        call VecRestoreArrayF90(field%flow_xx,xx_p, ierr)
-        call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p,ierr)
+        call GridVecRestoreArrayF90(grid,field%flow_xx,xx_p, ierr)
+        call GridVecRestoreArrayF90(grid,field%iphas_loc,iphase_loc_p,ierr)
         
         ! update dependent vectors
         call DiscretizationGlobalToLocal(discretization,field%flow_xx,field%flow_xx_loc,NFLOWDOF)  
@@ -717,10 +719,12 @@ subroutine RealizAssignTransportInitCond(realization)
     do
       if (.not.associated(cur_patch)) exit
 
+      grid => cur_patch%grid
+
       if (option%ntrandof > 0) then
 
         ! assign initial conditions values to domain
-        call VecGetArrayF90(field%tran_xx,xx_p, ierr); CHKERRQ(ierr)
+        call GridVecGetArrayF90(grid, field%tran_xx,xx_p, ierr); CHKERRQ(ierr)
         
         xx_p = -999.d0
         
@@ -732,11 +736,11 @@ subroutine RealizAssignTransportInitCond(realization)
           if (.not.associated(initial_condition%connection_set)) then
             do icell=1,initial_condition%region%num_cells
               local_id = initial_condition%region%cell_ids(icell)
-              ghosted_id = patch%grid%nL2G(local_id)
+              ghosted_id = grid%nL2G(local_id)
               iend = local_id*option%ntrandof
               ibegin = iend-option%ntrandof+1
-              if (associated(patch%imat)) then
-                if (patch%imat(ghosted_id) <= 0) then
+              if (associated(cur_patch%imat)) then
+                if (cur_patch%imat(ghosted_id) <= 0) then
                   xx_p(ibegin:iend) = 0.d0
                   cycle
                 endif
@@ -749,11 +753,11 @@ subroutine RealizAssignTransportInitCond(realization)
           else
             do iconn=1,initial_condition%connection_set%num_connections
               local_id = initial_condition%connection_set%id_dn(iconn)
-              ghosted_id = patch%grid%nL2G(local_id)
+              ghosted_id = grid%nL2G(local_id)
               iend = local_id*option%ntrandof
               ibegin = iend-option%ntrandof+1
-              if (associated(patch%imat)) then
-                if (patch%imat(ghosted_id) <= 0) then
+              if (associated(cur_patch%imat)) then
+                if (cur_patch%imat(ghosted_id) <= 0) then
                   xx_p(ibegin:iend) = 0.d0
                   cycle
                 endif
@@ -765,7 +769,7 @@ subroutine RealizAssignTransportInitCond(realization)
           initial_condition => initial_condition%next
         enddo
         
-        call VecRestoreArrayF90(field%tran_xx,xx_p, ierr)
+        call GridVecRestoreArrayF90(grid,field%tran_xx,xx_p, ierr)
         
         ! update dependent vectors
         call DiscretizationGlobalToLocal(discretization,field%tran_xx,field%tran_xx_loc,NTRANDOF)  

@@ -1921,7 +1921,7 @@ print *,'Res:bc:',aux_vars_bc(sum_connection)%aux_var_elem(0)%kvr,perm_dn, iphas
   enddo
 
 ! print *,'finished rp vol scale'
-  if(option%use_isoth==PETSC_TRUE)then
+  if(option%use_isoth) then
      do local_id = 1, grid%nlmax  ! For each local node do...
         ghosted_id = grid%nL2G(local_id)   ! corresponding ghost index
         if (associated(patch%imat)) then
