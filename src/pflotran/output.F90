@@ -1901,7 +1901,7 @@ subroutine WriteBreakthroughDataForCell(fid,realization,local_id)
           ! liquid mole fractions
           do i=1,option%nflowspec
             write(fid,110,advance="no") &
-              OutputGetVarFromArrayAtCell(realization,LIQUID_MOLE_FRACTION,i-1,local_id)
+              OutputGetVarFromArrayAtCell(realization,LIQUID_MOLE_FRACTION,i,local_id)
           enddo
       end select
   
@@ -1910,7 +1910,7 @@ subroutine WriteBreakthroughDataForCell(fid,realization,local_id)
           ! gas mole fractions
           do i=1,option%nflowspec
             write(fid,110,advance="no") &
-              OutputGetVarFromArrayAtCell(realization,GAS_MOLE_FRACTION,i-1,local_id)
+              OutputGetVarFromArrayAtCell(realization,GAS_MOLE_FRACTION,i,local_id)
           enddo
       end select 
 #if 0      
@@ -2093,7 +2093,7 @@ subroutine WriteBreakthroughDataForCoord(fid,realization,region)
           ! liquid mole fractions
           do i=1,option%nflowspec
             write(fid,110,advance="no") &
-              OutputGetVarFromArrayAtCoord(realization,LIQUID_MOLE_FRACTION,i-1, &
+              OutputGetVarFromArrayAtCoord(realization,LIQUID_MOLE_FRACTION,i, &
                                            region%coordinate,count,ghosted_ids)
           enddo
       end select
@@ -2103,7 +2103,7 @@ subroutine WriteBreakthroughDataForCoord(fid,realization,region)
           ! gas mole fractions
           do i=1,option%nflowspec
             write(fid,110,advance="no") &
-              OutputGetVarFromArrayAtCoord(realization,GAS_MOLE_FRACTION,i-1, &
+              OutputGetVarFromArrayAtCoord(realization,GAS_MOLE_FRACTION,i, &
                                            region%coordinate,count,ghosted_ids)
           enddo
       end select 
@@ -2647,7 +2647,7 @@ subroutine OutputHDF5(realization)
       select case(option%iflowmode)
         case (MPH_MODE,RICHARDS_MODE)
           do i=1,option%nflowspec
-            call OutputGetVarFromArray(realization,global_vec,LIQUID_MOLE_FRACTION,i-1)
+            call OutputGetVarFromArray(realization,global_vec,LIQUID_MOLE_FRACTION,i)
             write(string,'(''Liquid Mole Fraction('',i4,'')'')') i
             call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
           enddo
@@ -2657,7 +2657,7 @@ subroutine OutputHDF5(realization)
       select case(option%iflowmode)
         case (MPH_MODE)      
           do i=1,option%nflowspec
-            call OutputGetVarFromArray(realization,global_vec,GAS_MOLE_FRACTION,i-1)
+            call OutputGetVarFromArray(realization,global_vec,GAS_MOLE_FRACTION,i)
             write(string,'(''Gas Mole Fraction('',i4,'')'')') i
             call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
           enddo
