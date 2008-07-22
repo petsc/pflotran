@@ -1,6 +1,18 @@
 #ifndef included_PflotranApplicationStrategy
 #define included_PflotranApplicationStrategy
 
+
+#include <string>
+#include <vector>
+
+#include "tbox/Array.h"
+#include "tbox/Pointer.h"
+#include "CellVariable.h"
+#include "FaceVariable.h"
+#include "PatchHierarchy.h"
+#include "VariableContext.h"
+#include "FaceData.h"
+
 #include "ComponentSelector.h"
 #include "ApplicationStrategy.h"
 #include "PflotranApplicationParameters.h"
@@ -90,7 +102,22 @@ protected:
 private:
 
    PflotranApplicationStrategy();
+
+   void initialize(PflotranApplicationParameters *params);
    
+   // Name of application
+   std::string d_object_name;
+
+   // Hierarchy
+   tbox::Pointer< hier::PatchHierarchy<NDIM> > d_hierarchy;
+
+   int d_number_solution_components;
+   tbox::Array< tbox::Pointer< hier::Variable<NDIM> > > d_variable_list;
+
+   tbox::Array< tbox::Pointer< xfer::RefineSchedule<NDIM> > > d_regrid_refine_scheds;
+
+   tbox::Pointer<hier::VariableContext> d_application_ctx;
+
    hier::ComponentSelector d_AllocSelector;
    hier::ComponentSelector d_TimestampSelector;
 };

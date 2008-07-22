@@ -24,7 +24,8 @@
 #include <string>
 
 #ifdef __cplusplus
-extern "C" 
+extern "C"{
+#endif
 void create_samrai_vec_(SAMRAI::hier::PatchHierarchy<NDIM> **hierarchy, 
                         int &dof, 
                         bool &use_ghost,
@@ -84,5 +85,8 @@ void create_samrai_vec_(SAMRAI::hier::PatchHierarchy<NDIM> **hierarchy,
 
    *vec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM,double>::createPETScVector(samrai_vec);
 
+}
+
+#ifdef __cplusplus
 }
 #endif

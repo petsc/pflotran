@@ -8,10 +8,17 @@ PflotranApplicationStrategy::PflotranApplicationStrategy()
 
 PflotranApplicationStrategy::PflotranApplicationStrategy(PflotranApplicationParameters *params)
 {
+   initialize(params);
 }
 
 PflotranApplicationStrategy::~PflotranApplicationStrategy()
 {
+}
+
+void
+PflotranApplicationStrategy::initialize(PflotranApplicationParameters *params)
+{
+   d_hierarchy = params->d_hierarchy;
 }
 
 /**
@@ -66,11 +73,7 @@ PflotranApplicationStrategy::setValuesOnNewLevel( tbox::Pointer< hier::PatchLeve
 tbox::Array< tbox::Pointer< hier::Variable<NDIM> > > 
 PflotranApplicationStrategy::getVariables()
 {
-   tbox::Array< tbox::Pointer< hier::Variable<NDIM> > > varList;
-
-   tbox::pout << "ERROR::PflotranApplicationStrategy::getVariables not implemented as yet!!" << std::endl;
-   
-   return varList;
+   return(d_variable_list);
 }
 
 /**
@@ -81,11 +84,8 @@ PflotranApplicationStrategy::setupRegridRefineSchedules( const tbox::Pointer< hi
                                                          const int level_number,  
                                                          const tbox::Pointer< hier::BasePatchLevel<NDIM> > old_level )
 {
-   tbox::Array< tbox::Pointer< xfer::RefineSchedule<NDIM> > > scheduleList;
 
-   tbox::pout << "ERROR::PflotranApplicationStrategy::setupRegridRefineSchedules not implemented as yet!!" << std::endl;
-
-   return scheduleList;
+   return(d_regrid_refine_scheds);
 }
 
 /**
@@ -130,7 +130,7 @@ PflotranApplicationStrategy::evaluateFunction( tbox::Pointer< solv::SAMRAIVector
 void 
 PflotranApplicationStrategy::printObjectName( std::ostream& os )
 {
-   tbox::pout << "ERROR:: PflotranApplicationStrategy::printObjectName not implemented as yet!!" << std::endl;
+   os << d_object_name;
 }
 
 /**
@@ -141,6 +141,8 @@ PflotranApplicationStrategy::allocateVectorData(SAMRAI::tbox::Pointer<SAMRAI::so
                                                 double time, bool flag)
 {
    tbox::pout << "ERROR:: PflotranApplicationStrategy::allocateVectorData not implemented as yet!!" << std::endl;
+
+   x->allocateVectorData();
 } 
 
 }
