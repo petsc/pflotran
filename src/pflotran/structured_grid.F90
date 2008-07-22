@@ -646,8 +646,9 @@ function StructGridComputeInternConnect(structured_grid,option)
   type(structured_grid_type) :: structured_grid
   
   
-  PetscInt :: i, j, k, iconn, id_up, id_dn, len, samr_of
+  PetscInt :: i, j, k, iconn, id_up, id_dn, samr_of
   PetscInt :: nconn
+  PetscInt :: lenx, leny, lenz
   PetscReal :: dist_up, dist_dn
   type(connection_set_type), pointer :: connections
   PetscErrorCode :: ierr
@@ -659,24 +660,34 @@ function StructGridComputeInternConnect(structured_grid,option)
           structured_grid%nlx*(structured_grid%ngy-1)*structured_grid%nlz+ &
           structured_grid%nlx*structured_grid%nly*(structured_grid%ngz-1)
 
+  lenx = structured_grid%ngx - 1
+  leny = structured_grid%ngy - 1
+  lenz = structured_grid%ngz - 1
+
   if(.not.(structured_grid%p_samr_patch.eq.0)) then
      if(samr_patch_at_bc(structured_grid%p_samr_patch, 0, 0) ==1) then
         nconn = nconn - structured_grid%nlyz
+        lenx = lenx-1
      endif  
      if(samr_patch_at_bc(structured_grid%p_samr_patch, 0, 1) ==1) then 
         nconn = nconn - structured_grid%nlyz
+        lenx = lenx-1
      endif  
      if(samr_patch_at_bc(structured_grid%p_samr_patch, 1, 0) ==1) then
         nconn = nconn - structured_grid%nlxz
+        leny=leny-1
      endif  
      if(samr_patch_at_bc(structured_grid%p_samr_patch, 1, 1) ==1) then
         nconn = nconn - structured_grid%nlxz
+        leny=leny-1
      endif  
      if(samr_patch_at_bc(structured_grid%p_samr_patch, 2, 0) ==1) then
         nconn = nconn - structured_grid%nlxy
+        lenz=lenz-1
      endif  
      if(samr_patch_at_bc(structured_grid%p_samr_patch, 2, 1) ==1) then
         nconn = nconn - structured_grid%nlxy
+        lenz=lenz-1
      endif  
   endif
 
@@ -687,17 +698,15 @@ function StructGridComputeInternConnect(structured_grid,option)
   iconn = 0
   ! x-connections
   if (structured_grid%ngx > 1) then
-    len = structured_grid%ngx - 1
     samr_of=0
     ! the adjustments in the case of AMR are based on the PIMS code adjustments by LC
     if(.not.(structured_grid%p_samr_patch .eq.0)) then
        samr_of = 1
-       if(samr_patch_at_bc(structured_grid%p_samr_patch,0,1)==1) len = len-1       
     endif
 
     do k = structured_grid%kstart, structured_grid%kend
       do j = structured_grid%jstart, structured_grid%jend
-        do i = 1, len
+        do i = 1, lenx
           iconn = iconn+1
           id_up = i + j * structured_grid%ngx + k * structured_grid%ngxy+samr_of
           id_dn = id_up + 1
@@ -717,18 +726,15 @@ function StructGridComputeInternConnect(structured_grid,option)
 
   ! y-connections
   if (structured_grid%ngy > 1) then
-
-    len = structured_grid%ngy - 1
     samr_of=0
     ! the adjustments in the case of AMR are based on the PIMS code adjustments by LC
     if(.not.(structured_grid%p_samr_patch .eq.0)) then
        samr_of = structured_grid%ngx
-       if(samr_patch_at_bc(structured_grid%p_samr_patch,1,1)==1) len = len-1       
     endif
 
     do k = structured_grid%kstart, structured_grid%kend
       do i = structured_grid%istart, structured_grid%iend
-        do j = 1, len
+        do j = 1, leny
           iconn = iconn+1
           id_up = i + 1 + (j-1) * structured_grid%ngx + k * structured_grid%ngxy+samr_of
           id_dn = id_up + structured_grid%ngx
@@ -748,18 +754,15 @@ function StructGridComputeInternConnect(structured_grid,option)
       
   ! z-connections
   if (structured_grid%ngz > 1) then
-
-    len = structured_grid%ngz - 1
     samr_of=0
     ! the adjustments in the case of AMR are based on the PIMS code adjustments by LC
     if(.not.(structured_grid%p_samr_patch .eq.0)) then
        samr_of = structured_grid%ngxy
-       if(samr_patch_at_bc(structured_grid%p_samr_patch,2,1)==1) len = len-1       
     endif
 
     do j = structured_grid%jstart, structured_grid%jend
       do i = structured_grid%istart, structured_grid%iend
-        do k = 1, len
+        do k = 1, lenz
           iconn = iconn+1
           id_up = i + 1 + j * structured_grid%ngx + (k-1) * structured_grid%ngxy+samr_of
           id_dn = id_up + structured_grid%ngxy
@@ -886,7 +889,7 @@ subroutine StructuredGridComputeVolumes(structured_grid,option,nL2G,volume)
     volume_p(nl) = structured_grid%dx(nl) * structured_grid%dy(nl) * &
                    structured_grid%dz(nl)
   enddo
-  call VecRestoreArrayF90(volume,volume_p, ierr)
+  call StructGridVecRestoreArrayF90(structured_grid,volume,volume_p, ierr)
   
   if (option%commsize <= 16) then
     write(*,'(" rank= ",i3,", nlmax= ",i6,", nlx,y,z= ",3i4, &

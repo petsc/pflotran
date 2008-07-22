@@ -107,3 +107,11 @@ subroutine samr_patch_get_spacing(p_samr_patch, dx, dy, dz)
   PetscReal :: dx, dy, dz
 
 end subroutine samr_patch_get_spacing
+
+subroutine SAMRCreateMatrix(p_hierarchy, ndof, stencilsize, p_matrix)
+  PetscFortranAddr :: p_hierarchy
+  PetscInt :: ndof
+  PetscInt :: stencilsize
+  PetscFortranAddr :: p_matrix
+
+end subroutine SAMRCreateMatrix

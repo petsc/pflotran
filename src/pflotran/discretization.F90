@@ -398,6 +398,8 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
   MatType :: mat_type
   Mat :: Jacobian
   type(option_type) :: option
+  PetscFortranAddr :: p_samr_matrix
+  PetscInt :: ndof, stencilsize
 
   DM :: dm_ptr
   
@@ -415,7 +417,17 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
 #endif
     case(UNSTRUCTURED_GRID)
     case(AMR_GRID)
+       select case(dm_index)
+       case(ONEDOF)
+          ndof = 1
+       case(NFLOWDOF)
+          ndof = option%nflowdof
+       case(NTRANDOF)
+          ndof = option%ntrandof
+       end select
+       call SAMRCreateMatrix(discretization%amrgrid%p_samr_hierarchy, ndof, stencilsize, p_samr_matrix)
        call MatCreateShell(PETSC_COMM_WORLD, 0,0, PETSC_DETERMINE, PETSC_DETERMINE, PETSC_NULL, Jacobian, ierr)
+       call MatShellSetContext(Jacobian, p_samr_matrix, ierr);
   end select
 
 end subroutine DiscretizationCreateJacobian

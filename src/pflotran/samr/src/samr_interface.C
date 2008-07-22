@@ -14,6 +14,8 @@ void  cf90bridge_(void *, int*, void *);
 
 #ifdef __cplusplus
 extern "C" {
+#endif
+
 int hierarchy_number_levels_(SAMRAI::hier::PatchHierarchy<NDIM> **hierarchy)
 {
    return (*hierarchy)->getNumberOfLevels();
@@ -128,6 +130,13 @@ void samr_patch_get_spacing_(SAMRAI::hier::Patch<NDIM> **patch,
    *dz = ds[2];
 }
 
+void samrcreatematrix_(SAMRAI::hier::PatchHierarchy<NDIM> **hierarchy, 
+                       int ndof,
+                       int stencilSize,
+                       void **pMatrix)    
+{
 }
 
+#ifdef __cplusplus
+}
 #endif

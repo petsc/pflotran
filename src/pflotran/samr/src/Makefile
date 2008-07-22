@@ -23,6 +23,7 @@
 ## Modified:    $Date: 2006-08-23 15:10:50 -0600 (Wed, 23 Aug 2006) $
 ## Description: makefile for application to test implicit/nonlinear solver
 ##
+BUILDTYPE :=$(shell echo "`uname -p`-`uname -s`")
 
 # for now use the SAMRAI definition for F77 which should default to pgf95 or fortran
 F90=${F77}
@@ -49,9 +50,11 @@ ifeq "$(BUILDTYPE)" "i386-Darwin"
 endif
 
 CPPFLAGS_EXTRA += -I.
+CPPFLAGS_EXTRA += -I${AMRUTILITIES_HOME}/include
+CXXFLAGS_EXTRA += -I${AMRUTILITIES_HOME}/include
+CPPFLAGS_EXTRA += -I${PRECONDITIONER_HOME}/include
+CXXFLAGS_EXTRA += -I${PRECONDITIONER_HOME}/include
 
-#CPPFLAGS_EXTRA += -I${AMRUTILITIES_HOME}/include
-#CXXFLAGS_EXTRA += -I${AMRUTILITIES_HOME}/include
 #CPPFLAGS_EXTRA += -I${TIMEINTEGRATOR_HOME}/include
 #CXXFLAGS_EXTRA += -I${TIMEINTEGRATOR_HOME}/include
 #LDFLAGS_EXTRA += -L${AMRUTILITIES_HOME}/lib   
