@@ -15,7 +15,7 @@ ifdef hdf5
   else
 # the below is for jaguar
     HDF5_FLAGS = $(HDF5_FLIB) -DUSE_HDF5
-    HDF5_LIBS = $(HDF5_FLIB) -lhdf5_fortran -lhdf5 -lz
+    HDF5_LIBS = $(HDF5_FLIB) -lhdf5_fortran -lhdf5 -lz -lsz
   endif
 endif
 ifdef compile_broken
