@@ -31,7 +31,7 @@ module AMR_Grid_module
 
   type(gridlevelptr_type), dimension(:), pointer :: gridlevel ! pointer to the grid levels
 
-  PetscFortranAddr p_samr_hierarchy ! pointer to the SAMRAI hierarchy
+  PetscFortranAddr p_application ! pointer to the SAMRAI hierarchy
 
   end type amrgrid_type
 
@@ -67,7 +67,7 @@ function AMRGridCreate()
 
   allocate(amrgrid)
   nullify(amrgrid%gridlevel)
-  amrgrid%p_samr_hierarchy = 0
+  amrgrid%p_application = 0
 
   AMRGridCreate => amrgrid
 
@@ -116,25 +116,25 @@ function AMRGridCreateLevelPatchLists(amrgrid)
   end interface
 
 #include "include/finclude/petsc.h"
-  PetscFortranAddr :: p_samr_hierarchy
+  PetscFortranAddr :: p_application
   integer :: nlevels
   integer :: npatches
   integer :: ln
   integer :: pn
   logical :: islocal
 
-  p_samr_hierarchy = amrgrid%p_samr_hierarchy
+  p_application = amrgrid%p_application
 
-  nlevels =  hierarchy_number_levels(p_samr_hierarchy)
+  nlevels =  hierarchy_number_levels(p_application)
 
   level_list => LevelCreateList()
 
   do ln=0,nlevels-1
      level => LevelCreate()
      call LevelAddToList(level,level_list)
-     npatches = level_number_patches(p_samr_hierarchy, ln )
+     npatches = level_number_patches(p_application, ln )
      do pn=0,npatches-1
-        islocal = is_local_patch(p_samr_hierarchy, ln, pn);
+        islocal = is_local_patch(p_application, ln, pn);
         if(islocal) then
            patch => PatchCreate()
            patch%grid => amrgrid%gridlevel(ln+1)%grids(pn+1)%grid_ptr
@@ -176,7 +176,7 @@ subroutine AMRGridComputeLocalBounds(amrgrid)
   end interface
 
 #include "include/finclude/petsc.h"
-  PetscFortranAddr :: p_samr_hierarchy
+  PetscFortranAddr :: p_application
 
   integer :: nlevels
   integer :: npatches
@@ -185,14 +185,14 @@ subroutine AMRGridComputeLocalBounds(amrgrid)
   logical :: islocal
   DA :: da
 
-  p_samr_hierarchy = amrgrid%p_samr_hierarchy
+  p_application = amrgrid%p_application
 
-  nlevels =  hierarchy_number_levels(p_samr_hierarchy)
+  nlevels =  hierarchy_number_levels(p_application)
 
   do ln=0,nlevels-1
-     npatches = level_number_patches(p_samr_hierarchy, ln )
+     npatches = level_number_patches(p_application, ln )
      do pn=0,npatches-1
-        islocal = is_local_patch(p_samr_hierarchy, ln, pn);
+        islocal = is_local_patch(p_application, ln, pn);
         if(islocal) then
            structured_grid=>amrgrid%gridlevel(ln+1)%grids(pn+1)%grid_ptr%structured_grid
            call StructGridComputeLocalBounds(structured_grid, da)
@@ -227,7 +227,7 @@ subroutine AMRGridComputeGridSpacing(amrgrid)
   end interface
 
 #include "include/finclude/petsc.h"
-  PetscFortranAddr :: p_samr_hierarchy
+  PetscFortranAddr :: p_application
   PetscFortranAddr :: p_samr_patch
   PetscReal :: dx, dy, dz
 
@@ -238,14 +238,14 @@ subroutine AMRGridComputeGridSpacing(amrgrid)
   logical :: islocal
 
   
-  p_samr_hierarchy = amrgrid%p_samr_hierarchy
+  p_application = amrgrid%p_application
 
-  nlevels =  hierarchy_number_levels(p_samr_hierarchy)
+  nlevels =  hierarchy_number_levels(p_application)
 
   do ln=0,nlevels-1
-     npatches = level_number_patches(p_samr_hierarchy, ln )
+     npatches = level_number_patches(p_application, ln )
      do pn=0,npatches-1
-        islocal = is_local_patch(p_samr_hierarchy, ln, pn);
+        islocal = is_local_patch(p_application, ln, pn);
         if(islocal) then
            structured_grid =>amrgrid%gridlevel(ln+1)%grids(pn+1)%grid_ptr%structured_grid
            p_samr_patch = structured_grid%p_samr_patch
@@ -323,7 +323,7 @@ subroutine AMRGridInitialize(amrgrid)
   end interface
 
 #include "include/finclude/petsc.h"
-  PetscFortranAddr :: p_samr_hierarchy
+  PetscFortranAddr :: p_application
   PetscInt :: nx, ny, nz
   PetscReal:: x0, y0, z0
 
@@ -336,30 +336,30 @@ subroutine AMRGridInitialize(amrgrid)
   type(gridlevelptr_type), dimension(:), pointer :: gridlevel
   type(structured_grid_type), pointer :: struct_grid
 
-  if(associated(amrgrid) .and. amrgrid%p_samr_hierarchy/=0 ) then
-     p_samr_hierarchy = amrgrid%p_samr_hierarchy
+  if(associated(amrgrid) .and. amrgrid%p_application/=0 ) then
+     p_application = amrgrid%p_application
 
-     nlevels =  hierarchy_number_levels(p_samr_hierarchy)
+     nlevels =  hierarchy_number_levels(p_application)
  
      allocate(amrgrid%gridlevel(nlevels))
      
      gridlevel => amrgrid%gridlevel
 
-     call samr_get_origin(p_samr_hierarchy, x0, y0, z0)
+     call samr_get_origin(p_application, x0, y0, z0)
 
      do ln=0,nlevels-1
-        npatches = level_number_patches(p_samr_hierarchy, ln )
+        npatches = level_number_patches(p_application, ln )
         allocate(gridlevel(ln+1)%grids(npatches))
         do pn=0,npatches-1
-           islocal = is_local_patch(p_samr_hierarchy, ln, pn);
+           islocal = is_local_patch(p_application, ln, pn);
            if(islocal) then
               gridlevel(ln+1)%grids(pn+1)%grid_ptr => GridCreate()
               gridlevel(ln+1)%grids(pn+1)%grid_ptr%itype = STRUCTURED_GRID 
               gridlevel(ln+1)%grids(pn+1)%grid_ptr%ctype = 'structured'
               struct_grid=>StructuredGridCreate()
               gridlevel(ln+1)%grids(pn+1)%grid_ptr%structured_grid=>struct_grid
-              struct_grid%p_samr_patch=hierarchy_get_patch(p_samr_hierarchy, ln, pn)
-              call samr_physical_dimensions(p_samr_hierarchy, nx,ny,nz)
+              struct_grid%p_samr_patch=hierarchy_get_patch(p_application, ln, pn)
+              call samr_physical_dimensions(p_application, nx,ny,nz)
               struct_grid%nx = nx
               struct_grid%ny = ny
               struct_grid%nz = nz
@@ -401,10 +401,10 @@ subroutine AMRGridCreateVector(amrgrid, dof,vector,vector_type)
   select case (vector_type)
     case(GLOBAL)
       use_ghost=PETSC_FALSE
-      call create_samrai_vec(amrgrid%p_samr_hierarchy, dof, use_ghost, vector)
+      call create_samrai_vec(amrgrid%p_application, dof, use_ghost, vector)
     case(LOCAL)
        use_ghost=PETSC_TRUE
-      call create_samrai_vec(amrgrid%p_samr_hierarchy, dof, use_ghost, vector)
+      call create_samrai_vec(amrgrid%p_application, dof, use_ghost, vector)
     case(NATURAL)
        print *, 'ERROR::SAMRAI will not create PETSc Natural Vecs!!'
        stop
@@ -453,7 +453,7 @@ subroutine AMRGridComputeGeometryInformation(amrgrid, field, option)
   type(field_type), pointer :: field
   
 #include "include/finclude/petsc.h"
-  PetscFortranAddr :: p_samr_hierarchy
+  PetscFortranAddr :: p_application
 
   type(grid_type), pointer :: grid
 
@@ -464,12 +464,12 @@ subroutine AMRGridComputeGeometryInformation(amrgrid, field, option)
 
   call AMRGridComputeGridSpacing(amrgrid)
   
-  p_samr_hierarchy = amrgrid%p_samr_hierarchy
+  p_application = amrgrid%p_application
 
-  nlevels =  hierarchy_number_levels(p_samr_hierarchy)
+  nlevels =  hierarchy_number_levels(p_application)
 
   do ln=0,nlevels-1
-     npatches = level_number_patches(p_samr_hierarchy, ln )
+     npatches = level_number_patches(p_application, ln )
      do pn=0,npatches-1
         if (associated(amrgrid%gridlevel(ln+1)%grids(pn+1)%grid_ptr)) then
            grid => amrgrid%gridlevel(ln+1)%grids(pn+1)%grid_ptr

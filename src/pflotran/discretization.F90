@@ -425,7 +425,7 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
        case(NTRANDOF)
           ndof = option%ntrandof
        end select
-       call SAMRCreateMatrix(discretization%amrgrid%p_samr_hierarchy, ndof, stencilsize, p_samr_matrix)
+       call SAMRCreateMatrix(discretization%amrgrid%p_application, ndof, stencilsize, p_samr_matrix)
        call MatCreateShell(PETSC_COMM_WORLD, 0,0, PETSC_DETERMINE, PETSC_DETERMINE, PETSC_NULL, Jacobian, ierr)
        call MatShellSetContext(Jacobian, p_samr_matrix, ierr);
   end select

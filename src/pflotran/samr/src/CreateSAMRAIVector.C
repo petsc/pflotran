@@ -23,10 +23,13 @@
 #include "SAMRAIVectorReal.h"
 #include <string>
 
+#include "PflotranApplicationStrategy.h"
+
 #ifdef __cplusplus
 extern "C"{
 #endif
-void create_samrai_vec_(SAMRAI::hier::PatchHierarchy<NDIM> **hierarchy, 
+
+void create_samrai_vec_(SAMRAI::PflotranApplicationStrategy **application_strategy,
                         int &dof, 
                         bool &use_ghost,
                         Vec *vec)
@@ -41,6 +44,8 @@ void create_samrai_vec_(SAMRAI::hier::PatchHierarchy<NDIM> **hierarchy,
    dataName+=object_str;
 
    vec_i++;
+
+   SAMRAI::tbox::Pointer< SAMRAI::hier::PatchHierarchy<NDIM> > p_hierarchy = (*application_strategy)->d_hierarchy;
 
    SAMRAI::tbox::Pointer< SAMRAI::pdat::CellVariable<NDIM,double> > pflow_var;
 
@@ -67,7 +72,6 @@ void create_samrai_vec_(SAMRAI::hier::PatchHierarchy<NDIM> **hierarchy,
                                                           nghosts);
 
 
-   SAMRAI::tbox::Pointer< SAMRAI::hier::PatchHierarchy<NDIM> > p_hierarchy = (*hierarchy);
    const int nlevels = p_hierarchy->getNumberOfLevels();
 
    for(int ln=0; ln<p_hierarchy->getNumberOfLevels(); ln++)

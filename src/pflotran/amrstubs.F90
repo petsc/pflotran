@@ -11,14 +11,14 @@ samr_patch_at_bc=-1
 end function samr_patch_at_bc
 
 
-subroutine create_samrai_vec(p_hierarchy, dof, use_ghost, vec)
+subroutine create_samrai_vec(p_application, dof, use_ghost, vec)
 implicit none
 
 #include "include/finclude/petsc.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
 
-PetscFortranAddr :: p_hierarchy
+PetscFortranAddr :: p_application
 integer :: dof
 PetscTruth :: use_ghost
 Vec :: vec
@@ -44,20 +44,20 @@ integer :: nxs, nys, nzs, nlx, nly, nlz
 
 end subroutine samr_patch_get_ghostcorners
 
-integer function hierarchy_number_levels(p_hierarchy)
-  PetscFortranAddr, intent(inout) :: p_hierarchy
+integer function hierarchy_number_levels(p_application)
+  PetscFortranAddr, intent(inout) :: p_application
   hierarchy_number_levels=-1
 end function hierarchy_number_levels
 
-integer function level_number_patches(p_hierarchy, ln)
-  PetscFortranAddr, intent(inout) :: p_hierarchy
+integer function level_number_patches(p_application, ln)
+  PetscFortranAddr, intent(inout) :: p_application
   integer, intent(in) :: ln
 
   level_number_patches=-1
 end function level_number_patches
 
-logical function is_local_patch(p_hierarchy, ln, pn)
-  PetscFortranAddr, intent(inout) :: p_hierarchy
+logical function is_local_patch(p_application, ln, pn)
+  PetscFortranAddr, intent(inout) :: p_application
   integer, intent(in) :: ln
   integer, intent(in) :: pn
 
@@ -65,8 +65,8 @@ logical function is_local_patch(p_hierarchy, ln, pn)
 
 end function is_local_patch
 
-PetscFortranAddr function hierarchy_get_patch(p_hierarchy, ln, pn)
-  PetscFortranAddr, intent(inout) :: p_hierarchy
+PetscFortranAddr function hierarchy_get_patch(p_application, ln, pn)
+  PetscFortranAddr, intent(inout) :: p_application
   integer, intent(in) :: ln
   integer, intent(in) :: pn
 
@@ -74,15 +74,15 @@ PetscFortranAddr function hierarchy_get_patch(p_hierarchy, ln, pn)
   
 end function hierarchy_get_patch
 
-subroutine samr_physical_dimensions(p_hierarchy, nx, ny, nz)
-  PetscFortranAddr, intent(inout) :: p_hierarchy
+subroutine samr_physical_dimensions(p_application, nx, ny, nz)
+  PetscFortranAddr, intent(inout) :: p_application
   integer, intent(inout) :: nx
   integer, intent(inout) :: ny
   integer, intent(inout) :: nz
 end subroutine samr_physical_dimensions
 
-subroutine samr_get_origin(p_hierarchy, x0, y0, z0)
-  PetscFortranAddr, intent(inout) :: p_hierarchy
+subroutine samr_get_origin(p_application, x0, y0, z0)
+  PetscFortranAddr, intent(inout) :: p_application
   PetscReal, intent(inout) :: x0
   PetscReal, intent(inout) :: y0
   PetscReal, intent(inout) :: z0
@@ -108,8 +108,8 @@ subroutine samr_patch_get_spacing(p_samr_patch, dx, dy, dz)
 
 end subroutine samr_patch_get_spacing
 
-subroutine SAMRCreateMatrix(p_hierarchy, ndof, stencilsize, p_matrix)
-  PetscFortranAddr :: p_hierarchy
+subroutine SAMRCreateMatrix(p_application, ndof, stencilsize, p_matrix)
+  PetscFortranAddr :: p_application
   PetscInt :: ndof
   PetscInt :: stencilsize
   PetscFortranAddr :: p_matrix

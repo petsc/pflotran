@@ -16,7 +16,7 @@ extern "C"{
 
    void f_stepper_run_(void **p_simulation);
 
-   void f_set_hierarchy_ptr_(void **p_simulation, void **p_hierarchy);
+   void f_set_application_ptr_(void **p_simulation, void **p_application);
 
 struct gridparameters{
    void *p_grid;

@@ -97,6 +97,11 @@ public:
    void allocateVectorData(SAMRAI::tbox::Pointer<SAMRAI::solv::SAMRAIVectorReal<NDIM,double> > x,
                                    double time, bool flag=true ); 
 
+
+   // Hierarchy
+   tbox::Pointer< hier::PatchHierarchy<NDIM> > d_hierarchy;
+
+
 protected:
 
 private:
@@ -107,9 +112,6 @@ private:
    
    // Name of application
    std::string d_object_name;
-
-   // Hierarchy
-   tbox::Pointer< hier::PatchHierarchy<NDIM> > d_hierarchy;
 
    int d_number_solution_components;
    tbox::Array< tbox::Pointer< hier::Variable<NDIM> > > d_variable_list;

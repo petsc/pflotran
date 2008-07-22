@@ -5,6 +5,7 @@
 #include "CellData.h"
 #include "CartesianGridGeometry.h"
 #include "CartesianPatchGeometry.h"
+#include "PflotranApplicationStrategy.h"
 
 extern "C" {
 #include "petscvec.h"
@@ -16,34 +17,39 @@ void  cf90bridge_(void *, int*, void *);
 extern "C" {
 #endif
 
-int hierarchy_number_levels_(SAMRAI::hier::PatchHierarchy<NDIM> **hierarchy)
+int hierarchy_number_levels_(SAMRAI::PflotranApplicationStrategy **application_strategy)
 {
-   return (*hierarchy)->getNumberOfLevels();
+   SAMRAI::tbox::Pointer< SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy = (*application_strategy)->d_hierarchy;
+   return hierarchy->getNumberOfLevels();
 }
 
-int level_number_patches_(SAMRAI::hier::PatchHierarchy<NDIM> **hierarchy, int *ln)
+int level_number_patches_(SAMRAI::PflotranApplicationStrategy **application_strategy, int *ln)
 {
-   SAMRAI::tbox::Pointer<SAMRAI::hier::PatchLevel<NDIM> > level = (*hierarchy)->getPatchLevel(*ln);
+   SAMRAI::tbox::Pointer< SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy = (*application_strategy)->d_hierarchy;
+   SAMRAI::tbox::Pointer<SAMRAI::hier::PatchLevel<NDIM> > level = hierarchy->getPatchLevel(*ln);
    return level->getNumberOfPatches();
 }
 
-bool is_local_patch_(SAMRAI::hier::PatchHierarchy<NDIM> **hierarchy, int *ln, int *pn)
+bool is_local_patch_(SAMRAI::PflotranApplicationStrategy **application_strategy, int *ln, int *pn)
 {
-    SAMRAI::tbox::Pointer<SAMRAI::hier::PatchLevel<NDIM> > level = (*hierarchy)->getPatchLevel(*ln);
-    return(level->getProcessorMapping().isMappingLocal(*pn));
+   SAMRAI::tbox::Pointer< SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy = (*application_strategy)->d_hierarchy;
+   SAMRAI::tbox::Pointer<SAMRAI::hier::PatchLevel<NDIM> > level = hierarchy->getPatchLevel(*ln);
+   return(level->getProcessorMapping().isMappingLocal(*pn));
 }
 
-void *hierarchy_get_patch_(SAMRAI::hier::PatchHierarchy<NDIM> **hierarchy, int *ln, int *pn)
+void *hierarchy_get_patch_(SAMRAI::PflotranApplicationStrategy **application_strategy, int *ln, int *pn)
 {
-   SAMRAI::tbox::Pointer<SAMRAI::hier::PatchLevel<NDIM> > level = (*hierarchy)->getPatchLevel(*ln);
+   SAMRAI::tbox::Pointer< SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy = (*application_strategy)->d_hierarchy;
+   SAMRAI::tbox::Pointer<SAMRAI::hier::PatchLevel<NDIM> > level = hierarchy->getPatchLevel(*ln);
    SAMRAI::tbox::Pointer<SAMRAI::hier::Patch<NDIM> > patch = level->getPatch(*pn);
    return (void *)(patch.getPointer());
 }
 
-void samr_physical_dimensions_(SAMRAI::hier::PatchHierarchy<NDIM> **hierarchy, 
+void samr_physical_dimensions_(SAMRAI::PflotranApplicationStrategy **application_strategy, 
                                int *nx, int *ny, int *nz)
 {
-   SAMRAI::hier::BoxArray<NDIM> physicalDomain = (*hierarchy)->getGridGeometry()->getPhysicalDomain();
+   SAMRAI::tbox::Pointer< SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy = (*application_strategy)->d_hierarchy;
+   SAMRAI::hier::BoxArray<NDIM> physicalDomain = hierarchy->getGridGeometry()->getPhysicalDomain();
 
    // assume one box representing the domain for now
    SAMRAI::hier::Box< NDIM > physicalBox = physicalDomain.getBox(0);
@@ -52,12 +58,13 @@ void samr_physical_dimensions_(SAMRAI::hier::PatchHierarchy<NDIM> **hierarchy,
    (*nz) = physicalBox.numberCells(2);
 }
 
-void samr_get_origin_(SAMRAI::hier::PatchHierarchy<NDIM> **hierarchy,
+void samr_get_origin_(SAMRAI::PflotranApplicationStrategy **application_strategy,
                      double *x0,
                      double *y0,
                      double *z0)
 {
-   SAMRAI::tbox::Pointer<SAMRAI::geom::CartesianGridGeometry<NDIM> > grid_geometry = (*hierarchy)->getGridGeometry();
+   SAMRAI::tbox::Pointer< SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy = (*application_strategy)->d_hierarchy;
+   SAMRAI::tbox::Pointer<SAMRAI::geom::CartesianGridGeometry<NDIM> > grid_geometry = hierarchy->getGridGeometry();
    const double* xlo = grid_geometry->getXLower();
    (*x0) = xlo[0];
    (*y0) = xlo[1];
@@ -130,11 +137,12 @@ void samr_patch_get_spacing_(SAMRAI::hier::Patch<NDIM> **patch,
    *dz = ds[2];
 }
 
-void samrcreatematrix_(SAMRAI::hier::PatchHierarchy<NDIM> **hierarchy, 
+void samrcreatematrix_(SAMRAI::PflotranApplicationStrategy **application_strategy, 
                        int ndof,
                        int stencilSize,
                        void **pMatrix)    
 {
+   SAMRAI::tbox::Pointer< SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy = (*application_strategy)->d_hierarchy;
 }
 
 #ifdef __cplusplus

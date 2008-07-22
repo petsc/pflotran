@@ -1,4 +1,4 @@
-subroutine f_set_hierarchy_ptr(simulation, hierarchy_ptr)
+subroutine f_set_application_ptr(simulation, application_ptr)
   use Simulation_module
   use Discretization_module
   use AMR_Grid_module
@@ -9,9 +9,9 @@ subroutine f_set_hierarchy_ptr(simulation, hierarchy_ptr)
 
  type(simulation_type), pointer :: simulation
  type(discretization_type), pointer :: discretization
- PetscFortranAddr :: hierarchy_ptr
+ PetscFortranAddr :: application_ptr
 
  discretization => simulation%realization%discretization
- discretization%amrgrid%p_samr_hierarchy = hierarchy_ptr
+ discretization%amrgrid%p_application = application_ptr
 
-end subroutine f_set_hierarchy_ptr
+end subroutine f_set_application_ptr
