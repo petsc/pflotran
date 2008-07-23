@@ -170,11 +170,35 @@ protected:
    */
    void setupTransferSchedules(void);
 
+   void initializeBoundaryConditionStrategy(tbox::Pointer<tbox::Database> &db);
+
 private:
 
    PflotranJacobianMultilevelOperator();
 
+   bool d_adjust_cf_coefficients;
+   bool d_coarsen_diffusive_fluxes;
+   bool d_schedules_initialized;
+   bool d_use_cf_interpolant;
+   bool d_variable_order_interpolation;
+   bool d_reset_ghost_values;
+
+   std::string d_face_coarsen_op_str;
+   std::string d_face_refine_op_str;
+   std::string d_cell_coarsen_op_str;
+   std::string d_cell_refine_op_str;
+
+   int d_flux_id;
+
+   int d_bdry_types[2*NDIM];
+
    int d_numberOfVariables;
+
+   tbox::Pointer< pdat::FaceVariable<NDIM,double> > d_flux;
+
+   RefinementBoundaryInterpolation::InterpolationScheme d_tangent_interp_scheme;
+   RefinementBoundaryInterpolation::InterpolationScheme d_normal_interp_scheme;
+
    tbox::Array<PflotranJacobianLevelOperator*> d_level_operators;
 };
 

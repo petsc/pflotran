@@ -133,11 +133,28 @@ public:
 
 
    /**
+   * Returns integer array of offsets for non zero elements of the i,j stencil block.
+   * Block i,j of the stencil contains non zero connections between the i-th and j-th variables.
+   * \param i
+   *        index of first variable
+   * \param j
+   *        index of second variable   
+   */
+   std::vector<int> getStencilOffsets(const int i=0, 
+                                      const int j=0, 
+                                      const int k=0);
+
+   /**
    * Returns the number of primitive variables for the discretization
    */
    const int getNumberOfVariables(void){ return d_numberOfVariables; }
 
+
 protected:
+
+   void getFromInput(const tbox::Pointer<tbox::Database> &db);
+
+   void initializeInternalVariableData();
    
 private:
 
@@ -145,6 +162,16 @@ private:
 
    int d_numberOfVariables;
    
+   bool d_adjust_cf_coefficients;
+   bool d_interpolate_ghost_values;
+   bool d_sibling_fill_cached;
+   bool d_stencil_initialized;
+   bool d_coefficients_changed;
+   bool d_variable_order_interpolation;
+   bool d_reset_ghost_cells;
+
+   int d_extrapolation_order;           // extrapolation order to use for ghost cells on physical boundaries
+   int d_bdry_types[2*NDIM];
    int d_stencil_size;
    int d_stencil_id;
 

@@ -1,4 +1,5 @@
 #include "PflotranJacobianMultilevelOperator.h"
+#include "CartesianGridGeometry.h"
 
 namespace SAMRAI{
 
@@ -11,7 +12,44 @@ PflotranJacobianMultilevelOperator::~PflotranJacobianMultilevelOperator()
 }
 
 PflotranJacobianMultilevelOperator::PflotranJacobianMultilevelOperator(MultilevelOperatorParameters *parameters)
+   :MultilevelLinearOperator(parameters)
 {
+   d_flux_id                      = -1;
+   d_coarsen_diffusive_fluxes     = true;
+   d_schedules_initialized        = false;
+   d_adjust_cf_coefficients       = false; 
+   d_variable_order_interpolation = false;
+   d_reset_ghost_values           = true;
+   d_face_coarsen_op_str          = "CONSERVATIVE_COARSEN";
+   d_cell_coarsen_op_str          = "CONSERVATIVE_COARSEN";
+   d_cell_refine_op_str           = "CONSTANT_REFINE";
+   d_face_refine_op_str           = "CONSTANT_REFINE";
+   d_flux.setNull();
+
+   const int hierarchy_size       = d_hierarchy->getNumberOfLevels();
+
+   d_level_operators.resizeArray(hierarchy_size);
+
+   PflotranJacobianMultilevelOperator::getFromInput(parameters->d_db);
+   
+   for(int ln=0; ln<hierarchy_size; ln++)
+   {
+      LevelOperatorParameters *params = new LevelOperatorParameters(parameters->d_db);
+      // The next call is important
+      // It lets the level operators know what object_id to use as a suffix
+      // when creating internal data to minimize the number of variables created
+      parameters->d_db->putInteger("object_id", d_object_id);
+      
+      tbox::Pointer<hier::PatchLevel<NDIM> > level = d_hierarchy->getPatchLevel(ln);
+
+      params->d_level               = level;
+      params->d_cf_interpolant      = parameters->d_cf_interpolant;
+      params->d_set_boundary_ghosts = d_set_boundary_ghosts;
+      d_level_operators[ln]         = new PflotranJacobianLevelOperator(params);
+      delete params;
+   }
+   
+   initializeInternalVariableData();
 }
 
 void
@@ -25,6 +63,16 @@ PflotranJacobianMultilevelOperator::apply(const int ln,
                                           const double a,
                                           const double b)
 {
+#ifdef DEBUG_CHECK_ASSERTIONS
+   assert(f_id!=NULL);
+   assert(u_id!=NULL);
+   assert(r_id!=NULL);
+   assert(d_level_operators[ln]!=NULL);
+#endif
+
+   d_level_operators[ln]->apply(f_id , u_id , r_id ,
+                                f_idx, u_idx, r_idx,
+                                a, b);
 }
 
 void
@@ -54,11 +102,197 @@ PflotranJacobianMultilevelOperator::applyBoundaryCondition(const int ln,
 void
 PflotranJacobianMultilevelOperator::initializeInternalVariableData(void)
 {
+   hier::VariableDatabase<NDIM>* variable_db = hier::VariableDatabase<NDIM>::getDatabase();
+
+   const hier::IntVector<NDIM> zero_ghosts(0);
+
+   const tbox::Pointer< hier::VariableContext > scratch_cxt = variable_db->getContext("SCRATCH");
+
+   std::ostringstream ibuffer;
+   ibuffer<<(long)d_object_id;
+   std::string object_str=ibuffer.str();
+
+   std::string cellFlux("CellDiffusionOperator_InternalFlux");
+   cellFlux+=object_str;
+
+   d_flux = variable_db->getVariable(cellFlux);
+
+   if (!d_flux) 
+   {
+      d_flux = new pdat::FaceVariable<NDIM,double>(cellFlux,1);
+   }
+
+   d_flux_id = variable_db->registerVariableAndContext(d_flux,
+                                                       scratch_cxt,
+                                                       zero_ghosts);
+
+   for(int ln=0; ln<d_hierarchy->getNumberOfLevels(); ln++)
+   {
+      tbox::Pointer<hier::PatchLevel<NDIM> > level = d_hierarchy->getPatchLevel(ln);
+      // allocate storage space
+      if(!level->checkAllocated(d_flux_id))
+      {
+         level->allocatePatchData(d_flux_id);
+      }
+
+#ifdef DEBUG_CHECK_ASSERTIONS
+      assert(level->checkAllocated(d_flux_id));
+#endif
+
+   }
 }
 
 void
 PflotranJacobianMultilevelOperator::getFromInput(tbox::Pointer<tbox::Database> db)
 {
+#ifdef DEBUG_CHECK_ASSERTIONS
+   assert(!db.isNull());
+#endif
+
+   if (db->keyExists("tangent_interp_scheme")) 
+   {
+      d_tangent_interp_scheme = RefinementBoundaryInterpolation::lookupInterpolationScheme(db->getString("tangent_interp_scheme"));
+   } 
+   else 
+   {
+      TBOX_ERROR( "CellDiffusionMultilevelLevelOperator" 
+                 << " -- Required key `tangent_interp_scheme'"
+                 << " missing in input.");
+   }
+
+   if (db->keyExists("normal_interp_scheme")) 
+   {
+      d_normal_interp_scheme = RefinementBoundaryInterpolation::lookupInterpolationScheme(db->getString("normal_interp_scheme"));
+   } 
+   else 
+   {
+      TBOX_ERROR( "CellDiffusionMultilevelLevelOperator" 
+                 << " -- Required key `normal_interp_scheme'"
+                 << " missing in input.");
+   }
+
+   if (db->keyExists("coarsen_diffusive_fluxes")) 
+   {
+      d_coarsen_diffusive_fluxes = db->getBool("coarsen_diffusive_fluxes");
+   } 
+   else 
+   {
+      TBOX_ERROR("CellDiffusionMultilevelOperator" 
+                 << " -- Required key `coarsen_diffusive_fluxes'"
+                 << " missing in input.");
+   }
+   
+   if(db->keyExists("face_coarsen_op"))
+   {
+      d_face_coarsen_op_str = db->getString("face_coarsen_op");
+   }
+   else
+   {
+      TBOX_ERROR("CellDiffusionMultilevelOperator" 
+                 << " -- Required key `face_coarsen_op'"
+                 << " missing in input.");
+   }
+
+   if(db->keyExists("face_refine_op"))
+   {
+      d_face_refine_op_str = db->getString("face_refine_op");
+   }
+   else
+   {
+      TBOX_ERROR("CellDiffusionMultilevelOperator" 
+                 << " -- Required key `face_refine_op'"
+                 << " missing in input.");
+   }
+
+   if(db->keyExists("cell_coarsen_op"))
+   {
+      d_cell_coarsen_op_str = db->getString("cell_coarsen_op");
+   }
+   else
+   {
+      TBOX_ERROR("CellDiffusionMultilevelOperator" 
+                 << " -- Required key `cell_coarsen_op'"
+                 << " missing in input.");
+   }
+
+   if (db->keyExists("adjust_cf_coefficients")) 
+   {
+      d_adjust_cf_coefficients = db->getBool("adjust_cf_coefficients");      
+   } 
+   else 
+   {
+      TBOX_ERROR( "CellDiffusionLevelOperator" 
+                 << " -- Required key `adjust_cf_coefficients'"
+                 << " missing in input.");
+   }
+
+   if(db->keyExists("use_cf_interpolant"))
+   {
+      d_use_cf_interpolant = db->getBool("use_cf_interpolant");
+      
+      if(d_use_cf_interpolant)
+      {
+         d_cell_refine_op_str = "CONSTANT_REFINE";
+
+         if (db->keyExists("variable_order_interpolation")) 
+         {
+            d_variable_order_interpolation = db->getBool("variable_order_interpolation");
+         } 
+         else 
+         {
+            TBOX_ERROR("CellDiffusionMultilevelOperator"
+                       << " -- Required key `variable_order_interpolation'"
+                       << " missing in input.");
+         }
+      }
+      else
+      {
+         if(db->keyExists("cell_refine_op"))
+         {
+            d_cell_refine_op_str = db->getString("cell_refine_op");
+         }
+         else
+         {
+            TBOX_ERROR( "CellDiffusionMultilevelOperator"
+                       << " -- Required key `cell_refine_op'"
+                       << " missing in input.");
+         }
+      }
+   }
+   else
+   {
+      TBOX_ERROR("CellDiffusionMultilevelOperator"
+                 << " -- Required key `use_cf_interpolant'"
+                 << " missing in input.");
+   }
+
+   if (db->keyExists("boundary_conditions")) 
+   {
+      // get the database object for boundary conditions
+      db->getIntegerArray("boundary_conditions", (int *)&d_bdry_types, 2*NDIM);
+      
+      tbox::Pointer<geom::CartesianGridGeometry<NDIM> > grid_geometry = 
+         d_hierarchy->getGridGeometry();
+      hier::IntVector<NDIM> shift = grid_geometry->getPeriodicShift();
+      
+      for (int d=0; d<NDIM; d++) 
+      {
+         if (shift[d]!=0)
+         {
+            d_bdry_types[2*d+0] = PERIODIC;
+            d_bdry_types[2*d+1] = PERIODIC;
+         }
+      }
+
+      initializeBoundaryConditionStrategy(db);
+
+   } 
+   else 
+   {
+      TBOX_ERROR("CellDiffusionMultilevelOperator" 
+                 << " -- Required key `boundary_conditions'"
+                 << " missing in input.");
+   }   
 }
 
 void
@@ -71,6 +305,11 @@ PflotranJacobianMultilevelOperator::setFlux(const int coarse_ln,
 
 void
 PflotranJacobianMultilevelOperator::setupTransferSchedules(void)
+{
+}
+
+void 
+PflotranJacobianMultilevelOperator::initializeBoundaryConditionStrategy(tbox::Pointer<tbox::Database> &db)
 {
 }
 
