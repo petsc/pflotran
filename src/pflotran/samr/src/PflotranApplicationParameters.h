@@ -17,7 +17,6 @@ public:
 
    // Computational grid where problem is solved.
    tbox::Pointer< hier::PatchHierarchy<NDIM> > d_hierarchy;
-
 protected:
 private:
    PflotranApplicationParameters();

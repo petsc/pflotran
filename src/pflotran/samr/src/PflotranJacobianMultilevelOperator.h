@@ -18,6 +18,10 @@ extern "C"{
 #include "MultilevelLinearOperator.h"
 #include "PflotranJacobianLevelOperator.h"
 
+extern "C" {
+#include "petscmat.h"
+}
+
 namespace SAMRAI{
 
 class PflotranJacobianMultilevelOperator: public MultilevelLinearOperator
@@ -140,7 +144,23 @@ public:
    */
    const int getNumberOfVariables(void){ return d_numberOfVariables; }
 
+   static PetscErrorCode MatMult(Mat mat,Vec x,Vec y);
+
+   static PetscErrorCode MatZeroEntries(Mat mat);
+
+   static PetscErrorCode MatSetValuesLocal(Mat mat,
+                                           PetscInt nrow,const PetscInt irow[],
+                                           PetscInt ncol,const PetscInt icol[],
+                                           const PetscScalar y[],InsertMode addv);
+      
+   static PetscErrorCode MatSetValuesBlockedLocal(Mat mat,
+                                                  PetscInt nrow,const PetscInt irow[],
+                                                  PetscInt ncol,const PetscInt icol[],
+                                                  const PetscScalar y[],InsertMode addv);
+      
 protected:
+
+   void initializePetscMatInterface(void);
    /**
    * Allocates space for the internally used face centered flux
    */
@@ -200,6 +220,8 @@ private:
    RefinementBoundaryInterpolation::InterpolationScheme d_normal_interp_scheme;
 
    tbox::Array<PflotranJacobianLevelOperator*> d_level_operators;
+
+   Mat *d_pMatrix;
 };
 
 

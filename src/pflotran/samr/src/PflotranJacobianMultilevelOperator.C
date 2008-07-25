@@ -1,7 +1,11 @@
 #include "PflotranJacobianMultilevelOperator.h"
 #include "CartesianGridGeometry.h"
+#include "PflotranJacobianMultilevelOperatorParameters.h"
 
 namespace SAMRAI{
+#ifndef iC
+#define iC(fun) {CHKERRQ(fun);}
+#endif
 
 PflotranJacobianMultilevelOperator::PflotranJacobianMultilevelOperator()
 {
@@ -25,13 +29,21 @@ PflotranJacobianMultilevelOperator::PflotranJacobianMultilevelOperator(Multileve
    d_cell_refine_op_str           = "CONSTANT_REFINE";
    d_face_refine_op_str           = "CONSTANT_REFINE";
    d_flux.setNull();
-
+   
    const int hierarchy_size       = d_hierarchy->getNumberOfLevels();
 
    d_level_operators.resizeArray(hierarchy_size);
 
+   PflotranJacobianMultilevelOperatorParameters *pm = dynamic_cast<PflotranJacobianMultilevelOperatorParameters *>(parameters);
+
+   d_pMatrix = pm->d_pMatrix;
+
+   MatShellSetContext(*d_pMatrix,this);
+
    PflotranJacobianMultilevelOperator::getFromInput(parameters->d_db);
-   
+
+   initializePetscMatInterface();
+
    for(int ln=0; ln<hierarchy_size; ln++)
    {
       LevelOperatorParameters *params = new LevelOperatorParameters(parameters->d_db);
@@ -50,6 +62,18 @@ PflotranJacobianMultilevelOperator::PflotranJacobianMultilevelOperator(Multileve
    }
    
    initializeInternalVariableData();
+}
+
+void
+PflotranJacobianMultilevelOperator::initializePetscMatInterface(void)
+{
+   MatShellSetOperation(*d_pMatrix, MATOP_MULT, (void(*)(void))(&SAMRAI::PflotranJacobianMultilevelOperator::MatMult));
+
+   MatShellSetOperation(*d_pMatrix, MATOP_ZERO_ENTRIES, (void(*)(void))(&SAMRAI::PflotranJacobianMultilevelOperator::MatZeroEntries));
+
+   MatShellSetOperation(*d_pMatrix, MATOP_SET_VALUES_LOCAL, (void(*)(void))(&SAMRAI::PflotranJacobianMultilevelOperator::MatSetValuesLocal));
+
+   //   MatShellSetOperation(*d_pMatrix, MATOP_SET_VALUES_BLOCKED_LOCAL, (void(*)(void))(&SAMRAI::PflotranJacobianMultilevelOperator::MatSetValuesBlockedLocal));
 }
 
 void
@@ -148,7 +172,7 @@ PflotranJacobianMultilevelOperator::getFromInput(tbox::Pointer<tbox::Database> d
 #ifdef DEBUG_CHECK_ASSERTIONS
    assert(!db.isNull());
 #endif
-
+#if 0
    if (db->keyExists("tangent_interp_scheme")) 
    {
       d_tangent_interp_scheme = RefinementBoundaryInterpolation::lookupInterpolationScheme(db->getString("tangent_interp_scheme"));
@@ -292,7 +316,9 @@ PflotranJacobianMultilevelOperator::getFromInput(tbox::Pointer<tbox::Database> d
       TBOX_ERROR("CellDiffusionMultilevelOperator" 
                  << " -- Required key `boundary_conditions'"
                  << " missing in input.");
-   }   
+   } 
+#endif
+  
 }
 
 void
@@ -313,5 +339,49 @@ PflotranJacobianMultilevelOperator::initializeBoundaryConditionStrategy(tbox::Po
 {
 }
 
+PetscErrorCode
+PflotranJacobianMultilevelOperator::MatMult(Mat mat,Vec x,Vec y)
+{
+
+   PflotranJacobianMultilevelOperator *pMatrix = NULL;
+   
+   MatShellGetContext(mat,(void**)&pMatrix);
+   return (0);
+
+}
+
+PetscErrorCode  
+PflotranJacobianMultilevelOperator::MatZeroEntries(Mat mat)
+{
+  PflotranJacobianMultilevelOperator *pMatrix = NULL;
+   
+   MatShellGetContext(mat,(void**)&pMatrix);
+   return (0);
+
+}
+
+PetscErrorCode  
+PflotranJacobianMultilevelOperator::MatSetValuesLocal(Mat mat,
+                                                      PetscInt nrow,const PetscInt irow[],
+                                                      PetscInt ncol,const PetscInt icol[],
+                                                      const PetscScalar y[],InsertMode addv)
+{
+  PflotranJacobianMultilevelOperator *pMatrix = NULL;
+   
+   MatShellGetContext(mat,(void**)&pMatrix);
+   return (0);
+}
+
+PetscErrorCode  
+PflotranJacobianMultilevelOperator::MatSetValuesBlockedLocal(Mat mat,
+                                                             PetscInt nrow,const PetscInt irow[],
+                                                             PetscInt ncol,const PetscInt icol[],
+                                                             const PetscScalar y[],InsertMode addv)
+{
+  PflotranJacobianMultilevelOperator *pMatrix = NULL;
+   
+   MatShellGetContext(mat,(void**)&pMatrix);
+   return (0);
+}
 }
 

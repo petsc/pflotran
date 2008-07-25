@@ -16,6 +16,7 @@
 #include "ComponentSelector.h"
 #include "ApplicationStrategy.h"
 #include "PflotranApplicationParameters.h"
+#include "PflotranJacobianMultilevelOperator.h"
 
 namespace SAMRAI{
 
@@ -101,6 +102,7 @@ public:
    // Hierarchy
    tbox::Pointer< hier::PatchHierarchy<NDIM> > d_hierarchy;
 
+   void setJacobianMatrix(PflotranJacobianMultilevelOperator *pMatrix){d_Jacobian = pMatrix;}
 
 protected:
 
@@ -122,6 +124,8 @@ private:
 
    hier::ComponentSelector d_AllocSelector;
    hier::ComponentSelector d_TimestampSelector;
+
+   PflotranJacobianMultilevelOperator *d_Jacobian;
 };
 
 }

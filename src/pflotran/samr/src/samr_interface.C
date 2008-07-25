@@ -6,9 +6,12 @@
 #include "CartesianGridGeometry.h"
 #include "CartesianPatchGeometry.h"
 #include "PflotranApplicationStrategy.h"
+#include "PflotranJacobianMultilevelOperator.h"
+#include "PflotranJacobianMultilevelOperatorParameters.h"
 
 extern "C" {
 #include "petscvec.h"
+#include "petscmat.h"
 void  cf90bridge_(void *, int*, void *);
 
 }
@@ -138,11 +141,28 @@ void samr_patch_get_spacing_(SAMRAI::hier::Patch<NDIM> **patch,
 }
 
 void samrcreatematrix_(SAMRAI::PflotranApplicationStrategy **application_strategy, 
-                       int ndof,
-                       int stencilSize,
-                       void **pMatrix)    
+                       int *ndof,
+                       int *stencilSize,
+                       Mat *pMatrix)    
 {
+   int debug_level = 1;
+   tbox::Pointer<tbox::Database> db = new tbox::InputDatabase("input_db");
+   
    SAMRAI::tbox::Pointer< SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy = (*application_strategy)->d_hierarchy;
+
+   db->putInteger("ndof", *ndof);
+   db->putInteger("stencilsize", *stencilSize);
+   db->putInteger("print_info_level", debug_level);
+
+   SAMRAI::PflotranJacobianMultilevelOperatorParameters *parameters = new  SAMRAI::PflotranJacobianMultilevelOperatorParameters(db);
+   parameters->d_hierarchy = hierarchy;
+   parameters->d_pMatrix = pMatrix;
+   parameters->d_cf_interpolant = NULL;
+   parameters->d_set_boundary_ghosts.setNull();
+
+   SAMRAI::PflotranJacobianMultilevelOperator *pJacobian = new SAMRAI::PflotranJacobianMultilevelOperator((SAMRAI::MultilevelOperatorParameters *)parameters);
+   (*application_strategy)->setJacobianMatrix(pJacobian);
+
 }
 
 #ifdef __cplusplus

@@ -110,9 +110,9 @@ PflotranJacobianLevelOperator::apply(const int *f_id,
 
 void
 PflotranJacobianLevelOperator::applyBoundaryCondition(const int *var_id,
-                               const int *var_idx,
-                               const int *var_components,
-                               const int number_of_variables)
+                                                      const int *var_idx,
+                                                      const int *var_components,
+                                                      const int number_of_variables)
 {
 }
 
@@ -159,6 +159,7 @@ getFromInput(const tbox::Pointer<tbox::Database> &db)
 #ifdef DEBUG_CHECK_ASSERTIONS
    assert(!db.isNull());
 #endif
+#if 0
    if (db->keyExists("tangent_interp_scheme")) 
    {
       d_tangent_interp_scheme = RefinementBoundaryInterpolation::lookupInterpolationScheme(db->getString("tangent_interp_scheme"));
@@ -254,7 +255,7 @@ getFromInput(const tbox::Pointer<tbox::Database> &db)
                  << " -- Required key `boundary_conditions'"
                  << " missing in input.");
    }   
-
+#endif
 }
 
 }
