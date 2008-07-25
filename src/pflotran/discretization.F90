@@ -425,6 +425,7 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
        case(NTRANDOF)
           ndof = option%ntrandof
        end select
+       stencilsize=7;
        call MatCreateShell(PETSC_COMM_WORLD, 0,0, PETSC_DETERMINE, PETSC_DETERMINE, PETSC_NULL, Jacobian, ierr)
        call SAMRCreateMatrix(discretization%amrgrid%p_application, ndof, stencilsize, Jacobian)
   end select
@@ -564,6 +565,8 @@ subroutine DiscretizationGlobalToLocal(discretization,global_vec,local_vec,dm_in
       call DMGlobalToLocalBegin(dm_ptr,global_vec,INSERT_VALUES,local_vec,ierr)
       call DMGlobalToLocalEnd(dm_ptr,global_vec,INSERT_VALUES,local_vec,ierr)
 #endif
+      case(AMR_GRID)
+         call SAMRGlobalToLocal(discretization%amrgrid%p_application,global_vec, local_vec, ierr);
   end select
   
 end subroutine DiscretizationGlobalToLocal
@@ -598,6 +601,8 @@ subroutine DiscretizationLocalToGlobal(discretization,local_vec,global_vec,dm_in
 #else    
       call DMLocalToGlobal(dm_ptr,local_vec,INSERT_VALUES,global_vec,ierr)
 #endif
+      case(AMR_GRID)
+         call VecCopy(local_vec, global_vec, ierr);
   end select
   
 end subroutine DiscretizationLocalToGlobal

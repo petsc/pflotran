@@ -115,3 +115,11 @@ subroutine SAMRCreateMatrix(p_application, ndof, stencilsize, p_matrix)
   PetscFortranAddr :: p_matrix
 
 end subroutine SAMRCreateMatrix
+
+subroutine SAMRGlobalToLocal(p_application,gvec, lvec, ierr)
+  PetscFortranAddr :: p_application
+  Vec :: lvec
+  Vec :: gvec
+  PetscInt :: ierr
+
+end subroutine SAMRGlobalToLocal
