@@ -1,6 +1,7 @@
 #include "PflotranJacobianMultilevelOperator.h"
 #include "CartesianGridGeometry.h"
 #include "PflotranJacobianMultilevelOperatorParameters.h"
+#include "CCellData.h"
 
 namespace SAMRAI{
 #ifndef iC
@@ -67,13 +68,13 @@ PflotranJacobianMultilevelOperator::PflotranJacobianMultilevelOperator(Multileve
 void
 PflotranJacobianMultilevelOperator::initializePetscMatInterface(void)
 {
-   MatShellSetOperation(*d_pMatrix, MATOP_MULT, (void(*)(void))(&SAMRAI::PflotranJacobianMultilevelOperator::MatMult));
+   MatShellSetOperation(*d_pMatrix, MATOP_MULT, (void(*)(void))(&SAMRAI::PflotranJacobianMultilevelOperator::wrapperMatMult));
 
-   MatShellSetOperation(*d_pMatrix, MATOP_ZERO_ENTRIES, (void(*)(void))(&SAMRAI::PflotranJacobianMultilevelOperator::MatZeroEntries));
+   MatShellSetOperation(*d_pMatrix, MATOP_ZERO_ENTRIES, (void(*)(void))(&SAMRAI::PflotranJacobianMultilevelOperator::wrapperMatZeroEntries));
 
-   MatShellSetOperation(*d_pMatrix, MATOP_SET_VALUES_LOCAL, (void(*)(void))(&SAMRAI::PflotranJacobianMultilevelOperator::MatSetValuesLocal));
+   MatShellSetOperation(*d_pMatrix, MATOP_SET_VALUES_LOCAL, (void(*)(void))(&SAMRAI::PflotranJacobianMultilevelOperator::wrapperMatSetValuesLocal));
 
-   //   MatShellSetOperation(*d_pMatrix, MATOP_SET_VALUES_BLOCKED_LOCAL, (void(*)(void))(&SAMRAI::PflotranJacobianMultilevelOperator::MatSetValuesBlockedLocal));
+   MatShellSetOperation(*d_pMatrix, MATOP_SET_VALUES_BLOCKED, (void(*)(void))(&SAMRAI::PflotranJacobianMultilevelOperator::wrapperMatSetValuesBlockedLocal));
 }
 
 void
@@ -179,7 +180,7 @@ PflotranJacobianMultilevelOperator::getFromInput(tbox::Pointer<tbox::Database> d
    } 
    else 
    {
-      TBOX_ERROR( "CellDiffusionMultilevelLevelOperator" 
+      TBOX_ERROR( "PflotranJacobianMultilevelLevelOperator" 
                  << " -- Required key `tangent_interp_scheme'"
                  << " missing in input.");
    }
@@ -190,7 +191,7 @@ PflotranJacobianMultilevelOperator::getFromInput(tbox::Pointer<tbox::Database> d
    } 
    else 
    {
-      TBOX_ERROR( "CellDiffusionMultilevelLevelOperator" 
+      TBOX_ERROR( "PflotranJacobianMultilevelLevelOperator" 
                  << " -- Required key `normal_interp_scheme'"
                  << " missing in input.");
    }
@@ -201,7 +202,7 @@ PflotranJacobianMultilevelOperator::getFromInput(tbox::Pointer<tbox::Database> d
    } 
    else 
    {
-      TBOX_ERROR("CellDiffusionMultilevelOperator" 
+      TBOX_ERROR("PflotranJacobianMultilevelOperator" 
                  << " -- Required key `coarsen_diffusive_fluxes'"
                  << " missing in input.");
    }
@@ -212,7 +213,7 @@ PflotranJacobianMultilevelOperator::getFromInput(tbox::Pointer<tbox::Database> d
    }
    else
    {
-      TBOX_ERROR("CellDiffusionMultilevelOperator" 
+      TBOX_ERROR("PflotranJacobianMultilevelOperator" 
                  << " -- Required key `face_coarsen_op'"
                  << " missing in input.");
    }
@@ -223,7 +224,7 @@ PflotranJacobianMultilevelOperator::getFromInput(tbox::Pointer<tbox::Database> d
    }
    else
    {
-      TBOX_ERROR("CellDiffusionMultilevelOperator" 
+      TBOX_ERROR("PflotranJacobianMultilevelOperator" 
                  << " -- Required key `face_refine_op'"
                  << " missing in input.");
    }
@@ -234,7 +235,7 @@ PflotranJacobianMultilevelOperator::getFromInput(tbox::Pointer<tbox::Database> d
    }
    else
    {
-      TBOX_ERROR("CellDiffusionMultilevelOperator" 
+      TBOX_ERROR("PflotranJacobianMultilevelOperator" 
                  << " -- Required key `cell_coarsen_op'"
                  << " missing in input.");
    }
@@ -245,7 +246,7 @@ PflotranJacobianMultilevelOperator::getFromInput(tbox::Pointer<tbox::Database> d
    } 
    else 
    {
-      TBOX_ERROR( "CellDiffusionLevelOperator" 
+      TBOX_ERROR( "PflotranJacobianLevelOperator" 
                  << " -- Required key `adjust_cf_coefficients'"
                  << " missing in input.");
    }
@@ -264,7 +265,7 @@ PflotranJacobianMultilevelOperator::getFromInput(tbox::Pointer<tbox::Database> d
          } 
          else 
          {
-            TBOX_ERROR("CellDiffusionMultilevelOperator"
+            TBOX_ERROR("PflotranJacobianMultilevelOperator"
                        << " -- Required key `variable_order_interpolation'"
                        << " missing in input.");
          }
@@ -277,7 +278,7 @@ PflotranJacobianMultilevelOperator::getFromInput(tbox::Pointer<tbox::Database> d
          }
          else
          {
-            TBOX_ERROR( "CellDiffusionMultilevelOperator"
+            TBOX_ERROR( "PflotranJacobianMultilevelOperator"
                        << " -- Required key `cell_refine_op'"
                        << " missing in input.");
          }
@@ -285,7 +286,7 @@ PflotranJacobianMultilevelOperator::getFromInput(tbox::Pointer<tbox::Database> d
    }
    else
    {
-      TBOX_ERROR("CellDiffusionMultilevelOperator"
+      TBOX_ERROR("PflotranJacobianMultilevelOperator"
                  << " -- Required key `use_cf_interpolant'"
                  << " missing in input.");
    }
@@ -313,12 +314,32 @@ PflotranJacobianMultilevelOperator::getFromInput(tbox::Pointer<tbox::Database> d
    } 
    else 
    {
-      TBOX_ERROR("CellDiffusionMultilevelOperator" 
+      TBOX_ERROR("PflotranJacobianMultilevelOperator" 
                  << " -- Required key `boundary_conditions'"
                  << " missing in input.");
    } 
 #endif
-  
+   if (db->keyExists("stencilsize")) 
+   {
+      d_stencilSize = db->getInteger("stencilsize");      
+   } 
+   else 
+   {
+      TBOX_ERROR( "PflotranJacobianMultilevelOperator" 
+                 << " -- Required key `stencilsize'"
+                 << " missing in input.");
+   }
+
+   if (db->keyExists("ndof")) 
+   {
+      d_ndof = db->getInteger("ndof");      
+   } 
+   else 
+   {
+      TBOX_ERROR( "PflotranJacobianMultilevelOperator" 
+                 << " -- Required key `ndof'"
+                 << " missing in input.");
+   }
 }
 
 void
@@ -340,6 +361,18 @@ PflotranJacobianMultilevelOperator::initializeBoundaryConditionStrategy(tbox::Po
 }
 
 PetscErrorCode
+PflotranJacobianMultilevelOperator::wrapperMatMult(Mat mat,Vec x,Vec y)
+{
+
+   PflotranJacobianMultilevelOperator *pMatrix = NULL;
+   
+   MatShellGetContext(mat,(void**)&pMatrix);
+
+   return pMatrix->MatMult(mat,x,y);
+
+}
+
+PetscErrorCode
 PflotranJacobianMultilevelOperator::MatMult(Mat mat,Vec x,Vec y)
 {
 
@@ -350,14 +383,65 @@ PflotranJacobianMultilevelOperator::MatMult(Mat mat,Vec x,Vec y)
 
 }
 
+
+PetscErrorCode  
+PflotranJacobianMultilevelOperator::wrapperMatZeroEntries(Mat mat)
+{
+
+  PflotranJacobianMultilevelOperator *pMatrix = NULL;
+  MatShellGetContext(mat,(void**)&pMatrix);
+  return pMatrix->MatZeroEntries(mat);
+
+}
+
 PetscErrorCode  
 PflotranJacobianMultilevelOperator::MatZeroEntries(Mat mat)
 {
   PflotranJacobianMultilevelOperator *pMatrix = NULL;
    
    MatShellGetContext(mat,(void**)&pMatrix);
+
+   tbox::Pointer<hier::PatchHierarchy<NDIM> > hierarchy = pMatrix->getHierarchy();
+
+   for(int ln=0; ln<hierarchy->getNumberOfLevels(); ln++)
+   {
+      tbox::Pointer<hier::PatchLevel<NDIM> > level = d_hierarchy->getPatchLevel(ln);
+      
+      PflotranJacobianLevelOperator *levelMatrix = dynamic_cast<PflotranJacobianLevelOperator *>(pMatrix->getLevelOperator(ln));
+      
+      int stencil_id = levelMatrix->getStencilID();
+
+#ifdef DEBUG_CHECK_ASSERTIONS
+      assert(level->checkAllocated(stencil_id));
+#endif
+
+      for (hier::PatchLevel<NDIM>::Iterator p(level); p; p++) 
+      {
+         tbox::Pointer<hier::Patch<NDIM> > patch = level->getPatch(p());
+
+#ifdef DEBUG_CHECK_ASSERTIONS
+         assert(!patch.isNull());
+#endif
+         tbox::Pointer< pdat::CCellData<NDIM, double > > stencil = patch->getPatchData(stencil_id);
+         stencil->fillAll(0.0);
+      }
+   }   
+
    return (0);
 
+}
+
+PetscErrorCode  
+PflotranJacobianMultilevelOperator::wrapperMatSetValuesLocal(Mat mat,
+                                                             PetscInt nrow,const PetscInt irow[],
+                                                             PetscInt ncol,const PetscInt icol[],
+                                                             const PetscScalar y[],InsertMode addv)
+{
+  PflotranJacobianMultilevelOperator *pMatrix = NULL;
+   
+   MatShellGetContext(mat,(void**)&pMatrix);
+
+   return pMatrix->MatSetValuesLocal(mat, nrow, irow, ncol, icol, y, addv);
 }
 
 PetscErrorCode  
@@ -370,6 +454,18 @@ PflotranJacobianMultilevelOperator::MatSetValuesLocal(Mat mat,
    
    MatShellGetContext(mat,(void**)&pMatrix);
    return (0);
+}
+
+PetscErrorCode  
+PflotranJacobianMultilevelOperator::wrapperMatSetValuesBlockedLocal(Mat mat,
+                                                                    PetscInt nrow,const PetscInt irow[],
+                                                                    PetscInt ncol,const PetscInt icol[],
+                                                                    const PetscScalar y[],InsertMode addv)
+{
+  PflotranJacobianMultilevelOperator *pMatrix = NULL;
+   
+   MatShellGetContext(mat,(void**)&pMatrix);
+   return pMatrix->MatSetValuesBlockedLocal(mat, nrow, irow, ncol, icol, y, addv);
 }
 
 PetscErrorCode  

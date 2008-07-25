@@ -142,22 +142,38 @@ public:
    /**
    * Returns the number of primitive variables for the discretization
    */
-   const int getNumberOfVariables(void){ return d_numberOfVariables; }
+   const int getNumberOfVariables(void){ return d_ndof; }
+   
+   static PetscErrorCode wrapperMatMult(Mat mat,Vec x,Vec y);
 
-   static PetscErrorCode MatMult(Mat mat,Vec x,Vec y);
+   PetscErrorCode MatMult(Mat mat,Vec x,Vec y);
 
-   static PetscErrorCode MatZeroEntries(Mat mat);
+   static PetscErrorCode wrapperMatZeroEntries(Mat mat);
 
-   static PetscErrorCode MatSetValuesLocal(Mat mat,
-                                           PetscInt nrow,const PetscInt irow[],
-                                           PetscInt ncol,const PetscInt icol[],
-                                           const PetscScalar y[],InsertMode addv);
-      
-   static PetscErrorCode MatSetValuesBlockedLocal(Mat mat,
+   PetscErrorCode MatZeroEntries(Mat mat);
+
+   static PetscErrorCode wrapperMatSetValuesLocal(Mat mat,
                                                   PetscInt nrow,const PetscInt irow[],
                                                   PetscInt ncol,const PetscInt icol[],
                                                   const PetscScalar y[],InsertMode addv);
       
+   PetscErrorCode MatSetValuesLocal(Mat mat,
+                                    PetscInt nrow,const PetscInt irow[],
+                                    PetscInt ncol,const PetscInt icol[],
+                                    const PetscScalar y[],InsertMode addv);
+      
+   static PetscErrorCode wrapperMatSetValuesBlockedLocal(Mat mat,
+                                                         PetscInt nrow,const PetscInt irow[],
+                                                         PetscInt ncol,const PetscInt icol[],
+                                                         const PetscScalar y[],InsertMode addv);
+      
+   PetscErrorCode MatSetValuesBlockedLocal(Mat mat,
+                                           PetscInt nrow,const PetscInt irow[],
+                                           PetscInt ncol,const PetscInt icol[],
+                                           const PetscScalar y[],InsertMode addv);
+      
+   tbox::Pointer<hier::PatchHierarchy<NDIM> > getHierarchy(void){ return d_hierarchy; }
+   
 protected:
 
    void initializePetscMatInterface(void);
@@ -212,7 +228,9 @@ private:
 
    int d_bdry_types[2*NDIM];
 
-   int d_numberOfVariables;
+   int d_ndof;
+
+   int d_stencilSize;
 
    tbox::Pointer< pdat::FaceVariable<NDIM,double> > d_flux;
 

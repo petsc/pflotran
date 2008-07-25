@@ -53,21 +53,21 @@ PflotranJacobianLevelOperator::initializeInternalVariableData()
       d_level->allocatePatchData(d_flux_id);
    }
 
-   std::string FivePtStencil("PflotranJacobianOperator_FivePtStencil");
-   FivePtStencil+=object_str;
+   std::string Stencil("PflotranJacobianOperator_Stencil");
+   Stencil+=object_str;
 
 #ifdef DEBUG_CHECK_ASSERTIONS
    if(d_debug_print_info_level>4)
    {
-      tbox::pout << "PflotranJacobianLevelOperator::stencil variable name " << FivePtStencil << std::endl;
+      tbox::pout << "PflotranJacobianLevelOperator::stencil variable name " << Stencil << std::endl;
    }
 #endif
 
-   d_stencil = variable_db->getVariable(FivePtStencil);
+   d_stencil = variable_db->getVariable(Stencil);
 
    if (!d_stencil) 
    {
-      d_stencil = new pdat::CCellVariable<NDIM,double>(FivePtStencil,d_stencil_size);
+      d_stencil = new pdat::CCellVariable<NDIM,double>(Stencil,d_stencil_size*d_ndof*d_ndof);
    }
 
    if(d_stencil)
@@ -256,6 +256,29 @@ getFromInput(const tbox::Pointer<tbox::Database> &db)
                  << " missing in input.");
    }   
 #endif
+
+   if (db->keyExists("stencilsize")) 
+   {
+      d_stencil_size = db->getInteger("stencilsize");      
+   } 
+   else 
+   {
+      TBOX_ERROR( "PflotranJacobianLevelOperator" 
+                 << " -- Required key `stencilsize'"
+                 << " missing in input.");
+   }
+
+   if (db->keyExists("ndof")) 
+   {
+      d_ndof = db->getInteger("ndof");      
+   } 
+   else 
+   {
+      TBOX_ERROR( "PflotranJacobianLevelOperator" 
+                 << " -- Required key `ndof'"
+                 << " missing in input.");
+   }
+
 }
 
 }

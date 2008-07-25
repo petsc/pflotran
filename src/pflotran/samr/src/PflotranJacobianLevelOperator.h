@@ -147,8 +147,9 @@ public:
    /**
    * Returns the number of primitive variables for the discretization
    */
-   const int getNumberOfVariables(void){ return d_numberOfVariables; }
+   const int getNumberOfVariables(void){ return d_ndof; }
 
+   int getStencilID(void){return d_stencil_id;}
 
 protected:
 
@@ -160,7 +161,7 @@ private:
 
    PflotranJacobianLevelOperator();
 
-   int d_numberOfVariables;
+   int d_ndof;
    
    bool d_adjust_cf_coefficients;
    bool d_interpolate_ghost_values;
