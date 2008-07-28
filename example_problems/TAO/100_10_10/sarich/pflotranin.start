@@ -1,0 +1,36 @@
+:Description: 3D toy problem for testing TAO optimization
+ 
+MODE RICHARDS_LITE
+ 
+GRID
+TYPE structured
+NXYZ 100 10 10
+END
+ 
+ORIGIN 0.d0 0.d0 0.d0
+ 
+TECP VELO
+ 
+DXYZ
+1.d0
+1.d0
+1.d0
+ 
+:  d0[m^2/s] delhaq[kJ/mol]
+DIFF  1.D-9       12.6
+ 
+: Richards Equation Pref
+RICH 101325.
+ 
+SATURATION_FUNCTIONS
+:id itype swir   lambda alpha     pcwmax betac pwr
+ 1  1     0.1471 0.7465 4.4317d-4 1.e8   0.d0  1.d0
+END
+
+THERMAL_PROPERTIES
+:ithm rho    cpr     ckdry cksat tau cdiff   cexp
+  1   2.75e3 1000.e0 0.5   0.5   0.5 2.13d-5 1.8
+END
+
+
+
