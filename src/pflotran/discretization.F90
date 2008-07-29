@@ -29,6 +29,8 @@ module Discretization_module
       ! Arrays containing hierarchy of coarsened DMs, for use with Galerkin 
       ! multigrid.  Element i of each array is a *finer* DM than element i-1.
 
+    PetscInt :: dm_index_to_ndof(5) ! mapping between a dm_ptr to the number of degrees of freedom
+
   end type discretization_type
 
   public :: DiscretizationCreate, &
@@ -202,6 +204,11 @@ subroutine DiscretizationCreateDMs(discretization,option)
   PetscInt, parameter :: stencil_width = 1
   PetscErrorCode :: ierr
   PetscInt :: i
+
+  discretization%dm_index_to_ndof(ONEDOF) = 1
+  discretization%dm_index_to_ndof(NPHASEDOF) = option%nphase
+  discretization%dm_index_to_ndof(NFLOWDOF) = option%nflowdof
+  discretization%dm_index_to_ndof(NTRANDOF) = option%ntrandof
 
   !-----------------------------------------------------------------------
   ! Generate the DA objects that will manage communication.
@@ -551,6 +558,7 @@ subroutine DiscretizationGlobalToLocal(discretization,global_vec,local_vec,dm_in
   Vec :: global_vec
   Vec :: local_vec
   PetscInt :: dm_index
+  PetscInt :: ndof
   PetscErrorCode :: ierr
   DM :: dm_ptr
   
@@ -566,7 +574,8 @@ subroutine DiscretizationGlobalToLocal(discretization,global_vec,local_vec,dm_in
       call DMGlobalToLocalEnd(dm_ptr,global_vec,INSERT_VALUES,local_vec,ierr)
 #endif
       case(AMR_GRID)
-         call SAMRGlobalToLocal(discretization%amrgrid%p_application,global_vec, local_vec, ierr);
+         ndof = discretization% dm_index_to_ndof(dm_index)
+         call SAMRGlobalToLocal(discretization%amrgrid%p_application, ndof, global_vec, local_vec, ierr);
   end select
   
 end subroutine DiscretizationGlobalToLocal
@@ -622,6 +631,7 @@ subroutine DiscretizationLocalToLocal(discretization,local_vec1,local_vec2,dm_in
   Vec :: local_vec1
   Vec :: local_vec2
   PetscInt :: dm_index
+  PetscInt :: ndof
   PetscErrorCode :: ierr
   DM :: dm_ptr
   
@@ -632,6 +642,9 @@ subroutine DiscretizationLocalToLocal(discretization,local_vec1,local_vec2,dm_in
       call DALocalToLocalBegin(dm_ptr,local_vec1,INSERT_VALUES,local_vec2,ierr)
       call DALocalToLocalEnd(dm_ptr,local_vec1,INSERT_VALUES,local_vec2,ierr)
     case(UNSTRUCTURED_GRID)
+    case(AMR_GRID)
+         ndof = discretization% dm_index_to_ndof(dm_index)
+       call SAMRLocalToLocal(discretization%amrgrid%p_application, ndof, local_vec1, local_vec2, ierr);
   end select
   
 end subroutine DiscretizationLocalToLocal

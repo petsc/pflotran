@@ -160,9 +160,19 @@ PflotranApplicationStrategy::allocateVectorData(SAMRAI::tbox::Pointer<SAMRAI::so
 } 
 
 void
-PflotranApplicationStrategy::interpolateVector(tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> >  globalVec,
-                                               tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> >  localVec,
-                                               int ierr)
+PflotranApplicationStrategy::interpolateLocalToLocalVector(int ndof,
+                                                           tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> >  srcVec,
+                                                           tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> >  destVec,
+                                                           int ierr)
+{
+
+}
+
+void
+PflotranApplicationStrategy::interpolateGlobalToLocalVector(int ndof,
+                                                            tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> >  globalVec,
+                                                            tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> >  localVec,
+                                                            int ierr)
 {
     tbox::Pointer<hier::PatchHierarchy<NDIM> > hierarchy =  d_hierarchy;
 

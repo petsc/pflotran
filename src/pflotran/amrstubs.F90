@@ -1,3 +1,6 @@
+
+
+
 ! this is a stub function so that we don't have to always
 ! link with SAMRAI
 
@@ -116,10 +119,20 @@ subroutine SAMRCreateMatrix(p_application, ndof, stencilsize, p_matrix)
 
 end subroutine SAMRCreateMatrix
 
-subroutine SAMRGlobalToLocal(p_application,gvec, lvec, ierr)
+subroutine SAMRGlobalToLocal(p_application, ndof, gvec, lvec, ierr)
   PetscFortranAddr :: p_application
   Vec :: lvec
   Vec :: gvec
+  PetscInt :: ndof
   PetscInt :: ierr
 
 end subroutine SAMRGlobalToLocal
+
+subroutine SAMRLocalToLocal(p_application, ndof, gvec, lvec, ierr)
+  PetscFortranAddr :: p_application
+  Vec :: lvec
+  Vec :: gvec
+  PetscInt :: ndof
+  PetscInt :: ierr
+
+end subroutine SAMRLocalToLocal

@@ -166,6 +166,7 @@ void samrcreatematrix_(SAMRAI::PflotranApplicationStrategy **application_strateg
 }
 
 void samrglobaltolocal_(SAMRAI::PflotranApplicationStrategy **application_strategy, 
+                        int *ndof,
                         Vec gvec, 
                         Vec lvec, 
                         int ierr)
@@ -174,7 +175,21 @@ void samrglobaltolocal_(SAMRAI::PflotranApplicationStrategy **application_strate
 
    SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM, double > > localVec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM, double>::getSAMRAIVector(lvec);
 
-   (*application_strategy)->interpolateVector(globalVec, localVec, ierr);
+   (*application_strategy)->interpolateGlobalToLocalVector(*ndof, globalVec, localVec, ierr);
+   
+}
+
+void samrlocaltolocal_(SAMRAI::PflotranApplicationStrategy **application_strategy, 
+                       int *ndof,
+                       Vec svec, 
+                       Vec dvec, 
+                       int ierr)
+{
+   SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM, double > > srcVec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM, double>::getSAMRAIVector(svec);
+
+   SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM, double > > dstVec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM, double>::getSAMRAIVector(dvec);
+
+   (*application_strategy)->interpolateGlobalToLocalVector(*ndof, srcVec, dstVec, ierr);
    
 }
 

@@ -113,9 +113,15 @@ public:
 
    void setJacobianMatrix(PflotranJacobianMultilevelOperator *pMatrix){d_Jacobian.reset(pMatrix);}
 
-   void interpolateVector(tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> >  globalVec,
-                          tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> >  localVec,
-                          int ierr);
+   void interpolateGlobalToLocalVector(int ndof,
+                                       tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> >  globalVec,
+                                       tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> >  localVec,
+                                       int ierr);
+
+   void interpolateLocalToLocalVector(int ndof, 
+                                      tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> >  srcVec,
+                                      tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> >  destVec,
+                                      int ierr);
 
    void setRefinementBoundaryInterpolant(RefinementBoundaryInterpolation *cf_interpolant);
 
