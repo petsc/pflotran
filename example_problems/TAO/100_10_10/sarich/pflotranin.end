@@ -1,0 +1,140 @@
+ 
+TIME d every 10
+100.d0
+ 
+DTST 1.d-2
+1. 10.d0
+ 
+REGION all
+BLOCK 1 100 1 10 1 10
+END
+
+REGION region1
+BLOCK 1 50 1 10 1 10
+END
+
+REGION region2
+BLOCK 51 100 1 10 1 10
+END
+
+REGION breakthrough_1
+BLOCK 25 25 3 3 3 3
+END
+
+REGION breakthrough_2
+BLOCK 25 25 7 7 3 3
+END
+
+REGION breakthrough_3
+BLOCK 25 25 3 3 7 7
+END
+
+REGION breakthrough_4
+BLOCK 25 25 7 7 7 7
+END
+
+REGION breakthrough_5
+BLOCK 75 75 3 3 3 3
+END
+
+REGION breakthrough_6
+BLOCK 75 75 7 7 3 3
+END
+
+REGION breakthrough_7
+BLOCK 75 75 3 3 7 7
+END
+
+REGION breakthrough_8
+BLOCK 75 75 7 7 7 7
+END
+
+REGION West
+BLOCK 1 1 1 10 1 10
+FACE west
+END
+
+REGION East
+BLOCK 100 100 1 10 1 10
+FACE east
+END
+
+BREAKTHROUGH 
+REGION breakthrough_1
+END
+
+BREAKTHROUGH 
+REGION breakthrough_2
+END
+
+BREAKTHROUGH 
+REGION breakthrough_3
+END
+
+BREAKTHROUGH 
+REGION breakthrough_4
+END
+
+BREAKTHROUGH 
+REGION breakthrough_5
+END
+
+BREAKTHROUGH 
+REGION breakthrough_6
+END
+
+BREAKTHROUGH 
+REGION breakthrough_7
+END
+
+BREAKTHROUGH 
+REGION breakthrough_8
+END
+
+CONDITION west
+CLASS flow
+TYPE
+PRESSURE hydrostatic
+END
+INTERPOLATION linear
+DATUM 0.d0 0.d0 10.d0
+PRESSURE 201325.d0
+END
+
+CONDITION initial
+CLASS flow
+TYPE
+PRESSURE hydrostatic
+END
+INTERPOLATION linear
+DATUM 0.d0 0.d0 10.d0
+PRESSURE 101325.d0
+END
+
+: initial condition
+INITIAL_CONDITION
+FLOW_CONDITION initial
+REGION all
+END
+
+: west boundary condition
+BOUNDARY_CONDITION
+FLOW_CONDITION west
+REGION West
+END
+
+: east boundary condition
+BOUNDARY_CONDITION
+FLOW_CONDITION initial
+REGION East
+END
+
+STRATA
+REGION region1
+MATERIAL soil1
+END
+
+STRATA
+REGION region2
+MATERIAL soil2
+END
