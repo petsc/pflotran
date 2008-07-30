@@ -173,7 +173,8 @@ public:
                                            const PetscScalar y[],InsertMode addv);
       
    tbox::Pointer<hier::PatchHierarchy<NDIM> > getHierarchy(void){ return d_hierarchy; }
-   
+
+   LevelLinearOperator *getLevelOperator(const int ln){ return d_level_operators[ln];}
 protected:
 
    void initializePetscMatInterface(void);

@@ -1,6 +1,7 @@
 #include "PflotranApplicationStrategy.h"
 #include "tbox/TimerManager.h"
 #include "CellDataFactory.h"
+#include "tbox/RestartManager.h"
 
 namespace SAMRAI{
   
@@ -89,7 +90,13 @@ PflotranApplicationStrategy::initialize(PflotranApplicationParameters *params)
    d_grid_geometry   = d_hierarchy->getGridGeometry();
    d_application_db  = params->d_database;   
 
-   PflotranApplicationStrategy::getFromInput(d_application_db, false);
+   /*
+    * Initialize object with data read from given input/restart databases.
+    */
+   bool is_from_restart = tbox::RestartManager::getManager()->isFromRestart();
+
+   PflotranApplicationStrategy::getFromInput(d_application_db, is_from_restart);
+
 }
 
 void
@@ -104,6 +111,11 @@ PflotranApplicationStrategy::getFromInput(tbox::Pointer<tbox::Database> db,
    if (db->keyExists("nl_normal_coarse_fine_scheme")) {
       d_nl_normal_interp_scheme = RefinementBoundaryInterpolation::lookupInterpolationScheme(db->getString("nl_normal_coarse_fine_scheme"));
    }
+
+    if (db->keyExists("number_solution_components")) {
+       d_number_solution_components = db->getInteger("number_solution_components");
+   }
+  
 }
 
 /**
@@ -269,7 +281,7 @@ PflotranApplicationStrategy::interpolateLocalToLocalVector(tbox::Pointer< solv::
 
       d_refine_patch_strategy->setDataID(dest_id);
 
-      if(ghost_cell_fill.checkConsistency(d_LocalToLocalRefineSchedule[ln][srcDOF-1]))
+      if((!d_LocalToLocalRefineSchedule[ln][srcDOF-1].isNull()) && ghost_cell_fill.checkConsistency(d_LocalToLocalRefineSchedule[ln][srcDOF-1]))
       {
          ghost_cell_fill.resetSchedule(d_LocalToLocalRefineSchedule[ln][srcDOF-1]);
       }
@@ -347,7 +359,7 @@ PflotranApplicationStrategy::interpolateGlobalToLocalVector(tbox::Pointer< solv:
 
       d_refine_patch_strategy->setDataID(dest_id);
 
-      if(ghost_cell_fill.checkConsistency(d_GlobalToLocalRefineSchedule[ln][globalDOF-1]))
+      if((!d_GlobalToLocalRefineSchedule[ln][globalDOF-1].isNull()) && ghost_cell_fill.checkConsistency(d_GlobalToLocalRefineSchedule[ln][globalDOF-1]))
       {
          ghost_cell_fill.resetSchedule(d_GlobalToLocalRefineSchedule[ln][globalDOF-1]);
       }
@@ -394,9 +406,14 @@ PflotranApplicationStrategy::setRefinementBoundaryInterpolant(RefinementBoundary
 #endif
    d_cf_interpolant = cf_interpolant;
 
-   if(d_Jacobian.get()!=NULL)
+   if(d_FlowJacobian.get()!=NULL)
    {
-      d_Jacobian->setRefinementBoundaryInterpolant(cf_interpolant);
+      d_FlowJacobian->setRefinementBoundaryInterpolant(cf_interpolant);
+   }
+
+   if(d_TransportJacobian.get()!=NULL)
+   {
+      d_TransportJacobian->setRefinementBoundaryInterpolant(cf_interpolant);
    }
 
 }

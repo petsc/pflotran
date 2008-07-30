@@ -1,6 +1,7 @@
 DIRICHLET = 0
 NEUMANN   = 1
-MIXED     = 2
+PERIODIC  = 2
+MIXED     = 3
 ROBIN     = 4
 
 CartesianGeometry{
@@ -36,9 +37,38 @@ LoadBalancer{
    bin_pack = "SPATIAL"
 }
 
+PflotranApplicationStrategy{
+
+   nl_tangential_coarse_fine_scheme = "QUADRATIC"
+   nl_normal_coarse_fine_scheme     = "QUADRATIC"
+   number_solution_components       = 1
+
+   PflotranMultilevelOperator{
+     	       operator_name                   = "PflotranMultilevelOperator"
+	       tangent_interp_scheme           = "LINEAR"
+	       normal_interp_scheme            = "LINEAR"
+	       adjust_cf_coefficients          = FALSE
+	       interpolate_ghost_values        = TRUE
+	       extrapolation_order             = 2
+	       boundary_conditions             = PERIODIC, PERIODIC, DIRICHLET, DIRICHLET
+	       coarsen_diffusive_fluxes        = TRUE
+	       coarsen_convective_fluxes       = TRUE
+	       print_info_level                = 0
+	       cell_refine_op                  = "CONSTANT_REFINE"
+	       cell_coarsen_op                 = "CONSERVATIVE_COARSEN"
+	       face_refine_op                  = "CONSTANT_REFINE"
+	       face_coarsen_op                 = "CONSERVATIVE_COARSEN"
+	       variable_order_interpolation    = FALSE
+	       use_cf_interpolant              = TRUE
+   }
+
+}
+
 PIMS{
   pims_file = "pflotran.in"
 }
+
+
 
 PredictorCorrector{
    initial_time = 0.0

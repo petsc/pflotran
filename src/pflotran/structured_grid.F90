@@ -1153,8 +1153,7 @@ subroutine StructGridVecRestoreArrayF90(structured_grid, vec, f90ptr, ierr)
  if(structured_grid%p_samr_patch .eq. 0) then
     call VecRestoreArrayF90(vec, f90ptr, ierr)
  else
-    ierr=0
-! do nothing for now    
+    ierr = 0
  endif
  
 end subroutine StructGridVecRestoreArrayF90

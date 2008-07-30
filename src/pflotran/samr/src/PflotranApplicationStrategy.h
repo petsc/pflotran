@@ -109,7 +109,9 @@ public:
                            double time, bool flag=true ); 
 
 
-   void setJacobianMatrix(PflotranJacobianMultilevelOperator *pMatrix){d_Jacobian.reset(pMatrix);}
+   void setFlowJacobianMatrix(PflotranJacobianMultilevelOperator *pMatrix){d_FlowJacobian.reset(pMatrix);}
+
+   void setTransportJacobianMatrix(PflotranJacobianMultilevelOperator *pMatrix){d_TransportJacobian.reset(pMatrix);}
 
    void interpolateGlobalToLocalVector(tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> >  globalVec,
                                        tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> >  localVec,
@@ -187,8 +189,11 @@ private:
 
    tbox::Pointer<tbox::Database> d_application_db;
 
-   std::auto_ptr<PflotranJacobianMultilevelOperator> d_Jacobian;
-   tbox::Pointer< BoundaryConditionStrategy > d_refine_patch_strategy;
+   std::auto_ptr<PflotranJacobianMultilevelOperator> d_FlowJacobian;
+
+   std::auto_ptr<PflotranJacobianMultilevelOperator> d_TransportJacobian;
+
+   BoundaryConditionStrategy  *d_refine_patch_strategy;
 };
 
 }

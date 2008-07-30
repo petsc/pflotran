@@ -72,7 +72,6 @@ subroutine Init(simulation,filename)
   type(waypoint_list_type), pointer :: waypoint_list
   character(len=MAXSTRINGLENGTH) :: string
   PetscInt :: temp_int
-                       
   PetscErrorCode :: ierr
 
   call PetscLogStagePush(logging%stage(INIT_STAGE),ierr)
@@ -231,8 +230,10 @@ subroutine Init(simulation,filename)
     call SolverCreateSNES(tran_solver)  
     call SNESSetOptionsPrefix(tran_solver%snes, "tran_", ierr)
     call SolverCheckCommandLine(tran_solver)
+
     call DiscretizationCreateJacobian(discretization,NTRANDOF, &
                                       tran_solver%mat_type,tran_solver%J,option)
+
     call MatSetOptionsPrefix(tran_solver%J, "tran_", ierr)
     
     if (tran_solver%use_galerkin_mg) then
@@ -1977,28 +1978,29 @@ subroutine assignMaterialPropToRegions(realization)
                 option%permz_filename,GLOBAL)  
         endif
         
-        if (option%nflowdof > 0) then
-           call DiscretizationGlobalToLocal(discretization,field%perm0_xx, &
-                 field%perm_xx_loc,ONEDOF)  
-           call DiscretizationGlobalToLocal(discretization,field%perm0_yy, &
-                field%perm_yy_loc,ONEDOF)  
-           call DiscretizationGlobalToLocal(discretization,field%perm0_zz, &
-                field%perm_zz_loc,ONEDOF)   
-           
-           call DiscretizationLocalToLocal(discretization,field%icap_loc, &
-                field%icap_loc,ONEDOF)   
-           call DiscretizationLocalToLocal(discretization,field%ithrm_loc, &
-                field%ithrm_loc,ONEDOF)
-        endif
-        
-        call DiscretizationGlobalToLocal(discretization,field%porosity0, &
-             field%porosity_loc,ONEDOF)
-        call DiscretizationLocalToLocal(discretization,field%tor_loc, &
-             field%tor_loc,ONEDOF)   
         cur_patch => cur_patch%next
      enddo
      cur_level => cur_level%next
   enddo
+
+  if (option%nflowdof > 0) then
+     call DiscretizationGlobalToLocal(discretization,field%perm0_xx, &
+          field%perm_xx_loc,ONEDOF)  
+     call DiscretizationGlobalToLocal(discretization,field%perm0_yy, &
+          field%perm_yy_loc,ONEDOF)  
+     call DiscretizationGlobalToLocal(discretization,field%perm0_zz, &
+          field%perm_zz_loc,ONEDOF)   
+     
+     call DiscretizationLocalToLocal(discretization,field%icap_loc, &
+          field%icap_loc,ONEDOF)   
+     call DiscretizationLocalToLocal(discretization,field%ithrm_loc, &
+          field%ithrm_loc,ONEDOF)
+  endif
+  
+  call DiscretizationGlobalToLocal(discretization,field%porosity0, &
+       field%porosity_loc,ONEDOF)
+  call DiscretizationLocalToLocal(discretization,field%tor_loc, &
+       field%tor_loc,ONEDOF)   
 
 end subroutine assignMaterialPropToRegions
 

@@ -405,9 +405,8 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
   MatType :: mat_type
   Mat :: Jacobian
   type(option_type) :: option
-  PetscFortranAddr :: p_samr_matrix
   PetscInt :: ndof, stencilsize
-
+  PetscInt :: flowortransport
   DM :: dm_ptr
   
   dm_ptr = DiscretizationGetDMPtrFromIndex(discretization,dm_index)
@@ -429,12 +428,14 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
           ndof = 1
        case(NFLOWDOF)
           ndof = option%nflowdof
+          flowortransport = 0
        case(NTRANDOF)
           ndof = option%ntrandof
+          flowortransport = 1
        end select
        stencilsize=7;
        call MatCreateShell(PETSC_COMM_WORLD, 0,0, PETSC_DETERMINE, PETSC_DETERMINE, PETSC_NULL, Jacobian, ierr)
-       call SAMRCreateMatrix(discretization%amrgrid%p_application, ndof, stencilsize, Jacobian)
+       call SAMRCreateMatrix(discretization%amrgrid%p_application, ndof, stencilsize, flowortransport, Jacobian)
   end select
 
 end subroutine DiscretizationCreateJacobian

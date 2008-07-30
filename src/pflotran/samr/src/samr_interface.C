@@ -140,9 +140,19 @@ void samr_patch_get_spacing_(SAMRAI::hier::Patch<NDIM> **patch,
    *dz = ds[2];
 }
 
+void samrvecrestorearray_(SAMRAI::hier::Patch<NDIM> **patch, 
+                         Vec *rvec,
+                         void **f90wrap,
+                         int *ierr)
+{
+   SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM, double > > sVec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM, double>::getSAMRAIVector(*rvec);
+
+}
+
 void samrcreatematrix_(SAMRAI::PflotranApplicationStrategy **application_strategy, 
                        int *ndof,
                        int *stencilSize,
+                       int *flowortransport,
                        Mat *pMatrix)    
 {
    tbox::Pointer<tbox::Database> application_db = (*application_strategy)->getDatabase();
@@ -161,33 +171,40 @@ void samrcreatematrix_(SAMRAI::PflotranApplicationStrategy **application_strateg
    parameters->d_set_boundary_ghosts.setNull();
 
    SAMRAI::PflotranJacobianMultilevelOperator *pJacobian = new SAMRAI::PflotranJacobianMultilevelOperator((SAMRAI::MultilevelOperatorParameters *)parameters);
-   (*application_strategy)->setJacobianMatrix(pJacobian);
+   if(*flowortransport==0)
+   {
+      (*application_strategy)->setFlowJacobianMatrix(pJacobian);
+   }
+   else
+   {
+      (*application_strategy)->setTransportJacobianMatrix(pJacobian);
+   }
 
 }
 
 void samrglobaltolocal_(SAMRAI::PflotranApplicationStrategy **application_strategy, 
-                        Vec gvec, 
-                        Vec lvec, 
-                        int ierr)
+                        Vec *gvec, 
+                        Vec *lvec, 
+                        int *ierr)
 {
-   SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM, double > > globalVec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM, double>::getSAMRAIVector(gvec);
+   SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM, double > > globalVec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM, double>::getSAMRAIVector(*gvec);
 
-   SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM, double > > localVec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM, double>::getSAMRAIVector(lvec);
+   SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM, double > > localVec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM, double>::getSAMRAIVector(*lvec);
 
-   (*application_strategy)->interpolateGlobalToLocalVector(globalVec, localVec, ierr);
+   (*application_strategy)->interpolateGlobalToLocalVector(globalVec, localVec, *ierr);
    
 }
 
 void samrlocaltolocal_(SAMRAI::PflotranApplicationStrategy **application_strategy, 
-                       Vec svec, 
-                       Vec dvec, 
-                       int ierr)
+                       Vec *svec, 
+                       Vec *dvec, 
+                       int *ierr)
 {
-   SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM, double > > srcVec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM, double>::getSAMRAIVector(svec);
+   SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM, double > > srcVec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM, double>::getSAMRAIVector(*svec);
 
-   SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM, double > > dstVec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM, double>::getSAMRAIVector(dvec);
+   SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM, double > > dstVec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM, double>::getSAMRAIVector(*dvec);
 
-   (*application_strategy)->interpolateGlobalToLocalVector(srcVec, dstVec, ierr);
+   (*application_strategy)->interpolateGlobalToLocalVector(srcVec, dstVec, *ierr);
    
 }
 

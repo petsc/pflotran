@@ -45,7 +45,7 @@ void create_samrai_vec_(SAMRAI::PflotranApplicationStrategy **application_strate
 
    vec_i++;
 
-   SAMRAI::tbox::Pointer< SAMRAI::hier::PatchHierarchy<NDIM> > p_hierarchy = (*application_strategy)->d_hierarchy;
+   SAMRAI::tbox::Pointer< SAMRAI::hier::PatchHierarchy<NDIM> > p_hierarchy = (*application_strategy)->getHierarchy();
 
    SAMRAI::tbox::Pointer< SAMRAI::pdat::CellVariable<NDIM,double> > pflow_var;
 
