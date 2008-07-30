@@ -8,8 +8,10 @@
 #endif
 #include "tbox/Array.h"
 #include "tbox/Array.C"
+#include "BoundaryConditionStrategy.h"
 #include "PflotranJacobianLevelOperator.h"
 
 template class SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM,double> >;
 template class  SAMRAI::tbox::Array< SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM,double> > >;
 template class SAMRAI::tbox::Array<SAMRAI::PflotranJacobianLevelOperator*>;
+template class SAMRAI::tbox::Pointer<BoundaryConditionStrategy>;

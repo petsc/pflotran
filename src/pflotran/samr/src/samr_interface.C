@@ -22,27 +22,27 @@ extern "C" {
 
 int hierarchy_number_levels_(SAMRAI::PflotranApplicationStrategy **application_strategy)
 {
-   SAMRAI::tbox::Pointer< SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy = (*application_strategy)->d_hierarchy;
+   SAMRAI::tbox::Pointer< SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy = (*application_strategy)->getHierarchy();
    return hierarchy->getNumberOfLevels();
 }
 
 int level_number_patches_(SAMRAI::PflotranApplicationStrategy **application_strategy, int *ln)
 {
-   SAMRAI::tbox::Pointer< SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy = (*application_strategy)->d_hierarchy;
+   SAMRAI::tbox::Pointer< SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy = (*application_strategy)->getHierarchy();
    SAMRAI::tbox::Pointer<SAMRAI::hier::PatchLevel<NDIM> > level = hierarchy->getPatchLevel(*ln);
    return level->getNumberOfPatches();
 }
 
 bool is_local_patch_(SAMRAI::PflotranApplicationStrategy **application_strategy, int *ln, int *pn)
 {
-   SAMRAI::tbox::Pointer< SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy = (*application_strategy)->d_hierarchy;
+   SAMRAI::tbox::Pointer< SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy = (*application_strategy)->getHierarchy();
    SAMRAI::tbox::Pointer<SAMRAI::hier::PatchLevel<NDIM> > level = hierarchy->getPatchLevel(*ln);
    return(level->getProcessorMapping().isMappingLocal(*pn));
 }
 
 void *hierarchy_get_patch_(SAMRAI::PflotranApplicationStrategy **application_strategy, int *ln, int *pn)
 {
-   SAMRAI::tbox::Pointer< SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy = (*application_strategy)->d_hierarchy;
+   SAMRAI::tbox::Pointer< SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy = (*application_strategy)->getHierarchy();
    SAMRAI::tbox::Pointer<SAMRAI::hier::PatchLevel<NDIM> > level = hierarchy->getPatchLevel(*ln);
    SAMRAI::tbox::Pointer<SAMRAI::hier::Patch<NDIM> > patch = level->getPatch(*pn);
    return (void *)(patch.getPointer());
@@ -51,7 +51,7 @@ void *hierarchy_get_patch_(SAMRAI::PflotranApplicationStrategy **application_str
 void samr_physical_dimensions_(SAMRAI::PflotranApplicationStrategy **application_strategy, 
                                int *nx, int *ny, int *nz)
 {
-   SAMRAI::tbox::Pointer< SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy = (*application_strategy)->d_hierarchy;
+   SAMRAI::tbox::Pointer< SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy = (*application_strategy)->getHierarchy();
    SAMRAI::hier::BoxArray<NDIM> physicalDomain = hierarchy->getGridGeometry()->getPhysicalDomain();
 
    // assume one box representing the domain for now
@@ -66,7 +66,7 @@ void samr_get_origin_(SAMRAI::PflotranApplicationStrategy **application_strategy
                      double *y0,
                      double *z0)
 {
-   SAMRAI::tbox::Pointer< SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy = (*application_strategy)->d_hierarchy;
+   SAMRAI::tbox::Pointer< SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy = (*application_strategy)->getHierarchy();
    SAMRAI::tbox::Pointer<SAMRAI::geom::CartesianGridGeometry<NDIM> > grid_geometry = hierarchy->getGridGeometry();
    const double* xlo = grid_geometry->getXLower();
    (*x0) = xlo[0];
@@ -145,19 +145,19 @@ void samrcreatematrix_(SAMRAI::PflotranApplicationStrategy **application_strateg
                        int *stencilSize,
                        Mat *pMatrix)    
 {
-   int debug_level = 1;
-   tbox::Pointer<tbox::Database> db = new tbox::InputDatabase("input_db");
+   tbox::Pointer<tbox::Database> application_db = (*application_strategy)->getDatabase();
    
-   SAMRAI::tbox::Pointer< SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy = (*application_strategy)->d_hierarchy;
+   tbox::Pointer<tbox::Database> operator_db = application_db->getDatabase("PflotranMultilevelOperator");
 
-   db->putInteger("ndof", *ndof);
-   db->putInteger("stencilsize", *stencilSize);
-   db->putInteger("print_info_level", debug_level);
+   SAMRAI::tbox::Pointer< SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy = (*application_strategy)->getHierarchy();
 
-   SAMRAI::PflotranJacobianMultilevelOperatorParameters *parameters = new  SAMRAI::PflotranJacobianMultilevelOperatorParameters(db);
+   operator_db->putInteger("ndof", *ndof);
+   operator_db->putInteger("stencilsize", *stencilSize);
+
+   SAMRAI::PflotranJacobianMultilevelOperatorParameters *parameters = new  SAMRAI::PflotranJacobianMultilevelOperatorParameters(operator_db);
    parameters->d_hierarchy = hierarchy;
    parameters->d_pMatrix = pMatrix;
-   parameters->d_cf_interpolant = NULL;
+   parameters->d_cf_interpolant = (*application_strategy)->getRefinementBoundaryInterpolant();
    parameters->d_set_boundary_ghosts.setNull();
 
    SAMRAI::PflotranJacobianMultilevelOperator *pJacobian = new SAMRAI::PflotranJacobianMultilevelOperator((SAMRAI::MultilevelOperatorParameters *)parameters);
@@ -166,7 +166,6 @@ void samrcreatematrix_(SAMRAI::PflotranApplicationStrategy **application_strateg
 }
 
 void samrglobaltolocal_(SAMRAI::PflotranApplicationStrategy **application_strategy, 
-                        int *ndof,
                         Vec gvec, 
                         Vec lvec, 
                         int ierr)
@@ -175,12 +174,11 @@ void samrglobaltolocal_(SAMRAI::PflotranApplicationStrategy **application_strate
 
    SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM, double > > localVec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM, double>::getSAMRAIVector(lvec);
 
-   (*application_strategy)->interpolateGlobalToLocalVector(*ndof, globalVec, localVec, ierr);
+   (*application_strategy)->interpolateGlobalToLocalVector(globalVec, localVec, ierr);
    
 }
 
 void samrlocaltolocal_(SAMRAI::PflotranApplicationStrategy **application_strategy, 
-                       int *ndof,
                        Vec svec, 
                        Vec dvec, 
                        int ierr)
@@ -189,7 +187,7 @@ void samrlocaltolocal_(SAMRAI::PflotranApplicationStrategy **application_strateg
 
    SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM, double > > dstVec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM, double>::getSAMRAIVector(dvec);
 
-   (*application_strategy)->interpolateGlobalToLocalVector(*ndof, srcVec, dstVec, ierr);
+   (*application_strategy)->interpolateGlobalToLocalVector(srcVec, dstVec, ierr);
    
 }
 

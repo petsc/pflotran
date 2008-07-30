@@ -1,5 +1,6 @@
 #include "PflotranApplicationStrategy.h"
 #include "tbox/TimerManager.h"
+#include "CellDataFactory.h"
 
 namespace SAMRAI{
   
@@ -9,18 +10,71 @@ PflotranApplicationStrategy::PflotranApplicationStrategy()
 
 PflotranApplicationStrategy::PflotranApplicationStrategy(PflotranApplicationParameters *params)
 {
-   initialize(params);
-
    d_read_regrid_boxes                       = false;
-   d_error_checkpoint                        = false;
    d_is_after_regrid                         = false;
    d_use_variable_order_interpolation        = false;
    d_coarsen_fluxes                          = true;
+   d_error_checkpoint                        = false;
+
+   d_current_time                            = 0.0;
+
+   d_object_name                             = "PflotranApplicationStrategy";
+   
+   d_number_solution_components              = 0;
+
+   d_cf_interpolant                          = NULL;
+
+   d_nl_tangential_interp_scheme             = RefinementBoundaryInterpolation::linear;
+
+   d_nl_normal_interp_scheme                 = RefinementBoundaryInterpolation::linear;
+
+   d_refine_patch_strategy                   = new BoundaryConditionStrategy(-1);
+
+   d_variable_list.resizeArray(0);
+
+   d_soln_refine_op.setNull();
+
+   d_soln_coarsen_op.setNull();
+
+   d_regrid_refine_scheds.resizeArray(0);
+
+   initialize(params);
+
+   hier::VariableDatabase<NDIM>* variable_db = hier::VariableDatabase<NDIM>::getDatabase();
+   
+   if(!variable_db->checkVariableExists("solution"))
+   {
+      d_solution                                = new pdat::CellVariable<NDIM,double>("pflotranSolution", d_number_solution_components);
+   }
+   else
+   {
+      d_solution = variable_db->getVariable("pflotranSolution");
+   }
+
+   d_application_ctx = variable_db->getContext(d_object_name);
 
    d_soln_refine_op =  d_grid_geometry->lookupRefineOperator(d_solution,
                                                              "CONSTANT_REFINE");
 
+   d_soln_coarsen_op = d_grid_geometry->lookupCoarsenOperator(d_solution,
+                                                              "CONSERVATIVE_COARSEN");
+   
    d_GlobalToLocalRefineSchedule.resizeArray(d_hierarchy->getNumberOfLevels());
+   d_LocalToLocalRefineSchedule.resizeArray(d_hierarchy->getNumberOfLevels());
+   
+   assert(d_number_solution_components>=1);
+
+   for(int ln=0;ln<d_hierarchy->getNumberOfLevels(); ln++)
+   {
+      d_GlobalToLocalRefineSchedule[ln].resizeArray(d_number_solution_components);
+      d_LocalToLocalRefineSchedule[ln].resizeArray(d_number_solution_components);
+
+      for(int i=0;i<d_number_solution_components; i++)
+      {
+         d_GlobalToLocalRefineSchedule[ln][i].setNull();
+         d_LocalToLocalRefineSchedule[ln][i].setNull();
+      }
+   }
 
 }
 
@@ -31,8 +85,25 @@ PflotranApplicationStrategy::~PflotranApplicationStrategy()
 void
 PflotranApplicationStrategy::initialize(PflotranApplicationParameters *params)
 {
-   d_hierarchy = params->d_hierarchy;
-   d_grid_geometry = d_hierarchy->getGridGeometry();
+   d_hierarchy       = params->d_hierarchy;
+   d_grid_geometry   = d_hierarchy->getGridGeometry();
+   d_application_db  = params->d_database;   
+
+   PflotranApplicationStrategy::getFromInput(d_application_db, false);
+}
+
+void
+PflotranApplicationStrategy::getFromInput(tbox::Pointer<tbox::Database> db,
+                                          bool is_from_restart)
+{
+   
+   if (db->keyExists("nl_tangential_coarse_fine_scheme")) {
+      d_nl_tangential_interp_scheme=RefinementBoundaryInterpolation::lookupInterpolationScheme(db->getString("nl_tangential_coarse_fine_scheme"));
+   }
+
+   if (db->keyExists("nl_normal_coarse_fine_scheme")) {
+      d_nl_normal_interp_scheme = RefinementBoundaryInterpolation::lookupInterpolationScheme(db->getString("nl_normal_coarse_fine_scheme"));
+   }
 }
 
 /**
@@ -160,19 +231,9 @@ PflotranApplicationStrategy::allocateVectorData(SAMRAI::tbox::Pointer<SAMRAI::so
 } 
 
 void
-PflotranApplicationStrategy::interpolateLocalToLocalVector(int ndof,
-                                                           tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> >  srcVec,
-                                                           tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> >  destVec,
+PflotranApplicationStrategy::interpolateLocalToLocalVector(tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> >  srcVec,
+                                                           tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> >  dstVec,
                                                            int ierr)
-{
-
-}
-
-void
-PflotranApplicationStrategy::interpolateGlobalToLocalVector(int ndof,
-                                                            tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> >  globalVec,
-                                                            tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> >  localVec,
-                                                            int ierr)
 {
     tbox::Pointer<hier::PatchHierarchy<NDIM> > hierarchy =  d_hierarchy;
 
@@ -180,8 +241,18 @@ PflotranApplicationStrategy::interpolateGlobalToLocalVector(int ndof,
 
     t_interpolate_variable->start();
 
-    int src_id = globalVec->getComponentDescriptorIndex(0);
-    int dest_id = localVec->getComponentDescriptorIndex(0);   
+    int src_id = srcVec->getComponentDescriptorIndex(0);
+    int dest_id = dstVec->getComponentDescriptorIndex(0);   
+
+    tbox::Pointer< hier::Variable< NDIM > > srcVar = srcVec->getComponentVariable(0);
+    tbox::Pointer< pdat::CellDataFactory< NDIM, double > > srcFactory = srcVar->getPatchDataFactory(); 
+    int srcDOF = srcFactory->getDefaultDepth();
+
+    tbox::Pointer< hier::Variable< NDIM > > dstVar = dstVec->getComponentVariable(0);
+    tbox::Pointer< pdat::CellDataFactory< NDIM, double > > dstFactory = dstVar->getPatchDataFactory(); 
+    int dstDOF = dstFactory->getDefaultDepth();
+
+    assert(srcDOF=dstDOF);
 
     xfer::RefineAlgorithm<NDIM> ghost_cell_fill;
 
@@ -198,20 +269,20 @@ PflotranApplicationStrategy::interpolateGlobalToLocalVector(int ndof,
 
       d_refine_patch_strategy->setDataID(dest_id);
 
-      if(ghost_cell_fill.checkConsistency(d_GlobalToLocalRefineSchedule[ln]))
+      if(ghost_cell_fill.checkConsistency(d_LocalToLocalRefineSchedule[ln][srcDOF-1]))
       {
-         ghost_cell_fill.resetSchedule(d_GlobalToLocalRefineSchedule[ln]);
+         ghost_cell_fill.resetSchedule(d_LocalToLocalRefineSchedule[ln][srcDOF-1]);
       }
       else
       {
-         d_GlobalToLocalRefineSchedule[ln] = ghost_cell_fill.createSchedule(
+         d_LocalToLocalRefineSchedule[ln][srcDOF-1] = ghost_cell_fill.createSchedule(
             level, 
             ln-1,
             hierarchy,
             d_refine_patch_strategy);
       }
       
-      d_GlobalToLocalRefineSchedule[ln]->fillData(d_current_time);            
+      d_LocalToLocalRefineSchedule[ln][srcDOF-1]->fillData(d_current_time);            
 
       if(ln>0)
       {	
@@ -221,7 +292,85 @@ PflotranApplicationStrategy::interpolateGlobalToLocalVector(int ndof,
                                                             0);
           d_cf_interpolant->setGhostCellData(ln, dest_id);
 
-	  for ( int idx=0; idx<d_number_solution_components; idx++)
+	  for ( int idx=0; idx<srcDOF; idx++)
+	  {
+             d_cf_interpolant->interpolateGhostValues(ln,
+                                                      d_nl_tangential_interp_scheme,
+                                                      d_nl_normal_interp_scheme,
+                                                      dest_id,
+                                                      idx);     
+          }
+      }
+    }
+
+    // should add code to coarsen variables
+
+    t_interpolate_variable->stop();
+}
+
+void
+PflotranApplicationStrategy::interpolateGlobalToLocalVector(tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> >  globalVec,
+                                                            tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> >  localVec,
+                                                            int ierr)
+{
+    tbox::Pointer<hier::PatchHierarchy<NDIM> > hierarchy =  d_hierarchy;
+
+    static tbox::Pointer<tbox::Timer> t_interpolate_variable = tbox::TimerManager::getManager()->getTimer("PFlotran::PflotranApplicationStrategy::interpolateVector");
+
+    t_interpolate_variable->start();
+
+    int src_id = globalVec->getComponentDescriptorIndex(0);
+    int dest_id = localVec->getComponentDescriptorIndex(0);   
+
+    tbox::Pointer< hier::Variable< NDIM > > localVar = localVec->getComponentVariable(0);
+    tbox::Pointer< pdat::CellDataFactory< NDIM, double > > localFactory = localVar->getPatchDataFactory(); 
+    int localDOF = localFactory->getDefaultDepth();
+
+    tbox::Pointer< hier::Variable< NDIM > > globalVar = globalVec->getComponentVariable(0);
+    tbox::Pointer< pdat::CellDataFactory< NDIM, double > > globalFactory = globalVar->getPatchDataFactory(); 
+    int globalDOF = globalFactory->getDefaultDepth();
+
+    assert(localDOF=globalDOF);
+
+    xfer::RefineAlgorithm<NDIM> ghost_cell_fill;
+
+    ghost_cell_fill.registerRefine(dest_id,
+				   src_id,
+				   dest_id,
+				   d_soln_refine_op);
+
+    // now refine and set physical boundaries also
+    for (int ln = 0; ln < hierarchy->getNumberOfLevels(); ln++ ) 
+    {
+
+      tbox::Pointer<hier::PatchLevel<NDIM> > level = hierarchy->getPatchLevel(ln);
+
+      d_refine_patch_strategy->setDataID(dest_id);
+
+      if(ghost_cell_fill.checkConsistency(d_GlobalToLocalRefineSchedule[ln][globalDOF-1]))
+      {
+         ghost_cell_fill.resetSchedule(d_GlobalToLocalRefineSchedule[ln][globalDOF-1]);
+      }
+      else
+      {
+         d_GlobalToLocalRefineSchedule[ln][globalDOF-1] = ghost_cell_fill.createSchedule(
+            level, 
+            ln-1,
+            hierarchy,
+            d_refine_patch_strategy);
+      }
+      
+      d_GlobalToLocalRefineSchedule[ln][globalDOF-1]->fillData(d_current_time);            
+
+      if(ln>0)
+      {	
+          d_cf_interpolant->setVariableOrderInterpolation(d_use_variable_order_interpolation);
+          d_cf_interpolant->setPhysicalCornerRefGhostValues(ln,
+                                                            dest_id,
+                                                            0);
+          d_cf_interpolant->setGhostCellData(ln, dest_id);
+
+	  for ( int idx=0; idx<globalDOF; idx++)
 	  {
              d_cf_interpolant->interpolateGhostValues(ln,
                                                       d_nl_tangential_interp_scheme,

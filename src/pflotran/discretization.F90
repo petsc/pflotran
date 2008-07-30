@@ -558,7 +558,6 @@ subroutine DiscretizationGlobalToLocal(discretization,global_vec,local_vec,dm_in
   Vec :: global_vec
   Vec :: local_vec
   PetscInt :: dm_index
-  PetscInt :: ndof
   PetscErrorCode :: ierr
   DM :: dm_ptr
   
@@ -574,8 +573,7 @@ subroutine DiscretizationGlobalToLocal(discretization,global_vec,local_vec,dm_in
       call DMGlobalToLocalEnd(dm_ptr,global_vec,INSERT_VALUES,local_vec,ierr)
 #endif
       case(AMR_GRID)
-         ndof = discretization% dm_index_to_ndof(dm_index)
-         call SAMRGlobalToLocal(discretization%amrgrid%p_application, ndof, global_vec, local_vec, ierr);
+         call SAMRGlobalToLocal(discretization%amrgrid%p_application, global_vec, local_vec, ierr);
   end select
   
 end subroutine DiscretizationGlobalToLocal
@@ -631,7 +629,6 @@ subroutine DiscretizationLocalToLocal(discretization,local_vec1,local_vec2,dm_in
   Vec :: local_vec1
   Vec :: local_vec2
   PetscInt :: dm_index
-  PetscInt :: ndof
   PetscErrorCode :: ierr
   DM :: dm_ptr
   
@@ -643,8 +640,7 @@ subroutine DiscretizationLocalToLocal(discretization,local_vec1,local_vec2,dm_in
       call DALocalToLocalEnd(dm_ptr,local_vec1,INSERT_VALUES,local_vec2,ierr)
     case(UNSTRUCTURED_GRID)
     case(AMR_GRID)
-         ndof = discretization% dm_index_to_ndof(dm_index)
-       call SAMRLocalToLocal(discretization%amrgrid%p_application, ndof, local_vec1, local_vec2, ierr);
+       call SAMRLocalToLocal(discretization%amrgrid%p_application, local_vec1, local_vec2, ierr);
   end select
   
 end subroutine DiscretizationLocalToLocal

@@ -29,9 +29,11 @@ public:
    BoundaryConditionStrategy(const int id);
 
    /**
-    * Virtual destructor.
+    *  destructor.
     */
-   virtual ~BoundaryConditionStrategy();
+   ~BoundaryConditionStrategy();
+
+   void setDataID(int id){ d_data_id = id;}
 
    /**
     * Set solution ghost cell values along physical boundaries.

@@ -26,6 +26,7 @@
 #include "ApplicationStrategy.h"
 #include "PflotranApplicationParameters.h"
 #include "PflotranJacobianMultilevelOperator.h"
+#include "BoundaryConditionStrategy.h"
 
 namespace SAMRAI{
 
@@ -108,24 +109,23 @@ public:
                            double time, bool flag=true ); 
 
 
-   // Hierarchy
-   tbox::Pointer< hier::PatchHierarchy<NDIM> > d_hierarchy;
-
    void setJacobianMatrix(PflotranJacobianMultilevelOperator *pMatrix){d_Jacobian.reset(pMatrix);}
 
-   void interpolateGlobalToLocalVector(int ndof,
-                                       tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> >  globalVec,
+   void interpolateGlobalToLocalVector(tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> >  globalVec,
                                        tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> >  localVec,
                                        int ierr);
 
-   void interpolateLocalToLocalVector(int ndof, 
-                                      tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> >  srcVec,
+   void interpolateLocalToLocalVector(tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> >  srcVec,
                                       tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> >  destVec,
                                       int ierr);
 
    void setRefinementBoundaryInterpolant(RefinementBoundaryInterpolation *cf_interpolant);
 
    RefinementBoundaryInterpolation *getRefinementBoundaryInterpolant(void){return d_cf_interpolant; }
+
+   tbox::Pointer<tbox::Database> getDatabase(void){return d_application_db;}
+
+   tbox::Pointer< hier::PatchHierarchy<NDIM> > getHierarchy(void) { return d_hierarchy; }
 
 protected:
 
@@ -135,11 +135,17 @@ private:
 
    void initialize(PflotranApplicationParameters *params);
    
+   void getFromInput(tbox::Pointer<tbox::Database> db,
+                    bool is_from_restart);
+
    bool d_read_regrid_boxes;
    bool d_is_after_regrid;
    bool d_use_variable_order_interpolation;
    bool d_coarsen_fluxes;
    bool d_error_checkpoint;
+
+   // Hierarchy
+   tbox::Pointer< hier::PatchHierarchy<NDIM> > d_hierarchy;
 
    /*
     * We cache a pointer to the grid geometry object to set up initial
@@ -166,7 +172,8 @@ private:
 
    tbox::Array< tbox::Pointer< xfer::RefineSchedule<NDIM> > > d_regrid_refine_scheds;
 
-   tbox::Array< tbox::Pointer< xfer::RefineSchedule<NDIM> > > d_GlobalToLocalRefineSchedule;
+   tbox::Array< tbox::Array< tbox::Pointer< xfer::RefineSchedule<NDIM> > > > d_GlobalToLocalRefineSchedule;
+   tbox::Array< tbox::Array< tbox::Pointer< xfer::RefineSchedule<NDIM> > > > d_LocalToLocalRefineSchedule;
 
    tbox::Pointer<hier::VariableContext> d_application_ctx;
 
@@ -178,7 +185,10 @@ private:
    RefinementBoundaryInterpolation::InterpolationScheme d_nl_tangential_interp_scheme;
    RefinementBoundaryInterpolation::InterpolationScheme d_nl_normal_interp_scheme;
 
+   tbox::Pointer<tbox::Database> d_application_db;
+
    std::auto_ptr<PflotranJacobianMultilevelOperator> d_Jacobian;
+   tbox::Pointer< BoundaryConditionStrategy > d_refine_patch_strategy;
 };
 
 }

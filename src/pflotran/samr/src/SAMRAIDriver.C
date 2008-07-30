@@ -61,6 +61,7 @@ extern "C"{
 #include "BoundaryConditionStrategy.h"
 #include "BogusTagAndInitStrategy.h"
 
+#include "RefinementBoundaryInterpolation.h"
 #include "PflotranApplicationStrategy.h" 
 #include "PflotranApplicationParameters.h" 
 #include "fc_interface.h"
@@ -118,12 +119,21 @@ int main( int argc, char *argv[] )
 			  test_object,
 			  hierarchy);
  
-   tbox::Pointer<tbox::Database> app_database;
+   tbox::Pointer<tbox::Database> app_database = input_db->getDatabase("PflotranApplicationStrategy");
 
    PflotranApplicationParameters *params  =new PflotranApplicationParameters(app_database);
    params->d_hierarchy = hierarchy;
 
    PflotranApplicationStrategy *pflotranApplication = new PflotranApplicationStrategy(params);
+   
+   // create a RefinementBoundaryInterpolation object
+   RefinementBoundaryInterpolation *cf_interpolant = new RefinementBoundaryInterpolation(hierarchy);
+   cf_interpolant->setVariableOrderInterpolation(false);
+      
+   /*
+   * Add the RefinementBoundaryInterpolation object
+   */
+   pflotranApplication->setRefinementBoundaryInterpolant(cf_interpolant);
 
    void *p_pflotran_sim = NULL;
 
