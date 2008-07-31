@@ -1535,7 +1535,11 @@ subroutine RichardsLiteJacobian(snes,xx,A,B,flag,realization,ierr)
   
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
+  type(grid_type),  pointer :: grid
   
+ ! print *,'*********** In Jacobian ********************** '
+  call MatZeroEntries(A,ierr)
+
   cur_level => realization%level_list%first
   do
     if (.not.associated(cur_level)) exit
@@ -1543,6 +1547,14 @@ subroutine RichardsLiteJacobian(snes,xx,A,B,flag,realization,ierr)
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
+      grid => cur_patch%grid
+      ! need to set the current patch in the Jacobian operator
+      ! so that entries will be set correctly
+      if(associated(grid%structured_grid) .and. &
+        (.not.(grid%structured_grid%p_samr_patch.eq.0))) then
+         call SAMRSetCurrentJacobianPatch(A, grid%structured_grid%p_samr_patch)
+      endif
+
       call RichardsLiteJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       cur_patch => cur_patch%next
     enddo
@@ -1644,9 +1656,6 @@ subroutine RichardsLiteJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 !   2. Average molecular weights to p,t,s
   flag = SAME_NONZERO_PATTERN
 
- ! print *,'*********** In Jacobian ********************** '
-  call MatZeroEntries(A,ierr)
-
   call GridVecGetArrayF90(grid,field%flow_xx_loc, xx_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%perm_xx_loc, perm_xx_loc_p, ierr)
@@ -1657,7 +1666,7 @@ subroutine RichardsLiteJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   call GridVecGetArrayF90(grid,field%ithrm_loc, ithrm_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%icap_loc, icap_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%iphas_loc, iphase_loc_p, ierr)
-
+  
 #if 1
   ! Accumulation terms ------------------------------------
   do local_id = 1, grid%nlmax  ! For each local node do...

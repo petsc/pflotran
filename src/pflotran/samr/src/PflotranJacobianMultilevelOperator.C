@@ -31,6 +31,8 @@ PflotranJacobianMultilevelOperator::PflotranJacobianMultilevelOperator(Multileve
    d_face_refine_op_str           = "CONSTANT_REFINE";
    d_flux.setNull();
    
+   d_patch.setNull();
+
    const int hierarchy_size       = d_hierarchy->getNumberOfLevels();
 
    d_level_operators.resizeArray(hierarchy_size);
@@ -453,6 +455,21 @@ PflotranJacobianMultilevelOperator::MatSetValuesLocal(Mat mat,
   PflotranJacobianMultilevelOperator *pMatrix = NULL;
    
    MatShellGetContext(mat,(void**)&pMatrix);
+   
+   if(!pMatrix->d_patch.isNull())
+   {
+      int ln = d_patch->getPatchLevelNumber();
+      int patchNumber = d_patch->getPatchNumber();
+
+      PflotranJacobianLevelOperator *levelMatrix = dynamic_cast<PflotranJacobianLevelOperator *>(pMatrix->getLevelOperator(ln));
+
+      levelMatrix->MatSetValuesLocal(patchNumber,
+                                     nrow, irow,
+                                     ncol, icol,
+                                     y, addv);
+      
+   }
+
    return (0);
 }
 
@@ -477,6 +494,20 @@ PflotranJacobianMultilevelOperator::MatSetValuesBlockedLocal(Mat mat,
   PflotranJacobianMultilevelOperator *pMatrix = NULL;
    
    MatShellGetContext(mat,(void**)&pMatrix);
+
+   if(!pMatrix->d_patch.isNull())
+   {
+      int ln = d_patch->getPatchLevelNumber();
+      int patchNumber = d_patch->getPatchNumber();
+
+      PflotranJacobianLevelOperator *levelMatrix = dynamic_cast<PflotranJacobianLevelOperator *>(pMatrix->getLevelOperator(ln));
+      
+      levelMatrix->MatSetValuesLocal(patchNumber,
+                                     nrow, irow,
+                                     ncol, icol,
+                                     y, addv);
+      
+   }
    return (0);
 }
 }

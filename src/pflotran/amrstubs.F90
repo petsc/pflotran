@@ -136,3 +136,12 @@ subroutine SAMRLocalToLocal(p_application, gvec, lvec, ierr)
   PetscInt :: ierr
 
 end subroutine SAMRLocalToLocal
+
+subroutine SAMRSetCurrentJacobianPatch(mat,patch) 
+#include "include/finclude/petsc.h"
+#include "include/finclude/petscmat.h"
+#include "include/finclude/petscmat.h90"
+
+Mat :: mat
+PetscFortranAddr :: patch
+end subroutine SAMRSetCurrentJacobianPatch

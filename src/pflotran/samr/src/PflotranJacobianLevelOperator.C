@@ -281,4 +281,44 @@ getFromInput(const tbox::Pointer<tbox::Database> &db)
 
 }
 
+void 
+PflotranJacobianLevelOperator::MatSetValuesLocal(int patchNumber,
+                                                 PetscInt nrow,const PetscInt irow[],
+                                                 PetscInt ncol,const PetscInt icol[],
+                                                 const PetscScalar y[],InsertMode addv)
+{
+   int ngx;
+   int ngxy;
+
+   for(int i=0;i<nrow; i++)
+   {
+      int currentRow = irow[i];
+      k= int((currentRow)/ngxy) + 1;
+      j= int(mod(currentRow, ngxy)/ngx) + 1;
+      i= mod(mod(currentRow, ngxy),ngx) + 1;  
+
+      for(int j=0;j<ncol; j++)
+      {
+         int currentCol = icol[i];
+      }
+   }
+}
+
+void 
+PflotranJacobianLevelOperator::MatSetValuesBlockedLocal(int patchNumber,
+                                                        PetscInt nrow,const PetscInt irow[],
+                                                        PetscInt ncol,const PetscInt icol[],
+                                                        const PetscScalar y[],InsertMode addv)
+{
+   for(int i=0;i<nrow; i++)
+   {
+      int currentRow = irow[i];
+      for(int j=0;j<ncol; j++)
+      {
+         int currentCol = icol[i];
+      }
+   }
+
+}
+
 }

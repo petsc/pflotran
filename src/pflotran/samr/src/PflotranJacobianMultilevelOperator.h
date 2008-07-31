@@ -175,6 +175,9 @@ public:
    tbox::Pointer<hier::PatchHierarchy<NDIM> > getHierarchy(void){ return d_hierarchy; }
 
    LevelLinearOperator *getLevelOperator(const int ln){ return d_level_operators[ln];}
+
+   void setCurrentPatch(tbox::Pointer<hier::Patch <NDIM> > patch){d_patch = patch;}
+
 protected:
 
    void initializePetscMatInterface(void);
@@ -232,6 +235,8 @@ private:
    int d_ndof;
 
    int d_stencilSize;
+
+   tbox::Pointer<hier::Patch <NDIM> > d_patch;
 
    tbox::Pointer< pdat::FaceVariable<NDIM,double> > d_flux;
 

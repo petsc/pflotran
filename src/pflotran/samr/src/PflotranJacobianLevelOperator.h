@@ -18,6 +18,11 @@ extern "C"{
 #include <vector>
 #include "RefinementBoundaryInterpolation.h"
 
+extern "C" {
+#include "petsc.h"
+#include "petscmat.h"
+}
+
 namespace SAMRAI{
 
 class PflotranJacobianLevelOperator: public LevelLinearOperator
@@ -151,6 +156,16 @@ public:
 
    int getStencilID(void){return d_stencil_id;}
 
+   void MatSetValuesLocal(int patchNumber,
+                          PetscInt nrow,const PetscInt irow[],
+                          PetscInt ncol,const PetscInt icol[],
+                          const PetscScalar y[],InsertMode addv);
+
+   void MatSetValuesBlockedLocal(int patchNumber,
+                                 PetscInt nrow,const PetscInt irow[],
+                                 PetscInt ncol,const PetscInt icol[],
+                                 const PetscScalar y[],InsertMode addv);
+   
 protected:
 
    void getFromInput(const tbox::Pointer<tbox::Database> &db);
