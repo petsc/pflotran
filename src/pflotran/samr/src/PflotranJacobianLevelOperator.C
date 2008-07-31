@@ -1,5 +1,7 @@
 #include "PflotranJacobianLevelOperator.h"
 #include "CartesianGridGeometry.h"
+#include "CCellData.h"
+#include "PETSc_SAMRAIVectorReal.h"
 
 namespace SAMRAI{
 
@@ -287,19 +289,92 @@ PflotranJacobianLevelOperator::MatSetValuesLocal(int patchNumber,
                                                  PetscInt ncol,const PetscInt icol[],
                                                  const PetscScalar y[],InsertMode addv)
 {
-   int ngx;
-   int ngxy;
-
-   for(int i=0;i<nrow; i++)
+   tbox::Pointer< hier::Patch<NDIM> > patch = d_level->getPatch(patchNumber);
+   // the pointer to the patch can be NULL if the patch is off processor
+   if(!patch.isNull())
    {
-      int currentRow = irow[i];
-      k= int((currentRow)/ngxy) + 1;
-      j= int(mod(currentRow, ngxy)/ngx) + 1;
-      i= mod(mod(currentRow, ngxy),ngx) + 1;  
+      tbox::Pointer< pdat::CCellData<NDIM,double> > stencil = patch->getPatchData(d_stencil_id);
+      double *stencilArray = stencil->getPointer();
 
-      for(int j=0;j<ncol; j++)
+      const hier::Box<NDIM> &box  = patch->getBox();
+      hier::Box<NDIM> gbox = box;
+      gbox.grow(1);
+
+      const int ngx = gbox.numberCells(0);
+      const int ngxy = ngx*(gbox.numberCells(1));
+
+      const int nx = box.numberCells(0);
+      const int nxy = nx*(box.numberCells(1));
+
+      for(int i=0;i<nrow; i++)
       {
-         int currentCol = icol[i];
+         int currentRow = irow[i];
+         int kr= int((currentRow)/ngxy) - 1;
+         int jr= int((currentRow%ngxy)/ngx) - 1;
+         int ir= ((currentRow%ngxy)%ngx) - 1;  
+         
+         int offSet = kr*nxy+jr*nx+ir;
+
+         for(int j=0;j<ncol; j++)
+         {
+            int currentCol = icol[j];
+            int kl= int((currentCol)/ngxy) - 1;
+            int jl= int((currentCol%ngxy)/ngx) - 1;
+            int il= ((currentCol%ngxy)%ngx) - 1;  
+
+            il = il-ir;
+            jl = jl-jr;
+            kl = kl-kr;
+            
+            if(d_stencil_size==7)
+            {
+               int pos;
+
+               if((il==0)&(jl==0)&(kl==0))
+               {
+                  pos = 0;
+               }
+               else if((il==-1)&(jl==0)&(kl==0))
+               {
+                  pos = 1;
+               }
+               else if((il==1)&(jl==0)&(kl==0))
+               {
+                  pos = 2;
+               }
+               else if((il==0)&(jl==-1)&(kl==0))
+               {
+                  pos = 3;
+               }
+               else if((il==0)&(jl==1)&(kl==0))
+               {
+                  pos = 4;
+               }
+               else if((il==0)&(jl==0)&(kl==-1))
+               {
+                  pos = 5;
+               }
+               else if((il==0)&(jl==0)&(kl==1))
+               {
+                  pos = 6;
+               }
+               else
+               {
+                  pos=-1;
+                  abort();
+               }
+
+               stencilArray[offSet+pos] = (addv==INSERT_VALUES)?y[j]:stencilArray[offSet+pos]+y[j];
+
+            }
+            else
+            {
+
+               tbox::pout << "ERROR:: PflotranJacobianLevelOperator:: invalid stencil size" << std::endl;
+               abort();
+
+            }
+         }
       }
    }
 }
@@ -310,15 +385,138 @@ PflotranJacobianLevelOperator::MatSetValuesBlockedLocal(int patchNumber,
                                                         PetscInt ncol,const PetscInt icol[],
                                                         const PetscScalar y[],InsertMode addv)
 {
-   for(int i=0;i<nrow; i++)
+   tbox::Pointer< hier::Patch<NDIM> > patch = d_level->getPatch(patchNumber);
+   // the pointer to the patch can be NULL if the patch is off processor
+   if(!patch.isNull())
    {
-      int currentRow = irow[i];
-      for(int j=0;j<ncol; j++)
+      tbox::Pointer< pdat::CCellData<NDIM,double> > stencil = patch->getPatchData(d_stencil_id);
+      double *stencilArray = stencil->getPointer();
+
+      const hier::Box<NDIM> &box  = patch->getBox();
+      hier::Box<NDIM> gbox = box;
+      gbox.grow(1);
+
+      const int ngx = gbox.numberCells(0);
+      const int ngxy = ngx*(gbox.numberCells(1));
+
+      const int nx = box.numberCells(0);
+      const int nxy = nx*(box.numberCells(1));
+
+      for(int i=0;i<nrow; i++)
       {
-         int currentCol = icol[i];
+         int currentRow = irow[i];
+         int kr= int((currentRow)/ngxy) - 1;
+         int jr= int((currentRow%ngxy)/ngx) - 1;
+         int ir= ((currentRow%ngxy)%ngx) - 1;  
+         
+         int offSet = kr*nxy+jr*nx+ir;
+         offSet = offSet*d_ndof;
+
+         for(int j=0;j<ncol; j++)
+         {
+            int currentCol = icol[j];
+            int kl= int((currentCol)/ngxy) - 1;
+            int jl= int((currentCol%ngxy)/ngx) - 1;
+            int il= ((currentCol%ngxy)%ngx) - 1;  
+
+            il = il-ir;
+            jl = jl-jr;
+            kl = kl-kr;
+            
+            if(d_stencil_size==7)
+            {
+               int pos;
+
+               if((il==0)&(jl==0)&(kl==0))
+               {
+                  pos = 0;
+               }
+               else if((il==-1)&(jl==0)&(kl==0))
+               {
+                  pos = 1;
+               }
+               else if((il==1)&(jl==0)&(kl==0))
+               {
+                  pos = 2;
+               }
+               else if((il==0)&(jl==-1)&(kl==0))
+               {
+                  pos = 3;
+               }
+               else if((il==0)&(jl==1)&(kl==0))
+               {
+                  pos = 4;
+               }
+               else if((il==0)&(jl==0)&(kl==-1))
+               {
+                  pos = 5;
+               }
+               else if((il==0)&(jl==0)&(kl==1))
+               {
+                  pos = 6;
+               }
+               else
+               {
+                  pos=-1;
+                  abort();
+               }
+
+               pos = pos*d_ndof;
+
+               if(addv==INSERT_VALUES)
+               {
+                  for(int m=0;m<d_ndof; m++)
+                  {
+                     for(int l=0;l<d_ndof; l++)
+                     {
+                        stencilArray[offSet+pos+m*d_ndof+l] = y[j*d_ndof+m*d_ndof+l];
+                     }      
+                  }
+               }
+               else
+               {
+                  for(int m=0;m<d_ndof; m++)
+                  {
+                     for(int l=0;l<d_ndof; l++)
+                     {
+                        stencilArray[offSet+pos+m*d_ndof+l] += y[j*d_ndof+m*d_ndof+l];
+                     }      
+                  }
+
+               }
+            }
+            else
+            {
+
+               tbox::pout << "ERROR:: PflotranJacobianLevelOperator:: invalid stencil size" << std::endl;
+               abort();
+
+            }
+         }
       }
    }
+}
 
+int
+PflotranJacobianLevelOperator::MatMult(Vec x, Vec y )
+{
+   SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM, double > > xVec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM, double>::getSAMRAIVector(x);
+   SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM, double > > yVec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM, double>::getSAMRAIVector(y);
+
+   int src_id = xVec->getComponentDescriptorIndex(0);
+   int dest_id = yVec->getComponentDescriptorIndex(0);   
+
+   for (hier::PatchLevel<NDIM>::Iterator p(d_level); p; p++) 
+   {
+      tbox::Pointer<hier::Patch<NDIM> > patch = d_level->getPatch(p());
+      
+#ifdef DEBUG_CHECK_ASSERTIONS
+      assert(!patch.isNull());
+#endif
+      tbox::Pointer< pdat::CCellData<NDIM, double > > stencil = patch->getPatchData(d_stencil_id);
+   }
+   
+   return(0);
 }
 
 }

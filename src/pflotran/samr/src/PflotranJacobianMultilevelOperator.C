@@ -381,6 +381,15 @@ PflotranJacobianMultilevelOperator::MatMult(Mat mat,Vec x,Vec y)
    PflotranJacobianMultilevelOperator *pMatrix = NULL;
    
    MatShellGetContext(mat,(void**)&pMatrix);
+   for(int ln=0; ln<d_hierarchy->getNumberOfLevels(); ln++)
+   {
+      tbox::Pointer<hier::PatchLevel<NDIM> > level = d_hierarchy->getPatchLevel(ln);
+      
+      PflotranJacobianLevelOperator *levelMatrix = dynamic_cast<PflotranJacobianLevelOperator *>(pMatrix->getLevelOperator(ln));
+
+      levelMatrix->MatMult(x,y);
+   }
+
    return (0);
 
 }
