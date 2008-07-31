@@ -294,6 +294,8 @@ subroutine SolverReadLinear(solver,fid,myrank)
         call fiErrorMsg(myrank,'pc_type','SOLVER', ierr)   
         call fiWordToUpper(word)
         select case(trim(word))
+          case('NONE','PCNONE')
+            solver%pc_type = PCNONE
           case('ILU','PCILU')
             solver%pc_type = PCILU
           case('LU','PCLU')
