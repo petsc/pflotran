@@ -209,7 +209,7 @@ void samrlocaltolocal_(SAMRAI::PflotranApplicationStrategy **application_strateg
 }
 
 void 
-samrsetcurrentjacobianpatch( Mat *mat, SAMRAI::hier::Patch<NDIM> **patch)
+samrsetcurrentjacobianpatch_( Mat *mat, SAMRAI::hier::Patch<NDIM> **patch)
 {
    SAMRAI::PflotranJacobianMultilevelOperator *pJacobian = NULL;
    SAMRAI::tbox::Pointer< SAMRAI::hier::Patch<NDIM> > patchPtr = (*patch);

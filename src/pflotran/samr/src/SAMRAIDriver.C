@@ -84,7 +84,9 @@ int main( int argc, char *argv[] )
 
    tbox::SAMRAI_MPI::init(&argc, &argv);
    tbox::SAMRAIManager::startup();
-   int ierr = PetscInitializeNoArguments();
+
+   int ierr = PetscInitialize(&argc,&argv,PETSC_NULL,PETSC_NULL);
+
    PetscInitializeFortran();
 
    /*
@@ -265,7 +267,7 @@ void processCommandLine(int argc,
                         string& input_file, 
                         string& log_file)
 {
-  if ( (argc != 3) ) {
+  if ( (argc < 3) ) {
     tbox::pout << "USAGE:  " << argv[0] << " <input file> <log file> " << endl;
     exit(-1);
   } else {

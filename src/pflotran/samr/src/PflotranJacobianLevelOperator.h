@@ -20,6 +20,7 @@ extern "C"{
 
 extern "C" {
 #include "petsc.h"
+#include "petscvec.h"
 #include "petscmat.h"
 }
 
@@ -165,7 +166,9 @@ public:
                                  PetscInt nrow,const PetscInt irow[],
                                  PetscInt ncol,const PetscInt icol[],
                                  const PetscScalar y[],InsertMode addv);
-   
+
+   int MatMult(Vec x, Vec y);
+
 protected:
 
    void getFromInput(const tbox::Pointer<tbox::Database> &db);
