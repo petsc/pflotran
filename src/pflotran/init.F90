@@ -971,14 +971,12 @@ subroutine readInput(simulation,filename)
 !....................
 
       case('ORIG','ORIGIN')
-        if (realization%discretization%itype/=AMR_GRID .and. associated(grid%structured_grid)) then
-          call fiReadDouble(string,grid%structured_grid%origin(X_DIRECTION),ierr)
-          call fiErrorMsg(option%myrank,'X direction','Origin',ierr)
-          call fiReadDouble(string,grid%structured_grid%origin(Y_DIRECTION),ierr)
-          call fiErrorMsg(option%myrank,'Y direction','Origin',ierr)
-          call fiReadDouble(string,grid%structured_grid%origin(Z_DIRECTION),ierr)
-          call fiErrorMsg(option%myrank,'Z direction','Origin',ierr)
-        endif          
+        call fiReadDouble(string,realization%discretization%origin(X_DIRECTION),ierr)
+        call fiErrorMsg(option%myrank,'X direction','Origin',ierr)
+        call fiReadDouble(string,realization%discretization%origin(Y_DIRECTION),ierr)
+        call fiErrorMsg(option%myrank,'Y direction','Origin',ierr)
+        call fiReadDouble(string,realization%discretization%origin(Z_DIRECTION),ierr)
+        call fiErrorMsg(option%myrank,'Z direction','Origin',ierr)
         
 !....................
 

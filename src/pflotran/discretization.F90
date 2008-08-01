@@ -22,6 +22,7 @@ module Discretization_module
   type, public :: discretization_type
     PetscInt :: itype  ! type of discretization (e.g. structured, unstructured, etc.)
     character(len=MAXWORDLENGTH) :: ctype
+    PetscReal :: origin(3)
     type(grid_type), pointer :: grid  ! pointer to a grid object
     type(amrgrid_type), pointer :: amrgrid  ! pointer to an amr grid object
     DM :: dm_1_dof, dm_nflowdof, dm_ntrandof
@@ -76,6 +77,7 @@ function DiscretizationCreate()
   allocate(discretization)
   discretization%ctype = ''
   discretization%itype = 0
+  discretization%origin = 0.d0
 
   ! nullify DM pointers
   discretization%dm_1_dof = 0
@@ -152,6 +154,13 @@ subroutine DiscretizationRead(discretization,fid,option)
         call fiErrorMsg(option%myrank,'ny','GRID', ierr)
         call fiReadInt(string,nz,ierr)
         call fiErrorMsg(option%myrank,'nz','GRID', ierr)
+      case('ORIG','ORIGIN')
+        call fiReadDouble(string,discretization%origin(X_DIRECTION),ierr)
+        call fiErrorMsg(option%myrank,'X direction','Origin',ierr)
+        call fiReadDouble(string,discretization%origin(Y_DIRECTION),ierr)
+        call fiErrorMsg(option%myrank,'Y direction','Origin',ierr)
+        call fiReadDouble(string,discretization%origin(Z_DIRECTION),ierr)
+        call fiErrorMsg(option%myrank,'Z direction','Origin',ierr)        
       case('FILE')
       case('END')
         exit
@@ -173,6 +182,8 @@ subroutine DiscretizationRead(discretization,fid,option)
           str_grid%nmax = str_grid%nxy*str_grid%nz
           grid%structured_grid => str_grid
           grid%nmax = str_grid%nmax
+          grid%structured_grid%origin(X_DIRECTION:Z_DIRECTION) = &
+            discretization%origin(X_DIRECTION:Z_DIRECTION)
       end select
       discretization%grid => grid
       grid%itype = discretization%itype
