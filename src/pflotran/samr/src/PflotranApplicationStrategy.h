@@ -129,6 +129,8 @@ public:
 
    tbox::Pointer< hier::PatchHierarchy<NDIM> > getHierarchy(void) { return d_hierarchy; }
 
+   void createVector(int &dof, bool &use_ghost, Vec *vec);
+
 protected:
 
 private:
@@ -140,6 +142,7 @@ private:
    void getFromInput(tbox::Pointer<tbox::Database> db,
                     bool is_from_restart);
 
+   static int d_vec_instance_id;
    bool d_read_regrid_boxes;
    bool d_is_after_regrid;
    bool d_use_variable_order_interpolation;

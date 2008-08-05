@@ -2,9 +2,14 @@
 #include "tbox/TimerManager.h"
 #include "CellDataFactory.h"
 #include "tbox/RestartManager.h"
+#include "CellVariable.h"
+#include "SAMRAIVectorReal.h"
+#include "PETSc_SAMRAIVectorReal.h"
 
 namespace SAMRAI{
   
+int PflotranApplicationStrategy::d_vec_instance_id=0;
+
 PflotranApplicationStrategy::PflotranApplicationStrategy()
 {
 }
@@ -416,6 +421,61 @@ PflotranApplicationStrategy::setRefinementBoundaryInterpolant(RefinementBoundary
       d_TransportJacobian->setRefinementBoundaryInterpolant(cf_interpolant);
    }
 
+}
+
+void
+PflotranApplicationStrategy::createVector(int &dof, bool &use_ghost, Vec *vec)
+{
+   std::ostringstream ibuffer;
+   ibuffer<<(long)PflotranApplicationStrategy::d_vec_instance_id;
+   std::string object_str=ibuffer.str();
+
+   std::string dataName("PFLOTRAN_variable_");
+   dataName+=object_str;
+
+   PflotranApplicationStrategy::d_vec_instance_id++;
+
+   SAMRAI::tbox::Pointer< SAMRAI::pdat::CellVariable<NDIM,double> > pflotran_var;
+
+   pflotran_var = new SAMRAI::pdat::CellVariable<NDIM,double>(dataName,dof);
+
+   int pflotran_var_id;
+
+   SAMRAI::hier::VariableDatabase<NDIM>* variable_db = SAMRAI::hier::VariableDatabase<NDIM>::getDatabase();
+
+   const SAMRAI::tbox::Pointer< SAMRAI::hier::VariableContext > pflotran_cxt = variable_db->getContext("PFLOTRAN");
+
+   SAMRAI::hier::IntVector<NDIM> nghosts;
+
+   if(use_ghost)
+   {
+      nghosts = SAMRAI::hier::IntVector<NDIM>(1);
+   }
+   else
+   {
+      nghosts = SAMRAI::hier::IntVector<NDIM>(0);
+   }
+
+   pflotran_var_id = variable_db->registerVariableAndContext(pflotran_var,
+                                                             pflotran_cxt,
+                                                             nghosts);
+
+   const int nlevels = d_hierarchy->getNumberOfLevels();
+
+   for(int ln=0; ln<d_hierarchy->getNumberOfLevels(); ln++)
+   {
+      SAMRAI::tbox::Pointer<SAMRAI::hier::PatchLevel<NDIM> > level = d_hierarchy->getPatchLevel(ln);
+      level->allocatePatchData(pflotran_var_id);
+   }
+
+   SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM,double> > samrai_vec = new SAMRAI::solv::SAMRAIVectorReal<NDIM,double>(dataName,
+                                                                                                                                     d_hierarchy,
+                                                                                                                                     0, nlevels-1);
+
+   samrai_vec->addComponent(pflotran_var,
+                            pflotran_var_id);
+
+   *vec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM,double>::createPETScVector(samrai_vec);
 }
 
 }

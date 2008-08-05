@@ -41,7 +41,7 @@ PflotranApplicationStrategy{
 
    nl_tangential_coarse_fine_scheme = "QUADRATIC"
    nl_normal_coarse_fine_scheme     = "QUADRATIC"
-   number_solution_components       = 1
+   number_solution_components       = 3
 
    PflotranMultilevelOperator{
      	       operator_name                   = "PflotranMultilevelOperator"

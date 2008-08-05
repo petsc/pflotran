@@ -219,6 +219,16 @@ samrsetcurrentjacobianpatch_( Mat *mat, SAMRAI::hier::Patch<NDIM> **patch)
    pJacobian->setCurrentPatch(patchPtr);
 }
 
+
+void create_samrai_vec_(SAMRAI::PflotranApplicationStrategy **application_strategy,
+                        int &dof, 
+                        bool &use_ghost,
+                        Vec *vec)
+{
+
+   (*application_strategy)->createVector(dof, use_ghost, vec);
+}
+
 #ifdef __cplusplus
 }
 #endif
