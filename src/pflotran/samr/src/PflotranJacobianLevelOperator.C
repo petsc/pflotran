@@ -2,6 +2,7 @@
 #include "CartesianGridGeometry.h"
 #include "CCellData.h"
 #include "PETSc_SAMRAIVectorReal.h"
+#include "fortran/3d/prototypes.h"
 
 namespace SAMRAI{
 
@@ -313,7 +314,7 @@ PflotranJacobianLevelOperator::MatSetValuesLocal(int patchNumber,
          int jr= int((currentRow%ngxy)/ngx) - 1;
          int ir= ((currentRow%ngxy)%ngx) - 1;  
          
-         int offSet = kr*nxy+jr*nx+ir;
+         int offSet = (kr*nxy+jr*nx+ir)*d_stencil_size;
 
          for(int j=0;j<ncol; j++)
          {
@@ -504,7 +505,7 @@ PflotranJacobianLevelOperator::MatMult(Vec x, Vec y )
    SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM, double > > yVec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM, double>::getSAMRAIVector(y);
 
    int src_id = xVec->getComponentDescriptorIndex(0);
-   int dest_id = yVec->getComponentDescriptorIndex(0);   
+   int dst_id = yVec->getComponentDescriptorIndex(0);   
 
    for (hier::PatchLevel<NDIM>::Iterator p(d_level); p; p++) 
    {
@@ -513,7 +514,41 @@ PflotranJacobianLevelOperator::MatMult(Vec x, Vec y )
 #ifdef DEBUG_CHECK_ASSERTIONS
       assert(!patch.isNull());
 #endif
+      const hier::Box<NDIM> &box = patch->getBox();
+
       tbox::Pointer< pdat::CCellData<NDIM, double > > stencil = patch->getPatchData(d_stencil_id);
+      // for now we will use cell data instead of CCell data
+      tbox::Pointer< pdat::CellData<NDIM, double > > src = patch->getPatchData(src_id);
+      tbox::Pointer< pdat::CellData<NDIM, double > > dst = patch->getPatchData(dst_id);
+#ifdef DEBUG_CHECK_ASSERTIONS
+      assert(!stencil.isNull());
+      assert(!src.isNull());
+      assert(!dst.isNull());
+#endif
+
+      const hier::Index<NDIM> ifirst = box.lower();
+      const hier::Index<NDIM> ilast = box.upper();
+      
+      hier::IntVector<NDIM> ghost_cell_width = src->getGhostCellWidth();
+      const int sgcw=ghost_cell_width(0);
+      ghost_cell_width = dst->getGhostCellWidth();
+      const int dgcw=ghost_cell_width(0);
+
+#ifdef DEBUG_CHECK_ASSERTIONS
+        assert(sgcw>=0);
+        assert(dgcw>=0);
+        assert(d_stencil_size>0);
+        assert(d_ndof>=1);
+#endif
+        samrcellmatmult3d_( ifirst(0),ifirst(1),ifirst(2),
+                            ilast(0),ilast(1),ilast(2),
+                            d_stencil_size,
+                            d_ndof,
+                            stencil->getPointer(),
+                            sgcw,
+                            src->getPointer(),
+                            dgcw,
+                            dst->getPointer());
    }
    
    return(0);

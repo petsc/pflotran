@@ -14,9 +14,12 @@ extern "C"{
 #endif
 
 #include <vector>
-
+#include "RefineOperator.h"
+#include "CoarsenOperator.h"
+#include "SAMRAIVectorReal.h" 
 #include "MultilevelLinearOperator.h"
 #include "PflotranJacobianLevelOperator.h"
+#include "BoundaryConditionStrategy.h"
 
 extern "C" {
 #include "petscmat.h"
@@ -176,7 +179,7 @@ public:
 
    LevelLinearOperator *getLevelOperator(const int ln){ return d_level_operators[ln];}
 
-   void setCurrentPatch(tbox::Pointer<hier::Patch <NDIM> > patch){d_patch = patch;}
+   void setCurrentPatch(hier::Patch <NDIM> *patch){d_patch = patch;}
 
 protected:
 
@@ -212,6 +215,10 @@ protected:
 
    void initializeBoundaryConditionStrategy(tbox::Pointer<tbox::Database> &db);
 
+   Vec getScratchVector(void){ return d_scratch_vector; }
+
+   void initializeScratchVector( Vec x);
+
 private:
 
    PflotranJacobianMultilevelOperator();
@@ -236,16 +243,31 @@ private:
 
    int d_stencilSize;
 
-   tbox::Pointer<hier::Patch <NDIM> > d_patch;
+   /*
+    * Variables.
+    */
+   tbox::Pointer< pdat::CellVariable<NDIM,double> > d_scratch_variable;
+
+   hier::Patch <NDIM> *d_patch;
 
    tbox::Pointer< pdat::FaceVariable<NDIM,double> > d_flux;
 
-   RefinementBoundaryInterpolation::InterpolationScheme d_tangent_interp_scheme;
+   tbox::Pointer<xfer::RefineOperator<NDIM> >  d_soln_refine_op;
+   tbox::Pointer<xfer::CoarsenOperator<NDIM> > d_soln_coarsen_op;
+
+   tbox::Array< tbox::Pointer< xfer::RefineSchedule<NDIM> > > d_GlobalToLocalRefineSchedule;
+
+   RefinementBoundaryInterpolation::InterpolationScheme d_tangential_interp_scheme;
    RefinementBoundaryInterpolation::InterpolationScheme d_normal_interp_scheme;
+
+   BoundaryConditionStrategy  *d_refine_patch_strategy;
 
    tbox::Array<PflotranJacobianLevelOperator*> d_level_operators;
 
    Mat *d_pMatrix;
+
+   Vec d_scratch_vector;
+
 };
 
 

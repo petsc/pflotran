@@ -3,6 +3,7 @@
 #include "CellDataFactory.h"
 #include "tbox/RestartManager.h"
 #include "CellVariable.h"
+#include "CCellVariable.h"
 #include "SAMRAIVectorReal.h"
 #include "PETSc_SAMRAIVectorReal.h"
 

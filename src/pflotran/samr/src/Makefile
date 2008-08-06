@@ -40,6 +40,10 @@ include $(OBJECT)/config/Makefile.config
 M4DIRS        = -DSAMRAI_FORTDIR=$(SAMRAI)/\`include\'
 PDIM = 3
 
+FORTDIR  = fortran/${PDIM}d
+FORTM4SRC  = ${wildcard ${FORTDIR}/*.m4}
+FORTOBJS = ${FORTM4SRC:.m4=.o}
+
 ifeq "$(BUILDTYPE)" "x86_64-Linux"
    CXXFLAGS_EXTRA += -DNDIM=$(PDIM)
    CPPFLAGS_EXTRA += -DNDIM=$(PDIM)
@@ -69,6 +73,8 @@ LDLIBS_EXTRA += ${PRECONDITIONER_HOME}/lib/liblinearops3d.a
 SRCDIR = .
 VPATH = .
 
+vpath %.m4 fortran/${PDIM}d
+
 PFLOW_DIR = ../..
 
 CSRC=${wildcard ${SRCDIR}/*.c}
@@ -81,8 +87,6 @@ F90SRC  = ${wildcard ./*.F90}
 F90OBJS = ${F90SRC:.F90=.o}
 #F90OBJS = ../pflow_gridtype.o grid_create.o
 
-FSRC  = ${wildcard ./*.f}
-#FOBJS = ${FSRC:.f=.o}
 
 FFLAGS		 = -g
 
@@ -106,12 +110,15 @@ endif
 .F90.o :
 	${F90} ${FOPTFLAGS} $< ${MYFLAGS} -c ${PETSC_INCLUDE}
 
-.f.o :
-	${F90} ${FOPTFLAGS} $< ${MYFLAGS} -c ${PETSC_INCLUDE}
+#.f.o :
+#	${F90} ${FOPTFLAGS} $< ${MYFLAGS} -c ${PETSC_INCLUDE}
+
+$(FORTOBJS):$(FORTM4SRC)
+	cd $(FORTDIR); ${MAKE}
 
 
-SAMRAIDriver: SAMRAIDriver.o $(COBJS) $(CXXOBJS) ${F90OBJS}
-	$(CXX) -g $(CXXOBJS) $(COBJS) ${F90OBJS} ${FOBJS} ${PETSC_FORTRAN_LIB} $(LDFLAGS) $(LIBSAMRAI3D) $(LIBSAMRAI) -lhdf5_fortran  $(LDLIBS_EXTRA) $(LDLIBS) -lU77 -o $@
+SAMRAIDriver: SAMRAIDriver.o $(COBJS) $(CXXOBJS) ${F90OBJS} ${FORTOBJS}
+	$(CXX) -g $(CXXOBJS) $(COBJS) ${F90OBJS} ${FORTOBJS} ${PETSC_FORTRAN_LIB} $(LDFLAGS) $(LIBSAMRAI3D) $(LIBSAMRAI) -lhdf5_fortran  $(LDLIBS_EXTRA) $(LDLIBS) -lU77 -o $@
 
 clean:
 	$(RM) SAMRAIDriver *.f core *~ *.mod

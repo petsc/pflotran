@@ -2,6 +2,10 @@
 #include "CartesianGridGeometry.h"
 #include "PflotranJacobianMultilevelOperatorParameters.h"
 #include "CCellData.h"
+#include "PETSc_SAMRAIVectorReal.h"
+#include "tbox/TimerManager.h"
+#include "CellDataFactory.h"
+#include "RefineAlgorithm.h"
 
 namespace SAMRAI{
 #ifndef iC
@@ -31,7 +35,8 @@ PflotranJacobianMultilevelOperator::PflotranJacobianMultilevelOperator(Multileve
    d_face_refine_op_str           = "CONSTANT_REFINE";
    d_flux.setNull();
    
-   d_patch.setNull();
+   d_patch                        = NULL;
+   d_refine_patch_strategy        = new BoundaryConditionStrategy(-1);
 
    const int hierarchy_size       = d_hierarchy->getNumberOfLevels();
 
@@ -65,6 +70,12 @@ PflotranJacobianMultilevelOperator::PflotranJacobianMultilevelOperator(Multileve
    }
    
    initializeInternalVariableData();
+
+   d_GlobalToLocalRefineSchedule.resizeArray(d_hierarchy->getNumberOfLevels());
+   for(int ln=0; ln<hierarchy_size; ln++)
+   {
+      d_GlobalToLocalRefineSchedule[ln].setNull();
+   }
 }
 
 void
@@ -139,7 +150,23 @@ PflotranJacobianMultilevelOperator::initializeInternalVariableData(void)
    ibuffer<<(long)d_object_id;
    std::string object_str=ibuffer.str();
 
-   std::string cellFlux("CellDiffusionOperator_InternalFlux");
+   std::string vecname("PflotranJacobianMultilevelOperator_scratchVector");
+   vecname+=object_str;
+
+   tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> > scratch_vector = new solv::SAMRAIVectorReal<NDIM,double>(vecname,
+                                                                                                                 d_hierarchy,
+                                                                                                                 0, d_hierarchy->getFinestLevelNumber());
+
+   tbox::Pointer< pdat::CellVariable<NDIM,double> > scratchVar = new pdat::CellVariable<NDIM,double>(vecname,d_ndof);
+   int scratch_var_id = variable_db->registerVariableAndContext(scratchVar,
+                                                                scratch_cxt,
+                                                                hier::IntVector<NDIM>(1));
+   
+   scratch_vector->addComponent(scratchVar,
+                                scratch_var_id);
+   
+
+   std::string cellFlux("PflotranJacobianMultilevelOperator_InternalFlux");
    cellFlux+=object_str;
 
    d_flux = variable_db->getVariable(cellFlux);
@@ -153,6 +180,8 @@ PflotranJacobianMultilevelOperator::initializeInternalVariableData(void)
                                                        scratch_cxt,
                                                        zero_ghosts);
 
+   
+
    for(int ln=0; ln<d_hierarchy->getNumberOfLevels(); ln++)
    {
       tbox::Pointer<hier::PatchLevel<NDIM> > level = d_hierarchy->getPatchLevel(ln);
@@ -162,11 +191,18 @@ PflotranJacobianMultilevelOperator::initializeInternalVariableData(void)
          level->allocatePatchData(d_flux_id);
       }
 
+      if(!level->checkAllocated(scratch_var_id))
+      {
+         level->allocatePatchData(scratch_var_id);
+      }
+
 #ifdef DEBUG_CHECK_ASSERTIONS
       assert(level->checkAllocated(d_flux_id));
 #endif
 
    }
+
+   d_scratch_vector = solv::PETSc_SAMRAIVectorReal<NDIM,double>::createPETScVector(scratch_vector);
 }
 
 void
@@ -175,10 +211,10 @@ PflotranJacobianMultilevelOperator::getFromInput(tbox::Pointer<tbox::Database> d
 #ifdef DEBUG_CHECK_ASSERTIONS
    assert(!db.isNull());
 #endif
-#if 0
+
    if (db->keyExists("tangent_interp_scheme")) 
    {
-      d_tangent_interp_scheme = RefinementBoundaryInterpolation::lookupInterpolationScheme(db->getString("tangent_interp_scheme"));
+      d_tangential_interp_scheme = RefinementBoundaryInterpolation::lookupInterpolationScheme(db->getString("tangent_interp_scheme"));
    } 
    else 
    {
@@ -198,39 +234,6 @@ PflotranJacobianMultilevelOperator::getFromInput(tbox::Pointer<tbox::Database> d
                  << " missing in input.");
    }
 
-   if (db->keyExists("coarsen_diffusive_fluxes")) 
-   {
-      d_coarsen_diffusive_fluxes = db->getBool("coarsen_diffusive_fluxes");
-   } 
-   else 
-   {
-      TBOX_ERROR("PflotranJacobianMultilevelOperator" 
-                 << " -- Required key `coarsen_diffusive_fluxes'"
-                 << " missing in input.");
-   }
-   
-   if(db->keyExists("face_coarsen_op"))
-   {
-      d_face_coarsen_op_str = db->getString("face_coarsen_op");
-   }
-   else
-   {
-      TBOX_ERROR("PflotranJacobianMultilevelOperator" 
-                 << " -- Required key `face_coarsen_op'"
-                 << " missing in input.");
-   }
-
-   if(db->keyExists("face_refine_op"))
-   {
-      d_face_refine_op_str = db->getString("face_refine_op");
-   }
-   else
-   {
-      TBOX_ERROR("PflotranJacobianMultilevelOperator" 
-                 << " -- Required key `face_refine_op'"
-                 << " missing in input.");
-   }
-
    if(db->keyExists("cell_coarsen_op"))
    {
       d_cell_coarsen_op_str = db->getString("cell_coarsen_op");
@@ -239,17 +242,6 @@ PflotranJacobianMultilevelOperator::getFromInput(tbox::Pointer<tbox::Database> d
    {
       TBOX_ERROR("PflotranJacobianMultilevelOperator" 
                  << " -- Required key `cell_coarsen_op'"
-                 << " missing in input.");
-   }
-
-   if (db->keyExists("adjust_cf_coefficients")) 
-   {
-      d_adjust_cf_coefficients = db->getBool("adjust_cf_coefficients");      
-   } 
-   else 
-   {
-      TBOX_ERROR( "PflotranJacobianLevelOperator" 
-                 << " -- Required key `adjust_cf_coefficients'"
                  << " missing in input.");
    }
 
@@ -290,6 +282,51 @@ PflotranJacobianMultilevelOperator::getFromInput(tbox::Pointer<tbox::Database> d
    {
       TBOX_ERROR("PflotranJacobianMultilevelOperator"
                  << " -- Required key `use_cf_interpolant'"
+                 << " missing in input.");
+   }
+
+#if 0
+   if (db->keyExists("coarsen_diffusive_fluxes")) 
+   {
+      d_coarsen_diffusive_fluxes = db->getBool("coarsen_diffusive_fluxes");
+   } 
+   else 
+   {
+      TBOX_ERROR("PflotranJacobianMultilevelOperator" 
+                 << " -- Required key `coarsen_diffusive_fluxes'"
+                 << " missing in input.");
+   }
+   
+   if(db->keyExists("face_coarsen_op"))
+   {
+      d_face_coarsen_op_str = db->getString("face_coarsen_op");
+   }
+   else
+   {
+      TBOX_ERROR("PflotranJacobianMultilevelOperator" 
+                 << " -- Required key `face_coarsen_op'"
+                 << " missing in input.");
+   }
+
+   if(db->keyExists("face_refine_op"))
+   {
+      d_face_refine_op_str = db->getString("face_refine_op");
+   }
+   else
+   {
+      TBOX_ERROR("PflotranJacobianMultilevelOperator" 
+                 << " -- Required key `face_refine_op'"
+                 << " missing in input.");
+   }
+
+   if (db->keyExists("adjust_cf_coefficients")) 
+   {
+      d_adjust_cf_coefficients = db->getBool("adjust_cf_coefficients");      
+   } 
+   else 
+   {
+      TBOX_ERROR( "PflotranJacobianLevelOperator" 
+                 << " -- Required key `adjust_cf_coefficients'"
                  << " missing in input.");
    }
 
@@ -381,13 +418,18 @@ PflotranJacobianMultilevelOperator::MatMult(Mat mat,Vec x,Vec y)
    PflotranJacobianMultilevelOperator *pMatrix = NULL;
    
    MatShellGetContext(mat,(void**)&pMatrix);
+
+   pMatrix->initializeScratchVector(x);
+
+   Vec scratch = pMatrix->getScratchVector();
+
    for(int ln=0; ln<d_hierarchy->getNumberOfLevels(); ln++)
    {
       tbox::Pointer<hier::PatchLevel<NDIM> > level = d_hierarchy->getPatchLevel(ln);
       
       PflotranJacobianLevelOperator *levelMatrix = dynamic_cast<PflotranJacobianLevelOperator *>(pMatrix->getLevelOperator(ln));
 
-      levelMatrix->MatMult(x,y);
+      levelMatrix->MatMult(scratch,y);
    }
 
    return (0);
@@ -465,7 +507,7 @@ PflotranJacobianMultilevelOperator::MatSetValuesLocal(Mat mat,
    
    MatShellGetContext(mat,(void**)&pMatrix);
    
-   if(!pMatrix->d_patch.isNull())
+   if(pMatrix->d_patch !=NULL)
    {
       int ln = d_patch->getPatchLevelNumber();
       int patchNumber = d_patch->getPatchNumber();
@@ -504,7 +546,7 @@ PflotranJacobianMultilevelOperator::MatSetValuesBlockedLocal(Mat mat,
    
    MatShellGetContext(mat,(void**)&pMatrix);
 
-   if(!pMatrix->d_patch.isNull())
+   if(pMatrix->d_patch !=NULL)
    {
       int ln = d_patch->getPatchLevelNumber();
       int patchNumber = d_patch->getPatchNumber();
@@ -519,5 +561,86 @@ PflotranJacobianMultilevelOperator::MatSetValuesBlockedLocal(Mat mat,
    }
    return (0);
 }
+
+void
+PflotranJacobianMultilevelOperator::initializeScratchVector( Vec x )
+{
+    tbox::Pointer<hier::PatchHierarchy<NDIM> > hierarchy =  d_hierarchy;
+
+    static tbox::Pointer<tbox::Timer> t_interpolate_variable = tbox::TimerManager::getManager()->getTimer("PFlotran::PflotranJacobianMultilevelOperator::initializeScratchVector");
+
+    t_interpolate_variable->start();
+
+    SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM, double > > globalVec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM, double>::getSAMRAIVector(x);
+
+    SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM, double > > localVec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM, double>::getSAMRAIVector(d_scratch_vector);
+
+    int src_id = globalVec->getComponentDescriptorIndex(0);
+    int dest_id = localVec->getComponentDescriptorIndex(0);   
+
+    tbox::Pointer< hier::Variable< NDIM > > localVar = localVec->getComponentVariable(0);
+    tbox::Pointer< pdat::CellDataFactory< NDIM, double > > localFactory = localVar->getPatchDataFactory(); 
+    int localDOF = localFactory->getDefaultDepth();
+
+    tbox::Pointer< hier::Variable< NDIM > > globalVar = globalVec->getComponentVariable(0);
+    tbox::Pointer< pdat::CellDataFactory< NDIM, double > > globalFactory = globalVar->getPatchDataFactory(); 
+    int globalDOF = globalFactory->getDefaultDepth();
+
+    assert(localDOF=globalDOF);
+
+    xfer::RefineAlgorithm<NDIM> ghost_cell_fill;
+
+    ghost_cell_fill.registerRefine(dest_id,
+				   src_id,
+				   dest_id,
+				   d_soln_refine_op);
+
+    // now refine and set physical boundaries also
+    for (int ln = 0; ln < hierarchy->getNumberOfLevels(); ln++ ) 
+    {
+
+      tbox::Pointer<hier::PatchLevel<NDIM> > level = hierarchy->getPatchLevel(ln);
+
+      d_refine_patch_strategy->setDataID(dest_id);
+
+      if((!d_GlobalToLocalRefineSchedule[ln].isNull()) && ghost_cell_fill.checkConsistency(d_GlobalToLocalRefineSchedule[ln]))
+      {
+         ghost_cell_fill.resetSchedule(d_GlobalToLocalRefineSchedule[ln]);
+      }
+      else
+      {
+         d_GlobalToLocalRefineSchedule[ln] = ghost_cell_fill.createSchedule(
+            level, 
+            ln-1,
+            hierarchy,
+            d_refine_patch_strategy);
+      }
+      
+      d_GlobalToLocalRefineSchedule[ln]->fillData(0.0);            
+
+      if(ln>0)
+      {	
+          d_cf_interpolant->setVariableOrderInterpolation(d_variable_order_interpolation);
+          d_cf_interpolant->setPhysicalCornerRefGhostValues(ln,
+                                                            dest_id,
+                                                            0);
+          d_cf_interpolant->setGhostCellData(ln, dest_id);
+
+	  for ( int idx=0; idx<globalDOF; idx++)
+	  {
+             d_cf_interpolant->interpolateGhostValues(ln,
+                                                      d_tangential_interp_scheme,
+                                                      d_normal_interp_scheme,
+                                                      dest_id,
+                                                      idx);     
+          }
+      }
+    }
+
+    // should add code to coarsen variables
+
+    t_interpolate_variable->stop();
+}
+
 }
 
