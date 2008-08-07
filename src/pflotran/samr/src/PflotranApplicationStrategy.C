@@ -17,6 +17,10 @@ PflotranApplicationStrategy::PflotranApplicationStrategy()
 
 PflotranApplicationStrategy::PflotranApplicationStrategy(PflotranApplicationParameters *params)
 {
+#ifdef DEBUG_CHECK_ASSERTIONS
+   assert(params!=NULL);
+#endif
+
    d_read_regrid_boxes                       = false;
    d_is_after_regrid                         = false;
    d_use_variable_order_interpolation        = false;
@@ -36,6 +40,10 @@ PflotranApplicationStrategy::PflotranApplicationStrategy(PflotranApplicationPara
    d_nl_normal_interp_scheme                 = RefinementBoundaryInterpolation::linear;
 
    d_refine_patch_strategy                   = new BoundaryConditionStrategy(-1);
+
+#ifdef DEBUG_CHECK_ASSERTIONS
+   assert(d_refine_patch_strategy!=NULL);
+#endif
 
    d_variable_list.resizeArray(0);
 
@@ -69,7 +77,9 @@ PflotranApplicationStrategy::PflotranApplicationStrategy(PflotranApplicationPara
    d_GlobalToLocalRefineSchedule.resizeArray(d_hierarchy->getNumberOfLevels());
    d_LocalToLocalRefineSchedule.resizeArray(d_hierarchy->getNumberOfLevels());
    
+#ifdef DEBUG_CHECK_ASSERTIONS
    assert(d_number_solution_components>=1);
+#endif
 
    for(int ln=0;ln<d_hierarchy->getNumberOfLevels(); ln++)
    {
@@ -92,6 +102,10 @@ PflotranApplicationStrategy::~PflotranApplicationStrategy()
 void
 PflotranApplicationStrategy::initialize(PflotranApplicationParameters *params)
 {
+#ifdef DEBUG_CHECK_ASSERTIONS
+   assert(params!=NULL);
+#endif
+
    d_hierarchy       = params->d_hierarchy;
    d_grid_geometry   = d_hierarchy->getGridGeometry();
    d_application_db  = params->d_database;   
@@ -245,6 +259,10 @@ PflotranApplicationStrategy::allocateVectorData(SAMRAI::tbox::Pointer<SAMRAI::so
 {
    tbox::pout << "ERROR:: PflotranApplicationStrategy::allocateVectorData not implemented as yet!!" << std::endl;
 
+#ifdef DEBUG_CHECK_ASSERTIONS
+   assert(!x.isNull());
+#endif
+
    x->allocateVectorData();
 } 
 
@@ -253,6 +271,11 @@ PflotranApplicationStrategy::interpolateLocalToLocalVector(tbox::Pointer< solv::
                                                            tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> >  dstVec,
                                                            int ierr)
 {
+#ifdef DEBUG_CHECK_ASSERTIONS
+   assert(!srcVec.isNull());
+   assert(!dstVec.isNull());
+#endif
+
     tbox::Pointer<hier::PatchHierarchy<NDIM> > hierarchy =  d_hierarchy;
 
     static tbox::Pointer<tbox::Timer> t_interpolate_variable = tbox::TimerManager::getManager()->getTimer("PFlotran::PflotranApplicationStrategy::interpolateVector");
@@ -262,15 +285,43 @@ PflotranApplicationStrategy::interpolateLocalToLocalVector(tbox::Pointer< solv::
     int src_id = srcVec->getComponentDescriptorIndex(0);
     int dest_id = dstVec->getComponentDescriptorIndex(0);   
 
+#ifdef DEBUG_CHECK_ASSERTIONS
+    assert(src_id>=0);
+    assert(dst_id>=0);
+#endif
+
     tbox::Pointer< hier::Variable< NDIM > > srcVar = srcVec->getComponentVariable(0);
+
+#ifdef DEBUG_CHECK_ASSERTIONS
+    assert(!srcVar.isNull());
+#endif
+
     tbox::Pointer< pdat::CellDataFactory< NDIM, double > > srcFactory = srcVar->getPatchDataFactory(); 
+
+#ifdef DEBUG_CHECK_ASSERTIONS
+    assert(!srcFactory.isNull());
+#endif
+
     int srcDOF = srcFactory->getDefaultDepth();
 
     tbox::Pointer< hier::Variable< NDIM > > dstVar = dstVec->getComponentVariable(0);
+
+#ifdef DEBUG_CHECK_ASSERTIONS
+    assert(!dstVar.isNull());
+#endif
+
     tbox::Pointer< pdat::CellDataFactory< NDIM, double > > dstFactory = dstVar->getPatchDataFactory(); 
+
+#ifdef DEBUG_CHECK_ASSERTIONS
+    assert(!dstFactory.isNull());
+#endif
+
     int dstDOF = dstFactory->getDefaultDepth();
 
+#ifdef DEBUG_CHECK_ASSERTIONS
+    assert(srcDOF>=1);
     assert(srcDOF=dstDOF);
+#endif
 
     xfer::RefineAlgorithm<NDIM> ghost_cell_fill;
 
@@ -298,26 +349,35 @@ PflotranApplicationStrategy::interpolateLocalToLocalVector(tbox::Pointer< solv::
             ln-1,
             hierarchy,
             d_refine_patch_strategy);
+
+#ifdef DEBUG_CHECK_ASSERTIONS
+         assert(!d_LocalToLocalRefineSchedule[ln][srcDOF-1].isNull());
+#endif
+
       }
       
       d_LocalToLocalRefineSchedule[ln][srcDOF-1]->fillData(d_current_time);            
 
       if(ln>0)
       {	
-          d_cf_interpolant->setVariableOrderInterpolation(d_use_variable_order_interpolation);
-          d_cf_interpolant->setPhysicalCornerRefGhostValues(ln,
-                                                            dest_id,
-                                                            0);
-          d_cf_interpolant->setGhostCellData(ln, dest_id);
-
-	  for ( int idx=0; idx<srcDOF; idx++)
-	  {
-             d_cf_interpolant->interpolateGhostValues(ln,
-                                                      d_nl_tangential_interp_scheme,
-                                                      d_nl_normal_interp_scheme,
-                                                      dest_id,
-                                                      idx);     
-          }
+#ifdef DEBUG_CHECK_ASSERTIONS
+         assert(d_cf_interpolant!=NULL);
+#endif
+         
+         d_cf_interpolant->setVariableOrderInterpolation(d_use_variable_order_interpolation);
+         d_cf_interpolant->setPhysicalCornerRefGhostValues(ln,
+                                                           dest_id,
+                                                           0);
+         d_cf_interpolant->setGhostCellData(ln, dest_id);
+         
+         for ( int idx=0; idx<srcDOF; idx++)
+         {
+            d_cf_interpolant->interpolateGhostValues(ln,
+                                                     d_nl_tangential_interp_scheme,
+                                                     d_nl_normal_interp_scheme,
+                                                     dest_id,
+                                                     idx);     
+         }
       }
     }
 
