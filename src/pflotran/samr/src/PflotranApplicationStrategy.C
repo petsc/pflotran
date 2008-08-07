@@ -287,7 +287,7 @@ PflotranApplicationStrategy::interpolateLocalToLocalVector(tbox::Pointer< solv::
 
 #ifdef DEBUG_CHECK_ASSERTIONS
     assert(src_id>=0);
-    assert(dst_id>=0);
+    assert(dest_id>=0);
 #endif
 
     tbox::Pointer< hier::Variable< NDIM > > srcVar = srcVec->getComponentVariable(0);
