@@ -198,6 +198,28 @@ subroutine StructGridComputeLocalBounds(structured_grid,da)
 
   implicit none
 
+  interface
+     subroutine samr_patch_get_corners(p_patch, nxs, nys, nzs, nlx, nly, nlz)
+       implicit none
+       
+#include "include/finclude/petsc.h"
+
+       PetscFortranAddr :: p_patch
+       integer :: nxs, nys, nzs, nlx, nly, nlz
+
+     end subroutine samr_patch_get_corners
+     
+     subroutine samr_patch_get_ghostcorners(p_patch, nxs, nys, nzs, nlx, nly, nlz)
+       implicit none
+       
+#include "include/finclude/petsc.h"
+       
+       PetscFortranAddr :: p_patch
+       integer :: nxs, nys, nzs, nlx, nly, nlz
+
+     end subroutine samr_patch_get_ghostcorners
+  end interface
+     
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
 #include "include/finclude/petscda.h"
@@ -921,6 +943,14 @@ subroutine StructuredGridMapIndices(structured_grid,nG2L,nL2G,nL2A,nG2A)
 
   implicit none
 
+  interface
+     integer function samr_patch_at_bc(p_patch, axis, dim)
+#include "include/finclude/petsc.h"
+       PetscFortranAddr :: p_patch
+       integer :: axis,dim
+     end function samr_patch_at_bc
+  end interface
+
   type(structured_grid_type) :: structured_grid
   PetscInt, pointer :: nG2L(:), nL2G(:), nL2A(:), nG2A(:)
 
@@ -1008,6 +1038,60 @@ subroutine StructuredGridMapIndices(structured_grid,nG2L,nL2G,nL2A,nG2A)
       enddo
     enddo
   enddo
+
+  if(.not.(structured_grid%p_samr_patch.eq.0)) then
+     if(samr_patch_at_bc(structured_grid%p_samr_patch, 0, 0) ==1) then
+        do k=1,structured_grid%ngz
+           do j=1,structured_grid%ngy
+              ng = 1+(j-1)*structured_grid%ngx+(k-1)*structured_grid%ngxy
+              nG2L(ng) = -1
+           enddo
+        enddo
+     endif  
+     if(samr_patch_at_bc(structured_grid%p_samr_patch, 0, 1) ==1) then 
+        i=structured_grid%ngx
+        do k=1,structured_grid%ngz
+           do j=1,structured_grid%ngy
+              ng = i+(j-1)*structured_grid%ngx+(k-1)*structured_grid%ngxy
+              nG2L(ng) = -1
+           enddo
+        enddo
+     endif
+     if(samr_patch_at_bc(structured_grid%p_samr_patch, 1, 0) ==1) then
+        do k=1,structured_grid%ngz
+           do i=1,structured_grid%ngx
+              ng = i+(k-1)*structured_grid%ngxy
+              nG2L(ng) = -1
+           enddo
+        enddo
+     endif  
+     if(samr_patch_at_bc(structured_grid%p_samr_patch, 1, 1) ==1) then
+        j=structured_grid%ngy
+        do k=1,structured_grid%ngz
+           do i=1,structured_grid%ngx
+              ng = i+(j-1)*structured_grid%ngx+(k-1)*structured_grid%ngxy
+              nG2L(ng) = -1
+           enddo
+        enddo
+     endif  
+     if(samr_patch_at_bc(structured_grid%p_samr_patch, 2, 0) ==1) then
+        do j=1,structured_grid%ngy
+           do i=1,structured_grid%ngx
+              ng = i+(j-1)*structured_grid%ngx
+              nG2L(ng) = -1
+           enddo
+        enddo
+     endif  
+     if(samr_patch_at_bc(structured_grid%p_samr_patch, 2, 1) ==1) then
+        k=structured_grid%ngz
+        do j=1,structured_grid%ngy
+           do i=1,structured_grid%ngx
+              ng = i+(j-1)*structured_grid%ngx+(k-1)*structured_grid%ngxy
+              nG2L(ng) = -1
+           enddo
+        enddo
+     endif  
+  endif
 
   if(structured_grid%p_samr_patch.eq.0) then
      n=0
@@ -1098,6 +1182,19 @@ subroutine StructuredGridVecGetArrayF90(structured_grid, vec, f90ptr, ierr)
  use cf90interface_module
 
  implicit none 
+
+ interface
+    subroutine samr_vecgetarrayf90(patch, petscvec, f90wrap)
+      implicit none
+#include "include/finclude/petsc.h"
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
+
+      PetscFortranAddr, intent(inout):: patch
+      Vec:: petscvec
+      PetscFortranAddr :: f90wrap
+    end subroutine samr_vecgetarrayf90
+ end interface
 
 #include "include/finclude/petsc.h"
 #include "include/finclude/petscvec.h"
