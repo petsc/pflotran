@@ -1526,6 +1526,17 @@ subroutine RichardsLiteJacobian(snes,xx,A,B,flag,realization,ierr)
 
   implicit none
 
+  interface
+     subroutine SAMRSetCurrentJacobianPatch(mat,patch) 
+#include "include/finclude/petsc.h"
+#include "include/finclude/petscmat.h"
+#include "include/finclude/petscmat.h90"
+       
+       Mat :: mat
+       PetscFortranAddr :: patch
+     end subroutine SAMRSetCurrentJacobianPatch
+  end interface
+
   SNES :: snes
   Vec :: xx
   Mat :: A, B

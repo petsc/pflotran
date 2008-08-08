@@ -48,11 +48,15 @@ integer :: nxs, nys, nzs, nlx, nly, nlz
 end subroutine samr_patch_get_ghostcorners
 
 integer function hierarchy_number_levels(p_application)
+implicit none
+#include "include/finclude/petsc.h"
   PetscFortranAddr, intent(inout) :: p_application
   hierarchy_number_levels=-1
 end function hierarchy_number_levels
 
 integer function level_number_patches(p_application, ln)
+implicit none
+#include "include/finclude/petsc.h"
   PetscFortranAddr, intent(inout) :: p_application
   integer, intent(in) :: ln
 
@@ -60,6 +64,8 @@ integer function level_number_patches(p_application, ln)
 end function level_number_patches
 
 logical function is_local_patch(p_application, ln, pn)
+implicit none
+#include "include/finclude/petsc.h"
   PetscFortranAddr, intent(inout) :: p_application
   integer, intent(in) :: ln
   integer, intent(in) :: pn
@@ -69,6 +75,8 @@ logical function is_local_patch(p_application, ln, pn)
 end function is_local_patch
 
 PetscFortranAddr function hierarchy_get_patch(p_application, ln, pn)
+implicit none
+#include "include/finclude/petsc.h"
   PetscFortranAddr, intent(inout) :: p_application
   integer, intent(in) :: ln
   integer, intent(in) :: pn
@@ -78,6 +86,8 @@ PetscFortranAddr function hierarchy_get_patch(p_application, ln, pn)
 end function hierarchy_get_patch
 
 subroutine samr_physical_dimensions(p_application, nx, ny, nz)
+implicit none
+#include "include/finclude/petsc.h"
   PetscFortranAddr, intent(inout) :: p_application
   integer, intent(inout) :: nx
   integer, intent(inout) :: ny
@@ -85,6 +95,8 @@ subroutine samr_physical_dimensions(p_application, nx, ny, nz)
 end subroutine samr_physical_dimensions
 
 subroutine samr_get_origin(p_application, x0, y0, z0)
+implicit none
+#include "include/finclude/petsc.h"
   PetscFortranAddr, intent(inout) :: p_application
   PetscReal, intent(inout) :: x0
   PetscReal, intent(inout) :: y0
@@ -94,32 +106,49 @@ end subroutine samr_get_origin
 
 subroutine assign_c_ptr(return_arg, pointer_arg)
  use cf90interface_module
+implicit none
+#include "include/finclude/petsc.h"
   type(f90ptrwrap), pointer :: pointer_arg
   PetscFortranAddr :: return_arg
 
 end subroutine assign_c_ptr
 
 subroutine samr_vecgetarrayf90(patch, petscvec, f90wrap)
+implicit none
+#include "include/finclude/petsc.h"
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
   PetscFortranAddr, intent(inout):: patch
   Vec:: petscvec
   PetscFortranAddr :: f90wrap
 end subroutine samr_vecgetarrayf90
 
 subroutine samr_patch_get_spacing(p_samr_patch, dx, dy, dz)
+implicit none
+#include "include/finclude/petsc.h"
   PetscFortranAddr :: p_samr_patch
   PetscReal :: dx, dy, dz
 
 end subroutine samr_patch_get_spacing
 
-subroutine SAMRCreateMatrix(p_application, ndof, stencilsize, p_matrix)
+subroutine SAMRCreateMatrix(p_application, ndof, stencilsize, flowortransport, p_matrix)
+implicit none
+#include "include/finclude/petsc.h"
+#include "include/finclude/petscmat.h"
+#include "include/finclude/petscmat.h90"
   PetscFortranAddr :: p_application
   PetscInt :: ndof
   PetscInt :: stencilsize
-  PetscFortranAddr :: p_matrix
+  PetscInt :: flowortransport
+  Mat :: p_matrix
 
 end subroutine SAMRCreateMatrix
 
 subroutine SAMRGlobalToLocal(p_application, gvec, lvec, ierr)
+implicit none
+#include "include/finclude/petsc.h"
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
   PetscFortranAddr :: p_application
   Vec :: lvec
   Vec :: gvec
@@ -129,6 +158,10 @@ subroutine SAMRGlobalToLocal(p_application, gvec, lvec, ierr)
 end subroutine SAMRGlobalToLocal
 
 subroutine SAMRLocalToLocal(p_application, gvec, lvec, ierr)
+implicit none
+#include "include/finclude/petsc.h"
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
   PetscFortranAddr :: p_application
   Vec :: lvec
   Vec :: gvec

@@ -389,7 +389,22 @@ end subroutine AMRGridInitialize
 subroutine AMRGridCreateVector(amrgrid, dof,vector,vector_type)
 
   implicit none
-  
+
+  interface
+     subroutine create_samrai_vec(p_application, dof, use_ghost, vec)
+       implicit none
+       
+#include "include/finclude/petsc.h"
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
+       
+       PetscFortranAddr :: p_application
+       integer :: dof
+       PetscTruth :: use_ghost
+       Vec :: vec
+     end subroutine create_samrai_vec
+  end interface
+
   type(amrgrid_type), pointer:: amrgrid
   DM :: dm_ptr
   Vec :: vector
