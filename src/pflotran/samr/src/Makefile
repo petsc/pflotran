@@ -23,7 +23,7 @@
 ## Modified:    $Date: 2006-08-23 15:10:50 -0600 (Wed, 23 Aug 2006) $
 ## Description: makefile for application to test implicit/nonlinear solver
 ##
-BUILDTYPE :=$(shell echo "`uname -p`-`uname -s`")
+BUILDTYPE :=$(shell echo "`uname -m`-`uname -s`")
 
 # for now use the SAMRAI definition for F77 which should default to pgf95 or fortran
 F90=${F77}
@@ -95,8 +95,11 @@ FPPFLAGS         = -g
 PFLOW_LD_FLAGS = -L${PFLOW_DIR} -lpflotranamr
 
 LDFLAGS += ${PFLOW_LD_FLAGS}
-
+ifdef ABSOFT
 MYFLAGS = ${PETSCFLAGS} -I${PFLOW_DIR} -g -p ${PFLOW_DIR}
+else
+MYFLAGS = ${PETSCFLAGS} -I${PFLOW_DIR} -g
+endif
 
 ifdef petscrel
  include ${PETSC_DIR}/bmake/common/base
@@ -118,12 +121,12 @@ $(FORTOBJS):$(FORTM4SRC)
 
 
 SAMRAIDriver: SAMRAIDriver.o $(COBJS) $(CXXOBJS) ${F90OBJS} ${FORTOBJS}
-	$(CXX) -g $(CXXOBJS) $(COBJS) ${F90OBJS} ${FORTOBJS} ${PETSC_FORTRAN_LIB} $(LDFLAGS) $(LIBSAMRAI3D) $(LIBSAMRAI) -lhdf5_fortran  $(LDLIBS_EXTRA) $(LDLIBS) -lU77 -o $@
+	$(CXX) -g $(CXXOBJS) $(COBJS) ${F90OBJS} ${FORTOBJS} ${PETSC_FORTRAN_LIB} $(LDFLAGS) $(LIBSAMRAI3D) $(LIBSAMRAI) -lhdf5_fortran  $(LDLIBS_EXTRA) $(LDLIBS) -o $@
 
-clean:
-	$(RM) SAMRAIDriver *.f core *~ *.mod
-	$(RM) *.o *.ii *.int.c
-	$(RM) -r ti_files ii_files
+#clean:
+#	$(RM) SAMRAIDriver *.f core *~ *.mod
+#	$(RM) *.o *.ii *.int.c
+#	$(RM) -r ti_files ii_files
 
 veryclean:
 	$(MAKE) clean

@@ -115,12 +115,19 @@ subroutine DiscretizationRead(discretization,fid,option)
   PetscInt :: length
   PetscInt :: nx, ny, nz
   PetscErrorCode :: ierr
+  PetscInt :: i
 
   nx = 0
   ny = 0
   nz = 0
 
   ierr = 0
+
+! we initialize the word to blanks to avoid error reported by valgrind
+  do i=1,MAXWORDLENGTH
+     word(i:i) = ' '
+  enddo
+
   do
   
     call fiReadFlotranString(IUNIT1,string,ierr)
@@ -410,6 +417,21 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
   
   implicit none
   
+  interface
+
+     subroutine SAMRCreateMatrix(p_application, ndof, stencilsize, flowortransport, p_matrix)
+#include "include/finclude/petsc.h"
+#include "include/finclude/petscmat.h"
+#include "include/finclude/petscmat.h90"
+       PetscFortranAddr :: p_application
+       PetscInt :: ndof
+       PetscInt :: stencilsize
+       PetscInt :: flowortransport
+       Mat :: p_matrix
+     end subroutine SAMRCreateMatrix
+     
+  end interface
+
   type(discretization_type) :: discretization
   PetscInt :: dm_index
   PetscErrorCode :: ierr
@@ -566,6 +588,22 @@ subroutine DiscretizationGlobalToLocal(discretization,global_vec,local_vec,dm_in
 
   implicit none
   
+  interface
+     subroutine SAMRGlobalToLocal(p_application, gvec, lvec, ierr)
+       implicit none
+#include "include/finclude/petsc.h"
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
+       PetscFortranAddr :: p_application
+       Vec :: lvec
+       Vec :: gvec
+       PetscInt :: ndof
+       PetscInt :: ierr
+       
+     end subroutine SAMRGlobalToLocal
+
+  end interface
+
   type(discretization_type) :: discretization
   Vec :: global_vec
   Vec :: local_vec
@@ -637,6 +675,21 @@ subroutine DiscretizationLocalToLocal(discretization,local_vec1,local_vec2,dm_in
 
   implicit none
   
+  interface
+     subroutine SAMRLocalToLocal(p_application, gvec, lvec, ierr)
+       implicit none
+#include "include/finclude/petsc.h"
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
+       PetscFortranAddr :: p_application
+       Vec :: lvec
+       Vec :: gvec
+       PetscInt :: ndof
+       PetscInt :: ierr
+       
+     end subroutine SAMRLocalToLocal
+
+  end interface
   type(discretization_type) :: discretization
   Vec :: local_vec1
   Vec :: local_vec2

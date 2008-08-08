@@ -48,13 +48,6 @@ extern "C"{
 #include "assert.h"
 }
 
-#if 0
-#include "PIMSApplication.h"
-#include "PIMSApplicationParameters.h"
-#include "TimeIntegratorParameters.h"
-#include "ForwardEulerTimeIntegrator.h"
-#endif
-
 /*
  * Application header.
  */
@@ -75,8 +68,6 @@ extern "C"{
 
 int main( int argc, char *argv[] ) 
 {
-   double max_error = 0.0;
-   double l2_error = 0.0;
    string input_file;
    string log_file;
    
@@ -103,146 +94,55 @@ int main( int argc, char *argv[] )
    tbox::Pointer<tbox::Database> input_db = new tbox::InputDatabase("input_db");
    tbox::InputManager::getManager()->parseInputFile(input_file, input_db);
 
-   /*
-    * Create an application object.  Some TagAndInitStrategy must be
-    * provided in order to build an object that specifies cells that
-    * need refinement.  Here an empty object is provided, since a
-    * prescribed set of refinement regions are read in from the input
-    * file; it would be a useful exercise to fill in the
-    * applyGradientDetector method and to generate custom refinement
-    * regions.
-    */
-   BogusTagAndInitStrategy* test_object = new BogusTagAndInitStrategy();
-
-   /*
-    * Create the AMR hierarchy and initialize it
-    */
-   initializeAMRHierarchy(input_db,
-			  test_object,
-			  hierarchy);
  
    tbox::Pointer<tbox::Database> app_database = input_db->getDatabase("PflotranApplicationStrategy");
 
-   PflotranApplicationParameters *params  =new PflotranApplicationParameters(app_database);
-   params->d_hierarchy = hierarchy;
+   int mode =  app_database->getInteger("DriverMode");
 
-   PflotranApplicationStrategy *pflotranApplication = new PflotranApplicationStrategy(params);
-   
-   // create a RefinementBoundaryInterpolation object
-   RefinementBoundaryInterpolation *cf_interpolant = new RefinementBoundaryInterpolation(hierarchy);
-   cf_interpolant->setVariableOrderInterpolation(false);
+   PflotranApplicationStrategy *pflotranApplication = NULL;
+
+   if(mode==1)
+   {
+
+      /*
+      * Create an application object.  Some TagAndInitStrategy must be
+      * provided in order to build an object that specifies cells that
+      * need refinement.  Here an empty object is provided, since a
+      * prescribed set of refinement regions are read in from the input
+      * file; it would be a useful exercise to fill in the
+      * applyGradientDetector method and to generate custom refinement
+      * regions.
+      */
+      BogusTagAndInitStrategy* test_object = new BogusTagAndInitStrategy();
       
-   /*
-   * Add the RefinementBoundaryInterpolation object
-   */
-   pflotranApplication->setRefinementBoundaryInterpolant(cf_interpolant);
+      /*
+      * Create the AMR hierarchy and initialize it
+      */
+      initializeAMRHierarchy(input_db,
+                             test_object,
+                             hierarchy);
+      PflotranApplicationParameters *params  =new PflotranApplicationParameters(app_database);
+      params->d_hierarchy = hierarchy;
+      
+      pflotranApplication = new PflotranApplicationStrategy(params);
+      
+      // create a RefinementBoundaryInterpolation object
+      RefinementBoundaryInterpolation *cf_interpolant = new RefinementBoundaryInterpolation(hierarchy);
+      cf_interpolant->setVariableOrderInterpolation(false);
+      
+      /*
+      * Add the RefinementBoundaryInterpolation object
+      */
+      pflotranApplication->setRefinementBoundaryInterpolant(cf_interpolant);
+   }
 
    void *p_pflotran_sim = NULL;
 
-   f_create_simulation_(&p_pflotran_sim);
-
-   f_set_application_ptr_(&p_pflotran_sim,(void **) &pflotranApplication);
+   f_create_simulation_(&p_pflotran_sim, (void **)&pflotranApplication);
 
    f_initialize_simulation_(&p_pflotran_sim);
 
    f_stepper_run_(&p_pflotran_sim);
-
-
-#if 0
-   void *p_pflowhierarchy=NULL;
-   f_create_hierarchy_data_(&p_pflowhierarchy);
-
-#if 0
-   void *p_integrator = NULL;
-   f_create_integrator_(&p_integrator);
-#endif
-
-   void *p_samr_hierarchy=(void *)(hierarchy.getPointer());
-   gridparameters *params = new gridparameters;
-
-   hier::BoxArray<NDIM> physicalDomain = hierarchy->getGridGeometry()->getPhysicalDomain();
-
-   // assume one box representing the domain for now
-   hier::Box< NDIM > physicalBox = physicalDomain.getBox(0);
-   params->p_grid = p_pflowhierarchy;
-#if 0
-   params->p_timestep = p_integrator;
-#else
-   params->p_timestep = NULL;
-#endif
-
-   params->igeom = 1;
-   params->nx = physicalBox.numberCells(0);
-   params->ny = physicalBox.numberCells(1);
-   params->nz = physicalBox.numberCells(2);
-   params->npx = 1;
-   params->npy = 1;
-   params->npz = 1;
-   params->nphase = 1;
-   params->nlevels = hierarchy->getNumberOfLevels();
-   params->usesamrai = PETSC_TRUE;
-   params->p_samr_hierarchy = p_samr_hierarchy;
-
-#if 0
-   // Create the application
-   PIMSApplicationParameters* application_parameters = new PIMSApplicationParameters();
-   application_parameters->d_hierarchy = hierarchy;
-   application_parameters->d_db = input_db->getDatabase("PIMS");
-   application_parameters->d_pims_parameters = params;
-
-   PIMSApplication* application  = new PIMSApplication( application_parameters );
-   
-   // Initialize x0
-   application->setInitialConditions(0.0);
-   
-   // Create time integrator
-   algs::TimeIntegratorParameters* integration_parameters = new algs::TimeIntegratorParameters();
-   tbox::Pointer< tbox::Database > integrator_db = input_db->getDatabase("PredictorCorrector");
-   integration_parameters->d_db = integrator_db;
-   integration_parameters->dt_method = 1;
-   integration_parameters->d_ic_vector = application->get_x();
-   integration_parameters->d_application_strategy = application;
-   integration_parameters->d_integrator_name = "PredictorCorrector";
-   algs::ForwardEulerTimeIntegrator* integrator = new algs::ForwardEulerTimeIntegrator(integration_parameters);
-
-   // Create x(t)
-   tbox::Pointer< solv::SAMRAIVectorReal<NDIM,double> > x_t;
-   x_t = integrator->getCurrentSolution();
-
-   // Loop through time
-   double dt = integrator->getCurrentDt();
-   double time = integrator->getCurrentTime();
-   tbox::pout << "dt = " << dt << "\n";
-   int i = 1;
-   int retval;
-   double last_save = 0.0;
-   char buffer [50];
-
-   while ( time < integrator->getFinalTime() ) 
-   {
-      // Advance the solution
-      if (i==1)
-         integrator->advanceSolution(dt,true);
-      else
-         integrator->advanceSolution(dt,false);
-      // Get the current solution and time
-      x_t = integrator->getCurrentSolution();
-      time = integrator->getCurrentTime();
-      // Update the timestep
-      dt = integrator->getNextDt(true,retval);
-      // Write data
-      if ( i%5==0 ) {
-         sprintf(buffer,"t = %8.4f, dt = %8.6f\n",time,dt);
-         tbox::pout << buffer;
-      }
-
-      i++;
-   }
-
-   // That's all, folks!
-   delete application;
-#endif
-#endif
 
    /* 
     * That's all, folks!
