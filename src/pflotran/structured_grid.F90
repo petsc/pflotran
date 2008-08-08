@@ -205,7 +205,7 @@ subroutine StructGridComputeLocalBounds(structured_grid,da)
 #include "include/finclude/petsc.h"
 
        PetscFortranAddr :: p_patch
-       integer :: nxs, nys, nzs, nlx, nly, nlz
+       PetscInt :: nxs, nys, nzs, nlx, nly, nlz
 
      end subroutine samr_patch_get_corners
      
@@ -215,7 +215,7 @@ subroutine StructGridComputeLocalBounds(structured_grid,da)
 #include "include/finclude/petsc.h"
        
        PetscFortranAddr :: p_patch
-       integer :: nxs, nys, nzs, nlx, nly, nlz
+       PetscInt :: nxs, nys, nzs, nlx, nly, nlz
 
      end subroutine samr_patch_get_ghostcorners
   end interface
@@ -656,10 +656,10 @@ function StructGridComputeInternConnect(structured_grid,option)
   implicit none
 
   interface
-     integer function samr_patch_at_bc(p_patch, axis, dim)
+     PetscInt function samr_patch_at_bc(p_patch, axis, dim)
 #include "include/finclude/petsc.h"
        PetscFortranAddr :: p_patch
-       integer :: axis,dim
+       PetscInt :: axis,dim
      end function samr_patch_at_bc
   end interface
 
@@ -944,10 +944,10 @@ subroutine StructuredGridMapIndices(structured_grid,nG2L,nL2G,nL2A,nG2A)
   implicit none
 
   interface
-     integer function samr_patch_at_bc(p_patch, axis, dim)
+     PetscInt function samr_patch_at_bc(p_patch, axis, dim)
 #include "include/finclude/petsc.h"
        PetscFortranAddr :: p_patch
-       integer :: axis,dim
+       PetscInt :: axis,dim
      end function samr_patch_at_bc
   end interface
 
@@ -1189,7 +1189,6 @@ subroutine StructuredGridVecGetArrayF90(structured_grid, vec, f90ptr, ierr)
 #include "include/finclude/petsc.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
-
       PetscFortranAddr, intent(inout):: patch
       Vec:: petscvec
       PetscFortranAddr :: f90wrap
@@ -1203,7 +1202,7 @@ subroutine StructuredGridVecGetArrayF90(structured_grid, vec, f90ptr, ierr)
  type(structured_grid_type) :: structured_grid
  Vec:: vec
  PetscReal, pointer :: f90ptr(:)
- integer :: ierr
+ PetscInt :: ierr
  
  type(f90ptrwrap), pointer :: ptr
  PetscFortranAddr :: cptr
@@ -1214,7 +1213,7 @@ subroutine StructuredGridVecGetArrayF90(structured_grid, vec, f90ptr, ierr)
     ierr=0
     allocate(ptr)
     nullify(ptr%f90ptr)
-    call assign_c_ptr(cptr, ptr)
+    call assign_c_array_ptr(cptr, ptr)
     call samr_vecgetarrayf90(structured_grid%p_samr_patch, vec, cptr)
     f90ptr => ptr%f90ptr
     deallocate(ptr)
@@ -1242,7 +1241,7 @@ subroutine StructGridVecRestoreArrayF90(structured_grid, vec, f90ptr, ierr)
  type(structured_grid_type) :: structured_grid
  Vec:: vec
  PetscReal, pointer :: f90ptr(:)
- integer :: ierr
+ PetscInt :: ierr
  
  type(f90ptrwrap), pointer :: ptr
  PetscFortranAddr :: cptr
