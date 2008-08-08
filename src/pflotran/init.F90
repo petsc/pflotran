@@ -399,7 +399,7 @@ subroutine readRequiredCardsFromInput(realization,filename)
 
   type(realization_type) :: realization
   character(len=MAXWORDLENGTH) :: filename
-  PetscInt ::  idum
+  PetscInt ::  idum, i
 
   PetscErrorCode :: ierr
   character(len=MAXSTRINGLENGTH) :: string
@@ -419,6 +419,12 @@ subroutine readRequiredCardsFromInput(realization,filename)
   
   open(IUNIT1, file=filename, action="read", status="old") 
   open(IUNIT2, file='pflotran.out', action="write", status="unknown")
+
+! we initialize the word to blanks to avoid error reported by valgrind
+  do i=1,MAXWORDLENGTH
+     word(i:i) = ' '
+  enddo
+
 
 ! Read in select required cards
 !.........................................................................

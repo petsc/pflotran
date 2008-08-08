@@ -115,12 +115,19 @@ subroutine DiscretizationRead(discretization,fid,option)
   PetscInt :: length
   PetscInt :: nx, ny, nz
   PetscErrorCode :: ierr
+  PetscInt :: i
 
   nx = 0
   ny = 0
   nz = 0
 
   ierr = 0
+
+! we initialize the word to blanks to avoid error reported by valgrind
+  do i=1,MAXWORDLENGTH
+     word(i:i) = ' '
+  enddo
+
   do
   
     call fiReadFlotranString(IUNIT1,string,ierr)

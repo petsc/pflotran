@@ -95,8 +95,11 @@ FPPFLAGS         = -g
 PFLOW_LD_FLAGS = -L${PFLOW_DIR} -lpflotranamr
 
 LDFLAGS += ${PFLOW_LD_FLAGS}
-
+ifdef ABSOFT
 MYFLAGS = ${PETSCFLAGS} -I${PFLOW_DIR} -g -p ${PFLOW_DIR}
+else
+MYFLAGS = ${PETSCFLAGS} -I${PFLOW_DIR} -g
+endif
 
 ifdef petscrel
  include ${PETSC_DIR}/bmake/common/base

@@ -38,7 +38,7 @@ module Structured_Grid_module
     
     PetscReal, pointer :: dx(:), dy(:), dz(:), dxg(:), dyg(:), dzg(:)  ! Grid spacings
     
-    PetscFortranAddr p_samr_patch ! pointer to a SAMRAI patch object
+    PetscFortranAddr :: p_samr_patch ! pointer to a SAMRAI patch object
 
   end type structured_grid_type
 
