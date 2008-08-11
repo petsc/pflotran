@@ -260,6 +260,11 @@ subroutine fiReadFlotranString(fid, string, ierr)
 
 !  if (ierr /= 0) return
   ierr = 0
+
+! we initialize the word to blanks to avoid error reported by valgrind
+  do i=1,strlen
+     word(i:i) = ' '
+  enddo
   
   do
     read(fid,'(a256)',iostat=ierr) string
@@ -942,11 +947,16 @@ end subroutine fiReadDBaseDouble
   character(len=*) :: string
   character(len=strlen) :: string2, string3
   character(len=MAXWORDLENGTH) :: word
-  PetscInt :: fid, length1, length2
+  PetscInt :: fid, length1, length2, i
   PetscErrorCode :: ierr
 
   ierr = 0
 
+ ! we initialize the word to blanks to avoid error reported by valgrind
+  do i=1,MAXWORDLENGTH
+     word(i:i) = ' '
+  enddo
+ 
   length1 = len_trim(string)
 
   do 
