@@ -323,6 +323,14 @@ subroutine OutputTecplot(realization)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       end select
 
+      ! phase
+      select case(option%iflowmode)
+        case(MPH_MODE)
+          call OutputGetVarFromArray(realization,global_vec,PHASE,ZERO_INTEGER)
+          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_INTEGER)
+      end select
+
       ! liquid saturation
       select case(option%iflowmode)
         case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
@@ -382,13 +390,6 @@ subroutine OutputTecplot(realization)
         call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       endif
 #endif    
-      ! phase
-      select case(option%iflowmode)
-        case(MPH_MODE)
-          call OutputGetVarFromArray(realization,global_vec,PHASE,ZERO_INTEGER)
-          call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-          call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_INTEGER)
-      end select
       
     case default
   
