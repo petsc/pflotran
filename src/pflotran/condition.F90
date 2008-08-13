@@ -916,7 +916,7 @@ subroutine ConditionReadValuesFromFile(filename,dataset,option)
   PetscInt :: fid
   PetscInt :: count, i, status
   PetscErrorCode :: ierr
-  
+  print *, 'Read condition from file:',filename
   fid = 86
   open(unit=fid,file=filename,status="old",iostat=status)
   if (status /= 0) then
@@ -947,7 +947,8 @@ subroutine ConditionReadValuesFromFile(filename,dataset,option)
     call fiReadDouble(string,temp_times(count),ierr)
     call fiErrorMsg(option%myrank,'time','CONDITION FILE', ierr)   
     call fiReadDouble(string,temp_array1(count),ierr)
-    call fiErrorMsg(option%myrank,'array1','CONDITION FILE', ierr) 
+    call fiErrorMsg(option%myrank,'array1','CONDITION FILE', ierr)
+    print *, 'RCF:', temp_times(count),  temp_array1(count)
     if (dataset%rank > 1) then
       call fiReadDouble(string,temp_array2(count),ierr)
       call fiErrorMsg(option%myrank,'array2','CONDITION FILE', ierr) 

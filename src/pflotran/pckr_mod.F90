@@ -183,7 +183,7 @@ private
         um = pckr_m
         uum = 1.D0/um 
         un=1.D0/(1.D0-um)
-
+     !    print *,'pckr:',  ala, betac, pckr_m, pckr_pwr, pcmax,swir
         se=sw  
         temp=se**uum
         upc=(1.D0/temp - 1.D0)**(1.D0 - um) / ala / betac
@@ -422,7 +422,7 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,pckr_sir,pckr_lambda, &
             um = pckr_m
             uum = 1.D0/um 
             un=1.D0/(1.D0-um)
-
+            !print *,'pckr:',  ala, betac, pckr_m, pckr_pwr, pcmax,swir
             se=sw
             temp=se**uum
             if(sw<0.95D0)then 
