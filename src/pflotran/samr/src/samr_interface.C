@@ -2,7 +2,7 @@
 #include "PatchHierarchy.h"
 #include "PatchLevel.h"
 #include "PETSc_SAMRAIVectorReal.h"
-#include "CellData.h"
+#include "CCellData.h"
 #include "CartesianGridGeometry.h"
 #include "CartesianPatchGeometry.h"
 #include "PflotranApplicationStrategy.h"
@@ -113,7 +113,7 @@ void samr_vecgetarrayf90_(SAMRAI::hier::Patch<NDIM> **patch,
 
 {
    SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM, double > > sVec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM, double>::getSAMRAIVector(*petscVec);
-   SAMRAI::tbox::Pointer< SAMRAI::pdat::CellData<NDIM, double> > pData = sVec->getComponentPatchData(0, *(*patch));
+   SAMRAI::tbox::Pointer< SAMRAI::pdat::CCellData<NDIM, double> > pData = sVec->getComponentPatchData(0, *(*patch));
    int len = pData->getGhostBox().size();
 
    void *p_data_ptr = pData->getPointer(0);

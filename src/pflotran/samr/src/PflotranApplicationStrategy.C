@@ -1,11 +1,12 @@
 #include "PflotranApplicationStrategy.h"
 #include "tbox/TimerManager.h"
-#include "CellDataFactory.h"
+#include "CCellDataFactory.h"
 #include "tbox/RestartManager.h"
 #include "CellVariable.h"
 #include "CCellVariable.h"
 #include "SAMRAIVectorReal.h"
 #include "PETSc_SAMRAIVectorReal.h"
+#include "HierarchyCCellDataOpsReal.h"
 
 namespace SAMRAI{
   
@@ -59,7 +60,7 @@ PflotranApplicationStrategy::PflotranApplicationStrategy(PflotranApplicationPara
    
    if(!variable_db->checkVariableExists("solution"))
    {
-      d_solution                                = new pdat::CellVariable<NDIM,double>("pflotranSolution", d_number_solution_components);
+      d_solution                                = new pdat::CCellVariable<NDIM,double>("pflotranSolution", d_number_solution_components);
    }
    else
    {
@@ -68,11 +69,13 @@ PflotranApplicationStrategy::PflotranApplicationStrategy(PflotranApplicationPara
 
    d_application_ctx = variable_db->getContext(d_object_name);
 
+#if 0
    d_soln_refine_op =  d_grid_geometry->lookupRefineOperator(d_solution,
                                                              "CONSTANT_REFINE");
 
    d_soln_coarsen_op = d_grid_geometry->lookupCoarsenOperator(d_solution,
                                                               "CONSERVATIVE_COARSEN");
+#endif
    
    d_GlobalToLocalRefineSchedule.resizeArray(d_hierarchy->getNumberOfLevels());
    d_LocalToLocalRefineSchedule.resizeArray(d_hierarchy->getNumberOfLevels());
@@ -93,6 +96,8 @@ PflotranApplicationStrategy::PflotranApplicationStrategy(PflotranApplicationPara
       }
    }
 
+   d_math_op = new math::HierarchyCCellDataOpsReal< NDIM, double >(d_hierarchy,
+                                                                   0, d_hierarchy->getFinestLevelNumber());
 }
 
 PflotranApplicationStrategy::~PflotranApplicationStrategy()
@@ -296,7 +301,7 @@ PflotranApplicationStrategy::interpolateLocalToLocalVector(tbox::Pointer< solv::
     assert(!srcVar.isNull());
 #endif
 
-    tbox::Pointer< pdat::CellDataFactory< NDIM, double > > srcFactory = srcVar->getPatchDataFactory(); 
+    tbox::Pointer< pdat::CCellDataFactory< NDIM, double > > srcFactory = srcVar->getPatchDataFactory(); 
 
 #ifdef DEBUG_CHECK_ASSERTIONS
     assert(!srcFactory.isNull());
@@ -310,7 +315,7 @@ PflotranApplicationStrategy::interpolateLocalToLocalVector(tbox::Pointer< solv::
     assert(!dstVar.isNull());
 #endif
 
-    tbox::Pointer< pdat::CellDataFactory< NDIM, double > > dstFactory = dstVar->getPatchDataFactory(); 
+    tbox::Pointer< pdat::CCellDataFactory< NDIM, double > > dstFactory = dstVar->getPatchDataFactory(); 
 
 #ifdef DEBUG_CHECK_ASSERTIONS
     assert(!dstFactory.isNull());
@@ -401,11 +406,11 @@ PflotranApplicationStrategy::interpolateGlobalToLocalVector(tbox::Pointer< solv:
     int dest_id = localVec->getComponentDescriptorIndex(0);   
 
     tbox::Pointer< hier::Variable< NDIM > > localVar = localVec->getComponentVariable(0);
-    tbox::Pointer< pdat::CellDataFactory< NDIM, double > > localFactory = localVar->getPatchDataFactory(); 
+    tbox::Pointer< pdat::CCellDataFactory< NDIM, double > > localFactory = localVar->getPatchDataFactory(); 
     int localDOF = localFactory->getDefaultDepth();
 
     tbox::Pointer< hier::Variable< NDIM > > globalVar = globalVec->getComponentVariable(0);
-    tbox::Pointer< pdat::CellDataFactory< NDIM, double > > globalFactory = globalVar->getPatchDataFactory(); 
+    tbox::Pointer< pdat::CCellDataFactory< NDIM, double > > globalFactory = globalVar->getPatchDataFactory(); 
     int globalDOF = globalFactory->getDefaultDepth();
 
     assert(localDOF=globalDOF);
@@ -496,9 +501,9 @@ PflotranApplicationStrategy::createVector(int &dof, bool &use_ghost, Vec *vec)
 
    PflotranApplicationStrategy::d_vec_instance_id++;
 
-   SAMRAI::tbox::Pointer< SAMRAI::pdat::CellVariable<NDIM,double> > pflotran_var;
+   SAMRAI::tbox::Pointer< SAMRAI::pdat::CCellVariable<NDIM,double> > pflotran_var;
 
-   pflotran_var = new SAMRAI::pdat::CellVariable<NDIM,double>(dataName,dof);
+   pflotran_var = new SAMRAI::pdat::CCellVariable<NDIM,double>(dataName,dof);
 
    int pflotran_var_id;
 
@@ -534,7 +539,9 @@ PflotranApplicationStrategy::createVector(int &dof, bool &use_ghost, Vec *vec)
                                                                                                                                      0, nlevels-1);
 
    samrai_vec->addComponent(pflotran_var,
-                            pflotran_var_id);
+                            pflotran_var_id,
+                            -1,
+                            d_math_op);
 
    *vec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM,double>::createPETScVector(samrai_vec);
 }

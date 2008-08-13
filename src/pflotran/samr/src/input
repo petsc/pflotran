@@ -38,7 +38,7 @@ LoadBalancer{
 }
 
 PflotranApplicationStrategy{
-   DriverMode                       = 0
+   DriverMode                       = 1
    nl_tangential_coarse_fine_scheme = "QUADRATIC"
    nl_normal_coarse_fine_scheme     = "QUADRATIC"
    number_solution_components       = 3

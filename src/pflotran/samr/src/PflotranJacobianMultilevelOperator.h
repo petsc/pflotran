@@ -20,6 +20,8 @@ extern "C"{
 #include "MultilevelLinearOperator.h"
 #include "PflotranJacobianLevelOperator.h"
 #include "BoundaryConditionStrategy.h"
+#include "CCellVariable.h"
+#include "HierarchyDataOpsReal.h"
 
 extern "C" {
 #include "petscmat.h"
@@ -246,7 +248,7 @@ private:
    /*
     * Variables.
     */
-   tbox::Pointer< pdat::CellVariable<NDIM,double> > d_scratch_variable;
+   tbox::Pointer< pdat::CCellVariable<NDIM,double> > d_scratch_variable;
 
    hier::Patch <NDIM> *d_patch;
 
@@ -267,6 +269,8 @@ private:
    Mat *d_pMatrix;
 
    Vec d_scratch_vector;
+
+   tbox::Pointer< math::HierarchyDataOpsReal< NDIM, double > > d_math_op;
 
 };
 

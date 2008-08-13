@@ -7,7 +7,7 @@
 
 #include "tbox/Array.h"
 #include "tbox/Pointer.h"
-#include "CellVariable.h"
+#include "CCellVariable.h"
 #include "FaceVariable.h"
 #include "PatchHierarchy.h"
 #include "VariableContext.h"
@@ -27,6 +27,7 @@
 #include "PflotranApplicationParameters.h"
 #include "PflotranJacobianMultilevelOperator.h"
 #include "BoundaryConditionStrategy.h"
+#include "HierarchyDataOpsReal.h"
 
 namespace SAMRAI{
 
@@ -161,7 +162,7 @@ private:
    /*
     * Variables.
     */
-   tbox::Pointer< pdat::CellVariable<NDIM,double> > d_solution;
+   tbox::Pointer< pdat::CCellVariable<NDIM,double> > d_solution;
 
    double d_current_time;
 
@@ -197,6 +198,9 @@ private:
    std::auto_ptr<PflotranJacobianMultilevelOperator> d_TransportJacobian;
 
    BoundaryConditionStrategy  *d_refine_patch_strategy;
+
+   tbox::Pointer< math::HierarchyDataOpsReal< NDIM, double > > d_math_op;
+
 };
 
 }

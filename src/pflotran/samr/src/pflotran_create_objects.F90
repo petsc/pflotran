@@ -17,6 +17,7 @@ subroutine f_create_simulation(simulation_obj, application_ptr)
 
  if(.not.(application_ptr.eq.0)) then
     discretization%amrgrid => AMRGridCreate()
+    nullify(discretization%grid)
     discretization%amrgrid%p_application = application_ptr
  else
     nullify(discretization%amrgrid)

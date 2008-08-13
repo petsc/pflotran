@@ -518,8 +518,8 @@ PflotranJacobianLevelOperator::MatMult(Vec x, Vec y )
 
       tbox::Pointer< pdat::CCellData<NDIM, double > > stencil = patch->getPatchData(d_stencil_id);
       // for now we will use cell data instead of CCell data
-      tbox::Pointer< pdat::CellData<NDIM, double > > src = patch->getPatchData(src_id);
-      tbox::Pointer< pdat::CellData<NDIM, double > > dst = patch->getPatchData(dst_id);
+      tbox::Pointer< pdat::CCellData<NDIM, double > > src = patch->getPatchData(src_id);
+      tbox::Pointer< pdat::CCellData<NDIM, double > > dst = patch->getPatchData(dst_id);
 #ifdef DEBUG_CHECK_ASSERTIONS
       assert(!stencil.isNull());
       assert(!src.isNull());
@@ -540,7 +540,7 @@ PflotranJacobianLevelOperator::MatMult(Vec x, Vec y )
         assert(d_stencil_size>0);
         assert(d_ndof>=1);
 #endif
-        samrcellmatmult3d_( ifirst(0),ifirst(1),ifirst(2),
+        samrccellmatmult3d_( ifirst(0),ifirst(1),ifirst(2),
                             ilast(0),ilast(1),ilast(2),
                             d_stencil_size,
                             d_ndof,

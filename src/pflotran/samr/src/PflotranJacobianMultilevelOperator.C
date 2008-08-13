@@ -4,8 +4,9 @@
 #include "CCellData.h"
 #include "PETSc_SAMRAIVectorReal.h"
 #include "tbox/TimerManager.h"
-#include "CellDataFactory.h"
+#include "CCellDataFactory.h"
 #include "RefineAlgorithm.h"
+#include "HierarchyCCellDataOpsReal.h"
 
 namespace SAMRAI{
 #ifndef iC
@@ -76,6 +77,9 @@ PflotranJacobianMultilevelOperator::PflotranJacobianMultilevelOperator(Multileve
    {
       d_GlobalToLocalRefineSchedule[ln].setNull();
    }
+
+   d_math_op = new math::HierarchyCCellDataOpsReal< NDIM, double >(d_hierarchy,
+                                                                   0, d_hierarchy->getFinestLevelNumber());
 }
 
 void
@@ -157,13 +161,13 @@ PflotranJacobianMultilevelOperator::initializeInternalVariableData(void)
                                                                                                                  d_hierarchy,
                                                                                                                  0, d_hierarchy->getFinestLevelNumber());
 
-   tbox::Pointer< pdat::CellVariable<NDIM,double> > scratchVar = new pdat::CellVariable<NDIM,double>(vecname,d_ndof);
+   tbox::Pointer< pdat::CCellVariable<NDIM,double> > scratchVar = new pdat::CCellVariable<NDIM,double>(vecname,d_ndof);
    int scratch_var_id = variable_db->registerVariableAndContext(scratchVar,
                                                                 scratch_cxt,
                                                                 hier::IntVector<NDIM>(1));
    
    scratch_vector->addComponent(scratchVar,
-                                scratch_var_id);
+                                scratch_var_id, -1, d_math_op);
    
 
    std::string cellFlux("PflotranJacobianMultilevelOperator_InternalFlux");
@@ -579,11 +583,11 @@ PflotranJacobianMultilevelOperator::initializeScratchVector( Vec x )
     int dest_id = localVec->getComponentDescriptorIndex(0);   
 
     tbox::Pointer< hier::Variable< NDIM > > localVar = localVec->getComponentVariable(0);
-    tbox::Pointer< pdat::CellDataFactory< NDIM, double > > localFactory = localVar->getPatchDataFactory(); 
+    tbox::Pointer< pdat::CCellDataFactory< NDIM, double > > localFactory = localVar->getPatchDataFactory(); 
     int localDOF = localFactory->getDefaultDepth();
 
     tbox::Pointer< hier::Variable< NDIM > > globalVar = globalVec->getComponentVariable(0);
-    tbox::Pointer< pdat::CellDataFactory< NDIM, double > > globalFactory = globalVar->getPatchDataFactory(); 
+    tbox::Pointer< pdat::CCellDataFactory< NDIM, double > > globalFactory = globalVar->getPatchDataFactory(); 
     int globalDOF = globalFactory->getDefaultDepth();
 
     assert(localDOF=globalDOF);

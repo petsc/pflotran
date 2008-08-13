@@ -11,7 +11,7 @@ define(TT,6)dnl
 include(SAMRAI_FORTDIR/pdat_m4arrdim3d.i)dnl
 c
 c
-      subroutine samrcellmatmult3d(
+      subroutine samrccellmatmult3d(
      & ifirst0,ifirst1,ifirst2,ilast0,ilast1,ilast2,
      & stencilsize,
      & ndof,
@@ -28,8 +28,8 @@ c
       integer ilast0,ilast1,ilast2
       integer stencilsize, ndof
       integer sgcw, dgcw
-      REAL dst(CELL3d(ifirst,ilast,dgcw), ndof)
-      REAL src(CELL3d(ifirst,ilast,sgcw), ndof)
+      REAL dst(0:ndof-1,CELL3d(ifirst,ilast,dgcw))
+      REAL src(0:ndof-1,CELL3d(ifirst,ilast,sgcw))
       REAL stencil(0:ndof*ndof*stencilsize-1, 
      &             CELL3d(ifirst,ilast,0))
 
@@ -120,8 +120,8 @@ c
       integer ilast0,ilast1,ilast2
       integer ndof
       integer sgcw, dgcw
-      REAL dst(CELL3d(ifirst,ilast,dgcw),ndof)
-      REAL src(CELL3d(ifirst,ilast,sgcw),ndof)
+      REAL dst(0:ndof-1,CELL3d(ifirst,ilast,dgcw))
+      REAL src(0:ndof-1,CELL3d(ifirst,ilast,sgcw))
       REAL stencil(0:7*ndof*ndof-1,
      &             CELL3d(ifirst,ilast,0))
 
@@ -138,14 +138,14 @@ c
             do l=0,ndof-1
               dst(i,j,k,l)=0.0
               do m=0,ndof-1
-               dst(i,j,k,l)=dst(i,j,k,l)
-     &                    +stencil(PP*nd2+m*ndof+l,i,j,k)*src(i,j,k,m)
-     &                    +stencil(WW*nd2+m*ndof+l,i,j,k)*src(i-1,j,k,m)
-     &                    +stencil(EE*nd2+m*ndof+l,i,j,k)*src(i+1,j,k,m)
-     &                    +stencil(SS*nd2+m*ndof+l,i,j,k)*src(i,j-1,k,m)
-     &                    +stencil(NN*nd2+m*ndof+l,i,j,k)*src(i,j+1,k,m)
-     &                    +stencil(BB*nd2+m*ndof+l,i,j,k)*src(i,j,k-1,m)
-     &                    +stencil(TT*nd2+m*ndof+l,i,j,k)*src(i,j,k+1,m)
+               dst(l,i,j,k)=dst(l,i,j,k)
+     &                    +stencil(PP*nd2+m*ndof+l,i,j,k)*src(m,i,j,k)
+     &                    +stencil(WW*nd2+m*ndof+l,i,j,k)*src(m,i-1,j,k)
+     &                    +stencil(EE*nd2+m*ndof+l,i,j,k)*src(m,i+1,j,k)
+     &                    +stencil(SS*nd2+m*ndof+l,i,j,k)*src(m,i,j-1,k)
+     &                    +stencil(NN*nd2+m*ndof+l,i,j,k)*src(m,i,j+1,k)
+     &                    +stencil(BB*nd2+m*ndof+l,i,j,k)*src(m,i,j,k-1)
+     &                    +stencil(TT*nd2+m*ndof+l,i,j,k)*src(m,i,j,k+1)
               enddo
             enddo
           enddo
