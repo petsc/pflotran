@@ -408,7 +408,8 @@ subroutine ConditionRead(condition,option,fid)
   mass_rate%units = 'kg/s'
   temperature%units = 'C'
   concentration%units = 'M'
-
+  enthalpy%units = 'KJ/mol'
+  
   if (option%ntrandof > 0) then
     allocate(transport_concentrations(option%ntrandof))
     do idof = 1, option%ntrandof

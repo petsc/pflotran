@@ -849,6 +849,95 @@ end subroutine MphaseAccumulation
 
 ! ************************************************************************** !
 !
+! MphaseAccumulation: Computes the non-fixed portion of the accumulation
+!                       term for the residual
+! author: Chuan Lu
+! date: 05/12/08
+!
+! ************************************************************************** !  
+subroutine MphaseSourceSink(msrc,tsrc,hsrc,aux_var,isrctype,Res, energy_flag, option)
+
+  use Option_module
+  
+   use water_eos_module
+!   use gas_eos_module  
+  use co2eos_module
+  use span_wagner_spline_module, only: sw_prop
+  use co2_sw_module, only: co2_sw_interp
+  use span_wagner_module 
+  
+  implicit none
+
+  type(mphase_auxvar_elem_type) :: aux_var
+  type(option_type) :: option
+  PetscReal Res(1:option%nflowdof) 
+  PetscReal msrc(option%nflowspec), tsrc,hsrc 
+  PetscInt isrctype
+  logical :: energy_flag
+     
+  PetscReal :: dw_kg, dw_mol,dddt,dddp
+  PetscReal :: enth_src_h2o, enth_src_co2 
+  PetscReal :: rho, fg, dfgdp, dfgdt, eng, dhdt, dhdp, visc, dvdt, dvdp, xphi
+  PetscInt ierr  
+  
+  Res=0D0
+ ! if (present(ireac)) iireac=ireac
+      if (energy_flag) then
+        Res(option%nflowdof) = Res(option%nflowdof) + hsrc * option%flow_dt   
+      endif         
+ 
+      if (msrc(1) > 0.d0) then ! H2O injection
+        call wateos_noderiv(tsrc,aux_var%pres,dw_kg,dw_mol,enth_src_h2o,option%scale,ierr)
+!           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
+!           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
+        Res(jh2o) = Res( jh2o) + msrc(1) *option%flow_dt
+        if (energy_flag) &
+             Res(option%nflowdof) = Res(option%nflowdof) + msrc(1)*enth_src_h2o*option%flow_dt
+      endif  
+    
+      if (msrc(2) > 0.d0) then ! CO2 injection
+!        call printErrMsg(option,"concentration source not yet implemented in Mphase")
+      if(option%co2eos == EOS_SPAN_WAGNER)then
+         !  span-wagner
+          rho = aux_var%den(jco2)*option%fmwco2  
+          select case(option%itable)  
+            case(0,1,2,4,5)
+              if( option%itable >=4) then
+              call co2_sw_interp(aux_var%pres*1.D-6,&
+                  tsrc,rho,dddt,dddp,fg,dfgdp,dfgdt, &
+                  eng,enth_src_co2,dhdt,dhdp,visc,dvdt,dvdp,option%itable)
+              else
+              call co2_span_wagner(aux_var%pres*1.D-6,&
+                  tsrc+273.15D0,rho,dddt,dddp,fg,dfgdp,dfgdt, &
+                  eng,enth_src_co2,dhdt,dhdp,visc,dvdt,dvdp,option%itable)
+              endif 
+             case(3) 
+              call sw_prop(tsrc,aux_var%pres*1.D-6,rho, &
+                     enth_src_co2, eng, fg)
+          end select     
+
+         !  units: rho [kg/m^3]; csrc1 [kmol/s]
+            enth_src_co2 = enth_src_co2 * option%fmwco2
+      else if(option%co2eos == EOS_MRK)then
+! MRK eos [modified version from  Kerrick and Jacobs (1981) and Weir et al. (1996).]
+            call CO2(tsrc,aux_var%pres, rho,fg, xphi,enth_src_co2)
+            enth_src_co2 = enth_src_co2*option%fmwco2*option%scale
+      else
+         print *,'pflow mphase ERROR: Need specify CO2 EOS'
+         STOP    
+      endif
+              
+     Res(jco2) = Res(jco2) + msrc(2)*option%flow_dt
+     if (energy_flag) &
+     Res(option%nflowdof) = Res(option%nflowdof)+ msrc(2) * enth_src_co2 *option%flow_dt
+  endif
+end subroutine MphaseSourceSink
+
+
+
+
+! ************************************************************************** !
+!
 ! MphaseFlux: Computes the internal flux terms for the residual
 ! author: Chuan Lu
 ! date: 05/12/08
@@ -1460,13 +1549,6 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   use Field_module
   use Debug_module
   
-   use water_eos_module
-  use gas_eos_module  
-  use co2eos_module
-  use span_wagner_spline_module, only: sw_prop
-  use co2_sw_module, only: co2_sw_interp
-  use span_wagner_module
-
   
   implicit none
 
@@ -1502,6 +1584,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
   PetscReal :: upweight
   PetscReal :: Res(realization%option%nflowdof), v_darcy(realization%option%nphase)
   PetscReal :: xxbc(realization%option%nflowdof)
+  PetscReal :: msrc(1:realization%option%nflowspec)
   PetscViewer :: viewer
 
 
@@ -1649,11 +1732,12 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
     qsrc1 = source_sink%flow_condition%pressure%dataset%cur_value(1)
     tsrc1 = source_sink%flow_condition%temperature%dataset%cur_value(1)
     csrc1 = source_sink%flow_condition%concentration%dataset%cur_value(1)
-    !if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%dataset%cur_value(1)
-    hsrc1=0D0
+    if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%dataset%cur_value(1)
+!    hsrc1=0D0
     qsrc1 = qsrc1 / option%fmwh2o ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
     csrc1 = csrc1 / option%fmwco2
-      
+    msrc(1)=qsrc1; msrc(2) =csrc1
+       
     cur_connection_set => source_sink%connection_set
     
     do iconn = 1, cur_connection_set%num_connections      
@@ -1662,64 +1746,18 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
       if (associated(patch%imat)) then
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
-       ! print *,'REs: S/S:',iconn, local_id, qsrc1,tsrc1,csrc1 
-      if (enthalpy_flag) then
-        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1 * option%flow_dt   
-      endif         
+      
+      call MphaseSourceSink(msrc,tsrc1,hsrc1,aux_vars(ghosted_id)%aux_var_elem(0),&
+                            0,Res,enthalpy_flag, option)
 
-      if (qsrc1 > 0.d0) then ! injection
-        call wateos_noderiv(tsrc1,aux_vars(ghosted_id)%aux_var_elem(0)%pres, &
-                            dw_kg,dw_mol,enth_src_h2o,option%scale,ierr)
-!           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
-!           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
-        r_p((local_id-1)*option%nflowdof + jh2o) = r_p((local_id-1)*option%nflowdof + jh2o) &
-                                               - qsrc1 *option%flow_dt
-        if (enthalpy_flag) &
-             r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - qsrc1*enth_src_h2o*option%flow_dt
-      endif  
-    
-      if (csrc1 > 0.d0) then ! injection
-!        call printErrMsg(option,"concentration source not yet implemented in Mphase")
-      if(option%co2eos == EOS_SPAN_WAGNER)then
-         !  span-wagner
-            rho = aux_vars(ghosted_id)%aux_var_elem(0)%den(jco2)*option%fmwco2  
-          select case(option%itable)  
-            case(0,1,2,4,5)
-              if( option%itable >=4) then
-              call co2_sw_interp(aux_vars(ghosted_id)%aux_var_elem(0)%pres*1.D-6,&
-                  tsrc1,rho,dddt,dddp,fg,dfgdp,dfgdt, &
-                  eng,enth_src_co2,dhdt,dhdp,visc,dvdt,dvdp,option%itable)
-              else
-              call co2_span_wagner(aux_vars(ghosted_id)%aux_var_elem(0)%pres*1.D-6,&
-                  tsrc1+273.15D0,rho,dddt,dddp,fg,dfgdp,dfgdt, &
-                  eng,enth_src_co2,dhdt,dhdp,visc,dvdt,dvdp,option%itable)
-              endif 
-             case(3) 
-              call sw_prop(tsrc1,aux_vars(ghosted_id)%aux_var_elem(0)%pres*1.D-6,rho, &
-                     enth_src_co2, eng, fg)
-          end select     
-
-         !  units: rho [kg/m^3]; csrc1 [kmol/s]
-            enth_src_co2 = enth_src_co2 * option%fmwco2
-      else if(option%co2eos == EOS_SPAN_WAGNER)then
-! MRK eos [modified version from  Kerrick and Jacobs (1981) and Weir et al. (1996).]
-            call CO2(tsrc1,aux_vars(ghosted_id)%aux_var_elem(0)%pres,&
-            rho,fg, xphi,enth_src_co2)
-            enth_src_co2 = enth_src_co2*option%fmwco2*option%scale
-      else
-         print *,'pflow mphase ERROR: Need specify CO2 EOS'
-         STOP    
-      endif
-     
-           
-            r_p((local_id-1)*option%nflowdof + jco2) = r_p((local_id-1)*option%nflowdof + jco2) - csrc1*option%flow_dt
-            if (enthalpy_flag) &
-              r_p( local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - csrc1 * enth_src_co2 *option%flow_dt
-            Resold_AR(local_id,jco2)= Resold_AR(local_id,jco2) - csrc1*option%flow_dt
-            if (enthalpy_flag) &
-              Resold_AR(local_id,option%nflowdof)= Resold_AR(local_id,option%nflowdof) - csrc1 * enth_src_co2*option%flow_dt
-
-      endif
+      r_p((local_id-1)*option%nflowdof + jh2o) = r_p((local_id-1)*option%nflowdof + jh2o)-Res(jh2o)
+      r_p((local_id-1)*option%nflowdof + jco2) = r_p((local_id-1)*option%nflowdof + jco2)-Res(jco2)
+      Resold_AR(local_id,jh2o)= Resold_AR(local_id,jh2o) - Res(jh2o)    
+      Resold_AR(local_id,jco2)= Resold_AR(local_id,jco2) - Res(jco2)    
+      if (enthalpy_flag)then
+        r_p( local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - Res(option%nflowdof)
+        Resold_AR(local_id,option%nflowdof)= Resold_AR(local_id,option%nflowdof) - Res(option%nflowdof)
+       endif 
   !  else if (qsrc1 < 0.d0) then ! withdrawal
   !  endif
     enddo
@@ -1952,7 +1990,6 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
     call VecView(xx,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
-
 end subroutine MphaseResidualPatch
 
 ! ************************************************************************** !
@@ -2015,13 +2052,6 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   use Field_module
   use Debug_module
   
-  use water_eos_module
-  use gas_eos_module  
-  use co2eos_module
-  use span_wagner_spline_module, only: sw_prop
-  use co2_sw_module, only: co2_sw_interp
-  use span_wagner_module
-    
   implicit none
 
   SNES :: snes
@@ -2080,6 +2110,7 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   
   PetscReal :: vv_darcy(realization%option%nphase), voltemp
   PetscReal :: ra(1:realization%option%nflowdof,1:realization%option%nflowdof*2) 
+  PetscReal :: msrc(1:realization%option%nflowspec)
   PetscReal :: dddt, dddp, fg, dfgdp, dfgdt, eng, dhdt, dhdp, visc, dvdt,&
                dvdp, xphi
   PetscInt :: iphasebc                
@@ -2167,74 +2198,36 @@ subroutine MphaseJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     qsrc1 = source_sink%flow_condition%pressure%dataset%cur_value(1)
     tsrc1 = source_sink%flow_condition%temperature%dataset%cur_value(1)
     csrc1 = source_sink%flow_condition%concentration%dataset%cur_value(1)
+ !   hsrc1=0.D0
     if (enthalpy_flag) hsrc1 = source_sink%flow_condition%enthalpy%dataset%cur_value(1)
 
     qsrc1 = qsrc1 / option%fmwh2o ! [kg/s -> kmol/s; fmw -> g/mol = kg/kmol]
     csrc1 = csrc1 / option%fmwco2
-      
+    msrc(1)=qsrc1; msrc(2) =csrc1
+  
     cur_connection_set => source_sink%connection_set
-    
-    do iconn = 1, cur_connection_set%num_connections      
+ 
+       do iconn = 1, cur_connection_set%num_connections      
       local_id = cur_connection_set%id_dn(iconn)
       ghosted_id = grid%nL2G(local_id)
 
       if (associated(patch%imat)) then
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
-      
 !      if (enthalpy_flag) then
 !        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1 * option%flow_dt   
 !      endif         
-    
-      if (qsrc1 > 0.d0) then ! injection
-       do nvar =1, option%nflowdof
-         call wateos_noderiv(tsrc1,aux_vars(ghosted_id)%aux_var_elem(nvar)%pres,dw_kg,dw_mol,&
-              enth_src_h2o,option%scale,ierr)        
-!           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
-!           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
-          ! base on r_p() = r_p() - qsrc1*enth_src_h2o*option%flow_dt
-           ResInc(local_id,jh2o,nvar)=  ResInc(local_id,jh2o,nvar) - qsrc1*option%flow_dt
-          if (enthalpy_flag) & 
-           ResInc(local_id,option%nflowdof,nvar)=  ResInc(local_id,option%nflowdof,nvar) - qsrc1*enth_src_h2o*option%flow_dt
-        enddo
-     endif
-    
-      if (csrc1 > 0.d0) then ! injection
-            do nvar=1,option%nflowdof     
-              rho = aux_vars(ghosted_id)%aux_var_elem(nvar)%den(jco2)*option%fmwco2 
-            if(option%co2eos == EOS_SPAN_WAGNER)then
-         !    span-wagner
-            select case(option%itable)
-             case(0,1,2, 4,5)
-               if( option%itable >=4) then
-                call co2_sw_interp(aux_vars(ghosted_id)%aux_var_elem(nvar)%pres*1.D-6, &
-                    tsrc1,rho,dddt,dddp,fg,dfgdp,dfgdt, &
-                eng,enth_src_co2,dhdt,dhdp,visc,dvdt,dvdp,option%itable)
-              else
-               call co2_span_wagner(aux_vars(ghosted_id)%aux_var_elem(nvar)%pres*1.D-6,&
-                tsrc1+273.15D0,rho,dddt,dddp,fg,dfgdp,dfgdt, &
-                eng,enth_src_co2,dhdt,dhdp,visc,dvdt,dvdp,option%itable)
-               endif
-             case(3)
-                call sw_prop(tsrc1,aux_vars(ghosted_id)%aux_var_elem(nvar)%pres*1.D-6,rho, &
-                enth_src_co2, eng, fg)
-          end select     
-          enth_src_co2 = enth_src_co2 * option%fmwco2  
-          elseif(option%co2eos == EOS_MRK)then 
-! MRK eos [modified version from Kerrick and Jacobs (1981) and Weir et al. (1996).]     
-              call CO2(tsrc1,aux_vars(ghosted_id)%aux_var_elem(nvar)%pres,&
-                rho,fg, xphi,enth_src_co2 )
-              enth_src_co2 = enth_src_co2 * option%fmwco2 *option%scale
-          endif
+     do nvar =1, option%nflowdof
+       call MphaseSourceSink(msrc,tsrc1,hsrc1,aux_vars(ghosted_id)%aux_var_elem(nvar),&
+                            0, Res,enthalpy_flag, option)
+      
+       ResInc(local_id,jh2o,nvar)=  ResInc(local_id,jh2o,nvar) - Res(jh2o)
+       ResInc(local_id,jco2,nvar)=  ResInc(local_id,jco2,nvar) - Res(jco2)
+       if (enthalpy_flag) & 
+           ResInc(local_id,option%nflowdof,nvar)=&
+           ResInc(local_id,option%nflowdof,nvar)- Res(option%nflowdof) 
 
-         !    units: rho [kg/m^3]; csrc1 [kmol/s]
-
-              ResInc(local_id,jco2,nvar)=  ResInc(local_id,jco2,nvar) - csrc1*option%flow_dt
-              if (enthalpy_flag) &
-              ResInc(local_id,option%nflowdof,nvar)=  ResInc(local_id,option%nflowdof,nvar)&
-                   - csrc1*enth_src_co2*option%flow_dt
-           enddo
-        endif
+     enddo 
     enddo
     source_sink => source_sink%next
   enddo
