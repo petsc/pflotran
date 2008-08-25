@@ -949,7 +949,11 @@ subroutine ConditionReadValuesFromFile(filename,dataset,option)
     call fiErrorMsg(option%myrank,'time','CONDITION FILE', ierr)   
     call fiReadDouble(string,temp_array1(count),ierr)
     call fiErrorMsg(option%myrank,'array1','CONDITION FILE', ierr)
-    print *, 'RCF:', temp_times(count),  temp_array1(count)
+!    print *, 'RCF:', temp_times(count),  temp_array1(count)
+!   I have commented out the above line because it creates an impossible 
+!   amount of console output for even moderately-sized parallel runs!
+!   If someone needs this data, we need to add a -print_debug flag or 
+!   some such thing.  --RTM
     if (dataset%rank > 1) then
       call fiReadDouble(string,temp_array2(count),ierr)
       call fiErrorMsg(option%myrank,'array2','CONDITION FILE', ierr) 
