@@ -30,7 +30,8 @@ module Grid_module
     
     PetscReal, pointer :: x(:), y(:), z(:)
     
-    PetscReal :: x_min, x_max, y_min, y_max, z_min, z_max
+    PetscReal :: x_min_global, x_max_global, y_min_global, y_max_global, z_min_global, z_max_global
+    PetscReal :: x_min_local, x_max_local, y_min_local, y_max_local, z_min_local, z_max_local
 
     PetscInt, pointer :: hash(:,:,:)
     PetscInt :: num_hash_bins
@@ -96,12 +97,19 @@ function GridCreate()
   nullify(grid%y)
   nullify(grid%z)
 
-  grid%x_min = 1.d20
-  grid%x_max = -1.d20
-  grid%y_min = 1.d20
-  grid%y_max = -1.d20
-  grid%z_min = 1.d20
-  grid%z_max = -1.d20
+  grid%x_min_global = 1.d20
+  grid%x_max_global = -1.d20
+  grid%y_min_global = 1.d20
+  grid%y_max_global = -1.d20
+  grid%z_min_global = 1.d20
+  grid%z_max_global = -1.d20
+
+  grid%x_min_local = 1.d20
+  grid%x_max_local = -1.d20
+  grid%y_min_local = 1.d20
+  grid%y_max_local = -1.d20
+  grid%z_min_local = 1.d20
+  grid%z_max_local = -1.d20
 
   grid%nmax = 0
   grid%nlmax = 0 
@@ -236,14 +244,17 @@ end subroutine GridComputeSpacing
 ! date: 10/24/07
 !
 ! ************************************************************************** !
-subroutine GridComputeCoordinates(grid,option)
+subroutine GridComputeCoordinates(grid,origin_global,option)
 
   use Option_module
   
   implicit none
   
   type(grid_type) :: grid
+  PetscReal :: origin_global(3)
   type(option_type) :: option
+  
+  PetscErrorCode :: ierr  
   
   select case(grid%itype)
     case(STRUCTURED_GRID)
@@ -254,11 +265,27 @@ subroutine GridComputeCoordinates(grid,option)
       allocate(grid%z(grid%ngmax))
       grid%z = 0.d0
       call StructuredGridComputeCoord(grid%structured_grid,option, &
+                                      origin_global, &
                                       grid%x,grid%y,grid%z, &
-                                      grid%x_min,grid%x_max,grid%y_min, &
-                                      grid%y_max,grid%z_min,grid%z_max)
+                                      grid%x_min_local,grid%x_max_local, &
+                                      grid%y_min_local,grid%y_max_local, &
+                                      grid%z_min_local,grid%z_max_local)
     case(UNSTRUCTURED_GRID)
   end select
+
+  ! compute global max/min from the local max/in
+  call MPI_Allreduce(grid%x_min_local,grid%x_min_global,ONE_INTEGER, &
+                     MPI_DOUBLE_PRECISION,MPI_MIN,PETSC_COMM_WORLD,ierr)
+  call MPI_Allreduce(grid%y_min_local,grid%y_min_global,ONE_INTEGER, &
+                     MPI_DOUBLE_PRECISION,MPI_MIN,PETSC_COMM_WORLD,ierr)
+  call MPI_Allreduce(grid%z_min_local,grid%z_min_global,ONE_INTEGER, &
+                     MPI_DOUBLE_PRECISION,MPI_MIN,PETSC_COMM_WORLD,ierr)
+  call MPI_Allreduce(grid%x_max_local,grid%x_max_global,ONE_INTEGER, &
+                     MPI_DOUBLE_PRECISION,MPI_MAX,PETSC_COMM_WORLD,ierr)
+  call MPI_Allreduce(grid%y_max_local,grid%y_max_global,ONE_INTEGER, &
+                     MPI_DOUBLE_PRECISION,MPI_MAX,PETSC_COMM_WORLD,ierr)
+  call MPI_Allreduce(grid%z_max_local,grid%z_max_global,ONE_INTEGER, &
+                     MPI_DOUBLE_PRECISION,MPI_MAX,PETSC_COMM_WORLD,ierr)
 
 end subroutine GridComputeCoordinates
 
@@ -380,12 +407,12 @@ subroutine GridLocalizeRegions(grid,region_list,option)
       else if (dabs(region%coordinate(X_DIRECTION)) > 1.d-40 .and. &
                dabs(region%coordinate(Y_DIRECTION)) > 1.d-40 .and. &
                dabs(region%coordinate(Z_DIRECTION)) > 1.d-40 .and. &
-               region%coordinate(X_DIRECTION) >= grid%x_min .and. &
-               region%coordinate(X_DIRECTION) <= grid%x_max .and. &
-               region%coordinate(Y_DIRECTION) >= grid%y_min .and. &
-               region%coordinate(Y_DIRECTION) <= grid%y_max .and. &
-               region%coordinate(Z_DIRECTION) >= grid%z_min .and. &
-               region%coordinate(Z_DIRECTION) <= grid%z_max) then
+               region%coordinate(X_DIRECTION) >= grid%x_min_local .and. &
+               region%coordinate(X_DIRECTION) <= grid%x_max_local .and. &
+               region%coordinate(Y_DIRECTION) >= grid%y_min_local .and. &
+               region%coordinate(Y_DIRECTION) <= grid%y_max_local .and. &
+               region%coordinate(Z_DIRECTION) >= grid%z_min_local .and. &
+               region%coordinate(Z_DIRECTION) <= grid%z_max_local) then
         select case(grid%itype)
           case(STRUCTURED_GRID)
             call StructGridGetIJKFromCoordinate(grid%structured_grid, &

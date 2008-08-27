@@ -831,9 +831,10 @@ subroutine OutputFluxVelocitiesTecplot(realization,iphase, &
       do i=1,nx_local
         count = count + 1
         local_id = i+(j-1)*grid%structured_grid%nlx+(k-1)*grid%structured_grid%nlxy
-        array(count) = grid%x(grid%nL2G(local_id))
+        ghosted_id = grid%nL2G(local_id)
+        array(count) = grid%x(ghosted_id)
         if (direction == X_DIRECTION) &
-          array(count) = array(count) + 0.5d0*grid%structured_grid%dx(local_id)
+          array(count) = array(count) + 0.5d0*grid%structured_grid%dx(ghosted_id)
       enddo
     enddo
   enddo
@@ -854,9 +855,10 @@ subroutine OutputFluxVelocitiesTecplot(realization,iphase, &
       do i=1,nx_local
         count = count + 1
         local_id = i+(j-1)*grid%structured_grid%nlx+(k-1)*grid%structured_grid%nlxy
-        array(count) = grid%y(grid%nL2G(local_id))
+        ghosted_id = grid%nL2G(local_id)        
+        array(count) = grid%y(ghosted_id)
         if (direction == Y_DIRECTION) &
-          array(count) = array(count) + 0.5d0*grid%structured_grid%dy(local_id)
+          array(count) = array(count) + 0.5d0*grid%structured_grid%dy(ghosted_id)
       enddo
     enddo
   enddo
@@ -874,9 +876,10 @@ subroutine OutputFluxVelocitiesTecplot(realization,iphase, &
       do i=1,nx_local
         count = count + 1
         local_id = i+(j-1)*grid%structured_grid%nlx+(k-1)*grid%structured_grid%nlxy
-        array(count) = grid%z(grid%nL2G(local_id))
+        ghosted_id = grid%nL2G(local_id)        
+        array(count) = grid%z(ghosted_id)
         if (direction == Z_DIRECTION) &
-          array(count) = array(count) + 0.5d0*grid%structured_grid%dz(local_id)
+          array(count) = array(count) + 0.5d0*grid%structured_grid%dz(ghosted_id)
       enddo
     enddo
   enddo
@@ -1156,7 +1159,7 @@ subroutine WriteTecplotStructuredGrid(fid,realization)
           count = 0
         endif
         do i=1,nx
-          temp_real = temp_real + grid%structured_grid%dx0(i)
+          temp_real = temp_real + grid%structured_grid%dx_global(i)
           write(fid,1000,advance='no') temp_real
           count = count + 1
           if (mod(count,10) == 0) then
@@ -1180,7 +1183,7 @@ subroutine WriteTecplotStructuredGrid(fid,realization)
         endif
       enddo
       do j=1,ny
-        temp_real = temp_real + grid%structured_grid%dy0(j)
+        temp_real = temp_real + grid%structured_grid%dy_global(j)
         do i=1,nx+1
           write(fid,1000,advance='no') temp_real
           count = count + 1
@@ -1204,7 +1207,7 @@ subroutine WriteTecplotStructuredGrid(fid,realization)
       endif
     enddo
     do k=1,nz
-      temp_real = temp_real + grid%structured_grid%dz0(k)
+      temp_real = temp_real + grid%structured_grid%dz_global(k)
       do j=1,ny+1
         do i=1,nx+1
           write(fid,1000,advance='no') temp_real
@@ -2542,9 +2545,9 @@ subroutine OutputHDF5(realization)
     allocate(array(grid%structured_grid%nx))
     do i=1,grid%structured_grid%nx
       if (i == 1) then
-        array(i) = 0.5d0*grid%structured_grid%dx0(1)
+        array(i) = 0.5d0*grid%structured_grid%dx_global(1)
       else
-        array(i) = array(i-1) + 0.5d0*(grid%structured_grid%dx0(i-1)+grid%structured_grid%dx0(i))
+        array(i) = array(i-1) + 0.5d0*(grid%structured_grid%dx_global(i-1)+grid%structured_grid%dx_global(i))
       endif
     enddo
     call WriteHDF5Coordinates(string,option,grid%structured_grid%nx,array,grp_id)
@@ -2554,9 +2557,9 @@ subroutine OutputHDF5(realization)
     allocate(array(grid%structured_grid%ny))
     do i=1,grid%structured_grid%ny
       if (i == 1) then
-        array(i) = 0.5d0*grid%structured_grid%dy0(1)
+        array(i) = 0.5d0*grid%structured_grid%dy_global(1)
       else
-        array(i) = array(i-1) + 0.5d0*(grid%structured_grid%dy0(i-1)+grid%structured_grid%dy0(i))
+        array(i) = array(i-1) + 0.5d0*(grid%structured_grid%dy_global(i-1)+grid%structured_grid%dy_global(i))
       endif
     enddo
     call WriteHDF5Coordinates(string,option,grid%structured_grid%ny,array,grp_id)
@@ -2566,9 +2569,9 @@ subroutine OutputHDF5(realization)
     allocate(array(grid%structured_grid%nz))
     do i=1,grid%structured_grid%nz
       if (i == 1) then
-        array(i) = 0.5d0*grid%structured_grid%dz0(1)
+        array(i) = 0.5d0*grid%structured_grid%dz_global(1)
       else
-        array(i) = array(i-1) + 0.5d0*(grid%structured_grid%dz0(i-1)+grid%structured_grid%dz0(i))
+        array(i) = array(i-1) + 0.5d0*(grid%structured_grid%dz_global(i-1)+grid%structured_grid%dz_global(i))
       endif
     enddo
     call WriteHDF5Coordinates(string,option,grid%structured_grid%nz,array,grp_id)

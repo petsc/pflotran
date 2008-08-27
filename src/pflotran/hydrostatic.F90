@@ -269,8 +269,8 @@ subroutine HydrostaticUpdateCouplerBetter(coupler,option,grid)
   if (dabs(pressure_gradient(Z_DIRECTION)) < 1.d-40) then
     ! compute the vertical gradient based on a 1 meter vertical spacing and
     ! interpolate the values from that array
-    max_z = max(grid%z_max,datum(Z_DIRECTION))+1.d0 ! add 1m buffer
-    min_z = min(grid%z_min,datum(Z_DIRECTION))-1.d0
+    max_z = max(grid%z_max_global,datum(Z_DIRECTION))+1.d0 ! add 1m buffer
+    min_z = min(grid%z_min_global,datum(Z_DIRECTION))-1.d0
     
     num_pressures = int((max_z-min_z)/delta_z) + 1
     allocate(pressure_array(num_pressures))
