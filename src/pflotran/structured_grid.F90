@@ -31,7 +31,7 @@ module Structured_Grid_module
     PetscInt :: nlmax  ! Total number of non-ghosted nodes in local domain.
     PetscInt :: ngmax  ! Number of ghosted & non-ghosted nodes in local domain.
 
-    PetscReal :: origin(3)
+    PetscReal :: origin(3) ! local origin of non-ghosted grid
 
     ! grid spacing for each direction for global domain
     PetscReal, pointer :: dx_global(:), dy_global(:), dz_global(:)
@@ -40,7 +40,7 @@ module Structured_Grid_module
     
     logical :: invert_z_axis
     
-    PetscReal, pointer :: dx(:), dy(:), dz(:)  ! Grid spacings
+    PetscReal, pointer :: dx(:), dy(:), dz(:)  ! ghosted grid spacings for each grid cell
     
     PetscFortranAddr :: p_samr_patch ! pointer to a SAMRAI patch object
 
@@ -442,7 +442,7 @@ subroutine StructuredGridComputeSpacing(structured_grid,nG2A,nG2L)
   PetscInt :: nG2A(:)
   PetscInt :: nG2L(:)
   
-  PetscInt :: i, j, k, nl, ng, na
+  PetscInt :: i, j, k, ghosted_id
   PetscErrorCode :: ierr
 
   allocate(structured_grid%dxg_local(structured_grid%ngx))
@@ -451,13 +451,18 @@ subroutine StructuredGridComputeSpacing(structured_grid,nG2A,nG2L)
   structured_grid%dyg_local = 0.d0
   allocate(structured_grid%dzg_local(structured_grid%ngz))
   structured_grid%dzg_local = 0.d0
-   
-  structured_grid%dxg_local(1:structured_grid%ngx) = &
-    structured_grid%dx_global(structured_grid%ngxs+1:structured_grid%ngxe)
-  structured_grid%dyg_local(1:structured_grid%ngy) = &
-    structured_grid%dy_global(structured_grid%ngys+1:structured_grid%ngye)
-  structured_grid%dzg_local(1:structured_grid%ngz) = &
-    structured_grid%dz_global(structured_grid%ngzs+1:structured_grid%ngze)
+  
+  if (structured_grid%p_samr_patch == 0) then
+    print *, 'Bobby, fix StructuredGridComputeSpacing() to account for local grid spacing'
+    stop
+  else 
+    structured_grid%dxg_local(1:structured_grid%ngx) = &
+      structured_grid%dx_global(structured_grid%ngxs+1:structured_grid%ngxe)
+    structured_grid%dyg_local(1:structured_grid%ngy) = &
+      structured_grid%dy_global(structured_grid%ngys+1:structured_grid%ngye)
+    structured_grid%dzg_local(1:structured_grid%ngz) = &
+      structured_grid%dz_global(structured_grid%ngzs+1:structured_grid%ngze)
+  endif    
         
   allocate(structured_grid%dx(structured_grid%ngmax))
   structured_grid%dx = 0.d0
@@ -469,10 +474,10 @@ subroutine StructuredGridComputeSpacing(structured_grid,nG2A,nG2L)
   do k = 1, structured_grid%ngz
     do j = 1, structured_grid%ngy
       do i = 1, structured_grid%ngx
-        ng = i+(j-1)*structured_grid%ngx+(k-1)*structured_grid%ngxy
-        structured_grid%dx(ng) = structured_grid%dxg_local(i)
-        structured_grid%dy(ng) = structured_grid%dyg_local(j)
-        structured_grid%dz(ng) = structured_grid%dzg_local(k)
+        ghosted_id = i+(j-1)*structured_grid%ngx+(k-1)*structured_grid%ngxy
+        structured_grid%dx(ghosted_id) = structured_grid%dxg_local(i)
+        structured_grid%dy(ghosted_id) = structured_grid%dyg_local(j)
+        structured_grid%dz(ghosted_id) = structured_grid%dzg_local(k)
       enddo
     enddo
   enddo
@@ -548,19 +553,19 @@ subroutine StructuredGridComputeCoord(structured_grid,option,origin_global, &
 
 ! set min and max bounds of domain in coordinate directions
   ghosted_id = 0
-  if (structured_grid%kstart > 0) then
+  if (structured_grid%kstart > 0 .or. structured_grid%p_samr_patch /= 0) then
     z = -0.5d0*structured_grid%dzg_local(1)+structured_grid%origin(Z_DIRECTION)
   else
     z = 0.5d0*structured_grid%dzg_local(1)+structured_grid%origin(Z_DIRECTION)
   endif
   do k=1, structured_grid%ngz
-    if (structured_grid%jstart > 0) then
+    if (structured_grid%jstart > 0 .or. structured_grid%p_samr_patch /= 0) then
       y = -0.5d0*structured_grid%dyg_local(1)+structured_grid%origin(Y_DIRECTION)
     else
       y = 0.5d0*structured_grid%dyg_local(1)+structured_grid%origin(Y_DIRECTION)
     endif
     do j=1, structured_grid%ngy
-      if (structured_grid%istart > 0) then
+      if (structured_grid%istart > 0 .or. structured_grid%p_samr_patch /= 0) then
         x = -0.5d0*structured_grid%dxg_local(1)+structured_grid%origin(X_DIRECTION)
       else
         x = 0.5d0*structured_grid%dxg_local(1)+structured_grid%origin(X_DIRECTION)
@@ -1153,8 +1158,6 @@ subroutine StructuredGridMapIndices(structured_grid,nG2L,nL2G,nL2A,nG2A)
                    (k-1+structured_grid%nzs)*structured_grid%nxy
               if (natural_id>(structured_grid%nmax-1)) print *,'Wrong Nature order....'
               nL2A(local_id) = natural_id
-              !print *,grid%myrank, k,j,i,n,na
-              !grid%nG2N(ng) = na
            enddo
         enddo
      enddo
@@ -1168,8 +1171,6 @@ subroutine StructuredGridMapIndices(structured_grid,nG2L,nL2G,nL2A,nG2A)
                    (k-1+structured_grid%ngzs)*structured_grid%nxy
               if (natural_id>(structured_grid%nmax-1)) print *,'Wrong Nature order....'
               nG2A(local_id) = natural_id
-              !        print *,grid%myrank, k,j,i,n,na
-              !grid%nG2N(ng) = na
            enddo
         enddo
      enddo

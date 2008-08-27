@@ -28,7 +28,7 @@ module Grid_module
     PetscInt, pointer :: nL2G(:), nG2L(:), nL2A(:)
     PetscInt, pointer :: nG2A(:)
     
-    PetscReal, pointer :: x(:), y(:), z(:)
+    PetscReal, pointer :: x(:), y(:), z(:) ! coordinates of ghosted grid cells
     
     PetscReal :: x_min_global, x_max_global, y_min_global, y_max_global, z_min_global, z_max_global
     PetscReal :: x_min_local, x_max_local, y_min_local, y_max_local, z_min_local, z_max_local
