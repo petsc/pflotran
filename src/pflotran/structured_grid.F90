@@ -452,7 +452,7 @@ subroutine StructuredGridComputeSpacing(structured_grid,nG2A,nG2L)
   allocate(structured_grid%dzg_local(structured_grid%ngz))
   structured_grid%dzg_local = 0.d0
   
-  if (structured_grid%p_samr_patch == 0) then
+  if (structured_grid%p_samr_patch /= 0) then
     print *, 'Bobby, fix StructuredGridComputeSpacing() to account for local grid spacing'
     stop
   else 
