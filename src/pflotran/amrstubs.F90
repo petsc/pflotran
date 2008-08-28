@@ -31,6 +31,18 @@ PetscInt :: nxs, nys, nzs, nlx, nly, nlz
 
 end subroutine samr_patch_get_corners
 
+subroutine samr_patch_get_origin(p_patch, xs, ys, zs)
+implicit none
+
+#include "include/finclude/petsc.h"
+
+PetscFortranAddr, intent(inout) :: p_patch
+PetscReal, intent(inout) :: xs
+PetscReal, intent(inout) :: ys
+PetscReal, intent(inout) :: zs
+
+end subroutine samr_patch_get_origin
+
 subroutine samr_patch_get_ghostcorners(p_patch, nxs, nys, nzs, nlx, nly, nlz)
 implicit none
 

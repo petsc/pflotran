@@ -452,10 +452,7 @@ subroutine StructuredGridComputeSpacing(structured_grid,nG2A,nG2L)
   allocate(structured_grid%dzg_local(structured_grid%ngz))
   structured_grid%dzg_local = 0.d0
   
-  if (structured_grid%p_samr_patch /= 0) then
-    print *, 'Bobby, fix StructuredGridComputeSpacing() to account for local grid spacing'
-    stop
-  else 
+  if (structured_grid%p_samr_patch .eq. 0) then
     structured_grid%dxg_local(1:structured_grid%ngx) = &
       structured_grid%dx_global(structured_grid%ngxs+1:structured_grid%ngxe)
     structured_grid%dyg_local(1:structured_grid%ngy) = &
@@ -498,6 +495,17 @@ subroutine StructuredGridComputeCoord(structured_grid,option,origin_global, &
   use Option_module
   
   implicit none
+
+  interface
+     subroutine samr_patch_get_origin(p_patch, xs, ys, zs)
+       implicit none
+#include "include/finclude/petsc.h"
+       PetscFortranAddr, intent(inout) :: p_patch
+       PetscReal, intent(inout) :: xs
+       PetscReal, intent(inout) :: ys
+       PetscReal, intent(inout) :: zs
+     end subroutine samr_patch_get_origin
+  end interface
   
   type(structured_grid_type) :: structured_grid
   type(option_type) :: option
@@ -533,9 +541,10 @@ subroutine StructuredGridComputeCoord(structured_grid,option,origin_global, &
     y_max = y_min
     z_max = z_min
   else
-    x_min = structured_grid%origin(X_DIRECTION)
-    y_min = structured_grid%origin(Y_DIRECTION)
-    z_min = structured_grid%origin(Z_DIRECTION)
+    call samr_patch_get_origin(structured_grid%p_samr_patch, x_min, y_min, z_min)
+    structured_grid%origin(X_DIRECTION) = x_min
+    structured_grid%origin(Y_DIRECTION)=y_min
+    structured_grid%origin(Z_DIRECTION)=z_min
     x_max = x_min
     y_max = y_min
     z_max = z_min

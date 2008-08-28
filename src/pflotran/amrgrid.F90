@@ -250,15 +250,13 @@ subroutine AMRGridComputeGridSpacing(amrgrid)
            structured_grid =>amrgrid%gridlevel(ln+1)%grids(pn+1)%grid_ptr%structured_grid
            p_samr_patch = structured_grid%p_samr_patch
            call samr_patch_get_spacing(p_samr_patch, dx, dy, dz)
-#if 0
-! Bobby fix           
-           allocate(structured_grid%dx(structured_grid%nlmax))
-           structured_grid%dx = dx
-           allocate(structured_grid%dy(structured_grid%nlmax))
-           structured_grid%dy = dy
-           allocate(structured_grid%dz(structured_grid%nlmax))
-           structured_grid%dz = dz
-#endif           
+! for now we will assume that the SAMR grids will use constant grid spacing in each direction
+           allocate(structured_grid%dxg_local(structured_grid%ngx))
+           structured_grid%dxg_local = dx
+           allocate(structured_grid%dyg_local(structured_grid%ngy))
+           structured_grid%dyg_local = dy
+           allocate(structured_grid%dzg_local(structured_grid%ngz))
+           structured_grid%dzg_local = dz
            allocate(structured_grid%dx(structured_grid%ngmax))
            structured_grid%dx = dx
            allocate(structured_grid%dy(structured_grid%ngmax))

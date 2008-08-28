@@ -70,6 +70,8 @@ PflotranJacobianMultilevelOperator::PflotranJacobianMultilevelOperator(Multileve
       delete params;
    }
    
+   d_math_op = new math::HierarchyCCellDataOpsReal< NDIM, double >(d_hierarchy,
+                                                                   0, d_hierarchy->getFinestLevelNumber());
    initializeInternalVariableData();
 
    d_GlobalToLocalRefineSchedule.resizeArray(d_hierarchy->getNumberOfLevels());
@@ -78,8 +80,6 @@ PflotranJacobianMultilevelOperator::PflotranJacobianMultilevelOperator(Multileve
       d_GlobalToLocalRefineSchedule[ln].setNull();
    }
 
-   d_math_op = new math::HierarchyCCellDataOpsReal< NDIM, double >(d_hierarchy,
-                                                                   0, d_hierarchy->getFinestLevelNumber());
 }
 
 void
