@@ -532,23 +532,17 @@ subroutine StructuredGridComputeCoord(structured_grid,option,origin_global, &
     do k=1,structured_grid%nzs
       z_min = z_min + structured_grid%dz_global(k)
     enddo
-
-  ! set min and max bounds of domain in coordinate directions
-    structured_grid%origin(X_DIRECTION) = x_min
-    structured_grid%origin(Y_DIRECTION) = y_min
-    structured_grid%origin(Z_DIRECTION) = z_min
-    x_max = x_min
-    y_max = y_min
-    z_max = z_min
   else
     call samr_patch_get_origin(structured_grid%p_samr_patch, x_min, y_min, z_min)
-    structured_grid%origin(X_DIRECTION) = x_min
-    structured_grid%origin(Y_DIRECTION)=y_min
-    structured_grid%origin(Z_DIRECTION)=z_min
-    x_max = x_min
-    y_max = y_min
-    z_max = z_min
   endif
+  
+  ! set min and max bounds of domain in coordinate directions
+  structured_grid%origin(X_DIRECTION) = x_min
+  structured_grid%origin(Y_DIRECTION) = y_min
+  structured_grid%origin(Z_DIRECTION) = z_min
+  x_max = x_min
+  y_max = y_min
+  z_max = z_min
   
   do i=structured_grid%istart,structured_grid%iend
     x_max = x_max + structured_grid%dxg_local(i+1)

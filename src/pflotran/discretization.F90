@@ -189,8 +189,6 @@ subroutine DiscretizationRead(discretization,fid,option)
           str_grid%nmax = str_grid%nxy*str_grid%nz
           grid%structured_grid => str_grid
           grid%nmax = str_grid%nmax
-          grid%structured_grid%origin(X_DIRECTION:Z_DIRECTION) = &
-            discretization%origin(X_DIRECTION:Z_DIRECTION)
       end select
       discretization%grid => grid
       grid%itype = discretization%itype
