@@ -663,7 +663,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
                 case(MPH_MODE)
                   coupler%flow_aux_real_var(ONE_INTEGER,1:num_connections) = &
                     condition%pressure%dataset%cur_value(1)  ! <-- Chuan Fix
-                  coupler%flow_aux_real_var(TWO_INTEGER,1:num_connections) = &
+                   coupler%flow_aux_real_var(TWO_INTEGER,1:num_connections) = &
                     condition%temperature%dataset%cur_value(1)! <-- Chuan Fix
                   coupler%flow_aux_real_var(THREE_INTEGER,1:num_connections) = &
                     condition%concentration%dataset%cur_value(1)! <-- Chuan Fix
