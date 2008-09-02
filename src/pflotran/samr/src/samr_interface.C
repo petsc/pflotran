@@ -240,6 +240,15 @@ void create_samrai_vec_(SAMRAI::PflotranApplicationStrategy **application_strate
    (*application_strategy)->createVector(dof, use_ghost, vec);
 }
 
+void
+samrpetscobjectstateincrease_(Vec *vec)
+{
+#ifdef DEBUG_CHECK_ASSERTIONS
+   TBOX_ASSERT(!(vec == (Vec)NULL));
+#endif
+   int ierr = PetscObjectStateIncrease(reinterpret_cast<PetscObject>(*vec)); PETSC_SAMRAI_ERROR(ierr);
+}
+
 #ifdef __cplusplus
 }
 #endif
