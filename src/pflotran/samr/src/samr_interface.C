@@ -74,6 +74,18 @@ void samr_get_origin_(SAMRAI::PflotranApplicationStrategy **application_strategy
    (*z0) = xlo[2];
 }
 
+void samr_patch_get_origin_(SAMRAI::hier::Patch<NDIM> **patch,
+                            double *x0,
+                            double *y0,
+                            double *z0)
+{
+   SAMRAI::tbox::Pointer<SAMRAI::geom::CartesianPatchGeometry<NDIM> > patch_geometry = (*patch)->getPatchGeometry();
+   const double* xlo = patch_geometry->getXLower();
+   (*x0) = xlo[0];
+   (*y0) = xlo[1];
+   (*z0) = xlo[2];
+}
+
 void samr_patch_get_corners_(SAMRAI::hier::Patch<NDIM> **patch, 
                        int *nxs, int *nys, int *nzs,
                        int *nlx, int *nly, int *nlz)

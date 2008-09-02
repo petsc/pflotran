@@ -221,22 +221,18 @@ subroutine RealizationCreateDiscretization(realization)
     
       grid => discretization%grid
 
-      ! This should eventually be removed since origin needs to be read through DISCRETIZATION keyword.
-      if (discretization%itype == STRUCTURED_GRID) then
-        grid%structured_grid%origin(X_DIRECTION:Z_DIRECTION) = &
-          discretization%origin(X_DIRECTION:Z_DIRECTION)
-      endif
-            
       ! set up nG2L, NL2G, etc.
       call GridMapIndices(grid)
       call GridComputeSpacing(grid)
-      call GridComputeCoordinates(grid,option)
+      call GridComputeCoordinates(grid,discretization%origin,option)
       call GridComputeVolumes(grid,field%volume,option)
       ! set up internal connectivity, distance, etc.
       call GridComputeInternalConnect(grid,option)
 
     case(AMR_GRID)
-       call AMRGridComputeGeometryInformation(discretization%amrgrid, field, option)
+       call AMRGridComputeGeometryInformation(discretization%amrgrid, &
+                                              discretization%origin, &
+                                              field,option)
   end select      
 
 end subroutine RealizationCreateDiscretization

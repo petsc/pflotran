@@ -22,7 +22,7 @@ module Discretization_module
   type, public :: discretization_type
     PetscInt :: itype  ! type of discretization (e.g. structured, unstructured, etc.)
     character(len=MAXWORDLENGTH) :: ctype
-    PetscReal :: origin(3)
+    PetscReal :: origin(3) ! origin of global domain
     type(grid_type), pointer :: grid  ! pointer to a grid object
     type(amrgrid_type), pointer :: amrgrid  ! pointer to an amr grid object
     DM :: dm_1_dof, dm_nflowdof, dm_ntrandof
@@ -189,8 +189,6 @@ subroutine DiscretizationRead(discretization,fid,option)
           str_grid%nmax = str_grid%nxy*str_grid%nz
           grid%structured_grid => str_grid
           grid%nmax = str_grid%nmax
-          grid%structured_grid%origin(X_DIRECTION:Z_DIRECTION) = &
-            discretization%origin(X_DIRECTION:Z_DIRECTION)
       end select
       discretization%grid => grid
       grid%itype = discretization%itype

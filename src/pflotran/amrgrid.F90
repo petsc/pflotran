@@ -250,19 +250,19 @@ subroutine AMRGridComputeGridSpacing(amrgrid)
            structured_grid =>amrgrid%gridlevel(ln+1)%grids(pn+1)%grid_ptr%structured_grid
            p_samr_patch = structured_grid%p_samr_patch
            call samr_patch_get_spacing(p_samr_patch, dx, dy, dz)
-           allocate(structured_grid%dx(structured_grid%nlmax))
+! for now we will assume that the SAMR grids will use constant grid spacing in each direction
+           allocate(structured_grid%dxg_local(structured_grid%ngx))
+           structured_grid%dxg_local = dx
+           allocate(structured_grid%dyg_local(structured_grid%ngy))
+           structured_grid%dyg_local = dy
+           allocate(structured_grid%dzg_local(structured_grid%ngz))
+           structured_grid%dzg_local = dz
+           allocate(structured_grid%dx(structured_grid%ngmax))
            structured_grid%dx = dx
-           allocate(structured_grid%dy(structured_grid%nlmax))
+           allocate(structured_grid%dy(structured_grid%ngmax))
            structured_grid%dy = dy
-           allocate(structured_grid%dz(structured_grid%nlmax))
+           allocate(structured_grid%dz(structured_grid%ngmax))
            structured_grid%dz = dz
-           
-           allocate(structured_grid%dxg(structured_grid%ngmax))
-           structured_grid%dxg = dx
-           allocate(structured_grid%dyg(structured_grid%ngmax))
-           structured_grid%dyg = dy
-           allocate(structured_grid%dzg(structured_grid%ngmax))
-           structured_grid%dzg = dz
         endif
      end do
   end do
@@ -446,7 +446,8 @@ subroutine AMRGridCreateJacobian(dm_ptr,Jacobian,option)
 
 end subroutine AMRGridCreateJacobian
 
-subroutine AMRGridComputeGeometryInformation(amrgrid, field, option)
+subroutine AMRGridComputeGeometryInformation(amrgrid, origin_global, field, &
+                                             option)
   use Option_module
   use Field_module
   
@@ -466,6 +467,7 @@ subroutine AMRGridComputeGeometryInformation(amrgrid, field, option)
   type(amrgrid_type), pointer:: amrgrid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
+  PetscReal :: origin_global(3)
   
 #include "include/finclude/petsc.h"
   PetscFortranAddr :: p_application
@@ -489,7 +491,7 @@ subroutine AMRGridComputeGeometryInformation(amrgrid, field, option)
         if (associated(amrgrid%gridlevel(ln+1)%grids(pn+1)%grid_ptr)) then
            grid => amrgrid%gridlevel(ln+1)%grids(pn+1)%grid_ptr
            call GridMapIndices(grid)
-           call GridComputeCoordinates(grid,option)
+           call GridComputeCoordinates(grid,origin_global,option)
            call GridComputeVolumes(grid,field%volume,option)
            ! set up internal connectivity, distance, etc.
            call GridComputeInternalConnect(grid,option)
