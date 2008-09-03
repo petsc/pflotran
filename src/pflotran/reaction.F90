@@ -105,6 +105,7 @@ module Chemistry_module
     PetscReal, pointer :: primary_spec_a0(:)
     PetscReal, pointer :: primary_spec_Z(:)
     ! aqueous complexes
+    PetscInt :: neqcmplx
     PetscInt, pointer :: eqcmplxspecid(:,:)   ! (0:ncomp in rxn)
     PetscReal, pointer :: eqcmplxstoich(:,:)
     PetscReal, pointer :: eqcmplx_a0(:)
@@ -137,6 +138,7 @@ module Chemistry_module
     PetscReal, pointer :: mnrlstoich(:,:)
     PetscReal, pointer :: mnrl_K(:)
       ! for kinetic reactions
+    PetscInt :: nkinmnrl
     PetscInt, pointer :: kinmnrlspecid(:,:)
     PetscReal, pointer :: kinmnrlstoich(:,:)
     PetscReal, pointer :: kinmnrl_K(:)
@@ -152,9 +154,105 @@ module Chemistry_module
   public :: ChemistryCreate, &
             ChemistryRead, &
             GetPrimarySpeciesCount, &
-            GetPrimarySpeciesNames
+            GetPrimarySpeciesNames, &
+            CarbonateTestProblemCreate
 
 contains
+
+! ************************************************************************** !
+!
+! CarbonateTestProblemCreate: Creates a carbonate test problem for reactive
+!                             transport
+! author: Glenn Hammond
+! date: 08/28/08
+!
+! ************************************************************************** !
+function CarbonateTestProblemCreate(option)
+
+  use Option_module
+  
+  type(reaction_type), pointer :: CarbonateTestProblemCreate
+  type(option_type) :: option
+
+  type(reaction_type), pointer :: chemistry
+  PetscInt :: icomp, irxn
+  
+  chemistry => ChemistryCreate()
+
+  
+  ! Assumes primary components
+  ! 1 H+
+  ! 2 HCO3-
+  ! 3 Ca+2
+  
+  ! aqueous complexes
+  ! CO2(aq) (combined with H2CO3(aq)
+  ! CO3-2
+  ! CaCO3(aq)
+  
+  ! minerals
+  ! CaCO3(s)
+  
+  chemistry%neqcmplx = 3
+  allocate(chemistry%eqcmplxspecid(0:option%ncomp,chemistry%neqcmplx))
+  chemistry%eqcmplxspecid = 0
+  allocate(chemistry%eqcmplxstoich(option%ncomp,chemistry%neqcmplx))
+  chemistry%eqcmplxstoich = 0.d0
+  allocate(chemistry%eqcmplx_a0(chemistry%neqcmplx))
+  chemistry%eqcmplx_a0 = 0.d0
+  allocate(chemistry%eqcmplx_K(chemistry%neqcmplx))
+  chemistry%eqcmplx_K = 0.d0
+  
+  ! CO2(aq)
+  irxn = 1
+  chemistry%eqcmplxspecid(0,irxn) = 2
+  chemistry%eqcmplxspecid(1,irxn) = 1    ! H+
+  chemistry%eqcmplxspecid(2,irxn) = 2    ! HCO3-
+  chemistry%eqcmplxstoich(1,irxn) = 1.d0 ! H+
+  chemistry%eqcmplxstoich(2,irxn) = 1.d0 ! HCO3-
+  chemistry%eqcmplx_K(irxn) = -6.3447d0
+  
+  ! CO3-2
+  irxn = 2
+  chemistry%eqcmplxspecid(0,irxn) = 2
+  chemistry%eqcmplxspecid(1,irxn) = 1    ! H+
+  chemistry%eqcmplxspecid(2,irxn) = 2    ! HCO3-
+  chemistry%eqcmplxstoich(1,irxn) = -1.d0 ! H+
+  chemistry%eqcmplxstoich(2,irxn) = 1.d0 ! HCO3-
+  chemistry%eqcmplx_K(irxn) = 10.3288d0
+  
+  ! CaCO3(aq)
+  irxn = 3
+  chemistry%eqcmplxspecid(0,irxn) = 3
+  chemistry%eqcmplxspecid(1,irxn) = 1    ! H+
+  chemistry%eqcmplxspecid(2,irxn) = 2    ! HCO3-
+  chemistry%eqcmplxspecid(3,irxn) = 3    ! Ca+2
+  chemistry%eqcmplxstoich(1,irxn) = -1.d0 ! H+
+  chemistry%eqcmplxstoich(2,irxn) = 1.d0 ! HCO3-
+  chemistry%eqcmplxstoich(3,irxn) = 1.d0 ! Ca+2
+  chemistry%eqcmplx_K(irxn) = 7.0017d0
+
+  chemistry%nkinmnrl = 1
+  allocate(chemistry%kinmnrlspecid(0:option%ncomp,chemistry%nkinmnrl))
+  allocate(chemistry%kinmnrlstoich(option%ncomp,chemistry%nkinmnrl))
+  allocate(chemistry%kinmnrl_K(chemistry%nkinmnrl))
+  allocate(chemistry%kinmnrl_rate(chemistry%nkinmnrl))
+  
+  ! CaCO3(s)
+  irxn = 1
+  chemistry%kinmnrlspecid(0,irxn) = 3
+  chemistry%kinmnrlspecid(1,irxn) = 1    ! H+
+  chemistry%kinmnrlspecid(2,irxn) = 2    ! HCO3-
+  chemistry%kinmnrlspecid(3,irxn) = 3    ! Ca+2
+  chemistry%kinmnrlstoich(1,irxn) = -1.d0 ! H+
+  chemistry%kinmnrlstoich(2,irxn) = 1.d0 ! HCO3-
+  chemistry%kinmnrlstoich(3,irxn) = 1.d0 ! Ca+2
+  chemistry%kinmnrl_K(irxn) = 1.8487d0
+  chemistry%kinmnrl_rate(irxn) = 1.d-6
+  
+  CarbonateTestProblemCreate => chemistry
+     
+end function CarbonateTestProblemCreate
 
 ! ************************************************************************** !
 !
@@ -186,6 +284,7 @@ function ChemistryCreate()
   nullify(chemistry%primary_spec_a0)
   nullify(chemistry%primary_spec_Z)
   
+  chemistry%neqcmplx = 0
   nullify(chemistry%eqcmplxspecid)
   nullify(chemistry%eqcmplxstoich)
   nullify(chemistry%eqcmplx_a0)
@@ -214,11 +313,12 @@ function ChemistryCreate()
   nullify(chemistry%kinsurfcmplx_freesite_stoich)
   nullify(chemistry%kinsurfcmplx_K)
   nullify(chemistry%kinsurfcmplx_Z)
-  
+
   nullify(chemistry%mnrlspecid)
   nullify(chemistry%mnrlstoich)
   nullify(chemistry%mnrl_K)
   
+  chemistry%nkinmnrl = 0  
   nullify(chemistry%kinmnrlspecid)
   nullify(chemistry%kinmnrlstoich)
   nullify(chemistry%kinmnrl_K)

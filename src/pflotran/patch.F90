@@ -652,7 +652,8 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
       if (update) then
         if (associated(condition%pressure)) then
           select case(condition%pressure%itype)
-            case(DIRICHLET_BC,NEUMANN_BC,MASS_RATE_SS,ZERO_GRADIENT_BC)
+            case(DIRICHLET_BC,NEUMANN_BC,MASS_RATE_SS,ZERO_GRADIENT_BC, &
+                 VOLUMETRIC_RATE_SS)
 !              do idof = 1, condition%num_sub_conditions
 !                if (associated(condition%sub_condition_ptr(idof)%ptr)) then
 !                  coupler%flow_aux_real_var(idof,1:num_connections) = &

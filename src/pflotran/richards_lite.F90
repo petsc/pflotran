@@ -1325,17 +1325,15 @@ subroutine RichardsLiteResidualPatch(snes,xx,r,realization,ierr)
       if (associated(patch%imat)) then
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
-      
-      if (qsrc1 > 0.d0) then ! injection
-        tsrc1 = 25.d0
-        call wateos_noderiv(tsrc1,aux_vars(ghosted_id)%pres, &
-                            dw_kg,dw_mol,enth_src_h2o,option%scale,ierr)
-!           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
-!           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
-        r_p(local_id) = r_p(local_id) - qsrc1 *option%flow_dt
-      endif  
-  !  else if (qsrc1 < 0.d0) then ! withdrawal
-  !  endif
+
+      select case(source_sink%flow_condition%pressure%itype)
+        case(MASS_RATE_SS)
+          r_p(local_id) = r_p(local_id) - qsrc1*option%flow_dt
+        case(VOLUMETRIC_RATE_SS)  ! assume local density for now
+          r_p(local_id) = r_p(local_id) - qsrc1*aux_vars(ghosted_id)%den_kg* &
+                                          option%flow_dt
+      end select
+
     enddo
     source_sink => source_sink%next
   enddo
@@ -1725,24 +1723,15 @@ subroutine RichardsLiteJacobianPatch(snes,xx,A,B,flag,realization,ierr)
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
       
-!      if (enthalpy_flag) then
-!        r_p(local_id*option%nflowdof) = r_p(local_id*option%nflowdof) - hsrc1 * option%flow_dt   
-!      endif         
+      Jup = 0.d0
+      select case(source_sink%flow_condition%pressure%itype)
+        case(MASS_RATE_SS)
+        case(VOLUMETRIC_RATE_SS)  ! assume local density for now
+          Jup(1,1) = -qsrc1*aux_vars(ghosted_id)%dden_dp*aux_vars(ghosted_id)%avgmw* &
+                     option%flow_dt
 
-      if (qsrc1 > 0.d0) then ! injection
-        call wateos(tsrc1,aux_vars(ghosted_id)%pres,dw_kg,dw_mol,dw_dp,dw_dt, &
-              enth_src_h2o,hw_dp,hw_dt,option%scale,ierr)        
-!           units: dw_mol [mol/dm^3]; dw_kg [kg/m^3]
-!           qqsrc = qsrc1/dw_mol ! [kmol/s (mol/dm^3 = kmol/m^3)]
-        ! base on r_p() = r_p() - qsrc1*enth_src_h2o*option%flow_dt
-!        dresT_dp = -qsrc1*hw_dp*option%flow_dt
-        ! dresT_dt = -qsrc1*hw_dt*option%flow_dt ! since tsrc1 is prescribed, there is no derivative
-!        call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,dresT_dp,ADD_VALUES,ierr)
-        ! call MatSetValuesLocal(A,1,istart-1,1,istart-1,dresT_dt,ADD_VALUES,ierr)
-      endif  
-    
-  !  else if (qsrc1 < 0.d0) then ! withdrawal
-  !  endif
+      end select
+      call MatSetValuesLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)  
     enddo
     source_sink => source_sink%next
   enddo

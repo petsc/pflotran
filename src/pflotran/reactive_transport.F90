@@ -51,6 +51,7 @@ subroutine RTTimeCut(realization)
   field => realization%field
  
   call VecCopy(field%tran_xx,field%tran_yy,ierr)
+  call RTInitializeTimestep(realization)  
  
 end subroutine RTTimeCut
 
@@ -251,6 +252,7 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
+  type(reaction_type), pointer :: chemistry
   PetscReal, pointer :: xx_p(:), porosity_loc_p(:), saturation_loc_p(:), &
                         tor_loc_p(:), volume_p(:), accum_p(:), density_loc_p(:)
   PetscInt :: local_id, ghosted_id
@@ -262,6 +264,7 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
   patch => realization%patch
   aux_vars => patch%aux%RT%aux_vars
   grid => patch%grid
+  chemistry => realization%chemistry
 
   call VecGetArrayF90(field%tran_xx,xx_p, ierr)
   call VecGetArrayF90(field%porosity_loc,porosity_loc_p,ierr)
@@ -280,7 +283,7 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
     endif
     iend = local_id*option%ncomp
     istart = iend-option%ncomp+1
-    call RTAuxVarCompute(xx_p(istart:iend),aux_vars(ghosted_id),option)
+    call RTAuxVarCompute(xx_p(istart:iend),aux_vars(ghosted_id),chemistry,option)
     call RTAccumulation(aux_vars(ghosted_id),porosity_loc_p(ghosted_id), &
                         saturation_loc_p(ghosted_id), &
                         density_loc_p(ghosted_id), &
@@ -302,6 +305,29 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
 #endif
 
 end subroutine RTUpdateFixedAccumulationPatch
+
+! ************************************************************************** !
+!
+! RTAuxVarCompute: Computes secondary variables for each grid cell
+! author: Glenn Hammond
+! date: 08/28/08
+!
+! ************************************************************************** !
+subroutine RTAuxVarCompute(x,aux_var,chemistry,option)
+
+  use Option_module
+
+  implicit none
+  
+  type(option_type) :: option
+  PetscReal :: x(option%ncomp)  
+  type(reaction_type) :: chemistry  
+  type(reactive_transport_auxvar_type) :: aux_var
+
+  aux_var%primary_spec = x
+  call RTotal(aux_var,chemistry,option)
+  
+end subroutine RTAuxVarCompute
 
 ! ************************************************************************** !
 !
@@ -416,14 +442,19 @@ subroutine RTAccumulationDerivative(aux_var,por,sat,den,vol,option,J)
   type(option_type) :: option
   PetscReal :: J(option%ncomp,option%ncomp)
   
-  PetscInt :: icomp
+  PetscInt :: icomp, iphase
   PetscReal :: psdv_t
   
-  J = 0.d0
+  iphase = 1
   psdv_t = por*sat*den*vol/option%dt
-  do icomp=1,option%ncomp
-    J(icomp,icomp) = psdv_t
-  enddo
+  if (associated(aux_var%dtotal)) then
+    J = aux_var%dtotal(:,:,iphase)*psdv_t
+  else
+    J = 0.d0
+    do icomp=1,option%ncomp
+      J(icomp,icomp) = psdv_t
+    enddo
+  endif
 
 end subroutine RTAccumulationDerivative
 
@@ -555,6 +586,7 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
   PetscInt :: sum_connection, iconn
   PetscInt :: ghosted_id_up, ghosted_id_dn, local_id_up, local_id_dn
   PetscReal :: fraction_upwind, distance, dist_up, dist_dn
+  PetscReal :: qsrc
   
   option => realization%option
   field => realization%field
@@ -577,11 +609,9 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
   call VecGetArrayF90(field%tor_loc, tor_loc_p, ierr)
   call VecGetArrayF90(field%volume, volume_p, ierr)
 
-  r_p = 0.d0
+  r_p = -accum_p
 #if 1
   ! Accumulation terms ------------------------------------
-  r_p = - accum_p
-
   do local_id = 1, grid%nlmax  ! For each local node do...
     ghosted_id = grid%nL2G(local_id)
     !geh - Ignore inactive cells with inactive materials
@@ -614,14 +644,31 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
       
+      if (associated(source_sink%flow_condition) .and. &
+          associated(source_sink%flow_condition%pressure)) then
+        qsrc = source_sink%flow_condition%pressure%dataset%cur_value(1)
+      endif
+      
       do istart = 1, option%ncomp
-        Res(istart) = -1.d-6* &
-                      porosity_loc_p(ghosted_id)* &
-                      saturation_loc_p(ghosted_id)* &
-                      density_loc_p(ghosted_id)* &
-                      volume_p(local_id)* &
-                      (source_sink%tran_condition%sub_condition_ptr(istart)%ptr%dataset%cur_value(1)- &
-                       aux_vars(ghosted_id)%total(istart,iphase))
+        select case(source_sink%tran_condition%sub_condition_ptr(istart)%ptr%itype)
+          case(EQUILIBRIUM_SS)
+            Res(istart) = -1.d-6* &
+                          porosity_loc_p(ghosted_id)* &
+                          saturation_loc_p(ghosted_id)* &
+                          density_loc_p(ghosted_id)* &
+                          volume_p(local_id)* &
+                          (source_sink%tran_condition%sub_condition_ptr(istart)%ptr%dataset%cur_value(1)- &
+                           aux_vars(ghosted_id)%total(istart,iphase))
+          case(MASS_RATE_SS)
+            Res(istart) = -source_sink%tran_condition%sub_condition_ptr(istart)%ptr%dataset%cur_value(1)
+          case(CONCENTRATION_SS)
+            if (qsrc > 0) then ! injection
+              Res(istart) = -qsrc*source_sink%tran_condition%sub_condition_ptr(istart)%ptr%dataset%cur_value(1)
+            else ! extraction
+              Res(istart) = -qsrc*aux_vars(ghosted_id)%total(istart,iphase)
+            endif
+          case default
+        end select
       enddo
       iend = local_id*option%ncomp
       istart = iend-option%ncomp+1
@@ -843,6 +890,7 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   PetscInt :: sum_connection, iconn
   PetscInt :: ghosted_id_up, ghosted_id_dn, local_id_up, local_id_dn
   PetscReal :: fraction_upwind, distance, dist_up, dist_dn, rdum
+  PetscReal :: qsrc
   PetscViewer :: viewer
   
   option => realization%option
@@ -897,16 +945,28 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
       
+      if (associated(source_sink%flow_condition) .and. &
+          associated(source_sink%flow_condition%pressure)) then
+        qsrc = source_sink%flow_condition%pressure%dataset%cur_value(1)
+      endif
+      
       Jup = 0.d0
       do istart = 1, option%ncomp
-        Jup(istart,istart) = 1.d-6* &
-                             porosity_loc_p(ghosted_id)* &
-                             saturation_loc_p(ghosted_id)* &
-                             density_loc_p(ghosted_id)* &
-                             volume_p(local_id)
-!        Jup(istart,istart) = 1.d-1* &
-!                             1.d0/source_sink%tran_condition%concentration%dataset%cur_value(1)
-      enddo
+        select case(source_sink%tran_condition%sub_condition_ptr(istart)%ptr%itype)
+          case(EQUILIBRIUM_SS)
+            Jup(istart,istart) = 1.d-6* &
+                                 porosity_loc_p(ghosted_id)* &
+                                 saturation_loc_p(ghosted_id)* &
+                                 density_loc_p(ghosted_id)* &
+                                 volume_p(local_id)
+          case(MASS_RATE_SS)
+          case(CONCENTRATION_SS)
+            if (qsrc < 0) then ! extraction
+              Jup(istart,istart) = -qsrc
+            endif
+          case default
+        end select
+      enddo 
       call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)                        
     enddo
     source_sink => source_sink%next
@@ -1060,7 +1120,8 @@ subroutine RTUpdateAuxVars(realization)
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(grid_type), pointer :: grid
-  type(patch_type), pointer :: patch  
+  type(patch_type), pointer :: patch
+  type(reaction_type), pointer :: chemistry
   type(coupler_type), pointer :: boundary_condition
   type(connection_set_type), pointer :: cur_connection_set
 
@@ -1073,6 +1134,7 @@ subroutine RTUpdateAuxVars(realization)
   patch => realization%patch  
   grid => patch%grid
   field => realization%field
+  chemistry => realization%chemistry
   
   call VecGetArrayF90(field%tran_xx_loc,xx_loc_p, ierr)
 
@@ -1087,7 +1149,7 @@ subroutine RTUpdateAuxVars(realization)
    
     call RTAuxVarCompute(xx_loc_p(istart:iend), &
                          patch%aux%RT%aux_vars(ghosted_id), &
-                         option)
+                         chemistry,option)
   enddo
 
   boundary_condition => patch%boundary_conditions%first
@@ -1114,7 +1176,7 @@ subroutine RTUpdateAuxVars(realization)
       
       call RTAuxVarCompute(xxbc, &
                            patch%aux%RT%aux_vars_bc(sum_connection), &
-                           option)
+                           chemistry,option)
     enddo
     boundary_condition => boundary_condition%next
   enddo
@@ -1387,5 +1449,68 @@ function RTGetTecplotHeader(realization)
   RTGetTecplotHeader = string
 
 end function RTGetTecplotHeader
+
+! ************************************************************************** !
+!
+! RTotal: Computes the total component concentrations and derivative with
+!         respect to free-ion
+! author: Glenn Hammond
+! date: 08/28/08
+!
+! ************************************************************************** !
+subroutine RTotal(auxvar,chemistry,option)
+
+  use Option_module
+  
+  type(reactive_transport_auxvar_type) :: auxvar
+  type(reaction_type) :: chemistry
+  type(option_type) :: option
+  
+  PetscInt :: i, j, icplx, icomp, jcomp, iphase, ncomp
+  PetscReal :: log_conc(option%ncomp)
+  PetscReal :: lnQK, tempreal
+  PetscReal, parameter :: log_to_ln = 2.30258509299d0
+
+  iphase = 1                         
+
+  log_conc = log(auxvar%primary_spec)
+  auxvar%total(:,iphase) = auxvar%primary_spec
+  ! initialize derivatives
+  auxvar%dtotal = 0.d0
+  do icomp = 1, option%ncomp
+    auxvar%dtotal(icomp,icomp,iphase) = 1.d0
+  enddo
+  
+  do icplx = 1, chemistry%neqcmplx ! for each secondary species
+    ! compute secondary species concentration
+    lnQK = chemistry%eqcmplx_K(icplx)*log_to_ln
+    ncomp = chemistry%eqcmplxspecid(0,icplx)
+    do i = 1, ncomp
+      icomp = chemistry%eqcmplxspecid(i,icplx)
+      lnQK = lnQK + chemistry%eqcmplxstoich(i,icplx)*log_conc(icomp)
+    enddo
+    auxvar%secondary_spec(icplx) = exp(lnQK)
+  
+    ! add contribution to primary totals
+    do i = 1, ncomp
+      icomp = chemistry%eqcmplxspecid(i,icplx)
+      auxvar%total(icomp,iphase) = auxvar%total(icomp,iphase) + &
+                                   chemistry%eqcmplxstoich(i,icplx)* &
+                                   auxvar%secondary_spec(icplx)
+    enddo
+    
+    ! add contribution to derivatives of total with respect to free
+    do j = 1, ncomp
+      jcomp = chemistry%eqcmplxspecid(j,icplx)
+      tempreal = chemistry%eqcmplxstoich(j,icplx)*exp(lnQK-log_conc(jcomp))
+      do i = 1, ncomp
+        icomp = chemistry%eqcmplxspecid(i,icplx)
+        auxvar%dtotal(icomp,jcomp,iphase) = auxvar%dtotal(icomp,jcomp,iphase) + &
+                                     chemistry%eqcmplxstoich(i,icplx)*tempreal
+      enddo
+    enddo
+  enddo
+  
+end subroutine RTotal
 
 end module Reactive_Transport_module
