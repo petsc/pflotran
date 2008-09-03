@@ -35,7 +35,7 @@ module Reactive_Transport_Aux_module
   end type reactive_transport_type
 
   public :: RTAuxCreate, RTAuxDestroy, &
-            RTAuxVarCompute, RTAuxVarInit
+            RTAuxVarInit
 
 contains
 
@@ -96,29 +96,6 @@ subroutine RTAuxVarInit(aux_var,option)
   aux_var%secondary_spec = 0.d0
   
 end subroutine RTAuxVarInit
-
-! ************************************************************************** !
-!
-! RTAuxVarCompute: Computes secondary variables for each grid cell
-! author: Glenn Hammond
-! date: 02/14/08
-!
-! ************************************************************************** !
-subroutine RTAuxVarCompute(x,aux_var,option)
-
-  use Option_module
-
-  implicit none
-  
-  type(option_type) :: option
-  PetscReal :: x(option%ncomp)  
-  type(reactive_transport_auxvar_type) :: aux_var
-
-  ! update totals  
-  aux_var%total(1:option%ncomp,1) = x(1:option%ncomp)
-  ! add in other later
-  
-end subroutine RTAuxVarCompute
 
 ! ************************************************************************** !
 !
