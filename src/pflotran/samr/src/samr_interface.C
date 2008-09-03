@@ -126,7 +126,10 @@ void samr_vecgetarrayf90_(SAMRAI::hier::Patch<NDIM> **patch,
 {
    SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM, double > > sVec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM, double>::getSAMRAIVector(*petscVec);
    SAMRAI::tbox::Pointer< SAMRAI::pdat::CCellData<NDIM, double> > pData = sVec->getComponentPatchData(0, *(*patch));
+   int depth = pData->getDepth();
+
    int len = pData->getGhostBox().size();
+   len = len*depth;
 
    void *p_data_ptr = pData->getPointer(0);
 

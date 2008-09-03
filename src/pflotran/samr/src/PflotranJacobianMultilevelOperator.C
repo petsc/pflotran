@@ -557,10 +557,10 @@ PflotranJacobianMultilevelOperator::MatSetValuesBlockedLocal(Mat mat,
 
       PflotranJacobianLevelOperator *levelMatrix = dynamic_cast<PflotranJacobianLevelOperator *>(pMatrix->getLevelOperator(ln));
       
-      levelMatrix->MatSetValuesLocal(patchNumber,
-                                     nrow, irow,
-                                     ncol, icol,
-                                     y, addv);
+      levelMatrix->MatSetValuesBlockedLocal(patchNumber,
+                                            nrow, irow,
+                                            ncol, icol,
+                                            y, addv);
       
    }
    return (0);

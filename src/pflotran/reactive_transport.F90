@@ -475,6 +475,16 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
   use Option_module
 
   implicit none
+  interface
+     subroutine samrpetscobjectstateincrease(vec)
+       implicit none
+#include "include/finclude/petsc.h"
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
+       Vec :: vec
+     end subroutine samrpetscobjectstateincrease
+     
+  end interface
 
   SNES :: snes
   Vec :: xx
@@ -506,6 +516,9 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
     cur_level => cur_level%next
   enddo
 
+  if(discretization%itype==AMR_GRID) then
+     call samrpetscobjectstateincrease(r)
+  endif
 end subroutine RTResidual
 
 ! ************************************************************************** !
