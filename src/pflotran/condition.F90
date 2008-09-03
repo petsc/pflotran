@@ -557,6 +557,12 @@ subroutine ConditionRead(condition,option,fid)
               sub_condition_ptr%itype = ZERO_GRADIENT_BC
             case('seepage')
               sub_condition_ptr%itype = SEEPAGE_BC
+            case('volume','volumetric','volumetric_rate')
+              sub_condition_ptr%itype = VOLUMETRIC_RATE_SS
+            case('concentration')
+              sub_condition_ptr%itype = CONCENTRATION_SS
+            case('equilibrium')
+              sub_condition_ptr%itype = EQUILIBRIUM_SS
             case default
               string = 'bc type "' // trim(word) // '" not recognized in condition,type'
               call printErrMsg(option,string)
