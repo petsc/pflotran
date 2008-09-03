@@ -62,6 +62,7 @@ PetscInt, parameter :: AMR_GRID = 3
 
 ! condition types
 PetscInt, parameter :: DIRICHLET_BC = 1
+PetscInt, parameter :: PRODUCTION_WELL = -1
 PetscInt, parameter :: NEUMANN_BC = 2
 PetscInt, parameter :: ZERO_GRADIENT_BC = 3
 PetscInt, parameter :: HYDROSTATIC_BC = 4

@@ -555,6 +555,8 @@ subroutine ConditionRead(condition,option,fid)
               sub_condition_ptr%itype = HYDROSTATIC_BC
             case('zero_gradient')
               sub_condition_ptr%itype = ZERO_GRADIENT_BC
+            case('prod','production_well')
+              sub_condition_ptr%itype = PRODUCTION_WELL
             case('seepage')
               sub_condition_ptr%itype = SEEPAGE_BC
             case('volume','volumetric','volumetric_rate')

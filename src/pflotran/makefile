@@ -145,8 +145,7 @@ pflotranamr_obj = ${common_src}option.o \
 	${common_src}timestepper.o \
 	${common_src}simulation.o \
 	${common_src}output.o \
-	${common_src}init.o\
-	${common_src}amrstubs.o
+	${common_src}init.o
 
 pflotranamr: $(util_obj) $(pflotranamr_obj)
 	ar ru libpflotranamr.a $(util_obj) $(pflotranamr_obj)
