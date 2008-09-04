@@ -148,12 +148,13 @@ subroutine PatchAddToList(new_patch,patch_list)
   type(patch_type), pointer :: new_patch
   type(patch_list_type) :: patch_list
   
-  patch_list%num_patch_objects = patch_list%num_patch_objects + 1
-  new_patch%id = patch_list%num_patch_objects
-  if (.not.associated(patch_list%first)) patch_list%first => new_patch
-  if (associated(patch_list%last)) patch_list%last%next => new_patch
-  patch_list%last => new_patch
-  
+  if(associated(new_patch)) then
+     patch_list%num_patch_objects = patch_list%num_patch_objects + 1
+     new_patch%id = patch_list%num_patch_objects
+     if (.not.associated(patch_list%first)) patch_list%first => new_patch
+     if (associated(patch_list%last)) patch_list%last%next => new_patch
+     patch_list%last => new_patch
+  end if
 end subroutine PatchAddToList
 
 ! ************************************************************************** !

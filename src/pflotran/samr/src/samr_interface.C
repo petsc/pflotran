@@ -219,7 +219,7 @@ void samrlocaltolocal_(SAMRAI::PflotranApplicationStrategy **application_strateg
 
    SAMRAI::tbox::Pointer< SAMRAI::solv::SAMRAIVectorReal<NDIM, double > > dstVec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM, double>::getSAMRAIVector(*dvec);
 
-   (*application_strategy)->interpolateGlobalToLocalVector(srcVec, dstVec, *ierr);
+   (*application_strategy)->interpolateLocalToLocalVector(srcVec, dstVec, *ierr);
    
 }
 
@@ -250,6 +250,38 @@ samrpetscobjectstateincrease_(Vec *vec)
    TBOX_ASSERT(!(vec == (Vec)NULL));
 #endif
    int ierr = PetscObjectStateIncrease(reinterpret_cast<PetscObject>(*vec)); PETSC_SAMRAI_ERROR(ierr);
+}
+
+void
+samr_mpi_min_(double *x, double *y, double *z)
+{
+   double vals[3];
+
+   vals[0] = *x;
+   vals[1] = *y;
+   vals[2] = *z;
+
+   SAMRAI::tbox::SAMRAI_MPI::minReduction(vals);
+
+   *x = vals[0];
+   *y = vals[1];
+   *z = vals[2];
+}
+
+void
+samr_mpi_max_(double *x, double *y, double *z)
+{
+   double vals[3];
+
+   vals[0] = *x;
+   vals[1] = *y;
+   vals[2] = *z;
+
+   SAMRAI::tbox::SAMRAI_MPI::maxReduction(vals);
+
+   *x = vals[0];
+   *y = vals[1];
+   *z = vals[2];
 }
 
 #ifdef __cplusplus

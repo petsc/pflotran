@@ -33,6 +33,8 @@ module AMR_Grid_module
 
   PetscFortranAddr p_application ! pointer to the SAMRAI hierarchy
 
+  PetscInt :: nlevels
+
   end type amrgrid_type
 
   public:: AMRGridCreate, &
@@ -138,10 +140,13 @@ function AMRGridCreateLevelPatchLists(amrgrid)
         if(islocal) then
            patch => PatchCreate()
            patch%grid => amrgrid%gridlevel(ln+1)%grids(pn+1)%grid_ptr
+           call PatchAddToList(patch,level%patch_list)
+! this has to be called after the call to PatchAddToList since that routine
+! sets the patch id according to the size of the list
+           patch%id = pn
         else
            nullify(patch)
         endif
-        call PatchAddToList(patch,level%patch_list)
      end do
   end do
 
@@ -506,15 +511,50 @@ subroutine AMRGridReadDXYZ(amrgrid, option)
 
   implicit none
 
+  interface
+     integer function hierarchy_number_levels(p_hierarchy)
+        PetscFortranAddr, intent(inout) :: p_hierarchy
+     end function hierarchy_number_levels
+   
+     integer function level_number_patches(p_hierarchy, ln)
+       PetscFortranAddr, intent(inout) :: p_hierarchy
+       integer, intent(in) :: ln
+     end function level_number_patches
+ 
+     logical function is_local_patch(p_hierarchy, ln, pn)
+       PetscFortranAddr, intent(inout) :: p_hierarchy
+       integer, intent(in) :: ln
+       integer, intent(in) :: pn
+     end function is_local_patch
+  end interface
+
   type(amrgrid_type), pointer:: amrgrid
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
 
-  ! get a pointer to the first grid
+#include "include/finclude/petsc.h"
+  PetscFortranAddr :: p_application
+  integer :: nlevels
+  integer :: npatches
+  integer :: ln
+  integer :: pn
+  logical :: islocal
+
+  p_application = amrgrid%p_application
+
   ! note that this will need to be modified for parallel processing
-  grid => amrgrid%gridlevel(1)%grids(1)%grid_ptr
-  ! for the first cut we only read in the coarsest level
-  call StructuredGridReadDXYZ(grid%structured_grid,option)
+  
+  nlevels =  hierarchy_number_levels(p_application)
+  do ln=0,nlevels-1
+     npatches = level_number_patches(p_application, ln )
+     do pn=0,npatches-1
+        islocal = is_local_patch(p_application, ln, pn);
+        if(islocal) then
+           grid => amrgrid%gridlevel(ln+1)%grids(pn+1)%grid_ptr
+           call StructuredGridReadDXYZ(grid%structured_grid,option)
+        endif
+     end do
+  end do
 
 end subroutine AMRGridReadDXYZ
 
