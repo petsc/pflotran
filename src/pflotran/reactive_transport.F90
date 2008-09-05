@@ -1730,7 +1730,7 @@ subroutine RKineticMineral(Res,Jac,auxvar,chemistry,option)
       tempreal = chemistry%kinmnrlstoich(j,imnrl)*exp(lnQK-ln_conc(jcomp))
       do i = 1, ncomp
         icomp = chemistry%kinmnrlspecid(i,imnrl)
-        Jac(icomp,jcomp) = Jac(icomp,jcomp) + -1.d0*Im_const* &
+        Jac(icomp,jcomp) = Jac(icomp,jcomp) - Im_const* &
                                           Tempkin_const*QK**(Tempkin_const-1.d0)* &
                                           tempreal
       enddo
