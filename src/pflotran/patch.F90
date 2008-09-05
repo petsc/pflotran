@@ -57,7 +57,8 @@ module Patch_module
   public :: PatchCreate, PatchDestroy, PatchCreateList, PatchDestroyList, &
             PatchAddToList, PatchConvertListToArray, PatchProcessCouplers, &
             PatchUpdateAllCouplerAuxVars, PatchInitAllCouplerAuxVars, &
-            PatchLocalizeRegions, PatchAssignUniformVelocity
+            PatchLocalizeRegions, PatchAssignUniformVelocity, &
+            PatchBridgeFlowAndTransport
 
 contains
 
@@ -726,6 +727,45 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
   enddo
 
 end subroutine PatchUpdateCouplerAuxVars
+
+! ************************************************************************** !
+!
+! PatchBridgeFlowAndTransport: Maps auxilliary data (e.g. density) from flow
+!                              to transport
+! author: Glenn Hammond
+! date: 09/03/08
+!
+! ************************************************************************** !
+subroutine PatchBridgeFlowAndTransport(patch,option)
+
+  type(patch_type), pointer :: patch
+  type(option_type), pointer :: option
+
+  PetscInt :: iaux, iphase
+
+  ! loop over all bc aux vars
+  select case(option%iflowmode)
+    case(RICHARDS_LITE_MODE)
+      do iaux = 1, patch%aux%RT%num_aux
+        patch%aux%RT%aux_vars(iaux)%den(1) = &
+          patch%aux%RichardsLite%aux_vars(iaux)%den_kg
+        patch%aux%RT%aux_vars(iaux)%sat = &
+          patch%aux%RichardsLite%aux_vars(iaux)%sat
+      enddo
+      do iaux = 1, patch%aux%RT%num_aux_bc
+        patch%aux%RT%aux_vars_bc(iaux)%den(1) = &
+          patch%aux%RichardsLite%aux_vars_bc(iaux)%den_kg
+        patch%aux%RT%aux_vars_bc(iaux)%sat = &
+          patch%aux%RichardsLite%aux_vars_bc(iaux)%sat
+      enddo
+    case(RICHARDS_MODE,MPH_MODE)
+      if (option%myrank == 0) then
+        print *, 'Bridge of flow and transport densities needs to be implemented.  Ask Glenn'
+        stop
+      endif
+  end select
+
+end subroutine PatchBridgeFlowAndTransport
 
 ! ************************************************************************** !
 !

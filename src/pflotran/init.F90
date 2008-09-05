@@ -517,6 +517,8 @@ subroutine readRequiredCardsFromInput(realization,filename)
     option%ntrandof = GetPrimarySpeciesCount(realization%chemistry)
     option%comp_names => GetPrimarySpeciesNames(realization%chemistry)
     option%ncomp = option%ntrandof
+    option%ncmplx = GetSecondarySpeciesCount(realization%chemistry)
+    option%nmnrl = GetMineralCount(realization%chemistry)
   endif
 
 !.........................................................................

@@ -137,6 +137,7 @@ module Chemistry_module
     PetscInt, pointer :: mnrlspecid(:,:)
     PetscReal, pointer :: mnrlstoich(:,:)
     PetscReal, pointer :: mnrl_K(:)
+    PetscReal, pointer :: mnrl_molar_vol(:)
       ! for kinetic reactions
     PetscInt :: nkinmnrl
     PetscInt, pointer :: kinmnrlspecid(:,:)
@@ -155,6 +156,10 @@ module Chemistry_module
             ChemistryRead, &
             GetPrimarySpeciesCount, &
             GetPrimarySpeciesNames, &
+            GetSecondarySpeciesCount, &
+            GetSecondarySpeciesNames, &
+            GetMineralCount, &
+            GetMineralNames, &
             CarbonateTestProblemCreate
 
 contains
@@ -193,7 +198,7 @@ function CarbonateTestProblemCreate(option)
   ! minerals
   ! CaCO3(s)
   
-  chemistry%neqcmplx = 3
+  chemistry%neqcmplx = 5
   allocate(chemistry%eqcmplxspecid(0:option%ncomp,chemistry%neqcmplx))
   chemistry%eqcmplxspecid = 0
   allocate(chemistry%eqcmplxstoich(option%ncomp,chemistry%neqcmplx))
@@ -232,11 +237,28 @@ function CarbonateTestProblemCreate(option)
   chemistry%eqcmplxstoich(3,irxn) = 1.d0 ! Ca+2
   chemistry%eqcmplx_K(irxn) = 7.0017d0
 
+  ! CaHCO3-
+  irxn = 4
+  chemistry%eqcmplxspecid(0,irxn) = 2
+  chemistry%eqcmplxspecid(1,irxn) = 2    ! HCO3-
+  chemistry%eqcmplxspecid(2,irxn) = 3    ! Ca+2
+  chemistry%eqcmplxstoich(1,irxn) = 1.d0 ! HCO3-
+  chemistry%eqcmplxstoich(2,irxn) = 1.d0 ! Ca+2
+  chemistry%eqcmplx_K(irxn) = -1.0467d0
+
+  ! OH-
+  irxn = 5
+  chemistry%eqcmplxspecid(0,irxn) = 1
+  chemistry%eqcmplxspecid(1,irxn) = 1    ! H+
+  chemistry%eqcmplxstoich(1,irxn) = -1.d0 ! H+
+  chemistry%eqcmplx_K(irxn) = 13.9951
+  
   chemistry%nkinmnrl = 1
   allocate(chemistry%kinmnrlspecid(0:option%ncomp,chemistry%nkinmnrl))
   allocate(chemistry%kinmnrlstoich(option%ncomp,chemistry%nkinmnrl))
   allocate(chemistry%kinmnrl_K(chemistry%nkinmnrl))
   allocate(chemistry%kinmnrl_rate(chemistry%nkinmnrl))
+  allocate(chemistry%mnrl_molar_vol(chemistry%nkinmnrl))
   
   ! CaCO3(s)
   irxn = 1
@@ -249,6 +271,7 @@ function CarbonateTestProblemCreate(option)
   chemistry%kinmnrlstoich(3,irxn) = 1.d0 ! Ca+2
   chemistry%kinmnrl_K(irxn) = 1.8487d0
   chemistry%kinmnrl_rate(irxn) = 1.d-6
+  chemistry%mnrl_molar_vol(irxn) = 36.9340d0/1.d6  ! based on 36.934 cm^3/mol
   
   CarbonateTestProblemCreate => chemistry
      
@@ -317,6 +340,7 @@ function ChemistryCreate()
   nullify(chemistry%mnrlspecid)
   nullify(chemistry%mnrlstoich)
   nullify(chemistry%mnrl_K)
+  nullify(chemistry%mnrl_molar_vol)
   
   chemistry%nkinmnrl = 0  
   nullify(chemistry%kinmnrlspecid)
@@ -482,6 +506,126 @@ end function GetPrimarySpeciesCount
 
 ! ************************************************************************** !
 !
+! GetSecondarySpeciesNames: Returns the names of secondary species in an array
+! author: Glenn Hammond
+! date: 06/02/08
+!
+! ************************************************************************** !
+function GetSecondarySpeciesNames(chemistry)
+
+  implicit none
+  
+  character(len=MAXWORDLENGTH), pointer :: GetSecondarySpeciesNames(:)
+  type(reaction_type) :: chemistry
+
+  PetscInt :: count
+  character(len=MAXWORDLENGTH), pointer :: names(:)
+  type(aq_species_type), pointer :: species
+
+  count = GetSecondarySpeciesCount(chemistry)
+  allocate(names(count))
+  
+  count = 1
+  species => chemistry%secondary_species_list
+  do
+    if (.not.associated(species)) exit
+    names(count) = species%spec_name
+    count = count + 1
+    species => species%next
+  enddo
+
+  GetSecondarySpeciesNames => names
+  
+end function GetSecondarySpeciesNames
+
+! ************************************************************************** !
+!
+! GetSecondarySpeciesCount: Returns the number of secondary species
+! author: Glenn Hammond
+! date: 06/02/08
+!
+! ************************************************************************** !
+function GetSecondarySpeciesCount(chemistry)
+
+  implicit none
+  
+  integer :: GetSecondarySpeciesCount
+  type(reaction_type) :: chemistry
+
+  type(aq_species_type), pointer :: species
+
+  GetSecondarySpeciesCount = 0
+  species => chemistry%secondary_species_list
+  do
+    if (.not.associated(species)) exit
+    GetSecondarySpeciesCount = GetSecondarySpeciesCount + 1
+    species => species%next
+  enddo
+
+end function GetSecondarySpeciesCount
+
+! ************************************************************************** !
+!
+! GetMineralNames: Returns the names of minerals in an array
+! author: Glenn Hammond
+! date: 09/04/08
+!
+! ************************************************************************** !
+function GetMineralNames(chemistry)
+
+  implicit none
+  
+  character(len=MAXWORDLENGTH), pointer :: GetMineralNames(:)
+  type(reaction_type) :: chemistry
+
+  PetscInt :: count
+  character(len=MAXWORDLENGTH), pointer :: names(:)
+  type(mineral_type), pointer :: mineral
+
+  count = GetMineralCount(chemistry)
+  allocate(names(count))
+  
+  count = 1
+  mineral => chemistry%mineral_list
+  do
+    if (.not.associated(mineral)) exit
+    names(count) = mineral%mnrl_name
+    count = count + 1
+    mineral => mineral%next
+  enddo
+
+  GetMineralNames => names
+  
+end function GetMineralNames
+
+! ************************************************************************** !
+!
+! GetMineralCount: Returns the number of primary species
+! author: Glenn Hammond
+! date: 06/02/08
+!
+! ************************************************************************** !
+function GetMineralCount(chemistry)
+
+  implicit none
+  
+  integer :: GetMineralCount
+  type(reaction_type) :: chemistry
+
+  type(mineral_type), pointer :: mineral
+
+  GetMineralCount = 0
+  mineral => chemistry%mineral_list
+  do
+    if (.not.associated(mineral)) exit
+    GetMineralCount = GetMineralCount + 1
+    mineral => mineral%next
+  enddo
+
+end function GetMineralCount
+
+! ************************************************************************** !
+!
 ! ChemistryRead: Reads chemical species
 ! author: Glenn Hammond
 ! date: 05/02/08
@@ -544,7 +688,7 @@ subroutine ChemistryRead(chemistry,fid,option)
           species => AqueousSpeciesCreate()
           call fiReadWord(string,species%spec_name,.true.,ierr)  
           call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,PRIMARY_SPECIES', ierr)    
-          if (.not.associated(chemistry%primary_species_list)) &
+          if (.not.associated(chemistry%secondary_species_list)) &
             chemistry%secondary_species_list => species
           if (associated(prev_species)) prev_species%next => species
           prev_species => species
@@ -583,7 +727,9 @@ subroutine ChemistryRead(chemistry,fid,option)
           nullify(mineral)
         enddo
       case('END')
-        exit        
+        exit
+      case('RUN_CARBONATE')
+        ! skip        
       case default
         call printErrMsg(option,'CHEMISTRY keyword: '//trim(word)//' not recognized')
     end select
@@ -915,6 +1061,8 @@ subroutine ChemistryDestroy(chemistry)
   nullify(chemistry%mnrlstoich)
   if (associated(chemistry%mnrl_K)) deallocate(chemistry%mnrl_K)
   nullify(chemistry%mnrl_K)
+  if (associated(chemistry%mnrl_molar_vol)) deallocate(chemistry%mnrl_molar_vol)
+  nullify(chemistry%mnrl_molar_vol)
   
   if (associated(chemistry%kinmnrlspecid)) deallocate(chemistry%kinmnrlspecid)
   nullify(chemistry%kinmnrlspecid)

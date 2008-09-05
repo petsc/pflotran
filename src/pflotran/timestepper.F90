@@ -801,6 +801,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
 
     end select
     call VecDestroy(global_vec,ierr)
+    call RealizBridgeFlowAndTransport(realization)
   endif
 
 ! print screen output

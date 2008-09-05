@@ -57,7 +57,7 @@ private
             RealizationAddCoupler, RealizationAddStrata, &
             RealizationAddBreakthrough, RealizAssignInitialConditions, &
             RealizAssignUniformVelocity, RealizAssignTransportInitCond, &
-            RealizationRevertFlowParameters
+            RealizationRevertFlowParameters, RealizBridgeFlowAndTransport
   
 contains
   
@@ -785,6 +785,38 @@ subroutine RealizAssignTransportInitCond(realization)
   enddo
    
 end subroutine RealizAssignTransportInitCond
+
+! ************************************************************************** !
+!
+! RealizBridgeFlowAndTransport: Maps auxilliary data (e.g. density) from flow
+!                               to transport
+! author: Glenn Hammond
+! date: 09/03/08
+!
+! ************************************************************************** !
+subroutine RealizBridgeFlowAndTransport(realization)
+  
+  type(realization_type) :: realization
+  
+  type(option_type), pointer :: option
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+
+  option => realization%option
+
+  cur_level => realization%level_list%first
+  do 
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      call PatchBridgeFlowAndTransport(cur_patch,option)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+end subroutine RealizBridgeFlowAndTransport
 
 ! ************************************************************************** !
 !

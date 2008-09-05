@@ -215,16 +215,82 @@ subroutine RTUpdateSolution(realization)
 
   use Realization_module
   use Field_module
+  use Level_module
+  use Patch_module
   
   implicit none
   
   type(realization_type) :: realization
 
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
   PetscErrorCode :: ierr
   
   call VecCopy(realization%field%tran_xx,realization%field%tran_yy,ierr)
+  
+  ! update mineral volume fractions
+  
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call RTSetupPatch(realization)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+  
+  
 
 end subroutine RTUpdateSolution
+
+! ************************************************************************** !
+!
+! RTUpdateSolutionPatch: 
+! author: Glenn Hammond
+! date: 09/04/08
+!
+! ************************************************************************** !
+subroutine RTUpdateSolutionPatch(realization)
+
+  use Realization_module
+  use Patch_module
+  use Option_module
+  use Grid_module
+  use Chemistry_module
+ 
+  implicit none
+
+  type(realization_type) :: realization
+  
+  type(patch_type), pointer :: patch
+  type(option_type), pointer :: option
+  type(reaction_type), pointer :: chemistry
+  type(grid_type), pointer :: grid
+  type(reactive_transport_auxvar_type), pointer :: aux_vars(:)  
+
+  PetscInt :: ghosted_id, imnrl
+  
+  option => realization%option
+  patch => realization%patch
+  chemistry => realization%chemistry
+  grid => patch%grid
+
+  aux_vars => patch%aux%RT%aux_vars
+
+  do ghosted_id = 1, grid%ngmax
+    do imnrl = 1, option%nmnrl
+      aux_vars(ghosted_id)%mnrl_volfrac(imnrl) = aux_vars(ghosted_id)%mnrl_volfrac(imnrl) + &
+                                                 aux_vars(ghosted_id)%mnrl_rate(imnrl)* &
+                                                 chemistry%mnrl_molar_vol(imnrl)* &
+                                                 option%dt
+    enddo
+  enddo
+  
+end subroutine RTUpdateSolutionPatch
 
 ! ************************************************************************** !
 !
@@ -576,6 +642,7 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch
+  type(reaction_type), pointer :: chemistry
   type(reactive_transport_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
   PetscReal :: Res(realization%option%ncomp)
   PetscViewer :: viewer
@@ -587,10 +654,12 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
   PetscInt :: ghosted_id_up, ghosted_id_dn, local_id_up, local_id_dn
   PetscReal :: fraction_upwind, distance, dist_up, dist_dn
   PetscReal :: qsrc
+  PetscReal :: Jup(realization%option%ncomp,realization%option%ncomp)
   
   option => realization%option
   field => realization%field
   patch => realization%patch
+  chemistry => realization%chemistry
   grid => patch%grid
   aux_vars => patch%aux%RT%aux_vars
   aux_vars_bc => patch%aux%RT%aux_vars_bc
@@ -769,6 +838,20 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
     boundary_condition => boundary_condition%next
   enddo
 #endif  
+#if 1  
+! Reactions
+  do local_id = 1, grid%nlmax  ! For each local node do...
+    ghosted_id = grid%nL2G(local_id)
+    !geh - Ignore inactive cells with inactive materials
+    if (associated(patch%imat)) then
+      if (patch%imat(ghosted_id) <= 0) cycle
+    endif
+    iend = local_id*option%ncomp
+    istart = iend-option%ncomp+1
+    call RKineticMineral(Res,Jup,aux_vars(ghosted_id),chemistry,option)
+    r_p(istart:iend) = r_p(istart:iend) + Res(1:option%ncomp)                    
+  enddo
+#endif
 
   if (inactive_cells_exist) then
     do i=1,patch%aux%RT%n_zero_rows
@@ -888,10 +971,12 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch
-    
+  type(reaction_type), pointer :: chemistry
+      
   type(reactive_transport_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
   PetscReal :: Jup(realization%option%ncomp,realization%option%ncomp)
   PetscReal :: Jdn(realization%option%ncomp,realization%option%ncomp)
+  PetscReal :: Res(realization%option%ncomp)  
   
   type(coupler_type), pointer :: boundary_condition, source_sink
   type(connection_set_list_type), pointer :: connection_set_list
@@ -905,6 +990,7 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   option => realization%option
   field => realization%field
   patch => realization%patch  
+  chemistry => realization%chemistry
   grid => patch%grid
   aux_vars => patch%aux%RT%aux_vars
   aux_vars_bc => patch%aux%RT%aux_vars_bc
@@ -1074,7 +1160,22 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     enddo
     boundary_condition => boundary_condition%next
   enddo
-#endif  
+#endif 
+#if 1  
+! Reactions
+  do local_id = 1, grid%nlmax  ! For each local node do...
+    ghosted_id = grid%nL2G(local_id)
+    !geh - Ignore inactive cells with inactive materials
+    if (associated(patch%imat)) then
+      if (patch%imat(ghosted_id) <= 0) cycle
+    endif
+    iend = local_id*option%ncomp
+    istart = iend-option%ncomp+1
+    call RKineticMineral(Res,Jup,aux_vars(ghosted_id),chemistry,option)
+    call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)                        
+  enddo
+#endif
+ 
 
   ! Restore vectors
   call GridVecRestoreArrayF90(grid,field%tran_xx_loc, xx_loc_p, ierr)
@@ -1476,13 +1577,13 @@ subroutine RTotal(auxvar,chemistry,option)
   type(option_type) :: option
   
   PetscInt :: i, j, icplx, icomp, jcomp, iphase, ncomp
-  PetscReal :: log_conc(option%ncomp)
+  PetscReal :: ln_conc(option%ncomp)
   PetscReal :: lnQK, tempreal
   PetscReal, parameter :: log_to_ln = 2.30258509299d0
 
   iphase = 1                         
 
-  log_conc = log(auxvar%primary_spec)
+  ln_conc = log(auxvar%primary_spec)
   auxvar%total(:,iphase) = auxvar%primary_spec
   ! initialize derivatives
   auxvar%dtotal = 0.d0
@@ -1492,11 +1593,11 @@ subroutine RTotal(auxvar,chemistry,option)
   
   do icplx = 1, chemistry%neqcmplx ! for each secondary species
     ! compute secondary species concentration
-    lnQK = chemistry%eqcmplx_K(icplx)*log_to_ln
+    lnQK = -1.d0*chemistry%eqcmplx_K(icplx)*log_to_ln
     ncomp = chemistry%eqcmplxspecid(0,icplx)
     do i = 1, ncomp
       icomp = chemistry%eqcmplxspecid(i,icplx)
-      lnQK = lnQK + chemistry%eqcmplxstoich(i,icplx)*log_conc(icomp)
+      lnQK = lnQK + chemistry%eqcmplxstoich(i,icplx)*ln_conc(icomp)
     enddo
     auxvar%secondary_spec(icplx) = exp(lnQK)
   
@@ -1511,15 +1612,147 @@ subroutine RTotal(auxvar,chemistry,option)
     ! add contribution to derivatives of total with respect to free
     do j = 1, ncomp
       jcomp = chemistry%eqcmplxspecid(j,icplx)
-      tempreal = chemistry%eqcmplxstoich(j,icplx)*exp(lnQK-log_conc(jcomp))
+      tempreal = chemistry%eqcmplxstoich(j,icplx)*exp(lnQK-ln_conc(jcomp))
       do i = 1, ncomp
         icomp = chemistry%eqcmplxspecid(i,icplx)
         auxvar%dtotal(icomp,jcomp,iphase) = auxvar%dtotal(icomp,jcomp,iphase) + &
-                                     chemistry%eqcmplxstoich(i,icplx)*tempreal
+                                      chemistry%eqcmplxstoich(i,icplx)*tempreal
       enddo
     enddo
   enddo
   
 end subroutine RTotal
+
+! ************************************************************************** !
+!
+! RKineticMineral: Computes the kinetic mineral precipitation/dissolution
+!                  rates
+! author: Glenn Hammond
+! date: 09/04/08
+!
+! ************************************************************************** !
+subroutine RKineticMineral(Res,Jac,auxvar,chemistry,option)
+
+  use Option_module
+  
+  type(option_type) :: option
+  PetscReal :: Res(option%ncomp)
+  PetscReal :: Jac(option%ncomp,option%ncomp)
+  type(reactive_transport_auxvar_type) :: auxvar
+  type(reaction_type) :: chemistry
+  
+  PetscInt :: i, j, k, imnrl, icomp, jcomp, kcplx, iphase, ncomp
+  PetscReal :: prefactor, dprefactor_dcomp, dprefactor_dcplx, ln_prefactor
+  PetscReal :: Im, Im_const
+  PetscReal :: Tempkin_const
+  PetscReal :: ln_conc(option%ncomp)
+  PetscReal :: ln_sec(option%ncmplx)
+  PetscReal :: QK, lnQK, tempreal, tempreal2
+  PetscReal, parameter :: log_to_ln = 2.30258509299d0
+  PetscTruth :: prefactor_exists
+
+  iphase = 1                         
+
+  ln_conc = log(auxvar%primary_spec)
+
+  if (associated(chemistry%kinmnrl_pri_prefactor_id) .or. &
+      associated(chemistry%kinmnrl_sec_prefactor_id)) then
+    prefactor_exists = PETSC_TRUE
+    ln_sec = log(auxvar%secondary_spec)
+    print *, 'Kinetic mineral reaction prefactor calculations have not been verified.  Ask Glenn.'
+    stop
+  else
+    prefactor_exists = PETSC_FALSE
+    prefactor = 1.d0
+  endif
+  
+  
+  do imnrl = 1, chemistry%nkinmnrl ! for each mineral
+    ! compute secondary species concentration
+    lnQK = -1.d0*chemistry%kinmnrl_K(imnrl)*log_to_ln
+    ncomp = chemistry%kinmnrlspecid(0,imnrl)
+    do i = 1, ncomp
+      icomp = chemistry%kinmnrlspecid(i,imnrl)
+      lnQK = lnQK + chemistry%kinmnrlstoich(i,imnrl)*ln_conc(icomp)
+    enddo
+    QK = exp(lnQK)
+
+    if (auxvar%mnrl_volfrac(imnrl) > 0 .or. QK > 1.d0) then
+      Tempkin_const = 1.d0
+      ! compute prefactor
+      if (prefactor_exists) then
+        ln_prefactor = 0.d0
+        do i = 1, chemistry%kinmnrl_pri_prefactor_id(0,imnrl) ! primary contribution
+          icomp = chemistry%kinmnrl_pri_prefactor_id(i,imnrl)
+          ln_prefactor = ln_prefactor + &
+                         chemistry%kinmnrl_pri_prefactor_stoich(i,imnrl)* &
+                         ln_conc(icomp)
+        enddo
+        do k = 1, chemistry%kinmnrl_sec_prefactor_id(0,imnrl) ! secondary contribution
+          kcplx = chemistry%kinmnrl_sec_prefactor_id(k,imnrl)
+          ln_prefactor = ln_prefactor + &
+                         chemistry%kinmnrl_sec_prefactor_id(k,imnrl)* &
+                         ln_sec(kcplx)
+        enddo
+        prefactor = exp(ln_prefactor)
+      endif
+      ! compute rate
+      Im_const = -auxvar%mnrl_area0(imnrl)*prefactor*chemistry%kinmnrl_rate(imnrl)
+      Im = Im_const*(1.d0-QK**Tempkin_const)
+      auxvar%mnrl_rate(imnrl) = Im
+    else
+      auxvar%mnrl_rate(imnrl) = 0.d0
+      cycle
+    endif
+
+    ncomp = chemistry%kinmnrlspecid(0,imnrl)
+    do i = 1, ncomp
+      icomp = chemistry%kinmnrlspecid(i,imnrl)
+      Res(icomp) = Res(icomp) + chemistry%kinmnrlstoich(i,imnrl)*Im
+    enddo    
+
+    ! calculate derivatives of rate with respect to free
+    do j = 1, ncomp
+      jcomp = chemistry%kinmnrlspecid(j,imnrl)
+      tempreal = chemistry%kinmnrlstoich(j,imnrl)*exp(lnQK-ln_conc(jcomp))
+      do i = 1, ncomp
+        icomp = chemistry%kinmnrlspecid(i,imnrl)
+        Jac(icomp,jcomp) = Jac(icomp,jcomp) + -1.d0*Im_const* &
+                                          Tempkin_const*QK**(Tempkin_const-1.d0)* &
+                                          tempreal
+      enddo
+    enddo
+    
+    if (prefactor_exists) then ! add contribution of derivative in prefactor - messy
+      do j = 1, chemistry%kinmnrl_pri_prefactor_id(0,imnrl) ! primary contribution
+        jcomp = chemistry%kinmnrl_pri_prefactor_id(j,imnrl)
+        dprefactor_dcomp = chemistry%kinmnrl_pri_prefactor_stoich(j,imnrl)* &
+                           exp(ln_prefactor-ln_conc(jcomp))
+        tempreal = Im/prefactor*dprefactor_dcomp
+        do i = 1, ncomp
+          icomp = chemistry%kinmnrlspecid(i,imnrl)
+          Jac(icomp,jcomp) = Jac(icomp,jcomp) + chemistry%kinmnrlstoich(i,imnrl)*tempreal
+        enddo  
+      enddo
+      do k = 1, chemistry%kinmnrl_sec_prefactor_id(0,imnrl) ! secondary contribution
+        kcplx = chemistry%kinmnrl_sec_prefactor_id(k,imnrl)
+        dprefactor_dcplx = chemistry%kinmnrl_pri_prefactor_stoich(k,imnrl)* &
+                           exp(ln_prefactor-ln_sec(kcplx))
+        tempreal = Im/prefactor*dprefactor_dcplx
+        do j = 1, chemistry%eqcmplxstoich(0,kcplx)
+          jcomp = chemistry%eqcmplxstoich(j,kcplx)
+          tempreal2 = chemistry%eqcmplxstoich(j,kcplx)*exp(ln_sec(kcplx)-ln_conc(jcomp))
+          do i = 1, ncomp
+            icomp = chemistry%kinmnrlspecid(i,imnrl)
+            Jac(icomp,jcomp) = Jac(icomp,jcomp) + chemistry%kinmnrlstoich(i,imnrl)*tempreal* &
+                                              tempreal2
+          enddo  
+        enddo  
+      enddo
+    endif
+
+  enddo
+  
+end subroutine RKineticMineral
 
 end module Reactive_Transport_module
