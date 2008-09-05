@@ -193,3 +193,12 @@ implicit none
 #include "include/finclude/petscvec.h90"
   Vec :: vec
 end subroutine samrpetscobjectstateincrease
+
+
+subroutine samr_mpi_min(x,y,z)
+  PetscScalar, intent(inout) :: x,y,z
+end subroutine samr_mpi_min
+
+subroutine samr_mpi_max(x,y,z)
+  PetscScalar, intent(inout) :: x,y,z
+end subroutine samr_mpi_max

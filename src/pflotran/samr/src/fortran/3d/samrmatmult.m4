@@ -145,7 +145,7 @@ c
         do j = ifirst1, ilast1
           do i = ifirst0, ilast0
             do l=0,ndof-1
-              dst(i,j,k,l)=0.0
+              dst(l,i,j,k)=0.0
               do m=0,ndof-1
                dst(l,i,j,k)=dst(l,i,j,k)
      &                    +stencil(PP*nd2+m*ndof+l,i,j,k)*src(m,i,j,k)

@@ -76,6 +76,8 @@ int main( int argc, char *argv[] )
    tbox::SAMRAI_MPI::init(&argc, &argv);
    tbox::SAMRAIManager::startup();
 
+   PETSC_COMM_WORLD = SAMRAI::tbox::SAMRAI_MPI::getCommunicator();
+
    int ierr = PetscInitialize(&argc,&argv,PETSC_NULL,PETSC_NULL);
 
    PetscInitializeFortran();

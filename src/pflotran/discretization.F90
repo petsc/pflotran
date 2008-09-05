@@ -428,7 +428,25 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
        Mat :: p_matrix
      end subroutine SAMRCreateMatrix
      
+     integer function hierarchy_number_levels(p_hierarchy)
+       PetscFortranAddr, intent(inout) :: p_hierarchy
+     end function hierarchy_number_levels
+   
+     integer function level_number_patches(p_hierarchy, ln)
+       PetscFortranAddr, intent(inout) :: p_hierarchy
+       integer, intent(in) :: ln
+     end function level_number_patches
+
+     logical function is_local_patch(p_hierarchy, ln, pn)
+       PetscFortranAddr, intent(inout) :: p_hierarchy
+       integer, intent(in) :: ln
+       integer, intent(in) :: pn
+     end function is_local_patch
+     
   end interface
+
+#include "include/finclude/petscis.h"
+#include "include/finclude/petscis.h90"
 
   type(discretization_type) :: discretization
   PetscInt :: dm_index
@@ -437,9 +455,14 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
   Mat :: Jacobian
   type(option_type) :: option
   PetscInt :: ndof, stencilsize
+  PetscInt, pointer :: indices(:)
+  PetscInt :: ngmax
+  PetscInt :: imax, nlevels, ln, npatches, pn, i
   PetscInt :: flowortransport
   DM :: dm_ptr
-  
+  ISLocalToGlobalMapping :: ptmap, bmap
+  logical :: islocal
+
   dm_ptr = DiscretizationGetDMPtrFromIndex(discretization,dm_index)
     
   select case(discretization%itype)
@@ -464,9 +487,36 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
           ndof = option%ntrandof
           flowortransport = 1
        end select
+
        stencilsize=7;
        call MatCreateShell(PETSC_COMM_WORLD, 0,0, PETSC_DETERMINE, PETSC_DETERMINE, PETSC_NULL, Jacobian, ierr)
        call SAMRCreateMatrix(discretization%amrgrid%p_application, ndof, stencilsize, flowortransport, Jacobian)
+
+       if(ndof>1) then
+! we create a dummy mapping to satisfy the PETSc mapping requirements   
+          imax=0
+          nlevels =  hierarchy_number_levels(discretization%amrgrid%p_application)
+          do ln=0,nlevels-1
+             npatches = level_number_patches(discretization%amrgrid%p_application, ln )
+             do pn=0,npatches-1
+                islocal = is_local_patch(discretization%amrgrid%p_application, ln, pn);
+                if(islocal) then
+                   ngmax =  discretization%amrgrid%gridlevel(ln+1)%grids(pn+1)%grid_ptr%ngmax
+                   imax = max(ngmax,imax) 
+                endif
+             enddo
+          enddo
+       
+          allocate(indices(imax))
+          do i=1,imax
+             indices(i:i)=i-1
+          enddo
+          call ISLocalToGlobalMappingCreate(PETSC_COMM_WORLD, imax, indices, ptmap, ierr)          
+          call ISSetIdentity(ptmap, ierr)
+!          call ISLocalToGlobalMappingBlock(ptmap, ndof, bmap, ierr)
+          call MatSetLocalToGlobalMappingBlock(Jacobian, ptmap, ierr)
+       endif
+
   end select
 
 end subroutine DiscretizationCreateJacobian

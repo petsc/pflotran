@@ -964,7 +964,13 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
     call SNESGetLinearSolveIterations(solver%snes,num_linear_iterations, ierr)
     call VecNorm(field%tran_r,NORM_2,fnorm,ierr) 
     call VecNorm(field%tran_r,NORM_INFINITY,inorm,ierr)
-    scaled_fnorm = fnorm/discretization%grid%nmax   
+    ! the grid pointer is null if we are working with SAMRAI
+    if(associated(discretization%grid)) then
+       scaled_fnorm = fnorm/discretization%grid%nmax   
+    else
+       scaled_fnorm = fnorm
+    endif
+
     call SNESGetConvergedReason(solver%snes, snes_reason, ierr)
 
     sum_newton_iterations = sum_newton_iterations + num_newton_iterations
