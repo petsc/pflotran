@@ -143,13 +143,18 @@ module Chemistry_module
     PetscInt, pointer :: kinmnrlspecid(:,:)
     PetscReal, pointer :: kinmnrlstoich(:,:)
     PetscReal, pointer :: kinmnrl_K(:)
-    PetscReal, pointer :: kinmnrl_rate(:)
-    PetscInt, pointer :: kinmnrl_pri_prefactor_id(:,:)
-    PetscInt, pointer :: kinmnrl_sec_prefactor_id(:,:)
-    PetscInt, pointer :: kinmnrl_pri_prefactor_stoich(:,:)
-    PetscInt, pointer :: kinmnrl_sec_prefactor_stoich(:,:)
-    PetscReal, pointer :: kinmnrl_affinity_factor_sigma(:)
-    PetscReal, pointer :: kinmnrl_affinity_factor_beta(:)
+    PetscReal, pointer :: kinmnrl_rate(:,:)
+    PetscInt, pointer :: kinmnrl_num_prefactors(:)
+    PetscInt, pointer :: kinmnrl_pri_prefactor_id(:,:,:)
+    PetscReal, pointer :: kinmnrl_pri_pref_alpha_stoich(:,:,:)
+    PetscReal, pointer :: kinmnrl_pri_pref_beta_stoich(:,:,:)
+    PetscReal, pointer :: kinmnrl_pri_pref_atten_coef(:,:,:)
+    PetscInt, pointer :: kinmnrl_sec_prefactor_id(:,:,:)
+    PetscReal, pointer :: kinmnrl_sec_pref_alpha_stoich(:,:,:)
+    PetscReal, pointer :: kinmnrl_sec_pref_beta_stoich(:,:,:)
+    PetscReal, pointer :: kinmnrl_sec_pref_atten_coef(:,:,:)
+    PetscReal, pointer :: kinmnrl_Tempkin_const(:)
+    PetscReal, pointer :: kinmnrl_affinity_power(:)
   end type reaction_type
 
   public :: ChemistryCreate, &
@@ -257,8 +262,9 @@ function CarbonateTestProblemCreate(option)
   allocate(chemistry%kinmnrlspecid(0:option%ncomp,chemistry%nkinmnrl))
   allocate(chemistry%kinmnrlstoich(option%ncomp,chemistry%nkinmnrl))
   allocate(chemistry%kinmnrl_K(chemistry%nkinmnrl))
-  allocate(chemistry%kinmnrl_rate(chemistry%nkinmnrl))
+  allocate(chemistry%kinmnrl_rate(1,chemistry%nkinmnrl))
   allocate(chemistry%mnrl_molar_vol(chemistry%nkinmnrl))
+  allocate(chemistry%kinmnrl_num_prefactors(chemistry%nkinmnrl))
   
   ! CaCO3(s)
   irxn = 1
@@ -270,8 +276,9 @@ function CarbonateTestProblemCreate(option)
   chemistry%kinmnrlstoich(2,irxn) = 1.d0 ! HCO3-
   chemistry%kinmnrlstoich(3,irxn) = 1.d0 ! Ca+2
   chemistry%kinmnrl_K(irxn) = 1.8487d0
-  chemistry%kinmnrl_rate(irxn) = 1.d-6
+  chemistry%kinmnrl_rate(1,irxn) = 1.d-6
   chemistry%mnrl_molar_vol(irxn) = 36.9340d0/1.d6  ! based on 36.934 cm^3/mol
+  chemistry%kinmnrl_num_prefactors(irxn) = 0
   
   CarbonateTestProblemCreate => chemistry
      
@@ -347,12 +354,17 @@ function ChemistryCreate()
   nullify(chemistry%kinmnrlstoich)
   nullify(chemistry%kinmnrl_K)
   nullify(chemistry%kinmnrl_rate)
+  nullify(chemistry%kinmnrl_num_prefactors)
   nullify(chemistry%kinmnrl_pri_prefactor_id)
+  nullify(chemistry%kinmnrl_pri_pref_alpha_stoich)
+  nullify(chemistry%kinmnrl_pri_pref_beta_stoich)
+  nullify(chemistry%kinmnrl_pri_pref_atten_coef)
   nullify(chemistry%kinmnrl_sec_prefactor_id)
-  nullify(chemistry%kinmnrl_pri_prefactor_stoich)
-  nullify(chemistry%kinmnrl_sec_prefactor_stoich)
-  nullify(chemistry%kinmnrl_affinity_factor_sigma)
-  nullify(chemistry%kinmnrl_affinity_factor_beta)
+  nullify(chemistry%kinmnrl_sec_pref_alpha_stoich)
+  nullify(chemistry%kinmnrl_sec_pref_beta_stoich)
+  nullify(chemistry%kinmnrl_sec_pref_atten_coef)
+  nullify(chemistry%kinmnrl_Tempkin_const)
+  nullify(chemistry%kinmnrl_affinity_power)
 
   ChemistryCreate => chemistry
   
@@ -1072,18 +1084,28 @@ subroutine ChemistryDestroy(chemistry)
   nullify(chemistry%kinmnrl_K)
   if (associated(chemistry%kinmnrl_rate)) deallocate(chemistry%kinmnrl_rate)
   nullify(chemistry%kinmnrl_rate)
-  if (associated(chemistry%kinmnrl_pri_prefactor_id)) deallocate(chemistry%kinmnrl_sec_prefactor_id)
+  if (associated(chemistry%kinmnrl_num_prefactors)) deallocate(chemistry%kinmnrl_num_prefactors)
+  nullify(chemistry%kinmnrl_num_prefactors)
+  if (associated(chemistry%kinmnrl_pri_prefactor_id)) deallocate(chemistry%kinmnrl_pri_prefactor_id)
   nullify(chemistry%kinmnrl_pri_prefactor_id)
+  if (associated(chemistry%kinmnrl_pri_pref_alpha_stoich)) deallocate(chemistry%kinmnrl_pri_pref_alpha_stoich)
+  nullify(chemistry%kinmnrl_pri_pref_alpha_stoich)
+  if (associated(chemistry%kinmnrl_pri_pref_beta_stoich)) deallocate(chemistry%kinmnrl_pri_pref_beta_stoich)
+  nullify(chemistry%kinmnrl_pri_pref_beta_stoich)
+  if (associated(chemistry%kinmnrl_pri_pref_atten_coef)) deallocate(chemistry%kinmnrl_pri_pref_atten_coef)
+  nullify(chemistry%kinmnrl_pri_pref_atten_coef)
   if (associated(chemistry%kinmnrl_sec_prefactor_id)) deallocate(chemistry%kinmnrl_sec_prefactor_id)
   nullify(chemistry%kinmnrl_sec_prefactor_id)
-  if (associated(chemistry%kinmnrl_pri_prefactor_stoich)) deallocate(chemistry%kinmnrl_pri_prefactor_stoich)
-  nullify(chemistry%kinmnrl_pri_prefactor_stoich)
-  if (associated(chemistry%kinmnrl_sec_prefactor_stoich)) deallocate(chemistry%kinmnrl_sec_prefactor_stoich)
-  nullify(chemistry%kinmnrl_sec_prefactor_stoich)
-  if (associated(chemistry%kinmnrl_affinity_factor_sigma)) deallocate(chemistry%kinmnrl_affinity_factor_sigma)
-  nullify(chemistry%kinmnrl_affinity_factor_sigma)
-  if (associated(chemistry%kinmnrl_affinity_factor_beta)) deallocate(chemistry%kinmnrl_affinity_factor_beta)
-  nullify(chemistry%kinmnrl_affinity_factor_beta)
+  if (associated(chemistry%kinmnrl_sec_pref_alpha_stoich)) deallocate(chemistry%kinmnrl_sec_pref_alpha_stoich)
+  nullify(chemistry%kinmnrl_sec_pref_alpha_stoich)
+  if (associated(chemistry%kinmnrl_sec_pref_beta_stoich)) deallocate(chemistry%kinmnrl_sec_pref_beta_stoich)
+  nullify(chemistry%kinmnrl_sec_pref_beta_stoich)
+  if (associated(chemistry%kinmnrl_sec_pref_atten_coef)) deallocate(chemistry%kinmnrl_sec_pref_atten_coef)
+  nullify(chemistry%kinmnrl_sec_pref_atten_coef)
+  if (associated(chemistry%kinmnrl_Tempkin_const)) deallocate(chemistry%kinmnrl_Tempkin_const)
+  nullify(chemistry%kinmnrl_Tempkin_const)
+  if (associated(chemistry%kinmnrl_affinity_power)) deallocate(chemistry%kinmnrl_affinity_power)
+  nullify(chemistry%kinmnrl_affinity_power)
 
 end subroutine ChemistryDestroy
 

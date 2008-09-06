@@ -38,7 +38,7 @@ module Reactive_Transport_Aux_module
   end type reactive_transport_type
 
   public :: RTAuxCreate, RTAuxDestroy, &
-            RTAuxVarInit
+            RTAuxVarInit, RTAuxVarCopy, RTAuxVarDestroy
 
 contains
 
@@ -111,12 +111,40 @@ end subroutine RTAuxVarInit
 
 ! ************************************************************************** !
 !
-! AuxVarDestroy: Deallocates a reactive transport auxilliary object
+! RTAuxVarCopy: Copys an auxilliary object
+! author: Glenn Hammond
+! date: 09/05/08
+!
+! ************************************************************************** !
+subroutine RTAuxVarCopy(aux_var, aux_var2,option)
+
+  use Option_module
+
+  implicit none
+  
+  type(reactive_transport_auxvar_type) :: aux_var, aux_var2
+  type(option_type) :: option  
+  
+  aux_var%den = aux_var2%den
+  aux_var%sat = aux_var2%sat
+  aux_var%total = aux_var2%total
+  aux_var%dtotal = aux_var2%dtotal
+  aux_var%primary_spec = aux_var2%primary_spec
+  aux_var%secondary_spec = aux_var2%secondary_spec
+  aux_var%mnrl_volfrac = aux_var2%mnrl_volfrac
+  aux_var%mnrl_area0 = aux_var2%mnrl_area0
+  aux_var%mnrl_rate = aux_var2%mnrl_rate
+
+end subroutine RTAuxVarCopy
+
+! ************************************************************************** !
+!
+! RTAuxVarDestroy: Deallocates a reactive transport auxilliary object
 ! author: Glenn Hammond
 ! date: 02/14/08
 !
 ! ************************************************************************** !
-subroutine AuxVarDestroy(aux_var)
+subroutine RTAuxVarDestroy(aux_var)
 
   implicit none
 
@@ -139,7 +167,7 @@ subroutine AuxVarDestroy(aux_var)
   if (associated(aux_var%mnrl_rate))deallocate(aux_var%mnrl_rate)
   nullify(aux_var%mnrl_rate)
 
-end subroutine AuxVarDestroy
+end subroutine RTAuxVarDestroy
 
 ! ************************************************************************** !
 !
@@ -158,10 +186,10 @@ subroutine RTAuxDestroy(aux)
   if (.not.associated(aux)) return
   
   do iaux = 1, aux%num_aux
-    call AuxVarDestroy(aux%aux_vars(iaux))
+    call RTAuxVarDestroy(aux%aux_vars(iaux))
   enddo  
   do iaux = 1, aux%num_aux_bc
-    call AuxVarDestroy(aux%aux_vars_bc(iaux))
+    call RTAuxVarDestroy(aux%aux_vars_bc(iaux))
   enddo  
   
   if (associated(aux%aux_vars)) deallocate(aux%aux_vars)

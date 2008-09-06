@@ -861,7 +861,7 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
     endif
     iend = local_id*option%ncomp
     istart = iend-option%ncomp+1
-    call RKineticMineral(Res,Jup,aux_vars(ghosted_id),chemistry,option)
+    call RKineticMineral(Res,Jup,PETSC_TRUE,aux_vars(ghosted_id),chemistry,option)
     r_p(istart:iend) = r_p(istart:iend) + Res(1:option%ncomp)                    
   enddo
 #endif
@@ -1184,7 +1184,8 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     endif
     iend = local_id*option%ncomp
     istart = iend-option%ncomp+1
-    call RKineticMineral(Res,Jup,aux_vars(ghosted_id),chemistry,option)
+!    call RKineticMineral(Res,Jup,aux_vars(ghosted_id),chemistry,option)
+    call RKineticMineralDerivative(Res,Jup,aux_vars(ghosted_id),chemistry,option)
     call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)                        
   enddo
 #endif
@@ -1644,41 +1645,34 @@ end subroutine RTotal
 ! date: 09/04/08
 !
 ! ************************************************************************** !
-subroutine RKineticMineral(Res,Jac,auxvar,chemistry,option)
+subroutine RKineticMineral(Res,Jac,derivative,auxvar,chemistry,option)
 
   use Option_module
   
   type(option_type) :: option
+  PetscTruth :: derivative
   PetscReal :: Res(option%ncomp)
   PetscReal :: Jac(option%ncomp,option%ncomp)
   type(reactive_transport_auxvar_type) :: auxvar
   type(reaction_type) :: chemistry
   
-  PetscInt :: i, j, k, imnrl, icomp, jcomp, kcplx, iphase, ncomp
-  PetscReal :: prefactor, dprefactor_dcomp, dprefactor_dcplx, ln_prefactor
-  PetscReal :: Im, Im_const
-  PetscReal :: Tempkin_const
+  PetscInt :: i, j, k, imnrl, icomp, jcomp, kcplx, iphase, ncomp, ipref
+  PetscReal :: prefactor(10), sum_prefactor_rate
+  PetscReal :: dIm_dsum_prefactor_rate, dIm_dprefactor_rate
+  PetscReal :: dprefactor_dcomp_numerator, dprefactor_dcomp_denominator
+  PetscReal :: tempreal, tempreal2
+  PetscReal :: affinity_factor, sign_
+  PetscReal :: Im, Im_const, dIm_dQK
   PetscReal :: ln_conc(option%ncomp)
   PetscReal :: ln_sec(option%ncmplx)
-  PetscReal :: QK, lnQK, tempreal, tempreal2
+  PetscReal :: QK, lnQK, dQK_dCj
   PetscReal, parameter :: log_to_ln = 2.30258509299d0
   PetscTruth :: prefactor_exists
 
   iphase = 1                         
 
   ln_conc = log(auxvar%primary_spec)
-
-  if (associated(chemistry%kinmnrl_pri_prefactor_id) .or. &
-      associated(chemistry%kinmnrl_sec_prefactor_id)) then
-    prefactor_exists = PETSC_TRUE
-    ln_sec = log(auxvar%secondary_spec)
-    print *, 'Kinetic mineral reaction prefactor calculations have not been verified.  Ask Glenn.'
-    stop
-  else
-    prefactor_exists = PETSC_FALSE
-    prefactor = 1.d0
-  endif
-  
+  ln_sec = log(auxvar%secondary_spec)
   
   do imnrl = 1, chemistry%nkinmnrl ! for each mineral
     ! compute secondary species concentration
@@ -1689,29 +1683,57 @@ subroutine RKineticMineral(Res,Jac,auxvar,chemistry,option)
       lnQK = lnQK + chemistry%kinmnrlstoich(i,imnrl)*ln_conc(icomp)
     enddo
     QK = exp(lnQK)
+    
+    if (associated(chemistry%kinmnrl_Tempkin_const)) then
+      affinity_factor = 1.d0-QK**(1/chemistry%kinmnrl_Tempkin_const(imnrl))
+    else
+      affinity_factor = 1.d0-QK
+    endif
+    
+    sign_ = sign(1.d0,affinity_factor)
 
-    if (auxvar%mnrl_volfrac(imnrl) > 0 .or. QK > 1.d0) then
-      Tempkin_const = 1.d0
+    if (auxvar%mnrl_volfrac(imnrl) > 0 .or. sign_ < 0.d0) then
       ! compute prefactor
-      if (prefactor_exists) then
-        ln_prefactor = 0.d0
-        do i = 1, chemistry%kinmnrl_pri_prefactor_id(0,imnrl) ! primary contribution
-          icomp = chemistry%kinmnrl_pri_prefactor_id(i,imnrl)
-          ln_prefactor = ln_prefactor + &
-                         chemistry%kinmnrl_pri_prefactor_stoich(i,imnrl)* &
-                         ln_conc(icomp)
+      if (chemistry%kinmnrl_num_prefactors(imnrl) > 0) then
+        print *, 'Kinetic mineral reaction prefactor calculations have not been verified.  Ask Glenn.'
+        stop
+        sum_prefactor_rate = 0
+        do ipref = 1, chemistry%kinmnrl_num_prefactors(imnrl)
+          prefactor(ipref) = 1.d0
+          do i = 1, chemistry%kinmnrl_pri_prefactor_id(0,ipref,imnrl) ! primary contribution
+            icomp = chemistry%kinmnrl_pri_prefactor_id(i,ipref,imnrl)
+            prefactor(ipref) = prefactor(ipref) * &
+                               exp(chemistry%kinmnrl_pri_pref_alpha_stoich(i,ipref,imnrl)* &
+                                   ln_conc(icomp))/ &
+                               ((1.d0+chemistry%kinmnrl_pri_pref_atten_coef(i,ipref,imnrl))* &
+                                 exp(chemistry%kinmnrl_pri_pref_beta_stoich(i,ipref,imnrl)* &
+                                     ln_conc(icomp)))
+          enddo
+          do k = 1, chemistry%kinmnrl_sec_prefactor_id(0,ipref,imnrl) ! secondary contribution
+            kcplx = chemistry%kinmnrl_sec_prefactor_id(k,ipref,imnrl)
+            prefactor(ipref) = prefactor(ipref) * &
+                               exp(chemistry%kinmnrl_sec_pref_alpha_stoich(k,ipref,imnrl)* &
+                                   ln_sec(kcplx))/ &
+                               ((1.d0+chemistry%kinmnrl_sec_pref_atten_coef(i,ipref,imnrl))* &
+                                 exp(chemistry%kinmnrl_sec_pref_beta_stoich(k,ipref,imnrl)* &
+                                     ln_sec(kcplx)))
+          enddo
+          sum_prefactor_rate = sum_prefactor_rate + prefactor(ipref)*chemistry%kinmnrl_rate(ipref,imnrl)
         enddo
-        do k = 1, chemistry%kinmnrl_sec_prefactor_id(0,imnrl) ! secondary contribution
-          kcplx = chemistry%kinmnrl_sec_prefactor_id(k,imnrl)
-          ln_prefactor = ln_prefactor + &
-                         chemistry%kinmnrl_sec_prefactor_id(k,imnrl)* &
-                         ln_sec(kcplx)
-        enddo
-        prefactor = exp(ln_prefactor)
+      else
+        sum_prefactor_rate = chemistry%kinmnrl_rate(1,imnrl)
       endif
+
       ! compute rate
-      Im_const = -auxvar%mnrl_area0(imnrl)*prefactor*chemistry%kinmnrl_rate(imnrl)
-      Im = Im_const*(1.d0-QK**Tempkin_const)
+      Im_const = -1.d0*sign_*auxvar%mnrl_area0(imnrl)
+      if (associated(chemistry%kinmnrl_affinity_power)) then
+        Im = Im_const*abs(affinity_factor)**chemistry%kinmnrl_affinity_power(imnrl)
+      else
+        Im = Im_const*abs(affinity_factor)
+      endif
+      if (chemistry%kinmnrl_num_prefactors(imnrl) > 0) then
+        Im = Im*sum_prefactor_rate
+      endif
       auxvar%mnrl_rate(imnrl) = Im
     else
       auxvar%mnrl_rate(imnrl) = 0.d0
@@ -1722,50 +1744,133 @@ subroutine RKineticMineral(Res,Jac,auxvar,chemistry,option)
     do i = 1, ncomp
       icomp = chemistry%kinmnrlspecid(i,imnrl)
       Res(icomp) = Res(icomp) + chemistry%kinmnrlstoich(i,imnrl)*Im
-    enddo    
+    enddo 
+    
+    if (.not. derivative) cycle   
 
     ! calculate derivatives of rate with respect to free
+    dIm_dQK = -1.d0*Im
+    if (associated(chemistry%kinmnrl_affinity_power)) then
+      dIm_dQK = dIm_dQK*chemistry%kinmnrl_affinity_power(imnrl)/affinity_factor
+    endif
+    if (associated(chemistry%kinmnrl_Tempkin_const)) then
+      dIm_dQK = dIm_dQK*(1/chemistry%kinmnrl_Tempkin_const(imnrl))/QK
+    endif
+    
+    ! derivatives with respect to primary species in reaction quotient
     do j = 1, ncomp
       jcomp = chemistry%kinmnrlspecid(j,imnrl)
-      tempreal = chemistry%kinmnrlstoich(j,imnrl)*exp(lnQK-ln_conc(jcomp))
+      dQK_dCj = chemistry%kinmnrlstoich(j,imnrl)*exp(lnQK-ln_conc(jcomp))
       do i = 1, ncomp
         icomp = chemistry%kinmnrlspecid(i,imnrl)
-        Jac(icomp,jcomp) = Jac(icomp,jcomp) + -1.d0*Im_const* &
-                                          Tempkin_const*QK**(Tempkin_const-1.d0)* &
-                                          tempreal
+        Jac(icomp,jcomp) = Jac(icomp,jcomp) + &
+                           chemistry%kinmnrlstoich(i,imnrl)*dIm_dQK*dQK_dCj
       enddo
     enddo
-    
-    if (prefactor_exists) then ! add contribution of derivative in prefactor - messy
-      do j = 1, chemistry%kinmnrl_pri_prefactor_id(0,imnrl) ! primary contribution
-        jcomp = chemistry%kinmnrl_pri_prefactor_id(j,imnrl)
-        dprefactor_dcomp = chemistry%kinmnrl_pri_prefactor_stoich(j,imnrl)* &
-                           exp(ln_prefactor-ln_conc(jcomp))
-        tempreal = Im/prefactor*dprefactor_dcomp
-        do i = 1, ncomp
-          icomp = chemistry%kinmnrlspecid(i,imnrl)
-          Jac(icomp,jcomp) = Jac(icomp,jcomp) + chemistry%kinmnrlstoich(i,imnrl)*tempreal
-        enddo  
-      enddo
-      do k = 1, chemistry%kinmnrl_sec_prefactor_id(0,imnrl) ! secondary contribution
-        kcplx = chemistry%kinmnrl_sec_prefactor_id(k,imnrl)
-        dprefactor_dcplx = chemistry%kinmnrl_pri_prefactor_stoich(k,imnrl)* &
-                           exp(ln_prefactor-ln_sec(kcplx))
-        tempreal = Im/prefactor*dprefactor_dcplx
-        do j = 1, chemistry%eqcmplxstoich(0,kcplx)
-          jcomp = chemistry%eqcmplxstoich(j,kcplx)
-          tempreal2 = chemistry%eqcmplxstoich(j,kcplx)*exp(ln_sec(kcplx)-ln_conc(jcomp))
+
+    if (chemistry%kinmnrl_num_prefactors(imnrl) > 0) then ! add contribution of derivative in prefactor - messy
+      print *, 'Kinetic mineral reaction prefactor calculations have not been verified.  Ask Glenn.'
+      stop
+      
+      dIm_dsum_prefactor_rate = Im/sum_prefactor_rate
+      do ipref = 1, chemistry%kinmnrl_num_prefactors(imnrl)
+        dIm_dprefactor_rate = dIm_dsum_prefactor_rate*chemistry%kinmnrl_rate(ipref,imnrl)
+        do j = 1, chemistry%kinmnrl_pri_prefactor_id(0,ipref,imnrl) ! primary contribution
+          jcomp = chemistry%kinmnrl_pri_prefactor_id(j,ipref,imnrl)
+          ! numerator
+          dprefactor_dcomp_numerator = chemistry%kinmnrl_pri_pref_alpha_stoich(j,ipref,imnrl)* &
+                                       prefactor(ipref)/auxvar%primary_spec(jcomp)
+          ! denominator
+          dprefactor_dcomp_denominator = -1.d0*prefactor(ipref)/ &
+                                         chemistry%kinmnrl_pri_pref_beta_stoich(j,ipref,imnrl)* &
+                                         chemistry%kinmnrl_pri_pref_atten_coef(j,ipref,imnrl)* &
+                                         exp((chemistry%kinmnrl_pri_pref_beta_stoich(j,ipref,imnrl)-1.d0)* &
+                                             ln_conc(jcomp))* &
+                                         ((1.d0+chemistry%kinmnrl_pri_pref_atten_coef(j,ipref,imnrl))* &
+                                           exp(chemistry%kinmnrl_pri_pref_beta_stoich(j,ipref,imnrl)* &
+                                               ln_conc(jcomp)))
+          tempreal = dIm_dprefactor_rate*(dprefactor_dcomp_numerator+dprefactor_dcomp_denominator)
           do i = 1, ncomp
             icomp = chemistry%kinmnrlspecid(i,imnrl)
-            Jac(icomp,jcomp) = Jac(icomp,jcomp) + chemistry%kinmnrlstoich(i,imnrl)*tempreal* &
-                                              tempreal2
-          enddo  
-        enddo  
-      enddo
+            Jac(icomp,jcomp) = Jac(icomp,jcomp) + chemistry%kinmnrlstoich(i,imnrl)*tempreal
+          enddo  ! loop over col
+        enddo !loop over row
+        do k = 1, chemistry%kinmnrl_sec_prefactor_id(0,ipref,imnrl) ! secondary contribution
+          kcplx = chemistry%kinmnrl_sec_prefactor_id(k,ipref,imnrl)
+          ! numerator
+          dprefactor_dcomp_numerator = chemistry%kinmnrl_sec_pref_alpha_stoich(k,ipref,imnrl)* &
+                                       prefactor(ipref)/auxvar%secondary_spec(jcomp)
+          ! denominator
+          dprefactor_dcomp_denominator = -1.d0*prefactor(ipref)/ &
+                                         (1.d0+chemistry%kinmnrl_sec_pref_atten_coef(k,ipref,imnrl)* &
+                                          exp(chemistry%kinmnrl_sec_pref_beta_stoich(k,ipref,imnrl)* &
+                                              ln_sec(kcplx)))* &
+                                         chemistry%kinmnrl_sec_pref_beta_stoich(k,ipref,imnrl)* &
+                                         chemistry%kinmnrl_sec_pref_atten_coef(k,ipref,imnrl)* &
+                                         exp((chemistry%kinmnrl_sec_pref_beta_stoich(k,ipref,imnrl)-1.d0)* &
+                                              ln_sec(kcplx))
+          tempreal = dIm_dprefactor_rate*(dprefactor_dcomp_numerator+dprefactor_dcomp_denominator)
+          do j = 1, chemistry%eqcmplxstoich(0,kcplx)
+            jcomp = chemistry%eqcmplxstoich(j,kcplx)
+            tempreal2 = chemistry%eqcmplxstoich(j,kcplx)*exp(ln_sec(kcplx)-ln_conc(jcomp))
+            do i = 1, ncomp
+              icomp = chemistry%kinmnrlspecid(i,imnrl)
+              Jac(icomp,jcomp) = Jac(icomp,jcomp) + chemistry%kinmnrlstoich(i,imnrl)*tempreal* &
+                                                    tempreal2
+            enddo  ! loop over col
+          enddo  ! loop over row
+        enddo  ! loop over complexes
+      enddo  ! loop over prefactors
     endif
-
-  enddo
-  
+  enddo  ! loop over minerals
+    
 end subroutine RKineticMineral
+
+! ************************************************************************** !
+!
+! RKineticMineralDerivative: Computes the kinetic mineral precipitation/dissolution
+!                  rates
+! author: Glenn Hammond
+! date: 09/04/08
+!
+! ************************************************************************** !
+subroutine RKineticMineralDerivative(Res,Jac,auxvar,chemistry,option)
+
+  use Option_module
+  
+  type(option_type) :: option
+  PetscReal :: Res(option%ncomp)
+  PetscReal :: Jac(option%ncomp,option%ncomp)
+  type(reactive_transport_auxvar_type) :: auxvar
+  type(reaction_type) :: chemistry
+  
+  type(reactive_transport_auxvar_type) :: auxvar_pert
+  PetscReal :: Res_orig(option%ncomp)
+  PetscReal :: Res_pert(option%ncomp)
+  PetscReal :: Jac_dummy(option%ncomp,option%ncomp)
+  PetscReal :: pert
+
+  PetscInt :: icomp, jcomp
+
+  if (option%numerical_derivatives) then
+    call RTAuxVarInit(auxvar_pert,option)
+    call RTAuxVarCopy(auxvar,auxvar_pert,option)
+    call RKineticMineral(Res_orig,Jac_dummy,PETSC_FALSE,auxvar,chemistry,option)
+    do jcomp = 1, option%ncomp
+      call RTAuxVarCopy(auxvar,auxvar_pert,option)
+      pert = auxvar_pert%primary_spec(jcomp)*perturbation_tolerance
+      auxvar_pert%primary_spec(jcomp) = auxvar_pert%primary_spec(jcomp) + pert
+      call RTotal(auxvar,chemistry,option)
+      call RKineticMineral(Res_pert,Jac_dummy,PETSC_FALSE,auxvar,chemistry,option)
+      do icomp = 1, option%ncomp
+        Jac(icomp,jcomp) = Jac(icomp,jcomp) + (Res_pert(icomp)-Res_orig(icomp))/pert
+      enddo
+    enddo
+    call RTAuxVarDestroy(auxvar_pert)
+  else
+    call RKineticMineral(Res_orig,Jac,PETSC_TRUE,auxvar,chemistry,option)
+  endif
+    
+end subroutine RKineticMineralDerivative
 
 end module Reactive_Transport_module
