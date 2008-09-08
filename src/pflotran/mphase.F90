@@ -1538,7 +1538,7 @@ select case(icri)
       else if(satu(2) <= 0.D0)then
         write(*,'('' 2ph -> Liq '',''rank= '',i6,'' n='',i8,'' p='',1pe10.4, &
       & '' T='',1pe10.4,'' sg ='',1pe11.4,'' sl='',1pe11.4,'' sg='',1pe11.4)')  &
-        option%myrank,local_id, xx_p(dof_offset+1:dof_offset+3),satu(1),satu(2)
+        option%myrank,local_id, xx_p(dof_offset+1:dof_offset+3),satu(2), xmol(2)
         iphase_loc_p(ghosted_id) = 1 ! 2ph -> Liq
         ichange = 1
         tmp = xmol(2) * 0.99
