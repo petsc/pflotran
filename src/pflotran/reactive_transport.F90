@@ -1673,6 +1673,9 @@ subroutine RKineticMineral(Res,Jac,derivative,auxvar,chemistry,option)
 
   ln_conc = log(auxvar%primary_spec)
   ln_sec = log(auxvar%secondary_spec)
+
+  Res = 0.d0
+  Jac = 0.d0
   
   do imnrl = 1, chemistry%nkinmnrl ! for each mineral
     ! compute secondary species concentration
@@ -1851,6 +1854,9 @@ subroutine RKineticMineralDerivative(Res,Jac,auxvar,chemistry,option)
   PetscReal :: pert
 
   PetscInt :: icomp, jcomp
+
+  Res = 0.d0
+  Jac = 0.d0
 
   if (option%numerical_derivatives) then
     call RTAuxVarInit(auxvar_pert,option)
