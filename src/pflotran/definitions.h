@@ -64,10 +64,13 @@ PetscInt, parameter :: AMR_GRID = 3
 PetscInt, parameter :: DIRICHLET_BC = 1
 PetscInt, parameter :: PRODUCTION_WELL = -1
 PetscInt, parameter :: NEUMANN_BC = 2
-PetscInt, parameter :: MASS_RATE_SS = 3
-PetscInt, parameter :: ZERO_GRADIENT_BC = 5
-PetscInt, parameter :: HYDROSTATIC_BC = 6
-PetscInt, parameter :: SEEPAGE_BC = 7
+PetscInt, parameter :: ZERO_GRADIENT_BC = 3
+PetscInt, parameter :: HYDROSTATIC_BC = 4
+PetscInt, parameter :: SEEPAGE_BC = 5
+PetscInt, parameter :: MASS_RATE_SS = 6
+PetscInt, parameter :: VOLUMETRIC_RATE_SS = 7
+PetscInt, parameter :: CONCENTRATION_SS = 9
+PetscInt, parameter :: EQUILIBRIUM_SS = 10
 
 ! coupler types
 PetscInt, parameter :: INITIAL_COUPLER_TYPE = 1

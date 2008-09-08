@@ -543,7 +543,7 @@ PflotranApplicationStrategy::createVector(int &dof, bool &use_ghost, Vec *vec)
                             -1,
                             d_math_op);
 
-   *vec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM,double>::createPETScVector(samrai_vec);
+   *vec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM,double>::createPETScVector(samrai_vec, PETSC_COMM_WORLD);
 }
 
 }

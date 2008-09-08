@@ -185,3 +185,20 @@ subroutine SAMRSetCurrentJacobianPatch(mat,patch)
 Mat :: mat
 PetscFortranAddr :: patch
 end subroutine SAMRSetCurrentJacobianPatch
+
+subroutine samrpetscobjectstateincrease(vec)
+implicit none
+#include "include/finclude/petsc.h"
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
+  Vec :: vec
+end subroutine samrpetscobjectstateincrease
+
+
+subroutine samr_mpi_min(x,y,z)
+  PetscScalar, intent(inout) :: x,y,z
+end subroutine samr_mpi_min
+
+subroutine samr_mpi_max(x,y,z)
+  PetscScalar, intent(inout) :: x,y,z
+end subroutine samr_mpi_max

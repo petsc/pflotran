@@ -57,7 +57,8 @@ module Patch_module
   public :: PatchCreate, PatchDestroy, PatchCreateList, PatchDestroyList, &
             PatchAddToList, PatchConvertListToArray, PatchProcessCouplers, &
             PatchUpdateAllCouplerAuxVars, PatchInitAllCouplerAuxVars, &
-            PatchLocalizeRegions, PatchAssignUniformVelocity
+            PatchLocalizeRegions, PatchAssignUniformVelocity, &
+            PatchBridgeFlowAndTransport
 
 contains
 
@@ -148,12 +149,13 @@ subroutine PatchAddToList(new_patch,patch_list)
   type(patch_type), pointer :: new_patch
   type(patch_list_type) :: patch_list
   
-  patch_list%num_patch_objects = patch_list%num_patch_objects + 1
-  new_patch%id = patch_list%num_patch_objects
-  if (.not.associated(patch_list%first)) patch_list%first => new_patch
-  if (associated(patch_list%last)) patch_list%last%next => new_patch
-  patch_list%last => new_patch
-  
+  if(associated(new_patch)) then
+     patch_list%num_patch_objects = patch_list%num_patch_objects + 1
+     new_patch%id = patch_list%num_patch_objects
+     if (.not.associated(patch_list%first)) patch_list%first => new_patch
+     if (associated(patch_list%last)) patch_list%last%next => new_patch
+     patch_list%last => new_patch
+  end if
 end subroutine PatchAddToList
 
 ! ************************************************************************** !
@@ -652,7 +654,8 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
       if (update) then
         if (associated(condition%pressure)) then
           select case(condition%pressure%itype)
-            case(DIRICHLET_BC,NEUMANN_BC,MASS_RATE_SS,ZERO_GRADIENT_BC)
+            case(DIRICHLET_BC,NEUMANN_BC,MASS_RATE_SS,ZERO_GRADIENT_BC, &
+                 VOLUMETRIC_RATE_SS)
 !              do idof = 1, condition%num_sub_conditions
 !                if (associated(condition%sub_condition_ptr(idof)%ptr)) then
 !                  coupler%flow_aux_real_var(idof,1:num_connections) = &
@@ -725,6 +728,45 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
   enddo
 
 end subroutine PatchUpdateCouplerAuxVars
+
+! ************************************************************************** !
+!
+! PatchBridgeFlowAndTransport: Maps auxilliary data (e.g. density) from flow
+!                              to transport
+! author: Glenn Hammond
+! date: 09/03/08
+!
+! ************************************************************************** !
+subroutine PatchBridgeFlowAndTransport(patch,option)
+
+  type(patch_type), pointer :: patch
+  type(option_type), pointer :: option
+
+  PetscInt :: iaux, iphase
+
+  ! loop over all bc aux vars
+  select case(option%iflowmode)
+    case(RICHARDS_LITE_MODE)
+      do iaux = 1, patch%aux%RT%num_aux
+        patch%aux%RT%aux_vars(iaux)%den(1) = &
+          patch%aux%RichardsLite%aux_vars(iaux)%den_kg
+        patch%aux%RT%aux_vars(iaux)%sat = &
+          patch%aux%RichardsLite%aux_vars(iaux)%sat
+      enddo
+      do iaux = 1, patch%aux%RT%num_aux_bc
+        patch%aux%RT%aux_vars_bc(iaux)%den(1) = &
+          patch%aux%RichardsLite%aux_vars_bc(iaux)%den_kg
+        patch%aux%RT%aux_vars_bc(iaux)%sat = &
+          patch%aux%RichardsLite%aux_vars_bc(iaux)%sat
+      enddo
+    case(RICHARDS_MODE,MPH_MODE)
+      if (option%myrank == 0) then
+        print *, 'Bridge of flow and transport densities needs to be implemented.  Ask Glenn'
+        stop
+      endif
+  end select
+
+end subroutine PatchBridgeFlowAndTransport
 
 ! ************************************************************************** !
 !

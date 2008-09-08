@@ -135,13 +135,18 @@ subroutine TFluxDerivative(aux_var_up,por_up,tor_up,sat_up,den_up,dist_up, &
   
   coef_up = coef_up*area
   coef_dn = coef_dn*area
-  
-  J_up = 0.d0
-  J_dn = 0.d0
-  do icomp = 1, option%ncomp
-    J_up(icomp,icomp) = coef_up
-    J_dn(icomp,icomp) = coef_dn
-  enddo
+
+  if (associated(aux_var_dn%dtotal)) then
+    J_up = aux_var_up%dtotal(:,:,iphase)*coef_up
+    J_dn = aux_var_dn%dtotal(:,:,iphase)*coef_dn
+  else  
+    J_up = 0.d0
+    J_dn = 0.d0
+    do icomp = 1, option%ncomp
+      J_up(icomp,icomp) = coef_up
+      J_dn(icomp,icomp) = coef_dn
+    enddo
+  endif
 
 end subroutine TFluxDerivative
 
@@ -172,29 +177,33 @@ subroutine TBCFlux(ibndtype, &
   PetscInt :: icomp
   PetscInt :: iphase
   PetscReal :: weight
-  PetscReal :: stpd_dn
+  PetscReal :: sd_dn, sd_up
   PetscReal :: coef_up, coef_dn
   PetscReal :: diffusion, q
+  PetscReal :: den_up, sat_up
   
   diffusion = 0.d0
 
   iphase = 1
   q = velocity(iphase)
+  den_up = aux_var_up%den(1)
+  sat_up = aux_var_up%sat
 
   select case(ibndtype)
     case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
-      if (sat_dn > eps) then
-        stpd_dn = sat_dn*tor_dn*por_dn*den_dn
-        weight = stpd_dn/dist_dn
+      if (sat_up > eps .and. sat_dn > eps) then
+        sd_up = sat_up*den_up
+        sd_dn = sat_dn*den_dn
+        weight = tor_dn*por_dn*(sd_up*sd_dn)/((sd_up+sd_dn)*dist_dn)
         ! need to account for multiple phases
         diffusion = weight*(option%disp+option%difaq)
-      endif
+      endif    
     case(NEUMANN_BC,ZERO_GRADIENT_BC)
   end select
 
   !upstream weighting
   if (q > 0.d0) then
-    coef_up =  diffusion+q*den_dn
+    coef_up =  diffusion+q*den_up
     coef_dn = -diffusion
   else
     coef_up =  diffusion
@@ -238,23 +247,27 @@ subroutine TBCFluxDerivative(ibndtype, &
   PetscInt :: icomp
   PetscInt :: iphase
   PetscReal :: weight
-  PetscReal :: stpd_dn
+  PetscReal :: sd_up, sd_dn
   PetscReal :: coef_dn
   PetscReal :: diffusion, q
+  PetscReal :: den_up, sat_up  
   
   diffusion = 0.d0
 
   iphase = 1
   q = velocity(iphase)
+  den_up = aux_var_up%den(1)
+  sat_up = aux_var_up%sat  
 
   select case(ibndtype)
     case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
-      if (sat_dn > eps) then
-        stpd_dn = sat_dn*tor_dn*por_dn*den_dn
-        weight = stpd_dn/dist_dn
+      if (sat_up > eps .and. sat_dn > eps) then
+        sd_up = sat_up*den_up
+        sd_dn = sat_dn*den_dn
+        weight = tor_dn*por_dn*(sd_up*sd_dn)/((sd_up+sd_dn)*dist_dn)
         ! need to account for multiple phases
         diffusion = weight*(option%disp+option%difaq)
-      endif
+      endif    
     case(NEUMANN_BC,ZERO_GRADIENT_BC)
   end select
 
@@ -267,10 +280,14 @@ subroutine TBCFluxDerivative(ibndtype, &
   
   coef_dn = coef_dn*area
 
-  J_dn = 0.d0
-  do icomp = 1, option%ncomp
-    J_dn(icomp,icomp) = coef_dn
-  enddo
+  if (associated(aux_var_dn%dtotal)) then
+    J_dn = aux_var_dn%dtotal(:,:,iphase)*coef_dn
+  else
+    J_dn = 0.d0
+    do icomp = 1, option%ncomp
+      J_dn(icomp,icomp) = coef_dn
+    enddo
+  endif
 
 end subroutine TBCFluxDerivative
 

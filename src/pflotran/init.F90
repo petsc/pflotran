@@ -517,6 +517,8 @@ subroutine readRequiredCardsFromInput(realization,filename)
     option%ntrandof = GetPrimarySpeciesCount(realization%chemistry)
     option%comp_names => GetPrimarySpeciesNames(realization%chemistry)
     option%ncomp = option%ntrandof
+    option%ncmplx = GetSecondarySpeciesCount(realization%chemistry)
+    option%nmnrl = GetMineralCount(realization%chemistry)
   endif
 
 !.........................................................................
@@ -587,6 +589,7 @@ subroutine readInput(simulation,filename)
   use Waypoint_module
   use Debug_module
   use Patch_module
+  use Chemistry_module
  
   implicit none
   
@@ -704,6 +707,8 @@ subroutine readInput(simulation,filename)
             case('PRIMARY_SPECIES','SECONDARY_SPECIES','GAS_SPECIES', &
                  'MINERALS')
               call fiSkipToEND(IUNIT1,option%myrank,card)
+            case('RUN_CARBONATE')
+              realization%chemistry => CarbonateTestProblemCreate(option)
           end select
           if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
               fiStringCompare(string,'END',THREE_INTEGER)) exit

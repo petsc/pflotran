@@ -9,6 +9,8 @@ module Reactive_Transport_Aux_module
 #include "definitions.h"
  
   type, public :: reactive_transport_auxvar_type
+    PetscReal, pointer :: den(:)
+    PetscReal :: sat
     ! phase dependent totals
     PetscReal, pointer :: total(:,:)
     PetscReal, pointer :: dtotal(:,:,:)
@@ -24,6 +26,7 @@ module Reactive_Transport_Aux_module
     ! mineral reactions
     PetscReal, pointer :: mnrl_volfrac(:)
     PetscReal, pointer :: mnrl_area0(:)
+    PetscReal, pointer :: mnrl_rate(:)
   end type reactive_transport_auxvar_type
   
   type, public :: reactive_transport_type
@@ -35,7 +38,7 @@ module Reactive_Transport_Aux_module
   end type reactive_transport_type
 
   public :: RTAuxCreate, RTAuxDestroy, &
-            RTAuxVarCompute, RTAuxVarInit
+            RTAuxVarInit, RTAuxVarCopy, RTAuxVarDestroy
 
 contains
 
@@ -86,6 +89,9 @@ subroutine RTAuxVarInit(aux_var,option)
   type(reactive_transport_auxvar_type) :: aux_var
   type(option_type) :: option  
   
+  allocate(aux_var%den(option%nphase))
+  aux_var%den = 0.d0
+  aux_var%sat = 0.d0
   allocate(aux_var%total(option%ncomp,option%nphase))
   aux_var%total = 0.d0
   allocate(aux_var%dtotal(option%ncomp,option%ncomp,option%nphase))
@@ -94,51 +100,74 @@ subroutine RTAuxVarInit(aux_var,option)
   aux_var%primary_spec = 0.d0
   allocate(aux_var%secondary_spec(option%ncmplx))
   aux_var%secondary_spec = 0.d0
-  
+  allocate(aux_var%mnrl_volfrac(option%nmnrl))
+  aux_var%mnrl_volfrac = 0.d0
+  allocate(aux_var%mnrl_area0(option%nmnrl))
+  aux_var%mnrl_area0 = 0.d0
+  allocate(aux_var%mnrl_rate(option%nmnrl))
+  aux_var%mnrl_rate = 0.d0
+
 end subroutine RTAuxVarInit
 
 ! ************************************************************************** !
 !
-! RTAuxVarCompute: Computes secondary variables for each grid cell
+! RTAuxVarCopy: Copys an auxilliary object
 ! author: Glenn Hammond
-! date: 02/14/08
+! date: 09/05/08
 !
 ! ************************************************************************** !
-subroutine RTAuxVarCompute(x,aux_var,option)
+subroutine RTAuxVarCopy(aux_var, aux_var2,option)
 
   use Option_module
 
   implicit none
   
-  type(option_type) :: option
-  PetscReal :: x(option%ncomp)  
-  type(reactive_transport_auxvar_type) :: aux_var
-
-  ! update totals  
-  aux_var%total(1:option%ncomp,1) = x(1:option%ncomp)
-  ! add in other later
+  type(reactive_transport_auxvar_type) :: aux_var, aux_var2
+  type(option_type) :: option  
   
-end subroutine RTAuxVarCompute
+  aux_var%den = aux_var2%den
+  aux_var%sat = aux_var2%sat
+  aux_var%total = aux_var2%total
+  aux_var%dtotal = aux_var2%dtotal
+  aux_var%primary_spec = aux_var2%primary_spec
+  aux_var%secondary_spec = aux_var2%secondary_spec
+  aux_var%mnrl_volfrac = aux_var2%mnrl_volfrac
+  aux_var%mnrl_area0 = aux_var2%mnrl_area0
+  aux_var%mnrl_rate = aux_var2%mnrl_rate
+
+end subroutine RTAuxVarCopy
 
 ! ************************************************************************** !
 !
-! AuxVarDestroy: Deallocates a reactive transport auxilliary object
+! RTAuxVarDestroy: Deallocates a reactive transport auxilliary object
 ! author: Glenn Hammond
 ! date: 02/14/08
 !
 ! ************************************************************************** !
-subroutine AuxVarDestroy(aux_var)
+subroutine RTAuxVarDestroy(aux_var)
 
   implicit none
 
   type(reactive_transport_auxvar_type) :: aux_var
   
+  if (associated(aux_var%den)) deallocate(aux_var%den)
+  nullify(aux_var%den)
   if (associated(aux_var%total)) deallocate(aux_var%total)
   nullify(aux_var%total)
   if (associated(aux_var%dtotal))deallocate(aux_var%dtotal)
   nullify(aux_var%dtotal)
+  if (associated(aux_var%primary_spec))deallocate(aux_var%primary_spec)
+  nullify(aux_var%primary_spec)
+  if (associated(aux_var%secondary_spec))deallocate(aux_var%secondary_spec)
+  nullify(aux_var%secondary_spec)
+  if (associated(aux_var%mnrl_volfrac))deallocate(aux_var%mnrl_volfrac)
+  nullify(aux_var%mnrl_volfrac)
+  if (associated(aux_var%mnrl_area0))deallocate(aux_var%mnrl_area0)
+  nullify(aux_var%mnrl_area0)
+  if (associated(aux_var%mnrl_rate))deallocate(aux_var%mnrl_rate)
+  nullify(aux_var%mnrl_rate)
 
-end subroutine AuxVarDestroy
+end subroutine RTAuxVarDestroy
 
 ! ************************************************************************** !
 !
@@ -157,10 +186,10 @@ subroutine RTAuxDestroy(aux)
   if (.not.associated(aux)) return
   
   do iaux = 1, aux%num_aux
-    call AuxVarDestroy(aux%aux_vars(iaux))
+    call RTAuxVarDestroy(aux%aux_vars(iaux))
   enddo  
   do iaux = 1, aux%num_aux_bc
-    call AuxVarDestroy(aux%aux_vars_bc(iaux))
+    call RTAuxVarDestroy(aux%aux_vars_bc(iaux))
   enddo  
   
   if (associated(aux%aux_vars)) deallocate(aux%aux_vars)

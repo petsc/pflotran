@@ -290,6 +290,10 @@ PflotranJacobianLevelOperator::MatSetValuesLocal(int patchNumber,
                                                  PetscInt ncol,const PetscInt icol[],
                                                  const PetscScalar y[],InsertMode addv)
 {
+#ifdef DEBUG_CHECK_ASSERTIONS
+   assert(nrow==1);
+   assert(ncol==1);
+#endif
    tbox::Pointer< hier::Patch<NDIM> > patch = d_level->getPatch(patchNumber);
    // the pointer to the patch can be NULL if the patch is off processor
    if(!patch.isNull())
@@ -386,6 +390,10 @@ PflotranJacobianLevelOperator::MatSetValuesBlockedLocal(int patchNumber,
                                                         PetscInt ncol,const PetscInt icol[],
                                                         const PetscScalar y[],InsertMode addv)
 {
+#ifdef DEBUG_CHECK_ASSERTIONS
+   assert(nrow==1);
+   assert(ncol==1);
+#endif
    tbox::Pointer< hier::Patch<NDIM> > patch = d_level->getPatch(patchNumber);
    // the pointer to the patch can be NULL if the patch is off processor
    if(!patch.isNull())
@@ -411,7 +419,7 @@ PflotranJacobianLevelOperator::MatSetValuesBlockedLocal(int patchNumber,
          int ir= ((currentRow%ngxy)%ngx) - 1;  
          
          int offSet = kr*nxy+jr*nx+ir;
-         offSet = offSet*d_ndof;
+         offSet = offSet*d_stencil_size*d_ndof*d_ndof;
 
          for(int j=0;j<ncol; j++)
          {
@@ -462,7 +470,7 @@ PflotranJacobianLevelOperator::MatSetValuesBlockedLocal(int patchNumber,
                   abort();
                }
 
-               pos = pos*d_ndof;
+               pos = pos*d_ndof*d_ndof;
 
                if(addv==INSERT_VALUES)
                {

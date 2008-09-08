@@ -82,7 +82,7 @@ c
       REAL dst(CELL3d(ifirst,ilast,dgcw))
       REAL src(CELL3d(ifirst,ilast,sgcw))
       REAL stencil(0:6,CELL3d(ifirst,ilast,0))
-
+      REAL sum
       integer i,j,k
 c
 c***********************************************************************
@@ -90,13 +90,22 @@ c
       do k = ifirst2, ilast2
          do j = ifirst1, ilast1
             do i = ifirst0, ilast0
-               dst(i,j,k)=stencil(PP,i,j,k)*src(i,j,k)
-     &                   +stencil(WW,i,j,k)*src(i-1,j,k)
-     &                   +stencil(EE,i,j,k)*src(i+1,j,k)
-     &                   +stencil(SS,i,j,k)*src(i,j-1,k)
-     &                   +stencil(NN,i,j,k)*src(i,j+1,k)
-     &                   +stencil(BB,i,j,k)*src(i,j,k-1)
-     &                   +stencil(TT,i,j,k)*src(i,j,k+1)
+               sum=0.0
+               sum=sum+stencil(BB,i,j,k)*src(i,j,k-1)
+               sum=sum+stencil(SS,i,j,k)*src(i,j-1,k)
+               sum=sum+stencil(WW,i,j,k)*src(i-1,j,k)
+               sum=sum+stencil(PP,i,j,k)*src(i,j,k)
+               sum=sum+stencil(EE,i,j,k)*src(i+1,j,k)
+               sum=sum+stencil(NN,i,j,k)*src(i,j+1,k)
+               sum=sum+stencil(TT,i,j,k)*src(i,j,k+1)
+               dst(i,j,k)=sum
+c               dst(i,j,k)=stencil(PP,i,j,k)*src(i,j,k)
+c     &                   +stencil(WW,i,j,k)*src(i-1,j,k)
+c     &                   +stencil(EE,i,j,k)*src(i+1,j,k)
+c     &                   +stencil(SS,i,j,k)*src(i,j-1,k)
+c     &                   +stencil(NN,i,j,k)*src(i,j+1,k)
+c     &                   +stencil(BB,i,j,k)*src(i,j,k-1)
+c     &                   +stencil(TT,i,j,k)*src(i,j,k+1)
             enddo
          enddo
       enddo
@@ -136,7 +145,7 @@ c
         do j = ifirst1, ilast1
           do i = ifirst0, ilast0
             do l=0,ndof-1
-              dst(i,j,k,l)=0.0
+              dst(l,i,j,k)=0.0
               do m=0,ndof-1
                dst(l,i,j,k)=dst(l,i,j,k)
      &                    +stencil(PP*nd2+m*ndof+l,i,j,k)*src(m,i,j,k)
