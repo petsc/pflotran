@@ -460,7 +460,7 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
   PetscInt :: imax, nlevels, ln, npatches, pn, i
   PetscInt :: flowortransport
   DM :: dm_ptr
-  ISLocalToGlobalMapping :: ptmap, bmap
+  ISLocalToGlobalMapping :: ptmap
   logical :: islocal
 
   dm_ptr = DiscretizationGetDMPtrFromIndex(discretization,dm_index)
@@ -512,7 +512,7 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
              indices(i:i)=i-1
           enddo
           call ISLocalToGlobalMappingCreate(PETSC_COMM_WORLD, imax, indices, ptmap, ierr)          
-          call ISSetIdentity(ptmap, ierr)
+!          call ISSetIdentity(ptmap, ierr)
 !          call ISLocalToGlobalMappingBlock(ptmap, ndof, bmap, ierr)
           call MatSetLocalToGlobalMappingBlock(Jacobian, ptmap, ierr)
        endif
