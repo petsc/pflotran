@@ -47,7 +47,8 @@ module Mphase_module
          MphaseSetup,MphaseUpdateReason,&
          MphaseGetVarFromArray, MphaseGetVarFromArrayAtCell, &
          MphaseMaxChange, MphaseUpdateSolution, &
-         MphaseGetTecplotHeader, MphaseInitializeTimestep
+         MphaseGetTecplotHeader, MphaseInitializeTimestep, &
+         MphaseUpdateAuxVars
 
 contains
 

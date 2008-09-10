@@ -30,6 +30,7 @@ module Option_module
     PetscInt :: nmnrl      ! # of minerals
     PetscInt :: nsorb      ! # of primary sorbed species
     character(len=MAXWORDLENGTH), pointer :: comp_names(:)
+    PetscTruth :: use_log_formulation ! flag for solving for the change in the log of the concentration
 
     PetscInt :: iflag
     
@@ -177,6 +178,7 @@ function OptionCreate()
   option%nmnrl = 0
   option%nsorb = 0
   nullify(option%comp_names)
+  option%use_log_formulation = PETSC_FALSE
 
   option%uniform_velocity = 0.d0
   option%imod = 1

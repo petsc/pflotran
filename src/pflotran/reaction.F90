@@ -1,4 +1,4 @@
-module Chemistry_module
+module Reaction_module
   
   implicit none
   
@@ -108,7 +108,7 @@ module Chemistry_module
     PetscInt :: neqcmplx
     PetscInt, pointer :: eqcmplxspecid(:,:)   ! (0:ncomp in rxn)
     PetscReal, pointer :: eqcmplxstoich(:,:)
-    PetscReal, pointer :: eqcmplx_a0(:)
+    PetscReal, pointer :: eqcmplx_a0(:)  ! DeBye-Huckel constant
     PetscReal, pointer :: eqcmplx_K(:)
     ! ionx exchange reactions
     PetscInt, pointer :: eqionx_ncation(:)
@@ -157,8 +157,8 @@ module Chemistry_module
     PetscReal, pointer :: kinmnrl_affinity_power(:)
   end type reaction_type
 
-  public :: ChemistryCreate, &
-            ChemistryRead, &
+  public :: ReactionCreate, &
+            ReactionRead, &
             GetPrimarySpeciesCount, &
             GetPrimarySpeciesNames, &
             GetSecondarySpeciesCount, &
@@ -184,10 +184,10 @@ function CarbonateTestProblemCreate(option)
   type(reaction_type), pointer :: CarbonateTestProblemCreate
   type(option_type) :: option
 
-  type(reaction_type), pointer :: chemistry
+  type(reaction_type), pointer :: reaction
   PetscInt :: icomp, irxn
   
-  chemistry => ChemistryCreate()
+  reaction => ReactionCreate()
 
   
   ! Assumes primary components
@@ -203,172 +203,172 @@ function CarbonateTestProblemCreate(option)
   ! minerals
   ! CaCO3(s)
   
-  chemistry%neqcmplx = 5
-  allocate(chemistry%eqcmplxspecid(0:option%ncomp,chemistry%neqcmplx))
-  chemistry%eqcmplxspecid = 0
-  allocate(chemistry%eqcmplxstoich(option%ncomp,chemistry%neqcmplx))
-  chemistry%eqcmplxstoich = 0.d0
-  allocate(chemistry%eqcmplx_a0(chemistry%neqcmplx))
-  chemistry%eqcmplx_a0 = 0.d0
-  allocate(chemistry%eqcmplx_K(chemistry%neqcmplx))
-  chemistry%eqcmplx_K = 0.d0
+  reaction%neqcmplx = 5
+  allocate(reaction%eqcmplxspecid(0:option%ncomp,reaction%neqcmplx))
+  reaction%eqcmplxspecid = 0
+  allocate(reaction%eqcmplxstoich(option%ncomp,reaction%neqcmplx))
+  reaction%eqcmplxstoich = 0.d0
+  allocate(reaction%eqcmplx_a0(reaction%neqcmplx))
+  reaction%eqcmplx_a0 = 0.d0
+  allocate(reaction%eqcmplx_K(reaction%neqcmplx))
+  reaction%eqcmplx_K = 0.d0
   
   ! CO2(aq)
   irxn = 1
-  chemistry%eqcmplxspecid(0,irxn) = 2
-  chemistry%eqcmplxspecid(1,irxn) = 1    ! H+
-  chemistry%eqcmplxspecid(2,irxn) = 2    ! HCO3-
-  chemistry%eqcmplxstoich(1,irxn) = 1.d0 ! H+
-  chemistry%eqcmplxstoich(2,irxn) = 1.d0 ! HCO3-
-  chemistry%eqcmplx_K(irxn) = -6.3447d0
+  reaction%eqcmplxspecid(0,irxn) = 2
+  reaction%eqcmplxspecid(1,irxn) = 1    ! H+
+  reaction%eqcmplxspecid(2,irxn) = 2    ! HCO3-
+  reaction%eqcmplxstoich(1,irxn) = 1.d0 ! H+
+  reaction%eqcmplxstoich(2,irxn) = 1.d0 ! HCO3-
+  reaction%eqcmplx_K(irxn) = -6.3447d0
   
   ! CO3-2
   irxn = 2
-  chemistry%eqcmplxspecid(0,irxn) = 2
-  chemistry%eqcmplxspecid(1,irxn) = 1    ! H+
-  chemistry%eqcmplxspecid(2,irxn) = 2    ! HCO3-
-  chemistry%eqcmplxstoich(1,irxn) = -1.d0 ! H+
-  chemistry%eqcmplxstoich(2,irxn) = 1.d0 ! HCO3-
-  chemistry%eqcmplx_K(irxn) = 10.3288d0
+  reaction%eqcmplxspecid(0,irxn) = 2
+  reaction%eqcmplxspecid(1,irxn) = 1    ! H+
+  reaction%eqcmplxspecid(2,irxn) = 2    ! HCO3-
+  reaction%eqcmplxstoich(1,irxn) = -1.d0 ! H+
+  reaction%eqcmplxstoich(2,irxn) = 1.d0 ! HCO3-
+  reaction%eqcmplx_K(irxn) = 10.3288d0
   
   ! CaCO3(aq)
   irxn = 3
-  chemistry%eqcmplxspecid(0,irxn) = 3
-  chemistry%eqcmplxspecid(1,irxn) = 1    ! H+
-  chemistry%eqcmplxspecid(2,irxn) = 2    ! HCO3-
-  chemistry%eqcmplxspecid(3,irxn) = 3    ! Ca+2
-  chemistry%eqcmplxstoich(1,irxn) = -1.d0 ! H+
-  chemistry%eqcmplxstoich(2,irxn) = 1.d0 ! HCO3-
-  chemistry%eqcmplxstoich(3,irxn) = 1.d0 ! Ca+2
-  chemistry%eqcmplx_K(irxn) = 7.0017d0
+  reaction%eqcmplxspecid(0,irxn) = 3
+  reaction%eqcmplxspecid(1,irxn) = 1    ! H+
+  reaction%eqcmplxspecid(2,irxn) = 2    ! HCO3-
+  reaction%eqcmplxspecid(3,irxn) = 3    ! Ca+2
+  reaction%eqcmplxstoich(1,irxn) = -1.d0 ! H+
+  reaction%eqcmplxstoich(2,irxn) = 1.d0 ! HCO3-
+  reaction%eqcmplxstoich(3,irxn) = 1.d0 ! Ca+2
+  reaction%eqcmplx_K(irxn) = 7.0017d0
 
   ! CaHCO3-
   irxn = 4
-  chemistry%eqcmplxspecid(0,irxn) = 2
-  chemistry%eqcmplxspecid(1,irxn) = 2    ! HCO3-
-  chemistry%eqcmplxspecid(2,irxn) = 3    ! Ca+2
-  chemistry%eqcmplxstoich(1,irxn) = 1.d0 ! HCO3-
-  chemistry%eqcmplxstoich(2,irxn) = 1.d0 ! Ca+2
-  chemistry%eqcmplx_K(irxn) = -1.0467d0
+  reaction%eqcmplxspecid(0,irxn) = 2
+  reaction%eqcmplxspecid(1,irxn) = 2    ! HCO3-
+  reaction%eqcmplxspecid(2,irxn) = 3    ! Ca+2
+  reaction%eqcmplxstoich(1,irxn) = 1.d0 ! HCO3-
+  reaction%eqcmplxstoich(2,irxn) = 1.d0 ! Ca+2
+  reaction%eqcmplx_K(irxn) = -1.0467d0
 
   ! OH-
   irxn = 5
-  chemistry%eqcmplxspecid(0,irxn) = 1
-  chemistry%eqcmplxspecid(1,irxn) = 1    ! H+
-  chemistry%eqcmplxstoich(1,irxn) = -1.d0 ! H+
-  chemistry%eqcmplx_K(irxn) = 13.9951
+  reaction%eqcmplxspecid(0,irxn) = 1
+  reaction%eqcmplxspecid(1,irxn) = 1    ! H+
+  reaction%eqcmplxstoich(1,irxn) = -1.d0 ! H+
+  reaction%eqcmplx_K(irxn) = 13.9951
   
-  chemistry%nkinmnrl = 1
-  allocate(chemistry%kinmnrlspecid(0:option%ncomp,chemistry%nkinmnrl))
-  allocate(chemistry%kinmnrlstoich(option%ncomp,chemistry%nkinmnrl))
-  allocate(chemistry%kinmnrl_K(chemistry%nkinmnrl))
-  allocate(chemistry%kinmnrl_rate(1,chemistry%nkinmnrl))
-  allocate(chemistry%mnrl_molar_vol(chemistry%nkinmnrl))
-  allocate(chemistry%kinmnrl_num_prefactors(chemistry%nkinmnrl))
+  reaction%nkinmnrl = 1
+  allocate(reaction%kinmnrlspecid(0:option%ncomp,reaction%nkinmnrl))
+  allocate(reaction%kinmnrlstoich(option%ncomp,reaction%nkinmnrl))
+  allocate(reaction%kinmnrl_K(reaction%nkinmnrl))
+  allocate(reaction%kinmnrl_rate(1,reaction%nkinmnrl))
+  allocate(reaction%mnrl_molar_vol(reaction%nkinmnrl))
+  allocate(reaction%kinmnrl_num_prefactors(reaction%nkinmnrl))
   
   ! CaCO3(s)
   irxn = 1
-  chemistry%kinmnrlspecid(0,irxn) = 3
-  chemistry%kinmnrlspecid(1,irxn) = 1    ! H+
-  chemistry%kinmnrlspecid(2,irxn) = 2    ! HCO3-
-  chemistry%kinmnrlspecid(3,irxn) = 3    ! Ca+2
-  chemistry%kinmnrlstoich(1,irxn) = -1.d0 ! H+
-  chemistry%kinmnrlstoich(2,irxn) = 1.d0 ! HCO3-
-  chemistry%kinmnrlstoich(3,irxn) = 1.d0 ! Ca+2
-  chemistry%kinmnrl_K(irxn) = 1.8487d0
-  chemistry%kinmnrl_rate(1,irxn) = 1.d-6
-  chemistry%mnrl_molar_vol(irxn) = 36.9340d0/1.d6  ! based on 36.934 cm^3/mol
-  chemistry%kinmnrl_num_prefactors(irxn) = 0
+  reaction%kinmnrlspecid(0,irxn) = 3
+  reaction%kinmnrlspecid(1,irxn) = 1    ! H+
+  reaction%kinmnrlspecid(2,irxn) = 2    ! HCO3-
+  reaction%kinmnrlspecid(3,irxn) = 3    ! Ca+2
+  reaction%kinmnrlstoich(1,irxn) = -1.d0 ! H+
+  reaction%kinmnrlstoich(2,irxn) = 1.d0 ! HCO3-
+  reaction%kinmnrlstoich(3,irxn) = 1.d0 ! Ca+2
+  reaction%kinmnrl_K(irxn) = 1.8487d0
+  reaction%kinmnrl_rate(1,irxn) = 1.d-6
+  reaction%mnrl_molar_vol(irxn) = 36.9340d0/1.d6  ! based on 36.934 cm^3/mol
+  reaction%kinmnrl_num_prefactors(irxn) = 0
   
-  CarbonateTestProblemCreate => chemistry
+  CarbonateTestProblemCreate => reaction
      
 end function CarbonateTestProblemCreate
 
 ! ************************************************************************** !
 !
-! ChemistryCreate: Allocate and initialize chemistry object
+! ReactionCreate: Allocate and initialize reaction object
 ! author: Glenn Hammond
 ! date: 05/02/08
 !
 ! ************************************************************************** !
-function ChemistryCreate()
+function ReactionCreate()
 
   use Option_module
 
   implicit none
   
-  type(reaction_type), pointer :: ChemistryCreate
+  type(reaction_type), pointer :: ReactionCreate
   
-  type(reaction_type), pointer :: chemistry
+  type(reaction_type), pointer :: reaction
 
-  allocate(chemistry)  
+  allocate(reaction)  
 
-  nullify(chemistry%primary_species_list)
-  nullify(chemistry%secondary_species_list)
-  nullify(chemistry%gas_species_list)
-  nullify(chemistry%mineral_list)
-  nullify(chemistry%ion_exchange_list)
-  nullify(chemistry%surface_complex_list)
+  nullify(reaction%primary_species_list)
+  nullify(reaction%secondary_species_list)
+  nullify(reaction%gas_species_list)
+  nullify(reaction%mineral_list)
+  nullify(reaction%ion_exchange_list)
+  nullify(reaction%surface_complex_list)
   
-  nullify(chemistry%primary_spec_molwt)
-  nullify(chemistry%primary_spec_a0)
-  nullify(chemistry%primary_spec_Z)
+  nullify(reaction%primary_spec_molwt)
+  nullify(reaction%primary_spec_a0)
+  nullify(reaction%primary_spec_Z)
   
-  chemistry%neqcmplx = 0
-  nullify(chemistry%eqcmplxspecid)
-  nullify(chemistry%eqcmplxstoich)
-  nullify(chemistry%eqcmplx_a0)
-  nullify(chemistry%eqcmplx_K)
+  reaction%neqcmplx = 0
+  nullify(reaction%eqcmplxspecid)
+  nullify(reaction%eqcmplxstoich)
+  nullify(reaction%eqcmplx_a0)
+  nullify(reaction%eqcmplx_K)
   
-  nullify(chemistry%eqionx_ncation)
-  nullify(chemistry%eqionx_CEC)
-  nullify(chemistry%eqionx_k)
-  nullify(chemistry%eqionx_cationid)
-  nullify(chemistry%eqionx_rxn_offset)
+  nullify(reaction%eqionx_ncation)
+  nullify(reaction%eqionx_CEC)
+  nullify(reaction%eqionx_k)
+  nullify(reaction%eqionx_cationid)
+  nullify(reaction%eqionx_rxn_offset)
   
-  nullify(chemistry%kinionx_ncation)
-  nullify(chemistry%kinionx_CEC)
-  nullify(chemistry%kinionx_k)
-  nullify(chemistry%kinionx_cationid)
-  nullify(chemistry%kinionx_rxn_offset)
+  nullify(reaction%kinionx_ncation)
+  nullify(reaction%kinionx_CEC)
+  nullify(reaction%kinionx_k)
+  nullify(reaction%kinionx_cationid)
+  nullify(reaction%kinionx_rxn_offset)
   
-  nullify(chemistry%eqsurfcmplxspecid)
-  nullify(chemistry%eqsurfcmplxstoich)
-  nullify(chemistry%eqsurfcmplx_freesite_stoich)
-  nullify(chemistry%eqsurfcmplx_K)
-  nullify(chemistry%eqsurfcmplx_Z)
+  nullify(reaction%eqsurfcmplxspecid)
+  nullify(reaction%eqsurfcmplxstoich)
+  nullify(reaction%eqsurfcmplx_freesite_stoich)
+  nullify(reaction%eqsurfcmplx_K)
+  nullify(reaction%eqsurfcmplx_Z)
   
-  nullify(chemistry%kinsurfcmplxspecid)
-  nullify(chemistry%kinsurfcmplxstoich)
-  nullify(chemistry%kinsurfcmplx_freesite_stoich)
-  nullify(chemistry%kinsurfcmplx_K)
-  nullify(chemistry%kinsurfcmplx_Z)
+  nullify(reaction%kinsurfcmplxspecid)
+  nullify(reaction%kinsurfcmplxstoich)
+  nullify(reaction%kinsurfcmplx_freesite_stoich)
+  nullify(reaction%kinsurfcmplx_K)
+  nullify(reaction%kinsurfcmplx_Z)
 
-  nullify(chemistry%mnrlspecid)
-  nullify(chemistry%mnrlstoich)
-  nullify(chemistry%mnrl_K)
-  nullify(chemistry%mnrl_molar_vol)
+  nullify(reaction%mnrlspecid)
+  nullify(reaction%mnrlstoich)
+  nullify(reaction%mnrl_K)
+  nullify(reaction%mnrl_molar_vol)
   
-  chemistry%nkinmnrl = 0  
-  nullify(chemistry%kinmnrlspecid)
-  nullify(chemistry%kinmnrlstoich)
-  nullify(chemistry%kinmnrl_K)
-  nullify(chemistry%kinmnrl_rate)
-  nullify(chemistry%kinmnrl_num_prefactors)
-  nullify(chemistry%kinmnrl_pri_prefactor_id)
-  nullify(chemistry%kinmnrl_pri_pref_alpha_stoich)
-  nullify(chemistry%kinmnrl_pri_pref_beta_stoich)
-  nullify(chemistry%kinmnrl_pri_pref_atten_coef)
-  nullify(chemistry%kinmnrl_sec_prefactor_id)
-  nullify(chemistry%kinmnrl_sec_pref_alpha_stoich)
-  nullify(chemistry%kinmnrl_sec_pref_beta_stoich)
-  nullify(chemistry%kinmnrl_sec_pref_atten_coef)
-  nullify(chemistry%kinmnrl_Tempkin_const)
-  nullify(chemistry%kinmnrl_affinity_power)
+  reaction%nkinmnrl = 0  
+  nullify(reaction%kinmnrlspecid)
+  nullify(reaction%kinmnrlstoich)
+  nullify(reaction%kinmnrl_K)
+  nullify(reaction%kinmnrl_rate)
+  nullify(reaction%kinmnrl_num_prefactors)
+  nullify(reaction%kinmnrl_pri_prefactor_id)
+  nullify(reaction%kinmnrl_pri_pref_alpha_stoich)
+  nullify(reaction%kinmnrl_pri_pref_beta_stoich)
+  nullify(reaction%kinmnrl_pri_pref_atten_coef)
+  nullify(reaction%kinmnrl_sec_prefactor_id)
+  nullify(reaction%kinmnrl_sec_pref_alpha_stoich)
+  nullify(reaction%kinmnrl_sec_pref_beta_stoich)
+  nullify(reaction%kinmnrl_sec_pref_atten_coef)
+  nullify(reaction%kinmnrl_Tempkin_const)
+  nullify(reaction%kinmnrl_affinity_power)
 
-  ChemistryCreate => chemistry
+  ReactionCreate => reaction
   
-end function ChemistryCreate
+end function ReactionCreate
 
 ! ************************************************************************** !
 !
@@ -463,22 +463,22 @@ end function MineralCreate
 ! date: 06/02/08
 !
 ! ************************************************************************** !
-function GetPrimarySpeciesNames(chemistry)
+function GetPrimarySpeciesNames(reaction)
 
   implicit none
   
   character(len=MAXWORDLENGTH), pointer :: GetPrimarySpeciesNames(:)
-  type(reaction_type) :: chemistry
+  type(reaction_type) :: reaction
 
   PetscInt :: count
   character(len=MAXWORDLENGTH), pointer :: names(:)
   type(aq_species_type), pointer :: species
 
-  count = GetPrimarySpeciesCount(chemistry)
+  count = GetPrimarySpeciesCount(reaction)
   allocate(names(count))
   
   count = 1
-  species => chemistry%primary_species_list
+  species => reaction%primary_species_list
   do
     if (.not.associated(species)) exit
     names(count) = species%spec_name
@@ -497,17 +497,17 @@ end function GetPrimarySpeciesNames
 ! date: 06/02/08
 !
 ! ************************************************************************** !
-function GetPrimarySpeciesCount(chemistry)
+function GetPrimarySpeciesCount(reaction)
 
   implicit none
   
   integer :: GetPrimarySpeciesCount
-  type(reaction_type) :: chemistry
+  type(reaction_type) :: reaction
 
   type(aq_species_type), pointer :: species
 
   GetPrimarySpeciesCount = 0
-  species => chemistry%primary_species_list
+  species => reaction%primary_species_list
   do
     if (.not.associated(species)) exit
     GetPrimarySpeciesCount = GetPrimarySpeciesCount + 1
@@ -523,22 +523,22 @@ end function GetPrimarySpeciesCount
 ! date: 06/02/08
 !
 ! ************************************************************************** !
-function GetSecondarySpeciesNames(chemistry)
+function GetSecondarySpeciesNames(reaction)
 
   implicit none
   
   character(len=MAXWORDLENGTH), pointer :: GetSecondarySpeciesNames(:)
-  type(reaction_type) :: chemistry
+  type(reaction_type) :: reaction
 
   PetscInt :: count
   character(len=MAXWORDLENGTH), pointer :: names(:)
   type(aq_species_type), pointer :: species
 
-  count = GetSecondarySpeciesCount(chemistry)
+  count = GetSecondarySpeciesCount(reaction)
   allocate(names(count))
   
   count = 1
-  species => chemistry%secondary_species_list
+  species => reaction%secondary_species_list
   do
     if (.not.associated(species)) exit
     names(count) = species%spec_name
@@ -557,17 +557,17 @@ end function GetSecondarySpeciesNames
 ! date: 06/02/08
 !
 ! ************************************************************************** !
-function GetSecondarySpeciesCount(chemistry)
+function GetSecondarySpeciesCount(reaction)
 
   implicit none
   
   integer :: GetSecondarySpeciesCount
-  type(reaction_type) :: chemistry
+  type(reaction_type) :: reaction
 
   type(aq_species_type), pointer :: species
 
   GetSecondarySpeciesCount = 0
-  species => chemistry%secondary_species_list
+  species => reaction%secondary_species_list
   do
     if (.not.associated(species)) exit
     GetSecondarySpeciesCount = GetSecondarySpeciesCount + 1
@@ -583,22 +583,22 @@ end function GetSecondarySpeciesCount
 ! date: 09/04/08
 !
 ! ************************************************************************** !
-function GetMineralNames(chemistry)
+function GetMineralNames(reaction)
 
   implicit none
   
   character(len=MAXWORDLENGTH), pointer :: GetMineralNames(:)
-  type(reaction_type) :: chemistry
+  type(reaction_type) :: reaction
 
   PetscInt :: count
   character(len=MAXWORDLENGTH), pointer :: names(:)
   type(mineral_type), pointer :: mineral
 
-  count = GetMineralCount(chemistry)
+  count = GetMineralCount(reaction)
   allocate(names(count))
   
   count = 1
-  mineral => chemistry%mineral_list
+  mineral => reaction%mineral_list
   do
     if (.not.associated(mineral)) exit
     names(count) = mineral%mnrl_name
@@ -617,17 +617,17 @@ end function GetMineralNames
 ! date: 06/02/08
 !
 ! ************************************************************************** !
-function GetMineralCount(chemistry)
+function GetMineralCount(reaction)
 
   implicit none
   
   integer :: GetMineralCount
-  type(reaction_type) :: chemistry
+  type(reaction_type) :: reaction
 
   type(mineral_type), pointer :: mineral
 
   GetMineralCount = 0
-  mineral => chemistry%mineral_list
+  mineral => reaction%mineral_list
   do
     if (.not.associated(mineral)) exit
     GetMineralCount = GetMineralCount + 1
@@ -638,19 +638,19 @@ end function GetMineralCount
 
 ! ************************************************************************** !
 !
-! ChemistryRead: Reads chemical species
+! ReactionRead: Reads chemical species
 ! author: Glenn Hammond
 ! date: 05/02/08
 !
 ! ************************************************************************** !
-subroutine ChemistryRead(chemistry,fid,option)
+subroutine ReactionRead(reaction,fid,option)
 
   use Fileio_module
   use Option_module
   
   implicit none
   
-  type(reaction_type) :: chemistry
+  type(reaction_type) :: reaction
   type(option_type) :: option
   PetscInt :: fid
   
@@ -684,8 +684,8 @@ subroutine ChemistryRead(chemistry,fid,option)
           species => AqueousSpeciesCreate()
           call fiReadWord(string,species%spec_name,.true.,ierr)  
           call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,PRIMARY_SPECIES', ierr)    
-          if (.not.associated(chemistry%primary_species_list)) &
-            chemistry%primary_species_list => species
+          if (.not.associated(reaction%primary_species_list)) &
+            reaction%primary_species_list => species
           if (associated(prev_species)) prev_species%next => species
           prev_species => species
           nullify(species)
@@ -700,8 +700,8 @@ subroutine ChemistryRead(chemistry,fid,option)
           species => AqueousSpeciesCreate()
           call fiReadWord(string,species%spec_name,.true.,ierr)  
           call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,PRIMARY_SPECIES', ierr)    
-          if (.not.associated(chemistry%secondary_species_list)) &
-            chemistry%secondary_species_list => species
+          if (.not.associated(reaction%secondary_species_list)) &
+            reaction%secondary_species_list => species
           if (associated(prev_species)) prev_species%next => species
           prev_species => species
           nullify(species)
@@ -716,8 +716,8 @@ subroutine ChemistryRead(chemistry,fid,option)
           gas => GasSpeciesCreate()
           call fiReadWord(string,gas%spec_name,.true.,ierr)  
           call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,GAS_SPECIES', ierr)    
-          if (.not.associated(chemistry%gas_species_list)) &
-            chemistry%gas_species_list => gas
+          if (.not.associated(reaction%gas_species_list)) &
+            reaction%gas_species_list => gas
           if (associated(prev_gas)) prev_gas%next => gas
           prev_gas => gas
           nullify(gas)
@@ -732,8 +732,8 @@ subroutine ChemistryRead(chemistry,fid,option)
           mineral => MineralCreate()
           call fiReadWord(string,mineral%mnrl_name,.true.,ierr)  
           call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,MINERAL', ierr)    
-          if (.not.associated(chemistry%mineral_list)) &
-            chemistry%mineral_list => mineral
+          if (.not.associated(reaction%mineral_list)) &
+            reaction%mineral_list => mineral
           if (associated(prev_mineral)) prev_mineral%next => mineral
           prev_mineral => mineral
           nullify(mineral)
@@ -747,7 +747,7 @@ subroutine ChemistryRead(chemistry,fid,option)
     end select
   enddo
  
-end subroutine ChemistryRead
+end subroutine ReactionRead
 
 ! ************************************************************************** !
 !
@@ -928,16 +928,16 @@ end subroutine SurfaceComplexationRxnDestroy
 
 ! ************************************************************************** !
 !
-! ChemistryDestroy: Deallocates a chemistry object
+! ReactionDestroy: Deallocates a reaction object
 ! author: Glenn Hammond
 ! date: 05/29/08
 !
 ! ************************************************************************** !
-subroutine ChemistryDestroy(chemistry)
+subroutine ReactionDestroy(reaction)
 
   implicit none
 
-  type(reaction_type), pointer :: chemistry
+  type(reaction_type), pointer :: reaction
   
   type(aq_species_type), pointer :: aq_species, prev_aq_species
   type(gas_species_type), pointer :: gas_species, prev_gas_species
@@ -945,168 +945,168 @@ subroutine ChemistryDestroy(chemistry)
   type(ion_exchange_rxn_type), pointer :: ionxrxn, prev_ionxrxn
   type(surface_complexation_rxn_type), pointer :: surfcplxrxn, prev_surfcplxrxn
 
-  if (.not.associated(chemistry)) return 
+  if (.not.associated(reaction)) return 
 
   ! primary species
-  aq_species => chemistry%primary_species_list
+  aq_species => reaction%primary_species_list
   do
     if (.not.associated(aq_species)) exit
     prev_aq_species => aq_species
     aq_species => aq_species%next
     call AqueousSpeciesDestroy(prev_aq_species)
   enddo  
-  nullify(chemistry%primary_species_list)
+  nullify(reaction%primary_species_list)
 
   ! secondary species
-  aq_species => chemistry%secondary_species_list
+  aq_species => reaction%secondary_species_list
   do
     if (.not.associated(aq_species)) exit
     prev_aq_species => aq_species
     aq_species => aq_species%next
     call AqueousSpeciesDestroy(prev_aq_species)
   enddo  
-  nullify(chemistry%secondary_species_list)
+  nullify(reaction%secondary_species_list)
 
   ! gas species
-  gas_species => chemistry%gas_species_list
+  gas_species => reaction%gas_species_list
   do
     if (.not.associated(gas_species)) exit
     prev_gas_species => gas_species
     gas_species => gas_species%next
     call GasSpeciesDestroy(prev_gas_species)
   enddo  
-  nullify(chemistry%gas_species_list)
+  nullify(reaction%gas_species_list)
   
   ! mineral species
-  mineral => chemistry%mineral_list
+  mineral => reaction%mineral_list
   do
     if (.not.associated(mineral)) exit
     prev_mineral => mineral
     mineral => mineral%next
     call MineralDestroy(prev_mineral)
   enddo    
-  nullify(chemistry%mineral_list)
+  nullify(reaction%mineral_list)
   
   ! ionx exchange reactions
-  ionxrxn => chemistry%ion_exchange_list
+  ionxrxn => reaction%ion_exchange_list
   do
     if (.not.associated(ionxrxn)) exit
     prev_ionxrxn => ionxrxn
     ionxrxn => ionxrxn%next
     call IonExchangeRxnDestroy(prev_ionxrxn)
   enddo    
-  nullify(chemistry%ion_exchange_list)
+  nullify(reaction%ion_exchange_list)
 
   ! surface complexation reactions
-  surfcplxrxn => chemistry%surface_complex_list
+  surfcplxrxn => reaction%surface_complex_list
   do
     if (.not.associated(surfcplxrxn)) exit
     prev_surfcplxrxn => surfcplxrxn
     surfcplxrxn => surfcplxrxn%next
     call SurfaceComplexationRxnDestroy(prev_surfcplxrxn)
   enddo    
-  nullify(chemistry%surface_complex_list)
+  nullify(reaction%surface_complex_list)
   
-  if (associated(chemistry%primary_spec_molwt)) deallocate(chemistry%primary_spec_molwt)
-  nullify(chemistry%primary_spec_molwt)
-  if (associated(chemistry%primary_spec_a0)) deallocate(chemistry%primary_spec_a0)
-  nullify(chemistry%primary_spec_a0)
-  if (associated(chemistry%primary_spec_Z)) deallocate(chemistry%primary_spec_Z)
-  nullify(chemistry%primary_spec_Z)
+  if (associated(reaction%primary_spec_molwt)) deallocate(reaction%primary_spec_molwt)
+  nullify(reaction%primary_spec_molwt)
+  if (associated(reaction%primary_spec_a0)) deallocate(reaction%primary_spec_a0)
+  nullify(reaction%primary_spec_a0)
+  if (associated(reaction%primary_spec_Z)) deallocate(reaction%primary_spec_Z)
+  nullify(reaction%primary_spec_Z)
   
-  if (associated(chemistry%eqcmplxspecid)) deallocate(chemistry%eqcmplxspecid)
-  nullify(chemistry%eqcmplxspecid)
-  if (associated(chemistry%eqcmplxstoich)) deallocate(chemistry%eqcmplxstoich)
-  nullify(chemistry%eqcmplxstoich)
-  if (associated(chemistry%eqcmplx_a0)) deallocate(chemistry%eqcmplx_a0)
-  nullify(chemistry%eqcmplx_a0)
-  if (associated(chemistry%eqcmplx_K)) deallocate(chemistry%eqcmplx_K)
-  nullify(chemistry%eqcmplx_K)
+  if (associated(reaction%eqcmplxspecid)) deallocate(reaction%eqcmplxspecid)
+  nullify(reaction%eqcmplxspecid)
+  if (associated(reaction%eqcmplxstoich)) deallocate(reaction%eqcmplxstoich)
+  nullify(reaction%eqcmplxstoich)
+  if (associated(reaction%eqcmplx_a0)) deallocate(reaction%eqcmplx_a0)
+  nullify(reaction%eqcmplx_a0)
+  if (associated(reaction%eqcmplx_K)) deallocate(reaction%eqcmplx_K)
+  nullify(reaction%eqcmplx_K)
   
-  if (associated(chemistry%eqionx_ncation)) deallocate(chemistry%eqionx_ncation)
-  nullify(chemistry%eqionx_ncation)
-  if (associated(chemistry%eqionx_CEC)) deallocate(chemistry%eqionx_CEC)
-  nullify(chemistry%eqionx_CEC)
-  if (associated(chemistry%eqionx_k)) deallocate(chemistry%eqionx_k)
-  nullify(chemistry%eqionx_k)
-  if (associated(chemistry%eqionx_cationid)) deallocate(chemistry%eqionx_cationid)
-  nullify(chemistry%eqionx_cationid)
-  if (associated(chemistry%eqionx_cationid)) deallocate(chemistry%eqionx_cationid)
-  nullify(chemistry%eqionx_rxn_offset)
+  if (associated(reaction%eqionx_ncation)) deallocate(reaction%eqionx_ncation)
+  nullify(reaction%eqionx_ncation)
+  if (associated(reaction%eqionx_CEC)) deallocate(reaction%eqionx_CEC)
+  nullify(reaction%eqionx_CEC)
+  if (associated(reaction%eqionx_k)) deallocate(reaction%eqionx_k)
+  nullify(reaction%eqionx_k)
+  if (associated(reaction%eqionx_cationid)) deallocate(reaction%eqionx_cationid)
+  nullify(reaction%eqionx_cationid)
+  if (associated(reaction%eqionx_cationid)) deallocate(reaction%eqionx_cationid)
+  nullify(reaction%eqionx_rxn_offset)
   
-  if (associated(chemistry%kinionx_ncation)) deallocate(chemistry%kinionx_ncation)
-  nullify(chemistry%kinionx_ncation)
-  if (associated(chemistry%kinionx_CEC)) deallocate(chemistry%kinionx_CEC)
-  nullify(chemistry%kinionx_CEC)
-  if (associated(chemistry%kinionx_k)) deallocate(chemistry%kinionx_k)
-  nullify(chemistry%kinionx_k)
-  if (associated(chemistry%kinionx_cationid)) deallocate(chemistry%kinionx_cationid)
-  nullify(chemistry%kinionx_cationid)
-  if (associated(chemistry%kinionx_rxn_offset)) deallocate(chemistry%kinionx_rxn_offset)
-  nullify(chemistry%kinionx_rxn_offset)
+  if (associated(reaction%kinionx_ncation)) deallocate(reaction%kinionx_ncation)
+  nullify(reaction%kinionx_ncation)
+  if (associated(reaction%kinionx_CEC)) deallocate(reaction%kinionx_CEC)
+  nullify(reaction%kinionx_CEC)
+  if (associated(reaction%kinionx_k)) deallocate(reaction%kinionx_k)
+  nullify(reaction%kinionx_k)
+  if (associated(reaction%kinionx_cationid)) deallocate(reaction%kinionx_cationid)
+  nullify(reaction%kinionx_cationid)
+  if (associated(reaction%kinionx_rxn_offset)) deallocate(reaction%kinionx_rxn_offset)
+  nullify(reaction%kinionx_rxn_offset)
   
-  if (associated(chemistry%eqsurfcmplxspecid)) deallocate(chemistry%eqsurfcmplxspecid)
-  nullify(chemistry%eqsurfcmplxspecid)
-  if (associated(chemistry%eqsurfcmplxstoich)) deallocate(chemistry%eqsurfcmplxstoich)
-  nullify(chemistry%eqsurfcmplxstoich)
-  if (associated(chemistry%eqsurfcmplx_freesite_stoich)) deallocate(chemistry%eqsurfcmplx_freesite_stoich)
-  nullify(chemistry%eqsurfcmplx_freesite_stoich)
-  if (associated(chemistry%eqsurfcmplx_K)) deallocate(chemistry%eqsurfcmplx_K)
-  nullify(chemistry%eqsurfcmplx_K)
-  if (associated(chemistry%eqsurfcmplx_Z)) deallocate(chemistry%eqsurfcmplx_Z)
-  nullify(chemistry%eqsurfcmplx_Z)
+  if (associated(reaction%eqsurfcmplxspecid)) deallocate(reaction%eqsurfcmplxspecid)
+  nullify(reaction%eqsurfcmplxspecid)
+  if (associated(reaction%eqsurfcmplxstoich)) deallocate(reaction%eqsurfcmplxstoich)
+  nullify(reaction%eqsurfcmplxstoich)
+  if (associated(reaction%eqsurfcmplx_freesite_stoich)) deallocate(reaction%eqsurfcmplx_freesite_stoich)
+  nullify(reaction%eqsurfcmplx_freesite_stoich)
+  if (associated(reaction%eqsurfcmplx_K)) deallocate(reaction%eqsurfcmplx_K)
+  nullify(reaction%eqsurfcmplx_K)
+  if (associated(reaction%eqsurfcmplx_Z)) deallocate(reaction%eqsurfcmplx_Z)
+  nullify(reaction%eqsurfcmplx_Z)
   
-  if (associated(chemistry%kinsurfcmplxspecid)) deallocate(chemistry%kinsurfcmplxspecid)
-  nullify(chemistry%kinsurfcmplxspecid)
-  if (associated(chemistry%kinsurfcmplxstoich)) deallocate(chemistry%kinsurfcmplxstoich)
-  nullify(chemistry%kinsurfcmplxstoich)
-  if (associated(chemistry%kinsurfcmplx_freesite_stoich)) deallocate(chemistry%kinsurfcmplx_freesite_stoich)
-  nullify(chemistry%kinsurfcmplx_freesite_stoich)
-  if (associated(chemistry%kinsurfcmplx_K)) deallocate(chemistry%kinsurfcmplx_K)
-  nullify(chemistry%kinsurfcmplx_K)
-  if (associated(chemistry%kinsurfcmplx_Z)) deallocate(chemistry%kinsurfcmplx_Z)
-  nullify(chemistry%kinsurfcmplx_Z)
+  if (associated(reaction%kinsurfcmplxspecid)) deallocate(reaction%kinsurfcmplxspecid)
+  nullify(reaction%kinsurfcmplxspecid)
+  if (associated(reaction%kinsurfcmplxstoich)) deallocate(reaction%kinsurfcmplxstoich)
+  nullify(reaction%kinsurfcmplxstoich)
+  if (associated(reaction%kinsurfcmplx_freesite_stoich)) deallocate(reaction%kinsurfcmplx_freesite_stoich)
+  nullify(reaction%kinsurfcmplx_freesite_stoich)
+  if (associated(reaction%kinsurfcmplx_K)) deallocate(reaction%kinsurfcmplx_K)
+  nullify(reaction%kinsurfcmplx_K)
+  if (associated(reaction%kinsurfcmplx_Z)) deallocate(reaction%kinsurfcmplx_Z)
+  nullify(reaction%kinsurfcmplx_Z)
   
-  if (associated(chemistry%mnrlspecid)) deallocate(chemistry%mnrlspecid)
-  nullify(chemistry%mnrlspecid)
-  if (associated(chemistry%mnrlstoich)) deallocate(chemistry%mnrlstoich)
-  nullify(chemistry%mnrlstoich)
-  if (associated(chemistry%mnrl_K)) deallocate(chemistry%mnrl_K)
-  nullify(chemistry%mnrl_K)
-  if (associated(chemistry%mnrl_molar_vol)) deallocate(chemistry%mnrl_molar_vol)
-  nullify(chemistry%mnrl_molar_vol)
+  if (associated(reaction%mnrlspecid)) deallocate(reaction%mnrlspecid)
+  nullify(reaction%mnrlspecid)
+  if (associated(reaction%mnrlstoich)) deallocate(reaction%mnrlstoich)
+  nullify(reaction%mnrlstoich)
+  if (associated(reaction%mnrl_K)) deallocate(reaction%mnrl_K)
+  nullify(reaction%mnrl_K)
+  if (associated(reaction%mnrl_molar_vol)) deallocate(reaction%mnrl_molar_vol)
+  nullify(reaction%mnrl_molar_vol)
   
-  if (associated(chemistry%kinmnrlspecid)) deallocate(chemistry%kinmnrlspecid)
-  nullify(chemistry%kinmnrlspecid)
-  if (associated(chemistry%kinmnrlstoich)) deallocate(chemistry%kinmnrlstoich)
-  nullify(chemistry%kinmnrlstoich)
-  if (associated(chemistry%kinmnrl_K)) deallocate(chemistry%kinmnrl_K)
-  nullify(chemistry%kinmnrl_K)
-  if (associated(chemistry%kinmnrl_rate)) deallocate(chemistry%kinmnrl_rate)
-  nullify(chemistry%kinmnrl_rate)
-  if (associated(chemistry%kinmnrl_num_prefactors)) deallocate(chemistry%kinmnrl_num_prefactors)
-  nullify(chemistry%kinmnrl_num_prefactors)
-  if (associated(chemistry%kinmnrl_pri_prefactor_id)) deallocate(chemistry%kinmnrl_pri_prefactor_id)
-  nullify(chemistry%kinmnrl_pri_prefactor_id)
-  if (associated(chemistry%kinmnrl_pri_pref_alpha_stoich)) deallocate(chemistry%kinmnrl_pri_pref_alpha_stoich)
-  nullify(chemistry%kinmnrl_pri_pref_alpha_stoich)
-  if (associated(chemistry%kinmnrl_pri_pref_beta_stoich)) deallocate(chemistry%kinmnrl_pri_pref_beta_stoich)
-  nullify(chemistry%kinmnrl_pri_pref_beta_stoich)
-  if (associated(chemistry%kinmnrl_pri_pref_atten_coef)) deallocate(chemistry%kinmnrl_pri_pref_atten_coef)
-  nullify(chemistry%kinmnrl_pri_pref_atten_coef)
-  if (associated(chemistry%kinmnrl_sec_prefactor_id)) deallocate(chemistry%kinmnrl_sec_prefactor_id)
-  nullify(chemistry%kinmnrl_sec_prefactor_id)
-  if (associated(chemistry%kinmnrl_sec_pref_alpha_stoich)) deallocate(chemistry%kinmnrl_sec_pref_alpha_stoich)
-  nullify(chemistry%kinmnrl_sec_pref_alpha_stoich)
-  if (associated(chemistry%kinmnrl_sec_pref_beta_stoich)) deallocate(chemistry%kinmnrl_sec_pref_beta_stoich)
-  nullify(chemistry%kinmnrl_sec_pref_beta_stoich)
-  if (associated(chemistry%kinmnrl_sec_pref_atten_coef)) deallocate(chemistry%kinmnrl_sec_pref_atten_coef)
-  nullify(chemistry%kinmnrl_sec_pref_atten_coef)
-  if (associated(chemistry%kinmnrl_Tempkin_const)) deallocate(chemistry%kinmnrl_Tempkin_const)
-  nullify(chemistry%kinmnrl_Tempkin_const)
-  if (associated(chemistry%kinmnrl_affinity_power)) deallocate(chemistry%kinmnrl_affinity_power)
-  nullify(chemistry%kinmnrl_affinity_power)
+  if (associated(reaction%kinmnrlspecid)) deallocate(reaction%kinmnrlspecid)
+  nullify(reaction%kinmnrlspecid)
+  if (associated(reaction%kinmnrlstoich)) deallocate(reaction%kinmnrlstoich)
+  nullify(reaction%kinmnrlstoich)
+  if (associated(reaction%kinmnrl_K)) deallocate(reaction%kinmnrl_K)
+  nullify(reaction%kinmnrl_K)
+  if (associated(reaction%kinmnrl_rate)) deallocate(reaction%kinmnrl_rate)
+  nullify(reaction%kinmnrl_rate)
+  if (associated(reaction%kinmnrl_num_prefactors)) deallocate(reaction%kinmnrl_num_prefactors)
+  nullify(reaction%kinmnrl_num_prefactors)
+  if (associated(reaction%kinmnrl_pri_prefactor_id)) deallocate(reaction%kinmnrl_pri_prefactor_id)
+  nullify(reaction%kinmnrl_pri_prefactor_id)
+  if (associated(reaction%kinmnrl_pri_pref_alpha_stoich)) deallocate(reaction%kinmnrl_pri_pref_alpha_stoich)
+  nullify(reaction%kinmnrl_pri_pref_alpha_stoich)
+  if (associated(reaction%kinmnrl_pri_pref_beta_stoich)) deallocate(reaction%kinmnrl_pri_pref_beta_stoich)
+  nullify(reaction%kinmnrl_pri_pref_beta_stoich)
+  if (associated(reaction%kinmnrl_pri_pref_atten_coef)) deallocate(reaction%kinmnrl_pri_pref_atten_coef)
+  nullify(reaction%kinmnrl_pri_pref_atten_coef)
+  if (associated(reaction%kinmnrl_sec_prefactor_id)) deallocate(reaction%kinmnrl_sec_prefactor_id)
+  nullify(reaction%kinmnrl_sec_prefactor_id)
+  if (associated(reaction%kinmnrl_sec_pref_alpha_stoich)) deallocate(reaction%kinmnrl_sec_pref_alpha_stoich)
+  nullify(reaction%kinmnrl_sec_pref_alpha_stoich)
+  if (associated(reaction%kinmnrl_sec_pref_beta_stoich)) deallocate(reaction%kinmnrl_sec_pref_beta_stoich)
+  nullify(reaction%kinmnrl_sec_pref_beta_stoich)
+  if (associated(reaction%kinmnrl_sec_pref_atten_coef)) deallocate(reaction%kinmnrl_sec_pref_atten_coef)
+  nullify(reaction%kinmnrl_sec_pref_atten_coef)
+  if (associated(reaction%kinmnrl_Tempkin_const)) deallocate(reaction%kinmnrl_Tempkin_const)
+  nullify(reaction%kinmnrl_Tempkin_const)
+  if (associated(reaction%kinmnrl_affinity_power)) deallocate(reaction%kinmnrl_affinity_power)
+  nullify(reaction%kinmnrl_affinity_power)
 
-end subroutine ChemistryDestroy
+end subroutine ReactionDestroy
 
-end module Chemistry_module
+end module Reaction_module

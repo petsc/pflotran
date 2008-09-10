@@ -1,7 +1,7 @@
 module Reactive_Transport_module
 
   use Transport_module
-  use Chemistry_module
+  use Reaction_module
   use Reactive_Transport_Aux_module
   
   implicit none
@@ -25,7 +25,7 @@ module Reactive_Transport_module
   
   public :: RTTimeCut, RTSetup, RTMaxChange, RTUpdateSolution, RTResidual, &
             RTJacobian, RTInitializeTimestep, RTGetTecplotHeader, &
-            RTGetVarFromArray
+            RTGetVarFromArray, RTUpdateAuxVars
   
 contains
 
@@ -149,7 +149,7 @@ subroutine RTSetupPatch(realization)
   ! create zero array for zeroing residual and Jacobian (1 on diagonal)
   ! for inactive cells (and isothermal)
   call RTCreateZeroArray(patch,option)
-
+  
 end subroutine RTSetupPatch
 
 ! ************************************************************************** !
@@ -237,7 +237,7 @@ subroutine RTUpdateSolution(realization)
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      call RTSetupPatch(realization)
+      call RTUpdateSolutionPatch(realization)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -260,7 +260,7 @@ subroutine RTUpdateSolutionPatch(realization)
   use Patch_module
   use Option_module
   use Grid_module
-  use Chemistry_module
+  use Reaction_module
  
   implicit none
 
@@ -268,7 +268,7 @@ subroutine RTUpdateSolutionPatch(realization)
   
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option
-  type(reaction_type), pointer :: chemistry
+  type(reaction_type), pointer :: reaction
   type(grid_type), pointer :: grid
   type(reactive_transport_auxvar_type), pointer :: aux_vars(:)  
 
@@ -276,19 +276,21 @@ subroutine RTUpdateSolutionPatch(realization)
   
   option => realization%option
   patch => realization%patch
-  chemistry => realization%chemistry
+  reaction => realization%reaction
   grid => patch%grid
 
   aux_vars => patch%aux%RT%aux_vars
 
-  do ghosted_id = 1, grid%ngmax
-    do imnrl = 1, option%nmnrl
-      aux_vars(ghosted_id)%mnrl_volfrac(imnrl) = aux_vars(ghosted_id)%mnrl_volfrac(imnrl) + &
-                                                 aux_vars(ghosted_id)%mnrl_rate(imnrl)* &
-                                                 chemistry%mnrl_molar_vol(imnrl)* &
-                                                 option%dt
+  if (option%nmnrl > 0) then
+    do ghosted_id = 1, grid%ngmax
+      do imnrl = 1, option%nmnrl
+        aux_vars(ghosted_id)%mnrl_volfrac(imnrl) = aux_vars(ghosted_id)%mnrl_volfrac(imnrl) + &
+                                                   aux_vars(ghosted_id)%mnrl_rate(imnrl)* &
+                                                   reaction%mnrl_molar_vol(imnrl)* &
+                                                   option%dt
+      enddo
     enddo
-  enddo
+  endif
   
 end subroutine RTUpdateSolutionPatch
 
@@ -318,7 +320,7 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
-  type(reaction_type), pointer :: chemistry
+  type(reaction_type), pointer :: reaction
   PetscReal, pointer :: xx_p(:), porosity_loc_p(:), saturation_loc_p(:), &
                         tor_loc_p(:), volume_p(:), accum_p(:), density_loc_p(:)
   PetscInt :: local_id, ghosted_id
@@ -330,7 +332,7 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
   patch => realization%patch
   aux_vars => patch%aux%RT%aux_vars
   grid => patch%grid
-  chemistry => realization%chemistry
+  reaction => realization%reaction
 
   call GridVecGetArrayF90(grid,field%tran_xx,xx_p, ierr)
   call GridVecGetArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
@@ -349,10 +351,10 @@ subroutine RTUpdateFixedAccumulationPatch(realization)
     endif
     iend = local_id*option%ncomp
     istart = iend-option%ncomp+1
-    call RTAuxVarCompute(xx_p(istart:iend),aux_vars(ghosted_id),chemistry,option)
+    aux_vars(ghosted_id)%den(1) = density_loc_p(ghosted_id)
+    call RTAuxVarCompute(xx_p(istart:iend),aux_vars(ghosted_id),reaction,option)
     call RTAccumulation(aux_vars(ghosted_id),porosity_loc_p(ghosted_id), &
                         saturation_loc_p(ghosted_id), &
-                        density_loc_p(ghosted_id), &
                         volume_p(local_id), &
                         option,accum_p(istart:iend)) 
   enddo
@@ -379,19 +381,19 @@ end subroutine RTUpdateFixedAccumulationPatch
 ! date: 08/28/08
 !
 ! ************************************************************************** !
-subroutine RTAuxVarCompute(x,aux_var,chemistry,option)
+subroutine RTAuxVarCompute(x,aux_var,reaction,option)
 
   use Option_module
 
   implicit none
   
   type(option_type) :: option
-  PetscReal :: x(option%ncomp)  
-  type(reaction_type) :: chemistry  
+  PetscReal :: x(option%ncomp)
+  type(reaction_type) :: reaction  
   type(reactive_transport_auxvar_type) :: aux_var
 
-  aux_var%primary_spec = x
-  call RTotal(aux_var,chemistry,option)
+  aux_var%primary_spec = x*aux_var%den(1)*1.d-3 ! convert mol/kg H20 -> mol/L
+  call RTotal(aux_var,reaction,option)
   
 end subroutine RTAuxVarCompute
 
@@ -496,7 +498,7 @@ end subroutine RTNumericalJacobianTest
 ! date: 02/15/08
 !
 ! ************************************************************************** !
-subroutine RTAccumulationDerivative(aux_var,por,sat,den,vol,option,J)
+subroutine RTAccumulationDerivative(aux_var,por,sat,vol,option,J)
 
   use Reactive_Transport_Aux_module
   use Option_module
@@ -504,21 +506,21 @@ subroutine RTAccumulationDerivative(aux_var,por,sat,den,vol,option,J)
   implicit none
   
   type(reactive_transport_auxvar_type) :: aux_var
-  PetscReal :: por, sat, vol, den
+  PetscReal :: por, sat, vol
   type(option_type) :: option
   PetscReal :: J(option%ncomp,option%ncomp)
   
   PetscInt :: icomp, iphase
-  PetscReal :: psdv_t
+  PetscReal :: psv_t
   
   iphase = 1
-  psdv_t = por*sat*den*vol/option%dt
+  psv_t = por*sat*vol/option%dt  ! density is already included in total
   if (associated(aux_var%dtotal)) then
-    J = aux_var%dtotal(:,:,iphase)*psdv_t
+    J = aux_var%dtotal(:,:,iphase)*psv_t
   else
     J = 0.d0
     do icomp=1,option%ncomp
-      J(icomp,icomp) = psdv_t
+      J(icomp,icomp) = psv_t
     enddo
   endif
 
@@ -531,7 +533,7 @@ end subroutine RTAccumulationDerivative
 ! date: 02/15/08
 !
 ! ************************************************************************** !
-subroutine RTAccumulation(aux_var,por,sat,den,vol,option,Res)
+subroutine RTAccumulation(aux_var,por,sat,vol,option,Res)
 
   use Reactive_Transport_Aux_module
   use Option_module
@@ -539,18 +541,18 @@ subroutine RTAccumulation(aux_var,por,sat,den,vol,option,Res)
   implicit none
   
   type(reactive_transport_auxvar_type) :: aux_var
-  PetscReal :: por, sat, vol, den
+  PetscReal :: por, sat, vol
   type(option_type) :: option
   PetscReal :: Res(option%ncomp)
   
   PetscInt :: icomp
   PetscInt :: iphase
-  PetscReal :: psdv_t
+  PetscReal :: psv_t
   
   iphase = 1
-  psdv_t = por*sat*den*vol/option%dt
+  psv_t = por*sat*vol/option%dt
   do icomp=1,option%ncomp
-    Res(icomp) = psdv_t*aux_var%total(icomp,iphase) 
+    Res(icomp) = psv_t*aux_var%total(icomp,iphase) 
   enddo
 
 end subroutine RTAccumulation
@@ -645,9 +647,9 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
   type(realization_type) :: realization  
   PetscErrorCode :: ierr
   
-  PetscReal, pointer :: xx_loc_p(:), r_p(:), accum_p(:)
+  PetscReal, pointer :: r_p(:), accum_p(:)
   PetscReal, pointer :: porosity_loc_p(:), saturation_loc_p(:), tor_loc_p(:), &
-                        volume_p(:), density_loc_p(:)
+                        volume_p(:)
   PetscInt :: local_id, ghosted_id
   PetscInt :: iphase
   PetscInt :: i, istart, iend                        
@@ -655,7 +657,7 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch
-  type(reaction_type), pointer :: chemistry
+  type(reaction_type), pointer :: reaction
   type(reactive_transport_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
   PetscReal :: Res(realization%option%ncomp)
   PetscViewer :: viewer
@@ -672,7 +674,7 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
   option => realization%option
   field => realization%field
   patch => realization%patch
-  chemistry => realization%chemistry
+  reaction => realization%reaction
   grid => patch%grid
   aux_vars => patch%aux%RT%aux_vars
   aux_vars_bc => patch%aux%RT%aux_vars_bc
@@ -681,13 +683,11 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
   aux_vars_up_to_date = .false. ! override flags since they will soon be out of date  
 
   ! Get pointer to Vector data
-  call GridVecGetArrayF90(grid,field%tran_xx_loc, xx_loc_p, ierr)
   call GridVecGetArrayF90(grid,r, r_p, ierr)
   call GridVecGetArrayF90(grid,field%tran_accum, accum_p, ierr)
  
   call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%saturation_loc, saturation_loc_p, ierr)
-  call GridVecGetArrayF90(grid,field%density_loc, density_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%tor_loc, tor_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%volume, volume_p, ierr)
 
@@ -704,7 +704,6 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
     istart = iend-option%ncomp+1
     call RTAccumulation(aux_vars(ghosted_id),porosity_loc_p(ghosted_id), &
                         saturation_loc_p(ghosted_id), &
-                        density_loc_p(ghosted_id), &
                         volume_p(local_id),option,Res) 
     r_p(istart:iend) = r_p(istart:iend) + Res(1:option%ncomp)
   enddo
@@ -737,7 +736,7 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
             Res(istart) = -1.d-6* &
                           porosity_loc_p(ghosted_id)* &
                           saturation_loc_p(ghosted_id)* &
-                          density_loc_p(ghosted_id)* &
+                          aux_vars(ghosted_id)%den(1)* &
                           volume_p(local_id)* &
                           (source_sink%tran_condition%sub_condition_ptr(istart)%ptr%dataset%cur_value(1)- &
                            aux_vars(ghosted_id)%total(istart,iphase))
@@ -788,11 +787,9 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
 
       call TFlux(aux_vars(ghosted_id_up),porosity_loc_p(ghosted_id_up), &
                  tor_loc_p(ghosted_id_up),saturation_loc_p(ghosted_id_up), &
-                 density_loc_p(ghosted_id_up), &
                  dist_up, &
                  aux_vars(ghosted_id_dn),porosity_loc_p(ghosted_id_dn), &
                  tor_loc_p(ghosted_id_dn),saturation_loc_p(ghosted_id_dn), &
-                 density_loc_p(ghosted_id_dn), &
                  dist_up, &
                  cur_connection_set%area(iconn),option, &
                  patch%internal_velocities(:,iconn),Res)
@@ -838,7 +835,6 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
                    porosity_loc_p(ghosted_id), &
                    tor_loc_p(ghosted_id), &
                    saturation_loc_p(ghosted_id), &
-                   density_loc_p(ghosted_id), &
                    cur_connection_set%dist(0,iconn), &
                    cur_connection_set%area(iconn), &
                    option,patch%boundary_velocities(:,sum_connection),Res)
@@ -861,7 +857,7 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
     endif
     iend = local_id*option%ncomp
     istart = iend-option%ncomp+1
-    call RKineticMineral(Res,Jup,PETSC_TRUE,aux_vars(ghosted_id),chemistry,option)
+    call RKineticMineral(Res,Jup,PETSC_TRUE,aux_vars(ghosted_id),reaction,option)
     r_p(istart:iend) = r_p(istart:iend) + Res(1:option%ncomp)                    
   enddo
 #endif
@@ -873,13 +869,11 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
   endif
   
   ! Restore vectors
-  call GridVecRestoreArrayF90(grid,field%tran_xx_loc, xx_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,r, r_p, ierr)
   call GridVecRestoreArrayF90(grid,field%tran_accum, accum_p, ierr)
  
   call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%saturation_loc, saturation_loc_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%density_loc, density_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%tor_loc, tor_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%volume, volume_p, ierr)
 
@@ -975,16 +969,16 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   type(realization_type) :: realization  
   PetscErrorCode :: ierr
   
-  PetscReal, pointer :: xx_loc_p(:), r_p(:), accum_p(:)
+  PetscReal, pointer :: r_p(:), accum_p(:)
   PetscReal, pointer :: porosity_loc_p(:), saturation_loc_p(:), tor_loc_p(:), &
-                        volume_p(:), density_loc_p(:)
+                        volume_p(:)
   PetscInt :: local_id, ghosted_id
   PetscInt :: istart, iend                        
   type(grid_type), pointer :: grid
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch
-  type(reaction_type), pointer :: chemistry
+  type(reaction_type), pointer :: reaction
       
   type(reactive_transport_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
   PetscReal :: Jup(realization%option%ncomp,realization%option%ncomp)
@@ -1003,7 +997,7 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   option => realization%option
   field => realization%field
   patch => realization%patch  
-  chemistry => realization%chemistry
+  reaction => realization%reaction
   grid => patch%grid
   aux_vars => patch%aux%RT%aux_vars
   aux_vars_bc => patch%aux%RT%aux_vars_bc
@@ -1012,12 +1006,10 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   call MatZeroEntries(A,ierr)
 
   ! Get pointer to Vector data
-  call GridVecGetArrayF90(grid,field%tran_xx_loc, xx_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%tran_accum, accum_p, ierr)
  
   call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%saturation_loc, saturation_loc_p, ierr)
-  call GridVecGetArrayF90(grid,field%density_loc, density_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%tor_loc, tor_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%volume, volume_p, ierr)
     
@@ -1032,7 +1024,6 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     istart = iend-option%ncomp+1
     call RTAccumulationDerivative(aux_vars(ghosted_id),porosity_loc_p(ghosted_id), &
                                   saturation_loc_p(ghosted_id), &
-                                  density_loc_p(ghosted_id), &
                                   volume_p(local_id),option,Jup) 
     call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)                        
   enddo
@@ -1065,7 +1056,7 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
             Jup(istart,istart) = 1.d-6* &
                                  porosity_loc_p(ghosted_id)* &
                                  saturation_loc_p(ghosted_id)* &
-                                 density_loc_p(ghosted_id)* &
+                                 aux_vars(ghosted_id)%den(1)* &
                                  volume_p(local_id)
           case(MASS_RATE_SS)
           case(CONCENTRATION_SS)
@@ -1109,10 +1100,10 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 
       call TFluxDerivative(aux_vars(ghosted_id_up),porosity_loc_p(ghosted_id_up), &
                  tor_loc_p(ghosted_id_up),saturation_loc_p(ghosted_id_up), &
-                 density_loc_p(ghosted_id_up),dist_up, &
+                 dist_up, &
                  aux_vars(ghosted_id_dn),porosity_loc_p(ghosted_id_dn), &
                  tor_loc_p(ghosted_id_dn),saturation_loc_p(ghosted_id_dn), &
-                 density_loc_p(ghosted_id_dn),dist_up, &
+                 dist_dn, &
                  cur_connection_set%area(iconn),option, &
                  patch%internal_velocities(:,iconn),Jup,Jdn)
 
@@ -1161,7 +1152,6 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                    porosity_loc_p(ghosted_id), &
                    tor_loc_p(ghosted_id), &
                    saturation_loc_p(ghosted_id), &
-                   density_loc_p(ghosted_id), &
                    cur_connection_set%dist(0,iconn), &
                    cur_connection_set%area(iconn), &
                    option,patch%boundary_velocities(:,sum_connection),Jdn)
@@ -1184,20 +1174,18 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     endif
     iend = local_id*option%ncomp
     istart = iend-option%ncomp+1
-!    call RKineticMineral(Res,Jup,aux_vars(ghosted_id),chemistry,option)
-    call RKineticMineralDerivative(Res,Jup,aux_vars(ghosted_id),chemistry,option)
+!    call RKineticMineral(Res,Jup,aux_vars(ghosted_id),reaction,option)
+    call RKineticMineralDerivative(Res,Jup,aux_vars(ghosted_id),reaction,option)
     call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)                        
   enddo
 #endif
  
 
   ! Restore vectors
-  call GridVecRestoreArrayF90(grid,field%tran_xx_loc, xx_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%tran_accum, accum_p, ierr)
  
   call GridVecRestoreArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%saturation_loc, saturation_loc_p, ierr)
-  call GridVecRestoreArrayF90(grid,field%density_loc, density_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%tor_loc, tor_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%volume, volume_p, ierr)
 
@@ -1229,6 +1217,40 @@ end subroutine RTJacobianPatch
 subroutine RTUpdateAuxVars(realization)
 
   use Realization_module
+  use Level_module
+  use Patch_module
+
+  type(realization_type) :: realization
+  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  
+  cur_level => realization%level_list%first
+  do
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      realization%patch => cur_patch
+      call RTUpdateAuxVarsPatch(realization)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+end subroutine RTUpdateAuxVars
+
+! ************************************************************************** !
+!
+! RTUpdateAuxVarsPatch: Updates the auxilliary variables associated with 
+!                       reactive transport
+! author: Glenn Hammond
+! date: 02/15/08
+!
+! ************************************************************************** !
+subroutine RTUpdateAuxVarsPatch(realization)
+
+  use Realization_module
   use Patch_module
   use Reactive_Transport_Aux_module
   use Grid_module
@@ -1245,12 +1267,12 @@ subroutine RTUpdateAuxVars(realization)
   type(field_type), pointer :: field
   type(grid_type), pointer :: grid
   type(patch_type), pointer :: patch
-  type(reaction_type), pointer :: chemistry
+  type(reaction_type), pointer :: reaction
   type(coupler_type), pointer :: boundary_condition
   type(connection_set_type), pointer :: cur_connection_set
 
   PetscInt :: ghosted_id, local_id, istart, iend, sum_connection, idof, iconn
-  PetscReal, pointer :: xx_loc_p(:)
+  PetscReal, pointer :: xx_loc_p(:), density_loc_p(:)
   PetscReal :: xxbc(realization%option%ncomp)
   PetscErrorCode :: ierr
   
@@ -1258,9 +1280,10 @@ subroutine RTUpdateAuxVars(realization)
   patch => realization%patch  
   grid => patch%grid
   field => realization%field
-  chemistry => realization%chemistry
+  reaction => realization%reaction
   
   call GridVecGetArrayF90(grid,field%tran_xx_loc,xx_loc_p, ierr)
+  call GridVecGetArrayF90(grid,field%density_loc, density_loc_p, ierr)
 
   do ghosted_id = 1, grid%ngmax
     if (grid%nG2L(ghosted_id) < 0) cycle ! bypass ghosted corner cells
@@ -1271,9 +1294,10 @@ subroutine RTUpdateAuxVars(realization)
     iend = ghosted_id*option%ncomp
     istart = iend-option%ncomp+1
    
+    patch%aux%RT%aux_vars(ghosted_id)%den(1) = density_loc_p(ghosted_id)
     call RTAuxVarCompute(xx_loc_p(istart:iend), &
                          patch%aux%RT%aux_vars(ghosted_id), &
-                         chemistry,option)
+                         reaction,option)
   enddo
 
   boundary_condition => patch%boundary_conditions%first
@@ -1291,26 +1315,31 @@ subroutine RTUpdateAuxVars(realization)
 
       do idof=1,option%ncomp
         select case(boundary_condition%tran_condition%itype(idof))
-          case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC,NEUMANN_BC)
+          case(CONCENTRATION_SS,DIRICHLET_BC,NEUMANN_BC)
             xxbc(idof) = boundary_condition%tran_aux_real_var(idof,iconn)
           case(ZERO_GRADIENT_BC)
-            xxbc(idof) = xx_loc_p((ghosted_id-1)*option%ncomp+idof)
+            if (option%use_log_formulation) then
+              xxbc(idof) = exp(xx_loc_p((ghosted_id-1)*option%ncomp+idof))
+            else
+              xxbc(idof) = xx_loc_p((ghosted_id-1)*option%ncomp+idof)
+            endif
         end select
       enddo
-      
+      ! no need to update boundary fluid density since it is already set
       call RTAuxVarCompute(xxbc, &
                            patch%aux%RT%aux_vars_bc(sum_connection), &
-                           chemistry,option)
+                           reaction,option)
     enddo
     boundary_condition => boundary_condition%next
   enddo
 
 
   call GridVecRestoreArrayF90(grid,field%tran_xx_loc,xx_loc_p, ierr)
+  call GridVecRestoreArrayF90(grid,field%density_loc, density_loc_p, ierr)  
   
   aux_vars_up_to_date = .true.
 
-end subroutine RTUpdateAuxVars
+end subroutine RTUpdateAuxVarsPatch
 
 ! ************************************************************************** !
 !
@@ -1432,11 +1461,14 @@ subroutine RTGetVarFromArray(realization,vec,ivar,isubvar)
 
   iphase = 1
   select case(ivar)
-    case(PRIMARY_SPEC_CONCENTRATION)
-      call VecStrideGather(field%tran_xx,isubvar,vec,INSERT_VALUES,ierr)
-    case(MATERIAL_ID,TOTAL_CONCENTRATION)
+    case(PRIMARY_SPEC_CONCENTRATION,MATERIAL_ID,TOTAL_CONCENTRATION)
       call GridVecGetArrayF90(grid,vec,vec_ptr,ierr)
       select case(ivar)
+        case(PRIMARY_SPEC_CONCENTRATION)
+          do local_id=1,grid%nlmax
+            ghosted_id = grid%nL2G(local_id)    
+            vec_ptr(local_id) = patch%aux%RT%aux_vars(ghosted_id)%primary_spec(isubvar)
+          enddo
         case(TOTAL_CONCENTRATION)
           do local_id=1,grid%nlmax
             ghosted_id = grid%nL2G(local_id)    
@@ -1483,7 +1515,6 @@ function RTGetVarFromArrayAtCell(realization,ivar,isubvar,local_id)
   type(option_type), pointer :: option
   type(field_type), pointer :: field
   type(patch_type), pointer :: patch  
-  PetscReal, pointer :: vec_ptr(:)
   PetscErrorCode :: ierr
 
   option => realization%option
@@ -1496,9 +1527,8 @@ function RTGetVarFromArrayAtCell(realization,ivar,isubvar,local_id)
   iphase = 1
   select case(ivar)
     case(PRIMARY_SPEC_CONCENTRATION)
-      call GridVecGetArrayF90(grid,field%tran_xx,vec_ptr,ierr)
-      value = vec_ptr((local_id-1)*option%ntrandof+isubvar)
-      call GridVecRestoreArrayF90(grid,field%tran_xx,vec_ptr,ierr)
+      ghosted_id = grid%nL2G(local_id)    
+      value = patch%aux%RT%aux_vars(ghosted_id)%primary_spec(isubvar)
     case(TOTAL_CONCENTRATION)
       ghosted_id = grid%nL2G(local_id)    
       value = patch%aux%RT%aux_vars(ghosted_id)%total(isubvar,iphase)
@@ -1520,22 +1550,38 @@ subroutine RTMaxChange(realization)
   use Realization_module
   use Option_module
   use Field_module
+  use Patch_module
+  use Grid_module
   
   implicit none
   
   type(realization_type) :: realization
   
   type(option_type), pointer :: option
-  type(field_type), pointer :: field  
+  type(field_type), pointer :: field 
+  type(grid_type), pointer :: grid 
+  PetscReal, pointer :: dxx_ptr(:), xx_ptr(:), yy_ptr(:)
   
   PetscErrorCode :: ierr
   
   option => realization%option
   field => realization%field
+  grid => realization%patch%grid
 
   option%dcmax=0.D0
   
-  call VecWAXPY(field%tran_dxx,-1.d0,field%tran_xx,field%tran_yy,ierr)
+  if (option%use_log_formulation) then
+    call GridVecGetArrayF90(grid,field%tran_xx,xx_ptr,ierr)
+    call GridVecGetArrayF90(grid,field%tran_yy,yy_ptr,ierr)
+    call GridVecGetArrayF90(grid,field%tran_dxx,dxx_ptr,ierr)
+    dxx_ptr = exp(xx_ptr)-exp(yy_ptr)
+    call GridVecRestoreArrayF90(grid,field%tran_xx,xx_ptr,ierr)
+    call GridVecRestoreArrayF90(grid,field%tran_yy,yy_ptr,ierr)
+    call GridVecRestoreArrayF90(grid,field%tran_dxx,dxx_ptr,ierr)
+  else
+    call VecWAXPY(field%tran_dxx,-1.d0,field%tran_xx,field%tran_yy,ierr)
+  endif
+  
   call VecStrideNorm(field%tran_dxx,ZERO_INTEGER,NORM_INFINITY,option%dcmax,ierr)
       
 end subroutine RTMaxChange
@@ -1582,12 +1628,12 @@ end function RTGetTecplotHeader
 ! date: 08/28/08
 !
 ! ************************************************************************** !
-subroutine RTotal(auxvar,chemistry,option)
+subroutine RTotal(auxvar,reaction,option)
 
   use Option_module
   
   type(reactive_transport_auxvar_type) :: auxvar
-  type(reaction_type) :: chemistry
+  type(reaction_type) :: reaction
   type(option_type) :: option
   
   PetscInt :: i, j, icplx, icomp, jcomp, iphase, ncomp
@@ -1605,32 +1651,32 @@ subroutine RTotal(auxvar,chemistry,option)
     auxvar%dtotal(icomp,icomp,iphase) = 1.d0
   enddo
   
-  do icplx = 1, chemistry%neqcmplx ! for each secondary species
+  do icplx = 1, reaction%neqcmplx ! for each secondary species
     ! compute secondary species concentration
-    lnQK = -1.d0*chemistry%eqcmplx_K(icplx)*log_to_ln
-    ncomp = chemistry%eqcmplxspecid(0,icplx)
+    lnQK = -1.d0*reaction%eqcmplx_K(icplx)*log_to_ln
+    ncomp = reaction%eqcmplxspecid(0,icplx)
     do i = 1, ncomp
-      icomp = chemistry%eqcmplxspecid(i,icplx)
-      lnQK = lnQK + chemistry%eqcmplxstoich(i,icplx)*ln_conc(icomp)
+      icomp = reaction%eqcmplxspecid(i,icplx)
+      lnQK = lnQK + reaction%eqcmplxstoich(i,icplx)*ln_conc(icomp)
     enddo
     auxvar%secondary_spec(icplx) = exp(lnQK)
   
     ! add contribution to primary totals
     do i = 1, ncomp
-      icomp = chemistry%eqcmplxspecid(i,icplx)
+      icomp = reaction%eqcmplxspecid(i,icplx)
       auxvar%total(icomp,iphase) = auxvar%total(icomp,iphase) + &
-                                   chemistry%eqcmplxstoich(i,icplx)* &
+                                   reaction%eqcmplxstoich(i,icplx)* &
                                    auxvar%secondary_spec(icplx)
     enddo
     
     ! add contribution to derivatives of total with respect to free
     do j = 1, ncomp
-      jcomp = chemistry%eqcmplxspecid(j,icplx)
-      tempreal = chemistry%eqcmplxstoich(j,icplx)*exp(lnQK-ln_conc(jcomp))
+      jcomp = reaction%eqcmplxspecid(j,icplx)
+      tempreal = reaction%eqcmplxstoich(j,icplx)*exp(lnQK-ln_conc(jcomp))
       do i = 1, ncomp
-        icomp = chemistry%eqcmplxspecid(i,icplx)
+        icomp = reaction%eqcmplxspecid(i,icplx)
         auxvar%dtotal(icomp,jcomp,iphase) = auxvar%dtotal(icomp,jcomp,iphase) + &
-                                      chemistry%eqcmplxstoich(i,icplx)*tempreal
+                                      reaction%eqcmplxstoich(i,icplx)*tempreal
       enddo
     enddo
   enddo
@@ -1645,7 +1691,7 @@ end subroutine RTotal
 ! date: 09/04/08
 !
 ! ************************************************************************** !
-subroutine RKineticMineral(Res,Jac,derivative,auxvar,chemistry,option)
+subroutine RKineticMineral(Res,Jac,derivative,auxvar,reaction,option)
 
   use Option_module
   
@@ -1654,7 +1700,7 @@ subroutine RKineticMineral(Res,Jac,derivative,auxvar,chemistry,option)
   PetscReal :: Res(option%ncomp)
   PetscReal :: Jac(option%ncomp,option%ncomp)
   type(reactive_transport_auxvar_type) :: auxvar
-  type(reaction_type) :: chemistry
+  type(reaction_type) :: reaction
   
   PetscInt :: i, j, k, imnrl, icomp, jcomp, kcplx, iphase, ncomp, ipref
   PetscReal :: prefactor(10), sum_prefactor_rate
@@ -1677,18 +1723,18 @@ subroutine RKineticMineral(Res,Jac,derivative,auxvar,chemistry,option)
   Res = 0.d0
   Jac = 0.d0
   
-  do imnrl = 1, chemistry%nkinmnrl ! for each mineral
+  do imnrl = 1, reaction%nkinmnrl ! for each mineral
     ! compute secondary species concentration
-    lnQK = -1.d0*chemistry%kinmnrl_K(imnrl)*log_to_ln
-    ncomp = chemistry%kinmnrlspecid(0,imnrl)
+    lnQK = -1.d0*reaction%kinmnrl_K(imnrl)*log_to_ln
+    ncomp = reaction%kinmnrlspecid(0,imnrl)
     do i = 1, ncomp
-      icomp = chemistry%kinmnrlspecid(i,imnrl)
-      lnQK = lnQK + chemistry%kinmnrlstoich(i,imnrl)*ln_conc(icomp)
+      icomp = reaction%kinmnrlspecid(i,imnrl)
+      lnQK = lnQK + reaction%kinmnrlstoich(i,imnrl)*ln_conc(icomp)
     enddo
     QK = exp(lnQK)
     
-    if (associated(chemistry%kinmnrl_Tempkin_const)) then
-      affinity_factor = 1.d0-QK**(1/chemistry%kinmnrl_Tempkin_const(imnrl))
+    if (associated(reaction%kinmnrl_Tempkin_const)) then
+      affinity_factor = 1.d0-QK**(1/reaction%kinmnrl_Tempkin_const(imnrl))
     else
       affinity_factor = 1.d0-QK
     endif
@@ -1697,44 +1743,44 @@ subroutine RKineticMineral(Res,Jac,derivative,auxvar,chemistry,option)
 
     if (auxvar%mnrl_volfrac(imnrl) > 0 .or. sign_ < 0.d0) then
       ! compute prefactor
-      if (chemistry%kinmnrl_num_prefactors(imnrl) > 0) then
+      if (reaction%kinmnrl_num_prefactors(imnrl) > 0) then
         print *, 'Kinetic mineral reaction prefactor calculations have not been verified.  Ask Glenn.'
         stop
         sum_prefactor_rate = 0
-        do ipref = 1, chemistry%kinmnrl_num_prefactors(imnrl)
+        do ipref = 1, reaction%kinmnrl_num_prefactors(imnrl)
           prefactor(ipref) = 1.d0
-          do i = 1, chemistry%kinmnrl_pri_prefactor_id(0,ipref,imnrl) ! primary contribution
-            icomp = chemistry%kinmnrl_pri_prefactor_id(i,ipref,imnrl)
+          do i = 1, reaction%kinmnrl_pri_prefactor_id(0,ipref,imnrl) ! primary contribution
+            icomp = reaction%kinmnrl_pri_prefactor_id(i,ipref,imnrl)
             prefactor(ipref) = prefactor(ipref) * &
-                               exp(chemistry%kinmnrl_pri_pref_alpha_stoich(i,ipref,imnrl)* &
+                               exp(reaction%kinmnrl_pri_pref_alpha_stoich(i,ipref,imnrl)* &
                                    ln_conc(icomp))/ &
-                               ((1.d0+chemistry%kinmnrl_pri_pref_atten_coef(i,ipref,imnrl))* &
-                                 exp(chemistry%kinmnrl_pri_pref_beta_stoich(i,ipref,imnrl)* &
+                               ((1.d0+reaction%kinmnrl_pri_pref_atten_coef(i,ipref,imnrl))* &
+                                 exp(reaction%kinmnrl_pri_pref_beta_stoich(i,ipref,imnrl)* &
                                      ln_conc(icomp)))
           enddo
-          do k = 1, chemistry%kinmnrl_sec_prefactor_id(0,ipref,imnrl) ! secondary contribution
-            kcplx = chemistry%kinmnrl_sec_prefactor_id(k,ipref,imnrl)
+          do k = 1, reaction%kinmnrl_sec_prefactor_id(0,ipref,imnrl) ! secondary contribution
+            kcplx = reaction%kinmnrl_sec_prefactor_id(k,ipref,imnrl)
             prefactor(ipref) = prefactor(ipref) * &
-                               exp(chemistry%kinmnrl_sec_pref_alpha_stoich(k,ipref,imnrl)* &
+                               exp(reaction%kinmnrl_sec_pref_alpha_stoich(k,ipref,imnrl)* &
                                    ln_sec(kcplx))/ &
-                               ((1.d0+chemistry%kinmnrl_sec_pref_atten_coef(i,ipref,imnrl))* &
-                                 exp(chemistry%kinmnrl_sec_pref_beta_stoich(k,ipref,imnrl)* &
+                               ((1.d0+reaction%kinmnrl_sec_pref_atten_coef(i,ipref,imnrl))* &
+                                 exp(reaction%kinmnrl_sec_pref_beta_stoich(k,ipref,imnrl)* &
                                      ln_sec(kcplx)))
           enddo
-          sum_prefactor_rate = sum_prefactor_rate + prefactor(ipref)*chemistry%kinmnrl_rate(ipref,imnrl)
+          sum_prefactor_rate = sum_prefactor_rate + prefactor(ipref)*reaction%kinmnrl_rate(ipref,imnrl)
         enddo
       else
-        sum_prefactor_rate = chemistry%kinmnrl_rate(1,imnrl)
+        sum_prefactor_rate = reaction%kinmnrl_rate(1,imnrl)
       endif
 
       ! compute rate
       Im_const = -1.d0*sign_*auxvar%mnrl_area0(imnrl)
-      if (associated(chemistry%kinmnrl_affinity_power)) then
-        Im = Im_const*abs(affinity_factor)**chemistry%kinmnrl_affinity_power(imnrl)
+      if (associated(reaction%kinmnrl_affinity_power)) then
+        Im = Im_const*abs(affinity_factor)**reaction%kinmnrl_affinity_power(imnrl)
       else
         Im = Im_const*abs(affinity_factor)
       endif
-      if (chemistry%kinmnrl_num_prefactors(imnrl) > 0) then
+      if (reaction%kinmnrl_num_prefactors(imnrl) > 0) then
         Im = Im*sum_prefactor_rate
       endif
       auxvar%mnrl_rate(imnrl) = Im
@@ -1743,82 +1789,82 @@ subroutine RKineticMineral(Res,Jac,derivative,auxvar,chemistry,option)
       cycle
     endif
 
-    ncomp = chemistry%kinmnrlspecid(0,imnrl)
+    ncomp = reaction%kinmnrlspecid(0,imnrl)
     do i = 1, ncomp
-      icomp = chemistry%kinmnrlspecid(i,imnrl)
-      Res(icomp) = Res(icomp) + chemistry%kinmnrlstoich(i,imnrl)*Im
+      icomp = reaction%kinmnrlspecid(i,imnrl)
+      Res(icomp) = Res(icomp) + reaction%kinmnrlstoich(i,imnrl)*Im
     enddo 
     
     if (.not. derivative) cycle   
 
     ! calculate derivatives of rate with respect to free
     dIm_dQK = -1.d0*Im
-    if (associated(chemistry%kinmnrl_affinity_power)) then
-      dIm_dQK = dIm_dQK*chemistry%kinmnrl_affinity_power(imnrl)/affinity_factor
+    if (associated(reaction%kinmnrl_affinity_power)) then
+      dIm_dQK = dIm_dQK*reaction%kinmnrl_affinity_power(imnrl)/affinity_factor
     endif
-    if (associated(chemistry%kinmnrl_Tempkin_const)) then
-      dIm_dQK = dIm_dQK*(1/chemistry%kinmnrl_Tempkin_const(imnrl))/QK
+    if (associated(reaction%kinmnrl_Tempkin_const)) then
+      dIm_dQK = dIm_dQK*(1/reaction%kinmnrl_Tempkin_const(imnrl))/QK
     endif
     
     ! derivatives with respect to primary species in reaction quotient
     do j = 1, ncomp
-      jcomp = chemistry%kinmnrlspecid(j,imnrl)
-      dQK_dCj = chemistry%kinmnrlstoich(j,imnrl)*exp(lnQK-ln_conc(jcomp))
+      jcomp = reaction%kinmnrlspecid(j,imnrl)
+      dQK_dCj = reaction%kinmnrlstoich(j,imnrl)*exp(lnQK-ln_conc(jcomp))
       do i = 1, ncomp
-        icomp = chemistry%kinmnrlspecid(i,imnrl)
+        icomp = reaction%kinmnrlspecid(i,imnrl)
         Jac(icomp,jcomp) = Jac(icomp,jcomp) + &
-                           chemistry%kinmnrlstoich(i,imnrl)*dIm_dQK*dQK_dCj
+                           reaction%kinmnrlstoich(i,imnrl)*dIm_dQK*dQK_dCj
       enddo
     enddo
 
-    if (chemistry%kinmnrl_num_prefactors(imnrl) > 0) then ! add contribution of derivative in prefactor - messy
+    if (reaction%kinmnrl_num_prefactors(imnrl) > 0) then ! add contribution of derivative in prefactor - messy
       print *, 'Kinetic mineral reaction prefactor calculations have not been verified.  Ask Glenn.'
       stop
       
       dIm_dsum_prefactor_rate = Im/sum_prefactor_rate
-      do ipref = 1, chemistry%kinmnrl_num_prefactors(imnrl)
-        dIm_dprefactor_rate = dIm_dsum_prefactor_rate*chemistry%kinmnrl_rate(ipref,imnrl)
-        do j = 1, chemistry%kinmnrl_pri_prefactor_id(0,ipref,imnrl) ! primary contribution
-          jcomp = chemistry%kinmnrl_pri_prefactor_id(j,ipref,imnrl)
+      do ipref = 1, reaction%kinmnrl_num_prefactors(imnrl)
+        dIm_dprefactor_rate = dIm_dsum_prefactor_rate*reaction%kinmnrl_rate(ipref,imnrl)
+        do j = 1, reaction%kinmnrl_pri_prefactor_id(0,ipref,imnrl) ! primary contribution
+          jcomp = reaction%kinmnrl_pri_prefactor_id(j,ipref,imnrl)
           ! numerator
-          dprefactor_dcomp_numerator = chemistry%kinmnrl_pri_pref_alpha_stoich(j,ipref,imnrl)* &
+          dprefactor_dcomp_numerator = reaction%kinmnrl_pri_pref_alpha_stoich(j,ipref,imnrl)* &
                                        prefactor(ipref)/auxvar%primary_spec(jcomp)
           ! denominator
           dprefactor_dcomp_denominator = -1.d0*prefactor(ipref)/ &
-                                         chemistry%kinmnrl_pri_pref_beta_stoich(j,ipref,imnrl)* &
-                                         chemistry%kinmnrl_pri_pref_atten_coef(j,ipref,imnrl)* &
-                                         exp((chemistry%kinmnrl_pri_pref_beta_stoich(j,ipref,imnrl)-1.d0)* &
+                                         reaction%kinmnrl_pri_pref_beta_stoich(j,ipref,imnrl)* &
+                                         reaction%kinmnrl_pri_pref_atten_coef(j,ipref,imnrl)* &
+                                         exp((reaction%kinmnrl_pri_pref_beta_stoich(j,ipref,imnrl)-1.d0)* &
                                              ln_conc(jcomp))* &
-                                         ((1.d0+chemistry%kinmnrl_pri_pref_atten_coef(j,ipref,imnrl))* &
-                                           exp(chemistry%kinmnrl_pri_pref_beta_stoich(j,ipref,imnrl)* &
+                                         ((1.d0+reaction%kinmnrl_pri_pref_atten_coef(j,ipref,imnrl))* &
+                                           exp(reaction%kinmnrl_pri_pref_beta_stoich(j,ipref,imnrl)* &
                                                ln_conc(jcomp)))
           tempreal = dIm_dprefactor_rate*(dprefactor_dcomp_numerator+dprefactor_dcomp_denominator)
           do i = 1, ncomp
-            icomp = chemistry%kinmnrlspecid(i,imnrl)
-            Jac(icomp,jcomp) = Jac(icomp,jcomp) + chemistry%kinmnrlstoich(i,imnrl)*tempreal
+            icomp = reaction%kinmnrlspecid(i,imnrl)
+            Jac(icomp,jcomp) = Jac(icomp,jcomp) + reaction%kinmnrlstoich(i,imnrl)*tempreal
           enddo  ! loop over col
         enddo !loop over row
-        do k = 1, chemistry%kinmnrl_sec_prefactor_id(0,ipref,imnrl) ! secondary contribution
-          kcplx = chemistry%kinmnrl_sec_prefactor_id(k,ipref,imnrl)
+        do k = 1, reaction%kinmnrl_sec_prefactor_id(0,ipref,imnrl) ! secondary contribution
+          kcplx = reaction%kinmnrl_sec_prefactor_id(k,ipref,imnrl)
           ! numerator
-          dprefactor_dcomp_numerator = chemistry%kinmnrl_sec_pref_alpha_stoich(k,ipref,imnrl)* &
+          dprefactor_dcomp_numerator = reaction%kinmnrl_sec_pref_alpha_stoich(k,ipref,imnrl)* &
                                        prefactor(ipref)/auxvar%secondary_spec(jcomp)
           ! denominator
           dprefactor_dcomp_denominator = -1.d0*prefactor(ipref)/ &
-                                         (1.d0+chemistry%kinmnrl_sec_pref_atten_coef(k,ipref,imnrl)* &
-                                          exp(chemistry%kinmnrl_sec_pref_beta_stoich(k,ipref,imnrl)* &
+                                         (1.d0+reaction%kinmnrl_sec_pref_atten_coef(k,ipref,imnrl)* &
+                                          exp(reaction%kinmnrl_sec_pref_beta_stoich(k,ipref,imnrl)* &
                                               ln_sec(kcplx)))* &
-                                         chemistry%kinmnrl_sec_pref_beta_stoich(k,ipref,imnrl)* &
-                                         chemistry%kinmnrl_sec_pref_atten_coef(k,ipref,imnrl)* &
-                                         exp((chemistry%kinmnrl_sec_pref_beta_stoich(k,ipref,imnrl)-1.d0)* &
+                                         reaction%kinmnrl_sec_pref_beta_stoich(k,ipref,imnrl)* &
+                                         reaction%kinmnrl_sec_pref_atten_coef(k,ipref,imnrl)* &
+                                         exp((reaction%kinmnrl_sec_pref_beta_stoich(k,ipref,imnrl)-1.d0)* &
                                               ln_sec(kcplx))
           tempreal = dIm_dprefactor_rate*(dprefactor_dcomp_numerator+dprefactor_dcomp_denominator)
-          do j = 1, chemistry%eqcmplxstoich(0,kcplx)
-            jcomp = chemistry%eqcmplxstoich(j,kcplx)
-            tempreal2 = chemistry%eqcmplxstoich(j,kcplx)*exp(ln_sec(kcplx)-ln_conc(jcomp))
+          do j = 1, reaction%eqcmplxstoich(0,kcplx)
+            jcomp = reaction%eqcmplxstoich(j,kcplx)
+            tempreal2 = reaction%eqcmplxstoich(j,kcplx)*exp(ln_sec(kcplx)-ln_conc(jcomp))
             do i = 1, ncomp
-              icomp = chemistry%kinmnrlspecid(i,imnrl)
-              Jac(icomp,jcomp) = Jac(icomp,jcomp) + chemistry%kinmnrlstoich(i,imnrl)*tempreal* &
+              icomp = reaction%kinmnrlspecid(i,imnrl)
+              Jac(icomp,jcomp) = Jac(icomp,jcomp) + reaction%kinmnrlstoich(i,imnrl)*tempreal* &
                                                     tempreal2
             enddo  ! loop over col
           enddo  ! loop over row
@@ -1837,7 +1883,7 @@ end subroutine RKineticMineral
 ! date: 09/04/08
 !
 ! ************************************************************************** !
-subroutine RKineticMineralDerivative(Res,Jac,auxvar,chemistry,option)
+subroutine RKineticMineralDerivative(Res,Jac,auxvar,reaction,option)
 
   use Option_module
   
@@ -1845,7 +1891,7 @@ subroutine RKineticMineralDerivative(Res,Jac,auxvar,chemistry,option)
   PetscReal :: Res(option%ncomp)
   PetscReal :: Jac(option%ncomp,option%ncomp)
   type(reactive_transport_auxvar_type) :: auxvar
-  type(reaction_type) :: chemistry
+  type(reaction_type) :: reaction
   
   type(reactive_transport_auxvar_type) :: auxvar_pert
   PetscReal :: Res_orig(option%ncomp)
@@ -1861,20 +1907,20 @@ subroutine RKineticMineralDerivative(Res,Jac,auxvar,chemistry,option)
   if (option%numerical_derivatives) then
     call RTAuxVarInit(auxvar_pert,option)
     call RTAuxVarCopy(auxvar,auxvar_pert,option)
-    call RKineticMineral(Res_orig,Jac_dummy,PETSC_FALSE,auxvar,chemistry,option)
+    call RKineticMineral(Res_orig,Jac_dummy,PETSC_FALSE,auxvar,reaction,option)
     do jcomp = 1, option%ncomp
       call RTAuxVarCopy(auxvar,auxvar_pert,option)
       pert = auxvar_pert%primary_spec(jcomp)*perturbation_tolerance
       auxvar_pert%primary_spec(jcomp) = auxvar_pert%primary_spec(jcomp) + pert
-      call RTotal(auxvar,chemistry,option)
-      call RKineticMineral(Res_pert,Jac_dummy,PETSC_FALSE,auxvar,chemistry,option)
+      call RTotal(auxvar,reaction,option)
+      call RKineticMineral(Res_pert,Jac_dummy,PETSC_FALSE,auxvar,reaction,option)
       do icomp = 1, option%ncomp
         Jac(icomp,jcomp) = Jac(icomp,jcomp) + (Res_pert(icomp)-Res_orig(icomp))/pert
       enddo
     enddo
     call RTAuxVarDestroy(auxvar_pert)
   else
-    call RKineticMineral(Res_orig,Jac,PETSC_TRUE,auxvar,chemistry,option)
+    call RKineticMineral(Res_orig,Jac,PETSC_TRUE,auxvar,reaction,option)
   endif
     
 end subroutine RKineticMineralDerivative

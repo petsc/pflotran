@@ -3999,6 +3999,8 @@ subroutine ComputeFlowFluxVelocityStats(realization)
         cur_connection_set => cur_connection_set%next
       enddo
 
+      call VecRestoreArrayF90(global_vec,vec_ptr,ierr)
+      
       ! compute stats
       call VecSum(global_vec,sum,ierr)
       average = sum/real(grid%nmax)

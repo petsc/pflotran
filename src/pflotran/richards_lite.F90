@@ -39,7 +39,8 @@ module Richards_Lite_module
          RichardsLiteSetup, RichardsLiteNumericalJacTest, &
          RichardsLiteGetVarFromArray, RichardsLiteGetVarFromArrayAtCell, &
          RichardsLiteMaxChange, RichardsLiteUpdateSolution, &
-         RichardsLiteGetTecplotHeader, RichardsLiteInitializeTimestep
+         RichardsLiteGetTecplotHeader, RichardsLiteInitializeTimestep, &
+         RichardsLiteUpdateAuxVars
 
 contains
 

@@ -71,6 +71,7 @@ subroutine Init(simulation,filename)
   type(pflow_debug_type), pointer :: debug
   type(waypoint_list_type), pointer :: waypoint_list
   character(len=MAXSTRINGLENGTH) :: string
+  Vec :: global_vec
   PetscInt :: temp_int
   PetscErrorCode :: ierr
 
@@ -318,10 +319,13 @@ subroutine Init(simulation,filename)
     select case(option%iflowmode)
       case(RICHARDS_MODE)
         call RichardsSetup(realization)
+        call RichardsUpdateAuxVars(realization)
       case(RICHARDS_LITE_MODE)
         call RichardsLiteSetup(realization)
+        call RichardsLiteUpdateAuxVars(realization)
       case(MPH_MODE)
         call MphaseSetup(realization)
+        call MphaseUpdateAuxVars(realization)
     end select
   endif
   
@@ -330,11 +334,55 @@ subroutine Init(simulation,filename)
         dabs(option%uniform_velocity(3)) >  0.d0) then
       call RealizAssignUniformVelocity(realization)
     endif
-    call VecSet(field%saturation_loc,1.d0,ierr)
-    call VecCopy(field%saturation_loc,field%saturation0_loc,ierr)
-    call VecSet(field%density_loc,55.357308212035d0,ierr)
-    call VecCopy(field%density_loc,field%density0_loc,ierr)
+    
     call RTSetup(realization)
+    
+    ! initialize densities and saturations
+    if (option%nflowdof > 0) then
+      call DiscretizationCreateVector(realization%discretization,ONEDOF, &
+                                      global_vec,GLOBAL,option)
+      select case(option%iflowmode)
+        case(RICHARDS_MODE)
+          call RichardsGetVarFromArray(realization,global_vec, &
+                                       LIQUID_SATURATION,ZERO_INTEGER)
+          call DiscretizationGlobalToLocal(realization%discretization, &
+                                           global_vec,field%saturation_loc,ONEDOF)   
+          call RichardsGetVarFromArray(realization,global_vec, &
+                                       LIQUID_DENSITY,ZERO_INTEGER)
+          call DiscretizationGlobalToLocal(realization%discretization, &
+                                           global_vec,field%density_loc,ONEDOF)   
+        case(RICHARDS_LITE_MODE)
+          call RichardsLiteGetVarFromArray(realization,global_vec, &
+                                           LIQUID_SATURATION,ZERO_INTEGER)
+          call DiscretizationGlobalToLocal(realization%discretization, &
+                                           global_vec,field%saturation_loc,ONEDOF)   
+          call RichardsLiteGetVarFromArray(realization,global_vec, &
+                                           LIQUID_DENSITY,ZERO_INTEGER)
+          call DiscretizationGlobalToLocal(realization%discretization, &
+                                           global_vec,field%density_loc,ONEDOF)   
+  ! ** clu: Not sure mphase need this by now
+        case(MPH_MODE) 
+          call MphaseGetVarFromArray(realization,global_vec, &
+                                       LIQUID_SATURATION,ZERO_INTEGER)
+          call DiscretizationGlobalToLocal(realization%discretization, &
+                                           global_vec,field%saturation_loc,ONEDOF)   
+          call MphaseGetVarFromArray(realization,global_vec, &
+                                       LIQUID_DENSITY,ZERO_INTEGER)
+          call DiscretizationGlobalToLocal(realization%discretization, &
+                                           global_vec,field%density_loc,ONEDOF)   
+      end select
+      call VecDestroy(global_vec,ierr)
+    else
+      call VecSet(field%saturation_loc,1.d0,ierr)
+      call VecCopy(field%saturation_loc,field%saturation0_loc,ierr)
+      call VecSet(field%density_loc,997.160290931658d0,ierr)
+      call VecCopy(field%density_loc,field%density0_loc,ierr)
+    endif
+
+    ! map densities and saturations to reactive transport aux vars
+    call RealizBridgeFlowAndTransport(realization) 
+    call RTUpdateAuxVars(realization)
+
   endif
   
   ! print info
@@ -393,7 +441,7 @@ subroutine readRequiredCardsFromInput(realization,filename)
   use Level_module
   use Realization_module
   use AMR_Grid_module
-  use Chemistry_module
+  use Reaction_module
 
   implicit none
 
@@ -512,13 +560,13 @@ subroutine readRequiredCardsFromInput(realization,filename)
   call fiFindStringInFile(IUNIT1,string,ierr)
 
   if (ierr == 0) then
-    realization%chemistry => ChemistryCreate()
-    call ChemistryRead(realization%chemistry,IUNIT1,option)
-    option%ntrandof = GetPrimarySpeciesCount(realization%chemistry)
-    option%comp_names => GetPrimarySpeciesNames(realization%chemistry)
+    realization%reaction => ReactionCreate()
+    call ReactionRead(realization%reaction,IUNIT1,option)
+    option%ntrandof = GetPrimarySpeciesCount(realization%reaction)
+    option%comp_names => GetPrimarySpeciesNames(realization%reaction)
     option%ncomp = option%ntrandof
-    option%ncmplx = GetSecondarySpeciesCount(realization%chemistry)
-    option%nmnrl = GetMineralCount(realization%chemistry)
+    option%ncmplx = GetSecondarySpeciesCount(realization%reaction)
+    option%nmnrl = GetMineralCount(realization%reaction)
   endif
 
 !.........................................................................
@@ -589,7 +637,7 @@ subroutine readInput(simulation,filename)
   use Waypoint_module
   use Debug_module
   use Patch_module
-  use Chemistry_module
+  use Reaction_module
  
   implicit none
   
@@ -708,7 +756,7 @@ subroutine readInput(simulation,filename)
                  'MINERALS')
               call fiSkipToEND(IUNIT1,option%myrank,card)
             case('RUN_CARBONATE')
-              realization%chemistry => CarbonateTestProblemCreate(option)
+              realization%reaction => CarbonateTestProblemCreate(option)
           end select
           if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
               fiStringCompare(string,'END',THREE_INTEGER)) exit

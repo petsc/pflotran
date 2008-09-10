@@ -397,6 +397,7 @@ subroutine ConditionRead(condition,option,fid)
   default_gradient%rank = 3
   
   pressure => SubConditionCreate(option%nphase)
+  flux => pressure
   mass_rate => SubConditionCreate(option%nflowspec)
   temperature => SubConditionCreate(ONE_INTEGER)
   concentration => SubConditionCreate(ONE_INTEGER)

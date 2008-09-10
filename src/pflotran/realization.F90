@@ -9,7 +9,7 @@ module Realization_module
   use Debug_module
   use Waypoint_module
   
-  use Chemistry_module
+  use Reaction_module
   
   use Level_module
   use Patch_module
@@ -35,7 +35,7 @@ private
     type(condition_list_type), pointer :: flow_conditions
     type(condition_list_type), pointer :: transport_conditions
     
-    type(reaction_type), pointer :: chemistry
+    type(reaction_type), pointer :: reaction
     
     type(material_type), pointer :: materials
     type(material_ptr_type), pointer :: material_array(:)
@@ -100,7 +100,7 @@ function RealizationCreate()
   nullify(realization%saturation_function_array)
   nullify(realization%fluid_properties)
   
-  nullify(realization%chemistry)
+  nullify(realization%reaction)
   
   RealizationCreate => realization
   
@@ -729,6 +729,7 @@ subroutine RealizAssignTransportInitCond(realization)
         call GridVecGetArrayF90(grid, field%tran_xx,xx_p, ierr); CHKERRQ(ierr)
         
         xx_p = -999.d0
+        if (option%use_log_formulation) xx_p = log(xx_p)
         
         initial_condition => cur_patch%initial_conditions%first
         do
@@ -743,13 +744,19 @@ subroutine RealizAssignTransportInitCond(realization)
               ibegin = iend-option%ntrandof+1
               if (associated(cur_patch%imat)) then
                 if (cur_patch%imat(ghosted_id) <= 0) then
-                  xx_p(ibegin:iend) = 0.d0
+                  xx_p(ibegin:iend) = 1.d-200
+                  if (option%use_log_formulation) xx_p(ibegin:iend) = log(xx_p(ibegin:iend))
                   cycle
                 endif
               endif
               do idof = 1, option%ntrandof
-                xx_p(ibegin+idof-1) = &
-                  initial_condition%tran_condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
+                if (option%use_log_formulation) then
+                  xx_p(ibegin+idof-1) = &
+                    log(initial_condition%tran_condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1))
+                else
+                  xx_p(ibegin+idof-1) = &
+                    initial_condition%tran_condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
+                endif
               enddo
             enddo
           else
@@ -760,12 +767,18 @@ subroutine RealizAssignTransportInitCond(realization)
               ibegin = iend-option%ntrandof+1
               if (associated(cur_patch%imat)) then
                 if (cur_patch%imat(ghosted_id) <= 0) then
-                  xx_p(ibegin:iend) = 0.d0
+                  xx_p(ibegin:iend) = 1.d-200
+                  if (option%use_log_formulation) xx_p(ibegin:iend) = log(xx_p(ibegin:iend))
                   cycle
                 endif
               endif
-              xx_p(ibegin:iend) = &
-                initial_condition%tran_aux_real_var(1:option%ntrandof,iconn)
+              if (option%use_log_formulation) then
+                xx_p(ibegin:iend) = &
+                  log(initial_condition%tran_aux_real_var(1:option%ntrandof,iconn))
+              else
+                xx_p(ibegin:iend) = &
+                  initial_condition%tran_aux_real_var(1:option%ntrandof,iconn)
+              endif
             enddo
           endif
           initial_condition => initial_condition%next

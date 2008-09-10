@@ -40,7 +40,8 @@ module Richards_module
          RichardsGetVarFromArray, RichardsGetVarFromArrayAtCell, &
          RichardsMaxChange, RichardsUpdateSolution, &
          RichardsGetTecplotHeader, RichardsInitializeTimestep, &
-         RichardsSetup, RichardsResidualToMass
+         RichardsSetup, RichardsResidualToMass, &
+         RichardsUpdateAuxVars
 
   PetscInt, parameter :: jh2o = 1
 

@@ -23,8 +23,8 @@ module Field_module
     Vec :: perm_xx_loc, perm_yy_loc, perm_zz_loc
     Vec :: perm0_xx, perm0_yy, perm0_zz, perm_pow
     
-    Vec :: saturation_loc, density_loc
-    Vec :: saturation0_loc, density0_loc
+    Vec :: density_loc, density0_loc ! fluid density in kg/m^3
+    Vec :: saturation_loc, saturation0_loc
 
     Vec :: volume 
     

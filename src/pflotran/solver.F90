@@ -480,14 +480,18 @@ subroutine SolverPrintLinearInfo(solver,fid,header,myrank)
     write(fid,*) 
     write(*,'(a)') trim(header)
     write(fid,'(a)') trim(header)
-    write(*,'(" atol:",1pe12.4)') solver%linear_atol
-    write(fid,'(" atol:",1pe12.4)') solver%linear_atol
-    write(*,'(" rtol:",1pe12.4)') solver%linear_rtol
-    write(fid,'(" rtol:",1pe12.4)') solver%linear_rtol
-    write(*,'(" dtol:",1pe12.4)') solver%linear_dtol
-    write(fid,'(" dtol:",1pe12.4)') solver%linear_dtol
-    write(*,'("maxit:",i7)') solver%linear_maxit
-    write(fid,'("maxit:",i7)') solver%linear_maxit
+    write(*,'(" solver: ",a)') trim(solver%ksp_type)
+    write(fid,'(" solver: ",a)') trim(solver%ksp_type)
+    write(*,'("precond: ",a)') trim(solver%pc_type)
+    write(fid,'("precond: ",a)') trim(solver%pc_type)
+    write(*,'("   atol:",1pe12.4)') solver%linear_atol
+    write(fid,'("   atol:",1pe12.4)') solver%linear_atol
+    write(*,'("   rtol:",1pe12.4)') solver%linear_rtol
+    write(fid,'("   rtol:",1pe12.4)') solver%linear_rtol
+    write(*,'("   dtol:",1pe12.4)') solver%linear_dtol
+    write(fid,'("   dtol:",1pe12.4)') solver%linear_dtol
+    write(*,'("  maxit:",i7)') solver%linear_maxit
+    write(fid,'("  maxit:",i7)') solver%linear_maxit
   endif
 
 end subroutine SolverPrintLinearInfo

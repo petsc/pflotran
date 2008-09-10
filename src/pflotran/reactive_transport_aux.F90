@@ -10,7 +10,7 @@ module Reactive_Transport_Aux_module
  
   type, public :: reactive_transport_auxvar_type
     PetscReal, pointer :: den(:)
-    PetscReal :: sat
+    PetscReal, pointer :: sat(:)
     ! phase dependent totals
     PetscReal, pointer :: total(:,:)
     PetscReal, pointer :: dtotal(:,:,:)
@@ -91,6 +91,7 @@ subroutine RTAuxVarInit(aux_var,option)
   
   allocate(aux_var%den(option%nphase))
   aux_var%den = 0.d0
+  allocate(aux_var%sat(option%nphase))
   aux_var%sat = 0.d0
   allocate(aux_var%total(option%ncomp,option%nphase))
   aux_var%total = 0.d0
@@ -152,6 +153,8 @@ subroutine RTAuxVarDestroy(aux_var)
   
   if (associated(aux_var%den)) deallocate(aux_var%den)
   nullify(aux_var%den)
+  if (associated(aux_var%sat)) deallocate(aux_var%sat)
+  nullify(aux_var%sat)
   if (associated(aux_var%total)) deallocate(aux_var%total)
   nullify(aux_var%total)
   if (associated(aux_var%dtotal))deallocate(aux_var%dtotal)
