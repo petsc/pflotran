@@ -724,7 +724,8 @@ function StructGridComputeInternConnect(structured_grid,option)
   type(structured_grid_type) :: structured_grid
   
   
-  PetscInt :: i, j, k, iconn, id_up, id_dn, samr_of
+  PetscInt :: i, j, k, iconn, id_up, id_dn
+  PetscInt :: samr_ofx, samr_ofy, samr_ofz
   PetscInt :: nconn
   PetscInt :: lenx, leny, lenz
   PetscReal :: dist_up, dist_dn
@@ -733,6 +734,9 @@ function StructGridComputeInternConnect(structured_grid,option)
   
   call ConnectionAllocateLists()
   
+  samr_ofx = 0
+  samr_ofy = 0
+  samr_ofz = 0
   ! the adjustments in the case of AMR are based on the PIMS code adjustments by LC
   nconn = (structured_grid%ngx-1)*structured_grid%nly*structured_grid%nlz+ &
           structured_grid%nlx*(structured_grid%ngy-1)*structured_grid%nlz+ &
@@ -746,6 +750,7 @@ function StructGridComputeInternConnect(structured_grid,option)
      if(samr_patch_at_bc(structured_grid%p_samr_patch, 0, 0) ==1) then
         nconn = nconn - structured_grid%nlyz
         lenx = lenx-1
+        samr_ofx = 1
      endif  
      if(samr_patch_at_bc(structured_grid%p_samr_patch, 0, 1) ==1) then 
         nconn = nconn - structured_grid%nlyz
@@ -754,6 +759,7 @@ function StructGridComputeInternConnect(structured_grid,option)
      if(samr_patch_at_bc(structured_grid%p_samr_patch, 1, 0) ==1) then
         nconn = nconn - structured_grid%nlxz
         leny=leny-1
+        samr_ofy = structured_grid%ngx
      endif  
      if(samr_patch_at_bc(structured_grid%p_samr_patch, 1, 1) ==1) then
         nconn = nconn - structured_grid%nlxz
@@ -762,6 +768,7 @@ function StructGridComputeInternConnect(structured_grid,option)
      if(samr_patch_at_bc(structured_grid%p_samr_patch, 2, 0) ==1) then
         nconn = nconn - structured_grid%nlxy
         lenz=lenz-1
+        samr_ofz = structured_grid%ngxy
      endif  
      if(samr_patch_at_bc(structured_grid%p_samr_patch, 2, 1) ==1) then
         nconn = nconn - structured_grid%nlxy
@@ -776,17 +783,12 @@ function StructGridComputeInternConnect(structured_grid,option)
   iconn = 0
   ! x-connections
   if (structured_grid%ngx > 1) then
-    samr_of=0
-    ! the adjustments in the case of AMR are based on the PIMS code adjustments by LC
-    if(.not.(structured_grid%p_samr_patch .eq.0)) then
-       samr_of = 1
-    endif
 
     do k = structured_grid%kstart, structured_grid%kend
       do j = structured_grid%jstart, structured_grid%jend
         do i = 1, lenx
           iconn = iconn+1
-          id_up = i + j * structured_grid%ngx + k * structured_grid%ngxy+samr_of
+          id_up = i + j * structured_grid%ngx + k * structured_grid%ngxy+samr_ofx
           id_dn = id_up + 1
           connections%id_up(iconn) = id_up
           connections%id_dn(iconn) = id_dn
@@ -804,17 +806,12 @@ function StructGridComputeInternConnect(structured_grid,option)
 
   ! y-connections
   if (structured_grid%ngy > 1) then
-    samr_of=0
-    ! the adjustments in the case of AMR are based on the PIMS code adjustments by LC
-    if(.not.(structured_grid%p_samr_patch .eq.0)) then
-       samr_of = structured_grid%ngx
-    endif
 
     do k = structured_grid%kstart, structured_grid%kend
       do i = structured_grid%istart, structured_grid%iend
         do j = 1, leny
           iconn = iconn+1
-          id_up = i + 1 + (j-1) * structured_grid%ngx + k * structured_grid%ngxy+samr_of
+          id_up = i + 1 + (j-1) * structured_grid%ngx + k * structured_grid%ngxy+samr_ofy
           id_dn = id_up + structured_grid%ngx
           connections%id_up(iconn) = id_up
           connections%id_dn(iconn) = id_dn
@@ -832,17 +829,12 @@ function StructGridComputeInternConnect(structured_grid,option)
       
   ! z-connections
   if (structured_grid%ngz > 1) then
-    samr_of=0
-    ! the adjustments in the case of AMR are based on the PIMS code adjustments by LC
-    if(.not.(structured_grid%p_samr_patch .eq.0)) then
-       samr_of = structured_grid%ngxy
-    endif
 
     do j = structured_grid%jstart, structured_grid%jend
       do i = structured_grid%istart, structured_grid%iend
         do k = 1, lenz
           iconn = iconn+1
-          id_up = i + 1 + j * structured_grid%ngx + (k-1) * structured_grid%ngxy+samr_of
+          id_up = i + 1 + j * structured_grid%ngx + (k-1) * structured_grid%ngxy+samr_ofz
           id_dn = id_up + structured_grid%ngxy
           connections%id_up(iconn) = id_up
           connections%id_dn(iconn) = id_dn

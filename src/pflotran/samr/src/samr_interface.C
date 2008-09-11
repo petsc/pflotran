@@ -284,6 +284,11 @@ samr_mpi_max_(double *x, double *y, double *z)
    *z = vals[2];
 }
 
+void samrbarrier_(void)
+{
+   SAMRAI::tbox::SAMRAI_MPI::barrier();
+}
+
 #ifdef __cplusplus
 }
 #endif

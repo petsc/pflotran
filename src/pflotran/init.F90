@@ -95,8 +95,11 @@ subroutine Init(simulation,filename)
   call readRequiredCardsFromInput(realization,filename)
 
   patch => realization%patch
-  grid => patch%grid
-  
+
+  if(associated(patch%grid)) then
+     grid => patch%grid
+  endif
+
   ! process command line options
   call OptionCheckCommandLine(option)
 

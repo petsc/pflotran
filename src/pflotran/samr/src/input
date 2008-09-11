@@ -14,10 +14,10 @@ CartesianGeometry{
 GriddingAlgorithm{
    max_levels = 1
    largest_patch_size {
-      level_0 = 256, 100, 100
+      level_0 = 25, 10, 10
    }
  smallest_patch_size {
-      level_0 = 4,4,4
+      level_0 = 25,10,10
    }
    ratio_to_coarser {
       level_1  = 2, 2, 2
