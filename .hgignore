@@ -9,6 +9,7 @@ syntax: glob
 *.toc
 *.bst
 *.sty
+*.synctex.gz
 .DS_Store
 ._.DS_Store
 .hgignore.orig
