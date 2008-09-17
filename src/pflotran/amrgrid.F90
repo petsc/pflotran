@@ -134,6 +134,7 @@ function AMRGridCreateLevelPatchLists(amrgrid)
   do ln=0,nlevels-1
      level => LevelCreate()
      call LevelAddToList(level,level_list)
+     level%patch_list => PatchCreateList()
      npatches = level_number_patches(p_application, ln )
      do pn=0,npatches-1
         islocal = is_local_patch(p_application, ln, pn);
@@ -144,8 +145,6 @@ function AMRGridCreateLevelPatchLists(amrgrid)
 ! this has to be called after the call to PatchAddToList since that routine
 ! sets the patch id according to the size of the list
            patch%id = pn
-        else
-           nullify(patch)
         endif
      end do
   end do
@@ -526,6 +525,7 @@ subroutine AMRGridReadDXYZ(amrgrid, option)
        integer, intent(in) :: ln
        integer, intent(in) :: pn
      end function is_local_patch
+
   end interface
 
   type(amrgrid_type), pointer:: amrgrid
@@ -539,9 +539,11 @@ subroutine AMRGridReadDXYZ(amrgrid, option)
   integer :: ln
   integer :: pn
   logical :: islocal
+  logical :: readdxyz
 
   p_application = amrgrid%p_application
 
+  readdxyz = .FALSE.
   ! note that this will need to be modified for parallel processing
   
   nlevels =  hierarchy_number_levels(p_application)
@@ -551,7 +553,13 @@ subroutine AMRGridReadDXYZ(amrgrid, option)
         islocal = is_local_patch(p_application, ln, pn);
         if(islocal) then
            grid => amrgrid%gridlevel(ln+1)%grids(pn+1)%grid_ptr
+           if(readdxyz) then
+              BACKSPACE(UNIT=IUNIT1)
+              BACKSPACE(UNIT=IUNIT1)
+              BACKSPACE(UNIT=IUNIT1)
+           endif
            call StructuredGridReadDXYZ(grid%structured_grid,option)
+           readdxyz = .TRUE.
         endif
      end do
   end do
