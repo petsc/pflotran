@@ -9,13 +9,15 @@ module Reactive_Transport_Aux_module
 #include "definitions.h"
  
   type, public :: reactive_transport_auxvar_type
-    PetscReal, pointer :: den(:)
+    PetscReal, pointer :: den(:) ! kg water / m^3 water
     PetscReal, pointer :: sat(:)
+    ! molality
+    PetscReal, pointer :: primary_molal(:) ! kg solute / L water
     ! phase dependent totals
-    PetscReal, pointer :: total(:,:)
-    PetscReal, pointer :: dtotal(:,:,:)
+    PetscReal, pointer :: total(:,:) ! mol solute / L water
+    PetscReal, pointer :: dtotal(:,:,:) ! kg water / m^3 water
     ! aqueous species
-    PetscReal, pointer :: primary_spec(:)
+    PetscReal, pointer :: primary_spec(:) ! mol solute / L water
     ! aqueous complexes
     PetscReal, pointer :: secondary_spec(:)
     ! sorption reactions
@@ -33,6 +35,8 @@ module Reactive_Transport_Aux_module
     PetscInt :: num_aux, num_aux_bc
     PetscInt, pointer :: zero_rows_local(:), zero_rows_local_ghosted(:)
     PetscInt :: n_zero_rows
+    PetscTruth :: aux_vars_up_to_date
+    PetscTruth :: inactive_cells_exist
     type(reactive_transport_auxvar_type), pointer :: aux_vars(:)
     type(reactive_transport_auxvar_type), pointer :: aux_vars_bc(:)
   end type reactive_transport_type
@@ -68,6 +72,8 @@ function RTAuxCreate()
   aux%n_zero_rows = 0
   nullify(aux%zero_rows_local)
   nullify(aux%zero_rows_local_ghosted)
+  aux%aux_vars_up_to_date = PETSC_FALSE
+  aux%inactive_cells_exist = PETSC_FALSE
 
   RTAuxCreate => aux
   
@@ -93,6 +99,8 @@ subroutine RTAuxVarInit(aux_var,option)
   aux_var%den = 0.d0
   allocate(aux_var%sat(option%nphase))
   aux_var%sat = 0.d0
+  allocate(aux_var%primary_molal(option%ncomp))
+  aux_var%primary_molal = 0.d0
   allocate(aux_var%total(option%ncomp,option%nphase))
   aux_var%total = 0.d0
   allocate(aux_var%dtotal(option%ncomp,option%ncomp,option%nphase))
@@ -104,7 +112,7 @@ subroutine RTAuxVarInit(aux_var,option)
   allocate(aux_var%mnrl_volfrac(option%nmnrl))
   aux_var%mnrl_volfrac = 0.d0
   allocate(aux_var%mnrl_area0(option%nmnrl))
-  aux_var%mnrl_area0 = 0.d0
+  aux_var%mnrl_area0 = 1.d0 ! Hardwired for now - geh
   allocate(aux_var%mnrl_rate(option%nmnrl))
   aux_var%mnrl_rate = 0.d0
 
@@ -128,6 +136,7 @@ subroutine RTAuxVarCopy(aux_var, aux_var2,option)
   
   aux_var%den = aux_var2%den
   aux_var%sat = aux_var2%sat
+  aux_var%primary_molal = aux_var2%primary_molal
   aux_var%total = aux_var2%total
   aux_var%dtotal = aux_var2%dtotal
   aux_var%primary_spec = aux_var2%primary_spec
@@ -155,6 +164,8 @@ subroutine RTAuxVarDestroy(aux_var)
   nullify(aux_var%den)
   if (associated(aux_var%sat)) deallocate(aux_var%sat)
   nullify(aux_var%sat)
+  if (associated(aux_var%primary_molal)) deallocate(aux_var%primary_molal)
+  nullify(aux_var%primary_molal)
   if (associated(aux_var%total)) deallocate(aux_var%total)
   nullify(aux_var%total)
   if (associated(aux_var%dtotal))deallocate(aux_var%dtotal)

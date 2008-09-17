@@ -58,14 +58,17 @@ subroutine TFlux(aux_var_up,por_up,tor_up,sat_up,dist_up, &
   q = velocity(iphase)
   
   if (sat_up > eps .and. sat_dn > eps) then
-    stp_up = sat_up*tor_up*por_up
+    stp_up = sat_up*tor_up*por_up 
     stp_dn = sat_dn*tor_dn*por_dn
+    ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
     weight = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
     ! need to account for multiple phases
+    ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
     diffusion = weight*(option%disp+option%difaq)
   endif
   
   !upstream weighting
+  ! units = (m^3 water/m^2 bulk/sec)
   if (q > 0.d0) then
     coef_up =  diffusion+q
     coef_dn = -diffusion
@@ -74,9 +77,12 @@ subroutine TFlux(aux_var_up,por_up,tor_up,sat_up,dist_up, &
     coef_dn = -diffusion+q
   endif
   
-  coef_up = coef_up*area
-  coef_dn = coef_dn*area
+  ! units = (m^3 water/m^2 bulk/sec)*(m^2 bulk)*(1000 L water/m^3 water)
+  !       = L water/sec
+  coef_up = coef_up*area*1000.d0  ! 1000 converts m^3 -> L
+  coef_dn = coef_dn*area*1000.d0
   
+  ! units = (L water/sec)*(mol/L) = mol/s
   Res(1:option%ncomp) = coef_up*aux_var_up%total(1:option%ncomp,iphase) + &
                         coef_dn*aux_var_dn%total(1:option%ncomp,iphase)
                         
@@ -121,12 +127,15 @@ subroutine TFluxDerivative(aux_var_up,por_up,tor_up,sat_up,dist_up, &
   if (sat_up > eps .and. sat_dn > eps) then
     stp_up = sat_up*tor_up*por_up
     stp_dn = sat_dn*tor_dn*por_dn
+    ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
     weight = (stp_up*stp_dn)/(stp_up*dist_dn+stp_dn*dist_up)
     ! need to account for multiple phases
+    ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
     diffusion = weight*(option%disp+option%difaq)
   endif
   
   !upstream weighting
+  ! units = (m^3 water/m^2 bulk/sec)
   if (q > 0.d0) then
     coef_up =  diffusion+q
     coef_dn = -diffusion
@@ -135,9 +144,12 @@ subroutine TFluxDerivative(aux_var_up,por_up,tor_up,sat_up,dist_up, &
     coef_dn = -diffusion+q
   endif
   
+  ! units = (m^3 water/m^2 bulk/sec)*(m^2 bulk)
+  !       = m^3 water/sec
   coef_up = coef_up*area
   coef_dn = coef_dn*area
 
+  ! units = (m^3 water/sec)*(kg water/m^3 water) = kg water/sec
   if (associated(aux_var_dn%dtotal)) then
     J_up = aux_var_up%dtotal(:,:,iphase)*coef_up
     J_dn = aux_var_dn%dtotal(:,:,iphase)*coef_dn
@@ -145,8 +157,8 @@ subroutine TFluxDerivative(aux_var_up,por_up,tor_up,sat_up,dist_up, &
     J_up = 0.d0
     J_dn = 0.d0
     do icomp = 1, option%ncomp
-      J_up(icomp,icomp) = coef_up
-      J_dn(icomp,icomp) = coef_dn
+      J_up(icomp,icomp) = coef_up*aux_var_up%den(iphase)
+      J_dn(icomp,icomp) = coef_dn*aux_var_dn%den(iphase)
     enddo
   endif
 
@@ -192,14 +204,17 @@ subroutine TBCFlux(ibndtype, &
   select case(ibndtype)
     case(DIRICHLET_BC)
       if (sat_up > eps .and. sat_dn > eps) then
+        ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
         weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
         ! need to account for multiple phases
+        ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
         diffusion = weight*(option%disp+option%difaq)
       endif    
     case(CONCENTRATION_SS,NEUMANN_BC,ZERO_GRADIENT_BC)
   end select
 
   !upstream weighting
+  ! units = (m^3 water/m^2 bulk/sec)
   if (q > 0.d0) then
     coef_up =  diffusion+q
     coef_dn = -diffusion
@@ -208,9 +223,12 @@ subroutine TBCFlux(ibndtype, &
     coef_dn = -diffusion+q
   endif
 
-  coef_up = coef_up*area
-  coef_dn = coef_dn*area
-  
+  ! units = (m^3 water/m^2 bulk/sec)*(m^2 bulk)*(1000 L water/m^3 water)
+  !       = L water/sec
+  coef_up = coef_up*area*1000.d0  ! 1000 converts m^3 -> L
+  coef_dn = coef_dn*area*1000.d0
+
+  ! units = (L water/sec)*(mol/L) = mol/s  
   Res(1:option%ncomp) = coef_up*aux_var_up%total(1:option%ncomp,iphase) + &
                         coef_dn*aux_var_dn%total(1:option%ncomp,iphase)  
 
@@ -258,28 +276,34 @@ subroutine TBCFluxDerivative(ibndtype, &
   select case(ibndtype)
     case(DIRICHLET_BC)
       if (sat_up > eps .and. sat_dn > eps) then
+        ! units = (m^3 water/m^3 por)*(m^3 por/m^3 bulk)/(m bulk) = m^3 water/m^4 bulk 
         weight = tor_dn*por_dn*(sat_up*sat_dn)/((sat_up+sat_dn)*dist_dn)
         ! need to account for multiple phases
+        ! units = (m^3 water/m^4 bulk)*(m^2 bulk/sec) = m^3 water/m^2 bulk/sec
         diffusion = weight*(option%disp+option%difaq)
       endif    
     case(CONCENTRATION_SS,NEUMANN_BC,ZERO_GRADIENT_BC)
   end select
 
   !upstream weighting
+  ! units = (m^3 water/m^2 bulk/sec)  
   if (q > 0.d0) then
     coef_dn = -diffusion
   else
     coef_dn = -diffusion+q
   endif
-  
+
+  ! units = (m^3 water/m^2 bulk/sec)*(m^2 bulk)
+  !       = m^3 water/sec  
   coef_dn = coef_dn*area
 
+  ! units = (m^3 water/sec)*(kg water/L water) = kg water/sec
   if (associated(aux_var_dn%dtotal)) then
     J_dn = aux_var_dn%dtotal(:,:,iphase)*coef_dn
   else
     J_dn = 0.d0
     do icomp = 1, option%ncomp
-      J_dn(icomp,icomp) = coef_dn
+      J_dn(icomp,icomp) = coef_dn*aux_var_dn%den(iphase)
     enddo
   endif
 

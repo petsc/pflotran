@@ -38,6 +38,7 @@ module Condition_module
     type(sub_condition_type), pointer :: temperature
     type(sub_condition_type), pointer :: concentration
     type(sub_condition_ptr_type), pointer :: transport_concentrations(:)
+    type(sub_condition_ptr_type), pointer :: mineral_concentrations(:)
     type(sub_condition_type), pointer :: enthalpy
     type(sub_condition_ptr_type), pointer :: sub_condition_ptr(:)
     type(condition_type), pointer :: next         ! pointer to next condition_type for linked-lists
@@ -102,6 +103,7 @@ function ConditionCreate(option)
   nullify(condition%concentration)
   nullify(condition%enthalpy)
   nullify(condition%transport_concentrations)
+  nullify(condition%mineral_concentrations)
   nullify(condition%sub_condition_ptr)
   nullify(condition%itype)
   nullify(condition%next)
@@ -372,6 +374,7 @@ subroutine ConditionRead(condition,option,fid)
                                        concentration, enthalpy, mass_rate, &
                                        sub_condition_ptr
   type(sub_condition_ptr_type), pointer :: transport_concentrations(:)
+  type(sub_condition_ptr_type), pointer :: mineral_concentrations(:)
   PetscReal :: default_time = 0.d0
   PetscInt :: default_iphase = 0
   type(condition_dataset_type) :: default_dataset
@@ -381,6 +384,7 @@ subroutine ConditionRead(condition,option,fid)
   PetscInt :: default_itype
   PetscInt :: array_size, length, idof
   logical :: found
+  PetscTruth :: minerals_exist
   PetscErrorCode :: ierr
 
   call PetscLogEventBegin(logging%event_condition_read, &
@@ -422,6 +426,18 @@ subroutine ConditionRead(condition,option,fid)
     nullify(transport_concentrations)
   endif
   
+  minerals_exist = PETSC_FALSE
+  if (option%nmnrl > 0) then
+    allocate(mineral_concentrations(option%nmnrl))
+    do idof = 1, option%nmnrl
+      mineral_concentrations(idof)%ptr => SubConditionCreate(ONE_INTEGER)
+      mineral_concentrations(idof)%ptr%name = option%mnrl_names(idof)
+      mineral_concentrations(idof)%ptr%units = '-'
+    enddo
+  else
+    nullify(mineral_concentrations)
+  endif
+
   default_ctype = 'dirichlet'
   default_itype = DIRICHLET_BC
 
@@ -664,6 +680,24 @@ subroutine ConditionRead(condition,option,fid)
         endif
         call ConditionReadValues(option,word,string,sub_condition_ptr%dataset, &
                                  sub_condition_ptr%units)
+      case('MINERAL')
+        minerals_exist = PETSC_TRUE
+        if (condition%iclass == TRANSPORT_CLASS) then
+          call fiReadWord(string,word,.true.,ierr)
+          call fiErrorMsg(option%myrank,'name','CONDITION,MINERAL', ierr)
+          nullify(sub_condition_ptr)
+          if (option%nmnrl > 0) then           
+            sub_condition_ptr => &
+              GetSubConditionFromArrayByName(mineral_concentrations,word)
+            if (.not.associated(sub_condition_ptr)) then
+              string = 'mineral name "' // trim(word) // &
+                       '" not recognized in condition'
+              call printErrMsg(option,string)
+            endif
+          endif
+        endif
+        call ConditionReadValues(option,word,string,sub_condition_ptr%dataset, &
+                                 sub_condition_ptr%units)
     end select 
   
   enddo  
@@ -718,17 +752,30 @@ subroutine ConditionRead(condition,option,fid)
                             default_ctype, default_itype, &
                             default_dataset, &
                             default_datum, default_gradient)
-    ! these are not used with transport
+    ! these are not used with flow
     do idof = 1, option%ntrandof
       if (associated(transport_concentrations(idof)%ptr)) &
         call SubConditionDestroy(transport_concentrations(idof)%ptr)
     enddo
     if (associated(transport_concentrations)) deallocate(transport_concentrations)
     nullify(transport_concentrations)
+    do idof = 1, option%nmnrl
+      if (associated(mineral_concentrations(idof)%ptr)) &
+        call SubConditionDestroy(mineral_concentrations(idof)%ptr)
+    enddo
+    if (associated(mineral_concentrations)) deallocate(mineral_concentrations)
+    nullify(mineral_concentrations)
   else
     do idof = 1, option%ntrandof
       word = 'solute concentration: ' // trim(transport_concentrations(idof)%ptr%name)
       call SubConditionVerify(option,condition,word,transport_concentrations(idof)%ptr,default_time, &
+                              default_ctype, default_itype, &
+                              default_dataset, &
+                              default_datum, default_gradient)
+    enddo
+    do idof = 1, option%nmnrl
+      word = 'mineral concentration: ' // trim(mineral_concentrations(idof)%ptr%name)
+      call SubConditionVerify(option,condition,word,mineral_concentrations(idof)%ptr,default_time, &
                               default_ctype, default_itype, &
                               default_dataset, &
                               default_datum, default_gradient)
@@ -816,12 +863,31 @@ subroutine ConditionRead(condition,option,fid)
     end select
   else
     condition%num_sub_conditions = option%ntrandof
+    if (minerals_exist) then
+      condition%num_sub_conditions = condition%num_sub_conditions + option%nmnrl
+    endif
     allocate(condition%sub_condition_ptr(condition%num_sub_conditions))
-    allocate(condition%itype(condition%num_sub_conditions))
+  
+    allocate(condition%itype(option%ntrandof))
+    condition%transport_concentrations => transport_concentrations
     do idof = 1, option%ntrandof
       condition%sub_condition_ptr(idof)%ptr => transport_concentrations(idof)%ptr
-      condition%itype(idof) = condition%sub_condition_ptr(idof)%ptr%itype
+      condition%itype(idof) = transport_concentrations(idof)%ptr%itype
     enddo
+
+    if (minerals_exist) then
+      do idof = 1, option%nmnrl
+        condition%sub_condition_ptr(idof+option%ntrandof)%ptr => mineral_concentrations(idof)%ptr
+      enddo
+      condition%mineral_concentrations => mineral_concentrations
+    else
+      do idof = 1, option%nmnrl
+        if (associated(mineral_concentrations(idof)%ptr)) &
+          call SubConditionDestroy(mineral_concentrations(idof)%ptr)
+      enddo
+      if (associated(mineral_concentrations)) deallocate(mineral_concentrations)
+      nullify(mineral_concentrations)
+    endif
   endif
   
   call ConditionDatasetDestroy(default_dataset)
@@ -1292,11 +1358,33 @@ subroutine ConditionDestroy(condition)
   
   if (.not.associated(condition)) return
   
-  do i=1,condition%num_sub_conditions
-    call SubConditionDestroy(condition%sub_condition_ptr(i)%ptr)
-  enddo
-  deallocate(condition%sub_condition_ptr)
+  if (associated(condition%sub_condition_ptr)) then
+    do i=1,condition%num_sub_conditions
+      call SubConditionDestroy(condition%sub_condition_ptr(i)%ptr)
+    enddo
+    deallocate(condition%sub_condition_ptr)
+    nullify(condition%sub_condition_ptr)
+  endif
+
+  if (associated(condition%transport_concentrations)) then
+! this is performed under sub_condition_ptr
+!    do i = 1, size(condition%transport_concentrations)
+!      call SubConditionDestroy(condition%transport_concentrations(i)%ptr)
+!    enddo
+    deallocate(condition%transport_concentrations)
+    nullify(condition%transport_concentrations)
+  endif
   
+  if (associated(condition%mineral_concentrations)) then
+! this is performed under sub_condition_ptr
+!    do i = 1, size(condition%mineral_concentrations)
+!      call SubConditionDestroy(condition%mineral_concentrations(i)%ptr)
+!    enddo
+    deallocate(condition%mineral_concentrations)
+    nullify(condition%mineral_concentrations)
+  endif
+
+
   if (associated(condition%itype)) deallocate(condition%itype)
   nullify(condition%itype)
   
@@ -1306,7 +1394,6 @@ subroutine ConditionDestroy(condition)
   nullify(condition%concentration)
   nullify(condition%enthalpy)
   
-  nullify(condition%sub_condition_ptr)
   nullify(condition%next)  
   
   deallocate(condition)

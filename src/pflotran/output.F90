@@ -385,7 +385,7 @@ subroutine OutputTecplot(realization)
 #if 0      
       ! Volume Fraction
       if (option%rk > 0.d0) then
-        call OutputGetVarFromArray(realization,global_vec,VOLUME_FRACTION,ZERO_INTEGER)
+        call OutputGetVarFromArray(realization,global_vec,MINERAL_VOLUME_FRACTION,ZERO_INTEGER)
         call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
         call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
       endif
@@ -1921,7 +1921,7 @@ subroutine WriteBreakthroughDataForCell(fid,realization,local_id)
       ! Volume Fraction
       if (option%rk > 0.d0) then
         write(fid,110,advance="no") &
-          OutputGetVarFromArrayAtCell(realization,VOLUME_FRACTION,ZERO_INTEGER,local_id)
+          OutputGetVarFromArrayAtCell(realization,MINERAL_VOLUME_FRACTION,ZERO_INTEGER,local_id)
       endif
 #endif    
       ! phase
@@ -2115,7 +2115,7 @@ subroutine WriteBreakthroughDataForCoord(fid,realization,region)
       ! Volume Fraction
       if (option%rk > 0.d0) then
         write(fid,110,advance="no") &
-          OutputGetVarFromArrayAtCoord(realization,VOLUME_FRACTION,ZERO_INTEGER, &
+          OutputGetVarFromArrayAtCoord(realization,MINERAL_VOLUME_FRACTION,ZERO_INTEGER, &
                                        region%coordinate,count,ghosted_ids)
       endif
 #endif    
@@ -2669,7 +2669,7 @@ subroutine OutputHDF5(realization)
 #if 0    
       ! Volume Fraction
       if (option%rk > 0.d0) then
-        call OutputGetVarFromArray(realization,global_vec,VOLUME_FRACTION,ZERO_INTEGER)
+        call OutputGetVarFromArray(realization,global_vec,MINERAL_VOLUME_FRACTION,ZERO_INTEGER)
         string = "Volume Fraction"
         call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
       endif
@@ -3109,9 +3109,6 @@ function OutputGetVarFromArrayAtCell(realization,ivar,isubvar,local_id)
   use Realization_module
   use Option_module
 
-  use Richards_module, only : RichardsGetVarFromArrayAtCell
-  use Richards_Lite_module, only : RichardsLiteGetVarFromArrayAtCell
-
   implicit none
   
   PetscReal :: OutputGetVarFromArrayAtCell
@@ -3127,10 +3124,10 @@ function OutputGetVarFromArrayAtCell(realization,ivar,isubvar,local_id)
   select case(realization%option%iflowmode)
     case(RICHARDS_MODE)
       OutputGetVarFromArrayAtCell = &
-        RichardsGetVarFromArrayAtCell(realization,ivar,isubvar,ghosted_id)
+        RealizGetDatasetValueAtCell(realization,ivar,isubvar,ghosted_id)
     case(RICHARDS_LITE_MODE)
       OutputGetVarFromArrayAtCell = &
-        RichardsLiteGetVarFromArrayAtCell(realization,ivar,isubvar,ghosted_id)
+        RealizGetDatasetValueAtCell(realization,ivar,isubvar,ghosted_id)
   end select
 
 end function OutputGetVarFromArrayAtCell
@@ -3148,10 +3145,6 @@ function OutputGetVarFromArrayAtCoord(realization,ivar,isubvar,coordinate, &
   use Realization_module
   use Grid_module
   use Option_module
-
-  use Richards_module, only : RichardsGetVarFromArrayAtCell
-  use Richards_Lite_module, only : RichardsLiteGetVarFromArrayAtCell
-  use Mphase_module, only : MphaseGetVarFromArrayAtCell
 
   implicit none
   
@@ -3181,17 +3174,7 @@ function OutputGetVarFromArrayAtCoord(realization,ivar,isubvar,coordinate, &
     dz = coordinate(3)-grid%z(ghosted_id)
     sum_root = sqrt(dx*dx+dy*dy+dz*dz)
     value = 0.d0
-    select case(realization%option%iflowmode)
-      case(RICHARDS_MODE)
-        value = &
-          RichardsGetVarFromArrayAtCell(realization,ivar,isubvar,ghosted_id)
-      case(RICHARDS_LITE_MODE)
-        value = &
-          RichardsLiteGetVarFromArrayAtCell(realization,ivar,isubvar,ghosted_id)  
-      case(MPH_MODE)
-        value = &
-          MphaseGetVarFromArrayAtCell(realization,ivar,isubvar,ghosted_id)  
-    end select
+    value = RealizGetDatasetValueAtCell(realization,ivar,isubvar,ghosted_id)
     if (sum_root < 1.d-40) then ! bail because it is right on this coordinate
       sum_weight = 1.d0
       sum_value = value
@@ -3220,11 +3203,6 @@ subroutine OutputGetVarFromArray(realization,vec,ivar,isubvar)
   use Option_module
   use Field_module
 
-  use Richards_module, only : RichardsGetVarFromArray
-  use Richards_Lite_module, only : RichardsLiteGetVarFromArray
-  use Reactive_Transport_module, only : RTGetVarFromArray
-  use Mphase_module, only : MphaseGetVarFromArray
-    
   implicit none
   
   type(realization_type) :: realization
@@ -3232,51 +3210,11 @@ subroutine OutputGetVarFromArray(realization,vec,ivar,isubvar)
   PetscInt :: ivar
   PetscInt :: isubvar
 
-  type(option_type), pointer :: option
-
   call PetscLogEventBegin(logging%event_output_get_var_from_array, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &
                           PETSC_NULL_OBJECT,PETSC_NULL_OBJECT,ierr) 
                         
-  option => realization%option
-
-  select case(ivar)
-    case(TEMPERATURE,PRESSURE,LIQUID_SATURATION,GAS_SATURATION,LIQUID_ENERGY, &
-         GAS_ENERGY,LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION,VOLUME_FRACTION, &
-         PHASE,LIQUID_DENSITY,GAS_DENSITY)
-      select case(option%iflowmode)
-        case(RICHARDS_MODE)
-          call RichardsGetVarFromArray(realization,vec,ivar,isubvar)
-          return
-        case(RICHARDS_LITE_MODE)
-          call RichardsLiteGetVarFromArray(realization,vec,ivar,isubvar)
-          return
-      case(MPH_MODE)
-          call MphaseGetVarFromArray(realization,vec,ivar,isubvar)
-          return
-      end select
-    case(PRIMARY_SPEC_CONCENTRATION,TOTAL_CONCENTRATION)
-      call RTGetVarFromArray(realization,vec,ivar,isubvar)
-    case(MATERIAL_ID)
-      if (option%nflowdof > 0) then
-        select case(option%iflowmode)
-          case(RICHARDS_MODE)
-            call RichardsGetVarFromArray(realization,vec,ivar,isubvar)
-            return
-          case(RICHARDS_LITE_MODE)
-            call RichardsLiteGetVarFromArray(realization,vec,ivar,isubvar)
-            return
-          case(MPH_MODE)
-            call MphaseGetVarFromArray(realization,vec,ivar,isubvar)
-            return
-            
-        end select
-      else
-        call RTGetVarFromArray(realization,vec,ivar,isubvar)
-      endif
-    case default
-      call printErrMsg(realization%option,'IVAR not found in OutputGetVarFromArray')
-  end select
+  call RealizationGetDataset(realization,vec,ivar,isubvar)
 
   call PetscLogEventEnd(logging%event_output_get_var_from_array, &
                         PETSC_NULL_OBJECT,PETSC_NULL_OBJECT, &

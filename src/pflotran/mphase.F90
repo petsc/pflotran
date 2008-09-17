@@ -45,7 +45,6 @@ module Mphase_module
   public MphaseResidual,MphaseJacobian, &
          MphaseUpdateFixedAccumulation,MphaseTimeCut,&
          MphaseSetup,MphaseUpdateReason,&
-         MphaseGetVarFromArray, MphaseGetVarFromArrayAtCell, &
          MphaseMaxChange, MphaseUpdateSolution, &
          MphaseGetTecplotHeader, MphaseInitializeTimestep, &
          MphaseUpdateAuxVars
@@ -622,7 +621,7 @@ subroutine MphaseUpdateAuxVarsPatch(realization)
   call VecRestoreArrayF90(field%icap_loc,icap_loc_p,ierr)
   call VecRestoreArrayF90(field%iphas_loc,iphase_loc_p,ierr)
   
-  patch%aux%Mphase%aux_vars_up_to_date = .true.
+  patch%aux%Mphase%aux_vars_up_to_date = PETSC_TRUE
 
 end subroutine MphaseUpdateAuxVarsPatch
 
@@ -1661,7 +1660,7 @@ subroutine MphaseResidualPatch(snes,xx,r,realization,ierr)
 
  ! call MphaseUpdateAuxVarsPatchNinc(realization)
   ! override flags since they will soon be out of date  
- ! patch%MphaseAux%aux_vars_up_to_date = .false. 
+ ! patch%MphaseAux%aux_vars_up_to_date = PETSC_FALSE 
 
 ! now assign access pointer to local variables
   call VecGetArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
@@ -2903,164 +2902,6 @@ function MphaseGetTecplotHeader(realization)
   MphaseGetTecplotHeader = string
 
 end function MphaseGetTecplotHeader
-
-! ************************************************************************** !
-!
-! RichardsGetVarFromArray: Extracts variables indexed by ivar and isubvar
-!                          from Richards type
-! author: Glenn Hammond
-! date: 10/25/07
-!
-! ************************************************************************** !
-subroutine MphaseGetVarFromArray(realization,vec,ivar,isubvar)
-
-  use Realization_module
-  use Grid_module
-  use Patch_module
-  use Option_module
-  use Field_module
-
-  implicit none
-
-  type(realization_type) :: realization
-  Vec :: vec
-  PetscInt :: ivar
-  PetscInt :: isubvar
-
-  PetscInt :: local_id, ghosted_id
-  type(grid_type), pointer :: grid
-  type(patch_type), pointer :: patch
-  type(option_type), pointer :: option
-  type(field_type), pointer :: field
-  type(mphase_auxvar_type), pointer :: aux_vars(:)
-  PetscReal, pointer :: vec_ptr(:), vec2_ptr(:)
-  PetscErrorCode :: ierr
-
-  option => realization%option
-  patch => realization%patch
-  grid => patch%grid
-  field => realization%field
- ! print *,'MphaseGetVarFromArray, get pointer'
-  if (.not.patch%aux%Mphase%aux_vars_up_to_date) call MphaseUpdateAuxVars(realization)
- ! print *,'MphaseGetVarFromArray, updated'
-  aux_vars => patch%aux%Mphase%aux_vars
- ! print *,'MphaseGetVarFromArray, get var'
-  call VecGetArrayF90(vec,vec_ptr,ierr)
-
-  select case(ivar)
-    case(TEMPERATURE,PRESSURE,LIQUID_SATURATION,GAS_SATURATION, &
-         LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION,LIQUID_ENERGY,GAS_ENERGY, &
-         LIQUID_DENSITY,GAS_DENSITY)
-      do local_id=1,grid%nlmax
-        ghosted_id = grid%nL2G(local_id)    
-        select case(ivar)
-          case(TEMPERATURE)
-             vec_ptr(local_id) = aux_vars(ghosted_id)%aux_var_elem(0)%temp
-          case(PRESSURE)
-            vec_ptr(local_id) = aux_vars(ghosted_id)%aux_var_elem(0)%pres
-          case(LIQUID_SATURATION)
-            vec_ptr(local_id) = aux_vars(ghosted_id)%aux_var_elem(0)%sat(1)
-          case(LIQUID_DENSITY)
-            vec_ptr(local_id) = aux_vars(ghosted_id)%aux_var_elem(0)%den(1)
-          case(GAS_SATURATION)
-             vec_ptr(local_id) = aux_vars(ghosted_id)%aux_var_elem(0)%sat(2)
-          case(GAS_MOLE_FRACTION)
-             vec_ptr(local_id) = aux_vars(ghosted_id)%aux_var_elem(0)%xmol(2+isubvar)
-          case(GAS_ENERGY)
-             vec_ptr(local_id) = aux_vars(ghosted_id)%aux_var_elem(0)%u(2)
-          case(GAS_DENSITY) ! still need implementation
-             vec_ptr(local_id) = aux_vars(ghosted_id)%aux_var_elem(0)%den(2)
-          case(LIQUID_MOLE_FRACTION)
-             vec_ptr(local_id) = aux_vars(ghosted_id)%aux_var_elem(0)%xmol(isubvar)
-          case(LIQUID_ENERGY)
-             vec_ptr(local_id) = aux_vars(ghosted_id)%aux_var_elem(0)%u(1)
-        end select
-      enddo
-    case(PHASE)
-      call VecGetArrayF90(field%iphas_loc,vec2_ptr,ierr)
-      do local_id=1,grid%nlmax
-        vec_ptr(local_id) = vec2_ptr(grid%nL2G(local_id))
-      enddo
-      call VecRestoreArrayF90(field%iphas_loc,vec2_ptr,ierr)
-    case(MATERIAL_ID)
-      do local_id=1,grid%nlmax
-        vec_ptr(local_id) = patch%imat(grid%nL2G(local_id))
-      enddo
-  end select
-  
-  call VecRestoreArrayF90(vec,vec_ptr,ierr)
-
-end subroutine MphaseGetVarFromArray
-
-! ************************************************************************** !
-!
-! RichardsGetVarFromArrayAtCell: Returns variablesindexed by ivar, isubvar,
-!                                 local id from Richards type
-! author: Glenn Hammond
-! date: 02/11/08
-!
-! ************************************************************************** !
-function MphaseGetVarFromArrayAtCell(realization,ivar,isubvar,ghosted_id)
-
-  use Realization_module
-  use Grid_module
-  use Patch_module
-  use Option_module
-  use Field_module
-
-  implicit none
-
-  PetscReal :: MphaseGetVarFromArrayAtCell
-  type(realization_type) :: realization
-  PetscInt :: ivar
-  PetscInt :: isubvar
-  PetscInt :: ghosted_id
-
-  PetscReal :: value
-  type(grid_type), pointer :: grid
-  type(option_type), pointer :: option
-  type(field_type), pointer :: field
-  type(patch_type), pointer :: patch
-  type(mphase_auxvar_type), pointer :: aux_vars(:)  
-  PetscReal, pointer :: vec_ptr(:)
-  PetscErrorCode :: ierr
-
-  option => realization%option
-  patch => realization%patch
-  grid => patch%grid
-  field => realization%field
-
-  if (.not.patch%aux%Mphase%aux_vars_up_to_date) call MphaseUpdateAuxVars(realization)
-
-  aux_vars => patch%aux%mphase%aux_vars
-
-  select case(ivar)
-  case(TEMPERATURE)
-    value = aux_vars(ghosted_id)%aux_var_elem(0)%temp
-  case(PRESSURE)
-      value  = aux_vars(ghosted_id)%aux_var_elem(0)%pres
-  case(LIQUID_SATURATION)
-      value  = aux_vars(ghosted_id)%aux_var_elem(0)%sat(1)
-  case(LIQUID_DENSITY)
-      value = aux_vars(ghosted_id)%aux_var_elem(0)%den(1)
-  case(GAS_SATURATION)
-      value  = aux_vars(ghosted_id)%aux_var_elem(0)%sat(2)
-  case(GAS_MOLE_FRACTION)
-      value  = aux_vars(ghosted_id)%aux_var_elem(0)%xmol(4)
-  case(GAS_ENERGY)
-      value = aux_vars(ghosted_id)%aux_var_elem(0)%u(2)
-  case(GAS_DENSITY) ! still need implementation
-      value  = aux_vars(ghosted_id)%aux_var_elem(0)%den(2)
-  case(LIQUID_MOLE_FRACTION)
-      value  = aux_vars(ghosted_id)%aux_var_elem(0)%xmol(2)
-  case(LIQUID_ENERGY)
-      value = aux_vars(ghosted_id)%aux_var_elem(0)%u(1)
-  end select
-   
-  mphaseGetVarFromArrayAtCell = value
-  
-end function MphaseGetVarFromArrayAtCell
-
 
 ! ************************************************************************** !
 !

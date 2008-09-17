@@ -624,37 +624,12 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   if (field%saturation0_loc /= 0) then ! store initial saturations for transport
     call DiscretizationCreateVector(realization%discretization,ONEDOF, &
                                     global_vec,GLOBAL,option)
-    select case(option%iflowmode)
-      case(RICHARDS_MODE)
-        call RichardsGetVarFromArray(realization,global_vec, &
-                                     LIQUID_SATURATION,ZERO_INTEGER)
-        call DiscretizationGlobalToLocal(realization%discretization, &
-                                         global_vec,field%saturation0_loc,ONEDOF)   
-        call RichardsGetVarFromArray(realization,global_vec, &
-                                     LIQUID_DENSITY,ZERO_INTEGER)
-        call DiscretizationGlobalToLocal(realization%discretization, &
-                                         global_vec,field%density0_loc,ONEDOF)   
-      case(RICHARDS_LITE_MODE)
-        call RichardsLiteGetVarFromArray(realization,global_vec, &
-                                         LIQUID_SATURATION,ZERO_INTEGER)
-        call DiscretizationGlobalToLocal(realization%discretization, &
-                                         global_vec,field%saturation0_loc,ONEDOF)   
-        call RichardsLiteGetVarFromArray(realization,global_vec, &
-                                         LIQUID_DENSITY,ZERO_INTEGER)
-        call DiscretizationGlobalToLocal(realization%discretization, &
-                                         global_vec,field%density0_loc,ONEDOF)   
-! ** clu: Not sure mphase need this by now
-      case(MPH_MODE) 
-        call MphaseGetVarFromArray(realization,global_vec, &
-                                     LIQUID_SATURATION,ZERO_INTEGER)
-        call DiscretizationGlobalToLocal(realization%discretization, &
-                                         global_vec,field%saturation0_loc,ONEDOF)   
-        call MphaseGetVarFromArray(realization,global_vec, &
-                                     LIQUID_DENSITY,ZERO_INTEGER)
-        call DiscretizationGlobalToLocal(realization%discretization, &
-                                         global_vec,field%density0_loc,ONEDOF)   
-
-    end select
+    call RealizationGetDataset(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
+    call DiscretizationGlobalToLocal(realization%discretization, &
+                                     global_vec,field%saturation0_loc,ONEDOF)   
+    call RealizationGetDataset(realization,global_vec,LIQUID_DENSITY,ZERO_INTEGER)
+    call DiscretizationGlobalToLocal(realization%discretization, &
+                                     global_vec,field%density0_loc,ONEDOF)   
     call VecDestroy(global_vec,ierr)
   endif
   
@@ -769,37 +744,12 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   if (field%saturation_loc /= 0) then ! store final saturations for transport
     call DiscretizationCreateVector(realization%discretization,ONEDOF, &
                                     global_vec,GLOBAL,option)
-    select case(option%iflowmode)
-      case(RICHARDS_MODE)
-        call RichardsGetVarFromArray(realization,global_vec, &
-                                     LIQUID_SATURATION,ZERO_INTEGER)
-        call DiscretizationGlobalToLocal(realization%discretization, &
-                                         global_vec,field%saturation_loc,ONEDOF)   
-        call RichardsGetVarFromArray(realization,global_vec, &
-                                     LIQUID_DENSITY,ZERO_INTEGER)
-        call DiscretizationGlobalToLocal(realization%discretization, &
-                                         global_vec,field%density_loc,ONEDOF)   
-      case(RICHARDS_LITE_MODE)
-        call RichardsLiteGetVarFromArray(realization,global_vec, &
-                                         LIQUID_SATURATION,ZERO_INTEGER)
-        call DiscretizationGlobalToLocal(realization%discretization, &
-                                         global_vec,field%saturation_loc,ONEDOF)   
-        call RichardsLiteGetVarFromArray(realization,global_vec, &
-                                         LIQUID_DENSITY,ZERO_INTEGER)
-        call DiscretizationGlobalToLocal(realization%discretization, &
-                                         global_vec,field%density_loc,ONEDOF)   
-! ** clu: Not sure mphase need this by now
-      case(MPH_MODE) 
-        call MphaseGetVarFromArray(realization,global_vec, &
-                                     LIQUID_SATURATION,ZERO_INTEGER)
-        call DiscretizationGlobalToLocal(realization%discretization, &
-                                         global_vec,field%saturation_loc,ONEDOF)   
-        call MphaseGetVarFromArray(realization,global_vec, &
-                                     LIQUID_DENSITY,ZERO_INTEGER)
-        call DiscretizationGlobalToLocal(realization%discretization, &
-                                         global_vec,field%density_loc,ONEDOF)   
-
-    end select
+    call RealizationGetDataset(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
+    call DiscretizationGlobalToLocal(realization%discretization, &
+                                     global_vec,field%saturation_loc,ONEDOF)   
+    call RealizationGetDataset(realization,global_vec,LIQUID_DENSITY,ZERO_INTEGER)
+    call DiscretizationGlobalToLocal(realization%discretization, &
+                                     global_vec,field%density_loc,ONEDOF)   
     call VecDestroy(global_vec,ierr)
     call RealizBridgeFlowAndTransport(realization)
   endif

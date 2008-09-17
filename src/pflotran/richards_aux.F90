@@ -38,8 +38,8 @@ module Richards_Aux_module
     PetscInt :: n_zero_rows
     PetscInt, pointer :: zero_rows_local(:), zero_rows_local_ghosted(:)
 
-    logical :: aux_vars_up_to_date
-    logical :: inactive_cells_exist
+    PetscTruth :: aux_vars_up_to_date
+    PetscTruth :: inactive_cells_exist
     PetscInt :: num_aux, num_aux_bc
     type(richards_auxvar_type), pointer :: aux_vars(:)
     type(richards_auxvar_type), pointer :: aux_vars_bc(:)
@@ -70,8 +70,8 @@ function RichardsAuxCreate()
   type(richards_type), pointer :: aux
 
   allocate(aux) 
-  aux%aux_vars_up_to_date = .false.
-  aux%inactive_cells_exist = .false.
+  aux%aux_vars_up_to_date = PETSC_FALSE
+  aux%inactive_cells_exist = PETSC_FALSE
   aux%num_aux = 0
   aux%num_aux_bc = 0
   nullify(aux%aux_vars)

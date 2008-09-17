@@ -58,7 +58,9 @@ module Patch_module
             PatchAddToList, PatchConvertListToArray, PatchProcessCouplers, &
             PatchUpdateAllCouplerAuxVars, PatchInitAllCouplerAuxVars, &
             PatchLocalizeRegions, PatchAssignUniformVelocity, &
-            PatchBridgeFlowAndTransport
+            PatchBridgeFlowAndTransport, &
+            PatchGetDataset, PatchGetDatasetValueAtCell, &
+            PatchSetDataset
 
 contains
 
@@ -705,10 +707,10 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
       if (force_update_flag) then
         update = .true.
       else 
-        do idof = 1, condition%num_sub_conditions
-          if (condition%sub_condition_ptr(idof)%ptr%dataset%is_transient .or. &
-              condition%sub_condition_ptr(idof)%ptr%gradient%is_transient .or. &
-              condition%sub_condition_ptr(idof)%ptr%datum%is_transient) then
+        do idof = 1, option%ntrandof
+          if (condition%transport_concentrations(idof)%ptr%dataset%is_transient .or. &
+              condition%transport_concentrations(idof)%ptr%gradient%is_transient .or. &
+              condition%transport_concentrations(idof)%ptr%datum%is_transient) then
             update = .true.
             exit
           endif
@@ -716,9 +718,9 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
       endif
       
       if (update) then ! for now, everything transport is dirichlet-type
-        do idof = 1, condition%num_sub_conditions
+        do idof = 1, option%ntrandof
           coupler%tran_aux_real_var(idof,1:num_connections) = &
-            condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
+            condition%transport_concentrations(idof)%ptr%dataset%cur_value(1)
         enddo
       endif
       
@@ -826,6 +828,518 @@ subroutine PatchAssignUniformVelocity(patch,option)
   enddo
 
 end subroutine PatchAssignUniformVelocity
+
+! ************************************************************************** !
+!
+! PatchAuxVarsUpToDate: Checks to see if aux vars are up to date
+! author: Glenn Hammond
+! date: 09/12/08
+!
+! ************************************************************************** !
+function PatchAuxVarsUpToDate(patch)
+
+  use Grid_module
+  use Option_module
+  use Field_module
+  
+  use Mphase_Aux_module
+  use Richards_Aux_module
+  use Richards_Lite_Aux_module
+  use Reactive_Transport_Aux_module  
+  
+  type(patch_type) :: patch
+  
+  PetscTruth :: PatchAuxVarsUpToDate
+  PetscTruth :: flow_up_to_date
+  PetscTruth :: transport_up_to_date
+  
+  if (associated(patch%aux%Richards)) then
+    flow_up_to_date = patch%aux%Richards%aux_vars_up_to_date
+  else if (associated(patch%aux%RichardsLite)) then
+    flow_up_to_date = patch%aux%RichardsLite%aux_vars_up_to_date
+  else if (associated(patch%aux%Mphase)) then
+    flow_up_to_date = patch%aux%Mphase%aux_vars_up_to_date
+  endif
+
+  if (associated(patch%aux%RT)) then
+    transport_up_to_date = patch%aux%RT%aux_vars_up_to_date
+  endif
+  
+  PatchAuxVarsUpToDate = flow_up_to_date .or. transport_up_to_date
+  
+end function PatchAuxVarsUpToDate
+
+! ************************************************************************** !
+!
+! PatchGetDataset: Extracts variables indexed by ivar and isubvar from a patch
+! author: Glenn Hammond
+! date: 09/12/08
+!
+! ************************************************************************** !
+subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
+
+  use Grid_module
+  use Option_module
+  use Field_module
+  
+  use Mphase_Aux_module
+  use Richards_Aux_module
+  use Richards_Lite_Aux_module
+  use Reactive_Transport_Aux_module  
+  
+  implicit none
+
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
+
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(patch_type), pointer :: patch  
+  Vec :: vec
+  PetscInt :: ivar
+  PetscInt :: isubvar
+  PetscInt :: iphase
+
+  PetscInt :: local_id
+  type(grid_type), pointer :: grid
+  PetscReal, pointer :: vec_ptr(:), vec_ptr2(:)
+  PetscErrorCode :: ierr
+
+  grid => patch%grid
+
+  call GridVecGetArrayF90(grid,vec,vec_ptr,ierr)
+
+  iphase = 1
+  select case(ivar)
+    case(TEMPERATURE,PRESSURE,LIQUID_SATURATION,GAS_SATURATION, &
+         LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION,LIQUID_ENERGY,GAS_ENERGY, &
+         LIQUID_DENSITY,GAS_DENSITY)
+      if (associated(patch%aux%Richards)) then
+        select case(ivar)
+          case(TEMPERATURE)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Richards%aux_vars(grid%nL2G(local_id))%temp
+            enddo
+          case(PRESSURE)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Richards%aux_vars(grid%nL2G(local_id))%pres
+            enddo
+          case(LIQUID_SATURATION)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Richards%aux_vars(grid%nL2G(local_id))%sat
+            enddo
+          case(LIQUID_DENSITY)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Richards%aux_vars(grid%nL2G(local_id))%den_kg
+            enddo
+          case(GAS_SATURATION,GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY) ! still need implementation
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = 0.d0
+            enddo
+          case(LIQUID_MOLE_FRACTION)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Richards%aux_vars(grid%nL2G(local_id))%xmol(isubvar)
+            enddo
+          case(LIQUID_ENERGY)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Richards%aux_vars(grid%nL2G(local_id))%u
+            enddo
+        end select
+      else if (associated(patch%aux%RichardsLite)) then
+        select case(ivar)
+          case(TEMPERATURE)
+            call printErrMsg(option,'TEMPERATURE not supported by RichardsLite')
+          case(GAS_SATURATION)
+            call printErrMsg(option,'GAS_SATURATION not supported by RichardsLite')
+          case(GAS_DENSITY)
+            call printErrMsg(option,'GAS_DENSITY not supported by RichardsLite')
+          case(LIQUID_MOLE_FRACTION)
+            call printErrMsg(option,'LIQUID_MOLE_FRACTION not supported by RichardsLite')
+          case(GAS_MOLE_FRACTION)
+            call printErrMsg(option,'GAS_MOLE_FRACTION not supported by RichardsLite')
+          case(LIQUID_ENERGY)
+            call printErrMsg(option,'LIQUID_ENERGY not supported by RichardsLite')
+          case(GAS_ENERGY)
+            call printErrMsg(option,'GAS_ENERGY not supported by RichardsLite')
+          case(PRESSURE)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%RichardsLite%aux_vars(grid%nL2G(local_id))%pres
+            enddo
+          case(LIQUID_SATURATION)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%RichardsLite%aux_vars(grid%nL2G(local_id))%sat
+            enddo
+          case(LIQUID_DENSITY)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%RichardsLite%aux_vars(grid%nL2G(local_id))%den_kg
+            enddo
+        end select
+      else if (associated(patch%aux%Mphase)) then
+        select case(ivar)
+          case(TEMPERATURE)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%temp
+            enddo
+          case(PRESSURE)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%pres
+            enddo
+          case(LIQUID_SATURATION)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%sat(1)
+            enddo
+          case(LIQUID_DENSITY)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%den(1)
+            enddo
+          case(GAS_SATURATION)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%sat(2)
+            enddo
+          case(GAS_MOLE_FRACTION)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%xmol(2+isubvar)
+            enddo
+          case(GAS_ENERGY)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%u(2)
+            enddo
+          case(GAS_DENSITY) 
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%den(2)
+            enddo
+          case(LIQUID_MOLE_FRACTION)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%xmol(isubvar)
+            enddo
+          case(LIQUID_ENERGY)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%u(1)
+            enddo
+        end select
+      endif
+    case(PRIMARY_SPEC_CONCENTRATION,TOTAL_CONCENTRATION)
+      select case(ivar)
+        case(PRIMARY_SPEC_CONCENTRATION)
+          do local_id=1,grid%nlmax
+            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%primary_spec(isubvar)
+          enddo
+        case(TOTAL_CONCENTRATION)
+          do local_id=1,grid%nlmax
+            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%total(isubvar,iphase)
+          enddo
+      end select
+    case(PHASE)
+      call GridVecGetArrayF90(grid,field%iphas_loc,vec_ptr2,ierr)
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = vec_ptr2(grid%nL2G(local_id))
+      enddo
+      call GridVecRestoreArrayF90(grid,field%iphas_loc,vec_ptr2,ierr)
+    case(MATERIAL_ID)
+      do local_id=1,grid%nlmax
+        vec_ptr(local_id) = patch%imat(grid%nL2G(local_id))
+      enddo
+    case default
+      call printErrMsg(option,'IVAR not found in OutputGetVarFromArray')      
+  end select
+
+  call GridVecRestoreArrayF90(grid,vec,vec_ptr,ierr)
+  
+end subroutine PatchGetDataset
+
+! ************************************************************************** !
+!
+! PatchGetDatasetValueAtCell: Returns variables indexed by ivar,
+!                             isubvar, local id from Reactive Transport type
+! author: Glenn Hammond
+! date: 02/11/08
+!
+! ************************************************************************** !
+function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
+                                    ghosted_id)
+
+  use Grid_module
+  use Option_module
+  use Field_module
+
+  implicit none
+
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
+
+  PetscReal :: PatchGetDatasetValueAtCell
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(patch_type), pointer :: patch  
+  PetscInt :: ivar
+  PetscInt :: isubvar
+  PetscInt :: iphase
+  PetscInt :: ghosted_id
+
+  PetscReal :: value
+  type(grid_type), pointer :: grid
+  PetscReal, pointer :: vec_ptr2(:)  
+  PetscErrorCode :: ierr
+
+  grid => patch%grid
+  
+  value = -999.d0
+
+  iphase = 1
+  select case(ivar)
+    case(TEMPERATURE,PRESSURE,LIQUID_SATURATION,GAS_SATURATION, &
+         LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION,LIQUID_ENERGY,GAS_ENERGY, &
+         LIQUID_DENSITY,GAS_DENSITY)
+      if (associated(patch%aux%Richards)) then
+        select case(ivar)
+          case(TEMPERATURE)
+            value = patch%aux%Richards%aux_vars(ghosted_id)%temp
+          case(PRESSURE)
+            value = patch%aux%Richards%aux_vars(ghosted_id)%pres
+          case(LIQUID_SATURATION)
+            value = patch%aux%Richards%aux_vars(ghosted_id)%sat
+          case(LIQUID_DENSITY)
+            value = patch%aux%Richards%aux_vars(ghosted_id)%den_kg
+          case(GAS_SATURATION,GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY) ! still need implementation
+            value = 0.d0
+          case(LIQUID_MOLE_FRACTION)
+            value = patch%aux%Richards%aux_vars(ghosted_id)%xmol(isubvar)
+          case(LIQUID_ENERGY)
+            value = patch%aux%Richards%aux_vars(ghosted_id)%u
+        end select
+      else if (associated(patch%aux%RichardsLite)) then
+        select case(ivar)
+          case(TEMPERATURE)
+            call printErrMsg(option,'TEMPERATURE not supported by RichardsLite')
+          case(GAS_SATURATION)
+            call printErrMsg(option,'GAS_SATURATION not supported by RichardsLite')
+          case(GAS_DENSITY)
+            call printErrMsg(option,'GAS_DENSITY not supported by RichardsLite')
+          case(LIQUID_MOLE_FRACTION)
+            call printErrMsg(option,'LIQUID_MOLE_FRACTION not supported by RichardsLite')
+          case(GAS_MOLE_FRACTION)
+            call printErrMsg(option,'GAS_MOLE_FRACTION not supported by RichardsLite')
+          case(LIQUID_ENERGY)
+            call printErrMsg(option,'LIQUID_ENERGY not supported by RichardsLite')
+          case(GAS_ENERGY)
+            call printErrMsg(option,'GAS_ENERGY not supported by RichardsLite')
+          case(PRESSURE)
+            value = patch%aux%RichardsLite%aux_vars(ghosted_id)%pres
+          case(LIQUID_SATURATION)
+            value = patch%aux%RichardsLite%aux_vars(ghosted_id)%sat
+          case(LIQUID_DENSITY)
+            value = patch%aux%RichardsLite%aux_vars(ghosted_id)%den_kg
+        end select
+      else if (associated(patch%aux%Mphase)) then
+        select case(ivar)
+          case(TEMPERATURE)
+            value = patch%aux%Mphase%aux_vars(ghosted_id)%aux_var_elem(0)%temp
+          case(PRESSURE)
+            value = patch%aux%Mphase%aux_vars(ghosted_id)%aux_var_elem(0)%pres
+          case(LIQUID_SATURATION)
+            value = patch%aux%Mphase%aux_vars(ghosted_id)%aux_var_elem(0)%sat(1)
+          case(LIQUID_DENSITY)
+            value = patch%aux%Mphase%aux_vars(ghosted_id)%aux_var_elem(0)%den(1)
+          case(GAS_SATURATION)
+            value = patch%aux%Mphase%aux_vars(ghosted_id)%aux_var_elem(0)%sat(2)
+          case(GAS_MOLE_FRACTION)
+            value = patch%aux%Mphase%aux_vars(ghosted_id)%aux_var_elem(0)%xmol(2+isubvar)
+          case(GAS_ENERGY)
+            value = patch%aux%Mphase%aux_vars(ghosted_id)%aux_var_elem(0)%u(2)
+          case(GAS_DENSITY) 
+            value = patch%aux%Mphase%aux_vars(ghosted_id)%aux_var_elem(0)%den(2)
+          case(LIQUID_MOLE_FRACTION)
+            value = patch%aux%Mphase%aux_vars(ghosted_id)%aux_var_elem(0)%xmol(isubvar)
+          case(LIQUID_ENERGY)
+            value = patch%aux%Mphase%aux_vars(ghosted_id)%aux_var_elem(0)%u(1)
+        end select
+      endif
+    case(PRIMARY_SPEC_CONCENTRATION,TOTAL_CONCENTRATION)
+      select case(ivar)
+        case(PRIMARY_SPEC_CONCENTRATION)
+          value = patch%aux%RT%aux_vars(ghosted_id)%primary_spec(isubvar)
+        case(TOTAL_CONCENTRATION)
+          value = patch%aux%RT%aux_vars(ghosted_id)%total(isubvar,iphase)
+      end select
+    case(PHASE)
+      call GridVecGetArrayF90(grid,field%iphas_loc,vec_ptr2,ierr)
+      value = vec_ptr2(ghosted_id)
+      call GridVecRestoreArrayF90(grid,field%iphas_loc,vec_ptr2,ierr)
+    case(MATERIAL_ID)
+      value = patch%imat(ghosted_id)
+  end select
+
+  PatchGetDatasetValueAtCell = value
+ 
+end function PatchGetDatasetValueAtCell
+
+! ************************************************************************** !
+!
+! PatchSetDataset: Sets variables indexed by ivar and isubvar within a patch
+! author: Glenn Hammond
+! date: 09/12/08
+!
+! ************************************************************************** !
+subroutine PatchSetDataset(patch,field,option,vec,ivar,isubvar)
+
+  use Grid_module
+  use Option_module
+  use Field_module
+
+  implicit none
+
+#include "include/finclude/petscvec.h"
+#include "include/finclude/petscvec.h90"
+
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field
+  type(patch_type), pointer :: patch  
+  Vec :: vec
+  PetscInt :: ivar
+  PetscInt :: isubvar
+  PetscInt :: iphase
+
+  PetscInt :: local_id
+  type(grid_type), pointer :: grid
+  PetscReal, pointer :: vec_ptr(:), vec_ptr2(:)
+  PetscErrorCode :: ierr
+
+  grid => patch%grid
+
+  call GridVecGetArrayF90(grid,vec,vec_ptr,ierr)
+
+  iphase = 1
+  select case(ivar)
+    case(TEMPERATURE,PRESSURE,LIQUID_SATURATION,GAS_SATURATION, &
+         LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION,LIQUID_ENERGY,GAS_ENERGY, &
+         LIQUID_DENSITY,GAS_DENSITY)
+      if (associated(patch%aux%Richards)) then
+        select case(ivar)
+          case(TEMPERATURE)
+            do local_id=1,grid%nlmax
+              patch%aux%Richards%aux_vars(grid%nL2G(local_id))%temp = vec_ptr(local_id)
+            enddo
+          case(PRESSURE)
+            do local_id=1,grid%nlmax
+              patch%aux%Richards%aux_vars(grid%nL2G(local_id))%pres = vec_ptr(local_id)
+            enddo
+          case(LIQUID_SATURATION)
+            do local_id=1,grid%nlmax
+              patch%aux%Richards%aux_vars(grid%nL2G(local_id))%sat = vec_ptr(local_id)
+            enddo
+          case(LIQUID_DENSITY)
+            do local_id=1,grid%nlmax
+              patch%aux%Richards%aux_vars(grid%nL2G(local_id))%den_kg = vec_ptr(local_id)
+            enddo
+          case(GAS_SATURATION,GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY) ! still need implementation
+          case(LIQUID_MOLE_FRACTION)
+            do local_id=1,grid%nlmax
+              patch%aux%Richards%aux_vars(grid%nL2G(local_id))%xmol(isubvar) = vec_ptr(local_id)
+            enddo
+          case(LIQUID_ENERGY)
+            do local_id=1,grid%nlmax
+              patch%aux%Richards%aux_vars(grid%nL2G(local_id))%u = vec_ptr(local_id)
+            enddo
+        end select
+      else if (associated(patch%aux%RichardsLite)) then
+        select case(ivar)
+          case(TEMPERATURE)
+            call printErrMsg(option,'TEMPERATURE not supported by RichardsLite')
+          case(GAS_SATURATION)
+            call printErrMsg(option,'GAS_SATURATION not supported by RichardsLite')
+          case(GAS_DENSITY)
+            call printErrMsg(option,'GAS_DENSITY not supported by RichardsLite')
+          case(LIQUID_MOLE_FRACTION)
+            call printErrMsg(option,'LIQUID_MOLE_FRACTION not supported by RichardsLite')
+          case(GAS_MOLE_FRACTION)
+            call printErrMsg(option,'GAS_MOLE_FRACTION not supported by RichardsLite')
+          case(LIQUID_ENERGY)
+            call printErrMsg(option,'LIQUID_ENERGY not supported by RichardsLite')
+          case(GAS_ENERGY)
+            call printErrMsg(option,'GAS_ENERGY not supported by RichardsLite')
+          case(PRESSURE)
+            do local_id=1,grid%nlmax
+              patch%aux%RichardsLite%aux_vars(grid%nL2G(local_id))%pres = vec_ptr(local_id)
+            enddo
+          case(LIQUID_SATURATION)
+            do local_id=1,grid%nlmax
+              patch%aux%RichardsLite%aux_vars(grid%nL2G(local_id))%sat = vec_ptr(local_id)
+            enddo
+          case(LIQUID_DENSITY)
+            do local_id=1,grid%nlmax
+              patch%aux%RichardsLite%aux_vars(grid%nL2G(local_id))%den_kg = vec_ptr(local_id)
+            enddo
+        end select
+      else if (associated(patch%aux%Mphase)) then
+        select case(ivar)
+          case(TEMPERATURE)
+            do local_id=1,grid%nlmax
+              patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%temp = vec_ptr(local_id)
+            enddo
+          case(PRESSURE)
+            do local_id=1,grid%nlmax
+              patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%pres = vec_ptr(local_id)
+            enddo
+          case(LIQUID_SATURATION)
+            do local_id=1,grid%nlmax
+              patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%sat(1) = vec_ptr(local_id)
+            enddo
+          case(LIQUID_DENSITY)
+            do local_id=1,grid%nlmax
+              patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%den(1) = vec_ptr(local_id)
+            enddo
+          case(GAS_SATURATION)
+            do local_id=1,grid%nlmax
+              patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%sat(2) = vec_ptr(local_id)
+            enddo
+          case(GAS_MOLE_FRACTION)
+            do local_id=1,grid%nlmax
+              patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%xmol(2+isubvar) = vec_ptr(local_id)
+            enddo
+          case(GAS_ENERGY)
+            do local_id=1,grid%nlmax
+              patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%u(2) = vec_ptr(local_id)
+            enddo
+          case(GAS_DENSITY) 
+            do local_id=1,grid%nlmax
+              patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%den(2) = vec_ptr(local_id)
+            enddo
+          case(LIQUID_MOLE_FRACTION)
+            do local_id=1,grid%nlmax
+              patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%xmol(isubvar) = vec_ptr(local_id)
+            enddo
+          case(LIQUID_ENERGY)
+            do local_id=1,grid%nlmax
+              patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%u(1) = vec_ptr(local_id)
+            enddo
+        end select
+      endif
+    case(PRIMARY_SPEC_CONCENTRATION,TOTAL_CONCENTRATION)
+      select case(ivar)
+        case(PRIMARY_SPEC_CONCENTRATION)
+          do local_id=1,grid%nlmax
+            patch%aux%RT%aux_vars(grid%nL2G(local_id))%primary_spec(isubvar) = vec_ptr(local_id)
+          enddo
+        case(TOTAL_CONCENTRATION)
+          do local_id=1,grid%nlmax
+            patch%aux%RT%aux_vars(grid%nL2G(local_id))%total(isubvar,iphase) = vec_ptr(local_id)
+          enddo
+      end select
+    case(PHASE)
+      call GridVecGetArrayF90(grid,field%iphas_loc,vec_ptr2,ierr)
+      do local_id=1,grid%nlmax
+        vec_ptr2(grid%nL2G(local_id)) = vec_ptr(local_id)
+      enddo
+      call GridVecRestoreArrayF90(grid,field%iphas_loc,vec_ptr2,ierr)
+    case(MATERIAL_ID)
+      do local_id=1,grid%nlmax
+        patch%imat(grid%nL2G(local_id)) = vec_ptr(local_id)
+      enddo
+  end select
+
+  call GridVecRestoreArrayF90(grid,vec,vec_ptr,ierr)
+  
+end subroutine PatchSetDataset
 
 ! ************************************************************************** !
 !

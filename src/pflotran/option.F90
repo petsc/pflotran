@@ -30,6 +30,7 @@ module Option_module
     PetscInt :: nmnrl      ! # of minerals
     PetscInt :: nsorb      ! # of primary sorbed species
     character(len=MAXWORDLENGTH), pointer :: comp_names(:)
+    character(len=MAXWORDLENGTH), pointer :: mnrl_names(:)
     PetscTruth :: use_log_formulation ! flag for solving for the change in the log of the concentration
 
     PetscInt :: iflag
@@ -178,6 +179,7 @@ function OptionCreate()
   option%nmnrl = 0
   option%nsorb = 0
   nullify(option%comp_names)
+  nullify(option%mnrl_names)
   option%use_log_formulation = PETSC_FALSE
 
   option%uniform_velocity = 0.d0
@@ -520,6 +522,8 @@ subroutine OptionDestroy(option)
 
   if (associated(option%comp_names)) deallocate(option%comp_names)
   nullify(option%comp_names)
+  if (associated(option%mnrl_names)) deallocate(option%mnrl_names)
+  nullify(option%mnrl_names)
   
   ! all the below should be placed somewhere other than option.F90
   if (associated(option%rock_density)) deallocate(option%rock_density)

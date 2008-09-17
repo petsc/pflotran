@@ -54,6 +54,7 @@ PetscInt, parameter :: NULL_MODE = 0
 PetscInt, parameter :: RICHARDS_MODE = 1
 PetscInt, parameter :: MPH_MODE = 2
 PetscInt, parameter :: RICHARDS_LITE_MODE = 3
+PetscInt, parameter :: REACTIVE_TRANSPORT_MODE = 4
 
 ! grid types
 PetscInt, parameter :: STRUCTURED_GRID = 1
@@ -117,12 +118,14 @@ PetscInt, parameter :: LIQUID_ENERGY = 10
 PetscInt, parameter :: GAS_ENERGY = 11
 PetscInt, parameter :: LIQUID_MOLE_FRACTION = 12
 PetscInt, parameter :: GAS_MOLE_FRACTION = 13
-PetscInt, parameter :: VOLUME_FRACTION = 14
-PetscInt, parameter :: PHASE = 15
-PetscInt, parameter :: MATERIAL_ID = 16
+PetscInt, parameter :: PHASE = 14
+PetscInt, parameter :: MATERIAL_ID = 15
 
-PetscInt, parameter :: PRIMARY_SPEC_CONCENTRATION = 17
+PetscInt, parameter :: PRIMARY_SPEC_CONCENTRATION = 16
+PetscInt, parameter :: SECONDARY_SPEC_CONCENTRATION = 17
 PetscInt, parameter :: TOTAL_CONCENTRATION = 18
+PetscInt, parameter :: MINERAL_VOLUME_FRACTION = 19
+PetscInt, parameter :: MINERAL_SURFACE_AREA = 20
 
 ! structured grid faces
 PetscInt, parameter :: WEST_FACE = 1

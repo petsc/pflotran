@@ -57,7 +57,9 @@ private
             RealizationAddCoupler, RealizationAddStrata, &
             RealizationAddBreakthrough, RealizAssignInitialConditions, &
             RealizAssignUniformVelocity, RealizAssignTransportInitCond, &
-            RealizationRevertFlowParameters, RealizBridgeFlowAndTransport
+            RealizationRevertFlowParameters, RealizBridgeFlowAndTransport, &
+            RealizationGetDataset, RealizGetDatasetValueAtCell, &
+            RealizationSetDataset
   
 contains
   
@@ -627,7 +629,7 @@ subroutine RealizAssignFlowInitCond(realization)
               endif
               do idof = 1, option%nflowdof
                 xx_p(ibegin+idof-1) = &
-                  initial_condition%flow_condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
+                  initial_condition%flow_condition%transport_concentrations(idof)%ptr%dataset%cur_value(1)
               enddo
               iphase_loc_p(ghosted_id)=initial_condition%flow_condition%iphase
             enddo
@@ -694,7 +696,7 @@ subroutine RealizAssignTransportInitCond(realization)
   
   type(realization_type) :: realization
   
-  PetscInt :: icell, iconn, idof
+  PetscInt :: icell, iconn, idof, isub_condition
   PetscInt :: local_id, ghosted_id, iend, ibegin
   PetscReal, pointer :: xx_p(:)
   PetscErrorCode :: ierr
@@ -713,7 +715,7 @@ subroutine RealizAssignTransportInitCond(realization)
   field => realization%field
   patch => realization%patch
   grid => patch%grid
-
+  
   cur_level => realization%level_list%first
   do 
     if (.not.associated(cur_level)) exit
@@ -749,13 +751,13 @@ subroutine RealizAssignTransportInitCond(realization)
                   cycle
                 endif
               endif
-              do idof = 1, option%ntrandof
+              do idof = 1, option%ntrandof ! primary aqueous concentrations
                 if (option%use_log_formulation) then
                   xx_p(ibegin+idof-1) = &
-                    log(initial_condition%tran_condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1))
+                    log(initial_condition%tran_condition%transport_concentrations(idof)%ptr%dataset%cur_value(1))
                 else
                   xx_p(ibegin+idof-1) = &
-                    initial_condition%tran_condition%sub_condition_ptr(idof)%ptr%dataset%cur_value(1)
+                    initial_condition%tran_condition%transport_concentrations(idof)%ptr%dataset%cur_value(1)
                 endif
               enddo
             enddo
@@ -796,7 +798,7 @@ subroutine RealizAssignTransportInitCond(realization)
     enddo
     cur_level => cur_level%next
   enddo
-   
+  
 end subroutine RealizAssignTransportInitCond
 
 ! ************************************************************************** !
@@ -923,8 +925,10 @@ subroutine RealizationAddWaypointsToList(realization)
   type(condition_type), pointer :: cur_condition
   type(sub_condition_type), pointer :: sub_condition
   type(waypoint_type), pointer :: waypoint
+  type(option_type), pointer :: option
   PetscInt :: itime, isub_condition
 
+  option => realization%option
   waypoint_list => realization%waypoints
 
   cur_condition => realization%flow_conditions%first
@@ -951,8 +955,8 @@ subroutine RealizationAddWaypointsToList(realization)
   do
     if (.not.associated(cur_condition)) exit
     if (cur_condition%sync_time_with_update) then
-      do isub_condition = 1, cur_condition%num_sub_conditions
-        sub_condition => cur_condition%sub_condition_ptr(isub_condition)%ptr
+      do isub_condition = 1, option%ntrandof
+        sub_condition => cur_condition%transport_concentrations(isub_condition)%ptr
         itime = 1
         if (sub_condition%dataset%max_time_index == 1 .and. &
             sub_condition%dataset%times(itime) > 1.d-40) then
@@ -968,6 +972,122 @@ subroutine RealizationAddWaypointsToList(realization)
   enddo
       
 end subroutine RealizationAddWaypointsToList
+
+! ************************************************************************** !
+!
+! RealizationGetDataset: Extracts variables indexed by ivar and isubvar from a 
+!                        realization
+! author: Glenn Hammond
+! date: 09/12/08
+!
+! ************************************************************************** !
+subroutine RealizationGetDataset(realization,vec,ivar,isubvar)
+
+  use Option_module
+
+  implicit none
+  
+  type(realization_type) :: realization
+  Vec :: vec
+  PetscInt :: ivar
+  PetscInt :: isubvar
+  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  
+  cur_level => realization%level_list%first
+  do 
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      call PatchGetDataset(cur_patch,realization%field,realization%option, &
+                           vec,ivar,isubvar)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+end subroutine RealizationGetDataset
+
+! ************************************************************************** !
+!
+! RealizGetDatasetValueAtCell: Extracts variables indexed by ivar and isubvar from a 
+!                        realization
+! author: Glenn Hammond
+! date: 09/12/08
+!
+! ************************************************************************** !
+function RealizGetDatasetValueAtCell(realization,ivar,isubvar,ghosted_id)
+
+  use Option_module
+
+  implicit none
+  
+  PetscReal :: RealizGetDatasetValueAtCell
+  type(realization_type) :: realization
+  PetscInt :: ivar
+  PetscInt :: isubvar
+  PetscInt :: ghosted_id
+  
+  PetscReal :: value
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  
+  cur_level => realization%level_list%first
+  do 
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      value = PatchGetDatasetValueAtCell(cur_patch,realization%field, &
+                                         realization%option, &
+                                         ivar,isubvar,ghosted_id)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+  
+  RealizGetDatasetValueAtCell = value
+
+end function RealizGetDatasetValueAtCell
+
+! ************************************************************************** !
+!
+! RealizationSetDataset: Sets variables indexed by ivar and isubvar in a 
+!                        realization
+! author: Glenn Hammond
+! date: 09/12/08
+!
+! ************************************************************************** !
+subroutine RealizationSetDataset(realization,vec,ivar,isubvar)
+
+  use Option_module
+
+  implicit none
+  
+  type(realization_type) :: realization
+  Vec :: vec
+  PetscInt :: ivar
+  PetscInt :: isubvar
+  
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+  
+  cur_level => realization%level_list%first
+  do 
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+      call PatchSetDataset(cur_patch,realization%field,realization%option, &
+                           vec,ivar,isubvar)
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+end subroutine RealizationSetDataset
 
 ! ************************************************************************** !
 !

@@ -8,24 +8,12 @@ module Richards_module
 
 #include "definitions.h"
   
-!#include "include/petscf90.h"
 #include "include/finclude/petscvec.h"
 #include "include/finclude/petscvec.h90"
-  ! It is VERY IMPORTANT to make sure that the above .h90 file gets included.
-  ! Otherwise some very strange things will happen and PETSc will give no
-  ! indication of what the problem is.
 #include "include/finclude/petscmat.h"
 #include "include/finclude/petscmat.h90"
-#include "include/finclude/petscda.h"
-#include "include/finclude/petscda.h90"
-!#ifdef USE_PETSC216
-!#include "include/finclude/petscsles.h"
-!#endif
 #include "include/finclude/petscsnes.h"
 #include "include/finclude/petscviewer.h"
-#include "include/finclude/petscsys.h"
-#include "include/finclude/petscis.h"
-#include "include/finclude/petscis.h90"
 #include "include/finclude/petsclog.h"
 
 
@@ -37,7 +25,6 @@ module Richards_module
   public RichardsResidual,RichardsJacobian, &
          RichardsUpdateFixedAccumulation,RichardsTimeCut,&
          RichardsNumericalJacobianTest, &
-         RichardsGetVarFromArray, RichardsGetVarFromArrayAtCell, &
          RichardsMaxChange, RichardsUpdateSolution, &
          RichardsGetTecplotHeader, RichardsInitializeTimestep, &
          RichardsSetup, RichardsResidualToMass, &
@@ -326,7 +313,7 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
   call VecRestoreArrayF90(field%perm_xx_loc,perm_xx_loc_p,ierr)
   call VecRestoreArrayF90(field%porosity_loc,porosity_loc_p,ierr)
   
-  patch%aux%Richards%aux_vars_up_to_date = .true.
+  patch%aux%Richards%aux_vars_up_to_date = PETSC_TRUE
 
 end subroutine RichardsUpdateAuxVarsPatch
 
@@ -1652,7 +1639,7 @@ subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
   
   call RichardsUpdateAuxVarsPatch(realization)
   ! override flags since they will soon be out of date  
-  patch%aux%Richards%aux_vars_up_to_date = .false. 
+  patch%aux%Richards%aux_vars_up_to_date = PETSC_FALSE
 
 ! now assign access pointer to local variables
   call VecGetArrayF90(field%flow_xx_loc, xx_loc_p, ierr)
@@ -2644,158 +2631,6 @@ function RichardsGetTecplotHeader(realization)
   RichardsGetTecplotHeader = string
 
 end function RichardsGetTecplotHeader
-
-! ************************************************************************** !
-!
-! RichardsGetVarFromArray: Extracts variables indexed by ivar and isubvar
-!                          from Richards type
-! author: Glenn Hammond
-! date: 10/25/07
-!
-! ************************************************************************** !
-subroutine RichardsGetVarFromArray(realization,vec,ivar,isubvar)
-
-  use Realization_module
-  use Grid_module
-  use Patch_module
-  use Option_module
-  use Field_module
-
-  implicit none
-
-  type(realization_type) :: realization
-  Vec :: vec
-  PetscInt :: ivar
-  PetscInt :: isubvar
-
-  PetscInt :: local_id, ghosted_id
-  type(grid_type), pointer :: grid
-  type(patch_type), pointer :: patch
-  type(option_type), pointer :: option
-  type(field_type), pointer :: field
-  type(richards_auxvar_type), pointer :: aux_vars(:)
-  PetscReal, pointer :: vec_ptr(:), vec2_ptr(:)
-  PetscErrorCode :: ierr
-
-  option => realization%option
-  patch => realization%patch
-  grid => patch%grid
-  field => realization%field
-
-  if (.not.patch%aux%Richards%aux_vars_up_to_date) call RichardsUpdateAuxVars(realization)
-
-  aux_vars => patch%aux%Richards%aux_vars
-  
-  call VecGetArrayF90(vec,vec_ptr,ierr)
-
-  select case(ivar)
-    case(TEMPERATURE,PRESSURE,LIQUID_SATURATION,GAS_SATURATION, &
-         LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION,LIQUID_ENERGY,GAS_ENERGY, &
-         LIQUID_DENSITY,GAS_DENSITY)
-      do local_id=1,grid%nlmax
-        ghosted_id = grid%nL2G(local_id)    
-        select case(ivar)
-          case(TEMPERATURE)
-            vec_ptr(local_id) = aux_vars(ghosted_id)%temp
-          case(PRESSURE)
-            vec_ptr(local_id) = aux_vars(ghosted_id)%pres
-          case(LIQUID_SATURATION)
-            vec_ptr(local_id) = aux_vars(ghosted_id)%sat
-          case(LIQUID_DENSITY)
-            vec_ptr(local_id) = aux_vars(ghosted_id)%den_kg
-          case(GAS_SATURATION,GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY) ! still need implementation
-            vec_ptr(local_id) = 0.d0
-          case(LIQUID_MOLE_FRACTION)
-            vec_ptr(local_id) = aux_vars(ghosted_id)%xmol(isubvar)
-          case(LIQUID_ENERGY)
-            vec_ptr(local_id) = aux_vars(ghosted_id)%u
-        end select
-      enddo
-    case(PHASE)
-      call VecGetArrayF90(field%iphas_loc,vec2_ptr,ierr)
-      do local_id=1,grid%nlmax
-        vec_ptr(local_id) = vec2_ptr(grid%nL2G(local_id))
-      enddo
-      call VecRestoreArrayF90(field%iphas_loc,vec2_ptr,ierr)
-    case(MATERIAL_ID)
-      do local_id=1,grid%nlmax
-        vec_ptr(local_id) = patch%imat(grid%nL2G(local_id))
-      enddo
-  end select
-  
-  call VecRestoreArrayF90(vec,vec_ptr,ierr)
-
-end subroutine RichardsGetVarFromArray
-
-! ************************************************************************** !
-!
-! RichardsGetVarFromArrayAtCell: Returns variablesindexed by ivar, isubvar,
-!                                 local id from Richards type
-! author: Glenn Hammond
-! date: 02/11/08
-!
-! ************************************************************************** !
-function RichardsGetVarFromArrayAtCell(realization,ivar,isubvar,ghosted_id)
-
-  use Realization_module
-  use Grid_module
-  use Patch_module
-  use Option_module
-  use Field_module
-
-  implicit none
-
-  PetscReal :: RichardsGetVarFromArrayAtCell
-  type(realization_type) :: realization
-  PetscInt :: ivar
-  PetscInt :: isubvar
-  PetscInt :: ghosted_id
-
-  PetscReal :: value
-  type(grid_type), pointer :: grid
-  type(option_type), pointer :: option
-  type(field_type), pointer :: field
-  type(patch_type), pointer :: patch
-  type(richards_auxvar_type), pointer :: aux_vars(:)  
-  PetscReal, pointer :: vec_ptr(:)
-  PetscErrorCode :: ierr
-
-  option => realization%option
-  patch => realization%patch
-  grid => patch%grid
-  field => realization%field
-
-  if (.not.patch%aux%Richards%aux_vars_up_to_date) call RichardsUpdateAuxVars(realization)
-
-  aux_vars => patch%aux%Richards%aux_vars
-
-  select case(ivar)
-    case(TEMPERATURE)
-      value = aux_vars(ghosted_id)%temp
-    case(PRESSURE)
-      value = aux_vars(ghosted_id)%pres
-    case(LIQUID_SATURATION)
-      value = aux_vars(ghosted_id)%sat
-    case(LIQUID_DENSITY)
-      value = aux_vars(ghosted_id)%den_kg
-    case(GAS_SATURATION,GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY) ! still needs implementation
-      value = 0.d0
-    case(LIQUID_MOLE_FRACTION)
-      value = aux_vars(ghosted_id)%xmol(isubvar+1)
-    case(LIQUID_ENERGY)
-      value = aux_vars(ghosted_id)%u
-    case(PHASE)
-      call VecGetArrayF90(field%iphas_loc,vec_ptr,ierr)
-      value = vec_ptr(ghosted_id)
-      call VecRestoreArrayF90(field%iphas_loc,vec_ptr,ierr)
-    case(MATERIAL_ID)
-      value = patch%imat(ghosted_id)
-  end select
-  
-  RichardsGetVarFromArrayAtCell = value
-  
-end function RichardsGetVarFromArrayAtCell
-
 
 ! ************************************************************************** !
 !

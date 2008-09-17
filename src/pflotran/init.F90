@@ -290,7 +290,6 @@ subroutine Init(simulation,filename)
   call RealizationProcessCouplers(realization)
   call assignMaterialPropToRegions(realization)
   call RealizationInitAllCouplerAuxVars(realization)
-  call RealizAssignInitialConditions(realization)
 
   ! should we still support this
   if (option%use_generalized_grid) then 
@@ -314,63 +313,51 @@ subroutine Init(simulation,filename)
   if (associated(flow_stepper)) flow_stepper%cur_waypoint => realization%waypoints%first
   if (associated(tran_stepper)) tran_stepper%cur_waypoint => realization%waypoints%first
   
-  ! move each case to its respective module and just call ModeSetup (e.g. RichardsSetup)
+  ! set up auxillary variable arrays
   if (option%nflowdof > 0) then
     select case(option%iflowmode)
       case(RICHARDS_MODE)
         call RichardsSetup(realization)
-        call RichardsUpdateAuxVars(realization)
       case(RICHARDS_LITE_MODE)
         call RichardsLiteSetup(realization)
-        call RichardsLiteUpdateAuxVars(realization)
       case(MPH_MODE)
         call MphaseSetup(realization)
+    end select
+  endif
+  if (option%ntrandof > 0) then
+    call RTSetup(realization)
+  endif
+  
+  ! assign initial conditions
+  call assignInitialConditions(realization)
+  
+  ! update auxilliary variables based on initial conditions
+  if (option%nflowdof > 0) then
+    select case(option%iflowmode)
+      case(RICHARDS_MODE)
+        call RichardsUpdateAuxVars(realization)
+      case(RICHARDS_LITE_MODE)
+        call RichardsLiteUpdateAuxVars(realization)
+      case(MPH_MODE)
         call MphaseUpdateAuxVars(realization)
     end select
   endif
-  
   if (option%ntrandof > 0) then
     if (dabs(option%uniform_velocity(1)) + dabs(option%uniform_velocity(2)) + &
         dabs(option%uniform_velocity(3)) >  0.d0) then
       call RealizAssignUniformVelocity(realization)
     endif
     
-    call RTSetup(realization)
-    
     ! initialize densities and saturations
     if (option%nflowdof > 0) then
       call DiscretizationCreateVector(realization%discretization,ONEDOF, &
                                       global_vec,GLOBAL,option)
-      select case(option%iflowmode)
-        case(RICHARDS_MODE)
-          call RichardsGetVarFromArray(realization,global_vec, &
-                                       LIQUID_SATURATION,ZERO_INTEGER)
-          call DiscretizationGlobalToLocal(realization%discretization, &
-                                           global_vec,field%saturation_loc,ONEDOF)   
-          call RichardsGetVarFromArray(realization,global_vec, &
-                                       LIQUID_DENSITY,ZERO_INTEGER)
-          call DiscretizationGlobalToLocal(realization%discretization, &
-                                           global_vec,field%density_loc,ONEDOF)   
-        case(RICHARDS_LITE_MODE)
-          call RichardsLiteGetVarFromArray(realization,global_vec, &
-                                           LIQUID_SATURATION,ZERO_INTEGER)
-          call DiscretizationGlobalToLocal(realization%discretization, &
-                                           global_vec,field%saturation_loc,ONEDOF)   
-          call RichardsLiteGetVarFromArray(realization,global_vec, &
-                                           LIQUID_DENSITY,ZERO_INTEGER)
-          call DiscretizationGlobalToLocal(realization%discretization, &
-                                           global_vec,field%density_loc,ONEDOF)   
-  ! ** clu: Not sure mphase need this by now
-        case(MPH_MODE) 
-          call MphaseGetVarFromArray(realization,global_vec, &
-                                       LIQUID_SATURATION,ZERO_INTEGER)
-          call DiscretizationGlobalToLocal(realization%discretization, &
-                                           global_vec,field%saturation_loc,ONEDOF)   
-          call MphaseGetVarFromArray(realization,global_vec, &
-                                       LIQUID_DENSITY,ZERO_INTEGER)
-          call DiscretizationGlobalToLocal(realization%discretization, &
-                                           global_vec,field%density_loc,ONEDOF)   
-      end select
+      call RealizationGetDataset(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
+      call DiscretizationGlobalToLocal(realization%discretization, &
+                                       global_vec,field%saturation_loc,ONEDOF)   
+      call RealizationGetDataset(realization,global_vec,LIQUID_DENSITY,ZERO_INTEGER)
+      call DiscretizationGlobalToLocal(realization%discretization, &
+                                       global_vec,field%density_loc,ONEDOF)   
       call VecDestroy(global_vec,ierr)
     else
       call VecSet(field%saturation_loc,1.d0,ierr)
@@ -567,6 +554,7 @@ subroutine readRequiredCardsFromInput(realization,filename)
     option%ncomp = option%ntrandof
     option%ncmplx = GetSecondarySpeciesCount(realization%reaction)
     option%nmnrl = GetMineralCount(realization%reaction)
+    option%mnrl_names => GetMineralNames(realization%reaction)
   endif
 
 !.........................................................................
@@ -2060,6 +2048,115 @@ subroutine assignMaterialPropToRegions(realization)
        field%tor_loc,ONEDOF)   
 
 end subroutine assignMaterialPropToRegions
+
+! ************************************************************************** !
+!
+! assignInitialConditions: Assigns initial conditions to regions of realization
+! author: Glenn Hammond
+! date: 09/15/08
+!
+! ************************************************************************** !
+subroutine assignInitialConditions(realization)
+
+  use Realization_module
+  use Level_module
+  use Patch_module
+  use Discretization_module
+  use Grid_module
+  use Field_module
+  use Coupler_module
+
+  implicit none
+
+  type(realization_type) :: realization
+  
+  PetscInt :: icell, iconn, idof
+  PetscInt :: local_id, ghosted_id
+  
+  type(option_type), pointer :: option
+  type(field_type), pointer :: field  
+  type(patch_type), pointer :: patch
+  type(grid_type), pointer :: grid
+  type(discretization_type), pointer :: discretization
+  type(coupler_type), pointer :: initial_condition
+  type(level_type), pointer :: cur_level
+  type(patch_type), pointer :: cur_patch
+
+  option => realization%option
+  discretization => realization%discretization
+  field => realization%field
+  patch => realization%patch
+  grid => patch%grid
+  
+  ! first call initialization of primary dofs
+  call RealizAssignInitialConditions(realization)
+  
+  ! now, let's fill in the secondary variables (mineral vol fracs, etc.)
+  cur_level => realization%level_list%first
+  do 
+    if (.not.associated(cur_level)) exit
+    cur_patch => cur_level%patch_list%first
+    do
+      if (.not.associated(cur_patch)) exit
+
+      grid => cur_patch%grid
+      
+      if (option%nflowdof > 0) then
+      endif
+
+      if (option%ntrandof > 0) then
+      
+        initial_condition => cur_patch%initial_conditions%first
+        do
+        
+          if (.not.associated(initial_condition)) exit
+
+          if (.not.associated(initial_condition%connection_set)) then
+            do icell=1,initial_condition%region%num_cells
+              local_id = initial_condition%region%cell_ids(icell)
+              ghosted_id = grid%nL2G(local_id)
+              if (associated(cur_patch%imat)) then
+                if (cur_patch%imat(ghosted_id) <= 0) then
+                  cycle
+                endif
+              endif
+              ! minerals              
+              if (associated(initial_condition%tran_condition%mineral_concentrations)) then
+                do idof = 1, option%nmnrl
+                  cur_patch%aux%RT%aux_vars(ghosted_id)%mnrl_volfrac(idof) = &
+                    initial_condition%tran_condition%mineral_concentrations(idof)%ptr%dataset%cur_value(1)
+                enddo
+              endif
+            enddo
+          else
+            do iconn=1,initial_condition%connection_set%num_connections
+              local_id = initial_condition%connection_set%id_dn(iconn)
+              ghosted_id = grid%nL2G(local_id)
+              if (associated(cur_patch%imat)) then
+                if (cur_patch%imat(ghosted_id) <= 0) then
+                  cycle
+                endif
+              endif
+              ! minerals              
+              if (associated(initial_condition%tran_condition%mineral_concentrations)) then
+                do idof = 1, option%nmnrl
+                  cur_patch%aux%RT%aux_vars(ghosted_id)%mnrl_volfrac(idof) = &
+                    initial_condition%tran_condition%mineral_concentrations(idof)%ptr%dataset%cur_value(1)
+                enddo
+              endif
+            enddo
+          endif
+          initial_condition => initial_condition%next
+        enddo
+        
+      endif
+      cur_patch => cur_patch%next
+    enddo
+    cur_level => cur_level%next
+  enddo
+
+end subroutine assignInitialConditions  
+
 
 ! ************************************************************************** !
 !
