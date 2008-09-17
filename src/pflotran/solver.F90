@@ -596,6 +596,7 @@ subroutine SolverCheckCommandLine(solver)
 
   PetscErrorCode :: ierr
   character(len=MAXSTRINGLENGTH) :: prefix
+  character(len=MAXSTRINGLENGTH) :: mat_type
   PetscTruth :: is_present
 
   if (solver%snes /= 0) then
@@ -603,6 +604,10 @@ subroutine SolverCheckCommandLine(solver)
   else
     prefix = PETSC_NULL_CHARACTER
   endif
+
+  ! Parse the options to determine if the matrix type has been specified.
+  call PetscOptionsGetString(prefix, '-mat_type', mat_type, is_present, ierr)
+  if (is_present) solver%mat_type = mat_type
 
   ! Parse the options for the Galerkin multigrid solver.
   ! Users can specify the number of levels of coarsening via the 
