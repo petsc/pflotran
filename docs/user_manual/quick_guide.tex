@@ -388,6 +388,48 @@ where \verb|#proc| is the desired number of processor cores.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+\subsection{Direct Solvers}
+
+To implement direct solvers in PETSc with PFLOTRAN first recompile PETSc with the options (petsc-dev, MacOSX 10.5):
+
+\begin{verbatim} 
+./config/configure.py --with-blas-lapack-lib="-framework vecLib" 
+--with-mpi-dir=\$PKGS/openmpi/openmpi-1.2.7-gcc-4.0.1-absoft-10.1 
+--with-debugging=0 --with-shared=0 
+--download-mumps=1 
+--download-parmetis=1 --with-parmetis 
+--download-scalapack=1 --with-scalapack 
+--download-blacs=1 --with-blacs
+\end{verbatim}
+
+\noindent
+Then run PFLOTRAN with the command-line options:
+\begin{verbatim} 
+-flow\_mat\_type mpiaij 
+-flow\_ksp\_type preonly 
+-flow\_pc\_type lu 
+-flow\_pc\_factor\_mat\_solver\_package mumps|
+\end{verbatim}
+
+\subsection{Condition Number of the Preconditioned Jacobian Matrix}
+
+Since the preconditioned matrix is not explicitly computed, it is necessary to estimate the condition number of the preconditioned Jacobian matrix using PETSc during a PFLOTRAN run. To do this specify a KSP type of GMRES (the Hessenberg matrix is needed that is constructed as part of the Arnoldi process), and then specify
+
+ {\tt -ksp\_monitor\_singular\_value}
+
+The ratio of the largest to smallest singular values gives the condition number estimate for the preconditioned operator.  Note that this flag will also cause the 2-norm of the true residual (as opposed to the preconditioned residual) to be printed.
+
+If you are doing this in the current version of PFLOTRAN, you need
+
+ {\tt -flow\_ksp\_type gmres -flow\_ksp\_monitor\_singular\_value}
+
+The estimates will get better the closer one is to the GMRES restart.  (When restart occurs, the Hessenberg matrix from which the eigenvalue estimates are obtained gets discarded along with everything else.)  The frequency can be changed via the option
+
+ {\tt -flow\_ksp\_gmres\_restart <positive integer>}
+
+The default restart frequency is 30.
+
+
 \section{Creating the Input File: PFLOTRAN Keywords}
 
 The PFLOTRAN input file construction is based on keywords. Lines beginning with a colon (:) are treated as comments. Each entry to the input file must begin in the first column. Keywords {\tt SKIP} and {\tt NOSKIP} are used to skip over sections of the input file. Blank lines may occur in input file. Alternate keyword spelling is indicated in round brackets (~). Input options are indicated in square brackets [~], as well as default values. Curly brackets \{~\} indicate the result of invoking the corresponding keyword. Always refer to source code when in doubt!

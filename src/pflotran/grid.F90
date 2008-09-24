@@ -431,12 +431,12 @@ subroutine GridLocalizeRegions(grid,region_list,option)
       else if (dabs(region%coordinate(X_DIRECTION)) > 1.d-40 .and. &
                dabs(region%coordinate(Y_DIRECTION)) > 1.d-40 .and. &
                dabs(region%coordinate(Z_DIRECTION)) > 1.d-40 .and. &
-               region%coordinate(X_DIRECTION) >= grid%x_min_local .and. &
-               region%coordinate(X_DIRECTION) <= grid%x_max_local .and. &
-               region%coordinate(Y_DIRECTION) >= grid%y_min_local .and. &
-               region%coordinate(Y_DIRECTION) <= grid%y_max_local .and. &
-               region%coordinate(Z_DIRECTION) >= grid%z_min_local .and. &
-               region%coordinate(Z_DIRECTION) <= grid%z_max_local) then
+               region%coordinate(X_DIRECTION) >= grid%x_min_global .and. &
+               region%coordinate(X_DIRECTION) <= grid%x_max_global .and. &
+               region%coordinate(Y_DIRECTION) >= grid%y_min_global .and. &
+               region%coordinate(Y_DIRECTION) <= grid%y_max_global .and. &
+               region%coordinate(Z_DIRECTION) >= grid%z_min_global .and. &
+               region%coordinate(Z_DIRECTION) <= grid%z_max_global) then
         select case(grid%itype)
           case(STRUCTURED_GRID)
             call StructGridGetIJKFromCoordinate(grid%structured_grid, &
