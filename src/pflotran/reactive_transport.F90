@@ -583,8 +583,10 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
   use Level_module
   use Discretization_module
   use Option_module
+  use Grid_module
 
   implicit none
+  
   interface
      subroutine samrpetscobjectstateincrease(vec)
        implicit none
@@ -593,25 +595,46 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
 #include "include/finclude/petscvec.h90"
        Vec :: vec
      end subroutine samrpetscobjectstateincrease
-     
   end interface
 
   SNES :: snes
   Vec :: xx
   Vec :: r
   type(realization_type) :: realization
+  PetscReal, pointer :: xx_p(:), log_xx_p(:)
   PetscErrorCode :: ierr
   
   type(discretization_type), pointer :: discretization
   type(field_type), pointer :: field
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
+  PetscViewer :: viewer  
   
   field => realization%field
   discretization => realization%discretization
   
   ! Communication -----------------------------------------
-  call DiscretizationGlobalToLocal(discretization,xx,field%tran_xx_loc,NTRANDOF)
+  if (realization%option%use_log_formulation) then
+    ! have to convert the log concentration to non-log form
+    cur_level => realization%level_list%first
+    do
+      if (.not.associated(cur_level)) exit
+      cur_patch => cur_level%patch_list%first
+      do
+        if (.not.associated(cur_patch)) exit
+        call GridVecGetArrayF90(cur_patch%grid,field%tran_xx,xx_p,ierr)
+        call GridVecGetArrayF90(cur_patch%grid,xx,log_xx_p,ierr)
+        xx_p(:) = exp(log_xx_p(:))
+        call GridVecRestoreArrayF90(cur_patch%grid,field%tran_xx,xx_p,ierr)
+        call GridVecRestoreArrayF90(cur_patch%grid,xx,log_xx_p,ierr)  
+        cur_patch => cur_patch%next
+      enddo
+      cur_level => cur_level%next
+    enddo
+    call DiscretizationGlobalToLocal(discretization,field%tran_xx,field%tran_xx_loc,NTRANDOF)
+  else
+    call DiscretizationGlobalToLocal(discretization,xx,field%tran_xx_loc,NTRANDOF)
+  endif
 
   cur_level => realization%level_list%first
   do
@@ -629,6 +652,18 @@ subroutine RTResidual(snes,xx,r,realization,ierr)
   if(discretization%itype==AMR_GRID) then
      call samrpetscobjectstateincrease(r)
   endif
+
+  if (realization%debug%vecview_residual) then
+    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'RTresidual.out',viewer,ierr)
+    call VecView(r,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+  endif
+  if (realization%debug%vecview_solution) then
+    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'RTxx.out',viewer,ierr)
+    call VecView(xx,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+  endif
+  
 end subroutine RTResidual
 
 ! ************************************************************************** !
@@ -883,7 +918,7 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
       r_p(patch%aux%RT%zero_rows_local(i)) = 0.d0
     enddo
   endif
-  
+
   ! Restore vectors
   call GridVecRestoreArrayF90(grid,r, r_p, ierr)
   call GridVecRestoreArrayF90(grid,field%tran_accum, accum_p, ierr)
@@ -893,17 +928,6 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
   call GridVecRestoreArrayF90(grid,field%tor_loc, tor_loc_p, ierr)
   call GridVecRestoreArrayF90(grid,field%volume, volume_p, ierr)
 
-  if (realization%debug%vecview_residual) then
-    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'RTresidual.out',viewer,ierr)
-    call VecView(r,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
-  endif
-  if (realization%debug%vecview_solution) then
-    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'RTxx.out',viewer,ierr)
-    call VecView(xx,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
-  endif
-  
 end subroutine RTResidualPatch
 
 ! ************************************************************************** !
@@ -920,6 +944,7 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
   use Patch_module
   use Grid_module
   use Option_module
+  use Field_module
 
   implicit none
 
@@ -929,7 +954,8 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
   type(realization_type) :: realization
   MatStructure flag
   PetscErrorCode :: ierr
-  
+
+  PetscViewer :: viewer  
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   type(grid_type),  pointer :: grid
@@ -954,7 +980,24 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
     enddo
     cur_level => cur_level%next
   enddo
+  
+  if (realization%debug%matview_Jacobian) then
+    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'RTjacobian.out',viewer,ierr)
+    call MatView(A,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+  endif
 
+  if (realization%option%use_log_formulation) then
+    call MatDiagonalScaleLocal(A,realization%field%tran_work_loc,ierr)
+
+    if (realization%debug%matview_Jacobian) then
+      call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'RTjacobianLog.out',viewer,ierr)
+      call MatView(A,viewer,ierr)
+      call PetscViewerDestroy(viewer,ierr)
+    endif
+    
+  endif
+  
 end subroutine RTJacobian
 
 ! ************************************************************************** !
@@ -987,7 +1030,7 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   
   PetscReal, pointer :: r_p(:), accum_p(:)
   PetscReal, pointer :: porosity_loc_p(:), saturation_loc_p(:), tor_loc_p(:), &
-                        volume_p(:)
+                        volume_p(:), work_loc_p(:)
   PetscInt :: local_id, ghosted_id
   PetscInt :: istart, iend                        
   type(grid_type), pointer :: grid
@@ -1197,6 +1240,23 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   enddo
 #endif
  
+  if (option%use_log_formulation) then
+    call GridVecGetArrayF90(grid,field%tran_work_loc, work_loc_p, ierr)
+    do ghosted_id = 1, grid%ngmax  ! For each local node do...
+      iend = ghosted_id*option%ncomp
+      istart = iend-option%ncomp+1
+      if (associated(patch%imat)) then
+        if (patch%imat(ghosted_id) <= 0) then
+          work_loc_p(istart:iend) = 1.d0
+        else
+          work_loc_p(istart:iend) = aux_vars(ghosted_id)%primary_molal(:)
+        endif
+      else
+        work_loc_p(istart:iend) = aux_vars(ghosted_id)%primary_molal(:)
+      endif
+    enddo
+    call GridVecRestoreArrayF90(grid,field%tran_work_loc, work_loc_p, ierr)
+  endif
 
   ! Restore vectors
   call GridVecRestoreArrayF90(grid,field%tran_accum, accum_p, ierr)
@@ -1215,12 +1275,6 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                           patch%aux%RT%zero_rows_local_ghosted,rdum,ierr) 
   endif
 
-  if (realization%debug%matview_Jacobian) then
-    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'RTjacobian.out',viewer,ierr)
-    call MatView(A,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
-  endif
-    
 end subroutine RTJacobianPatch
 
 ! ************************************************************************** !
@@ -1335,11 +1389,7 @@ subroutine RTUpdateAuxVarsPatch(realization)
           case(CONCENTRATION_SS,DIRICHLET_BC,NEUMANN_BC)
             xxbc(idof) = boundary_condition%tran_aux_real_var(idof,iconn)
           case(ZERO_GRADIENT_BC)
-            if (option%use_log_formulation) then
-              xxbc(idof) = exp(xx_loc_p((ghosted_id-1)*option%ncomp+idof))
-            else
-              xxbc(idof) = xx_loc_p((ghosted_id-1)*option%ncomp+idof)
-            endif
+            xxbc(idof) = xx_loc_p((ghosted_id-1)*option%ncomp+idof)
         end select
       enddo
       ! no need to update boundary fluid density since it is already set
@@ -1428,7 +1478,7 @@ subroutine RTCreateZeroArray(patch,option)
   call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
                      PETSC_COMM_WORLD,ierr)
 
-  if (flag > 0) patch%aux%RT%inactive_cells_exist = .true.
+  if (flag > 0) patch%aux%RT%inactive_cells_exist = PETSC_TRUE
 
   if (ncount /= n_zero_rows) then
     print *, 'Error:  Mismatch in non-zero row count!', ncount, n_zero_rows
@@ -1469,17 +1519,7 @@ subroutine RTMaxChange(realization)
 
   option%dcmax=0.D0
   
-  if (option%use_log_formulation) then
-    call GridVecGetArrayF90(grid,field%tran_xx,xx_ptr,ierr)
-    call GridVecGetArrayF90(grid,field%tran_yy,yy_ptr,ierr)
-    call GridVecGetArrayF90(grid,field%tran_dxx,dxx_ptr,ierr)
-    dxx_ptr = exp(xx_ptr)-exp(yy_ptr)
-    call GridVecRestoreArrayF90(grid,field%tran_xx,xx_ptr,ierr)
-    call GridVecRestoreArrayF90(grid,field%tran_yy,yy_ptr,ierr)
-    call GridVecRestoreArrayF90(grid,field%tran_dxx,dxx_ptr,ierr)
-  else
-    call VecWAXPY(field%tran_dxx,-1.d0,field%tran_xx,field%tran_yy,ierr)
-  endif
+  call VecWAXPY(field%tran_dxx,-1.d0,field%tran_xx,field%tran_yy,ierr)
   
   call VecStrideNorm(field%tran_dxx,ZERO_INTEGER,NORM_INFINITY,option%dcmax,ierr)
       
@@ -1683,12 +1723,12 @@ subroutine RKineticMineral(Res,Jac,derivative,auxvar,volume,reaction,option)
       ! area = cm^2 mnrl/cm^3 bulk
       ! volume = m^3 bulk
       ! units = cm^2 mnrl/m^3 bulk
-      Im_const = -1.d0*sign_*auxvar%mnrl_area0(imnrl)*1.d6 ! convert cm^3->m^3
+      Im_const = -1.d0*auxvar%mnrl_area0(imnrl)*1.d6 ! convert cm^3->m^3
       ! units = mol/sec/m^3 bulk
       if (associated(reaction%kinmnrl_affinity_power)) then
-        Im = Im_const*abs(affinity_factor)**reaction%kinmnrl_affinity_power(imnrl)*sum_prefactor_rate
+        Im = Im_const*sign_*abs(affinity_factor)**reaction%kinmnrl_affinity_power(imnrl)*sum_prefactor_rate
       else
-        Im = Im_const*abs(affinity_factor)*sum_prefactor_rate
+        Im = Im_const*sign_*abs(affinity_factor)*sum_prefactor_rate
       endif
       auxvar%mnrl_rate(imnrl) = Im ! mol/sec/m^3
     else
@@ -1711,9 +1751,10 @@ subroutine RKineticMineral(Res,Jac,derivative,auxvar,volume,reaction,option)
 
     ! calculate derivatives of rate with respect to free
     ! units = mol/sec
-    dIm_dQK = -1.d0*Im_const*sum_prefactor_rate
     if (associated(reaction%kinmnrl_affinity_power)) then
-      dIm_dQK = dIm_dQK*reaction%kinmnrl_affinity_power(imnrl)/affinity_factor
+      dIm_dQK = -1.d0*Im*reaction%kinmnrl_affinity_power(imnrl)/abs(affinity_factor)
+    else
+      dIm_dQK = -1.d0*Im_const*sum_prefactor_rate
     endif
     if (associated(reaction%kinmnrl_Tempkin_const)) then
       dIm_dQK = dIm_dQK*(1/reaction%kinmnrl_Tempkin_const(imnrl))/QK
@@ -1823,13 +1864,13 @@ subroutine RKineticMineralDerivative(Res,Jac,auxvar,volume,reaction,option)
   Res = 0.d0
   Jac = 0.d0
 
-!  if (option%numerical_derivatives) then
-  if (.true.) then
+  if (option%numerical_derivatives) then
+! if (.true.) then
     call RTAuxVarInit(auxvar_pert,option)
     call RTAuxVarCopy(auxvar_pert,auxvar,option)
     call RKineticMineral(Res_orig,Jac_dummy,PETSC_FALSE,auxvar,volume,reaction,option)
     do jcomp = 1, option%ncomp
-      call RTAuxVarCopy(auxvar,auxvar_pert,option)
+      call RTAuxVarCopy(auxvar_pert,auxvar,option)
       pert = auxvar_pert%primary_molal(jcomp)*perturbation_tolerance
       auxvar_pert%primary_molal(jcomp) = auxvar_pert%primary_molal(jcomp) + pert
       call RTAuxVarCompute(auxvar_pert%primary_molal,auxvar_pert,reaction,option)      

@@ -843,6 +843,7 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
   use Option_module
   use Solver_module
   use Field_module
+  use Grid_module
   
   implicit none
 
@@ -867,7 +868,7 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
   PetscInt :: n, nmax_inf
   PetscReal :: fnorm, scaled_fnorm, inorm
   logical :: plot_flag  
-  PetscReal, pointer :: r_p(:)  
+  PetscReal, pointer :: r_p(:), xx_p(:), log_xx_p(:)
 
   PetscInt, save :: linear_solver_divergence_count = 0
 
@@ -907,7 +908,25 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
   
   do
    
-    call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%tran_xx, ierr)
+    if (option%use_log_formulation) then
+      ! remove the module dependency above if you remove GridVecGetArrayF90!!!!
+      call GridVecGetArrayF90(realization%patch%grid,field%tran_xx,xx_p,ierr)
+      call GridVecGetArrayF90(realization%patch%grid,field%tran_log_xx,log_xx_p,ierr)
+      log_xx_p(:) = log(xx_p(:))
+      call GridVecRestoreArrayF90(realization%patch%grid,field%tran_xx,xx_p,ierr)
+      call GridVecRestoreArrayF90(realization%patch%grid,field%tran_log_xx,log_xx_p,ierr)
+      
+      call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%tran_log_xx, ierr)
+      
+      call GridVecGetArrayF90(realization%patch%grid,field%tran_xx,xx_p,ierr)
+      call GridVecGetArrayF90(realization%patch%grid,field%tran_log_xx,log_xx_p,ierr)
+      xx_p(:) = exp(log_xx_p(:))
+      call GridVecRestoreArrayF90(realization%patch%grid,field%tran_xx,xx_p,ierr)
+      call GridVecRestoreArrayF90(realization%patch%grid,field%tran_log_xx,log_xx_p,ierr)
+      
+    else
+      call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%tran_xx, ierr)
+    endif
 
 ! do we really need all this? - geh 
     call SNESGetIterationNumber(solver%snes,num_newton_iterations, ierr)

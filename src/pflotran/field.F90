@@ -36,6 +36,8 @@ module Field_module
     Vec :: flow_xx, flow_xx_loc, flow_dxx, flow_yy, flow_accum
     Vec :: tran_xx, tran_xx_loc, tran_dxx, tran_yy, tran_accum
     
+    Vec :: tran_log_xx, tran_work_loc
+    
     Vec :: flow_ts_mass_balance, flow_total_mass_balance
     Vec :: tran_ts_mass_balance, tran_total_mass_balance
    
@@ -94,11 +96,13 @@ function FieldCreate()
   field%flow_accum = 0
   
   field%tran_r = 0
+  field%tran_log_xx = 0
   field%tran_xx = 0
   field%tran_xx_loc = 0
   field%tran_dxx = 0
   field%tran_yy = 0
   field%tran_accum = 0
+  field%tran_work_loc = 0
   
   field%flow_ts_mass_balance = 0
   field%flow_total_mass_balance = 0
@@ -155,11 +159,13 @@ subroutine FieldDestroy(field)
   if (field%flow_accum /= 0) call VecDestroy(field%flow_accum,ierr)
   
   if (field%tran_r /= 0) call VecDestroy(field%tran_r,ierr)
+  if (field%tran_log_xx /= 0) call VecDestroy(field%tran_log_xx,ierr)
   if (field%tran_xx /= 0) call VecDestroy(field%tran_xx,ierr)
   if (field%tran_xx_loc /= 0) call VecDestroy(field%tran_xx_loc,ierr)
   if (field%tran_dxx /= 0) call VecDestroy(field%tran_dxx,ierr)
   if (field%tran_yy /= 0) call VecDestroy(field%tran_yy,ierr)
   if (field%tran_accum /= 0) call VecDestroy(field%tran_accum,ierr)
+  if (field%tran_work_loc /= 0) call VecDestroy(field%tran_work_loc,ierr)
 
   if (field%flow_ts_mass_balance /= 0) &
     call VecDestroy(field%flow_ts_mass_balance,ierr)
