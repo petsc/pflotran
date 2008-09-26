@@ -925,7 +925,7 @@ subroutine ConditionReadValuesFromFile(filename,dataset,option)
   PetscInt :: fid
   PetscInt :: count, i, status
   PetscErrorCode :: ierr
-  print *, 'Read condition from file:',filename
+
   fid = 86
   open(unit=fid,file=filename,status="old",iostat=status)
   if (status /= 0) then
