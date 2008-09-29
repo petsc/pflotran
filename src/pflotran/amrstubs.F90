@@ -110,6 +110,16 @@ implicit none
   
 end subroutine samr_get_origin
 
+subroutine samr_get_upper_corner(p_application, x0, y0, z0)
+implicit none
+#include "include/finclude/petsc.h"
+  PetscFortranAddr, intent(inout) :: p_application
+  PetscReal, intent(inout) :: x0
+  PetscReal, intent(inout) :: y0
+  PetscReal, intent(inout) :: z0
+  
+end subroutine samr_get_upper_corner
+
 subroutine assign_c_array_ptr(return_arg, pointer_arg)
  use cf90interface_module
 implicit none

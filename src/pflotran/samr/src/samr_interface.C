@@ -74,6 +74,20 @@ void samr_get_origin_(SAMRAI::PflotranApplicationStrategy **application_strategy
    (*z0) = xlo[2];
 }
 
+
+void samr_get_upper_corner_(SAMRAI::PflotranApplicationStrategy **application_strategy,
+                     double *x0,
+                     double *y0,
+                     double *z0)
+{
+   SAMRAI::tbox::Pointer< SAMRAI::hier::PatchHierarchy<NDIM> > hierarchy = (*application_strategy)->getHierarchy();
+   SAMRAI::tbox::Pointer<SAMRAI::geom::CartesianGridGeometry<NDIM> > grid_geometry = hierarchy->getGridGeometry();
+   const double* xup = grid_geometry->getXUpper();
+   (*x0) = xup[0];
+   (*y0) = xup[1];
+   (*z0) = xup[2];
+}
+
 void samr_patch_get_origin_(SAMRAI::hier::Patch<NDIM> **patch,
                             double *x0,
                             double *y0,
