@@ -844,6 +844,8 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
   use Solver_module
   use Field_module
   use Grid_module
+  use Level_module
+  use Patch_module
   
   implicit none
 
@@ -878,6 +880,8 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
   type(discretization_type), pointer :: discretization
   type(field_type), pointer :: field  
   type(solver_type), pointer :: solver
+  type(patch_type), pointer :: cur_patch
+  type(level_type), pointer :: cur_level
 
   option => realization%option
   discretization => realization%discretization
@@ -909,21 +913,58 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
   do
    
     if (option%use_log_formulation) then
-      ! remove the module dependency above if you remove GridVecGetArrayF90!!!!
-      call GridVecGetArrayF90(realization%patch%grid,field%tran_xx,xx_p,ierr)
-      call GridVecGetArrayF90(realization%patch%grid,field%tran_log_xx,log_xx_p,ierr)
-      log_xx_p(:) = log(xx_p(:))
-      call GridVecRestoreArrayF90(realization%patch%grid,field%tran_xx,xx_p,ierr)
-      call GridVecRestoreArrayF90(realization%patch%grid,field%tran_log_xx,log_xx_p,ierr)
-      
+      if (associated(realization%patch%grid%structured_grid) .and. &
+          (.not.(realization%patch%grid%structured_grid%p_samr_patch.eq.0))) then
+        cur_level => realization%level_list%first
+        do 
+          if (.not.associated(cur_level)) exit
+          cur_patch => cur_level%patch_list%first
+          do
+            if (.not.associated(cur_patch)) exit
+            call GridVecGetArrayF90(cur_patch%grid,field%tran_xx,xx_p,ierr)
+            call GridVecGetArrayF90(cur_patch%grid,field%tran_log_xx,log_xx_p,ierr)
+            log_xx_p(:) = log(xx_p(:))
+            call GridVecRestoreArrayF90(cur_patch%grid,field%tran_xx,xx_p,ierr)
+            call GridVecRestoreArrayF90(cur_patch%grid,field%tran_log_xx,log_xx_p,ierr)
+            cur_patch => cur_patch%next
+          enddo
+          cur_level => cur_level%next
+        enddo
+      else
+        ! remove the module dependency above if you remove GridVecGetArrayF90!!!!
+        call GridVecGetArrayF90(realization%patch%grid,field%tran_xx,xx_p,ierr)
+        call GridVecGetArrayF90(realization%patch%grid,field%tran_log_xx,log_xx_p,ierr)
+        log_xx_p(:) = log(xx_p(:))
+        call GridVecRestoreArrayF90(realization%patch%grid,field%tran_xx,xx_p,ierr)
+        call GridVecRestoreArrayF90(realization%patch%grid,field%tran_log_xx,log_xx_p,ierr)
+      endif
+        
       call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%tran_log_xx, ierr)
-      
-      call GridVecGetArrayF90(realization%patch%grid,field%tran_xx,xx_p,ierr)
-      call GridVecGetArrayF90(realization%patch%grid,field%tran_log_xx,log_xx_p,ierr)
-      xx_p(:) = exp(log_xx_p(:))
-      call GridVecRestoreArrayF90(realization%patch%grid,field%tran_xx,xx_p,ierr)
-      call GridVecRestoreArrayF90(realization%patch%grid,field%tran_log_xx,log_xx_p,ierr)
-      
+        
+      if (associated(realization%patch%grid%structured_grid) .and. &
+          (.not.(realization%patch%grid%structured_grid%p_samr_patch.eq.0))) then
+        cur_level => realization%level_list%first
+        do 
+          if (.not.associated(cur_level)) exit
+          cur_patch => cur_level%patch_list%first
+          do
+            if (.not.associated(cur_patch)) exit
+            call GridVecGetArrayF90(cur_patch%grid,field%tran_xx,xx_p,ierr)
+            call GridVecGetArrayF90(cur_patch%grid,field%tran_log_xx,log_xx_p,ierr)
+            xx_p(:) = exp(log_xx_p(:))
+            call GridVecRestoreArrayF90(cur_patch%grid,field%tran_xx,xx_p,ierr)
+            call GridVecRestoreArrayF90(cur_patch%grid,field%tran_log_xx,log_xx_p,ierr)
+            cur_patch => cur_patch%next
+          enddo
+          cur_level => cur_level%next
+        enddo
+      else
+        call GridVecGetArrayF90(realization%patch%grid,field%tran_xx,xx_p,ierr)
+        call GridVecGetArrayF90(realization%patch%grid,field%tran_log_xx,log_xx_p,ierr)
+        xx_p(:) = exp(log_xx_p(:))
+        call GridVecRestoreArrayF90(realization%patch%grid,field%tran_xx,xx_p,ierr)
+        call GridVecRestoreArrayF90(realization%patch%grid,field%tran_log_xx,log_xx_p,ierr)
+      endif
     else
       call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%tran_xx, ierr)
     endif

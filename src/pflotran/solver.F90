@@ -283,6 +283,8 @@ subroutine SolverReadLinear(solver,fid,myrank)
             solver%ksp_type = KSPGMRES
           case('BCGS','BICGSTAB','BI-CGSTAB')
             solver%ksp_type = KSPBCGS
+          case('IBCGS','IBICGSTAB','IBI-CGSTAB')
+            solver%ksp_type = KSPIBCGS
           case default
             string  = 'ERROR: Krylov solver type: ' // trim(word) // ' unknown.'
             if (myrank == 0) print *, string
