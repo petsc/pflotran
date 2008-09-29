@@ -396,12 +396,25 @@ subroutine OutputTecplot(realization)
   end select
   
   if (option%ntrandof > 0) then
-    do i=1,option%ntrandof
-      call OutputGetVarFromArray(realization,global_vec,TOTAL_CONCENTRATION,i)
-      call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
-      call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
-    enddo
-  endif  
+    if (associated(realization%reaction)) then
+      do i=1,option%ntrandof
+        call OutputGetVarFromArray(realization,global_vec,PRIMARY_SPEC_CONCENTRATION,i)
+        call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+        call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+      enddo
+      do i=1,realization%reaction%nkinmnrl
+        call OutputGetVarFromArray(realization,global_vec,MINERAL_VOLUME_FRACTION,i)
+        call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+        call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+      enddo
+    else
+      do i=1,option%nmnrl
+        call OutputGetVarFromArray(realization,global_vec,TOTAL_CONCENTRATION,i)
+        call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
+        call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
+      enddo
+    endif
+  endif
   
   ! material id
   if (associated(patch%imat)) then
@@ -2687,11 +2700,24 @@ subroutine OutputHDF5(realization)
   end select
 
   if (option%ntrandof > 0) then
-    do i=1,option%ntrandof
-      call OutputGetVarFromArray(realization,global_vec,TOTAL_CONCENTRATION,i)
-      write(string,'(a)') option%comp_names(i)
-      call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
-    enddo
+    if (associated(realization%reaction)) then
+      do i=1,option%ntrandof
+        call OutputGetVarFromArray(realization,global_vec,PRIMARY_SPEC_CONCENTRATION,i)
+        write(string,'(a)') option%comp_names(i)
+        call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
+      enddo
+      do i=1,realization%reaction%nkinmnrl
+        call OutputGetVarFromArray(realization,global_vec,MINERAL_VOLUME_FRACTION,i)
+        write(string,'(a)') option%mnrl_names(i)
+        call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
+      enddo
+    else
+      do i=1,option%nmnrl
+        call OutputGetVarFromArray(realization,global_vec,TOTAL_CONCENTRATION,i)
+        write(string,'(a)') option%comp_names(i)
+        call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
+      enddo
+    endif
   endif  
   
   ! material id

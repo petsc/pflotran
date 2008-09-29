@@ -931,12 +931,8 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
           cur_level => cur_level%next
         enddo
       else
-        ! remove the module dependency above if you remove GridVecGetArrayF90!!!!
-        call GridVecGetArrayF90(realization%patch%grid,field%tran_xx,xx_p,ierr)
-        call GridVecGetArrayF90(realization%patch%grid,field%tran_log_xx,log_xx_p,ierr)
-        log_xx_p(:) = log(xx_p(:))
-        call GridVecRestoreArrayF90(realization%patch%grid,field%tran_xx,xx_p,ierr)
-        call GridVecRestoreArrayF90(realization%patch%grid,field%tran_log_xx,log_xx_p,ierr)
+        call VecCopy(field%tran_xx,field%tran_log_xx,ierr)
+        call VecLog(field%tran_log_xx,ierr)
       endif
         
       call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%tran_log_xx, ierr)
@@ -959,11 +955,8 @@ subroutine StepperStepTransportDT(realization,stepper,timestep_cut_flag, &
           cur_level => cur_level%next
         enddo
       else
-        call GridVecGetArrayF90(realization%patch%grid,field%tran_xx,xx_p,ierr)
-        call GridVecGetArrayF90(realization%patch%grid,field%tran_log_xx,log_xx_p,ierr)
-        xx_p(:) = exp(log_xx_p(:))
-        call GridVecRestoreArrayF90(realization%patch%grid,field%tran_xx,xx_p,ierr)
-        call GridVecRestoreArrayF90(realization%patch%grid,field%tran_log_xx,log_xx_p,ierr)
+        call VecCopy(field%tran_log_xx,field%tran_xx,ierr)
+        call VecExp(field%tran_xx,ierr)
       endif
     else
       call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%tran_xx, ierr)

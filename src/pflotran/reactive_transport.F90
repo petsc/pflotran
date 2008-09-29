@@ -907,8 +907,12 @@ subroutine RTResidualPatch(snes,xx,r,realization,ierr)
     endif
     iend = local_id*option%ncomp
     istart = iend-option%ncomp+1
-    call RKineticMineral(Res,Jup,PETSC_FALSE,aux_vars(ghosted_id), &
-                         volume_p(local_id),reaction,option)
+    Res = 0.d0
+    Jup = 0.d0
+    if (reaction%nkinmnrl > 0) then
+      call RKineticMineral(Res,Jup,PETSC_FALSE,aux_vars(ghosted_id), &
+                           volume_p(local_id),reaction,option)
+    endif
     r_p(istart:iend) = r_p(istart:iend) + Res(1:option%ncomp)                    
   enddo
 #endif
@@ -1231,11 +1235,12 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     if (associated(patch%imat)) then
       if (patch%imat(ghosted_id) <= 0) cycle
     endif
-    iend = local_id*option%ncomp
-    istart = iend-option%ncomp+1
-!    call RKineticMineral(Res,Jup,aux_vars(ghosted_id),reaction,option)
-    call RKineticMineralDerivative(Res,Jup,aux_vars(ghosted_id), &
-                                   volume_p(local_id),reaction,option)
+    Res = 0.d0
+    Jup = 0.d0
+    if (reaction%nkinmnrl > 0) then
+      call RKineticMineralDerivative(Res,Jup,aux_vars(ghosted_id), &
+                                     volume_p(local_id),reaction,option)
+    endif
     call MatSetValuesBlockedLocal(A,1,ghosted_id-1,1,ghosted_id-1,Jup,ADD_VALUES,ierr)                        
   enddo
 #endif
@@ -1555,6 +1560,11 @@ function RTGetTecplotHeader(realization)
     string = trim(string) // trim(string2)
   enddo
   
+  do i=1,realization%reaction%nkinmnrl
+    write(string2,'('',"'',a,''"'')') trim(option%mnrl_names(i))
+    string = trim(string) // trim(string2)
+  enddo
+  
   RTGetTecplotHeader = string
 
 end function RTGetTecplotHeader
@@ -1664,9 +1674,6 @@ subroutine RKineticMineral(Res,Jac,derivative,auxvar,volume,reaction,option)
 
   ln_conc = log(auxvar%primary_spec)
   ln_sec = log(auxvar%secondary_spec)
-
-  Res = 0.d0
-  Jac = 0.d0
   
   do imnrl = 1, reaction%nkinmnrl ! for each mineral
     ! compute secondary species concentration
@@ -1860,9 +1867,6 @@ subroutine RKineticMineralDerivative(Res,Jac,auxvar,volume,reaction,option)
   PetscReal :: pert
 
   PetscInt :: icomp, jcomp
-
-  Res = 0.d0
-  Jac = 0.d0
 
   if (option%numerical_derivatives) then
 ! if (.true.) then

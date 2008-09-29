@@ -1018,7 +1018,7 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
             enddo
         end select
       endif
-    case(PRIMARY_SPEC_CONCENTRATION,TOTAL_CONCENTRATION)
+    case(PRIMARY_SPEC_CONCENTRATION,TOTAL_CONCENTRATION,MINERAL_VOLUME_FRACTION)
       select case(ivar)
         case(PRIMARY_SPEC_CONCENTRATION)
           do local_id=1,grid%nlmax
@@ -1027,6 +1027,10 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
         case(TOTAL_CONCENTRATION)
           do local_id=1,grid%nlmax
             vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%total(isubvar,iphase)
+          enddo
+        case(MINERAL_VOLUME_FRACTION)
+          do local_id=1,grid%nlmax
+            vec_ptr(local_id) = patch%aux%RT%aux_vars(grid%nL2G(local_id))%mnrl_volfrac(isubvar)
           enddo
       end select
     case(PHASE)
@@ -1154,12 +1158,14 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
             value = patch%aux%Mphase%aux_vars(ghosted_id)%aux_var_elem(0)%u(1)
         end select
       endif
-    case(PRIMARY_SPEC_CONCENTRATION,TOTAL_CONCENTRATION)
+    case(PRIMARY_SPEC_CONCENTRATION,TOTAL_CONCENTRATION,MINERAL_VOLUME_FRACTION)
       select case(ivar)
         case(PRIMARY_SPEC_CONCENTRATION)
           value = patch%aux%RT%aux_vars(ghosted_id)%primary_spec(isubvar)
         case(TOTAL_CONCENTRATION)
           value = patch%aux%RT%aux_vars(ghosted_id)%total(isubvar,iphase)
+        case(MINERAL_VOLUME_FRACTION)
+          value = patch%aux%RT%aux_vars(ghosted_id)%mnrl_volfrac(isubvar)
       end select
     case(PHASE)
       call GridVecGetArrayF90(grid,field%iphas_loc,vec_ptr2,ierr)
@@ -1314,7 +1320,7 @@ subroutine PatchSetDataset(patch,field,option,vec,ivar,isubvar)
             enddo
         end select
       endif
-    case(PRIMARY_SPEC_CONCENTRATION,TOTAL_CONCENTRATION)
+    case(PRIMARY_SPEC_CONCENTRATION,TOTAL_CONCENTRATION,MINERAL_VOLUME_FRACTION)
       select case(ivar)
         case(PRIMARY_SPEC_CONCENTRATION)
           do local_id=1,grid%nlmax
@@ -1323,6 +1329,10 @@ subroutine PatchSetDataset(patch,field,option,vec,ivar,isubvar)
         case(TOTAL_CONCENTRATION)
           do local_id=1,grid%nlmax
             patch%aux%RT%aux_vars(grid%nL2G(local_id))%total(isubvar,iphase) = vec_ptr(local_id)
+          enddo
+        case(MINERAL_VOLUME_FRACTION)
+          do local_id=1,grid%nlmax
+            patch%aux%RT%aux_vars(grid%nL2G(local_id))%mnrl_volfrac(isubvar) = vec_ptr(local_id)
           enddo
       end select
     case(PHASE)
