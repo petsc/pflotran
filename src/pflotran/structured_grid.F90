@@ -554,7 +554,7 @@ subroutine StructuredGridComputeCoord(structured_grid,option,origin_global, &
     z_max = z_max + structured_grid%dzg_local(k+1)
   enddo
 
-! set min and max bounds of domain in coordinate directions
+! fill in grid cell coordinates
   ghosted_id = 0
   if (structured_grid%kstart > 0 .or. structured_grid%p_samr_patch /= 0) then
     z = -0.5d0*structured_grid%dzg_local(1)+structured_grid%origin(Z_DIRECTION)

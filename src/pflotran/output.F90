@@ -1739,9 +1739,9 @@ subroutine WriteBreakthroughHeaderForCoord(fid,realization,region, &
   cell_id_string = trim(region%name)
   
   110 format(1pg12.4)
-  write(x_string,110) region%coordinate(X_DIRECTION)
-  write(y_string,110) region%coordinate(Y_DIRECTION)
-  write(z_string,110) region%coordinate(Z_DIRECTION)
+  write(x_string,110) region%coordinates(ONE_INTEGER)%x
+  write(y_string,110) region%coordinates(ONE_INTEGER)%y
+  write(z_string,110) region%coordinates(ONE_INTEGER)%z
   cell_id_string = trim(cell_id_string) // ' ' // trim(adjustl(x_string)) // ' ' // &
                    trim(adjustl(y_string)) // ' ' // trim(adjustl(z_string))
 
@@ -2016,7 +2016,7 @@ subroutine WriteBreakthroughDataForCoord(fid,realization,region)
   kstart = k
   kend = k
   ! find the neighboring cells, between which to interpolate
-  if (grid%x(ghosted_id) > region%coordinate(X_DIRECTION)) then
+  if (grid%x(ghosted_id) > region%coordinates(ONE_INTEGER)%x) then
     if (i > 1) then
       istart = i-1
     endif
@@ -2025,7 +2025,7 @@ subroutine WriteBreakthroughDataForCoord(fid,realization,region)
       iend = i+1
     endif
   endif
-  if (grid%y(ghosted_id) > region%coordinate(Y_DIRECTION)) then
+  if (grid%y(ghosted_id) > region%coordinates(ONE_INTEGER)%y) then
     if (j > 1) then
       jstart = j-1
     endif
@@ -2034,7 +2034,7 @@ subroutine WriteBreakthroughDataForCoord(fid,realization,region)
       jend = j+1
     endif
   endif
-  if (grid%z(ghosted_id) > region%coordinate(Z_DIRECTION)) then
+  if (grid%z(ghosted_id) > region%coordinates(ONE_INTEGER)%z) then
     if (k > 1) then
       kstart = k-1
     endif
@@ -2062,7 +2062,10 @@ subroutine WriteBreakthroughDataForCoord(fid,realization,region)
         case(MPH_MODE,RICHARDS_MODE)
           write(fid,110,advance="no") &
             OutputGetVarFromArrayAtCoord(realization,TEMPERATURE,ZERO_INTEGER, &
-                                         region%coordinate,count,ghosted_ids)
+                                         region%coordinates(ONE_INTEGER)%x, &
+                                         region%coordinates(ONE_INTEGER)%y, &
+                                         region%coordinates(ONE_INTEGER)%z, &
+                                         count,ghosted_ids)
       end select
 
       ! pressure
@@ -2070,7 +2073,10 @@ subroutine WriteBreakthroughDataForCoord(fid,realization,region)
         case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
           write(fid,110,advance="no") &
             OutputGetVarFromArrayAtCoord(realization,PRESSURE,ZERO_INTEGER, &
-                                         region%coordinate,count,ghosted_ids)
+                                         region%coordinates(ONE_INTEGER)%x, &
+                                         region%coordinates(ONE_INTEGER)%y, &
+                                         region%coordinates(ONE_INTEGER)%z, &
+                                         count,ghosted_ids)
       end select
 
       ! liquid saturation
@@ -2078,7 +2084,10 @@ subroutine WriteBreakthroughDataForCoord(fid,realization,region)
         case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
           write(fid,110,advance="no") &
             OutputGetVarFromArrayAtCoord(realization,LIQUID_SATURATION,ZERO_INTEGER, &
-                                         region%coordinate,count,ghosted_ids)
+                                         region%coordinates(ONE_INTEGER)%x, &
+                                         region%coordinates(ONE_INTEGER)%y, &
+                                         region%coordinates(ONE_INTEGER)%z, &
+                                         count,ghosted_ids)
       end select
 
       select case(option%iflowmode)
@@ -2086,7 +2095,10 @@ subroutine WriteBreakthroughDataForCoord(fid,realization,region)
           ! gas saturation
           write(fid,110,advance="no") &
             OutputGetVarFromArrayAtCoord(realization,GAS_SATURATION,ZERO_INTEGER, &
-                                         region%coordinate,count,ghosted_ids)
+                                         region%coordinates(ONE_INTEGER)%x, &
+                                         region%coordinates(ONE_INTEGER)%y, &
+                                         region%coordinates(ONE_INTEGER)%z, &
+                                         count,ghosted_ids)
       end select
     
       select case(option%iflowmode)
@@ -2094,7 +2106,10 @@ subroutine WriteBreakthroughDataForCoord(fid,realization,region)
           ! liquid energy
           write(fid,110,advance="no") &
             OutputGetVarFromArrayAtCoord(realization,LIQUID_ENERGY,ZERO_INTEGER, &
-                                         region%coordinate,count,ghosted_ids)
+                                         region%coordinates(ONE_INTEGER)%x, &
+                                         region%coordinates(ONE_INTEGER)%y, &
+                                         region%coordinates(ONE_INTEGER)%z, &
+                                         count,ghosted_ids)
       end select
     
       select case(option%iflowmode)
@@ -2102,7 +2117,10 @@ subroutine WriteBreakthroughDataForCoord(fid,realization,region)
           ! gas energy
           write(fid,110,advance="no") &
             OutputGetVarFromArrayAtCoord(realization,GAS_ENERGY,ZERO_INTEGER, &
-                                         region%coordinate,count,ghosted_ids)
+                                         region%coordinates(ONE_INTEGER)%x, &
+                                         region%coordinates(ONE_INTEGER)%y, &
+                                         region%coordinates(ONE_INTEGER)%z, &
+                                         count,ghosted_ids)
       end select
 
       select case(option%iflowmode)
@@ -2111,7 +2129,10 @@ subroutine WriteBreakthroughDataForCoord(fid,realization,region)
           do i=1,option%nflowspec
             write(fid,110,advance="no") &
               OutputGetVarFromArrayAtCoord(realization,LIQUID_MOLE_FRACTION,i, &
-                                           region%coordinate,count,ghosted_ids)
+                                           region%coordinates(ONE_INTEGER)%x, &
+                                           region%coordinates(ONE_INTEGER)%y, &
+                                           region%coordinates(ONE_INTEGER)%z, &
+                                           count,ghosted_ids)
           enddo
       end select
   
@@ -2121,7 +2142,10 @@ subroutine WriteBreakthroughDataForCoord(fid,realization,region)
           do i=1,option%nflowspec
             write(fid,110,advance="no") &
               OutputGetVarFromArrayAtCoord(realization,GAS_MOLE_FRACTION,i, &
-                                           region%coordinate,count,ghosted_ids)
+                                           region%coordinates(ONE_INTEGER)%x, &
+                                           region%coordinates(ONE_INTEGER)%y, &
+                                           region%coordinates(ONE_INTEGER)%z, &
+                                           count,ghosted_ids)
           enddo
       end select 
 #if 0      
@@ -2129,7 +2153,10 @@ subroutine WriteBreakthroughDataForCoord(fid,realization,region)
       if (option%rk > 0.d0) then
         write(fid,110,advance="no") &
           OutputGetVarFromArrayAtCoord(realization,MINERAL_VOLUME_FRACTION,ZERO_INTEGER, &
-                                       region%coordinate,count,ghosted_ids)
+                                       region%coordinates(ONE_INTEGER)%x, &
+                                       region%coordinates(ONE_INTEGER)%y, &
+                                       region%coordinates(ONE_INTEGER)%z, &
+                                       count,ghosted_ids)
       endif
 #endif    
       ! phase
@@ -2137,7 +2164,10 @@ subroutine WriteBreakthroughDataForCoord(fid,realization,region)
         case(MPH_MODE,RICHARDS_MODE)
           write(fid,111,advance="no") &
             int(OutputGetVarFromArrayAtCoord(realization,PHASE,ZERO_INTEGER, &
-                                             region%coordinate,count,ghosted_ids))
+                                             region%coordinates(ONE_INTEGER)%x, &
+                                             region%coordinates(ONE_INTEGER)%y, &
+                                             region%coordinates(ONE_INTEGER)%z, &
+                                             count,ghosted_ids))
       end select
       
     case default
@@ -2306,7 +2336,9 @@ subroutine WriteVelocityAtCoord(fid,realization,region)
 200 format(3(',',es13.6))
   
   velocity = GetVelocityAtCoord(fid,realization,region%cell_ids(1), &
-                                region%coordinate)
+                                region%coordinates(ONE_INTEGER)%x, &
+                                region%coordinates(ONE_INTEGER)%y, &
+                                region%coordinates(ONE_INTEGER)%z)
   
   write(fid,200,advance="no") velocity(1:3)*realization%output_option%tconv   
 
@@ -2320,7 +2352,7 @@ end subroutine WriteVelocityAtCoord
 ! date: 03/20/08
 !
 ! ************************************************************************** !  
-function GetVelocityAtCoord(fid,realization,local_id,coordinate)
+function GetVelocityAtCoord(fid,realization,local_id,x,y,z)
   use Realization_module
   use Option_module
   use Grid_module
@@ -2335,8 +2367,8 @@ function GetVelocityAtCoord(fid,realization,local_id,coordinate)
   PetscInt :: fid
   type(realization_type) :: realization
   PetscInt :: local_id
-  PetscReal :: coordinate(3)
-
+  PetscReal :: x, y, z
+  
   PetscInt :: ghosted_id
   type(option_type), pointer :: option
   type(grid_type), pointer :: grid
@@ -2348,6 +2380,7 @@ function GetVelocityAtCoord(fid,realization,local_id,coordinate)
   PetscInt :: iconn, sum_connection
   PetscInt :: local_id_up, local_id_dn
   PetscReal :: cell_coord(3), face_coord
+  PetscReal :: coordinate(3)
   PetscInt :: direction, iphase
   PetscReal :: area, weight, distance
   PetscReal :: sum_velocity(1:3), velocity(1:3)
@@ -2363,6 +2396,10 @@ function GetVelocityAtCoord(fid,realization,local_id,coordinate)
   iphase = 1
 
   ghosted_id = grid%nL2G(local_id)
+  
+  coordinate(X_DIRECTION) = x
+  coordinate(Y_DIRECTION) = y
+  coordinate(Z_DIRECTION) = z
 
   cell_coord(X_DIRECTION) = grid%x(ghosted_id)
   cell_coord(Y_DIRECTION) = grid%y(ghosted_id)
@@ -3165,7 +3202,7 @@ end function OutputGetVarFromArrayAtCell
 ! date: 02/11/08
 !
 ! ************************************************************************** !
-function OutputGetVarFromArrayAtCoord(realization,ivar,isubvar,coordinate, &
+function OutputGetVarFromArrayAtCoord(realization,ivar,isubvar,x,y,z, &
                                       num_cells,ghosted_ids)
 
   use Realization_module
@@ -3178,7 +3215,7 @@ function OutputGetVarFromArrayAtCoord(realization,ivar,isubvar,coordinate, &
   type(realization_type) :: realization
   PetscInt :: ivar
   PetscInt :: isubvar
-  PetscReal :: coordinate(3)
+  PetscReal :: x,y,z
   PetscInt :: num_cells
   PetscInt :: ghosted_ids(num_cells)
 
@@ -3195,9 +3232,9 @@ function OutputGetVarFromArrayAtCoord(realization,ivar,isubvar,coordinate, &
 
   do icell=1, num_cells
     ghosted_id = ghosted_ids(icell)
-    dx = coordinate(1)-grid%x(ghosted_id)
-    dy = coordinate(2)-grid%y(ghosted_id)
-    dz = coordinate(3)-grid%z(ghosted_id)
+    dx = x-grid%x(ghosted_id)
+    dy = y-grid%y(ghosted_id)
+    dz = z-grid%z(ghosted_id)
     sum_root = sqrt(dx*dx+dy*dy+dz*dz)
     value = 0.d0
     value = RealizGetDatasetValueAtCell(realization,ivar,isubvar,ghosted_id)

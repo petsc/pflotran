@@ -1,0 +1,206 @@
+:Description: 3D toy problem for richards equation
+:
+:MODE RICHARDS
+MODE RICHARDS_LITE
+:skip
+:TRAN 1
+CHEMISTRY
+PRIMARY_SPECIES
+river_c
+groundwater_c
+plume_c
+END
+END
+:noskip
+:
+:CHECKPOINT 1
+:RESTART pflotran.chk4
+:UNIFORM_VELOCITY 1.d0 0.d0 0.d0
+:NUMERICAL_JACOBIAN
+:INEXACT_NEWTON
+:
+:DEBUG
+:MATVIEW_JACOBIAN
+:VECVIEW_RESIDUAL
+:END
+:
+GRID
+TYPE structured
+NXYZ 100 10 10
+END
+:
+ORIGIN 0.d0 0.d0 0.d0
+:
+NEWTON_SOLVER 
+:NO_INFINITY_NORM
+:NO_PRINT_CONVERGENCE
+:PRINT_DETAILED_CONVERGENCE
+END
+:
+HDF5 !VELO FLUX
+TECP !VELO FLUX
+:
+DXYZ
+1.d0
+1.d0
+1.d0
+:
+:  d0[m^2/s] delhaq[kJ/mol]
+DIFF  1.D-9       12.6
+:
+: Richards Equation Pref
+RICH 101325.
+:
+SATURATION_FUNCTIONS
+:id itype swir   lambda alpha     pcwmax betac pwr
+ 1  1     0.1471 0.7465 4.4317d-4 1.e8   0.d0  1.d0
+END
+
+THERMAL_PROPERTIES
+:ithm rho    cpr     ckdry cksat tau cdiff   cexp
+  1   2.75e3 1000.e0 0.5   0.5   0.5 2.13d-5 1.8
+END
+:
+MATERIALS
+:name id icap ithm por  tau permx  permy  permz  permpwr
+soil1 1  1    1    0.25 0.5 1.d-12 1.d-12 1.d-12 1.d0
+soil2 2  1    1    0.25 0.5 1.d-13 1.d-13 1.d-13 1.d0
+END
+:
+:
+TIME d every 10
+100.d0
+:
+DTST 1.d-2
+1. 10.d0
+:
+REGION all
+COORDINATES
+0. 0. 0.
+100. 10. 10.
+END
+END
+
+REGION region1
+COORDINATES
+0. 0. 0.
+50. 10. 10.
+END
+END
+
+REGION region2
+COORDINATES
+50. 0. 0.
+100. 10. 10.
+END
+END
+
+REGION breakthrough
+COORDINATE 0. 0. 0. 
+END
+
+REGION West
+COORDINATES
+0. 0. 0.
+0. 10. 10.
+END
+FACE west
+END
+
+REGION East
+COORDINATES
+100. 0. 0.
+100. 10. 10.
+END
+FACE east
+END
+
+skip
+BREAKTHROUGH 
+REGION breakthrough
+END
+noskip
+
+CONDITION west
+CLASS flow
+TYPE
+PRESSURE hydrostatic
+TEMPERATURE dirichlet
+CONCENTRATION dirichlet
+END
+INTERPOLATION linear
+DATUM 0.d0 0.d0 10.d0
+PRESSURE 201325.d0
+TEMPERATURE 25.d0 
+CONCENTRATION 1.d0
+END
+
+CONDITION initial
+CLASS flow
+TYPE
+PRESSURE hydrostatic
+TEMPERATURE dirichlet
+CONCENTRATION zero_gradient
+END
+INTERPOLATION linear
+DATUM 0.d0 0.d0 10.d0
+PRESSURE 101325.d0
+TEMPERATURE 25.d0 
+CONCENTRATION 1.d-6 
+END
+
+CONDITION west_c
+CLASS transport
+TYPE
+CONCENTRATION river_c dirichlet
+CONCENTRATION groundwater_c dirichlet
+CONCENTRATION plume_c dirichlet
+END
+CONCENTRATION river_c 1.d-6 
+CONCENTRATION groundwater_c 1.d-6 
+CONCENTRATION plume_c 1.d0 
+END
+
+CONDITION initial_c
+CLASS transport
+TYPE
+CONCENTRATION river_c zero_gradient
+CONCENTRATION groundwater_c zero_gradient
+CONCENTRATION plume_c zero_gradient
+END
+CONCENTRATION river_c 1.d-6 
+CONCENTRATION groundwater_c 1.d0 
+CONCENTRATION plume_c 1.d-6 
+END
+
+: initial condition
+INITIAL_CONDITION
+FLOW_CONDITION initial
+TRANSPORT_CONDITION initial_c
+REGION all
+END
+
+: west boundary condition
+BOUNDARY_CONDITION
+FLOW_CONDITION west
+TRANSPORT_CONDITION west_c
+REGION West
+END
+
+: east boundary condition
+BOUNDARY_CONDITION
+FLOW_CONDITION initial
+TRANSPORT_CONDITION initial_c
+REGION East
+END
+
+STRATA
+REGION region1
+MATERIAL soil1
+END
+
+STRATA
+REGION region2
+MATERIAL soil2
+END
+
