@@ -665,12 +665,6 @@ subroutine RealizAssignFlowInitCond(realization)
         call GridVecRestoreArrayF90(grid,field%flow_xx,xx_p, ierr)
         call GridVecRestoreArrayF90(grid,field%iphas_loc,iphase_loc_p,ierr)
         
-        ! update dependent vectors
-        call DiscretizationGlobalToLocal(discretization,field%flow_xx,field%flow_xx_loc,NFLOWDOF)  
-        call VecCopy(field%flow_xx, field%flow_yy, ierr)
-        call DiscretizationLocalToLocal(discretization,field%iphas_loc,field%iphas_loc,ONEDOF)  
-        call DiscretizationLocalToLocal(discretization,field%iphas_loc,field%iphas_old_loc,ONEDOF)
-        
       endif
       
       cur_patch => cur_patch%next
@@ -678,6 +672,12 @@ subroutine RealizAssignFlowInitCond(realization)
     cur_level => cur_level%next
   enddo
    
+  ! update dependent vectors
+  call DiscretizationGlobalToLocal(discretization,field%flow_xx,field%flow_xx_loc,NFLOWDOF)  
+  call VecCopy(field%flow_xx, field%flow_yy, ierr)
+  call DiscretizationLocalToLocal(discretization,field%iphas_loc,field%iphas_loc,ONEDOF)  
+  call DiscretizationLocalToLocal(discretization,field%iphas_loc,field%iphas_old_loc,ONEDOF)
+  
 end subroutine RealizAssignFlowInitCond
 
 ! ************************************************************************** !
@@ -782,10 +782,6 @@ subroutine RealizAssignTransportInitCond(realization)
         enddo
         
         call GridVecRestoreArrayF90(grid,field%tran_xx,xx_p, ierr)
-        
-        ! update dependent vectors
-        call DiscretizationGlobalToLocal(discretization,field%tran_xx,field%tran_xx_loc,NTRANDOF)  
-        call VecCopy(field%tran_xx, field%tran_yy, ierr)
 
       endif
 
@@ -794,6 +790,10 @@ subroutine RealizAssignTransportInitCond(realization)
     cur_level => cur_level%next
   enddo
   
+  ! update dependent vectors
+  call DiscretizationGlobalToLocal(discretization,field%tran_xx,field%tran_xx_loc,NTRANDOF)  
+  call VecCopy(field%tran_xx, field%tran_yy, ierr)
+
 end subroutine RealizAssignTransportInitCond
 
 ! ************************************************************************** !
