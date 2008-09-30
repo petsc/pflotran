@@ -324,12 +324,21 @@ subroutine AMRGridInitialize(amrgrid)
      PetscReal, intent(inout) :: y0
      PetscReal, intent(inout) :: z0
    end subroutine samr_get_origin
+
+   subroutine samr_get_upper_corner(p_hierarchy, x1, y1, z1)
+     PetscFortranAddr, intent(inout) :: p_hierarchy
+     PetscReal, intent(inout) :: x1
+     PetscReal, intent(inout) :: y1
+     PetscReal, intent(inout) :: z1
+   end subroutine samr_get_upper_corner
+
   end interface
 
 #include "include/finclude/petsc.h"
   PetscFortranAddr :: p_application
   PetscInt :: nx, ny, nz
   PetscReal:: x0, y0, z0
+  PetscReal:: x1, y1, z1
 
   integer :: nlevels
   integer :: npatches
@@ -350,6 +359,7 @@ subroutine AMRGridInitialize(amrgrid)
      gridlevel => amrgrid%gridlevel
 
      call samr_get_origin(p_application, x0, y0, z0)
+     call samr_get_upper_corner(p_application, x1, y1, z1)
 
      do ln=0,nlevels-1
         npatches = level_number_patches(p_application, ln )
@@ -363,6 +373,12 @@ subroutine AMRGridInitialize(amrgrid)
               struct_grid=>StructuredGridCreate()
               gridlevel(ln+1)%grids(pn+1)%grid_ptr%structured_grid=>struct_grid
               struct_grid%p_samr_patch=hierarchy_get_patch(p_application, ln, pn)
+              gridlevel(ln+1)%grids(pn+1)%grid_ptr%x_min_global = x0
+              gridlevel(ln+1)%grids(pn+1)%grid_ptr%y_min_global = y0
+              gridlevel(ln+1)%grids(pn+1)%grid_ptr%z_min_global = z0
+              gridlevel(ln+1)%grids(pn+1)%grid_ptr%x_max_global = x1
+              gridlevel(ln+1)%grids(pn+1)%grid_ptr%y_max_global = y1
+              gridlevel(ln+1)%grids(pn+1)%grid_ptr%z_max_global = z1
               call samr_physical_dimensions(p_application, nx,ny,nz)
               struct_grid%nx = nx
               struct_grid%ny = ny

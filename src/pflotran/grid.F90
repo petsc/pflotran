@@ -250,17 +250,6 @@ subroutine GridComputeCoordinates(grid,origin_global,option)
   
   implicit none
 
-  interface
-
-     subroutine samr_mpi_min(x,y,z)
-       PetscScalar, intent(inout) :: x,y,z
-     end subroutine samr_mpi_min 
-
-     subroutine samr_mpi_max(x,y,z)
-       PetscScalar, intent(inout) :: x,y,z
-     end subroutine samr_mpi_max
-  end interface
-
   type(grid_type) :: grid
   PetscReal :: origin_global(3)
   type(option_type) :: option
@@ -284,19 +273,7 @@ subroutine GridComputeCoordinates(grid,origin_global,option)
     case(UNSTRUCTURED_GRID)
   end select
 
-  if((grid%itype==STRUCTURED_GRID).and.(grid%structured_grid%p_samr_patch)) then
-     grid%x_min_global=grid%x_min_local
-     grid%y_min_global=grid%y_min_local
-     grid%z_min_global=grid%z_min_local
-     grid%x_max_global=grid%x_max_local
-     grid%y_max_global=grid%y_max_local
-     grid%z_max_global=grid%z_max_local
-
-     call samr_mpi_min(grid%x_min_global, grid%y_min_global, grid%z_min_global)
-
-     call samr_mpi_max(grid%x_max_global, grid%y_max_global, grid%z_max_global)
-
-  else
+  if((grid%itype==STRUCTURED_GRID).and.(grid%structured_grid%p_samr_patch==0)) then
      ! compute global max/min from the local max/in
      call MPI_Allreduce(grid%x_min_local,grid%x_min_global,ONE_INTEGER, &
           MPI_DOUBLE_PRECISION,MPI_MIN,PETSC_COMM_WORLD,ierr)

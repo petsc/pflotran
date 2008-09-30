@@ -2068,6 +2068,7 @@ subroutine assignInitialConditions(realization)
   use Grid_module
   use Field_module
   use Coupler_module
+  use Option_module
 
   implicit none
 
