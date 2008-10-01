@@ -29,6 +29,9 @@ module Reactive_Transport_Aux_module
     PetscReal, pointer :: mnrl_volfrac(:)
     PetscReal, pointer :: mnrl_area0(:)
     PetscReal, pointer :: mnrl_rate(:)
+    ! activity coefficients
+    PetscReal, pointer :: pri_act_coef(:)
+    PetscReal, pointer :: sec_act_coef(:)
   end type reactive_transport_auxvar_type
   
   type, public :: reactive_transport_type
@@ -115,7 +118,12 @@ subroutine RTAuxVarInit(aux_var,option)
   aux_var%mnrl_area0 = 1.d0 ! Hardwired for now - geh
   allocate(aux_var%mnrl_rate(option%nmnrl))
   aux_var%mnrl_rate = 0.d0
-
+  
+  allocate(aux_var%pri_act_coef(option%ncomp))
+  aux_var%pri_act_coef = 1.d0
+  allocate(aux_var%sec_act_coef(option%ncmplx))
+  aux_var%sec_act_coef = 1.d0
+  
 end subroutine RTAuxVarInit
 
 ! ************************************************************************** !
@@ -144,6 +152,9 @@ subroutine RTAuxVarCopy(aux_var, aux_var2,option)
   aux_var%mnrl_volfrac = aux_var2%mnrl_volfrac
   aux_var%mnrl_area0 = aux_var2%mnrl_area0
   aux_var%mnrl_rate = aux_var2%mnrl_rate
+
+  aux_var%pri_act_coef = aux_var2%pri_act_coef
+  aux_var%sec_act_coef = aux_var2%sec_act_coef
 
 end subroutine RTAuxVarCopy
 
@@ -180,6 +191,10 @@ subroutine RTAuxVarDestroy(aux_var)
   nullify(aux_var%mnrl_area0)
   if (associated(aux_var%mnrl_rate))deallocate(aux_var%mnrl_rate)
   nullify(aux_var%mnrl_rate)
+  if (associated(aux_var%pri_act_coef))deallocate(aux_var%pri_act_coef)
+  nullify(aux_var%pri_act_coef)
+  if (associated(aux_var%sec_act_coef))deallocate(aux_var%sec_act_coef)
+  nullify(aux_var%sec_act_coef)
 
 end subroutine RTAuxVarDestroy
 

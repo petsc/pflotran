@@ -32,6 +32,7 @@ module Option_module
     character(len=MAXWORDLENGTH), pointer :: comp_names(:)
     character(len=MAXWORDLENGTH), pointer :: mnrl_names(:)
     PetscTruth :: use_log_formulation ! flag for solving for the change in the log of the concentration
+    PetscTruth :: use_activities
 
     PetscInt :: iflag
     
@@ -181,6 +182,7 @@ function OptionCreate()
   nullify(option%comp_names)
   nullify(option%mnrl_names)
   option%use_log_formulation = PETSC_FALSE
+  option%use_activities = PETSC_FALSE
 
   option%uniform_velocity = 0.d0
   option%imod = 1

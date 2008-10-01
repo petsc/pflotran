@@ -101,6 +101,7 @@ module Reaction_module
     type(surface_complexation_rxn_type), pointer :: surface_complex_list
     ! compressed arrays for efficient computation
     ! primary aqueous complexes
+    PetscInt :: ncomp
     PetscReal, pointer :: primary_spec_molwt(:)
     PetscReal, pointer :: primary_spec_a0(:)
     PetscReal, pointer :: primary_spec_Z(:)
@@ -108,8 +109,13 @@ module Reaction_module
     PetscInt :: neqcmplx
     PetscInt, pointer :: eqcmplxspecid(:,:)   ! (0:ncomp in rxn)
     PetscReal, pointer :: eqcmplxstoich(:,:)
-    PetscReal, pointer :: eqcmplx_a0(:)  ! DeBye-Huckel constant
+    PetscReal, pointer :: eqcmplx_a0(:)  ! Debye-Huckel constant
+    PetscReal, pointer :: eqcmplx_Z(:)
     PetscReal, pointer :: eqcmplx_K(:)
+    ! Debye-Huckel
+    PetscReal :: debyeA  ! Debye-Huckel A coefficient
+    PetscReal :: debyeB  ! Debye-Huckel B coefficient
+    PetscReal :: debyeBdot  ! Debye-Huckel Bdot coefficient
     ! ionx exchange reactions
     PetscInt, pointer :: eqionx_ncation(:)
     PetscReal, pointer :: eqionx_CEC(:)
@@ -202,6 +208,19 @@ function CarbonateTestProblemCreate(option)
   
   ! minerals
   ! CaCO3(s)
+  reaction%debyeA = 0.5114d0
+  reaction%debyeB = 0.3288d0
+  reaction%debyeBdot = 0.0410d0  
+  
+  reaction%ncomp = option%ncomp
+  allocate(reaction%primary_spec_Z(option%ncomp))
+  reaction%primary_spec_Z(1) = 1.d0
+  reaction%primary_spec_Z(2) = -1.d0
+  reaction%primary_spec_Z(3) = 2.d0
+  allocate(reaction%primary_spec_a0(option%ncomp))
+  reaction%primary_spec_a0(1) = 9.d0
+  reaction%primary_spec_a0(2) = 4.d0
+  reaction%primary_spec_a0(3) = 6.d0
   
   reaction%neqcmplx = 5
   allocate(reaction%eqcmplxspecid(0:option%ncomp,reaction%neqcmplx))
@@ -210,8 +229,14 @@ function CarbonateTestProblemCreate(option)
   reaction%eqcmplxstoich = 0.d0
   allocate(reaction%eqcmplx_a0(reaction%neqcmplx))
   reaction%eqcmplx_a0 = 0.d0
+  allocate(reaction%eqcmplx_Z(reaction%neqcmplx))
+  reaction%eqcmplx_Z = 0.d0
   allocate(reaction%eqcmplx_K(reaction%neqcmplx))
   reaction%eqcmplx_K = 0.d0
+  allocate(reaction%eqcmplx_Z(reaction%neqcmplx))
+  reaction%eqcmplx_Z = 0.d0
+  allocate(reaction%eqcmplx_a0(reaction%neqcmplx))
+  reaction%eqcmplx_a0 = 0.d0
   
   ! CO2(aq)
   irxn = 1
@@ -221,6 +246,8 @@ function CarbonateTestProblemCreate(option)
   reaction%eqcmplxstoich(1,irxn) = 1.d0 ! H+
   reaction%eqcmplxstoich(2,irxn) = 1.d0 ! HCO3-
   reaction%eqcmplx_K(irxn) = -6.3447d0
+  reaction%eqcmplx_Z(irxn) = 0.d0
+  reaction%eqcmplx_a0(irxn) = 3.d0
   
   ! CO3-2
   irxn = 2
@@ -230,6 +257,8 @@ function CarbonateTestProblemCreate(option)
   reaction%eqcmplxstoich(1,irxn) = -1.d0 ! H+
   reaction%eqcmplxstoich(2,irxn) = 1.d0 ! HCO3-
   reaction%eqcmplx_K(irxn) = 10.3288d0
+  reaction%eqcmplx_z(irxn) = -2.d0
+  reaction%eqcmplx_a0(irxn) = 4.5d0
   
   ! CaCO3(aq)
   irxn = 3
@@ -241,8 +270,10 @@ function CarbonateTestProblemCreate(option)
   reaction%eqcmplxstoich(2,irxn) = 1.d0 ! HCO3-
   reaction%eqcmplxstoich(3,irxn) = 1.d0 ! Ca+2
   reaction%eqcmplx_K(irxn) = 7.0017d0
+  reaction%eqcmplx_z(irxn) = 0.d0
+  reaction%eqcmplx_a0(irxn) = 3.d0
 
-  ! CaHCO3-
+  ! CaHCO3+
   irxn = 4
   reaction%eqcmplxspecid(0,irxn) = 2
   reaction%eqcmplxspecid(1,irxn) = 2    ! HCO3-
@@ -250,6 +281,8 @@ function CarbonateTestProblemCreate(option)
   reaction%eqcmplxstoich(1,irxn) = 1.d0 ! HCO3-
   reaction%eqcmplxstoich(2,irxn) = 1.d0 ! Ca+2
   reaction%eqcmplx_K(irxn) = -1.0467d0
+  reaction%eqcmplx_z(irxn) = 1.d0
+  reaction%eqcmplx_a0(irxn) = 4.d0
 
   ! OH-
   irxn = 5
@@ -257,6 +290,8 @@ function CarbonateTestProblemCreate(option)
   reaction%eqcmplxspecid(1,irxn) = 1    ! H+
   reaction%eqcmplxstoich(1,irxn) = -1.d0 ! H+
   reaction%eqcmplx_K(irxn) = 13.9951
+  reaction%eqcmplx_z(irxn) = -1.d0
+  reaction%eqcmplx_a0(irxn) = 3.5d0
   
   reaction%nkinmnrl = 1
   allocate(reaction%kinmnrlspecid(0:option%ncomp,reaction%nkinmnrl))
@@ -310,6 +345,7 @@ function ReactionCreate()
   nullify(reaction%ion_exchange_list)
   nullify(reaction%surface_complex_list)
   
+  reaction%ncomp = 0
   nullify(reaction%primary_spec_molwt)
   nullify(reaction%primary_spec_a0)
   nullify(reaction%primary_spec_Z)
@@ -318,7 +354,12 @@ function ReactionCreate()
   nullify(reaction%eqcmplxspecid)
   nullify(reaction%eqcmplxstoich)
   nullify(reaction%eqcmplx_a0)
+  nullify(reaction%eqcmplx_Z)
   nullify(reaction%eqcmplx_K)
+  
+  reaction%debyeA = 0.d0
+  reaction%debyeB = 0.d0
+  reaction%debyeBdot = 0.d0
   
   nullify(reaction%eqionx_ncation)
   nullify(reaction%eqionx_CEC)
@@ -1020,6 +1061,8 @@ subroutine ReactionDestroy(reaction)
   nullify(reaction%eqcmplxstoich)
   if (associated(reaction%eqcmplx_a0)) deallocate(reaction%eqcmplx_a0)
   nullify(reaction%eqcmplx_a0)
+  if (associated(reaction%eqcmplx_Z)) deallocate(reaction%eqcmplx_Z)
+  nullify(reaction%eqcmplx_Z)
   if (associated(reaction%eqcmplx_K)) deallocate(reaction%eqcmplx_K)
   nullify(reaction%eqcmplx_K)
   
