@@ -163,6 +163,9 @@ private:
     * Variables.
     */
    tbox::Pointer< pdat::CCellVariable<NDIM,double> > d_solution;
+   tbox::Pointer< pdat::CCellVariable<NDIM,double> > d_pflotran_weight;
+
+   int  d_pflotran_weight_id;
 
    double d_current_time;
 

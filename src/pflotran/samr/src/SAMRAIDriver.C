@@ -57,6 +57,7 @@ extern "C"{
 #include "RefinementBoundaryInterpolation.h"
 #include "PflotranApplicationStrategy.h" 
 #include "PflotranApplicationParameters.h" 
+#include "CCellDoubleConstantRefine.h"
 #include "fc_interface.h"
 #include "SAMRAIDriver.h"
 /*#include "pims_local_struct.h"*/
@@ -123,9 +124,15 @@ int main( int argc, char *argv[] )
       initializeAMRHierarchy(input_db,
                              test_object,
                              hierarchy);
+
+      tbox::Pointer<geom::CartesianGridGeometry<NDIM> > grid_geometry = hierarchy->getGridGeometry();
+      
+      pdat::CCellDoubleConstantRefine<NDIM> *ccell_const_refine_op = new pdat::CCellDoubleConstantRefine<NDIM>();
+      grid_geometry->addSpatialRefineOperator(ccell_const_refine_op);
+
       PflotranApplicationParameters *params  =new PflotranApplicationParameters(app_database);
       params->d_hierarchy = hierarchy;
-      
+
       pflotranApplication = new PflotranApplicationStrategy(params);
       
       // create a RefinementBoundaryInterpolation object
