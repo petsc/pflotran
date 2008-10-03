@@ -32,6 +32,8 @@ PetscInt, parameter :: NEG_ONE_INTEGER = -1
 PetscInt, parameter :: X_DIRECTION = 1
 PetscInt, parameter :: Y_DIRECTION = 2
 PetscInt, parameter :: Z_DIRECTION = 3
+PetscInt, parameter :: LOWER = 1
+PetscInt, parameter :: UPPER = 2
 
 ! Classes
 PetscInt, parameter :: NULL_CLASS = 0
@@ -60,6 +62,9 @@ PetscInt, parameter :: REACTIVE_TRANSPORT_MODE = 4
 PetscInt, parameter :: STRUCTURED_GRID = 1
 PetscInt, parameter :: UNSTRUCTURED_GRID = 2
 PetscInt, parameter :: AMR_GRID = 3
+PetscInt, parameter :: CARTESIAN_GRID = 4
+PetscInt, parameter :: CYLINDRICAL_GRID = 5
+PetscInt, parameter :: SPHERICAL_GRID = 6
 
 ! condition types
 PetscInt, parameter :: DIRICHLET_BC = 1

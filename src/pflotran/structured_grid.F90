@@ -8,6 +8,8 @@ module Structured_Grid_module
 
   type, public :: structured_grid_type
 
+    character(len=MAXWORDLENGTH) :: ctype
+    PetscInt :: itype  ! type of grid (e.g. structured, unstructured, etc.)
     PetscInt :: nx, ny, nz    ! Global domain dimensions of the grid.
     PetscInt :: nxy, nmax     ! nx * ny, nx * ny * nz
     PetscInt :: npx, npy, npz ! Processor partition in each direction.
@@ -32,6 +34,7 @@ module Structured_Grid_module
     PetscInt :: ngmax  ! Number of ghosted & non-ghosted nodes in local domain.
 
     PetscReal :: origin(3) ! local origin of non-ghosted grid
+    PetscReal :: bounds(3,3)
 
     ! grid spacing for each direction for global domain
     PetscReal, pointer :: dx_global(:), dy_global(:), dz_global(:)
@@ -81,6 +84,9 @@ function StructuredGridCreate()
   type(structured_grid_type), pointer :: structured_grid
 
   allocate(structured_grid)
+  
+  structured_grid%ctype = ''
+  structured_grid%itype = 0
   structured_grid%nx = 0
   structured_grid%ny = 0
   structured_grid%nz = 0
@@ -148,6 +154,7 @@ function StructuredGridCreate()
   
   
   structured_grid%origin = -1.d20
+  structured_grid%bounds = -1.d20
   
   structured_grid%invert_z_axis = .false.
   
@@ -453,6 +460,42 @@ subroutine StructuredGridComputeSpacing(structured_grid,nG2A,nG2L)
   structured_grid%dzg_local = 0.d0
   
   if (structured_grid%p_samr_patch .eq. 0) then
+    if (.not.associated(structured_grid%dx_global)) then
+      ! indicates that the grid spacings still need to be computed
+      if (structured_grid%bounds(1,1) < -1.d19) then ! bounds have not been initialized
+        print *, 'ERROR: Bounds have not been set for grid and DXYZ does not exist'
+        stop
+      endif
+      allocate(structured_grid%dx_global(structured_grid%nx))
+      allocate(structured_grid%dy_global(structured_grid%ny))
+      allocate(structured_grid%dz_global(structured_grid%nz))
+      
+      select case(structured_grid%itype)
+        case(CARTESIAN_GRID)
+          structured_grid%dx_global = (structured_grid%bounds(X_DIRECTION,UPPER)- &
+                                       structured_grid%bounds(X_DIRECTION,LOWER)) / &
+                                       dble(structured_grid%nx)
+          structured_grid%dy_global = (structured_grid%bounds(Y_DIRECTION,UPPER)- &
+                                       structured_grid%bounds(Y_DIRECTION,LOWER)) / &
+                                       dble(structured_grid%ny)
+          structured_grid%dz_global = (structured_grid%bounds(Z_DIRECTION,UPPER)- &
+                                       structured_grid%bounds(Z_DIRECTION,LOWER)) / &
+                                       dble(structured_grid%nz)
+        case(CYLINDRICAL_GRID)
+          print *, 'CYLINDRICAL grids still need dr to be set up'
+          stop
+          structured_grid%dy = 1.d0
+          structured_grid%dz_global = (structured_grid%bounds(Z_DIRECTION,UPPER)- &
+                                       structured_grid%bounds(Z_DIRECTION,LOWER)) / &
+                                       dble(structured_grid%nz)
+        case(SPHERICAL_GRID)
+          print *, 'CYLINDRICAL grids still need dr to be set up'
+          stop
+          structured_grid%dy = 1.d0
+          structured_grid%dz = 1.d0
+      end select
+      
+    endif
     structured_grid%dxg_local(1:structured_grid%ngx) = &
       structured_grid%dx_global(structured_grid%ngxs+1:structured_grid%ngxe)
     structured_grid%dyg_local(1:structured_grid%ngy) = &
@@ -953,21 +996,30 @@ subroutine StructuredGridComputeVolumes(structured_grid,option,nL2G,volume)
   PetscInt :: nL2G(:)
   Vec :: volume
   
-  PetscReal, parameter :: Pi=3.1415926d0
+  PetscReal, parameter :: Pi=3.141592653590d0
   
   PetscInt :: local_id, ghosted_id
   PetscReal, pointer :: volume_p(:)
   PetscErrorCode :: ierr
   
-!  call VecGetArrayF90(volume,volume_p, ierr)
   call StructuredGridVecGetArrayF90(structured_grid, volume,volume_p, ierr)
 
-  do local_id=1, structured_grid%nlmax
-    ghosted_id = nL2G(local_id)
-    volume_p(local_id) = structured_grid%dx(ghosted_id) * &
-                         structured_grid%dy(ghosted_id) * &
-                         structured_grid%dz(ghosted_id)
-  enddo
+  select case(structured_grid%itype)
+    case(CARTESIAN_GRID)
+      do local_id=1, structured_grid%nlmax
+        ghosted_id = nL2G(local_id)
+        volume_p(local_id) = structured_grid%dx(ghosted_id) * &
+                             structured_grid%dy(ghosted_id) * &
+                             structured_grid%dz(ghosted_id)
+      enddo
+    case(CYLINDRICAL_GRID)
+      print *, 'Volumes for cylindrical grid cells still needs to be set up.'
+      stop
+    case(SPHERICAL_GRID)
+      print *, 'Volumes for spherical grid cells still needs to be set up.'
+      stop
+  end select
+  
   call StructGridVecRestoreArrayF90(structured_grid,volume,volume_p, ierr)
   
   if (option%commsize <= 16) then

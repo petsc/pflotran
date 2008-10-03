@@ -636,6 +636,7 @@ subroutine readInput(simulation,filename)
   use Debug_module
   use Patch_module
   use Reaction_module
+  use Discretization_module
  
   implicit none
   
@@ -739,7 +740,7 @@ subroutine readInput(simulation,filename)
 
 !....................
       case ('GRID')
-        call fiSkipToEND(IUNIT1,option%myrank,card)
+        call DiscretizationRead(realization%discretization,IUNIT1,option)
 
 !....................
       case ('CHEMISTRY')
@@ -1013,6 +1014,7 @@ subroutine readInput(simulation,filename)
 
 !....................
 
+#if 0
       case ('DXYZ')
       
         if (realization%discretization%itype == STRUCTURED_GRID) then  ! look for processor decomposition
@@ -1024,6 +1026,7 @@ subroutine readInput(simulation,filename)
             print *, 'ERROR: Keyword "DXYZ" not supported for unstructured grid'
             stop
         endif
+#endif
 
 !....................
 
