@@ -544,9 +544,11 @@ subroutine RealizAssignInitialConditions(realization)
   implicit none
 
   type(realization_type) :: realization
-
-  call RealizAssignFlowInitCond(realization)
-  call RealizAssignTransportInitCond(realization)
+  
+  if (realization%option%nflowdof > 0) &
+    call RealizAssignFlowInitCond(realization)
+  if (realization%option%ntrandof > 0) &
+    call RealizAssignTransportInitCond(realization)
 
 end subroutine RealizAssignInitialConditions
 
@@ -603,71 +605,67 @@ subroutine RealizAssignFlowInitCond(realization)
 
       grid => cur_patch%grid
 
-      if (option%nflowdof > 0) then
-      
-        select case(option%iflowmode)
-          case(RICHARDS_LITE_MODE)
-          case(RICHARDS_MODE)
-          case(MPH_MODE)
+      select case(option%iflowmode)
+        case(RICHARDS_LITE_MODE)
+        case(RICHARDS_MODE)
+        case(MPH_MODE)
 !            call pflow_mphase_setupini(realization)
-        end select 
+      end select 
 
-        ! assign initial conditions values to domain
-        call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr); CHKERRQ(ierr)
-        call GridVecGetArrayF90(grid,field%iphas_loc,iphase_loc_p,ierr)
-        
-        xx_p = -999.d0
-        
-        initial_condition => cur_patch%initial_conditions%first
-        do
-        
-          if (.not.associated(initial_condition)) exit
-
-          if (.not.associated(initial_condition%connection_set)) then
-            do icell=1,initial_condition%region%num_cells
-              local_id = initial_condition%region%cell_ids(icell)
-              ghosted_id = grid%nL2G(local_id)
-              iend = local_id*option%nflowdof
-              ibegin = iend-option%nflowdof+1
-              if (associated(cur_patch%imat)) then
-                if (cur_patch%imat(ghosted_id) <= 0) then
-                  xx_p(ibegin:iend) = 0.d0
-                  iphase_loc_p(ghosted_id) = 0
-                  cycle
-                endif
-              endif
-              do idof = 1, option%nflowdof
-                xx_p(ibegin+idof-1) = &
-                  initial_condition%flow_condition%transport_concentrations(idof)%ptr%dataset%cur_value(1)
-              enddo
-              iphase_loc_p(ghosted_id)=initial_condition%flow_condition%iphase
-            enddo
-          else
-            do iconn=1,initial_condition%connection_set%num_connections
-              local_id = initial_condition%connection_set%id_dn(iconn)
-              ghosted_id = grid%nL2G(local_id)
-              iend = local_id*option%nflowdof
-              ibegin = iend-option%nflowdof+1
-              if (associated(cur_patch%imat)) then
-                if (cur_patch%imat(ghosted_id) <= 0) then
-                  xx_p(ibegin:iend) = 0.d0
-                  iphase_loc_p(ghosted_id) = 0
-                  cycle
-                endif
-              endif
-              xx_p(ibegin:iend) = &
-                initial_condition%flow_aux_real_var(1:option%nflowdof,iconn)
-              iphase_loc_p(ghosted_id)=initial_condition%flow_aux_int_var(1,iconn)
-            enddo
-          endif
-          initial_condition => initial_condition%next
-        enddo
-        
-        call GridVecRestoreArrayF90(grid,field%flow_xx,xx_p, ierr)
-        call GridVecRestoreArrayF90(grid,field%iphas_loc,iphase_loc_p,ierr)
-        
-      endif
+      ! assign initial conditions values to domain
+      call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr); CHKERRQ(ierr)
+      call GridVecGetArrayF90(grid,field%iphas_loc,iphase_loc_p,ierr)
       
+      xx_p = -999.d0
+      
+      initial_condition => cur_patch%initial_conditions%first
+      do
+      
+        if (.not.associated(initial_condition)) exit
+
+        if (.not.associated(initial_condition%connection_set)) then
+          do icell=1,initial_condition%region%num_cells
+            local_id = initial_condition%region%cell_ids(icell)
+            ghosted_id = grid%nL2G(local_id)
+            iend = local_id*option%nflowdof
+            ibegin = iend-option%nflowdof+1
+            if (associated(cur_patch%imat)) then
+              if (cur_patch%imat(ghosted_id) <= 0) then
+                xx_p(ibegin:iend) = 0.d0
+                iphase_loc_p(ghosted_id) = 0
+                cycle
+              endif
+            endif
+            do idof = 1, option%nflowdof
+              xx_p(ibegin+idof-1) = &
+                initial_condition%flow_condition%transport_concentrations(idof)%ptr%dataset%cur_value(1)
+            enddo
+            iphase_loc_p(ghosted_id)=initial_condition%flow_condition%iphase
+          enddo
+        else
+          do iconn=1,initial_condition%connection_set%num_connections
+            local_id = initial_condition%connection_set%id_dn(iconn)
+            ghosted_id = grid%nL2G(local_id)
+            iend = local_id*option%nflowdof
+            ibegin = iend-option%nflowdof+1
+            if (associated(cur_patch%imat)) then
+              if (cur_patch%imat(ghosted_id) <= 0) then
+                xx_p(ibegin:iend) = 0.d0
+                iphase_loc_p(ghosted_id) = 0
+                cycle
+              endif
+            endif
+            xx_p(ibegin:iend) = &
+              initial_condition%flow_aux_real_var(1:option%nflowdof,iconn)
+            iphase_loc_p(ghosted_id)=initial_condition%flow_aux_int_var(1,iconn)
+          enddo
+        endif
+        initial_condition => initial_condition%next
+      enddo
+      
+      call GridVecRestoreArrayF90(grid,field%flow_xx,xx_p, ierr)
+      call GridVecRestoreArrayF90(grid,field%iphas_loc,iphase_loc_p,ierr)
+        
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -734,57 +732,53 @@ subroutine RealizAssignTransportInitCond(realization)
 
       grid => cur_patch%grid
 
-      if (option%ntrandof > 0) then
+      ! assign initial conditions values to domain
+      call GridVecGetArrayF90(grid, field%tran_xx,xx_p, ierr); CHKERRQ(ierr)
+      
+      xx_p = -999.d0
+      
+      initial_condition => cur_patch%initial_conditions%first
+      do
+      
+        if (.not.associated(initial_condition)) exit
 
-        ! assign initial conditions values to domain
-        call GridVecGetArrayF90(grid, field%tran_xx,xx_p, ierr); CHKERRQ(ierr)
-        
-        xx_p = -999.d0
-        
-        initial_condition => cur_patch%initial_conditions%first
-        do
-        
-          if (.not.associated(initial_condition)) exit
-
-          if (.not.associated(initial_condition%connection_set)) then
-            do icell=1,initial_condition%region%num_cells
-              local_id = initial_condition%region%cell_ids(icell)
-              ghosted_id = grid%nL2G(local_id)
-              iend = local_id*option%ntrandof
-              ibegin = iend-option%ntrandof+1
-              if (associated(cur_patch%imat)) then
-                if (cur_patch%imat(ghosted_id) <= 0) then
-                  xx_p(ibegin:iend) = 1.d-200
-                  cycle
-                endif
+        if (.not.associated(initial_condition%connection_set)) then
+          do icell=1,initial_condition%region%num_cells
+            local_id = initial_condition%region%cell_ids(icell)
+            ghosted_id = grid%nL2G(local_id)
+            iend = local_id*option%ntrandof
+            ibegin = iend-option%ntrandof+1
+            if (associated(cur_patch%imat)) then
+              if (cur_patch%imat(ghosted_id) <= 0) then
+                xx_p(ibegin:iend) = 1.d-200
+                cycle
               endif
-              do idof = 1, option%ntrandof ! primary aqueous concentrations
-                xx_p(ibegin+idof-1) = &
-                  initial_condition%tran_condition%transport_concentrations(idof)%ptr%dataset%cur_value(1)
-              enddo
+            endif
+            do idof = 1, option%ntrandof ! primary aqueous concentrations
+              xx_p(ibegin+idof-1) = &
+                initial_condition%tran_condition%transport_concentrations(idof)%ptr%dataset%cur_value(1)
             enddo
-          else
-            do iconn=1,initial_condition%connection_set%num_connections
-              local_id = initial_condition%connection_set%id_dn(iconn)
-              ghosted_id = grid%nL2G(local_id)
-              iend = local_id*option%ntrandof
-              ibegin = iend-option%ntrandof+1
-              if (associated(cur_patch%imat)) then
-                if (cur_patch%imat(ghosted_id) <= 0) then
-                  xx_p(ibegin:iend) = 1.d-200
-                  cycle
-                endif
+          enddo
+        else
+          do iconn=1,initial_condition%connection_set%num_connections
+            local_id = initial_condition%connection_set%id_dn(iconn)
+            ghosted_id = grid%nL2G(local_id)
+            iend = local_id*option%ntrandof
+            ibegin = iend-option%ntrandof+1
+            if (associated(cur_patch%imat)) then
+              if (cur_patch%imat(ghosted_id) <= 0) then
+                xx_p(ibegin:iend) = 1.d-200
+                cycle
               endif
-              xx_p(ibegin:iend) = &
-                initial_condition%tran_aux_real_var(1:option%ntrandof,iconn)
-            enddo
-          endif
-          initial_condition => initial_condition%next
-        enddo
-        
-        call GridVecRestoreArrayF90(grid,field%tran_xx,xx_p, ierr)
-
-      endif
+            endif
+            xx_p(ibegin:iend) = &
+              initial_condition%tran_aux_real_var(1:option%ntrandof,iconn)
+          enddo
+        endif
+        initial_condition => initial_condition%next
+      enddo
+      
+      call GridVecRestoreArrayF90(grid,field%tran_xx,xx_p, ierr)
 
       cur_patch => cur_patch%next
     enddo
