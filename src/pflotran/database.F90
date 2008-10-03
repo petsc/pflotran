@@ -407,6 +407,7 @@ subroutine BasisInit(reaction,option)
 
   use Option_module
   use Reaction_module
+  use Fileio_module
 
   implicit none
   
@@ -421,31 +422,210 @@ subroutine BasisInit(reaction,option)
   character(len=MAXNAMELENGTH), allocatable :: old_basis_names(:)
   character(len=MAXNAMELENGTH), allocatable :: new_basis_names(:)
   
-  PetscInt :: icount
-
+  PetscInt :: ispec, itemp
+  PetscInt :: icount_old, icount_new
+  PetscInt :: i_old, i_new
+  
+  PetscTruth :: compute_new_basis
+  PetscTruth :: found
+  
   reaction%ncomp = GetPrimarySpeciesCount(reaction)
   reaction%neqcmplx = GetSecondarySpeciesCount(reaction)
 
   allocate(old_basis_names(reaction%ncomp+reaction%neqcmplx))
   allocate(new_basis_names(reaction%ncomp))
   
-  icount = 1
+  call BasisPrint(reaction,'Initial Basis',option)
+  
+  icount_old = 1
+  icount_new = 1
   cur_aq_spec => reaction%primary_species_list
   do
     if (.not.associated(cur_aq_spec)) exit
-    old_basis_names(icount) = cur_aq_spec%name
-    new_basis_names(icount) = cur_aq_spec%name
-    icount = icount + 1
+    icount_new = icount_new + 1
+    new_basis_names(icount_new) = cur_aq_spec%name
+    if (.not.associated(cur_aq_spec%eqrxn)) then
+      icount_old = icount_old + 1
+      old_basis_names(icount_old) = cur_aq_spec%name
+    endif
     cur_aq_spec => cur_aq_spec%next
   enddo
   cur_aq_spec => reaction%secondary_species_list
   do
     if (.not.associated(cur_aq_spec)) exit
-    old_basis_names(icount) = cur_aq_spec%name
-    icount = icount + 1
+    if (.not.associated(cur_aq_spec%eqrxn)) then
+      icount_old = icount_old + 1
+      old_basis_names(icount_old) = cur_aq_spec%name
+    endif
     cur_aq_spec => cur_aq_spec%next
   enddo
+  
+  ! check if basis needs to be swapped
+  compute_new_basis = PETSC_FALSE
+  do i_old = 1, icount_old
+    found = PETSC_FALSE
+    do i_new = 1, icount_new
+      if (fiStringCompare(old_basis_names(i_old), &
+                          new_basis_names(i_new),MAXNAMELENGTH)) then
+        found = PETSC_TRUE
+        exit
+      endif
+    enddo
+    if (.not.found) then
+      compute_new_basis = PETSC_TRUE
+      exit
+    endif
+  enddo
+  
+  ! check for seconday aqueous and gas species in reactions and swap them
+  ! out (e.g. HS- is a secondary aqueous complex in the database, but found 
+  ! in many secondary aqueous and mineral reactions)
+  
 
+  call BasisPrint(reaction,'Final Basis',option)
+  
 end subroutine BasisInit
+
+! ************************************************************************** !
+!
+! BasisPrint: Prints the basis
+! author: Glenn Hammond
+! date: 09/01/08
+!
+! ************************************************************************** !
+subroutine BasisPrint(reaction,title,option)
+
+  use Option_module
+  use Reaction_module
+
+  implicit none
+  
+  type(reaction_type) :: reaction
+  character(len=*) :: title
+  type(option_type) :: option
+  
+  type(aq_species_type), pointer :: cur_aq_spec
+  type(gas_species_type), pointer :: cur_gas_spec
+  type(mineral_type), pointer :: cur_mineral
+  type(surface_complexation_rxn_type), pointer :: cur_surfcplx
+
+  PetscInt :: ispec, itemp
+
+  if (option%myrank == 0) then
+    write(IUNIT2,*) trim(title)
+    write(IUNIT2,*)
+    write(IUNIT2,*)
+    write(IUNIT2,*)
+
+    write(IUNIT2,*) 'Primary Components'
+    cur_aq_spec => reaction%primary_species_list
+    do
+      if (.not.associated(cur_aq_spec)) exit
+      write(IUNIT2,*) cur_aq_spec%name
+      write(IUNIT2,*) '  Charge: ', cur_aq_spec%Z
+      write(IUNIT2,*) '  Molar Weight: ', cur_aq_spec%molar_weight
+      write(IUNIT2,*) '  Debye-Huckel a0: ', cur_aq_spec%name
+      if (associated(cur_aq_spec%eqrxn)) then
+        write(IUNIT2,*) '  Equilibrium Aqueous Reaction: '
+        write(IUNIT2,*) '    ', -1.d0, cur_aq_spec%name
+        do ispec = 1, cur_aq_spec%eqrxn%nspec
+          write(IUNIT2,*) '    ', cur_aq_spec%eqrxn%stoich(ispec), &
+                          cur_aq_spec%eqrxn%spec_name(ispec)
+        enddo
+        write(IUNIT2,*) '    logK: ', (cur_aq_spec%eqrxn%logK(itemp),itemp=1, &
+                                       reaction%num_dbase_temperatures)
+      endif
+      write(IUNIT2,*)
+      cur_aq_spec => cur_aq_spec%next
+    enddo
+    
+    write(IUNIT2,*)
+    write(IUNIT2,*) 'Secondary Components'
+    cur_aq_spec => reaction%secondary_species_list
+    do
+      if (.not.associated(cur_aq_spec)) exit
+      write(IUNIT2,*) cur_aq_spec%name
+      write(IUNIT2,*) '  Charge: ', cur_aq_spec%Z
+      write(IUNIT2,*) '  Molar Weight: ', cur_aq_spec%molar_weight
+      write(IUNIT2,*) '  Debye-Huckel a0: ', cur_aq_spec%name
+      if (associated(cur_aq_spec%eqrxn)) then
+        write(IUNIT2,*) '  Equilibrium Aqueous Reaction: '
+        write(IUNIT2,*) '    ', -1.d0, cur_aq_spec%name
+        do ispec = 1, cur_aq_spec%eqrxn%nspec
+          write(IUNIT2,*) '    ', cur_aq_spec%eqrxn%stoich(ispec), &
+                          cur_aq_spec%eqrxn%spec_name(ispec)
+        enddo
+        write(IUNIT2,*) '    logK: ', (cur_aq_spec%eqrxn%logK(itemp),itemp=1, &
+                                       reaction%num_dbase_temperatures)
+      endif
+      write(IUNIT2,*)
+      cur_aq_spec => cur_aq_spec%next
+    enddo
+    
+    write(IUNIT2,*)
+    write(IUNIT2,*) 'Gas Components'
+    cur_gas_spec => reaction%gas_species_list
+    do
+      if (.not.associated(cur_gas_spec)) exit
+      write(IUNIT2,*) cur_gas_spec%name
+      write(IUNIT2,*) '  Molar Weight: ', cur_gas_spec%molar_weight
+      if (associated(cur_gas_spec%eqrxn)) then
+        write(IUNIT2,*) '  Gas Reaction: '
+        write(IUNIT2,*) '    ', -1.d0, cur_gas_spec%name
+        do ispec = 1, cur_gas_spec%eqrxn%nspec
+          write(IUNIT2,*) '    ', cur_gas_spec%eqrxn%stoich(ispec), &
+                          cur_gas_spec%eqrxn%spec_name(ispec)
+        enddo
+        write(IUNIT2,*) '    logK: ', (cur_gas_spec%eqrxn%logK(itemp),itemp=1, &
+                                       reaction%num_dbase_temperatures)
+      endif
+      write(IUNIT2,*)
+      cur_gas_spec => cur_gas_spec%next
+    enddo
+    
+    write(IUNIT2,*)
+    write(IUNIT2,*) 'Minerals'
+    cur_mineral => reaction%mineral_list
+    do
+      if (.not.associated(cur_mineral)) exit
+      write(IUNIT2,*) cur_mineral%name
+      write(IUNIT2,*) '  Molar Weight: ', cur_mineral%molar_weight
+      write(IUNIT2,*) '  Molar Volume: ', cur_mineral%molar_volume
+      if (associated(cur_mineral%tstrxn)) then
+        write(IUNIT2,*) '  Mineral Reaction: '
+        write(IUNIT2,*) '    ', -1.d0, cur_mineral%name
+        do ispec = 1, cur_mineral%tstrxn%nspec
+          write(IUNIT2,*) '    ', cur_mineral%tstrxn%stoich(ispec), &
+                          cur_mineral%tstrxn%spec_name(ispec)
+        enddo
+        write(IUNIT2,*) '    logK: ', (cur_mineral%tstrxn%logK(itemp),itemp=1, &
+                                       reaction%num_dbase_temperatures)
+      endif
+      write(IUNIT2,*)
+      cur_mineral => cur_mineral%next
+    enddo
+    
+    write(IUNIT2,*)
+    write(IUNIT2,*) 'Surface Complexes'
+    cur_surfcplx => reaction%surface_complex_list
+    do
+      if (.not.associated(cur_surfcplx)) exit
+      write(IUNIT2,*) cur_surfcplx%name
+      write(IUNIT2,*) '  Charge: ', cur_surfcplx%Z
+      write(IUNIT2,*) '  Surface Complex Reaction: '
+      write(IUNIT2,*) '    ', -1.d0, cur_surfcplx%name
+      do ispec = 1, cur_surfcplx%nspec
+        write(IUNIT2,*) '    ', cur_surfcplx%stoich(ispec), &
+                        cur_surfcplx%spec_name(ispec)
+      enddo
+      write(IUNIT2,*) '    logK: ', (cur_surfcplx%logK(itemp),itemp=1, &
+                                     reaction%num_dbase_temperatures)
+      write(IUNIT2,*)
+      cur_surfcplx => cur_surfcplx%next
+    enddo
+    
+  endif
+
+end subroutine BasisPrint
 
 end module Database_module
