@@ -8,6 +8,8 @@ module Structured_Grid_module
 
   type, public :: structured_grid_type
 
+    character(len=MAXWORDLENGTH) :: ctype
+    PetscInt :: itype  ! type of grid (e.g. structured, unstructured, etc.)
     PetscInt :: nx, ny, nz    ! Global domain dimensions of the grid.
     PetscInt :: nxy, nmax     ! nx * ny, nx * ny * nz
     PetscInt :: npx, npy, npz ! Processor partition in each direction.
@@ -81,6 +83,9 @@ function StructuredGridCreate()
   type(structured_grid_type), pointer :: structured_grid
 
   allocate(structured_grid)
+  
+  structured_grid%ctype = ''
+  structured_grid%itype = 0
   structured_grid%nx = 0
   structured_grid%ny = 0
   structured_grid%nz = 0
@@ -953,7 +958,7 @@ subroutine StructuredGridComputeVolumes(structured_grid,option,nL2G,volume)
   PetscInt :: nL2G(:)
   Vec :: volume
   
-  PetscReal, parameter :: Pi=3.1415926d0
+  PetscReal, parameter :: Pi=3.141592653590d0
   
   PetscInt :: local_id, ghosted_id
   PetscReal, pointer :: volume_p(:)
@@ -962,12 +967,19 @@ subroutine StructuredGridComputeVolumes(structured_grid,option,nL2G,volume)
 !  call VecGetArrayF90(volume,volume_p, ierr)
   call StructuredGridVecGetArrayF90(structured_grid, volume,volume_p, ierr)
 
-  do local_id=1, structured_grid%nlmax
-    ghosted_id = nL2G(local_id)
-    volume_p(local_id) = structured_grid%dx(ghosted_id) * &
-                         structured_grid%dy(ghosted_id) * &
-                         structured_grid%dz(ghosted_id)
-  enddo
+! select case(trim(structured_grid_itype))
+
+!   case (structured_grid_type = CARTESIAN_GRID)
+    
+      do local_id=1, structured_grid%nlmax
+        ghosted_id = nL2G(local_id)
+        volume_p(local_id) = structured_grid%dx(ghosted_id) * &
+                             structured_grid%dy(ghosted_id) * &
+                             structured_grid%dz(ghosted_id)
+      enddo
+    
+! end select
+  
   call StructGridVecRestoreArrayF90(structured_grid,volume,volume_p, ierr)
   
   if (option%commsize <= 16) then

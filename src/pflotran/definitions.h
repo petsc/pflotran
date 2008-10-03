@@ -60,6 +60,9 @@ PetscInt, parameter :: REACTIVE_TRANSPORT_MODE = 4
 PetscInt, parameter :: STRUCTURED_GRID = 1
 PetscInt, parameter :: UNSTRUCTURED_GRID = 2
 PetscInt, parameter :: AMR_GRID = 3
+PetscInt, parameter :: CARTESIAN_GRID = 4
+PetscInt, parameter :: CYLINDRICAL_GRID = 5
+PetscInt, parameter :: SPHERICAL_GRID = 6
 
 ! condition types
 PetscInt, parameter :: DIRICHLET_BC = 1

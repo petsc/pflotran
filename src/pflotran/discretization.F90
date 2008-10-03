@@ -112,6 +112,8 @@ subroutine DiscretizationRead(discretization,fid,option)
   type(grid_type), pointer :: grid
   type(structured_grid_type), pointer :: str_grid
   type(amrgrid_type), pointer :: amrgrid
+  character(len=MAXWORDLENGTH) :: structured_grid_ctype
+  PetscInt :: structured_grid_itype
   PetscInt :: length
   PetscInt :: nx, ny, nz
   PetscErrorCode :: ierr
@@ -125,7 +127,7 @@ subroutine DiscretizationRead(discretization,fid,option)
 
 ! we initialize the word to blanks to avoid error reported by valgrind
   do i=1,MAXWORDLENGTH
-     word(i:i) = ' '
+    word(i:i) = ' '
   enddo
 
   do
@@ -147,6 +149,21 @@ subroutine DiscretizationRead(discretization,fid,option)
         select case(trim(discretization%ctype))
           case('structured')
             discretization%itype = STRUCTURED_GRID
+            call fiReadWord(string,structured_grid_ctype,.true.,ierr)
+            call fiDefaultMsg(option%myrank,'structured_grid_type',ierr)   
+            length = len_trim(structured_grid_ctype)
+            call fiCharsToLower(structured_grid_ctype,length)
+            select case(trim(structured_grid_ctype))
+              case('cartesian')
+                structured_grid_itype = CARTESIAN_GRID
+              case('cylindrical')
+                structured_grid_itype = CYLINDRICAL_GRID
+              case('spherical')
+                structured_grid_itype = SPHERICAL_GRID
+              case default
+                structured_grid_itype = CARTESIAN_GRID
+                structured_grid_ctype = 'cartesian'
+            end select
           case('unstructured')
             discretization%itype = UNSTRUCTURED_GRID
           case('amr')
@@ -189,6 +206,8 @@ subroutine DiscretizationRead(discretization,fid,option)
           str_grid%nmax = str_grid%nxy*str_grid%nz
           grid%structured_grid => str_grid
           grid%nmax = str_grid%nmax
+          grid%structured_grid%itype = structured_grid_itype
+          grid%structured_grid%ctype = structured_grid_ctype
       end select
       discretization%grid => grid
       grid%itype = discretization%itype
