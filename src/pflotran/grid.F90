@@ -437,13 +437,17 @@ subroutine GridLocalizeRegions(grid,region_list,option)
                 endif
                 call MPI_Allreduce(region%num_cells,count,ONE_INTEGER,MPI_INTEGER,MPI_SUM, &
                                    PETSC_COMM_WORLD,ierr)   
-                if (count /= 1) then
-                  write(string,*) 'Region: (coord)', &
-                                  region%coordinates(ONE_INTEGER)%x, &
-                                  region%coordinates(ONE_INTEGER)%y, &
-                                  region%coordinates(ONE_INTEGER)%z, &
-                                  ' not found in global domain.', count
-                  call printErrMsg(option,string)
+
+! the next test as designed will only work on a uniform grid
+                if(grid%structured_grid%p_samr_patch==0) then
+                   if (count /= 1) then
+                      write(string,*) 'Region: (coord)', &
+                           region%coordinates(ONE_INTEGER)%x, &
+                           region%coordinates(ONE_INTEGER)%y, &
+                           region%coordinates(ONE_INTEGER)%z, &
+                           ' not found in global domain.', count
+                      call printErrMsg(option,string)
+                   endif
                 endif
             end select
           endif

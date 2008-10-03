@@ -58,7 +58,7 @@ PflotranApplicationStrategy::PflotranApplicationStrategy(PflotranApplicationPara
 
    hier::VariableDatabase<NDIM>* variable_db = hier::VariableDatabase<NDIM>::getDatabase();
    
-   if(!variable_db->checkVariableExists("solution"))
+   if(!variable_db->checkVariableExists("pflotranSolution"))
    {
       d_solution                                = new pdat::CCellVariable<NDIM,double>("pflotranSolution", d_number_solution_components);
    }
@@ -67,12 +67,35 @@ PflotranApplicationStrategy::PflotranApplicationStrategy(PflotranApplicationPara
       d_solution = variable_db->getVariable("pflotranSolution");
    }
 
+   if(!variable_db->checkVariableExists("pflotranWeight"))
+   {
+      d_pflotran_weight = new pdat::CCellVariable<NDIM,double>("pflotranWeight", d_number_solution_components);
+   }
+   else
+   {
+      d_pflotran_weight = variable_db->getVariable("pflotranWeight");
+   }
+
+   const SAMRAI::tbox::Pointer< SAMRAI::hier::VariableContext > pflotran_cxt = variable_db->getContext("PFLOTRAN");
+
+   d_pflotran_weight_id = variable_db->registerVariableAndContext(d_pflotran_weight,
+                                                                  pflotran_cxt,
+                                                                  hier::IntVector<NDIM>(0));
+
+   for(int ln=0; ln<d_hierarchy->getNumberOfLevels(); ln++)
+   {
+      SAMRAI::tbox::Pointer<SAMRAI::hier::PatchLevel<NDIM> > level = d_hierarchy->getPatchLevel(ln);
+      level->allocatePatchData(d_pflotran_weight_id);
+   }
+   
+   AMRUtilities::setVectorWeights(d_hierarchy, d_pflotran_weight_id);
+
    d_application_ctx = variable_db->getContext(d_object_name);
 
-#if 0
    d_soln_refine_op =  d_grid_geometry->lookupRefineOperator(d_solution,
-                                                             "CONSTANT_REFINE");
+                                                             "CCELL_CONSTANT_REFINE");
 
+#if 0
    d_soln_coarsen_op = d_grid_geometry->lookupCoarsenOperator(d_solution,
                                                               "CONSERVATIVE_COARSEN");
 #endif
@@ -540,7 +563,7 @@ PflotranApplicationStrategy::createVector(int &dof, bool &use_ghost, Vec *vec)
 
    samrai_vec->addComponent(pflotran_var,
                             pflotran_var_id,
-                            -1,
+                            d_pflotran_weight_id,
                             d_math_op);
 
    *vec = SAMRAI::solv::PETSc_SAMRAIVectorReal<NDIM,double>::createPETScVector(samrai_vec, PETSC_COMM_WORLD);
