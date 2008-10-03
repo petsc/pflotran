@@ -10,6 +10,7 @@ module Realization_module
   use Waypoint_module
   
   use Reaction_module
+  use Database_module
   
   use Level_module
   use Patch_module

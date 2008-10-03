@@ -607,7 +607,8 @@ subroutine StructGridGetIJKFromCoordinate(structured_grid,x,y,z,i,j,k)
   type(structured_grid_type) :: structured_grid
   type(option_type) :: option
   PetscInt :: i, j, k
-  PetscInt :: ii, jj, kk
+  PetscInt :: i_local, j_local, k_local
+  PetscInt :: i_ghosted, j_ghosted, k_ghosted
   PetscReal :: x, y, z
   
   PetscReal :: x_lower_face, y_lower_face, z_lower_face
@@ -617,31 +618,37 @@ subroutine StructGridGetIJKFromCoordinate(structured_grid,x,y,z,i,j,k)
   k = -1
 
   x_lower_face = structured_grid%origin(X_DIRECTION)
-  do ii=structured_grid%istart,structured_grid%iend
-    if (x >= x_lower_face .and. &
-        x <= x_lower_face+structured_grid%dxg_local(ii+1)) then
-      i = ii+1 ! since ii is zero-based
+  i_local = 1
+  do i_ghosted=structured_grid%istart,structured_grid%iend
+    if (x >= x_lower_face .and. &                   ! since i_ghosted is zero-based
+        x <= x_lower_face+structured_grid%dxg_local(i_ghosted+1)) then
+      i = i_local 
       exit
     endif
-    x_lower_face = x_lower_face + structured_grid%dxg_local(ii+1)
+    i_local = i_local + 1
+    x_lower_face = x_lower_face + structured_grid%dxg_local(i_ghosted+1)
   enddo
   y_lower_face = structured_grid%origin(Y_DIRECTION)
-  do jj=structured_grid%jstart,structured_grid%jend
+  j_local = 1
+  do j_ghosted=structured_grid%jstart,structured_grid%jend
     if (y >= y_lower_face .and. &
-        y <= y_lower_face+structured_grid%dyg_local(jj+1)) then
-      j = jj+1
+        y <= y_lower_face+structured_grid%dyg_local(j_ghosted+1)) then
+      j = j_local
       exit
     endif
-    y_lower_face = y_lower_face + structured_grid%dyg_local(jj+1)
+    j_local = j_local + 1
+    y_lower_face = y_lower_face + structured_grid%dyg_local(j_ghosted+1)
   enddo
   z_lower_face = structured_grid%origin(Z_DIRECTION)
-  do kk=structured_grid%kstart,structured_grid%kend
+  k_local = 1
+  do k_ghosted=structured_grid%kstart,structured_grid%kend
     if (z >= z_lower_face .and. &
-        z <= z_lower_face+structured_grid%dzg_local(kk+1)) then
-      k = kk+1
+        z <= z_lower_face+structured_grid%dzg_local(k_ghosted+1)) then
+      k = k_local
       exit
     endif
-    z_lower_face = z_lower_face + structured_grid%dzg_local(kk+1)
+    k_local = k_local + 1
+    z_lower_face = z_lower_face + structured_grid%dzg_local(k_ghosted+1)
   enddo
     
 end subroutine StructGridGetIJKFromCoordinate

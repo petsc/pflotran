@@ -44,6 +44,7 @@ subroutine Init(simulation,filename)
   use Patch_module
   use Mass_Balance_module
   use Logging_module  
+  use Database_module
   
   use MPHASE_module
   use Richards_Lite_module
@@ -127,6 +128,12 @@ subroutine Init(simulation,filename)
 
   ! read in the remainder of the input file
   call readInput(simulation,filename)
+  
+  ! read reaction database
+  if (associated(realization%reaction) .and. &
+      len(realization%reaction%database_filename) > 1) then
+    call DatabaseRead(realization%reaction,option)
+  endif
 
   ! create grid and allocate vectors
   call RealizationCreateDiscretization(realization)
@@ -747,7 +754,7 @@ subroutine readInput(simulation,filename)
                  'MINERALS')
               call fiSkipToEND(IUNIT1,option%myrank,card)
             case('RUN_CARBONATE')
-              realization%reaction => CarbonateTestProblemCreate(option)
+              call CarbonateTestProblemCreate(realization%reaction,option)
           end select
           if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
               fiStringCompare(string,'END',THREE_INTEGER)) exit

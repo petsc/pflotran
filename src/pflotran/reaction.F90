@@ -7,16 +7,18 @@ module Reaction_module
 #include "definitions.h"
   
   type, public :: aq_species_type
-    character(len=MAXNAMELENGTH) :: spec_name
+    PetscInt :: id
+    character(len=MAXNAMELENGTH) :: name
     PetscReal :: a0
     PetscReal :: molar_weight
-    PetscReal :: valence
+    PetscReal :: Z
     type(equilibrium_rxn_type), pointer :: eqrxn
     type(aq_species_type), pointer :: next
   end type aq_species_type
 
   type, public :: gas_species_type
-    character(len=MAXNAMELENGTH) :: spec_name
+    PetscInt :: id
+    character(len=MAXNAMELENGTH) :: name
     PetscReal :: molar_volume
     PetscReal :: molar_weight
     type(equilibrium_rxn_type), pointer :: eqrxn
@@ -28,7 +30,7 @@ module Reaction_module
     character(len=MAXNAMELENGTH), pointer :: spec_name(:)
     PetscReal, pointer :: stoich(:)
     PetscInt, pointer :: spec_ids(:)
-    PetscReal, pointer :: logK
+    PetscReal, pointer :: logK(:)
   end type equilibrium_rxn_type
 
   type, public :: kinetic_rxn_type
@@ -36,13 +38,14 @@ module Reaction_module
     character(len=MAXNAMELENGTH), pointer :: spec_name(:)
     PetscReal, pointer :: stoich(:)
     PetscInt, pointer :: spec_ids(:)
-    PetscReal :: logK
+    PetscReal, pointer :: logK(:)
     PetscReal :: rate_forward
     PetscReal :: rate_reverse
   end type kinetic_rxn_type
 
   type, public :: mineral_type
-    character(len=MAXNAMELENGTH) :: mnrl_name
+    PetscInt :: id
+    character(len=MAXNAMELENGTH) :: name
     PetscReal :: molar_volume
     PetscReal :: molar_weight
     type(transition_state_rxn_type), pointer :: tstrxn
@@ -54,6 +57,7 @@ module Reaction_module
     character(len=MAXNAMELENGTH), pointer :: spec_name(:)
     PetscInt, pointer :: spec_ids(:)
     PetscReal, pointer :: stoich(:)
+    PetscReal, pointer :: logK(:)
     PetscInt :: nspec_primary_prefactor
     character(len=MAXNAMELENGTH), pointer :: spec_name_primary_prefactor(:)
     PetscInt, pointer :: spec_ids_primary_prefactor(:)
@@ -64,7 +68,6 @@ module Reaction_module
     PetscReal, pointer :: stoich_secondary_prefactor(:)
     PetscReal :: affinity_factor_sigma
     PetscReal :: affinity_factor_beta
-    PetscReal :: logK
     PetscReal :: rate
     PetscReal :: area0
   end type transition_state_rxn_type
@@ -81,18 +84,22 @@ module Reaction_module
   end type ion_exchange_rxn_type
 
   type, public :: surface_complexation_rxn_type
-    character(len=MAXNAMELENGTH) :: surfcmplx_name
-    PetscInt :: ncomp
+    PetscInt :: id
+    character(len=MAXNAMELENGTH) :: name
+    PetscInt :: nspec
     character(len=MAXNAMELENGTH), pointer :: spec_name(:)
     PetscInt, pointer :: spec_ids(:)
     PetscReal, pointer :: stoich(:)
     PetscReal, pointer :: free_site_stoich
-    PetscReal :: logK
-    PetscReal :: valence
+    PetscReal, pointer :: logK(:)
+    PetscReal :: Z
     type (surface_complexation_rxn_type), pointer :: next
   end type surface_complexation_rxn_type
   
   type, public :: reaction_type
+    character(len=MAXNAMELENGTH) :: database_filename
+    PetscInt :: num_dbase_temperatures
+    PetscReal, pointer :: dbase_temperatures(:)
     type(aq_species_type), pointer :: primary_species_list
     type(aq_species_type), pointer :: secondary_species_list
     type(gas_species_type), pointer :: gas_species_list
@@ -171,7 +178,10 @@ module Reaction_module
             GetSecondarySpeciesNames, &
             GetMineralCount, &
             GetMineralNames, &
-            CarbonateTestProblemCreate
+            CarbonateTestProblemCreate, &
+            EquilibriumRxnCreate, &
+            TransitionStateTheoryRxnCreate, &
+            SurfaceComplexationRxnCreate
 
 contains
 
@@ -183,18 +193,14 @@ contains
 ! date: 08/28/08
 !
 ! ************************************************************************** !
-function CarbonateTestProblemCreate(option)
+subroutine CarbonateTestProblemCreate(reaction,option)
 
   use Option_module
   
-  type(reaction_type), pointer :: CarbonateTestProblemCreate
+  type(reaction_type), pointer :: reaction
   type(option_type) :: option
 
-  type(reaction_type), pointer :: reaction
   PetscInt :: icomp, irxn
-  
-  reaction => ReactionCreate()
-
   
   ! Assumes primary components
   ! 1 H+
@@ -315,9 +321,7 @@ function CarbonateTestProblemCreate(option)
   reaction%mnrl_molar_vol(irxn) = 36.9340d0/1.d6  ! based on 36.934 cm^3/mol
   reaction%kinmnrl_num_prefactors(irxn) = 0
   
-  CarbonateTestProblemCreate => reaction
-     
-end function CarbonateTestProblemCreate
+end subroutine CarbonateTestProblemCreate
 
 ! ************************************************************************** !
 !
@@ -337,6 +341,10 @@ function ReactionCreate()
   type(reaction_type), pointer :: reaction
 
   allocate(reaction)  
+
+  reaction%database_filename = ''
+  reaction%num_dbase_temperatures = 0
+  nullify(reaction%dbase_temperatures)
 
   nullify(reaction%primary_species_list)
   nullify(reaction%secondary_species_list)
@@ -428,11 +436,12 @@ function AqueousSpeciesCreate()
   
   type(aq_species_type), pointer :: species
 
-  allocate(species)  
-  species%spec_name = ''
+  allocate(species) 
+  species%id = 0 
+  species%name = ''
   species%a0 = 0.d0
   species%molar_weight = 0.d0
-  species%valence = 0.d0
+  species%Z = 0.d0
   nullify(species%eqrxn)
   nullify(species%next)
 
@@ -458,7 +467,8 @@ function GasSpeciesCreate()
   type(gas_species_type), pointer :: species
 
   allocate(species)  
-  species%spec_name = ''
+  species%id = 0
+  species%name = ''
   species%molar_volume = 0.d0
   species%molar_weight = 0.d0
   nullify(species%eqrxn)
@@ -486,7 +496,8 @@ function MineralCreate()
   type(mineral_type), pointer :: mineral
 
   allocate(mineral)  
-  mineral%mnrl_name = ''
+  mineral%id = 0
+  mineral%name = ''
   mineral%molar_volume = 0.d0
   mineral%molar_weight = 0.d0
   nullify(mineral%tstrxn)
@@ -496,7 +507,102 @@ function MineralCreate()
   
 end function MineralCreate
 
+! ************************************************************************** !
+!
+! EquilibriumRxnCreate: Allocate and initialize an equilibrium reaction
+! author: Glenn Hammond
+! date: 09/01/08
+!
+! ************************************************************************** !
+function EquilibriumRxnCreate()
 
+  implicit none
+    
+  type(equilibrium_rxn_type), pointer :: EquilibriumRxnCreate
+
+  type(equilibrium_rxn_type), pointer :: eqrxn
+
+  allocate(eqrxn)
+  eqrxn%nspec = 0
+  nullify(eqrxn%spec_name)
+  nullify(eqrxn%stoich)
+  nullify(eqrxn%spec_ids)
+  nullify(eqrxn%logK)
+  
+  EquilibriumRxnCreate => eqrxn
+  
+end function EquilibriumRxnCreate
+
+! ************************************************************************** !
+!
+! TransitionStateTheoryRxnCreate: Allocate and initialize a transition state
+!                                 theory reaction
+! author: Glenn Hammond
+! date: 09/01/08
+!
+! ************************************************************************** !
+function TransitionStateTheoryRxnCreate()
+
+  implicit none
+    
+  type(transition_state_rxn_type), pointer :: TransitionStateTheoryRxnCreate
+
+  type(transition_state_rxn_type), pointer :: tstrxn
+
+  allocate(tstrxn)
+  tstrxn%nspec = 0
+  nullify(tstrxn%spec_name)
+  nullify(tstrxn%stoich)
+  nullify(tstrxn%spec_ids)
+  nullify(tstrxn%logK)
+  tstrxn%nspec_primary_prefactor = 0
+  nullify(tstrxn%spec_name_primary_prefactor)
+  nullify(tstrxn%spec_ids_primary_prefactor)
+  nullify(tstrxn%stoich_primary_prefactor)
+  tstrxn%nspec_secondary_prefactor = 0
+  nullify(tstrxn%spec_name_secondary_prefactor)
+  nullify(tstrxn%spec_ids_secondary_prefactor)
+  nullify(tstrxn%stoich_secondary_prefactor)
+  tstrxn%affinity_factor_sigma = 0.d0
+  tstrxn%affinity_factor_beta = 0.d0
+  tstrxn%rate = 0.d0
+  tstrxn%area0 = 0.d0
+  
+  TransitionStateTheoryRxnCreate => tstrxn
+  
+end function TransitionStateTheoryRxnCreate
+
+! ************************************************************************** !
+!
+! SurfaceComplexationRxnCreate: Allocate and initialize a surface complexation
+!                               reaction
+! author: Glenn Hammond
+! date: 09/01/08
+!
+! ************************************************************************** !
+function SurfaceComplexationRxnCreate()
+
+  implicit none
+    
+  type(surface_complexation_rxn_type), pointer :: SurfaceComplexationRxnCreate
+
+  type(surface_complexation_rxn_type), pointer :: surfcplxrxn
+  
+  allocate(surfcplxrxn)
+  surfcplxrxn%id = 0
+  surfcplxrxn%name = ''
+  surfcplxrxn%nspec = 0
+  nullify(surfcplxrxn%spec_name)
+  nullify(surfcplxrxn%stoich)
+  nullify(surfcplxrxn%spec_ids)
+  nullify(surfcplxrxn%logK)
+  nullify(surfcplxrxn%free_site_stoich)
+  surfcplxrxn%Z = 0.d0
+  
+  SurfaceComplexationRxnCreate => surfcplxrxn
+  
+end function SurfaceComplexationRxnCreate
+  
 ! ************************************************************************** !
 !
 ! GetPrimarySpeciesNames: Returns the names of primary species in an array
@@ -522,7 +628,7 @@ function GetPrimarySpeciesNames(reaction)
   species => reaction%primary_species_list
   do
     if (.not.associated(species)) exit
-    names(count) = species%spec_name
+    names(count) = species%name
     count = count + 1
     species => species%next
   enddo
@@ -582,7 +688,7 @@ function GetSecondarySpeciesNames(reaction)
   species => reaction%secondary_species_list
   do
     if (.not.associated(species)) exit
-    names(count) = species%spec_name
+    names(count) = species%name
     count = count + 1
     species => species%next
   enddo
@@ -642,7 +748,7 @@ function GetMineralNames(reaction)
   mineral => reaction%mineral_list
   do
     if (.not.associated(mineral)) exit
-    names(count) = mineral%mnrl_name
+    names(count) = mineral%name
     count = count + 1
     mineral => mineral%next
   enddo
@@ -723,11 +829,16 @@ subroutine ReactionRead(reaction,fid,option)
           if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
               fiStringCompare(string,'END',THREE_INTEGER)) exit
           species => AqueousSpeciesCreate()
-          call fiReadWord(string,species%spec_name,.true.,ierr)  
+          call fiReadWord(string,species%name,.true.,ierr)  
           call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,PRIMARY_SPECIES', ierr)    
-          if (.not.associated(reaction%primary_species_list)) &
+          if (.not.associated(reaction%primary_species_list)) then
             reaction%primary_species_list => species
-          if (associated(prev_species)) prev_species%next => species
+            species%id = 1
+          endif
+          if (associated(prev_species)) then
+            prev_species%next => species
+            species%id = prev_species%id + 1
+          endif
           prev_species => species
           nullify(species)
         enddo
@@ -739,11 +850,16 @@ subroutine ReactionRead(reaction,fid,option)
           if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
               fiStringCompare(string,'END',THREE_INTEGER)) exit
           species => AqueousSpeciesCreate()
-          call fiReadWord(string,species%spec_name,.true.,ierr)  
+          call fiReadWord(string,species%name,.true.,ierr)  
           call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,PRIMARY_SPECIES', ierr)    
-          if (.not.associated(reaction%secondary_species_list)) &
+          if (.not.associated(reaction%secondary_species_list)) then
             reaction%secondary_species_list => species
-          if (associated(prev_species)) prev_species%next => species
+            species%id = 1
+          endif
+          if (associated(prev_species)) then
+            prev_species%next => species
+            species%id = prev_species%id + 1            
+          endif
           prev_species => species
           nullify(species)
         enddo
@@ -755,11 +871,16 @@ subroutine ReactionRead(reaction,fid,option)
           if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
               fiStringCompare(string,'END',THREE_INTEGER)) exit
           gas => GasSpeciesCreate()
-          call fiReadWord(string,gas%spec_name,.true.,ierr)  
+          call fiReadWord(string,gas%name,.true.,ierr)  
           call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,GAS_SPECIES', ierr)    
-          if (.not.associated(reaction%gas_species_list)) &
+          if (.not.associated(reaction%gas_species_list)) then
             reaction%gas_species_list => gas
-          if (associated(prev_gas)) prev_gas%next => gas
+            gas%id = 1
+          endif
+          if (associated(prev_gas)) then
+            prev_gas%next => gas
+            gas%id = prev_gas%id + 1
+          endif
           prev_gas => gas
           nullify(gas)
         enddo
@@ -771,11 +892,16 @@ subroutine ReactionRead(reaction,fid,option)
           if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
               fiStringCompare(string,'END',THREE_INTEGER)) exit
           mineral => MineralCreate()
-          call fiReadWord(string,mineral%mnrl_name,.true.,ierr)  
+          call fiReadWord(string,mineral%name,.true.,ierr)  
           call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,MINERAL', ierr)    
-          if (.not.associated(reaction%mineral_list)) &
+          if (.not.associated(reaction%mineral_list)) then
             reaction%mineral_list => mineral
-          if (associated(prev_mineral)) prev_mineral%next => mineral
+            mineral%id = 1
+          endif
+          if (associated(prev_mineral)) then
+            prev_mineral%next => mineral
+            mineral%id = prev_mineral%id + 1
+          endif
           prev_mineral => mineral
           nullify(mineral)
         enddo
@@ -794,7 +920,7 @@ end subroutine ReactionRead
 !
 ! AqueousSpeciesDestroy: Deallocates an aqueous species
 ! author: Glenn Hammond
-! date: 05/29/07
+! date: 05/29/08
 !
 ! ************************************************************************** !
 subroutine AqueousSpeciesDestroy(species)
@@ -813,7 +939,7 @@ end subroutine AqueousSpeciesDestroy
 !
 ! GasSpeciesDestroy: Deallocates a gas species
 ! author: Glenn Hammond
-! date: 05/29/07
+! date: 05/29/08
 !
 ! ************************************************************************** !
 subroutine GasSpeciesDestroy(species)
@@ -832,7 +958,7 @@ end subroutine GasSpeciesDestroy
 !
 ! MineralDestroy: Deallocates a mineral
 ! author: Glenn Hammond
-! date: 05/29/07
+! date: 05/29/08
 !
 ! ************************************************************************** !
 subroutine MineralDestroy(mineral)
@@ -851,7 +977,7 @@ end subroutine MineralDestroy
 !
 ! EquilibriumRxnDestroy: Deallocates an equilibrium reaction
 ! author: Glenn Hammond
-! date: 05/29/07
+! date: 05/29/08
 !
 ! ************************************************************************** !
 subroutine EquilibriumRxnDestroy(eqrxn)
@@ -868,6 +994,8 @@ subroutine EquilibriumRxnDestroy(eqrxn)
   nullify(eqrxn%spec_ids)
   if (associated(eqrxn%stoich)) deallocate(eqrxn%stoich)
   nullify(eqrxn%stoich)
+  if (associated(eqrxn%logK)) deallocate(eqrxn%logK)
+  nullify(eqrxn%logK)
 
   deallocate(eqrxn)  
   nullify(eqrxn)
@@ -878,7 +1006,7 @@ end subroutine EquilibriumRxnDestroy
 !
 ! TransitionStateRxnDestroy: Deallocates a transition state reaction
 ! author: Glenn Hammond
-! date: 05/29/07
+! date: 05/29/08
 !
 ! ************************************************************************** !
 subroutine TransitionStateRxnDestroy(tstrxn)
@@ -907,6 +1035,8 @@ subroutine TransitionStateRxnDestroy(tstrxn)
   nullify(tstrxn%spec_ids_secondary_prefactor)
   if (associated(tstrxn%stoich_secondary_prefactor)) deallocate(tstrxn%stoich_secondary_prefactor)
   nullify(tstrxn%stoich_secondary_prefactor)
+  if (associated(tstrxn%logK)) deallocate(tstrxn%logK)
+  nullify(tstrxn%logK)
 
   deallocate(tstrxn)  
   nullify(tstrxn)
@@ -917,7 +1047,7 @@ end subroutine TransitionStateRxnDestroy
 !
 ! IonExchangeRxnDestroy: Deallocates an ion exchange reaction
 ! author: Glenn Hammond
-! date: 05/29/07
+! date: 05/29/08
 !
 ! ************************************************************************** !
 subroutine IonExchangeRxnDestroy(ionxrxn)
@@ -944,7 +1074,7 @@ end subroutine IonExchangeRxnDestroy
 !
 ! SurfaceComplexationRxnDestroy: Deallocates a surface complexation reaction
 ! author: Glenn Hammond
-! date: 05/29/07
+! date: 05/29/08
 !
 ! ************************************************************************** !
 subroutine SurfaceComplexationRxnDestroy(surfcplxrxn)
@@ -961,6 +1091,8 @@ subroutine SurfaceComplexationRxnDestroy(surfcplxrxn)
   nullify(surfcplxrxn%spec_ids)
   if (associated(surfcplxrxn%stoich)) deallocate(surfcplxrxn%stoich)
   nullify(surfcplxrxn%stoich)
+  if (associated(surfcplxrxn%logK)) deallocate(surfcplxrxn%logK)
+  nullify(surfcplxrxn%logK)
 
   deallocate(surfcplxrxn)  
   nullify(surfcplxrxn)
