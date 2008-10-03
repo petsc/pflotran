@@ -83,6 +83,11 @@ function DiscretizationCreate()
   discretization%dm_1_dof = 0
   discretization%dm_nflowdof = 0
   discretization%dm_ntrandof = 0
+  nullify(discretization%dmc_nflowdof)
+  nullify(discretization%dmc_ntrandof)
+  
+  nullify(discretization%grid)
+  nullify(discretization%amrgrid)
   
   DiscretizationCreate => discretization
 
@@ -102,8 +107,8 @@ subroutine DiscretizationRead(discretization,fid,option)
   use AMR_Grid_module
 
   implicit none
-  
-  type(option_type) :: option
+
+  type(option_type), pointer :: option
   type(discretization_type) :: discretization
   PetscInt :: fid
   
@@ -140,82 +145,193 @@ subroutine DiscretizationRead(discretization,fid,option)
     length = len_trim(word)
     call fiCharsToUpper(word,length)
       
-    select case(trim(word))
-      case('TYPE')
-        call fiReadWord(string,discretization%ctype,.true.,ierr)
-        call fiErrorMsg(option%myrank,'type','GRID', ierr)   
-        length = len_trim(discretization%ctype)
-        call fiCharsToLower(discretization%ctype,length)
-        select case(trim(discretization%ctype))
-          case('structured')
-            discretization%itype = STRUCTURED_GRID
-            call fiReadWord(string,structured_grid_ctype,.true.,ierr)
-            call fiDefaultMsg(option%myrank,'structured_grid_type',ierr)   
-            length = len_trim(structured_grid_ctype)
-            call fiCharsToLower(structured_grid_ctype,length)
-            select case(trim(structured_grid_ctype))
-              case('cartesian')
-                structured_grid_itype = CARTESIAN_GRID
-              case('cylindrical')
-                structured_grid_itype = CYLINDRICAL_GRID
-              case('spherical')
-                structured_grid_itype = SPHERICAL_GRID
-              case default
-                structured_grid_itype = CARTESIAN_GRID
-                structured_grid_ctype = 'cartesian'
-            end select
-          case('unstructured')
-            discretization%itype = UNSTRUCTURED_GRID
-          case('amr')
-            discretization%itype = AMR_GRID
-          case default
-            call printErrMsg(option,'Discretization type: '//trim(discretization%ctype)//' not recognized.')
-        end select    
-      case('NXYZ')
-        call fiReadInt(string,nx,ierr)
-        call fiErrorMsg(option%myrank,'nx','GRID', ierr)
-        call fiReadInt(string,ny,ierr)
-        call fiErrorMsg(option%myrank,'ny','GRID', ierr)
-        call fiReadInt(string,nz,ierr)
-        call fiErrorMsg(option%myrank,'nz','GRID', ierr)
-      case('ORIG','ORIGIN')
-        call fiReadDouble(string,discretization%origin(X_DIRECTION),ierr)
-        call fiErrorMsg(option%myrank,'X direction','Origin',ierr)
-        call fiReadDouble(string,discretization%origin(Y_DIRECTION),ierr)
-        call fiErrorMsg(option%myrank,'Y direction','Origin',ierr)
-        call fiReadDouble(string,discretization%origin(Z_DIRECTION),ierr)
-        call fiErrorMsg(option%myrank,'Z direction','Origin',ierr)        
-      case('FILE')
-      case('END')
-        exit
-    end select 
+    if (.not.associated(discretization%grid) .and. & ! first time read
+        .not.associated(discretization%amrgrid)) then
+      select case(trim(word))
+        case('TYPE')
+          call fiReadWord(string,discretization%ctype,.true.,ierr)
+          call fiErrorMsg(option%myrank,'type','GRID', ierr)   
+          length = len_trim(discretization%ctype)
+          call fiCharsToLower(discretization%ctype,length)
+          select case(trim(discretization%ctype))
+            case('structured')
+              discretization%itype = STRUCTURED_GRID
+              call fiReadWord(string,structured_grid_ctype,.true.,ierr)
+              call fiDefaultMsg(option%myrank,'structured_grid_type',ierr)   
+              length = len_trim(structured_grid_ctype)
+              call fiCharsToLower(structured_grid_ctype,length)
+              select case(trim(structured_grid_ctype))
+                case('cartesian')
+                  structured_grid_itype = CARTESIAN_GRID
+                case('cylindrical')
+                  structured_grid_itype = CYLINDRICAL_GRID
+                case('spherical')
+                  structured_grid_itype = SPHERICAL_GRID
+                case default
+                  structured_grid_itype = CARTESIAN_GRID
+                  structured_grid_ctype = 'cartesian'
+              end select
+            case('unstructured')
+              discretization%itype = UNSTRUCTURED_GRID
+            case('amr')
+              discretization%itype = AMR_GRID
+            case default
+              string = 'Discretization type: ' // trim(discretization%ctype) // &
+                       ' not recognized.'
+              call printErrMsg(option,string)
+          end select    
+        case('NXYZ')
+          call fiReadInt(string,nx,ierr)
+          call fiErrorMsg(option%myrank,'nx','GRID', ierr)
+          call fiReadInt(string,ny,ierr)
+          call fiErrorMsg(option%myrank,'ny','GRID', ierr)
+          call fiReadInt(string,nz,ierr)
+          call fiErrorMsg(option%myrank,'nz','GRID', ierr)
+          if (structured_grid_itype /= CARTESIAN_GRID) then
+            ny = 1 ! cylindrical and spherical have 1 cell in Y
+            if (structured_grid_itype /= CYLINDRICAL_GRID) nz = 1 ! spherical has 1 cell in Z
+          endif
+        case('ORIG','ORIGIN')
+          call fiReadDouble(string,discretization%origin(X_DIRECTION),ierr)
+          call fiErrorMsg(option%myrank,'X direction','Origin',ierr)
+          call fiReadDouble(string,discretization%origin(Y_DIRECTION),ierr)
+          call fiErrorMsg(option%myrank,'Y direction','Origin',ierr)
+          call fiReadDouble(string,discretization%origin(Z_DIRECTION),ierr)
+          call fiErrorMsg(option%myrank,'Z direction','Origin',ierr)        
+        case('FILE')
+        case('DXYZ')
+          call fiSkipToEND(IUNIT1,option%myrank,word) 
+        case('END')
+          exit
+      end select 
+    else ! should be the second time it is read
+      select case(trim(word))
+        case('TYPE')
+        case('NXYZ')
+        case('ORIG','ORIGIN')
+        case('FILE')
+        case('DXYZ')
+          select case(discretization%itype)
+            case(STRUCTURED_GRID)
+              call StructuredGridReadDXYZ(discretization%grid%structured_grid,option)
+            case(AMR_GRID)
+              call AMRGridReadDXYZ(discretization%amrgrid,option)
+            case default
+              string = 'ERROR: Keyword "DXYZ" not supported for unstructured grid'
+              call printErrMsg(option,string)
+          end select
+          call fiReadFlotranString(IUNIT1,string,ierr) ! z-direction
+          call fiReadStringErrorMsg(option%myrank,'DISCRETIZATION,BOUNDS,Z',ierr)
+          if (.not.(string(1:1) == '.' .or. string(1:1) == '/' .or. &
+                    fiStringCompare(string,'END',THREE_INTEGER))) then
+            string = 'Card DXYZ should include either 3 entires (one for ' // &
+                     'each grid direction or NX+NY+NZ entries'
+            call printErrMsg(option,string)
+          endif
+        case('BOUNDS')
+          select case(discretization%itype)
+            case(STRUCTURED_GRID)
+              grid => discretization%grid
+              if (grid%structured_grid%itype == CARTESIAN_GRID .or. &
+                  grid%structured_grid%itype == CYLINDRICAL_GRID .or. &
+                  grid%structured_grid%itype == SPHERICAL_GRID) then
+                call fiReadFlotranString(IUNIT1,string,ierr) ! x-direction
+                call fiReadStringErrorMsg(option%myrank,'DISCRETIZATION,BOUNDS,X or R',ierr)
+                call fiReadDouble(string,grid%structured_grid%bounds(X_DIRECTION,LOWER),ierr)
+                call fiErrorMsg(option%myrank,'Lower X or R','BOUNDS',ierr)
+                call fiReadDouble(string,grid%structured_grid%bounds(X_DIRECTION,UPPER),ierr)
+                call fiErrorMsg(option%myrank,'Upper X or R','BOUNDS',ierr)
+              endif
+              if (grid%structured_grid%itype == CARTESIAN_GRID) then
+                call fiReadFlotranString(IUNIT1,string,ierr) ! y-direction
+                call fiReadStringErrorMsg(option%myrank,'DISCRETIZATION,BOUNDS,Y',ierr)
+                call fiReadDouble(string,grid%structured_grid%bounds(Y_DIRECTION,LOWER),ierr)
+                call fiErrorMsg(option%myrank,'Lower Y','BOUNDS',ierr)
+                call fiReadDouble(string,grid%structured_grid%bounds(Y_DIRECTION,UPPER),ierr)
+                call fiErrorMsg(option%myrank,'Upper Y','BOUNDS',ierr)
+              endif
+              if (grid%structured_grid%itype == CARTESIAN_GRID .or. &
+                  grid%structured_grid%itype == CYLINDRICAL_GRID) then
+                call fiReadFlotranString(IUNIT1,string,ierr) ! z-direction
+                call fiReadStringErrorMsg(option%myrank,'DISCRETIZATION,BOUNDS,Z',ierr)
+                call fiReadDouble(string,grid%structured_grid%bounds(Z_DIRECTION,LOWER),ierr)
+                call fiErrorMsg(option%myrank,'Lower Z','BOUNDS',ierr)
+                call fiReadDouble(string,grid%structured_grid%bounds(Z_DIRECTION,UPPER),ierr)
+                call fiErrorMsg(option%myrank,'Upper Z','BOUNDS',ierr)
+              endif
+              call fiReadFlotranString(IUNIT1,string,ierr) ! z-direction
+              call fiReadStringErrorMsg(option%myrank,'DISCRETIZATION,BOUNDS,Z',ierr)
+              if (.not.(string(1:1) == '.' .or. string(1:1) == '/' .or. &
+                        fiStringCompare(string,'END',THREE_INTEGER))) then
+                if (option%myrank == 0) then
+                  if (grid%structured_grid%itype == CARTESIAN_GRID) then
+                    print *, 'BOUNDS card for a cartesian structured grid must include ' // &
+                             '5 lines.  I.e.'
+                    print *, 'BOUNDS'
+                    print *, 'x_min, x_max'
+                    print *, 'y_min, y_max'
+                    print *, 'z_min, z_max'
+                    print *, 'END'
+                  else if (grid%structured_grid%itype == CYLINDRICAL_GRID) then
+                    print *, 'BOUNDS card for a cylindrical structured grid must include ' // &
+                             '4 lines.  I.e.'
+                    print *, 'BOUNDS'
+                    print *, 'r_min, r_max'
+                    print *, 'z_min, z_max'
+                    print *, 'END'
+                  else if (grid%structured_grid%itype == SPHERICAL_GRID) then
+                    print *, 'BOUNDS card for a spherical structured grid must include ' // &
+                             '3 lines.  I.e.'
+                    print *, 'BOUNDS'
+                    print *, 'r_min, r_max'
+                    print *, 'END'
+                  endif
+                endif
+                stop
+              endif            
+            case(AMR_GRID)
+          end select
+          discretization%origin(X_DIRECTION) = grid%structured_grid%bounds(X_DIRECTION,LOWER)
+          discretization%origin(Y_DIRECTION) = grid%structured_grid%bounds(Y_DIRECTION,LOWER)
+          discretization%origin(Z_DIRECTION) = grid%structured_grid%bounds(Z_DIRECTION,LOWER)
+        case('END')
+          exit
+      end select 
+    endif
   
   enddo  
 
-  select case(discretization%itype)
-    case(UNSTRUCTURED_GRID,STRUCTURED_GRID)
-      grid => GridCreate()
-      select case(discretization%itype)
-        case(STRUCTURED_GRID)      
-          if (nx*ny*nz == 0) call printErrMsg(option,'NXYZ not set correctly for structured grid.')
-          str_grid => StructuredGridCreate()
-          str_grid%nx = nx
-          str_grid%ny = ny
-          str_grid%nz = nz
-          str_grid%nxy = str_grid%nx*str_grid%ny
-          str_grid%nmax = str_grid%nxy*str_grid%nz
-          grid%structured_grid => str_grid
-          grid%nmax = str_grid%nmax
-          grid%structured_grid%itype = structured_grid_itype
-          grid%structured_grid%ctype = structured_grid_ctype
-      end select
-      discretization%grid => grid
-      grid%itype = discretization%itype
-      grid%ctype = discretization%ctype
-    case(AMR_GRID)
-       amrgrid=>discretization%amrgrid
-       call AMRGridInitialize(amrgrid)
-  end select
+  if (.not.associated(discretization%grid) .and. & ! first time read
+      .not.associated(discretization%amrgrid)) then
+
+    select case(discretization%itype)
+      case(UNSTRUCTURED_GRID,STRUCTURED_GRID)
+        grid => GridCreate()
+        select case(discretization%itype)
+          case(STRUCTURED_GRID)      
+            if (nx*ny*nz == 0) call printErrMsg(option,'NXYZ not set correctly for structured grid.')
+            str_grid => StructuredGridCreate()
+            str_grid%nx = nx
+            str_grid%ny = ny
+            str_grid%nz = nz
+            str_grid%nxy = str_grid%nx*str_grid%ny
+            str_grid%nmax = str_grid%nxy*str_grid%nz
+            grid%structured_grid => str_grid
+            grid%nmax = str_grid%nmax
+            grid%structured_grid%itype = structured_grid_itype
+            grid%structured_grid%ctype = structured_grid_ctype
+        end select
+        discretization%grid => grid
+        grid%itype = discretization%itype
+        grid%ctype = discretization%ctype
+      case(AMR_GRID)
+         amrgrid=>discretization%amrgrid
+         call AMRGridInitialize(amrgrid)
+    end select
+
+  else
+
+  endif
 
 end subroutine DiscretizationRead
 

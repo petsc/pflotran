@@ -32,6 +32,8 @@ PetscInt, parameter :: NEG_ONE_INTEGER = -1
 PetscInt, parameter :: X_DIRECTION = 1
 PetscInt, parameter :: Y_DIRECTION = 2
 PetscInt, parameter :: Z_DIRECTION = 3
+PetscInt, parameter :: LOWER = 1
+PetscInt, parameter :: UPPER = 2
 
 ! Classes
 PetscInt, parameter :: NULL_CLASS = 0
