@@ -312,7 +312,7 @@ subroutine GridComputeVolumes(grid,volume,option)
   
   select case(grid%itype)
     case(STRUCTURED_GRID)
-      call StructuredGridComputeVolumes(grid%structured_grid,option, &
+      call StructuredGridComputeVolumes(grid%x,grid%structured_grid,option, &
                                         grid%nL2G,volume)
     case(UNSTRUCTURED_GRID)
   end select

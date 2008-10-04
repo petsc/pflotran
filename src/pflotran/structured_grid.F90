@@ -981,7 +981,7 @@ end subroutine StructGridPopulateConnection
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine StructuredGridComputeVolumes(structured_grid,option,nL2G,volume)
+subroutine StructuredGridComputeVolumes(radius,structured_grid,option,nL2G,volume)
 
   use Option_module
   use Grid_module
@@ -996,6 +996,7 @@ subroutine StructuredGridComputeVolumes(structured_grid,option,nL2G,volume)
   type(option_type) :: option
   type(grid_type) :: grid
   PetscInt :: nL2G(:)
+  PetscReal :: radius(:)
   Vec :: volume
   
   PetscReal, parameter :: Pi=3.141592653590d0
@@ -1020,8 +1021,8 @@ subroutine StructuredGridComputeVolumes(structured_grid,option,nL2G,volume)
 !     stop
       do local_id=1, structured_grid%nlmax
         ghosted_id = nL2G(local_id)
-        r_up = grid%x(ghosted_id) + 0.5d0*structured_grid%dx(ghosted_id)
-        r_down = grid%x(ghosted_id) - 0.5d0*structured_grid%dx(ghosted_id)
+        r_up = radius(ghosted_id) + 0.5d0*structured_grid%dx(ghosted_id)
+        r_down = radius(ghosted_id) - 0.5d0*structured_grid%dx(ghosted_id)
         volume_p(local_id) = pi * structured_grid%dx(ghosted_id) * (r_up + r_down) &
                                 * structured_grid%dz(ghosted_id)
       enddo
@@ -1030,8 +1031,8 @@ subroutine StructuredGridComputeVolumes(structured_grid,option,nL2G,volume)
 !     stop
       do local_id=1, structured_grid%nlmax
         ghosted_id = nL2G(local_id)
-        r_up = grid%x(ghosted_id) + 0.5d0*structured_grid%dx(ghosted_id)
-        r_down = grid%x(ghosted_id) - 0.5d0*structured_grid%dx(ghosted_id)
+        r_up = radius(ghosted_id) + 0.5d0*structured_grid%dx(ghosted_id)
+        r_down = radius(ghosted_id) - 0.5d0*structured_grid%dx(ghosted_id)
         volume_p(local_id) = 4.d0/3.d0 * pi * structured_grid%dx(ghosted_id) &
         * (r_up*r_up + r_up*r_down + r_down*r_down) &
                                 * structured_grid%dz(ghosted_id)
