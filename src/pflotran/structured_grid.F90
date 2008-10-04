@@ -754,7 +754,7 @@ end subroutine StructGridGetIJKFromGhostedID
 ! date: 10/17/07
 !
 ! ************************************************************************** !
-function StructGridComputeInternConnect(structured_grid,option)
+function StructGridComputeInternConnect(radius,structured_grid,option)
 
   use Connection_module
   use Option_module
@@ -773,12 +773,14 @@ function StructGridComputeInternConnect(structured_grid,option)
   type(option_type) :: option
   type(structured_grid_type) :: structured_grid
   
+  PetscReal, parameter :: Pi=3.141592653590d0
   
   PetscInt :: i, j, k, iconn, id_up, id_dn
   PetscInt :: samr_ofx, samr_ofy, samr_ofz
   PetscInt :: nconn
   PetscInt :: lenx, leny, lenz
   PetscReal :: dist_up, dist_dn
+  PetscReal :: radius(:)
   type(connection_set_type), pointer :: connections
   PetscErrorCode :: ierr
   
@@ -833,25 +835,69 @@ function StructGridComputeInternConnect(structured_grid,option)
   iconn = 0
   ! x-connections
   if (structured_grid%ngx > 1) then
-
-    do k = structured_grid%kstart, structured_grid%kend
-      do j = structured_grid%jstart, structured_grid%jend
-        do i = 1, lenx
-          iconn = iconn+1
-          id_up = i + j * structured_grid%ngx + k * structured_grid%ngxy+samr_ofx
-          id_dn = id_up + 1
-          connections%id_up(iconn) = id_up
-          connections%id_dn(iconn) = id_dn
-          connections%dist(-1:3,iconn) = 0.d0
-          dist_up = 0.5d0*structured_grid%dx(id_up)
-          dist_dn = 0.5d0*structured_grid%dx(id_dn)
-          connections%dist(-1,iconn) = dist_up/(dist_up+dist_dn)
-          connections%dist(0,iconn) = dist_up+dist_dn
-          connections%dist(1,iconn) = 1.d0  ! x component of unit vector
-          connections%area(iconn) = structured_grid%dy(id_up)*structured_grid%dz(id_up)
+    select case(structured_grid%itype)
+      case(CARTESIAN_GRID)
+        do k = structured_grid%kstart, structured_grid%kend
+          do j = structured_grid%jstart, structured_grid%jend
+            do i = 1, lenx
+              iconn = iconn+1
+              id_up = i + j * structured_grid%ngx + k * structured_grid%ngxy+samr_ofx
+              id_dn = id_up + 1
+              connections%id_up(iconn) = id_up
+              connections%id_dn(iconn) = id_dn
+              connections%dist(-1:3,iconn) = 0.d0
+              dist_up = 0.5d0*structured_grid%dx(id_up)
+              dist_dn = 0.5d0*structured_grid%dx(id_dn)
+              connections%dist(-1,iconn) = dist_up/(dist_up+dist_dn)
+              connections%dist(0,iconn) = dist_up+dist_dn
+              connections%dist(1,iconn) = 1.d0  ! x component of unit vector
+              connections%area(iconn) = structured_grid%dy(id_up)* &
+                                        structured_grid%dz(id_up)
+            enddo
+          enddo
         enddo
-      enddo
-    enddo
+      case(CYLINDRICAL_GRID)
+        do k = structured_grid%kstart, structured_grid%kend
+          do j = structured_grid%jstart, structured_grid%jend
+            do i = 1, lenx
+              iconn = iconn+1
+              id_up = i + j * structured_grid%ngx + k * structured_grid%ngxy+samr_ofx
+              id_dn = id_up + 1
+              connections%id_up(iconn) = id_up
+              connections%id_dn(iconn) = id_dn
+              connections%dist(-1:3,iconn) = 0.d0
+              dist_up = 0.5d0*structured_grid%dx(id_up)
+              dist_dn = 0.5d0*structured_grid%dx(id_dn)
+              connections%dist(-1,iconn) = dist_up/(dist_up+dist_dn)
+              connections%dist(0,iconn) = dist_up+dist_dn
+              connections%dist(1,iconn) = 1.d0  ! x component of unit vector
+              connections%area(iconn) = 2.d0 * pi * radius(id_up)* &
+                                        structured_grid%dz(id_up)
+            enddo
+          enddo
+        enddo
+      case(SPHERICAL_GRID)
+        do k = structured_grid%kstart, structured_grid%kend
+          do j = structured_grid%jstart, structured_grid%jend
+            do i = 1, lenx
+              iconn = iconn+1
+              id_up = i + j * structured_grid%ngx + k * structured_grid%ngxy+samr_ofx
+              id_dn = id_up + 1
+              connections%id_up(iconn) = id_up
+              connections%id_dn(iconn) = id_dn
+              connections%dist(-1:3,iconn) = 0.d0
+              dist_up = 0.5d0*structured_grid%dx(id_up)
+              dist_dn = 0.5d0*structured_grid%dx(id_dn)
+              connections%dist(-1,iconn) = dist_up/(dist_up+dist_dn)
+              connections%dist(0,iconn) = dist_up+dist_dn
+              connections%dist(1,iconn) = 1.d0  ! x component of unit vector
+              connections%area(iconn) = 4.d0 * pi * radius(id_up) * &
+                                        structured_grid%dz(id_up)
+            enddo
+          enddo
+        enddo
+  end select
+    
   endif
 
   ! y-connections
@@ -861,7 +907,8 @@ function StructGridComputeInternConnect(structured_grid,option)
       do i = structured_grid%istart, structured_grid%iend
         do j = 1, leny
           iconn = iconn+1
-          id_up = i + 1 + (j-1) * structured_grid%ngx + k * structured_grid%ngxy+samr_ofy
+          id_up = i + 1 + (j-1) * structured_grid%ngx + k * structured_grid%ngxy &
+                  +samr_ofy
           id_dn = id_up + structured_grid%ngx
           connections%id_up(iconn) = id_up
           connections%id_dn(iconn) = id_dn
@@ -871,7 +918,8 @@ function StructGridComputeInternConnect(structured_grid,option)
           connections%dist(-1,iconn) = dist_up/(dist_up+dist_dn)
           connections%dist(0,iconn) = dist_up+dist_dn
           connections%dist(2,iconn) = 1.d0  ! y component of unit vector
-          connections%area(iconn) = structured_grid%dx(id_up)*structured_grid%dz(id_up)
+          connections%area(iconn) = structured_grid%dx(id_up)* &
+                                    structured_grid%dz(id_up)
         enddo
       enddo
     enddo
@@ -879,25 +927,53 @@ function StructGridComputeInternConnect(structured_grid,option)
       
   ! z-connections
   if (structured_grid%ngz > 1) then
-
-    do j = structured_grid%jstart, structured_grid%jend
-      do i = structured_grid%istart, structured_grid%iend
-        do k = 1, lenz
-          iconn = iconn+1
-          id_up = i + 1 + j * structured_grid%ngx + (k-1) * structured_grid%ngxy+samr_ofz
-          id_dn = id_up + structured_grid%ngxy
-          connections%id_up(iconn) = id_up
-          connections%id_dn(iconn) = id_dn
-          connections%dist(-1:3,iconn) = 0.d0
-          dist_up = 0.5d0*structured_grid%dz(id_up)
-          dist_dn = 0.5d0*structured_grid%dz(id_dn)
-          connections%dist(-1,iconn) = dist_up/(dist_up+dist_dn)
-          connections%dist(0,iconn) = dist_up+dist_dn
-          connections%dist(3,iconn) = 1.d0  ! z component of unit vector
-          connections%area(iconn) = structured_grid%dx(id_up)*structured_grid%dy(id_up)
+    select case(structured_grid%itype)
+      case(CARTESIAN_GRID)
+        do j = structured_grid%jstart, structured_grid%jend
+          do i = structured_grid%istart, structured_grid%iend
+            do k = 1, lenz
+              iconn = iconn+1
+              id_up = i + 1 + j * structured_grid%ngx + (k-1) * &
+                  structured_grid%ngxy + samr_ofz
+              id_dn = id_up + structured_grid%ngxy
+              connections%id_up(iconn) = id_up
+              connections%id_dn(iconn) = id_dn
+              connections%dist(-1:3,iconn) = 0.d0
+              dist_up = 0.5d0*structured_grid%dz(id_up)
+              dist_dn = 0.5d0*structured_grid%dz(id_dn)
+              connections%dist(-1,iconn) = dist_up/(dist_up+dist_dn)
+              connections%dist(0,iconn) = dist_up+dist_dn
+              connections%dist(3,iconn) = 1.d0  ! z component of unit vector
+              connections%area(iconn) = structured_grid%dx(id_up) * &
+                                        structured_grid%dy(id_up)
+            enddo
+          enddo
         enddo
-      enddo
-    enddo
+      case(CYLINDRICAL_GRID)
+        do j = structured_grid%jstart, structured_grid%jend
+          do i = structured_grid%istart, structured_grid%iend
+            do k = 1, lenz
+              iconn = iconn+1
+              id_up = i + 1 + j * structured_grid%ngx + (k-1) * &
+                  structured_grid%ngxy + samr_ofz
+              id_dn = id_up + structured_grid%ngxy
+              connections%id_up(iconn) = id_up
+              connections%id_dn(iconn) = id_dn
+              connections%dist(-1:3,iconn) = 0.d0
+              dist_up = 0.5d0*structured_grid%dz(id_up)
+              dist_dn = 0.5d0*structured_grid%dz(id_dn)
+              connections%dist(-1,iconn) = dist_up/(dist_up+dist_dn)
+              connections%dist(0,iconn) = dist_up+dist_dn
+              connections%dist(3,iconn) = 1.d0  ! z component of unit vector
+              connections%area(iconn) = 2.d0 * pi * radius(id_up) * &
+                                        structured_grid%dx(id_up)
+            enddo
+          enddo
+        enddo
+      case(SPHERICAL_GRID)
+        print *, 'Areas for spherical coordinates for z-axis not applicable.'
+        stop
+  end select
   endif
   
   StructGridComputeInternConnect => connections
@@ -984,7 +1060,6 @@ end subroutine StructGridPopulateConnection
 subroutine StructuredGridComputeVolumes(radius,structured_grid,option,nL2G,volume)
 
   use Option_module
-  use Grid_module
   
   implicit none
 
@@ -994,7 +1069,6 @@ subroutine StructuredGridComputeVolumes(radius,structured_grid,option,nL2G,volum
   
   type(structured_grid_type) :: structured_grid
   type(option_type) :: option
-  type(grid_type) :: grid
   PetscInt :: nL2G(:)
   PetscReal :: radius(:)
   Vec :: volume
@@ -1017,18 +1091,12 @@ subroutine StructuredGridComputeVolumes(radius,structured_grid,option,nL2G,volum
                              structured_grid%dz(ghosted_id)
       enddo
     case(CYLINDRICAL_GRID)
-!     print *, 'Volumes for cylindrical grid cells still needs to be set up.'
-!     stop
       do local_id=1, structured_grid%nlmax
         ghosted_id = nL2G(local_id)
-        r_up = radius(ghosted_id) + 0.5d0*structured_grid%dx(ghosted_id)
-        r_down = radius(ghosted_id) - 0.5d0*structured_grid%dx(ghosted_id)
-        volume_p(local_id) = pi * structured_grid%dx(ghosted_id) * (r_up + r_down) &
-                                * structured_grid%dz(ghosted_id)
+        volume_p(local_id) = 2.d0 * pi * radius(ghosted_id) * structured_grid%dx(ghosted_id) * &
+                                structured_grid%dz(ghosted_id)
       enddo
     case(SPHERICAL_GRID)
-!     print *, 'Volumes for spherical grid cells still needs to be set up.'
-!     stop
       do local_id=1, structured_grid%nlmax
         ghosted_id = nL2G(local_id)
         r_up = radius(ghosted_id) + 0.5d0*structured_grid%dx(ghosted_id)

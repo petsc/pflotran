@@ -144,7 +144,7 @@ subroutine GridComputeInternalConnect(grid,option)
   select case(grid%itype)
     case(STRUCTURED_GRID)
       connection_set => &
-        StructGridComputeInternConnect(grid%structured_grid,option)
+        StructGridComputeInternConnect(grid%x,grid%structured_grid,option)
     case(UNSTRUCTURED_GRID) 
       connection_set => &
         UnstGridComputeInternConnect(grid%unstructured_grid,option)
