@@ -1518,7 +1518,7 @@ subroutine readInput(simulation,filename)
 #endif
       
         if (option%myrank==0) then
-          write(IUNIT2,'(/," *PCKR: ",i3)') ireg
+          write(IUNIT2,'(/," *PCKR: ",i3)') count
           write(IUNIT2,'("  icp swir    lambda         alpha")')
           do j = 1, count
             if (option%iflowmode == MPH_MODE .or. &

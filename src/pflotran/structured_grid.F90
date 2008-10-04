@@ -984,6 +984,7 @@ end subroutine StructGridPopulateConnection
 subroutine StructuredGridComputeVolumes(structured_grid,option,nL2G,volume)
 
   use Option_module
+! use Grid_module
   
   implicit none
 
@@ -993,6 +994,7 @@ subroutine StructuredGridComputeVolumes(structured_grid,option,nL2G,volume)
   
   type(structured_grid_type) :: structured_grid
   type(option_type) :: option
+! type(grid_type) :: gridx
   PetscInt :: nL2G(:)
   Vec :: volume
   
@@ -1000,6 +1002,7 @@ subroutine StructuredGridComputeVolumes(structured_grid,option,nL2G,volume)
   
   PetscInt :: local_id, ghosted_id
   PetscReal, pointer :: volume_p(:)
+  PetscReal :: r_up, r_down
   PetscErrorCode :: ierr
   
   call StructuredGridVecGetArrayF90(structured_grid, volume,volume_p, ierr)
@@ -1015,9 +1018,24 @@ subroutine StructuredGridComputeVolumes(structured_grid,option,nL2G,volume)
     case(CYLINDRICAL_GRID)
       print *, 'Volumes for cylindrical grid cells still needs to be set up.'
       stop
+      do local_id=1, structured_grid%nlmax
+        ghosted_id = nL2G(local_id)
+!       r_up = grid%x(ghosted_id) + 0.5d0*structured_grid%dx(ghosted_id)
+!       r_down = grid%x(ghosted_id) - 0.5d0*structured_grid%dx(ghosted_id)
+        volume_p(local_id) = pi * structured_grid%dx(ghosted_id) * (r_up + r_down) &
+                                * structured_grid%dz(ghosted_id)
+      enddo
     case(SPHERICAL_GRID)
       print *, 'Volumes for spherical grid cells still needs to be set up.'
       stop
+      do local_id=1, structured_grid%nlmax
+        ghosted_id = nL2G(local_id)
+!       r_up = grid%x(ghosted_id) + 0.5d0*structured_grid%dx(ghosted_id)
+!       r_down = grid%x(ghosted_id) - 0.5d0*structured_grid%dx(ghosted_id)
+        volume_p(local_id) = 4.d0/3.d0 * pi * structured_grid%dx(ghosted_id) &
+        * (r_up*r_up + r_up*r_down + r_down*r_down) &
+                                * structured_grid%dz(ghosted_id)
+      enddo
   end select
   
   call StructGridVecRestoreArrayF90(structured_grid,volume,volume_p, ierr)
