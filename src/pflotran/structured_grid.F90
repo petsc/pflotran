@@ -877,7 +877,7 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
               connections%dist(-1,iconn) = dist_up/(dist_up+dist_dn)
               connections%dist(0,iconn) = dist_up+dist_dn
               connections%dist(1,iconn) = 1.d0  ! x component of unit vector
-              connections%area(iconn) = 2.d0 * pi * radius(id_up)* &
+              connections%area(iconn) = 2.d0 * pi * (radius(id_up)+0.5d0*structured_grid%dx(id_up))* &
                                         structured_grid%dz(id_up)
             enddo
           enddo
@@ -897,7 +897,7 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
               connections%dist(-1,iconn) = dist_up/(dist_up+dist_dn)
               connections%dist(0,iconn) = dist_up+dist_dn
               connections%dist(1,iconn) = 1.d0  ! x component of unit vector
-              connections%area(iconn) = 4.d0 * pi * radius(id_up) * &
+              connections%area(iconn) = 4.d0 * pi * (radius(id_up)+0.5d0*structured_grid%dx(id_up)) * &
                                         structured_grid%dz(id_up)
             enddo
           enddo
@@ -1039,22 +1039,24 @@ subroutine StructGridPopulateConnection(radius,structured_grid,connection,iface,
             case(CYLINDRICAL_GRID)
               connection%dist(:,iconn) = 0.d0
               connection%dist(0,iconn) = 0.5d0*structured_grid%dx(ghosted_id)
-              connection%area(iconn) = 2.d0 * pi * radius(ghosted_id)* &
-                                        structured_grid%dz(ghosted_id)
               if (iface ==  WEST_FACE) then
                 connection%dist(1,iconn) = 1.d0
+                connection%area(iconn) = 0.d0
               else
                 connection%dist(1,iconn) = -1.d0
+                connection%area(iconn) = 2.d0 * pi * (radius(ghosted_id)+0.5d0*structured_grid%dx(ghosted_id)) * &
+                                        structured_grid%dz(ghosted_id)
               endif
             case(SPHERICAL_GRID)
               connection%dist(:,iconn) = 0.d0
               connection%dist(0,iconn) = 0.5d0*structured_grid%dx(ghosted_id)
-              connection%area(iconn) = 4.d0 * pi * radius(ghosted_id) * &
-                                        structured_grid%dz(ghosted_id)
               if (iface ==  WEST_FACE) then
                 connection%dist(1,iconn) = 1.d0
+                connection%area(iconn) = 0.d0
               else
                 connection%dist(1,iconn) = -1.d0
+                connection%area(iconn) = 4.d0 * pi * (radius(ghosted_id)+0.5d0*structured_grid%dx(ghosted_id)) * &
+                                        structured_grid%dz(ghosted_id)
               endif
           end select
 
