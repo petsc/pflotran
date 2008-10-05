@@ -185,7 +185,7 @@ subroutine GridPopulateConnection(grid,connection,iface,iconn,cell_id_local)
   
   select case(grid%itype)
     case(STRUCTURED_GRID)
-      call StructGridPopulateConnection(grid%structured_grid,connection, &
+      call StructGridPopulateConnection(grid%x,grid%structured_grid,connection, &
                                         iface,iconn,cell_id_ghosted)
     case(UNSTRUCTURED_GRID)
   end select

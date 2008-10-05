@@ -482,15 +482,21 @@ subroutine StructuredGridComputeSpacing(structured_grid,nG2A,nG2L)
                                        structured_grid%bounds(Z_DIRECTION,LOWER)) / &
                                        dble(structured_grid%nz)
         case(CYLINDRICAL_GRID)
-          print *, 'CYLINDRICAL grids still need dr to be set up'
-          stop
+!         print *, 'CYLINDRICAL grids still need dr to be set up'
+!         stop
+          structured_grid%dx_global = (structured_grid%bounds(X_DIRECTION,UPPER)- &
+                                       structured_grid%bounds(X_DIRECTION,LOWER)) / &
+                                       dble(structured_grid%nx)
           structured_grid%dy = 1.d0
           structured_grid%dz_global = (structured_grid%bounds(Z_DIRECTION,UPPER)- &
                                        structured_grid%bounds(Z_DIRECTION,LOWER)) / &
                                        dble(structured_grid%nz)
         case(SPHERICAL_GRID)
-          print *, 'CYLINDRICAL grids still need dr to be set up'
-          stop
+!         print *, 'CYLINDRICAL grids still need dr to be set up'
+!         stop
+          structured_grid%dx_global = (structured_grid%bounds(X_DIRECTION,UPPER)- &
+                                       structured_grid%bounds(X_DIRECTION,LOWER)) / &
+                                       dble(structured_grid%nx)
           structured_grid%dy = 1.d0
           structured_grid%dz = 1.d0
       end select
@@ -902,27 +908,35 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
 
   ! y-connections
   if (structured_grid%ngy > 1) then
-
-    do k = structured_grid%kstart, structured_grid%kend
-      do i = structured_grid%istart, structured_grid%iend
-        do j = 1, leny
-          iconn = iconn+1
-          id_up = i + 1 + (j-1) * structured_grid%ngx + k * structured_grid%ngxy &
+    select case(structured_grid%itype)
+      case(CARTESIAN_GRID)
+        do k = structured_grid%kstart, structured_grid%kend
+          do i = structured_grid%istart, structured_grid%iend
+            do j = 1, leny
+              iconn = iconn+1
+              id_up = i + 1 + (j-1) * structured_grid%ngx + k * structured_grid%ngxy &
                   +samr_ofy
-          id_dn = id_up + structured_grid%ngx
-          connections%id_up(iconn) = id_up
-          connections%id_dn(iconn) = id_dn
-          connections%dist(-1:3,iconn) = 0.d0
-          dist_up = 0.5d0*structured_grid%dy(id_up)
-          dist_dn = 0.5d0*structured_grid%dy(id_dn)
-          connections%dist(-1,iconn) = dist_up/(dist_up+dist_dn)
-          connections%dist(0,iconn) = dist_up+dist_dn
-          connections%dist(2,iconn) = 1.d0  ! y component of unit vector
-          connections%area(iconn) = structured_grid%dx(id_up)* &
+              id_dn = id_up + structured_grid%ngx
+              connections%id_up(iconn) = id_up
+              connections%id_dn(iconn) = id_dn
+              connections%dist(-1:3,iconn) = 0.d0
+              dist_up = 0.5d0*structured_grid%dy(id_up)
+              dist_dn = 0.5d0*structured_grid%dy(id_dn)
+              connections%dist(-1,iconn) = dist_up/(dist_up+dist_dn)
+              connections%dist(0,iconn) = dist_up+dist_dn
+              connections%dist(2,iconn) = 1.d0  ! y component of unit vector
+              connections%area(iconn) = structured_grid%dx(id_up)* &
                                     structured_grid%dz(id_up)
+            enddo
+          enddo
         enddo
-      enddo
-    enddo
+      case(CYLINDRICAL_GRID)
+        print *, 'Cylindrical coordinates not applicable.'
+        stop
+      case(SPHERICAL_GRID)
+        print *, 'Spherical coordinates not applicable.'
+        stop
+    end select
   endif
       
   ! z-connections
@@ -987,7 +1001,7 @@ end function StructGridComputeInternConnect
 ! date: 11/09/07
 !
 ! ************************************************************************** !
-subroutine StructGridPopulateConnection(structured_grid,connection,iface, &
+subroutine StructGridPopulateConnection(radius,structured_grid,connection,iface, &
                                         iconn,ghosted_id)
 
   use Connection_module
@@ -999,50 +1013,115 @@ subroutine StructGridPopulateConnection(structured_grid,connection,iface, &
   PetscInt :: iface
   PetscInt :: iconn
   PetscInt :: ghosted_id
+  PetscReal :: radius(:)
   
   PetscErrorCode :: ierr
+  
+  PetscReal, parameter :: Pi=3.141592653590d0
   
   select case(connection%itype)
     case(BOUNDARY_CONNECTION_TYPE)
       select case(iface)
+
         case(WEST_FACE,EAST_FACE)
-          connection%dist(:,iconn) = 0.d0
-          connection%dist(0,iconn) = 0.5d0*structured_grid%dx(ghosted_id)
-          connection%area(iconn) = structured_grid%dy(ghosted_id)* &
+
+          select case(structured_grid%itype)
+            case(CARTESIAN_GRID)
+              connection%dist(:,iconn) = 0.d0
+              connection%dist(0,iconn) = 0.5d0*structured_grid%dx(ghosted_id)
+              connection%area(iconn) = structured_grid%dy(ghosted_id)* &
                                    structured_grid%dz(ghosted_id)
-          if (iface ==  WEST_FACE) then
-            connection%dist(1,iconn) = 1.d0
-          else
-            connection%dist(1,iconn) = -1.d0
-          endif
+              if (iface ==  WEST_FACE) then
+                connection%dist(1,iconn) = 1.d0
+              else
+                connection%dist(1,iconn) = -1.d0
+              endif
+            case(CYLINDRICAL_GRID)
+              connection%dist(:,iconn) = 0.d0
+              connection%dist(0,iconn) = 0.5d0*structured_grid%dx(ghosted_id)
+              connection%area(iconn) = 2.d0 * pi * radius(ghosted_id)* &
+                                        structured_grid%dz(ghosted_id)
+              if (iface ==  WEST_FACE) then
+                connection%dist(1,iconn) = 1.d0
+              else
+                connection%dist(1,iconn) = -1.d0
+              endif
+            case(SPHERICAL_GRID)
+              connection%dist(:,iconn) = 0.d0
+              connection%dist(0,iconn) = 0.5d0*structured_grid%dx(ghosted_id)
+              connection%area(iconn) = 4.d0 * pi * radius(ghosted_id) * &
+                                        structured_grid%dz(ghosted_id)
+              if (iface ==  WEST_FACE) then
+                connection%dist(1,iconn) = 1.d0
+              else
+                connection%dist(1,iconn) = -1.d0
+              endif
+          end select
+
         case(SOUTH_FACE,NORTH_FACE)
-          connection%dist(:,iconn) = 0.d0
-          connection%dist(0,iconn) = 0.5d0*structured_grid%dy(ghosted_id)
-          connection%area(iconn) = structured_grid%dx(ghosted_id)* &
+
+          select case(structured_grid%itype)
+            case(CARTESIAN_GRID)
+              connection%dist(:,iconn) = 0.d0
+              connection%dist(0,iconn) = 0.5d0*structured_grid%dy(ghosted_id)
+              connection%area(iconn) = structured_grid%dx(ghosted_id)* &
                                    structured_grid%dz(ghosted_id)
-          if (iface ==  SOUTH_FACE) then
-            connection%dist(2,iconn) = 1.d0
-          else
-            connection%dist(2,iconn) = -1.d0
-          endif
+              if (iface ==  SOUTH_FACE) then
+                connection%dist(2,iconn) = 1.d0
+              else
+                connection%dist(2,iconn) = -1.d0
+              endif
+            case(CYLINDRICAL_GRID)
+              print *, 'Cylindrical coordinates not applicable.'
+              stop
+            case(SPHERICAL_GRID)
+              print *, 'Spherical coordinates not applicable.'
+              stop
+          end select
+
         case(BOTTOM_FACE,TOP_FACE)
-          connection%dist(:,iconn) = 0.d0
-          connection%dist(0,iconn) = 0.5d0*structured_grid%dz(ghosted_id)
-          connection%area(iconn) = structured_grid%dx(ghosted_id)* &
+
+          select case(structured_grid%itype)
+            case(CARTESIAN_GRID)
+              connection%dist(:,iconn) = 0.d0
+              connection%dist(0,iconn) = 0.5d0*structured_grid%dz(ghosted_id)
+              connection%area(iconn) = structured_grid%dx(ghosted_id)* &
                                    structured_grid%dy(ghosted_id)
-          if (structured_grid%invert_z_axis) then
-            if (iface ==  TOP_FACE) then 
-              connection%dist(3,iconn) = 1.d0
-            else
-              connection%dist(3,iconn) = -1.d0
-            endif
-          else
-            if (iface ==  TOP_FACE) then 
-              connection%dist(3,iconn) = -1.d0
-            else
-              connection%dist(3,iconn) = 1.d0
-            endif
-          endif
+              if (structured_grid%invert_z_axis) then
+                if (iface ==  TOP_FACE) then 
+                  connection%dist(3,iconn) = 1.d0
+                else
+                  connection%dist(3,iconn) = -1.d0
+                endif
+              else
+                if (iface ==  TOP_FACE) then 
+                  connection%dist(3,iconn) = -1.d0
+                else
+                  connection%dist(3,iconn) = 1.d0
+                endif
+              endif
+            case(CYLINDRICAL_GRID)
+              connection%dist(:,iconn) = 0.d0
+              connection%dist(0,iconn) = 0.5d0*structured_grid%dz(ghosted_id)
+              connection%area(iconn) = 2.d0 * pi * radius(ghosted_id) * &
+                                        structured_grid%dx(ghosted_id)
+              if (structured_grid%invert_z_axis) then
+                if (iface ==  TOP_FACE) then 
+                  connection%dist(3,iconn) = 1.d0
+                else
+                  connection%dist(3,iconn) = -1.d0
+                endif
+              else
+                if (iface ==  TOP_FACE) then 
+                  connection%dist(3,iconn) = -1.d0
+                else
+                  connection%dist(3,iconn) = 1.d0
+                endif
+              endif
+            case(SPHERICAL_GRID)
+              print *, 'Areas for spherical coordinates for z-axis not applicable.'
+              stop
+          end select
       end select
     case(INITIAL_CONNECTION_TYPE)
     case(SRC_SINK_CONNECTION_TYPE)
