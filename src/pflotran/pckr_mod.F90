@@ -285,6 +285,27 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,pckr_sir,pckr_lambda, &
       sgir=pckr_sir(2)
       select case(ipckrtype)
 
+      case(0) ! kr = 1
+      
+        if(sw>=1.01D0*swir)then
+          kr(1)=1.D0
+        elseif(sw<=swir)then
+          kr(1)=0.D0
+        else
+          kr(1)=(sw-swir)/swir*1D2
+        endif
+       
+        if(sg>=1.01D0*sgir)then
+          kr(2)=1.D0
+        elseif(sg<=sgir)then
+          kr(2)=0.D0
+        else
+          kr(2)=(sg-sgir)/sgir*1D2
+        endif
+        kr=1D0
+       
+        upc=0.D0
+
       case(1) ! van Gennuchten
         ala=pckr_alpha
       ! swir=pckr_swir
@@ -486,6 +507,30 @@ subroutine pflow_pckr_noderiv_exec(ipckrtype,pckr_sir,pckr_lambda, &
         else  
           kr(2)=(1.D0 - se)**0.33333333D0 * (1.D0 -se**(1.D0/um))**(2.D0*um) 
         endif
+
+      case(6) !linear intropolation ,need pcmax, assign krmax=1.
+        
+        if(sw>swir)then
+          se=(sw-swir)/(sw0-swir)
+          upc=pcmax*(1.D0-se)
+          kr(1)=se
+       !  kr(2)=1.D0 - kr(1)
+        else
+          upc=pcmax
+          kr(1)=0.d0
+        ! kr(2)=1.d0
+        end if
+
+        if(sg>sgir)then
+          se=(sg-sgir)/(1.D0-sgir)
+          !upc=pcmax*(1.D0-se)
+          ! kr(1)=se
+          kr(2)=se
+        else
+        ! upc=pcmax
+        ! kr(1)=0.d0
+          kr(2)=0.d0
+        end if
 
       end select
 
