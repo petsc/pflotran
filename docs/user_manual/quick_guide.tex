@@ -785,13 +785,13 @@ Initial and boundary conditions and material properties are assigned to spatial 
 \item[GRID]
 \item TYPE 
 \begin{deflist}{00000}
-\item structured
+\item STRUCTURED
 \begin{deflist}{00000}
 \item cartesian
 \item cylindrical
 \item spherical
 \end{deflist}
-\item unstructured
+\item UNSTRUCTURED
 \item amr
 \end{deflist}
 \item NXYZ nx ny nz
@@ -803,10 +803,44 @@ Initial and boundary conditions and material properties are assigned to spatial 
 \item dy
 \item dz
 \end{deflist}
+\item END
+\item[GRID Continued]
+\end{deflist}
+\end{minipage}
+}
+
+\shadowbox{
+\begin{minipage}{6.5in}
+\begin{deflist}{0000000000} 
+\item BOUNDS
+\begin{deflist}{00000}
+\item For CARTESIAN coordinates input:
+\begin{deflist}{00000}
+\item x\_min, x\_max
+\item y\_min, y\_max
+\item z\_min, z\_max
+\end{deflist}
+\item For CYLINDRICAL coordinates input:
+\begin{deflist}{00000}
+\item r\_min, r\_max
+\item z\_min, z\_max
+\end{deflist}
+\item For SPHERICAL coordinates input:
+\begin{deflist}{00000}
+\item r\_min, r\_max
+\end{deflist}
+\item UNSTRUCTURED
+\item AMR
+\end{deflist}
+\item END
 \item[END]
 \end{deflist}
 
-Example:
+\end{minipage}
+}
+
+\noindent
+Example: GRID
 
 \begin{verbatim}
 GRID
@@ -817,11 +851,11 @@ DXYZ
 1.d0
 2.d0
 END
+BOUNDS
+0. 1000.
+0. 64.
 END
 \end{verbatim}
-
-\end{minipage}
-}
 
 %========================================================================
 
