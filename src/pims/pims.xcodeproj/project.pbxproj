@@ -56,9 +56,11 @@
 		33021A8808A12EC800D082B8 /* Project object */ = {
 			isa = PBXProject;
 			buildConfigurationList = 33021A8908A12EC800D082B8 /* Build configuration list for PBXProject "pims" */;
+			compatibilityVersion = "Xcode 2.4";
 			hasScannedForEncodings = 0;
 			mainGroup = 33021A8608A12EC800D082B8;
 			projectDirPath = "";
+			projectRoot = "";
 			targets = (
 			);
 		};
