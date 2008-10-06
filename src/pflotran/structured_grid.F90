@@ -775,6 +775,7 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
      end function samr_patch_at_bc
   end interface
 
+  PetscReal :: radius(:)
   type(connection_set_type), pointer :: StructGridComputeInternConnect
   type(option_type) :: option
   type(structured_grid_type) :: structured_grid
@@ -786,7 +787,6 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
   PetscInt :: nconn
   PetscInt :: lenx, leny, lenz
   PetscReal :: dist_up, dist_dn
-  PetscReal :: radius(:)
   type(connection_set_type), pointer :: connections
   PetscErrorCode :: ierr
   

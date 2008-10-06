@@ -201,6 +201,8 @@ subroutine DiscretizationRead(discretization,fid,option)
         case('FILE')
         case('DXYZ')
           call fiSkipToEND(IUNIT1,option%myrank,word) 
+        case('BOUNDS')
+          call fiSkipToEND(IUNIT1,option%myrank,word) 
         case('END')
           exit
       end select 
