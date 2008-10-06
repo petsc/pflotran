@@ -144,7 +144,7 @@ subroutine GridComputeInternalConnect(grid,option)
   select case(grid%itype)
     case(STRUCTURED_GRID)
       connection_set => &
-        StructGridComputeInternConnect(grid%structured_grid,option)
+        StructGridComputeInternConnect(grid%x,grid%structured_grid,option)
     case(UNSTRUCTURED_GRID) 
       connection_set => &
         UnstGridComputeInternConnect(grid%unstructured_grid,option)
@@ -185,7 +185,7 @@ subroutine GridPopulateConnection(grid,connection,iface,iconn,cell_id_local)
   
   select case(grid%itype)
     case(STRUCTURED_GRID)
-      call StructGridPopulateConnection(grid%structured_grid,connection, &
+      call StructGridPopulateConnection(grid%x,grid%structured_grid,connection, &
                                         iface,iconn,cell_id_ghosted)
     case(UNSTRUCTURED_GRID)
   end select
@@ -312,7 +312,7 @@ subroutine GridComputeVolumes(grid,volume,option)
   
   select case(grid%itype)
     case(STRUCTURED_GRID)
-      call StructuredGridComputeVolumes(grid%structured_grid,option, &
+      call StructuredGridComputeVolumes(grid%x,grid%structured_grid,option, &
                                         grid%nL2G,volume)
     case(UNSTRUCTURED_GRID)
   end select
