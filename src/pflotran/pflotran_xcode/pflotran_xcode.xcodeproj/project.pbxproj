@@ -88,6 +88,9 @@
 		2366A7DC0D86058C0003BB1F /* utility.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = utility.F90; path = ../utility.F90; sourceTree = SOURCE_ROOT; };
 		2366A7DD0D86058C0003BB1F /* water_eos.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = water_eos.F90; path = ../water_eos.F90; sourceTree = SOURCE_ROOT; };
 		2366A7DE0D86058C0003BB1F /* waypoint.F90 */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.fortran.f90; name = waypoint.F90; path = ../waypoint.F90; sourceTree = SOURCE_ROOT; };
+		23EEB6F00E9B14C2002FBA38 /* cf90bridge.F90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = cf90bridge.F90; path = ../cf90bridge.F90; sourceTree = SOURCE_ROOT; };
+		23EEB6F10E9B14C2002FBA38 /* database.F90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = database.F90; path = ../database.F90; sourceTree = SOURCE_ROOT; };
+		23EEB6F20E9B14C2002FBA38 /* mixed_fluid_eos.F90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = mixed_fluid_eos.F90; path = ../mixed_fluid_eos.F90; sourceTree = SOURCE_ROOT; };
 		23FEACC60E19539F004B4044 /* mass_balance.F90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = mass_balance.F90; path = ../mass_balance.F90; sourceTree = SOURCE_ROOT; };
 		899DEDDE0DE327110060475D /* co2_span_wagner_spline.F90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = co2_span_wagner_spline.F90; path = ../co2_span_wagner_spline.F90; sourceTree = SOURCE_ROOT; };
 		899DEDDF0DE327110060475D /* co2_sw.F90 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.fortran.f90; name = co2_sw.F90; path = ../co2_sw.F90; sourceTree = SOURCE_ROOT; };
@@ -106,6 +109,7 @@
 				2366A78F0D86058C0003BB1F /* ascii_to_hdf5.F90 */,
 				2329A3DC0DC0F3F900AB44B2 /* auxilliary.F90 */,
 				2366A7900D86058C0003BB1F /* breakthrough.F90 */,
+				23EEB6F00E9B14C2002FBA38 /* cf90bridge.F90 */,
 				2366A7910D86058C0003BB1F /* checkpoint.F90 */,
 				2366A7920D86058C0003BB1F /* co2_span_wagner.F90 */,
 				899DEDDE0DE327110060475D /* co2_span_wagner_spline.F90 */,
@@ -117,6 +121,7 @@
 				2366A7970D86058C0003BB1F /* connection.F90 */,
 				2366A7980D86058C0003BB1F /* convergence.F90 */,
 				2366A7990D86058C0003BB1F /* coupler.F90 */,
+				23EEB6F10E9B14C2002FBA38 /* database.F90 */,
 				2366A79A0D86058C0003BB1F /* debug.F90 */,
 				2366A79B0D86058C0003BB1F /* definitions.h */,
 				2366A79C0D86058C0003BB1F /* discretization.F90 */,
@@ -134,6 +139,7 @@
 				2366A7A80D86058C0003BB1F /* makefile */,
 				23FEACC60E19539F004B4044 /* mass_balance.F90 */,
 				2366A7A90D86058C0003BB1F /* material.F90 */,
+				23EEB6F20E9B14C2002FBA38 /* mixed_fluid_eos.F90 */,
 				899DEDE20DE3377C0060475D /* mphase.F90 */,
 				899DEDE30DE3377C0060475D /* mphase_aux.F90 */,
 				2366A7AB0D86058C0003BB1F /* oil_eos.F90 */,
