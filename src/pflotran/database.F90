@@ -77,7 +77,6 @@ subroutine DatabaseRead(reaction,option)
     cur_surfcplx => cur_surfcplx%next
   enddo  
   
-  reaction%database_filename = 'hanford.dat'
   open(unit=dbase_id,file=reaction%database_filename,status='old',iostat=ierr)
   if (ierr /= 0) then
     string = 'DATABASE File: ' // reaction%database_filename // ' not found.'
@@ -341,7 +340,7 @@ subroutine DatabaseRead(reaction,option)
     if (cur_aq_spec%id < 0) then
       flag = PETSC_TRUE
       string = 'Aqueous primary species (' // trim(cur_aq_spec%name) // &
-               ') not found in database.'
+               ') either not found in database or doubled up in input file.'
       call printMsg(option,string)
     endif
     cur_aq_spec => cur_aq_spec%next
@@ -352,7 +351,7 @@ subroutine DatabaseRead(reaction,option)
     if (cur_aq_spec%id < 0) then
       flag = PETSC_TRUE
       string = 'Aqueous secondary species (' // trim(cur_aq_spec%name) // &
-               ') not found in database.'
+               ') either not found in database or doubled up in input file.'
       call printMsg(option,string)
     endif
     cur_aq_spec => cur_aq_spec%next
@@ -363,7 +362,7 @@ subroutine DatabaseRead(reaction,option)
     if (cur_gas_spec%id < 0) then
       flag = PETSC_TRUE
       string = 'Gas species (' // trim(cur_gas_spec%name) // &
-               ') not found in database.'
+               ') either not found in database or doubled up in input file.'
       call printMsg(option,string)
     endif
     cur_gas_spec => cur_gas_spec%next
@@ -374,7 +373,7 @@ subroutine DatabaseRead(reaction,option)
     if (cur_mineral%id < 0) then
       flag = PETSC_TRUE
       string = 'Mineral (' // trim(cur_mineral%name) // &
-               ') not found in database.'
+               ') either not found in database or doubled up in input file.'
       call printMsg(option,string)
     endif
     cur_mineral => cur_mineral%next
@@ -420,8 +419,6 @@ subroutine BasisInit(reaction,option)
   type(aq_species_type), pointer :: cur_sec_aq_spec
   type(gas_species_type), pointer :: cur_gas_spec
   type(mineral_type), pointer :: cur_mineral
-  type(aq_species_type), pointer :: cur_pri_aq_spec1
-  type(aq_species_type), pointer :: cur_pri_aq_spec2
   type(aq_species_type), pointer :: cur_sec_aq_spec1
   type(aq_species_type), pointer :: cur_sec_aq_spec2
   type(gas_species_type), pointer :: cur_gas_spec1
@@ -511,252 +508,6 @@ subroutine BasisInit(reaction,option)
       exit
     endif
   enddo
-  
-  ! check for seconday aqueous and gas species in reactions and swap them
-  ! out (e.g. HS- is a secondary aqueous complex in the database, but found 
-  ! in many secondary aqueous and mineral reactions)
-
-  nullify(cur_pri_aq_spec)
-  nullify(cur_pri_aq_spec1)
-  nullify(cur_pri_aq_spec2)
-  nullify(cur_sec_aq_spec)
-  nullify(cur_sec_aq_spec1)
-  nullify(cur_sec_aq_spec2)
-  nullify(cur_gas_spec)
-  nullify(cur_gas_spec1)
-  nullify(cur_gas_spec2)
-  nullify(cur_mineral)
-    
-  ! first off, lets remove all the secondary gases from all other reactions
-  cur_gas_spec1 => reaction%gas_species_list
-  do
-    if (.not.associated(cur_gas_spec1)) exit
-    
-    if (.not.associated(cur_gas_spec1%eqrxn)) then
-      cur_gas_spec1 => cur_gas_spec1%next
-      cycle
-    endif
-    
-    ! gases in gas reactions
-    cur_gas_spec2 => reaction%gas_species_list
-    do
-      if (.not.associated(cur_gas_spec2)) exit
-      
-      if (associated(cur_gas_spec2%eqrxn)) then
-        ispec = 1
-        do
-          if (ispec > cur_gas_spec2%eqrxn%nspec) exit
-          if (fiStringCompare(cur_gas_spec1%name, &
-                              cur_gas_spec2%eqrxn%spec_name(ispec), &
-                              MAXNAMELENGTH)) then
-            call BasisSwapSpeciesInGasOrSecRxn(cur_gas_spec1%name,cur_gas_spec1%eqrxn, &
-                                               cur_gas_spec2%eqrxn)
-            ispec = 0
-          endif
-          ispec = ispec + 1
-        enddo
-      endif
-      cur_gas_spec2 => cur_gas_spec2%next
-    enddo
-    nullify(cur_gas_spec2)
-
-    ! gases in primary aqueous reactions
-    cur_pri_aq_spec2 => reaction%primary_species_list
-    do
-      if (.not.associated(cur_pri_aq_spec2)) exit
-      
-      if (associated(cur_pri_aq_spec2%eqrxn)) then
-        ispec = 1
-        do
-          if (ispec > cur_pri_aq_spec2%eqrxn%nspec) exit
-          if (fiStringCompare(cur_gas_spec1%name, &
-                              cur_pri_aq_spec2%eqrxn%spec_name(ispec), &
-                              MAXNAMELENGTH)) then
-            call BasisSwapSpeciesInGasOrSecRxn(cur_gas_spec1%name,cur_gas_spec1%eqrxn, &
-                                               cur_pri_aq_spec2%eqrxn)
-            ispec = 0
-          endif
-          ispec = ispec + 1
-        enddo
-      endif
-      cur_pri_aq_spec2 => cur_pri_aq_spec2%next
-    enddo
-    nullify(cur_pri_aq_spec2)
-
-    ! gases in secondary aqueous reactions
-    cur_sec_aq_spec2 => reaction%secondary_species_list
-    do
-      if (.not.associated(cur_sec_aq_spec2)) exit
-      
-      if (associated(cur_sec_aq_spec2%eqrxn)) then
-        ispec = 1
-        do
-          if (ispec > cur_sec_aq_spec2%eqrxn%nspec) exit
-          if (fiStringCompare(cur_gas_spec1%name, &
-                              cur_sec_aq_spec2%eqrxn%spec_name(ispec), &
-                              MAXNAMELENGTH)) then
-            call BasisSwapSpeciesInGasOrSecRxn(cur_gas_spec1%name,cur_gas_spec1%eqrxn, &
-                                               cur_sec_aq_spec2%eqrxn)
-            ispec = 0
-          endif
-          ispec = ispec + 1
-        enddo
-      endif
-      cur_sec_aq_spec2 => cur_sec_aq_spec2%next
-    enddo
-    nullify(cur_sec_aq_spec2)
-
-    ! gases in mineral reactions
-    cur_mineral => reaction%mineral_list
-    do
-      if (.not.associated(cur_mineral)) exit
-      
-      if (associated(cur_mineral%tstrxn)) then
-        ispec = 1
-        do
-          if (ispec > cur_mineral%tstrxn%nspec) exit
-          if (fiStringCompare(cur_gas_spec1%name, &
-                              cur_mineral%tstrxn%spec_name(ispec), &
-                              MAXNAMELENGTH)) then
-            call BasisSwapSpeciesInMineralRxn(cur_gas_spec1%name,cur_gas_spec1%eqrxn, &
-                                              cur_mineral%tstrxn)
-            ispec = 0
-          endif
-          ispec = ispec + 1
-        enddo
-      endif
-      cur_mineral => cur_mineral%next
-    enddo
-    nullify(cur_mineral)
-    
-    cur_gas_spec1 => cur_gas_spec1%next
-  enddo
-
-  nullify(cur_pri_aq_spec)
-  nullify(cur_pri_aq_spec1)
-  nullify(cur_pri_aq_spec2)
-  nullify(cur_sec_aq_spec)
-  nullify(cur_sec_aq_spec1)
-  nullify(cur_sec_aq_spec2)
-  nullify(cur_gas_spec)
-  nullify(cur_gas_spec1)
-  nullify(cur_gas_spec2)
-  nullify(cur_mineral)
-
-  ! aqueous species
-  ! at this point, both the primary and secondary aqueous species list
-  ! may contain equilibrium reactions
-  cur_pri_aq_spec => reaction%primary_species_list
-  cur_sec_aq_spec => reaction%primary_species_list
-  do
-    ! the logic below allows one to utilize the same code to loop over
-    ! both primary and secondary species
-    if (associated(cur_pri_aq_spec)) then
-      cur_aq_spec => cur_pri_aq_spec
-      cur_pri_aq_spec => cur_pri_aq_spec%next
-    else if (associated(cur_sec_aq_spec)) then
-      cur_aq_spec => cur_sec_aq_spec
-      cur_sec_aq_spec => cur_sec_aq_spec%next
-    else
-      nullify(cur_aq_spec)
-      exit
-    endif
-      
-    if (.not.associated(cur_aq_spec%eqrxn)) then
-      cycle
-    endif
-    
-    ! aqueous species in gas reactions
-    cur_gas_spec2 => reaction%gas_species_list
-    do
-      if (.not.associated(cur_gas_spec2)) exit
-      
-      if (associated(cur_gas_spec2%eqrxn)) then
-        ispec = 1
-        do
-          if (ispec > cur_gas_spec2%eqrxn%nspec) exit
-          if (fiStringCompare(cur_aq_spec%name, &
-                              cur_gas_spec2%eqrxn%spec_name(ispec), &
-                              MAXNAMELENGTH)) then
-            call BasisSwapSpeciesInGasOrSecRxn(cur_aq_spec%name,cur_aq_spec%eqrxn, &
-                                               cur_gas_spec2%eqrxn)
-            ispec = 0
-          endif
-          ispec = ispec + 1
-        enddo
-      endif
-      cur_gas_spec2 => cur_gas_spec2%next
-    enddo
-    nullify(cur_gas_spec2)
-
-    ! aqueous species in primary aqueous reactions
-    cur_pri_aq_spec2 => reaction%primary_species_list
-    do
-      if (.not.associated(cur_pri_aq_spec2)) exit
-      
-      if (associated(cur_pri_aq_spec2%eqrxn)) then
-        ispec = 1
-        do
-          if (ispec > cur_pri_aq_spec2%eqrxn%nspec) exit
-          if (fiStringCompare(cur_aq_spec%name, &
-                              cur_pri_aq_spec2%eqrxn%spec_name(ispec), &
-                              MAXNAMELENGTH)) then
-            call BasisSwapSpeciesInGasOrSecRxn(cur_aq_spec%name,cur_aq_spec%eqrxn, &
-                                               cur_pri_aq_spec2%eqrxn)
-            ispec = 0
-          endif
-          ispec = ispec + 1
-        enddo
-      endif
-      cur_pri_aq_spec2 => cur_pri_aq_spec2%next
-    enddo
-    nullify(cur_pri_aq_spec2)
-
-    ! aqueous species in secondary aqueous reactions
-    cur_sec_aq_spec2 => reaction%secondary_species_list
-    do
-      if (.not.associated(cur_sec_aq_spec2)) exit
-      
-      if (associated(cur_sec_aq_spec2%eqrxn)) then
-        ispec = 1
-        do
-          if (ispec > cur_sec_aq_spec2%eqrxn%nspec) exit
-          if (fiStringCompare(cur_aq_spec%name, &
-                              cur_sec_aq_spec2%eqrxn%spec_name(ispec), &
-                              MAXNAMELENGTH)) then
-            call BasisSwapSpeciesInGasOrSecRxn(cur_aq_spec%name,cur_aq_spec%eqrxn, &
-                                               cur_sec_aq_spec2%eqrxn)
-            ispec = 0
-          endif
-          ispec = ispec + 1
-        enddo
-      endif
-      cur_sec_aq_spec2 => cur_sec_aq_spec2%next      
-    enddo
-    nullify(cur_sec_aq_spec2)
-
-    ! gases in mineral reactions
-    cur_mineral => reaction%mineral_list
-    do
-      if (.not.associated(cur_mineral)) exit
-      
-      if (associated(cur_mineral%tstrxn)) then
-        ispec = 1
-        do
-          if (ispec > cur_mineral%tstrxn%nspec) exit
-          if (fiStringCompare(cur_aq_spec%name, &
-                              cur_mineral%tstrxn%spec_name(ispec), &
-                              MAXNAMELENGTH)) then
-            call BasisSwapSpeciesInMineralRxn(cur_aq_spec%name,cur_aq_spec%eqrxn, &
-                                              cur_mineral%tstrxn)
-            ispec = 0
-          endif
-          ispec = ispec + 1
-        enddo
-      endif
-      cur_mineral => cur_mineral%next
-    enddo
-  enddo
 
   allocate(stoich_prev(ncomp_h2o))
   stoich_prev = 0.d0
@@ -827,7 +578,331 @@ subroutine BasisInit(reaction,option)
       call lubksb(new_basis,ncomp_h2o,indices,stoich_prev)
       transformation(:,ispec) = stoich_prev(:)
     enddo
+  
+    ! at this point, any primary species with eqrxns can have them removed
+    ! and secondary species without eqrxns need one added
+
+    cur_pri_aq_spec => reaction%primary_species_list
+    do
+      if (.not.associated(cur_pri_aq_spec)) exit
+      if (associated(cur_pri_aq_spec%eqrxn)) then
+        call EquilibriumRxnDestroy(cur_pri_aq_spec%eqrxn)
+      endif
+      cur_pri_aq_spec => cur_pri_aq_spec%next
+    enddo
+
+    cur_sec_aq_spec => reaction%secondary_species_list
+    do
+      if (.not.associated(cur_sec_aq_spec)) exit
+      if (.not.associated(cur_sec_aq_spec%eqrxn)) then
+        cur_sec_aq_spec%eqrxn => EquilibriumRxnCreate()
+        stoich_prev = 0.d0
+        found = PETSC_FALSE
+        do icol = 1, icount_old
+          if (fiStringCompare(cur_sec_aq_spec%name, &
+                              old_basis_names(icol),MAXNAMELENGTH)) then
+            stoich_prev(icol) = 1.d0
+            found = PETSC_TRUE
+            exit
+          endif
+        enddo  
+        if (.not.found) then
+          string = 'Species ' // trim(cur_sec_aq_spec%name) // ', which is' // &
+                   ' being swapped out of the basis was not found in' // &
+                   ' original basis.'
+          call printErrMsg(option,string)        
+        endif   
+        do icol = 1, ncomp_h2o
+          stoich_new(icol) = &
+            dot_product(stoich_prev(1:ncomp_h2o), &
+                        transformation(1:ncomp_h2o,icol))
+        enddo
+        do i = 1, reaction%num_dbase_temperatures
+          logK(i) = logK(i) - &
+            dot_product(stoich_prev(1:ncomp_h2o),logKvector(i,1:ncomp_h2o))
+        enddo
+
+        ! count # of species in reaction
+        do icol = 1, ncomp_h2o
+          if (dabs(stoich_new(icol)) > 1.d-40) &
+            cur_sec_aq_spec%eqrxn%nspec = cur_sec_aq_spec%eqrxn%nspec + 1
+        enddo
+        allocate(cur_sec_aq_spec%eqrxn%stoich(cur_sec_aq_spec%eqrxn%nspec))
+        cur_sec_aq_spec%eqrxn%stoich = 0.d0
+        allocate(cur_sec_aq_spec%eqrxn%spec_name(cur_sec_aq_spec%eqrxn%nspec))
+        cur_sec_aq_spec%eqrxn%spec_name = ''
+        allocate(cur_sec_aq_spec%eqrxn%spec_ids(cur_sec_aq_spec%eqrxn%nspec))
+        cur_sec_aq_spec%eqrxn%spec_ids = 0
+        allocate(cur_sec_aq_spec%eqrxn%logK(reaction%num_dbase_temperatures))
+        cur_sec_aq_spec%eqrxn%logK = 0.d0
+
+        ispec = 0
+        do icol = 1, ncomp_h2o
+          if (dabs(stoich_new(icol)) > 1.d-40) then
+            ispec = ispec + 1
+            cur_sec_aq_spec%eqrxn%spec_name(ispec) = new_basis_names(icol)
+            cur_sec_aq_spec%eqrxn%stoich(ispec) = stoich_new(icol)
+            cur_sec_aq_spec%eqrxn%spec_ids(ispec) = icol
+          endif
+        enddo
+        cur_sec_aq_spec%eqrxn%logK = logK
+    
+      endif
+      cur_sec_aq_spec => cur_sec_aq_spec%next
+    enddo
   endif
+
+  ! now substitute in secondary aqueous species and gases
+
+  ! check for seconday aqueous and gas species in reactions and swap them
+  ! out (e.g. HS- is a secondary aqueous complex in the database, but found 
+  ! in many secondary aqueous and mineral reactions)
+
+  nullify(cur_aq_spec)
+  nullify(cur_pri_aq_spec)
+  nullify(cur_sec_aq_spec)
+  nullify(cur_sec_aq_spec1)
+  nullify(cur_sec_aq_spec2)
+  nullify(cur_gas_spec)
+  nullify(cur_gas_spec1)
+  nullify(cur_gas_spec2)
+  nullify(cur_mineral)
+    
+  ! first off, lets remove all the secondary gases from all other reactions
+  cur_gas_spec1 => reaction%gas_species_list
+  do
+    if (.not.associated(cur_gas_spec1)) exit
+    
+    if (.not.associated(cur_gas_spec1%eqrxn)) then
+      cur_gas_spec1 => cur_gas_spec1%next
+      cycle
+    endif
+    
+    ! gases in gas reactions
+    cur_gas_spec2 => reaction%gas_species_list
+    do
+      if (.not.associated(cur_gas_spec2)) exit
+      
+      if (associated(cur_gas_spec2%eqrxn)) then
+        ispec = 1
+        do
+          if (ispec > cur_gas_spec2%eqrxn%nspec) exit
+          if (fiStringCompare(cur_gas_spec1%name, &
+                              cur_gas_spec2%eqrxn%spec_name(ispec), &
+                              MAXNAMELENGTH)) then
+            call BasisSubSpeciesInGasOrSecRxn(cur_gas_spec1%name, &
+                                              cur_gas_spec1%eqrxn, &
+                                              cur_gas_spec2%eqrxn)
+            ispec = 0
+          endif
+          ispec = ispec + 1
+        enddo
+      endif
+      cur_gas_spec2 => cur_gas_spec2%next
+    enddo
+    nullify(cur_gas_spec2)
+
+    ! gases in secondary aqueous reactions
+    cur_sec_aq_spec2 => reaction%secondary_species_list
+    do
+      if (.not.associated(cur_sec_aq_spec2)) exit
+      
+      if (associated(cur_sec_aq_spec2%eqrxn)) then
+        ispec = 1
+        do
+          if (ispec > cur_sec_aq_spec2%eqrxn%nspec) exit
+          if (fiStringCompare(cur_gas_spec1%name, &
+                              cur_sec_aq_spec2%eqrxn%spec_name(ispec), &
+                              MAXNAMELENGTH)) then
+            call BasisSubSpeciesInGasOrSecRxn(cur_gas_spec1%name, &
+                                              cur_gas_spec1%eqrxn, &
+                                              cur_sec_aq_spec2%eqrxn)
+            ispec = 0
+          endif
+          ispec = ispec + 1
+        enddo
+      endif
+      cur_sec_aq_spec2 => cur_sec_aq_spec2%next
+    enddo
+    nullify(cur_sec_aq_spec2)
+
+    ! gases in mineral reactions
+    cur_mineral => reaction%mineral_list
+    do
+      if (.not.associated(cur_mineral)) exit
+      
+      if (associated(cur_mineral%tstrxn)) then
+        ispec = 1
+        do
+          if (ispec > cur_mineral%tstrxn%nspec) exit
+          if (fiStringCompare(cur_gas_spec1%name, &
+                              cur_mineral%tstrxn%spec_name(ispec), &
+                              MAXNAMELENGTH)) then
+            call BasisSubSpeciesInMineralRxn(cur_gas_spec1%name, &
+                                             cur_gas_spec1%eqrxn, &
+                                             cur_mineral%tstrxn)
+            ispec = 0
+          endif
+          ispec = ispec + 1
+        enddo
+      endif
+      cur_mineral => cur_mineral%next
+    enddo
+    nullify(cur_mineral)
+    
+    cur_gas_spec1 => cur_gas_spec1%next
+  enddo
+
+  nullify(cur_aq_spec)
+  nullify(cur_pri_aq_spec)
+  nullify(cur_sec_aq_spec)
+  nullify(cur_sec_aq_spec1)
+  nullify(cur_sec_aq_spec2)
+  nullify(cur_gas_spec)
+  nullify(cur_gas_spec1)
+  nullify(cur_gas_spec2)
+  nullify(cur_mineral)
+
+  ! secondary aqueous species
+  cur_sec_aq_spec1 => reaction%secondary_species_list
+  do
+
+    if (.not.associated(cur_sec_aq_spec1)) exit
+    
+    if (.not.associated(cur_sec_aq_spec1%eqrxn)) then
+      cur_sec_aq_spec1 => cur_sec_aq_spec1%next
+      cycle
+    endif
+    
+    ! secondary aqueous species in gas reactions
+    cur_gas_spec2 => reaction%gas_species_list
+    do
+      if (.not.associated(cur_gas_spec2)) exit
+      
+      if (associated(cur_gas_spec2%eqrxn)) then
+        ispec = 1
+        do
+          if (ispec > cur_gas_spec2%eqrxn%nspec) exit
+          if (fiStringCompare(cur_sec_aq_spec1%name, &
+                              cur_gas_spec2%eqrxn%spec_name(ispec), &
+                              MAXNAMELENGTH)) then
+            call BasisSubSpeciesInGasOrSecRxn(cur_sec_aq_spec1%name, &
+                                              cur_sec_aq_spec1%eqrxn, &
+                                              cur_gas_spec2%eqrxn)
+            ispec = 0
+          endif
+          ispec = ispec + 1
+        enddo
+      endif
+      cur_gas_spec2 => cur_gas_spec2%next
+    enddo
+    nullify(cur_gas_spec2)
+
+    ! secondary aqueous species in secondary aqueous reactions
+    cur_sec_aq_spec2 => reaction%secondary_species_list
+    do
+      if (.not.associated(cur_sec_aq_spec2)) exit
+      
+      if (associated(cur_sec_aq_spec2%eqrxn)) then
+        ispec = 1
+        do
+          if (ispec > cur_sec_aq_spec2%eqrxn%nspec) exit
+          if (fiStringCompare(cur_sec_aq_spec1%name, &
+                              cur_sec_aq_spec2%eqrxn%spec_name(ispec), &
+                              MAXNAMELENGTH)) then
+            call BasisSubSpeciesInGasOrSecRxn(cur_sec_aq_spec1%name, &
+                                              cur_sec_aq_spec1%eqrxn, &
+                                              cur_sec_aq_spec2%eqrxn)
+            ispec = 0
+          endif
+          ispec = ispec + 1
+        enddo
+      endif
+      cur_sec_aq_spec2 => cur_sec_aq_spec2%next      
+    enddo
+    nullify(cur_sec_aq_spec2)
+
+    ! secondary aqueous species in mineral reactions
+    cur_mineral => reaction%mineral_list
+    do
+      if (.not.associated(cur_mineral)) exit
+      
+      if (associated(cur_mineral%tstrxn)) then
+        ispec = 1
+        do
+          if (ispec > cur_mineral%tstrxn%nspec) exit
+          if (fiStringCompare(cur_sec_aq_spec1%name, &
+                              cur_mineral%tstrxn%spec_name(ispec), &
+                              MAXNAMELENGTH)) then
+            call BasisSubSpeciesInMineralRxn(cur_sec_aq_spec1%name, &
+                                             cur_sec_aq_spec1%eqrxn, &
+                                             cur_mineral%tstrxn)
+            ispec = 0
+          endif
+          ispec = ispec + 1
+        enddo
+      endif
+      cur_mineral => cur_mineral%next
+    enddo
+    cur_sec_aq_spec1 => cur_sec_aq_spec1%next
+  enddo
+
+  nullify(cur_aq_spec)
+  nullify(cur_pri_aq_spec)
+  nullify(cur_sec_aq_spec)
+  nullify(cur_sec_aq_spec1)
+  nullify(cur_sec_aq_spec2)
+  nullify(cur_gas_spec)
+  nullify(cur_gas_spec1)
+  nullify(cur_gas_spec2)
+  nullify(cur_mineral)
+
+  ! align all species in rxns with basis
+  cur_sec_aq_spec => reaction%secondary_species_list
+  do
+    if (.not.associated(cur_sec_aq_spec)) exit
+    if (.not.associated(cur_sec_aq_spec%eqrxn%spec_ids)) then
+      allocate(cur_sec_aq_spec%eqrxn%spec_ids(cur_sec_aq_spec%eqrxn%nspec))
+      cur_sec_aq_spec%eqrxn%spec_ids = 0
+    endif
+    call BasisAlignSpeciesInRxn(ncomp_h2o,new_basis_names, &
+                                cur_sec_aq_spec%eqrxn%nspec, &
+                                cur_sec_aq_spec%eqrxn%spec_name, &
+                                cur_sec_aq_spec%eqrxn%stoich, &
+                                cur_sec_aq_spec%eqrxn%spec_ids,option)     
+    cur_sec_aq_spec => cur_sec_aq_spec%next
+  enddo
+
+  cur_gas_spec => reaction%gas_species_list
+  do
+    if (.not.associated(cur_gas_spec)) exit
+    if (.not.associated(cur_gas_spec%eqrxn%spec_ids)) then
+      allocate(cur_gas_spec%eqrxn%spec_ids(cur_gas_spec%eqrxn%nspec))
+      cur_gas_spec%eqrxn%spec_ids = 0
+    endif
+    call BasisAlignSpeciesInRxn(ncomp_h2o,new_basis_names, &
+                                cur_gas_spec%eqrxn%nspec, &
+                                cur_gas_spec%eqrxn%spec_name, &
+                                cur_gas_spec%eqrxn%stoich, &
+                                cur_gas_spec%eqrxn%spec_ids,option)     
+    cur_gas_spec => cur_gas_spec%next
+  enddo
+
+  cur_mineral => reaction%mineral_list
+  do
+    if (.not.associated(cur_mineral)) exit
+    if (.not.associated(cur_mineral%tstrxn%spec_ids)) then
+      allocate(cur_mineral%tstrxn%spec_ids(cur_mineral%tstrxn%nspec))
+      cur_mineral%tstrxn%spec_ids = 0
+    endif    
+    call BasisAlignSpeciesInRxn(ncomp_h2o,new_basis_names, &
+                                cur_mineral%tstrxn%nspec, &
+                                cur_mineral%tstrxn%spec_name, &
+                                cur_mineral%tstrxn%stoich, &
+                                cur_mineral%tstrxn%spec_ids,option)     
+    cur_mineral => cur_mineral%next
+  enddo  
+
 
   ! fill reaction arrays, swapping if necessary
   allocate(reaction%primary_species_names(reaction%ncomp))
@@ -854,88 +929,12 @@ subroutine BasisInit(reaction,option)
     allocate(reaction%eqcmplx_a0(reaction%neqcmplx))
     reaction%eqcmplx_a0 = 0.d0
 
+    ! pack in reaction arrays
     cur_sec_aq_spec => reaction%secondary_species_list
     isec_spec = 1
     do
       if (.not.associated(cur_sec_aq_spec)) exit
-      logK = 0.d0
-      stoich_prev = 0.d0
-      stoich_new = 0.d0
-      if (associated(cur_sec_aq_spec%eqrxn)) then
-        logK = cur_sec_aq_spec%eqrxn%logK
-        do i=1,cur_sec_aq_spec%eqrxn%nspec
-          found = PETSC_FALSE
-          do icol=1,icount_old
-            if (fiStringCompare(cur_sec_aq_spec%eqrxn%spec_name(i), &
-                                old_basis_names(icol), &
-                                MAXNAMELENGTH)) then
-              stoich_prev(icol) = cur_sec_aq_spec%eqrxn%stoich(i)
-              found= PETSC_TRUE
-              exit
-            endif
-          enddo
-          if (.not.found) then
-            string = trim(cur_sec_aq_spec%eqrxn%spec_name(i)) // ' not found in basis'
-            call printMsg(option,string)
-          endif
-        enddo
-      else
-        if (.not.compute_new_basis) then
-          string = 'Primary species listed as a secondary species needs ' // &
-                   'basis swapping: ' // trim(cur_sec_aq_spec%name)
-          call printErrMsg(option,string)
-        endif
-        do icol = 1, icount_old
-          if (fiStringCompare(cur_sec_aq_spec%name, &
-                              old_basis_names(icol),MAXNAMELENGTH)) then
-            stoich_prev(icol) = 1.d0
-          endif
-        enddo
-      endif
-      
-      if (compute_new_basis) then
-        do icol = 1, ncomp_h2o
-          stoich_new(icol) = &
-            dot_product(stoich_prev(1:ncomp_h2o), &
-                        transformation(1:ncomp_h2o,icol))
-        enddo
-        do i = 1, reaction%num_dbase_temperatures
-          logK(i) = logK(i) - &
-            dot_product(stoich_prev(1:ncomp_h2o),logKvector(i,1:ncomp_h2o))
-        enddo
-      else
-        stoich_new = stoich_prev
-      endif
-        
-      call EquilibriumRxnDestroy(cur_sec_aq_spec%eqrxn)
-      cur_sec_aq_spec%eqrxn => EquilibriumRxnCreate()
-        
-      ! count # of species in reaction
-      do icol = 1, ncomp_h2o
-        if (dabs(stoich_new(icol)) > 1.d-40) &
-          cur_sec_aq_spec%eqrxn%nspec = cur_sec_aq_spec%eqrxn%nspec + 1
-      enddo
-      allocate(cur_sec_aq_spec%eqrxn%stoich(cur_sec_aq_spec%eqrxn%nspec))
-      cur_sec_aq_spec%eqrxn%stoich = 0.d0
-      allocate(cur_sec_aq_spec%eqrxn%spec_name(cur_sec_aq_spec%eqrxn%nspec))
-      cur_sec_aq_spec%eqrxn%spec_name = ''
-      allocate(cur_sec_aq_spec%eqrxn%spec_ids(cur_sec_aq_spec%eqrxn%nspec))
-      cur_sec_aq_spec%eqrxn%spec_ids = 0
-      allocate(cur_sec_aq_spec%eqrxn%logK(reaction%num_dbase_temperatures))
-      cur_sec_aq_spec%eqrxn%logK = 0.d0
-      
-      i = 0
-      do icol = 1, ncomp_h2o
-        if (dabs(stoich_new(icol)) > 1.d-40) then
-          i = i + 1
-          cur_sec_aq_spec%eqrxn%spec_name(i) = new_basis_names(icol)
-          cur_sec_aq_spec%eqrxn%stoich(i) = stoich_new(icol)
-          cur_sec_aq_spec%eqrxn%spec_ids(i) = icol
-        endif
-      enddo
-      cur_sec_aq_spec%eqrxn%logK = logK
 
-      ! pack in reaction arrays
       reaction%secondary_species_names(isec_spec) = &
         cur_sec_aq_spec%name
       ispec = 0
@@ -998,69 +997,7 @@ subroutine BasisInit(reaction,option)
     imnrl = 1
     do
       if (.not.associated(cur_mineral)) exit
-      reaction%mineral_names(imnrl) = cur_mineral%name
-      stoich_prev = 0.d0
-      stoich_new = 0.d0
-      logK = cur_mineral%tstrxn%logK
-      do i = 1, cur_mineral%tstrxn%nspec
-        found = PETSC_FALSE
-        do icol = 1, icount_old
-          if (fiStringCompare(cur_mineral%tstrxn%spec_name(i), &
-                              old_basis_names(icol),MAXNAMELENGTH)) then
-            stoich_prev(icol) = cur_mineral%tstrxn%stoich(i)
-            found = PETSC_TRUE
-            exit
-          endif
-        enddo
-        if (.not.found) then
-          string = trim(cur_mineral%tstrxn%spec_name(i)) // ' not found in basis.'
-          call printErrMsg(option,string)
-        endif
-      enddo
-      
-      if (compute_new_basis) then
-        do icol = 1, ncomp_h2o
-          stoich_new(icol) = &
-            dot_product(stoich_prev(1:ncomp_h2o), &
-                        transformation(1:ncomp_h2o,icol))
-        enddo
-        do i = 1, reaction%num_dbase_temperatures
-          logK(i) = logK(i) - &
-            dot_product(stoich_prev(1:ncomp_h2o),logKvector(i,1:ncomp_h2o))
-        enddo
-      else
-        stoich_new = stoich_prev
-      endif
-      
-      call TransitionStateTheoryRxnDestroy(cur_mineral%tstrxn)
-      cur_mineral%tstrxn => TransitionStateTheoryRxnCreate()
-      
-      ! count # of species in reaction
-      do icol = 1, ncomp_h2o
-        if (dabs(stoich_new(icol)) > 1.d-40) &
-          cur_mineral%tstrxn%nspec = cur_mineral%tstrxn%nspec + 1
-      enddo
-      allocate(cur_mineral%tstrxn%stoich(cur_mineral%tstrxn%nspec))
-      cur_mineral%tstrxn%stoich = 0.d0
-      allocate(cur_mineral%tstrxn%spec_name(cur_mineral%tstrxn%nspec))
-      cur_mineral%tstrxn%spec_name = ''
-      allocate(cur_mineral%tstrxn%spec_ids(cur_mineral%tstrxn%nspec))
-      cur_mineral%tstrxn%spec_ids = 0
-      allocate(cur_mineral%tstrxn%logK(reaction%num_dbase_temperatures))
-      cur_mineral%tstrxn%logK = 0.d0
-      
-      i = 0
-      do icol = 1, ncomp_h2o
-        if (dabs(stoich_new(icol)) > 1.d-40) then
-          i = i + 1
-          cur_mineral%tstrxn%spec_name(i) = new_basis_names(icol)
-          cur_mineral%tstrxn%stoich(i) = stoich_new(icol)
-          cur_mineral%tstrxn%spec_ids(i) = icol
-        endif
-      enddo
-      cur_mineral%tstrxn%logK = logK
-      
-      ! pack in reaction arrays      
+
       reaction%mineral_names(imnrl) = cur_mineral%name
       ispec = 0
       do i = 1, cur_mineral%tstrxn%nspec
@@ -1090,15 +1027,6 @@ subroutine BasisInit(reaction,option)
     enddo
   endif
 
-  ! remove any equilibrium reaction associated with primary species
-  cur_pri_aq_spec => reaction%primary_species_list
-  do
-    if (.not.associated(cur_pri_aq_spec)) exit
-    if (associated(cur_pri_aq_spec%eqrxn)) &
-      call EquilibriumRxnDestroy(cur_pri_aq_spec%eqrxn)
-    cur_pri_aq_spec => cur_pri_aq_spec%next
-  enddo  
-
   call BasisPrint(reaction,'Final Basis',option)
   
   if (allocated(new_basis)) deallocate(new_basis)
@@ -1116,14 +1044,88 @@ end subroutine BasisInit
 
 ! ************************************************************************** !
 !
-! BasisSwapSpeciesInGasOrSecRxn: Swaps out a chemical species in a chemical  
+! BasisAlignSpeciesInRxn: Aligns the ordering of species in reaction with
+!                         the current basis
+! author: Glenn Hammond
+! date: 10/07/08
+!
+! ************************************************************************** !
+subroutine BasisAlignSpeciesInRxn(num_basis_species,basis_names, &
+                                  num_rxn_species,rxn_species_names, &
+                                  rxn_stoich,rxn_species_ids,option)
+
+  use Option_module
+  use Fileio_module
+  
+  implicit none
+  
+  PetscInt :: num_basis_species
+  character(len=MAXNAMELENGTH) :: basis_names(num_basis_species)
+  PetscInt :: num_rxn_species
+  character(len=MAXNAMELENGTH) :: rxn_species_names(num_rxn_species)
+  PetscReal :: rxn_stoich(num_rxn_species)
+  PetscInt :: rxn_species_ids(num_rxn_species)
+  type(option_type) :: option
+
+  PetscInt :: i_rxn_species
+  PetscInt :: i_basis_species
+  PetscReal :: stoich_new(num_basis_species)
+  PetscTruth :: found
+  character(len=MAXSTRINGLENGTH) :: string  
+  
+  stoich_new = 0.d0
+  do i_rxn_species = 1, num_rxn_species
+    found = PETSC_FALSE
+    do i_basis_species = 1, num_basis_species
+      if (fiStringCompare(rxn_species_names(i_rxn_species), &
+                            basis_names(i_basis_species), &
+                            MAXNAMELENGTH)) then
+        stoich_new(i_basis_species) = rxn_stoich(i_rxn_species)
+        found = PETSC_TRUE
+        exit
+      endif
+    enddo
+    if (.not.found) then
+      string = trim(rxn_species_names(i_rxn_species)) // &
+               ' not found in basis (BasisAlignSpeciesInRxn)'
+      call printErrMsg(option,string)
+    endif
+  enddo
+  
+  ! zero everthing out
+  rxn_species_names = ''
+  rxn_stoich = 0.d0
+  rxn_species_ids = 0
+
+  ! fill in
+  i_rxn_species = 0
+  do i_basis_species = 1, num_basis_species
+    if (dabs(stoich_new(i_basis_species)) > 1.d-40) then
+      i_rxn_species = i_rxn_species + 1
+      rxn_species_names(i_rxn_species) = basis_names(i_basis_species)
+      rxn_stoich(i_rxn_species) = stoich_new(i_basis_species)
+      rxn_species_ids(i_rxn_species) = i_basis_species
+    endif
+  enddo
+  
+  if (i_rxn_species /= num_rxn_species) then
+    write(string,*) 'Number of reaction species does not match original:', &
+                    i_rxn_species, num_rxn_species
+    call printErrMsg(option,string)
+  endif
+
+end subroutine BasisAlignSpeciesInRxn 
+     
+! ************************************************************************** !
+!
+! BasisSubSpeciesInGasOrSecRxn: Swaps out a chemical species in a chemical  
 !                                reaction, replacing it with the species in a 
 !                                secondary reaction (swaps 1 into 2)
 ! author: Glenn Hammond
 ! date: 10/06/08
 !
 ! ************************************************************************** !
-subroutine BasisSwapSpeciesInGasOrSecRxn(name1,eqrxn1,eqrxn2)
+subroutine BasisSubSpeciesInGasOrSecRxn(name1,eqrxn1,eqrxn2)
 
   use Fileio_module
   
@@ -1138,6 +1140,9 @@ subroutine BasisSwapSpeciesInGasOrSecRxn(name1,eqrxn1,eqrxn2)
   PetscReal :: tempstoich(20)
   PetscReal :: scale
   PetscTruth :: found
+
+  tempnames = ''
+  tempstoich = 0.d0
 
   ! load species in reaction other than species 1 into new arrays
   scale = 1.d0
@@ -1158,7 +1163,7 @@ subroutine BasisSwapSpeciesInGasOrSecRxn(name1,eqrxn1,eqrxn2)
   ! if not duplicated
   do j=1,eqrxn1%nspec
     found = PETSC_FALSE
-    do i=1,eqrxn2%nspec-1
+    do i=1,tempcount
       if (fiStringCompare(tempnames(i), &
                           eqrxn1%spec_name(j), &
                           MAXNAMELENGTH)) then
@@ -1180,15 +1185,17 @@ subroutine BasisSwapSpeciesInGasOrSecRxn(name1,eqrxn1,eqrxn2)
   
   ! check for zero stoichiometries due to cancelation
   prevcount = tempcount
+  tempcount = 0
   do i=1,prevcount
     if (dabs(tempstoich(i)) > 1.d-10) then
-      j = j + 1
-      tempnames(j) = tempnames(j)
-      tempstoich(j) = tempstoich(j)
-    else
-      tempcount = tempcount - 1
+      tempcount = tempcount + 1
+      tempnames(tempcount) = tempnames(i)
+      tempstoich(tempcount) = tempstoich(i)
     endif
   enddo
+  
+  tempnames(tempcount+1:) = ''
+  tempstoich(tempcount+1:) = 0.d0
   
   ! reallocate
   allocate(eqrxn2%spec_name(tempcount))
@@ -1204,18 +1211,18 @@ subroutine BasisSwapSpeciesInGasOrSecRxn(name1,eqrxn1,eqrxn2)
   ! adjust the equilibrium coefficient
   eqrxn2%logK = eqrxn2%logK + scale*eqrxn1%logK
 
-end subroutine BasisSwapSpeciesInGasOrSecRxn
+end subroutine BasisSubSpeciesInGasOrSecRxn
 
 ! ************************************************************************** !
 !
-! BasisSwapSpeciesInMineralRxn: Swaps out a chemical species in a chemical  
+! BasisSubSpeciesInMineralRxn: Swaps out a chemical species in a chemical  
 !                                reaction, replacing it with the species in a 
 !                                secondary reaction (swaps 1 into 2)
 ! author: Glenn Hammond
 ! date: 10/06/08
 !
 ! ************************************************************************** !
-subroutine BasisSwapSpeciesInMineralRxn(name,eqrxn,tstrxn)
+subroutine BasisSubSpeciesInMineralRxn(name,eqrxn,tstrxn)
 
   use Fileio_module
   
@@ -1231,6 +1238,9 @@ subroutine BasisSwapSpeciesInMineralRxn(name,eqrxn,tstrxn)
   PetscReal :: scale
   PetscTruth :: found
 
+  tempnames = ''
+  tempstoich = 0.d0
+  
   ! load species in reaction other than species 1 into new arrays
   scale = 1.d0
   tempcount = 0
@@ -1250,7 +1260,7 @@ subroutine BasisSwapSpeciesInMineralRxn(name,eqrxn,tstrxn)
   ! if not duplicated
   do j=1,eqrxn%nspec
     found = PETSC_FALSE
-    do i=1,tstrxn%nspec-1
+    do i=1,tstrxn%nspec
       if (fiStringCompare(tempnames(i), &
                           eqrxn%spec_name(j), &
                           MAXNAMELENGTH)) then
@@ -1272,16 +1282,18 @@ subroutine BasisSwapSpeciesInMineralRxn(name,eqrxn,tstrxn)
   
   ! check for zero stoichiometries due to cancelation
   prevcount = tempcount
+  tempcount = 0
   do i=1,prevcount
     if (dabs(tempstoich(i)) > 1.d-10) then
-      j = j + 1
-      tempnames(j) = tempnames(j)
-      tempstoich(j) = tempstoich(j)
-    else
-      tempcount = tempcount - 1
+      tempcount = tempcount + 1
+      tempnames(tempcount) = tempnames(i)
+      tempstoich(tempcount) = tempstoich(i)
     endif
   enddo
-  
+
+  tempnames(tempcount+1:) = ''
+  tempstoich(tempcount+1:) = 0.d0
+    
   ! reallocate
   allocate(tstrxn%spec_name(tempcount))
   allocate(tstrxn%stoich(tempcount))
@@ -1296,7 +1308,7 @@ subroutine BasisSwapSpeciesInMineralRxn(name,eqrxn,tstrxn)
   ! adjust the equilibrium coefficient
   tstrxn%logK = tstrxn%logK + scale*eqrxn%logK
 
-end subroutine BasisSwapSpeciesInMineralRxn
+end subroutine BasisSubSpeciesInMineralRxn
 
 ! ************************************************************************** !
 !

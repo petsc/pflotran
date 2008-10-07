@@ -130,13 +130,13 @@ subroutine Init(simulation,filename)
   call readInput(simulation,filename)
   
   ! read reaction database
-#if 1
-  if (associated(realization%reaction) .and. &
-      len(realization%reaction%database_filename) > 1) then
-    call DatabaseRead(realization%reaction,option)
-    call BasisInit(realization%reaction,option)    
+  if (associated(realization%reaction)) then
+    if (option%ncmplx > 0 .or. &
+        option%nmnrl > 0) then
+      call DatabaseRead(realization%reaction,option)
+      call BasisInit(realization%reaction,option)    
+    endif
   endif
-#endif
 
   ! create grid and allocate vectors
   call RealizationCreateDiscretization(realization)
@@ -568,6 +568,7 @@ subroutine readRequiredCardsFromInput(realization,filename)
     option%ncmplx = GetSecondarySpeciesCount(realization%reaction)
     option%nmnrl = GetMineralCount(realization%reaction)
     option%mnrl_names => GetMineralNames(realization%reaction)
+    realization%reaction%ncomp = option%ntrandof
   endif
 
 !.........................................................................

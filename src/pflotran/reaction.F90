@@ -938,10 +938,13 @@ subroutine ReactionRead(reaction,fid,option)
           prev_mineral => mineral
           nullify(mineral)
         enddo
-      case('END')
-        exit
       case('MINERAL_RATES')
         call fiSkipToEND(fid,option%myrank,word)       
+      case('DATABASE')
+        call fiReadWord(string,reaction%database_filename,.true.,ierr)  
+        call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,DATABASE FILENAME', ierr)          
+      case('END')
+        exit
       case default
         call printErrMsg(option,'CHEMISTRY keyword: '//trim(word)//' not recognized')
     end select

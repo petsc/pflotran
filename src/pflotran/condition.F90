@@ -681,12 +681,12 @@ subroutine ConditionRead(condition,option,fid)
         call ConditionReadValues(option,word,string,sub_condition_ptr%dataset, &
                                  sub_condition_ptr%units)
       case('MINERAL')
-        minerals_exist = PETSC_TRUE
         if (condition%iclass == TRANSPORT_CLASS) then
           call fiReadWord(string,word,.true.,ierr)
           call fiErrorMsg(option%myrank,'name','CONDITION,MINERAL', ierr)
           nullify(sub_condition_ptr)
           if (option%nmnrl > 0) then           
+            minerals_exist = PETSC_TRUE
             sub_condition_ptr => &
               GetSubConditionFromArrayByName(mineral_concentrations,word)
             if (.not.associated(sub_condition_ptr)) then
@@ -696,8 +696,10 @@ subroutine ConditionRead(condition,option,fid)
             endif
           endif
         endif
-        call ConditionReadValues(option,word,string,sub_condition_ptr%dataset, &
-                                 sub_condition_ptr%units)
+        if (associated(sub_condition_ptr)) then
+          call ConditionReadValues(option,word,string,sub_condition_ptr%dataset, &
+                                   sub_condition_ptr%units)
+        endif
     end select 
   
   enddo  
