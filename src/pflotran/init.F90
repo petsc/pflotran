@@ -133,6 +133,7 @@ subroutine Init(simulation,filename)
   if (associated(realization%reaction) .and. &
       len(realization%reaction%database_filename) > 1) then
     call DatabaseRead(realization%reaction,option)
+    call BasisInit(realization%reaction,option)    
   endif
 
   ! create grid and allocate vectors
@@ -754,8 +755,8 @@ subroutine readInput(simulation,filename)
             case('PRIMARY_SPECIES','SECONDARY_SPECIES','GAS_SPECIES', &
                  'MINERALS')
               call fiSkipToEND(IUNIT1,option%myrank,card)
-            case('RUN_CARBONATE')
-              call CarbonateTestProblemCreate(realization%reaction,option)
+            case('MINERAL_RATES')
+              call ReactionReadMineralRates(realization%reaction,IUNIT1,option)
           end select
           if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
               fiStringCompare(string,'END',THREE_INTEGER)) exit

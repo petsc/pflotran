@@ -109,21 +109,24 @@ module Reaction_module
     ! compressed arrays for efficient computation
     ! primary aqueous complexes
     PetscInt :: ncomp
+    character(len=MAXNAMELENGTH), pointer :: primary_species_names(:)
     PetscReal, pointer :: primary_spec_molwt(:)
     PetscReal, pointer :: primary_spec_a0(:)
     PetscReal, pointer :: primary_spec_Z(:)
     ! aqueous complexes
     PetscInt :: neqcmplx
+    character(len=MAXNAMELENGTH), pointer :: secondary_species_names(:)
     PetscInt, pointer :: eqcmplxspecid(:,:)   ! (0:ncomp in rxn)
     PetscReal, pointer :: eqcmplxstoich(:,:)
     PetscReal, pointer :: eqcmplx_a0(:)  ! Debye-Huckel constant
     PetscReal, pointer :: eqcmplx_Z(:)
-    PetscReal, pointer :: eqcmplx_K(:)
+    PetscReal, pointer :: eqcmplx_K(:,:)
     ! Debye-Huckel
     PetscReal :: debyeA  ! Debye-Huckel A coefficient
     PetscReal :: debyeB  ! Debye-Huckel B coefficient
     PetscReal :: debyeBdot  ! Debye-Huckel Bdot coefficient
     ! ionx exchange reactions
+    character(len=MAXNAMELENGTH), pointer :: ion_exchange_names(:)
     PetscInt, pointer :: eqionx_ncation(:)
     PetscReal, pointer :: eqionx_CEC(:)
     PetscReal, pointer :: eqionx_k(:,:)
@@ -135,6 +138,7 @@ module Reaction_module
     PetscInt, pointer :: kinionx_cationid(:)
     PetscInt, pointer :: kinionx_rxn_offset(:)
     ! surface complexation reactions
+    character(len=MAXNAMELENGTH), pointer :: surface_complex_names(:)
     PetscInt, pointer :: eqsurfcmplxspecid(:,:)
     PetscReal, pointer :: eqsurfcmplxstoich(:,:)
     PetscReal, pointer :: eqsurfcmplx_freesite_stoich(:,:)
@@ -143,9 +147,10 @@ module Reaction_module
     PetscInt, pointer :: kinsurfcmplxspecid(:,:)
     PetscReal, pointer :: kinsurfcmplxstoich(:,:)
     PetscReal, pointer :: kinsurfcmplx_freesite_stoich(:,:)
-    PetscReal, pointer :: kinsurfcmplx_K(:)
+    PetscReal, pointer :: kinsurfcmplx_K(:,:)
     PetscReal, pointer :: kinsurfcmplx_Z(:)  ! valence
     ! mineral reactions
+    character(len=MAXNAMELENGTH), pointer :: mineral_names(:)
       ! for saturation states
     PetscInt, pointer :: mnrlspecid(:,:)
     PetscReal, pointer :: mnrlstoich(:,:)
@@ -155,7 +160,7 @@ module Reaction_module
     PetscInt :: nkinmnrl
     PetscInt, pointer :: kinmnrlspecid(:,:)
     PetscReal, pointer :: kinmnrlstoich(:,:)
-    PetscReal, pointer :: kinmnrl_K(:)
+    PetscReal, pointer :: kinmnrl_K(:,:)
     PetscReal, pointer :: kinmnrl_rate(:,:)
     PetscInt, pointer :: kinmnrl_num_prefactors(:)
     PetscInt, pointer :: kinmnrl_pri_prefactor_id(:,:,:)
@@ -180,8 +185,10 @@ module Reaction_module
             GetMineralNames, &
             CarbonateTestProblemCreate, &
             EquilibriumRxnCreate, &
+            EquilibriumRxnDestroy, &
             TransitionStateTheoryRxnCreate, &
-            SurfaceComplexationRxnCreate
+            SurfaceComplexationRxnCreate, &
+            ReactionReadMineralRates
 
 contains
 
@@ -216,7 +223,8 @@ subroutine CarbonateTestProblemCreate(reaction,option)
   ! CaCO3(s)
   reaction%debyeA = 0.5114d0
   reaction%debyeB = 0.3288d0
-  reaction%debyeBdot = 0.0410d0  
+  reaction%debyeBdot = 0.0410d0 
+  reaction%num_dbase_temperatures = 1
   
   reaction%ncomp = option%ncomp
   allocate(reaction%primary_spec_Z(option%ncomp))
@@ -233,11 +241,7 @@ subroutine CarbonateTestProblemCreate(reaction,option)
   reaction%eqcmplxspecid = 0
   allocate(reaction%eqcmplxstoich(option%ncomp,reaction%neqcmplx))
   reaction%eqcmplxstoich = 0.d0
-  allocate(reaction%eqcmplx_a0(reaction%neqcmplx))
-  reaction%eqcmplx_a0 = 0.d0
-  allocate(reaction%eqcmplx_Z(reaction%neqcmplx))
-  reaction%eqcmplx_Z = 0.d0
-  allocate(reaction%eqcmplx_K(reaction%neqcmplx))
+  allocate(reaction%eqcmplx_K(reaction%num_dbase_temperatures,reaction%neqcmplx))
   reaction%eqcmplx_K = 0.d0
   allocate(reaction%eqcmplx_Z(reaction%neqcmplx))
   reaction%eqcmplx_Z = 0.d0
@@ -251,7 +255,7 @@ subroutine CarbonateTestProblemCreate(reaction,option)
   reaction%eqcmplxspecid(2,irxn) = 2    ! HCO3-
   reaction%eqcmplxstoich(1,irxn) = 1.d0 ! H+
   reaction%eqcmplxstoich(2,irxn) = 1.d0 ! HCO3-
-  reaction%eqcmplx_K(irxn) = -6.3447d0
+  reaction%eqcmplx_K(1,irxn) = -6.3447d0
   reaction%eqcmplx_Z(irxn) = 0.d0
   reaction%eqcmplx_a0(irxn) = 3.d0
   
@@ -262,7 +266,7 @@ subroutine CarbonateTestProblemCreate(reaction,option)
   reaction%eqcmplxspecid(2,irxn) = 2    ! HCO3-
   reaction%eqcmplxstoich(1,irxn) = -1.d0 ! H+
   reaction%eqcmplxstoich(2,irxn) = 1.d0 ! HCO3-
-  reaction%eqcmplx_K(irxn) = 10.3288d0
+  reaction%eqcmplx_K(1,irxn) = 10.3288d0
   reaction%eqcmplx_z(irxn) = -2.d0
   reaction%eqcmplx_a0(irxn) = 4.5d0
   
@@ -275,7 +279,7 @@ subroutine CarbonateTestProblemCreate(reaction,option)
   reaction%eqcmplxstoich(1,irxn) = -1.d0 ! H+
   reaction%eqcmplxstoich(2,irxn) = 1.d0 ! HCO3-
   reaction%eqcmplxstoich(3,irxn) = 1.d0 ! Ca+2
-  reaction%eqcmplx_K(irxn) = 7.0017d0
+  reaction%eqcmplx_K(1,irxn) = 7.0017d0
   reaction%eqcmplx_z(irxn) = 0.d0
   reaction%eqcmplx_a0(irxn) = 3.d0
 
@@ -286,7 +290,7 @@ subroutine CarbonateTestProblemCreate(reaction,option)
   reaction%eqcmplxspecid(2,irxn) = 3    ! Ca+2
   reaction%eqcmplxstoich(1,irxn) = 1.d0 ! HCO3-
   reaction%eqcmplxstoich(2,irxn) = 1.d0 ! Ca+2
-  reaction%eqcmplx_K(irxn) = -1.0467d0
+  reaction%eqcmplx_K(1,irxn) = -1.0467d0
   reaction%eqcmplx_z(irxn) = 1.d0
   reaction%eqcmplx_a0(irxn) = 4.d0
 
@@ -295,14 +299,14 @@ subroutine CarbonateTestProblemCreate(reaction,option)
   reaction%eqcmplxspecid(0,irxn) = 1
   reaction%eqcmplxspecid(1,irxn) = 1    ! H+
   reaction%eqcmplxstoich(1,irxn) = -1.d0 ! H+
-  reaction%eqcmplx_K(irxn) = 13.9951
+  reaction%eqcmplx_K(1,irxn) = 13.9951
   reaction%eqcmplx_z(irxn) = -1.d0
   reaction%eqcmplx_a0(irxn) = 3.5d0
   
   reaction%nkinmnrl = 1
   allocate(reaction%kinmnrlspecid(0:option%ncomp,reaction%nkinmnrl))
   allocate(reaction%kinmnrlstoich(option%ncomp,reaction%nkinmnrl))
-  allocate(reaction%kinmnrl_K(reaction%nkinmnrl))
+  allocate(reaction%kinmnrl_K(reaction%num_dbase_temperatures,reaction%nkinmnrl))
   allocate(reaction%kinmnrl_rate(1,reaction%nkinmnrl))
   allocate(reaction%mnrl_molar_vol(reaction%nkinmnrl))
   allocate(reaction%kinmnrl_num_prefactors(reaction%nkinmnrl))
@@ -316,7 +320,7 @@ subroutine CarbonateTestProblemCreate(reaction,option)
   reaction%kinmnrlstoich(1,irxn) = -1.d0 ! H+
   reaction%kinmnrlstoich(2,irxn) = 1.d0 ! HCO3-
   reaction%kinmnrlstoich(3,irxn) = 1.d0 ! Ca+2
-  reaction%kinmnrl_K(irxn) = 1.8487d0
+  reaction%kinmnrl_K(1,irxn) = 1.8487d0
   reaction%kinmnrl_rate(1,irxn) = 1.d-6
   reaction%mnrl_molar_vol(irxn) = 36.9340d0/1.d6  ! based on 36.934 cm^3/mol
   reaction%kinmnrl_num_prefactors(irxn) = 0
@@ -352,6 +356,12 @@ function ReactionCreate()
   nullify(reaction%mineral_list)
   nullify(reaction%ion_exchange_list)
   nullify(reaction%surface_complex_list)
+  
+  nullify(reaction%primary_species_names)
+  nullify(reaction%secondary_species_names)
+  nullify(reaction%surface_complex_names)
+  nullify(reaction%ion_exchange_names)
+  nullify(reaction%mineral_names)
   
   reaction%ncomp = 0
   nullify(reaction%primary_spec_molwt)
@@ -812,7 +822,7 @@ subroutine ReactionRead(reaction,fid,option)
   ierr = 0
   do
   
-    call fiReadFlotranString(IUNIT1,string,ierr)
+    call fiReadFlotranString(fid,string,ierr)
     if (ierr /= 0) exit
 
     call fiReadWord(string,word,.true.,ierr)
@@ -824,7 +834,7 @@ subroutine ReactionRead(reaction,fid,option)
       case('PRIMARY_SPECIES')
         nullify(prev_species)
         do
-          call fiReadFlotranString(IUNIT1,string,ierr)
+          call fiReadFlotranString(fid,string,ierr)
           if (ierr /= 0) exit
           if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
               fiStringCompare(string,'END',THREE_INTEGER)) exit
@@ -845,7 +855,7 @@ subroutine ReactionRead(reaction,fid,option)
       case('SECONDARY_SPECIES')
         nullify(prev_species)
         do
-          call fiReadFlotranString(IUNIT1,string,ierr)
+          call fiReadFlotranString(fid,string,ierr)
           if (ierr /= 0) exit
           if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
               fiStringCompare(string,'END',THREE_INTEGER)) exit
@@ -866,7 +876,7 @@ subroutine ReactionRead(reaction,fid,option)
       case('GAS_SPECIES')
         nullify(prev_gas)
         do
-          call fiReadFlotranString(IUNIT1,string,ierr)
+          call fiReadFlotranString(fid,string,ierr)
           if (ierr /= 0) exit
           if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
               fiStringCompare(string,'END',THREE_INTEGER)) exit
@@ -887,7 +897,7 @@ subroutine ReactionRead(reaction,fid,option)
       case('MINERALS')
         nullify(prev_mineral)
         do
-          call fiReadFlotranString(IUNIT1,string,ierr)
+          call fiReadFlotranString(fid,string,ierr)
           if (ierr /= 0) exit
           if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
               fiStringCompare(string,'END',THREE_INTEGER)) exit
@@ -907,14 +917,87 @@ subroutine ReactionRead(reaction,fid,option)
         enddo
       case('END')
         exit
-      case('RUN_CARBONATE')
-        ! skip        
+      case('MINERAL_RATES')
+        call fiSkipToEND(fid,option%myrank,word)       
       case default
         call printErrMsg(option,'CHEMISTRY keyword: '//trim(word)//' not recognized')
     end select
   enddo
  
 end subroutine ReactionRead
+
+! ************************************************************************** !
+!
+! ReactionRead: Reads chemical species
+! author: Glenn Hammond
+! date: 05/02/08
+!
+! ************************************************************************** !
+subroutine ReactionReadMineralRates(reaction,fid,option)
+
+  use Fileio_module
+  use Option_module
+  
+  implicit none
+  
+  type(reaction_type) :: reaction
+  type(option_type) :: option
+  PetscInt :: fid
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXNAMELENGTH) :: name
+  
+  type(mineral_type), pointer :: cur_mineral
+  PetscErrorCode :: ierr
+
+  cur_mineral => reaction%mineral_list
+  do 
+    if (.not.associated(cur_mineral)) exit
+    cur_mineral%id = -1*abs(cur_mineral%id)
+    cur_mineral => cur_mineral%next
+  enddo
+
+  ierr = 0
+  do
+  
+    call fiReadFlotranString(fid,string,ierr)
+    if (ierr /= 0) exit
+
+    if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
+        fiStringCompare(string,'END',THREE_INTEGER)) exit  
+
+    call fiReadNChars(string,name,MAXNAMELENGTH,.true.,ierr)
+    call fiErrorMsg(option%myrank,'keyword','CHEMISTRY', ierr)
+    
+    cur_mineral => reaction%mineral_list
+    do 
+      if (.not.associated(cur_mineral)) exit
+      if (fiStringCompare(cur_mineral%name,name,MAXNAMELENGTH)) then
+        if (.not.associated(cur_mineral%tstrxn)) then
+          cur_mineral%tstrxn => TransitionStateTheoryRxnCreate()
+        endif
+        call fiReadDouble(string,cur_mineral%tstrxn%rate,ierr)
+        cur_mineral%id = abs(cur_mineral%id)
+        exit
+      endif
+      cur_mineral => cur_mineral%next
+    enddo
+    
+  enddo
+ 
+  cur_mineral => reaction%mineral_list
+  do 
+    if (.not.associated(cur_mineral)) exit
+    if (cur_mineral%id < 0) then
+      string = 'No rate provided in input file for mineral: ' // &
+               trim(cur_mineral%name) // '.'
+      call printErrMsg(option,string)
+    endif
+    cur_mineral => cur_mineral%next
+  enddo
+  
+end subroutine ReactionReadMineralRates
 
 ! ************************************************************************** !
 !
@@ -1179,6 +1262,17 @@ subroutine ReactionDestroy(reaction)
     call SurfaceComplexationRxnDestroy(prev_surfcplxrxn)
   enddo    
   nullify(reaction%surface_complex_list)
+  
+  if (associated(reaction%primary_species_names)) deallocate(reaction%primary_species_names)
+  nullify(reaction%primary_species_names)
+  if (associated(reaction%secondary_species_names)) deallocate(reaction%secondary_species_names)
+  nullify(reaction%secondary_species_names)
+  if (associated(reaction%ion_exchange_names)) deallocate(reaction%ion_exchange_names)
+  nullify(reaction%ion_exchange_names)
+  if (associated(reaction%surface_complex_names)) deallocate(reaction%surface_complex_names)
+  nullify(reaction%surface_complex_names)
+  if (associated(reaction%mineral_names)) deallocate(reaction%mineral_names)
+  nullify(reaction%mineral_names)
   
   if (associated(reaction%primary_spec_molwt)) deallocate(reaction%primary_spec_molwt)
   nullify(reaction%primary_spec_molwt)

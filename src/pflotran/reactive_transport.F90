@@ -1673,7 +1673,7 @@ subroutine RTotal(auxvar,reaction,option)
   
   do icplx = 1, reaction%neqcmplx ! for each secondary species
     ! compute secondary species concentration
-    lnQK = -1.d0*reaction%eqcmplx_K(icplx)*log_to_ln
+    lnQK = -1.d0*reaction%eqcmplx_K(2,icplx)*log_to_ln
     ncomp = reaction%eqcmplxspecid(0,icplx)
     do i = 1, ncomp
       icomp = reaction%eqcmplxspecid(i,icplx)
@@ -1754,7 +1754,7 @@ subroutine RKineticMineral(Res,Jac,derivative,auxvar,volume,reaction,option)
   
   do imnrl = 1, reaction%nkinmnrl ! for each mineral
     ! compute secondary species concentration
-    lnQK = -1.d0*reaction%kinmnrl_K(imnrl)*log_to_ln
+    lnQK = -1.d0*reaction%kinmnrl_K(2,imnrl)*log_to_ln
     ncomp = reaction%kinmnrlspecid(0,imnrl)
     do i = 1, ncomp
       icomp = reaction%kinmnrlspecid(i,imnrl)
