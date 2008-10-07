@@ -775,6 +775,7 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
      end function samr_patch_at_bc
   end interface
 
+  PetscReal :: radius(:)
   type(connection_set_type), pointer :: StructGridComputeInternConnect
   type(option_type) :: option
   type(structured_grid_type) :: structured_grid
@@ -786,7 +787,6 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
   PetscInt :: nconn
   PetscInt :: lenx, leny, lenz
   PetscReal :: dist_up, dist_dn
-  PetscReal :: radius(:)
   type(connection_set_type), pointer :: connections
   PetscErrorCode :: ierr
   
@@ -897,8 +897,7 @@ function StructGridComputeInternConnect(radius,structured_grid,option)
               connections%dist(-1,iconn) = dist_up/(dist_up+dist_dn)
               connections%dist(0,iconn) = dist_up+dist_dn
               connections%dist(1,iconn) = 1.d0  ! x component of unit vector
-              connections%area(iconn) = 4.d0 * pi * (radius(id_up)+0.5d0*structured_grid%dx(id_up)) * &
-                                        structured_grid%dz(id_up)
+              connections%area(iconn) = 4.d0 * pi * (radius(id_up)+0.5d0*structured_grid%dx(id_up))
             enddo
           enddo
         enddo
@@ -1055,8 +1054,7 @@ subroutine StructGridPopulateConnection(radius,structured_grid,connection,iface,
                 connection%area(iconn) = 0.d0
               else
                 connection%dist(1,iconn) = -1.d0
-                connection%area(iconn) = 4.d0 * pi * (radius(ghosted_id)+0.5d0*structured_grid%dx(ghosted_id)) * &
-                                        structured_grid%dz(ghosted_id)
+                connection%area(iconn) = 4.d0 * pi * (radius(ghosted_id)+0.5d0*structured_grid%dx(ghosted_id))
               endif
           end select
 
@@ -1183,8 +1181,7 @@ subroutine StructuredGridComputeVolumes(radius,structured_grid,option,nL2G,volum
         r_up = radius(ghosted_id) + 0.5d0*structured_grid%dx(ghosted_id)
         r_down = radius(ghosted_id) - 0.5d0*structured_grid%dx(ghosted_id)
         volume_p(local_id) = 4.d0/3.d0 * pi * structured_grid%dx(ghosted_id) &
-        * (r_up*r_up + r_up*r_down + r_down*r_down) &
-                                * structured_grid%dz(ghosted_id)
+        * (r_up*r_up + r_up*r_down + r_down*r_down)
       enddo
   end select
   
