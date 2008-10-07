@@ -82,6 +82,7 @@ pflotran_obj = ${common_src}option.o \
 	${common_src}level.o \
 	${common_src}amrgrid.o\
 	${common_src}discretization.o \
+	${common_src}database.o \
 	${common_src}realization.o \
 	${common_src}hdf5.o \
 	${common_src}mphase.o\
@@ -130,6 +131,7 @@ pflotranamr_obj = ${common_src}option.o \
 	${common_src}level.o \
 	${common_src}amrgrid.o\
 	${common_src}discretization.o \
+	${common_src}database.o \
 	${common_src}realization.o \
 	${common_src}hdf5.o \
 	${common_src}mphase.o\
@@ -223,3 +225,4 @@ timestepper.o : richards.o richards_lite.o mphase.o \
 hdf5.o : realization.o option.o logging.o
 checkpoint.o : realization.o logging.o
 mass_balance.o : realization.o option.o field.o solver.o logging.o richards.o
+database.o : reaction.o fileio.o option.o utility.o
