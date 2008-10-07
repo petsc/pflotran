@@ -97,7 +97,7 @@ module Reaction_module
   end type surface_complexation_rxn_type
   
   type, public :: reaction_type
-    character(len=MAXNAMELENGTH) :: database_filename
+    character(len=MAXSTRINGLENGTH) :: database_filename
     PetscInt :: num_dbase_temperatures
     PetscReal, pointer :: dbase_temperatures(:)
     type(aq_species_type), pointer :: primary_species_list
@@ -941,7 +941,7 @@ subroutine ReactionRead(reaction,fid,option)
       case('MINERAL_RATES')
         call fiSkipToEND(fid,option%myrank,word)       
       case('DATABASE')
-        call fiReadWord(string,reaction%database_filename,.true.,ierr)  
+        call fiReadNChars(string,reaction%database_filename,MAXSTRINGLENGTH,.true.,ierr)  
         call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,DATABASE FILENAME', ierr)          
       case('END')
         exit
