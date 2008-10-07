@@ -1657,6 +1657,7 @@ subroutine RTotal(auxvar,reaction,option)
   PetscInt :: i, j, icplx, icomp, jcomp, iphase, ncomp
   PetscReal :: ln_conc(reaction%ncomp)
   PetscReal :: ln_act(reaction%ncomp)
+  PetscReal :: ln_act_h2o
   PetscReal :: lnQK, tempreal
   PetscReal, parameter :: log_to_ln = 2.30258509299d0
 
@@ -1664,6 +1665,7 @@ subroutine RTotal(auxvar,reaction,option)
 
   ln_conc = log(auxvar%primary_spec)
   ln_act = ln_conc+log(auxvar%pri_act_coef)
+  ln_act_h2o = 0.d0  ! assume act h2o = 1 for now
   auxvar%total(:,iphase) = auxvar%primary_spec
   ! initialize derivatives
   auxvar%dtotal = 0.d0
@@ -1673,7 +1675,13 @@ subroutine RTotal(auxvar,reaction,option)
   
   do icplx = 1, reaction%neqcmplx ! for each secondary species
     ! compute secondary species concentration
-    lnQK = -1.d0*reaction%eqcmplx_K(2,icplx)*log_to_ln
+    lnQK = -1.d0*reaction%eqcmplx_logK(icplx)*log_to_ln
+
+    ! activity of water
+    if (reaction%eqcmplxh2oid(icplx) > 0) then
+      lnQK = lnQK + reaction%eqcmplxh2ostoich(icplx)*ln_act_h2o
+    endif
+
     ncomp = reaction%eqcmplxspecid(0,icplx)
     do i = 1, ncomp
       icomp = reaction%eqcmplxspecid(i,icplx)
@@ -1740,6 +1748,7 @@ subroutine RKineticMineral(Res,Jac,derivative,auxvar,volume,reaction,option)
   PetscReal :: ln_sec(reaction%neqcmplx)
   PetscReal :: ln_act(reaction%ncomp)
   PetscReal :: ln_sec_act(reaction%neqcmplx)
+  PetscReal :: ln_act_h2o
   PetscReal :: QK, lnQK, dQK_dCj, dQK_dmj
   PetscReal, parameter :: log_to_ln = 2.30258509299d0
   PetscTruth :: prefactor_exists
@@ -1751,10 +1760,17 @@ subroutine RKineticMineral(Res,Jac,derivative,auxvar,volume,reaction,option)
   
   ln_act = ln_conc+log(auxvar%pri_act_coef)
   ln_sec_act = ln_sec+log(auxvar%sec_act_coef)
+  ln_act_h2o = 0.d0
   
   do imnrl = 1, reaction%nkinmnrl ! for each mineral
     ! compute secondary species concentration
-    lnQK = -1.d0*reaction%kinmnrl_K(2,imnrl)*log_to_ln
+    lnQK = -1.d0*reaction%kinmnrl_logK(imnrl)*log_to_ln
+
+    ! activity of water
+    if (reaction%kinmnrlh2oid(imnrl) > 0) then
+      lnQK = lnQK + reaction%kinmnrlh2ostoich(imnrl)*ln_act_h2o
+    endif
+
     ncomp = reaction%kinmnrlspecid(0,imnrl)
     do i = 1, ncomp
       icomp = reaction%kinmnrlspecid(i,imnrl)

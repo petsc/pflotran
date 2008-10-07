@@ -30,6 +30,7 @@ module Reactive_Transport_Aux_module
     PetscReal, pointer :: mnrl_area0(:)
     PetscReal, pointer :: mnrl_rate(:)
     ! activity coefficients
+    PetscReal :: act_h2o
     PetscReal, pointer :: pri_act_coef(:)
     PetscReal, pointer :: sec_act_coef(:)
   end type reactive_transport_auxvar_type
@@ -119,6 +120,7 @@ subroutine RTAuxVarInit(aux_var,option)
   allocate(aux_var%mnrl_rate(option%nmnrl))
   aux_var%mnrl_rate = 0.d0
   
+  aux_var%act_h2o = 1.d0
   allocate(aux_var%pri_act_coef(option%ncomp))
   aux_var%pri_act_coef = 1.d0
   allocate(aux_var%sec_act_coef(option%ncmplx))
@@ -153,6 +155,7 @@ subroutine RTAuxVarCopy(aux_var, aux_var2,option)
   aux_var%mnrl_area0 = aux_var2%mnrl_area0
   aux_var%mnrl_rate = aux_var2%mnrl_rate
 
+  aux_var%act_h2o = aux_var2%act_h2o
   aux_var%pri_act_coef = aux_var2%pri_act_coef
   aux_var%sec_act_coef = aux_var2%sec_act_coef
 

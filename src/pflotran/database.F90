@@ -432,14 +432,17 @@ subroutine BasisInit(reaction,option)
   character(len=MAXNAMELENGTH), allocatable :: new_basis_names(:)
 
   character(len=MAXNAMELENGTH), parameter :: h2oname = 'H2O'
+  PetscInt, parameter :: h2o_id = 1
+
   character(len=MAXSTRINGLENGTH) :: string
   
   PetscReal :: logK(reaction%num_dbase_temperatures)
   PetscReal, allocatable :: transformation(:,:), old_basis(:,:), new_basis(:,:)
-  PetscReal, allocatable :: stoich_vector(:), logKvector(:,:)
+  PetscReal, allocatable :: stoich_new(:), stoich_prev(:), logKvector(:,:)
   PetscInt, allocatable :: indices(:)
   
   PetscInt :: ispec, itemp
+  PetscInt :: spec_id
   PetscInt :: ncomp_h2o
   PetscInt :: icount_old, icount_new
   PetscInt :: i, j, irow, icol
@@ -755,6 +758,11 @@ subroutine BasisInit(reaction,option)
     enddo
   enddo
 
+  allocate(stoich_prev(ncomp_h2o))
+  stoich_prev = 0.d0
+  allocate(stoich_new(ncomp_h2o))
+  stoich_new = 0.d0
+
   if (compute_new_basis) then
   
     allocate(new_basis(ncomp_h2o,ncomp_h2o))
@@ -763,8 +771,6 @@ subroutine BasisInit(reaction,option)
     transformation = 0.d0
     allocate(old_basis(ncomp_h2o,ncomp_h2o))
     old_basis = 0.d0
-    allocate(stoich_vector(ncomp_h2o))
-    stoich_vector = 0.d0
     allocate(logKvector(reaction%num_dbase_temperatures,ncomp_h2o))
     logKvector = 0.d0
     allocate(indices(ncomp_h2o))
@@ -816,28 +822,33 @@ subroutine BasisInit(reaction,option)
     ! matrix
     call ludcmp(new_basis,ncomp_h2o,indices,idum)
     do ispec = 1, ncomp_h2o
-      stoich_vector = 0.d0
-      stoich_vector(ispec) = 1.d0
-      call lubksb(new_basis,ncomp_h2o,indices,stoich_vector)
-      transformation(:,ispec) = stoich_vector(:)
+      stoich_prev = 0.d0
+      stoich_prev(ispec) = 1.d0
+      call lubksb(new_basis,ncomp_h2o,indices,stoich_prev)
+      transformation(:,ispec) = stoich_prev(:)
     enddo
   endif
 
   ! fill reaction arrays, swapping if necessary
   allocate(reaction%primary_species_names(reaction%ncomp))
   
-  
   ! secondary aqueous complexes
   reaction%neqcmplx = GetSecondarySpeciesCount(reaction)
   
   if (reaction%neqcmplx > 0) then
     allocate(reaction%secondary_species_names(reaction%neqcmplx))
-    allocate(reaction%eqcmplxspecid(0:ncomp_h2o,reaction%neqcmplx))
+    allocate(reaction%eqcmplxspecid(0:reaction%ncomp,reaction%neqcmplx))
     reaction%eqcmplxspecid = 0
-    allocate(reaction%eqcmplxstoich(ncomp_h2o,reaction%neqcmplx))
+    allocate(reaction%eqcmplxstoich(0:reaction%ncomp,reaction%neqcmplx))
     reaction%eqcmplxstoich = 0.d0
-    allocate(reaction%eqcmplx_K(reaction%num_dbase_temperatures,reaction%neqcmplx))
-    reaction%eqcmplx_K = 0.d0
+    allocate(reaction%eqcmplxh2oid(reaction%neqcmplx))
+    reaction%eqcmplxh2oid = 0
+    allocate(reaction%eqcmplxh2ostoich(reaction%neqcmplx))
+    reaction%eqcmplxh2ostoich = 0.d0
+    allocate(reaction%eqcmplx_logK(reaction%neqcmplx))
+    reaction%eqcmplx_logK = 0.d0
+    allocate(reaction%eqcmplx_logKcoef(reaction%num_dbase_temperatures,reaction%neqcmplx))
+    reaction%eqcmplx_logKcoef = 0.d0
     allocate(reaction%eqcmplx_Z(reaction%neqcmplx))
     reaction%eqcmplx_Z = 0.d0
     allocate(reaction%eqcmplx_a0(reaction%neqcmplx))
@@ -848,7 +859,8 @@ subroutine BasisInit(reaction,option)
     do
       if (.not.associated(cur_sec_aq_spec)) exit
       logK = 0.d0
-      stoich_vector = 0.d0
+      stoich_prev = 0.d0
+      stoich_new = 0.d0
       if (associated(cur_sec_aq_spec%eqrxn)) then
         logK = cur_sec_aq_spec%eqrxn%logK
         do i=1,cur_sec_aq_spec%eqrxn%nspec
@@ -857,7 +869,7 @@ subroutine BasisInit(reaction,option)
             if (fiStringCompare(cur_sec_aq_spec%eqrxn%spec_name(i), &
                                 old_basis_names(icol), &
                                 MAXNAMELENGTH)) then
-              stoich_vector(icol) = cur_sec_aq_spec%eqrxn%stoich(i)
+              stoich_prev(icol) = cur_sec_aq_spec%eqrxn%stoich(i)
               found= PETSC_TRUE
               exit
             endif
@@ -876,56 +888,86 @@ subroutine BasisInit(reaction,option)
         do icol = 1, icount_old
           if (fiStringCompare(cur_sec_aq_spec%name, &
                               old_basis_names(icol),MAXNAMELENGTH)) then
-            stoich_vector(icol) = 1.d0
+            stoich_prev(icol) = 1.d0
           endif
         enddo
       endif
       
       if (compute_new_basis) then
         do icol = 1, ncomp_h2o
-          reaction%eqcmplxstoich(icol,isec_spec) = &
-            dot_product(stoich_vector(1:ncomp_h2o), &
+          stoich_new(icol) = &
+            dot_product(stoich_prev(1:ncomp_h2o), &
                         transformation(1:ncomp_h2o,icol))
         enddo
         do i = 1, reaction%num_dbase_temperatures
           logK(i) = logK(i) - &
-            dot_product(reaction%eqcmplxstoich(1:ncomp_h2o,isec_spec), &
-                        logKvector(i,1:ncomp_h2o))
-        enddo
-        call EquilibriumRxnDestroy(cur_sec_aq_spec%eqrxn)
-        cur_sec_aq_spec%eqrxn => EquilibriumRxnCreate()
-        do icol = 1, ncomp_h2o
-          if (dabs(reaction%eqcmplxstoich(icol,isec_spec)) > 1.d-40) &
-            cur_sec_aq_spec%eqrxn%nspec = cur_sec_aq_spec%eqrxn%nspec + 1
-        enddo
-        allocate(cur_sec_aq_spec%eqrxn%stoich(cur_sec_aq_spec%eqrxn%nspec))
-        cur_sec_aq_spec%eqrxn%stoich = 0.d0
-        allocate(cur_sec_aq_spec%eqrxn%spec_name(cur_sec_aq_spec%eqrxn%nspec))
-        cur_sec_aq_spec%eqrxn%spec_name = ''
-        allocate(cur_sec_aq_spec%eqrxn%spec_ids(cur_sec_aq_spec%eqrxn%nspec))
-        cur_sec_aq_spec%eqrxn%spec_ids = 0
-        allocate(cur_sec_aq_spec%eqrxn%logK(reaction%num_dbase_temperatures))
-        cur_sec_aq_spec%eqrxn%logK = 0.d0
-        i = 0
-        do icol = 1, ncomp_h2o
-          if (dabs(reaction%eqcmplxstoich(icol,isec_spec)) > 1.d-40) then
-            i = i + 1
-            cur_sec_aq_spec%eqrxn%stoich(i) = &
-              reaction%eqcmplxstoich(icol,isec_spec)
-            cur_sec_aq_spec%eqrxn%spec_name(i) = new_basis_names(icol)
-          endif
-          cur_sec_aq_spec%eqrxn%logK = logK
+            dot_product(stoich_prev(1:ncomp_h2o),logKvector(i,1:ncomp_h2o))
         enddo
       else
-        reaction%eqcmplxstoich(1:ncomp_h2o,isec_spec) = &
-          stoich_vector(1:ncomp_h2o)
+        stoich_new = stoich_prev
       endif
-      reaction%eqcmplx_K(:,isec_spec) = logK
+        
+      call EquilibriumRxnDestroy(cur_sec_aq_spec%eqrxn)
+      cur_sec_aq_spec%eqrxn => EquilibriumRxnCreate()
+        
+      ! count # of species in reaction
+      do icol = 1, ncomp_h2o
+        if (dabs(stoich_new(icol)) > 1.d-40) &
+          cur_sec_aq_spec%eqrxn%nspec = cur_sec_aq_spec%eqrxn%nspec + 1
+      enddo
+      allocate(cur_sec_aq_spec%eqrxn%stoich(cur_sec_aq_spec%eqrxn%nspec))
+      cur_sec_aq_spec%eqrxn%stoich = 0.d0
+      allocate(cur_sec_aq_spec%eqrxn%spec_name(cur_sec_aq_spec%eqrxn%nspec))
+      cur_sec_aq_spec%eqrxn%spec_name = ''
+      allocate(cur_sec_aq_spec%eqrxn%spec_ids(cur_sec_aq_spec%eqrxn%nspec))
+      cur_sec_aq_spec%eqrxn%spec_ids = 0
+      allocate(cur_sec_aq_spec%eqrxn%logK(reaction%num_dbase_temperatures))
+      cur_sec_aq_spec%eqrxn%logK = 0.d0
       
+      i = 0
+      do icol = 1, ncomp_h2o
+        if (dabs(stoich_new(icol)) > 1.d-40) then
+          i = i + 1
+          cur_sec_aq_spec%eqrxn%spec_name(i) = new_basis_names(icol)
+          cur_sec_aq_spec%eqrxn%stoich(i) = stoich_new(icol)
+          cur_sec_aq_spec%eqrxn%spec_ids(i) = icol
+        endif
+      enddo
+      cur_sec_aq_spec%eqrxn%logK = logK
+
+      ! pack in reaction arrays
+      reaction%secondary_species_names(isec_spec) = &
+        cur_sec_aq_spec%name
+      ispec = 0
+      do i = 1, cur_sec_aq_spec%eqrxn%nspec
+        if (cur_sec_aq_spec%eqrxn%spec_ids(i) /= h2o_id) then
+          ispec = ispec + 1
+          spec_id = cur_sec_aq_spec%eqrxn%spec_ids(i)
+          if (spec_id > h2o_id) spec_id = spec_id - 1
+          reaction%eqcmplxspecid(ispec,isec_spec) = spec_id
+          reaction%eqcmplxstoich(ispec,isec_spec) = &
+            cur_sec_aq_spec%eqrxn%stoich(i)
+            
+        else ! fill in h2o id and stoich
+          reaction%eqcmplxh2oid(isec_spec) = h2o_id
+          reaction%eqcmplxh2ostoich(isec_spec) = &
+            cur_sec_aq_spec%eqrxn%stoich(i)
+        endif
+      enddo
+      reaction%eqcmplxspecid(0,isec_spec) = ispec
+      reaction%eqcmplx_logKcoef(:,isec_spec) = &
+        cur_sec_aq_spec%eqrxn%logK
+      reaction%eqcmplx_logK(isec_spec) = cur_sec_aq_spec%eqrxn%logK(2)
+      reaction%eqcmplx_Z(isec_spec) = cur_sec_aq_spec%Z
+      reaction%eqcmplx_a0(isec_spec) = cur_sec_aq_spec%a0
+  
       isec_spec = isec_spec + 1
       cur_sec_aq_spec => cur_sec_aq_spec%next
     enddo
+
   endif
+  nullify(cur_sec_aq_spec)
+  isec_spec = -1 ! to catch bugs
 ! right now, gas complexes are not set up in the reaction object
   ! gas complexes
 
@@ -933,12 +975,18 @@ subroutine BasisInit(reaction,option)
   reaction%nkinmnrl = GetMineralCount(reaction)
   if (reaction%nkinmnrl > 0) then
     allocate(reaction%mineral_names(reaction%nkinmnrl))
-    allocate(reaction%kinmnrlspecid(0:ncomp_h2o,reaction%nkinmnrl))
+    allocate(reaction%kinmnrlspecid(0:reaction%ncomp,reaction%nkinmnrl))
     reaction%kinmnrlspecid = 0
-    allocate(reaction%kinmnrlstoich(ncomp_h2o,reaction%nkinmnrl))
+    allocate(reaction%kinmnrlstoich(reaction%ncomp,reaction%nkinmnrl))
     reaction%kinmnrlstoich = 0.d0
-    allocate(reaction%kinmnrl_K(reaction%num_dbase_temperatures,reaction%nkinmnrl))
-    reaction%kinmnrl_K = 0.d0
+    allocate(reaction%kinmnrlh2oid(reaction%nkinmnrl))
+    reaction%kinmnrlh2oid = 0
+    allocate(reaction%kinmnrlh2ostoich(reaction%nkinmnrl))
+    reaction%kinmnrlh2ostoich = 0.d0
+    allocate(reaction%kinmnrl_logK(reaction%nkinmnrl))
+    reaction%kinmnrl_logK = 0.d0
+    allocate(reaction%kinmnrl_logKcoef(reaction%num_dbase_temperatures,reaction%nkinmnrl))
+    reaction%kinmnrl_logKcoef = 0.d0
     allocate(reaction%kinmnrl_rate(1,reaction%nkinmnrl))
     reaction%kinmnrl_rate = 0.d0
     allocate(reaction%mnrl_molar_vol(reaction%nkinmnrl))
@@ -951,14 +999,15 @@ subroutine BasisInit(reaction,option)
     do
       if (.not.associated(cur_mineral)) exit
       reaction%mineral_names(imnrl) = cur_mineral%name
-      stoich_vector = 0.d0
+      stoich_prev = 0.d0
+      stoich_new = 0.d0
       logK = cur_mineral%tstrxn%logK
       do i = 1, cur_mineral%tstrxn%nspec
         found = PETSC_FALSE
         do icol = 1, icount_old
           if (fiStringCompare(cur_mineral%tstrxn%spec_name(i), &
                               old_basis_names(icol),MAXNAMELENGTH)) then
-            stoich_vector(icol) = cur_mineral%tstrxn%stoich(i)
+            stoich_prev(icol) = cur_mineral%tstrxn%stoich(i)
             found = PETSC_TRUE
             exit
           endif
@@ -968,22 +1017,74 @@ subroutine BasisInit(reaction,option)
           call printErrMsg(option,string)
         endif
       enddo
+      
       if (compute_new_basis) then
         do icol = 1, ncomp_h2o
-          reaction%kinmnrlstoich(icol,imnrl) = dot_product(stoich_vector, &
-                                                           transformation(:,icol))
+          stoich_new(icol) = &
+            dot_product(stoich_prev(1:ncomp_h2o), &
+                        transformation(1:ncomp_h2o,icol))
         enddo
         do i = 1, reaction%num_dbase_temperatures
           logK(i) = logK(i) - &
-            dot_product(reaction%kinmnrlstoich(:,imnrl),logKvector(i,:))
+            dot_product(stoich_prev(1:ncomp_h2o),logKvector(i,1:ncomp_h2o))
         enddo
       else
-        reaction%kinmnrlstoich(:,imnrl) = stoich_vector
+        stoich_new = stoich_prev
       endif
-      reaction%kinmnrl_K(:,imnrl) = logK
+      
+      call TransitionStateTheoryRxnDestroy(cur_mineral%tstrxn)
+      cur_mineral%tstrxn => TransitionStateTheoryRxnCreate()
+      
+      ! count # of species in reaction
+      do icol = 1, ncomp_h2o
+        if (dabs(stoich_new(icol)) > 1.d-40) &
+          cur_mineral%tstrxn%nspec = cur_mineral%tstrxn%nspec + 1
+      enddo
+      allocate(cur_mineral%tstrxn%stoich(cur_mineral%tstrxn%nspec))
+      cur_mineral%tstrxn%stoich = 0.d0
+      allocate(cur_mineral%tstrxn%spec_name(cur_mineral%tstrxn%nspec))
+      cur_mineral%tstrxn%spec_name = ''
+      allocate(cur_mineral%tstrxn%spec_ids(cur_mineral%tstrxn%nspec))
+      cur_mineral%tstrxn%spec_ids = 0
+      allocate(cur_mineral%tstrxn%logK(reaction%num_dbase_temperatures))
+      cur_mineral%tstrxn%logK = 0.d0
+      
+      i = 0
+      do icol = 1, ncomp_h2o
+        if (dabs(stoich_new(icol)) > 1.d-40) then
+          i = i + 1
+          cur_mineral%tstrxn%spec_name(i) = new_basis_names(icol)
+          cur_mineral%tstrxn%stoich(i) = stoich_new(icol)
+          cur_mineral%tstrxn%spec_ids(i) = icol
+        endif
+      enddo
+      cur_mineral%tstrxn%logK = logK
+      
+      ! pack in reaction arrays      
+      reaction%mineral_names(imnrl) = cur_mineral%name
+      ispec = 0
+      do i = 1, cur_mineral%tstrxn%nspec
+        if (cur_mineral%tstrxn%spec_ids(i) /= h2o_id) then
+          ispec = ispec + 1
+          spec_id = cur_mineral%tstrxn%spec_ids(i)
+          if (spec_id > h2o_id) spec_id = spec_id - 1
+          reaction%kinmnrlspecid(ispec,imnrl) = spec_id
+          reaction%kinmnrlstoich(ispec,imnrl) = &
+            cur_mineral%tstrxn%stoich(i)
+            
+        else ! fill in h2o id and stoich
+          reaction%kinmnrlh2oid(imnrl) = h2o_id
+          reaction%kinmnrlh2ostoich(imnrl) = &
+            cur_mineral%tstrxn%stoich(i)
+        endif
+      enddo
+      reaction%kinmnrlspecid(0,imnrl) = ispec
+      reaction%kinmnrl_logKcoef(:,imnrl) = &
+        cur_mineral%tstrxn%logK
+      reaction%kinmnrl_logK(imnrl) = cur_mineral%tstrxn%logK(2)
       reaction%kinmnrl_rate(1,imnrl) = cur_mineral%tstrxn%rate
       reaction%mnrl_molar_vol(imnrl) = cur_mineral%molar_volume
-      
+  
       cur_mineral => cur_mineral%next
       imnrl = imnrl + 1
     enddo
@@ -1003,7 +1104,8 @@ subroutine BasisInit(reaction,option)
   if (allocated(new_basis)) deallocate(new_basis)
   if (allocated(old_basis)) deallocate(old_basis)
   if (allocated(transformation)) deallocate(transformation)
-  if (allocated(stoich_vector)) deallocate(stoich_vector)
+  if (allocated(stoich_prev)) deallocate(stoich_prev)
+  if (allocated(stoich_new)) deallocate(stoich_new)
   if (allocated(logKvector)) deallocate(logKvector)
   if (allocated(indices)) deallocate(indices)
 

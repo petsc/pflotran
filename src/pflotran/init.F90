@@ -130,7 +130,7 @@ subroutine Init(simulation,filename)
   call readInput(simulation,filename)
   
   ! read reaction database
-#if 0
+#if 1
   if (associated(realization%reaction) .and. &
       len(realization%reaction%database_filename) > 1) then
     call DatabaseRead(realization%reaction,option)

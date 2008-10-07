@@ -110,7 +110,6 @@ module Reaction_module
     ! primary aqueous complexes
     PetscInt :: ncomp
     character(len=MAXNAMELENGTH), pointer :: primary_species_names(:)
-    PetscReal, pointer :: primary_spec_molwt(:)
     PetscReal, pointer :: primary_spec_a0(:)
     PetscReal, pointer :: primary_spec_Z(:)
     ! aqueous complexes
@@ -118,9 +117,12 @@ module Reaction_module
     character(len=MAXNAMELENGTH), pointer :: secondary_species_names(:)
     PetscInt, pointer :: eqcmplxspecid(:,:)   ! (0:ncomp in rxn)
     PetscReal, pointer :: eqcmplxstoich(:,:)
+    PetscInt, pointer :: eqcmplxh2oid(:)       ! id of water, if present
+    PetscReal, pointer :: eqcmplxh2ostoich(:)  ! stoichiometry of water, if present
     PetscReal, pointer :: eqcmplx_a0(:)  ! Debye-Huckel constant
     PetscReal, pointer :: eqcmplx_Z(:)
-    PetscReal, pointer :: eqcmplx_K(:,:)
+    PetscReal, pointer :: eqcmplx_logK(:)
+    PetscReal, pointer :: eqcmplx_logKcoef(:,:)
     ! Debye-Huckel
     PetscReal :: debyeA  ! Debye-Huckel A coefficient
     PetscReal :: debyeB  ! Debye-Huckel B coefficient
@@ -141,26 +143,35 @@ module Reaction_module
     character(len=MAXNAMELENGTH), pointer :: surface_complex_names(:)
     PetscInt, pointer :: eqsurfcmplxspecid(:,:)
     PetscReal, pointer :: eqsurfcmplxstoich(:,:)
+    PetscInt, pointer :: eqsurfcmplxh2oid(:)
+    PetscReal, pointer :: eqsurfcmplxh2ostoich(:)
     PetscReal, pointer :: eqsurfcmplx_freesite_stoich(:,:)
-    PetscReal, pointer :: eqsurfcmplx_K(:)
+    PetscReal, pointer :: eqsurfcmplx_logK(:)
+    PetscReal, pointer :: eqsurfcmplx_logKcoef(:,:)
     PetscReal, pointer :: eqsurfcmplx_Z(:)  ! valence
     PetscInt, pointer :: kinsurfcmplxspecid(:,:)
     PetscReal, pointer :: kinsurfcmplxstoich(:,:)
+    PetscInt, pointer :: kinsurfcmplxh2oid(:)
+    PetscReal, pointer :: kinsurfcmplxh2ostoich(:)
     PetscReal, pointer :: kinsurfcmplx_freesite_stoich(:,:)
-    PetscReal, pointer :: kinsurfcmplx_K(:,:)
+    PetscReal, pointer :: kinsurfcmplx_logK(:)
+    PetscReal, pointer :: kinsurfcmplx_logKcoef(:,:)
     PetscReal, pointer :: kinsurfcmplx_Z(:)  ! valence
     ! mineral reactions
     character(len=MAXNAMELENGTH), pointer :: mineral_names(:)
       ! for saturation states
     PetscInt, pointer :: mnrlspecid(:,:)
     PetscReal, pointer :: mnrlstoich(:,:)
-    PetscReal, pointer :: mnrl_K(:)
+    PetscReal, pointer :: mnrl_logK(:)
     PetscReal, pointer :: mnrl_molar_vol(:)
       ! for kinetic reactions
     PetscInt :: nkinmnrl
     PetscInt, pointer :: kinmnrlspecid(:,:)
     PetscReal, pointer :: kinmnrlstoich(:,:)
-    PetscReal, pointer :: kinmnrl_K(:,:)
+    PetscInt, pointer :: kinmnrlh2oid(:)
+    PetscReal, pointer :: kinmnrlh2ostoich(:)
+    PetscReal, pointer :: kinmnrl_logK(:)
+    PetscReal, pointer :: kinmnrl_logKcoef(:,:)
     PetscReal, pointer :: kinmnrl_rate(:,:)
     PetscInt, pointer :: kinmnrl_num_prefactors(:)
     PetscInt, pointer :: kinmnrl_pri_prefactor_id(:,:,:)
@@ -187,6 +198,7 @@ module Reaction_module
             EquilibriumRxnCreate, &
             EquilibriumRxnDestroy, &
             TransitionStateTheoryRxnCreate, &
+            TransitionStateTheoryRxnDestroy, &
             SurfaceComplexationRxnCreate, &
             ReactionReadMineralRates
 
@@ -241,8 +253,8 @@ subroutine CarbonateTestProblemCreate(reaction,option)
   reaction%eqcmplxspecid = 0
   allocate(reaction%eqcmplxstoich(option%ncomp,reaction%neqcmplx))
   reaction%eqcmplxstoich = 0.d0
-  allocate(reaction%eqcmplx_K(reaction%num_dbase_temperatures,reaction%neqcmplx))
-  reaction%eqcmplx_K = 0.d0
+  allocate(reaction%eqcmplx_logK(reaction%neqcmplx))
+  reaction%eqcmplx_logK = 0.d0
   allocate(reaction%eqcmplx_Z(reaction%neqcmplx))
   reaction%eqcmplx_Z = 0.d0
   allocate(reaction%eqcmplx_a0(reaction%neqcmplx))
@@ -255,7 +267,7 @@ subroutine CarbonateTestProblemCreate(reaction,option)
   reaction%eqcmplxspecid(2,irxn) = 2    ! HCO3-
   reaction%eqcmplxstoich(1,irxn) = 1.d0 ! H+
   reaction%eqcmplxstoich(2,irxn) = 1.d0 ! HCO3-
-  reaction%eqcmplx_K(1,irxn) = -6.3447d0
+  reaction%eqcmplx_logK(irxn) = -6.3447d0
   reaction%eqcmplx_Z(irxn) = 0.d0
   reaction%eqcmplx_a0(irxn) = 3.d0
   
@@ -266,7 +278,7 @@ subroutine CarbonateTestProblemCreate(reaction,option)
   reaction%eqcmplxspecid(2,irxn) = 2    ! HCO3-
   reaction%eqcmplxstoich(1,irxn) = -1.d0 ! H+
   reaction%eqcmplxstoich(2,irxn) = 1.d0 ! HCO3-
-  reaction%eqcmplx_K(1,irxn) = 10.3288d0
+  reaction%eqcmplx_logK(irxn) = 10.3288d0
   reaction%eqcmplx_z(irxn) = -2.d0
   reaction%eqcmplx_a0(irxn) = 4.5d0
   
@@ -279,7 +291,7 @@ subroutine CarbonateTestProblemCreate(reaction,option)
   reaction%eqcmplxstoich(1,irxn) = -1.d0 ! H+
   reaction%eqcmplxstoich(2,irxn) = 1.d0 ! HCO3-
   reaction%eqcmplxstoich(3,irxn) = 1.d0 ! Ca+2
-  reaction%eqcmplx_K(1,irxn) = 7.0017d0
+  reaction%eqcmplx_logK(irxn) = 7.0017d0
   reaction%eqcmplx_z(irxn) = 0.d0
   reaction%eqcmplx_a0(irxn) = 3.d0
 
@@ -290,7 +302,7 @@ subroutine CarbonateTestProblemCreate(reaction,option)
   reaction%eqcmplxspecid(2,irxn) = 3    ! Ca+2
   reaction%eqcmplxstoich(1,irxn) = 1.d0 ! HCO3-
   reaction%eqcmplxstoich(2,irxn) = 1.d0 ! Ca+2
-  reaction%eqcmplx_K(1,irxn) = -1.0467d0
+  reaction%eqcmplx_logK(irxn) = -1.0467d0
   reaction%eqcmplx_z(irxn) = 1.d0
   reaction%eqcmplx_a0(irxn) = 4.d0
 
@@ -299,14 +311,14 @@ subroutine CarbonateTestProblemCreate(reaction,option)
   reaction%eqcmplxspecid(0,irxn) = 1
   reaction%eqcmplxspecid(1,irxn) = 1    ! H+
   reaction%eqcmplxstoich(1,irxn) = -1.d0 ! H+
-  reaction%eqcmplx_K(1,irxn) = 13.9951
+  reaction%eqcmplx_logK(irxn) = 13.9951
   reaction%eqcmplx_z(irxn) = -1.d0
   reaction%eqcmplx_a0(irxn) = 3.5d0
   
   reaction%nkinmnrl = 1
   allocate(reaction%kinmnrlspecid(0:option%ncomp,reaction%nkinmnrl))
   allocate(reaction%kinmnrlstoich(option%ncomp,reaction%nkinmnrl))
-  allocate(reaction%kinmnrl_K(reaction%num_dbase_temperatures,reaction%nkinmnrl))
+  allocate(reaction%kinmnrl_logK(reaction%nkinmnrl))
   allocate(reaction%kinmnrl_rate(1,reaction%nkinmnrl))
   allocate(reaction%mnrl_molar_vol(reaction%nkinmnrl))
   allocate(reaction%kinmnrl_num_prefactors(reaction%nkinmnrl))
@@ -320,7 +332,7 @@ subroutine CarbonateTestProblemCreate(reaction,option)
   reaction%kinmnrlstoich(1,irxn) = -1.d0 ! H+
   reaction%kinmnrlstoich(2,irxn) = 1.d0 ! HCO3-
   reaction%kinmnrlstoich(3,irxn) = 1.d0 ! Ca+2
-  reaction%kinmnrl_K(1,irxn) = 1.8487d0
+  reaction%kinmnrl_logK(irxn) = 1.8487d0
   reaction%kinmnrl_rate(1,irxn) = 1.d-6
   reaction%mnrl_molar_vol(irxn) = 36.9340d0/1.d6  ! based on 36.934 cm^3/mol
   reaction%kinmnrl_num_prefactors(irxn) = 0
@@ -364,16 +376,18 @@ function ReactionCreate()
   nullify(reaction%mineral_names)
   
   reaction%ncomp = 0
-  nullify(reaction%primary_spec_molwt)
   nullify(reaction%primary_spec_a0)
   nullify(reaction%primary_spec_Z)
   
   reaction%neqcmplx = 0
   nullify(reaction%eqcmplxspecid)
   nullify(reaction%eqcmplxstoich)
+  nullify(reaction%eqcmplxh2oid)
+  nullify(reaction%eqcmplxh2ostoich)
   nullify(reaction%eqcmplx_a0)
   nullify(reaction%eqcmplx_Z)
-  nullify(reaction%eqcmplx_K)
+  nullify(reaction%eqcmplx_logK)
+  nullify(reaction%eqcmplx_logKcoef)
   
   reaction%debyeA = 0.d0
   reaction%debyeB = 0.d0
@@ -393,25 +407,34 @@ function ReactionCreate()
   
   nullify(reaction%eqsurfcmplxspecid)
   nullify(reaction%eqsurfcmplxstoich)
+  nullify(reaction%eqsurfcmplxh2oid)
+  nullify(reaction%eqsurfcmplxh2ostoich)
   nullify(reaction%eqsurfcmplx_freesite_stoich)
-  nullify(reaction%eqsurfcmplx_K)
+  nullify(reaction%eqsurfcmplx_logK)
+  nullify(reaction%eqsurfcmplx_logKcoef)
   nullify(reaction%eqsurfcmplx_Z)
   
   nullify(reaction%kinsurfcmplxspecid)
   nullify(reaction%kinsurfcmplxstoich)
+  nullify(reaction%kinsurfcmplxh2oid)
+  nullify(reaction%kinsurfcmplxh2ostoich)
   nullify(reaction%kinsurfcmplx_freesite_stoich)
-  nullify(reaction%kinsurfcmplx_K)
+  nullify(reaction%kinsurfcmplx_logK)
+  nullify(reaction%kinsurfcmplx_logKcoef)
   nullify(reaction%kinsurfcmplx_Z)
 
   nullify(reaction%mnrlspecid)
   nullify(reaction%mnrlstoich)
-  nullify(reaction%mnrl_K)
+  nullify(reaction%mnrl_logK)
   nullify(reaction%mnrl_molar_vol)
   
   reaction%nkinmnrl = 0  
   nullify(reaction%kinmnrlspecid)
   nullify(reaction%kinmnrlstoich)
-  nullify(reaction%kinmnrl_K)
+  nullify(reaction%kinmnrlh2oid)
+  nullify(reaction%kinmnrlh2ostoich)
+  nullify(reaction%kinmnrl_logK)
+  nullify(reaction%kinmnrl_logKcoef)
   nullify(reaction%kinmnrl_rate)
   nullify(reaction%kinmnrl_num_prefactors)
   nullify(reaction%kinmnrl_pri_prefactor_id)
@@ -1050,7 +1073,8 @@ subroutine MineralDestroy(mineral)
     
   type(mineral_type), pointer :: mineral
 
-  if (associated(mineral%tstrxn)) call TransitionStateRxnDestroy(mineral%tstrxn)
+  if (associated(mineral%tstrxn)) &
+    call TransitionStateTheoryRxnDestroy(mineral%tstrxn)
   deallocate(mineral)  
   nullify(mineral)
 
@@ -1087,12 +1111,12 @@ end subroutine EquilibriumRxnDestroy
 
 ! ************************************************************************** !
 !
-! TransitionStateRxnDestroy: Deallocates a transition state reaction
+! TransitionStateTheoryRxnDestroy: Deallocates a transition state reaction
 ! author: Glenn Hammond
 ! date: 05/29/08
 !
 ! ************************************************************************** !
-subroutine TransitionStateRxnDestroy(tstrxn)
+subroutine TransitionStateTheoryRxnDestroy(tstrxn)
 
   implicit none
     
@@ -1124,7 +1148,7 @@ subroutine TransitionStateRxnDestroy(tstrxn)
   deallocate(tstrxn)  
   nullify(tstrxn)
 
-end subroutine TransitionStateRxnDestroy
+end subroutine TransitionStateTheoryRxnDestroy
 
 ! ************************************************************************** !
 !
@@ -1274,8 +1298,6 @@ subroutine ReactionDestroy(reaction)
   if (associated(reaction%mineral_names)) deallocate(reaction%mineral_names)
   nullify(reaction%mineral_names)
   
-  if (associated(reaction%primary_spec_molwt)) deallocate(reaction%primary_spec_molwt)
-  nullify(reaction%primary_spec_molwt)
   if (associated(reaction%primary_spec_a0)) deallocate(reaction%primary_spec_a0)
   nullify(reaction%primary_spec_a0)
   if (associated(reaction%primary_spec_Z)) deallocate(reaction%primary_spec_Z)
@@ -1285,12 +1307,18 @@ subroutine ReactionDestroy(reaction)
   nullify(reaction%eqcmplxspecid)
   if (associated(reaction%eqcmplxstoich)) deallocate(reaction%eqcmplxstoich)
   nullify(reaction%eqcmplxstoich)
+  if (associated(reaction%eqcmplxh2oid)) deallocate(reaction%eqcmplxh2oid)
+  nullify(reaction%eqcmplxh2oid)
+  if (associated(reaction%eqcmplxh2ostoich)) deallocate(reaction%eqcmplxh2ostoich)
+  nullify(reaction%eqcmplxh2ostoich)
   if (associated(reaction%eqcmplx_a0)) deallocate(reaction%eqcmplx_a0)
   nullify(reaction%eqcmplx_a0)
   if (associated(reaction%eqcmplx_Z)) deallocate(reaction%eqcmplx_Z)
   nullify(reaction%eqcmplx_Z)
-  if (associated(reaction%eqcmplx_K)) deallocate(reaction%eqcmplx_K)
-  nullify(reaction%eqcmplx_K)
+  if (associated(reaction%eqcmplx_logK)) deallocate(reaction%eqcmplx_logK)
+  nullify(reaction%eqcmplx_logK)
+  if (associated(reaction%eqcmplx_logKcoef)) deallocate(reaction%eqcmplx_logKcoef)
+  nullify(reaction%eqcmplx_logKcoef)
   
   if (associated(reaction%eqionx_ncation)) deallocate(reaction%eqionx_ncation)
   nullify(reaction%eqionx_ncation)
@@ -1318,10 +1346,16 @@ subroutine ReactionDestroy(reaction)
   nullify(reaction%eqsurfcmplxspecid)
   if (associated(reaction%eqsurfcmplxstoich)) deallocate(reaction%eqsurfcmplxstoich)
   nullify(reaction%eqsurfcmplxstoich)
+  if (associated(reaction%eqsurfcmplxh2oid)) deallocate(reaction%eqsurfcmplxh2oid)
+  nullify(reaction%eqsurfcmplxh2oid)
+  if (associated(reaction%eqsurfcmplxh2ostoich)) deallocate(reaction%eqsurfcmplxh2ostoich)
+  nullify(reaction%eqsurfcmplxh2ostoich)
   if (associated(reaction%eqsurfcmplx_freesite_stoich)) deallocate(reaction%eqsurfcmplx_freesite_stoich)
   nullify(reaction%eqsurfcmplx_freesite_stoich)
-  if (associated(reaction%eqsurfcmplx_K)) deallocate(reaction%eqsurfcmplx_K)
-  nullify(reaction%eqsurfcmplx_K)
+  if (associated(reaction%eqsurfcmplx_logK)) deallocate(reaction%eqsurfcmplx_logK)
+  nullify(reaction%eqsurfcmplx_logK)
+  if (associated(reaction%eqsurfcmplx_logKcoef)) deallocate(reaction%eqsurfcmplx_logKcoef)
+  nullify(reaction%eqsurfcmplx_logKcoef)
   if (associated(reaction%eqsurfcmplx_Z)) deallocate(reaction%eqsurfcmplx_Z)
   nullify(reaction%eqsurfcmplx_Z)
   
@@ -1331,8 +1365,10 @@ subroutine ReactionDestroy(reaction)
   nullify(reaction%kinsurfcmplxstoich)
   if (associated(reaction%kinsurfcmplx_freesite_stoich)) deallocate(reaction%kinsurfcmplx_freesite_stoich)
   nullify(reaction%kinsurfcmplx_freesite_stoich)
-  if (associated(reaction%kinsurfcmplx_K)) deallocate(reaction%kinsurfcmplx_K)
-  nullify(reaction%kinsurfcmplx_K)
+  if (associated(reaction%kinsurfcmplx_logK)) deallocate(reaction%kinsurfcmplx_logK)
+  nullify(reaction%kinsurfcmplx_logK)
+  if (associated(reaction%kinsurfcmplx_logKcoef)) deallocate(reaction%kinsurfcmplx_logKcoef)
+  nullify(reaction%kinsurfcmplx_logKcoef)
   if (associated(reaction%kinsurfcmplx_Z)) deallocate(reaction%kinsurfcmplx_Z)
   nullify(reaction%kinsurfcmplx_Z)
   
@@ -1340,8 +1376,8 @@ subroutine ReactionDestroy(reaction)
   nullify(reaction%mnrlspecid)
   if (associated(reaction%mnrlstoich)) deallocate(reaction%mnrlstoich)
   nullify(reaction%mnrlstoich)
-  if (associated(reaction%mnrl_K)) deallocate(reaction%mnrl_K)
-  nullify(reaction%mnrl_K)
+  if (associated(reaction%mnrl_logK)) deallocate(reaction%mnrl_logK)
+  nullify(reaction%mnrl_logK)
   if (associated(reaction%mnrl_molar_vol)) deallocate(reaction%mnrl_molar_vol)
   nullify(reaction%mnrl_molar_vol)
   
@@ -1349,8 +1385,14 @@ subroutine ReactionDestroy(reaction)
   nullify(reaction%kinmnrlspecid)
   if (associated(reaction%kinmnrlstoich)) deallocate(reaction%kinmnrlstoich)
   nullify(reaction%kinmnrlstoich)
-  if (associated(reaction%kinmnrl_K)) deallocate(reaction%kinmnrl_K)
-  nullify(reaction%kinmnrl_K)
+  if (associated(reaction%kinmnrlh2oid)) deallocate(reaction%kinmnrlh2oid)
+  nullify(reaction%kinmnrlh2oid)
+  if (associated(reaction%kinmnrlh2ostoich)) deallocate(reaction%kinmnrlh2ostoich)
+  nullify(reaction%kinmnrlh2ostoich)
+  if (associated(reaction%kinmnrl_logK)) deallocate(reaction%kinmnrl_logK)
+  nullify(reaction%kinmnrl_logK)
+  if (associated(reaction%kinmnrl_logKcoef)) deallocate(reaction%kinmnrl_logKcoef)
+  nullify(reaction%kinmnrl_logKcoef)
   if (associated(reaction%kinmnrl_rate)) deallocate(reaction%kinmnrl_rate)
   nullify(reaction%kinmnrl_rate)
   if (associated(reaction%kinmnrl_num_prefactors)) deallocate(reaction%kinmnrl_num_prefactors)
