@@ -177,7 +177,8 @@ init.o : option.o grid.o debug.o realization.o solver.o timestepper.o \
 	waypoint.o field.o general_grid.o co2_span_wagner.o utility.o \
 	co2_span_wagner_spline.o co2_sw.o \
 	coupler.o strata.o pckr_mod.o field.o mphase.o \
-	richards_lite.o richards.o discretization.o logging.o mass_balance.o
+	richards_lite.o richards.o discretization.o logging.o mass_balance.o \
+	database.o
 unstructured_grid.o : option.o connection.o 
 structured_grid.o : connection.o option.o fileio.o 
 general_grid.o : grid.o realization.o hdf5.o logging.o
