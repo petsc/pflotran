@@ -858,6 +858,7 @@ function PatchAuxVarsUpToDate(patch)
   use Option_module
   use Field_module
   
+  use Immis_Aux_module
   use Mphase_Aux_module
   use Richards_Aux_module
   use Richards_Lite_Aux_module
@@ -875,6 +876,8 @@ function PatchAuxVarsUpToDate(patch)
     flow_up_to_date = patch%aux%RichardsLite%aux_vars_up_to_date
   else if (associated(patch%aux%Mphase)) then
     flow_up_to_date = patch%aux%Mphase%aux_vars_up_to_date
+  else if (associated(patch%aux%Immis)) then
+    flow_up_to_date = patch%aux%Immis%aux_vars_up_to_date
   endif
 
   if (associated(patch%aux%RT)) then
@@ -898,6 +901,7 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
   use Option_module
   use Field_module
   
+  use Immis_Aux_module
   use Mphase_Aux_module
   use Richards_Aux_module
   use Richards_Lite_Aux_module
@@ -1031,6 +1035,41 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
           case(LIQUID_ENERGY)
             do local_id=1,grid%nlmax
               vec_ptr(local_id) = patch%aux%Mphase%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%u(1)
+            enddo
+        end select
+      else if (associated(patch%aux%Immis)) then
+        select case(ivar)
+          case(TEMPERATURE)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Immis%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%temp
+            enddo
+          case(PRESSURE)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Immis%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%pres
+            enddo
+          case(LIQUID_SATURATION)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Immis%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%sat(1)
+            enddo
+          case(LIQUID_DENSITY)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Immis%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%den(1)
+            enddo
+          case(GAS_SATURATION)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Immis%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%sat(2)
+            enddo
+           case(GAS_ENERGY)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Immis%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%u(2)
+            enddo
+          case(GAS_DENSITY) 
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Immis%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%den(2)
+            enddo
+          case(LIQUID_ENERGY)
+            do local_id=1,grid%nlmax
+              vec_ptr(local_id) = patch%aux%Immis%aux_vars(grid%nL2G(local_id))%aux_var_elem(0)%u(1)
             enddo
         end select
       endif
@@ -1172,6 +1211,25 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
             value = patch%aux%Mphase%aux_vars(ghosted_id)%aux_var_elem(0)%xmol(isubvar)
           case(LIQUID_ENERGY)
             value = patch%aux%Mphase%aux_vars(ghosted_id)%aux_var_elem(0)%u(1)
+        end select
+     else if (associated(patch%aux%Immis)) then
+        select case(ivar)
+          case(TEMPERATURE)
+            value = patch%aux%Immis%aux_vars(ghosted_id)%aux_var_elem(0)%temp
+          case(PRESSURE)
+            value = patch%aux%Immis%aux_vars(ghosted_id)%aux_var_elem(0)%pres
+          case(LIQUID_SATURATION)
+            value = patch%aux%Immis%aux_vars(ghosted_id)%aux_var_elem(0)%sat(1)
+          case(LIQUID_DENSITY)
+            value = patch%aux%Immis%aux_vars(ghosted_id)%aux_var_elem(0)%den(1)
+          case(GAS_SATURATION)
+            value = patch%aux%Immis%aux_vars(ghosted_id)%aux_var_elem(0)%sat(2)
+          case(GAS_ENERGY)
+            value = patch%aux%Immis%aux_vars(ghosted_id)%aux_var_elem(0)%u(2)
+          case(GAS_DENSITY) 
+            value = patch%aux%Immis%aux_vars(ghosted_id)%aux_var_elem(0)%den(2)
+          case(LIQUID_ENERGY)
+            value = patch%aux%Immis%aux_vars(ghosted_id)%aux_var_elem(0)%u(1)
         end select
       endif
     case(PRIMARY_SPEC_CONCENTRATION,TOTAL_CONCENTRATION,MINERAL_VOLUME_FRACTION)

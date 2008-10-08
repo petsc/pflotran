@@ -901,9 +901,8 @@ subroutine ImmisSourceSink(mmsrc,psrc,tsrc,hsrc,aux_var,isrctype,Res, energy_fla
               v_darcy=0D0
               if (ukvr*Dq>floweps) then
                  v_darcy = Dq * ukvr * dphi
-                 Res(1) =Res(1)- v_darcy* aux_var%den(np)*aux_var%xmol((np-1)*option%nflowspec+1) 
-                 Res(2) =Res(2)- v_darcy* aux_var%den(np)*aux_var%xmol((np-1)*option%nflowspec+2) 
-                 if(energy_flag) Res(3) =Res(3)- v_darcy* aux_var%den(np)*aux_var%h(np)
+                 Res(np) =Res(np)- v_darcy* aux_var%den(np) 
+                 if(energy_flag) Res(option%nflowdof) =Res(option%nflowdof)- v_darcy* aux_var%den(np)*aux_var%h(np)
               endif
            endif
         enddo
@@ -920,10 +919,9 @@ subroutine ImmisSourceSink(mmsrc,psrc,tsrc,hsrc,aux_var,isrctype,Res, energy_fla
               v_darcy=0D0
               if (ukvr*Dq>floweps) then
                  v_darcy = Dq * ukvr * dphi
-                 Res(1) =Res(1)- v_darcy* aux_var%den(np)*aux_var%xmol((np-1)*option%nflowspec+1) 
-                 Res(2) =Res(2)- v_darcy* aux_var%den(np)*aux_var%xmol((np-1)*option%nflowspec+2) 
-                 if(energy_flag) Res(3) =Res(3)- v_darcy* aux_var%den(np)*aux_var%h(np)
-              endif
+                 Res(np) =Res(np)- v_darcy* aux_var%den(np) 
+                 if(energy_flag) Res(option%nflowdof) =Res(option%nflowdof)- v_darcy* aux_var%den(np)*aux_var%h(np)
+               endif
            endif
         enddo 
     case default
@@ -931,8 +929,6 @@ subroutine ImmisSourceSink(mmsrc,psrc,tsrc,hsrc,aux_var,isrctype,Res, energy_fla
    end select      
       
  end subroutine ImmisSourceSink
-
-
 
 
 ! ************************************************************************** !
@@ -1389,7 +1385,7 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
         
      istart =  (ng-1) * option%nflowdof +1 ; iend = istart -1 + option%nflowdof
      iphase =int(iphase_loc_p(ng))
-     call ImmisAuxVarCompute_Ninc(xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0),iphase,&
+     call ImmisAuxVarCompute_Ninc(xx_loc_p(istart:iend),aux_vars(ng)%aux_var_elem(0),&
           realization%saturation_function_array(int(icap_loc_p(ng)))%ptr,&
           realization%fluid_properties,option)
 

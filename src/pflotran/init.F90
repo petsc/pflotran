@@ -1848,7 +1848,7 @@ subroutine setFlowMode(option)
       option%nflowdof = 3
       option%nflowspec = 2
       option%itable = 2
-    case('MPH','MPHASE')
+    case('IMS','IMMIS','THS')
       option%iflowmode = IMS_MODE
       option%nphase = 2
       option%nflowdof = 3

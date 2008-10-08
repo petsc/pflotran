@@ -1,5 +1,5 @@
 module Immis_Aux_module
-use Immis_pckr_module
+use Mphase_pckr_module
   implicit none
   
   private 
@@ -224,7 +224,7 @@ subroutine ImmisAuxVarCompute_NINC(x,aux_var,saturation_function, &
   use span_wagner_spline_module, only: sw_prop
   use co2_sw_module, only: co2_sw_interp
   use Material_module
-  use Immis_pckr_module
+  use Mphase_pckr_module
   
   implicit none
 
@@ -253,10 +253,10 @@ subroutine ImmisAuxVarCompute_NINC(x,aux_var,saturation_function, &
   aux_var%u = 0.d0
   aux_var%den = 0.d0
   aux_var%avgmw = 0.d0
-  aux_var%xmol = 0.d0
   aux_var%pc = 0.d0
   aux_var%kvr = 0.d0
-  aux_var%diff = 0.d0
+! aux_var%xmol = 0.d0
+! aux_var%diff = 0.d0
   kr = 0.d0
  
   aux_var%pres = x(1)  
