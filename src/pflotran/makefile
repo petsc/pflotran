@@ -105,7 +105,6 @@ pflotran_obj = ${common_src}option.o \
 
 pflotranamr_obj = ${common_src}option.o \
 	${common_src}logging.o \
-	${common_src}reaction_aux.o\
 	${common_src}reactive_transport_aux.o\
 	${common_src}richards_aux.o\
 	${common_src}richards_lite_aux.o\
