@@ -55,7 +55,6 @@ util_obj  = ${common_src}fileio.o \
 
 pflotran_obj = ${common_src}option.o \
 	${common_src}logging.o \
-	${common_src}reaction_aux.o\
 	${common_src}reactive_transport_aux.o\
 	${common_src}richards_aux.o\
 	${common_src}richards_lite_aux.o\
@@ -104,7 +103,6 @@ pflotran_obj = ${common_src}option.o \
 
 pflotranamr_obj = ${common_src}option.o \
 	${common_src}logging.o \
-	${common_src}reaction_aux.o\
 	${common_src}reactive_transport_aux.o\
 	${common_src}richards_aux.o\
 	${common_src}richards_lite_aux.o\
@@ -207,7 +205,7 @@ output.o : grid.o structured_grid.o option.o realization.o field.o \
 					 reactive_transport.o \
            richards.o richards_lite.o mphase.o \
 					 discretization.o logging.o
-reaction.o : reactive_transport_aux.o reaction_aux.o option.o
+reaction.o : reactive_transport_aux.o option.o
 transport.o : reactive_transport_aux.o option.o
 reactive_transport.o : realization.o reaction.o transport.o \
                        reactive_transport_aux.o
