@@ -228,7 +228,8 @@ subroutine SubConditionVerify(option, condition, sub_condition_name, &
                               default_time, &
                               default_ctype, default_itype, &
                               default_dataset, &
-                              default_datum, default_gradient)
+                              default_datum, default_gradient, &
+                              destroy_if_null)
 
   use Option_module
 
@@ -247,13 +248,14 @@ subroutine SubConditionVerify(option, condition, sub_condition_name, &
   type(condition_dataset_type) :: default_dataset
   type(condition_dataset_type) :: default_datum
   type(condition_dataset_type) :: default_gradient
+  PetscTruth :: destroy_if_null
 
   PetscInt :: array_size
 
   if (.not.associated(sub_condition)) return
   
   if (.not.associated(sub_condition%dataset%values)) then
-    call SubConditionDestroy(sub_condition)
+    if (destroy_if_null) call SubConditionDestroy(sub_condition)
     return
   endif
   
@@ -733,27 +735,27 @@ subroutine ConditionRead(condition,option,fid)
     call SubConditionVerify(option,condition,word,pressure,default_time, &
                             default_ctype, default_itype, &
                             default_dataset, &
-                            default_datum, default_gradient)
+                            default_datum, default_gradient,PETSC_TRUE)
     word = 'mass_rate'
     call SubConditionVerify(option,condition,word,mass_rate,default_time, &
                             default_ctype, default_itype, &
                             default_dataset, &
-                            default_datum, default_gradient)
+                            default_datum, default_gradient,PETSC_TRUE)
     word = 'temperature'
     call SubConditionVerify(option,condition,word,temperature,default_time, &
                             default_ctype, default_itype, &
                             default_dataset, &
-                            default_datum, default_gradient)
+                            default_datum, default_gradient,PETSC_TRUE)
     word = 'concentration'
     call SubConditionVerify(option,condition,word,concentration,default_time, &
                             default_ctype, default_itype, &
                             default_dataset, &
-                            default_datum, default_gradient)
+                            default_datum, default_gradient,PETSC_TRUE)
     word = 'enthalpy'
     call SubConditionVerify(option,condition,word,enthalpy,default_time, &
                             default_ctype, default_itype, &
                             default_dataset, &
-                            default_datum, default_gradient)
+                            default_datum, default_gradient,PETSC_TRUE)
     ! these are not used with flow
     do idof = 1, option%ntrandof
       if (associated(transport_concentrations(idof)%ptr)) &
@@ -773,14 +775,14 @@ subroutine ConditionRead(condition,option,fid)
       call SubConditionVerify(option,condition,word,transport_concentrations(idof)%ptr,default_time, &
                               default_ctype, default_itype, &
                               default_dataset, &
-                              default_datum, default_gradient)
+                              default_datum, default_gradient,PETSC_FALSE)
     enddo
     do idof = 1, option%nmnrl
       word = 'mineral concentration: ' // trim(mineral_concentrations(idof)%ptr%name)
       call SubConditionVerify(option,condition,word,mineral_concentrations(idof)%ptr,default_time, &
                               default_ctype, default_itype, &
                               default_dataset, &
-                              default_datum, default_gradient)
+                              default_datum, default_gradient,PETSC_FALSE)
     enddo
     ! these are not used with transport
     if (associated(pressure)) call SubConditionDestroy(pressure)
