@@ -29,10 +29,10 @@ subroutine DatabaseRead(reaction,option)
   type(reaction_type) :: reaction
   type(option_type) :: option
   
-  type(aq_species_type), pointer :: cur_aq_spec
-  type(gas_species_type), pointer :: cur_gas_spec
-  type(mineral_type), pointer :: cur_mineral
-  type(surface_complexation_rxn_type), pointer :: cur_surfcplx
+  type(aq_species_type), pointer :: cur_aq_spec, cur_aq_spec2
+  type(gas_species_type), pointer :: cur_gas_spec, cur_gas_spec2
+  type(mineral_type), pointer :: cur_mineral, cur_mineral2
+  type(surface_complexation_rxn_type), pointer :: cur_surfcplx, cur_surfcplx2
   
   character(len=MAXSTRINGLENGTH) :: string
   character(len=MAXNAMELENGTH) :: name
@@ -332,6 +332,159 @@ subroutine DatabaseRead(reaction,option)
     
   enddo
   
+  ! check for duplicate species
+ flag = PETSC_FALSE
+ 
+  ! aqueous primary species
+  cur_aq_spec => reaction%primary_species_list
+  do
+    if (.not.associated(cur_aq_spec)) exit
+    
+    ! aqueous primary species
+    cur_aq_spec2 => cur_aq_spec%next
+    do
+      if (.not.associated(cur_aq_spec2)) exit
+      if (cur_aq_spec%id /= cur_aq_spec2%id .and. &
+          fiStringCompare(cur_aq_spec%name, &
+                          cur_aq_spec2%name,MAXNAMELENGTH)) then
+        flag = PETSC_TRUE
+        string = 'Aqueous primary species (' // trim(cur_aq_spec%name) // &
+                 ') duplicated in input file.'
+        call printMsg(option,string)                          
+      endif
+      cur_aq_spec2 => cur_aq_spec2%next
+    enddo
+
+    cur_aq_spec2 => reaction%secondary_species_list
+    do
+      if (.not.associated(cur_aq_spec2)) exit
+      if (fiStringCompare(cur_aq_spec%name, &
+                          cur_aq_spec2%name,MAXNAMELENGTH)) then
+        flag = PETSC_TRUE
+        string = 'Aqueous primary species (' // trim(cur_aq_spec%name) // &
+                 ') duplicated as secondary species in input file.'
+        call printMsg(option,string)                          
+      endif
+      cur_aq_spec2 => cur_aq_spec2%next
+    enddo
+
+    cur_gas_spec2 => reaction%gas_species_list
+    do
+      if (.not.associated(cur_gas_spec2)) exit
+      if (fiStringCompare(cur_aq_spec%name, &
+                          cur_gas_spec2%name,MAXNAMELENGTH)) then
+        flag = PETSC_TRUE
+        string = 'Aqueous primary species (' // trim(cur_aq_spec%name) // &
+                 ') duplicated as gas species in input file.'
+        call printMsg(option,string)                          
+      endif
+      cur_gas_spec2 => cur_gas_spec2%next
+    enddo
+    cur_aq_spec => cur_aq_spec%next  
+  enddo
+  
+  ! aqueous secondary species
+  cur_aq_spec => reaction%secondary_species_list
+  do
+    if (.not.associated(cur_aq_spec)) exit
+    
+    ! already checked against primary
+    ! aqueous secondary species
+    cur_aq_spec2 => cur_aq_spec%next
+    do
+      if (.not.associated(cur_aq_spec2)) exit
+      if (cur_aq_spec%id /= cur_aq_spec2%id .and. &
+          fiStringCompare(cur_aq_spec%name, &
+                          cur_aq_spec2%name,MAXNAMELENGTH)) then
+        flag = PETSC_TRUE
+        string = 'Aqueous secondary species (' // trim(cur_aq_spec%name) // &
+                 ') duplicated in input file.'
+        call printMsg(option,string)                          
+      endif
+      cur_aq_spec2 => cur_aq_spec2%next
+    enddo
+
+    cur_gas_spec2 => reaction%gas_species_list
+    do
+      if (.not.associated(cur_gas_spec2)) exit
+      if (fiStringCompare(cur_aq_spec%name, &
+                          cur_gas_spec2%name,MAXNAMELENGTH)) then
+        flag = PETSC_TRUE
+        string = 'Aqueous secondary species (' // trim(cur_aq_spec%name) // &
+                 ') duplicated as gas species in input file.'
+        call printMsg(option,string)                          
+      endif
+      cur_gas_spec2 => cur_gas_spec2%next
+    enddo
+    cur_aq_spec => cur_aq_spec%next  
+  enddo
+  
+  ! gas species
+  cur_gas_spec => reaction%gas_species_list
+  do
+    if (.not.associated(cur_aq_spec)) exit
+    
+    ! already checked against primary
+    ! already checked against secondary
+    ! gas species
+    cur_gas_spec2 => cur_gas_spec%next
+    do
+      if (.not.associated(cur_gas_spec2)) exit
+      if (cur_gas_spec%id /= cur_gas_spec2%id .and. &
+          fiStringCompare(cur_aq_spec%name, &
+                          cur_gas_spec2%name,MAXNAMELENGTH)) then
+        flag = PETSC_TRUE
+        string = 'Gas species (' // trim(cur_aq_spec%name) // &
+                 ') duplicated in input file.'
+        call printMsg(option,string)                          
+      endif
+      cur_gas_spec2 => cur_gas_spec2%next
+    enddo
+    cur_aq_spec => cur_aq_spec%next  
+  enddo
+  
+  ! minerals
+  cur_mineral => reaction%mineral_list
+  do
+    if (.not.associated(cur_mineral)) exit
+    cur_mineral2 => cur_mineral%next
+    do
+      if (.not.associated(cur_mineral2)) exit
+      if (cur_mineral%id /= cur_mineral2%id .and. &
+          fiStringCompare(cur_mineral%name, &
+                          cur_mineral2%name,MAXNAMELENGTH)) then
+        flag = PETSC_TRUE
+        string = 'Mineral (' // trim(cur_mineral%name) // &
+                 ') duplicated in input file.'
+        call printMsg(option,string)                          
+      endif
+      cur_mineral2 => cur_mineral2%next
+    enddo
+    cur_mineral => cur_mineral%next
+  enddo
+  
+  ! surface complexes
+  cur_surfcplx => reaction%surface_complex_list
+  do
+    if (.not.associated(cur_surfcplx)) exit
+    cur_surfcplx2 => cur_surfcplx%next
+    do
+      if (.not.associated(cur_surfcplx2)) exit
+      if (cur_surfcplx%id /= cur_surfcplx2%id .and. &
+          fiStringCompare(cur_surfcplx%name, &
+                          cur_surfcplx2%name,MAXNAMELENGTH)) then
+        flag = PETSC_TRUE
+        string = 'Mineral (' // trim(cur_surfcplx2%name) // &
+                 ') duplicated in input file.'
+        call printMsg(option,string)                          
+      endif
+      cur_surfcplx2 => cur_surfcplx2%next
+    enddo
+    cur_surfcplx => cur_surfcplx%next
+  enddo
+  
+  if (flag) call printErrMsg(option,'Species duplicated in input file.')
+  
   ! check that all species, etc. were read
   flag = PETSC_FALSE
   cur_aq_spec => reaction%primary_species_list
@@ -340,7 +493,7 @@ subroutine DatabaseRead(reaction,option)
     if (cur_aq_spec%id < 0) then
       flag = PETSC_TRUE
       string = 'Aqueous primary species (' // trim(cur_aq_spec%name) // &
-               ') either not found in database or doubled up in input file.'
+               ') not found in database.'
       call printMsg(option,string)
     endif
     cur_aq_spec => cur_aq_spec%next
@@ -351,7 +504,7 @@ subroutine DatabaseRead(reaction,option)
     if (cur_aq_spec%id < 0) then
       flag = PETSC_TRUE
       string = 'Aqueous secondary species (' // trim(cur_aq_spec%name) // &
-               ') either not found in database or doubled up in input file.'
+               ') not found in database.'
       call printMsg(option,string)
     endif
     cur_aq_spec => cur_aq_spec%next
@@ -362,7 +515,7 @@ subroutine DatabaseRead(reaction,option)
     if (cur_gas_spec%id < 0) then
       flag = PETSC_TRUE
       string = 'Gas species (' // trim(cur_gas_spec%name) // &
-               ') either not found in database or doubled up in input file.'
+               ') not found in database.'
       call printMsg(option,string)
     endif
     cur_gas_spec => cur_gas_spec%next
@@ -373,7 +526,7 @@ subroutine DatabaseRead(reaction,option)
     if (cur_mineral%id < 0) then
       flag = PETSC_TRUE
       string = 'Mineral (' // trim(cur_mineral%name) // &
-               ') either not found in database or doubled up in input file.'
+               ') not found in database.'
       call printMsg(option,string)
     endif
     cur_mineral => cur_mineral%next
