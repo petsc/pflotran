@@ -46,6 +46,7 @@ subroutine Init(simulation,filename)
   use Logging_module  
   use Database_module
   
+  use Immis_module
   use MPHASE_module
   use Richards_Lite_module
   use Richards_module
@@ -160,7 +161,7 @@ subroutine Init(simulation,filename)
   
     if (flow_solver%mat_type == MATAIJ) then
       select case(option%iflowmode)
-        case(MPH_MODE,RICHARDS_MODE)
+        case(MPH_MODE,RICHARDS_MODE,IMS_MODE)
           call printErrMsg(option,&
                            'AIJ matrix not supported for current mode: '// &
                            option%flowmode)
@@ -171,6 +172,8 @@ subroutine Init(simulation,filename)
       write(*,'(" number of dofs = ",i3,", number of phases = ",i3,i2)') &
         option%nflowdof,option%nphase
       select case(option%iflowmode)
+        case(IMS_MODE)
+          write(*,'(" mode = IMS: p, T, s/C")')
         case(MPH_MODE)
           write(*,'(" mode = MPH: p, T, s/C")')
         case(RICHARDS_MODE)
@@ -209,6 +212,10 @@ subroutine Init(simulation,filename)
       case(MPH_MODE)
         call SNESSetFunction(flow_solver%snes,field%flow_r,MPHASEResidual,realization,ierr)
         call SNESSetJacobian(flow_solver%snes, flow_solver%J, flow_solver%J, MPHASEJacobian, &
+                             realization, ierr)
+      case(IMS_MODE)
+        call SNESSetFunction(flow_solver%snes,field%flow_r,ImmisResidual,realization,ierr)
+        call SNESSetJacobian(flow_solver%snes, flow_solver%J, flow_solver%J, ImmisJacobian, &
                              realization, ierr)
     end select
 
@@ -335,7 +342,9 @@ subroutine Init(simulation,filename)
         call RichardsLiteSetup(realization)
       case(MPH_MODE)
         call MphaseSetup(realization)
-    end select
+     case(IMS_MODE)
+        call ImmisSetup(realization) 
+     end select
   endif
   if (option%ntrandof > 0) then
     call RTSetup(realization)
@@ -353,6 +362,8 @@ subroutine Init(simulation,filename)
         call RichardsLiteUpdateAuxVars(realization)
       case(MPH_MODE)
         call MphaseUpdateAuxVars(realization)
+      case(IMS_MODE)
+        call ImmisUpdateAuxVars(realization)
     end select
   endif
   if (option%ntrandof > 0) then
@@ -1424,7 +1435,7 @@ subroutine readInput(simulation,filename)
           call fiErrorMsg(option%myrank,'icaptype','PCKR', ierr)
       
           select case(option%iflowmode)
-            case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
+            case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE,IMS_MODE)
               do np=1, option%nphase
                 call fiReadDouble(string,saturation_function%Sr(np),ierr)
                 call fiErrorMsg(option%myrank,'Sr','PCKR', ierr)
@@ -1462,7 +1473,7 @@ subroutine readInput(simulation,filename)
         option%icaptype = 0
   
         select case(option%iflowmode)
-          case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
+          case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE,IMS_MODE)
             allocate(option%sir(1:option%nphase,count))
           case default
             allocate(option%swir(count))
@@ -1490,7 +1501,7 @@ subroutine readInput(simulation,filename)
           
           option%icaptype(id) = saturation_function%saturation_function_itype
           select case(option%iflowmode)
-            case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
+            case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE,IMS_MODE)
               do i=1,option%nphase
                 option%sir(i,id) = saturation_function%Sr(i)
               enddo
@@ -1519,6 +1530,7 @@ subroutine readInput(simulation,filename)
       !clu removed on 05/21/08
 #if 0
         if (option%iflowmode == MPH_MODE .or. &
+            option%iflowmode == IMS_MODE .or. &
             option%iflowmode == RICHARDS_MODE .or. &
             option%iflowmode == RICHARDS_LITE_MODE) then
           call pckr_init(option%nphase,count,grid%nlmax, &
@@ -1533,6 +1545,7 @@ subroutine readInput(simulation,filename)
           write(IUNIT2,'("  icp swir    lambda         alpha")')
           do j = 1, count
             if (option%iflowmode == MPH_MODE .or. &
+                option%iflowmode == IMS_MODE .or. &
                 option%iflowmode == RICHARDS_MODE .or. &
                 option%iflowmode == RICHARDS_LITE_MODE) then
               write(IUNIT2,'(i4,1p8e12.4)') option%icaptype(j),(option%sir(np,j),np=1, &
@@ -1547,6 +1560,7 @@ subroutine readInput(simulation,filename)
         end if
 
         if (option%iflowmode == MPH_MODE .or. &
+            option%iflowmode == IMS_MODE .or. &
             option%iflowmode == RICHARDS_MODE .or. &
             option%iflowmode == RICHARDS_LITE_MODE) then
           deallocate(option%icaptype, option%pckrm, option%lambda, &
@@ -1830,6 +1844,12 @@ subroutine setFlowMode(option)
       option%nflowspec = 1
     case('MPH','MPHASE')
       option%iflowmode = MPH_MODE
+      option%nphase = 2
+      option%nflowdof = 3
+      option%nflowspec = 2
+      option%itable = 2
+    case('MPH','MPHASE')
+      option%iflowmode = IMS_MODE
       option%nphase = 2
       option%nflowdof = 3
       option%nflowspec = 2

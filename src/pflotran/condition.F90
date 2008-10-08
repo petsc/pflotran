@@ -792,7 +792,7 @@ subroutine ConditionRead(condition,option,fid)
     
   if (condition%iclass == FLOW_CLASS) then
     select case(option%iflowmode)
-      case(RICHARDS_MODE,MPH_MODE)
+      case(RICHARDS_MODE,MPH_MODE,IMS_MODE)
         if (.not.associated(pressure) .and. .not.associated(mass_rate)) then
           call printErrMsg(option,'pressure and mass_rate condition null in condition: ' // &
                            condition%name)

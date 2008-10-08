@@ -99,6 +99,7 @@ subroutine MassBalanceUpdate(realization,flow_solver,tran_solver)
         call VecAXPY(field%tran_total_mass_balance, &
                      field%tran_ts_mass_balance,1.d0,ierr)
       case(MPH_MODE)
+      case(IMS_MODE)
     end select
   endif
   

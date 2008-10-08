@@ -540,6 +540,13 @@ subroutine PatchInitCouplerAuxVars(patch,coupler_list,option)
               allocate(coupler%flow_aux_int_var(1,num_connections))
               coupler%flow_aux_real_var = 0.d0
               coupler%flow_aux_int_var = 0
+
+            case(IMS_MODE)
+
+              allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
+              allocate(coupler%flow_aux_int_var(1,num_connections))
+              coupler%flow_aux_real_var = 0.d0
+              coupler%flow_aux_int_var = 0
                 
             case default
           end select
@@ -631,7 +638,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
 
       update = .false.
       select case(option%iflowmode)
-        case(RICHARDS_MODE,MPH_MODE)
+        case(RICHARDS_MODE,MPH_MODE,IMS_MODE)
           if (force_update_flag .or. &
               condition%pressure%dataset%is_transient .or. &
               condition%pressure%gradient%is_transient .or. &
@@ -665,6 +672,15 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
 !                endif
 !              enddo
               select case(option%iflowmode)
+                case(IMS_MODE)
+                  coupler%flow_aux_real_var(ONE_INTEGER,1:num_connections) = &
+                    condition%pressure%dataset%cur_value(1)  ! <-- Chuan Fix
+                   coupler%flow_aux_real_var(TWO_INTEGER,1:num_connections) = &
+                    condition%temperature%dataset%cur_value(1)! <-- Chuan Fix
+                  coupler%flow_aux_real_var(THREE_INTEGER,1:num_connections) = &
+                    condition%concentration%dataset%cur_value(1)! <-- Chuan Fix
+                  coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
+                    condition%iphase
                 case(MPH_MODE)
                   coupler%flow_aux_real_var(ONE_INTEGER,1:num_connections) = &
                     condition%pressure%dataset%cur_value(1)  ! <-- Chuan Fix
@@ -761,7 +777,7 @@ subroutine PatchBridgeFlowAndTransport(patch,option)
         patch%aux%RT%aux_vars_bc(iaux)%sat = &
           patch%aux%RichardsLite%aux_vars_bc(iaux)%sat
       enddo
-    case(RICHARDS_MODE,MPH_MODE)
+    case(RICHARDS_MODE,MPH_MODE,IMS_MODE)
       if (option%myrank == 0) then
         print *, 'Bridge of flow and transport densities needs to be implemented.  Ask Glenn'
         stop
