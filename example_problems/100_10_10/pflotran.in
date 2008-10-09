@@ -1,7 +1,6 @@
 :Description: 3D toy problem for richards equation
 :
-:MODE RICHARDS
-MODE RICHARDS_LITE
+MODE RICHARDS
 :skip
 :TRAN 1
 CHEMISTRY

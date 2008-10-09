@@ -1,6 +1,6 @@
 :Description: 3D toy problem for testing TAO optimization
  
-MODE RICHARDS_LITE
+MODE RICHARDS
  
 GRID
 TYPE structured

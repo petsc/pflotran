@@ -1,6 +1,7 @@
 :Description: 3D 5 spot problem for testing geochemistry
-:
-MODE RICHARDS_LITE
+
+MODE RICHARDS
+
 CHEMISTRY
 PRIMARY_SPECIES
 H+
@@ -17,9 +18,8 @@ END
 MINERALS
 Calcite
 END
-RUN_CARBONATE
 END
-:
+
 :NUMERICAL_JACOBIAN
 :INEXACT_NEWTON
 :
