@@ -203,7 +203,7 @@ subroutine DiscretizationRead(discretization,fid,option)
           call fiSkipToEND(IUNIT1,option%myrank,word) 
         case('BOUNDS')
           call fiSkipToEND(IUNIT1,option%myrank,word) 
-        case('END')
+        case('END','/','.')
           exit
       end select 
     else ! should be the second time it is read
@@ -296,7 +296,7 @@ subroutine DiscretizationRead(discretization,fid,option)
           discretization%origin(X_DIRECTION) = grid%structured_grid%bounds(X_DIRECTION,LOWER)
           discretization%origin(Y_DIRECTION) = grid%structured_grid%bounds(Y_DIRECTION,LOWER)
           discretization%origin(Z_DIRECTION) = grid%structured_grid%bounds(Z_DIRECTION,LOWER)
-        case('END')
+        case('END','/','.')
           exit
       end select 
     endif

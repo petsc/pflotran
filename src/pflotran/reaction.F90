@@ -943,7 +943,7 @@ subroutine ReactionRead(reaction,fid,option)
       case('DATABASE')
         call fiReadNChars(string,reaction%database_filename,MAXSTRINGLENGTH,.true.,ierr)  
         call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,DATABASE FILENAME', ierr)          
-      case('END')
+      case('END','/','.')
         exit
       case default
         call printErrMsg(option,'CHEMISTRY keyword: '//trim(word)//' not recognized')

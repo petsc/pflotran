@@ -267,7 +267,7 @@ subroutine CouplerRead(coupler,fid,option)
             print *, 'ERROR: FACE option (', trim(word), ') not recognized.'
             stop
         end select
-      case('END')
+      case('END','/','.')
         exit
       case default
         string = 'Coupler card (' // trim(word) // ') not recognized.'

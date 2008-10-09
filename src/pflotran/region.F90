@@ -359,7 +359,7 @@ subroutine RegionRead(region,fid,option)
           case('TOP')
             region%iface = TOP_FACE
         end select
-      case('END')
+      case('END','/','.')
         exit        
       case default
         call printErrMsg(option,'REGION keyword: '//trim(word)//' not recognized')
