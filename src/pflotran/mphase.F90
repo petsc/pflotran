@@ -2854,7 +2854,7 @@ end subroutine MphaseMaxChangePatch
 
 ! ************************************************************************** !
 !
-! RichardsLiteGetTecplotHeader: Returns Richards contribution to 
+! RichardsGetTecplotHeader: Returns Richards contribution to 
 !                               Tecplot file header
 ! author: Glenn Hammond
 ! date: 02/13/08

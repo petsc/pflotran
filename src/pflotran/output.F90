@@ -164,7 +164,7 @@ subroutine OutputTecplot(realization)
   
   use Mphase_module
   use THC_module
-  use Richards_Lite_module
+  use Richards_module
   
   use Reactive_Transport_module
  
@@ -230,8 +230,8 @@ subroutine OutputTecplot(realization)
         string2 = MphaseGetTecplotHeader(realization)
       case(THC_MODE)
         string2 = THCGetTecplotHeader(realization)
-      case(RICHARDS_LITE_MODE)
-       string2 = RichardsLiteGetTecplotHeader(realization)
+      case(RICHARDS_MODE)
+       string2 = RichardsGetTecplotHeader(realization)
     end select
     string = trim(string) // trim(string2)
     
@@ -305,7 +305,7 @@ subroutine OutputTecplot(realization)
   endif
 
   select case(option%iflowmode)
-    case(MPH_MODE,THC_MODE,RICHARDS_LITE_MODE)
+    case(MPH_MODE,THC_MODE,RICHARDS_MODE)
 
       ! temperature
       select case(option%iflowmode)
@@ -317,7 +317,7 @@ subroutine OutputTecplot(realization)
 
       ! pressure
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,RICHARDS_LITE_MODE)
+        case(MPH_MODE,THC_MODE,RICHARDS_MODE)
           call OutputGetVarFromArray(realization,global_vec,PRESSURE,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -333,7 +333,7 @@ subroutine OutputTecplot(realization)
 
       ! liquid saturation
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,RICHARDS_LITE_MODE)
+        case(MPH_MODE,THC_MODE,RICHARDS_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -1640,7 +1640,7 @@ subroutine WriteBreakthroughHeaderForCell(fid,realization,region,icell, &
       endif
 #endif      
       string = trim(string) // ',"Phase '// trim(cell_id_string) // '"'
-    case(THC_MODE,RICHARDS_LITE_MODE)
+    case(THC_MODE,RICHARDS_MODE)
       if (option%iflowmode == THC_MODE) then
         string = ',"X [m] '// trim(cell_id_string) // '",' // &
                  '"Y [m] '// trim(cell_id_string) // '",' // &
@@ -1770,7 +1770,7 @@ subroutine WriteBreakthroughHeaderForCoord(fid,realization,region, &
       endif
 #endif      
       string = trim(string) // ',"Phase '// trim(cell_id_string) // '"'
-    case(THC_MODE,RICHARDS_LITE_MODE)
+    case(THC_MODE,RICHARDS_MODE)
       if (option%iflowmode == THC_MODE) then
 !        string = ',"X [m] '// trim(cell_id_string) // '",' // &
 !                 '"Y [m] '// trim(cell_id_string) // '",' // &
@@ -1869,7 +1869,7 @@ subroutine WriteBreakthroughDataForCell(fid,realization,local_id)
   !write(fid,110,advance="no") grid%z(ghosted_id)
   
   select case(option%iflowmode)
-    case (MPH_MODE,THC_MODE,RICHARDS_LITE_MODE)
+    case (MPH_MODE,THC_MODE,RICHARDS_MODE)
 
       ! temperature
       select case(option%iflowmode)
@@ -1880,14 +1880,14 @@ subroutine WriteBreakthroughDataForCell(fid,realization,local_id)
 
       ! pressure
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,RICHARDS_LITE_MODE)
+        case(MPH_MODE,THC_MODE,RICHARDS_MODE)
           write(fid,110,advance="no") &
             OutputGetVarFromArrayAtCell(realization,PRESSURE,ZERO_INTEGER,local_id)
       end select
 
       ! liquid saturation
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,RICHARDS_LITE_MODE)
+        case(MPH_MODE,THC_MODE,RICHARDS_MODE)
           write(fid,110,advance="no") &
             OutputGetVarFromArrayAtCell(realization,LIQUID_SATURATION,ZERO_INTEGER,local_id)
       end select
@@ -2055,7 +2055,7 @@ subroutine WriteBreakthroughDataForCoord(fid,realization,region)
   enddo
   
   select case(option%iflowmode)
-    case (MPH_MODE,THC_MODE,RICHARDS_LITE_MODE)
+    case (MPH_MODE,THC_MODE,RICHARDS_MODE)
 
       ! temperature
       select case(option%iflowmode)
@@ -2070,7 +2070,7 @@ subroutine WriteBreakthroughDataForCoord(fid,realization,region)
 
       ! pressure
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,RICHARDS_LITE_MODE)
+        case(MPH_MODE,THC_MODE,RICHARDS_MODE)
           write(fid,110,advance="no") &
             OutputGetVarFromArrayAtCoord(realization,PRESSURE,ZERO_INTEGER, &
                                          region%coordinates(ONE_INTEGER)%x, &
@@ -2081,7 +2081,7 @@ subroutine WriteBreakthroughDataForCoord(fid,realization,region)
 
       ! liquid saturation
       select case(option%iflowmode)
-        case(MPH_MODE,THC_MODE,RICHARDS_LITE_MODE)
+        case(MPH_MODE,THC_MODE,RICHARDS_MODE)
           write(fid,110,advance="no") &
             OutputGetVarFromArrayAtCoord(realization,LIQUID_SATURATION,ZERO_INTEGER, &
                                          region%coordinates(ONE_INTEGER)%x, &
@@ -2647,7 +2647,7 @@ subroutine OutputHDF5(realization)
   select case(option%iflowmode)
   
     case(MPH_MODE,THC_MODE, &
-         RICHARDS_LITE_MODE)
+         RICHARDS_MODE)
 
       ! temperature
       select case(option%iflowmode)
@@ -2659,7 +2659,7 @@ subroutine OutputHDF5(realization)
 
       ! pressure
       select case(option%iflowmode)
-        case (MPH_MODE,THC_MODE,RICHARDS_LITE_MODE)
+        case (MPH_MODE,THC_MODE,RICHARDS_MODE)
           call OutputGetVarFromArray(realization,global_vec,PRESSURE,ZERO_INTEGER)
           string = "Pressure"
           call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
@@ -2667,7 +2667,7 @@ subroutine OutputHDF5(realization)
 
       ! liquid saturation
       select case(option%iflowmode)
-        case (MPH_MODE,THC_MODE,RICHARDS_LITE_MODE)
+        case (MPH_MODE,THC_MODE,RICHARDS_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
           string = "Liquid Saturation"
           call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)  
@@ -3188,7 +3188,7 @@ function OutputGetVarFromArrayAtCell(realization,ivar,isubvar,local_id)
     case(THC_MODE)
       OutputGetVarFromArrayAtCell = &
         RealizGetDatasetValueAtCell(realization,ivar,isubvar,ghosted_id)
-    case(RICHARDS_LITE_MODE)
+    case(RICHARDS_MODE)
       OutputGetVarFromArrayAtCell = &
         RealizGetDatasetValueAtCell(realization,ivar,isubvar,ghosted_id)
   end select
@@ -3658,7 +3658,7 @@ subroutine OutputMassBalance(realization)
       case (MPH_MODE)
       case(THC_MODE)
         string2 = '"Water [kg]","Solute [mol]","Energy []"'
-      case(RICHARDS_LITE_MODE)
+      case(RICHARDS_MODE)
     end select
     string = trim(string) // trim(string2)
     

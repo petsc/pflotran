@@ -605,7 +605,7 @@ subroutine RealizAssignFlowInitCond(realization)
       grid => cur_patch%grid
 
       select case(option%iflowmode)
-        case(RICHARDS_LITE_MODE)
+        case(RICHARDS_MODE)
         case(THC_MODE)
         case(MPH_MODE)
         case(IMS_MODE)

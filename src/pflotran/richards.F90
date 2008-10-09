@@ -1,6 +1,6 @@
-module Richards_Lite_module
+module Richards_module
 
-  use Richards_Lite_Aux_module
+  use Richards_Aux_module
   
   implicit none
   
@@ -22,23 +22,23 @@ module Richards_Lite_module
   PetscReal, parameter :: floweps   = 1.D-24
   PetscReal, parameter :: perturbation_tolerance = 1.d-5
   
-  public RichardsLiteResidual,RichardsLiteJacobian, &
-         RichardsLiteUpdateFixedAccum,RichardsLiteTimeCut,&
-         RichardsLiteSetup, RichardsLiteNumericalJacTest, &
-         RichardsLiteInitializeTimestep, RichardsLiteUpdateAuxVars, &
-         RichardsLiteMaxChange, RichardsLiteUpdateSolution, &
-         RichardsLiteGetTecplotHeader
+  public RichardsResidual,RichardsJacobian, &
+         RichardsUpdateFixedAccum,RichardsTimeCut,&
+         RichardsSetup, RichardsNumericalJacTest, &
+         RichardsInitializeTimestep, RichardsUpdateAuxVars, &
+         RichardsMaxChange, RichardsUpdateSolution, &
+         RichardsGetTecplotHeader
 
 contains
 
 ! ************************************************************************** !
 !
-! RichardsLiteTimeCut: Resets arrays for time step cut
+! RichardsTimeCut: Resets arrays for time step cut
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
 ! ************************************************************************** !
-subroutine RichardsLiteTimeCut(realization)
+subroutine RichardsTimeCut(realization)
  
   use Realization_module
   use Option_module
@@ -59,16 +59,16 @@ subroutine RichardsLiteTimeCut(realization)
 
   call VecCopy(field%flow_yy,field%flow_xx,ierr)
  
-end subroutine RichardsLiteTimeCut
+end subroutine RichardsTimeCut
 
 ! ************************************************************************** !
 !
-! RichardsLiteSetup: 
+! RichardsSetup: 
 ! author: Glenn Hammond
 ! date: 02/22/08
 !
 ! ************************************************************************** !
-subroutine RichardsLiteSetup(realization)
+subroutine RichardsSetup(realization)
 
   use Realization_module
   use Level_module
@@ -86,22 +86,22 @@ subroutine RichardsLiteSetup(realization)
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      call RichardsLiteSetupPatch(realization)
+      call RichardsSetupPatch(realization)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
   enddo
 
-end subroutine RichardsLiteSetup
+end subroutine RichardsSetup
   
 ! ************************************************************************** !
 !
-! RichardsLiteSetupPatch: Creates arrays for auxilliary variables
+! RichardsSetupPatch: Creates arrays for auxilliary variables
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
 ! ************************************************************************** !
-subroutine RichardsLiteSetupPatch(realization)
+subroutine RichardsSetupPatch(realization)
 
   use Realization_module
   use Patch_module
@@ -120,21 +120,21 @@ subroutine RichardsLiteSetupPatch(realization)
   type(coupler_type), pointer :: boundary_condition
 
   PetscInt :: ghosted_id, iconn, sum_connection
-  type(richards_lite_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)  
+  type(richards_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)  
   
   option => realization%option
   patch => realization%patch
   grid => patch%grid
 
-  patch%aux%RichardsLite => RichardsLiteAuxCreate()
+  patch%aux%Richards => RichardsAuxCreate()
   
   ! allocate aux_var data structures for all grid cells  
   allocate(aux_vars(grid%ngmax))
   do ghosted_id = 1, grid%ngmax
-    call RichardsLiteAuxVarInit(aux_vars(ghosted_id),option)
+    call RichardsAuxVarInit(aux_vars(ghosted_id),option)
   enddo
-  patch%aux%RichardsLite%aux_vars => aux_vars
-  patch%aux%RichardsLite%num_aux = grid%ngmax
+  patch%aux%Richards%aux_vars => aux_vars
+  patch%aux%Richards%num_aux = grid%ngmax
   
   ! count the number of boundary connections and allocate
   ! aux_var data structures for them  
@@ -148,26 +148,26 @@ subroutine RichardsLiteSetupPatch(realization)
   enddo
   allocate(aux_vars_bc(sum_connection))
   do iconn = 1, sum_connection
-    call RichardsLiteAuxVarInit(aux_vars_bc(iconn),option)
+    call RichardsAuxVarInit(aux_vars_bc(iconn),option)
   enddo
-  patch%aux%RichardsLite%aux_vars_bc => aux_vars_bc
-  patch%aux%RichardsLite%num_aux_bc = sum_connection
+  patch%aux%Richards%aux_vars_bc => aux_vars_bc
+  patch%aux%Richards%num_aux_bc = sum_connection
   
   ! create zero array for zeroing residual and Jacobian (1 on diagonal)
   ! for inactive cells (and isothermal)
-  call RichardsLiteCreateZeroArray(patch,option)
+  call RichardsCreateZeroArray(patch,option)
 
-end subroutine RichardsLiteSetupPatch
+end subroutine RichardsSetupPatch
 
 ! ************************************************************************** !
 !
-! RichardsLiteUpdateAuxVars: Updates the auxilliary variables associated with 
+! RichardsUpdateAuxVars: Updates the auxilliary variables associated with 
 !                        the Richards problem
 ! author: Glenn Hammond
 ! date: 12/10/07
 !
 ! ************************************************************************** !
-subroutine RichardsLiteUpdateAuxVars(realization)
+subroutine RichardsUpdateAuxVars(realization)
 
   use Realization_module
   use Level_module
@@ -185,23 +185,23 @@ subroutine RichardsLiteUpdateAuxVars(realization)
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      call RichardsLiteUpdateAuxVarsPatch(realization)
+      call RichardsUpdateAuxVarsPatch(realization)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
   enddo
 
-end subroutine RichardsLiteUpdateAuxVars
+end subroutine RichardsUpdateAuxVars
 
 ! ************************************************************************** !
 !
-! RichardsLiteUpdateAuxVarsPatch: Updates the auxilliary variables associated with 
+! RichardsUpdateAuxVarsPatch: Updates the auxilliary variables associated with 
 !                        the Richards problem
 ! author: Glenn Hammond
 ! date: 12/10/07
 !
 ! ************************************************************************** !
-subroutine RichardsLiteUpdateAuxVarsPatch(realization)
+subroutine RichardsUpdateAuxVarsPatch(realization)
 
   use Realization_module
   use Patch_module
@@ -222,7 +222,7 @@ subroutine RichardsLiteUpdateAuxVarsPatch(realization)
   type(field_type), pointer :: field
   type(coupler_type), pointer :: boundary_condition
   type(connection_set_type), pointer :: cur_connection_set
-  type(richards_lite_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)  
+  type(richards_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)  
 
   PetscInt :: ghosted_id, local_id, sum_connection, idof, iconn
   PetscInt :: iphasebc, iphase
@@ -236,8 +236,8 @@ subroutine RichardsLiteUpdateAuxVarsPatch(realization)
   grid => patch%grid
   field => realization%field
 
-  aux_vars => patch%aux%RichardsLite%aux_vars
-  aux_vars_bc => patch%aux%RichardsLite%aux_vars_bc
+  aux_vars => patch%aux%Richards%aux_vars
+  aux_vars_bc => patch%aux%Richards%aux_vars_bc
     
   call GridVecGetArrayF90(grid,field%flow_xx_loc,xx_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%icap_loc,icap_loc_p,ierr)
@@ -253,7 +253,7 @@ subroutine RichardsLiteUpdateAuxVarsPatch(realization)
     endif
     iphase = int(iphase_loc_p(ghosted_id))
    
-    call RichardsLiteAuxVarCompute(xx_loc_p(ghosted_id:ghosted_id),aux_vars(ghosted_id), &
+    call RichardsAuxVarCompute(xx_loc_p(ghosted_id:ghosted_id),aux_vars(ghosted_id), &
                        iphase, &
                        realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                        porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                       
@@ -274,21 +274,21 @@ subroutine RichardsLiteUpdateAuxVarsPatch(realization)
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
 
-      select case(boundary_condition%flow_condition%itype(RICHARDS_LITE_PRESSURE_DOF))
+      select case(boundary_condition%flow_condition%itype(RICHARDS_PRESSURE_DOF))
         case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
-          xxbc(1) = boundary_condition%flow_aux_real_var(RICHARDS_LITE_PRESSURE_DOF,iconn)
+          xxbc(1) = boundary_condition%flow_aux_real_var(RICHARDS_PRESSURE_DOF,iconn)
         case(NEUMANN_BC,ZERO_GRADIENT_BC)
           xxbc(1) = xx_loc_p(ghosted_id)
       end select
       
-      select case(boundary_condition%flow_condition%itype(RICHARDS_LITE_PRESSURE_DOF))
+      select case(boundary_condition%flow_condition%itype(RICHARDS_PRESSURE_DOF))
         case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
-          iphasebc = boundary_condition%flow_aux_int_var(RICHARDS_LITE_PRESSURE_DOF,iconn)
+          iphasebc = boundary_condition%flow_aux_int_var(RICHARDS_PRESSURE_DOF,iconn)
         case(NEUMANN_BC,ZERO_GRADIENT_BC)
           iphasebc=int(iphase_loc_p(ghosted_id))                               
       end select
 
-      call RichardsLiteAuxVarCompute(xxbc(1),aux_vars_bc(sum_connection), &
+      call RichardsAuxVarCompute(xxbc(1),aux_vars_bc(sum_connection), &
                          iphasebc, &
                          realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                          porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                         
@@ -304,18 +304,18 @@ subroutine RichardsLiteUpdateAuxVarsPatch(realization)
   call GridVecRestoreArrayF90(grid,field%perm_xx_loc,perm_xx_loc_p,ierr)
   call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)  
   
-  patch%aux%RichardsLite%aux_vars_up_to_date = PETSC_TRUE
+  patch%aux%Richards%aux_vars_up_to_date = PETSC_TRUE
 
-end subroutine RichardsLiteUpdateAuxVarsPatch
+end subroutine RichardsUpdateAuxVarsPatch
 
 ! ************************************************************************** !
 !
-! RichardsLiteInitializeTimestep: Update data in module prior to time step
+! RichardsInitializeTimestep: Update data in module prior to time step
 ! author: Glenn Hammond
 ! date: 02/20/08
 !
 ! ************************************************************************** !
-subroutine RichardsLiteInitializeTimestep(realization)
+subroutine RichardsInitializeTimestep(realization)
 
   use Realization_module
   
@@ -323,19 +323,19 @@ subroutine RichardsLiteInitializeTimestep(realization)
   
   type(realization_type) :: realization
 
-  call RichardsLiteUpdateFixedAccum(realization)
+  call RichardsUpdateFixedAccum(realization)
 
-end subroutine RichardsLiteInitializeTimestep
+end subroutine RichardsInitializeTimestep
 
 ! ************************************************************************** !
 !
-! RichardsLiteUpdateSolution: Updates data in module after a successful time 
+! RichardsUpdateSolution: Updates data in module after a successful time 
 !                             step
 ! author: Glenn Hammond
 ! date: 02/13/08
 !
 ! ************************************************************************** !
-subroutine RichardsLiteUpdateSolution(realization)
+subroutine RichardsUpdateSolution(realization)
 
   use Realization_module
   use Field_module
@@ -351,17 +351,17 @@ subroutine RichardsLiteUpdateSolution(realization)
   
   call VecCopy(field%flow_xx,field%flow_yy,ierr)   
 
-end subroutine RichardsLiteUpdateSolution
+end subroutine RichardsUpdateSolution
 
 ! ************************************************************************** !
 !
-! RichardsLiteUpdateFixedAccum: Updates the fixed portion of the 
+! RichardsUpdateFixedAccum: Updates the fixed portion of the 
 !                                  accumulation term
 ! author: Glenn Hammond
 ! date: 12/10/07
 !
 ! ************************************************************************** !
-subroutine RichardsLiteUpdateFixedAccum(realization)
+subroutine RichardsUpdateFixedAccum(realization)
 
   use Realization_module
   use Level_module
@@ -385,7 +385,7 @@ subroutine RichardsLiteUpdateFixedAccum(realization)
     cur_level => cur_level%next
   enddo
 
-end subroutine RichardsLiteUpdateFixedAccum
+end subroutine RichardsUpdateFixedAccum
 
 ! ************************************************************************** !
 !
@@ -411,7 +411,7 @@ subroutine RichardsLiUpdateFixedAccumPatch(realization)
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
-  type(richards_lite_auxvar_type), pointer :: aux_vars(:)
+  type(richards_auxvar_type), pointer :: aux_vars(:)
 
   PetscInt :: ghosted_id, local_id, iphase
   PetscReal, pointer :: xx_p(:), icap_loc_p(:), iphase_loc_p(:)
@@ -425,7 +425,7 @@ subroutine RichardsLiUpdateFixedAccumPatch(realization)
   patch => realization%patch
   grid => patch%grid
 
-  aux_vars => patch%aux%RichardsLite%aux_vars
+  aux_vars => patch%aux%Richards%aux_vars
     
   call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr)
   call GridVecGetArrayF90(grid,field%icap_loc,icap_loc_p,ierr)
@@ -445,13 +445,13 @@ subroutine RichardsLiUpdateFixedAccumPatch(realization)
       if (patch%imat(ghosted_id) <= 0) cycle
     endif
     iphase = int(iphase_loc_p(ghosted_id))
-    call RichardsLiteAuxVarCompute(xx_p(local_id:local_id),aux_vars(ghosted_id), &
+    call RichardsAuxVarCompute(xx_p(local_id:local_id),aux_vars(ghosted_id), &
                        iphase, &
                        realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                        porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                        
                        option)
     iphase_loc_p(ghosted_id) = iphase
-    call RichardsLiteAccumulation(aux_vars(ghosted_id),porosity_loc_p(ghosted_id), &
+    call RichardsAccumulation(aux_vars(ghosted_id),porosity_loc_p(ghosted_id), &
                                   volume_p(local_id), &
                                   option%dencpr(int(ithrm_loc_p(ghosted_id))), &
                                   option,accum_p(local_id:local_id)) 
@@ -469,19 +469,19 @@ subroutine RichardsLiUpdateFixedAccumPatch(realization)
   call GridVecRestoreArrayF90(grid,field%flow_accum, accum_p, ierr)
 
 #if 0
-!  call RichardsLiteNumericalJacTest(field%flow_xx,realization)
+!  call RichardsNumericalJacTest(field%flow_xx,realization)
 #endif
 
 end subroutine RichardsLiUpdateFixedAccumPatch
 
 ! ************************************************************************** !
 !
-! RichardsLiteNumericalJacTest: Computes the a test numerical jacobian
+! RichardsNumericalJacTest: Computes the a test numerical jacobian
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
 ! ************************************************************************** !
-subroutine RichardsLiteNumericalJacTest(xx,realization)
+subroutine RichardsNumericalJacTest(xx,realization)
 
   use Realization_module
   use Patch_module
@@ -526,7 +526,7 @@ subroutine RichardsLiteNumericalJacTest(xx,realization)
   call MatSetType(A,MATAIJ,ierr)
   call MatSetFromOptions(A,ierr)
     
-  call RichardsLiteResidual(PETSC_NULL_OBJECT,xx,res,realization,ierr)
+  call RichardsResidual(PETSC_NULL_OBJECT,xx,res,realization,ierr)
   call GridVecGetArrayF90(grid,res,vec2_p,ierr)
   do icell = 1,grid%nlmax
     if (associated(patch%imat)) then
@@ -539,7 +539,7 @@ subroutine RichardsLiteNumericalJacTest(xx,realization)
       perturbation = vec_p(idof)*perturbation_tolerance
       vec_p(idof) = vec_p(idof)+perturbation
       call vecrestorearrayf90(xx_pert,vec_p,ierr)
-      call richardsliteresidual(PETSC_NULL_OBJECT,xx_pert,res_pert,realization,ierr)
+      call RichardsResidual(PETSC_NULL_OBJECT,xx_pert,res_pert,realization,ierr)
       call vecgetarrayf90(res_pert,vec_p,ierr)
       do idof2 = 1, grid%nlmax*option%nflowdof
         derivative = (vec_p(idof2)-vec2_p(idof2))/perturbation
@@ -564,17 +564,17 @@ subroutine RichardsLiteNumericalJacTest(xx,realization)
   call VecDestroy(res,ierr)
   call VecDestroy(res_pert,ierr)
   
-end subroutine RichardsLiteNumericalJacTest
+end subroutine RichardsNumericalJacTest
 
 ! ************************************************************************** !
 !
-! RichardsLiteAccumDerivative: Computes derivatives of the accumulation 
+! RichardsAccumDerivative: Computes derivatives of the accumulation 
 !                                 term for the Jacobian
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
 ! ************************************************************************** !
-subroutine RichardsLiteAccumDerivative(aux_var,por,vol,rock_dencpr,option, &
+subroutine RichardsAccumDerivative(aux_var,por,vol,rock_dencpr,option, &
                                           sat_func,J)
 
   use Option_module
@@ -582,7 +582,7 @@ subroutine RichardsLiteAccumDerivative(aux_var,por,vol,rock_dencpr,option, &
   
   implicit none
 
-  type(richards_lite_auxvar_type) :: aux_var
+  type(richards_auxvar_type) :: aux_var
   type(option_type) :: option
   PetscReal vol,por,rock_dencpr
   type(saturation_function_type) :: sat_func
@@ -592,7 +592,7 @@ subroutine RichardsLiteAccumDerivative(aux_var,por,vol,rock_dencpr,option, &
   PetscReal :: porXvol
 
   PetscInt :: iphase, ideriv
-  type(richards_lite_auxvar_type) :: aux_var_pert
+  type(richards_auxvar_type) :: aux_var_pert
   PetscReal :: x(1), x_pert(1), pert, res(1), res_pert(1), J_pert(1,1)
 
   porXvol = por*vol
@@ -600,14 +600,14 @@ subroutine RichardsLiteAccumDerivative(aux_var,por,vol,rock_dencpr,option, &
   J(1,1) = (aux_var%sat*aux_var%dden_dp+aux_var%dsat_dp*aux_var%den)*porXvol
 
   if (option%numerical_derivatives) then
-    call RichardsLiteAuxVarCopy(aux_var,aux_var_pert,option)
+    call RichardsAuxVarCopy(aux_var,aux_var_pert,option)
     x(1) = aux_var%pres
-    call RichardsLiteAccumulation(aux_var,por,vol,rock_dencpr,option,res)
+    call RichardsAccumulation(aux_var,por,vol,rock_dencpr,option,res)
     ideriv = 1
     pert = x(ideriv)*perturbation_tolerance
     x_pert = x
     x_pert(ideriv) = x_pert(ideriv) + pert
-    call RichardsLiteAuxVarCompute(x_pert(1),aux_var_pert,iphase,sat_func, &
+    call RichardsAuxVarCompute(x_pert(1),aux_var_pert,iphase,sat_func, &
                                    0.d0,0.d0,option)
 #if 0      
       select case(ideriv)
@@ -619,45 +619,45 @@ subroutine RichardsLiteAccumDerivative(aux_var,por,vol,rock_dencpr,option, &
           print *, 'dkvr_dp:', aux_var%dkvr_dp, (aux_var_pert%kvr-aux_var%kvr)/pert
       end select     
 #endif     
-    call RichardsLiteAccumulation(aux_var_pert,por,vol,rock_dencpr,option,res_pert)
+    call RichardsAccumulation(aux_var_pert,por,vol,rock_dencpr,option,res_pert)
     J_pert(1,1) = (res_pert(1)-res(1))/pert
     J = J_pert
   endif
    
-end subroutine RichardsLiteAccumDerivative
+end subroutine RichardsAccumDerivative
 
 ! ************************************************************************** !
 !
-! RichardsLiteAccumulation: Computes the non-fixed portion of the accumulation
+! RichardsAccumulation: Computes the non-fixed portion of the accumulation
 !                       term for the residual
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
 ! ************************************************************************** !  
-subroutine RichardsLiteAccumulation(aux_var,por,vol,rock_dencpr,option,Res)
+subroutine RichardsAccumulation(aux_var,por,vol,rock_dencpr,option,Res)
 
   use Option_module
   
   implicit none
 
-  type(richards_lite_auxvar_type) :: aux_var
+  type(richards_auxvar_type) :: aux_var
   type(option_type) :: option
   PetscReal Res(1:option%nflowdof) 
   PetscReal vol,por,rock_dencpr
        
   Res(1) = aux_var%sat * aux_var%den * por * vol
 
-end subroutine RichardsLiteAccumulation
+end subroutine RichardsAccumulation
 
 ! ************************************************************************** !
 !
-! RichardsLiteFluxDerivative: Computes the derivatives of the internal flux terms
+! RichardsFluxDerivative: Computes the derivatives of the internal flux terms
 !                         for the Jacobian
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
 ! ************************************************************************** ! 
-subroutine RichardsLiteFluxDerivative(aux_var_up,por_up,sir_up,dd_up,perm_up, &
+subroutine RichardsFluxDerivative(aux_var_up,por_up,sir_up,dd_up,perm_up, &
                         aux_var_dn,por_dn,sir_dn,dd_dn,perm_dn, &
                         area,dist_gravity,upweight, &
                         option,sat_func_up,sat_func_dn,Jup,Jdn)
@@ -666,7 +666,7 @@ subroutine RichardsLiteFluxDerivative(aux_var_up,por_up,sir_up,dd_up,perm_up, &
   
   implicit none
   
-  type(richards_lite_auxvar_type) :: aux_var_up, aux_var_dn
+  type(richards_auxvar_type) :: aux_var_up, aux_var_dn
   type(option_type) :: option
   PetscReal :: sir_up, sir_dn
   PetscReal :: por_up, por_dn
@@ -688,7 +688,7 @@ subroutine RichardsLiteFluxDerivative(aux_var_up,por_up,sir_up,dd_up,perm_up, &
   PetscReal :: dq_dp_up, dq_dp_dn
 
   PetscInt :: iphase, ideriv
-  type(richards_lite_auxvar_type) :: aux_var_pert_up, aux_var_pert_dn
+  type(richards_auxvar_type) :: aux_var_pert_up, aux_var_pert_dn
   PetscReal :: x_up(1), x_dn(1), x_pert_up(1), x_pert_dn(1), pert_up, pert_dn, &
             res(1), res_pert_up(1), res_pert_dn(1), J_pert_up(1,1), J_pert_dn(1,1)
   
@@ -760,11 +760,11 @@ subroutine RichardsLiteFluxDerivative(aux_var_up,por_up,sir_up,dd_up,perm_up, &
  !                                              dn J = J - Jdn  
 
   if (option%numerical_derivatives) then
-    call RichardsLiteAuxVarCopy(aux_var_up,aux_var_pert_up,option)
-    call RichardsLiteAuxVarCopy(aux_var_dn,aux_var_pert_dn,option)
+    call RichardsAuxVarCopy(aux_var_up,aux_var_pert_up,option)
+    call RichardsAuxVarCopy(aux_var_dn,aux_var_pert_dn,option)
     x_up(1) = aux_var_up%pres
     x_dn(1) = aux_var_dn%pres
-    call RichardsLiteFlux(aux_var_up,por_up,sir_up,dd_up,perm_up, &
+    call RichardsFlux(aux_var_up,por_up,sir_up,dd_up,perm_up, &
                       aux_var_dn,por_dn,sir_dn,dd_dn,perm_dn, &
                       area,dist_gravity,upweight, &
                       option,v_darcy,res)
@@ -775,15 +775,15 @@ subroutine RichardsLiteFluxDerivative(aux_var_up,por_up,sir_up,dd_up,perm_up, &
     x_pert_dn = x_dn
     x_pert_up(ideriv) = x_pert_up(ideriv) + pert_up
     x_pert_dn(ideriv) = x_pert_dn(ideriv) + pert_dn
-    call RichardsLiteAuxVarCompute(x_pert_up(1),aux_var_pert_up,iphase,sat_func_up, &
+    call RichardsAuxVarCompute(x_pert_up(1),aux_var_pert_up,iphase,sat_func_up, &
                                    0.d0,0.d0,option)
-    call RichardsLiteAuxVarCompute(x_pert_dn(1),aux_var_pert_dn,iphase,sat_func_dn, &
+    call RichardsAuxVarCompute(x_pert_dn(1),aux_var_pert_dn,iphase,sat_func_dn, &
                                    0.d0,0.d0,option)
-    call RichardsLiteFlux(aux_var_pert_up,por_up,sir_up,dd_up,perm_up, &
+    call RichardsFlux(aux_var_pert_up,por_up,sir_up,dd_up,perm_up, &
                       aux_var_dn,por_dn,sir_dn,dd_dn,perm_dn, &
                       area,dist_gravity,upweight, &
                       option,v_darcy,res_pert_up)
-    call RichardsLiteFlux(aux_var_up,por_up,sir_up,dd_up,perm_up, &
+    call RichardsFlux(aux_var_up,por_up,sir_up,dd_up,perm_up, &
                       aux_var_pert_dn,por_dn,sir_dn,dd_dn,perm_dn, &
                       area,dist_gravity,upweight, &
                       option,v_darcy,res_pert_dn)
@@ -793,16 +793,16 @@ subroutine RichardsLiteFluxDerivative(aux_var_up,por_up,sir_up,dd_up,perm_up, &
     Jdn = J_pert_dn
   endif
 
-end subroutine RichardsLiteFluxDerivative
+end subroutine RichardsFluxDerivative
 
 ! ************************************************************************** !
 !
-! RichardsLiteFlux: Computes the internal flux terms for the residual
+! RichardsFlux: Computes the internal flux terms for the residual
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
 ! ************************************************************************** ! 
-subroutine RichardsLiteFlux(aux_var_up,por_up,sir_up,dd_up,perm_up, &
+subroutine RichardsFlux(aux_var_up,por_up,sir_up,dd_up,perm_up, &
                         aux_var_dn,por_dn,sir_dn,dd_dn,perm_dn, &
                         area,dist_gravity,upweight, &
                         option,v_darcy,Res)
@@ -810,7 +810,7 @@ subroutine RichardsLiteFlux(aux_var_up,por_up,sir_up,dd_up,perm_up, &
   
   implicit none
   
-  type(richards_lite_auxvar_type) :: aux_var_up, aux_var_dn
+  type(richards_auxvar_type) :: aux_var_up, aux_var_dn
   type(option_type) :: option
   PetscReal :: sir_up, sir_dn
   PetscReal :: por_up, por_dn
@@ -866,17 +866,17 @@ subroutine RichardsLiteFlux(aux_var_up,por_up,sir_up,dd_up,perm_up, &
  ! note: Res is the flux contribution, for node 1 R = R + Res_FL
  !                                              2 R = R - Res_FL  
 
-end subroutine RichardsLiteFlux
+end subroutine RichardsFlux
 
 ! ************************************************************************** !
 !
-! RichardsLiteBCFluxDerivative: Computes the derivatives of the boundary flux 
+! RichardsBCFluxDerivative: Computes the derivatives of the boundary flux 
 !                           terms for the Jacobian
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
 ! ************************************************************************** !
-subroutine RichardsLiteBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
+subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
                                     por_dn,sir_dn,dd_up,perm_dn, &
                                     area,dist_gravity,option, &
                                     sat_func_dn,Jdn)
@@ -886,7 +886,7 @@ subroutine RichardsLiteBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn,
   implicit none
   
   PetscInt :: ibndtype(:)
-  type(richards_lite_auxvar_type) :: aux_var_up, aux_var_dn
+  type(richards_auxvar_type) :: aux_var_up, aux_var_dn
   type(option_type) :: option
   PetscReal :: dd_up, sir_dn
   PetscReal :: aux_vars(:) ! from aux_real_var array in boundary condition
@@ -909,7 +909,7 @@ subroutine RichardsLiteBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn,
   PetscReal :: dq_dp_dn
 
   PetscInt :: iphase, ideriv
-  type(richards_lite_auxvar_type) :: aux_var_pert_dn, aux_var_pert_up
+  type(richards_auxvar_type) :: aux_var_pert_dn, aux_var_pert_up
   PetscReal :: perturbation
   PetscReal :: x_dn(1), x_up(1), x_pert_dn(1), x_pert_up(1), pert_dn, res(1), &
             res_pert_dn(1), J_pert_dn(1,1)
@@ -927,7 +927,7 @@ subroutine RichardsLiteBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn,
   dq_dp_dn = 0.d0
         
   ! Flow   
-  select case(ibndtype(RICHARDS_LITE_PRESSURE_DOF))
+  select case(ibndtype(RICHARDS_PRESSURE_DOF))
     ! figure out the direction of flow
     case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
       Dq = perm_dn / dd_up
@@ -951,7 +951,7 @@ subroutine RichardsLiteBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn,
         dphi = aux_var_up%pres - aux_var_dn%pres + gravity
         dphi_dp_dn = -1.d0 + dgravity_dden_dn*aux_var_dn%dden_dp
 
-        if (ibndtype(RICHARDS_LITE_PRESSURE_DOF) == SEEPAGE_BC) then
+        if (ibndtype(RICHARDS_PRESSURE_DOF) == SEEPAGE_BC) then
               ! flow in         ! boundary cell is <= pref
           if (dphi > 0.d0 .and. aux_var_up%pres-option%pref < eps) then
             dphi = 0.d0
@@ -974,8 +974,8 @@ subroutine RichardsLiteBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn,
       endif 
 
     case(NEUMANN_BC)
-      if (dabs(aux_vars(RICHARDS_LITE_PRESSURE_DOF)) > floweps) then
-        v_darcy = aux_vars(RICHARDS_LITE_PRESSURE_DOF)
+      if (dabs(aux_vars(RICHARDS_PRESSURE_DOF)) > floweps) then
+        v_darcy = aux_vars(RICHARDS_PRESSURE_DOF)
         if (v_darcy > 0.d0) then 
           density_ave = aux_var_up%den
         else 
@@ -992,18 +992,18 @@ subroutine RichardsLiteBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn,
   Jdn = Jdn * option%flow_dt
 
   if (option%numerical_derivatives) then
-    call RichardsLiteAuxVarCopy(aux_var_up,aux_var_pert_up,option)
-    call RichardsLiteAuxVarCopy(aux_var_dn,aux_var_pert_dn,option)
+    call RichardsAuxVarCopy(aux_var_up,aux_var_pert_up,option)
+    call RichardsAuxVarCopy(aux_var_dn,aux_var_pert_dn,option)
     x_up(1) = aux_var_up%pres
     x_dn(1) = aux_var_dn%pres
     ideriv = 1
     if (ibndtype(ideriv) == ZERO_GRADIENT_BC) then
       x_up(ideriv) = x_dn(ideriv)
     endif
-    call RichardsLiteBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
+    call RichardsBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
                         por_dn,sir_dn,dd_up,perm_dn, &
                         area,dist_gravity,option,v_darcy,res)
-    if (ibndtype(RICHARDS_LITE_PRESSURE_DOF) == ZERO_GRADIENT_BC) then
+    if (ibndtype(RICHARDS_PRESSURE_DOF) == ZERO_GRADIENT_BC) then
       x_pert_up = x_up
     endif
     ideriv = 1
@@ -1014,27 +1014,27 @@ subroutine RichardsLiteBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn,
     if (ibndtype(ideriv) == ZERO_GRADIENT_BC) then
       x_pert_up(ideriv) = x_pert_dn(ideriv)
     endif   
-    call RichardsLiteAuxVarCompute(x_pert_dn(1),aux_var_pert_dn,iphase,sat_func_dn, &
+    call RichardsAuxVarCompute(x_pert_dn(1),aux_var_pert_dn,iphase,sat_func_dn, &
                                    0.d0,0.d0,option)
-    call RichardsLiteAuxVarCompute(x_pert_up(1),aux_var_pert_up,iphase,sat_func_dn, &
+    call RichardsAuxVarCompute(x_pert_up(1),aux_var_pert_up,iphase,sat_func_dn, &
                                    0.d0,0.d0,option)
-    call RichardsLiteBCFlux(ibndtype,aux_vars,aux_var_pert_up,aux_var_pert_dn, &
+    call RichardsBCFlux(ibndtype,aux_vars,aux_var_pert_up,aux_var_pert_dn, &
                         por_dn,sir_dn,dd_up,perm_dn, &
                         area,dist_gravity,option,v_darcy,res_pert_dn)
     J_pert_dn(1,ideriv) = (res_pert_dn(1)-res(1))/pert_dn
     Jdn = J_pert_dn
   endif
 
-end subroutine RichardsLiteBCFluxDerivative
+end subroutine RichardsBCFluxDerivative
 
 ! ************************************************************************** !
 !
-! RichardsLiteBCFlux: Computes the  boundary flux terms for the residual
+! RichardsBCFlux: Computes the  boundary flux terms for the residual
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
 ! ************************************************************************** !
-subroutine RichardsLiteBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
+subroutine RichardsBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
                           por_dn,sir_dn,dd_up,perm_dn, &
                           area,dist_gravity,option,v_darcy,Res)
   use Option_module
@@ -1042,7 +1042,7 @@ subroutine RichardsLiteBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   implicit none
   
   PetscInt :: ibndtype(:)
-  type(richards_lite_auxvar_type) :: aux_var_up, aux_var_dn
+  type(richards_auxvar_type) :: aux_var_up, aux_var_dn
   type(option_type) :: option
   PetscReal :: dd_up, sir_dn
   PetscReal :: aux_vars(:) ! from aux_real_var array
@@ -1063,7 +1063,7 @@ subroutine RichardsLiteBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   q = 0.d0
 
   ! Flow   
-  select case(ibndtype(RICHARDS_LITE_PRESSURE_DOF))
+  select case(ibndtype(RICHARDS_PRESSURE_DOF))
     ! figure out the direction of flow
     case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
       Dq = perm_dn / dd_up
@@ -1083,7 +1083,7 @@ subroutine RichardsLiteBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
        
         dphi = aux_var_up%pres - aux_var_dn%pres + gravity
 
-        if (ibndtype(RICHARDS_LITE_PRESSURE_DOF) == SEEPAGE_BC) then
+        if (ibndtype(RICHARDS_PRESSURE_DOF) == SEEPAGE_BC) then
               ! flow in         ! boundary cell is <= pref
           if (dphi > 0.d0 .and. aux_var_up%pres-option%pref < eps) then
             dphi = 0.d0
@@ -1102,8 +1102,8 @@ subroutine RichardsLiteBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
       endif 
 
     case(NEUMANN_BC)
-      if (dabs(aux_vars(RICHARDS_LITE_PRESSURE_DOF)) > floweps) then
-        v_darcy = aux_vars(RICHARDS_LITE_PRESSURE_DOF)
+      if (dabs(aux_vars(RICHARDS_PRESSURE_DOF)) > floweps) then
+        v_darcy = aux_vars(RICHARDS_PRESSURE_DOF)
         if (v_darcy > 0.d0) then 
           density_ave = aux_var_up%den
         else 
@@ -1119,16 +1119,16 @@ subroutine RichardsLiteBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
 
   Res(1)=fluxm * option%flow_dt
 
-end subroutine RichardsLiteBCFlux
+end subroutine RichardsBCFlux
 
 ! ************************************************************************** !
 !
-! RichardsLiteResidual: Computes the residual equation 
+! RichardsResidual: Computes the residual equation 
 ! author: Glenn Hammond
 ! date: 12/10/07
 !
 ! ************************************************************************** !
-subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
+subroutine RichardsResidual(snes,xx,r,realization,ierr)
 
   use Realization_module
   use Field_module
@@ -1181,7 +1181,7 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      call RichardsLiteResidualPatch(snes,xx,r,realization,ierr)
+      call RichardsResidualPatch(snes,xx,r,realization,ierr)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -1190,16 +1190,16 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
   if(discretization%itype==AMR_GRID) then
      call samrpetscobjectstateincrease(r)
   endif
-end subroutine RichardsLiteResidual
+end subroutine RichardsResidual
 
 ! ************************************************************************** !
 !
-! RichardsLiteResidualPatch: Computes the residual equation 
+! RichardsResidualPatch: Computes the residual equation 
 ! author: Glenn Hammond
 ! date: 12/10/07
 !
 ! ************************************************************************** !
-subroutine RichardsLiteResidualPatch(snes,xx,r,realization,ierr)
+subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
 
   use water_eos_module
 
@@ -1253,7 +1253,7 @@ subroutine RichardsLiteResidualPatch(snes,xx,r,realization,ierr)
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option
   type(field_type), pointer :: field
-  type(richards_lite_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
+  type(richards_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
   type(coupler_type), pointer :: boundary_condition, source_sink
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
@@ -1269,11 +1269,11 @@ subroutine RichardsLiteResidualPatch(snes,xx,r,realization,ierr)
   option => realization%option
   field => realization%field
 
-  aux_vars => patch%aux%RichardsLite%aux_vars
-  aux_vars_bc => patch%aux%RichardsLite%aux_vars_bc
+  aux_vars => patch%aux%Richards%aux_vars
+  aux_vars_bc => patch%aux%Richards%aux_vars_bc
 
-  call RichardsLiteUpdateAuxVarsPatch(realization)
-  patch%aux%RichardsLite%aux_vars_up_to_date = PETSC_FALSE ! override flags since they will soon be out of date
+  call RichardsUpdateAuxVarsPatch(realization)
+  patch%aux%Richards%aux_vars_up_to_date = PETSC_FALSE ! override flags since they will soon be out of date
 
 ! now assign access pointer to local variables
   call GridVecGetArrayF90(grid,field%flow_xx_loc, xx_loc_p, ierr)
@@ -1302,7 +1302,7 @@ subroutine RichardsLiteResidualPatch(snes,xx,r,realization,ierr)
     if (associated(patch%imat)) then
       if (patch%imat(ghosted_id) <= 0) cycle
     endif
-    call RichardsLiteAccumulation(aux_vars(ghosted_id),porosity_loc_p(ghosted_id), &
+    call RichardsAccumulation(aux_vars(ghosted_id),porosity_loc_p(ghosted_id), &
                                   volume_p(local_id), &
                                   option%dencpr(int(ithrm_loc_p(ghosted_id))), &
                                   option,Res) 
@@ -1392,7 +1392,7 @@ subroutine RichardsLiteResidualPatch(snes,xx,r,realization,ierr)
       D_up = option%ckwet(ithrm_up)
       D_dn = option%ckwet(ithrm_dn)
 
-      call RichardsLiteFlux(aux_vars(ghosted_id_up),porosity_loc_p(ghosted_id_up), &
+      call RichardsFlux(aux_vars(ghosted_id_up),porosity_loc_p(ghosted_id_up), &
                           option%sir(1,icap_up), &
                           dd_up,perm_up, &
                         aux_vars(ghosted_id_dn),porosity_loc_p(ghosted_id_dn), &
@@ -1455,7 +1455,7 @@ subroutine RichardsLiteResidualPatch(snes,xx,r,realization,ierr)
 
       icap_dn = int(icap_loc_p(ghosted_id))  
 
-      call RichardsLiteBCFlux(boundary_condition%flow_condition%itype, &
+      call RichardsBCFlux(boundary_condition%flow_condition%itype, &
                                 boundary_condition%flow_aux_real_var(:,iconn), &
                                 aux_vars_bc(sum_connection), &
                                 aux_vars(ghosted_id), &
@@ -1474,9 +1474,9 @@ subroutine RichardsLiteResidualPatch(snes,xx,r,realization,ierr)
   enddo
 #endif  
 
-  if (patch%aux%RichardsLite%inactive_cells_exist) then
-    do i=1,patch%aux%RichardsLite%n_zero_rows
-      r_p(patch%aux%RichardsLite%zero_rows_local(i)) = 0.d0
+  if (patch%aux%Richards%inactive_cells_exist) then
+    do i=1,patch%aux%Richards%n_zero_rows
+      r_p(patch%aux%Richards%zero_rows_local(i)) = 0.d0
     enddo
   endif
 
@@ -1504,16 +1504,16 @@ subroutine RichardsLiteResidualPatch(snes,xx,r,realization,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
   
-end subroutine RichardsLiteResidualPatch
+end subroutine RichardsResidualPatch
 
 ! ************************************************************************** !
 !
-! RichardsLiteJacobian: Computes the Jacobian
+! RichardsJacobian: Computes the Jacobian
 ! author: Glenn Hammond
 ! date: 12/10/07
 !
 ! ************************************************************************** !
-subroutine RichardsLiteJacobian(snes,xx,A,B,flag,realization,ierr)
+subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
 
   use Realization_module
   use Level_module
@@ -1563,22 +1563,22 @@ subroutine RichardsLiteJacobian(snes,xx,A,B,flag,realization,ierr)
          call SAMRSetCurrentJacobianPatch(A, grid%structured_grid%p_samr_patch)
       endif
 
-      call RichardsLiteJacobianPatch(snes,xx,A,B,flag,realization,ierr)
+      call RichardsJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
   enddo
 
-end subroutine RichardsLiteJacobian
+end subroutine RichardsJacobian
                 
 ! ************************************************************************** !
 !
-! RichardsLiteJacobianPatch: Computes the Jacobian
+! RichardsJacobianPatch: Computes the Jacobian
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
 ! ************************************************************************** !
-subroutine RichardsLiteJacobianPatch(snes,xx,A,B,flag,realization,ierr)
+subroutine RichardsJacobianPatch(snes,xx,A,B,flag,realization,ierr)
        
   use water_eos_module
 
@@ -1638,7 +1638,7 @@ subroutine RichardsLiteJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option 
   type(field_type), pointer :: field 
-  type(richards_lite_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:) 
+  type(richards_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:) 
   
   PetscViewer :: viewer
   Vec :: debug_vec
@@ -1656,8 +1656,8 @@ subroutine RichardsLiteJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   option => realization%option
   field => realization%field
 
-  aux_vars => patch%aux%RichardsLite%aux_vars
-  aux_vars_bc => patch%aux%RichardsLite%aux_vars_bc
+  aux_vars => patch%aux%Richards%aux_vars
+  aux_vars_bc => patch%aux%Richards%aux_vars_bc
 
 ! dropped derivatives:
 !   1.D0 gas phase viscocity to all p,t,c,s
@@ -1684,7 +1684,7 @@ subroutine RichardsLiteJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       if (patch%imat(ghosted_id) <= 0) cycle
     endif
     icap = int(icap_loc_p(ghosted_id))
-    call RichardsLiteAccumDerivative(aux_vars(ghosted_id), &
+    call RichardsAccumDerivative(aux_vars(ghosted_id), &
                               porosity_loc_p(ghosted_id), &
                               volume_p(local_id), &
                               option%dencpr(int(ithrm_loc_p(ghosted_id))), &
@@ -1798,7 +1798,7 @@ subroutine RichardsLiteJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       icap_up = int(icap_loc_p(ghosted_id_up))
       icap_dn = int(icap_loc_p(ghosted_id_dn))
                               
-      call RichardsLiteFluxDerivative(aux_vars(ghosted_id_up),porosity_loc_p(ghosted_id_up), &
+      call RichardsFluxDerivative(aux_vars(ghosted_id_up),porosity_loc_p(ghosted_id_up), &
                           option%sir(1,icap_up), &
                           dd_up,perm_up, &
                         aux_vars(ghosted_id_dn),porosity_loc_p(ghosted_id_dn), &
@@ -1874,7 +1874,7 @@ subroutine RichardsLiteJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 
       icap_dn = int(icap_loc_p(ghosted_id))  
 
-      call RichardsLiteBCFluxDerivative(boundary_condition%flow_condition%itype, &
+      call RichardsBCFluxDerivative(boundary_condition%flow_condition%itype, &
                                 boundary_condition%flow_aux_real_var(:,iconn), &
                                 aux_vars_bc(sum_connection), &
                                 aux_vars(ghosted_id), &
@@ -1916,10 +1916,10 @@ subroutine RichardsLiteJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
 
 ! zero out isothermal and inactive cells
-  if (patch%aux%RichardsLite%inactive_cells_exist) then
+  if (patch%aux%Richards%inactive_cells_exist) then
     f_up = 1.d0
-    call MatZeroRowsLocal(A,patch%aux%RichardsLite%n_zero_rows, &
-                          patch%aux%RichardsLite%zero_rows_local_ghosted,f_up,ierr) 
+    call MatZeroRowsLocal(A,patch%aux%Richards%n_zero_rows, &
+                          patch%aux%Richards%zero_rows_local_ghosted,f_up,ierr) 
   endif
 
   if (realization%debug%matview_Jacobian) then
@@ -1941,16 +1941,16 @@ subroutine RichardsLiteJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 !    if (option%myrank == 0) print *, 'max:', i, norm
   endif
 
-end subroutine RichardsLiteJacobianPatch
+end subroutine RichardsJacobianPatch
 
 ! ************************************************************************** !
 !
-! RichardsLiteCreateZeroArray: Computes the zeroed rows for inactive grid cells
+! RichardsCreateZeroArray: Computes the zeroed rows for inactive grid cells
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
 ! ************************************************************************** !
-subroutine RichardsLiteCreateZeroArray(patch,option)
+subroutine RichardsCreateZeroArray(patch,option)
 
   use Realization_module
   use Patch_module
@@ -2006,29 +2006,29 @@ subroutine RichardsLiteCreateZeroArray(patch,option)
     enddo
   endif
 
-  patch%aux%RichardsLite%zero_rows_local => zero_rows_local
-  patch%aux%RichardsLite%zero_rows_local_ghosted => zero_rows_local_ghosted
-  patch%aux%RichardsLite%n_zero_rows = n_zero_rows
+  patch%aux%Richards%zero_rows_local => zero_rows_local
+  patch%aux%Richards%zero_rows_local_ghosted => zero_rows_local_ghosted
+  patch%aux%Richards%n_zero_rows = n_zero_rows
   
   call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
                      PETSC_COMM_WORLD,ierr)
-  if (flag > 0) patch%aux%RichardsLite%inactive_cells_exist = .true.
+  if (flag > 0) patch%aux%Richards%inactive_cells_exist = .true.
 
   if (ncount /= n_zero_rows) then
     print *, 'Error:  Mismatch in non-zero row count!', ncount, n_zero_rows
     stop
   endif
 
-end subroutine RichardsLiteCreateZeroArray
+end subroutine RichardsCreateZeroArray
 
 ! ************************************************************************** !
 !
-! RichardsLiteMaxChange: Computes the maximum change in the solution vector
+! RichardsMaxChange: Computes the maximum change in the solution vector
 ! author: Glenn Hammond
 ! date: 01/15/08
 !
 ! ************************************************************************** !
-subroutine RichardsLiteMaxChange(realization)
+subroutine RichardsMaxChange(realization)
 
   use Realization_module
   use Option_module
@@ -2049,17 +2049,17 @@ subroutine RichardsLiteMaxChange(realization)
   call VecWAXPY(field%flow_dxx,-1.d0,field%flow_xx,field%flow_yy,ierr)
   call VecStrideNorm(field%flow_dxx,ZERO_INTEGER,NORM_INFINITY,option%dpmax,ierr)
 
-end subroutine RichardsLiteMaxChange
+end subroutine RichardsMaxChange
 
 ! ************************************************************************** !
 !
-! RichardsLiteGetTecplotHeader: Returns Richards Lite contribution to 
+! RichardsGetTecplotHeader: Returns Richards Lite contribution to 
 !                               Tecplot file header
 ! author: Glenn Hammond
 ! date: 02/13/08
 !
 ! ************************************************************************** !
-function RichardsLiteGetTecplotHeader(realization)
+function RichardsGetTecplotHeader(realization)
   
   use Realization_module
   use Option_module
@@ -2067,7 +2067,7 @@ function RichardsLiteGetTecplotHeader(realization)
     
   implicit none
   
-  character(len=MAXSTRINGLENGTH) :: RichardsLiteGetTecplotHeader
+  character(len=MAXSTRINGLENGTH) :: RichardsGetTecplotHeader
   type(realization_type) :: realization
   
   character(len=MAXSTRINGLENGTH) :: string, string2
@@ -2081,18 +2081,18 @@ function RichardsLiteGetTecplotHeader(realization)
            '"P [Pa]",' // &
            '"sl"'
  
-  RichardsLiteGetTecplotHeader = string
+  RichardsGetTecplotHeader = string
 
-end function RichardsLiteGetTecplotHeader
+end function RichardsGetTecplotHeader
 
 ! ************************************************************************** !
 !
-! RichardsLiteDestroy: Deallocates variables associated with Richard
+! RichardsDestroy: Deallocates variables associated with Richard
 ! author: Glenn Hammond
 ! date: 02/14/08
 !
 ! ************************************************************************** !
-subroutine RichardsLiteDestroy(patch)
+subroutine RichardsDestroy(patch)
 
   use Patch_module
 
@@ -2101,8 +2101,8 @@ subroutine RichardsLiteDestroy(patch)
   type(patch_type) :: patch
   
   ! need to free array in aux vars
-  call RichardsLiteAuxDestroy(patch%aux%RichardsLite)
+  call RichardsAuxDestroy(patch%aux%Richards)
 
-end subroutine RichardsLiteDestroy
+end subroutine RichardsDestroy
 
-end module Richards_Lite_module
+end module Richards_module

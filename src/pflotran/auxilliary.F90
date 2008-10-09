@@ -1,7 +1,7 @@
 module Auxilliary_module
   
   use THC_Aux_module
-  use Richards_Lite_Aux_module
+  use Richards_Aux_module
   use Reactive_Transport_Aux_module
   use Mphase_Aux_module
   use Immis_Aux_module
@@ -15,7 +15,7 @@ module Auxilliary_module
   type, public :: auxilliary_type 
     type(reactive_transport_type), pointer :: RT
     type(thc_type), pointer :: THC
-    type(richards_lite_type), pointer :: RichardsLite
+    type(richards_type), pointer :: Richards
     type(mphase_type), pointer :: Mphase
     type(immis_type), pointer :: Immis
   end type auxilliary_type
@@ -40,7 +40,7 @@ subroutine AuxInit(aux)
   
   nullify(aux%RT)
   nullify(aux%THC)
-  nullify(aux%RichardsLite)
+  nullify(aux%Richards)
   nullify(aux%Mphase)
   nullify(aux%Immis)
   
@@ -61,12 +61,12 @@ subroutine AuxDestroy(aux)
   
   call RTAuxDestroy(aux%RT)
   call THCAuxDestroy(aux%THC)
-  call RichardsLiteAuxDestroy(aux%RichardsLite)
+  call RichardsAuxDestroy(aux%Richards)
   !call MphaseAuxDestroy(aux%Mphase)
   
   nullify(aux%RT)
   nullify(aux%THC)
-  nullify(aux%RichardsLite)
+  nullify(aux%Richards)
   nullify(aux%Mphase)
   nullify(aux%Immis)
   

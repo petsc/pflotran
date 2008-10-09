@@ -413,7 +413,7 @@ subroutine StepperUpdateDT(flow_stepper,tran_stepper,option,timestep_cut_flag, &
         ut = min(up,utmp,uus)
       endif
       dtt = fac * dt * (1.d0 + ut)
-    case(RICHARDS_LITE_MODE)
+    case(RICHARDS_MODE)
       fac = 0.5d0
       if (num_newton_iterations >= stepper%iaccel) then
         fac = 0.33d0
@@ -546,7 +546,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
                              num_newton_iterations)
   
   use MPHASE_module
-  use Richards_Lite_module
+  use Richards_module
   use THC_module
   use Output_module
   
@@ -636,8 +636,8 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   select case(option%iflowmode)
     case(THC_MODE)
       call THCInitializeTimestep(realization)
-    case(RICHARDS_LITE_MODE)
-      call RichardsLiteInitializeTimestep(realization)
+    case(RICHARDS_MODE)
+      call RichardsInitializeTimestep(realization)
     case(MPH_MODE)
       call MphaseInitializeTimestep(realization)
   end select
@@ -648,7 +648,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
   do
     
     select case(option%iflowmode)
-      case(MPH_MODE,THC_MODE,RICHARDS_LITE_MODE)
+      case(MPH_MODE,THC_MODE,RICHARDS_MODE)
         call SNESSolve(solver%snes, PETSC_NULL_OBJECT, field%flow_xx, ierr)
     end select
 
@@ -676,7 +676,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
           call MPhaseUpdateReason(update_reason,realization)
         case(THC_MODE)
           update_reason=1
-        case(RICHARDS_LITE_MODE)
+        case(RICHARDS_MODE)
           update_reason=1
       end select   
       if (option%myrank==0) print *,'update_reason: ',update_reason
@@ -717,8 +717,8 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
       select case(option%iflowmode)
         case(THC_MODE)
           call THCTimeCut(realization)
-        case(RICHARDS_LITE_MODE)
-          call RichardsLiteTimeCut(realization)
+        case(RICHARDS_MODE)
+          call RichardsTimeCut(realization)
         case(MPH_MODE)
           call MphaseTimeCut(realization)
       end select
@@ -794,8 +794,8 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
           option%dpmax,option%dtmpmax,option%dcmax
       endif
     endif
-  else if (option%iflowmode == RICHARDS_LITE_MODE) then
-    call RichardsLiteMaxChange(realization)
+  else if (option%iflowmode == RICHARDS_MODE) then
+    call RichardsMaxChange(realization)
     if (option%myrank==0) then
       if (mod(stepper%steps,option%imod) == 0 .or. stepper%steps == 1) then
         write(*,'("  --> max chng: dpmx= ",1pe12.4)') option%dpmax
@@ -1098,7 +1098,7 @@ end subroutine StepperUpdateSolution
 subroutine StepperUpdateFlowSolution(realization)
   
   use MPHASE_module, only: MphaseUpdateSolution
-  use Richards_Lite_module, only : RichardsLiteUpdateSolution
+  use Richards_module, only : RichardsUpdateSolution
   use THC_module, only : THCUpdateSolution
 
   use Realization_module
@@ -1119,8 +1119,8 @@ subroutine StepperUpdateFlowSolution(realization)
       call MphaseUpdateSolution(realization)
     case(THC_MODE)
       call THCUpdateSolution(realization)
-    case(RICHARDS_LITE_MODE)
-      call RichardsLiteUpdateSolution(realization)
+    case(RICHARDS_MODE)
+      call RichardsUpdateSolution(realization)
   end select    
 
 end subroutine StepperUpdateFlowSolution

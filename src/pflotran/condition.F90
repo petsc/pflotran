@@ -866,7 +866,7 @@ subroutine ConditionRead(condition,option,fid)
         condition%itype(THREE_INTEGER) = concentration%itype
         if (associated(enthalpy)) condition%itype(FOUR_INTEGER) = concentration%itype
         
-      case(RICHARDS_LITE_MODE)
+      case(RICHARDS_MODE)
         if (.not.associated(pressure) .and. .not.associated(mass_rate)) then
           call printErrMsg(option,'pressure and mass_rate condition null in condition: ' // &
                            condition%name)
@@ -885,7 +885,7 @@ subroutine ConditionRead(condition,option,fid)
         if (associated(mass_rate)) condition%itype(ONE_INTEGER) = mass_rate%itype
         if (associated(pressure)) condition%itype(ONE_INTEGER) = pressure%itype
         
-        ! these are not used with richards_lite
+        ! these are not used with richards
         if (associated(temperature)) call SubConditionDestroy(temperature)
         if (associated(concentration)) call SubConditionDestroy(concentration)
         if (associated(enthalpy)) call SubConditionDestroy(enthalpy)

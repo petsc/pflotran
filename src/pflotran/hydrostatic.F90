@@ -294,7 +294,7 @@ subroutine HydrostaticUpdateCouplerBetter(coupler,option,grid)
     rho0 = rho
     do ipressure=idatum+1,num_pressures
       dist_z = dist_z + delta_z
-      if (option%iflowmode /= RICHARDS_LITE_MODE) &
+      if (option%iflowmode /= RICHARDS_MODE) &
         temperature = temperature + temperature_gradient(Z_DIRECTION)*delta_z
       call nacl_den(temperature,pressure0*1.d-6,xm_nacl,dw_kg) 
       rho = dw_kg * 1.d3
@@ -324,12 +324,12 @@ subroutine HydrostaticUpdateCouplerBetter(coupler,option,grid)
 
     ! compute pressures above datum, if any
     pressure0 = pressure_array(idatum)
-    if (option%iflowmode /= RICHARDS_LITE_MODE) temperature = temperature_at_datum
+    if (option%iflowmode /= RICHARDS_MODE) temperature = temperature_at_datum
     dist_z = 0.d0
     rho0 = density_array(idatum)
     do ipressure=idatum-1,1,-1
       dist_z = dist_z + delta_z
-      if (option%iflowmode /= RICHARDS_LITE_MODE) &
+      if (option%iflowmode /= RICHARDS_MODE) &
         temperature = temperature - temperature_gradient(Z_DIRECTION)*delta_z
       call nacl_den(temperature,pressure0*1.d-6,xm_nacl,dw_kg) 
       rho = dw_kg * 1.d3
@@ -398,7 +398,7 @@ subroutine HydrostaticUpdateCouplerBetter(coupler,option,grid)
       coupler%flow_aux_real_var(1,iconn) = pressure
     endif
 
-    if (option%iflowmode /= RICHARDS_LITE_MODE) then
+    if (option%iflowmode /= RICHARDS_MODE) then
       temperature = temperature_at_datum + &
                     temperature_gradient(X_DIRECTION)*dist_x + & ! gradient in K/m
                     temperature_gradient(Y_DIRECTION)*dist_y + &

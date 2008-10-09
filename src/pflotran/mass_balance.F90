@@ -95,7 +95,7 @@ subroutine MassBalanceUpdate(realization,flow_solver,tran_solver)
         call THCResidualToMass(realization)      
         call VecAXPY(field%tran_total_mass_balance, &
                      field%tran_ts_mass_balance,1.d0,ierr)
-      case(RICHARDS_LITE_MODE)
+      case(RICHARDS_MODE)
         call VecAXPY(field%tran_total_mass_balance, &
                      field%tran_ts_mass_balance,1.d0,ierr)
       case(MPH_MODE)

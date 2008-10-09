@@ -479,7 +479,7 @@ end subroutine MphaseAuxVarCompute_WINC
 
 ! ************************************************************************** !
 !
-! AuxVarDestroy: Deallocates a richards auxilliary object
+! AuxVarDestroy: Deallocates a mphase auxilliary object
 ! author: Glenn Hammond
 ! date: 02/14/08
 !
@@ -510,7 +510,7 @@ end subroutine MphaseAuxVarDestroy
 
 ! ************************************************************************** !
 !
-! THCAuxDestroy: Deallocates a richards auxilliary object
+! THCAuxDestroy: Deallocates a thc auxilliary object
 ! author: Glenn Hammond
 ! date: 02/14/08
 !

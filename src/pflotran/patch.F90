@@ -527,7 +527,7 @@ subroutine PatchInitCouplerAuxVars(patch,coupler_list,option)
           ! allocate arrays that match the number of connections
           select case(option%iflowmode)
 
-            case(THC_MODE,RICHARDS_LITE_MODE)
+            case(THC_MODE,RICHARDS_MODE)
            
               allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
               allocate(coupler%flow_aux_int_var(1,num_connections))
@@ -644,7 +644,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
               condition%concentration%datum%is_transient) then
             update = .true.
           endif
-        case(RICHARDS_LITE_MODE)
+        case(RICHARDS_MODE)
           if (force_update_flag .or. &
               condition%pressure%dataset%is_transient .or. &
               condition%pressure%gradient%is_transient .or. &
@@ -683,7 +683,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
                     condition%concentration%dataset%cur_value(1)
                   coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
                     condition%iphase
-                case(RICHARDS_LITE_MODE)
+                case(RICHARDS_MODE)
                   coupler%flow_aux_real_var(ONE_INTEGER,1:num_connections) = &
                     condition%pressure%dataset%cur_value(1)
               end select
@@ -748,18 +748,18 @@ subroutine PatchBridgeFlowAndTransport(patch,option)
 
   ! loop over all bc aux vars
   select case(option%iflowmode)
-    case(RICHARDS_LITE_MODE)
+    case(RICHARDS_MODE)
       do iaux = 1, patch%aux%RT%num_aux
         patch%aux%RT%aux_vars(iaux)%den(1) = &
-          patch%aux%RichardsLite%aux_vars(iaux)%den_kg
+          patch%aux%Richards%aux_vars(iaux)%den_kg
         patch%aux%RT%aux_vars(iaux)%sat = &
-          patch%aux%RichardsLite%aux_vars(iaux)%sat
+          patch%aux%Richards%aux_vars(iaux)%sat
       enddo
       do iaux = 1, patch%aux%RT%num_aux_bc
         patch%aux%RT%aux_vars_bc(iaux)%den(1) = &
-          patch%aux%RichardsLite%aux_vars_bc(iaux)%den_kg
+          patch%aux%Richards%aux_vars_bc(iaux)%den_kg
         patch%aux%RT%aux_vars_bc(iaux)%sat = &
-          patch%aux%RichardsLite%aux_vars_bc(iaux)%sat
+          patch%aux%Richards%aux_vars_bc(iaux)%sat
       enddo
     case(THC_MODE,MPH_MODE)
       if (option%myrank == 0) then
@@ -844,7 +844,7 @@ function PatchAuxVarsUpToDate(patch)
   
   use Mphase_Aux_module
   use THC_Aux_module
-  use Richards_Lite_Aux_module
+  use Richards_Aux_module
   use Reactive_Transport_Aux_module  
   
   type(patch_type) :: patch
@@ -855,8 +855,8 @@ function PatchAuxVarsUpToDate(patch)
   
   if (associated(patch%aux%THC)) then
     flow_up_to_date = patch%aux%THC%aux_vars_up_to_date
-  else if (associated(patch%aux%RichardsLite)) then
-    flow_up_to_date = patch%aux%RichardsLite%aux_vars_up_to_date
+  else if (associated(patch%aux%Richards)) then
+    flow_up_to_date = patch%aux%Richards%aux_vars_up_to_date
   else if (associated(patch%aux%Mphase)) then
     flow_up_to_date = patch%aux%Mphase%aux_vars_up_to_date
   endif
@@ -884,7 +884,7 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
   
   use Mphase_Aux_module
   use THC_Aux_module
-  use Richards_Lite_Aux_module
+  use Richards_Aux_module
   use Reactive_Transport_Aux_module  
   
   implicit none
@@ -945,33 +945,33 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
               vec_ptr(local_id) = patch%aux%THC%aux_vars(grid%nL2G(local_id))%u
             enddo
         end select
-      else if (associated(patch%aux%RichardsLite)) then
+      else if (associated(patch%aux%Richards)) then
         select case(ivar)
           case(TEMPERATURE)
-            call printErrMsg(option,'TEMPERATURE not supported by RichardsLite')
+            call printErrMsg(option,'TEMPERATURE not supported by Richards')
           case(GAS_SATURATION)
-            call printErrMsg(option,'GAS_SATURATION not supported by RichardsLite')
+            call printErrMsg(option,'GAS_SATURATION not supported by Richards')
           case(GAS_DENSITY)
-            call printErrMsg(option,'GAS_DENSITY not supported by RichardsLite')
+            call printErrMsg(option,'GAS_DENSITY not supported by Richards')
           case(LIQUID_MOLE_FRACTION)
-            call printErrMsg(option,'LIQUID_MOLE_FRACTION not supported by RichardsLite')
+            call printErrMsg(option,'LIQUID_MOLE_FRACTION not supported by Richards')
           case(GAS_MOLE_FRACTION)
-            call printErrMsg(option,'GAS_MOLE_FRACTION not supported by RichardsLite')
+            call printErrMsg(option,'GAS_MOLE_FRACTION not supported by Richards')
           case(LIQUID_ENERGY)
-            call printErrMsg(option,'LIQUID_ENERGY not supported by RichardsLite')
+            call printErrMsg(option,'LIQUID_ENERGY not supported by Richards')
           case(GAS_ENERGY)
-            call printErrMsg(option,'GAS_ENERGY not supported by RichardsLite')
+            call printErrMsg(option,'GAS_ENERGY not supported by Richards')
           case(PRESSURE)
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%RichardsLite%aux_vars(grid%nL2G(local_id))%pres
+              vec_ptr(local_id) = patch%aux%Richards%aux_vars(grid%nL2G(local_id))%pres
             enddo
           case(LIQUID_SATURATION)
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%RichardsLite%aux_vars(grid%nL2G(local_id))%sat
+              vec_ptr(local_id) = patch%aux%Richards%aux_vars(grid%nL2G(local_id))%sat
             enddo
           case(LIQUID_DENSITY)
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%RichardsLite%aux_vars(grid%nL2G(local_id))%den_kg
+              vec_ptr(local_id) = patch%aux%Richards%aux_vars(grid%nL2G(local_id))%den_kg
             enddo
         end select
       else if (associated(patch%aux%Mphase)) then
@@ -1111,28 +1111,28 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
           case(LIQUID_ENERGY)
             value = patch%aux%THC%aux_vars(ghosted_id)%u
         end select
-      else if (associated(patch%aux%RichardsLite)) then
+      else if (associated(patch%aux%Richards)) then
         select case(ivar)
           case(TEMPERATURE)
-            call printErrMsg(option,'TEMPERATURE not supported by RichardsLite')
+            call printErrMsg(option,'TEMPERATURE not supported by Richards')
           case(GAS_SATURATION)
-            call printErrMsg(option,'GAS_SATURATION not supported by RichardsLite')
+            call printErrMsg(option,'GAS_SATURATION not supported by Richards')
           case(GAS_DENSITY)
-            call printErrMsg(option,'GAS_DENSITY not supported by RichardsLite')
+            call printErrMsg(option,'GAS_DENSITY not supported by Richards')
           case(LIQUID_MOLE_FRACTION)
-            call printErrMsg(option,'LIQUID_MOLE_FRACTION not supported by RichardsLite')
+            call printErrMsg(option,'LIQUID_MOLE_FRACTION not supported by Richards')
           case(GAS_MOLE_FRACTION)
-            call printErrMsg(option,'GAS_MOLE_FRACTION not supported by RichardsLite')
+            call printErrMsg(option,'GAS_MOLE_FRACTION not supported by Richards')
           case(LIQUID_ENERGY)
-            call printErrMsg(option,'LIQUID_ENERGY not supported by RichardsLite')
+            call printErrMsg(option,'LIQUID_ENERGY not supported by Richards')
           case(GAS_ENERGY)
-            call printErrMsg(option,'GAS_ENERGY not supported by RichardsLite')
+            call printErrMsg(option,'GAS_ENERGY not supported by Richards')
           case(PRESSURE)
-            value = patch%aux%RichardsLite%aux_vars(ghosted_id)%pres
+            value = patch%aux%Richards%aux_vars(ghosted_id)%pres
           case(LIQUID_SATURATION)
-            value = patch%aux%RichardsLite%aux_vars(ghosted_id)%sat
+            value = patch%aux%Richards%aux_vars(ghosted_id)%sat
           case(LIQUID_DENSITY)
-            value = patch%aux%RichardsLite%aux_vars(ghosted_id)%den_kg
+            value = patch%aux%Richards%aux_vars(ghosted_id)%den_kg
         end select
       else if (associated(patch%aux%Mphase)) then
         select case(ivar)
@@ -1247,33 +1247,33 @@ subroutine PatchSetDataset(patch,field,option,vec,ivar,isubvar)
               patch%aux%THC%aux_vars(grid%nL2G(local_id))%u = vec_ptr(local_id)
             enddo
         end select
-      else if (associated(patch%aux%RichardsLite)) then
+      else if (associated(patch%aux%Richards)) then
         select case(ivar)
           case(TEMPERATURE)
-            call printErrMsg(option,'TEMPERATURE not supported by RichardsLite')
+            call printErrMsg(option,'TEMPERATURE not supported by Richards')
           case(GAS_SATURATION)
-            call printErrMsg(option,'GAS_SATURATION not supported by RichardsLite')
+            call printErrMsg(option,'GAS_SATURATION not supported by Richards')
           case(GAS_DENSITY)
-            call printErrMsg(option,'GAS_DENSITY not supported by RichardsLite')
+            call printErrMsg(option,'GAS_DENSITY not supported by Richards')
           case(LIQUID_MOLE_FRACTION)
-            call printErrMsg(option,'LIQUID_MOLE_FRACTION not supported by RichardsLite')
+            call printErrMsg(option,'LIQUID_MOLE_FRACTION not supported by Richards')
           case(GAS_MOLE_FRACTION)
-            call printErrMsg(option,'GAS_MOLE_FRACTION not supported by RichardsLite')
+            call printErrMsg(option,'GAS_MOLE_FRACTION not supported by Richards')
           case(LIQUID_ENERGY)
-            call printErrMsg(option,'LIQUID_ENERGY not supported by RichardsLite')
+            call printErrMsg(option,'LIQUID_ENERGY not supported by Richards')
           case(GAS_ENERGY)
-            call printErrMsg(option,'GAS_ENERGY not supported by RichardsLite')
+            call printErrMsg(option,'GAS_ENERGY not supported by Richards')
           case(PRESSURE)
             do local_id=1,grid%nlmax
-              patch%aux%RichardsLite%aux_vars(grid%nL2G(local_id))%pres = vec_ptr(local_id)
+              patch%aux%Richards%aux_vars(grid%nL2G(local_id))%pres = vec_ptr(local_id)
             enddo
           case(LIQUID_SATURATION)
             do local_id=1,grid%nlmax
-              patch%aux%RichardsLite%aux_vars(grid%nL2G(local_id))%sat = vec_ptr(local_id)
+              patch%aux%Richards%aux_vars(grid%nL2G(local_id))%sat = vec_ptr(local_id)
             enddo
           case(LIQUID_DENSITY)
             do local_id=1,grid%nlmax
-              patch%aux%RichardsLite%aux_vars(grid%nL2G(local_id))%den_kg = vec_ptr(local_id)
+              patch%aux%Richards%aux_vars(grid%nL2G(local_id))%den_kg = vec_ptr(local_id)
             enddo
         end select
       else if (associated(patch%aux%Mphase)) then

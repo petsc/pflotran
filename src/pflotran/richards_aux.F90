@@ -1,4 +1,4 @@
-module Richards_Lite_Aux_module
+module Richards_Aux_module
 
   implicit none
   
@@ -6,7 +6,7 @@ module Richards_Lite_Aux_module
 
 #include "definitions.h"
 
-  type, public :: richards_lite_auxvar_type
+  type, public :: richards_auxvar_type
     PetscReal :: pres
     PetscReal :: temp
     PetscReal :: sat
@@ -22,42 +22,42 @@ module Richards_Lite_Aux_module
     PetscReal :: dsat_dp
     PetscReal :: dden_dp
     PetscReal :: dkvr_dp
-  end type richards_lite_auxvar_type
+  end type richards_auxvar_type
   
-  type, public :: richards_lite_type
+  type, public :: richards_type
     PetscInt :: n_zero_rows
     PetscInt, pointer :: zero_rows_local(:), zero_rows_local_ghosted(:)
 
     PetscTruth :: aux_vars_up_to_date
     PetscTruth :: inactive_cells_exist
     PetscInt :: num_aux, num_aux_bc
-    type(richards_lite_auxvar_type), pointer :: aux_vars(:)
-    type(richards_lite_auxvar_type), pointer :: aux_vars_bc(:)
-  end type richards_lite_type
+    type(richards_auxvar_type), pointer :: aux_vars(:)
+    type(richards_auxvar_type), pointer :: aux_vars_bc(:)
+  end type richards_type
 
-  public :: RichardsLiteAuxCreate, RichardsLiteAuxDestroy, &
-            RichardsLiteAuxVarCompute, RichardsLiteAuxVarInit, &
-            RichardsLiteAuxVarCopy
+  public :: RichardsAuxCreate, RichardsAuxDestroy, &
+            RichardsAuxVarCompute, RichardsAuxVarInit, &
+            RichardsAuxVarCopy
 
 contains
 
 
 ! ************************************************************************** !
 !
-! RichardsLiteAuxVarCreate: Allocate and initialize auxilliary object
+! RichardsAuxVarCreate: Allocate and initialize auxilliary object
 ! author: Glenn Hammond
 ! date: 02/14/08
 !
 ! ************************************************************************** !
-function RichardsLiteAuxCreate()
+function RichardsAuxCreate()
 
   use Option_module
 
   implicit none
   
-  type(richards_lite_type), pointer :: RichardsLiteAuxCreate
+  type(richards_type), pointer :: RichardsAuxCreate
   
-  type(richards_lite_type), pointer :: aux
+  type(richards_type), pointer :: aux
 
   allocate(aux) 
   aux%aux_vars_up_to_date = PETSC_FALSE
@@ -70,24 +70,24 @@ function RichardsLiteAuxCreate()
   nullify(aux%zero_rows_local)
   nullify(aux%zero_rows_local_ghosted)
 
-  RichardsLiteAuxCreate => aux
+  RichardsAuxCreate => aux
   
-end function RichardsLiteAuxCreate
+end function RichardsAuxCreate
 
 ! ************************************************************************** !
 !
-! RichardsLiteAuxVarInit: Initialize auxilliary object
+! RichardsAuxVarInit: Initialize auxilliary object
 ! author: Glenn Hammond
 ! date: 02/14/08
 !
 ! ************************************************************************** !
-subroutine RichardsLiteAuxVarInit(aux_var,option)
+subroutine RichardsAuxVarInit(aux_var,option)
 
   use Option_module
 
   implicit none
   
-  type(richards_lite_auxvar_type) :: aux_var
+  type(richards_auxvar_type) :: aux_var
   type(option_type) :: option
   
   aux_var%pres = 0.d0
@@ -106,22 +106,22 @@ subroutine RichardsLiteAuxVarInit(aux_var,option)
   aux_var%dden_dp = 0.d0
   aux_var%dkvr_dp = 0.d0
 
-end subroutine RichardsLiteAuxVarInit
+end subroutine RichardsAuxVarInit
 
 ! ************************************************************************** !
 !
-! RichardsLiteAuxVarCopy: Copies an auxilliary variable
+! RichardsAuxVarCopy: Copies an auxilliary variable
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
 ! ************************************************************************** !  
-subroutine RichardsLiteAuxVarCopy(aux_var,aux_var2,option)
+subroutine RichardsAuxVarCopy(aux_var,aux_var2,option)
 
   use Option_module
 
   implicit none
   
-  type(richards_lite_auxvar_type) :: aux_var, aux_var2
+  type(richards_auxvar_type) :: aux_var, aux_var2
   type(option_type) :: option
 
   aux_var2%pres = aux_var%pres
@@ -140,16 +140,16 @@ subroutine RichardsLiteAuxVarCopy(aux_var,aux_var2,option)
   aux_var2%dden_dp = aux_var%dden_dp
   aux_var2%dkvr_dp = aux_var%dkvr_dp
 
-end subroutine RichardsLiteAuxVarCopy
+end subroutine RichardsAuxVarCopy
   
 ! ************************************************************************** !
 !
-! RichardsLiteAuxVarCompute: Computes auxilliary variables for each grid cell
+! RichardsAuxVarCompute: Computes auxilliary variables for each grid cell
 ! author: Glenn Hammond
 ! date: 02/22/08
 !
 ! ************************************************************************** !
-subroutine RichardsLiteAuxVarCompute(x,aux_var,iphase,saturation_function, &
+subroutine RichardsAuxVarCompute(x,aux_var,iphase,saturation_function, &
                                      por,perm,option)
 
   use Option_module
@@ -161,7 +161,7 @@ subroutine RichardsLiteAuxVarCompute(x,aux_var,iphase,saturation_function, &
   type(option_type) :: option
   type(saturation_function_type) :: saturation_function
   PetscReal :: x(option%nflowdof)
-  type(richards_lite_auxvar_type) :: aux_var
+  type(richards_auxvar_type) :: aux_var
   PetscInt :: iphase
   PetscReal :: por, perm
 
@@ -234,7 +234,7 @@ subroutine RichardsLiteAuxVarCompute(x,aux_var,iphase,saturation_function, &
   
   aux_var%dkvr_dp = dkr_dp/visl - kr/(visl*visl)*dvis_dp
 
-end subroutine RichardsLiteAuxVarCompute
+end subroutine RichardsAuxVarCompute
 
 ! ************************************************************************** !
 !
@@ -247,23 +247,23 @@ subroutine AuxVarDestroy(aux_var)
 
   implicit none
 
-  type(richards_lite_auxvar_type) :: aux_var
+  type(richards_auxvar_type) :: aux_var
   
 
 end subroutine AuxVarDestroy
 
 ! ************************************************************************** !
 !
-! RichardsLiteAuxDestroy: Deallocates a richards auxilliary object
+! RichardsAuxDestroy: Deallocates a richards auxilliary object
 ! author: Glenn Hammond
 ! date: 02/14/08
 !
 ! ************************************************************************** !
-subroutine RichardsLiteAuxDestroy(aux)
+subroutine RichardsAuxDestroy(aux)
 
   implicit none
 
-  type(richards_lite_type), pointer :: aux
+  type(richards_type), pointer :: aux
   PetscInt :: iaux
   
   if (.not.associated(aux)) return
@@ -284,6 +284,6 @@ subroutine RichardsLiteAuxDestroy(aux)
   if (associated(aux%zero_rows_local_ghosted)) deallocate(aux%zero_rows_local_ghosted)
   nullify(aux%zero_rows_local_ghosted)
     
-end subroutine RichardsLiteAuxDestroy
+end subroutine RichardsAuxDestroy
 
-end module Richards_Lite_Aux_module
+end module Richards_Aux_module
