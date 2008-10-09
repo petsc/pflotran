@@ -527,7 +527,7 @@ subroutine PatchInitCouplerAuxVars(patch,coupler_list,option)
           ! allocate arrays that match the number of connections
           select case(option%iflowmode)
 
-            case(RICHARDS_MODE,RICHARDS_LITE_MODE)
+            case(THC_MODE,RICHARDS_LITE_MODE)
            
               allocate(coupler%flow_aux_real_var(option%nflowdof*option%nphase,num_connections))
               allocate(coupler%flow_aux_int_var(1,num_connections))
@@ -631,7 +631,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
 
       update = .false.
       select case(option%iflowmode)
-        case(RICHARDS_MODE,MPH_MODE)
+        case(THC_MODE,MPH_MODE)
           if (force_update_flag .or. &
               condition%pressure%dataset%is_transient .or. &
               condition%pressure%gradient%is_transient .or. &
@@ -674,7 +674,7 @@ subroutine PatchUpdateCouplerAuxVars(patch,coupler_list,force_update_flag, &
                     condition%concentration%dataset%cur_value(1)! <-- Chuan Fix
                   coupler%flow_aux_int_var(COUPLER_IPHASE_INDEX,1:num_connections) = &
                     condition%iphase
-                case(RICHARDS_MODE)
+                case(THC_MODE)
                   coupler%flow_aux_real_var(ONE_INTEGER,1:num_connections) = &
                     condition%pressure%dataset%cur_value(1)
                   coupler%flow_aux_real_var(TWO_INTEGER,1:num_connections) = &
@@ -761,7 +761,7 @@ subroutine PatchBridgeFlowAndTransport(patch,option)
         patch%aux%RT%aux_vars_bc(iaux)%sat = &
           patch%aux%RichardsLite%aux_vars_bc(iaux)%sat
       enddo
-    case(RICHARDS_MODE,MPH_MODE)
+    case(THC_MODE,MPH_MODE)
       if (option%myrank == 0) then
         print *, 'Bridge of flow and transport densities needs to be implemented.  Ask Glenn'
         stop
@@ -843,7 +843,7 @@ function PatchAuxVarsUpToDate(patch)
   use Field_module
   
   use Mphase_Aux_module
-  use Richards_Aux_module
+  use THC_Aux_module
   use Richards_Lite_Aux_module
   use Reactive_Transport_Aux_module  
   
@@ -853,8 +853,8 @@ function PatchAuxVarsUpToDate(patch)
   PetscTruth :: flow_up_to_date
   PetscTruth :: transport_up_to_date
   
-  if (associated(patch%aux%Richards)) then
-    flow_up_to_date = patch%aux%Richards%aux_vars_up_to_date
+  if (associated(patch%aux%THC)) then
+    flow_up_to_date = patch%aux%THC%aux_vars_up_to_date
   else if (associated(patch%aux%RichardsLite)) then
     flow_up_to_date = patch%aux%RichardsLite%aux_vars_up_to_date
   else if (associated(patch%aux%Mphase)) then
@@ -883,7 +883,7 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
   use Field_module
   
   use Mphase_Aux_module
-  use Richards_Aux_module
+  use THC_Aux_module
   use Richards_Lite_Aux_module
   use Reactive_Transport_Aux_module  
   
@@ -914,23 +914,23 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
     case(TEMPERATURE,PRESSURE,LIQUID_SATURATION,GAS_SATURATION, &
          LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION,LIQUID_ENERGY,GAS_ENERGY, &
          LIQUID_DENSITY,GAS_DENSITY)
-      if (associated(patch%aux%Richards)) then
+      if (associated(patch%aux%THC)) then
         select case(ivar)
           case(TEMPERATURE)
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%Richards%aux_vars(grid%nL2G(local_id))%temp
+              vec_ptr(local_id) = patch%aux%THC%aux_vars(grid%nL2G(local_id))%temp
             enddo
           case(PRESSURE)
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%Richards%aux_vars(grid%nL2G(local_id))%pres
+              vec_ptr(local_id) = patch%aux%THC%aux_vars(grid%nL2G(local_id))%pres
             enddo
           case(LIQUID_SATURATION)
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%Richards%aux_vars(grid%nL2G(local_id))%sat
+              vec_ptr(local_id) = patch%aux%THC%aux_vars(grid%nL2G(local_id))%sat
             enddo
           case(LIQUID_DENSITY)
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%Richards%aux_vars(grid%nL2G(local_id))%den_kg
+              vec_ptr(local_id) = patch%aux%THC%aux_vars(grid%nL2G(local_id))%den_kg
             enddo
           case(GAS_SATURATION,GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY) ! still need implementation
             do local_id=1,grid%nlmax
@@ -938,11 +938,11 @@ subroutine PatchGetDataset(patch,field,option,vec,ivar,isubvar)
             enddo
           case(LIQUID_MOLE_FRACTION)
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%Richards%aux_vars(grid%nL2G(local_id))%xmol(isubvar)
+              vec_ptr(local_id) = patch%aux%THC%aux_vars(grid%nL2G(local_id))%xmol(isubvar)
             enddo
           case(LIQUID_ENERGY)
             do local_id=1,grid%nlmax
-              vec_ptr(local_id) = patch%aux%Richards%aux_vars(grid%nL2G(local_id))%u
+              vec_ptr(local_id) = patch%aux%THC%aux_vars(grid%nL2G(local_id))%u
             enddo
         end select
       else if (associated(patch%aux%RichardsLite)) then
@@ -1094,22 +1094,22 @@ function PatchGetDatasetValueAtCell(patch,field,option,ivar,isubvar, &
     case(TEMPERATURE,PRESSURE,LIQUID_SATURATION,GAS_SATURATION, &
          LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION,LIQUID_ENERGY,GAS_ENERGY, &
          LIQUID_DENSITY,GAS_DENSITY)
-      if (associated(patch%aux%Richards)) then
+      if (associated(patch%aux%THC)) then
         select case(ivar)
           case(TEMPERATURE)
-            value = patch%aux%Richards%aux_vars(ghosted_id)%temp
+            value = patch%aux%THC%aux_vars(ghosted_id)%temp
           case(PRESSURE)
-            value = patch%aux%Richards%aux_vars(ghosted_id)%pres
+            value = patch%aux%THC%aux_vars(ghosted_id)%pres
           case(LIQUID_SATURATION)
-            value = patch%aux%Richards%aux_vars(ghosted_id)%sat
+            value = patch%aux%THC%aux_vars(ghosted_id)%sat
           case(LIQUID_DENSITY)
-            value = patch%aux%Richards%aux_vars(ghosted_id)%den_kg
+            value = patch%aux%THC%aux_vars(ghosted_id)%den_kg
           case(GAS_SATURATION,GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY) ! still need implementation
             value = 0.d0
           case(LIQUID_MOLE_FRACTION)
-            value = patch%aux%Richards%aux_vars(ghosted_id)%xmol(isubvar)
+            value = patch%aux%THC%aux_vars(ghosted_id)%xmol(isubvar)
           case(LIQUID_ENERGY)
-            value = patch%aux%Richards%aux_vars(ghosted_id)%u
+            value = patch%aux%THC%aux_vars(ghosted_id)%u
         end select
       else if (associated(patch%aux%RichardsLite)) then
         select case(ivar)
@@ -1219,32 +1219,32 @@ subroutine PatchSetDataset(patch,field,option,vec,ivar,isubvar)
     case(TEMPERATURE,PRESSURE,LIQUID_SATURATION,GAS_SATURATION, &
          LIQUID_MOLE_FRACTION,GAS_MOLE_FRACTION,LIQUID_ENERGY,GAS_ENERGY, &
          LIQUID_DENSITY,GAS_DENSITY)
-      if (associated(patch%aux%Richards)) then
+      if (associated(patch%aux%THC)) then
         select case(ivar)
           case(TEMPERATURE)
             do local_id=1,grid%nlmax
-              patch%aux%Richards%aux_vars(grid%nL2G(local_id))%temp = vec_ptr(local_id)
+              patch%aux%THC%aux_vars(grid%nL2G(local_id))%temp = vec_ptr(local_id)
             enddo
           case(PRESSURE)
             do local_id=1,grid%nlmax
-              patch%aux%Richards%aux_vars(grid%nL2G(local_id))%pres = vec_ptr(local_id)
+              patch%aux%THC%aux_vars(grid%nL2G(local_id))%pres = vec_ptr(local_id)
             enddo
           case(LIQUID_SATURATION)
             do local_id=1,grid%nlmax
-              patch%aux%Richards%aux_vars(grid%nL2G(local_id))%sat = vec_ptr(local_id)
+              patch%aux%THC%aux_vars(grid%nL2G(local_id))%sat = vec_ptr(local_id)
             enddo
           case(LIQUID_DENSITY)
             do local_id=1,grid%nlmax
-              patch%aux%Richards%aux_vars(grid%nL2G(local_id))%den_kg = vec_ptr(local_id)
+              patch%aux%THC%aux_vars(grid%nL2G(local_id))%den_kg = vec_ptr(local_id)
             enddo
           case(GAS_SATURATION,GAS_MOLE_FRACTION,GAS_ENERGY,GAS_DENSITY) ! still need implementation
           case(LIQUID_MOLE_FRACTION)
             do local_id=1,grid%nlmax
-              patch%aux%Richards%aux_vars(grid%nL2G(local_id))%xmol(isubvar) = vec_ptr(local_id)
+              patch%aux%THC%aux_vars(grid%nL2G(local_id))%xmol(isubvar) = vec_ptr(local_id)
             enddo
           case(LIQUID_ENERGY)
             do local_id=1,grid%nlmax
-              patch%aux%Richards%aux_vars(grid%nL2G(local_id))%u = vec_ptr(local_id)
+              patch%aux%THC%aux_vars(grid%nL2G(local_id))%u = vec_ptr(local_id)
             enddo
         end select
       else if (associated(patch%aux%RichardsLite)) then

@@ -163,7 +163,7 @@ subroutine OutputTecplot(realization)
   use Patch_module
   
   use Mphase_module
-  use Richards_module
+  use THC_module
   use Richards_Lite_module
   
   use Reactive_Transport_module
@@ -228,8 +228,8 @@ subroutine OutputTecplot(realization)
     select case(option%iflowmode)
       case (MPH_MODE)
         string2 = MphaseGetTecplotHeader(realization)
-      case(RICHARDS_MODE)
-        string2 = RichardsGetTecplotHeader(realization)
+      case(THC_MODE)
+        string2 = THCGetTecplotHeader(realization)
       case(RICHARDS_LITE_MODE)
        string2 = RichardsLiteGetTecplotHeader(realization)
     end select
@@ -305,11 +305,11 @@ subroutine OutputTecplot(realization)
   endif
 
   select case(option%iflowmode)
-    case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
+    case(MPH_MODE,THC_MODE,RICHARDS_LITE_MODE)
 
       ! temperature
       select case(option%iflowmode)
-        case(MPH_MODE,RICHARDS_MODE)
+        case(MPH_MODE,THC_MODE)
           call OutputGetVarFromArray(realization,global_vec,TEMPERATURE,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -317,7 +317,7 @@ subroutine OutputTecplot(realization)
 
       ! pressure
       select case(option%iflowmode)
-        case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
+        case(MPH_MODE,THC_MODE,RICHARDS_LITE_MODE)
           call OutputGetVarFromArray(realization,global_vec,PRESSURE,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -333,7 +333,7 @@ subroutine OutputTecplot(realization)
 
       ! liquid saturation
       select case(option%iflowmode)
-        case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
+        case(MPH_MODE,THC_MODE,RICHARDS_LITE_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -349,7 +349,7 @@ subroutine OutputTecplot(realization)
     
       ! liquid energy
       select case(option%iflowmode)
-        case(MPH_MODE,RICHARDS_MODE)
+        case(MPH_MODE,THC_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_ENERGY,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -364,7 +364,7 @@ subroutine OutputTecplot(realization)
       end select
 
       select case(option%iflowmode)
-        case(MPH_MODE,RICHARDS_MODE)
+        case(MPH_MODE,THC_MODE)
           ! liquid mole fractions
           do i=1,option%nflowspec
             call OutputGetVarFromArray(realization,global_vec,LIQUID_MOLE_FRACTION,i)
@@ -1640,8 +1640,8 @@ subroutine WriteBreakthroughHeaderForCell(fid,realization,region,icell, &
       endif
 #endif      
       string = trim(string) // ',"Phase '// trim(cell_id_string) // '"'
-    case(RICHARDS_MODE,RICHARDS_LITE_MODE)
-      if (option%iflowmode == RICHARDS_MODE) then
+    case(THC_MODE,RICHARDS_LITE_MODE)
+      if (option%iflowmode == THC_MODE) then
         string = ',"X [m] '// trim(cell_id_string) // '",' // &
                  '"Y [m] '// trim(cell_id_string) // '",' // &
                  '"Z [m] '// trim(cell_id_string) // '",' // &
@@ -1656,7 +1656,7 @@ subroutine WriteBreakthroughHeaderForCell(fid,realization,region,icell, &
                  '"P [Pa] '// trim(cell_id_string) // '",' // &
                  '"sl '// trim(cell_id_string) // '"'
       endif
-      if (option%iflowmode == RICHARDS_MODE) then
+      if (option%iflowmode == THC_MODE) then
         do i=1,option%nflowspec
           write(string2,'('',"Xl('',i2,'') '// trim(cell_id_string) // '"'')') i
           string = trim(string) // trim(string2)
@@ -1770,8 +1770,8 @@ subroutine WriteBreakthroughHeaderForCoord(fid,realization,region, &
       endif
 #endif      
       string = trim(string) // ',"Phase '// trim(cell_id_string) // '"'
-    case(RICHARDS_MODE,RICHARDS_LITE_MODE)
-      if (option%iflowmode == RICHARDS_MODE) then
+    case(THC_MODE,RICHARDS_LITE_MODE)
+      if (option%iflowmode == THC_MODE) then
 !        string = ',"X [m] '// trim(cell_id_string) // '",' // &
 !                 '"Y [m] '// trim(cell_id_string) // '",' // &
 !                 '"Z [m] '// trim(cell_id_string) // '",' // &
@@ -1786,7 +1786,7 @@ subroutine WriteBreakthroughHeaderForCoord(fid,realization,region, &
         string = ',"P [Pa] '// trim(cell_id_string) // '",' // &
                  '"sl '// trim(cell_id_string) // '"'
       endif
-      if (option%iflowmode == RICHARDS_MODE) then
+      if (option%iflowmode == THC_MODE) then
         do i=1,option%nflowspec
           write(string2,'('',"Xl('',i2,'') '// trim(cell_id_string) // '"'')') i
           string = trim(string) // trim(string2)
@@ -1869,25 +1869,25 @@ subroutine WriteBreakthroughDataForCell(fid,realization,local_id)
   !write(fid,110,advance="no") grid%z(ghosted_id)
   
   select case(option%iflowmode)
-    case (MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
+    case (MPH_MODE,THC_MODE,RICHARDS_LITE_MODE)
 
       ! temperature
       select case(option%iflowmode)
-        case(MPH_MODE,RICHARDS_MODE)
+        case(MPH_MODE,THC_MODE)
           write(fid,110,advance="no") &
             OutputGetVarFromArrayAtCell(realization,TEMPERATURE,ZERO_INTEGER,local_id)
       end select
 
       ! pressure
       select case(option%iflowmode)
-        case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
+        case(MPH_MODE,THC_MODE,RICHARDS_LITE_MODE)
           write(fid,110,advance="no") &
             OutputGetVarFromArrayAtCell(realization,PRESSURE,ZERO_INTEGER,local_id)
       end select
 
       ! liquid saturation
       select case(option%iflowmode)
-        case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
+        case(MPH_MODE,THC_MODE,RICHARDS_LITE_MODE)
           write(fid,110,advance="no") &
             OutputGetVarFromArrayAtCell(realization,LIQUID_SATURATION,ZERO_INTEGER,local_id)
       end select
@@ -1900,7 +1900,7 @@ subroutine WriteBreakthroughDataForCell(fid,realization,local_id)
       end select
     
       select case(option%iflowmode)
-        case(MPH_MODE,RICHARDS_MODE)
+        case(MPH_MODE,THC_MODE)
           ! liquid energy
           write(fid,110,advance="no") &
             OutputGetVarFromArrayAtCell(realization,LIQUID_ENERGY,ZERO_INTEGER,local_id)
@@ -1914,7 +1914,7 @@ subroutine WriteBreakthroughDataForCell(fid,realization,local_id)
       end select
 
       select case(option%iflowmode)
-        case(MPH_MODE,RICHARDS_MODE)
+        case(MPH_MODE,THC_MODE)
           ! liquid mole fractions
           do i=1,option%nflowspec
             write(fid,110,advance="no") &
@@ -1939,7 +1939,7 @@ subroutine WriteBreakthroughDataForCell(fid,realization,local_id)
 #endif    
       ! phase
       select case(option%iflowmode)
-        case(MPH_MODE,RICHARDS_MODE)
+        case(MPH_MODE,THC_MODE)
           write(fid,111,advance="no") &
             int(OutputGetVarFromArrayAtCell(realization,PHASE,ZERO_INTEGER,local_id))
       end select
@@ -2055,11 +2055,11 @@ subroutine WriteBreakthroughDataForCoord(fid,realization,region)
   enddo
   
   select case(option%iflowmode)
-    case (MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
+    case (MPH_MODE,THC_MODE,RICHARDS_LITE_MODE)
 
       ! temperature
       select case(option%iflowmode)
-        case(MPH_MODE,RICHARDS_MODE)
+        case(MPH_MODE,THC_MODE)
           write(fid,110,advance="no") &
             OutputGetVarFromArrayAtCoord(realization,TEMPERATURE,ZERO_INTEGER, &
                                          region%coordinates(ONE_INTEGER)%x, &
@@ -2070,7 +2070,7 @@ subroutine WriteBreakthroughDataForCoord(fid,realization,region)
 
       ! pressure
       select case(option%iflowmode)
-        case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
+        case(MPH_MODE,THC_MODE,RICHARDS_LITE_MODE)
           write(fid,110,advance="no") &
             OutputGetVarFromArrayAtCoord(realization,PRESSURE,ZERO_INTEGER, &
                                          region%coordinates(ONE_INTEGER)%x, &
@@ -2081,7 +2081,7 @@ subroutine WriteBreakthroughDataForCoord(fid,realization,region)
 
       ! liquid saturation
       select case(option%iflowmode)
-        case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
+        case(MPH_MODE,THC_MODE,RICHARDS_LITE_MODE)
           write(fid,110,advance="no") &
             OutputGetVarFromArrayAtCoord(realization,LIQUID_SATURATION,ZERO_INTEGER, &
                                          region%coordinates(ONE_INTEGER)%x, &
@@ -2102,7 +2102,7 @@ subroutine WriteBreakthroughDataForCoord(fid,realization,region)
       end select
     
       select case(option%iflowmode)
-        case(MPH_MODE,RICHARDS_MODE)
+        case(MPH_MODE,THC_MODE)
           ! liquid energy
           write(fid,110,advance="no") &
             OutputGetVarFromArrayAtCoord(realization,LIQUID_ENERGY,ZERO_INTEGER, &
@@ -2124,7 +2124,7 @@ subroutine WriteBreakthroughDataForCoord(fid,realization,region)
       end select
 
       select case(option%iflowmode)
-        case(MPH_MODE,RICHARDS_MODE)
+        case(MPH_MODE,THC_MODE)
           ! liquid mole fractions
           do i=1,option%nflowspec
             write(fid,110,advance="no") &
@@ -2161,7 +2161,7 @@ subroutine WriteBreakthroughDataForCoord(fid,realization,region)
 #endif    
       ! phase
       select case(option%iflowmode)
-        case(MPH_MODE,RICHARDS_MODE)
+        case(MPH_MODE,THC_MODE)
           write(fid,111,advance="no") &
             int(OutputGetVarFromArrayAtCoord(realization,PHASE,ZERO_INTEGER, &
                                              region%coordinates(ONE_INTEGER)%x, &
@@ -2646,12 +2646,12 @@ subroutine OutputHDF5(realization)
 
   select case(option%iflowmode)
   
-    case(MPH_MODE,RICHARDS_MODE, &
+    case(MPH_MODE,THC_MODE, &
          RICHARDS_LITE_MODE)
 
       ! temperature
       select case(option%iflowmode)
-        case (MPH_MODE,RICHARDS_MODE)
+        case (MPH_MODE,THC_MODE)
           call OutputGetVarFromArray(realization,global_vec,TEMPERATURE,ZERO_INTEGER)
           string = "Temperature"
           call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
@@ -2659,7 +2659,7 @@ subroutine OutputHDF5(realization)
 
       ! pressure
       select case(option%iflowmode)
-        case (MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
+        case (MPH_MODE,THC_MODE,RICHARDS_LITE_MODE)
           call OutputGetVarFromArray(realization,global_vec,PRESSURE,ZERO_INTEGER)
           string = "Pressure"
           call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)
@@ -2667,7 +2667,7 @@ subroutine OutputHDF5(realization)
 
       ! liquid saturation
       select case(option%iflowmode)
-        case (MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
+        case (MPH_MODE,THC_MODE,RICHARDS_LITE_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_SATURATION,ZERO_INTEGER)
           string = "Liquid Saturation"
           call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE)  
@@ -2683,7 +2683,7 @@ subroutine OutputHDF5(realization)
       
       ! liquid energy
       select case(option%iflowmode)
-        case (MPH_MODE,RICHARDS_MODE)
+        case (MPH_MODE,THC_MODE)
           call OutputGetVarFromArray(realization,global_vec,LIQUID_ENERGY,ZERO_INTEGER)
           string = "Liquid Energy"
           call HDF5WriteStructDataSetFromVec(string,realization,global_vec,grp_id,H5T_NATIVE_DOUBLE) 
@@ -2699,7 +2699,7 @@ subroutine OutputHDF5(realization)
     
       ! liquid mole fractions
       select case(option%iflowmode)
-        case (MPH_MODE,RICHARDS_MODE)
+        case (MPH_MODE,THC_MODE)
           do i=1,option%nflowspec
             call OutputGetVarFromArray(realization,global_vec,LIQUID_MOLE_FRACTION,i)
             write(string,'(''Liquid Mole Fraction('',i4,'')'')') i
@@ -3185,7 +3185,7 @@ function OutputGetVarFromArrayAtCell(realization,ivar,isubvar,local_id)
   ghosted_id = realization%patch%grid%nL2G(local_id)
 
   select case(realization%option%iflowmode)
-    case(RICHARDS_MODE)
+    case(THC_MODE)
       OutputGetVarFromArrayAtCell = &
         RealizGetDatasetValueAtCell(realization,ivar,isubvar,ghosted_id)
     case(RICHARDS_LITE_MODE)
@@ -3656,7 +3656,7 @@ subroutine OutputMassBalance(realization)
     string2 = ''
     select case(option%iflowmode)
       case (MPH_MODE)
-      case(RICHARDS_MODE)
+      case(THC_MODE)
         string2 = '"Water [kg]","Solute [mol]","Energy []"'
       case(RICHARDS_LITE_MODE)
     end select
@@ -3732,11 +3732,11 @@ subroutine OutputMassBalance(realization)
   endif
 
   select case(option%iflowmode)
-    case(RICHARDS_MODE)
+    case(THC_MODE)
 #if 0
       ! water mass
       select case(option%iflowmode)
-        case(MPH_MODE,RICHARDS_MODE)
+        case(MPH_MODE,THC_MODE)
           call OutputGetVarFromArray(realization,global_vec,TEMPERATURE,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -3744,7 +3744,7 @@ subroutine OutputMassBalance(realization)
 
       ! solute mass
       select case(option%iflowmode)
-        case(MPH_MODE,RICHARDS_MODE)
+        case(MPH_MODE,THC_MODE)
           call OutputGetVarFromArray(realization,global_vec,TEMPERATURE,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)
@@ -3752,7 +3752,7 @@ subroutine OutputMassBalance(realization)
 
       ! energy
       select case(option%iflowmode)
-        case(MPH_MODE,RICHARDS_MODE)
+        case(MPH_MODE,THC_MODE)
           call OutputGetVarFromArray(realization,global_vec,TEMPERATURE,ZERO_INTEGER)
           call DiscretizationGlobalToNatural(discretization,global_vec,natural_vec,ONEDOF)
           call WriteTecplotDataSetFromVec(IUNIT3,realization,natural_vec,TECPLOT_REAL)

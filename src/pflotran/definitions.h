@@ -53,7 +53,7 @@ PetscInt, parameter :: NATURAL = 3
 
 ! modes
 PetscInt, parameter :: NULL_MODE = 0
-PetscInt, parameter :: RICHARDS_MODE = 1
+PetscInt, parameter :: THC_MODE = 1
 PetscInt, parameter :: MPH_MODE = 2
 PetscInt, parameter :: RICHARDS_LITE_MODE = 3
 PetscInt, parameter :: REACTIVE_TRANSPORT_MODE = 4
@@ -97,11 +97,11 @@ PetscInt, parameter :: INITIAL_CONNECTION_TYPE = 3
 PetscInt, parameter :: SRC_SINK_CONNECTION_TYPE = 4
 
 ! dofs for each mode
-PetscInt, parameter :: RICHARDS_PRESSURE_DOF = 1
-PetscInt, parameter :: RICHARDS_MASS_RATE_DOF = 2
-PetscInt, parameter :: RICHARDS_TEMPERATURE_DOF = 3
-PetscInt, parameter :: RICHARDS_CONCENTRATION_DOF = 4
-PetscInt, parameter :: RICHARDS_ENTHALPY_DOF = 5
+PetscInt, parameter :: THC_PRESSURE_DOF = 1
+PetscInt, parameter :: THC_MASS_RATE_DOF = 2
+PetscInt, parameter :: THC_TEMPERATURE_DOF = 3
+PetscInt, parameter :: THC_CONCENTRATION_DOF = 4
+PetscInt, parameter :: THC_ENTHALPY_DOF = 5
 
 PetscInt, parameter :: MPH_PRESSURE_DOF = 1
 PetscInt, parameter :: MPH_MASS_RATE_DOF = 2
@@ -109,11 +109,8 @@ PetscInt, parameter :: MPH_TEMPERATURE_DOF = 3
 PetscInt, parameter :: MPH_CONCENTRATION_DOF = 4
 PetscInt, parameter :: MPH_ENTHALPY_DOF = 5
 
-PetscInt, parameter :: THC_PRESSURE_DOF = 1
-PetscInt, parameter :: THC_MASS_RATE_DOF = 2
-PetscInt, parameter :: THC_TEMPERATURE_DOF = 3
-PetscInt, parameter :: THC_CONCENTRATION_DOF = 4
-PetscInt, parameter :: THC_ENTHALPY_DOF = 5
+PetscInt, parameter :: RICHARDS_LITE_PRESSURE_DOF = 1
+PetscInt, parameter :: RICHARDS_LITE_MASS_RATE_DOF = 2
 
 ! output definitions
 PetscInt, parameter :: X_COORDINATE = 1

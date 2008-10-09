@@ -61,7 +61,7 @@ subroutine MassBalanceUpdate(realization,flow_solver,tran_solver)
   use Solver_module
   use Logging_module
   
-  use Richards_module, only : RichardsResidualToMass
+  use THC_module, only : THCResidualToMass
   
   implicit none
   
@@ -91,8 +91,8 @@ subroutine MassBalanceUpdate(realization,flow_solver,tran_solver)
     call SNESComputeFunction(flow_solver%snes,field%flow_xx, &
                              field%flow_ts_mass_balance,ierr)
     select case(option%iflowmode)
-      case(RICHARDS_MODE)
-        call RichardsResidualToMass(realization)      
+      case(THC_MODE)
+        call THCResidualToMass(realization)      
         call VecAXPY(field%tran_total_mass_balance, &
                      field%tran_ts_mass_balance,1.d0,ierr)
       case(RICHARDS_LITE_MODE)

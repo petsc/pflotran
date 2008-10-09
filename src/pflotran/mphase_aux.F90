@@ -161,7 +161,7 @@ end subroutine MphaseAuxVarInit
 
 ! ************************************************************************** !
 !
-! RichardsAuxVarCopy: Copies an auxilliary variable
+! THCAuxVarCopy: Copies an auxilliary variable
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
@@ -510,7 +510,7 @@ end subroutine MphaseAuxVarDestroy
 
 ! ************************************************************************** !
 !
-! RichardsAuxDestroy: Deallocates a richards auxilliary object
+! THCAuxDestroy: Deallocates a richards auxilliary object
 ! author: Glenn Hammond
 ! date: 02/14/08
 !

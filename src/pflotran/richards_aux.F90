@@ -1,4 +1,4 @@
-module Richards_Aux_module
+module THC_Aux_module
 
   implicit none
   
@@ -6,7 +6,7 @@ module Richards_Aux_module
 
 #include "definitions.h"
 
-  type, public :: richards_auxvar_type
+  type, public :: thc_auxvar_type
     PetscReal :: pres
     PetscReal :: temp
     PetscReal :: sat
@@ -32,42 +32,42 @@ module Richards_Aux_module
     PetscReal :: du_dt
     PetscReal, pointer :: xmol(:)
     PetscReal, pointer :: diff(:)
-  end type richards_auxvar_type
+  end type thc_auxvar_type
   
-  type, public :: richards_type
+  type, public :: thc_type
     PetscInt :: n_zero_rows
     PetscInt, pointer :: zero_rows_local(:), zero_rows_local_ghosted(:)
 
     PetscTruth :: aux_vars_up_to_date
     PetscTruth :: inactive_cells_exist
     PetscInt :: num_aux, num_aux_bc
-    type(richards_auxvar_type), pointer :: aux_vars(:)
-    type(richards_auxvar_type), pointer :: aux_vars_bc(:)
-  end type richards_type
+    type(thc_auxvar_type), pointer :: aux_vars(:)
+    type(thc_auxvar_type), pointer :: aux_vars_bc(:)
+  end type thc_type
 
-  public :: RichardsAuxCreate, RichardsAuxDestroy, &
-            RichardsAuxVarCompute, RichardsAuxVarInit, &
-            RichardsAuxVarCopy
+  public :: THCAuxCreate, THCAuxDestroy, &
+            THCAuxVarCompute, THCAuxVarInit, &
+            THCAuxVarCopy
 
 contains
 
 
 ! ************************************************************************** !
 !
-! RichardsAuxCreate: Allocate and initialize auxilliary object
+! THCAuxCreate: Allocate and initialize auxilliary object
 ! author: Glenn Hammond
 ! date: 02/14/08
 !
 ! ************************************************************************** !
-function RichardsAuxCreate()
+function THCAuxCreate()
 
   use Option_module
 
   implicit none
   
-  type(richards_type), pointer :: RichardsAuxCreate
+  type(thc_type), pointer :: THCAuxCreate
   
-  type(richards_type), pointer :: aux
+  type(thc_type), pointer :: aux
 
   allocate(aux) 
   aux%aux_vars_up_to_date = PETSC_FALSE
@@ -80,24 +80,24 @@ function RichardsAuxCreate()
   nullify(aux%zero_rows_local)
   nullify(aux%zero_rows_local_ghosted)
 
-  RichardsAuxCreate => aux
+  THCAuxCreate => aux
   
-end function RichardsAuxCreate
+end function THCAuxCreate
 
 ! ************************************************************************** !
 !
-! RichardsAuxVarInit: Initialize auxilliary object
+! THCAuxVarInit: Initialize auxilliary object
 ! author: Glenn Hammond
 ! date: 02/14/08
 !
 ! ************************************************************************** !
-subroutine RichardsAuxVarInit(aux_var,option)
+subroutine THCAuxVarInit(aux_var,option)
 
   use Option_module
 
   implicit none
   
-  type(richards_auxvar_type) :: aux_var
+  type(thc_auxvar_type) :: aux_var
   type(option_type) :: option
   
   aux_var%pres = 0.d0
@@ -128,22 +128,22 @@ subroutine RichardsAuxVarInit(aux_var,option)
   allocate(aux_var%diff(option%nflowspec))
   aux_var%diff = 0.d0
 
-end subroutine RichardsAuxVarInit
+end subroutine THCAuxVarInit
 
 ! ************************************************************************** !
 !
-! RichardsAuxVarCopy: Copies an auxilliary variable
+! THCAuxVarCopy: Copies an auxilliary variable
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
 ! ************************************************************************** !  
-subroutine RichardsAuxVarCopy(aux_var,aux_var2,option)
+subroutine THCAuxVarCopy(aux_var,aux_var2,option)
 
   use Option_module
 
   implicit none
   
-  type(richards_auxvar_type) :: aux_var, aux_var2
+  type(thc_auxvar_type) :: aux_var, aux_var2
   type(option_type) :: option
 
   aux_var2%pres = aux_var%pres
@@ -172,16 +172,16 @@ subroutine RichardsAuxVarCopy(aux_var,aux_var2,option)
   aux_var2%xmol = aux_var%xmol
   aux_var2%diff = aux_var%diff
 
-end subroutine RichardsAuxVarCopy
+end subroutine THCAuxVarCopy
 
 ! ************************************************************************** !
 !
-! RichardsAuxVarCompute: Computes auxilliary variables for each grid cell
+! THCAuxVarCompute: Computes auxilliary variables for each grid cell
 ! author: Glenn Hammond
 ! date: 02/22/08
 !
 ! ************************************************************************** !
-subroutine RichardsAuxVarCompute(x,aux_var,iphase,saturation_function, &
+subroutine THCAuxVarCompute(x,aux_var,iphase,saturation_function, &
                                  por,perm,option)
 
   use Option_module
@@ -193,7 +193,7 @@ subroutine RichardsAuxVarCompute(x,aux_var,iphase,saturation_function, &
   type(option_type) :: option
   type(saturation_function_type) :: saturation_function
   PetscReal :: x(option%nflowdof)
-  type(richards_auxvar_type) :: aux_var
+  type(thc_auxvar_type) :: aux_var
   PetscReal :: por, perm
   PetscInt :: iphase
 
@@ -291,11 +291,11 @@ subroutine RichardsAuxVarCompute(x,aux_var,iphase,saturation_function, &
   aux_var%dh_dt = hw_dt
   aux_var%du_dt = hw_dt + pw/(dw_mol*dw_mol)*option%scale*dw_dt
 
-end subroutine RichardsAuxVarCompute
+end subroutine THCAuxVarCompute
 
 ! ************************************************************************** !
 !
-! AuxVarDestroy: Deallocates a richards auxilliary object
+! AuxVarDestroy: Deallocates a thc auxilliary object
 ! author: Glenn Hammond
 ! date: 02/14/08
 !
@@ -304,7 +304,7 @@ subroutine AuxVarDestroy(aux_var)
 
   implicit none
 
-  type(richards_auxvar_type) :: aux_var
+  type(thc_auxvar_type) :: aux_var
   
   if (associated(aux_var%xmol)) deallocate(aux_var%xmol)
   nullify(aux_var%xmol)
@@ -315,16 +315,16 @@ end subroutine AuxVarDestroy
 
 ! ************************************************************************** !
 !
-! RichardsAuxDestroy: Deallocates a richards auxilliary object
+! THCAuxDestroy: Deallocates a thc auxilliary object
 ! author: Glenn Hammond
 ! date: 02/14/08
 !
 ! ************************************************************************** !
-subroutine RichardsAuxDestroy(aux)
+subroutine THCAuxDestroy(aux)
 
   implicit none
 
-  type(richards_type), pointer :: aux
+  type(thc_type), pointer :: aux
   PetscInt :: iaux
   
   if (.not.associated(aux)) return
@@ -345,6 +345,6 @@ subroutine RichardsAuxDestroy(aux)
   if (associated(aux%zero_rows_local_ghosted)) deallocate(aux%zero_rows_local_ghosted)
   nullify(aux%zero_rows_local_ghosted)
     
-end subroutine RichardsAuxDestroy
+end subroutine THCAuxDestroy
 
-end module Richards_Aux_module
+end module THC_Aux_module

@@ -48,7 +48,7 @@ subroutine Init(simulation,filename)
   
   use MPHASE_module
   use Richards_Lite_module
-  use Richards_module
+  use THC_module
   
   use Reactive_Transport_module
 
@@ -110,7 +110,7 @@ subroutine Init(simulation,filename)
   
   ! initialize flow mode
   if (len_trim(option%flowmode) > 0) then
-    ! set the operational mode (e.g. RICHARDS_MODE, MPH_MODE, etc)
+    ! set the operational mode (e.g. THC_MODE, MPH_MODE, etc)
     call setFlowMode(option)
     flow_solver => flow_stepper%solver
   else
@@ -160,7 +160,7 @@ subroutine Init(simulation,filename)
   
     if (flow_solver%mat_type == MATAIJ) then
       select case(option%iflowmode)
-        case(MPH_MODE,RICHARDS_MODE)
+        case(MPH_MODE,THC_MODE)
           call printErrMsg(option,&
                            'AIJ matrix not supported for current mode: '// &
                            option%flowmode)
@@ -173,7 +173,7 @@ subroutine Init(simulation,filename)
       select case(option%iflowmode)
         case(MPH_MODE)
           write(*,'(" mode = MPH: p, T, s/C")')
-        case(RICHARDS_MODE)
+        case(THC_MODE)
           write(*,'(" mode = Richards: p, T, s/C")')
         case(RICHARDS_LITE_MODE)
           write(*,'(" mode = Richards: p")')      
@@ -198,9 +198,9 @@ subroutine Init(simulation,filename)
     endif
     
     select case(option%iflowmode)
-      case(RICHARDS_MODE)
-        call SNESSetFunction(flow_solver%snes,field%flow_r,RichardsResidual,realization,ierr)
-        call SNESSetJacobian(flow_solver%snes, flow_solver%J, flow_solver%J, RichardsJacobian, &
+      case(THC_MODE)
+        call SNESSetFunction(flow_solver%snes,field%flow_r,THCResidual,realization,ierr)
+        call SNESSetJacobian(flow_solver%snes, flow_solver%J, flow_solver%J, THCJacobian, &
                              realization, ierr)
       case(RICHARDS_LITE_MODE)
         call SNESSetFunction(flow_solver%snes,field%flow_r,RichardsLiteResidual,realization,ierr)
@@ -329,8 +329,8 @@ subroutine Init(simulation,filename)
   ! set up auxillary variable arrays
   if (option%nflowdof > 0) then
     select case(option%iflowmode)
-      case(RICHARDS_MODE)
-        call RichardsSetup(realization)
+      case(THC_MODE)
+        call THCSetup(realization)
       case(RICHARDS_LITE_MODE)
         call RichardsLiteSetup(realization)
       case(MPH_MODE)
@@ -347,8 +347,8 @@ subroutine Init(simulation,filename)
   ! update auxilliary variables based on initial conditions
   if (option%nflowdof > 0) then
     select case(option%iflowmode)
-      case(RICHARDS_MODE)
-        call RichardsUpdateAuxVars(realization)
+      case(THC_MODE)
+        call THCUpdateAuxVars(realization)
       case(RICHARDS_LITE_MODE)
         call RichardsLiteUpdateAuxVars(realization)
       case(MPH_MODE)
@@ -1424,7 +1424,7 @@ subroutine readInput(simulation,filename)
           call fiErrorMsg(option%myrank,'icaptype','PCKR', ierr)
       
           select case(option%iflowmode)
-            case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
+            case(MPH_MODE,THC_MODE,RICHARDS_LITE_MODE)
               do np=1, option%nphase
                 call fiReadDouble(string,saturation_function%Sr(np),ierr)
                 call fiErrorMsg(option%myrank,'Sr','PCKR', ierr)
@@ -1462,7 +1462,7 @@ subroutine readInput(simulation,filename)
         option%icaptype = 0
   
         select case(option%iflowmode)
-          case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
+          case(MPH_MODE,THC_MODE,RICHARDS_LITE_MODE)
             allocate(option%sir(1:option%nphase,count))
           case default
             allocate(option%swir(count))
@@ -1490,7 +1490,7 @@ subroutine readInput(simulation,filename)
           
           option%icaptype(id) = saturation_function%saturation_function_itype
           select case(option%iflowmode)
-            case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
+            case(MPH_MODE,THC_MODE,RICHARDS_LITE_MODE)
               do i=1,option%nphase
                 option%sir(i,id) = saturation_function%Sr(i)
               enddo
@@ -1519,7 +1519,7 @@ subroutine readInput(simulation,filename)
       !clu removed on 05/21/08
 #if 0
         if (option%iflowmode == MPH_MODE .or. &
-            option%iflowmode == RICHARDS_MODE .or. &
+            option%iflowmode == THC_MODE .or. &
             option%iflowmode == RICHARDS_LITE_MODE) then
           call pckr_init(option%nphase,count,grid%nlmax, &
                          option%icaptype,option%sir, option%pckrm, &
@@ -1533,7 +1533,7 @@ subroutine readInput(simulation,filename)
           write(IUNIT2,'("  icp swir    lambda         alpha")')
           do j = 1, count
             if (option%iflowmode == MPH_MODE .or. &
-                option%iflowmode == RICHARDS_MODE .or. &
+                option%iflowmode == THC_MODE .or. &
                 option%iflowmode == RICHARDS_LITE_MODE) then
               write(IUNIT2,'(i4,1p8e12.4)') option%icaptype(j),(option%sir(np,j),np=1, &
                 option%nphase),option%lambda(j),option%alpha(j), &
@@ -1547,7 +1547,7 @@ subroutine readInput(simulation,filename)
         end if
 
         if (option%iflowmode == MPH_MODE .or. &
-            option%iflowmode == RICHARDS_MODE .or. &
+            option%iflowmode == THC_MODE .or. &
             option%iflowmode == RICHARDS_LITE_MODE) then
           deallocate(option%icaptype, option%pckrm, option%lambda, &
                      option%alpha,option%pcwmax, option%pcbetac, &
@@ -1819,7 +1819,7 @@ subroutine setFlowMode(option)
   call fiCharsToUpper(option%flowmode,length)
   select case(option%flowmode)
     case('RICHARDS')
-      option%iflowmode = RICHARDS_MODE
+      option%iflowmode = THC_MODE
       option%nphase = 1
       option%nflowdof = 3
       option%nflowspec = 2

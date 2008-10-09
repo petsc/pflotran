@@ -1,6 +1,6 @@
-module Richards_module
+module THC_module
 
-  use Richards_Aux_module
+  use THC_Aux_module
   
   implicit none
   
@@ -22,13 +22,13 @@ module Richards_module
   PetscReal, parameter :: floweps   = 1.D-24
   PetscReal, parameter :: perturbation_tolerance = 1.d-5
 
-  public RichardsResidual,RichardsJacobian, &
-         RichardsUpdateFixedAccumulation,RichardsTimeCut,&
-         RichardsNumericalJacobianTest, &
-         RichardsMaxChange, RichardsUpdateSolution, &
-         RichardsGetTecplotHeader, RichardsInitializeTimestep, &
-         RichardsSetup, RichardsResidualToMass, &
-         RichardsUpdateAuxVars
+  public THCResidual,THCJacobian, &
+         THCUpdateFixedAccumulation,THCTimeCut,&
+         THCNumericalJacobianTest, &
+         THCMaxChange, THCUpdateSolution, &
+         THCGetTecplotHeader, THCInitializeTimestep, &
+         THCSetup, THCResidualToMass, &
+         THCUpdateAuxVars
 
   PetscInt, parameter :: jh2o = 1
 
@@ -36,12 +36,12 @@ contains
 
 ! ************************************************************************** !
 !
-! RichardsTimeCut: Resets arrays for time step cut
+! THCTimeCut: Resets arrays for time step cut
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
 ! ************************************************************************** !
-subroutine RichardsTimeCut(realization)
+subroutine THCTimeCut(realization)
  
   use Realization_module
   use Option_module
@@ -60,17 +60,17 @@ subroutine RichardsTimeCut(realization)
  
   call VecCopy(field%flow_yy,field%flow_xx,ierr)
  
-end subroutine RichardsTimeCut
+end subroutine THCTimeCut
 
 
 ! ************************************************************************** !
 !
-! RichardsSetup: 
+! THCSetup: 
 ! author: Glenn Hammond
 ! date: 02/22/08
 !
 ! ************************************************************************** !
-subroutine RichardsSetup(realization)
+subroutine THCSetup(realization)
 
   use Realization_module
   use Level_module
@@ -88,22 +88,22 @@ subroutine RichardsSetup(realization)
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      call RichardsSetupPatch(realization)
+      call THCSetupPatch(realization)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
   enddo
 
-end subroutine RichardsSetup
+end subroutine THCSetup
   
 ! ************************************************************************** !
 !
-! RichardsSetupPatch: 
+! THCSetupPatch: 
 ! author: Glenn Hammond
 ! date: 02/22/08
 !
 ! ************************************************************************** !
-subroutine RichardsSetupPatch(realization)
+subroutine THCSetupPatch(realization)
 
   use Realization_module
   use Patch_module
@@ -122,7 +122,7 @@ subroutine RichardsSetupPatch(realization)
   type(patch_type),pointer :: patch
   type(grid_type), pointer :: grid
   type(coupler_type), pointer :: boundary_condition
-  type(richards_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
+  type(thc_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
 
   PetscInt :: ghosted_id, iconn, sum_connection
   
@@ -130,15 +130,15 @@ subroutine RichardsSetupPatch(realization)
   patch => realization%patch
   grid => patch%grid
     
-  patch%aux%Richards => RichardsAuxCreate()
+  patch%aux%THC => THCAuxCreate()
     
   ! allocate aux_var data structures for all grid cells
   allocate(aux_vars(grid%ngmax))
   do ghosted_id = 1, grid%ngmax
-    call RichardsAuxVarInit(aux_vars(ghosted_id),option)
+    call THCAuxVarInit(aux_vars(ghosted_id),option)
   enddo
-  patch%aux%Richards%aux_vars => aux_vars
-  patch%aux%Richards%num_aux = grid%ngmax
+  patch%aux%THC%aux_vars => aux_vars
+  patch%aux%THC%num_aux = grid%ngmax
   
   ! count the number of boundary connections and allocate
   ! aux_var data structures for them
@@ -152,26 +152,26 @@ subroutine RichardsSetupPatch(realization)
   enddo
   allocate(aux_vars_bc(sum_connection))
   do iconn = 1, sum_connection
-    call RichardsAuxVarInit(aux_vars_bc(iconn),option)
+    call THCAuxVarInit(aux_vars_bc(iconn),option)
   enddo
-  patch%aux%Richards%aux_vars_bc => aux_vars_bc
-  patch%aux%Richards%num_aux_bc = sum_connection
+  patch%aux%THC%aux_vars_bc => aux_vars_bc
+  patch%aux%THC%num_aux_bc = sum_connection
 
   ! create zero array for zeroing residual and Jacobian (1 on diagonal)
   ! for inactive cells (and isothermal)
-  call RichardsCreateZeroArray(patch,option)
+  call THCCreateZeroArray(patch,option)
 
-end subroutine RichardsSetupPatch
+end subroutine THCSetupPatch
 
 ! ************************************************************************** !
 !
-! RichardsUpdateAuxVars: Updates the auxilliary variables associated with 
-!                        the Richards problem
+! THCUpdateAuxVars: Updates the auxilliary variables associated with 
+!                        the THC problem
 ! author: Glenn Hammond
 ! date: 12/10/07
 !
 ! ************************************************************************** !
-subroutine RichardsUpdateAuxVars(realization)
+subroutine THCUpdateAuxVars(realization)
 
   use Realization_module
   use Level_module
@@ -189,23 +189,23 @@ subroutine RichardsUpdateAuxVars(realization)
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      call RichardsUpdateAuxVarsPatch(realization)
+      call THCUpdateAuxVarsPatch(realization)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
   enddo
 
-end subroutine RichardsUpdateAuxVars
+end subroutine THCUpdateAuxVars
 
 ! ************************************************************************** !
 !
-! RichardsUpdateAuxVarsPatch: Updates the auxilliary variables associated with 
-!                        the Richards problem
+! THCUpdateAuxVarsPatch: Updates the auxilliary variables associated with 
+!                        the THC problem
 ! author: Glenn Hammond
 ! date: 12/10/07
 !
 ! ************************************************************************** !
-subroutine RichardsUpdateAuxVarsPatch(realization)
+subroutine THCUpdateAuxVarsPatch(realization)
 
   use Realization_module
   use Patch_module
@@ -226,7 +226,7 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
   type(field_type), pointer :: field
   type(coupler_type), pointer :: boundary_condition
   type(connection_set_type), pointer :: cur_connection_set
-  type(richards_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
+  type(thc_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
 
   PetscInt :: ghosted_id, local_id, istart, iend, sum_connection, idof, iconn
   PetscInt :: iphasebc, iphase
@@ -240,8 +240,8 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
   grid => patch%grid
   field => realization%field
   
-  aux_vars => patch%aux%Richards%aux_vars
-  aux_vars_bc => patch%aux%Richards%aux_vars_bc
+  aux_vars => patch%aux%THC%aux_vars
+  aux_vars_bc => patch%aux%THC%aux_vars_bc
   
   call GridVecGetArrayF90(grid,field%flow_xx_loc,xx_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%icap_loc,icap_loc_p,ierr)
@@ -259,7 +259,7 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
     istart = iend-option%nflowdof+1
     iphase = int(iphase_loc_p(ghosted_id))
    
-    call RichardsAuxVarCompute(xx_loc_p(istart:iend), &
+    call THCAuxVarCompute(xx_loc_p(istart:iend), &
                        aux_vars(ghosted_id), &
                        iphase, &
                        realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
@@ -290,14 +290,14 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
         end select
       enddo
       
-      select case(boundary_condition%flow_condition%itype(RICHARDS_PRESSURE_DOF))
+      select case(boundary_condition%flow_condition%itype(THC_PRESSURE_DOF))
         case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
           iphasebc = boundary_condition%flow_aux_int_var(1,iconn)
         case(NEUMANN_BC,ZERO_GRADIENT_BC)
           iphasebc=int(iphase_loc_p(ghosted_id))                               
       end select
 
-      call RichardsAuxVarCompute(xxbc,aux_vars_bc(sum_connection), &
+      call THCAuxVarCompute(xxbc,aux_vars_bc(sum_connection), &
                          iphasebc, &
                          realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                          porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &
@@ -313,18 +313,18 @@ subroutine RichardsUpdateAuxVarsPatch(realization)
   call GridVecRestoreArrayF90(grid,field%perm_xx_loc,perm_xx_loc_p,ierr)
   call GridVecRestoreArrayF90(grid,field%porosity_loc,porosity_loc_p,ierr)
   
-  patch%aux%Richards%aux_vars_up_to_date = PETSC_TRUE
+  patch%aux%THC%aux_vars_up_to_date = PETSC_TRUE
 
-end subroutine RichardsUpdateAuxVarsPatch
+end subroutine THCUpdateAuxVarsPatch
 
 ! ************************************************************************** !
 !
-! RichardsInitializeTimestep: Update data in module prior to time step
+! THCInitializeTimestep: Update data in module prior to time step
 ! author: Glenn Hammond
 ! date: 02/20/08
 !
 ! ************************************************************************** !
-subroutine RichardsInitializeTimestep(realization)
+subroutine THCInitializeTimestep(realization)
 
   use Realization_module
   
@@ -332,18 +332,18 @@ subroutine RichardsInitializeTimestep(realization)
   
   type(realization_type) :: realization
 
-  call RichardsUpdateFixedAccumulation(realization)
+  call THCUpdateFixedAccumulation(realization)
 
-end subroutine RichardsInitializeTimestep
+end subroutine THCInitializeTimestep
 
 ! ************************************************************************** !
 !
-! RichardsUpdateSolution: Updates data in module after a successful time step
+! THCUpdateSolution: Updates data in module after a successful time step
 ! author: Glenn Hammond
 ! date: 02/13/08
 !
 ! ************************************************************************** !
-subroutine RichardsUpdateSolution(realization)
+subroutine THCUpdateSolution(realization)
 
   use Realization_module
   
@@ -355,17 +355,17 @@ subroutine RichardsUpdateSolution(realization)
   
   call VecCopy(realization%field%flow_xx,realization%field%flow_yy,ierr)   
 
-end subroutine RichardsUpdateSolution
+end subroutine THCUpdateSolution
 
 ! ************************************************************************** !
 !
-! RichardsUpdateFixedAccumulation: Updates the fixed portion of the 
+! THCUpdateFixedAccumulation: Updates the fixed portion of the 
 !                                  accumulation term
 ! author: Glenn Hammond
 ! date: 12/10/07
 !
 ! ************************************************************************** !
-subroutine RichardsUpdateFixedAccumulation(realization)
+subroutine THCUpdateFixedAccumulation(realization)
 
   use Realization_module
   use Level_module
@@ -383,23 +383,23 @@ subroutine RichardsUpdateFixedAccumulation(realization)
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      call RichardsUpdateFixedAccumPatch(realization)
+      call THCUpdateFixedAccumPatch(realization)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
   enddo
 
-end subroutine RichardsUpdateFixedAccumulation
+end subroutine THCUpdateFixedAccumulation
 
 ! ************************************************************************** !
 !
-! RichardsUpdateFixedAccumPatch: Updates the fixed portion of the 
+! THCUpdateFixedAccumPatch: Updates the fixed portion of the 
 !                                  accumulation term
 ! author: Glenn Hammond
 ! date: 12/10/07
 !
 ! ************************************************************************** !
-subroutine RichardsUpdateFixedAccumPatch(realization)
+subroutine THCUpdateFixedAccumPatch(realization)
 
   use Realization_module
   use Patch_module
@@ -415,7 +415,7 @@ subroutine RichardsUpdateFixedAccumPatch(realization)
   type(patch_type), pointer :: patch
   type(grid_type), pointer :: grid
   type(field_type), pointer :: field
-  type(richards_auxvar_type), pointer :: aux_vars(:)
+  type(thc_auxvar_type), pointer :: aux_vars(:)
 
   PetscInt :: ghosted_id, local_id, istart, iend, iphase
   PetscReal, pointer :: xx_p(:), icap_loc_p(:), iphase_loc_p(:)
@@ -429,7 +429,7 @@ subroutine RichardsUpdateFixedAccumPatch(realization)
   patch => realization%patch
   grid => patch%grid
 
-  aux_vars => patch%aux%Richards%aux_vars
+  aux_vars => patch%aux%THC%aux_vars
     
   call GridVecGetArrayF90(grid,field%flow_xx,xx_p, ierr)
   call GridVecGetArrayF90(grid,field%icap_loc,icap_loc_p,ierr)
@@ -451,14 +451,14 @@ subroutine RichardsUpdateFixedAccumPatch(realization)
     iend = local_id*option%nflowdof
     istart = iend-option%nflowdof+1
     iphase = int(iphase_loc_p(ghosted_id))
-    call RichardsAuxVarCompute(xx_p(istart:iend), &
+    call THCAuxVarCompute(xx_p(istart:iend), &
                        aux_vars(ghosted_id), &
                        iphase, &
                        realization%saturation_function_array(int(icap_loc_p(ghosted_id)))%ptr, &
                        porosity_loc_p(ghosted_id),perm_xx_loc_p(ghosted_id), &                       
                        option)
     iphase_loc_p(ghosted_id) = iphase
-    call RichardsAccumulation(aux_vars(ghosted_id), &
+    call THCAccumulation(aux_vars(ghosted_id), &
                               porosity_loc_p(ghosted_id), &
                               volume_p(local_id), &
                               option%dencpr(int(ithrm_loc_p(ghosted_id))), &
@@ -477,19 +477,19 @@ subroutine RichardsUpdateFixedAccumPatch(realization)
   call GridVecRestoreArrayF90(grid,field%flow_accum, accum_p, ierr)
 
 #if 0
-!  call RichardsNumericalJacobianTest(field%flow_xx,realization)
+!  call THCNumericalJacobianTest(field%flow_xx,realization)
 #endif
 
-end subroutine RichardsUpdateFixedAccumPatch
+end subroutine THCUpdateFixedAccumPatch
 
 ! ************************************************************************** !
 !
-! RichardsNumericalJacobianTest: Computes the a test numerical jacobian
+! THCNumericalJacobianTest: Computes the a test numerical jacobian
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
 ! ************************************************************************** !
-subroutine RichardsNumericalJacobianTest(xx,realization)
+subroutine THCNumericalJacobianTest(xx,realization)
 
   use Realization_module
   use Patch_module
@@ -534,7 +534,7 @@ subroutine RichardsNumericalJacobianTest(xx,realization)
   call MatSetType(A,MATAIJ,ierr)
   call MatSetFromOptions(A,ierr)
     
-  call RichardsResidual(PETSC_NULL_OBJECT,xx,res,realization,ierr)
+  call THCResidual(PETSC_NULL_OBJECT,xx,res,realization,ierr)
   call GridVecGetArrayF90(grid,res,vec2_p,ierr)
   do icell = 1,grid%nlmax
     if (associated(patch%imat)) then
@@ -546,7 +546,7 @@ subroutine RichardsNumericalJacobianTest(xx,realization)
       perturbation = vec_p(idof)*perturbation_tolerance
       vec_p(idof) = vec_p(idof)+perturbation
       call vecrestorearrayf90(xx_pert,vec_p,ierr)
-      call RichardsResidual(PETSC_NULL_OBJECT,xx_pert,res_pert,realization,ierr)
+      call THCResidual(PETSC_NULL_OBJECT,xx_pert,res_pert,realization,ierr)
       call vecgetarrayf90(res_pert,vec_p,ierr)
       do idof2 = 1, grid%nlmax*option%nflowdof
         derivative = (vec_p(idof2)-vec2_p(idof2))/perturbation
@@ -571,17 +571,17 @@ subroutine RichardsNumericalJacobianTest(xx,realization)
   call VecDestroy(res,ierr)
   call VecDestroy(res_pert,ierr)
   
-end subroutine RichardsNumericalJacobianTest
+end subroutine THCNumericalJacobianTest
 
 ! ************************************************************************** !
 !
-! RichardsAccumulationDerivative: Computes derivatives of the accumulation 
+! THCAccumulationDerivative: Computes derivatives of the accumulation 
 !                                 term for the Jacobian
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
 ! ************************************************************************** !
-subroutine RichardsAccumulationDerivative(aux_var,por,vol,rock_dencpr,option, &
+subroutine THCAccumulationDerivative(aux_var,por,vol,rock_dencpr,option, &
                                           sat_func,J)
 
   use Option_module
@@ -589,7 +589,7 @@ subroutine RichardsAccumulationDerivative(aux_var,por,vol,rock_dencpr,option, &
   
   implicit none
 
-  type(richards_auxvar_type) :: aux_var
+  type(thc_auxvar_type) :: aux_var
   type(option_type) :: option
   PetscReal vol,por,rock_dencpr
   type(saturation_function_type) :: sat_func
@@ -599,7 +599,7 @@ subroutine RichardsAccumulationDerivative(aux_var,por,vol,rock_dencpr,option, &
   PetscReal :: porXvol, mol(option%nflowspec), eng
 
   PetscInt :: iphase, ideriv
-  type(richards_auxvar_type) :: aux_var_pert
+  type(thc_auxvar_type) :: aux_var_pert
   PetscReal :: x(3), x_pert(3), pert, res(3), res_pert(3), J_pert(3,3)
 
   porXvol = por*vol
@@ -622,16 +622,16 @@ subroutine RichardsAccumulationDerivative(aux_var,por,vol,rock_dencpr,option, &
 
   if (option%numerical_derivatives) then
     allocate(aux_var_pert%xmol(option%nflowspec),aux_var_pert%diff(option%nflowspec))
-    call RichardsAuxVarCopy(aux_var,aux_var_pert,option)
+    call THCAuxVarCopy(aux_var,aux_var_pert,option)
     x(1) = aux_var%pres
     x(2) = aux_var%temp
     x(3) = aux_var%xmol(2)
-    call RichardsAccumulation(aux_var,por,vol,rock_dencpr,option,res)
+    call THCAccumulation(aux_var,por,vol,rock_dencpr,option,res)
     do ideriv = 1,3
       pert = x(ideriv)*perturbation_tolerance
       x_pert = x
       x_pert(ideriv) = x_pert(ideriv) + pert
-      call RichardsAuxVarCompute(x_pert,aux_var_pert,iphase,sat_func, &
+      call THCAuxVarCompute(x_pert,aux_var_pert,iphase,sat_func, &
                                  0.d0,0.d0,option)
 #if 0      
       select case(ideriv)
@@ -650,30 +650,30 @@ subroutine RichardsAccumulationDerivative(aux_var,por,vol,rock_dencpr,option, &
           print *, 'du_dt:', aux_var%du_dt, (aux_var_pert%u-aux_var%u)/pert
       end select     
 #endif     
-      call RichardsAccumulation(aux_var_pert,por,vol,rock_dencpr,option,res_pert)
+      call THCAccumulation(aux_var_pert,por,vol,rock_dencpr,option,res_pert)
       J_pert(:,ideriv) = (res_pert(:)-res(:))/pert
     enddo
     deallocate(aux_var_pert%xmol,aux_var_pert%diff)
     J = J_pert
   endif
    
-end subroutine RichardsAccumulationDerivative
+end subroutine THCAccumulationDerivative
 
 ! ************************************************************************** !
 !
-! RichardsAccumulation: Computes the non-fixed portion of the accumulation
+! THCAccumulation: Computes the non-fixed portion of the accumulation
 !                       term for the residual
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
 ! ************************************************************************** !  
-subroutine RichardsAccumulation(aux_var,por,vol,rock_dencpr,option,Res)
+subroutine THCAccumulation(aux_var,por,vol,rock_dencpr,option,Res)
 
   use Option_module
   
   implicit none
 
-  type(richards_auxvar_type) :: aux_var
+  type(thc_auxvar_type) :: aux_var
   type(option_type) :: option
   PetscReal Res(1:option%nflowdof) 
   PetscReal vol,por,rock_dencpr
@@ -705,17 +705,17 @@ subroutine RichardsAccumulation(aux_var,por,vol,rock_dencpr,option,Res)
   Res(1:option%nflowdof-1)=mol(:)
   Res(option%nflowdof)=eng
 
-end subroutine RichardsAccumulation
+end subroutine THCAccumulation
 
 ! ************************************************************************** !
 !
-! RichardsFluxDerivative: Computes the derivatives of the internal flux terms
+! THCFluxDerivative: Computes the derivatives of the internal flux terms
 !                         for the Jacobian
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
 ! ************************************************************************** ! 
-subroutine RichardsFluxDerivative(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
+subroutine THCFluxDerivative(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
                         aux_var_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
                         area,dist_gravity,upweight, &
                         option,sat_func_up,sat_func_dn,Jup,Jdn)
@@ -724,7 +724,7 @@ subroutine RichardsFluxDerivative(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,
   
   implicit none
   
-  type(richards_auxvar_type) :: aux_var_up, aux_var_dn
+  type(thc_auxvar_type) :: aux_var_up, aux_var_dn
   type(option_type) :: option
   PetscReal :: sir_up, sir_dn
   PetscReal :: por_up, por_dn
@@ -752,7 +752,7 @@ subroutine RichardsFluxDerivative(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,
   PetscReal :: duxmol_dxmol_up, duxmol_dxmol_dn
 
   PetscInt :: iphase, ideriv
-  type(richards_auxvar_type) :: aux_var_pert_up, aux_var_pert_dn
+  type(thc_auxvar_type) :: aux_var_pert_up, aux_var_pert_dn
   PetscReal :: x_up(3), x_dn(3), x_pert_up(3), x_pert_dn(3), pert_up, pert_dn, &
             res(3), res_pert_up(3), res_pert_dn(3), J_pert_up(3,3), J_pert_dn(3,3)
   
@@ -950,15 +950,15 @@ subroutine RichardsFluxDerivative(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,
   if (option%numerical_derivatives) then
     allocate(aux_var_pert_up%xmol(option%nflowspec),aux_var_pert_up%diff(option%nflowspec))
     allocate(aux_var_pert_dn%xmol(option%nflowspec),aux_var_pert_dn%diff(option%nflowspec))
-    call RichardsAuxVarCopy(aux_var_up,aux_var_pert_up,option)
-    call RichardsAuxVarCopy(aux_var_dn,aux_var_pert_dn,option)
+    call THCAuxVarCopy(aux_var_up,aux_var_pert_up,option)
+    call THCAuxVarCopy(aux_var_dn,aux_var_pert_dn,option)
     x_up(1) = aux_var_up%pres
     x_up(2) = aux_var_up%temp
     x_up(3) = aux_var_up%xmol(2)
     x_dn(1) = aux_var_dn%pres
     x_dn(2) = aux_var_dn%temp
     x_dn(3) = aux_var_dn%xmol(2)
-    call RichardsFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
+    call THCFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
                       aux_var_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
                       area,dist_gravity,upweight, &
                       option,v_darcy,res)
@@ -969,15 +969,15 @@ subroutine RichardsFluxDerivative(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,
       x_pert_dn = x_dn
       x_pert_up(ideriv) = x_pert_up(ideriv) + pert_up
       x_pert_dn(ideriv) = x_pert_dn(ideriv) + pert_dn
-      call RichardsAuxVarCompute(x_pert_up,aux_var_pert_up,iphase,sat_func_up, &
+      call THCAuxVarCompute(x_pert_up,aux_var_pert_up,iphase,sat_func_up, &
                                  0.d0,0.d0,option)
-      call RichardsAuxVarCompute(x_pert_dn,aux_var_pert_dn,iphase,sat_func_dn, &
+      call THCAuxVarCompute(x_pert_dn,aux_var_pert_dn,iphase,sat_func_dn, &
                                  0.d0,0.d0,option)
-      call RichardsFlux(aux_var_pert_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
+      call THCFlux(aux_var_pert_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
                         aux_var_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
                         area,dist_gravity,upweight, &
                         option,v_darcy,res_pert_up)
-      call RichardsFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
+      call THCFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
                         aux_var_pert_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
                         area,dist_gravity,upweight, &
                         option,v_darcy,res_pert_dn)
@@ -990,16 +990,16 @@ subroutine RichardsFluxDerivative(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,
     Jdn = J_pert_dn
   endif
 
-end subroutine RichardsFluxDerivative
+end subroutine THCFluxDerivative
 
 ! ************************************************************************** !
 !
-! RichardsFlux: Computes the internal flux terms for the residual
+! THCFlux: Computes the internal flux terms for the residual
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
 ! ************************************************************************** ! 
-subroutine RichardsFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
+subroutine THCFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
                         aux_var_dn,por_dn,tor_dn,sir_dn,dd_dn,perm_dn,Dk_dn, &
                         area,dist_gravity,upweight, &
                         option,v_darcy,Res)
@@ -1007,7 +1007,7 @@ subroutine RichardsFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
   
   implicit none
   
-  type(richards_auxvar_type) :: aux_var_up, aux_var_dn
+  type(thc_auxvar_type) :: aux_var_up, aux_var_dn
   type(option_type) :: option
   PetscReal :: sir_up, sir_dn
   PetscReal :: por_up, por_dn
@@ -1094,17 +1094,17 @@ subroutine RichardsFlux(aux_var_up,por_up,tor_up,sir_up,dd_up,perm_up,Dk_up, &
  ! note: Res is the flux contribution, for node 1 R = R + Res_FL
  !                                              2 R = R - Res_FL  
 
-end subroutine RichardsFlux
+end subroutine THCFlux
 
 ! ************************************************************************** !
 !
-! RichardsBCFluxDerivative: Computes the derivatives of the boundary flux 
+! THCBCFluxDerivative: Computes the derivatives of the boundary flux 
 !                           terms for the Jacobian
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
 ! ************************************************************************** !
-subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
+subroutine THCBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
                                     por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
                                     area,dist_gravity,option, &
                                     sat_func_dn,Jdn)
@@ -1114,7 +1114,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   implicit none
   
   PetscInt :: ibndtype(:)
-  type(richards_auxvar_type) :: aux_var_up, aux_var_dn
+  type(thc_auxvar_type) :: aux_var_up, aux_var_dn
   type(option_type) :: option
   PetscReal :: dd_up, sir_dn
   PetscReal :: aux_vars(:) ! from aux_real_var array in boundary condition
@@ -1141,7 +1141,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   PetscReal :: duxmol_dxmol_dn
 
   PetscInt :: iphase, ideriv
-  type(richards_auxvar_type) :: aux_var_pert_dn, aux_var_pert_up
+  type(thc_auxvar_type) :: aux_var_pert_dn, aux_var_pert_up
   PetscReal :: perturbation
   PetscReal :: x_dn(3), x_up(3), x_pert_dn(3), x_pert_up(3), pert_dn, res(3), &
             res_pert_dn(3), J_pert_dn(3,3)
@@ -1171,7 +1171,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
         
   ! Flow   
   diffdp = por_dn*tor_dn/dd_up*area
-  select case(ibndtype(RICHARDS_PRESSURE_DOF))
+  select case(ibndtype(THC_PRESSURE_DOF))
     ! figure out the direction of flow
     case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
       Dq = perm_dn / dd_up
@@ -1188,7 +1188,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
         dden_ave_dp_dn = (1.D0-upweight)*aux_var_dn%dden_dp
         dden_ave_dt_dn = (1.D0-upweight)*aux_var_dn%dden_dt
 
-        if (ibndtype(RICHARDS_TEMPERATURE_DOF) == ZERO_GRADIENT_BC) then
+        if (ibndtype(THC_TEMPERATURE_DOF) == ZERO_GRADIENT_BC) then
           dden_ave_dt_dn = dden_ave_dt_dn + upweight*aux_var_up%dden_dt
         endif
         
@@ -1201,7 +1201,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
         dphi_dp_dn = -1.d0 + dgravity_dden_dn*aux_var_dn%dden_dp
         dphi_dt_dn = dgravity_dden_dn*aux_var_dn%dden_dt
 
-        if (ibndtype(RICHARDS_PRESSURE_DOF) == SEEPAGE_BC) then
+        if (ibndtype(THC_PRESSURE_DOF) == SEEPAGE_BC) then
               ! flow in         ! boundary cell is <= pref
           if (dphi > 0.d0 .and. aux_var_up%pres-option%pref < eps) then
             dphi = 0.d0
@@ -1210,14 +1210,14 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
           endif
         endif        
         
-        if (ibndtype(RICHARDS_TEMPERATURE_DOF) == ZERO_GRADIENT_BC) then
+        if (ibndtype(THC_TEMPERATURE_DOF) == ZERO_GRADIENT_BC) then
                                    !( dgravity_dden_up                   ) (dden_dt_up)
           dphi_dt_dn = dphi_dt_dn + upweight*aux_var_up%avgmw*dist_gravity*aux_var_up%dden_dt
         endif
         
         if (dphi>=0.D0) then
           ukvr = aux_var_up%kvr
-          if (ibndtype(RICHARDS_TEMPERATURE_DOF) == ZERO_GRADIENT_BC) then
+          if (ibndtype(THC_TEMPERATURE_DOF) == ZERO_GRADIENT_BC) then
             dukvr_dt_dn = aux_var_up%dkvr_dt
           endif
         else
@@ -1235,11 +1235,11 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
       endif 
 
     case(NEUMANN_BC)
-      if (dabs(aux_vars(RICHARDS_PRESSURE_DOF)) > floweps) then
-        v_darcy = aux_vars(RICHARDS_PRESSURE_DOF)
+      if (dabs(aux_vars(THC_PRESSURE_DOF)) > floweps) then
+        v_darcy = aux_vars(THC_PRESSURE_DOF)
         if (v_darcy > 0.d0) then 
           density_ave = aux_var_up%den
-          if (ibndtype(RICHARDS_TEMPERATURE_DOF) == ZERO_GRADIENT_BC) then
+          if (ibndtype(THC_TEMPERATURE_DOF) == ZERO_GRADIENT_BC) then
             dden_ave_dt_dn = aux_var_up%dden_dt
           endif
         else 
@@ -1255,13 +1255,13 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   if (v_darcy >= 0.D0) then
     uh = aux_var_up%h
     uxmol(:)=aux_var_up%xmol(1:option%nflowspec)
-    if (ibndtype(RICHARDS_PRESSURE_DOF) == ZERO_GRADIENT_BC) then
+    if (ibndtype(THC_PRESSURE_DOF) == ZERO_GRADIENT_BC) then
       duh_dp_dn = aux_var_up%dh_dp
     endif
-    if (ibndtype(RICHARDS_TEMPERATURE_DOF) == ZERO_GRADIENT_BC) then
+    if (ibndtype(THC_TEMPERATURE_DOF) == ZERO_GRADIENT_BC) then
       duh_dt_dn = aux_var_up%dh_dt
     endif
-    if (ibndtype(RICHARDS_CONCENTRATION_DOF) == ZERO_GRADIENT_BC) then
+    if (ibndtype(THC_CONCENTRATION_DOF) == ZERO_GRADIENT_BC) then
       duxmol_dxmol_dn = 1.d0
     endif
   else
@@ -1288,7 +1288,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
 !  Jdn(option%nflowdof,3:option%nflowdof) = 0.d0
 
   ! Diffusion term   
-  select case(ibndtype(RICHARDS_CONCENTRATION_DOF))
+  select case(ibndtype(THC_CONCENTRATION_DOF))
     case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC) 
 !      if (aux_var_up%sat > eps .and. aux_var_dn%sat > eps) then
 !        diff = diffdp * 0.25D0*(aux_var_up%sat+aux_var_dn%sat)*(aux_var_up%den+aux_var_dn%den)
@@ -1316,7 +1316,7 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   end select
 
   ! Conduction term
-  select case(ibndtype(RICHARDS_TEMPERATURE_DOF))
+  select case(ibndtype(THC_TEMPERATURE_DOF))
     case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
       Dk =  Dk_dn / dd_up
       !cond = Dk*area*(aux_var_up%temp-aux_var_dn%temp) 
@@ -1328,8 +1328,8 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   if (option%numerical_derivatives) then
     allocate(aux_var_pert_dn%xmol(option%nflowspec),aux_var_pert_dn%diff(option%nflowspec))
     allocate(aux_var_pert_up%xmol(option%nflowspec),aux_var_pert_up%diff(option%nflowspec))
-    call RichardsAuxVarCopy(aux_var_up,aux_var_pert_up,option)
-    call RichardsAuxVarCopy(aux_var_dn,aux_var_pert_dn,option)
+    call THCAuxVarCopy(aux_var_up,aux_var_pert_up,option)
+    call THCAuxVarCopy(aux_var_dn,aux_var_pert_dn,option)
     x_up(1) = aux_var_up%pres
     x_up(2) = aux_var_up%temp
     x_up(3) = aux_var_up%xmol(2)
@@ -1341,12 +1341,12 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
         x_up(ideriv) = x_dn(ideriv)
       endif
     enddo
-    call RichardsBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
+    call THCBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
                         por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
                         area,dist_gravity,option,v_darcy,res)
-    if (ibndtype(RICHARDS_PRESSURE_DOF) == ZERO_GRADIENT_BC .or. &
-        ibndtype(RICHARDS_TEMPERATURE_DOF) == ZERO_GRADIENT_BC .or. &
-        ibndtype(RICHARDS_CONCENTRATION_DOF) == ZERO_GRADIENT_BC) then
+    if (ibndtype(THC_PRESSURE_DOF) == ZERO_GRADIENT_BC .or. &
+        ibndtype(THC_TEMPERATURE_DOF) == ZERO_GRADIENT_BC .or. &
+        ibndtype(THC_CONCENTRATION_DOF) == ZERO_GRADIENT_BC) then
       x_pert_up = x_up
     endif
     do ideriv = 1,3
@@ -1357,11 +1357,11 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
       if (ibndtype(ideriv) == ZERO_GRADIENT_BC) then
         x_pert_up(ideriv) = x_pert_dn(ideriv)
       endif   
-      call RichardsAuxVarCompute(x_pert_dn,aux_var_pert_dn,iphase,sat_func_dn, &
+      call THCAuxVarCompute(x_pert_dn,aux_var_pert_dn,iphase,sat_func_dn, &
                                  0.d0,0.d0,option)
-      call RichardsAuxVarCompute(x_pert_up,aux_var_pert_up,iphase,sat_func_dn, &
+      call THCAuxVarCompute(x_pert_up,aux_var_pert_up,iphase,sat_func_dn, &
                                  0.d0,0.d0,option)
-      call RichardsBCFlux(ibndtype,aux_vars,aux_var_pert_up,aux_var_pert_dn, &
+      call THCBCFlux(ibndtype,aux_vars,aux_var_pert_up,aux_var_pert_dn, &
                           por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
                           area,dist_gravity,option,v_darcy,res_pert_dn)
       J_pert_dn(:,ideriv) = (res_pert_dn(:)-res(:))/pert_dn
@@ -1370,16 +1370,16 @@ subroutine RichardsBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
     Jdn = J_pert_dn
   endif
 
-end subroutine RichardsBCFluxDerivative
+end subroutine THCBCFluxDerivative
 
 ! ************************************************************************** !
 !
-! RichardsBCFlux: Computes the  boundary flux terms for the residual
+! THCBCFlux: Computes the  boundary flux terms for the residual
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
 ! ************************************************************************** !
-subroutine RichardsBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
+subroutine THCBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
                           por_dn,tor_dn,sir_dn,dd_up,perm_dn,Dk_dn, &
                           area,dist_gravity,option,v_darcy,Res)
   use Option_module
@@ -1387,7 +1387,7 @@ subroutine RichardsBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   implicit none
   
   PetscInt :: ibndtype(:)
-  type(richards_auxvar_type) :: aux_var_up, aux_var_dn
+  type(thc_auxvar_type) :: aux_var_up, aux_var_dn
   type(option_type) :: option
   PetscReal :: dd_up, sir_dn
   PetscReal :: aux_vars(:) ! from aux_real_var array
@@ -1410,7 +1410,7 @@ subroutine RichardsBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
 
   ! Flow   
   diffdp = por_dn*tor_dn/dd_up*area
-  select case(ibndtype(RICHARDS_PRESSURE_DOF))
+  select case(ibndtype(THC_PRESSURE_DOF))
     ! figure out the direction of flow
     case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
       Dq = perm_dn / dd_up
@@ -1430,7 +1430,7 @@ subroutine RichardsBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
 
         dphi = aux_var_up%pres - aux_var_dn%pres + gravity
 
-        if (ibndtype(RICHARDS_PRESSURE_DOF) == SEEPAGE_BC) then
+        if (ibndtype(THC_PRESSURE_DOF) == SEEPAGE_BC) then
               ! flow in         ! boundary cell is <= pref
           if (dphi > 0.d0 .and. aux_var_up%pres-option%pref < eps) then
             dphi = 0.d0
@@ -1449,8 +1449,8 @@ subroutine RichardsBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
       endif 
 
     case(NEUMANN_BC)
-      if (dabs(aux_vars(RICHARDS_PRESSURE_DOF)) > floweps) then
-        v_darcy = aux_vars(RICHARDS_PRESSURE_DOF)
+      if (dabs(aux_vars(THC_PRESSURE_DOF)) > floweps) then
+        v_darcy = aux_vars(THC_PRESSURE_DOF)
         if (v_darcy > 0.d0) then 
           density_ave = aux_var_up%den
         else 
@@ -1476,7 +1476,7 @@ subroutine RichardsBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   fluxe = fluxe + q*density_ave*uh
 
   ! Diffusion term   
-  select case(ibndtype(RICHARDS_CONCENTRATION_DOF))
+  select case(ibndtype(THC_CONCENTRATION_DOF))
     case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC) 
 !      if (aux_var_up%sat > eps .and. aux_var_dn%sat > eps) then
 !        diff = diffdp * 0.25D0*(aux_var_up%sat+aux_var_dn%sat)*(aux_var_up%den+aux_var_dn%den)
@@ -1490,7 +1490,7 @@ subroutine RichardsBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   end select
 
   ! Conduction term
-  select case(ibndtype(RICHARDS_TEMPERATURE_DOF))
+  select case(ibndtype(THC_TEMPERATURE_DOF))
     case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
       Dk =  Dk_dn / dd_up
       cond = Dk*area*(aux_var_up%temp-aux_var_dn%temp) 
@@ -1500,16 +1500,16 @@ subroutine RichardsBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   Res(1:option%nflowspec)=fluxm(:)* option%flow_dt
   Res(option%nflowdof)=fluxe * option%flow_dt
 
-end subroutine RichardsBCFlux
+end subroutine THCBCFlux
 
 ! ************************************************************************** !
 !
-! RichardsResidual: Computes the residual equation 
+! THCResidual: Computes the residual equation 
 ! author: Glenn Hammond
 ! date: 12/10/07
 !
 ! ************************************************************************** !
-subroutine RichardsResidual(snes,xx,r,realization,ierr)
+subroutine THCResidual(snes,xx,r,realization,ierr)
 
   use Realization_module
   use Level_module
@@ -1546,7 +1546,7 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
   discretization => realization%discretization
   
   ! Communication -----------------------------------------
-  ! These 3 must be called before RichardsUpdateAuxVars()
+  ! These 3 must be called before THCUpdateAuxVars()
   call DiscretizationGlobalToLocal(discretization,xx,field%flow_xx_loc,NFLOWDOF)
   call DiscretizationLocalToLocal(discretization,field%iphas_loc,field%iphas_loc,ONEDOF)
   call DiscretizationLocalToLocal(discretization,field%icap_loc,field%icap_loc,ONEDOF)
@@ -1563,7 +1563,7 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
     do
       if (.not.associated(cur_patch)) exit
       realization%patch => cur_patch
-      call RichardsResidualPatch(snes,xx,r,realization,ierr)
+      call THCResidualPatch(snes,xx,r,realization,ierr)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -1573,16 +1573,16 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
      call samrpetscobjectstateincrease(r)
   endif
 
-end subroutine RichardsResidual
+end subroutine THCResidual
 
 ! ************************************************************************** !
 !
-! RichardsResidualPatch: Computes the residual equation at patch level
+! THCResidualPatch: Computes the residual equation at patch level
 ! author: Glenn Hammond
 ! date: 12/10/07
 !
 ! ************************************************************************** !
-subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
+subroutine THCResidualPatch(snes,xx,r,realization,ierr)
 
   use water_eos_module
 
@@ -1634,7 +1634,7 @@ subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option
   type(field_type), pointer :: field
-  type(richards_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
+  type(thc_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
   type(coupler_type), pointer :: boundary_condition, source_sink
   type(connection_set_list_type), pointer :: connection_set_list
   type(connection_set_type), pointer :: cur_connection_set
@@ -1649,12 +1649,12 @@ subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
   option => realization%option
   field => realization%field
 
-  aux_vars => patch%aux%Richards%aux_vars
-  aux_vars_bc => patch%aux%Richards%aux_vars_bc
+  aux_vars => patch%aux%THC%aux_vars
+  aux_vars_bc => patch%aux%THC%aux_vars_bc
   
-  call RichardsUpdateAuxVarsPatch(realization)
+  call THCUpdateAuxVarsPatch(realization)
   ! override flags since they will soon be out of date  
-  patch%aux%Richards%aux_vars_up_to_date = PETSC_FALSE
+  patch%aux%THC%aux_vars_up_to_date = PETSC_FALSE
 
 ! now assign access pointer to local variables
   call GridVecGetArrayF90(grid,field%flow_xx_loc, xx_loc_p, ierr)
@@ -1686,7 +1686,7 @@ subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
     endif
     iend = local_id*option%nflowdof
     istart = iend-option%nflowdof+1
-    call RichardsAccumulation(aux_vars(ghosted_id),porosity_loc_p(ghosted_id), &
+    call THCAccumulation(aux_vars(ghosted_id),porosity_loc_p(ghosted_id), &
                               volume_p(local_id), &
                               option%dencpr(int(ithrm_loc_p(ghosted_id))), &
                               option,Res) 
@@ -1700,7 +1700,7 @@ subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
     if (.not.associated(source_sink)) exit
     
     ! check whether enthalpy dof is included
-    if (source_sink%flow_condition%num_sub_conditions > RICHARDS_CONCENTRATION_DOF) then
+    if (source_sink%flow_condition%num_sub_conditions > THC_CONCENTRATION_DOF) then
       enthalpy_flag = .true.
     else
       enthalpy_flag = .false.
@@ -1738,7 +1738,7 @@ subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
       endif  
     
       if (csrc1 > 0.d0) then ! injection
-        call printErrMsg(option,"concentration source not yet implemented in Richards")
+        call printErrMsg(option,"concentration source not yet implemented in THC")
       endif
   !  else if (qsrc1 < 0.d0) then ! withdrawal
   !  endif
@@ -1799,7 +1799,7 @@ subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
       D_up = option%ckwet(ithrm_up)
       D_dn = option%ckwet(ithrm_dn)
 
-      call RichardsFlux(aux_vars(ghosted_id_up),porosity_loc_p(ghosted_id_up), &
+      call THCFlux(aux_vars(ghosted_id_up),porosity_loc_p(ghosted_id_up), &
                           tor_loc_p(ghosted_id_up),option%sir(1,icap_up), &
                           dd_up,perm_up,D_up, &
                         aux_vars(ghosted_id_dn),porosity_loc_p(ghosted_id_dn), &
@@ -1866,7 +1866,7 @@ subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
 
       icap_dn = int(icap_loc_p(ghosted_id))  
 
-      call RichardsBCFlux(boundary_condition%flow_condition%itype, &
+      call THCBCFlux(boundary_condition%flow_condition%itype, &
                                 boundary_condition%flow_aux_real_var(:,iconn), &
                                 aux_vars_bc(sum_connection), &
                                 aux_vars(ghosted_id), &
@@ -1899,9 +1899,9 @@ subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
     enddo
   endif
 
-  if (patch%aux%Richards%inactive_cells_exist) then
-    do i=1,patch%aux%Richards%n_zero_rows
-      r_p(patch%aux%Richards%zero_rows_local(i)) = 0.d0
+  if (patch%aux%THC%inactive_cells_exist) then
+    do i=1,patch%aux%THC%n_zero_rows
+      r_p(patch%aux%THC%zero_rows_local(i)) = 0.d0
     enddo
   endif
 
@@ -1930,16 +1930,16 @@ subroutine RichardsResidualPatch(snes,xx,r,realization,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
 
-end subroutine RichardsResidualPatch
+end subroutine THCResidualPatch
 
 ! ************************************************************************** !
 !
-! RichardsJacobian: Computes the Jacobian
+! THCJacobian: Computes the Jacobian
 ! author: Glenn Hammond
 ! date: 12/10/07
 !
 ! ************************************************************************** !
-subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
+subroutine THCJacobian(snes,xx,A,B,flag,realization,ierr)
 
   use Realization_module
   use Patch_module
@@ -1985,22 +1985,22 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
         (.not.(grid%structured_grid%p_samr_patch.eq.0))) then
          call SAMRSetCurrentJacobianPatch(A, grid%structured_grid%p_samr_patch)
       endif
-      call RichardsJacobianPatch(snes,xx,A,B,flag,realization,ierr)
+      call THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
   enddo
 
-end subroutine RichardsJacobian
+end subroutine THCJacobian
 
 ! ************************************************************************** !
 !
-! RichardsJacobianPatch: Computes the Jacobian
+! THCJacobianPatch: Computes the Jacobian
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
 ! ************************************************************************** !
-subroutine RichardsJacobianPatch(snes,xx,A,B,flag,realization,ierr)
+subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
        
   use water_eos_module
 
@@ -2060,7 +2060,7 @@ subroutine RichardsJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   type(patch_type), pointer :: patch
   type(option_type), pointer :: option 
   type(field_type), pointer :: field 
-  type(richards_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
+  type(thc_auxvar_type), pointer :: aux_vars(:), aux_vars_bc(:)
   
   PetscViewer :: viewer
   Vec :: debug_vec
@@ -2078,8 +2078,8 @@ subroutine RichardsJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   option => realization%option
   field => realization%field
 
-  aux_vars => patch%aux%Richards%aux_vars
-  aux_vars_bc => patch%aux%Richards%aux_vars_bc
+  aux_vars => patch%aux%THC%aux_vars
+  aux_vars_bc => patch%aux%THC%aux_vars_bc
   
 ! dropped derivatives:
 !   1.D0 gas phase viscocity to all p,t,c,s
@@ -2087,7 +2087,7 @@ subroutine RichardsJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   flag = SAME_NONZERO_PATTERN
 
 #if 0
-!  call RichardsNumericalJacobianTest(xx,realization)
+!  call THCNumericalJacobianTest(xx,realization)
 #endif
 
  ! print *,'*********** In Jacobian ********************** '
@@ -2116,7 +2116,7 @@ subroutine RichardsJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     iend = local_id*option%nflowdof
     istart = iend-option%nflowdof+1
     icap = int(icap_loc_p(ghosted_id))
-    call RichardsAccumulationDerivative(aux_vars(ghosted_id), &
+    call THCAccumulationDerivative(aux_vars(ghosted_id), &
                               porosity_loc_p(ghosted_id), &
                               volume_p(local_id), &
                               option%dencpr(int(ithrm_loc_p(ghosted_id))), &
@@ -2140,7 +2140,7 @@ subroutine RichardsJacobianPatch(snes,xx,A,B,flag,realization,ierr)
     if (.not.associated(source_sink)) exit
     
     ! check whether enthalpy dof is included
-    if (source_sink%flow_condition%num_sub_conditions > RICHARDS_CONCENTRATION_DOF) then
+    if (source_sink%flow_condition%num_sub_conditions > THC_CONCENTRATION_DOF) then
       enthalpy_flag = .true.
     else
       enthalpy_flag = .false.
@@ -2182,7 +2182,7 @@ subroutine RichardsJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       endif  
     
       if (csrc1 > 0.d0) then ! injection
-        call printErrMsg(option,"concentration source not yet implemented in Richards")
+        call printErrMsg(option,"concentration source not yet implemented in THC")
       endif
   !  else if (qsrc1 < 0.d0) then ! withdrawal
   !  endif
@@ -2253,7 +2253,7 @@ subroutine RichardsJacobianPatch(snes,xx,A,B,flag,realization,ierr)
       icap_up = int(icap_loc_p(ghosted_id_up))
       icap_dn = int(icap_loc_p(ghosted_id_dn))
                               
-      call RichardsFluxDerivative(aux_vars(ghosted_id_up),porosity_loc_p(ghosted_id_up), &
+      call THCFluxDerivative(aux_vars(ghosted_id_up),porosity_loc_p(ghosted_id_up), &
                           tor_loc_p(ghosted_id_up),option%sir(1,icap_up), &
                           dd_up,perm_up,D_up, &
                         aux_vars(ghosted_id_dn),porosity_loc_p(ghosted_id_dn), &
@@ -2328,7 +2328,7 @@ subroutine RichardsJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                                           cur_connection_set%dist(1:3,iconn))
       icap_dn = int(icap_loc_p(ghosted_id))  
 
-      call RichardsBCFluxDerivative(boundary_condition%flow_condition%itype, &
+      call THCBCFluxDerivative(boundary_condition%flow_condition%itype, &
                                 boundary_condition%flow_aux_real_var(:,iconn), &
                                 aux_vars_bc(sum_connection), &
                                 aux_vars(ghosted_id), &
@@ -2392,10 +2392,10 @@ subroutine RichardsJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
 #else
-  if (patch%aux%Richards%inactive_cells_exist) then
+  if (patch%aux%THC%inactive_cells_exist) then
     f_up = 1.d0
-    call MatZeroRowsLocal(A,patch%aux%Richards%n_zero_rows, &
-                          patch%aux%Richards%zero_rows_local_ghosted,f_up,ierr) 
+    call MatZeroRowsLocal(A,patch%aux%THC%n_zero_rows, &
+                          patch%aux%THC%zero_rows_local_ghosted,f_up,ierr) 
   endif
 #endif
 
@@ -2418,16 +2418,16 @@ subroutine RichardsJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 !    if (option%myrank == 0) print *, 'max:', i, norm
   endif
 
-end subroutine RichardsJacobianPatch
+end subroutine THCJacobianPatch
 
 ! ************************************************************************** !
 !
-! RichardsCreateZeroArray: Computes the zeroed rows for inactive grid cells
+! THCCreateZeroArray: Computes the zeroed rows for inactive grid cells
 ! author: Glenn Hammond
 ! date: 12/13/07
 !
 ! ************************************************************************** !
-subroutine RichardsCreateZeroArray(patch,option)
+subroutine THCCreateZeroArray(patch,option)
 
   use Patch_module
   use Grid_module
@@ -2504,29 +2504,29 @@ subroutine RichardsCreateZeroArray(patch,option)
 #endif
   endif
 
-  patch%aux%Richards%zero_rows_local => zero_rows_local
-  patch%aux%Richards%zero_rows_local_ghosted => zero_rows_local_ghosted
-  patch%aux%Richards%n_zero_rows = n_zero_rows
+  patch%aux%THC%zero_rows_local => zero_rows_local
+  patch%aux%THC%zero_rows_local_ghosted => zero_rows_local_ghosted
+  patch%aux%THC%n_zero_rows = n_zero_rows
 
   call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
                      PETSC_COMM_WORLD,ierr)
-  if (flag > 0) patch%aux%Richards%inactive_cells_exist = .true.
+  if (flag > 0) patch%aux%THC%inactive_cells_exist = .true.
 
   if (ncount /= n_zero_rows) then
     print *, 'Error:  Mismatch in non-zero row count!', ncount, n_zero_rows
     stop
   endif
 
-end subroutine RichardsCreateZeroArray
+end subroutine THCCreateZeroArray
 
 ! ************************************************************************** !
 !
-! RichardsMaxChange: Computes the maximum change in the solution vector
+! THCMaxChange: Computes the maximum change in the solution vector
 ! author: Glenn Hammond
 ! date: 01/15/08
 !
 ! ************************************************************************** !
-subroutine RichardsMaxChange(realization)
+subroutine THCMaxChange(realization)
 
   use Realization_module
   use Option_module
@@ -2552,16 +2552,16 @@ subroutine RichardsMaxChange(realization)
   if (option%nflowdof > 2) &
     call VecStrideNorm(field%flow_dxx,TWO_INTEGER,NORM_INFINITY,option%dcmax,ierr)
     
-end subroutine RichardsMaxChange
+end subroutine THCMaxChange
 
 ! ************************************************************************** !
 !
-! RichardsResidualToMass: Computes mass balance from residual equation
+! THCResidualToMass: Computes mass balance from residual equation
 ! author: Glenn Hammond
 ! date: 12/10/07
 !
 ! ************************************************************************** !
-subroutine RichardsResidualToMass(realization)
+subroutine THCResidualToMass(realization)
 
   use Realization_module
   use Level_module
@@ -2583,7 +2583,7 @@ subroutine RichardsResidualToMass(realization)
   type(option_type), pointer :: option
   
   PetscReal, pointer :: mass_balance_p(:)
-  type(richards_auxvar_type), pointer :: aux_vars(:) 
+  type(thc_auxvar_type), pointer :: aux_vars(:) 
   PetscErrorCode :: ierr
   PetscInt :: local_id, ghosted_id
   PetscInt :: istart
@@ -2599,7 +2599,7 @@ subroutine RichardsResidualToMass(realization)
       if (.not.associated(cur_patch)) exit
 
       grid => cur_patch%grid
-      aux_vars => cur_patch%aux%Richards%aux_vars
+      aux_vars => cur_patch%aux%THC%aux_vars
 
       call GridVecGetArrayF90(grid,field%flow_ts_mass_balance,mass_balance_p, ierr)
   
@@ -2622,17 +2622,17 @@ subroutine RichardsResidualToMass(realization)
     cur_level => cur_level%next
   enddo
 
-end subroutine RichardsResidualToMass
+end subroutine THCResidualToMass
 
 ! ************************************************************************** !
 !
-! RichardsLiteGetTecplotHeader: Returns Richards contribution to 
+! THCLiteGetTecplotHeader: Returns THC contribution to 
 !                               Tecplot file header
 ! author: Glenn Hammond
 ! date: 02/13/08
 !
 ! ************************************************************************** !
-function RichardsGetTecplotHeader(realization)
+function THCGetTecplotHeader(realization)
 
   use Realization_module
   use Option_module
@@ -2640,7 +2640,7 @@ function RichardsGetTecplotHeader(realization)
 
   implicit none
   
-  character(len=MAXSTRINGLENGTH) :: RichardsGetTecplotHeader
+  character(len=MAXSTRINGLENGTH) :: THCGetTecplotHeader
   type(realization_type) :: realization
   
   character(len=MAXSTRINGLENGTH) :: string, string2
@@ -2661,18 +2661,18 @@ function RichardsGetTecplotHeader(realization)
     string = trim(string) // trim(string2)
   enddo
   
-  RichardsGetTecplotHeader = string
+  THCGetTecplotHeader = string
 
-end function RichardsGetTecplotHeader
+end function THCGetTecplotHeader
 
 ! ************************************************************************** !
 !
-! RichardsDestroy: Deallocates variables associated with Richard
+! THCDestroy: Deallocates variables associated with Richard
 ! author: Glenn Hammond
 ! date: 02/14/08
 !
 ! ************************************************************************** !
-subroutine RichardsDestroy(patch)
+subroutine THCDestroy(patch)
 
   use Patch_module
 
@@ -2681,8 +2681,8 @@ subroutine RichardsDestroy(patch)
   type(patch_type) :: patch
   
   ! need to free array in aux vars
-  call RichardsAuxDestroy(patch%aux%Richards)
+  call THCAuxDestroy(patch%aux%THC)
 
-end subroutine RichardsDestroy
+end subroutine THCDestroy
 
-end module Richards_module
+end module THC_module

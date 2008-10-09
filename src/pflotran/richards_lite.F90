@@ -274,16 +274,16 @@ subroutine RichardsLiteUpdateAuxVarsPatch(realization)
         if (patch%imat(ghosted_id) <= 0) cycle
       endif
 
-      select case(boundary_condition%flow_condition%itype(RICHARDS_PRESSURE_DOF))
+      select case(boundary_condition%flow_condition%itype(RICHARDS_LITE_PRESSURE_DOF))
         case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
-          xxbc(1) = boundary_condition%flow_aux_real_var(RICHARDS_PRESSURE_DOF,iconn)
+          xxbc(1) = boundary_condition%flow_aux_real_var(RICHARDS_LITE_PRESSURE_DOF,iconn)
         case(NEUMANN_BC,ZERO_GRADIENT_BC)
           xxbc(1) = xx_loc_p(ghosted_id)
       end select
       
-      select case(boundary_condition%flow_condition%itype(RICHARDS_PRESSURE_DOF))
+      select case(boundary_condition%flow_condition%itype(RICHARDS_LITE_PRESSURE_DOF))
         case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
-          iphasebc = boundary_condition%flow_aux_int_var(RICHARDS_PRESSURE_DOF,iconn)
+          iphasebc = boundary_condition%flow_aux_int_var(RICHARDS_LITE_PRESSURE_DOF,iconn)
         case(NEUMANN_BC,ZERO_GRADIENT_BC)
           iphasebc=int(iphase_loc_p(ghosted_id))                               
       end select
@@ -927,7 +927,7 @@ subroutine RichardsLiteBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn,
   dq_dp_dn = 0.d0
         
   ! Flow   
-  select case(ibndtype(RICHARDS_PRESSURE_DOF))
+  select case(ibndtype(RICHARDS_LITE_PRESSURE_DOF))
     ! figure out the direction of flow
     case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
       Dq = perm_dn / dd_up
@@ -951,7 +951,7 @@ subroutine RichardsLiteBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn,
         dphi = aux_var_up%pres - aux_var_dn%pres + gravity
         dphi_dp_dn = -1.d0 + dgravity_dden_dn*aux_var_dn%dden_dp
 
-        if (ibndtype(RICHARDS_PRESSURE_DOF) == SEEPAGE_BC) then
+        if (ibndtype(RICHARDS_LITE_PRESSURE_DOF) == SEEPAGE_BC) then
               ! flow in         ! boundary cell is <= pref
           if (dphi > 0.d0 .and. aux_var_up%pres-option%pref < eps) then
             dphi = 0.d0
@@ -974,8 +974,8 @@ subroutine RichardsLiteBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn,
       endif 
 
     case(NEUMANN_BC)
-      if (dabs(aux_vars(RICHARDS_PRESSURE_DOF)) > floweps) then
-        v_darcy = aux_vars(RICHARDS_PRESSURE_DOF)
+      if (dabs(aux_vars(RICHARDS_LITE_PRESSURE_DOF)) > floweps) then
+        v_darcy = aux_vars(RICHARDS_LITE_PRESSURE_DOF)
         if (v_darcy > 0.d0) then 
           density_ave = aux_var_up%den
         else 
@@ -1003,7 +1003,7 @@ subroutine RichardsLiteBCFluxDerivative(ibndtype,aux_vars,aux_var_up,aux_var_dn,
     call RichardsLiteBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
                         por_dn,sir_dn,dd_up,perm_dn, &
                         area,dist_gravity,option,v_darcy,res)
-    if (ibndtype(RICHARDS_PRESSURE_DOF) == ZERO_GRADIENT_BC) then
+    if (ibndtype(RICHARDS_LITE_PRESSURE_DOF) == ZERO_GRADIENT_BC) then
       x_pert_up = x_up
     endif
     ideriv = 1
@@ -1063,7 +1063,7 @@ subroutine RichardsLiteBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
   q = 0.d0
 
   ! Flow   
-  select case(ibndtype(RICHARDS_PRESSURE_DOF))
+  select case(ibndtype(RICHARDS_LITE_PRESSURE_DOF))
     ! figure out the direction of flow
     case(DIRICHLET_BC,HYDROSTATIC_BC,SEEPAGE_BC)
       Dq = perm_dn / dd_up
@@ -1083,7 +1083,7 @@ subroutine RichardsLiteBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
        
         dphi = aux_var_up%pres - aux_var_dn%pres + gravity
 
-        if (ibndtype(RICHARDS_PRESSURE_DOF) == SEEPAGE_BC) then
+        if (ibndtype(RICHARDS_LITE_PRESSURE_DOF) == SEEPAGE_BC) then
               ! flow in         ! boundary cell is <= pref
           if (dphi > 0.d0 .and. aux_var_up%pres-option%pref < eps) then
             dphi = 0.d0
@@ -1102,8 +1102,8 @@ subroutine RichardsLiteBCFlux(ibndtype,aux_vars,aux_var_up,aux_var_dn, &
       endif 
 
     case(NEUMANN_BC)
-      if (dabs(aux_vars(RICHARDS_PRESSURE_DOF)) > floweps) then
-        v_darcy = aux_vars(RICHARDS_PRESSURE_DOF)
+      if (dabs(aux_vars(RICHARDS_LITE_PRESSURE_DOF)) > floweps) then
+        v_darcy = aux_vars(RICHARDS_LITE_PRESSURE_DOF)
         if (v_darcy > 0.d0) then 
           density_ave = aux_var_up%den
         else 
@@ -1164,7 +1164,7 @@ subroutine RichardsLiteResidual(snes,xx,r,realization,ierr)
   discretization => realization%discretization
   
   ! Communication -----------------------------------------
-  ! These 3 must be called before RichardsUpdateAuxVars()
+  ! These 3 must be called before THCUpdateAuxVars()
   call DiscretizationGlobalToLocal(discretization,xx,field%flow_xx_loc,NFLOWDOF)
   call DiscretizationLocalToLocal(discretization,field%iphas_loc,field%iphas_loc,ONEDOF)
   call DiscretizationLocalToLocal(discretization,field%icap_loc,field%icap_loc,ONEDOF)

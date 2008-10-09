@@ -606,7 +606,7 @@ subroutine RealizAssignFlowInitCond(realization)
 
       select case(option%iflowmode)
         case(RICHARDS_LITE_MODE)
-        case(RICHARDS_MODE)
+        case(THC_MODE)
         case(MPH_MODE)
 !            call pflow_mphase_setupini(realization)
       end select 
