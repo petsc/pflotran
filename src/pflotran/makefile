@@ -59,6 +59,7 @@ pflotran_obj = ${common_src}option.o \
 	${common_src}thc_aux.o\
 	${common_src}richards_lite_aux.o\
 	${common_src}mphase_aux.o\
+	${common_src}immis_aux.o\
 	${common_src}auxilliary.o\
 	${common_src}field.o \
 	${common_src}debug.o \
@@ -85,6 +86,7 @@ pflotran_obj = ${common_src}option.o \
 	${common_src}realization.o \
 	${common_src}hdf5.o \
 	${common_src}mphase.o\
+	${common_src}immis.o\
 	${common_src}transport.o\
 	${common_src}reaction.o\
 	${common_src}reactive_transport.o\
@@ -107,6 +109,7 @@ pflotranamr_obj = ${common_src}option.o \
 	${common_src}thc_aux.o\
 	${common_src}richards_lite_aux.o\
 	${common_src}mphase_aux.o\
+	${common_src}immis_aux.o\
 	${common_src}auxilliary.o\
 	${common_src}field.o \
 	${common_src}debug.o \
@@ -133,6 +136,7 @@ pflotranamr_obj = ${common_src}option.o \
 	${common_src}realization.o \
 	${common_src}hdf5.o \
 	${common_src}mphase.o\
+	${common_src}immis.o\
 	${common_src}transport.o\
 	${common_src}reaction.o\
 	${common_src}reactive_transport.o\
@@ -215,7 +219,10 @@ richards_lite.o : richards_lite_aux.o realization.o
 thc_aux.o : option.o material.o water_eos.o
 richards_lite_aux.o : option.o material.o water_eos.o
 mphase.o : mphase_aux.o realization.o 
+mphase.o : immis_aux.o realization.o 
 mphase_aux.o :  option.o material.o water_eos.o co2_span_wagner.o \
+		co2eos.o co2_span_wagner_spline.o co2_sw.o pckr_mod.o
+immis_aux.o :  option.o material.o water_eos.o co2_span_wagner.o \
 		co2eos.o co2_span_wagner_spline.o co2_sw.o pckr_mod.o
 timestepper.o : thc.o richards_lite.o mphase.o \
                 realization.o grid.o option.o field.o solver.o \
