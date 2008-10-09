@@ -588,24 +588,26 @@ subroutine ConditionRead(condition,option,fid)
               call fiReadWord(string,word,.true.,ierr)
               call fiDefaultMsg(option%myrank,'CONDITION,TYPE,CONCENTRATION',ierr)
               length = len_trim(word)
-              call fiCharsToUpper(word,length)
-              select case(word)
-                case('F','FREE')
-                  sub_condition_ptr%aux_int = CONDITION_FREE_CONCENTRATION
-                case('T','Total')
-                  sub_condition_ptr%aux_int = CONDITION_TOTAL_CONCENTRATION
-                case('P')
-                  sub_condition_ptr%aux_int = CONDITION_P_CONCENTRATION
-                case('EQ')
-                  sub_condition_ptr%aux_int = CONDITION_EQ_CONCENTRATION
-                  call fiReadWord(string,word,.true.,ierr)
-                  call fiErrorMsg(option%myrank,'TYPE,CONCENTRATION,TYPE','CONDITION', ierr)   
-                  sub_condition_ptr%aux_word = trim(word)
-                case default
-                  string = 'concentration type "' // trim(word) // &
-                           '" not recognized in type,concentration,condition,type'
-                  call printErrMsg(option,string)              
-              end select
+              if (length > 0) then
+                call fiCharsToUpper(word,length)
+                select case(word)
+                  case('F','FREE')
+                    sub_condition_ptr%aux_int = CONDITION_FREE_CONCENTRATION
+                  case('T','Total')
+                    sub_condition_ptr%aux_int = CONDITION_TOTAL_CONCENTRATION
+                  case('P')
+                    sub_condition_ptr%aux_int = CONDITION_P_CONCENTRATION
+                  case('EQ')
+                    sub_condition_ptr%aux_int = CONDITION_EQ_CONCENTRATION
+                    call fiReadWord(string,word,.true.,ierr)
+                    call fiErrorMsg(option%myrank,'TYPE,CONCENTRATION,TYPE','CONDITION', ierr)   
+                    sub_condition_ptr%aux_word = trim(word)
+                  case default
+                    string = 'concentration type "' // trim(word) // &
+                             '" not recognized in type,concentration,condition,type'
+                    call printErrMsg(option,string)              
+                end select
+              endif
             case('equilibrium')
               sub_condition_ptr%itype = EQUILIBRIUM_SS
             case default
