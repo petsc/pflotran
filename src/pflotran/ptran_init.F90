@@ -1259,7 +1259,7 @@ subroutine readInput(simulation,filename)
           call fiErrorMsg(option%myrank,'icaptype','PCKR', ierr)
       
           select case(option%imode)
-            case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
+            case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE, IMS_MODE)
               do np=1, option%nphase
                 call fiReadDouble(string,saturation_function%Sr(np),ierr)
                 call fiErrorMsg(option%myrank,'Sr','PCKR', ierr)
@@ -1295,7 +1295,7 @@ subroutine readInput(simulation,filename)
         option%icaptype = 0
   
         select case(option%imode)
-          case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
+          case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE,IMS_MODE)
             allocate(option%sir(1:option%nphase,count))
           case default
             allocate(option%swir(count))
@@ -1323,7 +1323,7 @@ subroutine readInput(simulation,filename)
           
           option%icaptype(id) = saturation_function%saturation_function_itype
           select case(option%imode)
-            case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE)
+            case(MPH_MODE,RICHARDS_MODE,RICHARDS_LITE_MODE,IMS_MODE)
               do i=1,option%nphase
                 option%sir(i,id) = saturation_function%Sr(i)
               enddo
@@ -1350,6 +1350,7 @@ subroutine readInput(simulation,filename)
         enddo
 
         if (option%imode == MPH_MODE .or. &
+            option%imode == IMS_MODE .or. &
             option%imode == RICHARDS_MODE .or. &
             option%imode == RICHARDS_LITE_MODE) then
           call pckr_init(option%nphase,count,grid%nlmax, &
@@ -1365,6 +1366,7 @@ subroutine readInput(simulation,filename)
           do j = 1, count
             i=option%icaptype(j)
             if (option%imode == MPH_MODE .or. &
+                option%imode == IMS_MODE .or. &
                 option%imode == RICHARDS_MODE .or. &
                 option%imode == RICHARDS_LITE_MODE) then
               write(IUNIT2,'(i4,1p8e12.4)') i,(option%sir(np,i),np=1, &
@@ -1379,6 +1381,7 @@ subroutine readInput(simulation,filename)
         end if
 
         if (option%imode == MPH_MODE .or. &
+            option%imode == IMS_MODE .or. &
             option%imode == RICHARDS_MODE .or. &
             option%imode == RICHARDS_LITE_MODE) then
           deallocate(option%icaptype, option%pckrm, option%lambda, &
@@ -1648,12 +1651,18 @@ subroutine setMode(option)
     option%nphase = 2
     option%nspec = 2
     option%ndof = 3
+  else if (fiStringCompare(option%mode,"ims",len_trim(option%mode))) then
+    option%imode = IMS_MODE
+    option%nphase = 2
+    option%nspec = 2
+    option%ndof = 3
   else if (fiStringCompare(option%mode,"",#)) then
 !#endif  
   endif 
   
   if (option%imode /= THC_MODE .and. &
       option%imode /= MPH_MODE .and. &
+      option%imode /= IMS_MODE .and. &
       option%imode /= RICHARDS_MODE .and. &
       option%imode /= RICHARDS_LITE_MODE) then 
 
@@ -1858,7 +1867,7 @@ subroutine assignInitialConditions(realization)
   use Condition_module
   use Grid_module
   
-  use MPHASE_module, only : pflow_mphase_setupini
+!  use MPHASE_module, only : pflow_mphase_setupini
 
   implicit none
   
@@ -1888,6 +1897,7 @@ subroutine assignInitialConditions(realization)
     case(RICHARDS_LITE_MODE)
     case(RICHARDS_MODE)
     case(MPH_MODE)
+    case(IMS_MODE)
   !    call pflow_mphase_setupini(realization)
   end select 
 

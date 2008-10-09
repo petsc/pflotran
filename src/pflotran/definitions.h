@@ -57,6 +57,7 @@ PetscInt, parameter :: THC_MODE = 1
 PetscInt, parameter :: MPH_MODE = 2
 PetscInt, parameter :: RICHARDS_LITE_MODE = 3
 PetscInt, parameter :: REACTIVE_TRANSPORT_MODE = 4
+PetscInt, parameter :: IMS_MODE = 5
 
 ! grid types
 PetscInt, parameter :: STRUCTURED_GRID = 1
