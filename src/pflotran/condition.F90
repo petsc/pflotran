@@ -52,7 +52,8 @@ module Condition_module
     type(condition_dataset_type) :: datum
     type(condition_dataset_type) :: gradient
     type(condition_dataset_type) :: dataset
-
+    character(len=MAXWORDLENGTH) :: aux_word
+    PetscInt :: aux_int
   end type sub_condition_type
   
   type, public :: sub_condition_ptr_type
@@ -108,14 +109,14 @@ function ConditionCreate(option)
   nullify(condition%itype)
   nullify(condition%next)
   condition%sync_time_with_update = .false.
-  condition%time_units = ""
-  condition%length_units = ""
+  condition%time_units = ''
+  condition%length_units = ''
   condition%id = 0
   condition%iphase = 0
   condition%num_sub_conditions = 0
-  condition%class = ""
+  condition%class = ''
   condition%iclass = NULL_CLASS
-  condition%name = ""
+  condition%name = ''
 
   condition_count = condition_count + 1
   condition%id = condition_count
@@ -144,10 +145,12 @@ function SubConditionCreate(ndof)
   type(sub_condition_type), pointer :: sub_condition
   
   allocate(sub_condition)
-  sub_condition%units = ""
+  sub_condition%units = ''
   sub_condition%itype = 0
-  sub_condition%ctype = ""
-  sub_condition%name = ""
+  sub_condition%ctype = ''
+  sub_condition%name = ''
+  sub_condition%aux_int = 0
+  sub_condition%aux_word = ''
 
   call ConditionDatasetInit(sub_condition%dataset)
   sub_condition%dataset%rank = ndof
@@ -582,6 +585,27 @@ subroutine ConditionRead(condition,option,fid)
               sub_condition_ptr%itype = VOLUMETRIC_RATE_SS
             case('concentration')
               sub_condition_ptr%itype = CONCENTRATION_SS
+              call fiReadWord(string,word,.true.,ierr)
+              call fiDefaultMsg(option%myrank,'CONDITION,TYPE,CONCENTRATION',ierr)
+              length = len_trim(word)
+              call fiCharsToUpper(word,length)
+              select case(word)
+                case('F','FREE')
+                  sub_condition_ptr%aux_int = CONDITION_FREE_CONCENTRATION
+                case('T','Total')
+                  sub_condition_ptr%aux_int = CONDITION_TOTAL_CONCENTRATION
+                case('P')
+                  sub_condition_ptr%aux_int = CONDITION_P_CONCENTRATION
+                case('EQ')
+                  sub_condition_ptr%aux_int = CONDITION_EQ_CONCENTRATION
+                  call fiReadWord(string,word,.true.,ierr)
+                  call fiErrorMsg(option%myrank,'TYPE,CONCENTRATION,TYPE','CONDITION', ierr)   
+                  sub_condition_ptr%aux_word = trim(word)
+                case default
+                  string = 'concentration type "' // trim(word) // &
+                           '" not recognized in type,concentration,condition,type'
+                  call printErrMsg(option,string)              
+              end select
             case('equilibrium')
               sub_condition_ptr%itype = EQUILIBRIUM_SS
             case default
