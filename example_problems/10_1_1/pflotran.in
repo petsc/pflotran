@@ -1,6 +1,6 @@
 :Description: 1D problem for testing geochemistry
 :
-MODE RICHARDS_LITE
+MODE RICHARDS
 CHEMISTRY
 PRIMARY_SPECIES
 OH-

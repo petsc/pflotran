@@ -171,8 +171,11 @@ end function StructuredGridCreate
 ! date: 10/22/07
 !
 ! ************************************************************************** !
-subroutine StructuredGridCreateDA(structured_grid,da,ndof,stencil_width)
-      
+subroutine StructuredGridCreateDA(structured_grid,da,ndof,stencil_width, &
+                                  option)
+
+  use Option_module
+        
   implicit none
 
 #include "include/finclude/petscvec.h"
@@ -180,6 +183,7 @@ subroutine StructuredGridCreateDA(structured_grid,da,ndof,stencil_width)
 #include "include/finclude/petscda.h"
 #include "include/finclude/petscda.h90"
 
+  type(option_type) :: option
   type(structured_grid_type) :: structured_grid
   DA :: da
   PetscInt :: ndof
@@ -190,7 +194,7 @@ subroutine StructuredGridCreateDA(structured_grid,da,ndof,stencil_width)
   !-----------------------------------------------------------------------
   ! Generate the DA object that will manage communication.
   !-----------------------------------------------------------------------
-  call DACreate3D(PETSC_COMM_WORLD,DA_NONPERIODIC,DA_STENCIL_STAR, &
+  call DACreate3D(option%comm,DA_NONPERIODIC,DA_STENCIL_STAR, &
                   structured_grid%nx,structured_grid%ny,structured_grid%nz, &
                   structured_grid%npx,structured_grid%npy,structured_grid%npz, &
                   ndof,stencil_width, &

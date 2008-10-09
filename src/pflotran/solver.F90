@@ -39,7 +39,8 @@ module Solver_module
     PetscInt :: galerkin_mg_levels_z
 
     ! Jacobian matrix
-    Mat :: J
+    Mat :: J    ! Jacobian
+    Mat :: JMF  ! matrix-free Jacobian
     MatType :: mat_type
 
     MatFDColoring :: matfdcoloring
@@ -118,6 +119,7 @@ function SolverCreate()
   solver%galerkin_mg_levels_z = 1
   
   solver%J = 0
+  solver%JMF = 0
   solver%mat_type = MATBAIJ
 !  solver%interpolation = 0
   nullify(solver%interpolation)
@@ -146,15 +148,16 @@ end function SolverCreate
 ! date: 02/12/08
 !
 ! ************************************************************************** !
-subroutine SolverCreateSNES(solver)
+subroutine SolverCreateSNES(solver,comm)
 
   implicit none
   
   type(solver_type) :: solver
 
+  PetscMPIInt :: comm
   PetscErrorCode :: ierr
   
-  call SNESCreate(PETSC_COMM_WORLD, solver%snes, ierr)
+  call SNESCreate(comm, solver%snes, ierr)
   call SNESSetFromOptions(solver%snes, ierr) 
 
   ! grab handles for ksp and pc
@@ -312,21 +315,6 @@ subroutine SolverReadLinear(solver,fid,myrank)
             stop
         end select
 
-      case('MATRIX_TYPE')
-        call fiReadWord(string,word,.true.,ierr)
-        call fiErrorMsg(myrank,'mat_type','SOLVER', ierr)   
-        call fiWordToUpper(word)
-        select case(trim(word))
-          case('BAIJ')
-            solver%mat_type = MATBAIJ
-          case('AIJ')
-            solver%mat_type = MATBAIJ
-          case default
-            string  = 'ERROR: Matrix type: ' // trim(word) // ' unknown.'
-            if (myrank == 0) print *, string
-            stop
-        end select
-        
       case('ATOL')
         call fiReadDouble(string,solver%linear_atol,ierr)
         call fiDefaultMsg(myrank,'linear_atol',ierr)
@@ -444,6 +432,8 @@ subroutine SolverReadNewton(solver,fid,myrank)
             solver%mat_type = MATBAIJ
           case('AIJ')
             solver%mat_type = MATBAIJ
+          case('MFFD','MATRIX_FREE')
+            solver%mat_type = MATMFFD
           case default
             string  = 'ERROR: Matrix type: ' // trim(word) // ' unknown.'
             if (myrank == 0) print *, string

@@ -368,18 +368,18 @@ subroutine DiscretizationCreateDMs(discretization,option)
   !-----------------------------------------------------------------------
   ndof = 1
   call DiscretizationCreateDM(discretization,discretization%dm_1_dof,ndof, &
-                              stencil_width)
+                              stencil_width,option)
   
   if (option%nflowdof > 0) then
     ndof = option%nflowdof
     call DiscretizationCreateDM(discretization,discretization%dm_nflowdof, &
-                                ndof,stencil_width)
+                                ndof,stencil_width,option)
   endif
   
   if (option%ntrandof > 0) then
     ndof = option%ntrandof
     call DiscretizationCreateDM(discretization,discretization%dm_ntrandof, &
-                                ndof,stencil_width)
+                                ndof,stencil_width,option)
   endif
 
   select case(discretization%itype)
@@ -403,19 +403,23 @@ end subroutine DiscretizationCreateDMs
 ! date: 02/08/08
 !
 ! ************************************************************************** !
-subroutine DiscretizationCreateDM(discretization,dm,ndof,stencil_width)
+subroutine DiscretizationCreateDM(discretization,dm,ndof,stencil_width, &
+                                  option)
 
+  use Option_module
+  
   implicit none
   
   type(discretization_type) :: discretization
   DM :: dm
   PetscInt :: ndof
   PetscInt :: stencil_width
+  type(option_type) :: option
   
   select case(discretization%itype)
     case(STRUCTURED_GRID)
-      call StructuredGridCreateDA(discretization%grid%structured_grid,dm, &
-                                  ndof,stencil_width)
+      call StructuredGridCreateDA(discretization%grid%structured_grid, &
+                                  dm,ndof,stencil_width,option)
     case(UNSTRUCTURED_GRID)
   end select
 
@@ -605,13 +609,8 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
   select case(discretization%itype)
     case(STRUCTURED_GRID)
       call DAGetMatrix(dm_ptr,mat_type,Jacobian,ierr)
-#if (PETSC_VERSION_RELEASE == 1)
-      call MatSetOption(Jacobian,MAT_KEEP_ZEROED_ROWS,ierr)
-      call MatSetOption(Jacobian,MAT_COLUMN_ORIENTED,ierr)
-#else
       call MatSetOption(Jacobian,MAT_KEEP_ZEROED_ROWS,PETSC_FALSE,ierr)
       call MatSetOption(Jacobian,MAT_ROW_ORIENTED,PETSC_FALSE,ierr)
-#endif
     case(UNSTRUCTURED_GRID)
     case(AMR_GRID)
        select case(dm_index)
@@ -626,7 +625,7 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
        end select
 
        stencilsize=7;
-       call MatCreateShell(PETSC_COMM_WORLD, 0,0, PETSC_DETERMINE, PETSC_DETERMINE, PETSC_NULL, Jacobian, ierr)
+       call MatCreateShell(option%comm, 0,0, PETSC_DETERMINE, PETSC_DETERMINE, PETSC_NULL, Jacobian, ierr)
        call SAMRCreateMatrix(discretization%amrgrid%p_application, ndof, stencilsize, flowortransport, Jacobian)
 
        if(ndof>1) then
@@ -648,7 +647,7 @@ subroutine DiscretizationCreateJacobian(discretization,dm_index,mat_type,Jacobia
           do i=1,imax
              indices(i:i)=i-1
           enddo
-          call ISLocalToGlobalMappingCreate(PETSC_COMM_WORLD, imax, indices, ptmap, ierr)          
+          call ISLocalToGlobalMappingCreate(option%comm, imax, indices, ptmap, ierr)          
 !          call ISSetIdentity(ptmap, ierr)
 !          call ISLocalToGlobalMappingBlock(ptmap, ndof, bmap, ierr)
           call MatSetLocalToGlobalMappingBlock(Jacobian, ptmap, ierr)
@@ -668,7 +667,8 @@ end subroutine DiscretizationCreateJacobian
 ! ************************************************************************** !
 subroutine DiscretizationCreateInterpolation(discretization,dm_index, &
                                              interpolation,mg_levels_x, &
-                                             mg_levels_y, mg_levels_z)
+                                             mg_levels_y, mg_levels_z, &
+                                             option)
 
   use Option_module
   
@@ -679,6 +679,7 @@ subroutine DiscretizationCreateInterpolation(discretization,dm_index, &
   PetscErrorCode :: ierr
   Mat, pointer :: interpolation(:)
   PetscInt :: mg_levels_x, mg_levels_y, mg_levels_z
+  type(option_type) :: option
 
   PetscInt :: mg_levels
   PetscInt :: refine_x, refine_y, refine_z
@@ -715,7 +716,7 @@ subroutine DiscretizationCreateInterpolation(discretization,dm_index, &
         call DASetRefinementFactor(dm_fine_ptr, refine_x, refine_y, refine_z, &
                                    ierr)
         call DASetInterpolationType(dm_fine_ptr, DA_Q0, ierr)
-        call DACoarsen(dm_fine_ptr, PETSC_COMM_WORLD, dmc_ptr(i), ierr)
+        call DACoarsen(dm_fine_ptr, option%comm, dmc_ptr(i), ierr)
         call DAGetInterpolation(dmc_ptr(i), dm_fine_ptr, interpolation(i), &
                                 PETSC_NULL_OBJECT, ierr)
         dm_fine_ptr => dmc_ptr(i)
@@ -800,13 +801,8 @@ subroutine DiscretizationGlobalToLocal(discretization,global_vec,local_vec,dm_in
     
   select case(discretization%itype)
     case(STRUCTURED_GRID,UNSTRUCTURED_GRID)
-#if (PETSC_VERSION_RELEASE == 1)    
-      call DAGlobalToLocalBegin(dm_ptr,global_vec,INSERT_VALUES,local_vec,ierr)
-      call DAGlobalToLocalEnd(dm_ptr,global_vec,INSERT_VALUES,local_vec,ierr)
-#else
       call DMGlobalToLocalBegin(dm_ptr,global_vec,INSERT_VALUES,local_vec,ierr)
       call DMGlobalToLocalEnd(dm_ptr,global_vec,INSERT_VALUES,local_vec,ierr)
-#endif
       case(AMR_GRID)
          call SAMRGlobalToLocal(discretization%amrgrid%p_application, global_vec, local_vec, ierr);
   end select
@@ -838,11 +834,7 @@ subroutine DiscretizationLocalToGlobal(discretization,local_vec,global_vec,dm_in
   
   select case(discretization%itype)
     case(STRUCTURED_GRID,UNSTRUCTURED_GRID)
-#if (PETSC_VERSION_RELEASE == 1)
-      call DALocalToGlobal(dm_ptr,local_vec,INSERT_VALUES,global_vec,ierr)
-#else    
       call DMLocalToGlobal(dm_ptr,local_vec,INSERT_VALUES,global_vec,ierr)
-#endif
       case(AMR_GRID)
          call VecCopy(local_vec, global_vec, ierr);
   end select
@@ -978,11 +970,7 @@ subroutine DiscretizationGlobalToLocalBegin(discretization,global_vec,local_vec,
   
   select case(discretization%itype)
     case(STRUCTURED_GRID,UNSTRUCTURED_GRID)
-#if (PETSC_VERSION_RELEASE == 1)    
-      call DAGlobalToLocalBegin(dm_ptr,global_vec,INSERT_VALUES,local_vec,ierr)
-#else
       call DMGlobalToLocalBegin(dm_ptr,global_vec,INSERT_VALUES,local_vec,ierr)
-#endif      
   end select
   
 end subroutine DiscretizationGlobalToLocalBegin
@@ -1012,11 +1000,7 @@ subroutine DiscretizationGlobalToLocalEnd(discretization,global_vec,local_vec,dm
   
   select case(discretization%itype)
     case(STRUCTURED_GRID,UNSTRUCTURED_GRID)
-#if (PETSC_VERSION_RELEASE == 1)        
-      call DAGlobalToLocalEnd(dm_ptr,global_vec,INSERT_VALUES,local_vec,ierr)
-#else
       call DMGlobalToLocalEnd(dm_ptr,global_vec,INSERT_VALUES,local_vec,ierr)
-#endif      
   end select
   
 end subroutine DiscretizationGlobalToLocalEnd
@@ -1209,7 +1193,6 @@ subroutine DiscretizationDestroy(discretization)
       
   select case(discretization%itype)
     case(STRUCTURED_GRID)
-#if (PETSC_VERSION_RELEASE == 0)    
       if (discretization%dm_1_dof /= 0) &
         call DMDestroy(discretization%dm_1_dof,ierr)
       discretization%dm_1_dof = 0
@@ -1225,17 +1208,6 @@ subroutine DiscretizationDestroy(discretization)
         enddo
         deallocate(discretization%dmc_nflowdof)
       endif
-#else
-      if (discretization%dm_1_dof /= 0) &
-        call DADestroy(discretization%dm_1_dof,ierr)
-      discretization%dm_1_dof = 0
-      if (discretization%dm_nflowdof /= 0) &
-        call DADestroy(discretization%dm_nflowdof,ierr)
-      discretization%dm_nflowdof = 0
-      if (discretization%dm_ntrandof /= 0) &
-        call DADestroy(discretization%dm_ntrandof,ierr)
-      discretization%dm_ntrandof = 0
-#endif
     case(UNSTRUCTURED_GRID)
   end select
   

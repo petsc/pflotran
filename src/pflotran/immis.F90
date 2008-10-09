@@ -246,10 +246,10 @@ end subroutine ImmisSetupPatch
     cur_level => cur_level%next
   enddo
 
-   call MPI_Barrier(PETSC_COMM_WORLD,ierr)
+   call MPI_Barrier(option%comm,ierr)
    if(option%commsize >1)then
       call MPI_ALLREDUCE(ipass,ipass0,ONE_INTEGER, MPI_INTEGER,MPI_SUM, &
-           PETSC_COMM_WORLD,ierr)
+           option%comm,ierr)
       if(ipass0 < option%commsize) ipass=-1
    endif
    ImmisInitGuessCheck =ipass
@@ -373,11 +373,11 @@ subroutine ImmisUpdateReason(reason, realization)
     cur_level => cur_level%next
  enddo
 
- call MPI_Barrier(PETSC_COMM_WORLD,ierr)
+ call MPI_Barrier(realization%option%comm,ierr)
   
   if(realization%option%commsize >1)then
      call MPI_ALLREDUCE(re, re0,1, MPI_INTEGER,MPI_SUM, &
-          PETSC_COMM_WORLD,ierr)
+          realization%option%comm,ierr)
      if(re0<realization%option%commsize) re=0
   endif
   reason=re
@@ -1701,12 +1701,12 @@ subroutine ImmisResidualPatch(snes,xx,r,realization,ierr)
 !  call VecRestoreArrayF90(field%iphas_loc, iphase_loc_p, ierr)
 
   if (realization%debug%vecview_residual) then
-    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'Rresidual.out',viewer,ierr)
+    call PetscViewerASCIIOpen(option%comm,'Rresidual.out',viewer,ierr)
     call VecView(r,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
   if (realization%debug%vecview_solution) then
-    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'Rxx.out',viewer,ierr)
+    call PetscViewerASCIIOpen(option%comm,'Rxx.out',viewer,ierr)
     call VecView(xx,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
@@ -2072,7 +2072,7 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian_srcsink.out',viewer,ierr)
+    call PetscViewerASCIIOpen(option%comm,'jacobian_srcsink.out',viewer,ierr)
     call MatView(A,PETSC_VIEWER_STDOUT_WORLD,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
@@ -2199,7 +2199,7 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
  ! print *,'end inter flux'
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian_flux.out',viewer,ierr)
+    call PetscViewerASCIIOpen(option%comm,'jacobian_flux.out',viewer,ierr)
     call MatView(A,PETSC_VIEWER_STDOUT_WORLD,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
@@ -2207,7 +2207,7 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian_bcflux.out',viewer,ierr)
+    call PetscViewerASCIIOpen(option%comm,'jacobian_bcflux.out',viewer,ierr)
     call MatView(A,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
@@ -2260,7 +2260,7 @@ subroutine ImmisJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   endif
 
   if (realization%debug%matview_Jacobian) then
-    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'Rjacobian.out',viewer,ierr)
+    call PetscViewerASCIIOpen(option%comm,'Rjacobian.out',viewer,ierr)
     call MatView(A,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
@@ -2372,7 +2372,7 @@ print *,'zero rows point 3'
   patch%aux%Immis%zero_rows_local_ghosted => zero_rows_local_ghosted
 print *,'zero rows point 4'
   call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
-                     PETSC_COMM_WORLD,ierr)
+                     option%comm,ierr)
   if (flag > 0) patch%aux%Immis%inactive_cells_exist = .true.
 
   if (ncount /= n_zero_rows) then
@@ -2439,7 +2439,7 @@ subroutine ImmisMaxChange(realization)
   enddo
 
   if(option%commsize >1)then
-    call MPI_ALLREDUCE(dsmax, max_s,1, MPI_DOUBLE_PRECISION,MPI_MAX, PETSC_COMM_WORLD,ierr)
+    call MPI_ALLREDUCE(dsmax, max_s,1, MPI_DOUBLE_PRECISION,MPI_MAX, option%comm,ierr)
     dsmax = max_s
   endif 
   option%dsmax=dsmax

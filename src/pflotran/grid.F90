@@ -276,17 +276,17 @@ subroutine GridComputeCoordinates(grid,origin_global,option)
   if((grid%itype==STRUCTURED_GRID).and.(grid%structured_grid%p_samr_patch==0)) then
      ! compute global max/min from the local max/in
      call MPI_Allreduce(grid%x_min_local,grid%x_min_global,ONE_INTEGER, &
-          MPI_DOUBLE_PRECISION,MPI_MIN,PETSC_COMM_WORLD,ierr)
+          MPI_DOUBLE_PRECISION,MPI_MIN,option%comm,ierr)
      call MPI_Allreduce(grid%y_min_local,grid%y_min_global,ONE_INTEGER, &
-          MPI_DOUBLE_PRECISION,MPI_MIN,PETSC_COMM_WORLD,ierr)
+          MPI_DOUBLE_PRECISION,MPI_MIN,option%comm,ierr)
      call MPI_Allreduce(grid%z_min_local,grid%z_min_global,ONE_INTEGER, &
-          MPI_DOUBLE_PRECISION,MPI_MIN,PETSC_COMM_WORLD,ierr)
+          MPI_DOUBLE_PRECISION,MPI_MIN,option%comm,ierr)
      call MPI_Allreduce(grid%x_max_local,grid%x_max_global,ONE_INTEGER, &
-          MPI_DOUBLE_PRECISION,MPI_MAX,PETSC_COMM_WORLD,ierr)
+          MPI_DOUBLE_PRECISION,MPI_MAX,option%comm,ierr)
      call MPI_Allreduce(grid%y_max_local,grid%y_max_global,ONE_INTEGER, &
-          MPI_DOUBLE_PRECISION,MPI_MAX,PETSC_COMM_WORLD,ierr)
+          MPI_DOUBLE_PRECISION,MPI_MAX,option%comm,ierr)
      call MPI_Allreduce(grid%z_max_local,grid%z_max_global,ONE_INTEGER, &
-          MPI_DOUBLE_PRECISION,MPI_MAX,PETSC_COMM_WORLD,ierr)
+          MPI_DOUBLE_PRECISION,MPI_MAX,option%comm,ierr)
   endif
 end subroutine GridComputeCoordinates
 
@@ -436,7 +436,7 @@ subroutine GridLocalizeRegions(grid,region_list,option)
                   region%num_cells = 0
                 endif
                 call MPI_Allreduce(region%num_cells,count,ONE_INTEGER,MPI_INTEGER,MPI_SUM, &
-                                   PETSC_COMM_WORLD,ierr)   
+                                   option%comm,ierr)   
 
 ! the next test as designed will only work on a uniform grid
                 if(grid%structured_grid%p_samr_patch==0) then
@@ -770,7 +770,7 @@ subroutine GridCreateNaturalToGhostedHash(grid,option)
   
 !  call GridPrintHashTable(grid)
   call mpi_allreduce(max_num_ids_per_hash,num_in_hash,ONE_INTEGER,MPI_INTEGER, &
-                     MPI_MAX,PETSC_COMM_WORLD,ierr)
+                     MPI_MAX,option%comm,ierr)
   if (option%myrank == 0) print *, 'max_num_ids_per_hash:', num_in_hash
 
   call PetscLogEventEnd(logging%event_hash_create, &

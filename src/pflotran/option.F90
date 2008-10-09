@@ -11,6 +11,7 @@ module Option_module
 
   type, public :: option_type 
   
+    PetscMPIInt :: comm                      ! alternative to PETSC_COMM_WORLD
     PetscMPIInt :: myrank                    ! rank in PETSC_COMM_WORLD
     PetscMPIInt :: commsize                  ! size of PETSC_COMM_WORLD
   
@@ -160,6 +161,10 @@ function OptionCreate()
   type(option_type), pointer :: option
   
   allocate(option)
+
+  option%comm = 0
+  option%myrank = 0
+  option%commsize = 0
 
   option%iflag = 0
   
@@ -477,7 +482,7 @@ function OptionCheckTouch(option,filename)
 
   if (option%myrank == 0) &
     open(unit=fid,file=trim(filename),status='old',iostat=ios)
-  call MPI_Bcast(ios,1,MPI_INTEGER,ZERO_INTEGER,PETSC_COMM_WORLD,ierr)
+  call MPI_Bcast(ios,1,MPI_INTEGER,ZERO_INTEGER,option%comm,ierr)
 
   if (ios == 0) then
     if (option%myrank == 0) close(fid,status='delete')

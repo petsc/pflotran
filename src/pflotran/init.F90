@@ -182,7 +182,7 @@ subroutine Init(simulation,filename)
 
     call printMsg(option,"  Beginning set up of FLOW SNES ")
 
-    call SolverCreateSNES(flow_solver)  
+    call SolverCreateSNES(flow_solver,option%comm)  
     call SNESSetOptionsPrefix(flow_solver%snes, "flow_", ierr)
     call SolverCheckCommandLine(flow_solver)
     call DiscretizationCreateJacobian(discretization,NFLOWDOF, &
@@ -194,7 +194,8 @@ subroutine Init(simulation,filename)
                                              flow_solver%interpolation, &
                                              flow_solver%galerkin_mg_levels_x, &
                                              flow_solver%galerkin_mg_levels_y, &
-                                             flow_solver%galerkin_mg_levels_z)
+                                             flow_solver%galerkin_mg_levels_z, &
+                                             option)
     endif
     
     select case(option%iflowmode)
@@ -222,15 +223,9 @@ subroutine Init(simulation,filename)
     ! shell for custom convergence test.  The default SNES convergence test  
     ! is call within this function. 
     flow_stepper%convergence_context => ConvergenceContextCreate(flow_solver,option)
-#if (PETSC_VERSION_RELEASE == 0)
     call SNESSetConvergenceTest(flow_solver%snes,ConvergenceTest, &
                                 flow_stepper%convergence_context, &
                                 PETSC_NULL_FUNCTION,ierr) 
-#else
-    call SNESSetConvergenceTest(flow_solver%snes,ConvergenceTest, &
-                                flow_stepper%convergence_context, &
-                                ierr) 
-#endif
     call printMsg(option,"  Finished setting up FLOW SNES ")
 
   endif
@@ -241,7 +236,7 @@ subroutine Init(simulation,filename)
 
     call printMsg(option,"  Beginning set up of TRAN SNES ")
     
-    call SolverCreateSNES(tran_solver)  
+    call SolverCreateSNES(tran_solver,option%comm)  
     call SNESSetOptionsPrefix(tran_solver%snes, "tran_", ierr)
     call SolverCheckCommandLine(tran_solver)
 
@@ -255,7 +250,8 @@ subroutine Init(simulation,filename)
                                              tran_solver%interpolation, &
                                              tran_solver%galerkin_mg_levels_x, &
                                              tran_solver%galerkin_mg_levels_y, &
-                                             tran_solver%galerkin_mg_levels_z)
+                                             tran_solver%galerkin_mg_levels_z, &
+                                             option)
     endif
 
     call SNESSetFunction(tran_solver%snes,field%tran_r,RTResidual,realization,ierr)
@@ -274,15 +270,9 @@ subroutine Init(simulation,filename)
     ! shell for custom convergence test.  The default SNES convergence test  
     ! is call within this function. 
     tran_stepper%convergence_context => ConvergenceContextCreate(tran_solver,option)
-#if (PETSC_VERSION_RELEASE == 0)
     call SNESSetConvergenceTest(tran_solver%snes,ConvergenceTest, &
                                 tran_stepper%convergence_context, &
                                 PETSC_NULL_FUNCTION,ierr) 
-#else
-    call SNESSetConvergenceTest(tran_solver%snes,ConvergenceTest, &
-                                tran_stepper%convergence_context, &
-                                ierr) 
-#endif
 
     call printMsg(option,"  Finished setting up TRAN SNES ")
   
@@ -2545,7 +2535,7 @@ subroutine readVectorFromFile(realization,vector,filename,vector_type)
       enddo
       ierr = 0
       if (option%myrank == 0) read(fid,*,iostat=ierr) values(1:read_count)
-      call mpi_bcast(ierr,ONE_INTEGER,MPI_INTEGER,source,PETSC_COMM_WORLD,ierr)      
+      call mpi_bcast(ierr,ONE_INTEGER,MPI_INTEGER,source,option%comm,ierr)      
       if (ierr /= 0) then
         string = 'Insufficent data in file: ' // filename
         call printErrMsg(option,string)
@@ -2556,7 +2546,7 @@ subroutine readVectorFromFile(realization,vector,filename,vector_type)
       endif
       count = count + read_count
     enddo
-    call mpi_bcast(count,ONE_INTEGER,MPI_INTEGER,source,PETSC_COMM_WORLD,ierr)      
+    call mpi_bcast(count,ONE_INTEGER,MPI_INTEGER,source,option%comm,ierr)      
     if (count /= grid%nmax) then
       write(string,'(a,i8,a,i8,a)') 'Number of data in file (', count, &
                                     ') does not match size of vector (', &

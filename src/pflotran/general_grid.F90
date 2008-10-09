@@ -131,7 +131,7 @@ subroutine ReadStructuredGridHDF5(realization)
   if (option%myrank == 0) print *, 'Opening hdf5 file: ', trim(filename)
   call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
 #ifndef SERIAL_HDF5
-  call h5pset_fapl_mpio_f(prop_id,PETSC_COMM_WORLD,MPI_INFO_NULL,hdf5_err)
+  call h5pset_fapl_mpio_f(prop_id,option%comm,MPI_INFO_NULL,hdf5_err)
 #endif
   call h5fopen_f(filename,H5F_ACC_RDONLY_F,file_id,hdf5_err,prop_id)
   call h5pclose_f(prop_id,hdf5_err)
@@ -471,7 +471,7 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
     endif
     if (option%commsize > 1) &
       call mpi_bcast(upwind_ids,dims(1),MPI_INTEGER,ZERO_INTEGER, &
-                     PETSC_COMM_WORLD,ierr)
+                     option%comm,ierr)
 #endif    
     call h5sselect_hyperslab_f(file_space_id_down, H5S_SELECT_SET_F,offset, &
                                length,hdf5_err,stride,stride) 
@@ -490,7 +490,7 @@ subroutine SetupConnectionIndices(grid,option,file_id,indices)
     endif
     if (option%commsize > 1) &
       call mpi_bcast(downwind_ids,dims(1),MPI_INTEGER,ZERO_INTEGER, &
-                     PETSC_COMM_WORLD,ierr)
+                     option%comm,ierr)
 #endif    
     do i=1,dims(1)
       connection_count = connection_count + 1

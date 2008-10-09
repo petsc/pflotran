@@ -529,7 +529,7 @@ subroutine THCNumericalJacobianTest(xx,realization)
   call VecDuplicate(xx,res,ierr)
   call VecDuplicate(xx,res_pert,ierr)
   
-  call MatCreate(PETSC_COMM_WORLD,A,ierr)
+  call MatCreate(option%comm,A,ierr)
   call MatSetSizes(A,PETSC_DECIDE,PETSC_DECIDE,grid%nlmax*option%nflowdof,grid%nlmax*option%nflowdof,ierr)
   call MatSetType(A,MATAIJ,ierr)
   call MatSetFromOptions(A,ierr)
@@ -561,7 +561,7 @@ subroutine THCNumericalJacobianTest(xx,realization)
 
   call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
   call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-  call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'numerical_jacobian.out',viewer,ierr)
+  call PetscViewerASCIIOpen(option%comm,'numerical_jacobian.out',viewer,ierr)
   call MatView(A,viewer,ierr)
   call PetscViewerDestroy(viewer,ierr)
 
@@ -1920,12 +1920,12 @@ subroutine THCResidualPatch(snes,xx,r,realization,ierr)
   call GridVecRestoreArrayF90(grid,field%iphas_loc, iphase_loc_p, ierr)
 
   if (realization%debug%vecview_residual) then
-    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'Rresidual.out',viewer,ierr)
+    call PetscViewerASCIIOpen(option%comm,'THCresidual.out',viewer,ierr)
     call VecView(r,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
   if (realization%debug%vecview_solution) then
-    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'Rxx.out',viewer,ierr)
+    call PetscViewerASCIIOpen(option%comm,'THCxx.out',viewer,ierr)
     call VecView(xx,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
@@ -2129,7 +2129,7 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian_accum.out',viewer,ierr)
+    call PetscViewerASCIIOpen(option%comm,'jacobian_accum.out',viewer,ierr)
     call MatView(A,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
@@ -2193,7 +2193,7 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian_srcsink.out',viewer,ierr)
+    call PetscViewerASCIIOpen(option%comm,'jacobian_srcsink.out',viewer,ierr)
     call MatView(A,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
@@ -2285,7 +2285,7 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian_flux.out',viewer,ierr)
+    call PetscViewerASCIIOpen(option%comm,'jacobian_flux.out',viewer,ierr)
     call MatView(A,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
@@ -2351,7 +2351,7 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   if (realization%debug%matview_Jacobian_detailed) then
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
-    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'jacobian_bcflux.out',viewer,ierr)
+    call PetscViewerASCIIOpen(option%comm,'jacobian_bcflux.out',viewer,ierr)
     call MatView(A,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
@@ -2400,7 +2400,7 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
 #endif
 
   if (realization%debug%matview_Jacobian) then
-    call PetscViewerASCIIOpen(PETSC_COMM_WORLD,'Rjacobian.out',viewer,ierr)
+    call PetscViewerASCIIOpen(option%comm,'THCjacobian.out',viewer,ierr)
     call MatView(A,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
@@ -2509,7 +2509,7 @@ subroutine THCCreateZeroArray(patch,option)
   patch%aux%THC%n_zero_rows = n_zero_rows
 
   call MPI_Allreduce(n_zero_rows,flag,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
-                     PETSC_COMM_WORLD,ierr)
+                     option%comm,ierr)
   if (flag > 0) patch%aux%THC%inactive_cells_exist = .true.
 
   if (ncount /= n_zero_rows) then

@@ -138,7 +138,7 @@ subroutine Checkpoint(realization, &
   else if (id < 1000000) then
     write(fname, '(a12,i6)') 'pflotran.chk', id
   endif
-  call PetscViewerBinaryOpen(PETSC_COMM_WORLD, fname, FILE_MODE_WRITE, &
+  call PetscViewerBinaryOpen(option%comm, fname, FILE_MODE_WRITE, &
                              viewer, ierr)
 
   !--------------------------------------------------------------------
@@ -150,7 +150,7 @@ subroutine Checkpoint(realization, &
   ! checkpoint header, since sizeof() is not supported by some Fortran 
   ! compilers.  To be on the safe side, we assume an integer is 8 bytes.
   bagsize = 120
-  call PetscBagCreate(PETSC_COMM_WORLD, bagsize, bag, ierr)
+  call PetscBagCreate(option%comm, bagsize, bag, ierr)
   call PetscBagGetData(bag, header, ierr); CHKERRQ(ierr)
 
   ! Register variables that are passed into timestepper().
@@ -320,7 +320,7 @@ subroutine Restart(realization, &
   call PetscGetTime(tstart,ierr)   
   if (option%myrank == 0) &
     print *,'--> Open checkpoint file: ', trim(option%restart_file)
-  call PetscViewerBinaryOpen(PETSC_COMM_WORLD,option%restart_file, &
+  call PetscViewerBinaryOpen(option%comm,option%restart_file, &
                              FILE_MODE_READ,viewer,ierr)
  
   ! Get the header data.

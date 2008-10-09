@@ -854,7 +854,7 @@ subroutine OutputFluxVelocitiesTecplot(realization,iphase, &
   ! warning: adjusted size will be changed in ConvertArrayToNatural
   ! thus, you cannot pass in local_size, since it is needed later
   adjusted_size = local_size
-  call ConvertArrayToNatural(indices,array,adjusted_size,global_size)
+  call ConvertArrayToNatural(indices,array,adjusted_size,global_size,option)
   call WriteTecplotDataSet(IUNIT3,realization,array,TECPLOT_REAL,adjusted_size)
   ! since the array has potentially been resized, must reallocate
   deallocate(array)
@@ -876,7 +876,7 @@ subroutine OutputFluxVelocitiesTecplot(realization,iphase, &
     enddo
   enddo
   adjusted_size = local_size
-  call ConvertArrayToNatural(indices,array,adjusted_size,global_size)
+  call ConvertArrayToNatural(indices,array,adjusted_size,global_size,option)
   call WriteTecplotDataSet(IUNIT3,realization,array,TECPLOT_REAL,adjusted_size)
   deallocate(array)
   nullify(array)
@@ -897,7 +897,7 @@ subroutine OutputFluxVelocitiesTecplot(realization,iphase, &
     enddo
   enddo
   adjusted_size = local_size
-  call ConvertArrayToNatural(indices,array,adjusted_size,global_size)
+  call ConvertArrayToNatural(indices,array,adjusted_size,global_size,option)
   call WriteTecplotDataSet(IUNIT3,realization,array,TECPLOT_REAL,adjusted_size)
   deallocate(array)
   nullify(array)
@@ -946,7 +946,7 @@ subroutine OutputFluxVelocitiesTecplot(realization,iphase, &
   array(1:local_size) = array(1:local_size)*output_option%tconv ! convert time units
   
   adjusted_size = local_size
-  call ConvertArrayToNatural(indices,array,adjusted_size,global_size)
+  call ConvertArrayToNatural(indices,array,adjusted_size,global_size,option)
   call WriteTecplotDataSet(IUNIT3,realization,array,TECPLOT_REAL,adjusted_size)
   deallocate(array)
   nullify(array)
@@ -1298,14 +1298,14 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
 
   if (size_flag /= 0) then
     call MPI_Allreduce(size_flag,max_local_size,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
-                       PETSC_COMM_WORLD,ierr)
+                       option%comm,ierr)
     local_size = size_flag
   else 
   ! if first time, determine the maximum size of any local array across 
   ! all procs
     if (max_local_size_saved < 0) then
       call MPI_Allreduce(grid%nlmax,max_local_size,ONE_INTEGER,MPI_INTEGER,MPI_MAX, &
-                         PETSC_COMM_WORLD,ierr)
+                         option%comm,ierr)
       max_local_size_saved = max_local_size
       if (option%myrank == 0) print *, 'max_local_size_saved: ', max_local_size
     endif
@@ -1360,15 +1360,15 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
       if (option%io_handshake_buffer_size > 0 .and. &
           iproc+max_proc_prefetch >= max_proc) then
         max_proc = max_proc + option%io_handshake_buffer_size
-        call MPI_Bcast(max_proc,1,MPI_INTEGER,ZERO_INTEGER,PETSC_COMM_WORLD, &
+        call MPI_Bcast(max_proc,1,MPI_INTEGER,ZERO_INTEGER,option%comm, &
                        ierr)
       endif
 #endif      
-      call MPI_Probe(iproc,MPI_ANY_TAG,PETSC_COMM_WORLD,status,ierr)
+      call MPI_Probe(iproc,MPI_ANY_TAG,option%comm,status,ierr)
       recv_size = status(MPI_TAG)
       if (datatype == 0) then
         call MPI_Recv(integer_data_recv,recv_size,MPI_INTEGER,iproc, &
-                      MPI_ANY_TAG,PETSC_COMM_WORLD,status,ierr)
+                      MPI_ANY_TAG,option%comm,status,ierr)
         if (recv_size > 0) then
           integer_data(num_in_array+1:num_in_array+recv_size) = &
                                              integer_data_recv(1:recv_size)
@@ -1387,7 +1387,7 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
         endif
       else
         call MPI_Recv(real_data_recv,recv_size,MPI_DOUBLE_PRECISION,iproc, &
-                      MPI_ANY_TAG,PETSC_COMM_WORLD,status,ierr)
+                      MPI_ANY_TAG,option%comm,status,ierr)
         if (recv_size > 0) then
           real_data(num_in_array+1:num_in_array+recv_size) = &
                                              real_data_recv(1:recv_size)
@@ -1409,7 +1409,7 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
 #ifdef HANDSHAKE    
     if (option%io_handshake_buffer_size > 0) then
       max_proc = -1
-      call MPI_Bcast(max_proc,1,MPI_INTEGER,ZERO_INTEGER,PETSC_COMM_WORLD, &
+      call MPI_Bcast(max_proc,1,MPI_INTEGER,ZERO_INTEGER,option%comm, &
                      ierr)
     endif
 #endif      
@@ -1426,22 +1426,22 @@ subroutine WriteTecplotDataSet(fid,realization,array,datatype,size_flag)
     if (option%io_handshake_buffer_size > 0) then
       do
         if (option%myrank < max_proc) exit
-        call MPI_Bcast(max_proc,1,MPI_INTEGER,ZERO_INTEGER,PETSC_COMM_WORLD, &
+        call MPI_Bcast(max_proc,1,MPI_INTEGER,ZERO_INTEGER,option%comm, &
                        ierr)
       enddo
     endif
 #endif    
     if (datatype == TECPLOT_INTEGER) then
       call MPI_Send(integer_data,local_size,MPI_INTEGER,ZERO_INTEGER,local_size, &
-                    PETSC_COMM_WORLD,ierr)
+                    option%comm,ierr)
     else
       call MPI_Send(real_data,local_size,MPI_DOUBLE_PRECISION,ZERO_INTEGER,local_size, &
-                    PETSC_COMM_WORLD,ierr)
+                    option%comm,ierr)
     endif
 #ifdef HANDSHAKE    
     if (option%io_handshake_buffer_size > 0) then
       do
-        call MPI_Bcast(max_proc,1,MPI_INTEGER,ZERO_INTEGER,PETSC_COMM_WORLD, &
+        call MPI_Bcast(max_proc,1,MPI_INTEGER,ZERO_INTEGER,option%comm, &
                        ierr)
         if (max_proc < 0) exit
       enddo
@@ -2566,7 +2566,7 @@ subroutine OutputHDF5(realization)
 
   call h5pcreate_f(H5P_FILE_ACCESS_F,prop_id,hdf5_err)
 #ifndef SERIAL_HDF5
-  call h5pset_fapl_mpio_f(prop_id,PETSC_COMM_WORLD,MPI_INFO_NULL,hdf5_err)
+  call h5pset_fapl_mpio_f(prop_id,option%comm,MPI_INFO_NULL,hdf5_err)
 #endif
   if (.not.first) call h5fopen_f(filename,H5F_ACC_RDWR_F,file_id, &
                                       hdf5_err,prop_id)
@@ -2914,17 +2914,17 @@ subroutine WriteHDF5FluxVelocities(name,realization,iphase,direction,file_id)
     if (grid%structured_grid%ngxe-grid%structured_grid%nxe == 0) then
       nx_local = grid%structured_grid%nlx-1
     endif
-    call MPI_Allreduce(nx_local,i,ONE_INTEGER,MPI_INTEGER,MPI_MIN,PETSC_COMM_WORLD,ierr)
+    call MPI_Allreduce(nx_local,i,ONE_INTEGER,MPI_INTEGER,MPI_MIN,option%comm,ierr)
     if (i == 0) trick_flux_vel_x = .true.
     if (grid%structured_grid%ngye-grid%structured_grid%nye == 0) then
       ny_local = grid%structured_grid%nly-1
     endif
-    call MPI_Allreduce(ny_local,j,ONE_INTEGER,MPI_INTEGER,MPI_MIN,PETSC_COMM_WORLD,ierr)
+    call MPI_Allreduce(ny_local,j,ONE_INTEGER,MPI_INTEGER,MPI_MIN,option%comm,ierr)
     if (j == 0) trick_flux_vel_y = .true.
     if (grid%structured_grid%ngze-grid%structured_grid%nze == 0) then
       nz_local = grid%structured_grid%nlz-1
     endif
-    call MPI_Allreduce(nz_local,k,ONE_INTEGER,MPI_INTEGER,MPI_MIN,PETSC_COMM_WORLD,ierr)
+    call MPI_Allreduce(nz_local,k,ONE_INTEGER,MPI_INTEGER,MPI_MIN,option%comm,ierr)
     if (k == 0) trick_flux_vel_z = .true.
   endif
 
@@ -3122,20 +3122,22 @@ end subroutine GetCoordinates
 ! date: 10/25/07
 !
 ! ************************************************************************** !
-subroutine ConvertArrayToNatural(indices,array, &
-                                 local_size,global_size)
+subroutine ConvertArrayToNatural(indices,array,local_size,global_size,option)
 
+  use Option_module
+  
   implicit none
   
   PetscInt :: local_size, global_size
   PetscInt :: indices(:)
   PetscReal, pointer :: array(:)
+  type(option_type) :: option
   
   Vec :: natural_vec
   PetscInt, allocatable :: indices_zero_based(:)
   PetscReal, pointer :: vec_ptr(:)
   
-  call VecCreate(PETSC_COMM_WORLD,natural_vec,ierr)
+  call VecCreate(option%comm,natural_vec,ierr)
   call VecSetSizes(natural_vec,PETSC_DECIDE,global_size,ierr)
   call VecSetType(natural_vec,VECMPI,ierr)
 
