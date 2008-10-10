@@ -978,14 +978,13 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
   type(grid_type),  pointer :: grid
 
 
+  flag = SAME_NONZERO_PATTERN
   call MatGetType(A,mat_type,ierr)
   if (mat_type == MATMFFD) then
-    flag = SAME_NONZERO_PATTERN
     J = B
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
   else
-    flag = SAME_NONZERO_PATTERN
     J = A
   endif
     

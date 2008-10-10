@@ -1967,9 +1967,25 @@ subroutine THCJacobian(snes,xx,A,B,flag,realization,ierr)
   MatStructure flag
   PetscErrorCode :: ierr
   
+  Mat :: J
+  MatType :: mat_type
+  PetscViewer :: viewer
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   type(grid_type),  pointer :: grid
+  PetscReal :: norm
+  
+  flag = SAME_NONZERO_PATTERN
+  call MatGetType(A,mat_type,ierr)
+  if (mat_type == MATMFFD) then
+    J = B
+    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
+    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
+  else
+    J = A
+  endif
+
+  call MatZeroEntries(J,ierr)
 
   cur_level => realization%level_list%first
   do
@@ -1983,14 +1999,29 @@ subroutine THCJacobian(snes,xx,A,B,flag,realization,ierr)
       ! so that entries will be set correctly
       if(associated(grid%structured_grid) .and. &
         (.not.(grid%structured_grid%p_samr_patch.eq.0))) then
-         call SAMRSetCurrentJacobianPatch(A, grid%structured_grid%p_samr_patch)
+         call SAMRSetCurrentJacobianPatch(J, grid%structured_grid%p_samr_patch)
       endif
-      call THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
+      call THCJacobianPatch(snes,xx,J,J,flag,realization,ierr)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
   enddo
 
+  if (realization%debug%matview_Jacobian) then
+    call PetscViewerASCIIOpen(realization%option%comm,'THCjacobian.out', &
+                              viewer,ierr)
+    call MatView(J,viewer,ierr)
+    call PetscViewerDestroy(viewer,ierr)
+  endif
+  if (realization%debug%norm_Jacobian) then
+    call MatNorm(J,NORM_1,norm,ierr)
+    if (realization%option%myrank == 0) print *, '1 norm:', norm
+    call MatNorm(J,NORM_FROBENIUS,norm,ierr)
+    if (realization%option%myrank == 0) print *, '2 norm:', norm
+    call MatNorm(J,NORM_INFINITY,norm,ierr)
+    if (realization%option%myrank == 0) print *, 'inf norm:', norm
+  endif
+  
 end subroutine THCJacobian
 
 ! ************************************************************************** !
@@ -2064,14 +2095,6 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   
   PetscViewer :: viewer
   Vec :: debug_vec
-!-----------------------------------------------------------------------
-! R stand for residual
-!  ra       1              2              3              4          5              6            7      8
-! 1: p     dR/dpi         dR/dTi          dR/dci        dR/dsi   dR/dpim        dR/dTim
-! 2: T
-! 3: c
-! 4  s         
-!-----------------------------------------------------------------------
 
   patch => realization%patch
   grid => patch%grid
@@ -2081,17 +2104,9 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   aux_vars => patch%aux%THC%aux_vars
   aux_vars_bc => patch%aux%THC%aux_vars_bc
   
-! dropped derivatives:
-!   1.D0 gas phase viscocity to all p,t,c,s
-!   2. Average molecular weights to p,t,s
-  flag = SAME_NONZERO_PATTERN
-
 #if 0
 !  call THCNumericalJacobianTest(xx,realization)
 #endif
-
- ! print *,'*********** In Jacobian ********************** '
-  call MatZeroEntries(A,ierr)
 
   call GridVecGetArrayF90(grid,field%flow_xx_loc, xx_loc_p, ierr)
   call GridVecGetArrayF90(grid,field%porosity_loc, porosity_loc_p, ierr)
@@ -2398,25 +2413,6 @@ subroutine THCJacobianPatch(snes,xx,A,B,flag,realization,ierr)
                           patch%aux%THC%zero_rows_local_ghosted,f_up,ierr) 
   endif
 #endif
-
-  if (realization%debug%matview_Jacobian) then
-    call PetscViewerASCIIOpen(option%comm,'THCjacobian.out',viewer,ierr)
-    call MatView(A,viewer,ierr)
-    call PetscViewerDestroy(viewer,ierr)
-  endif
-  if (realization%debug%norm_Jacobian) then
-    call MatNorm(A,NORM_1,norm,ierr)
-    if (option%myrank == 0) print *, '1 norm:', norm
-    call MatNorm(A,NORM_FROBENIUS,norm,ierr)
-    if (option%myrank == 0) print *, '2 norm:', norm
-    call MatNorm(A,NORM_INFINITY,norm,ierr)
-    if (option%myrank == 0) print *, 'inf norm:', norm
-!    call DiscretizationCreateVector(grid,ONEDOF,debug_vec,GLOBAL,option)
-!    call MatGetRowMaxAbs(A,debug_vec,PETSC_NULL_INTEGER,ierr)
-!    call VecMax(debug_vec,i,norm,ierr)
-!    call VecDestroy(debug_vec,ierr)
-!    if (option%myrank == 0) print *, 'max:', i, norm
-  endif
 
 end subroutine THCJacobianPatch
 

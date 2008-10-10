@@ -1549,14 +1549,13 @@ subroutine RichardsJacobian(snes,xx,A,B,flag,realization,ierr)
   type(grid_type),  pointer :: grid
   PetscReal :: norm
   
+  flag = SAME_NONZERO_PATTERN
   call MatGetType(A,mat_type,ierr)
   if (mat_type == MATMFFD) then
-    flag = SAME_NONZERO_PATTERN
     J = B
     call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
     call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
   else
-    flag = SAME_NONZERO_PATTERN
     J = A
   endif
 
@@ -1671,14 +1670,6 @@ subroutine RichardsJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   
   PetscViewer :: viewer
   Vec :: debug_vec
-!-----------------------------------------------------------------------
-! R stand for residual
-!  ra       1              2              3              4          5              6            7      8
-! 1: p     dR/dpi         dR/dTi          dR/dci        dR/dsi   dR/dpim        dR/dTim
-! 2: T
-! 3: c
-! 4  s         
-!-----------------------------------------------------------------------
 
   patch => realization%patch
   grid => patch%grid
