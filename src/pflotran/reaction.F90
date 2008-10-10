@@ -86,11 +86,13 @@ module Reaction_module
   type, public :: surface_complexation_rxn_type
     PetscInt :: id
     character(len=MAXNAMELENGTH) :: name
+    PetscInt :: mineral_id
+    character(len=MAXNAMELENGTH) :: mineral_name
     PetscInt :: nspec
     character(len=MAXNAMELENGTH), pointer :: spec_name(:)
     PetscInt, pointer :: spec_ids(:)
     PetscReal, pointer :: stoich(:)
-    PetscReal, pointer :: free_site_stoich
+    PetscReal :: free_site_stoich
     PetscReal, pointer :: logK(:)
     PetscReal :: Z
     type (surface_complexation_rxn_type), pointer :: next
@@ -145,18 +147,23 @@ module Reaction_module
     PetscReal, pointer :: eqsurfcmplxstoich(:,:)
     PetscInt, pointer :: eqsurfcmplxh2oid(:)
     PetscReal, pointer :: eqsurfcmplxh2ostoich(:)
-    PetscReal, pointer :: eqsurfcmplx_freesite_stoich(:,:)
+    PetscInt, pointer :: eqsurfcmplx_free_site_id(:)
+    PetscReal, pointer :: eqsurfcmplx_free_site_stoich(:)
+    PetscInt, pointer :: eqsurfcmplx_mineral_id(:)
     PetscReal, pointer :: eqsurfcmplx_logK(:)
     PetscReal, pointer :: eqsurfcmplx_logKcoef(:,:)
     PetscReal, pointer :: eqsurfcmplx_Z(:)  ! valence
+
+#if 0    
     PetscInt, pointer :: kinsurfcmplxspecid(:,:)
     PetscReal, pointer :: kinsurfcmplxstoich(:,:)
     PetscInt, pointer :: kinsurfcmplxh2oid(:)
     PetscReal, pointer :: kinsurfcmplxh2ostoich(:)
-    PetscReal, pointer :: kinsurfcmplx_freesite_stoich(:,:)
+    PetscReal, pointer :: kinsurfcmplx_freesite_stoich(:)
     PetscReal, pointer :: kinsurfcmplx_logK(:)
     PetscReal, pointer :: kinsurfcmplx_logKcoef(:,:)
     PetscReal, pointer :: kinsurfcmplx_Z(:)  ! valence
+#endif    
     ! mineral reactions
     character(len=MAXNAMELENGTH), pointer :: mineral_names(:)
       ! for saturation states
@@ -409,11 +416,14 @@ function ReactionCreate()
   nullify(reaction%eqsurfcmplxstoich)
   nullify(reaction%eqsurfcmplxh2oid)
   nullify(reaction%eqsurfcmplxh2ostoich)
-  nullify(reaction%eqsurfcmplx_freesite_stoich)
+  nullify(reaction%eqsurfcmplx_mineral_id)
+  nullify(reaction%eqsurfcmplx_free_site_id)
+  nullify(reaction%eqsurfcmplx_free_site_stoich)
   nullify(reaction%eqsurfcmplx_logK)
   nullify(reaction%eqsurfcmplx_logKcoef)
   nullify(reaction%eqsurfcmplx_Z)
-  
+
+#if 0  
   nullify(reaction%kinsurfcmplxspecid)
   nullify(reaction%kinsurfcmplxstoich)
   nullify(reaction%kinsurfcmplxh2oid)
@@ -422,6 +432,7 @@ function ReactionCreate()
   nullify(reaction%kinsurfcmplx_logK)
   nullify(reaction%kinsurfcmplx_logKcoef)
   nullify(reaction%kinsurfcmplx_Z)
+#endif
 
   nullify(reaction%mnrlspecid)
   nullify(reaction%mnrlstoich)
@@ -624,13 +635,15 @@ function SurfaceComplexationRxnCreate()
   allocate(surfcplxrxn)
   surfcplxrxn%id = 0
   surfcplxrxn%name = ''
+  surfcplxrxn%mineral_id = 0
+  surfcplxrxn%mineral_name = ''
+  surfcplxrxn%free_site_stoich = 0
   surfcplxrxn%nspec = 0
+  surfcplxrxn%Z = 0.d0
   nullify(surfcplxrxn%spec_name)
   nullify(surfcplxrxn%stoich)
   nullify(surfcplxrxn%spec_ids)
   nullify(surfcplxrxn%logK)
-  nullify(surfcplxrxn%free_site_stoich)
-  surfcplxrxn%Z = 0.d0
   
   SurfaceComplexationRxnCreate => surfcplxrxn
   
@@ -1353,15 +1366,20 @@ subroutine ReactionDestroy(reaction)
   nullify(reaction%eqsurfcmplxh2oid)
   if (associated(reaction%eqsurfcmplxh2ostoich)) deallocate(reaction%eqsurfcmplxh2ostoich)
   nullify(reaction%eqsurfcmplxh2ostoich)
-  if (associated(reaction%eqsurfcmplx_freesite_stoich)) deallocate(reaction%eqsurfcmplx_freesite_stoich)
-  nullify(reaction%eqsurfcmplx_freesite_stoich)
+  if (associated(reaction%eqsurfcmplx_mineral_id)) deallocate(reaction%eqsurfcmplx_mineral_id)
+  nullify(reaction%eqsurfcmplx_mineral_id)
+  if (associated(reaction%eqsurfcmplx_free_site_id)) deallocate(reaction%eqsurfcmplx_free_site_id)
+  nullify(reaction%eqsurfcmplx_free_site_id)
+  if (associated(reaction%eqsurfcmplx_free_site_stoich)) deallocate(reaction%eqsurfcmplx_free_site_stoich)
+  nullify(reaction%eqsurfcmplx_free_site_stoich)
   if (associated(reaction%eqsurfcmplx_logK)) deallocate(reaction%eqsurfcmplx_logK)
   nullify(reaction%eqsurfcmplx_logK)
   if (associated(reaction%eqsurfcmplx_logKcoef)) deallocate(reaction%eqsurfcmplx_logKcoef)
   nullify(reaction%eqsurfcmplx_logKcoef)
   if (associated(reaction%eqsurfcmplx_Z)) deallocate(reaction%eqsurfcmplx_Z)
   nullify(reaction%eqsurfcmplx_Z)
-  
+
+#if 0  
   if (associated(reaction%kinsurfcmplxspecid)) deallocate(reaction%kinsurfcmplxspecid)
   nullify(reaction%kinsurfcmplxspecid)
   if (associated(reaction%kinsurfcmplxstoich)) deallocate(reaction%kinsurfcmplxstoich)
@@ -1374,6 +1392,7 @@ subroutine ReactionDestroy(reaction)
   nullify(reaction%kinsurfcmplx_logKcoef)
   if (associated(reaction%kinsurfcmplx_Z)) deallocate(reaction%kinsurfcmplx_Z)
   nullify(reaction%kinsurfcmplx_Z)
+#endif
   
   if (associated(reaction%mnrlspecid)) deallocate(reaction%mnrlspecid)
   nullify(reaction%mnrlspecid)
