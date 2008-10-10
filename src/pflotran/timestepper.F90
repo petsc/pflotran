@@ -735,7 +735,7 @@ subroutine StepperStepFlowDT(realization,stepper,timestep_cut_flag, &
 !  call THCInitializeTimestep(realization)    
 !  call SNESComputeFunction(stepper%solver%snes,field%flow_xx,field%flow_r,ierr)
 !  call SNESComputeJacobian(stepper%solver%snes,field%flow_xx,stepper%solver%J, &
-!                           stepper%solver%J,PETSC_NULL_INTEGER,ierr)
+!                           stepper%solver%Jpre,PETSC_NULL_INTEGER,ierr)
 
   stepper%newton_cum = stepper%newton_cum + sum_newton_iterations
   stepper%linear_cum = stepper%linear_cum + sum_linear_iterations

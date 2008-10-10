@@ -158,7 +158,7 @@ subroutine Init(simulation,filename)
   ! update flow mode based on optional input
   if (option%nflowdof > 0) then
   
-    if (flow_solver%mat_type == MATAIJ) then
+    if (flow_solver%J_mat_type == MATAIJ) then
       select case(option%iflowmode)
         case(MPH_MODE,THC_MODE)
           call printErrMsg(option,&
@@ -185,9 +185,24 @@ subroutine Init(simulation,filename)
     call SolverCreateSNES(flow_solver,option%comm)  
     call SNESSetOptionsPrefix(flow_solver%snes, "flow_", ierr)
     call SolverCheckCommandLine(flow_solver)
+
+    if (flow_solver%Jpre_mat_type == '') then
+      if (flow_solver%J_mat_type /= MATMFFD) then
+        flow_solver%Jpre_mat_type = flow_solver%J_mat_type
+      else
+        flow_solver%Jpre_mat_type = MATBAIJ
+      endif
+    endif
+
     call DiscretizationCreateJacobian(discretization,NFLOWDOF, &
-                                      flow_solver%mat_type,flow_solver%J,option)
-    call MatSetOptionsPrefix(flow_solver%J, "flow_", ierr)
+                                      flow_solver%Jpre_mat_type, &
+                                      flow_solver%Jpre, &
+                                      option)
+    call MatSetOptionsPrefix(flow_solver%Jpre, "flow_", ierr)
+
+    if (flow_solver%J_mat_type /= MATMFFD) then
+      flow_solver%J = flow_solver%Jpre
+    endif
 
     if (flow_solver%use_galerkin_mg) then
       call DiscretizationCreateInterpolation(discretization,NFLOWDOF, &
@@ -200,19 +215,32 @@ subroutine Init(simulation,filename)
     
     select case(option%iflowmode)
       case(THC_MODE)
-        call SNESSetFunction(flow_solver%snes,field%flow_r,THCResidual,realization,ierr)
-        call SNESSetJacobian(flow_solver%snes, flow_solver%J, flow_solver%J, THCJacobian, &
-                             realization, ierr)
+        call SNESSetFunction(flow_solver%snes,field%flow_r,THCResidual, &
+                             realization,ierr)
       case(RICHARDS_MODE)
-        call SNESSetFunction(flow_solver%snes,field%flow_r,RichardsResidual,realization,ierr)
-        call SNESSetJacobian(flow_solver%snes, flow_solver%J, flow_solver%J, RichardsJacobian, &
-                             realization, ierr)
+        call SNESSetFunction(flow_solver%snes,field%flow_r,RichardsResidual, &
+                             realization,ierr)
       case(MPH_MODE)
-        call SNESSetFunction(flow_solver%snes,field%flow_r,MPHASEResidual,realization,ierr)
-        call SNESSetJacobian(flow_solver%snes, flow_solver%J, flow_solver%J, MPHASEJacobian, &
-                             realization, ierr)
+        call SNESSetFunction(flow_solver%snes,field%flow_r,MPHASEResidual, &
+                             realization,ierr)
     end select
+    
+    if (flow_solver%J_mat_type == MATMFFD) then
+      call MatCreateSNESMF(flow_solver%snes,flow_solver%J,ierr)
+    endif
 
+    select case(option%iflowmode)
+      case(THC_MODE)
+        call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
+                             THCJacobian,realization,ierr)
+      case(RICHARDS_MODE)
+        call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
+                             RichardsJacobian,realization,ierr)
+      case(MPH_MODE)
+        call SNESSetJacobian(flow_solver%snes,flow_solver%J,flow_solver%Jpre, &
+                             MPHASEJacobian,realization, ierr)
+    end select
+    
     call SolverSetSNESOptions(flow_solver)
 
     string = 'Solver: ' // trim(flow_solver%ksp_type)
@@ -240,9 +268,22 @@ subroutine Init(simulation,filename)
     call SNESSetOptionsPrefix(tran_solver%snes, "tran_", ierr)
     call SolverCheckCommandLine(tran_solver)
 
-    call DiscretizationCreateJacobian(discretization,NTRANDOF, &
-                                      tran_solver%mat_type,tran_solver%J,option)
+    if (tran_solver%Jpre_mat_type == '') then
+      if (tran_solver%J_mat_type /= MATMFFD) then
+        tran_solver%Jpre_mat_type = tran_solver%J_mat_type
+      else
+        tran_solver%Jpre_mat_type = MATBAIJ
+      endif
+    endif
 
+    call DiscretizationCreateJacobian(discretization,NTRANDOF, &
+                                      tran_solver%J_mat_type, &
+                                      tran_solver%Jpre,option)
+
+    if (tran_solver%J_mat_type /= MATMFFD) then
+      tran_solver%J = tran_solver%Jpre
+    endif
+    
     call MatSetOptionsPrefix(tran_solver%J, "tran_", ierr)
     
     if (tran_solver%use_galerkin_mg) then
@@ -255,8 +296,13 @@ subroutine Init(simulation,filename)
     endif
 
     call SNESSetFunction(tran_solver%snes,field%tran_r,RTResidual,realization,ierr)
-    call SNESSetJacobian(tran_solver%snes, tran_solver%J, tran_solver%J, RTJacobian, &
-                         realization, ierr)
+
+    if (tran_solver%J_mat_type == MATMFFD) then
+      call MatCreateSNESMF(tran_solver%snes,tran_solver%J,ierr)
+    endif
+    
+    call SNESSetJacobian(tran_solver%snes,tran_solver%J,tran_solver%Jpre, &
+                         RTJacobian,realization, ierr)
 
     call SNESLineSearchSet(tran_solver%snes,SNESLineSearchNo,PETSC_NULL_OBJECT,ierr)
 
@@ -1024,6 +1070,7 @@ subroutine readInput(simulation,filename)
 
 !....................
 
+#if 0
       case('ORIG','ORIGIN')
         call fiReadDouble(string,realization%discretization%origin(X_DIRECTION),ierr)
         call fiErrorMsg(option%myrank,'X direction','Origin',ierr)
@@ -1031,6 +1078,7 @@ subroutine readInput(simulation,filename)
         call fiErrorMsg(option%myrank,'Y direction','Origin',ierr)
         call fiReadDouble(string,realization%discretization%origin(Z_DIRECTION),ierr)
         call fiErrorMsg(option%myrank,'Z direction','Origin',ierr)
+#endif
         
 !....................
 

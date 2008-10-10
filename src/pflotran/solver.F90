@@ -40,8 +40,9 @@ module Solver_module
 
     ! Jacobian matrix
     Mat :: J    ! Jacobian
-    Mat :: JMF  ! matrix-free Jacobian
-    MatType :: mat_type
+    Mat :: Jpre ! Jacobian to be used in preconditioner
+    MatType :: J_mat_type
+    MatType :: Jpre_mat_type
 
     MatFDColoring :: matfdcoloring
       ! Coloring used for computing the Jacobian via finite differences.
@@ -119,8 +120,9 @@ function SolverCreate()
   solver%galerkin_mg_levels_z = 1
   
   solver%J = 0
-  solver%JMF = 0
-  solver%mat_type = MATBAIJ
+  solver%Jpre = 0
+  solver%J_mat_type = MATBAIJ
+  solver%Jpre_mat_type = ''
 !  solver%interpolation = 0
   nullify(solver%interpolation)
   solver%matfdcoloring = 0
@@ -284,6 +286,8 @@ subroutine SolverReadLinear(solver,fid,myrank)
             solver%ksp_type = KSPPREONLY
           case('GMRES')
             solver%ksp_type = KSPGMRES
+          case('FGMRES')
+            solver%ksp_type = KSPFGMRES
           case('BCGS','BICGSTAB','BI-CGSTAB')
             solver%ksp_type = KSPBCGS
           case('IBCGS','IBICGSTAB','IBI-CGSTAB')
@@ -429,13 +433,30 @@ subroutine SolverReadNewton(solver,fid,myrank)
         call fiWordToUpper(word)
         select case(trim(word))
           case('BAIJ')
-            solver%mat_type = MATBAIJ
+            solver%J_mat_type = MATBAIJ
           case('AIJ')
-            solver%mat_type = MATBAIJ
+            solver%J_mat_type = MATBAIJ
           case('MFFD','MATRIX_FREE')
-            solver%mat_type = MATMFFD
+            solver%J_mat_type = MATMFFD
           case default
             string  = 'ERROR: Matrix type: ' // trim(word) // ' unknown.'
+            if (myrank == 0) print *, string
+            stop
+        end select
+        
+      case('PRECONDITIONER_MATRIX_TYPE')
+        call fiReadWord(string,word,.true.,ierr)
+        call fiErrorMsg(myrank,'mat_type','SOLVER', ierr)   
+        call fiWordToUpper(word)
+        select case(trim(word))
+          case('BAIJ')
+            solver%Jpre_mat_type = MATBAIJ
+          case('AIJ')
+            solver%Jpre_mat_type = MATBAIJ
+          case('MFFD','MATRIX_FREE')
+            solver%Jpre_mat_type = MATMFFD
+          case default
+            string  = 'ERROR: Preconditioner Matrix type: ' // trim(word) // ' unknown.'
             if (myrank == 0) print *, string
             stop
         end select
@@ -603,7 +624,10 @@ subroutine SolverCheckCommandLine(solver)
 
   ! Parse the options to determine if the matrix type has been specified.
   call PetscOptionsGetString(prefix, '-mat_type', mat_type, is_present, ierr)
-  if (is_present) solver%mat_type = mat_type
+  if (is_present) solver%J_mat_type = mat_type
+  
+  call PetscOptionsGetString(prefix, '-pre_mat_type', mat_type, is_present, ierr)
+  if (is_present) solver%Jpre_mat_type = mat_type
 
   ! Parse the options for the Galerkin multigrid solver.
   ! Users can specify the number of levels of coarsening via the 
@@ -632,7 +656,7 @@ subroutine SolverCheckCommandLine(solver)
   if (is_present) solver%use_galerkin_mg = PETSC_TRUE
 
   if (solver%use_galerkin_mg) then
-    solver%mat_type = MATAIJ
+    solver%J_mat_type = MATAIJ
       ! Must use AIJ above, as BAIJ is not supported for Galerkin MG solver.
     solver%galerkin_mg_levels = max(solver%galerkin_mg_levels_x, &
                                     solver%galerkin_mg_levels_y, &
@@ -659,7 +683,12 @@ subroutine SolverDestroy(solver)
   integer :: i
 
   if (.not.associated(solver)) return
-    
+
+  if (solver%Jpre == solver%J) then
+    solver%Jpre = 0
+  elseif (solver%Jpre /= 0) then
+    call MatDestroy(solver%Jpre,ierr)
+  endif
   if (solver%J /= 0) call MatDestroy(solver%J,ierr)
   if (associated(solver%interpolation)) then
     do i=1,solver%galerkin_mg_levels-1

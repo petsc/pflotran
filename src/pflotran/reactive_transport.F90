@@ -970,10 +970,26 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
   MatStructure flag
   PetscErrorCode :: ierr
 
+  Mat :: J
+  MatType :: mat_type
   PetscViewer :: viewer  
   type(level_type), pointer :: cur_level
   type(patch_type), pointer :: cur_patch
   type(grid_type),  pointer :: grid
+
+
+  call MatGetType(A,mat_type,ierr)
+  if (mat_type == MATMFFD) then
+    flag = SAME_NONZERO_PATTERN
+    J = B
+    call MatAssemblyBegin(A,MAT_FINAL_ASSEMBLY,ierr)
+    call MatAssemblyEnd(A,MAT_FINAL_ASSEMBLY,ierr)
+  else
+    flag = SAME_NONZERO_PATTERN
+    J = A
+  endif
+    
+  call MatZeroEntries(J,ierr)
   
   cur_level => realization%level_list%first
   do
@@ -987,10 +1003,10 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
       ! so that entries will be set correctly
       if(associated(grid%structured_grid) .and. &
         (.not.(grid%structured_grid%p_samr_patch.eq.0))) then
-         call SAMRSetCurrentJacobianPatch(A, grid%structured_grid%p_samr_patch)
+         call SAMRSetCurrentJacobianPatch(J,grid%structured_grid%p_samr_patch)
       endif
 
-      call RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
+      call RTJacobianPatch(snes,xx,J,J,flag,realization,ierr)
       cur_patch => cur_patch%next
     enddo
     cur_level => cur_level%next
@@ -999,17 +1015,17 @@ subroutine RTJacobian(snes,xx,A,B,flag,realization,ierr)
   if (realization%debug%matview_Jacobian) then
     call PetscViewerASCIIOpen(realization%option%comm,'RTjacobian.out', &
                               viewer,ierr)
-    call MatView(A,viewer,ierr)
+    call MatView(J,viewer,ierr)
     call PetscViewerDestroy(viewer,ierr)
   endif
 
   if (realization%option%use_log_formulation) then
-    call MatDiagonalScaleLocal(A,realization%field%tran_work_loc,ierr)
+    call MatDiagonalScaleLocal(J,realization%field%tran_work_loc,ierr)
 
     if (realization%debug%matview_Jacobian) then
       call PetscViewerASCIIOpen(realization%option%comm,'RTjacobianLog.out', &
                                 viewer,ierr)
-      call MatView(A,viewer,ierr)
+      call MatView(J,viewer,ierr)
       call PetscViewerDestroy(viewer,ierr)
     endif
     
@@ -1077,9 +1093,6 @@ subroutine RTJacobianPatch(snes,xx,A,B,flag,realization,ierr)
   grid => patch%grid
   aux_vars => patch%aux%RT%aux_vars
   aux_vars_bc => patch%aux%RT%aux_vars_bc
-
-  flag = SAME_NONZERO_PATTERN  
-  call MatZeroEntries(A,ierr)
 
   ! Get pointer to Vector data
   call GridVecGetArrayF90(grid,field%tran_accum, accum_p, ierr)
