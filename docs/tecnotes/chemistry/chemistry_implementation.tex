@@ -1,0 +1,736 @@
+\documentclass[12pt]{article} 
+%\usepackage{times,helvet}
+\usepackage{palatino}
+%\usepackage{ssss}
+\usepackage{amsmath,amsbsy,amssymb}
+%\usepackage{fancyheadings}
+%\usepackage{deflist}
+\usepackage{fancyhdr}
+\usepackage{tabularx}
+\usepackage{verbatim}
+\usepackage{moreverb}
+\usepackage{float,comment}
+\usepackage{graphicx}
+\usepackage{longtable}
+\usepackage{portland}
+\textwidth 6.5in
+\textheight 9.5in
+%\topmargin -.1in
+\topmargin -.75in
+\newlength{\boxwidth}
+\setlength{\boxwidth}{5.8in}
+\oddsidemargin -0in
+\evensidemargin -0in
+\headheight 0.25in
+\lhead{{\sl PFLOTRAN: Chemical Algorithms}}
+\chead{\rm - \thepage\ -}
+\rhead{\today}
+\cfoot{}
+\newcommand\flotran{{\sl FloTran}}
+\renewcommand{\baselinestretch}{1.0}
+\def\EQ#1\EN{\begin{equation}#1\end{equation}}
+\def\BA#1\EA{\begin{align}#1\end{align}}
+\def\BS#1\ES{\begin{split}#1\end{split}}
+%\newcommand{\EQ}{\begin{equation}}
+%\newcommand{\EN}{\end{equation}}
+\newcommand{\bcr}{\begin{center}}
+\newcommand{\ecr}{\end{center}}
+\newcommand{\eq}{\ =\ }
+\newcommand{\degc}{$^\circ$C}
+\newcommand{\ecm}{{\rm ecm}}
+\newcommand{\eff}{{\rm eff}}
+\newcommand{\eqr}{{\rm le}}
+\newcommand{\equ}{{\rm eq}}
+\newcommand{\kin}{{\rm kin}}
+\newcommand{\rdx}{{\rm rdx}}
+\newcommand{\ind}{{\rm id}}
+\newcommand{\dep}{{\rm dp}}
+\newcommand{\e}{{\rm{e}}}
+\newcommand{\erf}{{\rm{erf}}}
+\newcommand{\erfc}{{\rm{erfc}}}
+\newcommand{\p}{{\partial}}
+\newcommand{\A}{{\mathcal A}}
+\newcommand{\B}{{\mathcal B}}
+\newcommand{\C}{{\mathcal C}}
+\newcommand{\D}{{\mathcal D}}
+\newcommand{\E}{{\mathcal E}}
+\newcommand{\F}{{\mathcal F}}
+\newcommand{\G}{{\mathcal G}}
+\newcommand{\I}{{\mathcal I}}
+\newcommand{\J}{{\mathcal J}}
+\newcommand{\M}{{\mathcal M}}
+\newcommand{\cO}{{\mathcal O}}
+\renewcommand{\P}{{{\mathcal P}}}
+\newcommand{\Q}{{\mathcal Q}}
+\newcommand{\R}{{{\mathcal R}}}
+\renewcommand{\S}{{\mathcal S}}
+\newcommand{\T}{{\mathcal T}}
+\newcommand{\W}{{\mathcal W}}
+\newcommand{\Y}{{\mathcal Y}}
+\newcommand{\Z}{{\mathcal Z}}
+\newcommand{\rev}{{\rm rev}}
+\newcommand{\irr}{{\rm irr}}
+\renewcommand{\a}{{\alpha}}
+\newcommand{\abar}{{\bar \alpha}}
+\renewcommand{\b}{{\beta}}
+\newcommand{\w}{{\rm H_2O}}
+\newcommand{\air}{{\rm N_2}}
+\newcommand{\pe}{{\rm Pe}}
+\newcommand{\da}{{\rm Da}}
+\renewcommand{\k}{{\dot R}^0}
+\renewcommand{\L}{\widehat{\mathcal L}}
+\renewcommand{\bar}{\overline}
+\newcommand{\dsty}{{\displaystyle}}
+\newcommand{\diff}{{\mathcal D}}
+\newcommand{\surf}{\equiv \!\!\!}
+\newcommand{\bnabla}{\boldsymbol{\nabla}}
+\newcommand{\bA}{\boldsymbol{A}}
+\newcommand{\ba}{\boldsymbol{a}}
+\newcommand{\bB}{\boldsymbol{B}}
+\newcommand{\bC}{\boldsymbol{C}}
+\newcommand{\bc}{\boldsymbol{c}}
+\newcommand{\bE}{\boldsymbol{E}}
+\newcommand{\bF}{\boldsymbol{F}}
+\newcommand{\bi}{\boldsymbol{i}}
+\newcommand{\bI}{\boldsymbol{I}}
+\newcommand{\bJ}{\boldsymbol{J}}
+\newcommand{\bK}{\boldsymbol{K}}
+\newcommand{\bM}{\boldsymbol{M}}
+\newcommand{\bdelta}{\boldsymbol{\delta}}
+\newcommand{\bGamma}{\boldsymbol{\Gamma}}
+\newcommand{\bOmega}{\boldsymbol{\Omega}}
+\newcommand{\bPsi}{\boldsymbol{\Psi}}
+\newcommand{\bO}{\boldsymbol{O}}
+\newcommand{\bnu}{\boldsymbol{\nu}}
+\newcommand{\bdS}{\boldsymbol{dS}}
+\newcommand{\bP}{\boldsymbol{P}}
+\newcommand{\bq}{\boldsymbol{q}}
+\newcommand{\br}{\boldsymbol{r}}
+\newcommand{\bR}{\boldsymbol{R}}
+\newcommand{\bS}{\boldsymbol{S}}
+\newcommand{\bu}{\boldsymbol{u}}
+\newcommand{\bv}{\boldsymbol{v}}
+\newcommand{\bx}{\boldsymbol{x}}
+\newcommand{\arrows}{~\rightleftharpoons~}
+\newcommand{\arrowstab}{\!\!\!\rightleftharpoons\!\!\!}
+\newcommand{\longline}{\noindent\rule[-0.1in]{\textwidth}{0.01in}}
+
+%\numberwithin{equation}{section}
+
+%\renewcommand{\theequation}{\arabic{section}.\arabic{equation}}
+
+%\newcounter{saveeqn}%
+%\newcommand{\seteqn}{\setcounter{saveeqn}{\value{equation}}%
+%\stepcounter{saveeqn}\setcounter{equation}{0}%
+%\renewcommand{\theequation}
+%      {\mbox{\arabic{saveeqn}-\alph{equation}}}}%
+%\newcommand{\reseteqn}{\setcounter{equation}{\value{saveeqn}}%
+%\renewcommand{\theequation}{\arabic{equation}}}%
+
+\newcounter{saveeqn}%
+\newcommand{\seteqn}{\setcounter{saveeqn}{\value{equation}}%
+\stepcounter{saveeqn}\setcounter{equation}{0}%
+\renewcommand{\theequation}
+      {\mbox{\arabic{section}.\arabic{saveeqn}\alph{equation}}}}%
+\newcommand{\reseteqn}{\setcounter{equation}{\value{saveeqn}}%
+\renewcommand{\theequation}{\arabic{section}.\arabic{equation}}}%
+
+\setcounter{secnumdepth}{5}
+\setcounter{tocdepth}{5}
+
+\setlength{\parindent}{0.3125in}
+\setlength{\parskip}{2ex plus 0.2ex minus 0.2ex}
+
+\renewcommand{\contentsname}{TABLE OF CONTENTS}
+\setcounter{secnumdepth}{5}
+
+\setlongtables
+
+\pagestyle{fancy}
+
+\thispagestyle{empty}
+
+\begin{document}
+
+\bcr
+
+\section*{Chemistry Implementation in PFLOTRAN: Colloids, Surface Complexation, Ion Exchange, Biogeochemistry with Monode Kinetics, Precipitation/Dissolution, Solid Solutions, Species-Dependent Diffusion, Pitzer Model, \ldots}
+
+P.C. Lichtner (LANL, \today)
+
+\ecr
+
+\longline
+
+\tableofcontents
+
+\longline
+
+\section{Reading the Thermodynamic Database}
+
+\subsection{Database Format}
+
+The thermodynamic database stores all chemical reaction properties (equilibrium constant $\log K_r$, reaction stoichiometry $\nu_{ir}$, species valence $z_i$, Debye parameter $a_i$, mineral molar volume $\overline V_m$, and formula weight $w_i$) used in PFLOTRAN, with the exception of ion exchange. Reactions included in the database consist of aqueous complexation, mineral precipitation and dissolution, gaseous reactions, and surface complexation. The database is divided in five sections: database primary species, aqueous complex reactions, gaseous reactions, mineral reactions, and surface complexation. The format of the database is set up as shown in Table~\ref{tdatabase}. Equilibrium constants are stored at the temperatures: $\{$0, 25, 60, 100, 150, 200, 250, 300$\}$\degc. In the standard database the equilibrium constants are interpolated using a least squares fit to the Meier-Kelly expansion
+\EQ
+\log K \eq c_{-1} \ln T + c_0 + c_1 T + \frac{c_2}{T} + \frac{c_3}{T^2},
+\EN
+with coefficients $c_i$. As a consequence the entries in the database are not exactly reproduced at the corresponding temperatures. 
+
+\begin{table}[h]\centering
+\caption{Thermodynamic database format.}\label{tdatabase}
+\vspace{3mm}
+\begin{tabular}{ll}
+\hline
+Primary Species: & name, $a_0$, $z$, $w$\\
+Secondary Species: & name, nspec, ($\nu$(n), name($n$), $n$=1, nspec), log$K$(1:8) $a_0$, $z$, $w$\\
+Gaseous Species: & name, $\overline V$, nspec, ($\nu$(n), name($n$), $n$=1, nspec), log$K$(1:8), $w$ \\
+Minerals: & name, $\overline V$, nspec, ($\nu$(n), name($n$), $n$=1, nspec), log$K$(1:8), $w$\\
+Surface Complexes: & $>$name, nspec, ($\nu$(n), name($n$), $n$=1, nspec), log$K$(1:8), $z$, $w$\\
+\hline
+\end{tabular}
+\end{table}
+
+Redox reactions in the standard database are usually written in terms of O$_{2(g)}$.
+Complexation reactions involving redox sensitive species are written in such a manner as to preserve the redox state.
+
+\subsection{Primary Species: Transforming the Database}
+
+The user must first select a set of aqueous primary species in terms of which the reactions in the database are then transformed. This is typically carried out as follows. For an arbitrary reaction corresponding to an aqueous complex that is read from the database with the form
+\EQ
+\varnothing\arrows\sum_i\nu_{ir}\A_i,
+\EN
+with $\varnothing$ representing the null species, the species are partitioned into primary and secondary species leading to the reaction
+\EQ
+\varnothing\arrows\sum_j\nu_{jr}\A_j + \sum_i\nu_{ir}\A_i.
+\EN
+Because, by construction, the matrix $\nu_{ir}$ is nonsingular, it can be inverted to give the canonical form
+\EQ\label{canonical}
+\sum_j\widetilde\nu_{ji}\A_j \arrows \A_i,
+\EN
+where
+\EQ
+\widetilde\nu_{ji} \eq -\sum_r\nu_{jr}(\nu^{-1})_{ri}.
+\EN
+These reactions are presumed to apply to both aqueous complexes and gaseous reactions. For mineral reactions, the database form
+\EQ
+\sum_j\nu_{jm}\A_j + \sum_i\nu_{im}\A_i\arrows\M_m,
+\EN
+is transformed by eliminating the secondary species $\A_i$ using Eqn.\eqref{canonical} to give
+\EQ
+\sum_j\widetilde\nu_{jm}\A_j\arrows\M_m,
+\EN
+where
+\EQ
+\widetilde\nu_{jm}\eq\nu_{jm}+\sum_i\widetilde\nu_{ji}\nu_{im}.
+\EN
+
+\section{Homogeneous Reactions}
+
+Homogeneous reactions taking place within the aqueous phase can either be governed by local equilibrium relations or by kinetics as, for example, in sulfate reduction described by the reaction
+\EQ
+\rm SO_4^{2-} + H^+ - 2 O_{2(aq)} \arrows \rm HS^-. 
+\EN
+In this reaction sulfur is transformed through electron transfer from S$^{\rm VI}$ to S$^{-\rm II}$. Here it is necessary to ensure that complexes do not mix different redox states together. For example, the reactions
+\EQ
+\rm SO_4^{2-} + H^+ \arrows \rm HSO_4^-,
+\EN
+and
+\EQ
+\rm HS^- + H^+ \arrows \rm H_2S_{(aq)}.
+\EN
+preserve the sulfur redox state and can be consider to be in local equilibrium.
+
+Local equilibrium reactions can always be written in the canonical form
+\EQ
+\sum_j\nu_{ji}\A_j \arrows \A_i.
+\EN
+Kinetic reactions depend on the specific mechanism and are assumed to have the general form
+\EQ
+\varnothing\arrows\sum_i\nu_{ir}\A_i.
+\EN
+Breaking this reaction out into primary and secondary species gives
+\EQ
+\varnothing\arrows\sum_j\nu_{jr}\A_j + \sum_i\nu_{ir}\A_i.
+\EN
+Eliminating the secondary species $\A_i$ yields the reactions
+\EQ
+\varnothing\arrows\sum_j\widetilde\nu_{jr}\A_j,
+\EN
+where
+\EQ
+\widetilde\nu_{jr} \eq \nu_{jr} + \sum_i \nu_{ji}\nu_{ir}.
+\EN
+
+The transport equations in the presence of homogeneous reactions take the form
+\EQ
+\frac{\p}{\p t} \varphi C_j + \bnabla\cdot\bF_j \eq -\sum_i\nu_{ji}I_i + \sum_r\widetilde\nu_{jr} I_r,
+\EN
+for primary species, and
+\EQ
+\frac{\p}{\p t} \varphi C_i + \bnabla\cdot\bF_i \eq I_i,
+\EN
+for secondary species. Noting that the rates $I_i$ for local equilibrium reactions are determined through algebraic mass action equations providing the concentrations of secondary species, these rates can be eliminated to yield the primary species transport equations
+\EQ
+\frac{\p}{\p t} \varphi \Psi_j + \bnabla\cdot\bOmega_j \eq \sum_r\widetilde\nu_{jr} I_r,
+\EN
+where the total concentration $\Psi_j$ and flux $\bOmega_j$ are defined by
+\EQ
+\Psi_j \eq C_j + \sum_i\nu_{ji}C_i,
+\EN
+and
+\EQ
+\bOmega_j \eq \bF_j + \sum_i\nu_{ji}\bF_i.
+\EN
+The flux $\bF_k$ has the usual form with contributions from advection and diffusion/dispersion given by
+\EQ
+\bF_k \eq \bq C_k - \varphi D \bnabla C_k,
+\EN
+with diffusion/dispersion coefficient $D$ assumed to be identical for all species. This condition is relaxed in the section below on species-dependent diffusion. The concentration of the $i$th secondary species is given by the relation
+\EQ
+m_i \eq \gamma_i^{-1} \prod_j \big(\gamma_j m_j\big)^{\nu_{ji}},
+\EN
+where the molality $m_l$ is related to molarity $C_l$ by the approximate expression
+\EQ
+C_l \eq \rho_w m_l,
+\EN
+where $\rho_w$ denotes the density of pure water.
+Activity coefficients $\gamma_l$ are obtained from the Debye-H\"uckel algorithm
+\EQ
+\log\,\gamma_i \eq -\frac{z_i^2 A \sqrt{\I}}{1+B \stackrel{\circ}{a}_i \sqrt{I}}+\dot b \I,
+\EN
+and the Davies algorithm defined by the expression
+\EQ
+\log\,\gamma_i \eq -\frac{z_i^2}{2}\left[\frac{\sqrt{\I}}{1+ \sqrt{\I}}-0.3 \I\right].
+\EN
+The ionic strength $\I$ is defined by
+\EQ
+\I \eq \frac{1}{2} \sum_j z_j^2 m_j + \frac{1}{2} \sum_i z_i^2 m_i,
+\EN
+with molality $m_l$ and valence $z_l$. In the case of the Debye-H\"uckel and Davies algorithms, the activity coeffients are determined by solving a nonlinear equation for the ionic strength.
+For high ionic strength solutions, the Pitzer model must be used which is described in a later section.
+
+\section{Mineral Precipitation/Dissolution Reactions}
+
+Mineral precipitation/dissolution reactions are assumed to have the form
+\EQ
+\sum_j\nu_{jm}\A_j \arrows \M_m.
+\EN
+The rate law based on transition state theory has the general form
+\BA\label{ratemin}
+\widehat I_m &\eq - {\rm sgn}_m s_m^{} \left(\sum_l \P_{ml}^{} k_{ml}^{} \right) \bigg| 1- \left(K_m Q_m\right)^\frac{1}{\sigma_m} \bigg|^{\beta_m},\\
+&\eq - {\rm sgn}_m s_m^{} \left(\sum_l \P_{ml}^{} k_{ml}^{} \right) \bigg| 1- \e^{-A_m/(\sigma_mRT)} \bigg|^{\beta_m},
+\EA
+where the affinity $A_m$ is defined as
+\EQ
+A_m \eq -RT\ln K_mQ_m,
+\EN
+the quantity sgn$_m$ denotes the sign of the affinity factor
+\EQ
+{\rm sgn}_m \eq \dfrac{1- \left(K_m Q_m\right)^{1/\sigma_m}}{\big| 1- \left(K_m Q_m\right)^{1/\sigma_m}\big|},
+\EN
+where $K_m$ represents the equilibrium constant, $Q_m$ denotes the ion activity product
+\EQ
+Q_m\eq\prod_j\big(\gamma_j C_j\big)^{\nu_{jm}},
+\EN
+the prefactor $\P_{ml}$ is defined as the product of contributions from primary and secondary species:
+\EQ\label{prefactorm}
+\P_{ml} \eq \left[\prod_{j=1}^{N_c} \frac{a_j^{\alpha_{jl}^m}}{1+K_{jl}^{} a_j^{\beta_{jl}^m}} \right] \,
+\left[\prod_{i=1}^{N_{cx}} \frac{a_i^{\alpha_{il}^m}}{1+K_{il}^{} a_i^{\beta_{il}^m}}\right],
+\EN
+$k_{ml}$ denotes the kinetic rate constant for the $l$th parallel reaction, $s_m$ denotes the specific mineral surface area participating in the reaction, $\sigma_m$ denotes Tempkin's constant, $a_i$ represents the activity of the $i$th species, and $\alpha_{jl}^m$, $\alpha_{il}^m$ are a constants. A transport-limited form of the rate law can be devised according to the expression
+\EQ\label{ratemintran}
+\widehat I_m \eq -s_m^{} \sum_l \P_{ml}^{} k_{ml}^{} \left[ \dfrac{1-\left(K_m Q_m\right)^{1/\sigma_m}}{1+\dfrac{k_{ml}^{}}{r_m^{\rm lim}} \left(K_m Q_m\right)^{1/\sigma_m}} \right],
+\EN
+with transport-limited rate $r_{\rm lim}$. In the limit $K_mQ_m\rightarrow\infty$, the rate becomes
+\EQ
+\lim_{K_mQ_m\rightarrow\infty}\widehat I_m \eq r_m^{\rm lim} s_m^{}\sum_l \P_{ml}^{}.
+\EN
+
+Adding mineral precipitation/dissolution to the mass conservation equations yields
+\EQ
+\frac{\p}{\p t} \varphi \Psi_j + \bnabla\cdot\bOmega_j \eq \sum_r\widetilde\nu_{jr}I_r -\sum_m \nu_{jm} I_m,
+\EN
+\EQ
+\frac{\p\varphi_m}{\p t} \eq \overline V_m I_m.
+\EN
+
+\section{Sorption}
+
+\subsection{Surface Complexation Reactions}
+
+\noindent
+Surface complexation reactions are assumed to have the general form
+\EQ
+\nu_i^\a >\!\!\!X_\a + \sum_j \nu_{ji} \A_j \arrows >\!\!\!\A_i^\a,
+\EN
+for surface complex $>\!\!\!\A_i^\a$ and empty surface site $>\!\!\!X_\a$ on surface sites designated by $\a$. Each surface site $\a$ corresponds to a particular type of site $s_m$ associated with a particular mineral $\M_m$. Thus $\a = (m,\,s_m)$ can be represented by two indices $m$ and $s_m$. Conservation of surface sorption sites is expressed as
+\EQ
+\omega_\a = S_X^\a + \sum_i \nu_i^\a S_i^\a,
+\EN
+where the surface site concentration $\omega_\a$ is given by
+\EQ
+\omega_\a \eq \frac{N_\a}{V} \eq \frac{N_\a}{A_m}\frac{A_m}{M_m}\frac{M_m}{V_m}\frac{V_m}{V} \eq \eta_m^\a \A_m \rho_m \varphi_m.
+\EN
+
+\noindent
+The reaction rate:
+\EQ
+I_i^\a = k_i^{\a f} (S_X^\a)^{\nu_i^\a} \prod_j a_j^{\nu_{ji}} - k_i^{\a b} S_i^\a
+\EN
+
+\noindent
+The mass conservation equations in the presence of surface complexation reactions have the form
+\BA
+\frac{\p}{\p t} \varphi \Psi_j + \bnabla\cdot\bOmega_j &= -\sum_{i\a} \nu_{ji} I_i^\a,\\
+\frac{\p S_i^\a}{\p t} &= I_i^\a,\\
+\frac{\p S_X^\a}{\p t} &= -\sum_{i} \nu_{i}^\a I_i^\a.
+\EA
+Eliminating the reaction rates $I_i^\a$ leads to the equations
+\EQ
+\frac{\p}{\p t} \left\{\varphi \Psi_j +\sum_{i\a} \nu_{ji} S_i^\a \right\} + \bnabla\cdot\bOmega_j = 0.
+\EN
+Note that the sorption site concentration $\omega_\a$ is conserved:
+\EQ
+\frac{\p\omega_\a}{\p t} \eq \frac{\p S_X^\a}{\p t} + \sum_i\nu_i^\a \frac{\p S_i^\a}{\p t} \eq 0.
+\EN 
+
+\subsubsection{Implementation}
+
+Implementing surface complexation involves summing over complexes associated with different sites on different minerals. The structure of the sum has the form
+\EQ
+\sum_{i\a} S_i^\a \eq 
+%\sum_{m=p_1}^{M_{1}} 
+\sum_{m=1\rule[5pt]{0pt}{1pt}}^{M} \,\,\,
+\sum_{s=s_1(m)}^{s_2(m)} \,
+\sum_{i=i_1(l)}^{i_2(i)} S_i^{ms}
+\EN
+
+\noindent Local Equilibrium:
+\EQ
+S_i^\a \eq K_i^\a Q_i^{} (S_X^\a)^{\nu_i^\a},
+\EN
+\EQ
+Q_i\eq \prod_j a_j^{\nu_{ji}},
+\EN
+\EQ
+\omega_\a = S_X^\a + \sum_{i} \nu_i^\a (S_X^\a)^{\nu_i^\a} K_i^\a Q_i^{}.
+\EN
+
+\noindent Jacobian:
+\EQ
+C_l\frac{\p S_X}{\p C_l} \eq -\dfrac{\displaystyle\sum\nu_{li}\nu_iS_i}{1+\dfrac{1}{S_X}\displaystyle\sum\nu_i^2 S_i}
+\EN
+\BA
+C_l\frac{\p S_i}{\p C_l} &\eq \nu_{li} S_i + \nu_iS_i \frac{C_l}{S_X}\frac{\p S_X}{\p C_l},\\
+&\eq \nu_{li} S_i - \nu_iS_i \dfrac{\displaystyle\sum_{i'}\nu_{li'}\nu_iS_{i'}}{S_X+\displaystyle\sum_{i'}\nu_{i'}^2 S_{i'}},\\
+&\eq S_i \left\{ \nu_{li} - \dfrac{\nu_i \displaystyle\sum_{i'}\nu_{li'}\nu_{i'} S_{i'}}{S_X+\displaystyle\sum_{i'}\nu_{i'}^2 S_{i'}} \right\}
+\EA
+\BA
+C_l\frac{\p\Psi_j^S}{\p C_l} &\eq C_l\sum_i \nu_{ji} \frac{\p S_i}{\p C_l},\\
+&\eq \sum_i \nu_{ji} S_i \left[\nu_{li} - \dfrac{\nu_i \displaystyle\sum_{i'}\nu_{li'}\nu_{i'} S_{i'}}{S_X+\displaystyle\sum_{i'}\nu_{i'}^2 S_{i'}}\right],\\
+&\eq \sum_i \nu_{ji} \nu_{li} S_i - \frac{1}{S_X+\displaystyle\sum_{i'}\nu_{i'}^2 S_{i'}}\left(\sum_i \nu_{ji} \nu_i S_i \right) \left( \displaystyle\sum_{i'}\nu_{li'}\nu_{i'} S_{i'}\right)
+\EA
+
+\noindent Special Case: $\nu_i^\a=1$
+\EQ
+\omega_\a \eq S_X^\a + \sum_i S_i^\a
+\EN
+\EQ
+S_X^\a \eq \frac{\omega_\a}{1+\sum_i K_i^\a Q_i}
+\EN
+\EQ
+S_i^\a \eq \frac{\omega_\a K_i^\a Q_i}{1+\sum_{i'} K_{i'}^\a Q_{i'}}
+\EN
+\BA
+C_l\frac{\p S_i}{\p C_l} &\eq \nu_{li} S_i - \frac{\omega Q_i}{\big(1+\sum Q_{i'}\big)^2}\sum\nu_{li'}Q_{i'},\\
+&\eq \nu_{li} S_i - S_i \frac{1}{\omega}\sum \nu_{li'} S_{i'},\\
+&\eq S_i \left[\nu_{li} - \frac{1}{\omega}\sum \nu_{li'} S_{i'}\right].
+\EA
+\BA
+C_l\frac{\p\Psi_j^S}{\p C_l} &\eq C_l\sum_i \nu_{ji} \frac{\p S_i}{\p C_l},\\
+&\eq \sum_i \nu_{ji} S_i \left[\nu_{li} - \frac{1}{\omega}\sum \nu_{li'} S_{i'}\right],\\
+&\eq \sum_i \nu_{ji} \nu_{li} S_i - \frac{1}{\omega}\left(\sum\nu_{ji}S_i\right) \left(\sum \nu_{li'} S_{i'}\right).
+\EA
+
+\noindent
+Residual:
+\BA
+R_j &+\!\!= \sum_i \nu_{ji} I_i V_n\\
+R_i &= \big(S_i^{k+1}-S_i^k\big) \frac{V_n}{\Delta t} - I_i V_n\\
+R_X &=\big(S_X^{k+1}-S_X^k\big) \frac{V_n}{\Delta t} + \sum_i I_i V_n
+\EA
+
+\noindent
+Jacobian:
+\BA
+\frac{\p R_j}{\p C_l} &+\!\!= \sum_i \nu_{ji} \frac{\p I_i}{\p C_l} V_n\\
+\frac{\p R_j}{\p S_i} &+\!\!= \sum_i \nu_{ji} \frac{\p I_i}{\p S_i} V_n\\
+\frac{\p R_j}{\p S_X} &+\!\!= \sum_i \nu_{ji} \frac{\p I_i}{\p S_X} V_n
+\EA
+\BA
+\frac{\p R_i}{\p C_l} &= - \frac{\p I_i}{\p C_l} V_n\\
+\frac{\p R_i}{\p S_i} &= \frac{V_n}{\Delta t} - \frac{\p I_i}{\p S_i} V_n\\
+\frac{\p R_i}{\p S_X} &= - \frac{\p I_i}{\p S_X} V_n
+\EA
+\BA
+\frac{\p R_X}{\p C_l} &= \sum_i \frac{\p I_i}{\p C_l} V_n\\
+\frac{\p R_X}{\p S_i} &= \sum_i \frac{\p I_i}{\p S_i} V_n\\
+\frac{\p R_X}{\p S_X} &= \frac{V_n}{\Delta t} + \sum_i \frac{\p I_i}{\p S_X} V_n
+\EA
+\BA
+C_l\frac{\p I_i}{\p C_l} &= \nu_{ji} k_i^f S_X^{} Q_i\\
+\frac{\p I_i}{\p S_i} &= -k_i^b\\
+\frac{\p I_i}{\p S_X} &= k_i^f Q_i
+\EA
+
+\subsection{Ion Exchange Reactions}
+Ion exchange reactions may be represented either in terms of bulk- or mineral-specific rock properties.  Changes in bulk sorption properties can be expected as a result of mineral reactions.  However, only the mineral-based formulation enables these effects to be captured in the model.  The bulk rock sorption site concentration $\omega_\a$, in units of moles of sites per bulk sediment volume (mol/dm$^3$), is related to the bulk cation exchange capacity $Q_\a$ (mol/kg) by the expression
+
+Ion exchange reactions can be expressed in the form
+\EQ\label{ex1}
+\dfrac{1}{z_j} \A_j + \dfrac{1}{z_i} X_{z_i}\A_i \arrows \dfrac{1}{z_i} \A_i + \dfrac{1}{z_j} X_{z_j}\A_j,
+\EN
+with valencies $z_j$, $z_i$ of cations $\A_j$ and $\A_i$, respectively. The reference cation is denoted by the subscript $j$ and the subscript $i\!\ne\! j$ represents all other cations. 
+The mass action equation is given by
+\EQ
+K_{ji} \eq \left(\dfrac{X_j^\a}{a_j}\right)^{1/z_j}\left(\dfrac{a_i}{X_i^\a}\right)^{1/z_i},
+\EN
+where, using the Gaines-Thomas convention, the equivalent fractions $X_k$ are defined by
+\EQ
+X_k^\a = \frac{z_k S_k^\a}{\displaystyle\sum_l z_l S_l^\a} = \frac{z_k}{\omega_\a}S_k^\a,
+\EN
+with 
+\EQ
+\sum_k X_k^\a = 1,
+\EN
+The site concentration $\omega_\a$ is defined by
+\EQ
+\omega_\a = \sum_k z_k S_k^\a,
+\EN
+where $\omega_\a$ is related to the cation exchange capacity $Q_\a$ (CEC) by the expression
+\EQ
+\omega_\a = (1-\varphi) \rho_s \, Q_\a,
+\EN
+with solid density $\rho_s$ and porosity $\varphi$. 
+
+For equivalent exchange $(z_j\!=\!z_i\!=\!z)$, an explicit expression exists for the sorbed concentrations given by
+\EQ
+S_j^\a \eq \frac{\omega_\a}{z} \frac{k_j C_j}{\sum k_lC_l},
+\EN
+where $C_k$ denotes the $k$th cation concentration. This expression follows directly from the mass action equations and conservation of exchange sites.
+
+\subsubsection{Kinetic Formulation of Ion Exchange}
+
+The simplest approach to developing a kinetic formulation of ion exchange is to assume simple reaction kinetics in which the rate is equal to the difference between the forward and backward rates with concentrations raised to powers of the reaction stoichiometric coefficients. This form of the rate law, however, is not unique (with the exception of monovalent exchange) and depends on the stoichometry used to write the exchange reaction. As long as the same final equilibrium state is obtained, the correctness of the form of the rate law cannot be ascertained without further experiment effort.
+
+
+\subsubsection{Kinetic Rate Laws}
+
+The kinetic reaction rate for reaction \eqref{ex1} has the following form  
+\begin{subequations}
+\EQ
+I_{ji} \eq k_{ji}^f a_j^{1/z_j} X_i^{1/z_i} - k_{ji}^b a_i^{1/z_i} X_j^{1/z_j},
+\EN
+and for reaction \eqref{ex2} the form 
+\EQ
+\widetilde I_{ji} \eq \widetilde k_{ji}^f a_j^{z_i} X_i^{z_j} - \widetilde k_{ji}^b a_i^{z_j} X_j^{z_i}.
+\EN
+\end{subequations}
+Although the reaction rates $I_{ji}$ and $\widetilde I_{ji}$ corresponding to reactions \eqref{ex1} and \eqref{ex2} are not simply related, the equilibrium constants for the corresponding reactions are related by the expression
+\EQ
+\widetilde K_{ji} \eq \big(K_{ji}\big)^{z_jz_i}.
+\EN
+The ratio of the forward and backward rate constants are equal to the equilibrium constants according to
+\EQ
+K_{ji} \eq \frac{k_{ji}^f}{k_{ji}^b},
+\EN
+and similarly for $\widetilde K_{ji}$.
+
+\subsubsection{Mass Conservation Relations}
+
+Mass conservation equations including homogeneous aqueous reactions, mineral precipitation and dissolution, and ion exchange with the form \eqref{ex1} using cation $\A_j$ as reference cation have the form
+\begin{subequations}
+\BA
+\frac{\p}{\p t} \varphi \Psi_j + \bnabla\cdot\bOmega_j &= -\frac{1}{z_j}\sum_{i\ne j} I_{ji} - \sum_m\nu_{jm}I_m,\\
+\frac{\p}{\p t} \varphi \Psi_j + \bnabla\cdot\bOmega_j &= \frac{1}{z_i} I_{ji} - \sum_m\nu_{im}I_m,
+\EA
+\end{subequations}
+for aqueous primary species with mineral reaction rates $I_m$.
+Sorbed concentrations obey the conservation equations
+\begin{subequations}
+\BA
+\frac{\p S_j}{\p t} &= \frac{1}{z_j}\sum_{i\ne j} I_{ji},\\
+\frac{\p S_i}{\p t} &= -\frac{1}{z_i} I_{ji}.
+\EA
+\end{subequations}
+Similar expressions hold for the exchange reactions of the form of reactions \eqref{ex2} but with different stoichiometric exchange coefficients
+\begin{subequations}
+\BA
+\frac{\p}{\p t} \varphi \Psi_j + \bnabla\cdot\bOmega_j &= -\sum_{i\ne j} z_i \widetilde I_{ji} - \sum_m\nu_{jm}I_m,\\
+\frac{\p}{\p t} \varphi \Psi_j + \bnabla\cdot\bOmega_j &= z_j \widetilde I_{ji} - \sum_m\nu_{im}I_m,
+\EA
+\end{subequations}
+with sorbed concentrations
+\begin{subequations}
+\BA
+\frac{\p S_j}{\p t} &= \sum_{i\ne j} z_i\widetilde I_{ji},\\
+\frac{\p S_i}{\p t} &= -z_j \widetilde I_{ji}.
+\EA
+\end{subequations}
+
+Eliminating the exchange rates from the primary species equations gives the equation
+\EQ
+\frac{\p}{\p t} \left(\varphi \Psi_j + S_j\right) + \bnabla\cdot\bOmega_j \eq -\sum_m\nu_{jm}I_m,
+\EN
+valid for all exchangeable cations and for both forms of the exchange reactions.
+
+It follows that for both formulations exchange sites are conserved according to the result
+\EQ
+\frac{\p\omega}{\p t} \eq 0.
+\EN
+implying that the cation exchange capacity of the porous medium is constant as must be the case.
+
+\subsubsection{Finite Difference Form}
+
+For a system with $N_{\rm ex}$ exchangeable cations, in a kinetic formulation there are $2\times N_{\rm ex}$ independent variables: $\{C_1,\,\cdots,\,C_{N_{\rm ex}},\,S_1,\,\cdots,\,S_{N_{\rm ex}}\}$, consisting of the cation aqueous and sorbed concentrations.
+
+The contribution of ion exchange to the residual function $R_{kn}^{\rm ex}$ for finite difference equations for the $j$th primary species at the $n$th node is given by (only the case of reactions \eqref{ex1} are presented here):
+\EQ
+R_{jn}^{\rm ex} \eq V_n\frac{\Delta S_j}{\Delta t},
+\EN
+and for sorbed concentrations
+\begin{subequations}
+\BA
+R_{N_{\rm ex}+j,n} &\eq \frac{V_n}{\Delta t} \big(S_{jn}^{t+\Delta t}-S_{jn}^t \big) - \frac{V_n}{z_j}\sum_{i\ne j} I_{ji,n},\\
+R_{N_{\rm ex}+i,n} &\eq \frac{V_n}{\Delta t} \big(S_{in}^{t+\Delta t}-S_{in}^t \big) + \frac{V_n}{z_i} I_{ji,n}.
+\EA
+\end{subequations}
+
+The Jacobian equations in matrix form for the contribution of exchange reactions have the structure
+\EQ
+\renewcommand{\arraystretch}{2}
+\left[
+\begin{array}{cc}
+0 & \dfrac{\p R_j}{\p S_k}\\
+\dfrac{\p R_{N_{\rm ex}+j}}{\p C_k} & \dfrac{\p R_{N_{\rm ex}+j}}{\p S_k}
+\end{array}
+\right]
+\left[
+\begin{array}{c}
+\delta C_j \\
+\delta S_k
+\end{array}
+\right]
+\eq
+-\left[
+\begin{array}{c}
+R_j\\
+R_{N_{\rm ex}+j}
+\end{array}
+\right],
+\EN
+with
+\EQ
+\dfrac{\p R_j}{\p S_k} \eq \delta_{jk}\frac{V}{\Delta t},
+\EN
+and
+\begin{subequations}
+\BA
+\frac{\p R_{N_{\rm ex}+j,n}}{\p\ln C_{jn}} &\eq \frac{V_n}{z_j}C_j\sum_{i\ne j} \frac{\p I_{ji,n}}{\p C_{jn}},\\
+\frac{\p R_{N_{\rm ex}+j,n}}{\p\ln C_{in}} &\eq \frac{V_n}{z_j} C_i\frac{\p I_{ji,n}}{\p C_i},\\
+\frac{\p R_{N_{\rm ex}+i,n}}{\p\ln C_{jn}} &\eq \frac{V_n}{z_i} C_j\frac{\p I_{ji,n}}{\p C_{jn}},\\
+\frac{\p R_{N_{\rm ex}+i,n}}{\p\ln C_{in}} &\eq \frac{V_n}{z_i} C_i\frac{\p I_{ji,n}}{\p C_{in}},
+\EA
+\end{subequations}
+\begin{subequations}
+\BA
+\frac{\p R_{N_{\rm ex}+j,n}}{\p S_{jn}} &\eq \frac{V_n}{\Delta t} - \frac{V_n}{z_j}\sum_{i\ne j} \frac{\p I_{ji,n}}{\p S_{jn}},\\
+\frac{\p R_{N_{\rm ex}+j,n}}{\p S_{in}} &\eq \frac{V_n}{\Delta t} - \frac{V_n}{z_j} \frac{\p I_{ji,n}}{\p S_i},\\
+\frac{\p R_{N_{\rm ex}+i,n}}{\p S_{jn}} &\eq \frac{V_n}{\Delta t} + \frac{V_n}{z_i} \frac{\p I_{ji,n}}{\p S_{jn}},\\
+\frac{\p R_{N_{\rm ex}+i,n}}{\p S_{in}} &\eq \frac{V_n}{\Delta t} + \frac{V_n}{z_i} \frac{\p I_{ji,n}}{\p S_{in}}.
+\EA
+\end{subequations}
+Logarithmic derivatives of the exchange reaction rates are given by
+\begin{subequations}
+\BA
+C_j\frac{\p I_{ji}}{\p C_j} &= \frac{1}{z_j} k_{ji}^f a_j^{1/z_j} S_i^{1/z_i},\\
+C_i\frac{\p I_{ji}}{\p C_i} &= -\frac{1}{z_i} k_{ji}^b a_i^{1/z_i} S_j^{1/z_j},\\
+S_j\frac{\p I_{ji}}{\p S_j} &= -\frac{1}{z_j} k_{ji}^b a_i^{1/z_i} S_j^{1/z_j},\\
+S_i\frac{\p I_{ji}}{\p S_i} &= \frac{1}{z_i} k_{ji}^f a_j^{1/z_j} S_i^{1/z_i}.
+\EA
+\end{subequations}
+Note that: $\dfrac{df}{d\ln x} = x \dfrac{df}{dx}$, for any function $f$.
+
+\section{Colloid-Facilitated Transport}
+
+\section{Solid Solutions}
+
+\section{Biogeochemical Reactions}
+
+\section{Species-Dependent Diffusion}
+
+\end{document}
+%
+\begin{comment}
+\begin{subequations}
+\BA
+R_{jn}^{\rm ex} &\eq \frac{V_n}{z_j}\sum_{i\ne j} I_{ji,n},\\
+R_{in}^{\rm ex} &\eq -\frac{V_n}{z_i} I_{ji,n},
+\EA
+\end{subequations}
+\end{comment}
+%
+
+%
+\begin{comment}
+The contribution of ion exchange to the Jacobian matrix has the following forms for the reference cation
+\begin{subequations}
+\BA
+\frac{\p R_{jn}^{\rm ex}}{\p\ln C_{jn}} &\eq -\frac{V_n}{z_j}C_{jn}\sum_{i\ne j} \frac{\p I_{ji,n}}{\p C_{jn}},\\
+\frac{\p R_{jn}^{\rm ex}}{\p\ln C_{in}} &\eq -\frac{V_n}{z_j} C_{in}\frac{\p I_{ji,n}}{\p C_{in}},\\
+\frac{\p R_{jn}^{\rm ex}}{\p S_{jn}} &\eq -\frac{V_n}{z_j}\sum_{i\ne j} \frac{\p I_{ji,n}}{\p S_{jn}},\\
+\frac{\p R_{jn}^{\rm ex}}{\p S_{in}} &\eq -\frac{V_n}{z_j} \frac{\p I_{ji,n}}{\p S_{in}},
+\EA
+\end{subequations}
+and for all other cations
+\begin{subequations}
+\BA
+\frac{\p R_{in}^{\rm ex}}{\p\ln C_{jn}} &\eq \frac{V_n}{z_i} C_j\frac{\p I_{ji,n}}{\p C_{jn}},\\
+\frac{\p R_{in}^{\rm ex}}{\p\ln C_{in}} &\eq \frac{V_n}{z_i} C_i\frac{\p I_{ji,n}}{\p C_{in}},\\
+\frac{\p R_{in}^{\rm ex}}{\p S_{jn}} &\eq \frac{V_n}{z_i} \frac{\p I_{ji,n}}{\p S_{jn}},\\
+\frac{\p R_{in}^{\rm ex}}{\p S_{in}} &\eq \frac{V_n}{z_i} \frac{\p I_{ji,n}}{\p S_{in}}.
+\EA
+\end{subequations}
+\end{comment}
+
+%
+\begin{comment}
+Sorbed concentrations give
+\begin{subequations}
+\BA
+\frac{\p R_{N_{\rm ex}+j,n}}{\p\ln C_{jn}} &\eq \frac{V_n}{z_j}C_j\sum_{i\ne j} \frac{\p I_{ji,n}}{\p C_{jn}},\\
+\frac{\p R_{N_{\rm ex}+j,n}}{\p\ln C_{in}} &\eq \frac{V_n}{z_j} C_i\frac{\p I_{ji,n}}{\p C_i},\\
+\frac{\p R_{N_{\rm ex}+j,n}}{\p S_{jn}} &\eq \frac{V_n}{\Delta t} - \frac{V_n}{z_j}\sum_{i\ne j} \frac{\p I_{ji,n}}{\p S_{jn}},\\
+\frac{\p R_{N_{\rm ex}+j,n}}{\p S_{in}} &\eq \frac{V_n}{\Delta t} - \frac{V_n}{z_j} \frac{\p I_{ji,n}}{\p S_i},
+\EA
+\end{subequations}
+\begin{subequations}
+\BA
+\frac{\p R_{N_{\rm ex}+i,n}}{\p\ln C_{jn}} &\eq \frac{V_n}{z_i} C_j\frac{\p I_{ji,n}}{\p C_{jn}},\\
+\frac{\p R_{N_{\rm ex}+i,n}}{\p\ln C_{in}} &\eq \frac{V_n}{z_i} C_i\frac{\p I_{ji,n}}{\p C_{in}},\\
+\frac{\p R_{N_{\rm ex}+i,n}}{\p S_{jn}} &\eq \frac{V_n}{\Delta t} + \frac{V_n}{z_i} \frac{\p I_{ji,n}}{\p S_{jn}},\\
+\frac{\p R_{N_{\rm ex}+i,n}}{\p S_{in}} &\eq \frac{V_n}{\Delta t} + \frac{V_n}{z_i} \frac{\p I_{ji,n}}{\p S_{in}}.
+\EA
+\end{subequations}
+\end{comment}
+%
+
+\begin{comment}
+\noindent Conversion to Mass Units (mol/dm$^3$ $\rightarrow$ mol/g)
+\EQ
+S_j^M \eq \frac{\overline N_j}{M_s} \eq \frac{\overline N_j}{V} \frac{V}{V_s} \frac{V_s}{M_s} \eq \frac{S_j}{(1-\varphi)\rho_s}
+\EN
+\EQ
+{\rm CEC} \eq \frac{N_{\rm sites}}{M_s} \eq \frac{N_{\rm sites}}{A_s} \frac{A_s}{M_s} \eq \zeta_s \A_s
+\EN
+\end{comment}
