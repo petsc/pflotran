@@ -1102,7 +1102,7 @@ subroutine ReactionReadSurfaceComplexes(reaction,fid,option)
   do 
     if (.not.associated(cur_srfcmplx)) exit
     if (cur_srfcmplx%id < 0) then
-      string = 'No rate provided in input file for mineral: ' // &
+      string = 'No surface complex site density provided for mineral: ' // &
                trim(cur_srfcmplx%name) // '.'
       call printErrMsg(option,string)
     endif

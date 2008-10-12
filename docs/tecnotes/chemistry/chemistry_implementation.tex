@@ -3,7 +3,6 @@
 \usepackage{palatino}
 %\usepackage{ssss}
 \usepackage{amsmath,amsbsy,amssymb}
-%\usepackage{fancyheadings}
 %\usepackage{deflist}
 \usepackage{fancyhdr}
 \usepackage{tabularx}
@@ -12,7 +11,12 @@
 \usepackage{float,comment}
 \usepackage{graphicx}
 \usepackage{longtable}
-\usepackage{portland}
+%\usepackage{portland}
+
+%must be last package
+%\usepackage{hyperref}
+\usepackage[debug=false, colorlinks=true, pdfstartview=FitV, linkcolor=blue, citecolor=blue, urlcolor=blue, pdfpagelabels=true]{hyperref}
+
 \textwidth 6.5in
 \textheight 9.5in
 %\topmargin -.1in
@@ -389,10 +393,34 @@ Eliminating the reaction rates $I_i^\a$ leads to the equations
 \EQ
 \frac{\p}{\p t} \left\{\varphi \Psi_j +\sum_{i\a} \nu_{ji} S_i^\a \right\} + \bnabla\cdot\bOmega_j = 0.
 \EN
-Note that the sorption site concentration $\omega_\a$ is conserved:
+
+\subsubsection{Site Conservation}
+
+Note that the sorption site concentration $\omega_\a$ is conserved with respect to surface complexation reactions:
 \EQ
-\frac{\p\omega_\a}{\p t} \eq \frac{\p S_X^\a}{\p t} + \sum_i\nu_i^\a \frac{\p S_i^\a}{\p t} \eq 0.
-\EN 
+\left(\frac{\p\omega_\a}{\p t}\right)_{\rm \footnotesize
+\begin{array}{c}
+surf.\\
+cmplx
+\end{array}
+}
+\eq \frac{\p S_X^\a}{\p t} + \sum_i\nu_i^\a \frac{\p S_i^\a}{\p t} \eq 0.
+\EN
+However, precipitation/dissolution reactions can lead to a change in $\omega_\a$:
+\BA
+\left(\frac{\p\omega_\a}{\p t}\right)_{\rm \footnotesize
+\begin{array}{c}
+precip.\\
+/diss.
+\end{array}
+} 
+&\eq \eta_m^\a\A_m\rho_m\frac{\p\varphi_m}{\p t},\\
+&\eq \eta_m^\a\A_m\rho_m \overline V_m I_m.
+\EA
+
+\subsubsection{Bulk Properties}
+
+In many cases surface complexation properties are specified in terms of bulk properties of the porous medium: $\eta_b$, $\A_b$, $\rho_b$, $\varphi$. To represent this situation a fictitious mineral $\M_{m_0}$ may be entered with properties that reproduce the bulk density of the system by taking $W_{m_0}^{}\overline V_{m_0}^{-1}\varphi_{m_0}^{}\!=\!\rho_b$.
 
 \subsubsection{Implementation}
 
