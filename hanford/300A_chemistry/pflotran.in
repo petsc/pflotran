@@ -1,0 +1,311 @@
+:Description: 1D problem for testing geochemistry
+:
+MODE RICHARDS
+CHEMISTRY
+PRIMARY_SPECIES
+Na+
+K+
+Ca++
+Al(OH)4-
+H+
+UO2++
+HCO3-
+Cl-
+NO3-
+SO4--
+SiO2(aq)
+O2(aq)
+/
+SECONDARY_SPECIES
+OH-
+CO2(aq)
+CO3--
+CaCO3(aq)
+CaHCO3+
+CaSO4(aq)
+NaCl(aq)
+NaOH(aq)
+NaHCO3(aq)
+NaHSiO3(aq)
+NaNO3(aq)
+NaNO2(aq)
+HSO4-
+KSO4-
+HNO3(aq)
+NO2-
+NH3(aq)
+HN3(aq)
+N3-
+H3SiO4-
+H2SiO4--
+Al+++
+Al(OH)2+
+:Al(OH)4-
+:AlO2-
+AlOH++
+U+++
+U++++
+UO2+
+(UO2)2(OH)2++
+UO2CO3(aq)
+UO2(CO3)2--
+UO2(CO3)3----
+UO2Cl+
+UO2OH+
+/
+GAS_SPECIES
+O2(g)
+CO2(g)
+/
+MINERALS
+Calcite
+Kaolinite
+/
+MINERAL_RATES
+Calcite 1.d-6
+Kaolinite 1.e-12
+/
+skip
+SURFACE_COMPLEXES
+Calcite 10.
+>SOH 1.e-6
+>NPPSOUO2OH
+>NPPSOUO2(HCO3)2-
+/
+/
+/
+noskip
+DATABASE /Users/lichtner/projects/parallel/repository/pflotran/database/hanford.dat
+/
+:
+:NUMERICAL_JACOBIAN
+:INEXACT_NEWTON
+:STATISTICS
+:
+:CHECKPOINT 50
+:WALLCLOCK_STOP 0.05
+:
+DEBUG
+:MATVIEW_JACOBIAN
+:VECVIEW_RESIDUAL
+:VECVIEW_SOLUTION
+/
+:
+GRID
+TYPE structured
+NXYZ 10 1 1
+DXYZ
+1.
+1.
+1.
+/
+/
+:
+NEWTON_SOLVER
+:RTOL 1.d-8
+ATOL 1.d-6
+NO_INFINITY_NORM
+:NO_PRINT_CONVERGENCE
+:PRINT_DETAILED_CONVERGENCE
+/
+:
+LINEAR_SOLVER
+KSP_TYPE PREONLY
+PC_TYPE LU
+/
+:
+LINEAR_SOLVER TRANSPORT
+KSP_TYPE PREONLY
+PC_TYPE LU
+/
+:
+:STATISTICS
+:
+:HDF5 VELO !FLUX
+TECP VELO !FLUX
+:
+DIFF  1.D-9       12.6
+:
+: Richards Equation Pref
+RICH 101325.
+:
+SATURATION_FUNCTIONS
+:id itype swir   lambda alpha     pcwmax betac pwr
+ 1  2     0.10   2.67   2.042d-4  1.e8   0.d0  1.d0
+/
+
+THERMAL_PROPERTIES
+:ithm rho    cpr     ckdry cksat tau cdiff   cexp
+  1   2.75e3 1000.e0 0.5   0.5   0.5 2.13d-5 1.8
+/
+:
+MATERIALS
+:name   id icap ithm por  tau permx     permy     permz     permpwr
+Soil1   1  1    1    0.25 0.5 1.d-12    1.d-12    1.d-13    1.d0
+/
+:
+:TIME d every 10
+TIME y
+1.
+:
+:DTST 1.d-6
+DTST 1.d-6
+:50. 1.0d0 
+50. 0.1d0 
+:
+REGION all
+BLOCK 1 10 1 1 1 1
+/
+
+REGION West
+BLOCK 1 1 1 1 1 1
+FACE west
+/
+
+REGION East
+BLOCK 10 10 1 1 1 1
+FACE east
+/
+
+skip
+CONDITION Inlet
+CLASS flow
+TYPE
+PRESSURE mass
+/
+PRESSURE 1.d-3
+/
+
+CONDITION Outlet
+CLASS flow
+TYPE
+PRESSURE mass
+/
+PRESSURE -1.d-3
+/
+noskip
+
+CONDITION Inlet
+CLASS flow
+TYPE
+FLUX neumann
+/
+FLUX 2.8935185d-7 ! 0.1 m/day pore water
+/
+
+CONDITION Outlet
+CLASS flow
+TYPE
+FLUX neumann
+/
+FLUX -2.8935185d-7
+/
+
+CONDITION initial
+CLASS flow
+TYPE
+PRESSURE hydrostatic
+/
+DATUM 0.d0 0.d0 1.d0
+PRESSURE 201325.d0
+/
+
+CONDITION Inlet_c
+CLASS transport
+TYPE
+CONCENTRATION Na+ concentration
+CONCENTRATION K+ concentration
+CONCENTRATION H+ concentration
+CONCENTRATION HCO3- concentration
+CONCENTRATION Ca++ concentration
+CONCENTRATION Al(OH)4- concentration
+CONCENTRATION Cl- concentration
+CONCENTRATION NO3- concentration
+CONCENTRATION SO4-- concentration
+CONCENTRATION UO2++ concentration
+CONCENTRATION SiO2(aq) concentration
+CONCENTRATION O2(aq) concentration
+/
+CONCENTRATION Na+ 1.e-3
+CONCENTRATION K+ 1.e-4
+CONCENTRATION H+ 1.4207389178d-5
+CONCENTRATION HCO3- 1.0027999691d-3
+CONCENTRATION Ca++ 1.d-40
+CONCENTRATION Al(OH)4- 1.e-8
+CONCENTRATION Cl- 1.e-3
+CONCENTRATION NO3- 1.e-4
+CONCENTRATION SO4-- 1.e-4
+CONCENTRATION UO2++ 1.e-8
+CONCENTRATION SiO2(aq) 1.e-4
+CONCENTRATION O2(aq) 1.e-6
+/
+
+CONDITION initial_c
+CLASS transport
+TYPE
+CONCENTRATION Na+ concentration
+CONCENTRATION K+ concentration
+CONCENTRATION H+ concentration
+CONCENTRATION HCO3- concentration
+CONCENTRATION Ca++ concentration
+CONCENTRATION Al(OH)4- concentration
+CONCENTRATION Cl- concentration
+CONCENTRATION NO3- concentration
+CONCENTRATION SO4-- concentration
+CONCENTRATION UO2++ concentration
+CONCENTRATION SiO2(aq) concentration
+CONCENTRATION O2(aq) concentration
+/
+CONCENTRATION Na+ 0.1
+CONCENTRATION K+ 1.e-4
+CONCENTRATION H+ 1.4207389178d-8
+CONCENTRATION HCO3- 1.0027999691d-3
+CONCENTRATION Ca++ 1.0027999691d-5
+CONCENTRATION Al(OH)4- 1.e-8
+CONCENTRATION Cl- 0.1
+CONCENTRATION NO3- 1.e-4
+CONCENTRATION SO4-- 1.e-4
+CONCENTRATION UO2++ 1.e-8
+CONCENTRATION SiO2(aq) 1.e-4
+CONCENTRATION O2(aq) 1.e-6
+MINERAL Calcite 0.001
+MINERAL Kaolinite 0.0
+/
+
+BOUNDARY_CONDITION
+FLOW_CONDITION Inlet
+TRANSPORT_CONDITION Inlet_c
+REGION West
+/
+
+BOUNDARY_CONDITION
+FLOW_CONDITION Outlet
+TRANSPORT_CONDITION initial_c
+REGION East
+/
+
+skip
+SOURCE_SINK
+FLOW_CONDITION Inlet
+TRANSPORT_CONDITION Inlet_c
+REGION West
+/
+
+SOURCE_SINK
+FLOW_CONDITION Outlet
+TRANSPORT_CONDITION initial_c
+REGION East
+/
+noskip
+
+INITIAL_CONDITION
+FLOW_CONDITION initial
+TRANSPORT_CONDITION initial_c
+REGION all
+/
+
+STRATA
+MATERIAL Soil1
+REGION all
+/
+

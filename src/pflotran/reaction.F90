@@ -207,7 +207,8 @@ module Reaction_module
             TransitionStateTheoryRxnCreate, &
             TransitionStateTheoryRxnDestroy, &
             SurfaceComplexationRxnCreate, &
-            ReactionReadMineralRates
+            ReactionReadMineralRates, &
+            ReactionReadSurfaceComplexes
 
 contains
 
@@ -1037,6 +1038,78 @@ subroutine ReactionReadMineralRates(reaction,fid,option)
   enddo
   
 end subroutine ReactionReadMineralRates
+! ************************************************************************** !
+!
+! ReactionRead: Reads chemical species
+! author: Glenn Hammond
+! date: 05/02/08
+!
+! ************************************************************************** !
+subroutine ReactionReadSurfaceComplexes(reaction,fid,option)
+
+  use Fileio_module
+  use Option_module
+  
+  implicit none
+  
+  type(reaction_type) :: reaction
+  type(option_type) :: option
+  PetscInt :: fid
+  
+  character(len=MAXSTRINGLENGTH) :: string
+  character(len=MAXWORDLENGTH) :: word
+  character(len=MAXNAMELENGTH) :: name
+  
+  type(surface_complexation_rxn_type), pointer :: cur_srfcmplx
+  PetscErrorCode :: ierr
+
+  cur_srfcmplx => reaction%surface_complex_list
+  do 
+    if (.not.associated(cur_srfcmplx)) exit
+    cur_srfcmplx%id = -1*abs(cur_srfcmplx%id)
+    cur_srfcmplx => cur_srfcmplx%next
+  enddo
+
+  ierr = 0
+  do
+  
+    call fiReadFlotranString(fid,string,ierr)
+    if (ierr /= 0) exit
+
+    if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
+        fiStringCompare(string,'END',THREE_INTEGER)) exit  
+
+    call fiReadNChars(string,name,MAXNAMELENGTH,.true.,ierr)
+    call fiErrorMsg(option%myrank,'keyword','CHEMISTRY', ierr)
+    
+    cur_srfcmplx => reaction%surface_complex_list
+    do 
+      if (.not.associated(cur_srfcmplx)) exit
+      if (fiStringCompare(cur_srfcmplx%name,name,MAXNAMELENGTH)) then
+!       if (.not.associated(cur_srfcmplx%tstrxn)) then
+!         cur_srfcmplx%tstrxn => TransitionStateTheoryRxnCreate()
+!       endif
+!       call fiReadDouble(string,cur_srfcmplx%tstrxn%rate,ierr)
+!       cur_srfcmplx%id = abs(cur_srfcmplx%id)
+        exit
+      endif
+      cur_srfcmplx => cur_srfcmplx%next
+    enddo
+    
+  enddo
+ 
+  cur_srfcmplx => reaction%surface_complex_list
+  do 
+    if (.not.associated(cur_srfcmplx)) exit
+    if (cur_srfcmplx%id < 0) then
+      string = 'No rate provided in input file for mineral: ' // &
+               trim(cur_srfcmplx%name) // '.'
+      call printErrMsg(option,string)
+    endif
+    cur_srfcmplx => cur_srfcmplx%next
+  enddo
+  
+end subroutine ReactionReadSurfaceComplexes
 
 ! ************************************************************************** !
 !

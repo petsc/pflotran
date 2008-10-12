@@ -99,7 +99,7 @@ subroutine Init(simulation,filename)
   patch => realization%patch
 
   if(associated(patch%grid)) then
-     grid => patch%grid
+    grid => patch%grid
   endif
 
   ! process command line options
@@ -506,7 +506,7 @@ subroutine readRequiredCardsFromInput(realization,filename)
 
 ! we initialize the word to blanks to avoid error reported by valgrind
   do i=1,MAXWORDLENGTH
-     word(i:i) = ' '
+    word(i:i) = ' '
   enddo
 
 
@@ -548,8 +548,8 @@ subroutine readRequiredCardsFromInput(realization,filename)
       call PatchAddToList(patch,level%patch_list)
       realization%patch => patch
     case(AMR_GRID)
-       realization%level_list => AMRGridCreateLevelPatchLists(discretization%amrgrid)
-       realization%patch => realization%level_list%first%patch_list%first
+      realization%level_list => AMRGridCreateLevelPatchLists(discretization%amrgrid)
+      realization%patch => realization%level_list%first%patch_list%first
   end select
 !.........................................................................
 
@@ -796,6 +796,9 @@ subroutine readInput(simulation,filename)
               call fiSkipToEND(IUNIT1,option%myrank,card)
             case('MINERAL_RATES')
               call ReactionReadMineralRates(realization%reaction,IUNIT1,option)
+            case('SURFACE_COMPLEXES')
+              call ReactionReadSurfaceComplexes(realization%reaction,IUNIT1, &
+              option)
           end select
           if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
               fiStringCompare(string,'END',THREE_INTEGER)) exit

@@ -483,6 +483,30 @@ C_l\frac{\p I_i}{\p C_l} &= \nu_{ji} k_i^f S_X^{} Q_i\\
 \frac{\p I_i}{\p S_X} &= k_i^f Q_i
 \EA
 
+\subsubsection{Input File Structure}
+
+\begin{verbatim}
+SURFACE_COMPLEX
+min1 area1
+  >fsite1 den1
+    >srf1
+    >srf2
+    >srf3
+    END
+  >fsite2 den2
+    >srf4
+    >srf5
+    END
+  END
+min2 area2
+  >fsite3 den3
+    >srf6
+    >srf7
+    END
+  END
+END
+\end{verbatim}
+
 \subsection{Ion Exchange Reactions}
 Ion exchange reactions may be represented either in terms of bulk- or mineral-specific rock properties.  Changes in bulk sorption properties can be expected as a result of mineral reactions.  However, only the mineral-based formulation enables these effects to be captured in the model.  The bulk rock sorption site concentration $\omega_\a$, in units of moles of sites per bulk sediment volume (mol/dm$^3$), is related to the bulk cation exchange capacity $Q_\a$ (mol/kg) by the expression
 
@@ -661,11 +685,37 @@ S_i\frac{\p I_{ji}}{\p S_i} &= \frac{1}{z_i} k_{ji}^f a_j^{1/z_j} S_i^{1/z_i}.
 \end{subequations}
 Note that: $\dfrac{df}{d\ln x} = x \dfrac{df}{dx}$, for any function $f$.
 
+\subsubsection{Input File Structure}
+
+\begin{verbatim}
+ION_EXCHANGE
+min1 
+  cec1
+    >cat1
+    >cat2
+    >cat3
+    END
+  cec2
+    >cat4
+    >cat5
+    END
+  END
+min2 
+  cec3
+    >cat6
+    >cat7
+    END
+  END
+END
+\end{verbatim}
+
 \section{Colloid-Facilitated Transport}
 
 \section{Solid Solutions}
 
 \section{Biogeochemical Reactions}
+
+\section{Pitzer Activity Coefficient Algorithm}
 
 \section{Species-Dependent Diffusion}
 
