@@ -211,6 +211,11 @@ subroutine StepperRun(realization,flow_stepper,tran_stepper)
       WaypointSkipToTime(realization%waypoints,option%time)
     if (associated(tran_stepper)) tran_stepper%cur_waypoint => &
       WaypointSkipToTime(realization%waypoints,option%time)
+
+    if (option%nflowdof > 0) then
+      call StepperUpdateFlowAuxVars(realization)
+    endif
+
   endif
 
   if (option%overwrite_restart_transport .and. option%ntrandof > 0) then
@@ -1146,6 +1151,43 @@ subroutine StepperUpdateTransportSolution(realization)
   call RTUpdateSolution(realization)
 
 end subroutine StepperUpdateTransportSolution
+
+! ************************************************************************** !
+!
+! StepperUpdateFlowAuxVars: Updates the flow auxilliary variables
+! author: Glenn Hammond
+! date: 10/11/08 
+!
+! ************************************************************************** !
+subroutine StepperUpdateFlowAuxVars(realization)
+  
+  use MPHASE_module, only: MphaseUpdateAuxVars
+  use Richards_module, only : RichardsUpdateAuxVars
+  use THC_module, only : THCUpdateAuxVars
+
+  use Realization_module
+  use Option_module
+
+  implicit none
+
+  type(realization_type) :: realization
+
+  type(option_type), pointer :: option
+  
+  PetscErrorCode :: ierr
+  
+  option => realization%option
+  
+  select case(option%iflowmode)
+    case(MPH_MODE)
+      call MphaseUpdateAuxVars(realization)
+    case(THC_MODE)
+      call THCUpdateAuxVars(realization)
+    case(RICHARDS_MODE)
+      call RichardsUpdateAuxVars(realization)
+  end select    
+
+end subroutine StepperUpdateFlowAuxVars
 
 ! ************************************************************************** !
 !

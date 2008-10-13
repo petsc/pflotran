@@ -357,7 +357,7 @@ end subroutine MPhaseUpdateReasonPatch
 
 ! ************************************************************************** !
 !
-! THCUpdateAuxVars: Updates the auxilliary variables associated with 
+! MphaseUpdateAuxVars: Updates the auxilliary variables associated with 
 !                        the Richards problem
 ! author: Glenn Hammond
 ! date: 12/10/07

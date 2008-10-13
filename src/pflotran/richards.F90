@@ -1164,7 +1164,7 @@ subroutine RichardsResidual(snes,xx,r,realization,ierr)
   discretization => realization%discretization
   
   ! Communication -----------------------------------------
-  ! These 3 must be called before THCUpdateAuxVars()
+  ! These 3 must be called before RichardsUpdateAuxVars()
   call DiscretizationGlobalToLocal(discretization,xx,field%flow_xx_loc,NFLOWDOF)
   call DiscretizationLocalToLocal(discretization,field%iphas_loc,field%iphas_loc,ONEDOF)
   call DiscretizationLocalToLocal(discretization,field%icap_loc,field%icap_loc,ONEDOF)
