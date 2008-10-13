@@ -513,6 +513,7 @@ C_l\frac{\p I_i}{\p C_l} &= \nu_{ji} k_i^f S_X^{} Q_i\\
 
 \subsubsection{Input File Structure}
 
+F77 programing style:
 \begin{verbatim}
 SURFACE_COMPLEX
 min1 area1
@@ -528,6 +529,38 @@ min1 area1
   END
 min2 area2
   >fsite3 den3
+    >srf6
+    >srf7
+    END
+  END
+END
+\end{verbatim}
+
+\noindent
+F90 object oriented programming style:
+\begin{verbatim}
+SORPTION
+  SURFACE_COMPLEXATION_RXN
+    MINERAL min1
+    SITE    >fsite1 den1
+    SURFACE_COMPLEXES
+    >srf1
+    >srf2
+    >srf3
+    END
+  END
+  SURFACE_COMPLEXATION_RXN
+    MINERAL min1
+    SITE    >fsite2 den2
+    SURFACE_COMPLEXES
+    >srf4
+    >srf5
+    END
+  END
+  SURFACE_COMPLEXATION_RXN
+    MINERAL min2
+    SITE    >fsite3 den3
+    SURFACE_COMPLEXES
     >srf6
     >srf7
     END
@@ -715,6 +748,7 @@ Note that: $\dfrac{df}{d\ln x} = x \dfrac{df}{dx}$, for any function $f$.
 
 \subsubsection{Input File Structure}
 
+F77 programing style:
 \begin{verbatim}
 ION_EXCHANGE
 min1 
@@ -730,6 +764,38 @@ min1
   END
 min2 
   cec3
+    >cat6
+    >cat7
+    END
+  END
+END
+\end{verbatim}
+
+\noindent
+F90 object oriented programming style:
+\begin{verbatim}
+SORPTION
+  ION_EXCHANGE_RXN
+    MINERAL min1
+    SITE    cec1
+    CATION
+    >cat1
+    >cat2
+    >cat3
+    END
+  END
+  ION_EXCHANGE_RXN
+    MINERAL min1
+    SITE    cec2
+    CATION
+    >cat4
+    >cat5
+    END
+  END
+  ION_EXCHANGE_RXN
+    MINERAL min2
+    SITE    cec3
+    CATION
     >cat6
     >cat7
     END
