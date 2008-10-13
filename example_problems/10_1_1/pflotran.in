@@ -1,6 +1,7 @@
 :Description: 1D problem for testing geochemistry
-:
+ 
 MODE RICHARDS
+
 CHEMISTRY
 PRIMARY_SPECIES
 OH-
@@ -23,6 +24,13 @@ END
 DATABASE ../../database/hanford.dat
 END
 :
+:CHECKPOINT 1
+:RESTART pflotran.chk1
+
+TIMESTEPPER
+:MAX_STEPS 5
+END
+
 :NUMERICAL_JACOBIAN
 :INEXACT_NEWTON
 :STATISTICS
