@@ -67,13 +67,15 @@ Kaolinite 1.e-12
 /
 skip
 SURFACE_COMPLEXES
-Calcite 10.
->SOH 1.e-6
+SURFACE_COMPLEX
+MONERAL Calcite 10.
+SITE >SOH 1.e-6
+COMPLEXES
 >NPPSOUO2OH
 >NPPSOUO2(HCO3)2-
-/
-/
-/
+END
+END
+END
 noskip
 DATABASE /Users/lichtner/projects/parallel/repository/pflotran/database/hanford.dat
 /
