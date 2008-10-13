@@ -398,7 +398,7 @@ Eliminating the reaction rates $I_i^\a$ leads to the equations
 
 Note that the sorption site concentration $\omega_\a$ is conserved with respect to surface complexation reactions:
 \EQ
-\left(\frac{\p\omega_\a}{\p t}\right)_{\rm \footnotesize
+\left(\frac{\p\omega_\a}{\p t}\right)_{\rm \tiny\hspace{-8pt}
 \begin{array}{c}
 surf.\\
 cmplx
@@ -408,14 +408,14 @@ cmplx
 \EN
 However, precipitation/dissolution reactions can lead to a change in $\omega_\a$:
 \BA
-\left(\frac{\p\omega_\a}{\p t}\right)_{\rm \footnotesize
+\left(\frac{\p\omega_\a}{\p t}\right)_{\rm \tiny\hspace{-8pt}
 \begin{array}{c}
 precip.\\
 /diss.
 \end{array}
 } 
-&\eq \eta_m^\a\A_m\rho_m\frac{\p\varphi_m}{\p t},\\
-&\eq \eta_m^\a\A_m\rho_m \overline V_m I_m.
+&\eq \eta_m^\a\A_m^{}\rho_m^{}\frac{\p\varphi_m}{\p t},\\
+&\eq \eta_m^\a\A_m^{}\rho_m^{}\overline V_m^{} I_m^{}.
 \EA
 
 \subsubsection{Bulk Properties}
@@ -514,6 +514,7 @@ C_l\frac{\p I_i}{\p C_l} &= \nu_{ji} k_i^f S_X^{} Q_i\\
 \subsubsection{Input File Structure}
 
 F77 programing style:
+\small
 \begin{verbatim}
 SURFACE_COMPLEX
 min1 area1
@@ -535,9 +536,11 @@ min2 area2
   END
 END
 \end{verbatim}
+\normalsize
 
 \noindent
 F90 object oriented programming style:
+\small
 \begin{verbatim}
 SORPTION
   SURFACE_COMPLEXATION_RXN
@@ -567,6 +570,7 @@ SORPTION
   END
 END
 \end{verbatim}
+\normalsize
 
 \subsection{Ion Exchange Reactions}
 Ion exchange reactions may be represented either in terms of bulk- or mineral-specific rock properties.  Changes in bulk sorption properties can be expected as a result of mineral reactions.  However, only the mineral-based formulation enables these effects to be captured in the model.  The bulk rock sorption site concentration $\omega_\a$, in units of moles of sites per bulk sediment volume (mol/dm$^3$), is related to the bulk cation exchange capacity $Q_\a$ (mol/kg) by the expression
@@ -600,7 +604,7 @@ with solid density $\rho_s$ and porosity $\varphi$.
 
 For equivalent exchange $(z_j\!=\!z_i\!=\!z)$, an explicit expression exists for the sorbed concentrations given by
 \EQ
-S_j^\a \eq \frac{\omega_\a}{z} \frac{k_j C_j}{\sum k_lC_l},
+S_j^\a \eq \frac{\omega_\a}{z} \frac{k_j^\a C_j^{}}{\sum k_l^\a C_l^{}},
 \EN
 where $C_k$ denotes the $k$th cation concentration. This expression follows directly from the mass action equations and conservation of exchange sites.
 
@@ -612,74 +616,49 @@ The simplest approach to developing a kinetic formulation of ion exchange is to 
 \subsubsection{Kinetic Rate Laws}
 
 The kinetic reaction rate for reaction \eqref{ex1} has the following form  
-\begin{subequations}
 \EQ
-I_{ji} \eq k_{ji}^f a_j^{1/z_j} X_i^{1/z_i} - k_{ji}^b a_i^{1/z_i} X_j^{1/z_j},
-\EN
-and for reaction \eqref{ex2} the form 
-\EQ
-\widetilde I_{ji} \eq \widetilde k_{ji}^f a_j^{z_i} X_i^{z_j} - \widetilde k_{ji}^b a_i^{z_j} X_j^{z_i}.
-\EN
-\end{subequations}
-Although the reaction rates $I_{ji}$ and $\widetilde I_{ji}$ corresponding to reactions \eqref{ex1} and \eqref{ex2} are not simply related, the equilibrium constants for the corresponding reactions are related by the expression
-\EQ
-\widetilde K_{ji} \eq \big(K_{ji}\big)^{z_jz_i}.
+I_{ji} \eq k_{ji}^f a_j^{1/z_j} X_i^{1/z_i} - k_{ji}^b a_i^{1/z_i} X_j^{1/z_j}.
 \EN
 The ratio of the forward and backward rate constants are equal to the equilibrium constants according to
 \EQ
-K_{ji} \eq \frac{k_{ji}^f}{k_{ji}^b},
+K_{ji} \eq \frac{k_{ji}^f}{k_{ji}^b}.
 \EN
-and similarly for $\widetilde K_{ji}$.
 
 \subsubsection{Mass Conservation Relations}
 
 Mass conservation equations including homogeneous aqueous reactions, mineral precipitation and dissolution, and ion exchange with the form \eqref{ex1} using cation $\A_j$ as reference cation have the form
 \begin{subequations}
 \BA
-\frac{\p}{\p t} \varphi \Psi_j + \bnabla\cdot\bOmega_j &= -\frac{1}{z_j}\sum_{i\ne j} I_{ji} - \sum_m\nu_{jm}I_m,\\
-\frac{\p}{\p t} \varphi \Psi_j + \bnabla\cdot\bOmega_j &= \frac{1}{z_i} I_{ji} - \sum_m\nu_{im}I_m,
+\frac{\p}{\p t}\varphi\Psi_j + \bnabla\cdot\bOmega_j &= -\frac{1}{z_j}\sum_\a\sum_{k\ne j} I_{jk}^\a - \sum_m\nu_{jm}I_m + \sum_r\widetilde\nu_{jr}I_r,\\
+\frac{\p}{\p t}\varphi\Psi_k + \bnabla\cdot\bOmega_k &= \frac{1}{z_k} \sum_\a I_{jk}^\a - \sum_m\nu_{km}I_m+ \sum_r\widetilde\nu_{kr}I_r,
 \EA
 \end{subequations}
 for aqueous primary species with mineral reaction rates $I_m$.
 Sorbed concentrations obey the conservation equations
 \begin{subequations}
 \BA
-\frac{\p S_j}{\p t} &= \frac{1}{z_j}\sum_{i\ne j} I_{ji},\\
-\frac{\p S_i}{\p t} &= -\frac{1}{z_i} I_{ji}.
-\EA
-\end{subequations}
-Similar expressions hold for the exchange reactions of the form of reactions \eqref{ex2} but with different stoichiometric exchange coefficients
-\begin{subequations}
-\BA
-\frac{\p}{\p t} \varphi \Psi_j + \bnabla\cdot\bOmega_j &= -\sum_{i\ne j} z_i \widetilde I_{ji} - \sum_m\nu_{jm}I_m,\\
-\frac{\p}{\p t} \varphi \Psi_j + \bnabla\cdot\bOmega_j &= z_j \widetilde I_{ji} - \sum_m\nu_{im}I_m,
-\EA
-\end{subequations}
-with sorbed concentrations
-\begin{subequations}
-\BA
-\frac{\p S_j}{\p t} &= \sum_{i\ne j} z_i\widetilde I_{ji},\\
-\frac{\p S_i}{\p t} &= -z_j \widetilde I_{ji}.
+\frac{\p S_j^\a}{\p t} &= \frac{1}{z_j}\sum_{i\ne j} I_{ji}^\a,\\
+\frac{\p S_k^\a}{\p t} &= -\frac{1}{z_k} I_{jk}^\a.
 \EA
 \end{subequations}
 
 Eliminating the exchange rates from the primary species equations gives the equation
 \EQ
-\frac{\p}{\p t} \left(\varphi \Psi_j + S_j\right) + \bnabla\cdot\bOmega_j \eq -\sum_m\nu_{jm}I_m,
+\frac{\p}{\p t} \left(\varphi \Psi_j + \sum_\a S_j^\a\right) + \bnabla\cdot\bOmega_j \eq -\sum_m\nu_{jm}I_m + \sum_r\widetilde\nu_{jr}I_r,
 \EN
-valid for all exchangeable cations and for both forms of the exchange reactions.
+valid for all exchangeable cations.
 
-It follows that for both formulations exchange sites are conserved according to the result
+It follows that exchange sites are conserved according to the result
 \EQ
-\frac{\p\omega}{\p t} \eq 0.
+\frac{\p\omega_\a}{\p t} \eq 0.
 \EN
-implying that the cation exchange capacity of the porous medium is constant as must be the case.
+implying that the cation exchange capacity of the porous medium is constant with respect to exchange reactions as must be the case.
 
 \subsubsection{Finite Difference Form}
 
 For a system with $N_{\rm ex}$ exchangeable cations, in a kinetic formulation there are $2\times N_{\rm ex}$ independent variables: $\{C_1,\,\cdots,\,C_{N_{\rm ex}},\,S_1,\,\cdots,\,S_{N_{\rm ex}}\}$, consisting of the cation aqueous and sorbed concentrations.
 
-The contribution of ion exchange to the residual function $R_{kn}^{\rm ex}$ for finite difference equations for the $j$th primary species at the $n$th node is given by (only the case of reactions \eqref{ex1} are presented here):
+The contribution of ion exchange to the residual function $R_{kn}^{\rm ex}$ for finite difference equations for the $j$th primary species at the $n$th node is given by:
 \EQ
 R_{jn}^{\rm ex} \eq V_n\frac{\Delta S_j}{\Delta t},
 \EN
@@ -749,6 +728,7 @@ Note that: $\dfrac{df}{d\ln x} = x \dfrac{df}{dx}$, for any function $f$.
 \subsubsection{Input File Structure}
 
 F77 programing style:
+\small
 \begin{verbatim}
 ION_EXCHANGE
 min1 
@@ -770,9 +750,11 @@ min2
   END
 END
 \end{verbatim}
+\normalsize
 
 \noindent
 F90 object oriented programming style:
+\small
 \begin{verbatim}
 SORPTION
   ION_EXCHANGE_RXN
@@ -802,6 +784,7 @@ SORPTION
   END
 END
 \end{verbatim}
+\normalsize
 
 \section{Colloid-Facilitated Transport}
 
