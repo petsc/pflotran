@@ -953,7 +953,27 @@ subroutine ReactionRead(reaction,fid,option)
           nullify(mineral)
         enddo
       case('MINERAL_RATES')
-        call fiSkipToEND(fid,option%myrank,word)       
+        call fiSkipToEND(fid,option%myrank,word)
+      case('SORPTION')
+        do
+          call fiReadFlotranString(fid,string,ierr)
+          if (ierr /= 0) exit
+          if (string(1:1) == '.' .or. string(1:1) == '/' .or. &
+              fiStringCompare(string,'END',THREE_INTEGER)) exit
+
+          call fiReadWord(string,word,.true.,ierr)
+          call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,SORPTION', ierr)
+          call fiWordToUpper(word)   
+
+          select case(trim(word))
+            case('SURFACE_COMPLEXATION_RXN')
+          !   call SurfaceComplexRXNRead
+            case('ION_EXCHANGE_RXN')
+          !   call IonExchangeRXNRead
+            case('DISTRIBUTION_COEF')
+          !   call DistributionCoefRead
+          end select
+        enddo
       case('DATABASE')
         call fiReadNChars(string,reaction%database_filename,MAXSTRINGLENGTH,.true.,ierr)  
         call fiErrorMsg(option%myrank,'keyword','CHEMISTRY,DATABASE FILENAME', ierr)          
